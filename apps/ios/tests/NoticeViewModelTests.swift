@@ -36,6 +36,8 @@ struct NoticeViewModelTests {
         precondition(card.state!.organizationName == "한국농어촌공사" && card.state!.contextNames == "충북대학교")
         precondition(card.state!.title == krc.title && card.state!.targetUser == krc.targetUser && card.state!.applicationSummary == krc.applicationInformation.summary)
         precondition(detail.state!.organizationPath.isEmpty && detail.state!.contexts[0].label == "행사 관련 기관")
+        precondition(detail.state!.applicationURL?.absoluteString == krc.applicationInformation.url)
+        precondition(detail.state!.applicationTime.timeline != nil)
         precondition(detail.state!.organizationLinks.allSatisfy { $0.organizationName != nil })
         precondition(detail.state!.sources.count == reopened.state!.sources.count && detail.state!.evidence.count == model.evidence.count)
         let notifications = Mutex(0)

@@ -11,9 +11,10 @@ struct EventTimeRows: View {
             VStack(alignment: .leading, spacing: NativeSpacing.related) {
                 ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
                     VStack(alignment: .leading, spacing: NativeSpacing.compact) {
-                        if let label = line.label { Text(label).font(.caption).foregroundStyle(.secondary) }
-                        Text(line.date).font(.body.weight(.medium))
-                        Text(line.time).font(.subheadline).foregroundStyle(.secondary)
+                        if let label = line.label, !line.time.hasSuffix("부터"), !line.time.hasSuffix("까지") {
+                            Text(label).font(.caption).foregroundStyle(.secondary)
+                        }
+                        Text("\(line.date) \(line.time)").font(.body)
                     }
                     .accessibilityElement(children: .combine)
                 }

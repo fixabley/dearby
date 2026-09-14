@@ -9,6 +9,7 @@ struct EventPeriodPresentation {
     }
     let lines: [Line]
     let note: String?
+    private(set) var timeline: EventTimelineInterval? = nil
 
     init(startsAt: String?, startsOn: String?, endsAt: String?, endsOn: String?, timezone: String?) {
         let raw = [startsAt, startsOn, endsAt, endsOn].compactMap { $0 }.joined(separator: " · ")
@@ -67,7 +68,12 @@ struct EventPeriodPresentation {
         if let first, let last {
             if first.day == last.day {
                 let time: String
-                if let start = first.clock, let end = last.clock { time = start == end ? start : "\(start)부터 \(end)까지" }
+                if let start = first.clock, let end = last.clock {
+                    if let zone, zone.secondsFromGMT(for: first.date) != zone.secondsFromGMT(for: last.date) {
+                        let offset = formatter("ZZZZZ")
+                        time = "\(start) (\(offset.string(from: first.date)))부터 \(end) (\(offset.string(from: last.date)))까지"
+                    } else { time = start == end ? start : "\(start)부터 \(end)까지" }
+                }
                 else if first.clock == nil && last.clock == nil { time = "시간 미확인" }
                 else { time = "시작 \(first.clock ?? "시간 미확인") · 종료 \(last.clock ?? "시간 미확인")" }
                 self = Self(lines: [.init(label: nil, date: date.string(from: first.date), time: time)], note: zoneText)
@@ -77,6 +83,9 @@ struct EventPeriodPresentation {
         } else if let last {
             self = Self(lines: [line(last, "마감")], note: ["시작 미확인", zoneText].compactMap { $0 }.joined(separator: " · "))
         } else { self = fallback("시간 미확인") }
+        if let first, first.clock != nil, let last, last.clock != nil, let zone {
+            timeline = EventTimelineInterval(start: first.date, end: last.date, timeZone: zone)
+        }
     }
 
     private init(lines: [Line], note: String?) { self.lines = lines; self.note = note }

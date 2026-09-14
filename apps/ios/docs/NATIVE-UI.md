@@ -67,4 +67,17 @@ Shared `LocationInformation(name:detail:action:)`는 장소명 body와 상세 su
 
 ### 사용자 Calendar 이미지: 한국어 기간과 링크
 
-`EventPeriodPresentation`은 한국어 요일/오전·오후와 부터·까지를 표시한다. `ExternalLinkCard(url:label:)`는 이미 안전성을 검사한 URL과 의미 label만 받아 도메인과 native `Link` 열기를 표시한다. ViewThatFits는 큰글자에서 세로 조합을 허용한다. 링크가 없으면 상위 View가 생략하며 앱 신청URL/온라인URL은 State/VM에서 조립한다. 원본 URL을 미리 fetch하거나 공유하지 않는다. [이번 근거와 검증](evidence/issue-02/calendar-reference/README.md).
+`EventPeriodPresentation`은 한국어 요일/오전·오후와 부터·까지를 표시한다. `ExternalLinkCard(url:label:)`는 이미 안전성을 검사한 URL과 의미 label만 받아 도메인과 native `Link` 열기를 표시한다. AnyLayout은 접근성 글자 크기에서 세로 조합을 사용한다. 링크가 없으면 상위 View가 생략하며 앱 신청URL/온라인URL은 State/VM에서 조립한다. 원본 URL을 미리 fetch하거나 공유하지 않는다. [이번 근거와 검증](evidence/issue-02/calendar-reference/README.md).
+
+### 표시 전용 일간 타임라인
+
+| API | Native mapping / 사용처 |
+| --- | --- |
+| `EventDayTimeline(interval:title:)` | 신청/각 활동에서 사용; local State 날짜 선택, native ScrollViewReader + ScrollView, 320pt 기본·AX 최대520pt viewport |
+| `EventDaySelector(selection:range:timeZone:calendar:title:previousDate:nextDate:)` | Binding/원시 값만 받는 compact DatePicker와 이전/다음 Button; source-zone, 범위 제한, 큰글자 세로 배치 |
+| `EventTimelineGrid(day:title:hourHeight:gutter:)` | 하루 눈금·가로선·accent fill/stroke 블록, system fonts/primary text/separator/background; 정확한 구간 AX label |
+| `EventTimelineInterval(start:end:timeZone:)` | 도메인 없는 Shared/Lib 표시용 half-open interval; 인접일 Calendar 연산, 해당일 clip과 시간 눈금만 계산 |
+
+SwiftUI에 이 용도의 일정 일간 시간표 control이 없어 좁은 custom grid를 유지한다. native DatePicker의 날짜 탐색이나 내비게이션/전체 달력 앱을 재구현하지 않는다. 상세 List 안의 세로 ScrollView는 사용자가 요청한 bounded 미리보기에 한정하며 header/바깥 여백으로 상세를, 내부 시간표로 하루 전체를 스크롤한다. 일반일은 24시간, DST 전환일은 실제23/25/23.5시간과 offset이 구별된 눈금이다.
+
+같은날 기간 문장은 날짜 한 번, 여러날은 한국어 시작/종료 문장을 줄별로 읽는다. State가 생성한 `EventPeriodPresentation.timeline`은 두 timestamp·timezone·일치·순서가 검증될 때만 존재한다. 날짜만/혼합 정밀도/마감만/invalid/역전/0길이는 정보 문구를 표시하며 종일/길이를 만들지 않는다. 긴 기간 전체 날짜 배열은 만들지 않고 `[start,end)`를 선택일의 실제 자정 경계에서 자른다. 시작일 기본 선택, 끝이 자정이면 다음날 선택 제외다. 최소44pt 블록은 **시각 높이만** 확대하고 정확한 시간 문장·AX label과 확대 안내는 유지한다. 최대글자에서는 gutter 폭 제한과 별도의 전체 일정명으로 가독성을 보완한다. 어떠한 OS 일정 조회/권한/저장·외부 링크 호출도 표시 중 일어나지 않는다.

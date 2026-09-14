@@ -16,6 +16,11 @@ struct NoticeScheduleView: View {
                 }
             }
             EventTimeRows(lines: state.time.lines, note: state.time.note)
+            if let interval = state.time.timeline {
+                EventDayTimeline(interval: interval, title: state.title)
+            } else {
+                Text("시작·종료 시각이 확인되면 시간표를 표시합니다.").font(.footnote).foregroundStyle(.secondary)
+            }
             ForEach(Array(state.places.enumerated()), id: \.offset) { _, place in
                 LocationInformation(name: place.display.name, detail: place.display.detail) {
                     if place.venue.coordinates != nil { VenueMapButton(venue: place.venue, onOpenMap: onOpenMap) }
