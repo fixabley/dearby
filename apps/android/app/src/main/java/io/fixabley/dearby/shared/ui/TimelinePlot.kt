@@ -56,4 +56,3 @@ internal fun TimelinePlot(day: DayTimelineState, title: String) {
     if (enlarged) Text("짧은 구간은 블록을 확대해 표시합니다. 정확한 시간은 위 안내를 확인해 주세요.",
         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
-

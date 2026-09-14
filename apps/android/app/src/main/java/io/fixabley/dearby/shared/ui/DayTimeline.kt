@@ -26,4 +26,3 @@ internal fun DayTimeline(interval: TimelineInterval, title: String, modifier: Mo
     }
     if (showPicker) TimelineDatePicker(interval, date, { selected = it.toEpochDay(); showPicker = false }, { showPicker = false })
 }
-
