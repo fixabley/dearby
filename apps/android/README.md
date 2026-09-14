@@ -76,4 +76,7 @@ DB/원본/쓰기 오류는 기존 snapshot을 유지하고 재시도하도록 �
 기기 테스트는 사용자5554가 아닌 전용5556에서 uniqueDB로 수행하며 실제 캘린더 저장/외부 지도 화면은 검증하지 않습니다.
 
 
-최종 검증(2026-09-14): FSD60파일/self-test24(금지18/허용6), JVM39, Debug·계측 APK 컴파일, Lint 오류0/경고12, 전용5556 계측35 모두 통과(실패/오류/skip0). 실제 DB5건과 기존 UI/저장/지도/캘린더30건을 함께 실행했다. 기록은 `build/room-final-build.log`, `build/room-instrumentation.log`, 표준 JVM/계측 XML·Lint 보고서이며 중간 버튼/widget/저장소 단계 결과와 구분한다. 전용5556은 검증 후 종료했고 사용자5554는 조작하지 않았다. canonical asset SHA256 `c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f` 유지, 실제 Calendar Save/외부 지도 앱 내부 화면은 검증하지 않았다.
+#1 병합 당시 검증(2026-09-14): FSD60파일/self-test24(금지18/허용6), JVM39, Debug·계측 APK 컴파일, Lint 오류0/경고12, 전용5556 계측35 모두 통과(실패/오류/skip0). 실제 DB5건과 기존 UI/저장/지도/캘린더30건을 함께 실행했다. 기록은 `build/room-final-build.log`, `build/room-instrumentation.log`, 표준 JVM/계측 XML·Lint 보고서이며 중간 버튼/widget/저장소 단계 결과와 구분한다. 전용5556은 검증 후 종료했고 사용자5554는 조작하지 않았다. canonical asset SHA256 `c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f` 유지, 실제 Calendar Save/외부 지도 앱 내부 화면은 검증하지 않았다.
+
+
+#2 검증(2026-09-14): FSD66/self-test24, JVM39, Debug·Release·계측 APK 빌드, Lint 오류0/기존경고12, 전용5556 전체계측39 모두 통과. 신규 디자인 회귀4건을 포함한다. [before/after 화면·검증·한계](docs/design-system/VERIFICATION.md), [Shared API와 native 사용 규칙](docs/design-system/README.md)을 참고한다.

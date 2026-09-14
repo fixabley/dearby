@@ -39,3 +39,7 @@ Issue #2. Android 12/API31 이상, 기존 Compose BOM 2026.02.01/Material3를 �
 App의 초기 로딩/오류·재시도와 발견/즐겨찾기의 빈 화면에서 실제 사용한다. 큰 글자에서 상태 화면 전체는 스크롤 가능하다. 상태 저장·fetch·retry 정책은 App에 남아 있으며 패널은 값을 렌더링할 뿐이다. `StatusPreview.kt`의 light/dark/2배 글자와 `StatusPanelTest`의 loading→failure 접근성/재시도 콜백이 검증 진입점이다. 발견의 저장 피드백도 polite live region으로 제공하며 navigation은 기존 native selected semantics를 유지한다.
 
 상태 컴포넌트 검증(2026-09-14): 전용5556 StatusPanelTest 1/1 통과, FSD 66파일/self-test24 통과. 기존 화면 상태 소유권·재시도 로직은 변경하지 않았다.
+
+전체 최종 실행 결과·before/after 비교·기기 보존·검증 한계는 [검증 문서](VERIFICATION.md)에 정리한다.
+
+남기는 custom 조합: `NoticeCard`는 기존 세로 pager·더블탭·State/콜백을 연결하므로 domain widget에 유지한다. `FavoriteOrganizationCard`도 조직과 연결 공고·삭제를 조합하므로 Shared로 이동하지 않는다. 버튼의 도메인 label/하트와 제목은 소유 widget에 남고 native NavigationBar/ModalBottomSheet를 다시 구현하지 않는다.

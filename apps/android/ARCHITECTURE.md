@@ -174,4 +174,7 @@ ANDROID_SERIAL=emulator-5556 JAVA_HOME='/Applications/Android Studio.app/Content
 기존 계측30/Lint 기록은 이전 작업 결과다. 사용자5554를 조작하지 않으며 전용5556과 unique test DB만 사용한다. 기존 테스트의 즐겨찾기는 백업/복원하고 실제 Calendar Save는 수행하지 않는다. 외부 지도 렌더링·캘린더 앱 내부 UI/저장·동기화·전체 접근성은 별도 미검증이다. 영속 캐시 TTL/암호화/실제 API·로그인·자동 추출은 이번 범위에 없다.
 
 
-최종 검증(2026-09-14): FSD60파일/self-test24(금지18/허용6), JVM39, Debug·계측 APK 컴파일, Lint 오류0/경고12, 전용5556 계측35 모두 통과(실패/오류/skip0). 실제 DB5건과 기존 UI/저장/지도/캘린더30건을 함께 실행했다. 기록은 `build/room-final-build.log`, `build/room-instrumentation.log`, 표준 JVM/계측 XML·Lint 보고서이며 중간 버튼/widget/저장소 단계 결과와 구분한다. 전용5556은 검증 후 종료했고 사용자5554는 조작하지 않았다. canonical asset SHA256 `c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f` 유지, 실제 Calendar Save/외부 지도 앱 내부 화면은 검증하지 않았다.
+#1 병합 당시 검증(2026-09-14): FSD60파일/self-test24(금지18/허용6), JVM39, Debug·계측 APK 컴파일, Lint 오류0/경고12, 전용5556 계측35 모두 통과(실패/오류/skip0). 실제 DB5건과 기존 UI/저장/지도/캘린더30건을 함께 실행했다. 기록은 `build/room-final-build.log`, `build/room-instrumentation.log`, 표준 JVM/계측 XML·Lint 보고서이며 중간 버튼/widget/저장소 단계 결과와 구분한다. 전용5556은 검증 후 종료했고 사용자5554는 조작하지 않았다. canonical asset SHA256 `c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f` 유지, 실제 Calendar Save/외부 지도 앱 내부 화면은 검증하지 않았다.
+
+
+#2 검증(2026-09-14): FSD66/self-test24, JVM39, Debug·Release·계측 APK 빌드, Lint 오류0/기존경고12, 전용5556 전체계측39 모두 통과. 신규 디자인 회귀4건을 포함한다. [before/after 화면·검증·한계](docs/design-system/VERIFICATION.md), [Shared API와 native 사용 규칙](docs/design-system/README.md)을 참고한다.
