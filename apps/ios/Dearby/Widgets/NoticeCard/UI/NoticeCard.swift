@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct ActivityCard: View {
+struct NoticeCard: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     let summary: NoticeSummary

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Display helper owned by the ActivityCard slice.
+/// Display helper owned by the NoticeCard slice.
 struct NoticeFact: View {
     let label: String
     let value: String

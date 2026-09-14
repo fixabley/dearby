@@ -41,7 +41,7 @@ xcodebuild \
 
 - `Dearby/App/`: 앱 진입·단일 상태 소유·탭·페이지 목적지 조립
 - `Dearby/Pages/{Discovery,Favorites,NoticeDetail}/UI/`: 화면과 로컬 UI 상태
-- `Dearby/Widgets/{ActivityCard,FavoriteOrganizationCard}/UI/`: 독립 복합 카드, 표시 데이터·콜백만 사용
+- `Dearby/Widgets/{NoticeCard,FavoriteOrganizationCard}/UI/`: 독립 복합 카드, 표시 데이터·콜백만 사용
 - `Dearby/Features/FavoriteOrganization/{Model,API}/`: 관찰 상태·추가/삭제·저장 계약·UserDefaults
 - `Dearby/Entities/NoticeCatalog/{Model,API,UI}/`: 서로 연결된 모델·조회·공급·분류 표시
 - `Dearby/Resources/`와 `Dearby/Assets.xcassets/`: 기존 번들 샘플·테마·아이콘
@@ -168,3 +168,5 @@ apps/ios/build/dearby-detail-tests shared/contracts/activities/sample.json
 ```
 
 NoticeDetailRepository는 App 수명 동안 조직 source/cache를 공유하고 페이지에는 NoticeDetail만 전달합니다. 근거의 sourceId/locator/fieldPath 및 출처 메타데이터, 역할 ID와 선택 조직 ID를 보존합니다. aiDescription은 기존 검토 샘플 요약으로 새 AI 생성이 아닙니다. 상세 기간/장소는 캘린더·지도에도 동일한 값으로 전달합니다.
+
+앱 도메인은 Notice/NoticeDetail/NoticeCatalog/NoticeSummary와 NoticeCard로 통일합니다. JSON activities 키, activity-samples.json 리소스, activity.<id> 접근성 태그는 기존 호환성 이름이며 별도 앱 도메인이 아닙니다.

@@ -21,7 +21,7 @@ struct DiscoveryView<Destination: View>: View {
                     ScrollView(.vertical) {
                         LazyVStack(spacing: 0) {
                             ForEach(Array(catalog.feed.enumerated()), id: \.element.id) { index, notice in
-                                ActivityCard(
+                                NoticeCard(
                                     summary: catalog.summary(for: notice),
                                     saved: notice.favoriteOrganizationId.map { favoriteIDs.contains($0) } ?? false,
                                     position: "\(index + 1) / \(catalog.feed.count)",

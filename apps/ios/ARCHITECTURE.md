@@ -33,8 +33,8 @@ apps/ios/
 │   │       ├── NoticeScheduleView.swift
 │   │       └── CalendarAddButton.swift
 │   ├── Widgets/
-│   │   ├── ActivityCard/UI/ActivityCard.swift
-│   │   ├── ActivityCard/UI/NoticeFact.swift
+│   │   ├── NoticeCard/UI/NoticeCard.swift
+│   │   ├── NoticeCard/UI/NoticeFact.swift
 │   │   └── FavoriteOrganizationCard/UI/FavoriteOrganizationCard.swift
 │   ├── Features/
 │   │   ├── AddToCalendar/Model/
@@ -95,13 +95,13 @@ apps/ios/
 | Pages/Discovery | `DiscoveryView<Destination>` | 카탈로그·ID 집합·저장 콜백·App의 목적지 ViewBuilder; 로컬 sheet 선택·피드백 |
 | Pages/Favorites | `FavoriteListView<Destination>` | 카탈로그·ID 집합·삭제 콜백·목적지 ViewBuilder; 목록·빈 상태 |
 | Pages/NoticeDetail | `NoticeDetailView` | `NoticeDetail`·typed onOpenMap 및 optional 신청/활동 캘린더 콜백; 상세 표시 |
-| Widgets/ActivityCard | `ActivityCard` | `NoticeSummary`·저장 여부·position·compact·onSave/onShowDetail |
+| Widgets/NoticeCard | `NoticeCard` | `NoticeSummary`·저장 여부·position·compact·onSave/onShowDetail |
 | Widgets/FavoriteOrganizationCard | `FavoriteOrganizationCard<Destination>` | 조직·카탈로그·삭제 콜백·목적지 ViewBuilder; 연결 공고의 기존 NavigationLink |
 | Features/AddToCalendar | `CalendarDraftMapper.application(_:)`, `schedule(_:detail:mapURL:)`, `CalendarEventDraft`/`CalendarEventInterval` | App이 호출하는 순수 초안 매핑; 날짜 정책은 slice 내부 helper |
 | Features/FavoriteOrganization | `FavoriteOrganizations`, `SaveOrganizationResult`, `FavoriteOrganizationsRepository`, `UserDefaultsFavoriteOrganizationsRepository` | 상태와 저장 계약; 구체 저장 구현은 App 조립 또는 독립 테스트에서 사용 |
 | Entities/NoticeCatalog | `NoticeApplication`, `NoticeSchedule`, `NoticeLocation`, `NoticeVenue`, `NoticeCoordinates`, `NoticeSummary`, `NoticeCatalog` 및 Model의 `Notice`, `NoticeOrganization`, `NoticeSource`, `NoticeContext`, `NoticeSchedule`; `NoticeCatalogRepository`, `BundleNoticeCatalogRepository`; `NoticeClassificationView` | 순수 모델/조회, 교체 가능한 공급, 카드·즐겨찾기의 분류 표시 |
 
-`NoticeFact(label:value:)`는 Widgets/ActivityCard/UI/NoticeFact.swift의 slice 내부 표시 helper다. 파일 간 사용을 위해 기본 internal이며 외부 slice 진입점으로 사용하지 않는다.
+`NoticeFact(label:value:)`는 Widgets/NoticeCard/UI/NoticeFact.swift의 slice 내부 표시 helper다. 파일 간 사용을 위해 기본 internal이며 외부 slice 진입점으로 사용하지 않는다.
 `NoticeIdentityView(notice:catalog:)`, `NoticeDetailField(title:value:)`, `NoticeIdentityFact(label:value:icon:)`는 Pages/NoticeDetail/UI의 개별 파일에 있는 slice 내부 표시 helper다.
 파일 간 사용에 필요한 기본 internal만 사용하며 slice 외부에서는 NoticeDetailView를 진입점으로 사용한다.
 Preview 저장소도 App 파일의 private 타입이다. 외부 소비자는 이 helper들을 직접 사용하지 않는다.
@@ -115,7 +115,7 @@ Preview 저장소도 App 파일의 private 타입이다. 외부 소비자는 이
 현재 실제 흐름:
 
 ```text
-App → Discovery page → ActivityCard widget → NoticeCatalog entity
+App → Discovery page → NoticeCard widget → NoticeCatalog entity
 App → Favorites page → FavoriteOrganizationCard widget → NoticeCatalog entity
 App → NoticeDetail page → NoticeCatalog entity
 App → FavoriteOrganization state → 같은 slice의 저장 protocol → UserDefaults 구현
@@ -154,7 +154,7 @@ Swift 타입 선언과 식별자 참조를 수집해 실제 상향 참조·동�
 
 ## 새 기능 배치 예시
 
-- 공고 카드만의 표시나 버튼은 `Widgets/ActivityCard/UI`와 해당 검사에 둔다. 그 페이지의 필터 선택은 `Pages/Discovery/UI` 로컬 상태로 둔다.
+- 공고 카드만의 표시나 버튼은 `Widgets/NoticeCard/UI`와 해당 검사에 둔다. 그 페이지의 필터 선택은 `Pages/Discovery/UI` 로컬 상태로 둔다.
 - 즐겨찾기 조직 카드의 표시 변경은 `Widgets/FavoriteOrganizationCard/UI`, 저장·삭제 행동과 저장 구현은 `Features/FavoriteOrganization/Model|API`에 둔다.
 - 새 상세 화면은 Pages의 독립 slice에 만들고 **App에서** 목적지를 주입한다. Discovery/Favorites가 새 페이지를 직접 생성하지 않는다.
 - 새로운 카탈로그 조회는 `Entities/NoticeCatalog/Model`, 실제 공급 교체는 같은 slice의 API와 App 조립을 변경한다. 네트워크 도입 시 async·취소·오류 정책은 해당 작업에서 정하며 지금 미리 구현하지 않는다.
@@ -216,7 +216,7 @@ UI 도구의 첫 삭제는 오래된 접근성 인덱스로 거절되어 새 sna
 
 ## UI 보조 컴포넌트 파일 분리
 
-2026-09-14 카드의 NoticeFact를 같은 Widgets/ActivityCard/UI 파일로 이동했다. String label/value 및 기존 VStack·글꼴·행 제한을 그대로 유지하며 Shared로 승격하지 않는다.
+2026-09-14 카드의 NoticeFact를 같은 Widgets/NoticeCard/UI 파일로 이동했다. String label/value 및 기존 VStack·글꼴·행 제한을 그대로 유지하며 Shared로 승격하지 않는다.
 카드 분리 시 전체 17 Swift 파일 구조 검사와 Simulator Debug 빌드가 통과했다(2026-09-14 09:38 UTC 빌드 로그).
 
 상세의 함수형 detail/fact는 각각 NoticeDetailField/NoticeIdentityFact의 body로 옮기고 NoticeIdentityView도 별도 파일로 분리했다.
@@ -231,7 +231,7 @@ UI 도구의 첫 삭제는 오래된 접근성 인덱스로 거절되어 새 sna
 | Pages/Discovery/UI/DiscoveryView.swift | body와 저장 결과 처리 함수만 존재, 분리 없음 |
 | Pages/Favorites/UI/FavoriteListView.swift | body와 데이터 조회 속성만 존재, 분리 없음 |
 | Pages/NoticeDetail/UI/NoticeDetailView.swift | NoticeIdentityView, detail, fact를 위 세 파일로 분리 |
-| Widgets/ActivityCard/UI/ActivityCard.swift | NoticeFact를 같은 UI의 별도 파일로 분리 |
+| Widgets/NoticeCard/UI/NoticeCard.swift | NoticeFact를 같은 UI의 별도 파일로 분리 |
 | Widgets/FavoriteOrganizationCard/UI/FavoriteOrganizationCard.swift | 별도 명명된 helper 없음; 작은 inline NavigationLink label 유지 |
 | Entities/NoticeCatalog/UI/NoticeClassificationView.swift | 단일 View만 존재, 분리 없음 |
 
@@ -375,3 +375,8 @@ NoticeDetail.organizationLinks도 contexts와 같은 NoticeDetailContext 읽기 
 앱의 raw/read 모델은 같은 공고 도메인이다. ActivityNotice → Notice, ActivityDetail → NoticeDetail, ActivityCatalog → NoticeCatalog, ActivityNoticeSummary → NoticeSummary로 이름을 통일하고 나머지 모델/저장소의 Activity 접두사도 Notice로 바꿨다. Entities/NoticeCatalog에서 순수 상세 init, cache-aside 수명/무효화와 source ID·phase 의미를 그대로 유지한다. 내부 NoticeCatalog.notices의 CodingKeys만 기존 JSON 키 activities에 대응한다.
 
 2026-09-14 도메인 이름 변경 후 README의 상세(old/new JSON)·조직·즐겨찾기·지도·캘린더(old/new JSON) Swift 6 standalone 모두 통과했다. 45파일 FSD/fixture 및 Simulator build 11:36:41Z 성공(경고/오류 없음). 명칭 변경으로 native runtime은 실행하지 않았다. JSON/공통 경로/리소스 activity-samples.json과 ID·저장 키·접근성 태그는 호환성 예외이며 별도 Activity 앱 도메인이 아니다.
+
+
+카드 명칭도 ActivityCard → NoticeCard로 변경했다. Widgets/NoticeCard/UI/NoticeCard.swift와 같은 slice의 NoticeFact, Discovery의 사용처 및 현재 문서 트리를 함께 갱신했다. 카드 변경 후 45파일 FSD/fixture와 Simulator build 11:37:31Z 성공(경고/오류 없음), diff 검사 통과.
+
+최종 audit: `rg -n 'Activity' apps/ios/Dearby apps/ios/tests --glob '*.swift' --glob '*.py'`와 파일명 검색에서 이전 도메인 심볼/경로 없음. 생산 Swift의 activity/activities는 Bundle 리소스 activity-samples, CodingKeys activities, 접근성 식별자 activity.<id> 세 호환성 위치만 남는다. tests의 원본 JSON activities·리소스 이름, calendar 검사 메시지의 실제 참여 activity, docs의 공통 activities/activity-data 경로·이전 runtime artifact 및 이전→현재 매핑 설명은 의도적으로 유지한다. 기존 UI 한국어 활동은 실제 참여 의미이며 변경하지 않았다. 네이티브 지도/캘린더 실행 및 사용자 데이터 조작은 없다.
