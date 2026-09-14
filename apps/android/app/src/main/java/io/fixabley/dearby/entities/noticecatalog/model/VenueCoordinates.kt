@@ -1,4 +1,4 @@
-package io.fixabley.dearby.entities.activitycatalog.model
+package io.fixabley.dearby.entities.noticecatalog.model
 
 internal data class VenueCoordinates(val latitude: Double, val longitude: Double) {
     val isValid: Boolean get() = latitude.isFinite() && longitude.isFinite() &&

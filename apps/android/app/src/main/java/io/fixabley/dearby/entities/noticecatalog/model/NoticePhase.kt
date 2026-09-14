@@ -1,6 +1,6 @@
-package io.fixabley.dearby.entities.activitycatalog.model
+package io.fixabley.dearby.entities.noticecatalog.model
 
-internal data class ActivityPhase(
+internal data class NoticePhase(
     val phase: String,
     val startsAt: String? = null,
     val startsOn: String? = null,

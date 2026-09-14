@@ -10,8 +10,8 @@ import android.widget.Toast
 import io.fixabley.dearby.app.DearbyApp
 import io.fixabley.dearby.app.openCalendarEditor
 import io.fixabley.dearby.app.openVenueMap
-import io.fixabley.dearby.entities.activitycatalog.api.ActivityDetailRepository
-import io.fixabley.dearby.entities.activitycatalog.api.AssetCatalogProvider
+import io.fixabley.dearby.entities.noticecatalog.api.NoticeDetailRepository
+import io.fixabley.dearby.entities.noticecatalog.api.AssetCatalogProvider
 import io.fixabley.dearby.features.favoriteorganization.api.SharedPreferencesFavoriteStore
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
 import io.fixabley.dearby.shared.ui.theme.DearbyTheme
@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val catalogProvider = ActivityDetailRepository(AssetCatalogProvider(applicationContext.assets))
+        val catalogProvider = NoticeDetailRepository(AssetCatalogProvider(applicationContext.assets))
         val favorites = FavoritesState(SharedPreferencesFavoriteStore(
             getSharedPreferences(SharedPreferencesFavoriteStore.FILE_NAME, MODE_PRIVATE)
         ))

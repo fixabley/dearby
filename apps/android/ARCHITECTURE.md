@@ -19,7 +19,7 @@ pages/
     NoticeDetailSheet.kt                상세 시트·dismiss/원문 콜백
     NoticeIdentity.kt                   상세 내부의 관심 조직·분류·맥락·회차
     AddToCalendarButton.kt             immutable 초안·버튼·콜백
-    ActivityScheduleSection.kt          단계별 일정 안내·캘린더 버튼
+    NoticeScheduleSection.kt          단계별 일정 안내·캘린더 버튼
     NoticeLocationSection.kt            장소 요약·복수 장소 액션·층/호실 안내
     VenueMapButton.kt                   단일 장소 이름·지도 콜백
 widgets/
@@ -38,30 +38,30 @@ features/
     api/FavoriteStore.kt                 저장 계약
     api/SharedPreferencesFavoriteStore.kt 기존 로컬 저장 구현
 entities/
-  activitycatalog/
-    model/ActivityCatalog.kt            ID 참조 Organization/NoticeContext/Notice/ActivityCatalog
-    model/ActivityDetail.kt             상세 transient projection/단계 장소/명시적 조직 역할
-    model/ActivitySource.kt             출처 메타데이터/필드별 근거
-    api/ActivityDetailRepository.kt     snapshot 공급·상세 getter·조직 캐시 수명
+  noticecatalog/
+    model/NoticeCatalog.kt            ID 참조 Organization/NoticeContext/Notice/NoticeCatalog
+    model/NoticeDetail.kt             상세 transient projection/단계 장소/명시적 조직 역할
+    model/NoticeSource.kt             출처 메타데이터/필드별 근거
+    api/NoticeDetailRepository.kt     snapshot 공급·상세 getter·조직 캐시 수명
     api/OrganizationSource.kt           원본 계약/인메모리 원본
     api/OrganizationRepository.kt       독립 ID cache-aside·순환 안전 경로
-    api/DecodeActivityEvidence.kt       중첩 evidence와 fieldPath 해석
-    model/ActivityApplication.kt        신청 summary·날짜·URL
-    model/ActivityPhase.kt              활동 phase·날짜·mode·온라인 URL
-    model/ActivityLocation.kt           장소 summary/mode/status와 복수 venues
-    model/ActivityVenue.kt              phase/name/address·선택 좌표
+    api/DecodeNoticeEvidence.kt       중첩 evidence와 fieldPath 해석
+    model/NoticeApplication.kt        신청 summary·날짜·URL
+    model/NoticePhase.kt              활동 phase·날짜·mode·온라인 URL
+    model/NoticeLocation.kt           장소 summary/mode/status와 복수 venues
+    model/NoticeVenue.kt              phase/name/address·선택 좌표
     model/VenueCoordinates.kt           유한 수·위경도 범위 검증
     api/DecodeCalendarMetadata.kt     신청·단계 JSON 보존 해석 (내부)
-    api/DecodeActivityLocation.kt       선택 좌표 안전 해석 (slice 내부)
+    api/DecodeNoticeLocation.kt       선택 좌표 안전 해석 (slice 내부)
     api/CatalogProvider.kt              교체 가능한 공급 계약
     api/AssetCatalogProvider.kt         기존 JSON/출처 URL 매핑·번들 로딩
-    ui/ActivityClassification.kt        활동 분류·행사 학교 표시
+    ui/NoticeClassification.kt        활동 분류·행사 학교 표시
 shared/
   ui/NoticeFact.kt                      도메인 없는 제목/값 표시
   ui/theme/Theme.kt                     기존 앱 테마
 ```
 
-공고·조직·계층·맥락·출처 매핑은 서로 연결된 activitycatalog slice에 둔다. 필요 없는 Source 추상 타입이나 서로 참조하는 entity slice를 만들지 않는다. 빈 세그먼트나 사용하지 않는 추상화도 추가하지 않는다.
+공고·조직·계층·맥락·출처 매핑은 서로 연결된 noticecatalog slice에 둔다. 필요 없는 Source 추상 타입이나 서로 참조하는 entity slice를 만들지 않는다. 빈 세그먼트나 사용하지 않는 추상화도 추가하지 않는다.
 
 ## 슬라이스 public API 계약
 
@@ -72,12 +72,12 @@ shared/
 | App (segment 예외) | manifest의 `MainActivity`, `app/DearbyApp` 조립 |
 | Pages / discovery | `ui.DiscoveryScreen` |
 | Pages / favorites | `ui.FavoritesScreen` |
-| Pages / noticedetail | `ui.NoticeDetailSheet`; `NoticeIdentity`, `NoticeLocationSection`, `VenueMapButton`, `AddToCalendarButton`, `ActivityScheduleSection`은 slice 내부 helper |
+| Pages / noticedetail | `ui.NoticeDetailSheet`; `NoticeIdentity`, `NoticeLocationSection`, `VenueMapButton`, `AddToCalendarButton`, `NoticeScheduleSection`은 slice 내부 helper |
 | Widgets / activitycard | `ui.ActivityCard` |
 | Widgets / favoriteorganizationcard | `ui.FavoriteOrganizationCard` |
 | Features / addtocalendar | `model.CalendarDraft`, `model.applicationCalendarDraft`, `model.phaseCalendarDraft` |
 | Features / favoriteorganization | `model.FavoritesState`, `api.FavoriteStore`, `api.SharedPreferencesFavoriteStore` |
-| Entities / activitycatalog | `model.Organization`, `model.NoticeContext`, `model.Notice`, `model.ActivityCatalog`, `model.ActivityDetail`, `model.ActivityScheduleDetail`, `model.ResolvedOrganizationRole`, `model.ActivitySource`, `model.ActivityEvidence`, `model.ActivityApplication`, `model.ActivityPhase`, `model.ActivityLocation`, `model.ActivityVenue`, `model.VenueCoordinates`, `api.CatalogProvider`, `api.AssetCatalogProvider`, `api.ActivityDetailRepository`, `api.OrganizationSource`, `api.InMemoryOrganizationSource`, `api.OrganizationRepository`, `ui.ActivityClassification` |
+| Entities / noticecatalog | `model.Organization`, `model.NoticeContext`, `model.Notice`, `model.NoticeCatalog`, `model.NoticeDetail`, `model.NoticeScheduleDetail`, `model.ResolvedOrganizationRole`, `model.NoticeSource`, `model.NoticeEvidence`, `model.NoticeApplication`, `model.NoticePhase`, `model.NoticeLocation`, `model.NoticeVenue`, `model.VenueCoordinates`, `api.CatalogProvider`, `api.AssetCatalogProvider`, `api.NoticeDetailRepository`, `api.OrganizationSource`, `api.InMemoryOrganizationSource`, `api.OrganizationRepository`, `ui.NoticeClassification` |
 | Shared (segment 예외) | `ui.NoticeFact`, `ui.theme.DearbyTheme` |
 
 저장소 필드·상태 setter·내부 update 함수·JSON 배열 helper는 private이다. `NoticeIdentity`는 별도 Kotlin 파일에서 같은 상세 slice가 사용하는 internal helper이며 App 등 외부 slice에서 import하지 않도록 구조 검사로 제한한다. MainActivity의 루트 패키지는 기존 Android 컴포넌트 이름을 바꾸지 않기 위한 App 진입점 예외다.
@@ -90,9 +90,9 @@ App → Pages → Widgets → Features → Entities → Shared
 
 더 아래 레이어로 건너뛰는 참조는 허용한다. 같은 레이어의 다른 slice와 상위 레이어는 참조하지 않는다. App과 Shared는 slice 없이 목적별 segment를 두는 예외다.
 
-`MainActivity`가 실제 CatalogProvider를 감싼 ActivityDetailRepository와 FavoriteStore, FavoritesState를 생성한다. `DearbyApp`이 공급자를 호출하고 선택 탭과 상세 ActivityDetail 조회 결과를 소유한다. 발견/즐겨찾기 페이지는 상세 목적지의 타입을 모르며 `showDetail(Notice)` 콜백을 App에 전달한다. App만 NoticeDetailSheet를 생성하고 dismiss와 외부 URL 콜백을 연결한다. 페이지가 다른 페이지를 import하지 않으며 새 라우터 라이브러리를 도입하지 않는다.
+`MainActivity`가 실제 CatalogProvider를 감싼 NoticeDetailRepository와 FavoriteStore, FavoritesState를 생성한다. `DearbyApp`이 공급자를 호출하고 선택 탭과 상세 NoticeDetail 조회 결과를 소유한다. 발견/즐겨찾기 페이지는 상세 목적지의 타입을 모르며 `showDetail(Notice)` 콜백을 App에 전달한다. App만 NoticeDetailSheet를 생성하고 dismiss와 외부 URL 콜백을 연결한다. 페이지가 다른 페이지를 import하지 않으며 새 라우터 라이브러리를 도입하지 않는다.
 
-공고 카드와 조직 카드는 서로 참조하지 않는다. 공고 카드는 공고·조직·학교 문자열·저장 여부·위치·저장/상세 콜백을 받는다. 조직 카드는 조직·상위 조직 목록·연결 공고·공고 ID별 학교 문자열·삭제/상세 콜백을 받는다. 공유 상태·저장소·공급자·Context에 직접 접근하지 않는다. 두 위젯의 활동 분류 표시는 Entities의 ActivityClassification을 사용한다.
+공고 카드와 조직 카드는 서로 참조하지 않는다. 공고 카드는 공고·조직·학교 문자열·저장 여부·위치·저장/상세 콜백을 받는다. 조직 카드는 조직·상위 조직 목록·연결 공고·공고 ID별 학교 문자열·삭제/상세 콜백을 받는다. 공유 상태·저장소·공급자·Context에 직접 접근하지 않는다. 두 위젯의 활동 분류 표시는 Entities의 NoticeClassification을 사용한다.
 
 ## 상태 소유와 호환성
 
@@ -117,7 +117,7 @@ Entities의 CatalogProvider는 현재 동기식 번들 공급용이다. 공급 �
 - 카드 내용/저장 버튼 표현은 `widgets/activitycard/ui/`, 조직 카드의 연결 공고 표현은 `widgets/favoriteorganizationcard/ui/`에 둔다. 이벤트는 인수로 전달한다.
 - 피드 필터의 화면 임시 선택은 `pages/discovery/ui/`에 둔다. 다른 페이지로 이동하는 목적지 콜백은 App에서 연결한다.
 - 새로운 저장 행동은 `features/favoriteorganization/model/`, 저장 방식 교체는 같은 slice의 api와 App 조립에 둔다. 저장키 변경은 별도 호환 검토가 필요하다.
-- 공고 분류 표시나 카탈로그 조회 계산은 `entities/activitycatalog/ui/` 또는 model에 둔다. source/organization의 서로 연결된 모델을 임의 cross-slice로 쪼개지 않는다.
+- 공고 분류 표시나 카탈로그 조회 계산은 `entities/noticecatalog/ui/` 또는 model에 둔다. source/organization의 서로 연결된 모델을 임의 cross-slice로 쪼개지 않는다.
 - 도메인과 관계없는 제목/값 표시·테마만 Shared에 둔다. 한 번 쓰는 상세 helper를 범용이라는 이유로 Shared에 올리지 않는다.
 - 실제 새 slice가 필요하면 문서의 진입점 표와 `scripts/check-fsd.py`의 API 목록도 함께 갱신한다.
 
@@ -161,13 +161,13 @@ TalkBack·최대 글자 크기·태블릿·가로 화면 전체 검증, 비동�
 
 기존 화면 보존에 대한 위 FSD 기록은 지도 액션 추가 전의 결과다. 이번에는 사용자 승인으로 상세 활동 장소에 유효한 좌표를 가진 각 venue의 지도 버튼과 “층·호실은 장소 안내를 확인해 주세요.” 안내를 추가한다. 카드의 기존 장소 문구는 `location.summary` 그대로다. Android의 기존 단순 표시 문자열은 이미 String이므로 추가 래퍼 제거는 없다.
 
-`Notice.location`은 `ActivityLocation`이다. mode/status/summary와 venue별 phase/name/address/선택 좌표를 유지한다. 좌표 누락·null·부분 값·문자열·범위 밖 값은 unknown(null)으로 읽고 0으로 대체하지 않는다. 명시적인 (0,0)은 유효하다. JSON schemaVersion 1.0.0과 canonical evidence/coordinateEvidence/eligibility 구조는 그대로 보존하며 앱용 표시 모델만 필요한 필드를 읽는다. decoder는 activitycatalog 내부 helper이고 새 model 타입 3개는 slice 외부 진입점이다.
+`Notice.location`은 `NoticeLocation`이다. mode/status/summary와 venue별 phase/name/address/선택 좌표를 유지한다. 좌표 누락·null·부분 값·문자열·범위 밖 값은 unknown(null)으로 읽고 0으로 대체하지 않는다. 명시적인 (0,0)은 유효하다. JSON schemaVersion 1.0.0과 canonical evidence/coordinateEvidence/eligibility 구조는 그대로 보존하며 앱용 표시 모델만 필요한 필드를 읽는다. decoder는 noticecatalog 내부 helper이고 새 model 타입 3개는 slice 외부 진입점이다.
 
-상세 slice의 `NoticeLocationSection`과 `VenueMapButton`은 각자 파일에 둔 internal helper다. 입력 데이터/콜백만 받고 Context·공급자·저장소·공유 상태에 접근하지 않는다. 온라인 장소는 좌표가 있어도 지도 버튼을 제공하지 않는다. App이 `(ActivityVenue) -> Unit`을 상세에 주입하고 MainActivity가 `openVenueMap`을 연결한다. 좌표 검증을 실행 직전에도 적용하고 [Android 지도 Intent 규격](https://developer.android.com/guide/components/intents-common#Maps)에 따라 ACTION_VIEW geo URI와 인코딩한 좌표/장소 이름을 전달한다. package/component를 고정하지 않아 OS가 설치된 앱 선택을 처리한다. ActivityNotFoundException/SecurityException은 native Toast 안내로 처리한다. 웹 fallback·권한·현재 위치·길찾기·앱 내 geocoding/네트워크 호출은 추가하지 않는다.
+상세 slice의 `NoticeLocationSection`과 `VenueMapButton`은 각자 파일에 둔 internal helper다. 입력 데이터/콜백만 받고 Context·공급자·저장소·공유 상태에 접근하지 않는다. 온라인 장소는 좌표가 있어도 지도 버튼을 제공하지 않는다. App이 `(NoticeVenue) -> Unit`을 상세에 주입하고 MainActivity가 `openVenueMap`을 연결한다. 좌표 검증을 실행 직전에도 적용하고 [Android 지도 Intent 규격](https://developer.android.com/guide/components/intents-common#Maps)에 따라 ACTION_VIEW geo URI와 인코딩한 좌표/장소 이름을 전달한다. package/component를 고정하지 않아 OS가 설치된 앱 선택을 처리한다. ActivityNotFoundException/SecurityException은 native Toast 안내로 처리한다. 웹 fallback·권한·현재 위치·길찾기·앱 내 geocoding/네트워크 호출은 추가하지 않는다.
 
 새 장소 표시 기능은 같은 상세 ui slice에, 좌표 해석은 entity api에, 외부 앱 실행은 App에 배치한다. 지도 앱 내부의 화면과 경로는 앱이 제어하지 않는다. 공통 계약/검증 좌표는 [별도 PR #6](https://github.com/fixabley/dearby/pull/6)에서 관리하며 이 플랫폼 PR은 Android 리소스만 갱신한다. 건물 대표 좌표이며 출입구·층·호실 정밀 좌표가 아니다. 리소스 SHA-256: `407b0c5ed29d066ae9cf2c7d146749f1566e38ba966369db6cfd5ec1952feb6f`. 이 브랜치의 shared snapshot은 #6 통합 전 버전이므로 비교는 coordinator가 제공한 canonical 원본과 수행한다.
 
-새 테스트: JVM VenueCoordinatesTest는 0/경계/비유한 수/범위를 검증한다. 계측 ActivityLocationDecodeTest는 이전 JSON·null/부분/비정상 좌표·복수 장소·구조 보존을, VenueMapIntentTest는 한국어/&/# 이름 인코딩·unpinned 요청·미설치/차단 피드백을 검증한다. VenueMapFlowTest는 복수 장소 버튼/온라인 제외/명시적 클릭 및 발견→상세→App 요청 전달을 검사한다. 기존 11건 UI/저장 회귀도 함께 실행한다.
+새 테스트: JVM VenueCoordinatesTest는 0/경계/비유한 수/범위를 검증한다. 계측 NoticeLocationDecodeTest는 이전 JSON·null/부분/비정상 좌표·복수 장소·구조 보존을, VenueMapIntentTest는 한국어/&/# 이름 인코딩·unpinned 요청·미설치/차단 피드백을 검증한다. VenueMapFlowTest는 복수 장소 버튼/온라인 제외/명시적 클릭 및 발견→상세→App 요청 전달을 검사한다. 기존 11건 UI/저장 회귀도 함께 실행한다.
 
 이번 지도 검증 결과: 구조24파일/self-test11, JVM7건, Debug 빌드, Lint 오류0/권고11, 전용 emulator-5556 계측20건 통과(실패/오류/skip 0). 첫 계측의 비유한 JSON 기대 1건은 Android JSONObject가 Infinity를 파싱 단계에서 거부하는 실제 동작에 맞춰 수정하고 전체20건을 재실행했다. 비유한 수를 가진 직접 모델은 JVM/Intent 단계에서 거부되며 비유한 JSON은 기존 App 공급 실패·재시도 화면으로 처리된다. `cmd package resolve-activity --brief -a android.intent.action.VIEW -d 'geo:36.62819644470018,127.45787581357385?q=36.62819644470018,127.45787581357385'`로 전용 기기의 MapsActivity 설치를 확인했다. 실제 지도 렌더링·다중 앱 chooser 화면·TalkBack 전체 점검은 수행하지 않았으며 실행 요청/오류는 주입한 함수로 캡처했다. 사용자5554는 조작하지 않았다.
 
@@ -176,7 +176,7 @@ TalkBack·최대 글자 크기·태블릿·가로 화면 전체 검증, 비동�
 
 ## 신청 캘린더 편집기 (2026-09-14)
 
-`entities/activitycatalog/model/ActivityApplication.kt`은 기존 summary와 opensAt/opensOn/closesAt/closesOn/timezone/url을 보존한다. 카드와 상세 문구는 단일 summary를 그대로 사용한다. JSON의 채널·증빙·근거는 canonical 원본에 유지하며 표시 모델만 필요한 필드를 읽는다.
+`entities/noticecatalog/model/NoticeApplication.kt`은 기존 summary와 opensAt/opensOn/closesAt/closesOn/timezone/url을 보존한다. 카드와 상세 문구는 단일 summary를 그대로 사용한다. JSON의 채널·증빙·근거는 canonical 원본에 유지하며 표시 모델만 필요한 필드를 읽는다.
 
 새 실제 파일과 진입점:
 - `features/addtocalendar/model/CalendarDraft.kt`: 외부 진입점인 immutable 편집기 입력값, UI가 받아 전달할 수 있는 유일한 Feature 타입.
@@ -184,7 +184,7 @@ TalkBack·최대 글자 크기·태블릿·가로 화면 전체 검증, 비동�
 - 같은 slice의 `CalendarPeriod.kt`, `CalendarLinks.kt`: 내부 strict 날짜/시간대 변환 및 http(s) 검증 helper.
 - `app/OpenCalendarEditor.kt`: `calendarInsertIntent`, `openCalendarEditor` App 내부 OS 어댑터.
 - `pages/noticedetail/ui/AddToCalendarButton.kt`: 상세 slice 내부 개별 UI 파일; 초안/문구/콜백만 받으며 날짜 변환·저장·Context를 직접 접근하지 않는다.
-- Entities 외부 진입점에 `model.ActivityApplication`을 추가한다. 구조검사는 Pages/Widgets에 immutable `CalendarDraft`만 좁게 허용하고 변환 함수·다른 Feature 상태/API 참조를 계속 차단한다 (self-test 금지9/허용4).
+- Entities 외부 진입점에 `model.NoticeApplication`을 추가한다. 구조검사는 Pages/Widgets에 immutable `CalendarDraft`만 좁게 허용하고 변환 함수·다른 Feature 상태/API 참조를 계속 차단한다 (self-test 금지9/허용4).
 
 두 timestamp가 유효하고 종료가 시작보다 뒤면 정확한 구간을 쓴다. 그 외는 알려진 날짜를 종일로 표현하고 자정 종료는 제외 경계, 날짜만의 종료는 포함일 다음날 경계로 변환한다. 시간대는 소스/기본 Asia/Seoul이며 기기 시간대를 쓰지 않는다. Android 종일 초안은 같은 달력 날짜의 UTC 자정을 사용한다. 마감만 있으면 신청 마감, 시작만 있으면 해당 날짜 한 날과 마감 미확인 안내, 날짜가 없거나 잘못되거나 역전되면 버튼을 생략한다. 알려진 시각·원래 summary·시간대·미확인 정보는 설명에 남긴다. startAt/startOn이 시간대 기준으로 모순되면 내보내지 않는다. 정확한 종료 timestamp가 있으면 날짜-only 종료보다 우선한다.
 
@@ -197,7 +197,7 @@ App이 초안을 구성해 상세와 클릭 콜백에 전달한다. ACTION_INSER
 
 ## 활동 단계 캘린더 (2026-09-14)
 
-`ActivityPhase`는 원래 phase/startsAt/startsOn/endsAt와 선택 endsOn/timezone/onlineUrl, mode를 가진다. 기존 일정 표시 문자열은 summary 계산으로 보존하고 날짜를 UI 문구에서 다시 추출하지 않는다. 새 모델 외부 진입점은 `entities.activitycatalog.model.ActivityPhase`, 변환 진입점은 `features.addtocalendar.model.phaseCalendarDraft`다. App만 변환을 호출하고 nullable 초안 목록을 순서대로 상세에 전달한다. `ActivityScheduleSection`은 같은 상세 slice의 별도 internal UI 파일이며 원래 문구·초안·인덱스·콜백만 받는다. 새 캘린더 대상은 같은 Feature의 변환에, 표시 변경은 해당 Pages UI에, OS 편집기 전달은 App에 추가한다.
+`NoticePhase`는 원래 phase/startsAt/startsOn/endsAt와 선택 endsOn/timezone/onlineUrl, mode를 가진다. 기존 일정 표시 문자열은 summary 계산으로 보존하고 날짜를 UI 문구에서 다시 추출하지 않는다. 새 모델 외부 진입점은 `entities.noticecatalog.model.NoticePhase`, 변환 진입점은 `features.addtocalendar.model.phaseCalendarDraft`다. App만 변환을 호출하고 nullable 초안 목록을 순서대로 상세에 전달한다. `NoticeScheduleSection`은 같은 상세 slice의 별도 internal UI 파일이며 원래 문구·초안·인덱스·콜백만 받는다. 새 캘린더 대상은 같은 Feature의 변환에, 표시 변경은 해당 Pages UI에, OS 편집기 전달은 App에 추가한다.
 
 활동도 두 시각이 유효하면 정확한 구간, 그 외는 날짜 기준 종일 초안이다. endsOn은 포함일이며 endsAt 자정은 제외 경계다. 시작이 없거나 잘못된/역전된 값이면 내보내지 않는다. 종료 미확인은 한 날 초안과 `종료: 미확인`을 사용하고 실제 종료 시간이라고 주장하지 않는다.
 
@@ -213,29 +213,36 @@ venue는 phase 문자열이 정확히 일치하는 모든 항목을 사용한다
 
 ## 조직 원본과 cache-aside (2026-09-14)
 
-activitycatalog api의 OrganizationSource/InMemoryOrganizationSource는 snapshot별 별도 조직 원본 저장소다. OrganizationRepository는 최초 빈 ID 캐시에서 조회하고 miss일 때만 source.find를 호출하며 성공한 record만 저장한다. path는 parentOrganizationId를 따라가고 visited ID로 순환을 중단하여 복구 가능한 부분 경로를 반환한다. 선택 ID는 전역 leaf로 강제하지 않는다. replaceSource는 원본 교체와 모든 캐시된 조상 삭제를 같은 monitor lock에서 처리하며 경로 자체는 영속 저장하지 않는다. find/path/replaceSource는 @Synchronized로 원자적이다. 네트워크·외부 DI·새 모듈을 추가하지 않았다.
+noticecatalog api의 OrganizationSource/InMemoryOrganizationSource는 snapshot별 별도 조직 원본 저장소다. OrganizationRepository는 최초 빈 ID 캐시에서 조회하고 miss일 때만 source.find를 호출하며 성공한 record만 저장한다. path는 parentOrganizationId를 따라가고 visited ID로 순환을 중단하여 복구 가능한 부분 경로를 반환한다. 선택 ID는 전역 leaf로 강제하지 않는다. replaceSource는 원본 교체와 모든 캐시된 조상 삭제를 같은 monitor lock에서 처리하며 경로 자체는 영속 저장하지 않는다. find/path/replaceSource는 @Synchronized로 원자적이다. 네트워크·외부 DI·새 모듈을 추가하지 않았다.
 
 진입점은 같은 Entity의 api.OrganizationSource, api.InMemoryOrganizationSource, api.OrganizationRepository다. 별도 Dictionary source와 cache이므로 단순 인덱스 조회와 구별된다. OrganizationRepositoryTest JVM4건은 빈 캐시/miss/hit 원본 호출수, 성공만 캐시·missing/nil, 공통 부모 재사용, 순환/부분 경로, 이름·부모 snapshot 교체 무효화를 검증한다. 이 책임은 상세 getter가 뒤이어 공유하여 사용한다.
 
 
-## ActivityDetail 조회 경계 (2026-09-14)
+## NoticeDetail 조회 경계 (2026-09-14)
 
-최신 상세 입력은 `ActivityDetail`과 기존 immutable CalendarDraft 값/사용자 콜백이다. 상세 Pages에는 원시 Notice/ActivityCatalog/저장소를 전달하지 않는다. 구조검사에 상세 Pages의 Notice/ActivityCatalog 금지 사례를 추가했다. App은 발견/즐겨찾기의 선택 ID로 `ActivityDetailRepository.detail(id)`를 호출하고, 지도는 detail.location의 venue를, 캘린더는 detail.applicationInformation 및 이미 단계별 장소가 연결된 detail.schedules를 사용한다. 이전 원시 Notice 기반 calendar mapping은 제거했다. Feature가 Entity를 아래 방향으로 참조하며 Entity에 CalendarDraft/OS 구현을 넣지 않는다.
+최신 상세 입력은 `NoticeDetail`과 기존 immutable CalendarDraft 값/사용자 콜백이다. 상세 Pages에는 원시 Notice/NoticeCatalog/저장소를 전달하지 않는다. 구조검사에 상세 Pages의 Notice/NoticeCatalog 금지 사례를 추가했다. App은 발견/즐겨찾기의 선택 ID로 `NoticeDetailRepository.detail(id)`를 호출하고, 지도는 detail.location의 venue를, 캘린더는 detail.applicationInformation 및 이미 단계별 장소가 연결된 detail.schedules를 사용한다. 이전 원시 Notice 기반 calendar mapping은 제거했다. Feature가 Entity를 아래 방향으로 참조하며 Entity에 CalendarDraft/OS 구현을 넣지 않는다.
 
-ActivityDetail 필드 매핑:
+NoticeDetail 필드 매핑:
 - title ← title; aiDescription ← 기존 검토 sample.summary, descriptionProvenance=`reviewed_sample_summary`. 새 AI 생성이라 표시하지 않으며 모델 이름 외 UI 문구를 바꾸지 않는다.
 - organizationId ← favoriteOrganizationId; organizationPath는 해당 ID와 부모만 해석한 **영속화하지 않는 조회 경로**다. 전체 카탈로그/글로벌 조직 트리를 포함하지 않는다. 자식이 있는 선택 조직도 그대로 대상이다.
 - relatedOrganizations ← organizationLinks의 ID/명시적 role/해석한 이름. contexts도 ID와 명시적 role/기존 label/이름을 유지한다. path에서 주최·운영·학교 관계를 추론하지 않는다.
 - categoryPath/categorySummary, edition, targetUser(audience.summary), participationCondition(eligibility.summary), benefits/issues는 기존 표시 의미를 보존한다.
-- applicationInformation은 기존 ActivityApplication을 재사용하며 날짜/URL/summary 외 methods(channels), requiredDocuments, submissionLocations를 실제 읽는다. 기간용 중복 summary wrapper를 만들지 않는다.
-- schedules는 `ActivityScheduleDetail(period: ActivityPhase, locations: List<ActivityVenue>)`로 묶는다. 온라인은 offline venue 없음, 그 외 exact phase join의 모든 일치 장소를 포함한다. 전체 location.summary도 원래 상세 안내를 보존한다.
-- sourceURL/sources/evidence는 실제 원본 해석 결과다. ActivitySource는 id/url/kind/checkedAt/access/note, ActivityEvidence는 sourceId/locator/fieldPath/sourceURL을 유지한다. sources에는 공고 sourceIds와 근거에서 참조한 좌표 출처까지 포함한다. 모르는 source ID는 ID와 null 메타데이터, 모르는 URL은 null로 남기며 사실을 만들지 않는다.
+- applicationInformation은 기존 NoticeApplication을 재사용하며 날짜/URL/summary 외 methods(channels), requiredDocuments, submissionLocations를 실제 읽는다. 기간용 중복 summary wrapper를 만들지 않는다.
+- schedules는 `NoticeScheduleDetail(period: NoticePhase, locations: List<NoticeVenue>)`로 묶는다. 온라인은 offline venue 없음, 그 외 exact phase join의 모든 일치 장소를 포함한다. 전체 location.summary도 원래 상세 안내를 보존한다.
+- sourceURL/sources/evidence는 실제 원본 해석 결과다. NoticeSource는 id/url/kind/checkedAt/access/note, NoticeEvidence는 sourceId/locator/fieldPath/sourceURL을 유지한다. sources에는 공고 sourceIds와 근거에서 참조한 좌표 출처까지 포함한다. 모르는 source ID는 ID와 null 메타데이터, 모르는 URL은 null로 남기며 사실을 만들지 않는다.
 
-`DecodeActivityEvidence`는 같은 Entity 내부 helper다. canonical evidence의 소속 객체/배열 경로(예: schedule[0], location.venues[0].coordinates)를 보존한다. qualityIssues의 명시 fieldPath도 사용한다. 원본 JSON은 변경하지 않는다. 근거 데이터는 상세 조회 결과에서 사용 가능하며 기존 화면에 새 근거 목록 UI를 추가하지 않는다.
+`DecodeNoticeEvidence`는 같은 Entity 내부 helper다. canonical evidence의 소속 객체/배열 경로(예: schedule[0], location.venues[0].coordinates)를 보존한다. qualityIssues의 명시 fieldPath도 사용한다. 원본 JSON은 변경하지 않는다. 근거 데이터는 상세 조회 결과에서 사용 가능하며 기존 화면에 새 근거 목록 UI를 추가하지 않는다.
 
-App의 저장소 인스턴스는 MainActivity.onCreate에서 Compose 밖에 한 번 만든다. load 성공한 snapshot으로 별도 source를 한 번 채우고 ID cache는 빈 상태로 둔다. 상세 getter/재구성/재진입에서 저장소 생성이나 prewarm을 하지 않는다. App 기존 remember 공급/재시도 흐름을 유지하며 동일 snapshot 객체로 다시 load하면 캐시를 유지한다. 다른 snapshot의 이름/부모 교체는 replaceSnapshot으로 전체 source/cache를 같은 monitor lock 안에서 교체한다. 기존 카드/즐겨찾기 ActivityCatalog helper도 같은 공급 snapshot을 사용하며 경로 결과 의미가 동일함을 테스트한다. 현 UI에는 live refresh가 없고 replacement는 명시적으로 테스트한 API다. 기존에 반환한 detail은 immutable snapshot 조회 결과이며 자동 갱신되는 관찰 객체가 아니다.
+App의 저장소 인스턴스는 MainActivity.onCreate에서 Compose 밖에 한 번 만든다. load 성공한 snapshot으로 별도 source를 한 번 채우고 ID cache는 빈 상태로 둔다. 상세 getter/재구성/재진입에서 저장소 생성이나 prewarm을 하지 않는다. App 기존 remember 공급/재시도 흐름을 유지하며 동일 snapshot 객체로 다시 load하면 캐시를 유지한다. 다른 snapshot의 이름/부모 교체는 replaceSnapshot으로 전체 source/cache를 같은 monitor lock 안에서 교체한다. 기존 카드/즐겨찾기 NoticeCatalog helper도 같은 공급 snapshot을 사용하며 경로 결과 의미가 동일함을 테스트한다. 현 UI에는 live refresh가 없고 replacement는 명시적으로 테스트한 API다. 기존에 반환한 detail은 immutable snapshot 조회 결과이며 자동 갱신되는 관찰 객체가 아니다.
 
-OrganizationRepositoryTest4와 ActivityDetailRepositoryTest3은 cold miss/hit 실제 source 호출수·공유 부모/두 번 상세 열기·성공만 캐시·missing·순환·snapshot 이름/부모 무효화·ID만 저장한 참조·전역 leaf 비강제·표시/역할/근거 보존을 JVM에서 검사한다. ActivityDetailProjectionTest2는 실제 canonical asset의 출처/근거/신청 방식과 미해결 source의 URL 비조작을 계측으로 확인한다. 기존 캘린더 pure tests도 동일 detail getter를 거쳐 phase 장소/시각 검증을 유지한다.
+OrganizationRepositoryTest4와 NoticeDetailRepositoryTest3은 cold miss/hit 실제 source 호출수·공유 부모/두 번 상세 열기·성공만 캐시·missing·순환·snapshot 이름/부모 무효화·ID만 저장한 참조·전역 leaf 비강제·표시/역할/근거 보존을 JVM에서 검사한다. NoticeDetailProjectionTest2는 실제 canonical asset의 출처/근거/신청 방식과 미해결 source의 URL 비조작을 계측으로 확인한다. 기존 캘린더 pure tests도 동일 detail getter를 거쳐 phase 장소/시각 검증을 유지한다.
 
 
-이번 ActivityDetail 최종 검증(2026-09-14): 구조41파일/self-test16(금지11/허용5), JVM24(기존17+조직4+상세3), Debug, Lint 오류0/권고12, 전용5556 계측30건(기존28+projection2) 모두 통과(실패/오류/skip 0). 조직 기능 커밋 전에도 JVM21/Debug/구조37파일을 실행했다. 최신 로그 `build/activity-detail-final.log`, 조직 선행 로그 `build/organization-cache.log`, 앱 표준 JVM/계측 XML·Lint 보고서가 실제 증거다. 앞 캘린더 JVM17/계측28은 이전 결과다. canonical asset은 SHA256 c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f 그대로이며 공통 JSON 변경 없음. 외부 지도/캘린더 앱 화면은 이번에 검증하지 않았고 전용 기기에서 실제 캘린더 저장도 하지 않았다. 사용자5554 보존, 전용5556만 종료한다.
+이번 NoticeDetail 최종 검증(2026-09-14): 구조41파일/self-test16(금지11/허용5), JVM24(기존17+조직4+상세3), Debug, Lint 오류0/권고12, 전용5556 계측30건(기존28+projection2) 모두 통과(실패/오류/skip 0). 조직 기능 커밋 전에도 JVM21/Debug/구조37파일을 실행했다. 최신 로그 `build/activity-detail-final.log`, 조직 선행 로그 `build/organization-cache.log`, 앱 표준 JVM/계측 XML·Lint 보고서가 실제 증거다. 앞 캘린더 JVM17/계측28은 이전 결과다. canonical asset은 SHA256 c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f 그대로이며 공통 JSON 변경 없음. 외부 지도/캘린더 앱 화면은 이번에 검증하지 않았고 전용 기기에서 실제 캘린더 저장도 하지 않았다. 사용자5554 보존, 전용5556만 종료한다.
+
+
+## Notice 도메인 명칭 통일 (2026-09-14)
+
+앱의 원시 공고 Notice와 상세 조회 NoticeDetail은 같은 공고 도메인이다. ActivityDetail→NoticeDetail, ActivityCatalog→NoticeCatalog, ActivityDetailRepository→NoticeDetailRepository, Activity 접두 모델/decoder/UI→Notice 접두 이름, entities.activitycatalog→entities.noticecatalog로 변경했다. 기존 별칭은 남기지 않는다. 조회/cache/출처/기간/장소 동작은 변경하지 않는다. 도메인·상세 이름 단계에서 구조41파일/self-test16, JVM24, Debug 및 계측 APK 컴파일을 실제 실행해 통과했다 (build/notice-domain-rename.log).
+
+Android MainActivity/ComponentActivity/ActivityNotFoundException/startActivity/androidx.activity 및 Activity 재생성 테스트는 플랫폼 용어다. JSON의 activities 키, activity-samples.json 리소스, activity.* 테스트 태그와 fixture ID, shared 계약 경로 및 과거 build/activity-detail-final.log 같은 증거 파일명은 호환성/기록 예외로 유지한다. 이 예외는 별도 앱 activity 도메인을 의미하지 않는다. 실제 참여를 의미하는 한국어 활동 문구도 유지한다.

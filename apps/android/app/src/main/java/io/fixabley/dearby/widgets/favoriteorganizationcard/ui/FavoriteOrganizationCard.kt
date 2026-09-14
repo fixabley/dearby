@@ -6,9 +6,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import io.fixabley.dearby.entities.activitycatalog.model.Notice
-import io.fixabley.dearby.entities.activitycatalog.model.Organization
-import io.fixabley.dearby.entities.activitycatalog.ui.ActivityClassification
+import io.fixabley.dearby.entities.noticecatalog.model.Notice
+import io.fixabley.dearby.entities.noticecatalog.model.Organization
+import io.fixabley.dearby.entities.noticecatalog.ui.NoticeClassification
 
 @Composable
 internal fun FavoriteOrganizationCard(
@@ -32,7 +32,7 @@ internal fun FavoriteOrganizationCard(
                 TextButton(onClick = { showDetail(notice) }, modifier = Modifier.testTag("favorite.notice.${notice.id}")) {
                     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(notice.title)
-                        ActivityClassification(notice, contextNames[notice.id].orEmpty())
+                        NoticeClassification(notice, contextNames[notice.id].orEmpty())
                     }
                 }
             }

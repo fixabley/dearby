@@ -1,4 +1,4 @@
-package io.fixabley.dearby.entities.activitycatalog.model
+package io.fixabley.dearby.entities.noticecatalog.model
 
 import org.junit.Assert.*
 import org.junit.Test
@@ -15,8 +15,8 @@ class VenueCoordinatesTest {
     fun invalidCoordinatesAndAbsenceNeverEnableMaps() {
         for ((lat, lon) in listOf(90.01 to 0.0, 0.0 to -180.01, Double.NaN to 0.0,
             0.0 to Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY to 0.0)) {
-            assertFalse(ActivityVenue(null, "fixture", null, VenueCoordinates(lat, lon)).canOpenMap)
+            assertFalse(NoticeVenue(null, "fixture", null, VenueCoordinates(lat, lon)).canOpenMap)
         }
-        assertFalse(ActivityVenue(null, "fixture", null, null).canOpenMap)
+        assertFalse(NoticeVenue(null, "fixture", null, null).canOpenMap)
     }
 }

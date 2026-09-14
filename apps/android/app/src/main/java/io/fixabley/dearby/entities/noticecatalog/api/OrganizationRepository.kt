@@ -1,6 +1,6 @@
-package io.fixabley.dearby.entities.activitycatalog.api
+package io.fixabley.dearby.entities.noticecatalog.api
 
-import io.fixabley.dearby.entities.activitycatalog.model.Organization
+import io.fixabley.dearby.entities.noticecatalog.model.Organization
 
 /** Monitor confinement makes lookup/path/replacement atomic, including all ancestor records. */
 internal class OrganizationRepository(private var source: OrganizationSource) {

@@ -13,20 +13,20 @@ import io.fixabley.dearby.R
 import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft
 import io.fixabley.dearby.features.addtocalendar.model.applicationCalendarDraft
 import io.fixabley.dearby.features.addtocalendar.model.phaseCalendarDraft
-import io.fixabley.dearby.entities.activitycatalog.model.ActivityDetail
-import io.fixabley.dearby.entities.activitycatalog.model.ActivityVenue
-import io.fixabley.dearby.entities.activitycatalog.api.ActivityDetailRepository
+import io.fixabley.dearby.entities.noticecatalog.model.NoticeDetail
+import io.fixabley.dearby.entities.noticecatalog.model.NoticeVenue
+import io.fixabley.dearby.entities.noticecatalog.api.NoticeDetailRepository
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
 import io.fixabley.dearby.pages.discovery.ui.DiscoveryScreen
 import io.fixabley.dearby.pages.favorites.ui.FavoritesScreen
 import io.fixabley.dearby.pages.noticedetail.ui.NoticeDetailSheet
 
 @Composable
-internal fun DearbyApp(catalogProvider: ActivityDetailRepository, favorites: FavoritesState, onOpenSource: (String) -> Unit, onOpenMap: (ActivityVenue) -> Unit, onAddToCalendar: (CalendarDraft) -> Unit) {
+internal fun DearbyApp(catalogProvider: NoticeDetailRepository, favorites: FavoritesState, onOpenSource: (String) -> Unit, onOpenMap: (NoticeVenue) -> Unit, onAddToCalendar: (CalendarDraft) -> Unit) {
     var retry by remember { mutableIntStateOf(0) }
     val result = remember(catalogProvider, retry) { runCatching { catalogProvider.load() } }
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
-    var detail by remember { mutableStateOf<ActivityDetail?>(null) }
+    var detail by remember { mutableStateOf<NoticeDetail?>(null) }
     val catalog = result.getOrNull()
 
     Scaffold(

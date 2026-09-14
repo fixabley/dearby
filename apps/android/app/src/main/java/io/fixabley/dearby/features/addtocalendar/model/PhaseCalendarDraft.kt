@@ -1,11 +1,11 @@
 package io.fixabley.dearby.features.addtocalendar.model
 
-import io.fixabley.dearby.entities.activitycatalog.model.ActivityScheduleDetail
-import io.fixabley.dearby.entities.activitycatalog.model.ActivityDetail
+import io.fixabley.dearby.entities.noticecatalog.model.NoticeScheduleDetail
+import io.fixabley.dearby.entities.noticecatalog.model.NoticeDetail
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
-internal fun phaseCalendarDraft(notice: ActivityDetail, schedule: ActivityScheduleDetail): CalendarDraft? {
+internal fun phaseCalendarDraft(notice: NoticeDetail, schedule: NoticeScheduleDetail): CalendarDraft? {
     val phase = schedule.period
     val period = calendarPeriod(phase.startsAt, phase.startsOn, phase.endsAt, phase.endsOn,
         phase.timezone, allowEndOnly = false) ?: return null

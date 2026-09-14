@@ -1,6 +1,6 @@
-package io.fixabley.dearby.entities.activitycatalog.api
+package io.fixabley.dearby.entities.noticecatalog.api
 
-import io.fixabley.dearby.entities.activitycatalog.model.Organization
+import io.fixabley.dearby.entities.noticecatalog.model.Organization
 
 internal fun interface OrganizationSource {
     fun find(id: String): Organization?

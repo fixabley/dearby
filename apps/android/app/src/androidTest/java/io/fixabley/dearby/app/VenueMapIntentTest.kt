@@ -3,13 +3,13 @@ package io.fixabley.dearby.app
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
-import io.fixabley.dearby.entities.activitycatalog.model.ActivityVenue
-import io.fixabley.dearby.entities.activitycatalog.model.VenueCoordinates
+import io.fixabley.dearby.entities.noticecatalog.model.NoticeVenue
+import io.fixabley.dearby.entities.noticecatalog.model.VenueCoordinates
 import org.junit.Assert.*
 import org.junit.Test
 
 class VenueMapIntentTest {
-    private val venue = ActivityVenue("event", "한글 & # 장소(5층)", null, VenueCoordinates(12.5, -45.25))
+    private val venue = NoticeVenue("event", "한글 & # 장소(5층)", null, VenueCoordinates(12.5, -45.25))
 
     @Test
     fun unpinnedViewIntentEncodesLabelAndExactCoordinates() {

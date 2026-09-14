@@ -1,4 +1,4 @@
-package io.fixabley.dearby.entities.activitycatalog.model
+package io.fixabley.dearby.entities.noticecatalog.model
 
 internal data class Organization(val id: String, val name: String, val parentOrganizationId: String?)
 internal data class NoticeContext(val organizationId: String, val role: String) {
@@ -17,9 +17,9 @@ internal data class Notice(
     val organizationId: String?,
     val audience: String,
     val eligibility: String,
-    val application: ActivityApplication,
-    val location: ActivityLocation,
-    val schedule: List<ActivityPhase>,
+    val application: NoticeApplication,
+    val location: NoticeLocation,
+    val schedule: List<NoticePhase>,
     val benefits: List<String>,
     val issues: List<String>,
     val sourceUrl: String,
@@ -27,8 +27,8 @@ internal data class Notice(
     val contexts: List<NoticeContext>,
     val edition: Int?,
     val organizationLinks: List<NoticeContext> = emptyList(),
-    val sources: List<ActivitySource> = emptyList(),
-    val evidence: List<ActivityEvidence> = emptyList(),
+    val sources: List<NoticeSource> = emptyList(),
+    val evidence: List<NoticeEvidence> = emptyList(),
 ) {
     val categorySummary: String get() {
         val labels = mapOf("recruitment" to "채용", "recruitment_event" to "채용행사",
@@ -38,7 +38,7 @@ internal data class Notice(
     }
 }
 
-data internal class ActivityCatalog(
+data internal class NoticeCatalog(
     val snapshotDate: String,
     val organizations: List<Organization>,
     val feed: List<Notice>,

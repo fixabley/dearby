@@ -3,11 +3,11 @@ package io.fixabley.dearby
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
-import io.fixabley.dearby.entities.activitycatalog.api.ActivityDetailRepository
+import io.fixabley.dearby.entities.noticecatalog.api.NoticeDetailRepository
 import io.fixabley.dearby.app.DearbyApp
 import io.fixabley.dearby.app.openVenueMap
-import io.fixabley.dearby.entities.activitycatalog.api.AssetCatalogProvider
-import io.fixabley.dearby.entities.activitycatalog.model.*
+import io.fixabley.dearby.entities.noticecatalog.api.AssetCatalogProvider
+import io.fixabley.dearby.entities.noticecatalog.model.*
 import io.fixabley.dearby.features.favoriteorganization.api.FavoriteStore
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
 import io.fixabley.dearby.pages.noticedetail.ui.NoticeLocationSection
@@ -18,12 +18,12 @@ import org.junit.Test
 
 class VenueMapFlowTest {
     @get:Rule val rule = createComposeRule()
-    private val first = ActivityVenue(null, "첫 장소 & #", null, VenueCoordinates(0.0, 0.0))
-    private val second = ActivityVenue(null, "둘째 장소", null, VenueCoordinates(12.0, 34.0))
+    private val first = NoticeVenue(null, "첫 장소 & #", null, VenueCoordinates(0.0, 0.0))
+    private val second = NoticeVenue(null, "둘째 장소", null, VenueCoordinates(12.0, 34.0))
 
     @Test fun multipleVenuesExposeOnlyValidActionsAndPreserveSummary() {
-        val selected = mutableListOf<ActivityVenue>()
-        val location = ActivityLocation("별관 5층 501호", "offline", "confirmed", listOf(
+        val selected = mutableListOf<NoticeVenue>()
+        val location = NoticeLocation("별관 5층 501호", "offline", "confirmed", listOf(
             first, second, first.copy(coordinates = null), first.copy(coordinates = VenueCoordinates(Double.NaN, 0.0)),
         ))
         rule.setContent { DearbyTheme { NoticeLocationSection(location, { selected.add(it) }) } }
@@ -40,7 +40,7 @@ class VenueMapFlowTest {
 
     @Test fun onlineLocationNeverOffersMapEvenIfCoordinatesExist() {
         rule.setContent { DearbyTheme {
-            NoticeLocationSection(ActivityLocation("온라인 참여", "online", "confirmed", listOf(first)), { error("Unexpected action") })
+            NoticeLocationSection(NoticeLocation("온라인 참여", "online", "confirmed", listOf(first)), { error("Unexpected action") })
         } }
         rule.onNodeWithText("온라인 참여").assertIsDisplayed()
         rule.onNodeWithTag("venue.map.0").assertDoesNotExist()
@@ -56,7 +56,7 @@ class VenueMapFlowTest {
             override fun read() = emptySet<String>()
             override fun write(ids: Set<String>) = Unit
         })
-        val repository = ActivityDetailRepository(provider)
+        val repository = NoticeDetailRepository(provider)
         rule.setContent { DearbyTheme {
             DearbyApp(repository, favorites, onOpenSource = {}, onAddToCalendar = {}, onOpenMap = { venue ->
                 assertEquals(expected, venue)

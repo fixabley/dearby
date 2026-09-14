@@ -1,12 +1,12 @@
-package io.fixabley.dearby.entities.activitycatalog.api
+package io.fixabley.dearby.entities.noticecatalog.api
 
-import io.fixabley.dearby.entities.activitycatalog.model.ActivityEvidence
+import io.fixabley.dearby.entities.noticecatalog.model.NoticeEvidence
 import org.json.JSONArray
 import org.json.JSONObject
 
 /** Retains each evidence association, including nested venue coordinates and array positions. */
-internal fun decodeActivityEvidence(item: JSONObject, sourceURLs: Map<String, String?>): List<ActivityEvidence> {
-    val result = mutableListOf<ActivityEvidence>()
+internal fun decodeNoticeEvidence(item: JSONObject, sourceURLs: Map<String, String?>): List<NoticeEvidence> {
+    val result = mutableListOf<NoticeEvidence>()
     fun visit(value: Any?, path: String) {
         when (value) {
             is JSONObject -> value.keys().asSequence().toList().sorted().forEach { key ->
@@ -17,7 +17,7 @@ internal fun decodeActivityEvidence(item: JSONObject, sourceURLs: Map<String, St
                         val evidence = child.optJSONObject(index) ?: continue
                         val sourceId = evidence.opt("sourceId") as? String ?: continue
                         val locator = evidence.opt("locator") as? String ?: continue
-                        result.add(ActivityEvidence(sourceId, locator, field, sourceURLs[sourceId]))
+                        result.add(NoticeEvidence(sourceId, locator, field, sourceURLs[sourceId]))
                     }
                 } else visit(child, if (path.isEmpty()) key else "$path.$key")
             }

@@ -1,13 +1,13 @@
-package io.fixabley.dearby.entities.activitycatalog.api
+package io.fixabley.dearby.entities.noticecatalog.api
 
-import io.fixabley.dearby.entities.activitycatalog.model.ActivityLocation
-import io.fixabley.dearby.entities.activitycatalog.model.ActivityVenue
-import io.fixabley.dearby.entities.activitycatalog.model.VenueCoordinates
+import io.fixabley.dearby.entities.noticecatalog.model.NoticeLocation
+import io.fixabley.dearby.entities.noticecatalog.model.NoticeVenue
+import io.fixabley.dearby.entities.noticecatalog.model.VenueCoordinates
 import org.json.JSONObject
 
-internal fun decodeActivityLocation(json: JSONObject): ActivityLocation {
+internal fun decodeNoticeLocation(json: JSONObject): NoticeLocation {
     val venues = json.optJSONArray("venues")
-    return ActivityLocation(
+    return NoticeLocation(
         summary = json.getString("summary"),
         mode = json.optString("mode", "unknown"),
         status = json.optString("status", "unknown"),
@@ -17,7 +17,7 @@ internal fun decodeActivityLocation(json: JSONObject): ActivityLocation {
             // Reject partial values and coercions (strings/booleans), never fill absent axes with zero.
             val latitude = (coordinates?.opt("latitude") as? Number)?.toDouble()
             val longitude = (coordinates?.opt("longitude") as? Number)?.toDouble()
-            ActivityVenue(
+            NoticeVenue(
                 phase = venue.opt("phase") as? String,
                 name = venue.opt("name") as? String,
                 address = venue.opt("address") as? String,

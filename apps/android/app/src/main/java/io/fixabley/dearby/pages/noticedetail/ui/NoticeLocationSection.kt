@@ -8,12 +8,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import io.fixabley.dearby.entities.activitycatalog.model.ActivityLocation
-import io.fixabley.dearby.entities.activitycatalog.model.ActivityVenue
+import io.fixabley.dearby.entities.noticecatalog.model.NoticeLocation
+import io.fixabley.dearby.entities.noticecatalog.model.NoticeVenue
 import io.fixabley.dearby.shared.ui.NoticeFact
 
 @Composable
-internal fun NoticeLocationSection(location: ActivityLocation, onOpenMap: (ActivityVenue) -> Unit) {
+internal fun NoticeLocationSection(location: NoticeLocation, onOpenMap: (NoticeVenue) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         NoticeFact("활동 장소", location.summary)
         if (location.mode != "online") {

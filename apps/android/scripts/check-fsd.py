@@ -18,13 +18,13 @@ API = {
         "model.FavoritesState", "api.FavoriteStore", "api.SharedPreferencesFavoriteStore",
     },
     "features.addtocalendar": {"model.CalendarDraft", "model.applicationCalendarDraft", "model.phaseCalendarDraft"},
-    "entities.activitycatalog": {
-        "model.ActivityApplication", "model.ActivityPhase", "model.ActivityDetail", "model.ActivityScheduleDetail",
-        "model.ResolvedOrganizationRole", "model.ActivitySource", "model.ActivityEvidence", "api.ActivityDetailRepository",
-        "model.ActivityLocation", "model.ActivityVenue", "model.VenueCoordinates",
-        "model.ActivityCatalog", "model.Notice", "model.Organization", "model.NoticeContext",
+    "entities.noticecatalog": {
+        "model.NoticeApplication", "model.NoticePhase", "model.NoticeDetail", "model.NoticeScheduleDetail",
+        "model.ResolvedOrganizationRole", "model.NoticeSource", "model.NoticeEvidence", "api.NoticeDetailRepository",
+        "model.NoticeLocation", "model.NoticeVenue", "model.VenueCoordinates",
+        "model.NoticeCatalog", "model.Notice", "model.Organization", "model.NoticeContext",
         "api.OrganizationSource", "api.InMemoryOrganizationSource", "api.OrganizationRepository",
-        "api.CatalogProvider", "api.AssetCatalogProvider", "ui.ActivityClassification",
+        "api.CatalogProvider", "api.AssetCatalogProvider", "ui.NoticeClassification",
     },
 }
 
@@ -73,8 +73,8 @@ def check_source(relative_path, text):
             (target_layer == "features" and ref != "features.addtocalendar.model.CalendarDraft") or ".api." in ref
         ):
             errors.append(f"UI must receive values/callbacks, not state or data providers: {ref}")
-    if source == "pages.noticedetail" and any(ref in {"entities.activitycatalog.model.Notice", "entities.activitycatalog.model.ActivityCatalog"} for ref in references):
-        errors.append("detail UI must receive ActivityDetail, not raw catalog/notice")
+    if source == "pages.noticedetail" and any(ref in {"entities.noticecatalog.model.Notice", "entities.noticecatalog.model.NoticeCatalog"} for ref in references):
+        errors.append("detail UI must receive NoticeDetail, not raw catalog/notice")
     if layer in ("pages", "widgets") and re.search(
         r"\b(LocalContext|SharedPreferences|getSharedPreferences|AssetManager)\b", code
     ):
@@ -87,19 +87,19 @@ def self_test():
         ("pages/discovery/ui/Example.kt", "import io.fixabley.dearby.app.DearbyApp", False),
         ("pages/discovery/ui/Example.kt", "import io.fixabley.dearby.pages.noticedetail.ui.NoticeDetailSheet", False),
         ("widgets/activitycard/ui/Example.kt", "import io.fixabley.dearby.widgets.favoriteorganizationcard.ui.FavoriteOrganizationCard", False),
-        ("entities/activitycatalog/model/Example.kt", "import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState", False),
+        ("entities/noticecatalog/model/Example.kt", "import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState", False),
         ("widgets/activitycard/ui/Example.kt", "import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState as State", False),
         ("widgets/activitycard/ui/Example.kt", "import android.content.SharedPreferences", False),
         ("app/Example.kt", "import io.fixabley.dearby.pages.noticedetail.ui.NoticeIdentity", False),
         ("pages/discovery/ui/Example.kt", "fun bad() = io.fixabley.dearby.pages.favorites.ui.FavoritesScreen()", False),
         ("app/Example.kt", "import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState", True),
-        ("widgets/activitycard/ui/Example.kt", "import io.fixabley.dearby.entities.activitycatalog.ui.ActivityClassification", True),
+        ("widgets/activitycard/ui/Example.kt", "import io.fixabley.dearby.entities.noticecatalog.ui.NoticeClassification", True),
         ("shared/ui/Example.kt", "import io.fixabley.dearby.shared.ui.theme.DearbyTheme", True),
         ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft", True),
         ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.features.addtocalendar.model.applicationCalendarDraft", False),
-        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.entities.activitycatalog.model.Notice", False),
-        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.entities.activitycatalog.model.ActivityCatalog", False),
-        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.entities.activitycatalog.model.ActivityDetail", True),
+        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.entities.noticecatalog.model.Notice", False),
+        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.entities.noticecatalog.model.NoticeCatalog", False),
+        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.entities.noticecatalog.model.NoticeDetail", True),
     ]
     for filename, snippet, allowed in cases:
         path = Path(filename)

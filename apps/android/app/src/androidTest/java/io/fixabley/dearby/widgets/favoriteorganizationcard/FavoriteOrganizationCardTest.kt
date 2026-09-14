@@ -3,7 +3,7 @@ package io.fixabley.dearby.widgets.favoriteorganizationcard
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
-import io.fixabley.dearby.entities.activitycatalog.api.AssetCatalogProvider
+import io.fixabley.dearby.entities.noticecatalog.api.AssetCatalogProvider
 import io.fixabley.dearby.shared.ui.theme.DearbyTheme
 import io.fixabley.dearby.widgets.favoriteorganizationcard.ui.FavoriteOrganizationCard
 import org.junit.Assert.assertEquals

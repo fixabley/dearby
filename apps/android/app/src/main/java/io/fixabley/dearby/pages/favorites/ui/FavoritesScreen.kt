@@ -8,12 +8,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.Alignment
-import io.fixabley.dearby.entities.activitycatalog.model.ActivityCatalog
-import io.fixabley.dearby.entities.activitycatalog.model.Notice
+import io.fixabley.dearby.entities.noticecatalog.model.NoticeCatalog
+import io.fixabley.dearby.entities.noticecatalog.model.Notice
 import io.fixabley.dearby.widgets.favoriteorganizationcard.ui.FavoriteOrganizationCard
 
 @Composable
-internal fun FavoritesScreen(catalog: ActivityCatalog, favoriteIds: Set<String>, onRemove: (String) -> Unit, showDetail: (Notice) -> Unit) {
+internal fun FavoritesScreen(catalog: NoticeCatalog, favoriteIds: Set<String>, onRemove: (String) -> Unit, showDetail: (Notice) -> Unit) {
     val organizations = catalog.organizations.filter { it.id in favoriteIds }
     if (organizations.isEmpty()) {
         Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center,

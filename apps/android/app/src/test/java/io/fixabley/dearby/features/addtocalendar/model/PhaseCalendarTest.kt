@@ -1,19 +1,19 @@
 package io.fixabley.dearby.features.addtocalendar.model
 
-import io.fixabley.dearby.entities.activitycatalog.model.*
+import io.fixabley.dearby.entities.noticecatalog.model.*
 import java.time.Instant
 import org.junit.Assert.*
 import org.junit.Test
 
 class PhaseCalendarTest {
-    private fun phaseDraft(notice: Notice, phase: ActivityPhase): CalendarDraft? {
+    private fun phaseDraft(notice: Notice, phase: NoticePhase): CalendarDraft? {
         val detail = projectCalendarNotice(notice.copy(schedule = listOf(phase)))
         return phaseCalendarDraft(detail, detail.schedules.single())
     }
 
     @Test fun preciseKrcAndDbPhasesKeepKnownHours() {
         for ((start, end) in listOf("14:00:00" to "16:00:00", "10:00:00" to "17:00:00")) {
-            val phase = ActivityPhase("event", "2026-09-15T$start+09:00", "2026-09-15", "2026-09-15T$end+09:00")
+            val phase = NoticePhase("event", "2026-09-15T$start+09:00", "2026-09-15", "2026-09-15T$end+09:00")
             val draft = phaseDraft(calendarNoticeRecord(), phase)!!
             assertFalse(draft.allDay)
             assertEquals(java.time.OffsetDateTime.parse(phase.startsAt).toInstant().toEpochMilli(), draft.beginsAtMillis)
@@ -23,7 +23,7 @@ class PhaseCalendarTest {
     }
 
     @Test fun dateOnlyUnknownEndAndInclusiveRangeDoNotInventAnHour() {
-        val phase = ActivityPhase("preliminary", startsOn = "2026-10-14", mode = "online")
+        val phase = NoticePhase("preliminary", startsOn = "2026-10-14", mode = "online")
         val draft = phaseDraft(calendarNoticeRecord(), phase)!!
         assertTrue(draft.allDay)
         assertEquals(Instant.parse("2026-10-14T00:00:00Z").toEpochMilli(), draft.beginsAtMillis)
@@ -39,9 +39,9 @@ class PhaseCalendarTest {
     }
 
     @Test fun onlinePreliminaryNeverBorrowsFinalVenueAndOnlyVerifiedOnlineUrlIsIncluded() {
-        val notice = calendarNoticeRecord().copy(location = ActivityLocation("온라인 예선 / 결선 장소", "mixed", "partial",
-            listOf(ActivityVenue("final", "결선 전용 장소", "결선 주소", VenueCoordinates(1.0, 2.0)))))
-        val phase = ActivityPhase("preliminary", startsOn = "2026-10-14", mode = "online", onlineUrl = "https://example.org/live?x=1&y=2#room")
+        val notice = calendarNoticeRecord().copy(location = NoticeLocation("온라인 예선 / 결선 장소", "mixed", "partial",
+            listOf(NoticeVenue("final", "결선 전용 장소", "결선 주소", VenueCoordinates(1.0, 2.0)))))
+        val phase = NoticePhase("preliminary", startsOn = "2026-10-14", mode = "online", onlineUrl = "https://example.org/live?x=1&y=2#room")
         val draft = phaseDraft(notice, phase)!!
         assertEquals("온라인", draft.location)
         assertTrue(draft.description.contains("온라인 URL: ${phase.onlineUrl}"))
@@ -55,13 +55,13 @@ class PhaseCalendarTest {
     }
 
     @Test fun exactPhaseJoinRetainsAllMatchingVenuesAndSafeCoordinateMapLinks() {
-        val notice = calendarNoticeRecord().copy(location = ActivityLocation("여러 장소", "mixed", "known", listOf(
-            ActivityVenue("preliminary", "예선 전용", null, null),
-            ActivityVenue("final", "한글 & # 결선 5층", "첫 주소", VenueCoordinates(0.0, 0.0)),
-            ActivityVenue("final", "둘째 결선", "둘째 주소", VenueCoordinates(12.5, -45.0)),
-            ActivityVenue(null, "단계 미지정", null, null),
+        val notice = calendarNoticeRecord().copy(location = NoticeLocation("여러 장소", "mixed", "known", listOf(
+            NoticeVenue("preliminary", "예선 전용", null, null),
+            NoticeVenue("final", "한글 & # 결선 5층", "첫 주소", VenueCoordinates(0.0, 0.0)),
+            NoticeVenue("final", "둘째 결선", "둘째 주소", VenueCoordinates(12.5, -45.0)),
+            NoticeVenue(null, "단계 미지정", null, null),
         )))
-        val phase = ActivityPhase("final", startsOn = "2026-11-04", mode = "offline")
+        val phase = NoticePhase("final", startsOn = "2026-11-04", mode = "offline")
         val draft = phaseDraft(notice, phase)!!
         assertEquals("한글 & # 결선 5층 · 첫 주소 / 둘째 결선 · 둘째 주소", draft.location)
         assertFalse(draft.description.contains("예선 전용"))

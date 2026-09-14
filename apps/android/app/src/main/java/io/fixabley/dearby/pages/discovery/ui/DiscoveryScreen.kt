@@ -9,12 +9,12 @@ import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
-import io.fixabley.dearby.entities.activitycatalog.model.ActivityCatalog
-import io.fixabley.dearby.entities.activitycatalog.model.Notice
+import io.fixabley.dearby.entities.noticecatalog.model.NoticeCatalog
+import io.fixabley.dearby.entities.noticecatalog.model.Notice
 import io.fixabley.dearby.widgets.activitycard.ui.ActivityCard
 
 @Composable
-internal fun DiscoveryScreen(catalog: ActivityCatalog, favoriteIds: Set<String>, onSave: (String) -> Unit, showDetail: (Notice) -> Unit) {
+internal fun DiscoveryScreen(catalog: NoticeCatalog, favoriteIds: Set<String>, onSave: (String) -> Unit, showDetail: (Notice) -> Unit) {
     var feedback by remember { mutableStateOf("") }
     val pager = rememberPagerState(pageCount = { catalog.feed.size })
     Column(Modifier.fillMaxSize()) {

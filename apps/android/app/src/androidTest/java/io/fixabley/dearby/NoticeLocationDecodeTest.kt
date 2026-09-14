@@ -1,11 +1,11 @@
 package io.fixabley.dearby
 
-import io.fixabley.dearby.entities.activitycatalog.api.decodeActivityLocation
+import io.fixabley.dearby.entities.noticecatalog.api.decodeNoticeLocation
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
 
-class ActivityLocationDecodeTest {
+class NoticeLocationDecodeTest {
     @Test
     fun legacyVenuesAndEvidenceRemainIntactWithoutCoordinates() {
         val json = JSONObject("""{"summary":"5층 459호","mode":"mixed","status":"partial",
@@ -13,7 +13,7 @@ class ActivityLocationDecodeTest {
             {"phase":"event","name":"다른 장소","coordinates":null}],
             "evidence":[{"sourceId":"fixture","locator":"원문"}]}""")
         val original = json.toString()
-        val location = decodeActivityLocation(json)
+        val location = decodeNoticeLocation(json)
         assertEquals("5층 459호", location.summary)
         assertEquals("mixed", location.mode)
         assertEquals("partial", location.status)
@@ -32,7 +32,7 @@ class ActivityLocationDecodeTest {
             """{"latitude":90.1,"longitude":0}""", """{"latitude":0,"longitude":180.1}""")
         for (coordinates in invalid) {
             val json = JSONObject("""{"summary":"fixture","venues":[{"coordinates":$coordinates}]}""")
-            assertNull(coordinates, decodeActivityLocation(json).venues.single().coordinates)
+            assertNull(coordinates, decodeNoticeLocation(json).venues.single().coordinates)
         }
         // Android's JSON parser rejects nonfinite numeric literals before model decoding.
         // DearbyApp handles provider failure through its existing retry/error state.
@@ -50,7 +50,7 @@ class ActivityLocationDecodeTest {
              "coordinateEvidence":[{"sourceId":"fixture","locator":"검증 좌표"}]},
             {"phase":"final","name":"두 번째","coordinates":{"latitude":-90,"longitude":180}}]}""")
         val original = json.toString()
-        val venues = decodeActivityLocation(json).venues
+        val venues = decodeNoticeLocation(json).venues
         assertEquals(2, venues.size)
         assertEquals(0.0, venues.first().coordinates!!.latitude, 0.0)
         assertEquals(0.0, venues.first().coordinates!!.longitude, 0.0)

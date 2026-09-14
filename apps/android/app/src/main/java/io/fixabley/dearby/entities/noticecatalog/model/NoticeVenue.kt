@@ -1,6 +1,6 @@
-package io.fixabley.dearby.entities.activitycatalog.model
+package io.fixabley.dearby.entities.noticecatalog.model
 
-internal data class ActivityVenue(
+internal data class NoticeVenue(
     val phase: String?,
     val name: String?,
     val address: String?,

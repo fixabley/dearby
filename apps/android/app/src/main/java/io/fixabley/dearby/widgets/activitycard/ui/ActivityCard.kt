@@ -13,10 +13,10 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import io.fixabley.dearby.entities.activitycatalog.model.Notice
-import io.fixabley.dearby.entities.activitycatalog.model.Organization
+import io.fixabley.dearby.entities.noticecatalog.model.Notice
+import io.fixabley.dearby.entities.noticecatalog.model.Organization
 import io.fixabley.dearby.shared.ui.NoticeFact
-import io.fixabley.dearby.entities.activitycatalog.ui.ActivityClassification
+import io.fixabley.dearby.entities.noticecatalog.ui.NoticeClassification
 
 @Composable
 internal fun ActivityCard(
@@ -38,7 +38,7 @@ internal fun ActivityCard(
                         Text("공고 샘플", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
                         Text(position, style = MaterialTheme.typography.labelMedium)
                     }
-                    ActivityClassification(notice, contextNames,
+                    NoticeClassification(notice, contextNames,
                         Modifier.testTag("classification.${notice.id}"),
                         maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(notice.title, style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,

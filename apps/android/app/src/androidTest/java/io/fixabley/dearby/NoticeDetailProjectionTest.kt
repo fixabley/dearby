@@ -1,16 +1,16 @@
 package io.fixabley.dearby
 
 import androidx.test.platform.app.InstrumentationRegistry
-import io.fixabley.dearby.entities.activitycatalog.api.ActivityDetailRepository
-import io.fixabley.dearby.entities.activitycatalog.api.AssetCatalogProvider
-import io.fixabley.dearby.entities.activitycatalog.api.decodeActivityEvidence
+import io.fixabley.dearby.entities.noticecatalog.api.NoticeDetailRepository
+import io.fixabley.dearby.entities.noticecatalog.api.AssetCatalogProvider
+import io.fixabley.dearby.entities.noticecatalog.api.decodeNoticeEvidence
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
 
-class ActivityDetailProjectionTest {
+class NoticeDetailProjectionTest {
     @Test fun canonicalDetailsDecodeAllSourcesFieldEvidenceAndApplicationMethods() {
-        val repo = ActivityDetailRepository(AssetCatalogProvider(InstrumentationRegistry.getInstrumentation().targetContext.assets))
+        val repo = NoticeDetailRepository(AssetCatalogProvider(InstrumentationRegistry.getInstrumentation().targetContext.assets))
         val catalog = repo.load()
         val detail = repo.detail("cieat-NCR000000007344")!!
         assertTrue(detail.sources.map { it.id }.containsAll(listOf("krc", "cbnu-campus-map", "cbnu-library-location")))
@@ -31,7 +31,7 @@ class ActivityDetailProjectionTest {
             "schedule":[{"evidence":[{"sourceId":"known","locator":"날짜"}]}],
             "location":{"venues":[{"coordinateEvidence":[{"sourceId":"known","locator":"좌표"}]}]}}""")
         val before = json.toString()
-        val evidence = decodeActivityEvidence(json, mapOf("known" to "https://example.org/verified"))
+        val evidence = decodeNoticeEvidence(json, mapOf("known" to "https://example.org/verified"))
         assertEquals(before, json.toString())
         assertEquals(3, evidence.size)
         val missing = evidence.single { it.sourceId == "missing" }

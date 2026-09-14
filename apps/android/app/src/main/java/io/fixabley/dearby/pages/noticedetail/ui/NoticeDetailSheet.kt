@@ -10,13 +10,13 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.platform.testTag
 import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft
-import io.fixabley.dearby.entities.activitycatalog.model.ActivityDetail
-import io.fixabley.dearby.entities.activitycatalog.model.ActivityVenue
+import io.fixabley.dearby.entities.noticecatalog.model.NoticeDetail
+import io.fixabley.dearby.entities.noticecatalog.model.NoticeVenue
 import io.fixabley.dearby.shared.ui.NoticeFact
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun NoticeDetailSheet(notice: ActivityDetail, onDismiss: () -> Unit, onOpenSource: (String) -> Unit, onOpenMap: (ActivityVenue) -> Unit, applicationDraft: CalendarDraft?, phaseDrafts: List<CalendarDraft?>, onAddToCalendar: (CalendarDraft) -> Unit) {
+internal fun NoticeDetailSheet(notice: NoticeDetail, onDismiss: () -> Unit, onOpenSource: (String) -> Unit, onOpenMap: (NoticeVenue) -> Unit, applicationDraft: CalendarDraft?, phaseDrafts: List<CalendarDraft?>, onAddToCalendar: (CalendarDraft) -> Unit) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -36,7 +36,7 @@ internal fun NoticeDetailSheet(notice: ActivityDetail, onDismiss: () -> Unit, on
                         Modifier.testTag("calendar.application"))
                 }
             }
-            itemsIndexed(notice.schedules) { index, phase -> ActivityScheduleSection(phase, phaseDrafts.getOrNull(index), index, onAddToCalendar) }
+            itemsIndexed(notice.schedules) { index, phase -> NoticeScheduleSection(phase, phaseDrafts.getOrNull(index), index, onAddToCalendar) }
             item { NoticeLocationSection(notice.location, onOpenMap) }
             items(notice.benefits) { NoticeFact("혜택", it) }
             items(notice.issues) { NoticeFact("확인 필요", it) }

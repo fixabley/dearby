@@ -1,27 +1,27 @@
-package io.fixabley.dearby.entities.activitycatalog.api
+package io.fixabley.dearby.entities.noticecatalog.api
 
-import io.fixabley.dearby.entities.activitycatalog.model.*
+import io.fixabley.dearby.entities.noticecatalog.model.*
 import org.junit.Assert.*
 import org.junit.Test
 
-class ActivityDetailRepositoryTest {
+class NoticeDetailRepositoryTest {
     private val notice = Notice("activity", "제목", "검토 요약", "selected", "참여 대상", "참여 조건",
-        ActivityApplication("신청 안내", methods = listOf("email")),
-        ActivityLocation("온라인 예선 / 결선", "mixed", "partial", listOf(ActivityVenue("final", "결선 장소", null, null))),
-        listOf(ActivityPhase("preliminary", startsOn = "2026-10-14", mode = "online"), ActivityPhase("final", startsOn = "2026-11-04", mode = "offline")),
+        NoticeApplication("신청 안내", methods = listOf("email")),
+        NoticeLocation("온라인 예선 / 결선", "mixed", "partial", listOf(NoticeVenue("final", "결선 장소", null, null))),
+        listOf(NoticePhase("preliminary", startsOn = "2026-10-14", mode = "online"), NoticePhase("final", startsOn = "2026-11-04", mode = "offline")),
         listOf("혜택"), listOf("확인 필요"), "https://example.org/source", listOf("competition"),
         listOf(NoticeContext("parent", "event_context"), NoticeContext("unknown", "co_operator")), 2,
         organizationLinks = listOf(NoticeContext("operator", "operator")),
-        sources = listOf(ActivitySource("source", "https://example.org/source", "web_page", "checked", "public", "검토")),
-        evidence = listOf(ActivityEvidence("source", "신청 방법", "application", "https://example.org/source")))
+        sources = listOf(NoticeSource("source", "https://example.org/source", "web_page", "checked", "public", "검토")),
+        evidence = listOf(NoticeEvidence("source", "신청 방법", "application", "https://example.org/source")))
     private val records = listOf(Organization("selected", "선택 조직", "parent"), Organization("parent", "상위", null),
         Organization("child", "선택 조직의 자식", "selected"), Organization("operator", "운영 조직", null))
 
     @Test fun twoDetailOpensReuseOneEmptyCacheIncludingSharedContextParent() {
         val fetches = mutableListOf<String>()
         var seeds = 0
-        val catalog = ActivityCatalog("snapshot", records, listOf(notice))
-        val repo = ActivityDetailRepository(CatalogProvider { catalog }) { rows ->
+        val catalog = NoticeCatalog("snapshot", records, listOf(notice))
+        val repo = NoticeDetailRepository(CatalogProvider { catalog }) { rows ->
             seeds++
             OrganizationSource { id -> fetches.add(id); rows.find { it.id == id } }
         }
@@ -42,7 +42,7 @@ class ActivityDetailRepositoryTest {
     }
 
     @Test fun detailKeepsOnlyRelevantReadPathAndExplicitRolesWithAllDisplayData() {
-        val repo = ActivityDetailRepository(CatalogProvider { ActivityCatalog("s", records, listOf(notice)) })
+        val repo = NoticeDetailRepository(CatalogProvider { NoticeCatalog("s", records, listOf(notice)) })
         repo.load()
         val detail = repo.detail(notice.id)!!
         assertEquals("selected", detail.organizationId) // May itself have a child; never force a global leaf.
@@ -65,14 +65,14 @@ class ActivityDetailRepositoryTest {
         assertTrue(detail.schedules.first().locations.isEmpty())
         assertEquals(listOf("결선 장소"), detail.schedules.last().locations.map { it.name })
         assertFalse(Notice::class.java.declaredFields.any { it.name in setOf("organizations", "organizationPath") })
-        assertFalse(ActivityDetail::class.java.declaredFields.any { it.type == ActivityCatalog::class.java || it.type == Notice::class.java })
+        assertFalse(NoticeDetail::class.java.declaredFields.any { it.type == NoticeCatalog::class.java || it.type == Notice::class.java })
     }
 
     @Test fun replacementChangesNamesAndParentsForDetailAndCatalogHelpersTogether() {
-        val repo = ActivityDetailRepository(CatalogProvider { ActivityCatalog("s", records, listOf(notice)) })
+        val repo = NoticeDetailRepository(CatalogProvider { NoticeCatalog("s", records, listOf(notice)) })
         repo.load()
         repo.detail(notice.id)
-        val replacement = ActivityCatalog("same timestamp", listOf(Organization("selected", "새 이름", "new"), Organization("new", "새 부모", null)), listOf(notice))
+        val replacement = NoticeCatalog("same timestamp", listOf(Organization("selected", "새 이름", "new"), Organization("new", "새 부모", null)), listOf(notice))
         repo.replaceSnapshot(replacement)
         val detail = repo.detail(notice.id)!!
         assertEquals(listOf("새 부모", "새 이름"), detail.organizationPath.map { it.name })

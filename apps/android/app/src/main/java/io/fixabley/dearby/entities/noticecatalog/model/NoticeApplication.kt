@@ -1,6 +1,6 @@
-package io.fixabley.dearby.entities.activitycatalog.model
+package io.fixabley.dearby.entities.noticecatalog.model
 
-internal data class ActivityApplication(
+internal data class NoticeApplication(
     val summary: String,
     val opensAt: String? = null,
     val opensOn: String? = null,

@@ -3,11 +3,11 @@ package io.fixabley.dearby
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
-import io.fixabley.dearby.entities.activitycatalog.api.ActivityDetailRepository
+import io.fixabley.dearby.entities.noticecatalog.api.NoticeDetailRepository
 import io.fixabley.dearby.app.DearbyApp
-import io.fixabley.dearby.entities.activitycatalog.api.AssetCatalogProvider
-import io.fixabley.dearby.entities.activitycatalog.api.CatalogProvider
-import io.fixabley.dearby.entities.activitycatalog.model.ActivityApplication
+import io.fixabley.dearby.entities.noticecatalog.api.AssetCatalogProvider
+import io.fixabley.dearby.entities.noticecatalog.api.CatalogProvider
+import io.fixabley.dearby.entities.noticecatalog.model.NoticeApplication
 import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft
 import io.fixabley.dearby.features.favoriteorganization.api.FavoriteStore
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
@@ -26,7 +26,7 @@ class ApplicationCalendarFlowTest {
     @Test fun applicationEditorOpensOnlyOnClickAndKeepsDetailForCancelReturn() {
         val provider = AssetCatalogProvider(InstrumentationRegistry.getInstrumentation().targetContext.assets)
         val captured = mutableListOf<CalendarDraft>()
-        val repository = ActivityDetailRepository(provider)
+        val repository = NoticeDetailRepository(provider)
         rule.setContent { DearbyTheme { DearbyApp(repository, favorites, {}, {}, { captured.add(it) }) } }
         rule.onNodeWithTag("details.cieat-NCR000000007344").performClick()
         rule.onNodeWithTag("notice.detail").performScrollToNode(hasTestTag("calendar.application"))
@@ -42,8 +42,8 @@ class ApplicationCalendarFlowTest {
 
     @Test fun unknownApplicationDatesKeepSummaryWithoutAnExportAction() {
         val catalog = AssetCatalogProvider(InstrumentationRegistry.getInstrumentation().targetContext.assets).load()
-        val first = catalog.feed.first().copy(application = ActivityApplication("신청 일정 미확인"))
-        val repository = ActivityDetailRepository(CatalogProvider { catalog.copy(feed = listOf(first)) })
+        val first = catalog.feed.first().copy(application = NoticeApplication("신청 일정 미확인"))
+        val repository = NoticeDetailRepository(CatalogProvider { catalog.copy(feed = listOf(first)) })
         rule.setContent { DearbyTheme { DearbyApp(repository, favorites, {}, {}, { fail("No draft") }) } }
         rule.onNodeWithTag("details.${first.id}").performClick()
         rule.onNodeWithTag("notice.detail").performScrollToNode(hasText("신청 일정 미확인"))

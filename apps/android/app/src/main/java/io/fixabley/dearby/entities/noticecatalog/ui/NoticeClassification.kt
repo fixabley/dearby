@@ -1,14 +1,14 @@
-package io.fixabley.dearby.entities.activitycatalog.ui
+package io.fixabley.dearby.entities.noticecatalog.ui
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
-import io.fixabley.dearby.entities.activitycatalog.model.Notice
+import io.fixabley.dearby.entities.noticecatalog.model.Notice
 
 @Composable
-internal fun ActivityClassification(
+internal fun NoticeClassification(
     notice: Notice,
     contextNames: String,
     modifier: Modifier = Modifier,

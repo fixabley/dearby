@@ -1,17 +1,17 @@
-package io.fixabley.dearby.entities.activitycatalog.api
+package io.fixabley.dearby.entities.noticecatalog.api
 
-import io.fixabley.dearby.entities.activitycatalog.model.ActivityApplication
-import io.fixabley.dearby.entities.activitycatalog.model.ActivityPhase
+import io.fixabley.dearby.entities.noticecatalog.model.NoticeApplication
+import io.fixabley.dearby.entities.noticecatalog.model.NoticePhase
 import org.json.JSONObject
 
-internal fun decodeActivityApplication(json: JSONObject) = ActivityApplication(
+internal fun decodeNoticeApplication(json: JSONObject) = NoticeApplication(
     json.getString("summary"), json.calendarDate("opensAt"), json.calendarDate("opensOn"),
     json.calendarDate("closesAt"), json.calendarDate("closesOn"), json.calendarTimezone(),
     json.opt("url") as? String, json.stringValues("channels"),
     json.stringValues("requiredDocuments"), json.stringValues("submissionLocations"),
 )
 
-internal fun decodeActivityPhase(json: JSONObject) = ActivityPhase(
+internal fun decodeNoticePhase(json: JSONObject) = NoticePhase(
     json.getString("phase"), json.calendarDate("startsAt"), json.calendarDate("startsOn"),
     json.calendarDate("endsAt"), json.calendarDate("endsOn"), json.calendarTimezone(),
     json.opt("mode") as? String ?: "unknown", json.opt("onlineUrl") as? String,

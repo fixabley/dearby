@@ -56,7 +56,7 @@ JVM 단위 테스트는 앱 실행 없이 임시 저장소로 즐겨찾기 추�
 - `app/src/main/java/io/fixabley/dearby/pages/favorites/ui/`: 즐겨찾기 페이지
 - `app/src/main/java/io/fixabley/dearby/widgets/favoriteorganizationcard/ui/`: 조직 카드
 - `app/src/main/java/io/fixabley/dearby/pages/noticedetail/ui/`: 상세 시트와 내부 표시
-- `app/src/main/java/io/fixabley/dearby/entities/activitycatalog/`: 응집된 카탈로그 모델과 공급 경계
+- `app/src/main/java/io/fixabley/dearby/entities/noticecatalog/`: 응집된 카탈로그 모델과 공급 경계
 - `app/src/main/java/io/fixabley/dearby/features/favoriteorganization/`: 즐겨찾기 행동·관찰 상태·저장 경계
 - `app/src/main/java/io/fixabley/dearby/shared/ui/`: 범용 표시와 테마
 - `app/src/test/`: 앱 없는 JVM 상태 테스트
@@ -85,7 +85,7 @@ AGP의 내장 Kotlin 지원을 사용하므로 `org.jetbrains.kotlin.android` �
 
 상세 활동 장소의 각 venue에 유효한 좌표가 있으면 장소 이름을 표시한 지도 버튼이 나타납니다. 기존 장소 안내와 층·호실 문구는 유지합니다. 온라인·좌표 미확인/오류 장소에는 버튼이 없으며, (0,0)은 명시된 경우에만 유효합니다. 버튼을 누르면 OS의 지도 앱 선택으로 전달하고 열 수 있는 앱이 없으면 native 안내를 표시합니다. 위치 권한·현재 위치·길찾기·geocoding/네트워크 기능을 추가하지 않습니다.
 
-장소 데이터는 ActivityLocation/ActivityVenue/VenueCoordinates로 해석하며 App이 외부 실행 콜백을 주입합니다. 각 상세 UI helper는 같은 slice 내 독립 파일입니다. 공통 좌표 계약·근거는 [PR #6](https://github.com/fixabley/dearby/pull/6)을 참조합니다. 샘플 좌표는 건물 대표 위치로, 층·호실은 원래 장소 안내를 확인해야 합니다. 새 좌표/URI/버튼 테스트도 위 JVM·전용 기기 명령으로 실행됩니다.
+장소 데이터는 NoticeLocation/NoticeVenue/VenueCoordinates로 해석하며 App이 외부 실행 콜백을 주입합니다. 각 상세 UI helper는 같은 slice 내 독립 파일입니다. 공통 좌표 계약·근거는 [PR #6](https://github.com/fixabley/dearby/pull/6)을 참조합니다. 샘플 좌표는 건물 대표 위치로, 층·호실은 원래 장소 안내를 확인해야 합니다. 새 좌표/URI/버튼 테스트도 위 JVM·전용 기기 명령으로 실행됩니다.
 
 2026-09-14 지도 추가 검증: 구조24파일/self-test11·JVM7·Debug·Lint(오류0/권고11)·전용5556 계측20 통과. 실제 외부 지도 렌더링은 검증하지 않았고 설치된 handler 확인과 Intent 캡처/실패 처리를 검증했습니다. 상세 증거·기존 결과와의 구분은 ARCHITECTURE.md에 있습니다.
 
@@ -101,6 +101,8 @@ AGP의 내장 Kotlin 지원을 사용하므로 `org.jetbrains.kotlin.android` �
 조직은 선택 ID와 별도 원본 레코드로 관리하며, 최초 빈 메모리 캐시에서 miss일 때 원본을 조회합니다. 부모 경로는 순환을 방지해 계산하고 snapshot 교체 시 캐시를 비웁니다. JVM OrganizationRepositoryTest로 호출수·공통 부모·누락·순환·교체를 검증합니다.
 
 
-상세 화면은 이제 self-contained ActivityDetail 조회 결과를 받습니다. App이 한 번 소유한 저장소에서 선택 조직 ID/명시적 역할을 해석하고 관련 경로만 일시적으로 반환합니다. 원본 출처·필드별 근거·신청 방식·단계별 장소를 실제 디코딩하며 지도/캘린더도 같은 조회 결과를 사용합니다. 기존 summary는 검토 요약으로 유지하고 새 AI 생성이라고 표시하지 않습니다. 전체 조직 트리나 경로를 공고에 중복 저장하지 않습니다.
+상세 화면은 이제 self-contained NoticeDetail 조회 결과를 받습니다. App이 한 번 소유한 저장소에서 선택 조직 ID/명시적 역할을 해석하고 관련 경로만 일시적으로 반환합니다. 원본 출처·필드별 근거·신청 방식·단계별 장소를 실제 디코딩하며 지도/캘린더도 같은 조회 결과를 사용합니다. 기존 summary는 검토 요약으로 유지하고 새 AI 생성이라고 표시하지 않습니다. 전체 조직 트리나 경로를 공고에 중복 저장하지 않습니다.
 
-ActivityDetail 최신 검증(2026-09-14): 구조41파일/self-test16·JVM24·Debug·Lint 오류0/권고12·전용5556 계측30 통과. 출처·근거는 모델에 보존하며 새로운 근거 목록 화면이나 네트워크/TTL/디스크 조직 캐시는 이번 범위에 없습니다. 상세·캐시는 Activity 수명이며 재시작 시 번들에서 다시 채웁니다.
+NoticeDetail 최신 검증(2026-09-14): 구조41파일/self-test16·JVM24·Debug·Lint 오류0/권고12·전용5556 계측30 통과. 출처·근거는 모델에 보존하며 새로운 근거 목록 화면이나 네트워크/TTL/디스크 조직 캐시는 이번 범위에 없습니다. 상세·캐시는 Activity 수명이며 재시작 시 번들에서 다시 채웁니다.
+
+앱 공고 도메인은 Notice/NoticeDetail/NoticeCatalog 및 entities.noticecatalog로 통일했습니다. Android 프레임워크 Activity 이름과 기존 activities JSON 키·activity-samples.json·ID/테스트 태그는 호환성 예외로 보존합니다. 이름 변경이며 상세/cache/지도/캘린더 동작은 동일합니다.

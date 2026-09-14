@@ -3,10 +3,10 @@ package io.fixabley.dearby
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
-import io.fixabley.dearby.entities.activitycatalog.api.ActivityDetailRepository
+import io.fixabley.dearby.entities.noticecatalog.api.NoticeDetailRepository
 import io.fixabley.dearby.app.DearbyApp
-import io.fixabley.dearby.entities.activitycatalog.api.AssetCatalogProvider
-import io.fixabley.dearby.entities.activitycatalog.api.CatalogProvider
+import io.fixabley.dearby.entities.noticecatalog.api.AssetCatalogProvider
+import io.fixabley.dearby.entities.noticecatalog.api.CatalogProvider
 import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft
 import io.fixabley.dearby.features.favoriteorganization.api.FavoriteStore
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
@@ -26,7 +26,7 @@ class PhaseCalendarFlowTest {
         val catalog = AssetCatalogProvider(InstrumentationRegistry.getInstrumentation().targetContext.assets).load()
         val contest = catalog.feed.single { it.id == "cbnu-software-1154064" }
         val captured = mutableListOf<CalendarDraft>()
-        val repository = ActivityDetailRepository(CatalogProvider { catalog.copy(feed = listOf(contest)) })
+        val repository = NoticeDetailRepository(CatalogProvider { catalog.copy(feed = listOf(contest)) })
         rule.setContent { DearbyTheme { DearbyApp(repository, favorites, {}, {}, { captured.add(it) }) } }
         rule.onNodeWithTag("details.${contest.id}").performClick()
         rule.onNodeWithTag("notice.detail").performScrollToNode(hasTestTag("calendar.phase.0"))
@@ -49,7 +49,7 @@ class PhaseCalendarFlowTest {
         val catalog = AssetCatalogProvider(InstrumentationRegistry.getInstrumentation().targetContext.assets).load()
         val first = catalog.feed.first()
         val invalid = first.copy(schedule = listOf(first.schedule.first().copy(startsAt = "invalid", startsOn = null)))
-        val repository = ActivityDetailRepository(CatalogProvider { catalog.copy(feed = listOf(invalid)) })
+        val repository = NoticeDetailRepository(CatalogProvider { catalog.copy(feed = listOf(invalid)) })
         rule.setContent { DearbyTheme { DearbyApp(repository, favorites, {}, {}, { fail("No phase action") }) } }
         rule.onNodeWithTag("details.${first.id}").performClick()
         rule.onNodeWithTag("notice.detail").performScrollToNode(hasText(invalid.schedule.first().summary))

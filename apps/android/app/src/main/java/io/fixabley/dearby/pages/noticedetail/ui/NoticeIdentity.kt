@@ -6,11 +6,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.testTag
-import io.fixabley.dearby.entities.activitycatalog.model.ActivityDetail
+import io.fixabley.dearby.entities.noticecatalog.model.NoticeDetail
 import io.fixabley.dearby.shared.ui.NoticeFact
 
 @Composable
-internal fun NoticeIdentity(notice: ActivityDetail) {
+internal fun NoticeIdentity(notice: NoticeDetail) {
     Surface(modifier = Modifier.fillMaxWidth().testTag("identity.${notice.id}"),
         shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {

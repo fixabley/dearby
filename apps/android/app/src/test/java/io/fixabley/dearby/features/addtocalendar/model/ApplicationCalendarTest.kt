@@ -1,25 +1,25 @@
 package io.fixabley.dearby.features.addtocalendar.model
 
-import io.fixabley.dearby.entities.activitycatalog.model.*
-import io.fixabley.dearby.entities.activitycatalog.api.ActivityDetailRepository
-import io.fixabley.dearby.entities.activitycatalog.api.CatalogProvider
+import io.fixabley.dearby.entities.noticecatalog.model.*
+import io.fixabley.dearby.entities.noticecatalog.api.NoticeDetailRepository
+import io.fixabley.dearby.entities.noticecatalog.api.CatalogProvider
 import java.time.Instant
 import java.util.TimeZone
 import org.junit.Assert.*
 import org.junit.Test
 
-internal fun calendarNoticeRecord(application: ActivityApplication = ActivityApplication("기존 신청 안내")) = Notice(
+internal fun calendarNoticeRecord(application: NoticeApplication = NoticeApplication("기존 신청 안내")) = Notice(
     "fixture", "공고", "원문 요약", null, "대상", "조건", application,
-    ActivityLocation("장소 안내", "unknown", "unknown", emptyList()), emptyList(), emptyList(), emptyList(),
+    NoticeLocation("장소 안내", "unknown", "unknown", emptyList()), emptyList(), emptyList(), emptyList(),
     "https://example.org/source", emptyList(), emptyList(), null,
 )
 
-internal fun projectCalendarNotice(notice: Notice): ActivityDetail {
-    val repository = ActivityDetailRepository(CatalogProvider { ActivityCatalog("fixture", emptyList(), listOf(notice)) })
+internal fun projectCalendarNotice(notice: Notice): NoticeDetail {
+    val repository = NoticeDetailRepository(CatalogProvider { NoticeCatalog("fixture", emptyList(), listOf(notice)) })
     repository.load()
     return repository.detail(notice.id)!!
 }
-internal fun calendarNotice(application: ActivityApplication = ActivityApplication("기존 신청 안내")) = projectCalendarNotice(calendarNoticeRecord(application))
+internal fun calendarNotice(application: NoticeApplication = NoticeApplication("기존 신청 안내")) = projectCalendarNotice(calendarNoticeRecord(application))
 
 class ApplicationCalendarTest {
     private fun millis(value: String) = Instant.parse(value).toEpochMilli()
@@ -31,7 +31,7 @@ class ApplicationCalendarTest {
             assertEquals(millis("2026-09-11T00:00:00Z"), calendarPeriod(null, "2026-09-11", null, null, "Asia/Seoul", true)!!.begin)
             for ((open, close) in listOf("2026-08-27T09:00:00+09:00" to "2026-09-15T13:00:00+09:00",
                 "2026-08-06T09:00:00+09:00" to "2026-09-15T16:00:00+09:00")) {
-                val draft = applicationCalendarDraft(calendarNotice(ActivityApplication("마감 안내", opensAt = open, closesAt = close)))!!
+                val draft = applicationCalendarDraft(calendarNotice(NoticeApplication("마감 안내", opensAt = open, closesAt = close)))!!
                 assertFalse(draft.allDay)
                 assertEquals(java.time.OffsetDateTime.parse(open).toInstant().toEpochMilli(), draft.beginsAtMillis)
                 assertEquals(java.time.OffsetDateTime.parse(close).toInstant().toEpochMilli(), draft.endsAtMillis)
@@ -42,7 +42,7 @@ class ApplicationCalendarTest {
     }
 
     @Test fun contestNormalizedMidnightRemainsExclusiveAndExactDeadlineRemainsInNotes() {
-        val draft = applicationCalendarDraft(calendarNotice(ActivityApplication("10.07 24:00", opensOn = "2026-09-11", closesAt = "2026-10-08T00:00:00+09:00")))!!
+        val draft = applicationCalendarDraft(calendarNotice(NoticeApplication("10.07 24:00", opensOn = "2026-09-11", closesAt = "2026-10-08T00:00:00+09:00")))!!
         assertTrue(draft.allDay)
         assertEquals(millis("2026-09-11T00:00:00Z"), draft.beginsAtMillis)
         assertEquals(millis("2026-10-08T00:00:00Z"), draft.endsAtMillis)
@@ -53,7 +53,7 @@ class ApplicationCalendarTest {
     @Test fun dateRangesAreInclusiveWhileEndOnlyMidnightUsesPreviousDay() {
         val range = calendarPeriod(null, "2026-09-11", null, "2026-09-12", "Asia/Seoul", true)!!
         assertEquals(millis("2026-09-13T00:00:00Z"), range.end)
-        val close = applicationCalendarDraft(calendarNotice(ActivityApplication("마감", closesAt = "2026-10-08T00:00:00+09:00")))!!
+        val close = applicationCalendarDraft(calendarNotice(NoticeApplication("마감", closesAt = "2026-10-08T00:00:00+09:00")))!!
         assertEquals(millis("2026-10-07T00:00:00Z"), close.beginsAtMillis)
         assertEquals(millis("2026-10-08T00:00:00Z"), close.endsAtMillis)
         assertTrue(close.title.endsWith("[신청 마감]"))
@@ -62,7 +62,7 @@ class ApplicationCalendarTest {
     }
 
     @Test fun missingEndUsesKnownDayWithUnknownNoteAndNoDatesHaveNoAction() {
-        val draft = applicationCalendarDraft(calendarNotice(ActivityApplication("시작 안내", opensAt = "2026-09-11T15:00:00+09:00")))!!
+        val draft = applicationCalendarDraft(calendarNotice(NoticeApplication("시작 안내", opensAt = "2026-09-11T15:00:00+09:00")))!!
         assertTrue(draft.allDay)
         assertEquals(millis("2026-09-11T00:00:00Z"), draft.beginsAtMillis)
         assertEquals(millis("2026-09-12T00:00:00Z"), draft.endsAtMillis)
@@ -84,7 +84,7 @@ class ApplicationCalendarTest {
     }
 
     @Test fun onlyVerifiedHttpApplicationUrlIsLabeledApplicationAndSourceStaysSeparate() {
-        val application = ActivityApplication("안내", closesOn = "2026-09-16", url = "https://example.org/apply?q=%ED%95%9C&x=1#form")
+        val application = NoticeApplication("안내", closesOn = "2026-09-16", url = "https://example.org/apply?q=%ED%95%9C&x=1#form")
         val valid = applicationCalendarDraft(calendarNotice(application))!!
         assertTrue(valid.description.contains("신청 URL: ${application.url}"))
         assertTrue(valid.description.contains("원문: https://example.org/source"))
