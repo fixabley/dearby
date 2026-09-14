@@ -30,3 +30,7 @@ AX5에서는 첫 화면에 모든 버튼이 들어가지 않는다. 실제 작�
 실제 doubletap은 XcodeBuildMCP batch의 2회 연속 tap으로 시도했으나 저장 상태 전환을 확인하지 못했다(자동화 간격 제한인지 실제 제스처 문제인지 미확정). 기존 `.onTapGesture(count: 2)`와 accessibility save action은 그대로이고 명시적 저장 버튼 흐름은 검증했다. 실제 doubletap 재검증은 남는다.
 
 지도 앱 실행과 EventKit 편집기 진입/취소는 이번 런에서 완료 증거를 얻지 못했다. calendar button 자동화 tap 후 편집기 화면을 확인하지 못했으므로 성공으로 집계하지 않는다. 기존 mapper/launcher 회귀와 callback 연결은 확인했으며 실제 일정은 저장하지 않았다. Canvas preview 렌더 세션, 물리 기기, iPad/회전, VoiceOver 낭독 및 Increase Contrast는 미검증이다. 현재 PNG는 시스템 기본 text size 또는 최대 AX5를 확인한 것으로 모든 중간 크기 조합 검증을 의미하지 않는다.
+
+## 후속 OS 흐름 재검증 (c1045f1, 2026-09-14 14:32–14:38Z)
+
+위 최초 한계 중 calendar 진입과 지도 실행, 실제 doubletap 콜백은 [후속 증거](evidence/issue-02/followup/README.md)로 추가 확인했다. 앱 코드 변경 없이 신청/활동 EventKit 편집기와 지도 핀이 열렸으며 single doubleclick primitive로 현재 카드 저장 피드백이 갱신되었다. EventKit의 remote UI가 AX tree에서 빠져 배경 ref만 노출되는 자동화 제약을 확인했다. 성공/환경 제약 및 활동 취소 중 외부 입력 provenance 한계는 후속 기록에 구별했다. 최초 기록은 당시 결과로 보존한다.
