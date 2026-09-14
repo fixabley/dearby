@@ -1,4 +1,5 @@
 plugins {
+    alias(libs.plugins.ksp)
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
@@ -40,7 +41,11 @@ kotlin {
     }
 }
 
+ksp { arg("room.schemaLocation", "$projectDir/schemas") }
+
 dependencies {
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.ui)
@@ -48,6 +53,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     androidTestImplementation("androidx.test:runner:1.7.0")
