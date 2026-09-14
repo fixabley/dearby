@@ -39,9 +39,9 @@ CoreData: error:   Total i-nodes: 			0
 CoreData: error:   File system ID: 		0, 0
 CoreData: error:   Free i-nodes: 			0
 CoreData: error:   Owner UID: 			0
-CoreData: error:   Filesystem type name: 		
-CoreData: error:   Mount on name: 			
-CoreData: error:   Mount from name: 		
+CoreData: error:   Filesystem type name:
+CoreData: error:   Mount on name:
+CoreData: error:   Mount from name:
 CoreData: error: Executing as effective user 501
 CoreData: error: Information for /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-5DEE8682-24B6-4276-82C9-3DAECA3CC2A2/not-a-directory
 CoreData: error: ---------------------------
@@ -51,7 +51,7 @@ CoreData: error:   File Size: 		8 bytes
 CoreData: error:   File inode: 		45300212
 CoreData: error:   File user ID: 		501
 CoreData: error:   File group ID: 		20
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: -
 CoreData: error:   644
 CoreData: error:   file is not a symbolic link
@@ -80,7 +80,7 @@ CoreData: error:   File Size: 		192 bytes
 CoreData: error:   File inode: 		45300204
 CoreData: error:   File user ID: 		501
 CoreData: error:   File group ID: 		20
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   755
 CoreData: error:   file is not a symbolic link
@@ -94,7 +94,7 @@ CoreData: error:   File Size: 		352 bytes
 CoreData: error:   File inode: 		45299688
 CoreData: error:   File user ID: 		501
 CoreData: error:   File group ID: 		20
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   755
 CoreData: error:   file is not a symbolic link
@@ -108,7 +108,7 @@ CoreData: error:   File Size: 		320 bytes
 CoreData: error:   File inode: 		45286506
 CoreData: error:   File user ID: 		501
 CoreData: error:   File group ID: 		20
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   755
 CoreData: error:   file is not a symbolic link
@@ -122,7 +122,7 @@ CoreData: error:   File Size: 		160 bytes
 CoreData: error:   File inode: 		45286282
 CoreData: error:   File user ID: 		501
 CoreData: error:   File group ID: 		20
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   755
 CoreData: error:   file is not a symbolic link
@@ -136,7 +136,7 @@ CoreData: error:   File Size: 		384 bytes
 CoreData: error:   File inode: 		45286268
 CoreData: error:   File user ID: 		501
 CoreData: error:   File group ID: 		20
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   755
 CoreData: error:   file is not a symbolic link
@@ -150,7 +150,7 @@ CoreData: error:   File Size: 		544 bytes
 CoreData: error:   File inode: 		44939507
 CoreData: error:   File user ID: 		501
 CoreData: error:   File group ID: 		20
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   755
 CoreData: error:   file is not a symbolic link
@@ -164,7 +164,7 @@ CoreData: error:   File Size: 		512 bytes
 CoreData: error:   File inode: 		46660
 CoreData: error:   File user ID: 		501
 CoreData: error:   File group ID: 		20
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   700
 CoreData: error:   file is not a symbolic link
@@ -178,7 +178,7 @@ CoreData: error:   File Size: 		2080 bytes
 CoreData: error:   File inode: 		46611
 CoreData: error:   File user ID: 		501
 CoreData: error:   File group ID: 		20
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   750
 CoreData: error:   file is not a symbolic link
@@ -192,7 +192,7 @@ CoreData: error:   File Size: 		160 bytes
 CoreData: error:   File inode: 		21001
 CoreData: error:   File user ID: 		0
 CoreData: error:   File group ID: 		80
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   755
 CoreData: error:   file is not a symbolic link
@@ -206,7 +206,7 @@ CoreData: error:   File Size: 		704 bytes
 CoreData: error:   File inode: 		2
 CoreData: error:   File user ID: 		0
 CoreData: error:   File group ID: 		0
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   755
 CoreData: error:   file is not a symbolic link
@@ -245,9 +245,9 @@ CoreData: error:   Total i-nodes: 			0
 CoreData: error:   File system ID: 		0, 0
 CoreData: error:   Free i-nodes: 			0
 CoreData: error:   Owner UID: 			0
-CoreData: error:   Filesystem type name: 		
-CoreData: error:   Mount on name: 			
-CoreData: error:   Mount from name: 		
+CoreData: error:   Filesystem type name:
+CoreData: error:   Mount on name:
+CoreData: error:   Mount from name:
 CoreData: error: Executing as effective user 501
 CoreData: error: Information for /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-9FA2DCD6-1644-493B-9DA1-5602D94379AB/not-a-directory
 CoreData: error: ---------------------------
@@ -257,7 +257,7 @@ CoreData: error:   File Size: 		8 bytes
 CoreData: error:   File inode: 		45300221
 CoreData: error:   File user ID: 		501
 CoreData: error:   File group ID: 		20
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: -
 CoreData: error:   644
 CoreData: error:   file is not a symbolic link
@@ -286,7 +286,7 @@ CoreData: error:   File Size: 		192 bytes
 CoreData: error:   File inode: 		45300213
 CoreData: error:   File user ID: 		501
 CoreData: error:   File group ID: 		20
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   755
 CoreData: error:   file is not a symbolic link
@@ -300,7 +300,7 @@ CoreData: error:   File Size: 		352 bytes
 CoreData: error:   File inode: 		45299688
 CoreData: error:   File user ID: 		501
 CoreData: error:   File group ID: 		20
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   755
 CoreData: error:   file is not a symbolic link
@@ -314,7 +314,7 @@ CoreData: error:   File Size: 		320 bytes
 CoreData: error:   File inode: 		45286506
 CoreData: error:   File user ID: 		501
 CoreData: error:   File group ID: 		20
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   755
 CoreData: error:   file is not a symbolic link
@@ -328,7 +328,7 @@ CoreData: error:   File Size: 		160 bytes
 CoreData: error:   File inode: 		45286282
 CoreData: error:   File user ID: 		501
 CoreData: error:   File group ID: 		20
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   755
 CoreData: error:   file is not a symbolic link
@@ -342,7 +342,7 @@ CoreData: error:   File Size: 		384 bytes
 CoreData: error:   File inode: 		45286268
 CoreData: error:   File user ID: 		501
 CoreData: error:   File group ID: 		20
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   755
 CoreData: error:   file is not a symbolic link
@@ -356,7 +356,7 @@ CoreData: error:   File Size: 		544 bytes
 CoreData: error:   File inode: 		44939507
 CoreData: error:   File user ID: 		501
 CoreData: error:   File group ID: 		20
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   755
 CoreData: error:   file is not a symbolic link
@@ -370,7 +370,7 @@ CoreData: error:   File Size: 		512 bytes
 CoreData: error:   File inode: 		46660
 CoreData: error:   File user ID: 		501
 CoreData: error:   File group ID: 		20
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   700
 CoreData: error:   file is not a symbolic link
@@ -384,7 +384,7 @@ CoreData: error:   File Size: 		2080 bytes
 CoreData: error:   File inode: 		46611
 CoreData: error:   File user ID: 		501
 CoreData: error:   File group ID: 		20
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   750
 CoreData: error:   file is not a symbolic link
@@ -398,7 +398,7 @@ CoreData: error:   File Size: 		160 bytes
 CoreData: error:   File inode: 		21001
 CoreData: error:   File user ID: 		0
 CoreData: error:   File group ID: 		80
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   755
 CoreData: error:   file is not a symbolic link
@@ -412,7 +412,7 @@ CoreData: error:   File Size: 		704 bytes
 CoreData: error:   File inode: 		2
 CoreData: error:   File user ID: 		0
 CoreData: error:   File group ID: 		0
-CoreData: error:   File Permissions: 	
+CoreData: error:   File Permissions:
 CoreData: error: d
 CoreData: error:   755
 CoreData: error:   file is not a symbolic link
