@@ -35,7 +35,7 @@ class ApplicationCalendarFlowTest {
         rule.runOnIdle {
             assertEquals(1, captured.size)
             assertTrue(captured.single().title.endsWith("[신청 기간]"))
-            assertTrue(captured.single().description.contains("신청 URL: ${provider.load().notices.first().applicationInformation.url}"))
+            assertEquals(provider.load().notices.first().sourceURL, captured.single().description)
         }
         rule.onNodeWithTag("notice.detail").assertIsDisplayed()
     }

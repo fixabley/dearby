@@ -10,7 +10,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class CalendarEditorTest {
-    private val draft = CalendarDraft("신청 [신청 마감]", "신청 URL: https://example.org/apply\n원문: https://example.org/source", "", 1789430400000, 1789516800000, true, "Asia/Seoul")
+    private val draft = CalendarDraft("신청 [신청 마감]", "https://example.org/source", "", 1789430400000, 1789516800000, true, "Asia/Seoul")
 
     @Test fun explicitEditorRequestHasNoPermissionsInviteesOrAutomaticSaveExtras() {
         val requests = mutableListOf<Intent>()

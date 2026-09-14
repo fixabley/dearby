@@ -111,9 +111,9 @@ NoticeModel.venuesFor는 온라인이면 빈 장소, 그 외 exact phase 일치�
 
 좌표가 유한하고 범위 내인 venue만 지도 액션을 제공한다. 생략/null/불완전 좌표는 미확인이고 명시 (0,0)은 유효하다. package를 고정하지 않은 geo ACTION_VIEW의 한국어/특수 문자 label을 인코딩하며 handler 부재를 안내한다. 위치 권한·geocoding·현재 위치·네트워크는 추가하지 않는다.
 
-캘린더는 ACTION_INSERT/CalendarContract.Events.CONTENT_URI로 사용자 편집기를 열고 저장했다고 간주하지 않는다. 제목·설명·장소·시작/종료·종일 값을 전달하며 URL은 설명에 신청/온라인/원문으로 구분한다. 캘린더 권한·직접 provider 쓰기·참석자·자동 알림은 없다. ActivityNotFoundException/SecurityException을 안내한다.
+캘린더는 ACTION_INSERT/CalendarContract.Events.CONTENT_URI로 사용자 편집기를 열고 저장했다고 간주하지 않는다. 제목·장소·시작/종료·종일 값은 유지하며 DESCRIPTION은 검증된 NoticeModel.sourceURL 문자열 하나만 전달한다. 접두어·요약·날짜 안내·신청/온라인 URL·지도 링크를 붙이지 않는다. 원본 URL이 없거나 유효한 HTTP(S)가 아니면 빈 문자열이며 다른 URL로 대체하지 않는다. Android에 별도 가짜 URL extra를 추가하지 않는다. 캘린더 권한·직접 provider 쓰기·참석자·자동 알림은 없다. ActivityNotFoundException/SecurityException을 안내한다.
 
-정확한 시작/종료 시각이면 실제 구간을 사용한다. 나머지는 strict 날짜와 원래 시간대(기본 Asia/Seoul)의 종일 구간이며 inclusive 종료 날짜 다음날/정확한 자정의 exclusive 경계를 구별한다. 마감만 있으면 마감일(자정이면 전날), 시작만 있으면 알려진 하루와 종료 미확인 안내다. 잘못된/역전 날짜는 액션이 없다. 임의 한 시간을 만들지 않는다. Android 종일 millis는 UTC 자정으로 원래 달력 날짜를 보존한다. 온라인 단계는 온라인 URL 또는 온라인, 오프라인은 해당 단계의 모든 장소/주소/지도 링크다.
+정확한 시작/종료 시각이면 실제 구간을 사용한다. 나머지는 strict 날짜와 원래 시간대(기본 Asia/Seoul)의 종일 구간이며 inclusive 종료 날짜 다음날/정확한 자정의 exclusive 경계를 구별한다. 마감만 있으면 마감일(자정이면 전날), 시작만 있으면 알려진 하루다(원래 안내는 앱 상세에서 유지한다). 잘못된/역전 날짜는 액션이 없다. 임의 한 시간을 만들지 않는다. Android 종일 millis는 UTC 자정으로 원래 달력 날짜를 보존한다. EVENT_LOCATION은 온라인 단계의 온라인 표시와 오프라인 단계의 모든 일치 장소/주소를 유지한다.
 
 `dearby.favorites.v1`/`organizationIDs` StringSet·조직 ID·manifest·test tag를 유지한다. JSON `activities`, `activity-samples.json`, `activity.*` fixture/tag, Android MainActivity/ComponentActivity 등은 통신/플랫폼 호환성 이름이며 별도 앱 도메인이 아니다. canonical asset SHA256은 `c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f`다.
 
@@ -138,3 +138,8 @@ ANDROID_SERIAL=emulator-5556 JAVA_HOME='/Applications/Android Studio.app/Content
 증거는 `build/state-final-build.log`, `build/state-instrumentation.log`, 표준 `app/build/test-results/testDebugUnitTest/`, `app/build/outputs/androidTest-results/connected/debug/`, `app/build/reports/lint-results-debug.xml`이다. 중간 기반/VM 단계 JVM31/33/34는 제거 전 구 테스트와 함께 실행한 결과이며 최종29와 구분한다. 이전 작업의 계측 결과를 이번 결과로 재사용하지 않았다.
 
 전용5556에서만 실행하고 테스트의 기존 즐겨찾기 집합을 백업/복원했다. 테스트 후 전용 기기만 종료했으며 사용자5554를 조작하지 않았다. 외부 지도 렌더링·캘린더 편집기 UI 열기/취소·실제 저장/동기화는 이번에 검증하지 않았고 캘린더 Save를 수행하지 않았다. 네트워크·로그인·원문 자동 추출·TTL/디스크 캐시·전체 접근성 검증은 범위 밖이다. 동기식 번들 source이며 비동기 공급이 필요하면 별도 수명/취소 정책이 필요하다.
+
+
+## 캘린더 메모 변경 검증 (2026-09-14)
+
+신청/활동 일정 모두 메모는 검증된 원본 HTTP(S) URL 문자열 하나이며 누락/오류는 빈 문자열이다. 신청/온라인 URL로 대체하지 않는다. 이번 JVM30·Debug·계측 APK 컴파일·FSD49파일/self-test21 통과, 증거는 `build/calendar-source-only.log`와 표준 JVM XML이다. 앞선 계측30/Lint 결과는 이전 구조 작업 결과이며 이번에는 기기 실행·일정 저장·Lint를 반복하지 않았다.

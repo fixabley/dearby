@@ -34,13 +34,11 @@ class ApplicationCalendarTest {
         } finally { TimeZone.setDefault(previous) }
     }
 
-    @Test fun contestNormalizedMidnightRemainsExclusiveAndExactDeadlineRemainsInNotes() {
+    @Test fun contestNormalizedMidnightRemainsExclusive() {
         val draft = applicationCalendarDraft(calendarNotice(NoticeApplication("10.07 24:00", opensOn = "2026-09-11", closesAt = "2026-10-08T00:00:00+09:00")))!!
         assertTrue(draft.allDay)
         assertEquals(millis("2026-09-11T00:00:00Z"), draft.beginsAtMillis)
         assertEquals(millis("2026-10-08T00:00:00Z"), draft.endsAtMillis)
-        assertTrue(draft.description.contains("10.07 24:00"))
-        assertTrue(draft.description.contains("2026-10-08T00:00:00+09:00"))
     }
 
     @Test fun dateRangesAreInclusiveWhileEndOnlyMidnightUsesPreviousDay() {
@@ -54,13 +52,11 @@ class ApplicationCalendarTest {
         assertEquals(millis("2026-09-13T00:00:00Z"), nonMidnight.end)
     }
 
-    @Test fun missingEndUsesKnownDayWithUnknownNoteAndNoDatesHaveNoAction() {
+    @Test fun missingEndUsesKnownDayAndNoDatesHaveNoAction() {
         val draft = applicationCalendarDraft(calendarNotice(NoticeApplication("시작 안내", opensAt = "2026-09-11T15:00:00+09:00")))!!
         assertTrue(draft.allDay)
         assertEquals(millis("2026-09-11T00:00:00Z"), draft.beginsAtMillis)
         assertEquals(millis("2026-09-12T00:00:00Z"), draft.endsAtMillis)
-        assertTrue(draft.description.contains("마감: 미확인"))
-        assertTrue(draft.description.contains("15:00:00+09:00"))
         assertNull(applicationCalendarDraft(calendarNotice()))
     }
 
@@ -76,15 +72,13 @@ class ApplicationCalendarTest {
         assertNull(calendarPeriod("2026-09-11T15:00:00+09:00", "2026-09-12", null, null, "Asia/Seoul", true))
     }
 
-    @Test fun onlyVerifiedHttpApplicationUrlIsLabeledApplicationAndSourceStaysSeparate() {
-        val application = NoticeApplication("안내", closesOn = "2026-09-16", url = "https://example.org/apply?q=%ED%95%9C&x=1#form")
-        val valid = applicationCalendarDraft(calendarNotice(application))!!
-        assertTrue(valid.description.contains("신청 URL: ${application.url}"))
-        assertTrue(valid.description.contains("원문: https://example.org/source"))
-        for (url in listOf(null, "javascript:alert(1)", "https:///missing", "https://user:pass@example.org/", "https://example.org/ bad")) {
-            val draft = applicationCalendarDraft(calendarNotice(application.copy(url = url)))!!
-            assertTrue(draft.description.contains("신청 URL: 미확인"))
-            assertFalse(draft.description.contains("신청 URL: https://example.org/source"))
+    @Test fun descriptionIsOnlyVerifiedSourceUrlAndNeverFallsBackToApplicationUrl() {
+        val notice = calendarNotice(NoticeApplication("안내", closesOn = "2026-09-16", url = "https://example.org/apply"))
+        for (url in listOf("https://example.org/source?q=%ED%95%9C&x=1#form", "http://example.org/source")) {
+            assertEquals(url, applicationCalendarDraft(notice.copy(sourceURL = url))!!.description)
+        }
+        for (url in listOf("", "javascript:alert(1)", "https:///missing", "https://user:pass@example.org/", "https://example.org/ bad")) {
+            assertEquals("", applicationCalendarDraft(notice.copy(sourceURL = url))!!.description)
         }
     }
 }
