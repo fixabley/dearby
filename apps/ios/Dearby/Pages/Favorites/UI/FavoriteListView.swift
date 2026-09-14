@@ -18,6 +18,7 @@ struct FavoriteListView<Destination: View>: View {
                         destination: destination
                     )
                 }
+                .listStyle(.insetGrouped)
             }
         }
         .navigationTitle("즐겨찾기")

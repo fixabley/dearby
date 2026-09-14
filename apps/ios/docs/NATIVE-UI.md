@@ -34,3 +34,7 @@ Xcode 26.6 (17F113), Swift 6, deployment iOS 26.0; 검증 runtime iOS 26.5. SDK/
 ## 상세 적용
 
 상세는 `List(.insetGrouped)`의 기본 `Section`으로 요약/조직/참여/기간·장소/혜택/출처를 묶는다. 중복 NoticeDetailField/NoticeIdentityFact를 제거하고 Shared InformationRow를 직접 사용한다. 긴 정보는 무제한 줄바꿈하며 섹션 label은 시스템 header다. Calendar/Map는 기존 콜백을 그대로 쓰는 borderless Button이고 label 44pt를 보장한다(이 스타일에는 bordered 내부 padding이 없음). 원문은 native Link다. 별도 section wrapper·도메인 제목 wrapper는 없다.
+
+## 즐겨찾기 적용
+
+FavoriteOrganizationCard는 도메인 widget 안에서 native Section을 조합한다. 조직별 header, 연결 공고별 NavigationLink, 독립 destructive 삭제 row를 사용해 이전 한 row 안의 복수 액션을 분리한다. 상위 조직은 InformationRow, 연결 공고 없음은 StatusMessage다. 삭제 접근성 label에 조직명을 포함하고 목록의 시스템 separator/inset/scroll을 그대로 따른다. widget View/State/VM 동위 구조는 유지한다.
