@@ -14,6 +14,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import io.fixabley.dearby.widgets.noticecard.model.NoticeCardState
+import io.fixabley.dearby.shared.ui.buttons.SecondaryButton
 import io.fixabley.dearby.shared.ui.NoticeFact
 import io.fixabley.dearby.entities.notice.ui.NoticeClassification
 
@@ -54,13 +55,12 @@ internal fun NoticeCard(
                     }
                 }
                 if (notice.organizationName != null) {
-                    Button(onClick = save, modifier = Modifier.fillMaxWidth().testTag("save.${notice.id}")) {
-                        Text(if (notice.saved) "저장됨 · ${notice.organizationName}" else "${notice.organizationName} 저장", maxLines = 2)
-                    }
+                    NoticeCardSaveButton(notice.saved, notice.organizationName, save,
+                        Modifier.fillMaxWidth().testTag("save.${notice.id}"))
                 } else {
                     Text("저장할 조직 확인 중", style = MaterialTheme.typography.labelMedium)
                 }
-                TextButton(onClick = showDetail, modifier = Modifier.fillMaxWidth().testTag("details.${notice.id}")) {
+                SecondaryButton(onClick = showDetail, modifier = Modifier.fillMaxWidth().testTag("details.${notice.id}")) {
                     Text("공고 정보 · 출처 보기")
                 }
             }

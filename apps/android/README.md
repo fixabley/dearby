@@ -75,3 +75,8 @@ JVM 단위 테스트는 앱 실행 없이 임시 저장소로 즐겨찾기 추�
 ## 캘린더 메모 변경 검증 (2026-09-14)
 
 신청/활동 일정 모두 메모는 검증된 원본 HTTP(S) URL 문자열 하나이며 누락/오류는 빈 문자열이다. 신청/온라인 URL로 대체하지 않는다. 이번 JVM30·Debug·계측 APK 컴파일·FSD49파일/self-test21 통과, 증거는 `build/calendar-source-only.log`와 표준 JVM XML이다. 앞선 계측30/Lint 결과는 이전 구조 작업 결과이며 이번에는 기기 실행·일정 저장·Lint를 반복하지 않았다.
+
+
+## Shared 버튼과 카드 조합
+
+shared/ui/buttons의 PrimaryButton/SecondaryButton은 content slot·onClick·modifier만 받는 Material3 Button/OutlinedButton이다. 도메인 문구는 widget의 NoticeCardSaveButton이 조합하고 saved/조직명/저장 callback/태그는 호출자가 소유한다. 카드 상세 열기는 SecondaryButton으로 맞췄고 제목 Text는 inline으로 유지했다. Material Icons가 현재 compile classpath에 없어 아이콘용 의존성을 추가하지 않았다. NoticeFact는 카드와 상세 여러 섹션에서 재사용하므로 Shared에 유지한다.

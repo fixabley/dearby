@@ -25,11 +25,13 @@ class NoticeCardTest {
         val favorites = FavoritesState(object : FavoriteStore { override fun read() = emptySet<String>(); override fun write(ids: Set<String>) {} })
         val session = NoticeSession(NoticeSnapshotReader { catalog }, favorites)
         session.load()
+        val multiplier = mutableStateOf(1)
         var saves = 0
         var details = 0
         rule.setContent {
             DearbyTheme {
-                NoticeCard(session.cardStates().first { it.id == notice.id }, "1 / 4", save = { saves++ }, showDetail = { details++ })
+                val currentMultiplier = multiplier.value
+                NoticeCard(session.cardStates().first { it.id == notice.id }, "1 / 4", save = { saves += currentMultiplier }, showDetail = { details++ })
             }
         }
         rule.onNodeWithTag("classification.${notice.id}", useUnmergedTree = true)
@@ -37,12 +39,12 @@ class NoticeCardTest {
         rule.onNodeWithTag("save.${notice.id}").performClick()
         // The callback does not imply an internal store or optimistic widget state.
         rule.onNodeWithTag("save.${notice.id}").assertTextEquals("한국농어촌공사 저장")
-        rule.runOnIdle { favorites.save("krc") }
+        rule.runOnIdle { favorites.save("krc"); multiplier.value = 10 }
         rule.onNodeWithTag("save.${notice.id}").assertTextEquals("저장됨 · 한국농어촌공사")
         rule.onNodeWithTag("activity.${notice.id}").performTouchInput { doubleClick() }
         rule.onNodeWithTag("details.${notice.id}").performClick()
         rule.runOnIdle {
-            assertEquals(2, saves)
+            assertEquals(11, saves)
             assertEquals(1, details)
         }
     }
