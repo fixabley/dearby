@@ -21,10 +21,8 @@ struct NoticeDetailView: View {
                 InformationRow(title: "참여 조건", value: state.participationCondition)
             }
             Section("신청") {
-                NoticeApplicationView(summary: state.applicationPeriod, onAddToCalendar: onAddApplication)
-                if state.applicationPeriod != state.applicationSummary {
-                    Text(state.applicationSummary).font(.footnote).foregroundStyle(.secondary)
-                }
+                NoticeApplicationView(time: state.applicationTime, original: state.applicationSummary, onAddToCalendar: onAddApplication)
+
             }
             Section("활동") {
                 ForEach(Array(state.schedules.enumerated()), id: \.offset) { index, phase in
@@ -32,7 +30,9 @@ struct NoticeDetailView: View {
                                        onAddToCalendar: onAddSchedule.indices.contains(index) ? onAddSchedule[index] : nil,
                                        onOpenMap: onOpenMap)
                 }
-                Text(state.location.summary).font(.footnote).foregroundStyle(.secondary)
+                DisclosureGroup("원문 장소 안내") {
+                    Text(state.location.summary).font(.footnote).foregroundStyle(.secondary)
+                }
                 if state.schedules.isEmpty {
                     NoticeLocationView(location: state.location, onOpenMap: onOpenMap)
                 }

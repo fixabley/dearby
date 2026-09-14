@@ -176,3 +176,7 @@ Widgets/Notice/NoticeCard는 NoticeCard·NoticeCardSaveButton·NoticeFact·Notic
 ## #2 일정·아이콘 후속
 
 Shared/UI MetadataRow는 아이콘/문자열만, Shared/Lib CompactPeriod는 원시 날짜 문자열/시간대만 받는다. NoticeDetailState의 NoticeScheduleState가 원본 phase 순서대로 표시 이름·기간·phase별 장소를 조합하고, View는 같은 index의 App callback을 호출한다. 원본 Notice/Organization model, repository/cache, CalendarDatePolicy 및 지도/캘린더 메모 계약은 변경하지 않는다. 제목은 기존 View 내부, widget flat 구조와 Observation 소유권은 유지한다. 최신 실행 결과는 VERIFICATION-ISSUE-02의 후속 기록이 이전 미검증 기록보다 우선한다.
+
+## Calendar 참고 상세 표시 후속
+
+EventPeriodPresentation/EventTimeRows/LocationInformation은 Shared의 범용 값·표시 API다. NoticeScheduleState/NoticeSchedulePlaceState/NoticePlaceState와 Detail VM이 원본 일정·장소를 표시용으로 조합하며 Views는 값과 콜백을 렌더링한다. 이 표시 포맷은 calendar draft와 공유하지 않으므로 export 정책/원본 URL memo 및 원본 model/cache는 그대로다. 카드 표현도 변경하지 않는다. 장소 변환은 명확한 문자열 경계만 사용하며 원본 venue/summary는 보존한다. 관련 테스트 실행 범위·대표 상세 사진은 docs/evidence/issue-02/calendar-detail/README.md에 기록한다.

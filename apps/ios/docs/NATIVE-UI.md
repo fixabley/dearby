@@ -54,3 +54,13 @@ AX5에서 실제 스크롤로 카드 아래 저장/상세 버튼에 도달하고
 공식 참고: [Apple iconOnly](https://developer.apple.com/documentation/swiftui/labelstyle/icononly), [Apple DateFormatter](https://developer.apple.com/documentation/foundation/dateformatter) (2026-09-14 Markdown 원문 확인). 새로운 SDK/의존성은 없다.
 
 날짜만 주어진 값은 종일로 단정하지 않고 `시간 미확인`을 표시한다. 역전 기간/알 수 없는 시간대는 원문과 확인 필요 표시로 남긴다. phase에 장소가 없으면 다른 단계 장소를 복사하지 않고 `장소 미확인`으로 표시하며 원래 전체 장소 설명은 별도 보조 텍스트에 보존한다.
+
+## Calendar를 참고한 상세 기간·장소 위계
+
+Shared `EventTimeRows(lines:note:)`는 범용 날짜/시간/시작·종료 label만 렌더링한다. 날짜 body.medium, 시간 subheadline.secondary, 시간대 footnote.secondary로 분리한다. Shared/Lib `EventPeriodPresentation(startsAt:startsOn:endsAt:endsOn:timezone:)`는 같은날 날짜를 한 번 표시하고, 다른날은 시작/종료 두 블록을 만든다. 날짜만 있으면 시간 미확인, 종료가 없으면 종료 미확인이다. conflicting on/at·역전·invalid·지원하지 않는 timestamp 정밀도/offset 형식은 원문 필드와 확인 메시지를 표시하며 값을 임의 정정하지 않는다. 기존 카드 CompactPeriod나 calendar mapper에는 사용하지 않는다.
+
+Shared `LocationInformation(name:detail:action:)`는 장소명 body와 상세 subheadline.secondary, caller의 map action 슬롯을 받는다. 기본 크기에서는 장소 옆, 접근성 글자 크기에서는 장소 아래에 action을 두어 텍스트 너비를 확보한다. 화면 전용 `NoticePlaceState`는 명시적인 마지막 괄호의 층·호 또는 공백으로 분리된 숫자 호실만 보조 줄로 옮긴다. 건물코드·예정·불명확한 괄호는 장소명에 그대로 남기고 주소는 별도 문자열일 때 보조 줄에 넣는다. 원래 venue는 State에 함께 보존하여 동일 지도 callback에 전달한다. 주소를 새로 추론하거나 geocode하지 않는다.
+
+신청/phase 제목은 기존 View의 headline, calendar action은 해당 제목 오른쪽이다. 원문 신청/장소 문구는 native DisclosureGroup에서 그대로 볼 수 있어 기본 화면의 동일 날짜·장소 반복을 줄인다. 온라인은 온라인 표시와 검증된 HTTP(S) URL Link를 유지하며 URL 전체는 접근성 label로 제공한다. Shared는 원본 Notice/Organization/Feature를 참조하지 않는다.
+
+참고한 실제 자료는 [Apple iPhone Guide](https://support.apple.com/en-lamr/guide/iphone/iph3d110f84/ios)의 일간 보기 이미지와 별도의 제목/장소·영상통화/시작·종료 입력 설명, 이전 EventKit editor 캡처다. 이 자료는 날짜·시간/장소를 나누는 근거이며 이번 상세 레이아웃 자체는 Dearby의 디자인 해석이다. Apple Calendar 일정 상세 replica나 실제 앱 상세 화면 관찰을 주장하지 않는다. [최신 검증](evidence/issue-02/calendar-detail/README.md).
