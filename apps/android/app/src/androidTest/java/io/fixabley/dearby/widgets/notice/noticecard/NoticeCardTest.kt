@@ -38,9 +38,9 @@ class NoticeCardTest {
             .assertTextEquals("채용 › 채용행사 · 충북대학교")
         rule.onNodeWithTag("save.${notice.id}").performClick()
         // The callback does not imply an internal store or optimistic widget state.
-        rule.onNodeWithTag("save.${notice.id}").assertTextEquals("한국농어촌공사 저장")
+        rule.onNodeWithTag("save.${notice.id}").assertContentDescriptionEquals("한국농어촌공사 저장")
         rule.runOnIdle { favorites.save("krc"); multiplier.value = 10 }
-        rule.onNodeWithTag("save.${notice.id}").assertTextEquals("저장됨 · 한국농어촌공사")
+        rule.onNodeWithTag("save.${notice.id}").assertContentDescriptionEquals("저장됨 · 한국농어촌공사").assertIsSelected()
         rule.onNodeWithTag("activity.${notice.id}").performTouchInput { doubleClick() }
         rule.onNodeWithTag("details.${notice.id}").performClick()
         rule.runOnIdle {

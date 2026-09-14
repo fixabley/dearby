@@ -43,7 +43,7 @@ class DiscoveryFlowTest {
         rule.onNodeWithTag("save.cieat-NCR000000007344").performClick()
         rule.onNodeWithTag("tab.favorites").performClick()
         rule.onNodeWithTag("favorite.notice.cieat-NCR000000007344").performClick()
-        rule.onNodeWithText("관심 조직").assertIsDisplayed()
+        rule.onNode(hasText("관심 조직") and hasAnyAncestor(hasTestTag("notice.detail"))).assertIsDisplayed()
         rule.onNode(hasText("한국농어촌공사") and hasAnyAncestor(hasTestTag("notice.detail")))
             .assertIsDisplayed()
         androidx.test.espresso.Espresso.pressBack()
@@ -51,7 +51,7 @@ class DiscoveryFlowTest {
         rule.onNodeWithTag("remove.krc").performClick()
         rule.onNodeWithText("저장한 조직이 없어요").assertIsDisplayed()
         rule.onNodeWithTag("tab.discovery").performClick()
-        rule.onNodeWithTag("save.cieat-NCR000000007344").assertTextEquals("한국농어촌공사 저장")
+        rule.onNodeWithTag("save.cieat-NCR000000007344").assertContentDescriptionEquals("한국농어촌공사 저장")
     }
 
     @Test
@@ -59,8 +59,8 @@ class DiscoveryFlowTest {
         rule.onNodeWithTag("classification.cieat-NCR000000007344", useUnmergedTree = true)
             .assertTextEquals("채용 › 채용행사 · 충북대학교")
         rule.onNodeWithTag("details.cieat-NCR000000007344").performClick()
-        rule.onNodeWithText("관심 조직").assertIsDisplayed()
-        rule.onNodeWithText("한국농어촌공사").assertIsDisplayed()
+        rule.onNode(hasText("관심 조직") and hasAnyAncestor(hasTestTag("notice.detail"))).assertIsDisplayed()
+        rule.onNode(hasText("한국농어촌공사") and hasAnyAncestor(hasTestTag("notice.detail"))).assertIsDisplayed()
         rule.onNodeWithText("행사 관련 기관").assertIsDisplayed()
         rule.onNodeWithText("충북대학교").assertIsDisplayed()
         rule.onNodeWithText("상위 조직").assertDoesNotExist()
@@ -88,7 +88,7 @@ class DiscoveryFlowTest {
         rule.onNodeWithTag("activity.cieat-NCR000000007344")
             .performTouchInput { doubleClick() }
         rule.onNodeWithTag("save.cieat-NCR000000007344")
-            .assertTextContains("저장됨", substring = true)
+            .assertContentDescriptionContains("저장됨", substring = true)
         rule.onNodeWithTag("activity.cieat-NCR000000007344").performTouchInput { doubleClick() }
         rule.onNodeWithTag("discovery.pager").performTouchInput { swipeUp() }
         rule.onNodeWithTag("activity.cieat-NCR000000007306").assertIsDisplayed()

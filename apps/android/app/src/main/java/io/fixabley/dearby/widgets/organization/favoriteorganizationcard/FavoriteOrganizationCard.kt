@@ -6,7 +6,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import io.fixabley.dearby.shared.ui.theme.Spacing
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.painterResource
+import io.fixabley.dearby.R
 import io.fixabley.dearby.widgets.organization.favoriteorganizationcard.FavoriteOrganizationCardState
 import io.fixabley.dearby.entities.notice.ui.NoticeClassification
 
@@ -26,15 +28,18 @@ internal fun FavoriteOrganizationCard(
             Text(if (state.notices.isEmpty()) "현재 연결된 공고가 없어요" else "연결된 공고 ${state.notices.size}개",
                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             state.notices.forEach { notice ->
-                TextButton(onClick = { showDetail(notice.id) }, modifier = Modifier.testTag("favorite.notice.${notice.id}")) {
-                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.extraSmall)) {
-                        Text(notice.title)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.extraSmall)) {
+                        Text(notice.title, style = MaterialTheme.typography.titleSmall)
                         NoticeClassification(notice.classification)
+                    }
+                    IconButton(onClick = { showDetail(notice.id) }, modifier = Modifier.testTag("favorite.notice.${notice.id}")) {
+                        Icon(painterResource(R.drawable.ic_info), contentDescription = "${notice.title} 상세 보기")
                     }
                 }
             }
-            TextButton(onClick = { onRemove(state.id) }, modifier = Modifier.testTag("remove.${state.id}")) {
-                Text("즐겨찾기에서 삭제", color = MaterialTheme.colorScheme.error)
+            IconButton(onClick = { onRemove(state.id) }, modifier = Modifier.testTag("remove.${state.id}")) {
+                Icon(painterResource(R.drawable.ic_delete), contentDescription = "${state.name} 즐겨찾기에서 삭제", tint = MaterialTheme.colorScheme.error)
             }
         }
     }

@@ -17,7 +17,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import io.fixabley.dearby.widgets.notice.noticecard.NoticeCardState
 import io.fixabley.dearby.shared.ui.InformationRow
-import io.fixabley.dearby.shared.ui.buttons.SecondaryButton
+import io.fixabley.dearby.shared.ui.MetadataRow
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.Alignment
+import io.fixabley.dearby.R
 import io.fixabley.dearby.entities.notice.ui.NoticeClassification
 
 @Composable
@@ -49,22 +52,28 @@ internal fun NoticeCard(
                     if (!compact) {
                         HorizontalDivider()
                         InformationRow("참여 대상", notice.targetUser, maxLines = 2)
-                        InformationRow("신청 마감", notice.applicationSummary, maxLines = 2)
-                        InformationRow("활동 장소", notice.locationSummary, maxLines = 2)
                     }
+                    MetadataRow(painterResource(R.drawable.ic_calendar), notice.applicationDateText,
+                        "신청 기간: ${notice.applicationSummary}", maxLines = if (compact) 1 else 2)
+                    MetadataRow(painterResource(R.drawable.ic_place), notice.locationSummary,
+                        "활동 장소: ${notice.locationSummary}", maxLines = if (compact) 1 else 2)
                     if (notice.hasIssues) {
                         Text("확인이 필요한 정보가 있어요", style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
-                if (notice.organizationName != null) {
-                    NoticeCardSaveButton(notice.saved, notice.organizationName, save,
-                        Modifier.fillMaxWidth().testTag("save.${notice.id}"))
-                } else {
-                    Text("저장할 조직 확인 중", style = MaterialTheme.typography.labelMedium)
-                }
-                SecondaryButton(onClick = showDetail, modifier = Modifier.fillMaxWidth().testTag("details.${notice.id}")) {
-                    Text("공고 정보 · 출처 보기")
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.small)) {
+                    Column(Modifier.weight(1f)) {
+                        Text("관심 조직", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(notice.organizationName ?: "저장할 조직 확인 중", style = MaterialTheme.typography.titleMedium)
+                    }
+                    notice.organizationName?.let { name ->
+                        NoticeCardSaveButton(notice.saved, name, save, Modifier.testTag("save.${notice.id}"))
+                    }
+                    OutlinedIconButton(onClick = showDetail, modifier = Modifier.testTag("details.${notice.id}")) {
+                        Icon(painterResource(R.drawable.ic_info), contentDescription = "공고 정보 · 출처 보기")
+                    }
                 }
             }
         }

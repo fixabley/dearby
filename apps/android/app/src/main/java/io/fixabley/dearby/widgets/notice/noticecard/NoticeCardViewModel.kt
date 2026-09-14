@@ -1,5 +1,6 @@
 package io.fixabley.dearby.widgets.notice.noticecard
 
+import io.fixabley.dearby.shared.ui.compactPeriodText
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import io.fixabley.dearby.entities.notice.api.NoticeRepository
@@ -14,7 +15,9 @@ internal class NoticeCardViewModel(private val id: String, private val notices: 
             val organization = organizations.find(notice.organizationId)
             val context = notice.contexts.distinctBy { it.organizationId }.mapNotNull { organizations.find(it.organizationId)?.name }.joinToString(" · ")
             NoticeCardState(notice.id, notice.title, listOf(notice.categorySummary, context).filter { it.isNotEmpty() }.joinToString(" · "),
-                notice.targetUser, notice.applicationInformation.summary, notice.location.summary, notice.issues.isNotEmpty(), organization?.id, organization?.name)
+                notice.targetUser, notice.applicationInformation.summary, notice.location.summary, notice.issues.isNotEmpty(), organization?.id, organization?.name,
+                applicationDateText = notice.applicationInformation.let { compactPeriodText(null, null, it.closesAt, it.closesOn,
+                    it.timezone, it.summary, "마감") })
         }
     }
     val state: NoticeCardState? get() = content?.let { it.copy(saved = it.organizationId in favorites.ids) }

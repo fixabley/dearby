@@ -74,8 +74,13 @@ class DesignSystemTest {
         val issue = rule.onNodeWithText("확인이 필요한 정보가 있어요").fetchSemanticsNode().boundsInRoot
         assertTrue("Body must not paint behind actions", body.bottom <= save.top)
         assertTrue("Last visible fact must fit above actions", issue.bottom <= save.top)
-        rule.onNodeWithTag("save.large").assertHeightIsAtLeast(48.dp).performClick()
-        rule.onNodeWithTag("details.large").assertIsDisplayed().assertHeightIsAtLeast(48.dp).performClick()
+        val targetMinimum = with(rule.density) { 48.dp.toPx() }
+        for (tag in listOf("save.large", "details.large")) {
+            val target = rule.onNodeWithTag(tag).fetchSemanticsNode().touchBoundsInRoot
+            assertTrue(target.width >= targetMinimum && target.height >= targetMinimum)
+        }
+        rule.onNodeWithTag("save.large").assertContentDescriptionEquals("한국농어촌공사 저장").assertIsNotSelected().performClick()
+        rule.onNodeWithTag("details.large").assertIsDisplayed().performClick()
         rule.runOnIdle { assertEquals(1, saved); assertEquals(1, opened) }
     }
 }

@@ -43,3 +43,13 @@ App의 초기 로딩/오류·재시도와 발견/즐겨찾기의 빈 화면에�
 전체 최종 실행 결과·before/after 비교·기기 보존·검증 한계는 [검증 문서](VERIFICATION.md)에 정리한다.
 
 남기는 custom 조합: `NoticeCard`는 기존 세로 pager·더블탭·State/콜백을 연결하므로 domain widget에 유지한다. `FavoriteOrganizationCard`도 조직과 연결 공고·삭제를 조합하므로 Shared로 이동하지 않는다. 버튼의 도메인 label/하트와 제목은 소유 widget에 남고 native NavigationBar/ModalBottomSheet를 다시 구현하지 않는다.
+
+## PR9 후속: 아이콘과 메타데이터
+
+저장·상세·삭제·지도·캘린더 추가·원문 열기는 Material3 IconButton/OutlinedIconButton/FilledTonalIconButton을 직접 사용한다. text control 진입점 Primary/Secondary는 그대로 유지한다. 로컬 24dp vector와 theme tint를 사용하고 SDK/패키지는 추가하지 않는다. 각 아이콘은 조직명/일정명까지 포함하는 contentDescription을 가지며 native 최소48dp touch bounds를 보존한다. 저장은 toggle 삭제가 아니라 기존 idempotent save이며 selected/stateDescription과 채운 하트로 상태를 나타낸다. 관심 조직 이름은 카드 하단 titleMedium, 보조 labelMedium으로 명시한다.
+
+`MetadataRow(icon: Painter, value: String, description: String, modifier, maxLines)`는 아이콘+bodyMedium 값이다. description에는 역할과 전체 원문 정보를 전달하고 clearAndSetSemantics로 중복 낭독을 막는다. 카드의 compact 1줄 표시는 시각적 요약이며 전체 값은 접근성과 상세에 유지한다. 일정·장소를 도메인명 없이 받으며 저장/조회/OS 행동을 소유하지 않는다.
+
+`compactPeriodText(startAt, startOn, endAt, endOn, timezone, fallback, endLabel)`는 java.time의 엄격한 날짜와 원본 시간대로 표시만 만든다. 같은 날짜의 시간 범위는 한 번의 날짜와 HH:mm–HH:mm, 연도 경계는 두 연도, date-only는 시간 미확인으로 표시한다. malformed/충돌/역전 값은 fallback을 유지하며 calendar exporter의 종일/자정 규칙은 변경하지 않는다.
+
+근거: [공식 IconButton](https://developer.android.com/develop/ui/compose/components/icon-button), [DateTimeFormatter](https://developer.android.com/reference/java/time/format/DateTimeFormatter), 2026-09-14 확인.
