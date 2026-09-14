@@ -1,9 +1,10 @@
 import SwiftUI
 
-struct DiscoveryView: View {
+struct DiscoveryView<Destination: View>: View {
     let catalog: ActivityCatalog
     let favoriteIDs: Set<String>
     let saveOrganization: (String) -> Void
+    @ViewBuilder let destination: (ActivityNotice) -> Destination
     @State private var detail: ActivityNotice?
     @State private var saveFeedback = ""
     @State private var saveCount = 0
@@ -47,7 +48,7 @@ struct DiscoveryView: View {
         .navigationTitle("활동 둘러보기")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $detail) { notice in
-            NoticeDetailView(notice: notice, catalog: catalog)
+            destination(notice)
         }
         .sensoryFeedback(.success, trigger: saveCount)
     }

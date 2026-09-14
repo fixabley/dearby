@@ -14,7 +14,9 @@ struct ContentView: View {
                 TabView {
                     Tab("발견", systemImage: "rectangle.stack") {
                         NavigationStack {
-                            DiscoveryView(catalog: catalog, favoriteIDs: favoriteIDs, saveOrganization: favorites.save)
+                            DiscoveryView(catalog: catalog, favoriteIDs: favoriteIDs, saveOrganization: favorites.save) { notice in
+                                NoticeDetailView(notice: notice, catalog: catalog)
+                            }
                         }
                     }
                     Tab("즐겨찾기", systemImage: "heart") {

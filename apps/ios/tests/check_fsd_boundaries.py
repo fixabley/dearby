@@ -42,7 +42,7 @@ def check(sources, selected=()):
                     errors.append(f'{path}: upward reference to {name} ({target})')
                 if layer == target_layer and layer not in ('App', 'Shared') and parts[1] != target_parts[1]:
                     errors.append(f'{path}: cross-slice reference to {name} ({target})')
-                if layer in ('Pages', 'Widgets') and (target_layer == 'Features' or 'API' in target_parts):
+                if (layer in ('Pages', 'Widgets') and target_layer == 'Features') or ('UI' in parts and 'API' in target_parts):
                     errors.append(f'{path}: UI must receive values/callbacks, not {name}')
         if layer in ('Pages', 'Widgets') or (layer in ('Entities', 'Shared') and 'UI' in parts):
             if re.search(r'\b(?:UserDefaults|Bundle|FileManager|URLSession)\b', code):
@@ -58,6 +58,8 @@ def self_test():
         'Widgets/Other/UI/Other.swift': 'struct Other {}',
         'Features/Favorite/Model/State.swift': 'struct State {}',
         'Entities/Catalog/Model/Item.swift': 'struct Item {}',
+        'Entities/Catalog/API/Provider.swift': 'struct Provider {}',
+        'Entities/Catalog/UI/Label.swift': 'struct Label { let item: Item }',
     }
     assert not check(fixture)
     for path, reference in [
@@ -66,6 +68,8 @@ def self_test():
         ('Widgets/Card/UI/Card.swift', 'Other'),
         ('Widgets/Card/UI/Card.swift', 'State'),
         ('Widgets/Card/UI/Card.swift', 'UserDefaults'),
+        ('Entities/Catalog/UI/Label.swift', 'Provider'),
+        ('Entities/Catalog/Model/Item.swift', 'Card'),
     ]:
         assert check({**fixture, path: fixture[path] + '\nlet forbidden: ' + reference}), reference
 

@@ -1,140 +1,141 @@
-# FSD 전환 진행 — 즐겨찾기 조직 카드
+# iOS FSD 구조
 
-2026-09-14. `Pages/Favorites/UI/FavoriteListView<Destination>`는 표시 ID와 삭제 콜백·목적지 ViewBuilder를 받는다.
-`Widgets/FavoriteOrganizationCard/UI/FavoriteOrganizationCard<Destination>`는 독립 복합 카드이며 저장소/공유 상태나 상세 페이지 타입을 모른다. App이 목적지를 주입하고 기존 NavigationLink 모습·뒤로 가기를 유지한다.
-즐겨찾기 행동의 단일 상태는 `Features/FavoriteOrganization/Model/FavoriteOrganizations`, 저장 계약과 UserDefaults 구현은 같은 slice의 API에 둔다. App의 소유 인스턴스·관찰 위치와 기존 키/배열은 유지한다.
-이번 컴포넌트 검사는 두 소비자의 삭제 알림까지 확장했다. Widgets/Entities/FavoriteOrganization/Favorites의 경계 검사, 독립 Swift 상태·복원 검사 및 Simulator Debug 빌드가 통과했다. 아래 공고 카드 기록 및 이전 구조는 단계 이력이며 최종 라우팅 커밋에서 실제 트리 전체로 교체한다.
-
----
-
-# FSD 전환 진행 — 공고 카드 컴포넌트
-
-2026-09-14, [#1](https://github.com/fixabley/dearby/issues/1) / [설계 #3](https://github.com/fixabley/dearby/pull/3).
-공고 카드 진입점은 `Widgets/ActivityCard/UI/ActivityCard.swift`의 internal `ActivityCard`다. 표시 모델과 저장 여부·콜백만 받으며 내부 요약 `NoticeFact`는 같은 파일의 private 타입이다.
-카드가 의존하는 공고·조직·출처·카탈로그는 하나의 응집된 `Entities/ActivityCatalog` slice로 함께 옮겼다. `Model/ActivityCatalog.swift`의 모델·조회, `API/ActivityCatalogProviding.swift`와 `BundleActivityCatalogProvider.swift`의 공급 경계, `UI/NoticeClassificationView.swift`가 진입점이다.
-Entities는 Widgets를 모르며 같은 레이어의 다른 slice를 참조하지 않는다. 실제 FSD 구조 검사는 `python3 apps/ios/tests/check_fsd_boundaries.py --slice Widgets/ActivityCard --slice Entities/ActivityCatalog`로 실행한다.
-이번 카드 컴포넌트 검사: 경계 검사(상향·다른 slice·UI 상태/저장 접근 금지 음성 사례 포함), 독립 Swift 상태/공급/복원 검사 및 Simulator Debug 빌드 통과.
-다음 컴포넌트 커밋에서 즐겨찾기 카드/행동과 페이지 라우팅을 옮긴다. 아래는 이전 aa4a258 구조·검증 기록이며 이번 FSD 최종 상태가 아니다.
-
----
-
-# iOS 앱 구조
-
-[이슈 #1](https://github.com/fixabley/dearby/issues/1)의 승인된 Seed v2와 [공통 설계 PR #3](https://github.com/fixabley/dearby/pull/3)을 적용한다.
-긴 화면 파일에서 탐색·즐겨찾기·상세와 저장을 함께 다루던 책임을 나눴다. 기존 화면·문구·탭·제스처·샘플·저장 형식을 유지한다.
-외형 정비는 [#2](https://github.com/fixabley/dearby/issues/2)의 범위다. 새 외부 상태 관리/DI 라이브러리, 빌드 모듈, 네트워크 및 API 변경은 없다.
+[이슈 #1](https://github.com/fixabley/dearby/issues/1)과 [공통 설계 PR #3](https://github.com/fixabley/dearby/pull/3)의 FSD 책임·의존 방향을 단일 SwiftUI 앱에 적용한다.
+공고 카드, 즐겨찾기 조직 카드, 상세 라우팅을 기능별 후속 커밋으로 분리한다. 기존 화면·문구·제스처·탭·sheet/back·ID·저장 키/배열·샘플을 유지한다.
+외형 정비 [#2](https://github.com/fixabley/dearby/issues/2), 외부 DI/상태관리 라이브러리, 별도 빌드 모듈과 네트워크/API는 포함하지 않는다.
 
 ## 실제 디렉터리 트리
 
 ```text
 apps/ios/
-├── Dearby.xcodeproj/                 # 기존 synchronized Dearby 그룹·공유 scheme 유지
+├── Dearby.xcodeproj/                     # 기존 synchronized Dearby 그룹·공유 scheme
 ├── Dearby/
 │   ├── App/
-│   │   ├── DearbyApp.swift           # 실제 의존성 생성, 즐겨찾기 단일 소유
-│   │   └── ContentView.swift         # 로딩/오류·탭·NavigationStack 조합
+│   │   ├── DearbyApp.swift               # 실제 의존성·단일 상태 소유
+│   │   └── ContentView.swift             # 로딩·탭·페이지 목적지 조립
+│   ├── Pages/
+│   │   ├── Discovery/UI/DiscoveryView.swift
+│   │   ├── Favorites/UI/FavoriteListView.swift
+│   │   └── NoticeDetail/UI/NoticeDetailView.swift
+│   ├── Widgets/
+│   │   ├── ActivityCard/UI/ActivityCard.swift
+│   │   └── FavoriteOrganizationCard/UI/FavoriteOrganizationCard.swift
 │   ├── Features/
-│   │   ├── Discovery/
-│   │   │   ├── DiscoveryView.swift   # 세로 피드, 상세 sheet, 저장 피드백
-│   │   │   ├── ActivityCard.swift    # 표시 데이터·저장/상세 콜백
-│   │   │   └── NoticeFact.swift      # 카드 전용 요약
-│   │   ├── Favorites/
-│   │   │   ├── FavoriteListView.swift
-│   │   │   └── FavoriteOrganizationRow.swift
-│   │   └── NoticeDetail/
-│   │       ├── NoticeDetailView.swift
-│   │       └── NoticeIdentityView.swift
-│   ├── Shared/
-│   │   ├── Models/ActivityCatalog.swift
-│   │   ├── State/FavoriteOrganizations.swift
-│   │   ├── Data/
-│   │   │   ├── ActivityCatalogProviding.swift
-│   │   │   ├── BundleActivityCatalogProvider.swift
-│   │   │   ├── FavoriteOrganizationsStorage.swift
-│   │   │   └── UserDefaultsFavoriteOrganizationsStorage.swift
-│   │   └── UI/NoticeClassificationView.swift
+│   │   └── FavoriteOrganization/
+│   │       ├── Model/FavoriteOrganizations.swift
+│   │       └── API/
+│   │           ├── FavoriteOrganizationsStorage.swift
+│   │           └── UserDefaultsFavoriteOrganizationsStorage.swift
+│   ├── Entities/
+│   │   └── ActivityCatalog/
+│   │       ├── Model/ActivityCatalog.swift
+│   │       ├── API/
+│   │       │   ├── ActivityCatalogProviding.swift
+│   │       │   └── BundleActivityCatalogProvider.swift
+│   │       └── UI/NoticeClassificationView.swift
 │   ├── Resources/activity-samples.json
 │   └── Assets.xcassets/
-├── tests/FavoritesStoreTests.swift   # 앱·SwiftUI 없이 실행
+├── tests/
+│   ├── FavoritesStoreTests.swift
+│   └── check_fsd_boundaries.py
 ├── ARCHITECTURE.md
 └── README.md
 ```
 
-`Dearby/` 아래 Swift 파일과 리소스는 기존 Xcode 파일 시스템 동기화 그룹이 자동 포함한다.
-테스트 실행 파일과 증거는 무시되는 `build/`에 생성하며 앱 타깃에 넣지 않는다.
+`UI`, `Model`, `API`는 표현·도메인/상태·외부 데이터 접근 목적을 구분하는 segment다.
+공고·조직·출처·계층·학교 맥락은 서로 연결된 **단일 ActivityCatalog entity slice**에 둔다. 서로 다른 entity로 억지 분리해 순환 참조를 만들지 않는다.
+현재 여러 도메인에서 공유하는 범용 Swift UI가 없어 Shared 폴더를 만들지 않았다. 카드 전용 요약은 widget 내부 private 타입이다.
+향후 실제 공용 범용 표시·테마 코드가 필요하면 slice 없이 `Shared/UI` 등 목적별 segment에 둔다. 기존 asset catalog와 번들 리소스의 경로는 유지한다.
+`Dearby/`의 Xcode synchronized 그룹이 모든 파일을 포함한다. 테스트와 `build/` 증거는 앱 타깃 밖에 둔다.
 
-## 책임과 의존 방향
+## 슬라이스 public API 계약
+
+아래는 **슬라이스 밖에서 사용하는 네이티브 진입점**이다. Swift의 `public` 키워드나 JS barrel 파일을 의미하지 않는다.
+단일 앱 모듈에서 진입점은 기본 `internal`이며 외부 모듈 API를 추가하지 않는다.
+
+| 슬라이스 | 외부 진입점 | 입력·책임 |
+| --- | --- | --- |
+| Pages/Discovery | `DiscoveryView<Destination>` | 카탈로그·ID 집합·저장 콜백·App의 목적지 ViewBuilder; 로컬 sheet 선택·피드백 |
+| Pages/Favorites | `FavoriteListView<Destination>` | 카탈로그·ID 집합·삭제 콜백·목적지 ViewBuilder; 목록·빈 상태 |
+| Pages/NoticeDetail | `NoticeDetailView` | 공고·카탈로그; 상세 표시만 수행 |
+| Widgets/ActivityCard | `ActivityCard` | 공고·조직·학교 맥락·저장 여부·위치·크기 모드·저장/상세 콜백 |
+| Widgets/FavoriteOrganizationCard | `FavoriteOrganizationCard<Destination>` | 조직·카탈로그·삭제 콜백·목적지 ViewBuilder; 연결 공고의 기존 NavigationLink |
+| Features/FavoriteOrganization | `FavoriteOrganizations`, `FavoriteOrganizationsStorage`, `UserDefaultsFavoriteOrganizationsStorage` | 상태와 저장 계약; 구체 저장 구현은 App 조립 또는 독립 테스트에서 사용 |
+| Entities/ActivityCatalog | `ActivityCatalog` 및 같은 Model 파일의 `ActivityNotice`, `ActivityOrganization`, `ActivitySource`, `ActivityField`, `ActivityIssue`, `ActivityContext`, `ActivitySchedule`; `ActivityCatalogProviding`, `BundleActivityCatalogProvider`; `NoticeClassificationView` | 순수 모델/조회, 교체 가능한 공급, 카드·즐겨찾기의 분류 표시 |
+
+`NoticeFact`는 ActivityCard 파일의 private 구현, `NoticeIdentityView`는 NoticeDetail 파일의 private 구현이다.
+Preview 저장소도 App 파일의 private 타입이다. 외부 소비자는 이 helper들을 직접 사용하지 않는다.
+별도 빌드 모듈이 없으므로 폴더만으로 internal 진입점 접근을 컴파일러가 강제 차단하지는 않는다. 경계는 아래 검사와 리뷰로 보완한다.
+
+## 의존 방향과 라우팅
+
+허용 방향은 `App → Pages → Widgets → Features → Entities → Shared`이며 아래 레이어를 건너뛰어 참조할 수 있다.
+같은 레이어의 다른 slice 참조와 상향 참조는 금지한다. App·Shared는 slice 없는 예외다.
+
+현재 실제 흐름:
 
 ```text
-DearbyApp → ContentView → Features → Shared/Models, Shared/UI
-    │           │
-    │           └→ ActivityCatalogProviding → BundleActivityCatalogProvider
-    └→ FavoriteOrganizations → FavoriteOrganizationsStorage → UserDefaults 구현
-
-사용자 이벤트 → 화면 콜백 → 단일 FavoriteOrganizations 변경
-             → ContentView의 Observation 읽기 → 두 탭에 새 ID 집합 전달
+App → Discovery page → ActivityCard widget → ActivityCatalog entity
+App → Favorites page → FavoriteOrganizationCard widget → ActivityCatalog entity
+App → NoticeDetail page → ActivityCatalog entity
+App → FavoriteOrganization state → 같은 slice의 저장 protocol → UserDefaults 구현
+App → ActivityCatalog 공급 protocol → 같은 entity의 번들 구현
 ```
 
-- App만 실제 공급·저장 구현을 조립한다. ContentView는 카탈로그 공급 protocol을 호출하고 성공/실패를 기존 화면으로 표시한다.
-- Features와 Shared/UI는 표시 모델·ID 집합·콜백만 받는다. UserDefaults, Bundle, 파일이나 저장소를 직접 접근하거나 공유 상태를 생성하지 않는다.
-- 모델은 SwiftUI·Observation·저장소를 모르며, 조직 경로/분류/피드 등의 계산은 순수하다. JSON 파일 읽기와 버전·모드 확인은 Bundle 공급자에 둔다.
-- `FavoriteOrganizations`는 구체 저장소를 모르고 protocol의 `load/save`만 사용한다. 사용자 이벤트 및 저장은 MainActor에서 직렬 실행한다.
-- 여러 화면에서 실제 재사용하는 분류 표시만 Shared/UI에 둔다. 카드 요약과 상세의 정보 표시처럼 요구하는 모양이 다른 컴포넌트는 기능 안에 둔다.
-- 기본 TabView, NavigationStack, List, ScrollView, Button, sheet를 우선한다. 구조 정리만으로 외형이나 네이티브 UI 스타일을 바꾸지 않는다.
+ContentView가 Discovery와 Favorites에 `(ActivityNotice) -> Destination` ViewBuilder를 주입하며 그 안에서만 NoticeDetailView를 생성한다.
+Discovery는 기존 `.sheet(item:)`의 로컬 선택값을 유지하고 주입된 목적지를 표시한다. Favorites의 widget은 기존 NavigationLink에 주입된 목적지를 연결한다.
+페이지와 카드는 다른 페이지 타입을 모르며 공고 카드와 조직 카드도 서로 참조하지 않는다. 새로운 전역 라우터·선택 상태·AnyView 계층을 만들지 않는다.
+Widget은 표시 데이터와 콜백만 받고 저장소·공유 상태를 직접 생성하거나 읽지 않는다. Entity UI 역시 데이터 공급을 실행하지 않는다.
 
 ## 상태 소유와 생명주기
 
-| 상태 | 소유자·수명 | 읽기·변경 |
+| 상태 | 소유·수명 | 변경 흐름 |
 | --- | --- | --- |
-| 즐겨찾기 ID 집합 | DearbyApp의 단일 `@State`가 `@Observable FavoriteOrganizations`를 앱 수명 동안 유지 | ContentView가 읽고 탭에 값·이벤트 콜백 전달; 저장·삭제는 같은 인스턴스로 모임 |
-| 카탈로그·로딩 오류 | 루트 ContentView의 `@State`; 기존 `.task` 로딩과 다시 시도 유지 | 주입된 `ActivityCatalogProviding.load()` 결과로 갱신 |
-| 발견 상세 선택·저장 피드백·햅틱 카운트 | DiscoveryView의 로컬 `@State` | 해당 화면의 이벤트가 변경; 전역 상태로 승격하지 않음 |
-| 탭 선택·각 탭의 내비게이션·스크롤 위치 | 기존 SwiftUI TabView/NavigationStack/ScrollView 수명 | 기존 시스템 동작 유지; 새로운 라우터나 별도 캐시를 만들지 않음 |
+| 즐겨찾기 ID 집합 | DearbyApp의 단일 `@State`가 Feature의 `@Observable FavoriteOrganizations`를 앱 수명 동안 유지 | 화면 콜백 → 같은 MainActor 상태 → 저장 계약 → 루트 관찰 → 두 페이지에 최신 ID 값 |
+| 카탈로그·로드 오류 | ContentView 로컬 `@State` | 기존 `.task`·다시 시도에서 주입된 동기 공급자를 호출 |
+| 발견 상세 선택·피드백·햅틱 카운트 | DiscoveryView 로컬 `@State` | 저장/상세 콜백의 UI 결과만 관리 |
+| 탭·내비게이션·스크롤 | 기존 SwiftUI 기본 컴포넌트 수명 | 기존 TabView/NavigationStack/ScrollView·sheet 동작 유지 |
 
-ContentView는 **지연 생성되는 탭/내비게이션 클로저 앞에서** `favorites.ids`를 읽어 Observation 의존성을 등록한다.
-이 읽기를 내부 클로저로 옮기면 상태 테스트는 통과해도 실제 탭의 값이 오래된 상태로 남을 수 있으므로 화면 회귀를 함께 확인한다.
-여러 소비자는 별도 상태 사본을 소유하지 않고 루트가 제공한 최신 값으로 렌더링한다. 새로운 창도 앱의 같은 상태를 사용한다.
-외부 프로세스의 UserDefaults 변경을 실시간 감시하는 기능은 없으며 저장소 복원은 상태 생성 시 수행한다.
-Preview는 빈 값을 읽고 쓰기를 버리는 전용 저장소로 앱 사용자의 즐겨찾기에 접근하지 않는다.
-
-## 저장·모델 호환
-
-`dearby.favoriteOrganizationIDs.v1` 키에 정렬된 문자열 배열을 저장하고 읽을 때 Set으로 중복을 제거한다.
-추가는 토글이 아닌 멱등 저장이고 해제는 명시적 삭제다. 기존에 저장된 운영부서나 현재 모델에 없는 ID도 임의 변환·삭제하지 않는다.
-기존 ID를 표시할 수 있는 조직만 목록에 렌더링하는 규칙도 유지한다.
-
-한국농어촌공사와 DB손해보험은 각각 기업 ID를 저장한다. 학교 맥락·분류·부모 관계는 별개이며 상위 조직/학교를 자동 저장하지 않는다.
-영남권 대회는 교육원 아래 지속 프로그램 ID를 저장하고 회차는 개별 공고에 남긴다.
+ContentView의 `favorites.ids` 읽기는 **lazy Tab/NavigationStack 클로저 앞**에 유지한다. 내부 지연 클로저에서만 읽으면 페이지에 오래된 값이 남을 수 있다.
+Feature 상태는 저장소를 주입받아 생성 시 복원하고, UI는 별도 상태 사본을 소유하지 않는다. 외부 프로세스의 저장 변경을 실시간 감시하지 않는다.
+UserDefaults의 `dearby.favoriteOrganizationIDs.v1` 키, 정렬된 문자열 배열, 중복 방지·멱등 추가·명시적 삭제를 유지한다.
+기업 ID·대회 프로그램 ID를 저장하고 상위 교육원·행사 학교를 자동 저장하지 않는다. 기존 운영부서/현재 모델에 없는 ID도 임의 삭제·변환하지 않는다.
 [활동 규격](../../docs/product/activity-data-v1.md)과 [관심 대상 규칙](../../docs/product/interest-target-rules.md)을 따른다.
+
+## 구조 검사와 한계
+
+루트에서 `python3 apps/ios/tests/check_fsd_boundaries.py`를 실행한다.
+Swift 타입 선언과 식별자 참조를 수집해 실제 상향 참조·동일 레이어 다른 slice 참조를 찾으며, UI의 Feature 상태/API 및 UserDefaults/Bundle 직접 접근도 거절한다.
+대표 금지 참조(다른 페이지, 상위 페이지, 형제 widget, Feature 상태, UserDefaults, entity UI의 공급자, entity에서 widget)를 주입한 음성 fixture가 매번 실행된다.
+`--slice`는 특정 컴포넌트를 점검하는 선택 인수이고, 최종 검증은 모든 Swift 파일을 검사한다.
+
+이 검사는 Swift parser나 컴파일러 모듈 격리가 아닌 작은 lexical guard다. 주석·일반 문자열을 제외하므로 문자열 보간 내부 참조, 추론된 타입의 멤버 호출, 복잡한 alias·동적 호출·매크로는 놓칠 수 있고 같은 이름의 타입은 오탐할 수 있다.
+추가 API를 만들 때 문서 진입점을 갱신하고 전체 구조 검사·빌드·실제 UI 흐름을 함께 리뷰한다.
 
 ## 새 기능 배치 예시
 
-- 카드에 기존 모델의 요약 표시를 추가한다면 `Features/Discovery/ActivityCard.swift` 또는 같은 폴더의 전용 View에 둔다.
-- 즐겨찾기 행 표현은 `Features/Favorites/`에 둔다. 발견과 즐겨찾기가 같은 표시를 실제로 공유할 때 `Shared/UI/`로 옮긴다.
-- 상세만 필요한 펼침/접힘은 `NoticeDetail`의 로컬 `@State`에 둔다. 기능 간 공유가 필요한 새 상태라면 App에서 하나 소유하고 표시 값/콜백을 주입한다.
-- 저장 구현 교체는 `Shared/Data`의 protocol 구현과 App 조립을 바꾼다. UI나 상태 객체에 구체 저장소 호출을 추가하지 않는다.
-- 후속 서버 카탈로그 공급은 `ActivityCatalogProviding` 경계에서 시작한다. 현재는 동기 번들 로딩에 맞춘 최소 protocol이며, 네트워크 도입 시 async·취소·오류 정책을 해당 작업에서 정한다. 인증·재시도·페이지네이션은 미리 구현하지 않는다.
-- 새 모델 조회는 `Shared/Models`에 둔다. 공통 계약 변경이 필요하면 coordinator와 먼저 조율하며 iOS에서 공통 샘플이나 Android 리소스를 임의 수정하지 않는다.
+- 공고 카드만의 표시나 버튼은 `Widgets/ActivityCard/UI`와 해당 검사에 둔다. 그 페이지의 필터 선택은 `Pages/Discovery/UI` 로컬 상태로 둔다.
+- 즐겨찾기 조직 카드의 표시 변경은 `Widgets/FavoriteOrganizationCard/UI`, 저장·삭제 행동과 저장 구현은 `Features/FavoriteOrganization/Model|API`에 둔다.
+- 새 상세 화면은 Pages의 독립 slice에 만들고 **App에서** 목적지를 주입한다. Discovery/Favorites가 새 페이지를 직접 생성하지 않는다.
+- 새로운 카탈로그 조회는 `Entities/ActivityCatalog/Model`, 실제 공급 교체는 같은 slice의 API와 App 조립을 변경한다. 네트워크 도입 시 async·취소·오류 정책은 해당 작업에서 정하며 지금 미리 구현하지 않는다.
+- 서로 다른 widget이 필요한 도메인 분류 표시는 entity UI에, 실제 도메인 없는 공용 UI가 필요해지면 Shared/UI에 둔다. 빈 segment나 사용하지 않는 추상화를 추가하지 않는다.
+- 공통 계약 변경은 coordinator와 먼저 조율한다. 각 기능 변경에 필요한 코드·검사·문서를 한 커밋에 묶으며 이미 게시된 커밋은 재작성하지 않는다.
 
 ## 검증 기록
 
-2026-09-14 이번 리팩터링에서 실행했다. 명령은 [README](README.md)를 따른다.
+2026-09-14 **이번 FSD 후속 변경**에서 실행한 결과다. 재현 명령은 [README](README.md)를 따른다.
 
-| 검사 | 결과·실행 범위 |
+| 검사 | 이번 결과 |
 | --- | --- |
-| 독립 `swiftc -swift-version 6` | 인메모리 저장소 주입·추가/중복/삭제·두 Observation 소비자의 알림/동일 값, 실제 UserDefaults 배열 호환과 새 저장소·상태 복원 통과 |
-| 모델·공급자 | 실제 공통 JSON 디코딩, 기업/학교 분리·대회 경로/회차, 번들 공급 교체·잘못된 모드/손상 JSON 오류 통과 |
-| Xcode Simulator Debug | Xcode 26.6, iOS 26.5 전용 iPhone 17 Pro, `CODE_SIGNING_ALLOWED=NO` 빌드·실행 성공 |
-| 공통 데이터 | 루트 `npm test` 13건 통과, `python3 scripts/sync-activity-samples.py --check` 일치 |
-| 실제 화면·저장 | 전용 기기에서 하단 탭·빈 목록·저장 버튼·목록·연결 공고 상세의 기업/학교 분리·명시적 삭제와 카드 반영 확인 |
-| 더블탭·중복 | Orca computer의 전용 Simulator 창 좌표 `--click-count 2`로 미저장 DB 카드를 저장하고 반복 후 두 기업이 각 한 행으로 유지됨을 화면 확인 |
-| 재실행 | 앱 종료/재실행 후 두 기업 유지, KRC 삭제 후 다시 종료/재실행하여 DB만 남음 확인 |
-| 카드 이동 | 접근성 `scroll down`으로 1/4 KRC → 2/4 DB 전환 확인; 합성 터치 드래그는 이동을 확인하지 못했으므로 터치 스와이프 회귀 통과로 기록하지 않음 |
+| FSD 구조 | 전체 14 Swift 파일 통과; 상향/형제 slice/상태·저장 접근 금지 음성 fixture 통과 |
+| 독립 Swift 6 | 인메모리 추가·중복·삭제, 두 Observation 소비자의 추가/삭제 통지·동일 값, UserDefaults 기존 배열 호환·복원, 카탈로그 공급 교체·손상 오류 통과 |
+| 컴포넌트별 빌드 | 공고 카드·즐겨찾기 카드·최종 상세 라우팅 모두 Xcode 26.6 Simulator Debug 빌드 통과, 최종 앱 실행 확인 |
+| Discovery 라우팅 | 전용 기기에서 공고 버튼 → 상세 sheet 및 취소로 원래 카드 복귀, 기업/학교 분리 표시 확인 |
+| Favorites 라우팅 | 조직 카드의 DB 공고 → 상세 NavigationLink 및 back → 목록 복귀 확인 |
+| 카드·공유 상태 | KRC 카드 더블클릭 저장 → 두 기업 목록, KRC 삭제 → 발견 카드 미저장 표시, 앱 종료·재실행 후 DB만 유지 확인 |
+| 카드 이동 | 접근성 scroll down으로 1/4 KRC → 2/4 DB 확인; 실제 터치 스와이프는 이번에도 검증하지 않음 |
 
-전용 기기 `Dearby-Issue1-iOS`를 새로 사용했다. 기존 사용자 시뮬레이터의 즐겨찾기는 초기화하거나 삭제하지 않았다.
-로컬 증거는 `build/regression/`의 `favorites-two-organizations.png`, `restored-after-relaunch.png`, `deletion-restored.png`에 남긴다(커밋 제외).
-MCP 접근성 snapshot/elementRef 입력은 화면과 다른 상태를 보고한 경우가 있어 성공 응답만으로 동작을 판정하지 않고 Orca 창 조작과 스크린샷으로 보완했다.
-
-실제 터치 스와이프, VoiceOver 전체 흐름, 최대 글자 크기, iPad·가로 화면, 실기기 전체 검증은 미완료다.
-독립 상태 검증은 SwiftUI 화면 테스트가 아니며 이번 수동/도구 회귀를 상시 XCUITest로 자동화한 것은 아니다.
-API 연결·로그인·개인화·원문 자동 추출·Q&A/커피챗/크레딧·트리 탐색은 기존과 같이 범위 밖이다.
+전용 `Dearby-Issue1-iOS` (`A434888F-4096-48AE-91B2-37A498233B55`, iOS 26.5)을 사용했다. 사용자 기기를 초기화하거나 즐겨찾기를 삭제하지 않았다.
+로컬 증거는 `build/fsd-regression/`의 `discovery-sheet.png`, `favorites-detail.png`, `restored-favorites.png` 및 검사 로그에 남긴다(커밋 제외).
+이전 aa4a258의 공통 npm 13건·샘플 일치 및 화면 검증은 이전 기록이다. 이번에는 바뀐 Swift 구조·상태·라우팅 흐름을 중심으로 검사한다.
+실제 터치 스와이프, VoiceOver 전체 흐름, 최대 글자 크기, iPad·가로·실기기 전체 검증은 남아 있다. 이번 도구 회귀는 상시 XCUITest가 아니다.
