@@ -80,4 +80,12 @@ SchedulePreview의 light/dark/2×와 InformationPreview의 MetadataRow를 제공
 
 사용자가 제공한 /tmp/dearby-calendar-reference-1.png 및 -2.png를 직접 확인했다. 굵은 일정명, 자연스러운 오전/오후 …부터/…까지, 도메인 링크 카드, 시간 눈금과 색 블록을 참고한다. 원본 screenshot의 공유 액션은 이번 범위가 아니며 링크 열기만 native FilledTonalIconButton으로 제공한다.
 
-`LinkCard(domain, address, onOpen, modifier)`는 표시/콜백만 담당한다. NoticeDetail State의 `detailLink`는 기존 calendarWebUrl 정책(http/https·host·userinfo 없음)을 그대로 사용해 application.url/onlineUrl만 전달하고 링크 없는 경우 생략한다. 전체 목적지는 접근성 description에 보존하며 도메인을 시각 표시한다. 카드본문/Calendar export에는 변화가 없다. `koreanTime`은 분/초/소수초를 생략하지 않고 정각의 0분만 줄인다.
+`LinkCard(domain, address, onOpen, modifier)`는 표시/콜백만 담당한다. NoticeDetail State의 `detailLink`는 기존 calendarWebUrl과 동일한 정책(http/https·host·userinfo 없음)을 독립 적용해 application.url/onlineUrl만 전달하고 링크 없는 경우 생략한다. 전체 목적지는 접근성 description에 보존하며 도메인을 시각 표시한다. 카드본문/Calendar export에는 변화가 없다. `koreanTime`은 분/초/소수초를 생략하지 않고 정각의 0분만 줄인다.
+
+`DayTimeline(interval, title, modifier)`는 도메인 없는 Instant 시작/배타종료/ZoneId 값과 표시 제목을 받는다. 날짜선택만 rememberSaveable 국소 상태이며 source Model이나 OS에 쓰지 않는다. `TimelineDateHeader`는 날짜와 이전/다음 enable값·콜백, `TimelineDatePicker`는 native Material3 날짜선택, `TimelinePlot`은 선택한 하루의 tick/clip 표시값을 사용한다. 상위 NoticeDetailState의 detailTimeline은 두 timestamp와 strict 검증이 모두 충족될 때만 interval을 생성한다. deadline-only/날짜만/mixed precision/invalid·충돌·역전에는 정보문구만 표시한다.
+
+Material3 DatePicker는 날짜 선택용이고 이 앱에서 재사용할 native 일정 블록 renderer가 없어 시간 gutter/가로선/단일 accent block만 좁은 custom UI로 구성했다. native primary/onPrimary, typography/shapes, IconButton/TextButton을 유지한다. grid는 320dp viewport 안에서 세로스크롤하고 hour 간격은 fontScale에 따라 늘어난다. 짧은 구간은 최소 시각 높이로 확대했다는 안내를 보이며 정확한 초·소수초 포함 시간은 caption과 block semantics에 보존한다. 블록 내 말줄임은 시각적 보조이며 caption/접근성은 전체값이다.
+
+일간 clipping은 sourceZone LocalDate.atStartOfDay와 다음 localDate로 경계를 계산한다. 시작일9시~자정/중간날 전체/마지막날0~13시의 연속기간이며 매일9~13시 반복이 아니다. end.minusNanos(1)로 자정 배타종료 다음날을 제외한다. 일반날24시간, DST날은 실제23/25시간 axis와 반복시각 offset을 표시한다. 사라진 localDate는 선택/이동에서 제외하고 긴 기간의 모든날 배열은 만들지 않으며 선택일의 최대25시간 tick만 만든다.
+
+공식 근거: [Material3 DatePickerState](https://developer.android.com/reference/kotlin/androidx/compose/material3/DatePickerState), [rememberDatePickerState](https://developer.android.com/reference/kotlin/androidx/compose/material3/rememberDatePickerState.composable). DatePicker의 UTC-midnight 날짜값을 UTC LocalDate로 읽은 후 sourceZone clipping에 전달하며 source timestamp로 혼동하지 않는다. min/max와 SelectableDates로 기간 밖 선택을 제한한다.

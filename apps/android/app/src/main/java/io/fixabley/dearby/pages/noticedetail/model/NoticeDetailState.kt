@@ -37,6 +37,9 @@ internal data class NoticeDetailState(
     val phaseDrafts: List<CalendarDraft?>,
     val saved: Boolean = false,
 ) {
+    val applicationTimeline get() = applicationInformation.let {
+        detailTimeline(it.opensAt, it.opensOn, it.closesAt, it.closesOn, it.timezone)
+    }
     val applicationLink: DetailLinkState? get() = detailLink(applicationInformation.url)
     val applicationPeriod: DetailPeriodState get() = applicationInformation.let {
         detailPeriod(it.opensAt, it.opensOn, it.closesAt, it.closesOn, it.timezone, it.summary, "마감")
@@ -63,6 +66,9 @@ internal data class NoticeDetailState(
 internal data class ResolvedOrganizationRole(val organizationId: String, val role: String, val label: String, val name: String?)
 internal data class NoticeScheduleState(val period: NoticePhase, val locations: List<NoticeVenue>) {
     val title: String get() = if (period.mode == "online" && !period.label.startsWith("온라인")) "온라인 ${period.label}" else period.label
+    val timeline get() = period.let {
+        detailTimeline(it.startsAt, it.startsOn, it.endsAt, it.endsOn, it.timezone)
+    }
     val link: DetailLinkState? get() = detailLink(period.onlineUrl).takeIf { period.mode == "online" }
     val dateDetails: DetailPeriodState get() = detailPeriod(period.startsAt, period.startsOn, period.endsAt,
         period.endsOn, period.timezone, period.summary)

@@ -18,6 +18,7 @@ import io.fixabley.dearby.shared.ui.ContentSection
 import io.fixabley.dearby.shared.ui.MetadataRow
 import io.fixabley.dearby.shared.ui.DetailMetadata
 import io.fixabley.dearby.shared.ui.LinkCard
+import io.fixabley.dearby.shared.ui.DayTimeline
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.semantics.heading
@@ -63,6 +64,9 @@ internal fun NoticeDetailSheet(notice: NoticeDetailState, onDismiss: () -> Unit,
                     notice.applicationLink?.let { link ->
                         LinkCard(link.domain, link.url, { onOpenSource(link.url) }, Modifier.testTag("application.link"))
                     }
+                    notice.applicationTimeline?.let {
+                        DayTimeline(it, "신청", Modifier.testTag("application.timeline"))
+                    } ?: Text("시작·종료 시각이 모두 확인되어야 시간표를 표시할 수 있어요.", style = MaterialTheme.typography.bodySmall)
                     if (notice.applicationInformation.requiredDocuments.isNotEmpty()) {
                         InformationRow("제출 서류", notice.applicationInformation.requiredDocuments.joinToString(" · "))
                     }
