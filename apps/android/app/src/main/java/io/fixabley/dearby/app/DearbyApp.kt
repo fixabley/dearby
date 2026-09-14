@@ -27,7 +27,7 @@ import io.fixabley.dearby.pages.favorites.ui.FavoritesScreen
 import io.fixabley.dearby.pages.noticedetail.ui.NoticeDetailSheet
 
 @Composable
-internal fun DearbyApp(catalogProvider: NoticeSession, onOpenSource: (String) -> Unit, onOpenMap: (NoticeVenue) -> Unit, onAddToCalendar: (CalendarDraft) -> Unit) {
+internal fun DearbyApp(catalogProvider: NoticeSession, onOpenSource: (String) -> Unit, onOpenMap: (NoticeVenue) -> Unit, onAddToCalendar: (CalendarDraft) -> Unit, busyProvider: io.fixabley.dearby.features.calendarbusy.api.BusyProvider? = null) {
     var retry by remember { mutableIntStateOf(0) }
     var loading by remember(catalogProvider) { mutableStateOf(true) }
     var failed by remember(catalogProvider) { mutableStateOf(false) }
@@ -87,6 +87,7 @@ internal fun DearbyApp(catalogProvider: NoticeSession, onOpenSource: (String) ->
         }
     }
     detail?.state?.let { notice ->
-        NoticeDetailSheet(notice, onDismiss = { detail = null }, onOpenSource = onOpenSource, onOpenMap = onOpenMap, onAddToCalendar = onAddToCalendar)
+        if (busyProvider != null) NoticeDetailRoute(notice, busyProvider, { detail = null }, onOpenSource, onOpenMap, onAddToCalendar)
+        else NoticeDetailSheet(notice, onDismiss = { detail = null }, onOpenSource = onOpenSource, onOpenMap = onOpenMap, onAddToCalendar = onAddToCalendar)
     }
 }

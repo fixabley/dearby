@@ -33,4 +33,13 @@ class BusyIntervalTest {
         assertNull(row.copy(selfStatus = 2).interval(ZoneOffset.UTC))
         assertNull(row.copy(end = 0).interval(ZoneOffset.UTC))
     }
+    @Test fun floatingDeviceDayClipsToDifferentSourceZoneWithoutNineAmShift() {
+        val row = BusyOccurrence(Instant.parse("2026-03-08T00:00:00Z").toEpochMilli(),
+            Instant.parse("2026-03-09T00:00:00Z").toEpochMilli(), true, 0, 0, 0)
+        val value = row.interval(ZoneId.of("America/Los_Angeles"))!!
+        val source = BusyInterval(Instant.parse("2026-03-08T15:00:00Z"), Instant.parse("2026-03-09T15:00:00Z"))
+        assertEquals(listOf(BusyInterval(source.start, Instant.parse("2026-03-09T07:00:00Z"))), mergedBusy(listOf(value), source))
+        assertTrue(mergedBusy(listOf(value), BusyInterval(value.end, value.end.plusSeconds(86400))).isEmpty())
+    }
+
 }

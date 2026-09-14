@@ -19,14 +19,15 @@ class AndroidBusyProviderTest {
     @Test fun numericProjectionSqlNullFilteringAndFloatingAllDay() = runBlocking {
         SQLiteDatabase.create(null).use { db ->
             db.execSQL("CREATE TABLE instances(begin INTEGER, end INTEGER, allDay INTEGER, availability INTEGER, eventStatus INTEGER, selfAttendeeStatus INTEGER, visible INTEGER)")
-            fun row(s: Instant, e: Instant, all: Int = 0, availability: Int? = 0, status: Int? = 0, self: Int? = 0) {
-                db.execSQL("INSERT INTO instances VALUES(?,?,?,?,?,?,1)", arrayOf(s.toEpochMilli(), e.toEpochMilli(), all, availability, status, self))
+            fun row(s: Instant, e: Instant, all: Int = 0, availability: Int? = 0, status: Int? = 0, self: Int? = 0, visible: Int = 1) {
+                db.execSQL("INSERT INTO instances VALUES(?,?,?,?,?,?,?)", arrayOf(s.toEpochMilli(), e.toEpochMilli(), all, availability, status, self, visible))
             }
             row(start.plusSeconds(3600), start.plusSeconds(7200), availability = null, status = null, self = null)
             row(start.plusSeconds(10800), start.plusSeconds(14400), availability = 2)
             row(start.plusSeconds(18000), start.plusSeconds(21600), availability = 1)
             row(start.plusSeconds(25200), start.plusSeconds(28800), status = 2)
             row(start.plusSeconds(32400), start.plusSeconds(36000), self = 2)
+            row(start.plusSeconds(43200), start.plusSeconds(46800), visible = 0)
             var calls = 0
             val provider = AndroidBusyProvider(context, { zone }, { BusyPermission.Granted }) { uri, projection, selection, _ ->
                 assertNotEquals(Looper.getMainLooper(), Looper.myLooper())
@@ -37,7 +38,7 @@ class AndroidBusyProviderTest {
                 db.query("instances", projection, selection, null, null, null, "begin ASC")
             }
             val result = provider.read(BusyQuery(window, window))
-            assertEquals(2, calls); assertEquals(2, result.size)
+            assertEquals(2, calls); assertEquals(3, result.size)
             assertEquals(start.plusSeconds(3600), result[0].start)
             row(Instant.parse("2026-09-15T00:00:00Z"), Instant.parse("2026-09-16T00:00:00Z"), all = 1)
             calls = 0

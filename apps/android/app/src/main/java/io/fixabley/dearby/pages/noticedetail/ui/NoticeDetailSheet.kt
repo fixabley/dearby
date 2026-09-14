@@ -28,7 +28,12 @@ import io.fixabley.dearby.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun NoticeDetailSheet(notice: NoticeDetailState, onDismiss: () -> Unit, onOpenSource: (String) -> Unit, onOpenMap: (NoticeVenue) -> Unit, onAddToCalendar: (CalendarDraft) -> Unit) {
+internal fun NoticeDetailSheet(notice: NoticeDetailState, onDismiss: () -> Unit, onOpenSource: (String) -> Unit, onOpenMap: (NoticeVenue) -> Unit, onAddToCalendar: (CalendarDraft) -> Unit,
+    busy: io.fixabley.dearby.shared.ui.BusyDisplayState? = null,
+    overlays: Map<Int, io.fixabley.dearby.shared.ui.BusyOverlayState> = emptyMap(),
+    onBusyToggle: (Boolean) -> Unit = {}, onBusyContinue: () -> Unit = {}, onBusySettings: () -> Unit = {},
+    onBusyRetry: () -> Unit = {}, onBusyDate: (Int, java.time.LocalDate) -> Unit = { _, _ -> }) {
+    if (busy?.consent == true) CalendarConsentDialog(onBusyContinue, { onBusyToggle(false) })
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -38,6 +43,7 @@ internal fun NoticeDetailSheet(notice: NoticeDetailState, onDismiss: () -> Unit,
             item { Text(notice.title, style = MaterialTheme.typography.headlineSmall) }
             item { Text(notice.aiDescription) }
             item { NoticeIdentity(notice) }
+            busy?.let { item { io.fixabley.dearby.shared.ui.BusyCalendarControl(it, onBusyToggle, onBusySettings, onBusyRetry) } }
             item { HorizontalDivider() }
             item { InformationRow("참여 대상", notice.targetUser) }
             item { InformationRow("참여 조건", notice.participationCondition) }
@@ -73,7 +79,7 @@ internal fun NoticeDetailSheet(notice: NoticeDetailState, onDismiss: () -> Unit,
                 }
             }
             if (notice.schedules.isNotEmpty()) item { HorizontalDivider() }
-            itemsIndexed(notice.schedules) { index, phase -> NoticeScheduleSection(phase, notice.phaseDrafts.getOrNull(index), index, onAddToCalendar, onOpenMap, onOpenSource) }
+            itemsIndexed(notice.schedules) { index, phase -> NoticeScheduleSection(phase, notice.phaseDrafts.getOrNull(index), index, onAddToCalendar, onOpenMap, onOpenSource, overlays[index], { onBusyDate(index, it) }) }
             item { NoticeLocationSection(notice.location, onOpenMap, notice.schedules.filter { it.period.mode != "online" }.flatMap { it.locations }) }
             items(notice.benefits) { InformationRow("혜택", it) }
             items(notice.issues) { InformationRow("확인 필요", it) }

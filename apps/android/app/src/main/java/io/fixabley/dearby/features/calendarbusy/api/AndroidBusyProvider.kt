@@ -51,7 +51,7 @@ internal class AndroidBusyProvider(context: Context,
                     val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also {
                         ContentUris.appendId(it, start.toEpochMilli()); ContentUris.appendId(it, end.toEpochMilli())
                     }.build()
-                    val selection = "visible=1 AND allDay=$allDay AND (availability IS NULL OR availability!=1) AND (eventStatus IS NULL OR eventStatus!=2) AND (selfAttendeeStatus IS NULL OR selfAttendeeStatus!=2)"
+                    val selection = "allDay=$allDay AND (availability IS NULL OR availability!=1) AND (eventStatus IS NULL OR eventStatus!=2) AND (selfAttendeeStatus IS NULL OR selfAttendeeStatus!=2)"
                     val cursor = queryCursor(uri, PROJECTION.copyOf(), selection, signal) ?: error("Calendar query unavailable")
                     cursor.use {
                         while (it.moveToNext()) {

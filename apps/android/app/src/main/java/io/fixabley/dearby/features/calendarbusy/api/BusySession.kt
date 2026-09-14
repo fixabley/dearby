@@ -10,7 +10,7 @@ import kotlinx.coroutines.*
 
 internal enum class BusyConnection { Off, Consent, Requesting, Denied, Restricted, Revoked, Active }
 internal enum class BusyLoad { Loading, Failed, Ready }
-internal data class BusyResult(val load: BusyLoad, val intervals: List<BusyInterval> = emptyList(), val overlaps: Boolean = false)
+internal data class BusyResult(val load: BusyLoad, val intervals: List<BusyInterval> = emptyList(), val overlaps: Boolean = false, val window: BusyInterval? = null)
 
 /** Main-thread, detail-session owner. No persistent state, event metadata, or application periods. */
 internal class BusySession(private val provider: BusyProvider, private val scope: CoroutineScope) {
@@ -78,18 +78,18 @@ internal class BusySession(private val provider: BusyProvider, private val scope
         results = results - key
         if (!enabled || !foreground || closed) return
         val token = generation
-        results = results + (key to BusyResult(BusyLoad.Loading))
+        results = results + (key to BusyResult(BusyLoad.Loading, window = query.window))
         jobs[key] = scope.launch {
             fun current() = !closed && foreground && enabled && generation == token && revisions[key] == revision
             try {
                 val values = provider.read(query)
                 if (current()) {
                     if (provider.permission() != BusyPermission.Granted) revoke()
-                    else results = results + (key to BusyResult(BusyLoad.Ready, mergedBusy(values, query.window), busyOverlaps(values, query.activity)))
+                    else results = results + (key to BusyResult(BusyLoad.Ready, mergedBusy(values, query.window), busyOverlaps(values, query.activity), query.window))
                 }
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: SecurityException) { if (current()) revoke() }
-            catch (_: Exception) { if (current()) results = results + (key to BusyResult(BusyLoad.Failed)) }
+            catch (_: Exception) { if (current()) results = results + (key to BusyResult(BusyLoad.Failed, window = query.window)) }
         }
     }
 }
