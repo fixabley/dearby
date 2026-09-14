@@ -17,7 +17,7 @@ import io.fixabley.dearby.pages.noticedetail.model.NoticeScheduleState
 import io.fixabley.dearby.shared.ui.BusyInterval
 import io.fixabley.dearby.shared.ui.theme.DearbyTheme
 import java.io.File
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -26,14 +26,16 @@ class BusyCalendarFlowTest {
     @get:Rule val rule = createComposeRule()
     private class Fake : BusyProvider {
         var access = BusyPermission.NotGranted
+        var pending: CompletableDeferred<List<BusyInterval>>? = null
         val queries = mutableListOf<BusyQuery>()
         override fun permission() = access
         override suspend fun read(query: BusyQuery): List<BusyInterval> {
             queries.add(query)
+            pending?.let { return withContext(NonCancellable) { it.await() } }
             return listOf(BusyInterval(query.activity.start, minOf(query.activity.end, query.activity.start.plusSeconds(9000))))
         }
     }
-    private fun show(fake: Fake, dark: Boolean = false, large: Boolean = false) {
+    private fun show(fake: Fake, dark: Boolean = false, large: Boolean = false, initiallyEnabled: Boolean = true): CalendarSettingsController {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val catalog = NoticeSession(AssetNoticeSnapshotReader(context.assets), FavoritesState(object : FavoriteStore {
             override fun read() = emptySet<String>(); override fun write(ids: Set<String>) {}
@@ -42,14 +44,20 @@ class BusyCalendarFlowTest {
         val notice = catalog.detail("cieat-NCR000000007344").state!!.copy(
             schedules = listOf(NoticeScheduleState(NoticePhase("event", startsAt = "2026-09-15T09:00:00+09:00",
                 endsAt = "2026-09-16T13:00:00+09:00", timezone = "Asia/Seoul"), emptyList())))
+        val controller = CalendarSettingsController(fake, object : CalendarSettingsStore {
+            override var enabled = initiallyEnabled
+            override var firstPromptHandled = true
+            override fun write(enabled: Boolean, firstPromptHandled: Boolean) { this.enabled = enabled; this.firstPromptHandled = firstPromptHandled }
+        })
         rule.setContent {
             DearbyTheme(darkTheme = dark, dynamicColor = false) {
                 val density = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(density.density, if (large) 2f else 1f)) {
-                    NoticeDetailRoute(notice, fake, {}, {}, {}, {}, permissionRequest = { completion -> completion() })
+                    NoticeDetailRoute(notice, fake, {}, {}, {}, {}, enabled = controller.enabled)
                 }
             }
         }
+        return controller
     }
     private fun capture(name: String) {
         rule.waitForIdle()
@@ -61,22 +69,23 @@ class BusyCalendarFlowTest {
         File(dir, "$name.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
         bitmap.recycle()
     }
-    @Test fun offConsentCancelDeniedNeverQueries() {
-        val fake = Fake(); show(fake)
-        rule.onNodeWithTag("busy.switch").performScrollTo().assertIsOff(); capture("off-light")
-        rule.onNodeWithTag("busy.switch").performClick()
-        rule.onNodeWithText("내 일정 연결").assertIsDisplayed(); capture("consent-light")
-        rule.onNodeWithText("취소").performClick()
-        rule.onNodeWithTag("busy.switch").assertIsOff(); capture("cancel-light")
-        rule.onNodeWithTag("busy.switch").performClick(); rule.onNodeWithText("계속").performClick()
-        rule.onNodeWithTag("busy.switch").assertIsOff()
-        rule.onNodeWithText("캘린더 권한이 거절되어 바쁜 시간을 확인하지 못했어요. 다시 켜거나 앱 설정에서 허용할 수 있어요.").assertExists()
-        capture("denied-light")
-        rule.runOnIdle { assertTrue(fake.queries.isEmpty()) }
+    @Test fun settingsOffCancelsPendingDetailAndRejectsLateResult() {
+        val fake = Fake().apply { access = BusyPermission.Granted; pending = CompletableDeferred() }
+        val controller = show(fake, initiallyEnabled = false)
+        rule.onNodeWithTag("notice.detail").performScrollToNode(hasTestTag("schedule.title.0"))
+        rule.onNodeWithTag("schedule.timeline.0").performScrollTo()
+        rule.runOnIdle { assertTrue(fake.queries.isEmpty()); controller.enable() }
+        rule.waitUntil(5000) { fake.queries.isNotEmpty() }
+        rule.onNodeWithText("선택 날짜의 바쁜 시간을 확인하는 중이에요.").assertExists()
+        rule.runOnIdle { controller.disable(); fake.pending!!.complete(listOf(fake.queries.single().activity)) }
+        rule.waitForIdle()
+        rule.onAllNodesWithTag("busy.block").assertCountEquals(0)
+        rule.onAllNodesWithTag("timeline.intersection").assertCountEquals(0)
+        rule.onAllNodesWithTag("activity.warning", useUnmergedTree = true).assertCountEquals(0)
+        capture("detail-off-after-loading")
     }
     private fun busyFlow(dark: Boolean, large: Boolean, suffix: String) {
-        val fake = Fake().apply { access = BusyPermission.Granted }; show(fake, dark, large)
-        rule.onNodeWithTag("busy.switch").performScrollTo().performClick().assertIsOn()
+        val fake = Fake().apply { access = BusyPermission.Granted }; val controller = show(fake, dark, large)
         rule.onNodeWithTag("notice.detail").performScrollToNode(hasTestTag("schedule.title.0"))
         rule.onNodeWithTag("schedule.timeline.0").performScrollTo()
         rule.waitUntil(5000) { fake.queries.isNotEmpty() }
@@ -91,8 +100,7 @@ class BusyCalendarFlowTest {
             assertEquals(fake.queries[0].window.end, fake.queries[1].window.start)
             assertEquals(fake.queries[0].activity.start, fake.queries[0].window.start.plusSeconds(9 * 3600))
         }
-        rule.onNodeWithTag("notice.detail").performScrollToIndex(3)
-        rule.onNodeWithTag("busy.switch").performScrollTo().performClick().assertIsOff()
+        rule.runOnIdle { controller.disable() }
         rule.onNodeWithTag("notice.detail").performScrollToNode(hasTestTag("schedule.title.0"))
         rule.onNodeWithTag("schedule.timeline.0").performScrollTo()
         rule.onAllNodesWithTag("busy.block").assertCountEquals(0)

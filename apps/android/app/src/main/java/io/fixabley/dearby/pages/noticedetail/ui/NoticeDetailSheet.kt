@@ -29,11 +29,9 @@ import io.fixabley.dearby.R
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun NoticeDetailSheet(notice: NoticeDetailState, onDismiss: () -> Unit, onOpenSource: (String) -> Unit, onOpenMap: (NoticeVenue) -> Unit, onAddToCalendar: (CalendarDraft) -> Unit,
-    busy: io.fixabley.dearby.shared.ui.BusyDisplayState? = null,
+    busyMessage: String? = null,
     overlays: Map<Int, io.fixabley.dearby.shared.ui.BusyOverlayState> = emptyMap(),
-    onBusyToggle: (Boolean) -> Unit = {}, onBusyContinue: () -> Unit = {}, onBusySettings: () -> Unit = {},
-    onBusyRetry: () -> Unit = {}, onBusyDate: (Int, java.time.LocalDate) -> Unit = { _, _ -> }) {
-    if (busy?.consent == true) CalendarConsentDialog(onBusyContinue, { onBusyToggle(false) })
+    onBusyDate: (Int, java.time.LocalDate) -> Unit = { _, _ -> }) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -43,7 +41,7 @@ internal fun NoticeDetailSheet(notice: NoticeDetailState, onDismiss: () -> Unit,
             item { Text(notice.title, style = MaterialTheme.typography.headlineSmall) }
             item { Text(notice.aiDescription) }
             item { NoticeIdentity(notice) }
-            busy?.let { item { io.fixabley.dearby.shared.ui.BusyCalendarControl(it, onBusyToggle, onBusySettings, onBusyRetry) } }
+            busyMessage?.let { item { Text(it, style = MaterialTheme.typography.bodySmall) } }
             item { HorizontalDivider() }
             item { InformationRow("참여 대상", notice.targetUser) }
             item { InformationRow("참여 조건", notice.participationCondition) }

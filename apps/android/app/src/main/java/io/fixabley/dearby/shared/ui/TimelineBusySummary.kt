@@ -15,10 +15,10 @@ import io.fixabley.dearby.shared.ui.theme.Spacing
 @Composable
 internal fun TimelineBusySummary(block: BusyPlotBlock, overlaps: Boolean) {
     Row(Modifier.fillMaxWidth().clearAndSetSemantics {
-        contentDescription = block.description + if (overlaps) ". 활동과 겹치는 시간" else ". 활동과 겹치지 않음"
+        contentDescription = if (overlaps) block.overlapDescription.orEmpty() else block.description + ". 활동과 겹치지 않음"
     }, horizontalArrangement = Arrangement.spacedBy(Spacing.small), verticalAlignment = Alignment.Top) {
         if (overlaps) Icon(painterResource(R.drawable.ic_warning), null,
             Modifier.size(20.dp).testTag("busy.summary.warning"), tint = MaterialTheme.colorScheme.error)
-        Text("바쁜 시간 · ${block.timeText}", style = MaterialTheme.typography.bodySmall)
+        Text(if (overlaps) "겹치는 시간 · ${block.overlapTimeText}" else "바쁜 시간 · ${block.timeText}", style = MaterialTheme.typography.bodySmall)
     }
 }

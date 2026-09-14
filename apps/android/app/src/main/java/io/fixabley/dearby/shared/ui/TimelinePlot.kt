@@ -75,7 +75,7 @@ internal fun TimelinePlot(day: DayTimelineState, title: String, busy: List<BusyP
                 }
                 busy.forEach { block ->
                     if (block.overlapStartMinute != null && block.overlapEndMinute != null) {
-                        TimelineIntersectionOutline(block.description,
+                        TimelineIntersectionOutline(block.overlapDescription.orEmpty(),
                             Modifier.offset(x = gutter, y = hour * (block.overlapStartMinute / 60f)).width(width)
                                 .height(hour * ((block.overlapEndMinute - block.overlapStartMinute) / 60f)))
                     }

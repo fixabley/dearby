@@ -26,4 +26,11 @@ class TimelineIntersectionTest {
         assertEquals(listOf(BusyInterval(at(0), at(7200))), union)
         assertEquals(BusyInterval(at(0), at(3600)), timelineIntersection(union.single(), BusyInterval(at(-1), at(3600))))
     }
+    @Test fun overlapSummaryFormatsOnlyThreeToFourNotBusyThreeToFive() {
+        val zone = java.time.ZoneId.of("Asia/Seoul")
+        fun time(hour: Int) = java.time.LocalDate.of(2026, 9, 15).atTime(hour, 0).atZone(zone).toInstant()
+        val shared = timelineIntersection(BusyInterval(time(14), time(16)), BusyInterval(time(15), time(17)))!!
+        assertEquals("오후 3시부터 오후 4시까지", timelineIntersectionText(shared, zone, time(0).plusSeconds(86400)))
+    }
+
 }

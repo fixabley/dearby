@@ -1,6 +1,6 @@
 # 기기 바쁜 시간 · #10
 
-PR9의 시간축 위에 읽기 전용 기능을 쌓는다. `BusyProvider`는 익명 `BusyInterval`만 반환하고 `BusySession`은 상세 수명의 동의·권한·조회·취소를 소유한다. Shared/UI는 범용 구간 연산 및 표시값만 제공한다. 신청 기간은 조회/비교에 등록하지 않는다.
+PR9의 시간축 위에 읽기 전용 기능을 쌓는다. `BusyProvider`는 익명 `BusyInterval`만 반환하고 `BusySession`은 상세 수명의 조회·취소를 소유하고 App의 CalendarSettingsController가 영속 선택/최초 안내/권한 요청을 조율한다. Shared/UI는 범용 구간 연산 및 표시값만 제공한다. 신청 기간은 조회/비교에 등록하지 않는다.
 
 Android `CalendarContract.Instances`는 선택일 범위의 반복 occurrence를 전개한다. 숫자 BEGIN/END/ALL_DAY/AVAILABILITY/STATUS/SELF_ATTENDEE_STATUS만 projection하고 제목·장소·메모·주최자 문자열은 읽지 않는다. 명시적 free/canceled/declined만 제외하며 NULL/unknown 및 tentative는 busy로 유지한다. 권한 거절/오류는 빈 결과와 별도 상태다.
 
@@ -16,13 +16,12 @@ ALL_DAY의 UTC midnight는 floating 날짜다. 별도 UTC-date query 후 기기 
 
 ## 상세 표시 API / native mapping
 
-- App `NoticeDetailRoute`가 단일 BusySession, OS RequestPermission launcher, ON_RESUME/ON_STOP/종료를 조립한다. 기본 OFF이며 동의 Continue에서만 READ_CALENDAR를 요청한다. 이미 허용되었다면 즉시 켜고, OFF는 OS 권한을 철회하지 않고 조회/인메모리 결과를 제거한다.
-- Page `NoticeDetailSheet`는 BusyDisplayState, phase별 BusyOverlayState, toggle/continue/settings/retry/date 콜백을 받는다. `NoticeScheduleSection`만 활동의 LocalDate를 전달한다. 신청 DayTimeline에는 busy나 조회 콜백을 전달하지 않는다.
-- Shared `BusyCalendarControl`은 native M3 Switch/TextButton, `CalendarConsentDialog`는 page의 M3 AlertDialog다. 권한/OS query는 Shared/Page에 없다.
+- App `CalendarSettingsController`/`CalendarSettingsHost`가 최초 실행 안내, 명시적인 READ_CALENDAR 요청, 별도 boolean 영속 설정과 lifecycle을 조립한다. 상단 gear→Pages/Settings의 ‘겹치는 일정 확인하기’ Switch에서 변경한다. [상세 소유권/키/검증](SETTINGS.md).
+- Page `NoticeDetailSheet`는 결과 문구, phase별 BusyOverlayState, 날짜 콜백만 받는다. 동의/스위치는 상세에 없다. `NoticeScheduleSection`만 활동 LocalDate를 App으로 전달하고 신청 시간축은 연결하지 않는다.
 - `DayTimeline(interval, title, busy, onDate)`는 선택 날짜가 결과 window와 다르면 이전 결과를 숨긴다. 시간 gutter는 눈금만 표시하며 본문에 Primary 활동과 반투명 tertiaryContainer 바쁜 시간 블록을 겹친다.
 - `timelineIntersection`은 원본 Instant의 반열린 교집합을 계산한다. `TimelineIntersectionOutline`은 교집합 높이에만 Canvas dashed stroke를 clip하고, 최소 시각 높이를 계산에 사용하지 않는다. 경고 아이콘도 실제 양의 길이 교집합에만 붙는다.
 - `TimelineBusyBlock`은 제목 없는 바쁜 시간/한국어 시각을 표시한다. 활동 제목과 시각은 native Primary/onPrimary로 보호하고 측정된 제목 높이 이후의 빈 공간에 busy 문구를 배치한다. 공간이 없는 짧은 구간은 아래 `TimelineBusySummary` 및 AX로 정확한 정보를 제공한다. busy끼리 union 계약은 유지한다.
-- `TimelineLegend`는 활동/내 일정 배색을 설명한다. OFF는 본문 busy·점선·경고를 함께 제거한다. [상세 날짜/시간](DATE-PRESENTATION.md)은 날짜/요일 다음 줄 시간 구조를 유지하고 한국 시간 중복 라벨만 생략한다.
+- `TimelineBusySummary`의 겹치는 시간은 점선과 같은 실제 교집합만 포맷한다(활동14–16/개인15–17 → 오후3시부터오후4시까지). 개인 전체 시간은 블록의 바쁜 시간 라벨과 AX로 구분한다. `TimelineLegend`는 활동/내 일정 배색을 설명한다. OFF는 본문 busy·점선·경고를 함께 제거한다. [상세 날짜/시간](DATE-PRESENTATION.md)은 날짜/요일 다음 줄 시간 구조를 유지하고 한국 시간 중복 라벨만 생략한다.
 
 Compose M3에는 읽기 전용 하루 시간축이 없어 기존의 좁은 custom plot에 배색 오버레이와 정확한 교집합 점선을 추가했다. native colors/typography/shapes/icons를 유지하고 SDK/라이브러리를 추가·업그레이드하지 않았다. [Google Material warning 원본](https://github.com/google/material-design-icons/blob/master/src/alert/warning/materialicons/24px.svg), [runtime permission 안내](https://developer.android.com/training/permissions/requesting), [정책에 의한 권한 제한 확인](https://developer.android.com/reference/android/content/pm/PackageManager#isPermissionRevokedByPolicy(java.lang.String,%20java.lang.String))을 참고했다.
 

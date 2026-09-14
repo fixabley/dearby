@@ -195,6 +195,8 @@ NoticeDetail의 DetailPeriodState/DetailPlaceState 순수 projection이 날짜/�
 
 ## Calendar busy (#10, PR9 의존)
 
-`features/calendarbusy/api`의 BusyProvider/AndroidBusyProvider와 BusySession은 읽기 권한 및 상세 수명의 익명 시간 구간을 소유한다. OS Instances 조회는 IO/CancellationSignal, 결과는 인메모리만이며 generation/revision으로 취소 후 stale publish를 막는다. 순수 BusyOccurrence는 floating 종일 날짜를 기기 시간대 자정으로 해석한다. Shared BusyInterval은 반열린 구간 clip/merge/overlap만 제공한다. OS 계약과 검증은 [calendar-busy](docs/calendar-busy/README.md)를 따른다.
+`features/calendarbusy/api`의 BusyProvider/AndroidBusyProvider와 BusySession은 권한 확인 및 상세 수명의 익명 시간 구간을 소유한다. OS Instances 조회는 IO/CancellationSignal, 결과는 인메모리만이며 generation/revision으로 취소 후 stale publish를 막는다. 순수 BusyOccurrence는 floating 종일 날짜를 기기 시간대 자정으로 해석한다. Shared BusyInterval은 반열린 구간 clip/merge/overlap만 제공한다. OS 계약과 검증은 [calendar-busy](docs/calendar-busy/README.md)를 따른다.
 
-App NoticeDetailRoute가 OS permission launcher/lifecycle과 BusySession을 조립하고 Page에는 BusyDisplayState/BusyOverlayState와 콜백만 전달한다. Shared DayTimeline의 선택 LocalDate→App→BusyQuery 흐름이며 신청 시간축은 연결하지 않는다. busy는 시간축 본문에서 Primary 활동과 semantic tertiary 배색으로 겹치며, 원본 Instant 교집합 구간만 별도 Canvas 점선으로 표시한다. 시간 gutter는 눈금만 담당하고 활동 제목/시각은 배색 오버레이 위에서 보호한다. 스위치 상태는 상세 세션 하나에만 있으며 영속 저장하지 않는다.
+App CalendarSettingsController/CalendarSettingsHost가 최초 실행 안내·OS permission launcher와 영속 boolean 선택을 소유한다. Pages/Settings는 SettingsState와 콜백만 받아 native sheet/ListItem/Switch를 표시하며 기존 상단 gear로 연다. 별도 SharedPreferencesCalendarSettingsStore는 enabled/firstPromptHandled 두 boolean만 저장한다. 상세에는 동의/스위치가 없고 전역 선택이 유효할 때 NoticeDetailRoute→BusySession으로 선택 날짜 조회를 조율한다. OFF/종료/배경에서는 결과와 query만 정리하고 영속 선택과 분리한다.
+
+Shared DayTimeline은 LocalDate/범용 구간만 받는다. 본문 Primary 활동과 반투명 tertiary busy를 겹치며 원본 Instant 교집합에만 Canvas 점선과 같은 범위의 겹침 문구를 표시한다. 시간 gutter는 눈금만 담당하고 활동 제목/시각은 오버레이 위에서 보호한다. 카드/캐시/즐겨찾기/원본URL메모/지도/캘린더 export는 변경하지 않는다.

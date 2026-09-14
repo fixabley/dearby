@@ -34,6 +34,7 @@ class BusyTimelineDisplayTest {
         assertEquals(blocks[0].boundsInRoot.width, blocks[1].boundsInRoot.width, 1f)
         assertEquals(rule.onNodeWithTag("timeline.block").fetchSemanticsNode().boundsInRoot.width, blocks[0].boundsInRoot.width, 1f)
         rule.onAllNodesWithTag("timeline.intersection").assertCountEquals(1)
+        rule.onNodeWithTag("timeline.intersection").assertContentDescriptionContains("오전 9시부터 오전 9시 45분까지", substring = true)
         val dashed = rule.onNodeWithTag("timeline.intersection").fetchSemanticsNode().boundsInRoot
         assertTrue(dashed.top > blocks[0].boundsInRoot.top)
         assertEquals(blocks[0].boundsInRoot.bottom, dashed.bottom, 1f)

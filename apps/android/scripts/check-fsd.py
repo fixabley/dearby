@@ -10,6 +10,7 @@ LAYERS = {name: i for i, name in enumerate(("app", "pages", "widgets", "features
 # Native slice entry points; kept in sync with ARCHITECTURE.md, not barrel files.
 API = {
     "pages.discovery": {"ui.DiscoveryScreen"},
+    "pages.settings": {"ui.SettingsSheet", "ui.CalendarWelcomeDialog", "model.SettingsState"},
     "pages.favorites": {"ui.FavoritesScreen"},
     "pages.noticedetail": {"ui.NoticeDetailSheet", "model.NoticeDetailViewModel", "model.NoticeDetailState"},
     "widgets.notice.noticecard": {"NoticeCard", "NoticeCardState", "NoticeCardViewModel"},
