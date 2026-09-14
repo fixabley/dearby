@@ -2,9 +2,9 @@ package io.fixabley.dearby
 
 import android.content.Context
 import androidx.test.platform.app.InstrumentationRegistry
-import io.fixabley.dearby.core.data.AssetCatalogProvider
-import io.fixabley.dearby.core.data.SharedPreferencesFavoriteStore
-import io.fixabley.dearby.core.state.FavoritesState
+import io.fixabley.dearby.entities.activitycatalog.api.AssetCatalogProvider
+import io.fixabley.dearby.features.favoriteorganization.api.SharedPreferencesFavoriteStore
+import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
 import org.junit.Assert.*
 import org.junit.Test
 

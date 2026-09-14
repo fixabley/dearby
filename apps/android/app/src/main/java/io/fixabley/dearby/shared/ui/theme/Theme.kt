@@ -1,4 +1,4 @@
-package io.fixabley.dearby.ui.theme
+package io.fixabley.dearby.shared.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme

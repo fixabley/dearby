@@ -9,8 +9,8 @@ import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
-import io.fixabley.dearby.core.model.ActivityCatalog
-import io.fixabley.dearby.core.model.Notice
+import io.fixabley.dearby.entities.activitycatalog.model.ActivityCatalog
+import io.fixabley.dearby.entities.activitycatalog.model.Notice
 
 @Composable
 internal fun DiscoveryScreen(catalog: ActivityCatalog, favoriteIds: Set<String>, onSave: (String) -> Unit, showDetail: (Notice) -> Unit) {

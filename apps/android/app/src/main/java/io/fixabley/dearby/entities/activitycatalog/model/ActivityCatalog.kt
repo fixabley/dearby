@@ -1,7 +1,7 @@
-package io.fixabley.dearby.core.model
+package io.fixabley.dearby.entities.activitycatalog.model
 
-data class Organization(val id: String, val name: String, val parentOrganizationId: String?)
-data class NoticeContext(val organizationId: String, val role: String) {
+internal data class Organization(val id: String, val name: String, val parentOrganizationId: String?)
+internal data class NoticeContext(val organizationId: String, val role: String) {
     val label: String get() = when (role) {
         "venue_institution" -> "개최 기관"
         "audience_institution" -> "참여 대상 기관"
@@ -10,7 +10,7 @@ data class NoticeContext(val organizationId: String, val role: String) {
     }
 }
 
-data class Notice(
+internal data class Notice(
     val id: String,
     val title: String,
     val summary: String,
@@ -35,7 +35,7 @@ data class Notice(
     }
 }
 
-data class ActivityCatalog(
+data internal class ActivityCatalog(
     val snapshotDate: String,
     val organizations: List<Organization>,
     val feed: List<Notice>,

@@ -1,12 +1,12 @@
-package io.fixabley.dearby.core.state
+package io.fixabley.dearby.features.favoriteorganization.model
 
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import io.fixabley.dearby.core.data.FavoriteStore
+import io.fixabley.dearby.features.favoriteorganization.api.FavoriteStore
 
 /** One root-owned state, observed by Compose and changed on the UI thread. */
-class FavoritesState(private val store: FavoriteStore) {
+internal class FavoritesState(private val store: FavoriteStore) {
     var ids: Set<String> by mutableStateOf(store.read().toSet())
         private set
 

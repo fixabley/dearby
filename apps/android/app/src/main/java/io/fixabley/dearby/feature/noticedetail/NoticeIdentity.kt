@@ -6,9 +6,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.testTag
-import io.fixabley.dearby.core.model.ActivityCatalog
-import io.fixabley.dearby.core.model.Notice
-import io.fixabley.dearby.core.ui.NoticeFact
+import io.fixabley.dearby.entities.activitycatalog.model.ActivityCatalog
+import io.fixabley.dearby.entities.activitycatalog.model.Notice
+import io.fixabley.dearby.shared.ui.NoticeFact
 
 @Composable
 internal fun NoticeIdentity(notice: Notice, catalog: ActivityCatalog) {

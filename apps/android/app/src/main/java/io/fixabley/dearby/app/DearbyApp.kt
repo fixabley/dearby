@@ -10,9 +10,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import io.fixabley.dearby.R
-import io.fixabley.dearby.core.model.Notice
-import io.fixabley.dearby.core.data.CatalogProvider
-import io.fixabley.dearby.core.state.FavoritesState
+import io.fixabley.dearby.entities.activitycatalog.model.Notice
+import io.fixabley.dearby.entities.activitycatalog.api.CatalogProvider
+import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
 import io.fixabley.dearby.feature.discovery.DiscoveryScreen
 import io.fixabley.dearby.feature.favorites.FavoritesScreen
 import io.fixabley.dearby.feature.noticedetail.NoticeDetailSheet

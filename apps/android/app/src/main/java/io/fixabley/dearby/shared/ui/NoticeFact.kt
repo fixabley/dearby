@@ -1,4 +1,4 @@
-package io.fixabley.dearby.core.ui
+package io.fixabley.dearby.shared.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*

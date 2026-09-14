@@ -1,9 +1,9 @@
-package io.fixabley.dearby.core.data
+package io.fixabley.dearby.features.favoriteorganization.api
 
 import android.content.SharedPreferences
 
 /** Keeps the existing file, string-set key and asynchronous disk write format. */
-class SharedPreferencesFavoriteStore(private val preferences: SharedPreferences) : FavoriteStore {
+internal class SharedPreferencesFavoriteStore(private val preferences: SharedPreferences) : FavoriteStore {
     override fun read(): Set<String> = preferences.getStringSet(IDS_KEY, emptySet())!!.toSet()
 
     override fun write(ids: Set<String>) {

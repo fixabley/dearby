@@ -8,10 +8,10 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import io.fixabley.dearby.app.DearbyApp
-import io.fixabley.dearby.core.data.AssetCatalogProvider
-import io.fixabley.dearby.core.data.SharedPreferencesFavoriteStore
-import io.fixabley.dearby.core.state.FavoritesState
-import io.fixabley.dearby.ui.theme.DearbyTheme
+import io.fixabley.dearby.entities.activitycatalog.api.AssetCatalogProvider
+import io.fixabley.dearby.features.favoriteorganization.api.SharedPreferencesFavoriteStore
+import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
+import io.fixabley.dearby.shared.ui.theme.DearbyTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

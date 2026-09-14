@@ -8,9 +8,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.platform.testTag
-import io.fixabley.dearby.core.model.ActivityCatalog
-import io.fixabley.dearby.core.model.Notice
-import io.fixabley.dearby.core.ui.NoticeFact
+import io.fixabley.dearby.entities.activitycatalog.model.ActivityCatalog
+import io.fixabley.dearby.entities.activitycatalog.model.Notice
+import io.fixabley.dearby.shared.ui.NoticeFact
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

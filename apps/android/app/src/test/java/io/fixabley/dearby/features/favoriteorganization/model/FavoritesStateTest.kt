@@ -1,8 +1,8 @@
-package io.fixabley.dearby.core.state
+package io.fixabley.dearby.features.favoriteorganization.model
 
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.snapshots.SnapshotStateObserver
-import io.fixabley.dearby.core.data.FavoriteStore
+import io.fixabley.dearby.features.favoriteorganization.api.FavoriteStore
 import org.junit.Assert.*
 import org.junit.Test
 

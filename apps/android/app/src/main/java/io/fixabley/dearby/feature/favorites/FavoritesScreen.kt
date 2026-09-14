@@ -9,8 +9,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
-import io.fixabley.dearby.core.model.ActivityCatalog
-import io.fixabley.dearby.core.model.Notice
+import io.fixabley.dearby.entities.activitycatalog.model.ActivityCatalog
+import io.fixabley.dearby.entities.activitycatalog.model.Notice
 
 @Composable
 internal fun FavoritesScreen(catalog: ActivityCatalog, favoriteIds: Set<String>, onRemove: (String) -> Unit, showDetail: (Notice) -> Unit) {

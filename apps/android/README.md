@@ -48,10 +48,12 @@ JVM 단위 테스트는 앱 실행 없이 임시 저장소로 즐겨찾기 추�
 ## 구조
 
 - `app/src/main/java/io/fixabley/dearby/MainActivity.kt`: 앱 진입점
-- `app/src/main/java/io/fixabley/dearby/ui/theme/Theme.kt`: 라이트·다크 테마
+- `app/src/main/java/io/fixabley/dearby/shared/ui/theme/Theme.kt`: 라이트·다크 테마
 - `app/src/main/java/io/fixabley/dearby/app/`: 루트 화면 조합과 상태 전달
 - `app/src/main/java/io/fixabley/dearby/feature/`: discovery·favorites·noticedetail 화면과 기능별 UI
-- `app/src/main/java/io/fixabley/dearby/core/`: 순수 모델·즐겨찾기 상태·공급/저장 인터페이스·실제 로컬 구현·공통 UI
+- `app/src/main/java/io/fixabley/dearby/entities/activitycatalog/`: 응집된 카탈로그 모델과 공급 경계
+- `app/src/main/java/io/fixabley/dearby/features/favoriteorganization/`: 즐겨찾기 행동·관찰 상태·저장 경계
+- `app/src/main/java/io/fixabley/dearby/shared/ui/`: 범용 표시와 테마
 - `app/src/test/`: 앱 없는 JVM 상태 테스트
 - `app/src/androidTest/`: Compose 흐름과 실제 로컬 데이터 계측 테스트
 - `app/src/main/assets/activity-samples.json`: 공통 기준 파일에서 복사한 샘플

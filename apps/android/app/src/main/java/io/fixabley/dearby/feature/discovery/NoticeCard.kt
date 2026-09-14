@@ -13,9 +13,9 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import io.fixabley.dearby.core.model.Notice
-import io.fixabley.dearby.core.model.Organization
-import io.fixabley.dearby.core.ui.NoticeFact
+import io.fixabley.dearby.entities.activitycatalog.model.Notice
+import io.fixabley.dearby.entities.activitycatalog.model.Organization
+import io.fixabley.dearby.shared.ui.NoticeFact
 
 @Composable
 internal fun NoticeCard(

@@ -1,11 +1,11 @@
-package io.fixabley.dearby.core.data
+package io.fixabley.dearby.entities.activitycatalog.api
 
 import android.content.res.AssetManager
-import io.fixabley.dearby.core.model.*
+import io.fixabley.dearby.entities.activitycatalog.model.*
 import org.json.JSONArray
 import org.json.JSONObject
 
-class AssetCatalogProvider(private val assets: AssetManager) : CatalogProvider {
+internal class AssetCatalogProvider(private val assets: AssetManager) : CatalogProvider {
     override fun load(): ActivityCatalog {
         val raw = assets.open("activity-samples.json").bufferedReader().use { it.readText() }
         val root = JSONObject(raw)
