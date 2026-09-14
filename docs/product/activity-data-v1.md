@@ -5,7 +5,7 @@
 
 ## 핵심 모델
 
-`Organization(조직)`과 `Activity(개별 공고)`는 별도 식별자를 가진다.
+`Organization(조직)`과 `Notice(개별 공고)`는 별도 식별자를 가진다.
 SW마에스트로 13기 공고를 저장하면 SW마에스트로 조직이 남는다는 사용자 정의를 따른다.
 제목이나 URL만으로 조직을 합치지 않고 검토한 ID를 사용한다.
 
@@ -235,8 +235,8 @@ iOS는 EventKitUI 편집기, Android는 CalendarContract ACTION_INSERT 편집 �
 
 ## 상세 조회 모델과 조직 저장·캐시 (2026-09-14)
 
-상세 화면은 `ActivityDetail`과 사용자 동작 콜백을 받는다. 화면이 카탈로그나 저장소를 받아 조직·출처를 직접 조회하지 않는다.
-`ActivityDetail`은 해당 공고의 제목, 요약 설명, 대상·참여 조건, 신청 정보, 단계별 일정·장소, 혜택·확인 사항, 출처와 원문 근거를 포함하는 조회 결과다.
+상세 화면은 `NoticeDetail`과 사용자 동작 콜백을 받는다. 화면이 카탈로그나 저장소를 받아 조직·출처를 직접 조회하지 않는다.
+`NoticeDetail`은 해당 공고의 제목, 요약 설명, 대상·참여 조건, 신청 정보, 단계별 일정·장소, 혜택·확인 사항, 출처와 원문 근거를 포함하는 조회 결과다.
 기존 샘플의 summary는 검토해 작성한 요약이며 `aiDescription`에 대응시키더라도 새 AI 생성 결과라고 표시하지 않는다.
 정확한 필드·플랫폼 타입과 파일 배치는 각 앱의 `ARCHITECTURE.md`에 기록한다.
 
@@ -277,3 +277,9 @@ App이 공급한 카탈로그 스냅샷에 맞춰 저장소·캐시의 수명을
 
 플랫폼 검증은 캐시 miss/hit의 원본 조회 횟수, 상세 재진입 시 재사용, 공유 부모·미확인 ID·순환,
 동일 ID의 이름/부모 변경 후 캐시 무효화, 원문 근거의 보존 및 기존 상세·지도·캘린더 동작을 포함한다.
+
+
+## 공고 도메인 이름
+
+두 앱에서 개별 공고는 `Notice`, 상세 조회 결과는 `NoticeDetail`, 공고 모음은 `NoticeCatalog`로 부른다. 카드 컴포넌트와 FSD 슬라이스도 `NoticeCard`, `NoticeCatalog`로 맞춘다. 여기서 별도 Activity 엔티티를 모델링한 것은 아니다.
+기존 공통 JSON의 `activities` 키, `shared/contracts/activities/` 경로, 번들 `activity-samples.json`은 호환성을 위한 전송 규격 이름이다. 앱 내부 이름과 디코딩 경계에서 연결하고 기존 파일·키·공고 ID·즐겨찾기 저장값을 바꾸지 않는다. Android 프레임워크의 Activity/MainActivity는 앱 화면의 실행 단위이며 공고 도메인 이름이 아니다.
