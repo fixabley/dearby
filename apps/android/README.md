@@ -53,8 +53,8 @@ JVM 단위 테스트는 앱 실행 없이 임시 저장소로 즐겨찾기 추�
 - `app/`, `app/data/`: 앱 조립·라우팅·OS 어댑터·번들 transport
 - `pages/discovery/ui/`, `pages/favorites/ui/`: State 목록 표시
 - `pages/noticedetail/model/`, `ui/`: NoticeDetailViewModel → NoticeDetailState → 상세 시트
-- `widgets/noticecard/model/`, `ui/`: NoticeCardViewModel → NoticeCardState → 카드
-- `widgets/favoriteorganizationcard/model/`, `ui/`: 조직 카드의 표시 조합과 삭제 콜백
+- `widgets/notice/noticecard/`, `ui/`: NoticeCardViewModel → NoticeCardState → 카드
+- `widgets/organization/favoriteorganizationcard/`, `ui/`: 조직 카드의 표시 조합과 삭제 콜백
 - `entities/notice/`, `entities/organization/`: 독립 model/api, 서로 참조하지 않음
 - `features/favoriteorganization/`, `features/addtocalendar/`: 공유 저장 상태·순수 캘린더 초안
 - `shared/ui/`: 범용 표시·테마
@@ -80,3 +80,6 @@ JVM 단위 테스트는 앱 실행 없이 임시 저장소로 즐겨찾기 추�
 ## Shared 버튼과 카드 조합
 
 shared/ui/buttons의 PrimaryButton/SecondaryButton은 content slot·onClick·modifier만 받는 Material3 Button/OutlinedButton이다. 도메인 문구는 widget의 NoticeCardSaveButton이 조합하고 saved/조직명/저장 callback/태그는 호출자가 소유한다. 카드 상세 열기는 SecondaryButton으로 맞췄고 제목 Text는 inline으로 유지했다. Material Icons가 현재 compile classpath에 없어 아이콘용 의존성을 추가하지 않았다. NoticeFact는 카드와 상세 여러 섹션에서 재사용하므로 Shared에 유지한다.
+
+
+Widget은 widgets/notice/noticecard와 widgets/organization/favoriteorganizationcard에서 Composable·State·ViewModel을 같은 폴더에 둔다(ui/model 하위 폴더 없음). domain 그룹은 다른 widget 참조의 예외가 아니며 slice identity는 domain+widget이다. 구조 검사는 flat 파일의 @Composable을 찾아 raw Model/VM/저장소/OS 접근을 제한하고 비렌더링 ViewModel의 하위 의존을 허용한다. 같은 domain의 다른 widget 금지 fixture도 포함한다.

@@ -1,4 +1,4 @@
-package io.fixabley.dearby.widgets.favoriteorganizationcard
+package io.fixabley.dearby.widgets.organization.favoriteorganizationcard
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -9,7 +9,7 @@ import io.fixabley.dearby.app.NoticeSession
 import io.fixabley.dearby.app.data.NoticeSnapshotReader
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
 import io.fixabley.dearby.features.favoriteorganization.api.FavoriteStore
-import io.fixabley.dearby.widgets.favoriteorganizationcard.ui.FavoriteOrganizationCard
+import io.fixabley.dearby.widgets.organization.favoriteorganizationcard.FavoriteOrganizationCard
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test

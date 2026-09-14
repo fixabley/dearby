@@ -32,14 +32,15 @@ pages/
     ui/VenueMapButton.kt                장소별 지도 액션
     ui/AddToCalendarButton.kt           캘린더 초안 액션
 widgets/
-  noticecard/
-    model/NoticeCardViewModel.kt        ID 조회·표시 조합·저장 행동
-    model/NoticeCardState.kt            카드 표시값·saved
-    ui/NoticeCard.kt                    State·위치·콜백
-  favoriteorganizationcard/
-    model/FavoriteOrganizationCardViewModel.kt
-    model/FavoriteOrganizationCardState.kt  조직·상위 이름·연결 공고 행
-    ui/FavoriteOrganizationCard.kt      State·삭제/상세 콜백
+  notice/noticecard/
+    NoticeCard.kt                       State·위치·콜백
+    NoticeCardSaveButton.kt             저장 문구와 PrimaryButton 조합
+    NoticeCardState.kt                  불변 표시값
+    NoticeCardViewModel.kt              공고/조직/즐겨찾기 조합
+  organization/favoriteorganizationcard/
+    FavoriteOrganizationCard.kt         State·삭제/상세 콜백
+    FavoriteOrganizationCardState.kt    표시값과 연결 공고 행
+    FavoriteOrganizationCardViewModel.kt
 features/
   favoriteorganization/
     model/FavoritesState.kt             단일 관찰 ID 집합
@@ -68,6 +69,8 @@ entities/
     api/OrganizationSource.kt           주입 계약·인메모리 원본
     api/OrganizationRepository.kt       독립 cache-aside·순환 안전 경로
 shared/ui/
+  buttons/PrimaryButton.kt              Material3 Button content slot
+  buttons/SecondaryButton.kt            Material3 OutlinedButton content slot
   NoticeFact.kt                         범용 제목/값
   theme/Theme.kt                        기존 Material 3 테마
 ```
@@ -80,8 +83,8 @@ shared/ui/
 | --- | --- |
 | Pages/discovery, favorites | 각 `ui.*Screen` |
 | Pages/noticedetail | `model.NoticeDetailViewModel`, `model.NoticeDetailState`, `ui.NoticeDetailSheet` |
-| Widgets/noticecard | `model.NoticeCardViewModel`, `model.NoticeCardState`, `ui.NoticeCard` |
-| Widgets/favoriteorganizationcard | `model.FavoriteOrganizationCardViewModel`, `model.FavoriteOrganizationCardState`, `model.FavoriteNoticeState`, `ui.FavoriteOrganizationCard` |
+| Widgets/notice/noticecard | `NoticeCardViewModel`, `NoticeCardState`, `NoticeCard` |
+| Widgets/organization/favoriteorganizationcard | `FavoriteOrganizationCardViewModel`, `FavoriteOrganizationCardState`, `FavoriteNoticeState`, `FavoriteOrganizationCard` |
 | Features/favoriteorganization | `model.FavoritesState`, `api.FavoriteStore`, `api.SharedPreferencesFavoriteStore` |
 | Features/addtocalendar | `model.CalendarDraft`, `applicationCalendarDraft`, `phaseCalendarDraft` |
 | Entities/notice | `NoticeModel`, `NoticeContext`, 신청/기간/장소/좌표/출처/근거 모델, `api.NoticeSource`, `InMemoryNoticeSource`, `NoticeRepository`, `ui.NoticeClassification` |
@@ -150,3 +153,8 @@ ANDROID_SERIAL=emulator-5556 JAVA_HOME='/Applications/Android Studio.app/Content
 shared/ui/buttons의 PrimaryButton/SecondaryButton은 content slot·onClick·modifier만 받는 Material3 Button/OutlinedButton이다. 도메인 문구는 widget의 NoticeCardSaveButton이 조합하고 saved/조직명/저장 callback/태그는 호출자가 소유한다. 카드 상세 열기는 SecondaryButton으로 맞췄고 제목 Text는 inline으로 유지했다. Material Icons가 현재 compile classpath에 없어 아이콘용 의존성을 추가하지 않았다. NoticeFact는 카드와 상세 여러 섹션에서 재사용하므로 Shared에 유지한다.
 
 버튼 조합 단계: JVM30·Debug·계측 APK 컴파일·구조52파일/self-test21 통과(`build/design-buttons.log`). 기존 카드 회귀에 재구성 후 최신 저장 callback 검증을 반영했으며 이 단계에서는 기기 실행 없이 컴파일했다.
+
+
+Widget은 widgets/notice/noticecard와 widgets/organization/favoriteorganizationcard에서 Composable·State·ViewModel을 같은 폴더에 둔다(ui/model 하위 폴더 없음). domain 그룹은 다른 widget 참조의 예외가 아니며 slice identity는 domain+widget이다. 구조 검사는 flat 파일의 @Composable을 찾아 raw Model/VM/저장소/OS 접근을 제한하고 비렌더링 ViewModel의 하위 의존을 허용한다. 같은 domain의 다른 widget 금지 fixture도 포함한다.
+
+Widget 배치 단계: JVM30·Debug·계측 APK·Lint 오류0/경고12·구조52파일/self-test24(금지18/허용6) 통과(`build/widget-domains.log`). 기기는 이 단계에서 실행하지 않았다.

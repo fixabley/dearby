@@ -1,4 +1,4 @@
-package io.fixabley.dearby.widgets.noticecard
+package io.fixabley.dearby.widgets.notice.noticecard
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
@@ -10,7 +10,7 @@ import io.fixabley.dearby.app.NoticeSession
 import io.fixabley.dearby.app.data.NoticeSnapshotReader
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
 import io.fixabley.dearby.features.favoriteorganization.api.FavoriteStore
-import io.fixabley.dearby.widgets.noticecard.ui.NoticeCard
+import io.fixabley.dearby.widgets.notice.noticecard.NoticeCard
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test

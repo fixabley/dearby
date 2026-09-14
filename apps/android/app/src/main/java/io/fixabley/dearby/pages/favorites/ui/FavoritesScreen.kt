@@ -8,8 +8,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.Alignment
-import io.fixabley.dearby.widgets.favoriteorganizationcard.model.FavoriteOrganizationCardState
-import io.fixabley.dearby.widgets.favoriteorganizationcard.ui.FavoriteOrganizationCard
+import io.fixabley.dearby.widgets.organization.favoriteorganizationcard.FavoriteOrganizationCardState
+import io.fixabley.dearby.widgets.organization.favoriteorganizationcard.FavoriteOrganizationCard
 
 @Composable
 internal fun FavoritesScreen(organizations: List<FavoriteOrganizationCardState>, onRemove: (String) -> Unit, showDetail: (String) -> Unit) {

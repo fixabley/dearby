@@ -12,8 +12,8 @@ API = {
     "pages.discovery": {"ui.DiscoveryScreen"},
     "pages.favorites": {"ui.FavoritesScreen"},
     "pages.noticedetail": {"ui.NoticeDetailSheet", "model.NoticeDetailViewModel", "model.NoticeDetailState"},
-    "widgets.noticecard": {"ui.NoticeCard", "model.NoticeCardState", "model.NoticeCardViewModel"},
-    "widgets.favoriteorganizationcard": {"ui.FavoriteOrganizationCard", "model.FavoriteOrganizationCardState", "model.FavoriteNoticeState", "model.FavoriteOrganizationCardViewModel"},
+    "widgets.notice.noticecard": {"NoticeCard", "NoticeCardState", "NoticeCardViewModel"},
+    "widgets.organization.favoriteorganizationcard": {"FavoriteOrganizationCard", "FavoriteOrganizationCardState", "FavoriteNoticeState", "FavoriteOrganizationCardViewModel"},
     "features.favoriteorganization": {
         "model.FavoritesState", "api.FavoriteStore", "api.SharedPreferencesFavoriteStore",
     },
@@ -30,7 +30,7 @@ def owner(name):
         return "app"
     if parts[0] in ("app", "shared"):
         return parts[0]
-    key = ".".join(parts[:2])
+    key = ".".join(parts[:3] if parts[0] == "widgets" else parts[:2])
     return key if key in API else None
 
 
@@ -47,6 +47,7 @@ def check_source(relative_path, text):
         return errors + ["unknown layer/slice"]
     layer = source.split(".")[0]
     code = re.sub(r"^package[^\n]*", "", code, flags=re.M)
+    rendering = layer in ("pages", "widgets") and bool(re.search(r"@(?:androidx\.compose\.runtime\.)?Composable\b", code))
     references = re.findall(r"\b" + re.escape(PREFIX) + r"\.([\w.*]+)", code)
     for ref in references:
         if ref.split(".")[0] in ("R", "BuildConfig"):
@@ -64,36 +65,40 @@ def check_source(relative_path, text):
             exports = [target + "." + entry for entry in API[target]]
             if not any(ref == entry or ref.startswith(entry + ".") for entry in exports):
                 errors.append(f"non-entry-point dependency: {ref}")
-        if layer in ("pages", "widgets") and "ui" in relative_path.parts and (
+        if rendering and (
             (target_layer == "features" and ref != "features.addtocalendar.model.CalendarDraft") or ".api." in ref
         ):
             errors.append(f"UI must receive values/callbacks, not state or data providers: {ref}")
-    if layer in ("pages", "widgets") and "ui" in relative_path.parts and any(ref in {"entities.notice.model.NoticeModel", "entities.organization.model.OrganizationModel"} for ref in references):
+    if rendering and any(ref in {"entities.notice.model.NoticeModel", "entities.organization.model.OrganizationModel"} for ref in references):
         errors.append("rendering UI must receive State, not raw domain models")
-    if layer in ("pages", "widgets") and "ui" in relative_path.parts and re.search(
-        r"\b(LocalContext|SharedPreferences|getSharedPreferences|AssetManager)\b", code
+    if rendering and re.search(
+        r"\b(LocalContext|SharedPreferences|getSharedPreferences|AssetManager|Intent|startActivity|[A-Za-z]+ViewModel|[A-Za-z]+Repository)\b", code
     ):
-        errors.append("UI directly accesses Android context/storage")
+        errors.append("rendering UI directly accesses ViewModel/repository or Android side effects")
     return errors
 
 
 def self_test():
+    API["widgets.notice.fixture"] = {"OtherCard"}
     cases = [
         ("pages/discovery/ui/Example.kt", "import io.fixabley.dearby.app.DearbyApp", False),
         ("pages/discovery/ui/Example.kt", "import io.fixabley.dearby.pages.noticedetail.ui.NoticeDetailSheet", False),
-        ("widgets/noticecard/ui/Example.kt", "import io.fixabley.dearby.widgets.favoriteorganizationcard.ui.FavoriteOrganizationCard", False),
+        ("widgets/notice/noticecard/Example.kt", "import io.fixabley.dearby.widgets.organization.favoriteorganizationcard.FavoriteOrganizationCard", False),
         ("entities/notice/model/Example.kt", "import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState", False),
-        ("widgets/noticecard/ui/Example.kt", "import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState as State", False),
-        ("widgets/noticecard/ui/Example.kt", "import android.content.SharedPreferences", False),
+        ("widgets/notice/noticecard/Example.kt", "import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState as State", False),
+        ("widgets/notice/noticecard/Example.kt", "import android.content.SharedPreferences", False),
         ("app/Example.kt", "import io.fixabley.dearby.pages.noticedetail.ui.NoticeIdentity", False),
         ("pages/discovery/ui/Example.kt", "fun bad() = io.fixabley.dearby.pages.favorites.ui.FavoritesScreen()", False),
         ("app/Example.kt", "import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState", True),
-        ("widgets/noticecard/ui/Example.kt", "import io.fixabley.dearby.entities.notice.ui.NoticeClassification", True),
+        ("widgets/notice/noticecard/Example.kt", "import io.fixabley.dearby.entities.notice.ui.NoticeClassification", True),
         ("entities/notice/model/Example.kt", "import io.fixabley.dearby.entities.organization.model.OrganizationModel", False),
         ("entities/organization/model/Example.kt", "import io.fixabley.dearby.entities.notice.model.NoticeModel", False),
         ("features/addtocalendar/model/Example.kt", "import io.fixabley.dearby.pages.noticedetail.model.NoticeDetailState", False),
-        ("widgets/noticecard/model/Example.kt", "import io.fixabley.dearby.entities.notice.api.NoticeRepository", True),
-        ("widgets/noticecard/ui/Example.kt", "import io.fixabley.dearby.entities.organization.model.OrganizationModel", False),
+        ("widgets/notice/noticecard/Example.kt", "import io.fixabley.dearby.entities.notice.api.NoticeRepository", True),
+        ("widgets/notice/noticecard/Example.kt", "import io.fixabley.dearby.entities.organization.model.OrganizationModel", False),
+        ("widgets/notice/noticecard/Example.kt", "import io.fixabley.dearby.widgets.notice.fixture.OtherCard", False),
+        ("widgets/notice/noticecard/Example.kt", "val model: NoticeCardViewModel? = null", False),
+        ("widgets/notice/noticecard/Example.kt", "import android.content.Intent", False),
         ("shared/ui/Example.kt", "import io.fixabley.dearby.shared.ui.theme.DearbyTheme", True),
         ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft", True),
         ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.features.addtocalendar.model.applicationCalendarDraft", False),
@@ -104,9 +109,12 @@ def self_test():
     for filename, snippet, allowed in cases:
         path = Path(filename)
         package = PREFIX + "." + ".".join(path.parts[:-1])
+        if filename.startswith(("pages/", "widgets/")) and not (allowed and "NoticeRepository" in snippet):
+            snippet += "\n@Composable fun Render() {}"
         errors = check_source(path, f"package {package}\n{snippet}\n")
         assert (not errors) == allowed, (filename, snippet, errors)
-    print(f"Boundary self-test: {len(cases)} cases passed (15 forbidden, 6 allowed)")
+    del API["widgets.notice.fixture"]
+    print(f"Boundary self-test: {len(cases)} cases passed (18 forbidden, 6 allowed)")
 
 
 if __name__ == "__main__":

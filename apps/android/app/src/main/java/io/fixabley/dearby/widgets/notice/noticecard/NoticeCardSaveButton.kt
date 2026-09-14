@@ -1,4 +1,4 @@
-package io.fixabley.dearby.widgets.noticecard.ui
+package io.fixabley.dearby.widgets.notice.noticecard
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable

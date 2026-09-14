@@ -1,11 +1,11 @@
-package io.fixabley.dearby.widgets.favoriteorganizationcard.model
+package io.fixabley.dearby.widgets.organization.favoriteorganizationcard
 
 import io.fixabley.dearby.entities.notice.api.*
 import io.fixabley.dearby.entities.organization.api.*
 import io.fixabley.dearby.entities.organization.model.OrganizationModel
 import io.fixabley.dearby.features.favoriteorganization.api.FavoriteStore
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
-import io.fixabley.dearby.widgets.noticecard.model.NoticeCardViewModel
+import io.fixabley.dearby.widgets.notice.noticecard.NoticeCardViewModel
 import org.junit.Assert.*
 import org.junit.Test
 

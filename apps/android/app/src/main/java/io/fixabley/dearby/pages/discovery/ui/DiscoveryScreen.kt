@@ -9,8 +9,8 @@ import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
-import io.fixabley.dearby.widgets.noticecard.model.NoticeCardState
-import io.fixabley.dearby.widgets.noticecard.ui.NoticeCard
+import io.fixabley.dearby.widgets.notice.noticecard.NoticeCardState
+import io.fixabley.dearby.widgets.notice.noticecard.NoticeCard
 
 @Composable
 internal fun DiscoveryScreen(snapshotDate: String, cards: List<NoticeCardState>, onSave: (String) -> String, showDetail: (String) -> Unit) {

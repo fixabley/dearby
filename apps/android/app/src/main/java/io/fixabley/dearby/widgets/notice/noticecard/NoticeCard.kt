@@ -1,4 +1,4 @@
-package io.fixabley.dearby.widgets.noticecard.ui
+package io.fixabley.dearby.widgets.notice.noticecard
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -13,7 +13,7 @@ import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import io.fixabley.dearby.widgets.noticecard.model.NoticeCardState
+import io.fixabley.dearby.widgets.notice.noticecard.NoticeCardState
 import io.fixabley.dearby.shared.ui.buttons.SecondaryButton
 import io.fixabley.dearby.shared.ui.NoticeFact
 import io.fixabley.dearby.entities.notice.ui.NoticeClassification

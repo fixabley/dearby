@@ -1,4 +1,4 @@
-package io.fixabley.dearby.widgets.favoriteorganizationcard.model
+package io.fixabley.dearby.widgets.organization.favoriteorganizationcard
 
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue

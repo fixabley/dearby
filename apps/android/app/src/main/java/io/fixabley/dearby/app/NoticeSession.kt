@@ -11,8 +11,8 @@ import io.fixabley.dearby.entities.notice.api.InMemoryNoticeSource
 import io.fixabley.dearby.entities.organization.api.OrganizationRepository
 import io.fixabley.dearby.entities.organization.api.InMemoryOrganizationSource
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
-import io.fixabley.dearby.widgets.noticecard.model.NoticeCardViewModel
-import io.fixabley.dearby.widgets.favoriteorganizationcard.model.FavoriteOrganizationCardViewModel
+import io.fixabley.dearby.widgets.notice.noticecard.NoticeCardViewModel
+import io.fixabley.dearby.widgets.organization.favoriteorganizationcard.FavoriteOrganizationCardViewModel
 import io.fixabley.dearby.pages.noticedetail.model.NoticeDetailViewModel
 
 /** App/UI-thread owner; readers are called only by load, never from rendering Views. */

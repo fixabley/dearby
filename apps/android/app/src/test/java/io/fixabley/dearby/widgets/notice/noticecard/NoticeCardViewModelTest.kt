@@ -1,4 +1,4 @@
-package io.fixabley.dearby.widgets.noticecard.model
+package io.fixabley.dearby.widgets.notice.noticecard
 
 import androidx.compose.runtime.snapshots.Snapshot
 import io.fixabley.dearby.entities.notice.api.*
