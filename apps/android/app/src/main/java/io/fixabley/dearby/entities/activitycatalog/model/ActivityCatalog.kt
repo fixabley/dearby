@@ -18,7 +18,7 @@ internal data class Notice(
     val audience: String,
     val eligibility: String,
     val application: String,
-    val location: String,
+    val location: ActivityLocation,
     val schedule: List<String>,
     val benefits: List<String>,
     val issues: List<String>,

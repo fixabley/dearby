@@ -11,6 +11,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import io.fixabley.dearby.R
 import io.fixabley.dearby.entities.activitycatalog.model.Notice
+import io.fixabley.dearby.entities.activitycatalog.model.ActivityVenue
 import io.fixabley.dearby.entities.activitycatalog.api.CatalogProvider
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
 import io.fixabley.dearby.pages.discovery.ui.DiscoveryScreen
@@ -18,7 +19,7 @@ import io.fixabley.dearby.pages.favorites.ui.FavoritesScreen
 import io.fixabley.dearby.pages.noticedetail.ui.NoticeDetailSheet
 
 @Composable
-internal fun DearbyApp(catalogProvider: CatalogProvider, favorites: FavoritesState, onOpenSource: (String) -> Unit) {
+internal fun DearbyApp(catalogProvider: CatalogProvider, favorites: FavoritesState, onOpenSource: (String) -> Unit, onOpenMap: (ActivityVenue) -> Unit) {
     var retry by remember { mutableIntStateOf(0) }
     val result = remember(catalogProvider, retry) { runCatching { catalogProvider.load() } }
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
@@ -61,6 +62,6 @@ internal fun DearbyApp(catalogProvider: CatalogProvider, favorites: FavoritesSta
         }
     }
     detail?.let { notice ->
-        NoticeDetailSheet(notice, catalog, onDismiss = { detail = null }, onOpenSource = onOpenSource)
+        NoticeDetailSheet(notice, catalog, onDismiss = { detail = null }, onOpenSource = onOpenSource, onOpenMap = onOpenMap)
     }
 }

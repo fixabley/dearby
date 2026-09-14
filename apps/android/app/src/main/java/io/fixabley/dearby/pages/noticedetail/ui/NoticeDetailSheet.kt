@@ -10,11 +10,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.platform.testTag
 import io.fixabley.dearby.entities.activitycatalog.model.ActivityCatalog
 import io.fixabley.dearby.entities.activitycatalog.model.Notice
+import io.fixabley.dearby.entities.activitycatalog.model.ActivityVenue
 import io.fixabley.dearby.shared.ui.NoticeFact
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun NoticeDetailSheet(notice: Notice, catalog: ActivityCatalog?, onDismiss: () -> Unit, onOpenSource: (String) -> Unit) {
+internal fun NoticeDetailSheet(notice: Notice, catalog: ActivityCatalog?, onDismiss: () -> Unit, onOpenSource: (String) -> Unit, onOpenMap: (ActivityVenue) -> Unit) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -29,7 +30,7 @@ internal fun NoticeDetailSheet(notice: Notice, catalog: ActivityCatalog?, onDism
             item { NoticeFact("참여 조건", notice.eligibility) }
             item { NoticeFact("신청 기간", notice.application) }
             items(notice.schedule) { NoticeFact("활동 일정", it) }
-            item { NoticeFact("활동 장소", notice.location) }
+            item { NoticeLocationSection(notice.location, onOpenMap) }
             items(notice.benefits) { NoticeFact("혜택", it) }
             items(notice.issues) { NoticeFact("확인 필요", it) }
             item {

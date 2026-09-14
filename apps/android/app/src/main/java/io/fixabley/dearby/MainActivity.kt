@@ -8,6 +8,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import io.fixabley.dearby.app.DearbyApp
+import io.fixabley.dearby.app.openVenueMap
 import io.fixabley.dearby.entities.activitycatalog.api.AssetCatalogProvider
 import io.fixabley.dearby.features.favoriteorganization.api.SharedPreferencesFavoriteStore
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
@@ -26,6 +27,10 @@ class MainActivity : ComponentActivity() {
                 DearbyApp(catalogProvider, favorites, onOpenSource = { url ->
                     runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
                         .onFailure { Toast.makeText(this, "공고를 열 브라우저가 없어요", Toast.LENGTH_SHORT).show() }
+                }, onOpenMap = { venue ->
+                    openVenueMap(venue, startActivity = { startActivity(it) }, onUnavailable = {
+                        Toast.makeText(this, "지도를 열 수 있는 앱이 없어요", Toast.LENGTH_SHORT).show()
+                    })
                 })
             }
         }

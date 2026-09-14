@@ -29,7 +29,7 @@ internal class AssetCatalogProvider(private val assets: AssetManager) : CatalogP
                     audience = item.getJSONObject("audience").getString("summary"),
                     eligibility = item.getJSONObject("eligibility").getString("summary"),
                     application = item.getJSONObject("application").getString("summary"),
-                    location = item.getJSONObject("location").getString("summary"),
+                    location = decodeActivityLocation(item.getJSONObject("location")),
                     schedule = item.getJSONArray("schedule").objects().map { phase ->
                         val label = mapOf("event" to "행사", "preliminary" to "예선", "finalist_announcement" to "결선 진출 발표", "final" to "결선·시상")[phase.getString("phase")] ?: phase.getString("phase")
                         val start = if (phase.isNull("startsAt")) phase.optString("startsOn", "일정 미확인") else phase.getString("startsAt").take(16).replace('T', ' ')

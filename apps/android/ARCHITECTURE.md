@@ -9,6 +9,7 @@
 ```text
 MainActivity.kt                         기존 manifest 컴포넌트, App 진입·의존성 조립
 app/
+  OpenVenueMap.kt                       geo Intent 생성·실행/실패 콜백
   DearbyApp.kt                          탭·상세 라우팅·공급/재시도·상태 전달
 pages/
   discovery/ui/DiscoveryScreen.kt       피드·pager·피드백·공고 카드 조합
@@ -16,6 +17,8 @@ pages/
   noticedetail/ui/
     NoticeDetailSheet.kt                상세 시트·dismiss/원문 콜백
     NoticeIdentity.kt                   상세 내부의 관심 조직·분류·맥락·회차
+    NoticeLocationSection.kt            장소 요약·복수 장소 액션·층/호실 안내
+    VenueMapButton.kt                   단일 장소 이름·지도 콜백
 widgets/
   activitycard/ui/ActivityCard.kt        공고 내용·더블탭·저장·상세 열기
   favoriteorganizationcard/ui/
@@ -28,6 +31,10 @@ features/
 entities/
   activitycatalog/
     model/ActivityCatalog.kt            Organization/NoticeContext/Notice/ActivityCatalog
+    model/ActivityLocation.kt           장소 summary/mode/status와 복수 venues
+    model/ActivityVenue.kt              phase/name/address·선택 좌표
+    model/VenueCoordinates.kt           유한 수·위경도 범위 검증
+    api/DecodeActivityLocation.kt       선택 좌표 안전 해석 (slice 내부)
     api/CatalogProvider.kt              교체 가능한 공급 계약
     api/AssetCatalogProvider.kt         기존 JSON/출처 URL 매핑·번들 로딩
     ui/ActivityClassification.kt        활동 분류·행사 학교 표시
@@ -47,11 +54,11 @@ shared/
 | App (segment 예외) | manifest의 `MainActivity`, `app/DearbyApp` 조립 |
 | Pages / discovery | `ui.DiscoveryScreen` |
 | Pages / favorites | `ui.FavoritesScreen` |
-| Pages / noticedetail | `ui.NoticeDetailSheet`; `NoticeIdentity`는 slice 내부 helper |
+| Pages / noticedetail | `ui.NoticeDetailSheet`; `NoticeIdentity`, `NoticeLocationSection`, `VenueMapButton`은 slice 내부 helper |
 | Widgets / activitycard | `ui.ActivityCard` |
 | Widgets / favoriteorganizationcard | `ui.FavoriteOrganizationCard` |
 | Features / favoriteorganization | `model.FavoritesState`, `api.FavoriteStore`, `api.SharedPreferencesFavoriteStore` |
-| Entities / activitycatalog | `model.Organization`, `model.NoticeContext`, `model.Notice`, `model.ActivityCatalog`, `api.CatalogProvider`, `api.AssetCatalogProvider`, `ui.ActivityClassification` |
+| Entities / activitycatalog | `model.Organization`, `model.NoticeContext`, `model.Notice`, `model.ActivityCatalog`, `model.ActivityLocation`, `model.ActivityVenue`, `model.VenueCoordinates`, `api.CatalogProvider`, `api.AssetCatalogProvider`, `ui.ActivityClassification` |
 | Shared (segment 예외) | `ui.NoticeFact`, `ui.theme.DearbyTheme` |
 
 저장소 필드·상태 setter·내부 update 함수·JSON 배열 helper는 private이다. `NoticeIdentity`는 별도 Kotlin 파일에서 같은 상세 slice가 사용하는 internal helper이며 App 등 외부 slice에서 import하지 않도록 구조 검사로 제한한다. MainActivity의 루트 패키지는 기존 Android 컴포넌트 이름을 바꾸지 않기 위한 App 진입점 예외다.
@@ -130,3 +137,19 @@ TalkBack·최대 글자 크기·태블릿·가로 화면 전체 검증, 비동�
 최종 FSD 검증(2026-09-14): 구조검사 main Kotlin 17개 파일 통과, self-test 금지 8건 거절/허용 3건 통과. JVM 상태5건·Debug 빌드·전용 API36.1 계측11건 통과(실패/오류/skip 0), Lint 오류0/권고11건. 발견→상세→back 시 같은 카드/탭, 즐겨찾기→상세→back 시 같은 탭, 카드의 독립 이벤트·기존 저장 복원까지 현재 코드로 확인했다. 한국어 문자열 집합과 샘플 JSON은 3c8d2c5와 동일하다.
 
 로컬 증거는 `build/fsd-foundation.log`, `build/fsd-activitycard.log`, `build/fsd-favoritecard.log`, `build/fsd-final.log`, `app/build/test-results/testDebugUnitTest/`, `app/build/outputs/androidTest-results/connected/debug/`, `app/build/reports/lint-results-debug.html`에 있다(Git 제외). 구조 검사 명령은 추가 설치 없이 Python 표준 라이브러리만 사용한다. 이전 cold-start smoke는 이번에 반복하지 않았고 실제 저장/Activity 재생성 회귀는 이번 계측에 포함했다.
+
+## 장소 좌표와 지도 액션 (2026-09-14 추가)
+
+기존 화면 보존에 대한 위 FSD 기록은 지도 액션 추가 전의 결과다. 이번에는 사용자 승인으로 상세 활동 장소에 유효한 좌표를 가진 각 venue의 지도 버튼과 “층·호실은 장소 안내를 확인해 주세요.” 안내를 추가한다. 카드의 기존 장소 문구는 `location.summary` 그대로다. Android의 기존 단순 표시 문자열은 이미 String이므로 추가 래퍼 제거는 없다.
+
+`Notice.location`은 `ActivityLocation`이다. mode/status/summary와 venue별 phase/name/address/선택 좌표를 유지한다. 좌표 누락·null·부분 값·문자열·범위 밖 값은 unknown(null)으로 읽고 0으로 대체하지 않는다. 명시적인 (0,0)은 유효하다. JSON schemaVersion 1.0.0과 canonical evidence/coordinateEvidence/eligibility 구조는 그대로 보존하며 앱용 표시 모델만 필요한 필드를 읽는다. decoder는 activitycatalog 내부 helper이고 새 model 타입 3개는 slice 외부 진입점이다.
+
+상세 slice의 `NoticeLocationSection`과 `VenueMapButton`은 각자 파일에 둔 internal helper다. 입력 데이터/콜백만 받고 Context·공급자·저장소·공유 상태에 접근하지 않는다. 온라인 장소는 좌표가 있어도 지도 버튼을 제공하지 않는다. App이 `(ActivityVenue) -> Unit`을 상세에 주입하고 MainActivity가 `openVenueMap`을 연결한다. 좌표 검증을 실행 직전에도 적용하고 [Android 지도 Intent 규격](https://developer.android.com/guide/components/intents-common#Maps)에 따라 ACTION_VIEW geo URI와 인코딩한 좌표/장소 이름을 전달한다. package/component를 고정하지 않아 OS가 설치된 앱 선택을 처리한다. ActivityNotFoundException/SecurityException은 native Toast 안내로 처리한다. 웹 fallback·권한·현재 위치·길찾기·앱 내 geocoding/네트워크 호출은 추가하지 않는다.
+
+새 장소 표시 기능은 같은 상세 ui slice에, 좌표 해석은 entity api에, 외부 앱 실행은 App에 배치한다. 지도 앱 내부의 화면과 경로는 앱이 제어하지 않는다. 공통 계약/검증 좌표는 [별도 PR #6](https://github.com/fixabley/dearby/pull/6)에서 관리하며 이 플랫폼 PR은 Android 리소스만 갱신한다. 건물 대표 좌표이며 출입구·층·호실 정밀 좌표가 아니다. 리소스 SHA-256: `407b0c5ed29d066ae9cf2c7d146749f1566e38ba966369db6cfd5ec1952feb6f`. 이 브랜치의 shared snapshot은 #6 통합 전 버전이므로 비교는 coordinator가 제공한 canonical 원본과 수행한다.
+
+새 테스트: JVM VenueCoordinatesTest는 0/경계/비유한 수/범위를 검증한다. 계측 ActivityLocationDecodeTest는 이전 JSON·null/부분/비정상 좌표·복수 장소·구조 보존을, VenueMapIntentTest는 한국어/&/# 이름 인코딩·unpinned 요청·미설치/차단 피드백을 검증한다. VenueMapFlowTest는 복수 장소 버튼/온라인 제외/명시적 클릭 및 발견→상세→App 요청 전달을 검사한다. 기존 11건 UI/저장 회귀도 함께 실행한다.
+
+이번 지도 검증 결과: 구조24파일/self-test11, JVM7건, Debug 빌드, Lint 오류0/권고11, 전용 emulator-5556 계측20건 통과(실패/오류/skip 0). 첫 계측의 비유한 JSON 기대 1건은 Android JSONObject가 Infinity를 파싱 단계에서 거부하는 실제 동작에 맞춰 수정하고 전체20건을 재실행했다. 비유한 수를 가진 직접 모델은 JVM/Intent 단계에서 거부되며 비유한 JSON은 기존 App 공급 실패·재시도 화면으로 처리된다. `cmd package resolve-activity --brief -a android.intent.action.VIEW -d 'geo:36.62819644470018,127.45787581357385?q=36.62819644470018,127.45787581357385'`로 전용 기기의 MapsActivity 설치를 확인했다. 실제 지도 렌더링·다중 앱 chooser 화면·TalkBack 전체 점검은 수행하지 않았으며 실행 요청/오류는 주입한 함수로 캡처했다. 사용자5554는 조작하지 않았다.
+
+로그: `build/maps-build-verified.log`, `build/maps-instrumentation.log`, 기존 표준 JVM/계측 XML 및 Lint 보고서 (Git 제외). 위 FSD17/JVM5/계측11 기록은 과거 실행이고 이번 결과는 24/7/20이다.

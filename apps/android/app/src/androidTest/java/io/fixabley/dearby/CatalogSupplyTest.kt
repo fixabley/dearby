@@ -32,7 +32,7 @@ class CatalogSupplyTest {
             override fun read() = setOf("legacy")
             override fun write(ids: Set<String>) = Unit
         })
-        rule.setContent { DearbyTheme { DearbyApp(provider, favorites, onOpenSource = {}) } }
+        rule.setContent { DearbyTheme { DearbyApp(provider, favorites, onOpenSource = {}, onOpenMap = {}) } }
         rule.onNodeWithText("공고를 불러오지 못했어요").assertIsDisplayed()
         rule.onNodeWithText("다시 시도").performClick()
         rule.onNodeWithText("표시할 공고가 없어요").assertIsDisplayed()

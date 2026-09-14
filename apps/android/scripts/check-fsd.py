@@ -18,6 +18,7 @@ API = {
         "model.FavoritesState", "api.FavoriteStore", "api.SharedPreferencesFavoriteStore",
     },
     "entities.activitycatalog": {
+        "model.ActivityLocation", "model.ActivityVenue", "model.VenueCoordinates",
         "model.ActivityCatalog", "model.Notice", "model.Organization", "model.NoticeContext",
         "api.CatalogProvider", "api.AssetCatalogProvider", "ui.ActivityClassification",
     },
