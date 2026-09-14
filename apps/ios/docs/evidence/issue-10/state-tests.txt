@@ -1,0 +1,2 @@
+PASS: half-open overlap/merge/adjacency/all-day/expanded occurrences/filter; OFF/consent cancel/continue/shared permission/reuse/denied/restricted/error/empty; loading OFF and stale day suppression; revoke/background/resume/close
+PASS: FSD lexical boundaries (84 Swift files; scope: all), guard fixtures
