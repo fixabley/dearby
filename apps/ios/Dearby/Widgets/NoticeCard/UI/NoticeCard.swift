@@ -42,12 +42,7 @@ struct NoticeCard: View {
             .accessibilityIdentifier("activity.\(state.id)")
 
             if let organizationName = state.organizationName {
-                Button(action: onSave) {
-                    Label(state.saved ? "저장됨 · \(organizationName)" : "\(organizationName) 저장",
-                          systemImage: state.saved ? "heart.fill" : "heart")
-                        .frame(maxWidth: .infinity).lineLimit(2)
-                }
-                .buttonStyle(.borderedProminent)
+                SaveOrganizationButton(saved: state.saved, organizationName: organizationName, onSave: onSave)
                 .accessibilityIdentifier("save.\(state.id)")
             } else {
                 Text("저장할 조직 확인 중").font(.caption).foregroundStyle(.secondary)

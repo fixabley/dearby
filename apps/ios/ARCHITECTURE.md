@@ -51,6 +51,7 @@ Features/FavoriteOrganization/API/FavoriteOrganizationsRepository.swift
 Features/FavoriteOrganization/API/UserDefaultsFavoriteOrganizationsRepository.swift
 Features/FavoriteOrganization/Model/FavoriteOrganizations.swift
 Features/FavoriteOrganization/Model/SaveOrganizationResult.swift
+Features/FavoriteOrganization/UI/SaveOrganizationButton.swift
 Pages/Discovery/UI/DiscoveryView.swift
 Pages/Favorites/UI/FavoriteListView.swift
 Pages/NoticeDetail/Model/NoticeDetailState.swift
@@ -140,3 +141,9 @@ FSD 63 Swift 파일과 negative fixtures 통과. entity 간 참조·UI raw 모�
 신청 및 활동 CalendarEventDraft.notes는 NoticeModel.sourceURL을 HTTP(S) 검증한 URL 문자열 하나이며 누락/잘못된 원본은 빈 문자열이다. 접두어·요약·날짜 설명·지도 링크를 덧붙이거나 신청 URL로 대체하지 않는다. EKEvent.url은 기존 신청 URL/온라인 URL을 유지하고 제목·기간·장소 및 지도 버튼은 그대로다. schedule mapper의 불필요한 mapURL 콜백과 호출부를 제거했다.
 
 이번 검증은 run_standalone.sh의 calendar swiftc 명령으로 CalendarDraftTests를 컴파일하고 앱/old shared JSON 각각 실행한 것이다. 원본 HTTP/HTTPS·누락·잘못된 scheme/host/credentials·무관한 source ID·이벤트 URL 분리 및 기존 KST/날짜/phase/장소 회귀가 통과했다. FSD 63파일/negative fixtures와 Simulator build 12:58:10Z(경고/오류 없음) 통과. 전체 SwiftData/favorites 검사는 이전 결과이며 이번 작은 notes 변경으로 재실행하지 않았고 실제 캘린더 저장/편집기 실행도 하지 않았다.
+
+## 조직 저장 버튼 분리 (2026-09-14)
+
+Features/FavoriteOrganization/UI/SaveOrganizationButton은 saved Bool·organizationName String·onSave 콜백만 받는 internal 표시 컴포넌트다. 저장소/State/VM 소유 없이 기존 라벨·heart 아이콘·무한 너비·lineLimit(2)·borderedProminent를 유지한다. NoticeCard가 조직 유무에 따른 표시와 save.<noticeID> 접근성 ID를 소유하고 제목 Text·더블탭은 변경하지 않았다. 다른 저장 UI를 확인했으나 같은 스타일/의미의 추가 버튼은 없어 이번 사용처는 공고 카드 하나다.
+
+FSD 검사는 Pages/Widgets UI가 하위 Features/UI를 조합하는 일반 규칙을 허용하며 Feature Model/API 직접 접근 금지는 유지한다. positive 조합 및 negative Model/API fixtures 포함 64 Swift 파일 검사 통과, Simulator build 13:15:06Z 성공(경고/오류 없음). 단순 추출이므로 별도 동작 복제 테스트·전체 suite·실제 UI 실행은 하지 않았다.

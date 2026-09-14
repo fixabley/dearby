@@ -52,7 +52,7 @@ def check(sources, selected=()):
                     errors.append(f'{path}: cross-slice reference to {name} ({target})')
                 value_result = (layer == 'Pages' and name == 'SaveOrganizationResult'
                                 and target == 'Features/FavoriteOrganization/Model/SaveOrganizationResult.swift')
-                if (layer in ('Pages', 'Widgets') and 'UI' in parts and target_layer == 'Features' and not value_result) or ('UI' in parts and 'API' in target_parts):
+                if (layer in ('Pages', 'Widgets') and 'UI' in parts and target_layer == 'Features' and target_parts[2] != 'UI' and not value_result) or ('UI' in parts and 'API' in target_parts):
                     errors.append(f'{path}: UI must receive values/callbacks, not {name}')
         if 'UI' in parts:
             if re.search(r'\b(?:UserDefaults|Bundle|FileManager|SwiftData|ModelContext|ModelContainer|URLSession|UIApplication|openURL|MKMapItem|CLLocationManager|EventKit|EventKitUI|EKEventStore|EKEventEditViewController)\b', code):
@@ -74,6 +74,9 @@ def self_test():
     fixture['Features/FavoriteOrganization/Model/SaveOrganizationResult.swift'] = 'enum SaveOrganizationResult {}'
     fixture['Features/FavoriteOrganization/API/FavoriteOrganizationsRepository.swift'] = 'protocol FavoriteOrganizationsRepository {}'
     fixture['Pages/Discovery/UI/Discovery.swift'] += '\nlet result: SaveOrganizationResult'
+    fixture['Features/Favorite/UI/SaveButton.swift'] = 'struct SaveButton {}'
+    fixture['Pages/Discovery/UI/Discovery.swift'] += '\nlet button: SaveButton'
+    fixture['Widgets/Card/UI/Card.swift'] += '\nlet button: SaveButton'
     assert not check(fixture)
     for raw_type in ['NoticeCatalog', 'Notice', 'NoticeModel', 'OrganizationModel', 'BundleSnapshot', 'NoticeCardViewModel']:
         assert check({**fixture, 'Pages/NoticeDetail/UI/NoticeDetailView.swift': 'struct NoticeDetailView { let raw: ' + raw_type + ' }'})
@@ -98,6 +101,7 @@ def self_test():
         ('Pages/Discovery/UI/Discovery.swift', 'State'),
         ('Pages/Discovery/UI/Discovery.swift', 'FavoriteOrganizationsRepository'),
         ('Widgets/Card/UI/Card.swift', 'SaveOrganizationResult'),
+        ('Widgets/Card/UI/Card.swift', 'FavoriteOrganizationsRepository'),
         ('Widgets/Card/UI/Card.swift', 'UserDefaults'),
         ('Pages/Detail/UI/Detail.swift', 'openURL'),
         ('Pages/Detail/UI/Detail.swift', 'UIApplication'),
