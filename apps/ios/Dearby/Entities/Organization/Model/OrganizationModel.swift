@@ -4,4 +4,3 @@ struct OrganizationModel: Decodable, Identifiable {
     let parentId: String?
     private enum CodingKeys: String, CodingKey { case id, name; case parentId = "parentOrganizationId" }
 }
-

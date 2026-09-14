@@ -6,4 +6,3 @@ struct NoticeSource: Decodable {
     var access: String? = nil
     var note: String? = nil
 }
-
