@@ -3,11 +3,11 @@ package io.fixabley.dearby
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
-import io.fixabley.dearby.entities.noticecatalog.api.NoticeDetailRepository
+import io.fixabley.dearby.app.NoticeSession
 import io.fixabley.dearby.app.DearbyApp
 import io.fixabley.dearby.app.openVenueMap
-import io.fixabley.dearby.entities.noticecatalog.api.AssetCatalogProvider
-import io.fixabley.dearby.entities.noticecatalog.model.*
+import io.fixabley.dearby.app.data.AssetNoticeSnapshotReader
+import io.fixabley.dearby.entities.notice.model.*
 import io.fixabley.dearby.features.favoriteorganization.api.FavoriteStore
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
 import io.fixabley.dearby.pages.noticedetail.ui.NoticeLocationSection
@@ -49,16 +49,16 @@ class VenueMapFlowTest {
 
     @Test fun discoveryDetailPassesCanonicalVenueToAppOnlyAfterExplicitClick() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
-        val provider = AssetCatalogProvider(context.assets)
-        val expected = provider.load().feed.first().location.venues.first()
+        val provider = AssetNoticeSnapshotReader(context.assets)
+        val expected = provider.load().notices.first().location.venues.first()
         val requests = mutableListOf<android.content.Intent>()
         val favorites = FavoritesState(object : FavoriteStore {
             override fun read() = emptySet<String>()
             override fun write(ids: Set<String>) = Unit
         })
-        val repository = NoticeDetailRepository(provider)
+        val repository = NoticeSession(provider, favorites)
         rule.setContent { DearbyTheme {
-            DearbyApp(repository, favorites, onOpenSource = {}, onAddToCalendar = {}, onOpenMap = { venue ->
+            DearbyApp(repository, onOpenSource = {}, onAddToCalendar = {}, onOpenMap = { venue ->
                 assertEquals(expected, venue)
                 openVenueMap(venue, { requests.add(it) }, { error("Unexpected unavailable") })
             })

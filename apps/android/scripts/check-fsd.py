@@ -13,21 +13,14 @@ API = {
     "pages.favorites": {"ui.FavoritesScreen"},
     "pages.noticedetail": {"ui.NoticeDetailSheet", "model.NoticeDetailViewModel", "model.NoticeDetailState"},
     "widgets.noticecard": {"ui.NoticeCard", "model.NoticeCardState", "model.NoticeCardViewModel"},
-    "widgets.favoriteorganizationcard": {"ui.FavoriteOrganizationCard"},
+    "widgets.favoriteorganizationcard": {"ui.FavoriteOrganizationCard", "model.FavoriteOrganizationCardState", "model.FavoriteNoticeState", "model.FavoriteOrganizationCardViewModel"},
     "features.favoriteorganization": {
         "model.FavoritesState", "api.FavoriteStore", "api.SharedPreferencesFavoriteStore",
     },
     "features.addtocalendar": {"model.CalendarDraft", "model.applicationCalendarDraft", "model.phaseCalendarDraft"},
-    "entities.notice": {"model.NoticeModel", "model.NoticeContext", "model.NoticeApplication", "model.NoticeLocation", "model.NoticePhase", "model.NoticeVenue", "model.VenueCoordinates", "model.NoticeSource", "model.NoticeEvidence", "api.NoticeSource", "api.InMemoryNoticeSource", "api.NoticeRepository"},
+    "entities.notice": {"model.NoticeModel", "model.NoticeContext", "model.NoticeApplication", "model.NoticeLocation", "model.NoticePhase", "model.NoticeVenue", "model.VenueCoordinates", "model.NoticeSource", "model.NoticeEvidence", "api.NoticeSource", "api.InMemoryNoticeSource", "api.NoticeRepository", "ui.NoticeClassification"},
     "entities.organization": {"model.OrganizationModel", "api.OrganizationSource", "api.InMemoryOrganizationSource", "api.OrganizationRepository"},
-    "entities.noticecatalog": {
-        "model.NoticeApplication", "model.NoticePhase", "model.NoticeDetail", "model.NoticeScheduleDetail",
-        "model.ResolvedOrganizationRole", "model.NoticeSource", "model.NoticeEvidence", "api.NoticeDetailRepository",
-        "model.NoticeLocation", "model.NoticeVenue", "model.VenueCoordinates",
-        "model.NoticeCatalog", "model.Notice", "model.Organization", "model.NoticeContext",
-        "api.OrganizationSource", "api.InMemoryOrganizationSource", "api.OrganizationRepository",
-        "api.CatalogProvider", "api.AssetCatalogProvider", "ui.NoticeClassification",
-    },
+
 }
 
 
@@ -75,8 +68,8 @@ def check_source(relative_path, text):
             (target_layer == "features" and ref != "features.addtocalendar.model.CalendarDraft") or ".api." in ref
         ):
             errors.append(f"UI must receive values/callbacks, not state or data providers: {ref}")
-    if source == "pages.noticedetail" and any(ref in {"entities.noticecatalog.model.Notice", "entities.noticecatalog.model.NoticeCatalog"} for ref in references):
-        errors.append("detail UI must receive NoticeDetail, not raw catalog/notice")
+    if layer in ("pages", "widgets") and "ui" in relative_path.parts and any(ref in {"entities.notice.model.NoticeModel", "entities.organization.model.OrganizationModel"} for ref in references):
+        errors.append("rendering UI must receive State, not raw domain models")
     if layer in ("pages", "widgets") and "ui" in relative_path.parts and re.search(
         r"\b(LocalContext|SharedPreferences|getSharedPreferences|AssetManager)\b", code
     ):
@@ -89,26 +82,31 @@ def self_test():
         ("pages/discovery/ui/Example.kt", "import io.fixabley.dearby.app.DearbyApp", False),
         ("pages/discovery/ui/Example.kt", "import io.fixabley.dearby.pages.noticedetail.ui.NoticeDetailSheet", False),
         ("widgets/noticecard/ui/Example.kt", "import io.fixabley.dearby.widgets.favoriteorganizationcard.ui.FavoriteOrganizationCard", False),
-        ("entities/noticecatalog/model/Example.kt", "import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState", False),
+        ("entities/notice/model/Example.kt", "import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState", False),
         ("widgets/noticecard/ui/Example.kt", "import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState as State", False),
         ("widgets/noticecard/ui/Example.kt", "import android.content.SharedPreferences", False),
         ("app/Example.kt", "import io.fixabley.dearby.pages.noticedetail.ui.NoticeIdentity", False),
         ("pages/discovery/ui/Example.kt", "fun bad() = io.fixabley.dearby.pages.favorites.ui.FavoritesScreen()", False),
         ("app/Example.kt", "import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState", True),
-        ("widgets/noticecard/ui/Example.kt", "import io.fixabley.dearby.entities.noticecatalog.ui.NoticeClassification", True),
+        ("widgets/noticecard/ui/Example.kt", "import io.fixabley.dearby.entities.notice.ui.NoticeClassification", True),
+        ("entities/notice/model/Example.kt", "import io.fixabley.dearby.entities.organization.model.OrganizationModel", False),
+        ("entities/organization/model/Example.kt", "import io.fixabley.dearby.entities.notice.model.NoticeModel", False),
+        ("features/addtocalendar/model/Example.kt", "import io.fixabley.dearby.pages.noticedetail.model.NoticeDetailState", False),
+        ("widgets/noticecard/model/Example.kt", "import io.fixabley.dearby.entities.notice.api.NoticeRepository", True),
+        ("widgets/noticecard/ui/Example.kt", "import io.fixabley.dearby.entities.organization.model.OrganizationModel", False),
         ("shared/ui/Example.kt", "import io.fixabley.dearby.shared.ui.theme.DearbyTheme", True),
         ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft", True),
         ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.features.addtocalendar.model.applicationCalendarDraft", False),
-        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.entities.noticecatalog.model.Notice", False),
-        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.entities.noticecatalog.model.NoticeCatalog", False),
-        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.entities.noticecatalog.model.NoticeDetail", True),
+        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.entities.notice.api.NoticeRepository", False),
+        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.entities.notice.model.NoticeModel", False),
+        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.pages.noticedetail.model.NoticeDetailState", True),
     ]
     for filename, snippet, allowed in cases:
         path = Path(filename)
         package = PREFIX + "." + ".".join(path.parts[:-1])
         errors = check_source(path, f"package {package}\n{snippet}\n")
         assert (not errors) == allowed, (filename, snippet, errors)
-    print(f"Boundary self-test: {len(cases)} cases passed (11 forbidden, 5 allowed)")
+    print(f"Boundary self-test: {len(cases)} cases passed (15 forbidden, 6 allowed)")
 
 
 if __name__ == "__main__":

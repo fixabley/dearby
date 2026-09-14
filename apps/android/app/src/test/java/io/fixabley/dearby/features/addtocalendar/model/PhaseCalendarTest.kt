@@ -1,14 +1,13 @@
 package io.fixabley.dearby.features.addtocalendar.model
 
-import io.fixabley.dearby.entities.noticecatalog.model.*
+import io.fixabley.dearby.entities.notice.model.*
 import java.time.Instant
 import org.junit.Assert.*
 import org.junit.Test
 
 class PhaseCalendarTest {
-    private fun phaseDraft(notice: Notice, phase: NoticePhase): CalendarDraft? {
-        val detail = projectCalendarNotice(notice.copy(schedule = listOf(phase)))
-        return phaseCalendarDraft(detail, detail.schedules.single())
+    private fun phaseDraft(notice: NoticeModel, phase: NoticePhase): CalendarDraft? {
+        return phaseCalendarDraft(notice, phase)
     }
 
     @Test fun preciseKrcAndDbPhasesKeepKnownHours() {

@@ -1,4 +1,4 @@
-package io.fixabley.dearby.entities.noticecatalog.model
+package io.fixabley.dearby.entities.notice.model
 
 import org.junit.Assert.*
 import org.junit.Test

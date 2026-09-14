@@ -3,28 +3,35 @@ package io.fixabley.dearby.widgets.favoriteorganizationcard
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
-import io.fixabley.dearby.entities.noticecatalog.api.AssetCatalogProvider
+import io.fixabley.dearby.app.data.AssetNoticeSnapshotReader
 import io.fixabley.dearby.shared.ui.theme.DearbyTheme
+import io.fixabley.dearby.app.NoticeSession
+import io.fixabley.dearby.app.data.NoticeSnapshotReader
+import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
+import io.fixabley.dearby.features.favoriteorganization.api.FavoriteStore
 import io.fixabley.dearby.widgets.favoriteorganizationcard.ui.FavoriteOrganizationCard
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
 class FavoriteOrganizationCardTest {
+    private fun session(catalog: io.fixabley.dearby.app.data.NoticeSnapshot, id: String): NoticeSession {
+        val favorites = FavoritesState(object : FavoriteStore { override fun read() = setOf(id); override fun write(ids: Set<String>) {} })
+        return NoticeSession(NoticeSnapshotReader { catalog }, favorites).also { it.load() }
+    }
+
     @get:Rule val rule = createComposeRule()
 
     @Test
     fun linkedNoticeAndRemovalDelegateTheirExactIds() {
-        val catalog = AssetCatalogProvider(InstrumentationRegistry.getInstrumentation().targetContext.assets).load()
-        val organization = catalog.organization("krc")!!
-        val notices = catalog.feed.filter { it.organizationId == organization.id }
+        val catalog = AssetNoticeSnapshotReader(InstrumentationRegistry.getInstrumentation().targetContext.assets).load()
+        val state = session(catalog, "krc").favoriteStates().single()
+        val notices = catalog.notices.filter { it.organizationId == state.id }
         val opened = mutableListOf<String>()
         val removed = mutableListOf<String>()
         rule.setContent {
             DearbyTheme {
-                FavoriteOrganizationCard(organization, emptyList(), notices,
-                    notices.associate { it.id to catalog.contextNames(it) },
-                    onRemove = { removed.add(it) }, showDetail = { opened.add(it.id) })
+                FavoriteOrganizationCard(state, onRemove = { removed.add(it) }, showDetail = { opened.add(it) })
             }
         }
         rule.onNodeWithText("채용 › 채용행사 · 충북대학교", useUnmergedTree = true).assertIsDisplayed()
@@ -38,13 +45,12 @@ class FavoriteOrganizationCardTest {
 
     @Test
     fun legacyOrganizationWithoutNoticesKeepsItsParentAndDeleteAction() {
-        val catalog = AssetCatalogProvider(InstrumentationRegistry.getInstrumentation().targetContext.assets).load()
-        val organization = catalog.organization("cbnu-career")!!
+        val catalog = AssetNoticeSnapshotReader(InstrumentationRegistry.getInstrumentation().targetContext.assets).load()
+        val state = session(catalog, "cbnu-career").favoriteStates().single()
         var removed: String? = null
         rule.setContent {
             DearbyTheme {
-                FavoriteOrganizationCard(organization, catalog.organizationPath(organization.id).dropLast(1),
-                    emptyList(), emptyMap(), onRemove = { removed = it }, showDetail = {})
+                FavoriteOrganizationCard(state, onRemove = { removed = it }, showDetail = {})
             }
         }
         rule.onNodeWithText("충북대학교").assertIsDisplayed()

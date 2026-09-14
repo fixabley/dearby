@@ -1,5 +1,6 @@
 package io.fixabley.dearby.pages.noticedetail.model
 
+import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft
 import io.fixabley.dearby.entities.notice.model.NoticeApplication
 import io.fixabley.dearby.entities.notice.model.NoticeLocation
 import io.fixabley.dearby.entities.notice.model.NoticeSource
@@ -31,6 +32,8 @@ internal data class NoticeDetailState(
     val sourceURL: String,
     val sources: List<NoticeSource>,
     val evidence: List<NoticeEvidence>,
+    val applicationDraft: CalendarDraft?,
+    val phaseDrafts: List<CalendarDraft?>,
     val saved: Boolean = false,
 )
 

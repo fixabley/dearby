@@ -5,12 +5,12 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import io.fixabley.dearby.entities.noticecatalog.api.NoticeDetailRepository
+import io.fixabley.dearby.app.NoticeSession
 import io.fixabley.dearby.app.DearbyApp
-import io.fixabley.dearby.entities.noticecatalog.api.CatalogProvider
+import io.fixabley.dearby.app.data.NoticeSnapshotReader
 import io.fixabley.dearby.features.favoriteorganization.api.FavoriteStore
-import io.fixabley.dearby.entities.noticecatalog.model.NoticeCatalog
-import io.fixabley.dearby.entities.noticecatalog.model.Organization
+import io.fixabley.dearby.app.data.NoticeSnapshot
+import io.fixabley.dearby.entities.organization.model.OrganizationModel
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
 import io.fixabley.dearby.shared.ui.theme.DearbyTheme
 import org.junit.Assert.assertEquals
@@ -24,17 +24,17 @@ class CatalogSupplyTest {
     @Test
     fun injectedProviderCanRetryWithoutReplacingFavoritesOrReloadingOnTabChange() {
         var loads = 0
-        val provider = CatalogProvider {
+        val provider = NoticeSnapshotReader {
             loads++
             check(loads > 1) { "First load fails" }
-            NoticeCatalog("2026-09-14", listOf(Organization("legacy", "이전 조직", null)), emptyList())
+            NoticeSnapshot("2026-09-14", listOf(OrganizationModel("legacy", "이전 조직", null)), emptyList())
         }
         val favorites = FavoritesState(object : FavoriteStore {
             override fun read() = setOf("legacy")
             override fun write(ids: Set<String>) = Unit
         })
-        val repository = NoticeDetailRepository(provider)
-        rule.setContent { DearbyTheme { DearbyApp(repository, favorites, onOpenSource = {}, onAddToCalendar = {}, onOpenMap = {}) } }
+        val repository = NoticeSession(provider, favorites)
+        rule.setContent { DearbyTheme { DearbyApp(repository, onOpenSource = {}, onAddToCalendar = {}, onOpenMap = {}) } }
         rule.onNodeWithText("공고를 불러오지 못했어요").assertIsDisplayed()
         rule.onNodeWithText("다시 시도").performClick()
         rule.onNodeWithText("표시할 공고가 없어요").assertIsDisplayed()

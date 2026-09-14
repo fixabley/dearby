@@ -3,8 +3,8 @@ package io.fixabley.dearby.app
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
-import io.fixabley.dearby.entities.noticecatalog.model.NoticeVenue
-import io.fixabley.dearby.entities.noticecatalog.model.VenueCoordinates
+import io.fixabley.dearby.entities.notice.model.NoticeVenue
+import io.fixabley.dearby.entities.notice.model.VenueCoordinates
 import org.junit.Assert.*
 import org.junit.Test
 

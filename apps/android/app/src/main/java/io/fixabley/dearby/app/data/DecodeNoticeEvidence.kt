@@ -1,6 +1,6 @@
-package io.fixabley.dearby.entities.noticecatalog.api
+package io.fixabley.dearby.app.data
 
-import io.fixabley.dearby.entities.noticecatalog.model.NoticeEvidence
+import io.fixabley.dearby.entities.notice.model.NoticeEvidence
 import org.json.JSONArray
 import org.json.JSONObject
 

@@ -2,7 +2,7 @@ package io.fixabley.dearby
 
 import android.content.Context
 import androidx.test.platform.app.InstrumentationRegistry
-import io.fixabley.dearby.entities.noticecatalog.api.AssetCatalogProvider
+import io.fixabley.dearby.app.data.AssetNoticeSnapshotReader
 import io.fixabley.dearby.features.favoriteorganization.api.SharedPreferencesFavoriteStore
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
 import org.junit.Assert.*
@@ -46,18 +46,20 @@ class LocalDataTest {
 
     @Test
     fun bundledProviderPreservesTargetsContextParentAndEdition() {
-        val catalog = AssetCatalogProvider(
+        val catalog = AssetNoticeSnapshotReader(
             InstrumentationRegistry.getInstrumentation().targetContext.assets
         ).load()
-        assertEquals(4, catalog.feed.size)
-        val career = catalog.feed.first { it.id == "cieat-NCR000000007344" }
+        val organizations = io.fixabley.dearby.entities.organization.api.OrganizationRepository(
+            io.fixabley.dearby.entities.organization.api.InMemoryOrganizationSource(catalog.organizations))
+        assertEquals(4, catalog.notices.size)
+        val career = catalog.notices.first { it.id == "cieat-NCR000000007344" }
         assertEquals("krc", career.organizationId)
         assertEquals("채용 › 채용행사", career.categorySummary)
-        assertEquals("충북대학교", catalog.contextNames(career))
-        assertEquals(listOf("krc"), catalog.organizationPath(career.organizationId).map { it.id })
-        val contest = catalog.feed.first { it.id == "cbnu-software-1154064" }
+        assertEquals("충북대학교", career.contexts.mapNotNull { organizations.find(it.organizationId)?.name }.joinToString(" · "))
+        assertEquals(listOf("krc"), organizations.path(career.organizationId).map { it.id })
+        val contest = catalog.notices.first { it.id == "cbnu-software-1154064" }
         assertEquals(2, contest.edition)
         assertEquals(listOf("yeongnam-ai-security", "yeongnam-cyber-defense"),
-            catalog.organizationPath(contest.organizationId).map { it.id })
+            organizations.path(contest.organizationId).map { it.id })
     }
 }

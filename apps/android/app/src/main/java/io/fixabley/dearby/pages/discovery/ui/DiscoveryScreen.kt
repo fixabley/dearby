@@ -9,32 +9,24 @@ import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
-import io.fixabley.dearby.entities.noticecatalog.model.NoticeCatalog
-import io.fixabley.dearby.entities.noticecatalog.model.Notice
+import io.fixabley.dearby.widgets.noticecard.model.NoticeCardState
 import io.fixabley.dearby.widgets.noticecard.ui.NoticeCard
 
 @Composable
-internal fun DiscoveryScreen(catalog: NoticeCatalog, favoriteIds: Set<String>, onSave: (String) -> Unit, showDetail: (Notice) -> Unit) {
+internal fun DiscoveryScreen(snapshotDate: String, cards: List<NoticeCardState>, onSave: (String) -> String, showDetail: (String) -> Unit) {
     var feedback by remember { mutableStateOf("") }
-    val pager = rememberPagerState(pageCount = { catalog.feed.size })
+    val pager = rememberPagerState(pageCount = { cards.size })
     Column(Modifier.fillMaxSize()) {
-        Text("검토한 공고 샘플 · ${catalog.snapshotDate}",
+        Text("검토한 공고 샘플 · ${snapshotDate}",
             Modifier.padding(horizontal = 22.dp, vertical = 10.dp),
             style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (catalog.feed.isEmpty()) {
+        if (cards.isEmpty()) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { Text("표시할 공고가 없어요") }
         } else {
-            VerticalPager(pager, Modifier.weight(1f).fillMaxWidth().testTag("discovery.pager"), key = { catalog.feed[it].id }) { index ->
-                val notice = catalog.feed[index]
-                val organization = catalog.organization(notice.organizationId)
-                val save = {
-                    if (organization != null) {
-                        onSave(organization.id)
-                        feedback = "${organization.name} 저장됨"
-                    } else feedback = "저장할 조직을 확인 중이에요"
-                }
-                NoticeCard(notice, organization, catalog.contextNames(notice), organization?.id in favoriteIds,
-                    "${index + 1} / ${catalog.feed.size}", save, { showDetail(notice) })
+            VerticalPager(pager, Modifier.weight(1f).fillMaxWidth().testTag("discovery.pager"), key = { cards[it].id }) { index ->
+                val notice = cards[index]
+                NoticeCard(notice, "${index + 1} / ${cards.size}",
+                    { feedback = onSave(notice.id) }, { showDetail(notice.id) })
             }
         }
         Text(feedback.ifEmpty { "위아래로 넘기기 · 더블탭으로 조직 저장" },

@@ -1,16 +1,15 @@
 package io.fixabley.dearby.features.addtocalendar.model
 
-import io.fixabley.dearby.entities.noticecatalog.model.NoticeScheduleDetail
-import io.fixabley.dearby.entities.noticecatalog.model.NoticeDetail
+import io.fixabley.dearby.entities.notice.model.NoticePhase
+import io.fixabley.dearby.entities.notice.model.NoticeModel
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
-internal fun phaseCalendarDraft(notice: NoticeDetail, schedule: NoticeScheduleDetail): CalendarDraft? {
-    val phase = schedule.period
+internal fun phaseCalendarDraft(notice: NoticeModel, phase: NoticePhase): CalendarDraft? {
     val period = calendarPeriod(phase.startsAt, phase.startsOn, phase.endsAt, phase.endsOn,
         phase.timezone, allowEndOnly = false) ?: return null
     val online = phase.mode == "online"
-    val venues = schedule.locations
+    val venues = notice.venuesFor(phase)
     val place = if (online) "온라인" else venues.joinToString(" / ") { venue ->
         listOfNotNull(venue.name?.takeIf { it.isNotBlank() }, venue.address?.takeIf { it.isNotBlank() })
             .distinct().joinToString(" · ").ifBlank { "장소 미확인" }

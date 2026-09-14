@@ -11,23 +11,19 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import io.fixabley.dearby.R
 import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft
-import io.fixabley.dearby.features.addtocalendar.model.applicationCalendarDraft
-import io.fixabley.dearby.features.addtocalendar.model.phaseCalendarDraft
-import io.fixabley.dearby.entities.noticecatalog.model.NoticeDetail
-import io.fixabley.dearby.entities.noticecatalog.model.NoticeVenue
-import io.fixabley.dearby.entities.noticecatalog.api.NoticeDetailRepository
-import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
+import io.fixabley.dearby.pages.noticedetail.model.NoticeDetailViewModel
+import io.fixabley.dearby.entities.notice.model.NoticeVenue
 import io.fixabley.dearby.pages.discovery.ui.DiscoveryScreen
 import io.fixabley.dearby.pages.favorites.ui.FavoritesScreen
 import io.fixabley.dearby.pages.noticedetail.ui.NoticeDetailSheet
 
 @Composable
-internal fun DearbyApp(catalogProvider: NoticeDetailRepository, favorites: FavoritesState, onOpenSource: (String) -> Unit, onOpenMap: (NoticeVenue) -> Unit, onAddToCalendar: (CalendarDraft) -> Unit) {
+internal fun DearbyApp(catalogProvider: NoticeSession, onOpenSource: (String) -> Unit, onOpenMap: (NoticeVenue) -> Unit, onAddToCalendar: (CalendarDraft) -> Unit) {
     var retry by remember { mutableIntStateOf(0) }
     val result = remember(catalogProvider, retry) { runCatching { catalogProvider.load() } }
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
-    var detail by remember { mutableStateOf<NoticeDetail?>(null) }
-    val catalog = result.getOrNull()
+    var detail by remember { mutableStateOf<NoticeDetailViewModel?>(null) }
+    val catalog = if (result.isSuccess) catalogProvider.snapshot else null
 
     Scaffold(
         bottomBar = {
@@ -58,13 +54,13 @@ internal fun DearbyApp(catalogProvider: NoticeDetailRepository, favorites: Favor
                     Button(onClick = { retry++ }) { Text("다시 시도") }
                 }
             } else if (selectedTab == 0) {
-                DiscoveryScreen(catalog, favorites.ids, favorites::save, showDetail = { detail = catalogProvider.detail(it.id) })
+                DiscoveryScreen(catalog.snapshotDate, catalogProvider.cardStates(), catalogProvider::save, showDetail = { detail = catalogProvider.detail(it) })
             } else {
-                FavoritesScreen(catalog, favorites.ids, favorites::remove, showDetail = { detail = catalogProvider.detail(it.id) })
+                FavoritesScreen(catalogProvider.favoriteStates(), catalogProvider::remove, showDetail = { detail = catalogProvider.detail(it) })
             }
         }
     }
-    detail?.let { notice ->
-        NoticeDetailSheet(notice, onDismiss = { detail = null }, onOpenSource = onOpenSource, onOpenMap = onOpenMap, applicationDraft = applicationCalendarDraft(notice), phaseDrafts = notice.schedules.map { phaseCalendarDraft(notice, it) }, onAddToCalendar = onAddToCalendar)
+    detail?.state?.let { notice ->
+        NoticeDetailSheet(notice, onDismiss = { detail = null }, onOpenSource = onOpenSource, onOpenMap = onOpenMap, onAddToCalendar = onAddToCalendar)
     }
 }

@@ -8,8 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import io.fixabley.dearby.entities.noticecatalog.model.NoticeLocation
-import io.fixabley.dearby.entities.noticecatalog.model.NoticeVenue
+import io.fixabley.dearby.entities.notice.model.NoticeLocation
+import io.fixabley.dearby.entities.notice.model.NoticeVenue
 import io.fixabley.dearby.shared.ui.NoticeFact
 
 @Composable

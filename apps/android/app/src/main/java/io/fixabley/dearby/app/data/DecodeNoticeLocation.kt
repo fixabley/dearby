@@ -1,8 +1,8 @@
-package io.fixabley.dearby.entities.noticecatalog.api
+package io.fixabley.dearby.app.data
 
-import io.fixabley.dearby.entities.noticecatalog.model.NoticeLocation
-import io.fixabley.dearby.entities.noticecatalog.model.NoticeVenue
-import io.fixabley.dearby.entities.noticecatalog.model.VenueCoordinates
+import io.fixabley.dearby.entities.notice.model.NoticeLocation
+import io.fixabley.dearby.entities.notice.model.NoticeVenue
+import io.fixabley.dearby.entities.notice.model.VenueCoordinates
 import org.json.JSONObject
 
 internal fun decodeNoticeLocation(json: JSONObject): NoticeLocation {

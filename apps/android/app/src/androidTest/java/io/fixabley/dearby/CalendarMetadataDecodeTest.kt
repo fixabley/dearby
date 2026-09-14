@@ -1,7 +1,7 @@
 package io.fixabley.dearby
 
-import io.fixabley.dearby.entities.noticecatalog.api.decodeNoticeApplication
-import io.fixabley.dearby.entities.noticecatalog.api.decodeNoticePhase
+import io.fixabley.dearby.app.data.decodeNoticeApplication
+import io.fixabley.dearby.app.data.decodeNoticePhase
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test

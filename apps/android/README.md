@@ -44,67 +44,29 @@ JVM 단위 테스트는 앱 실행 없이 임시 저장소로 즐겨찾기 추�
 전용 에뮬레이터를 지정해 `ANDROID_SERIAL=emulator-5556 ./gradlew :app:connectedDebugAndroidTest`를 실행하면 더블탭,
 세로 넘김, 조직 중복 방지, Activity 재생성 후 저장 유지·삭제, 버튼·탭·연결 상세와 실제 저장/카탈로그 공급을 검증합니다.
 `emulator-5556`은 예시이며 실제 전용 기기 serial을 확인합니다. 사용자 즐겨찾기가 있는 `emulator-5554`에는 실행하지 않습니다.
-테스트는 실행 기기의 Dearby 즐겨찾기를 초기화하므로 개발용 기기를 사용합니다.
+흐름 테스트는 기존 즐겨찾기를 백업/복원하지만 실행 중 값을 변경하므로 전용 개발 기기만 사용합니다.
 
-## 구조
+## 구조와 사용 흐름
 
-- `app/src/main/java/io/fixabley/dearby/MainActivity.kt`: 앱 진입점
-- `app/src/main/java/io/fixabley/dearby/shared/ui/theme/Theme.kt`: 라이트·다크 테마
-- `app/src/main/java/io/fixabley/dearby/app/`: 루트 화면 조합과 상태 전달
-- `app/src/main/java/io/fixabley/dearby/pages/discovery/ui/`: 탐색 페이지
-- `app/src/main/java/io/fixabley/dearby/widgets/noticecard/ui/`: 공고 카드
-- `app/src/main/java/io/fixabley/dearby/pages/favorites/ui/`: 즐겨찾기 페이지
-- `app/src/main/java/io/fixabley/dearby/widgets/favoriteorganizationcard/ui/`: 조직 카드
-- `app/src/main/java/io/fixabley/dearby/pages/noticedetail/ui/`: 상세 시트와 내부 표시
-- `app/src/main/java/io/fixabley/dearby/entities/noticecatalog/`: 응집된 카탈로그 모델과 공급 경계
-- `app/src/main/java/io/fixabley/dearby/features/favoriteorganization/`: 즐겨찾기 행동·관찰 상태·저장 경계
-- `app/src/main/java/io/fixabley/dearby/shared/ui/`: 범용 표시와 테마
-- `app/src/test/`: 앱 없는 JVM 상태 테스트
-- `app/src/androidTest/`: Compose 흐름과 실제 로컬 데이터 계측 테스트
-- `app/src/main/assets/activity-samples.json`: 공통 기준 파일에서 복사한 샘플
-- `app/src/main/res/`: 문자열, 시작 테마, 임시 런처 아이콘
-- `gradle/libs.versions.toml`: 플러그인과 라이브러리 버전
-- `gradle/wrapper/`, `gradlew`, `gradlew.bat`: 재현 가능한 Gradle 실행 환경
+공고는 `entities/notice/NoticeModel`, 조직은 `entities/organization/OrganizationModel`로 독립 관리합니다(실제 파일은 각 model segment). App의 NoticeSession이 두 lazy cache-aside 저장소와 카드/상세 ViewModel 수명을 공유합니다. ViewModel이 조직 ID를 해석해 immutable State를 만들고 UI는 State와 콜백만 받습니다. 즐겨찾기는 기존 FavoritesState 하나를 관찰하여 다른 탭에서 삭제해도 기존 카드의 saved가 갱신됩니다.
 
-FSD의 실제 트리, slice 진입점, 상태 소유, 의존 방향·검사 한계, 새 기능 배치 예시는 [ARCHITECTURE.md](ARCHITECTURE.md)를 참고합니다.
+- `app/`, `app/data/`: 앱 조립·라우팅·OS 어댑터·번들 transport
+- `pages/discovery/ui/`, `pages/favorites/ui/`: State 목록 표시
+- `pages/noticedetail/model/`, `ui/`: NoticeDetailViewModel → NoticeDetailState → 상세 시트
+- `widgets/noticecard/model/`, `ui/`: NoticeCardViewModel → NoticeCardState → 카드
+- `widgets/favoriteorganizationcard/model/`, `ui/`: 조직 카드의 표시 조합과 삭제 콜백
+- `entities/notice/`, `entities/organization/`: 독립 model/api, 서로 참조하지 않음
+- `features/favoriteorganization/`, `features/addtocalendar/`: 공유 저장 상태·순수 캘린더 초안
+- `shared/ui/`: 범용 표시·테마
 
-AGP의 내장 Kotlin 지원을 사용하므로 `org.jetbrains.kotlin.android` 플러그인은 적용하지 않습니다.
-참고: [AGP 내장 Kotlin](https://developer.android.com/build/migrate-to-built-in-kotlin),
-[AGP 9.1 호환성](https://developer.android.com/build/releases/agp-9-1-0-release-notes).
+실제 트리·진입점·캐시 교체/관찰 수명·새 기능 배치·검사 한계는 [ARCHITECTURE.md](ARCHITECTURE.md)를 참고합니다. 앱 안에 원시/상세 공고 Entity를 중복 보관하지 않으며 조직 이름/경로는 State의 표시값입니다. 공고에는 선택 조직 및 명시적 맥락 역할의 ID만 있습니다. 출처/필드별 근거도 실제 디코딩합니다. 기존 summary는 검토 요약이며 새 AI 생성이라고 표시하지 않습니다.
 
-## 공고 분류와 조직 관계
+공고를 세로로 넘기고 더블탭/버튼으로 조직을 저장합니다. 즐겨찾기는 연결 공고와 분류·학교를 표시하며 관심 대상·부모·학교 역할을 구분합니다. 상세의 지도 버튼은 유효한 좌표가 있는 각 장소에만 표시합니다. 신청/활동 단계의 캘린더 버튼은 알려진 날짜로 OS 편집기를 열며 검증된 신청/온라인 URL과 원문을 구분합니다. 온라인 단계에 다른 단계의 오프라인 장소를 붙이지 않습니다. 사용자가 편집·저장/취소하며 앱은 저장 완료로 간주하지 않습니다. 권한/현재 위치/직접 일정 저장/외부 라이브러리는 추가하지 않습니다.
 
-카드에는 활동 분류와 행사 관련 학교를, 상세에는 관심 조직·상위 조직·활동 분류·
-역할별 관련 기관·회차를 표시합니다. 즐겨찾기는 조직별 연결 공고 수와 각 공고의 분류·학교를 보여줍니다.
-학교 맥락은 조직의 부모와 구분하며, 관심 표시는 공고에 지정된 기업·프로그램만 저장합니다.
-기존에 저장한 조직의 연결 공고가 없어도 항목을 유지하고 빈 상태를 안내합니다.
-전체 조직 트리를 접고 펼치는 탐색 화면은 아직 포함하지 않습니다.
+기존 JSON `activities`·asset `activity-samples.json`·ID·저장 키·test tag·Android Activity 이름은 호환성을 위해 유지합니다. 공통 계약은 [PR #6](https://github.com/fixabley/dearby/pull/6), 작업은 [이슈 #1](https://github.com/fixabley/dearby/issues/1)과 [설계 #3](https://github.com/fixabley/dearby/pull/3)을 참조합니다.
 
+## 이번 검증 (2026-09-14)
 
-## 장소 지도 열기
+구조49파일/self-test21, JVM29, Debug·계측 APK 컴파일, Lint 오류0/경고12, 전용5556 계측30 통과(실패/오류/skip0). 두 독립 캐시·같은 VM의 snapshot 교체·외부 컴포넌트 즐겨찾기 삭제의 Compose 관찰·출처/단계 장소·기존 카드/탭/상세/저장·지도/캘린더 전달을 확인했습니다. 추가로 `./gradlew :app:assembleDebugAndroidTest`로 기기 테스트 참조를 컴파일할 수 있습니다.
 
-상세 활동 장소의 각 venue에 유효한 좌표가 있으면 장소 이름을 표시한 지도 버튼이 나타납니다. 기존 장소 안내와 층·호실 문구는 유지합니다. 온라인·좌표 미확인/오류 장소에는 버튼이 없으며, (0,0)은 명시된 경우에만 유효합니다. 버튼을 누르면 OS의 지도 앱 선택으로 전달하고 열 수 있는 앱이 없으면 native 안내를 표시합니다. 위치 권한·현재 위치·길찾기·geocoding/네트워크 기능을 추가하지 않습니다.
-
-장소 데이터는 NoticeLocation/NoticeVenue/VenueCoordinates로 해석하며 App이 외부 실행 콜백을 주입합니다. 각 상세 UI helper는 같은 slice 내 독립 파일입니다. 공통 좌표 계약·근거는 [PR #6](https://github.com/fixabley/dearby/pull/6)을 참조합니다. 샘플 좌표는 건물 대표 위치로, 층·호실은 원래 장소 안내를 확인해야 합니다. 새 좌표/URI/버튼 테스트도 위 JVM·전용 기기 명령으로 실행됩니다.
-
-2026-09-14 지도 추가 검증: 구조24파일/self-test11·JVM7·Debug·Lint(오류0/권고11)·전용5556 계측20 통과. 실제 외부 지도 렌더링은 검증하지 않았고 설치된 handler 확인과 Intent 캡처/실패 처리를 검증했습니다. 상세 증거·기존 결과와의 구분은 ARCHITECTURE.md에 있습니다.
-
-
-## 신청 기간 캘린더
-
-상세의 신청 기간 옆에서 캘린더 편집기를 열 수 있습니다. 알려진 신청 날짜·마감·시간대와 검증된 신청 URL/별도 원문을 채워 주며, 사용자가 수정·저장하거나 취소합니다. 날짜를 확인할 수 없으면 버튼이 없고 기존 문구가 유지됩니다. 종료 시각 미확인은 한 시간으로 추정하지 않고 종일 초안과 원래 안내로 표현합니다. 앱은 캘린더 권한을 요청하거나 직접 저장하지 않으며 편집기를 열 수 없으면 안내합니다.
-
-활동 일정도 각 단계 옆에서 캘린더에 추가할 수 있습니다. 온라인 예선은 온라인으로, 오프라인 단계는 정확히 연결된 모든 장소/주소와 지도 링크로 전달합니다. 확인된 온라인 URL만 넣고 신청 URL·원문을 구분합니다. 일정 종료가 없으면 알려진 시작 날짜의 종일 초안으로 전달하며 종료 미확인을 명시합니다. 캘린더 편집기에서 수정 후 저장할 수 있고 앱은 저장 완료로 간주하지 않습니다.
-
-최신 캘린더 검증(2026-09-14): 구조35파일/self-test13·JVM17·Debug·Lint(오류0/권고12)·전용5556 계측28 통과. 전용 기기에 캘린더 편집기가 없어 실제 외부 편집기 열기/취소는 미검증이며, Intent 전달/실패와 상세 상태 유지는 주입 테스트로 확인했습니다. 실제 일정 저장은 수행하지 않았습니다.
-
-조직은 선택 ID와 별도 원본 레코드로 관리하며, 최초 빈 메모리 캐시에서 miss일 때 원본을 조회합니다. 부모 경로는 순환을 방지해 계산하고 snapshot 교체 시 캐시를 비웁니다. JVM OrganizationRepositoryTest로 호출수·공통 부모·누락·순환·교체를 검증합니다.
-
-
-상세 화면은 이제 self-contained NoticeDetail 조회 결과를 받습니다. App이 한 번 소유한 저장소에서 선택 조직 ID/명시적 역할을 해석하고 관련 경로만 일시적으로 반환합니다. 원본 출처·필드별 근거·신청 방식·단계별 장소를 실제 디코딩하며 지도/캘린더도 같은 조회 결과를 사용합니다. 기존 summary는 검토 요약으로 유지하고 새 AI 생성이라고 표시하지 않습니다. 전체 조직 트리나 경로를 공고에 중복 저장하지 않습니다.
-
-NoticeDetail 최신 검증(2026-09-14): 구조41파일/self-test16·JVM24·Debug·Lint 오류0/권고12·전용5556 계측30 통과. 출처·근거는 모델에 보존하며 새로운 근거 목록 화면이나 네트워크/TTL/디스크 조직 캐시는 이번 범위에 없습니다. 상세·캐시는 Activity 수명이며 재시작 시 번들에서 다시 채웁니다.
-
-앱 공고 도메인은 Notice/NoticeDetail/NoticeCatalog 및 entities.noticecatalog로 통일했습니다. Android 프레임워크 Activity 이름과 기존 activities JSON 키·activity-samples.json·ID/테스트 태그는 호환성 예외로 보존합니다. 이름 변경이며 상세/cache/지도/캘린더 동작은 동일합니다.
-
-공고 카드도 NoticeCard/widgets.noticecard로 통일했습니다. 이번 이름 변경은 구조41파일/self-test16·JVM24·Debug·계측 APK 컴파일·Lint(오류0/권고12)를 통과했으며, 기기 계측30건은 이전 작업 결과입니다. Kotlin60파일의 기계적 이름 변경 및 asset/manifest/리소스 불변을 확인했고 기기를 조작하지 않았습니다.
+이번 로그는 `build/state-final-build.log`, `build/state-instrumentation.log`입니다. 과거 단계 결과는 Git/로컬 인계 이력에 남기며 최신 구조의 결과와 구분합니다. 사용자5554를 조작하지 않았고 전용5556만 종료했습니다. 외부 지도/캘린더 앱 내부 UI·실제 일정 저장은 이번에 검증하지 않았습니다. 네트워크·로그인·원문 자동 추출은 미구현이며 동기식 번들/메모리 캐시입니다.

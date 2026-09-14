@@ -10,8 +10,8 @@ import android.widget.Toast
 import io.fixabley.dearby.app.DearbyApp
 import io.fixabley.dearby.app.openCalendarEditor
 import io.fixabley.dearby.app.openVenueMap
-import io.fixabley.dearby.entities.noticecatalog.api.NoticeDetailRepository
-import io.fixabley.dearby.entities.noticecatalog.api.AssetCatalogProvider
+import io.fixabley.dearby.app.NoticeSession
+import io.fixabley.dearby.app.data.AssetNoticeSnapshotReader
 import io.fixabley.dearby.features.favoriteorganization.api.SharedPreferencesFavoriteStore
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
 import io.fixabley.dearby.shared.ui.theme.DearbyTheme
@@ -20,13 +20,13 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val catalogProvider = NoticeDetailRepository(AssetCatalogProvider(applicationContext.assets))
         val favorites = FavoritesState(SharedPreferencesFavoriteStore(
             getSharedPreferences(SharedPreferencesFavoriteStore.FILE_NAME, MODE_PRIVATE)
         ))
+        val catalogProvider = NoticeSession(AssetNoticeSnapshotReader(applicationContext.assets), favorites)
         setContent {
             DearbyTheme {
-                DearbyApp(catalogProvider, favorites, onOpenSource = { url ->
+                DearbyApp(catalogProvider, onOpenSource = { url ->
                     runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
                         .onFailure { Toast.makeText(this, "공고를 열 브라우저가 없어요", Toast.LENGTH_SHORT).show() }
                 }, onAddToCalendar = { draft ->

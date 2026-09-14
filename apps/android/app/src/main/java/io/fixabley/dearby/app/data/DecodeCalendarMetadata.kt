@@ -1,7 +1,7 @@
-package io.fixabley.dearby.entities.noticecatalog.api
+package io.fixabley.dearby.app.data
 
-import io.fixabley.dearby.entities.noticecatalog.model.NoticeApplication
-import io.fixabley.dearby.entities.noticecatalog.model.NoticePhase
+import io.fixabley.dearby.entities.notice.model.NoticeApplication
+import io.fixabley.dearby.entities.notice.model.NoticePhase
 import org.json.JSONObject
 
 internal fun decodeNoticeApplication(json: JSONObject) = NoticeApplication(

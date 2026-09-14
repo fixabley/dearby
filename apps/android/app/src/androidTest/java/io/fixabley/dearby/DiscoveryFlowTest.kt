@@ -3,10 +3,23 @@ package io.fixabley.dearby
 import android.content.Context
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import org.junit.Before
+import org.junit.After
 import org.junit.Rule
 import org.junit.Test
 
 class DiscoveryFlowTest {
+    private var originalFavoriteIds: Set<String>? = null
+    @Before fun preserveFavorites() {
+        originalFavoriteIds = rule.activity.getSharedPreferences("dearby.favorites.v1", Context.MODE_PRIVATE)
+            .getStringSet("organizationIDs", null)?.toSet()
+    }
+    @After fun restoreFavorites() {
+        val editor = rule.activity.getSharedPreferences("dearby.favorites.v1", Context.MODE_PRIVATE).edit()
+        originalFavoriteIds?.let { editor.putStringSet("organizationIDs", it) } ?: editor.remove("organizationIDs")
+        editor.commit()
+    }
+
     @get:Rule
     val rule = createAndroidComposeRule<MainActivity>()
 
