@@ -23,16 +23,17 @@ apps/ios/
 │   ├── Features/
 │   │   └── FavoriteOrganization/
 │   │       ├── Model/FavoriteOrganizations.swift
+│   │       ├── Model/SaveOrganizationResult.swift
 │   │       └── API/
-│   │           ├── FavoriteOrganizationsStorage.swift
-│   │           └── UserDefaultsFavoriteOrganizationsStorage.swift
+│   │           ├── FavoriteOrganizationsRepository.swift
+│   │           └── UserDefaultsFavoriteOrganizationsRepository.swift
 │   ├── Entities/
 │   │   └── ActivityCatalog/
 │   │       ├── Model/ActivityCatalog.swift
 │   │       ├── Model/ActivityNoticeSummary.swift
 │   │       ├── API/
-│   │       │   ├── ActivityCatalogProviding.swift
-│   │       │   └── BundleActivityCatalogProvider.swift
+│   │       │   ├── ActivityCatalogRepository.swift
+│   │       │   └── BundleActivityCatalogRepository.swift
 │   │       └── UI/NoticeClassificationView.swift
 │   ├── Resources/activity-samples.json
 │   └── Assets.xcassets/
@@ -45,7 +46,7 @@ apps/ios/
 
 `UI`, `Model`, `API`는 표현·도메인/상태·외부 데이터 접근 목적을 구분하는 segment다.
 공고·조직·출처·계층·학교 맥락은 서로 연결된 **단일 ActivityCatalog entity slice**에 둔다. 서로 다른 entity로 억지 분리해 순환 참조를 만들지 않는다.
-현재 여러 도메인에서 공유하는 범용 Swift UI가 없어 Shared 폴더를 만들지 않았다. 카드 전용 요약은 widget 내부 private 타입이다.
+현재 여러 도메인에서 공유하는 범용 Swift UI가 없어 Shared 폴더를 만들지 않았다. 카드 전용 보조 표시는 widget 내부 private 타입이다.
 향후 실제 공용 범용 표시·테마 코드가 필요하면 slice 없이 `Shared/UI` 등 목적별 segment에 둔다. 기존 asset catalog와 번들 리소스의 경로는 유지한다.
 `Dearby/`의 Xcode synchronized 그룹이 모든 파일을 포함한다. 테스트와 `build/` 증거는 앱 타깃 밖에 둔다.
 
@@ -61,8 +62,8 @@ apps/ios/
 | Pages/NoticeDetail | `NoticeDetailView` | 공고·카탈로그; 상세 표시만 수행 |
 | Widgets/ActivityCard | `ActivityCard` | `ActivityNoticeSummary`·저장 여부·position·compact·onSave/onShowDetail |
 | Widgets/FavoriteOrganizationCard | `FavoriteOrganizationCard<Destination>` | 조직·카탈로그·삭제 콜백·목적지 ViewBuilder; 연결 공고의 기존 NavigationLink |
-| Features/FavoriteOrganization | `FavoriteOrganizations`, `FavoriteOrganizationsStorage`, `UserDefaultsFavoriteOrganizationsStorage` | 상태와 저장 계약; 구체 저장 구현은 App 조립 또는 독립 테스트에서 사용 |
-| Entities/ActivityCatalog | `ActivityNoticeSummary`, `ActivityCatalog` 및 같은 Model 파일의 `ActivityNotice`, `ActivityOrganization`, `ActivitySource`, `ActivityField`, `ActivityIssue`, `ActivityContext`, `ActivitySchedule`; `ActivityCatalogProviding`, `BundleActivityCatalogProvider`; `NoticeClassificationView` | 순수 모델/조회, 교체 가능한 공급, 카드·즐겨찾기의 분류 표시 |
+| Features/FavoriteOrganization | `FavoriteOrganizations`, `SaveOrganizationResult`, `FavoriteOrganizationsRepository`, `UserDefaultsFavoriteOrganizationsRepository` | 상태와 저장 계약; 구체 저장 구현은 App 조립 또는 독립 테스트에서 사용 |
+| Entities/ActivityCatalog | `ActivityNoticeSummary`, `ActivityCatalog` 및 같은 Model 파일의 `ActivityNotice`, `ActivityOrganization`, `ActivitySource`, `ActivityField`, `ActivityIssue`, `ActivityContext`, `ActivitySchedule`; `ActivityCatalogRepository`, `BundleActivityCatalogRepository`; `NoticeClassificationView` | 순수 모델/조회, 교체 가능한 공급, 카드·즐겨찾기의 분류 표시 |
 
 `NoticeFact`는 ActivityCard 파일의 private 구현, `NoticeIdentityView`는 NoticeDetail 파일의 private 구현이다.
 Preview 저장소도 App 파일의 private 타입이다. 외부 소비자는 이 helper들을 직접 사용하지 않는다.
@@ -124,7 +125,7 @@ Swift 타입 선언과 식별자 참조를 수집해 실제 상향 참조·동�
 
 ## 검증 기록
 
-2026-09-14 **이번 FSD 후속 변경**에서 실행한 결과다. 재현 명령은 [README](README.md)를 따른다.
+2026-09-14 **이전 FSD 변경(4e9d9b2까지)**에서 실행한 결과다. 재현 명령은 [README](README.md)를 따른다.
 
 | 검사 | 이번 결과 |
 | --- | --- |
@@ -147,3 +148,30 @@ Swift 타입 선언과 식별자 참조를 수집해 실제 상향 참조·동�
 카드는 전체 카탈로그나 범용 data를 받지 않는다. position/saved/compact와 onSave/onShowDetail은 외부 표현 상태·이벤트로 유지한다.
 미확정/알 수 없는 대상은 organization이 nil이며 원래 공고와 행사 학교 맥락은 보존한다. 모델에 저장·UI 부수효과를 추가하지 않는다.
 이번 카드 요약 변경에서 독립 Swift의 해결/미확정·대회 요약 검사와 기존 상태/복원 검사, FSD 전체 15파일 검사, Simulator Debug 빌드를 실행해 통과했다.
+
+## 저장 업무 연산·Repository 보완 — 이번 확인
+
+`FavoriteOrganizations.saveOrganization(for:in:)`가 카탈로그에서 관심 대상 조직을 해결하고 저장한다.
+`.saved(ActivityOrganization)`는 카탈로그의 정식 조직 이름을 반환하고 `.unresolved`는 상태·관찰 알림·저장 쓰기를 발생시키지 않는다.
+Discovery는 App이 주입한 `(ActivityNotice) -> SaveOrganizationResult`의 결과를 기존 문구와 성공 햅틱 카운트로 변환한다.
+App이 카탈로그와 단일 상태를 연결하며 별도 Service/UseCase·상태 사본을 만들지 않는다.
+
+`ActivityCatalogRepository.load()`와 `BundleActivityCatalogRepository`는 기존 동기 카탈로그 공급 계약/구현의 이름을 명확히 한 것이다.
+`FavoriteOrganizationsRepository.load()/save(_:)`와 `UserDefaultsFavoriteOrganizationsRepository` 역시 기존 저장 계약/구현이며 중복 wrapper가 아니다.
+반복 저장도 같은 Set을 동기로 쓰고, 삭제·정렬 문자열 배열·기존 알 수 없는 ID 복원 의미를 유지한다.
+
+구조 검사는 Pages에서 정확한 `Features/FavoriteOrganization/Model/SaveOrganizationResult.swift`의 결과 값 타입만 허용한다.
+Page의 관찰 상태/Repository 접근, Widget의 결과 타입/상태 접근은 음성 fixture로 계속 금지한다.
+이는 Pages → Features의 순수 결과 값 계약이며 컴파일러 접근 격리를 주장하지 않는다.
+
+이번 최종 보완에서 README의 독립 swiftc 명령과 전체 16파일 구조 검사를 실행해 통과했다.
+유효 조직·정식 이름 결과·반복 저장, nil/미등록 대상의 무쓰기·무변경·무알림, 두 소비자 Observation, 실제 UserDefaults 복원 및 카탈로그/요약 검사를 포함한다.
+XcodeBuildMCP `build_sim`과 `build_run_sim`을 전용 기기/기존 scheme/Debug/`CODE_SIGNING_ALLOWED=NO`로 실행해 경고·오류 없이 통과했다.
+빌드 로그는 `build_sim_2026-09-14T09-25-04-477Z_pid15343_80416ede.log`, 실행 빌드는 `build_run_sim_2026-09-14T09-25-18-892Z_pid15343_460c9de6.log`다.
+
+전용 Dearby-Issue1-iOS에서 KRC 저장 버튼 → `한국농어촌공사 저장됨`, 카드 더블클릭 반복 → 두 기업 목록에 중복 없음,
+즐겨찾기 탭 반영 → KRC 삭제 → 발견 미저장 표시를 확인했다. 새로 추가한 KRC만 삭제하여 기존 DB 즐겨찾기를 보존했다.
+UI 도구의 첫 삭제는 오래된 접근성 인덱스로 거절되어 새 snapshot으로 재시도 후 확인했다.
+로컬 증거는 `build/refinement-regression/`의 JSON과 `saved-feedback.png`, `shared-favorites.png`다(커밋 제외).
+이번 callback 보완은 sheet/back 구조를 바꾸지 않아 해당 결과는 위 이전 회귀 기록을 구분해 유지한다.
+실제 터치 스와이프·햅틱의 물리 감각·전체 접근성/실기기 회귀는 이번에도 미검증이다.

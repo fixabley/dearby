@@ -4,20 +4,25 @@ import Observation
 @Observable
 final class FavoriteOrganizations {
     private(set) var ids: Set<String>
-    private let storage: any FavoriteOrganizationsStorage
+    private let repository: any FavoriteOrganizationsRepository
 
-    init(storage: any FavoriteOrganizationsStorage) {
-        self.storage = storage
-        ids = storage.load()
+    init(repository: any FavoriteOrganizationsRepository) {
+        self.repository = repository
+        ids = repository.load()
     }
 
-    func save(_ organizationID: String) {
-        ids.insert(organizationID)
-        storage.save(ids)
+    @discardableResult
+    func saveOrganization(for notice: ActivityNotice, in catalog: ActivityCatalog) -> SaveOrganizationResult {
+        guard let organization = catalog.organization(notice.favoriteOrganizationId) else {
+            return .unresolved
+        }
+        ids.insert(organization.id)
+        repository.save(ids)
+        return .saved(organization)
     }
 
     func remove(_ organizationID: String) {
         ids.remove(organizationID)
-        storage.save(ids)
+        repository.save(ids)
     }
 }

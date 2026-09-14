@@ -1,7 +1,7 @@
 import Foundation
 
 @MainActor
-struct UserDefaultsFavoriteOrganizationsStorage: FavoriteOrganizationsStorage {
+struct UserDefaultsFavoriteOrganizationsRepository: FavoriteOrganizationsRepository {
     private let defaults: UserDefaults
     private let key = "dearby.favoriteOrganizationIDs.v1"
 

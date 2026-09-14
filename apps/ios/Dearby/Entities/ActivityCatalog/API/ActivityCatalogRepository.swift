@@ -1,5 +1,5 @@
 import Foundation
 
-protocol ActivityCatalogProviding {
+protocol ActivityCatalogRepository {
     func load() throws -> ActivityCatalog
 }

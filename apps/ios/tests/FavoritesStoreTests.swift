@@ -6,12 +6,13 @@ import Synchronization
 struct FavoritesStoreTests {
     @MainActor
     static func main() throws {
-        testInMemoryState()
-        try testCatalogProvider()
+        try testCatalogRepository()
         let suite = "dearby.test.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let catalog = try JSONDecoder().decode(ActivityCatalog.self, from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
+        testInMemoryState(catalog: catalog)
+        testSaveOrganization(catalog: catalog)
         try testNoticeSummary(catalog: catalog)
         let careerCards = catalog.feed.filter { ["krc", "db-insurance"].contains($0.favoriteOrganizationId ?? "") }
         precondition(careerCards.count == 2)
@@ -21,36 +22,36 @@ struct FavoritesStoreTests {
             precondition(catalog.organizationPath(card.favoriteOrganizationId).count == 1,
                          "The event school must not become the company's parent")
         }
-        let store = FavoriteOrganizations(storage: UserDefaultsFavoriteOrganizationsStorage(defaults: defaults))
-        for card in careerCards { store.save(card.favoriteOrganizationId!) }
-        for card in careerCards { store.save(card.favoriteOrganizationId!) }
+        let store = FavoriteOrganizations(repository: UserDefaultsFavoriteOrganizationsRepository(defaults: defaults))
+        for card in careerCards { store.saveOrganization(for: card, in: catalog) }
+        for card in careerCards { store.saveOrganization(for: card, in: catalog) }
         precondition(store.ids == ["krc", "db-insurance"], "Repeated saves preserve two distinct subjects")
         precondition(!store.ids.contains("cbnu-career") && !store.ids.contains("cbnu"))
-        let reloaded = FavoriteOrganizations(storage: UserDefaultsFavoriteOrganizationsStorage(defaults: defaults))
+        let reloaded = FavoriteOrganizations(repository: UserDefaultsFavoriteOrganizationsRepository(defaults: defaults))
         precondition(reloaded.ids == store.ids, "Favorite must survive store recreation")
         reloaded.remove("krc")
-        precondition(FavoriteOrganizations(storage: UserDefaultsFavoriteOrganizationsStorage(defaults: defaults)).ids == ["db-insurance"])
+        precondition(FavoriteOrganizations(repository: UserDefaultsFavoriteOrganizationsRepository(defaults: defaults)).ids == ["db-insurance"])
         reloaded.remove("db-insurance")
-        precondition(FavoriteOrganizations(storage: UserDefaultsFavoriteOrganizationsStorage(defaults: defaults)).ids.isEmpty, "Removal must persist")
+        precondition(FavoriteOrganizations(repository: UserDefaultsFavoriteOrganizationsRepository(defaults: defaults)).ids.isEmpty, "Removal must persist")
         precondition(catalog.feed.count == 4)
         let contest = catalog.feed.first { $0.id == "cbnu-software-1154064" }!
         precondition(contest.favoriteOrganizationId == "yeongnam-cyber-defense")
         precondition(contest.edition == 2)
         precondition(catalog.organizationPath(contest.favoriteOrganizationId).map(\.id)
                      == ["yeongnam-ai-security", "yeongnam-cyber-defense"])
-        store.save(contest.favoriteOrganizationId!)
+        store.saveOrganization(for: contest, in: catalog)
         precondition(store.ids.contains("yeongnam-cyber-defense"))
         precondition(!store.ids.contains("yeongnam-ai-security"))
         // The legacy array format, including old/unknown IDs, must survive unchanged.
         defaults.set(["cbnu-career", "krc", "krc", "legacy-unknown"], forKey: "dearby.favoriteOrganizationIDs.v1")
-        let restored = FavoriteOrganizations(storage: UserDefaultsFavoriteOrganizationsStorage(
+        let restored = FavoriteOrganizations(repository: UserDefaultsFavoriteOrganizationsRepository(
             defaults: UserDefaults(suiteName: suite)!))
         precondition(restored.ids == ["cbnu-career", "krc", "legacy-unknown"])
-        restored.save("db-insurance")
+        restored.saveOrganization(for: careerCards.first { $0.favoriteOrganizationId == "db-insurance" }!, in: catalog)
         precondition(defaults.stringArray(forKey: "dearby.favoriteOrganizationIDs.v1")
                      == ["cbnu-career", "db-insurance", "krc", "legacy-unknown"])
         restored.remove("krc")
-        let recreated = FavoriteOrganizations(storage: UserDefaultsFavoriteOrganizationsStorage(
+        let recreated = FavoriteOrganizations(repository: UserDefaultsFavoriteOrganizationsRepository(
             defaults: UserDefaults(suiteName: suite)!))
         precondition(recreated.ids == ["cbnu-career", "db-insurance", "legacy-unknown"])
         print("PASS: legacy UserDefaults array compatibility, fresh storage/state restoration")
@@ -87,9 +88,43 @@ struct FavoritesStoreTests {
     }
 
     @MainActor
-    private static func testInMemoryState() {
-        let storage = InMemoryFavoritesStorage(ids: ["cbnu-career"])
-        let state = FavoriteOrganizations(storage: storage)
+    private static func testSaveOrganization(catalog: ActivityCatalog) {
+        let repository = InMemoryFavoritesRepository(ids: ["legacy-unknown"])
+        let state = FavoriteOrganizations(repository: repository)
+        let notice = catalog.feed.first { $0.favoriteOrganizationId == "krc" }!
+        for shouldSave in [false, true] {
+            if shouldSave {
+                for _ in 0..<2 {
+                    guard case .saved(let organization) = state.saveOrganization(for: notice, in: catalog) else {
+                        preconditionFailure("Resolved target must succeed")
+                    }
+                    precondition(organization.id == "krc")
+                    precondition(organization.name == catalog.organization("krc")!.name)
+                    precondition(organization.name != notice.title, "Feedback uses canonical organization, not notice title")
+                }
+                precondition(state.ids == ["legacy-unknown", "krc"])
+                precondition(repository.writes.count == 2, "Repeat saves retain synchronous persistence semantics")
+            }
+            let before = state.ids
+            let writeCount = repository.writes.count
+            let changes = Mutex(0)
+            withObservationTracking { _ = state.ids } onChange: { changes.withLock { $0 += 1 } }
+            for target in [nil, "unknown-organization"] as [String?] {
+                guard case .unresolved = state.saveOrganization(for: noticeWithTarget(target, from: notice), in: catalog) else {
+                    preconditionFailure("Absent and unknown targets must remain unresolved")
+                }
+                precondition(state.ids == before && repository.ids == before)
+                precondition(repository.writes.count == writeCount)
+            }
+            precondition(changes.withLock { $0 } == 0, "Invalid targets must not mutate observable state")
+        }
+        print("PASS: validated save result, canonical label, repeat saves, unresolved targets cause no writes or state changes")
+    }
+
+    @MainActor
+    private static func testInMemoryState(catalog: ActivityCatalog) {
+        let storage = InMemoryFavoritesRepository(ids: ["cbnu-career"])
+        let state = FavoriteOrganizations(repository: storage)
         // Two consumers of the same root state, like Discovery and Favorites.
         let discoveryIDs = { state.ids }
         let favoritesIDs = { state.ids }
@@ -102,13 +137,13 @@ struct FavoritesStoreTests {
             favoritesChanges.withLock { $0 += 1 }
         }
         precondition(discoveryIDs() == ["cbnu-career"])
-        state.save("krc")
+        state.saveOrganization(for: catalog.feed.first { $0.favoriteOrganizationId == "krc" }!, in: catalog)
         precondition(discoveryIDs() == ["cbnu-career", "krc"])
         precondition(favoritesIDs() == discoveryIDs())
         precondition(discoveryChanges.withLock { $0 } == 1)
         precondition(favoritesChanges.withLock { $0 } == 1)
-        state.save("krc")
-        state.save("db-insurance")
+        state.saveOrganization(for: catalog.feed.first { $0.favoriteOrganizationId == "krc" }!, in: catalog)
+        state.saveOrganization(for: catalog.feed.first { $0.favoriteOrganizationId == "db-insurance" }!, in: catalog)
         precondition(discoveryIDs() == ["cbnu-career", "krc", "db-insurance"])
         precondition(favoritesIDs() == discoveryIDs())
         withObservationTracking { _ = discoveryIDs() } onChange: {
@@ -124,11 +159,11 @@ struct FavoritesStoreTests {
         precondition(discoveryIDs() == ["cbnu-career", "db-insurance"])
         precondition(favoritesIDs() == discoveryIDs())
         precondition(storage.ids == state.ids)
-        precondition(FavoriteOrganizations(storage: storage).ids == state.ids)
+        precondition(FavoriteOrganizations(repository: storage).ids == state.ids)
         print("PASS: injected in-memory state, add, duplicate, delete, two Observation consumers")
     }
 
-    private static func testCatalogProvider() throws {
+    private static func testCatalogRepository() throws {
         let sample = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
         let fixture = URL(fileURLWithPath: "apps/ios/build/CatalogFixture-" + UUID().uuidString + ".bundle")
         try FileManager.default.createDirectory(at: fixture, withIntermediateDirectories: true)
@@ -136,10 +171,10 @@ struct FavoritesStoreTests {
         let resource = fixture.appendingPathComponent("activity-samples.json")
         try sample.write(to: resource)
         let bundle = Bundle(url: fixture)!
-        let provider: any ActivityCatalogProviding = BundleActivityCatalogProvider(bundle: bundle)
+        let provider: any ActivityCatalogRepository = BundleActivityCatalogRepository(bundle: bundle)
         let catalog = try provider.load()
         precondition(catalog.feed.count == 4)
-        let replacement: any ActivityCatalogProviding = FixedCatalogProvider(catalog: catalog)
+        let replacement: any ActivityCatalogRepository = FixedCatalogRepository(catalog: catalog)
         let replaced = try replacement.load()
         precondition(replaced.feed.map(\.id) == catalog.feed.map(\.id))
         let invalid = String(decoding: sample, as: UTF8.self)
@@ -161,15 +196,16 @@ struct FavoritesStoreTests {
 
 
 @MainActor
-private final class InMemoryFavoritesStorage: FavoriteOrganizationsStorage {
+private final class InMemoryFavoritesRepository: FavoriteOrganizationsRepository {
     var ids: Set<String>
+    private(set) var writes: [Set<String>] = []
 
     init(ids: Set<String> = []) { self.ids = ids }
     func load() -> Set<String> { ids }
-    func save(_ ids: Set<String>) { self.ids = ids }
+    func save(_ ids: Set<String>) { self.ids = ids; writes.append(ids) }
 }
 
-private struct FixedCatalogProvider: ActivityCatalogProviding {
+private struct FixedCatalogRepository: ActivityCatalogRepository {
     let catalog: ActivityCatalog
     func load() throws -> ActivityCatalog { catalog }
 }

@@ -2,12 +2,12 @@ import SwiftUI
 
 @main
 struct DearbyApp: App {
-    private let catalogProvider = BundleActivityCatalogProvider()
-    @State private var favorites = FavoriteOrganizations(storage: UserDefaultsFavoriteOrganizationsStorage())
+    private let catalogRepository = BundleActivityCatalogRepository()
+    @State private var favorites = FavoriteOrganizations(repository: UserDefaultsFavoriteOrganizationsRepository())
 
     var body: some Scene {
         WindowGroup {
-            ContentView(catalogProvider: catalogProvider, favorites: favorites)
+            ContentView(catalogRepository: catalogRepository, favorites: favorites)
         }
     }
 }

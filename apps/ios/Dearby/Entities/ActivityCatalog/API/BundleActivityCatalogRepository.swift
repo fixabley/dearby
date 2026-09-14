@@ -1,6 +1,6 @@
 import Foundation
 
-struct BundleActivityCatalogProvider: ActivityCatalogProviding {
+struct BundleActivityCatalogRepository: ActivityCatalogRepository {
     let bundle: Bundle
 
     init(bundle: Bundle = .main) {

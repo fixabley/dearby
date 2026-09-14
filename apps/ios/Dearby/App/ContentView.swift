@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    let catalogProvider: any ActivityCatalogProviding
+    let catalogRepository: any ActivityCatalogRepository
     let favorites: FavoriteOrganizations
     @State private var catalog: ActivityCatalog?
     @State private var loadFailed = false
@@ -14,7 +14,9 @@ struct ContentView: View {
                 TabView {
                     Tab("발견", systemImage: "rectangle.stack") {
                         NavigationStack {
-                            DiscoveryView(catalog: catalog, favoriteIDs: favoriteIDs, saveOrganization: favorites.save) { notice in
+                            DiscoveryView(catalog: catalog, favoriteIDs: favoriteIDs, saveOrganization: { notice in
+                                favorites.saveOrganization(for: notice, in: catalog)
+                            }) { notice in
                                 NoticeDetailView(notice: notice, catalog: catalog)
                             }
                         }
@@ -44,7 +46,7 @@ struct ContentView: View {
 
     private func loadCatalog() {
         do {
-            catalog = try catalogProvider.load()
+            catalog = try catalogRepository.load()
             loadFailed = false
         } catch {
             loadFailed = true
@@ -54,12 +56,12 @@ struct ContentView: View {
 
 #if DEBUG
 #Preview {
-    ContentView(catalogProvider: BundleActivityCatalogProvider(),
-                favorites: FavoriteOrganizations(storage: PreviewFavoritesStorage()))
+    ContentView(catalogRepository: BundleActivityCatalogRepository(),
+                favorites: FavoriteOrganizations(repository: PreviewFavoritesRepository()))
 }
 
 @MainActor
-private struct PreviewFavoritesStorage: FavoriteOrganizationsStorage {
+private struct PreviewFavoritesRepository: FavoriteOrganizationsRepository {
     func load() -> Set<String> { [] }
     func save(_ ids: Set<String>) {}
 }

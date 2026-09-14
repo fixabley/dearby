@@ -96,3 +96,7 @@ python3 apps/ios/tests/check_fsd_boundaries.py
 각 기능/컴포넌트 변경에 필요한 코드·검사·문서를 같은 커밋에 넣는다.
 
 카드 입력은 `catalog.summary(for:)`의 `ActivityNoticeSummary`이며, 독립 검사에서 대상 해결/미확정·학교 맥락·대회 회차 보존을 확인한다.
+
+즐겨찾기 업무 연산은 `FavoriteOrganizations.saveOrganization(for:in:)`가 소유하며, 페이지는 `SaveOrganizationResult`만 받아 피드백으로 표시한다.
+카탈로그와 즐겨찾기는 각각 Repository 계약과 번들/UserDefaults 구현을 주입한다. 저장 키와 동기 배열 저장 형식은 유지한다.
+독립 검사는 정상 조직 이름 결과와 반복 저장, 대상 nil/미등록 시 무쓰기·무변경·무알림까지 검증한다.

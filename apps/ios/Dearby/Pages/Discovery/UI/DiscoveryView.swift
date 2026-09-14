@@ -3,7 +3,7 @@ import SwiftUI
 struct DiscoveryView<Destination: View>: View {
     let catalog: ActivityCatalog
     let favoriteIDs: Set<String>
-    let saveOrganization: (String) -> Void
+    let saveOrganization: (ActivityNotice) -> SaveOrganizationResult
     @ViewBuilder let destination: (ActivityNotice) -> Destination
     @State private var detail: ActivityNotice?
     @State private var saveFeedback = ""
@@ -52,12 +52,12 @@ struct DiscoveryView<Destination: View>: View {
     }
 
     private func save(_ notice: ActivityNotice) {
-        guard let organization = catalog.organization(notice.favoriteOrganizationId) else {
+        switch saveOrganization(notice) {
+        case .saved(let organization):
+            saveFeedback = "\(organization.name) 저장됨"
+            saveCount += 1
+        case .unresolved:
             saveFeedback = "저장할 조직을 확인 중이에요"
-            return
         }
-        saveOrganization(organization.id)
-        saveFeedback = "\(organization.name) 저장됨"
-        saveCount += 1
     }
 }
