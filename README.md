@@ -1,8 +1,8 @@
 # Dearby
 
 Kotlin Android 앱과 Swift iOS 앱을 함께 관리하는 모노레포입니다.
-iOS 앱은 초기화되어 있으며, Android 앱은 아직 생성하지 않았습니다.
-앱 실행 방법은 [iOS README](apps/ios/README.md)를 참고하세요.
+Android와 iOS 앱의 기본 프로젝트가 초기화되어 있습니다.
+실행 방법은 [Android README](apps/android/README.md)와 [iOS README](apps/ios/README.md)를 참고하세요.
 
 ## 디렉터리 구조
 
@@ -20,8 +20,8 @@ API 명세와 개발 문서는 두 클라이언트가 함께 사용합니다.
 
 ## 프로젝트 추가
 
-- Android 프로젝트는 `apps/android/`를 루트로 생성하거나 옮깁니다.
-  Gradle 설정과 Gradle Wrapper도 이 디렉터리에 함께 둡니다.
+- Android 프로젝트는 `apps/android/`에서 관리합니다.
+  Android Studio에서 이 디렉터리를 열어 개발합니다.
 - iOS 프로젝트는 `apps/ios/Dearby.xcodeproj`에서 관리합니다.
 - 앱을 옮길 때 중첩된 `.git` 디렉터리를 포함하지 않습니다.
   기존 저장소의 커밋 기록을 보존해야 한다면 먼저 이관 방식을 결정합니다.
