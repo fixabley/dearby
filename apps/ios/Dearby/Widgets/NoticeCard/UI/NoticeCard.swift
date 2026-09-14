@@ -42,14 +42,16 @@ struct NoticeCard: View {
             .accessibilityIdentifier("activity.\(state.id)")
 
             if let organizationName = state.organizationName {
-                SaveOrganizationButton(saved: state.saved, organizationName: organizationName, onSave: onSave)
-                .accessibilityIdentifier("save.\(state.id)")
+                NoticeCardSaveButton(saved: state.saved, organizationName: organizationName, onSave: onSave)
+                    .accessibilityIdentifier("save.\(state.id)")
             } else {
                 Text("저장할 조직 확인 중").font(.caption).foregroundStyle(.secondary)
             }
-            Button("공고 정보 · 출처 보기", action: onShowDetail)
-                .frame(maxWidth: .infinity)
-                .accessibilityIdentifier("details.\(state.id)")
+            SecondaryButton(action: onShowDetail) {
+                Text("공고 정보 · 출처 보기")
+                    .frame(maxWidth: .infinity)
+            }
+            .accessibilityIdentifier("details.\(state.id)")
         }
         .padding(compact ? 16 : 22)
         .background(.background, in: RoundedRectangle(cornerRadius: 24))

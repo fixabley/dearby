@@ -51,7 +51,6 @@ Features/FavoriteOrganization/API/FavoriteOrganizationsRepository.swift
 Features/FavoriteOrganization/API/UserDefaultsFavoriteOrganizationsRepository.swift
 Features/FavoriteOrganization/Model/FavoriteOrganizations.swift
 Features/FavoriteOrganization/Model/SaveOrganizationResult.swift
-Features/FavoriteOrganization/UI/SaveOrganizationButton.swift
 Pages/Discovery/UI/DiscoveryView.swift
 Pages/Favorites/UI/FavoriteListView.swift
 Pages/NoticeDetail/Model/NoticeDetailState.swift
@@ -71,6 +70,9 @@ Widgets/FavoriteOrganizationCard/UI/FavoriteOrganizationCard.swift
 Widgets/NoticeCard/Model/NoticeCardState.swift
 Widgets/NoticeCard/Model/NoticeCardViewModel.swift
 Widgets/NoticeCard/UI/NoticeCard.swift
+Widgets/NoticeCard/UI/NoticeCardSaveButton.swift
+Shared/UI/Buttons/PrimaryButton.swift
+Shared/UI/Buttons/SecondaryButton.swift
 Widgets/NoticeCard/UI/NoticeFact.swift
 ```
 
@@ -110,7 +112,7 @@ OS 지도·캘린더는 App/NoticeDetailDestination에서만 연결한다. Calen
 
 기본 internal 진입점이며 private source/cache/초기 렌더링 값은 외부에 노출하지 않는다. 단일 Swift 모듈로 compiler-enforced slice를 제공한다고 주장하지 않는다. check_fsd_boundaries.py는 엔티티 간 참조·상향/동일 layer 교차 slice·UI의 raw 모델/저장소/VM·저장/OS 접근·Calendar→Page State를 부정 fixture로 검사한다. private nested CodingKeys는 Swift 합성 디코딩 이름이라 symbol 연결 대상에서 제외한다. lexical 검사이므로 보간/동적 참조 등은 리뷰로 보완한다.
 
-새 공고 정보는 NoticeModel/decoder에 의미 있는 값으로 추가하고 해당 VM에서 State로 구성한다. 새 조직 정보는 OrganizationModel/source에 두고 필요한 상위 VM만 주입한다. 새 OS 행동은 App에 어댑터를 두고 View에는 콜백만 전달한다. 범용 Shared는 현재 실제 필요가 없어 만들지 않았다.
+새 공고 정보는 NoticeModel/decoder에 의미 있는 값으로 추가하고 해당 VM에서 State로 구성한다. 새 조직 정보는 OrganizationModel/source에 두고 필요한 상위 VM만 주입한다. 새 OS 행동은 App에 어댑터를 두고 View에는 콜백만 전달한다. 범용 버튼 스타일은 Shared/UI/Buttons에 두고 문구·조직 상태 조합은 Widgets/NoticeCard에 둔다.
 
 ## SwiftData 저장과 snapshot 계약
 
@@ -142,8 +144,10 @@ FSD 63 Swift 파일과 negative fixtures 통과. entity 간 참조·UI raw 모�
 
 이번 검증은 run_standalone.sh의 calendar swiftc 명령으로 CalendarDraftTests를 컴파일하고 앱/old shared JSON 각각 실행한 것이다. 원본 HTTP/HTTPS·누락·잘못된 scheme/host/credentials·무관한 source ID·이벤트 URL 분리 및 기존 KST/날짜/phase/장소 회귀가 통과했다. FSD 63파일/negative fixtures와 Simulator build 12:58:10Z(경고/오류 없음) 통과. 전체 SwiftData/favorites 검사는 이전 결과이며 이번 작은 notes 변경으로 재실행하지 않았고 실제 캘린더 저장/편집기 실행도 하지 않았다.
 
-## 조직 저장 버튼 분리 (2026-09-14)
+## 공통 버튼과 카드 조합 (2026-09-14)
 
-Features/FavoriteOrganization/UI/SaveOrganizationButton은 saved Bool·organizationName String·onSave 콜백만 받는 internal 표시 컴포넌트다. 저장소/State/VM 소유 없이 기존 라벨·heart 아이콘·무한 너비·lineLimit(2)·borderedProminent를 유지한다. NoticeCard가 조직 유무에 따른 표시와 save.<noticeID> 접근성 ID를 소유하고 제목 Text·더블탭은 변경하지 않았다. 다른 저장 UI를 확인했으나 같은 스타일/의미의 추가 버튼은 없어 이번 사용처는 공고 카드 하나다.
+Shared/UI/Buttons/PrimaryButton과 SecondaryButton은 generic ViewBuilder label·action만 받는 internal 네이티브 스타일 컴포넌트다. 각각 borderedProminent/bordered이며 도메인 타입·문구·저장 상태를 모른다. Widgets/NoticeCard/UI/NoticeCardSaveButton(saved:organizationName:onSave:)이 기존 저장 문구·heart 아이콘·무한 너비·lineLimit(2)를 PrimaryButton label로 조합한다. 이전 Features/FavoriteOrganization/UI/SaveOrganizationButton은 제거했으며 실제 저장 의미/상태는 기존 Feature에 남는다.
 
-FSD 검사는 Pages/Widgets UI가 하위 Features/UI를 조합하는 일반 규칙을 허용하며 Feature Model/API 직접 접근 금지는 유지한다. positive 조합 및 negative Model/API fixtures 포함 64 Swift 파일 검사 통과, Simulator build 13:15:06Z 성공(경고/오류 없음). 단순 추출이므로 별도 동작 복제 테스트·전체 suite·실제 UI 실행은 하지 않았다.
+NoticeCard는 표시 조건·save.<noticeID>/details.<noticeID>·더블탭 및 제목 Text를 유지한다. 상세 동작은 SecondaryButton을 사용하며 bordered 스타일은 이번 요청의 의도된 외형 변경이다. 불필요한 로딩/크기 변형이나 추가 title 컴포넌트는 만들지 않았다. Shared/UI segment 경로는 기존 FSD 일반 규칙으로 허용된다.
+
+이번 FSD 66 Swift 파일/negative fixtures 및 Simulator build 13:20:44Z 통과(경고/오류 없음). diff에서 제목 Text·표시 조건·doubletap·접근성 ID 유지 확인. 단순 컴포넌트 조합 변경으로 전체 suite/실제 UI 및 캘린더 동작은 실행하지 않았다.
