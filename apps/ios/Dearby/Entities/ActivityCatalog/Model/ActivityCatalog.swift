@@ -59,14 +59,6 @@ struct ActivityOrganization: Decodable, Identifiable {
     let parentOrganizationId: String?
 }
 
-struct ActivityField: Decodable {
-    let summary: String
-}
-
-struct ActivityIssue: Decodable {
-    let summary: String
-}
-
 struct ActivityContext: Decodable {
     let organizationId: String
     let role: String
@@ -103,13 +95,13 @@ struct ActivityNotice: Decodable, Identifiable {
     let demoVisible: Bool
     let favoriteOrganizationId: String?
     let sourceIds: [String]
-    let audience: ActivityField
-    let eligibility: ActivityField
-    let application: ActivityField
-    let location: ActivityField
+    let audience: String
+    let eligibility: String
+    let application: String
+    let location: ActivityLocation
     let schedule: [ActivitySchedule]
-    let benefits: [ActivityField]
-    let qualityIssues: [ActivityIssue]
+    let benefits: [String]
+    let qualityIssues: [String]
     let categoryPath: [String]
     let contexts: [ActivityContext]
     let edition: Int?
@@ -119,5 +111,46 @@ struct ActivityNotice: Decodable, Identifiable {
                       "competition": "대회", "career": "진로", "mentoring": "멘토링",
                       "academic_administration": "학사 행정"]
         return categoryPath.map { labels[$0] ?? $0 }.joined(separator: " › ")
+    }
+}
+
+// Decode only display summaries from the structured source contract.
+// An extension preserves Swift's memberwise initializer for fixtures and projections.
+extension ActivityNotice {
+    private enum CodingKeys: String, CodingKey {
+        case id, title, summary, demoVisible, favoriteOrganizationId, sourceIds
+        case audience, eligibility, application, location, schedule, benefits, qualityIssues
+        case categoryPath, contexts, edition
+    }
+    private enum SummaryKey: String, CodingKey { case summary }
+
+    init(from decoder: any Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(String.self, forKey: .id)
+        title = try values.decode(String.self, forKey: .title)
+        summary = try values.decode(String.self, forKey: .summary)
+        demoVisible = try values.decode(Bool.self, forKey: .demoVisible)
+        favoriteOrganizationId = try values.decodeIfPresent(String.self, forKey: .favoriteOrganizationId)
+        sourceIds = try values.decode([String].self, forKey: .sourceIds)
+        audience = try values.nestedContainer(keyedBy: SummaryKey.self, forKey: .audience).decode(String.self, forKey: .summary)
+        eligibility = try values.nestedContainer(keyedBy: SummaryKey.self, forKey: .eligibility).decode(String.self, forKey: .summary)
+        application = try values.nestedContainer(keyedBy: SummaryKey.self, forKey: .application).decode(String.self, forKey: .summary)
+        location = try values.decode(ActivityLocation.self, forKey: .location)
+        schedule = try values.decode([ActivitySchedule].self, forKey: .schedule)
+        var benefitValues = try values.nestedUnkeyedContainer(forKey: .benefits)
+        var decodedBenefits: [String] = []
+        while !benefitValues.isAtEnd {
+            decodedBenefits.append(try benefitValues.nestedContainer(keyedBy: SummaryKey.self).decode(String.self, forKey: .summary))
+        }
+        benefits = decodedBenefits
+        var issueValues = try values.nestedUnkeyedContainer(forKey: .qualityIssues)
+        var decodedIssues: [String] = []
+        while !issueValues.isAtEnd {
+            decodedIssues.append(try issueValues.nestedContainer(keyedBy: SummaryKey.self).decode(String.self, forKey: .summary))
+        }
+        qualityIssues = decodedIssues
+        categoryPath = try values.decode([String].self, forKey: .categoryPath)
+        contexts = try values.decode([ActivityContext].self, forKey: .contexts)
+        edition = try values.decodeIfPresent(Int.self, forKey: .edition)
     }
 }

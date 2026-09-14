@@ -102,3 +102,5 @@ python3 apps/ios/tests/check_fsd_boundaries.py
 독립 검사는 정상 조직 이름 결과와 반복 저장, 대상 nil/미등록 시 무쓰기·무변경·무알림까지 검증한다.
 
 카드의 NoticeFact와 상세의 NoticeIdentityView/NoticeDetailField/NoticeIdentityFact는 각 소유 slice의 UI 파일로 분리합니다. 외부 진입점은 기존 카드·페이지이며, 전체 UI 조사 목록과 이번 빌드/검사 결과는 ARCHITECTURE.md의 UI 보조 컴포넌트 파일 분리를 참고합니다.
+
+앱의 단순 summary 필드는 String/[String]으로 디코딩하며 원본 구조화 JSON은 유지합니다. 장소는 ActivityLocation/ActivityVenue로 해석합니다.

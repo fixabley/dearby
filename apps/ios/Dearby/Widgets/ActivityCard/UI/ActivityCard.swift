@@ -27,8 +27,8 @@ struct ActivityCard: View {
                     .lineLimit(3)
                 if !compact && !typeSize.isAccessibilitySize {
                     Divider()
-                    NoticeFact(label: "참여 대상", value: notice.audience.summary)
-                    NoticeFact(label: "신청 마감", value: notice.application.summary)
+                    NoticeFact(label: "참여 대상", value: notice.audience)
+                    NoticeFact(label: "신청 마감", value: notice.application)
                     NoticeFact(label: "활동 장소", value: notice.location.summary)
                 }
                 if !notice.qualityIssues.isEmpty {

@@ -36,6 +36,8 @@ apps/ios/
 │   │   └── ActivityCatalog/
 │   │       ├── Model/ActivityCatalog.swift
 │   │       ├── Model/ActivityNoticeSummary.swift
+│   │       ├── Model/ActivityLocation.swift
+│   │       ├── Model/ActivityVenue.swift
 │   │       ├── API/
 │   │       │   ├── ActivityCatalogRepository.swift
 │   │       │   └── BundleActivityCatalogRepository.swift
@@ -68,7 +70,7 @@ apps/ios/
 | Widgets/ActivityCard | `ActivityCard` | `ActivityNoticeSummary`·저장 여부·position·compact·onSave/onShowDetail |
 | Widgets/FavoriteOrganizationCard | `FavoriteOrganizationCard<Destination>` | 조직·카탈로그·삭제 콜백·목적지 ViewBuilder; 연결 공고의 기존 NavigationLink |
 | Features/FavoriteOrganization | `FavoriteOrganizations`, `SaveOrganizationResult`, `FavoriteOrganizationsRepository`, `UserDefaultsFavoriteOrganizationsRepository` | 상태와 저장 계약; 구체 저장 구현은 App 조립 또는 독립 테스트에서 사용 |
-| Entities/ActivityCatalog | `ActivityNoticeSummary`, `ActivityCatalog` 및 같은 Model 파일의 `ActivityNotice`, `ActivityOrganization`, `ActivitySource`, `ActivityField`, `ActivityIssue`, `ActivityContext`, `ActivitySchedule`; `ActivityCatalogRepository`, `BundleActivityCatalogRepository`; `NoticeClassificationView` | 순수 모델/조회, 교체 가능한 공급, 카드·즐겨찾기의 분류 표시 |
+| Entities/ActivityCatalog | `ActivityNoticeSummary`, `ActivityCatalog` 및 같은 Model 파일의 `ActivityNotice`, `ActivityOrganization`, `ActivitySource`, `ActivityContext`, `ActivitySchedule`; `ActivityCatalogRepository`, `BundleActivityCatalogRepository`; `NoticeClassificationView` | 순수 모델/조회, 교체 가능한 공급, 카드·즐겨찾기의 분류 표시 |
 
 `NoticeFact(label:value:)`는 Widgets/ActivityCard/UI/NoticeFact.swift의 slice 내부 표시 helper다. 파일 간 사용을 위해 기본 internal이며 외부 slice 진입점으로 사용하지 않는다.
 `NoticeIdentityView(notice:catalog:)`, `NoticeDetailField(title:value:)`, `NoticeIdentityFact(label:value:icon:)`는 Pages/NoticeDetail/UI의 개별 파일에 있는 slice 내부 표시 helper다.
@@ -212,3 +214,6 @@ UI 도구의 첫 삭제는 오래된 접근성 인덱스로 거절되어 새 sna
 최종 로그는 build_sim_2026-09-14T09-39-06-779Z_pid15343_246d46a4.log다.
 이번에는 상태 없는 표시 코드의 파일 이동과 함수→View 변환만 수행해 새 mirror 테스트나 런타임 재실행은 추가하지 않았다.
 앞선 저장/라우팅 UI 회귀는 이전 기록이며 이번 결과로 표시하지 않는다. 개인/전용 시뮬레이터의 앱 데이터나 환경을 조작하지 않았다.
+
+## 문자열 모델 정리
+ActivityNotice의 audience/eligibility/application은 String, benefits/qualityIssues는 [String]이다. Decodable extension이 원본 객체의 summary만 읽으며 별도 DTO/문자열 wrapper를 만들지 않는다. 자동 memberwise 초기화는 테스트와 projection에서 유지한다. 원본 evidence/eligibility 등 구조화 JSON은 변경하지 않는다. 장소는 summary/mode/status/venues를 갖는 ActivityLocation과 ActivityVenue로 구분한다. 이번 기존 canonical JSON 전체 표시 문자열 일치·상태/복원 테스트 및 구조 검사와 Simulator 빌드를 실행했다.

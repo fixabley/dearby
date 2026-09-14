@@ -11,6 +11,17 @@ struct FavoritesStoreTests {
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let catalog = try JSONDecoder().decode(ActivityCatalog.self, from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
+        let source = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))) as! [String: Any]
+        let rawNotices = source["activities"] as! [[String: Any]]
+        for notice in catalog.activities {
+            let raw = rawNotices.first { $0["id"] as? String == notice.id }!
+            precondition(notice.audience == (raw["audience"] as! [String: Any])["summary"] as! String)
+            precondition(notice.eligibility == (raw["eligibility"] as! [String: Any])["summary"] as! String)
+            precondition(notice.application == (raw["application"] as! [String: Any])["summary"] as! String)
+            precondition(notice.benefits == (raw["benefits"] as! [[String: Any]]).map { $0["summary"] as! String })
+            precondition(notice.qualityIssues == (raw["qualityIssues"] as! [[String: Any]]).map { $0["summary"] as! String })
+        }
+        print("PASS: nested canonical summaries preserve all flat app display strings")
         testInMemoryState(catalog: catalog)
         testSaveOrganization(catalog: catalog)
         try testNoticeSummary(catalog: catalog)
