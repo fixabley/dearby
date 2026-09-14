@@ -22,6 +22,7 @@ API = {
         "model.ActivityApplication", "model.ActivityPhase",
         "model.ActivityLocation", "model.ActivityVenue", "model.VenueCoordinates",
         "model.ActivityCatalog", "model.Notice", "model.Organization", "model.NoticeContext",
+        "api.OrganizationSource", "api.InMemoryOrganizationSource", "api.OrganizationRepository",
         "api.CatalogProvider", "api.AssetCatalogProvider", "ui.ActivityClassification",
     },
 }

@@ -203,3 +203,10 @@ venue는 phase 문자열이 정확히 일치하는 모든 항목을 사용한다
 최종 캘린더 검증(2026-09-14): 구조35파일/self-test13(금지9/허용4), JVM17(기존 상태/좌표7+신청6+단계4), Debug, Lint 오류0/권고12, 전용 emulator-5556 계측28건 통과(실패/오류/skip 0). 앞선 지도24파일/JVM7/계측20과 구분한다. Lint 권고는 기존 사용 패턴 및 의존 버전 알림으로 의존성을 변경하지 않았다. `DecodeCalendarMetadata`는 같은 Entity 내부 helper이며 타입이 잘못된 날짜를 누락으로 덮지 않고 변환 단계에서 거부되도록 보존한다. CalendarMetadataDecodeTest 2건은 이전 optional 필드·null·timezone 기본값·inclusive endsOn·rich JSON 불변·잘못된 타입을 검사한다.
 
 실행 명령은 기존 구조/JVM/Debug/Lint/전용 계측 명령과 같다. 최신 로그는 `build/calendar-final-verified.log`, 결과 XML은 `app/build/test-results/testDebugUnitTest/`, `app/build/outputs/androidTest-results/connected/debug/`, Lint는 `app/build/reports/lint-results-debug.html`이다. `adb -s emulator-5556 shell cmd package resolve-activity --brief -a android.intent.action.INSERT -d content://com.android.calendar/events` 결과가 `No activity found`여서 실제 외부 편집기 열기/취소는 미검증이다. 테스트는 주입한 어댑터로 Intent/미설치·차단 오류와 handoff 후 상세 상태 유지를 검증했으며 실제 캘린더 이벤트를 저장하지 않았다. 설치된 편집기 내부의 쓰기 가능한 캘린더 선택은 그 앱이 처리한다. Dearby는 캘린더를 읽지 않아 저장 여부나 개인 캘린더 목록을 확인하지 않는다. 실제 편집기 UI·저장/동기화·TalkBack 전체 검증은 남은 한계다. 사용자5554는 조작하지 않았고 테스트 후 전용5556만 종료한다.
+
+
+## 조직 원본과 cache-aside (2026-09-14)
+
+activitycatalog api의 OrganizationSource/InMemoryOrganizationSource는 snapshot별 별도 조직 원본 저장소다. OrganizationRepository는 최초 빈 ID 캐시에서 조회하고 miss일 때만 source.find를 호출하며 성공한 record만 저장한다. path는 parentOrganizationId를 따라가고 visited ID로 순환을 중단하여 복구 가능한 부분 경로를 반환한다. 선택 ID는 전역 leaf로 강제하지 않는다. replaceSource는 원본 교체와 모든 캐시된 조상 삭제를 같은 monitor lock에서 처리하며 경로 자체는 영속 저장하지 않는다. find/path/replaceSource는 @Synchronized로 원자적이다. 네트워크·외부 DI·새 모듈을 추가하지 않았다.
+
+진입점은 같은 Entity의 api.OrganizationSource, api.InMemoryOrganizationSource, api.OrganizationRepository다. 별도 Dictionary source와 cache이므로 단순 인덱스 조회와 구별된다. OrganizationRepositoryTest JVM4건은 빈 캐시/miss/hit 원본 호출수, 성공만 캐시·missing/nil, 공통 부모 재사용, 순환/부분 경로, 이름·부모 snapshot 교체 무효화를 검증한다. 이 책임은 상세 getter가 뒤이어 공유하여 사용한다.
