@@ -58,6 +58,22 @@
       "checkedAt": "2026-09-14T06:41:40+00:00",
       "access": "public",
       "note": "공개 HTML 본문 확인"
+    },
+    {
+      "id": "cbnu-campus-map",
+      "url": "https://www.cbnu.ac.kr/www/selectWebCampusList.do?key=644",
+      "kind": "web_page",
+      "checkedAt": "2026-09-14T10:13:08Z",
+      "access": "public",
+      "note": "공식 캠퍼스맵 loadData의 N12 중앙도서관(campusNo99), N16-1 인문대학 본관(campusNo95) 건물 대표 좌표. 실내 층·호실 좌표가 아님."
+    },
+    {
+      "id": "cbnu-library-location",
+      "url": "https://www.cbnu.ac.kr/www/contents.do?key=532",
+      "kind": "web_page",
+      "checkedAt": "2026-09-14T10:13:08Z",
+      "access": "public",
+      "note": "공식 도서관 안내에서 중앙도서관 1·2관 동번호 N12 확인."
     }
   ],
   "organizations": [
@@ -221,7 +237,8 @@
             "locator": "신청 기한·구비서류·제출처"
           }
         ],
-        "opensOn": null
+        "opensOn": null,
+        "url": null
       },
       "schedule": [],
       "location": {
@@ -380,9 +397,14 @@
           {
             "sourceId": "krc",
             "locator": "모집기간·신청방법"
+          },
+          {
+            "sourceId": "krc",
+            "locator": "2026-09-14 공개 상세 페이지 신청하기 영역 확인. 로그인 후 신청하는 프로그램 페이지 URL이며 신청 완료를 의미하지 않음."
           }
         ],
-        "opensOn": "2026-08-27"
+        "opensOn": "2026-08-27",
+        "url": "https://cieat.cbnu.ac.kr/ncrProgramAppl/a/m/getProgramDetail.do?npiKeyId=NCR000000007344"
       },
       "schedule": [
         {
@@ -396,7 +418,10 @@
               "sourceId": "krc",
               "locator": "교육 내용 및 운영방법"
             }
-          ]
+          ],
+          "endsOn": null,
+          "timezone": "Asia/Seoul",
+          "onlineUrl": null
         }
       ],
       "location": {
@@ -406,8 +431,22 @@
         "venues": [
           {
             "phase": "event",
-            "name": "중앙도서관 2관 세미나실(5층)",
-            "address": null
+            "name": "충북대학교 중앙도서관 2관 세미나실(5층)",
+            "address": null,
+            "coordinates": {
+              "latitude": 36.62819644470018,
+              "longitude": 127.45787581357385
+            },
+            "coordinateEvidence": [
+              {
+                "sourceId": "cbnu-campus-map",
+                "locator": "loadData campusNo=99, mapSe=BULD, buldNo=N12 중앙도서관: 건물 대표점, 개별 관·층·호실 좌표 아님"
+              },
+              {
+                "sourceId": "cbnu-library-location",
+                "locator": "중앙도서관 위치 및 연락처: N12 / 중앙도서관 1·2관"
+              }
+            ]
           }
         ],
         "evidence": [
@@ -562,9 +601,14 @@
           {
             "sourceId": "db",
             "locator": "모집기간·신청방법"
+          },
+          {
+            "sourceId": "db",
+            "locator": "2026-09-14 공개 상세 페이지 신청하기 영역 확인. 로그인 후 신청하는 프로그램 페이지 URL이며 신청 완료를 의미하지 않음."
           }
         ],
-        "opensOn": "2026-08-06"
+        "opensOn": "2026-08-06",
+        "url": "https://cieat.cbnu.ac.kr/ncrProgramAppl/a/m/getProgramDetail.do?npiKeyId=NCR000000007306"
       },
       "schedule": [
         {
@@ -578,7 +622,10 @@
               "sourceId": "db",
               "locator": "교육 내용 및 운영방법"
             }
-          ]
+          ],
+          "endsOn": null,
+          "timezone": "Asia/Seoul",
+          "onlineUrl": null
         }
       ],
       "location": {
@@ -588,8 +635,22 @@
         "venues": [
           {
             "phase": "event",
-            "name": "중앙도서관 1관 상담실 1호실·6호실",
-            "address": null
+            "name": "충북대학교 중앙도서관 1관 상담실 1호실·6호실",
+            "address": null,
+            "coordinates": {
+              "latitude": 36.62819644470018,
+              "longitude": 127.45787581357385
+            },
+            "coordinateEvidence": [
+              {
+                "sourceId": "cbnu-campus-map",
+                "locator": "loadData campusNo=99, mapSe=BULD, buldNo=N12 중앙도서관: 건물 대표점, 개별 관·층·호실 좌표 아님"
+              },
+              {
+                "sourceId": "cbnu-library-location",
+                "locator": "중앙도서관 위치 및 연락처: N12 / 중앙도서관 1·2관"
+              }
+            ]
           }
         ],
         "evidence": [
@@ -729,9 +790,14 @@
           {
             "sourceId": "mentoring",
             "locator": "모집기간·신청방법"
+          },
+          {
+            "sourceId": "mentoring",
+            "locator": "2026-09-14 공개 상세 페이지 신청하기 영역 확인. 로그인 후 신청하는 프로그램 페이지 URL이며 신청 완료를 의미하지 않음."
           }
         ],
-        "opensOn": "2026-09-08"
+        "opensOn": "2026-09-08",
+        "url": "https://cieat.cbnu.ac.kr/ncrProgramAppl/a/m/getProgramDetail.do?npiKeyId=NCR000000007382"
       },
       "schedule": [
         {
@@ -745,7 +811,10 @@
               "sourceId": "mentoring",
               "locator": "교육 내용 및 운영방법"
             }
-          ]
+          ],
+          "endsOn": null,
+          "timezone": "Asia/Seoul",
+          "onlineUrl": null
         }
       ],
       "location": {
@@ -755,8 +824,18 @@
         "venues": [
           {
             "phase": "event",
-            "name": "N16-1 459호",
-            "address": null
+            "name": "충북대학교 인문대학 본관(N16-1) 459호",
+            "address": null,
+            "coordinates": {
+              "latitude": 36.630148842811074,
+              "longitude": 127.45866999572327
+            },
+            "coordinateEvidence": [
+              {
+                "sourceId": "cbnu-campus-map",
+                "locator": "loadData campusNo=95, mapSe=BULD, buldNo=N16-1 인문대학 본관: 건물 대표점, 459호 실내 좌표 아님"
+              }
+            ]
           }
         ],
         "evidence": [
@@ -959,7 +1038,8 @@
             "locator": "참가신청"
           }
         ],
-        "opensOn": "2026-09-11"
+        "opensOn": "2026-09-11",
+        "url": null
       },
       "schedule": [
         {
@@ -973,7 +1053,10 @@
               "sourceId": "poster",
               "locator": "대회 일정"
             }
-          ]
+          ],
+          "endsOn": null,
+          "timezone": "Asia/Seoul",
+          "onlineUrl": null
         },
         {
           "phase": "finalist_announcement",
@@ -986,7 +1069,10 @@
               "sourceId": "poster",
               "locator": "대회 일정"
             }
-          ]
+          ],
+          "endsOn": null,
+          "timezone": "Asia/Seoul",
+          "onlineUrl": null
         },
         {
           "phase": "final",
@@ -999,7 +1085,10 @@
               "sourceId": "poster",
               "locator": "대회 일정·시상계획"
             }
-          ]
+          ],
+          "endsOn": null,
+          "timezone": "Asia/Seoul",
+          "onlineUrl": null
         }
       ],
       "location": {
@@ -1010,7 +1099,9 @@
           {
             "phase": "final",
             "name": "2026 부산 사이버보안 콘퍼런스 행사장",
-            "address": null
+            "address": null,
+            "coordinates": null,
+            "coordinateEvidence": []
           }
         ],
         "evidence": [
