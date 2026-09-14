@@ -10,12 +10,12 @@
 | --- | --- |
 | App | 앱 진입, 실제 공급/저장 구현 조립, 공유 상태 단일 소유, 탭과 화면 간 라우팅 |
 | Pages | Discovery, Favorites, NoticeDetail 화면과 화면 전용 임시 UI 상태 |
-| Widgets | ActivityCard(공고 내용·저장·상세 열기), FavoriteOrganizationCard(조직·연결 공고·삭제)의 독립 UI 블록 |
+| Widgets | NoticeCard(공고 내용·저장·상세 열기), FavoriteOrganizationCard(조직·연결 공고·삭제)의 독립 UI 블록 |
 | Features | FavoriteOrganization의 저장·명시적 삭제 행동, 관찰 상태와 로컬 저장 경계/구현 |
-| Entities | ActivityCatalog의 공고·조직·출처·계층·맥락 모델 및 공급 경계/번들 구현, 공고 분류 표시 |
+| Entities | NoticeCatalog의 공고·조직·출처·계층·맥락 모델 및 공급 경계/번들 구현, 공고 분류 표시 |
 | Shared | 도메인 지식 없는 정보 표시, 테마 등 범용 UI·기반 코드 |
 
-카탈로그 샘플의 공고·조직·출처는 서로 연결된 하나의 ActivityCatalog 슬라이스 안에서 관리한다. 이를 서로 다른 entity 슬라이스로 먼저 분리해 순환 참조를 만드는 대신 현재 모델의 응집성을 유지한다. 추후 분리할 실제 필요가 생기면 관계 조합을 상위 레이어로 옮기거나 명시적 참조 계약을 별도 설계한다. 조직 저장 상태는 일반 Shared가 아닌 FavoriteOrganization 사용자 행동에 속한다.
+카탈로그 샘플의 공고·조직·출처는 서로 연결된 하나의 NoticeCatalog 슬라이스 안에서 관리한다. 이를 서로 다른 entity 슬라이스로 먼저 분리해 순환 참조를 만드는 대신 현재 모델의 응집성을 유지한다. 추후 분리할 실제 필요가 생기면 관계 조합을 상위 레이어로 옮기거나 명시적 참조 계약을 별도 설계한다. 조직 저장 상태는 일반 Shared가 아닌 FavoriteOrganization 사용자 행동에 속한다.
 
 ```text
 App/                            # Android: app/
@@ -25,14 +25,14 @@ Pages/                          # pages/
   Favorites/ui/                 # favorites/ui/
   NoticeDetail/ui/              # noticedetail/ui/
 Widgets/                        # widgets/
-  ActivityCard/ui/              # activitycard/ui/
+  NoticeCard/ui/              # noticecard/ui/
   FavoriteOrganizationCard/ui/  # favoriteorganizationcard/ui/
 Features/                       # features/
   FavoriteOrganization/
     model/                      # 상태·추가/삭제
     api/                        # 저장 계약·로컬 구현
 Entities/                       # entities/
-  ActivityCatalog/
+  NoticeCatalog/
     model/                      # 공고·조직·카탈로그
     api/                        # 공급 계약·번들 구현
     ui/                         # 도메인 분류 표시
@@ -69,3 +69,9 @@ Swift의 단일 앱 모듈과 Kotlin의 한 Gradle 모듈에서는 폴더만으�
 각 앱에서 FSD 의존 경계, 실제 디렉터리와 public API 목록, 빌드 및 관련 테스트를 확인한다. 라우팅이나 컴포넌트 조합이 바뀐 사용자 흐름은 회귀 검증한다. 이전 테스트 결과와 이번 실행을 구별하고 합성 제스처 도구의 한계를 성공으로 기록하지 않는다.
 
 PR #3은 공통 설계, #4는 Android, #5는 iOS이며 각각 main 대상이다. 자동 병합하지 않고 두 플랫폼까지 검토한 뒤 #1 완료 여부를 판단한다.
+
+
+## 공고 도메인 용어
+
+공고 원본은 Notice, 상세 조회 결과는 NoticeDetail, 공고 모음은 NoticeCatalog로 통일한다. NoticeDetailRepository는 조회·조직 cache-aside를 담당하고 iOS NoticeDetail 생성자는 조회된 값의 조립을 담당한다. 공고 카드 슬라이스는 NoticeCard/noticecard다.
+Android MainActivity 등의 프레임워크 용어와 기존 JSON activities 키·activity-samples.json 리소스 이름은 호환성을 위해 유지한다. 이들은 별도 Activity 도메인이 있다는 뜻이 아니다.
