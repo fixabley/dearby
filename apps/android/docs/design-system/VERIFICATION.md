@@ -48,3 +48,33 @@ NoticeModel/OrganizationModel, Room off-main/cancellation/transaction, L1→disk
 계측은 전달값·앱 콜백·사용자 흐름을 검증하며 외부 지도 앱 렌더링, Calendar 앱 내부 편집/저장, TalkBack 음성 전체 순회, 다른 OEM wallpaper 팔레트·API31 실기기·가로/태블릿 전체 조합을 검증했다고 주장하지 않는다. 접근성 증거는 Compose semantics/터치 bounds와 화면 검토이며 완전한 접근성 감사는 아니다. Preview는 Android Studio에서 ThemePreview/InformationPreview/StatusPreview의 light/dark/2×를 열 수 있고, 해당 구성요소는 실제 기기 계측/앱 화면에서도 렌더링했다.
 
 화면 QA 완료: 28개 PNG 링크 확인, light/dark 기본·2×의 발견/상세/즐겨찾기와 큰글자 빈 상태·저장됨·스크롤 화면을 시각 검토했다. 캡처 후 5556의 `font_scale=1.0`, `night=no`, favorites `<map />` 복원을 읽기 확인했다.
+
+## PR9 후속 — 아이콘 액션과 일정 위계 (2026-09-14)
+
+아래는 f4784a1 이후 사용자 요청을 반영한 **새 실행 결과**다. 이전 표의 JVM39/계측39·after 이미지는 이번 후속 변경 전 기준으로 보존한다.
+
+- 구현: `3cd742b` 카드 icon/metadata, `77295a4` 이름 중심 일정/신청 구획, `95735c4` 충돌하는 날짜 필드의 전체 접근성 보존.
+- 최종 검증: FSD68/self-test24, JVM46(기존39+신규7), 전체 계측39, Debug/Release/계측 APK, Lint 오류0/기존12 모두 통과. 이번 계측에서 저장 이름/selected/48dp touch bounds를 확인하고, 예선·발표·결선 3개 calendar icon의 이름·날짜·장소·원본URL 매칭과 불명/invalid 날짜의 액션 부재를 확인했다.
+- JVM 새 회귀: 같은 날 시각 축약, 연도 경계, 날짜만 있는 경우, invalid/충돌/역전/미확인, 자정 마감, 명시 timezone, 온라인 이름 중복/URL 보존, 복수 장소/주소/호실, 충돌한 timestamp/date 필드 동시 접근성 보존.
+- 최종 로그: `build/icons-schedule-final-build.log`, `build/icons-schedule-final-instrumentation.log`, `build/icons-schedule-capture.log`. 최종 APK minSdk31/target36 및 기존 의존성 유지.
+- 초기 icon 계측의 1건은 카드에 새로 표시한 관심 조직 label과 시트 label을 전역으로 찾던 기존 테스트 selector 충돌이었다. 상세 ancestor로 범위를 좁혔으며 최종 전체 실행39는 failures/errors/skips 0이다.
+
+### 최신 화면
+
+기존 `after-*`가 이번 before(f4784a1)다. 아래 `latest-*`는 최종 후속 앱으로 전용5556에서 새로 캡처한 실제 화면이다. 신청과 행사, 온라인 예선·발표·결선의 이름을 아이콘으로 대체하지 않고 titleLarge/bold로 읽을 수 있으며 날짜·장소는 bodyMedium, 보조 안내는 bodySmall/labelSmall이다. compact 카드에서는 날짜/장소도 1줄 메타데이터로 유지하고 전체 값은 접근성/상세에 남는다.
+
+| 화면 | light | dark | light 2× | dark 2× |
+| --- | --- | --- | --- | --- |
+| 발견 | [화면](evidence/latest-light-discovery.png) | [화면](evidence/latest-dark-discovery.png) | [화면](evidence/latest-light-large-discovery.png) | [화면](evidence/latest-dark-large-discovery.png) |
+| 저장됨 | [화면](evidence/latest-light-saved.png) | [화면](evidence/latest-dark-saved.png) | [화면](evidence/latest-light-large-saved.png) | [화면](evidence/latest-dark-large-saved.png) |
+| 즐겨찾기 | [화면](evidence/latest-light-favorites.png) | [화면](evidence/latest-dark-favorites.png) | [화면](evidence/latest-light-large-favorites.png) | [화면](evidence/latest-dark-large-favorites.png) |
+| 빈 화면 | [화면](evidence/latest-light-empty.png) | [화면](evidence/latest-dark-empty.png) | [화면](evidence/latest-light-large-empty.png) | [화면](evidence/latest-dark-large-empty.png) |
+| 상세 상단 | [화면](evidence/latest-light-detail.png) | [화면](evidence/latest-dark-detail.png) | [화면](evidence/latest-light-large-detail.png) | [화면](evidence/latest-dark-large-detail.png) |
+| 신청 | [화면](evidence/latest-light-application.png) | [화면](evidence/latest-dark-application.png) | [화면](evidence/latest-light-large-application.png) | [화면](evidence/latest-dark-large-application.png) |
+| 행사 | [화면](evidence/latest-light-event.png) | [화면](evidence/latest-dark-event.png) | [화면](evidence/latest-light-large-event.png) | [화면](evidence/latest-dark-large-event.png) |
+| 온라인 예선·발표 | [화면](evidence/latest-light-contest.png) | [화면](evidence/latest-dark-contest.png) | [화면](evidence/latest-light-large-contest.png) | [화면](evidence/latest-dark-large-contest.png) |
+| 결선 | [화면](evidence/latest-light-final.png) | [화면](evidence/latest-dark-final.png) | [화면](evidence/latest-light-large-final.png) | [화면](evidence/latest-dark-large-final.png) |
+
+이전과 같은 전용5556에서 캡처하며 실제 calendar save/외부 링크 실행 없이 UI와 전달값만 검증한다. 캡처의 초기 빠른 스크롤이 목표 구획을 지나쳐 드라이버를 느린 스크롤로 수정했다. 앱 코드/기기 데이터 초기화로 우회하지 않았다. TalkBack 전체 음성 순회, API31 실기기, 모든 OEM·가로·태블릿 조합과 외부 Calendar/지도 앱 내부는 여전히 미검증이다.
+
+최신 화면 QA 완료: 새 PNG36개와 모든 증거 링크를 확인했고 light/dark 기본·2×의 카드, 즐겨찾기, 신청·행사와 온라인 예선·발표·결선을 시각 검토했다. 일정 이름·날짜·장소·액션의 겹침 없이 줄바꿈/스크롤되며 compact 카드의 말줄임은 상세와 전체 접근성 설명으로 보완한다. 캡처 종료 후 전용5556의 `font_scale=1.0`, `night=no`, favorites `<map />` 복원을 읽기 확인했다.
