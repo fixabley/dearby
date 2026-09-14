@@ -14,6 +14,7 @@ App/CalendarEditorRequest.swift
 App/CalendarEventEditor.swift
 App/ContentView.swift
 App/DearbyApp.swift
+App/NoticeDestinationView.swift
 App/NoticeDetailDestination.swift
 App/NoticeSession.swift
 App/VenueMapLauncher.swift
@@ -112,3 +113,10 @@ OS 지도·캘린더는 App/NoticeDetailDestination에서만 연결한다. Calen
 이번에는 지도/캘린더 OS 전환·실제 캘린더 저장을 실행하지 않았다. 이전 작업의 Maps/캘린더 편집기 열기·취소는 이전 검증으로만 본다. 실제 터치 doubletap/swipe·물리 햅틱·전체 접근성·실기기는 미검증이다. 원본 JSON 활동/activities, activity-samples 리소스, activity.<id> 접근성 태그와 기존 저장 키는 호환성 예외이며 다른 앱 도메인이 아니다. 다른 플랫폼·공통 snapshot·사용자 simulator는 수정하지 않았다.
 
 이번 변경은 이전 엔티티 타입 제거와 모든 호출부의 State 전환을 함께 묶는 하나의 화면 데이터 경계 기능 커밋이다. 삭제된 타입을 중간 호환 alias로 유지하거나 코드/테스트/문서를 별도 단계 커밋으로 나누지 않는다.
+
+
+## App 목적지 컴포넌트 분리
+
+NoticeDestinationView(id:session:)는 ContentView의 함수형 목적지 조립을 별도 App View 파일로 추출한 컴포넌트다. 발견 sheet와 즐겨찾기 navigation이 같은 진입점을 사용하고, body에서 현재 세션의 State/NoticeModel을 읽어 NoticeDetailDestination 또는 기존 누락 안내를 구성한다. 세션이나 VM을 새로 만들지 않으며 snapshot 교체 시 기존 NoticeSession 관찰과 루트 favorites.ids 읽기를 유지한다. App 조립 책임으로서 entity/page 경계에는 변경이 없다.
+
+2026-09-14 이번 추출 검증: 기존 run_standalone.sh 전체 old/new JSON 검사 및 FSD 56파일/fixture 통과, Simulator build 12:08:14Z·build_run 12:08:38Z 성공(경고/오류 없음). 단순 추출로 새 동작을 복제하는 테스트는 추가하지 않았다. App에 함수형 some View helper가 남지 않음을 검색 확인했다. 이전 탭 전환 중 screenshot과 구분하여 전용기기에서 1.2초 이상 안정화 후 build/destination-discovery-stable.png 및 destination-favorites-stable.png를 캡처·시각 확인했다. prefs db-insurance 유지, 지도/캘린더 외부 전환은 재실행하지 않았다.

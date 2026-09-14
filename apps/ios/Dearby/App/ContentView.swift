@@ -17,14 +17,14 @@ struct ContentView: View {
                     Tab("발견", systemImage: "rectangle.stack") {
                         NavigationStack {
                             DiscoveryView(snapshotDate: session.snapshotDate, cards: cards, saveOrganization: session.save) { id in
-                                destination(id, session: session)
+                                NoticeDestinationView(id: id, session: session)
                             }
                         }
                     }
                     Tab("즐겨찾기", systemImage: "heart") {
                         NavigationStack {
                             FavoriteListView(cards: favoriteCards, removeOrganization: favorites.remove) { id in
-                                destination(id, session: session)
+                                NoticeDestinationView(id: id, session: session)
                             }
                         }
                     }
@@ -42,15 +42,6 @@ struct ContentView: View {
             }
         }
         .task { loadCatalog() }
-    }
-
-    @ViewBuilder
-    private func destination(_ id: String, session: NoticeSession) -> some View {
-        if let state = session.detailState(id), let notice = session.notices.notice(id) {
-            NoticeDetailDestination(state: state, notice: notice)
-        } else {
-            ContentUnavailableView("공고를 불러오지 못했어요", systemImage: "exclamationmark.triangle")
-        }
     }
 
     private func loadCatalog() {
