@@ -13,6 +13,8 @@ import io.fixabley.dearby.shared.ui.theme.Spacing
 @Composable
 internal fun TimelineLegend() {
     Row(horizontalArrangement = Arrangement.spacedBy(Spacing.small), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(12.dp).background(MaterialTheme.colorScheme.primary, MaterialTheme.shapes.extraSmall))
+        Text("활동", style = MaterialTheme.typography.labelSmall)
         Box(Modifier.size(12.dp).background(MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.75f), MaterialTheme.shapes.extraSmall))
         Text("내 일정", style = MaterialTheme.typography.labelSmall)
     }

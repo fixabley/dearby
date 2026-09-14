@@ -21,7 +21,7 @@ class BusyTimelineDisplayTest {
     private fun at(time: String) = ZonedDateTime.parse("2026-09-15T$time+09:00[Asia/Seoul]").toInstant()
     @Test fun onlyPositiveIntersectionWarnsAndActivityRetainsFullWidth() {
         val interval = TimelineInterval(at("09:00:00"), at("10:00:00"), zone)
-        val busy = listOf(BusyInterval(at("09:15:00"), at("09:45:00")),
+        val busy = listOf(BusyInterval(at("08:45:00"), at("09:45:00")),
             BusyInterval(at("10:00:00"), at("11:00:00")), BusyInterval(at("11:30:00"), at("12:00:00")))
         rule.setContent { DearbyTheme(dynamicColor = false) {
             Column(Modifier.safeDrawingPadding().verticalScroll(rememberScrollState())) {
@@ -32,7 +32,12 @@ class BusyTimelineDisplayTest {
         rule.onAllNodesWithTag("activity.warning", useUnmergedTree = true).assertCountEquals(1)
         val blocks = rule.onAllNodesWithTag("busy.block").fetchSemanticsNodes()
         assertEquals(blocks[0].boundsInRoot.width, blocks[1].boundsInRoot.width, 1f)
-        assertTrue(rule.onNodeWithTag("timeline.block").fetchSemanticsNode().boundsInRoot.width > blocks[0].boundsInRoot.width * 2)
+        assertEquals(rule.onNodeWithTag("timeline.block").fetchSemanticsNode().boundsInRoot.width, blocks[0].boundsInRoot.width, 1f)
+        rule.onAllNodesWithTag("timeline.intersection").assertCountEquals(1)
+        val dashed = rule.onNodeWithTag("timeline.intersection").fetchSemanticsNode().boundsInRoot
+        assertTrue(dashed.top > blocks[0].boundsInRoot.top)
+        assertEquals(blocks[0].boundsInRoot.bottom, dashed.bottom, 1f)
+        assertEquals(blocks[0].boundsInRoot.height * 0.75f, dashed.height, 1f)
         assertEquals(blocks[1].boundsInRoot.width, blocks[2].boundsInRoot.width, 1f)
         rule.onAllNodesWithTag("busy.block")[1].assertContentDescriptionContains("활동과 겹치지 않음", substring = true)
         rule.waitForIdle()
@@ -51,6 +56,7 @@ class BusyTimelineDisplayTest {
             }
         } }
         rule.onAllNodesWithTag("activity.warning", useUnmergedTree = true).assertCountEquals(0)
+        rule.onAllNodesWithTag("timeline.intersection").assertCountEquals(0)
         rule.onNodeWithTag("busy.block").assertContentDescriptionContains("활동과 겹치지 않음", substring = true)
     }
     @Test fun dateChangeNeverShowsPreviousWindowResult() {
@@ -66,6 +72,20 @@ class BusyTimelineDisplayTest {
         rule.onNodeWithText("이전 날짜 겹침").assertDoesNotExist()
         rule.onNodeWithText("선택 날짜의 바쁜 시간을 확인하는 중이에요.").assertExists()
         rule.onAllNodesWithTag("busy.block").assertCountEquals(0)
+    }
+
+    @Test fun busyLabelCannotCoverLongActivityTitle() {
+        val title = "긴 활동 제목 · 현장 설명회와 질의응답 및 참여 방법을 함께 안내합니다"
+        val interval = TimelineInterval(at("09:00:00"), at("12:00:00"), zone)
+        rule.setContent { DearbyTheme {
+            Column(Modifier.safeDrawingPadding()) {
+                DayTimeline(interval, title, busy = BusyOverlayState("겹침", listOf(BusyInterval(at("09:00:00"), at("11:30:00")))))
+            }
+        } }
+        rule.onNodeWithTag("timeline.block").assertContentDescriptionContains(title, substring = true)
+        val activity = rule.onNodeWithTag("activity.label", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        val label = rule.onNodeWithTag("busy.label", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+        assertTrue(label.top >= activity.bottom)
     }
 
 }

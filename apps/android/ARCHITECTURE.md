@@ -197,4 +197,4 @@ NoticeDetail의 DetailPeriodState/DetailPlaceState 순수 projection이 날짜/�
 
 `features/calendarbusy/api`의 BusyProvider/AndroidBusyProvider와 BusySession은 읽기 권한 및 상세 수명의 익명 시간 구간을 소유한다. OS Instances 조회는 IO/CancellationSignal, 결과는 인메모리만이며 generation/revision으로 취소 후 stale publish를 막는다. 순수 BusyOccurrence는 floating 종일 날짜를 기기 시간대 자정으로 해석한다. Shared BusyInterval은 반열린 구간 clip/merge/overlap만 제공한다. OS 계약과 검증은 [calendar-busy](docs/calendar-busy/README.md)를 따른다.
 
-App NoticeDetailRoute가 OS permission launcher/lifecycle과 BusySession을 조립하고 Page에는 BusyDisplayState/BusyOverlayState와 콜백만 전달한다. Shared DayTimeline의 선택 LocalDate→App→BusyQuery 흐름이며 신청 시간축은 연결하지 않는다. busy는 시간 gutter 배경으로 표시하고 활동 전체너비/정확한 교집합 경고를 유지한다. 스위치 상태는 상세 세션 하나에만 있으며 영속 저장하지 않는다.
+App NoticeDetailRoute가 OS permission launcher/lifecycle과 BusySession을 조립하고 Page에는 BusyDisplayState/BusyOverlayState와 콜백만 전달한다. Shared DayTimeline의 선택 LocalDate→App→BusyQuery 흐름이며 신청 시간축은 연결하지 않는다. busy는 시간축 본문에서 Primary 활동과 semantic tertiary 배색으로 겹치며, 원본 Instant 교집합 구간만 별도 Canvas 점선으로 표시한다. 시간 gutter는 눈금만 담당하고 활동 제목/시각은 배색 오버레이 위에서 보호한다. 스위치 상태는 상세 세션 하나에만 있으며 영속 저장하지 않는다.

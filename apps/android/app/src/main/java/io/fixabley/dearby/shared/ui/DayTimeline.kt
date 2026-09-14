@@ -36,9 +36,11 @@ internal fun DayTimeline(interval: TimelineInterval, title: String, modifier: Mo
             val time = "${koreanTime(start.toLocalTime())}–" +
                 (if (it.end == window.end) "다음 날 오전 12시" else koreanTime(end.toLocalTime()))
             val offset = if (start.offset != end.offset) " (${start.offset} → ${end.offset})" else ""
+            val intersection = timelineIntersection(it, BusyInterval(interval.start, interval.end))
+            fun minute(value: java.time.Instant) = java.time.Duration.between(dayStart, value).toNanos() / 60_000_000_000f
             BusyPlotBlock(java.time.Duration.between(dayStart, it.start).toNanos() / 60_000_000_000f,
                 java.time.Duration.between(dayStart, it.end).toNanos() / 60_000_000_000f,
-                "바쁜 시간: $time$offset. $date, 시간대 ${interval.zone.id}, 종료 시각 제외", time + offset, busyOverlaps(listOf(it), BusyInterval(interval.start, interval.end)))
+                "바쁜 시간: $time$offset. $date, 시간대 ${interval.zone.id}, 종료 시각 제외", time + offset, intersection != null, intersection?.start?.let(::minute), intersection?.end?.let(::minute))
         }
         if (currentBusy != null) TimelineLegend()
         TimelinePlot(day, title, blocks)

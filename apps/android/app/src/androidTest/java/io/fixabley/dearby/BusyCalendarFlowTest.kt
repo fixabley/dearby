@@ -30,7 +30,7 @@ class BusyCalendarFlowTest {
         override fun permission() = access
         override suspend fun read(query: BusyQuery): List<BusyInterval> {
             queries.add(query)
-            return listOf(BusyInterval(query.activity.start, minOf(query.activity.end, query.activity.start.plusSeconds(5400))))
+            return listOf(BusyInterval(query.activity.start, minOf(query.activity.end, query.activity.start.plusSeconds(9000))))
         }
     }
     private fun show(fake: Fake, dark: Boolean = false, large: Boolean = false) {
@@ -96,6 +96,7 @@ class BusyCalendarFlowTest {
         rule.onNodeWithTag("notice.detail").performScrollToNode(hasTestTag("schedule.title.0"))
         rule.onNodeWithTag("schedule.timeline.0").performScrollTo()
         rule.onAllNodesWithTag("busy.block").assertCountEquals(0)
+        rule.onAllNodesWithTag("timeline.intersection").assertCountEquals(0)
         rule.onAllNodesWithTag("activity.warning", useUnmergedTree = true).assertCountEquals(0)
         capture("hidden-$suffix")
     }
