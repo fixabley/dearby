@@ -30,6 +30,9 @@ internal data class NoticeModel(
     val evidence: List<NoticeEvidence> = emptyList(),
     val descriptionProvenance: String = "reviewed_sample_summary",
 ) {
+    fun venuesFor(phase: NoticePhase): List<NoticeVenue> =
+        if (phase.mode == "online") emptyList() else location.venues.filter { it.phase == phase.phase }
+
     val categorySummary: String get() {
         val labels = mapOf("recruitment" to "채용", "recruitment_event" to "채용행사",
             "competition" to "대회", "career" to "진로", "mentoring" to "멘토링",

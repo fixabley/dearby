@@ -260,3 +260,5 @@ Android MainActivity/ComponentActivity/ActivityNotFoundException/startActivity/a
 NoticeRepositoryTest3은 cold miss/hit·missing·교체·조직 객체/경로 부재를, 새 OrganizationRepositoryTest4는 기존 원본 호출수·공유 부모·순환·무효화를 검사한다. 기반 단계 JVM31/Debug 통과(build/independent-repositories.log). 전체 화면 연결 검증은 후속 결과와 구분한다.
 
 NoticeCardViewModel/NoticeCardState를 widgets.noticecard.model에 추가했다. ViewModel이 두 repository로 표시 값을 조합하고, 저장 여부는 기존 FavoritesState에서 매번 읽는다. repository revision 기반 derivedStateOf는 동일 render의 재조회와 missing 반복 조회를 막고 replacement 때 다시 계산한다. JVM 카드2건(공유 저장/삭제, 이름교체, missing/recovery) 및 전체33건/Debug 통과(build/card-viewmodel.log). UI 조립 전환은 공통 snapshot 수명 연결과 함께 수행한다. UI segment의 직접 저장소 접근 금지는 유지하고 Model segment만 하위 저장소/Feature 접근을 허용한다.
+
+NoticeDetailViewModel→NoticeDetailState를 Pages/noticedetail/model에 추가했다. 조직 경로는 문자열 표시값으로만 State에 있고 NoticeModel에는 없다. ViewModel은 독립 저장소와 shared favorites를 주입받아 출처/근거/명시 role/phase별 장소를 보존한다. 단일 venuesFor 순수 규칙으로 온라인/결선 장소를 분리한다. JVM detail1건(두 VM cache 재사용·부모/context·근거·save·replacement/missing)와 전체34건/Debug 통과(build/detail-viewmodel.log). 최종 UI는 공통 App 조립 교체와 함께 이 State만 받도록 연결한다.

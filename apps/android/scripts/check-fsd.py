@@ -11,7 +11,7 @@ LAYERS = {name: i for i, name in enumerate(("app", "pages", "widgets", "features
 API = {
     "pages.discovery": {"ui.DiscoveryScreen"},
     "pages.favorites": {"ui.FavoritesScreen"},
-    "pages.noticedetail": {"ui.NoticeDetailSheet"},
+    "pages.noticedetail": {"ui.NoticeDetailSheet", "model.NoticeDetailViewModel", "model.NoticeDetailState"},
     "widgets.noticecard": {"ui.NoticeCard", "model.NoticeCardState", "model.NoticeCardViewModel"},
     "widgets.favoriteorganizationcard": {"ui.FavoriteOrganizationCard"},
     "features.favoriteorganization": {
