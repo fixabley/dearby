@@ -86,15 +86,17 @@ SwiftUI에 이 용도의 일정 일간 시간표 control이 없어 좁은 custom
 
 `EventTimeRows`는 각 시작/종료의 날짜·요일을 body, 다음 줄 자연어 시간 범위를 subheadline으로 표시한다. 같은날 날짜 1회, 다일 각 날짜/시간 대응을 유지하며 큰글자 자연 줄바꿈을 허용한다. 한국 시간 보조라벨만 생략하고 Asia/Seoul 계산 및 export, 다른 시간대와 DST offset, 미확인/원문 fallback은 유지한다. 사용자 제공 `/tmp/dearby-period-linebreak-reference.png`를 직접 확인했고 관련 `run_detail_presentations.sh`로 변환 계약을 검증한다.
 
-### #10 · 내 일정 연결과 시간축 비교
+### #10 · 환경설정과 기기 일정 비교
 
 | 진입점 | 입력/출력 | Native 매핑/사용처 |
 | --- | --- | --- |
-| CalendarConnectionControl | CalendarConnectionState, isEnabled, toggle/continue/cancel/settings 콜백 | native Toggle·alert·Button·ProgressView; 상세 한 섹션 |
-| EventDayTimeline | 기존 interval/title + BusyTimeDisplay, onSelectDay, onRetryBusy (기본 hidden/nil) | native 날짜선택/스크롤 유지; 실제 활동만 콜백 연결, 신청은 hidden |
-| BusyTimeStatusView / SummaryView | 표시상태, source TimeZone, retry | Label·DisclosureGroup·SF Symbol; 실패와 빈 성공 분리, 짧은 구간 전체 시각 읽기 |
-| BusyTimeInterval / Display | start/end Date, status, intervals/overlaps | OS/공고 도메인 없는 값; half-open union/clip |
+| CalendarConnectionControl | CalendarConnectionState, isEnabled, toggle/settings 콜백 | native Toggle·Button·ProgressView; Pages/Settings/Form 한 섹션 |
+| EventDayTimeline | 기존 interval/title + BusyTimeDisplay, onSelectDay, onRetryBusy (기본 hidden/nil) | native 날짜선택/스크롤; 실제 활동에만 busy, 신청은 hidden |
+| BusyTimeStatusView / SummaryView | 표시상태, source TimeZone, retry | Label·DisclosureGroup·SF Symbol; 실제 intersection 문장, 실패와 빈 성공 구분, 짧은 구간 전체 시각 읽기 |
+| BusyTimeInterval / Display | start/end Date, status, intervals/overlaps | OS/공고 도메인 없는 half-open union/clip 값 |
 
-일간 그림은 SwiftUI에 기기 busy와 활동을 겹쳐 보여주는 제공 View가 없어 좁은 custom grid를 유지한다. 활동은 accentColor, 바쁜 시간은 semantic secondary의 반투명 배경이며 본문 동일 시간축에 배치한다. 시간 gutter는 유지한다. 교집합의 실제 높이에만 primary dashed stroke, 활동에는 exclamationmark.triangle.fill과 접근성 겹침 안내를 제공한다. 활동 제목은 왼쪽, 바쁜 시간 명칭과 시각은 오른쪽으로 나누어 본문 제목을 가리지 않는다. 짧은 busy/교집합 높이는 확대하지 않으며 전체 시각은 인접 native DisclosureGroup 및 AX에서 제공한다. 활동의 기존 최소 시각높이는 교집합 계산에 사용하지 않는다. OFF면 바쁜 구간·점선·경고·결과를 모두 제거한다. 큰글자에서는 전체 활동명도 시간표 위에 보이며 블록 문자 일부가 시각높이 안에 들어가지 않으면 전체 시각 요약을 사용한다.
+SwiftUI는 활동+기기 busy 비교용 timeline View를 제공하지 않아 좁은 custom grid를 유지한다. 활동은 accentColor, 바쁜 시간은 UIKit adaptive systemTeal의 낮은 opacity를 사용한다. 시간 gutter는 유지하며 본문 같은 시간축의 실제 교집합만 primary dashed stroke와 exclamationmark.triangle.fill을 표시한다. 겹치는 시간 문장은 busy 전체가 아닌 동일 intersection 배열을 포맷한다. 예: 활동14–16 / busy15–17 → 겹침15–16. 접점은 warning/점선 없음. 활동명은 왼쪽, busy 명칭/시각은 오른쪽으로 분리해 가림을 줄인다. 짧은 busy/교집합은 높이를 확대하지 않고 인접 DisclosureGroup 및 AX가 정확한 전체 시각을 제공한다. 기존 activity 최소 시각높이를 교집합 계산에 사용하지 않는다. 큰글자 전체 활동명은 시간표 위에도 제공한다.
 
-개인 캘린더 권한/조회는 Shared UI 밖 ReadCalendarBusy feature와 App에서만 수행한다. 상세 하나의 스위치가 여러 일정의 연결 상태를 소유하며 원본URL/지도/기존 calendar editor 액션과 별개다. [실행 증거와 공개 Apple API 근거](evidence/issue-10/README.md).
+환경설정의 겹치는 일정 확인하기는 전역 설정이며 최초 설명은 App의 native alert 켜기/나중에로 한 번 표시한다. 재실행 유지 boolean만 저장하고 개인 일정 구간은 상세의 임시 세션에 남는다. Shared는 권한/저장 API에 접근하지 않는다. [최신 실행 증거와 Apple 근거](evidence/issue-10/README.md).
+
+피드 큰글자에서는 카드 안 native ScrollView로 긴 내용을 읽고 바깥 native viewAligned(alwaysByOne)의 고정 한 장 이동을 유지한다. 제스처 경합을 피하는 이전/다음 공고 native 버튼은 AX 크기에서만 제공한다. [실제검증](evidence/issue-10/PAGING.md).

@@ -1,4 +1,5 @@
+PASS preferences: first prompt once/later zero permission/relaunch persistence/grant/deny/reuse/inactive; OFF cancels active detail and stale permission/query; foreground revocation; only two boolean keys persisted
 PASS positive overlap/touch/one-second boundaries; Korean times, midnight and DST repeated-hour offsets
 PASS: permission prompt inactive/Continue-dismissal accepted; background late grant ignored
 PASS: half-open overlap/merge/adjacency/all-day/expanded occurrences/filter; OFF/consent cancel/continue/shared permission/reuse/denied/restricted/error/empty; loading OFF and stale day suppression; revoke/background/resume/close
-PASS: FSD lexical boundaries (93 Swift files; scope: all), guard fixtures
+PASS: FSD lexical boundaries (99 Swift files; scope: all), guard fixtures

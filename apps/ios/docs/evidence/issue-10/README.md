@@ -1,38 +1,40 @@
-# Issue10 · 바쁜 시간 연결 및 활동 겹침
+# Issue10 · 기기 바쁜 시간과 활동 겹침
 
-2026-09-15 KST 실행 기록. PR8 head458f12d를 부모로 하는 `fixabley/dearby-ios-calendar-busy`, 별도 Draft PR base `fixabley/dearby-ios-2`다. Refs #10; 부모 PR8에 권한 기능을 섞지 않는다.
+2026-09-15 KST 최종 기준. PR8 head458f12d 부모의 별도 fixabley/dearby-ios-calendar-busy branch / base fixabley/dearby-ios-2, Refs #10. 이 기록은 중간 상세스위치/gutter/회색 시안을 대체한다.
 
-## 구현/경계
+## 동작과 경계
 
-단일 상세 BusyCalendarSession은 default OFF, 동의 전 권한요청0, 취소→OFF, 계속→권한요청, granted 재사용, denied/restricted/failed/empty를 분리한다. 앱 첫화면 또는 상세 진입에서 OS 권한 요청은 없다. 확정된 활동의 선택 날짜만 조회하며 신청 접수기간은 지속 참석 시간으로 판단하지 않는다. 부분 조회 결과는 선택 날짜 기준이며 참여 가능을 보장하지 않는다.
+최초 실행은 목적 설명과 켜기/나중에를 한 번 표시한다. 나중에는 OS 요청0, 켜기에서만 fullAccess 요청. 이후 gear→환경설정의 겹치는 일정 확인하기로 ON/OFF를 변경하며 재실행에 유지한다. App/CalendarPreferences가 permission/preference를 소유하고 비개인 enabled/firstPromptHandled boolean 두 개만 UserDefaults에 저장한다. 처음 alert가 화면 준비 전에 사라지는 문제를 발견해 초기 렌더 준비 뒤 표시하도록 수정했다.
 
-EventKitBusyProvider actor가 fullAccess 및 선택일 predicate/occurrence enumeration을 소유한다. 취소/free/본인declined 제외, 반복은 OS가 전개한 occurrences, 시간대·종일·자정은 절대시각의 반열린 clip으로 처리한다. 27시간 이하 한 선택일 범위만 허용하고 긴 활동 전체를 읽지 않는다. 선택 날짜 구간을 union하여 중복/겹침을 합치고 활동 교집합만 계산한다. 제목/장소/참석자 상세/ID/메모는 UI/로그/서버/디스크에 남기지 않는다. 참가자 객체는 adapter 내부 본인 거절 boolean 판별에만 사용한다. EventKit 객체는 actor 밖으로 전달하지 않고 start/end Date만 일시 메모리로 반환한다. 조회 뒤 store.reset 및 참조 정리, OFF/close/background/revoke 시 결과 즉시 제거·취소·generation 무효화, 늦은 응답 무시. 실제 권한 alert의 inactive는 유지하고 실제 background에서만 중단한다. foreground/선택날짜/저장소 알림은 재조회한다.
+상세에는 결과만 있으며 각 BusyCalendarSession의 개인 interval은 일시 메모리다. 설정OFF는 등록 세션을 즉시 취소/정리하고 늦은 권한/조회 응답도 generation으로 차단한다. close/background/revoke에서도 정리, foreground/선택일/저장소 변경에 재조회한다. 권한 dialog의 일시 inactive를 background로 오인해 취소하지 않는다. denied/restricted/failed/empty를 구분하고 거절·권한 실패는 전역enabledfalse다.
 
-Shared는 busy interval/표시 상태/콜백만 받는다. custom timeline은 활동 accent와 busy secondary 반투명 배경을 본문 시간축에 그리며 실제 양의 교집합만 점선, 활동 warning 및 AX를 제공한다. 접점0이나 시각적 최소 activity 높이로 가짜 겹침을 만들지 않는다. 활동명과 busy 명칭은 좌우에 두어 가림을 줄이고 짧은 구간은 정확한 높이와 인접 전체 시각 요약으로 의미를 보존한다. 상세 날짜는 날짜·요일 body / 다음줄 시간 subheadline, 한국 시간 중복라벨만 생략; 내부 sourcezone/DST/원문fallback/export 그대로다.
+확정 활동의 선택일만 읽고 신청기간은 참석 충돌에서 제외한다. EventKit actor의 27시간 이하 한 날짜 predicate가 반복 occurrence를 전개하며 취소/free/본인declined 제외, half-open clip/union/양의 intersection을 사용한다. 제목/장소/ID/메모는 읽거나 UI/로그/서버/디스크에 남기지 않는다. 참가자 정보는 actor 내부 본인 거절 boolean 판별에만 사용한다. OS객체는 밖으로 전달하지 않고 Date 두 개만 반환, store.reset으로 참조 정리한다. 서버 전송·SwiftData/cache 저장 없음.
 
-## 이번 실행 결과
+활동accent / adaptive systemTeal busy를 본문에 반투명으로 표시하고 실제 교집합만 점선·warning·자연어 겹침 시각을 보여준다. 활동14–16 / busy15–17이면 점선과 겹침문장은15–16이며 busy전체15–17은 바쁜시간으로 명확히 구분한다. 접점은 경고 없음. 짧은 구간은 정확한 높이, 전체시각 DisclosureGroup/AX; activity 최소 시각높이로 가짜 겹침을 만들지 않는다. 날짜·요일 body / 다음줄 시간 subheadline, 한국 시간 중복라벨만 제거하며 sourcezone/DST/fallback/export는 유지한다.
 
-- `run_busy_calendar.sh`: PASS, [state-tests.txt](state-tests.txt). 겹침/비겹침/접점/1초/종일/중복반복 occurrence/filter, Korean 시각/자정/DST offset, OFF/동의취소/계속/복수활동 단일권한/재사용/거절/제한/실패/빈성공/조회중OFF/이전날stale/권한철회/close/background/resume 검증. 별도 held permission으로 inactive 및 Continue 직후 alert-dismissal은 허용 결과 유지, 실제 background 뒤 지연 허용은 OFF 유지 검증.
-- `run_detail_presentations.sh`: 이번 소스에서 PASS. 날짜·시간·장소·safe URL, 다일 first/middle/last/end-midnight/23·25·23.5시간/DST fold/짧은시간/불명precision/100년 bounded projection. FSD 93 Swift files 및 guard 부정 fixture PASS.
-- Xcode26.6/Swift6, iOS26.5 전용4156: Debug build+run 16:34:44Z PASS, 경고0/오류0; Release build 16:35:56Z PASS, 경고0/오류0. 생성 Info.plist의 fullAccess 목적문구 양쪽 확인, Release binary에 debug fixture switch/provider 없는 것 확인. 로그는 아래 로컬 경로.
-- UI는 오직 `--busy-calendar-fixture=overlap|denied|touch`로 실행한 가짜 provider이며 EventKit 생성/OS권한 허용/개인일정 조회를 하지 않는다. Toggle→native 안내→계속→fakeON 및 deniedOFF, 취소OFF, ON→OFF 제거를 실제 MCP touch와 window3055 PNG로 확인했다. 마지막 표시변경의 light/dark/AX5 및 접점 화면을 갱신했다. 이전 얇은 lane/두열/gutter 시안 증거는 최종 PNG로 교체했다.
+## 이번 검증
 
-| 증거 | 실제 확인 |
+- [state-tests.txt](state-tests.txt): fake provider/session/preference, 최초한번/나중에0/계속허용·거절·실패·제한/재실행유지/기존권한재사용/OFF중단/지연권한·조회/권한철회/선택일stale/background/inactive/close PASS. 별도 temporary UserDefaults suite에서 두 boolean 키만 저장되는 것 확인 후 정리. 개인데이터 저장 없음. interval merge/접점/1초/종일/OS전개값 fixture/취소freedeclined/Korean 시각/자정/DST offset/14–16 대15–17 문장15–16 PASS.
+- run_detail_presentations.sh: 이번 날짜·장소·safe URL/다일·DST·불명precision 기존계약 PASS. 전체 이전 suite는 재실행하지 않았다. FSD99 Swift files/부정 fixture PASS.
+- Xcode26.6/Swift6/iOS26.5 전용4156: 최종 Debug build+run16:51:26Z 및 Release build16:52:06Z PASS, 경고0/오류0. 생성 Info.plist fullAccess 목적문구 확인, Release에 debug fixture 코드 없는 것 확인.
+- UI는 오직 explicit debug fake-provider이며 OS fullAccess 허용/개인일정 조회/Calendar Save는 하지 않았다. 실제 first-prompt 나중에→gear/settingsOFF→ON→상세 결과, 별도 fake denied settingsOFF/설정경로 확인. 정상/접점 light, 정상 dark/AX5를 window3055 PNG로 확인. 마지막 intersection 문장 추가는 light/dark 갱신; AX5 그림은 같은 최종 배색/설정 구조에서 해당 한 줄 추가 전 촬영.
+- [피드 검증](PAGING.md): 사용자 AX 자유스크롤 정책 폐기 후 고정 한장 native alwaysByOne. 일반 fast fling1→2→1, AX 카드내부 스크롤2/4유지/다음버튼/상세진입, 실제 click-count2로 이미저장된 KRC의 저장 feedback 확인(집합불변).
+
+| 증거 | 확인한 상태 |
 | --- | --- |
-| [consent.png](consent.png) | 정확한 목적 안내와 native 계속/취소 (표시 최종정리 전 동일 제어) |
-| [off-after-cancel.png](off-after-cancel.png) | 동의 취소 후 OFF, 조회 없음 안내 |
-| [fake-denied.png](fake-denied.png) | fake 거절은 OFF 및 권한 없음/설정 버튼, 빈성공 아님 |
-| [fake-overlap.png](fake-overlap.png) | 최종 날짜/시간 분리, 활동14–16와 busy15–17, 점선15–16만 |
-| [fake-overlap-dark.png](fake-overlap-dark.png) | 동일 최종 상태 dark |
-| [fake-overlap-ax5.png](fake-overlap-ax5.png) | 최대 접근성 글자크기, 독립 블록/점선/경고, 세로스크롤 |
-| [fake-touch.png](fake-touch.png) | 활동14–16 / busy16–17 접점: busy 표시하되 점선·경고 없음 |
-| [off-after-on.png](off-after-on.png) | 최종 ON→OFF 즉시 busy/점선/결과 제거 |
+| [first-prompt.png](first-prompt.png) | 최초 native 켜기/나중에 및 정확한 목적문구 |
+| [settings-off.png](settings-off.png) | 나중에 후 환경설정 OFF |
+| [settings-on.png](settings-on.png) | 환경설정 fake ON, 상세 스위치 없음 |
+| [settings-denied.png](settings-denied.png) | fake 거절 OFF·권한 없음·설정 열기 |
+| [fake-overlap.png](fake-overlap.png) / [dark](fake-overlap-dark.png) | 날짜/시간 분리, 활동14–16 / busy15–17 / 점선 및 문장15–16 |
+| [AX5](fake-overlap-ax5.png) | 큰글자 블록·점선·경고·세로스크롤 |
+| [fake-touch.png](fake-touch.png) |14–16 /16–17 접점의 busy는 표시, 점선·경고 없음 |
 
-## 미검증 및 제한
+## 미검증/제한
 
-실제 OS 권한 허용·개인 일정 조회·계정별 반복/종일 occurrence를 실행하지 않았다. EventKit adapter는 SDK 빌드 및 공식 문서로 확인했고 fake 상태/값 테스트가 OS backend 검증을 대신한다고 주장하지 않는다. enumeration API는 명시적 오류 반환 채널이 없으므로 권한 사전/사후 검사 외 시스템 backend 오류와 빈 목록의 구분은 보장할 수 없다. synchronous OS enumeration의 즉시 중단을 보장하지 않지만 callback 취소검사/stop·actor reset과 generation guard로 이후 화면 반영은 차단한다.
+실제 OS 권한 허용·개인 일정·계정별 반복/종일 occurrence는 실행하지 않았다. OS adapter는 SDK 빌드와 공식 문서로 확인했으며 fake가 실제backend 검증을 대신한다고 주장하지 않는다. enumeration API에 명시 오류 채널이 없어 권한 사전/사후 검사 외 시스템 backend 오류와 빈 목록을 완전히 구분할 수 없다. synchronous query 즉시 종료를 보장하지 않으나 callback 취소검사/stop·reset 및 generation으로 뒤늦은 화면 반영을 차단한다.
 
-VoiceOver 실제 음성, 모든 기기/공고/크기, OS 실제 철회/설정 이동, Canvas는 미검증이다. 짧은 busy 구간은 시간 높이를 늘리지 않아 블록 내부 문자가 생략/잘릴 수 있고 DisclosureGroup 및 AX가 전체 시각을 제공한다. AX 트리 stale/Orca synthetic input 무반응이 있어 명령 성공만으로 UI 통과 처리하지 않았으며 실제 window PNG를 확인했다. 전체 이전 suite/36장 재촬영을 하지 않았다. 기존 export/map/cache/favorites는 소스 계약 유지, 이번에 Calendar Save/외부 링크/지도/즐겨찾기 조작 없음. A434/C38E untouched;4156은 light/large로 복원했다.
+VoiceOver 실제음성/모든크기·기기·공고/OS실제권한철회·설정이동/Canvas는 미검증이다. 짧은 block 내부 문자가 생략·잘릴 때 인접 요약/AX에서 전체시각을 제공한다. AX stale/일부 Orca synthetic 무반응으로 실제window PNG 및 MCP touch로 결과를 판정했다. 이전 중간스위치 사진은 최종증거에서 제거했다. A434/C38E untouched;4156 light/large 복원. 실제저장/외부URL/지도 조작 없음. 기존 models/source/cache/export/maps/favorites key 계약 유지.
 
 ## Apple API 근거 (이번 작업에서 확인)
 
@@ -42,4 +44,5 @@ VoiceOver 실제 음성, 모든 기기/공고/크기, OS 실제 철회/설정 �
 - [Updating with notifications](https://developer.apple.com/documentation/EventKit/updating-with-notifications): 저장소 변경 후 재조회.
 - [participantStatus](https://developer.apple.com/documentation/eventkit/ekparticipant/participantstatus), [declined](https://developer.apple.com/documentation/eventkit/ekparticipantstatus/declined): 본인 거절 제외.
 
-로컬 build logs: `~/Library/Developer/XcodeBuildMCP/workspaces/dearby-ios-2-e039b1051c4c/logs/build_run_sim_2026-09-14T16-34-44-906Z_pid74437_853b0ba6.log`, `build_sim_2026-09-14T16-35-56-809Z_pid74437_c07d229f.log`.
+
+최종 build logs: `~/Library/Developer/XcodeBuildMCP/workspaces/dearby-ios-2-e039b1051c4c/logs/build_run_sim_2026-09-14T16-51-26-328Z_pid74437_0e6d94f2.log`, `build_sim_2026-09-14T16-52-06-720Z_pid74437_08052476.log`.

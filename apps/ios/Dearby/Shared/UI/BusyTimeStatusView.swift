@@ -17,11 +17,14 @@ struct BusyTimeStatusView: View {
             VStack(alignment: .leading, spacing: NativeSpacing.compact) {
                 Label(display.overlaps.isEmpty ? "선택 날짜의 활동 시간과 겹침 없음" : "선택 날짜의 활동 시간과 겹침 있음",
                       systemImage: display.overlaps.isEmpty ? "checkmark.circle" : "exclamationmark.triangle")
+                ForEach(Array(display.overlaps.enumerated()), id: \.offset) { _, interval in
+                    Text("겹치는 시간 · \(interval.description(in: timeZone))")
+                }
                 Text("기기 일정 기준 · 참여 가능을 보장하지 않습니다.")
                     .foregroundStyle(.secondary)
                 if !display.intervals.isEmpty {
                     BusyTimeSummaryView(display: display, timeZone: timeZone)
-                    Text("강조색: 활동 · 회색: 바쁜 시간 · 점선: 겹치는 시간")
+                    Text("강조색: 활동 · 청록색: 바쁜 시간 · 점선: 겹치는 시간")
                         .foregroundStyle(.secondary)
                 }
             }.font(.footnote).fixedSize(horizontal: false, vertical: true)

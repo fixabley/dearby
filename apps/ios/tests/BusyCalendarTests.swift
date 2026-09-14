@@ -7,6 +7,8 @@ actor FakeBusyProvider: BusyCalendarProvider {
     var fails = false
     var hold = false
     var pending: [CheckedContinuation<[BusyTimeInterval], Error>] = []
+    var permissionFails = false
+    func failPermission() { permissionFails = true }
     var holdPermission = false
     var pendingPermission: CheckedContinuation<BusyCalendarAuthorization, Error>?
     var requested = 0
@@ -15,6 +17,7 @@ actor FakeBusyProvider: BusyCalendarProvider {
     func authorization() -> BusyCalendarAuthorization { access }
     func requestReadPermission() async throws -> BusyCalendarAuthorization {
         requested += 1
+        if permissionFails { throw BusyCalendarFailure.unavailable }
         if holdPermission { return try await withCheckedThrowingContinuation { pendingPermission = $0 } }
         access = decision; return access
     }
@@ -39,6 +42,7 @@ actor FakeBusyProvider: BusyCalendarProvider {
 
 @main struct BusyCalendarTests {
     @MainActor static func main() async {
+        await testCalendarPreferences()
         func date(_ seconds: Double) -> Date { Date(timeIntervalSince1970: seconds) }
         func busy(_ a: Double, _ b: Double) -> BusyTimeInterval { .init(start: date(a), end: date(b))! }
         let day = DateInterval(start: date(0), end: date(86400))
@@ -60,6 +64,8 @@ actor FakeBusyProvider: BusyCalendarProvider {
         precondition(BusyTimeInterval.merged([busy(12*3600,14*3600)], in: activity).isEmpty)
         precondition(BusyTimeInterval.merged([busy(16*3600-1,17*3600)], in: activity) == [busy(16*3600-1,16*3600)])
         let utc = TimeZone(secondsFromGMT: 0)!
+        let actualOverlap = BusyTimeInterval.merged([busy(15*3600,17*3600)], in: activity)
+        precondition(actualOverlap.map { $0.description(in: utc) } == ["오후 3시부터 오후 4시까지"])
         precondition(busy(15*3600,17*3600).description(in: utc) == "오후 3시부터 오후 5시까지")
         precondition(busy(15*3600+30,15*3600+31).description(in: utc).contains("30초"))
         precondition(busy(23*3600,86400).description(in: utc).contains("1월 2일"))

@@ -13,6 +13,8 @@ App/BusyCalendarProviderFactory.swift
 App/CalendarEditorDelegate.swift
 App/CalendarEditorRequest.swift
 App/CalendarEventEditor.swift
+App/CalendarPreferenceStore.swift
+App/CalendarPreferences.swift
 App/ContentView.swift
 App/DearbyApp.swift
 App/NoticeDestinationView.swift
@@ -21,6 +23,7 @@ App/NoticeSession.swift
 App/PreviewBusyCalendarProvider.swift
 App/SnapshotManifest.swift
 App/SwiftDataSnapshotStore.swift
+App/UserDefaultsCalendarPreferenceStore.swift
 App/VenueMapLauncher.swift
 App/VenueMapLink.swift
 Entities/Notice/API/NoticeRecord.swift
@@ -57,6 +60,8 @@ Features/ReadCalendarBusy/API/BusyCalendarProvider.swift
 Features/ReadCalendarBusy/API/EventKitBusyProvider.swift
 Features/ReadCalendarBusy/Model/BusyCalendarOccurrence.swift
 Features/ReadCalendarBusy/Model/BusyCalendarSession.swift
+Pages/Discovery/UI/DiscoveryCardPage.swift
+Pages/Discovery/UI/DiscoveryPageControls.swift
 Pages/Discovery/UI/DiscoveryView.swift
 Pages/Favorites/UI/FavoriteListView.swift
 Pages/NoticeDetail/Model/NoticeDetailState.swift
@@ -69,6 +74,7 @@ Pages/NoticeDetail/UI/NoticeIdentityView.swift
 Pages/NoticeDetail/UI/NoticeLocationView.swift
 Pages/NoticeDetail/UI/NoticeScheduleView.swift
 Pages/NoticeDetail/UI/VenueMapButton.swift
+Pages/Settings/UI/SettingsView.swift
 Shared/Lib/BusyTimeDescription.swift
 Shared/Lib/BusyTimeDisplay.swift
 Shared/Lib/BusyTimeInterval.swift
@@ -209,10 +215,14 @@ EventPeriodPresentation/EventTimeRows/LocationInformation은 Shared의 범용 �
 
 Calendar screenshot 후속: Shared/Lib의 `EventTimelineInterval`은 명시적 timezone의 검증된 날짜 값만 받아 한 날짜의 half-open clip/눈금을 계산한다. NoticeDetail State/VM의 `EventPeriodPresentation` 및 applicationURL이 이를 조립하며 Shared/UI의 `EventDayTimeline`, `EventDaySelector`, `EventTimelineGrid`, `ExternalLinkCard`는 값/Binding만 받는다. 선택 날짜는 미리보기의 일시적인 local State이며 repository, favorite owner, export mapper, App 수명은 바꾸지 않는다. UI 하위 조각은 역할별 View 파일이며 순수 scroll helper만 함수로 둔다. #10은 아래의 별도 읽기 feature로 busy provider를 연결한다.
 
-## #10 · 상세 세션의 바쁜 시간 읽기
+## #10 · 환경설정과 임시 상세 조회
 
-App/NoticeDetailDestination의 State가 BusyCalendarSession 하나를 소유한다. Feature/ReadCalendarBusy의 provider protocol/session/actor adapter가 권한과 OS 조회를 격리하고 Pages에는 연결 상태·busy 값·콜백만 내려간다. Shared는 Date interval, 표시 상태와 date-selection/retry 콜백만 받으며 EventKit/model/source/store 참조가 없다. 위젯 flat 구조 및 기존 NoticeSession·즐겨찾기 소유권/SwiftData/cache/export/map 계약은 그대로다.
+App/CalendarPreferences는 공유 preference/permission owner다. App 시작의 설명은 한번만 native alert로 표시하며 켜기/나중에 응답 뒤 firstPromptHandled를 기록한다. OS fullAccess는 명시적 켜기 또는 환경설정 ON에서만 요청한다. UserDefaultsCalendarPreferenceStore는 dearby.calendarBusy.enabled / firstPromptHandled의 비개인 boolean 두 개만 영속하며 기존 favorites 키/소유권과 독립이다. ContentView의 gear→native sheet/NavigationStack→Pages/Settings/Form이 겹치는 일정 확인하기 스위치를 표시한다. 앱 초기 화면 준비 전 alert가 사라지는 문제를 피하도록 로드 완료/실패 후 Task.yield 뒤 최초 안내를 시작한다.
 
-화면마다 default OFF → native 동의 → EventKit fullAccess이며 이미 허용했으면 즉시 조회한다. 확정 활동의 선택 날짜만 등록하며 신청기간은 등록하지 않는다. 권한 요청 alert의 inactive는 취소하지 않고 실제 background/close/OFF/revoke에서 Task generation을 무효화하고 개인 구간을 비운다. active/선택 날짜/이벤트 저장소 변경 시 재조회한다. EventKit 객체는 actor 밖으로 나오지 않고 제목/장소/ID/메모 등은 읽거나 기록하지 않으며 본인 거절 여부만 참가자 상태로 판별한다. 결과는 날짜 두 개의 일시 메모리 값이며 네트워크·디스크 저장이 없다.
+상세에는 스위치/권한 안내를 중복 배치하지 않고 확정 활동의 선택 날짜 busy 결과만 보여준다. App/NoticeDetailDestination이 별도 BusyCalendarSession을 가지고 전역 CalendarPreferences에 약한 참조로 attach/detach한다. 전역 OFF는 등록 세션을 즉시 cancel/clear하며, detail close/background/revoke도 개인 결과를 버린다. App 복귀와 EventKit 변경은 전역 권한 및 선택 날짜를 재검사한다. 최초 권한 dialog의 inactive는 유지하고 background 뒤 늦은 권한 응답은 무시한다. 여러 선택일의 늦은 결과도 generation으로 차단한다.
 
-OS EventKit의 synchronous occurrence enumeration은 actor에서 수행하며 시간범위는 27시간 이하 한 선택일로 제한한다. 취소/free/본인declined 제외, 중복·중첩/인접 interval union, 반열린 clip, 양의 교집합만 점선/경고로 표시한다. fullAccess는 OS가 쓰기도 허용하는 권한이지만 adapter는 읽기만 구현하며 FSD guard가 save/remove/다른 permission 요청을 금지한다. SDK enumeration의 오류 채널 부재와 실제 개인 일정 검증 제외 등은 [#10 실행 기록](docs/evidence/issue-10/README.md)을 따른다.
+ReadCalendarBusy feature의 actor가 EventKit 객체를 내부에 가두고 start/end Date만 반환한다. 선택일 27시간 이내 predicate, OS 전개 occurrence, 취소/free/본인거절 제외, 반열린 clip/union/양의 intersection을 사용한다. 제목/장소/메모/ID를 읽거나 기록하지 않으며 참가자 객체는 본인거절 boolean에만 사용한다. 결과는 일시 메모리이며 SwiftData/cache/서버로 전달하지 않는다. fullAccess는 OS가 쓰기도 허용하지만 adapter는 읽기 전용이고 FSD guard가 save/remove/다른 권한 요청을 금지한다. 기존 export/maps/NoticeSession/cache/favorites 및 widget flat 구조는 유지한다.
+
+Shared UI는 범용 값·표시상태·콜백만 받고 source/model/OS/store를 참조하지 않는다. 바쁜 시간은 adaptive systemTeal, 활동은 accent, 실제 교집합만 점선 및 warning과 자연어 시각을 표시한다. [최신 실행·API·미검증](docs/evidence/issue-10/README.md).
+
+피드 접근성 후속은 모든 글자크기에서 고정 viewport의 native alwaysByOne 정렬을 사용한다. AX 내용만 카드 안에서 스크롤하며 별도 native 이전/다음 공고 버튼을 제공한다. [원인/실제 fling·doubletap 검증](docs/evidence/issue-10/PAGING.md).

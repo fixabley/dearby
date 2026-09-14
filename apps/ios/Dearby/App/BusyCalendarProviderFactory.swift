@@ -9,4 +9,12 @@ enum BusyCalendarProviderFactory {
         #endif
         return EventKitBusyProvider()
     }
+    @MainActor static func makePreferenceStore() -> any CalendarPreferenceStore {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains(where: { $0.hasPrefix("--busy-calendar-fixture=") }) {
+            return MemoryCalendarPreferenceStore()
+        }
+        #endif
+        return UserDefaultsCalendarPreferenceStore()
+    }
 }

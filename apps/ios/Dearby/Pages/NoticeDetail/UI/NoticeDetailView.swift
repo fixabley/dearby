@@ -6,13 +6,7 @@ struct NoticeDetailView: View {
     let onAddApplication: (() -> Void)?
     let onOpenMap: (NoticeVenue) -> Void
 
-    var calendarConnection: CalendarConnectionState = .off
-    var personalCalendarEnabled = false
     var busyDays: [Int: BusyTimeDisplay] = [:]
-    var onToggleCalendar: (Bool) -> Void = { _ in }
-    var onContinueCalendar: () -> Void = {}
-    var onCancelCalendar: () -> Void = {}
-    var onCalendarSettings: () -> Void = {}
     var onSelectActivityDay: (Int, EventTimelineInterval.Day) -> Void = { _, _ in }
     var onRetryBusy: () -> Void = {}
 
@@ -33,11 +27,6 @@ struct NoticeDetailView: View {
             Section("신청") {
                 NoticeApplicationView(time: state.applicationTime, title: state.title, original: state.applicationSummary, url: state.applicationURL, onAddToCalendar: onAddApplication)
 
-            }
-            Section("내 일정") {
-                CalendarConnectionControl(state: calendarConnection, isEnabled: personalCalendarEnabled,
-                    onToggle: onToggleCalendar, onContinue: onContinueCalendar,
-                    onCancel: onCancelCalendar, onSettings: onCalendarSettings)
             }
             Section("활동") {
                 ForEach(Array(state.schedules.enumerated()), id: \.offset) { index, phase in

@@ -5,6 +5,7 @@ import EventKit
 struct NoticeDetailDestination: View {
     let state: NoticeDetailState
     let notice: NoticeModel
+    let calendarPreferences: CalendarPreferences
     @Environment(\.openURL) private var openURL
     @Environment(\.scenePhase) private var scenePhase
     @State private var busyCalendar: BusyCalendarSession
@@ -12,9 +13,9 @@ struct NoticeDetailDestination: View {
     @State private var calendarRequest: CalendarEditorRequest?
     @State private var calendarFailed = false
 
-    init(state: NoticeDetailState, notice: NoticeModel, provider: any BusyCalendarProvider = BusyCalendarProviderFactory.make()) {
-        self.state = state; self.notice = notice
-        _busyCalendar = State(initialValue: BusyCalendarSession(provider: provider))
+    init(state: NoticeDetailState, notice: NoticeModel, calendarPreferences: CalendarPreferences) {
+        self.state = state; self.notice = notice; self.calendarPreferences = calendarPreferences
+        _busyCalendar = State(initialValue: BusyCalendarSession(provider: calendarPreferences.provider))
     }
 
     var body: some View {
@@ -26,15 +27,13 @@ struct NoticeDetailDestination: View {
                          onAddSchedule: phases.map { draft in draft.map { event in { openCalendar(event) } } },
                          onAddApplication: application.map { draft in { openCalendar(draft) } },
                          onOpenMap: openMap,
-                         calendarConnection: busyCalendar.connection, personalCalendarEnabled: busyCalendar.isEnabled,
-                         busyDays: busyCalendar.days, onToggleCalendar: busyCalendar.setEnabled,
-                         onContinueCalendar: busyCalendar.continueConsent, onCancelCalendar: busyCalendar.cancelConsent,
-                         onCalendarSettings: { openURL(URL(string: UIApplication.openSettingsURLString)!) },
+                         busyDays: busyCalendar.days,
                          onSelectActivityDay: { index, day in
                              busyCalendar.select(id: index, day: DateInterval(start: day.start, end: day.end),
                                  activity: DateInterval(start: day.clippedStart, end: day.clippedEnd))
                          }, onRetryBusy: busyCalendar.refresh)
-            .onDisappear { busyCalendar.close() }
+            .onAppear { calendarPreferences.attach(busyCalendar) }
+            .onDisappear { calendarPreferences.detach(busyCalendar) }
             .onChange(of: scenePhase) { _, phase in
                 // System permission alerts cause inactive; do not cancel their pending response.
                 switch phase {
@@ -43,7 +42,7 @@ struct NoticeDetailDestination: View {
                 default: busyCalendar.lifecycle(.inactive)
                 }
             }
-            .onReceive(NotificationCenter.default.publisher(for: .EKEventStoreChanged)) { _ in busyCalendar.refresh() }
+            .onReceive(NotificationCenter.default.publisher(for: .EKEventStoreChanged)) { _ in calendarPreferences.refreshAuthorization(); busyCalendar.refresh() }
             .sheet(item: $calendarRequest) { request in
                 CalendarEventEditor(request: request, onDismiss: { calendarRequest = nil })
             }

@@ -12,7 +12,7 @@ struct BusyTimeBlocks: View {
             ForEach(Array(display.intervals.enumerated()), id: \.offset) { _, interval in
                 if let clipped = interval.clipped(to: DateInterval(start: day.start, end: day.end)) {
                     RoundedRectangle(cornerRadius: 3)
-                        .fill(.secondary.opacity(0.20))
+                        .fill(Color(uiColor: .systemTeal).opacity(0.22))
                         .frame(width: max(40, geometry.size.width - gutter - 12), height: clipped.end.timeIntervalSince(clipped.start) / 3600 * hourHeight)
                         .offset(x: gutter + 8, y: clipped.start.timeIntervalSince(day.start) / 3600 * hourHeight + 12)
                         .accessibilityHidden(true)
