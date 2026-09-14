@@ -39,7 +39,7 @@ xcodebuild \
 
 ## 구조와 검증
 
-현재 앱은 Entities/Notice의 NoticeModel과 Entities/Organization의 OrganizationModel을 독립적으로 조회합니다. App이 snapshot과 repository 수명을 소유하고 카드·상세·즐겨찾기 ViewModel이 State를 조합합니다. View는 State·콜백만 받습니다. 실제 트리·진입점·캐시/Observation 수명은 [ARCHITECTURE.md](ARCHITECTURE.md)를 참고하세요.
+현재 앱은 Entities/Notice의 NoticeModel과 Entities/Organization의 OrganizationModel을 독립적으로 조회합니다. App이 실제 SwiftData container/context·snapshot·repository 수명을 소유하고 카드·상세·즐겨찾기 ViewModel이 State를 조합합니다. View는 State·콜백만 받습니다. 실제 트리·진입점·캐시/Observation 수명은 [ARCHITECTURE.md](ARCHITECTURE.md)를 참고하세요.
 
 저장 키/JSON activities·activity-samples.json·접근성 태그와 기존 한국어 문구를 유지합니다. [Related #1](https://github.com/fixabley/dearby/issues/1), [설계 #3](https://github.com/fixabley/dearby/pull/3), [공통 계약 #6](https://github.com/fixabley/dearby/pull/6)은 별도 통합합니다.
 
@@ -51,6 +51,8 @@ python3 apps/ios/tests/check_fsd_boundaries.py
 git diff --check
 ```
 
-run_standalone.sh에 실제 swiftc 파일 목록과 실행 명령이 있습니다. 현재 tests는 FavoritesStoreTests, OrganizationRepositoryTests, NoticeViewModelTests, CalendarDraftTests, VenueMapTests이며 old shared JSON과 앱 JSON을 모두 읽습니다. 앱 리소스 canonical SHA256은 c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f입니다. shared snapshot은 변경하지 않으므로 공통 PR #6 통합 전 samples:check의 리소스 차이는 예상됩니다.
+run_standalone.sh에 실제 swiftc 파일 목록과 실행 명령이 있습니다. 현재 tests는 FavoritesStoreTests, OrganizationRepositoryTests, NoticeViewModelTests, CalendarDraftTests, VenueMapTests와 실제 디스크 SwiftDataOrganizationTests/SwiftDataNoticeTests/SwiftDataSnapshotTests이며 old shared JSON과 앱 JSON을 모두 읽습니다. 앱 리소스 canonical SHA256은 c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f입니다. shared snapshot은 변경하지 않으므로 공통 PR #6 통합 전 samples:check의 리소스 차이는 예상됩니다.
 
 이번 standalone/FSD·Simulator build 및 전용 기기 저장/탭/상세 smoke 결과와 미검증 영역은 ARCHITECTURE.md에 구분해 기록했습니다. 지도/캘린더 어댑터는 유지하며 캘린더 권한 요청·직접 저장은 하지 않습니다.
+
+조회는 L1 메모리 → L2 SwiftData ID 조회 → L3 번들 mock 순서입니다. miss 승격은 명시 save 성공 후 이루어지며, 같은 snapshot 재실행은 기존 disk를 사용합니다. 버전 변경은 manifest와 양쪽 L2의 원자적 무효화 후 Session을 재구성합니다. SwiftData 파일은 Application Support/DearbyNoticeCache에 두고 favorites UserDefaults는 그대로 유지합니다. 독립 테스트는 임시 disk store를 종료/재오픈하고 실패 보존도 검사합니다. 의도적인 잘못된 경로 fixture의 CoreData 오류 로그는 예상되며 최종 exit 0을 확인하세요.

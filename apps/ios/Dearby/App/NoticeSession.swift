@@ -12,26 +12,27 @@ final class NoticeSession {
     private(set) var favoriteCards: [FavoriteOrganizationCardViewModel] = []
     @ObservationIgnored private var details: [String: NoticeDetailViewModel] = [:]
 
-    init(snapshot: BundleSnapshot, favorites: FavoriteOrganizations) throws {
+    init(manifest: SnapshotManifest, noticeSource: any NoticeRecordSource,
+         organizationSource: any OrganizationSource, favorites: FavoriteOrganizations) throws {
         self.favorites = favorites
-        notices = NoticeRepository(source: SnapshotNoticeSource(notices: snapshot.notices, sources: snapshot.sources))
-        organizations = OrganizationRepository(source: SnapshotOrganizationSource(organizations: snapshot.organizations))
-        snapshotDate = snapshot.snapshotAt
-        try compose(snapshot)
+        notices = NoticeRepository(source: noticeSource)
+        organizations = OrganizationRepository(source: organizationSource)
+        snapshotDate = manifest.snapshotAt
+        try compose(feedIDs: manifest.feedIDs, organizationIDs: manifest.organizationIDs)
     }
 
-    func replaceSnapshot(_ snapshot: BundleSnapshot) throws {
-        notices.replaceSource(SnapshotNoticeSource(notices: snapshot.notices, sources: snapshot.sources))
-        organizations.replaceSource(SnapshotOrganizationSource(organizations: snapshot.organizations))
-        snapshotDate = snapshot.snapshotAt
-        try compose(snapshot)
+    /// Explicit in-memory fixture composition; production uses SwiftDataSnapshotStore.makeSession.
+    convenience init(snapshot: BundleSnapshot, favorites: FavoriteOrganizations) throws {
+        try self.init(manifest: SnapshotManifest(snapshot: snapshot),
+            noticeSource: SnapshotNoticeSource(notices: snapshot.notices, sources: snapshot.sources),
+            organizationSource: SnapshotOrganizationSource(organizations: snapshot.organizations), favorites: favorites)
     }
 
-    private func compose(_ snapshot: BundleSnapshot) throws {
-        cards = try snapshot.feedIDs.map { try NoticeCardViewModel(id: $0, notices: notices, organizations: organizations, favorites: favorites) }
-        favoriteCards = try snapshot.organizations.map { try FavoriteOrganizationCardViewModel(id: $0.id, noticeIDs: snapshot.feedIDs,
+    private func compose(feedIDs: [String], organizationIDs: [String]) throws {
+        cards = try feedIDs.map { try NoticeCardViewModel(id: $0, notices: notices, organizations: organizations, favorites: favorites) }
+        favoriteCards = try organizationIDs.map { try FavoriteOrganizationCardViewModel(id: $0, noticeIDs: feedIDs,
             notices: notices, organizations: organizations, favorites: favorites) }
-        details = Dictionary(uniqueKeysWithValues: try snapshot.feedIDs.map { id in
+        details = Dictionary(uniqueKeysWithValues: try feedIDs.map { id in
             (id, try NoticeDetailViewModel(id: id, notices: notices, organizations: organizations, favorites: favorites))
         })
     }

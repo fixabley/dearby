@@ -3,6 +3,8 @@ import SwiftUI
 struct ContentView: View {
     let snapshotReader: any SnapshotReader
     let favorites: FavoriteOrganizations
+    var makeStorage: () throws -> SwiftDataSnapshotStore = { try SwiftDataSnapshotStore() }
+    @State private var storage: SwiftDataSnapshotStore?
     @State private var session: NoticeSession?
     @State private var loadFailed = false
 
@@ -47,7 +49,12 @@ struct ContentView: View {
     private func loadCatalog() {
         guard session == nil else { return }
         do {
-            session = try NoticeSession(snapshot: try snapshotReader.load(), favorites: favorites)
+            let activeStore: SwiftDataSnapshotStore
+            if let storage { activeStore = storage } else {
+                activeStore = try makeStorage()
+                storage = activeStore
+            }
+            session = try activeStore.makeSession(snapshot: snapshotReader.load(), favorites: favorites)
             loadFailed = false
         } catch {
             loadFailed = true
@@ -58,7 +65,8 @@ struct ContentView: View {
 #if DEBUG
 #Preview {
     ContentView(snapshotReader: BundleSnapshotReader(),
-                favorites: FavoriteOrganizations(repository: PreviewFavoritesRepository()))
+                favorites: FavoriteOrganizations(repository: PreviewFavoritesRepository()),
+                makeStorage: { try SwiftDataSnapshotStore(inMemory: true) })
 }
 
 @MainActor

@@ -1,4 +1,5 @@
 import Foundation
+import CryptoKit
 
 /// Transport composition only. The activities wire key remains compatible.
 struct BundleSnapshot: Decodable {
@@ -8,6 +9,7 @@ struct BundleSnapshot: Decodable {
     let sources: [NoticeSource]
     let organizations: [OrganizationModel]
     let notices: [NoticeModel]
+    var contentHash: String = ""
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, mode, snapshotAt, sources, organizations
         case notices = "activities"
@@ -25,7 +27,9 @@ struct BundleSnapshotReader: SnapshotReader {
     init(bundle: Bundle = .main) { self.bundle = bundle }
     func load() throws -> BundleSnapshot {
         guard let url = bundle.url(forResource: "activity-samples", withExtension: "json") else { throw CocoaError(.fileNoSuchFile) }
-        let snapshot = try JSONDecoder().decode(BundleSnapshot.self, from: Data(contentsOf: url))
+        let data = try Data(contentsOf: url)
+        var snapshot = try JSONDecoder().decode(BundleSnapshot.self, from: data)
+        snapshot.contentHash = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
         guard snapshot.schemaVersion == "1.0.0", snapshot.mode == "reviewed_sample" else { throw CocoaError(.coderReadCorrupt) }
         return snapshot
     }

@@ -1,4 +1,4 @@
-struct OrganizationModel: Decodable, Identifiable {
+struct OrganizationModel: Codable, Identifiable {
     let id: String
     let name: String
     let parentId: String?

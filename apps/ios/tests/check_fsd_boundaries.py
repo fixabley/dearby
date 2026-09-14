@@ -26,6 +26,8 @@ def check(sources, selected=()):
             continue
         if re.search(r'\b(?:requestFullAccessToEvents|requestWriteOnlyAccessToEvents|requestAccess|EKAlarm|addAlarm)\b|\b(?:eventStore|store)\.save\s*\(', code):
             errors.append(f'{path}: calendar editor must not request access, save directly or add alarms')
+        if path.startswith('Entities/') and '/Model/' in path and re.search(r'\b(?:SwiftData|ModelContext|ModelContainer)\b', code):
+            errors.append(f'{path}: domain values must not depend on SwiftData')
         if '/UI/' in path and re.search(r'\b(?:NoticeModel|OrganizationModel|BundleSnapshot|NoticeCatalog|Notice|NoticeDetailRepository|NoticeRepository|OrganizationRepository|\w+ViewModel)\b', code):
             errors.append(f'{path}: rendering UI accepts State and callbacks, not raw models/repositories/VMs')
         parts = path.split('/')
@@ -100,6 +102,8 @@ def self_test():
         ('Pages/Detail/UI/Detail.swift', 'openURL'),
         ('Pages/Detail/UI/Detail.swift', 'UIApplication'),
         ('Pages/Detail/UI/Detail.swift', 'EKEventStore'),
+        ('Pages/Detail/UI/Detail.swift', 'ModelContext'),
+        ('Entities/Catalog/Model/Item.swift', 'SwiftData'),
         ('Entities/Catalog/UI/Label.swift', 'MKMapItem'),
         ('Entities/Catalog/UI/Label.swift', 'Provider'),
         ('Entities/Catalog/Model/Item.swift', 'Card'),
