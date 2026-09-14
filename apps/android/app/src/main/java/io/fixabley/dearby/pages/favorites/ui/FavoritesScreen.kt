@@ -9,16 +9,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import io.fixabley.dearby.shared.ui.StatusPanel
 import io.fixabley.dearby.widgets.organization.favoriteorganizationcard.FavoriteOrganizationCardState
 import io.fixabley.dearby.widgets.organization.favoriteorganizationcard.FavoriteOrganizationCard
 
 @Composable
 internal fun FavoritesScreen(organizations: List<FavoriteOrganizationCardState>, onRemove: (String) -> Unit, showDetail: (String) -> Unit) {
     if (organizations.isEmpty()) {
-        Column(Modifier.fillMaxSize().padding(Spacing.extraLarge), verticalArrangement = Arrangement.Center,
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Spacing.extraLarge), verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("저장한 조직이 없어요", style = MaterialTheme.typography.titleLarge)
-            Text("발견 탭의 공고를 더블탭하면 조직이 여기에 저장돼요.", Modifier.padding(top = Spacing.medium))
+            StatusPanel("저장한 조직이 없어요", message = "발견 탭의 공고를 더블탭하거나 저장 버튼을 누르면 조직이 여기에 저장돼요.")
         }
     } else {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(Spacing.extraLarge), verticalArrangement = Arrangement.spacedBy(Spacing.large)) {

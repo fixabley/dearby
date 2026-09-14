@@ -31,3 +31,11 @@ Issue #2. Android 12/API31 이상, 기존 Compose BOM 2026.02.01/Material3를 �
 `InformationPreview.kt`는 light/dark/2배 글자에서 긴 정보와 액션 묶음을 제공한다. `DesignSystemTest`는 정보의 병합 읽기, disabled 콜백 차단·48dp native 터치 높이, 큰 글자 카드의 본문/버튼 겹침 회귀를 검증한다. 발견 카드의 compact 분기는 높이/시스템 fontScale로 판단하며 상세에서 전체 정보를 유지한다. baseline 2배 글자 겹침은 `evidence/before-dark-large-discovery.png`에서 확인할 수 있다.
 
 정보/액션 컴포넌트 검증(2026-09-14): 전용5556의 DesignSystemTest 3/3 통과. 버튼은 40dp 시각 높이를 임의로 확대하지 않고 SemanticsNode.touchBoundsInRoot의 48dp 이상 폭·높이를 검사한다. 큰 글자 카드의 저장·상세 버튼 배치와 콜백, 병합된 label/value를 함께 검증했다.
+
+## 상태와 피드백
+
+`StatusPanel(title, modifier, message?, kind = Neutral, action?)`은 `Surface` + `Text` + 선택 `CircularProgressIndicator` 및 action slot이다. `StatusKind`는 Neutral/Loading/Error 세 가지만 제공한다. 상태의 제목/설명은 polite live region으로 묶고 액션은 독립적인 native 버튼으로 읽는다. 오류는 errorContainer/onErrorContainer, 나머지는 surfaceContainer/onSurface를 사용하며 색 외에 문구로도 구분한다.
+
+App의 초기 로딩/오류·재시도와 발견/즐겨찾기의 빈 화면에서 실제 사용한다. 큰 글자에서 상태 화면 전체는 스크롤 가능하다. 상태 저장·fetch·retry 정책은 App에 남아 있으며 패널은 값을 렌더링할 뿐이다. `StatusPreview.kt`의 light/dark/2배 글자와 `StatusPanelTest`의 loading→failure 접근성/재시도 콜백이 검증 진입점이다. 발견의 저장 피드백도 polite live region으로 제공하며 navigation은 기존 native selected semantics를 유지한다.
+
+상태 컴포넌트 검증(2026-09-14): 전용5556 StatusPanelTest 1/1 통과, FSD 66파일/self-test24 통과. 기존 화면 상태 소유권·재시도 로직은 변경하지 않았다.

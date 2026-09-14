@@ -81,6 +81,7 @@ shared/ui/
   buttons/SecondaryButton.kt            native OutlinedButton 강조수준 진입점
   InformationRow.kt                     도메인 없는 label/value 묶음 읽기
   ContentSection.kt                     공통 tonal 정보/액션 묶음
+  StatusPanel.kt                        neutral/loading/error와 독립 action 슬롯
   theme/Theme.kt                        dynamic/static Material3 theme
   theme/Spacing.kt                      콘텐츠 간격 토큰
 ```
