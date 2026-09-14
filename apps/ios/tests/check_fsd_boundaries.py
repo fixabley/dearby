@@ -53,7 +53,7 @@ def check(sources, selected=()):
                 if (layer in ('Pages', 'Widgets') and 'UI' in parts and target_layer == 'Features' and not value_result) or ('UI' in parts and 'API' in target_parts):
                     errors.append(f'{path}: UI must receive values/callbacks, not {name}')
         if 'UI' in parts:
-            if re.search(r'\b(?:UserDefaults|Bundle|FileManager|URLSession|UIApplication|openURL|MKMapItem|CLLocationManager|EventKit|EventKitUI|EKEventStore|EKEventEditViewController)\b', code):
+            if re.search(r'\b(?:UserDefaults|Bundle|FileManager|SwiftData|ModelContext|ModelContainer|URLSession|UIApplication|openURL|MKMapItem|CLLocationManager|EventKit|EventKitUI|EKEventStore|EKEventEditViewController)\b', code):
                 errors.append(f'{path}: direct storage/resource access from UI')
     return sorted(set(errors))
 

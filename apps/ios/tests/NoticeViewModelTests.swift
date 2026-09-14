@@ -27,11 +27,11 @@ struct NoticeViewModelTests {
         precondition(source.counts[krc.id] == 1)
         let memory = MemoryFavorites()
         let favorites = FavoriteOrganizations(repository: memory)
-        let card = NoticeCardViewModel(id: krc.id, notices: notices, organizations: organizations, favorites: favorites)
-        let second = NoticeCardViewModel(id: krc.id, notices: notices, organizations: organizations, favorites: favorites)
-        let detail = NoticeDetailViewModel(id: krc.id, notices: notices, organizations: organizations, favorites: favorites)
-        let reopened = NoticeDetailViewModel(id: krc.id, notices: notices, organizations: organizations, favorites: favorites)
-        let favoriteCard = FavoriteOrganizationCardViewModel(id: "krc", noticeIDs: snapshot.feedIDs, notices: notices, organizations: organizations, favorites: favorites)
+        let card = testValue(try NoticeCardViewModel(id: krc.id, notices: notices, organizations: organizations, favorites: favorites))
+        let second = testValue(try NoticeCardViewModel(id: krc.id, notices: notices, organizations: organizations, favorites: favorites))
+        let detail = testValue(try NoticeDetailViewModel(id: krc.id, notices: notices, organizations: organizations, favorites: favorites))
+        let reopened = testValue(try NoticeDetailViewModel(id: krc.id, notices: notices, organizations: organizations, favorites: favorites))
+        let favoriteCard = testValue(try FavoriteOrganizationCardViewModel(id: "krc", noticeIDs: snapshot.feedIDs, notices: notices, organizations: organizations, favorites: favorites))
         precondition(source.counts[krc.id] == 1 && orgSource.counts["krc"] == 1 && orgSource.counts["cbnu"] == 1)
         precondition(card.state!.organizationName == "한국농어촌공사" && card.state!.contextNames == "충북대학교")
         precondition(card.state!.title == krc.title && card.state!.targetUser == krc.targetUser && card.state!.applicationSummary == krc.applicationInformation.summary)
@@ -50,10 +50,10 @@ struct NoticeViewModelTests {
         let before = (source.counts, orgSource.counts)
         for _ in 0..<3 { _ = card.state; _ = detail.state; _ = favoriteCard.state }
         precondition(source.counts == before.0 && orgSource.counts == before.1, "Rendering reads never fetch")
-        precondition(NoticeCardViewModel(id: "absent", notices: notices, organizations: organizations, favorites: favorites).state == nil)
-        precondition(NoticeDetailViewModel(id: "absent", notices: notices, organizations: organizations, favorites: favorites).state == nil)
-        let contestState = NoticeDetailViewModel(id: contest.id, notices: notices, organizations: organizations, favorites: favorites).state!
-        precondition(contestState.organizationPath == organizations.path(to: contest.favoriteOrganizationId).dropLast().map(\.name))
+        precondition(testValue(try NoticeCardViewModel(id: "absent", notices: notices, organizations: organizations, favorites: favorites)).state == nil)
+        precondition(testValue(try NoticeDetailViewModel(id: "absent", notices: notices, organizations: organizations, favorites: favorites)).state == nil)
+        let contestState = testValue(try NoticeDetailViewModel(id: contest.id, notices: notices, organizations: organizations, favorites: favorites)).state!
+        precondition(contestState.organizationPath == testValue(try organizations.path(to: contest.favoriteOrganizationId)).dropLast().map(\.name))
         precondition(contestState.edition == 2)
         let projectedContest = notices.notice(contest.id)!
         precondition(projectedContest.schedules.first { $0.period.phase == "preliminary" }!.locations.isEmpty)
@@ -89,17 +89,17 @@ struct NoticeViewModelTests {
         let nextOrgs = CountOrganizationSource(changed.organizations)
         notices.replaceSource(nextSource); organizations.replaceSource(nextOrgs)
         precondition(nextSource.counts.isEmpty && nextOrgs.counts.isEmpty)
-        let unresolved = NoticeCardViewModel(id: krc.id, notices: notices, organizations: organizations, favorites: favorites)
-        let changedDetail = NoticeDetailViewModel(id: krc.id, notices: notices, organizations: organizations, favorites: favorites).state!
+        let unresolved = testValue(try NoticeCardViewModel(id: krc.id, notices: notices, organizations: organizations, favorites: favorites))
+        let changedDetail = testValue(try NoticeDetailViewModel(id: krc.id, notices: notices, organizations: organizations, favorites: favorites)).state!
         let writes = memory.writes
         guard case .unresolved = unresolved.save() else { preconditionFailure() }
         precondition(memory.writes == writes && unresolved.state!.organizationName == nil && unresolved.state!.contextNames == "바뀐 학교")
         precondition(changedDetail.organizationLinks[0].organizationID == "unknown" && changedDetail.organizationLinks[0].role == "contact" && changedDetail.organizationLinks[0].organizationName == nil)
         precondition(changedDetail.organizationLinks[0].basis == "source" && changedDetail.organizationLinks[0].note == "보존")
         precondition(changedDetail.evidence.contains { $0.sourceId == "missing-source" && $0.sourceURL == nil })
-        precondition(nextSource.counts[krc.id] == 1 && organizations.path(to: "cbnu").map(\.name) == ["바뀐 학교"])
-        let session = NoticeSession(snapshot: snapshot, favorites: favorites)
-        session.replaceSnapshot(changed)
+        precondition(nextSource.counts[krc.id] == 1 && testValue(try organizations.path(to: "cbnu")).map(\.name) == ["바뀐 학교"])
+        let session = testValue(try NoticeSession(snapshot: snapshot, favorites: favorites))
+        try session.replaceSnapshot(changed)
         precondition(session.cards.first { $0.state?.id == krc.id }!.state!.title == "바뀐 공고")
         precondition(session.detailState(krc.id)!.contexts[0].organizationName == "바뀐 학교")
         precondition(session.detailState("absent") == nil)
@@ -129,4 +129,8 @@ struct NoticeViewModelTests {
     var writes = 0
     func load() -> Set<String> { ids }
     func save(_ ids: Set<String>) { self.ids = ids; writes += 1 }
+}
+
+private func testValue<T>(_ operation: @autoclosure () throws -> T) -> T {
+    do { return try operation() } catch { preconditionFailure("Unexpected error: \(error)") }
 }

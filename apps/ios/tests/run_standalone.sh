@@ -19,3 +19,6 @@ done
 apps/ios/build/dearby-organization-tests
 apps/ios/build/dearby-map-tests
 python3 apps/ios/tests/check_fsd_boundaries.py
+
+swiftc -swift-version 6 -parse-as-library "${organization[@]}" apps/ios/tests/SwiftDataOrganizationTests.swift -o apps/ios/build/dearby-organization-disk-tests
+apps/ios/build/dearby-organization-disk-tests

@@ -120,3 +120,9 @@ OS 지도·캘린더는 App/NoticeDetailDestination에서만 연결한다. Calen
 NoticeDestinationView(id:session:)는 ContentView의 함수형 목적지 조립을 별도 App View 파일로 추출한 컴포넌트다. 발견 sheet와 즐겨찾기 navigation이 같은 진입점을 사용하고, body에서 현재 세션의 State/NoticeModel을 읽어 NoticeDetailDestination 또는 기존 누락 안내를 구성한다. 세션이나 VM을 새로 만들지 않으며 snapshot 교체 시 기존 NoticeSession 관찰과 루트 favorites.ids 읽기를 유지한다. App 조립 책임으로서 entity/page 경계에는 변경이 없다.
 
 2026-09-14 이번 추출 검증: 기존 run_standalone.sh 전체 old/new JSON 검사 및 FSD 56파일/fixture 통과, Simulator build 12:08:14Z·build_run 12:08:38Z 성공(경고/오류 없음). 단순 추출로 새 동작을 복제하는 테스트는 추가하지 않았다. App에 함수형 some View helper가 남지 않음을 검색 확인했다. 이전 탭 전환 중 screenshot과 구분하여 전용기기에서 1.2초 이상 안정화 후 build/destination-discovery-stable.png 및 destination-favorites-stable.png를 캡처·시각 확인했다. prefs db-insurance 유지, 지도/캘린더 외부 전환은 재실행하지 않았다.
+
+## SwiftData 조직 조회 도입 (진행 중)
+
+OrganizationRecord는 저장 구현의 @Model이고 OrganizationModel과 분리한다. SwiftDataOrganizationSource는 ID predicate로 L2를 조회하고 miss면 주입 외부 source를 호출하여 명시 save 성공 후에만 값을 반환한다. L1은 기존 OrganizationRepository이며 저장/읽기 오류를 throws로 App 오류/재시도까지 전달한다. 누락은 nil이고 실패와 구분한다. autosave를 끄고 승격 실패는 rollback한다. 현재 외부 source는 snapshot mock이며 App 디스크 컨테이너/manifest 연결은 후속 공고 저장 구현과 함께 진행한다.
+
+실제 임시 disk store 재오픈·L1 hit/L2 조회·L3 승격·L2 재조회 시 external 0회·저장 실패 rollback/재호출·missing/throw 구분을 SwiftDataOrganizationTests로 검증했다. 기존 old/new standalone·58파일 FSD/fixture와 Simulator build 12:23:28Z 통과. [ModelContext](https://developer.apple.com/documentation/swiftdata/modelcontext)의 save/rollback/autosave 계약을 따른다.

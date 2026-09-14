@@ -205,7 +205,7 @@ private extension BundleSnapshot {
     var feed: [NoticeModel] { feedIDs.compactMap { id in notices.first { $0.id == id } } }
     func organization(_ id: String?) -> OrganizationModel? { organizations.first { $0.id == id } }
     @MainActor func organizationPath(_ id: String?) -> [OrganizationModel] {
-        OrganizationRepository(source: SnapshotOrganizationSource(organizations: organizations)).path(to: id)
+        testValue(try OrganizationRepository(source: SnapshotOrganizationSource(organizations: organizations)).path(to: id))
     }
     func contextNames(for notice: NoticeModel) -> String {
         var seen: Set<String> = []
@@ -217,4 +217,8 @@ private extension FavoriteOrganizations {
     func saveOrganization(for notice: NoticeModel, in snapshot: BundleSnapshot) -> SaveOrganizationResult {
         saveOrganization(snapshot.organization(notice.favoriteOrganizationId))
     }
+}
+
+private func testValue<T>(_ operation: @autoclosure () throws -> T) -> T {
+    do { return try operation() } catch { preconditionFailure("Unexpected error: \(error)") }
 }

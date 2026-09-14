@@ -12,27 +12,27 @@ final class NoticeSession {
     private(set) var favoriteCards: [FavoriteOrganizationCardViewModel] = []
     @ObservationIgnored private var details: [String: NoticeDetailViewModel] = [:]
 
-    init(snapshot: BundleSnapshot, favorites: FavoriteOrganizations) {
+    init(snapshot: BundleSnapshot, favorites: FavoriteOrganizations) throws {
         self.favorites = favorites
         notices = NoticeRepository(source: SnapshotNoticeSource(notices: snapshot.notices, sources: snapshot.sources))
         organizations = OrganizationRepository(source: SnapshotOrganizationSource(organizations: snapshot.organizations))
         snapshotDate = snapshot.snapshotAt
-        compose(snapshot)
+        try compose(snapshot)
     }
 
-    func replaceSnapshot(_ snapshot: BundleSnapshot) {
+    func replaceSnapshot(_ snapshot: BundleSnapshot) throws {
         notices.replaceSource(SnapshotNoticeSource(notices: snapshot.notices, sources: snapshot.sources))
         organizations.replaceSource(SnapshotOrganizationSource(organizations: snapshot.organizations))
         snapshotDate = snapshot.snapshotAt
-        compose(snapshot)
+        try compose(snapshot)
     }
 
-    private func compose(_ snapshot: BundleSnapshot) {
-        cards = snapshot.feedIDs.map { NoticeCardViewModel(id: $0, notices: notices, organizations: organizations, favorites: favorites) }
-        favoriteCards = snapshot.organizations.map { FavoriteOrganizationCardViewModel(id: $0.id, noticeIDs: snapshot.feedIDs,
+    private func compose(_ snapshot: BundleSnapshot) throws {
+        cards = try snapshot.feedIDs.map { try NoticeCardViewModel(id: $0, notices: notices, organizations: organizations, favorites: favorites) }
+        favoriteCards = try snapshot.organizations.map { try FavoriteOrganizationCardViewModel(id: $0.id, noticeIDs: snapshot.feedIDs,
             notices: notices, organizations: organizations, favorites: favorites) }
-        details = Dictionary(uniqueKeysWithValues: snapshot.feedIDs.map { id in
-            (id, NoticeDetailViewModel(id: id, notices: notices, organizations: organizations, favorites: favorites))
+        details = Dictionary(uniqueKeysWithValues: try snapshot.feedIDs.map { id in
+            (id, try NoticeDetailViewModel(id: id, notices: notices, organizations: organizations, favorites: favorites))
         })
     }
 

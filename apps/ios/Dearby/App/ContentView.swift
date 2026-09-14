@@ -47,7 +47,7 @@ struct ContentView: View {
     private func loadCatalog() {
         guard session == nil else { return }
         do {
-            session = NoticeSession(snapshot: try snapshotReader.load(), favorites: favorites)
+            session = try NoticeSession(snapshot: try snapshotReader.load(), favorites: favorites)
             loadFailed = false
         } catch {
             loadFailed = true

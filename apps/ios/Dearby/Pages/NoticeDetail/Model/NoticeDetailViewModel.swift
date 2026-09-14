@@ -2,18 +2,18 @@
 final class NoticeDetailViewModel {
     private let favorites: FavoriteOrganizations
     private let initial: NoticeDetailState?
-    init(id: String, notices: NoticeRepository, organizations: OrganizationRepository, favorites: FavoriteOrganizations) {
+    init(id: String, notices: NoticeRepository, organizations: OrganizationRepository, favorites: FavoriteOrganizations) throws {
         self.favorites = favorites
         guard let notice = notices.notice(id) else { initial = nil; return }
-        let path = organizations.path(to: notice.favoriteOrganizationId)
-        func resolve(_ ref: NoticeContext) -> NoticeInstitutionState {
+        let path = try organizations.path(to: notice.favoriteOrganizationId)
+        func resolve(_ ref: NoticeContext) throws -> NoticeInstitutionState {
             NoticeInstitutionState(organizationID: ref.organizationId, role: ref.role, label: ref.label,
-                basis: ref.basis, note: ref.note, organizationName: organizations.organization(ref.organizationId)?.name)
+                basis: ref.basis, note: ref.note, organizationName: try organizations.organization(ref.organizationId)?.name)
         }
         initial = NoticeDetailState(id: notice.id, title: notice.title, aiDescription: notice.aiDescription,
             descriptionProvenance: notice.descriptionProvenance, organizationID: notice.favoriteOrganizationId,
             organizationName: path.last?.name, organizationPath: path.dropLast().map(\.name),
-            organizationLinks: notice.organizationLinks.map(resolve), contexts: notice.contexts.map(resolve),
+            organizationLinks: try notice.organizationLinks.map(resolve), contexts: try notice.contexts.map(resolve),
             categorySummary: notice.categorySummary, targetUser: notice.targetUser,
             participationCondition: notice.participationCondition, applicationSummary: notice.applicationInformation.summary,
             scheduleSummaries: notice.schedules.map { $0.period.summary }, location: notice.location,
