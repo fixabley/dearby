@@ -50,11 +50,12 @@ internal data class NoticeDetailState(
             it.opensAt?.let { value -> "시작 시각: $value" }, it.opensOn?.let { value -> "시작 날짜: $value" },
             it.closesAt?.let { value -> "마감 시각: $value" }, it.closesOn?.let { value -> "마감 날짜: $value" }).joinToString(". ")
     }
+    val applicationPlaceDetails: String? get() = applicationInformation.submissionLocations.joinToString("\n").ifBlank { null }
     val applicationPlaceText: String get() = applicationInformation.let {
         val channels = it.methods.map { method -> when (method) {
             "platform" -> "온라인 신청"; "email" -> "이메일"; "office" -> "방문 접수"; "postal" -> "우편"; else -> method
         } }
-        (channels + it.submissionLocations).joinToString(" · ").ifBlank { "신청 방법·장소 미확인" }
+        channels.joinToString(" · ").ifBlank { "신청 방법·장소 미확인" }
     }
 }
 

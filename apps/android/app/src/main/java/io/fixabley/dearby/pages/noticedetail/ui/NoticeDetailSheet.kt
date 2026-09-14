@@ -53,8 +53,9 @@ internal fun NoticeDetailSheet(notice: NoticeDetailState, onDismiss: () -> Unit,
                     }
                     Text(notice.applicationPeriod.timezone, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    MetadataRow(painterResource(R.drawable.ic_place), notice.applicationPlaceText,
-                        "신청 방법·장소: ${notice.applicationPlaceText}")
+                    DetailMetadata(painterResource(R.drawable.ic_place), notice.applicationPlaceText,
+                        notice.applicationPlaceDetails,
+                        listOfNotNull("신청 방법·장소: ${notice.applicationPlaceText}", notice.applicationPlaceDetails).joinToString(". "))
                     notice.applicationNote?.let {
                         Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
@@ -64,8 +65,8 @@ internal fun NoticeDetailSheet(notice: NoticeDetailState, onDismiss: () -> Unit,
                 }
             }
             if (notice.schedules.isNotEmpty()) item { HorizontalDivider() }
-            itemsIndexed(notice.schedules) { index, phase -> NoticeScheduleSection(phase, notice.phaseDrafts.getOrNull(index), index, onAddToCalendar) }
-            item { NoticeLocationSection(notice.location, onOpenMap) }
+            itemsIndexed(notice.schedules) { index, phase -> NoticeScheduleSection(phase, notice.phaseDrafts.getOrNull(index), index, onAddToCalendar, onOpenMap) }
+            item { NoticeLocationSection(notice.location, onOpenMap, notice.schedules.filter { it.period.mode != "online" }.flatMap { it.locations }) }
             items(notice.benefits) { InformationRow("혜택", it) }
             items(notice.issues) { InformationRow("확인 필요", it) }
             item {

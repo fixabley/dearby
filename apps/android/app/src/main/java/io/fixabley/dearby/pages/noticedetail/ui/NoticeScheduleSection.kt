@@ -14,12 +14,14 @@ import androidx.compose.ui.text.font.FontWeight
 import io.fixabley.dearby.R
 import io.fixabley.dearby.pages.noticedetail.model.NoticeScheduleState
 import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft
+import io.fixabley.dearby.entities.notice.model.NoticeVenue
+import io.fixabley.dearby.pages.noticedetail.model.detailPlace
 import io.fixabley.dearby.shared.ui.MetadataRow
 import io.fixabley.dearby.shared.ui.DetailMetadata
 import io.fixabley.dearby.shared.ui.ContentSection
 
 @Composable
-internal fun NoticeScheduleSection(phase: NoticeScheduleState, draft: CalendarDraft?, index: Int, onAdd: (CalendarDraft) -> Unit) {
+internal fun NoticeScheduleSection(phase: NoticeScheduleState, draft: CalendarDraft?, index: Int, onAdd: (CalendarDraft) -> Unit, onOpenMap: (NoticeVenue) -> Unit = {}) {
     ContentSection {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(phase.title, Modifier.weight(1f).semantics { heading() }.testTag("schedule.title.$index"),
@@ -30,8 +32,17 @@ internal fun NoticeScheduleSection(phase: NoticeScheduleState, draft: CalendarDr
             DetailMetadata(painterResource(R.drawable.ic_calendar), line.date, line.time, phase.dateDescription,
                 Modifier.testTag("schedule.date.$index.$lineIndex"))
         }
-        MetadataRow(painterResource(R.drawable.ic_place), phase.placeText, "${phase.title} 장소: ${phase.placeDescription}",
-            Modifier.testTag("schedule.place.$index"))
+        if (phase.period.mode == "online" || phase.locations.isEmpty()) {
+            DetailMetadata(painterResource(R.drawable.ic_place), phase.placeText,
+                phase.period.onlineUrl?.takeIf { phase.period.mode == "online" },
+                "${phase.title} 장소: ${phase.placeDescription}", Modifier.testTag("schedule.place.$index"))
+        } else phase.locations.forEachIndexed { venueIndex, venue ->
+            val place = detailPlace(venue)
+            DetailMetadata(painterResource(R.drawable.ic_place), place.name, place.detail,
+                "${phase.title} 장소: ${place.description}", Modifier.testTag("schedule.place.$index.$venueIndex")) {
+                VenueMapButton(venue, onOpenMap, Modifier.testTag("schedule.map.$index.$venueIndex"))
+            }
+        }
         Text(if (phase.period.timezone == "Asia/Seoul") "한국 시간" else phase.period.timezone,
             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
