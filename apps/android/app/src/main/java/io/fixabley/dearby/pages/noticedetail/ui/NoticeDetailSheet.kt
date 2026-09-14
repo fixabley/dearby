@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import io.fixabley.dearby.shared.ui.theme.Spacing
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -21,8 +22,8 @@ internal fun NoticeDetailSheet(notice: NoticeDetailState, onDismiss: () -> Unit,
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     ) {
-        LazyColumn(Modifier.fillMaxWidth().padding(horizontal = 24.dp).testTag("notice.detail"),
-            contentPadding = PaddingValues(bottom = 32.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        LazyColumn(Modifier.fillMaxWidth().padding(horizontal = Spacing.extraLarge).testTag("notice.detail"),
+            contentPadding = PaddingValues(bottom = Spacing.section), verticalArrangement = Arrangement.spacedBy(Spacing.large)) {
             item { Text(notice.title, style = MaterialTheme.typography.headlineSmall) }
             item { Text(notice.aiDescription) }
             item { NoticeIdentity(notice) }
@@ -30,7 +31,7 @@ internal fun NoticeDetailSheet(notice: NoticeDetailState, onDismiss: () -> Unit,
             item { NoticeFact("참여 대상", notice.targetUser) }
             item { NoticeFact("참여 조건", notice.participationCondition) }
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
                     NoticeFact("신청 기간", notice.applicationInformation.summary)
                     AddToCalendarButton(notice.applicationDraft, "신청 기간 캘린더에 추가", onAddToCalendar,
                         Modifier.testTag("calendar.application"))

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import io.fixabley.dearby.shared.ui.theme.Spacing
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -18,7 +19,7 @@ internal fun DiscoveryScreen(snapshotDate: String, cards: List<NoticeCardState>,
     val pager = rememberPagerState(pageCount = { cards.size })
     Column(Modifier.fillMaxSize()) {
         Text("검토한 공고 샘플 · ${snapshotDate}",
-            Modifier.padding(horizontal = 22.dp, vertical = 10.dp),
+            Modifier.padding(horizontal = Spacing.extraLarge, vertical = Spacing.small),
             style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (cards.isEmpty()) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { Text("표시할 공고가 없어요") }
@@ -30,7 +31,7 @@ internal fun DiscoveryScreen(snapshotDate: String, cards: List<NoticeCardState>,
             }
         }
         Text(feedback.ifEmpty { "위아래로 넘기기 · 더블탭으로 조직 저장" },
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp).testTag("discovery.feedback"),
+            Modifier.fillMaxWidth().padding(horizontal = Spacing.extraLarge, vertical = Spacing.small).testTag("discovery.feedback"),
             style = MaterialTheme.typography.labelSmall, maxLines = 2)
     }
 }

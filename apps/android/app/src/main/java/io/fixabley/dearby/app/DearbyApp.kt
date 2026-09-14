@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import io.fixabley.dearby.shared.ui.theme.Spacing
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.testTag
@@ -57,16 +58,16 @@ internal fun DearbyApp(catalogProvider: NoticeSession, onOpenSource: (String) ->
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).testTag(if (catalog != null) "catalog.ready" else "catalog.loading")) {
-            Text("Dearby", Modifier.padding(horizontal = 22.dp, vertical = 12.dp),
+            Text("Dearby", Modifier.padding(horizontal = Spacing.extraLarge, vertical = Spacing.medium),
                 style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             if (failed && catalog != null) {
                 Text("공고를 불러오지 못했어요")
                 Button(onClick = { retry++ }) { Text("다시 시도") }
             }
             if (catalog == null && loading) {
-                Text("공고를 불러오는 중이에요", Modifier.padding(24.dp))
+                Text("공고를 불러오는 중이에요", Modifier.padding(Spacing.extraLarge))
             } else if (catalog == null) {
-                Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
+                Column(Modifier.fillMaxSize().padding(Spacing.extraLarge), verticalArrangement = Arrangement.Center) {
                     Text("공고를 불러오지 못했어요")
                     Button(onClick = { retry++ }) { Text("다시 시도") }
                 }

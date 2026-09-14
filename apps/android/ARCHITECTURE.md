@@ -77,10 +77,9 @@ entities/
     api/OrganizationDiskStore.kt        L2 계약·StoredOrganizationSource
     api/OrganizationRecord.kt           id/name/parentId Room 행·DAO·adapter
 shared/ui/
-  buttons/PrimaryButton.kt              Material3 Button content slot
-  buttons/SecondaryButton.kt            Material3 OutlinedButton content slot
   NoticeFact.kt                         범용 제목/값
-  theme/Theme.kt                        기존 Material 3 테마
+  theme/Theme.kt                        dynamic/static Material3 theme
+  theme/Spacing.kt                      콘텐츠 간격 토큰
 ```
 
 ## 진입점과 의존 방향
@@ -149,9 +148,11 @@ manifest에는 전체 원문 hash와 모든 decoded fields를 포함한 fingerpr
 
 각 요청은 generation을 가지며 replaceSnapshot/새 load가 기존 요청을 무효화한다. IO 중 checkActive와 Main 게시 직전 generation/취소를 검사해 오래된 응답이 최신 snapshot을 덮지 않게 한다. CancellationException은 다시 던지고 취소된 effect의 finally가 새 로딩 상태를 덮지 않도록 활성 context를 확인한다. 실패 중 기존 화면 데이터는 유지되며 현재 bundle mock 이외 실제 API/네트워크는 없다.
 
-## Shared 디자인 버튼
+## Shared 디자인 시스템
 
-PrimaryButton/SecondaryButton은 Shared의 content slot·onClick·modifier만 받는 Material3 Button/OutlinedButton이다. 도메인 문구/아이콘은 NoticeCardSaveButton이 saved/organizationName/onSave로 조합한다. 기존 outline/filled vector와 8dp 간격, contentDescription=null을 사용해 중복 낭독을 피한다. 카드 상세 열기는 SecondaryButton으로 맞추고 제목 Text는 inline이다. NoticeFact는 카드와 상세 여러 섹션의 실제 재사용이 있어 Shared에 유지한다.
+[디자인 시스템 API·native mapping·사용 규칙](docs/design-system/README.md)을 따른다. DearbyTheme은 API31+ dynamic color를 기본 사용하고 static light/dark로 opt out 가능하다. Typography/Shapes는 native 기본값이며 화면에서 semantic MaterialTheme 역할을 읽는다. 콘텐츠 간격만 Spacing으로 관리한다.
+
+기본 Button/OutlinedButton/TextButton은 직접 사용한다. 일대일 Primary/Secondary wrapper는 제거했으며 NoticeCardSaveButton은 widget에서 저장 문구와 하트를 조합한다. 제목은 카드 안에 남긴다. navigation/tab/sheet와 domain 카드의 소유권은 유지한다.
 
 Widget은 domain/widget 폴더에 Composable·State·ViewModel을 함께 둔다. ui/model 하위 폴더가 없으며 domain은 cross-widget 의존 예외가 아니다. 구조 검사는 @Composable 파일의 raw Model/VM/repository/OS 접근을 막고 비렌더링 VM의 하위 의존을 허용한다. 같은 domain의 다른 widget 금지 fixture도 있다.
 

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import io.fixabley.dearby.shared.ui.theme.Spacing
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.testTag
 import io.fixabley.dearby.pages.noticedetail.model.NoticeDetailState
@@ -13,7 +14,7 @@ import io.fixabley.dearby.shared.ui.NoticeFact
 internal fun NoticeIdentity(notice: NoticeDetailState) {
     Surface(modifier = Modifier.fillMaxWidth().testTag("identity.${notice.id}"),
         shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.padding(Spacing.large), verticalArrangement = Arrangement.spacedBy(Spacing.large)) {
             notice.organizationName?.let { name ->
                 NoticeFact("관심 조직", name)
                 val ancestors = notice.ancestorNames

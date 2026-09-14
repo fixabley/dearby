@@ -7,6 +7,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import io.fixabley.dearby.shared.ui.theme.Spacing
 import androidx.compose.ui.unit.dp
 import io.fixabley.dearby.entities.notice.model.NoticeLocation
 import io.fixabley.dearby.entities.notice.model.NoticeVenue
@@ -14,7 +15,7 @@ import io.fixabley.dearby.shared.ui.NoticeFact
 
 @Composable
 internal fun NoticeLocationSection(location: NoticeLocation, onOpenMap: (NoticeVenue) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.medium)) {
         NoticeFact("활동 장소", location.summary)
         if (location.mode != "online") {
             location.venues.forEachIndexed { index, venue ->
