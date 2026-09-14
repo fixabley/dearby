@@ -126,4 +126,3 @@ Validate /Users/jominjun/Library/Developer/XcodeBuildMCP/workspaces/dearby-ios-2
     builtin-validationUtility /Users/jominjun/Library/Developer/XcodeBuildMCP/workspaces/dearby-ios-2-e039b1051c4c/DerivedData/Dearby-8e08a8ee7487/Build/Products/Debug-iphonesimulator/Dearby.app -shallow-bundle -infoplist-subpath Info.plist
 
 ** BUILD SUCCEEDED **
-
