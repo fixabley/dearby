@@ -75,3 +75,9 @@ SchedulePreview의 light/dark/2×와 InformationPreview의 MetadataRow를 제공
 파싱 실패의 원문 summary는 날짜 fallback에 이미 표시하므로 신청 보조문구에서 다시 반복하지 않는다.
 
 `SchedulePreview`의 light/dark/2×가 새 DetailMetadata 날짜·시간 구성을 사용한다. 동일 컴포넌트는 신청과 실제 phase 장소에서도 사용한다.
+
+### 사용자 Calendar 이미지 기반 후속 (2026-09-15)
+
+사용자가 제공한 /tmp/dearby-calendar-reference-1.png 및 -2.png를 직접 확인했다. 굵은 일정명, 자연스러운 오전/오후 …부터/…까지, 도메인 링크 카드, 시간 눈금과 색 블록을 참고한다. 원본 screenshot의 공유 액션은 이번 범위가 아니며 링크 열기만 native FilledTonalIconButton으로 제공한다.
+
+`LinkCard(domain, address, onOpen, modifier)`는 표시/콜백만 담당한다. NoticeDetail State의 `detailLink`는 기존 calendarWebUrl 정책(http/https·host·userinfo 없음)을 그대로 사용해 application.url/onlineUrl만 전달하고 링크 없는 경우 생략한다. 전체 목적지는 접근성 description에 보존하며 도메인을 시각 표시한다. 카드본문/Calendar export에는 변화가 없다. `koreanTime`은 분/초/소수초를 생략하지 않고 정각의 0분만 줄인다.

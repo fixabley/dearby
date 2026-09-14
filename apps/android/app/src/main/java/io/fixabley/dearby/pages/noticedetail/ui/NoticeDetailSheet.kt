@@ -17,6 +17,7 @@ import io.fixabley.dearby.shared.ui.InformationRow
 import io.fixabley.dearby.shared.ui.ContentSection
 import io.fixabley.dearby.shared.ui.MetadataRow
 import io.fixabley.dearby.shared.ui.DetailMetadata
+import io.fixabley.dearby.shared.ui.LinkCard
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.semantics.heading
@@ -59,13 +60,16 @@ internal fun NoticeDetailSheet(notice: NoticeDetailState, onDismiss: () -> Unit,
                     notice.applicationNote?.let {
                         Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    notice.applicationLink?.let { link ->
+                        LinkCard(link.domain, link.url, { onOpenSource(link.url) }, Modifier.testTag("application.link"))
+                    }
                     if (notice.applicationInformation.requiredDocuments.isNotEmpty()) {
                         InformationRow("제출 서류", notice.applicationInformation.requiredDocuments.joinToString(" · "))
                     }
                 }
             }
             if (notice.schedules.isNotEmpty()) item { HorizontalDivider() }
-            itemsIndexed(notice.schedules) { index, phase -> NoticeScheduleSection(phase, notice.phaseDrafts.getOrNull(index), index, onAddToCalendar, onOpenMap) }
+            itemsIndexed(notice.schedules) { index, phase -> NoticeScheduleSection(phase, notice.phaseDrafts.getOrNull(index), index, onAddToCalendar, onOpenMap, onOpenSource) }
             item { NoticeLocationSection(notice.location, onOpenMap, notice.schedules.filter { it.period.mode != "online" }.flatMap { it.locations }) }
             items(notice.benefits) { InformationRow("혜택", it) }
             items(notice.issues) { InformationRow("확인 필요", it) }

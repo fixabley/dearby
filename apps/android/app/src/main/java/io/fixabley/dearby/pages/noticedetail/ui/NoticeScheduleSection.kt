@@ -18,10 +18,11 @@ import io.fixabley.dearby.entities.notice.model.NoticeVenue
 import io.fixabley.dearby.pages.noticedetail.model.detailPlace
 import io.fixabley.dearby.shared.ui.MetadataRow
 import io.fixabley.dearby.shared.ui.DetailMetadata
+import io.fixabley.dearby.shared.ui.LinkCard
 import io.fixabley.dearby.shared.ui.ContentSection
 
 @Composable
-internal fun NoticeScheduleSection(phase: NoticeScheduleState, draft: CalendarDraft?, index: Int, onAdd: (CalendarDraft) -> Unit, onOpenMap: (NoticeVenue) -> Unit = {}) {
+internal fun NoticeScheduleSection(phase: NoticeScheduleState, draft: CalendarDraft?, index: Int, onAdd: (CalendarDraft) -> Unit, onOpenMap: (NoticeVenue) -> Unit = {}, onOpenLink: (String) -> Unit = {}) {
     ContentSection {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(phase.title, Modifier.weight(1f).semantics { heading() }.testTag("schedule.title.$index"),
@@ -34,7 +35,7 @@ internal fun NoticeScheduleSection(phase: NoticeScheduleState, draft: CalendarDr
         }
         if (phase.period.mode == "online" || phase.locations.isEmpty()) {
             DetailMetadata(painterResource(R.drawable.ic_place), phase.placeText,
-                phase.period.onlineUrl?.takeIf { phase.period.mode == "online" },
+                null,
                 "${phase.title} 장소: ${phase.placeDescription}", Modifier.testTag("schedule.place.$index"))
         } else phase.locations.forEachIndexed { venueIndex, venue ->
             val place = detailPlace(venue)
@@ -42,6 +43,9 @@ internal fun NoticeScheduleSection(phase: NoticeScheduleState, draft: CalendarDr
                 "${phase.title} 장소: ${place.description}", Modifier.testTag("schedule.place.$index.$venueIndex")) {
                 VenueMapButton(venue, onOpenMap, Modifier.testTag("schedule.map.$index.$venueIndex"))
             }
+        }
+        phase.link?.let { link ->
+            LinkCard(link.domain, link.url, { onOpenLink(link.url) }, Modifier.testTag("schedule.link.$index"))
         }
         Text(if (phase.period.timezone == "Asia/Seoul") "한국 시간" else phase.period.timezone,
             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

@@ -25,10 +25,8 @@ internal fun detailPeriod(startAt: String?, startOn: String?, endAt: String?, en
     val sd = s?.toLocalDate() ?: startOn?.let(LocalDate::parse)
     val ed = e?.toLocalDate() ?: endOn?.let(LocalDate::parse)
     val day = DateTimeFormatter.ofPattern("uuuu년 M월 d일 (E)", Locale.KOREAN)
-    val clock = DateTimeFormatter.ofPattern("HH:mm", Locale.KOREAN)
     fun time(value: java.time.ZonedDateTime?): String = value?.let {
-        if (it.second != 0 || it.nano != 0) it.toLocalTime().format(DateTimeFormatter.ISO_LOCAL_TIME)
-        else it.format(clock)
+        io.fixabley.dearby.shared.ui.koreanTime(it.toLocalTime())
     } ?: "시간 미확인"
     val st = time(s)
     val et = time(e)
@@ -37,12 +35,12 @@ internal fun detailPeriod(startAt: String?, startOn: String?, endAt: String?, en
             when {
                 s == null && e == null -> "시간 미확인"
                 s == null || e == null -> "시작 $st · $endLabel $et"
-                else -> "$st – $et"
+                else -> "${st}부터 ${et}까지"
             }))
         else -> buildList {
             if (sd == null) add(DetailPeriodLine("시작 미확인", ""))
-            if (sd != null) add(DetailPeriodLine("시작 · ${sd.format(day)}", st))
-            if (ed != null) add(DetailPeriodLine("$endLabel · ${ed.format(day)}", et))
+            if (sd != null) add(DetailPeriodLine(sd.format(day), if (s != null) "${st}부터" else "시작 시간 미확인"))
+            if (ed != null) add(DetailPeriodLine(ed.format(day), if (e != null) "${et}까지" else "$endLabel 시간 미확인"))
             if (ed == null) add(DetailPeriodLine("$endLabel 미확인", ""))
         }
     }
