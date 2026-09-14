@@ -47,7 +47,7 @@ internal fun NoticeDetailSheet(notice: NoticeDetailState, onDismiss: () -> Unit,
                             Modifier.testTag("calendar.application"))
                     }
                     MetadataRow(painterResource(R.drawable.ic_calendar), notice.applicationDateText,
-                        "신청 기간: ${notice.applicationDateText}. ${notice.applicationInformation.summary}, ${notice.applicationInformation.timezone}")
+                        notice.applicationDateDescription)
                     MetadataRow(painterResource(R.drawable.ic_place), notice.applicationPlaceText,
                         "신청 방법·장소: ${notice.applicationPlaceText}")
                     Text(notice.applicationInformation.summary, style = MaterialTheme.typography.bodySmall,

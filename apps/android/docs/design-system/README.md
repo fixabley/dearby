@@ -12,7 +12,7 @@ Issue #2. Android 12/API31 이상, 기존 Compose BOM 2026.02.01/Material3를 �
 | `MaterialTheme.typography` / `Typography()` | 카드·시트 제목 headlineSmall/titleLarge, 조직 제목 titleMedium, 정보 bodyMedium, 보조 bodySmall/labelMedium. 별도 폰트·sp 복사·고정 높이 텍스트 금지. 제목은 소유 화면/widget 안에 둔다. |
 | `MaterialTheme.shapes` / `Shapes()` | native shape scale. OutlinedCard·Button·ModalBottomSheet의 기본 shape를 유지한다. |
 | `Spacing` | extraSmall 4, small 8, medium 12, large 16, extraLarge 24, section 32dp. 콘텐츠 간격만 담당하며 버튼 높이·아이콘·탭 규격을 덮어쓰지 않는다. |
-| `PrimaryButton(onClick, modifier, enabled, content)`, `SecondaryButton(onClick, modifier, enabled, content)`, native `TextButton` | 저장/원문/재시도는 Button, 상세/지도/캘린더는 OutlinedButton, 연결 공고/삭제는 TextButton. enabled·상호작용·48dp 최소 터치영역·semantics는 시스템 API를 보존한다. 승인된 두 강조수준 진입점은 유지하고 다른 모든 native 컨트롤의 alias는 추가하지 않는다. |
+| `PrimaryButton(onClick, modifier, enabled, content)`, `SecondaryButton(onClick, modifier, enabled, content)`, native `TextButton` | 재시도처럼 텍스트가 필요한 행동은 Primary/Secondary를 사용한다. 저장·상세·삭제·지도·캘린더·원문 액션은 아래 후속 정책의 native icon button을 사용한다. enabled·상호작용·48dp 최소 터치영역·semantics는 시스템 API를 보존한다. 승인된 두 강조수준 진입점은 유지하고 다른 모든 native 컨트롤의 alias는 추가하지 않는다. |
 | `OutlinedCard`, `Surface`, `HorizontalDivider` (직접 사용) | 공고/조직 card는 widget에 남긴다. 시트·navigation·tab은 기존 Material3를 그대로 사용한다. |
 
 `NoticeCardSaveButton`은 조직 이름, 저장 문구, 하트 선택을 조합하는 도메인 widget이다. Shared로 옮기지 않는다. icon은 옆의 Text로 읽을 수 있어 contentDescription=null이며 간격은 ButtonDefaults.IconSpacing이다. 버튼 텍스트 줄 수를 강제하지 않아 큰 글자·긴 조직명에서도 줄바꿈한다.
@@ -56,6 +56,8 @@ App의 초기 로딩/오류·재시도와 발견/즐겨찾기의 빈 화면에�
 
 일정은 Page의 NoticeScheduleState가 원래 NoticePhase와 phase별 venues로 표시값을 만든다. titleLarge/bold 일정 이름(온라인 접두사 중복 방지) → 달력 MetadataRow → 장소 MetadataRow 순서이며 우측 calendar-add IconButton은 같은 index의 기존 draft를 전달한다. 신청은 별도 ContentSection/구분선으로 분리하고 원래 마감 안내와 제출 조건을 bodySmall/정보행으로 남긴다. 장소의 짧은 이름은 원래 층·호실을 포함하며 전체 주소·온라인 URL은 접근성 설명에, 주소는 기존 상세 장소 구획에도 보존한다. unknown 장소·시간을 확정값으로 바꾸지 않는다. 원래 이슈/출처도 유지한다.
 
-SchedulePreview의 light/dark/2×와 InformationPreview의 MetadataRow를 제공한다. 이번 신규 JVM 회귀6건은 compactPeriodText4/NoticeSchedulePresentation2이며 기존 PhaseCalendarFlowTest를 예선·발표·결선 3개 모두의 이름/날짜/원본URL/장소 매칭으로 강화했다. 기존 icon action 테스트는 accessible name/selected/최소48dp touch bounds/콜백을 검증한다.
+SchedulePreview의 light/dark/2×와 InformationPreview의 MetadataRow를 제공한다. 이번 신규 JVM 회귀7건은 compactPeriodText4/NoticeSchedulePresentation3이며 기존 PhaseCalendarFlowTest를 예선·발표·결선 3개 모두의 이름/날짜/원본URL/장소 매칭으로 강화했다. 기존 icon action 테스트는 accessible name/selected/최소48dp touch bounds/콜백을 검증한다.
 
-후속 구현 검증(2026-09-14): 최종 소스로 JVM45, 전체계측39, Debug/Release/계측 APK, Lint 오류0/기존12, FSD68/self-test24 통과. 과거 f4784a1 결과와 구분하며 실행 로그는 `build/icons-schedule-final-build.log`, `build/icons-schedule-final-instrumentation.log`다.
+후속 구현 검증(2026-09-14): 최종 소스로 JVM46, 전체계측39, Debug/Release/계측 APK, Lint 오류0/기존12, FSD68/self-test24 통과. 과거 f4784a1 결과와 구분하며 실행 로그는 `build/icons-schedule-final-build.log`, `build/icons-schedule-final-instrumentation.log`다.
+
+날짜 충돌 때 접근성 설명은 startsAt/startsOn/endsAt/endsOn을 각각 보존하며 신청의 opens/closes 필드도 같은 규칙이다. 원본 시각과 날짜 중 하나를 선택해 나머지를 숨기지 않는다.

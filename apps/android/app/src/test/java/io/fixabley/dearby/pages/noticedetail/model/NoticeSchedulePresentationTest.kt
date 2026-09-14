@@ -25,4 +25,12 @@ class NoticeSchedulePresentationTest {
         assertEquals("A관 217호 · 충북 청주시 A로 1 / B관 5층 · 충북 청주시 B로 2", state.placeDescription)
         assertEquals("장소 미확인", state.copy(locations = emptyList()).placeText)
     }
+    @Test fun conflictingDateAndTimestampBothRemainAccessible() {
+        val state = NoticeScheduleState(NoticePhase("event", startsAt = "2026-09-15T14:00:00+09:00",
+            startsOn = "2026-09-16", endsAt = "2026-09-15T16:00:00+09:00", endsOn = "2026-09-17"), emptyList())
+        assertEquals(state.period.summary, state.dateText)
+        for (original in listOf("2026-09-15T14:00:00+09:00", "2026-09-16", "2026-09-15T16:00:00+09:00", "2026-09-17")) {
+            assertTrue(state.dateDescription.contains(original))
+        }
+    }
 }
