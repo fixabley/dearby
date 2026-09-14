@@ -1,5 +1,5 @@
 plugins {
-    id("com.google.devtools.ksp") version "2.3.12"
+    alias(libs.plugins.ksp)
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
@@ -44,8 +44,8 @@ kotlin {
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }
 
 dependencies {
-    implementation("androidx.room:room-runtime:2.8.5")
-    ksp("androidx.room:room-compiler:2.8.5")
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.ui)

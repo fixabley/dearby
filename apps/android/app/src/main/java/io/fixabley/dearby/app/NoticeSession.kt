@@ -1,5 +1,11 @@
 package io.fixabley.dearby.app
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.CancellationException
+import java.util.concurrent.atomic.AtomicLong
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,7 +22,10 @@ import io.fixabley.dearby.widgets.organization.favoriteorganizationcard.Favorite
 import io.fixabley.dearby.pages.noticedetail.model.NoticeDetailViewModel
 
 /** App/UI-thread owner; readers are called only by load, never from rendering Views. */
-internal class NoticeSession(private val reader: NoticeSnapshotReader, private val favorites: FavoritesState) {
+internal class NoticeSession(private val reader: NoticeSnapshotReader, private val favorites: FavoritesState,
+    private val prepare: (NoticeSnapshot, () -> Unit) -> NoticeSnapshot = { snapshot, check -> check(); snapshot },
+) {
+    private val loadGeneration = AtomicLong()
     val notices = NoticeRepository(InMemoryNoticeSource(emptyList()))
     val organizations = OrganizationRepository(InMemoryOrganizationSource(emptyList()))
     var snapshot: NoticeSnapshot? by mutableStateOf(null)
@@ -24,8 +33,21 @@ internal class NoticeSession(private val reader: NoticeSnapshotReader, private v
     private val cards = mutableMapOf<String, NoticeCardViewModel>()
     private val details = mutableMapOf<String, NoticeDetailViewModel>()
     private var favoriteCards = emptyList<FavoriteOrganizationCardViewModel>()
-    fun load(): NoticeSnapshot = reader.load().also { if (snapshot !== it) replaceSnapshot(it) }
+    suspend fun load(): NoticeSnapshot {
+        val request = loadGeneration.incrementAndGet()
+        val value = withContext(Dispatchers.IO) {
+            val context = currentCoroutineContext()
+            val check = { context.ensureActive(); if (request != loadGeneration.get()) throw CancellationException("Superseded snapshot") }
+            check()
+            prepare(reader.load(), check).also { check() }
+        }
+        currentCoroutineContext().ensureActive()
+        if (request != loadGeneration.get()) throw CancellationException("Superseded snapshot")
+        replaceSnapshot(value)
+        return value
+    }
     fun replaceSnapshot(value: NoticeSnapshot) {
+        loadGeneration.incrementAndGet()
         Snapshot.withMutableSnapshot {
             notices.replaceSource(InMemoryNoticeSource(value.notices))
             organizations.replaceSource(InMemoryOrganizationSource(value.organizations))

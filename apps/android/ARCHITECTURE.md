@@ -19,6 +19,9 @@ app/
     DecodeCalendarMetadata.kt          신청/단계 날짜·방식 해석
     DecodeNoticeEvidence.kt            출처 ID·locator·fieldPath 해석
     DecodeNoticeLocation.kt            복수 장소·선택 좌표 해석
+    cache/NoticeCacheDatabase.kt       App 소유 Room DB v1·손상 파일 보존
+    cache/SnapshotManifest.kt          전체 hash/codec/목록 metadata
+    cache/RoomSnapshotStore.kt         양쪽 L2+manifest 원자적 준비
 pages/
   discovery/ui/DiscoveryScreen.kt       State 목록·pager·피드백
   favorites/ui/FavoritesScreen.kt       State 목록·빈 화면
@@ -62,12 +65,17 @@ entities/
     model/VenueCoordinates.kt           유한 수/범위 검사
     model/NoticeSource.kt               출처 메타데이터·필드별 근거
     api/NoticeSource.kt                 주입 계약·인메모리 원본
-    api/NoticeRepository.kt             독립 lazy cache-aside
+    api/NoticeRepository.kt             독립 lazy L1 cache-aside
+    api/NoticeDiskStore.kt              L2 계약·StoredNoticeSource(mock L3)
+    api/NoticeRecord.kt                 ID/codec/payload Room 행·DAO·adapter
+    api/NoticeStorageCodec.kt           공고별 모든 필드 binary codec v1
     ui/NoticeClassification.kt          분류 문자열 표시
   organization/
     model/OrganizationModel.kt          id/name/parentId
     api/OrganizationSource.kt           주입 계약·인메모리 원본
-    api/OrganizationRepository.kt       독립 cache-aside·순환 안전 경로
+    api/OrganizationRepository.kt       독립 L1 cache-aside·순환 안전 경로
+    api/OrganizationDiskStore.kt        L2 계약·StoredOrganizationSource
+    api/OrganizationRecord.kt           id/name/parentId Room 행·DAO·adapter
 shared/ui/
   buttons/PrimaryButton.kt              Material3 Button content slot
   buttons/SecondaryButton.kt            Material3 OutlinedButton content slot
@@ -87,8 +95,8 @@ shared/ui/
 | Widgets/organization/favoriteorganizationcard | `FavoriteOrganizationCardViewModel`, `FavoriteOrganizationCardState`, `FavoriteNoticeState`, `FavoriteOrganizationCard` |
 | Features/favoriteorganization | `model.FavoritesState`, `api.FavoriteStore`, `api.SharedPreferencesFavoriteStore` |
 | Features/addtocalendar | `model.CalendarDraft`, `applicationCalendarDraft`, `phaseCalendarDraft` |
-| Entities/notice | `NoticeModel`, `NoticeContext`, 신청/기간/장소/좌표/출처/근거 모델, `api.NoticeSource`, `InMemoryNoticeSource`, `NoticeRepository`, `ui.NoticeClassification` |
-| Entities/organization | `OrganizationModel`, `OrganizationSource`, `InMemoryOrganizationSource`, `OrganizationRepository` |
+| Entities/notice | `NoticeModel`, `NoticeContext`, 신청/기간/장소/좌표/출처/근거 모델, `api.NoticeSource`, `InMemoryNoticeSource`, `NoticeRepository`, `NoticeRecord/NoticeDao/RoomNoticeStore/StoredNoticeSource/NoticeStorageCodec`, `ui.NoticeClassification` |
+| Entities/organization | `OrganizationModel`, `OrganizationSource`, `InMemoryOrganizationSource`, `OrganizationRepository`, `OrganizationRecord/OrganizationDao/RoomOrganizationStore/StoredOrganizationSource` |
 
 정확한 심볼 allowlist는 `scripts/check-fsd.py`와 일치한다. `model.NoticeSource`는 출처 메타데이터이고 `api.NoticeSource`는 공고 조회 계약이다. UI helper는 같은 slice 안의 internal 파일이며 다른 slice에 공개하지 않는다. 각 클래스의 캐시·derived content·setter는 private이다. Kotlin internal은 모듈 밖 접근만 막으며 **slice를 컴파일러가 격리하는 구조는 아니다**. 작은 구조 검사는 package/경로·import/FQN·상향/교차 의존·진입점·UI 저장소 및 전체 도메인 모델 접근을 검사한다. 정규식 기반으로 문자열 보간/별칭 전파/리플렉션 등 모든 Kotlin 의미를 분석하지 않는다.
 
@@ -102,7 +110,7 @@ NoticeSnapshot/Reader는 App 경계에서 기존 번들을 두 독립 모델 목
 
 ## 캐시·VM·관찰 수명
 
-MainActivity가 Compose 밖에서 FavoritesState와 NoticeSession을 한 번 생성한다. Session은 공고/조직 Repository를 각각 공유하며 snapshot별 독립 source를 주입한다. source의 dictionary와 처음 비어 있는 ID cache는 별개다. find는 cache 확인 → miss 시 source 호출 → 성공만 저장한다. 누락 ID는 repository에서 캐시하지 않는다. Organization path는 parentId를 따라 visited ID로 순환을 중단하며 복구 가능한 부분 경로를 유지한다. find/path/replaceSource는 monitor로 동기화한다.
+MainActivity가 Compose 밖에서 FavoritesState와 NoticeSession 및 IO 준비 콜백을 한 번 생성한다. Session은 공고/조직 Repository를 각각 공유하며 snapshot별 독립 source를 주입한다. source의 dictionary와 처음 비어 있는 ID cache는 별개다. find는 cache 확인 → miss 시 source 호출 → 성공만 저장한다. 누락 ID는 repository에서 캐시하지 않는다. Organization path는 parentId를 따라 visited ID로 순환을 중단하며 복구 가능한 부분 경로를 유지한다. find/path/replaceSource는 monitor로 동기화한다.
 
 App/UI 스레드가 Session과 VM 수명을 소유한다. 카드/상세 VM은 ID별로 재사용하고 렌더링마다 생성하지 않는다. VM의 derivedStateOf는 repository revision을 관찰하며 같은 세대의 성공/누락 표시 결과를 재사용한다. replaceSource는 모든 ID 캐시를 지우고 관찰 revision을 증가시킨다. Session.replaceSnapshot은 Compose snapshot 안에서 양쪽 source와 목록을 교체한다. 기존 카드·상세 VM은 새 이름/부모/공고 값을 읽으며, 즐겨찾기 VM 목록은 snapshot의 연결 공고 ID 구성이 바뀔 수 있어 재구성한다. live refresh UI는 없고 이 API의 교체 동작을 테스트한다.
 
@@ -127,7 +135,27 @@ NoticeModel.venuesFor는 온라인이면 빈 장소, 그 외 exact phase 일치�
 - 공통 조직 정보는 Organization source/repository에서 제공하고 각 소비 VM이 조합한다. Notice Entity에 조직 의존을 넣지 않는다.
 - 새 OS 액션은 하위 Feature에서 순수 입력을 만들고 App 어댑터/콜백으로 실행한다. 페이지가 다른 페이지를 import하지 않는다.
 
-## 이번 검증과 한계 (2026-09-14)
+## Room 준비와 화면 게시
+
+Room 2.8.5/KSP 2.3.12는 version catalog에서 관리한다. 실제 Maven 해결·현재 AGP9.1.1/built-in Kotlin2.2.10/JDK25 빌드로 호환성을 확인했다. [Room 공식 문서](https://developer.android.com/jetpack/androidx/releases/room)와 [비동기 조회 안내](https://developer.android.com/training/data-storage/room/async-queries)를 따른다. 추가 state/DI 라이브러리는 없다. `app/schemas/...NoticeCacheDatabase/1.json`은 생성된 DB v1 스키마다.
+
+앱 DB는 `dearby-notice-cache-v1.db`다. 공고 행은 id/codecVersion/개별 payload, 조직 행은 id/name/parentId이며 whole-catalog blob이 아니다. NoticeStorageCodec v1은 모든 저장 모델 필드를 길이 구분 binary로 roundtrip하고 버전·잘림·trailing bytes·row/payload ID 불일치를 거부한다. L2와 mock L3의 반환 ID도 요청과 일치해야 한다. 모든 source/evidence/기간/복수 장소/좌표/provenance를 유지하며 조직 객체/경로는 공고 payload에 없다.
+
+LaunchedEffect가 suspend Session.load를 호출한다. Dispatchers.IO에서 번들을 읽고 App 소유 DB를 열어 prepare한 뒤 finally에서 닫는다. Room 기본 main-thread 금지를 유지한다. DB open/read/corrupt/write/external 실패를 missing으로 바꾸지 않으며 파괴적 migration/reset을 사용하지 않는다. SQLite onCorruption도 파일 삭제 대신 오류를 전달한다. 실패하면 기존 메모리 snapshot을 유지하고 재시도 안내를 보여준다.
+
+준비 트랜잭션의 임시 공고/조직 Repository는 각각 **L1 memory → L2 Room ID query → L3 snapshot mock** 순서로 읽는다. L2 miss 뒤 외부 성공은 upsert가 성공해야 임시 L1에 반환한다. 이 L1들은 준비 요청에만 존재하며 화면에 공개하지 않고 폐기한다. 같은 전체 hash+codec 재시작에서는 L2가 공급하여 외부 record fetch는 0이다(번들 hash/metadata 확인을 위한 읽기·해석은 여전히 수행한다).
+
+manifest에는 전체 원문 hash와 모든 decoded fields를 포함한 fingerprint/codecVersion/날짜/순서 있는 공고·조직 ID 목록을 저장한다. 변경 시 두 테이블 invalidate → 모든 필요한 ID 재조회/upsert → manifest 교체를 **동일 Room transaction**에서 수행한다. 목록 삭제/이름/부모 변경을 함께 반영하고 중간 실패/취소는 이 트랜잭션 전체를 rollback한다. commit 성공 후에만 준비된 모델 목록이 Main으로 돌아와 화면용 memory-only 원본·관찰 revision을 교체한다. 따라서 화면용 L1 승격/게시 보장은 전체 transaction commit 뒤다. 화면용 Repository/VM은 Room에 접근하지 않고 준비된 목록에서만 읽으며 이 메모리는 Session 수명이다. 준비 단계의 임시 cache와 화면의 지속 cache를 혼동하지 않는다.
+
+각 요청은 generation을 가지며 replaceSnapshot/새 load가 기존 요청을 무효화한다. IO 중 checkActive와 Main 게시 직전 generation/취소를 검사해 오래된 응답이 최신 snapshot을 덮지 않게 한다. CancellationException은 다시 던지고 취소된 effect의 finally가 새 로딩 상태를 덮지 않도록 활성 context를 확인한다. 실패 중 기존 화면 데이터는 유지되며 현재 bundle mock 이외 실제 API/네트워크는 없다.
+
+## Shared 디자인 버튼
+
+PrimaryButton/SecondaryButton은 Shared의 content slot·onClick·modifier만 받는 Material3 Button/OutlinedButton이다. 도메인 문구/아이콘은 NoticeCardSaveButton이 saved/organizationName/onSave로 조합한다. 기존 outline/filled vector와 8dp 간격, contentDescription=null을 사용해 중복 낭독을 피한다. 카드 상세 열기는 SecondaryButton으로 맞추고 제목 Text는 inline이다. NoticeFact는 카드와 상세 여러 섹션의 실제 재사용이 있어 Shared에 유지한다.
+
+Widget은 domain/widget 폴더에 Composable·State·ViewModel을 함께 둔다. ui/model 하위 폴더가 없으며 domain은 cross-widget 의존 예외가 아니다. 구조 검사는 @Composable 파일의 raw Model/VM/repository/OS 접근을 막고 비렌더링 VM의 하위 의존을 허용한다. 같은 domain의 다른 widget 금지 fixture도 있다.
+
+## 검증 명령과 범위
 
 ```sh
 cd apps/android
@@ -136,35 +164,9 @@ JAVA_HOME='/Applications/Android Studio.app/Contents/jbr/Contents/Home' ./gradle
 ANDROID_SERIAL=emulator-5556 JAVA_HOME='/Applications/Android Studio.app/Contents/jbr/Contents/Home' ./gradlew :app:connectedDebugAndroidTest
 ```
 
-이번 최종 구조49파일/self-test21(금지15/허용6), JVM29, Debug/계측 APK 컴파일, Lint 오류0/경고12, 전용5556 계측30 모두 통과했다. 테스트 실패/오류/skip은 0이다. JVM은 두 캐시의 miss/hit/원본 호출수·공유 부모·누락·순환·교체, ID-only 모델, VM 역할/출처/장소 조합, 기존 VM의 snapshot 교체, 다른 컴포넌트 삭제 후 saved 및 실제 Compose SnapshotStateObserver invalidation, 기존 즐겨찾기/좌표/기간 정책을 검사한다. 계측은 기존 swipe/doubletap/save/delete/tab/detail/recreate, 실제 저장 복원/asset 해석과 지도/캘린더 Intent 전달·오류를 검증한다.
+순수 테스트는 기존 favorites/VM/좌표/캘린더와 디스크 source의 조회 순서·호출수·실패/no promotion·잘못된 ID·payload 전체 필드·Session 최신 요청/취소를 검증한다. Room 계측은 unique test DB의 실제 close/reopen, 동일 hash external fetch0, 변경/삭제/reparent, SQL write failure·external failure·cancel rollback, payload/DB 손상 파일 보존을 검사한다. 기존 UI 흐름은 비동기 작업이 Compose idle 밖에 있으므로 실제 catalog.ready 게시를 waitUntil로 기다린다. 고정 sleep으로 로딩 완료를 가정하지 않는다.
 
-증거는 `build/state-final-build.log`, `build/state-instrumentation.log`, 표준 `app/build/test-results/testDebugUnitTest/`, `app/build/outputs/androidTest-results/connected/debug/`, `app/build/reports/lint-results-debug.xml`이다. 중간 기반/VM 단계 JVM31/33/34는 제거 전 구 테스트와 함께 실행한 결과이며 최종29와 구분한다. 이전 작업의 계측 결과를 이번 결과로 재사용하지 않았다.
-
-전용5556에서만 실행하고 테스트의 기존 즐겨찾기 집합을 백업/복원했다. 테스트 후 전용 기기만 종료했으며 사용자5554를 조작하지 않았다. 외부 지도 렌더링·캘린더 편집기 UI 열기/취소·실제 저장/동기화는 이번에 검증하지 않았고 캘린더 Save를 수행하지 않았다. 네트워크·로그인·원문 자동 추출·TTL/디스크 캐시·전체 접근성 검증은 범위 밖이다. 동기식 번들 source이며 비동기 공급이 필요하면 별도 수명/취소 정책이 필요하다.
+기존 계측30/Lint 기록은 이전 작업 결과다. 사용자5554를 조작하지 않으며 전용5556과 unique test DB만 사용한다. 기존 테스트의 즐겨찾기는 백업/복원하고 실제 Calendar Save는 수행하지 않는다. 외부 지도 렌더링·캘린더 앱 내부 UI/저장·동기화·전체 접근성은 별도 미검증이다. 영속 캐시 TTL/암호화/실제 API·로그인·자동 추출은 이번 범위에 없다.
 
 
-## 캘린더 메모 변경 검증 (2026-09-14)
-
-신청/활동 일정 모두 메모는 검증된 원본 HTTP(S) URL 문자열 하나이며 누락/오류는 빈 문자열이다. 신청/온라인 URL로 대체하지 않는다. 이번 JVM30·Debug·계측 APK 컴파일·FSD49파일/self-test21 통과, 증거는 `build/calendar-source-only.log`와 표준 JVM XML이다. 앞선 계측30/Lint 결과는 이전 구조 작업 결과이며 이번에는 기기 실행·일정 저장·Lint를 반복하지 않았다.
-
-
-## Shared 버튼과 카드 조합
-
-shared/ui/buttons의 PrimaryButton/SecondaryButton은 content slot·onClick·modifier만 받는 Material3 Button/OutlinedButton이다. 도메인 문구는 widget의 NoticeCardSaveButton이 조합하고 saved/조직명/저장 callback/태그는 호출자가 소유한다. 카드 상세 열기는 SecondaryButton으로 맞췄고 제목 Text는 inline으로 유지했다. 기존 outline heart vector와 filled variant를 저장 상태에 따라 표시하며 contentDescription=null로 문구의 중복 낭독을 피한다. 새 아이콘 의존성은 추가하지 않았다. NoticeFact는 카드와 상세 여러 섹션에서 재사용하므로 Shared에 유지한다.
-
-버튼 조합 단계: JVM30·Debug·계측 APK 컴파일·구조52파일/self-test21 통과(`build/design-buttons.log`). 기존 카드 회귀에 재구성 후 최신 저장 callback 검증을 반영했으며 이 단계에서는 기기 실행 없이 컴파일했다.
-
-
-Widget은 widgets/notice/noticecard와 widgets/organization/favoriteorganizationcard에서 Composable·State·ViewModel을 같은 폴더에 둔다(ui/model 하위 폴더 없음). domain 그룹은 다른 widget 참조의 예외가 아니며 slice identity는 domain+widget이다. 구조 검사는 flat 파일의 @Composable을 찾아 raw Model/VM/저장소/OS 접근을 제한하고 비렌더링 ViewModel의 하위 의존을 허용한다. 같은 domain의 다른 widget 금지 fixture도 포함한다.
-
-Widget 배치 단계: JVM30·Debug·계측 APK·Lint 오류0/경고12·구조52파일/self-test24(금지18/허용6) 통과(`build/widget-domains.log`). 기기는 이 단계에서 실행하지 않았다.
-
-
-## 조직 영속 조회 기반
-
-OrganizationDiskStore/StoredOrganizationSource는 독립 조직 source의 L2→mock L3 경계다. Repository L1 miss에서만 disk를 읽고 외부 성공은 upsert 완료 뒤 반환한다. read/write/external 오류를 missing으로 바꾸거나 실패 값을 L1에 올리지 않는다. RoomOrganizationStore는 ID/name/parentId 행을 조회한다. Room2.8.5/KSP2.3.12를 실제 Maven 해결 및 기존 AGP/built-in Kotlin과 Debug로 확인했고 JVM32 통과(`build/organization-disk-source.log`). 실제 DB/manifest 조립·전용 기기 검증은 후속 연결 단계에서 진행한다.
-
-
-## 공고 영속 payload
-
-NoticeStorageCodec v1은 공고별 길이 구분 binary payload로 모든 raw 모델 필드(출처/근거/신청 방식/기간/복수 장소/좌표/역할 ID/provenance)를 roundtrip한다. 전체 카탈로그 blob과 조직 객체는 저장하지 않는다. RoomNoticeStore는 row codec version·payload ID를 검사하고 StoredNoticeSource는 L2/L3 반환 ID를 검증한다(조직도 동일). 읽기/외부/쓰기 오류와 잘못된 ID는 throw하며 실패를 캐시하지 않는다. JVM37 및 Debug 통과, 증거 `build/notice-disk-codec.log`와 JVM XML; 실제 DB는 App 조립 후 검증한다.
+최종 검증(2026-09-14): FSD60파일/self-test24(금지18/허용6), JVM39, Debug·계측 APK 컴파일, Lint 오류0/경고12, 전용5556 계측35 모두 통과(실패/오류/skip0). 실제 DB5건과 기존 UI/저장/지도/캘린더30건을 함께 실행했다. 기록은 `build/room-final-build.log`, `build/room-instrumentation.log`, 표준 JVM/계측 XML·Lint 보고서이며 중간 버튼/widget/저장소 단계 결과와 구분한다. 전용5556은 검증 후 종료했고 사용자5554는 조작하지 않았다. canonical asset SHA256 `c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f` 유지, 실제 Calendar Save/외부 지도 앱 내부 화면은 검증하지 않았다.

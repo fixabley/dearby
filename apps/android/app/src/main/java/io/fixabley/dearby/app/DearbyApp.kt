@@ -1,5 +1,8 @@
 package io.fixabley.dearby.app
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,10 +23,18 @@ import io.fixabley.dearby.pages.noticedetail.ui.NoticeDetailSheet
 @Composable
 internal fun DearbyApp(catalogProvider: NoticeSession, onOpenSource: (String) -> Unit, onOpenMap: (NoticeVenue) -> Unit, onAddToCalendar: (CalendarDraft) -> Unit) {
     var retry by remember { mutableIntStateOf(0) }
-    val result = remember(catalogProvider, retry) { runCatching { catalogProvider.load() } }
+    var loading by remember(catalogProvider) { mutableStateOf(true) }
+    var failed by remember(catalogProvider) { mutableStateOf(false) }
+    LaunchedEffect(catalogProvider, retry) {
+        loading = true
+        try { catalogProvider.load(); failed = false }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { failed = true }
+        finally { if (currentCoroutineContext().isActive) loading = false }
+    }
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var detail by remember { mutableStateOf<NoticeDetailViewModel?>(null) }
-    val catalog = if (result.isSuccess) catalogProvider.snapshot else null
+    val catalog = catalogProvider.snapshot
 
     Scaffold(
         bottomBar = {
@@ -45,10 +56,16 @@ internal fun DearbyApp(catalogProvider: NoticeSession, onOpenSource: (String) ->
             }
         },
     ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
+        Column(Modifier.fillMaxSize().padding(padding).testTag(if (catalog != null) "catalog.ready" else "catalog.loading")) {
             Text("Dearby", Modifier.padding(horizontal = 22.dp, vertical = 12.dp),
                 style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-            if (catalog == null) {
+            if (failed && catalog != null) {
+                Text("공고를 불러오지 못했어요")
+                Button(onClick = { retry++ }) { Text("다시 시도") }
+            }
+            if (catalog == null && loading) {
+                Text("공고를 불러오는 중이에요", Modifier.padding(24.dp))
+            } else if (catalog == null) {
                 Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
                     Text("공고를 불러오지 못했어요")
                     Button(onClick = { retry++ }) { Text("다시 시도") }

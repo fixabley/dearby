@@ -24,7 +24,7 @@ class NoticeCardTest {
         val notice = catalog.notices.first { it.organizationId == "krc" }
         val favorites = FavoritesState(object : FavoriteStore { override fun read() = emptySet<String>(); override fun write(ids: Set<String>) {} })
         val session = NoticeSession(NoticeSnapshotReader { catalog }, favorites)
-        session.load()
+        kotlinx.coroutines.runBlocking { session.load() }
         val multiplier = mutableStateOf(1)
         var saves = 0
         var details = 0

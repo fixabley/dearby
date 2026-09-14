@@ -17,7 +17,7 @@ import org.junit.Test
 class FavoriteOrganizationCardTest {
     private fun session(catalog: io.fixabley.dearby.app.data.NoticeSnapshot, id: String): NoticeSession {
         val favorites = FavoritesState(object : FavoriteStore { override fun read() = setOf(id); override fun write(ids: Set<String>) {} })
-        return NoticeSession(NoticeSnapshotReader { catalog }, favorites).also { it.load() }
+        return NoticeSession(NoticeSnapshotReader { catalog }, favorites).also { kotlinx.coroutines.runBlocking { it.load() } }
     }
 
     @get:Rule val rule = createComposeRule()

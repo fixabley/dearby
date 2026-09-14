@@ -63,6 +63,7 @@ class VenueMapFlowTest {
                 openVenueMap(venue, { requests.add(it) }, { error("Unexpected unavailable") })
             })
         } }
+        rule.waitForCatalog()
         rule.onNodeWithTag("details.cieat-NCR000000007344").performClick()
         rule.onNodeWithTag("notice.detail").performScrollToNode(hasTestTag("venue.map.0"))
         rule.runOnIdle { assertTrue(requests.isEmpty()) }

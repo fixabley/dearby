@@ -7,6 +7,7 @@ import io.fixabley.dearby.entities.notice.model.NoticeModel
 import io.fixabley.dearby.entities.notice.model.NoticeContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.security.MessageDigest
 
 internal class AssetNoticeSnapshotReader(private val assets: AssetManager) : NoticeSnapshotReader {
     override fun load(): NoticeSnapshot {
@@ -61,7 +62,8 @@ internal class AssetNoticeSnapshotReader(private val assets: AssetManager) : Not
                     evidence = evidence,
                 )
             }.sortedBy { if (it.organizationId == null) 1 else 0 }
-        return NoticeSnapshot(root.getString("snapshotAt").take(10), organizations, feed)
+        return NoticeSnapshot(root.getString("snapshotAt").take(10), organizations, feed,
+            MessageDigest.getInstance("SHA-256").digest(raw.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) })
     }
 }
 

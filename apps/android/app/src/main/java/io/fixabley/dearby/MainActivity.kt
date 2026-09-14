@@ -10,6 +10,8 @@ import android.widget.Toast
 import io.fixabley.dearby.app.DearbyApp
 import io.fixabley.dearby.app.openCalendarEditor
 import io.fixabley.dearby.app.openVenueMap
+import io.fixabley.dearby.app.data.cache.NoticeCacheDatabase
+import io.fixabley.dearby.app.data.cache.RoomSnapshotStore
 import io.fixabley.dearby.app.NoticeSession
 import io.fixabley.dearby.app.data.AssetNoticeSnapshotReader
 import io.fixabley.dearby.features.favoriteorganization.api.SharedPreferencesFavoriteStore
@@ -23,7 +25,11 @@ class MainActivity : ComponentActivity() {
         val favorites = FavoritesState(SharedPreferencesFavoriteStore(
             getSharedPreferences(SharedPreferencesFavoriteStore.FILE_NAME, MODE_PRIVATE)
         ))
-        val catalogProvider = NoticeSession(AssetNoticeSnapshotReader(applicationContext.assets), favorites)
+        val catalogProvider = NoticeSession(AssetNoticeSnapshotReader(applicationContext.assets), favorites) { snapshot, check ->
+            val database = NoticeCacheDatabase.open(applicationContext)
+            try { RoomSnapshotStore(database).prepare(snapshot, checkActive = check) }
+            finally { database.close() }
+        }
         setContent {
             DearbyTheme {
                 DearbyApp(catalogProvider, onOpenSource = { url ->

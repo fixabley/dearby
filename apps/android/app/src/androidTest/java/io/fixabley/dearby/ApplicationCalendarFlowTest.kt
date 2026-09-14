@@ -28,6 +28,7 @@ class ApplicationCalendarFlowTest {
         val captured = mutableListOf<CalendarDraft>()
         val repository = NoticeSession(provider, favorites)
         rule.setContent { DearbyTheme { DearbyApp(repository, {}, {}, { captured.add(it) }) } }
+        rule.waitForCatalog()
         rule.onNodeWithTag("details.cieat-NCR000000007344").performClick()
         rule.onNodeWithTag("notice.detail").performScrollToNode(hasTestTag("calendar.application"))
         rule.runOnIdle { assertTrue(captured.isEmpty()) }
@@ -45,6 +46,7 @@ class ApplicationCalendarFlowTest {
         val first = catalog.notices.first().copy(applicationInformation = NoticeApplication("신청 일정 미확인"))
         val repository = NoticeSession(NoticeSnapshotReader { catalog.copy(notices = listOf(first)) }, favorites)
         rule.setContent { DearbyTheme { DearbyApp(repository, {}, {}, { fail("No draft") }) } }
+        rule.waitForCatalog()
         rule.onNodeWithTag("details.${first.id}").performClick()
         rule.onNodeWithTag("notice.detail").performScrollToNode(hasText("신청 일정 미확인"))
         rule.onNode(hasText("신청 일정 미확인") and hasAnyAncestor(hasTestTag("notice.detail"))).assertIsDisplayed()

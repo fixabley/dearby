@@ -28,6 +28,7 @@ class PhaseCalendarFlowTest {
         val captured = mutableListOf<CalendarDraft>()
         val repository = NoticeSession(NoticeSnapshotReader { catalog.copy(notices = listOf(contest)) }, favorites)
         rule.setContent { DearbyTheme { DearbyApp(repository, {}, {}, { captured.add(it) }) } }
+        rule.waitForCatalog()
         rule.onNodeWithTag("details.${contest.id}").performClick()
         rule.onNodeWithTag("notice.detail").performScrollToNode(hasTestTag("calendar.phase.0"))
         rule.runOnIdle { assertTrue(captured.isEmpty()) }
@@ -51,6 +52,7 @@ class PhaseCalendarFlowTest {
         val invalid = first.copy(schedules = listOf(first.schedules.first().copy(startsAt = "invalid", startsOn = null)))
         val repository = NoticeSession(NoticeSnapshotReader { catalog.copy(notices = listOf(invalid)) }, favorites)
         rule.setContent { DearbyTheme { DearbyApp(repository, {}, {}, { fail("No phase action") }) } }
+        rule.waitForCatalog()
         rule.onNodeWithTag("details.${first.id}").performClick()
         rule.onNodeWithTag("notice.detail").performScrollToNode(hasText(invalid.schedules.first().summary))
         rule.onNodeWithText(invalid.schedules.first().summary).assertIsDisplayed()

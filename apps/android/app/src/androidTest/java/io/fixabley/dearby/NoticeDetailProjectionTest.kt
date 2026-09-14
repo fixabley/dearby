@@ -14,7 +14,7 @@ class NoticeDetailProjectionTest {
             override fun read() = emptySet<String>(); override fun write(ids: Set<String>) {}
         })
         val repo = NoticeSession(AssetNoticeSnapshotReader(InstrumentationRegistry.getInstrumentation().targetContext.assets), favorites)
-        val catalog = repo.load()
+        val catalog = kotlinx.coroutines.runBlocking { repo.load() }
         val detail = repo.detail("cieat-NCR000000007344").state!!
         assertTrue(detail.sources.map { it.id }.containsAll(listOf("krc", "cbnu-campus-map", "cbnu-library-location")))
         assertTrue(detail.sources.all { it.url != null && it.checkedAt != null })

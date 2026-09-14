@@ -1,5 +1,6 @@
 package io.fixabley.dearby
 
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -35,8 +36,10 @@ class CatalogSupplyTest {
         })
         val repository = NoticeSession(provider, favorites)
         rule.setContent { DearbyTheme { DearbyApp(repository, onOpenSource = {}, onAddToCalendar = {}, onOpenMap = {}) } }
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("공고를 불러오지 못했어요").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("공고를 불러오지 못했어요").assertIsDisplayed()
         rule.onNodeWithText("다시 시도").performClick()
+        rule.waitForCatalog()
         rule.onNodeWithText("표시할 공고가 없어요").assertIsDisplayed()
         rule.onNodeWithTag("tab.favorites").performClick()
         rule.onNodeWithText("이전 조직").assertIsDisplayed()

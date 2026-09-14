@@ -53,8 +53,8 @@ JVM 단위 테스트는 앱 실행 없이 임시 저장소로 즐겨찾기 추�
 - `app/`, `app/data/`: 앱 조립·라우팅·OS 어댑터·번들 transport
 - `pages/discovery/ui/`, `pages/favorites/ui/`: State 목록 표시
 - `pages/noticedetail/model/`, `ui/`: NoticeDetailViewModel → NoticeDetailState → 상세 시트
-- `widgets/notice/noticecard/`, `ui/`: NoticeCardViewModel → NoticeCardState → 카드
-- `widgets/organization/favoriteorganizationcard/`, `ui/`: 조직 카드의 표시 조합과 삭제 콜백
+- `widgets/notice/noticecard/`: NoticeCardViewModel → NoticeCardState → 카드
+- `widgets/organization/favoriteorganizationcard/`: 조직 카드의 표시 조합과 삭제 콜백
 - `entities/notice/`, `entities/organization/`: 독립 model/api, 서로 참조하지 않음
 - `features/favoriteorganization/`, `features/addtocalendar/`: 공유 저장 상태·순수 캘린더 초안
 - `shared/ui/`: 범용 표시·테마
@@ -65,21 +65,15 @@ JVM 단위 테스트는 앱 실행 없이 임시 저장소로 즐겨찾기 추�
 
 기존 JSON `activities`·asset `activity-samples.json`·ID·저장 키·test tag·Android Activity 이름은 호환성을 위해 유지합니다. 공통 계약은 [PR #6](https://github.com/fixabley/dearby/pull/6), 작업은 [이슈 #1](https://github.com/fixabley/dearby/issues/1)과 [설계 #3](https://github.com/fixabley/dearby/pull/3)을 참조합니다.
 
-## 이번 검증 (2026-09-14)
+## 영속 캐시와 재시도
 
-구조49파일/self-test21, JVM29, Debug·계측 APK 컴파일, Lint 오류0/경고12, 전용5556 계측30 통과(실패/오류/skip0). 두 독립 캐시·같은 VM의 snapshot 교체·외부 컴포넌트 즐겨찾기 삭제의 Compose 관찰·출처/단계 장소·기존 카드/탭/상세/저장·지도/캘린더 전달을 확인했습니다. 추가로 `./gradlew :app:assembleDebugAndroidTest`로 기기 테스트 참조를 컴파일할 수 있습니다.
+Room 2.8.5/KSP 2.3.12를 사용합니다. IO 준비 단계에서 독립 공고/조직 L1→Room ID 조회→번들 mock을 사용하며 개별 공고 payload와 별도 조직 레코드를 저장합니다. 전체 내용 hash/codec/목록 manifest가 바뀌면 양쪽 cache와 metadata를 한 transaction으로 교체합니다. 같은 hash 재실행은 L2에서 읽으며 외부 record fetch가 없습니다. 화면 VM은 준비된 메모리만 읽습니다.
 
-이번 로그는 `build/state-final-build.log`, `build/state-instrumentation.log`입니다. 과거 단계 결과는 Git/로컬 인계 이력에 남기며 최신 구조의 결과와 구분합니다. 사용자5554를 조작하지 않았고 전용5556만 종료했습니다. 외부 지도/캘린더 앱 내부 UI·실제 일정 저장은 이번에 검증하지 않았습니다. 네트워크·로그인·원문 자동 추출은 미구현이며 동기식 번들/메모리 캐시입니다.
+DB/원본/쓰기 오류는 기존 snapshot을 유지하고 재시도하도록 전달합니다. 손상 파일을 자동 삭제하거나 destructive migration하지 않습니다. 취소/새 요청이 이전 응답의 게시를 막습니다. 즐겨찾기 Prefs는 이 DB와 별개이며 기존 키/ID를 유지합니다. 자세한 수명·한계·Room schema/public API는 [ARCHITECTURE.md](ARCHITECTURE.md)를 참고합니다.
 
+PrimaryButton/SecondaryButton은 Shared 디자인만, 저장 문구·outline/filled heart는 widget NoticeCardSaveButton이 소유합니다. widget은 domain/widget 아래 View·State·ViewModel을 함께 둡니다. NoticeFact는 카드/상세의 실제 공용 표시로 유지합니다.
 
-## 캘린더 메모 변경 검증 (2026-09-14)
-
-신청/활동 일정 모두 메모는 검증된 원본 HTTP(S) URL 문자열 하나이며 누락/오류는 빈 문자열이다. 신청/온라인 URL로 대체하지 않는다. 이번 JVM30·Debug·계측 APK 컴파일·FSD49파일/self-test21 통과, 증거는 `build/calendar-source-only.log`와 표준 JVM XML이다. 앞선 계측30/Lint 결과는 이전 구조 작업 결과이며 이번에는 기기 실행·일정 저장·Lint를 반복하지 않았다.
-
-
-## Shared 버튼과 카드 조합
-
-shared/ui/buttons의 PrimaryButton/SecondaryButton은 content slot·onClick·modifier만 받는 Material3 Button/OutlinedButton이다. 도메인 문구는 widget의 NoticeCardSaveButton이 조합하고 saved/조직명/저장 callback/태그는 호출자가 소유한다. 카드 상세 열기는 SecondaryButton으로 맞췄고 제목 Text는 inline으로 유지했다. 기존 outline heart vector와 filled variant를 저장 상태에 따라 표시하며 contentDescription=null로 문구의 중복 낭독을 피한다. 새 아이콘 의존성은 추가하지 않았다. NoticeFact는 카드와 상세 여러 섹션에서 재사용하므로 Shared에 유지한다.
+기기 테스트는 사용자5554가 아닌 전용5556에서 uniqueDB로 수행하며 실제 캘린더 저장/외부 지도 화면은 검증하지 않습니다.
 
 
-Widget은 widgets/notice/noticecard와 widgets/organization/favoriteorganizationcard에서 Composable·State·ViewModel을 같은 폴더에 둔다(ui/model 하위 폴더 없음). domain 그룹은 다른 widget 참조의 예외가 아니며 slice identity는 domain+widget이다. 구조 검사는 flat 파일의 @Composable을 찾아 raw Model/VM/저장소/OS 접근을 제한하고 비렌더링 ViewModel의 하위 의존을 허용한다. 같은 domain의 다른 widget 금지 fixture도 포함한다.
+최종 검증(2026-09-14): FSD60파일/self-test24(금지18/허용6), JVM39, Debug·계측 APK 컴파일, Lint 오류0/경고12, 전용5556 계측35 모두 통과(실패/오류/skip0). 실제 DB5건과 기존 UI/저장/지도/캘린더30건을 함께 실행했다. 기록은 `build/room-final-build.log`, `build/room-instrumentation.log`, 표준 JVM/계측 XML·Lint 보고서이며 중간 버튼/widget/저장소 단계 결과와 구분한다. 전용5556은 검증 후 종료했고 사용자5554는 조작하지 않았다. canonical asset SHA256 `c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f` 유지, 실제 Calendar Save/외부 지도 앱 내부 화면은 검증하지 않았다.
