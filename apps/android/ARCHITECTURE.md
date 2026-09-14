@@ -163,3 +163,8 @@ Widget 배치 단계: JVM30·Debug·계측 APK·Lint 오류0/경고12·구조52�
 ## 조직 영속 조회 기반
 
 OrganizationDiskStore/StoredOrganizationSource는 독립 조직 source의 L2→mock L3 경계다. Repository L1 miss에서만 disk를 읽고 외부 성공은 upsert 완료 뒤 반환한다. read/write/external 오류를 missing으로 바꾸거나 실패 값을 L1에 올리지 않는다. RoomOrganizationStore는 ID/name/parentId 행을 조회한다. Room2.8.5/KSP2.3.12를 실제 Maven 해결 및 기존 AGP/built-in Kotlin과 Debug로 확인했고 JVM32 통과(`build/organization-disk-source.log`). 실제 DB/manifest 조립·전용 기기 검증은 후속 연결 단계에서 진행한다.
+
+
+## 공고 영속 payload
+
+NoticeStorageCodec v1은 공고별 길이 구분 binary payload로 모든 raw 모델 필드(출처/근거/신청 방식/기간/복수 장소/좌표/역할 ID/provenance)를 roundtrip한다. 전체 카탈로그 blob과 조직 객체는 저장하지 않는다. RoomNoticeStore는 row codec version·payload ID를 검사하고 StoredNoticeSource는 L2/L3 반환 ID를 검증한다(조직도 동일). 읽기/외부/쓰기 오류와 잘못된 ID는 throw하며 실패를 캐시하지 않는다. JVM37 및 Debug 통과, 증거 `build/notice-disk-codec.log`와 JVM XML; 실제 DB는 App 조립 후 검증한다.

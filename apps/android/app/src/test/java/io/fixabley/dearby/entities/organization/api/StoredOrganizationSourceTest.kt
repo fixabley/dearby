@@ -42,4 +42,19 @@ class StoredOrganizationSourceTest {
         val failed = OrganizationRepository(StoredOrganizationSource(empty, OrganizationSource { error("mock failed") }))
         assertThrows(IllegalStateException::class.java) { failed.find("org") }
     }
+    @Test fun mismatchedIdsNeverWriteOrReturnSuccess() {
+        val value = OrganizationModel("wrong", "조직", null)
+        var writes = 0
+        val disk = object : OrganizationDiskStore {
+            override fun find(id: String): OrganizationModel? = null
+            override fun upsert(value: OrganizationModel) { writes++ }
+        }
+        assertThrows(IllegalArgumentException::class.java) { StoredOrganizationSource(disk, OrganizationSource { value }).find("requested") }
+        assertEquals(0, writes)
+        val corrupt = object : OrganizationDiskStore {
+            override fun find(id: String): OrganizationModel? = value
+            override fun upsert(value: OrganizationModel) { writes++ }
+        }
+        assertThrows(IllegalArgumentException::class.java) { StoredOrganizationSource(corrupt, OrganizationSource { error("must not fetch") }).find("requested") }
+    }
 }
