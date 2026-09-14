@@ -249,7 +249,7 @@ iOS는 EventKitUI 편집기, Android는 CalendarContract ACTION_INSERT 편집 �
 `OrganizationModel`은 id·name·parentOrganizationId를 보유하고 공고와 독립된 저장소에서 관리한다.
 contexts/organizationLinks의 명시적 역할은 유지하며 트리 위치로 주최 기관·학교 소속을 추정하지 않는다.
 
-`NoticeRepository`와 `OrganizationRepository`는 각각의 조회·저장 경계와 캐시를 담당한다. 이번 원본 저장은 번들 스냅샷을 채운 인메모리 방식이다.
+`NoticeRepository`와 `OrganizationRepository`는 각각의 조회·저장 경계와 캐시를 담당한다. Android 원본 저장은 번들 스냅샷을 채운 인메모리 방식이다. iOS는 인메모리 읽기 캐시 다음 계층에 SwiftData 디스크 저장소를 둔다.
 원본을 ID로 인덱싱한 저장소와 처음 비어 있는 읽기 캐시는 별개다.
 
 1. ID로 읽기 캐시를 확인한다.
@@ -259,6 +259,10 @@ contexts/organizationLinks의 명시적 역할은 유지하며 트리 위치로 
 
 App이 두 Repository의 인스턴스와 공급 스냅샷의 수명을 소유한다. 컴포넌트마다 새 저장소나 캐시를 만들지 않는다.
 원본 스냅샷을 교체하면 해당 캐시 전체를 비우거나 새 스냅샷에 대응하는 저장소를 사용한다. 같은 ID여도 이름·부모·공고 내용이 달라질 수 있다.
+
+iOS의 번들은 초기 데이터 적재와 샘플 내용 갱신에 사용한다. 같은 데이터로 재실행할 때는 SwiftData에 저장된 공고·조직을 재사용하며, 메모리 캐시 miss는 ID별 영속 조회로 이어진다. 영속 레코드에도 조직 이름·경로를 공고에 중복 저장하지 않는다. 저장용 SwiftData 타입은 조회 구현 경계에 두고 도메인 Model과 화면 State의 계약을 유지한다.
+
+스냅샷 교체는 공고·조직·목록 메타데이터를 함께 저장하고 성공한 뒤에만 읽기 캐시와 화면 구성을 갱신한다. 실패를 알 수 없는 ID로 취급하거나 기존 저장소를 삭제해 복구하지 않는다. 즐겨찾기 ID 저장 형식은 유지한다. 실제 디스크 저장소 재개, 동일 데이터 재적재 방지, 변경·삭제와 캐시 무효화, 실패 시 기존 상태 보존을 검증한다.
 이번에는 파일 영속화·TTL·백그라운드 동기화·서버 연결을 추가하지 않는다. 앱 재시작 시 번들로 원본을 다시 채운다.
 
 ### ViewModel이 모델을 조합하고 View는 State를 표시한다
