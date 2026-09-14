@@ -77,6 +77,52 @@ test('sample map points retain official evidence and unresolved venues remain wi
   assert.match(contest.location.summary, /상세 장소 확인 필요/);
 });
 
+test('calendar links and date-only end are optional, explicit web links and real dates', () => {
+  const copy = structuredClone(data);
+  const notice = copy.activities.find((row) => row.kind === 'competition');
+  notice.application.url = 'https://example.com/apply?id=1&lang=ko';
+  notice.schedule[0].onlineUrl = 'https://example.com/online';
+  notice.schedule[0].endsOn = '2026-10-15';
+  assert.ok(validate(copy), JSON.stringify(validate.errors));
+  for (const bad of ['javascript:alert(1)', 'file:///tmp/event', 'mailto:apply@example.com', 'not-a-url']) {
+    const broken = structuredClone(copy);
+    broken.activities.find((row) => row.kind === 'competition').application.url = bad;
+    assert.equal(validate(broken), false);
+    const badPhase = structuredClone(copy);
+    badPhase.activities.find((row) => row.kind === 'competition').schedule[0].onlineUrl = bad;
+    assert.equal(validate(badPhase), false);
+  }
+  notice.schedule[0].endsOn = '2026-02-30';
+  assert.equal(validate(copy), false);
+  const legacy = structuredClone(data);
+  for (const row of legacy.activities) {
+    delete row.application.url;
+    for (const phase of row.schedule) {
+      delete phase.onlineUrl;
+      delete phase.endsOn;
+      delete phase.timezone;
+    }
+  }
+  assert.ok(validate(legacy), JSON.stringify(validate.errors));
+});
+
+test('application links point to verified application pages and online preliminaries do not inherit final venues', () => {
+  const applications = data.activities.filter((row) => row.application.url);
+  assert.equal(applications.length, 3);
+  for (const row of applications) {
+    assert.deepEqual(row.application.channels, ['platform']);
+    assert.ok(row.application.url.includes(row.id.replace('cieat-', '')));
+    assert.ok(row.application.evidence.some((entry) => entry.locator.includes('신청하기')));
+  }
+  const contest = data.activities.find((row) => row.kind === 'competition');
+  assert.equal(contest.application.url, null);
+  const preliminary = contest.schedule.find((phase) => phase.phase === 'preliminary');
+  assert.equal(preliminary.mode, 'online');
+  assert.equal(preliminary.onlineUrl, null);
+  assert.equal(contest.location.venues.some((venue) => venue.phase === preliminary.phase), false);
+  assert.equal(contest.location.venues.filter((venue) => venue.phase === 'final').length, 1);
+});
+
 test('all IDs are unique and all organization/source references resolve', () => {
   for (const rows of [data.activities, data.organizations, data.sources]) {
     assert.equal(new Set(rows.map((row) => row.id)).size, rows.length);

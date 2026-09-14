@@ -465,6 +465,19 @@
           "items": {
             "$ref": "#/$defs/evidence"
           }
+        },
+        "url": {
+          "description": "확인된 웹 링크. 생략/null은 미확인. 원문 URL을 신청/온라인 링크로 자동 간주하지 않는다.",
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://"
+            }
+          ]
         }
       },
       "required": [
@@ -524,6 +537,33 @@
           "items": {
             "$ref": "#/$defs/evidence"
           }
+        },
+        "onlineUrl": {
+          "description": "확인된 웹 링크. 생략/null은 미확인. 원문 URL을 신청/온라인 링크로 자동 간주하지 않는다.",
+          "anyOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "format": "uri",
+              "pattern": "^https?://"
+            }
+          ]
+        },
+        "endsOn": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date",
+          "description": "시각이 없는 활동 종료일(해당 날짜 포함)."
+        },
+        "timezone": {
+          "enum": [
+            "Asia/Seoul"
+          ],
+          "description": "시각/날짜의 기준 시간대. 기존 생략 자료는 Asia/Seoul로 해석."
         }
       },
       "required": [

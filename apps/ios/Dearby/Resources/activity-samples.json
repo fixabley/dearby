@@ -237,7 +237,8 @@
             "locator": "신청 기한·구비서류·제출처"
           }
         ],
-        "opensOn": null
+        "opensOn": null,
+        "url": null
       },
       "schedule": [],
       "location": {
@@ -396,9 +397,14 @@
           {
             "sourceId": "krc",
             "locator": "모집기간·신청방법"
+          },
+          {
+            "sourceId": "krc",
+            "locator": "2026-09-14 공개 상세 페이지 신청하기 영역 확인. 로그인 후 신청하는 프로그램 페이지 URL이며 신청 완료를 의미하지 않음."
           }
         ],
-        "opensOn": "2026-08-27"
+        "opensOn": "2026-08-27",
+        "url": "https://cieat.cbnu.ac.kr/ncrProgramAppl/a/m/getProgramDetail.do?npiKeyId=NCR000000007344"
       },
       "schedule": [
         {
@@ -412,7 +418,10 @@
               "sourceId": "krc",
               "locator": "교육 내용 및 운영방법"
             }
-          ]
+          ],
+          "endsOn": null,
+          "timezone": "Asia/Seoul",
+          "onlineUrl": null
         }
       ],
       "location": {
@@ -592,9 +601,14 @@
           {
             "sourceId": "db",
             "locator": "모집기간·신청방법"
+          },
+          {
+            "sourceId": "db",
+            "locator": "2026-09-14 공개 상세 페이지 신청하기 영역 확인. 로그인 후 신청하는 프로그램 페이지 URL이며 신청 완료를 의미하지 않음."
           }
         ],
-        "opensOn": "2026-08-06"
+        "opensOn": "2026-08-06",
+        "url": "https://cieat.cbnu.ac.kr/ncrProgramAppl/a/m/getProgramDetail.do?npiKeyId=NCR000000007306"
       },
       "schedule": [
         {
@@ -608,7 +622,10 @@
               "sourceId": "db",
               "locator": "교육 내용 및 운영방법"
             }
-          ]
+          ],
+          "endsOn": null,
+          "timezone": "Asia/Seoul",
+          "onlineUrl": null
         }
       ],
       "location": {
@@ -773,9 +790,14 @@
           {
             "sourceId": "mentoring",
             "locator": "모집기간·신청방법"
+          },
+          {
+            "sourceId": "mentoring",
+            "locator": "2026-09-14 공개 상세 페이지 신청하기 영역 확인. 로그인 후 신청하는 프로그램 페이지 URL이며 신청 완료를 의미하지 않음."
           }
         ],
-        "opensOn": "2026-09-08"
+        "opensOn": "2026-09-08",
+        "url": "https://cieat.cbnu.ac.kr/ncrProgramAppl/a/m/getProgramDetail.do?npiKeyId=NCR000000007382"
       },
       "schedule": [
         {
@@ -789,7 +811,10 @@
               "sourceId": "mentoring",
               "locator": "교육 내용 및 운영방법"
             }
-          ]
+          ],
+          "endsOn": null,
+          "timezone": "Asia/Seoul",
+          "onlineUrl": null
         }
       ],
       "location": {
@@ -1013,7 +1038,8 @@
             "locator": "참가신청"
           }
         ],
-        "opensOn": "2026-09-11"
+        "opensOn": "2026-09-11",
+        "url": null
       },
       "schedule": [
         {
@@ -1027,7 +1053,10 @@
               "sourceId": "poster",
               "locator": "대회 일정"
             }
-          ]
+          ],
+          "endsOn": null,
+          "timezone": "Asia/Seoul",
+          "onlineUrl": null
         },
         {
           "phase": "finalist_announcement",
@@ -1040,7 +1069,10 @@
               "sourceId": "poster",
               "locator": "대회 일정"
             }
-          ]
+          ],
+          "endsOn": null,
+          "timezone": "Asia/Seoul",
+          "onlineUrl": null
         },
         {
           "phase": "final",
@@ -1053,7 +1085,10 @@
               "sourceId": "poster",
               "locator": "대회 일정·시상계획"
             }
-          ]
+          ],
+          "endsOn": null,
+          "timezone": "Asia/Seoul",
+          "onlineUrl": null
         }
       ],
       "location": {
