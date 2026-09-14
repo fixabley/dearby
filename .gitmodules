@@ -1,0 +1,4 @@
+[submodule "apps/ios"]
+	path = apps/ios
+	url = https://github.com/fixabley/dearby-ios.git
+	branch = main

@@ -1,0 +1,42 @@
+# macOS
+.DS_Store
+
+# Local environment
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Android / Gradle
+.gradle/
+.kotlin/
+local.properties
+**/build/
+.cxx/
+.externalNativeBuild/
+*.jks
+*.keystore
+
+# IDE-local settings
+.idea/
+*.iml
+
+# Xcode / Swift
+DerivedData/
+.build/
+xcuserdata/
+*.xcuserstate
+*.ipa
+*.dSYM/
+*.dSYM.zip
+*.xcarchive/
+
+# CocoaPods / Carthage artifacts (keep lockfiles tracked)
+Pods/
+Carthage/Build/
+
+# Signing credentials
+*.p12
+*.p8
+*.mobileprovision
+*.provisionprofile
