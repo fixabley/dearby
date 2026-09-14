@@ -7,6 +7,7 @@ struct DiscoveryView<Destination: View>: View {
     let cards: [NoticeCardState]
     let saveOrganization: (String) -> SaveOrganizationResult
     @ViewBuilder let destination: (String) -> Destination
+    @State private var focusedID: String?
     @State private var detail: NoticeCardState?
     @State private var saveFeedback = ""
     @State private var saveCount = 0
@@ -23,23 +24,25 @@ struct DiscoveryView<Destination: View>: View {
                     ScrollView(.vertical) {
                         LazyVStack(spacing: 0) {
                             ForEach(Array(cards.enumerated()), id: \.element.id) { index, notice in
-                                NoticeCard(
-                                    state: notice,
-                                    position: "\(index + 1) / \(cards.count)",
-                                    compact: geometry.size.height < 520,
-                                    onSave: { save(notice) },
-                                    onShowDetail: { detail = notice }
-                                )
-                                .frame(width: geometry.size.width)
-                                .frame(minHeight: geometry.size.height)
-                                .frame(height: typeSize.isAccessibilitySize ? nil : geometry.size.height)
+                                DiscoveryCardPage(state: notice, position: "\(index + 1) / \(cards.count)",
+                                    viewport: geometry.size, scrollContents: typeSize.isAccessibilitySize,
+                                    onSave: { save(notice) }, onShowDetail: { detail = notice })
+                                    .id(notice.id)
                             }
                         }
                         .scrollTargetLayout()
                     }
                     .scrollIndicators(.hidden)
-                    .scrollTargetBehavior(DiscoveryPagingBehavior(enabled: !typeSize.isAccessibilitySize))
+                    .scrollTargetBehavior(.viewAligned(limitBehavior: .alwaysByOne))
+                    .scrollPosition(id: $focusedID)
                 }
+            }
+            if typeSize.isAccessibilitySize, !cards.isEmpty {
+                let index = cards.firstIndex { $0.id == focusedID } ?? 0
+                DiscoveryPageControls(position: "\(index + 1) / \(cards.count)",
+                    canPrevious: index > 0, canNext: index + 1 < cards.count,
+                    onPrevious: { withAnimation { focusedID = cards[max(0, index - 1)].id } },
+                    onNext: { withAnimation { focusedID = cards[min(cards.count - 1, index + 1)].id } })
             }
             Text(saveFeedback.isEmpty ? "위아래로 넘기기 · 더블탭으로 조직 저장" : saveFeedback)
                 .font(.caption).foregroundStyle(.secondary)
@@ -62,17 +65,6 @@ struct DiscoveryView<Destination: View>: View {
             saveCount += 1
         case .unresolved:
             saveFeedback = "저장할 조직을 확인 중이에요"
-        }
-    }
-}
-
-/// Preserve native paging normally; let oversized accessibility cards scroll freely.
-private struct DiscoveryPagingBehavior: ScrollTargetBehavior {
-    let enabled: Bool
-
-    func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
-        if enabled {
-            PagingScrollTargetBehavior().updateTarget(&target, context: context)
         }
     }
 }
