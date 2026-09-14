@@ -56,7 +56,7 @@ class VenueMapFlowTest {
             override fun write(ids: Set<String>) = Unit
         })
         rule.setContent { DearbyTheme {
-            DearbyApp(provider, favorites, onOpenSource = {}, onOpenMap = { venue ->
+            DearbyApp(provider, favorites, onOpenSource = {}, onAddToCalendar = {}, onOpenMap = { venue ->
                 assertEquals(expected, venue)
                 openVenueMap(venue, { requests.add(it) }, { error("Unexpected unavailable") })
             })

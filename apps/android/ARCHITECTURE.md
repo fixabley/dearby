@@ -153,3 +153,24 @@ TalkBack·최대 글자 크기·태블릿·가로 화면 전체 검증, 비동�
 이번 지도 검증 결과: 구조24파일/self-test11, JVM7건, Debug 빌드, Lint 오류0/권고11, 전용 emulator-5556 계측20건 통과(실패/오류/skip 0). 첫 계측의 비유한 JSON 기대 1건은 Android JSONObject가 Infinity를 파싱 단계에서 거부하는 실제 동작에 맞춰 수정하고 전체20건을 재실행했다. 비유한 수를 가진 직접 모델은 JVM/Intent 단계에서 거부되며 비유한 JSON은 기존 App 공급 실패·재시도 화면으로 처리된다. `cmd package resolve-activity --brief -a android.intent.action.VIEW -d 'geo:36.62819644470018,127.45787581357385?q=36.62819644470018,127.45787581357385'`로 전용 기기의 MapsActivity 설치를 확인했다. 실제 지도 렌더링·다중 앱 chooser 화면·TalkBack 전체 점검은 수행하지 않았으며 실행 요청/오류는 주입한 함수로 캡처했다. 사용자5554는 조작하지 않았다.
 
 로그: `build/maps-build-verified.log`, `build/maps-instrumentation.log`, 기존 표준 JVM/계측 XML 및 Lint 보고서 (Git 제외). 위 FSD17/JVM5/계측11 기록은 과거 실행이고 이번 결과는 24/7/20이다.
+
+
+## 신청 캘린더 편집기 (2026-09-14)
+
+`entities/activitycatalog/model/ActivityApplication.kt`은 기존 summary와 opensAt/opensOn/closesAt/closesOn/timezone/url을 보존한다. 카드와 상세 문구는 단일 summary를 그대로 사용한다. JSON의 채널·증빙·근거는 canonical 원본에 유지하며 표시 모델만 필요한 필드를 읽는다.
+
+새 실제 파일과 진입점:
+- `features/addtocalendar/model/CalendarDraft.kt`: 외부 진입점인 immutable 편집기 입력값, UI가 받아 전달할 수 있는 유일한 Feature 타입.
+- `features/addtocalendar/model/ApplicationCalendarDraft.kt`: App만 호출하는 `applicationCalendarDraft(Notice)` 진입점.
+- 같은 slice의 `CalendarPeriod.kt`, `CalendarLinks.kt`: 내부 strict 날짜/시간대 변환 및 http(s) 검증 helper.
+- `app/OpenCalendarEditor.kt`: `calendarInsertIntent`, `openCalendarEditor` App 내부 OS 어댑터.
+- `pages/noticedetail/ui/AddToCalendarButton.kt`: 상세 slice 내부 개별 UI 파일; 초안/문구/콜백만 받으며 날짜 변환·저장·Context를 직접 접근하지 않는다.
+- Entities 외부 진입점에 `model.ActivityApplication`을 추가한다. 구조검사는 Pages/Widgets에 immutable `CalendarDraft`만 좁게 허용하고 변환 함수·다른 Feature 상태/API 참조를 계속 차단한다 (self-test 금지9/허용4).
+
+두 timestamp가 유효하고 종료가 시작보다 뒤면 정확한 구간을 쓴다. 그 외는 알려진 날짜를 종일로 표현하고 자정 종료는 제외 경계, 날짜만의 종료는 포함일 다음날 경계로 변환한다. 시간대는 소스/기본 Asia/Seoul이며 기기 시간대를 쓰지 않는다. Android 종일 초안은 같은 달력 날짜의 UTC 자정을 사용한다. 마감만 있으면 신청 마감, 시작만 있으면 해당 날짜 한 날과 마감 미확인 안내, 날짜가 없거나 잘못되거나 역전되면 버튼을 생략한다. 알려진 시각·원래 summary·시간대·미확인 정보는 설명에 남긴다. startAt/startOn이 시간대 기준으로 모순되면 내보내지 않는다. 정확한 종료 timestamp가 있으면 날짜-only 종료보다 우선한다.
+
+App이 초안을 구성해 상세와 클릭 콜백에 전달한다. ACTION_INSERT + CalendarContract.Events.CONTENT_URI의 네이티브 편집기를 열고 TITLE/DESCRIPTION/LOCATION/BEGIN/END/ALL_DAY/시간대만 채운다. 신청 URL은 검증된 http(s)만 `신청 URL`로 쓰고 원문은 별도 `원문`으로 표시한다. Android 공통 URL 필드가 없어 DESCRIPTION을 사용한다. [공식 Calendar Intent](https://developer.android.com/guide/components/intents-common#Calendar), [Calendar Provider](https://developer.android.com/identity/providers/calendar-provider)를 따른다. READ/WRITE_CALENDAR 권한·provider 직접 insert·자동 저장·초대자·리마인더를 추가하지 않는다. 미설치/보안 차단은 native 안내이며 단순 편집기 실행을 저장 완료라고 표시하지 않는다. 저장·취소는 외부 편집기에서 사용자에게 맡긴다.
+
+공통 PR #6 확정 캘린더 asset SHA256 `c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f`를 자기 resource에만 복사했다. 앞 지도 섹션의 hash는 당시 검증값이다. 이번에는 신청 캘린더의 Kotlin 순수 날짜·URL 정책과 Intent/버튼 계측을 추가했다. 기존 지도 검증은 과거 결과이며 최신 전체 검증은 활동 단계 연결 후 별도로 기록한다.
+
+신청 기능 커밋 전 검증: 구조31파일/self-test13·JVM13(기존7+신청6)·Debug·전용5556 신청/Intent 계측4건 통과. 로그 `build/calendar-application-verified.log`. 최초 UI 테스트의 잘못 가정한 URL 호스트와 상세/카드 중복 문구 selector를 교정 후 4건 재실행했다. 실제 편집기 handler는 없어 외부 화면 확인은 미실행이다.

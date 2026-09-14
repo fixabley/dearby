@@ -28,7 +28,12 @@ internal class AssetCatalogProvider(private val assets: AssetManager) : CatalogP
                     organizationId = if (item.isNull("favoriteOrganizationId")) null else item.getString("favoriteOrganizationId"),
                     audience = item.getJSONObject("audience").getString("summary"),
                     eligibility = item.getJSONObject("eligibility").getString("summary"),
-                    application = item.getJSONObject("application").getString("summary"),
+                    application = item.getJSONObject("application").let { application ->
+                        ActivityApplication(application.getString("summary"),
+                            application.opt("opensAt") as? String, application.opt("opensOn") as? String,
+                            application.opt("closesAt") as? String, application.opt("closesOn") as? String,
+                            application.opt("timezone") as? String ?: "Asia/Seoul", application.opt("url") as? String)
+                    },
                     location = decodeActivityLocation(item.getJSONObject("location")),
                     schedule = item.getJSONArray("schedule").objects().map { phase ->
                         val label = mapOf("event" to "행사", "preliminary" to "예선", "finalist_announcement" to "결선 진출 발표", "final" to "결선·시상")[phase.getString("phase")] ?: phase.getString("phase")

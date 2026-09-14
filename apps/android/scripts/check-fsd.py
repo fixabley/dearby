@@ -17,7 +17,9 @@ API = {
     "features.favoriteorganization": {
         "model.FavoritesState", "api.FavoriteStore", "api.SharedPreferencesFavoriteStore",
     },
+    "features.addtocalendar": {"model.CalendarDraft", "model.applicationCalendarDraft"},
     "entities.activitycatalog": {
+        "model.ActivityApplication",
         "model.ActivityLocation", "model.ActivityVenue", "model.VenueCoordinates",
         "model.ActivityCatalog", "model.Notice", "model.Organization", "model.NoticeContext",
         "api.CatalogProvider", "api.AssetCatalogProvider", "ui.ActivityClassification",
@@ -66,7 +68,7 @@ def check_source(relative_path, text):
             if not any(ref == entry or ref.startswith(entry + ".") for entry in exports):
                 errors.append(f"non-entry-point dependency: {ref}")
         if layer in ("pages", "widgets") and (
-            target_layer == "features" or ".api." in ref
+            (target_layer == "features" and ref != "features.addtocalendar.model.CalendarDraft") or ".api." in ref
         ):
             errors.append(f"UI must receive values/callbacks, not state or data providers: {ref}")
     if layer in ("pages", "widgets") and re.search(
@@ -89,13 +91,15 @@ def self_test():
         ("app/Example.kt", "import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState", True),
         ("widgets/activitycard/ui/Example.kt", "import io.fixabley.dearby.entities.activitycatalog.ui.ActivityClassification", True),
         ("shared/ui/Example.kt", "import io.fixabley.dearby.shared.ui.theme.DearbyTheme", True),
+        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft", True),
+        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.features.addtocalendar.model.applicationCalendarDraft", False),
     ]
     for filename, snippet, allowed in cases:
         path = Path(filename)
         package = PREFIX + "." + ".".join(path.parts[:-1])
         errors = check_source(path, f"package {package}\n{snippet}\n")
         assert (not errors) == allowed, (filename, snippet, errors)
-    print(f"Boundary self-test: {len(cases)} cases passed (8 forbidden, 3 allowed)")
+    print(f"Boundary self-test: {len(cases)} cases passed (9 forbidden, 4 allowed)")
 
 
 if __name__ == "__main__":

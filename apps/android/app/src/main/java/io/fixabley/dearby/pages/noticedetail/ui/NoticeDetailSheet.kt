@@ -9,13 +9,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.platform.testTag
 import io.fixabley.dearby.entities.activitycatalog.model.ActivityCatalog
+import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft
 import io.fixabley.dearby.entities.activitycatalog.model.Notice
 import io.fixabley.dearby.entities.activitycatalog.model.ActivityVenue
 import io.fixabley.dearby.shared.ui.NoticeFact
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun NoticeDetailSheet(notice: Notice, catalog: ActivityCatalog?, onDismiss: () -> Unit, onOpenSource: (String) -> Unit, onOpenMap: (ActivityVenue) -> Unit) {
+internal fun NoticeDetailSheet(notice: Notice, catalog: ActivityCatalog?, onDismiss: () -> Unit, onOpenSource: (String) -> Unit, onOpenMap: (ActivityVenue) -> Unit, applicationDraft: CalendarDraft?, onAddToCalendar: (CalendarDraft) -> Unit) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -28,7 +29,13 @@ internal fun NoticeDetailSheet(notice: Notice, catalog: ActivityCatalog?, onDism
             item { HorizontalDivider() }
             item { NoticeFact("참여 대상", notice.audience) }
             item { NoticeFact("참여 조건", notice.eligibility) }
-            item { NoticeFact("신청 기간", notice.application) }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    NoticeFact("신청 기간", notice.application.summary)
+                    AddToCalendarButton(applicationDraft, "신청 기간 캘린더에 추가", onAddToCalendar,
+                        Modifier.testTag("calendar.application"))
+                }
+            }
             items(notice.schedule) { NoticeFact("활동 일정", it) }
             item { NoticeLocationSection(notice.location, onOpenMap) }
             items(notice.benefits) { NoticeFact("혜택", it) }

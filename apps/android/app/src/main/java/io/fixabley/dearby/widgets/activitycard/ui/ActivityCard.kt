@@ -46,7 +46,7 @@ internal fun ActivityCard(
                     if (!compact) {
                         HorizontalDivider()
                         NoticeFact("참여 대상", notice.audience, 2)
-                        NoticeFact("신청 마감", notice.application, 2)
+                        NoticeFact("신청 마감", notice.application.summary, 2)
                         NoticeFact("활동 장소", notice.location.summary, 2)
                     }
                     if (notice.issues.isNotEmpty()) {

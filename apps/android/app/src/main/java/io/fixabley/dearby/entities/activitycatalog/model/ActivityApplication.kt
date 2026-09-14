@@ -1,0 +1,11 @@
+package io.fixabley.dearby.entities.activitycatalog.model
+
+internal data class ActivityApplication(
+    val summary: String,
+    val opensAt: String? = null,
+    val opensOn: String? = null,
+    val closesAt: String? = null,
+    val closesOn: String? = null,
+    val timezone: String = "Asia/Seoul",
+    val url: String? = null,
+)
