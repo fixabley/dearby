@@ -1,0 +1,1043 @@
+{
+  "schemaVersion": "1.0.0",
+  "mode": "reviewed_sample",
+  "snapshotAt": "2026-09-14T06:41:40+00:00",
+  "sources": [
+    {
+      "id": "english",
+      "url": "https://software.cbnu.ac.kr/sub0401/1153966",
+      "kind": "web_page",
+      "checkedAt": "2026-09-14T06:41:40+00:00",
+      "access": "public",
+      "note": "공개 HTML 본문 확인"
+    },
+    {
+      "id": "contest",
+      "url": "https://software.cbnu.ac.kr/sub0401/1154064",
+      "kind": "web_page",
+      "checkedAt": "2026-09-14T06:41:40+00:00",
+      "access": "public",
+      "note": "공개 HTML 본문 확인"
+    },
+    {
+      "id": "poster",
+      "url": "https://software.cbnu.ac.kr/se2/upload/d_20260911_074334_1789112614627_8_0",
+      "kind": "poster",
+      "checkedAt": "2026-09-14T06:41:40+00:00",
+      "access": "public",
+      "note": "포스터 이미지 육안 확인"
+    },
+    {
+      "id": "cieat-home",
+      "url": "https://cieat.cbnu.ac.kr/clientMain/a/t/main.do",
+      "kind": "web_page",
+      "checkedAt": "2026-09-14T06:41:40+00:00",
+      "access": "public",
+      "note": "공개 HTML 본문 확인"
+    },
+    {
+      "id": "krc",
+      "url": "https://cieat.cbnu.ac.kr/ncrProgramAppl/a/m/getProgramDetail.do?npiKeyId=NCR000000007344",
+      "kind": "web_page",
+      "checkedAt": "2026-09-14T06:41:40+00:00",
+      "access": "public",
+      "note": "공개 HTML 본문 확인"
+    },
+    {
+      "id": "db",
+      "url": "https://cieat.cbnu.ac.kr/ncrProgramAppl/a/m/getProgramDetail.do?npiKeyId=NCR000000007306",
+      "kind": "web_page",
+      "checkedAt": "2026-09-14T06:41:40+00:00",
+      "access": "public",
+      "note": "공개 HTML 본문 확인"
+    },
+    {
+      "id": "mentoring",
+      "url": "https://cieat.cbnu.ac.kr/ncrProgramAppl/a/m/getProgramDetail.do?npiKeyId=NCR000000007382",
+      "kind": "web_page",
+      "checkedAt": "2026-09-14T06:41:40+00:00",
+      "access": "public",
+      "note": "공개 HTML 본문 확인"
+    }
+  ],
+  "organizations": [
+    {
+      "id": "cbnu",
+      "name": "충북대학교",
+      "kind": "institution",
+      "sourceIds": [
+        "english",
+        "krc",
+        "mentoring"
+      ],
+      "parentOrganizationId": null
+    },
+    {
+      "id": "cbnu-software",
+      "name": "충북대학교 소프트웨어학부",
+      "kind": "department",
+      "sourceIds": [
+        "english"
+      ],
+      "parentOrganizationId": "cbnu"
+    },
+    {
+      "id": "cbnu-career",
+      "name": "충북대학교 대학일자리센터",
+      "kind": "department",
+      "sourceIds": [
+        "krc"
+      ],
+      "parentOrganizationId": "cbnu"
+    },
+    {
+      "id": "cbnu-russian",
+      "name": "충북대학교 러시아언어문화학과",
+      "kind": "department",
+      "sourceIds": [
+        "mentoring"
+      ],
+      "parentOrganizationId": "cbnu"
+    },
+    {
+      "id": "krc",
+      "name": "한국농어촌공사",
+      "kind": "institution",
+      "sourceIds": [
+        "krc"
+      ],
+      "parentOrganizationId": null
+    },
+    {
+      "id": "db-insurance",
+      "name": "DB손해보험",
+      "kind": "company",
+      "sourceIds": [
+        "db"
+      ],
+      "parentOrganizationId": null
+    },
+    {
+      "id": "yeongnam-ai-security",
+      "name": "영남권 AI·정보보호영재교육원",
+      "kind": "institution",
+      "sourceIds": [
+        "contest"
+      ],
+      "parentOrganizationId": null
+    },
+    {
+      "id": "yeongnam-cyber-defense",
+      "name": "영남권 사이버 공격 방어 대회",
+      "kind": "program",
+      "sourceIds": [
+        "contest",
+        "poster"
+      ],
+      "parentOrganizationId": "yeongnam-ai-security"
+    }
+  ],
+  "activities": [
+    {
+      "id": "cbnu-software-1153966",
+      "title": "교양영어 선택이수제 2026년 9월 신청",
+      "kind": "academic_administration",
+      "summary": "공인 어학성적 등을 제출해 지정 영어 교과목 한 과목의 이수 요건 면제를 신청하는 학사 안내입니다. 학점은 인정되지 않습니다.",
+      "demoVisible": false,
+      "sourceIds": [
+        "english"
+      ],
+      "organizationLinks": [
+        {
+          "organizationId": "cbnu-software",
+          "role": "publisher"
+        },
+        {
+          "organizationId": "cbnu-software",
+          "role": "submission_office"
+        }
+      ],
+      "favoriteOrganizationId": null,
+      "interestTags": [],
+      "audience": {
+        "summary": "지정 영어 교과목 미이수자 중 이수 면제 희망자",
+        "status": "partial",
+        "educationLevels": [],
+        "years": [],
+        "majors": [],
+        "institutionIds": [],
+        "evidence": [
+          {
+            "sourceId": "english",
+            "locator": "대상자 및 신청 불가 안내"
+          }
+        ]
+      },
+      "eligibility": {
+        "summary": "지정 영어 교과목 기이수자는 신청 불가 · 어학성적 세부 기준은 첨부 확인 필요",
+        "status": "partial",
+        "rule": {
+          "field": "applicant.hasCompletedTargetEnglishCourse",
+          "operator": "eq",
+          "value": false
+        },
+        "unknowns": [
+          {
+            "field": "englishScoreThreshold",
+            "reason": "attachment_not_reviewed",
+            "resolveBy": "source_review"
+          }
+        ],
+        "evidence": [
+          {
+            "sourceId": "english",
+            "locator": "대상자·구비서류·첨부 목록"
+          }
+        ]
+      },
+      "application": {
+        "summary": "2026.09.16까지 · 마감 시각 미기재",
+        "opensAt": null,
+        "closesAt": null,
+        "closesOn": "2026-09-16",
+        "deadlinePrecision": "date",
+        "originalDeadline": "2026. 9. 16.(수)까지",
+        "timezone": "Asia/Seoul",
+        "channels": [
+          "office",
+          "email"
+        ],
+        "requiredDocuments": [
+          "공인어학성적표",
+          "신청서",
+          "개인정보 수집·이용 동의서"
+        ],
+        "submissionLocations": [
+          "소프트웨어학부 사무실 S4-1동 217호"
+        ],
+        "evidence": [
+          {
+            "sourceId": "english",
+            "locator": "신청 기한·구비서류·제출처"
+          }
+        ],
+        "opensOn": null
+      },
+      "schedule": [],
+      "location": {
+        "summary": "활동 장소 해당 없음 · 제출처는 학부사무실",
+        "status": "not_applicable",
+        "mode": "unknown",
+        "venues": [],
+        "evidence": []
+      },
+      "benefits": [
+        {
+          "kind": "course_requirement_waiver",
+          "summary": "지정 교과목 한 과목의 이수 요건 면제 · 학점 미인정",
+          "amount": null,
+          "unit": null,
+          "issuer": null,
+          "evidence": [
+            {
+              "sourceId": "english",
+              "locator": "대상교과목·이수 요건 면제"
+            }
+          ]
+        }
+      ],
+      "cost": {
+        "amount": null,
+        "currency": "KRW",
+        "status": "unknown"
+      },
+      "capacity": null,
+      "qualityIssues": [
+        {
+          "code": "out_of_feed_scope",
+          "fieldPath": "kind",
+          "summary": "조직·활동 모집이 아닌 학사 행정 안내로 첫 탐색 피드에서 제외",
+          "resolveBy": "editorial_review",
+          "evidence": [
+            {
+              "sourceId": "english",
+              "locator": "본문"
+            }
+          ]
+        },
+        {
+          "code": "unreviewed_attachment",
+          "fieldPath": "eligibility",
+          "summary": "HWP 3개 첨부의 세부 점수·자격 기준은 미확인",
+          "resolveBy": "source_review",
+          "evidence": [
+            {
+              "sourceId": "english",
+              "locator": "본문"
+            }
+          ]
+        }
+      ],
+      "edition": null,
+      "categoryPath": [
+        "academic_administration"
+      ],
+      "contexts": [],
+      "targetSelection": {
+        "method": "editorial_provisional",
+        "ruleId": null,
+        "note": "기존 샘플의 잠정 지정. 운영자만으로 관심 대상임을 확정하지 않음."
+      }
+    },
+    {
+      "id": "cieat-NCR000000007344",
+      "title": "한국농어촌공사 채용설명회",
+      "kind": "career_event",
+      "summary": "채용 절차 안내와 질의응답으로 한국농어촌공사의 채용 정보를 알아보는 설명회입니다.",
+      "demoVisible": true,
+      "sourceIds": [
+        "krc"
+      ],
+      "organizationLinks": [
+        {
+          "organizationId": "cbnu-career",
+          "role": "operator"
+        },
+        {
+          "organizationId": "krc",
+          "role": "subject"
+        }
+      ],
+      "favoriteOrganizationId": "krc",
+      "interestTags": [
+        "진로탐색",
+        "직무정보"
+      ],
+      "audience": {
+        "summary": "모든 학과 · 1~6학년 · 소속 학교 범위 확인 필요",
+        "status": "partial",
+        "educationLevels": [],
+        "years": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "majors": [],
+        "institutionIds": [],
+        "evidence": [
+          {
+            "sourceId": "krc",
+            "locator": "참여 학과/학부/전공·참여학년"
+          }
+        ]
+      },
+      "eligibility": {
+        "summary": "개인 신청 · 1~6학년 · 사전 접수",
+        "status": "partial",
+        "rule": {
+          "field": "applicant.year",
+          "operator": "in",
+          "value": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        "unknowns": [
+          {
+            "field": "institutionScope",
+            "reason": "not_stated",
+            "resolveBy": "source_review"
+          }
+        ],
+        "evidence": [
+          {
+            "sourceId": "krc",
+            "locator": "개인·참여학년·신청 시 주의사항"
+          }
+        ]
+      },
+      "application": {
+        "summary": "2026-09-15 13:00 마감",
+        "opensAt": "2026-08-27T09:00:00+09:00",
+        "closesAt": "2026-09-15T13:00:00+09:00",
+        "closesOn": null,
+        "deadlinePrecision": "minute",
+        "originalDeadline": "2026-09-15T13:00",
+        "timezone": "Asia/Seoul",
+        "channels": [
+          "platform"
+        ],
+        "requiredDocuments": [],
+        "submissionLocations": [],
+        "evidence": [
+          {
+            "sourceId": "krc",
+            "locator": "모집기간·신청방법"
+          }
+        ],
+        "opensOn": "2026-08-27"
+      },
+      "schedule": [
+        {
+          "phase": "event",
+          "startsOn": "2026-09-15",
+          "startsAt": "2026-09-15T14:00:00+09:00",
+          "endsAt": "2026-09-15T16:00:00+09:00",
+          "mode": "offline",
+          "evidence": [
+            {
+              "sourceId": "krc",
+              "locator": "교육 내용 및 운영방법"
+            }
+          ]
+        }
+      ],
+      "location": {
+        "summary": "중앙도서관 2관 세미나실(5층)",
+        "status": "known",
+        "mode": "offline",
+        "venues": [
+          {
+            "phase": "event",
+            "name": "중앙도서관 2관 세미나실(5층)",
+            "address": null
+          }
+        ],
+        "evidence": [
+          {
+            "sourceId": "krc",
+            "locator": "장소·교육 내용 및 운영방법"
+          }
+        ]
+      },
+      "benefits": [
+        {
+          "kind": "external_mileage",
+          "summary": "CIEAT 마일리지 150점",
+          "amount": 150,
+          "unit": "CIEAT_POINT",
+          "issuer": "충북대학교 CIEAT",
+          "evidence": [
+            {
+              "sourceId": "krc",
+              "locator": "씨앗 마일리지"
+            }
+          ]
+        }
+      ],
+      "cost": {
+        "amount": null,
+        "currency": "KRW",
+        "status": "unknown"
+      },
+      "capacity": 50,
+      "qualityIssues": [
+        {
+          "code": "source_conflict",
+          "fieldPath": "schedule.duration",
+          "summary": "참여시간 표는 3시간, 본문 일정 14:00~16:00은 2시간. 이수 인정 시간과 실제 소요 시간 관계 확인 필요",
+          "resolveBy": "source_review",
+          "evidence": [
+            {
+              "sourceId": "krc",
+              "locator": "본문"
+            }
+          ]
+        }
+      ],
+      "edition": null,
+      "categoryPath": [
+        "recruitment",
+        "recruitment_event"
+      ],
+      "contexts": [
+        {
+          "organizationId": "cbnu",
+          "role": "event_context",
+          "basis": "user_confirmed",
+          "note": "사용자가 지정한 행사 학교 맥락. 소속 관계나 재학생 전용 조건을 의미하지 않음."
+        }
+      ],
+      "targetSelection": {
+        "method": "user_approved",
+        "ruleId": "career-krc",
+        "note": "사용자가 지정한 관심 대상 기업. 대학일자리센터는 운영 역할로 보존."
+      }
+    },
+    {
+      "id": "cieat-NCR000000007306",
+      "title": "DB손해보험 채용상담회",
+      "kind": "career_event",
+      "summary": "기업과 채용 절차를 알아보고 일대일 상담과 질의응답을 할 수 있는 행사입니다.",
+      "demoVisible": true,
+      "sourceIds": [
+        "db"
+      ],
+      "organizationLinks": [
+        {
+          "organizationId": "cbnu-career",
+          "role": "operator"
+        },
+        {
+          "organizationId": "db-insurance",
+          "role": "subject"
+        }
+      ],
+      "favoriteOrganizationId": "db-insurance",
+      "interestTags": [
+        "진로탐색",
+        "직무정보"
+      ],
+      "audience": {
+        "summary": "모든 학과 · 1~6학년 · 소속 학교 범위 확인 필요",
+        "status": "partial",
+        "educationLevels": [],
+        "years": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "majors": [],
+        "institutionIds": [],
+        "evidence": [
+          {
+            "sourceId": "db",
+            "locator": "참여 학과/학부/전공·참여학년"
+          }
+        ]
+      },
+      "eligibility": {
+        "summary": "개인 신청 · 1~6학년 · 사전 접수",
+        "status": "partial",
+        "rule": {
+          "field": "applicant.year",
+          "operator": "in",
+          "value": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        "unknowns": [
+          {
+            "field": "institutionScope",
+            "reason": "not_stated",
+            "resolveBy": "source_review"
+          }
+        ],
+        "evidence": [
+          {
+            "sourceId": "db",
+            "locator": "개인·참여학년·신청 시 주의사항"
+          }
+        ]
+      },
+      "application": {
+        "summary": "2026-09-15 16:00 마감",
+        "opensAt": "2026-08-06T09:00:00+09:00",
+        "closesAt": "2026-09-15T16:00:00+09:00",
+        "closesOn": null,
+        "deadlinePrecision": "minute",
+        "originalDeadline": "2026-09-15T16:00",
+        "timezone": "Asia/Seoul",
+        "channels": [
+          "platform"
+        ],
+        "requiredDocuments": [],
+        "submissionLocations": [],
+        "evidence": [
+          {
+            "sourceId": "db",
+            "locator": "모집기간·신청방법"
+          }
+        ],
+        "opensOn": "2026-08-06"
+      },
+      "schedule": [
+        {
+          "phase": "event",
+          "startsOn": "2026-09-15",
+          "startsAt": "2026-09-15T10:00:00+09:00",
+          "endsAt": "2026-09-15T17:00:00+09:00",
+          "mode": "offline",
+          "evidence": [
+            {
+              "sourceId": "db",
+              "locator": "교육 내용 및 운영방법"
+            }
+          ]
+        }
+      ],
+      "location": {
+        "summary": "중앙도서관 1관 상담실 1호실·6호실",
+        "status": "known",
+        "mode": "offline",
+        "venues": [
+          {
+            "phase": "event",
+            "name": "중앙도서관 1관 상담실 1호실·6호실",
+            "address": null
+          }
+        ],
+        "evidence": [
+          {
+            "sourceId": "db",
+            "locator": "장소·교육 내용 및 운영방법"
+          }
+        ]
+      },
+      "benefits": [
+        {
+          "kind": "external_mileage",
+          "summary": "CIEAT 마일리지 350점",
+          "amount": 350,
+          "unit": "CIEAT_POINT",
+          "issuer": "충북대학교 CIEAT",
+          "evidence": [
+            {
+              "sourceId": "db",
+              "locator": "씨앗 마일리지"
+            }
+          ]
+        },
+        {
+          "kind": "gift",
+          "summary": "기념품 제공",
+          "amount": null,
+          "unit": null,
+          "issuer": null,
+          "evidence": [
+            {
+              "sourceId": "db",
+              "locator": "지원 혜택"
+            }
+          ]
+        }
+      ],
+      "cost": {
+        "amount": null,
+        "currency": "KRW",
+        "status": "unknown"
+      },
+      "capacity": 50,
+      "qualityIssues": [],
+      "edition": null,
+      "categoryPath": [
+        "recruitment",
+        "recruitment_event"
+      ],
+      "contexts": [
+        {
+          "organizationId": "cbnu",
+          "role": "event_context",
+          "basis": "user_confirmed",
+          "note": "사용자가 지정한 행사 학교 맥락. 소속 관계나 재학생 전용 조건을 의미하지 않음."
+        }
+      ],
+      "targetSelection": {
+        "method": "user_approved",
+        "ruleId": "career-db-insurance",
+        "note": "사용자가 지정한 관심 대상 기업. 대학일자리센터는 운영 역할로 보존."
+      }
+    },
+    {
+      "id": "cieat-NCR000000007382",
+      "title": "러시아언어문화학과 현직자 동문 직무 멘토링",
+      "kind": "mentoring",
+      "summary": "현직 동문에게 직무 경험을 듣는 멘토링입니다. 참여 학과 안내가 서로 달라 담당부서 확인이 필요합니다.",
+      "demoVisible": true,
+      "sourceIds": [
+        "mentoring"
+      ],
+      "organizationLinks": [
+        {
+          "organizationId": "cbnu-russian",
+          "role": "operator"
+        }
+      ],
+      "favoriteOrganizationId": "cbnu-russian",
+      "interestTags": [
+        "진로탐색",
+        "직무정보"
+      ],
+      "audience": {
+        "summary": "표: 모든 학과 / 본문: 러시아언어문화학과 학생 · 대상 확인 필요",
+        "status": "conflicting",
+        "educationLevels": [],
+        "years": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        "majors": [],
+        "institutionIds": [],
+        "evidence": [
+          {
+            "sourceId": "mentoring",
+            "locator": "참여 학과/학부/전공·참여학년"
+          }
+        ]
+      },
+      "eligibility": {
+        "summary": "참여 학과 안내가 서로 다름 · 운영부서 확인 필요",
+        "status": "conflicting",
+        "rule": null,
+        "unknowns": [
+          {
+            "field": "institutionScope",
+            "reason": "not_stated",
+            "resolveBy": "source_review"
+          }
+        ],
+        "evidence": [
+          {
+            "sourceId": "mentoring",
+            "locator": "개인·참여학년·신청 시 주의사항"
+          }
+        ]
+      },
+      "application": {
+        "summary": "2026.09.16 24:00 마감",
+        "opensAt": "2026-09-08T00:00:00+09:00",
+        "closesAt": "2026-09-17T00:00:00+09:00",
+        "closesOn": null,
+        "deadlinePrecision": "minute",
+        "originalDeadline": "2026-09-16 24시",
+        "timezone": "Asia/Seoul",
+        "channels": [
+          "platform"
+        ],
+        "requiredDocuments": [],
+        "submissionLocations": [],
+        "evidence": [
+          {
+            "sourceId": "mentoring",
+            "locator": "모집기간·신청방법"
+          }
+        ],
+        "opensOn": "2026-09-08"
+      },
+      "schedule": [
+        {
+          "phase": "event",
+          "startsOn": "2026-09-21",
+          "startsAt": "2026-09-21T18:00:00+09:00",
+          "endsAt": "2026-09-21T21:00:00+09:00",
+          "mode": "offline",
+          "evidence": [
+            {
+              "sourceId": "mentoring",
+              "locator": "교육 내용 및 운영방법"
+            }
+          ]
+        }
+      ],
+      "location": {
+        "summary": "N16-1 459호",
+        "status": "known",
+        "mode": "offline",
+        "venues": [
+          {
+            "phase": "event",
+            "name": "N16-1 459호",
+            "address": null
+          }
+        ],
+        "evidence": [
+          {
+            "sourceId": "mentoring",
+            "locator": "장소·교육 내용 및 운영방법"
+          }
+        ]
+      },
+      "benefits": [
+        {
+          "kind": "external_mileage",
+          "summary": "CIEAT 마일리지 150점",
+          "amount": 150,
+          "unit": "CIEAT_POINT",
+          "issuer": "충북대학교 CIEAT",
+          "evidence": [
+            {
+              "sourceId": "mentoring",
+              "locator": "씨앗 마일리지"
+            }
+          ]
+        }
+      ],
+      "cost": {
+        "amount": null,
+        "currency": "KRW",
+        "status": "unknown"
+      },
+      "capacity": 16,
+      "qualityIssues": [
+        {
+          "code": "source_conflict",
+          "fieldPath": "audience.majors",
+          "summary": "참여 학과 표는 모든과, 본문 대상은 러시아언어문화학과 학생",
+          "resolveBy": "source_review",
+          "evidence": [
+            {
+              "sourceId": "mentoring",
+              "locator": "본문"
+            }
+          ]
+        }
+      ],
+      "edition": null,
+      "categoryPath": [
+        "career",
+        "mentoring"
+      ],
+      "contexts": [],
+      "targetSelection": {
+        "method": "editorial_provisional",
+        "ruleId": null,
+        "note": "기존 샘플의 잠정 지정. 운영자만으로 관심 대상임을 확정하지 않음."
+      }
+    },
+    {
+      "id": "cbnu-software-1154064",
+      "title": "2026 제2회 영남권 사이버 공격 방어 대회",
+      "kind": "competition",
+      "summary": "대학부와 청소년부가 팀으로 참가하는 사이버보안 대회입니다. 온라인 예선을 거쳐 오프라인 결선을 진행합니다.",
+      "demoVisible": true,
+      "sourceIds": [
+        "contest",
+        "poster"
+      ],
+      "organizationLinks": [
+        {
+          "organizationId": "cbnu-software",
+          "role": "publisher"
+        },
+        {
+          "organizationId": "yeongnam-ai-security",
+          "role": "contact"
+        },
+        {
+          "organizationId": "yeongnam-cyber-defense",
+          "role": "subject"
+        }
+      ],
+      "favoriteOrganizationId": "yeongnam-cyber-defense",
+      "interestTags": [
+        "사이버보안",
+        "CTF"
+      ],
+      "audience": {
+        "summary": "대학·대학원생 또는 중·고등학생 · 부문별 팀 구성",
+        "status": "known",
+        "educationLevels": [
+          "undergraduate",
+          "graduate",
+          "middle_school",
+          "high_school"
+        ],
+        "years": [],
+        "majors": [],
+        "institutionIds": [],
+        "evidence": [
+          {
+            "sourceId": "contest",
+            "locator": "참가대상"
+          },
+          {
+            "sourceId": "poster",
+            "locator": "참가자격"
+          }
+        ]
+      },
+      "eligibility": {
+        "summary": "4인 이하 팀 · 팀원 중 1명 이상이 영남권에 재학 또는 거주",
+        "status": "known",
+        "rule": {
+          "all": [
+            {
+              "field": "team.size",
+              "operator": "lte",
+              "value": 4
+            },
+            {
+              "any": [
+                {
+                  "field": "team.division",
+                  "operator": "eq",
+                  "value": "university"
+                },
+                {
+                  "field": "team.division",
+                  "operator": "eq",
+                  "value": "youth"
+                }
+              ]
+            },
+            {
+              "someMember": {
+                "any": [
+                  {
+                    "field": "member.schoolRegion",
+                    "operator": "in",
+                    "value": [
+                      "부산",
+                      "울산",
+                      "대구",
+                      "경남",
+                      "경북"
+                    ]
+                  },
+                  {
+                    "field": "member.residenceRegion",
+                    "operator": "in",
+                    "value": [
+                      "부산",
+                      "울산",
+                      "대구",
+                      "경남",
+                      "경북"
+                    ]
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "unknowns": [],
+        "evidence": [
+          {
+            "sourceId": "contest",
+            "locator": "참가요건"
+          },
+          {
+            "sourceId": "poster",
+            "locator": "참가자격"
+          }
+        ]
+      },
+      "application": {
+        "summary": "2026.09.11 ~ 10.07 24:00",
+        "opensAt": null,
+        "closesAt": "2026-10-08T00:00:00+09:00",
+        "closesOn": null,
+        "deadlinePrecision": "minute",
+        "originalDeadline": "2026. 10. 7.(수) 24:00",
+        "timezone": "Asia/Seoul",
+        "channels": [
+          "postal",
+          "email"
+        ],
+        "requiredDocuments": [
+          "참가신청서",
+          "개인정보 수집·이용 동의서",
+          "재학 또는 거주 증빙"
+        ],
+        "submissionLocations": [],
+        "evidence": [
+          {
+            "sourceId": "contest",
+            "locator": "참가접수·접수방법"
+          },
+          {
+            "sourceId": "poster",
+            "locator": "참가신청"
+          }
+        ],
+        "opensOn": "2026-09-11"
+      },
+      "schedule": [
+        {
+          "phase": "preliminary",
+          "startsOn": "2026-10-14",
+          "startsAt": null,
+          "endsAt": null,
+          "mode": "online",
+          "evidence": [
+            {
+              "sourceId": "poster",
+              "locator": "대회 일정"
+            }
+          ]
+        },
+        {
+          "phase": "finalist_announcement",
+          "startsOn": "2026-10-22",
+          "startsAt": null,
+          "endsAt": null,
+          "mode": "unknown",
+          "evidence": [
+            {
+              "sourceId": "poster",
+              "locator": "대회 일정"
+            }
+          ]
+        },
+        {
+          "phase": "final",
+          "startsOn": "2026-11-04",
+          "startsAt": null,
+          "endsAt": null,
+          "mode": "offline",
+          "evidence": [
+            {
+              "sourceId": "poster",
+              "locator": "대회 일정·시상계획"
+            }
+          ]
+        }
+      ],
+      "location": {
+        "summary": "온라인 예선 / 부산 사이버보안 콘퍼런스에서 결선·시상 · 상세 장소 확인 필요",
+        "status": "partial",
+        "mode": "mixed",
+        "venues": [
+          {
+            "phase": "final",
+            "name": "2026 부산 사이버보안 콘퍼런스 행사장",
+            "address": null
+          }
+        ],
+        "evidence": [
+          {
+            "sourceId": "poster",
+            "locator": "대회방식·시상계획"
+          }
+        ]
+      },
+      "benefits": [],
+      "cost": {
+        "amount": null,
+        "currency": "KRW",
+        "status": "unknown"
+      },
+      "capacity": null,
+      "qualityIssues": [],
+      "edition": 2,
+      "categoryPath": [
+        "competition"
+      ],
+      "contexts": [],
+      "targetSelection": {
+        "method": "user_approved",
+        "ruleId": "yeongnam-competition",
+        "note": "사용자가 지정한 지속 대회 프로그램. 교육원은 부모 및 문의처."
+      }
+    }
+  ]
+}

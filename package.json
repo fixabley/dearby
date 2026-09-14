@@ -1,0 +1,14 @@
+{
+  "devDependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1"
+  },
+  "name": "dearby-workspace",
+  "private": true,
+  "scripts": {
+    "test": "node --test scripts/*.test.mjs",
+    "samples:sync": "python3 scripts/sync-activity-samples.py",
+    "samples:check": "python3 scripts/sync-activity-samples.py --check",
+    "samples:infer": "node scripts/infer-activity-target.mjs"
+  }
+}

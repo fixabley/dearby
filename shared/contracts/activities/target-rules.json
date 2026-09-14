@@ -1,0 +1,69 @@
+{
+  "version": "1.0.0",
+  "rules": [
+    {
+      "id": "career-krc",
+      "kind": "career_event",
+      "subjectOrganizationId": "krc",
+      "targetOrganizationId": "krc",
+      "categoryPath": [
+        "recruitment",
+        "recruitment_event"
+      ],
+      "approvedBy": "user",
+      "approvedCases": [
+        {
+          "activityId": "cieat-NCR000000007344",
+          "contexts": [
+            {
+              "organizationId": "cbnu",
+              "role": "event_context",
+              "basis": "user_confirmed",
+              "note": "사용자가 지정한 행사 학교 맥락. 소속 관계나 재학생 전용 조건을 의미하지 않음."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "career-db-insurance",
+      "kind": "career_event",
+      "subjectOrganizationId": "db-insurance",
+      "targetOrganizationId": "db-insurance",
+      "categoryPath": [
+        "recruitment",
+        "recruitment_event"
+      ],
+      "approvedBy": "user",
+      "approvedCases": [
+        {
+          "activityId": "cieat-NCR000000007306",
+          "contexts": [
+            {
+              "organizationId": "cbnu",
+              "role": "event_context",
+              "basis": "user_confirmed",
+              "note": "사용자가 지정한 행사 학교 맥락. 소속 관계나 재학생 전용 조건을 의미하지 않음."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "yeongnam-competition",
+      "kind": "competition",
+      "subjectOrganizationId": "yeongnam-cyber-defense",
+      "targetOrganizationId": "yeongnam-cyber-defense",
+      "categoryPath": [
+        "competition"
+      ],
+      "approvedBy": "user",
+      "approvedCases": [
+        {
+          "activityId": "cbnu-software-1154064",
+          "contexts": []
+        }
+      ]
+    }
+  ]
+}

@@ -40,3 +40,21 @@ git clone https://github.com/fixabley/dearby.git
 ```
 
 작업과 업데이트 절차는 [모노레포 운영 가이드](docs/monorepo.md)를 참고하세요.
+
+## 첫 기능: 공고 탐색과 조직 즐겨찾기
+
+두 앱에서 검토한 공고 샘플을 세로로 넘기고, 더블탭 또는 저장 버튼으로 조직을 저장합니다.
+즐겨찾기는 기기에 보관하며 API 연결 없이 실행할 수 있습니다.
+
+- [활동 공고 규격과 원문 검토](docs/product/activity-data-v1.md)
+- [첫 반복의 동작·검증·남은 결정](docs/product/iteration-01.md)
+- [관심 대상 선정·분류 규칙과 추론 도구](docs/product/interest-target-rules.md)
+- [공통 샘플](shared/contracts/activities/sample.json) / [JSON Schema](shared/contracts/activities/schema.json)
+
+루트 npm은 공통 데이터 검증용입니다. 네이티브 앱 빌드에는 필요하지 않습니다.
+
+```sh
+npm ci
+python3 scripts/sync-activity-samples.py
+npm test
+```

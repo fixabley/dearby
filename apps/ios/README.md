@@ -40,7 +40,7 @@ xcodebuild \
 ## 소스 구조
 
 - `Dearby/DearbyApp.swift`: 앱 진입점
-- `Dearby/ContentView.swift`: SwiftUI 시작 화면과 Preview
+- `Dearby/ContentView.swift`: 카드 탐색·상세·조직 즐겨찾기와 Preview
 - `Dearby/Assets.xcassets`: 테마 색상과 앱 아이콘 슬롯
 - `Dearby.xcodeproj/xcshareddata/xcschemes/Dearby.xcscheme`: 공유 scheme
 
@@ -56,3 +56,19 @@ Swift Package Manager 의존성을 추가한다면 앱의 `Package.resolved`도 
 이 앱은 Dearby 모노레포의 `apps/ios/`에서 관리합니다.
 별도 Git 초기화나 submodule 설정 없이, 저장소 루트에서 다른 클라이언트 및
 공통 명세와 함께 브랜치·커밋·PR을 관리합니다.
+
+## 샘플과 저장소 검증
+
+샘플 데이터는 루트 `scripts/sync-activity-samples.py`로 동기화합니다.
+조직 ID를 UserDefaults에 저장하며 로그인이나 API 연결은 아직 없습니다.
+Xcode 테스트 타깃 대신 다음 독립 Swift 검증을 모노레포 루트에서 실행할 수 있습니다.
+임시 UserDefaults suite를 사용하므로 앱에 저장된 즐겨찾기를 건드리지 않습니다.
+
+```sh
+swiftc -parse-as-library \
+  apps/ios/Dearby/ActivityCatalog.swift \
+  apps/ios/Dearby/FavoriteOrganizations.swift \
+  apps/ios/tests/FavoritesStoreTests.swift \
+  -o /tmp/dearby-favorites-tests
+/tmp/dearby-favorites-tests shared/contracts/activities/sample.json
+```
