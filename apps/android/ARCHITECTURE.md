@@ -158,3 +158,8 @@ shared/ui/buttons의 PrimaryButton/SecondaryButton은 content slot·onClick·mod
 Widget은 widgets/notice/noticecard와 widgets/organization/favoriteorganizationcard에서 Composable·State·ViewModel을 같은 폴더에 둔다(ui/model 하위 폴더 없음). domain 그룹은 다른 widget 참조의 예외가 아니며 slice identity는 domain+widget이다. 구조 검사는 flat 파일의 @Composable을 찾아 raw Model/VM/저장소/OS 접근을 제한하고 비렌더링 ViewModel의 하위 의존을 허용한다. 같은 domain의 다른 widget 금지 fixture도 포함한다.
 
 Widget 배치 단계: JVM30·Debug·계측 APK·Lint 오류0/경고12·구조52파일/self-test24(금지18/허용6) 통과(`build/widget-domains.log`). 기기는 이 단계에서 실행하지 않았다.
+
+
+## 조직 영속 조회 기반
+
+OrganizationDiskStore/StoredOrganizationSource는 독립 조직 source의 L2→mock L3 경계다. Repository L1 miss에서만 disk를 읽고 외부 성공은 upsert 완료 뒤 반환한다. read/write/external 오류를 missing으로 바꾸거나 실패 값을 L1에 올리지 않는다. RoomOrganizationStore는 ID/name/parentId 행을 조회한다. Room2.8.5/KSP2.3.12를 실제 Maven 해결 및 기존 AGP/built-in Kotlin과 Debug로 확인했고 JVM32 통과(`build/organization-disk-source.log`). 실제 DB/manifest 조립·전용 기기 검증은 후속 연결 단계에서 진행한다.
