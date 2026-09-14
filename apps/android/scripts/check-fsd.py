@@ -18,6 +18,8 @@ API = {
         "model.FavoritesState", "api.FavoriteStore", "api.SharedPreferencesFavoriteStore",
     },
     "features.addtocalendar": {"model.CalendarDraft", "model.applicationCalendarDraft", "model.phaseCalendarDraft"},
+    "entities.notice": {"model.NoticeModel", "model.NoticeContext", "model.NoticeApplication", "model.NoticeLocation", "model.NoticePhase", "model.NoticeVenue", "model.VenueCoordinates", "model.NoticeSource", "model.NoticeEvidence", "api.NoticeSource", "api.InMemoryNoticeSource", "api.NoticeRepository"},
+    "entities.organization": {"model.OrganizationModel", "api.OrganizationSource", "api.InMemoryOrganizationSource", "api.OrganizationRepository"},
     "entities.noticecatalog": {
         "model.NoticeApplication", "model.NoticePhase", "model.NoticeDetail", "model.NoticeScheduleDetail",
         "model.ResolvedOrganizationRole", "model.NoticeSource", "model.NoticeEvidence", "api.NoticeDetailRepository",

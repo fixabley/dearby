@@ -251,3 +251,10 @@ Android MainActivity/ComponentActivity/ActivityNotFoundException/startActivity/a
 공고 카드도 ActivityCard→NoticeCard, widgets.activitycard→widgets.noticecard로 파일/심볼/테스트/allowlist를 함께 옮겼다. raw Notice, NoticeDetail, NoticeCatalog은 한 공고 도메인의 원본/조회/공급 형태이며 기존 별칭은 없다. Organization 및 VenueCoordinates처럼 기존 중립 이름은 유지했다.
 
 이번 이름 변경 최종 검증: 구조41파일/self-test16(금지11/허용5), JVM24, Debug, 계측 APK 컴파일, Lint 오류0/권고12 통과. 이름만 옮겼으므로 기기 계측 실행과 지도/캘린더 동작은 반복하지 않았다. 이전 계측30 통과는 b8838e2 작업 당시 결과다. 기기를 실행·초기화하지 않았다. Kotlin60파일이 b8838e2 기준의 지정된 이름/경로 치환과 정확히 같고, 모든 비-Kotlin src 파일(asset/리소스/manifest)은 바이트 단위 동일함을 검사했다. canonical hash c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f 유지. 증거: build/notice-rename-final.log, build/notice-rename-audit.txt, 표준 JVM XML/Lint 보고서. rg Activity/activity/activities 감사 결과는 프레임워크/통신·태그·fixture ID/과거 기록 예외와 구분했으며 Kotlin에 이전 도메인 심볼/패키지는 남아 있지 않다.
+
+
+## 독립 Notice/Organization 저장소 기반 (2026-09-14)
+
+새 기준은 entities.notice의 NoticeModel(공고 정보·조직 참조 ID만), entities.organization의 OrganizationModel(id/name/parentId)이다. 두 Entity는 서로 import하지 않는다. 각각 Source/InMemorySource와 성공만 저장하는 빈 ID cache-aside Repository를 갖고, replaceSource는 cache 삭제와 Compose 관찰 revision 증가를 원자적으로 수행한다. App에서 UI 스레드 snapshot 교체를 소유하며 Organization path는 기존 cycle-safe 규칙이다. 이 기반 위 카드/상세 State·ViewModel을 연결하면서 과거 noticecatalog/NoticeDetail entity는 제거한다. 모델 생성자는 I/O나 저장소 조회를 하지 않는다.
+
+NoticeRepositoryTest3은 cold miss/hit·missing·교체·조직 객체/경로 부재를, 새 OrganizationRepositoryTest4는 기존 원본 호출수·공유 부모·순환·무효화를 검사한다. 기반 단계 JVM31/Debug 통과(build/independent-repositories.log). 전체 화면 연결 검증은 후속 결과와 구분한다.
