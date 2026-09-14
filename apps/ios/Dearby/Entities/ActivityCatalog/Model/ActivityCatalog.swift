@@ -97,7 +97,7 @@ struct ActivityNotice: Decodable, Identifiable {
     let sourceIds: [String]
     let audience: String
     let eligibility: String
-    let application: String
+    let application: ActivityApplication
     let location: ActivityLocation
     let schedule: [ActivitySchedule]
     let benefits: [String]
@@ -134,7 +134,7 @@ extension ActivityNotice {
         sourceIds = try values.decode([String].self, forKey: .sourceIds)
         audience = try values.nestedContainer(keyedBy: SummaryKey.self, forKey: .audience).decode(String.self, forKey: .summary)
         eligibility = try values.nestedContainer(keyedBy: SummaryKey.self, forKey: .eligibility).decode(String.self, forKey: .summary)
-        application = try values.nestedContainer(keyedBy: SummaryKey.self, forKey: .application).decode(String.self, forKey: .summary)
+        application = try values.decode(ActivityApplication.self, forKey: .application)
         location = try values.decode(ActivityLocation.self, forKey: .location)
         schedule = try values.decode([ActivitySchedule].self, forKey: .schedule)
         var benefitValues = try values.nestedUnkeyedContainer(forKey: .benefits)

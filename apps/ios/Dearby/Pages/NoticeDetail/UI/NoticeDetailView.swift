@@ -3,6 +3,7 @@ import SwiftUI
 struct NoticeDetailView: View {
     let notice: ActivityNotice
     let catalog: ActivityCatalog
+    let onAddApplication: (() -> Void)?
     let onOpenMap: (ActivityVenue) -> Void
 
     var body: some View {
@@ -14,7 +15,7 @@ struct NoticeDetailView: View {
                 Divider()
                 NoticeDetailField(title: "참여 대상", value: notice.audience)
                 NoticeDetailField(title: "참여 조건", value: notice.eligibility)
-                NoticeDetailField(title: "신청 기간", value: notice.application)
+                NoticeApplicationView(summary: notice.application.summary, onAddToCalendar: onAddApplication)
                 ForEach(Array(notice.schedule.enumerated()), id: \.offset) { _, phase in
                     NoticeDetailField(title: "활동 일정", value: phase.summary)
                 }

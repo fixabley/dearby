@@ -17,7 +17,7 @@ struct FavoritesStoreTests {
             let raw = rawNotices.first { $0["id"] as? String == notice.id }!
             precondition(notice.audience == (raw["audience"] as! [String: Any])["summary"] as! String)
             precondition(notice.eligibility == (raw["eligibility"] as! [String: Any])["summary"] as! String)
-            precondition(notice.application == (raw["application"] as! [String: Any])["summary"] as! String)
+            precondition(notice.application.summary == (raw["application"] as! [String: Any])["summary"] as! String)
             precondition(notice.benefits == (raw["benefits"] as! [[String: Any]]).map { $0["summary"] as! String })
             precondition(notice.qualityIssues == (raw["qualityIssues"] as! [[String: Any]]).map { $0["summary"] as! String })
         }

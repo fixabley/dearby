@@ -126,3 +126,16 @@ apps/ios/build/dearby-favorites-tests apps/ios/Dearby/Resources/activity-samples
 이 브랜치의 shared snapshot은 유지하고 앱 리소스만 coordinator의 최종 canonical 파일과 byte 비교했습니다.
 따라서 #6 통합 전 루트 samples:check는 오래된 shared snapshot과 앱 리소스 차이를 보고할 수 있습니다.
 이번 canonical SHA256: `407b0c5ed29d066ae9cf2c7d146749f1566e38ba966369db6cfd5ec1952feb6f`.
+
+## 캘린더 초안 검증
+
+```sh
+swiftc -swift-version 6 -parse-as-library \
+  apps/ios/Dearby/Entities/ActivityCatalog/Model/*.swift \
+  apps/ios/Dearby/Features/AddToCalendar/Model/*.swift \
+  apps/ios/Dearby/App/CalendarEditorRequest.swift \
+  apps/ios/tests/CalendarDraftTests.swift -o apps/ios/build/dearby-calendar-tests
+apps/ios/build/dearby-calendar-tests apps/ios/Dearby/Resources/activity-samples.json
+```
+
+캘린더 버튼은 사용자가 수정·저장하거나 취소할 수 있는 시스템 편집기를 엽니다. 앱은 캘린더 접근 권한 요청이나 직접 저장을 하지 않습니다.

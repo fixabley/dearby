@@ -261,3 +261,19 @@ Maps 미설치/OS 거절의 실기기 UI는 미검증이며 실패 callback은 �
 ## 온라인 전용 장소 지도 제외 — 리뷰 보완
 이전 e0b16b2는 좌표만 검사하여 online 장소에도 유효 좌표가 있으면 버튼을 표시하는 누락이 있었다. venuesWithCoordinates는 이제 mode가 online이면 빈 배열을 반환하고 offline/mixed/unknown에서는 기존 유효 좌표 필터를 유지한다.
 이번에는 online에 유효 0,0 및 -90,180 좌표를 함께 넣은 회귀와 다른 mode 보존 검사를 추가했다. standalone Swift6 지도 테스트·전체 28파일 FSD/금지 fixture 및 Simulator Debug 빌드가 통과했다(빌드 로그 build_sim_2026-09-14T10-23-44-688Z_pid15343_8e334383.log, 경고·오류 없음). 순수 필터 수정이므로 런타임은 재실행하지 않았으며 샘플·UI 배치·저장 로직은 변경하지 않았다.
+
+## 신청 캘린더 편집기
+
+ActivityApplication은 summary뿐 아니라 opensAt/opensOn/closesAt/closesOn/timezone/url을 보존하는 의미 있는 entity 모델이다.
+App의 CalendarDraftMapper.application 호출이 Features/AddToCalendar/Model의 순수 CalendarEventDraft/CalendarEventInterval을 만든다.
+CalendarDatePolicy는 엄격한 날짜·오프셋 timestamp와 시간대 검증, 충돌하는 시작 날짜 거절, 정확한 timed 구간 또는 종일 날짜 구간을 만든다.
+종일 끝 날짜는 exclusive이고 자정 마감은 전날의 마감으로 해석한다. 날짜 없는 경우 버튼을 생략하며 종료 미확인은 하루짜리 종일 표시와 메모를 사용한다.
+원문/정확한 마감/미확인 값은 notes에 보존하고 신청 URL과 원문 URL은 구별한다.
+Pages의 NoticeApplicationView/CalendarAddButton은 별도 파일이며 App이 공급하는 optional callback만 받는다. Feature 타입을 Pages에 노출하지 않는다.
+App/CalendarEditorRequest는 종일 날짜를 기기 timezone의 자정으로 변환하고 timed 구간의 원본 timezone을 유지한다.
+App/CalendarEventEditor는 EKEventEditViewController를 조립하고 CalendarEditorDelegate는 완료/취소시 닫는다. 실제 저장은 사용자가 OS 편집기에서 선택한다.
+[Apple EventKitUI 안내](https://developer.apple.com/videos/play/wwdc2023/10052/)에 따라 권한 요청·캘린더 읽기·직접 저장·초대자·알람을 추가하지 않는다.
+캘린더 선택 불가 상태는 OS 편집기가 처리하며 사용자는 취소할 수 있다. 앱은 편집기 표시를 저장 성공으로 보고하지 않는다.
+
+이번 신청 테스트는 KRC/DB 정확 KST, 대회 자정 마감, 마감만/시작만/미상/잘못된 값/역전, 날짜 범위/혼합 정밀도, URL·원문 분리와 기기 시간대별 종일 날짜 보존을 검증한다.
+실행 명령은 README의 calendar 테스트 명령이며 신청 구현 Simulator Debug 빌드와 구조 검사를 실행했다. 활동 phase와 실제 편집기 UI 검증은 후속 변경에서 수행한다.
