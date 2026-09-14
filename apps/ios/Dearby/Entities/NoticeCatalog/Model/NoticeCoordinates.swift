@@ -1,4 +1,4 @@
-struct ActivityCoordinates: Decodable, Equatable {
+struct NoticeCoordinates: Decodable, Equatable {
     let latitude: Double
     let longitude: Double
 
@@ -10,7 +10,7 @@ struct ActivityCoordinates: Decodable, Equatable {
     }
 }
 
-extension ActivityCoordinates {
+extension NoticeCoordinates {
     private enum CodingKeys: String, CodingKey { case latitude, longitude }
 
     init(from decoder: any Decoder) throws {

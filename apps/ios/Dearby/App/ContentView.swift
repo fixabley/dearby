@@ -1,9 +1,9 @@
 import SwiftUI
 
 struct ContentView: View {
-    let catalogRepository: any ActivityCatalogRepository
+    let catalogRepository: any NoticeCatalogRepository
     let favorites: FavoriteOrganizations
-    @State private var details: ActivityDetailRepository?
+    @State private var details: NoticeDetailRepository?
     @State private var loadFailed = false
 
     var body: some View {
@@ -52,7 +52,7 @@ struct ContentView: View {
     private func loadCatalog() {
         guard details == nil else { return }
         do {
-            details = ActivityDetailRepository(catalog: try catalogRepository.load())
+            details = NoticeDetailRepository(catalog: try catalogRepository.load())
             loadFailed = false
         } catch {
             loadFailed = true
@@ -62,7 +62,7 @@ struct ContentView: View {
 
 #if DEBUG
 #Preview {
-    ContentView(catalogRepository: BundleActivityCatalogRepository(),
+    ContentView(catalogRepository: BundleNoticeCatalogRepository(),
                 favorites: FavoriteOrganizations(repository: PreviewFavoritesRepository()))
 }
 

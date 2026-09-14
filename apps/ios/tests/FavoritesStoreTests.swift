@@ -10,10 +10,10 @@ struct FavoritesStoreTests {
         let suite = "dearby.test.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
-        let catalog = try JSONDecoder().decode(ActivityCatalog.self, from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
+        let catalog = try JSONDecoder().decode(NoticeCatalog.self, from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
         let source = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))) as! [String: Any]
         let rawNotices = source["activities"] as! [[String: Any]]
-        for notice in catalog.activities {
+        for notice in catalog.notices {
             let raw = rawNotices.first { $0["id"] as? String == notice.id }!
             precondition(notice.audience == (raw["audience"] as! [String: Any])["summary"] as! String)
             precondition(notice.eligibility == (raw["eligibility"] as! [String: Any])["summary"] as! String)
@@ -69,8 +69,8 @@ struct FavoritesStoreTests {
         print("PASS: catalog decoding, organization deduplication, persistence, removal")
     }
 
-    private static func noticeWithTarget(_ target: String?, from notice: ActivityNotice) -> ActivityNotice {
-        ActivityNotice(id: notice.id, title: notice.title, summary: notice.summary,
+    private static func noticeWithTarget(_ target: String?, from notice: Notice) -> Notice {
+        Notice(id: notice.id, title: notice.title, summary: notice.summary,
                        demoVisible: notice.demoVisible, favoriteOrganizationId: target,
                        sourceIds: notice.sourceIds, audience: notice.audience, eligibility: notice.eligibility,
                        application: notice.application, location: notice.location, schedule: notice.schedule,
@@ -78,8 +78,8 @@ struct FavoritesStoreTests {
                        categoryPath: notice.categoryPath, contexts: notice.contexts, edition: notice.edition)
     }
 
-    private static func testNoticeSummary(catalog: ActivityCatalog) throws {
-        let notice = catalog.activities.first { $0.favoriteOrganizationId == "krc" }!
+    private static func testNoticeSummary(catalog: NoticeCatalog) throws {
+        let notice = catalog.notices.first { $0.favoriteOrganizationId == "krc" }!
         let summary = catalog.summary(for: notice)
         precondition(summary.notice.id == notice.id && summary.notice.title == notice.title)
         precondition(summary.organization?.id == "krc")
@@ -91,7 +91,7 @@ struct FavoritesStoreTests {
             precondition(unresolved.notice.id == notice.id)
             precondition(unresolved.contextNames == "충북대학교", "Unresolved target must not discard event context")
         }
-        let contest = catalog.activities.first { $0.favoriteOrganizationId == "yeongnam-cyber-defense" }!
+        let contest = catalog.notices.first { $0.favoriteOrganizationId == "yeongnam-cyber-defense" }!
         let contestSummary = catalog.summary(for: contest)
         precondition(contestSummary.organization?.id == "yeongnam-cyber-defense")
         precondition(contestSummary.notice.edition == 2 && contestSummary.contextNames.isEmpty)
@@ -99,7 +99,7 @@ struct FavoritesStoreTests {
     }
 
     @MainActor
-    private static func testSaveOrganization(catalog: ActivityCatalog) {
+    private static func testSaveOrganization(catalog: NoticeCatalog) {
         let repository = InMemoryFavoritesRepository(ids: ["legacy-unknown"])
         let state = FavoriteOrganizations(repository: repository)
         let notice = catalog.feed.first { $0.favoriteOrganizationId == "krc" }!
@@ -133,7 +133,7 @@ struct FavoritesStoreTests {
     }
 
     @MainActor
-    private static func testInMemoryState(catalog: ActivityCatalog) {
+    private static func testInMemoryState(catalog: NoticeCatalog) {
         let storage = InMemoryFavoritesRepository(ids: ["cbnu-career"])
         let state = FavoriteOrganizations(repository: storage)
         // Two consumers of the same root state, like Discovery and Favorites.
@@ -182,10 +182,10 @@ struct FavoritesStoreTests {
         let resource = fixture.appendingPathComponent("activity-samples.json")
         try sample.write(to: resource)
         let bundle = Bundle(url: fixture)!
-        let provider: any ActivityCatalogRepository = BundleActivityCatalogRepository(bundle: bundle)
+        let provider: any NoticeCatalogRepository = BundleNoticeCatalogRepository(bundle: bundle)
         let catalog = try provider.load()
         precondition(catalog.feed.count == 4)
-        let replacement: any ActivityCatalogRepository = FixedCatalogRepository(catalog: catalog)
+        let replacement: any NoticeCatalogRepository = FixedCatalogRepository(catalog: catalog)
         let replaced = try replacement.load()
         precondition(replaced.feed.map(\.id) == catalog.feed.map(\.id))
         let invalid = String(decoding: sample, as: UTF8.self)
@@ -216,7 +216,7 @@ private final class InMemoryFavoritesRepository: FavoriteOrganizationsRepository
     func save(_ ids: Set<String>) { self.ids = ids; writes.append(ids) }
 }
 
-private struct FixedCatalogRepository: ActivityCatalogRepository {
-    let catalog: ActivityCatalog
-    func load() throws -> ActivityCatalog { catalog }
+private struct FixedCatalogRepository: NoticeCatalogRepository {
+    let catalog: NoticeCatalog
+    func load() throws -> NoticeCatalog { catalog }
 }

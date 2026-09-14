@@ -1,11 +1,11 @@
-struct ActivityVenue: Decodable {
+struct NoticeVenue: Decodable {
     let phase: String
     let name: String
     let address: String?
-    let coordinates: ActivityCoordinates?
+    let coordinates: NoticeCoordinates?
 }
 
-extension ActivityVenue {
+extension NoticeVenue {
     private enum CodingKeys: String, CodingKey { case phase, name, address, coordinates }
 
     init(from decoder: any Decoder) throws {
@@ -14,6 +14,6 @@ extension ActivityVenue {
         name = try values.decode(String.self, forKey: .name)
         address = try values.decodeIfPresent(String.self, forKey: .address)
         // Bad optional coordinates must not hide the original venue or whole catalog.
-        coordinates = try? values.decodeIfPresent(ActivityCoordinates.self, forKey: .coordinates)
+        coordinates = try? values.decodeIfPresent(NoticeCoordinates.self, forKey: .coordinates)
     }
 }

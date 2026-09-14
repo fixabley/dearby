@@ -1,33 +1,33 @@
 import Foundation
 
 /// Transient read projection, deliberately not Codable/persisted. Organization references remain IDs.
-struct ActivityDetail: Identifiable {
+struct NoticeDetail: Identifiable {
     let id: String
     let title: String
     let aiDescription: String
     let descriptionProvenance: String
     let organizationID: String?
-    let organizationPath: [ActivityOrganization]
-    let organizationLinks: [ActivityDetailContext]
+    let organizationPath: [NoticeOrganization]
+    let organizationLinks: [NoticeDetailContext]
     let categoryPath: [String]
     let categorySummary: String
-    let contexts: [ActivityDetailContext]
+    let contexts: [NoticeDetailContext]
     let targetUser: String
     let participationCondition: String
-    let applicationInformation: ActivityApplication
-    let schedules: [ActivityDetailSchedule]
-    let location: ActivityLocation
+    let applicationInformation: NoticeApplication
+    let schedules: [NoticeDetailSchedule]
+    let location: NoticeLocation
     let benefits: [String]
     let qualityIssues: [String]
     let edition: Int?
     let sourceURL: URL?
-    let sources: [ActivitySource]
-    let evidence: [ActivityEvidence]
+    let sources: [NoticeSource]
+    let evidence: [NoticeEvidence]
 
     /// Pure construction from already fetched values; no repository, cache or IO.
-    init(notice: ActivityNotice, organizationPath: [ActivityOrganization],
-         contexts: [ActivityDetailContext], organizationLinks: [ActivityDetailContext],
-         sources: [ActivitySource]) {
+    init(notice: Notice, organizationPath: [NoticeOrganization],
+         contexts: [NoticeDetailContext], organizationLinks: [NoticeDetailContext],
+         sources: [NoticeSource]) {
         self.id = notice.id
         self.title = notice.title
         self.aiDescription = notice.summary
@@ -53,7 +53,7 @@ struct ActivityDetail: Identifiable {
             return resolved
         }
         schedules = notice.schedule.map { phase in
-            ActivityDetailSchedule(period: phase,
+            NoticeDetailSchedule(period: phase,
                 locations: phase.mode == "online" ? [] : notice.location.venues.filter { $0.phase == phase.phase },
                 locationSummary: notice.location.summary)
         }
@@ -61,13 +61,13 @@ struct ActivityDetail: Identifiable {
 
 }
 
-struct ActivityDetailContext {
-    let reference: ActivityContext
+struct NoticeDetailContext {
+    let reference: NoticeContext
     let organizationName: String?
 }
 
-struct ActivityDetailSchedule {
-    let period: ActivitySchedule
-    let locations: [ActivityVenue]
+struct NoticeDetailSchedule {
+    let period: NoticeSchedule
+    let locations: [NoticeVenue]
     let locationSummary: String
 }

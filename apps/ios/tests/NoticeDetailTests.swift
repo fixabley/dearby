@@ -1,18 +1,18 @@
 import Foundation
 
 @main
-struct ActivityDetailTests {
+struct NoticeDetailTests {
     @MainActor
     static func main() throws {
         let data = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
-        let catalog = try JSONDecoder().decode(ActivityCatalog.self, from: data)
+        let catalog = try JSONDecoder().decode(NoticeCatalog.self, from: data)
         let originalJSON = try JSONSerialization.jsonObject(with: data) as! [String: Any]
         let originalNotices = originalJSON["activities"] as! [[String: Any]]
         try directConstruction(originalNotices.first { $0["favoriteOrganizationId"] as? String == "yeongnam-cyber-defense" }!)
         let source = DetailCountingSource(catalog.organizations)
-        let repository = ActivityDetailRepository(catalog: catalog, source: source)
+        let repository = NoticeDetailRepository(catalog: catalog, source: source)
         precondition(source.fetches.isEmpty)
-        let contest = catalog.activities.first { $0.favoriteOrganizationId == "yeongnam-cyber-defense" }!
+        let contest = catalog.notices.first { $0.favoriteOrganizationId == "yeongnam-cyber-defense" }!
         let first = repository.detail(id: contest.id)!
         let coldFetches = source.fetches
         precondition(coldFetches["yeongnam-cyber-defense"] == 1 && coldFetches["yeongnam-ai-security"] == 1)
@@ -26,7 +26,7 @@ struct ActivityDetailTests {
         precondition(first.schedules.first { $0.period.phase == "final" }!.locations.map(\.name) == contest.location.venues.map(\.name))
         precondition(first.organizationLinks.map { $0.reference.role } == ["publisher", "contact", "subject"])
         precondition(repository.detail(id: "missing") == nil)
-        for notice in catalog.activities {
+        for notice in catalog.notices {
             let detail = repository.detail(id: notice.id)!
             for link in detail.organizationLinks {
                 precondition(link.organizationName == catalog.organization(link.reference.organizationId)?.name && link.organizationName != nil)
@@ -46,7 +46,7 @@ struct ActivityDetailTests {
             }
             precondition(detail.sources.allSatisfy { $0.kind != nil && $0.checkedAt != nil })
         }
-        let krc = catalog.activities.first { $0.favoriteOrganizationId == "krc" }!
+        let krc = catalog.notices.first { $0.favoriteOrganizationId == "krc" }!
         let detail = repository.detail(id: krc.id)!
         precondition(detail.contexts[0].reference.role == "event_context" && detail.contexts[0].organizationName == "충북대학교")
         precondition(detail.contexts[0].reference.basis == "user_confirmed")
@@ -75,7 +75,7 @@ struct ActivityDetailTests {
         organizations[parentIndex]["name"] = "바뀐 학교"
         organizations[parentIndex]["parentOrganizationId"] = "unknown-parent"
         raw["organizations"] = organizations
-        let changed = try JSONDecoder().decode(ActivityCatalog.self, from: JSONSerialization.data(withJSONObject: raw))
+        let changed = try JSONDecoder().decode(NoticeCatalog.self, from: JSONSerialization.data(withJSONObject: raw))
         let changedSource = DetailCountingSource(changed.organizations)
         repository.replaceSnapshot(changed, source: changedSource)
         precondition(changedSource.fetches.isEmpty, "Replacement clears rather than prewarms")
@@ -102,13 +102,13 @@ struct ActivityDetailTests {
             ["phase": "unmatched", "name": "다른 단계"]
         ]
         raw["location"] = location
-        let notice = try JSONDecoder().decode(ActivityNotice.self, from: JSONSerialization.data(withJSONObject: raw))
-        let context = ActivityDetailContext(reference: ActivityContext(organizationId: "selected", role: "event_context"), organizationName: "주입 이름")
-        let primary = ActivitySource(id: "primary", url: "https://example.com/primary")
-        let secondary = ActivitySource(id: "secondary", url: "https://example.com/secondary")
-        let detail = ActivityDetail(notice: notice, organizationPath: [], contexts: [context], organizationLinks: [context], sources: [secondary, primary])
+        let notice = try JSONDecoder().decode(Notice.self, from: JSONSerialization.data(withJSONObject: raw))
+        let context = NoticeDetailContext(reference: NoticeContext(organizationId: "selected", role: "event_context"), organizationName: "주입 이름")
+        let primary = NoticeSource(id: "primary", url: "https://example.com/primary")
+        let secondary = NoticeSource(id: "secondary", url: "https://example.com/secondary")
+        let detail = NoticeDetail(notice: notice, organizationPath: [], contexts: [context], organizationLinks: [context], sources: [secondary, primary])
         precondition(detail.sourceURL?.absoluteString == primary.url, "Use notice first source ID, never array order")
-        let unmatched = ActivityDetail(notice: notice, organizationPath: [], contexts: [], organizationLinks: [], sources: [secondary])
+        let unmatched = NoticeDetail(notice: notice, organizationPath: [], contexts: [], organizationLinks: [], sources: [secondary])
         precondition(unmatched.sourceURL == nil, "Missing primary must not fall back to another source")
         precondition(detail.evidence.contains { $0.sourceId == "secondary" && $0.sourceURL?.absoluteString == secondary.url })
         precondition(detail.evidence.contains { $0.sourceId == "missing" && $0.sourceURL == nil })
@@ -136,8 +136,8 @@ struct ActivityDetailTests {
 
 @MainActor
 private final class DetailCountingSource: OrganizationSource {
-    private let records: [String: ActivityOrganization]
+    private let records: [String: NoticeOrganization]
     private(set) var fetches: [String: Int] = [:]
-    init(_ records: [ActivityOrganization]) { self.records = Dictionary(uniqueKeysWithValues: records.map { ($0.id, $0) }) }
-    func fetch(id: String) -> ActivityOrganization? { fetches[id, default: 0] += 1; return records[id] }
+    init(_ records: [NoticeOrganization]) { self.records = Dictionary(uniqueKeysWithValues: records.map { ($0.id, $0) }) }
+    func fetch(id: String) -> NoticeOrganization? { fetches[id, default: 0] += 1; return records[id] }
 }

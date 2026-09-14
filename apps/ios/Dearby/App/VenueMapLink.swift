@@ -2,7 +2,7 @@ import Foundation
 
 /// Apple Maps request construction belongs to App, not the catalog entity.
 enum VenueMapLink {
-    static func url(for venue: ActivityVenue) -> URL? {
+    static func url(for venue: NoticeVenue) -> URL? {
         guard let coordinates = venue.coordinates else { return nil }
         var components = URLComponents()
         components.scheme = "https"

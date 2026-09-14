@@ -1,6 +1,6 @@
 import Foundation
 
-struct ActivityEvidence {
+struct NoticeEvidence {
     let sourceId: String
     let locator: String
     let fieldPath: String
@@ -8,7 +8,7 @@ struct ActivityEvidence {
 }
 
 /// Reads evidence at arbitrary nested contract fields without retaining an untyped JSON object.
-enum ActivityEvidenceDecoder {
+enum NoticeEvidenceDecoder {
     private struct Key: CodingKey {
         let stringValue: String
         var intValue: Int? { nil }
@@ -16,16 +16,16 @@ enum ActivityEvidenceDecoder {
         init?(intValue: Int) { return nil }
     }
 
-    static func collect(from decoder: any Decoder, path: String = "") throws -> [ActivityEvidence] {
+    static func collect(from decoder: any Decoder, path: String = "") throws -> [NoticeEvidence] {
         if let object = try? decoder.container(keyedBy: Key.self) {
-            var result: [ActivityEvidence] = []
+            var result: [NoticeEvidence] = []
             let declaredPath = try object.decodeIfPresent(String.self, forKey: Key(stringValue: "fieldPath"))
             for key in object.allKeys.sorted(by: { $0.stringValue < $1.stringValue }) {
                 if key.stringValue == "evidence" || key.stringValue == "coordinateEvidence" {
                     var references = try object.nestedUnkeyedContainer(forKey: key)
                     while !references.isAtEnd {
                         let reference = try references.nestedContainer(keyedBy: Key.self)
-                        result.append(ActivityEvidence(
+                        result.append(NoticeEvidence(
                             sourceId: try reference.decode(String.self, forKey: Key(stringValue: "sourceId")),
                             locator: try reference.decode(String.self, forKey: Key(stringValue: "locator")),
                             fieldPath: declaredPath ?? (key.stringValue == "coordinateEvidence" ? path + ".coordinates" : path)))
@@ -38,7 +38,7 @@ enum ActivityEvidenceDecoder {
             return result
         }
         if var array = try? decoder.unkeyedContainer() {
-            var result: [ActivityEvidence] = []
+            var result: [NoticeEvidence] = []
             while !array.isAtEnd {
                 let index = array.currentIndex
                 result += try collect(from: array.superDecoder(), path: "\(path)[\(index)]")

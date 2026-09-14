@@ -1,11 +1,11 @@
 import SwiftUI
 
 struct DiscoveryView<Destination: View>: View {
-    let catalog: ActivityCatalog
+    let catalog: NoticeCatalog
     let favoriteIDs: Set<String>
-    let saveOrganization: (ActivityNotice) -> SaveOrganizationResult
-    @ViewBuilder let destination: (ActivityNotice) -> Destination
-    @State private var detail: ActivityNotice?
+    let saveOrganization: (Notice) -> SaveOrganizationResult
+    @ViewBuilder let destination: (Notice) -> Destination
+    @State private var detail: Notice?
     @State private var saveFeedback = ""
     @State private var saveCount = 0
 
@@ -51,7 +51,7 @@ struct DiscoveryView<Destination: View>: View {
         .sensoryFeedback(.success, trigger: saveCount)
     }
 
-    private func save(_ notice: ActivityNotice) {
+    private func save(_ notice: Notice) {
         switch saveOrganization(notice) {
         case .saved(let organization):
             saveFeedback = "\(organization.name) 저장됨"

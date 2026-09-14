@@ -12,7 +12,7 @@ final class FavoriteOrganizations {
     }
 
     @discardableResult
-    func saveOrganization(for notice: ActivityNotice, in catalog: ActivityCatalog) -> SaveOrganizationResult {
+    func saveOrganization(for notice: Notice, in catalog: NoticeCatalog) -> SaveOrganizationResult {
         guard let organization = catalog.organization(notice.favoriteOrganizationId) else {
             return .unresolved
         }

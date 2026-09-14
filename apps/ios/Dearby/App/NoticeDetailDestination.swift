@@ -2,7 +2,7 @@ import SwiftUI
 
 /// App owns the OS action and presents failure on the active sheet/navigation destination.
 struct NoticeDetailDestination: View {
-    let detail: ActivityDetail
+    let detail: NoticeDetail
     @Environment(\.openURL) private var openURL
     @State private var mapFailed = false
     @State private var calendarRequest: CalendarEditorRequest?
@@ -11,7 +11,7 @@ struct NoticeDetailDestination: View {
     var body: some View {
         let application = CalendarDraftMapper.application(detail)
         let phases = detail.schedules.map {
-            CalendarDraftMapper.activity($0, detail: detail, mapURL: VenueMapLink.url)
+            CalendarDraftMapper.schedule($0, detail: detail, mapURL: VenueMapLink.url)
         }
         NoticeDetailView(detail: detail,
                          onAddSchedule: phases.map { draft in draft.map { event in { openCalendar(event) } } },
@@ -35,7 +35,7 @@ struct NoticeDetailDestination: View {
                                       onFailure: { calendarFailed = true })
     }
 
-    private func openMap(_ venue: ActivityVenue) {
+    private func openMap(_ venue: NoticeVenue) {
         VenueMapLauncher.open(venue, using: { url, completion in
             openURL(url, completion: completion)
         }, onFailure: { mapFailed = true })

@@ -11,9 +11,9 @@ struct CalendarDraftTests {
 
     @MainActor
     static func main() throws {
-        let catalog = try JSONDecoder().decode(ActivityCatalog.self, from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
-        let krc = catalog.activities.first { $0.favoriteOrganizationId == "krc" }!
-        let db = catalog.activities.first { $0.favoriteOrganizationId == "db-insurance" }!
+        let catalog = try JSONDecoder().decode(NoticeCatalog.self, from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
+        let krc = catalog.notices.first { $0.favoriteOrganizationId == "krc" }!
+        let db = catalog.notices.first { $0.favoriteOrganizationId == "db-insurance" }!
         for notice in [krc, db] {
             let draft = CalendarDraftMapper.application(detail(notice, catalog: catalog))!
             guard case .timed(let start, let end, let zone) = draft.interval else { preconditionFailure() }
@@ -24,7 +24,7 @@ struct CalendarDraftTests {
             precondition(request.start == start && request.end == end && !request.isAllDay)
             precondition(request.timezone?.identifier == "Asia/Seoul")
         }
-        let contest = catalog.activities.first { $0.favoriteOrganizationId == "yeongnam-cyber-defense" }!
+        let contest = catalog.notices.first { $0.favoriteOrganizationId == "yeongnam-cyber-defense" }!
         expectDays(CalendarDraftMapper.application(detail(contest, catalog: catalog))?.interval, "2026-09-11", "2026-10-08")
         func interval(_ startAt: String? = nil, _ startOn: String? = nil, _ endAt: String? = nil, _ endOn: String? = nil, allowEndOnly: Bool = true) -> CalendarEventInterval? {
             CalendarDatePolicy.interval(startAt: startAt, startOn: startOn, endAt: endAt, endOn: endOn, timezone: nil, allowEndOnly: allowEndOnly)
@@ -60,15 +60,15 @@ struct CalendarDraftTests {
         application["url"] = "https://example.com/apply?a=1&b=2#신청"
         application["opensAt"] = NSNull(); application["opensOn"] = NSNull()
         notices[index]["application"] = application; raw["activities"] = notices
-        let changed = try JSONDecoder().decode(ActivityCatalog.self, from: JSONSerialization.data(withJSONObject: raw))
-        let deadline = CalendarDraftMapper.application(detail(changed.activities[index], catalog: changed))!
+        let changed = try JSONDecoder().decode(NoticeCatalog.self, from: JSONSerialization.data(withJSONObject: raw))
+        let deadline = CalendarDraftMapper.application(detail(changed.notices[index], catalog: changed))!
         precondition(deadline.title.hasPrefix("[신청 마감]"))
         precondition(deadline.url == CalendarDraftMapper.verifiedURL(application["url"] as? String))
         precondition(deadline.notes.contains("신청 URL:") && deadline.notes.contains("원문:"))
         application.removeValue(forKey: "url"); application["closesAt"] = NSNull(); application["closesOn"] = NSNull(); application["opensOn"] = "2026-10-01"
         notices[index]["application"] = application; raw["activities"] = notices
-        let noURL = try JSONDecoder().decode(ActivityCatalog.self, from: JSONSerialization.data(withJSONObject: raw))
-        let draft = CalendarDraftMapper.application(detail(noURL.activities[index], catalog: noURL))!
+        let noURL = try JSONDecoder().decode(NoticeCatalog.self, from: JSONSerialization.data(withJSONObject: raw))
+        let draft = CalendarDraftMapper.application(detail(noURL.notices[index], catalog: noURL))!
         precondition(draft.url == nil && draft.notes.contains("신청 마감: 미확인") && draft.notes.contains("신청 URL: 미확인"))
         for zone in ["Asia/Seoul", "America/Los_Angeles", "Pacific/Auckland"] {
             let request = CalendarEditorRequest(draft: draft, deviceTimeZone: TimeZone(identifier: zone)!)!
@@ -91,11 +91,11 @@ struct CalendarDraftTests {
     }
 
     @MainActor
-    static func testActivities(catalog: ActivityCatalog) throws {
-        let contest = catalog.activities.first { $0.favoriteOrganizationId == "yeongnam-cyber-defense" }!
-        func draft(_ phase: ActivitySchedule, notice: ActivityNotice? = nil) -> CalendarEventDraft? {
+    static func testActivities(catalog: NoticeCatalog) throws {
+        let contest = catalog.notices.first { $0.favoriteOrganizationId == "yeongnam-cyber-defense" }!
+        func draft(_ phase: NoticeSchedule, notice: Notice? = nil) -> CalendarEventDraft? {
             let projected = detail(notice ?? contest, catalog: catalog, schedule: [phase])
-            return CalendarDraftMapper.activity(projected.schedules[0], detail: projected, mapURL: VenueMapLink.url)
+            return CalendarDraftMapper.schedule(projected.schedules[0], detail: projected, mapURL: VenueMapLink.url)
         }
         let preliminary = draft(contest.schedule.first { $0.phase == "preliminary" }!)!
         expectDays(preliminary.interval, "2026-10-14", "2026-10-15")
@@ -106,15 +106,15 @@ struct CalendarDraftTests {
         precondition(final.location == contest.location.venues.first { $0.phase == "final" }!.name)
         precondition(final.notes.contains("활동 종료: 미확인"))
         for target in ["krc", "db-insurance"] {
-            let notice = catalog.activities.first { $0.favoriteOrganizationId == target }!
+            let notice = catalog.notices.first { $0.favoriteOrganizationId == target }!
             let phase = notice.schedule[0]
             let event = draft(phase, notice: notice)!
             guard case .timed(let start, let end, let timezone) = event.interval else { preconditionFailure() }
             precondition(timezone == "Asia/Seoul" && start == CalendarDatePolicy.instant(phase.startsAt!) && end == CalendarDatePolicy.instant(phase.endsAt!))
             precondition(event.notes.contains("지도 (") == (notice.location.venues[0].coordinates != nil))
         }
-        func phase(_ mode: String = "online", url: String? = nil, name: String = "preliminary", start: String? = "2026-10-14", end: String? = nil) -> ActivitySchedule {
-            ActivitySchedule(phase: name, startsOn: start, startsAt: nil, endsAt: nil, endsOn: end, timezone: nil, mode: mode, onlineUrl: url)
+        func phase(_ mode: String = "online", url: String? = nil, name: String = "preliminary", start: String? = "2026-10-14", end: String? = nil) -> NoticeSchedule {
+            NoticeSchedule(phase: name, startsOn: start, startsAt: nil, endsAt: nil, endsOn: end, timezone: nil, mode: mode, onlineUrl: url)
         }
         let online = draft(phase(url: "https://example.com/온라인?a=1&b=2#회의"))!
         precondition(online.url != nil && online.location == "온라인" && online.notes.contains("온라인 URL:"))
@@ -125,13 +125,13 @@ struct CalendarDraftTests {
         precondition(draft(phase(start: nil)) == nil)
         precondition(draft(phase(start: "2026-02-30")) == nil)
         precondition(draft(phase(end: "2026-10-13")) == nil)
-        let venues = [ActivityVenue(phase: "final", name: "본관", address: "주소1", coordinates: ActivityCoordinates(latitude: 0, longitude: 0)),
-                      ActivityVenue(phase: "preliminary", name: "다른 단계", address: nil, coordinates: nil),
-                      ActivityVenue(phase: "final", name: "별관", address: "주소2", coordinates: ActivityCoordinates(latitude: 10, longitude: 20))]
-        let notice = ActivityNotice(id: contest.id, title: contest.title, summary: contest.summary, demoVisible: contest.demoVisible,
+        let venues = [NoticeVenue(phase: "final", name: "본관", address: "주소1", coordinates: NoticeCoordinates(latitude: 0, longitude: 0)),
+                      NoticeVenue(phase: "preliminary", name: "다른 단계", address: nil, coordinates: nil),
+                      NoticeVenue(phase: "final", name: "별관", address: "주소2", coordinates: NoticeCoordinates(latitude: 10, longitude: 20))]
+        let notice = Notice(id: contest.id, title: contest.title, summary: contest.summary, demoVisible: contest.demoVisible,
                                     favoriteOrganizationId: contest.favoriteOrganizationId, sourceIds: contest.sourceIds,
                                     audience: contest.audience, eligibility: contest.eligibility, application: contest.application,
-                                    location: ActivityLocation(summary: "본관/별관", mode: "mixed", status: "known", venues: venues),
+                                    location: NoticeLocation(summary: "본관/별관", mode: "mixed", status: "known", venues: venues),
                                     schedule: contest.schedule, benefits: contest.benefits, qualityIssues: contest.qualityIssues,
                                     categoryPath: contest.categoryPath, contexts: contest.contexts, edition: contest.edition)
         let multiple = draft(phase("offline", name: "final"), notice: notice)!
@@ -145,15 +145,15 @@ struct CalendarDraftTests {
 
 
     @MainActor
-    static func detail(_ notice: ActivityNotice, catalog: ActivityCatalog, schedule: [ActivitySchedule]? = nil) -> ActivityDetail {
-        let copy = ActivityNotice(id: notice.id, title: notice.title, summary: notice.summary, demoVisible: notice.demoVisible,
+    static func detail(_ notice: Notice, catalog: NoticeCatalog, schedule: [NoticeSchedule]? = nil) -> NoticeDetail {
+        let copy = Notice(id: notice.id, title: notice.title, summary: notice.summary, demoVisible: notice.demoVisible,
                                   favoriteOrganizationId: notice.favoriteOrganizationId, sourceIds: notice.sourceIds,
                                   audience: notice.audience, eligibility: notice.eligibility, application: notice.application,
                                   location: notice.location, schedule: schedule ?? notice.schedule, benefits: notice.benefits,
                                   qualityIssues: notice.qualityIssues, categoryPath: notice.categoryPath, contexts: notice.contexts, edition: notice.edition)
-        let snapshot = ActivityCatalog(schemaVersion: catalog.schemaVersion, mode: catalog.mode, snapshotAt: catalog.snapshotAt,
-                                       sources: catalog.sources, organizations: catalog.organizations, activities: [copy])
-        return ActivityDetailRepository(catalog: snapshot).detail(id: copy.id)!
+        let snapshot = NoticeCatalog(schemaVersion: catalog.schemaVersion, mode: catalog.mode, snapshotAt: catalog.snapshotAt,
+                                       sources: catalog.sources, organizations: catalog.organizations, notices: [copy])
+        return NoticeDetailRepository(catalog: snapshot).detail(id: copy.id)!
     }
 
 }

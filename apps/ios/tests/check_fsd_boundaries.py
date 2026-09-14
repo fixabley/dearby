@@ -24,8 +24,8 @@ def check(sources, selected=()):
             continue
         if re.search(r'\b(?:requestFullAccessToEvents|requestWriteOnlyAccessToEvents|requestAccess|EKAlarm|addAlarm)\b|\b(?:eventStore|store)\.save\s*\(', code):
             errors.append(f'{path}: calendar editor must not request access, save directly or add alarms')
-        if path.startswith('Pages/NoticeDetail/UI/') and re.search(r'\b(?:ActivityCatalog|ActivityNotice)\b', code):
-            errors.append(f'{path}: detail UI must receive ActivityDetail, not raw catalog/notice')
+        if path.startswith('Pages/NoticeDetail/UI/') and re.search(r'\b(?:NoticeCatalog|Notice)\b', code):
+            errors.append(f'{path}: detail UI must receive NoticeDetail, not raw catalog/notice')
         parts = path.split('/')
         layer = parts[0]
         if layer not in LAYERS:
@@ -71,7 +71,7 @@ def self_test():
     fixture['Features/FavoriteOrganization/API/FavoriteOrganizationsRepository.swift'] = 'protocol FavoriteOrganizationsRepository {}'
     fixture['Pages/Discovery/UI/Discovery.swift'] += '\nlet result: SaveOrganizationResult'
     assert not check(fixture)
-    for raw_type in ['ActivityCatalog', 'ActivityNotice']:
+    for raw_type in ['NoticeCatalog', 'Notice']:
         assert check({**fixture, 'Pages/NoticeDetail/UI/NoticeDetailView.swift': 'struct NoticeDetailView { let raw: ' + raw_type + ' }'})
     for forbidden in ['requestFullAccessToEvents()', 'requestWriteOnlyAccessToEvents()', 'store.save(event)', 'EKAlarm()']:
         assert check({**fixture, 'App/Editor.swift': 'struct Editor {}\n' + forbidden})

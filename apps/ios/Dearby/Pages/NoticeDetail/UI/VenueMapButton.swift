@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct VenueMapButton: View {
-    let venue: ActivityVenue
-    let onOpenMap: (ActivityVenue) -> Void
+    let venue: NoticeVenue
+    let onOpenMap: (NoticeVenue) -> Void
 
     var body: some View {
         Button { onOpenMap(venue) } label: {

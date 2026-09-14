@@ -2,8 +2,8 @@ import SwiftUI
 
 /// Location summary and explicit per-venue actions; no OS services in this slice.
 struct NoticeLocationView: View {
-    let location: ActivityLocation
-    let onOpenMap: (ActivityVenue) -> Void
+    let location: NoticeLocation
+    let onOpenMap: (NoticeVenue) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

@@ -1,10 +1,10 @@
 import SwiftUI
 
 struct NoticeDetailView: View {
-    let detail: ActivityDetail
+    let detail: NoticeDetail
     let onAddSchedule: [(() -> Void)?]
     let onAddApplication: (() -> Void)?
-    let onOpenMap: (ActivityVenue) -> Void
+    let onOpenMap: (NoticeVenue) -> Void
 
     var body: some View {
         ScrollView {

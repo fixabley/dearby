@@ -1,4 +1,4 @@
-struct ActivityApplication: Decodable {
+struct NoticeApplication: Decodable {
     let summary: String
     let opensAt: String?
     let opensOn: String?

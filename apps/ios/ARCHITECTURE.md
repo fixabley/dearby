@@ -48,23 +48,23 @@ apps/ios/
 │   │           ├── FavoriteOrganizationsRepository.swift
 │   │           └── UserDefaultsFavoriteOrganizationsRepository.swift
 │   ├── Entities/
-│   │   └── ActivityCatalog/
-│   │       ├── Model/ActivityCatalog.swift
-│   │       ├── Model/ActivityNoticeSummary.swift
-│   │       ├── Model/ActivityLocation.swift
-│   │       ├── Model/ActivityVenue.swift
-│   │       ├── Model/ActivityCoordinates.swift
-│   │       ├── Model/ActivityApplication.swift
-│   │       ├── Model/ActivitySchedule.swift
-│   │       ├── Model/ActivityDetail.swift
-│   │       ├── Model/ActivityEvidence.swift
+│   │   └── NoticeCatalog/
+│   │       ├── Model/NoticeCatalog.swift
+│   │       ├── Model/NoticeSummary.swift
+│   │       ├── Model/NoticeLocation.swift
+│   │       ├── Model/NoticeVenue.swift
+│   │       ├── Model/NoticeCoordinates.swift
+│   │       ├── Model/NoticeApplication.swift
+│   │       ├── Model/NoticeSchedule.swift
+│   │       ├── Model/NoticeDetail.swift
+│   │       ├── Model/NoticeEvidence.swift
 │   │       ├── API/
-│   │       │   ├── ActivityCatalogRepository.swift
-│   │       │   ├── BundleActivityCatalogRepository.swift
+│   │       │   ├── NoticeCatalogRepository.swift
+│   │       │   ├── BundleNoticeCatalogRepository.swift
 │   │       │   ├── OrganizationSource.swift
 │   │       │   ├── SnapshotOrganizationSource.swift
 │   │       │   ├── OrganizationRepository.swift
-│   │       │   └── ActivityDetailRepository.swift
+│   │       │   └── NoticeDetailRepository.swift
 │   │       └── UI/NoticeClassificationView.swift
 │   ├── Resources/activity-samples.json
 │   └── Assets.xcassets/
@@ -74,13 +74,13 @@ apps/ios/
 │   ├── VenueMapTests.swift
 │   ├── CalendarDraftTests.swift
 │   ├── OrganizationRepositoryTests.swift
-│   └── ActivityDetailTests.swift
+│   └── NoticeDetailTests.swift
 ├── ARCHITECTURE.md
 └── README.md
 ```
 
 `UI`, `Model`, `API`는 표현·도메인/상태·외부 데이터 접근 목적을 구분하는 segment다.
-공고·조직·출처·계층·학교 맥락은 서로 연결된 **단일 ActivityCatalog entity slice**에 둔다. 서로 다른 entity로 억지 분리해 순환 참조를 만들지 않는다.
+공고·조직·출처·계층·학교 맥락은 서로 연결된 **단일 NoticeCatalog entity slice**에 둔다. 서로 다른 entity로 억지 분리해 순환 참조를 만들지 않는다.
 현재 여러 도메인에서 공유하는 범용 Swift UI가 없어 Shared 폴더를 만들지 않았다. 카드 전용 보조 표시는 같은 widget slice의 UI 파일에 둔다.
 향후 실제 공용 범용 표시·테마 코드가 필요하면 slice 없이 `Shared/UI` 등 목적별 segment에 둔다. 기존 asset catalog와 번들 리소스의 경로는 유지한다.
 `Dearby/`의 Xcode synchronized 그룹이 모든 파일을 포함한다. 테스트와 `build/` 증거는 앱 타깃 밖에 둔다.
@@ -94,12 +94,12 @@ apps/ios/
 | --- | --- | --- |
 | Pages/Discovery | `DiscoveryView<Destination>` | 카탈로그·ID 집합·저장 콜백·App의 목적지 ViewBuilder; 로컬 sheet 선택·피드백 |
 | Pages/Favorites | `FavoriteListView<Destination>` | 카탈로그·ID 집합·삭제 콜백·목적지 ViewBuilder; 목록·빈 상태 |
-| Pages/NoticeDetail | `NoticeDetailView` | `ActivityDetail`·typed onOpenMap 및 optional 신청/활동 캘린더 콜백; 상세 표시 |
-| Widgets/ActivityCard | `ActivityCard` | `ActivityNoticeSummary`·저장 여부·position·compact·onSave/onShowDetail |
+| Pages/NoticeDetail | `NoticeDetailView` | `NoticeDetail`·typed onOpenMap 및 optional 신청/활동 캘린더 콜백; 상세 표시 |
+| Widgets/ActivityCard | `ActivityCard` | `NoticeSummary`·저장 여부·position·compact·onSave/onShowDetail |
 | Widgets/FavoriteOrganizationCard | `FavoriteOrganizationCard<Destination>` | 조직·카탈로그·삭제 콜백·목적지 ViewBuilder; 연결 공고의 기존 NavigationLink |
-| Features/AddToCalendar | `CalendarDraftMapper.application(_:catalog:)`, `activity(_:notice:catalog:mapURL:)`, `CalendarEventDraft`/`CalendarEventInterval` | App이 호출하는 순수 초안 매핑; 날짜 정책은 slice 내부 helper |
+| Features/AddToCalendar | `CalendarDraftMapper.application(_:)`, `schedule(_:detail:mapURL:)`, `CalendarEventDraft`/`CalendarEventInterval` | App이 호출하는 순수 초안 매핑; 날짜 정책은 slice 내부 helper |
 | Features/FavoriteOrganization | `FavoriteOrganizations`, `SaveOrganizationResult`, `FavoriteOrganizationsRepository`, `UserDefaultsFavoriteOrganizationsRepository` | 상태와 저장 계약; 구체 저장 구현은 App 조립 또는 독립 테스트에서 사용 |
-| Entities/ActivityCatalog | `ActivityApplication`, `ActivitySchedule`, `ActivityLocation`, `ActivityVenue`, `ActivityCoordinates`, `ActivityNoticeSummary`, `ActivityCatalog` 및 Model의 `ActivityNotice`, `ActivityOrganization`, `ActivitySource`, `ActivityContext`, `ActivitySchedule`; `ActivityCatalogRepository`, `BundleActivityCatalogRepository`; `NoticeClassificationView` | 순수 모델/조회, 교체 가능한 공급, 카드·즐겨찾기의 분류 표시 |
+| Entities/NoticeCatalog | `NoticeApplication`, `NoticeSchedule`, `NoticeLocation`, `NoticeVenue`, `NoticeCoordinates`, `NoticeSummary`, `NoticeCatalog` 및 Model의 `Notice`, `NoticeOrganization`, `NoticeSource`, `NoticeContext`, `NoticeSchedule`; `NoticeCatalogRepository`, `BundleNoticeCatalogRepository`; `NoticeClassificationView` | 순수 모델/조회, 교체 가능한 공급, 카드·즐겨찾기의 분류 표시 |
 
 `NoticeFact(label:value:)`는 Widgets/ActivityCard/UI/NoticeFact.swift의 slice 내부 표시 helper다. 파일 간 사용을 위해 기본 internal이며 외부 slice 진입점으로 사용하지 않는다.
 `NoticeIdentityView(notice:catalog:)`, `NoticeDetailField(title:value:)`, `NoticeIdentityFact(label:value:icon:)`는 Pages/NoticeDetail/UI의 개별 파일에 있는 slice 내부 표시 helper다.
@@ -115,14 +115,14 @@ Preview 저장소도 App 파일의 private 타입이다. 외부 소비자는 이
 현재 실제 흐름:
 
 ```text
-App → Discovery page → ActivityCard widget → ActivityCatalog entity
-App → Favorites page → FavoriteOrganizationCard widget → ActivityCatalog entity
-App → NoticeDetail page → ActivityCatalog entity
+App → Discovery page → ActivityCard widget → NoticeCatalog entity
+App → Favorites page → FavoriteOrganizationCard widget → NoticeCatalog entity
+App → NoticeDetail page → NoticeCatalog entity
 App → FavoriteOrganization state → 같은 slice의 저장 protocol → UserDefaults 구현
-App → ActivityCatalog 공급 protocol → 같은 entity의 번들 구현
+App → NoticeCatalog 공급 protocol → 같은 entity의 번들 구현
 ```
 
-ContentView가 Discovery와 Favorites에 `(ActivityNotice) -> Destination` ViewBuilder를 주입하며 그 안에서 App의 NoticeDetailDestination이 NoticeDetailView를 조립한다.
+ContentView가 Discovery와 Favorites에 `(Notice) -> Destination` ViewBuilder를 주입하며 그 안에서 App의 NoticeDetailDestination이 NoticeDetailView를 조립한다.
 Discovery는 기존 `.sheet(item:)`의 로컬 선택값을 유지하고 주입된 목적지를 표시한다. Favorites의 widget은 기존 NavigationLink에 주입된 목적지를 연결한다.
 페이지와 카드는 다른 페이지 타입을 모르며 공고 카드와 조직 카드도 서로 참조하지 않는다. 새로운 전역 라우터·선택 상태·AnyView 계층을 만들지 않는다.
 Widget은 표시 데이터와 콜백만 받고 저장소·공유 상태를 직접 생성하거나 읽지 않는다. Entity UI 역시 데이터 공급을 실행하지 않는다.
@@ -157,7 +157,7 @@ Swift 타입 선언과 식별자 참조를 수집해 실제 상향 참조·동�
 - 공고 카드만의 표시나 버튼은 `Widgets/ActivityCard/UI`와 해당 검사에 둔다. 그 페이지의 필터 선택은 `Pages/Discovery/UI` 로컬 상태로 둔다.
 - 즐겨찾기 조직 카드의 표시 변경은 `Widgets/FavoriteOrganizationCard/UI`, 저장·삭제 행동과 저장 구현은 `Features/FavoriteOrganization/Model|API`에 둔다.
 - 새 상세 화면은 Pages의 독립 slice에 만들고 **App에서** 목적지를 주입한다. Discovery/Favorites가 새 페이지를 직접 생성하지 않는다.
-- 새로운 카탈로그 조회는 `Entities/ActivityCatalog/Model`, 실제 공급 교체는 같은 slice의 API와 App 조립을 변경한다. 네트워크 도입 시 async·취소·오류 정책은 해당 작업에서 정하며 지금 미리 구현하지 않는다.
+- 새로운 카탈로그 조회는 `Entities/NoticeCatalog/Model`, 실제 공급 교체는 같은 slice의 API와 App 조립을 변경한다. 네트워크 도입 시 async·취소·오류 정책은 해당 작업에서 정하며 지금 미리 구현하지 않는다.
 - 서로 다른 widget이 필요한 도메인 분류 표시는 entity UI에, 실제 도메인 없는 공용 UI가 필요해지면 Shared/UI에 둔다. 빈 segment나 사용하지 않는 추상화를 추가하지 않는다.
 - 공통 계약 변경은 coordinator와 먼저 조율한다. 각 기능 변경에 필요한 코드·검사·문서를 한 커밋에 묶으며 이미 게시된 커밋은 재작성하지 않는다.
 
@@ -182,7 +182,7 @@ Swift 타입 선언과 식별자 참조를 수집해 실제 상향 참조·동�
 
 ## 카드 입력 보완 — 이번 확인
 
-`catalog.summary(for: notice)`가 notice·해결된 organization·실제 String contextNames를 묶는 순수 `ActivityNoticeSummary`를 만든다.
+`catalog.summary(for: notice)`가 notice·해결된 organization·실제 String contextNames를 묶는 순수 `NoticeSummary`를 만든다.
 카드는 전체 카탈로그나 범용 data를 받지 않는다. position/saved/compact와 onSave/onShowDetail은 외부 표현 상태·이벤트로 유지한다.
 미확정/알 수 없는 대상은 organization이 nil이며 원래 공고와 행사 학교 맥락은 보존한다. 모델에 저장·UI 부수효과를 추가하지 않는다.
 이번 카드 요약 변경에서 독립 Swift의 해결/미확정·대회 요약 검사와 기존 상태/복원 검사, FSD 전체 15파일 검사, Simulator Debug 빌드를 실행해 통과했다.
@@ -190,11 +190,11 @@ Swift 타입 선언과 식별자 참조를 수집해 실제 상향 참조·동�
 ## 저장 업무 연산·Repository 보완 — 이번 확인
 
 `FavoriteOrganizations.saveOrganization(for:in:)`가 카탈로그에서 관심 대상 조직을 해결하고 저장한다.
-`.saved(ActivityOrganization)`는 카탈로그의 정식 조직 이름을 반환하고 `.unresolved`는 상태·관찰 알림·저장 쓰기를 발생시키지 않는다.
-Discovery는 App이 주입한 `(ActivityNotice) -> SaveOrganizationResult`의 결과를 기존 문구와 성공 햅틱 카운트로 변환한다.
+`.saved(NoticeOrganization)`는 카탈로그의 정식 조직 이름을 반환하고 `.unresolved`는 상태·관찰 알림·저장 쓰기를 발생시키지 않는다.
+Discovery는 App이 주입한 `(Notice) -> SaveOrganizationResult`의 결과를 기존 문구와 성공 햅틱 카운트로 변환한다.
 App이 카탈로그와 단일 상태를 연결하며 별도 Service/UseCase·상태 사본을 만들지 않는다.
 
-`ActivityCatalogRepository.load()`와 `BundleActivityCatalogRepository`는 기존 동기 카탈로그 공급 계약/구현의 이름을 명확히 한 것이다.
+`NoticeCatalogRepository.load()`와 `BundleNoticeCatalogRepository`는 기존 동기 카탈로그 공급 계약/구현의 이름을 명확히 한 것이다.
 `FavoriteOrganizationsRepository.load()/save(_:)`와 `UserDefaultsFavoriteOrganizationsRepository` 역시 기존 저장 계약/구현이며 중복 wrapper가 아니다.
 반복 저장도 같은 Set을 동기로 쓰고, 삭제·정렬 문자열 배열·기존 알 수 없는 ID 복원 의미를 유지한다.
 
@@ -233,7 +233,7 @@ UI 도구의 첫 삭제는 오래된 접근성 인덱스로 거절되어 새 sna
 | Pages/NoticeDetail/UI/NoticeDetailView.swift | NoticeIdentityView, detail, fact를 위 세 파일로 분리 |
 | Widgets/ActivityCard/UI/ActivityCard.swift | NoticeFact를 같은 UI의 별도 파일로 분리 |
 | Widgets/FavoriteOrganizationCard/UI/FavoriteOrganizationCard.swift | 별도 명명된 helper 없음; 작은 inline NavigationLink label 유지 |
-| Entities/ActivityCatalog/UI/NoticeClassificationView.swift | 단일 View만 존재, 분리 없음 |
+| Entities/NoticeCatalog/UI/NoticeClassificationView.swift | 단일 View만 존재, 분리 없음 |
 
 전체 생산 Swift 파일의 View 선언·some View 반환 함수 검색과 위 8개 원본 UI 파일 읽기로 조사했다.
 분리 후 네 helper 파일도 확인했으며 추가 동거 UI 타입·함수형 UI helper는 없다. body, 작은 inline ViewBuilder, 비 UI 모델/저장/preview 구현은 이번 분리 대상이 아니다.
@@ -245,18 +245,18 @@ UI 도구의 첫 삭제는 오래된 접근성 인덱스로 거절되어 새 sna
 앞선 저장/라우팅 UI 회귀는 이전 기록이며 이번 결과로 표시하지 않는다. 개인/전용 시뮬레이터의 앱 데이터나 환경을 조작하지 않았다.
 
 ## 문자열 모델 정리
-ActivityNotice의 audience/eligibility/application은 String, benefits/qualityIssues는 [String]이다. Decodable extension이 원본 객체의 summary만 읽으며 별도 DTO/문자열 wrapper를 만들지 않는다. 자동 memberwise 초기화는 테스트와 projection에서 유지한다. 원본 evidence/eligibility 등 구조화 JSON은 변경하지 않는다. 장소는 summary/mode/status/venues를 갖는 ActivityLocation과 ActivityVenue로 구분한다. 이번 기존 canonical JSON 전체 표시 문자열 일치·상태/복원 테스트 및 구조 검사와 Simulator 빌드를 실행했다.
+Notice의 audience/eligibility/application은 String, benefits/qualityIssues는 [String]이다. Decodable extension이 원본 객체의 summary만 읽으며 별도 DTO/문자열 wrapper를 만들지 않는다. 자동 memberwise 초기화는 테스트와 projection에서 유지한다. 원본 evidence/eligibility 등 구조화 JSON은 변경하지 않는다. 장소는 summary/mode/status/venues를 갖는 NoticeLocation과 NoticeVenue로 구분한다. 이번 기존 canonical JSON 전체 표시 문자열 일치·상태/복원 테스트 및 구조 검사와 Simulator 빌드를 실행했다.
 
 ## 장소 좌표·지도 링크
 
 좌표 공통 계약은 [별도 PR #6](https://github.com/fixabley/dearby/pull/6)의 schemaVersion 1.0.0 선택 확장이다.
-ActivityLocation(summary/mode/status/venues), ActivityVenue(phase/name/address/coordinates), ActivityCoordinates(latitude/longitude)는 순수 entity 값이며 UIKit/MapKit/저장 메서드가 없다.
+NoticeLocation(summary/mode/status/venues), NoticeVenue(phase/name/address/coordinates), NoticeCoordinates(latitude/longitude)는 순수 entity 값이며 UIKit/MapKit/저장 메서드가 없다.
 좌표 누락·null·불완전·잘못된 타입·비유한 수·범위 초과는 해당 venue.coordinates만 nil로 처리하여 원본 장소와 공고를 유지한다.
 0,0은 명시적으로 주어진 경우 유효하고 미상 기본값으로 생성하지 않는다. 좌표의 생성자와 Decodable 모두 검증하며 여러 장소의 순서를 보존한다.
 원본 evidence/coordinateEvidence·자격 구조는 리소스 JSON에 그대로 보존하고 앱은 필요한 표시/좌표만 디코딩한다.
 
 슬라이스 내부 helper 계약: NoticeLocationView(location:onOpenMap:)는 summary를 유지하고 venuesWithCoordinates만 VenueMapButton(venue:onOpenMap:)으로 표시한다.
-새 UI는 각각 파일로 분리하며 callback은 ActivityVenue 값만 넘긴다. entity의 venuesWithCoordinates는 유효 좌표가 있는 장소 조회이고 지도 서비스/URL을 알지 못한다.
+새 UI는 각각 파일로 분리하며 callback은 NoticeVenue 값만 넘긴다. entity의 venuesWithCoordinates는 유효 좌표가 있는 장소 조회이고 지도 서비스/URL을 알지 못한다.
 App/NoticeDetailDestination은 기존 sheet/NavigationLink 위치에서 상세와 실패 alert를 함께 조립하므로 오류 피드백이 열린 상세 위에 나타난다.
 App/VenueMapLink.url(for:)는 URLComponents의 ll/q 항목으로 한글·&·# 장소 이름을 안전하게 인코딩한다.
 [Apple 공식 Map Links](https://developer.apple.com/library/archive/featuredarticles/iPhoneURLScheme_Reference/MapLinks/MapLinks.html)의 좌표와 핀 이름 계약을 따른다.
@@ -286,7 +286,7 @@ Maps 미설치/OS 거절의 실기기 UI는 미검증이며 실패 callback은 �
 
 ## 신청 캘린더 편집기
 
-ActivityApplication은 summary뿐 아니라 opensAt/opensOn/closesAt/closesOn/timezone/url을 보존하는 의미 있는 entity 모델이다.
+NoticeApplication은 summary뿐 아니라 opensAt/opensOn/closesAt/closesOn/timezone/url을 보존하는 의미 있는 entity 모델이다.
 App의 CalendarDraftMapper.application 호출이 Features/AddToCalendar/Model의 순수 CalendarEventDraft/CalendarEventInterval을 만든다.
 CalendarDatePolicy는 엄격한 날짜·오프셋 timestamp와 시간대 검증, 충돌하는 시작 날짜 거절, 정확한 timed 구간 또는 종일 날짜 구간을 만든다.
 종일 끝 날짜는 exclusive이고 자정 마감은 전날의 마감으로 해석한다. 날짜 없는 경우 버튼을 생략하며 종료 미확인은 하루짜리 종일 표시와 메모를 사용한다.
@@ -302,8 +302,8 @@ App/CalendarEventEditor는 EKEventEditViewController를 조립하고 CalendarEdi
 
 ## 활동 단계별 캘린더 — 최종 확인
 
-ActivitySchedule은 endsOn(포함 날짜)/timezone/onlineUrl/mode와 기존 시각을 보존하는 자체 entity 파일이다.
-CalendarDraftMapper.activity는 EXACT phase == venue.phase로 연결한다. 온라인 단계는 무조건 location 온라인과 검증된 onlineUrl 또는 접속 URL 미확인을 사용해 결선 장소를 누출하지 않는다.
+NoticeSchedule은 endsOn(포함 날짜)/timezone/onlineUrl/mode와 기존 시각을 보존하는 자체 entity 파일이다.
+CalendarDraftMapper.schedule는 EXACT phase == venue.phase로 연결한다. 온라인 단계는 무조건 location 온라인과 검증된 onlineUrl 또는 접속 URL 미확인을 사용해 결선 장소를 누출하지 않는다.
 오프라인 단계의 일치하는 장소는 모두 name/address로 합치고, 각 좌표 지도 링크는 App이 주입한 VenueMapLink로 notes에 포함한다. 미일치 장소는 장소 미확인이다.
 복수 장소를 임의의 단일 pin으로 줄이지 않으며 structuredLocation은 추가하지 않는다.
 Pages/NoticeScheduleView는 각 schedule 위치의 optional callback으로 같은 CalendarAddButton을 표시한다. App의 단일 활성 CalendarEditorRequest가 편집기 수명을 소유한다.
@@ -328,28 +328,28 @@ notes에 원래 summary·정확한 시작/끝·시간대·미확인 항목을 �
 기존 실제 터치 스와이프·물리 햅틱·전체 접근성 한계는 유지한다. 마지막 순수 adapter 보강 후에는 빌드·독립 검사를 재실행했고 runtime 기록은 그 직전 동일 편집기 UI 경로다.
 
 ## 조직 원본·cache-aside 조회
-Entities/ActivityCatalog/API의 OrganizationSource.fetch(id:)와 SnapshotOrganizationSource는 조직 레코드를 별도 저장한다. OrganizationRepository는 처음 비어 있는 독립 ID 캐시를 조회하고 miss에서만 source를 호출하며 성공한 레코드만 캐시한다. path(to:)는 parent ID를 cycle-safe하게 따라가는 일시 projection이며 누락된 상위에서도 복구 가능한 경로를 유지한다. MainActor에서 replaceSource가 모든 캐시를 지워 이름/부모 변경을 반영한다.
+Entities/NoticeCatalog/API의 OrganizationSource.fetch(id:)와 SnapshotOrganizationSource는 조직 레코드를 별도 저장한다. OrganizationRepository는 처음 비어 있는 독립 ID 캐시를 조회하고 miss에서만 source를 호출하며 성공한 레코드만 캐시한다. path(to:)는 parent ID를 cycle-safe하게 따라가는 일시 projection이며 누락된 상위에서도 복구 가능한 경로를 유지한다. MainActor에서 replaceSource가 모든 캐시를 지워 이름/부모 변경을 반영한다.
 이번 독립 source 호출 횟수 검사는 cold/hit·공유 상위·nil/없는ID·cycle/고아·전체 snapshot rename/reparent 무효화를 확인한다. 상세 projection 통합은 같은 작업의 다음 기능 커밋에 적용한다.
 
 
-## ActivityDetail 조회 경계 (2026-09-14)
+## NoticeDetail 조회 경계 (2026-09-14)
 
-`ActivityDetailRepository.detail(id:)`가 상세의 유일한 투영 진입점이다. App의 `ContentView`는 로드 시 한 번 저장소를 소유하고 상세를 열 때 같은 인스턴스를 사용한다. Pages/NoticeDetail는 상세 값·콜백만 받으며 카탈로그·원본 공고·저장소를 읽지 않는다. 카드와 즐겨찾기는 같은 snapshot의 기존 카탈로그 계약을 유지한다.
+`NoticeDetailRepository.detail(id:)`가 상세의 유일한 투영 진입점이다. App의 `ContentView`는 로드 시 한 번 저장소를 소유하고 상세를 열 때 같은 인스턴스를 사용한다. Pages/NoticeDetail는 상세 값·콜백만 받으며 카탈로그·원본 공고·저장소를 읽지 않는다. 카드와 즐겨찾기는 같은 snapshot의 기존 카탈로그 계약을 유지한다.
 
 조직 원본 `OrganizationSource`와 ID 캐시는 별개다. `OrganizationRepository`는 성공한 조회만 캐시하고 parent ID를 cycle-safe하게 따라가며, 알 수 없는 부모에서는 복구 가능한 경로를 반환한다. 선택 ID는 전역 leaf 조건 없이 그대로 보존한다. `replaceSnapshot`은 source와 catalog를 함께 교체하고 모든 레코드 캐시를 비운다. 별도의 경로 캐시나 영구 캐시가 없으며 모두 MainActor에 한정된다. 현재 실시간 갱신 UI는 없고, 향후 갱신 기능은 App 상태 갱신과 이 교체 메서드를 함께 연결해야 한다.
 
-`ActivityDetail`는 Codable/저장 모델이 아닌 일시적 읽기 결과다. 조직은 원본에서 ID로만 참조하고 조직 레코드는 별도 snapshot source에 둔다. 결과의 organizationPath는 선택 노드의 관련 경로만 포함하며 전체 조직 트리를 복제하거나 저장하지 않는다. organizationLinks와 contexts는 명시된 role/ID를 유지하고 경로에서 주최 역할을 추론하지 않는다.
+`NoticeDetail`는 Codable/저장 모델이 아닌 일시적 읽기 결과다. 조직은 원본에서 ID로만 참조하고 조직 레코드는 별도 snapshot source에 둔다. 결과의 organizationPath는 선택 노드의 관련 경로만 포함하며 전체 조직 트리를 복제하거나 저장하지 않는다. organizationLinks와 contexts는 명시된 role/ID를 유지하고 경로에서 주최 역할을 추론하지 않는다.
 
-`aiDescription`은 기존 검토 샘플 summary이며 `descriptionProvenance = reviewed_sample.summary`로 출처를 구분한다. 새로운 AI 생성으로 표시하지 않는다. applicationInformation은 기존 날짜·URL·summary와 channels/requiredDocuments/submissionLocations를 보존한다. schedule의 period와 정확히 phase가 일치하는 장소를 ActivityDetail 이니셜라이저에서 한 번 묶고 온라인 단계에는 오프라인 장소를 넣지 않는다. CalendarDraftMapper는 이 상세 값만 사용하며 기존 엄격한 날짜 정책은 유지한다. 지도는 상세의 기존 location 값을 사용한다.
+`aiDescription`은 기존 검토 샘플 summary이며 `descriptionProvenance = reviewed_sample.summary`로 출처를 구분한다. 새로운 AI 생성으로 표시하지 않는다. applicationInformation은 기존 날짜·URL·summary와 channels/requiredDocuments/submissionLocations를 보존한다. schedule의 period와 정확히 phase가 일치하는 장소를 NoticeDetail 이니셜라이저에서 한 번 묶고 온라인 단계에는 오프라인 장소를 넣지 않는다. CalendarDraftMapper는 이 상세 값만 사용하며 기존 엄격한 날짜 정책은 유지한다. 지도는 상세의 기존 location 값을 사용한다.
 
-`ActivityEvidenceDecoder`는 구조화 JSON을 Decoder로 순회하여 evidence/coordinateEvidence의 sourceId·locator·fieldPath를 보존한다. quality issue의 명시 fieldPath를 우선하고 배열 위치는 경로에 남긴다. 상세는 관련 source 레코드(kind/checkedAt/access/note 포함)와 근거 URL을 제공하며, 알 수 없는 source ID도 근거에서 삭제하지 않는다. 원본 JSON의 추가 메타데이터 전체를 앱에 영구 복제하는 것은 아니며 변경 없이 번들에 유지한다.
+`NoticeEvidenceDecoder`는 구조화 JSON을 Decoder로 순회하여 evidence/coordinateEvidence의 sourceId·locator·fieldPath를 보존한다. quality issue의 명시 fieldPath를 우선하고 배열 위치는 경로에 남긴다. 상세는 관련 source 레코드(kind/checkedAt/access/note 포함)와 근거 URL을 제공하며, 알 수 없는 source ID도 근거에서 삭제하지 않는다. 원본 JSON의 추가 메타데이터 전체를 앱에 영구 복제하는 것은 아니며 변경 없이 번들에 유지한다.
 
-상세 UI의 ActivityCatalog/ActivityNotice 참조를 lexical checker의 부정 fixture로 금지한다. 단일 Swift 모듈이므로 컴파일러가 slice를 격리하는 것은 아니다. 새 상세 항목은 entity의 의미 있는 필드와 getter를 갱신하고 페이지의 동일 slice UI 파일에 표시하며 OS 동작은 App에서 주입한다.
+상세 UI의 NoticeCatalog/Notice 참조를 lexical checker의 부정 fixture로 금지한다. 단일 Swift 모듈이므로 컴파일러가 slice를 격리하는 것은 아니다. 새 상세 항목은 entity의 의미 있는 필드와 getter를 갱신하고 페이지의 동일 slice UI 파일에 표시하며 OS 동작은 App에서 주입한다.
 
 
 ### 이번 상세 투영 검증 결과
 
-2026-09-14 Swift 6 standalone: OrganizationRepositoryTests(콜드/히트 fetch 수·공유 부모·missing·cycle·snapshot rename/reparent), ActivityDetailTests(동일 저장소 두 번 열기·선택 부모 ID·맥락 역할·전체 원본 evidence 수/경로/unknown source·출처 메타데이터), CalendarDraftTests(기존 엄격 날짜/phase/복수 장소/URL/adapter), FavoritesStoreTests(관찰·저장/복원), VenueMapTests 모두 통과했다. 상세와 캘린더 검사는 old shared JSON 및 최신 앱 JSON 각각 실행했다. README 명령으로 재현할 수 있다.
+2026-09-14 Swift 6 standalone: OrganizationRepositoryTests(콜드/히트 fetch 수·공유 부모·missing·cycle·snapshot rename/reparent), NoticeDetailTests(동일 저장소 두 번 열기·선택 부모 ID·맥락 역할·전체 원본 evidence 수/경로/unknown source·출처 메타데이터), CalendarDraftTests(기존 엄격 날짜/phase/복수 장소/URL/adapter), FavoritesStoreTests(관찰·저장/복원), VenueMapTests 모두 통과했다. 상세와 캘린더 검사는 old shared JSON 및 최신 앱 JSON 각각 실행했다. README 명령으로 재현할 수 있다.
 
 `python3 apps/ios/tests/check_fsd_boundaries.py`: 45 Swift 파일 및 부정 fixture 통과. `git diff --check` 통과. XcodeBuildMCP `build_sim`(CODE_SIGNING_ALLOWED=NO, 전용 simulator 대상) 성공, 경고/오류 없음; 로그 `build_sim_2026-09-14T11-20-38-165Z_pid15343_9fc86060.log`.
 
@@ -358,13 +358,20 @@ Entities/ActivityCatalog/API의 OrganizationSource.fetch(id:)와 SnapshotOrganiz
 
 ### 조직 링크 이름 조회 보완
 
-ActivityDetail.organizationLinks도 contexts와 같은 ActivityDetailContext 읽기 투영이다. reference에는 원본 ID/role/basis/note를 유지하고 organizationName은 동일 OrganizationRepository 캐시를 통해 해결한다. 누락 조직은 nil 이름으로 원본 참조를 보존한다. Notice.organizationLinks는 계속 ID/역할 참조이며 이름이나 경로를 저장하지 않는다. UI 변경 없이 상세 소비자가 추가 카탈로그 조회 없이 기관 이름을 사용할 수 있다.
+NoticeDetail.organizationLinks도 contexts와 같은 NoticeDetailContext 읽기 투영이다. reference에는 원본 ID/role/basis/note를 유지하고 organizationName은 동일 OrganizationRepository 캐시를 통해 해결한다. 누락 조직은 nil 이름으로 원본 참조를 보존한다. Notice.organizationLinks는 계속 ID/역할 참조이며 이름이나 경로를 저장하지 않는다. UI 변경 없이 상세 소비자가 추가 카탈로그 조회 없이 기관 이름을 사용할 수 있다.
 
 2026-09-14 보완 검증: README의 상세·캘린더 swiftc 명령을 재컴파일하고 old/new JSON 각각 통과했다. 실제 링크 이름·미등록 ID/role/basis/note 보존·링크/맥락/경로 공유 성공 fetch 1회 검사를 포함한다. 45파일 FSD/부정 fixture·git diff --check 통과, Simulator build 11:24:30Z 성공(경고/오류 없음). 값 투영만 변경하여 native runtime 및 사용자 캘린더 조작은 하지 않았다.
 
 
-### ActivityDetail 순수 생성 경계
+### NoticeDetail 순수 생성 경계
 
 `init(notice:organizationPath:contexts:organizationLinks:sources:)`가 이미 조회한 값만 받아 모든 상세 필드, 근거 URL, 정확한 phase 장소를 조립한다. Catalog/Repository/IO나 캐시 생성에 의존하지 않는다. 대표 sourceURL은 sources 배열 첫 항목이 아니라 notice.sourceIds.first와 ID가 일치하는 출처로만 해결하며, 없으면 nil이다. Repository는 공고 조회·공유 조직 캐시 조회와 관련 source ID 합집합 선택 후 이니셜라이저 호출만 담당한다.
 
 2026-09-14 이번 검증: README의 Swift 6 상세/캘린더 standalone을 재컴파일하여 old/new JSON 모두 통과했고, 조직 cache-aside standalone도 통과했다. 저장소 없는 직접 생성에서 순서가 다른 출처/대표 ID 누락·근거 URL·온라인 장소 제외·정확한 phase의 복수 장소·기존 필드를 검사했다. 45파일 FSD/부정 fixture, git diff --check, Simulator build 11:31:42Z 통과(경고/오류 없음). 순수 로직 이동으로 native runtime은 실행하지 않았고 사용자 기기/캘린더 데이터는 변경하지 않았다.
+
+
+## Notice 명칭 통일
+
+앱의 raw/read 모델은 같은 공고 도메인이다. ActivityNotice → Notice, ActivityDetail → NoticeDetail, ActivityCatalog → NoticeCatalog, ActivityNoticeSummary → NoticeSummary로 이름을 통일하고 나머지 모델/저장소의 Activity 접두사도 Notice로 바꿨다. Entities/NoticeCatalog에서 순수 상세 init, cache-aside 수명/무효화와 source ID·phase 의미를 그대로 유지한다. 내부 NoticeCatalog.notices의 CodingKeys만 기존 JSON 키 activities에 대응한다.
+
+2026-09-14 도메인 이름 변경 후 README의 상세(old/new JSON)·조직·즐겨찾기·지도·캘린더(old/new JSON) Swift 6 standalone 모두 통과했다. 45파일 FSD/fixture 및 Simulator build 11:36:41Z 성공(경고/오류 없음). 명칭 변경으로 native runtime은 실행하지 않았다. JSON/공통 경로/리소스 activity-samples.json과 ID·저장 키·접근성 태그는 호환성 예외이며 별도 Activity 앱 도메인이 아니다.

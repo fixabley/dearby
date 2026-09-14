@@ -1,10 +1,10 @@
 import SwiftUI
 
 struct FavoriteOrganizationCard<Destination: View>: View {
-    let organization: ActivityOrganization
-    let catalog: ActivityCatalog
+    let organization: NoticeOrganization
+    let catalog: NoticeCatalog
     let remove: () -> Void
-    @ViewBuilder let destination: (ActivityNotice) -> Destination
+    @ViewBuilder let destination: (Notice) -> Destination
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {

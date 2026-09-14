@@ -2,7 +2,7 @@ import Foundation
 
 @MainActor
 enum VenueMapLauncher {
-    static func open(_ venue: ActivityVenue,
+    static func open(_ venue: NoticeVenue,
                      using openURL: (URL, @escaping (Bool) -> Void) -> Void,
                      onFailure: @escaping () -> Void) {
         guard let url = VenueMapLink.url(for: venue) else {

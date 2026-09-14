@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Identity panel owned by the NoticeDetail slice.
 struct NoticeIdentityView: View {
-    let detail: ActivityDetail
+    let detail: NoticeDetail
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {

@@ -3,7 +3,7 @@ import SwiftUI
 struct ActivityCard: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
-    let summary: ActivityNoticeSummary
+    let summary: NoticeSummary
     let saved: Bool
     let position: String
     let compact: Bool

@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct DearbyApp: App {
-    private let catalogRepository = BundleActivityCatalogRepository()
+    private let catalogRepository = BundleNoticeCatalogRepository()
     @State private var favorites = FavoriteOrganizations(repository: UserDefaultsFavoriteOrganizationsRepository())
 
     var body: some Scene {

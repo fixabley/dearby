@@ -43,7 +43,7 @@ xcodebuild \
 - `Dearby/Pages/{Discovery,Favorites,NoticeDetail}/UI/`: 화면과 로컬 UI 상태
 - `Dearby/Widgets/{ActivityCard,FavoriteOrganizationCard}/UI/`: 독립 복합 카드, 표시 데이터·콜백만 사용
 - `Dearby/Features/FavoriteOrganization/{Model,API}/`: 관찰 상태·추가/삭제·저장 계약·UserDefaults
-- `Dearby/Entities/ActivityCatalog/{Model,API,UI}/`: 서로 연결된 모델·조회·공급·분류 표시
+- `Dearby/Entities/NoticeCatalog/{Model,API,UI}/`: 서로 연결된 모델·조회·공급·분류 표시
 - `Dearby/Resources/`와 `Dearby/Assets.xcassets/`: 기존 번들 샘플·테마·아이콘
 
 실제 트리, slice별 public API 계약, 의존 방향, 상태 생명주기, 새 기능 배치는 [ARCHITECTURE.md](ARCHITECTURE.md)를 따른다.
@@ -69,8 +69,8 @@ UserDefaults suite를 사용하며 사용자 앱 즐겨찾기는 변경하지 �
 ```sh
 mkdir -p apps/ios/build
 swiftc -swift-version 6 -parse-as-library \
-  apps/ios/Dearby/Entities/ActivityCatalog/Model/*.swift \
-  apps/ios/Dearby/Entities/ActivityCatalog/API/*.swift \
+  apps/ios/Dearby/Entities/NoticeCatalog/Model/*.swift \
+  apps/ios/Dearby/Entities/NoticeCatalog/API/*.swift \
   apps/ios/Dearby/Features/FavoriteOrganization/Model/*.swift \
   apps/ios/Dearby/Features/FavoriteOrganization/API/*.swift \
   apps/ios/tests/FavoritesStoreTests.swift \
@@ -95,7 +95,7 @@ python3 apps/ios/tests/check_fsd_boundaries.py
 이 검사는 간단한 lexical guard이며 Swift parser/모듈 격리를 대체하지 않는다. 추론·보간·동적 참조 등 누락 가능성은 구조 문서에 기록한다.
 각 기능/컴포넌트 변경에 필요한 코드·검사·문서를 같은 커밋에 넣는다.
 
-카드 입력은 `catalog.summary(for:)`의 `ActivityNoticeSummary`이며, 독립 검사에서 대상 해결/미확정·학교 맥락·대회 회차 보존을 확인한다.
+카드 입력은 `catalog.summary(for:)`의 `NoticeSummary`이며, 독립 검사에서 대상 해결/미확정·학교 맥락·대회 회차 보존을 확인한다.
 
 즐겨찾기 업무 연산은 `FavoriteOrganizations.saveOrganization(for:in:)`가 소유하며, 페이지는 `SaveOrganizationResult`만 받아 피드백으로 표시한다.
 카탈로그와 즐겨찾기는 각각 Repository 계약과 번들/UserDefaults 구현을 주입한다. 저장 키와 동기 배열 저장 형식은 유지한다.
@@ -103,7 +103,7 @@ python3 apps/ios/tests/check_fsd_boundaries.py
 
 카드의 NoticeFact와 상세의 NoticeIdentityView/NoticeDetailField/NoticeIdentityFact는 각 소유 slice의 UI 파일로 분리합니다. 외부 진입점은 기존 카드·페이지이며, 전체 UI 조사 목록과 이번 빌드/검사 결과는 ARCHITECTURE.md의 UI 보조 컴포넌트 파일 분리를 참고합니다.
 
-앱의 단순 summary 필드는 String/[String]으로 디코딩하며 원본 구조화 JSON은 유지합니다. 장소는 ActivityLocation/ActivityVenue로 해석합니다.
+앱의 단순 summary 필드는 String/[String]으로 디코딩하며 원본 구조화 JSON은 유지합니다. 장소는 NoticeLocation/NoticeVenue로 해석합니다.
 
 ## 장소 좌표와 지도 검증
 
@@ -113,7 +113,7 @@ App이 Apple Maps HTTPS 링크를 명시적 탭에서만 열며, OS가 링크를
 
 ```sh
 swiftc -swift-version 6 -parse-as-library \
-  apps/ios/Dearby/Entities/ActivityCatalog/Model/*.swift \
+  apps/ios/Dearby/Entities/NoticeCatalog/Model/*.swift \
   apps/ios/Dearby/App/VenueMapLink.swift \
   apps/ios/Dearby/App/VenueMapLauncher.swift \
   apps/ios/tests/VenueMapTests.swift -o apps/ios/build/dearby-map-tests
@@ -131,8 +131,8 @@ apps/ios/build/dearby-favorites-tests apps/ios/Dearby/Resources/activity-samples
 
 ```sh
 swiftc -swift-version 6 -parse-as-library \
-  apps/ios/Dearby/Entities/ActivityCatalog/Model/*.swift \
-  apps/ios/Dearby/Entities/ActivityCatalog/API/*.swift \
+  apps/ios/Dearby/Entities/NoticeCatalog/Model/*.swift \
+  apps/ios/Dearby/Entities/NoticeCatalog/API/*.swift \
   apps/ios/Dearby/Features/AddToCalendar/Model/*.swift \
   apps/ios/Dearby/App/CalendarEditorRequest.swift \
   apps/ios/Dearby/App/VenueMapLink.swift \
@@ -142,7 +142,7 @@ apps/ios/build/dearby-calendar-tests apps/ios/Dearby/Resources/activity-samples.
 
 캘린더 버튼은 사용자가 수정·저장하거나 취소할 수 있는 시스템 편집기를 엽니다. 앱은 캘린더 접근 권한 요청이나 직접 저장을 하지 않습니다.
 
-신청은 ActivityApplication의 날짜·URL을 보존하고, 각 활동 단계는 정확히 일치하는 장소 또는 온라인 접속 정보를 사용합니다.
+신청은 NoticeApplication의 날짜·URL을 보존하고, 각 활동 단계는 정확히 일치하는 장소 또는 온라인 접속 정보를 사용합니다.
 날짜를 확인할 수 없으면 해당 버튼이 없고 원래 안내 문구는 유지됩니다. 종료 미상은 notes에 남기며 임의의 시간 길이를 생성하지 않습니다.
 최신 캘린더 sample은 공통 PR #6의 SHA256 `c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f`이며 이전 지도 sample hash를 대체합니다.
 
@@ -150,8 +150,8 @@ apps/ios/build/dearby-calendar-tests apps/ios/Dearby/Resources/activity-samples.
 
 ```sh
 swiftc -swift-version 6 -parse-as-library \
-  apps/ios/Dearby/Entities/ActivityCatalog/Model/*.swift \
-  apps/ios/Dearby/Entities/ActivityCatalog/API/*.swift \
+  apps/ios/Dearby/Entities/NoticeCatalog/Model/*.swift \
+  apps/ios/Dearby/Entities/NoticeCatalog/API/*.swift \
   apps/ios/tests/OrganizationRepositoryTests.swift -o apps/ios/build/dearby-organization-tests
 apps/ios/build/dearby-organization-tests
 ```
@@ -160,11 +160,11 @@ apps/ios/build/dearby-organization-tests
 
 ```sh
 swiftc -swift-version 6 -parse-as-library \
-  apps/ios/Dearby/Entities/ActivityCatalog/Model/*.swift \
-  apps/ios/Dearby/Entities/ActivityCatalog/API/*.swift \
-  apps/ios/tests/ActivityDetailTests.swift -o apps/ios/build/dearby-detail-tests
+  apps/ios/Dearby/Entities/NoticeCatalog/Model/*.swift \
+  apps/ios/Dearby/Entities/NoticeCatalog/API/*.swift \
+  apps/ios/tests/NoticeDetailTests.swift -o apps/ios/build/dearby-detail-tests
 apps/ios/build/dearby-detail-tests apps/ios/Dearby/Resources/activity-samples.json
 apps/ios/build/dearby-detail-tests shared/contracts/activities/sample.json
 ```
 
-ActivityDetailRepository는 App 수명 동안 조직 source/cache를 공유하고 페이지에는 ActivityDetail만 전달합니다. 근거의 sourceId/locator/fieldPath 및 출처 메타데이터, 역할 ID와 선택 조직 ID를 보존합니다. aiDescription은 기존 검토 샘플 요약으로 새 AI 생성이 아닙니다. 상세 기간/장소는 캘린더·지도에도 동일한 값으로 전달합니다.
+NoticeDetailRepository는 App 수명 동안 조직 source/cache를 공유하고 페이지에는 NoticeDetail만 전달합니다. 근거의 sourceId/locator/fieldPath 및 출처 메타데이터, 역할 ID와 선택 조직 ID를 보존합니다. aiDescription은 기존 검토 샘플 요약으로 새 AI 생성이 아닙니다. 상세 기간/장소는 캘린더·지도에도 동일한 값으로 전달합니다.

@@ -1,12 +1,12 @@
 import SwiftUI
 
 struct FavoriteListView<Destination: View>: View {
-    let catalog: ActivityCatalog
+    let catalog: NoticeCatalog
     let favoriteIDs: Set<String>
     let removeOrganization: (String) -> Void
-    @ViewBuilder let destination: (ActivityNotice) -> Destination
+    @ViewBuilder let destination: (Notice) -> Destination
 
-    private var savedOrganizations: [ActivityOrganization] {
+    private var savedOrganizations: [NoticeOrganization] {
         catalog.organizations.filter { favoriteIDs.contains($0.id) }
     }
 

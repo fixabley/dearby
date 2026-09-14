@@ -1,31 +1,36 @@
 import Foundation
 
-struct ActivityCatalog: Decodable {
+struct NoticeCatalog: Decodable {
     let schemaVersion: String
     let mode: String
     let snapshotAt: String
-    let sources: [ActivitySource]
-    let organizations: [ActivityOrganization]
-    let activities: [ActivityNotice]
+    let sources: [NoticeSource]
+    let organizations: [NoticeOrganization]
+    let notices: [Notice]
 
-    var feed: [ActivityNotice] {
-        activities.filter(\.demoVisible).sorted {
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, mode, snapshotAt, sources, organizations
+        case notices = "activities" // Existing wire key; app domain is Notice.
+    }
+
+    var feed: [Notice] {
+        notices.filter(\.demoVisible).sorted {
             ($0.favoriteOrganizationId == nil ? 1 : 0) < ($1.favoriteOrganizationId == nil ? 1 : 0)
         }
     }
 
-    func summary(for notice: ActivityNotice) -> ActivityNoticeSummary {
-        ActivityNoticeSummary(notice: notice,
+    func summary(for notice: Notice) -> NoticeSummary {
+        NoticeSummary(notice: notice,
                               organization: organization(notice.favoriteOrganizationId),
                               contextNames: contextNames(for: notice))
     }
 
-    func organization(_ id: String?) -> ActivityOrganization? {
+    func organization(_ id: String?) -> NoticeOrganization? {
         organizations.first { $0.id == id }
     }
 
-    func organizationPath(_ id: String?) -> [ActivityOrganization] {
-        var path: [ActivityOrganization] = []
+    func organizationPath(_ id: String?) -> [NoticeOrganization] {
+        var path: [NoticeOrganization] = []
         var seen: Set<String> = []
         var current = organization(id)
         while let item = current, seen.insert(item.id).inserted {
@@ -35,7 +40,7 @@ struct ActivityCatalog: Decodable {
         return path
     }
 
-    func contextNames(for notice: ActivityNotice) -> String {
+    func contextNames(for notice: Notice) -> String {
         var seen: Set<String> = []
         return notice.contexts.compactMap { context in
             guard seen.insert(context.organizationId).inserted else { return nil }
@@ -43,12 +48,12 @@ struct ActivityCatalog: Decodable {
         }.joined(separator: " · ")
     }
 
-    func sourceURL(for activity: ActivityNotice) -> URL? {
-        sources.first { $0.id == activity.sourceIds.first }.flatMap { URL(string: $0.url) }
+    func sourceURL(for notice: Notice) -> URL? {
+        sources.first { $0.id == notice.sourceIds.first }.flatMap { URL(string: $0.url) }
     }
 }
 
-struct ActivitySource: Decodable {
+struct NoticeSource: Decodable {
     let id: String
     let url: String
     var kind: String? = nil
@@ -57,13 +62,13 @@ struct ActivitySource: Decodable {
     var note: String? = nil
 }
 
-struct ActivityOrganization: Decodable, Identifiable {
+struct NoticeOrganization: Decodable, Identifiable {
     let id: String
     let name: String
     let parentOrganizationId: String?
 }
 
-struct ActivityContext: Decodable {
+struct NoticeContext: Decodable {
     let organizationId: String
     let role: String
     var basis: String? = nil
@@ -79,7 +84,7 @@ struct ActivityContext: Decodable {
     }
 }
 
-struct ActivityNotice: Decodable, Identifiable {
+struct Notice: Decodable, Identifiable {
     let id: String
     let title: String
     let summary: String
@@ -88,16 +93,16 @@ struct ActivityNotice: Decodable, Identifiable {
     let sourceIds: [String]
     let audience: String
     let eligibility: String
-    let application: ActivityApplication
-    let location: ActivityLocation
-    let schedule: [ActivitySchedule]
+    let application: NoticeApplication
+    let location: NoticeLocation
+    let schedule: [NoticeSchedule]
     let benefits: [String]
     let qualityIssues: [String]
     let categoryPath: [String]
-    let contexts: [ActivityContext]
+    let contexts: [NoticeContext]
     let edition: Int?
-    var organizationLinks: [ActivityContext] = []
-    var evidence: [ActivityEvidence] = []
+    var organizationLinks: [NoticeContext] = []
+    var evidence: [NoticeEvidence] = []
 
     var categorySummary: String {
         let labels = ["recruitment": "채용", "recruitment_event": "채용행사",
@@ -109,7 +114,7 @@ struct ActivityNotice: Decodable, Identifiable {
 
 // Decode only display summaries from the structured source contract.
 // An extension preserves Swift's memberwise initializer for fixtures and projections.
-extension ActivityNotice {
+extension Notice {
     private enum CodingKeys: String, CodingKey {
         case id, title, summary, demoVisible, favoriteOrganizationId, sourceIds
         case audience, eligibility, application, location, schedule, benefits, qualityIssues
@@ -127,9 +132,9 @@ extension ActivityNotice {
         sourceIds = try values.decode([String].self, forKey: .sourceIds)
         audience = try values.nestedContainer(keyedBy: SummaryKey.self, forKey: .audience).decode(String.self, forKey: .summary)
         eligibility = try values.nestedContainer(keyedBy: SummaryKey.self, forKey: .eligibility).decode(String.self, forKey: .summary)
-        application = try values.decode(ActivityApplication.self, forKey: .application)
-        location = try values.decode(ActivityLocation.self, forKey: .location)
-        schedule = try values.decode([ActivitySchedule].self, forKey: .schedule)
+        application = try values.decode(NoticeApplication.self, forKey: .application)
+        location = try values.decode(NoticeLocation.self, forKey: .location)
+        schedule = try values.decode([NoticeSchedule].self, forKey: .schedule)
         var benefitValues = try values.nestedUnkeyedContainer(forKey: .benefits)
         var decodedBenefits: [String] = []
         while !benefitValues.isAtEnd {
@@ -143,9 +148,9 @@ extension ActivityNotice {
         }
         qualityIssues = decodedIssues
         categoryPath = try values.decode([String].self, forKey: .categoryPath)
-        contexts = try values.decode([ActivityContext].self, forKey: .contexts)
+        contexts = try values.decode([NoticeContext].self, forKey: .contexts)
         edition = try values.decodeIfPresent(Int.self, forKey: .edition)
-        organizationLinks = try values.decodeIfPresent([ActivityContext].self, forKey: .organizationLinks) ?? []
-        evidence = try ActivityEvidenceDecoder.collect(from: decoder)
+        organizationLinks = try values.decodeIfPresent([NoticeContext].self, forKey: .organizationLinks) ?? []
+        evidence = try NoticeEvidenceDecoder.collect(from: decoder)
     }
 }
