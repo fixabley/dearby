@@ -9,6 +9,7 @@
 ```text
 MainActivity.kt                         기존 manifest 컴포넌트, App 진입·의존성 조립
 app/
+  OpenCalendarEditor.kt                Calendar ACTION_INSERT·실패 안내
   OpenVenueMap.kt                       geo Intent 생성·실행/실패 콜백
   DearbyApp.kt                          탭·상세 라우팅·공급/재시도·상태 전달
 pages/
@@ -17,6 +18,8 @@ pages/
   noticedetail/ui/
     NoticeDetailSheet.kt                상세 시트·dismiss/원문 콜백
     NoticeIdentity.kt                   상세 내부의 관심 조직·분류·맥락·회차
+    AddToCalendarButton.kt             immutable 초안·버튼·콜백
+    ActivityScheduleSection.kt          단계별 일정 안내·캘린더 버튼
     NoticeLocationSection.kt            장소 요약·복수 장소 액션·층/호실 안내
     VenueMapButton.kt                   단일 장소 이름·지도 콜백
 widgets/
@@ -24,6 +27,12 @@ widgets/
   favoriteorganizationcard/ui/
     FavoriteOrganizationCard.kt        조직·상위 경로·연결 공고·명시적 삭제
 features/
+  addtocalendar/model/
+    CalendarDraft.kt                   immutable 편집기 입력
+    ApplicationCalendarDraft.kt        신청 날짜·URL 초안
+    PhaseCalendarDraft.kt              활동 단계·장소/온라인 초안
+    CalendarPeriod.kt                  strict 시간/종일 경계 (내부)
+    CalendarLinks.kt                   안전한 http(s) URL (내부)
   favoriteorganization/
     model/FavoritesState.kt             관찰 상태·멱등 추가·삭제
     api/FavoriteStore.kt                 저장 계약
@@ -31,9 +40,12 @@ features/
 entities/
   activitycatalog/
     model/ActivityCatalog.kt            Organization/NoticeContext/Notice/ActivityCatalog
+    model/ActivityApplication.kt        신청 summary·날짜·URL
+    model/ActivityPhase.kt              활동 phase·날짜·mode·온라인 URL
     model/ActivityLocation.kt           장소 summary/mode/status와 복수 venues
     model/ActivityVenue.kt              phase/name/address·선택 좌표
     model/VenueCoordinates.kt           유한 수·위경도 범위 검증
+    api/DecodeCalendarMetadata.kt     신청·단계 JSON 보존 해석 (내부)
     api/DecodeActivityLocation.kt       선택 좌표 안전 해석 (slice 내부)
     api/CatalogProvider.kt              교체 가능한 공급 계약
     api/AssetCatalogProvider.kt         기존 JSON/출처 URL 매핑·번들 로딩
@@ -54,11 +66,12 @@ shared/
 | App (segment 예외) | manifest의 `MainActivity`, `app/DearbyApp` 조립 |
 | Pages / discovery | `ui.DiscoveryScreen` |
 | Pages / favorites | `ui.FavoritesScreen` |
-| Pages / noticedetail | `ui.NoticeDetailSheet`; `NoticeIdentity`, `NoticeLocationSection`, `VenueMapButton`은 slice 내부 helper |
+| Pages / noticedetail | `ui.NoticeDetailSheet`; `NoticeIdentity`, `NoticeLocationSection`, `VenueMapButton`, `AddToCalendarButton`, `ActivityScheduleSection`은 slice 내부 helper |
 | Widgets / activitycard | `ui.ActivityCard` |
 | Widgets / favoriteorganizationcard | `ui.FavoriteOrganizationCard` |
+| Features / addtocalendar | `model.CalendarDraft`, `model.applicationCalendarDraft`, `model.phaseCalendarDraft` |
 | Features / favoriteorganization | `model.FavoritesState`, `api.FavoriteStore`, `api.SharedPreferencesFavoriteStore` |
-| Entities / activitycatalog | `model.Organization`, `model.NoticeContext`, `model.Notice`, `model.ActivityCatalog`, `model.ActivityLocation`, `model.ActivityVenue`, `model.VenueCoordinates`, `api.CatalogProvider`, `api.AssetCatalogProvider`, `ui.ActivityClassification` |
+| Entities / activitycatalog | `model.Organization`, `model.NoticeContext`, `model.Notice`, `model.ActivityCatalog`, `model.ActivityApplication`, `model.ActivityPhase`, `model.ActivityLocation`, `model.ActivityVenue`, `model.VenueCoordinates`, `api.CatalogProvider`, `api.AssetCatalogProvider`, `ui.ActivityClassification` |
 | Shared (segment 예외) | `ui.NoticeFact`, `ui.theme.DearbyTheme` |
 
 저장소 필드·상태 setter·내부 update 함수·JSON 배열 helper는 private이다. `NoticeIdentity`는 별도 Kotlin 파일에서 같은 상세 slice가 사용하는 internal helper이며 App 등 외부 slice에서 import하지 않도록 구조 검사로 제한한다. MainActivity의 루트 패키지는 기존 Android 컴포넌트 이름을 바꾸지 않기 위한 App 진입점 예외다.
@@ -174,3 +187,19 @@ App이 초안을 구성해 상세와 클릭 콜백에 전달한다. ACTION_INSER
 공통 PR #6 확정 캘린더 asset SHA256 `c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f`를 자기 resource에만 복사했다. 앞 지도 섹션의 hash는 당시 검증값이다. 이번에는 신청 캘린더의 Kotlin 순수 날짜·URL 정책과 Intent/버튼 계측을 추가했다. 기존 지도 검증은 과거 결과이며 최신 전체 검증은 활동 단계 연결 후 별도로 기록한다.
 
 신청 기능 커밋 전 검증: 구조31파일/self-test13·JVM13(기존7+신청6)·Debug·전용5556 신청/Intent 계측4건 통과. 로그 `build/calendar-application-verified.log`. 최초 UI 테스트의 잘못 가정한 URL 호스트와 상세/카드 중복 문구 selector를 교정 후 4건 재실행했다. 실제 편집기 handler는 없어 외부 화면 확인은 미실행이다.
+
+
+## 활동 단계 캘린더 (2026-09-14)
+
+`ActivityPhase`는 원래 phase/startsAt/startsOn/endsAt와 선택 endsOn/timezone/onlineUrl, mode를 가진다. 기존 일정 표시 문자열은 summary 계산으로 보존하고 날짜를 UI 문구에서 다시 추출하지 않는다. 새 모델 외부 진입점은 `entities.activitycatalog.model.ActivityPhase`, 변환 진입점은 `features.addtocalendar.model.phaseCalendarDraft`다. App만 변환을 호출하고 nullable 초안 목록을 순서대로 상세에 전달한다. `ActivityScheduleSection`은 같은 상세 slice의 별도 internal UI 파일이며 원래 문구·초안·인덱스·콜백만 받는다. 새 캘린더 대상은 같은 Feature의 변환에, 표시 변경은 해당 Pages UI에, OS 편집기 전달은 App에 추가한다.
+
+활동도 두 시각이 유효하면 정확한 구간, 그 외는 날짜 기준 종일 초안이다. endsOn은 포함일이며 endsAt 자정은 제외 경계다. 시작이 없거나 잘못된/역전된 값이면 내보내지 않는다. 종료 미확인은 한 날 초안과 `종료: 미확인`을 사용하고 실제 종료 시간이라고 주장하지 않는다.
+
+venue는 phase 문자열이 정확히 일치하는 모든 항목을 사용한다. 오프라인 장소 이름·주소·층/호실을 함께 넣고 유효 좌표 지도 링크를 설명에 남긴다. 온라인은 EVENT_LOCATION이 `온라인`이며 검증된 onlineUrl만 설명에 기록하고 다른 단계의 오프라인 장소를 차용하지 않는다. onlineUrl이 없으면 URL을 추정하지 않는다. 관련 원문은 `원문`으로 구분하며 신청 URL로 위장하지 않는다. 본문에는 원래 공고/단계 안내와 알려진 시각·시간대·미확인 정보를 남긴다.
+
+순수 PhaseCalendarTest가 KRC/DB 정확한 시각·종일/자정·종료 미확인·잘못된 날짜·온라인 링크·불일치/복수 venue를 검증한다. PhaseCalendarFlowTest는 canonical 대회의 예선과 결선이 각각 올바른 초안으로 전달되는지, 잘못된 단계는 문구를 유지하면서 버튼이 없는지 확인한다. 기존 신청/지도/저장 테스트를 유지한다. 기능별 신청/활동 커밋에 관련 테스트와 문서를 함께 넣는다.
+
+
+최종 캘린더 검증(2026-09-14): 구조35파일/self-test13(금지9/허용4), JVM17(기존 상태/좌표7+신청6+단계4), Debug, Lint 오류0/권고12, 전용 emulator-5556 계측28건 통과(실패/오류/skip 0). 앞선 지도24파일/JVM7/계측20과 구분한다. Lint 권고는 기존 사용 패턴 및 의존 버전 알림으로 의존성을 변경하지 않았다. `DecodeCalendarMetadata`는 같은 Entity 내부 helper이며 타입이 잘못된 날짜를 누락으로 덮지 않고 변환 단계에서 거부되도록 보존한다. CalendarMetadataDecodeTest 2건은 이전 optional 필드·null·timezone 기본값·inclusive endsOn·rich JSON 불변·잘못된 타입을 검사한다.
+
+실행 명령은 기존 구조/JVM/Debug/Lint/전용 계측 명령과 같다. 최신 로그는 `build/calendar-final-verified.log`, 결과 XML은 `app/build/test-results/testDebugUnitTest/`, `app/build/outputs/androidTest-results/connected/debug/`, Lint는 `app/build/reports/lint-results-debug.html`이다. `adb -s emulator-5556 shell cmd package resolve-activity --brief -a android.intent.action.INSERT -d content://com.android.calendar/events` 결과가 `No activity found`여서 실제 외부 편집기 열기/취소는 미검증이다. 테스트는 주입한 어댑터로 Intent/미설치·차단 오류와 handoff 후 상세 상태 유지를 검증했으며 실제 캘린더 이벤트를 저장하지 않았다. 설치된 편집기 내부의 쓰기 가능한 캘린더 선택은 그 앱이 처리한다. Dearby는 캘린더를 읽지 않아 저장 여부나 개인 캘린더 목록을 확인하지 않는다. 실제 편집기 UI·저장/동기화·TalkBack 전체 검증은 남은 한계다. 사용자5554는 조작하지 않았고 테스트 후 전용5556만 종료한다.

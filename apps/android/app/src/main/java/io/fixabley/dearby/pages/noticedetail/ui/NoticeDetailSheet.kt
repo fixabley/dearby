@@ -6,6 +6,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.platform.testTag
 import io.fixabley.dearby.entities.activitycatalog.model.ActivityCatalog
@@ -16,7 +17,7 @@ import io.fixabley.dearby.shared.ui.NoticeFact
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-internal fun NoticeDetailSheet(notice: Notice, catalog: ActivityCatalog?, onDismiss: () -> Unit, onOpenSource: (String) -> Unit, onOpenMap: (ActivityVenue) -> Unit, applicationDraft: CalendarDraft?, onAddToCalendar: (CalendarDraft) -> Unit) {
+internal fun NoticeDetailSheet(notice: Notice, catalog: ActivityCatalog?, onDismiss: () -> Unit, onOpenSource: (String) -> Unit, onOpenMap: (ActivityVenue) -> Unit, applicationDraft: CalendarDraft?, phaseDrafts: List<CalendarDraft?>, onAddToCalendar: (CalendarDraft) -> Unit) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -36,7 +37,7 @@ internal fun NoticeDetailSheet(notice: Notice, catalog: ActivityCatalog?, onDism
                         Modifier.testTag("calendar.application"))
                 }
             }
-            items(notice.schedule) { NoticeFact("활동 일정", it) }
+            itemsIndexed(notice.schedule) { index, phase -> ActivityScheduleSection(phase, phaseDrafts.getOrNull(index), index, onAddToCalendar) }
             item { NoticeLocationSection(notice.location, onOpenMap) }
             items(notice.benefits) { NoticeFact("혜택", it) }
             items(notice.issues) { NoticeFact("확인 필요", it) }

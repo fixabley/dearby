@@ -19,7 +19,7 @@ internal data class Notice(
     val eligibility: String,
     val application: ActivityApplication,
     val location: ActivityLocation,
-    val schedule: List<String>,
+    val schedule: List<ActivityPhase>,
     val benefits: List<String>,
     val issues: List<String>,
     val sourceUrl: String,

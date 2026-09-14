@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import io.fixabley.dearby.R
 import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft
 import io.fixabley.dearby.features.addtocalendar.model.applicationCalendarDraft
+import io.fixabley.dearby.features.addtocalendar.model.phaseCalendarDraft
 import io.fixabley.dearby.entities.activitycatalog.model.Notice
 import io.fixabley.dearby.entities.activitycatalog.model.ActivityVenue
 import io.fixabley.dearby.entities.activitycatalog.api.CatalogProvider
@@ -64,6 +65,6 @@ internal fun DearbyApp(catalogProvider: CatalogProvider, favorites: FavoritesSta
         }
     }
     detail?.let { notice ->
-        NoticeDetailSheet(notice, catalog, onDismiss = { detail = null }, onOpenSource = onOpenSource, onOpenMap = onOpenMap, applicationDraft = applicationCalendarDraft(notice), onAddToCalendar = onAddToCalendar)
+        NoticeDetailSheet(notice, catalog, onDismiss = { detail = null }, onOpenSource = onOpenSource, onOpenMap = onOpenMap, applicationDraft = applicationCalendarDraft(notice), phaseDrafts = notice.schedule.map { phaseCalendarDraft(notice, it) }, onAddToCalendar = onAddToCalendar)
     }
 }

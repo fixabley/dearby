@@ -28,19 +28,9 @@ internal class AssetCatalogProvider(private val assets: AssetManager) : CatalogP
                     organizationId = if (item.isNull("favoriteOrganizationId")) null else item.getString("favoriteOrganizationId"),
                     audience = item.getJSONObject("audience").getString("summary"),
                     eligibility = item.getJSONObject("eligibility").getString("summary"),
-                    application = item.getJSONObject("application").let { application ->
-                        ActivityApplication(application.getString("summary"),
-                            application.opt("opensAt") as? String, application.opt("opensOn") as? String,
-                            application.opt("closesAt") as? String, application.opt("closesOn") as? String,
-                            application.opt("timezone") as? String ?: "Asia/Seoul", application.opt("url") as? String)
-                    },
+                    application = decodeActivityApplication(item.getJSONObject("application")),
                     location = decodeActivityLocation(item.getJSONObject("location")),
-                    schedule = item.getJSONArray("schedule").objects().map { phase ->
-                        val label = mapOf("event" to "행사", "preliminary" to "예선", "finalist_announcement" to "결선 진출 발표", "final" to "결선·시상")[phase.getString("phase")] ?: phase.getString("phase")
-                        val start = if (phase.isNull("startsAt")) phase.optString("startsOn", "일정 미확인") else phase.getString("startsAt").take(16).replace('T', ' ')
-                        val end = if (phase.isNull("endsAt")) "" else " ~ " + phase.getString("endsAt").take(16).replace('T', ' ')
-                        "$label: $start$end (한국 시간)"
-                    },
+                    schedule = item.getJSONArray("schedule").objects().map(::decodeActivityPhase),
                     benefits = item.getJSONArray("benefits").objects().map { it.getString("summary") },
                     issues = item.getJSONArray("qualityIssues").objects().map { it.getString("summary") },
                     categoryPath = item.getJSONArray("categoryPath").let { array ->

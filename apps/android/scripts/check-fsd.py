@@ -17,9 +17,9 @@ API = {
     "features.favoriteorganization": {
         "model.FavoritesState", "api.FavoriteStore", "api.SharedPreferencesFavoriteStore",
     },
-    "features.addtocalendar": {"model.CalendarDraft", "model.applicationCalendarDraft"},
+    "features.addtocalendar": {"model.CalendarDraft", "model.applicationCalendarDraft", "model.phaseCalendarDraft"},
     "entities.activitycatalog": {
-        "model.ActivityApplication",
+        "model.ActivityApplication", "model.ActivityPhase",
         "model.ActivityLocation", "model.ActivityVenue", "model.VenueCoordinates",
         "model.ActivityCatalog", "model.Notice", "model.Organization", "model.NoticeContext",
         "api.CatalogProvider", "api.AssetCatalogProvider", "ui.ActivityClassification",
