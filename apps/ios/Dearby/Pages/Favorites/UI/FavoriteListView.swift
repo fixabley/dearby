@@ -1,9 +1,10 @@
 import SwiftUI
 
-struct FavoriteListView: View {
+struct FavoriteListView<Destination: View>: View {
     let catalog: ActivityCatalog
     let favoriteIDs: Set<String>
     let removeOrganization: (String) -> Void
+    @ViewBuilder let destination: (ActivityNotice) -> Destination
 
     private var savedOrganizations: [ActivityOrganization] {
         catalog.organizations.filter { favoriteIDs.contains($0.id) }
@@ -16,10 +17,11 @@ struct FavoriteListView: View {
                                        description: Text("발견 탭의 공고를 더블탭하면 조직이 여기에 저장돼요."))
             } else {
                 List(savedOrganizations) { organization in
-                    FavoriteOrganizationRow(
+                    FavoriteOrganizationCard(
                         organization: organization,
                         catalog: catalog,
-                        remove: { removeOrganization(organization.id) }
+                        remove: { removeOrganization(organization.id) },
+                        destination: destination
                     )
                 }
             }

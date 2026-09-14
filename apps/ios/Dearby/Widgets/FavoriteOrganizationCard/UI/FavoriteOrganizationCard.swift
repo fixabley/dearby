@@ -1,9 +1,10 @@
 import SwiftUI
 
-struct FavoriteOrganizationRow: View {
+struct FavoriteOrganizationCard<Destination: View>: View {
     let organization: ActivityOrganization
     let catalog: ActivityCatalog
     let remove: () -> Void
+    @ViewBuilder let destination: (ActivityNotice) -> Destination
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -18,7 +19,7 @@ struct FavoriteOrganizationRow: View {
                 .font(.caption).foregroundStyle(.secondary)
             ForEach(notices) { notice in
                 NavigationLink {
-                    NoticeDetailView(notice: notice, catalog: catalog)
+                    destination(notice)
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(notice.title)

@@ -19,7 +19,9 @@ struct ContentView: View {
                     }
                     Tab("즐겨찾기", systemImage: "heart") {
                         NavigationStack {
-                            FavoriteListView(catalog: catalog, favoriteIDs: favoriteIDs, removeOrganization: favorites.remove)
+                            FavoriteListView(catalog: catalog, favoriteIDs: favoriteIDs, removeOrganization: favorites.remove) { notice in
+                                NoticeDetailView(notice: notice, catalog: catalog)
+                            }
                         }
                     }
                 }

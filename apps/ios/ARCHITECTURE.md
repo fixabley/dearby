@@ -1,3 +1,12 @@
+# FSD 전환 진행 — 즐겨찾기 조직 카드
+
+2026-09-14. `Pages/Favorites/UI/FavoriteListView<Destination>`는 표시 ID와 삭제 콜백·목적지 ViewBuilder를 받는다.
+`Widgets/FavoriteOrganizationCard/UI/FavoriteOrganizationCard<Destination>`는 독립 복합 카드이며 저장소/공유 상태나 상세 페이지 타입을 모른다. App이 목적지를 주입하고 기존 NavigationLink 모습·뒤로 가기를 유지한다.
+즐겨찾기 행동의 단일 상태는 `Features/FavoriteOrganization/Model/FavoriteOrganizations`, 저장 계약과 UserDefaults 구현은 같은 slice의 API에 둔다. App의 소유 인스턴스·관찰 위치와 기존 키/배열은 유지한다.
+이번 컴포넌트 검사는 두 소비자의 삭제 알림까지 확장했다. Widgets/Entities/FavoriteOrganization/Favorites의 경계 검사, 독립 Swift 상태·복원 검사 및 Simulator Debug 빌드가 통과했다. 아래 공고 카드 기록 및 이전 구조는 단계 이력이며 최종 라우팅 커밋에서 실제 트리 전체로 교체한다.
+
+---
+
 # FSD 전환 진행 — 공고 카드 컴포넌트
 
 2026-09-14, [#1](https://github.com/fixabley/dearby/issues/1) / [설계 #3](https://github.com/fixabley/dearby/pull/3).

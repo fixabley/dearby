@@ -81,7 +81,15 @@ struct FavoritesStoreTests {
         state.save("db-insurance")
         precondition(discoveryIDs() == ["cbnu-career", "krc", "db-insurance"])
         precondition(favoritesIDs() == discoveryIDs())
+        withObservationTracking { _ = discoveryIDs() } onChange: {
+            discoveryChanges.withLock { $0 += 1 }
+        }
+        withObservationTracking { _ = favoritesIDs() } onChange: {
+            favoritesChanges.withLock { $0 += 1 }
+        }
         state.remove("krc")
+        precondition(discoveryChanges.withLock { $0 } == 2)
+        precondition(favoritesChanges.withLock { $0 } == 2)
         state.remove("not-saved")
         precondition(discoveryIDs() == ["cbnu-career", "db-insurance"])
         precondition(favoritesIDs() == discoveryIDs())
