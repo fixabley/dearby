@@ -73,3 +73,5 @@ SchedulePreview의 light/dark/2×와 InformationPreview의 MetadataRow를 제공
 상세의 nonzero 초·소수초는 ISO_LOCAL_TIME으로 보존한다. 같은날 mixed precision은 시작/종료 시간 미확인을 구분하고 종료만 있으면 시작 미확인도 표시한다. 카드의 기존 축약 출력에는 변경하지 않는다.
 
 파싱 실패의 원문 summary는 날짜 fallback에 이미 표시하므로 신청 보조문구에서 다시 반복하지 않는다.
+
+`SchedulePreview`의 light/dark/2×가 새 DetailMetadata 날짜·시간 구성을 사용한다. 동일 컴포넌트는 신청과 실제 phase 장소에서도 사용한다.

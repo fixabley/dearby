@@ -184,3 +184,7 @@ ANDROID_SERIAL=emulator-5556 JAVA_HOME='/Applications/Android Studio.app/Content
 PR9 후속: 공고/조직 액션은 native icon button으로 줄이고 관심 조직명은 카드에 유지한다. NoticeScheduleState가 phase 이름·간결한 날짜·짧은 장소/전체 접근성 설명을 조립하며 신청과 활동 일정을 분리한다. 모델/캐시/캘린더 exporter는 그대로다. 상세한 API·정책은 디자인 시스템 문서의 후속 항목을 따른다.
 
 PR9 아이콘/일정 후속 검증(2026-09-14): JVM46·전체계측39·FSD68/self-test24·Debug/Release/계측 APK·Lint 오류0/기존12 통과. [최신 화면과 실행 기록](docs/design-system/VERIFICATION.md#pr9-후속--아이콘-액션과-일정-위계-2026-09-14)을 참고한다.
+
+### Calendar-style detail projection (PR9 후속)
+
+NoticeDetail의 DetailPeriodState/DetailPlaceState 순수 projection이 날짜/시간과 장소명/주소·호실을 조립한다. Shared `DetailMetadata`는 primary/secondary/description/icon과 native action 슬롯만 받는다. 지도 액션은 phase의 원본 NoticeVenue를 전달하고 하단 장소 구획에는 중복되지 않은 원문 안내/미배치 venue만 남긴다. 카드/도메인 모델/cache/favorites/exporter 불변이며 상세의 초·소수초/미확인 경계도 보존한다. 참고와 이번 검증은 design-system/VERIFICATION.md의 2026-09-15 절에 분리 기록한다.

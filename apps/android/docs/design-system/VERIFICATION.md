@@ -78,3 +78,36 @@ NoticeModel/OrganizationModel, Room off-main/cancellation/transaction, L1→disk
 이전과 같은 전용5556에서 캡처하며 실제 calendar save/외부 링크 실행 없이 UI와 전달값만 검증한다. 캡처의 초기 빠른 스크롤이 목표 구획을 지나쳐 드라이버를 느린 스크롤로 수정했다. 앱 코드/기기 데이터 초기화로 우회하지 않았다. TalkBack 전체 음성 순회, API31 실기기, 모든 OEM·가로·태블릿 조합과 외부 Calendar/지도 앱 내부는 여전히 미검증이다.
 
 최신 화면 QA 완료: 새 PNG36개와 모든 증거 링크를 확인했고 light/dark 기본·2×의 카드, 즐겨찾기, 신청·행사와 온라인 예선·발표·결선을 시각 검토했다. 일정 이름·날짜·장소·액션의 겹침 없이 줄바꿈/스크롤되며 compact 카드의 말줄임은 상세와 전체 접근성 설명으로 보완한다. 캡처 종료 후 전용5556의 `font_scale=1.0`, `night=no`, favorites `<map />` 복원을 읽기 확인했다.
+
+## 캘린더 상세 표현 후속 (2026-09-15)
+
+기준 `ff8ccaa` 이후의 새 실행이다. `7cee7af`는 날짜/시간 위계, `0721fe5`는 장소 상세와 지도 인접 배치, `9820ca8`는 초·소수초와 미확인 경계 보존이다. 카드·모델·cache·favorites·Calendar exporter·공통 JSON/의존성은 변경하지 않았다.
+
+[Google Calendar Android 공식 도움말](https://support.google.com/calendar/answer/72143?co=GENIE.Platform%3DAndroid&hl=en)의 제목·장소·종일 옵션 구분을 참고했다. 전용5556 설치 Calendar에 INSERT 화면 열기를 시도했으나 계정 설정 화면만 표시됐다. 계정 설정·일정 저장은 진행하지 않았으며 Calendar 일정 상세를 직접 관찰했다는 주장은 하지 않는다. 날짜/시간 줄 분리와 장소 위계는 사용자 요구와 공식 문서에 기반한 설계 해석이다. 날짜만 있는 source는 종일로 단정하지 않고 시간 미확인으로 표시한다.
+
+이번 최종 실행: JVM52(이전46+새 날짜4/장소2), 관련 계측7(ApplicationCalendarFlowTest2/PhaseCalendarFlowTest2/VenueMapFlowTest3), Debug 앱·계측 APK 빌드, Lint 오류0/기존12, FSD71/self-test24 모두 통과했다. 테스트 failures/errors/skips는 모두0이다. 전체 계측39/Release는 직전 후속 결과이며 이번에는 재실행하지 않았다.
+
+새 회귀는 같은날 날짜1회/시간범위, 여러날 시작·종료/연도경계, 날짜만/시간미확인, timezone 변환, 초·소수초, mixed precision·시작누락, invalid·역전·충돌 모든 raw 필드, 중복 summary와 24:00/불확실 원문 보존, 호실/주소 분리·중요조건 보존을 확인한다. 계측은 새 배치의 지도 버튼이 해당 원본 venue를 전달하는지와 신청/3phase calendar draft의 이름·날짜·장소·원본URL 매칭을 확인했다. 실제 Calendar 저장은 하지 않았다.
+
+로컬 로그: `build/calendar-detail-final-build.log`, `build/calendar-detail-instrumentation.log`, `build/calendar-detail-capture.log`. JVM XML/계측 XML과 Lint 보고서는 표준 app/build 경로다. 공개 API/사용처/native mapping/설계 해석은 README.md의 캘린더 상세 절에 있다.
+
+### 상세 대표 화면
+
+이전 `latest-*` PNG는 ff8ccaa 기준 before로 그대로 보존한다. 이번에는 바뀐 상세 대표8장만 캡처한다.
+
+| 대표 | Before | 이번 화면 |
+| --- | --- | --- |
+| light 신청 | [이전](evidence/latest-light-application.png) | [현재](evidence/calendar-light-application.png) |
+| light 행사 | [이전](evidence/latest-light-event.png) | [현재](evidence/calendar-light-event.png) |
+| dark 신청 | [이전](evidence/latest-dark-application.png) | [현재](evidence/calendar-dark-application.png) |
+| dark 행사 | [이전](evidence/latest-dark-event.png) | [현재](evidence/calendar-dark-event.png) |
+| light 2× 행사 | [이전](evidence/latest-light-large-event.png) | [현재](evidence/calendar-light-large-event.png) |
+| light 2× 예선 | [이전](evidence/latest-light-large-contest.png) | [현재](evidence/calendar-light-large-contest.png) |
+| dark 2× 행사 | [이전](evidence/latest-dark-large-event.png) | [현재](evidence/calendar-dark-large-event.png) |
+| dark 2× 결선 | [이전](evidence/latest-dark-large-final.png) | [현재](evidence/calendar-dark-large-final.png) |
+
+사용자5554는 조작하지 않았다. TalkBack 전체 음성 순회·API31 실기기·OEM/가로/태블릿 전체조합과 외부 지도/Calendar 내부는 미검증이다. 원문에만 있는 장소 변경/시간불확실/24:00 같은 의미는 남기므로 모든 원문 중복을 기계적으로 제거하지 않는다.
+
+큰 글자 캡처 중 고정 횟수 swipe가 마지막 카드에 도달하지 못해 첫 드라이버가 중단됐다. finally로 설정을 복원한 후 실제 페이지 번호 4/4를 확인하는 드라이버로 남은 큰글자 화면만 재개했으며 앱 코드/데이터 변경으로 우회하지 않았다.
+
+최종 화면 QA: 새 대표8장과 모든 evidence 링크 확인 완료. light/dark 신청·행사와 2× 행사·예선·결선에서 일정 제목/날짜/시간/장소/호실/개별 액션의 겹침 없이 줄바꿈·스크롤되는 것을 시각 검토했다. 촬영 종료 후 전용5556의 font_scale=1.0, night=no, 원래 favorites `<map />` 복원을 읽기 확인했다.
