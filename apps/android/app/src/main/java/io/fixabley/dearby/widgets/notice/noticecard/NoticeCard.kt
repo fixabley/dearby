@@ -9,13 +9,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import io.fixabley.dearby.widgets.notice.noticecard.NoticeCardState
-import io.fixabley.dearby.shared.ui.NoticeFact
+import io.fixabley.dearby.shared.ui.InformationRow
+import io.fixabley.dearby.shared.ui.buttons.SecondaryButton
 import io.fixabley.dearby.entities.notice.ui.NoticeClassification
 
 @Composable
@@ -25,7 +27,8 @@ internal fun NoticeCard(
 ) {
     val currentSave by rememberUpdatedState(save)
     BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = Spacing.large, vertical = Spacing.small)) {
-        val compact = maxHeight < 500.dp
+        // Reserve room for actions as the system font grows; full facts remain in the sheet.
+        val compact = maxHeight / LocalDensity.current.fontScale < 500.dp
         OutlinedCard(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().padding(if (compact) Spacing.large else Spacing.extraLarge),
                 verticalArrangement = Arrangement.spacedBy(if (compact) Spacing.small else Spacing.large)) {
@@ -45,9 +48,9 @@ internal fun NoticeCard(
                         fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis)
                     if (!compact) {
                         HorizontalDivider()
-                        NoticeFact("참여 대상", notice.targetUser, 2)
-                        NoticeFact("신청 마감", notice.applicationSummary, 2)
-                        NoticeFact("활동 장소", notice.locationSummary, 2)
+                        InformationRow("참여 대상", notice.targetUser, maxLines = 2)
+                        InformationRow("신청 마감", notice.applicationSummary, maxLines = 2)
+                        InformationRow("활동 장소", notice.locationSummary, maxLines = 2)
                     }
                     if (notice.hasIssues) {
                         Text("확인이 필요한 정보가 있어요", style = MaterialTheme.typography.labelSmall,
@@ -60,7 +63,7 @@ internal fun NoticeCard(
                 } else {
                     Text("저장할 조직 확인 중", style = MaterialTheme.typography.labelMedium)
                 }
-                OutlinedButton(onClick = showDetail, modifier = Modifier.fillMaxWidth().testTag("details.${notice.id}")) {
+                SecondaryButton(onClick = showDetail, modifier = Modifier.fillMaxWidth().testTag("details.${notice.id}")) {
                     Text("공고 정보 · 출처 보기")
                 }
             }

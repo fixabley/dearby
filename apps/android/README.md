@@ -71,7 +71,7 @@ Room 2.8.5/KSP 2.3.12를 사용합니다. IO 준비 단계에서 독립 공고/�
 
 DB/원본/쓰기 오류는 기존 snapshot을 유지하고 재시도하도록 전달합니다. 손상 파일을 자동 삭제하거나 destructive migration하지 않습니다. 취소/새 요청이 이전 응답의 게시를 막습니다. 즐겨찾기 Prefs는 이 DB와 별개이며 기존 키/ID를 유지합니다. 자세한 수명·한계·Room schema/public API는 [ARCHITECTURE.md](ARCHITECTURE.md)를 참고합니다.
 
-[Shared/UI 디자인 시스템](docs/design-system/README.md)은 native Material3 theme·간격·범용 표시를 제공한다. 기본 버튼은 Material3를 직접 사용하고 저장 문구·하트는 NoticeCardSaveButton이 소유한다. widget의 flat View/State/VM 구조를 유지한다.
+[Shared/UI 디자인 시스템](docs/design-system/README.md)은 native Material3 theme·간격·범용 표시를 제공한다. Primary/Secondary 버튼은 Material3에 위임하고 저장 문구·하트는 NoticeCardSaveButton이 소유한다. widget의 flat View/State/VM 구조를 유지한다.
 
 기기 테스트는 사용자5554가 아닌 전용5556에서 uniqueDB로 수행하며 실제 캘린더 저장/외부 지도 화면은 검증하지 않습니다.
 

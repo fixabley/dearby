@@ -9,12 +9,12 @@ import io.fixabley.dearby.R
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.material3.Button
+import io.fixabley.dearby.shared.ui.buttons.PrimaryButton
 
 /** Display-only composition; the caller owns saved state, callbacks and test identity. */
 @Composable
 internal fun NoticeCardSaveButton(saved: Boolean, organizationName: String, onSave: () -> Unit, modifier: Modifier = Modifier) {
-    Button(onClick = onSave, modifier = modifier) {
+    PrimaryButton(onClick = onSave, modifier = modifier) {
         Icon(painterResource(if (saved) R.drawable.ic_favorite_filled else R.drawable.ic_favorite), contentDescription = null)
         Spacer(Modifier.width(ButtonDefaults.IconSpacing))
         Text(if (saved) "저장됨 · $organizationName" else "$organizationName 저장")

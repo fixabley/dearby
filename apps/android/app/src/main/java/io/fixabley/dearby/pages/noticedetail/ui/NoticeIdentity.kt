@@ -4,31 +4,27 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import io.fixabley.dearby.shared.ui.theme.Spacing
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.testTag
 import io.fixabley.dearby.pages.noticedetail.model.NoticeDetailState
-import io.fixabley.dearby.shared.ui.NoticeFact
+import io.fixabley.dearby.shared.ui.InformationRow
+import io.fixabley.dearby.shared.ui.ContentSection
 
 @Composable
 internal fun NoticeIdentity(notice: NoticeDetailState) {
-    Surface(modifier = Modifier.fillMaxWidth().testTag("identity.${notice.id}"),
-        shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surfaceContainer) {
-        Column(Modifier.padding(Spacing.large), verticalArrangement = Arrangement.spacedBy(Spacing.large)) {
+    ContentSection(Modifier.testTag("identity.${notice.id}")) {
             notice.organizationName?.let { name ->
-                NoticeFact("관심 조직", name)
+                InformationRow("관심 조직", name)
                 val ancestors = notice.ancestorNames
                 if (ancestors.isNotEmpty()) {
-                    NoticeFact("상위 조직", ancestors.joinToString(" › "))
+                    InformationRow("상위 조직", ancestors.joinToString(" › "))
                 }
                 Text("이 공고에서 관심 표시하면 ${name}이 저장돼요.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            NoticeFact("활동 분류", notice.categorySummary)
+            InformationRow("활동 분류", notice.categorySummary)
             notice.contexts.forEach { context ->
-                context.name?.let { NoticeFact(context.label, it) }
+                context.name?.let { InformationRow(context.label, it) }
             }
-            notice.edition?.let { NoticeFact("회차", "제${it}회") }
-        }
+            notice.edition?.let { InformationRow("회차", "제${it}회") }
     }
 }

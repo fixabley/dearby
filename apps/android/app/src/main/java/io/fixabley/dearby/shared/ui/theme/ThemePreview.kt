@@ -4,9 +4,9 @@ import android.content.res.Configuration
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
+import io.fixabley.dearby.shared.ui.buttons.PrimaryButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import io.fixabley.dearby.shared.ui.buttons.SecondaryButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -23,10 +23,10 @@ private fun NativeControlsPreview() {
         Surface {
             Column(Modifier.padding(Spacing.extraLarge), verticalArrangement = Arrangement.spacedBy(Spacing.small)) {
                 Text("시스템 컨트롤", style = MaterialTheme.typography.headlineSmall)
-                Button(onClick = {}) { Text("주요 행동") }
-                OutlinedButton(onClick = {}) { Text("보조 행동") }
+                PrimaryButton(onClick = {}) { Text("주요 행동") }
+                SecondaryButton(onClick = {}) { Text("보조 행동") }
                 TextButton(onClick = {}) { Text("텍스트 행동") }
-                Button(onClick = {}, enabled = false) { Text("사용할 수 없음") }
+                PrimaryButton(onClick = {}, enabled = false) { Text("사용할 수 없음") }
             }
         }
     }

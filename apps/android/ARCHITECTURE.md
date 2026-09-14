@@ -77,7 +77,10 @@ entities/
     api/OrganizationDiskStore.kt        L2 계약·StoredOrganizationSource
     api/OrganizationRecord.kt           id/name/parentId Room 행·DAO·adapter
 shared/ui/
-  NoticeFact.kt                         범용 제목/값
+  buttons/PrimaryButton.kt              native Button 강조수준 진입점
+  buttons/SecondaryButton.kt            native OutlinedButton 강조수준 진입점
+  InformationRow.kt                     도메인 없는 label/value 묶음 읽기
+  ContentSection.kt                     공통 tonal 정보/액션 묶음
   theme/Theme.kt                        dynamic/static Material3 theme
   theme/Spacing.kt                      콘텐츠 간격 토큰
 ```
@@ -152,7 +155,7 @@ manifest에는 전체 원문 hash와 모든 decoded fields를 포함한 fingerpr
 
 [디자인 시스템 API·native mapping·사용 규칙](docs/design-system/README.md)을 따른다. DearbyTheme은 API31+ dynamic color를 기본 사용하고 static light/dark로 opt out 가능하다. Typography/Shapes는 native 기본값이며 화면에서 semantic MaterialTheme 역할을 읽는다. 콘텐츠 간격만 Spacing으로 관리한다.
 
-기본 Button/OutlinedButton/TextButton은 직접 사용한다. 일대일 Primary/Secondary wrapper는 제거했으며 NoticeCardSaveButton은 widget에서 저장 문구와 하트를 조합한다. 제목은 카드 안에 남긴다. navigation/tab/sheet와 domain 카드의 소유권은 유지한다.
+PrimaryButton/SecondaryButton은 Material3 Button/OutlinedButton에 enabled·modifier·content를 위임한다. 나머지 컨트롤은 직접 사용하며 NoticeCardSaveButton은 widget에서 저장 문구와 하트를 조합한다. 제목은 카드 안에 남긴다. navigation/tab/sheet와 domain 카드의 소유권은 유지한다.
 
 Widget은 domain/widget 폴더에 Composable·State·ViewModel을 함께 둔다. ui/model 하위 폴더가 없으며 domain은 cross-widget 의존 예외가 아니다. 구조 검사는 @Composable 파일의 raw Model/VM/repository/OS 접근을 막고 비렌더링 VM의 하위 의존을 허용한다. 같은 domain의 다른 widget 금지 fixture도 있다.
 
