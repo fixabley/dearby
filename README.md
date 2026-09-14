@@ -31,6 +31,10 @@ API 명세와 개발 문서는 두 클라이언트가 함께 사용합니다.
 
 저장소 전체를 일반 `git clone`으로 가져오고, 루트에서 브랜치·커밋·PR을 관리합니다.
 Android·iOS·공통 명세의 연관된 변경은 하나의 커밋이나 PR에 함께 포함할 수 있습니다.
-현재 이 저장소에는 원격 저장소가 연결되어 있지 않습니다.
+원격 저장소는 [fixabley/dearby](https://github.com/fixabley/dearby)이며, 기본 브랜치는 `main`입니다.
+
+```sh
+git clone https://github.com/fixabley/dearby.git
+```
 
 작업과 업데이트 절차는 [모노레포 운영 가이드](docs/monorepo.md)를 참고하세요.

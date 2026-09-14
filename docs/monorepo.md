@@ -21,7 +21,8 @@ git status
 git commit -m "Describe the change"
 ```
 
-원격 저장소를 연결한 뒤에는 일반적인 `git push`와 `git pull --ff-only`를 사용합니다.
+원격 저장소는 `https://github.com/fixabley/dearby.git`이며, 기본 브랜치는 `main`입니다.
+일반적인 `git push`와 `git pull --ff-only`를 사용합니다.
 앱별로 별도의 커밋이나 참조 갱신을 할 필요가 없습니다.
 
 ## 빌드와 검증
