@@ -29,6 +29,7 @@ apps/ios/
 │   ├── Entities/
 │   │   └── ActivityCatalog/
 │   │       ├── Model/ActivityCatalog.swift
+│   │       ├── Model/ActivityNoticeSummary.swift
 │   │       ├── API/
 │   │       │   ├── ActivityCatalogProviding.swift
 │   │       │   └── BundleActivityCatalogProvider.swift
@@ -58,10 +59,10 @@ apps/ios/
 | Pages/Discovery | `DiscoveryView<Destination>` | 카탈로그·ID 집합·저장 콜백·App의 목적지 ViewBuilder; 로컬 sheet 선택·피드백 |
 | Pages/Favorites | `FavoriteListView<Destination>` | 카탈로그·ID 집합·삭제 콜백·목적지 ViewBuilder; 목록·빈 상태 |
 | Pages/NoticeDetail | `NoticeDetailView` | 공고·카탈로그; 상세 표시만 수행 |
-| Widgets/ActivityCard | `ActivityCard` | 공고·조직·학교 맥락·저장 여부·위치·크기 모드·저장/상세 콜백 |
+| Widgets/ActivityCard | `ActivityCard` | `ActivityNoticeSummary`·저장 여부·position·compact·onSave/onShowDetail |
 | Widgets/FavoriteOrganizationCard | `FavoriteOrganizationCard<Destination>` | 조직·카탈로그·삭제 콜백·목적지 ViewBuilder; 연결 공고의 기존 NavigationLink |
 | Features/FavoriteOrganization | `FavoriteOrganizations`, `FavoriteOrganizationsStorage`, `UserDefaultsFavoriteOrganizationsStorage` | 상태와 저장 계약; 구체 저장 구현은 App 조립 또는 독립 테스트에서 사용 |
-| Entities/ActivityCatalog | `ActivityCatalog` 및 같은 Model 파일의 `ActivityNotice`, `ActivityOrganization`, `ActivitySource`, `ActivityField`, `ActivityIssue`, `ActivityContext`, `ActivitySchedule`; `ActivityCatalogProviding`, `BundleActivityCatalogProvider`; `NoticeClassificationView` | 순수 모델/조회, 교체 가능한 공급, 카드·즐겨찾기의 분류 표시 |
+| Entities/ActivityCatalog | `ActivityNoticeSummary`, `ActivityCatalog` 및 같은 Model 파일의 `ActivityNotice`, `ActivityOrganization`, `ActivitySource`, `ActivityField`, `ActivityIssue`, `ActivityContext`, `ActivitySchedule`; `ActivityCatalogProviding`, `BundleActivityCatalogProvider`; `NoticeClassificationView` | 순수 모델/조회, 교체 가능한 공급, 카드·즐겨찾기의 분류 표시 |
 
 `NoticeFact`는 ActivityCard 파일의 private 구현, `NoticeIdentityView`는 NoticeDetail 파일의 private 구현이다.
 Preview 저장소도 App 파일의 private 타입이다. 외부 소비자는 이 helper들을 직접 사용하지 않는다.
@@ -139,3 +140,10 @@ Swift 타입 선언과 식별자 참조를 수집해 실제 상향 참조·동�
 로컬 증거는 `build/fsd-regression/`의 `discovery-sheet.png`, `favorites-detail.png`, `restored-favorites.png` 및 검사 로그에 남긴다(커밋 제외).
 이전 aa4a258의 공통 npm 13건·샘플 일치 및 화면 검증은 이전 기록이다. 이번에는 바뀐 Swift 구조·상태·라우팅 흐름을 중심으로 검사한다.
 실제 터치 스와이프, VoiceOver 전체 흐름, 최대 글자 크기, iPad·가로·실기기 전체 검증은 남아 있다. 이번 도구 회귀는 상시 XCUITest가 아니다.
+
+## 카드 입력 보완 — 이번 확인
+
+`catalog.summary(for: notice)`가 notice·해결된 organization·실제 String contextNames를 묶는 순수 `ActivityNoticeSummary`를 만든다.
+카드는 전체 카탈로그나 범용 data를 받지 않는다. position/saved/compact와 onSave/onShowDetail은 외부 표현 상태·이벤트로 유지한다.
+미확정/알 수 없는 대상은 organization이 nil이며 원래 공고와 행사 학교 맥락은 보존한다. 모델에 저장·UI 부수효과를 추가하지 않는다.
+이번 카드 요약 변경에서 독립 Swift의 해결/미확정·대회 요약 검사와 기존 상태/복원 검사, FSD 전체 15파일 검사, Simulator Debug 빌드를 실행해 통과했다.

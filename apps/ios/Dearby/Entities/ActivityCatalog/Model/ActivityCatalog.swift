@@ -14,6 +14,12 @@ struct ActivityCatalog: Decodable {
         }
     }
 
+    func summary(for notice: ActivityNotice) -> ActivityNoticeSummary {
+        ActivityNoticeSummary(notice: notice,
+                              organization: organization(notice.favoriteOrganizationId),
+                              contextNames: contextNames(for: notice))
+    }
+
     func organization(_ id: String?) -> ActivityOrganization? {
         organizations.first { $0.id == id }
     }

@@ -22,14 +22,12 @@ struct DiscoveryView<Destination: View>: View {
                         LazyVStack(spacing: 0) {
                             ForEach(Array(catalog.feed.enumerated()), id: \.element.id) { index, notice in
                                 ActivityCard(
-                                    notice: notice,
-                                    organization: catalog.organization(notice.favoriteOrganizationId),
-                                    contextNames: catalog.contextNames(for: notice),
+                                    summary: catalog.summary(for: notice),
                                     saved: notice.favoriteOrganizationId.map { favoriteIDs.contains($0) } ?? false,
                                     position: "\(index + 1) / \(catalog.feed.count)",
                                     compact: geometry.size.height < 520,
-                                    save: { save(notice) },
-                                    showDetail: { detail = notice }
+                                    onSave: { save(notice) },
+                                    onShowDetail: { detail = notice }
                                 )
                                 .frame(width: geometry.size.width, height: geometry.size.height)
                             }

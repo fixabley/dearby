@@ -94,3 +94,5 @@ python3 apps/ios/tests/check_fsd_boundaries.py
 
 이 검사는 간단한 lexical guard이며 Swift parser/모듈 격리를 대체하지 않는다. 추론·보간·동적 참조 등 누락 가능성은 구조 문서에 기록한다.
 각 기능/컴포넌트 변경에 필요한 코드·검사·문서를 같은 커밋에 넣는다.
+
+카드 입력은 `catalog.summary(for:)`의 `ActivityNoticeSummary`이며, 독립 검사에서 대상 해결/미확정·학교 맥락·대회 회차 보존을 확인한다.

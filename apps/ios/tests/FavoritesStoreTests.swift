@@ -12,6 +12,7 @@ struct FavoritesStoreTests {
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let catalog = try JSONDecoder().decode(ActivityCatalog.self, from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
+        try testNoticeSummary(catalog: catalog)
         let careerCards = catalog.feed.filter { ["krc", "db-insurance"].contains($0.favoriteOrganizationId ?? "") }
         precondition(careerCards.count == 2)
         for card in careerCards {
@@ -54,6 +55,35 @@ struct FavoritesStoreTests {
         precondition(recreated.ids == ["cbnu-career", "db-insurance", "legacy-unknown"])
         print("PASS: legacy UserDefaults array compatibility, fresh storage/state restoration")
         print("PASS: catalog decoding, organization deduplication, persistence, removal")
+    }
+
+    private static func noticeWithTarget(_ target: String?, from notice: ActivityNotice) -> ActivityNotice {
+        ActivityNotice(id: notice.id, title: notice.title, summary: notice.summary,
+                       demoVisible: notice.demoVisible, favoriteOrganizationId: target,
+                       sourceIds: notice.sourceIds, audience: notice.audience, eligibility: notice.eligibility,
+                       application: notice.application, location: notice.location, schedule: notice.schedule,
+                       benefits: notice.benefits, qualityIssues: notice.qualityIssues,
+                       categoryPath: notice.categoryPath, contexts: notice.contexts, edition: notice.edition)
+    }
+
+    private static func testNoticeSummary(catalog: ActivityCatalog) throws {
+        let notice = catalog.activities.first { $0.favoriteOrganizationId == "krc" }!
+        let summary = catalog.summary(for: notice)
+        precondition(summary.notice.id == notice.id && summary.notice.title == notice.title)
+        precondition(summary.organization?.id == "krc")
+        precondition(summary.organization?.name == catalog.organization("krc")?.name)
+        precondition(summary.contextNames == "충북대학교")
+        for target in [nil, "unknown-organization"] as [String?] {
+            let unresolved = catalog.summary(for: noticeWithTarget(target, from: notice))
+            precondition(unresolved.organization == nil)
+            precondition(unresolved.notice.id == notice.id)
+            precondition(unresolved.contextNames == "충북대학교", "Unresolved target must not discard event context")
+        }
+        let contest = catalog.activities.first { $0.favoriteOrganizationId == "yeongnam-cyber-defense" }!
+        let contestSummary = catalog.summary(for: contest)
+        precondition(contestSummary.organization?.id == "yeongnam-cyber-defense")
+        precondition(contestSummary.notice.edition == 2 && contestSummary.contextNames.isEmpty)
+        print("PASS: notice summary resolved/unresolved target, school context, contest edition")
     }
 
     @MainActor
