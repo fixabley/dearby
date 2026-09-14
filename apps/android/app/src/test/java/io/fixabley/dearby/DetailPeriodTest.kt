@@ -31,4 +31,14 @@ class DetailPeriodTest {
         assertEquals("2026.09.14 24:00 마감", applicationPeriodNote("2026.09.14 24:00 마감", "2026-09-15T00:00:00+09:00", d))
         assertEquals("마감 시각 미기재", applicationPeriodNote("마감 시각 미기재", null, d))
     }
+    @Test fun secondsMixedPrecisionAndMissingStartStayExplicit() {
+        val seconds = detailPeriod("2026-09-15T14:00:30.123+09:00", null,
+            "2026-09-15T16:00:45+09:00", null, "Asia/Seoul", "raw")
+        assertEquals("14:00:30.123 – 16:00:45", seconds.lines.single().time)
+        val mixed = detailPeriod(null, "2026-09-15", "2026-09-15T16:00:00+09:00", null, "Asia/Seoul", "raw")
+        assertEquals("시작 시간 미확인 · 종료 16:00", mixed.lines.single().time)
+        val endOnly = detailPeriod(null, null, null, "2026-09-15", "Asia/Seoul", "raw", "마감")
+        assertEquals("시작 미확인", endOnly.lines.first().date)
+        assertEquals("마감 · 2026년 9월 15일 (화)", endOnly.lines.last().date)
+    }
 }

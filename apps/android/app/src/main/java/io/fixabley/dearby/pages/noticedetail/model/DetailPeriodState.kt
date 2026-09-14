@@ -26,12 +26,21 @@ internal fun detailPeriod(startAt: String?, startOn: String?, endAt: String?, en
     val ed = e?.toLocalDate() ?: endOn?.let(LocalDate::parse)
     val day = DateTimeFormatter.ofPattern("uuuu년 M월 d일 (E)", Locale.KOREAN)
     val clock = DateTimeFormatter.ofPattern("HH:mm", Locale.KOREAN)
-    val st = s?.format(clock) ?: "시간 미확인"
-    val et = e?.format(clock) ?: "시간 미확인"
+    fun time(value: java.time.ZonedDateTime?): String = value?.let {
+        if (it.second != 0 || it.nano != 0) it.toLocalTime().format(DateTimeFormatter.ISO_LOCAL_TIME)
+        else it.format(clock)
+    } ?: "시간 미확인"
+    val st = time(s)
+    val et = time(e)
     val lines = when {
         sd != null && sd == ed -> listOf(DetailPeriodLine(sd.format(day),
-            if (s == null && e == null) "시간 미확인" else "$st – $et"))
+            when {
+                s == null && e == null -> "시간 미확인"
+                s == null || e == null -> "시작 $st · $endLabel $et"
+                else -> "$st – $et"
+            }))
         else -> buildList {
+            if (sd == null) add(DetailPeriodLine("시작 미확인", ""))
             if (sd != null) add(DetailPeriodLine("시작 · ${sd.format(day)}", st))
             if (ed != null) add(DetailPeriodLine("$endLabel · ${ed.format(day)}", et))
             if (ed == null) add(DetailPeriodLine("$endLabel 미확인", ""))
@@ -43,5 +52,5 @@ internal fun detailPeriod(startAt: String?, startOn: String?, endAt: String?, en
 /** Only suppress an exactly matching, ordinary closing timestamp; uncertainty/24:00 stays visible. */
 internal fun applicationPeriodNote(summary: String, closesAt: String?, details: DetailPeriodState): String? {
     val exact = closesAt?.take(16)?.replace('T', ' ')?.plus(" 마감")
-    return summary.takeUnless { details.valid && it == exact }
+    return summary.takeUnless { !details.valid || it == exact }
 }

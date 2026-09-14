@@ -69,3 +69,7 @@ SchedulePreview의 light/dark/2×와 InformationPreview의 MetadataRow를 제공
 참고: [Google Calendar Android 공식 도움말](https://support.google.com/calendar/answer/72143?co=GENIE.Platform%3DAndroid&hl=en)은 제목·장소·종일 옵션을 별도 속성으로 다룬다. 전용5556의 설치된 Calendar는 계정 설정 화면만 열려 실제 일정 상세는 확인하지 못했다. 줄 분리와 font 위계는 이 문서와 사용자 요구를 바탕으로 한 설계 해석이며 Google 화면을 그대로 재현했다는 뜻이 아니다. 계정 설정/일정 저장은 진행하지 않았다.
 
 장소도 DetailMetadata를 사용한다. 상위 detailPlace projection은 명확한 끝의 `(5층)`/`459호`/`1호실·6호실`만 보조 줄로 분리하며 괄호 건물코드와 불확실 문구, 전체 주소는 유지한다. 지도 native IconButton 슬롯은 해당 일정/venue에 붙고 원본 NoticeVenue를 그대로 전달한다. 모든 venue를 일정에 표시한 경우 하단에서 반복하지 않으며 location summary 전체가 venue에 이미 포함된 경우만 생략한다. 온라인은 온라인 표시와 URL 텍스트/전체 접근성 설명을 유지하고 URL을 자동 실행하지 않는다. 신청은 접수방법과 제출처를 분리한다.
+
+상세의 nonzero 초·소수초는 ISO_LOCAL_TIME으로 보존한다. 같은날 mixed precision은 시작/종료 시간 미확인을 구분하고 종료만 있으면 시작 미확인도 표시한다. 카드의 기존 축약 출력에는 변경하지 않는다.
+
+파싱 실패의 원문 summary는 날짜 fallback에 이미 표시하므로 신청 보조문구에서 다시 반복하지 않는다.
