@@ -150,7 +150,7 @@ ANDROID_SERIAL=emulator-5556 JAVA_HOME='/Applications/Android Studio.app/Content
 
 ## Shared 버튼과 카드 조합
 
-shared/ui/buttons의 PrimaryButton/SecondaryButton은 content slot·onClick·modifier만 받는 Material3 Button/OutlinedButton이다. 도메인 문구는 widget의 NoticeCardSaveButton이 조합하고 saved/조직명/저장 callback/태그는 호출자가 소유한다. 카드 상세 열기는 SecondaryButton으로 맞췄고 제목 Text는 inline으로 유지했다. Material Icons가 현재 compile classpath에 없어 아이콘용 의존성을 추가하지 않았다. NoticeFact는 카드와 상세 여러 섹션에서 재사용하므로 Shared에 유지한다.
+shared/ui/buttons의 PrimaryButton/SecondaryButton은 content slot·onClick·modifier만 받는 Material3 Button/OutlinedButton이다. 도메인 문구는 widget의 NoticeCardSaveButton이 조합하고 saved/조직명/저장 callback/태그는 호출자가 소유한다. 카드 상세 열기는 SecondaryButton으로 맞췄고 제목 Text는 inline으로 유지했다. 기존 outline heart vector와 filled variant를 저장 상태에 따라 표시하며 contentDescription=null로 문구의 중복 낭독을 피한다. 새 아이콘 의존성은 추가하지 않았다. NoticeFact는 카드와 상세 여러 섹션에서 재사용하므로 Shared에 유지한다.
 
 버튼 조합 단계: JVM30·Debug·계측 APK 컴파일·구조52파일/self-test21 통과(`build/design-buttons.log`). 기존 카드 회귀에 재구성 후 최신 저장 callback 검증을 반영했으며 이 단계에서는 기기 실행 없이 컴파일했다.
 
