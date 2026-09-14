@@ -111,3 +111,37 @@ NoticeModel/OrganizationModel, Room off-main/cancellation/transaction, L1→disk
 큰 글자 캡처 중 고정 횟수 swipe가 마지막 카드에 도달하지 못해 첫 드라이버가 중단됐다. finally로 설정을 복원한 후 실제 페이지 번호 4/4를 확인하는 드라이버로 남은 큰글자 화면만 재개했으며 앱 코드/데이터 변경으로 우회하지 않았다.
 
 최종 화면 QA: 새 대표8장과 모든 evidence 링크 확인 완료. light/dark 신청·행사와 2× 행사·예선·결선에서 일정 제목/날짜/시간/장소/호실/개별 액션의 겹침 없이 줄바꿈·스크롤되는 것을 시각 검토했다. 촬영 종료 후 전용5556의 font_scale=1.0, night=no, 원래 favorites `<map />` 복원을 읽기 확인했다.
+
+## 사용자 이미지 기반 기간·링크·일간 미리보기 (2026-09-15)
+
+기준 `5dbb8c5` 이후 새 구현/실행이다. `66d0ea4`는 한국어 기간 문장/안전한 실제 URL 링크 카드, `08408b7`는 날짜 선택/시간그리드/일간 clipping과 관련 회귀다.
+
+사용자 제공 [참고1](evidence/user-calendar-reference-1.png)·[참고2](evidence/user-calendar-reference-2.png)를 view_image로 직접 확인했다. 굵은 일정명, 오전/오후 …부터/…까지, 도메인 카드, 시간 gutter와 가로선, accent block을 Android M3로 구현했다. 이전 단계의 Google Calendar 설치앱 계정 설정 화면과 달리 이번 참고는 사용자가 제공한 실제 Calendar 캡처다. 앱이 생성한 화면이나 Android 화면이라고 주장하지 않는다.
+
+이번 최종 검증은 JVM58(이전52+link/time2+timeline4), 관련계측10(신규timeline/link3+신청/phase/지도7), Debug/계측 APK build, Lint 오류0/기존12, FSD80/self-test24 통과다. tests failures/errors/skips0. 이번에는 전체suite/Release/이전36장을 반복하지 않았다. 날짜 picker는 숫자28/description selector가 아닌 native semantics의 전체 날짜 Text를 사용하도록 테스트를 수정한 뒤 최종10을 다시 실행했다. 최초 FSD에서 feature 내부 safeURL 함수 직접 의존을 발견해 동일 검증 정책을 상위 표시 projection에 독립 적용했으며 최종 구조검사는 통과했다.
+
+- clipping: 시작일9시~자정/중간날0~자정/마지막날0~13시, 범위밖 제한, 배타자정·연도경계, sourceZone DST23/25h·반복시간offset, 사라진 localDate의 인접날 이동을 검증했다. 모든날 배열 없이 선택일 tick만 계산한다.
+- 불명: deadline-only/날짜만/mixed precision/invalid/역전/충돌에는 block 없음. 기존 Calendar export가 날짜만을 처리하는 방식과 분리된 표시정책이다.
+- 접근성: 원문URL 전체 목적지, 링크 callback-only, nativepicker 날짜변경, 경계버튼 disabled, 2× dark 짧은구간의 정확한 초·소수초/확대표시 semantics를 검증했다. block 말줄임과 최소 시각높이는 전체 caption/정확한 구간 설명과 확대 안내로 보완한다.
+- 보호: 카드·모델·cache·favorites·Calendar exporter·map·원본source/JSON·SDK 불변. source/calendar save/URL share/외부열기를 실제 실행하지 않았고 모든 action 계측은 callback을 캡처한다. 기기 Calendar 조회/권한/provider/busy-block은 코디네이터 지시에 따라 별도 후속으로 남겨두었다.
+
+로컬 로그 `build/timeline-final-build.log`, `build/timeline-instrumentation.log`, `build/timeline-capture.log`; 표준 JVM/계측 XML 및 Lint 보고서. 공개 API·native mapping·custom 이유와 [Material3 DatePickerState](https://developer.android.com/reference/kotlin/androidx/compose/material3/DatePickerState)의 UTC 날짜 처리 근거는 README.md의 사용자 이미지 후속 절을 참고한다.
+
+### 이번 상세 대표 화면
+
+기준 before는 직전 calendar-light-application/event 등이며, 아래 timeline-*는 이번 최종 앱의 새 실제 캡처다.
+
+| 대표 | 증거 |
+| --- | --- |
+| light 기간문장·실제 URL 카드 | [화면](evidence/timeline-light-period-link.png) |
+| 시작일 오전9시 시작 | [화면](evidence/timeline-light-first-day.png) |
+| 다음 날짜로 이동한 중간날 | [화면](evidence/timeline-light-middle-day.png) |
+| native 날짜선택기 | [화면](evidence/timeline-native-date-picker.png) |
+| 선택기로 이동한 마감일 0~13시 | [화면](evidence/timeline-light-last-day.png) |
+| 320dp viewport 안 시간대 스크롤 | [화면](evidence/timeline-light-scroll.png) |
+| dark 시작일 | [화면](evidence/timeline-dark-first-day.png) |
+| dark 2× 시작일 | [화면](evidence/timeline-dark-large-first-day.png) |
+
+첫 캡처 드라이버는 nested scroll 내부를 움직이고 날짜 버튼의 자식Text를 놓쳤다. finally 복원 후 outer 여백 swipe와 childText 중심tap으로 수정해 새 화면을 다시 수집했다. 앱 데이터 변경으로 우회하지 않았고 캡처는 외부 열기/저장/공유 동작을 누르지 않는다. TalkBack 전체 음성·API31 실기기/OEM/가로/태블릿 전체조합·외부 앱 내부 검증은 하지 않았다.
+
+최종 QA: 새 실제대표8장·사용자참고2장 링크 확인, 기간/link·시작일/중간일/마감일·nativepicker·내부스크롤·dark/2×를 시각 검토했다. 사용자5554는 조작하지 않았고 전용5556의 font_scale=1.0/night=no/favorites `<map />` 복원을 읽기 확인했다. 기기 일정 busy-block/native switch/권한은 별도 #10 Task에 남겨두며 현재 구현에는 포함하지 않는다.

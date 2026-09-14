@@ -188,3 +188,7 @@ PR9 아이콘/일정 후속 검증(2026-09-14): JVM46·전체계측39·FSD68/sel
 ### Calendar-style detail projection (PR9 후속)
 
 NoticeDetail의 DetailPeriodState/DetailPlaceState 순수 projection이 날짜/시간과 장소명/주소·호실을 조립한다. Shared `DetailMetadata`는 primary/secondary/description/icon과 native action 슬롯만 받는다. 지도 액션은 phase의 원본 NoticeVenue를 전달하고 하단 장소 구획에는 중복되지 않은 원문 안내/미배치 venue만 남긴다. 카드/도메인 모델/cache/favorites/exporter 불변이며 상세의 초·소수초/미확인 경계도 보존한다. 참고와 이번 검증은 design-system/VERIFICATION.md의 2026-09-15 절에 분리 기록한다.
+
+### 선택일 타임라인 (PR9 사용자 이미지 후속)
+
+상위 DetailTimelineState가 raw timestamp/날짜·sourceZone을 검증한 뒤 domain-free TimelineInterval을 Shared UI로 전달한다. DayTimeline은 날짜선택만 국소 상태로 보유하고 날짜header/nativepicker/grid를 각각 분리한다. 선택일 tick·clip 계산에는 OS/캐시/도메인 조회가 없다. 원문 링크도 상위 detailLink가 안전 정책과 도메인을 조립해 LinkCard 값/콜백으로 전달한다. native primary/onPrimary accent와 320dp 세로스크롤 시간그리드만 custom이다. 기기 캘린더 read/permission/provider 및 busy-block/충돌판정은 별도 후속 범위로 구현하지 않았다.
