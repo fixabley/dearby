@@ -13,20 +13,20 @@ import io.fixabley.dearby.R
 import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft
 import io.fixabley.dearby.features.addtocalendar.model.applicationCalendarDraft
 import io.fixabley.dearby.features.addtocalendar.model.phaseCalendarDraft
-import io.fixabley.dearby.entities.activitycatalog.model.Notice
+import io.fixabley.dearby.entities.activitycatalog.model.ActivityDetail
 import io.fixabley.dearby.entities.activitycatalog.model.ActivityVenue
-import io.fixabley.dearby.entities.activitycatalog.api.CatalogProvider
+import io.fixabley.dearby.entities.activitycatalog.api.ActivityDetailRepository
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
 import io.fixabley.dearby.pages.discovery.ui.DiscoveryScreen
 import io.fixabley.dearby.pages.favorites.ui.FavoritesScreen
 import io.fixabley.dearby.pages.noticedetail.ui.NoticeDetailSheet
 
 @Composable
-internal fun DearbyApp(catalogProvider: CatalogProvider, favorites: FavoritesState, onOpenSource: (String) -> Unit, onOpenMap: (ActivityVenue) -> Unit, onAddToCalendar: (CalendarDraft) -> Unit) {
+internal fun DearbyApp(catalogProvider: ActivityDetailRepository, favorites: FavoritesState, onOpenSource: (String) -> Unit, onOpenMap: (ActivityVenue) -> Unit, onAddToCalendar: (CalendarDraft) -> Unit) {
     var retry by remember { mutableIntStateOf(0) }
     val result = remember(catalogProvider, retry) { runCatching { catalogProvider.load() } }
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
-    var detail by remember { mutableStateOf<Notice?>(null) }
+    var detail by remember { mutableStateOf<ActivityDetail?>(null) }
     val catalog = result.getOrNull()
 
     Scaffold(
@@ -58,13 +58,13 @@ internal fun DearbyApp(catalogProvider: CatalogProvider, favorites: FavoritesSta
                     Button(onClick = { retry++ }) { Text("다시 시도") }
                 }
             } else if (selectedTab == 0) {
-                DiscoveryScreen(catalog, favorites.ids, favorites::save, showDetail = { detail = it })
+                DiscoveryScreen(catalog, favorites.ids, favorites::save, showDetail = { detail = catalogProvider.detail(it.id) })
             } else {
-                FavoritesScreen(catalog, favorites.ids, favorites::remove, showDetail = { detail = it })
+                FavoritesScreen(catalog, favorites.ids, favorites::remove, showDetail = { detail = catalogProvider.detail(it.id) })
             }
         }
     }
     detail?.let { notice ->
-        NoticeDetailSheet(notice, catalog, onDismiss = { detail = null }, onOpenSource = onOpenSource, onOpenMap = onOpenMap, applicationDraft = applicationCalendarDraft(notice), phaseDrafts = notice.schedule.map { phaseCalendarDraft(notice, it) }, onAddToCalendar = onAddToCalendar)
+        NoticeDetailSheet(notice, onDismiss = { detail = null }, onOpenSource = onOpenSource, onOpenMap = onOpenMap, applicationDraft = applicationCalendarDraft(notice), phaseDrafts = notice.schedules.map { phaseCalendarDraft(notice, it) }, onAddToCalendar = onAddToCalendar)
     }
 }

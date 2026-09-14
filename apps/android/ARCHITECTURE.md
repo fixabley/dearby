@@ -39,7 +39,13 @@ features/
     api/SharedPreferencesFavoriteStore.kt 기존 로컬 저장 구현
 entities/
   activitycatalog/
-    model/ActivityCatalog.kt            Organization/NoticeContext/Notice/ActivityCatalog
+    model/ActivityCatalog.kt            ID 참조 Organization/NoticeContext/Notice/ActivityCatalog
+    model/ActivityDetail.kt             상세 transient projection/단계 장소/명시적 조직 역할
+    model/ActivitySource.kt             출처 메타데이터/필드별 근거
+    api/ActivityDetailRepository.kt     snapshot 공급·상세 getter·조직 캐시 수명
+    api/OrganizationSource.kt           원본 계약/인메모리 원본
+    api/OrganizationRepository.kt       독립 ID cache-aside·순환 안전 경로
+    api/DecodeActivityEvidence.kt       중첩 evidence와 fieldPath 해석
     model/ActivityApplication.kt        신청 summary·날짜·URL
     model/ActivityPhase.kt              활동 phase·날짜·mode·온라인 URL
     model/ActivityLocation.kt           장소 summary/mode/status와 복수 venues
@@ -71,7 +77,7 @@ shared/
 | Widgets / favoriteorganizationcard | `ui.FavoriteOrganizationCard` |
 | Features / addtocalendar | `model.CalendarDraft`, `model.applicationCalendarDraft`, `model.phaseCalendarDraft` |
 | Features / favoriteorganization | `model.FavoritesState`, `api.FavoriteStore`, `api.SharedPreferencesFavoriteStore` |
-| Entities / activitycatalog | `model.Organization`, `model.NoticeContext`, `model.Notice`, `model.ActivityCatalog`, `model.ActivityApplication`, `model.ActivityPhase`, `model.ActivityLocation`, `model.ActivityVenue`, `model.VenueCoordinates`, `api.CatalogProvider`, `api.AssetCatalogProvider`, `ui.ActivityClassification` |
+| Entities / activitycatalog | `model.Organization`, `model.NoticeContext`, `model.Notice`, `model.ActivityCatalog`, `model.ActivityDetail`, `model.ActivityScheduleDetail`, `model.ResolvedOrganizationRole`, `model.ActivitySource`, `model.ActivityEvidence`, `model.ActivityApplication`, `model.ActivityPhase`, `model.ActivityLocation`, `model.ActivityVenue`, `model.VenueCoordinates`, `api.CatalogProvider`, `api.AssetCatalogProvider`, `api.ActivityDetailRepository`, `api.OrganizationSource`, `api.InMemoryOrganizationSource`, `api.OrganizationRepository`, `ui.ActivityClassification` |
 | Shared (segment 예외) | `ui.NoticeFact`, `ui.theme.DearbyTheme` |
 
 저장소 필드·상태 setter·내부 update 함수·JSON 배열 helper는 private이다. `NoticeIdentity`는 별도 Kotlin 파일에서 같은 상세 slice가 사용하는 internal helper이며 App 등 외부 slice에서 import하지 않도록 구조 검사로 제한한다. MainActivity의 루트 패키지는 기존 Android 컴포넌트 이름을 바꾸지 않기 위한 App 진입점 예외다.
@@ -84,7 +90,7 @@ App → Pages → Widgets → Features → Entities → Shared
 
 더 아래 레이어로 건너뛰는 참조는 허용한다. 같은 레이어의 다른 slice와 상위 레이어는 참조하지 않는다. App과 Shared는 slice 없이 목적별 segment를 두는 예외다.
 
-`MainActivity`가 실제 CatalogProvider, FavoriteStore, FavoritesState를 생성한다. `DearbyApp`이 공급자를 호출하고 선택 탭과 상세 Notice를 소유한다. 발견/즐겨찾기 페이지는 상세 목적지의 타입을 모르며 `showDetail(Notice)` 콜백을 App에 전달한다. App만 NoticeDetailSheet를 생성하고 dismiss와 외부 URL 콜백을 연결한다. 페이지가 다른 페이지를 import하지 않으며 새 라우터 라이브러리를 도입하지 않는다.
+`MainActivity`가 실제 CatalogProvider를 감싼 ActivityDetailRepository와 FavoriteStore, FavoritesState를 생성한다. `DearbyApp`이 공급자를 호출하고 선택 탭과 상세 ActivityDetail 조회 결과를 소유한다. 발견/즐겨찾기 페이지는 상세 목적지의 타입을 모르며 `showDetail(Notice)` 콜백을 App에 전달한다. App만 NoticeDetailSheet를 생성하고 dismiss와 외부 URL 콜백을 연결한다. 페이지가 다른 페이지를 import하지 않으며 새 라우터 라이브러리를 도입하지 않는다.
 
 공고 카드와 조직 카드는 서로 참조하지 않는다. 공고 카드는 공고·조직·학교 문자열·저장 여부·위치·저장/상세 콜백을 받는다. 조직 카드는 조직·상위 조직 목록·연결 공고·공고 ID별 학교 문자열·삭제/상세 콜백을 받는다. 공유 상태·저장소·공급자·Context에 직접 접근하지 않는다. 두 위젯의 활동 분류 표시는 Entities의 ActivityClassification을 사용한다.
 
@@ -210,3 +216,26 @@ venue는 phase 문자열이 정확히 일치하는 모든 항목을 사용한다
 activitycatalog api의 OrganizationSource/InMemoryOrganizationSource는 snapshot별 별도 조직 원본 저장소다. OrganizationRepository는 최초 빈 ID 캐시에서 조회하고 miss일 때만 source.find를 호출하며 성공한 record만 저장한다. path는 parentOrganizationId를 따라가고 visited ID로 순환을 중단하여 복구 가능한 부분 경로를 반환한다. 선택 ID는 전역 leaf로 강제하지 않는다. replaceSource는 원본 교체와 모든 캐시된 조상 삭제를 같은 monitor lock에서 처리하며 경로 자체는 영속 저장하지 않는다. find/path/replaceSource는 @Synchronized로 원자적이다. 네트워크·외부 DI·새 모듈을 추가하지 않았다.
 
 진입점은 같은 Entity의 api.OrganizationSource, api.InMemoryOrganizationSource, api.OrganizationRepository다. 별도 Dictionary source와 cache이므로 단순 인덱스 조회와 구별된다. OrganizationRepositoryTest JVM4건은 빈 캐시/miss/hit 원본 호출수, 성공만 캐시·missing/nil, 공통 부모 재사용, 순환/부분 경로, 이름·부모 snapshot 교체 무효화를 검증한다. 이 책임은 상세 getter가 뒤이어 공유하여 사용한다.
+
+
+## ActivityDetail 조회 경계 (2026-09-14)
+
+최신 상세 입력은 `ActivityDetail`과 기존 immutable CalendarDraft 값/사용자 콜백이다. 상세 Pages에는 원시 Notice/ActivityCatalog/저장소를 전달하지 않는다. 구조검사에 상세 Pages의 Notice/ActivityCatalog 금지 사례를 추가했다. App은 발견/즐겨찾기의 선택 ID로 `ActivityDetailRepository.detail(id)`를 호출하고, 지도는 detail.location의 venue를, 캘린더는 detail.applicationInformation 및 이미 단계별 장소가 연결된 detail.schedules를 사용한다. 이전 원시 Notice 기반 calendar mapping은 제거했다. Feature가 Entity를 아래 방향으로 참조하며 Entity에 CalendarDraft/OS 구현을 넣지 않는다.
+
+ActivityDetail 필드 매핑:
+- title ← title; aiDescription ← 기존 검토 sample.summary, descriptionProvenance=`reviewed_sample_summary`. 새 AI 생성이라 표시하지 않으며 모델 이름 외 UI 문구를 바꾸지 않는다.
+- organizationId ← favoriteOrganizationId; organizationPath는 해당 ID와 부모만 해석한 **영속화하지 않는 조회 경로**다. 전체 카탈로그/글로벌 조직 트리를 포함하지 않는다. 자식이 있는 선택 조직도 그대로 대상이다.
+- relatedOrganizations ← organizationLinks의 ID/명시적 role/해석한 이름. contexts도 ID와 명시적 role/기존 label/이름을 유지한다. path에서 주최·운영·학교 관계를 추론하지 않는다.
+- categoryPath/categorySummary, edition, targetUser(audience.summary), participationCondition(eligibility.summary), benefits/issues는 기존 표시 의미를 보존한다.
+- applicationInformation은 기존 ActivityApplication을 재사용하며 날짜/URL/summary 외 methods(channels), requiredDocuments, submissionLocations를 실제 읽는다. 기간용 중복 summary wrapper를 만들지 않는다.
+- schedules는 `ActivityScheduleDetail(period: ActivityPhase, locations: List<ActivityVenue>)`로 묶는다. 온라인은 offline venue 없음, 그 외 exact phase join의 모든 일치 장소를 포함한다. 전체 location.summary도 원래 상세 안내를 보존한다.
+- sourceURL/sources/evidence는 실제 원본 해석 결과다. ActivitySource는 id/url/kind/checkedAt/access/note, ActivityEvidence는 sourceId/locator/fieldPath/sourceURL을 유지한다. sources에는 공고 sourceIds와 근거에서 참조한 좌표 출처까지 포함한다. 모르는 source ID는 ID와 null 메타데이터, 모르는 URL은 null로 남기며 사실을 만들지 않는다.
+
+`DecodeActivityEvidence`는 같은 Entity 내부 helper다. canonical evidence의 소속 객체/배열 경로(예: schedule[0], location.venues[0].coordinates)를 보존한다. qualityIssues의 명시 fieldPath도 사용한다. 원본 JSON은 변경하지 않는다. 근거 데이터는 상세 조회 결과에서 사용 가능하며 기존 화면에 새 근거 목록 UI를 추가하지 않는다.
+
+App의 저장소 인스턴스는 MainActivity.onCreate에서 Compose 밖에 한 번 만든다. load 성공한 snapshot으로 별도 source를 한 번 채우고 ID cache는 빈 상태로 둔다. 상세 getter/재구성/재진입에서 저장소 생성이나 prewarm을 하지 않는다. App 기존 remember 공급/재시도 흐름을 유지하며 동일 snapshot 객체로 다시 load하면 캐시를 유지한다. 다른 snapshot의 이름/부모 교체는 replaceSnapshot으로 전체 source/cache를 같은 monitor lock 안에서 교체한다. 기존 카드/즐겨찾기 ActivityCatalog helper도 같은 공급 snapshot을 사용하며 경로 결과 의미가 동일함을 테스트한다. 현 UI에는 live refresh가 없고 replacement는 명시적으로 테스트한 API다. 기존에 반환한 detail은 immutable snapshot 조회 결과이며 자동 갱신되는 관찰 객체가 아니다.
+
+OrganizationRepositoryTest4와 ActivityDetailRepositoryTest3은 cold miss/hit 실제 source 호출수·공유 부모/두 번 상세 열기·성공만 캐시·missing·순환·snapshot 이름/부모 무효화·ID만 저장한 참조·전역 leaf 비강제·표시/역할/근거 보존을 JVM에서 검사한다. ActivityDetailProjectionTest2는 실제 canonical asset의 출처/근거/신청 방식과 미해결 source의 URL 비조작을 계측으로 확인한다. 기존 캘린더 pure tests도 동일 detail getter를 거쳐 phase 장소/시각 검증을 유지한다.
+
+
+이번 ActivityDetail 최종 검증(2026-09-14): 구조41파일/self-test16(금지11/허용5), JVM24(기존17+조직4+상세3), Debug, Lint 오류0/권고12, 전용5556 계측30건(기존28+projection2) 모두 통과(실패/오류/skip 0). 조직 기능 커밋 전에도 JVM21/Debug/구조37파일을 실행했다. 최신 로그 `build/activity-detail-final.log`, 조직 선행 로그 `build/organization-cache.log`, 앱 표준 JVM/계측 XML·Lint 보고서가 실제 증거다. 앞 캘린더 JVM17/계측28은 이전 결과다. canonical asset은 SHA256 c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f 그대로이며 공통 JSON 변경 없음. 외부 지도/캘린더 앱 화면은 이번에 검증하지 않았고 전용 기기에서 실제 캘린더 저장도 하지 않았다. 사용자5554 보존, 전용5556만 종료한다.

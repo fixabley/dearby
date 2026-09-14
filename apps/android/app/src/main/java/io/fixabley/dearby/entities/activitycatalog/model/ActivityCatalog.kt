@@ -26,6 +26,9 @@ internal data class Notice(
     val categoryPath: List<String>,
     val contexts: List<NoticeContext>,
     val edition: Int?,
+    val organizationLinks: List<NoticeContext> = emptyList(),
+    val sources: List<ActivitySource> = emptyList(),
+    val evidence: List<ActivityEvidence> = emptyList(),
 ) {
     val categorySummary: String get() {
         val labels = mapOf("recruitment" to "채용", "recruitment_event" to "채용행사",

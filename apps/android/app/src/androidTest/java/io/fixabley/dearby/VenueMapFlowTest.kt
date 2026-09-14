@@ -3,6 +3,7 @@ package io.fixabley.dearby
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
+import io.fixabley.dearby.entities.activitycatalog.api.ActivityDetailRepository
 import io.fixabley.dearby.app.DearbyApp
 import io.fixabley.dearby.app.openVenueMap
 import io.fixabley.dearby.entities.activitycatalog.api.AssetCatalogProvider
@@ -55,8 +56,9 @@ class VenueMapFlowTest {
             override fun read() = emptySet<String>()
             override fun write(ids: Set<String>) = Unit
         })
+        val repository = ActivityDetailRepository(provider)
         rule.setContent { DearbyTheme {
-            DearbyApp(provider, favorites, onOpenSource = {}, onAddToCalendar = {}, onOpenMap = { venue ->
+            DearbyApp(repository, favorites, onOpenSource = {}, onAddToCalendar = {}, onOpenMap = { venue ->
                 assertEquals(expected, venue)
                 openVenueMap(venue, { requests.add(it) }, { error("Unexpected unavailable") })
             })

@@ -11,9 +11,13 @@ internal class AssetCatalogProvider(private val assets: AssetManager) : CatalogP
         val root = JSONObject(raw)
         check(root.getString("schemaVersion") == "1.0.0")
         check(root.getString("mode") == "reviewed_sample")
-        val sources = root.getJSONArray("sources").objects().associate {
-            it.getString("id") to it.getString("url")
+        val sources = root.getJSONArray("sources").objects().associate { source ->
+            val record = ActivitySource(source.getString("id"), source.opt("url") as? String,
+                source.opt("kind") as? String, source.opt("checkedAt") as? String,
+                source.opt("access") as? String, source.opt("note") as? String)
+            record.id to record
         }
+        val sourceURLs = sources.mapValues { it.value.url }
         val organizations = root.getJSONArray("organizations").objects().map {
             Organization(it.getString("id"), it.getString("name"),
                 if (it.isNull("parentOrganizationId")) null else it.getString("parentOrganizationId"))
@@ -21,6 +25,10 @@ internal class AssetCatalogProvider(private val assets: AssetManager) : CatalogP
         val feed = root.getJSONArray("activities").objects()
             .filter { it.getBoolean("demoVisible") }
             .map { item ->
+                val evidence = decodeActivityEvidence(item, sourceURLs)
+                val sourceIds = item.getJSONArray("sourceIds").let { array ->
+                    (0 until array.length()).map { array.getString(it) }
+                }
                 Notice(
                     id = item.getString("id"),
                     title = item.getString("title"),
@@ -40,7 +48,14 @@ internal class AssetCatalogProvider(private val assets: AssetManager) : CatalogP
                         NoticeContext(it.getString("organizationId"), it.getString("role"))
                     },
                     edition = if (item.isNull("edition")) null else item.getInt("edition"),
-                    sourceUrl = sources.getValue(item.getJSONArray("sourceIds").getString(0)),
+                    sourceUrl = sourceURLs[sourceIds.firstOrNull()].orEmpty(),
+                    organizationLinks = item.optJSONArray("organizationLinks")?.objects()?.map {
+                        NoticeContext(it.getString("organizationId"), it.getString("role"))
+                    }.orEmpty(),
+                    sources = (sourceIds + evidence.map { it.sourceId }).distinct().map { id ->
+                        sources[id] ?: ActivitySource(id, null, null, null, null, null)
+                    },
+                    evidence = evidence,
                 )
             }.sortedBy { if (it.organizationId == null) 1 else 0 }
         return ActivityCatalog(root.getString("snapshotAt").take(10), organizations, feed)

@@ -3,6 +3,7 @@ package io.fixabley.dearby
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
+import io.fixabley.dearby.entities.activitycatalog.api.ActivityDetailRepository
 import io.fixabley.dearby.app.DearbyApp
 import io.fixabley.dearby.entities.activitycatalog.api.AssetCatalogProvider
 import io.fixabley.dearby.entities.activitycatalog.api.CatalogProvider
@@ -25,7 +26,8 @@ class PhaseCalendarFlowTest {
         val catalog = AssetCatalogProvider(InstrumentationRegistry.getInstrumentation().targetContext.assets).load()
         val contest = catalog.feed.single { it.id == "cbnu-software-1154064" }
         val captured = mutableListOf<CalendarDraft>()
-        rule.setContent { DearbyTheme { DearbyApp(CatalogProvider { catalog.copy(feed = listOf(contest)) }, favorites, {}, {}, { captured.add(it) }) } }
+        val repository = ActivityDetailRepository(CatalogProvider { catalog.copy(feed = listOf(contest)) })
+        rule.setContent { DearbyTheme { DearbyApp(repository, favorites, {}, {}, { captured.add(it) }) } }
         rule.onNodeWithTag("details.${contest.id}").performClick()
         rule.onNodeWithTag("notice.detail").performScrollToNode(hasTestTag("calendar.phase.0"))
         rule.runOnIdle { assertTrue(captured.isEmpty()) }
@@ -47,7 +49,8 @@ class PhaseCalendarFlowTest {
         val catalog = AssetCatalogProvider(InstrumentationRegistry.getInstrumentation().targetContext.assets).load()
         val first = catalog.feed.first()
         val invalid = first.copy(schedule = listOf(first.schedule.first().copy(startsAt = "invalid", startsOn = null)))
-        rule.setContent { DearbyTheme { DearbyApp(CatalogProvider { catalog.copy(feed = listOf(invalid)) }, favorites, {}, {}, { fail("No phase action") }) } }
+        val repository = ActivityDetailRepository(CatalogProvider { catalog.copy(feed = listOf(invalid)) })
+        rule.setContent { DearbyTheme { DearbyApp(repository, favorites, {}, {}, { fail("No phase action") }) } }
         rule.onNodeWithTag("details.${first.id}").performClick()
         rule.onNodeWithTag("notice.detail").performScrollToNode(hasText(invalid.schedule.first().summary))
         rule.onNodeWithText(invalid.schedule.first().summary).assertIsDisplayed()

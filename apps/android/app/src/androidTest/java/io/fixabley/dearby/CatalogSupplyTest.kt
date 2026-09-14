@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import io.fixabley.dearby.entities.activitycatalog.api.ActivityDetailRepository
 import io.fixabley.dearby.app.DearbyApp
 import io.fixabley.dearby.entities.activitycatalog.api.CatalogProvider
 import io.fixabley.dearby.features.favoriteorganization.api.FavoriteStore
@@ -32,7 +33,8 @@ class CatalogSupplyTest {
             override fun read() = setOf("legacy")
             override fun write(ids: Set<String>) = Unit
         })
-        rule.setContent { DearbyTheme { DearbyApp(provider, favorites, onOpenSource = {}, onAddToCalendar = {}, onOpenMap = {}) } }
+        val repository = ActivityDetailRepository(provider)
+        rule.setContent { DearbyTheme { DearbyApp(repository, favorites, onOpenSource = {}, onAddToCalendar = {}, onOpenMap = {}) } }
         rule.onNodeWithText("공고를 불러오지 못했어요").assertIsDisplayed()
         rule.onNodeWithText("다시 시도").performClick()
         rule.onNodeWithText("표시할 공고가 없어요").assertIsDisplayed()

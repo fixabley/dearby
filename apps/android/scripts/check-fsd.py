@@ -19,7 +19,8 @@ API = {
     },
     "features.addtocalendar": {"model.CalendarDraft", "model.applicationCalendarDraft", "model.phaseCalendarDraft"},
     "entities.activitycatalog": {
-        "model.ActivityApplication", "model.ActivityPhase",
+        "model.ActivityApplication", "model.ActivityPhase", "model.ActivityDetail", "model.ActivityScheduleDetail",
+        "model.ResolvedOrganizationRole", "model.ActivitySource", "model.ActivityEvidence", "api.ActivityDetailRepository",
         "model.ActivityLocation", "model.ActivityVenue", "model.VenueCoordinates",
         "model.ActivityCatalog", "model.Notice", "model.Organization", "model.NoticeContext",
         "api.OrganizationSource", "api.InMemoryOrganizationSource", "api.OrganizationRepository",
@@ -72,6 +73,8 @@ def check_source(relative_path, text):
             (target_layer == "features" and ref != "features.addtocalendar.model.CalendarDraft") or ".api." in ref
         ):
             errors.append(f"UI must receive values/callbacks, not state or data providers: {ref}")
+    if source == "pages.noticedetail" and any(ref in {"entities.activitycatalog.model.Notice", "entities.activitycatalog.model.ActivityCatalog"} for ref in references):
+        errors.append("detail UI must receive ActivityDetail, not raw catalog/notice")
     if layer in ("pages", "widgets") and re.search(
         r"\b(LocalContext|SharedPreferences|getSharedPreferences|AssetManager)\b", code
     ):
@@ -94,13 +97,16 @@ def self_test():
         ("shared/ui/Example.kt", "import io.fixabley.dearby.shared.ui.theme.DearbyTheme", True),
         ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft", True),
         ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.features.addtocalendar.model.applicationCalendarDraft", False),
+        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.entities.activitycatalog.model.Notice", False),
+        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.entities.activitycatalog.model.ActivityCatalog", False),
+        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.entities.activitycatalog.model.ActivityDetail", True),
     ]
     for filename, snippet, allowed in cases:
         path = Path(filename)
         package = PREFIX + "." + ".".join(path.parts[:-1])
         errors = check_source(path, f"package {package}\n{snippet}\n")
         assert (not errors) == allowed, (filename, snippet, errors)
-    print(f"Boundary self-test: {len(cases)} cases passed (9 forbidden, 4 allowed)")
+    print(f"Boundary self-test: {len(cases)} cases passed (11 forbidden, 5 allowed)")
 
 
 if __name__ == "__main__":

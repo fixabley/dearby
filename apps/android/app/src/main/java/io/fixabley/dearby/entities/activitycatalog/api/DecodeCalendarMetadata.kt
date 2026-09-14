@@ -7,7 +7,8 @@ import org.json.JSONObject
 internal fun decodeActivityApplication(json: JSONObject) = ActivityApplication(
     json.getString("summary"), json.calendarDate("opensAt"), json.calendarDate("opensOn"),
     json.calendarDate("closesAt"), json.calendarDate("closesOn"), json.calendarTimezone(),
-    json.opt("url") as? String,
+    json.opt("url") as? String, json.stringValues("channels"),
+    json.stringValues("requiredDocuments"), json.stringValues("submissionLocations"),
 )
 
 internal fun decodeActivityPhase(json: JSONObject) = ActivityPhase(
@@ -22,3 +23,8 @@ private fun JSONObject.calendarDate(key: String): String? =
 
 private fun JSONObject.calendarTimezone(): String =
     if (!has("timezone")) "Asia/Seoul" else calendarDate("timezone") ?: ""
+
+private fun JSONObject.stringValues(key: String): List<String> {
+    val values = optJSONArray(key) ?: return emptyList()
+    return (0 until values.length()).mapNotNull { values.opt(it) as? String }
+}

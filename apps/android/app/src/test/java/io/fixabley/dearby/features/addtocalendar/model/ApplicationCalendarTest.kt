@@ -1,16 +1,25 @@
 package io.fixabley.dearby.features.addtocalendar.model
 
 import io.fixabley.dearby.entities.activitycatalog.model.*
+import io.fixabley.dearby.entities.activitycatalog.api.ActivityDetailRepository
+import io.fixabley.dearby.entities.activitycatalog.api.CatalogProvider
 import java.time.Instant
 import java.util.TimeZone
 import org.junit.Assert.*
 import org.junit.Test
 
-internal fun calendarNotice(application: ActivityApplication = ActivityApplication("기존 신청 안내")) = Notice(
+internal fun calendarNoticeRecord(application: ActivityApplication = ActivityApplication("기존 신청 안내")) = Notice(
     "fixture", "공고", "원문 요약", null, "대상", "조건", application,
     ActivityLocation("장소 안내", "unknown", "unknown", emptyList()), emptyList(), emptyList(), emptyList(),
     "https://example.org/source", emptyList(), emptyList(), null,
 )
+
+internal fun projectCalendarNotice(notice: Notice): ActivityDetail {
+    val repository = ActivityDetailRepository(CatalogProvider { ActivityCatalog("fixture", emptyList(), listOf(notice)) })
+    repository.load()
+    return repository.detail(notice.id)!!
+}
+internal fun calendarNotice(application: ActivityApplication = ActivityApplication("기존 신청 안내")) = projectCalendarNotice(calendarNoticeRecord(application))
 
 class ApplicationCalendarTest {
     private fun millis(value: String) = Instant.parse(value).toEpochMilli()
