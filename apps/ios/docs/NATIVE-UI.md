@@ -81,3 +81,7 @@ Shared `LocationInformation(name:detail:action:)`는 장소명 body와 상세 su
 SwiftUI에 이 용도의 일정 일간 시간표 control이 없어 좁은 custom grid를 유지한다. native DatePicker의 날짜 탐색이나 내비게이션/전체 달력 앱을 재구현하지 않는다. 상세 List 안의 세로 ScrollView는 사용자가 요청한 bounded 미리보기에 한정하며 header/바깥 여백으로 상세를, 내부 시간표로 하루 전체를 스크롤한다. 일반일은 24시간, DST 전환일은 실제23/25/23.5시간과 offset이 구별된 눈금이다.
 
 같은날 기간 문장은 날짜 한 번, 여러날은 한국어 시작/종료 문장을 줄별로 읽는다. State가 생성한 `EventPeriodPresentation.timeline`은 두 timestamp·timezone·일치·순서가 검증될 때만 존재한다. 날짜만/혼합 정밀도/마감만/invalid/역전/0길이는 정보 문구를 표시하며 종일/길이를 만들지 않는다. 긴 기간 전체 날짜 배열은 만들지 않고 `[start,end)`를 선택일의 실제 자정 경계에서 자른다. 시작일 기본 선택, 끝이 자정이면 다음날 선택 제외다. 최소44pt 블록은 **시각 높이만** 확대하고 정확한 시간 문장·AX label과 확대 안내는 유지한다. 최대글자에서는 gutter 폭 제한과 별도의 전체 일정명으로 가독성을 보완한다. 어떠한 OS 일정 조회/권한/저장·외부 링크 호출도 표시 중 일어나지 않는다.
+
+### 상세 날짜·시간 줄 분리 (2026-09-15)
+
+`EventTimeRows`는 각 시작/종료의 날짜·요일을 body, 다음 줄 자연어 시간 범위를 subheadline으로 표시한다. 같은날 날짜 1회, 다일 각 날짜/시간 대응을 유지하며 큰글자 자연 줄바꿈을 허용한다. 한국 시간 보조라벨만 생략하고 Asia/Seoul 계산 및 export, 다른 시간대와 DST offset, 미확인/원문 fallback은 유지한다. 사용자 제공 `/tmp/dearby-period-linebreak-reference.png`를 직접 확인했고 관련 `run_detail_presentations.sh`로 변환 계약을 검증한다.
