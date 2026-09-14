@@ -39,6 +39,44 @@ test('sample conforms to the versioned contract; missing eligibility is rejected
   assert.equal(validate(broken), false);
 });
 
+test('venue coordinates are optional complete WGS84 pairs; malformed coordinates are rejected', () => {
+  const withCoordinates = (coordinates) => {
+    const copy = structuredClone(data);
+    copy.activities.find((row) => row.kind === 'career_event').location.venues[0].coordinates = coordinates;
+    return copy;
+  };
+  for (const coordinates of [null, { latitude: 0, longitude: 0 },
+    { latitude: -90, longitude: -180 }, { latitude: 90, longitude: 180 }]) {
+    assert.ok(validate(withCoordinates(coordinates)), JSON.stringify(validate.errors));
+  }
+  for (const coordinates of [{ latitude: 37 }, { longitude: 127 }, {},
+    { latitude: 91, longitude: 127 }, { latitude: 37, longitude: -181 },
+    { latitude: '37', longitude: 127 }, { latitude: null, longitude: 127 },
+    { latitude: Infinity, longitude: 127 }]) {
+    assert.equal(validate(withCoordinates(coordinates)), false);
+  }
+  const legacy = structuredClone(data);
+  for (const row of legacy.activities) {
+    for (const venue of row.location.venues) {
+      delete venue.coordinates;
+      delete venue.coordinateEvidence;
+    }
+  }
+  assert.ok(validate(legacy), JSON.stringify(validate.errors));
+});
+
+test('sample map points retain official evidence and unresolved venues remain without coordinates', () => {
+  const mapped = data.activities.flatMap((row) => row.location.venues).filter((venue) => venue.coordinates);
+  assert.equal(mapped.length, 3);
+  for (const venue of mapped) {
+    assert.ok(venue.coordinateEvidence.length > 0);
+    assert.ok(venue.coordinateEvidence.every((entry) => data.sources.some((source) => source.id === entry.sourceId)));
+  }
+  const contest = data.activities.find((row) => row.kind === 'competition');
+  assert.equal(contest.location.venues[0].coordinates, null);
+  assert.match(contest.location.summary, /상세 장소 확인 필요/);
+});
+
 test('all IDs are unique and all organization/source references resolve', () => {
   for (const rows of [data.activities, data.organizations, data.sources]) {
     assert.equal(new Set(rows.map((row) => row.id)).size, rows.length);

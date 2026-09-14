@@ -58,6 +58,22 @@
       "checkedAt": "2026-09-14T06:41:40+00:00",
       "access": "public",
       "note": "공개 HTML 본문 확인"
+    },
+    {
+      "id": "cbnu-campus-map",
+      "url": "https://www.cbnu.ac.kr/www/selectWebCampusList.do?key=644",
+      "kind": "web_page",
+      "checkedAt": "2026-09-14T10:13:08Z",
+      "access": "public",
+      "note": "공식 캠퍼스맵 loadData의 N12 중앙도서관(campusNo99), N16-1 인문대학 본관(campusNo95) 건물 대표 좌표. 실내 층·호실 좌표가 아님."
+    },
+    {
+      "id": "cbnu-library-location",
+      "url": "https://www.cbnu.ac.kr/www/contents.do?key=532",
+      "kind": "web_page",
+      "checkedAt": "2026-09-14T10:13:08Z",
+      "access": "public",
+      "note": "공식 도서관 안내에서 중앙도서관 1·2관 동번호 N12 확인."
     }
   ],
   "organizations": [
@@ -406,8 +422,22 @@
         "venues": [
           {
             "phase": "event",
-            "name": "중앙도서관 2관 세미나실(5층)",
-            "address": null
+            "name": "충북대학교 중앙도서관 2관 세미나실(5층)",
+            "address": null,
+            "coordinates": {
+              "latitude": 36.62819644470018,
+              "longitude": 127.45787581357385
+            },
+            "coordinateEvidence": [
+              {
+                "sourceId": "cbnu-campus-map",
+                "locator": "loadData campusNo=99, mapSe=BULD, buldNo=N12 중앙도서관: 건물 대표점, 개별 관·층·호실 좌표 아님"
+              },
+              {
+                "sourceId": "cbnu-library-location",
+                "locator": "중앙도서관 위치 및 연락처: N12 / 중앙도서관 1·2관"
+              }
+            ]
           }
         ],
         "evidence": [
@@ -588,8 +618,22 @@
         "venues": [
           {
             "phase": "event",
-            "name": "중앙도서관 1관 상담실 1호실·6호실",
-            "address": null
+            "name": "충북대학교 중앙도서관 1관 상담실 1호실·6호실",
+            "address": null,
+            "coordinates": {
+              "latitude": 36.62819644470018,
+              "longitude": 127.45787581357385
+            },
+            "coordinateEvidence": [
+              {
+                "sourceId": "cbnu-campus-map",
+                "locator": "loadData campusNo=99, mapSe=BULD, buldNo=N12 중앙도서관: 건물 대표점, 개별 관·층·호실 좌표 아님"
+              },
+              {
+                "sourceId": "cbnu-library-location",
+                "locator": "중앙도서관 위치 및 연락처: N12 / 중앙도서관 1·2관"
+              }
+            ]
           }
         ],
         "evidence": [
@@ -755,8 +799,18 @@
         "venues": [
           {
             "phase": "event",
-            "name": "N16-1 459호",
-            "address": null
+            "name": "충북대학교 인문대학 본관(N16-1) 459호",
+            "address": null,
+            "coordinates": {
+              "latitude": 36.630148842811074,
+              "longitude": 127.45866999572327
+            },
+            "coordinateEvidence": [
+              {
+                "sourceId": "cbnu-campus-map",
+                "locator": "loadData campusNo=95, mapSe=BULD, buldNo=N16-1 인문대학 본관: 건물 대표점, 459호 실내 좌표 아님"
+              }
+            ]
           }
         ],
         "evidence": [
@@ -1010,7 +1064,9 @@
           {
             "phase": "final",
             "name": "2026 부산 사이버보안 콘퍼런스 행사장",
-            "address": null
+            "address": null,
+            "coordinates": null,
+            "coordinateEvidence": []
           }
         ],
         "evidence": [

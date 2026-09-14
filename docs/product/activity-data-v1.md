@@ -165,3 +165,35 @@ npm test
 
 샘플의 기준 파일은 `shared/contracts/activities/sample.json` 하나다.
 iOS·Android의 JSON 리소스는 위 스크립트로 복사하며 `--check`로 일치 여부를 확인한다.
+
+## 장소 좌표와 지도 연결 (2026-09-14)
+
+location은 단일 문자열로 줄이지 않는다. summary는 기존 장소 안내, venues는 일정 단계별 실제 장소다.
+각 venue에 선택 필드 coordinates: { latitude, longitude } 또는 null을 추가한다. WGS84 십진도이며 위도 -90~90, 경도 -180~180을 함께 제공한다.
+생략/null은 미확인이다. 0,0은 유효한 좌표이므로 미확인을 나타내는 기본값으로 사용하지 않는다.
+불완전한 쌍·문자열·범위 밖 값은 규격에서 거절한다. 이전 좌표 없는 1.0.0 자료도 유효한 선택 필드 확장이다.
+coordinateEvidence는 기존 sourceId/locator 구조로 좌표 및 건물 연결의 확인 근거를 기록한다.
+
+이번 샘플의 좌표는 [충북대학교 공식 캠퍼스맵](https://www.cbnu.ac.kr/www/selectWebCampusList.do?key=644)의 공개 loadData에서 확인했다.
+
+| 적용 공고 | 기준 건물 | 위도 | 경도 |
+| --- | --- | --- | --- |
+| 한국농어촌공사·DB손해보험 행사 | N12 중앙도서관, campusNo 99 | 36.62819644470018 | 127.45787581357385 |
+| 러시아언어문화학과 동문 멘토링 | N16-1 인문대학 본관, campusNo 95 | 36.630148842811074 | 127.45866999572327 |
+
+[공식 도서관 안내](https://www.cbnu.ac.kr/www/contents.do?key=532)에서 1·2관 모두 N12로 확인했다.
+좌표는 건물 대표점이며 개별 관 입구·층·호실의 정확한 위치를 뜻하지 않는다. 장소 summary의 실내 안내를 유지한다.
+대회 결선 행사장은 상세 위치가 미확정이므로 좌표를 null로 유지했다. 행정 공고에는 활동 장소가 없어 venues가 빈 배열이다.
+좌표 출처의 checkedAt은 이번 확인 시각이고 기존 모집공고의 snapshotAt/일정은 갱신하지 않았다.
+
+앱 표시 모델의 audience/eligibility/application은 String, benefits/qualityIssues는 문자열 목록으로 단순화한다.
+공통 원문 규격의 조건 rule/status/evidence 및 혜택 금액/단위는 추론·검증에 필요하므로 제거하지 않는다.
+iOS는 디코딩에서 summary를 펼치고 Android는 기존 문자열 매핑을 유지한다. 중복 DTO 계층을 새로 추가할 필요는 없다.
+
+지도 열기는 상세 화면에서 좌표가 있는 각 장소에 제공하며, 층·호실은 안내 문구로 확인하게 한다.
+플랫폼 외부 앱 호출은 앱 조립부가 담당한다. iOS는 [Apple Map Links](https://developer.apple.com/library/archive/featuredarticles/iPhoneURLScheme_Reference/MapLinks/MapLinks.html),
+Android는 [geo ACTION_VIEW](https://developer.android.com/guide/components/intents-common#Maps)를 사용한다.
+위치 권한이나 사용자 현위치 조회는 필요하지 않으며, 앱 내부 지도·경로 계산·자동 지오코딩은 이번 범위에 포함하지 않는다.
+
+검증: npm test 15건 통과(좌표 범위/쌍/타입/기존 형식/근거 참조 포함), samples:check 통과.
+플랫폼 구현 및 실제 지도 앱 연결 검증은 각각의 앱 PR/ARCHITECTURE.md에 별도 기록한다.

@@ -579,6 +579,41 @@
                   "string",
                   "null"
                 ]
+              },
+              "coordinates": {
+                "description": "지도 표시용 WGS84 좌표. 생략/null은 미확인. 건물 대표점일 수 있으며 층·호실은 name/summary를 확인한다.",
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "latitude": {
+                        "type": "number",
+                        "minimum": -90,
+                        "maximum": 90
+                      },
+                      "longitude": {
+                        "type": "number",
+                        "minimum": -180,
+                        "maximum": 180
+                      }
+                    },
+                    "required": [
+                      "latitude",
+                      "longitude"
+                    ]
+                  }
+                ]
+              },
+              "coordinateEvidence": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/evidence"
+                },
+                "description": "공식 지도 등 좌표와 장소 연결의 확인 근거."
               }
             },
             "required": [
