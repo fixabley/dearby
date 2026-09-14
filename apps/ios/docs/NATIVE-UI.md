@@ -30,3 +30,7 @@ Xcode 26.6 (17F113), Swift 6, deployment iOS 26.0; 검증 runtime iOS 26.5. SDK/
 - [Apple — Materials](https://developer.apple.com/design/human-interface-guidelines/materials): 콘텐츠와 제어/탐색 material의 역할 구분.
 
 최신 문서에 보이는 Xcode 27 API는 현 Xcode 26.6 범위를 넘으므로 도입하지 않았다.
+
+## 상세 적용
+
+상세는 `List(.insetGrouped)`의 기본 `Section`으로 요약/조직/참여/기간·장소/혜택/출처를 묶는다. 중복 NoticeDetailField/NoticeIdentityFact를 제거하고 Shared InformationRow를 직접 사용한다. 긴 정보는 무제한 줄바꿈하며 섹션 label은 시스템 header다. Calendar/Map는 기존 콜백을 그대로 쓰는 borderless Button이고 label 44pt를 보장한다(이 스타일에는 bordered 내부 padding이 없음). 원문은 native Link다. 별도 section wrapper·도메인 제목 wrapper는 없다.

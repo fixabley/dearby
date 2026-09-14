@@ -57,9 +57,7 @@ Pages/NoticeDetail/Model/NoticeDetailState.swift
 Pages/NoticeDetail/Model/NoticeDetailViewModel.swift
 Pages/NoticeDetail/UI/CalendarAddButton.swift
 Pages/NoticeDetail/UI/NoticeApplicationView.swift
-Pages/NoticeDetail/UI/NoticeDetailField.swift
 Pages/NoticeDetail/UI/NoticeDetailView.swift
-Pages/NoticeDetail/UI/NoticeIdentityFact.swift
 Pages/NoticeDetail/UI/NoticeIdentityView.swift
 Pages/NoticeDetail/UI/NoticeLocationView.swift
 Pages/NoticeDetail/UI/NoticeScheduleView.swift
@@ -166,3 +164,5 @@ Widgets/Notice/NoticeCard는 NoticeCard·NoticeCardSaveButton·NoticeFact·Notic
 ## #2 native Shared UI
 
 현재 공개 API와 기본 Section/List/폰트 사용 규칙은 [NATIVE-UI](docs/NATIVE-UI.md)에 있다. Shared는 순수 표시 값과 콜백만 받으며 InformationRow가 도메인 없는 fact 조합을 대체한다. 도메인 카드·제목·State/VM의 flat 구조는 그대로이며 App 상태 수명과 body 조회 경계는 변경하지 않는다. 탐색은 semantic grouped 배경과 native large 버튼을 쓰고 접근성 크기에서 카드 자연 높이를 허용한다. 초기 구현 FSD 69파일 및 Xcode 26.6 simulator build 성공; 실제 화면 검증 결과는 별도 증거 문서에서 갱신한다.
+
+#2 상세는 native List/Section과 Shared InformationRow/StatusMessage로 구성한다. Calendar/Map route·callback·원본 URL 메모는 그대로다. 중복 순수 fact 파일 2개를 제거했다.
