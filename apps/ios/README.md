@@ -100,3 +100,5 @@ python3 apps/ios/tests/check_fsd_boundaries.py
 즐겨찾기 업무 연산은 `FavoriteOrganizations.saveOrganization(for:in:)`가 소유하며, 페이지는 `SaveOrganizationResult`만 받아 피드백으로 표시한다.
 카탈로그와 즐겨찾기는 각각 Repository 계약과 번들/UserDefaults 구현을 주입한다. 저장 키와 동기 배열 저장 형식은 유지한다.
 독립 검사는 정상 조직 이름 결과와 반복 저장, 대상 nil/미등록 시 무쓰기·무변경·무알림까지 검증한다.
+
+카드의 NoticeFact와 상세의 NoticeIdentityView/NoticeDetailField/NoticeIdentityFact는 각 소유 slice의 UI 파일로 분리합니다. 외부 진입점은 기존 카드·페이지이며, 전체 UI 조사 목록과 이번 빌드/검사 결과는 ARCHITECTURE.md의 UI 보조 컴포넌트 파일 분리를 참고합니다.
