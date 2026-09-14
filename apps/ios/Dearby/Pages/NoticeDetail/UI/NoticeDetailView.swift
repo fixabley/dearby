@@ -21,7 +21,7 @@ struct NoticeDetailView: View {
                 InformationRow(title: "참여 조건", value: state.participationCondition)
             }
             Section("신청") {
-                NoticeApplicationView(time: state.applicationTime, original: state.applicationSummary, onAddToCalendar: onAddApplication)
+                NoticeApplicationView(time: state.applicationTime, original: state.applicationSummary, url: state.applicationURL, onAddToCalendar: onAddApplication)
 
             }
             Section("활동") {

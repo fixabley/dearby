@@ -17,6 +17,7 @@ struct NoticeDetailState: Identifiable {
     let scheduleSummaries: [String]
     let applicationPeriod: String
     let applicationTime: EventPeriodPresentation
+    let applicationURL: URL?
     let schedules: [NoticeScheduleState]
     let location: NoticeLocation
     let benefits: [String]

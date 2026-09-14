@@ -43,7 +43,8 @@ struct EventPeriodPresentation {
                 let iso = formatter("yyyy-MM-dd'T'HH:mm:ssXXXXX")
                 guard let date = iso.date(from: at), iso.string(from: date) == at,
                       on == nil || day.string(from: date) == on else { return nil }
-                let clock = formatter(calendar.component(.second, from: date) == 0 ? "HH:mm" : "HH:mm:ss")
+                let clock = formatter(calendar.component(.second, from: date) != 0 ? "a h시 m분 s초" : (calendar.component(.minute, from: date) == 0 ? "a h시" : "a h시 m분"))
+                clock.locale = Locale(identifier: "ko_KR")
                 return Point(date: date, day: day.string(from: date), clock: clock.string(from: date))
             }
             guard let on, let date = day.date(from: on) else { return nil }
@@ -57,15 +58,16 @@ struct EventPeriodPresentation {
         if let first, let last, first.date > last.date {
             self = fallback("기간 순서 확인 필요"); return
         }
-        let date = formatter("yyyy년 M월 d일")
+        let date = formatter("yyyy년 M월 d일 (E)")
+        date.locale = Locale(identifier: "ko_KR")
         let zoneText = timezone.map { $0 == "Asia/Seoul" ? "한국 시간" : $0 }
         func line(_ point: Point, _ label: String?) -> Line {
-            .init(label: label, date: date.string(from: point.date), time: point.clock ?? "시간 미확인")
+            .init(label: label, date: date.string(from: point.date), time: point.clock.map { $0 + (label == "시작" ? "부터" : label == "종료" ? "까지" : "") } ?? "시간 미확인")
         }
         if let first, let last {
             if first.day == last.day {
                 let time: String
-                if let start = first.clock, let end = last.clock { time = start == end ? start : "\(start)–\(end)" }
+                if let start = first.clock, let end = last.clock { time = start == end ? start : "\(start)부터 \(end)까지" }
                 else if first.clock == nil && last.clock == nil { time = "시간 미확인" }
                 else { time = "시작 \(first.clock ?? "시간 미확인") · 종료 \(last.clock ?? "시간 미확인")" }
                 self = Self(lines: [.init(label: nil, date: date.string(from: first.date), time: time)], note: zoneText)

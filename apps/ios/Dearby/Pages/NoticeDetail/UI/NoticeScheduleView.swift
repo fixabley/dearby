@@ -25,10 +25,7 @@ struct NoticeScheduleView: View {
                 LocationInformation(name: state.location, detail: nil) { EmptyView() }
             }
             if let url = state.onlineURL {
-                Link(destination: url) {
-                    Label(url.host ?? "온라인 장소", systemImage: "video")
-                        .frame(minHeight: 44, alignment: .leading)
-                }.accessibilityLabel("온라인 장소 열기: \(url.absoluteString)")
+                ExternalLinkCard(url: url, label: "온라인 장소")
             }
         }
     }

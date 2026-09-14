@@ -64,3 +64,7 @@ Shared `LocationInformation(name:detail:action:)`는 장소명 body와 상세 su
 신청/phase 제목은 기존 View의 headline, calendar action은 해당 제목 오른쪽이다. 원문 신청/장소 문구는 native DisclosureGroup에서 그대로 볼 수 있어 기본 화면의 동일 날짜·장소 반복을 줄인다. 온라인은 온라인 표시와 검증된 HTTP(S) URL Link를 유지하며 URL 전체는 접근성 label로 제공한다. Shared는 원본 Notice/Organization/Feature를 참조하지 않는다.
 
 참고한 실제 자료는 [Apple iPhone Guide](https://support.apple.com/en-lamr/guide/iphone/iph3d110f84/ios)의 일간 보기 이미지와 별도의 제목/장소·영상통화/시작·종료 입력 설명, 이전 EventKit editor 캡처다. 이 자료는 날짜·시간/장소를 나누는 근거이며 이번 상세 레이아웃 자체는 Dearby의 디자인 해석이다. Apple Calendar 일정 상세 replica나 실제 앱 상세 화면 관찰을 주장하지 않는다. [최신 검증](evidence/issue-02/calendar-detail/README.md).
+
+### 사용자 Calendar 이미지: 한국어 기간과 링크
+
+`EventPeriodPresentation`은 한국어 요일/오전·오후와 부터·까지를 표시한다. `ExternalLinkCard(url:label:)`는 이미 안전성을 검사한 URL과 의미 label만 받아 도메인과 native `Link` 열기를 표시한다. ViewThatFits는 큰글자에서 세로 조합을 허용한다. 링크가 없으면 상위 View가 생략하며 앱 신청URL/온라인URL은 State/VM에서 조립한다. 원본 URL을 미리 fetch하거나 공유하지 않는다. [이번 근거와 검증](evidence/issue-02/calendar-reference/README.md).

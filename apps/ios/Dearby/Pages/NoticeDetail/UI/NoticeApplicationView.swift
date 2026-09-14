@@ -3,6 +3,7 @@ import SwiftUI
 struct NoticeApplicationView: View {
     let time: EventPeriodPresentation
     let original: String
+    let url: URL?
     let onAddToCalendar: (() -> Void)?
     var body: some View {
         VStack(alignment: .leading, spacing: NativeSpacing.content) {
@@ -14,6 +15,7 @@ struct NoticeApplicationView: View {
                 }
             }
             EventTimeRows(lines: time.lines, note: time.note)
+            if let url { ExternalLinkCard(url: url, label: "신청 링크") }
             DisclosureGroup("원문 신청 안내") {
                 Text(original).font(.footnote).foregroundStyle(.secondary)
             }
