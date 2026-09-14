@@ -33,3 +33,5 @@ VoiceOver 실제 음성 낭독과 모든 기종/방향은 미검증이다. CLI c
 discovery-final-light/dark.png는 마지막 활동 장소 label 보완 이후이며 다른 캡처의 기능/상세 레이아웃은 그대로다.
 
 before는 ../before-* 및 ../followup, 이 디렉터리는 after다. 임시 스크린샷 경로를 포함하는 AX JSON의 durable PNG는 동 디렉터리 해당 이름의 PNG를 이용한다.
+
+실행 로그의 행 끝 공백과 마지막 빈 줄만 정규화했다. 원본 실행결과 내용과 PASS/오류 fixture 출력은 유지했다.

@@ -44,19 +44,19 @@ SwiftEmitModule normal arm64 Emitting\ module\ for\ Dearby (in target 'Dearby' f
 
 EmitSwiftModule normal arm64 (in target 'Dearby' from project 'Dearby')
     cd /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios
-    
+
 
 SwiftCompile normal arm64 Compiling\ NoticeCard.swift /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/Dearby/Widgets/Notice/NoticeCard/NoticeCard.swift (in target 'Dearby' from project 'Dearby')
 
 SwiftCompile normal arm64 /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/Dearby/Widgets/Notice/NoticeCard/NoticeCard.swift (in target 'Dearby' from project 'Dearby')
     cd /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios
-    
+
 
 SwiftCompile normal arm64 Compiling\ NoticeCardSaveButton.swift /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/Dearby/Widgets/Notice/NoticeCard/NoticeCardSaveButton.swift (in target 'Dearby' from project 'Dearby')
 
 SwiftCompile normal arm64 /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/Dearby/Widgets/Notice/NoticeCard/NoticeCardSaveButton.swift (in target 'Dearby' from project 'Dearby')
     cd /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios
-    
+
 
 SwiftDriverJobDiscovery normal arm64 Compiling NoticeCardSaveButton.swift (in target 'Dearby' from project 'Dearby')
 
@@ -113,24 +113,24 @@ ProcessInfoPlistFile /Users/jominjun/Library/Developer/XcodeBuildMCP/workspaces/
 
 CodeSign /Users/jominjun/Library/Developer/XcodeBuildMCP/workspaces/dearby-ios-2-e039b1051c4c/DerivedData/Dearby-8e08a8ee7487/Build/Products/Debug-iphonesimulator/Dearby.app/Dearby.debug.dylib (in target 'Dearby' from project 'Dearby')
     cd /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios
-    
+
     Signing Identity:     "Sign to Run Locally"
-    
+
     /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/jominjun/Library/Developer/XcodeBuildMCP/workspaces/dearby-ios-2-e039b1051c4c/DerivedData/Dearby-8e08a8ee7487/Build/Products/Debug-iphonesimulator/Dearby.app/Dearby.debug.dylib
 
 CodeSign /Users/jominjun/Library/Developer/XcodeBuildMCP/workspaces/dearby-ios-2-e039b1051c4c/DerivedData/Dearby-8e08a8ee7487/Build/Products/Debug-iphonesimulator/Dearby.app/__preview.dylib (in target 'Dearby' from project 'Dearby')
     cd /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios
-    
+
     Signing Identity:     "Sign to Run Locally"
-    
+
     /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/jominjun/Library/Developer/XcodeBuildMCP/workspaces/dearby-ios-2-e039b1051c4c/DerivedData/Dearby-8e08a8ee7487/Build/Products/Debug-iphonesimulator/Dearby.app/__preview.dylib
 /Users/jominjun/Library/Developer/XcodeBuildMCP/workspaces/dearby-ios-2-e039b1051c4c/DerivedData/Dearby-8e08a8ee7487/Build/Products/Debug-iphonesimulator/Dearby.app/__preview.dylib: replacing existing signature
 
 CodeSign /Users/jominjun/Library/Developer/XcodeBuildMCP/workspaces/dearby-ios-2-e039b1051c4c/DerivedData/Dearby-8e08a8ee7487/Build/Products/Debug-iphonesimulator/Dearby.app (in target 'Dearby' from project 'Dearby')
     cd /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios
-    
+
     Signing Identity:     "Sign to Run Locally"
-    
+
     /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/jominjun/Library/Developer/XcodeBuildMCP/workspaces/dearby-ios-2-e039b1051c4c/DerivedData/Dearby-8e08a8ee7487/Build/Products/Debug-iphonesimulator/Dearby.app
 
 Validate /Users/jominjun/Library/Developer/XcodeBuildMCP/workspaces/dearby-ios-2-e039b1051c4c/DerivedData/Dearby-8e08a8ee7487/Build/Products/Debug-iphonesimulator/Dearby.app (in target 'Dearby' from project 'Dearby')
@@ -138,4 +138,3 @@ Validate /Users/jominjun/Library/Developer/XcodeBuildMCP/workspaces/dearby-ios-2
     builtin-validationUtility /Users/jominjun/Library/Developer/XcodeBuildMCP/workspaces/dearby-ios-2-e039b1051c4c/DerivedData/Dearby-8e08a8ee7487/Build/Products/Debug-iphonesimulator/Dearby.app -shallow-bundle -infoplist-subpath Info.plist
 
 ** BUILD SUCCEEDED **
-
