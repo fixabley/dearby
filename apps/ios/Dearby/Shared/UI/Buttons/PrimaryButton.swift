@@ -1,0 +1,11 @@
+import SwiftUI
+
+struct PrimaryButton<Content: View>: View {
+    let action: () -> Void
+    @ViewBuilder let label: () -> Content
+
+    var body: some View {
+        Button(action: action, label: label)
+            .buttonStyle(.borderedProminent)
+    }
+}

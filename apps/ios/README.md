@@ -37,38 +37,24 @@ xcodebuild \
   build
 ```
 
-## 소스 구조
+## 구조와 검증
 
-- `Dearby/DearbyApp.swift`: 앱 진입점
-- `Dearby/ContentView.swift`: 카드 탐색·상세·조직 즐겨찾기와 Preview
-- `Dearby/Assets.xcassets`: 테마 색상과 앱 아이콘 슬롯
-- `Dearby.xcodeproj/xcshareddata/xcschemes/Dearby.xcscheme`: 공유 scheme
+현재 앱은 Entities/Notice의 NoticeModel과 Entities/Organization의 OrganizationModel을 독립적으로 조회합니다. App이 실제 SwiftData container/context·snapshot·repository 수명을 소유하고 카드·상세·즐겨찾기 ViewModel이 State를 조합합니다. View는 State·콜백만 받습니다. 실제 트리·진입점·캐시/Observation 수명은 [ARCHITECTURE.md](ARCHITECTURE.md)를 참고하세요.
 
-`Dearby/` 폴더는 Xcode의 파일 시스템 동기화 그룹이므로 새 소스 파일을 추가하면
-프로젝트에 자동으로 반영됩니다. 외부 의존성과 테스트 타깃은 아직 없습니다.
-앱 아이콘 이미지는 출시 전에 추가해야 합니다.
+저장 키/JSON activities·activity-samples.json·접근성 태그와 기존 한국어 문구를 유지합니다. [Related #1](https://github.com/fixabley/dearby/issues/1), [설계 #3](https://github.com/fixabley/dearby/pull/3), [공통 계약 #6](https://github.com/fixabley/dearby/pull/6)은 별도 통합합니다.
 
-Swift Package Manager 의존성을 추가한다면 앱의 `Package.resolved`도 커밋합니다.
-개발자별 Xcode 상태와 인증서·프로비저닝 프로파일은 커밋하지 않습니다.
-
-## 저장소
-
-이 앱은 Dearby 모노레포의 `apps/ios/`에서 관리합니다.
-별도 Git 초기화나 submodule 설정 없이, 저장소 루트에서 다른 클라이언트 및
-공통 명세와 함께 브랜치·커밋·PR을 관리합니다.
-
-## 샘플과 저장소 검증
-
-샘플 데이터는 루트 `scripts/sync-activity-samples.py`로 동기화합니다.
-조직 ID를 UserDefaults에 저장하며 로그인이나 API 연결은 아직 없습니다.
-Xcode 테스트 타깃 대신 다음 독립 Swift 검증을 모노레포 루트에서 실행할 수 있습니다.
-임시 UserDefaults suite를 사용하므로 앱에 저장된 즐겨찾기를 건드리지 않습니다.
+저장소 루트에서 실행합니다. 외부 설치나 앱 실행 없이 임시 저장소/별도 UserDefaults suite로 검사합니다.
 
 ```sh
-swiftc -parse-as-library \
-  apps/ios/Dearby/ActivityCatalog.swift \
-  apps/ios/Dearby/FavoriteOrganizations.swift \
-  apps/ios/tests/FavoritesStoreTests.swift \
-  -o /tmp/dearby-favorites-tests
-/tmp/dearby-favorites-tests shared/contracts/activities/sample.json
+bash apps/ios/tests/run_standalone.sh
+python3 apps/ios/tests/check_fsd_boundaries.py
+git diff --check
 ```
+
+run_standalone.sh에 실제 swiftc 파일 목록과 실행 명령이 있습니다. 현재 tests는 FavoritesStoreTests, OrganizationRepositoryTests, NoticeViewModelTests, CalendarDraftTests, VenueMapTests와 실제 디스크 SwiftDataOrganizationTests/SwiftDataNoticeTests/SwiftDataSnapshotTests이며 old shared JSON과 앱 JSON을 모두 읽습니다. 앱 리소스 canonical SHA256은 c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f입니다. shared snapshot은 변경하지 않으므로 공통 PR #6 통합 전 samples:check의 리소스 차이는 예상됩니다.
+
+이번 standalone/FSD·Simulator build 및 전용 기기 저장/탭/상세 smoke 결과와 미검증 영역은 ARCHITECTURE.md에 구분해 기록했습니다. 지도/캘린더 어댑터는 유지하며 캘린더 권한 요청·직접 저장은 하지 않습니다.
+
+조회는 L1 메모리 → L2 SwiftData ID 조회 → L3 번들 mock 순서입니다. miss 승격은 명시 save 성공 후 이루어지며, 같은 snapshot 재실행은 기존 disk를 사용합니다. 버전 변경은 manifest와 양쪽 L2의 원자적 무효화 후 Session을 재구성합니다. SwiftData 파일은 Application Support/DearbyNoticeCache에 두고 favorites UserDefaults는 그대로 유지합니다. 독립 테스트는 임시 disk store를 종료/재오픈하고 실패 보존도 검사합니다. 의도적인 잘못된 경로 fixture의 CoreData 오류 로그는 예상되며 최종 exit 0을 확인하세요.
+
+위젯은 Widgets/<Domain>/<Widget> 폴더에 View·ViewModel·State를 함께 둡니다. 독립 테스트 스크립트는 해당 폴더의 *State.swift/*ViewModel.swift만 선택하여 SwiftUI 앱 실행 없이 검증합니다.
