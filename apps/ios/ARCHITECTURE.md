@@ -1,3 +1,14 @@
+# FSD 전환 진행 — 공고 카드 컴포넌트
+
+2026-09-14, [#1](https://github.com/fixabley/dearby/issues/1) / [설계 #3](https://github.com/fixabley/dearby/pull/3).
+공고 카드 진입점은 `Widgets/ActivityCard/UI/ActivityCard.swift`의 internal `ActivityCard`다. 표시 모델과 저장 여부·콜백만 받으며 내부 요약 `NoticeFact`는 같은 파일의 private 타입이다.
+카드가 의존하는 공고·조직·출처·카탈로그는 하나의 응집된 `Entities/ActivityCatalog` slice로 함께 옮겼다. `Model/ActivityCatalog.swift`의 모델·조회, `API/ActivityCatalogProviding.swift`와 `BundleActivityCatalogProvider.swift`의 공급 경계, `UI/NoticeClassificationView.swift`가 진입점이다.
+Entities는 Widgets를 모르며 같은 레이어의 다른 slice를 참조하지 않는다. 실제 FSD 구조 검사는 `python3 apps/ios/tests/check_fsd_boundaries.py --slice Widgets/ActivityCard --slice Entities/ActivityCatalog`로 실행한다.
+이번 카드 컴포넌트 검사: 경계 검사(상향·다른 slice·UI 상태/저장 접근 금지 음성 사례 포함), 독립 Swift 상태/공급/복원 검사 및 Simulator Debug 빌드 통과.
+다음 컴포넌트 커밋에서 즐겨찾기 카드/행동과 페이지 라우팅을 옮긴다. 아래는 이전 aa4a258 구조·검증 기록이며 이번 FSD 최종 상태가 아니다.
+
+---
+
 # iOS 앱 구조
 
 [이슈 #1](https://github.com/fixabley/dearby/issues/1)의 승인된 Seed v2와 [공통 설계 PR #3](https://github.com/fixabley/dearby/pull/3)을 적용한다.

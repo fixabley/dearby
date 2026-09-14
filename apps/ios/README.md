@@ -40,13 +40,15 @@ xcodebuild \
 ## 소스 구조
 
 - `Dearby/App/`: 앱 진입·의존성 조립·단일 즐겨찾기 상태 소유·탭 조합
-- `Dearby/Features/Discovery/`: 탐색 화면과 카드
+- `Dearby/Features/Discovery/`: 탐색 화면 (페이지 전환 예정)
+- `Dearby/Widgets/ActivityCard/UI/`: 공고 카드·카드 전용 private 요약
 - `Dearby/Features/Favorites/`: 즐겨찾기 목록과 조직 행
 - `Dearby/Features/NoticeDetail/`: 공고 상세와 조직·분류·학교·회차 표시
-- `Dearby/Shared/Models/`: 공고·조직·카탈로그와 순수 조회
+- `Dearby/Entities/ActivityCatalog/Model/`: 공고·조직·카탈로그와 순수 조회
 - `Dearby/Shared/State/`: Observation 즐겨찾기 상태와 추가·삭제 이벤트
-- `Dearby/Shared/Data/`: 교체 가능한 카탈로그 공급·저장 protocol 및 번들·UserDefaults 구현
-- `Dearby/Shared/UI/`: 발견·즐겨찾기에서 재사용하는 분류 표시
+- `Dearby/Shared/Data/`: 즐겨찾기 저장 protocol 및 UserDefaults 구현 (기능 전환 예정)
+- `Dearby/Entities/ActivityCatalog/API/`: 카탈로그 공급 protocol·번들 구현
+- `Dearby/Entities/ActivityCatalog/UI/`: 발견·즐겨찾기에서 재사용하는 분류 표시
 - `Dearby/Resources/`: 번들 샘플, `Dearby/Assets.xcassets`: 테마와 앱 아이콘 슬롯
 - `Dearby.xcodeproj/xcshareddata/xcschemes/Dearby.xcscheme`: 공유 scheme
 
@@ -74,7 +76,8 @@ UserDefaults suite를 사용하며 사용자 앱 즐겨찾기는 변경하지 �
 ```sh
 mkdir -p apps/ios/build
 swiftc -swift-version 6 -parse-as-library \
-  apps/ios/Dearby/Shared/Models/*.swift \
+  apps/ios/Dearby/Entities/ActivityCatalog/Model/*.swift \
+  apps/ios/Dearby/Entities/ActivityCatalog/API/*.swift \
   apps/ios/Dearby/Shared/State/*.swift \
   apps/ios/Dearby/Shared/Data/*.swift \
   apps/ios/tests/FavoritesStoreTests.swift \
