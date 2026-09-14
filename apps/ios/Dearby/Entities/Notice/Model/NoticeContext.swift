@@ -1,4 +1,4 @@
-struct NoticeContext: Decodable {
+struct NoticeContext: Codable {
     let organizationId: String
     let role: String
     var basis: String? = nil

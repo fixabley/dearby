@@ -1,6 +1,6 @@
 import Foundation
 
-struct NoticeSchedule: Decodable {
+struct NoticeSchedule: Codable {
     let phase: String
     let startsOn: String?
     let startsAt: String?

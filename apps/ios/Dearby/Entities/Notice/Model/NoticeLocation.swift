@@ -1,4 +1,4 @@
-struct NoticeLocation: Decodable {
+struct NoticeLocation: Codable {
     let summary: String
     let mode: String
     let status: String

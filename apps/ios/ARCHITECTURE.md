@@ -126,3 +126,9 @@ NoticeDestinationView(id:session:)는 ContentView의 함수형 목적지 조립�
 OrganizationRecord는 저장 구현의 @Model이고 OrganizationModel과 분리한다. SwiftDataOrganizationSource는 ID predicate로 L2를 조회하고 miss면 주입 외부 source를 호출하여 명시 save 성공 후에만 값을 반환한다. L1은 기존 OrganizationRepository이며 저장/읽기 오류를 throws로 App 오류/재시도까지 전달한다. 누락은 nil이고 실패와 구분한다. autosave를 끄고 승격 실패는 rollback한다. 현재 외부 source는 snapshot mock이며 App 디스크 컨테이너/manifest 연결은 후속 공고 저장 구현과 함께 진행한다.
 
 실제 임시 disk store 재오픈·L1 hit/L2 조회·L3 승격·L2 재조회 시 external 0회·저장 실패 rollback/재호출·missing/throw 구분을 SwiftDataOrganizationTests로 검증했다. 기존 old/new standalone·58파일 FSD/fixture와 Simulator build 12:23:28Z 통과. [ModelContext](https://developer.apple.com/documentation/swiftdata/modelcontext)의 save/rollback/autosave 계약을 따른다.
+
+## SwiftData 공고 codec/source 도입 (진행 중)
+
+NoticeRecord는 ID unique와 버전付き NoticeStorageCodec payload로 공고 한 건만 저장한다. 전체 catalog blob이 아니며 payload는 모든 저장 필드·출처 metadata·근거 sourceURL/fieldPath·unknown 참조·기간/장소/role을 명시한다. domain은 관리 객체나 저장 context를 갖지 않는다. SwiftDataNoticeSource는 L2 ID fetch→L3 mock→명시 save 성공 후 반환이며 corrupt payload/읽기/외부/저장 실패는 nil로 숨기지 않는다. App 목적지는 이미 VM 구성 시 로드한 cachedNotice만 읽어 body에서 디스크 fetch를 하지 않는다.
+
+old/new JSON의 실제 디스크 재오픈·L1/L2/L3 호출 수·전체 codec 필드 roundtrip·대표 출처/오류와 누락 구분·외부 실패·승격 save rollback/재시도를 확인했다. 기존 전체 standalone·61파일 FSD/fixture·Simulator build 12:26:18Z 통과. App의 production 컨테이너/manifest는 후속 통합에서 연결한다.

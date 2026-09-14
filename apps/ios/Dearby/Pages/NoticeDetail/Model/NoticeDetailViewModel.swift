@@ -4,7 +4,7 @@ final class NoticeDetailViewModel {
     private let initial: NoticeDetailState?
     init(id: String, notices: NoticeRepository, organizations: OrganizationRepository, favorites: FavoriteOrganizations) throws {
         self.favorites = favorites
-        guard let notice = notices.notice(id) else { initial = nil; return }
+        guard let notice = try notices.notice(id) else { initial = nil; return }
         let path = try organizations.path(to: notice.favoriteOrganizationId)
         func resolve(_ ref: NoticeContext) throws -> NoticeInstitutionState {
             NoticeInstitutionState(organizationID: ref.organizationId, role: ref.role, label: ref.label,

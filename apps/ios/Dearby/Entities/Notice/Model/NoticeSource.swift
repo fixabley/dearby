@@ -1,4 +1,4 @@
-struct NoticeSource: Decodable {
+struct NoticeSource: Codable {
     let id: String
     let url: String
     var kind: String? = nil

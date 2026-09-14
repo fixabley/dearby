@@ -6,7 +6,7 @@ struct NoticeDestinationView: View {
     let session: NoticeSession
 
     var body: some View {
-        if let state = session.detailState(id), let notice = session.notices.notice(id) {
+        if let state = session.detailState(id), let notice = session.notices.cachedNotice(id) {
             NoticeDetailDestination(state: state, notice: notice)
         } else {
             ContentUnavailableView("공고를 불러오지 못했어요", systemImage: "exclamationmark.triangle")

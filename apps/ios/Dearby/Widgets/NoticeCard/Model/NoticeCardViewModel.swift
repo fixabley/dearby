@@ -5,7 +5,7 @@ final class NoticeCardViewModel {
     private let initial: NoticeCardState?
     init(id: String, notices: NoticeRepository, organizations: OrganizationRepository, favorites: FavoriteOrganizations) throws {
         self.favorites = favorites
-        guard let notice = notices.notice(id) else { organization = nil; initial = nil; return }
+        guard let notice = try notices.notice(id) else { organization = nil; initial = nil; return }
         organization = try organizations.organization(notice.favoriteOrganizationId)
         var seen: Set<String> = []
         let names = try notice.contexts.compactMap { ref -> String? in

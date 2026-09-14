@@ -22,3 +22,8 @@ python3 apps/ios/tests/check_fsd_boundaries.py
 
 swiftc -swift-version 6 -parse-as-library "${organization[@]}" apps/ios/tests/SwiftDataOrganizationTests.swift -o apps/ios/build/dearby-organization-disk-tests
 apps/ios/build/dearby-organization-disk-tests
+
+swiftc -swift-version 6 -parse-as-library "${notice[@]}" "${organization[@]}" "${snapshot[@]}" apps/ios/tests/SwiftDataNoticeTests.swift -o apps/ios/build/dearby-notice-disk-tests
+for sample in apps/ios/Dearby/Resources/activity-samples.json shared/contracts/activities/sample.json; do
+  apps/ios/build/dearby-notice-disk-tests "$sample"
+done

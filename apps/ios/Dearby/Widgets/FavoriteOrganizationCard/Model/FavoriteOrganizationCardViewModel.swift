@@ -6,7 +6,7 @@ final class FavoriteOrganizationCardViewModel {
         self.favorites = favorites
         guard let organization = try organizations.organization(id) else { initial = nil; return }
         let rows = try noticeIDs.compactMap { id -> FavoriteNoticeRowState? in
-            guard let notice = notices.notice(id), notice.favoriteOrganizationId == organization.id else { return nil }
+            guard let notice = try notices.notice(id), notice.favoriteOrganizationId == organization.id else { return nil }
             var seen: Set<String> = []
             let names = try notice.contexts.compactMap { ref -> String? in
                 guard seen.insert(ref.organizationId).inserted else { return nil }

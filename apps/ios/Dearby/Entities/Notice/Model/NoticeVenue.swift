@@ -1,4 +1,4 @@
-struct NoticeVenue: Decodable {
+struct NoticeVenue: Codable {
     let phase: String
     let name: String
     let address: String?

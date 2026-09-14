@@ -20,6 +20,7 @@ final class SwiftDataOrganizationSource: OrganizationSource {
         guard rows.count <= 1 else { throw CocoaError(.coderReadCorrupt) }
         if let row = rows.first { return OrganizationModel(id: row.id, name: row.name, parentId: row.parentId) }
         guard let value = try external.fetch(id: id) else { return nil }
+        guard value.id == id else { throw CocoaError(.coderReadCorrupt) }
         do {
             context.insert(OrganizationRecord(value))
             try commit(context)

@@ -1,6 +1,6 @@
 import Foundation
 
-struct NoticeEvidence {
+struct NoticeEvidence: Codable {
     let sourceId: String
     let locator: String
     let fieldPath: String

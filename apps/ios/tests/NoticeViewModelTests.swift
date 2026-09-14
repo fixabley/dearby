@@ -15,15 +15,15 @@ struct NoticeViewModelTests {
         precondition(source.counts.isEmpty && orgSource.counts.isEmpty)
         let krc = snapshot.notices.first { $0.favoriteOrganizationId == "krc" }!
         let contest = snapshot.notices.first { $0.favoriteOrganizationId == "yeongnam-cyber-defense" }!
-        precondition(notices.notice("missing") == nil && notices.notice("missing") == nil)
+        precondition(testValue(try notices.notice("missing")) == nil && testValue(try notices.notice("missing")) == nil)
         precondition(source.counts["missing"] == 2, "Only success is cached")
-        let model = notices.notice(krc.id)!
+        let model = testValue(try notices.notice(krc.id))!
         let reordered = SnapshotNoticeSource(notices: snapshot.notices, sources: snapshot.sources.reversed()).fetch(id: krc.id)!
         precondition(reordered.sourceURL == model.sourceURL, "Primary source follows reference ID, not source array order")
         let withoutPrimary = SnapshotNoticeSource(notices: snapshot.notices, sources: snapshot.sources.filter { $0.id != krc.sourceIds.first }).fetch(id: krc.id)!
         precondition(withoutPrimary.sourceURL == nil, "Missing primary never falls back to an unrelated source")
         precondition(orgSource.counts.isEmpty, "Notice lookup must not fetch organizations")
-        _ = notices.notice(krc.id)
+        _ = testValue(try notices.notice(krc.id))
         precondition(source.counts[krc.id] == 1)
         let memory = MemoryFavorites()
         let favorites = FavoriteOrganizations(repository: memory)
@@ -55,14 +55,14 @@ struct NoticeViewModelTests {
         let contestState = testValue(try NoticeDetailViewModel(id: contest.id, notices: notices, organizations: organizations, favorites: favorites)).state!
         precondition(contestState.organizationPath == testValue(try organizations.path(to: contest.favoriteOrganizationId)).dropLast().map(\.name))
         precondition(contestState.edition == 2)
-        let projectedContest = notices.notice(contest.id)!
+        let projectedContest = testValue(try notices.notice(contest.id))!
         precondition(projectedContest.schedules.first { $0.period.phase == "preliminary" }!.locations.isEmpty)
         precondition(projectedContest.schedules.first { $0.period.phase == "final" }!.locations.map(\.name) == contest.location.venues.map(\.name))
         // Full evidence, including nested paths and unknown source, survives provider resolution.
         var raw = try JSONSerialization.jsonObject(with: data) as! [String: Any]
         let rawNotices = raw["activities"] as! [[String: Any]]
         for notice in snapshot.notices {
-            let loaded = notices.notice(notice.id)!
+            let loaded = testValue(try notices.notice(notice.id))!
             precondition(loaded.evidence.count == evidenceCount(rawNotices.first { $0["id"] as? String == notice.id }!))
             precondition(loaded.sources.allSatisfy { $0.kind != nil && $0.checkedAt != nil })
             for evidence in loaded.evidence {
@@ -116,7 +116,7 @@ struct NoticeViewModelTests {
     let underlying: any NoticeRecordSource
     var counts: [String: Int] = [:]
     init(_ underlying: any NoticeRecordSource) { self.underlying = underlying }
-    func fetch(id: String) -> NoticeModel? { counts[id, default: 0] += 1; return underlying.fetch(id: id) }
+    func fetch(id: String) throws -> NoticeModel? { counts[id, default: 0] += 1; return try underlying.fetch(id: id) }
 }
 @MainActor private final class CountOrganizationSource: OrganizationSource {
     let records: [OrganizationModel]
