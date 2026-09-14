@@ -258,3 +258,5 @@ Android MainActivity/ComponentActivity/ActivityNotFoundException/startActivity/a
 새 기준은 entities.notice의 NoticeModel(공고 정보·조직 참조 ID만), entities.organization의 OrganizationModel(id/name/parentId)이다. 두 Entity는 서로 import하지 않는다. 각각 Source/InMemorySource와 성공만 저장하는 빈 ID cache-aside Repository를 갖고, replaceSource는 cache 삭제와 Compose 관찰 revision 증가를 원자적으로 수행한다. App에서 UI 스레드 snapshot 교체를 소유하며 Organization path는 기존 cycle-safe 규칙이다. 이 기반 위 카드/상세 State·ViewModel을 연결하면서 과거 noticecatalog/NoticeDetail entity는 제거한다. 모델 생성자는 I/O나 저장소 조회를 하지 않는다.
 
 NoticeRepositoryTest3은 cold miss/hit·missing·교체·조직 객체/경로 부재를, 새 OrganizationRepositoryTest4는 기존 원본 호출수·공유 부모·순환·무효화를 검사한다. 기반 단계 JVM31/Debug 통과(build/independent-repositories.log). 전체 화면 연결 검증은 후속 결과와 구분한다.
+
+NoticeCardViewModel/NoticeCardState를 widgets.noticecard.model에 추가했다. ViewModel이 두 repository로 표시 값을 조합하고, 저장 여부는 기존 FavoritesState에서 매번 읽는다. repository revision 기반 derivedStateOf는 동일 render의 재조회와 missing 반복 조회를 막고 replacement 때 다시 계산한다. JVM 카드2건(공유 저장/삭제, 이름교체, missing/recovery) 및 전체33건/Debug 통과(build/card-viewmodel.log). UI 조립 전환은 공통 snapshot 수명 연결과 함께 수행한다. UI segment의 직접 저장소 접근 금지는 유지하고 Model segment만 하위 저장소/Feature 접근을 허용한다.

@@ -12,7 +12,7 @@ API = {
     "pages.discovery": {"ui.DiscoveryScreen"},
     "pages.favorites": {"ui.FavoritesScreen"},
     "pages.noticedetail": {"ui.NoticeDetailSheet"},
-    "widgets.noticecard": {"ui.NoticeCard"},
+    "widgets.noticecard": {"ui.NoticeCard", "model.NoticeCardState", "model.NoticeCardViewModel"},
     "widgets.favoriteorganizationcard": {"ui.FavoriteOrganizationCard"},
     "features.favoriteorganization": {
         "model.FavoritesState", "api.FavoriteStore", "api.SharedPreferencesFavoriteStore",
@@ -71,13 +71,13 @@ def check_source(relative_path, text):
             exports = [target + "." + entry for entry in API[target]]
             if not any(ref == entry or ref.startswith(entry + ".") for entry in exports):
                 errors.append(f"non-entry-point dependency: {ref}")
-        if layer in ("pages", "widgets") and (
+        if layer in ("pages", "widgets") and "ui" in relative_path.parts and (
             (target_layer == "features" and ref != "features.addtocalendar.model.CalendarDraft") or ".api." in ref
         ):
             errors.append(f"UI must receive values/callbacks, not state or data providers: {ref}")
     if source == "pages.noticedetail" and any(ref in {"entities.noticecatalog.model.Notice", "entities.noticecatalog.model.NoticeCatalog"} for ref in references):
         errors.append("detail UI must receive NoticeDetail, not raw catalog/notice")
-    if layer in ("pages", "widgets") and re.search(
+    if layer in ("pages", "widgets") and "ui" in relative_path.parts and re.search(
         r"\b(LocalContext|SharedPreferences|getSharedPreferences|AssetManager)\b", code
     ):
         errors.append("UI directly accesses Android context/storage")
