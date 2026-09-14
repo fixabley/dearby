@@ -22,12 +22,12 @@ struct FavoriteOrganizationCard<Destination: View>: View {
                         NoticeClassificationView(category: notice.category,
                                                  contextNames: notice.contextNames)
                     }
-                    .frame(minHeight: 44, alignment: .leading)
+                    .frame(minWidth: 44, minHeight: 44, alignment: .leading)
                 }
             }
             Button(role: .destructive, action: remove) {
-                Label("즐겨찾기에서 삭제", systemImage: "heart.slash")
-                    .frame(minHeight: 44, alignment: .leading)
+                Label("즐겨찾기에서 삭제", systemImage: "heart.slash").labelStyle(.iconOnly)
+                    .frame(minWidth: 44, minHeight: 44, alignment: .leading)
             }
             .accessibilityLabel("\(state.name) 즐겨찾기에서 삭제")
             .accessibilityIdentifier("remove.\(state.id)")

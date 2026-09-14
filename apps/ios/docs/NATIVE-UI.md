@@ -42,3 +42,15 @@ FavoriteOrganizationCard는 도메인 widget 안에서 native Section을 조합�
 ## 접근성 보완과 검증
 
 AX5에서 실제 스크롤로 카드 아래 저장/상세 버튼에 도달하고 같은 공고 상세 시트를 열었다. 카드의 긴 제목 preview를 추가했다. 즐겨찾기 고정 하단 안내에는 semantic canvas 배경을 두어 스크롤 텍스트와 겹쳐 읽히지 않게 한다. 신청/활동 캘린더 버튼은 VoiceOver label로 구별한다. [검증·before/after 증거](VERIFICATION-ISSUE-02.md)를 참고한다.
+
+## 일정 메타데이터와 아이콘 액션 (후속)
+
+`MetadataRow(systemImage:text:accessibilityText:)`는 Shared/UI의 도메인 없는 Label/subheadline 조합이다. 아이콘은 secondary, 값은 primary이며 큰 글자에서 줄바꿈한다. 카드 신청/장소 및 상세 신청/각 단계 기간·장소에서 사용한다. 날짜는 Shared/Lib `CompactPeriod.period(start:end:timezone:fallback:)`가 원시 문자열만 받아 Foundation으로 표시한다. 같은 날은 종료 시각만, 연도 경계는 양쪽 연도, 0이 아닌 초는 초까지 유지한다. 시간대가 없거나 해석할 수 없는 timestamp는 원문을 유지하고 종료 미확인은 명시한다. 이 함수는 표시 전용이며 날짜 저장 정책을 대체하지 않는다.
+
+상세 State는 원래 schedules 순서로 이름/기간/해당 단계 장소를 투영한다. 신청은 별도 Section, 활동은 각 단계의 굵은 headline → calendar 기간 → mappin 장소 순서다. 온라인 접두사는 중복하지 않으며 온라인 단계에 오프라인 장소를 붙이지 않는다. 장소 전체 원문/불확실성은 활동 footer 내용에 남고 신청 원문 요약도 유지한다. 각 단계의 calendar callback은 같은 원본 배열 index로 연결한다. App의 EventKit/지도 매퍼와 state lifetime은 변경하지 않는다.
+
+식별 가능한 저장/정보/삭제/캘린더/지도/원문 액션은 native `Label.iconOnly`를 사용한다. 텍스트 label은 접근성에 남고 저장 대상 조직명은 카드에 계속 보인다. calendar/map는 44×44pt 이상, 저장/정보는 native large control을 유지한다. 제목은 title2.bold, 단계는 headline, 메타데이터는 subheadline, 원문 조건/보조는 footnote로 구분하며 폰트 고정·축소 제한은 없다. emoji 대신 native SF Symbols를 사용해 Dynamic Type/접근성 및 플랫폼 일관성을 따른다.
+
+공식 참고: [Apple iconOnly](https://developer.apple.com/documentation/swiftui/labelstyle/icononly), [Apple DateFormatter](https://developer.apple.com/documentation/foundation/dateformatter) (2026-09-14 Markdown 원문 확인). 새로운 SDK/의존성은 없다.
+
+날짜만 주어진 값은 종일로 단정하지 않고 `시간 미확인`을 표시한다. 역전 기간/알 수 없는 시간대는 원문과 확인 필요 표시로 남긴다. phase에 장소가 없으면 다른 단계 장소를 복사하지 않고 `장소 미확인`으로 표시하며 원래 전체 장소 설명은 별도 보조 텍스트에 보존한다.

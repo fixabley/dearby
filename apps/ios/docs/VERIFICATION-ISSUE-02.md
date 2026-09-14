@@ -34,3 +34,9 @@ AX5에서는 첫 화면에 모든 버튼이 들어가지 않는다. 실제 작�
 ## 후속 OS 흐름 재검증 (c1045f1, 2026-09-14 14:32–14:38Z)
 
 위 최초 한계 중 calendar 진입과 지도 실행, 실제 doubletap 콜백은 [후속 증거](evidence/issue-02/followup/README.md)로 추가 확인했다. 앱 코드 변경 없이 신청/활동 EventKit 편집기와 지도 핀이 열렸으며 single doubleclick primitive로 현재 카드 저장 피드백이 갱신되었다. EventKit의 remote UI가 AX tree에서 빠져 배경 ref만 노출되는 자동화 제약을 확인했다. 성공/환경 제약 및 활동 취소 중 외부 입력 provenance 한계는 후속 기록에 구별했다. 최초 기록은 당시 결과로 보존한다.
+
+## 일정 이름·메타데이터·아이콘 후속 (최신)
+
+[후속 증거와 성공/환경 제약 구분](evidence/issue-02/metadata/README.md). Shared MetadataRow/CompactPeriod와 State 투영을 적용하고 신청과 활동 단계 구분, 굵은 단계 이름, phase별 기간/장소/캘린더 action, native icon-only 액션을 실제 사용한다. 원문 조건·장소 불확실성 및 접근성 labels는 남는다.
+
+최종 XcodeBuildMCP build/run 15:01:30Z 성공 및 전체 standalone suite exit0/FSD69파일 통과. 신규 독립 기기4156에서 실제 doubletap 미저장→저장, 즐겨찾기 표시/삭제, 신청·행사 calendar editor 진입→폐기→상세 복귀, 지도 앱 실행, 발견 swipe, 다단계와 주요 화면 light/dark/AX5를 확인했다. calendar 실제 save/VoiceOver 낭독/모든 단계 editor 개별 실행은 미검증이다. 기존 A434/C38E는 초기화·종료하지 않았다. c1045f1과 최신 양쪽에서 실제 편집기 진입이 가능해 List/Section의 calendar 진입 회귀는 재현되지 않았다.

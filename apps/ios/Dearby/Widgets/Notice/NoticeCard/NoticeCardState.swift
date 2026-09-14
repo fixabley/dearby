@@ -9,4 +9,5 @@ struct NoticeCardState: Identifiable {
     let hasQualityIssues: Bool
     let organizationName: String?
     var saved: Bool
+    var applicationPeriod: String? = nil
 }

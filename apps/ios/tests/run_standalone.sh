@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 mkdir -p apps/ios/build
-notice=(apps/ios/Dearby/Entities/Notice/Model/*.swift apps/ios/Dearby/Entities/Notice/API/*.swift)
+notice=(apps/ios/Dearby/Shared/Lib/CompactPeriod.swift apps/ios/Dearby/Entities/Notice/Model/*.swift apps/ios/Dearby/Entities/Notice/API/*.swift)
 organization=(apps/ios/Dearby/Entities/Organization/Model/*.swift apps/ios/Dearby/Entities/Organization/API/*.swift)
 favorites=(apps/ios/Dearby/Features/FavoriteOrganization/Model/*.swift apps/ios/Dearby/Features/FavoriteOrganization/API/*.swift)
 snapshot=(apps/ios/Dearby/App/BundleSnapshot.swift apps/ios/Dearby/App/SnapshotManifest.swift)

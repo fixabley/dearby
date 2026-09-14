@@ -20,13 +20,22 @@ struct NoticeDetailView: View {
                 InformationRow(title: "참여 대상", value: state.targetUser)
                 InformationRow(title: "참여 조건", value: state.participationCondition)
             }
-            Section("기간과 장소") {
-                NoticeApplicationView(summary: state.applicationSummary, onAddToCalendar: onAddApplication)
-                ForEach(Array(state.scheduleSummaries.enumerated()), id: \.offset) { index, phase in
-                    NoticeScheduleView(summary: phase,
-                                       onAddToCalendar: onAddSchedule.indices.contains(index) ? onAddSchedule[index] : nil)
+            Section("신청") {
+                NoticeApplicationView(summary: state.applicationPeriod, onAddToCalendar: onAddApplication)
+                if state.applicationPeriod != state.applicationSummary {
+                    Text(state.applicationSummary).font(.footnote).foregroundStyle(.secondary)
                 }
-                NoticeLocationView(location: state.location, onOpenMap: onOpenMap)
+            }
+            Section("활동") {
+                ForEach(Array(state.schedules.enumerated()), id: \.offset) { index, phase in
+                    NoticeScheduleView(state: phase,
+                                       onAddToCalendar: onAddSchedule.indices.contains(index) ? onAddSchedule[index] : nil,
+                                       onOpenMap: onOpenMap)
+                }
+                Text(state.location.summary).font(.footnote).foregroundStyle(.secondary)
+                if state.schedules.isEmpty {
+                    NoticeLocationView(location: state.location, onOpenMap: onOpenMap)
+                }
             }
             if !state.benefits.isEmpty {
                 Section("혜택") {
@@ -42,7 +51,8 @@ struct NoticeDetailView: View {
                 if let sourceURL = state.sourceURL {
                     Link(destination: sourceURL) {
                         Label("원문 공고 열기", systemImage: "arrow.up.right.square")
-                            .frame(minHeight: 44, alignment: .leading)
+                            .labelStyle(.iconOnly)
+                            .frame(minWidth: 44, minHeight: 44, alignment: .leading)
                     }
                 }
             } header: {

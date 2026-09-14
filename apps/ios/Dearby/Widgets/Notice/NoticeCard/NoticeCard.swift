@@ -23,11 +23,13 @@ struct NoticeCard: View {
                 Text(state.title)
                     .font(compact ? .title3.bold() : .title2.bold())
                     .lineLimit(typeSize.isAccessibilitySize ? nil : 3)
-                if !compact && !typeSize.isAccessibilitySize {
+                if !compact {
                     Divider()
                     InformationRow(title: "참여 대상", value: state.targetUser)
-                    InformationRow(title: "신청 마감", value: state.applicationSummary)
-                    InformationRow(title: "활동 장소", value: state.locationSummary)
+                    Text("신청").font(.subheadline.bold())
+                    MetadataRow(systemImage: "calendar", text: state.applicationPeriod ?? state.applicationSummary, accessibilityText: "신청, \(state.applicationSummary)")
+                    Text("활동 장소").font(.subheadline.bold())
+                    MetadataRow(systemImage: "mappin.and.ellipse", text: state.locationSummary, accessibilityText: "활동 장소, \(state.locationSummary)")
                 }
                 if state.hasQualityIssues {
                     StatusMessage(text: "확인이 필요한 정보가 있어요")
@@ -47,7 +49,7 @@ struct NoticeCard: View {
                 StatusMessage(text: "저장할 조직 확인 중", systemImage: "heart")
             }
             SecondaryButton(action: onShowDetail) {
-                Text("공고 정보 · 출처 보기")
+                Label("공고 정보 · 출처 보기", systemImage: "info.circle").labelStyle(.iconOnly)
                     .frame(maxWidth: .infinity)
             }
             .accessibilityIdentifier("details.\(state.id)")

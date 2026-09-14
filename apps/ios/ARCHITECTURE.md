@@ -172,3 +172,7 @@ Widgets/Notice/NoticeCard는 NoticeCard·NoticeCardSaveButton·NoticeFact·Notic
 ## #2 최종 검증 및 접근성 정책
 
 기본 발견은 시스템 paging, 접근성 크기는 자연 높이·자연 스크롤이다. 같은 State/로컬 저장 피드백 수명 안에서 scroll target 정책만 달라진다. Shared API/native mapping과 사용처는 [NATIVE-UI](docs/NATIVE-UI.md), 실제 build·회귀·터치·PNG 및 미검증 항목은 [검증 기록](docs/VERIFICATION-ISSUE-02.md)을 따른다. 이번 전체 standalone 회귀/FSD 67파일/최종 simulator build가 통과했다. 실제 doubletap·지도 앱·calendar editor·VoiceOver 낭독은 검증 완료로 주장하지 않는다.
+
+## #2 일정·아이콘 후속
+
+Shared/UI MetadataRow는 아이콘/문자열만, Shared/Lib CompactPeriod는 원시 날짜 문자열/시간대만 받는다. NoticeDetailState의 NoticeScheduleState가 원본 phase 순서대로 표시 이름·기간·phase별 장소를 조합하고, View는 같은 index의 App callback을 호출한다. 원본 Notice/Organization model, repository/cache, CalendarDatePolicy 및 지도/캘린더 메모 계약은 변경하지 않는다. 제목은 기존 View 내부, widget flat 구조와 Observation 소유권은 유지한다. 최신 실행 결과는 VERIFICATION-ISSUE-02의 후속 기록이 이전 미검증 기록보다 우선한다.
