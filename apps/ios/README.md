@@ -134,8 +134,13 @@ swiftc -swift-version 6 -parse-as-library \
   apps/ios/Dearby/Entities/ActivityCatalog/Model/*.swift \
   apps/ios/Dearby/Features/AddToCalendar/Model/*.swift \
   apps/ios/Dearby/App/CalendarEditorRequest.swift \
+  apps/ios/Dearby/App/VenueMapLink.swift \
   apps/ios/tests/CalendarDraftTests.swift -o apps/ios/build/dearby-calendar-tests
 apps/ios/build/dearby-calendar-tests apps/ios/Dearby/Resources/activity-samples.json
 ```
 
 캘린더 버튼은 사용자가 수정·저장하거나 취소할 수 있는 시스템 편집기를 엽니다. 앱은 캘린더 접근 권한 요청이나 직접 저장을 하지 않습니다.
+
+신청은 ActivityApplication의 날짜·URL을 보존하고, 각 활동 단계는 정확히 일치하는 장소 또는 온라인 접속 정보를 사용합니다.
+날짜를 확인할 수 없으면 해당 버튼이 없고 원래 안내 문구는 유지됩니다. 종료 미상은 notes에 남기며 임의의 시간 길이를 생성하지 않습니다.
+최신 캘린더 sample은 공통 PR #6의 SHA256 `c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f`이며 이전 지도 sample hash를 대체합니다.

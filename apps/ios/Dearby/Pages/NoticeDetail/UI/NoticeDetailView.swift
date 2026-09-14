@@ -3,6 +3,7 @@ import SwiftUI
 struct NoticeDetailView: View {
     let notice: ActivityNotice
     let catalog: ActivityCatalog
+    let onAddSchedule: [(() -> Void)?]
     let onAddApplication: (() -> Void)?
     let onOpenMap: (ActivityVenue) -> Void
 
@@ -16,8 +17,9 @@ struct NoticeDetailView: View {
                 NoticeDetailField(title: "참여 대상", value: notice.audience)
                 NoticeDetailField(title: "참여 조건", value: notice.eligibility)
                 NoticeApplicationView(summary: notice.application.summary, onAddToCalendar: onAddApplication)
-                ForEach(Array(notice.schedule.enumerated()), id: \.offset) { _, phase in
-                    NoticeDetailField(title: "활동 일정", value: phase.summary)
+                ForEach(Array(notice.schedule.enumerated()), id: \.offset) { index, phase in
+                    NoticeScheduleView(summary: phase.summary,
+                                       onAddToCalendar: onAddSchedule.indices.contains(index) ? onAddSchedule[index] : nil)
                 }
                 NoticeLocationView(location: notice.location, onOpenMap: onOpenMap)
                 ForEach(Array(notice.benefits.enumerated()), id: \.offset) { _, benefit in

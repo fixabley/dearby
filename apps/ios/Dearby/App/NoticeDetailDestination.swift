@@ -11,8 +11,13 @@ struct NoticeDetailDestination: View {
 
     var body: some View {
         let application = CalendarDraftMapper.application(notice, catalog: catalog)
+        let phases = notice.schedule.map {
+            CalendarDraftMapper.activity($0, notice: notice, catalog: catalog, mapURL: VenueMapLink.url)
+        }
         NoticeDetailView(notice: notice, catalog: catalog,
-                         onAddApplication: application.map { draft in { openCalendar(draft) } }, onOpenMap: openMap)
+                         onAddSchedule: phases.map { draft in draft.map { event in { openCalendar(event) } } },
+                         onAddApplication: application.map { draft in { openCalendar(draft) } },
+                         onOpenMap: openMap)
             .sheet(item: $calendarRequest) { request in
                 CalendarEventEditor(request: request, onDismiss: { calendarRequest = nil })
             }
@@ -27,8 +32,8 @@ struct NoticeDetailDestination: View {
     }
 
     private func openCalendar(_ draft: CalendarEventDraft) {
-        guard let request = CalendarEditorRequest(draft: draft) else { calendarFailed = true; return }
-        calendarRequest = request
+        CalendarEditorRequest.prepare(draft, present: { calendarRequest = $0 },
+                                      onFailure: { calendarFailed = true })
     }
 
     private func openMap(_ venue: ActivityVenue) {

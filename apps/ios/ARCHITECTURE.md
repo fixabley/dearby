@@ -15,7 +15,10 @@ apps/ios/
 │   │   ├── ContentView.swift             # 로딩·탭·페이지 목적지 조립
 │   │   ├── NoticeDetailDestination.swift # 상세 OS 동작·실패 알림 조립
 │   │   ├── VenueMapLink.swift            # 순수 Apple Maps URL 생성
-│   │   └── VenueMapLauncher.swift        # URL 열기 콜백·실패 처리
+│   │   ├── VenueMapLauncher.swift        # URL 열기 콜백·실패 처리
+│   │   ├── CalendarEditorRequest.swift   # 시스템 편집기 입력 변환·실패
+│   │   ├── CalendarEventEditor.swift     # EventKitUI representable
+│   │   └── CalendarEditorDelegate.swift  # 완료·취소 delegate
 │   ├── Pages/
 │   │   ├── Discovery/UI/DiscoveryView.swift
 │   │   ├── Favorites/UI/FavoriteListView.swift
@@ -25,12 +28,19 @@ apps/ios/
 │   │       ├── NoticeDetailField.swift
 │   │       ├── NoticeIdentityFact.swift
 │   │       ├── NoticeLocationView.swift
-│   │       └── VenueMapButton.swift
+│   │       ├── VenueMapButton.swift
+│   │       ├── NoticeApplicationView.swift
+│   │       ├── NoticeScheduleView.swift
+│   │       └── CalendarAddButton.swift
 │   ├── Widgets/
 │   │   ├── ActivityCard/UI/ActivityCard.swift
 │   │   ├── ActivityCard/UI/NoticeFact.swift
 │   │   └── FavoriteOrganizationCard/UI/FavoriteOrganizationCard.swift
 │   ├── Features/
+│   │   ├── AddToCalendar/Model/
+│   │   │   ├── CalendarEventDraft.swift
+│   │   │   ├── CalendarDatePolicy.swift
+│   │   │   └── CalendarDraftMapper.swift
 │   │   └── FavoriteOrganization/
 │   │       ├── Model/FavoriteOrganizations.swift
 │   │       ├── Model/SaveOrganizationResult.swift
@@ -44,6 +54,8 @@ apps/ios/
 │   │       ├── Model/ActivityLocation.swift
 │   │       ├── Model/ActivityVenue.swift
 │   │       ├── Model/ActivityCoordinates.swift
+│   │       ├── Model/ActivityApplication.swift
+│   │       ├── Model/ActivitySchedule.swift
 │   │       ├── API/
 │   │       │   ├── ActivityCatalogRepository.swift
 │   │       │   └── BundleActivityCatalogRepository.swift
@@ -53,7 +65,8 @@ apps/ios/
 ├── tests/
 │   ├── FavoritesStoreTests.swift
 │   ├── check_fsd_boundaries.py
-│   └── VenueMapTests.swift
+│   ├── VenueMapTests.swift
+│   └── CalendarDraftTests.swift
 ├── ARCHITECTURE.md
 └── README.md
 ```
@@ -73,11 +86,12 @@ apps/ios/
 | --- | --- | --- |
 | Pages/Discovery | `DiscoveryView<Destination>` | 카탈로그·ID 집합·저장 콜백·App의 목적지 ViewBuilder; 로컬 sheet 선택·피드백 |
 | Pages/Favorites | `FavoriteListView<Destination>` | 카탈로그·ID 집합·삭제 콜백·목적지 ViewBuilder; 목록·빈 상태 |
-| Pages/NoticeDetail | `NoticeDetailView` | 공고·카탈로그·typed onOpenMap 콜백; 상세 표시 |
+| Pages/NoticeDetail | `NoticeDetailView` | 공고·카탈로그·typed onOpenMap 및 optional 신청/활동 캘린더 콜백; 상세 표시 |
 | Widgets/ActivityCard | `ActivityCard` | `ActivityNoticeSummary`·저장 여부·position·compact·onSave/onShowDetail |
 | Widgets/FavoriteOrganizationCard | `FavoriteOrganizationCard<Destination>` | 조직·카탈로그·삭제 콜백·목적지 ViewBuilder; 연결 공고의 기존 NavigationLink |
+| Features/AddToCalendar | `CalendarDraftMapper.application(_:catalog:)`, `activity(_:notice:catalog:mapURL:)`, `CalendarEventDraft`/`CalendarEventInterval` | App이 호출하는 순수 초안 매핑; 날짜 정책은 slice 내부 helper |
 | Features/FavoriteOrganization | `FavoriteOrganizations`, `SaveOrganizationResult`, `FavoriteOrganizationsRepository`, `UserDefaultsFavoriteOrganizationsRepository` | 상태와 저장 계약; 구체 저장 구현은 App 조립 또는 독립 테스트에서 사용 |
-| Entities/ActivityCatalog | `ActivityLocation`, `ActivityVenue`, `ActivityCoordinates`, `ActivityNoticeSummary`, `ActivityCatalog` 및 같은 Model 파일의 `ActivityNotice`, `ActivityOrganization`, `ActivitySource`, `ActivityContext`, `ActivitySchedule`; `ActivityCatalogRepository`, `BundleActivityCatalogRepository`; `NoticeClassificationView` | 순수 모델/조회, 교체 가능한 공급, 카드·즐겨찾기의 분류 표시 |
+| Entities/ActivityCatalog | `ActivityApplication`, `ActivitySchedule`, `ActivityLocation`, `ActivityVenue`, `ActivityCoordinates`, `ActivityNoticeSummary`, `ActivityCatalog` 및 Model의 `ActivityNotice`, `ActivityOrganization`, `ActivitySource`, `ActivityContext`, `ActivitySchedule`; `ActivityCatalogRepository`, `BundleActivityCatalogRepository`; `NoticeClassificationView` | 순수 모델/조회, 교체 가능한 공급, 카드·즐겨찾기의 분류 표시 |
 
 `NoticeFact(label:value:)`는 Widgets/ActivityCard/UI/NoticeFact.swift의 slice 내부 표시 helper다. 파일 간 사용을 위해 기본 internal이며 외부 slice 진입점으로 사용하지 않는다.
 `NoticeIdentityView(notice:catalog:)`, `NoticeDetailField(title:value:)`, `NoticeIdentityFact(label:value:icon:)`는 Pages/NoticeDetail/UI의 개별 파일에 있는 slice 내부 표시 helper다.
@@ -277,3 +291,30 @@ App/CalendarEventEditor는 EKEventEditViewController를 조립하고 CalendarEdi
 
 이번 신청 테스트는 KRC/DB 정확 KST, 대회 자정 마감, 마감만/시작만/미상/잘못된 값/역전, 날짜 범위/혼합 정밀도, URL·원문 분리와 기기 시간대별 종일 날짜 보존을 검증한다.
 실행 명령은 README의 calendar 테스트 명령이며 신청 구현 Simulator Debug 빌드와 구조 검사를 실행했다. 활동 phase와 실제 편집기 UI 검증은 후속 변경에서 수행한다.
+
+## 활동 단계별 캘린더 — 최종 확인
+
+ActivitySchedule은 endsOn(포함 날짜)/timezone/onlineUrl/mode와 기존 시각을 보존하는 자체 entity 파일이다.
+CalendarDraftMapper.activity는 EXACT phase == venue.phase로 연결한다. 온라인 단계는 무조건 location 온라인과 검증된 onlineUrl 또는 접속 URL 미확인을 사용해 결선 장소를 누출하지 않는다.
+오프라인 단계의 일치하는 장소는 모두 name/address로 합치고, 각 좌표 지도 링크는 App이 주입한 VenueMapLink로 notes에 포함한다. 미일치 장소는 장소 미확인이다.
+복수 장소를 임의의 단일 pin으로 줄이지 않으며 structuredLocation은 추가하지 않는다.
+Pages/NoticeScheduleView는 각 schedule 위치의 optional callback으로 같은 CalendarAddButton을 표시한다. App의 단일 활성 CalendarEditorRequest가 편집기 수명을 소유한다.
+CalendarEditorRequest.prepare는 검증된 요청을 주입 presentation 콜백에만 전달하고 잘못된 요청에는 실패 콜백을 부른다. OS 오류/캘린더 선택은 EventKitUI에서 처리하며 앱은 캘린더를 읽어 존재 여부를 사전 검사하지 않는다.
+
+엄격 날짜 정책은 잘못된 날짜/timestamp/offset/시작 날짜 모순/역전을 거절하고, 실제 시간값이 있으면 끝 timestamp를 우선한다.
+정확한 시작·끝은 timed, 나머지는 소스 timezone의 날짜를 사용한다. 날짜-only 종료는 다음 날짜 exclusive, 자정 끝은 해당 날짜 exclusive다.
+종일 이벤트는 DateComponents로 저장하고 EventKit 입력 시 device timezone 자정으로 변환하여 LA 등 기기 timezone에서도 한국 기준 날짜를 유지한다.
+notes에 원래 summary·정확한 시작/끝·시간대·미확인 항목을 남기고 한 시간짜리 종료를 만들어내지 않는다.
+
+이번 canonical 리소스는 공통 PR #6의 SHA256 c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f와 byte 일치한다.
+이 checkout의 shared snapshot은 변경하지 않아 #6 병합 전 samples:check 차이는 예상된다. 기존/최종 JSON 각각 calendar·상태 테스트를 실행하고 map 테스트도 유지했다.
+순수 검사는 KRC/DB timed KST, 대회 신청9/11→exclusive10/8, 예선10/14→exclusive10/15 온라인, 결선11/4와 일치 장소,
+복수 장소/미일치 단계/온라인 URL 유무·오류, 신청 URL과 원문 분리, 종료 미확인, 잘못된/역전/모순 값, LA/서울/Auckland 종일 변환, 주입 adapter의 오류/성공을 통과했다.
+전체39파일 FSD 및 Pages EventKit 접근·권한요청/직접저장/자동알람 금지 fixture 통과, 최종 Simulator Debug 빌드 성공(경고/오류 없음, build_sim_2026-09-14T10-41-36-598Z_pid15343_20ec83d8.log).
+
+전용 Dearby-Issue1-iOS iOS26.5에서 KRC 신청 버튼→실제 EventKitUI 편집기(8/27 09:00~9/15 13:00, 신청 URL)와
+활동 버튼→행사9/15 14:00~16:00 및 도서관 장소를 확인하고 둘 다 Escape 취소로 상세 복귀했다. 추가/저장 버튼은 누르지 않았고 캘린더 권한 요청도 나타나지 않았다.
+원격 편집기 접근성 트리는 도구에 노출되지 않아 screenshot으로 값을 확인했고 창 focus 실패로 좌표 취소 대신 Escape를 사용했다.
+증거는 build/calendar-regression/application-editor.png, application-cancelled.png, activity-editor.png 및 UI JSON이다.
+종일/온라인 실제 OS 화면, 캘린더 없는 계정/원격 editor 실패/실기기는 미검증이다. 전자는 순수 변환 테스트로 검증하고 후자는 OS 처리와 취소 경로에 맡긴다.
+기존 실제 터치 스와이프·물리 햅틱·전체 접근성 한계는 유지한다. 마지막 순수 adapter 보강 후에는 빌드·독립 검사를 재실행했고 runtime 기록은 그 직전 동일 편집기 UI 경로다.

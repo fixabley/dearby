@@ -26,6 +26,10 @@ enum CalendarDatePolicy {
               let utc = calendar("UTC"), day(String(raw.prefix(10)), calendar: utc) != nil else { return nil }
         let time = raw.dropFirst(11).prefix(8).split(separator: ":").compactMap { Int($0) }
         guard time.count == 3, time[0] < 24, time[1] < 60, time[2] < 60 else { return nil }
+        if !raw.hasSuffix("Z") {
+            let offset = raw.suffix(5).split(separator: ":").compactMap { Int($0) }
+            guard offset.count == 2, offset[0] < 24, offset[1] < 60 else { return nil }
+        }
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = raw.contains(".") ? [.withInternetDateTime, .withFractionalSeconds] : [.withInternetDateTime]
         return formatter.date(from: raw)

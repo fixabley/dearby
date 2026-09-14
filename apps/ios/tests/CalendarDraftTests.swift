@@ -41,7 +41,7 @@ struct CalendarDraftTests {
             precondition(interval(nil, bad, nil, "2026-10-02") == nil)
             precondition(interval(nil, "2026-10-01", nil, bad) == nil)
         }
-        for bad in ["2026-02-30T12:00:00+09:00", "2026-10-01T24:00:00+09:00", "2026-10-01T12:60:00+09:00", "2026-10-01T12:00:00", "garbage"] {
+        for bad in ["2026-02-30T12:00:00+09:00", "2026-10-01T24:00:00+09:00", "2026-10-01T12:60:00+09:00", "2026-10-01T12:00:00", "2026-10-01T12:00:00+99:00", "2026-10-01T12:00:00+09:99", "garbage"] {
             precondition(interval(bad, "2026-10-01", nil, "2026-10-02") == nil)
         }
         precondition(interval("2026-10-02T12:00:00+09:00", nil, "2026-10-01T12:00:00+09:00") == nil)
@@ -75,6 +75,69 @@ struct CalendarDraftTests {
             precondition(request.isAllDay && calendar.component(.day, from: request.start) == 1 && calendar.component(.day, from: request.end) == 2)
             precondition(calendar.component(.hour, from: request.start) == 0)
         }
+        var requests: [CalendarEditorRequest] = []
+        var failures = 0
+        CalendarEditorRequest.prepare(draft, deviceTimeZone: TimeZone(identifier: "Asia/Seoul")!,
+                                      present: { requests.append($0) }, onFailure: { failures += 1 })
+        precondition(requests.count == 1 && failures == 0 && requests[0].draft.notes == draft.notes)
+        let reversed = CalendarEventDraft(title: "invalid", interval: .timed(start: Date(timeIntervalSince1970: 2), end: Date(timeIntervalSince1970: 1), timezone: "Asia/Seoul"), location: nil, url: nil, notes: "")
+        CalendarEditorRequest.prepare(reversed, present: { _ in preconditionFailure("Invalid request must not present") }, onFailure: { failures += 1 })
+        let malformed = CalendarEventDraft(title: "invalid", interval: .allDay(start: DateComponents(year: 2026, month: 2, day: 30), endExclusive: DateComponents(year: 2026, month: 3, day: 4)), location: nil, url: nil, notes: "")
+        CalendarEditorRequest.prepare(malformed, present: { _ in preconditionFailure("Malformed dates must not present") }, onFailure: { failures += 1 })
+        precondition(failures == 2)
+        try testActivities(catalog: catalog)
         print("PASS: application exact KST, deadline-only, contest midnight, strict invalid/reversed dates, mixed precision, inclusive dates, unknown end, URL/source separation, all-day device-zone conversion")
     }
+
+    static func testActivities(catalog: ActivityCatalog) throws {
+        let contest = catalog.activities.first { $0.favoriteOrganizationId == "yeongnam-cyber-defense" }!
+        func draft(_ phase: ActivitySchedule, notice: ActivityNotice? = nil) -> CalendarEventDraft? {
+            CalendarDraftMapper.activity(phase, notice: notice ?? contest, catalog: catalog, mapURL: VenueMapLink.url)
+        }
+        let preliminary = draft(contest.schedule.first { $0.phase == "preliminary" }!)!
+        expectDays(preliminary.interval, "2026-10-14", "2026-10-15")
+        precondition(preliminary.location == "온라인" && preliminary.url == nil)
+        precondition(preliminary.notes.contains("접속 URL 미확인") && !preliminary.notes.contains("콘퍼런스"))
+        let final = draft(contest.schedule.first { $0.phase == "final" }!)!
+        expectDays(final.interval, "2026-11-04", "2026-11-05")
+        precondition(final.location == contest.location.venues.first { $0.phase == "final" }!.name)
+        precondition(final.notes.contains("활동 종료: 미확인"))
+        for target in ["krc", "db-insurance"] {
+            let notice = catalog.activities.first { $0.favoriteOrganizationId == target }!
+            let phase = notice.schedule[0]
+            let event = draft(phase, notice: notice)!
+            guard case .timed(let start, let end, let timezone) = event.interval else { preconditionFailure() }
+            precondition(timezone == "Asia/Seoul" && start == CalendarDatePolicy.instant(phase.startsAt!) && end == CalendarDatePolicy.instant(phase.endsAt!))
+            precondition(event.notes.contains("지도 (") == (notice.location.venues[0].coordinates != nil))
+        }
+        func phase(_ mode: String = "online", url: String? = nil, name: String = "preliminary", start: String? = "2026-10-14", end: String? = nil) -> ActivitySchedule {
+            ActivitySchedule(phase: name, startsOn: start, startsAt: nil, endsAt: nil, endsOn: end, timezone: nil, mode: mode, onlineUrl: url)
+        }
+        let online = draft(phase(url: "https://example.com/온라인?a=1&b=2#회의"))!
+        precondition(online.url != nil && online.location == "온라인" && online.notes.contains("온라인 URL:"))
+        precondition(draft(phase(url: "javascript:bad"))!.url == nil)
+        precondition(draft(phase("offline", name: "unmatched"))!.location == "장소 미확인")
+        precondition(!draft(phase("offline", name: "unmatched"))!.notes.contains("콘퍼런스"))
+        expectDays(draft(phase(end: "2026-10-16"))?.interval, "2026-10-14", "2026-10-17")
+        precondition(draft(phase(start: nil)) == nil)
+        precondition(draft(phase(start: "2026-02-30")) == nil)
+        precondition(draft(phase(end: "2026-10-13")) == nil)
+        let venues = [ActivityVenue(phase: "final", name: "본관", address: "주소1", coordinates: ActivityCoordinates(latitude: 0, longitude: 0)),
+                      ActivityVenue(phase: "preliminary", name: "다른 단계", address: nil, coordinates: nil),
+                      ActivityVenue(phase: "final", name: "별관", address: "주소2", coordinates: ActivityCoordinates(latitude: 10, longitude: 20))]
+        let notice = ActivityNotice(id: contest.id, title: contest.title, summary: contest.summary, demoVisible: contest.demoVisible,
+                                    favoriteOrganizationId: contest.favoriteOrganizationId, sourceIds: contest.sourceIds,
+                                    audience: contest.audience, eligibility: contest.eligibility, application: contest.application,
+                                    location: ActivityLocation(summary: "본관/별관", mode: "mixed", status: "known", venues: venues),
+                                    schedule: contest.schedule, benefits: contest.benefits, qualityIssues: contest.qualityIssues,
+                                    categoryPath: contest.categoryPath, contexts: contest.contexts, edition: contest.edition)
+        let multiple = draft(phase("offline", name: "final"), notice: notice)!
+        precondition(multiple.location == "본관 · 주소1 / 별관 · 주소2")
+        precondition(multiple.notes.contains("지도 (본관)") && multiple.notes.contains("지도 (별관)"))
+        precondition(!multiple.notes.contains("다른 단계") && multiple.url == nil)
+        let noLeak = draft(phase(), notice: notice)!
+        precondition(noLeak.location == "온라인" && !noLeak.notes.contains("본관") && !noLeak.notes.contains("다른 단계"))
+        print("PASS: activity exact KST, online URLs/unknown, exact phase join, multiple venues/maps, invalid dates, no invented duration")
+    }
+
 }

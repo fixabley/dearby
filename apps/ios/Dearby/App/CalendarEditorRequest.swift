@@ -24,4 +24,14 @@ struct CalendarEditorRequest: Identifiable {
             self.start = lower; self.end = upper; timezone = nil; isAllDay = true
         }
     }
+
+    static func prepare(_ draft: CalendarEventDraft, deviceTimeZone: TimeZone = .current,
+                        present: (CalendarEditorRequest) -> Void, onFailure: () -> Void) {
+        guard let request = CalendarEditorRequest(draft: draft, deviceTimeZone: deviceTimeZone) else {
+            onFailure()
+            return
+        }
+        present(request)
+    }
+
 }

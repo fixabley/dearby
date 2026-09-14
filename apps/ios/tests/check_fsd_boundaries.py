@@ -22,6 +22,8 @@ def check(sources, selected=()):
     for path, code in cleaned.items():
         if selected and not any(path.startswith(s + '/') for s in selected):
             continue
+        if re.search(r'\b(?:requestFullAccessToEvents|requestWriteOnlyAccessToEvents|requestAccess|EKAlarm|addAlarm)\b|\b(?:eventStore|store)\.save\s*\(', code):
+            errors.append(f'{path}: calendar editor must not request access, save directly or add alarms')
         parts = path.split('/')
         layer = parts[0]
         if layer not in LAYERS:
@@ -47,7 +49,7 @@ def check(sources, selected=()):
                 if (layer in ('Pages', 'Widgets') and target_layer == 'Features' and not value_result) or ('UI' in parts and 'API' in target_parts):
                     errors.append(f'{path}: UI must receive values/callbacks, not {name}')
         if layer in ('Pages', 'Widgets') or (layer in ('Entities', 'Shared') and 'UI' in parts):
-            if re.search(r'\b(?:UserDefaults|Bundle|FileManager|URLSession|UIApplication|openURL|MKMapItem|CLLocationManager)\b', code):
+            if re.search(r'\b(?:UserDefaults|Bundle|FileManager|URLSession|UIApplication|openURL|MKMapItem|CLLocationManager|EventKit|EventKitUI|EKEventStore|EKEventEditViewController)\b', code):
                 errors.append(f'{path}: direct storage/resource access from UI')
     return sorted(set(errors))
 
@@ -67,6 +69,8 @@ def self_test():
     fixture['Features/FavoriteOrganization/API/FavoriteOrganizationsRepository.swift'] = 'protocol FavoriteOrganizationsRepository {}'
     fixture['Pages/Discovery/UI/Discovery.swift'] += '\nlet result: SaveOrganizationResult'
     assert not check(fixture)
+    for forbidden in ['requestFullAccessToEvents()', 'requestWriteOnlyAccessToEvents()', 'store.save(event)', 'EKAlarm()']:
+        assert check({**fixture, 'App/Editor.swift': 'struct Editor {}\n' + forbidden})
     for path, reference in [
         ('Pages/Discovery/UI/Discovery.swift', 'Detail'),
         ('Widgets/Card/UI/Card.swift', 'Discovery'),
@@ -78,6 +82,7 @@ def self_test():
         ('Widgets/Card/UI/Card.swift', 'UserDefaults'),
         ('Pages/Detail/UI/Detail.swift', 'openURL'),
         ('Pages/Detail/UI/Detail.swift', 'UIApplication'),
+        ('Pages/Detail/UI/Detail.swift', 'EKEventStore'),
         ('Entities/Catalog/UI/Label.swift', 'MKMapItem'),
         ('Entities/Catalog/UI/Label.swift', 'Provider'),
         ('Entities/Catalog/Model/Item.swift', 'Card'),
