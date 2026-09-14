@@ -19,6 +19,7 @@ apps/ios/
 │   │   └── NoticeDetail/UI/NoticeDetailView.swift
 │   ├── Widgets/
 │   │   ├── ActivityCard/UI/ActivityCard.swift
+│   │   ├── ActivityCard/UI/NoticeFact.swift
 │   │   └── FavoriteOrganizationCard/UI/FavoriteOrganizationCard.swift
 │   ├── Features/
 │   │   └── FavoriteOrganization/
@@ -46,7 +47,7 @@ apps/ios/
 
 `UI`, `Model`, `API`는 표현·도메인/상태·외부 데이터 접근 목적을 구분하는 segment다.
 공고·조직·출처·계층·학교 맥락은 서로 연결된 **단일 ActivityCatalog entity slice**에 둔다. 서로 다른 entity로 억지 분리해 순환 참조를 만들지 않는다.
-현재 여러 도메인에서 공유하는 범용 Swift UI가 없어 Shared 폴더를 만들지 않았다. 카드 전용 보조 표시는 widget 내부 private 타입이다.
+현재 여러 도메인에서 공유하는 범용 Swift UI가 없어 Shared 폴더를 만들지 않았다. 카드 전용 보조 표시는 같은 widget slice의 UI 파일에 둔다.
 향후 실제 공용 범용 표시·테마 코드가 필요하면 slice 없이 `Shared/UI` 등 목적별 segment에 둔다. 기존 asset catalog와 번들 리소스의 경로는 유지한다.
 `Dearby/`의 Xcode synchronized 그룹이 모든 파일을 포함한다. 테스트와 `build/` 증거는 앱 타깃 밖에 둔다.
 
@@ -65,7 +66,8 @@ apps/ios/
 | Features/FavoriteOrganization | `FavoriteOrganizations`, `SaveOrganizationResult`, `FavoriteOrganizationsRepository`, `UserDefaultsFavoriteOrganizationsRepository` | 상태와 저장 계약; 구체 저장 구현은 App 조립 또는 독립 테스트에서 사용 |
 | Entities/ActivityCatalog | `ActivityNoticeSummary`, `ActivityCatalog` 및 같은 Model 파일의 `ActivityNotice`, `ActivityOrganization`, `ActivitySource`, `ActivityField`, `ActivityIssue`, `ActivityContext`, `ActivitySchedule`; `ActivityCatalogRepository`, `BundleActivityCatalogRepository`; `NoticeClassificationView` | 순수 모델/조회, 교체 가능한 공급, 카드·즐겨찾기의 분류 표시 |
 
-`NoticeFact`는 ActivityCard 파일의 private 구현, `NoticeIdentityView`는 NoticeDetail 파일의 private 구현이다.
+`NoticeFact(label:value:)`는 Widgets/ActivityCard/UI/NoticeFact.swift의 slice 내부 표시 helper다. 파일 간 사용을 위해 기본 internal이며 외부 slice 진입점으로 사용하지 않는다.
+`NoticeIdentityView`는 NoticeDetail 파일의 private 구현이다.
 Preview 저장소도 App 파일의 private 타입이다. 외부 소비자는 이 helper들을 직접 사용하지 않는다.
 별도 빌드 모듈이 없으므로 폴더만으로 internal 진입점 접근을 컴파일러가 강제 차단하지는 않는다. 경계는 아래 검사와 리뷰로 보완한다.
 
@@ -175,3 +177,8 @@ UI 도구의 첫 삭제는 오래된 접근성 인덱스로 거절되어 새 sna
 로컬 증거는 `build/refinement-regression/`의 JSON과 `saved-feedback.png`, `shared-favorites.png`다(커밋 제외).
 이번 callback 보완은 sheet/back 구조를 바꾸지 않아 해당 결과는 위 이전 회귀 기록을 구분해 유지한다.
 실제 터치 스와이프·햅틱의 물리 감각·전체 접근성/실기기 회귀는 이번에도 미검증이다.
+
+## UI 보조 컴포넌트 파일 분리
+
+2026-09-14 카드의 NoticeFact를 같은 Widgets/ActivityCard/UI 파일로 이동했다. String label/value 및 기존 VStack·글꼴·행 제한을 그대로 유지하며 Shared로 승격하지 않는다.
+카드 분리 시 전체 17 Swift 파일 구조 검사와 Simulator Debug 빌드가 통과했다(2026-09-14 09:38 UTC 빌드 로그).
