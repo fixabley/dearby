@@ -11,6 +11,24 @@ class DiscoveryFlowTest {
     val rule = createAndroidComposeRule<MainActivity>()
 
     @Test
+    fun saveButtonUpdatesBothTabsAndFavoriteOpensTheSameDetail() {
+        rule.activity.getSharedPreferences("dearby.favorites.v1", Context.MODE_PRIVATE).edit().clear().commit()
+        rule.activityRule.scenario.recreate()
+        rule.waitForIdle()
+        rule.onNodeWithTag("save.cieat-NCR000000007344").performClick()
+        rule.onNodeWithTag("tab.favorites").performClick()
+        rule.onNodeWithTag("favorite.notice.cieat-NCR000000007344").performClick()
+        rule.onNodeWithText("관심 조직").assertIsDisplayed()
+        rule.onNode(hasText("한국농어촌공사") and hasAnyAncestor(hasTestTag("notice.detail")))
+            .assertIsDisplayed()
+        androidx.test.espresso.Espresso.pressBack()
+        rule.onNodeWithTag("remove.krc").performClick()
+        rule.onNodeWithText("저장한 조직이 없어요").assertIsDisplayed()
+        rule.onNodeWithTag("tab.discovery").performClick()
+        rule.onNodeWithTag("save.cieat-NCR000000007344").assertTextEquals("한국농어촌공사 저장")
+    }
+
+    @Test
     fun careerDetailSeparatesInterestTargetFromEventSchool() {
         rule.onNodeWithTag("classification.cieat-NCR000000007344", useUnmergedTree = true)
             .assertTextEquals("채용 › 채용행사 · 충북대학교")

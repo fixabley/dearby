@@ -29,7 +29,7 @@ SDK 경로는 Android Studio가 생성하는 `local.properties`에 설정하거�
 
 ```sh
 cd apps/android
-./gradlew :app:assembleDebug :app:lintDebug
+./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
 ```
 
 Debug APK는 `app/build/outputs/apk/debug/app-debug.apk`에 생성됩니다.
@@ -39,19 +39,27 @@ Android 12 이상 에뮬레이터 또는 USB 디버깅 기기를 선택해 Andro
 Release 빌드는 R8 코드·리소스 축소를 사용합니다. 배포용 서명 설정은 아직 없으며,
 서명 키는 저장소에 커밋하지 않습니다.
 
-전용 에뮬레이터에서 `./gradlew :app:connectedDebugAndroidTest`를 실행하면 더블탭,
-세로 넘김, 조직 중복 방지, Activity 재생성 후 저장 유지·삭제를 검증합니다.
+JVM 단위 테스트는 앱 실행 없이 임시 저장소로 즐겨찾기 추가·중복·삭제·복원과 여러 소비자의 상태 일관성을 검증합니다.
+전용 에뮬레이터를 지정해 `ANDROID_SERIAL=emulator-5556 ./gradlew :app:connectedDebugAndroidTest`를 실행하면 더블탭,
+세로 넘김, 조직 중복 방지, Activity 재생성 후 저장 유지·삭제, 버튼·탭·연결 상세와 실제 저장/카탈로그 공급을 검증합니다.
+`emulator-5556`은 예시이며 실제 전용 기기 serial을 확인합니다. 사용자 즐겨찾기가 있는 `emulator-5554`에는 실행하지 않습니다.
 테스트는 실행 기기의 Dearby 즐겨찾기를 초기화하므로 개발용 기기를 사용합니다.
 
 ## 구조
 
 - `app/src/main/java/io/fixabley/dearby/MainActivity.kt`: 앱 진입점
 - `app/src/main/java/io/fixabley/dearby/ui/theme/Theme.kt`: 라이트·다크 테마
-- `app/src/main/java/io/fixabley/dearby/discovery/`: 카드 탐색·상세·조직 즐겨찾기와 로컬 저장
+- `app/src/main/java/io/fixabley/dearby/app/`: 루트 화면 조합과 상태 전달
+- `app/src/main/java/io/fixabley/dearby/feature/`: discovery·favorites·noticedetail 화면과 기능별 UI
+- `app/src/main/java/io/fixabley/dearby/core/`: 순수 모델·즐겨찾기 상태·공급/저장 인터페이스·실제 로컬 구현·공통 UI
+- `app/src/test/`: 앱 없는 JVM 상태 테스트
+- `app/src/androidTest/`: Compose 흐름과 실제 로컬 데이터 계측 테스트
 - `app/src/main/assets/activity-samples.json`: 공통 기준 파일에서 복사한 샘플
 - `app/src/main/res/`: 문자열, 시작 테마, 임시 런처 아이콘
 - `gradle/libs.versions.toml`: 플러그인과 라이브러리 버전
 - `gradle/wrapper/`, `gradlew`, `gradlew.bat`: 재현 가능한 Gradle 실행 환경
+
+실제 디렉터리 트리, 상태 생명주기, 의존 방향, 새 기능 배치 예시는 [ARCHITECTURE.md](ARCHITECTURE.md)를 참고합니다.
 
 AGP의 내장 Kotlin 지원을 사용하므로 `org.jetbrains.kotlin.android` 플러그인은 적용하지 않습니다.
 참고: [AGP 내장 Kotlin](https://developer.android.com/build/migrate-to-built-in-kotlin),

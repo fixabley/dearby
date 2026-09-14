@@ -1,11 +1,14 @@
-package io.fixabley.dearby.discovery
+package io.fixabley.dearby.feature.noticedetail
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.testTag
+import io.fixabley.dearby.core.model.ActivityCatalog
+import io.fixabley.dearby.core.model.Notice
+import io.fixabley.dearby.core.ui.NoticeFact
 
 @Composable
 internal fun NoticeIdentity(notice: Notice, catalog: ActivityCatalog) {
