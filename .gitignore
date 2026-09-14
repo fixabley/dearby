@@ -1,6 +1,13 @@
 # macOS
 .DS_Store
 
+# Node.js / NestJS
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+*.log
+
 # Local environment
 .env
 .env.*
