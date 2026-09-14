@@ -56,9 +56,15 @@ apps/ios/
 │   │       ├── Model/ActivityCoordinates.swift
 │   │       ├── Model/ActivityApplication.swift
 │   │       ├── Model/ActivitySchedule.swift
+│   │       ├── Model/ActivityDetail.swift
+│   │       ├── Model/ActivityEvidence.swift
 │   │       ├── API/
 │   │       │   ├── ActivityCatalogRepository.swift
-│   │       │   └── BundleActivityCatalogRepository.swift
+│   │       │   ├── BundleActivityCatalogRepository.swift
+│   │       │   ├── OrganizationSource.swift
+│   │       │   ├── SnapshotOrganizationSource.swift
+│   │       │   ├── OrganizationRepository.swift
+│   │       │   └── ActivityDetailRepository.swift
 │   │       └── UI/NoticeClassificationView.swift
 │   ├── Resources/activity-samples.json
 │   └── Assets.xcassets/
@@ -66,7 +72,9 @@ apps/ios/
 │   ├── FavoritesStoreTests.swift
 │   ├── check_fsd_boundaries.py
 │   ├── VenueMapTests.swift
-│   └── CalendarDraftTests.swift
+│   ├── CalendarDraftTests.swift
+│   ├── OrganizationRepositoryTests.swift
+│   └── ActivityDetailTests.swift
 ├── ARCHITECTURE.md
 └── README.md
 ```
@@ -86,7 +94,7 @@ apps/ios/
 | --- | --- | --- |
 | Pages/Discovery | `DiscoveryView<Destination>` | 카탈로그·ID 집합·저장 콜백·App의 목적지 ViewBuilder; 로컬 sheet 선택·피드백 |
 | Pages/Favorites | `FavoriteListView<Destination>` | 카탈로그·ID 집합·삭제 콜백·목적지 ViewBuilder; 목록·빈 상태 |
-| Pages/NoticeDetail | `NoticeDetailView` | 공고·카탈로그·typed onOpenMap 및 optional 신청/활동 캘린더 콜백; 상세 표시 |
+| Pages/NoticeDetail | `NoticeDetailView` | `ActivityDetail`·typed onOpenMap 및 optional 신청/활동 캘린더 콜백; 상세 표시 |
 | Widgets/ActivityCard | `ActivityCard` | `ActivityNoticeSummary`·저장 여부·position·compact·onSave/onShowDetail |
 | Widgets/FavoriteOrganizationCard | `FavoriteOrganizationCard<Destination>` | 조직·카탈로그·삭제 콜백·목적지 ViewBuilder; 연결 공고의 기존 NavigationLink |
 | Features/AddToCalendar | `CalendarDraftMapper.application(_:catalog:)`, `activity(_:notice:catalog:mapURL:)`, `CalendarEventDraft`/`CalendarEventInterval` | App이 호출하는 순수 초안 매핑; 날짜 정책은 slice 내부 helper |
@@ -322,3 +330,27 @@ notes에 원래 summary·정확한 시작/끝·시간대·미확인 항목을 �
 ## 조직 원본·cache-aside 조회
 Entities/ActivityCatalog/API의 OrganizationSource.fetch(id:)와 SnapshotOrganizationSource는 조직 레코드를 별도 저장한다. OrganizationRepository는 처음 비어 있는 독립 ID 캐시를 조회하고 miss에서만 source를 호출하며 성공한 레코드만 캐시한다. path(to:)는 parent ID를 cycle-safe하게 따라가는 일시 projection이며 누락된 상위에서도 복구 가능한 경로를 유지한다. MainActor에서 replaceSource가 모든 캐시를 지워 이름/부모 변경을 반영한다.
 이번 독립 source 호출 횟수 검사는 cold/hit·공유 상위·nil/없는ID·cycle/고아·전체 snapshot rename/reparent 무효화를 확인한다. 상세 projection 통합은 같은 작업의 다음 기능 커밋에 적용한다.
+
+
+## ActivityDetail 조회 경계 (2026-09-14)
+
+`ActivityDetailRepository.detail(id:)`가 상세의 유일한 투영 진입점이다. App의 `ContentView`는 로드 시 한 번 저장소를 소유하고 상세를 열 때 같은 인스턴스를 사용한다. Pages/NoticeDetail는 상세 값·콜백만 받으며 카탈로그·원본 공고·저장소를 읽지 않는다. 카드와 즐겨찾기는 같은 snapshot의 기존 카탈로그 계약을 유지한다.
+
+조직 원본 `OrganizationSource`와 ID 캐시는 별개다. `OrganizationRepository`는 성공한 조회만 캐시하고 parent ID를 cycle-safe하게 따라가며, 알 수 없는 부모에서는 복구 가능한 경로를 반환한다. 선택 ID는 전역 leaf 조건 없이 그대로 보존한다. `replaceSnapshot`은 source와 catalog를 함께 교체하고 모든 레코드 캐시를 비운다. 별도의 경로 캐시나 영구 캐시가 없으며 모두 MainActor에 한정된다. 현재 실시간 갱신 UI는 없고, 향후 갱신 기능은 App 상태 갱신과 이 교체 메서드를 함께 연결해야 한다.
+
+`ActivityDetail`는 Codable/저장 모델이 아닌 일시적 읽기 결과다. 조직은 원본에서 ID로만 참조하고 조직 레코드는 별도 snapshot source에 둔다. 결과의 organizationPath는 선택 노드의 관련 경로만 포함하며 전체 조직 트리를 복제하거나 저장하지 않는다. organizationLinks와 contexts는 명시된 role/ID를 유지하고 경로에서 주최 역할을 추론하지 않는다.
+
+`aiDescription`은 기존 검토 샘플 summary이며 `descriptionProvenance = reviewed_sample.summary`로 출처를 구분한다. 새로운 AI 생성으로 표시하지 않는다. applicationInformation은 기존 날짜·URL·summary와 channels/requiredDocuments/submissionLocations를 보존한다. schedule의 period와 정확히 phase가 일치하는 장소를 getter에서 한 번 묶고 온라인 단계에는 오프라인 장소를 넣지 않는다. CalendarDraftMapper는 이 상세 값만 사용하며 기존 엄격한 날짜 정책은 유지한다. 지도는 상세의 기존 location 값을 사용한다.
+
+`ActivityEvidenceDecoder`는 구조화 JSON을 Decoder로 순회하여 evidence/coordinateEvidence의 sourceId·locator·fieldPath를 보존한다. quality issue의 명시 fieldPath를 우선하고 배열 위치는 경로에 남긴다. 상세는 관련 source 레코드(kind/checkedAt/access/note 포함)와 근거 URL을 제공하며, 알 수 없는 source ID도 근거에서 삭제하지 않는다. 원본 JSON의 추가 메타데이터 전체를 앱에 영구 복제하는 것은 아니며 변경 없이 번들에 유지한다.
+
+상세 UI의 ActivityCatalog/ActivityNotice 참조를 lexical checker의 부정 fixture로 금지한다. 단일 Swift 모듈이므로 컴파일러가 slice를 격리하는 것은 아니다. 새 상세 항목은 entity의 의미 있는 필드와 getter를 갱신하고 페이지의 동일 slice UI 파일에 표시하며 OS 동작은 App에서 주입한다.
+
+
+### 이번 상세 투영 검증 결과
+
+2026-09-14 Swift 6 standalone: OrganizationRepositoryTests(콜드/히트 fetch 수·공유 부모·missing·cycle·snapshot rename/reparent), ActivityDetailTests(동일 저장소 두 번 열기·선택 부모 ID·맥락 역할·전체 원본 evidence 수/경로/unknown source·출처 메타데이터), CalendarDraftTests(기존 엄격 날짜/phase/복수 장소/URL/adapter), FavoritesStoreTests(관찰·저장/복원), VenueMapTests 모두 통과했다. 상세와 캘린더 검사는 old shared JSON 및 최신 앱 JSON 각각 실행했다. README 명령으로 재현할 수 있다.
+
+`python3 apps/ios/tests/check_fsd_boundaries.py`: 45 Swift 파일 및 부정 fixture 통과. `git diff --check` 통과. XcodeBuildMCP `build_sim`(CODE_SIGNING_ALLOWED=NO, 전용 simulator 대상) 성공, 경고/오류 없음; 로그 `build_sim_2026-09-14T11-20-38-165Z_pid15343_9fc86060.log`.
+
+이번에는 UI 필드 공급만 바꾸고 기존 OS 어댑터·문구·레이아웃을 유지했으므로 native editor/Maps 런타임을 재실행하지 않았다. 앞선 캘린더 실제 열기·취소와 지도 handoff는 이전 검증이며 이번 결과로 간주하지 않는다. source는 in-memory snapshot이고 실시간 refresh UI·영구 캐시·네트워크는 구현하지 않았다. 번들 canonical SHA c649b0a1 및 사용자 즐겨찾기/기기 설정은 변경하지 않았다.

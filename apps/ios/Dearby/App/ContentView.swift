@@ -3,28 +3,33 @@ import SwiftUI
 struct ContentView: View {
     let catalogRepository: any ActivityCatalogRepository
     let favorites: FavoriteOrganizations
-    @State private var catalog: ActivityCatalog?
+    @State private var details: ActivityDetailRepository?
     @State private var loadFailed = false
 
     var body: some View {
         // Observe before the lazy tab/navigation builders capture their value inputs.
         let favoriteIDs = favorites.ids
         Group {
-            if let catalog {
+            if let details {
+                let catalog = details.catalog
                 TabView {
                     Tab("발견", systemImage: "rectangle.stack") {
                         NavigationStack {
                             DiscoveryView(catalog: catalog, favoriteIDs: favoriteIDs, saveOrganization: { notice in
                                 favorites.saveOrganization(for: notice, in: catalog)
                             }) { notice in
-                                NoticeDetailDestination(notice: notice, catalog: catalog)
+                                if let detail = details.detail(id: notice.id) {
+                                    NoticeDetailDestination(detail: detail)
+                                }
                             }
                         }
                     }
                     Tab("즐겨찾기", systemImage: "heart") {
                         NavigationStack {
                             FavoriteListView(catalog: catalog, favoriteIDs: favoriteIDs, removeOrganization: favorites.remove) { notice in
-                                NoticeDetailDestination(notice: notice, catalog: catalog)
+                                if let detail = details.detail(id: notice.id) {
+                                    NoticeDetailDestination(detail: detail)
+                                }
                             }
                         }
                     }
@@ -45,8 +50,9 @@ struct ContentView: View {
     }
 
     private func loadCatalog() {
+        guard details == nil else { return }
         do {
-            catalog = try catalogRepository.load()
+            details = ActivityDetailRepository(catalog: try catalogRepository.load())
             loadFailed = false
         } catch {
             loadFailed = true

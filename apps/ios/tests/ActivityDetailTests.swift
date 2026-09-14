@@ -1,0 +1,97 @@
+import Foundation
+
+@main
+struct ActivityDetailTests {
+    @MainActor
+    static func main() throws {
+        let data = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
+        let catalog = try JSONDecoder().decode(ActivityCatalog.self, from: data)
+        let originalJSON = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        let originalNotices = originalJSON["activities"] as! [[String: Any]]
+        let source = DetailCountingSource(catalog.organizations)
+        let repository = ActivityDetailRepository(catalog: catalog, source: source)
+        precondition(source.fetches.isEmpty)
+        let contest = catalog.activities.first { $0.favoriteOrganizationId == "yeongnam-cyber-defense" }!
+        let first = repository.detail(id: contest.id)!
+        let coldFetches = source.fetches
+        precondition(coldFetches["yeongnam-cyber-defense"] == 1 && coldFetches["yeongnam-ai-security"] == 1)
+        let reopened = repository.detail(id: contest.id)!
+        precondition(source.fetches == coldFetches, "Two opens share the same source/cache lifetime")
+        precondition(first.organizationID == "yeongnam-cyber-defense" && reopened.organizationPath.map(\.id) == catalog.organizationPath(contest.favoriteOrganizationId).map(\.id))
+        precondition(first.aiDescription == contest.summary && first.descriptionProvenance == "reviewed_sample.summary")
+        precondition(first.targetUser == contest.audience && first.participationCondition == contest.eligibility)
+        precondition(first.applicationInformation.summary == contest.application.summary)
+        precondition(first.schedules.first { $0.period.phase == "preliminary" }!.locations.isEmpty)
+        precondition(first.schedules.first { $0.period.phase == "final" }!.locations.map(\.name) == contest.location.venues.map(\.name))
+        precondition(first.organizationLinks.map(\.role) == ["publisher", "contact", "subject"])
+        precondition(repository.detail(id: "missing") == nil)
+        for notice in catalog.activities {
+            let detail = repository.detail(id: notice.id)!
+            precondition(detail.title == notice.title && detail.categorySummary == notice.categorySummary)
+            precondition(detail.location.summary == notice.location.summary && detail.benefits == notice.benefits && detail.qualityIssues == notice.qualityIssues)
+            precondition(detail.contexts.map { $0.reference.organizationId } == notice.contexts.map(\.organizationId))
+            precondition(detail.contexts.map { $0.reference.label } == notice.contexts.map(\.label))
+            let rawNotice = originalNotices.first { $0["id"] as? String == notice.id }!
+            precondition(detail.evidence.count == evidenceCount(rawNotice) && !detail.evidence.isEmpty)
+            for evidence in detail.evidence {
+                precondition(!evidence.fieldPath.isEmpty && !evidence.locator.isEmpty)
+                precondition(evidence.sourceURL?.absoluteString == catalog.sources.first { $0.id == evidence.sourceId }?.url)
+            }
+            precondition(detail.sources.allSatisfy { $0.kind != nil && $0.checkedAt != nil })
+        }
+        let krc = catalog.activities.first { $0.favoriteOrganizationId == "krc" }!
+        let detail = repository.detail(id: krc.id)!
+        precondition(detail.contexts[0].reference.role == "event_context" && detail.contexts[0].organizationName == "충북대학교")
+        precondition(detail.contexts[0].reference.basis == "user_confirmed")
+        precondition(detail.applicationInformation.channels == ["platform"])
+        precondition(detail.evidence.contains { $0.fieldPath == "schedule.duration" && $0.sourceId == "krc" })
+        if krc.location.venues[0].coordinates != nil {
+            precondition(detail.evidence.contains { $0.fieldPath == "location.venues[0].coordinates" && $0.sourceURL != nil })
+        }
+        // IDs stay normalized in the saved payload; selecting a parent is allowed.
+        var raw = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        var notices = raw["activities"] as! [[String: Any]]
+        let index = notices.firstIndex { $0["id"] as? String == krc.id }!
+        precondition(notices[index]["favoriteOrganizationId"] is String && notices[index]["organizationPath"] == nil)
+        notices[index]["favoriteOrganizationId"] = "cbnu"
+        notices[index]["contexts"] = [["organizationId": "unknown", "role": "venue_institution"]]
+        var audience = notices[index]["audience"] as! [String: Any]
+        audience["evidence"] = [["sourceId": "missing-source", "locator": "보존해야 함"]]
+        notices[index]["audience"] = audience
+        raw["activities"] = notices
+        var organizations = raw["organizations"] as! [[String: Any]]
+        let parentIndex = organizations.firstIndex { $0["id"] as? String == "cbnu" }!
+        organizations[parentIndex]["name"] = "바뀐 학교"
+        organizations[parentIndex]["parentOrganizationId"] = "unknown-parent"
+        raw["organizations"] = organizations
+        let changed = try JSONDecoder().decode(ActivityCatalog.self, from: JSONSerialization.data(withJSONObject: raw))
+        let changedSource = DetailCountingSource(changed.organizations)
+        repository.replaceSnapshot(changed, source: changedSource)
+        precondition(changedSource.fetches.isEmpty, "Replacement clears rather than prewarms")
+        let updated = repository.detail(id: krc.id)!
+        precondition(updated.organizationID == "cbnu" && updated.organizationPath.map(\.name) == ["바뀐 학교"])
+        precondition(updated.contexts[0].organizationName == nil && updated.contexts[0].reference.label == "개최 기관")
+        precondition(updated.evidence.contains { $0.sourceId == "missing-source" && $0.locator == "보존해야 함" && $0.fieldPath == "audience" && $0.sourceURL == nil })
+        precondition(repository.catalog.organization("cbnu")?.name == updated.organizationPath.last?.name)
+        print("PASS: shared repository two detail opens, ID-only references/selected parent, exact contexts and phase places, decoded sources/evidence paths/unknown source, snapshot rename/reparent replacement")
+    }
+    private static func evidenceCount(_ value: Any) -> Int {
+        if let object = value as? [String: Any] {
+            return object.reduce(0) { count, entry in
+                if entry.key == "evidence" || entry.key == "coordinateEvidence" {
+                    return count + (entry.value as! [Any]).count
+                }
+                return count + evidenceCount(entry.value)
+            }
+        }
+        return (value as? [Any])?.reduce(0) { $0 + evidenceCount($1) } ?? 0
+    }
+}
+
+@MainActor
+private final class DetailCountingSource: OrganizationSource {
+    private let records: [String: ActivityOrganization]
+    private(set) var fetches: [String: Int] = [:]
+    init(_ records: [ActivityOrganization]) { self.records = Dictionary(uniqueKeysWithValues: records.map { ($0.id, $0) }) }
+    func fetch(id: String) -> ActivityOrganization? { fetches[id, default: 0] += 1; return records[id] }
+}

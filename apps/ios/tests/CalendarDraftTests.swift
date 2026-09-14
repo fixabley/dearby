@@ -9,12 +9,13 @@ struct CalendarDraftTests {
         precondition(upper == calendar.dateComponents([.year, .month, .day], from: CalendarDatePolicy.day(end, calendar: calendar)!))
     }
 
+    @MainActor
     static func main() throws {
         let catalog = try JSONDecoder().decode(ActivityCatalog.self, from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
         let krc = catalog.activities.first { $0.favoriteOrganizationId == "krc" }!
         let db = catalog.activities.first { $0.favoriteOrganizationId == "db-insurance" }!
         for notice in [krc, db] {
-            let draft = CalendarDraftMapper.application(notice, catalog: catalog)!
+            let draft = CalendarDraftMapper.application(detail(notice, catalog: catalog))!
             guard case .timed(let start, let end, let zone) = draft.interval else { preconditionFailure() }
             precondition(start == CalendarDatePolicy.instant(notice.application.opensAt!))
             precondition(end == CalendarDatePolicy.instant(notice.application.closesAt!))
@@ -24,7 +25,7 @@ struct CalendarDraftTests {
             precondition(request.timezone?.identifier == "Asia/Seoul")
         }
         let contest = catalog.activities.first { $0.favoriteOrganizationId == "yeongnam-cyber-defense" }!
-        expectDays(CalendarDraftMapper.application(contest, catalog: catalog)?.interval, "2026-09-11", "2026-10-08")
+        expectDays(CalendarDraftMapper.application(detail(contest, catalog: catalog))?.interval, "2026-09-11", "2026-10-08")
         func interval(_ startAt: String? = nil, _ startOn: String? = nil, _ endAt: String? = nil, _ endOn: String? = nil, allowEndOnly: Bool = true) -> CalendarEventInterval? {
             CalendarDatePolicy.interval(startAt: startAt, startOn: startOn, endAt: endAt, endOn: endOn, timezone: nil, allowEndOnly: allowEndOnly)
         }
@@ -60,14 +61,14 @@ struct CalendarDraftTests {
         application["opensAt"] = NSNull(); application["opensOn"] = NSNull()
         notices[index]["application"] = application; raw["activities"] = notices
         let changed = try JSONDecoder().decode(ActivityCatalog.self, from: JSONSerialization.data(withJSONObject: raw))
-        let deadline = CalendarDraftMapper.application(changed.activities[index], catalog: changed)!
+        let deadline = CalendarDraftMapper.application(detail(changed.activities[index], catalog: changed))!
         precondition(deadline.title.hasPrefix("[신청 마감]"))
         precondition(deadline.url == CalendarDraftMapper.verifiedURL(application["url"] as? String))
         precondition(deadline.notes.contains("신청 URL:") && deadline.notes.contains("원문:"))
         application.removeValue(forKey: "url"); application["closesAt"] = NSNull(); application["closesOn"] = NSNull(); application["opensOn"] = "2026-10-01"
         notices[index]["application"] = application; raw["activities"] = notices
         let noURL = try JSONDecoder().decode(ActivityCatalog.self, from: JSONSerialization.data(withJSONObject: raw))
-        let draft = CalendarDraftMapper.application(noURL.activities[index], catalog: noURL)!
+        let draft = CalendarDraftMapper.application(detail(noURL.activities[index], catalog: noURL))!
         precondition(draft.url == nil && draft.notes.contains("신청 마감: 미확인") && draft.notes.contains("신청 URL: 미확인"))
         for zone in ["Asia/Seoul", "America/Los_Angeles", "Pacific/Auckland"] {
             let request = CalendarEditorRequest(draft: draft, deviceTimeZone: TimeZone(identifier: zone)!)!
@@ -89,10 +90,12 @@ struct CalendarDraftTests {
         print("PASS: application exact KST, deadline-only, contest midnight, strict invalid/reversed dates, mixed precision, inclusive dates, unknown end, URL/source separation, all-day device-zone conversion")
     }
 
+    @MainActor
     static func testActivities(catalog: ActivityCatalog) throws {
         let contest = catalog.activities.first { $0.favoriteOrganizationId == "yeongnam-cyber-defense" }!
         func draft(_ phase: ActivitySchedule, notice: ActivityNotice? = nil) -> CalendarEventDraft? {
-            CalendarDraftMapper.activity(phase, notice: notice ?? contest, catalog: catalog, mapURL: VenueMapLink.url)
+            let projected = detail(notice ?? contest, catalog: catalog, schedule: [phase])
+            return CalendarDraftMapper.activity(projected.schedules[0], detail: projected, mapURL: VenueMapLink.url)
         }
         let preliminary = draft(contest.schedule.first { $0.phase == "preliminary" }!)!
         expectDays(preliminary.interval, "2026-10-14", "2026-10-15")
@@ -138,6 +141,19 @@ struct CalendarDraftTests {
         let noLeak = draft(phase(), notice: notice)!
         precondition(noLeak.location == "온라인" && !noLeak.notes.contains("본관") && !noLeak.notes.contains("다른 단계"))
         print("PASS: activity exact KST, online URLs/unknown, exact phase join, multiple venues/maps, invalid dates, no invented duration")
+    }
+
+
+    @MainActor
+    static func detail(_ notice: ActivityNotice, catalog: ActivityCatalog, schedule: [ActivitySchedule]? = nil) -> ActivityDetail {
+        let copy = ActivityNotice(id: notice.id, title: notice.title, summary: notice.summary, demoVisible: notice.demoVisible,
+                                  favoriteOrganizationId: notice.favoriteOrganizationId, sourceIds: notice.sourceIds,
+                                  audience: notice.audience, eligibility: notice.eligibility, application: notice.application,
+                                  location: notice.location, schedule: schedule ?? notice.schedule, benefits: notice.benefits,
+                                  qualityIssues: notice.qualityIssues, categoryPath: notice.categoryPath, contexts: notice.contexts, edition: notice.edition)
+        let snapshot = ActivityCatalog(schemaVersion: catalog.schemaVersion, mode: catalog.mode, snapshotAt: catalog.snapshotAt,
+                                       sources: catalog.sources, organizations: catalog.organizations, activities: [copy])
+        return ActivityDetailRepository(catalog: snapshot).detail(id: copy.id)!
     }
 
 }

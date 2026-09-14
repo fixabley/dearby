@@ -6,4 +6,7 @@ struct ActivityApplication: Decodable {
     let closesOn: String?
     let timezone: String?
     let url: String?
+    var channels: [String]? = nil
+    var requiredDocuments: [String]? = nil
+    var submissionLocations: [String]? = nil
 }

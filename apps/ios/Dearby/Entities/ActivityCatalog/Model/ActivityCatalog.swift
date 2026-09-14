@@ -51,6 +51,10 @@ struct ActivityCatalog: Decodable {
 struct ActivitySource: Decodable {
     let id: String
     let url: String
+    var kind: String? = nil
+    var checkedAt: String? = nil
+    var access: String? = nil
+    var note: String? = nil
 }
 
 struct ActivityOrganization: Decodable, Identifiable {
@@ -62,6 +66,8 @@ struct ActivityOrganization: Decodable, Identifiable {
 struct ActivityContext: Decodable {
     let organizationId: String
     let role: String
+    var basis: String? = nil
+    var note: String? = nil
 
     var label: String {
         switch role {
@@ -90,6 +96,8 @@ struct ActivityNotice: Decodable, Identifiable {
     let categoryPath: [String]
     let contexts: [ActivityContext]
     let edition: Int?
+    var organizationLinks: [ActivityContext] = []
+    var evidence: [ActivityEvidence] = []
 
     var categorySummary: String {
         let labels = ["recruitment": "채용", "recruitment_event": "채용행사",
@@ -105,7 +113,7 @@ extension ActivityNotice {
     private enum CodingKeys: String, CodingKey {
         case id, title, summary, demoVisible, favoriteOrganizationId, sourceIds
         case audience, eligibility, application, location, schedule, benefits, qualityIssues
-        case categoryPath, contexts, edition
+        case categoryPath, contexts, edition, organizationLinks
     }
     private enum SummaryKey: String, CodingKey { case summary }
 
@@ -137,5 +145,7 @@ extension ActivityNotice {
         categoryPath = try values.decode([String].self, forKey: .categoryPath)
         contexts = try values.decode([ActivityContext].self, forKey: .contexts)
         edition = try values.decodeIfPresent(Int.self, forKey: .edition)
+        organizationLinks = try values.decodeIfPresent([ActivityContext].self, forKey: .organizationLinks) ?? []
+        evidence = try ActivityEvidenceDecoder.collect(from: decoder)
     }
 }

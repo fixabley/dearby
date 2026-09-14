@@ -132,6 +132,7 @@ apps/ios/build/dearby-favorites-tests apps/ios/Dearby/Resources/activity-samples
 ```sh
 swiftc -swift-version 6 -parse-as-library \
   apps/ios/Dearby/Entities/ActivityCatalog/Model/*.swift \
+  apps/ios/Dearby/Entities/ActivityCatalog/API/*.swift \
   apps/ios/Dearby/Features/AddToCalendar/Model/*.swift \
   apps/ios/Dearby/App/CalendarEditorRequest.swift \
   apps/ios/Dearby/App/VenueMapLink.swift \
@@ -154,3 +155,16 @@ swiftc -swift-version 6 -parse-as-library \
   apps/ios/tests/OrganizationRepositoryTests.swift -o apps/ios/build/dearby-organization-tests
 apps/ios/build/dearby-organization-tests
 ```
+
+## 상세 투영·근거 검증
+
+```sh
+swiftc -swift-version 6 -parse-as-library \
+  apps/ios/Dearby/Entities/ActivityCatalog/Model/*.swift \
+  apps/ios/Dearby/Entities/ActivityCatalog/API/*.swift \
+  apps/ios/tests/ActivityDetailTests.swift -o apps/ios/build/dearby-detail-tests
+apps/ios/build/dearby-detail-tests apps/ios/Dearby/Resources/activity-samples.json
+apps/ios/build/dearby-detail-tests shared/contracts/activities/sample.json
+```
+
+ActivityDetailRepository는 App 수명 동안 조직 source/cache를 공유하고 페이지에는 ActivityDetail만 전달합니다. 근거의 sourceId/locator/fieldPath 및 출처 메타데이터, 역할 ID와 선택 조직 ID를 보존합니다. aiDescription은 기존 검토 샘플 요약으로 새 AI 생성이 아닙니다. 상세 기간/장소는 캘린더·지도에도 동일한 값으로 전달합니다.
