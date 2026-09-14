@@ -15,7 +15,7 @@ import io.fixabley.dearby.entities.activitycatalog.api.CatalogProvider
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
 import io.fixabley.dearby.pages.discovery.ui.DiscoveryScreen
 import io.fixabley.dearby.pages.favorites.ui.FavoritesScreen
-import io.fixabley.dearby.feature.noticedetail.NoticeDetailSheet
+import io.fixabley.dearby.pages.noticedetail.ui.NoticeDetailSheet
 
 @Composable
 internal fun DearbyApp(catalogProvider: CatalogProvider, favorites: FavoritesState, onOpenSource: (String) -> Unit) {

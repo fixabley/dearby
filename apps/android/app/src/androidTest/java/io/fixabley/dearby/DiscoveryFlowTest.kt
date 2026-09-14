@@ -11,6 +11,17 @@ class DiscoveryFlowTest {
     val rule = createAndroidComposeRule<MainActivity>()
 
     @Test
+    fun detailBackReturnsToTheSameDiscoveryCardAndTab() {
+        rule.onNodeWithTag("discovery.pager").performTouchInput { swipeUp() }
+        rule.onNodeWithTag("details.cieat-NCR000000007306").performClick()
+        rule.onNodeWithTag("notice.detail").assertIsDisplayed()
+        androidx.test.espresso.Espresso.pressBack()
+        rule.onNodeWithTag("notice.detail").assertDoesNotExist()
+        rule.onNodeWithTag("tab.discovery").assertIsSelected()
+        rule.onNodeWithTag("activity.cieat-NCR000000007306").assertIsDisplayed()
+    }
+
+    @Test
     fun saveButtonUpdatesBothTabsAndFavoriteOpensTheSameDetail() {
         rule.activity.getSharedPreferences("dearby.favorites.v1", Context.MODE_PRIVATE).edit().clear().commit()
         rule.activityRule.scenario.recreate()
@@ -22,6 +33,7 @@ class DiscoveryFlowTest {
         rule.onNode(hasText("한국농어촌공사") and hasAnyAncestor(hasTestTag("notice.detail")))
             .assertIsDisplayed()
         androidx.test.espresso.Espresso.pressBack()
+        rule.onNodeWithTag("tab.favorites").assertIsSelected()
         rule.onNodeWithTag("remove.krc").performClick()
         rule.onNodeWithText("저장한 조직이 없어요").assertIsDisplayed()
         rule.onNodeWithTag("tab.discovery").performClick()

@@ -1,4 +1,4 @@
-package io.fixabley.dearby.feature.noticedetail
+package io.fixabley.dearby.pages.noticedetail.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*

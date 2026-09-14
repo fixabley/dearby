@@ -29,6 +29,7 @@ SDK 경로는 Android Studio가 생성하는 `local.properties`에 설정하거�
 
 ```sh
 cd apps/android
+python3 scripts/check-fsd.py --self-test
 ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
 ```
 
@@ -54,7 +55,7 @@ JVM 단위 테스트는 앱 실행 없이 임시 저장소로 즐겨찾기 추�
 - `app/src/main/java/io/fixabley/dearby/widgets/activitycard/ui/`: 공고 카드
 - `app/src/main/java/io/fixabley/dearby/pages/favorites/ui/`: 즐겨찾기 페이지
 - `app/src/main/java/io/fixabley/dearby/widgets/favoriteorganizationcard/ui/`: 조직 카드
-- `app/src/main/java/io/fixabley/dearby/feature/noticedetail/`: 전환 중인 상세 화면
+- `app/src/main/java/io/fixabley/dearby/pages/noticedetail/ui/`: 상세 시트와 내부 표시
 - `app/src/main/java/io/fixabley/dearby/entities/activitycatalog/`: 응집된 카탈로그 모델과 공급 경계
 - `app/src/main/java/io/fixabley/dearby/features/favoriteorganization/`: 즐겨찾기 행동·관찰 상태·저장 경계
 - `app/src/main/java/io/fixabley/dearby/shared/ui/`: 범용 표시와 테마
@@ -65,7 +66,7 @@ JVM 단위 테스트는 앱 실행 없이 임시 저장소로 즐겨찾기 추�
 - `gradle/libs.versions.toml`: 플러그인과 라이브러리 버전
 - `gradle/wrapper/`, `gradlew`, `gradlew.bat`: 재현 가능한 Gradle 실행 환경
 
-실제 디렉터리 트리, 상태 생명주기, 의존 방향, 새 기능 배치 예시는 [ARCHITECTURE.md](ARCHITECTURE.md)를 참고합니다.
+FSD의 실제 트리, slice 진입점, 상태 소유, 의존 방향·검사 한계, 새 기능 배치 예시는 [ARCHITECTURE.md](ARCHITECTURE.md)를 참고합니다.
 
 AGP의 내장 Kotlin 지원을 사용하므로 `org.jetbrains.kotlin.android` 플러그인은 적용하지 않습니다.
 참고: [AGP 내장 Kotlin](https://developer.android.com/build/migrate-to-built-in-kotlin),
