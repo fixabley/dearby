@@ -53,3 +53,9 @@ App의 초기 로딩/오류·재시도와 발견/즐겨찾기의 빈 화면에�
 `compactPeriodText(startAt, startOn, endAt, endOn, timezone, fallback, endLabel)`는 java.time의 엄격한 날짜와 원본 시간대로 표시만 만든다. 같은 날짜의 시간 범위는 한 번의 날짜와 HH:mm–HH:mm, 연도 경계는 두 연도, date-only는 시간 미확인으로 표시한다. malformed/충돌/역전 값은 fallback을 유지하며 calendar exporter의 종일/자정 규칙은 변경하지 않는다.
 
 근거: [공식 IconButton](https://developer.android.com/develop/ui/compose/components/icon-button), [DateTimeFormatter](https://developer.android.com/reference/java/time/format/DateTimeFormatter), 2026-09-14 확인.
+
+일정은 Page의 NoticeScheduleState가 원래 NoticePhase와 phase별 venues로 표시값을 만든다. titleLarge/bold 일정 이름(온라인 접두사 중복 방지) → 달력 MetadataRow → 장소 MetadataRow 순서이며 우측 calendar-add IconButton은 같은 index의 기존 draft를 전달한다. 신청은 별도 ContentSection/구분선으로 분리하고 원래 마감 안내와 제출 조건을 bodySmall/정보행으로 남긴다. 장소의 짧은 이름은 원래 층·호실을 포함하며 전체 주소·온라인 URL은 접근성 설명에, 주소는 기존 상세 장소 구획에도 보존한다. unknown 장소·시간을 확정값으로 바꾸지 않는다. 원래 이슈/출처도 유지한다.
+
+SchedulePreview의 light/dark/2×와 InformationPreview의 MetadataRow를 제공한다. 이번 신규 JVM 회귀6건은 compactPeriodText4/NoticeSchedulePresentation2이며 기존 PhaseCalendarFlowTest를 예선·발표·결선 3개 모두의 이름/날짜/원본URL/장소 매칭으로 강화했다. 기존 icon action 테스트는 accessible name/selected/최소48dp touch bounds/콜백을 검증한다.
+
+후속 구현 검증(2026-09-14): 최종 소스로 JVM45, 전체계측39, Debug/Release/계측 APK, Lint 오류0/기존12, FSD68/self-test24 통과. 과거 f4784a1 결과와 구분하며 실행 로그는 `build/icons-schedule-final-build.log`, `build/icons-schedule-final-instrumentation.log`다.

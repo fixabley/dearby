@@ -32,16 +32,26 @@ class PhaseCalendarFlowTest {
         rule.onNodeWithTag("details.${contest.id}").performClick()
         rule.onNodeWithTag("notice.detail").performScrollToNode(hasTestTag("calendar.phase.0"))
         rule.runOnIdle { assertTrue(captured.isEmpty()) }
-        rule.onNodeWithTag("calendar.phase.0").performClick()
+        rule.onNodeWithTag("schedule.title.0").assertTextEquals("온라인 예선")
+        rule.onNodeWithTag("calendar.phase.0").assertContentDescriptionEquals("온라인 예선 캘린더에 추가").performClick()
+        rule.onNodeWithTag("notice.detail").performScrollToNode(hasTestTag("calendar.phase.1"))
+        rule.onNodeWithTag("schedule.title.1").assertTextEquals("결선 진출 발표")
+        rule.onNodeWithTag("calendar.phase.1").assertContentDescriptionEquals("결선 진출 발표 캘린더에 추가").performClick()
         rule.onNodeWithTag("notice.detail").performScrollToNode(hasTestTag("calendar.phase.2"))
-        rule.onNodeWithTag("calendar.phase.2").performClick()
+        rule.onNodeWithTag("schedule.title.2").assertTextEquals("결선·시상")
+        rule.onNodeWithTag("calendar.phase.2").assertContentDescriptionEquals("결선·시상 캘린더에 추가").performClick()
         rule.runOnIdle {
-            assertEquals(2, captured.size)
+            assertEquals(3, captured.size)
             assertEquals("온라인", captured[0].location)
             assertTrue(captured[0].title.endsWith("[예선]"))
-            assertEquals("2026 부산 사이버보안 콘퍼런스 행사장", captured[1].location)
-            assertTrue(captured[1].title.endsWith("[결선·시상]"))
+            assertEquals("2026 부산 사이버보안 콘퍼런스 행사장", captured[2].location)
+            assertTrue(captured[2].title.endsWith("[결선·시상]"))
+            assertTrue(captured[1].title.endsWith("[결선 진출 발표]"))
+            assertEquals(listOf("2026-10-14", "2026-10-22", "2026-11-04"), captured.map {
+                java.time.Instant.ofEpochMilli(it.beginsAtMillis).atZone(java.time.ZoneOffset.UTC).toLocalDate().toString()
+            })
             assertTrue(captured.all { it.allDay })
+            assertTrue(captured.all { it.description == contest.sourceURL })
         }
         rule.onNodeWithTag("notice.detail").assertIsDisplayed()
     }
@@ -54,8 +64,8 @@ class PhaseCalendarFlowTest {
         rule.setContent { DearbyTheme { DearbyApp(repository, {}, {}, { fail("No phase action") }) } }
         rule.waitForCatalog()
         rule.onNodeWithTag("details.${first.id}").performClick()
-        rule.onNodeWithTag("notice.detail").performScrollToNode(hasText(invalid.schedules.first().summary))
-        rule.onNodeWithText(invalid.schedules.first().summary).assertIsDisplayed()
+        rule.onNodeWithTag("notice.detail").performScrollToNode(hasTestTag("schedule.date.0"))
+        rule.onNodeWithTag("schedule.date.0").assertContentDescriptionContains(invalid.schedules.first().summary, substring = true)
         rule.onNodeWithTag("calendar.phase.0").assertDoesNotExist()
     }
 }

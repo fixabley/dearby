@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import io.fixabley.dearby.R
 import androidx.compose.ui.tooling.preview.Preview
 import io.fixabley.dearby.shared.ui.buttons.SecondaryButton
 import io.fixabley.dearby.shared.ui.theme.DearbyTheme
@@ -21,7 +23,7 @@ private fun InformationPreview() {
         Column(Modifier.padding(Spacing.large), verticalArrangement = Arrangement.spacedBy(Spacing.large)) {
             ContentSection {
                 InformationRow("안내", "여러 줄로 이어지는 정보도 글자 크기에 맞춰 읽을 수 있어요.")
-                InformationRow("기간", "2026년 9월 14일 – 9월 18일")
+                MetadataRow(painterResource(R.drawable.ic_calendar), "2026.9.15(화) 14:00–16:00", "기간: 2026년 9월 15일 오후 2시부터 4시, 한국 시간")
                 SecondaryButton(onClick = {}) { Text("자세히 보기") }
             }
         }

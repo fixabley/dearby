@@ -80,6 +80,8 @@ shared/ui/
   buttons/PrimaryButton.kt              native Button 강조수준 진입점
   buttons/SecondaryButton.kt            native OutlinedButton 강조수준 진입점
   InformationRow.kt                     도메인 없는 label/value 묶음 읽기
+  MetadataRow.kt                        아이콘+간결한 값/전체 접근성 설명
+  PeriodText.kt                         구조화 날짜의 순수 표시 formatter
   ContentSection.kt                     공통 tonal 정보/액션 묶음
   StatusPanel.kt                        neutral/loading/error와 독립 action 슬롯
   theme/Theme.kt                        dynamic/static Material3 theme
@@ -178,3 +180,5 @@ ANDROID_SERIAL=emulator-5556 JAVA_HOME='/Applications/Android Studio.app/Content
 
 
 #2 검증(2026-09-14): FSD66/self-test24, JVM39, Debug·Release·계측 APK 빌드, Lint 오류0/기존경고12, 전용5556 전체계측39 모두 통과. 신규 디자인 회귀4건을 포함한다. [before/after 화면·검증·한계](docs/design-system/VERIFICATION.md), [Shared API와 native 사용 규칙](docs/design-system/README.md)을 참고한다.
+
+PR9 후속: 공고/조직 액션은 native icon button으로 줄이고 관심 조직명은 카드에 유지한다. NoticeScheduleState가 phase 이름·간결한 날짜·짧은 장소/전체 접근성 설명을 조립하며 신청과 활동 일정을 분리한다. 모델/캐시/캘린더 exporter는 그대로다. 상세한 API·정책은 디자인 시스템 문서의 후속 항목을 따른다.

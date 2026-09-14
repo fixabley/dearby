@@ -15,7 +15,13 @@ import io.fixabley.dearby.pages.noticedetail.model.NoticeDetailState
 import io.fixabley.dearby.entities.notice.model.NoticeVenue
 import io.fixabley.dearby.shared.ui.InformationRow
 import io.fixabley.dearby.shared.ui.ContentSection
-import io.fixabley.dearby.shared.ui.buttons.PrimaryButton
+import io.fixabley.dearby.shared.ui.MetadataRow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.painterResource
+import io.fixabley.dearby.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,11 +40,24 @@ internal fun NoticeDetailSheet(notice: NoticeDetailState, onDismiss: () -> Unit,
             item { InformationRow("참여 조건", notice.participationCondition) }
             item {
                 ContentSection {
-                    InformationRow("신청 기간", notice.applicationInformation.summary)
-                    AddToCalendarButton(notice.applicationDraft, "신청 기간 캘린더에 추가", onAddToCalendar,
-                        Modifier.testTag("calendar.application"))
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Text("신청", Modifier.weight(1f).semantics { heading() },
+                            style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        AddToCalendarButton(notice.applicationDraft, "신청 기간 캘린더에 추가", onAddToCalendar,
+                            Modifier.testTag("calendar.application"))
+                    }
+                    MetadataRow(painterResource(R.drawable.ic_calendar), notice.applicationDateText,
+                        "신청 기간: ${notice.applicationDateText}. ${notice.applicationInformation.summary}, ${notice.applicationInformation.timezone}")
+                    MetadataRow(painterResource(R.drawable.ic_place), notice.applicationPlaceText,
+                        "신청 방법·장소: ${notice.applicationPlaceText}")
+                    Text(notice.applicationInformation.summary, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (notice.applicationInformation.requiredDocuments.isNotEmpty()) {
+                        InformationRow("제출 서류", notice.applicationInformation.requiredDocuments.joinToString(" · "))
+                    }
                 }
             }
+            if (notice.schedules.isNotEmpty()) item { HorizontalDivider() }
             itemsIndexed(notice.schedules) { index, phase -> NoticeScheduleSection(phase, notice.phaseDrafts.getOrNull(index), index, onAddToCalendar) }
             item { NoticeLocationSection(notice.location, onOpenMap) }
             items(notice.benefits) { InformationRow("혜택", it) }
@@ -48,7 +67,9 @@ internal fun NoticeDetailSheet(notice: NoticeDetailState, onDismiss: () -> Unit,
                     style = MaterialTheme.typography.bodySmall)
             }
             item {
-                PrimaryButton(onClick = { onOpenSource(notice.sourceURL) }) { Text("원문 공고 열기") }
+                FilledTonalIconButton(onClick = { onOpenSource(notice.sourceURL) }) {
+                    Icon(painterResource(R.drawable.ic_open_in_new), contentDescription = "원문 공고 열기")
+                }
             }
         }
     }
