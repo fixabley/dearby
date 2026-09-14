@@ -40,17 +40,6 @@ struct ActivityCatalog: Decodable {
     func sourceURL(for activity: ActivityNotice) -> URL? {
         sources.first { $0.id == activity.sourceIds.first }.flatMap { URL(string: $0.url) }
     }
-
-    static func load() throws -> ActivityCatalog {
-        guard let url = Bundle.main.url(forResource: "activity-samples", withExtension: "json") else {
-            throw CocoaError(.fileNoSuchFile)
-        }
-        let catalog = try JSONDecoder().decode(ActivityCatalog.self, from: Data(contentsOf: url))
-        guard catalog.schemaVersion == "1.0.0", catalog.mode == "reviewed_sample" else {
-            throw CocoaError(.coderReadCorrupt)
-        }
-        return catalog
-    }
 }
 
 struct ActivitySource: Decodable {

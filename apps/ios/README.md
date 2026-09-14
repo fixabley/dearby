@@ -39,17 +39,23 @@ xcodebuild \
 
 ## 소스 구조
 
-- `Dearby/DearbyApp.swift`: 앱 진입점
-- `Dearby/ContentView.swift`: 카드 탐색·상세·조직 즐겨찾기와 Preview
-- `Dearby/Assets.xcassets`: 테마 색상과 앱 아이콘 슬롯
+- `Dearby/App/`: 앱 진입·의존성 조립·단일 즐겨찾기 상태 소유·탭 조합
+- `Dearby/Features/Discovery/`: 탐색 화면과 카드
+- `Dearby/Features/Favorites/`: 즐겨찾기 목록과 조직 행
+- `Dearby/Features/NoticeDetail/`: 공고 상세와 조직·분류·학교·회차 표시
+- `Dearby/Shared/Models/`: 공고·조직·카탈로그와 순수 조회
+- `Dearby/Shared/State/`: Observation 즐겨찾기 상태와 추가·삭제 이벤트
+- `Dearby/Shared/Data/`: 교체 가능한 카탈로그 공급·저장 protocol 및 번들·UserDefaults 구현
+- `Dearby/Shared/UI/`: 발견·즐겨찾기에서 재사용하는 분류 표시
+- `Dearby/Resources/`: 번들 샘플, `Dearby/Assets.xcassets`: 테마와 앱 아이콘 슬롯
 - `Dearby.xcodeproj/xcshareddata/xcschemes/Dearby.xcscheme`: 공유 scheme
 
-`Dearby/` 폴더는 Xcode의 파일 시스템 동기화 그룹이므로 새 소스 파일을 추가하면
-프로젝트에 자동으로 반영됩니다. 외부 의존성과 테스트 타깃은 아직 없습니다.
-앱 아이콘 이미지는 출시 전에 추가해야 합니다.
+상태 생명주기·의존 방향·새 기능 배치는 [ARCHITECTURE.md](ARCHITECTURE.md)를 따른다.
+[이슈 #1](https://github.com/fixabley/dearby/issues/1), [공통 설계 PR #3](https://github.com/fixabley/dearby/pull/3)을 기준으로 기존 외형과 저장 형식을 유지한다.
 
-Swift Package Manager 의존성을 추가한다면 앱의 `Package.resolved`도 커밋합니다.
-개발자별 Xcode 상태와 인증서·프로비저닝 프로파일은 커밋하지 않습니다.
+`Dearby/`는 Xcode 파일 시스템 동기화 그룹이므로 하위 파일을 자동 포함한다.
+외부 의존성과 별도 테스트 타깃·빌드 모듈은 없다. Preview는 저장하지 않는 전용 저장소를 사용한다.
+앱 아이콘 이미지는 출시 전에 추가해야 한다. 개발자별 Xcode 상태와 인증서·프로비저닝 프로파일은 커밋하지 않는다.
 
 ## 저장소
 
@@ -57,18 +63,26 @@ Swift Package Manager 의존성을 추가한다면 앱의 `Package.resolved`도 
 별도 Git 초기화나 submodule 설정 없이, 저장소 루트에서 다른 클라이언트 및
 공통 명세와 함께 브랜치·커밋·PR을 관리합니다.
 
-## 샘플과 저장소 검증
+## 샘플과 상태·저장소 검증
 
-샘플 데이터는 루트 `scripts/sync-activity-samples.py`로 동기화합니다.
-조직 ID를 UserDefaults에 저장하며 로그인이나 API 연결은 아직 없습니다.
-Xcode 테스트 타깃 대신 다음 독립 Swift 검증을 모노레포 루트에서 실행할 수 있습니다.
-임시 UserDefaults suite를 사용하므로 앱에 저장된 즐겨찾기를 건드리지 않습니다.
+샘플의 기준은 루트 `shared/contracts/activities/sample.json`이다. 공통 동기화 스크립트는
+Android 리소스도 수정하므로 공통 담당과 조율한다. 앱은 번들 데이터만 사용하며 API 연결·로그인은 없다.
+
+Xcode 테스트 타깃 없이 모노레포 루트에서 실행한다. 인메모리 저장소 및 고유한 임시
+UserDefaults suite를 사용하며 사용자 앱 즐겨찾기는 변경하지 않는다. 생성한 suite와 번들 fixture는 종료 시 제거한다.
 
 ```sh
-swiftc -parse-as-library \
-  apps/ios/Dearby/ActivityCatalog.swift \
-  apps/ios/Dearby/FavoriteOrganizations.swift \
+mkdir -p apps/ios/build
+swiftc -swift-version 6 -parse-as-library \
+  apps/ios/Dearby/Shared/Models/*.swift \
+  apps/ios/Dearby/Shared/State/*.swift \
+  apps/ios/Dearby/Shared/Data/*.swift \
   apps/ios/tests/FavoritesStoreTests.swift \
-  -o /tmp/dearby-favorites-tests
-/tmp/dearby-favorites-tests shared/contracts/activities/sample.json
+  -o apps/ios/build/dearby-favorites-tests
+apps/ios/build/dearby-favorites-tests shared/contracts/activities/sample.json
 ```
+
+검증 항목은 임시 저장소 주입, 추가·반복 추가·삭제, 두 Observation 소비자의 동일 상태와 변경 통지,
+기존 UserDefaults 문자열 배열 호환·저장소 재생성 복원, 기업/학교 분리와 대회 프로그램·회차,
+카탈로그 공급자 교체·번들 디코딩·잘못된 모드/JSON 오류다.
+화면 회귀는 별도 시뮬레이터에서 수행하며 실제 결과와 한계는 [구조 문서의 검증 기록](ARCHITECTURE.md#검증-기록)에 남긴다.
