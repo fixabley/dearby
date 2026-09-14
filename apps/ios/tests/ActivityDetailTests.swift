@@ -23,10 +23,16 @@ struct ActivityDetailTests {
         precondition(first.applicationInformation.summary == contest.application.summary)
         precondition(first.schedules.first { $0.period.phase == "preliminary" }!.locations.isEmpty)
         precondition(first.schedules.first { $0.period.phase == "final" }!.locations.map(\.name) == contest.location.venues.map(\.name))
-        precondition(first.organizationLinks.map(\.role) == ["publisher", "contact", "subject"])
+        precondition(first.organizationLinks.map { $0.reference.role } == ["publisher", "contact", "subject"])
         precondition(repository.detail(id: "missing") == nil)
         for notice in catalog.activities {
             let detail = repository.detail(id: notice.id)!
+            for link in detail.organizationLinks {
+                precondition(link.organizationName == catalog.organization(link.reference.organizationId)?.name && link.organizationName != nil)
+                let original = notice.organizationLinks.first { $0.organizationId == link.reference.organizationId && $0.role == link.reference.role }!
+                precondition(link.reference.basis == original.basis && link.reference.note == original.note)
+                precondition(source.fetches[link.reference.organizationId] == 1, "Links, contexts and paths share successful cache entries")
+            }
             precondition(detail.title == notice.title && detail.categorySummary == notice.categorySummary)
             precondition(detail.location.summary == notice.location.summary && detail.benefits == notice.benefits && detail.qualityIssues == notice.qualityIssues)
             precondition(detail.contexts.map { $0.reference.organizationId } == notice.contexts.map(\.organizationId))
@@ -54,7 +60,11 @@ struct ActivityDetailTests {
         let index = notices.firstIndex { $0["id"] as? String == krc.id }!
         precondition(notices[index]["favoriteOrganizationId"] is String && notices[index]["organizationPath"] == nil)
         notices[index]["favoriteOrganizationId"] = "cbnu"
-        notices[index]["contexts"] = [["organizationId": "unknown", "role": "venue_institution"]]
+        notices[index]["organizationLinks"] = [
+            ["organizationId": "unknown-link", "role": "contact", "basis": "source", "note": "보존"],
+            ["organizationId": "cbnu", "role": "publisher"]
+        ]
+        notices[index]["contexts"] = [["organizationId": "unknown", "role": "venue_institution"], ["organizationId": "cbnu", "role": "event_context"]]
         var audience = notices[index]["audience"] as! [String: Any]
         audience["evidence"] = [["sourceId": "missing-source", "locator": "보존해야 함"]]
         notices[index]["audience"] = audience
@@ -69,6 +79,9 @@ struct ActivityDetailTests {
         repository.replaceSnapshot(changed, source: changedSource)
         precondition(changedSource.fetches.isEmpty, "Replacement clears rather than prewarms")
         let updated = repository.detail(id: krc.id)!
+        precondition(updated.organizationLinks[0].reference.organizationId == "unknown-link" && updated.organizationLinks[0].reference.role == "contact")
+        precondition(updated.organizationLinks[0].reference.basis == "source" && updated.organizationLinks[0].reference.note == "보존" && updated.organizationLinks[0].organizationName == nil)
+        precondition(updated.organizationLinks[1].organizationName == "바뀐 학교" && changedSource.fetches["cbnu"] == 1)
         precondition(updated.organizationID == "cbnu" && updated.organizationPath.map(\.name) == ["바뀐 학교"])
         precondition(updated.contexts[0].organizationName == nil && updated.contexts[0].reference.label == "개최 기관")
         precondition(updated.evidence.contains { $0.sourceId == "missing-source" && $0.locator == "보존해야 함" && $0.fieldPath == "audience" && $0.sourceURL == nil })

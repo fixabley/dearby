@@ -8,7 +8,7 @@ struct ActivityDetail: Identifiable {
     let descriptionProvenance: String
     let organizationID: String?
     let organizationPath: [ActivityOrganization]
-    let organizationLinks: [ActivityContext]
+    let organizationLinks: [ActivityDetailContext]
     let categoryPath: [String]
     let categorySummary: String
     let contexts: [ActivityDetailContext]

@@ -354,3 +354,10 @@ Entities/ActivityCatalog/API의 OrganizationSource.fetch(id:)와 SnapshotOrganiz
 `python3 apps/ios/tests/check_fsd_boundaries.py`: 45 Swift 파일 및 부정 fixture 통과. `git diff --check` 통과. XcodeBuildMCP `build_sim`(CODE_SIGNING_ALLOWED=NO, 전용 simulator 대상) 성공, 경고/오류 없음; 로그 `build_sim_2026-09-14T11-20-38-165Z_pid15343_9fc86060.log`.
 
 이번에는 UI 필드 공급만 바꾸고 기존 OS 어댑터·문구·레이아웃을 유지했으므로 native editor/Maps 런타임을 재실행하지 않았다. 앞선 캘린더 실제 열기·취소와 지도 handoff는 이전 검증이며 이번 결과로 간주하지 않는다. source는 in-memory snapshot이고 실시간 refresh UI·영구 캐시·네트워크는 구현하지 않았다. 번들 canonical SHA c649b0a1 및 사용자 즐겨찾기/기기 설정은 변경하지 않았다.
+
+
+### 조직 링크 이름 조회 보완
+
+ActivityDetail.organizationLinks도 contexts와 같은 ActivityDetailContext 읽기 투영이다. reference에는 원본 ID/role/basis/note를 유지하고 organizationName은 동일 OrganizationRepository 캐시를 통해 해결한다. 누락 조직은 nil 이름으로 원본 참조를 보존한다. Notice.organizationLinks는 계속 ID/역할 참조이며 이름이나 경로를 저장하지 않는다. UI 변경 없이 상세 소비자가 추가 카탈로그 조회 없이 기관 이름을 사용할 수 있다.
+
+2026-09-14 보완 검증: README의 상세·캘린더 swiftc 명령을 재컴파일하고 old/new JSON 각각 통과했다. 실제 링크 이름·미등록 ID/role/basis/note 보존·링크/맥락/경로 공유 성공 fetch 1회 검사를 포함한다. 45파일 FSD/부정 fixture·git diff --check 통과, Simulator build 11:24:30Z 성공(경고/오류 없음). 값 투영만 변경하여 native runtime 및 사용자 캘린더 조작은 하지 않았다.

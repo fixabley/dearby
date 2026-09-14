@@ -22,6 +22,9 @@ final class ActivityDetailRepository {
         let contexts = notice.contexts.map {
             ActivityDetailContext(reference: $0, organizationName: organizations.organization($0.organizationId)?.name)
         }
+        let links = notice.organizationLinks.map {
+            ActivityDetailContext(reference: $0, organizationName: organizations.organization($0.organizationId)?.name)
+        }
         var relevantIDs = Set(notice.sourceIds)
         relevantIDs.formUnion(notice.evidence.map(\.sourceId))
         let sources = catalog.sources.filter { relevantIDs.contains($0.id) }
@@ -32,7 +35,7 @@ final class ActivityDetailRepository {
         }
         return ActivityDetail(id: notice.id, title: notice.title, aiDescription: notice.summary,
                               descriptionProvenance: "reviewed_sample.summary", organizationID: notice.favoriteOrganizationId,
-                              organizationPath: path, organizationLinks: notice.organizationLinks,
+                              organizationPath: path, organizationLinks: links,
                               categoryPath: notice.categoryPath, categorySummary: notice.categorySummary, contexts: contexts,
                               targetUser: notice.audience, participationCondition: notice.eligibility,
                               applicationInformation: notice.application,
