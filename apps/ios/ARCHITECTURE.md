@@ -318,3 +318,7 @@ notes에 원래 summary·정확한 시작/끝·시간대·미확인 항목을 �
 증거는 build/calendar-regression/application-editor.png, application-cancelled.png, activity-editor.png 및 UI JSON이다.
 종일/온라인 실제 OS 화면, 캘린더 없는 계정/원격 editor 실패/실기기는 미검증이다. 전자는 순수 변환 테스트로 검증하고 후자는 OS 처리와 취소 경로에 맡긴다.
 기존 실제 터치 스와이프·물리 햅틱·전체 접근성 한계는 유지한다. 마지막 순수 adapter 보강 후에는 빌드·독립 검사를 재실행했고 runtime 기록은 그 직전 동일 편집기 UI 경로다.
+
+## 조직 원본·cache-aside 조회
+Entities/ActivityCatalog/API의 OrganizationSource.fetch(id:)와 SnapshotOrganizationSource는 조직 레코드를 별도 저장한다. OrganizationRepository는 처음 비어 있는 독립 ID 캐시를 조회하고 miss에서만 source를 호출하며 성공한 레코드만 캐시한다. path(to:)는 parent ID를 cycle-safe하게 따라가는 일시 projection이며 누락된 상위에서도 복구 가능한 경로를 유지한다. MainActor에서 replaceSource가 모든 캐시를 지워 이름/부모 변경을 반영한다.
+이번 독립 source 호출 횟수 검사는 cold/hit·공유 상위·nil/없는ID·cycle/고아·전체 snapshot rename/reparent 무효화를 확인한다. 상세 projection 통합은 같은 작업의 다음 기능 커밋에 적용한다.
