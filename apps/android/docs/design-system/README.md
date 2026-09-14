@@ -61,3 +61,9 @@ SchedulePreview의 light/dark/2×와 InformationPreview의 MetadataRow를 제공
 후속 구현 검증(2026-09-14): 최종 소스로 JVM46, 전체계측39, Debug/Release/계측 APK, Lint 오류0/기존12, FSD68/self-test24 통과. 과거 f4784a1 결과와 구분하며 실행 로그는 `build/icons-schedule-final-build.log`, `build/icons-schedule-final-instrumentation.log`다.
 
 날짜 충돌 때 접근성 설명은 startsAt/startsOn/endsAt/endsOn을 각각 보존하며 신청의 opens/closes 필드도 같은 규칙이다. 원본 시각과 날짜 중 하나를 선택해 나머지를 숨기지 않는다.
+
+### 캘린더 상세 날짜/시간 (2026-09-15)
+
+`DetailMetadata(icon, primary, secondary, description, modifier, action)`은 범용 두 줄 정보와 native action 슬롯이다. bodyLarge/Medium과 bodyMedium/onSurfaceVariant로 위계화하고 전체 접근성 설명을 병합하되 버튼은 독립 액션으로 유지한다. NoticeDetail의 `detailPeriod` projection이 같은날 날짜 하나/시간범위, 여러날 시작·종료 각각의 날짜/시간, 시간미확인·시간대·연도경계를 조립한다. 기존 compactPeriodText의 strict validation을 재사용하며 invalid/역전/충돌은 원문과 모든 raw 날짜 필드를 표시한다. 신청 원문은 정확히 일치하는 일반 ISO 마감문구만 생략하고 24:00·불확실성은 보존한다. 카드/Calendar exporter에는 변경이 없다.
+
+참고: [Google Calendar Android 공식 도움말](https://support.google.com/calendar/answer/72143?co=GENIE.Platform%3DAndroid&hl=en)은 제목·장소·종일 옵션을 별도 속성으로 다룬다. 전용5556의 설치된 Calendar는 계정 설정 화면만 열려 실제 일정 상세는 확인하지 못했다. 줄 분리와 font 위계는 이 문서와 사용자 요구를 바탕으로 한 설계 해석이며 Google 화면을 그대로 재현했다는 뜻이 아니다. 계정 설정/일정 저장은 진행하지 않았다.

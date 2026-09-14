@@ -15,6 +15,7 @@ import io.fixabley.dearby.R
 import io.fixabley.dearby.pages.noticedetail.model.NoticeScheduleState
 import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft
 import io.fixabley.dearby.shared.ui.MetadataRow
+import io.fixabley.dearby.shared.ui.DetailMetadata
 import io.fixabley.dearby.shared.ui.ContentSection
 
 @Composable
@@ -25,8 +26,10 @@ internal fun NoticeScheduleSection(phase: NoticeScheduleState, draft: CalendarDr
                 style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             AddToCalendarButton(draft, "${phase.title} 캘린더에 추가", onAdd, Modifier.testTag("calendar.phase.$index"))
         }
-        MetadataRow(painterResource(R.drawable.ic_calendar), phase.dateText, phase.dateDescription,
-            Modifier.testTag("schedule.date.$index"))
+        phase.dateDetails.lines.forEachIndexed { lineIndex, line ->
+            DetailMetadata(painterResource(R.drawable.ic_calendar), line.date, line.time, phase.dateDescription,
+                Modifier.testTag("schedule.date.$index.$lineIndex"))
+        }
         MetadataRow(painterResource(R.drawable.ic_place), phase.placeText, "${phase.title} 장소: ${phase.placeDescription}",
             Modifier.testTag("schedule.place.$index"))
         Text(if (phase.period.timezone == "Asia/Seoul") "한국 시간" else phase.period.timezone,

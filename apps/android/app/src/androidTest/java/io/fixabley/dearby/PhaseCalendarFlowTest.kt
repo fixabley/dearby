@@ -64,8 +64,8 @@ class PhaseCalendarFlowTest {
         rule.setContent { DearbyTheme { DearbyApp(repository, {}, {}, { fail("No phase action") }) } }
         rule.waitForCatalog()
         rule.onNodeWithTag("details.${first.id}").performClick()
-        rule.onNodeWithTag("notice.detail").performScrollToNode(hasTestTag("schedule.date.0"))
-        rule.onNodeWithTag("schedule.date.0").assertContentDescriptionContains(invalid.schedules.first().summary, substring = true)
+        rule.onNodeWithTag("notice.detail").performScrollToNode(hasTestTag("schedule.date.0.0"))
+        rule.onNodeWithTag("schedule.date.0.0").assertContentDescriptionContains(invalid.schedules.first().summary, substring = true)
         rule.onNodeWithTag("calendar.phase.0").assertDoesNotExist()
     }
 }

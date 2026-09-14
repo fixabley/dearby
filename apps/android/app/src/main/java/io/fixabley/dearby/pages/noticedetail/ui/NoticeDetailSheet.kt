@@ -16,6 +16,7 @@ import io.fixabley.dearby.entities.notice.model.NoticeVenue
 import io.fixabley.dearby.shared.ui.InformationRow
 import io.fixabley.dearby.shared.ui.ContentSection
 import io.fixabley.dearby.shared.ui.MetadataRow
+import io.fixabley.dearby.shared.ui.DetailMetadata
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.semantics.heading
@@ -46,12 +47,17 @@ internal fun NoticeDetailSheet(notice: NoticeDetailState, onDismiss: () -> Unit,
                         AddToCalendarButton(notice.applicationDraft, "신청 기간 캘린더에 추가", onAddToCalendar,
                             Modifier.testTag("calendar.application"))
                     }
-                    MetadataRow(painterResource(R.drawable.ic_calendar), notice.applicationDateText,
-                        notice.applicationDateDescription)
+                    notice.applicationPeriod.lines.forEach { line ->
+                        DetailMetadata(painterResource(R.drawable.ic_calendar), line.date, line.time,
+                            notice.applicationDateDescription)
+                    }
+                    Text(notice.applicationPeriod.timezone, style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
                     MetadataRow(painterResource(R.drawable.ic_place), notice.applicationPlaceText,
                         "신청 방법·장소: ${notice.applicationPlaceText}")
-                    Text(notice.applicationInformation.summary, style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    notice.applicationNote?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     if (notice.applicationInformation.requiredDocuments.isNotEmpty()) {
                         InformationRow("제출 서류", notice.applicationInformation.requiredDocuments.joinToString(" · "))
                     }
