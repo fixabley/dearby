@@ -12,7 +12,7 @@ struct NoticeDetailDestination: View {
     var body: some View {
         let application = CalendarDraftMapper.application(notice)
         let phases = notice.schedules.map {
-            CalendarDraftMapper.schedule($0, detail: notice, mapURL: VenueMapLink.url)
+            CalendarDraftMapper.schedule($0, detail: notice)
         }
         NoticeDetailView(state: state,
                          onAddSchedule: phases.map { draft in draft.map { event in { openCalendar(event) } } },

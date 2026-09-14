@@ -64,12 +64,12 @@ struct CalendarDraftTests {
         let deadline = CalendarDraftMapper.application(detail(changed.notices[index], catalog: changed))!
         precondition(deadline.title.hasPrefix("[신청 마감]"))
         precondition(deadline.url == CalendarDraftMapper.verifiedURL(application["url"] as? String))
-        precondition(deadline.notes.contains("신청 URL:") && deadline.notes.contains("원문:"))
+        precondition(deadline.notes == detail(changed.notices[index], catalog: changed).sourceURL!.absoluteString)
         application.removeValue(forKey: "url"); application["closesAt"] = NSNull(); application["closesOn"] = NSNull(); application["opensOn"] = "2026-10-01"
         notices[index]["application"] = application; raw["activities"] = notices
         let noURL = try JSONDecoder().decode(BundleSnapshot.self, from: JSONSerialization.data(withJSONObject: raw))
         let draft = CalendarDraftMapper.application(detail(noURL.notices[index], catalog: noURL))!
-        precondition(draft.url == nil && draft.notes.contains("신청 마감: 미확인") && draft.notes.contains("신청 URL: 미확인"))
+        precondition(draft.url == nil && draft.notes == detail(noURL.notices[index], catalog: noURL).sourceURL!.absoluteString)
         for zone in ["Asia/Seoul", "America/Los_Angeles", "Pacific/Auckland"] {
             let request = CalendarEditorRequest(draft: draft, deviceTimeZone: TimeZone(identifier: zone)!)!
             let calendar = CalendarDatePolicy.calendar(zone)!
@@ -86,6 +86,22 @@ struct CalendarDraftTests {
         let malformed = CalendarEventDraft(title: "invalid", interval: .allDay(start: DateComponents(year: 2026, month: 2, day: 30), endExclusive: DateComponents(year: 2026, month: 3, day: 4)), location: nil, url: nil, notes: "")
         CalendarEditorRequest.prepare(malformed, present: { _ in preconditionFailure("Malformed dates must not present") }, onFailure: { failures += 1 })
         precondition(failures == 2)
+        // Both application and activity notes use only the primary source, never event URL fallback.
+        var sourceNotice = detail(changed.notices[index], catalog: changed)
+        let sourceID = sourceNotice.sourceIds.first!
+        for rawSource in [nil, "", "javascript:bad", "https://", "https://user:pass@example.com", "https://example.com/original?a=1&b=2#section", "http://example.com/original"] as [String?] {
+            sourceNotice.sources = rawSource.map { [NoticeSource(id: sourceID, url: $0)] } ?? []
+            let expected = CalendarDraftMapper.verifiedURL(rawSource)?.absoluteString ?? ""
+            let applicationDraft = CalendarDraftMapper.application(sourceNotice)!
+            precondition(applicationDraft.notes == expected)
+            precondition(applicationDraft.url == deadline.url, "Application event URL must remain separate")
+            let phase = NoticePhase(period: NoticeSchedule(phase: "online", startsOn: "2026-10-01", startsAt: nil, endsAt: nil, endsOn: nil, timezone: nil, mode: "online", onlineUrl: "https://example.com/join"), locations: [], locationSummary: "온라인")
+            let activityDraft = CalendarDraftMapper.schedule(phase, detail: sourceNotice)!
+            precondition(activityDraft.notes == expected && activityDraft.location == "온라인")
+            precondition(activityDraft.url?.absoluteString == "https://example.com/join")
+        }
+        sourceNotice.sources = [NoticeSource(id: "unrelated", url: "https://example.com/not-primary")]
+        precondition(CalendarDraftMapper.application(sourceNotice)!.notes.isEmpty)
         try testActivities(catalog: catalog)
         print("PASS: application exact KST, deadline-only, contest midnight, strict invalid/reversed dates, mixed precision, inclusive dates, unknown end, URL/source separation, all-day device-zone conversion")
     }
@@ -95,29 +111,29 @@ struct CalendarDraftTests {
         let contest = catalog.notices.first { $0.favoriteOrganizationId == "yeongnam-cyber-defense" }!
         func draft(_ phase: NoticeSchedule, notice: NoticeModel? = nil) -> CalendarEventDraft? {
             let projected = detail(notice ?? contest, catalog: catalog, schedule: [phase])
-            return CalendarDraftMapper.schedule(projected.schedules[0], detail: projected, mapURL: VenueMapLink.url)
+            return CalendarDraftMapper.schedule(projected.schedules[0], detail: projected)
         }
         let preliminary = draft(contest.schedule.first { $0.phase == "preliminary" }!)!
         expectDays(preliminary.interval, "2026-10-14", "2026-10-15")
         precondition(preliminary.location == "온라인" && preliminary.url == nil)
-        precondition(preliminary.notes.contains("접속 URL 미확인") && !preliminary.notes.contains("콘퍼런스"))
+        precondition(preliminary.notes == detail(contest, catalog: catalog).sourceURL!.absoluteString)
         let final = draft(contest.schedule.first { $0.phase == "final" }!)!
         expectDays(final.interval, "2026-11-04", "2026-11-05")
         precondition(final.location == contest.location.venues.first { $0.phase == "final" }!.name)
-        precondition(final.notes.contains("활동 종료: 미확인"))
+        precondition(final.notes == preliminary.notes)
         for target in ["krc", "db-insurance"] {
             let notice = catalog.notices.first { $0.favoriteOrganizationId == target }!
             let phase = notice.schedule[0]
             let event = draft(phase, notice: notice)!
             guard case .timed(let start, let end, let timezone) = event.interval else { preconditionFailure() }
             precondition(timezone == "Asia/Seoul" && start == CalendarDatePolicy.instant(phase.startsAt!) && end == CalendarDatePolicy.instant(phase.endsAt!))
-            precondition(event.notes.contains("지도 (") == (notice.location.venues[0].coordinates != nil))
+            precondition(event.notes == detail(notice, catalog: catalog).sourceURL!.absoluteString)
         }
         func phase(_ mode: String = "online", url: String? = nil, name: String = "preliminary", start: String? = "2026-10-14", end: String? = nil) -> NoticeSchedule {
             NoticeSchedule(phase: name, startsOn: start, startsAt: nil, endsAt: nil, endsOn: end, timezone: nil, mode: mode, onlineUrl: url)
         }
         let online = draft(phase(url: "https://example.com/온라인?a=1&b=2#회의"))!
-        precondition(online.url != nil && online.location == "온라인" && online.notes.contains("온라인 URL:"))
+        precondition(online.url != nil && online.location == "온라인" && online.notes == preliminary.notes)
         precondition(draft(phase(url: "javascript:bad"))!.url == nil)
         precondition(draft(phase("offline", name: "unmatched"))!.location == "장소 미확인")
         precondition(!draft(phase("offline", name: "unmatched"))!.notes.contains("콘퍼런스"))
@@ -136,11 +152,11 @@ struct CalendarDraftTests {
                                     categoryPath: contest.categoryPath, contexts: contest.contexts, edition: contest.edition)
         let multiple = draft(phase("offline", name: "final"), notice: notice)!
         precondition(multiple.location == "본관 · 주소1 / 별관 · 주소2")
-        precondition(multiple.notes.contains("지도 (본관)") && multiple.notes.contains("지도 (별관)"))
+        precondition(multiple.notes == preliminary.notes)
         precondition(!multiple.notes.contains("다른 단계") && multiple.url == nil)
         let noLeak = draft(phase(), notice: notice)!
         precondition(noLeak.location == "온라인" && !noLeak.notes.contains("본관") && !noLeak.notes.contains("다른 단계"))
-        print("PASS: activity exact KST, online URLs/unknown, exact phase join, multiple venues/maps, invalid dates, no invented duration")
+        print("PASS: activity exact KST, online URLs/unknown, exact phase join, multiple venues/source-only notes, invalid dates, no invented duration")
     }
 
 

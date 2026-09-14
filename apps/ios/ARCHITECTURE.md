@@ -134,3 +134,9 @@ FSD 63 Swift 파일과 negative fixtures 통과. entity 간 참조·UI raw 모�
 이번 smoke는 디스크 재실행과 상세/탭 표시 확인이다. 이전 저장/삭제 상호 반영 smoke 및 Maps/캘린더 편집기 열기·취소는 이전 결과이며 이번에 외부 OS 전환을 재실행하지 않았다. 실제 touch doubletap/swipe·물리 햅틱·전체 접근성·실기기·대용량 성능·향후 SwiftData schema migration은 미검증이다. 동기 MainActor는 현재 작은 sample 범위다. 원본 JSON activities, activity-samples 리소스, activity.<id> 접근성 태그는 호환성 예외다.
 
 이전 모델/State 공통 migration은 제거되는 entity 타입과 모든 호출부를 함께 바꿔 빌드 가능한 하나의 화면 데이터 경계 기능으로 묶었다. 이번 SwiftData는 조직 source, 공고 source/codec, App snapshot/재실행 통합의 기능 커밋으로 나눈다.
+
+## 캘린더 원본 URL 메모 (2026-09-14)
+
+신청 및 활동 CalendarEventDraft.notes는 NoticeModel.sourceURL을 HTTP(S) 검증한 URL 문자열 하나이며 누락/잘못된 원본은 빈 문자열이다. 접두어·요약·날짜 설명·지도 링크를 덧붙이거나 신청 URL로 대체하지 않는다. EKEvent.url은 기존 신청 URL/온라인 URL을 유지하고 제목·기간·장소 및 지도 버튼은 그대로다. schedule mapper의 불필요한 mapURL 콜백과 호출부를 제거했다.
+
+이번 검증은 run_standalone.sh의 calendar swiftc 명령으로 CalendarDraftTests를 컴파일하고 앱/old shared JSON 각각 실행한 것이다. 원본 HTTP/HTTPS·누락·잘못된 scheme/host/credentials·무관한 source ID·이벤트 URL 분리 및 기존 KST/날짜/phase/장소 회귀가 통과했다. FSD 63파일/negative fixtures와 Simulator build 12:58:10Z(경고/오류 없음) 통과. 전체 SwiftData/favorites 검사는 이전 결과이며 이번 작은 notes 변경으로 재실행하지 않았고 실제 캘린더 저장/편집기 실행도 하지 않았다.
