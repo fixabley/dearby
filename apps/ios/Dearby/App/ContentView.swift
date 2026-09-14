@@ -17,14 +17,14 @@ struct ContentView: View {
                             DiscoveryView(catalog: catalog, favoriteIDs: favoriteIDs, saveOrganization: { notice in
                                 favorites.saveOrganization(for: notice, in: catalog)
                             }) { notice in
-                                NoticeDetailView(notice: notice, catalog: catalog)
+                                NoticeDetailDestination(notice: notice, catalog: catalog)
                             }
                         }
                     }
                     Tab("즐겨찾기", systemImage: "heart") {
                         NavigationStack {
                             FavoriteListView(catalog: catalog, favoriteIDs: favoriteIDs, removeOrganization: favorites.remove) { notice in
-                                NoticeDetailView(notice: notice, catalog: catalog)
+                                NoticeDetailDestination(notice: notice, catalog: catalog)
                             }
                         }
                     }

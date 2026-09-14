@@ -47,7 +47,7 @@ def check(sources, selected=()):
                 if (layer in ('Pages', 'Widgets') and target_layer == 'Features' and not value_result) or ('UI' in parts and 'API' in target_parts):
                     errors.append(f'{path}: UI must receive values/callbacks, not {name}')
         if layer in ('Pages', 'Widgets') or (layer in ('Entities', 'Shared') and 'UI' in parts):
-            if re.search(r'\b(?:UserDefaults|Bundle|FileManager|URLSession)\b', code):
+            if re.search(r'\b(?:UserDefaults|Bundle|FileManager|URLSession|UIApplication|openURL|MKMapItem|CLLocationManager)\b', code):
                 errors.append(f'{path}: direct storage/resource access from UI')
     return sorted(set(errors))
 
@@ -76,6 +76,9 @@ def self_test():
         ('Pages/Discovery/UI/Discovery.swift', 'FavoriteOrganizationsRepository'),
         ('Widgets/Card/UI/Card.swift', 'SaveOrganizationResult'),
         ('Widgets/Card/UI/Card.swift', 'UserDefaults'),
+        ('Pages/Detail/UI/Detail.swift', 'openURL'),
+        ('Pages/Detail/UI/Detail.swift', 'UIApplication'),
+        ('Entities/Catalog/UI/Label.swift', 'MKMapItem'),
         ('Entities/Catalog/UI/Label.swift', 'Provider'),
         ('Entities/Catalog/Model/Item.swift', 'Card'),
     ]:

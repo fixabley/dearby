@@ -104,3 +104,25 @@ python3 apps/ios/tests/check_fsd_boundaries.py
 카드의 NoticeFact와 상세의 NoticeIdentityView/NoticeDetailField/NoticeIdentityFact는 각 소유 slice의 UI 파일로 분리합니다. 외부 진입점은 기존 카드·페이지이며, 전체 UI 조사 목록과 이번 빌드/검사 결과는 ARCHITECTURE.md의 UI 보조 컴포넌트 파일 분리를 참고합니다.
 
 앱의 단순 summary 필드는 String/[String]으로 디코딩하며 원본 구조화 JSON은 유지합니다. 장소는 ActivityLocation/ActivityVenue로 해석합니다.
+
+## 장소 좌표와 지도 검증
+
+장소의 유효한 좌표가 있을 때만 상세에 장소별 지도 버튼을 표시합니다. 건물 좌표이며 층·호실은 기존 안내를 확인합니다.
+App이 Apple Maps HTTPS 링크를 명시적 탭에서만 열며, OS가 링크를 처리하지 못하면 해당 상세 화면에 알림을 표시합니다.
+위치 권한·현재 위치·길찾기·앱의 지오코딩/네트워크 요청은 추가하지 않습니다.
+
+```sh
+swiftc -swift-version 6 -parse-as-library \
+  apps/ios/Dearby/Entities/ActivityCatalog/Model/*.swift \
+  apps/ios/Dearby/App/VenueMapLink.swift \
+  apps/ios/Dearby/App/VenueMapLauncher.swift \
+  apps/ios/tests/VenueMapTests.swift -o apps/ios/build/dearby-map-tests
+apps/ios/build/dearby-map-tests
+# 앱 리소스의 새 좌표 JSON으로도 기존 상태·표시 검사
+apps/ios/build/dearby-favorites-tests apps/ios/Dearby/Resources/activity-samples.json
+```
+
+좌표 공통 계약은 [PR #6](https://github.com/fixabley/dearby/pull/6)에서 별도로 통합합니다.
+이 브랜치의 shared snapshot은 유지하고 앱 리소스만 coordinator의 최종 canonical 파일과 byte 비교했습니다.
+따라서 #6 통합 전 루트 samples:check는 오래된 shared snapshot과 앱 리소스 차이를 보고할 수 있습니다.
+이번 canonical SHA256: `407b0c5ed29d066ae9cf2c7d146749f1566e38ba966369db6cfd5ec1952feb6f`.

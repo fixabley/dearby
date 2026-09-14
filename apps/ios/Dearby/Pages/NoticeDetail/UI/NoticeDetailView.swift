@@ -3,6 +3,7 @@ import SwiftUI
 struct NoticeDetailView: View {
     let notice: ActivityNotice
     let catalog: ActivityCatalog
+    let onOpenMap: (ActivityVenue) -> Void
 
     var body: some View {
         ScrollView {
@@ -17,7 +18,7 @@ struct NoticeDetailView: View {
                 ForEach(Array(notice.schedule.enumerated()), id: \.offset) { _, phase in
                     NoticeDetailField(title: "활동 일정", value: phase.summary)
                 }
-                NoticeDetailField(title: "활동 장소", value: notice.location.summary)
+                NoticeLocationView(location: notice.location, onOpenMap: onOpenMap)
                 ForEach(Array(notice.benefits.enumerated()), id: \.offset) { _, benefit in
                     NoticeDetailField(title: "혜택", value: benefit)
                 }

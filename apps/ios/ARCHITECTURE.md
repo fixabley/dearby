@@ -12,7 +12,10 @@ apps/ios/
 ├── Dearby/
 │   ├── App/
 │   │   ├── DearbyApp.swift               # 실제 의존성·단일 상태 소유
-│   │   └── ContentView.swift             # 로딩·탭·페이지 목적지 조립
+│   │   ├── ContentView.swift             # 로딩·탭·페이지 목적지 조립
+│   │   ├── NoticeDetailDestination.swift # 상세 OS 동작·실패 알림 조립
+│   │   ├── VenueMapLink.swift            # 순수 Apple Maps URL 생성
+│   │   └── VenueMapLauncher.swift        # URL 열기 콜백·실패 처리
 │   ├── Pages/
 │   │   ├── Discovery/UI/DiscoveryView.swift
 │   │   ├── Favorites/UI/FavoriteListView.swift
@@ -20,7 +23,9 @@ apps/ios/
 │   │       ├── NoticeDetailView.swift
 │   │       ├── NoticeIdentityView.swift
 │   │       ├── NoticeDetailField.swift
-│   │       └── NoticeIdentityFact.swift
+│   │       ├── NoticeIdentityFact.swift
+│   │       ├── NoticeLocationView.swift
+│   │       └── VenueMapButton.swift
 │   ├── Widgets/
 │   │   ├── ActivityCard/UI/ActivityCard.swift
 │   │   ├── ActivityCard/UI/NoticeFact.swift
@@ -38,6 +43,7 @@ apps/ios/
 │   │       ├── Model/ActivityNoticeSummary.swift
 │   │       ├── Model/ActivityLocation.swift
 │   │       ├── Model/ActivityVenue.swift
+│   │       ├── Model/ActivityCoordinates.swift
 │   │       ├── API/
 │   │       │   ├── ActivityCatalogRepository.swift
 │   │       │   └── BundleActivityCatalogRepository.swift
@@ -46,7 +52,8 @@ apps/ios/
 │   └── Assets.xcassets/
 ├── tests/
 │   ├── FavoritesStoreTests.swift
-│   └── check_fsd_boundaries.py
+│   ├── check_fsd_boundaries.py
+│   └── VenueMapTests.swift
 ├── ARCHITECTURE.md
 └── README.md
 ```
@@ -66,11 +73,11 @@ apps/ios/
 | --- | --- | --- |
 | Pages/Discovery | `DiscoveryView<Destination>` | 카탈로그·ID 집합·저장 콜백·App의 목적지 ViewBuilder; 로컬 sheet 선택·피드백 |
 | Pages/Favorites | `FavoriteListView<Destination>` | 카탈로그·ID 집합·삭제 콜백·목적지 ViewBuilder; 목록·빈 상태 |
-| Pages/NoticeDetail | `NoticeDetailView` | 공고·카탈로그; 상세 표시만 수행 |
+| Pages/NoticeDetail | `NoticeDetailView` | 공고·카탈로그·typed onOpenMap 콜백; 상세 표시 |
 | Widgets/ActivityCard | `ActivityCard` | `ActivityNoticeSummary`·저장 여부·position·compact·onSave/onShowDetail |
 | Widgets/FavoriteOrganizationCard | `FavoriteOrganizationCard<Destination>` | 조직·카탈로그·삭제 콜백·목적지 ViewBuilder; 연결 공고의 기존 NavigationLink |
 | Features/FavoriteOrganization | `FavoriteOrganizations`, `SaveOrganizationResult`, `FavoriteOrganizationsRepository`, `UserDefaultsFavoriteOrganizationsRepository` | 상태와 저장 계약; 구체 저장 구현은 App 조립 또는 독립 테스트에서 사용 |
-| Entities/ActivityCatalog | `ActivityNoticeSummary`, `ActivityCatalog` 및 같은 Model 파일의 `ActivityNotice`, `ActivityOrganization`, `ActivitySource`, `ActivityContext`, `ActivitySchedule`; `ActivityCatalogRepository`, `BundleActivityCatalogRepository`; `NoticeClassificationView` | 순수 모델/조회, 교체 가능한 공급, 카드·즐겨찾기의 분류 표시 |
+| Entities/ActivityCatalog | `ActivityLocation`, `ActivityVenue`, `ActivityCoordinates`, `ActivityNoticeSummary`, `ActivityCatalog` 및 같은 Model 파일의 `ActivityNotice`, `ActivityOrganization`, `ActivitySource`, `ActivityContext`, `ActivitySchedule`; `ActivityCatalogRepository`, `BundleActivityCatalogRepository`; `NoticeClassificationView` | 순수 모델/조회, 교체 가능한 공급, 카드·즐겨찾기의 분류 표시 |
 
 `NoticeFact(label:value:)`는 Widgets/ActivityCard/UI/NoticeFact.swift의 slice 내부 표시 helper다. 파일 간 사용을 위해 기본 internal이며 외부 slice 진입점으로 사용하지 않는다.
 `NoticeIdentityView(notice:catalog:)`, `NoticeDetailField(title:value:)`, `NoticeIdentityFact(label:value:icon:)`는 Pages/NoticeDetail/UI의 개별 파일에 있는 slice 내부 표시 helper다.
@@ -93,7 +100,7 @@ App → FavoriteOrganization state → 같은 slice의 저장 protocol → UserD
 App → ActivityCatalog 공급 protocol → 같은 entity의 번들 구현
 ```
 
-ContentView가 Discovery와 Favorites에 `(ActivityNotice) -> Destination` ViewBuilder를 주입하며 그 안에서만 NoticeDetailView를 생성한다.
+ContentView가 Discovery와 Favorites에 `(ActivityNotice) -> Destination` ViewBuilder를 주입하며 그 안에서 App의 NoticeDetailDestination이 NoticeDetailView를 조립한다.
 Discovery는 기존 `.sheet(item:)`의 로컬 선택값을 유지하고 주입된 목적지를 표시한다. Favorites의 widget은 기존 NavigationLink에 주입된 목적지를 연결한다.
 페이지와 카드는 다른 페이지 타입을 모르며 공고 카드와 조직 카드도 서로 참조하지 않는다. 새로운 전역 라우터·선택 상태·AnyView 계층을 만들지 않는다.
 Widget은 표시 데이터와 콜백만 받고 저장소·공유 상태를 직접 생성하거나 읽지 않는다. Entity UI 역시 데이터 공급을 실행하지 않는다.
@@ -217,3 +224,36 @@ UI 도구의 첫 삭제는 오래된 접근성 인덱스로 거절되어 새 sna
 
 ## 문자열 모델 정리
 ActivityNotice의 audience/eligibility/application은 String, benefits/qualityIssues는 [String]이다. Decodable extension이 원본 객체의 summary만 읽으며 별도 DTO/문자열 wrapper를 만들지 않는다. 자동 memberwise 초기화는 테스트와 projection에서 유지한다. 원본 evidence/eligibility 등 구조화 JSON은 변경하지 않는다. 장소는 summary/mode/status/venues를 갖는 ActivityLocation과 ActivityVenue로 구분한다. 이번 기존 canonical JSON 전체 표시 문자열 일치·상태/복원 테스트 및 구조 검사와 Simulator 빌드를 실행했다.
+
+## 장소 좌표·지도 링크
+
+좌표 공통 계약은 [별도 PR #6](https://github.com/fixabley/dearby/pull/6)의 schemaVersion 1.0.0 선택 확장이다.
+ActivityLocation(summary/mode/status/venues), ActivityVenue(phase/name/address/coordinates), ActivityCoordinates(latitude/longitude)는 순수 entity 값이며 UIKit/MapKit/저장 메서드가 없다.
+좌표 누락·null·불완전·잘못된 타입·비유한 수·범위 초과는 해당 venue.coordinates만 nil로 처리하여 원본 장소와 공고를 유지한다.
+0,0은 명시적으로 주어진 경우 유효하고 미상 기본값으로 생성하지 않는다. 좌표의 생성자와 Decodable 모두 검증하며 여러 장소의 순서를 보존한다.
+원본 evidence/coordinateEvidence·자격 구조는 리소스 JSON에 그대로 보존하고 앱은 필요한 표시/좌표만 디코딩한다.
+
+슬라이스 내부 helper 계약: NoticeLocationView(location:onOpenMap:)는 summary를 유지하고 venuesWithCoordinates만 VenueMapButton(venue:onOpenMap:)으로 표시한다.
+새 UI는 각각 파일로 분리하며 callback은 ActivityVenue 값만 넘긴다. entity의 venuesWithCoordinates는 유효 좌표가 있는 장소 조회이고 지도 서비스/URL을 알지 못한다.
+App/NoticeDetailDestination은 기존 sheet/NavigationLink 위치에서 상세와 실패 alert를 함께 조립하므로 오류 피드백이 열린 상세 위에 나타난다.
+App/VenueMapLink.url(for:)는 URLComponents의 ll/q 항목으로 한글·&·# 장소 이름을 안전하게 인코딩한다.
+[Apple 공식 Map Links](https://developer.apple.com/library/archive/featuredarticles/iPhoneURLScheme_Reference/MapLinks/MapLinks.html)의 좌표와 핀 이름 계약을 따른다.
+App/VenueMapLauncher.open(_:using:onFailure:)는 유효한 URL만 주입된 OS opener에 전달한다. OS는 Maps 또는 웹 처리를 선택하고 실패 completion에는 native alert를 요청한다.
+사용자가 버튼을 누르기 전 외부 동작이 없으며 위치 권한·현재 위치·길찾기·지오코딩·앱 네트워크/라이브러리/모듈을 추가하지 않는다.
+
+최종 canonical 원본은 /Users/jominjun/Documents/dearby/shared/contracts/activities/sample.json이고 앱 리소스에만 복사했다.
+SHA256 407b0c5ed29d066ae9cf2c7d146749f1566e38ba966369db6cfd5ec1952feb6f 일치 확인. 이 checkout의 shared/다른 플랫폼은 수정하지 않았다.
+KRC/DB는 N12 도서관 건물, 멘토링은 N16-1 인문대 건물의 공통 담당 검증 좌표이며 대회 장소는 좌표 미상이다.
+장소 summary의 층·호실은 유지하고 지도 옆에 `층·호실은 장소 안내를 확인해 주세요.`를 표시한다. 실내·입구 정밀 위치를 의미하지 않는다.
+
+이번 검사: 좌표 누락/null/부분/타입 오류/NaN/Infinity/범위/0 및 경계값, 복수 장소의 버튼 대상 조회,
+한글/&/# URL 왕복과 ll/q 요청, 성공/처리 불가/좌표 없음의 open/failure 콜백을 독립 테스트로 통과했다.
+원래 좌표 없는 shared JSON과 새 앱 리소스로 기존 상태·표시·복원 검사도 각각 통과했다.
+Xcode Simulator Debug 최종 빌드·실행 성공, build_run_sim_2026-09-14T10-16-22-184Z_pid15343_6cee89b5.log에 경고·오류 없음.
+전용 Dearby-Issue1-iOS에서 KRC 상세의 장소/층 안내/지도 버튼을 확인하고 좌표 링크를 눌러 Apple Maps의 장소 이름·36.62820/127.45788 핀 표시까지 확인했다.
+Maps 최초 알림 안내는 `지금 안 함`을 선택했다. 앱 위치 권한·경로 동작은 실행하지 않았고 개인 기기/즐겨찾기는 건드리지 않았다.
+증거는 build/maps-regression/의 UI JSON 및 apple-maps-pin.png다. 접근성 인덱스가 바뀐 입력은 실제 화면의 버튼 위치를 확인해 재시도했다.
+Maps 미설치/OS 거절의 실기기 UI는 미검증이며 실패 callback은 주입 테스트로 확인한다. 기존 터치 스와이프·물리 햅틱/전체 접근성 한계는 유지한다.
+
+지도 관련 FSD 검사도 Pages/Widgets/Entity UI의 openURL·UIApplication·MKMapItem·CLLocationManager 직접 접근을 금지하며 대표 음성 fixture를 유지한다. 최종 전체 28 Swift 파일 구조 검사 통과.
+전용 기기에서 Maps 복귀 후 기존 DB 즐겨찾기 보존, DB 공고의 NavigationLink 상세·장소 버튼과 back으로 목록 복귀도 확인했다.
