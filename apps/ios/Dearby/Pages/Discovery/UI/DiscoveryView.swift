@@ -1,30 +1,29 @@
 import SwiftUI
 
 struct DiscoveryView<Destination: View>: View {
-    let catalog: NoticeCatalog
-    let favoriteIDs: Set<String>
-    let saveOrganization: (Notice) -> SaveOrganizationResult
-    @ViewBuilder let destination: (Notice) -> Destination
-    @State private var detail: Notice?
+    let snapshotDate: String
+    let cards: [NoticeCardState]
+    let saveOrganization: (String) -> SaveOrganizationResult
+    @ViewBuilder let destination: (String) -> Destination
+    @State private var detail: NoticeCardState?
     @State private var saveFeedback = ""
     @State private var saveCount = 0
 
     var body: some View {
         VStack(spacing: 0) {
-            Text("검토한 공고 샘플 · \(catalog.snapshotAt.prefix(10))")
+            Text("검토한 공고 샘플 · \(snapshotDate.prefix(10))")
                 .font(.caption).foregroundStyle(.secondary)
                 .padding(.bottom, 8)
-            if catalog.feed.isEmpty {
+            if cards.isEmpty {
                 ContentUnavailableView("표시할 공고가 없어요", systemImage: "rectangle.stack")
             } else {
                 GeometryReader { geometry in
                     ScrollView(.vertical) {
                         LazyVStack(spacing: 0) {
-                            ForEach(Array(catalog.feed.enumerated()), id: \.element.id) { index, notice in
+                            ForEach(Array(cards.enumerated()), id: \.element.id) { index, notice in
                                 NoticeCard(
-                                    summary: catalog.summary(for: notice),
-                                    saved: notice.favoriteOrganizationId.map { favoriteIDs.contains($0) } ?? false,
-                                    position: "\(index + 1) / \(catalog.feed.count)",
+                                    state: notice,
+                                    position: "\(index + 1) / \(cards.count)",
                                     compact: geometry.size.height < 520,
                                     onSave: { save(notice) },
                                     onShowDetail: { detail = notice }
@@ -46,15 +45,15 @@ struct DiscoveryView<Destination: View>: View {
         .navigationTitle("활동 둘러보기")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $detail) { notice in
-            destination(notice)
+            destination(notice.id)
         }
         .sensoryFeedback(.success, trigger: saveCount)
     }
 
-    private func save(_ notice: Notice) {
-        switch saveOrganization(notice) {
+    private func save(_ notice: NoticeCardState) {
+        switch saveOrganization(notice.id) {
         case .saved(let organization):
-            saveFeedback = "\(organization.name) 저장됨"
+            saveFeedback = "\(organization) 저장됨"
             saveCount += 1
         case .unresolved:
             saveFeedback = "저장할 조직을 확인 중이에요"

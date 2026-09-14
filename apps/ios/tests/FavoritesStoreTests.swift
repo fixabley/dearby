@@ -6,25 +6,25 @@ import Synchronization
 struct FavoritesStoreTests {
     @MainActor
     static func main() throws {
-        try testCatalogRepository()
+        try testSnapshotReader()
         let suite = "dearby.test.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
-        let catalog = try JSONDecoder().decode(NoticeCatalog.self, from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
+        let catalog = try JSONDecoder().decode(BundleSnapshot.self, from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
         let source = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))) as! [String: Any]
         let rawNotices = source["activities"] as! [[String: Any]]
         for notice in catalog.notices {
             let raw = rawNotices.first { $0["id"] as? String == notice.id }!
-            precondition(notice.audience == (raw["audience"] as! [String: Any])["summary"] as! String)
-            precondition(notice.eligibility == (raw["eligibility"] as! [String: Any])["summary"] as! String)
-            precondition(notice.application.summary == (raw["application"] as! [String: Any])["summary"] as! String)
+            precondition(notice.targetUser == (raw["audience"] as! [String: Any])["summary"] as! String)
+            precondition(notice.participationCondition == (raw["eligibility"] as! [String: Any])["summary"] as! String)
+            precondition(notice.applicationInformation.summary == (raw["application"] as! [String: Any])["summary"] as! String)
             precondition(notice.benefits == (raw["benefits"] as! [[String: Any]]).map { $0["summary"] as! String })
             precondition(notice.qualityIssues == (raw["qualityIssues"] as! [[String: Any]]).map { $0["summary"] as! String })
         }
         print("PASS: nested canonical summaries preserve all flat app display strings")
         testInMemoryState(catalog: catalog)
         testSaveOrganization(catalog: catalog)
-        try testNoticeSummary(catalog: catalog)
+
         let careerCards = catalog.feed.filter { ["krc", "db-insurance"].contains($0.favoriteOrganizationId ?? "") }
         precondition(careerCards.count == 2)
         for card in careerCards {
@@ -69,37 +69,17 @@ struct FavoritesStoreTests {
         print("PASS: catalog decoding, organization deduplication, persistence, removal")
     }
 
-    private static func noticeWithTarget(_ target: String?, from notice: Notice) -> Notice {
-        Notice(id: notice.id, title: notice.title, summary: notice.summary,
+    private static func noticeWithTarget(_ target: String?, from notice: NoticeModel) -> NoticeModel {
+        NoticeModel(id: notice.id, title: notice.title, aiDescription: notice.aiDescription,
                        demoVisible: notice.demoVisible, favoriteOrganizationId: target,
-                       sourceIds: notice.sourceIds, audience: notice.audience, eligibility: notice.eligibility,
-                       application: notice.application, location: notice.location, schedule: notice.schedule,
+                       sourceIds: notice.sourceIds, targetUser: notice.targetUser, participationCondition: notice.participationCondition,
+                       applicationInformation: notice.applicationInformation, location: notice.location, schedule: notice.schedule,
                        benefits: notice.benefits, qualityIssues: notice.qualityIssues,
                        categoryPath: notice.categoryPath, contexts: notice.contexts, edition: notice.edition)
     }
 
-    private static func testNoticeSummary(catalog: NoticeCatalog) throws {
-        let notice = catalog.notices.first { $0.favoriteOrganizationId == "krc" }!
-        let summary = catalog.summary(for: notice)
-        precondition(summary.notice.id == notice.id && summary.notice.title == notice.title)
-        precondition(summary.organization?.id == "krc")
-        precondition(summary.organization?.name == catalog.organization("krc")?.name)
-        precondition(summary.contextNames == "충북대학교")
-        for target in [nil, "unknown-organization"] as [String?] {
-            let unresolved = catalog.summary(for: noticeWithTarget(target, from: notice))
-            precondition(unresolved.organization == nil)
-            precondition(unresolved.notice.id == notice.id)
-            precondition(unresolved.contextNames == "충북대학교", "Unresolved target must not discard event context")
-        }
-        let contest = catalog.notices.first { $0.favoriteOrganizationId == "yeongnam-cyber-defense" }!
-        let contestSummary = catalog.summary(for: contest)
-        precondition(contestSummary.organization?.id == "yeongnam-cyber-defense")
-        precondition(contestSummary.notice.edition == 2 && contestSummary.contextNames.isEmpty)
-        print("PASS: notice summary resolved/unresolved target, school context, contest edition")
-    }
-
     @MainActor
-    private static func testSaveOrganization(catalog: NoticeCatalog) {
+    private static func testSaveOrganization(catalog: BundleSnapshot) {
         let repository = InMemoryFavoritesRepository(ids: ["legacy-unknown"])
         let state = FavoriteOrganizations(repository: repository)
         let notice = catalog.feed.first { $0.favoriteOrganizationId == "krc" }!
@@ -109,9 +89,8 @@ struct FavoritesStoreTests {
                     guard case .saved(let organization) = state.saveOrganization(for: notice, in: catalog) else {
                         preconditionFailure("Resolved target must succeed")
                     }
-                    precondition(organization.id == "krc")
-                    precondition(organization.name == catalog.organization("krc")!.name)
-                    precondition(organization.name != notice.title, "Feedback uses canonical organization, not notice title")
+                    precondition(organization == catalog.organization("krc")!.name)
+                    precondition(organization != notice.title, "Feedback uses canonical organization, not notice title")
                 }
                 precondition(state.ids == ["legacy-unknown", "krc"])
                 precondition(repository.writes.count == 2, "Repeat saves retain synchronous persistence semantics")
@@ -133,7 +112,7 @@ struct FavoritesStoreTests {
     }
 
     @MainActor
-    private static func testInMemoryState(catalog: NoticeCatalog) {
+    private static func testInMemoryState(catalog: BundleSnapshot) {
         let storage = InMemoryFavoritesRepository(ids: ["cbnu-career"])
         let state = FavoriteOrganizations(repository: storage)
         // Two consumers of the same root state, like Discovery and Favorites.
@@ -174,7 +153,7 @@ struct FavoritesStoreTests {
         print("PASS: injected in-memory state, add, duplicate, delete, two Observation consumers")
     }
 
-    private static func testCatalogRepository() throws {
+    private static func testSnapshotReader() throws {
         let sample = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
         let fixture = URL(fileURLWithPath: "apps/ios/build/CatalogFixture-" + UUID().uuidString + ".bundle")
         try FileManager.default.createDirectory(at: fixture, withIntermediateDirectories: true)
@@ -182,10 +161,10 @@ struct FavoritesStoreTests {
         let resource = fixture.appendingPathComponent("activity-samples.json")
         try sample.write(to: resource)
         let bundle = Bundle(url: fixture)!
-        let provider: any NoticeCatalogRepository = BundleNoticeCatalogRepository(bundle: bundle)
+        let provider: any SnapshotReader = BundleSnapshotReader(bundle: bundle)
         let catalog = try provider.load()
         precondition(catalog.feed.count == 4)
-        let replacement: any NoticeCatalogRepository = FixedCatalogRepository(catalog: catalog)
+        let replacement: any SnapshotReader = FixedSnapshotReader(catalog: catalog)
         let replaced = try replacement.load()
         precondition(replaced.feed.map(\.id) == catalog.feed.map(\.id))
         let invalid = String(decoding: sample, as: UTF8.self)
@@ -216,7 +195,26 @@ private final class InMemoryFavoritesRepository: FavoriteOrganizationsRepository
     func save(_ ids: Set<String>) { self.ids = ids; writes.append(ids) }
 }
 
-private struct FixedCatalogRepository: NoticeCatalogRepository {
-    let catalog: NoticeCatalog
-    func load() throws -> NoticeCatalog { catalog }
+private struct FixedSnapshotReader: SnapshotReader {
+    let catalog: BundleSnapshot
+    func load() throws -> BundleSnapshot { catalog }
+}
+
+// Transport fixture helpers for persistence regressions, not production domain composition.
+private extension BundleSnapshot {
+    var feed: [NoticeModel] { feedIDs.compactMap { id in notices.first { $0.id == id } } }
+    func organization(_ id: String?) -> OrganizationModel? { organizations.first { $0.id == id } }
+    @MainActor func organizationPath(_ id: String?) -> [OrganizationModel] {
+        OrganizationRepository(source: SnapshotOrganizationSource(organizations: organizations)).path(to: id)
+    }
+    func contextNames(for notice: NoticeModel) -> String {
+        var seen: Set<String> = []
+        return notice.contexts.compactMap { seen.insert($0.organizationId).inserted ? organization($0.organizationId)?.name : nil }.joined(separator: " · ")
+    }
+}
+private extension FavoriteOrganizations {
+    @discardableResult
+    func saveOrganization(for notice: NoticeModel, in snapshot: BundleSnapshot) -> SaveOrganizationResult {
+        saveOrganization(snapshot.organization(notice.favoriteOrganizationId))
+    }
 }

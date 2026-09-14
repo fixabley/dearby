@@ -1,35 +1,30 @@
 import SwiftUI
 
 struct ContentView: View {
-    let catalogRepository: any NoticeCatalogRepository
+    let snapshotReader: any SnapshotReader
     let favorites: FavoriteOrganizations
-    @State private var details: NoticeDetailRepository?
+    @State private var session: NoticeSession?
     @State private var loadFailed = false
 
     var body: some View {
-        // Observe before the lazy tab/navigation builders capture their value inputs.
-        let favoriteIDs = favorites.ids
+        // Read shared favorites before lazy Tab builders capture immutable rendering states.
+        let _ = favorites.ids
         Group {
-            if let details {
-                let catalog = details.catalog
+            if let session {
+                let cards = session.cards.compactMap(\.state)
+                let favoriteCards = session.favoriteCards.compactMap(\.state)
                 TabView {
                     Tab("발견", systemImage: "rectangle.stack") {
                         NavigationStack {
-                            DiscoveryView(catalog: catalog, favoriteIDs: favoriteIDs, saveOrganization: { notice in
-                                favorites.saveOrganization(for: notice, in: catalog)
-                            }) { notice in
-                                if let detail = details.detail(id: notice.id) {
-                                    NoticeDetailDestination(detail: detail)
-                                }
+                            DiscoveryView(snapshotDate: session.snapshotDate, cards: cards, saveOrganization: session.save) { id in
+                                destination(id, session: session)
                             }
                         }
                     }
                     Tab("즐겨찾기", systemImage: "heart") {
                         NavigationStack {
-                            FavoriteListView(catalog: catalog, favoriteIDs: favoriteIDs, removeOrganization: favorites.remove) { notice in
-                                if let detail = details.detail(id: notice.id) {
-                                    NoticeDetailDestination(detail: detail)
-                                }
+                            FavoriteListView(cards: favoriteCards, removeOrganization: favorites.remove) { id in
+                                destination(id, session: session)
                             }
                         }
                     }
@@ -49,10 +44,19 @@ struct ContentView: View {
         .task { loadCatalog() }
     }
 
+    @ViewBuilder
+    private func destination(_ id: String, session: NoticeSession) -> some View {
+        if let state = session.detailState(id), let notice = session.notices.notice(id) {
+            NoticeDetailDestination(state: state, notice: notice)
+        } else {
+            ContentUnavailableView("공고를 불러오지 못했어요", systemImage: "exclamationmark.triangle")
+        }
+    }
+
     private func loadCatalog() {
-        guard details == nil else { return }
+        guard session == nil else { return }
         do {
-            details = NoticeDetailRepository(catalog: try catalogRepository.load())
+            session = NoticeSession(snapshot: try snapshotReader.load(), favorites: favorites)
             loadFailed = false
         } catch {
             loadFailed = true
@@ -62,7 +66,7 @@ struct ContentView: View {
 
 #if DEBUG
 #Preview {
-    ContentView(catalogRepository: BundleNoticeCatalogRepository(),
+    ContentView(snapshotReader: BundleSnapshotReader(),
                 favorites: FavoriteOrganizations(repository: PreviewFavoritesRepository()))
 }
 

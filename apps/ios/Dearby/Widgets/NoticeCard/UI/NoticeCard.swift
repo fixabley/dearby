@@ -3,14 +3,12 @@ import SwiftUI
 struct NoticeCard: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
-    let summary: NoticeSummary
-    let saved: Bool
+    let state: NoticeCardState
     let position: String
     let compact: Bool
     let onSave: () -> Void
     let onShowDetail: () -> Void
     var body: some View {
-        let notice = summary.notice
         VStack(alignment: .leading, spacing: compact ? 10 : 18) {
             VStack(alignment: .leading, spacing: compact ? 10 : 18) {
                 HStack {
@@ -19,19 +17,19 @@ struct NoticeCard: View {
                     Spacer()
                     Text(position).foregroundStyle(.secondary)
                 }.font(.caption.bold())
-                NoticeClassificationView(category: notice.categorySummary, contextNames: summary.contextNames)
+                NoticeClassificationView(category: state.category, contextNames: state.contextNames)
                     .lineLimit(2)
-                    .accessibilityIdentifier("classification.\(notice.id)")
-                Text(notice.title)
+                    .accessibilityIdentifier("classification.\(state.id)")
+                Text(state.title)
                     .font(compact ? .title3.bold() : .title2.bold())
                     .lineLimit(3)
                 if !compact && !typeSize.isAccessibilitySize {
                     Divider()
-                    NoticeFact(label: "참여 대상", value: notice.audience)
-                    NoticeFact(label: "신청 마감", value: notice.application.summary)
-                    NoticeFact(label: "활동 장소", value: notice.location.summary)
+                    NoticeFact(label: "참여 대상", value: state.targetUser)
+                    NoticeFact(label: "신청 마감", value: state.applicationSummary)
+                    NoticeFact(label: "활동 장소", value: state.locationSummary)
                 }
-                if !notice.qualityIssues.isEmpty {
+                if state.hasQualityIssues {
                     Label("확인이 필요한 정보가 있어요", systemImage: "info.circle")
                         .font(.caption).foregroundStyle(.secondary)
                 }
@@ -41,22 +39,22 @@ struct NoticeCard: View {
             .contentShape(Rectangle())
             .onTapGesture(count: 2, perform: onSave)
             .accessibilityAction(named: "조직 즐겨찾기에 저장", onSave)
-            .accessibilityIdentifier("activity.\(notice.id)")
+            .accessibilityIdentifier("activity.\(state.id)")
 
-            if let organization = summary.organization {
+            if let organizationName = state.organizationName {
                 Button(action: onSave) {
-                    Label(saved ? "저장됨 · \(organization.name)" : "\(organization.name) 저장",
-                          systemImage: saved ? "heart.fill" : "heart")
+                    Label(state.saved ? "저장됨 · \(organizationName)" : "\(organizationName) 저장",
+                          systemImage: state.saved ? "heart.fill" : "heart")
                         .frame(maxWidth: .infinity).lineLimit(2)
                 }
                 .buttonStyle(.borderedProminent)
-                .accessibilityIdentifier("save.\(notice.id)")
+                .accessibilityIdentifier("save.\(state.id)")
             } else {
                 Text("저장할 조직 확인 중").font(.caption).foregroundStyle(.secondary)
             }
             Button("공고 정보 · 출처 보기", action: onShowDetail)
                 .frame(maxWidth: .infinity)
-                .accessibilityIdentifier("details.\(notice.id)")
+                .accessibilityIdentifier("details.\(state.id)")
         }
         .padding(compact ? 16 : 22)
         .background(.background, in: RoundedRectangle(cornerRadius: 24))

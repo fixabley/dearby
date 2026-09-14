@@ -1,36 +1,33 @@
 import SwiftUI
 
 struct FavoriteOrganizationCard<Destination: View>: View {
-    let organization: NoticeOrganization
-    let catalog: NoticeCatalog
+    let state: FavoriteOrganizationCardState
     let remove: () -> Void
-    @ViewBuilder let destination: (Notice) -> Destination
+    @ViewBuilder let destination: (String) -> Destination
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(organization.name).font(.headline)
-            let ancestors = catalog.organizationPath(organization.id).dropLast()
-            if !ancestors.isEmpty {
-                Text(ancestors.map(\.name).joined(separator: " › "))
-                    .font(.caption).foregroundStyle(.secondary)
+            Text(state.name).font(.headline)
+            if !state.ancestorNames.isEmpty {
+                Text(state.ancestorNames).font(.caption).foregroundStyle(.secondary)
             }
-            let notices = catalog.feed.filter { $0.favoriteOrganizationId == organization.id }
+            let notices = state.notices
             Text(notices.isEmpty ? "현재 연결된 공고가 없어요" : "연결된 공고 \(notices.count)개")
                 .font(.caption).foregroundStyle(.secondary)
             ForEach(notices) { notice in
                 NavigationLink {
-                    destination(notice)
+                    destination(notice.id)
                 } label: {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(notice.title)
-                        NoticeClassificationView(category: notice.categorySummary,
-                                                 contextNames: catalog.contextNames(for: notice))
+                        NoticeClassificationView(category: notice.category,
+                                                 contextNames: notice.contextNames)
                     }
                 }
             }
             Button("즐겨찾기에서 삭제", role: .destructive, action: remove)
                 .font(.caption)
-                .accessibilityIdentifier("remove.\(organization.id)")
+                .accessibilityIdentifier("remove.\(state.id)")
         }.padding(.vertical, 6)
     }
 }

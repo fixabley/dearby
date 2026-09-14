@@ -12,13 +12,11 @@ final class FavoriteOrganizations {
     }
 
     @discardableResult
-    func saveOrganization(for notice: Notice, in catalog: NoticeCatalog) -> SaveOrganizationResult {
-        guard let organization = catalog.organization(notice.favoriteOrganizationId) else {
-            return .unresolved
-        }
+    func saveOrganization(_ organization: OrganizationModel?) -> SaveOrganizationResult {
+        guard let organization else { return .unresolved }
         ids.insert(organization.id)
         repository.save(ids)
-        return .saved(organization)
+        return .saved(organization.name)
     }
 
     func remove(_ organizationID: String) {

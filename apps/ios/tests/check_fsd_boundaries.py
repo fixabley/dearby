@@ -17,6 +17,8 @@ def check(sources, selected=()):
     cleaned = {p: code_only(s) for p, s in sources.items()}
     for path, code in cleaned.items():
         for name in re.findall(r'\b(?:struct|class|enum|protocol|typealias)\s+(\w+)', code):
+            if name == "CodingKeys":  # Swift synthesizes decoding from this private nested name.
+                continue
             declarations.setdefault(name, set()).add(path)
     errors = []
     for path, code in cleaned.items():
@@ -24,8 +26,8 @@ def check(sources, selected=()):
             continue
         if re.search(r'\b(?:requestFullAccessToEvents|requestWriteOnlyAccessToEvents|requestAccess|EKAlarm|addAlarm)\b|\b(?:eventStore|store)\.save\s*\(', code):
             errors.append(f'{path}: calendar editor must not request access, save directly or add alarms')
-        if path.startswith('Pages/NoticeDetail/UI/') and re.search(r'\b(?:NoticeCatalog|Notice)\b', code):
-            errors.append(f'{path}: detail UI must receive NoticeDetail, not raw catalog/notice')
+        if '/UI/' in path and re.search(r'\b(?:NoticeModel|OrganizationModel|BundleSnapshot|NoticeCatalog|Notice|NoticeDetailRepository|NoticeRepository|OrganizationRepository|\w+ViewModel)\b', code):
+            errors.append(f'{path}: rendering UI accepts State and callbacks, not raw models/repositories/VMs')
         parts = path.split('/')
         layer = parts[0]
         if layer not in LAYERS:
@@ -48,9 +50,9 @@ def check(sources, selected=()):
                     errors.append(f'{path}: cross-slice reference to {name} ({target})')
                 value_result = (layer == 'Pages' and name == 'SaveOrganizationResult'
                                 and target == 'Features/FavoriteOrganization/Model/SaveOrganizationResult.swift')
-                if (layer in ('Pages', 'Widgets') and target_layer == 'Features' and not value_result) or ('UI' in parts and 'API' in target_parts):
+                if (layer in ('Pages', 'Widgets') and 'UI' in parts and target_layer == 'Features' and not value_result) or ('UI' in parts and 'API' in target_parts):
                     errors.append(f'{path}: UI must receive values/callbacks, not {name}')
-        if layer in ('Pages', 'Widgets') or (layer in ('Entities', 'Shared') and 'UI' in parts):
+        if 'UI' in parts:
             if re.search(r'\b(?:UserDefaults|Bundle|FileManager|URLSession|UIApplication|openURL|MKMapItem|CLLocationManager|EventKit|EventKitUI|EKEventStore|EKEventEditViewController)\b', code):
                 errors.append(f'{path}: direct storage/resource access from UI')
     return sorted(set(errors))
@@ -71,8 +73,19 @@ def self_test():
     fixture['Features/FavoriteOrganization/API/FavoriteOrganizationsRepository.swift'] = 'protocol FavoriteOrganizationsRepository {}'
     fixture['Pages/Discovery/UI/Discovery.swift'] += '\nlet result: SaveOrganizationResult'
     assert not check(fixture)
-    for raw_type in ['NoticeCatalog', 'Notice']:
+    for raw_type in ['NoticeCatalog', 'Notice', 'NoticeModel', 'OrganizationModel', 'BundleSnapshot', 'NoticeCardViewModel']:
         assert check({**fixture, 'Pages/NoticeDetail/UI/NoticeDetailView.swift': 'struct NoticeDetailView { let raw: ' + raw_type + ' }'})
+    independent = {
+        'Entities/Notice/Model/NoticeModel.swift': 'struct NoticeModel {}',
+        'Entities/Organization/Model/OrganizationModel.swift': 'struct OrganizationModel {}',
+        'Pages/NoticeDetail/Model/NoticeDetailState.swift': 'struct NoticeDetailState {}',
+        'Features/AddToCalendar/Model/Mapper.swift': 'struct Mapper {}',
+    }
+    assert not check(independent)
+    for path, ref in [('Entities/Notice/Model/NoticeModel.swift', 'OrganizationModel'),
+                      ('Entities/Organization/Model/OrganizationModel.swift', 'NoticeModel'),
+                      ('Features/AddToCalendar/Model/Mapper.swift', 'NoticeDetailState')]:
+        assert check({**independent, path: independent[path] + ' let invalid: ' + ref})
     for forbidden in ['requestFullAccessToEvents()', 'requestWriteOnlyAccessToEvents()', 'store.save(event)', 'EKAlarm()']:
         assert check({**fixture, 'App/Editor.swift': 'struct Editor {}\n' + forbidden})
     for path, reference in [

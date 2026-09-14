@@ -2,11 +2,11 @@
 @MainActor
 final class OrganizationRepository {
     private var source: any OrganizationSource
-    private var cache: [String: NoticeOrganization] = [:]
+    private var cache: [String: OrganizationModel] = [:]
 
     init(source: any OrganizationSource) { self.source = source }
 
-    func organization(_ id: String?) -> NoticeOrganization? {
+    func organization(_ id: String?) -> OrganizationModel? {
         guard let id else { return nil }
         if let record = cache[id] { return record }
         guard let record = source.fetch(id: id) else { return nil }
@@ -14,13 +14,13 @@ final class OrganizationRepository {
         return record
     }
 
-    func path(to id: String?) -> [NoticeOrganization] {
-        var result: [NoticeOrganization] = []
+    func path(to id: String?) -> [OrganizationModel] {
+        var result: [OrganizationModel] = []
         var visited: Set<String> = []
         var next = id
         while let id = next, visited.insert(id).inserted, let record = organization(id) {
             result.insert(record, at: 0)
-            next = record.parentOrganizationId
+            next = record.parentId
         }
         return result
     }

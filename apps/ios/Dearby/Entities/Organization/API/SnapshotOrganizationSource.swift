@@ -1,10 +1,10 @@
 @MainActor
 struct SnapshotOrganizationSource: OrganizationSource {
-    private let records: [String: NoticeOrganization]
+    private let records: [String: OrganizationModel]
 
-    init(organizations: [NoticeOrganization]) {
+    init(organizations: [OrganizationModel]) {
         records = Dictionary(organizations.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     }
 
-    func fetch(id: String) -> NoticeOrganization? { records[id] }
+    func fetch(id: String) -> OrganizationModel? { records[id] }
 }

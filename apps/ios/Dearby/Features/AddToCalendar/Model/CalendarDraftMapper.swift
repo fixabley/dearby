@@ -9,7 +9,7 @@ enum CalendarDraftMapper {
         return components.url
     }
 
-    static func application(_ detail: NoticeDetail) -> CalendarEventDraft? {
+    static func application(_ detail: NoticeModel) -> CalendarEventDraft? {
         let application = detail.applicationInformation
         guard let interval = CalendarDatePolicy.interval(startAt: application.opensAt, startOn: application.opensOn,
                                                         endAt: application.closesAt, endOn: application.closesOn,
@@ -25,7 +25,7 @@ enum CalendarDraftMapper {
                                   location: nil, url: url, notes: notes.joined(separator: "\n"))
     }
 
-    static func schedule(_ schedule: NoticeDetailSchedule, detail: NoticeDetail,
+    static func schedule(_ schedule: NoticePhase, detail: NoticeModel,
                          mapURL: (NoticeVenue) -> URL?) -> CalendarEventDraft? {
         let phase = schedule.period
         guard let interval = CalendarDatePolicy.interval(startAt: phase.startsAt, startOn: phase.startsOn,

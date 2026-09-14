@@ -11,14 +11,14 @@ struct CalendarDraftTests {
 
     @MainActor
     static func main() throws {
-        let catalog = try JSONDecoder().decode(NoticeCatalog.self, from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
+        let catalog = try JSONDecoder().decode(BundleSnapshot.self, from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
         let krc = catalog.notices.first { $0.favoriteOrganizationId == "krc" }!
         let db = catalog.notices.first { $0.favoriteOrganizationId == "db-insurance" }!
         for notice in [krc, db] {
             let draft = CalendarDraftMapper.application(detail(notice, catalog: catalog))!
             guard case .timed(let start, let end, let zone) = draft.interval else { preconditionFailure() }
-            precondition(start == CalendarDatePolicy.instant(notice.application.opensAt!))
-            precondition(end == CalendarDatePolicy.instant(notice.application.closesAt!))
+            precondition(start == CalendarDatePolicy.instant(notice.applicationInformation.opensAt!))
+            precondition(end == CalendarDatePolicy.instant(notice.applicationInformation.closesAt!))
             precondition(zone == "Asia/Seoul" && draft.title.hasPrefix("[신청 기간]"))
             let request = CalendarEditorRequest(draft: draft, deviceTimeZone: TimeZone(identifier: "America/Los_Angeles")!)!
             precondition(request.start == start && request.end == end && !request.isAllDay)
@@ -60,14 +60,14 @@ struct CalendarDraftTests {
         application["url"] = "https://example.com/apply?a=1&b=2#신청"
         application["opensAt"] = NSNull(); application["opensOn"] = NSNull()
         notices[index]["application"] = application; raw["activities"] = notices
-        let changed = try JSONDecoder().decode(NoticeCatalog.self, from: JSONSerialization.data(withJSONObject: raw))
+        let changed = try JSONDecoder().decode(BundleSnapshot.self, from: JSONSerialization.data(withJSONObject: raw))
         let deadline = CalendarDraftMapper.application(detail(changed.notices[index], catalog: changed))!
         precondition(deadline.title.hasPrefix("[신청 마감]"))
         precondition(deadline.url == CalendarDraftMapper.verifiedURL(application["url"] as? String))
         precondition(deadline.notes.contains("신청 URL:") && deadline.notes.contains("원문:"))
         application.removeValue(forKey: "url"); application["closesAt"] = NSNull(); application["closesOn"] = NSNull(); application["opensOn"] = "2026-10-01"
         notices[index]["application"] = application; raw["activities"] = notices
-        let noURL = try JSONDecoder().decode(NoticeCatalog.self, from: JSONSerialization.data(withJSONObject: raw))
+        let noURL = try JSONDecoder().decode(BundleSnapshot.self, from: JSONSerialization.data(withJSONObject: raw))
         let draft = CalendarDraftMapper.application(detail(noURL.notices[index], catalog: noURL))!
         precondition(draft.url == nil && draft.notes.contains("신청 마감: 미확인") && draft.notes.contains("신청 URL: 미확인"))
         for zone in ["Asia/Seoul", "America/Los_Angeles", "Pacific/Auckland"] {
@@ -91,9 +91,9 @@ struct CalendarDraftTests {
     }
 
     @MainActor
-    static func testActivities(catalog: NoticeCatalog) throws {
+    static func testActivities(catalog: BundleSnapshot) throws {
         let contest = catalog.notices.first { $0.favoriteOrganizationId == "yeongnam-cyber-defense" }!
-        func draft(_ phase: NoticeSchedule, notice: Notice? = nil) -> CalendarEventDraft? {
+        func draft(_ phase: NoticeSchedule, notice: NoticeModel? = nil) -> CalendarEventDraft? {
             let projected = detail(notice ?? contest, catalog: catalog, schedule: [phase])
             return CalendarDraftMapper.schedule(projected.schedules[0], detail: projected, mapURL: VenueMapLink.url)
         }
@@ -128,9 +128,9 @@ struct CalendarDraftTests {
         let venues = [NoticeVenue(phase: "final", name: "본관", address: "주소1", coordinates: NoticeCoordinates(latitude: 0, longitude: 0)),
                       NoticeVenue(phase: "preliminary", name: "다른 단계", address: nil, coordinates: nil),
                       NoticeVenue(phase: "final", name: "별관", address: "주소2", coordinates: NoticeCoordinates(latitude: 10, longitude: 20))]
-        let notice = Notice(id: contest.id, title: contest.title, summary: contest.summary, demoVisible: contest.demoVisible,
+        let notice = NoticeModel(id: contest.id, title: contest.title, aiDescription: contest.aiDescription, demoVisible: contest.demoVisible,
                                     favoriteOrganizationId: contest.favoriteOrganizationId, sourceIds: contest.sourceIds,
-                                    audience: contest.audience, eligibility: contest.eligibility, application: contest.application,
+                                    targetUser: contest.targetUser, participationCondition: contest.participationCondition, applicationInformation: contest.applicationInformation,
                                     location: NoticeLocation(summary: "본관/별관", mode: "mixed", status: "known", venues: venues),
                                     schedule: contest.schedule, benefits: contest.benefits, qualityIssues: contest.qualityIssues,
                                     categoryPath: contest.categoryPath, contexts: contest.contexts, edition: contest.edition)
@@ -145,15 +145,13 @@ struct CalendarDraftTests {
 
 
     @MainActor
-    static func detail(_ notice: Notice, catalog: NoticeCatalog, schedule: [NoticeSchedule]? = nil) -> NoticeDetail {
-        let copy = Notice(id: notice.id, title: notice.title, summary: notice.summary, demoVisible: notice.demoVisible,
+    static func detail(_ notice: NoticeModel, catalog: BundleSnapshot, schedule: [NoticeSchedule]? = nil) -> NoticeModel {
+        let copy = NoticeModel(id: notice.id, title: notice.title, aiDescription: notice.aiDescription, demoVisible: notice.demoVisible,
                                   favoriteOrganizationId: notice.favoriteOrganizationId, sourceIds: notice.sourceIds,
-                                  audience: notice.audience, eligibility: notice.eligibility, application: notice.application,
+                                  targetUser: notice.targetUser, participationCondition: notice.participationCondition, applicationInformation: notice.applicationInformation,
                                   location: notice.location, schedule: schedule ?? notice.schedule, benefits: notice.benefits,
                                   qualityIssues: notice.qualityIssues, categoryPath: notice.categoryPath, contexts: notice.contexts, edition: notice.edition)
-        let snapshot = NoticeCatalog(schemaVersion: catalog.schemaVersion, mode: catalog.mode, snapshotAt: catalog.snapshotAt,
-                                       sources: catalog.sources, organizations: catalog.organizations, notices: [copy])
-        return NoticeDetailRepository(catalog: snapshot).detail(id: copy.id)!
+        return SnapshotNoticeSource(notices: [copy], sources: catalog.sources).fetch(id: copy.id)!
     }
 
 }
