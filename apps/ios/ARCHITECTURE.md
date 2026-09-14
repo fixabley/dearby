@@ -340,7 +340,7 @@ Entities/ActivityCatalog/API의 OrganizationSource.fetch(id:)와 SnapshotOrganiz
 
 `ActivityDetail`는 Codable/저장 모델이 아닌 일시적 읽기 결과다. 조직은 원본에서 ID로만 참조하고 조직 레코드는 별도 snapshot source에 둔다. 결과의 organizationPath는 선택 노드의 관련 경로만 포함하며 전체 조직 트리를 복제하거나 저장하지 않는다. organizationLinks와 contexts는 명시된 role/ID를 유지하고 경로에서 주최 역할을 추론하지 않는다.
 
-`aiDescription`은 기존 검토 샘플 summary이며 `descriptionProvenance = reviewed_sample.summary`로 출처를 구분한다. 새로운 AI 생성으로 표시하지 않는다. applicationInformation은 기존 날짜·URL·summary와 channels/requiredDocuments/submissionLocations를 보존한다. schedule의 period와 정확히 phase가 일치하는 장소를 getter에서 한 번 묶고 온라인 단계에는 오프라인 장소를 넣지 않는다. CalendarDraftMapper는 이 상세 값만 사용하며 기존 엄격한 날짜 정책은 유지한다. 지도는 상세의 기존 location 값을 사용한다.
+`aiDescription`은 기존 검토 샘플 summary이며 `descriptionProvenance = reviewed_sample.summary`로 출처를 구분한다. 새로운 AI 생성으로 표시하지 않는다. applicationInformation은 기존 날짜·URL·summary와 channels/requiredDocuments/submissionLocations를 보존한다. schedule의 period와 정확히 phase가 일치하는 장소를 ActivityDetail 이니셜라이저에서 한 번 묶고 온라인 단계에는 오프라인 장소를 넣지 않는다. CalendarDraftMapper는 이 상세 값만 사용하며 기존 엄격한 날짜 정책은 유지한다. 지도는 상세의 기존 location 값을 사용한다.
 
 `ActivityEvidenceDecoder`는 구조화 JSON을 Decoder로 순회하여 evidence/coordinateEvidence의 sourceId·locator·fieldPath를 보존한다. quality issue의 명시 fieldPath를 우선하고 배열 위치는 경로에 남긴다. 상세는 관련 source 레코드(kind/checkedAt/access/note 포함)와 근거 URL을 제공하며, 알 수 없는 source ID도 근거에서 삭제하지 않는다. 원본 JSON의 추가 메타데이터 전체를 앱에 영구 복제하는 것은 아니며 변경 없이 번들에 유지한다.
 
@@ -361,3 +361,10 @@ Entities/ActivityCatalog/API의 OrganizationSource.fetch(id:)와 SnapshotOrganiz
 ActivityDetail.organizationLinks도 contexts와 같은 ActivityDetailContext 읽기 투영이다. reference에는 원본 ID/role/basis/note를 유지하고 organizationName은 동일 OrganizationRepository 캐시를 통해 해결한다. 누락 조직은 nil 이름으로 원본 참조를 보존한다. Notice.organizationLinks는 계속 ID/역할 참조이며 이름이나 경로를 저장하지 않는다. UI 변경 없이 상세 소비자가 추가 카탈로그 조회 없이 기관 이름을 사용할 수 있다.
 
 2026-09-14 보완 검증: README의 상세·캘린더 swiftc 명령을 재컴파일하고 old/new JSON 각각 통과했다. 실제 링크 이름·미등록 ID/role/basis/note 보존·링크/맥락/경로 공유 성공 fetch 1회 검사를 포함한다. 45파일 FSD/부정 fixture·git diff --check 통과, Simulator build 11:24:30Z 성공(경고/오류 없음). 값 투영만 변경하여 native runtime 및 사용자 캘린더 조작은 하지 않았다.
+
+
+### ActivityDetail 순수 생성 경계
+
+`init(notice:organizationPath:contexts:organizationLinks:sources:)`가 이미 조회한 값만 받아 모든 상세 필드, 근거 URL, 정확한 phase 장소를 조립한다. Catalog/Repository/IO나 캐시 생성에 의존하지 않는다. 대표 sourceURL은 sources 배열 첫 항목이 아니라 notice.sourceIds.first와 ID가 일치하는 출처로만 해결하며, 없으면 nil이다. Repository는 공고 조회·공유 조직 캐시 조회와 관련 source ID 합집합 선택 후 이니셜라이저 호출만 담당한다.
+
+2026-09-14 이번 검증: README의 Swift 6 상세/캘린더 standalone을 재컴파일하여 old/new JSON 모두 통과했고, 조직 cache-aside standalone도 통과했다. 저장소 없는 직접 생성에서 순서가 다른 출처/대표 ID 누락·근거 URL·온라인 장소 제외·정확한 phase의 복수 장소·기존 필드를 검사했다. 45파일 FSD/부정 fixture, git diff --check, Simulator build 11:31:42Z 통과(경고/오류 없음). 순수 로직 이동으로 native runtime은 실행하지 않았고 사용자 기기/캘린더 데이터는 변경하지 않았다.

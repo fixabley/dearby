@@ -8,6 +8,7 @@ struct ActivityDetailTests {
         let catalog = try JSONDecoder().decode(ActivityCatalog.self, from: data)
         let originalJSON = try JSONSerialization.jsonObject(with: data) as! [String: Any]
         let originalNotices = originalJSON["activities"] as! [[String: Any]]
+        try directConstruction(originalNotices.first { $0["favoriteOrganizationId"] as? String == "yeongnam-cyber-defense" }!)
         let source = DetailCountingSource(catalog.organizations)
         let repository = ActivityDetailRepository(catalog: catalog, source: source)
         precondition(source.fetches.isEmpty)
@@ -88,6 +89,38 @@ struct ActivityDetailTests {
         precondition(repository.catalog.organization("cbnu")?.name == updated.organizationPath.last?.name)
         print("PASS: shared repository two detail opens, ID-only references/selected parent, exact contexts and phase places, decoded sources/evidence paths/unknown source, snapshot rename/reparent replacement")
     }
+    // No repository or catalog: construction consumes only decoded notice and supplied values.
+    private static func directConstruction(_ original: [String: Any]) throws {
+        var raw = original
+        raw["sourceIds"] = ["primary", "secondary"]
+        raw["evidence"] = [["sourceId": "secondary", "locator": "보조 근거"], ["sourceId": "missing", "locator": "미해결"]]
+        var location = raw["location"] as! [String: Any]
+        location["venues"] = [
+            ["phase": "preliminary", "name": "온라인에 넣지 않을 장소"],
+            ["phase": "final", "name": "첫 결선 장소"],
+            ["phase": "final", "name": "두 번째 결선 장소"],
+            ["phase": "unmatched", "name": "다른 단계"]
+        ]
+        raw["location"] = location
+        let notice = try JSONDecoder().decode(ActivityNotice.self, from: JSONSerialization.data(withJSONObject: raw))
+        let context = ActivityDetailContext(reference: ActivityContext(organizationId: "selected", role: "event_context"), organizationName: "주입 이름")
+        let primary = ActivitySource(id: "primary", url: "https://example.com/primary")
+        let secondary = ActivitySource(id: "secondary", url: "https://example.com/secondary")
+        let detail = ActivityDetail(notice: notice, organizationPath: [], contexts: [context], organizationLinks: [context], sources: [secondary, primary])
+        precondition(detail.sourceURL?.absoluteString == primary.url, "Use notice first source ID, never array order")
+        let unmatched = ActivityDetail(notice: notice, organizationPath: [], contexts: [], organizationLinks: [], sources: [secondary])
+        precondition(unmatched.sourceURL == nil, "Missing primary must not fall back to another source")
+        precondition(detail.evidence.contains { $0.sourceId == "secondary" && $0.sourceURL?.absoluteString == secondary.url })
+        precondition(detail.evidence.contains { $0.sourceId == "missing" && $0.sourceURL == nil })
+        precondition(detail.schedules.first { $0.period.phase == "preliminary" }!.locations.isEmpty)
+        precondition(detail.schedules.first { $0.period.phase == "final" }!.locations.map(\.name) == ["첫 결선 장소", "두 번째 결선 장소"])
+        precondition(detail.title == notice.title && detail.aiDescription == notice.summary && detail.descriptionProvenance == "reviewed_sample.summary")
+        precondition(detail.organizationID == notice.favoriteOrganizationId && detail.contexts[0].organizationName == "주입 이름" && detail.organizationLinks[0].reference.role == "event_context")
+        precondition(detail.applicationInformation.summary == notice.application.summary && detail.targetUser == notice.audience && detail.participationCondition == notice.eligibility)
+        precondition(detail.categoryPath == notice.categoryPath && detail.benefits == notice.benefits && detail.qualityIssues == notice.qualityIssues && detail.edition == notice.edition)
+        print("PASS: value-only detail initializer, misordered/missing primary source, evidence resolution, exact phase/online venues, preserved fields")
+    }
+
     private static func evidenceCount(_ value: Any) -> Int {
         if let object = value as? [String: Any] {
             return object.reduce(0) { count, entry in

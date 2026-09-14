@@ -28,22 +28,7 @@ final class ActivityDetailRepository {
         var relevantIDs = Set(notice.sourceIds)
         relevantIDs.formUnion(notice.evidence.map(\.sourceId))
         let sources = catalog.sources.filter { relevantIDs.contains($0.id) }
-        let evidence = notice.evidence.map { reference in
-            var resolved = reference
-            resolved.sourceURL = sources.first { $0.id == reference.sourceId }.flatMap { URL(string: $0.url) }
-            return resolved
-        }
-        return ActivityDetail(id: notice.id, title: notice.title, aiDescription: notice.summary,
-                              descriptionProvenance: "reviewed_sample.summary", organizationID: notice.favoriteOrganizationId,
-                              organizationPath: path, organizationLinks: links,
-                              categoryPath: notice.categoryPath, categorySummary: notice.categorySummary, contexts: contexts,
-                              targetUser: notice.audience, participationCondition: notice.eligibility,
-                              applicationInformation: notice.application,
-                              schedules: notice.schedule.map { phase in
-                                  ActivityDetailSchedule(period: phase,
-                                      locations: phase.mode == "online" ? [] : notice.location.venues.filter { $0.phase == phase.phase },
-                                      locationSummary: notice.location.summary)
-                              }, location: notice.location, benefits: notice.benefits, qualityIssues: notice.qualityIssues,
-                              edition: notice.edition, sourceURL: catalog.sourceURL(for: notice), sources: sources, evidence: evidence)
+        return ActivityDetail(notice: notice, organizationPath: path, contexts: contexts,
+                              organizationLinks: links, sources: sources)
     }
 }
