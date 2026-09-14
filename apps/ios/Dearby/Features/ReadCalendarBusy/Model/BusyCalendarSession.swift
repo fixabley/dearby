@@ -1,6 +1,8 @@
 import Foundation
 import Observation
 
+enum BusyCalendarLifecycle { case active, inactive, background }
+
 /// One opt-in owner per detail presentation; query tasks and personal results are ephemeral.
 @MainActor @Observable
 final class BusyCalendarSession {
@@ -34,7 +36,7 @@ final class BusyCalendarSession {
             }
         }
     }
-    func cancelConsent() { setEnabled(false) }
+    func cancelConsent() { if connection == .consent { setEnabled(false) } }
     func continueConsent() {
         guard connection == .consent else { return }
         invalidate(); isEnabled = true; connection = .requesting
@@ -94,6 +96,13 @@ final class BusyCalendarSession {
                     self.days[id] = .failed
                 }
             }
+        }
+    }
+    func lifecycle(_ phase: BusyCalendarLifecycle) {
+        switch phase {
+        case .active: resume()
+        case .inactive: break // Permission alerts are transient; keep their generation alive.
+        case .background: suspend()
         }
     }
     func suspend() {

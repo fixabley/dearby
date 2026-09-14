@@ -7,11 +7,20 @@ actor FakeBusyProvider: BusyCalendarProvider {
     var fails = false
     var hold = false
     var pending: [CheckedContinuation<[BusyTimeInterval], Error>] = []
+    var holdPermission = false
+    var pendingPermission: CheckedContinuation<BusyCalendarAuthorization, Error>?
     var requested = 0
     var queries: [DateInterval] = []
     var discards = 0
     func authorization() -> BusyCalendarAuthorization { access }
-    func requestReadPermission() -> BusyCalendarAuthorization { requested += 1; access = decision; return access }
+    func requestReadPermission() async throws -> BusyCalendarAuthorization {
+        requested += 1
+        if holdPermission { return try await withCheckedThrowingContinuation { pendingPermission = $0 } }
+        access = decision; return access
+    }
+    func holdPermissionResponse() { holdPermission = true }
+    func permissionPending() -> Bool { pendingPermission != nil }
+    func grantPermission() { access = .fullAccess; pendingPermission?.resume(returning: .fullAccess); pendingPermission = nil }
     func intervals(in range: DateInterval) async throws -> [BusyTimeInterval] {
         queries.append(range)
         if hold { return try await withCheckedThrowingContinuation { pending.append($0) } }
@@ -46,6 +55,18 @@ actor FakeBusyProvider: BusyCalendarProvider {
         let occurrences = [busy(100, 200), busy(300, 400), busy(100, 200)]
         precondition(BusyTimeInterval.merged(occurrences, in: day) == [busy(100, 200), busy(300, 400)])
         precondition(BusyTimeInterval(start: date(20), end: date(10)) == nil)
+        // Warning uses positive intersection, never a visual minimum height or a touching edge.
+        precondition(BusyTimeInterval.merged([busy(16*3600,17*3600)], in: activity).isEmpty)
+        precondition(BusyTimeInterval.merged([busy(12*3600,14*3600)], in: activity).isEmpty)
+        precondition(BusyTimeInterval.merged([busy(16*3600-1,17*3600)], in: activity) == [busy(16*3600-1,16*3600)])
+        let utc = TimeZone(secondsFromGMT: 0)!
+        precondition(busy(15*3600,17*3600).description(in: utc) == "오후 3시부터 오후 5시까지")
+        precondition(busy(15*3600+30,15*3600+31).description(in: utc).contains("30초"))
+        precondition(busy(23*3600,86400).description(in: utc).contains("1월 2일"))
+        let iso = ISO8601DateFormatter(), zone = TimeZone(identifier: "America/New_York")!
+        let dst = BusyTimeInterval(start: iso.date(from: "2026-11-01T05:30:00Z")!, end: iso.date(from: "2026-11-01T06:30:00Z")!)!
+        precondition(dst.description(in: zone).contains("-04:00") && dst.description(in: zone).contains("-05:00"))
+        print("PASS positive overlap/touch/one-second boundaries; Korean times, midnight and DST repeated-hour offsets")
         @MainActor func wait(_ condition: @MainActor () async -> Bool) async {
             for _ in 0..<500 { if await condition() { return }; try? await Task.sleep(for: .milliseconds(2)) }
             preconditionFailure("fake condition timed out")
@@ -108,7 +129,31 @@ actor FakeBusyProvider: BusyCalendarProvider {
         precondition(owner.days[0]!.intervals.isEmpty) // late old day never replaces the new selection
         owner.suspend(); precondition(owner.days.isEmpty)
         owner.resume(); await wait { owner.days[0]?.status == .ready }
-        owner.close(); precondition(!owner.isEnabled && owner.days.isEmpty)
+        await provider.configure(hold: true)
+        owner.refresh(); await wait { await provider.counts().2 == 1 }
+        owner.close(); await provider.release(overlaps)
+        try? await Task.sleep(for: .milliseconds(20))
+        precondition(!owner.isEnabled && owner.days.isEmpty)
+        let promptProvider = FakeBusyProvider(), promptOwner = BusyCalendarSession(provider: FakeBusyProvider())
+        promptOwner.close()
+        let prompt = BusyCalendarSession(provider: promptProvider)
+        await promptProvider.holdPermissionResponse()
+        prompt.setEnabled(true); await wait { prompt.connection == .consent }
+        prompt.continueConsent(); prompt.cancelConsent() // alert dismissal after Continue is not a cancel
+        await wait { await promptProvider.permissionPending() }
+        prompt.lifecycle(.inactive)
+        precondition(prompt.connection == .requesting && prompt.isEnabled)
+        await promptProvider.grantPermission(); await wait { prompt.connection == .connected }
+        prompt.lifecycle(.active); precondition(prompt.isEnabled)
+        prompt.close()
+        await promptProvider.configure(access: .notRequested)
+        prompt.setEnabled(true); await wait { prompt.connection == .consent }
+        prompt.continueConsent(); await wait { await promptProvider.permissionPending() }
+        prompt.lifecycle(.background); await promptProvider.grantPermission()
+        try? await Task.sleep(for: .milliseconds(20))
+        precondition(!prompt.isEnabled && prompt.connection == .off && prompt.days.isEmpty)
+        prompt.lifecycle(.active); precondition(!prompt.isEnabled)
+        print("PASS: permission prompt inactive/Continue-dismissal accepted; background late grant ignored")
         print("PASS: half-open overlap/merge/adjacency/all-day/expanded occurrences/filter; OFF/consent cancel/continue/shared permission/reuse/denied/restricted/error/empty; loading OFF and stale day suppression; revoke/background/resume/close")
     }
 }

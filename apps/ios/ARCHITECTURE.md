@@ -9,6 +9,7 @@
 
 ```text
 App/BundleSnapshot.swift
+App/BusyCalendarProviderFactory.swift
 App/CalendarEditorDelegate.swift
 App/CalendarEditorRequest.swift
 App/CalendarEventEditor.swift
@@ -17,6 +18,7 @@ App/DearbyApp.swift
 App/NoticeDestinationView.swift
 App/NoticeDetailDestination.swift
 App/NoticeSession.swift
+App/PreviewBusyCalendarProvider.swift
 App/SnapshotManifest.swift
 App/SwiftDataSnapshotStore.swift
 App/VenueMapLauncher.swift
@@ -51,10 +53,15 @@ Features/FavoriteOrganization/API/FavoriteOrganizationsRepository.swift
 Features/FavoriteOrganization/API/UserDefaultsFavoriteOrganizationsRepository.swift
 Features/FavoriteOrganization/Model/FavoriteOrganizations.swift
 Features/FavoriteOrganization/Model/SaveOrganizationResult.swift
+Features/ReadCalendarBusy/API/BusyCalendarProvider.swift
+Features/ReadCalendarBusy/API/EventKitBusyProvider.swift
+Features/ReadCalendarBusy/Model/BusyCalendarOccurrence.swift
+Features/ReadCalendarBusy/Model/BusyCalendarSession.swift
 Pages/Discovery/UI/DiscoveryView.swift
 Pages/Favorites/UI/FavoriteListView.swift
 Pages/NoticeDetail/Model/NoticeDetailState.swift
 Pages/NoticeDetail/Model/NoticeDetailViewModel.swift
+Pages/NoticeDetail/Model/NoticePlaceState.swift
 Pages/NoticeDetail/UI/CalendarAddButton.swift
 Pages/NoticeDetail/UI/NoticeApplicationView.swift
 Pages/NoticeDetail/UI/NoticeDetailView.swift
@@ -62,19 +69,38 @@ Pages/NoticeDetail/UI/NoticeIdentityView.swift
 Pages/NoticeDetail/UI/NoticeLocationView.swift
 Pages/NoticeDetail/UI/NoticeScheduleView.swift
 Pages/NoticeDetail/UI/VenueMapButton.swift
-Widgets/Organization/FavoriteOrganizationCard/FavoriteOrganizationCardState.swift
-Widgets/Organization/FavoriteOrganizationCard/FavoriteOrganizationCardViewModel.swift
-Widgets/Organization/FavoriteOrganizationCard/FavoriteOrganizationCard.swift
-Widgets/Notice/NoticeCard/NoticeCardState.swift
-Widgets/Notice/NoticeCard/NoticeCardViewModel.swift
-Widgets/Notice/NoticeCard/NoticeCard.swift
-Widgets/Notice/NoticeCard/NoticeCardSaveButton.swift
+Shared/Lib/BusyTimeDescription.swift
+Shared/Lib/BusyTimeDisplay.swift
+Shared/Lib/BusyTimeInterval.swift
+Shared/Lib/CalendarConnectionState.swift
+Shared/Lib/CompactPeriod.swift
+Shared/Lib/EventPeriodPresentation.swift
+Shared/Lib/EventTimelineInterval.swift
+Shared/UI/BusyTimeBlocks.swift
+Shared/UI/BusyTimeOverlay.swift
+Shared/UI/BusyTimeStatusView.swift
+Shared/UI/BusyTimeSummaryView.swift
 Shared/UI/Buttons/PrimaryButton.swift
 Shared/UI/Buttons/SecondaryButton.swift
+Shared/UI/CalendarConnectionControl.swift
+Shared/UI/EventDaySelector.swift
+Shared/UI/EventDayTimeline.swift
+Shared/UI/EventTimeRows.swift
+Shared/UI/EventTimelineGrid.swift
+Shared/UI/ExternalLinkCard.swift
 Shared/UI/InformationRow.swift
-Shared/UI/StatusMessage.swift
-Shared/UI/NativeStyle.swift
+Shared/UI/LocationInformation.swift
+Shared/UI/MetadataRow.swift
 Shared/UI/NativeComponentsPreview.swift
+Shared/UI/NativeStyle.swift
+Shared/UI/StatusMessage.swift
+Widgets/Notice/NoticeCard/NoticeCard.swift
+Widgets/Notice/NoticeCard/NoticeCardSaveButton.swift
+Widgets/Notice/NoticeCard/NoticeCardState.swift
+Widgets/Notice/NoticeCard/NoticeCardViewModel.swift
+Widgets/Organization/FavoriteOrganizationCard/FavoriteOrganizationCard.swift
+Widgets/Organization/FavoriteOrganizationCard/FavoriteOrganizationCardState.swift
+Widgets/Organization/FavoriteOrganizationCard/FavoriteOrganizationCardViewModel.swift
 ```
 
 ## 엔티티와 조회 경계
@@ -107,7 +133,7 @@ App/ContentView가 SwiftDataSnapshotStore의 container/context와 현재 NoticeS
 
 각 VM의 state.saved 또는 표시 여부는 매번 같은 FavoriteOrganizations.ids를 읽는다. 별도 mutable favorites 복사본이 없고 다른 카드 저장/조직 카드 삭제가 기존 VM에 바로 보인다. App ContentView는 lazy Tab 클로저 밖에서 favorites.ids와 State 배열을 읽어 SwiftUI Observation을 유지한다. 상세/목적지는 App이 ID로 조립하여 Pages가 서로를 참조하지 않는다.
 
-OS 지도·캘린더는 App/NoticeDetailDestination에서만 연결한다. CalendarDraftMapper는 독립 NoticeModel/phase 값을 받으므로 Page State로의 상향 의존이나 중복 mapper가 없다. 기간 strictness·KST/종일·자정 exclusive·온라인/정확 phase/복수 장소·원문과 신청 URL 구분을 유지한다. 권한 요청·EventStore.save·자동 알람·네트워크는 없다.
+OS 지도·캘린더는 App/NoticeDetailDestination에서만 연결한다. CalendarDraftMapper는 독립 NoticeModel/phase 값을 받으므로 Page State로의 상향 의존이나 중복 mapper가 없다. 기간 strictness·KST/종일·자정 exclusive·온라인/정확 phase/복수 장소·원문과 신청 URL 구분을 유지한다. 기존 편집기 export에는 권한 요청·EventStore.save·자동 알람·네트워크가 없다. #10의 별도 ReadCalendarBusy feature만 사용자의 동의 후 fullAccess를 요청한다.
 
 ## 구조 검사와 확장
 
@@ -181,4 +207,12 @@ Shared/UI MetadataRow는 아이콘/문자열만, Shared/Lib CompactPeriod는 원
 
 EventPeriodPresentation/EventTimeRows/LocationInformation은 Shared의 범용 값·표시 API다. NoticeScheduleState/NoticeSchedulePlaceState/NoticePlaceState와 Detail VM이 원본 일정·장소를 표시용으로 조합하며 Views는 값과 콜백을 렌더링한다. 이 표시 포맷은 calendar draft와 공유하지 않으므로 export 정책/원본 URL memo 및 원본 model/cache는 그대로다. 카드 표현도 변경하지 않는다. 장소 변환은 명확한 문자열 경계만 사용하며 원본 venue/summary는 보존한다. 관련 테스트 실행 범위·대표 상세 사진은 docs/evidence/issue-02/calendar-detail/README.md에 기록한다.
 
-Calendar screenshot 후속: Shared/Lib의 `EventTimelineInterval`은 명시적 timezone의 검증된 날짜 값만 받아 한 날짜의 half-open clip/눈금을 계산한다. NoticeDetail State/VM의 `EventPeriodPresentation` 및 applicationURL이 이를 조립하며 Shared/UI의 `EventDayTimeline`, `EventDaySelector`, `EventTimelineGrid`, `ExternalLinkCard`는 값/Binding만 받는다. 선택 날짜는 미리보기의 일시적인 local State이며 repository, favorite owner, export mapper, App 수명은 바꾸지 않는다. UI 하위 조각은 역할별 View 파일이며 순수 scroll helper만 함수로 둔다. OS busy/calendar provider는 이번 범위 밖이다.
+Calendar screenshot 후속: Shared/Lib의 `EventTimelineInterval`은 명시적 timezone의 검증된 날짜 값만 받아 한 날짜의 half-open clip/눈금을 계산한다. NoticeDetail State/VM의 `EventPeriodPresentation` 및 applicationURL이 이를 조립하며 Shared/UI의 `EventDayTimeline`, `EventDaySelector`, `EventTimelineGrid`, `ExternalLinkCard`는 값/Binding만 받는다. 선택 날짜는 미리보기의 일시적인 local State이며 repository, favorite owner, export mapper, App 수명은 바꾸지 않는다. UI 하위 조각은 역할별 View 파일이며 순수 scroll helper만 함수로 둔다. #10은 아래의 별도 읽기 feature로 busy provider를 연결한다.
+
+## #10 · 상세 세션의 바쁜 시간 읽기
+
+App/NoticeDetailDestination의 State가 BusyCalendarSession 하나를 소유한다. Feature/ReadCalendarBusy의 provider protocol/session/actor adapter가 권한과 OS 조회를 격리하고 Pages에는 연결 상태·busy 값·콜백만 내려간다. Shared는 Date interval, 표시 상태와 date-selection/retry 콜백만 받으며 EventKit/model/source/store 참조가 없다. 위젯 flat 구조 및 기존 NoticeSession·즐겨찾기 소유권/SwiftData/cache/export/map 계약은 그대로다.
+
+화면마다 default OFF → native 동의 → EventKit fullAccess이며 이미 허용했으면 즉시 조회한다. 확정 활동의 선택 날짜만 등록하며 신청기간은 등록하지 않는다. 권한 요청 alert의 inactive는 취소하지 않고 실제 background/close/OFF/revoke에서 Task generation을 무효화하고 개인 구간을 비운다. active/선택 날짜/이벤트 저장소 변경 시 재조회한다. EventKit 객체는 actor 밖으로 나오지 않고 제목/장소/ID/메모 등은 읽거나 기록하지 않으며 본인 거절 여부만 참가자 상태로 판별한다. 결과는 날짜 두 개의 일시 메모리 값이며 네트워크·디스크 저장이 없다.
+
+OS EventKit의 synchronous occurrence enumeration은 actor에서 수행하며 시간범위는 27시간 이하 한 선택일로 제한한다. 취소/free/본인declined 제외, 중복·중첩/인접 interval union, 반열린 clip, 양의 교집합만 점선/경고로 표시한다. fullAccess는 OS가 쓰기도 허용하는 권한이지만 adapter는 읽기만 구현하며 FSD guard가 save/remove/다른 permission 요청을 금지한다. SDK enumeration의 오류 채널 부재와 실제 개인 일정 검증 제외 등은 [#10 실행 기록](docs/evidence/issue-10/README.md)을 따른다.
