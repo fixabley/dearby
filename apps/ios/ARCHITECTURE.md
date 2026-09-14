@@ -257,3 +257,7 @@ Maps 미설치/OS 거절의 실기기 UI는 미검증이며 실패 callback은 �
 
 지도 관련 FSD 검사도 Pages/Widgets/Entity UI의 openURL·UIApplication·MKMapItem·CLLocationManager 직접 접근을 금지하며 대표 음성 fixture를 유지한다. 최종 전체 28 Swift 파일 구조 검사 통과.
 전용 기기에서 Maps 복귀 후 기존 DB 즐겨찾기 보존, DB 공고의 NavigationLink 상세·장소 버튼과 back으로 목록 복귀도 확인했다.
+
+## 온라인 전용 장소 지도 제외 — 리뷰 보완
+이전 e0b16b2는 좌표만 검사하여 online 장소에도 유효 좌표가 있으면 버튼을 표시하는 누락이 있었다. venuesWithCoordinates는 이제 mode가 online이면 빈 배열을 반환하고 offline/mixed/unknown에서는 기존 유효 좌표 필터를 유지한다.
+이번에는 online에 유효 0,0 및 -90,180 좌표를 함께 넣은 회귀와 다른 mode 보존 검사를 추가했다. standalone Swift6 지도 테스트·전체 28파일 FSD/금지 fixture 및 Simulator Debug 빌드가 통과했다(빌드 로그 build_sim_2026-09-14T10-23-44-688Z_pid15343_8e334383.log, 경고·오류 없음). 순수 필터 수정이므로 런타임은 재실행하지 않았으며 샘플·UI 배치·저장 로직은 변경하지 않았다.

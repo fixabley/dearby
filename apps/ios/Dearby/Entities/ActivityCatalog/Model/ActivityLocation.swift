@@ -5,6 +5,7 @@ struct ActivityLocation: Decodable {
     let venues: [ActivityVenue]
 
     var venuesWithCoordinates: [ActivityVenue] {
-        venues.filter { $0.coordinates != nil }
+        guard mode != "online" else { return [] }
+        return venues.filter { $0.coordinates != nil }
     }
 }

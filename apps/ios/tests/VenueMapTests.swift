@@ -34,6 +34,13 @@ struct VenueMapTests {
         precondition(location.venuesWithCoordinates.count == 2)
         precondition(location.venuesWithCoordinates.map(\.coordinates) == [zero.coordinates, edge.coordinates])
         precondition(ActivityLocation(summary: "온라인", mode: "online", status: "unknown", venues: invalidVenues).venuesWithCoordinates.isEmpty)
+        let online = ActivityLocation(summary: "온라인", mode: "online", status: "known", venues: invalidVenues + [zero, edge])
+        precondition(online.venuesWithCoordinates.isEmpty, "Online-only locations never offer maps, even with valid coordinates")
+        for mode in ["offline", "mixed", "unknown"] {
+            let other = ActivityLocation(summary: "장소", mode: mode, status: "known", venues: invalidVenues + [zero, edge])
+            precondition(other.venuesWithCoordinates.map(\.coordinates) == [zero.coordinates, edge.coordinates])
+        }
+        print("PASS: online mode excludes valid zero/edge coordinates; other modes retain valid venues")
         let url = VenueMapLink.url(for: zero)!
         let components = URLComponents(url: url, resolvingAgainstBaseURL: false)!
         precondition(components.scheme == "https" && components.host == "maps.apple.com" && components.fragment == nil)
