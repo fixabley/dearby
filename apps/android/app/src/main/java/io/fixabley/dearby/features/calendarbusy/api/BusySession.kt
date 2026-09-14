@@ -48,7 +48,11 @@ internal class BusySession(private val provider: BusyProvider, private val scope
     }
     fun off() { clear(); connection = BusyConnection.Off }
     fun close() { off(); queries.clear(); closed = true }
-    fun background() { foreground = false; clear() }
+    fun background() {
+        foreground = false
+        clear()
+        if (connection == BusyConnection.Consent || connection == BusyConnection.Requesting) connection = BusyConnection.Off
+    }
     fun resume() {
         foreground = true
         if (!enabled || closed) return

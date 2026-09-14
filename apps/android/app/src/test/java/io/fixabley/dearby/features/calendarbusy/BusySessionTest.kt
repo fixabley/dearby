@@ -67,4 +67,17 @@ class BusySessionTest {
         fake.access = BusyPermission.Restricted; session.enable()
         assertEquals(BusyConnection.Restricted, session.connection)
     }
+    @Test fun stoppedPermissionRequestReturnsToOperableOffAndOneSessionCoordinatesPhases() = runBlocking {
+        val fake = Fake(); val session = BusySession(fake, this)
+        session.enable(); val token = session.confirm()!!
+        session.background(); fake.access = BusyPermission.Granted
+        session.permissionResult(token); session.resume()
+        assertEquals(BusyConnection.Off, session.connection)
+        session.select(0, query); session.select(1, query)
+        fake.action = { listOf(window) }; session.enable(); yield()
+        assertEquals(2, fake.reads)
+        assertTrue(session.results.values.all { it.overlaps })
+        session.off(); assertTrue(session.results.isEmpty())
+    }
+
 }
