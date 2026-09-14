@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct DiscoveryView<Destination: View>: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
+
     let snapshotDate: String
     let cards: [NoticeCardState]
     let saveOrganization: (String) -> SaveOrganizationResult
@@ -28,7 +30,9 @@ struct DiscoveryView<Destination: View>: View {
                                     onSave: { save(notice) },
                                     onShowDetail: { detail = notice }
                                 )
-                                .frame(width: geometry.size.width, height: geometry.size.height)
+                                .frame(width: geometry.size.width)
+                                .frame(minHeight: geometry.size.height)
+                                .frame(height: typeSize.isAccessibilitySize ? nil : geometry.size.height)
                             }
                         }
                         .scrollTargetLayout()
@@ -39,9 +43,10 @@ struct DiscoveryView<Destination: View>: View {
             }
             Text(saveFeedback.isEmpty ? "위아래로 넘기기 · 더블탭으로 조직 저장" : saveFeedback)
                 .font(.caption).foregroundStyle(.secondary)
-                .lineLimit(2).frame(minHeight: 36).padding(.horizontal)
+                .fixedSize(horizontal: false, vertical: true).frame(minHeight: 36).padding(.horizontal)
                 .accessibilityIdentifier("discovery.feedback")
         }
+        .background(NativeSurface.canvas)
         .navigationTitle("활동 둘러보기")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $detail) { notice in

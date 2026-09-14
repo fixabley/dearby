@@ -73,7 +73,10 @@ Widgets/Notice/NoticeCard/NoticeCard.swift
 Widgets/Notice/NoticeCard/NoticeCardSaveButton.swift
 Shared/UI/Buttons/PrimaryButton.swift
 Shared/UI/Buttons/SecondaryButton.swift
-Widgets/Notice/NoticeCard/NoticeFact.swift
+Shared/UI/InformationRow.swift
+Shared/UI/StatusMessage.swift
+Shared/UI/NativeStyle.swift
+Shared/UI/NativeComponentsPreview.swift
 ```
 
 ## 엔티티와 조회 경계
@@ -159,3 +162,7 @@ Widgets/Notice/NoticeCard는 NoticeCard·NoticeCardSaveButton·NoticeFact·Notic
 구조 검사는 위젯 파일의 Swift View 준수 선언을 식별하며 multiline·generic constraint·SwiftUI.View fixture를 포함한다. 자체 State 사용·VM→repository는 허용하고 View→VM/raw model/repository/OS/storage와 같은/다른 도메인의 형제 위젯 참조는 차단한다. generic 인자의 View 제약만으로 State를 View라 판단하지 않는다. 작은 lexical 검사이므로 복잡한 Swift 매크로/동적 alias 전체를 파싱하는 compiler 보장은 아니다.
 
 이번 FSD 66파일/positive·negative fixtures, run_standalone.sh에서 갱신한 *State.swift/*ViewModel.swift 경로로 NoticeViewModelTests 컴파일 및 old shared/앱 JSON 각각 실행 통과. Simulator build 13:28:05Z 성공(경고/오류 없음). 8개 Swift 파일 내용은 이동 전과 동일함을 비교했고 전체 disk/calendar suite·실제 UI 실행은 하지 않았다.
+
+## #2 native Shared UI
+
+현재 공개 API와 기본 Section/List/폰트 사용 규칙은 [NATIVE-UI](docs/NATIVE-UI.md)에 있다. Shared는 순수 표시 값과 콜백만 받으며 InformationRow가 도메인 없는 fact 조합을 대체한다. 도메인 카드·제목·State/VM의 flat 구조는 그대로이며 App 상태 수명과 body 조회 경계는 변경하지 않는다. 탐색은 semantic grouped 배경과 native large 버튼을 쓰고 접근성 크기에서 카드 자연 높이를 허용한다. 초기 구현 FSD 69파일 및 Xcode 26.6 simulator build 성공; 실제 화면 검증 결과는 별도 증거 문서에서 갱신한다.

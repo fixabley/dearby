@@ -10,7 +10,8 @@ struct NoticeCardSaveButton: View {
         PrimaryButton(action: onSave) {
             Label(saved ? "저장됨 · \(organizationName)" : "\(organizationName) 저장",
                   systemImage: saved ? "heart.fill" : "heart")
-                .frame(maxWidth: .infinity).lineLimit(2)
+                .frame(maxWidth: .infinity).fixedSize(horizontal: false, vertical: true)
         }
+        .accessibilityValue(saved ? "저장됨" : "저장 안 됨")
     }
 }

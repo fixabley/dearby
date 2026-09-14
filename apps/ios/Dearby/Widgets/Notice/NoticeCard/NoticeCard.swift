@@ -9,8 +9,8 @@ struct NoticeCard: View {
     let onSave: () -> Void
     let onShowDetail: () -> Void
     var body: some View {
-        VStack(alignment: .leading, spacing: compact ? 10 : 18) {
-            VStack(alignment: .leading, spacing: compact ? 10 : 18) {
+        VStack(alignment: .leading, spacing: compact ? NativeSpacing.related : NativeSpacing.content) {
+            VStack(alignment: .leading, spacing: compact ? NativeSpacing.related : NativeSpacing.content) {
                 HStack {
                     Label("공고 샘플", systemImage: "sparkle")
                         .foregroundStyle(.tint)
@@ -18,20 +18,19 @@ struct NoticeCard: View {
                     Text(position).foregroundStyle(.secondary)
                 }.font(.caption.bold())
                 NoticeClassificationView(category: state.category, contextNames: state.contextNames)
-                    .lineLimit(2)
+                    .lineLimit(typeSize.isAccessibilitySize ? nil : 2)
                     .accessibilityIdentifier("classification.\(state.id)")
                 Text(state.title)
                     .font(compact ? .title3.bold() : .title2.bold())
-                    .lineLimit(3)
+                    .lineLimit(typeSize.isAccessibilitySize ? nil : 3)
                 if !compact && !typeSize.isAccessibilitySize {
                     Divider()
-                    NoticeFact(label: "참여 대상", value: state.targetUser)
-                    NoticeFact(label: "신청 마감", value: state.applicationSummary)
-                    NoticeFact(label: "활동 장소", value: state.locationSummary)
+                    InformationRow(title: "참여 대상", value: state.targetUser)
+                    InformationRow(title: "신청 마감", value: state.applicationSummary)
+                    InformationRow(title: "활동 장소", value: state.locationSummary)
                 }
                 if state.hasQualityIssues {
-                    Label("확인이 필요한 정보가 있어요", systemImage: "info.circle")
-                        .font(.caption).foregroundStyle(.secondary)
+                    StatusMessage(text: "확인이 필요한 정보가 있어요")
                 }
                 Spacer(minLength: 0)
             }
@@ -45,7 +44,7 @@ struct NoticeCard: View {
                 NoticeCardSaveButton(saved: state.saved, organizationName: organizationName, onSave: onSave)
                     .accessibilityIdentifier("save.\(state.id)")
             } else {
-                Text("저장할 조직 확인 중").font(.caption).foregroundStyle(.secondary)
+                StatusMessage(text: "저장할 조직 확인 중", systemImage: "heart")
             }
             SecondaryButton(action: onShowDetail) {
                 Text("공고 정보 · 출처 보기")
@@ -53,9 +52,8 @@ struct NoticeCard: View {
             }
             .accessibilityIdentifier("details.\(state.id)")
         }
-        .padding(compact ? 16 : 22)
-        .background(.background, in: RoundedRectangle(cornerRadius: 24))
-        .overlay(RoundedRectangle(cornerRadius: 24).stroke(.quaternary))
-        .padding(.horizontal, 16).padding(.vertical, 8)
+        .padding(compact ? NativeSpacing.content : NativeSpacing.section)
+        .background(NativeSurface.content, in: RoundedRectangle(cornerRadius: 24))
+        .padding(.horizontal, NativeSpacing.content).padding(.vertical, NativeSpacing.related)
     }
 }
