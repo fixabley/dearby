@@ -38,7 +38,7 @@ struct DiscoveryView<Destination: View>: View {
                         .scrollTargetLayout()
                     }
                     .scrollIndicators(.hidden)
-                    .scrollTargetBehavior(.paging)
+                    .scrollTargetBehavior(DiscoveryPagingBehavior(enabled: !typeSize.isAccessibilitySize))
                 }
             }
             Text(saveFeedback.isEmpty ? "위아래로 넘기기 · 더블탭으로 조직 저장" : saveFeedback)
@@ -62,6 +62,17 @@ struct DiscoveryView<Destination: View>: View {
             saveCount += 1
         case .unresolved:
             saveFeedback = "저장할 조직을 확인 중이에요"
+        }
+    }
+}
+
+/// Preserve native paging normally; let oversized accessibility cards scroll freely.
+private struct DiscoveryPagingBehavior: ScrollTargetBehavior {
+    let enabled: Bool
+
+    func updateTarget(_ target: inout ScrollTarget, context: TargetContext) {
+        if enabled {
+            PagingScrollTargetBehavior().updateTarget(&target, context: context)
         }
     }
 }

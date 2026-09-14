@@ -168,3 +168,7 @@ Widgets/Notice/NoticeCard는 NoticeCard·NoticeCardSaveButton·NoticeFact·Notic
 #2 상세는 native List/Section과 Shared InformationRow/StatusMessage로 구성한다. Calendar/Map route·callback·원본 URL 메모는 그대로다. 중복 순수 fact 파일 2개를 제거했다.
 
 #2 FavoriteOrganizationCard는 native Section을 반환하며 FavoriteListView의 List 안에 직접 조립한다. 저장소/ID/삭제 callback은 변하지 않고 삭제 label에 조직명이 포함된다.
+
+## #2 최종 검증 및 접근성 정책
+
+기본 발견은 시스템 paging, 접근성 크기는 자연 높이·자연 스크롤이다. 같은 State/로컬 저장 피드백 수명 안에서 scroll target 정책만 달라진다. Shared API/native mapping과 사용처는 [NATIVE-UI](docs/NATIVE-UI.md), 실제 build·회귀·터치·PNG 및 미검증 항목은 [검증 기록](docs/VERIFICATION-ISSUE-02.md)을 따른다. 이번 전체 standalone 회귀/FSD 67파일/최종 simulator build가 통과했다. 실제 doubletap·지도 앱·calendar editor·VoiceOver 낭독은 검증 완료로 주장하지 않는다.
