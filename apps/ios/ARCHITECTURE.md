@@ -64,16 +64,16 @@ Pages/NoticeDetail/UI/NoticeIdentityView.swift
 Pages/NoticeDetail/UI/NoticeLocationView.swift
 Pages/NoticeDetail/UI/NoticeScheduleView.swift
 Pages/NoticeDetail/UI/VenueMapButton.swift
-Widgets/FavoriteOrganizationCard/Model/FavoriteOrganizationCardState.swift
-Widgets/FavoriteOrganizationCard/Model/FavoriteOrganizationCardViewModel.swift
-Widgets/FavoriteOrganizationCard/UI/FavoriteOrganizationCard.swift
-Widgets/NoticeCard/Model/NoticeCardState.swift
-Widgets/NoticeCard/Model/NoticeCardViewModel.swift
-Widgets/NoticeCard/UI/NoticeCard.swift
-Widgets/NoticeCard/UI/NoticeCardSaveButton.swift
+Widgets/Organization/FavoriteOrganizationCard/FavoriteOrganizationCardState.swift
+Widgets/Organization/FavoriteOrganizationCard/FavoriteOrganizationCardViewModel.swift
+Widgets/Organization/FavoriteOrganizationCard/FavoriteOrganizationCard.swift
+Widgets/Notice/NoticeCard/NoticeCardState.swift
+Widgets/Notice/NoticeCard/NoticeCardViewModel.swift
+Widgets/Notice/NoticeCard/NoticeCard.swift
+Widgets/Notice/NoticeCard/NoticeCardSaveButton.swift
 Shared/UI/Buttons/PrimaryButton.swift
 Shared/UI/Buttons/SecondaryButton.swift
-Widgets/NoticeCard/UI/NoticeFact.swift
+Widgets/Notice/NoticeCard/NoticeFact.swift
 ```
 
 ## 엔티티와 조회 경계
@@ -90,9 +90,9 @@ OrganizationRepository.path는 parentId를 cycle-safe하게 따라가며 누락 
 
 | 소유 slice | 진입점 | 책임 |
 | --- | --- | --- |
-| Widgets/NoticeCard | NoticeCardViewModel / NoticeCardState / NoticeCard | 공고 ID·독립 저장소·공유 favorites 주입 → 카드 표시 문자열/조직 이름/현재 saved; save 결과 이름 또는 unresolved |
+| Widgets/Notice/NoticeCard | NoticeCardViewModel / NoticeCardState / NoticeCard | 공고 ID·독립 저장소·공유 favorites 주입 → 카드 표시 문자열/조직 이름/현재 saved; save 결과 이름 또는 unresolved |
 | Pages/NoticeDetail | NoticeDetailViewModel / NoticeDetailState / NoticeDetailView | 공고 ID를 조회하고 관련 조직 경로·역할별 이름·출처/근거·기간 요약을 State로 조합 |
-| Widgets/FavoriteOrganizationCard | FavoriteOrganizationCardViewModel / FavoriteOrganizationCardState | 조직 및 연결된 feed 공고를 행 State로 조합; 공유 저장 상태에 따라 보임/사라짐 |
+| Widgets/Organization/FavoriteOrganizationCard | FavoriteOrganizationCardViewModel / FavoriteOrganizationCardState | 조직 및 연결된 feed 공고를 행 State로 조합; 공유 저장 상태에 따라 보임/사라짐 |
 | Pages/Discovery | DiscoveryView | 카드 State 배열·저장 콜백·App 목적지 ID 콜백; paging/sheet/로컬 피드백만 |
 | Pages/Favorites | FavoriteListView | 조직 카드 State 배열·삭제·목적지 ID 콜백; 목록 표시 |
 | Features/FavoriteOrganization | FavoriteOrganizations / FavoriteOrganizationsRepository | 기존 Observation 단일 ID 집합·동기 저장·삭제·UserDefaults 배열 복원 |
@@ -112,7 +112,7 @@ OS 지도·캘린더는 App/NoticeDetailDestination에서만 연결한다. Calen
 
 기본 internal 진입점이며 private source/cache/초기 렌더링 값은 외부에 노출하지 않는다. 단일 Swift 모듈로 compiler-enforced slice를 제공한다고 주장하지 않는다. check_fsd_boundaries.py는 엔티티 간 참조·상향/동일 layer 교차 slice·UI의 raw 모델/저장소/VM·저장/OS 접근·Calendar→Page State를 부정 fixture로 검사한다. private nested CodingKeys는 Swift 합성 디코딩 이름이라 symbol 연결 대상에서 제외한다. lexical 검사이므로 보간/동적 참조 등은 리뷰로 보완한다.
 
-새 공고 정보는 NoticeModel/decoder에 의미 있는 값으로 추가하고 해당 VM에서 State로 구성한다. 새 조직 정보는 OrganizationModel/source에 두고 필요한 상위 VM만 주입한다. 새 OS 행동은 App에 어댑터를 두고 View에는 콜백만 전달한다. 범용 버튼 스타일은 Shared/UI/Buttons에 두고 문구·조직 상태 조합은 Widgets/NoticeCard에 둔다.
+새 공고 정보는 NoticeModel/decoder에 의미 있는 값으로 추가하고 해당 VM에서 State로 구성한다. 새 조직 정보는 OrganizationModel/source에 두고 필요한 상위 VM만 주입한다. 새 OS 행동은 App에 어댑터를 두고 View에는 콜백만 전달한다. 범용 버튼 스타일은 Shared/UI/Buttons에 두고 문구·조직 상태 조합은 Widgets/Notice/NoticeCard에 둔다.
 
 ## SwiftData 저장과 snapshot 계약
 
@@ -146,8 +146,16 @@ FSD 63 Swift 파일과 negative fixtures 통과. entity 간 참조·UI raw 모�
 
 ## 공통 버튼과 카드 조합 (2026-09-14)
 
-Shared/UI/Buttons/PrimaryButton과 SecondaryButton은 generic ViewBuilder label·action만 받는 internal 네이티브 스타일 컴포넌트다. 각각 borderedProminent/bordered이며 도메인 타입·문구·저장 상태를 모른다. Widgets/NoticeCard/UI/NoticeCardSaveButton(saved:organizationName:onSave:)이 기존 저장 문구·heart 아이콘·무한 너비·lineLimit(2)를 PrimaryButton label로 조합한다. 이전 Features/FavoriteOrganization/UI/SaveOrganizationButton은 제거했으며 실제 저장 의미/상태는 기존 Feature에 남는다.
+Shared/UI/Buttons/PrimaryButton과 SecondaryButton은 generic ViewBuilder label·action만 받는 internal 네이티브 스타일 컴포넌트다. 각각 borderedProminent/bordered이며 도메인 타입·문구·저장 상태를 모른다. Widgets/Notice/NoticeCard/NoticeCardSaveButton(saved:organizationName:onSave:)이 기존 저장 문구·heart 아이콘·무한 너비·lineLimit(2)를 PrimaryButton label로 조합한다. 이전 Features/FavoriteOrganization/UI/SaveOrganizationButton은 제거했으며 실제 저장 의미/상태는 기존 Feature에 남는다.
 
 NoticeCard는 표시 조건·save.<noticeID>/details.<noticeID>·더블탭 및 제목 Text를 유지한다. 상세 동작은 SecondaryButton을 사용하며 bordered 스타일은 이번 요청의 의도된 외형 변경이다. 불필요한 로딩/크기 변형이나 추가 title 컴포넌트는 만들지 않았다. Shared/UI segment 경로는 기존 FSD 일반 규칙으로 허용된다.
 
 이번 FSD 66 Swift 파일/negative fixtures 및 Simulator build 13:20:44Z 통과(경고/오류 없음). diff에서 제목 Text·표시 조건·doubletap·접근성 ID 유지 확인. 단순 컴포넌트 조합 변경으로 전체 suite/실제 UI 및 캘린더 동작은 실행하지 않았다.
+
+## 위젯 도메인 그룹과 같은 폴더 배치 (2026-09-14)
+
+Widgets/Notice/NoticeCard는 NoticeCard·NoticeCardSaveButton·NoticeFact·NoticeCardViewModel·NoticeCardState 5개 파일, Widgets/Organization/FavoriteOrganizationCard는 View·ViewModel·State 3개 파일을 같은 컴포넌트 폴더에 둔다. UI/Model 하위 폴더는 사용하지 않는다. 도메인은 그룹이며 slice identity는 Domain+Widget 전체다. 같은 도메인이라도 다른 위젯을 직접 참조하지 않는다. 저장소 조합은 ViewModel, 렌더링은 State/값/콜백 계약을 유지한다. 다른 layer와 Shared 버튼 구조는 변경하지 않았다.
+
+구조 검사는 위젯 파일의 Swift View 준수 선언을 식별하며 multiline·generic constraint·SwiftUI.View fixture를 포함한다. 자체 State 사용·VM→repository는 허용하고 View→VM/raw model/repository/OS/storage와 같은/다른 도메인의 형제 위젯 참조는 차단한다. generic 인자의 View 제약만으로 State를 View라 판단하지 않는다. 작은 lexical 검사이므로 복잡한 Swift 매크로/동적 alias 전체를 파싱하는 compiler 보장은 아니다.
+
+이번 FSD 66파일/positive·negative fixtures, run_standalone.sh에서 갱신한 *State.swift/*ViewModel.swift 경로로 NoticeViewModelTests 컴파일 및 old shared/앱 JSON 각각 실행 통과. Simulator build 13:28:05Z 성공(경고/오류 없음). 8개 Swift 파일 내용은 이동 전과 동일함을 비교했고 전체 disk/calendar suite·실제 UI 실행은 하지 않았다.

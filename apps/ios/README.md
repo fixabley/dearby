@@ -56,3 +56,5 @@ run_standalone.sh에 실제 swiftc 파일 목록과 실행 명령이 있습니�
 이번 standalone/FSD·Simulator build 및 전용 기기 저장/탭/상세 smoke 결과와 미검증 영역은 ARCHITECTURE.md에 구분해 기록했습니다. 지도/캘린더 어댑터는 유지하며 캘린더 권한 요청·직접 저장은 하지 않습니다.
 
 조회는 L1 메모리 → L2 SwiftData ID 조회 → L3 번들 mock 순서입니다. miss 승격은 명시 save 성공 후 이루어지며, 같은 snapshot 재실행은 기존 disk를 사용합니다. 버전 변경은 manifest와 양쪽 L2의 원자적 무효화 후 Session을 재구성합니다. SwiftData 파일은 Application Support/DearbyNoticeCache에 두고 favorites UserDefaults는 그대로 유지합니다. 독립 테스트는 임시 disk store를 종료/재오픈하고 실패 보존도 검사합니다. 의도적인 잘못된 경로 fixture의 CoreData 오류 로그는 예상되며 최종 exit 0을 확인하세요.
+
+위젯은 Widgets/<Domain>/<Widget> 폴더에 View·ViewModel·State를 함께 둡니다. 독립 테스트 스크립트는 해당 폴더의 *State.swift/*ViewModel.swift만 선택하여 SwiftUI 앱 실행 없이 검증합니다.
