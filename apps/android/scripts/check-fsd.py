@@ -14,6 +14,7 @@ API = {
     "pages.noticedetail": {"ui.NoticeDetailSheet", "model.NoticeDetailViewModel", "model.NoticeDetailState"},
     "widgets.notice.noticecard": {"NoticeCard", "NoticeCardState", "NoticeCardViewModel"},
     "widgets.organization.favoriteorganizationcard": {"FavoriteOrganizationCard", "FavoriteOrganizationCardState", "FavoriteNoticeState", "FavoriteOrganizationCardViewModel"},
+    "features.calendarbusy": {"api.BusyProvider", "api.BusyPermission", "api.BusyQuery", "api.AndroidBusyProvider", "api.BusySession", "api.BusyConnection", "api.BusyLoad", "api.BusyResult"},
     "features.favoriteorganization": {
         "model.FavoritesState", "api.FavoriteStore", "api.SharedPreferencesFavoriteStore",
     },

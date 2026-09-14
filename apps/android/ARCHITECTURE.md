@@ -192,3 +192,7 @@ NoticeDetail의 DetailPeriodState/DetailPlaceState 순수 projection이 날짜/�
 ### 선택일 타임라인 (PR9 사용자 이미지 후속)
 
 상위 DetailTimelineState가 raw timestamp/날짜·sourceZone을 검증한 뒤 domain-free TimelineInterval을 Shared UI로 전달한다. DayTimeline은 날짜선택만 국소 상태로 보유하고 날짜header/nativepicker/grid를 각각 분리한다. 선택일 tick·clip 계산에는 OS/캐시/도메인 조회가 없다. 원문 링크도 상위 detailLink가 안전 정책과 도메인을 조립해 LinkCard 값/콜백으로 전달한다. native primary/onPrimary accent와 320dp 세로스크롤 시간그리드만 custom이다. 기기 캘린더 read/permission/provider 및 busy-block/충돌판정은 별도 후속 범위로 구현하지 않았다.
+
+## Calendar busy (#10, PR9 의존)
+
+`features/calendarbusy/api`의 BusyProvider/AndroidBusyProvider와 BusySession은 읽기 권한 및 상세 수명의 익명 시간 구간을 소유한다. OS Instances 조회는 IO/CancellationSignal, 결과는 인메모리만이며 generation/revision으로 취소 후 stale publish를 막는다. 순수 BusyOccurrence는 floating 종일 날짜를 기기 시간대 자정으로 해석한다. Shared BusyInterval은 반열린 구간 clip/merge/overlap만 제공한다. OS 계약과 검증은 [calendar-busy](docs/calendar-busy/README.md)를 따른다.
