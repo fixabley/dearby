@@ -14,7 +14,7 @@ import io.fixabley.dearby.entities.activitycatalog.model.Notice
 import io.fixabley.dearby.entities.activitycatalog.api.CatalogProvider
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
 import io.fixabley.dearby.pages.discovery.ui.DiscoveryScreen
-import io.fixabley.dearby.feature.favorites.FavoritesScreen
+import io.fixabley.dearby.pages.favorites.ui.FavoritesScreen
 import io.fixabley.dearby.feature.noticedetail.NoticeDetailSheet
 
 @Composable

@@ -27,3 +27,11 @@ FSD 공통 경계 선행 검증(2026-09-14): JVM 5건, Debug 빌드 및 계측 A
 공고 카드의 새 표현은 widgets/activitycard/ui에, 피드 전용 임시 상태는 pages/discovery/ui에 둔다. ActivityCardTest는 저장소 없이 외부 저장 여부를 주입하고 버튼·더블탭·상세 콜백과 분류 표시를 검증한다. 기존 문구·padding·스타일·태그는 유지한다.
 
 공고 카드 검증(2026-09-14): 전용 API36.1에서 ActivityCardTest 1건 통과, 제품/계측 APK 재컴파일 성공.
+
+## 즐겨찾기 조직 카드
+
+`pages/favorites/ui/FavoritesScreen.kt`가 ID로 표시할 조직을 고르고 각 `widgets/favoriteorganizationcard/ui/FavoriteOrganizationCard.kt`에 조직·상위 경로·연결 공고·공고별 맥락 표시 문자열·삭제/상세 콜백을 준다. 위젯은 저장소·공유 상태 및 ActivityCard widget을 참조하지 않는다. slice 진입점은 FavoriteOrganizationCard이며, 분류 표현은 동일한 Entities의 ActivityClassification을 사용한다.
+
+조직 카드의 표시를 바꾸려면 widgets/favoriteorganizationcard/ui에, 목록 빈 상태/조직 선택 계산은 pages/favorites/ui에 둔다. 독립 위젯 테스트에서 연결 공고 분류·학교·상세/삭제 콜백과 연결 공고 없는 기존 조직의 삭제를 검증한다.
+
+조직 카드 검증(2026-09-14): 전용 API36.1에서 FavoriteOrganizationCardTest 2건 통과, 제품/계측 APK 재컴파일 성공.
