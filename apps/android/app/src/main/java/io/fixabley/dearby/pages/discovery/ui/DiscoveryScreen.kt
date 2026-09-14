@@ -1,4 +1,4 @@
-package io.fixabley.dearby.feature.discovery
+package io.fixabley.dearby.pages.discovery.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
 import io.fixabley.dearby.entities.activitycatalog.model.ActivityCatalog
 import io.fixabley.dearby.entities.activitycatalog.model.Notice
+import io.fixabley.dearby.widgets.activitycard.ui.ActivityCard
 
 @Composable
 internal fun DiscoveryScreen(catalog: ActivityCatalog, favoriteIds: Set<String>, onSave: (String) -> Unit, showDetail: (Notice) -> Unit) {
@@ -32,7 +33,7 @@ internal fun DiscoveryScreen(catalog: ActivityCatalog, favoriteIds: Set<String>,
                         feedback = "${organization.name} 저장됨"
                     } else feedback = "저장할 조직을 확인 중이에요"
                 }
-                NoticeCard(notice, organization, catalog.contextNames(notice), organization?.id in favoriteIds,
+                ActivityCard(notice, organization, catalog.contextNames(notice), organization?.id in favoriteIds,
                     "${index + 1} / ${catalog.feed.size}", save, { showDetail(notice) })
             }
         }

@@ -13,7 +13,7 @@ import io.fixabley.dearby.R
 import io.fixabley.dearby.entities.activitycatalog.model.Notice
 import io.fixabley.dearby.entities.activitycatalog.api.CatalogProvider
 import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState
-import io.fixabley.dearby.feature.discovery.DiscoveryScreen
+import io.fixabley.dearby.pages.discovery.ui.DiscoveryScreen
 import io.fixabley.dearby.feature.favorites.FavoritesScreen
 import io.fixabley.dearby.feature.noticedetail.NoticeDetailSheet
 

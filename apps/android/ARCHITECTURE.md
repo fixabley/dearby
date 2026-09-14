@@ -19,3 +19,11 @@
 검증 명령: `./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest`. 기존 JVM 5건과 실제 저장/공급 계측의 참조를 새 경계에 맞춰 수정했다. 이전 3c8d2c5의 JVM5/계측7/Debug/Lint 결과는 과거 기록이며 FSD 변경 검증은 각 컴포넌트 진행 시 별도로 기록한다.
 
 FSD 공통 경계 선행 검증(2026-09-14): JVM 5건, Debug 빌드 및 계측 APK 빌드 통과.
+
+## 공고 카드와 탐색 페이지
+
+`pages/discovery/ui/DiscoveryScreen.kt`는 피드·pager·피드백을 소유하고 `widgets/activitycard/ui/ActivityCard.kt`를 조합한다. 위젯의 slice 진입점은 `ActivityCard(notice, organization, contextNames, saved, position, save, showDetail)`이며 표시값과 콜백만 받는다. 상태·저장소와 다른 widget은 참조하지 않는다. 분류 표현은 entity의 `ui/ActivityClassification.kt` 진입점으로 분리했다. 상세 목적지는 App에 전달한 콜백으로 연다.
+
+공고 카드의 새 표현은 widgets/activitycard/ui에, 피드 전용 임시 상태는 pages/discovery/ui에 둔다. ActivityCardTest는 저장소 없이 외부 저장 여부를 주입하고 버튼·더블탭·상세 콜백과 분류 표시를 검증한다. 기존 문구·padding·스타일·태그는 유지한다.
+
+공고 카드 검증(2026-09-14): 전용 API36.1에서 ActivityCardTest 1건 통과, 제품/계측 APK 재컴파일 성공.

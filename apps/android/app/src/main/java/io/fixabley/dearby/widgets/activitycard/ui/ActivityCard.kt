@@ -1,4 +1,4 @@
-package io.fixabley.dearby.feature.discovery
+package io.fixabley.dearby.widgets.activitycard.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -16,9 +16,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import io.fixabley.dearby.entities.activitycatalog.model.Notice
 import io.fixabley.dearby.entities.activitycatalog.model.Organization
 import io.fixabley.dearby.shared.ui.NoticeFact
+import io.fixabley.dearby.entities.activitycatalog.ui.ActivityClassification
 
 @Composable
-internal fun NoticeCard(
+internal fun ActivityCard(
     notice: Notice, organization: Organization?, contextNames: String, saved: Boolean, position: String,
     save: () -> Unit, showDetail: () -> Unit,
 ) {
@@ -37,9 +38,8 @@ internal fun NoticeCard(
                         Text("공고 샘플", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelMedium)
                         Text(position, style = MaterialTheme.typography.labelMedium)
                     }
-                    Text(listOf(notice.categorySummary, contextNames).filter { it.isNotEmpty() }.joinToString(" · "),
+                    ActivityClassification(notice, contextNames,
                         Modifier.testTag("classification.${notice.id}"),
-                        style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(notice.title, style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis)

@@ -50,7 +50,9 @@ JVM 단위 테스트는 앱 실행 없이 임시 저장소로 즐겨찾기 추�
 - `app/src/main/java/io/fixabley/dearby/MainActivity.kt`: 앱 진입점
 - `app/src/main/java/io/fixabley/dearby/shared/ui/theme/Theme.kt`: 라이트·다크 테마
 - `app/src/main/java/io/fixabley/dearby/app/`: 루트 화면 조합과 상태 전달
-- `app/src/main/java/io/fixabley/dearby/feature/`: discovery·favorites·noticedetail 화면과 기능별 UI
+- `app/src/main/java/io/fixabley/dearby/pages/discovery/ui/`: 탐색 페이지
+- `app/src/main/java/io/fixabley/dearby/widgets/activitycard/ui/`: 공고 카드
+- `app/src/main/java/io/fixabley/dearby/feature/`: 전환 중인 즐겨찾기·상세 화면
 - `app/src/main/java/io/fixabley/dearby/entities/activitycatalog/`: 응집된 카탈로그 모델과 공급 경계
 - `app/src/main/java/io/fixabley/dearby/features/favoriteorganization/`: 즐겨찾기 행동·관찰 상태·저장 경계
 - `app/src/main/java/io/fixabley/dearby/shared/ui/`: 범용 표시와 테마
