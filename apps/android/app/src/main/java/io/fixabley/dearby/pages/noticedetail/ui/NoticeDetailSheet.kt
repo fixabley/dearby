@@ -59,7 +59,7 @@ internal fun NoticeDetailSheet(notice: NoticeDetailState, onDismiss: () -> Unit,
                         DetailMetadata(painterResource(R.drawable.ic_calendar), line.date, line.time,
                             notice.applicationDateDescription)
                     }
-                    Text(notice.applicationPeriod.timezone, style = MaterialTheme.typography.labelSmall,
+                    if (notice.applicationInformation.timezone != "Asia/Seoul") Text(notice.applicationPeriod.timezone, style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     DetailMetadata(painterResource(R.drawable.ic_place), notice.applicationPlaceText,
                         notice.applicationPlaceDetails,

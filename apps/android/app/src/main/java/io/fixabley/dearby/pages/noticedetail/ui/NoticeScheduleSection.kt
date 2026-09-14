@@ -50,7 +50,7 @@ internal fun NoticeScheduleSection(phase: NoticeScheduleState, draft: CalendarDr
         }
         phase.timeline?.let { DayTimeline(it, phase.title, Modifier.testTag("schedule.timeline.$index"), busy, onDate) }
             ?: Text("시작·종료 시각이 모두 확인되어야 시간표를 표시할 수 있어요.", style = MaterialTheme.typography.bodySmall)
-        Text(if (phase.period.timezone == "Asia/Seoul") "한국 시간" else phase.period.timezone,
+        if (phase.period.timezone != "Asia/Seoul") Text(phase.period.timezone,
             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
