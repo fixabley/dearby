@@ -1,4 +1,4 @@
-package io.fixabley.dearby.widgets.activitycard
+package io.fixabley.dearby.widgets.noticecard
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.*
@@ -6,12 +6,12 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import io.fixabley.dearby.entities.noticecatalog.api.AssetCatalogProvider
 import io.fixabley.dearby.shared.ui.theme.DearbyTheme
-import io.fixabley.dearby.widgets.activitycard.ui.ActivityCard
+import io.fixabley.dearby.widgets.noticecard.ui.NoticeCard
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
-class ActivityCardTest {
+class NoticeCardTest {
     @get:Rule val rule = createComposeRule()
 
     @Test
@@ -23,7 +23,7 @@ class ActivityCardTest {
         var details = 0
         rule.setContent {
             DearbyTheme {
-                ActivityCard(notice, catalog.organization("krc"), catalog.contextNames(notice),
+                NoticeCard(notice, catalog.organization("krc"), catalog.contextNames(notice),
                     saved.value, "1 / 4", save = { saves++ }, showDetail = { details++ })
             }
         }

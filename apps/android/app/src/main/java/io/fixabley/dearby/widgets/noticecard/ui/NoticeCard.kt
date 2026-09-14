@@ -1,4 +1,4 @@
-package io.fixabley.dearby.widgets.activitycard.ui
+package io.fixabley.dearby.widgets.noticecard.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -19,7 +19,7 @@ import io.fixabley.dearby.shared.ui.NoticeFact
 import io.fixabley.dearby.entities.noticecatalog.ui.NoticeClassification
 
 @Composable
-internal fun ActivityCard(
+internal fun NoticeCard(
     notice: Notice, organization: Organization?, contextNames: String, saved: Boolean, position: String,
     save: () -> Unit, showDetail: () -> Unit,
 ) {

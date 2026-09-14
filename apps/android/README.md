@@ -52,7 +52,7 @@ JVM 단위 테스트는 앱 실행 없이 임시 저장소로 즐겨찾기 추�
 - `app/src/main/java/io/fixabley/dearby/shared/ui/theme/Theme.kt`: 라이트·다크 테마
 - `app/src/main/java/io/fixabley/dearby/app/`: 루트 화면 조합과 상태 전달
 - `app/src/main/java/io/fixabley/dearby/pages/discovery/ui/`: 탐색 페이지
-- `app/src/main/java/io/fixabley/dearby/widgets/activitycard/ui/`: 공고 카드
+- `app/src/main/java/io/fixabley/dearby/widgets/noticecard/ui/`: 공고 카드
 - `app/src/main/java/io/fixabley/dearby/pages/favorites/ui/`: 즐겨찾기 페이지
 - `app/src/main/java/io/fixabley/dearby/widgets/favoriteorganizationcard/ui/`: 조직 카드
 - `app/src/main/java/io/fixabley/dearby/pages/noticedetail/ui/`: 상세 시트와 내부 표시
@@ -106,3 +106,5 @@ AGP의 내장 Kotlin 지원을 사용하므로 `org.jetbrains.kotlin.android` �
 NoticeDetail 최신 검증(2026-09-14): 구조41파일/self-test16·JVM24·Debug·Lint 오류0/권고12·전용5556 계측30 통과. 출처·근거는 모델에 보존하며 새로운 근거 목록 화면이나 네트워크/TTL/디스크 조직 캐시는 이번 범위에 없습니다. 상세·캐시는 Activity 수명이며 재시작 시 번들에서 다시 채웁니다.
 
 앱 공고 도메인은 Notice/NoticeDetail/NoticeCatalog 및 entities.noticecatalog로 통일했습니다. Android 프레임워크 Activity 이름과 기존 activities JSON 키·activity-samples.json·ID/테스트 태그는 호환성 예외로 보존합니다. 이름 변경이며 상세/cache/지도/캘린더 동작은 동일합니다.
+
+공고 카드도 NoticeCard/widgets.noticecard로 통일했습니다. 이번 이름 변경은 구조41파일/self-test16·JVM24·Debug·계측 APK 컴파일·Lint(오류0/권고12)를 통과했으며, 기기 계측30건은 이전 작업 결과입니다. Kotlin60파일의 기계적 이름 변경 및 asset/manifest/리소스 불변을 확인했고 기기를 조작하지 않았습니다.

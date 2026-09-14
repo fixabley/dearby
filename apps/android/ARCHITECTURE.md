@@ -23,7 +23,7 @@ pages/
     NoticeLocationSection.kt            장소 요약·복수 장소 액션·층/호실 안내
     VenueMapButton.kt                   단일 장소 이름·지도 콜백
 widgets/
-  activitycard/ui/ActivityCard.kt        공고 내용·더블탭·저장·상세 열기
+  noticecard/ui/NoticeCard.kt        공고 내용·더블탭·저장·상세 열기
   favoriteorganizationcard/ui/
     FavoriteOrganizationCard.kt        조직·상위 경로·연결 공고·명시적 삭제
 features/
@@ -73,7 +73,7 @@ shared/
 | Pages / discovery | `ui.DiscoveryScreen` |
 | Pages / favorites | `ui.FavoritesScreen` |
 | Pages / noticedetail | `ui.NoticeDetailSheet`; `NoticeIdentity`, `NoticeLocationSection`, `VenueMapButton`, `AddToCalendarButton`, `NoticeScheduleSection`은 slice 내부 helper |
-| Widgets / activitycard | `ui.ActivityCard` |
+| Widgets / noticecard | `ui.NoticeCard` |
 | Widgets / favoriteorganizationcard | `ui.FavoriteOrganizationCard` |
 | Features / addtocalendar | `model.CalendarDraft`, `model.applicationCalendarDraft`, `model.phaseCalendarDraft` |
 | Features / favoriteorganization | `model.FavoritesState`, `api.FavoriteStore`, `api.SharedPreferencesFavoriteStore` |
@@ -114,7 +114,7 @@ Entities의 CatalogProvider는 현재 동기식 번들 공급용이다. 공급 �
 
 ## 새 기능 배치 예시
 
-- 카드 내용/저장 버튼 표현은 `widgets/activitycard/ui/`, 조직 카드의 연결 공고 표현은 `widgets/favoriteorganizationcard/ui/`에 둔다. 이벤트는 인수로 전달한다.
+- 카드 내용/저장 버튼 표현은 `widgets/noticecard/ui/`, 조직 카드의 연결 공고 표현은 `widgets/favoriteorganizationcard/ui/`에 둔다. 이벤트는 인수로 전달한다.
 - 피드 필터의 화면 임시 선택은 `pages/discovery/ui/`에 둔다. 다른 페이지로 이동하는 목적지 콜백은 App에서 연결한다.
 - 새로운 저장 행동은 `features/favoriteorganization/model/`, 저장 방식 교체는 같은 slice의 api와 App 조립에 둔다. 저장키 변경은 별도 호환 검토가 필요하다.
 - 공고 분류 표시나 카탈로그 조회 계산은 `entities/noticecatalog/ui/` 또는 model에 둔다. source/organization의 서로 연결된 모델을 임의 cross-slice로 쪼개지 않는다.
@@ -141,7 +141,7 @@ ANDROID_SERIAL=emulator-5556 ./gradlew :app:connectedDebugAndroidTest
 
 JVM 테스트는 `app/src/test/java/io/fixabley/dearby/features/favoriteorganization/model/FavoritesStateTest.kt`의 5건이다. 임시 저장소로 추가·중복·삭제·기존 ID 복원과 여러 소비자의 Compose 관찰 일관성을 앱 없이 검증한다.
 
-계측은 기존 DiscoveryFlowTest/LocalDataTest/CatalogSupplyTest 7건의 참조를 새 경계로 갱신하고, 독립 ActivityCardTest 1건·FavoriteOrganizationCardTest 2건·상세 back 시 같은 카드/탭 복귀 1건을 추가했다. 총 11건이며 조직 카드에서 상세를 닫은 뒤 즐겨찾기 탭 유지도 확인한다. 실제 SharedPreferences XML 복원과 번들 해석·교체 공급 재시도를 포함한다. runner 1.7.0/Espresso 3.7.0은 유지한다.
+계측은 기존 DiscoveryFlowTest/LocalDataTest/CatalogSupplyTest 7건의 참조를 새 경계로 갱신하고, 독립 NoticeCardTest 1건·FavoriteOrganizationCardTest 2건·상세 back 시 같은 카드/탭 복귀 1건을 추가했다. 총 11건이며 조직 카드에서 상세를 닫은 뒤 즐겨찾기 탭 유지도 확인한다. 실제 SharedPreferences XML 복원과 번들 해석·교체 공급 재시도를 포함한다. runner 1.7.0/Espresso 3.7.0은 유지한다.
 
 `DiscoveryFlowTest`는 테스트 기기의 즐겨찾기를 초기화하므로 사용자 emulator-5554에서는 실행하지 않는다. 이번 전용 AVD는 checkout의 `build/avd/Dearby_Architecture_Test.avd`를 emulator-5556으로 실행했다. 구조 검사는 테스트 소스를 제외하지만 JVM/계측 컴파일과 실행은 전체 테스트를 검증한다.
 
@@ -246,3 +246,8 @@ OrganizationRepositoryTest4와 NoticeDetailRepositoryTest3은 cold miss/hit 실�
 앱의 원시 공고 Notice와 상세 조회 NoticeDetail은 같은 공고 도메인이다. ActivityDetail→NoticeDetail, ActivityCatalog→NoticeCatalog, ActivityDetailRepository→NoticeDetailRepository, Activity 접두 모델/decoder/UI→Notice 접두 이름, entities.activitycatalog→entities.noticecatalog로 변경했다. 기존 별칭은 남기지 않는다. 조회/cache/출처/기간/장소 동작은 변경하지 않는다. 도메인·상세 이름 단계에서 구조41파일/self-test16, JVM24, Debug 및 계측 APK 컴파일을 실제 실행해 통과했다 (build/notice-domain-rename.log).
 
 Android MainActivity/ComponentActivity/ActivityNotFoundException/startActivity/androidx.activity 및 Activity 재생성 테스트는 플랫폼 용어다. JSON의 activities 키, activity-samples.json 리소스, activity.* 테스트 태그와 fixture ID, shared 계약 경로 및 과거 build/activity-detail-final.log 같은 증거 파일명은 호환성/기록 예외로 유지한다. 이 예외는 별도 앱 activity 도메인을 의미하지 않는다. 실제 참여를 의미하는 한국어 활동 문구도 유지한다.
+
+
+공고 카드도 ActivityCard→NoticeCard, widgets.activitycard→widgets.noticecard로 파일/심볼/테스트/allowlist를 함께 옮겼다. raw Notice, NoticeDetail, NoticeCatalog은 한 공고 도메인의 원본/조회/공급 형태이며 기존 별칭은 없다. Organization 및 VenueCoordinates처럼 기존 중립 이름은 유지했다.
+
+이번 이름 변경 최종 검증: 구조41파일/self-test16(금지11/허용5), JVM24, Debug, 계측 APK 컴파일, Lint 오류0/권고12 통과. 이름만 옮겼으므로 기기 계측 실행과 지도/캘린더 동작은 반복하지 않았다. 이전 계측30 통과는 b8838e2 작업 당시 결과다. 기기를 실행·초기화하지 않았다. Kotlin60파일이 b8838e2 기준의 지정된 이름/경로 치환과 정확히 같고, 모든 비-Kotlin src 파일(asset/리소스/manifest)은 바이트 단위 동일함을 검사했다. canonical hash c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f 유지. 증거: build/notice-rename-final.log, build/notice-rename-audit.txt, 표준 JVM XML/Lint 보고서. rg Activity/activity/activities 감사 결과는 프레임워크/통신·태그·fixture ID/과거 기록 예외와 구분했으며 Kotlin에 이전 도메인 심볼/패키지는 남아 있지 않다.

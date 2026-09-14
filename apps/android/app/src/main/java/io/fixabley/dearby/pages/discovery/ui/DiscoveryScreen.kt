@@ -11,7 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.testTag
 import io.fixabley.dearby.entities.noticecatalog.model.NoticeCatalog
 import io.fixabley.dearby.entities.noticecatalog.model.Notice
-import io.fixabley.dearby.widgets.activitycard.ui.ActivityCard
+import io.fixabley.dearby.widgets.noticecard.ui.NoticeCard
 
 @Composable
 internal fun DiscoveryScreen(catalog: NoticeCatalog, favoriteIds: Set<String>, onSave: (String) -> Unit, showDetail: (Notice) -> Unit) {
@@ -33,7 +33,7 @@ internal fun DiscoveryScreen(catalog: NoticeCatalog, favoriteIds: Set<String>, o
                         feedback = "${organization.name} 저장됨"
                     } else feedback = "저장할 조직을 확인 중이에요"
                 }
-                ActivityCard(notice, organization, catalog.contextNames(notice), organization?.id in favoriteIds,
+                NoticeCard(notice, organization, catalog.contextNames(notice), organization?.id in favoriteIds,
                     "${index + 1} / ${catalog.feed.size}", save, { showDetail(notice) })
             }
         }
