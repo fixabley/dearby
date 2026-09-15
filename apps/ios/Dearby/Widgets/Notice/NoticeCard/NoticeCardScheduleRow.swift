@@ -12,18 +12,20 @@ struct NoticeCardScheduleRow: View {
                 .fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 8) {
                 HStack(alignment: .top, spacing: 4) {
-                    Text("📅").accessibilityHidden(true)
+                    Image(systemName: "calendar").foregroundStyle(.secondary)
+                        .frame(width: 20).accessibilityHidden(true)
                     Text(state.period).fixedSize(horizontal: false, vertical: true)
                 }
                 ForEach(state.places) { place in
-                    HStack(alignment: .top, spacing: 0) {
-                        Text("📍").accessibilityHidden(true)
+                    HStack(alignment: .top, spacing: 4) {
+                        Image(systemName: "mappin.and.ellipse").foregroundStyle(.secondary)
+                            .frame(width: 20).accessibilityHidden(true)
                         Text(place.text)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .fixedSize(horizontal: false, vertical: true)
                         if let index = place.venueIndex {
                             Button { onOpenMap(index) } label: {
-                                Text("🗺️").frame(minWidth: 44, minHeight: 44)
+                                Image(systemName: "map").frame(minWidth: 44, minHeight: 44)
                             }
                             .buttonStyle(.borderless)
                             .accessibilityLabel("\(state.title), \(place.text) 지도 열기")
