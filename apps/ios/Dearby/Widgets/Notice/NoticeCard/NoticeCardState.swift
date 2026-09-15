@@ -9,5 +9,6 @@ struct NoticeCardState: Identifiable {
     let hasQualityIssues: Bool
     let organizationName: String?
     var saved: Bool
+    var schedules: [NoticeCardScheduleState] = []
     var applicationPeriod: String? = nil
 }

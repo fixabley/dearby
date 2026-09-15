@@ -16,6 +16,7 @@ internal class NoticeCardViewModel(private val id: String, private val notices: 
             val context = notice.contexts.distinctBy { it.organizationId }.mapNotNull { organizations.find(it.organizationId)?.name }.joinToString(" · ")
             NoticeCardState(notice.id, notice.title, listOf(notice.categorySummary, context).filter { it.isNotEmpty() }.joinToString(" · "),
                 notice.targetUser, notice.applicationInformation.summary, notice.location.summary, notice.issues.isNotEmpty(), organization?.id, organization?.name,
+                schedules = cardSchedules(notice),
                 applicationDateText = notice.applicationInformation.let { compactPeriodText(null, null, it.closesAt, it.closesOn,
                     it.timezone, it.summary, "마감") })
         }

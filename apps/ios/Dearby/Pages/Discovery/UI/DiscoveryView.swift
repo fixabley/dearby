@@ -12,6 +12,7 @@ struct DiscoveryView<Destination: View>: View {
     @State private var saveFeedback = ""
     @State private var saveCount = 0
 
+    var onOpenMap: (String, Int, Int) -> Void = { _, _, _ in }
     var body: some View {
         VStack(spacing: 0) {
             Text("검토한 공고 샘플 · \(snapshotDate.prefix(10))")
@@ -25,8 +26,9 @@ struct DiscoveryView<Destination: View>: View {
                         LazyVStack(spacing: 0) {
                             ForEach(Array(cards.enumerated()), id: \.element.id) { index, notice in
                                 DiscoveryCardPage(state: notice, position: "\(index + 1) / \(cards.count)",
-                                    viewport: geometry.size, scrollContents: typeSize.isAccessibilitySize,
-                                    onSave: { save(notice) }, onShowDetail: { detail = notice })
+                                    viewport: geometry.size, scrollContents: typeSize.isAccessibilitySize || geometry.size.height < 520,
+                                    onSave: { save(notice) }, onShowDetail: { detail = notice },
+                                    onOpenMap: { onOpenMap(notice.id, $0, $1) })
                                     .id(notice.id)
                             }
                         }

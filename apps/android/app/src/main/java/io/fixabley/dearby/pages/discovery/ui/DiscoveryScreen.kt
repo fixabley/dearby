@@ -1,6 +1,7 @@
 package io.fixabley.dearby.pages.discovery.ui
 
 import androidx.compose.foundation.layout.*
+import io.fixabley.dearby.entities.notice.model.NoticeVenue
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -20,7 +21,7 @@ import io.fixabley.dearby.widgets.notice.noticecard.NoticeCardState
 import io.fixabley.dearby.widgets.notice.noticecard.NoticeCard
 
 @Composable
-internal fun DiscoveryScreen(snapshotDate: String, cards: List<NoticeCardState>, onSave: (String) -> String, showDetail: (String) -> Unit) {
+internal fun DiscoveryScreen(snapshotDate: String, cards: List<NoticeCardState>, onSave: (String) -> String, showDetail: (String) -> Unit, onOpenMap: (NoticeVenue) -> Unit = {}) {
     var feedback by remember { mutableStateOf("") }
     val pager = rememberPagerState(pageCount = { cards.size })
     Column(Modifier.fillMaxSize()) {
@@ -34,7 +35,7 @@ internal fun DiscoveryScreen(snapshotDate: String, cards: List<NoticeCardState>,
             VerticalPager(pager, Modifier.weight(1f).fillMaxWidth().testTag("discovery.pager"), key = { cards[it].id }) { index ->
                 val notice = cards[index]
                 NoticeCard(notice, "${index + 1} / ${cards.size}",
-                    { feedback = onSave(notice.id) }, { showDetail(notice.id) })
+                    { feedback = onSave(notice.id) }, { showDetail(notice.id) }, onOpenMap)
             }
         }
         Text(feedback.ifEmpty { "위아래로 넘기기 · 더블탭으로 조직 저장" },

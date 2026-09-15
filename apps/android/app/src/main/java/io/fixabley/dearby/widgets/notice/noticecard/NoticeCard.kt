@@ -1,6 +1,9 @@
 package io.fixabley.dearby.widgets.notice.noticecard
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import io.fixabley.dearby.entities.notice.model.NoticeVenue
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -14,10 +17,8 @@ import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import io.fixabley.dearby.widgets.notice.noticecard.NoticeCardState
 import io.fixabley.dearby.shared.ui.InformationRow
-import io.fixabley.dearby.shared.ui.MetadataRow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Alignment
 import io.fixabley.dearby.R
@@ -26,16 +27,16 @@ import io.fixabley.dearby.entities.notice.ui.NoticeClassification
 @Composable
 internal fun NoticeCard(
     notice: NoticeCardState, position: String,
-    save: () -> Unit, showDetail: () -> Unit,
+    save: () -> Unit, showDetail: () -> Unit, onOpenMap: (NoticeVenue) -> Unit = {},
 ) {
     val currentSave by rememberUpdatedState(save)
     BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = Spacing.large, vertical = Spacing.small)) {
-        // Reserve room for actions as the system font grows; full facts remain in the sheet.
+        // Compact changes spacing only; all facts remain reachable inside the card.
         val compact = maxHeight / LocalDensity.current.fontScale < 500.dp
         OutlinedCard(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().padding(if (compact) Spacing.large else Spacing.extraLarge),
                 verticalArrangement = Arrangement.spacedBy(if (compact) Spacing.small else Spacing.large)) {
-                Column(Modifier.weight(1f).fillMaxWidth()
+                Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
                     .pointerInput(notice.id) { detectTapGestures(onDoubleTap = { currentSave() }) }
                     .semantics { customActions = listOf(CustomAccessibilityAction("조직 즐겨찾기에 저장") { currentSave(); true }) }
                     .testTag("activity.${notice.id}"),
@@ -46,17 +47,14 @@ internal fun NoticeCard(
                     }
                     NoticeClassification(notice.classification,
                         Modifier.testTag("classification.${notice.id}"),
-                        maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        maxLines = Int.MAX_VALUE)
                     Text(notice.title, style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                    if (!compact) {
-                        HorizontalDivider()
-                        InformationRow("참여 대상", notice.targetUser, maxLines = 2)
+                        fontWeight = FontWeight.Bold)
+                    HorizontalDivider()
+                    InformationRow("참여 대상", notice.targetUser)
+                    notice.schedules.forEachIndexed { index, schedule ->
+                        CardScheduleRow(schedule, "card.schedule.${notice.id}.$index", onOpenMap)
                     }
-                    MetadataRow(painterResource(R.drawable.ic_calendar), notice.applicationDateText,
-                        "신청 기간: ${notice.applicationSummary}", maxLines = if (compact) 1 else 2)
-                    MetadataRow(painterResource(R.drawable.ic_place), notice.locationSummary,
-                        "활동 장소: ${notice.locationSummary}", maxLines = if (compact) 1 else 2)
                     if (notice.hasIssues) {
                         Text("확인이 필요한 정보가 있어요", style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant)
