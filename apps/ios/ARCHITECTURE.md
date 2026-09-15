@@ -9,30 +9,33 @@ All custom folders below `Dearby/` use lowerCamelCase, including `ui`, `api`, an
 ```text
 app/
   entrypoint/        DearbyApp
-  routes/            ContentView, NoticeDestinationView, NoticeDetailDestination
+  routes/            ContentView, AppTabs, NoticeDestinationView
   providers/         snapshot/container/session, calendar preferences, injected provider factories
 pages/
   discovery/ui/      feed paging, save-result feedback, navigation callbacks
   favorites/ui/      saved organization list
   noticeDetail/
-    ui/              full detail and page-local sections
-    model/           NoticeDetailViewModel/State, place presentation
+    ui/              NoticeDetailPage: List, navigation title and presentation
   settings/ui/       connection preference presentation
 widgets/
   noticeCard/
     ui/              connected NoticeCard, pure NoticeCardContent and local schedule/save views
     model/           NoticeCardViewModel, NoticeCardState, schedule/place states
+  noticeDetail/
+    ui/              detail sections and feature composition
+    model/           NoticeDetailViewModel/State, organization/notice assembly
   favoriteOrganizationCard/
     ui/              connected card, pure FavoriteOrganizationCardContent
     model/           FavoriteOrganizationCardViewModel/State
 features/
-  saveOrganization/model/          validated save/remove action facade and result
+  saveOrganization/model|ui/       save/remove facade, saved identity, controls and storage disclosure
+  openNoticeDetails/ui/           notice-specific detail action with route callback
   addToCalendar/model|api|ui/      draft/date policy, OS editor bridge, add button
   openLocation/api|ui/            exact venue map URL/launcher and button
   checkCalendarOverlap/model|api|ui/ ephemeral busy query/session, authorization/retry UI, EventKit read adapter
 entities/
-  notice/model|api|ui/             independent notice values, repository/cache/source, pure classification
-  organization/model|api/         organization values, repository/cache/path resolution
+  notice/model|api|ui/             independent notice values, repository/cache/source, notice-only display projections and pure content
+  organization/model|api|ui/      organization values, repository/cache/path resolution, summary section
   favorite/model|api/             single observable ID set and persistent repository
 shared/
   ui/                            native controls, rows, generic timeline presentation
@@ -43,23 +46,25 @@ Empty segments are not created. One-use card content stays in its Widget. Indepe
 
 ## Direction, segments and public API
 
-Every lower layer is allowed: App→pages/widgets/features/entities/Shared, Pages→widgets/features/entities/Shared, Widgets→features/entities/Shared, Features→entities/Shared, Entities→Shared. Same-slice UI→Model→API is allowed; same-layer different-slice references are forbidden. App and Shared use purpose segments without domain slices.
+Only the nearest **two** lower layers may be directly referenced: app→pages/widgets, pages→widgets/features, widgets→features/entities, features→entities/shared, entities→shared. Only `app/providers/` is the composition root exception for constructing, retaining and injecting any lower-layer dependency. `app/routes/` and `app/entrypoint/` obey the two-layer rule. Same-slice UI→Model→API remains allowed; sibling slices remain forbidden. Framework imports such as SwiftUI/Foundation are not FSD layer references. Existing framework safety checks remain.
+
+Provider exceptions never permit unexported internals or UI implementation. AppComposition constructs a Page destination from the shared snapshot and calendar preference owner; the route receives that Page, not inferred access to distant domain operations. Cross-slice typealias/re-export facades are prohibited. Inferred/member/macro/dynamic dependencies still require review.
 
 The executable [public-api.json](architecture/public-api.json) names cross-slice contracts. Swift `internal` does not imply permission to reach another slice's internals; `public` is not required to be an FSD entrypoint. NoticeRecord, OrganizationRecord and NoticeStorageCodec are internal. App uses NoticeCacheStorage/OrganizationCacheStorage schema/deletion/fingerprint contracts instead. The checker rejects unknown/duplicate manifest entries and ambiguous declarations.
 
-Entity UI may receive its own Model. shared/Entity UI and explicit `*Content.swift` presentation components are pure: values/callbacks only, no repository/storage/network/OS work. Widget/Page connected UI may access its own VM and lower-layer public contracts. Shared has no upper-domain dependencies. The concrete policy and checker limits are in [architecture/README](architecture/README.md).
+Entity UI may receive its own Model. shared/Entity UI and explicit `*Content.swift` presentation components are pure: values/callbacks only, no repository/storage/network/OS work. Widget/Page connected UI may access its own VM and lower-layer public contracts. Shared has no upper-domain dependencies. Shared controls/tokens remain below meaningful Entity/Feature UI: NoticeCardBody, OrganizationSummary, NoticePreviewLabel, NoticeSourceSection, save controls and NoticeDetailsButton. Widget State retains cross-domain composition and saved values; pure entity UI receives notice-only display values and slots/callbacks. Page canvas uses the native SwiftUI system background. The concrete policy and checker limits are in [architecture/README](architecture/README.md).
 
 ## State and lifetime
 
 - NoticeModel carries notice values and organization IDs/roles, never OrganizationModel or repository lookup. Organization stays independent; VMs combine them into screen State.
 - Connected NoticeCard reads its VM and delegates save; Discovery retains paging, save feedback/haptic trigger and detail route callback. Connected FavoriteOrganizationCard reads its VM and delegates explicit remove.
 - entities/favorite/FavoriteOrganizationStore is the sole observable saved-ID owner. The shared features/saveOrganization/FavoriteOrganizations facade validates organization targets and exposes that state without a copy. Existing UserDefaults key/array restoration, idempotent insert, explicit delete and unresolved no-write semantics remain.
-- app/providers creates/shares repositories and sessions. notice/Organization each retain L1→SwiftData L2→bundled mock source. External success is explicitly persisted before L1 promotion. Missing versus error, snapshot digest/schema and coordinated rollback remain unchanged. Entity cache facades never save independently; App commits/rolls back the snapshot transaction and replaces sessions after success.
-- app/routes owns destinations and lifecycle wiring. Calendar editor and map behavior adapters live in Feature/API; routes supply callbacks and present resulting UI. No new deep-link scheme, API client, DI library or state framework is introduced.
+- Observable AppSession owns startup, retained storage, failure/retry and the successful NoticeSession lifetime. ContentView selects loading/failure/ready; AppTabs owns tab/navigation roots. SettingsPresentation owns first-use prompt/settings sheet/lifecycle wiring. app/providers creates/shares repositories and sessions. notice/Organization each retain L1→SwiftData L2→bundled mock source. External success is explicitly persisted before L1 promotion. Missing versus error, snapshot digest/schema and coordinated rollback remain unchanged. Entity cache facades never save independently; App commits/rolls back the snapshot transaction and replaces sessions after success.
+- NoticeDetailPage owns the List/presentation; its Widget combines notice/organization State with calendar/location Features. CalendarExportPresentation/VenueMapPresentation own editor/map actions and failure presentation, and BusyCalendarLifecycleModifier owns detail attach/detach/background/EventKit refresh. Card Widgets resolve exact phase/venue indices and delegate maps to the same feature. Routes only select destinations. No new deep-link scheme, API client, DI library or state framework is introduced.
 
 ## Privacy and platform behavior
 
-CheckCalendarOverlap retains actor-confined EventKit read access. Global CalendarPreferences owns first-use consent and two boolean preferences; detail BusyCalendarSession owns ephemeral intervals. OFF, close, background, revocation and stale generations clear/cancel as before. Event metadata is neither displayed nor persisted/sent to a server. Tests use mock busy providers, never personal calendar data.
+CheckCalendarOverlap retains actor-confined EventKit read access. The shared features/checkCalendarOverlap CalendarPreferences owns first-use consent and two boolean preferences; detail BusyCalendarSession owns ephemeral intervals. OFF, close, background, revocation and stale generations clear/cancel as before. Event metadata is neither displayed nor persisted/sent to a server. Tests use mock busy providers, never personal calendar data.
 
 Calendar export keeps the original source-only HTTP(S) notes, exact phase/date/timezone and existing event URL semantics. The system editor handles edits; app code never saves/removes events directly or requests write-only permission. Maps use exact valid phase/venue coordinates and existing failure feedback. The display retains field-boundary schedule/place rows, native icons, URL host labels, paging/inner AX scroll, doubletap and native controls.
 
@@ -67,11 +72,13 @@ Calendar export keeps the original source-only HTTP(S) notes, exact phase/date/t
 
 ```sh
 bash apps/ios/tests/run_architecture.sh
+bash apps/ios/tests/test_layer_distance_gate.sh
+bash apps/ios/tests/run_swiftlint.sh
 bash apps/ios/tests/run_standalone.sh
 bash apps/ios/tests/run_busy_calendar.sh
 bash apps/ios/tests/run_detail_presentations.sh
 ```
 
-The macOS architecture package pins Harmonize and SwiftSyntax and scans only this checkout's production source. All physical paths use the final layout; no migration mapping remains. [Current execution evidence](docs/FSD-MIGRATION.md) includes simulator/violation sensitivity and limitations. Prior feature evidence remains under docs/evidence/issue-02, issue-10 and card-lines; those older runs are not new validation.
+The macOS architecture package pins Harmonize and SwiftSyntax and scans only this checkout's production source. All physical paths use the final layout; no migration mapping remains. [Current execution evidence](docs/evidence/two-layer-composition/README.md) distinguishes verified model/cache/startup/Observation checks and Simulator build/screenshots from UI input regressions blocked by the local Xcode27 Simulator environment. Prior feature evidence remains under docs/evidence/issue-02, issue-10 and card-lines; those older runs are not new validation.
 
 CalendarConnectionControl/State and BusyTimeStatusView belong to CheckCalendarOverlap. CalendarOverlapTimeline injects query status/retry into Shared EventDayTimeline through a ViewBuilder slot. Generic timeline/date/anonymous interval geometry remains Shared; it neither requests permission nor decides retry behavior.

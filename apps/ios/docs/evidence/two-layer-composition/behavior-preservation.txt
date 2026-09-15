@@ -1,0 +1,7 @@
+UNCHANGED: features/addToCalendar/model/CalendarDraftMapper.swift
+UNCHANGED: features/addToCalendar/api/CalendarEditorRequest.swift
+UNCHANGED: features/checkCalendarOverlap/model/BusyCalendarSession.swift
+UNCHANGED: features/checkCalendarOverlap/api/EventKitBusyProvider.swift
+UNCHANGED: app/providers/SwiftDataSnapshotStore.swift
+BYTE-IDENTICAL MOVE: CalendarPreferenceStore.swift
+BYTE-IDENTICAL MOVE: CalendarPreferences.swift

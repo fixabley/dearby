@@ -8,13 +8,16 @@ struct NoticeCard: View {
     let onSaved: (SaveOrganizationResult) -> Void
     let onShowDetail: () -> Void
     var scrollSchedules = true
-    var onOpenMap: (Int, Int) -> Void = { _, _ in }
 
     var body: some View {
         if let state = viewModel.state {
-            NoticeCardContent(state: state, position: position, compact: compact,
+            VenueMapPresentation(failureMessage: "지도를 열지 못했어요.") { openMap in
+                NoticeCardContent(state: state, position: position, compact: compact,
                 onSave: { onSaved(viewModel.save()) }, onShowDetail: onShowDetail,
-                scrollSchedules: scrollSchedules, onOpenMap: onOpenMap)
+                scrollSchedules: scrollSchedules, onOpenMap: { schedule, venue in
+                    if let location = viewModel.venue(scheduleIndex: schedule, venueIndex: venue) { openMap(location) }
+                })
+            }
         }
     }
 }

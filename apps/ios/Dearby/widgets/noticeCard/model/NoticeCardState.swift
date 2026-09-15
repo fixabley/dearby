@@ -11,4 +11,8 @@ struct NoticeCardState: Identifiable {
     var saved: Bool
     var schedules: [NoticeCardScheduleState] = []
     var applicationPeriod: String? = nil
+    var summary: NoticeCardSummaryState {
+        NoticeCardSummaryState(id: id, title: title, category: category, contextNames: contextNames,
+            targetUser: targetUser, hasQualityIssues: hasQualityIssues)
+    }
 }

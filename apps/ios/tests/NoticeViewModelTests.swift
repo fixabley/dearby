@@ -93,6 +93,8 @@ struct NoticeViewModelTests {
         for (index, phase) in model.schedules.enumerated() where phase.period.mode != "online" {
             for place in cardRows[index + 1].places where place.venueIndex != nil {
                 let venue = phase.locations[place.venueIndex!]
+                let routed = card.venue(scheduleIndex: index, venueIndex: place.venueIndex!)
+                precondition(routed?.name == venue.name && routed?.coordinates == venue.coordinates)
                 precondition(place.fields == [venue.name, venue.address].compactMap { $0 }.filter { !$0.isEmpty })
             }
         }

@@ -1,0 +1,7 @@
+# Notice cards and native Shared composition
+
+The connected NoticeCard Widget still owns its cross-domain ViewModel/State and save feedback callback. It retains the original notice only to resolve validated schedule/venue indices; the openLocation Feature presents the map result. NoticeCardSummaryState and schedule projection contain only notice display values. NoticeCardBody owns the title, classification, audience, schedule scrolling, doubletap/accessibility save action and native Shared card spacing/surface; schedules and actions are injected by the Widget.
+
+NoticeCardSaveButton and NoticeDetailsButton compose existing Shared native buttons in their meaningful user-action Features. OrganizationSummary owns the organization path, empty-linked-notice state, title and count. NoticePreviewLabel owns notice title/classification row spacing. FavoriteListView retains observed filtering and navigation assembly; SavedOrganizationList owns empty state and device-storage disclosure with the Shared spacing/surface. No Shared control implementation or token facade is duplicated in Widgets. Page canvas uses SwiftUI's native system background.
+
+Standalone tests retain all card period/place/source assertions after moving the notice-only projection, and AppSessionTests cover map index bounds and separate save/remove Observation subscriptions. Full branch lint/architecture/cache/build results and actual-UI limitations are in the [execution report](evidence/two-layer-composition/README.md). Widget physical layout remains the latest main's widgets/<slice>/ui|model.
