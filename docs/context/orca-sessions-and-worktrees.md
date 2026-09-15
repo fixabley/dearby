@@ -1,6 +1,6 @@
 # Git·Orca 현재 상태
 
-현재 확인(2026-09-15 23:40 KST): root는 ci/ios-architecture-tests, iOS 신규 checkout은 /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests다. Run run_172be1f40d2f / Dispatch ctx_c8cf3ee2e5b6에서 아키텍처 테스트 구현 중. root와 worker 모두 원격 main b0c76a1(PR17 포함)을 통합했다. 아래 빌드/카드 구현 배정은 별도 실행 환경에서 남긴 과거 이력이며 현재 배정으로 해석하지 않는다.
+현재 확인(2026-09-15): root ci/ios-architecture-tests, iOS checkout /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests. Run run_172be1f40d2f / Task task_b014b64c1f3f / Dispatch ctx_c8cf3ee2e5b6 succeeded, terminal term_63e15d3b-5a6c-4075-aca7-500e2300490c retained. 구현과 CI는 통합 PR18에서 검토한다. 두 checkout 모두 origin/main b0c76a1을 포함한다. root가 PR/CI를 담당하며 아래 빌드/카드 배정은 이전 이력이다.
 
 2026-09-15 정리: iOS dearby-ios-2 및 Android dearby-android 워크트리 제거, 두 완료 worker terminal release 및 transcript captured. 예전 terminal/dispatch ID를 재사용하지 않는다. 루트 checkout만 유지하며 후속 작업은 main에서 새 역할별 worktree를 만든다.
 

@@ -1,12 +1,13 @@
 # 현재 작업과 결정
 
-2026-09-15: 현재 작업은 Swift 아키텍처 테스트 적용이다. 이전 UI/캘린더 작업 정리는 완료됐다.
+2026-09-15: Swift 아키텍처 검사 구현과 CI 연결을 [PR18](https://github.com/fixabley/dearby/pull/18)에 제출했다. PR은 아직 main에 병합하지 않았다.
 
-- 사용자 승인: Harmonize + Swift Testing으로 지원되는 구조 규칙을 검사하고 기존 Python FSD 참조 검사를 유지한다. 프로덕션 모듈 분리나 UI 변경은 하지 않는다.
-- iOS 담당 worktree: dearby-ios-architecture-tests. root는 ci/ios-architecture-tests에서 .github/workflows/ios-architecture.yml 및 공통 검사 운영 문서를 담당한다.
-- Run run_172be1f40d2f / Task task_b014b64c1f3f / Dispatch ctx_c8cf3ee2e5b6 / terminal term_63e15d3b-5a6c-4075-aca7-500e2300490c, runtime b2a34e5f-8da0-4f91-83e6-b081d2c899e2. 재개 시 실시간 확인.
-- main branch protection 적용 완료: iOS architecture required, strict=true, enforce_admins=true, force push/deletion 금지. workflow는 아직 미병합/미실행이므로 현재 검사 완료 상태가 아니다.
-- worker는 apps/ios와 자기 역할 인계만 commit/push하고 PR 생성하지 않는다. root가 worker branch를 통합해 구현+CI 단일 PR을 만들고 실제 CI를 검증한다. Xcode16.4/Swift6.1/macOS15 CI 기준에 맞춰 Harmonize1.2.1/SwiftSyntax601.0.1 고정. 실제 CI 검증 대기.
+- Harmonize1.2.1/SwiftSyntax601.0.1 고정 테스트 패키지와 기존 Python FSD 검사를 함께 실행한다. 앱 모듈/런타임/기존 guard는 변경하지 않았다.
+- 실행: `bash apps/ios/tests/run_architecture.sh`. 로컬 Swift6.3.3에서 102파일/기존 fixtures 및 Swift Testing6테스트 통과. 두 임시 위반 exit1, 제거 후 /tmp에서 exit0, 원본 파일 해시 동일.
+- main protection: `iOS architecture` required, strict=true, enforce_admins=true. 모든 PR/main push workflow는 macOS15/Xcode16.4를 선택한다. 원격 CI의 현재 결과는 PR18 Checks 및 실행 로그가 정본이다.
+- origin https://github.com/fixabley/dearby.git를 fetch하여 PR17 포함 main b0c76a1을 root/worker에 통합했다. 충돌은 root 인계3개/worker 인계2개뿐이며 양측 기록을 보존했다. 제품 소스 충돌/변경 없음.
+- iOS task task_b014b64c1f3f / dispatch ctx_c8cf3ee2e5b6 succeeded. 기능 commit74e6189를 root ci/ios-architecture-tests에 merge했다. 담당 세션은 사용자 협업 방침에 따라 retained, 새 지시 없이 추가 작업하지 않는다.
+- API·Android 및 후속 #13/#14/#15는 이번 범위 밖. 근거·한계는 apps/ios/tests/ArchitectureTests/VERIFICATION.md와 README.md 참조.
 
 이전 완료 기록:
 
