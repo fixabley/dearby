@@ -1,6 +1,6 @@
 # Git·Orca 현재 상태
 
-현재 확인(2026-09-16 01:04 KST): root `refactor/ios-lowercase-folders`, origin `https://github.com/fixabley/dearby.git`, origin/main `f8f648c`(PR18 병합). PR19–23은 기능별 누적 PR이며 사용자 리뷰 전 main에 병합하지 않는다.
+현재 확인(2026-09-16 01:04 KST): root `chore/ios-swiftlint`, origin `https://github.com/fixabley/dearby.git`, origin/main `f8f648c`(PR18 병합). PR19–23은 기능별 누적 PR이며 사용자 리뷰 전 main에 병합하지 않는다.
 
 - iOS checkout: `/Users/jominjun/Documents/dearby/dearby-ios-architecture-tests`, branch `fixabley/dearby-ios-architecture-tests`, 최종 `ada4634`. Root에 최종 기록까지 cherry-pick 통합했다.
 - Run `run_58f7d03f4deb` / Task `task_31d48a682566` / Dispatch `ctx_338f8e66f52b`: 구현·검증 succeeded 보고를 수신하고 acknowledged. Terminal `term_63e15d3b-5a6c-4075-aca7-500e2300490c`은 사용자 요청에 따라 **retained**로 유지했다. 완료 Dispatch로 추가 작업을 시작하지 않는다.
@@ -13,7 +13,7 @@
 
 SwiftLint 추가 요청도 같은 Task의 별도 기능 commit으로 배정했다. Root가 CI, worker가 앱 lint 설정·설치/실행 스크립트와 필요한 코드 수정을 맡는다.
 
-활성 Dispatch `ctx_ae82a98e1b6d`, terminal `term_11663b1e-05f7-41bf-9057-226d7875e2ab`: ready/input_accepted와 turn_started 확인. 역할 범위는 동일한 apps/ios·iOS 인계이며 root는 공통 규칙 문서·CI·PR24 준비를 담당한다. 이전 terminal은 완료 이력 보존용 retained이며 후속 작업 담당이 아니다.
+완료 Dispatch `ctx_ae82a98e1b6d`, terminal `term_11663b1e-05f7-41bf-9057-226d7875e2ab`: 폴더명 a338707 및 SwiftLint ee9c4e0 성공 보고를 수신·확인 처리했고 01:20 KST retained로 전환했다. Root는 af71776/051c45e로 통합했다. 후속 작업은 이 terminal을 런타임 확인 후 새 Task/Dispatch로 배정한다. 역할 범위는 동일한 apps/ios·iOS 인계이며 root는 공통 규칙 문서·CI·PR24/25 통합을 담당한다. reclaimable worker는 0개임을 확인했다. 이전 terminal은 완료 이력 보존용 retained이며 후속 작업 담당이 아니다.
 
 ## 과거 운영 이력
 

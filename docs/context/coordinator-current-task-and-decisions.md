@@ -1,6 +1,6 @@
 # 현재 작업과 결정
 
-2026-09-16: **iOS Harmonize FSD 첫 리팩터링 완료, 추가 폴더 소문자 시작 규칙 완료·SwiftLint 적용 중**. 사용자 요청으로 App→app, NoticeCard→noticeCard, UI→ui, API→api 등 소스 폴더 이름을 변경한다. 타입·파일명 및 Xcode 도구 규격 이름은 유지한다. 추가로 SwiftLint 도입을 승인받아 폴더명 변경과 별도 기능 commit/PR로 구현한다. SwiftLint는 일반 스타일, Harmonize는 FSD 경계를 담당하며 로컬 실행과 CI에 고정 버전으로 연결한다. 사용자는 문서만이 아닌 규칙 구현→리팩터링→회귀 검증 반복을 요청했다. 사용자 피드백 전 main에 병합하지 않는다. Android/API 및 #13/#14/#15는 이번 범위 밖이다.
+2026-09-16: **iOS Harmonize FSD 첫 리팩터링 완료, 폴더명·SwiftLint 구현과 로컬 검증 완료, 최종 CI 확인 중**. 사용자 요청으로 App→app, NoticeCard→noticeCard, UI→ui, API→api 등 소스 폴더 이름을 변경한다. 타입·파일명 및 Xcode 도구 규격 이름은 유지한다. 추가로 SwiftLint 도입을 승인받아 폴더명 변경과 별도 기능 commit/PR로 구현한다. SwiftLint는 일반 스타일, Harmonize는 FSD 경계를 담당하며 로컬 실행과 CI에 고정 버전으로 연결한다. 사용자는 문서만이 아닌 규칙 구현→리팩터링→회귀 검증 반복을 요청했다. 사용자 피드백 전 main에 병합하지 않는다. Android/API 및 #13/#14/#15는 이번 범위 밖이다.
 
 ## 구현과 검토 단위
 
@@ -13,8 +13,12 @@
 | [#21](https://github.com/fixabley/dearby/pull/21) | 즐겨찾기 조직 카드·공유 저장 상태 | #20 브랜치 |
 | [#22](https://github.com/fixabley/dearby/pull/22) | 상세 캘린더·지도 Feature | #21 브랜치 |
 | [#23](https://github.com/fixabley/dearby/pull/23) | App 조립·캘린더 연결 UI 경계·최종 검사 및 CI | #22 브랜치 |
+| [#24](https://github.com/fixabley/dearby/pull/24) | 소문자 시작 소스 폴더·실제 경로 검사 | #23 브랜치 |
+| [#25](https://github.com/fixabley/dearby/pull/25) | SwiftLint 고정 설치·61개 규칙·strict CI | #24 브랜치 |
 
-Root 브랜치는 `refactor/ios-lowercase-folders`이며 PR23 위에 후속 PR로 폴더명 변경을 쌓는다. 기존 PR19–23 이력은 유지한다. 기능별 커밋을 검토하여 순서대로 통합했고 각 단계에서 아키텍처 검사를 실행했다. 원격 main은 2026-09-16 00:56 KST 확인 당시 f8f648c(PR18 병합), 다섯 PR 모두 충돌 없음. 게시 이력 재작성·강제 push 없음.
+Root 브랜치는 `chore/ios-swiftlint`. 폴더명 변경 af71776은 PR23 기반 `refactor/ios-lowercase-folders`로 게시하고 SwiftLint를 그 위에 PR25로 게시했다. 기존 PR19–23 이력은 유지한다. 기능별 커밋을 검토하여 순서대로 통합했고 각 단계에서 아키텍처 검사를 실행했다. 원격 main은 2026-09-16 00:56 KST 확인 당시 f8f648c(PR18 병합), 다섯 PR 모두 충돌 없음. 게시 이력 재작성·강제 push 없음.
+
+[PR24](https://github.com/fixabley/dearby/pull/24)의 폴더명 기능 a338707을 root af71776으로 통합했다. 110개 100% rename 및 전체 제품/asset 바이트 보존, 담당 Xcode27 전체 회귀·빌드·첫 화면, 실제 대문자 위반 실패/복원을 확인했다. Root 구조 검사도 통과했고 [run34993653054](https://github.com/fixabley/dearby/actions/runs/34993653054)에서 CI 전체와 앱 빌드 성공을 확인했다. SwiftLint ee9c4e0을 root 051c45e로 통합했고 apps/ios diff 동일을 확인했다. 명시61개 규칙/127 Swift 파일 strict 위반0건, 도구 누락·버전 불일치·실제 앱/테스트 위반 실패와 복원을 확인했다. Root도 setup/lint/runner fixture/Harmonize9 tests를 별도로 실행해 통과했다. 최종 CI는 [PR25 checks](https://github.com/fixabley/dearby/pull/25/checks)를 확인한다.
 
 ## 검증과 환경
 
@@ -26,7 +30,7 @@ Root 브랜치는 `refactor/ios-lowercase-folders`이며 PR23 위에 후속 PR�
 
 ## 역할과 다음 행동
 
-iOS는 기존 checkout/terminal을 런타임 확인 후 새 Run `run_58f7d03f4deb` / Task `task_31d48a682566` / Dispatch `ctx_338f8e66f52b`로 배정했다. 추가 폴더명 Task는 `task_cdb97a35bdce`이며 기존 terminal 재사용 시도가 agent_readiness timeout으로 실패하여 같은 iOS checkout에 새 담당 실행을 배정했다. 실제 현재 수명은 [Orca 운영 문서](orca-sessions-and-worktrees.md)와 런타임을 확인한다. 플랫폼 담당은 자기 apps/ios·역할 인계, root는 공통 문서·CI·통합과 PR 검토를 맡는다.
+iOS는 기존 checkout/terminal을 런타임 확인 후 새 Run `run_58f7d03f4deb` / Task `task_31d48a682566` / Dispatch `ctx_338f8e66f52b`로 배정했다. 추가 폴더명 Task는 `task_cdb97a35bdce`이며 기존 terminal 재사용 시도가 agent_readiness timeout으로 실패하여 같은 iOS checkout의 새 담당 Dispatch ctx_ae82a98e1b6d에서 폴더명·SwiftLint 모두 succeeded 보고를 받았다. 01:20 KST 해당 terminal을 피드백용 retained로 전환하고 전달을 확인 처리했다. 실제 현재 수명은 [Orca 운영 문서](orca-sessions-and-worktrees.md)와 런타임을 확인한다. 플랫폼 담당은 자기 apps/ios·역할 인계, root는 공통 문서·CI·통합과 PR 검토를 맡는다.
 
 최종 새 Xcode27 UI 증거와 iOS 인계 ada4634를 root 2a81bab으로 통합했다. 담당 성공 보고를 수신하고 01:04 KST 세션을 피드백용 retained로 전환했다. PR23 최종 문서·주석 commit 이후 CI 상태는 위 checks에서 확인한다. 사용자의 구체적 변경 제안이 오면 해당 기능 커밋과 동일한 구조·회귀 검증으로 반복한다. 자동 테스트 통과를 사용자의 디자인·설계 만족으로 대신 판단하지 않는다.
 
@@ -63,5 +67,3 @@ iOS는 기존 checkout/terminal을 런타임 확인 후 새 Run `run_58f7d03f4de
 - 완료된 iOS·Android Orca 세션은 transcript를 보존하고 종료, worktree 제거. 다음 구현은 main에서 이슈별로 만들며 역할 분리를 유지한다.
 
 현재 정본: docs/architecture/native-apps.md, native-design-system.md 및 각 앱 ARCHITECTURE.md. 과거 논의는 archive/2026-09-15-before-pr-cleanup/에 보존했다.
-
-추가 폴더명 기능 a338707을 root에서 검토·통합했다. 110개 100% rename 및 전체 제품/asset 바이트 보존, 담당 Xcode27 전체 회귀·빌드·첫 화면, 실제 대문자 위반 실패/복원 결과를 확인했다. SwiftLint는 다음 별도 commit/PR로 진행 중이다.
