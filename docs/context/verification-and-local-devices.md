@@ -1,5 +1,7 @@
 # 검증 — 마지막 실행 결과와 재현 위치
 
+2026-09-16 최종 코드3c0d12c CI35004063640 두 job SUCCESS. 전역 직렬화 후 구조12/4suites·lint153/0·실제 production gate·기존 회귀·Simulator build 통과. 인계 문서 후속 커밋은 앱 코드 변경 없음.
+
 2026-09-16 두 레이어 후속: 최종 source는 iOS 역할 문서와 [이번 증거](../../apps/ios/docs/evidence/two-layer-composition/README.md)를 따른다. Worker 새 AST12/기존 AST9 호환성·lint152/0·기능 회귀·Simulator build 통과. Root 통합에서도 AST12/lint152/0 확인. 실제 Simulator 입력이 화면을 전환하지 못해 이번 탭·paging·doubletap·동의·OS editor 동작은 미검증이며 과거 성공을 재사용하지 않는다.
 
 갱신: 2026-09-16 KST. 최신 대상은 iOS FSD 리팩터링이다. 아래 과거 UI 작업과 실행 시점을 구별한다.
