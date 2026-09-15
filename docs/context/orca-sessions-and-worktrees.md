@@ -1,6 +1,6 @@
 # Git·Orca 현재 상태
 
-현재 확인(2026-09-16 01:04 KST): root `chore/ios-swiftlint`, origin `https://github.com/fixabley/dearby.git`, origin/main `f8f648c`(PR18 병합). PR19–23은 기능별 누적 PR이며 사용자 리뷰 전 main에 병합하지 않는다.
+현재 확인(2026-09-16 01:29 KST): 사용자 승인으로 PR19–25 main 병합 완료, origin/main `fb1214d`. Root에서 최신 main을 받아 lint127파일 위반0건 확인 후 인계 문서를 별도 docs/ios-merged-lint-handoff 브랜치로 정리한다. origin은 `https://github.com/fixabley/dearby.git`다. 코드 담당 worktree/retained 세션은 유지하며 이번 턴에서 재배정하지 않았다.
 
 - iOS checkout: `/Users/jominjun/Documents/dearby/dearby-ios-architecture-tests`, branch `fixabley/dearby-ios-architecture-tests`, 최종 `ada4634`. Root에 최종 기록까지 cherry-pick 통합했다.
 - Run `run_58f7d03f4deb` / Task `task_31d48a682566` / Dispatch `ctx_338f8e66f52b`: 구현·검증 succeeded 보고를 수신하고 acknowledged. Terminal `term_63e15d3b-5a6c-4075-aca7-500e2300490c`은 사용자 요청에 따라 **retained**로 유지했다. 완료 Dispatch로 추가 작업을 시작하지 않는다.
