@@ -13,9 +13,7 @@ struct ArchitectureTests {
         var sharedUICount = 0
         var domainCount = 0
         for file in files {
-            let physicalPath = String(file.path.dropFirst(root.count))
-            let mappings = try JSONDecoder().decode([String: String].self, from: Data(contentsOf: SourceInventory.iosRoot.appendingPathComponent("architecture/migration-paths.json")))
-            let path = mappings[physicalPath] ?? physicalPath
+            let path = String(file.path.dropFirst(root.count))
             let text = try String(contentsOf: file, encoding: .utf8)
             let source = SwiftSourceCode(source: text)
             stateCount += source.structs().filter { $0.name.hasSuffix("State") }.count

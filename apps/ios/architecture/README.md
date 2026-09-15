@@ -12,6 +12,6 @@
 - This is a syntax graph, not compiler name resolution: member/local name collisions, implicit types, aliases, macro expansion, conditional compilation and dynamic dispatch need review. All conditional source branches are checked. Nested types are reached through their exported outer declaration.
 - Python retains calendar permission/editor-write/alarm restrictions, domain SwiftData independence and nonempty layer inventory. UI blanket raw Model/VM and flat Widget policies were superseded; graph/path/pure UI protection now lives in AST rules with paired fixtures.
 
-## Temporary migration
+## Completed migration
 
-`migration-paths.json` enumerates each existing file's destination; the tests inspect all files under canonical paths, never skip old files. It is removed after feature migrations. This shared checker/cache-facade prerequisite enables small component commits without disabling CI.
+All source paths now use the new physical layout. No path aliases or exclusions remain; a test rejects restoration of migration-paths.json. The common checker prerequisite was necessary for individually passing component commits.

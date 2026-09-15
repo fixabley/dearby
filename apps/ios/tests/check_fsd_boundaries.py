@@ -16,8 +16,7 @@ def check(sources, selected=()):
     errors = []
     for path, source in sources.items():
         code = code_only(source)
-        read_adapter = path in ('Features/ReadCalendarBusy/API/EventKitBusyProvider.swift',
-                                'Features/CheckCalendarOverlap/API/EventKitBusyProvider.swift')
+        read_adapter = path == 'Features/CheckCalendarOverlap/API/EventKitBusyProvider.swift'
         if ((re.search(r'\brequestFullAccessToEvents\b', code) and not read_adapter)
                 or re.search(r'\b(?:requestWriteOnlyAccessToEvents|requestAccess|EKAlarm|addAlarm)\b|\b(?:eventStore|store)\.(?:save|remove)\s*\(', code)):
             errors.append(f'{path}: calendar editor must not request access, save directly or add alarms')
@@ -27,8 +26,7 @@ def check(sources, selected=()):
 
 
 def self_test():
-    for adapter in ('Features/ReadCalendarBusy/API/EventKitBusyProvider.swift',
-                    'Features/CheckCalendarOverlap/API/EventKitBusyProvider.swift'):
+    for adapter in ('Features/CheckCalendarOverlap/API/EventKitBusyProvider.swift',):
         assert not check({adapter: 'store.requestFullAccessToEvents()'})
         for forbidden in ('store.save(event)', 'eventStore.remove(event)', 'store.requestWriteOnlyAccessToEvents()', 'EKAlarm()'):
             assert check({adapter: forbidden})
@@ -45,6 +43,9 @@ if __name__ == '__main__':
     parser.add_argument('--slice', action='append', default=[], help='Check a specific slice during migration')
     args = parser.parse_args()
     self_test()
+    for path in ROOT.rglob('*'):
+        if path.is_symlink():
+            raise SystemExit(f'source symlink forbidden: {path}')
     sources = {str(p.relative_to(ROOT)): p.read_text() for p in ROOT.rglob('*.swift')}
     assert sources, "empty production source inventory"
     for layer in LAYERS:

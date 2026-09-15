@@ -8,13 +8,12 @@ struct FSDTests {
         let root = ios.appendingPathComponent("Dearby").path + "/"
         let exports = try JSONDecoder().decode([String: [String]].self,
             from: Data(contentsOf: ios.appendingPathComponent("architecture/public-api.json")))
-        let migrations = try JSONDecoder().decode([String: String].self,
-            from: Data(contentsOf: ios.appendingPathComponent("architecture/migration-paths.json")))
+        #expect(!FileManager.default.fileExists(atPath: ios.appendingPathComponent("architecture/migration-paths.json").path), "migration mapping must stay removed")
         let files = try SourceInventory.productionFiles(iosRoot: ios)
         var sources: [String: String] = [:]
         for file in files {
             let path = String(file.path.dropFirst(root.count))
-            let canonical = migrations[path] ?? path
+            let canonical = path
             #expect(sources[canonical] == nil, "duplicate migration target \(canonical)")
             sources[canonical] = try String(contentsOf: file, encoding: .utf8)
         }

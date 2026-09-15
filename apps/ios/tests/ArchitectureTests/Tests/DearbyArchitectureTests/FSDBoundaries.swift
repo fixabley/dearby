@@ -84,7 +84,7 @@ enum FSDBoundaries {
             if file.syntax.hasError { reject("swift-syntax", "source must parse without errors") }
             if file.pureUI {
                 let forbidden: Set<String> = ["UserDefaults", "Bundle", "FileManager", "URLSession", "UIApplication", "openURL", "SwiftData", "ModelContext", "ModelContainer", "EventKit", "EventKitUI", "EKEventStore", "EKEventEditViewController", "MKMapItem", "CLLocationManager"]
-                for name in file.references.intersection(forbidden) { reject("pure-ui-effect", "pure UI cannot use \(name)") }
+                for name in file.references where forbidden.contains(name) || name.hasSuffix("Repository") || name.hasSuffix("ViewModel") { reject("pure-ui-effect", "pure UI cannot use \(name)") }
             }
             for name in file.references {
                 for target in declarations[name] ?? [] where target.path != file.path {
