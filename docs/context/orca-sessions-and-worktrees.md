@@ -36,4 +36,4 @@ Run `run_a54c2d35693a`의 iOS 일정/URL 후속, Android 작업 모두 succeeded
 | iOS | `ctx_d9f7b9eeb75d` | `term_f1400b32-1536-4726-90b4-67439ba8fafa` |
 | Android | `ctx_a9734ee105e4` | `term_491b5f4b-c686-451a-8b2c-d2956eaa2270` |
 
-iOS `b712ca3`, Android `848b90e`를 로컬 main에 검토·통합했고 플랫폼 소스 동일성을 git diff로 확인했다. 두 checkout의 기존 미커밋 실행 기록과 로컬 산출물은 보존했다. reclaimable worker 0개이며 앱 실행 유지: iOS PID52933, Android PID8284. 원격 push/PR 없음. 다음 작업 시 checkout·런타임·기기 상태를 다시 확인한다.
+iOS `b712ca3`, Android `848b90e`를 로컬 main에 검토·통합했고 플랫폼 소스 동일성을 git diff로 확인했다. 두 checkout의 기존 미커밋 실행 기록과 로컬 산출물은 보존했다. reclaimable worker 0개이며 앱 실행 유지: iOS PID52933, Android PID8284. 후속 사용자 요청으로 root는 feat/native-card-schedules 브랜치에서 통합 PR 게시를 진행한다. 다음 작업 시 checkout·런타임·기기 상태를 다시 확인한다.
