@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Identity panel owned by the NoticeDetail slice.
 struct NoticeIdentityView: View {
-    let state: NoticeDetailState
+    let state: NoticeIdentityState
 
     var body: some View {
         Group {
@@ -25,6 +25,5 @@ struct NoticeIdentityView: View {
                 InformationRow(title: "회차", value: "제\(edition)회", systemImage: "calendar")
             }
         }
-        .accessibilityIdentifier("identity.\(state.id)")
     }
 }
