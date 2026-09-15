@@ -1,3 +1,4 @@
+// Force casts below assert the bundled JSON fixture schema, never external input.
 import Foundation
 
 @main
@@ -53,10 +54,10 @@ struct CalendarDraftTests {
             precondition(CalendarDraftMapper.verifiedURL(raw) == nil)
         }
         precondition(CalendarDraftMapper.verifiedURL("https://example.com/신청?a=1&b=2#확인") != nil)
-        var raw = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))) as! [String: Any]
-        var notices = raw["activities"] as! [[String: Any]]
+        var raw = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))) as! [String: Any] // swiftlint:disable:this force_cast
+        var notices = raw["activities"] as! [[String: Any]] // swiftlint:disable:this force_cast
         let index = notices.firstIndex { $0["id"] as? String == krc.id }!
-        var application = notices[index]["application"] as! [String: Any]
+        var application = notices[index]["application"] as! [String: Any] // swiftlint:disable:this force_cast
         application["url"] = "https://example.com/apply?a=1&b=2#신청"
         application["opensAt"] = NSNull(); application["opensOn"] = NSNull()
         notices[index]["application"] = application; raw["activities"] = notices
@@ -158,7 +159,6 @@ struct CalendarDraftTests {
         precondition(noLeak.location == "온라인" && !noLeak.notes.contains("본관") && !noLeak.notes.contains("다른 단계"))
         print("PASS: activity exact KST, online URLs/unknown, exact phase join, multiple venues/source-only notes, invalid dates, no invented duration")
     }
-
 
     @MainActor
     static func detail(_ notice: NoticeModel, catalog: BundleSnapshot, schedule: [NoticeSchedule]? = nil) -> NoticeModel {

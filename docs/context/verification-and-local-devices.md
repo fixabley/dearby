@@ -1,6 +1,20 @@
 # 검증 — 마지막 실행 결과와 재현 위치
 
-갱신: 2026-09-15 KST. #2/#10은 main에 통합 완료했다. 아래에서 이번 빌드·실행과 과거 회귀 검증을 구별한다.
+갱신: 2026-09-16 KST. 최신 대상은 iOS FSD 리팩터링이다. 아래 과거 UI 작업과 실행 시점을 구별한다.
+
+## 폴더명·SwiftLint 후속
+
+소문자 시작 폴더 변경은 [PR24 검증 기록](../../apps/ios/docs/evidence/lowercase-folders/README.md)이 정본이다. Root에서도 architecture 9 tests 및 전체 113개 제품/asset 파일의 바이트 보존을 확인했다. [run34993653054](https://github.com/fixabley/dearby/actions/runs/34993653054)에서 hosted 구조·전체 회귀·Simulator 빌드가 성공했다. SwiftLint는 이후 ee9c4e0(root 051c45e)에서 별도로 검증했다. [SwiftLint 실행 정본](../../apps/ios/docs/evidence/swiftlint/README.md): 0.65.1/명시61규칙, 앱109+테스트18파일 strict 위반0건, tool missing/version mismatch/앱·테스트 위반 실패와 복원, 최종 architecture9/full standalone/busy/detail 및 Xcode27 Simulator 빌드·첫 화면 통과. Root가 같은 소스에서 checksum 설치·lint·runner fixture·Harmonize를 직접 실행하여 통과했고 첫 화면 PNG를 확인했다. 기존 전체 UI 조작과 이번 첫 화면 확인을 구별한다. 최신 hosted 결과는 [PR25 checks](https://github.com/fixabley/dearby/pull/25/checks)에서 확인한다.
+
+## iOS Harmonize FSD 검증
+
+정본은 [FSD-MIGRATION.md](../../apps/ios/docs/FSD-MIGRATION.md), 현재 PR은 [#23 checks](https://github.com/fixabley/dearby/pull/23/checks)다. 최종 제품 소스 a214cda의 [hosted 검증](https://github.com/fixabley/dearby/actions/runs/34990938224)에서 Harmonize 9 tests/109파일, 전체 standalone·busy-calendar·detail-presentation 회귀와 실제 Simulator 빌드가 통과했다. Root가 두 job의 성공과 상세 PASS 로그를 확인했다.
+
+로컬은 Xcode26.6/Swift6.3.3에서 기능별 검증 후 도구 체인이 27.0으로 외부 교체됐다. 사용자가 라이선스에 동의한 뒤 Xcode27.0(27A266a)/Swift6.4에서 root 구조 검사와 담당 전체 회귀·빌드가 다시 통과했다. 전용 Simulator는 Dearby-FSD-Verify, iOS26.5, `B04DEBB6-53B1-4CB1-858C-8C290846D4AB`이며 글자 크기 large로 복원했다. 새 Xcode의 화면 프런트엔드는 Device Hub이다. 기기/PID/window는 다음 작업 시 다시 확인한다.
+
+새 Xcode27 최종 UI에서 설정 전환·상세 14–16시 타임라인·즐겨찾기 삭제/재저장 동기화·재실행 복원·DB 상세 진입을 확인했다. Root는 최종 timeline/favorites/failure PNG를 직접 검토했다. 재조회 버튼의 UI 클릭 완료는 미확인이며 failed→refresh→ready 자동회귀와 구별한다. 실제 임시 위반 검사와 시점별 UI 증거는 정본에 기록한다. 테스트는 `--busy-calendar-fixture=empty`로 실행했으며 실제 개인 캘린더 접근·저장·전송을 하지 않았다. 전체 VoiceOver/모든 기기 검증은 포함하지 않는다. Android/API는 이번에 다시 빌드하거나 수정하지 않았다.
+
+## 이전 검증 기록
 
 ## 기간·장소 줄 컴포넌트 검증 (2026-09-15 17시 KST)
 

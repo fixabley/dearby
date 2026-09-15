@@ -1,4 +1,3 @@
-# ios 담당 인계
+# iOS 담당
 
-현재 구현·담당 범위·검증·다음 행동은 [역할별 컨텍스트](../context/ios-implementation-and-handoff.md)를 따른다.
-카드 일정·장소 줄 컴포넌트는 PR17로 통합됐다. 2026-09-15 dearby-ios-architecture-tests에서 Harmonize 구조 테스트와 위반 민감도 검증을 완료했고 메인이 통합 PR/CI를 담당한다. 앱 런타임은 변경하지 않았다.
+2026-09-16 lowerCamelCase 폴더 기능 구현/검증 완료, 추가 승인 SwiftLint 구현/검증 완료. 현재 역할/Dispatch/검증 정본은 [iOS 인계](../context/ios-implementation-and-handoff.md), 폴더 검증은 [실행 기록](../../apps/ios/docs/evidence/lowercase-folders/README.md)을 따른다. SwiftLint 검증은 apps/ios/docs/evidence/swiftlint/README.md이며 root가 후속 PR/공통 CI를 담당한다.

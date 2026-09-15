@@ -2,7 +2,7 @@
 
 Xcode 26.6 (17F113), Swift 6, deployment iOS 26.0; 검증 runtime iOS 26.5. SDK/라이브러리는 추가하거나 올리지 않는다. Figma 원본은 확인하지 않았으며 replica를 주장하지 않는다.
 
-## Shared/UI 공개 진입점 (단일 모듈 internal)
+## shared/UI 공개 진입점 (단일 모듈 internal)
 
 | API | Native mapping | 실제 사용 / 책임 |
 | --- | --- | --- |
@@ -45,7 +45,7 @@ AX5에서 실제 스크롤로 카드 아래 저장/상세 버튼에 도달하고
 
 ## 일정 메타데이터와 아이콘 액션 (후속)
 
-`MetadataRow(systemImage:text:accessibilityText:)`는 Shared/UI의 도메인 없는 Label/subheadline 조합이다. 아이콘은 secondary, 값은 primary이며 큰 글자에서 줄바꿈한다. 카드 신청/장소 및 상세 신청/각 단계 기간·장소에서 사용한다. 날짜는 Shared/Lib `CompactPeriod.period(start:end:timezone:fallback:)`가 원시 문자열만 받아 Foundation으로 표시한다. 같은 날은 종료 시각만, 연도 경계는 양쪽 연도, 0이 아닌 초는 초까지 유지한다. 시간대가 없거나 해석할 수 없는 timestamp는 원문을 유지하고 종료 미확인은 명시한다. 이 함수는 표시 전용이며 날짜 저장 정책을 대체하지 않는다.
+`MetadataRow(systemImage:text:accessibilityText:)`는 shared/UI의 도메인 없는 Label/subheadline 조합이다. 아이콘은 secondary, 값은 primary이며 큰 글자에서 줄바꿈한다. 카드 신청/장소 및 상세 신청/각 단계 기간·장소에서 사용한다. 날짜는 shared/Lib `CompactPeriod.period(start:end:timezone:fallback:)`가 원시 문자열만 받아 Foundation으로 표시한다. 같은 날은 종료 시각만, 연도 경계는 양쪽 연도, 0이 아닌 초는 초까지 유지한다. 시간대가 없거나 해석할 수 없는 timestamp는 원문을 유지하고 종료 미확인은 명시한다. 이 함수는 표시 전용이며 날짜 저장 정책을 대체하지 않는다.
 
 상세 State는 원래 schedules 순서로 이름/기간/해당 단계 장소를 투영한다. 신청은 별도 Section, 활동은 각 단계의 굵은 headline → calendar 기간 → mappin 장소 순서다. 온라인 접두사는 중복하지 않으며 온라인 단계에 오프라인 장소를 붙이지 않는다. 장소 전체 원문/불확실성은 활동 footer 내용에 남고 신청 원문 요약도 유지한다. 각 단계의 calendar callback은 같은 원본 배열 index로 연결한다. App의 EventKit/지도 매퍼와 state lifetime은 변경하지 않는다.
 
@@ -57,11 +57,11 @@ AX5에서 실제 스크롤로 카드 아래 저장/상세 버튼에 도달하고
 
 ## Calendar를 참고한 상세 기간·장소 위계
 
-Shared `EventTimeRows(lines:note:)`는 범용 날짜/시간/시작·종료 label만 렌더링한다. 날짜 body.medium, 시간 subheadline.secondary, 시간대 footnote.secondary로 분리한다. Shared/Lib `EventPeriodPresentation(startsAt:startsOn:endsAt:endsOn:timezone:)`는 같은날 날짜를 한 번 표시하고, 다른날은 시작/종료 두 블록을 만든다. 날짜만 있으면 시간 미확인, 종료가 없으면 종료 미확인이다. conflicting on/at·역전·invalid·지원하지 않는 timestamp 정밀도/offset 형식은 원문 필드와 확인 메시지를 표시하며 값을 임의 정정하지 않는다. 기존 카드 CompactPeriod나 calendar mapper에는 사용하지 않는다.
+Shared `EventTimeRows(lines:note:)`는 범용 날짜/시간/시작·종료 label만 렌더링한다. 날짜 body.medium, 시간 subheadline.secondary, 시간대 footnote.secondary로 분리한다. shared/Lib `EventPeriodPresentation(startsAt:startsOn:endsAt:endsOn:timezone:)`는 같은날 날짜를 한 번 표시하고, 다른날은 시작/종료 두 블록을 만든다. 날짜만 있으면 시간 미확인, 종료가 없으면 종료 미확인이다. conflicting on/at·역전·invalid·지원하지 않는 timestamp 정밀도/offset 형식은 원문 필드와 확인 메시지를 표시하며 값을 임의 정정하지 않는다. 기존 카드 CompactPeriod나 calendar mapper에는 사용하지 않는다.
 
 Shared `LocationInformation(name:detail:action:)`는 장소명 body와 상세 subheadline.secondary, caller의 map action 슬롯을 받는다. 기본 크기에서는 장소 옆, 접근성 글자 크기에서는 장소 아래에 action을 두어 텍스트 너비를 확보한다. 화면 전용 `NoticePlaceState`는 명시적인 마지막 괄호의 층·호 또는 공백으로 분리된 숫자 호실만 보조 줄로 옮긴다. 건물코드·예정·불명확한 괄호는 장소명에 그대로 남기고 주소는 별도 문자열일 때 보조 줄에 넣는다. 원래 venue는 State에 함께 보존하여 동일 지도 callback에 전달한다. 주소를 새로 추론하거나 geocode하지 않는다.
 
-신청/phase 제목은 기존 View의 headline, calendar action은 해당 제목 오른쪽이다. 원문 신청/장소 문구는 native DisclosureGroup에서 그대로 볼 수 있어 기본 화면의 동일 날짜·장소 반복을 줄인다. 온라인은 온라인 표시와 검증된 HTTP(S) URL Link를 유지하며 URL 전체는 접근성 label로 제공한다. Shared는 원본 Notice/Organization/Feature를 참조하지 않는다.
+신청/phase 제목은 기존 View의 headline, calendar action은 해당 제목 오른쪽이다. 원문 신청/장소 문구는 native DisclosureGroup에서 그대로 볼 수 있어 기본 화면의 동일 날짜·장소 반복을 줄인다. 온라인은 온라인 표시와 검증된 HTTP(S) URL Link를 유지하며 URL 전체는 접근성 label로 제공한다. Shared는 원본 notice/organization/Feature를 참조하지 않는다.
 
 참고한 실제 자료는 [Apple iPhone Guide](https://support.apple.com/en-lamr/guide/iphone/iph3d110f84/ios)의 일간 보기 이미지와 별도의 제목/장소·영상통화/시작·종료 입력 설명, 이전 EventKit editor 캡처다. 이 자료는 날짜·시간/장소를 나누는 근거이며 이번 상세 레이아웃 자체는 Dearby의 디자인 해석이다. Apple Calendar 일정 상세 replica나 실제 앱 상세 화면 관찰을 주장하지 않는다. [최신 검증](evidence/issue-02/calendar-detail/README.md).
 
@@ -76,7 +76,7 @@ Shared `LocationInformation(name:detail:action:)`는 장소명 body와 상세 su
 | `EventDayTimeline(interval:title:)` | 신청/각 활동에서 사용; local State 날짜 선택, native ScrollViewReader + ScrollView, 320pt 기본·AX 최대520pt viewport |
 | `EventDaySelector(selection:range:timeZone:calendar:title:previousDate:nextDate:)` | Binding/원시 값만 받는 compact DatePicker와 이전/다음 Button; source-zone, 범위 제한, 큰글자 세로 배치 |
 | `EventTimelineGrid(day:title:hourHeight:gutter:)` | 하루 눈금·가로선·accent fill/stroke 블록, system fonts/primary text/separator/background; 정확한 구간 AX label |
-| `EventTimelineInterval(start:end:timeZone:)` | 도메인 없는 Shared/Lib 표시용 half-open interval; 인접일 Calendar 연산, 해당일 clip과 시간 눈금만 계산 |
+| `EventTimelineInterval(start:end:timeZone:)` | 도메인 없는 shared/Lib 표시용 half-open interval; 인접일 Calendar 연산, 해당일 clip과 시간 눈금만 계산 |
 
 SwiftUI에 이 용도의 일정 일간 시간표 control이 없어 좁은 custom grid를 유지한다. native DatePicker의 날짜 탐색이나 내비게이션/전체 달력 앱을 재구현하지 않는다. 상세 List 안의 세로 ScrollView는 사용자가 요청한 bounded 미리보기에 한정하며 header/바깥 여백으로 상세를, 내부 시간표로 하루 전체를 스크롤한다. 일반일은 24시간, DST 전환일은 실제23/25/23.5시간과 offset이 구별된 눈금이다.
 
@@ -90,7 +90,7 @@ SwiftUI에 이 용도의 일정 일간 시간표 control이 없어 좁은 custom
 
 | 진입점 | 입력/출력 | Native 매핑/사용처 |
 | --- | --- | --- |
-| CalendarConnectionControl | CalendarConnectionState, isEnabled, toggle/settings 콜백 | native Toggle·Button·ProgressView; Pages/Settings/Form 한 섹션 |
+| CalendarConnectionControl | CalendarConnectionState, isEnabled, toggle/settings 콜백 | native Toggle·Button·ProgressView; pages/settings/Form 한 섹션 |
 | EventDayTimeline | 기존 interval/title + BusyTimeDisplay, onSelectDay, onRetryBusy (기본 hidden/nil) | native 날짜선택/스크롤; 실제 활동에만 busy, 신청은 hidden |
 | BusyTimeStatusView / SummaryView | 표시상태, source TimeZone, retry | Label·DisclosureGroup·SF Symbol; 실제 intersection 문장, 실패와 빈 성공 구분, 짧은 구간 전체 시각 읽기 |
 | BusyTimeInterval / Display | start/end Date, status, intervals/overlaps | OS/공고 도메인 없는 half-open union/clip 값 |

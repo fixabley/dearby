@@ -51,7 +51,7 @@ actor FakeBusyProvider: BusyCalendarProvider {
         precondition(BusyTimeInterval.merged(overlaps, in: day) == [busy(13 * 3600, 16 * 3600)])
         precondition(BusyTimeInterval.merged([busy(-86400, 0), busy(86400, 90000)], in: day).isEmpty)
         precondition(BusyTimeInterval.merged([busy(-86400, 86400)], in: activity) == [busy(14 * 3600, 16 * 3600)])
-        for flags in [(true,false,false),(false,true,false),(false,false,true)] {
+        for flags in [(true, false, false), (false, true, false), (false, false, true)] {
             precondition(BusyCalendarOccurrence(start: date(10), end: date(20), cancelled: flags.0,
                 explicitlyFree: flags.1, declinedByMe: flags.2).interval == nil)
         }
@@ -60,15 +60,15 @@ actor FakeBusyProvider: BusyCalendarProvider {
         precondition(BusyTimeInterval.merged(occurrences, in: day) == [busy(100, 200), busy(300, 400)])
         precondition(BusyTimeInterval(start: date(20), end: date(10)) == nil)
         // Warning uses positive intersection, never a visual minimum height or a touching edge.
-        precondition(BusyTimeInterval.merged([busy(16*3600,17*3600)], in: activity).isEmpty)
-        precondition(BusyTimeInterval.merged([busy(12*3600,14*3600)], in: activity).isEmpty)
-        precondition(BusyTimeInterval.merged([busy(16*3600-1,17*3600)], in: activity) == [busy(16*3600-1,16*3600)])
+        precondition(BusyTimeInterval.merged([busy(16*3600, 17*3600)], in: activity).isEmpty)
+        precondition(BusyTimeInterval.merged([busy(12*3600, 14*3600)], in: activity).isEmpty)
+        precondition(BusyTimeInterval.merged([busy(16*3600-1, 17*3600)], in: activity) == [busy(16*3600-1, 16*3600)])
         let utc = TimeZone(secondsFromGMT: 0)!
-        let actualOverlap = BusyTimeInterval.merged([busy(15*3600,17*3600)], in: activity)
+        let actualOverlap = BusyTimeInterval.merged([busy(15*3600, 17*3600)], in: activity)
         precondition(actualOverlap.map { $0.description(in: utc) } == ["오후 3시부터 오후 4시까지"])
-        precondition(busy(15*3600,17*3600).description(in: utc) == "오후 3시부터 오후 5시까지")
-        precondition(busy(15*3600+30,15*3600+31).description(in: utc).contains("30초"))
-        precondition(busy(23*3600,86400).description(in: utc).contains("1월 2일"))
+        precondition(busy(15*3600, 17*3600).description(in: utc) == "오후 3시부터 오후 5시까지")
+        precondition(busy(15*3600+30, 15*3600+31).description(in: utc).contains("30초"))
+        precondition(busy(23*3600, 86400).description(in: utc).contains("1월 2일"))
         let iso = ISO8601DateFormatter(), zone = TimeZone(identifier: "America/New_York")!
         let dst = BusyTimeInterval(start: iso.date(from: "2026-11-01T05:30:00Z")!, end: iso.date(from: "2026-11-01T06:30:00Z")!)!
         precondition(dst.description(in: zone).contains("-04:00") && dst.description(in: zone).contains("-05:00"))
@@ -91,7 +91,7 @@ actor FakeBusyProvider: BusyCalendarProvider {
         owner.setEnabled(true); await wait { owner.connection == .consent }
         await provider.configure(values: overlaps)
         owner.continueConsent(); await wait { owner.days[0]?.status == .ready }
-        precondition(owner.isEnabled && owner.days[0]!.overlaps == [busy(14*3600,16*3600)])
+        precondition(owner.isEnabled && owner.days[0]!.overlaps == [busy(14*3600, 16*3600)])
         let connected = await provider.counts(); precondition(connected.0 == 1)
         owner.select(id: 1, day: day, activity: DateInterval(start: date(20*3600), end: date(21*3600)))
         await wait { owner.days[1]?.status == .ready }

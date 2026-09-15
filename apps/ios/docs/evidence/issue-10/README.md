@@ -4,11 +4,11 @@
 
 ## 동작과 경계
 
-최초 실행은 목적 설명과 켜기/나중에를 한 번 표시한다. 나중에는 OS 요청0, 켜기에서만 fullAccess 요청. 이후 gear→환경설정의 겹치는 일정 확인하기로 ON/OFF를 변경하며 재실행에 유지한다. App/CalendarPreferences가 permission/preference를 소유하고 비개인 enabled/firstPromptHandled boolean 두 개만 UserDefaults에 저장한다. 처음 alert가 화면 준비 전에 사라지는 문제를 발견해 초기 렌더 준비 뒤 표시하도록 수정했다.
+최초 실행은 목적 설명과 켜기/나중에를 한 번 표시한다. 나중에는 OS 요청0, 켜기에서만 fullAccess 요청. 이후 gear→환경설정의 겹치는 일정 확인하기로 ON/OFF를 변경하며 재실행에 유지한다. app/CalendarPreferences가 permission/preference를 소유하고 비개인 enabled/firstPromptHandled boolean 두 개만 UserDefaults에 저장한다. 처음 alert가 화면 준비 전에 사라지는 문제를 발견해 초기 렌더 준비 뒤 표시하도록 수정했다.
 
 상세에는 결과만 있으며 각 BusyCalendarSession의 개인 interval은 일시 메모리다. 설정OFF는 등록 세션을 즉시 취소/정리하고 늦은 권한/조회 응답도 generation으로 차단한다. close/background/revoke에서도 정리, foreground/선택일/저장소 변경에 재조회한다. 권한 dialog의 일시 inactive를 background로 오인해 취소하지 않는다. denied/restricted/failed/empty를 구분하고 거절·권한 실패는 전역enabledfalse다.
 
-확정 활동의 선택일만 읽고 신청기간은 참석 충돌에서 제외한다. EventKit actor의 27시간 이하 한 날짜 predicate가 반복 occurrence를 전개하며 취소/free/본인declined 제외, half-open clip/union/양의 intersection을 사용한다. 제목/장소/ID/메모는 읽거나 UI/로그/서버/디스크에 남기지 않는다. 참가자 정보는 actor 내부 본인 거절 boolean 판별에만 사용한다. OS객체는 밖으로 전달하지 않고 Date 두 개만 반환, store.reset으로 참조 정리한다. 서버 전송·SwiftData/cache 저장 없음.
+확정 활동의 선택일만 읽고 신청기간은 참석 충돌에서 제외한다. EventKit actor의 27시간 이하 한 날짜 predicate가 반복 occurrence를 전개하며 취소/free/본인declined 제외, half-open clip/union/양의 intersection을 사용한다. 제목/장소/ID/메모는 읽거나 ui/로그/서버/디스크에 남기지 않는다. 참가자 정보는 actor 내부 본인 거절 boolean 판별에만 사용한다. OS객체는 밖으로 전달하지 않고 Date 두 개만 반환, store.reset으로 참조 정리한다. 서버 전송·SwiftData/cache 저장 없음.
 
 활동accent / adaptive systemTeal busy를 본문에 반투명으로 표시하고 실제 교집합만 점선·warning·자연어 겹침 시각을 보여준다. 활동14–16 / busy15–17이면 점선과 겹침문장은15–16이며 busy전체15–17은 바쁜시간으로 명확히 구분한다. 접점은 경고 없음. 짧은 구간은 정확한 높이, 전체시각 DisclosureGroup/AX; activity 최소 시각높이로 가짜 겹침을 만들지 않는다. 날짜·요일 body / 다음줄 시간 subheadline, 한국 시간 중복라벨만 제거하며 sourcezone/DST/fallback/export는 유지한다.
 

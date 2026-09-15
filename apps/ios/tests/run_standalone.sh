@@ -2,16 +2,16 @@
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 mkdir -p apps/ios/build
-notice=(apps/ios/Dearby/Shared/Lib/*.swift apps/ios/Dearby/Entities/Notice/Model/*.swift apps/ios/Dearby/Entities/Notice/API/*.swift)
-organization=(apps/ios/Dearby/Entities/Organization/Model/*.swift apps/ios/Dearby/Entities/Organization/API/*.swift)
-favorites=(apps/ios/Dearby/Features/FavoriteOrganization/Model/*.swift apps/ios/Dearby/Features/FavoriteOrganization/API/*.swift)
-snapshot=(apps/ios/Dearby/App/BundleSnapshot.swift apps/ios/Dearby/App/SnapshotManifest.swift)
+notice=(apps/ios/Dearby/shared/lib/*.swift apps/ios/Dearby/entities/notice/model/*.swift apps/ios/Dearby/entities/notice/api/*.swift)
+organization=(apps/ios/Dearby/entities/organization/model/*.swift apps/ios/Dearby/entities/organization/api/*.swift)
+favorites=(apps/ios/Dearby/features/saveOrganization/model/*.swift apps/ios/Dearby/entities/favorite/model/*.swift apps/ios/Dearby/entities/favorite/api/*.swift)
+snapshot=(apps/ios/Dearby/app/providers/BundleSnapshot.swift apps/ios/Dearby/app/providers/SnapshotManifest.swift)
 swiftc -swift-version 6 -parse-as-library "${notice[@]}" "${organization[@]}" "${favorites[@]}" "${snapshot[@]}" apps/ios/tests/FavoritesStoreTests.swift -o apps/ios/build/dearby-favorites-tests
 swiftc -swift-version 6 -parse-as-library "${organization[@]}" apps/ios/tests/OrganizationRepositoryTests.swift -o apps/ios/build/dearby-organization-tests
-swiftc -swift-version 6 -parse-as-library "${notice[@]}" "${organization[@]}" "${favorites[@]}" "${snapshot[@]}" apps/ios/Dearby/Widgets/Notice/NoticeCard/*State.swift apps/ios/Dearby/Widgets/Notice/NoticeCard/*ViewModel.swift apps/ios/Dearby/Widgets/Organization/FavoriteOrganizationCard/*State.swift apps/ios/Dearby/Widgets/Organization/FavoriteOrganizationCard/*ViewModel.swift apps/ios/Dearby/Pages/NoticeDetail/Model/*.swift apps/ios/Dearby/App/NoticeSession.swift apps/ios/tests/NoticeViewModelTests.swift -o apps/ios/build/dearby-viewmodel-tests
-swiftc -swift-version 6 -parse-as-library "${notice[@]}" "${organization[@]}" "${snapshot[@]}" apps/ios/Dearby/Features/AddToCalendar/Model/*.swift apps/ios/Dearby/App/CalendarEditorRequest.swift apps/ios/tests/CalendarDraftTests.swift -o apps/ios/build/dearby-calendar-tests
-swiftc -swift-version 6 -parse-as-library "${notice[@]}" apps/ios/Dearby/App/VenueMapLink.swift apps/ios/Dearby/App/VenueMapLauncher.swift apps/ios/tests/VenueMapTests.swift -o apps/ios/build/dearby-map-tests
-for sample in apps/ios/Dearby/Resources/activity-samples.json shared/contracts/activities/sample.json; do
+swiftc -swift-version 6 -parse-as-library "${notice[@]}" "${organization[@]}" "${favorites[@]}" "${snapshot[@]}" apps/ios/Dearby/widgets/noticeCard/model/*State.swift apps/ios/Dearby/widgets/noticeCard/model/*ViewModel.swift apps/ios/Dearby/widgets/favoriteOrganizationCard/model/*State.swift apps/ios/Dearby/widgets/favoriteOrganizationCard/model/*ViewModel.swift apps/ios/Dearby/pages/noticeDetail/model/*.swift apps/ios/Dearby/app/providers/NoticeSession.swift apps/ios/tests/NoticeViewModelTests.swift -o apps/ios/build/dearby-viewmodel-tests
+swiftc -swift-version 6 -parse-as-library "${notice[@]}" "${organization[@]}" "${snapshot[@]}" apps/ios/Dearby/features/addToCalendar/model/*.swift apps/ios/Dearby/features/addToCalendar/api/CalendarEditorRequest.swift apps/ios/tests/CalendarDraftTests.swift -o apps/ios/build/dearby-calendar-tests
+swiftc -swift-version 6 -parse-as-library "${notice[@]}" apps/ios/Dearby/features/openLocation/api/VenueMapLink.swift apps/ios/Dearby/features/openLocation/api/VenueMapLauncher.swift apps/ios/tests/VenueMapTests.swift -o apps/ios/build/dearby-map-tests
+for sample in apps/ios/Dearby/resources/activity-samples.json shared/contracts/activities/sample.json; do
   apps/ios/build/dearby-favorites-tests "$sample"
   apps/ios/build/dearby-viewmodel-tests "$sample"
   apps/ios/build/dearby-calendar-tests "$sample"
@@ -24,11 +24,11 @@ swiftc -swift-version 6 -parse-as-library "${organization[@]}" apps/ios/tests/Sw
 apps/ios/build/dearby-organization-disk-tests
 
 swiftc -swift-version 6 -parse-as-library "${notice[@]}" "${organization[@]}" "${snapshot[@]}" apps/ios/tests/SwiftDataNoticeTests.swift -o apps/ios/build/dearby-notice-disk-tests
-for sample in apps/ios/Dearby/Resources/activity-samples.json shared/contracts/activities/sample.json; do
+for sample in apps/ios/Dearby/resources/activity-samples.json shared/contracts/activities/sample.json; do
   apps/ios/build/dearby-notice-disk-tests "$sample"
 done
 
-swiftc -swift-version 6 -parse-as-library "${notice[@]}" "${organization[@]}" "${favorites[@]}" "${snapshot[@]}" apps/ios/Dearby/Widgets/Notice/NoticeCard/*State.swift apps/ios/Dearby/Widgets/Notice/NoticeCard/*ViewModel.swift apps/ios/Dearby/Widgets/Organization/FavoriteOrganizationCard/*State.swift apps/ios/Dearby/Widgets/Organization/FavoriteOrganizationCard/*ViewModel.swift apps/ios/Dearby/Pages/NoticeDetail/Model/*.swift apps/ios/Dearby/App/NoticeSession.swift apps/ios/Dearby/App/SwiftDataSnapshotStore.swift apps/ios/tests/SwiftDataSnapshotTests.swift -o apps/ios/build/dearby-snapshot-disk-tests
-for sample in apps/ios/Dearby/Resources/activity-samples.json shared/contracts/activities/sample.json; do
+swiftc -swift-version 6 -parse-as-library "${notice[@]}" "${organization[@]}" "${favorites[@]}" "${snapshot[@]}" apps/ios/Dearby/widgets/noticeCard/model/*State.swift apps/ios/Dearby/widgets/noticeCard/model/*ViewModel.swift apps/ios/Dearby/widgets/favoriteOrganizationCard/model/*State.swift apps/ios/Dearby/widgets/favoriteOrganizationCard/model/*ViewModel.swift apps/ios/Dearby/pages/noticeDetail/model/*.swift apps/ios/Dearby/app/providers/NoticeSession.swift apps/ios/Dearby/app/providers/SwiftDataSnapshotStore.swift apps/ios/tests/SwiftDataSnapshotTests.swift -o apps/ios/build/dearby-snapshot-disk-tests
+for sample in apps/ios/Dearby/resources/activity-samples.json shared/contracts/activities/sample.json; do
   apps/ios/build/dearby-snapshot-disk-tests "$sample"
 done

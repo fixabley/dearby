@@ -1,3 +1,4 @@
+// Force casts below assert the bundled JSON fixture schema, never external input.
 import Foundation
 import Observation
 import Synchronization
@@ -134,8 +135,8 @@ struct NoticeViewModelTests {
         precondition(CompactPeriod.period(start: "2026-09-16", end: "2026-09-15", fallback: "unknown").contains("기간 순서 확인 필요"))
         precondition(CompactPeriod.period(start: "2026-09-15T14:00:00+09:00", end: nil, timezone: "Bad/Zone", fallback: "unknown").contains("시간대 확인 필요"))
         // Full evidence, including nested paths and unknown source, survives provider resolution.
-        var raw = try JSONSerialization.jsonObject(with: data) as! [String: Any]
-        let rawNotices = raw["activities"] as! [[String: Any]]
+        var raw = try JSONSerialization.jsonObject(with: data) as! [String: Any] // swiftlint:disable:this force_cast
+        let rawNotices = raw["activities"] as! [[String: Any]] // swiftlint:disable:this force_cast
         for notice in snapshot.notices {
             let loaded = testValue(try notices.notice(notice.id))!
             precondition(loaded.evidence.count == evidenceCount(rawNotices.first { $0["id"] as? String == notice.id }!))
@@ -151,11 +152,11 @@ struct NoticeViewModelTests {
         let fullURL = "https://online.example.com/join/long-path?room=123#entry"
         let address = "서울시 중구 세종대로 110"
         let prose = "https://example.com/form 방문 접수"
-        var application = urlFixture["application"] as! [String: Any]
+        var application = urlFixture["application"] as! [String: Any] // swiftlint:disable:this force_cast
         application["url"] = fullURL
         application["submissionLocations"] = [address, prose, "https://apply.example.com/path?q=1"]
         urlFixture["application"] = application
-        var schedules = urlFixture["schedule"] as! [[String: Any]]
+        var schedules = urlFixture["schedule"] as! [[String: Any]] // swiftlint:disable:this force_cast
         schedules[0]["mode"] = "online"
         schedules[0]["onlineUrl"] = fullURL
         urlFixture["schedule"] = schedules
@@ -173,7 +174,7 @@ struct NoticeViewModelTests {
         changedNotices[index]["evidence"] = [["sourceId": "missing-source", "locator": "보존"]]
         changedNotices[index]["title"] = "바뀐 공고"
         raw["activities"] = changedNotices
-        var changedOrgs = raw["organizations"] as! [[String: Any]]
+        var changedOrgs = raw["organizations"] as! [[String: Any]] // swiftlint:disable:this force_cast
         let orgIndex = changedOrgs.firstIndex { $0["id"] as? String == "cbnu" }!
         changedOrgs[orgIndex]["name"] = "바뀐 학교"
         changedOrgs[orgIndex]["parentOrganizationId"] = "unknown-parent"
@@ -200,7 +201,7 @@ struct NoticeViewModelTests {
     }
     private static func evidenceCount(_ value: Any) -> Int {
         if let object = value as? [String: Any] {
-            return object.reduce(0) { $0 + ((["evidence", "coordinateEvidence"].contains($1.key)) ? ($1.value as! [Any]).count : evidenceCount($1.value)) }
+            return object.reduce(0) { $0 + ((["evidence", "coordinateEvidence"].contains($1.key)) ? ($1.value as! [Any]).count : evidenceCount($1.value)) } // swiftlint:disable:this force_cast
         }
         return (value as? [Any])?.reduce(0) { $0 + evidenceCount($1) } ?? 0
     }

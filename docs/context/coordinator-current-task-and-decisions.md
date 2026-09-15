@@ -1,5 +1,41 @@
 # 현재 작업과 결정
 
+2026-09-16: **iOS Harmonize FSD 첫 리팩터링 완료, 폴더명·SwiftLint 구현과 로컬 검증 완료, 최종 CI 확인 중**. 사용자 요청으로 App→app, NoticeCard→noticeCard, UI→ui, API→api 등 소스 폴더 이름을 변경한다. 타입·파일명 및 Xcode 도구 규격 이름은 유지한다. 추가로 SwiftLint 도입을 승인받아 폴더명 변경과 별도 기능 commit/PR로 구현한다. SwiftLint는 일반 스타일, Harmonize는 FSD 경계를 담당하며 로컬 실행과 CI에 고정 버전으로 연결한다. 사용자는 문서만이 아닌 규칙 구현→리팩터링→회귀 검증 반복을 요청했다. 사용자 피드백 전 main에 병합하지 않는다. Android/API 및 #13/#14/#15는 이번 범위 밖이다.
+
+## 구현과 검토 단위
+
+[공통 FSD 기준](../architecture/fsd-domain-rules-draft.md), [실제 iOS 구조](../../apps/ios/ARCHITECTURE.md), [검증 정본](../../apps/ios/docs/FSD-MIGRATION.md)을 따른다. 모든 하위 레이어 참조 허용, 동일 레이어 다른 슬라이스 직접 참조 금지, App 목적별 세그먼트, Entity 저장소, 순수 UI와 연결 UI 구분을 Harmonize/SwiftSyntax 검사로 구현했다. 임시 경로 매핑은 제거했고 재도입도 검사한다. 단일 모듈의 검사이며 컴파일러 수준의 완전한 타입 의존성 분석이라고 주장하지 않는다.
+
+| PR | 범위 | base |
+| --- | --- | --- |
+| [#19](https://github.com/fixabley/dearby/pull/19) | 공통 FSD 검사·저장소 노출 경계 | main |
+| [#20](https://github.com/fixabley/dearby/pull/20) | 공고 카드 | #19 브랜치 |
+| [#21](https://github.com/fixabley/dearby/pull/21) | 즐겨찾기 조직 카드·공유 저장 상태 | #20 브랜치 |
+| [#22](https://github.com/fixabley/dearby/pull/22) | 상세 캘린더·지도 Feature | #21 브랜치 |
+| [#23](https://github.com/fixabley/dearby/pull/23) | App 조립·캘린더 연결 UI 경계·최종 검사 및 CI | #22 브랜치 |
+| [#24](https://github.com/fixabley/dearby/pull/24) | 소문자 시작 소스 폴더·실제 경로 검사 | #23 브랜치 |
+| [#25](https://github.com/fixabley/dearby/pull/25) | SwiftLint 고정 설치·61개 규칙·strict CI | #24 브랜치 |
+
+Root 브랜치는 `chore/ios-swiftlint`. 폴더명 변경 af71776은 PR23 기반 `refactor/ios-lowercase-folders`로 게시하고 SwiftLint를 그 위에 PR25로 게시했다. 기존 PR19–23 이력은 유지한다. 기능별 커밋을 검토하여 순서대로 통합했고 각 단계에서 아키텍처 검사를 실행했다. 원격 main은 2026-09-16 00:56 KST 확인 당시 f8f648c(PR18 병합), 다섯 PR 모두 충돌 없음. 게시 이력 재작성·강제 push 없음.
+
+[PR24](https://github.com/fixabley/dearby/pull/24)의 폴더명 기능 a338707을 root af71776으로 통합했다. 110개 100% rename 및 전체 제품/asset 바이트 보존, 담당 Xcode27 전체 회귀·빌드·첫 화면, 실제 대문자 위반 실패/복원을 확인했다. Root 구조 검사도 통과했고 [run34993653054](https://github.com/fixabley/dearby/actions/runs/34993653054)에서 CI 전체와 앱 빌드 성공을 확인했다. SwiftLint ee9c4e0을 root 051c45e로 통합했고 apps/ios diff 동일을 확인했다. 명시61개 규칙/127 Swift 파일 strict 위반0건, 도구 누락·버전 불일치·실제 앱/테스트 위반 실패와 복원을 확인했다. Root도 setup/lint/runner fixture/Harmonize9 tests를 별도로 실행해 통과했다. 최종 CI는 [PR25 checks](https://github.com/fixabley/dearby/pull/25/checks)를 확인한다.
+
+## 검증과 환경
+
+최종 제품 소스 a214cda(worker 57aba2a와 apps/ios 동일)의 hosted [run34990938224](https://github.com/fixabley/dearby/actions/runs/34990938224)는 Harmonize 9 tests/109파일, 전체 standalone/busy/detail 회귀 및 실제 Simulator 빌드 모두 성공했다. 구조·회귀 job은 Xcode16.4/Swift6.1.2, 앱 빌드는 Xcode26.6이다. CI에 세 회귀 스크립트와 앱 빌드를 추가했으며 기존 required context `iOS architecture`와 보호 정책은 유지했다. 최종 PR head 상태는 [PR23 checks](https://github.com/fixabley/dearby/pull/23/checks)를 확인한다.
+
+로컬 Xcode가 26.6에서 27.0으로 외부 갱신되어 Swift exit69가 발생했으나, 사용자가 약관에 직접 동의했고 00:53 KST Swift6.4/Xcode27.0 정상 실행을 확인했다. 이후 root Harmonize 9 tests/109파일 및 담당 전체 회귀·앱 빌드가 통과했다. 전용 Simulator 글자 크기는 large로 복원했다. 라이선스 문제는 해결됐으며 추가 동의 요청이 필요하지 않다.
+
+실제 임시 위반 네 종류(상향 참조, 형제 Widget VM, Entity 순수 UI 저장소, 비공개 Record)는 각각 exit1, 제거 후 exit0 및 원본 108파일 SHA256 동일을 확인했다. 이는 최종 캘린더 UI 경계 후속 파일 추가 전 Xcode26.6 검사다. 시점별 UI 증거와 검증 한계는 앱 검증 정본에 기록하며 과거 PR18 결과를 이번 결과로 사용하지 않는다.
+
+## 역할과 다음 행동
+
+iOS는 기존 checkout/terminal을 런타임 확인 후 새 Run `run_58f7d03f4deb` / Task `task_31d48a682566` / Dispatch `ctx_338f8e66f52b`로 배정했다. 추가 폴더명 Task는 `task_cdb97a35bdce`이며 기존 terminal 재사용 시도가 agent_readiness timeout으로 실패하여 같은 iOS checkout의 새 담당 Dispatch ctx_ae82a98e1b6d에서 폴더명·SwiftLint 모두 succeeded 보고를 받았다. 01:20 KST 해당 terminal을 피드백용 retained로 전환하고 전달을 확인 처리했다. 실제 현재 수명은 [Orca 운영 문서](orca-sessions-and-worktrees.md)와 런타임을 확인한다. 플랫폼 담당은 자기 apps/ios·역할 인계, root는 공통 문서·CI·통합과 PR 검토를 맡는다.
+
+최종 새 Xcode27 UI 증거와 iOS 인계 ada4634를 root 2a81bab으로 통합했다. 담당 성공 보고를 수신하고 01:04 KST 세션을 피드백용 retained로 전환했다. PR23 최종 문서·주석 commit 이후 CI 상태는 위 checks에서 확인한다. 사용자의 구체적 변경 제안이 오면 해당 기능 커밋과 동일한 구조·회귀 검증으로 반복한다. 자동 테스트 통과를 사용자의 디자인·설계 만족으로 대신 판단하지 않는다.
+
+## 이전 완료 이력
+
 2026-09-15: Swift 아키텍처 검사 구현과 CI 연결을 [PR18](https://github.com/fixabley/dearby/pull/18)로 관리한다. 로컬과 hosted Xcode16.4/Swift6.1.2에서 전체 검사를 통과했고, 사용자가 계속 진행하도록 요청해 최종 CI 확인 후 병합한다. 실제 병합 상태와 최신 검사 결과는 PR18이 정본이다.
 
 - Harmonize1.2.1/SwiftSyntax601.0.1 고정 테스트 패키지와 기존 Python FSD 검사를 함께 실행한다. 앱 모듈/런타임/기존 guard는 변경하지 않았다.
