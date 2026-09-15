@@ -1,5 +1,16 @@
 # 현재 작업과 결정
 
+2026-09-15: Swift 아키텍처 검사 구현과 CI 연결을 [PR18](https://github.com/fixabley/dearby/pull/18)로 관리한다. 로컬과 hosted Xcode16.4/Swift6.1.2에서 전체 검사를 통과했고, 사용자가 계속 진행하도록 요청해 최종 CI 확인 후 병합한다. 실제 병합 상태와 최신 검사 결과는 PR18이 정본이다.
+
+- Harmonize1.2.1/SwiftSyntax601.0.1 고정 테스트 패키지와 기존 Python FSD 검사를 함께 실행한다. 앱 모듈/런타임/기존 guard는 변경하지 않았다.
+- 실행: `bash apps/ios/tests/run_architecture.sh`. 로컬 Swift6.3.3에서 102파일/기존 fixtures 및 Swift Testing6테스트 통과. 두 임시 위반 exit1, 제거 후 /tmp에서 exit0, 원본 파일 해시 동일.
+- main protection: `iOS architecture` required, strict=true, enforce_admins=true. 모든 PR/main push workflow는 macOS15/Xcode16.4를 선택한다. 원격 CI의 현재 결과는 PR18 Checks 및 실행 로그가 정본이다.
+- origin https://github.com/fixabley/dearby.git를 fetch하여 PR17 포함 main b0c76a1을 root/worker에 통합했다. 충돌은 root 인계3개/worker 인계2개뿐이며 양측 기록을 보존했다. 제품 소스 충돌/변경 없음.
+- iOS task task_b014b64c1f3f / dispatch ctx_c8cf3ee2e5b6 succeeded. 기능 commit74e6189를 root ci/ios-architecture-tests에 merge했다. 담당 세션은 사용자 협업 방침에 따라 retained, 새 지시 없이 추가 작업하지 않는다.
+- API·Android 및 후속 #13/#14/#15는 이번 범위 밖. 근거·한계는 apps/ios/tests/ArchitectureTests/VERIFICATION.md와 README.md 참조.
+
+이전 완료 기록:
+
 2026-09-15 17:04 KST: 기간 시작·종료를 별도 컴포넌트로 나누고 장소를 필드·단어 단위로 줄배치하는 후속 개선까지 로컬 main 통합 완료. iOS b712ca3, Android 848b90e를 검토 후 merge commit으로 통합했다. 두 앱 빌드·실행 및 관련 검증 완료; 세션은 transcript 보존 후 release하고 checkout·기기는 유지한다.
 
 ## 현재 카드 일정 표시 결정
@@ -11,8 +22,7 @@
 - 일정 phase에 맞는 장소만 연결한다. 신청 위치는 application 제출 장소/URL이며 행사 장소를 신청 장소로 추정하지 않는다.
 - 날짜만 있거나 한쪽 기간이 없을 때 시각/종료를 생성하지 않는다. 긴 문자열·다중 일정·큰 글자에서도 모든 일정에 접근 가능하게 한다.
 - Model→ViewModel→State 및 콜백 경계를 유지한다. 공통 계약/API/상세 화면의 별도 변경은 범위 밖이다.
-- 플랫폼별 카드 일정 기능과 사용자 추가 요청(도메인·아이콘)을 각 기능 커밋으로 묶어 검증/통합했다. 사용자가 후속으로 PR 정리·push를 요청했다. feat/native-card-schedules 브랜치로 push하고 양쪽 플랫폼의 기능별 커밋을 보존한 [PR #17](https://github.com/fixabley/dearby/pull/17)을 게시했다. PR은 OPEN·충돌 없음으로 확인했으며 병합하지 않았다. GitHub 검사 결과는 등록되어 있지 않고 로컬 검증 기록을 PR에 연결했다.
-
+- 플랫폼별 카드 일정 기능과 사용자 추가 요청(도메인·아이콘)을 각 기능 커밋으로 묶어 검증/통합했다. 사용자가 후속으로 PR 정리·push를 요청했다. feat/native-card-schedules 브랜치로 push하고 양쪽 플랫폼의 기능별 커밋을 보존한 [PR #17](https://github.com/fixabley/dearby/pull/17)을 게시했다. 게시 당시 OPEN이었다. 이번 원격 확인에서 PR17이 origin/main b0c76a1에 병합된 것을 확인했고 현재 아키텍처 작업에 통합했다. 당시 로컬 검증 기록은 PR에 연결되어 있다.
 
 - #2 native Shared/UI: PR7 공통 원칙, PR8 iOS, PR9 Android 병합 완료.
 - #10 캘린더 바쁜 시간: PR11 Android, PR12 iOS 병합 완료. merge commit으로 기능별 커밋 보존.
