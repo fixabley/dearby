@@ -6,7 +6,7 @@
 
 ## 2026-09-16 Harmonize 적용 기준
 
-[FSD 규칙안](fsd-domain-rules-draft.md)을 iOS Harmonize 검사와 실제 코드에 적용한다. 모든 하위 레이어 참조와 동일 슬라이스 내부 참조를 허용하고, 상향 참조·동일 레이어 다른 슬라이스 내부 접근을 금지한다. iOS app은 entrypoint/routes/providers 등 목적별 세그먼트, pages/widgets는 슬라이스 아래 ui/model 등 역할 세그먼트를 사용한다. 사용자 정의 소스 폴더는 lowerCamelCase로 시작하며 UI/API 약어도 ui/api로 표기한다. Swift 타입·파일명과 Xcode 도구 규격 디렉터리는 유지한다. 기존의 Widget 동위 배치와 렌더링 UI의 Model/ViewModel 일괄 금지는 이번 iOS 개편으로 대체한다.
+[FSD 규칙안](fsd-domain-rules-draft.md)을 iOS Harmonize 검사와 실제 코드에 적용한다. 직접 하위 두 레이어와 동일 슬라이스 내부 참조를 허용하고, 상향·세 레이어 이상 건너뛰기·동일 레이어 다른 슬라이스 내부 접근을 금지한다. app/providers의 의존성 생성·수명 관리만 더 아래 레이어 조립을 허용한다. 이 최신 정책은 iOS에 적용했으며 Android 구현 완료를 뜻하지 않는다. iOS app은 entrypoint/routes/providers 등 목적별 세그먼트, pages/widgets는 슬라이스 아래 ui/model 등 역할 세그먼트를 사용한다. 사용자 정의 소스 폴더는 lowerCamelCase로 시작하며 UI/API 약어도 ui/api로 표기한다. Swift 타입·파일명과 Xcode 도구 규격 디렉터리는 유지한다. 기존의 Widget 동위 배치와 렌더링 UI의 Model/ViewModel 일괄 금지는 이번 iOS 개편으로 대체한다.
 
 Entity UI는 자기 도메인 값/표시값과 콜백을 받는 순수 표현이다. Widget/Page의 연결 UI는 자기 ViewModel을 관찰하고 Feature 행동을 주입할 수 있다. Repository와 캐시는 소유 도메인의 Entities에 유지하며, 지도·캘린더 OS 행동 어댑터는 해당 Feature로 옮긴다. App은 저장소 수명과 화면 간 라우팅을 조립한다. Shared는 도메인 행동 없는 디자인 시스템과 범용 기반만 가진다.
 
@@ -23,7 +23,7 @@ Entity UI는 자기 도메인 값/표시값과 콜백을 받는 순수 표현이
 | Entities | Notice의 NoticeModel·공고 조회/캐시와 Organization의 OrganizationModel·조직 조회/캐시·부모 경로 해석 |
 | Shared | 도메인 지식 없는 정보 표시, 테마 등 범용 UI·기반 코드 |
 
-공고와 조직은 독립 Entity 슬라이스다. NoticeModel은 조직 ID와 명시적 관계만 알고 OrganizationModel/이름/경로는 모른다. 두 모델의 조합은 Widgets/Pages의 ViewModel에서 수행하며 Entity 간 직접 참조를 만들지 않는다. 번들 전체 스냅샷을 읽는 공급 조립은 App 경계에 둔다. 조직 즐겨찾기 상태는 Features/FavoriteOrganization에 속한다.
+공고와 조직은 독립 Entity 슬라이스다. NoticeModel은 조직 ID와 명시적 관계만 알고 OrganizationModel/이름/경로는 모른다. 두 모델의 조합은 Widgets의 ViewModel에서 수행하며 Entity 간 직접 참조를 만들지 않는다. 번들 전체 스냅샷을 읽는 공급 조립은 App 경계에 둔다. 조직 즐겨찾기 상태는 Features/FavoriteOrganization에 속한다.
 
 ```text
 App/                            # Android: app/
@@ -61,7 +61,7 @@ Shared/                         # shared/
 
 ## 의존 방향과 화면 조합
 
-`App → Pages → Widgets → Features → Entities → Shared` 순서로 아래 레이어를 참조한다. 중간 레이어를 거치지 않고 더 아래를 참조할 수 있다. 같은 레이어의 다른 슬라이스를 직접 참조하지 않는다. App·Shared는 슬라이스 없이 목적별 세그먼트를 두는 예외다.
+`App → Pages → Widgets → Features → Entities → Shared` 순서로 아래 레이어를 참조한다. 직접 참조는 바로 아래 두 레이어까지만 허용한다: App→Pages/Widgets, Pages→Widgets/Features, Widgets→Features/Entities, Features→Entities/Shared, Entities→Shared. app/providers의 의존성 생성·수명 관리만 예외이며 routes/entrypoint는 예외가 아니다. 같은 레이어의 다른 슬라이스를 직접 참조하지 않는다. App·Shared는 슬라이스 없이 목적별 세그먼트를 두는 예외다.
 
 탐색 페이지가 상세 페이지 타입을 직접 생성하거나 즐겨찾기 페이지가 탐색 페이지를 참조하지 않는다. 화면 간 연결은 App의 라우팅·주입된 목적지 View/콜백으로 구성한다. SwiftUI NavigationLink·sheet와 Compose 시트/뒤로 가기의 기존 동작을 유지한다.
 
@@ -100,7 +100,7 @@ State는 렌더링 값이다. 저장소·가변 전역 상태·콜백·부수 �
 
 즐겨찾기 저장 목록은 기존 단일 상태가 원본이다. ViewModel의 State.saved는 이를 관찰해 반영하며 다른 화면에서 삭제한 결과도 기존 카드에 반영되어야 한다. UI 재계산마다 저장소·캐시·관찰 연결을 새로 만들지 않고 플랫폼에 맞는 수명을 유지한다.
 
-Features/AddToCalendar는 Pages/Widgets의 State를 참조하지 않는다. App이 모델의 기간·장소 등 필요한 값을 Feature에 전달하고, 실제 지도·캘린더 OS 동작은 App 어댑터에서 실행한다.
+Features/AddToCalendar는 Pages/Widgets의 State를 참조하지 않는다. Widget이 모델의 기간·장소 등 필요한 값을 Feature에 전달한다. 실제 지도·캘린더 OS 동작은 해당 Feature 어댑터가 실행하고, Widget이 행동과 표시를 조립한다. App routes는 목적지 연결만 담당한다.
 
 검증에는 독립 Entity 의존 경계, State만 받는 UI, 캐시 miss/hit·교체, 누락/순환 조직, 두 모델의 State 조합, 화면 간 즐겨찾기 상태 반영 및 기존 사용자 동작을 포함한다. 구성 변경이므로 해당 흐름의 플랫폼 회귀 검증이 필요하다.
 

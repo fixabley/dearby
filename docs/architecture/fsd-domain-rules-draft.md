@@ -2,13 +2,13 @@
 
 작성: 2026-09-16. 대상: iOS·Android 클라이언트 내부 구조. NestJS 서버와 모노레포 루트 `apps/` 배치는 대상이 아니다.
 
-이 문서는 FSD 문서 비교 후 정리한 **Harmonize 규칙·리팩터링의 목표 기준**이다. 2026-09-16 사용자 정정에 따라 iOS 검사·실제 리팩터링과 회귀 검증을 완료했으며, 추가 피드백인 소문자 시작 폴더 규칙을 적용한다. Android의 현재 구현을 뜻하지 않는다. 기존 `native-apps.md` 및 각 앱 ARCHITECTURE.md와 달라지는 정책은 아래에 명시하며, 코드 적용 시 문서·검사를 함께 갱신한다.
+이 문서는 FSD 문서 비교 후 정리한 **Harmonize 규칙·리팩터링의 목표 기준**이다. 2026-09-16 사용자 정정에 따라 iOS 검사·실제 리팩터링과 회귀 검증을 완료했으며, 추가 피드백인 소문자 시작 폴더 규칙을 적용했다. 이후 승인된 직접 하위 두 레이어 제한과 App 책임 분리를 iOS에 적용했다. Android의 현재 구현을 뜻하지 않는다. 기존 `native-apps.md` 및 각 앱 ARCHITECTURE.md와 달라지는 정책은 아래에 명시하며, 코드 적용 시 문서·검사를 함께 갱신한다.
 
 ## 1. 기본 원칙
 
 FSD의 레이어는 책임과 의존 방향을, 슬라이스는 제품에서의 의미를, 세그먼트는 기술적 역할을 구분한다. 중간 레이어를 반드시 거치는 파이프라인으로 사용하지 않는다.
 
-- 모든 하위 레이어를 참조할 수 있다. 상위 레이어 참조는 금지한다.
+- 바로 아래 두 레이어까지만 직접 참조한다. 상향 참조와 세 레이어 이상 건너뛴 참조는 금지한다. 이는 FSD 기본 규칙보다 엄격한 Dearby의 사용자 승인 정책이다.
 - 같은 슬라이스 내부 참조는 허용한다. 같은 레이어의 다른 슬라이스 참조는 기본적으로 금지한다.
 - 다른 슬라이스에서는 명시된 공개 진입점만 사용한다.
 - 필요한 레이어·슬라이스·세그먼트만 만든다. 하나의 화면 전용 코드를 재사용 계획만으로 하위 레이어에 분산하지 않는다.
@@ -20,12 +20,14 @@ FSD의 레이어는 책임과 의존 방향을, 슬라이스는 제품에서의 
 
 | 출발 레이어 | 허용하는 다른 레이어 |
 | --- | --- |
-| App | Pages, Widgets, Features, Entities, Shared |
-| Pages | Widgets, Features, Entities, Shared |
-| Widgets | Features, Entities, Shared |
+| App | Pages, Widgets |
+| Pages | Widgets, Features |
+| Widgets | Features, Entities |
 | Features | Entities, Shared |
 | Entities | Shared |
 | Shared | 없음 |
+
+**조립 예외는 `app/providers/`에만 둔다.** 공유 저장소·구체 공급자·세션을 생성하고 수명을 관리하며 하위 계약을 주입할 때 모든 하위 레이어를 참조할 수 있다. routes와 entrypoint에는 예외가 없다. providers로 화면·지도 실행·캘린더 편집 UI를 옮기거나 타입 별칭/재노출로 제한을 우회하지 않는다. App 내부 참조는 가능하지만 루트 View가 provider를 통해 얻은 하위 객체의 세부 동작을 직접 실행하는 구조도 리뷰에서 금지한다. 단순 전달용 Widget을 만들어 통과시키지 않고 독립적인 도메인 표현·행동 조합 단위로 분리한다. Shared 디자인 토큰·버튼·상태 표현을 Widget에 인라인 복제하는 방식도 금지한다. 공고/조직의 순수 표현은 Entities가 Shared를 조립하고 사용자 행동 UI는 Features가 Shared를 조립해 사용한다.
 
 이 표는 프로젝트 내부 의존성에 대한 것이다. SwiftUI/Foundation, Compose/Kotlin 표준 라이브러리 같은 외부 모듈은 역할별 규칙으로 별도 검사한다. 같은 슬라이스 내부 `ui → model` 또는 `model → api`는 위반이 아니다. 순환 의존은 같은 슬라이스 안에서도 피한다.
 
@@ -73,7 +75,7 @@ pages/
   favorites/ui/
   notice-detail/
     ui/
-    model/                     # 상세 전용 ViewModel·State가 필요하면 배치
+    model/                     # 화면 전용 선택/표시 상태가 필요하면 배치; Entity 조회는 Widget
   settings/ui/
 widgets/
   notice-card/
@@ -111,7 +113,7 @@ shared/
   lib/date/                    # 도메인 정책이 없는 날짜·구간 연산
 ```
 
-이 트리를 맞추려고 빈 폴더를 만들지 않는다. `favorite` 엔티티 추가는 이 설계의 제안이며 현재 Features/FavoriteOrganization에 있는 데이터와 행동을 분리할 때 필요성을 확인한다. 단순 저장 상태만으로 충분하면 불필요한 Model 타입을 만들지 않는다. 아직 없는 API 서버용 클라이언트도 미리 만들지 않는다.
+이 트리를 맞추려고 빈 폴더를 만들지 않는다. iOS는 favorite 엔티티와 saveOrganization 행동을 이미 분리했다. Android의 이전 구조를 옮길 때도 데이터와 행동의 책임을 구분한다. 단순 저장 상태만으로 충분하면 불필요한 Model 타입을 만들지 않는다. 아직 없는 API 서버용 클라이언트도 미리 만들지 않는다.
 
 [근거: 슬라이스·세그먼트와 공개 API](https://fsd.how/docs/reference/slices-segments/).
 
@@ -157,8 +159,8 @@ NoticeCard (Widget)
 - 도메인 원본은 `NoticeModel`, `OrganizationModel`, 화면 표시값은 `NoticeCardState` 같은 State 이름을 유지한다.
 - ViewModel은 조회 결과 조립·로딩·실패·사용자 동작을 책임질 때 둔다. 단순 전달용 ViewModel을 만들지 않는다.
 - Widget의 연결 UI는 자기 슬라이스 ViewModel을 사용할 수 있다. Entity/Shared의 순수 UI는 값·콜백으로 제한한다.
-- Pages는 자기 화면 State/ViewModel을 둘 수 있다. Pages에서 하위 Feature나 Entity를 사용하는 것도 허용한다.
-- app/providers가 공유 저장소·서비스를 생성하고 수명을 관리한다. App이 하위 레이어를 참조할 수 있으므로 불필요한 중간 전달 계층을 만들지 않는다.
+- Pages는 자기 화면 State/ViewModel을 둘 수 있다. Pages는 Widgets·Features 공개 계약만 직접 사용한다. 원본 Entity 조회·표시 조립은 의미 있는 Widget 단위에서 수행한다.
+- app/providers가 공유 저장소·서비스를 생성하고 수명을 관리한다. 이 조립 경로만 하위 두 레이어 제한의 예외다. 저장소 생성·로딩·재시도는 App의 관찰 가능한 세션 소유자에 두고 ContentView는 준비 상태와 루트 화면을 연결한다.
 - 공고·조직은 독립된 L1→SwiftData/Room→외부 source(현재 mock) 경계를 유지한다. 영속화 성공 전 캐시 승격 금지, snapshot 교체·오류/미존재 구분을 보존한다.
 - 즐겨찾기 상태 소유자는 하나이며 화면별 가변 복사를 만들지 않는다. 추가는 멱등이고 제거는 명시적 동작이다.
 - 기기 busy 시간은 임시 메모리에만 보유하고 OFF·종료·권한 철회 시 정리한다. 동의·서버 미전송·원본 URL 메모 계약도 유지한다.
@@ -168,7 +170,7 @@ NoticeCard (Widget)
 
 대상은 각 클라이언트의 App/app 레이어다. 저장소 루트 `apps/ios`, `apps/android`, `apps/dearby-api`는 유지한다.
 
-`app/routes`는 외부 URL과 내부 라우트 값을 연결하고 필요한 Page를 생성한다. 공고 조회·즐겨찾기 저장은 직접 구현하지 않고 주입된 하위 서비스에 위임한다. 딥링크 경로와 관계없는 저장소 설정은 `app/providers`, 진입 코드는 `app/entrypoint`에 둔다.
+`app/routes`는 외부 URL과 내부 라우트 값을 연결하고 필요한 Page를 생성한다. 공고 조회·즐겨찾기 저장·지도/캘린더 행동은 직접 구현하거나 하위 저장소에 접근하지 않는다. Pages/Widgets의 공개 진입점과 콜백을 조립한다. 딥링크 경로와 관계없는 저장소 설정은 `app/providers`, 진입 코드는 `app/entrypoint`에 둔다.
 
 예시 구조:
 
@@ -186,7 +188,8 @@ app/routes/
 
 | 검사 | 허용 / 위반 예 |
 | --- | --- |
-| 레이어 방향 | Pages→Entities/Shared 허용, Entities→Features 금지 |
+| 레이어 방향 | Pages→Widgets/Features 허용, Pages→Entities/Shared 및 Widgets→Shared 금지 |
+| 조립 예외 | app/providers→Entities 허용, 동일 참조를 routes/entrypoint에 두면 실패 |
 | 슬라이스 독립 | notice-card 내부 ui→model 허용, notice-card→다른 Widget 내부 금지 |
 | 폴더 배치 | pages도 slice/ui 등 사용, app·shared에 domain slice 강제 금지. iOS 사용자 정의 소스 폴더는 소문자로 시작 |
 | 순수 표현 경계 | Entity UI→자기 Model 허용, Entity/Shared UI→Repository·OS side effect 금지 |
@@ -203,7 +206,7 @@ Swift 단일 앱 모듈에서는 폴더 간 의존성이 `import` 문에 나타�
 
 | 현재 | 설계안 |
 | --- | --- |
-| 모든 하위 레이어 참조 가능 | 유지. 인접 1~2계층 제한은 도입하지 않음 |
+| 모든 하위 레이어 참조 가능 | 사용자 승인으로 바로 아래 두 레이어만 직접 참조. app/providers 조립만 예외 |
 | Widgets/Domain/Widget에 UI·State·VM 동위 배치 | 기본은 Widget slice/ui·model. 기존 동위 배치 규칙을 변경하는 제안 |
 | Entities의 공고·조직 Repository | 소유 데이터에 맞는 Entity에 유지. 일괄 Features 이동 없음 |
 | 모든 렌더링 UI의 Model/VM 참조 금지 | Entity UI는 자기 Model 허용, 연결 Widget/Page UI는 자기 VM 허용 |
@@ -211,8 +214,8 @@ Swift 단일 앱 모듈에서는 폴더 간 의존성이 `import` 문에 나타�
 | App의 진입·OS 어댑터·공급자 혼재 | routes/entrypoint/providers로 정리하고 행동 어댑터는 해당 Feature에 배치 |
 | Pages/Slice/UI·Model | 유지. Pages 세그먼트 제거는 하지 않음 |
 
-적용은 기능별로 나눈다: 공고 카드 → 즐겨찾기 조직 카드 → 상세 일정/지도/캘린더 → 앱 라우팅·설정. 각 기능 PR에 필요한 코드 이동·상태 연결·규칙/fixture·문서를 함께 넣는다. 여러 기능이 공유하는 규칙 변경은 명시적 선행 PR로 분리할 수 있지만 미이전 코드 때문에 CI를 전체 비활성화하지 않는다. 이전/새 경계를 경로별로 임시 매핑하고 이전이 완료되면 그 매핑을 제거한다.
+적용은 기능별로 나눈다: 공고 카드 → 즐겨찾기 조직 카드 → 상세 일정/지도/캘린더 → 앱 라우팅·설정. 각 기능 PR에 필요한 코드 이동·상태 연결·규칙/fixture·문서를 함께 넣는다. 여러 기능이 공유하는 규칙 변경은 명시적 선행 PR로 분리할 수 있지만 미이전 코드 때문에 CI를 전체 비활성화하지 않는다. 필요한 공통 변경은 하나의 선행 커밋으로 설명한다. 완성된 규칙에 임시 경로 매핑·전체 비활성화·legacy 예외를 남기지 않는다.
 
-완료 기준은 두 앱 빌드, 아키텍처 검사, 해당 기능의 기존 동작·저장 복원·화면 간 상태 동기화 검증이다. 파일만 옮기는 경우와 사용자 흐름이 바뀌는 경우의 검증 범위를 구별한다.
+플랫폼별 완료 기준은 해당 앱 빌드, 아키텍처 검사, 해당 기능의 기존 동작·저장 복원·화면 간 상태 동기화 검증이다. 현재 승인된 적용 범위는 iOS이며 Android 검증을 완료했다고 기록하지 않는다. 파일만 옮기는 경우와 사용자 흐름이 바뀌는 경우의 검증 범위를 구별한다.
 
 현재 iOS Harmonize 규칙과 실제 코드의 적용·회귀 검증을 진행한다. Android 적용 완료를 의미하지 않는다. 기능별 검증과 PR 검토 후 사용자 변경 제안을 같은 방식으로 반영하며, 테스트 통과를 사용자 만족의 대리 기준으로 삼지 않는다.

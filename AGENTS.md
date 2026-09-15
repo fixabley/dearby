@@ -65,7 +65,7 @@ SwiftLint는 일반 Swift 스타일, Harmonize/SwiftSyntax는 FSD 경계·폴더
 
 ## 네이티브 Widget 배치와 Harmonize 개편
 
-2026-09-16 사용자는 FSD 공식 문서 비교 후 Harmonize 규칙 작성과 실제 리팩터링·회귀 검증을 요청했다. 상세 목표는 docs/architecture/fsd-domain-rules-draft.md다. iOS는 widgets/<slice>/ui|model, pages/<slice>/ui|model 및 app 목적별 세그먼트를 사용한다. 2026-09-16 추가 결정으로 소스 폴더는 소문자로 시작하는 lowerCamelCase(noticeCard, addToCalendar)이며 약어는 ui/api/lib로 소문자 표기한다. Swift 타입·파일 이름과 Xcode 프로젝트/asset 규격 이름은 유지한다. Entity 순수 UI는 자기 도메인 값과 콜백을 받으며, Widget/Page 연결 UI는 자기 ViewModel과 Feature 진입점을 사용할 수 있다. 모든 하위 레이어 참조를 허용하고 같은 레이어 다른 슬라이스 직접 참조는 금지한다. 이 결정은 이전 Widget 안의 UI/Model 폴더 금지보다 우선한다. Android는 이번 iOS 작업에 포함하지 않으며 현재 widgets/<domain>/<widget>/ 동위 배치를 유지한다. 구현/검사 완료 여부는 각 플랫폼 인계와 ARCHITECTURE.md를 확인한다.
+2026-09-16 사용자는 FSD 공식 문서 비교 후 Harmonize 규칙 작성과 실제 리팩터링·회귀 검증을 요청했다. 상세 목표는 docs/architecture/fsd-domain-rules-draft.md다. iOS는 widgets/<slice>/ui|model, pages/<slice>/ui|model 및 app 목적별 세그먼트를 사용한다. 2026-09-16 추가 결정으로 소스 폴더는 소문자로 시작하는 lowerCamelCase(noticeCard, addToCalendar)이며 약어는 ui/api/lib로 소문자 표기한다. Swift 타입·파일 이름과 Xcode 프로젝트/asset 규격 이름은 유지한다. Entity 순수 UI는 자기 도메인 값과 콜백을 받으며, Widget/Page 연결 UI는 자기 ViewModel과 Feature 진입점을 사용할 수 있다. 최신 승인인 직접 하위 두 레이어 제한을 적용하며 app/providers의 조립만 예외다. 같은 레이어 다른 슬라이스 직접 참조는 금지한다. 이 결정은 이전 Widget 안의 UI/Model 폴더 금지보다 우선한다. Android는 이번 iOS 작업에 포함하지 않으며 현재 widgets/<domain>/<widget>/ 동위 배치를 유지한다. 구현/검사 완료 여부는 각 플랫폼 인계와 ARCHITECTURE.md를 확인한다.
 
 ## Android 3계층 캐시
 사용자는 iOS와 동등한 Android 영속캐시도 승인했다. Room 기반 L1→L2→외부mock 조회와 명시적 저장승격, snapshot transaction 무효화, 실패시 데이터보존, off-main I/O와 취소후 stale publish 방지를 적용한다. Shared UI는 플랫폼 네이티브 디자인버튼, Widgets는 도메인별 화면조합을 담당한다.
@@ -77,3 +77,7 @@ SwiftLint는 일반 Swift 스타일, Harmonize/SwiftSyntax는 FSD 경계·폴더
 ## 컨텍스트 문서 유지 방식
 
 현재 상태는 담당 역할 문서에서 교체·갱신하고 동일한 작업 로그를 여러 파일에 복제하지 않는다. 진행·완료·미착수를 구분하며 상세 이력은 docs/context/archive/날짜별-폴더에 보존한다. docs/workstreams는 역할별 context로 연결되는 안내로 유지한다. 과거 스냅샷의 세션 ID·Draft·미병합 상태를 현재 지시로 해석하지 않는다.
+
+## 직접 하위 두 레이어 제한 (2026-09-16 최신 승인)
+
+App→Pages/Widgets, Pages→Widgets/Features, Widgets→Features/Entities, Features→Entities/Shared, Entities→Shared만 직접 참조한다. 동일 슬라이스 내부는 허용하고 형제 슬라이스·상향 참조 금지는 유지한다. app/providers의 의존성 생성·공유 수명 관리·주입만 모든 하위 레이어 조립을 허용한다. app/routes와 entrypoint는 예외가 아니다. providers에 기능 UI를 몰아넣거나 타입 별칭·단순 전달 래퍼로 제한을 우회하지 않는다. ContentView는 시작 상태와 루트 화면 연결만 맡고 저장소 초기화·재시도, 화면별 지도/캘린더 행동, 설정 표시를 책임에 따라 분리한다. 현재 iOS에 적용했으며 Android 적용 완료를 뜻하지 않는다.
