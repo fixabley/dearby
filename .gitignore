@@ -6,6 +6,7 @@
 /dearby-android/
 /dearby-ios/
 /dearby-ios-2/
+/dearby-ios-architecture-tests/
 
 # Node.js / NestJS
 node_modules/
