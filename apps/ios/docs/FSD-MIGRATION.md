@@ -19,3 +19,9 @@ Card validation: architecture 9 tests and full standalone regression passed (104
 Widget UI/Model now form FavoriteOrganizationCard slice. The connected View reads its VM and delegates explicit remove; the pure Content stays local. Entities/Favorite owns one observable ID set and existing UserDefaults contract/key, independent of Organization. Features/SaveOrganization validates/resolves save meaning and returns the existing result; every VM still shares the same FavoriteOrganizations facade/store.
 
 Favorite validation: full architecture and standalone (including shared Observation consumers, legacy UserDefaults reload, duplicate save, explicit remove, unresolved no-write and both snapshot rollback samples) passed after renaming the stored field to favoriteStore to disambiguate the retained calendar store.remove lexical guard. Simulator build/run passed. No old storage key or cache schema changed.
+
+## Detail calendar/map actions and overlap feature
+
+Calendar request/editor/delegate now belong to Features/AddToCalendar/API; CalendarAddButton is its UI entry. VenueMapLink/Launcher and VenueMapButton belong to Features/OpenLocation API/UI. ReadCalendarBusy is renamed CheckCalendarOverlap with its unchanged provider/session cancellation/privacy behavior. Detail still owns display-only Page State/UI; App route owns presentation/lifetime and uses exported behavior contracts. OS bridges are confined to Feature API, never pure UI. No calendar data is accessed in verification: mock providers only.
+
+Detail/action validation: architecture, full standalone (both calendar source-URL/map samples and disk regressions), run_busy_calendar.sh (consent, settings persistence, cancellation/stale generations, clipping/intersection and privacy-safe provider fixtures), run_detail_presentations.sh (presentation/timezone/timeline) all passed. Simulator build/run passed with empty mock busy provider; OS calendar access was not used.

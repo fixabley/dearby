@@ -5,8 +5,8 @@ mkdir -p apps/ios/build
 swiftc -swift-version 6 -parse-as-library \
   apps/ios/Dearby/Shared/Lib/BusyTime*.swift \
   apps/ios/Dearby/Shared/Lib/CalendarConnectionState.swift \
-  apps/ios/Dearby/Features/ReadCalendarBusy/API/BusyCalendarProvider.swift \
-  apps/ios/Dearby/Features/ReadCalendarBusy/Model/*.swift \
+  apps/ios/Dearby/Features/CheckCalendarOverlap/API/BusyCalendarProvider.swift \
+  apps/ios/Dearby/Features/CheckCalendarOverlap/Model/*.swift \
   apps/ios/Dearby/App/CalendarPreference*.swift \
   apps/ios/Dearby/App/UserDefaultsCalendarPreferenceStore.swift \
   apps/ios/tests/CalendarPreferenceTests.swift \

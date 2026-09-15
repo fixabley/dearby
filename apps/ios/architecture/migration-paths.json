@@ -1,14 +1,9 @@
 {
-  "App/VenueMapLauncher.swift": "Features/OpenLocation/API/VenueMapLauncher.swift",
-  "App/CalendarEditorRequest.swift": "Features/AddToCalendar/API/CalendarEditorRequest.swift",
-  "App/VenueMapLink.swift": "Features/OpenLocation/API/VenueMapLink.swift",
-  "App/CalendarEditorDelegate.swift": "Features/AddToCalendar/API/CalendarEditorDelegate.swift",
   "App/NoticeSession.swift": "App/Providers/NoticeSession.swift",
   "App/CalendarPreferences.swift": "App/Providers/CalendarPreferences.swift",
   "App/NoticeDestinationView.swift": "App/Routes/NoticeDestinationView.swift",
   "App/BusyCalendarProviderFactory.swift": "App/Providers/BusyCalendarProviderFactory.swift",
   "App/BundleSnapshot.swift": "App/Providers/BundleSnapshot.swift",
-  "App/CalendarEventEditor.swift": "Features/AddToCalendar/API/CalendarEventEditor.swift",
   "App/PreviewBusyCalendarProvider.swift": "App/Providers/PreviewBusyCalendarProvider.swift",
   "App/NoticeDetailDestination.swift": "App/Routes/NoticeDetailDestination.swift",
   "App/SnapshotManifest.swift": "App/Providers/SnapshotManifest.swift",
@@ -16,9 +11,5 @@
   "App/CalendarPreferenceStore.swift": "App/Providers/CalendarPreferenceStore.swift",
   "App/UserDefaultsCalendarPreferenceStore.swift": "App/Providers/UserDefaultsCalendarPreferenceStore.swift",
   "App/ContentView.swift": "App/Routes/ContentView.swift",
-  "App/SwiftDataSnapshotStore.swift": "App/Providers/SwiftDataSnapshotStore.swift",
-  "Features/ReadCalendarBusy/Model/BusyCalendarSession.swift": "Features/CheckCalendarOverlap/Model/BusyCalendarSession.swift",
-  "Features/ReadCalendarBusy/Model/BusyCalendarOccurrence.swift": "Features/CheckCalendarOverlap/Model/BusyCalendarOccurrence.swift",
-  "Features/ReadCalendarBusy/API/BusyCalendarProvider.swift": "Features/CheckCalendarOverlap/API/BusyCalendarProvider.swift",
-  "Features/ReadCalendarBusy/API/EventKitBusyProvider.swift": "Features/CheckCalendarOverlap/API/EventKitBusyProvider.swift"
+  "App/SwiftDataSnapshotStore.swift": "App/Providers/SwiftDataSnapshotStore.swift"
 }

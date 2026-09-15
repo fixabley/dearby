@@ -26,7 +26,8 @@
     "CalendarDraftMapper",
     "CalendarEditorRequest",
     "CalendarEventDraft",
-    "CalendarEventEditor"
+    "CalendarEventEditor",
+    "CalendarAddButton"
   ],
   "Features/CheckCalendarOverlap": [
     "BusyCalendarAuthorization",
@@ -37,7 +38,8 @@
     "EventKitBusyProvider"
   ],
   "Features/OpenLocation": [
-    "VenueMapLauncher"
+    "VenueMapLauncher",
+    "VenueMapButton"
   ],
   "Features/SaveOrganization": [
     "FavoriteOrganizations",
