@@ -6,7 +6,7 @@
 
 ## 2026-09-16 Harmonize 적용 기준
 
-[FSD 규칙안](fsd-domain-rules-draft.md)을 iOS Harmonize 검사와 실제 코드에 적용한다. 모든 하위 레이어 참조와 동일 슬라이스 내부 참조를 허용하고, 상향 참조·동일 레이어 다른 슬라이스 내부 접근을 금지한다. App은 EntryPoint/Routes/Providers 등 목적별 세그먼트, Pages/Widgets는 슬라이스 아래 UI/Model 등 역할 세그먼트를 사용한다. 기존의 Widget 동위 배치와 렌더링 UI의 Model/ViewModel 일괄 금지는 이번 iOS 개편으로 대체한다.
+[FSD 규칙안](fsd-domain-rules-draft.md)을 iOS Harmonize 검사와 실제 코드에 적용한다. 모든 하위 레이어 참조와 동일 슬라이스 내부 참조를 허용하고, 상향 참조·동일 레이어 다른 슬라이스 내부 접근을 금지한다. iOS app은 entrypoint/routes/providers 등 목적별 세그먼트, pages/widgets는 슬라이스 아래 ui/model 등 역할 세그먼트를 사용한다. 사용자 정의 소스 폴더는 lowerCamelCase로 시작하며 UI/API 약어도 ui/api로 표기한다. Swift 타입·파일명과 Xcode 도구 규격 디렉터리는 유지한다. 기존의 Widget 동위 배치와 렌더링 UI의 Model/ViewModel 일괄 금지는 이번 iOS 개편으로 대체한다.
 
 Entity UI는 자기 도메인 값/표시값과 콜백을 받는 순수 표현이다. Widget/Page의 연결 UI는 자기 ViewModel을 관찰하고 Feature 행동을 주입할 수 있다. Repository와 캐시는 소유 도메인의 Entities에 유지하며, 지도·캘린더 OS 행동 어댑터는 해당 Feature로 옮긴다. App은 저장소 수명과 화면 간 라우팅을 조립한다. Shared는 도메인 행동 없는 디자인 시스템과 범용 기반만 가진다.
 

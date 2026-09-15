@@ -2,7 +2,7 @@
 
 작성: 2026-09-16. 대상: iOS·Android 클라이언트 내부 구조. NestJS 서버와 모노레포 루트 `apps/` 배치는 대상이 아니다.
 
-이 문서는 FSD 문서 비교 후 정리한 **Harmonize 규칙·리팩터링의 목표 기준**이다. 2026-09-16 사용자 정정에 따라 먼저 iOS 검사와 실제 코드에 적용 중이다. 현재 구현이나 Harmonize 규칙이 이미 이 구조를 따른다는 뜻이 아니다. 기존 `native-apps.md` 및 각 앱 ARCHITECTURE.md와 달라지는 정책은 아래에 명시하며, 코드 적용 시 문서·검사를 함께 갱신한다.
+이 문서는 FSD 문서 비교 후 정리한 **Harmonize 규칙·리팩터링의 목표 기준**이다. 2026-09-16 사용자 정정에 따라 iOS 검사·실제 리팩터링과 회귀 검증을 완료했으며, 추가 피드백인 소문자 시작 폴더 규칙을 적용한다. Android의 현재 구현을 뜻하지 않는다. 기존 `native-apps.md` 및 각 앱 ARCHITECTURE.md와 달라지는 정책은 아래에 명시하며, 코드 적용 시 문서·검사를 함께 갱신한다.
 
 ## 1. 기본 원칙
 
@@ -61,7 +61,7 @@ App·Shared를 제외한 레이어는 `레이어/슬라이스/세그먼트`를 �
 - `lib`는 날짜·문자열 등 구체적인 목적이 있는 코드에만 사용하고 범용 helpers 모음으로 만들지 않는다.
 - 슬라이스 그룹은 탐색용으로만 허용한다. 그룹 폴더 안에 형제 슬라이스가 공유하는 코드를 넣지 않는다.
 
-아래는 **논리 트리**다. iOS의 기존 PascalCase 폴더나 Android의 소문자 패키지명과 대응시킨다. 예를 들어 논리 `save-organization`은 iOS `SaveOrganization`, Android `saveorganization`으로 매핑할 수 있다. Android 패키지에는 하이픈을 넣지 않는다. 구현 검사에서는 플랫폼별 실제 경로와 논리 슬라이스의 대응을 명시해 사용한다.
+아래는 **논리 트리**다. 2026-09-16 사용자 추가 결정에 따라 iOS의 사용자 정의 소스 폴더는 소문자로 시작하는 lowerCamelCase로 표기한다. 예를 들어 논리 `save-organization`은 iOS `saveOrganization`, Android `saveorganization`에 대응한다. iOS 레이어·세그먼트는 `app`, `widgets`, `ui`, `model`, `api`, `lib`처럼 소문자이며 `UI`/`API` 약어도 모두 소문자로 쓴다. Swift 타입·파일명과 Dearby 타깃 루트/Xcode 프로젝트·asset 규격 디렉터리는 변경하지 않는다. Android 패키지에는 하이픈을 넣지 않는다. 검사는 실제 디스크 경로를 검사하며 대문자 폴더를 별칭으로 허용하지 않는다.
 
 ```text
 app/
@@ -158,7 +158,7 @@ NoticeCard (Widget)
 - ViewModel은 조회 결과 조립·로딩·실패·사용자 동작을 책임질 때 둔다. 단순 전달용 ViewModel을 만들지 않는다.
 - Widget의 연결 UI는 자기 슬라이스 ViewModel을 사용할 수 있다. Entity/Shared의 순수 UI는 값·콜백으로 제한한다.
 - Pages는 자기 화면 State/ViewModel을 둘 수 있다. Pages에서 하위 Feature나 Entity를 사용하는 것도 허용한다.
-- App/providers가 공유 저장소·서비스를 생성하고 수명을 관리한다. App이 하위 레이어를 참조할 수 있으므로 불필요한 중간 전달 계층을 만들지 않는다.
+- app/providers가 공유 저장소·서비스를 생성하고 수명을 관리한다. App이 하위 레이어를 참조할 수 있으므로 불필요한 중간 전달 계층을 만들지 않는다.
 - 공고·조직은 독립된 L1→SwiftData/Room→외부 source(현재 mock) 경계를 유지한다. 영속화 성공 전 캐시 승격 금지, snapshot 교체·오류/미존재 구분을 보존한다.
 - 즐겨찾기 상태 소유자는 하나이며 화면별 가변 복사를 만들지 않는다. 추가는 멱등이고 제거는 명시적 동작이다.
 - 기기 busy 시간은 임시 메모리에만 보유하고 OFF·종료·권한 철회 시 정리한다. 동의·서버 미전송·원본 URL 메모 계약도 유지한다.
@@ -188,7 +188,7 @@ app/routes/
 | --- | --- |
 | 레이어 방향 | Pages→Entities/Shared 허용, Entities→Features 금지 |
 | 슬라이스 독립 | notice-card 내부 ui→model 허용, notice-card→다른 Widget 내부 금지 |
-| 폴더 배치 | Pages도 slice/ui 등 사용, App·Shared에 domain slice 강제 금지 |
+| 폴더 배치 | pages도 slice/ui 등 사용, app·shared에 domain slice 강제 금지. iOS 사용자 정의 소스 폴더는 소문자로 시작 |
 | 순수 표현 경계 | Entity UI→자기 Model 허용, Entity/Shared UI→Repository·OS side effect 금지 |
 | 연결 UI 경계 | Widget UI→자기 ViewModel/Feature 진입점 허용, 다른 슬라이스 내부 API 접근 금지 |
 | 원본 Model 독립 | NoticeModel→조직 ID 허용, Organization 조회·SwiftData/Room 의존 금지 |

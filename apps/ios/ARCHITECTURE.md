@@ -1,59 +1,61 @@
 # iOS domain FSD architecture
 
-Updated 2026-09-16 after the approved domain FSD migration. This replaces the former flat Widget and blanket rendering Model/VM rules. The app remains one SwiftUI/Observation module; folder boundaries are enforced by tests and review, not the Swift compiler.
+Updated 2026-09-16 after the approved domain FSD migration. This replaces the former flat Widget and blanket rendering model/VM rules. The app remains one SwiftUI/Observation module; folder boundaries are enforced by tests and review, not the Swift compiler.
+
+All custom folders below `Dearby/` use lowerCamelCase, including `ui`, `api`, and `resources`. Swift filenames/types and the Xcode target/project root retain their names. Only the root `Assets.xcassets` tool-managed structure keeps Xcode asset naming. Both Python and Swift physical inventories reject invalid directories, including empty/non-Swift directories; there is no FSD source exclusion.
 
 ## Production layout (Dearby/)
 
 ```text
-App/
-  Entrypoint/        DearbyApp
-  Routes/            ContentView, NoticeDestinationView, NoticeDetailDestination
-  Providers/         snapshot/container/session, calendar preferences, injected provider factories
-Pages/
-  Discovery/UI/      feed paging, save-result feedback, navigation callbacks
-  Favorites/UI/      saved organization list
-  NoticeDetail/
-    UI/              full detail and page-local sections
-    Model/           NoticeDetailViewModel/State, place presentation
-  Settings/UI/       connection preference presentation
-Widgets/
-  NoticeCard/
-    UI/              connected NoticeCard, pure NoticeCardContent and local schedule/save views
-    Model/           NoticeCardViewModel, NoticeCardState, schedule/place states
-  FavoriteOrganizationCard/
-    UI/              connected card, pure FavoriteOrganizationCardContent
-    Model/           FavoriteOrganizationCardViewModel/State
-Features/
-  SaveOrganization/Model/          validated save/remove action facade and result
-  AddToCalendar/Model|API|UI/      draft/date policy, OS editor bridge, add button
-  OpenLocation/API|UI/            exact venue map URL/launcher and button
-  CheckCalendarOverlap/Model|API|UI/ ephemeral busy query/session, authorization/retry UI, EventKit read adapter
-Entities/
-  Notice/Model|API|UI/             independent notice values, repository/cache/source, pure classification
-  Organization/Model|API/         organization values, repository/cache/path resolution
-  Favorite/Model|API/             single observable ID set and persistent repository
-Shared/
-  UI/                            native controls, rows, generic timeline presentation
-  Lib/                           domain-free date/time/display values and interval calculations
+app/
+  entrypoint/        DearbyApp
+  routes/            ContentView, NoticeDestinationView, NoticeDetailDestination
+  providers/         snapshot/container/session, calendar preferences, injected provider factories
+pages/
+  discovery/ui/      feed paging, save-result feedback, navigation callbacks
+  favorites/ui/      saved organization list
+  noticeDetail/
+    ui/              full detail and page-local sections
+    model/           NoticeDetailViewModel/State, place presentation
+  settings/ui/       connection preference presentation
+widgets/
+  noticeCard/
+    ui/              connected NoticeCard, pure NoticeCardContent and local schedule/save views
+    model/           NoticeCardViewModel, NoticeCardState, schedule/place states
+  favoriteOrganizationCard/
+    ui/              connected card, pure FavoriteOrganizationCardContent
+    model/           FavoriteOrganizationCardViewModel/State
+features/
+  saveOrganization/model/          validated save/remove action facade and result
+  addToCalendar/model|api|ui/      draft/date policy, OS editor bridge, add button
+  openLocation/api|ui/            exact venue map URL/launcher and button
+  checkCalendarOverlap/model|api|ui/ ephemeral busy query/session, authorization/retry UI, EventKit read adapter
+entities/
+  notice/model|api|ui/             independent notice values, repository/cache/source, pure classification
+  organization/model|api/         organization values, repository/cache/path resolution
+  favorite/model|api/             single observable ID set and persistent repository
+shared/
+  ui/                            native controls, rows, generic timeline presentation
+  lib/                           domain-free date/time/display values and interval calculations
 ```
 
 Empty segments are not created. One-use card content stays in its Widget. Independent UI types added by this migration use separate files; title Text is not extracted into a wrapper.
 
 ## Direction, segments and public API
 
-Every lower layer is allowed: App→Pages/Widgets/Features/Entities/Shared, Pages→Widgets/Features/Entities/Shared, Widgets→Features/Entities/Shared, Features→Entities/Shared, Entities→Shared. Same-slice UI→Model→API is allowed; same-layer different-slice references are forbidden. App and Shared use purpose segments without domain slices.
+Every lower layer is allowed: App→pages/widgets/features/entities/Shared, Pages→widgets/features/entities/Shared, Widgets→features/entities/Shared, Features→entities/Shared, Entities→Shared. Same-slice UI→Model→API is allowed; same-layer different-slice references are forbidden. App and Shared use purpose segments without domain slices.
 
 The executable [public-api.json](architecture/public-api.json) names cross-slice contracts. Swift `internal` does not imply permission to reach another slice's internals; `public` is not required to be an FSD entrypoint. NoticeRecord, OrganizationRecord and NoticeStorageCodec are internal. App uses NoticeCacheStorage/OrganizationCacheStorage schema/deletion/fingerprint contracts instead. The checker rejects unknown/duplicate manifest entries and ambiguous declarations.
 
-Entity UI may receive its own Model. Shared/Entity UI and explicit `*Content.swift` presentation components are pure: values/callbacks only, no repository/storage/network/OS work. Widget/Page connected UI may access its own VM and lower-layer public contracts. Shared has no upper-domain dependencies. The concrete policy and checker limits are in [architecture/README](architecture/README.md).
+Entity UI may receive its own Model. shared/Entity UI and explicit `*Content.swift` presentation components are pure: values/callbacks only, no repository/storage/network/OS work. Widget/Page connected UI may access its own VM and lower-layer public contracts. Shared has no upper-domain dependencies. The concrete policy and checker limits are in [architecture/README](architecture/README.md).
 
 ## State and lifetime
 
 - NoticeModel carries notice values and organization IDs/roles, never OrganizationModel or repository lookup. Organization stays independent; VMs combine them into screen State.
 - Connected NoticeCard reads its VM and delegates save; Discovery retains paging, save feedback/haptic trigger and detail route callback. Connected FavoriteOrganizationCard reads its VM and delegates explicit remove.
-- Entities/Favorite/FavoriteOrganizationStore is the sole observable saved-ID owner. The shared Features/SaveOrganization/FavoriteOrganizations facade validates organization targets and exposes that state without a copy. Existing UserDefaults key/array restoration, idempotent insert, explicit delete and unresolved no-write semantics remain.
-- App/providers creates/shares repositories and sessions. Notice/Organization each retain L1→SwiftData L2→bundled mock source. External success is explicitly persisted before L1 promotion. Missing versus error, snapshot digest/schema and coordinated rollback remain unchanged. Entity cache facades never save independently; App commits/rolls back the snapshot transaction and replaces sessions after success.
-- App/routes owns destinations and lifecycle wiring. Calendar editor and map behavior adapters live in Feature/API; routes supply callbacks and present resulting UI. No new deep-link scheme, API client, DI library or state framework is introduced.
+- entities/favorite/FavoriteOrganizationStore is the sole observable saved-ID owner. The shared features/saveOrganization/FavoriteOrganizations facade validates organization targets and exposes that state without a copy. Existing UserDefaults key/array restoration, idempotent insert, explicit delete and unresolved no-write semantics remain.
+- app/providers creates/shares repositories and sessions. notice/Organization each retain L1→SwiftData L2→bundled mock source. External success is explicitly persisted before L1 promotion. Missing versus error, snapshot digest/schema and coordinated rollback remain unchanged. Entity cache facades never save independently; App commits/rolls back the snapshot transaction and replaces sessions after success.
+- app/routes owns destinations and lifecycle wiring. Calendar editor and map behavior adapters live in Feature/API; routes supply callbacks and present resulting UI. No new deep-link scheme, API client, DI library or state framework is introduced.
 
 ## Privacy and platform behavior
 

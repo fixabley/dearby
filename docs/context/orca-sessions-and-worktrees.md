@@ -1,11 +1,19 @@
 # Git·Orca 현재 상태
 
-현재 확인(2026-09-16 01:04 KST): root `refactor/ios-app-routing-fsd`, origin `https://github.com/fixabley/dearby.git`, origin/main `f8f648c`(PR18 병합). PR19–23은 기능별 누적 PR이며 사용자 리뷰 전 main에 병합하지 않는다.
+현재 확인(2026-09-16 01:04 KST): root `refactor/ios-lowercase-folders`, origin `https://github.com/fixabley/dearby.git`, origin/main `f8f648c`(PR18 병합). PR19–23은 기능별 누적 PR이며 사용자 리뷰 전 main에 병합하지 않는다.
 
 - iOS checkout: `/Users/jominjun/Documents/dearby/dearby-ios-architecture-tests`, branch `fixabley/dearby-ios-architecture-tests`, 최종 `ada4634`. Root에 최종 기록까지 cherry-pick 통합했다.
 - Run `run_58f7d03f4deb` / Task `task_31d48a682566` / Dispatch `ctx_338f8e66f52b`: 구현·검증 succeeded 보고를 수신하고 acknowledged. Terminal `term_63e15d3b-5a6c-4075-aca7-500e2300490c`은 사용자 요청에 따라 **retained**로 유지했다. 완료 Dispatch로 추가 작업을 시작하지 않는다.
 - 후속 피드백 시 런타임/checkout 상태를 재확인하고 기존 담당 terminal에 새 Task/Dispatch로 배정한다. Root가 플랫폼 구현을 중복 시작하지 않는다. 이전 `ctx_c8cf3ee2e5b6`는 PR18 완료 이력이다.
 - Root는 공통 문서·CI·PR/통합, iOS worker는 자기 apps/ios·역할 인계를 담당한다. Android/API 활성 배정 없음.
+
+## 폴더 소문자 시작 후속 (2026-09-16 01:09 KST)
+
+사용자 추가 피드백 Task `task_cdb97a35bdce`. 기존 terminal 재사용 Dispatch `ctx_3a9e2ee36f2e`는 agent_readiness timeout으로 실패했고 작업 입력은 배정되지 않았다. 실패 receipt와 소유 상태를 확인한 뒤 같은 checkout에 새 Codex terminal로 재시도했다.
+
+SwiftLint 추가 요청도 같은 Task의 별도 기능 commit으로 배정했다. Root가 CI, worker가 앱 lint 설정·설치/실행 스크립트와 필요한 코드 수정을 맡는다.
+
+활성 Dispatch `ctx_ae82a98e1b6d`, terminal `term_11663b1e-05f7-41bf-9057-226d7875e2ab`: ready/input_accepted와 turn_started 확인. 역할 범위는 동일한 apps/ios·iOS 인계이며 root는 공통 규칙 문서·CI·PR24 준비를 담당한다. 이전 terminal은 완료 이력 보존용 retained이며 후속 작업 담당이 아니다.
 
 ## 과거 운영 이력
 

@@ -23,7 +23,7 @@ AX5에서는 첫 화면에 모든 버튼이 들어가지 않는다. 실제 작�
 - AX5 저장 button의 멱등 재저장, 상세 button의 sheet 진입, 즐겨찾기 NavigationLink의 상세 push 및 Back 확인. 상세 화면 스크롤로 기간/지도/출처까지 표시 확인.
 - 접근성 트리에서 저장 button label/value, 조직명이 포함된 삭제 label, native tab/NavigationLink 식별 확인. InformationRow label/value 결합, status text+symbol, title header trait 및 신청/활동 calendar 구별 label은 코드로 확인했다.
 - 터치 정책: native bordered `.controlSize(.large)` 사용(기본 화면에서 약 50pt 높이), borderless calendar/map/link 및 목록 액션은 label minHeight 44pt. 실제 중앙 tap은 저장/상세/삭제에서 확인했다. 정밀 hit-test 경계 측정이나 VoiceOver 실제 낭독 검증은 수행하지 않았다.
-- App/Entities model/API/Features/Resources 및 State/VM diff 없음: favorites key/ID/single owner, Notice/Organization model, cache, observation 수명, body diskIO와 지도/calendar mapper·flow 계약은 그대로다.
+- app/Entities model/api/features/Resources 및 State/VM diff 없음: favorites key/ID/single owner, notice/Organization model, cache, observation 수명, body diskIO와 지도/calendar mapper·flow 계약은 그대로다.
 
 ## 검증 한계
 

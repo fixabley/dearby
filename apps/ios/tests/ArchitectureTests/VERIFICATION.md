@@ -25,12 +25,12 @@ The inventory fixture initially exposed Foundation's `/private/var` versus `/var
 
 ## Reversible production violation checks
 
-Both probes used the untracked file `apps/ios/Dearby/Shared/UI/ArchitectureSensitivityProbe.swift`, created exclusively and removed in a Python `finally` block. Every run invoked the **absolute path** to `run_architecture.sh` with working directory `/tmp`.
+Both probes used the untracked file `apps/ios/Dearby/shared/ui/ArchitectureSensitivityProbe.swift`, created exclusively and removed in a Python `finally` block. Every run invoked the **absolute path** to `run_architecture.sh` with working directory `/tmp`.
 
 | Temporary source | Expected / observed |
 | --- | --- |
 | `public struct ArchitectureSensitivityProbe {}` | Python passed for 103 files; Harmonize reported `[shared-access] ArchitectureSensitivityProbe must remain internal to the app module`; script exit 1. |
-| `struct ArchitectureSensitivityProbe { let session: NoticeSession }` | Python reported `upward reference to NoticeSession (App/NoticeSession.swift)`; script exit 1 before Swift tests. |
+| `struct ArchitectureSensitivityProbe { let session: NoticeSession }` | Python reported `upward reference to NoticeSession (app/NoticeSession.swift)`; script exit 1 before Swift tests. |
 | Probe removed | Same absolute runner from `/tmp` returned 0; all 6 Swift Testing tests and the legacy guard passed. |
 
 SHA-256 hashes of every original production Swift file were compared before probes, after each probe removal, and after the final passing run: all **102 files unchanged**. No probe remains.

@@ -18,8 +18,8 @@ struct ArchitectureTests {
             let source = SwiftSourceCode(source: text)
             stateCount += source.structs().filter { $0.name.hasSuffix("State") }.count
             viewModelCount += source.classes().filter { $0.name.hasSuffix("ViewModel") }.count
-            if path.hasPrefix("Shared/UI/") { sharedUICount += 1 }
-            if path.hasPrefix("Entities/") && path.contains("/Model/") { domainCount += 1 }
+            if path.hasPrefix("shared/ui/") { sharedUICount += 1 }
+            if path.hasPrefix("entities/") && path.contains("/model/") { domainCount += 1 }
             let violations = ArchitectureRules.check(path: path, text: text)
             #expect(violations.isEmpty, "\(violations.map(\.description).joined(separator: "\n"))")
         }
@@ -38,33 +38,33 @@ struct ArchitectureTests {
     }
 
     static let fixtures: [Fixture] = [
-        .init(rule: "domain-import", path: "Entities/Notice/Model/NoticeModel.swift",
+        .init(rule: "domain-import", path: "entities/notice/model/NoticeModel.swift",
               valid: "import Foundation\nstruct NoticeModel {} // import SwiftData",
               invalid: "import class SwiftData.ModelContext\nstruct NoticeModel {}"),
-        .init(rule: "ui-import", path: "Widgets/Card/UI/Card.swift",
+        .init(rule: "ui-import", path: "widgets/card/ui/Card.swift",
               valid: "import SwiftUI\nstruct Card<C: View>: SwiftUI.View where C: Equatable {}",
               invalid: "import EventKit\nstruct Card<C: View>: SwiftUI.View where C: Equatable {}"),
-        .init(rule: "ui-import", path: "Pages/Detail/UI/DetailView.swift",
+        .init(rule: "ui-import", path: "pages/detail/ui/DetailView.swift",
               valid: "import SwiftUI\nstruct DetailView: View {}",
               invalid: "#if os(iOS)\nimport SwiftData\n#endif\nstruct DetailView: View {}"),
-        .init(rule: "state-struct", path: "Widgets/Card/Model/CardState.swift",
+        .init(rule: "state-struct", path: "widgets/card/model/CardState.swift",
               valid: "struct CardState {}", invalid: "class CardState {}"),
-        .init(rule: "state-location", path: "Pages/Detail/UI/Renamed.swift",
+        .init(rule: "state-location", path: "pages/detail/ui/Renamed.swift",
               valid: "struct DetailView: View {}", invalid: "struct DetailState {}"),
-        .init(rule: "state-location", path: "Widgets/Card/UI/Model/Renamed.swift",
+        .init(rule: "state-location", path: "widgets/card/ui/model/Renamed.swift",
               valid: "struct Helper {}", invalid: "struct CardState {}"),
-        .init(rule: "state-name", path: "Pages/Detail/Model/DetailState.swift",
+        .init(rule: "state-name", path: "pages/detail/model/DetailState.swift",
               valid: "struct DetailState {}\nstruct PlaceState {}",
               invalid: "struct DetailState {}\nstruct Place {}"),
-        .init(rule: "state-name", path: "Widgets/Card/Model/CardState.swift",
+        .init(rule: "state-name", path: "widgets/card/model/CardState.swift",
               valid: "struct CardState {}", invalid: "// struct CardState {}\nstruct WrongState {}"),
-        .init(rule: "viewmodel-class", path: "Widgets/Card/Model/CardViewModel.swift",
+        .init(rule: "viewmodel-class", path: "widgets/card/model/CardViewModel.swift",
               valid: "final class CardViewModel {}", invalid: "struct CardViewModel {}"),
-        .init(rule: "viewmodel-location", path: "Pages/Detail/UI/Renamed.swift",
+        .init(rule: "viewmodel-location", path: "pages/detail/ui/Renamed.swift",
               valid: "struct DetailView: View {}", invalid: "final class DetailViewModel {}"),
-        .init(rule: "viewmodel-name", path: "Pages/Detail/Model/DetailViewModel.swift",
+        .init(rule: "viewmodel-name", path: "pages/detail/model/DetailViewModel.swift",
               valid: "final class DetailViewModel {}", invalid: "final class WrongViewModel {}"),
-        .init(rule: "shared-access", path: "Shared/UI/Buttons/PrimaryButton.swift",
+        .init(rule: "shared-access", path: "shared/ui/buttons/PrimaryButton.swift",
               valid: "struct PrimaryButton<L: View>: View {}",
               invalid: "public struct PrimaryButton<L: View>: View {}"),
     ]
@@ -83,19 +83,19 @@ struct ArchitectureTests {
             let text = "import UIKit; public class Fake {}"
         }
         """#
-        #expect(ArchitectureRules.check(path: "Shared/UI/Label.swift", text: text).isEmpty)
+        #expect(ArchitectureRules.check(path: "shared/ui/Label.swift", text: text).isEmpty)
     }
 
     @Test(arguments: ["class Card: View {}", "enum Card: SwiftUI.View {}", "extension Card: View {}"])
     func alternateWidgetViewDeclarations(declaration: String) {
-        #expect(ArchitectureRules.check(path: "Widgets/Card/UI/Card.swift", text: declaration).isEmpty)
-        #expect(ArchitectureRules.check(path: "Widgets/Card/UI/Card.swift", text: "import EventKit\n" + declaration)
+        #expect(ArchitectureRules.check(path: "widgets/card/ui/Card.swift", text: declaration).isEmpty)
+        #expect(ArchitectureRules.check(path: "widgets/card/ui/Card.swift", text: "import EventKit\n" + declaration)
             .contains { $0.rule == "ui-import" })
     }
 
     @Test func genericConstraintAloneDoesNotMakeWidgetAView() {
         let source = "import EventKit\nstruct GenericState<Content: View> {}"
-        #expect(ArchitectureRules.check(path: "Widgets/Card/Model/GenericState.swift", text: source).isEmpty)
+        #expect(ArchitectureRules.check(path: "widgets/card/model/GenericState.swift", text: source).isEmpty)
     }
 
     @Test func inventoryIsCheckoutLocalAndFailsClosed() throws {
@@ -109,19 +109,28 @@ struct ArchitectureTests {
             try text.write(to: file, atomically: true, encoding: .utf8)
         }
         try write("checkout/apps/ios/ARCHITECTURE.md", "fixture")
-        try write("checkout/apps/ios/Dearby/App/Entrypoint/DearbyApp.swift")
+        try write("checkout/apps/ios/Dearby/app/entrypoint/DearbyApp.swift")
         try write("checkout/apps/ios/tests/ArchitectureTests/Fixtures/Bad.swift")
         try write("checkout/apps/ios/tests/ArchitectureTests/.build/checkouts/Harmonize/Bad.swift")
         try write("checkout/dearby-ios/apps/ios/Dearby/Bad.swift")
         try write("other-worktree/apps/ios/Dearby/Bad.swift")
         #expect(throws: (any Error).self) { try SourceInventory.productionFiles(iosRoot: ios) }
-        for layer in ["Pages", "Widgets", "Features", "Entities", "Shared"] {
+        for layer in ["pages", "widgets", "features", "entities", "shared"] {
             try write("checkout/apps/ios/Dearby/\(layer)/Fixture.swift")
         }
         let files = try SourceInventory.productionFiles(iosRoot: ios)
         #expect(files.count == 6)
         #expect(files.allSatisfy { $0.path.hasPrefix(ios.appendingPathComponent("Dearby").path + "/") })
         #expect(throws: (any Error).self) { try SourceInventory.productionFiles(iosRoot: temporary) }
+        // Empty and non-Swift directories must not evade physical inventory checks.
+        for relative in ["Uppercase", "shared/ui/Uppercase", "resources/Uppercase"] {
+            let directory = ios.appendingPathComponent("Dearby/" + relative)
+            try manager.createDirectory(at: directory, withIntermediateDirectories: true)
+            #expect(throws: SourceInventory.InventoryError.self) { try SourceInventory.productionFiles(iosRoot: ios) }
+            try manager.removeItem(at: directory)
+        }
+        try write("checkout/apps/ios/Dearby/Assets.xcassets/AppIcon.appiconset/Contents.json", "{}")
+        #expect(try SourceInventory.productionFiles(iosRoot: ios).count == 6)
         try manager.createSymbolicLink(at: ios.appendingPathComponent("Dearby/External"), withDestinationURL: temporary.appendingPathComponent("other-worktree"))
         #expect(throws: (any Error).self) { try SourceInventory.productionFiles(iosRoot: ios) }
     }

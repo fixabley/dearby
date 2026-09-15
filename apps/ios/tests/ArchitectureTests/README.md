@@ -2,7 +2,7 @@
 
 Run `bash apps/ios/tests/run_architecture.sh` from the checkout root, or invoke its absolute path from any cwd. Failures propagate with nonzero exit. The package is macOS test-only and has no app runtime dependency.
 
-Policy, approved exceptions and public contracts: [iOS FSD policy](../../architecture/README.md). The latest design supersedes blanket rendering Model/VM bans and flat Widget paths; their old fixture expectations have been replaced with explicit allowed/violating pairs.
+Policy, approved exceptions and public contracts: [iOS FSD policy](../../architecture/README.md). The latest design supersedes blanket rendering model/VM bans and flat Widget paths; their old fixture expectations have been replaced with explicit allowed/violating pairs.
 
 Harmonize 1.2.1, SwiftSyntax 601.0.1 and Yams 5.4.0 are locked in Package.resolved. Swift 6.1+/macOS13+; local tests use Xcode26.6/Swift6.3.3. The runner requires resolved versions. No app SDK is required for architecture tests.
 

@@ -11,7 +11,7 @@ EventPeriodPresentation은 같은날 날짜 한 번, 한국어 요일/오전·�
 ## 일간 미리보기 구현과 참고 API
 
 - native compact DatePicker/이전·다음 버튼, 범위 제한·source timezone을 적용했다. [Apple DatePicker](https://developer.apple.com/documentation/swiftui/datepicker/init(selection:in:displayedcomponents:label:)) 및 [Calendar 날짜 연산](https://developer.apple.com/documentation/foundation/calendar/date(byadding:value:to:wrappingcomponents:))을 확인했다.
-- Shared/Lib는 검증된 `[start,end)`를 선택일 Calendar day interval로 clip한다. 첫날9시~자정, 중간날자정~다음자정, 마지막날자정~13시이며 매일9~13시 반복이 아니다. 종료자정은 그 다음날을 포함하지 않는다. 선택 가능한 ClosedRange만 보유하고 긴 기간 모든날 배열을 만들지 않는다.
+- shared/Lib는 검증된 `[start,end)`를 선택일 Calendar day interval로 clip한다. 첫날9시~자정, 중간날자정~다음자정, 마지막날자정~13시이며 매일9~13시 반복이 아니다. 종료자정은 그 다음날을 포함하지 않는다. 선택 가능한 ClosedRange만 보유하고 긴 기간 모든날 배열을 만들지 않는다.
 - 날짜만/마감만/혼합정밀도/invalid/역전/0길이에서는 timeline을 만들지 않는다. DST day는 실제 경과시간에 따른23/25/23.5시간 눈금을 사용하고 반복시각의 offset도 구별한다. 한국어 문장에서도 같은날 DST fold의 동일 시각은 양쪽 offset을 보존한다.
 - SwiftUI에 해당 일정 grid control이 없어 좁은 custom timeline을 사용한다. 날짜선택/그리드는 별도 View 파일, 원본 조립은 State/VM이다. 기본320pt, AX최대520pt 내부 세로 스크롤이며 앱의 기존 semantic accent(분홍색)를 사용했다. 사용자 이미지의 파란색을 고정 복제하지 않는다. 짧은 일정의 최소44pt 높이는 시각 보정으로만 취급하며 실제 시간 문장/AX/안내는 유지한다.
 

@@ -17,20 +17,20 @@ enum ArchitectureRules {
         let structures = source.structs(includeNested: false)
         let classes = source.classes(includeNested: false)
         let enums = source.enums(includeNested: false)
-        let isWidget = parts.first == "Widgets"
-        let isPresentation = isWidget || parts.first == "Pages"
+        let isWidget = parts.first == "widgets"
+        let isPresentation = isWidget || parts.first == "pages"
         let isView = source.structs().contains { $0.inheritanceTypesNames.contains(where: isViewType) }
             || source.classes().contains { $0.inheritanceTypesNames.contains(where: isViewType) }
             || source.enums().contains { $0.inheritanceTypesNames.contains(where: isViewType) }
             || source.extensions().contains { $0.inheritanceTypesNames.contains(where: isViewType) }
-        let rendering = parts.contains("UI") || (isWidget && isView)
+        let rendering = parts.contains("ui") || (isWidget && isView)
         var result: [Violation] = []
         func reject(_ rule: String, _ detail: String) {
             result.append(Violation(rule: rule, path: path, detail: detail))
         }
         for item in source.imports() {
             let module = item.name.split(separator: ".").first.map(String.init) ?? item.name
-            if parts.first == "Entities", parts.contains("Model"), module == "SwiftData" {
+            if parts.first == "entities", parts.contains("model"), module == "SwiftData" {
                 reject("domain-import", "domain Model must not import \(item.name)")
             }
             if rendering, ["SwiftData", "EventKit", "EventKitUI", "MapKit", "CoreLocation", "UIKit"].contains(module) {
@@ -43,7 +43,7 @@ enum ArchitectureRules {
             if !structures.contains(where: { $0.name == name }) {
                 reject("state-struct", "\(name) must be a value struct")
             }
-            let correctLocation = parts.count >= 4 && parts[2] == "Model"
+            let correctLocation = parts.count >= 4 && parts[2] == "model"
             if !correctLocation { reject("state-location", "\(name) belongs in its slice Model segment") }
         }
         if isPresentation && stem.hasSuffix("State") {
@@ -58,13 +58,13 @@ enum ArchitectureRules {
             if !classes.contains(where: { $0.name == name }) {
                 reject("viewmodel-class", "\(name) must be a class")
             }
-            let correctLocation = parts.count >= 4 && parts[2] == "Model"
+            let correctLocation = parts.count >= 4 && parts[2] == "model"
             if !correctLocation { reject("viewmodel-location", "\(name) belongs in its slice Model segment") }
         }
         if isPresentation && stem.hasSuffix("ViewModel"), !classes.contains(where: { $0.name == stem }) {
             reject("viewmodel-name", "file must declare class \(stem)")
         }
-        if path.hasPrefix("Shared/UI/") {
+        if path.hasPrefix("shared/ui/") {
             for item in structures where item.modifiers.contains(.public) || item.modifiers.contains(.open) || item.modifiers.contains(.package) {
                 reject("shared-access", "\(item.name) must remain internal to the app module")
             }

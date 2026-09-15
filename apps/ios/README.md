@@ -39,7 +39,7 @@ xcodebuild \
 
 ## 구조와 검증
 
-현재 앱은 Entities/Notice의 NoticeModel과 Entities/Organization의 OrganizationModel을 독립적으로 조회합니다. App이 실제 SwiftData container/context·snapshot·repository 수명을 소유하고 카드·상세·즐겨찾기 ViewModel이 State를 조합합니다. View는 State·콜백만 받습니다. 실제 트리·진입점·캐시/Observation 수명은 [ARCHITECTURE.md](ARCHITECTURE.md)를 참고하세요.
+현재 앱은 entities/Notice의 NoticeModel과 entities/Organization의 OrganizationModel을 독립적으로 조회합니다. App이 실제 SwiftData container/context·snapshot·repository 수명을 소유하고 카드·상세·즐겨찾기 ViewModel이 State를 조합합니다. View는 State·콜백만 받습니다. 실제 트리·진입점·캐시/Observation 수명은 [ARCHITECTURE.md](ARCHITECTURE.md)를 참고하세요.
 
 저장 키/JSON activities·activity-samples.json·접근성 태그와 기존 한국어 문구를 유지합니다. [Related #1](https://github.com/fixabley/dearby/issues/1), [설계 #3](https://github.com/fixabley/dearby/pull/3), [공통 계약 #6](https://github.com/fixabley/dearby/pull/6)은 별도 통합합니다.
 
@@ -57,4 +57,4 @@ run_standalone.sh에 실제 swiftc 파일 목록과 실행 명령이 있습니�
 
 조회는 L1 메모리 → L2 SwiftData ID 조회 → L3 번들 mock 순서입니다. miss 승격은 명시 save 성공 후 이루어지며, 같은 snapshot 재실행은 기존 disk를 사용합니다. 버전 변경은 manifest와 양쪽 L2의 원자적 무효화 후 Session을 재구성합니다. SwiftData 파일은 Application Support/DearbyNoticeCache에 두고 favorites UserDefaults는 그대로 유지합니다. 독립 테스트는 임시 disk store를 종료/재오픈하고 실패 보존도 검사합니다. 의도적인 잘못된 경로 fixture의 CoreData 오류 로그는 예상되며 최종 exit 0을 확인하세요.
 
-위젯은 Widgets/<Domain>/<Widget> 폴더에 View·ViewModel·State를 함께 둡니다. 독립 테스트 스크립트는 해당 폴더의 *State.swift/*ViewModel.swift만 선택하여 SwiftUI 앱 실행 없이 검증합니다.
+위젯은 widgets/<Domain>/<Widget> 폴더에 View·ViewModel·State를 함께 둡니다. 독립 테스트 스크립트는 해당 폴더의 *State.swift/*ViewModel.swift만 선택하여 SwiftUI 앱 실행 없이 검증합니다.

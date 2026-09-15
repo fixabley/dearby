@@ -1,5 +1,5 @@
 {
-  "Entities/Notice": [
+  "entities/notice": [
     "NoticeClassificationView",
     "NoticeContext",
     "NoticeEvidence",
@@ -14,7 +14,7 @@
     "SwiftDataNoticeSource",
     "NoticeCacheStorage"
   ],
-  "Entities/Organization": [
+  "entities/organization": [
     "OrganizationModel",
     "OrganizationRepository",
     "OrganizationSource",
@@ -22,14 +22,14 @@
     "SwiftDataOrganizationSource",
     "OrganizationCacheStorage"
   ],
-  "Features/AddToCalendar": [
+  "features/addToCalendar": [
     "CalendarDraftMapper",
     "CalendarEditorRequest",
     "CalendarEventDraft",
     "CalendarEventEditor",
     "CalendarAddButton"
   ],
-  "Features/CheckCalendarOverlap": [
+  "features/checkCalendarOverlap": [
     "BusyCalendarAuthorization",
     "BusyCalendarFailure",
     "BusyCalendarLifecycle",
@@ -40,29 +40,29 @@
     "CalendarConnectionState",
     "CalendarOverlapTimeline"
   ],
-  "Features/OpenLocation": [
+  "features/openLocation": [
     "VenueMapLauncher",
     "VenueMapButton"
   ],
-  "Features/SaveOrganization": [
+  "features/saveOrganization": [
     "FavoriteOrganizations",
     "SaveOrganizationResult"
   ],
-  "Pages/Discovery": [
+  "pages/discovery": [
     "DiscoveryView"
   ],
-  "Pages/Favorites": [
+  "pages/favorites": [
     "FavoriteListView"
   ],
-  "Pages/NoticeDetail": [
+  "pages/noticeDetail": [
     "NoticeDetailState",
     "NoticeDetailView",
     "NoticeDetailViewModel"
   ],
-  "Pages/Settings": [
+  "pages/settings": [
     "SettingsView"
   ],
-  "Shared": [
+  "shared": [
     "BusyTimeDisplay",
     "BusyTimeInterval",
     "CompactPeriod",
@@ -80,17 +80,17 @@
     "StatusMessage",
     "BusyTimeSummaryView"
   ],
-  "Widgets/FavoriteOrganizationCard": [
+  "widgets/favoriteOrganizationCard": [
     "FavoriteOrganizationCard",
     "FavoriteOrganizationCardState",
     "FavoriteOrganizationCardViewModel"
   ],
-  "Widgets/NoticeCard": [
+  "widgets/noticeCard": [
     "NoticeCard",
     "NoticeCardState",
     "NoticeCardViewModel"
   ],
-  "Entities/Favorite": [
+  "entities/favorite": [
     "FavoriteOrganizationStore",
     "FavoriteOrganizationsRepository",
     "UserDefaultsFavoriteOrganizationsRepository"

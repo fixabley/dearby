@@ -6,7 +6,7 @@ import SwiftSyntax
 /// Structural declaration graph. Identifiers are parsed syntax, not text in comments/strings.
 /// This intentionally does not claim type-checker resolution of aliases/inference/macros.
 enum FSDBoundaries {
-    static let layers = ["App", "Pages", "Widgets", "Features", "Entities", "Shared"]
+    static let layers = ["app", "pages", "widgets", "features", "entities", "shared"]
     struct File {
         let path: String
         let source: SwiftSourceCode
@@ -15,8 +15,8 @@ enum FSDBoundaries {
         let references: Set<String>
         var parts: [String] { path.split(separator: "/").map(String.init) }
         var layer: String { parts.first ?? "" }
-        var slice: String { parts.prefix(layer == "App" || layer == "Shared" ? 1 : 2).joined(separator: "/") }
-        var pureUI: Bool { parts.contains("UI") && (["Entities", "Shared"].contains(layer) || path.hasSuffix("Content.swift")) }
+        var slice: String { parts.prefix(layer == "app" || layer == "shared" ? 1 : 2).joined(separator: "/") }
+        var pureUI: Bool { parts.contains("ui") && (["entities", "shared"].contains(layer) || path.hasSuffix("Content.swift")) }
         init(path: String, text: String) {
             self.path = path
             source = SwiftSourceCode(source: text)
@@ -70,15 +70,18 @@ enum FSDBoundaries {
             }
             guard let rank = layers.firstIndex(of: file.layer) else { reject("fsd-path", "unknown layer"); continue }
             let parts = file.parts
-            if file.layer == "App" {
-                if parts.count < 3 || !["Entrypoint", "Routes", "Providers"].contains(parts[1]) {
-                    reject("fsd-path", "App requires Entrypoint/Routes/Providers")
+            for directory in parts.dropLast() where directory.range(of: "^[a-z][A-Za-z0-9]*$", options: .regularExpression) == nil {
+                reject("directory-name", "source directory must use lowerCamelCase: \(directory)")
+            }
+            if file.layer == "app" {
+                if parts.count < 3 || !["entrypoint", "routes", "providers"].contains(parts[1]) {
+                    reject("fsd-path", "App requires entrypoint/routes/Providers")
                 }
-            } else if file.layer == "Shared" {
-                if parts.count < 3 || !["UI", "Model", "API", "Lib", "Config"].contains(parts[1]) {
+            } else if file.layer == "shared" {
+                if parts.count < 3 || !["ui", "model", "api", "lib", "config"].contains(parts[1]) {
                     reject("fsd-path", "Shared requires purpose segment")
                 }
-            } else if parts.count < 4 || !["UI", "Model", "API", "Lib", "Config"].contains(parts[2]) {
+            } else if parts.count < 4 || !["ui", "model", "api", "lib", "config"].contains(parts[2]) {
                 reject("fsd-path", "expected Layer/Slice/Segment/file")
             }
             if file.syntax.hasError { reject("swift-syntax", "source must parse without errors") }
@@ -96,7 +99,7 @@ enum FSDBoundaries {
                     if target.slice != file.slice && !(exports[target.slice] ?? []).contains(name) {
                         reject("fsd-public-api", "\(name) is internal to \(target.slice)")
                     }
-                    if file.pureUI && (target.parts.contains("API") || name.hasSuffix("Repository") || name.hasSuffix("ViewModel")) {
+                    if file.pureUI && (target.parts.contains("api") || name.hasSuffix("Repository") || name.hasSuffix("ViewModel")) {
                         reject("pure-ui-effect", "pure UI cannot access \(name)")
                     }
                 }

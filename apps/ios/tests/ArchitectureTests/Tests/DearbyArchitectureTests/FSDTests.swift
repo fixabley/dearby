@@ -23,67 +23,67 @@ struct FSDTests {
 
     @Test func manifestAndConditionalDeclarations() {
         #expect(FSDBoundaries.check(sources: ["": "struct Empty {}"], exports: [:]).contains { $0.rule == "fsd-path" })
-        #expect(FSDBoundaries.check(sources: ["Shared/Lib/A.swift": "struct A {}"], exports: ["Shared": ["Missing"]]).contains { $0.rule == "fsd-manifest" })
-        #expect(FSDBoundaries.check(sources: ["Shared/Lib/A.swift": "struct A {}", "Shared/Lib/B.swift": "struct A {}"], exports: [:]).contains { $0.rule == "fsd-ambiguous" })
+        #expect(FSDBoundaries.check(sources: ["shared/lib/A.swift": "struct A {}"], exports: ["shared": ["Missing"]]).contains { $0.rule == "fsd-manifest" })
+        #expect(FSDBoundaries.check(sources: ["shared/lib/A.swift": "struct A {}", "shared/lib/B.swift": "struct A {}"], exports: [:]).contains { $0.rule == "fsd-ambiguous" })
         for declaration in ["actor Hidden {}", "typealias Hidden = Int", "func Hidden() {}"] {
-            let sources = ["Entities/Notice/API/Hidden.swift": "#if os(iOS)\n" + declaration + "\n#endif",
-                           "Pages/Detail/Model/Consumer.swift": "struct Consumer { let value = Hidden() }"]
+            let sources = ["entities/notice/api/Hidden.swift": "#if os(iOS)\n" + declaration + "\n#endif",
+                           "pages/detail/model/Consumer.swift": "struct Consumer { let value = Hidden() }"]
             #expect(FSDBoundaries.check(sources: sources, exports: [:]).contains { $0.rule == "fsd-public-api" })
         }
     }
 
     @Test func dependencyFixtures() {
         let declarations = [
-            "Entities/Notice/Model/NoticeModel.swift": "struct NoticeModel {}",
-            "Entities/Notice/API/NoticeRepository.swift": "class NoticeRepository {}",
-            "Entities/Notice/API/NoticeRecord.swift": "struct NoticeRecord {}",
-            "Entities/Notice/API/NoticeStorageCodec.swift": "enum NoticeStorageCodec {}",
-            "Entities/Organization/Model/OrganizationModel.swift": "struct OrganizationModel {}",
-            "Widgets/Card/Model/CardViewModel.swift": "class CardViewModel {}",
-            "Widgets/Sibling/Model/SiblingViewModel.swift": "class SiblingViewModel {}",
-            "Features/Save/Model/Save.swift": "class Save {}",
-            "Features/CheckCalendarOverlap/Model/CalendarConnectionState.swift": "enum CalendarConnectionState {}",
-            "Pages/Detail/Model/DetailViewModel.swift": "class DetailViewModel {}",
-            "Shared/Lib/DateValue.swift": "struct DateValue {}",
+            "entities/notice/model/NoticeModel.swift": "struct NoticeModel {}",
+            "entities/notice/api/NoticeRepository.swift": "class NoticeRepository {}",
+            "entities/notice/api/NoticeRecord.swift": "struct NoticeRecord {}",
+            "entities/notice/api/NoticeStorageCodec.swift": "enum NoticeStorageCodec {}",
+            "entities/organization/model/OrganizationModel.swift": "struct OrganizationModel {}",
+            "widgets/card/model/CardViewModel.swift": "class CardViewModel {}",
+            "widgets/sibling/model/SiblingViewModel.swift": "class SiblingViewModel {}",
+            "features/save/model/Save.swift": "class Save {}",
+            "features/checkCalendarOverlap/model/CalendarConnectionState.swift": "enum CalendarConnectionState {}",
+            "pages/detail/model/DetailViewModel.swift": "class DetailViewModel {}",
+            "shared/lib/DateValue.swift": "struct DateValue {}",
         ]
-        let exports = ["Entities/Notice": ["NoticeModel", "NoticeRepository"],
-                       "Entities/Organization": ["OrganizationModel"], "Widgets/Card": ["CardViewModel"],
-                       "Widgets/Sibling": ["SiblingViewModel"], "Features/Save": ["Save"],
-                       "Pages/Detail": ["DetailViewModel"], "Shared": ["DateValue"],
-                       "Features/CheckCalendarOverlap": ["CalendarConnectionState"]]
+        let exports = ["entities/notice": ["NoticeModel", "NoticeRepository"],
+                       "entities/organization": ["OrganizationModel"], "widgets/card": ["CardViewModel"],
+                       "widgets/sibling": ["SiblingViewModel"], "features/save": ["Save"],
+                       "pages/detail": ["DetailViewModel"], "shared": ["DateValue"],
+                       "features/checkCalendarOverlap": ["CalendarConnectionState"]]
         let allowed: [(String, String)] = [
-            ("Features/CheckCalendarOverlap/UI/Control.swift", "CalendarConnectionState"),
-            ("Entities/Notice/UI/Label.swift", "NoticeModel"),
-            ("Widgets/Card/UI/Card.swift", "CardViewModel"),
-            ("Widgets/Card/UI/CardContent.swift", "NoticeModel"),
-            ("Widgets/Card/UI/Card.swift", "Save"),
-            ("Pages/Detail/UI/Detail.swift", "DetailViewModel"),
-            ("Pages/Detail/UI/Detail.swift", "NoticeRepository"),
-            ("Pages/Detail/UI/Detail.swift", "DateValue"),
-            ("App/Providers/Dependencies.swift", "NoticeRepository"),
+            ("features/checkCalendarOverlap/ui/Control.swift", "CalendarConnectionState"),
+            ("entities/notice/ui/Label.swift", "NoticeModel"),
+            ("widgets/card/ui/Card.swift", "CardViewModel"),
+            ("widgets/card/ui/CardContent.swift", "NoticeModel"),
+            ("widgets/card/ui/Card.swift", "Save"),
+            ("pages/detail/ui/Detail.swift", "DetailViewModel"),
+            ("pages/detail/ui/Detail.swift", "NoticeRepository"),
+            ("pages/detail/ui/Detail.swift", "DateValue"),
+            ("app/providers/Dependencies.swift", "NoticeRepository"),
         ]
         for (path, name) in allowed {
             #expect(FSDBoundaries.check(sources: declarations.merging([path: "struct Consumer { let value: \(name) }"]) { _, new in new }, exports: exports).isEmpty)
         }
         let forbidden: [(String, String, String)] = [
-            ("Shared/UI/Control.swift", "CalendarConnectionState", "fsd-upward"),
-            ("Entities/Notice/Model/Bad.swift", "Save", "fsd-upward"),
-            ("Entities/Notice/Model/Bad.swift", "OrganizationModel", "fsd-cross-slice"),
-            ("Widgets/Card/UI/Bad.swift", "SiblingViewModel", "fsd-cross-slice"),
-            ("Pages/Detail/UI/Bad.swift", "NoticeRecord", "fsd-public-api"),
-            ("Entities/Notice/UI/Bad.swift", "NoticeRepository", "pure-ui-effect"),
-            ("Widgets/Card/UI/CardContent.swift", "CardViewModel", "pure-ui-effect"),
-            ("Widgets/Card/Model/Bad.swift", "NoticeStorageCodec", "fsd-public-api"),
-            ("Shared/UI/Bad.swift", "UserDefaults", "pure-ui-effect"),
-            ("Entities/Notice/UI/Bad.swift", "URLSession", "pure-ui-effect"),
+            ("shared/ui/Control.swift", "CalendarConnectionState", "fsd-upward"),
+            ("entities/notice/model/Bad.swift", "Save", "fsd-upward"),
+            ("entities/notice/model/Bad.swift", "OrganizationModel", "fsd-cross-slice"),
+            ("widgets/card/ui/Bad.swift", "SiblingViewModel", "fsd-cross-slice"),
+            ("pages/detail/ui/Bad.swift", "NoticeRecord", "fsd-public-api"),
+            ("entities/notice/ui/Bad.swift", "NoticeRepository", "pure-ui-effect"),
+            ("widgets/card/ui/CardContent.swift", "CardViewModel", "pure-ui-effect"),
+            ("widgets/card/model/Bad.swift", "NoticeStorageCodec", "fsd-public-api"),
+            ("shared/ui/Bad.swift", "UserDefaults", "pure-ui-effect"),
+            ("entities/notice/ui/Bad.swift", "URLSession", "pure-ui-effect"),
         ]
         for (path, name, rule) in forbidden {
             let errors = FSDBoundaries.check(sources: declarations.merging([path: "struct Consumer { let value: \(name) }"]) { _, new in new }, exports: exports)
             #expect(errors.contains { $0.rule == rule }, "\(path) → \(name): \(errors)")
         }
-        #expect(FSDBoundaries.check(sources: ["Shared/UI/Label.swift": "struct Label { let text = \"UserDefaults NoticeModel\" } // URLSession"], exports: [:]).isEmpty)
-        #expect(FSDBoundaries.check(sources: ["App/Bad.swift": "struct Bad {}"], exports: [:]).contains { $0.rule == "fsd-path" })
-        #expect(FSDBoundaries.check(sources: ["Widgets/Notice/Card/UI/Bad.swift": "struct Bad {}"], exports: [:]).contains { $0.rule == "fsd-path" })
-        #expect(FSDBoundaries.check(sources: ["Shared/Lib/Bad.swift": "struct {"], exports: [:]).contains { $0.rule == "swift-syntax" })
+        #expect(FSDBoundaries.check(sources: ["shared/ui/Label.swift": "struct Label { let text = \"UserDefaults NoticeModel\" } // URLSession"], exports: [:]).isEmpty)
+        #expect(FSDBoundaries.check(sources: ["app/Bad.swift": "struct Bad {}"], exports: [:]).contains { $0.rule == "fsd-path" })
+        #expect(FSDBoundaries.check(sources: ["widgets/notice/card/ui/Bad.swift": "struct Bad {}"], exports: [:]).contains { $0.rule == "fsd-path" })
+        #expect(FSDBoundaries.check(sources: ["shared/lib/Bad.swift": "struct {"], exports: [:]).contains { $0.rule == "swift-syntax" })
     }
 }

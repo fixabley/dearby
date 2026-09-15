@@ -52,7 +52,7 @@
 - NoticeCardViewModel은 두 모델과 공유 즐겨찾기 상태를 조합해 NoticeCardState를 제공한다. 상세도 NoticeDetailViewModel→NoticeDetailState로 같은 규칙을 따른다.
 - 화면별 표시 타입은 State 접미사, 원본 도메인 타입은 Model 접미사를 사용한다. View는 State와 콜백으로 표시하며 작은 하위 View에 불필요한 ViewModel을 만들지 않는다.
 - 즐겨찾기 원본 상태는 하나이고 State.saved는 이를 반영한다. ViewModel마다 복사한 즐겨찾기 목록을 독립적으로 변경하지 않는다.
-- Entities/Notice와 Entities/Organization은 서로 직접 참조하지 않고 상위 ViewModel에서 조합한다. Feature가 화면 State에 상향 의존하지 않도록 지도·캘린더에 필요한 모델 값은 App에서 전달한다.
+- entities/notice와 entities/organization은 서로 직접 참조하지 않고 상위 ViewModel에서 조합한다. Feature가 화면 State에 상향 의존하지 않도록 지도·캘린더에 필요한 모델 값은 App에서 전달한다.
 
 
 ## iOS 3계층 캐시
@@ -61,7 +61,7 @@
 
 ## 네이티브 Widget 배치와 Harmonize 개편
 
-2026-09-16 사용자는 FSD 공식 문서 비교 후 Harmonize 규칙 작성과 실제 리팩터링·회귀 검증을 요청했다. 상세 목표는 docs/architecture/fsd-domain-rules-draft.md다. iOS부터 Widgets/<Slice>/UI|Model, Pages/<Slice>/UI|Model 및 App 목적별 세그먼트로 이행한다. Entity 순수 UI는 자기 도메인 값과 콜백을 받으며, Widget/Page 연결 UI는 자기 ViewModel과 Feature 진입점을 사용할 수 있다. 모든 하위 레이어 참조를 허용하고 같은 레이어 다른 슬라이스 직접 참조는 금지한다. 이 결정은 이전 Widget 안의 UI/Model 폴더 금지보다 우선한다. Android는 이번 iOS 작업에 포함하지 않으며 현재 widgets/<domain>/<widget>/ 동위 배치를 유지한다. 구현/검사 완료 여부는 각 플랫폼 인계와 ARCHITECTURE.md를 확인한다.
+2026-09-16 사용자는 FSD 공식 문서 비교 후 Harmonize 규칙 작성과 실제 리팩터링·회귀 검증을 요청했다. 상세 목표는 docs/architecture/fsd-domain-rules-draft.md다. iOS는 widgets/<slice>/ui|model, pages/<slice>/ui|model 및 app 목적별 세그먼트를 사용한다. 2026-09-16 추가 결정으로 소스 폴더는 소문자로 시작하는 lowerCamelCase(noticeCard, addToCalendar)이며 약어는 ui/api/lib로 소문자 표기한다. Swift 타입·파일 이름과 Xcode 프로젝트/asset 규격 이름은 유지한다. Entity 순수 UI는 자기 도메인 값과 콜백을 받으며, Widget/Page 연결 UI는 자기 ViewModel과 Feature 진입점을 사용할 수 있다. 모든 하위 레이어 참조를 허용하고 같은 레이어 다른 슬라이스 직접 참조는 금지한다. 이 결정은 이전 Widget 안의 UI/Model 폴더 금지보다 우선한다. Android는 이번 iOS 작업에 포함하지 않으며 현재 widgets/<domain>/<widget>/ 동위 배치를 유지한다. 구현/검사 완료 여부는 각 플랫폼 인계와 ARCHITECTURE.md를 확인한다.
 
 ## Android 3계층 캐시
 사용자는 iOS와 동등한 Android 영속캐시도 승인했다. Room 기반 L1→L2→외부mock 조회와 명시적 저장승격, snapshot transaction 무효화, 실패시 데이터보존, off-main I/O와 취소후 stale publish 방지를 적용한다. Shared UI는 플랫폼 네이티브 디자인버튼, Widgets는 도메인별 화면조합을 담당한다.

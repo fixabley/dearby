@@ -1,0 +1,52 @@
+Test Suite 'All tests' started at 2026-09-16 01:11:08.239.
+Test Suite 'All tests' passed at 2026-09-16 01:11:08.240.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+◇ Test run started.
+↳ Testing Library Version: 2084
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite FSDTests started.
+◇ Suite ArchitectureTests started.
+◇ Test productionBoundaries() started.
+◇ Test productionArchitecture() started.
+✘ Test productionArchitecture() recorded an issue at ArchitectureTests.swift:7:6: Caught error: .directoryName("/Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/Dearby/shared/UI")
+✘ Test productionBoundaries() recorded an issue at FSDTests.swift:6:6: Caught error: .directoryName("/Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/Dearby/shared/UI")
+✘ Test productionArchitecture() failed after 0.005 seconds with 1 issue.
+✘ Test productionBoundaries() failed after 0.005 seconds with 1 issue.
+◇ Test supportedRuleSensitivity(fixture:) started.
+◇ Test manifestAndConditionalDeclarations() started.
+◇ Test case passing 1 argument fixture → Fixture(rule: "domain-import", path: "entities/notice/model/NoticeModel.swift", valid: "import Foundation\nstruct NoticeModel {} // import SwiftData", invalid: "import class SwiftData.ModelContext\nstruct NoticeModel {}") to supportedRuleSensitivity(fixture:) started.
+◇ Test case passing 1 argument fixture → Fixture(rule: "ui-import", path: "widgets/card/ui/Card.swift", valid: "import SwiftUI\nstruct Card<C: View>: SwiftUI.View where C: Equatable {}", invalid: "import EventKit\nstruct Card<C: View>: SwiftUI.View where C: Equatable {}") to supportedRuleSensitivity(fixture:) started.
+◇ Test case passing 1 argument fixture → Fixture(rule: "ui-import", path: "pages/detail/ui/DetailView.swift", valid: "import SwiftUI\nstruct DetailView: View {}", invalid: "#if os(iOS)\nimport SwiftData\n#endif\nstruct DetailView: View {}") to supportedRuleSensitivity(fixture:) started.
+◇ Test case passing 1 argument fixture → Fixture(rule: "state-struct", path: "widgets/card/model/CardState.swift", valid: "struct CardState {}", invalid: "class CardState {}") to supportedRuleSensitivity(fixture:) started.
+◇ Test case passing 1 argument fixture → Fixture(rule: "state-location", path: "pages/detail/ui/Renamed.swift", valid: "struct DetailView: View {}", invalid: "struct DetailState {}") to supportedRuleSensitivity(fixture:) started.
+◇ Test case passing 1 argument fixture → Fixture(rule: "state-location", path: "widgets/card/ui/model/Renamed.swift", valid: "struct Helper {}", invalid: "struct CardState {}") to supportedRuleSensitivity(fixture:) started.
+◇ Test case passing 1 argument fixture → Fixture(rule: "state-name", path: "pages/detail/model/DetailState.swift", valid: "struct DetailState {}\nstruct PlaceState {}", invalid: "struct DetailState {}\nstruct Place {}") to supportedRuleSensitivity(fixture:) started.
+◇ Test case passing 1 argument fixture → Fixture(rule: "state-name", path: "widgets/card/model/CardState.swift", valid: "struct CardState {}", invalid: "// struct CardState {}\nstruct WrongState {}") to supportedRuleSensitivity(fixture:) started.
+✔ Test manifestAndConditionalDeclarations() passed after 0.006 seconds.
+◇ Test dependencyFixtures() started.
+◇ Test case passing 1 argument fixture → Fixture(rule: "viewmodel-class", path: "widgets/card/model/CardViewModel.swift", valid: "final class CardViewModel {}", invalid: "struct CardViewModel {}") to supportedRuleSensitivity(fixture:) started.
+◇ Test case passing 1 argument fixture → Fixture(rule: "viewmodel-location", path: "pages/detail/ui/Renamed.swift", valid: "struct DetailView: View {}", invalid: "final class DetailViewModel {}") to supportedRuleSensitivity(fixture:) started.
+◇ Test case passing 1 argument fixture → Fixture(rule: "viewmodel-name", path: "pages/detail/model/DetailViewModel.swift", valid: "final class DetailViewModel {}", invalid: "final class WrongViewModel {}") to supportedRuleSensitivity(fixture:) started.
+◇ Test case passing 1 argument fixture → Fixture(rule: "shared-access", path: "shared/ui/buttons/PrimaryButton.swift", valid: "struct PrimaryButton<L: View>: View {}", invalid: "public struct PrimaryButton<L: View>: View {}") to supportedRuleSensitivity(fixture:) started.
+✔ Test supportedRuleSensitivity(fixture:) with 12 test cases passed after 0.010 seconds.
+◇ Test commentsAndStringsAreNotDeclarationsOrImports() started.
+✔ Test commentsAndStringsAreNotDeclarationsOrImports() passed after 0.001 seconds.
+◇ Test alternateWidgetViewDeclarations(declaration:) started.
+◇ Test case passing 1 argument declaration → "class Card: View {}" to alternateWidgetViewDeclarations(declaration:) started.
+◇ Test case passing 1 argument declaration → "enum Card: SwiftUI.View {}" to alternateWidgetViewDeclarations(declaration:) started.
+◇ Test case passing 1 argument declaration → "extension Card: View {}" to alternateWidgetViewDeclarations(declaration:) started.
+✔ Test alternateWidgetViewDeclarations(declaration:) with 3 test cases passed after 0.002 seconds.
+◇ Test genericConstraintAloneDoesNotMakeWidgetAView() started.
+✔ Test genericConstraintAloneDoesNotMakeWidgetAView() passed after 0.001 seconds.
+◇ Test inventoryIsCheckoutLocalAndFailsClosed() started.
+✔ Test inventoryIsCheckoutLocalAndFailsClosed() passed after 0.014 seconds.
+✘ Suite ArchitectureTests failed after 0.035 seconds with 1 issue.
+✔ Test dependencyFixtures() passed after 0.059 seconds.
+✘ Suite FSDTests failed after 0.072 seconds with 1 issue.
+✘ Test run with 9 tests in 2 suites failed after 0.072 seconds with 2 issues.
+Note: Some test targets reported failures:
+  - DearbyArchitectureTests (Swift Testing)
+Building for debugging...
+[Computing dependencies]
+[1 / 5]
+Build complete! (0.62초)
