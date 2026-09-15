@@ -26,3 +26,14 @@ Run `run_a54c2d35693a`의 iOS 일정/URL 후속, Android 작업 모두 succeeded
 - 두 역할의 기능 커밋을 로컬 main에 검토 후 merge commit으로 통합했다. 원격 push/PR 없음.
 - checkout의 기존 미커밋 실행 기록과 build/기기 산출물은 보존했다. 자기 checkout 외 수정 없음. 다음 작업은 이 checkout과 새 세션 사용 여부를 런타임에서 다시 확인한다.
 - 앱/전용 Simulator·emulator는 유지한다. 최신 기기/검증은 verification-and-local-devices.md 참조.
+
+## 기간·장소 줄 컴포넌트 완료 (2026-09-15 17:04 KST 확인)
+
+동일 checkout에서 Run `run_f43d8347585e` 완료. 아래 두 worker 모두 succeeded 수신 후 transcript 보존 및 release했다. ID는 이력이며 재사용하지 않는다.
+
+| 역할 | Dispatch | terminal |
+| --- | --- | --- |
+| iOS | `ctx_d9f7b9eeb75d` | `term_f1400b32-1536-4726-90b4-67439ba8fafa` |
+| Android | `ctx_a9734ee105e4` | `term_491b5f4b-c686-451a-8b2c-d2956eaa2270` |
+
+iOS `b712ca3`, Android `848b90e`를 로컬 main에 검토·통합했고 플랫폼 소스 동일성을 git diff로 확인했다. 두 checkout의 기존 미커밋 실행 기록과 로컬 산출물은 보존했다. reclaimable worker 0개이며 앱 실행 유지: iOS PID52933, Android PID8284. 원격 push/PR 없음. 다음 작업 시 checkout·런타임·기기 상태를 다시 확인한다.

@@ -2,7 +2,16 @@
 
 갱신: 2026-09-15 KST. #2/#10은 main에 통합 완료했다. 아래에서 이번 빌드·실행과 과거 회귀 검증을 구별한다.
 
-## 카드 일정 표시 검증 (2026-09-15 16:24 KST)
+## 기간·장소 줄 컴포넌트 검증 (2026-09-15 17시 KST)
+
+시작과 종료는 원본 경계에서 별도 State 원소로 만들고 각각 Text로 표시한다. 장소는 원본 필드와 공백 단위로 배치하며, 열보다 긴 단일 단어만 내부 줄바꿈을 허용한다. Root가 양쪽 실제 화면과 변경 코드를 검토했다.
+
+- [iOS 이번 검증](../../apps/ios/docs/evidence/card-lines/README.md): 관련 State 두 sample, FSD102/guard, Simulator 빌드·실행 통과. 첫 카드·다중/누락 일정·AX5 화면 확인. Simulator 서비스 오류는 데이터 삭제 없이 복구했다. worker release 뒤 root가 앱을 재실행하여 PID52933을 확인했다.
+- [Android 이번 검증](../../apps/android/docs/card-schedules/CARD-LINES.md): 관련 JVM6·FSD101/self-test24·Debug/계측APK 빌드 통과. 최종 카드 계측 로그 `build/card-lines/instrumentation-layout.log`: OK (2 tests), 31.179초. Root가 `screenshots-final/card-schedule-canonical-map.png`에서 시작/종료 별도 줄, 장소 단어 줄배치, host·네이티브 아이콘을 직접 확인했다. 통합 소스 동일성 및 worker release 뒤 MainActivity 복귀 Status ok/PID8284를 확인했다.
+
+이번 변경에서 전체 지도·캘린더 회귀나 실제 스크린리더 낭독을 다시 실행하지 않았다. 아래 검증은 이전 구현 시점의 결과다.
+
+## 이전 카드 일정 표시 검증 (2026-09-15 16:24 KST)
 
 최종 요구: 일정명/구분선/캘린더 아이콘+기간/위치 아이콘+위치, 유효 좌표 지도 아이콘 버튼, URL은 host만 표시.
 
