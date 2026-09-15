@@ -37,6 +37,8 @@ final class NoticeSession {
         })
     }
 
+    func detailViewModel(_ id: String) -> NoticeDetailViewModel? { details[id] }
+
     func detailState(_ id: String) -> NoticeDetailState? { details[id]?.state }
 
 }
