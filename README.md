@@ -40,6 +40,7 @@ git clone https://github.com/fixabley/dearby.git
 ```
 
 작업과 업데이트 절차는 [모노레포 운영 가이드](docs/monorepo.md)를 참고하세요.
+플랫폼별 Orca 세션과 담당 범위는 [작업 세션 안내](docs/workstreams/README.md)에 기록합니다.
 
 ## 첫 기능: 공고 탐색과 조직 즐겨찾기
 

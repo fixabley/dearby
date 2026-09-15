@@ -67,7 +67,7 @@
 
 ## 워크트리 정리 이후 최신 상태 (2026-09-14)
 
-#1의 PR #3/#4/#5/#6을 main에 통합하고 기존 플랫폼 worktree·세션을 제거했다. 이전 terminal handle과 retained 상태는 재사용하지 않는다. 다음 플랫폼 구현은 최신 main에서 이슈 전용 역할별 worktree·Orca 세션을 새로 구성한다. #2는 native Shared/UI 디자인 시스템 구현을 시작했다. 현재 세션 배정은 docs/context/orca-sessions-and-worktrees.md를 따른다. 재개 시 docs/context/README.md와 coordinator-current-task-and-decisions.md를 먼저 읽는다. 백업 위치는 coordinator-architecture-merged-and-worktrees-cleaned.md에 있다.
+#1의 PR #3/#4/#5/#6을 main에 통합하고 기존 플랫폼 worktree·세션을 제거했다. 이전 terminal handle과 retained 상태는 재사용하지 않는다. 다음 플랫폼 구현은 최신 main에서 이슈 전용 역할별 worktree·Orca 세션을 새로 구성한다. #2와 #10은 PR7/8/9/11/12로 main 통합했고 2026-09-15 완료된 플랫폼 세션과 worktree도 정리했다. 후속 #13/#14/#15는 미착수다. 현재 세션 배정은 docs/context/orca-sessions-and-worktrees.md를 따른다. 재개 시 docs/context/README.md와 coordinator-current-task-and-decisions.md를 먼저 읽는다. 백업 위치는 coordinator-architecture-merged-and-worktrees-cleaned.md에 있다.
 
 ## 컨텍스트 문서 유지 방식
 
