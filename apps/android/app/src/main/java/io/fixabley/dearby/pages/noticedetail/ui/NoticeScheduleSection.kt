@@ -23,7 +23,7 @@ import io.fixabley.dearby.shared.ui.DayTimeline
 import io.fixabley.dearby.shared.ui.ContentSection
 
 @Composable
-internal fun NoticeScheduleSection(phase: NoticeScheduleState, draft: CalendarDraft?, index: Int, onAdd: (CalendarDraft) -> Unit, onOpenMap: (NoticeVenue) -> Unit = {}, onOpenLink: (String) -> Unit = {}) {
+internal fun NoticeScheduleSection(phase: NoticeScheduleState, draft: CalendarDraft?, index: Int, onAdd: (CalendarDraft) -> Unit, onOpenMap: (NoticeVenue) -> Unit = {}, onOpenLink: (String) -> Unit = {}, busy: io.fixabley.dearby.shared.ui.BusyOverlayState? = null, onDate: (java.time.LocalDate) -> Unit = {}) {
     ContentSection {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(phase.title, Modifier.weight(1f).semantics { heading() }.testTag("schedule.title.$index"),
@@ -48,9 +48,9 @@ internal fun NoticeScheduleSection(phase: NoticeScheduleState, draft: CalendarDr
         phase.link?.let { link ->
             LinkCard(link.domain, link.url, { onOpenLink(link.url) }, Modifier.testTag("schedule.link.$index"))
         }
-        phase.timeline?.let { DayTimeline(it, phase.title, Modifier.testTag("schedule.timeline.$index")) }
+        phase.timeline?.let { DayTimeline(it, phase.title, Modifier.testTag("schedule.timeline.$index"), busy, onDate) }
             ?: Text("시작·종료 시각이 모두 확인되어야 시간표를 표시할 수 있어요.", style = MaterialTheme.typography.bodySmall)
-        Text(if (phase.period.timezone == "Asia/Seoul") "한국 시간" else phase.period.timezone,
+        if (phase.period.timezone != "Asia/Seoul") Text(phase.period.timezone,
             style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

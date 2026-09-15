@@ -27,7 +27,8 @@ import io.fixabley.dearby.pages.favorites.ui.FavoritesScreen
 import io.fixabley.dearby.pages.noticedetail.ui.NoticeDetailSheet
 
 @Composable
-internal fun DearbyApp(catalogProvider: NoticeSession, onOpenSource: (String) -> Unit, onOpenMap: (NoticeVenue) -> Unit, onAddToCalendar: (CalendarDraft) -> Unit) {
+internal fun DearbyApp(catalogProvider: NoticeSession, onOpenSource: (String) -> Unit, onOpenMap: (NoticeVenue) -> Unit, onAddToCalendar: (CalendarDraft) -> Unit, busyProvider: io.fixabley.dearby.features.calendarbusy.api.BusyProvider? = null, calendarSettings: CalendarSettingsController? = null) {
+    var settingsOpen by remember { mutableStateOf(false) }
     var retry by remember { mutableIntStateOf(0) }
     var loading by remember(catalogProvider) { mutableStateOf(true) }
     var failed by remember(catalogProvider) { mutableStateOf(false) }
@@ -63,8 +64,13 @@ internal fun DearbyApp(catalogProvider: NoticeSession, onOpenSource: (String) ->
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).testTag(if (catalog != null) "catalog.ready" else "catalog.loading")) {
-            Text("Dearby", Modifier.padding(horizontal = Spacing.extraLarge, vertical = Spacing.medium),
-                style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Text("Dearby", Modifier.weight(1f).padding(horizontal = Spacing.extraLarge, vertical = Spacing.medium),
+                    style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                if (calendarSettings != null) IconButton(onClick = { settingsOpen = true }, Modifier.testTag("settings.open")) {
+                    Icon(painterResource(R.drawable.ic_settings), contentDescription = "환경설정")
+                }
+            }
             if (failed && catalog != null) {
                 StatusPanel("공고를 불러오지 못했어요", Modifier.padding(horizontal = Spacing.large),
                     kind = StatusKind.Error, action = { PrimaryButton(onClick = { retry++ }) { Text("다시 시도") } })
@@ -86,7 +92,9 @@ internal fun DearbyApp(catalogProvider: NoticeSession, onOpenSource: (String) ->
             }
         }
     }
+    calendarSettings?.let { CalendarSettingsHost(it, settingsOpen, { settingsOpen = false }) }
     detail?.state?.let { notice ->
-        NoticeDetailSheet(notice, onDismiss = { detail = null }, onOpenSource = onOpenSource, onOpenMap = onOpenMap, onAddToCalendar = onAddToCalendar)
+        if (busyProvider != null) NoticeDetailRoute(notice, busyProvider, { detail = null }, onOpenSource, onOpenMap, onAddToCalendar, enabled = calendarSettings?.enabled == true)
+        else NoticeDetailSheet(notice, onDismiss = { detail = null }, onOpenSource = onOpenSource, onOpenMap = onOpenMap, onAddToCalendar = onAddToCalendar)
     }
 }

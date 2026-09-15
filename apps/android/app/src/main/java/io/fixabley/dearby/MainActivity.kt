@@ -30,9 +30,13 @@ class MainActivity : ComponentActivity() {
             try { RoomSnapshotStore(database).prepare(snapshot, checkActive = check) }
             finally { database.close() }
         }
+        val busyProvider = io.fixabley.dearby.features.calendarbusy.api.AndroidBusyProvider(applicationContext)
+        val calendarSettings = io.fixabley.dearby.app.CalendarSettingsController(busyProvider,
+            io.fixabley.dearby.app.SharedPreferencesCalendarSettingsStore(getSharedPreferences(
+                io.fixabley.dearby.app.SharedPreferencesCalendarSettingsStore.FILE_NAME, MODE_PRIVATE)))
         setContent {
             DearbyTheme {
-                DearbyApp(catalogProvider, onOpenSource = { url ->
+                DearbyApp(catalogProvider, busyProvider = busyProvider, calendarSettings = calendarSettings, onOpenSource = { url ->
                     runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
                         .onFailure { Toast.makeText(this, "공고를 열 브라우저가 없어요", Toast.LENGTH_SHORT).show() }
                 }, onAddToCalendar = { draft ->
