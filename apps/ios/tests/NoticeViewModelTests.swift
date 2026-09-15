@@ -40,6 +40,34 @@ struct NoticeViewModelTests {
         precondition(detail.state!.applicationTime.timeline != nil)
         precondition(detail.state!.organizationLinks.allSatisfy { $0.organizationName != nil })
         precondition(detail.state!.sources.count == reopened.state!.sources.count && detail.state!.evidence.count == model.evidence.count)
+        let cardRows = card.state!.schedules
+        precondition(cardRows.count == krc.schedule.count + 1 && cardRows[0].title == "신청 기간")
+        precondition(cardRows[0].places.allSatisfy { $0.venueIndex == nil })
+        precondition(cardRows[0].places[0].text.contains(krc.applicationInformation.url!))
+        let contestRows = NoticeCardViewModel.scheduleStates(contest)
+        precondition(contestRows.count == contest.schedule.count + 1)
+        for (index, phase) in contest.schedules.enumerated() {
+            let row = contestRows[index + 1]
+            precondition(row.id == index && row.title == phase.period.label)
+            if phase.period.mode == "online" {
+                precondition(row.places.allSatisfy { $0.venueIndex == nil })
+                precondition(row.places[0].text.contains("온라인"))
+            }
+            for place in row.places where place.venueIndex != nil {
+                precondition(phase.locations[place.venueIndex!].coordinates != nil)
+                precondition(place.text.contains(phase.locations[place.venueIndex!].name))
+            }
+        }
+        precondition(!cardRows[0].period.contains("한국 시간"))
+        let foreign = NoticeCardViewModel.period(start: "2026-09-15T14:00:00+09:00", end: "2026-09-15T15:00:00+09:00", timezone: "America/New_York", fallback: "")
+        precondition(foreign.components(separatedBy: "America/New_York").count == 2)
+        let dateOnly = NoticeCardViewModel.period(start: "2026-09-15", end: nil, timezone: nil, fallback: "일정 미확인")
+        precondition(dateOnly == "2026.9.15 (시간 미확인)부터 · 종료 미확인")
+        precondition(NoticeCardViewModel.period(start: nil, end: "2026-09-16", timezone: nil, fallback: "미확인").hasPrefix("시작 미확인"))
+        precondition(NoticeCardViewModel.period(start: nil, end: nil, timezone: nil, fallback: "일정 미확인") == "일정 미확인")
+        precondition(NoticeCardViewModel.period(start: "2026-09-15T14:00:00+09:00", end: nil, timezone: "Bad/Zone", fallback: "").contains("시간대 확인 필요"))
+        precondition(NoticeCardViewModel.period(start: "2026-09-15T14:00:00+09:00", end: nil, timezone: nil, fallback: "").contains("+09:00"))
+        precondition(NoticeCardViewModel.period(start: "2026-09-17", end: "2026-09-15", timezone: nil, fallback: "").contains("기간 순서 확인 필요"))
         let notifications = Mutex(0)
         withObservationTracking { _ = card.state?.saved; _ = detail.state?.saved; _ = favoriteCard.state } onChange: { notifications.withLock { $0 += 1 } }
         guard case .saved(let name) = second.save() else { preconditionFailure() }

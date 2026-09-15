@@ -6,6 +6,7 @@ struct ContentView: View {
     let calendarPreferences: CalendarPreferences
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.openURL) private var openURL
+    @State private var mapFailed = false
     @State private var showSettings = false
     var makeStorage: () throws -> SwiftDataSnapshotStore = { try SwiftDataSnapshotStore() }
     @State private var storage: SwiftDataSnapshotStore?
@@ -24,6 +25,13 @@ struct ContentView: View {
                         NavigationStack {
                             DiscoveryView(snapshotDate: session.snapshotDate, cards: cards, saveOrganization: session.save) { id in
                                 NoticeDestinationView(id: id, session: session, calendarPreferences: calendarPreferences)
+                            } onOpenMap: { id, scheduleIndex, venueIndex in
+                                guard let notice = session.notices.cachedNotice(id),
+                                      notice.schedules.indices.contains(scheduleIndex),
+                                      notice.schedules[scheduleIndex].locations.indices.contains(venueIndex) else { return }
+                                VenueMapLauncher.open(notice.schedules[scheduleIndex].locations[venueIndex],
+                                    using: { url, completion in openURL(url, completion: completion) },
+                                    onFailure: { mapFailed = true })
                             }
                             .toolbar { Button("환경설정", systemImage: "gearshape") { showSettings = true } }
                         }
@@ -48,6 +56,11 @@ struct ContentView: View {
             } else {
                 ProgressView("공고 불러오는 중")
             }
+        }
+        .alert("지도 열기 실패", isPresented: $mapFailed) {
+            Button("확인", role: .cancel) {}
+        } message: {
+            Text("지도를 열지 못했어요.")
         }
         .task { loadCatalog() }
         .task(id: session != nil || loadFailed) {
