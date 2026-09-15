@@ -1,0 +1,3 @@
+PASS: independent lazy notice/org sources, hit/reuse/replacement; one model, full evidence; card/detail/favorite states and shared Observation save/delete; missing IDs and snapshot recompose
+PASS: independent lazy notice/org sources, hit/reuse/replacement; one model, full evidence; card/detail/favorite states and shared Observation save/delete; missing IDs and snapshot recompose
+PASS: FSD lexical boundaries (101 Swift files; scope: all), guard fixtures
