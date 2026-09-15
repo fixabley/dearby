@@ -43,7 +43,23 @@ struct NoticeViewModelTests {
         let cardRows = card.state!.schedules
         precondition(cardRows.count == krc.schedule.count + 1 && cardRows[0].title == "신청 기간")
         precondition(cardRows[0].places.allSatisfy { $0.venueIndex == nil })
-        precondition(cardRows[0].places[0].text.contains(krc.applicationInformation.url!))
+        precondition(cardRows[0].places[0].text.contains(URL(string: krc.applicationInformation.url!)!.host!))
+        precondition(!cardRows[0].places[0].text.contains(krc.applicationInformation.url!))
+        for (input, expected) in [
+            ("https://example.com/application/deep/path?form=123#section", "example.com"),
+            ("  HTTP://www.example.com:8080/path?q=1  ", "www.example.com"),
+            ("https://example.com/a%20b", "example.com"),
+            ("서울시 중구 세종대로 110", "서울시 중구 세종대로 110"),
+            ("신청: https://example.com/form", "신청: https://example.com/form"),
+            ("https://example.com/form 방문 접수", "https://example.com/form 방문 접수"),
+            ("https://example.com/form\n방문 접수", "https://example.com/form\n방문 접수"),
+            ("www.example.com/form", "www.example.com/form"),
+            ("mailto:apply@example.com", "mailto:apply@example.com"),
+            ("https:///", "https:///"),
+            ("", "")
+        ] {
+            precondition(NoticeCardViewModel.placeLabel(input) == expected, input)
+        }
         let contestRows = NoticeCardViewModel.scheduleStates(contest)
         precondition(contestRows.count == contest.schedule.count + 1)
         for (index, phase) in contest.schedules.enumerated() {
@@ -52,6 +68,9 @@ struct NoticeViewModelTests {
             if phase.period.mode == "online" {
                 precondition(row.places.allSatisfy { $0.venueIndex == nil })
                 precondition(row.places[0].text.contains("온라인"))
+                if let url = phase.period.onlineUrl, let host = URL(string: url)?.host {
+                    precondition(row.places[0].text == "온라인\n" + host)
+                }
             }
             for place in row.places where place.venueIndex != nil {
                 precondition(phase.locations[place.venueIndex!].coordinates != nil)
@@ -120,6 +139,25 @@ struct NoticeViewModelTests {
             let fields = Set(Mirror(reflecting: loaded).children.compactMap(\.label))
             precondition(fields.isDisjoint(with: ["organization", "organizationName", "organizationPath", "organizations"]), "One NoticeModel holds only organization references")
         }
+        var urlFixture = rawNotices.first { $0["id"] as? String == contest.id }!
+        let fullURL = "https://online.example.com/join/long-path?room=123#entry"
+        let address = "서울시 중구 세종대로 110"
+        let prose = "https://example.com/form 방문 접수"
+        var application = urlFixture["application"] as! [String: Any]
+        application["url"] = fullURL
+        application["submissionLocations"] = [address, prose, "https://apply.example.com/path?q=1"]
+        urlFixture["application"] = application
+        var schedules = urlFixture["schedule"] as! [[String: Any]]
+        schedules[0]["mode"] = "online"
+        schedules[0]["onlineUrl"] = fullURL
+        urlFixture["schedule"] = schedules
+        let urlModel = try JSONDecoder().decode(NoticeModel.self, from: JSONSerialization.data(withJSONObject: urlFixture))
+        let urlRows = NoticeCardViewModel.scheduleStates(urlModel)
+        precondition(urlRows[0].places[0].text == [address, prose, "apply.example.com", "online.example.com"].joined(separator: "\n"))
+        precondition(urlRows[1].places[0].text == "온라인\nonline.example.com")
+        precondition(urlModel.applicationInformation.url == fullURL && urlModel.schedule[0].onlineUrl == fullURL)
+        precondition(urlModel.applicationInformation.submissionLocations == [address, prose, "https://apply.example.com/path?q=1"])
+        print("PASS: card web URL hosts; address/prose and original application/schedule URLs preserved")
         var changedNotices = rawNotices
         let index = changedNotices.firstIndex { $0["id"] as? String == krc.id }!
         changedNotices[index]["favoriteOrganizationId"] = "unknown"

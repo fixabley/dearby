@@ -39,13 +39,13 @@ extension NoticeCardViewModel {
         let first = NoticeCardScheduleState(id: -1, title: "신청 기간",
             period: period(start: application.opensAt ?? application.opensOn, end: application.closesAt ?? application.closesOn,
                            timezone: application.timezone, fallback: application.summary),
-            places: [.init(id: 0, text: applicationPlaces.isEmpty ? "신청 위치 미확인" : applicationPlaces.joined(separator: "\n"), venueIndex: nil)])
+            places: [.init(id: 0, text: applicationPlaces.isEmpty ? "신청 위치 미확인" : applicationPlaces.map(placeLabel).joined(separator: "\n"), venueIndex: nil)])
         return [first] + notice.schedules.enumerated().map { index, phase in
             let schedule = phase.period
             var places: [NoticeCardPlaceState] = []
             if schedule.mode == "online" || schedule.mode == "hybrid" || schedule.onlineUrl != nil {
                 let url = schedule.onlineUrl?.trimmingCharacters(in: .whitespacesAndNewlines)
-                places.append(.init(id: -1, text: "온라인" + ((url?.isEmpty == false) ? "\n" + url! : " · URL 미확인"), venueIndex: nil))
+                places.append(.init(id: -1, text: "온라인" + ((url?.isEmpty == false) ? "\n" + placeLabel(url!) : " · URL 미확인"), venueIndex: nil))
             }
             if schedule.mode != "online" {
                 places += phase.locations.enumerated().map { venueIndex, venue in
@@ -58,6 +58,16 @@ extension NoticeCardViewModel {
                 period: period(start: schedule.startsAt ?? schedule.startsOn, end: schedule.endsAt ?? schedule.endsOn,
                                timezone: schedule.timezone, fallback: "일정 미확인"), places: places)
         }
+    }
+
+    // Only shorten a whole web URL; addresses and prose containing links stay intact.
+    static func placeLabel(_ text: String) -> String {
+        let candidate = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard candidate.rangeOfCharacter(from: .whitespacesAndNewlines) == nil,
+              let url = URL(string: candidate),
+              ["http", "https"].contains(url.scheme?.lowercased() ?? ""),
+              let host = url.host, !host.isEmpty else { return text }
+        return host
     }
 
     static func period(start: String?, end: String?, timezone: String?, fallback: String) -> String {
