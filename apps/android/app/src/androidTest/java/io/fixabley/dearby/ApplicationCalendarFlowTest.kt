@@ -48,8 +48,8 @@ class ApplicationCalendarFlowTest {
         rule.setContent { DearbyTheme { DearbyApp(repository, {}, {}, { fail("No draft") }) } }
         rule.waitForCatalog()
         rule.onNodeWithTag("details.${first.id}").performClick()
-        rule.onNodeWithTag("notice.detail").performScrollToNode(hasText("신청 일정 미확인"))
-        rule.onNode(hasText("신청 일정 미확인") and hasAnyAncestor(hasTestTag("notice.detail"))).assertIsDisplayed()
+        rule.onNodeWithTag("notice.detail").performScrollToNode(hasContentDescription("신청 기간: 신청 일정 미확인", substring = true))
+        rule.onNode(hasContentDescription("신청 기간: 신청 일정 미확인", substring = true) and hasAnyAncestor(hasTestTag("notice.detail"))).assertIsDisplayed()
         rule.onNodeWithTag("calendar.application").assertDoesNotExist()
     }
 }

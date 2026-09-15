@@ -77,10 +77,15 @@ entities/
     api/OrganizationDiskStore.kt        L2 계약·StoredOrganizationSource
     api/OrganizationRecord.kt           id/name/parentId Room 행·DAO·adapter
 shared/ui/
-  buttons/PrimaryButton.kt              Material3 Button content slot
-  buttons/SecondaryButton.kt            Material3 OutlinedButton content slot
-  NoticeFact.kt                         범용 제목/값
-  theme/Theme.kt                        기존 Material 3 테마
+  buttons/PrimaryButton.kt              native Button 강조수준 진입점
+  buttons/SecondaryButton.kt            native OutlinedButton 강조수준 진입점
+  InformationRow.kt                     도메인 없는 label/value 묶음 읽기
+  MetadataRow.kt                        아이콘+간결한 값/전체 접근성 설명
+  PeriodText.kt                         구조화 날짜의 순수 표시 formatter
+  ContentSection.kt                     공통 tonal 정보/액션 묶음
+  StatusPanel.kt                        neutral/loading/error와 독립 action 슬롯
+  theme/Theme.kt                        dynamic/static Material3 theme
+  theme/Spacing.kt                      콘텐츠 간격 토큰
 ```
 
 ## 진입점과 의존 방향
@@ -149,9 +154,11 @@ manifest에는 전체 원문 hash와 모든 decoded fields를 포함한 fingerpr
 
 각 요청은 generation을 가지며 replaceSnapshot/새 load가 기존 요청을 무효화한다. IO 중 checkActive와 Main 게시 직전 generation/취소를 검사해 오래된 응답이 최신 snapshot을 덮지 않게 한다. CancellationException은 다시 던지고 취소된 effect의 finally가 새 로딩 상태를 덮지 않도록 활성 context를 확인한다. 실패 중 기존 화면 데이터는 유지되며 현재 bundle mock 이외 실제 API/네트워크는 없다.
 
-## Shared 디자인 버튼
+## Shared 디자인 시스템
 
-PrimaryButton/SecondaryButton은 Shared의 content slot·onClick·modifier만 받는 Material3 Button/OutlinedButton이다. 도메인 문구/아이콘은 NoticeCardSaveButton이 saved/organizationName/onSave로 조합한다. 기존 outline/filled vector와 8dp 간격, contentDescription=null을 사용해 중복 낭독을 피한다. 카드 상세 열기는 SecondaryButton으로 맞추고 제목 Text는 inline이다. NoticeFact는 카드와 상세 여러 섹션의 실제 재사용이 있어 Shared에 유지한다.
+[디자인 시스템 API·native mapping·사용 규칙](docs/design-system/README.md)을 따른다. DearbyTheme은 API31+ dynamic color를 기본 사용하고 static light/dark로 opt out 가능하다. Typography/Shapes는 native 기본값이며 화면에서 semantic MaterialTheme 역할을 읽는다. 콘텐츠 간격만 Spacing으로 관리한다.
+
+PrimaryButton/SecondaryButton은 Material3 Button/OutlinedButton에 enabled·modifier·content를 위임한다. 나머지 컨트롤은 직접 사용하며 NoticeCardSaveButton은 widget에서 저장 문구와 하트를 조합한다. 제목은 카드 안에 남긴다. navigation/tab/sheet와 domain 카드의 소유권은 유지한다.
 
 Widget은 domain/widget 폴더에 Composable·State·ViewModel을 함께 둔다. ui/model 하위 폴더가 없으며 domain은 cross-widget 의존 예외가 아니다. 구조 검사는 @Composable 파일의 raw Model/VM/repository/OS 접근을 막고 비렌더링 VM의 하위 의존을 허용한다. 같은 domain의 다른 widget 금지 fixture도 있다.
 
@@ -169,4 +176,19 @@ ANDROID_SERIAL=emulator-5556 JAVA_HOME='/Applications/Android Studio.app/Content
 기존 계측30/Lint 기록은 이전 작업 결과다. 사용자5554를 조작하지 않으며 전용5556과 unique test DB만 사용한다. 기존 테스트의 즐겨찾기는 백업/복원하고 실제 Calendar Save는 수행하지 않는다. 외부 지도 렌더링·캘린더 앱 내부 UI/저장·동기화·전체 접근성은 별도 미검증이다. 영속 캐시 TTL/암호화/실제 API·로그인·자동 추출은 이번 범위에 없다.
 
 
-최종 검증(2026-09-14): FSD60파일/self-test24(금지18/허용6), JVM39, Debug·계측 APK 컴파일, Lint 오류0/경고12, 전용5556 계측35 모두 통과(실패/오류/skip0). 실제 DB5건과 기존 UI/저장/지도/캘린더30건을 함께 실행했다. 기록은 `build/room-final-build.log`, `build/room-instrumentation.log`, 표준 JVM/계측 XML·Lint 보고서이며 중간 버튼/widget/저장소 단계 결과와 구분한다. 전용5556은 검증 후 종료했고 사용자5554는 조작하지 않았다. canonical asset SHA256 `c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f` 유지, 실제 Calendar Save/외부 지도 앱 내부 화면은 검증하지 않았다.
+#1 병합 당시 검증(2026-09-14): FSD60파일/self-test24(금지18/허용6), JVM39, Debug·계측 APK 컴파일, Lint 오류0/경고12, 전용5556 계측35 모두 통과(실패/오류/skip0). 실제 DB5건과 기존 UI/저장/지도/캘린더30건을 함께 실행했다. 기록은 `build/room-final-build.log`, `build/room-instrumentation.log`, 표준 JVM/계측 XML·Lint 보고서이며 중간 버튼/widget/저장소 단계 결과와 구분한다. 전용5556은 검증 후 종료했고 사용자5554는 조작하지 않았다. canonical asset SHA256 `c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f` 유지, 실제 Calendar Save/외부 지도 앱 내부 화면은 검증하지 않았다.
+
+
+#2 검증(2026-09-14): FSD66/self-test24, JVM39, Debug·Release·계측 APK 빌드, Lint 오류0/기존경고12, 전용5556 전체계측39 모두 통과. 신규 디자인 회귀4건을 포함한다. [before/after 화면·검증·한계](docs/design-system/VERIFICATION.md), [Shared API와 native 사용 규칙](docs/design-system/README.md)을 참고한다.
+
+PR9 후속: 공고/조직 액션은 native icon button으로 줄이고 관심 조직명은 카드에 유지한다. NoticeScheduleState가 phase 이름·간결한 날짜·짧은 장소/전체 접근성 설명을 조립하며 신청과 활동 일정을 분리한다. 모델/캐시/캘린더 exporter는 그대로다. 상세한 API·정책은 디자인 시스템 문서의 후속 항목을 따른다.
+
+PR9 아이콘/일정 후속 검증(2026-09-14): JVM46·전체계측39·FSD68/self-test24·Debug/Release/계측 APK·Lint 오류0/기존12 통과. [최신 화면과 실행 기록](docs/design-system/VERIFICATION.md#pr9-후속--아이콘-액션과-일정-위계-2026-09-14)을 참고한다.
+
+### Calendar-style detail projection (PR9 후속)
+
+NoticeDetail의 DetailPeriodState/DetailPlaceState 순수 projection이 날짜/시간과 장소명/주소·호실을 조립한다. Shared `DetailMetadata`는 primary/secondary/description/icon과 native action 슬롯만 받는다. 지도 액션은 phase의 원본 NoticeVenue를 전달하고 하단 장소 구획에는 중복되지 않은 원문 안내/미배치 venue만 남긴다. 카드/도메인 모델/cache/favorites/exporter 불변이며 상세의 초·소수초/미확인 경계도 보존한다. 참고와 이번 검증은 design-system/VERIFICATION.md의 2026-09-15 절에 분리 기록한다.
+
+### 선택일 타임라인 (PR9 사용자 이미지 후속)
+
+상위 DetailTimelineState가 raw timestamp/날짜·sourceZone을 검증한 뒤 domain-free TimelineInterval을 Shared UI로 전달한다. DayTimeline은 날짜선택만 국소 상태로 보유하고 날짜header/nativepicker/grid를 각각 분리한다. 선택일 tick·clip 계산에는 OS/캐시/도메인 조회가 없다. 원문 링크도 상위 detailLink가 안전 정책과 도메인을 조립해 LinkCard 값/콜백으로 전달한다. native primary/onPrimary accent와 320dp 세로스크롤 시간그리드만 custom이다. 기기 캘린더 read/permission/provider 및 busy-block/충돌판정은 별도 후속 범위로 구현하지 않았다.

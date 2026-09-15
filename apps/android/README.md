@@ -71,9 +71,14 @@ Room 2.8.5/KSP 2.3.12를 사용합니다. IO 준비 단계에서 독립 공고/�
 
 DB/원본/쓰기 오류는 기존 snapshot을 유지하고 재시도하도록 전달합니다. 손상 파일을 자동 삭제하거나 destructive migration하지 않습니다. 취소/새 요청이 이전 응답의 게시를 막습니다. 즐겨찾기 Prefs는 이 DB와 별개이며 기존 키/ID를 유지합니다. 자세한 수명·한계·Room schema/public API는 [ARCHITECTURE.md](ARCHITECTURE.md)를 참고합니다.
 
-PrimaryButton/SecondaryButton은 Shared 디자인만, 저장 문구·outline/filled heart는 widget NoticeCardSaveButton이 소유합니다. widget은 domain/widget 아래 View·State·ViewModel을 함께 둡니다. NoticeFact는 카드/상세의 실제 공용 표시로 유지합니다.
+[Shared/UI 디자인 시스템](docs/design-system/README.md)은 native Material3 theme·간격·범용 표시를 제공한다. Primary/Secondary 버튼은 Material3에 위임하고 저장 문구·하트는 NoticeCardSaveButton이 소유한다. widget의 flat View/State/VM 구조를 유지한다.
 
 기기 테스트는 사용자5554가 아닌 전용5556에서 uniqueDB로 수행하며 실제 캘린더 저장/외부 지도 화면은 검증하지 않습니다.
 
 
-최종 검증(2026-09-14): FSD60파일/self-test24(금지18/허용6), JVM39, Debug·계측 APK 컴파일, Lint 오류0/경고12, 전용5556 계측35 모두 통과(실패/오류/skip0). 실제 DB5건과 기존 UI/저장/지도/캘린더30건을 함께 실행했다. 기록은 `build/room-final-build.log`, `build/room-instrumentation.log`, 표준 JVM/계측 XML·Lint 보고서이며 중간 버튼/widget/저장소 단계 결과와 구분한다. 전용5556은 검증 후 종료했고 사용자5554는 조작하지 않았다. canonical asset SHA256 `c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f` 유지, 실제 Calendar Save/외부 지도 앱 내부 화면은 검증하지 않았다.
+#1 병합 당시 검증(2026-09-14): FSD60파일/self-test24(금지18/허용6), JVM39, Debug·계측 APK 컴파일, Lint 오류0/경고12, 전용5556 계측35 모두 통과(실패/오류/skip0). 실제 DB5건과 기존 UI/저장/지도/캘린더30건을 함께 실행했다. 기록은 `build/room-final-build.log`, `build/room-instrumentation.log`, 표준 JVM/계측 XML·Lint 보고서이며 중간 버튼/widget/저장소 단계 결과와 구분한다. 전용5556은 검증 후 종료했고 사용자5554는 조작하지 않았다. canonical asset SHA256 `c649b0a1d898497adf9bd4e2363c5753a1eecf996a7467e604dadaaee4a9e95f` 유지, 실제 Calendar Save/외부 지도 앱 내부 화면은 검증하지 않았다.
+
+
+#2 검증(2026-09-14): FSD66/self-test24, JVM39, Debug·Release·계측 APK 빌드, Lint 오류0/기존경고12, 전용5556 전체계측39 모두 통과. 신규 디자인 회귀4건을 포함한다. [before/after 화면·검증·한계](docs/design-system/VERIFICATION.md), [Shared API와 native 사용 규칙](docs/design-system/README.md)을 참고한다.
+
+PR9 아이콘/일정 후속 검증(2026-09-14): JVM46·전체계측39·FSD68/self-test24·Debug/Release/계측 APK·Lint 오류0/기존12 통과. [최신 화면과 실행 기록](docs/design-system/VERIFICATION.md#pr9-후속--아이콘-액션과-일정-위계-2026-09-14)을 참고한다.

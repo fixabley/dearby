@@ -7,11 +7,17 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import io.fixabley.dearby.shared.ui.theme.Spacing
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import io.fixabley.dearby.shared.ui.StatusPanel
+import io.fixabley.dearby.shared.ui.StatusKind
+import io.fixabley.dearby.shared.ui.buttons.PrimaryButton
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import io.fixabley.dearby.R
 import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft
 import io.fixabley.dearby.pages.noticedetail.model.NoticeDetailViewModel
@@ -57,18 +63,21 @@ internal fun DearbyApp(catalogProvider: NoticeSession, onOpenSource: (String) ->
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).testTag(if (catalog != null) "catalog.ready" else "catalog.loading")) {
-            Text("Dearby", Modifier.padding(horizontal = 22.dp, vertical = 12.dp),
+            Text("Dearby", Modifier.padding(horizontal = Spacing.extraLarge, vertical = Spacing.medium),
                 style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
             if (failed && catalog != null) {
-                Text("공고를 불러오지 못했어요")
-                Button(onClick = { retry++ }) { Text("다시 시도") }
+                StatusPanel("공고를 불러오지 못했어요", Modifier.padding(horizontal = Spacing.large),
+                    kind = StatusKind.Error, action = { PrimaryButton(onClick = { retry++ }) { Text("다시 시도") } })
             }
             if (catalog == null && loading) {
-                Text("공고를 불러오는 중이에요", Modifier.padding(24.dp))
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Spacing.extraLarge)) {
+                    StatusPanel("공고를 불러오는 중이에요", kind = StatusKind.Loading)
+                }
             } else if (catalog == null) {
-                Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center) {
-                    Text("공고를 불러오지 못했어요")
-                    Button(onClick = { retry++ }) { Text("다시 시도") }
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(Spacing.extraLarge),
+                    verticalArrangement = Arrangement.Center) {
+                    StatusPanel("공고를 불러오지 못했어요", kind = StatusKind.Error,
+                        action = { PrimaryButton(onClick = { retry++ }) { Text("다시 시도") } })
                 }
             } else if (selectedTab == 0) {
                 DiscoveryScreen(catalog.snapshotDate, catalogProvider.cardStates(), catalogProvider::save, showDetail = { detail = catalogProvider.detail(it) })

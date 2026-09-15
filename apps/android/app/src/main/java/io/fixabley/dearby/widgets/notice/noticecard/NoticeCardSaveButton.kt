@@ -1,22 +1,23 @@
 package io.fixabley.dearby.widgets.notice.noticecard
 
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.unit.dp
-import io.fixabley.dearby.R
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import io.fixabley.dearby.shared.ui.buttons.PrimaryButton
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import io.fixabley.dearby.R
 
-/** Display-only composition; the caller owns saved state, callbacks and test identity. */
+/** Saving is idempotent, not a toggle: removal stays in Favorites. */
 @Composable
 internal fun NoticeCardSaveButton(saved: Boolean, organizationName: String, onSave: () -> Unit, modifier: Modifier = Modifier) {
-    PrimaryButton(onClick = onSave, modifier = modifier) {
-        Icon(painterResource(if (saved) R.drawable.ic_favorite_filled else R.drawable.ic_favorite), contentDescription = null)
-        Spacer(Modifier.width(8.dp))
-        Text(if (saved) "저장됨 · $organizationName" else "$organizationName 저장", maxLines = 2)
+    FilledTonalIconButton(onClick = onSave, modifier = modifier.semantics {
+        selected = saved
+        stateDescription = if (saved) "저장됨" else "저장되지 않음"
+    }) {
+        Icon(painterResource(if (saved) R.drawable.ic_favorite_filled else R.drawable.ic_favorite),
+            contentDescription = if (saved) "저장됨 · $organizationName" else "$organizationName 저장")
     }
 }

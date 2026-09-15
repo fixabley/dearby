@@ -27,7 +27,7 @@ class VenueMapFlowTest {
             first, second, first.copy(coordinates = null), first.copy(coordinates = VenueCoordinates(Double.NaN, 0.0)),
         ))
         rule.setContent { DearbyTheme { NoticeLocationSection(location, { selected.add(it) }) } }
-        rule.onNodeWithText(location.summary).assertIsDisplayed()
+        rule.onNodeWithContentDescription("활동 장소: ${location.summary}").assertIsDisplayed()
         rule.onNodeWithTag("venue.map.0").assertIsDisplayed()
         rule.onNodeWithTag("venue.map.1").assertIsDisplayed()
         rule.onNodeWithTag("venue.map.2").assertDoesNotExist()
@@ -35,14 +35,14 @@ class VenueMapFlowTest {
         rule.runOnIdle { assertTrue(selected.isEmpty()) }
         rule.onNodeWithTag("venue.map.1").performClick()
         rule.runOnIdle { assertEquals(listOf(second), selected) }
-        rule.onNodeWithText("층·호실은 장소 안내를 확인해 주세요.").assertIsDisplayed()
+        rule.onNodeWithText("층·호실은 장소 안내를 확인해 주세요.").assertDoesNotExist()
     }
 
     @Test fun onlineLocationNeverOffersMapEvenIfCoordinatesExist() {
         rule.setContent { DearbyTheme {
             NoticeLocationSection(NoticeLocation("온라인 참여", "online", "confirmed", listOf(first)), { error("Unexpected action") })
         } }
-        rule.onNodeWithText("온라인 참여").assertIsDisplayed()
+        rule.onNodeWithContentDescription("활동 장소: 온라인 참여").assertIsDisplayed()
         rule.onNodeWithTag("venue.map.0").assertDoesNotExist()
         rule.onNodeWithText("층·호실은 장소 안내를 확인해 주세요.").assertDoesNotExist()
     }
@@ -65,9 +65,9 @@ class VenueMapFlowTest {
         } }
         rule.waitForCatalog()
         rule.onNodeWithTag("details.cieat-NCR000000007344").performClick()
-        rule.onNodeWithTag("notice.detail").performScrollToNode(hasTestTag("venue.map.0"))
+        rule.onNodeWithTag("notice.detail").performScrollToNode(hasTestTag("schedule.map.0.0"))
         rule.runOnIdle { assertTrue(requests.isEmpty()) }
-        rule.onNodeWithTag("venue.map.0").performClick()
+        rule.onNodeWithTag("schedule.map.0.0").performClick()
         rule.runOnIdle {
             assertEquals(1, requests.size)
             assertEquals("geo", requests.single().data?.scheme)
