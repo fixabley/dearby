@@ -1,6 +1,12 @@
 # macOS
 .DS_Store
 
+# Orca-managed child worktrees (full independent checkouts)
+/dearby-api/
+/dearby-android/
+/dearby-ios/
+/dearby-ios-2/
+
 # Node.js / NestJS
 node_modules/
 dist/
