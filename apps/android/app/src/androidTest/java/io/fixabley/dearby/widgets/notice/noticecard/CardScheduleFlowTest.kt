@@ -62,12 +62,12 @@ class CardScheduleFlowTest {
 
     @Test fun compactLargeFontKeepsEveryScheduleAndFullLongLocationReachable() {
         val longPlace = "부산광역시 해운대구 센텀중앙로 123 컨벤션센터 별관 501호 · https://example.org/very/long/path?registration=complete"
-        val venue = NoticeVenue("final", "결선", longPlace, VenueCoordinates(35.0, 129.0))
+        val venue = NoticeVenue("final", "충북대학교 중앙도서관 2관 세미나실(5층)", longPlace, VenueCoordinates(35.0, 129.0))
         val rows = listOf(
-            CardScheduleState("신청 기간", "시작 미확인 · 2026.10.7(수) (시간 미확인)까지", listOf(CardPlaceState("신청 위치 미확인"))),
-            CardScheduleState("온라인 예선", "2026.10.8(목) 09:00부터 · 종료 미확인", listOf(CardPlaceState("온라인 · https://example.org/preliminary"))),
-            CardScheduleState("결선 진출 발표", "일정 미확인", listOf(CardPlaceState("장소 미확인"))),
-            CardScheduleState("결선·시상", "2026.10.10(토) (시간 미확인)부터 · 종료 미확인", listOf(CardPlaceState(longPlace, venue))))
+            CardScheduleState("신청 기간", cardPeriodLines(null, null, null, "2026-10-07", "Asia/Seoul", "신청"), listOf(CardPlaceState(listOf("신청 위치 미확인")))),
+            CardScheduleState("온라인 예선", cardPeriodLines("2026-10-08T09:00:00+09:00", null, null, null, "Asia/Seoul", "일정"), listOf(CardPlaceState(listOf("온라인", "example.org")))),
+            CardScheduleState("결선 진출 발표", listOf("일정 미확인"), listOf(CardPlaceState(listOf("장소 미확인")))),
+            CardScheduleState("결선·시상", cardPeriodLines(null, "2026-10-10", null, null, "Asia/Seoul", "일정"), listOf(CardPlaceState(listOfNotNull(venue.name, longPlace), venue))))
         var saves = 0; var details = 0; var selected: NoticeVenue? = null
         rule.setContent { DearbyTheme {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
@@ -79,14 +79,19 @@ class CardScheduleFlowTest {
         } }
         screenshot("large-top")
         rows.forEachIndexed { index, row ->
-            rule.onNodeWithText(row.dateText).performScrollTo().assertIsDisplayed()
+            row.dateLines.forEachIndexed { lineIndex, line ->
+                rule.onNodeWithTag("card.schedule.fixture.$index.date.$lineIndex").performScrollTo().assertTextEquals(line).assertIsDisplayed()
+            }
             screenshot("large-$index-date")
-            row.places.forEach { rule.onNodeWithText(it.text).performScrollTo().assertIsDisplayed() }
+            row.places.forEach { place -> place.lines.forEach { rule.onNodeWithText(it).performScrollTo().assertIsDisplayed() } }
         }
         rule.onNodeWithTag("card.schedule.fixture.3.map.0").performScrollTo().assertIsDisplayed().performClick()
         screenshot("large-long-location")
         rule.onNodeWithTag("activity.fixture").performSemanticsAction(SemanticsActions.ScrollBy) { it(0f, 10000f) }
         screenshot("large-location-end")
+        // The last oversized word must actually be laid out, beyond the merged field semantics.
+        val url = "https://example.org/very/long/path?registration=complete"
+        rule.onNodeWithText(url, useUnmergedTree = true).assertIsDisplayed()
         rule.runOnIdle { assertEquals(venue, selected); assertEquals(0, saves) }
         rule.onNodeWithTag("save.fixture").assertIsDisplayed().performClick()
         rule.onNodeWithTag("details.fixture").assertIsDisplayed().performClick()
