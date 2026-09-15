@@ -4,6 +4,8 @@ Swift 아키텍처 검사는 `bash apps/ios/tests/run_architecture.sh`로 실행
 
 ## PR 검사
 
+PR23부터 같은 필수 job에서 `run_standalone.sh`, `run_busy_calendar.sh`, `run_detail_presentations.sh`도 실행한다. 구조 검사 이후 즐겨찾기·영속 캐시·스냅샷 롤백·캘린더 동의/취소·정확한 겹침·일정 표시 회귀를 확인한다. 이 테스트들은 mock/임시 저장소를 사용하며 실제 기기 캘린더를 읽거나 저장하지 않는다. Simulator UI 검증은 별도이며 이 호스트 검사로 대체했다고 주장하지 않는다.
+
 `.github/workflows/ios-architecture.yml`의 고정 job 이름은 `iOS architecture`다. 모든 PR과 main push에 실행하며, 필수 검사가 변경 경로 필터 때문에 영원히 pending으로 남지 않도록 paths 필터를 두지 않는다. read-only 토큰과 SHA 고정 checkout v6(Node24)을 사용하고 checkout에 자격 증명을 남기지 않는다. 코드 실행에 pull_request_target을 사용하지 않는다.
 
 Harmonize는 테스트 전용 의존성이다. 프로덕션 앱에 링크하거나 화면·상태 소유 구조를 변경하지 않는다. AST 기반 검사도 Swift 컴파일러의 전체 타입 해석을 대신하지 않으며 기존 lexical FSD 검사의 한계도 남는다. 규칙별 정상·위반 fixture와 빈 소스 집합 검증으로 검사 자체의 무력화를 탐지한다.

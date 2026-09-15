@@ -31,3 +31,9 @@ jobs:
           python3 --version
       - name: Validate iOS architecture
         run: bash apps/ios/tests/run_architecture.sh
+      - name: Verify favorites and persistent caches
+        run: bash apps/ios/tests/run_standalone.sh
+      - name: Verify calendar consent and overlap behavior
+        run: bash apps/ios/tests/run_busy_calendar.sh
+      - name: Verify schedule presentation and timeline
+        run: bash apps/ios/tests/run_detail_presentations.sh
