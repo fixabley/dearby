@@ -16,7 +16,7 @@ enum FSDBoundaries {
         var parts: [String] { path.split(separator: "/").map(String.init) }
         var layer: String { parts.first ?? "" }
         var slice: String { parts.prefix(layer == "app" || layer == "shared" ? 1 : 2).joined(separator: "/") }
-        var pureUI: Bool { parts.contains("ui") && (["entities", "shared"].contains(layer) || path.hasSuffix("Content.swift")) }
+        var pureUI: Bool { (parts.contains("ui") && ["entities", "shared"].contains(layer)) || path.hasSuffix("Content.swift") }
         init(path: String, text: String) {
             self.path = path
             source = SwiftSourceCode(source: text)
@@ -82,6 +82,17 @@ enum FSDBoundaries {
             } else if parts.count < 4 || !["ui", "model", "api", "lib", "config"].contains(parts[2]) {
                 reject("fsd-path", "expected Layer/Slice/Segment/file")
             }
+            let isProvider = parts.count >= 3 && parts[0] == "app" && parts[1] == "providers"
+            for item in file.source.imports() {
+                let module = item.name.split(separator: ".").first.map { $0.lowercased() } ?? ""
+                guard let importedRank = layers.firstIndex(of: module) else { continue }
+                if importedRank < rank { reject("fsd-upward", "import \(item.name)") }
+                if importedRank > rank + 2 && !isProvider { reject("fsd-distant", "import \(item.name)") }
+            }
+            if file.references.contains("_exported") { reject("fsd-reexport", "re-exported imports bypass slice contracts") }
+            let aliasVisitor = CrossSliceAliasVisitor(declarations: declarations, slice: file.slice)
+            aliasVisitor.walk(file.syntax)
+            for name in aliasVisitor.forbidden { reject("fsd-alias", "cross-slice typealias to \(name)") }
             if file.syntax.hasError { reject("swift-syntax", "source must parse without errors") }
             if file.pureUI {
                 let forbidden: Set<String> = ["UserDefaults", "Bundle", "FileManager", "URLSession", "UIApplication", "openURL", "SwiftData", "ModelContext", "ModelContainer", "EventKit", "EventKitUI", "EKEventStore", "EKEventEditViewController", "MKMapItem", "CLLocationManager"]
@@ -90,6 +101,9 @@ enum FSDBoundaries {
             for name in file.references {
                 for target in declarations[name] ?? [] where target.path != file.path {
                     guard let targetRank = layers.firstIndex(of: target.layer) else { continue }
+                    if targetRank > rank + 2 && !isProvider {
+                        reject("fsd-distant", "\(name) from \(target.path)")
+                    }
                     if targetRank < rank { reject("fsd-upward", "\(name) from \(target.path)") }
                     if target.layer == file.layer && target.slice != file.slice {
                         reject("fsd-cross-slice", "\(name) from \(target.path)")
@@ -104,5 +118,26 @@ enum FSDBoundaries {
             }
         }
         return errors.sorted { $0.description < $1.description }
+    }
+}
+
+/// Inspect alias RHS in conditional/nested declarations too; do not turn exports into alias facades.
+private final class CrossSliceAliasVisitor: SyntaxVisitor {
+    let declarations: [String: [FSDBoundaries.File]]
+    let slice: String
+    var forbidden = Set<String>()
+
+    init(declarations: [String: [FSDBoundaries.File]], slice: String) {
+        self.declarations = declarations
+        self.slice = slice
+        super.init(viewMode: .sourceAccurate)
+    }
+
+    override func visit(_ node: TypeAliasDeclSyntax) -> SyntaxVisitorContinueKind {
+        for token in node.initializer.value.tokens(viewMode: .sourceAccurate) {
+            if case .identifier(let name) = token.tokenKind,
+               declarations[name]?.contains(where: { $0.slice != slice }) == true { forbidden.insert(name) }
+        }
+        return .visitChildren
     }
 }

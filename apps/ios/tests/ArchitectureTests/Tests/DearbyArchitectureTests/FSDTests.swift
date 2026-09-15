@@ -58,14 +58,14 @@ struct FSDTests {
             ("widgets/card/ui/CardContent.swift", "NoticeModel"),
             ("widgets/card/ui/Card.swift", "Save"),
             ("pages/detail/ui/Detail.swift", "DetailViewModel"),
-            ("pages/detail/ui/Detail.swift", "NoticeRepository"),
-            ("pages/detail/ui/Detail.swift", "DateValue"),
             ("app/providers/Dependencies.swift", "NoticeRepository"),
         ]
         for (path, name) in allowed {
             #expect(FSDBoundaries.check(sources: declarations.merging([path: "struct Consumer { let value: \(name) }"]) { _, new in new }, exports: exports).isEmpty)
         }
         let forbidden: [(String, String, String)] = [
+            ("pages/detail/ui/Detail.swift", "NoticeRepository", "fsd-distant"),
+            ("pages/detail/ui/Detail.swift", "DateValue", "fsd-distant"),
             ("shared/ui/Control.swift", "CalendarConnectionState", "fsd-upward"),
             ("entities/notice/model/Bad.swift", "Save", "fsd-upward"),
             ("entities/notice/model/Bad.swift", "OrganizationModel", "fsd-cross-slice"),
@@ -73,7 +73,7 @@ struct FSDTests {
             ("pages/detail/ui/Bad.swift", "NoticeRecord", "fsd-public-api"),
             ("entities/notice/ui/Bad.swift", "NoticeRepository", "pure-ui-effect"),
             ("widgets/card/ui/CardContent.swift", "CardViewModel", "pure-ui-effect"),
-            ("widgets/card/model/Bad.swift", "NoticeStorageCodec", "fsd-public-api"),
+            ("widgets/card/ui/Bad.swift", "NoticeStorageCodec", "fsd-public-api"),
             ("shared/ui/Bad.swift", "UserDefaults", "pure-ui-effect"),
             ("entities/notice/ui/Bad.swift", "URLSession", "pure-ui-effect"),
         ]

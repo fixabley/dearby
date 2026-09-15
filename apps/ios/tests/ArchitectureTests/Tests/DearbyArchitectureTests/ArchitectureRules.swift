@@ -28,6 +28,11 @@ enum ArchitectureRules {
         func reject(_ rule: String, _ detail: String) {
             result.append(Violation(rule: rule, path: path, detail: detail))
         }
+        if path.hasPrefix("app/providers/"), isView || source.structs().contains(where: {
+            $0.inheritanceTypesNames.contains { ["ViewModifier", "UIViewRepresentable", "UIViewControllerRepresentable", "App"].contains($0) }
+        }) {
+            reject("provider-ui", "providers own construction/lifetime/injection, not UI implementation")
+        }
         for item in source.imports() {
             let module = item.name.split(separator: ".").first.map(String.init) ?? item.name
             if parts.first == "entities", parts.contains("model"), module == "SwiftData" {
