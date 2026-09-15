@@ -29,6 +29,12 @@ jobs:
         run: |
           xcrun swift --version
           python3 --version
+      - name: Install pinned SwiftLint
+        run: bash apps/ios/scripts/setup_swiftlint.sh
+      - name: Verify SwiftLint runner failures
+        run: python3 -I apps/ios/tests/check_swiftlint_runner.py
+      - name: Lint Swift sources
+        run: bash apps/ios/tests/run_swiftlint.sh
       - name: Validate iOS architecture
         run: bash apps/ios/tests/run_architecture.sh
       - name: Verify favorites and persistent caches

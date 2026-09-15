@@ -19,8 +19,11 @@ actor EventKitBusyProvider: BusyCalendarProvider {
         eventStore = store
         let _: Bool = try await withCheckedThrowingContinuation { continuation in
             store.requestFullAccessToEvents { granted, error in
-                if error != nil { continuation.resume(throwing: BusyCalendarFailure.unavailable) }
-                else { continuation.resume(returning: granted) }
+                if error != nil {
+                    continuation.resume(throwing: BusyCalendarFailure.unavailable)
+                } else {
+                    continuation.resume(returning: granted)
+                }
             }
         }
         return authorization()

@@ -73,9 +73,11 @@ struct EventPeriodPresentation {
                         let offset = formatter("ZZZZZ")
                         time = "\(start) (\(offset.string(from: first.date)))부터 \(end) (\(offset.string(from: last.date)))까지"
                     } else { time = start == end ? start : "\(start)부터 \(end)까지" }
+                } else if first.clock == nil && last.clock == nil {
+                    time = "시간 미확인"
+                } else {
+                    time = "시작 \(first.clock ?? "시간 미확인") · 종료 \(last.clock ?? "시간 미확인")"
                 }
-                else if first.clock == nil && last.clock == nil { time = "시간 미확인" }
-                else { time = "시작 \(first.clock ?? "시간 미확인") · 종료 \(last.clock ?? "시간 미확인")" }
                 self = Self(lines: [.init(label: nil, date: date.string(from: first.date), time: time)], note: zoneText)
             } else { self = Self(lines: [line(first, "시작"), line(last, "종료")], note: zoneText) }
         } else if let first {

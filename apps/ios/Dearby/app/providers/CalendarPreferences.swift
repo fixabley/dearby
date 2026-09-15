@@ -92,8 +92,12 @@ import Observation
         enabled = value; store.enabled = value; connection = state
         observers = observers.filter { $0.value.session != nil }
         for observer in observers.values {
-            if value { observer.session?.resume(); observer.session?.setEnabled(true) }
-            else { observer.session?.setEnabled(false) }
+            if value {
+                observer.session?.resume()
+                observer.session?.setEnabled(true)
+            } else {
+                observer.session?.setEnabled(false)
+            }
         }
         if !value { Task { [provider] in await provider.discard() } }
     }

@@ -30,8 +30,7 @@ enum SourceInventory {
                         throw InventoryError.directoryName(url.path)
                     }
                     try visit(url, inAssets: isAssetStructure)
-                }
-                else if url.pathExtension == "swift" { files.append(url.standardizedFileURL) }
+                } else if url.pathExtension == "swift" { files.append(url.standardizedFileURL) }
             }
         }
         try visit(root, atRoot: true)

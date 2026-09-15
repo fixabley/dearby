@@ -2,9 +2,17 @@
 
 Swift 아키텍처 검사는 `bash apps/ios/tests/run_architecture.sh`로 실행한다. iOS 앱을 실행하거나 Simulator를 준비할 필요 없이 macOS 호스트에서 소스를 검사한다. Harmonize가 처리하는 구조 규칙과 기존 FSD 참조 검사를 함께 실행하며 하나라도 위반하면 0이 아닌 종료 코드를 반환한다. 상세 규칙과 지원 범위는 `apps/ios/tests/ArchitectureTests/README.md`를 따른다.
 
+## SwiftLint
+
+일반 Swift 코드 스타일은 SwiftLint, 레이어·슬라이스·순수 UI·폴더명 경계는 Harmonize/SwiftSyntax 검사가 담당한다. 두 검사를 하나로 대체하지 않는다. SwiftLint는 앱 런타임 의존성이 아닌 개발 도구다.
+
+로컬과 CI는 같은 고정 버전을 사용한다. `bash apps/ios/scripts/setup_swiftlint.sh`로 공식 portable 배포의 SHA256을 확인하여 checkout의 Git 제외 build 디렉터리에 설치한 뒤 `bash apps/ios/tests/run_swiftlint.sh`로 검사한다. 실행 스크립트는 도구 누락/버전 불일치/규칙 위반을 성공으로 처리하지 않는다. 구체적 규칙과 적용 범위는 앱 `.swiftlint.yml`과 README를 따른다.
+
+[SwiftLint 공식 설치·설정 문서](https://github.com/realm/SwiftLint), [고정 릴리스 0.65.1](https://github.com/realm/SwiftLint/releases/tag/0.65.1).
+
 ## PR 검사
 
-PR23부터 같은 필수 job에서 `run_standalone.sh`, `run_busy_calendar.sh`, `run_detail_presentations.sh`도 실행한다. 구조 검사 이후 즐겨찾기·영속 캐시·스냅샷 롤백·캘린더 동의/취소·정확한 겹침·일정 표시 회귀를 확인한다. 이 테스트들은 mock/임시 저장소를 사용하며 실제 기기 캘린더를 읽거나 저장하지 않는다. Simulator UI 검증은 별도이며 이 호스트 검사로 대체했다고 주장하지 않는다. 별도 `iOS simulator build` job은 macOS26/Xcode26.6에서 실제 앱을 서명 없이 Simulator 대상으로 빌드한다. 도구 경로는 [공식 runner 이미지 목록](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-Readme.md#xcode)에 맞춰 고정했다.
+SwiftLint 설치·검사를 기존 필수 `iOS architecture` job에 추가한다. PR23부터 같은 필수 job에서 `run_standalone.sh`, `run_busy_calendar.sh`, `run_detail_presentations.sh`도 실행한다. 구조 검사 이후 즐겨찾기·영속 캐시·스냅샷 롤백·캘린더 동의/취소·정확한 겹침·일정 표시 회귀를 확인한다. 이 테스트들은 mock/임시 저장소를 사용하며 실제 기기 캘린더를 읽거나 저장하지 않는다. Simulator UI 검증은 별도이며 이 호스트 검사로 대체했다고 주장하지 않는다. 별도 `iOS simulator build` job은 macOS26/Xcode26.6에서 실제 앱을 서명 없이 Simulator 대상으로 빌드한다. 도구 경로는 [공식 runner 이미지 목록](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-Readme.md#xcode)에 맞춰 고정했다.
 
 `.github/workflows/ios-architecture.yml`의 고정 job 이름은 `iOS architecture`다. 모든 PR과 main push에 실행하며, 필수 검사가 변경 경로 필터 때문에 영원히 pending으로 남지 않도록 paths 필터를 두지 않는다. read-only 토큰과 SHA 고정 checkout v6(Node24)을 사용하고 checkout에 자격 증명을 남기지 않는다. 코드 실행에 pull_request_target을 사용하지 않는다.
 

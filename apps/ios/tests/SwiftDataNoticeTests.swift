@@ -1,3 +1,4 @@
+// Force casts below assert the bundled JSON fixture schema, never external input.
 import Foundation
 import SwiftData
 
@@ -23,7 +24,7 @@ struct SwiftDataNoticeTests {
                 let expected = mock.fetch(id: notice.id)!
                 let encoded = try NoticeStorageCodec.encode(expected)
                 precondition(tryEqual(value, expected))
-                let keys = Set((try JSONSerialization.jsonObject(with: encoded) as! [String: Any]).keys)
+                let keys = Set((try JSONSerialization.jsonObject(with: encoded) as! [String: Any]).keys) // swiftlint:disable:this force_cast
                 let storedFields = Mirror(reflecting: expected).children.compactMap { child -> String? in
                     // JSON omits nil optionals, but every populated stored domain field must be represented.
                     let mirror = Mirror(reflecting: child.value)
@@ -68,8 +69,7 @@ struct SwiftDataNoticeTests {
         print("PASS: per-ID SwiftData notice L1/L2/L3, disk reopen without external fetch, full codec metadata and corruption/missing distinction")
     }
     private static func tryEqual(_ left: NoticeModel, _ right: NoticeModel) -> Bool {
-        do { return try NoticeStorageCodec.encode(left) == NoticeStorageCodec.encode(right) }
-        catch { preconditionFailure("Codec failure: \(error)") }
+        do { return try NoticeStorageCodec.encode(left) == NoticeStorageCodec.encode(right) } catch { preconditionFailure("Codec failure: \(error)") }
     }
 }
 @MainActor private final class CountExternal: NoticeRecordSource {

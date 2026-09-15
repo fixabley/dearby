@@ -15,6 +15,8 @@ struct ContentView: View {
 
     var body: some View {
         // Read shared favorites before lazy Tab builders capture immutable rendering states.
+        // A declaration keeps this Observation read valid in ViewBuilder.
+        // swiftlint:disable:next redundant_discardable_let
         let _ = favorites.ids
         Group {
             if let session {

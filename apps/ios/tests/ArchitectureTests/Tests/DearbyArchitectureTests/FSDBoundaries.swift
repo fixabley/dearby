@@ -55,10 +55,8 @@ enum FSDBoundaries {
             errors.append(.init(rule: "fsd-ambiguous", path: owners[0].path, detail: "ambiguous top-level declaration \(name)"))
         }
         for (slice, names) in exports {
-            for name in names {
-                if declarations[name]?.filter({ $0.slice == slice }).count != 1 {
-                    errors.append(.init(rule: "fsd-manifest", path: "public-api.json", detail: "\(slice) exports missing/ambiguous \(name)"))
-                }
+            for name in names where declarations[name]?.filter({ $0.slice == slice }).count != 1 {
+                errors.append(.init(rule: "fsd-manifest", path: "public-api.json", detail: "\(slice) exports missing/ambiguous \(name)"))
             }
             if !files.contains(where: { $0.slice == slice }) || Set(names).count != names.count {
                 errors.append(.init(rule: "fsd-manifest", path: "public-api.json", detail: "unknown slice or duplicate entries: \(slice)"))

@@ -1,3 +1,4 @@
+// Force casts below assert the bundled JSON fixture schema, never external input.
 import Foundation
 import SwiftData
 
@@ -42,14 +43,14 @@ struct SwiftDataSnapshotTests {
         precondition(noExternalNotice.calls == 0 && noExternalOrganization.calls == 0)
         let oldFirst = oldSession.cards[0].state!
         let removedID = oldSession.cards[1].state!.id
-        var raw = try JSONSerialization.jsonObject(with: data) as! [String: Any]
-        var rawNotices = raw["activities"] as! [[String: Any]]
+        var raw = try JSONSerialization.jsonObject(with: data) as! [String: Any] // swiftlint:disable:this force_cast
+        var rawNotices = raw["activities"] as! [[String: Any]] // swiftlint:disable:this force_cast
         rawNotices.removeAll { $0["id"] as? String == removedID }
         let index = rawNotices.firstIndex { $0["id"] as? String == oldFirst.id }!
         rawNotices[index]["title"] = "수정된 공고"
         raw["activities"] = rawNotices
         raw["snapshotAt"] = "2026-10-01T00:00:00+09:00"
-        var rawOrganizations = raw["organizations"] as! [[String: Any]]
+        var rawOrganizations = raw["organizations"] as! [[String: Any]] // swiftlint:disable:this force_cast
         rawOrganizations.removeAll { $0["id"] as? String == "db-insurance" }
         let orgIndex = rawOrganizations.firstIndex { $0["id"] as? String == "krc" }!
         rawOrganizations[orgIndex]["name"] = "수정된 기관"

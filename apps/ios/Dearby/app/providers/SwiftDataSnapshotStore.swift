@@ -49,8 +49,11 @@ final class SwiftDataSnapshotStore {
         do {
             try NoticeCacheStorage.deleteAll(in: context)
             try OrganizationCacheStorage.deleteAll(in: context)
-            if let record = try context.fetch(FetchDescriptor<SnapshotManifestRecord>()).first { record.update(next) }
-            else { context.insert(SnapshotManifestRecord(next)) }
+            if let record = try context.fetch(FetchDescriptor<SnapshotManifestRecord>()).first {
+                record.update(next)
+            } else {
+                context.insert(SnapshotManifestRecord(next))
+            }
             try commit(context)
             return next
         } catch {

@@ -44,8 +44,7 @@ struct SwiftDataOrganizationTests {
         do { _ = try failing.organization("failed-save"); preconditionFailure() } catch TestFailure.storage {}
         precondition(external.calls == 3, "Failed save never populates L1")
         repository.replaceSource(FailingOrganizationSource())
-        do { _ = try repository.organization("child"); preconditionFailure("Failure must not become missing") }
-        catch TestFailure.storage {}
+        do { _ = try repository.organization("child"); preconditionFailure("Failure must not become missing") } catch TestFailure.storage {}
         print("PASS: SwiftData organization disk reopen, lazy ID fetch/L1 hit, missing vs failure")
     }
 }

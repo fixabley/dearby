@@ -43,6 +43,10 @@
 사용자는 iOS·Android 컴포넌트를 FSD 기반으로 분리하도록 요청했다. 현재 공통 기준은 docs/architecture/native-apps.md, 실제 플랫폼 트리와 노출 진입점은 각 앱 ARCHITECTURE.md를 따른다. 화면/위젯/사용자행동/도메인/범용 UI 경계를 구분하고 상향 의존·같은 레이어의 다른 슬라이스 직접 참조를 피한다. 화면 간 조립은 App에서 수행한다. 단일 네이티브 모듈의 폴더 경계를 컴파일러가 완전히 강제한다고 주장하지 않고 구조검사 및 리뷰로 보완한다.
 
 
+## Swift 코드 검사
+
+SwiftLint는 일반 Swift 스타일, Harmonize/SwiftSyntax는 FSD 경계·폴더 규칙을 검사한다. `apps/ios/.swiftlint.yml`을 정본으로 사용하며, `scripts/setup_swiftlint.sh`의 고정 버전·체크섬으로 설치 후 `tests/run_swiftlint.sh`를 실행한다(경로는 apps/ios 기준). baseline이나 광범위 disable로 위반을 숨기지 않고 필요한 한 줄 예외는 이유를 기록한다. 코드 수정 후 관련 회귀와 기존 구조 검사를 유지한다.
+
 ## 도메인 Model과 화면 State
 
 사용자가 정한 최신 규칙은 공고 NoticeModel과 독립 OrganizationModel, 화면별 ViewModel/State 조립이다. 이전 Notice/NoticeDetail 이중 엔티티 및 상세 생성자 조립 제안보다 우선한다.

@@ -74,4 +74,3 @@ struct NoticeCardContent: View {
     .background(NativeSurface.canvas)
     .environment(\.dynamicTypeSize, .accessibility5)
 }
-
