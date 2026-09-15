@@ -3,6 +3,9 @@ import SwiftUI
 struct NoticeScheduleView: View {
     let state: NoticeScheduleState
     let onAddToCalendar: (() -> Void)?
+    var busy: BusyTimeDisplay = .hidden
+    var onSelectDay: ((EventTimelineInterval.Day) -> Void)? = nil
+    var onRetryBusy: () -> Void = {}
     let onOpenMap: (NoticeVenue) -> Void
 
     var body: some View {
@@ -17,7 +20,7 @@ struct NoticeScheduleView: View {
             }
             EventTimeRows(lines: state.time.lines, note: state.time.note)
             if let interval = state.time.timeline {
-                EventDayTimeline(interval: interval, title: state.title)
+                EventDayTimeline(interval: interval, title: state.title, busy: busy, onSelectDay: onSelectDay, onRetryBusy: onRetryBusy)
             } else {
                 Text("시작·종료 시각이 확인되면 시간표를 표시합니다.").font(.footnote).foregroundStyle(.secondary)
             }

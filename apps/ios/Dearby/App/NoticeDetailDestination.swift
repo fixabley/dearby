@@ -1,13 +1,22 @@
 import SwiftUI
+import EventKit
 
 /// App owns the OS action and presents failure on the active sheet/navigation destination.
 struct NoticeDetailDestination: View {
     let state: NoticeDetailState
     let notice: NoticeModel
+    let calendarPreferences: CalendarPreferences
     @Environment(\.openURL) private var openURL
+    @Environment(\.scenePhase) private var scenePhase
+    @State private var busyCalendar: BusyCalendarSession
     @State private var mapFailed = false
     @State private var calendarRequest: CalendarEditorRequest?
     @State private var calendarFailed = false
+
+    init(state: NoticeDetailState, notice: NoticeModel, calendarPreferences: CalendarPreferences) {
+        self.state = state; self.notice = notice; self.calendarPreferences = calendarPreferences
+        _busyCalendar = State(initialValue: BusyCalendarSession(provider: calendarPreferences.provider))
+    }
 
     var body: some View {
         let application = CalendarDraftMapper.application(notice)
@@ -17,7 +26,23 @@ struct NoticeDetailDestination: View {
         NoticeDetailView(state: state,
                          onAddSchedule: phases.map { draft in draft.map { event in { openCalendar(event) } } },
                          onAddApplication: application.map { draft in { openCalendar(draft) } },
-                         onOpenMap: openMap)
+                         onOpenMap: openMap,
+                         busyDays: busyCalendar.days,
+                         onSelectActivityDay: { index, day in
+                             busyCalendar.select(id: index, day: DateInterval(start: day.start, end: day.end),
+                                 activity: DateInterval(start: day.clippedStart, end: day.clippedEnd))
+                         }, onRetryBusy: busyCalendar.refresh)
+            .onAppear { calendarPreferences.attach(busyCalendar) }
+            .onDisappear { calendarPreferences.detach(busyCalendar) }
+            .onChange(of: scenePhase) { _, phase in
+                // System permission alerts cause inactive; do not cancel their pending response.
+                switch phase {
+                case .active: busyCalendar.lifecycle(.active)
+                case .background: busyCalendar.lifecycle(.background)
+                default: busyCalendar.lifecycle(.inactive)
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .EKEventStoreChanged)) { _ in calendarPreferences.refreshAuthorization(); busyCalendar.refresh() }
             .sheet(item: $calendarRequest) { request in
                 CalendarEventEditor(request: request, onDismiss: { calendarRequest = nil })
             }

@@ -39,7 +39,9 @@ def check(sources, selected=()):
     for path, code in cleaned.items():
         if selected and not any(path.startswith(s + '/') for s in selected):
             continue
-        if re.search(r'\b(?:requestFullAccessToEvents|requestWriteOnlyAccessToEvents|requestAccess|EKAlarm|addAlarm)\b|\b(?:eventStore|store)\.save\s*\(', code):
+        read_adapter = path == 'Features/ReadCalendarBusy/API/EventKitBusyProvider.swift'
+        if ((re.search(r'\brequestFullAccessToEvents\b', code) and not read_adapter)
+                or re.search(r'\b(?:requestWriteOnlyAccessToEvents|requestAccess|EKAlarm|addAlarm)\b|\b(?:eventStore|store)\.(?:save|remove)\s*\(', code)):
             errors.append(f'{path}: calendar editor must not request access, save directly or add alarms')
         if path.startswith('Entities/') and '/Model/' in path and re.search(r'\b(?:SwiftData|ModelContext|ModelContainer)\b', code):
             errors.append(f'{path}: domain values must not depend on SwiftData')
@@ -107,6 +109,11 @@ def self_test():
         assert not check({**fixture, widget_view: declaration + ' { let state: CardState }'})
         for forbidden in ['CardViewModel', 'Provider', 'NoticeModel', 'UserDefaults', 'ModelContext', 'openURL', 'Sibling', 'Other']:
             assert check({**fixture, widget_view: declaration + ' { let bad: ' + forbidden + ' }'}), forbidden
+    read_adapter = 'Features/ReadCalendarBusy/API/EventKitBusyProvider.swift'
+    assert not check({read_adapter: 'store.requestFullAccessToEvents()'})
+    for bad in ['store.save(event)', 'eventStore.remove(event)', 'store.requestWriteOnlyAccessToEvents()']:
+        assert check({read_adapter: bad})
+    assert check({'Shared/UI/Bad.swift': 'store.requestFullAccessToEvents()'})
     # A generic View constraint alone does not make the containing state a rendering View.
     assert not declares_view('struct GenericState<Content: View> { let content: Content }')
     for raw_type in ['NoticeCatalog', 'Notice', 'NoticeModel', 'OrganizationModel', 'BundleSnapshot', 'NoticeCardViewModel']:

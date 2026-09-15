@@ -3,6 +3,10 @@ import SwiftUI
 struct ContentView: View {
     let snapshotReader: any SnapshotReader
     let favorites: FavoriteOrganizations
+    let calendarPreferences: CalendarPreferences
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
+    @State private var showSettings = false
     var makeStorage: () throws -> SwiftDataSnapshotStore = { try SwiftDataSnapshotStore() }
     @State private var storage: SwiftDataSnapshotStore?
     @State private var session: NoticeSession?
@@ -19,15 +23,17 @@ struct ContentView: View {
                     Tab("발견", systemImage: "rectangle.stack") {
                         NavigationStack {
                             DiscoveryView(snapshotDate: session.snapshotDate, cards: cards, saveOrganization: session.save) { id in
-                                NoticeDestinationView(id: id, session: session)
+                                NoticeDestinationView(id: id, session: session, calendarPreferences: calendarPreferences)
                             }
+                            .toolbar { Button("환경설정", systemImage: "gearshape") { showSettings = true } }
                         }
                     }
                     Tab("즐겨찾기", systemImage: "heart") {
                         NavigationStack {
                             FavoriteListView(cards: favoriteCards, removeOrganization: favorites.remove) { id in
-                                NoticeDestinationView(id: id, session: session)
+                                NoticeDestinationView(id: id, session: session, calendarPreferences: calendarPreferences)
                             }
+                            .toolbar { Button("환경설정", systemImage: "gearshape") { showSettings = true } }
                         }
                     }
                 }
@@ -44,6 +50,32 @@ struct ContentView: View {
             }
         }
         .task { loadCatalog() }
+        .task(id: session != nil || loadFailed) {
+            guard session != nil || loadFailed else { return }
+            await Task.yield()
+            calendarPreferences.start()
+        }
+        .sheet(isPresented: $showSettings) {
+            NavigationStack {
+                SettingsView(connection: calendarPreferences.connection, isEnabled: calendarPreferences.switchIsOn,
+                    onToggle: calendarPreferences.setEnabled,
+                    onSettings: { openURL(URL(string: UIApplication.openSettingsURLString)!) })
+                    .toolbar { Button("완료") { showSettings = false } }
+            }
+        }
+        .alert("겹치는 일정 확인하기", isPresented: Binding(get: { calendarPreferences.showFirstPrompt }, set: { _ in })) {
+            Button("나중에", role: .cancel, action: calendarPreferences.later)
+            Button("켜기", action: calendarPreferences.enableFromFirstPrompt)
+        } message: {
+            Text("캘린더의 바쁜 시간 정보를 가져와 활동 일정과 겹치는 시간을 확인합니다. 일정 제목·장소는 표시하지 않으며, 서버로 전송하지 않습니다.")
+        }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .active: calendarPreferences.lifecycle(.active)
+            case .background: calendarPreferences.lifecycle(.background)
+            default: calendarPreferences.lifecycle(.inactive)
+            }
+        }
     }
 
     private func loadCatalog() {
@@ -66,6 +98,7 @@ struct ContentView: View {
 #Preview {
     ContentView(snapshotReader: BundleSnapshotReader(),
                 favorites: FavoriteOrganizations(repository: PreviewFavoritesRepository()),
+                calendarPreferences: CalendarPreferences(store: MemoryCalendarPreferenceStore(), provider: PreviewBusyCalendarProvider(mode: "empty")),
                 makeStorage: { try SwiftDataSnapshotStore(inMemory: true) })
 }
 

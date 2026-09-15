@@ -8,7 +8,10 @@ struct DetailPresentationTests {
         }
         let same = period("2026-09-15T14:00:00+09:00", "2026-09-15", "2026-09-15T16:00:00+09:00")
         precondition(same.lines == [.init(label: nil, date: "2026년 9월 15일 (화)", time: "오후 2시부터 오후 4시까지")])
-        precondition(same.note == "한국 시간")
+        precondition(same.note == nil)
+        precondition(same.timeline?.timeZone.identifier == "Asia/Seoul")
+        let otherZone = period("2026-09-15T14:00:00-04:00", nil, "2026-09-15T16:00:00-04:00", zone: "America/New_York")
+        precondition(otherZone.note == "America/New_York")
         let across = period("2026-12-31T23:00:00+09:00", nil, "2027-01-01T01:00:00+09:00")
         precondition(across.lines.map(\.label) == ["시작", "종료"])
         precondition(across.lines.map(\.date) == ["2026년 12월 31일 (목)", "2027년 1월 1일 (금)"])

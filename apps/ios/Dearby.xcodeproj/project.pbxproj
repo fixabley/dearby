@@ -171,6 +171,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Dearby;
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "캘린더의 바쁜 시간을 읽어 활동 일정과 겹치는 시간을 확인합니다. 일정 제목·장소는 표시하거나 서버로 전송하지 않습니다.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -202,6 +203,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Dearby;
+				INFOPLIST_KEY_NSCalendarsFullAccessUsageDescription = "캘린더의 바쁜 시간을 읽어 활동 일정과 겹치는 시간을 확인합니다. 일정 제목·장소는 표시하거나 서버로 전송하지 않습니다.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

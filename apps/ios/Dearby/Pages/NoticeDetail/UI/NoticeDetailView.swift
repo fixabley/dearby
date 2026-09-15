@@ -6,6 +6,10 @@ struct NoticeDetailView: View {
     let onAddApplication: (() -> Void)?
     let onOpenMap: (NoticeVenue) -> Void
 
+    var busyDays: [Int: BusyTimeDisplay] = [:]
+    var onSelectActivityDay: (Int, EventTimelineInterval.Day) -> Void = { _, _ in }
+    var onRetryBusy: () -> Void = {}
+
     var body: some View {
         List {
             Section {
@@ -28,6 +32,8 @@ struct NoticeDetailView: View {
                 ForEach(Array(state.schedules.enumerated()), id: \.offset) { index, phase in
                     NoticeScheduleView(state: phase,
                                        onAddToCalendar: onAddSchedule.indices.contains(index) ? onAddSchedule[index] : nil,
+                                       busy: busyDays[index] ?? .hidden,
+                                       onSelectDay: { onSelectActivityDay(index, $0) }, onRetryBusy: onRetryBusy,
                                        onOpenMap: onOpenMap)
                 }
                 DisclosureGroup("원문 장소 안내") {

@@ -61,7 +61,7 @@ struct EventPeriodPresentation {
         }
         let date = formatter("yyyy년 M월 d일 (E)")
         date.locale = Locale(identifier: "ko_KR")
-        let zoneText = timezone.map { $0 == "Asia/Seoul" ? "한국 시간" : $0 }
+        let zoneText = timezone.flatMap { $0 == "Asia/Seoul" ? nil : $0 }
         func line(_ point: Point, _ label: String?) -> Line {
             .init(label: label, date: date.string(from: point.date), time: point.clock.map { $0 + (label == "시작" ? "부터" : label == "종료" ? "까지" : "") } ?? "시간 미확인")
         }
