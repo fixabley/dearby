@@ -17,15 +17,8 @@
   "App/UserDefaultsCalendarPreferenceStore.swift": "App/Providers/UserDefaultsCalendarPreferenceStore.swift",
   "App/ContentView.swift": "App/Routes/ContentView.swift",
   "App/SwiftDataSnapshotStore.swift": "App/Providers/SwiftDataSnapshotStore.swift",
-  "Widgets/Organization/FavoriteOrganizationCard/FavoriteOrganizationCard.swift": "Widgets/FavoriteOrganizationCard/UI/FavoriteOrganizationCard.swift",
-  "Widgets/Organization/FavoriteOrganizationCard/FavoriteOrganizationCardViewModel.swift": "Widgets/FavoriteOrganizationCard/Model/FavoriteOrganizationCardViewModel.swift",
-  "Widgets/Organization/FavoriteOrganizationCard/FavoriteOrganizationCardState.swift": "Widgets/FavoriteOrganizationCard/Model/FavoriteOrganizationCardState.swift",
   "Features/ReadCalendarBusy/Model/BusyCalendarSession.swift": "Features/CheckCalendarOverlap/Model/BusyCalendarSession.swift",
   "Features/ReadCalendarBusy/Model/BusyCalendarOccurrence.swift": "Features/CheckCalendarOverlap/Model/BusyCalendarOccurrence.swift",
   "Features/ReadCalendarBusy/API/BusyCalendarProvider.swift": "Features/CheckCalendarOverlap/API/BusyCalendarProvider.swift",
-  "Features/ReadCalendarBusy/API/EventKitBusyProvider.swift": "Features/CheckCalendarOverlap/API/EventKitBusyProvider.swift",
-  "Features/FavoriteOrganization/Model/FavoriteOrganizations.swift": "Features/SaveOrganization/Model/FavoriteOrganizations.swift",
-  "Features/FavoriteOrganization/Model/SaveOrganizationResult.swift": "Features/SaveOrganization/Model/SaveOrganizationResult.swift",
-  "Features/FavoriteOrganization/API/FavoriteOrganizationsRepository.swift": "Features/SaveOrganization/API/FavoriteOrganizationsRepository.swift",
-  "Features/FavoriteOrganization/API/UserDefaultsFavoriteOrganizationsRepository.swift": "Features/SaveOrganization/API/UserDefaultsFavoriteOrganizationsRepository.swift"
+  "Features/ReadCalendarBusy/API/EventKitBusyProvider.swift": "Features/CheckCalendarOverlap/API/EventKitBusyProvider.swift"
 }

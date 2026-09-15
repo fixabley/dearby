@@ -1,8 +1,10 @@
 @MainActor
-final class FavoriteOrganizationCardViewModel {
+final class FavoriteOrganizationCardViewModel: Identifiable {
+    let id: String
     private let favorites: FavoriteOrganizations
     private let initial: FavoriteOrganizationCardState?
     init(id: String, noticeIDs: [String], notices: NoticeRepository, organizations: OrganizationRepository, favorites: FavoriteOrganizations) throws {
+        self.id = id
         self.favorites = favorites
         guard let organization = try organizations.organization(id) else { initial = nil; return }
         let rows = try noticeIDs.compactMap { id -> FavoriteNoticeRowState? in

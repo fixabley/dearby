@@ -13,3 +13,9 @@ Executed: run_architecture.sh (9 tests, positive/violating fixtures), full run_s
 Widgets/NoticeCard/UI owns the connected NoticeCard and local display components; Model owns VM/State. Discovery passes the VM and receives save results for its existing feedback/haptic count. The widget reads its own VM and calls save; visual content, doubletap, schedule/map callbacks and AX paging remain the existing implementation. No Entity extraction was forced for single-use card content.
 
 Card validation: architecture 9 tests and full standalone regression passed (104 files before UI-only split). Simulator build/run succeeded on dedicated Dearby-FSD-Verify B04DEBB6-53B1-4CB1-858C-8C290846D4AB, empty busy fixture, first feed and consent visible. CardContent/ScheduleList were split into separate files; Content suffix is explicitly protected as pure UI. The original title Text stays inside content.
+
+## Favorite organization card and saved-ID entity
+
+Widget UI/Model now form FavoriteOrganizationCard slice. The connected View reads its VM and delegates explicit remove; the pure Content stays local. Entities/Favorite owns one observable ID set and existing UserDefaults contract/key, independent of Organization. Features/SaveOrganization validates/resolves save meaning and returns the existing result; every VM still shares the same FavoriteOrganizations facade/store.
+
+Favorite validation: full architecture and standalone (including shared Observation consumers, legacy UserDefaults reload, duplicate save, explicit remove, unresolved no-write and both snapshot rollback samples) passed after renaming the stored field to favoriteStore to disambiguate the retained calendar store.remove lexical guard. Simulator build/run passed. No old storage key or cache schema changed.

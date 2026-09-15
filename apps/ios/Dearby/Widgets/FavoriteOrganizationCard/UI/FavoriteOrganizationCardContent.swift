@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct FavoriteOrganizationCard<Destination: View>: View {
+struct FavoriteOrganizationCardContent<Destination: View>: View {
     let state: FavoriteOrganizationCardState
     let remove: () -> Void
     @ViewBuilder let destination: (String) -> Destination
@@ -46,7 +46,7 @@ struct FavoriteOrganizationCard<Destination: View>: View {
 #Preview("조직 · 큰 글자") {
     NavigationStack {
         List {
-            FavoriteOrganizationCard(
+            FavoriteOrganizationCardContent(
                 state: .init(id: "preview", name: "긴 이름의 관심 조직", ancestorNames: "대학교 › 단과대학",
                              notices: [.init(id: "notice", title: "누구나 참여할 수 있는 활동 안내", category: "교육", contextNames: "대학교")]),
                 remove: {}, destination: { Text($0) })

@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct FavoriteListView<Destination: View>: View {
-    let cards: [FavoriteOrganizationCardState]
-    let removeOrganization: (String) -> Void
+    let viewModels: [FavoriteOrganizationCardViewModel]
+    private var cards: [FavoriteOrganizationCardViewModel] { viewModels.filter { $0.state != nil } }
     @ViewBuilder let destination: (String) -> Destination
 
     var body: some View {
@@ -13,8 +13,7 @@ struct FavoriteListView<Destination: View>: View {
             } else {
                 List(cards) { organization in
                     FavoriteOrganizationCard(
-                        state: organization,
-                        remove: { removeOrganization(organization.id) },
+                        viewModel: organization,
                         destination: destination
                     )
                 }

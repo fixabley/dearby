@@ -41,9 +41,7 @@
   ],
   "Features/SaveOrganization": [
     "FavoriteOrganizations",
-    "FavoriteOrganizationsRepository",
-    "SaveOrganizationResult",
-    "UserDefaultsFavoriteOrganizationsRepository"
+    "SaveOrganizationResult"
   ],
   "Pages/Discovery": [
     "DiscoveryView"
@@ -87,5 +85,10 @@
     "NoticeCard",
     "NoticeCardState",
     "NoticeCardViewModel"
+  ],
+  "Entities/Favorite": [
+    "FavoriteOrganizationStore",
+    "FavoriteOrganizationsRepository",
+    "UserDefaultsFavoriteOrganizationsRepository"
   ]
 }

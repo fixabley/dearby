@@ -18,7 +18,6 @@ struct ContentView: View {
         let _ = favorites.ids
         Group {
             if let session {
-                let favoriteCards = session.favoriteCards.compactMap(\.state)
                 TabView {
                     Tab("발견", systemImage: "rectangle.stack") {
                         NavigationStack {
@@ -37,7 +36,7 @@ struct ContentView: View {
                     }
                     Tab("즐겨찾기", systemImage: "heart") {
                         NavigationStack {
-                            FavoriteListView(cards: favoriteCards, removeOrganization: favorites.remove) { id in
+                            FavoriteListView(viewModels: session.favoriteCards) { id in
                                 NoticeDestinationView(id: id, session: session, calendarPreferences: calendarPreferences)
                             }
                             .toolbar { Button("환경설정", systemImage: "gearshape") { showSettings = true } }
