@@ -37,3 +37,24 @@ jobs:
         run: bash apps/ios/tests/run_busy_calendar.sh
       - name: Verify schedule presentation and timeline
         run: bash apps/ios/tests/run_detail_presentations.sh
+
+  simulator-build:
+    name: iOS simulator build
+    runs-on: macos-26
+    timeout-minutes: 20
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Report app toolchain
+        run: xcodebuild -version
+      - name: Build iOS app for Simulator
+        run: >-
+          xcodebuild -project apps/ios/Dearby.xcodeproj
+          -scheme Dearby -configuration Debug
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath apps/ios/build/CI-DoNotCommit
+          CODE_SIGNING_ALLOWED=NO build

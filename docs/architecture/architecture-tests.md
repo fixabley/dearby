@@ -4,7 +4,7 @@ Swift 아키텍처 검사는 `bash apps/ios/tests/run_architecture.sh`로 실행
 
 ## PR 검사
 
-PR23부터 같은 필수 job에서 `run_standalone.sh`, `run_busy_calendar.sh`, `run_detail_presentations.sh`도 실행한다. 구조 검사 이후 즐겨찾기·영속 캐시·스냅샷 롤백·캘린더 동의/취소·정확한 겹침·일정 표시 회귀를 확인한다. 이 테스트들은 mock/임시 저장소를 사용하며 실제 기기 캘린더를 읽거나 저장하지 않는다. Simulator UI 검증은 별도이며 이 호스트 검사로 대체했다고 주장하지 않는다.
+PR23부터 같은 필수 job에서 `run_standalone.sh`, `run_busy_calendar.sh`, `run_detail_presentations.sh`도 실행한다. 구조 검사 이후 즐겨찾기·영속 캐시·스냅샷 롤백·캘린더 동의/취소·정확한 겹침·일정 표시 회귀를 확인한다. 이 테스트들은 mock/임시 저장소를 사용하며 실제 기기 캘린더를 읽거나 저장하지 않는다. Simulator UI 검증은 별도이며 이 호스트 검사로 대체했다고 주장하지 않는다. 별도 `iOS simulator build` job은 macOS26/Xcode26.6에서 실제 앱을 서명 없이 Simulator 대상으로 빌드한다. 도구 경로는 [공식 runner 이미지 목록](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-Readme.md#xcode)에 맞춰 고정했다.
 
 `.github/workflows/ios-architecture.yml`의 고정 job 이름은 `iOS architecture`다. 모든 PR과 main push에 실행하며, 필수 검사가 변경 경로 필터 때문에 영원히 pending으로 남지 않도록 paths 필터를 두지 않는다. read-only 토큰과 SHA 고정 checkout v6(Node24)을 사용하고 checkout에 자격 증명을 남기지 않는다. 코드 실행에 pull_request_target을 사용하지 않는다.
 
