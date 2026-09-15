@@ -20,7 +20,7 @@ struct NoticeScheduleView: View {
             }
             EventTimeRows(lines: state.time.lines, note: state.time.note)
             if let interval = state.time.timeline {
-                EventDayTimeline(interval: interval, title: state.title, busy: busy, onSelectDay: onSelectDay, onRetryBusy: onRetryBusy)
+                CalendarOverlapTimeline(interval: interval, title: state.title, busy: busy, onSelectDay: onSelectDay, onRetry: onRetryBusy)
             } else {
                 Text("시작·종료 시각이 확인되면 시간표를 표시합니다.").font(.footnote).foregroundStyle(.secondary)
             }

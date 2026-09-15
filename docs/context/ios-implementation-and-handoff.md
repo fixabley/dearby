@@ -1,32 +1,23 @@
-# IOS 구현 인계
+# iOS 구현 인계
 
-2026-09-15 PR #12까지 main 병합 완료. 이전 담당 세션/worktree는 정리했다.
+## 현재 작업 — 승인 FSD 전체 이행 (2026-09-16 00:48 KST 확인)
 
-SwiftUI @Observable, NoticeModel/OrganizationModel 분리, ViewModel→State 조립, 인메모리→SwiftData→mock cache-aside.
-FSD 하향 의존, Widgets/<domain>/<widget> 안의 UI/State/ViewModel 동위 배치, Shared/UI 네이티브 디자인 시스템을 유지한다.
+checkout `dearby-ios-architecture-tests`, branch `fixabley/dearby-ios-architecture-tests`, 기반 main `f8f648c`. terminal `term_63e15d3b-5a6c-4075-aca7-500e2300490c`, dispatch `ctx_338f8e66f52b`. 재개 시 Orca/Git 상태를 재확인한다. 기존 flat Widget 규칙은 최신 승인 UI/Model 세그먼트 설계로 교체했다.
 
-최신 기능: 환경설정의 `겹치는 일정 확인하기`, 최초 1회 켜기/나중에 설명, boolean 설정 영속화, 일시적 개인 busy 조회. 제목/장소는 표시하지 않고 서버로 전송하지 않는다. 활동/바쁜 시간은 배색 블록, 실제 교집합만 점선·경고·한국어 시간 요약이다. 날짜·요일 다음 줄에 시간을 표시하고 한국 시간 중복 라벨은 생략한다.
+## 구현
 
-검증 정본: apps/ios/docs/evidence/issue-10/README.md 및 PAGING.md. 실제 개인 일정/OS 권한/저장 검증은 #13, 접근성/제스처는 #14, iOS 조회 진단 한계는 #15에서 추적한다. 과거 상세 인계는 archive/2026-09-15-before-pr-cleanup/ 참조.
+기능별 로컬 commits: `cb42382` AST FSD/public API/cache facade 선행, `20ef057` NoticeCard, `d339ead` Favorite entity/connected card, `3803a2a` calendar/map 행동, `c703de3` App Entrypoint/Routes/Providers, `3129ac9` migration alias 제거/실제 위반 증거. Root는 앞 5개를 PR19–23으로 나눴으며 원격 PR/통합을 담당한다. worker는 merge/push하지 않는다.
 
-## 카드 일정·장소 줄 컴포넌트 — 완료 (2026-09-15)
+현재 마지막 변경은 CalendarConnectionControl/State와 BusyTimeStatusView를 CheckCalendarOverlap UI/Model로 옮기고 Feature CalendarOverlapTimeline이 범용 EventDayTimeline의 status slot을 조립하도록 하는 것이다. 자기 Feature UI→State 정상, Shared UI→Feature State 위반 fixture와 busy script 경로도 함께 변경했다.
 
-시작·종료는 원본별 State 배열→VStack 별도 Text, 장소는 원본 필드 배열→공백 단위 Layout으로 표시한다. AX 크기는 일정명을 위로 배치하고 긴 단일 토큰만 내부 줄바꿈한다. 기존 native 아이콘·URL host·정확한 phase/venue 지도 callback·State-only UI·카드 스크롤 유지; 카드 밖은 수정하지 않았다.
+## 검증과 제한
 
-이번 State 두 sample 및 필드/경계 fixture, FSD 102파일, 최종 Simulator build_run_sim PASS(PID 51021). 첫 카드·다중/누락 일정 및 AX5 일정/장소 캡처를 직접 확인했고 large로 복원했다. 환경 종료/설치 오류 후 데이터 보존 재실행 성공. [검증·화면·한계](../../apps/ios/docs/evidence/card-lines/README.md).
+Xcode26.6/Swift6.3.3에서 App 이동까지 architecture 9 Swift tests/기존 Python fixtures, standalone cache/favorite/snapshot, busy consent/cancel/privacy/overlap, detail 회귀 및 simulator build를 실제 통과했다. 이후 물리경로 최종 검사와 임시 production 상향/교차slice/순수UI effect/private API 위반 4개가 각각 runner exit1, 삭제 후 /tmp runner exit0 및 원본108파일 SHA256 일치를 확인했다.
 
-2026-09-15 연결 확인: checkout dearby-ios-run, terminal term_f1400b32-1536-4726-90b4-67439ba8fafa, dispatch ctx_d9f7b9eeb75d, Simulator A617D464-41FC-4C33-A3AC-A109D5C9F054. 기반 2d59853은 main 통합 완료라는 지시; 이번 기능 한 커밋을 메인 검토·통합에 전달한다. push/PR 없음, 앱 실행 유지. 기존 미커밋 실행 기록은 그대로 보존한다.
+전용 simulator `B04DEBB6-53B1-4CB1-858C-8C290846D4AB`에서 `--busy-calendar-fixture=empty`로 개인 calendar 접근 없이 feed/save/remove/favorites/detail, 실제 더블탭 저장, AX5 다음 카드 전환을 확인했다. 증거·기능별 결과 정본은 [FSD-MIGRATION](../../apps/ios/docs/FSD-MIGRATION.md). 앱은 c703de3 빌드이며 최종 Calendar UI 이동 전이다.
 
-## 완료: Harmonize 구조 테스트 구현 (2026-09-15)
+00:41 KST 외부 Xcode 업데이트로 27.0(27A266a) license 미동의 exit69가 발생했다. 라이선스를 대신 수락하지 않았고 root가 사용자에게 안내했다. 마지막 Calendar UI 변경은 Python109파일/diff만 통과했고 Swift/build 재검증은 대기; root가 Xcode16.4 hosted CI도 병행한다. 현재 전용 simulator font AX5는 license 해결 후 large로 복원할 것.
 
-현재 checkout은 dearby-ios-architecture-tests, branch fixabley/dearby-ios-architecture-tests. 시작 main 9eeb383에서 원격 PR17 포함 b0c76a1로 fast-forward했고 context/workstreams 충돌은 양쪽 기록을 보존해 해결했다. 현재 역할은 apps/ios 구조 테스트이며 위 카드 기능 기록의 이전 세션 연결을 재사용하지 않는다.
+## 다음 행동
 
-사용자 승인 범위는 독립 macOS SwiftPM + Harmonize 구조 테스트, 기존 FSD guard 전부 보존이다. apps/ios 테스트만 변경했고 앱 소스/프로젝트/런타임 의존성 변경은 없다. Harmonize 1.2.1 및 SwiftSyntax 601.0.1을 고정하고 Package.resolved를 포함한다. 단일 실행은 `bash apps/ios/tests/run_architecture.sh`; 규칙·범위·한계 정본은 [ArchitectureTests README](../../apps/ios/tests/ArchitectureTests/README.md).
-
-이번 실제 Xcode26.6/Swift6.3.3 실행: 기존 Python 102파일/전체 fixtures, Swift Testing 6테스트(규칙 12사례 및 View 선언 3사례) 통과. Harmonize-only 공개 UI 위반과 Python-only 상향 의존을 임시 production 파일로 주입해 각각 exit1, 제거 후 /tmp cwd에서 통합 runner exit0 확인했다. 원래 102개 소스 SHA256 모두 동일하다. [검증 보고](../../apps/ios/tests/ArchitectureTests/VERIFICATION.md).
-
-남은 작업은 메인 담당 통합 PR/CI(Xcode16.4 Swift6.1 baseline) 검증 및 리뷰다. 해당 Xcode는 로컬에 없어 통과로 주장하지 않는다. 조율에 따라 worker는 기능 commit/push만 제공하고 메인이 CI commit과 함께 하나의 PR을 만든다. 앱 runtime/build/OS 검증은 이번 테스트 도입 범위가 아니다.
-
-## 진행: 승인 FSD 전체 iOS 이행 (2026-09-16)
-
-현재 main f8f648c 안전 통합 완료. 새 설계는 Widget UI/Model 세그먼트, 자기VM 허용, Entity UI 자기Model 허용, 모든 하위레이어 참조/명시적 공개진입점을 사용한다. 기존 flat 규칙보다 우선한다. 공통 AST 검사·cache facade 선행 작업과 전체 standalone/구조 검증 완료; 다음은 카드→즐겨찾기→상세 행동→App 기능별 이행. 실시간 상세는 apps/ios/docs/FSD-MIGRATION.md. 로컬 기능commit만 제공하고 root가 원격 PR/통합 담당.
+마지막 기능 commit을 root에 즉시 전달해 CI 실행, 라이선스 해결 후 architecture/standalone/busy/detail 및 simulator rebuild와 설정 mock/persistence UI 재검증, font 복원, 결과/한계 갱신 후 현재 dispatch worker_done을 정확히 한 번 보낸다. 개인 일정 읽기쓰기 금지, 새 DI/state/deeplink/API 없음. 앱 OS 실제권한·개인일정 검증은 기존 별도 이슈 범위다.

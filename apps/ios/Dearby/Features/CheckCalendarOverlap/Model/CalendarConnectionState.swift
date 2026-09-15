@@ -1,4 +1,4 @@
-/// Values only; Shared UI never requests calendar permission or data.
+/// Feature permission/consent state; generic Shared timeline values do not model authorization.
 enum CalendarConnectionState: Equatable, Sendable {
     case off, checking, consent, requesting, connected, denied, restricted, failed
 }

@@ -27,7 +27,7 @@ Features/
   SaveOrganization/Model/          validated save/remove action facade and result
   AddToCalendar/Model|API|UI/      draft/date policy, OS editor bridge, add button
   OpenLocation/API|UI/            exact venue map URL/launcher and button
-  CheckCalendarOverlap/Model|API/ ephemeral busy query/session and EventKit read adapter
+  CheckCalendarOverlap/Model|API|UI/ ephemeral busy query/session, authorization/retry UI, EventKit read adapter
 Entities/
   Notice/Model|API|UI/             independent notice values, repository/cache/source, pure classification
   Organization/Model|API/         organization values, repository/cache/path resolution
@@ -71,3 +71,5 @@ bash apps/ios/tests/run_detail_presentations.sh
 ```
 
 The macOS architecture package pins Harmonize and SwiftSyntax and scans only this checkout's production source. All physical paths use the final layout; no migration mapping remains. [Current execution evidence](docs/FSD-MIGRATION.md) includes simulator/violation sensitivity and limitations. Prior feature evidence remains under docs/evidence/issue-02, issue-10 and card-lines; those older runs are not new validation.
+
+CalendarConnectionControl/State and BusyTimeStatusView belong to CheckCalendarOverlap. CalendarOverlapTimeline injects query status/retry into Shared EventDayTimeline through a ViewBuilder slot. Generic timeline/date/anonymous interval geometry remains Shared; it neither requests permission nor decides retry behavior.

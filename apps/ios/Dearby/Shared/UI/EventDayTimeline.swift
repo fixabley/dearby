@@ -1,20 +1,20 @@
 import SwiftUI
 
 /// Narrow visual day preview. Native controls own date selection; no editing or export.
-struct EventDayTimeline: View {
+struct EventDayTimeline<StatusContent: View>: View {
     let interval: EventTimelineInterval
     let title: String
     let busy: BusyTimeDisplay
     let onSelectDay: ((EventTimelineInterval.Day) -> Void)?
-    let onRetryBusy: () -> Void
+    let statusContent: () -> StatusContent
     @State private var selectedDate: Date
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @ScaledMetric(relativeTo: .caption) private var hourHeight = 64.0
     @ScaledMetric(relativeTo: .caption) private var gutter = 62.0
 
-    init(interval: EventTimelineInterval, title: String, busy: BusyTimeDisplay = .hidden, onSelectDay: ((EventTimelineInterval.Day) -> Void)? = nil, onRetryBusy: @escaping () -> Void = {}) {
+    init(interval: EventTimelineInterval, title: String, busy: BusyTimeDisplay = .hidden, onSelectDay: ((EventTimelineInterval.Day) -> Void)? = nil, @ViewBuilder statusContent: @escaping () -> StatusContent) {
         self.interval = interval; self.title = title
-        self.busy = busy; self.onSelectDay = onSelectDay; self.onRetryBusy = onRetryBusy
+        self.busy = busy; self.onSelectDay = onSelectDay; self.statusContent = statusContent
         _selectedDate = State(initialValue: interval.days.lowerBound)
     }
     var body: some View {
@@ -35,7 +35,7 @@ struct EventDayTimeline: View {
                 if day.hours != 24 {
                     Text("시간대 전환일 · 실제 \(day.hours.formatted())시간").font(.caption).foregroundStyle(.secondary)
                 }
-                BusyTimeStatusView(display: busy, timeZone: interval.timeZone, onRetry: onRetryBusy)
+                statusContent()
                 ScrollViewReader { proxy in
                     ScrollView(.vertical) {
                         EventTimelineGrid(day: day, title: title, hourHeight: hourHeight, gutter: min(92, gutter), busy: busy, timeZone: interval.timeZone)
@@ -56,6 +56,12 @@ struct EventDayTimeline: View {
         if let tick { proxy.scrollTo(tick.id, anchor: .top) }
     }
 
+}
+
+extension EventDayTimeline where StatusContent == EmptyView {
+    init(interval: EventTimelineInterval, title: String) {
+        self.init(interval: interval, title: title) { EmptyView() }
+    }
 }
 
 #Preview("일간 시간표") {

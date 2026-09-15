@@ -42,14 +42,17 @@ struct FSDTests {
             "Widgets/Card/Model/CardViewModel.swift": "class CardViewModel {}",
             "Widgets/Sibling/Model/SiblingViewModel.swift": "class SiblingViewModel {}",
             "Features/Save/Model/Save.swift": "class Save {}",
+            "Features/CheckCalendarOverlap/Model/CalendarConnectionState.swift": "enum CalendarConnectionState {}",
             "Pages/Detail/Model/DetailViewModel.swift": "class DetailViewModel {}",
             "Shared/Lib/DateValue.swift": "struct DateValue {}",
         ]
         let exports = ["Entities/Notice": ["NoticeModel", "NoticeRepository"],
                        "Entities/Organization": ["OrganizationModel"], "Widgets/Card": ["CardViewModel"],
                        "Widgets/Sibling": ["SiblingViewModel"], "Features/Save": ["Save"],
-                       "Pages/Detail": ["DetailViewModel"], "Shared": ["DateValue"]]
+                       "Pages/Detail": ["DetailViewModel"], "Shared": ["DateValue"],
+                       "Features/CheckCalendarOverlap": ["CalendarConnectionState"]]
         let allowed: [(String, String)] = [
+            ("Features/CheckCalendarOverlap/UI/Control.swift", "CalendarConnectionState"),
             ("Entities/Notice/UI/Label.swift", "NoticeModel"),
             ("Widgets/Card/UI/Card.swift", "CardViewModel"),
             ("Widgets/Card/UI/CardContent.swift", "NoticeModel"),
@@ -63,6 +66,7 @@ struct FSDTests {
             #expect(FSDBoundaries.check(sources: declarations.merging([path: "struct Consumer { let value: \(name) }"]) { _, new in new }, exports: exports).isEmpty)
         }
         let forbidden: [(String, String, String)] = [
+            ("Shared/UI/Control.swift", "CalendarConnectionState", "fsd-upward"),
             ("Entities/Notice/Model/Bad.swift", "Save", "fsd-upward"),
             ("Entities/Notice/Model/Bad.swift", "OrganizationModel", "fsd-cross-slice"),
             ("Widgets/Card/UI/Bad.swift", "SiblingViewModel", "fsd-cross-slice"),

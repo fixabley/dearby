@@ -35,7 +35,10 @@
     "BusyCalendarLifecycle",
     "BusyCalendarProvider",
     "BusyCalendarSession",
-    "EventKitBusyProvider"
+    "EventKitBusyProvider",
+    "CalendarConnectionControl",
+    "CalendarConnectionState",
+    "CalendarOverlapTimeline"
   ],
   "Features/OpenLocation": [
     "VenueMapLauncher",
@@ -62,8 +65,6 @@
   "Shared": [
     "BusyTimeDisplay",
     "BusyTimeInterval",
-    "CalendarConnectionControl",
-    "CalendarConnectionState",
     "CompactPeriod",
     "EventDayTimeline",
     "EventPeriodPresentation",
@@ -76,7 +77,8 @@
     "NativeSurface",
     "PrimaryButton",
     "SecondaryButton",
-    "StatusMessage"
+    "StatusMessage",
+    "BusyTimeSummaryView"
   ],
   "Widgets/FavoriteOrganizationCard": [
     "FavoriteOrganizationCard",
