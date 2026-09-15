@@ -13,7 +13,9 @@ struct ArchitectureTests {
         var sharedUICount = 0
         var domainCount = 0
         for file in files {
-            let path = String(file.path.dropFirst(root.count))
+            let physicalPath = String(file.path.dropFirst(root.count))
+            let mappings = try JSONDecoder().decode([String: String].self, from: Data(contentsOf: SourceInventory.iosRoot.appendingPathComponent("architecture/migration-paths.json")))
+            let path = mappings[physicalPath] ?? physicalPath
             let text = try String(contentsOf: file, encoding: .utf8)
             let source = SwiftSourceCode(source: text)
             stateCount += source.structs().filter { $0.name.hasSuffix("State") }.count
@@ -41,24 +43,24 @@ struct ArchitectureTests {
         .init(rule: "domain-import", path: "Entities/Notice/Model/NoticeModel.swift",
               valid: "import Foundation\nstruct NoticeModel {} // import SwiftData",
               invalid: "import class SwiftData.ModelContext\nstruct NoticeModel {}"),
-        .init(rule: "ui-import", path: "Widgets/Notice/Card/Card.swift",
+        .init(rule: "ui-import", path: "Widgets/Card/UI/Card.swift",
               valid: "import SwiftUI\nstruct Card<C: View>: SwiftUI.View where C: Equatable {}",
               invalid: "import EventKit\nstruct Card<C: View>: SwiftUI.View where C: Equatable {}"),
         .init(rule: "ui-import", path: "Pages/Detail/UI/DetailView.swift",
               valid: "import SwiftUI\nstruct DetailView: View {}",
               invalid: "#if os(iOS)\nimport SwiftData\n#endif\nstruct DetailView: View {}"),
-        .init(rule: "state-struct", path: "Widgets/Notice/Card/CardState.swift",
+        .init(rule: "state-struct", path: "Widgets/Card/Model/CardState.swift",
               valid: "struct CardState {}", invalid: "class CardState {}"),
         .init(rule: "state-location", path: "Pages/Detail/UI/Renamed.swift",
               valid: "struct DetailView: View {}", invalid: "struct DetailState {}"),
-        .init(rule: "state-location", path: "Widgets/Notice/Card/Model/Renamed.swift",
+        .init(rule: "state-location", path: "Widgets/Card/UI/Model/Renamed.swift",
               valid: "struct Helper {}", invalid: "struct CardState {}"),
         .init(rule: "state-name", path: "Pages/Detail/Model/DetailState.swift",
               valid: "struct DetailState {}\nstruct PlaceState {}",
               invalid: "struct DetailState {}\nstruct Place {}"),
-        .init(rule: "state-name", path: "Widgets/Notice/Card/CardState.swift",
+        .init(rule: "state-name", path: "Widgets/Card/Model/CardState.swift",
               valid: "struct CardState {}", invalid: "// struct CardState {}\nstruct WrongState {}"),
-        .init(rule: "viewmodel-class", path: "Widgets/Notice/Card/CardViewModel.swift",
+        .init(rule: "viewmodel-class", path: "Widgets/Card/Model/CardViewModel.swift",
               valid: "final class CardViewModel {}", invalid: "struct CardViewModel {}"),
         .init(rule: "viewmodel-location", path: "Pages/Detail/UI/Renamed.swift",
               valid: "struct DetailView: View {}", invalid: "final class DetailViewModel {}"),
@@ -88,14 +90,14 @@ struct ArchitectureTests {
 
     @Test(arguments: ["class Card: View {}", "enum Card: SwiftUI.View {}", "extension Card: View {}"])
     func alternateWidgetViewDeclarations(declaration: String) {
-        #expect(ArchitectureRules.check(path: "Widgets/Notice/Card/Card.swift", text: declaration).isEmpty)
-        #expect(ArchitectureRules.check(path: "Widgets/Notice/Card/Card.swift", text: "import EventKit\n" + declaration)
+        #expect(ArchitectureRules.check(path: "Widgets/Card/UI/Card.swift", text: declaration).isEmpty)
+        #expect(ArchitectureRules.check(path: "Widgets/Card/UI/Card.swift", text: "import EventKit\n" + declaration)
             .contains { $0.rule == "ui-import" })
     }
 
     @Test func genericConstraintAloneDoesNotMakeWidgetAView() {
         let source = "import EventKit\nstruct GenericState<Content: View> {}"
-        #expect(ArchitectureRules.check(path: "Widgets/Notice/Card/GenericState.swift", text: source).isEmpty)
+        #expect(ArchitectureRules.check(path: "Widgets/Card/Model/GenericState.swift", text: source).isEmpty)
     }
 
     @Test func inventoryIsCheckoutLocalAndFailsClosed() throws {

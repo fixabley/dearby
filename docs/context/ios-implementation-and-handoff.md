@@ -26,3 +26,7 @@ FSD 하향 의존, Widgets/<domain>/<widget> 안의 UI/State/ViewModel 동위 �
 이번 실제 Xcode26.6/Swift6.3.3 실행: 기존 Python 102파일/전체 fixtures, Swift Testing 6테스트(규칙 12사례 및 View 선언 3사례) 통과. Harmonize-only 공개 UI 위반과 Python-only 상향 의존을 임시 production 파일로 주입해 각각 exit1, 제거 후 /tmp cwd에서 통합 runner exit0 확인했다. 원래 102개 소스 SHA256 모두 동일하다. [검증 보고](../../apps/ios/tests/ArchitectureTests/VERIFICATION.md).
 
 남은 작업은 메인 담당 통합 PR/CI(Xcode16.4 Swift6.1 baseline) 검증 및 리뷰다. 해당 Xcode는 로컬에 없어 통과로 주장하지 않는다. 조율에 따라 worker는 기능 commit/push만 제공하고 메인이 CI commit과 함께 하나의 PR을 만든다. 앱 runtime/build/OS 검증은 이번 테스트 도입 범위가 아니다.
+
+## 진행: 승인 FSD 전체 iOS 이행 (2026-09-16)
+
+현재 main f8f648c 안전 통합 완료. 새 설계는 Widget UI/Model 세그먼트, 자기VM 허용, Entity UI 자기Model 허용, 모든 하위레이어 참조/명시적 공개진입점을 사용한다. 기존 flat 규칙보다 우선한다. 공통 AST 검사·cache facade 선행 작업과 전체 standalone/구조 검증 완료; 다음은 카드→즐겨찾기→상세 행동→App 기능별 이행. 실시간 상세는 apps/ios/docs/FSD-MIGRATION.md. 로컬 기능commit만 제공하고 root가 원격 PR/통합 담당.

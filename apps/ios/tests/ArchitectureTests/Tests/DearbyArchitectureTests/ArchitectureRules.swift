@@ -43,8 +43,8 @@ enum ArchitectureRules {
             if !structures.contains(where: { $0.name == name }) {
                 reject("state-struct", "\(name) must be a value struct")
             }
-            let correctLocation = isWidget ? parts.count == 4 : parts.count >= 4 && parts[2] == "Model"
-            if !correctLocation { reject("state-location", "\(name) belongs beside its widget or in Pages/Slice/Model") }
+            let correctLocation = parts.count >= 4 && parts[2] == "Model"
+            if !correctLocation { reject("state-location", "\(name) belongs in its slice Model segment") }
         }
         if isPresentation && stem.hasSuffix("State") {
             if !structures.contains(where: { $0.name == stem }) {
@@ -58,8 +58,8 @@ enum ArchitectureRules {
             if !classes.contains(where: { $0.name == name }) {
                 reject("viewmodel-class", "\(name) must be a class")
             }
-            let correctLocation = isWidget ? parts.count == 4 : parts.count >= 4 && parts[2] == "Model"
-            if !correctLocation { reject("viewmodel-location", "\(name) belongs beside its widget or in Pages/Slice/Model") }
+            let correctLocation = parts.count >= 4 && parts[2] == "Model"
+            if !correctLocation { reject("viewmodel-location", "\(name) belongs in its slice Model segment") }
         }
         if isPresentation && stem.hasSuffix("ViewModel"), !classes.contains(where: { $0.name == stem }) {
             reject("viewmodel-name", "file must declare class \(stem)")

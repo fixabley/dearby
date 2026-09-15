@@ -1,0 +1,91 @@
+{
+  "Entities/Notice": [
+    "NoticeClassificationView",
+    "NoticeContext",
+    "NoticeEvidence",
+    "NoticeLocation",
+    "NoticeModel",
+    "NoticePhase",
+    "NoticeRecordSource",
+    "NoticeRepository",
+    "NoticeSource",
+    "NoticeVenue",
+    "SnapshotNoticeSource",
+    "SwiftDataNoticeSource",
+    "NoticeCacheStorage"
+  ],
+  "Entities/Organization": [
+    "OrganizationModel",
+    "OrganizationRepository",
+    "OrganizationSource",
+    "SnapshotOrganizationSource",
+    "SwiftDataOrganizationSource",
+    "OrganizationCacheStorage"
+  ],
+  "Features/AddToCalendar": [
+    "CalendarDraftMapper",
+    "CalendarEditorRequest",
+    "CalendarEventDraft",
+    "CalendarEventEditor"
+  ],
+  "Features/CheckCalendarOverlap": [
+    "BusyCalendarAuthorization",
+    "BusyCalendarFailure",
+    "BusyCalendarLifecycle",
+    "BusyCalendarProvider",
+    "BusyCalendarSession",
+    "EventKitBusyProvider"
+  ],
+  "Features/OpenLocation": [
+    "VenueMapLauncher"
+  ],
+  "Features/SaveOrganization": [
+    "FavoriteOrganizations",
+    "FavoriteOrganizationsRepository",
+    "SaveOrganizationResult",
+    "UserDefaultsFavoriteOrganizationsRepository"
+  ],
+  "Pages/Discovery": [
+    "DiscoveryView"
+  ],
+  "Pages/Favorites": [
+    "FavoriteListView"
+  ],
+  "Pages/NoticeDetail": [
+    "NoticeDetailState",
+    "NoticeDetailView",
+    "NoticeDetailViewModel"
+  ],
+  "Pages/Settings": [
+    "SettingsView"
+  ],
+  "Shared": [
+    "BusyTimeDisplay",
+    "BusyTimeInterval",
+    "CalendarConnectionControl",
+    "CalendarConnectionState",
+    "CompactPeriod",
+    "EventDayTimeline",
+    "EventPeriodPresentation",
+    "EventTimeRows",
+    "EventTimelineInterval",
+    "ExternalLinkCard",
+    "InformationRow",
+    "LocationInformation",
+    "NativeSpacing",
+    "NativeSurface",
+    "PrimaryButton",
+    "SecondaryButton",
+    "StatusMessage"
+  ],
+  "Widgets/FavoriteOrganizationCard": [
+    "FavoriteOrganizationCard",
+    "FavoriteOrganizationCardState",
+    "FavoriteOrganizationCardViewModel"
+  ],
+  "Widgets/NoticeCard": [
+    "NoticeCard",
+    "NoticeCardState",
+    "NoticeCardViewModel"
+  ]
+}

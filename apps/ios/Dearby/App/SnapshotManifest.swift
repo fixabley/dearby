@@ -19,7 +19,7 @@ struct SnapshotManifest: Equatable {
             // Programmatic fixtures have no wire bytes; hash all decoded fields deterministically.
             let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
             let input = Fingerprint(header: [schemaVersion, mode, snapshotAt], sources: snapshot.sources,
-                organizations: snapshot.organizations, notices: try snapshot.notices.map(NoticeStorageCodec.encode))
+                organizations: snapshot.organizations, notices: try snapshot.notices.map(NoticeCacheStorage.fingerprint))
             digest = "notice-codec-v1:" + SHA256.hash(data: try encoder.encode(input)).map { String(format: "%02x", $0) }.joined()
         }
     }

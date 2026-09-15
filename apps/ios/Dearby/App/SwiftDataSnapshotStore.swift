@@ -10,7 +10,7 @@ final class SwiftDataSnapshotStore {
 
     init(url: URL? = nil, inMemory: Bool = false,
          commit: @escaping (ModelContext) throws -> Void = { try $0.save() }) throws {
-        let schema = Schema([NoticeRecord.self, OrganizationRecord.self, SnapshotManifestRecord.self])
+        let schema = Schema(NoticeCacheStorage.modelTypes + OrganizationCacheStorage.modelTypes + [SnapshotManifestRecord.self])
         let configuration: ModelConfiguration
         if inMemory {
             configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none)
@@ -47,8 +47,8 @@ final class SwiftDataSnapshotStore {
         if let current = try manifest(), current.digest == next.digest { return current }
         guard !context.hasChanges else { throw SnapshotStoreError.pendingChanges }
         do {
-            for record in try context.fetch(FetchDescriptor<NoticeRecord>()) { context.delete(record) }
-            for record in try context.fetch(FetchDescriptor<OrganizationRecord>()) { context.delete(record) }
+            try NoticeCacheStorage.deleteAll(in: context)
+            try OrganizationCacheStorage.deleteAll(in: context)
             if let record = try context.fetch(FetchDescriptor<SnapshotManifestRecord>()).first { record.update(next) }
             else { context.insert(SnapshotManifestRecord(next)) }
             try commit(context)

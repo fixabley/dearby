@@ -12,6 +12,8 @@ let package = Package(
     targets: [
         .testTarget(name: "DearbyArchitectureTests", dependencies: [
             .product(name: "Harmonize", package: "Harmonize"),
+            .product(name: "SwiftParser", package: "swift-syntax"),
+            .product(name: "SwiftSyntax", package: "swift-syntax"),
         ]),
     ]
 )

@@ -226,3 +226,7 @@ ReadCalendarBusy feature의 actor가 EventKit 객체를 내부에 가두고 star
 Shared UI는 범용 값·표시상태·콜백만 받고 source/model/OS/store를 참조하지 않는다. 바쁜 시간은 adaptive systemTeal, 활동은 accent, 실제 교집합만 점선 및 warning과 자연어 시각을 표시한다. [최신 실행·API·미검증](docs/evidence/issue-10/README.md).
 
 피드 접근성 후속은 모든 글자크기에서 고정 viewport의 native alwaysByOne 정렬을 사용한다. AX 내용만 카드 안에서 스크롤하며 별도 native 이전/다음 공고 버튼을 제공한다. [원인/실제 fling·doubletap 검증](docs/evidence/issue-10/PAGING.md).
+
+## 2026-09-16 FSD domain migration
+
+The approved [iOS policy and public contracts](architecture/README.md) supersede flat Widgets and blanket Model/ViewModel UI bans above. Harmonize + SwiftSyntax now check layer/slice directions, explicit exports and pure UI effects. Domain repositories remain in Entities; NoticeCacheStorage/OrganizationCacheStorage expose schema/deletion for the App snapshot transaction without exporting persisted records/codecs or changing save/rollback/digest behavior. Feature migrations follow as independently verifiable commits.
