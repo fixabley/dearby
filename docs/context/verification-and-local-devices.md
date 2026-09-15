@@ -2,6 +2,10 @@
 
 갱신: 2026-09-16 KST. 최신 대상은 iOS FSD 리팩터링이다. 아래 과거 UI 작업과 실행 시점을 구별한다.
 
+## 병합 후 main lint (2026-09-16 01:29 KST)
+
+사용자 승인 후 PR19–25가 main `fb1214d`에 병합됐다. Root에서 해당 main으로 `bash apps/ios/tests/run_swiftlint.sh`를 새로 실행하여 127파일 위반0건/exit0을 확인했다. 로그 `/tmp/dearby-main-swiftlint.log`, 추가 수정 없음. main 파일 트리는 이전 최종 검증 head e7e682b와 동일하다. [병합 전 최종 CI](https://github.com/fixabley/dearby/actions/runs/34994511738)는 lint·Harmonize·전체 회귀·Simulator 빌드 성공이며 이번 로컬 lint 실행과 구별한다.
+
 ## 폴더명·SwiftLint 후속
 
 소문자 시작 폴더 변경은 [PR24 검증 기록](../../apps/ios/docs/evidence/lowercase-folders/README.md)이 정본이다. Root에서도 architecture 9 tests 및 전체 113개 제품/asset 파일의 바이트 보존을 확인했다. [run34993653054](https://github.com/fixabley/dearby/actions/runs/34993653054)에서 hosted 구조·전체 회귀·Simulator 빌드가 성공했다. SwiftLint는 이후 ee9c4e0(root 051c45e)에서 별도로 검증했다. [SwiftLint 실행 정본](../../apps/ios/docs/evidence/swiftlint/README.md): 0.65.1/명시61규칙, 앱109+테스트18파일 strict 위반0건, tool missing/version mismatch/앱·테스트 위반 실패와 복원, 최종 architecture9/full standalone/busy/detail 및 Xcode27 Simulator 빌드·첫 화면 통과. Root가 같은 소스에서 checksum 설치·lint·runner fixture·Harmonize를 직접 실행하여 통과했고 첫 화면 PNG를 확인했다. 기존 전체 UI 조작과 이번 첫 화면 확인을 구별한다. 최신 hosted 결과는 [PR25 checks](https://github.com/fixabley/dearby/pull/25/checks)에서 확인한다.
