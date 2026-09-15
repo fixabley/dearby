@@ -1,6 +1,6 @@
 # 현재 작업과 결정
 
-2026-09-15: Swift 아키텍처 검사 구현과 CI 연결을 [PR18](https://github.com/fixabley/dearby/pull/18)에 제출했다. PR은 아직 main에 병합하지 않았다.
+2026-09-15: Swift 아키텍처 검사 구현과 CI 연결을 [PR18](https://github.com/fixabley/dearby/pull/18)로 관리한다. 로컬과 hosted Xcode16.4/Swift6.1.2에서 전체 검사를 통과했고, 사용자가 계속 진행하도록 요청해 최종 CI 확인 후 병합한다. 실제 병합 상태와 최신 검사 결과는 PR18이 정본이다.
 
 - Harmonize1.2.1/SwiftSyntax601.0.1 고정 테스트 패키지와 기존 Python FSD 검사를 함께 실행한다. 앱 모듈/런타임/기존 guard는 변경하지 않았다.
 - 실행: `bash apps/ios/tests/run_architecture.sh`. 로컬 Swift6.3.3에서 102파일/기존 fixtures 및 Swift Testing6테스트 통과. 두 임시 위반 exit1, 제거 후 /tmp에서 exit0, 원본 파일 해시 동일.
