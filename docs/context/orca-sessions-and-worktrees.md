@@ -1,6 +1,6 @@
 # Git·Orca 현재 상태
 
-현재 확인(2026-09-15): root ci/ios-architecture-tests, iOS checkout /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests. Run run_172be1f40d2f / Task task_b014b64c1f3f / Dispatch ctx_c8cf3ee2e5b6 succeeded, terminal term_63e15d3b-5a6c-4075-aca7-500e2300490c retained. 구현과 CI는 통합 PR18에서 검토한다. 두 checkout 모두 origin/main b0c76a1을 포함한다. root가 PR/CI를 담당하며 아래 빌드/카드 배정은 이전 이력이다.
+현재 확인(2026-09-16 00:23 KST): root `refactor/ios-fsd-harmonize`, iOS checkout `/Users/jominjun/Documents/dearby/dearby-ios-architecture-tests`. PR18은 main f8f648c에 병합 완료했고 두 checkout이 이 기준을 포함한다. 새 Run `run_58f7d03f4deb` / Task `task_31d48a682566` / Dispatch `ctx_338f8e66f52b`에서 iOS Harmonize FSD 규칙·실제 리팩터링·회귀 검증을 진행 중이다. 기존 retained terminal `term_63e15d3b-5a6c-4075-aca7-500e2300490c`을 런타임에서 확인한 뒤 새 Dispatch로 재사용했다. 이전 Dispatch `ctx_c8cf3ee2e5b6`는 완료 이력이다. root는 공통 기준과 PR/CI 검토, worker는 자기 apps/ios와 iOS 인계를 담당한다. Android/API 활성 배정 없음. 아래는 과거 이력이며 현재 상태로 해석하지 않는다.
 
 2026-09-15 정리: iOS dearby-ios-2 및 Android dearby-android 워크트리 제거, 두 완료 worker terminal release 및 transcript captured. 예전 terminal/dispatch ID를 재사용하지 않는다. 루트 checkout만 유지하며 후속 작업은 main에서 새 역할별 worktree를 만든다.
 

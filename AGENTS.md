@@ -59,8 +59,9 @@
 
 사용자가 SwiftData를 인메모리 캐시 다음 계층으로, 그 다음 외부 저장소(mock-data, 향후 API)를 요청했다. 공고·조직 각각 L1 → L2 → 외부 source 순서로 조회하고, 외부 성공 결과를 명시적으로 영속 저장한 뒤 L1에 반영한다. 저장/조회 오류와 missing을 구분한다. App이 SwiftData 수명과 snapshot 버전/캐시 무효화·Session 교체를 조율하며, domain Model·State·순수 UI 경계를 유지한다. 현재 mock은 동기 번들 기반이며 실제 API 연결의 비동기/취소 정책은 별도 구현 범위다.
 
-## 네이티브 Widget 배치 최신 결정
-사용자는 Widgets를 도메인별로 그룹화하고 widget 내부 UI/Model 폴더 없이 View·ViewModel·State를 동위 배치하도록 요청했다. iOS는 Widgets/<Domain>/<Widget>/, Android는 widgets/<domain>/<widget>/ 파일 구조를 사용한다. 도메인은 그룹일 뿐 다른 widget의 내부 참조를 허용하지 않는다. 역할 경계는 파일명/선언과 검사로 유지한다.
+## 네이티브 Widget 배치와 Harmonize 개편
+
+2026-09-16 사용자는 FSD 공식 문서 비교 후 Harmonize 규칙 작성과 실제 리팩터링·회귀 검증을 요청했다. 상세 목표는 docs/architecture/fsd-domain-rules-draft.md다. iOS부터 Widgets/<Slice>/UI|Model, Pages/<Slice>/UI|Model 및 App 목적별 세그먼트로 이행한다. Entity 순수 UI는 자기 도메인 값과 콜백을 받으며, Widget/Page 연결 UI는 자기 ViewModel과 Feature 진입점을 사용할 수 있다. 모든 하위 레이어 참조를 허용하고 같은 레이어 다른 슬라이스 직접 참조는 금지한다. 이 결정은 이전 Widget 안의 UI/Model 폴더 금지보다 우선한다. Android는 이번 iOS 작업에 포함하지 않으며 현재 widgets/<domain>/<widget>/ 동위 배치를 유지한다. 구현/검사 완료 여부는 각 플랫폼 인계와 ARCHITECTURE.md를 확인한다.
 
 ## Android 3계층 캐시
 사용자는 iOS와 동등한 Android 영속캐시도 승인했다. Room 기반 L1→L2→외부mock 조회와 명시적 저장승격, snapshot transaction 무효화, 실패시 데이터보존, off-main I/O와 취소후 stale publish 방지를 적용한다. Shared UI는 플랫폼 네이티브 디자인버튼, Widgets는 도메인별 화면조합을 담당한다.

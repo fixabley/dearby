@@ -4,6 +4,14 @@
 
 [FSD 레이어](https://feature-sliced.design/docs/reference/layers)와 [슬라이스·세그먼트](https://feature-sliced.design/docs/reference/slices-segments)의 책임·의존 방향을 단일 Swift/Kotlin 앱에 적용한다. 다음 배치는 Dearby의 현재 기능 규모에 맞춘 설계이며 프레임워크 공식 템플릿이 아니다.
 
+## 2026-09-16 Harmonize 적용 기준
+
+[FSD 규칙안](fsd-domain-rules-draft.md)을 iOS Harmonize 검사와 실제 코드에 적용한다. 모든 하위 레이어 참조와 동일 슬라이스 내부 참조를 허용하고, 상향 참조·동일 레이어 다른 슬라이스 내부 접근을 금지한다. App은 EntryPoint/Routes/Providers 등 목적별 세그먼트, Pages/Widgets는 슬라이스 아래 UI/Model 등 역할 세그먼트를 사용한다. 기존의 Widget 동위 배치와 렌더링 UI의 Model/ViewModel 일괄 금지는 이번 iOS 개편으로 대체한다.
+
+Entity UI는 자기 도메인 값/표시값과 콜백을 받는 순수 표현이다. Widget/Page의 연결 UI는 자기 ViewModel을 관찰하고 Feature 행동을 주입할 수 있다. Repository와 캐시는 소유 도메인의 Entities에 유지하며, 지도·캘린더 OS 행동 어댑터는 해당 Feature로 옮긴다. App은 저장소 수명과 화면 간 라우팅을 조립한다. Shared는 도메인 행동 없는 디자인 시스템과 범용 기반만 가진다.
+
+아래 기존 트리는 Android의 현재 구현과 이전 iOS 기준을 설명한다. 실제 이행 상태와 최종 노출 진입점은 각 앱 ARCHITECTURE.md, 검사 지원 범위는 iOS ArchitectureTests/README.md를 따른다. 아직 이전하지 않은 Android에 새 규칙 적용이 완료됐다고 해석하지 않는다.
+
 ## 레이어와 슬라이스
 
 | 레이어 | Dearby의 책임 / 예시 |
