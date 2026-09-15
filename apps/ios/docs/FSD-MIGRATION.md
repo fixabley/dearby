@@ -25,3 +25,9 @@ Favorite validation: full architecture and standalone (including shared Observat
 Calendar request/editor/delegate now belong to Features/AddToCalendar/API; CalendarAddButton is its UI entry. VenueMapLink/Launcher and VenueMapButton belong to Features/OpenLocation API/UI. ReadCalendarBusy is renamed CheckCalendarOverlap with its unchanged provider/session cancellation/privacy behavior. Detail still owns display-only Page State/UI; App route owns presentation/lifetime and uses exported behavior contracts. OS bridges are confined to Feature API, never pure UI. No calendar data is accessed in verification: mock providers only.
 
 Detail/action validation: architecture, full standalone (both calendar source-URL/map samples and disk regressions), run_busy_calendar.sh (consent, settings persistence, cancellation/stale generations, clipping/intersection and privacy-safe provider fixtures), run_detail_presentations.sh (presentation/timezone/timeline) all passed. Simulator build/run passed with empty mock busy provider; OS calendar access was not used.
+
+## App entrypoint, routes and providers
+
+DearbyApp belongs to Entrypoint; ContentView/NoticeDestinationView/NoticeDetailDestination remain Routes; snapshot/container/session/preferences/factory ownership lives in Providers. State/error/lifetime code is retained. Removed the unused App-level save relay now that the widget delegates to its own VM. Updated all executable scripts and source-inventory sentinel with the moved entrypoint. No URL scheme or external DI/state system added.
+
+App validation: architecture/full standalone/busy/detail scripts passed at the moved paths; simulator build/run passed (no warnings/errors). Dedicated fixture-only simulator showed consent, feed and favorites; explicit remove immediately produced empty favorites. Full UI proof and final sensitivity tests follow below.

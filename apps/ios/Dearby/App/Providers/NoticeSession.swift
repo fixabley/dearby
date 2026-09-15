@@ -38,7 +38,5 @@ final class NoticeSession {
     }
 
     func detailState(_ id: String) -> NoticeDetailState? { details[id]?.state }
-    func save(_ id: String) -> SaveOrganizationResult {
-        cards.first { $0.state?.id == id }?.save() ?? .unresolved
-    }
+
 }

@@ -111,7 +111,7 @@ struct ArchitectureTests {
             try text.write(to: file, atomically: true, encoding: .utf8)
         }
         try write("checkout/apps/ios/ARCHITECTURE.md", "fixture")
-        try write("checkout/apps/ios/Dearby/App/DearbyApp.swift")
+        try write("checkout/apps/ios/Dearby/App/Entrypoint/DearbyApp.swift")
         try write("checkout/apps/ios/tests/ArchitectureTests/Fixtures/Bad.swift")
         try write("checkout/apps/ios/tests/ArchitectureTests/.build/checkouts/Harmonize/Bad.swift")
         try write("checkout/dearby-ios/apps/ios/Dearby/Bad.swift")

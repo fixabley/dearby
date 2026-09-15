@@ -14,7 +14,7 @@ enum SourceInventory {
         let manager = FileManager.default
         let root = iosRoot.appendingPathComponent("Dearby", isDirectory: true).standardizedFileURL
         guard manager.fileExists(atPath: iosRoot.appendingPathComponent("ARCHITECTURE.md").path),
-              manager.fileExists(atPath: root.appendingPathComponent("App/DearbyApp.swift").path) else {
+              manager.fileExists(atPath: root.appendingPathComponent("App/Entrypoint/DearbyApp.swift").path) else {
             throw InventoryError.invalidRoot(iosRoot.path)
         }
         if root.resolvingSymlinksInPath() != root { throw InventoryError.symbolicLink(root.path) }

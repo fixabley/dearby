@@ -1,15 +1,1 @@
-{
-  "App/NoticeSession.swift": "App/Providers/NoticeSession.swift",
-  "App/CalendarPreferences.swift": "App/Providers/CalendarPreferences.swift",
-  "App/NoticeDestinationView.swift": "App/Routes/NoticeDestinationView.swift",
-  "App/BusyCalendarProviderFactory.swift": "App/Providers/BusyCalendarProviderFactory.swift",
-  "App/BundleSnapshot.swift": "App/Providers/BundleSnapshot.swift",
-  "App/PreviewBusyCalendarProvider.swift": "App/Providers/PreviewBusyCalendarProvider.swift",
-  "App/NoticeDetailDestination.swift": "App/Routes/NoticeDetailDestination.swift",
-  "App/SnapshotManifest.swift": "App/Providers/SnapshotManifest.swift",
-  "App/DearbyApp.swift": "App/Entrypoint/DearbyApp.swift",
-  "App/CalendarPreferenceStore.swift": "App/Providers/CalendarPreferenceStore.swift",
-  "App/UserDefaultsCalendarPreferenceStore.swift": "App/Providers/UserDefaultsCalendarPreferenceStore.swift",
-  "App/ContentView.swift": "App/Routes/ContentView.swift",
-  "App/SwiftDataSnapshotStore.swift": "App/Providers/SwiftDataSnapshotStore.swift"
-}
+{}
