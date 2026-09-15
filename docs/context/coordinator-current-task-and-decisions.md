@@ -34,3 +34,9 @@ Worker는 succeeded 보고를 수신·확인했고 사용자 요청에 따라 re
 Root 통합 checkout에서도 architecture12 exit0, strict lint152/0을 새로 실행했다. 실제 source gate probe를 CI에 추가하며 기존 필수 job 이름/보호 규칙은 유지한다.
 
 2026-09-16 02:35 KST PR 게시 확인: PR27 head3c3d4d9, PR28 정책 headcc8541c. PR27 Simulator CI 성공, 두 PR 나머지 원격 검사는 당시 실행 중. 최종 동적 상태는 GitHub와 Orca 카드에서 확인한다. 로컬 변경 없음, main 미병합.
+
+2026-09-16 02:46 KST CI 조사: PR27 전체 PASS. PR28 headaf44301 run35002215465는 Simulator/SwiftLint 성공 후 구조 패키지 build+link 완료(17:38:47 UTC), 테스트 결과 없이 6분 이상 대기하여 root가 취소하고 로그 /tmp/dearby-pr28-cancelled-job.log 확인. 같은 커밋의 미완료 job 재실행 중이며 성공으로 기록하지 않는다. 로컬12 테스트는 통과했으며 원격 원인은 아직 확정하지 않았다.
+
+02:50 KST 후속 활성 Task task_2b86ed171b8c / Dispatch ctx_4bd675d73f70 / terminal term_381a9f0e-d446-4fc4-903a-fb16686b7d52: iOS 같은 checkout에서 아키텍처 검사 실행 순서/CI hang 조사. Harmonize async barrier cache + 동기 읽기와 병렬 test suite가 가설이며 확정 아님. Root Swift6.4 strict cooperative pool 진단은12tests exit0라 로컬 미재현. worker는 검사 누락 없이 전역 직렬화 및 검증, root는 CI관리·통합 담당.
+
+02:53 KST 검사 실행 개선: worker751da86의 공통 ArchitectureTestSuite(.serialized) 아래 기존3suite를 중첩해 전역 직렬화. 로컬12tests/4suites, production probe, strict pool/lint153/0 통과. 앱/검사 항목/조건 변경 없음. CI 원인은 미확정이며 PR28 후속 커밋으로 같은 CI환경에서 검증한다.

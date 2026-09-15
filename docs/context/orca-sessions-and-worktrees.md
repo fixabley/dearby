@@ -1,5 +1,7 @@
 # Git·Orca 현재 상태
 
+02:50 KST 후속 활성: Task task_2b86ed171b8c / Dispatch ctx_4bd675d73f70 / terminal term_381a9f0e-d446-4fc4-903a-fb16686b7d52. 같은 iOS checkout에서 CI 구조검사 대기 조사 및 테스트 실행 수정. worker751da86은 전역 직렬화/로컬 검증 완료, root에 통합하고 PR28 원격 확인 중. 이전 구현 Dispatch는 retained. PR27 CI PASS, PR28 attempt2 조사 중.
+
 2026-09-16 하위 두 레이어 제한 후속: main `45a7c96`에서 root `test/ios-two-layer-boundaries`에서 PR27의 선행 branch `refactor/ios-app-composition` 위에 경계 검사를 통합하고 PR27/28로 게시했다. 원격 CI는 각 PR에서 확인한다. iOS checkout `/Users/jominjun/Documents/dearby/dearby-ios-architecture-tests`는 유지하며 담당자가 최신 main 기반 `feat/ios-two-layer-composition` branch에서 구현했다. Run `run_58f7d03f4deb`, Task `task_adac1e244b57`, 완료 Dispatch `ctx_3ac914267e01`, terminal `term_dd600aaf-7cbe-4288-a233-2ba46a78d35b`. worker-start ready/input_accepted/turn_started와 succeeded 보고를 확인했다. 완료 후 worker-retain 및 delivery acknowledgement 완료. Root는 공통 문서와 통합, iOS는 자기 checkout의 앱 코드/검증/역할 인계 담당. 다른 플랫폼 활성 배정 없음.
 
 재사용 시도 `ctx_865c17828a0b`는 기존 terminal의 readiness timeout으로 실패했고 입력을 전달하지 않았다. 기존 completed/retained IDs는 이전 작업 이력이며 새 작업 권한으로 재사용하지 않는다.
