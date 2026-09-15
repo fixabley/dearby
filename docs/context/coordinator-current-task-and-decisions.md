@@ -1,13 +1,36 @@
 # 현재 작업과 결정
 
-2026-09-16 진행 중: 사용자는 설계 문서만이 아니라 **Harmonize 규칙 구현 후 실제 리팩터링과 회귀 검증 반복**을 요청했다. 먼저 iOS를 적용하고, 검증된 변경을 PR에서 검토받아 추가 제안을 반영한다. 문서 작성으로 완료 처리하지 않는다. [FSD 규칙안](../architecture/fsd-domain-rules-draft.md)이 이번 구현의 기준이며 모든 하위 레이어 참조 허용, 동일 레이어 다른 슬라이스 금지, App 목적별 세그먼트, Entity 저장소 유지, 순수 UI와 연결 UI 구분을 적용한다. Android는 현재 구조를 유지하며 이번 iOS Dispatch에는 포함하지 않는다.
+2026-09-16: **iOS Harmonize FSD 규칙·리팩터링·회귀 검증 완료, PR 사용자 리뷰 대기**. 사용자는 문서만이 아닌 규칙 구현→리팩터링→회귀 검증 반복을 요청했다. 사용자 피드백 전 main에 병합하지 않는다. Android/API 및 #13/#14/#15는 이번 범위 밖이다.
 
-- Root: refactor/ios-app-routing-fsd. 검토용 stacked PR19(공통 검사, main base) → PR20(공고 카드) → PR21(즐겨찾기) → PR22(상세 OS 행동) → PR23(App) 게시. 각 후속 PR의 base는 직전 PR 브랜치다. PR19/20 CI 통과 확인, 나머지 진행 중(00:39 KST). 사용자 피드백 전 main 병합하지 않는다.
-- iOS: 기존 dearby-ios-architecture-tests checkout/terminal을 재사용하고 새 run_58f7d03f4deb / task_31d48a682566 / dispatch ctx_338f8e66f52b 배정. 이전 완료 Dispatch ID를 재사용하지 않았다.
-- 담당 범위: apps/ios 규칙·코드·기능별 테스트·앱 문서와 iOS 인계. 카드/즐겨찾기/상세 및 OS 행동/App 조립을 기능별 작은 커밋으로 만들고 검사→빌드→관련 사용자 흐름 회귀→발견한 오류 수정 순서로 검증한다.
-- 검증 기준: 정상·위반 fixtures와 실제 임시 위반 실패/제거 후 통과, 기존 캐시·즐겨찾기·기간/장소·캘린더 동의/취소/개인정보 계약 유지. worker cb42382/20ef057/d339ead/3803a2a/c703de3를 root에 순서대로 통합했다. 각 단계에서 root run_architecture.sh exit0(9 tests) 확인. 담당의 전체 standalone/cache/snapshot 및 busy/detail 회귀와 Simulator build 기록도 검토했다. 전체 UI·실제 위반 주입 최종 증거 및 임시 경로매핑 제거는 아직 진행 중이다. 기존 PR18 결과를 이번 결과로 사용하지 않는다.
-- 00:42 KST 환경 변경: 검증 중 /Applications/Xcode.app이 26.6→27.0(27A266a)으로 외부 교체됐다. root/worker 모두 Swift exit69 라이선스 미동의 재현. 사용자에게 직접 약관 확인/동의를 요청해 대기 중이며 임의 동의하지 않는다. 이전 실제 위반 4종 exit1/제거 후 exit0, 108파일 해시 동일 및 저장/더블탭/즐겨찾기·상세 UI 증거는 26.6 실행이다. 최종 CalendarConnectionControl/State의 Shared→Feature 이동은 추가 검증 필요. PR23 CI에 기존 standalone/busy/detail 회귀 스크립트 추가 중.
-- 사용자 만족 여부는 자동 테스트로 대신 판단하지 않는다. 첫 적용을 완수하고 PR과 증거를 제공한 뒤 제안받은 변경에도 같은 검증을 반복한다.
+## 구현과 검토 단위
+
+[공통 FSD 기준](../architecture/fsd-domain-rules-draft.md), [실제 iOS 구조](../../apps/ios/ARCHITECTURE.md), [검증 정본](../../apps/ios/docs/FSD-MIGRATION.md)을 따른다. 모든 하위 레이어 참조 허용, 동일 레이어 다른 슬라이스 직접 참조 금지, App 목적별 세그먼트, Entity 저장소, 순수 UI와 연결 UI 구분을 Harmonize/SwiftSyntax 검사로 구현했다. 임시 경로 매핑은 제거했고 재도입도 검사한다. 단일 모듈의 검사이며 컴파일러 수준의 완전한 타입 의존성 분석이라고 주장하지 않는다.
+
+| PR | 범위 | base |
+| --- | --- | --- |
+| [#19](https://github.com/fixabley/dearby/pull/19) | 공통 FSD 검사·저장소 노출 경계 | main |
+| [#20](https://github.com/fixabley/dearby/pull/20) | 공고 카드 | #19 브랜치 |
+| [#21](https://github.com/fixabley/dearby/pull/21) | 즐겨찾기 조직 카드·공유 저장 상태 | #20 브랜치 |
+| [#22](https://github.com/fixabley/dearby/pull/22) | 상세 캘린더·지도 Feature | #21 브랜치 |
+| [#23](https://github.com/fixabley/dearby/pull/23) | App 조립·캘린더 연결 UI 경계·최종 검사 및 CI | #22 브랜치 |
+
+Root 브랜치는 `refactor/ios-app-routing-fsd`. 기능별 커밋을 검토하여 순서대로 통합했고 각 단계에서 아키텍처 검사를 실행했다. 원격 main은 2026-09-16 00:56 KST 확인 당시 f8f648c(PR18 병합), 다섯 PR 모두 충돌 없음. 게시 이력 재작성·강제 push 없음.
+
+## 검증과 환경
+
+최종 제품 소스 a214cda(worker 57aba2a와 apps/ios 동일)의 hosted [run34990938224](https://github.com/fixabley/dearby/actions/runs/34990938224)는 Harmonize 9 tests/109파일, 전체 standalone/busy/detail 회귀 및 실제 Simulator 빌드 모두 성공했다. 구조·회귀 job은 Xcode16.4/Swift6.1.2, 앱 빌드는 Xcode26.6이다. CI에 세 회귀 스크립트와 앱 빌드를 추가했으며 기존 required context `iOS architecture`와 보호 정책은 유지했다. 최종 PR head 상태는 [PR23 checks](https://github.com/fixabley/dearby/pull/23/checks)를 확인한다.
+
+로컬 Xcode가 26.6에서 27.0으로 외부 갱신되어 Swift exit69가 발생했으나, 사용자가 약관에 직접 동의했고 00:53 KST Swift6.4/Xcode27.0 정상 실행을 확인했다. 이후 root Harmonize 9 tests/109파일 및 담당 전체 회귀·앱 빌드가 통과했다. 전용 Simulator 글자 크기는 large로 복원했다. 라이선스 문제는 해결됐으며 추가 동의 요청이 필요하지 않다.
+
+실제 임시 위반 네 종류(상향 참조, 형제 Widget VM, Entity 순수 UI 저장소, 비공개 Record)는 각각 exit1, 제거 후 exit0 및 원본 108파일 SHA256 동일을 확인했다. 이는 최종 캘린더 UI 경계 후속 파일 추가 전 Xcode26.6 검사다. 시점별 UI 증거와 검증 한계는 앱 검증 정본에 기록하며 과거 PR18 결과를 이번 결과로 사용하지 않는다.
+
+## 역할과 다음 행동
+
+iOS는 기존 checkout/terminal을 런타임 확인 후 새 Run `run_58f7d03f4deb` / Task `task_31d48a682566` / Dispatch `ctx_338f8e66f52b`로 배정했다. 실제 현재 수명은 [Orca 운영 문서](orca-sessions-and-worktrees.md)와 런타임을 확인한다. 플랫폼 담당은 자기 apps/ios·역할 인계, root는 공통 문서·CI·통합과 PR 검토를 맡는다.
+
+최종 새 Xcode27 UI 증거와 iOS 인계 ada4634를 root 2a81bab으로 통합했다. 담당 성공 보고를 수신하고 01:04 KST 세션을 피드백용 retained로 전환했다. PR23 최종 문서·주석 commit 이후 CI 상태는 위 checks에서 확인한다. 사용자의 구체적 변경 제안이 오면 해당 기능 커밋과 동일한 구조·회귀 검증으로 반복한다. 자동 테스트 통과를 사용자의 디자인·설계 만족으로 대신 판단하지 않는다.
+
+## 이전 완료 이력
 
 2026-09-15: Swift 아키텍처 검사 구현과 CI 연결을 [PR18](https://github.com/fixabley/dearby/pull/18)로 관리한다. 로컬과 hosted Xcode16.4/Swift6.1.2에서 전체 검사를 통과했고, 사용자가 계속 진행하도록 요청해 최종 CI 확인 후 병합한다. 실제 병합 상태와 최신 검사 결과는 PR18이 정본이다.
 
