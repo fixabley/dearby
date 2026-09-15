@@ -86,7 +86,7 @@ internal fun DearbyApp(catalogProvider: NoticeSession, onOpenSource: (String) ->
                         action = { PrimaryButton(onClick = { retry++ }) { Text("다시 시도") } })
                 }
             } else if (selectedTab == 0) {
-                DiscoveryScreen(catalog.snapshotDate, catalogProvider.cardStates(), catalogProvider::save, showDetail = { detail = catalogProvider.detail(it) })
+                DiscoveryScreen(catalog.snapshotDate, catalogProvider.cardStates(), catalogProvider::save, showDetail = { detail = catalogProvider.detail(it) }, onOpenMap = onOpenMap)
             } else {
                 FavoritesScreen(catalogProvider.favoriteStates(), catalogProvider::remove, showDetail = { detail = catalogProvider.detail(it) })
             }
