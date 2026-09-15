@@ -12,7 +12,19 @@
     "NoticeVenue",
     "SnapshotNoticeSource",
     "SwiftDataNoticeSource",
-    "NoticeCacheStorage"
+    "NoticeCacheStorage",
+    "NoticeApplicationState",
+    "NoticeScheduleState",
+    "NoticeSchedulePlaceState",
+    "NoticePlaceState",
+    "NoticeCardScheduleState",
+    "NoticeCardPlaceState",
+    "NoticeParticipationView",
+    "NoticeCardSummaryState",
+    "NoticeCardBody",
+    "NoticePreviewLabel",
+    "NoticeSourceSection",
+    "NoticeScheduleBody"
   ],
   "entities/organization": [
     "OrganizationModel",
@@ -20,14 +32,17 @@
     "OrganizationSource",
     "SnapshotOrganizationSource",
     "SwiftDataOrganizationSource",
-    "OrganizationCacheStorage"
+    "OrganizationCacheStorage",
+    "OrganizationSummary"
   ],
   "features/addToCalendar": [
     "CalendarDraftMapper",
     "CalendarEditorRequest",
     "CalendarEventDraft",
     "CalendarEventEditor",
-    "CalendarAddButton"
+    "CalendarAddButton",
+    "NoticeApplicationView",
+    "CalendarExportPresentation"
   ],
   "features/checkCalendarOverlap": [
     "BusyCalendarAuthorization",
@@ -38,15 +53,28 @@
     "EventKitBusyProvider",
     "CalendarConnectionControl",
     "CalendarConnectionState",
-    "CalendarOverlapTimeline"
+    "CalendarOverlapTimeline",
+    "CalendarPreferences",
+    "CalendarPreferenceStore",
+    "MemoryCalendarPreferenceStore",
+    "NoticeScheduleTimeline",
+    "BusyCalendarLifecycleModifier"
   ],
   "features/openLocation": [
     "VenueMapLauncher",
-    "VenueMapButton"
+    "VenueMapButton",
+    "VenueMapPresentation",
+    "NoticeScheduleLocations",
+    "NoticeLocationView"
   ],
   "features/saveOrganization": [
     "FavoriteOrganizations",
-    "SaveOrganizationResult"
+    "SaveOrganizationResult",
+    "NoticeCardSaveButton",
+    "NoticeIdentityState",
+    "NoticeInstitutionState",
+    "NoticeIdentityView",
+    "SavedOrganizationList"
   ],
   "pages/discovery": [
     "DiscoveryView"
@@ -55,12 +83,12 @@
     "FavoriteListView"
   ],
   "pages/noticeDetail": [
-    "NoticeDetailState",
-    "NoticeDetailView",
-    "NoticeDetailViewModel"
+    "NoticeDetailPage"
   ],
   "pages/settings": [
-    "SettingsView"
+    "SettingsView",
+    "SettingsPresentation",
+    "SettingsViewModel"
   ],
   "shared": [
     "BusyTimeDisplay",
@@ -80,19 +108,27 @@
     "StatusMessage",
     "BusyTimeSummaryView"
   ],
-  "widgets/favoriteOrganizationCard": [
-    "FavoriteOrganizationCard",
-    "FavoriteOrganizationCardState",
-    "FavoriteOrganizationCardViewModel"
+  "entities/favorite": [
+    "FavoriteOrganizationStore",
+    "FavoriteOrganizationsRepository",
+    "UserDefaultsFavoriteOrganizationsRepository"
+  ],
+  "widgets/noticeDetail": [
+    "NoticeDetail",
+    "NoticeDetailState",
+    "NoticeDetailViewModel"
   ],
   "widgets/noticeCard": [
     "NoticeCard",
     "NoticeCardState",
     "NoticeCardViewModel"
   ],
-  "entities/favorite": [
-    "FavoriteOrganizationStore",
-    "FavoriteOrganizationsRepository",
-    "UserDefaultsFavoriteOrganizationsRepository"
+  "widgets/favoriteOrganizationCard": [
+    "FavoriteOrganizationCard",
+    "FavoriteOrganizationCardState",
+    "FavoriteOrganizationCardViewModel"
+  ],
+  "features/openNoticeDetails": [
+    "NoticeDetailsButton"
   ]
 }

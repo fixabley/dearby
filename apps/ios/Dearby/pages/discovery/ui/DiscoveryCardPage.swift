@@ -8,20 +8,19 @@ struct DiscoveryCardPage: View {
     let scrollContents: Bool
     let onSaved: (SaveOrganizationResult) -> Void
     let onShowDetail: () -> Void
-    var onOpenMap: (Int, Int) -> Void = { _, _ in }
     var body: some View {
         Group {
             if scrollContents {
                 ScrollView(.vertical) {
                     NoticeCard(viewModel: viewModel, position: position, compact: viewport.height < 520,
-                        onSaved: onSaved, onShowDetail: onShowDetail, scrollSchedules: false, onOpenMap: onOpenMap)
+                        onSaved: onSaved, onShowDetail: onShowDetail, scrollSchedules: false)
                         .frame(minHeight: viewport.height)
                 }
                 .scrollBounceBehavior(.basedOnSize)
                 .accessibilityLabel("공고 내용 · \(position)")
             } else {
                 NoticeCard(viewModel: viewModel, position: position, compact: viewport.height < 520,
-                    onSaved: onSaved, onShowDetail: onShowDetail, onOpenMap: onOpenMap)
+                    onSaved: onSaved, onShowDetail: onShowDetail)
             }
         }
         .frame(width: viewport.width, height: viewport.height)

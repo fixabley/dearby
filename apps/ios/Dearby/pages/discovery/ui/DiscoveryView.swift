@@ -12,7 +12,6 @@ struct DiscoveryView<Destination: View>: View {
     @State private var saveFeedback = ""
     @State private var saveCount = 0
 
-    var onOpenMap: (String, Int, Int) -> Void = { _, _, _ in }
     var body: some View {
         VStack(spacing: 0) {
             Text("검토한 공고 샘플 · \(snapshotDate.prefix(10))")
@@ -27,8 +26,7 @@ struct DiscoveryView<Destination: View>: View {
                             ForEach(Array(cards.enumerated()), id: \.element.id) { index, notice in
                                 DiscoveryCardPage(viewModel: notice, position: "\(index + 1) / \(cards.count)",
                                     viewport: geometry.size, scrollContents: typeSize.isAccessibilitySize || geometry.size.height < 520,
-                                    onSaved: saved, onShowDetail: { detail = notice.state },
-                                    onOpenMap: { onOpenMap(notice.id, $0, $1) })
+                                    onSaved: saved, onShowDetail: { detail = notice.state })
                                     .id(notice.id)
                             }
                         }
@@ -51,7 +49,7 @@ struct DiscoveryView<Destination: View>: View {
                 .fixedSize(horizontal: false, vertical: true).frame(minHeight: 36).padding(.horizontal)
                 .accessibilityIdentifier("discovery.feedback")
         }
-        .background(NativeSurface.canvas)
+        .background(Color(uiColor: .systemGroupedBackground))
         .navigationTitle("활동 둘러보기")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $detail) { notice in
