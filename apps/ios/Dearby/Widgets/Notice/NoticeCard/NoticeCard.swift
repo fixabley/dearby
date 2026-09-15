@@ -8,6 +8,8 @@ struct NoticeCard: View {
     let compact: Bool
     let onSave: () -> Void
     let onShowDetail: () -> Void
+    var scrollSchedules = true
+    var onOpenMap: (Int, Int) -> Void = { _, _ in }
     var body: some View {
         VStack(alignment: .leading, spacing: compact ? NativeSpacing.related : NativeSpacing.content) {
             VStack(alignment: .leading, spacing: compact ? NativeSpacing.related : NativeSpacing.content) {
@@ -23,13 +25,14 @@ struct NoticeCard: View {
                 Text(state.title)
                     .font(compact ? .title3.bold() : .title2.bold())
                     .lineLimit(typeSize.isAccessibilitySize ? nil : 3)
-                if !compact {
-                    Divider()
-                    InformationRow(title: "참여 대상", value: state.targetUser)
-                    Text("신청").font(.subheadline.bold())
-                    MetadataRow(systemImage: "calendar", text: state.applicationPeriod ?? state.applicationSummary, accessibilityText: "신청, \(state.applicationSummary)")
-                    Text("활동 장소").font(.subheadline.bold())
-                    MetadataRow(systemImage: "mappin.and.ellipse", text: state.locationSummary, accessibilityText: "활동 장소, \(state.locationSummary)")
+                Divider()
+                InformationRow(title: "참여 대상", value: state.targetUser)
+                if typeSize.isAccessibilitySize || !scrollSchedules {
+                    scheduleRows
+                } else {
+                    ScrollView(.vertical) { scheduleRows }
+                        .scrollBounceBehavior(.basedOnSize)
+                        .frame(minHeight: 150)
                 }
                 if state.hasQualityIssues {
                     StatusMessage(text: "확인이 필요한 정보가 있어요")
@@ -58,6 +61,14 @@ struct NoticeCard: View {
         .background(NativeSurface.content, in: RoundedRectangle(cornerRadius: 24))
         .padding(.horizontal, NativeSpacing.content).padding(.vertical, NativeSpacing.related)
     }
+    private var scheduleRows: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            ForEach(state.schedules) { schedule in
+                NoticeCardScheduleRow(state: schedule) { onOpenMap(schedule.id, $0) }
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+
 }
 
 #Preview("공고 · 긴 제목 · 큰 글자") {

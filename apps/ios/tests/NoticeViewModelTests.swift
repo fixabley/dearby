@@ -40,6 +40,61 @@ struct NoticeViewModelTests {
         precondition(detail.state!.applicationTime.timeline != nil)
         precondition(detail.state!.organizationLinks.allSatisfy { $0.organizationName != nil })
         precondition(detail.state!.sources.count == reopened.state!.sources.count && detail.state!.evidence.count == model.evidence.count)
+        let cardRows = card.state!.schedules
+        precondition(cardRows.count == krc.schedule.count + 1 && cardRows[0].title == "신청 기간")
+        precondition(cardRows[0].places.allSatisfy { $0.venueIndex == nil })
+        precondition(cardRows[0].places[0].text.contains(URL(string: krc.applicationInformation.url!)!.host!))
+        precondition(!cardRows[0].places[0].text.contains(krc.applicationInformation.url!))
+        for (input, expected) in [
+            ("https://example.com/application/deep/path?form=123#section", "example.com"),
+            ("  HTTP://www.example.com:8080/path?q=1  ", "www.example.com"),
+            ("https://example.com/a%20b", "example.com"),
+            ("서울시 중구 세종대로 110", "서울시 중구 세종대로 110"),
+            ("신청: https://example.com/form", "신청: https://example.com/form"),
+            ("https://example.com/form 방문 접수", "https://example.com/form 방문 접수"),
+            ("https://example.com/form\n방문 접수", "https://example.com/form\n방문 접수"),
+            ("www.example.com/form", "www.example.com/form"),
+            ("mailto:apply@example.com", "mailto:apply@example.com"),
+            ("https:///", "https:///"),
+            ("", "")
+        ] {
+            precondition(NoticeCardViewModel.placeLabel(input) == expected, input)
+        }
+        let contestRows = NoticeCardViewModel.scheduleStates(contest)
+        precondition(contestRows.count == contest.schedule.count + 1)
+        for (index, phase) in contest.schedules.enumerated() {
+            let row = contestRows[index + 1]
+            precondition(row.id == index && row.title == phase.period.label)
+            if phase.period.mode == "online" {
+                precondition(row.places.allSatisfy { $0.venueIndex == nil })
+                precondition(row.places[0].text.contains("온라인"))
+                if let url = phase.period.onlineUrl, let host = URL(string: url)?.host {
+                    precondition(row.places[0].fields == ["온라인", host])
+                }
+            }
+            for place in row.places where place.venueIndex != nil {
+                precondition(phase.locations[place.venueIndex!].coordinates != nil)
+                precondition(place.text.contains(phase.locations[place.venueIndex!].name))
+            }
+        }
+        precondition(!cardRows[0].period.contains("한국 시간"))
+        let foreign = NoticeCardViewModel.period(start: "2026-09-15T14:00:00+09:00", end: "2026-09-15T15:00:00+09:00", timezone: "America/New_York", fallback: "")
+        precondition(foreign.joined().components(separatedBy: "America/New_York").count == 2)
+        let dateOnly = NoticeCardViewModel.period(start: "2026-09-15", end: nil, timezone: nil, fallback: "일정 미확인")
+        precondition(dateOnly == ["2026.9.15 (시간 미확인)부터", "종료 미확인"])
+        precondition(NoticeCardViewModel.period(start: nil, end: "2026-09-16", timezone: nil, fallback: "미확인").first == "시작 미확인")
+        precondition(NoticeCardViewModel.period(start: nil, end: nil, timezone: nil, fallback: "일정 미확인") == ["일정 미확인"])
+        precondition(NoticeCardViewModel.period(start: "2026-09-15T14:00:00+09:00", end: nil, timezone: "Bad/Zone", fallback: "").joined().contains("시간대 확인 필요"))
+        precondition(NoticeCardViewModel.period(start: "2026-09-15T14:00:00+09:00", end: nil, timezone: nil, fallback: "").joined().contains("+09:00"))
+        precondition(NoticeCardViewModel.period(start: "2026-09-17", end: "2026-09-15", timezone: nil, fallback: "").contains("기간 순서 확인 필요"))
+        let boundaries = NoticeCardViewModel.period(start: "2026-09-15T14:00:00+09:00", end: "2026-09-15T15:00:00+09:00", timezone: "Asia/Seoul", fallback: "")
+        precondition(boundaries == ["2026.9.15 14:00부터", "2026.9.15 15:00까지"])
+        for (index, phase) in model.schedules.enumerated() where phase.period.mode != "online" {
+            for place in cardRows[index + 1].places where place.venueIndex != nil {
+                let venue = phase.locations[place.venueIndex!]
+                precondition(place.fields == [venue.name, venue.address].compactMap { $0 }.filter { !$0.isEmpty })
+            }
+        }
         let notifications = Mutex(0)
         withObservationTracking { _ = card.state?.saved; _ = detail.state?.saved; _ = favoriteCard.state } onChange: { notifications.withLock { $0 += 1 } }
         guard case .saved(let name) = second.save() else { preconditionFailure() }
@@ -92,6 +147,25 @@ struct NoticeViewModelTests {
             let fields = Set(Mirror(reflecting: loaded).children.compactMap(\.label))
             precondition(fields.isDisjoint(with: ["organization", "organizationName", "organizationPath", "organizations"]), "One NoticeModel holds only organization references")
         }
+        var urlFixture = rawNotices.first { $0["id"] as? String == contest.id }!
+        let fullURL = "https://online.example.com/join/long-path?room=123#entry"
+        let address = "서울시 중구 세종대로 110"
+        let prose = "https://example.com/form 방문 접수"
+        var application = urlFixture["application"] as! [String: Any]
+        application["url"] = fullURL
+        application["submissionLocations"] = [address, prose, "https://apply.example.com/path?q=1"]
+        urlFixture["application"] = application
+        var schedules = urlFixture["schedule"] as! [[String: Any]]
+        schedules[0]["mode"] = "online"
+        schedules[0]["onlineUrl"] = fullURL
+        urlFixture["schedule"] = schedules
+        let urlModel = try JSONDecoder().decode(NoticeModel.self, from: JSONSerialization.data(withJSONObject: urlFixture))
+        let urlRows = NoticeCardViewModel.scheduleStates(urlModel)
+        precondition(urlRows[0].places[0].fields == [address, prose, "apply.example.com", "online.example.com"])
+        precondition(urlRows[1].places[0].fields == ["온라인", "online.example.com"])
+        precondition(urlModel.applicationInformation.url == fullURL && urlModel.schedule[0].onlineUrl == fullURL)
+        precondition(urlModel.applicationInformation.submissionLocations == [address, prose, "https://apply.example.com/path?q=1"])
+        print("PASS: card web URL hosts; address/prose and original application/schedule URLs preserved")
         var changedNotices = rawNotices
         let index = changedNotices.firstIndex { $0["id"] as? String == krc.id }!
         changedNotices[index]["favoriteOrganizationId"] = "unknown"
