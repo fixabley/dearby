@@ -1,0 +1,23 @@
+{
+  "context/ios-implementation-and-handoff.md": "5930d5275a9269788e488f87c284fc33b1cf1c3d845358b158a6dbb4c08d211e",
+  "context/coordinator-current-task-and-decisions.md": "a0f394d92a3515e242888d9362df1c6b62e799275bf28ddecb926f34681c22f0",
+  "context/symposium-seed-evolution.md": "1d66c480e51b64f5e48821961eab82cd148c46375d8da43af79cdbab05c81629",
+  "context/orca-sessions-and-worktrees.md": "012624db2fd74d2b0cb42114ae8c26f3456946ca7b7be6315f04517975bce6d1",
+  "context/ios-architecture-comparison-swiftui-ice-cubes.md": "30aa36098dcd0d0163ae288e1225e97f814db567954470482f3c594345adef38",
+  "context/product-planning-and-github-issues.md": "b23c42a37421039d7e0903976ec07381b2d2ba9259632b979a20317b5c393d5c",
+  "context/verification-and-local-devices.md": "c9a566fbda43bd6f9311ecf800e71c03bcb47f4830d8e5a57e65811796250100",
+  "context/issue-01-native-app-architecture.md": "111eff6ace3d0676c22cfe58b3b70a00b6305f537ce8383803823e0ed240cf63",
+  "context/README.md": "913f38bbe7ce9d00f876777bbdacc2ff5c462c5dd464a80e9af8c9dc7e06bd2a",
+  "context/api-implementation-and-handoff.md": "9eed8e3d714ce6da51589deaf7fd38a9a89b14038ff6c2bc538fd970f70e8352",
+  "context/symposium-interview-snapshot.md": "cb36fdca6e2ff2659fc476ee8514b2ca63ab63b2b667117914931d99cb2b71a6",
+  "context/pr-split-and-verification.md": "a8c2f24aceeaf27c171bd408b96d24385e623f4400472ef268f64efe94c7acbc",
+  "context/android-implementation-and-handoff.md": "2334ecb1a17821720c387122c15da642fb883317afe718b626caef992f02d3f5",
+  "context/git-state-at-capture.md": "3e7cae4153adb5fca3622dd5c2a8ad1a58a9c3d55efc4745d6d1afe979f16dcb",
+  "context/shared-data-and-source-decisions.md": "756ef961acea9ba57607b76e13204d5823e58135b77d5325ae290dadba625566",
+  "context/issue-02-native-ui.md": "c6d8d8d788950c4aad4522a7b90ae79abcbc64c97ef39f3c4101a575ca8fff36",
+  "context/coordinator-architecture-merged-and-worktrees-cleaned.md": "218711b3af50757940ca35f6e1f49b4ca5e6b353e92ee7f4b72a92322da2aae4",
+  "workstreams/api.md": "fcc2301e1f95c8aaa0e3fd07d06fd486ac28007d3a0a77b7a59586ee4189fbc7",
+  "workstreams/android.md": "2f3a46b0a557c60e0d013345f954b450c73e1bd7b5d3abaa34ad47096201e451",
+  "workstreams/README.md": "8c30b8bf50bbfea3151f2ba42732f69d783ecbc1627768ebc54dfb4ec46e6452",
+  "workstreams/ios.md": "41ca83afb4fe70e8da3dca54fe04a012d576a456b8f8c0a92c818b3464222392"
+}

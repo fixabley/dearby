@@ -1,5 +1,7 @@
 ## User Input
 
+> **최신 상태 — 2026-09-14:** 구조 개선 PR #3·#4·#5·#6은 main에 병합했고 #1을 닫았다. 하위 worktree/담당 터미널은 정리 완료했다. #2 디자인 구현은 아직 시작하지 않았다. 이전 세션 ID·draft/retained 기록은 이력이다. [통합·정리 및 다음 작업 인계](coordinator-architecture-merged-and-worktrees-cleaned.md)를 먼저 읽는다.
+
 Dearby의 서비스 아이디어는 정해져 있으며, 기능·화면·사용 흐름을 구체화하고 싶다.
 
 사용자 설명:
