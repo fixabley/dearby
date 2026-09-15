@@ -2,6 +2,7 @@ package io.fixabley.dearby.widgets.notice.noticecard
 
 import io.fixabley.dearby.entities.notice.model.NoticeModel
 import io.fixabley.dearby.entities.notice.model.NoticeVenue
+import java.net.URI
 import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
@@ -16,11 +17,11 @@ internal fun cardSchedules(notice: NoticeModel): List<CardScheduleState> = build
     val submission = (application.submissionLocations + listOfNotNull(application.url)).filter { it.isNotBlank() }.distinct()
     add(CardScheduleState("신청 기간", cardPeriodText(application.opensAt, application.opensOn,
         application.closesAt, application.closesOn, application.timezone, application.summary),
-        submission.map { CardPlaceState(it) }.ifEmpty { listOf(CardPlaceState("신청 위치 미확인")) }))
+        submission.map { CardPlaceState(cardLocationText(it)) }.ifEmpty { listOf(CardPlaceState("신청 위치 미확인")) }))
     notice.schedules.forEach { phase ->
         val places = buildList {
             if (phase.mode == "online" || phase.mode == "hybrid" || !phase.onlineUrl.isNullOrBlank()) {
-                add(CardPlaceState(listOfNotNull("온라인", phase.onlineUrl?.takeIf { it.isNotBlank() }).joinToString(" · ")))
+                add(CardPlaceState(listOfNotNull("온라인", phase.onlineUrl?.takeIf { it.isNotBlank() }?.let(::cardLocationText)).joinToString(" · ")))
             }
             notice.venuesFor(phase).forEach { venue ->
                 add(CardPlaceState(listOfNotNull(venue.name, venue.address).filter { it.isNotBlank() }.distinct()
@@ -65,3 +66,10 @@ internal fun cardPeriodText(startAt: String?, startOn: String?, endAt: String?, 
 private fun invalidPeriod(startAt: String?, startOn: String?, endAt: String?, endOn: String?, zone: String, fallback: String) =
     listOf("날짜 확인 필요", fallback, "시작: ${listOfNotNull(startAt, startOn).joinToString(" / ").ifBlank { "미확인" }}",
         "종료: ${listOfNotNull(endAt, endOn).joinToString(" / ").ifBlank { "미확인" }}", "시간대: $zone").joinToString(" · ")
+
+/** Same host label policy as detailLink, without an upward dependency on Page State. */
+private fun cardLocationText(value: String): String = runCatching {
+    val uri = URI(value)
+    if (uri.scheme?.lowercase() in setOf("http", "https") && !uri.host.isNullOrBlank() && uri.userInfo == null)
+        uri.host else value
+}.getOrDefault(value)

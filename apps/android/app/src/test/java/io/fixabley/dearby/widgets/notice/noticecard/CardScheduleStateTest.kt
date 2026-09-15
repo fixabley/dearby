@@ -34,8 +34,8 @@ class CardScheduleStateTest {
             location = NoticeLocation("전체 설명", "mixed", "partial", listOf(first, second, first.copy(phase = "preliminary"))))
         val rows = cardSchedules(notice)
         assertEquals(4, rows.size)
-        assertEquals(listOf("제출 사무실", "https://apply.example"), rows[0].places.map { it.text })
-        assertEquals(listOf(CardPlaceState("온라인 · https://online.example")), rows[1].places)
+        assertEquals(listOf("제출 사무실", "apply.example"), rows[0].places.map { it.text })
+        assertEquals(listOf(CardPlaceState("온라인 · online.example")), rows[1].places)
         assertEquals(3, rows[2].places.size)
         assertEquals(first, rows[2].places[1].mapVenue)
         assertNull(rows[2].places[2].mapVenue)
@@ -43,4 +43,18 @@ class CardScheduleStateTest {
         assertFalse(rows.any { it.places.any { place -> place.text.contains(notice.sourceURL) } })
         assertEquals("신청 위치 미확인", cardSchedules(noticeFixture())[0].places.single().text)
     }
+    @Test fun urlLabelsMatchDetailHostPolicyWithoutChangingRawUrlsOrAddresses() {
+        val raw = "https://www.example.org:8443/apply/path?token=long#section"
+        val mixed = "방문 안내 https://www.example.org/apply"
+        val submissions = listOf("부산시 센텀로 123 501호", mixed, "https://user@example.org/path", "https://bad host/path", "mailto:apply@example.org", raw)
+        val notice = noticeFixture().copy(applicationInformation = NoticeApplication("신청", url = raw, submissionLocations = submissions),
+            schedules = listOf(NoticePhase("event", mode = "online", onlineUrl = raw)))
+        val rows = cardSchedules(notice)
+        assertEquals(submissions.dropLast(1) + "www.example.org", rows[0].places.map { it.text })
+        assertEquals("온라인 · www.example.org", rows[1].places.single().text)
+        assertEquals(raw, notice.applicationInformation.url)
+        assertEquals(raw, notice.schedules.single().onlineUrl)
+        assertEquals(submissions, notice.applicationInformation.submissionLocations)
+    }
+
 }

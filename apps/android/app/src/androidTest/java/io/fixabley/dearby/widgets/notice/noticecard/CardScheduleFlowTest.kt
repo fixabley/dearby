@@ -47,6 +47,7 @@ class CardScheduleFlowTest {
             openVenueMap(venue, { intents.add(it) }, { error("unavailable") })
         }, {}) } }
         rule.waitForCatalog()
+        rule.onNodeWithText("cieat.cbnu.ac.kr").assertIsDisplayed()
         val tag = "card.schedule.cieat-NCR000000007344.1.map.0"
         rule.onNodeWithTag(tag).performScrollTo().assertIsDisplayed().assertHasClickAction()
         screenshot("canonical-map")

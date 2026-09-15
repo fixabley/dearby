@@ -3,10 +3,11 @@
 ## 변경 범위
 
 - `NoticeCardViewModel`이 `CardScheduleState`를 조립한다. 신청 기간 다음에 원본 순서의 모든 schedule을 표시한다.
-- 왼쪽 일정명, 1dp 세로 구분선, 오른쪽 📅 날짜와 📍 위치를 배치한다. 이모지와 본문을 별도 열로 두어 긴 URL도 본문 시작점에서 줄바꿈한다.
+- 왼쪽 일정명, 1dp 세로 구분선, 오른쪽 달력 아이콘·날짜와 위치 아이콘·장소를 배치한다. 아이콘과 본문을 별도 열로 두어 긴 URL도 본문 시작점에서 줄바꿈한다.
 - 시작·종료가 있으면 `부터 …까지`, 한쪽만 있으면 미확인 경계를 표시한다. date-only는 시간을 만들지 않는다. timestamp는 원본 시간대로 표시하며 한국 시간 반복 라벨은 생략한다. 기본 분 단위이며 원본의 0이 아닌 초·소수초는 보존한다. 충돌·역전·잘못된 날짜는 원본과 `날짜 확인 필요`를 표시한다.
+- 유효한 HTTP(S) 신청·온라인 URL과 제출처의 URL 단독 문자열은 상세의 기존 host 규칙으로 도메인만 표시한다. 원본 URL·일반 주소·URL이 섞인 문장은 유지한다.
 - 신청 위치는 submissionLocations 및 application.url만 사용한다. 활동 위치는 online mode/URL과 기존 `venuesFor`의 exact phase join을 사용한다. 온라인 단계에 물리적 venue를 연결하지 않으며 여러 장소를 모두 보존한다. 미확인 위치를 다른 단계나 sourceURL로 채우지 않는다.
-- 유효 좌표에만 48dp 이상 🗺️ IconButton과 일정명·위치를 포함한 접근성 이름을 제공한다. State의 선택 venue를 콜백으로 Discovery → App의 기존 geo 어댑터에 전달한다. View는 모델/저장소 조회와 OS 호출을 하지 않는다.
+- 유효 좌표에만 48dp 이상 지도 IconButton과 일정명·위치를 포함한 접근성 이름을 제공한다. State의 선택 venue를 콜백으로 Discovery → App의 기존 geo 어댑터에 전달한다. View는 모델/저장소 조회와 OS 호출을 하지 않는다.
 - compact에서도 제목·분류·참여 대상·모든 일정을 삭제/말줄임하지 않는다. 본문이 넘치면 카드 내부에서 스크롤하고 저장·상세 액션은 하단에 유지한다. 본문 경계에서 기존 세로 pager로 넘긴다.
 - 상세 UI, 모델/캐시, 공통·iOS 파일은 수정하지 않았다.
 
@@ -24,7 +25,7 @@
 
 ## 로컬 증거와 재현
 
-Git 제외 `apps/android/build/card-schedule-verification/`:
+Git 제외 `apps/android/build/card-schedule-verification/`. 아래 app-final 및 screenshots-final은 URL/아이콘 정정 전 이모지 시점의 증거이며, 최종 화면은 후속 절의 app-icons-final 및 icons-screenshots를 따른다:
 
 - `build-final.log`, `fsd.log`, `instrumentation-final.log`, `evidence-build.log`, `evidence-instrumentation.log`.
 - `app-final.png`, `launch-final.log`, `return-final.log`, `activity-final.txt`: 최종 설치 앱 실행·복귀와 MainActivity resumed.
@@ -53,3 +54,13 @@ python3 scripts/check-fsd.py --self-test
 ## 한계
 
 전체 계측/실제 캘린더/TalkBack 전체 탐색/모든 화면 크기를 검증했다고 주장하지 않는다. 외부 지도는 위 한 장소의 핀 렌더링만 확인했으며 경로 안내·지도 앱 저장은 검증하지 않았다. Orca emulator attach/ax는 runtime 응답 연결 오류가 있어 기기 지정 adb로 검증했다. 로그·PNG·APK는 로컬 산출물이며 다른 checkout으로 자동 전달되지 않는다.
+
+## URL 도메인·네이티브 아이콘 후속 (사용자 추가 요청)
+
+카드 일정 커밋 `9d033b8` 이후 전달된 도메인 표시와 이모지→아이콘 정정 요청을 한 카드 후속 커밋에 묶는다. 달력·위치는 기존 ic_calendar/ic_place vector를 재사용하고 지도는 같은 24dp vector 형식의 ic_map을 추가했다. Material Icon의 테마 tint와 기존 접근성 label·48dp 터치영역을 유지한다. `detailLink`와 같은 HTTP(S)/host/no-userinfo 규칙을 widget의 순수 formatter에 적용했으며 Page State 상향 의존이나 상세 수정은 없다. 포트·경로·쿼리 대신 host만 표시하고 주소·문장·잘못된 URL은 원문을 보존한다.
+
+이번 JVM79(신규 원본 보존·URL 정책 테스트 포함), FSD100/self-test24, Debug·계측 APK·Lint 오류0/경고13 통과. 관련 전체계측14는 위 일정/줄 정렬 구현 시점의 결과이며, 후속 URL 변경은 카드 전용 계측2 통과(30.689초)와 최종 설치 화면의 cieat.cbnu.ac.kr 표시로 별도 확인했다. 증거: `url-build.log`, `url-test-build.log`, `url-fsd.log`, `url-instrumentation.log`, `app-url-final.png`.
+
+최종 URL 빌드 앱은 2026-09-15 16:19 KST에 MainActivity topResumedActivity/PID7199로 실행 중임을 확인했다(`url-launch.log`, `url-activity-final.txt`). 이전 16:16/PID6228은 URL 변경 전 실행 기록이다.
+
+아이콘 최종 빌드/계측 APK/Lint·FSD 통과 후 카드 계측2도 통과(36.844초)했다. `icons-build.log`, `icons-fsd.log`, `icons-instrumentation.log`, `icons-screenshots/`가 해당 증거이며, 설치 앱의 최종 도메인·네이티브 아이콘 화면은 `app-icons-final.png`다. 마지막 실행 확인은 2026-09-15 16:23 KST MainActivity topResumedActivity/PID7535(`icons-launch.log`, `icons-activity-final.txt`)이며 전용5556과 Dearby를 유지한다. JVM79와 전체 관련계측14는 위에서 구분한 시점의 실행이며 단순 아이콘 교체 후 불필요하게 전체 기기검증을 반복하지 않았다.
