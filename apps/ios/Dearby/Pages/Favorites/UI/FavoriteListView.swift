@@ -18,11 +18,16 @@ struct FavoriteListView<Destination: View>: View {
                         destination: destination
                     )
                 }
+                .listStyle(.insetGrouped)
             }
         }
         .navigationTitle("즐겨찾기")
         .safeAreaInset(edge: .bottom) {
-            Text("이 기기에 저장돼요").font(.caption).foregroundStyle(.secondary).padding(8)
+            Text("이 기기에 저장돼요")
+                .font(.caption).foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
+                .padding(NativeSpacing.related)
+                .background(NativeSurface.canvas)
         }
     }
 }

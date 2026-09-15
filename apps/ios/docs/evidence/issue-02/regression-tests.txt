@@ -1,0 +1,437 @@
+PASS: injected catalog provider, bundle loading, mode and decoding failures
+PASS: nested canonical summaries preserve all flat app display strings
+PASS: injected in-memory state, add, duplicate, delete, two Observation consumers
+PASS: validated save result, canonical label, repeat saves, unresolved targets cause no writes or state changes
+PASS: legacy UserDefaults array compatibility, fresh storage/state restoration
+PASS: catalog decoding, organization deduplication, persistence, removal
+PASS: independent lazy notice/org sources, hit/reuse/replacement; one model, full evidence; card/detail/favorite states and shared Observation save/delete; missing IDs and snapshot recompose
+PASS: activity exact KST, online URLs/unknown, exact phase join, multiple venues/source-only notes, invalid dates, no invented duration
+PASS: application exact KST, deadline-only, contest midnight, strict invalid/reversed dates, mixed precision, inclusive dates, unknown end, URL/source separation, all-day device-zone conversion
+PASS: injected catalog provider, bundle loading, mode and decoding failures
+PASS: nested canonical summaries preserve all flat app display strings
+PASS: injected in-memory state, add, duplicate, delete, two Observation consumers
+PASS: validated save result, canonical label, repeat saves, unresolved targets cause no writes or state changes
+PASS: legacy UserDefaults array compatibility, fresh storage/state restoration
+PASS: catalog decoding, organization deduplication, persistence, removal
+PASS: independent lazy notice/org sources, hit/reuse/replacement; one model, full evidence; card/detail/favorite states and shared Observation save/delete; missing IDs and snapshot recompose
+PASS: activity exact KST, online URLs/unknown, exact phase join, multiple venues/source-only notes, invalid dates, no invented duration
+PASS: application exact KST, deadline-only, contest midnight, strict invalid/reversed dates, mixed precision, inclusive dates, unknown end, URL/source separation, all-day device-zone conversion
+PASS: independent source/cache cold miss/hit, shared parents, nil/missing, cycle/partial path, snapshot rename/reparent invalidation
+PASS: online mode excludes valid zero/edge coordinates; other modes retain valid venues
+PASS: missing/null/partial/invalid/nonfinite/range/zero coordinates, multiple venue controls, Korean &/# map label, exact launch request and failure feedback
+PASS: FSD lexical boundaries (67 Swift files; scope: all), guard fixtures
+PASS: SwiftData organization disk reopen, lazy ID fetch/L1 hit, missing vs failure
+PASS: per-ID SwiftData notice L1/L2/L3, disk reopen without external fetch, full codec metadata and corruption/missing distinction
+PASS: per-ID SwiftData notice L1/L2/L3, disk reopen without external fetch, full codec metadata and corruption/missing distinction
+CoreData: debug: PostSaveMaintenance: incremental_vacuum with freelist_count - 5 and pages_to_free 1
+CoreData: error: Failed to stat path '/Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-5DEE8682-24B6-4276-82C9-3DAECA3CC2A2/not-a-directory/store', errno 20 / Not a directory.
+CoreData: error: Executing as effective user 501
+CoreData: error:   Sandbox access to file-write-create denied
+CoreData: error: Failed to statfs file; errno 20 / Not a directory.
+CoreData: error: Information for file system
+CoreData: error: ---------------------------
+CoreData: error:   File system type: 		0
+CoreData: error:   File system flags: 		0
+CoreData: error:   Total data blocks: 		0
+CoreData: error:   Free data blocks: 		0
+CoreData: error:   Free blocks for nonsuperuser:	0
+CoreData: error:   Total i-nodes: 			0
+CoreData: error:   File system ID: 		0, 0
+CoreData: error:   Free i-nodes: 			0
+CoreData: error:   Owner UID: 			0
+CoreData: error:   Filesystem type name:
+CoreData: error:   Mount on name:
+CoreData: error:   Mount from name:
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-5DEE8682-24B6-4276-82C9-3DAECA3CC2A2/not-a-directory
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		8 bytes
+CoreData: error:   File inode: 		45300212
+CoreData: error:   File user ID: 		501
+CoreData: error:   File group ID: 		20
+CoreData: error:   File Permissions:
+CoreData: error: -
+CoreData: error:   644
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create allowed
+CoreData: error: Information for file system
+CoreData: error: ---------------------------
+CoreData: error:   File system type: 		0x1a
+CoreData: error:   File system flags: 		0x4909080
+CoreData: error:   MNT_JOURNALED
+CoreData: error:   Total data blocks: 		120699413
+CoreData: error:   Free data blocks: 		51070853
+CoreData: error:   Free blocks for nonsuperuser:	51070853
+CoreData: error:   Total i-nodes: 			2044746419
+CoreData: error:   File system ID: 		0x1000011, 0x1a
+CoreData: error:   Free i-nodes: 			2042834120
+CoreData: error:   Owner UID: 			0
+CoreData: error:   Filesystem type name: 		apfs
+CoreData: error:   Mount on name: 			/System/Volumes/Data
+CoreData: error:   Mount from name: 		/dev/disk3s1
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-5DEE8682-24B6-4276-82C9-3DAECA3CC2A2
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		192 bytes
+CoreData: error:   File inode: 		45300204
+CoreData: error:   File user ID: 		501
+CoreData: error:   File group ID: 		20
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   755
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create allowed
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		352 bytes
+CoreData: error:   File inode: 		45299688
+CoreData: error:   File user ID: 		501
+CoreData: error:   File group ID: 		20
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   755
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create allowed
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		320 bytes
+CoreData: error:   File inode: 		45286506
+CoreData: error:   File user ID: 		501
+CoreData: error:   File group ID: 		20
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   755
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create allowed
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users/jominjun/Documents/dearby/dearby-ios-2/apps
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		160 bytes
+CoreData: error:   File inode: 		45286282
+CoreData: error:   File user ID: 		501
+CoreData: error:   File group ID: 		20
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   755
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create allowed
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users/jominjun/Documents/dearby/dearby-ios-2
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		384 bytes
+CoreData: error:   File inode: 		45286268
+CoreData: error:   File user ID: 		501
+CoreData: error:   File group ID: 		20
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   755
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create allowed
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users/jominjun/Documents/dearby
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		544 bytes
+CoreData: error:   File inode: 		44939507
+CoreData: error:   File user ID: 		501
+CoreData: error:   File group ID: 		20
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   755
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create allowed
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users/jominjun/Documents
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		512 bytes
+CoreData: error:   File inode: 		46660
+CoreData: error:   File user ID: 		501
+CoreData: error:   File group ID: 		20
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   700
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create allowed
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users/jominjun
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		2080 bytes
+CoreData: error:   File inode: 		46611
+CoreData: error:   File user ID: 		501
+CoreData: error:   File group ID: 		20
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   750
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create allowed
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		160 bytes
+CoreData: error:   File inode: 		21001
+CoreData: error:   File user ID: 		0
+CoreData: error:   File group ID: 		80
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   755
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create denied
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		704 bytes
+CoreData: error:   File inode: 		2
+CoreData: error:   File user ID: 		0
+CoreData: error:   File group ID: 		0
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   755
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create denied
+CoreData: error: addPersistentStoreWithType:configuration:URL:options:error: returned error NSCocoaErrorDomain (258)
+CoreData: error: userInfo:
+CoreData: error: 	NSFilePath : /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-5DEE8682-24B6-4276-82C9-3DAECA3CC2A2/not-a-directory/store
+CoreData: error: 	reason : Component of path /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-5DEE8682-24B6-4276-82C9-3DAECA3CC2A2/not-a-directory/store is not a directory
+CoreData: error: storeType: SQLite
+CoreData: error: configuration: default
+CoreData: error: URL: apps/ios/build/snapshot-disk-5DEE8682-24B6-4276-82C9-3DAECA3CC2A2/not-a-directory/store -- file:///Users/jominjun/Documents/dearby/dearby-ios-2/
+CoreData: annotation: options:
+CoreData: annotation: 	NSMigratePersistentStoresAutomaticallyOption : 1
+CoreData: annotation: 	NSInferMappingModelAutomaticallyOption : 1
+CoreData: annotation: 	NSPersistentStoreRemoteChangeNotificationOptionKey : 1
+CoreData: annotation: 	NSPersistentHistoryTrackingKey : 1
+CoreData: error: <NSPersistentStoreCoordinator: 0xaf10e8a80>: Attempting recovery from error encountered during addPersistentStore: 0xaf0c15ad0 Error Domain=NSCocoaErrorDomain Code=258 "The item couldn’t be opened because the file name “store” is invalid." UserInfo={NSFilePath=/Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-5DEE8682-24B6-4276-82C9-3DAECA3CC2A2/not-a-directory/store, reason=Component of path /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-5DEE8682-24B6-4276-82C9-3DAECA3CC2A2/not-a-directory/store is not a directory}
+CoreData: error: Store failed to load.  <NSPersistentStoreDescription: 0xaf0c162e0> (type: SQLite, url: apps/ios/build/snapshot-disk-5DEE8682-24B6-4276-82C9-3DAECA3CC2A2/not-a-directory/store -- file:///Users/jominjun/Documents/dearby/dearby-ios-2/) with error = Error Domain=NSCocoaErrorDomain Code=258 "The item couldn’t be opened because the file name “store” is invalid." UserInfo={NSFilePath=/Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-5DEE8682-24B6-4276-82C9-3DAECA3CC2A2/not-a-directory/store, reason=Component of path /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-5DEE8682-24B6-4276-82C9-3DAECA3CC2A2/not-a-directory/store is not a directory} with userInfo {
+    NSFilePath = "/Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-5DEE8682-24B6-4276-82C9-3DAECA3CC2A2/not-a-directory/store";
+    reason = "Component of path /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-5DEE8682-24B6-4276-82C9-3DAECA3CC2A2/not-a-directory/store is not a directory";
+}
+PASS: disk manifest/session reopen without mock calls; same seed no writes; atomic change/deletion/metadata; save rollback preserves disk+L1; initialization failure preserves files/favorites
+CoreData: debug: PostSaveMaintenance: incremental_vacuum with freelist_count - 5 and pages_to_free 1
+CoreData: error: Failed to stat path '/Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-9FA2DCD6-1644-493B-9DA1-5602D94379AB/not-a-directory/store', errno 20 / Not a directory.
+CoreData: error: Executing as effective user 501
+CoreData: error:   Sandbox access to file-write-create denied
+CoreData: error: Failed to statfs file; errno 20 / Not a directory.
+CoreData: error: Information for file system
+CoreData: error: ---------------------------
+CoreData: error:   File system type: 		0
+CoreData: error:   File system flags: 		0
+CoreData: error:   Total data blocks: 		0
+CoreData: error:   Free data blocks: 		0
+CoreData: error:   Free blocks for nonsuperuser:	0
+CoreData: error:   Total i-nodes: 			0
+CoreData: error:   File system ID: 		0, 0
+CoreData: error:   Free i-nodes: 			0
+CoreData: error:   Owner UID: 			0
+CoreData: error:   Filesystem type name:
+CoreData: error:   Mount on name:
+CoreData: error:   Mount from name:
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-9FA2DCD6-1644-493B-9DA1-5602D94379AB/not-a-directory
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		8 bytes
+CoreData: error:   File inode: 		45300221
+CoreData: error:   File user ID: 		501
+CoreData: error:   File group ID: 		20
+CoreData: error:   File Permissions:
+CoreData: error: -
+CoreData: error:   644
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create allowed
+CoreData: error: Information for file system
+CoreData: error: ---------------------------
+CoreData: error:   File system type: 		0x1a
+CoreData: error:   File system flags: 		0x4909080
+CoreData: error:   MNT_JOURNALED
+CoreData: error:   Total data blocks: 		120699413
+CoreData: error:   Free data blocks: 		51070852
+CoreData: error:   Free blocks for nonsuperuser:	51070852
+CoreData: error:   Total i-nodes: 			2044746380
+CoreData: error:   File system ID: 		0x1000011, 0x1a
+CoreData: error:   Free i-nodes: 			2042834080
+CoreData: error:   Owner UID: 			0
+CoreData: error:   Filesystem type name: 		apfs
+CoreData: error:   Mount on name: 			/System/Volumes/Data
+CoreData: error:   Mount from name: 		/dev/disk3s1
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-9FA2DCD6-1644-493B-9DA1-5602D94379AB
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		192 bytes
+CoreData: error:   File inode: 		45300213
+CoreData: error:   File user ID: 		501
+CoreData: error:   File group ID: 		20
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   755
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create allowed
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		352 bytes
+CoreData: error:   File inode: 		45299688
+CoreData: error:   File user ID: 		501
+CoreData: error:   File group ID: 		20
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   755
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create allowed
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		320 bytes
+CoreData: error:   File inode: 		45286506
+CoreData: error:   File user ID: 		501
+CoreData: error:   File group ID: 		20
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   755
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create allowed
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users/jominjun/Documents/dearby/dearby-ios-2/apps
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		160 bytes
+CoreData: error:   File inode: 		45286282
+CoreData: error:   File user ID: 		501
+CoreData: error:   File group ID: 		20
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   755
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create allowed
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users/jominjun/Documents/dearby/dearby-ios-2
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		384 bytes
+CoreData: error:   File inode: 		45286268
+CoreData: error:   File user ID: 		501
+CoreData: error:   File group ID: 		20
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   755
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create allowed
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users/jominjun/Documents/dearby
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		544 bytes
+CoreData: error:   File inode: 		44939507
+CoreData: error:   File user ID: 		501
+CoreData: error:   File group ID: 		20
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   755
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create allowed
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users/jominjun/Documents
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		512 bytes
+CoreData: error:   File inode: 		46660
+CoreData: error:   File user ID: 		501
+CoreData: error:   File group ID: 		20
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   700
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create allowed
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users/jominjun
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		2080 bytes
+CoreData: error:   File inode: 		46611
+CoreData: error:   File user ID: 		501
+CoreData: error:   File group ID: 		20
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   750
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create allowed
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /Users
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		160 bytes
+CoreData: error:   File inode: 		21001
+CoreData: error:   File user ID: 		0
+CoreData: error:   File group ID: 		80
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   755
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create denied
+CoreData: error: Executing as effective user 501
+CoreData: error: Information for /
+CoreData: error: ---------------------------
+CoreData: error:   File Device ID: 	0
+CoreData: error:   Device ID: 		16777233
+CoreData: error:   File Size: 		704 bytes
+CoreData: error:   File inode: 		2
+CoreData: error:   File user ID: 		0
+CoreData: error:   File group ID: 		0
+CoreData: error:   File Permissions:
+CoreData: error: d
+CoreData: error:   755
+CoreData: error:   file is not a symbolic link
+CoreData: error:   Sandbox access to file-write-create denied
+CoreData: error: addPersistentStoreWithType:configuration:URL:options:error: returned error NSCocoaErrorDomain (258)
+CoreData: error: userInfo:
+CoreData: error: 	NSFilePath : /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-9FA2DCD6-1644-493B-9DA1-5602D94379AB/not-a-directory/store
+CoreData: error: 	reason : Component of path /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-9FA2DCD6-1644-493B-9DA1-5602D94379AB/not-a-directory/store is not a directory
+CoreData: error: storeType: SQLite
+CoreData: error: configuration: default
+CoreData: error: URL: apps/ios/build/snapshot-disk-9FA2DCD6-1644-493B-9DA1-5602D94379AB/not-a-directory/store -- file:///Users/jominjun/Documents/dearby/dearby-ios-2/
+CoreData: annotation: options:
+CoreData: annotation: 	NSMigratePersistentStoresAutomaticallyOption : 1
+CoreData: annotation: 	NSInferMappingModelAutomaticallyOption : 1
+CoreData: annotation: 	NSPersistentStoreRemoteChangeNotificationOptionKey : 1
+CoreData: annotation: 	NSPersistentHistoryTrackingKey : 1
+CoreData: error: <NSPersistentStoreCoordinator: 0x8eb488a00>: Attempting recovery from error encountered during addPersistentStore: 0x8ea8b3180 Error Domain=NSCocoaErrorDomain Code=258 "The item couldn’t be opened because the file name “store” is invalid." UserInfo={NSFilePath=/Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-9FA2DCD6-1644-493B-9DA1-5602D94379AB/not-a-directory/store, reason=Component of path /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-9FA2DCD6-1644-493B-9DA1-5602D94379AB/not-a-directory/store is not a directory}
+CoreData: error: Store failed to load.  <NSPersistentStoreDescription: 0x8ea8b1e60> (type: SQLite, url: apps/ios/build/snapshot-disk-9FA2DCD6-1644-493B-9DA1-5602D94379AB/not-a-directory/store -- file:///Users/jominjun/Documents/dearby/dearby-ios-2/) with error = Error Domain=NSCocoaErrorDomain Code=258 "The item couldn’t be opened because the file name “store” is invalid." UserInfo={NSFilePath=/Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-9FA2DCD6-1644-493B-9DA1-5602D94379AB/not-a-directory/store, reason=Component of path /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-9FA2DCD6-1644-493B-9DA1-5602D94379AB/not-a-directory/store is not a directory} with userInfo {
+    NSFilePath = "/Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-9FA2DCD6-1644-493B-9DA1-5602D94379AB/not-a-directory/store";
+    reason = "Component of path /Users/jominjun/Documents/dearby/dearby-ios-2/apps/ios/build/snapshot-disk-9FA2DCD6-1644-493B-9DA1-5602D94379AB/not-a-directory/store is not a directory";
+}
+PASS: disk manifest/session reopen without mock calls; same seed no writes; atomic change/deletion/metadata; save rollback preserves disk+L1; initialization failure preserves files/favorites

@@ -7,33 +7,61 @@ struct NoticeDetailView: View {
     let onOpenMap: (NoticeVenue) -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+        List {
+            Section {
                 Text(state.title).font(.title2.bold())
+                    .accessibilityAddTraits(.isHeader)
                 Text(state.aiDescription)
+            }
+            Section("조직과 분류") {
                 NoticeIdentityView(state: state)
-                Divider()
-                NoticeDetailField(title: "참여 대상", value: state.targetUser)
-                NoticeDetailField(title: "참여 조건", value: state.participationCondition)
-                NoticeApplicationView(summary: state.applicationSummary, onAddToCalendar: onAddApplication)
-                ForEach(Array(state.scheduleSummaries.enumerated()), id: \.offset) { index, phase in
-                    NoticeScheduleView(summary: phase,
-                                       onAddToCalendar: onAddSchedule.indices.contains(index) ? onAddSchedule[index] : nil)
+            }
+            Section("참여 안내") {
+                InformationRow(title: "참여 대상", value: state.targetUser)
+                InformationRow(title: "참여 조건", value: state.participationCondition)
+            }
+            Section("신청") {
+                NoticeApplicationView(time: state.applicationTime, title: state.title, original: state.applicationSummary, url: state.applicationURL, onAddToCalendar: onAddApplication)
+
+            }
+            Section("활동") {
+                ForEach(Array(state.schedules.enumerated()), id: \.offset) { index, phase in
+                    NoticeScheduleView(state: phase,
+                                       onAddToCalendar: onAddSchedule.indices.contains(index) ? onAddSchedule[index] : nil,
+                                       onOpenMap: onOpenMap)
                 }
-                NoticeLocationView(location: state.location, onOpenMap: onOpenMap)
-                ForEach(Array(state.benefits.enumerated()), id: \.offset) { _, benefit in
-                    NoticeDetailField(title: "혜택", value: benefit)
+                DisclosureGroup("원문 장소 안내") {
+                    Text(state.location.summary).font(.footnote).foregroundStyle(.secondary)
                 }
+                if state.schedules.isEmpty {
+                    NoticeLocationView(location: state.location, onOpenMap: onOpenMap)
+                }
+            }
+            if !state.benefits.isEmpty {
+                Section("혜택") {
+                    ForEach(Array(state.benefits.enumerated()), id: \.offset) { _, benefit in
+                        Text(benefit)
+                    }
+                }
+            }
+            Section {
                 ForEach(Array(state.qualityIssues.enumerated()), id: \.offset) { _, issue in
-                    NoticeDetailField(title: "확인 필요", value: issue)
+                    StatusMessage(text: issue)
                 }
-                Text("원문을 검토해 만든 샘플입니다. 현재 모집 여부와 변경된 조건은 원문에서 확인해 주세요.")
-                    .font(.footnote).foregroundStyle(.secondary)
                 if let sourceURL = state.sourceURL {
-                    Link("원문 공고 열기", destination: sourceURL)
+                    Link(destination: sourceURL) {
+                        Label("원문 공고 열기", systemImage: "arrow.up.right.square")
+                            .labelStyle(.iconOnly)
+                            .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                    }
                 }
-            }.frame(maxWidth: 620, alignment: .leading).padding(24)
+            } header: {
+                Text("출처와 확인 사항")
+            } footer: {
+                Text("원문을 검토해 만든 샘플입니다. 현재 모집 여부와 변경된 조건은 원문에서 확인해 주세요.")
+            }
         }
+        .listStyle(.insetGrouped)
         .navigationTitle("공고 정보")
         .presentationDragIndicator(.visible)
     }

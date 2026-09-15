@@ -16,7 +16,14 @@ final class NoticeDetailViewModel {
             organizationLinks: try notice.organizationLinks.map(resolve), contexts: try notice.contexts.map(resolve),
             categorySummary: notice.categorySummary, targetUser: notice.targetUser,
             participationCondition: notice.participationCondition, applicationSummary: notice.applicationInformation.summary,
-            scheduleSummaries: notice.schedules.map { $0.period.summary }, location: notice.location,
+            scheduleSummaries: notice.schedules.map { $0.period.summary }, applicationPeriod: CompactPeriod.period(start: notice.applicationInformation.opensAt ?? notice.applicationInformation.opensOn,
+                end: notice.applicationInformation.closesAt ?? notice.applicationInformation.closesOn,
+                timezone: notice.applicationInformation.timezone, fallback: notice.applicationInformation.summary),
+            applicationTime: EventPeriodPresentation(startsAt: notice.applicationInformation.opensAt,
+                startsOn: notice.applicationInformation.opensOn, endsAt: notice.applicationInformation.closesAt,
+                endsOn: notice.applicationInformation.closesOn, timezone: notice.applicationInformation.timezone),
+            applicationURL: NoticePlaceState.safeOnlineURL(notice.applicationInformation.url),
+            schedules: notice.schedules.map(NoticeScheduleState.init), location: notice.location,
             benefits: notice.benefits, qualityIssues: notice.qualityIssues, edition: notice.edition,
             sourceURL: notice.sourceURL, sources: notice.sources, evidence: notice.evidence, saved: false)
     }

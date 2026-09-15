@@ -1,0 +1,57 @@
+{
+  "id": "545c6d42-c270-411e-9afc-0d7cf4646efb",
+  "ok": true,
+  "result": {
+    "screenshot": {
+      "format": "png",
+      "height": 1992,
+      "scale": 2,
+      "width": 912,
+      "path": "/var/folders/_c/7hpdsqq9491gzj5z2wh2kf2m0000gn/T/orca-computer-use/545c6d42-c270-411e-9afc-0d7cf4646efb-screenshot.png",
+      "dataOmitted": true,
+      "expiresAt": "2026-09-15T14:56:42.978Z"
+    },
+    "snapshot": {
+      "coordinateSpace": "window",
+      "elementCount": 33,
+      "treeText": "App=com.apple.iphonesimulator (pid 61941)\nWindow: \"Dearby-Issue2-Schedule-Verify – iOS 26.5\", App: Simulator.\n\n0 standard window Dearby-Issue2-Schedule-Verify – iOS 26.5\n\t1 button Action\n\t2 button Volume Up\n\t3 button Volume Down\n\t4 button Sleep/Wake\n\t5 button Sheet Grabber, Value: Expanded, Secondary Actions: cancel, scroll left, scroll right, scroll up\n\t6 container, Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t\t7 text 2026.09.11 ~ 10.07 24:00, Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t\t8 heading 활동, Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t\t9 heading 온라인 예선, Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t\t10 generic element 온라인 예선, 2026.10.14 (시간 미확인) · 종료 미확인 (한국 시간), Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t\t11 generic element 온라인, Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t\t12 button 온라인 예선 캘린더에 추가: 2026.10.14 (시간 미확인) · 종료 미확인 (한국 시간), Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t\t13 heading 결선 진출 발표, Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t\t14 generic element 결선 진출 발표, 2026.10.22 (시간 미확인) · 종료 미확인 (한국 시간), Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t\t15 generic element 장소 미확인, Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t\t16 button 결선 진출 발표 캘린더에 추가: 2026.10.22 (시간 미확인) · 종료 미확인 (한국 시간), Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t\t17 heading 결선·시상, Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t\t18 generic element 결선·시상, 2026.11.4 (시간 미확인) · 종료 미확인 (한국 시간), Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t\t19 generic element 2026 부산 사이버보안 콘퍼런스 행사장, Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t\t20 button 결선·시상 캘린더에 추가: 2026.11.4 (시간 미확인) · 종료 미확인 (한국 시간), Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t\t21 text 온라인 예선 / 부산 사이버보안 콘퍼런스에서 결선·시상 · 상세 장소 확인 필요, Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t\t22 heading 출처와 확인 사항, Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t\t23 button 원문 공고 열기, Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t\t24 text 원문을 검토해 만든 샘플입니다. 현재 모집 여부와 변경된 조건은 원문에서 확인해 주세요., Secondary Actions: cancel, scroll down, scroll left, scroll right, scroll up\n\t25 toolbar\n\t\t26 button Home, Secondary Actions: name: move previous\n target:0x0\n selector:(null), name: move next\n target:0x0\n selector:(null), name: remove from toolbar\n target:0x0\n selector:(null)\n\t\t27 button Save Screen, Secondary Actions: name: move previous\n target:0x0\n selector:(null), name: move next\n target:0x0\n selector:(null), name: remove from toolbar\n target:0x0\n selector:(null)\n\t\t28 button Rotate, Secondary Actions: name: move previous\n target:0x0\n selector:(null), name: move next\n target:0x0\n selector:(null), name: remove from toolbar\n target:0x0\n selector:(null)\n\t29 close button\n\t30 full screen button, Secondary Actions: zoom the window\n\t31 minimize button\n\t32 text Dearby-Issue2-Schedule-Verify – iOS 26.5\n\nThe focused UI element is 0 standard window Dearby-Issue2-Schedule-Verify – iOS 26.5.",
+      "id": "7C1F4592-545A-41EF-84D5-88B8778129BF",
+      "truncation": {
+        "maxNodes": 1200,
+        "maxDepthReached": false,
+        "truncated": false,
+        "maxDepth": 64
+      },
+      "window": {
+        "width": 456,
+        "isOffscreen": false,
+        "platform": {
+          "layer": 0
+        },
+        "y": 82,
+        "height": 996,
+        "title": "Dearby-Issue2-Schedule-Verify – iOS 26.5",
+        "id": 3055,
+        "x": 1435,
+        "isMinimized": false,
+        "screenIndex": 0
+      },
+      "focusedElementId": 0,
+      "app": {
+        "bundleId": "com.apple.iphonesimulator",
+        "pid": 61941,
+        "name": "Simulator"
+      }
+    },
+    "screenshotStatus": {
+      "metadata": {
+        "engine": "screenCaptureKit",
+        "windowId": 3055
+      },
+      "state": "captured"
+    }
+  },
+  "_meta": {
+    "runtimeId": "2758203a-9fac-417f-8e4e-8034c6b2e69d"
+  }
+}

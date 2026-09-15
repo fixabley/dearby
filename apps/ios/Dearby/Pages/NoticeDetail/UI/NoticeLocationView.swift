@@ -7,7 +7,7 @@ struct NoticeLocationView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            NoticeDetailField(title: "활동 장소", value: location.summary)
+            InformationRow(title: "활동 장소", value: location.summary)
             if !location.venuesWithCoordinates.isEmpty {
                 Text("층·호실은 장소 안내를 확인해 주세요.")
                     .font(.caption).foregroundStyle(.secondary)

@@ -5,7 +5,11 @@ struct PrimaryButton<Content: View>: View {
     @ViewBuilder let label: () -> Content
 
     var body: some View {
-        Button(action: action, label: label)
+        Button(action: action) {
+            label()
+                .fixedSize(horizontal: false, vertical: true)
+        }
+            .controlSize(.large)
             .buttonStyle(.borderedProminent)
     }
 }

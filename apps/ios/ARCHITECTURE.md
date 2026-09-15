@@ -57,9 +57,7 @@ Pages/NoticeDetail/Model/NoticeDetailState.swift
 Pages/NoticeDetail/Model/NoticeDetailViewModel.swift
 Pages/NoticeDetail/UI/CalendarAddButton.swift
 Pages/NoticeDetail/UI/NoticeApplicationView.swift
-Pages/NoticeDetail/UI/NoticeDetailField.swift
 Pages/NoticeDetail/UI/NoticeDetailView.swift
-Pages/NoticeDetail/UI/NoticeIdentityFact.swift
 Pages/NoticeDetail/UI/NoticeIdentityView.swift
 Pages/NoticeDetail/UI/NoticeLocationView.swift
 Pages/NoticeDetail/UI/NoticeScheduleView.swift
@@ -73,7 +71,10 @@ Widgets/Notice/NoticeCard/NoticeCard.swift
 Widgets/Notice/NoticeCard/NoticeCardSaveButton.swift
 Shared/UI/Buttons/PrimaryButton.swift
 Shared/UI/Buttons/SecondaryButton.swift
-Widgets/Notice/NoticeCard/NoticeFact.swift
+Shared/UI/InformationRow.swift
+Shared/UI/StatusMessage.swift
+Shared/UI/NativeStyle.swift
+Shared/UI/NativeComponentsPreview.swift
 ```
 
 ## 엔티티와 조회 경계
@@ -159,3 +160,25 @@ Widgets/Notice/NoticeCard는 NoticeCard·NoticeCardSaveButton·NoticeFact·Notic
 구조 검사는 위젯 파일의 Swift View 준수 선언을 식별하며 multiline·generic constraint·SwiftUI.View fixture를 포함한다. 자체 State 사용·VM→repository는 허용하고 View→VM/raw model/repository/OS/storage와 같은/다른 도메인의 형제 위젯 참조는 차단한다. generic 인자의 View 제약만으로 State를 View라 판단하지 않는다. 작은 lexical 검사이므로 복잡한 Swift 매크로/동적 alias 전체를 파싱하는 compiler 보장은 아니다.
 
 이번 FSD 66파일/positive·negative fixtures, run_standalone.sh에서 갱신한 *State.swift/*ViewModel.swift 경로로 NoticeViewModelTests 컴파일 및 old shared/앱 JSON 각각 실행 통과. Simulator build 13:28:05Z 성공(경고/오류 없음). 8개 Swift 파일 내용은 이동 전과 동일함을 비교했고 전체 disk/calendar suite·실제 UI 실행은 하지 않았다.
+
+## #2 native Shared UI
+
+현재 공개 API와 기본 Section/List/폰트 사용 규칙은 [NATIVE-UI](docs/NATIVE-UI.md)에 있다. Shared는 순수 표시 값과 콜백만 받으며 InformationRow가 도메인 없는 fact 조합을 대체한다. 도메인 카드·제목·State/VM의 flat 구조는 그대로이며 App 상태 수명과 body 조회 경계는 변경하지 않는다. 탐색은 semantic grouped 배경과 native large 버튼을 쓰고 접근성 크기에서 카드 자연 높이를 허용한다. 초기 구현 FSD 69파일 및 Xcode 26.6 simulator build 성공; 실제 화면 검증 결과는 별도 증거 문서에서 갱신한다.
+
+#2 상세는 native List/Section과 Shared InformationRow/StatusMessage로 구성한다. Calendar/Map route·callback·원본 URL 메모는 그대로다. 중복 순수 fact 파일 2개를 제거했다.
+
+#2 FavoriteOrganizationCard는 native Section을 반환하며 FavoriteListView의 List 안에 직접 조립한다. 저장소/ID/삭제 callback은 변하지 않고 삭제 label에 조직명이 포함된다.
+
+## #2 최종 검증 및 접근성 정책
+
+기본 발견은 시스템 paging, 접근성 크기는 자연 높이·자연 스크롤이다. 같은 State/로컬 저장 피드백 수명 안에서 scroll target 정책만 달라진다. Shared API/native mapping과 사용처는 [NATIVE-UI](docs/NATIVE-UI.md), 실제 build·회귀·터치·PNG 및 미검증 항목은 [검증 기록](docs/VERIFICATION-ISSUE-02.md)을 따른다. 이번 전체 standalone 회귀/FSD 67파일/최종 simulator build가 통과했다. 실제 doubletap·지도 앱·calendar editor·VoiceOver 낭독은 검증 완료로 주장하지 않는다.
+
+## #2 일정·아이콘 후속
+
+Shared/UI MetadataRow는 아이콘/문자열만, Shared/Lib CompactPeriod는 원시 날짜 문자열/시간대만 받는다. NoticeDetailState의 NoticeScheduleState가 원본 phase 순서대로 표시 이름·기간·phase별 장소를 조합하고, View는 같은 index의 App callback을 호출한다. 원본 Notice/Organization model, repository/cache, CalendarDatePolicy 및 지도/캘린더 메모 계약은 변경하지 않는다. 제목은 기존 View 내부, widget flat 구조와 Observation 소유권은 유지한다. 최신 실행 결과는 VERIFICATION-ISSUE-02의 후속 기록이 이전 미검증 기록보다 우선한다.
+
+## Calendar 참고 상세 표시 후속
+
+EventPeriodPresentation/EventTimeRows/LocationInformation은 Shared의 범용 값·표시 API다. NoticeScheduleState/NoticeSchedulePlaceState/NoticePlaceState와 Detail VM이 원본 일정·장소를 표시용으로 조합하며 Views는 값과 콜백을 렌더링한다. 이 표시 포맷은 calendar draft와 공유하지 않으므로 export 정책/원본 URL memo 및 원본 model/cache는 그대로다. 카드 표현도 변경하지 않는다. 장소 변환은 명확한 문자열 경계만 사용하며 원본 venue/summary는 보존한다. 관련 테스트 실행 범위·대표 상세 사진은 docs/evidence/issue-02/calendar-detail/README.md에 기록한다.
+
+Calendar screenshot 후속: Shared/Lib의 `EventTimelineInterval`은 명시적 timezone의 검증된 날짜 값만 받아 한 날짜의 half-open clip/눈금을 계산한다. NoticeDetail State/VM의 `EventPeriodPresentation` 및 applicationURL이 이를 조립하며 Shared/UI의 `EventDayTimeline`, `EventDaySelector`, `EventTimelineGrid`, `ExternalLinkCard`는 값/Binding만 받는다. 선택 날짜는 미리보기의 일시적인 local State이며 repository, favorite owner, export mapper, App 수명은 바꾸지 않는다. UI 하위 조각은 역할별 View 파일이며 순수 scroll helper만 함수로 둔다. OS busy/calendar provider는 이번 범위 밖이다.

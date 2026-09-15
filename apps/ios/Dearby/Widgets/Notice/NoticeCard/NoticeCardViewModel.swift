@@ -15,7 +15,10 @@ final class NoticeCardViewModel {
         initial = NoticeCardState(id: notice.id, title: notice.title, category: notice.categorySummary,
             contextNames: names, targetUser: notice.targetUser, applicationSummary: notice.applicationInformation.summary,
             locationSummary: notice.location.summary, hasQualityIssues: !notice.qualityIssues.isEmpty,
-            organizationName: organization?.name, saved: false)
+            organizationName: organization?.name, saved: false,
+            applicationPeriod: CompactPeriod.period(start: notice.applicationInformation.opensAt ?? notice.applicationInformation.opensOn,
+                end: notice.applicationInformation.closesAt ?? notice.applicationInformation.closesOn,
+                timezone: notice.applicationInformation.timezone, fallback: notice.applicationInformation.summary))
     }
     var state: NoticeCardState? {
         guard var result = initial else { return nil }
