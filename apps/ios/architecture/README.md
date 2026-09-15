@@ -5,7 +5,7 @@
 - App → Pages → Widgets → Features → Entities → Shared: every lower layer is allowed.
 - Same slice can use its UI/Model/API; another slice in the same layer is forbidden.
 - App: Entrypoint/Routes/Providers. Shared: purpose segments. Others: Layer/Slice/UI|Model|API|Lib|Config.
-- Entities/Shared UI are pure. Entity UI may receive its own Model. No repository, storage/network/OS effects.
+- Entities/Shared UI and named *Content.swift presentation components are pure. Entity UI may receive its own Model. No repository, storage/network/OS effects.
 - Widget/Page UI may use its own VM and lower Feature/Entity exported contracts.
 - `public-api.json` explicitly names cross-slice contracts independently of Swift access modifiers. Records/codecs are hidden; App coordinates Entity cache storage facades, which do not commit independently.
 - Harmonize models discover declarations and imports; SwiftSyntax supplies identifier references, actors/typealiases/functions and parse errors. Unknown/duplicate exports and ambiguous top-level declarations fail.

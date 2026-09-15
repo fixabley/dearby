@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct NoticeCard: View {
+struct NoticeCardContent: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     let state: NoticeCardState
@@ -28,9 +28,9 @@ struct NoticeCard: View {
                 Divider()
                 InformationRow(title: "참여 대상", value: state.targetUser)
                 if typeSize.isAccessibilitySize || !scrollSchedules {
-                    scheduleRows
+                    NoticeCardScheduleList(schedules: state.schedules, onOpenMap: onOpenMap)
                 } else {
-                    ScrollView(.vertical) { scheduleRows }
+                    ScrollView(.vertical) { NoticeCardScheduleList(schedules: state.schedules, onOpenMap: onOpenMap) }
                         .scrollBounceBehavior(.basedOnSize)
                         .frame(minHeight: 150)
                 }
@@ -61,19 +61,12 @@ struct NoticeCard: View {
         .background(NativeSurface.content, in: RoundedRectangle(cornerRadius: 24))
         .padding(.horizontal, NativeSpacing.content).padding(.vertical, NativeSpacing.related)
     }
-    private var scheduleRows: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            ForEach(state.schedules) { schedule in
-                NoticeCardScheduleRow(state: schedule) { onOpenMap(schedule.id, $0) }
-            }
-        }.frame(maxWidth: .infinity, alignment: .leading)
-    }
 
 }
 
 #Preview("공고 · 긴 제목 · 큰 글자") {
     ScrollView {
-        NoticeCard(state: .init(id: "preview", title: "여러 줄로 이어지는 긴 공고 제목도 축소하지 않고 읽을 수 있어요",
+        NoticeCardContent(state: .init(id: "preview", title: "여러 줄로 이어지는 긴 공고 제목도 축소하지 않고 읽을 수 있어요",
                                 category: "교육", contextNames: "지역 기관", targetUser: "누구나", applicationSummary: "일정 확인 필요",
                                 locationSummary: "장소 확인 필요", hasQualityIssues: true, organizationName: "긴 이름의 관심 조직", saved: true),
                    position: "1 / 4", compact: false, onSave: {}, onShowDetail: {})
@@ -81,3 +74,4 @@ struct NoticeCard: View {
     .background(NativeSurface.canvas)
     .environment(\.dynamicTypeSize, .accessibility5)
 }
+

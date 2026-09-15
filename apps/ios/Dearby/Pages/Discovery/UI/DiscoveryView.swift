@@ -4,8 +4,8 @@ struct DiscoveryView<Destination: View>: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     let snapshotDate: String
-    let cards: [NoticeCardState]
-    let saveOrganization: (String) -> SaveOrganizationResult
+    let viewModels: [NoticeCardViewModel]
+    private var cards: [NoticeCardViewModel] { viewModels.filter { $0.state != nil } }
     @ViewBuilder let destination: (String) -> Destination
     @State private var focusedID: String?
     @State private var detail: NoticeCardState?
@@ -25,9 +25,9 @@ struct DiscoveryView<Destination: View>: View {
                     ScrollView(.vertical) {
                         LazyVStack(spacing: 0) {
                             ForEach(Array(cards.enumerated()), id: \.element.id) { index, notice in
-                                DiscoveryCardPage(state: notice, position: "\(index + 1) / \(cards.count)",
+                                DiscoveryCardPage(viewModel: notice, position: "\(index + 1) / \(cards.count)",
                                     viewport: geometry.size, scrollContents: typeSize.isAccessibilitySize || geometry.size.height < 520,
-                                    onSave: { save(notice) }, onShowDetail: { detail = notice },
+                                    onSaved: saved, onShowDetail: { detail = notice.state },
                                     onOpenMap: { onOpenMap(notice.id, $0, $1) })
                                     .id(notice.id)
                             }
@@ -60,8 +60,8 @@ struct DiscoveryView<Destination: View>: View {
         .sensoryFeedback(.success, trigger: saveCount)
     }
 
-    private func save(_ notice: NoticeCardState) {
-        switch saveOrganization(notice.id) {
+    private func saved(_ result: SaveOrganizationResult) {
+        switch result {
         case .saved(let organization):
             saveFeedback = "\(organization) 저장됨"
             saveCount += 1

@@ -1,11 +1,13 @@
 import Foundation
 
 @MainActor
-final class NoticeCardViewModel {
+final class NoticeCardViewModel: Identifiable {
+    let id: String
     private let favorites: FavoriteOrganizations
     private let organization: OrganizationModel?
     private let initial: NoticeCardState?
     init(id: String, notices: NoticeRepository, organizations: OrganizationRepository, favorites: FavoriteOrganizations) throws {
+        self.id = id
         self.favorites = favorites
         guard let notice = try notices.notice(id) else { organization = nil; initial = nil; return }
         organization = try organizations.organization(notice.favoriteOrganizationId)

@@ -18,12 +18,11 @@ struct ContentView: View {
         let _ = favorites.ids
         Group {
             if let session {
-                let cards = session.cards.compactMap(\.state)
                 let favoriteCards = session.favoriteCards.compactMap(\.state)
                 TabView {
                     Tab("발견", systemImage: "rectangle.stack") {
                         NavigationStack {
-                            DiscoveryView(snapshotDate: session.snapshotDate, cards: cards, saveOrganization: session.save) { id in
+                            DiscoveryView(snapshotDate: session.snapshotDate, viewModels: session.cards) { id in
                                 NoticeDestinationView(id: id, session: session, calendarPreferences: calendarPreferences)
                             } onOpenMap: { id, scheduleIndex, venueIndex in
                                 guard let notice = session.notices.cachedNotice(id),

@@ -53,6 +53,7 @@ struct FSDTests {
         let allowed: [(String, String)] = [
             ("Entities/Notice/UI/Label.swift", "NoticeModel"),
             ("Widgets/Card/UI/Card.swift", "CardViewModel"),
+            ("Widgets/Card/UI/CardContent.swift", "NoticeModel"),
             ("Widgets/Card/UI/Card.swift", "Save"),
             ("Pages/Detail/UI/Detail.swift", "DetailViewModel"),
             ("Pages/Detail/UI/Detail.swift", "NoticeRepository"),
@@ -68,6 +69,7 @@ struct FSDTests {
             ("Widgets/Card/UI/Bad.swift", "SiblingViewModel", "fsd-cross-slice"),
             ("Pages/Detail/UI/Bad.swift", "NoticeRecord", "fsd-public-api"),
             ("Entities/Notice/UI/Bad.swift", "NoticeRepository", "pure-ui-effect"),
+            ("Widgets/Card/UI/CardContent.swift", "CardViewModel", "pure-ui-effect"),
             ("Widgets/Card/Model/Bad.swift", "NoticeStorageCodec", "fsd-public-api"),
             ("Shared/UI/Bad.swift", "UserDefaults", "pure-ui-effect"),
             ("Entities/Notice/UI/Bad.swift", "URLSession", "pure-ui-effect"),

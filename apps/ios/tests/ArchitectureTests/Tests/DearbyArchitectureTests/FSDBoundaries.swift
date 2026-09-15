@@ -16,7 +16,7 @@ enum FSDBoundaries {
         var parts: [String] { path.split(separator: "/").map(String.init) }
         var layer: String { parts.first ?? "" }
         var slice: String { parts.prefix(layer == "App" || layer == "Shared" ? 1 : 2).joined(separator: "/") }
-        var pureUI: Bool { ["Entities", "Shared"].contains(layer) && parts.contains("UI") }
+        var pureUI: Bool { parts.contains("UI") && (["Entities", "Shared"].contains(layer) || path.hasSuffix("Content.swift")) }
         init(path: String, text: String) {
             self.path = path
             source = SwiftSourceCode(source: text)

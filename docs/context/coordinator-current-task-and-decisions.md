@@ -2,10 +2,10 @@
 
 2026-09-16 진행 중: 사용자는 설계 문서만이 아니라 **Harmonize 규칙 구현 후 실제 리팩터링과 회귀 검증 반복**을 요청했다. 먼저 iOS를 적용하고, 검증된 변경을 PR에서 검토받아 추가 제안을 반영한다. 문서 작성으로 완료 처리하지 않는다. [FSD 규칙안](../architecture/fsd-domain-rules-draft.md)이 이번 구현의 기준이며 모든 하위 레이어 참조 허용, 동일 레이어 다른 슬라이스 금지, App 목적별 세그먼트, Entity 저장소 유지, 순수 UI와 연결 UI 구분을 적용한다. Android는 현재 구조를 유지하며 이번 iOS Dispatch에는 포함하지 않는다.
 
-- Root branch: refactor/ios-fsd-harmonize, origin/main f8f648c 기준(2026-09-16 fetch 확인). 공통 규칙·문서·PR 검토 담당.
+- Root: 공통 검사 선행 PR19(refactor/ios-fsd-harmonize) Draft 게시. 현재 다음 기능 브랜치 refactor/ios-notice-card-fsd에서 카드 변경 검토 준비. origin/main f8f648c 기준(2026-09-16 fetch 확인). 공통 규칙·문서·PR 검토 담당.
 - iOS: 기존 dearby-ios-architecture-tests checkout/terminal을 재사용하고 새 run_58f7d03f4deb / task_31d48a682566 / dispatch ctx_338f8e66f52b 배정. 이전 완료 Dispatch ID를 재사용하지 않았다.
 - 담당 범위: apps/ios 규칙·코드·기능별 테스트·앱 문서와 iOS 인계. 카드/즐겨찾기/상세 및 OS 행동/App 조립을 기능별 작은 커밋으로 만들고 검사→빌드→관련 사용자 흐름 회귀→발견한 오류 수정 순서로 검증한다.
-- 검증 기준: 정상·위반 fixtures와 실제 임시 위반 실패/제거 후 통과, 기존 캐시·즐겨찾기·기간/장소·캘린더 동의/취소/개인정보 계약 유지. 새 테스트 결과는 아직 없다. 기존 PR18 결과를 이번 리팩터링 결과로 사용하지 않는다.
+- 검증 기준: 정상·위반 fixtures와 실제 임시 위반 실패/제거 후 통과, 기존 캐시·즐겨찾기·기간/장소·캘린더 동의/취소/개인정보 계약 유지. 선행 worker cb42382의 전체 standalone/cache/snapshot 회귀 통과 기록을 검토했고 root에 79f73ea로 통합하여 run_architecture.sh exit0(9 tests)을 별도로 확인했다. PR19 원격 CI는 대기 중이다. 전체 UI 리팩터링과 Simulator 회귀는 아직 진행 중이며 기존 PR18 결과를 이번 결과로 사용하지 않는다.
 - 사용자 만족 여부는 자동 테스트로 대신 판단하지 않는다. 첫 적용을 완수하고 PR과 증거를 제공한 뒤 제안받은 변경에도 같은 검증을 반복한다.
 
 2026-09-15: Swift 아키텍처 검사 구현과 CI 연결을 [PR18](https://github.com/fixabley/dearby/pull/18)로 관리한다. 로컬과 hosted Xcode16.4/Swift6.1.2에서 전체 검사를 통과했고, 사용자가 계속 진행하도록 요청해 최종 CI 확인 후 병합한다. 실제 병합 상태와 최신 검사 결과는 PR18이 정본이다.
