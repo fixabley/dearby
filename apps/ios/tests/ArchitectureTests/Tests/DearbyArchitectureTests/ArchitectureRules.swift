@@ -1,7 +1,7 @@
 import Foundation
 import Harmonize
 
-/// Syntax rules only. Cross-file name resolution remains in check_fsd_boundaries.py.
+/// Declaration rules; FSDBoundaries checks the cross-file syntax dependency graph.
 enum ArchitectureRules {
     struct Violation: Equatable, CustomStringConvertible {
         let rule: String

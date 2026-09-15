@@ -14,7 +14,7 @@ struct FSDTests {
         for file in files {
             let path = String(file.path.dropFirst(root.count))
             let canonical = path
-            #expect(sources[canonical] == nil, "duplicate migration target \(canonical)")
+            #expect(sources[canonical] == nil, "duplicate production path \(canonical)")
             sources[canonical] = try String(contentsOf: file, encoding: .utf8)
         }
         let errors = FSDBoundaries.check(sources: sources, exports: exports)
