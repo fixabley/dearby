@@ -28,7 +28,7 @@ for sample in apps/ios/Dearby/resources/activity-samples.json shared/contracts/a
   apps/ios/build/dearby-notice-disk-tests "$sample"
 done
 
-swiftc -swift-version 6 -parse-as-library "${notice[@]}" "${organization[@]}" "${favorites[@]}" "${snapshot[@]}" apps/ios/Dearby/widgets/noticeCard/model/*State.swift apps/ios/Dearby/widgets/noticeCard/model/*ViewModel.swift apps/ios/Dearby/widgets/favoriteOrganizationCard/model/*State.swift apps/ios/Dearby/widgets/favoriteOrganizationCard/model/*ViewModel.swift apps/ios/Dearby/widgets/noticeDetail/model/*State.swift apps/ios/Dearby/widgets/noticeDetail/model/*ViewModel.swift apps/ios/Dearby/app/providers/NoticeSession.swift apps/ios/Dearby/app/providers/SwiftDataSnapshotStore.swift apps/ios/tests/SwiftDataSnapshotTests.swift -o apps/ios/build/dearby-snapshot-disk-tests
+swiftc -swift-version 6 -parse-as-library "${notice[@]}" "${organization[@]}" "${favorites[@]}" "${snapshot[@]}" apps/ios/Dearby/widgets/noticeCard/model/*State.swift apps/ios/Dearby/widgets/noticeCard/model/*ViewModel.swift apps/ios/Dearby/widgets/favoriteOrganizationCard/model/*State.swift apps/ios/Dearby/widgets/favoriteOrganizationCard/model/*ViewModel.swift apps/ios/Dearby/widgets/noticeDetail/model/*State.swift apps/ios/Dearby/widgets/noticeDetail/model/*ViewModel.swift apps/ios/Dearby/app/providers/NoticeSession.swift apps/ios/Dearby/app/providers/SwiftDataSnapshotStore.swift apps/ios/tests/SnapshotTransactionChecks.swift apps/ios/tests/SwiftDataSnapshotTests.swift -o apps/ios/build/dearby-snapshot-disk-tests
 for sample in apps/ios/Dearby/resources/activity-samples.json shared/contracts/activities/sample.json; do
   apps/ios/build/dearby-snapshot-disk-tests "$sample"
 done

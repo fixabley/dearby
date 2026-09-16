@@ -1,12 +1,13 @@
 import Foundation
 import SwiftData
 
-/// App composes independent entity stores in one explicit disk transaction; favorites are separate.
+/// App-owned disk snapshot metadata and atomic cache transactions.
 @MainActor
 final class SwiftDataSnapshotStore {
     let container: ModelContainer
     let context: ModelContext
     private let commit: (ModelContext) throws -> Void
+    private var preparing = false
 
     init(url: URL? = nil, inMemory: Bool = false,
          commit: @escaping (ModelContext) throws -> Void = { try $0.save() }) throws {
@@ -37,29 +38,44 @@ final class SwiftDataSnapshotStore {
         return rows.first?.value
     }
 
-    /// Same digest does no writes. A new digest invalidates BOTH L2 slices and metadata atomically.
+    /// Same digest does no writes. Changed metadata and both L2 slices commit together.
     @discardableResult
     func prepare(_ snapshot: BundleSnapshot) throws -> SnapshotManifest {
+        try withSnapshot(snapshot) { $0 }
+    }
+
+    /// Synchronous, non-reentrant staging. The candidate is returned only after durable save.
+    func withSnapshot<Value>(_ snapshot: BundleSnapshot, load: (SnapshotManifest) throws -> Value) throws -> Value {
+        guard !preparing, !context.hasChanges else { throw SnapshotStoreError.pendingChanges }
         guard snapshot.schemaVersion == "1.0.0", snapshot.mode == "reviewed_sample",
               Set(snapshot.notices.map(\.id)).count == snapshot.notices.count,
               Set(snapshot.organizations.map(\.id)).count == snapshot.organizations.count else { throw CocoaError(.coderReadCorrupt) }
         let next = try SnapshotManifest(snapshot: snapshot)
-        if let current = try manifest(), current.digest == next.digest { return current }
-        guard !context.hasChanges else { throw SnapshotStoreError.pendingChanges }
+        preparing = true
+        defer { preparing = false }
         do {
-            try NoticeCacheStorage.deleteAll(in: context)
-            try OrganizationCacheStorage.deleteAll(in: context)
-            if let record = try context.fetch(FetchDescriptor<SnapshotManifestRecord>()).first {
-                record.update(next)
-            } else {
-                context.insert(SnapshotManifestRecord(next))
+            if try manifest()?.digest != next.digest {
+                try NoticeCacheStorage.deleteAll(in: context)
+                try OrganizationCacheStorage.deleteAll(in: context)
+                if let record = try context.fetch(FetchDescriptor<SnapshotManifestRecord>()).first {
+                    record.update(next)
+                } else {
+                    context.insert(SnapshotManifestRecord(next))
+                }
             }
-            try commit(context)
-            return next
+            let candidate = try load(next)
+            if context.hasChanges { try commit(context) }
+            return candidate
         } catch {
             context.rollback()
             throw error
         }
+    }
+
+    /// Candidate source promotions join the snapshot transaction; ordinary reads save immediately.
+    func persistCache(_ cacheContext: ModelContext) throws {
+        guard cacheContext === context else { throw SnapshotStoreError.foreignContext }
+        if !preparing { try commit(context) }
     }
 
     func makeSession(snapshot: BundleSnapshot, favorites: FavoriteOrganizations) throws -> NoticeSession {
@@ -72,4 +88,4 @@ final class SwiftDataSnapshotStore {
     }
 }
 
-enum SnapshotStoreError: Error { case pendingChanges }
+enum SnapshotStoreError: Error { case pendingChanges, foreignContext }
