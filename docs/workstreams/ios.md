@@ -1,3 +1,3 @@
 # iOS 담당
 
-2026-09-16 NoticeSession 제거·AppState·상세 지연 생성 완료. 전체 standalone/캐시/캘린더/상세 회귀, architecture12/36pairs, production probes, strict lint156/0, Simulator build 통과. 실제 UI 입력은 이번 미검증. 두 기능 커밋의 통합·사용자 Xcode 설정 보존·CI·PR은 root 담당이며 근거와 재개 지점은 [iOS 인계](../context/ios-implementation-and-handoff.md)를 따른다.
+2026-09-16 NoticeSession 제거 문서 후속 완료. ROOT-SESSION의 최신 AppState 문서 연결과 AppStateTests 참조를 정리했다. 코드·테스트·과거 검증 이력은 유지했으며 이번에는 새 테스트·빌드를 실행하지 않았다. 구현 결과·이전 검증·현재 Dispatch와 root 통합 재개 지점은 [iOS 인계](../context/ios-implementation-and-handoff.md)를 따른다.
