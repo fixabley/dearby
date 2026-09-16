@@ -26,11 +26,13 @@ NoticeCardViewModel.isDisplayable은 초기 콘텐츠 존재만 읽고 favorites
 
 Simulator build 성공(2026-09-16 16:24 KST): 자기 Dearby.xcodeproj/scheme Dearby, Debug, iOS26.5 B04DEBB6-53B1-4CB1-858C-8C290846D4AB, derivedData `apps/ios/build/state-lifecycles-derived`. 로그 `/Users/jominjun/Library/Developer/XcodeBuildMCP/workspaces/dearby-ios-architecture-tests-2e6f4371f452/logs/build_sim_2026-09-16T07-24-53-381Z_pid4555_43c4bca3.log`. 실제 UI 입력·렌더러·OS 권한 창/개인 일정은 이번에 구동하지 않았다.
 
-기능별 커밋은 캘린더 `9e95709`, 즐겨찾기 `18699c6`, 발견 관찰 후속 순서다(최종 SHA는 완료 보고와 log). root가 자기 checkout에서 통합·공통 문서·PR을 마감한다. worker push/PR 없음, 타 checkout 접근/사용자 Xcode 설정 수정 없음. 완료 보고 후 새 지시를 기다린다.
+기능별 커밋은 캘린더 `9e95709`, 즐겨찾기 `18699c6`, 발견 관찰 `b6c3d81` 순서다. 이후 캘린더 소유권 주석/문서 정정만 별도 커밋하며 실행 코드 변경은 없다(최종 SHA는 완료 보고와 log). root가 자기 checkout에서 통합·공통 문서·PR을 마감한다. worker push/PR 없음, 타 checkout 접근/사용자 Xcode 설정 수정 없음. 완료 보고 후 새 지시를 기다린다.
 
 ### Session/유사 객체 책임 재검토
 
-실제 Session 선언은 BusyCalendarSession 하나이며 상세 개인 결과/취소/선택 날짜 수명 때문에 유지한다. CalendarPreferences는 앱 권한/boolean 수명, SettingsViewModel은 Page sheet 표시, FavoriteOrganizations는 저장 행동 검증/피드백, FavoriteOrganizationStore는 단일 observable ID 원본, SwiftDataSnapshotStore는 디스크 transaction, entity repositories는 독립 cache-aside를 맡는다. 이름이나 짧은 메서드만으로 합치지 않는다. AppState는 앱 준비/스냅샷 게시, NoticeDetailRouteState는 화면 key별 lazy detail 수명을 유지한다. 전달전용 Session/Store는 추가하지 않는다.
+실제 Session 선언은 BusyCalendarSession 하나이며 상세 개인 결과/취소/선택 날짜 수명 때문에 유지한다. CalendarPreferences는 앱 권한/boolean 수명, SettingsViewModel은 Page sheet 표시, FavoriteOrganizations는 저장 행동 검증/피드백, FavoriteOrganizationStore는 단일 observable ID 원본, SwiftDataSnapshotStore는 디스크 transaction, entity repositories는 독립 cache-aside를 맡는다. 이름이나 짧은 메서드만으로 합치지 않는다. AppState는 앱 준비/스냅샷 게시, NoticeDetailRouteState는 화면 key별 lazy detail 수명을 유지한다. 전달전용 Session/Store는 추가하지 않는다. NoticeCard/NoticeDetail/FavoriteOrganizationCard ViewModel은 각 원본 조합과 표시 State를 제공하므로 유지하고, 새 FavoriteOrganizationListViewModel은 목록/인덱스/구독 수명·명시적 오류를 실제로 소유한다. UserDefaultsCalendarPreferenceStore는 두 boolean 영속 어댑터이며 MemoryCalendarPreferenceStore는 테스트/preview 경계로 유지한다. FavoriteOrganizationsObservation은 weak 변경 구독의 해제 수명을 표현하는 토큰이며 상태 저장소가 아니다.
+
+정리/삭제 대상은 BusyCalendarSession의 중복 동의/권한 요청 및 resume API와 미사용 consent enum, 상세별 scene/EventKit 관찰, 모든 조직 카드 선조립, 발견 부모의 saved 기반 필터였다. BusyCalendarSession을 이름만 바꾸거나 제거하지 않았다. 최종 주석도 opt-in owner라는 과거 표현을 query owner로 바로잡았다.
 
 아래는 이번 실행이 아닌 이전 구현 Dispatch의 보존 기록이다.
 

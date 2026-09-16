@@ -3,7 +3,7 @@ import Observation
 
 enum BusyCalendarLifecycle { case active, inactive, background }
 
-/// One opt-in owner per detail presentation; query tasks and personal results are ephemeral.
+/// One query owner per detail presentation; preferences own opt-in and permission requests.
 @MainActor @Observable
 final class BusyCalendarSession {
     private(set) var isEnabled = false
