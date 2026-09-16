@@ -1,5 +1,9 @@
 # 검증 — 마지막 실행 결과와 재현 위치
 
+2026-09-16 NoticeSession 제거: iOS 담당 로컬 architecture12/4 suites·lint156/0·production gate·기존 및 신규 회귀·Simulator build 통과. Root 통합 checkout에서도 사용자 Xcode 설정을 보존한 Simulator build가 성공했다(/tmp/dearby-notice-state-integration-build.log). 실제 UI 입력/렌더러 자동화는 이번 미검증. 상세 실행 기록은 [iOS 인계](ios-implementation-and-handoff.md), PR29/CI 최신 상태는 [조율 문서](coordinator-current-task-and-decisions.md)를 따른다.
+
+## 이전 실행 이력
+
 2026-09-16 최종 코드3c0d12c CI35004063640 두 job SUCCESS. 전역 직렬화 후 구조12/4suites·lint153/0·실제 production gate·기존 회귀·Simulator build 통과. 인계 문서 후속 커밋은 앱 코드 변경 없음.
 
 2026-09-16 두 레이어 후속: 최종 source는 iOS 역할 문서와 [이번 증거](../../apps/ios/docs/evidence/two-layer-composition/README.md)를 따른다. Worker 새 AST12/기존 AST9 호환성·lint152/0·기능 회귀·Simulator build 통과. Root 통합에서도 AST12/lint152/0 확인. 실제 Simulator 입력이 화면을 전환하지 못해 이번 탭·paging·doubletap·동의·OS editor 동작은 미검증이며 과거 성공을 재사용하지 않는다.
