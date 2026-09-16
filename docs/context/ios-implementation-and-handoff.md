@@ -1,12 +1,24 @@
 # iOS 구현 인계
 
-## 완료 — NoticeSession 제거 문서 후속
+## 진행 — 상태 수명·즐겨찾기 목록·발견 관찰 분리
 
-2026-09-16 KST: 자기 checkout `dearby-ios-architecture-tests`의 clean `b6cbfe8`에서 문서 후속만 수행했다. Orca 런타임에서 현재 checkout을 확인했으며 terminal `term_e6d174b0-3d53-4fae-ac33-1f4b0d2ac42d`, task `task_2118e21be810`, dispatch `ctx_d22a8757002f`를 사용했다. 재개 시 런타임 상태를 다시 확인한다.
+2026-09-16 KST: 자기 `dearby-ios-architecture-tests`의 `7f3e3c3`에서 `feat/ios-state-lifecycles` 생성. 기존 미커밋 검토 기록은 이번 승인 구현으로 갱신한다. terminal `term_e6d174b0-3d53-4fae-ac33-1f4b0d2ac42d`, task `task_6bf555ab4911`, dispatch `ctx_2fb2d4ca0526`; 재개 시 실시간 상태 재확인. 자기 apps/ios·역할 문서만 수정하며 root Xcode 설정/다른 checkout/공통 규칙은 건드리지 않는다.
 
-`ROOT-SESSION.md`를 최신 [APP-STATE.md](../../apps/ios/docs/APP-STATE.md) 연결 안내로 교체하고 `NOTICE-CARD-COMPOSITION.md`의 검사 참조를 `AppStateTests`로 갱신했다. 코드·테스트·과거 evidence 및 ArchitectureTests VERIFICATION 이력은 변경하지 않았다. 이번에는 지시대로 테스트·빌드를 새로 실행하지 않았으며 아래 검증은 이전 구현 Dispatch의 기록이다. 문서 커밋 SHA는 완료 보고와 브랜치 log를 따른다.
+### 캘린더 수명 — 구현 완료
 
-문서 후속은 완료했으며 root가 앱 통합·빌드·PR과 이 문서 커밋의 통합을 담당한다. 다른 checkout에는 접근하지 않았다.
+기존 소스 검토의 background 재개 문제를 먼저 회귀로 재현했다: `/tmp/dearby-lifecycles-calendar-red.log`에서 background 알림 후 개인 결과 비우기 assertion 실패(exit133). CalendarPreferences의 활성 guard와 한 번의 Feature api OS lifecycle adapter로 scene/EventKit 알림을 조율했다. 상세 modifier는 attach/detach만 담당하고 중복 resume/refresh를 없앴다. production 호출 없는 상세 동의 API와 consent enum/resume도 제거했다. SettingsPresentation의 첫 scene 보고로 초기 background를 반영하고 inactive는 권한 창을 취소하지 않는다.
+
+이번 busy 회귀 통과: background 알림, 늦은 authorization/query/grant, inactive 권한 dialog, 초기 background, 알림/재개당 조회1회, 취소된 쿼리 수, detach. 로그 `/tmp/dearby-lifecycles-calendar.log`. standalone도 exit0(`/tmp/dearby-lifecycles-calendar-standalone.log`). architecture12 tests·production gate·detail exit0, strict SwiftLint157파일 위반0. 로그 `/tmp/dearby-lifecycles-calendar-{architecture,gate,detail,lint}.log`. Simulator build는 gate 원상복구 뒤 자기 project/scheme·iOS26.5·derivedData `apps/ios/build/state-lifecycles-derived`에서 재확인 성공. 실제 UI 입력은 미검증. 기술 문서는 [캘린더 수명](../../apps/ios/docs/CALENDAR-LIFECYCLE.md).
+
+### 다음 작업
+
+저장 조직 중심 목록 조립/조직별 인덱스와 발견 부모 관찰 분리를 각 기능 테스트·문서와 묶어 구현·커밋한다. 기존 transaction 실패보존, 단일 favorites 및 카드/상세 즉시 반영을 유지한다. root가 통합·공통 문서·PR을 담당한다.
+
+### Session/유사 객체 책임 재검토
+
+실제 Session 선언은 BusyCalendarSession 하나이며 상세 개인 결과/취소/선택 날짜 수명 때문에 유지한다. CalendarPreferences는 앱 권한/boolean 수명, SettingsViewModel은 Page sheet 표시, FavoriteOrganizations는 저장 행동 검증/피드백, FavoriteOrganizationStore는 단일 observable ID 원본, SwiftDataSnapshotStore는 디스크 transaction, entity repositories는 독립 cache-aside를 맡는다. 이름이나 짧은 메서드만으로 합치지 않는다. AppState는 앱 준비/스냅샷 게시, NoticeDetailRouteState는 화면 key별 lazy detail 수명을 유지한다. 전달전용 Session/Store는 추가하지 않는다.
+
+아래는 이번 실행이 아닌 이전 구현 Dispatch의 보존 기록이다.
 
 ## 이전 구현 완료 — NoticeSession 제거 / AppState·상세 지연 생성
 
