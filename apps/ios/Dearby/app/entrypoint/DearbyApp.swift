@@ -2,11 +2,11 @@ import SwiftUI
 
 @main
 struct DearbyApp: App {
-    @State private var session = AppSession()
+    @State private var state = AppState()
 
     var body: some Scene {
         WindowGroup {
-            ContentView(session: session)
+            ContentView(state: state)
         }
     }
 }

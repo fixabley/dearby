@@ -1,3 +1,3 @@
 # iOS 담당
 
-2026-09-16 아키텍처 전체 suite 직렬화 완료. 전체12 tests/36 layer pairs, strict cooperative pool, production probes, strict lint153파일/위반0 통과. CI 정지 원인 미확정이며 동일 CI 재검증·PR28 통합은 root 담당. 최신 근거·한계·이전 기능 작업은 [iOS 인계](../context/ios-implementation-and-handoff.md)를 따른다.
+2026-09-16 NoticeSession 제거·AppState·상세 지연 생성 완료. 전체 standalone/캐시/캘린더/상세 회귀, architecture12/36pairs, production probes, strict lint156/0, Simulator build 통과. 실제 UI 입력은 이번 미검증. 두 기능 커밋의 통합·사용자 Xcode 설정 보존·CI·PR은 root 담당이며 근거와 재개 지점은 [iOS 인계](../context/ios-implementation-and-handoff.md)를 따른다.
