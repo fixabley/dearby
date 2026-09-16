@@ -7,6 +7,7 @@ struct SwiftDataSnapshotTests {
     @MainActor static func main() throws {
         let data = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
         let snapshot = try JSONDecoder().decode(BundleSnapshot.self, from: data)
+        try SnapshotTransactionChecks.run(snapshot: snapshot)
         let folder = URL(fileURLWithPath: "apps/ios/build/snapshot-disk-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: folder) }
