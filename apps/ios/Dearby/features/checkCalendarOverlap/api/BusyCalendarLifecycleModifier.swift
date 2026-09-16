@@ -1,8 +1,7 @@
 import SwiftUI
-import EventKit
 
+/// Detail lifetime only; the app-scoped preferences owner handles scene and store changes once.
 struct BusyCalendarLifecycleModifier: ViewModifier {
-    @Environment(\.scenePhase) private var scenePhase
     let session: BusyCalendarSession
     let preferences: CalendarPreferences
 
@@ -10,16 +9,5 @@ struct BusyCalendarLifecycleModifier: ViewModifier {
         content
             .onAppear { preferences.attach(session) }
             .onDisappear { preferences.detach(session) }
-            .onChange(of: scenePhase) { _, phase in
-                switch phase {
-                case .active: session.lifecycle(.active)
-                case .background: session.lifecycle(.background)
-                default: session.lifecycle(.inactive)
-                }
-            }
-            .onReceive(NotificationCenter.default.publisher(for: .EKEventStoreChanged)) { _ in
-                preferences.refreshAuthorization()
-                session.refresh()
-            }
     }
 }

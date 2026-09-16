@@ -11,6 +11,8 @@ import Observation
     @ObservationIgnored private let store: any CalendarPreferenceStore
     @ObservationIgnored private var operation: Task<Void, Never>?
     @ObservationIgnored private var generation = 0
+    // Foreground construction default; SettingsPresentation immediately supplies its initial scene phase.
+    @ObservationIgnored private var isActive = true
     private struct Observer { weak var session: BusyCalendarSession? }
     @ObservationIgnored private var observers: [ObjectIdentifier: Observer] = [:]
     var switchIsOn: Bool { enabled || connection == .checking || connection == .requesting }
@@ -36,6 +38,7 @@ import Observation
     func setEnabled(_ value: Bool) {
         invalidate()
         if !value { publish(false, state: .off); return }
+        guard isActive else { return }
         connection = .checking
         let token = generation
         operation = Task { [weak self, provider] in
@@ -56,13 +59,13 @@ import Observation
     }
     func attach(_ session: BusyCalendarSession) {
         observers[ObjectIdentifier(session)] = Observer(session: session)
-        if enabled { session.setEnabled(true) }
+        if enabled && isActive { session.setEnabled(true) }
     }
     func detach(_ session: BusyCalendarSession) {
         observers.removeValue(forKey: ObjectIdentifier(session)); session.close()
     }
     func refreshAuthorization() {
-        guard enabled, connection != .requesting else { return }
+        guard isActive, enabled, connection != .requesting else { return }
         invalidate(); let token = generation
         operation = Task { [weak self, provider] in
             let access = await provider.authorization()
@@ -73,8 +76,9 @@ import Observation
     func lifecycle(_ phase: BusyCalendarLifecycle) {
         switch phase {
         case .inactive: break // OS permission dialog does not cancel its own request.
-        case .active: refreshAuthorization()
+        case .active: isActive = true; refreshAuthorization()
         case .background:
+            isActive = false
             invalidate()
             if !enabled { connection = .off }
             for observer in observers.values { observer.session?.suspend() }
@@ -93,7 +97,6 @@ import Observation
         observers = observers.filter { $0.value.session != nil }
         for observer in observers.values {
             if value {
-                observer.session?.resume()
                 observer.session?.setEnabled(true)
             } else {
                 observer.session?.setEnabled(false)
@@ -102,5 +105,5 @@ import Observation
         if !value { Task { [provider] in await provider.discard() } }
     }
     private func invalidate() { generation += 1; operation?.cancel(); operation = nil }
-    private func current(_ token: Int) -> Bool { generation == token && !Task.isCancelled }
+    private func current(_ token: Int) -> Bool { generation == token && !Task.isCancelled && isActive }
 }

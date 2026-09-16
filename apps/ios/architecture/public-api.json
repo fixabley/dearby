@@ -58,7 +58,8 @@
     "CalendarPreferenceStore",
     "MemoryCalendarPreferenceStore",
     "NoticeScheduleTimeline",
-    "BusyCalendarLifecycleModifier"
+    "BusyCalendarLifecycleModifier",
+    "CalendarPreferencesLifecycleModifier"
   ],
   "features/openLocation": [
     "VenueMapLauncher",
