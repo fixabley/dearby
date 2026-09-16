@@ -25,6 +25,9 @@ final class NoticeCardViewModel: Identifiable {
             schedules: NoticeCardScheduleState.project(notice),
             applicationPeriod: NoticeApplicationState(notice: notice).period)
     }
+    /// Feed membership is snapshot-stable and never observes saved IDs.
+    var isDisplayable: Bool { initial != nil }
+
     var state: NoticeCardState? {
         guard var result = initial else { return nil }
         result.saved = organization.map { favorites.ids.contains($0.id) } ?? false
