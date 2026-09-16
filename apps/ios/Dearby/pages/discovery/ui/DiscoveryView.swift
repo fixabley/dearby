@@ -4,13 +4,18 @@ struct DiscoveryView<Destination: View>: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     let snapshotDate: String
-    let viewModels: [NoticeCardViewModel]
-    private var cards: [NoticeCardViewModel] { viewModels.filter { $0.state != nil } }
+    private let cards: [NoticeCardViewModel]
     @ViewBuilder let destination: (String) -> Destination
     @State private var focusedID: String?
     @State private var detail: NoticeCardState?
     @State private var saveFeedback = ""
     @State private var saveCount = 0
+
+    init(snapshotDate: String, viewModels: [NoticeCardViewModel], @ViewBuilder destination: @escaping (String) -> Destination) {
+        self.snapshotDate = snapshotDate
+        cards = viewModels.filter(\.isDisplayable)
+        self.destination = destination
+    }
 
     var body: some View {
         VStack(spacing: 0) {
