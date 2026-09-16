@@ -10,9 +10,15 @@
 
 이번 busy 회귀 통과: background 알림, 늦은 authorization/query/grant, inactive 권한 dialog, 초기 background, 알림/재개당 조회1회, 취소된 쿼리 수, detach. 로그 `/tmp/dearby-lifecycles-calendar.log`. standalone도 exit0(`/tmp/dearby-lifecycles-calendar-standalone.log`). architecture12 tests·production gate·detail exit0, strict SwiftLint157파일 위반0. 로그 `/tmp/dearby-lifecycles-calendar-{architecture,gate,detail,lint}.log`. Simulator build는 gate 원상복구 뒤 자기 project/scheme·iOS26.5·derivedData `apps/ios/build/state-lifecycles-derived`에서 재확인 성공. 실제 UI 입력은 미검증. 기술 문서는 [캘린더 수명](../../apps/ios/docs/CALENDAR-LIFECYCLE.md).
 
+### 즐겨찾기 목록 — 구현·검증 완료
+
+FavoriteOrganizationListViewModel은 스냅샷당 조직→feed ID 인덱스를 한 번 만들고 저장된 조직만 조립한다. Feature facade의 weak token 동기 post-mutation 구독으로 추가/삭제를 즉시 반영하고 중복 저장은 재조립하지 않는다. body/getter I/O와 ID 복제본은 없다. 기존 card 인스턴스는 유지하고 새 조직만 조회한다. 새 저장 경로 실패는 기존 카드를 보존하며 Page에 실패/재시도를 명시한다. 스냅샷 후보 실패는 기존 목록/구독을 보존하고 성공 직후에만 이전 구독을 끊는다. 앱 전체를 감싸는 Session/Store를 추가하지 않았다. [목록 조립 문서](../../apps/ios/docs/SAVED-ORGANIZATION-LIST.md).
+
+캘린더 커밋 `9e95709`는 root가 `361b668`로 통합하고 PR30으로 분리했다고 알려왔다(런타임 메시지, 원격 독립 조회는 하지 않음). 발견 부모 관찰 분리는 다음 기능 커밋이다.
+
 ### 다음 작업
 
-저장 조직 중심 목록 조립/조직별 인덱스와 발견 부모 관찰 분리를 각 기능 테스트·문서와 묶어 구현·커밋한다. 기존 transaction 실패보존, 단일 favorites 및 카드/상세 즉시 반영을 유지한다. root가 통합·공통 문서·PR을 담당한다.
+즐겨찾기 standalone(미저장 오류 격리/인덱스/동기 추가삭제/명시적 재시도/후보 실패보존/구독 교체·weak 해제·재진입·중복 방어), architecture12, production gate, strict lint160파일 위반0, Simulator build 통과. 로그 `/tmp/dearby-lifecycles-favorites-{standalone,architecture,gate,lint}.log`. 발견 부모 관찰 분리를 다음 기능으로 구현한다. 기존 transaction 실패보존, 단일 favorites 및 카드/상세 즉시 반영을 유지한다. root가 통합·공통 문서·PR을 담당한다.
 
 ### Session/유사 객체 책임 재검토
 

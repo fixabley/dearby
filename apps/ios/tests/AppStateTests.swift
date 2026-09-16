@@ -5,6 +5,7 @@ import Synchronization
 @main
 struct AppStateTests {
     @MainActor static func main() throws {
+        try testFavoriteList(data: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
         try testLifecycle(data: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
         let snapshot = try JSONDecoder().decode(BundleSnapshot.self,
             from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
@@ -34,14 +35,14 @@ struct AppStateTests {
         let favoritesChanges = Mutex(0)
         let detailChanges = Mutex(0)
         withObservationTracking { _ = card.state?.saved } onChange: { discoveryChanges.withLock { $0 += 1 } }
-        withObservationTracking { _ = appState.favoriteCards.filter { $0.state != nil } } onChange: { favoritesChanges.withLock { $0 += 1 } }
+        withObservationTracking { _ = appState.favoriteList!.cards.filter { $0.state != nil } } onChange: { favoritesChanges.withLock { $0 += 1 } }
         withObservationTracking { _ = detail.state?.saved } onChange: { detailChanges.withLock { $0 += 1 } }
         _ = card.save()
         precondition(discoveryChanges.withLock { $0 } == 1 && favoritesChanges.withLock { $0 } == 1 && detailChanges.withLock { $0 } == 1)
         precondition(card.state?.saved == true && detail.state?.saved == true)
-        let savedCard = appState.favoriteCards.first { $0.state != nil }!
+        let savedCard = appState.favoriteList!.cards.first { $0.state != nil }!
         withObservationTracking { _ = card.state?.saved } onChange: { discoveryChanges.withLock { $0 += 1 } }
-        withObservationTracking { _ = appState.favoriteCards.filter { $0.state != nil } } onChange: { favoritesChanges.withLock { $0 += 1 } }
+        withObservationTracking { _ = appState.favoriteList!.cards.filter { $0.state != nil } } onChange: { favoritesChanges.withLock { $0 += 1 } }
         withObservationTracking { _ = detail.state?.saved } onChange: { detailChanges.withLock { $0 += 1 } }
         savedCard.remove()
         precondition(discoveryChanges.withLock { $0 } == 2 && favoritesChanges.withLock { $0 } == 2 && detailChanges.withLock { $0 } == 2)

@@ -1,16 +1,21 @@
 import SwiftUI
 
 struct FavoriteListView<Destination: View>: View {
-    let viewModels: [FavoriteOrganizationCardViewModel]
-    private var cards: [FavoriteOrganizationCardViewModel] { viewModels.filter { $0.state != nil } }
+    let viewModel: FavoriteOrganizationListViewModel
     @ViewBuilder let destination: (String) -> Destination
 
     var body: some View {
-        SavedOrganizationList(isEmpty: cards.isEmpty) {
-            List(cards) { organization in
-                FavoriteOrganizationCard(viewModel: organization, destination: destination)
+        VStack {
+            if viewModel.loadFailed {
+                Text("저장한 조직을 불러오지 못했어요").font(.footnote)
+                Button("다시 시도", action: viewModel.reload)
             }
-            .listStyle(.insetGrouped)
+            SavedOrganizationList(isEmpty: viewModel.cards.isEmpty && !viewModel.loadFailed) {
+                List(viewModel.cards) { organization in
+                    FavoriteOrganizationCard(viewModel: organization, destination: destination)
+                }
+                .listStyle(.insetGrouped)
+            }
         }
         .navigationTitle("즐겨찾기")
     }
