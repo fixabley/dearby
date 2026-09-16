@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-/// App-owned disk snapshot metadata and atomic cache transactions.
+/// Owns disk snapshot metadata and atomic cache transactions, without presentation dependencies.
 @MainActor
 final class SwiftDataSnapshotStore {
     let container: ModelContainer
@@ -78,14 +78,6 @@ final class SwiftDataSnapshotStore {
         if !preparing { try commit(context) }
     }
 
-    func makeSession(snapshot: BundleSnapshot, favorites: FavoriteOrganizations) throws -> NoticeSession {
-        let metadata = try prepare(snapshot)
-        let noticeSource = SwiftDataNoticeSource(context: context,
-            external: SnapshotNoticeSource(notices: snapshot.notices, sources: snapshot.sources))
-        let organizationSource = SwiftDataOrganizationSource(context: context,
-            external: SnapshotOrganizationSource(organizations: snapshot.organizations))
-        return try NoticeSession(manifest: metadata, noticeSource: noticeSource, organizationSource: organizationSource, favorites: favorites)
-    }
 }
 
 enum SnapshotStoreError: Error { case pendingChanges, foreignContext }

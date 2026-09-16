@@ -1,34 +1,28 @@
 # iOS 구현 인계
 
-## 완료 — 아키텍처 테스트 전체 직렬화 (2026-09-16 02:53 KST)
+## 완료 — NoticeSession 제거 / AppState·상세 지연 생성
 
-자기 checkout/branch: dearby-ios-architecture-tests / feat/ios-two-layer-composition, 시작 head91d5b72. 이번 런타임 확인: term_381a9f0e-d446-4fc4-903a-fb16686b7d52 / task_2b86ed171b8c / ctx_4bd675d73f70. 재개 시 Orca 상태 재확인.
+2026-09-16 15:34 KST 확인. 자기 checkout `dearby-ios-architecture-tests`, `751da86`에서 clean 확인 후 `feat/ios-notice-state-composition` 생성. 이번 Orca terminal `term_381a9f0e-d446-4fc4-903a-fb16686b7d52`, task `task_8bb50e0f40a3`, dispatch `ctx_812a0cdd5cbe`; 재개 시 상태를 다시 확인한다.
 
-세 suite를 `ArchitectureTestSuite`의 extension 안에 중첩하고 부모 하나에 `.serialized` 적용. 모든 suite/parameterized case의 겹침을 막으며 실행 순서 자체는 보장하지 않는다. 기존 테스트 본문·fixture는 공백과 suite 포장을 제외하고 HEAD와 동일함을 비교 확인했다. 12 tests/36 layer pairs, exact provider/public API/probes 유지. 앱·Shared·외부 패키지·공통 정책·runner 수정 없음.
+### 승인 범위와 구현
 
-이번 Swift6.4 실행:
+- apps/ios와 자기 역할/워크스트림 문서만 수정했다. root checkout·사용자 Xcode27 project/scheme·Shared 디자인·공통 정책·Android/API는 수정하지 않았다. worker push/PR 없음.
+- NoticeSession 삭제, AppSession→AppState. 새 NoticeStore/NoticeFeedStore 없음. AppState는 앱 준비/실패/재시도, 카드·즐겨찾기 모델과 snapshot generation을 소유한다. app/providers의 AppSnapshotComposition은 두 독립 repository와 후보 모델을 생성/공유/주입한다.
+- SwiftDataSnapshotStore에서 makeSession·화면 VM·즐겨찾기 의존을 제거했다. coordinator 승인(이번 ask)대로 동기 MainActor candidate transaction을 사용한다. 후보 L1/화면은 save 성공 전 공개하지 않으며 실패 시 폐기한다. 일반 cache-aside는 기존대로 즉시 영속 저장 후 L1에 반영한다. snapshot transaction은 metadata/두 L2의 최종 save 후 공개 repository/카드들을 교체한다. pending 변경과 재진입을 거부한다.
+- 상세는 초기 카드 조립에서 만들지 않는다. coordinator 승인(이번 ask)한 value NoticeDetailRouteState가 app/routes에서 화면별 VM/loaded(id,generation)만 소유한다. task에서 한 번 조회하고 body는 순수 Page 조립만 한다. 같은 키 재호출/화면 재진입/공고 ID·snapshot 변경/실패 격리를 검증했다. Widget의 원본 Model·표시 State 책임과 단일 즐겨찾기 Observation은 유지했다.
+- 기능 커밋: `4a9734c` 저장소 snapshot transaction 지원·전용 검사·문서; 다음 `refactor(ios): replace notice session with app state and lazy detail` 커밋은 앱 상태/라우팅 적용·회귀·문서를 포함한다. 첫 커밋은 기존 makeSession caller를 일시 보존해 독립 검증 가능하며 두 번째에서 제거한다. 최종 SHA는 브랜치 log/worker_done 참조.
 
-- 전체 `run_architecture.sh` exit0: Python guard fixtures/132 Swift sources, Swift Testing12 tests / 3하위+1부모 suite, 1.624초. 모든 suite start/pass와 비중첩 실행 확인. 로그 `/tmp/dearby-serialized-architecture.log`.
-- `LIBDISPATCH_COOPERATIVE_POOL_STRICT=1 swift test --package-path apps/ios/tests/ArchitectureTests --skip-build` 30초 subprocess timeout 설정, exit0/12tests/1.616초. 로그 `/tmp/dearby-serialized-strict-pool.log`.
-- `test_layer_distance_gate.sh` exit0: 실제 route identifier/import 위반, provider private API/UI 위반 거절, provider 허용·원상복구 성공. 로그 `/tmp/dearby-serialized-probes.log`.
-- `run_swiftlint.sh` strict exit0, 153파일/위반0. 로그 `/tmp/dearby-serialized-lint.log`; `git diff --check` 통과.
+### 이번 실행한 검증
 
-원인 한계: CI run35002215465 attempt1은 Swift6.1 빌드 완료 뒤 무출력 정지했고 CI stack sample은 없다. Harmonize의 sync read/async barrier write에 의한 starvation은 가설이며 root와 worker의 로컬 strict pool 실행은 재현되지 않았다. [테스트 README](../../apps/ios/tests/ArchitectureTests/README.md)에 실행 원칙·증거·한계를 기록했다.
+- 첫 저장소 커밋의 staged 소스·기존 caller·추가 SnapshotTransactionChecks를 자기 build 폴더에 추출해 swiftc 컴파일, 두 sample fixture 실행 exit0. `/tmp/dearby-transaction-component.log`. intermediate 전체 앱 빌드까지 했다는 뜻은 아니다.
+- 최종 `bash apps/ios/tests/run_standalone.sh` exit0. `/tmp/dearby-app-state-standalone.log`: 기존 favorites/source/cache/SwiftData disk/calendar/map, startup/storage/source retry·성공 후 idempotence, discovery/favorites/open-detail save/remove Observation, 새 lazy detail 및 수명, snapshot 조립/read/save 실패 시 manifest/L2/L1/화면 보존·성공 교체·삭제 통과. 의도된 invalid store 경로 fixture의 CoreData 오류 로그는 예상 결과다.
+- `run_architecture.sh` exit0: lexical guard133 production Swift files, Swift Testing12 tests/4 suites(공통 부모 포함), 전체36 layer pairs 유지. `/tmp/dearby-app-state-architecture.log`.
+- `test_layer_distance_gate.sh` exit0: 실제 route identifier/import 거리 위반, provider private API/UI 위반 거절, provider 허용·원상복구 통과. `/tmp/dearby-app-state-probes.log`.
+- `run_swiftlint.sh` strict exit0: 156파일/위반0. `/tmp/dearby-app-state-lint.log`. `run_busy_calendar.sh`, `run_detail_presentations.sh` 각각 exit0: `/tmp/dearby-app-state-busy.log`, `/tmp/dearby-app-state-detail.log`. `git diff --check` 통과.
+- XcodeBuildMCP build_sim 성공(12초): 자기 Dearby.xcodeproj, scheme Dearby, Debug, iOS26.5 simulator B04DEBB6-53B1-4CB1-858C-8C290846D4AB, derivedData `apps/ios/build/notice-state-derived`. 로그 `/Users/jominjun/Library/Developer/XcodeBuildMCP/workspaces/dearby-ios-architecture-tests-2e6f4371f452/logs/build_sim_2026-09-16T06-24-48-191Z_pid61537_03181c8f.log`. 최종 production 코드와 동일한 코드 빌드이며 이후 변경은 테스트·문서다.
 
-남은 일: root가 이 테스트 실행 수정 커밋을 cherry-pick해 PR28 push/동일 macOS15·Xcode16.4 CI 재검증. worker push·타 checkout 수정 없음. 아래 기능/UI 검증 기록은 이전 작업 결과이며 이번에 다시 실행하지 않았다.
+### 한계와 다음 행동
 
-## 이전 구현·검증 (이번 실행 아님) — 하위 두 레이어 / AppSession (2026-09-16 KST)
+실제 UI 탭/렌더러 자동화는 이번 실행 미검증. 수명 테스트는 실제 route value-state loader와 반복 표시값 읽기를 실행하며 SwiftUI body 자체를 구동했다고 주장하지 않는다. root 지시에 따라 이전 Simulator 입력 도구 복구로 범위를 넓히지 않았다. 기존 UI 증거는 [이전 구현 보고서](../../apps/ios/docs/evidence/two-layer-composition/README.md)의 역사 기록이다.
 
-자기 checkout dearby-ios-architecture-tests, branch feat/ios-two-layer-composition, origin/main 45a7c96에서 clean 확인/fetch 후 신규 분기. 기존 브랜치와 history 보존, push/merge/타 checkout 변경 없음. Orca terminal term_dd600aaf-7cbe-4288-a233-2ba46a78d35b / task task_adac1e244b57 / dispatch ctx_3ac914267e01. 다음 작업 시 런타임 재확인.
-
-구현: app→pages/widgets, pages→widgets/features, widgets→features/entities, features→entities/shared, entities→shared. 정확한 app/providers만 생성·수명·주입 예외이며 내부 API/UI 구현은 허용하지 않음. source/import 거리·형제·alias/re-export 검사와 실제 production probes 추가. Widget은 coordinator 정정대로 최신 main의 widgets/<slice>/ui|model 유지.
-
-AppSession 시작/저장소 유지/재시도, 최소 ContentView와 AppTabs, SettingsPresentation 수명 분리. Detail Page는 List/라우팅, Widget은 원본 모델/조직/즐겨찾기 State 조합, Feature는 캘린더/지도/동의·수명/실패 UI. Entity NoticeCardBody/OrganizationSummary 및 Feature 행동 UI가 기존 Shared 스타일을 조립. root 강제 favorites Observation read 제거; 독립 발견/즐겨찾기/열린 상세 구독 save/remove 자동 테스트 통과.
-
-검증 정본은 [실행 보고서](../../apps/ios/docs/evidence/two-layer-composition/README.md). 최종 strict lint152/0, architecture12, 기존 standalone/cache/busy/detail 및 새 startup retry/Observation PASS. 최종 제품+기존 main checker9 PASS로 두 PR 분리 가능성을 검증했고 새 checker 복원 후12 PASS. Simulator build_run_sim PASS, PID22874, iOS26.5 B04DEBB6-53B1-4CB1-858C-8C290846D4AB, 자기 checkout build/two-layer-derived.
-
-실제 UI 한계: screenshot/AX 첫 화면·최초동의 표시 확인. MCP tap/touch 응답은 성공이지만 화면 미전환, Orca helper SimulatorKit 경로 오류/Simulator 검정 창. Xcode27 업데이트 로컬 환경 문제를 root와 확인했고 시스템 패치/기기 초기화 없이 보존. 실제 탭 저장/삭제·더블탭·페이지 전환·동의 클릭·OS 에디터/지도는 이번 실행 미검증이며 과거 증거를 새 검증으로 주장하지 않음.
-
-커밋: checker d18a27f, root/startup 8de3af7, detail/calendar d454e18, card/native 최종 커밋은 branch log 참조. 세 기능 커밋은 Page/Entity 표시 계약에 상호 의존하므로 전체 묶음으로 통합. 권장 PR1=기능3개+final public-api/docs/tests(기존 main checker 통과 입증), PR2=checker+root 공통정책. worker history는 checker 먼저이므로 root가 기능 커밋부터 선택해 통합한다. 개별 중간 커밋 검증은 주장하지 않는다.
-
-남은 일: root의 최종 리뷰/공통 문서/CI/PR 구성·통합, 정상 Simulator 입력 환경에서 UI 회귀. 현재 dispatch 보고 후 추가 작업 없이 대기.
+Root가 두 커밋을 순서대로 통합하고 사용자 Xcode 설정 보존을 확인한 뒤 공통 문서·CI·push/PR을 진행한다. 기술 정본은 [AppState](../../apps/ios/docs/APP-STATE.md), [snapshot transaction](../../apps/ios/docs/SNAPSHOT-TRANSACTIONS.md), [ARCHITECTURE](../../apps/ios/ARCHITECTURE.md)다. 완료 보고 후 새 지시 전까지 작업하지 않는다.
