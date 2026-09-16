@@ -15,8 +15,10 @@ struct AppTabs<Destination: View>: View {
             }
             Tab("즐겨찾기", systemImage: "heart") {
                 NavigationStack {
-                    FavoriteListView(viewModels: state.favoriteCards, destination: destination)
-                        .toolbar { Button("환경설정", systemImage: "gearshape", action: state.settings.present) }
+                    if let favorites = state.favoriteList {
+                        FavoriteListView(viewModel: favorites, destination: destination)
+                            .toolbar { Button("환경설정", systemImage: "gearshape", action: state.settings.present) }
+                    }
                 }
             }
         }

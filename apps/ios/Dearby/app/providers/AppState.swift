@@ -15,7 +15,7 @@ final class AppState {
     private(set) var snapshotDate = ""
     private(set) var generation = 0
     private(set) var cards: [NoticeCardViewModel] = []
-    private(set) var favoriteCards: [FavoriteOrganizationCardViewModel] = []
+    private(set) var favoriteList: FavoriteOrganizationListViewModel?
     private(set) var loadFailed = false
     var isReady: Bool { generation > 0 }
 
@@ -48,7 +48,9 @@ final class AppState {
             let candidate = try Self.composeSnapshot(snapshot, storage: activeStore, favorites: favorites,
                 organizationSource: makeOrganizationSource(snapshot))
             // No throwing work or suspension after commit: replace caches and presentation together.
-            (notices, organizations, cards, favoriteCards, snapshotDate) = candidate
+            favoriteList?.stopObserving()
+            (notices, organizations, cards, favoriteList, snapshotDate) = candidate
+            favoriteList?.startObserving()
             generation += 1
             loadFailed = false
         } catch {
