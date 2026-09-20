@@ -13,12 +13,11 @@ final class NoticeDetailViewModel {
                 basis: ref.basis, note: ref.note, organizationName: try organizations.organization(ref.organizationId)?.name)
         }
         initial = NoticeDetailState(id: notice.id, title: notice.title, aiDescription: notice.aiDescription,
-            descriptionProvenance: notice.descriptionProvenance, organizationID: notice.favoriteOrganizationId,
+            organizationID: notice.favoriteOrganizationId,
             organizationName: path.last?.name, organizationPath: path.dropLast().map(\.name),
             organizationLinks: try notice.organizationLinks.map(resolve), contexts: try notice.contexts.map(resolve),
             categorySummary: notice.categorySummary, targetUser: notice.targetUser,
-            participationCondition: notice.participationCondition, applicationSummary: notice.applicationInformation.summary,
-            scheduleSummaries: notice.schedules.map { $0.period.summary }, applicationPeriod: NoticeApplicationState(notice: notice).period,
+            participationCondition: notice.participationCondition,
             application: NoticeApplicationState(notice: notice),
             applicationURL: NoticePlaceState.safeOnlineURL(notice.applicationInformation.url),
             schedules: notice.schedules.map(NoticeScheduleState.init), location: notice.location,
