@@ -17,7 +17,8 @@ extension ArchitectureTestSuite {
                 let text = try String(contentsOf: file, encoding: .utf8)
                 let source = SwiftSourceCode(source: text)
                 stateCount += source.structs().filter { $0.name.hasSuffix("State") }.count
-                viewModelCount += source.classes().filter { $0.name.hasSuffix("ViewModel") }.count
+                viewModelCount += (source.classes().map(\.name) + source.structs().map(\.name))
+                    .filter { $0.hasSuffix("ViewModel") }.count
                 if path.hasPrefix("shared/ui/") { sharedUICount += 1 }
                 if path.hasPrefix("entities/") && path.contains("/model/") { domainCount += 1 }
                 let violations = ArchitectureRules.check(path: path, text: text)
@@ -27,7 +28,7 @@ extension ArchitectureTestSuite {
             #expect(viewModelCount > 0)
             #expect(sharedUICount > 0)
             #expect(domainCount > 0)
-            print("Harmonize production: \(files.count) Swift files, \(stateCount) State structs, \(viewModelCount) ViewModel classes")
+            print("Harmonize production: \(files.count) Swift files, \(stateCount) State structs, \(viewModelCount) ViewModel declarations")
         }
 
         struct Fixture: Sendable {
