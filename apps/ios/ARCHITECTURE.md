@@ -22,13 +22,13 @@ widgets/
     ui/              connected NoticeCard, pure NoticeCardContent and local schedule/save/detail action views
     model/           NoticeCardViewModel, NoticeCardState, schedule/place states
   noticeDetail/
-    ui/              detail sections and feature composition
+    ui/              detail sections, identity presentation and feature composition
     model/           NoticeDetailViewModel/State, organization/notice assembly
   favoriteOrganizationCard/
     ui/              connected card, pure FavoriteOrganizationCardContent
     model/           FavoriteOrganizationCardViewModel/State, saved-list ViewModel/index/subscription
 features/
-  saveOrganization/model|ui/       save/remove facade, saved identity and controls
+  saveOrganization/model|ui/       save/remove facade and controls
   addToCalendar/model|api|ui/      draft/date policy, OS editor bridge, add button
   openLocation/api|ui/            exact venue map URL/launcher and button
   checkCalendarOverlap/model|api|ui/ ephemeral busy query/session, authorization/retry UI, EventKit read adapter
@@ -47,7 +47,7 @@ Empty segments are not created. One-use card content stays in its Widget. Indepe
 
 By default only the nearest **two** lower layers may be directly referenced: app→pages/widgets, pages→widgets/features, widgets→features/entities, features→entities/shared, entities→shared. Only `app/providers/` is the composition root exception for constructing, retaining and injecting any lower-layer dependency. `app/routes/` and `app/entrypoint/` obey the two-layer rule, except the exact detail route may pass the exported CalendarPreferences instance into its Page. Routes still reject direct storage/network/OS work and API declarations. Pages/Widgets may use exported Shared UI design components/tokens directly; Shared api/lib/model and blanket imports remain outside that exception. Same-slice UI→Model→API remains allowed; sibling slices remain forbidden. Framework imports such as SwiftUI/Foundation are not FSD layer references. Existing framework safety checks remain.
 
-Provider exceptions never permit unexported internals or UI implementation. AppComposition constructs a Page destination from the shared snapshot and calendar preference owner; the route receives that Page, not inferred access to distant domain operations. Cross-slice typealias/re-export facades are prohibited. Inferred/member/macro/dynamic dependencies still require review.
+Provider exceptions never permit unexported internals or UI implementation. AppComposition constructs shared dependencies. NoticeDestinationView constructs its Page directly using its loaded ViewModel and the App-owned CalendarPreferences; its narrow composition exception does not grant repository or OS access. Cross-slice typealias/re-export facades are prohibited. Inferred/member/macro/dynamic dependencies still require review.
 
 The executable [public-api.json](architecture/public-api.json) names cross-slice contracts. Swift `internal` does not imply permission to reach another slice's internals; `public` is not required to be an FSD entrypoint. NoticeRecord, OrganizationRecord and NoticeStorageCodec are internal. App uses NoticeCacheStorage/OrganizationCacheStorage schema/deletion/fingerprint contracts instead. The checker rejects unknown/duplicate manifest entries and ambiguous declarations.
 
