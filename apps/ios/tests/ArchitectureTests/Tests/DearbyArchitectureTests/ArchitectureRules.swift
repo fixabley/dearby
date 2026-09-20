@@ -55,19 +55,17 @@ enum ArchitectureRules {
             if !structures.contains(where: { $0.name == stem }) {
                 reject("state-name", "file must declare struct \(stem)")
             }
-            for name in names where !name.hasSuffix("State") {
-                reject("state-name", "presentation values in a State file must use the State suffix: \(name)")
-            }
         }
         for name in names where isPresentation && name.hasSuffix("ViewModel") {
-            if !classes.contains(where: { $0.name == name }) {
-                reject("viewmodel-class", "\(name) must be a class")
+            if !classes.contains(where: { $0.name == name }) && !structures.contains(where: { $0.name == name }) {
+                reject("viewmodel-type", "\(name) must be a class or struct matching its ownership")
             }
             let correctLocation = parts.count >= 4 && parts[2] == "model"
             if !correctLocation { reject("viewmodel-location", "\(name) belongs in its slice Model segment") }
         }
-        if isPresentation && stem.hasSuffix("ViewModel"), !classes.contains(where: { $0.name == stem }) {
-            reject("viewmodel-name", "file must declare class \(stem)")
+        if isPresentation && stem.hasSuffix("ViewModel"),
+           !classes.contains(where: { $0.name == stem }) && !structures.contains(where: { $0.name == stem }) {
+            reject("viewmodel-name", "file must declare class or struct \(stem)")
         }
         if path.hasPrefix("shared/ui/") {
             for item in structures where item.modifiers.contains(.public) || item.modifiers.contains(.open) || item.modifiers.contains(.package) {
