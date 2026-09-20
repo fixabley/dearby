@@ -13,7 +13,7 @@ app/
   providers/         snapshot/container/session, calendar preferences, injected provider factories
 pages/
   discovery/ui/      feed paging, save-result feedback, navigation callbacks
-  favorites/ui/      saved organization list
+  favorites/ui/      saved organization list, empty state and storage disclosure
   noticeDetail/
     ui/              NoticeDetailPage: List, navigation title and presentation
   settings/ui/       connection preference presentation
@@ -28,7 +28,7 @@ widgets/
     ui/              connected card, pure FavoriteOrganizationCardContent
     model/           FavoriteOrganizationCardViewModel/State, saved-list ViewModel/index/subscription
 features/
-  saveOrganization/model|ui/       save/remove facade, saved identity, controls and storage disclosure
+  saveOrganization/model|ui/       save/remove facade, saved identity and controls
   addToCalendar/model|api|ui/      draft/date policy, OS editor bridge, add button
   openLocation/api|ui/            exact venue map URL/launcher and button
   checkCalendarOverlap/model|api|ui/ ephemeral busy query/session, authorization/retry UI, EventKit read adapter
