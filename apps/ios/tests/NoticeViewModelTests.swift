@@ -38,7 +38,7 @@ struct NoticeViewModelTests {
         precondition(card.state!.title == krc.title && card.state!.targetUser == krc.targetUser && card.state!.applicationSummary == krc.applicationInformation.summary)
         precondition(detail.state!.organizationPath.isEmpty && detail.state!.contexts[0].label == "행사 관련 기관")
         precondition(detail.state!.applicationURL?.absoluteString == krc.applicationInformation.url)
-        precondition(detail.state!.applicationTime.timeline != nil)
+        precondition(detail.state!.application.time.timeline != nil)
         precondition(detail.state!.organizationLinks.allSatisfy { $0.organizationName != nil })
         precondition(detail.state!.sources.count == reopened.state!.sources.count && detail.state!.evidence.count == model.evidence.count)
         let cardRows = card.state!.schedules
@@ -59,9 +59,9 @@ struct NoticeViewModelTests {
             ("https:///", "https:///"),
             ("", "")
         ] {
-            precondition(NoticeCardViewModel.placeLabel(input) == expected, input)
+            precondition(NoticeCardScheduleState.placeLabel(input) == expected, input)
         }
-        let contestRows = NoticeCardViewModel.scheduleStates(contest)
+        let contestRows = NoticeCardScheduleState.project(contest)
         precondition(contestRows.count == contest.schedule.count + 1)
         for (index, phase) in contest.schedules.enumerated() {
             let row = contestRows[index + 1]
@@ -79,20 +79,22 @@ struct NoticeViewModelTests {
             }
         }
         precondition(!cardRows[0].period.contains("한국 시간"))
-        let foreign = NoticeCardViewModel.period(start: "2026-09-15T14:00:00+09:00", end: "2026-09-15T15:00:00+09:00", timezone: "America/New_York", fallback: "")
+        let foreign = NoticeCardScheduleState.period(start: "2026-09-15T14:00:00+09:00", end: "2026-09-15T15:00:00+09:00", timezone: "America/New_York", fallback: "")
         precondition(foreign.joined().components(separatedBy: "America/New_York").count == 2)
-        let dateOnly = NoticeCardViewModel.period(start: "2026-09-15", end: nil, timezone: nil, fallback: "일정 미확인")
+        let dateOnly = NoticeCardScheduleState.period(start: "2026-09-15", end: nil, timezone: nil, fallback: "일정 미확인")
         precondition(dateOnly == ["2026.9.15 (시간 미확인)부터", "종료 미확인"])
-        precondition(NoticeCardViewModel.period(start: nil, end: "2026-09-16", timezone: nil, fallback: "미확인").first == "시작 미확인")
-        precondition(NoticeCardViewModel.period(start: nil, end: nil, timezone: nil, fallback: "일정 미확인") == ["일정 미확인"])
-        precondition(NoticeCardViewModel.period(start: "2026-09-15T14:00:00+09:00", end: nil, timezone: "Bad/Zone", fallback: "").joined().contains("시간대 확인 필요"))
-        precondition(NoticeCardViewModel.period(start: "2026-09-15T14:00:00+09:00", end: nil, timezone: nil, fallback: "").joined().contains("+09:00"))
-        precondition(NoticeCardViewModel.period(start: "2026-09-17", end: "2026-09-15", timezone: nil, fallback: "").contains("기간 순서 확인 필요"))
-        let boundaries = NoticeCardViewModel.period(start: "2026-09-15T14:00:00+09:00", end: "2026-09-15T15:00:00+09:00", timezone: "Asia/Seoul", fallback: "")
+        precondition(NoticeCardScheduleState.period(start: nil, end: "2026-09-16", timezone: nil, fallback: "미확인").first == "시작 미확인")
+        precondition(NoticeCardScheduleState.period(start: nil, end: nil, timezone: nil, fallback: "일정 미확인") == ["일정 미확인"])
+        precondition(NoticeCardScheduleState.period(start: "2026-09-15T14:00:00+09:00", end: nil, timezone: "Bad/Zone", fallback: "").joined().contains("시간대 확인 필요"))
+        precondition(NoticeCardScheduleState.period(start: "2026-09-15T14:00:00+09:00", end: nil, timezone: nil, fallback: "").joined().contains("+09:00"))
+        precondition(NoticeCardScheduleState.period(start: "2026-09-17", end: "2026-09-15", timezone: nil, fallback: "").contains("기간 순서 확인 필요"))
+        let boundaries = NoticeCardScheduleState.period(start: "2026-09-15T14:00:00+09:00", end: "2026-09-15T15:00:00+09:00", timezone: "Asia/Seoul", fallback: "")
         precondition(boundaries == ["2026.9.15 14:00부터", "2026.9.15 15:00까지"])
         for (index, phase) in model.schedules.enumerated() where phase.period.mode != "online" {
             for place in cardRows[index + 1].places where place.venueIndex != nil {
                 let venue = phase.locations[place.venueIndex!]
+                let routed = card.venue(scheduleIndex: index, venueIndex: place.venueIndex!)
+                precondition(routed?.name == venue.name && routed?.coordinates == venue.coordinates)
                 precondition(place.fields == [venue.name, venue.address].compactMap { $0 }.filter { !$0.isEmpty })
             }
         }
@@ -161,7 +163,7 @@ struct NoticeViewModelTests {
         schedules[0]["onlineUrl"] = fullURL
         urlFixture["schedule"] = schedules
         let urlModel = try JSONDecoder().decode(NoticeModel.self, from: JSONSerialization.data(withJSONObject: urlFixture))
-        let urlRows = NoticeCardViewModel.scheduleStates(urlModel)
+        let urlRows = NoticeCardScheduleState.project(urlModel)
         precondition(urlRows[0].places[0].fields == [address, prose, "apply.example.com", "online.example.com"])
         precondition(urlRows[1].places[0].fields == ["온라인", "online.example.com"])
         precondition(urlModel.applicationInformation.url == fullURL && urlModel.schedule[0].onlineUrl == fullURL)

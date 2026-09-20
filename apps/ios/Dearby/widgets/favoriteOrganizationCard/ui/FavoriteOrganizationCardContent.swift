@@ -6,23 +6,12 @@ struct FavoriteOrganizationCardContent<Destination: View>: View {
     @ViewBuilder let destination: (String) -> Destination
 
     var body: some View {
-        Section {
-            if !state.ancestorNames.isEmpty {
-                InformationRow(title: "상위 조직", value: state.ancestorNames, systemImage: "building.2")
-            }
-            if state.notices.isEmpty {
-                StatusMessage(text: "현재 연결된 공고가 없어요", systemImage: "doc.text")
-            }
+        OrganizationSummary(name: state.name, ancestors: state.ancestorNames, noticeCount: state.notices.count) {
             ForEach(state.notices) { notice in
                 NavigationLink {
                     destination(notice.id)
                 } label: {
-                    VStack(alignment: .leading, spacing: NativeSpacing.compact) {
-                        Text(notice.title).font(.body)
-                        NoticeClassificationView(category: notice.category,
-                                                 contextNames: notice.contextNames)
-                    }
-                    .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                    NoticePreviewLabel(title: notice.title, category: notice.category, contextNames: notice.contextNames)
                 }
             }
             Button(role: .destructive, action: remove) {
@@ -31,14 +20,6 @@ struct FavoriteOrganizationCardContent<Destination: View>: View {
             }
             .accessibilityLabel("\(state.name) 즐겨찾기에서 삭제")
             .accessibilityIdentifier("remove.\(state.id)")
-        } header: {
-            Text(state.name).font(.headline)
-                .foregroundStyle(.primary)
-                .textCase(nil)
-        } footer: {
-            if !state.notices.isEmpty {
-                Text("연결된 공고 \(state.notices.count)개")
-            }
         }
     }
 }

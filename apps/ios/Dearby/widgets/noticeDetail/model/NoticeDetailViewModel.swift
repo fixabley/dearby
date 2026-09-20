@@ -1,10 +1,12 @@
 @MainActor
 final class NoticeDetailViewModel {
+    let notice: NoticeModel?
     private let favorites: FavoriteOrganizations
     private let initial: NoticeDetailState?
     init(id: String, notices: NoticeRepository, organizations: OrganizationRepository, favorites: FavoriteOrganizations) throws {
         self.favorites = favorites
-        guard let notice = try notices.notice(id) else { initial = nil; return }
+        notice = try notices.notice(id)
+        guard let notice else { initial = nil; return }
         let path = try organizations.path(to: notice.favoriteOrganizationId)
         func resolve(_ ref: NoticeContext) throws -> NoticeInstitutionState {
             NoticeInstitutionState(organizationID: ref.organizationId, role: ref.role, label: ref.label,
@@ -16,12 +18,8 @@ final class NoticeDetailViewModel {
             organizationLinks: try notice.organizationLinks.map(resolve), contexts: try notice.contexts.map(resolve),
             categorySummary: notice.categorySummary, targetUser: notice.targetUser,
             participationCondition: notice.participationCondition, applicationSummary: notice.applicationInformation.summary,
-            scheduleSummaries: notice.schedules.map { $0.period.summary }, applicationPeriod: CompactPeriod.period(start: notice.applicationInformation.opensAt ?? notice.applicationInformation.opensOn,
-                end: notice.applicationInformation.closesAt ?? notice.applicationInformation.closesOn,
-                timezone: notice.applicationInformation.timezone, fallback: notice.applicationInformation.summary),
-            applicationTime: EventPeriodPresentation(startsAt: notice.applicationInformation.opensAt,
-                startsOn: notice.applicationInformation.opensOn, endsAt: notice.applicationInformation.closesAt,
-                endsOn: notice.applicationInformation.closesOn, timezone: notice.applicationInformation.timezone),
+            scheduleSummaries: notice.schedules.map { $0.period.summary }, applicationPeriod: NoticeApplicationState(notice: notice).period,
+            application: NoticeApplicationState(notice: notice),
             applicationURL: NoticePlaceState.safeOnlineURL(notice.applicationInformation.url),
             schedules: notice.schedules.map(NoticeScheduleState.init), location: notice.location,
             benefits: notice.benefits, qualityIssues: notice.qualityIssues, edition: notice.edition,
