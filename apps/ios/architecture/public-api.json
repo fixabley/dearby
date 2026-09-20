@@ -127,8 +127,5 @@
     "FavoriteOrganizationCardState",
     "FavoriteOrganizationCardViewModel",
     "FavoriteOrganizationListViewModel"
-  ],
-  "features/openNoticeDetails": [
-    "NoticeDetailsButton"
   ]
 }

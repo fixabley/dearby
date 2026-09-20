@@ -19,7 +19,7 @@ pages/
   settings/ui/       connection preference presentation
 widgets/
   noticeCard/
-    ui/              connected NoticeCard, pure NoticeCardContent and local schedule/save views
+    ui/              connected NoticeCard, pure NoticeCardContent and local schedule/save/detail action views
     model/           NoticeCardViewModel, NoticeCardState, schedule/place states
   noticeDetail/
     ui/              detail sections and feature composition
@@ -29,7 +29,6 @@ widgets/
     model/           FavoriteOrganizationCardViewModel/State, saved-list ViewModel/index/subscription
 features/
   saveOrganization/model|ui/       save/remove facade, saved identity, controls and storage disclosure
-  openNoticeDetails/ui/           notice-specific detail action with route callback
   addToCalendar/model|api|ui/      draft/date policy, OS editor bridge, add button
   openLocation/api|ui/            exact venue map URL/launcher and button
   checkCalendarOverlap/model|api|ui/ ephemeral busy query/session, authorization/retry UI, EventKit read adapter
@@ -52,7 +51,7 @@ Provider exceptions never permit unexported internals or UI implementation. AppC
 
 The executable [public-api.json](architecture/public-api.json) names cross-slice contracts. Swift `internal` does not imply permission to reach another slice's internals; `public` is not required to be an FSD entrypoint. NoticeRecord, OrganizationRecord and NoticeStorageCodec are internal. App uses NoticeCacheStorage/OrganizationCacheStorage schema/deletion/fingerprint contracts instead. The checker rejects unknown/duplicate manifest entries and ambiguous declarations.
 
-Entity UI may receive its own Model. shared/Entity UI and presentation declarations registered in `architecture/pure-ui.json` are pure: values/callbacks only, no repository/storage/network/OS work. Widget/Page connected UI may access its own VM and lower-layer public contracts. Shared has no upper-domain dependencies. Shared controls/tokens remain below meaningful Entity/Feature UI: NoticeCardBody, OrganizationSummary, NoticePreviewLabel, NoticeSourceSection, save controls and NoticeDetailsButton. Widget State retains cross-domain composition and saved values; pure entity UI receives notice-only display values and slots/callbacks. Page canvas uses the native SwiftUI system background. The concrete policy and checker limits are in [architecture/README](architecture/README.md).
+Entity UI may receive its own Model. shared/Entity UI and presentation declarations registered in `architecture/pure-ui.json` are pure: values/callbacks only, no repository/storage/network/OS work. Widget/Page connected UI may access its own VM and lower-layer public contracts. Shared has no upper-domain dependencies. Shared controls/tokens remain below meaningful Entity/Feature UI: NoticeCardBody, OrganizationSummary, NoticePreviewLabel, NoticeSourceSection, save controls. NoticeDetailsButton stays in its owning noticeCard Widget. Widget State retains cross-domain composition and saved values; pure entity UI receives notice-only display values and slots/callbacks. Page canvas uses the native SwiftUI system background. The concrete policy and checker limits are in [architecture/README](architecture/README.md).
 
 ## State and lifetime
 
