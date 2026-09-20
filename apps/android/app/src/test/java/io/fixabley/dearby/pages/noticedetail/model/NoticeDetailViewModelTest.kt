@@ -10,7 +10,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class NoticeDetailViewModelTest {
-    @Test fun viewModelJoinsIdsRetainsEvidenceAndSeparatesOnlineFromFinalVenue() {
+    @Test fun viewModelJoinsDisplayNamesPreservesSourceAndSeparatesOnlineFromFinalVenue() {
         val source = io.fixabley.dearby.entities.notice.model.NoticeSource("source", "https://example.org", "web", null, null, null)
         val evidence = NoticeEvidence("source", "일정", "schedule[0]", source.url)
         val model = noticeFixture().copy(contexts = listOf(NoticeContext("parent", "event_context")),
@@ -27,8 +27,12 @@ class NoticeDetailViewModelTest {
         assertEquals("선택 조직", state.organizationName)
         assertEquals(listOf("상위"), state.ancestorNames)
         assertEquals("행사 관련 기관", state.contexts.single().label)
-        assertEquals("parent", state.contexts.single().organizationId)
-        assertEquals(listOf(source), state.sources); assertEquals(listOf(evidence), state.evidence)
+        assertEquals("상위", state.contexts.single().name)
+        // Evidence remains in the independent source/codec, not a second UI projection.
+        val stored = NoticeStorageCodec.decode(NoticeStorageCodec.encode(notices.find(model.id)!!))
+        assertEquals(model, stored)
+        assertEquals(listOf(source), stored.sources); assertEquals(listOf(evidence), stored.evidence)
+        assertEquals("parent", stored.contexts.single().organizationId)
         assertTrue(state.schedules.first().locations.isEmpty())
         assertEquals("결선 장소", state.schedules.last().locations.single().name)
         assertEquals(2, reads)

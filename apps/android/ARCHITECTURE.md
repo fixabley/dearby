@@ -109,7 +109,7 @@ shared/ui/
 
 NoticeModel에는 선택 조직 ID와 contexts/organizationLinks의 명시적 역할 ID만 있다. 조직 이름·객체·경로·전체 트리는 없다. 부모가 있는 선택 노드를 전역 leaf로 바꾸지 않고 기존 관심 대상 ID를 유지한다. 조직 record는 별도로 보관하고 VM이 두 저장소를 조합한다. State의 조직 이름/조상 이름/해석한 역할은 렌더링 값이며 영속 공고 데이터가 아니다. View는 전체 NoticeModel이나 저장소를 받지 않는다. 의미 있는 작은 기간·장소·출처 값과 immutable CalendarDraft는 State/내부 UI 입력에 사용한다.
 
-NoticeModel은 title, aiDescription, targetUser, participationCondition, applicationInformation, schedules, location, benefits/issues, sourceURL/sources/evidence를 보존한다. aiDescription은 기존 검토 sample summary이며 provenance `reviewed_sample_summary`로 표시하고 새로운 AI 생성이라고 주장하지 않는다. 원본 출처 id/url/kind/checkedAt/access/note, 근거 sourceId/locator/fieldPath/sourceURL을 실제 디코딩한다. 모르는 URL은 null이며 사실을 만들지 않는다. 원본 rich JSON은 변경하지 않고 앱 표시 필드만 평탄화한다.
+NoticeModel은 title, aiDescription, targetUser, participationCondition, applicationInformation, schedules, location, benefits/issues, sourceURL/sources/evidence를 보존한다. aiDescription은 기존 검토 sample summary이며 원본 provenance `reviewed_sample_summary`를 보존하고 새로운 AI 생성이라고 주장하지 않는다. 원본 출처 id/url/kind/checkedAt/access/note, 근거 sourceId/locator/fieldPath/sourceURL을 실제 디코딩한다. 모르는 URL은 null이며 사실을 만들지 않는다. 원본 rich JSON은 변경하지 않고 앱 표시 필드만 평탄화한다.
 
 NoticeSnapshot/Reader는 App 경계에서 기존 번들을 두 독립 모델 목록으로 읽는 transport 조합이다. UI 입력이나 별도 공고 Entity가 아니다. 모델 생성자는 I/O/조회가 없는 순수 데이터다.
 
@@ -206,3 +206,9 @@ Shared DayTimeline은 LocalDate/범용 구간만 받는다. 본문 Primary 활�
 NoticeCardState는 실제 렌더링하는 식별/분류/대상/이슈/조직/저장 여부와 CardScheduleState 목록만 가진다. 미사용 applicationSummary/locationSummary/applicationDateText와 그 계산을 제거했다. 신청·활동 날짜/장소는 기존 cardSchedules→CardScheduleRow에서 그대로 표시하며 원본 모델과 codec은 바꾸지 않는다. 큰 글자 native 버튼/카드 일정 계측 fixture도 같은 입력 계약을 사용한다.
 
 카드 변경 검증(2026-09-20): JVM 전체, Debug/계측 APK, lintDebug(오류 0/경고 13), FSD 101파일/자체회귀 24 통과. 기록: 로컬 `build-design-simplification.log`. 기기 계측은 후속 최종 변경에서 실행한다. 변경 diff Ponytail 리뷰에서 추가 삭제 후보 없음; 날짜/장소 하위 UI와 공유 즐겨찾기 관찰 경계는 유지한다.
+
+### 상세 표시 계약
+
+상세 State는 UI에서 사용하지 않는 descriptionProvenance/categoryPath/relatedOrganizations/sources/evidence를 복사하지 않는다. 조직 context는 표시 label/name만 조립하며 원본 organizationId/role은 NoticeModel에 남는다. 원문 URL·설명·조직·분류·일정/장소·캘린더 입력과 공유 saved 관찰은 유지한다. 출처/근거 검증은 NoticeRepository의 원본→NoticeStorageCodec roundtrip 및 canonical 번들 모델에 적용한다. 저장 필드를 제거하거나 UI에서 원본 전체를 조회하지 않는다.
+
+상세 변경 검증(2026-09-20): JVM79/계측 APK/FSD101·자체회귀24 통과(`build-design-detail.log`). Ponytail diff 리뷰에서 추가 전달층/중복 투영 없음. saved는 화면 간 동기화 계약이므로 유지했다.
