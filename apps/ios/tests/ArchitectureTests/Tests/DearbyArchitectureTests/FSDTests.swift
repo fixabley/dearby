@@ -17,7 +17,10 @@ extension ArchitectureTestSuite {
                 #expect(sources[canonical] == nil, "duplicate production path \(canonical)")
                 sources[canonical] = try String(contentsOf: file, encoding: .utf8)
             }
-            let errors = FSDBoundaries.check(sources: sources, exports: exports)
+            let pureUI = try JSONDecoder().decode([String].self,
+                from: Data(contentsOf: ios.appendingPathComponent("architecture/pure-ui.json")))
+            #expect(!pureUI.isEmpty, "[pure-ui-contract] production must register its pure presentation components")
+            let errors = FSDBoundaries.check(sources: sources, exports: exports, pureUI: pureUI)
             #expect(errors.isEmpty, "\(errors.map(\.description).joined(separator: "\n"))")
         }
 
@@ -61,7 +64,7 @@ extension ArchitectureTestSuite {
                 ("app/providers/Dependencies.swift", "NoticeRepository"),
             ]
             for (path, name) in allowed {
-                #expect(FSDBoundaries.check(sources: declarations.merging([path: "struct Consumer { let value: \(name) }"]) { _, new in new }, exports: exports).isEmpty)
+                #expect(FSDBoundaries.check(sources: declarations.merging([path: "struct Consumer { let value: \(name) }"]) { _, new in new }, exports: exports, pureUI: path.hasSuffix("CardContent.swift") ? ["Consumer"] : []).isEmpty)
             }
             let forbidden: [(String, String, String)] = [
                 ("pages/detail/ui/Detail.swift", "NoticeRepository", "fsd-distant"),
@@ -78,7 +81,7 @@ extension ArchitectureTestSuite {
                 ("entities/notice/ui/Bad.swift", "URLSession", "pure-ui-effect"),
             ]
             for (path, name, rule) in forbidden {
-                let errors = FSDBoundaries.check(sources: declarations.merging([path: "struct Consumer { let value: \(name) }"]) { _, new in new }, exports: exports)
+                let errors = FSDBoundaries.check(sources: declarations.merging([path: "struct Consumer { let value: \(name) }"]) { _, new in new }, exports: exports, pureUI: path.hasSuffix("CardContent.swift") ? ["Consumer"] : [])
                 #expect(errors.contains { $0.rule == rule }, "\(path) → \(name): \(errors)")
             }
             #expect(FSDBoundaries.check(sources: ["shared/ui/Label.swift": "struct Label { let text = \"UserDefaults NoticeModel\" } // URLSession"], exports: [:]).isEmpty)

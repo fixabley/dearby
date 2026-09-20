@@ -1,5 +1,5 @@
 # iOS 담당
 
-2026-09-20 기존 설계 규칙 재검토 완료, 구현 미착수. 자기 HEAD `75ca705`의 실제 caller/line을 확인하여 State 미사용 필드·전달 팩토리·내부 전용 export·표시 UI 배치·상세 버튼 Feature의 5개 후보와 필요한 검증을 [iOS 인계](../context/ios-implementation-and-handoff.md)에 기록했다. Repository/캐시/개인 결과/권한 수명 책임은 유지하고 거리·파일명 규칙은 수단으로 재평가했다.
+2026-09-20 승인된 설계 단순화 구현·검증 완료. 미사용 표시필드/export, 좁은 Shared·상세 조립 예외, 명시적 pure UI 계약, State 보조타입/값형 VM 검사, 카드·즐겨찾기·상세 표시 귀속을 기능별 커밋으로 구현했다. [iOS 인계](../context/ios-implementation-and-handoff.md)에 현재 커밋/Dispatch와 재개 지점을 기록했다.
 
-이번 변경은 역할 문서 2개뿐이며 앱/테스트 코드·공통 정책·다른 checkout 수정 및 커밋/push/PR은 없다. 새 빌드·lint·architecture·회귀·UI 검증은 실행하지 않았다. 2026-09-16 검증 기록은 이전 실행이다. Root가 공통 정책과 적용 승인을 조율하며 worker는 완료 보고 후 세션을 유지한다.
+이번 standalone/busy/detail/architecture16/production gate/strict lint161파일 위반0 및 Simulator build/install/launch 성공. 발견 AX snapshot은 확인했으나 입력 후 전환 확인 실패·Simulator 소실로 상세/즐겨찾기 UI smoke와 큰 글자/VoiceOver·실제 권한은 미검증이다. worker는 자기 checkout만 변경했고 push/PR/merge는 Root 담당, 완료 후 세션 유지.
