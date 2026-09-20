@@ -1,10 +1,27 @@
 # iOS 구현 인계
 
-## 현재 — 승인된 설계 단순화 구현 중
+## 현재 — 승인된 설계 단순화 구현·검증 완료
 
-2026-09-20 KST: `75ca705`에서 `feat/ios-design-simplification` 생성, 기존 미커밋 검토 문서 보존. 새 task `task_5680a3ed1580`, dispatch `ctx_77f89952ed32`, terminal `term_13ba3b4a-9172-4a99-bff8-485358963ea0`. 자기 apps/ios와 역할 문서만 수정하며 commit 승인, push/PR/merge는 Root 담당이다. 새 승인 좁은 예외가 오래된 모든 하위 허용 문구보다 우선한다.
+2026-09-20 KST: 자기 `dearby-ios-architecture-tests`, `75ca705`에서 만든 `feat/ios-design-simplification`에서 구현했다. 기존 미커밋 검토 기록은 아래 보존했다. task `task_5680a3ed1580`, dispatch `ctx_77f89952ed32`, terminal `term_13ba3b4a-9172-4a99-bff8-485358963ea0`; 재개 시 Git/Orca를 다시 확인한다. 자기 apps/ios·역할 문서만 수정했으며 worker push/PR/merge 및 다른 checkout 쓰기는 없다. Root가 공통 정책·통합을 맡는다. 새 승인 좁은 예외가 과거의 모든 하위 허용 문구보다 우선한다.
 
-공통 선행 변경은 공개 Shared UI의 Pages/Widgets 직접참조, 명시적 pure UI 선언 계약, State 보조타입 접미사 강제 완화다. 컴포넌트 이동에 필요한 검사 기반이므로 별도 선행 커밋으로 묶는다. 현재 실제 VM은 공유 참조/Observation/구독 수명이 있어 class를 유지하되 선언 검사는 class/struct를 허용한다. 주타입/파일명/model 위치는 검사하며 enum/actor를 새로 허용하지 않는다. 선행 표시필드/export 커밋 `920b6bf`는 standalone 전체 exit0으로 Root에 전달했다. 정책 최종 architecture16 tests/5 suites와 확장 production gate(exit0)를 실행했다. strict lint는 VM 소유형식 조정 전 1차 exit0이며 최종 재실행 예정이다. 정책 로그 `/tmp/dearby-simplification-policy-{architecture,gate,lint}.log`; empty/stale 계약, rename 후 pure 위반, Shared 비표시/route OS/provider 내부·UI 위반 거절 및 원상복구를 확인했다. 최종 빌드/UI는 아직 미실행이며 이전 PASS는 재사용하지 않는다.
+### 최종 변경과 커밋
+
+- `920b6bf`: 카드3/상세4 미사용 표시필드, 내부 전용 export3 제거. 원본 Model/cache/source/evidence는 보존한다.
+- `0b40f1a`: 컴포넌트 이동에 필요한 공통 선행 검사 계약. Pages/Widgets→공개 shared/ui만 허용하며 Shared lib/api/model·전체 import는 열지 않는다. exact NoticeDestinationView→CalendarPreferences 조립 예외와 route OS/API 거절을 추가했다. pure-ui.json은 선언명 기반의 명시적 pure 계약이며 Entity/Shared UI 기본 순수성과 실제 Widget pure파일 보호를 유지한다. State 보조타입 접미사 의무는 없애고 주 State struct/이름/model 위치는 유지한다. VM 선언은 class/struct를 허용하되 기존 실제 공유/Observation/구독 소유 VM 구현은 유지한다.
+- `03518dd`: NoticeDetailsButton을 noticeCard 로컬 UI로 이동. 별도 파일·문구·AX identifier·callback·native button style 유지.
+- `5198b2d`: SavedOrganizationList를 favorites Page로 이동. 빈 목록/실패 구분 및 기기 저장 안내 유지.
+- `d60f7e8`: Root 리뷰 반영, production VM 집계도 class/struct를 동일하게 취급한다.
+- 마지막 상세 기능 커밋: NoticeIdentityView/State/InstitutionState를 noticeDetail Widget으로 이동하고 public-api에서 제거했다. AppComposition.detailPage 전달 factory를 없애고 route에서 Page를 직접 생성한다. route state/task·ID/generation·권한/개인 결과/저장소 수명은 바꾸지 않았다. 최종 SHA는 Git log/완료 보고를 따른다.
+
+### 이번에 실행한 검증과 한계
+
+standalone/busy/detail/architecture(16 tests·5 suites)/production negative gate 모두 exit0, strict SwiftLint161파일 위반0, diff 검사 통과. SwiftLint 설치도 고정 버전·체크섬을 확인했다. 로그 `/tmp/dearby-simplification-final-{standalone,busy,detail,architecture,gate,lint}.log`. 저장복원·실패보존·원자적 snapshot 교체·단일 즐겨찾기·지연상세·권한/취소/late result 회귀가 포함된다. gate는 마지막 VM 집계만 수정하기 전 실행이며 최종 전체 architecture/lint는 그 후 통과했다.
+
+Simulator build/install/launch 성공: 자기 project/scheme Dearby, Debug, iOS26.5 B04DEBB6-53B1-4CB1-858C-8C290846D4AB, derivedData `apps/ios/build/design-simplification-derived`. 발견 화면 AX snapshot에서 신청/행사 날짜, 저장 복원, 상세 버튼 ID/문구를 확인했다. 상세 tap 뒤 같은 screen hash가 남았고 후속 favorites tap 뒤 simulator-not-found 오류가 발생했다. 실시간 inventory에서도 해당 UDID가 없어졌으며 원인은 확인하지 않았다. **상세 탭/즐겨찾기 UI 변화·큰 글자/VoiceOver 순회·실제 OS 권한/개인 캘린더는 이번 통과로 주장하지 않는다.** worker는 Simulator 삭제/재생성을 하지 않았다. 앱 코드는 성공한 빌드 이후 변경하지 않았다.
+
+구체 검증·build log·UI 한계·ponytail 구현 diff 재검토는 [단순화 보고서](../../apps/ios/docs/DESIGN-SIMPLIFICATION.md)에 기록했다. 불필요한 추가 삭제 근거는 없었고 절감 수치를 추정하지 않았다. pure 계약의 새 항목 등록 누락 및 inferred member effect는 문법 검사만으로 자동 판별하지 못하므로 리뷰가 필요하다. 빈 목록·존재하지 않는 선언·중복·파일 rename 후 위반은 자동 검사한다.
+
+Root는 PR32 선행 통합 및 정책/컴포넌트 커밋 통합을 진행 중이라고 CLI로 알려왔다(원격 독립 조회는 하지 않음). 나머지 커밋 검토·push/PR/merge와 가능한 환경에서 실제 UI 재검증은 Root가 이어간다. worker는 완료 보고 후 세션을 유지하고 다음 지시를 기다린다.
 
 ## 이전 검토 — 구현 승인 전 기록
 

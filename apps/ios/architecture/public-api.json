@@ -70,10 +70,7 @@
     "FavoriteOrganizations",
     "FavoriteOrganizationsObservation",
     "SaveOrganizationResult",
-    "NoticeCardSaveButton",
-    "NoticeIdentityState",
-    "NoticeInstitutionState",
-    "NoticeIdentityView"
+    "NoticeCardSaveButton"
   ],
   "pages/discovery": [
     "DiscoveryView"
