@@ -1,6 +1,6 @@
 # Git·Orca 현재 상태
 
-2026-09-20 20:50 KST: 메인 root는 refactor/android-design-simplification 통합 중이며 PR27~33 병합 완료(origin/main77fe4c0). Android ctx_1d90d191c0f4 / term_dda3f25d-2d72-4efc-9c17-59970971ee35가 메인 하위 dearby-android-design-simplification에서 구현·검증 중. iOS ctx_77f89952ed32 / term_13ba3b4a-9172-4a99-bff8-485358963ea0는 086fd94 완료·retained·ack.
+2026-09-20 21:03 KST: 메인 root는 refactor/android-design-simplification 통합했으며 PR27~33 병합 완료(origin/main77fe4c0). Android ctx_1d90d191c0f4 / term_dda3f25d-2d72-4efc-9c17-59970971ee35가 메인 하위 dearby-android-design-simplification에서 da43846 구현·검증 완료·retained·delivery ack. iOS ctx_77f89952ed32 / term_13ba3b4a-9172-4a99-bff8-485358963ea0는 086fd94 완료·retained·ack.
 
 기획 전용 메인 하위 dearby-product-replanning / fixabley/dearby-product-replanning / term_f6c5228d-4e3c-4873-a4aa-a9d1011c93fe를 생성·활성화하고 prompt 수신 응답을 확인했다. 사용자가 직접 Socrates 인터뷰를 이어가는 세션으로 감독 worker 완료를 기다리지 않는다. runtime f311bec3-cb3a-46db-b79e-2dbf2412ee06, Run run_58f7d03f4deb. 최신 범위·다음 행동은 조율 문서를 따른다. 아래는 과거 기록이다.
 
