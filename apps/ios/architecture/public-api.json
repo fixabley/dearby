@@ -70,6 +70,7 @@
   ],
   "features/saveOrganization": [
     "FavoriteOrganizations",
+    "FavoriteOrganizationsObservation",
     "SaveOrganizationResult",
     "NoticeCardSaveButton",
     "NoticeIdentityState",
@@ -127,7 +128,8 @@
   "widgets/favoriteOrganizationCard": [
     "FavoriteOrganizationCard",
     "FavoriteOrganizationCardState",
-    "FavoriteOrganizationCardViewModel"
+    "FavoriteOrganizationCardViewModel",
+    "FavoriteOrganizationListViewModel"
   ],
   "features/openNoticeDetails": [
     "NoticeDetailsButton"

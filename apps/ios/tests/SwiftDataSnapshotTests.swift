@@ -32,7 +32,7 @@ struct SwiftDataSnapshotTests {
             precondition(session.cards.count == snapshot.feedIDs.count && session.snapshotDate == snapshot.snapshotAt)
             let count = try store.context.fetchCount(FetchDescriptor<NoticeRecord>())
             precondition(count == snapshot.feedIDs.count)
-            precondition(session.favoriteCards.compactMap(\.state).map(\.id) == ["db-insurance"])
+            precondition(session.favoriteList!.cards.compactMap(\.state).map(\.id) == ["db-insurance"])
         }
         let store = try SwiftDataSnapshotStore(url: url)
         let persistedManifest = try store.manifest()!
@@ -45,11 +45,9 @@ struct SwiftDataSnapshotTests {
         let oldCards = try persistedManifest.feedIDs.map {
             try NoticeCardViewModel(id: $0, notices: oldNotices, organizations: oldOrganizations, favorites: favorites)
         }
-        let oldFavorites = try persistedManifest.organizationIDs.map {
-            try FavoriteOrganizationCardViewModel(id: $0, noticeIDs: persistedManifest.feedIDs,
-                notices: oldNotices, organizations: oldOrganizations, favorites: favorites)
-        }
-        precondition(oldFavorites.compactMap(\.state).map(\.id) == ["db-insurance"])
+        let oldFavorites = try FavoriteOrganizationListViewModel(organizationIDs: persistedManifest.organizationIDs,
+            feedIDs: persistedManifest.feedIDs, notices: oldNotices, organizations: oldOrganizations, favorites: favorites)
+        precondition(oldFavorites.cards.compactMap(\.state).map(\.id) == ["db-insurance"])
         precondition(noExternalNotice.calls == 0 && noExternalOrganization.calls == 0)
         let oldFirst = oldCards[0].state!
         let removedID = oldCards[1].state!.id

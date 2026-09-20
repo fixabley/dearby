@@ -44,5 +44,5 @@ swiftc -D DEBUG -swift-version 6 -parse-as-library "${notice[@]}" "${organizatio
   apps/ios/Dearby/app/providers/PreviewBusyCalendarProvider.swift \
   apps/ios/Dearby/app/providers/AppState.swift apps/ios/Dearby/app/providers/AppSnapshotComposition.swift \
   apps/ios/Dearby/app/routes/NoticeDetailRouteState.swift \
-  apps/ios/tests/AppStateTests.swift apps/ios/tests/AppStateLifecycleTests.swift -o apps/ios/build/dearby-startup-tests
+  apps/ios/tests/AppStateTests.swift apps/ios/tests/AppStateLifecycleTests.swift apps/ios/tests/AppFavoriteListTests.swift -o apps/ios/build/dearby-startup-tests
 apps/ios/build/dearby-startup-tests apps/ios/Dearby/resources/activity-samples.json

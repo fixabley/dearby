@@ -5,6 +5,7 @@ import Synchronization
 @main
 struct AppStateTests {
     @MainActor static func main() throws {
+        try testFavoriteList(data: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
         try testLifecycle(data: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
         let snapshot = try JSONDecoder().decode(BundleSnapshot.self,
             from: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
@@ -30,26 +31,38 @@ struct AppStateTests {
         precondition(appState.settings.preferences === preferences)
         let card = appState.cards.first { $0.state?.organizationName != nil }!
         let detail = try appState.makeDetailViewModel(card.id)!
+        let parentChanges = Mutex(0)
+        let visibleIDs = appState.cards.filter(\.isDisplayable).map(\.id)
+        withObservationTracking {
+            _ = appState.cards.filter(\.isDisplayable).map(\.id)
+        } onChange: { parentChanges.withLock { $0 += 1 } }
         let discoveryChanges = Mutex(0)
         let favoritesChanges = Mutex(0)
         let detailChanges = Mutex(0)
         withObservationTracking { _ = card.state?.saved } onChange: { discoveryChanges.withLock { $0 += 1 } }
-        withObservationTracking { _ = appState.favoriteCards.filter { $0.state != nil } } onChange: { favoritesChanges.withLock { $0 += 1 } }
+        withObservationTracking { _ = appState.favoriteList!.cards.filter { $0.state != nil } } onChange: { favoritesChanges.withLock { $0 += 1 } }
         withObservationTracking { _ = detail.state?.saved } onChange: { detailChanges.withLock { $0 += 1 } }
         _ = card.save()
         precondition(discoveryChanges.withLock { $0 } == 1 && favoritesChanges.withLock { $0 } == 1 && detailChanges.withLock { $0 } == 1)
         precondition(card.state?.saved == true && detail.state?.saved == true)
-        let savedCard = appState.favoriteCards.first { $0.state != nil }!
+        precondition(parentChanges.withLock { $0 } == 0)
+        precondition(appState.cards.filter(\.isDisplayable).map(\.id) == visibleIDs)
+        let savedCard = appState.favoriteList!.cards.first { $0.state != nil }!
         withObservationTracking { _ = card.state?.saved } onChange: { discoveryChanges.withLock { $0 += 1 } }
-        withObservationTracking { _ = appState.favoriteCards.filter { $0.state != nil } } onChange: { favoritesChanges.withLock { $0 += 1 } }
+        withObservationTracking { _ = appState.favoriteList!.cards.filter { $0.state != nil } } onChange: { favoritesChanges.withLock { $0 += 1 } }
         withObservationTracking { _ = detail.state?.saved } onChange: { detailChanges.withLock { $0 += 1 } }
         savedCard.remove()
         precondition(discoveryChanges.withLock { $0 } == 2 && favoritesChanges.withLock { $0 } == 2 && detailChanges.withLock { $0 } == 2)
         precondition(card.state?.saved == false && detail.state?.saved == false && savedCard.state == nil)
+        precondition(parentChanges.withLock { $0 } == 0)
+        precondition(appState.cards.filter(\.isDisplayable).map(\.id) == visibleIDs)
+        let missingCard = try NoticeCardViewModel(id: "missing", notices: appState.notices!, organizations: appState.organizations!, favorites: favorites)
+        precondition(!missingCard.isDisplayable && missingCard.state == nil)
+        precondition((appState.cards + [missingCard]).filter(\.isDisplayable).map(\.id) == visibleIDs)
         precondition(card.venue(scheduleIndex: -1, venueIndex: 0) == nil)
         precondition(card.venue(scheduleIndex: 0, venueIndex: -1) == nil)
         precondition(card.venue(scheduleIndex: 999, venueIndex: 0) == nil)
-        print("PASS: startup storage failure/retry, source failure retains storage, success idempotent; independent discovery/favorites/open-detail Observation save+remove; invalid map indices")
+        print("PASS: startup storage failure/retry, source failure retains storage, success idempotent; parent membership has zero saved Observation while card/favorites/open-detail save+remove observe immediately; stable visible IDs/count and missing-card filtering; invalid map indices")
     }
 }
 

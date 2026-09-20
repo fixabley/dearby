@@ -1,6 +1,6 @@
 # iOS 구현 인계
 
-## 진행 — 상태 수명·즐겨찾기 목록·발견 관찰 분리
+## 완료 — 상태 수명·즐겨찾기 목록·발견 관찰 분리
 
 2026-09-16 KST: 자기 `dearby-ios-architecture-tests`의 `7f3e3c3`에서 `feat/ios-state-lifecycles` 생성. 기존 미커밋 검토 기록은 이번 승인 구현으로 갱신한다. terminal `term_e6d174b0-3d53-4fae-ac33-1f4b0d2ac42d`, task `task_6bf555ab4911`, dispatch `ctx_2fb2d4ca0526`; 재개 시 실시간 상태 재확인. 자기 apps/ios·역할 문서만 수정하며 root Xcode 설정/다른 checkout/공통 규칙은 건드리지 않는다.
 
@@ -10,13 +10,29 @@
 
 이번 busy 회귀 통과: background 알림, 늦은 authorization/query/grant, inactive 권한 dialog, 초기 background, 알림/재개당 조회1회, 취소된 쿼리 수, detach. 로그 `/tmp/dearby-lifecycles-calendar.log`. standalone도 exit0(`/tmp/dearby-lifecycles-calendar-standalone.log`). architecture12 tests·production gate·detail exit0, strict SwiftLint157파일 위반0. 로그 `/tmp/dearby-lifecycles-calendar-{architecture,gate,detail,lint}.log`. Simulator build는 gate 원상복구 뒤 자기 project/scheme·iOS26.5·derivedData `apps/ios/build/state-lifecycles-derived`에서 재확인 성공. 실제 UI 입력은 미검증. 기술 문서는 [캘린더 수명](../../apps/ios/docs/CALENDAR-LIFECYCLE.md).
 
-### 다음 작업
+### 즐겨찾기 목록 — 구현·검증 완료
 
-저장 조직 중심 목록 조립/조직별 인덱스와 발견 부모 관찰 분리를 각 기능 테스트·문서와 묶어 구현·커밋한다. 기존 transaction 실패보존, 단일 favorites 및 카드/상세 즉시 반영을 유지한다. root가 통합·공통 문서·PR을 담당한다.
+FavoriteOrganizationListViewModel은 스냅샷당 조직→feed ID 인덱스를 한 번 만들고 저장된 조직만 조립한다. Feature facade의 weak token 동기 post-mutation 구독으로 추가/삭제를 즉시 반영하고 중복 저장은 재조립하지 않는다. body/getter I/O와 ID 복제본은 없다. 기존 card 인스턴스는 유지하고 새 조직만 조회한다. 새 저장 경로 실패는 기존 카드를 보존하며 Page에 실패/재시도를 명시한다. 스냅샷 후보 실패는 기존 목록/구독을 보존하고 성공 직후에만 이전 구독을 끊는다. 앱 전체를 감싸는 Session/Store를 추가하지 않았다. [목록 조립 문서](../../apps/ios/docs/SAVED-ORGANIZATION-LIST.md).
+
+캘린더 커밋 `9e95709`는 root가 `361b668`로 통합하고 PR30으로 분리했다고 알려왔다(런타임 메시지, 원격 독립 조회는 하지 않음). 즐겨찾기 목록은 `18699c6`, 발견 부모 관찰은 별도 후속 기능 커밋이다.
+
+### 발견 부모 관찰 — 구현·검증 완료
+
+NoticeCardViewModel.isDisplayable은 초기 콘텐츠 존재만 읽고 favorites에 접근하지 않는다. DiscoveryView는 init에서 한 번 필터해 count/paging/AX 컨트롤이 같은 배열을 사용한다. 카드 Widget만 State.saved를 관찰하며 detail 여는 콜백에서만 필요 State를 읽는다. AppStateTests는 부모 membership 알림0과 카드/즐겨찾기/열린상세 save/remove 알림을 동시에 검증하고 missing card·표시 ID/count를 확인한다. SwiftUI 렌더러를 실행한 측정으로 주장하지 않는다.
+
+### 최종 검증·다음 행동
+
+이번 최종 production에서 `run_standalone.sh`, `run_architecture.sh`(12 tests/4 suites·전체36 layer pairs), `test_layer_distance_gate.sh`, `run_swiftlint.sh`(160파일 위반0), `run_busy_calendar.sh`, `run_detail_presentations.sh` 모두 exit0. 로그 `/tmp/dearby-lifecycles-final-{standalone,architecture,gate,lint,busy,detail}.log`. `git diff --check` 통과. 기존 invalid-store fixture의 CoreData 오류는 의도된 실패 경로이고 뒤의 검사들이 통과했다.
+
+Simulator build 성공(2026-09-16 16:24 KST): 자기 Dearby.xcodeproj/scheme Dearby, Debug, iOS26.5 B04DEBB6-53B1-4CB1-858C-8C290846D4AB, derivedData `apps/ios/build/state-lifecycles-derived`. 로그 `/Users/jominjun/Library/Developer/XcodeBuildMCP/workspaces/dearby-ios-architecture-tests-2e6f4371f452/logs/build_sim_2026-09-16T07-24-53-381Z_pid4555_43c4bca3.log`. 실제 UI 입력·렌더러·OS 권한 창/개인 일정은 이번에 구동하지 않았다.
+
+기능별 커밋은 캘린더 `9e95709`, 즐겨찾기 `18699c6`, 발견 관찰 `b6c3d81` 순서다. 이후 캘린더 소유권 주석/문서 정정만 별도 커밋하며 실행 코드 변경은 없다(최종 SHA는 완료 보고와 log). root가 자기 checkout에서 통합·공통 문서·PR을 마감한다. worker push/PR 없음, 타 checkout 접근/사용자 Xcode 설정 수정 없음. 완료 보고 후 새 지시를 기다린다.
 
 ### Session/유사 객체 책임 재검토
 
-실제 Session 선언은 BusyCalendarSession 하나이며 상세 개인 결과/취소/선택 날짜 수명 때문에 유지한다. CalendarPreferences는 앱 권한/boolean 수명, SettingsViewModel은 Page sheet 표시, FavoriteOrganizations는 저장 행동 검증/피드백, FavoriteOrganizationStore는 단일 observable ID 원본, SwiftDataSnapshotStore는 디스크 transaction, entity repositories는 독립 cache-aside를 맡는다. 이름이나 짧은 메서드만으로 합치지 않는다. AppState는 앱 준비/스냅샷 게시, NoticeDetailRouteState는 화면 key별 lazy detail 수명을 유지한다. 전달전용 Session/Store는 추가하지 않는다.
+실제 Session 선언은 BusyCalendarSession 하나이며 상세 개인 결과/취소/선택 날짜 수명 때문에 유지한다. CalendarPreferences는 앱 권한/boolean 수명, SettingsViewModel은 Page sheet 표시, FavoriteOrganizations는 저장 행동 검증/피드백, FavoriteOrganizationStore는 단일 observable ID 원본, SwiftDataSnapshotStore는 디스크 transaction, entity repositories는 독립 cache-aside를 맡는다. 이름이나 짧은 메서드만으로 합치지 않는다. AppState는 앱 준비/스냅샷 게시, NoticeDetailRouteState는 화면 key별 lazy detail 수명을 유지한다. 전달전용 Session/Store는 추가하지 않는다. NoticeCard/NoticeDetail/FavoriteOrganizationCard ViewModel은 각 원본 조합과 표시 State를 제공하므로 유지하고, 새 FavoriteOrganizationListViewModel은 목록/인덱스/구독 수명·명시적 오류를 실제로 소유한다. UserDefaultsCalendarPreferenceStore는 두 boolean 영속 어댑터이며 MemoryCalendarPreferenceStore는 테스트/preview 경계로 유지한다. FavoriteOrganizationsObservation은 weak 변경 구독의 해제 수명을 표현하는 토큰이며 상태 저장소가 아니다.
+
+정리/삭제 대상은 BusyCalendarSession의 중복 동의/권한 요청 및 resume API와 미사용 consent enum, 상세별 scene/EventKit 관찰, 모든 조직 카드 선조립, 발견 부모의 saved 기반 필터였다. BusyCalendarSession을 이름만 바꾸거나 제거하지 않았다. 최종 주석도 opt-in owner라는 과거 표현을 query owner로 바로잡았다.
 
 아래는 이번 실행이 아닌 이전 구현 Dispatch의 보존 기록이다.
 

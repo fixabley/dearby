@@ -26,7 +26,7 @@ extension AppStateTests {
         let originalCard = state.cards.first { $0.id == id }!
         let originalNotices = state.notices!
         let originalOrganizations = state.organizations!
-        let originalFavorite = state.favoriteCards[0]
+        let originalFavorite = state.favoriteList!.cards[0]
         let originalManifest = try storage.manifest()
         let originalGeneration = state.generation
 
@@ -84,7 +84,7 @@ extension AppStateTests {
         precondition(state.isReady && !state.loadFailed && commits == priorCommits + 2)
         precondition(state.generation == originalGeneration + 1)
         precondition(state.notices !== originalNotices && state.organizations !== originalOrganizations)
-        precondition(state.cards.first { $0.id == id } !== originalCard && state.favoriteCards[0] !== originalFavorite)
+        precondition(state.cards.first { $0.id == id } !== originalCard && state.favoriteList!.cards[0] !== originalFavorite)
         precondition(state.cards.first { $0.id == id }?.state?.title == "교체된 공고")
         precondition(state.cards.first { $0.id == id }?.state?.organizationName == "교체된 기관")
         route.load(.init(id: id, generation: state.generation), makeViewModel: makeDetail)
@@ -101,7 +101,7 @@ extension AppStateTests {
         func assertPreserved() throws {
             precondition(state.isReady && state.generation == originalGeneration)
             precondition(state.notices === originalNotices && state.organizations === originalOrganizations)
-            precondition(state.cards.first { $0.id == id } === originalCard && state.favoriteCards[0] === originalFavorite)
+            precondition(state.cards.first { $0.id == id } === originalCard && state.favoriteList!.cards[0] === originalFavorite)
             precondition(route.viewModel === originalDetail)
             precondition(originalNotices.cachedNotice(id)?.title == originalCard.state?.title)
             let manifest = try storage.manifest()
