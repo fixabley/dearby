@@ -24,3 +24,5 @@ All source paths now use the new physical layout. No path aliases or exclusions 
 ## Presentation declarations
 
 The main State keeps its matching filename, struct value semantics and model location. Supporting types in that file need not all end in State; names describe their purpose. Existing ViewModels remain classes because they retain shared dependencies or observable/subscription state; this change introduces no speculative value-VM abstraction. VMs may be classes or structs, with matching main declaration/filename and model location; enum/actor VMs are not enabled. Observation correctness remains a compiler and runtime regression concern rather than a filename-based ownership claim.
+
+Production inventory counts both class and struct ViewModel declarations; it does not require a reference-type VM to exist.
