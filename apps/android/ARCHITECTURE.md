@@ -200,3 +200,9 @@ NoticeDetail의 DetailPeriodState/DetailPlaceState 순수 projection이 날짜/�
 App CalendarSettingsController/CalendarSettingsHost가 최초 실행 안내·OS permission launcher와 영속 boolean 선택을 소유한다. Pages/Settings는 SettingsState와 콜백만 받아 native sheet/ListItem/Switch를 표시하며 기존 상단 gear로 연다. 별도 SharedPreferencesCalendarSettingsStore는 enabled/firstPromptHandled 두 boolean만 저장한다. 상세에는 동의/스위치가 없고 전역 선택이 유효할 때 NoticeDetailRoute→BusySession으로 선택 날짜 조회를 조율한다. OFF/종료/배경에서는 결과와 query만 정리하고 영속 선택과 분리한다.
 
 Shared DayTimeline은 LocalDate/범용 구간만 받는다. 본문 Primary 활동과 반투명 tertiary busy를 겹치며 원본 Instant 교집합에만 Canvas 점선과 같은 범위의 겹침 문구를 표시한다. 시간 gutter는 눈금만 담당하고 활동 제목/시각은 오버레이 위에서 보호한다. 카드/캐시/즐겨찾기/원본URL메모/지도/캘린더 export는 변경하지 않는다.
+
+## 설계 단순화 — 카드 표시 계약 (2026-09-20)
+
+NoticeCardState는 실제 렌더링하는 식별/분류/대상/이슈/조직/저장 여부와 CardScheduleState 목록만 가진다. 미사용 applicationSummary/locationSummary/applicationDateText와 그 계산을 제거했다. 신청·활동 날짜/장소는 기존 cardSchedules→CardScheduleRow에서 그대로 표시하며 원본 모델과 codec은 바꾸지 않는다. 큰 글자 native 버튼/카드 일정 계측 fixture도 같은 입력 계약을 사용한다.
+
+카드 변경 검증(2026-09-20): JVM 전체, Debug/계측 APK, lintDebug(오류 0/경고 13), FSD 101파일/자체회귀 24 통과. 기록: 로컬 `build-design-simplification.log`. 기기 계측은 후속 최종 변경에서 실행한다. 변경 diff Ponytail 리뷰에서 추가 삭제 후보 없음; 날짜/장소 하위 UI와 공유 즐겨찾기 관찰 경계는 유지한다.
