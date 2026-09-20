@@ -1,6 +1,5 @@
 {
   "entities/notice": [
-    "NoticeClassificationView",
     "NoticeContext",
     "NoticeEvidence",
     "NoticeLocation",
@@ -39,7 +38,6 @@
     "CalendarDraftMapper",
     "CalendarEditorRequest",
     "CalendarEventDraft",
-    "CalendarEventEditor",
     "CalendarAddButton",
     "NoticeApplicationView",
     "CalendarExportPresentation"
@@ -88,7 +86,6 @@
     "NoticeDetailPage"
   ],
   "pages/settings": [
-    "SettingsView",
     "SettingsPresentation",
     "SettingsViewModel"
   ],

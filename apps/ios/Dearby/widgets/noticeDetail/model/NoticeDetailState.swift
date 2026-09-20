@@ -4,7 +4,6 @@ struct NoticeDetailState: Identifiable {
     let id: String
     let title: String
     let aiDescription: String
-    let descriptionProvenance: String
     let organizationID: String?
     let organizationName: String?
     let organizationPath: [String]
@@ -13,9 +12,6 @@ struct NoticeDetailState: Identifiable {
     let categorySummary: String
     let targetUser: String
     let participationCondition: String
-    let applicationSummary: String
-    let scheduleSummaries: [String]
-    let applicationPeriod: String
     let application: NoticeApplicationState
     let applicationURL: URL?
     let schedules: [NoticeScheduleState]

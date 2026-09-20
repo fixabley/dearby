@@ -19,11 +19,10 @@ final class NoticeCardViewModel: Identifiable {
             return try organizations.organization(ref.organizationId)?.name
         }.joined(separator: " · ")
         initial = NoticeCardState(id: notice.id, title: notice.title, category: notice.categorySummary,
-            contextNames: names, targetUser: notice.targetUser, applicationSummary: notice.applicationInformation.summary,
-            locationSummary: notice.location.summary, hasQualityIssues: !notice.qualityIssues.isEmpty,
+            contextNames: names, targetUser: notice.targetUser,
+            hasQualityIssues: !notice.qualityIssues.isEmpty,
             organizationName: organization?.name, saved: false,
-            schedules: NoticeCardScheduleState.project(notice),
-            applicationPeriod: NoticeApplicationState(notice: notice).period)
+            schedules: NoticeCardScheduleState.project(notice))
     }
     /// Feed membership is snapshot-stable and never observes saved IDs.
     var isDisplayable: Bool { initial != nil }
