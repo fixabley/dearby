@@ -59,7 +59,7 @@ class DesignSystemTest {
         var saved = 0
         var opened = 0
         val state = NoticeCardState("large", "한국농어촌공사 채용설명회", "채용 › 채용행사 · 충북대학교",
-            "참여 대상 안내", "신청 마감 안내", "활동 장소 안내", true, "krc", "한국농어촌공사")
+            "참여 대상 안내", true, "krc", "한국농어촌공사")
         rule.setContent {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
                 DearbyTheme(darkTheme = true, dynamicColor = false) {

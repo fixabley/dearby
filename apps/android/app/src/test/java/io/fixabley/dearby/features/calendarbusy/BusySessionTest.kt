@@ -17,12 +17,12 @@ class BusySessionTest {
         override fun permission() = access
         override suspend fun read(query: BusyQuery): List<BusyInterval> { reads++; return action() }
     }
-    @Test fun consentCancelDenialAndGrantedSwitch() = runBlocking {
+    @Test fun deniedAccessDoesNotQueryAndExplicitEnableUsesGrantedPermission() = runBlocking {
         val fake = Fake(); val session = BusySession(fake, this)
         session.select(0, query); session.enable()
-        assertEquals(BusyConnection.Consent, session.connection); assertEquals(0, fake.reads)
+        assertEquals(BusyConnection.Denied, session.connection); assertEquals(0, fake.reads)
         session.off(); assertFalse(session.enabled)
-        session.enable(); session.permissionResult(session.confirm()!!)
+        session.enable()
         assertEquals(BusyConnection.Denied, session.connection); assertTrue(session.results.isEmpty())
         fake.access = BusyPermission.Granted; session.enable(); yield()
         assertEquals(BusyLoad.Ready, session.results[0]?.load)
@@ -51,7 +51,8 @@ class BusySessionTest {
         val fake = Fake().apply { access = BusyPermission.Granted; action = { error("test") } }
         val session = BusySession(fake, this); session.select(0, query); session.enable(); yield()
         assertEquals(BusyLoad.Failed, session.results[0]?.load)
-        fake.action = { listOf(window) }; session.retry(); yield()
+        session.background()
+        fake.action = { listOf(window) }; session.resume(); yield()
         assertEquals(listOf(window), session.results[0]?.intervals)
         session.background(); assertTrue(session.results.isEmpty())
         fake.access = BusyPermission.NotGranted; session.resume()
@@ -59,25 +60,40 @@ class BusySessionTest {
         session.close(); fake.access = BusyPermission.Granted; session.enable(); yield()
         assertFalse(session.enabled); assertTrue(session.results.isEmpty())
     }
-    @Test fun restrictedAndLatePermissionCannotEnable() = runBlocking {
+    @Test fun restrictedAndOffCannotResumeWithoutExplicitEnable() = runBlocking {
         val fake = Fake(); val session = BusySession(fake, this)
-        session.enable(); val token = session.confirm()!!; session.off()
-        fake.access = BusyPermission.Granted; session.permissionResult(token)
-        assertFalse(session.enabled)
+        session.select(0, query); session.enable(); session.off()
+        fake.access = BusyPermission.Granted; session.resume(); yield()
+        assertFalse(session.enabled); assertEquals(0, fake.reads)
         fake.access = BusyPermission.Restricted; session.enable()
         assertEquals(BusyConnection.Restricted, session.connection)
+        assertTrue(session.results.isEmpty()); assertEquals(0, fake.reads)
     }
-    @Test fun stoppedPermissionRequestReturnsToOperableOffAndOneSessionCoordinatesPhases() = runBlocking {
-        val fake = Fake(); val session = BusySession(fake, this)
-        session.enable(); val token = session.confirm()!!
-        session.background(); fake.access = BusyPermission.Granted
-        session.permissionResult(token); session.resume()
-        assertEquals(BusyConnection.Off, session.connection)
-        session.select(0, query); session.select(1, query)
-        fake.action = { listOf(window) }; session.enable(); yield()
+    @Test fun backgroundBlocksQueriesUntilResumeAndOneSessionCoordinatesPhases() = runBlocking {
+        val fake = Fake().apply { access = BusyPermission.Granted }
+        val session = BusySession(fake, this)
+        session.background(); session.enable()
+        session.select(0, query); session.select(1, query); yield()
+        assertEquals(0, fake.reads); assertTrue(session.results.isEmpty())
+        fake.action = { listOf(window) }; session.resume(); yield()
         assertEquals(2, fake.reads)
         assertTrue(session.results.values.all { it.overlaps })
         session.off(); assertTrue(session.results.isEmpty())
     }
-
+    @Test fun backgroundAndCloseFenceNonCooperativeResults() = runBlocking {
+        for (close in listOf(false, true)) {
+            val pending = CompletableDeferred<List<BusyInterval>>()
+            val fake = Fake().apply {
+                access = BusyPermission.Granted
+                action = { withContext(NonCancellable) { pending.await() } }
+            }
+            val session = BusySession(fake, this)
+            session.select(0, query); session.enable(); yield()
+            assertEquals(1, fake.reads)
+            if (close) session.close() else session.background()
+            pending.complete(listOf(window)); yield(); yield()
+            assertTrue(session.results.isEmpty())
+            session.close()
+        }
+    }
 }

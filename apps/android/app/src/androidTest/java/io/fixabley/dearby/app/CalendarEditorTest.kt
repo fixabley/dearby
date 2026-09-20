@@ -12,7 +12,7 @@ import org.junit.Test
 class CalendarEditorTest {
     private val draft = CalendarDraft("신청 [신청 마감]", "https://example.org/source", "", 1789430400000, 1789516800000, true, "Asia/Seoul")
 
-    @Test fun explicitEditorRequestHasNoPermissionsInviteesOrAutomaticSaveExtras() {
+    @Test fun explicitEditorRequestHasNoWritePermissionUriGrantsInviteesOrAutomaticSaveExtras() {
         val requests = mutableListOf<Intent>()
         openCalendarEditor(draft, { requests.add(it) }, { fail("Available") })
         val intent = requests.single()
@@ -33,7 +33,8 @@ class CalendarEditorTest {
             CalendarContract.Events.EVENT_TIMEZONE, CalendarContract.Events.EVENT_END_TIMEZONE), intent.extras!!.keySet())
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val permissions = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_PERMISSIONS).requestedPermissions.orEmpty()
-        assertFalse(permissions.contains("android.permission.READ_CALENDAR"))
+        // READ_CALENDAR belongs to the separately opted-in busy reader, not this editor request.
+        assertEquals(0, intent.flags) // No URI permission grants; the external editor owns saving.
         assertFalse(permissions.contains("android.permission.WRITE_CALENDAR"))
         val timed = calendarInsertIntent(draft.copy(allDay = false))
         assertEquals("Asia/Seoul", timed.getStringExtra(CalendarContract.Events.EVENT_TIMEZONE))

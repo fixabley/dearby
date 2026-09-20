@@ -15,13 +15,13 @@ internal class NoticeDetailViewModel(private val id: String, private val notices
         notices.revision; organizations.revision
         notices.find(id)?.let { notice ->
             val path = organizations.path(notice.organizationId)
-            fun resolve(ref: NoticeContext) = ResolvedOrganizationRole(ref.organizationId, ref.role, ref.label, organizations.find(ref.organizationId)?.name)
-            NoticeDetailState(notice.id, notice.title, notice.aiDescription, notice.descriptionProvenance,
+            fun resolve(ref: NoticeContext) = ResolvedOrganizationRole(ref.label, organizations.find(ref.organizationId)?.name)
+            NoticeDetailState(notice.id, notice.title, notice.aiDescription,
                 notice.organizationId, path.lastOrNull { it.id == notice.organizationId }?.name, path.dropLast(1).map { it.name },
-                notice.organizationLinks.map(::resolve), notice.categoryPath, notice.categorySummary,
+                notice.categorySummary,
                 notice.contexts.map(::resolve), notice.edition, notice.targetUser, notice.participationCondition,
                 notice.applicationInformation, notice.schedules.map { NoticeScheduleState(it, notice.venuesFor(it)) },
-                notice.location, notice.benefits, notice.issues, notice.sourceURL, notice.sources, notice.evidence,
+                notice.location, notice.benefits, notice.issues, notice.sourceURL,
                 applicationCalendarDraft(notice), notice.schedules.map { phaseCalendarDraft(notice, it) })
         }
     }

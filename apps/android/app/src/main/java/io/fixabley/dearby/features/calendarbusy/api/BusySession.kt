@@ -8,11 +8,11 @@ import io.fixabley.dearby.shared.ui.mergedBusy
 import io.fixabley.dearby.shared.ui.busyOverlaps
 import kotlinx.coroutines.*
 
-internal enum class BusyConnection { Off, Consent, Requesting, Denied, Restricted, Revoked, Active }
+internal enum class BusyConnection { Off, Denied, Restricted, Revoked, Active }
 internal enum class BusyLoad { Loading, Failed, Ready }
 internal data class BusyResult(val load: BusyLoad, val intervals: List<BusyInterval> = emptyList(), val overlaps: Boolean = false, val window: BusyInterval? = null)
 
-/** Main-thread, detail-session owner. No persistent state, event metadata, or application periods. */
+/** Main-thread detail query owner. Settings owns consent/permission requests; this only checks access. */
 internal class BusySession(private val provider: BusyProvider, private val scope: CoroutineScope) {
     var connection by mutableStateOf(BusyConnection.Off); private set
     var results by mutableStateOf<Map<Int, BusyResult>>(emptyMap()); private set
@@ -28,30 +28,15 @@ internal class BusySession(private val provider: BusyProvider, private val scope
         if (closed) return
         when (provider.permission()) {
             BusyPermission.Granted -> { connection = BusyConnection.Active; reload() }
-            BusyPermission.NotGranted -> connection = BusyConnection.Consent
+            BusyPermission.NotGranted -> connection = BusyConnection.Denied
             BusyPermission.Restricted -> connection = BusyConnection.Restricted
         }
-    }
-    fun confirm(): Long? {
-        if (connection != BusyConnection.Consent || closed) return null
-        connection = BusyConnection.Requesting
-        return generation
-    }
-    fun permissionResult(token: Long) {
-        if (closed || token != generation || connection != BusyConnection.Requesting) return
-        connection = when (provider.permission()) {
-            BusyPermission.Granted -> BusyConnection.Active
-            BusyPermission.NotGranted -> BusyConnection.Denied
-            BusyPermission.Restricted -> BusyConnection.Restricted
-        }
-        if (enabled) reload()
     }
     fun off() { clear(); connection = BusyConnection.Off }
     fun close() { off(); queries.clear(); closed = true }
     fun background() {
         foreground = false
         clear()
-        if (connection == BusyConnection.Consent || connection == BusyConnection.Requesting) connection = BusyConnection.Off
     }
     fun resume() {
         foreground = true
@@ -63,7 +48,6 @@ internal class BusySession(private val provider: BusyProvider, private val scope
         queries[key] = query
         load(key, query)
     }
-    fun retry() { if (enabled) reload() }
     private fun revoke() { clear(); connection = BusyConnection.Revoked }
     private fun clear() {
         generation++

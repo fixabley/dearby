@@ -43,7 +43,7 @@ internal fun NoticeDetailRoute(notice: NoticeDetailState, provider: BusyProvider
             BusyLoad.Failed -> "선택 날짜를 조회하지 못했어요. 상세를 다시 열어 주세요."
             BusyLoad.Ready -> "선택 날짜 기준 · " + if (result.overlaps) "활동과 바쁜 시간이 겹쳐요" else "활동과 기기 바쁜 시간 겹침 없음 · 참여 가능 보장 아님"
         }, result.intervals, result.window)
-    }.toMutableMap()
+    }
     NoticeDetailSheet(notice, { session.close(); onDismiss() }, onOpenSource, onOpenMap, onAddToCalendar,
         busyMessage = message, overlays = overlays, onBusyDate = { index, date ->
             notice.schedules.getOrNull(index)?.timeline?.let { interval ->

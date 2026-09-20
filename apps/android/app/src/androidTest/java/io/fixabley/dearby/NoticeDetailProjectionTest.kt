@@ -16,12 +16,12 @@ class NoticeDetailProjectionTest {
         val repo = NoticeSession(AssetNoticeSnapshotReader(InstrumentationRegistry.getInstrumentation().targetContext.assets), favorites)
         val catalog = kotlinx.coroutines.runBlocking { repo.load() }
         val detail = repo.detail("cieat-NCR000000007344").state!!
-        assertTrue(detail.sources.map { it.id }.containsAll(listOf("krc", "cbnu-campus-map", "cbnu-library-location")))
-        assertTrue(detail.sources.all { it.url != null && it.checkedAt != null })
-        assertTrue(detail.evidence.map { it.fieldPath }.containsAll(listOf("audience", "eligibility", "application", "schedule[0]", "location", "location.venues[0].coordinates", "benefits[0]", "schedule.duration")))
-        assertTrue(detail.evidence.all { it.sourceId.isNotBlank() && it.locator.isNotBlank() && it.sourceURL != null })
-        assertEquals(listOf("platform"), detail.applicationInformation.methods)
         val raw = catalog.notices.first { it.id == detail.id }
+        assertTrue(raw.sources.map { it.id }.containsAll(listOf("krc", "cbnu-campus-map", "cbnu-library-location")))
+        assertTrue(raw.sources.all { it.url != null && it.checkedAt != null })
+        assertTrue(raw.evidence.map { it.fieldPath }.containsAll(listOf("audience", "eligibility", "application", "schedule[0]", "location", "location.venues[0].coordinates", "benefits[0]", "schedule.duration")))
+        assertTrue(raw.evidence.all { it.sourceId.isNotBlank() && it.locator.isNotBlank() && it.sourceURL != null })
+        assertEquals(listOf("platform"), detail.applicationInformation.methods)
         assertEquals(raw.aiDescription, detail.aiDescription)
         assertEquals(raw.applicationInformation.summary, detail.applicationInformation.summary)
         assertEquals(raw.schedules.first(), detail.schedules.first().period)
