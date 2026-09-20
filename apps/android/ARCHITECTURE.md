@@ -90,14 +90,14 @@ shared/ui/
 
 ## 진입점과 의존 방향
 
-`App → Pages → Widgets → Features → Entities → Shared`이며 아래 레이어를 건너뛰는 참조는 허용한다. 같은 layer의 다른 slice를 참조하지 않는다. 특히 `entities.notice`와 `entities.organization`은 서로 import하지 않는다. App/Shared는 segment 예외다.
+`App → Pages → Widgets → Features → Entities → Shared`이며 아래 레이어를 건너뛰는 참조는 허용한다. 같은 layer의 다른 slice를 참조하지 않는다. 특히 `entities.notice`와 `entities.organization`은 서로 import하지 않는다. App/Shared는 segment 예외다. Pages/Widgets는 Shared의 공개 `shared.ui` 디자인 UI·토큰을 직접 참조할 수 있지만 Shared storage/network/OS 서비스 접근을 열지 않는다.
 
 | Slice | 외부에서 사용하는 진입점 |
 | --- | --- |
 | Pages/discovery, favorites | 각 `ui.*Screen` |
 | Pages/noticedetail | `model.NoticeDetailViewModel`, `model.NoticeDetailState`, `ui.NoticeDetailSheet` |
 | Widgets/notice/noticecard | `NoticeCardViewModel`, `NoticeCardState`, `NoticeCard` |
-| Widgets/organization/favoriteorganizationcard | `FavoriteOrganizationCardViewModel`, `FavoriteOrganizationCardState`, `FavoriteNoticeState`, `FavoriteOrganizationCard` |
+| Widgets/organization/favoriteorganizationcard | `FavoriteOrganizationCardViewModel`, `FavoriteOrganizationCardState`, `FavoriteOrganizationCard` |
 | Features/favoriteorganization | `model.FavoritesState`, `api.FavoriteStore`, `api.SharedPreferencesFavoriteStore` |
 | Features/addtocalendar | `model.CalendarDraft`, `applicationCalendarDraft`, `phaseCalendarDraft` |
 | Entities/notice | `NoticeModel`, `NoticeContext`, 신청/기간/장소/좌표/출처/근거 모델, `api.NoticeSource`, `InMemoryNoticeSource`, `NoticeRepository`, `NoticeRecord/NoticeDao/RoomNoticeStore/StoredNoticeSource/NoticeStorageCodec`, `ui.NoticeClassification` |
@@ -218,3 +218,13 @@ NoticeCardState는 실제 렌더링하는 식별/분류/대상/이슈/조직/저
 CalendarSettingsController/Host가 유일한 동의·권한 요청 소유자다. BusySession의 미호출 confirm/permissionResult/retry와 Consent/Requesting 상태를 제거하고 권한 거절은 Denied로 표현한다. 상세의 generation/revision·CoroutineScope·foreground·query 및 결과 수명은 유지한다. NoticeDetailRoute는 provider 구현을 직접 호출하지 않고 이 소유자와 표시 State/콜백만 조립하며, 읽기 전용 overlays에 불필요한 mutable map 복사도 제거했다. NoticeSession은 공유 repository/snapshot/VM identity를 소유하므로 전달 wrapper로 취급하지 않는다.
 
 캘린더 변경 검증(2026-09-20): JVM80(기존 설정 권한 회귀 유지 + background/close 지연 결과 회귀 1 추가)·계측 APK·FSD101/자체회귀24 통과(`build-design-busy.log`). Ponytail diff 검토 후 실제 수명·보안 경계 외 추가 삭제 후보 없음.
+
+### 실제 Android 규칙 재평가
+
+- Shared 디자인 UI/토큰 직접 참조는 원래 가능하며 불필요한 Feature wrapper가 없다. `shared.ui` 외 storage/network/OS 경로는 Pages/Widgets에 개방하지 않도록 구조 검사와 허용/금지 fixture를 명시했다. 기존 raw Model/Repository/OS·상향·형제 슬라이스 금지는 유지한다.
+- FavoriteNoticeState는 FavoriteOrganizationCard/VM 내부에서만 직접 사용하므로 외부 진입점 목록에서 제외했다. Kotlin internal 타입과 목록 표시/상태는 유지한다. BusyResult는 Route가 결과 속성을 소비하고 FavoriteStore는 주입 계약이므로 명시 import가 없다는 이유만으로 경계를 없애지 않는다.
+- State 보조타입 접미사·VM class 선언·Content 파일명 기반 순수 UI 검사는 없다. 기존 @Composable Page/Widget 값/콜백 계약을 유지한다. 검사 완화를 위해 Swift 규칙을 이식하거나 파일을 전면 이동하지 않는다.
+- Feature는 즐겨찾기 원본 상태, 캘린더 초안 생성, OS busy 조회를 소유한다. 표시만 하는 Feature/factory는 없다. AddToCalendarButton/VenueMapButton/CardScheduleRow 등 의미 있는 작은 UI는 이미 소유 Page/Widget에 있으므로 합치지 않는다.
+- Route는 State·콜백·lifecycle 소유자를 연결하고 DB/OS 구현은 별도 파일에 있다. NoticeSession/BusySession은 저장소 identity·VM 관찰·취소 세대·화면 수명이 있어 유지한다.
+
+이 정책 검증은 FSD101파일/자체회귀30(기존24 유지 + Shared 경로/내부 진입점6)으로 실행한다. 단일 Kotlin 모듈의 의미론 전체를 강제하는 컴파일러 검사는 아니며 기존 한계는 동일하다.
