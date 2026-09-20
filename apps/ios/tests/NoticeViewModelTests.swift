@@ -195,10 +195,13 @@ struct NoticeViewModelTests {
         precondition(changedDetail.organizationLinks[0].basis == "source" && changedDetail.organizationLinks[0].note == "보존")
         precondition(changedDetail.evidence.contains { $0.sourceId == "missing-source" && $0.sourceURL == nil })
         precondition(nextSource.counts[krc.id] == 1 && testValue(try organizations.path(to: "cbnu")).map(\.name) == ["바뀐 학교"])
-        let session = testValue(try NoticeSession(snapshot: changed, favorites: favorites))
-        precondition(session.cards.first { $0.state?.id == krc.id }!.state!.title == "바뀐 공고")
-        precondition(session.detailState(krc.id)!.contexts[0].organizationName == "바뀐 학교")
-        precondition(session.detailState("absent") == nil)
+        let freshNotices = NoticeRepository(source: nextSource)
+        let freshOrganizations = OrganizationRepository(source: nextOrgs)
+        let freshCard = testValue(try NoticeCardViewModel(id: krc.id, notices: freshNotices, organizations: freshOrganizations, favorites: favorites))
+        let freshDetail = testValue(try NoticeDetailViewModel(id: krc.id, notices: freshNotices, organizations: freshOrganizations, favorites: favorites))
+        precondition(freshCard.state!.title == "바뀐 공고")
+        precondition(freshDetail.state!.contexts[0].organizationName == "바뀐 학교")
+        precondition(testValue(try NoticeDetailViewModel(id: "absent", notices: freshNotices, organizations: freshOrganizations, favorites: favorites)).state == nil)
         print("PASS: independent lazy notice/org sources, hit/reuse/replacement; one model, full evidence; card/detail/favorite states and shared Observation save/delete; missing IDs and snapshot recompose")
     }
     private static func evidenceCount(_ value: Any) -> Int {

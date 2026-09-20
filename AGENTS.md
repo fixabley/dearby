@@ -61,7 +61,7 @@ SwiftLint는 일반 Swift 스타일, Harmonize/SwiftSyntax는 FSD 경계·폴더
 
 ## iOS 3계층 캐시
 
-사용자가 SwiftData를 인메모리 캐시 다음 계층으로, 그 다음 외부 저장소(mock-data, 향후 API)를 요청했다. 공고·조직 각각 L1 → L2 → 외부 source 순서로 조회하고, 외부 성공 결과를 명시적으로 영속 저장한 뒤 L1에 반영한다. 저장/조회 오류와 missing을 구분한다. App이 SwiftData 수명과 snapshot 버전/캐시 무효화·Session 교체를 조율하며, domain Model·State·순수 UI 경계를 유지한다. 현재 mock은 동기 번들 기반이며 실제 API 연결의 비동기/취소 정책은 별도 구현 범위다.
+사용자가 SwiftData를 인메모리 캐시 다음 계층으로, 그 다음 외부 저장소(mock-data, 향후 API)를 요청했다. 공고·조직 각각 L1 → L2 → 외부 source 순서로 조회하고, 외부 성공 결과를 명시적으로 영속 저장한 뒤 L1에 반영한다. 저장/조회 오류와 missing을 구분한다. App이 SwiftData 수명과 snapshot 버전/캐시 무효화·화면 표시 상태 교체를 조율하며, domain Model·State·순수 UI 경계를 유지한다. 현재 mock은 동기 번들 기반이며 실제 API 연결의 비동기/취소 정책은 별도 구현 범위다.
 
 ## 네이티브 Widget 배치와 Harmonize 개편
 

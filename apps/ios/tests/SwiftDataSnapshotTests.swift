@@ -7,6 +7,7 @@ struct SwiftDataSnapshotTests {
     @MainActor static func main() throws {
         let data = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
         let snapshot = try JSONDecoder().decode(BundleSnapshot.self, from: data)
+        try SnapshotTransactionChecks.run(snapshot: snapshot)
         let folder = URL(fileURLWithPath: "apps/ios/build/snapshot-disk-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: folder) }
@@ -25,7 +26,9 @@ struct SwiftDataSnapshotTests {
             precondition(orgEmpty == 0)
             _ = try store.prepare(snapshot)
             precondition(saves == 1, "Same seed must do no writes")
-            let session = try store.makeSession(snapshot: snapshot, favorites: favorites)
+            let session = makeApp(snapshot: snapshot, favorites: favorites, store: store)
+            session.loadCatalog()
+            precondition(session.isReady && !session.loadFailed)
             precondition(session.cards.count == snapshot.feedIDs.count && session.snapshotDate == snapshot.snapshotAt)
             let count = try store.context.fetchCount(FetchDescriptor<NoticeRecord>())
             precondition(count == snapshot.feedIDs.count)
@@ -36,13 +39,20 @@ struct SwiftDataSnapshotTests {
         precondition(persistedManifest == firstManifest)
         let noExternalNotice = NoExternalNotice()
         let noExternalOrganization = NoExternalOrganization()
-        // Recreate a complete session from disk metadata + ID queries only, no bundle model reinsertion.
-        let oldSession = try NoticeSession(manifest: persistedManifest,
-            noticeSource: SwiftDataNoticeSource(context: store.context, external: noExternalNotice),
-            organizationSource: SwiftDataOrganizationSource(context: store.context, external: noExternalOrganization), favorites: favorites)
+        // Recreate a complete presentation from disk metadata + ID queries only, no bundle model reinsertion.
+        let oldNotices = NoticeRepository(source: SwiftDataNoticeSource(context: store.context, external: noExternalNotice))
+        let oldOrganizations = OrganizationRepository(source: SwiftDataOrganizationSource(context: store.context, external: noExternalOrganization))
+        let oldCards = try persistedManifest.feedIDs.map {
+            try NoticeCardViewModel(id: $0, notices: oldNotices, organizations: oldOrganizations, favorites: favorites)
+        }
+        let oldFavorites = try persistedManifest.organizationIDs.map {
+            try FavoriteOrganizationCardViewModel(id: $0, noticeIDs: persistedManifest.feedIDs,
+                notices: oldNotices, organizations: oldOrganizations, favorites: favorites)
+        }
+        precondition(oldFavorites.compactMap(\.state).map(\.id) == ["db-insurance"])
         precondition(noExternalNotice.calls == 0 && noExternalOrganization.calls == 0)
-        let oldFirst = oldSession.cards[0].state!
-        let removedID = oldSession.cards[1].state!.id
+        let oldFirst = oldCards[0].state!
+        let removedID = oldCards[1].state!.id
         var raw = try JSONSerialization.jsonObject(with: data) as! [String: Any] // swiftlint:disable:this force_cast
         var rawNotices = raw["activities"] as! [[String: Any]] // swiftlint:disable:this force_cast
         rawNotices.removeAll { $0["id"] as? String == removedID }
@@ -57,19 +67,23 @@ struct SwiftDataSnapshotTests {
         rawOrganizations[orgIndex]["parentOrganizationId"] = "cbnu"
         raw["organizations"] = rawOrganizations
         let replacement = try JSONDecoder().decode(BundleSnapshot.self, from: JSONSerialization.data(withJSONObject: raw))
-        // Simulate a failing explicit transaction while keeping a live old session/cache.
+        // Simulate a failing explicit transaction while keeping a live old presentation/cache.
         let failing = try SwiftDataSnapshotStore(url: url, commit: { _ in throw SnapshotTestError.save })
         do { _ = try failing.prepare(replacement); preconditionFailure() } catch SnapshotTestError.save {}
         let afterFailure = try failing.manifest()
         precondition(afterFailure == persistedManifest && !failing.context.hasChanges)
         let oldOnDisk = try SwiftDataNoticeSource(context: failing.context, external: noExternalNotice).fetch(id: oldFirst.id)
-        precondition(oldOnDisk?.title == oldFirst.title && oldSession.cards[0].state!.title == oldFirst.title)
-        let cacheBefore = oldSession.notices.cachedNotice(oldFirst.id)
+        precondition(oldOnDisk?.title == oldFirst.title && oldCards[0].state!.title == oldFirst.title)
+        let cacheBefore = oldNotices.cachedNotice(oldFirst.id)
         precondition(cacheBefore?.title == oldFirst.title && favorites.ids == ["db-insurance"])
-        let newSession = try store.makeSession(snapshot: replacement, favorites: favorites)
+        let newSession = makeApp(snapshot: replacement, favorites: favorites, store: store)
+        newSession.loadCatalog()
+        precondition(newSession.isReady && !newSession.loadFailed)
         precondition(newSession.cards[0].state!.title == "수정된 공고" && newSession.cards[0].state!.organizationName == "수정된 기관")
-        precondition(newSession.detailState(oldFirst.id)!.organizationPath == ["충북대학교"])
-        precondition(newSession.snapshotDate == replacement.snapshotAt && newSession.detailState(removedID) == nil)
+        let detail = try newSession.makeDetailViewModel(oldFirst.id)!.state!
+        precondition(detail.organizationPath == ["충북대학교"])
+        let removedDetail = try newSession.makeDetailViewModel(removedID)?.state
+        precondition(newSession.snapshotDate == replacement.snapshotAt && removedDetail == nil)
         let missingNotice = try SwiftDataNoticeSource(context: store.context, external: NoNotice()).fetch(id: removedID)
         let missingOrganization = try SwiftDataOrganizationSource(context: store.context, external: NoOrganization()).fetch(id: "db-insurance")
         precondition(missingNotice == nil && missingOrganization == nil)
@@ -85,7 +99,7 @@ struct SwiftDataSnapshotTests {
         do { _ = try SwiftDataSnapshotStore(url: blocked.appendingPathComponent("store")); preconditionFailure() } catch {}
         let preserved = try String(contentsOf: blocked, encoding: .utf8)
         precondition(preserved == "preserve")
-        print("PASS: disk manifest/session reopen without mock calls; same seed no writes; atomic change/deletion/metadata; save rollback preserves disk+L1; initialization failure preserves files/favorites")
+        print("PASS: disk manifest/presentation reopen without mock calls; same seed no writes; atomic change/deletion/metadata; save rollback preserves disk+L1; initialization failure preserves files/favorites")
     }
 }
 private enum SnapshotTestError: Error { case save, unexpectedExternal }
@@ -102,4 +116,14 @@ private enum SnapshotTestError: Error { case save, unexpectedExternal }
 @MainActor private final class DiskTestFavorites: FavoriteOrganizationsRepository {
     func load() -> Set<String> { ["db-insurance"] }
     func save(_ ids: Set<String>) {}
+}
+
+@MainActor private func makeApp(snapshot: BundleSnapshot, favorites: FavoriteOrganizations, store: SwiftDataSnapshotStore) -> AppState {
+    AppState(snapshotReader: DiskSnapshotReader(snapshot: snapshot), favorites: favorites,
+        calendarPreferences: CalendarPreferences(store: MemoryCalendarPreferenceStore(), provider: PreviewBusyCalendarProvider(mode: "empty")),
+        makeStorage: { store })
+}
+private struct DiskSnapshotReader: SnapshotReader {
+    let snapshot: BundleSnapshot
+    func load() -> BundleSnapshot { snapshot }
 }
