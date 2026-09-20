@@ -1,6 +1,6 @@
 # Git·Orca 현재 상태
 
-2026-09-20 구현 진행: runtime f311bec3-cb3a-46db-b79e-2dbf2412ee06, Run run_58f7d03f4deb. iOS task_5680a3ed1580 / ctx_77f89952ed32 / term_13ba3b4a-9172-4a99-bff8-485358963ea0에서 보류 포함 설계 단순화 구현/회귀 진행 중. Root refactor/ios-design-simplification, worker feat/ios-design-simplification. 기존 검토 task_ba39e8fd4fba는 완료됐고 새 Task로 같은 live terminal을 재사용했다. PR27~32는 모두 main 병합 완료(origin/main 2362917). 사용자 Xcode/.swiftpm 변경은 root에 보존한다. 아래는 과거 상태이며 최신 재개점은 조율 문서를 따른다.
+2026-09-20 구현 진행: runtime f311bec3-cb3a-46db-b79e-2dbf2412ee06, Run run_58f7d03f4deb. iOS task_5680a3ed1580 / ctx_77f89952ed32 / term_13ba3b4a-9172-4a99-bff8-485358963ea0는 086fd94 구현/검증 완료·retained·ack. Android task_74dd1744d0d1 / ctx_1d90d191c0f4 / term_dda3f25d-2d72-4efc-9c17-59970971ee35가 dearby-android-design-simplification에서 구현 시작(ready 확인). Root refactor/ios-design-simplification, worker feat/ios-design-simplification. 기존 검토 task_ba39e8fd4fba는 완료됐고 새 Task로 같은 live terminal을 재사용했다. PR27~32는 모두 main 병합 완료(origin/main 2362917). 사용자 Xcode/.swiftpm 변경은 root에 보존한다. 아래는 과거 상태이며 최신 재개점은 조율 문서를 따른다.
 
 2026-09-16 16:28 KST 확인. iOS 상태 수명·즐겨찾기·발견 관찰 정리 완료, PR30/31 게시. 기존 PR27/28/29와 함께 미병합이며 이번에 병합하지 않는다.
 

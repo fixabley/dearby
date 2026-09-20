@@ -1,6 +1,6 @@
 # 현재 작업과 결정
 
-2026-09-20: 사용자가 재평가 후보의 실제 변경과 병합, 보류 항목까지 구현하도록 승인했다. iOS 작업 진행 중이며 Android/API는 범위 밖이다. 검토 정본은 [재평가 보고서](../../architecture/reviews/2026-09-20-design-rules-reassessment.md). [이전 인계](archive/2026-09-20-before-design-simplification.md)는 이력이다.
+2026-09-20: 사용자가 재평가 후보의 실제 변경과 병합, 보류 항목까지 구현하도록 승인했다. iOS 구현·로컬 검증 완료 후 통합 중이며, 사용자 추가 요청으로 Android도 같은 단순화 기준을 적용한다. API는 범위 밖이다. 검토 정본은 [재평가 보고서](../../architecture/reviews/2026-09-20-design-rules-reassessment.md). [이전 인계](archive/2026-09-20-before-design-simplification.md)는 이력이다.
 
 ## 구현 범위
 
@@ -17,3 +17,9 @@ origin 재확인/fetch 완료. 기존 PR27~31 의존 스택을 통합할 권한�
 ## 완료 기준
 
 기능별 커밋 및 변경 후 Ponytail 검토, standalone/busy/detail/architecture/production gate/strict lint/Simulator build, 가능한 UI smoke. 기존 테스트 결과를 이번 검증으로 기록하지 않는다. 아직 구현/검증/최종 병합 진행 중이다.
+
+## 20:42 KST 추가 상태
+
+iOS worker 086fd94까지 검토·통합 완료, worker_done succeeded/retain/ack 완료. standalone/busy/detail/architecture16/negative gate/strict lint/Simulator build-install-launch 성공. 상세/즐겨찾기 입력 검증은 Simulator가 runtime 목록에서 사라져 완료하지 못했으며 실제 권한·VoiceOver도 새 통과로 기록하지 않는다. 최종 앱 코드는 worker와 일치한다. 후속 PR CI/병합은 진행 중이다.
+
+Android는 기존 live 담당이 없어 origin/main 2362917에서 독립 Orca checkout dearby-android-design-simplification을 만들었다. task_74dd1744d0d1 / ctx_1d90d191c0f4 / term_dda3f25d-2d72-4efc-9c17-59970971ee35. ready/input_accepted/turnStart 확인. 소유 apps/android 및 Android 역할 문서; root가 공통 정책·PR 통합. Android 실제 구조에 대응하는 후보를 검토·구현하며 Swift 전용 검사/폴더를 억지로 이식하지 않는다. 기존 캐시·권한·취소·pager/저장 UX를 유지하고 unit/lint/build 및 가능한 emulator 검증을 수행한다.

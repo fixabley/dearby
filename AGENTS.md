@@ -98,3 +98,5 @@ App→Pages/Widgets, Pages→Widgets/Features, Widgets→Features/Entities, Feat
 사용자가 재평가 후보와 보류 항목까지 변경·병합하도록 승인했다. 이전 두 계층 제한은 기본값으로 유지하되 Pages/Widgets에서 공개된 Shared 디자인 UI·토큰을 직접 사용할 수 있다. Shared 저장소/네트워크/OS API와 lib 전체를 개방하지 않는다. 상세 Route는 앱 소유 CalendarPreferences를 Page에 전달하는 조립만 좁게 허용하고 Repository/OS/API 구현을 직접 실행하지 않는다. 정확한 예외는 iOS 실행 검사와 ARCHITECTURE.md를 함께 갱신한다.
 
 순수 UI는 Entity/Shared UI 기본 경계와 명시적 표시 컴포넌트 계약으로 검사하며 Content 파일명만을 근거로 삼지 않는다. State의 주 타입·위치·값 의미는 보존하되 같은 파일의 보조 타입까지 State 접미사를 강제하지 않는다. ViewModel도 이름만으로 참조형이 필수라고 보지 않고 실제 상태 소유·Observation 수명에 맞춰 판단한다. 기존 동작·원본 모델·캐시/권한/취소·접근성·회귀 검증은 유지한다. 의미있는 표시 컴포넌트는 Feature에서 소유 Widget/Page로 옮길 수 있으며 줄 수를 이유로 무조건 인라인하지 않는다. iOS 구현 완료 여부는 역할 인계와 검증 결과를 따른다. Android까지 이행 완료된 것으로 간주하지 않는다.
+
+2026-09-20 추가 승인: 같은 설계 단순화 기준을 Android에도 적용한다. 실제 Compose 구조에 대응되는 항목만 정리하며 Swift 전용 문법/검사 체계를 억지로 이식하지 않는다. Android 구현·검증 완료 여부는 담당 역할 문서를 따른다.

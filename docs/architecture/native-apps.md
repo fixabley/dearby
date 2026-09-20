@@ -10,7 +10,7 @@
 
 파일명이 Content로 끝나는지 대신 명시적 순수 표시 컴포넌트 계약을 사용한다. Entity/Shared UI의 기본 순수성은 유지한다. State 파일의 보조 enum/타입은 의미있는 이름을 사용할 수 있고, ViewModel의 값/참조 선택은 상태 소유와 Observation 수명에 따라 결정한다. 미사용 화면 투영 필드는 원본 정보를 보존하며 제거하고, 같은 슬라이스 내부에서만 쓰는 타입은 공개 목록에서 제외한다. 표시 전용 UI는 실제 소유 Page/Widget에 배치한다.
 
-사용자는 보류 항목을 포함한 변경·병합을 승인했다. 구체 코드·검사·회귀는 함께 변경하며 현재 구현/완료 여부는 iOS ARCHITECTURE와 역할 인계를 따른다. [재평가 근거](reviews/2026-09-20-design-rules-reassessment.md). Android/API는 이번 구현 범위가 아니다.
+사용자는 보류 항목을 포함한 변경·병합을 승인했다. 구체 코드·검사·회귀는 함께 변경하며 현재 구현/완료 여부는 iOS ARCHITECTURE와 역할 인계를 따른다. [재평가 근거](reviews/2026-09-20-design-rules-reassessment.md). 사용자 추가 승인으로 Android에도 같은 기준을 적용하되 실제 Compose 구조에 대응하는 항목을 정리한다. Swift 전용 검사 이식은 요구하지 않으며 API는 이번 범위 밖이다.
 
 ## 2026-09-16 Harmonize 적용 기준
 
