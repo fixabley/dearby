@@ -20,41 +20,11 @@ final class BusyCalendarSession {
     deinit { operation?.cancel() }
 
     func setEnabled(_ value: Bool) {
-        invalidate()
         isEnabled = value
-        if !value { connection = .off; discard(); return }
+        if !value { invalidate(); connection = .off; discard(); return }
+        suspended = false
         connection = .checking
-        let token = generation
-        operation = Task { [weak self, provider] in
-            let access = await provider.authorization()
-            guard let self, self.current(token) else { return }
-            switch access {
-            case .notRequested: self.isEnabled = false; self.connection = .consent
-            case .fullAccess: self.connection = .connected; self.refresh()
-            case .denied: self.disconnect(.denied)
-            case .restricted: self.disconnect(.restricted)
-            }
-        }
-    }
-    func cancelConsent() { if connection == .consent { setEnabled(false) } }
-    func continueConsent() {
-        guard connection == .consent else { return }
-        invalidate(); isEnabled = true; connection = .requesting
-        let token = generation
-        operation = Task { [weak self, provider] in
-            do {
-                let access = try await provider.requestReadPermission()
-                guard let self, self.current(token), self.isEnabled else { return }
-                switch access {
-                case .fullAccess: self.connection = .connected; self.refresh()
-                case .restricted: self.disconnect(.restricted)
-                default: self.disconnect(.denied)
-                }
-            } catch {
-                guard let self, self.current(token) else { return }
-                self.disconnect(.failed)
-            }
-        }
+        refresh()
     }
     func select(id: Int, day: DateInterval, activity: DateInterval) {
         guard day.duration > 0, activity.duration > 0,
@@ -65,7 +35,7 @@ final class BusyCalendarSession {
         if isEnabled && connection == .connected { refresh() }
     }
     func refresh() {
-        guard isEnabled, !suspended, connection != .requesting else { return }
+        guard isEnabled, !suspended else { return }
         invalidate()
         let token = generation, requests = selections
         for id in requests.keys { days[id] = .loading }
@@ -98,20 +68,9 @@ final class BusyCalendarSession {
             }
         }
     }
-    func lifecycle(_ phase: BusyCalendarLifecycle) {
-        switch phase {
-        case .active: resume()
-        case .inactive: break // Permission alerts are transient; keep their generation alive.
-        case .background: suspend()
-        }
-    }
     func suspend() {
         suspended = true; invalidate(); discard()
-        if connection == .consent || connection == .requesting || connection == .checking {
-            isEnabled = false; connection = .off
-        }
     }
-    func resume() { suspended = false; refresh() }
     func close() {
         isEnabled = false; connection = .off; selections.removeAll(); invalidate(); discard()
     }
