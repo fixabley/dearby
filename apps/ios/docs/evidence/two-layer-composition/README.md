@@ -18,6 +18,8 @@ Executed 2026-09-16 KST in `/Users/jominjun/Documents/dearby/dearby-ios-architec
 | Simulator build/run | Final build succeeded, PID22874, iOS26.5 `Dearby-FSD-Verify`, UDID `B04DEBB6-53B1-4CB1-858C-8C290846D4AB`; checkout-local derived data `apps/ios/build/two-layer-derived`. [Build log](simulator-build.txt) |
 | Source preservation | CalendarDraftMapper, CalendarEditorRequest, BusyCalendarSession, EventKitBusyProvider, SwiftDataSnapshotStore byte-identical to base; calendar preferences/protocol identical moves. [Comparison](behavior-preservation.txt) |
 
+Captured text logs have trailing whitespace normalized; results/content are unchanged.
+
 Architecture/lint/busy/detail final runners also executed with cwd `/tmp` using absolute script paths. Standalone final exit0 was observed. Core algorithms/Shared design controls remain unchanged; Entity/Feature composition preserves their use. Unit subscriptions verify runtime Observation propagation without a forced root read; they do not prove lazy SwiftUI tab rendering.
 
 ## UI evidence and limitation

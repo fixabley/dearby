@@ -37,6 +37,8 @@ jobs:
         run: bash apps/ios/tests/run_swiftlint.sh
       - name: Validate iOS architecture
         run: bash apps/ios/tests/run_architecture.sh
+      - name: Verify production boundary rejection
+        run: bash apps/ios/tests/test_layer_distance_gate.sh
       - name: Verify favorites and persistent caches
         run: bash apps/ios/tests/run_standalone.sh
       - name: Verify calendar consent and overlap behavior

@@ -12,7 +12,7 @@ Swift 아키텍처 검사는 `bash apps/ios/tests/run_architecture.sh`로 실행
 
 ## PR 검사
 
-SwiftLint 설치·검사를 기존 필수 `iOS architecture` job에 추가한다. PR23부터 같은 필수 job에서 `run_standalone.sh`, `run_busy_calendar.sh`, `run_detail_presentations.sh`도 실행한다. 구조 검사 이후 즐겨찾기·영속 캐시·스냅샷 롤백·캘린더 동의/취소·정확한 겹침·일정 표시 회귀를 확인한다. 이 테스트들은 mock/임시 저장소를 사용하며 실제 기기 캘린더를 읽거나 저장하지 않는다. Simulator UI 검증은 별도이며 이 호스트 검사로 대체했다고 주장하지 않는다. 별도 `iOS simulator build` job은 macOS26/Xcode26.6에서 실제 앱을 서명 없이 Simulator 대상으로 빌드한다. 도구 경로는 [공식 runner 이미지 목록](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-Readme.md#xcode)에 맞춰 고정했다.
+SwiftLint 설치·검사를 기존 필수 `iOS architecture` job에 추가한다. PR23부터 같은 필수 job에서 `run_standalone.sh`, `run_busy_calendar.sh`, `run_detail_presentations.sh`도 실행한다. 구조 검사 이후 즐겨찾기·영속 캐시·스냅샷 롤백·캘린더 동의/취소·정확한 겹침·일정 표시 회귀를 확인한다. 후속 두 레이어 정책에서는 `test_layer_distance_gate.sh`로 실제 소스 경로의 위반 주입·허용 provider 이동·복원을 CI에서도 확인한다. 이 테스트들은 mock/임시 저장소를 사용하며 실제 기기 캘린더를 읽거나 저장하지 않는다. Simulator UI 검증은 별도이며 이 호스트 검사로 대체했다고 주장하지 않는다. 별도 `iOS simulator build` job은 macOS26/Xcode26.6에서 실제 앱을 서명 없이 Simulator 대상으로 빌드한다. 도구 경로는 [공식 runner 이미지 목록](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-Readme.md#xcode)에 맞춰 고정했다.
 
 `.github/workflows/ios-architecture.yml`의 고정 job 이름은 `iOS architecture`다. 모든 PR과 main push에 실행하며, 필수 검사가 변경 경로 필터 때문에 영원히 pending으로 남지 않도록 paths 필터를 두지 않는다. read-only 토큰과 SHA 고정 checkout v6(Node24)을 사용하고 checkout에 자격 증명을 남기지 않는다. 코드 실행에 pull_request_target을 사용하지 않는다.
 
@@ -28,7 +28,7 @@ GitHub의 필수 검사 설정은 workflow 파일과 별개다. 2026-09-15 main�
 
 이번 작업은 [FSD 목표 규칙](fsd-domain-rules-draft.md)을 실제 Harmonize 검사와 iOS 코드에 적용한다. 기존 PR18의 기본 검사 통과를 새 구조의 검증 결과로 재사용하지 않는다.
 
-- 의존성: 정상 하위 참조/동일 슬라이스 참조와 위반 상향/형제 슬라이스 참조를 쌍으로 검사한다.
+- 의존성: 직접 하위 두 레이어/동일 슬라이스 참조의 정상 사례와 상향/형제 슬라이스/세 레이어 이상 건너뛰기 위반을 쌍으로 검사한다. app/providers 조립 예외는 허용하되 같은 참조를 app/routes·entrypoint로 옮기면 실패해야 한다. Framework import는 내부 레이어 참조와 구분한다.
 - 순수 UI: Entity의 자기 Model 참조는 허용하고 Repository·OS 부수 효과는 금지한다. 연결 Widget/Page UI의 자기 ViewModel 참조는 허용한다.
 - 공개 진입점: Swift 접근 제어와 FSD 노출 목록을 구별한다. 내부 저장 레코드·codec 접근을 실제로 탐지하는지 검사한다.
 - 민감도: 현재 checkout에 임시 위반을 넣어 전체 runner가 실패하는 것을 확인하고 제거 후 다시 통과시킨다. 임시 파일은 커밋하지 않는다.

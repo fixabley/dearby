@@ -340,7 +340,7 @@ SwiftEmitModule normal arm64 Emitting\ module\ for\ Dearby (in target 'Dearby' f
 
 SwiftCompile normal arm64 (in target 'Dearby' from project 'Dearby')
     cd /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios
-    
+
 
 SwiftCompile normal arm64 Compiling\ NoticeCard.swift,\ NoticeCardContent.swift,\ NoticeCardPlaceText.swift,\ NoticeCardScheduleList.swift,\ NoticeCardScheduleRow.swift,\ NoticeDetailState.swift,\ NoticeDetailViewModel.swift,\ NoticeDetail.swift,\ NoticeDetailSections.swift,\ NoticeScheduleView.swift,\ GeneratedAssetSymbols.swift /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/Dearby/widgets/noticeCard/ui/NoticeCard.swift /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/Dearby/widgets/noticeCard/ui/NoticeCardContent.swift /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/Dearby/widgets/noticeCard/ui/NoticeCardPlaceText.swift /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/Dearby/widgets/noticeCard/ui/NoticeCardScheduleList.swift /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/Dearby/widgets/noticeCard/ui/NoticeCardScheduleRow.swift /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/Dearby/widgets/noticeDetail/model/NoticeDetailState.swift /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/Dearby/widgets/noticeDetail/model/NoticeDetailViewModel.swift /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/Dearby/widgets/noticeDetail/ui/NoticeDetail.swift /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/Dearby/widgets/noticeDetail/ui/NoticeDetailSections.swift /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/Dearby/widgets/noticeDetail/ui/NoticeScheduleView.swift /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/build/two-layer-derived/Build/Intermediates.noindex/Dearby.build/Debug-iphonesimulator/Dearby.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'Dearby' from project 'Dearby')
 
@@ -697,24 +697,24 @@ ProcessInfoPlistFile /Users/jominjun/Documents/dearby/dearby-ios-architecture-te
 
 CodeSign /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/build/two-layer-derived/Build/Products/Debug-iphonesimulator/Dearby.app/Dearby.debug.dylib (in target 'Dearby' from project 'Dearby')
     cd /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios
-    
+
     Signing Identity:     "Sign to Run Locally"
-    
+
     /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/build/two-layer-derived/Build/Products/Debug-iphonesimulator/Dearby.app/Dearby.debug.dylib
 
 CodeSign /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/build/two-layer-derived/Build/Products/Debug-iphonesimulator/Dearby.app/__preview.dylib (in target 'Dearby' from project 'Dearby')
     cd /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios
-    
+
     Signing Identity:     "Sign to Run Locally"
-    
+
     /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/build/two-layer-derived/Build/Products/Debug-iphonesimulator/Dearby.app/__preview.dylib
 /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/build/two-layer-derived/Build/Products/Debug-iphonesimulator/Dearby.app/__preview.dylib: replacing existing signature
 
 CodeSign /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/build/two-layer-derived/Build/Products/Debug-iphonesimulator/Dearby.app (in target 'Dearby' from project 'Dearby')
     cd /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios
-    
+
     Signing Identity:     "Sign to Run Locally"
-    
+
     /usr/bin/codesign --force --sign - --timestamp\=none --generate-entitlement-der /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/build/two-layer-derived/Build/Products/Debug-iphonesimulator/Dearby.app
 
 Validate /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/build/two-layer-derived/Build/Products/Debug-iphonesimulator/Dearby.app (in target 'Dearby' from project 'Dearby')
@@ -728,4 +728,3 @@ PruneExplicitPrecompiledModules /Users/jominjun/Documents/dearby/dearby-ios-arch
 PruneExplicitPrecompiledModules /Users/jominjun/Documents/dearby/dearby-ios-architecture-tests/apps/ios/build/two-layer-derived/SDKExplicitPrecompiledModules
 
 ** BUILD SUCCEEDED **
-
