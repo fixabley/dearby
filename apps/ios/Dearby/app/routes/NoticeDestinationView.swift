@@ -13,7 +13,7 @@ struct NoticeDestinationView: View {
             if detail.loadedKey != key {
                 ProgressView("공고 불러오는 중")
             } else if let viewModel = detail.viewModel, viewModel.state != nil {
-                state.detailPage(viewModel: viewModel)
+                NoticeDetailPage(viewModel: viewModel, preferences: state.calendarPreferences)
             } else {
                 ContentUnavailableView("공고를 불러오지 못했어요", systemImage: "exclamationmark.triangle")
             }

@@ -4,6 +4,14 @@
 
 [FSD 레이어](https://feature-sliced.design/docs/reference/layers)와 [슬라이스·세그먼트](https://feature-sliced.design/docs/reference/slices-segments)의 책임·의존 방향을 단일 Swift/Kotlin 앱에 적용한다. 다음 배치는 Dearby의 현재 기능 규모에 맞춘 설계이며 프레임워크 공식 템플릿이 아니다.
 
+## 2026-09-20 설계 단순화 승인
+
+이 항목은 아래 과거 두 계층 제한의 일부를 대체한다. 기본 레이어 방향과 같은 슬라이스/공개 경계를 유지하며 Pages/Widgets가 공개 Shared UI·디자인 토큰을 직접 사용하는 좁은 예외를 둔다. Shared api/lib 전체나 저장·OS·네트워크 접근의 허가는 아니다. 상세 Route에서 앱 소유 CalendarPreferences를 Page에 전달하는 조립은 허용하고, 직접 저장소/OS 동작은 금지한다. 전달만 하는 detailPage factory를 제거할 수 있게 하되 providers의 생성·공유 수명 역할은 유지한다.
+
+파일명이 Content로 끝나는지 대신 명시적 순수 표시 컴포넌트 계약을 사용한다. Entity/Shared UI의 기본 순수성은 유지한다. State 파일의 보조 enum/타입은 의미있는 이름을 사용할 수 있고, ViewModel의 값/참조 선택은 상태 소유와 Observation 수명에 따라 결정한다. 미사용 화면 투영 필드는 원본 정보를 보존하며 제거하고, 같은 슬라이스 내부에서만 쓰는 타입은 공개 목록에서 제외한다. 표시 전용 UI는 실제 소유 Page/Widget에 배치한다.
+
+사용자는 보류 항목을 포함한 변경·병합을 승인했다. 구체 코드·검사·회귀는 함께 변경하며 현재 구현/완료 여부는 iOS ARCHITECTURE와 역할 인계를 따른다. [재평가 근거](reviews/2026-09-20-design-rules-reassessment.md). 사용자 추가 승인으로 Android에도 같은 기준을 적용하되 실제 Compose 구조에 대응하는 항목을 정리한다. Swift 전용 검사 이식은 요구하지 않으며 API는 이번 범위 밖이다.
+
 ## 2026-09-16 Harmonize 적용 기준
 
 [FSD 규칙안](fsd-domain-rules-draft.md)을 iOS Harmonize 검사와 실제 코드에 적용한다. 직접 하위 두 레이어와 동일 슬라이스 내부 참조를 허용하고, 상향·세 레이어 이상 건너뛰기·동일 레이어 다른 슬라이스 내부 접근을 금지한다. app/providers의 의존성 생성·수명 관리만 더 아래 레이어 조립을 허용한다. 이 최신 정책은 iOS에 적용했으며 Android 구현 완료를 뜻하지 않는다. iOS app은 entrypoint/routes/providers 등 목적별 세그먼트, pages/widgets는 슬라이스 아래 ui/model 등 역할 세그먼트를 사용한다. 사용자 정의 소스 폴더는 lowerCamelCase로 시작하며 UI/API 약어도 ui/api로 표기한다. Swift 타입·파일명과 Xcode 도구 규격 디렉터리는 유지한다. 기존의 Widget 동위 배치와 렌더링 UI의 Model/ViewModel 일괄 금지는 이번 iOS 개편으로 대체한다.

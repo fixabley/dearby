@@ -20,7 +20,9 @@ extension ArchitectureTestSuite {
                     #expect(imports.contains { $0.rule == "fsd-distant" } == (targetRank > sourceRank + 2))
                     #expect(imports.contains { $0.rule == "fsd-upward" } == (targetRank < sourceRank))
                 }
-                #expect(FSDBoundaries.check(sources: [path: "import SwiftUI\nimport Foundation\nimport EventKit\nstruct Consumer {}"], exports: [:]).isEmpty)
+                let frameworkErrors = FSDBoundaries.check(sources: [path: "import SwiftUI\nimport Foundation\nimport EventKit\nstruct Consumer {}"], exports: [:])
+                #expect(!frameworkErrors.contains { $0.rule == "fsd-distant" || $0.rule == "fsd-upward" })
+                #expect(frameworkErrors.contains { $0.rule == "route-effect" } == path.hasPrefix("app/routes/"))
             }
         }
 

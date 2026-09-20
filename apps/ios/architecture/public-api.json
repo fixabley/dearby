@@ -70,11 +70,7 @@
     "FavoriteOrganizations",
     "FavoriteOrganizationsObservation",
     "SaveOrganizationResult",
-    "NoticeCardSaveButton",
-    "NoticeIdentityState",
-    "NoticeInstitutionState",
-    "NoticeIdentityView",
-    "SavedOrganizationList"
+    "NoticeCardSaveButton"
   ],
   "pages/discovery": [
     "DiscoveryView"
@@ -127,8 +123,5 @@
     "FavoriteOrganizationCardState",
     "FavoriteOrganizationCardViewModel",
     "FavoriteOrganizationListViewModel"
-  ],
-  "features/openNoticeDetails": [
-    "NoticeDetailsButton"
   ]
 }

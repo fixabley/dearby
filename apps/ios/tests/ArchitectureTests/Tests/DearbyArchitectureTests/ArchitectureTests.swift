@@ -17,7 +17,8 @@ extension ArchitectureTestSuite {
                 let text = try String(contentsOf: file, encoding: .utf8)
                 let source = SwiftSourceCode(source: text)
                 stateCount += source.structs().filter { $0.name.hasSuffix("State") }.count
-                viewModelCount += source.classes().filter { $0.name.hasSuffix("ViewModel") }.count
+                viewModelCount += (source.classes().map(\.name) + source.structs().map(\.name))
+                    .filter { $0.hasSuffix("ViewModel") }.count
                 if path.hasPrefix("shared/ui/") { sharedUICount += 1 }
                 if path.hasPrefix("entities/") && path.contains("/model/") { domainCount += 1 }
                 let violations = ArchitectureRules.check(path: path, text: text)
@@ -27,7 +28,7 @@ extension ArchitectureTestSuite {
             #expect(viewModelCount > 0)
             #expect(sharedUICount > 0)
             #expect(domainCount > 0)
-            print("Harmonize production: \(files.count) Swift files, \(stateCount) State structs, \(viewModelCount) ViewModel classes")
+            print("Harmonize production: \(files.count) Swift files, \(stateCount) State structs, \(viewModelCount) ViewModel declarations")
         }
 
         struct Fixture: Sendable {
@@ -54,12 +55,12 @@ extension ArchitectureTestSuite {
             .init(rule: "state-location", path: "widgets/card/ui/model/Renamed.swift",
                   valid: "struct Helper {}", invalid: "struct CardState {}"),
             .init(rule: "state-name", path: "pages/detail/model/DetailState.swift",
-                  valid: "struct DetailState {}\nstruct PlaceState {}",
-                  invalid: "struct DetailState {}\nstruct Place {}"),
+                  valid: "struct DetailState {}\nstruct Place {}\nenum Availability { case ready }",
+                  invalid: "struct Detail {}\nstruct Place {}"),
             .init(rule: "state-name", path: "widgets/card/model/CardState.swift",
                   valid: "struct CardState {}", invalid: "// struct CardState {}\nstruct WrongState {}"),
-            .init(rule: "viewmodel-class", path: "widgets/card/model/CardViewModel.swift",
-                  valid: "final class CardViewModel {}", invalid: "struct CardViewModel {}"),
+            .init(rule: "viewmodel-type", path: "widgets/card/model/CardViewModel.swift",
+                  valid: "struct CardViewModel {}", invalid: "enum CardViewModel {}"),
             .init(rule: "viewmodel-location", path: "pages/detail/ui/Renamed.swift",
                   valid: "struct DetailView: View {}", invalid: "final class DetailViewModel {}"),
             .init(rule: "viewmodel-name", path: "pages/detail/model/DetailViewModel.swift",
@@ -73,6 +74,18 @@ extension ArchitectureTestSuite {
             #expect(ArchitectureRules.check(path: fixture.path, text: fixture.valid).isEmpty)
             let violations = ArchitectureRules.check(path: fixture.path, text: fixture.invalid)
             #expect(violations.contains { $0.rule == fixture.rule }, "Expected \(fixture.rule); got \(violations)")
+        }
+
+        @Test func viewModelOwnershipCanBeValueOrReference() {
+            for declaration in ["struct CardViewModel {}", "@Observable final class CardViewModel {}"] {
+                #expect(ArchitectureRules.check(path: "widgets/card/model/CardViewModel.swift", text: declaration).isEmpty)
+                #expect(ArchitectureRules.check(path: "widgets/card/ui/Renamed.swift", text: declaration)
+                    .contains { $0.rule == "viewmodel-location" })
+                #expect(ArchitectureRules.check(path: "widgets/card/model/OtherViewModel.swift", text: declaration)
+                    .contains { $0.rule == "viewmodel-name" })
+            }
+            #expect(ArchitectureRules.check(path: "widgets/card/model/CardViewModel.swift", text: "actor CardViewModel {}")
+                .contains { $0.rule == "viewmodel-name" })
         }
 
         @Test func commentsAndStringsAreNotDeclarationsOrImports() {
