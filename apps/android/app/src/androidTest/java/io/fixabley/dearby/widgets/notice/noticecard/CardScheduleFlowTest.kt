@@ -72,7 +72,7 @@ class CardScheduleFlowTest {
         rule.setContent { DearbyTheme {
             CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, 2f)) {
                 Box(Modifier.width(360.dp).height(600.dp)) {
-                    NoticeCard(NoticeCardState("fixture", "긴 제목도 잘리지 않고 전부 표시하는 일정 카드", "대회", "모든 참여 대상", "신청", "장소", false, "org", "조직", schedules = rows),
+                    NoticeCard(NoticeCardState("fixture", "긴 제목도 잘리지 않고 전부 표시하는 일정 카드", "대회", "모든 참여 대상", false, "org", "조직", schedules = rows),
                         "1 / 1", { saves++ }, { details++ }, { selected = it })
                 }
             }

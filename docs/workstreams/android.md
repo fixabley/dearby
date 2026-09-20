@@ -1,5 +1,3 @@
-# android 담당 인계
+# Android 담당 인계
 
-카드 일정·장소 줄 컴포넌트 구현·검증을 완료했다. 현재 상태는 [역할 컨텍스트](../context/android-implementation-and-handoff.md), 증거는 [카드 줄 검증](../../apps/android/docs/card-schedules/CARD-LINES.md)을 따른다. 전용5556과 앱을 유지하고 메인 검토·통합을 기다린다.
-
-현재 구현·담당 범위·다음 행동은 [역할별 컨텍스트](../context/android-implementation-and-handoff.md)를 따른다. 기존 담당 worktree·세션은 정리했으며 새 작업 시 다시 구성한다.
+2026-09-20: 메인 Dearby의 하위 Orca 세션에서 Android 설계 단순화를 진행한다. 현재 상태·소유 범위·실행 검증·다음 행동은 [역할 컨텍스트](../context/android-implementation-and-handoff.md)를 따른다. 다른 checkout에 쓰지 않으며 push/PR/merge는 메인이 담당한다.

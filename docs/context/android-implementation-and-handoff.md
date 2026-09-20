@@ -1,17 +1,18 @@
-# ANDROID 구현 인계
+# Android 구현 인계
 
-2026-09-15 PR #11까지 main 병합 완료. 이전 담당 세션/worktree는 정리했다.
+## 현재 작업 — 설계 단순화 진행 중 (2026-09-20)
 
-## 카드 줄 컴포넌트 — 완료 (2026-09-15)
+사용자가 iOS 설계 재평가를 Android 실제 코드에도 적용하도록 승인했다. 기능·화면·원본 모델·Room·단일 즐겨찾기·캘린더 동의/foreground/취소 계약을 보존한다. 자기 checkout의 apps/android 및 이 역할 문서/workstream만 수정하며 push/PR/merge는 메인 담당이다.
 
-- 원본 시작/종료→dateLines→Column의 별도 Text, 원본 venue.name/address·온라인/host→별도 장소 컴포넌트로 분리했다. 공백 토큰 배치와 긴 단일 토큰 soft-wrap을 사용하며 State-only·native icon·정확한 지도 callback을 유지한다.
-- 이번 관련 JVM6, FSD101/self-test24, Debug/계측APK, 카드계측2(최종31.179초) 통과. 첫 카드·큰 글자/다중/누락 일정·긴 장소 PNG 직접 확인. 상세 증거·긴 토큰 fallback 한계는 [카드 줄 검증](../../apps/android/docs/card-schedules/CARD-LINES.md)에만 기록한다. 이전 일정/URL/아이콘 검증은 [기존 카드 기록](../../apps/android/docs/card-schedules/VERIFICATION.md)이다.
-- 런타임 확인: dearby-android-run, worker `term_491b5f4b-c686-451a-8b2c-d2956eaa2270`, coordinator `term_f2158e63-1b6c-4da2-8567-3a1ed58c229e`, task `task_408c41375c69` / dispatch `ctx_a9734ee105e4`. 5556과 앱 실행 유지, 재개 시 실시간 재확인.
-- 기준8547adb는 메인 통합 완료로 전달받았다. 이번 기능을 한 커밋으로 묶고 push/PR 없이 메인 검토·통합을 기다린다. 작업 전 미커밋 실행 기록은 작업 트리에 그대로 보존하며 기능 커밋에서 제외한다. #13/#14/#15 전체 후속 범위는 미착수다.
+- Git/Orca 확인: 2026-09-20, origin/main PR32 `2362917`에서 만든 `fixabley/dearby-android-design-simplification`; checkout `/Users/jominjun/Documents/dearby/dearby-android-design-simplification`. 메인 Dearby의 Orca 하위 worktree이며 별도 Git checkout이다.
+- Worker `term_dda3f25d-2d72-4efc-9c17-59970971ee35`, task `task_74dd1744d0d1`, dispatch `ctx_1d90d191c0f4`. 재개 시 실시간 상태를 다시 확인한다.
+- 조사 완료: 카드의 미사용 신청/장소 요약·신청 날짜 표시값, 상세의 미표시 출처/분류/관계 투영, 내부 전용 진입점이 정리 후보다. Shared UI 직접 참조는 이미 허용한다. State 보조타입/VM class/Content 파일명 강제는 없으며 Swift 검사체계를 복제하지 않는다.
+- 수명 소유자는 유지: NoticeSession은 공유 저장소·snapshot·VM 캐시, BusySession은 상세 조회 취소/세대/foreground를 담당한다. SettingsController와 중복된 BusySession의 미호출 권한 요청 API를 검토 중이다.
+- 카드 구현/검증 완료: 미사용 표시값 3개와 계산을 제거하고 계측 fixture를 갱신했다. JVM 전체·Debug/계측 APK·lintDebug(오류 0/경고 13)·FSD101/자체회귀24를 이번 checkout에서 통과했다. 전용 Dearby_Issue2_Test를 5556으로 부팅했고 계측은 최종 변경 후 실행한다. 과거 검증과 구분한다.
+- 다음 행동: 기능별 코드·관련 테스트·문서 변경, Ponytail 변경 후 검토, JVM/lint/APK/FSD와 가능한 전용 emulator 계측 후 작은 커밋을 메인에 인계한다.
 
-Compose 네이티브 상태 관리, NoticeModel/OrganizationModel 분리, ViewModel→State 조립, 인메모리→Room→mock cache-aside.
-FSD 하향 의존, Widgets/<domain>/<widget> 안의 UI/State/ViewModel 동위 배치, Shared/UI 네이티브 디자인 시스템을 유지한다.
+## 유지하는 구현과 이전 검증
 
-최신 기능: 환경설정의 `겹치는 일정 확인하기`, 최초 1회 켜기/나중에 설명, boolean 설정 영속화, 일시적 개인 busy 조회. 제목/장소는 표시하지 않고 서버로 전송하지 않는다. 활동/바쁜 시간은 배색 블록, 실제 교집합만 점선·경고·한국어 시간 요약이다. 날짜·요일 다음 줄에 시간을 표시하고 한국 시간 중복 라벨은 생략한다.
+Compose pager·더블탭 조직 저장, 카드/목록/상세 State 조립, Notice/Organization 독립 repository와 Room L1→L2→mock, snapshot 원자적 교체·실패 복구·off-main·stale publish 차단을 유지한다. 최초 캘린더 안내/boolean 설정과 일시적 busy 조회, 지도/캘린더 URL, 네이티브 버튼/접근성도 보존한다.
 
-검증 정본: apps/android/docs/calendar-busy/VERIFICATION.md. 실제 개인 일정/OS 권한/저장 검증은 #13, 접근성/제스처는 #14, iOS 조회 진단 한계는 #15에서 추적한다. 과거 상세 인계는 archive/2026-09-15-before-pr-cleanup/ 참조.
+카드 줄/장소/긴 토큰 표시의 이전 증거는 [카드 줄 검증](../../apps/android/docs/card-schedules/CARD-LINES.md), 캘린더는 [기존 검증](../../apps/android/docs/calendar-busy/VERIFICATION.md), 실제 구조는 [ARCHITECTURE](../../apps/android/ARCHITECTURE.md)를 따른다. 과거 세션/5556 상태는 현재 상태가 아니다. #13/#14/#15 전체 후속은 이번 범위가 아니다.
