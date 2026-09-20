@@ -14,7 +14,7 @@ API = {
     "pages.favorites": {"ui.FavoritesScreen"},
     "pages.noticedetail": {"ui.NoticeDetailSheet", "model.NoticeDetailViewModel", "model.NoticeDetailState"},
     "widgets.notice.noticecard": {"NoticeCard", "NoticeCardState", "NoticeCardViewModel"},
-    "widgets.organization.favoriteorganizationcard": {"FavoriteOrganizationCard", "FavoriteOrganizationCardState", "FavoriteNoticeState", "FavoriteOrganizationCardViewModel"},
+    "widgets.organization.favoriteorganizationcard": {"FavoriteOrganizationCard", "FavoriteOrganizationCardState", "FavoriteOrganizationCardViewModel"},
     "features.calendarbusy": {"api.BusyProvider", "api.BusyPermission", "api.BusyQuery", "api.AndroidBusyProvider", "api.BusySession", "api.BusyConnection", "api.BusyLoad", "api.BusyResult"},
     "features.favoriteorganization": {
         "model.FavoritesState", "api.FavoriteStore", "api.SharedPreferencesFavoriteStore",
@@ -63,6 +63,9 @@ def check_source(relative_path, text):
             errors.append(f"upward dependency: {ref}")
         elif layer == target_layer and source != target:
             errors.append(f"same-layer cross-slice dependency: {ref}")
+        # Pages/Widgets may directly reuse design UI/tokens, not Shared infrastructure.
+        if layer in ("pages", "widgets") and target == "shared" and not ref.startswith("shared.ui."):
+            errors.append(f"Shared dependency must use design UI/tokens: {ref}")
         if source != target and target in API:
             exports = [target + "." + entry for entry in API[target]]
             if not any(ref == entry or ref.startswith(entry + ".") for entry in exports):
@@ -107,6 +110,12 @@ def self_test():
         ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.entities.notice.api.NoticeRepository", False),
         ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.entities.notice.model.NoticeModel", False),
         ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.pages.noticedetail.model.NoticeDetailState", True),
+        ("pages/discovery/ui/Example.kt", "import io.fixabley.dearby.shared.ui.buttons.PrimaryButton", True),
+        ("widgets/notice/noticecard/Example.kt", "import io.fixabley.dearby.shared.ui.theme.Spacing", True),
+        ("pages/discovery/ui/Example.kt", "import io.fixabley.dearby.shared.storage.Store", False),
+        ("widgets/notice/noticecard/Example.kt", "import io.fixabley.dearby.shared.network.Client", False),
+        ("pages/noticedetail/ui/Example.kt", "fun bad() = io.fixabley.dearby.shared.os.Platform.open()", False),
+        ("pages/favorites/ui/Example.kt", "import io.fixabley.dearby.widgets.organization.favoriteorganizationcard.FavoriteNoticeState", False),
     ]
     for filename, snippet, allowed in cases:
         path = Path(filename)
@@ -116,7 +125,8 @@ def self_test():
         errors = check_source(path, f"package {package}\n{snippet}\n")
         assert (not errors) == allowed, (filename, snippet, errors)
     del API["widgets.notice.fixture"]
-    print(f"Boundary self-test: {len(cases)} cases passed (18 forbidden, 6 allowed)")
+    allowed_count = sum(allowed for _, _, allowed in cases)
+    print(f"Boundary self-test: {len(cases)} cases passed ({len(cases) - allowed_count} forbidden, {allowed_count} allowed)")
 
 
 if __name__ == "__main__":
