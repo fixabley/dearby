@@ -28,3 +28,7 @@ Compose M3에는 읽기 전용 하루 시간축이 없어 기존의 좁은 custo
 Calendar의 VISIBLE은 UI 표시 선택이지 free/busy가 아니므로 숨긴 캘린더도 조회 가능한 바쁜 시간에는 포함한다. SQL fixture의 visible=0 행도 유지되는지 검증한다. 명시적 availability/status/self-status 제외 규칙만 적용한다.
 
 최종 실행 및 대표 화면: [VERIFICATION](VERIFICATION.md). [CalendarColumns.VISIBLE](https://developer.android.com/reference/android/provider/CalendarContract.CalendarColumns#VISIBLE)의 화면 표시 여부를 free/busy로 해석하지 않는다.
+
+## 캘린더 편집기 권한 회귀 정정 (2026-09-20)
+
+전체 계측에서 과거 CalendarEditorTest의 앱 전체 READ_CALENDAR 미선언 assertion이 실패했다(36줄). 기준 PR32부터 manifest는 별도 동의형 busy 조회를 위해 READ_CALENDAR를 선언하므로 exporter의 계약과 다르다. 이 assertion을 편집기 Intent의 URI 권한 grant flags=0 검증으로 교체하고 WRITE_CALENDAR 미선언, ACTION_INSERT의 정확한 extras·초대자/자동 저장 없음, handler 실패 안내 검증을 유지했다. 실제 AndroidManifest/권한 요청/OS exporter 코드는 변경하지 않는다. 재검증 결과는 [설계 단순화 검증](../design-simplification/VERIFICATION.md)에 기록한다.
