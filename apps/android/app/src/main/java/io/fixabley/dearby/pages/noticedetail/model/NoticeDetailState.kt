@@ -4,8 +4,6 @@ import io.fixabley.dearby.shared.ui.compactPeriodText
 import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft
 import io.fixabley.dearby.entities.notice.model.NoticeApplication
 import io.fixabley.dearby.entities.notice.model.NoticeLocation
-import io.fixabley.dearby.entities.notice.model.NoticeSource
-import io.fixabley.dearby.entities.notice.model.NoticeEvidence
 import io.fixabley.dearby.entities.notice.model.NoticePhase
 import io.fixabley.dearby.entities.notice.model.NoticeVenue
 
@@ -14,12 +12,9 @@ internal data class NoticeDetailState(
     val id: String,
     val title: String,
     val aiDescription: String,
-    val descriptionProvenance: String,
     val organizationId: String?,
     val organizationName: String?,
     val ancestorNames: List<String>,
-    val relatedOrganizations: List<ResolvedOrganizationRole>,
-    val categoryPath: List<String>,
     val categorySummary: String,
     val contexts: List<ResolvedOrganizationRole>,
     val edition: Int?,
@@ -31,8 +26,6 @@ internal data class NoticeDetailState(
     val benefits: List<String>,
     val issues: List<String>,
     val sourceURL: String,
-    val sources: List<NoticeSource>,
-    val evidence: List<NoticeEvidence>,
     val applicationDraft: CalendarDraft?,
     val phaseDrafts: List<CalendarDraft?>,
     val saved: Boolean = false,
@@ -63,7 +56,7 @@ internal data class NoticeDetailState(
     }
 }
 
-internal data class ResolvedOrganizationRole(val organizationId: String, val role: String, val label: String, val name: String?)
+internal data class ResolvedOrganizationRole(val label: String, val name: String?)
 internal data class NoticeScheduleState(val period: NoticePhase, val locations: List<NoticeVenue>) {
     val title: String get() = if (period.mode == "online" && !period.label.startsWith("온라인")) "온라인 ${period.label}" else period.label
     val timeline get() = period.let {
