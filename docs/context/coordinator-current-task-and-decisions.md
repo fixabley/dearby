@@ -12,7 +12,7 @@ Root refactor/ios-design-simplification는 공통 정책·통합·GitHub 병합 
 
 Orca Run run_58f7d03f4deb / Task task_5680a3ed1580 / Dispatch ctx_77f89952ed32 / terminal term_13ba3b4a-9172-4a99-bff8-485358963ea0. 준비·입력·실행 시작 확인. 완료된 검토 Task와 다르다. Runtime f311bec3-cb3a-46db-b79e-2dbf2412ee06.
 
-origin 재확인/fetch 완료. 기존 PR27~31 의존 스택을 통합할 권한을 사용자 병합 요청에 따라 적용한다. PR27은 필수 검사 두 개 성공·CLEAN 확인 후 merge했고 PR28의 base를 main으로 변경했다. 남은 PR28~31과 신규 변경은 보호규칙/CI 확인 후 병합한다. 강제 push/보호규칙 우회 없음.
+origin 재확인/fetch 완료. 기존 PR27~31 의존 스택을 통합할 권한을 사용자 병합 요청에 따라 적용한다. PR27~31 모두 각각 필수 검사 두 개 성공·CLEAN 확인 후 순서대로 main에 merge했다(origin/main 54038d2). root 작업 브랜치에도 충돌 없이 통합했다. 신규 표시 필드/export 정리 PR #32도 architecture·Simulator CI 성공 후 병합했다(origin/main 2362917). 구조 계약/컴포넌트 이동은 후속 PR로 통합 중이며 공개 Shared 디자인 예외·class/struct VM·명시적 pure 계약을 검사로 확인한다. 후속 변경도 보호규칙/CI 확인 후 병합한다. 강제 push/보호규칙 우회 없음.
 
 ## 완료 기준
 

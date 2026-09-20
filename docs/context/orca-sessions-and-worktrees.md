@@ -1,6 +1,6 @@
 # Git·Orca 현재 상태
 
-2026-09-20 재확인: runtime f311bec3-cb3a-46db-b79e-2dbf2412ee06. iOS 기존 worktree 75ca705에서 설계 재평가 task_ba39e8fd4fba / ctx_41ab5059821a / term_13ba3b4a-9172-4a99-bff8-485358963ea0 검토 완료·succeeded·retained·delivery ack. 기존 terminal 재사용 ctx_cfb312c5f3e3은 readiness timeout으로 시작 실패했고 잔여 리소스 없이 새 terminal retry했다. Worker는 자기 역할/워크스트림 문서 두 개만 미커밋이며 앱 수정 없음. Root가 해당 diff를 통합했다. 아래는 09-16 완료 당시 기록이다.
+2026-09-20 구현 진행: runtime f311bec3-cb3a-46db-b79e-2dbf2412ee06, Run run_58f7d03f4deb. iOS task_5680a3ed1580 / ctx_77f89952ed32 / term_13ba3b4a-9172-4a99-bff8-485358963ea0에서 보류 포함 설계 단순화 구현/회귀 진행 중. Root refactor/ios-design-simplification, worker feat/ios-design-simplification. 기존 검토 task_ba39e8fd4fba는 완료됐고 새 Task로 같은 live terminal을 재사용했다. PR27~32는 모두 main 병합 완료(origin/main 2362917). 사용자 Xcode/.swiftpm 변경은 root에 보존한다. 아래는 과거 상태이며 최신 재개점은 조율 문서를 따른다.
 
 2026-09-16 16:28 KST 확인. iOS 상태 수명·즐겨찾기·발견 관찰 정리 완료, PR30/31 게시. 기존 PR27/28/29와 함께 미병합이며 이번에 병합하지 않는다.
 
