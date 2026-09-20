@@ -212,3 +212,9 @@ NoticeCardState는 실제 렌더링하는 식별/분류/대상/이슈/조직/저
 상세 State는 UI에서 사용하지 않는 descriptionProvenance/categoryPath/relatedOrganizations/sources/evidence를 복사하지 않는다. 조직 context는 표시 label/name만 조립하며 원본 organizationId/role은 NoticeModel에 남는다. 원문 URL·설명·조직·분류·일정/장소·캘린더 입력과 공유 saved 관찰은 유지한다. 출처/근거 검증은 NoticeRepository의 원본→NoticeStorageCodec roundtrip 및 canonical 번들 모델에 적용한다. 저장 필드를 제거하거나 UI에서 원본 전체를 조회하지 않는다.
 
 상세 변경 검증(2026-09-20): JVM79/계측 APK/FSD101·자체회귀24 통과(`build-design-detail.log`). Ponytail diff 리뷰에서 추가 전달층/중복 투영 없음. saved는 화면 간 동기화 계약이므로 유지했다.
+
+### 캘린더 권한과 상세 조회 소유권
+
+CalendarSettingsController/Host가 유일한 동의·권한 요청 소유자다. BusySession의 미호출 confirm/permissionResult/retry와 Consent/Requesting 상태를 제거하고 권한 거절은 Denied로 표현한다. 상세의 generation/revision·CoroutineScope·foreground·query 및 결과 수명은 유지한다. NoticeDetailRoute는 provider 구현을 직접 호출하지 않고 이 소유자와 표시 State/콜백만 조립하며, 읽기 전용 overlays에 불필요한 mutable map 복사도 제거했다. NoticeSession은 공유 repository/snapshot/VM identity를 소유하므로 전달 wrapper로 취급하지 않는다.
+
+캘린더 변경 검증(2026-09-20): JVM80(기존 설정 권한 회귀 유지 + background/close 지연 결과 회귀 1 추가)·계측 APK·FSD101/자체회귀24 통과(`build-design-busy.log`). Ponytail diff 검토 후 실제 수명·보안 경계 외 추가 삭제 후보 없음.

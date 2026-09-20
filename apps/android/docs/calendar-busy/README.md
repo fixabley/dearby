@@ -12,7 +12,7 @@ ALL_DAY의 UTC midnight는 floating 날짜다. 별도 UTC-date query 후 기기 
 
 검증(2026-09-15): 새 BusyInterval/BusySession JVM 7개 통과, 전용5556의 AndroidBusyProvider 계측 3개 통과. in-memory SQLite numeric fixture로 SQL NULL/tentative/free/canceled/declined, projection/bounds/IO, floating 종일, null cursor 실패 및 CancellationSignal 전달을 실행했다. OS CalendarProvider 및 실제 계정 반복 확장은 읽지 않았고 공식 Instances 계약에 의존한다.
 
-권한 요청 중 실제 ON_STOP으로 화면이 가려지면 Consent/Requesting도 OFF로 되돌린다. 오래된 permission callback을 무시한 뒤에도 스위치를 다시 조작할 수 있다. 권한 다이얼로그의 일시 ON_PAUSE에는 정리하지 않는다. confirm→background→late permission→resume 및 여러 활동의 단일 세션 조율을 회귀 검증한다.
+권한 요청과 지연 callback의 세대 검사는 CalendarSettingsController/Host만 소유한다. 실제 ON_STOP에서는 진행 중인 요청을 OFF로 되돌리고 늦은 응답을 무시하며, 권한 다이얼로그의 일시 ON_PAUSE에는 정리하지 않는다. BusySession은 이미 허용된 접근을 확인하고 상세의 조회/취소/복귀만 담당한다. 2026-09-20 caller 조사에서 테스트 외 사용되지 않는 confirm/permissionResult/retry와 Consent/Requesting 상태를 제거했다. 재조회는 실제 화면 경로인 foreground 복귀/명시적 enable로 수행하며, 거절·제한·철회와 off/background/close/new-date의 stale publish 차단 회귀를 유지한다.
 
 ## 상세 표시 API / native mapping
 
