@@ -13,3 +13,9 @@ Validation results are recorded in the iOS role handoff; earlier test runs are n
 NoticeDetailsButton is local to widgets/noticeCard/ui. It retains its separate descriptive file, the native SecondaryButton style, full-width icon label, accessibility identifier and the Page-owned route callback. No Feature owns state or policy for this simple action. The type is explicitly registered as pure UI; its former Feature public API entry is removed.
 
 Validation: production architecture and strict lint are run for the move; the final Simulator smoke must verify details opening and unchanged save behavior.
+
+## Favorites page presentation
+
+SavedOrganizationList is local to pages/favorites/ui and explicitly registered as pure UI. FavoriteListView still passes its existing empty/error condition and content; the native empty view and on-device storage disclosure are unchanged. FavoriteOrganizations and FavoriteOrganizationListViewModel keep their existing mutation, observation, retry and lifetime responsibilities.
+
+Validation: production architecture and strict lint cover the placement; final standalone tests retain favorites failure preservation and single-source observation coverage.

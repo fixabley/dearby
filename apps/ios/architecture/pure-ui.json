@@ -1,5 +1,6 @@
 [
   "FavoriteOrganizationCardContent",
   "NoticeCardContent",
-  "NoticeDetailsButton"
+  "NoticeDetailsButton",
+  "SavedOrganizationList"
 ]

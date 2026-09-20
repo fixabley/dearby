@@ -73,8 +73,7 @@
     "NoticeCardSaveButton",
     "NoticeIdentityState",
     "NoticeInstitutionState",
-    "NoticeIdentityView",
-    "SavedOrganizationList"
+    "NoticeIdentityView"
   ],
   "pages/discovery": [
     "DiscoveryView"
