@@ -35,7 +35,7 @@ struct NoticeViewModelTests {
         let favoriteCard = testValue(try FavoriteOrganizationCardViewModel(id: "krc", noticeIDs: snapshot.feedIDs, notices: notices, organizations: organizations, favorites: favorites))
         precondition(source.counts[krc.id] == 1 && orgSource.counts["krc"] == 1 && orgSource.counts["cbnu"] == 1)
         precondition(card.state!.organizationName == "한국농어촌공사" && card.state!.contextNames == "충북대학교")
-        precondition(card.state!.title == krc.title && card.state!.targetUser == krc.targetUser && card.state!.applicationSummary == krc.applicationInformation.summary)
+        precondition(card.state!.title == krc.title && card.state!.targetUser == krc.targetUser)
         precondition(detail.state!.organizationPath.isEmpty && detail.state!.contexts[0].label == "행사 관련 기관")
         precondition(detail.state!.applicationURL?.absoluteString == krc.applicationInformation.url)
         precondition(detail.state!.application.time.timeline != nil)

@@ -24,8 +24,8 @@ struct NoticeCardContent: View {
 #Preview("공고 · 긴 제목 · 큰 글자") {
     ScrollView {
         NoticeCardContent(state: .init(id: "preview", title: "여러 줄로 이어지는 긴 공고 제목도 축소하지 않고 읽을 수 있어요",
-                                category: "교육", contextNames: "지역 기관", targetUser: "누구나", applicationSummary: "일정 확인 필요",
-                                locationSummary: "장소 확인 필요", hasQualityIssues: true, organizationName: "긴 이름의 관심 조직", saved: true),
+                                category: "교육", contextNames: "지역 기관", targetUser: "누구나",
+                                hasQualityIssues: true, organizationName: "긴 이름의 관심 조직", saved: true),
                    position: "1 / 4", compact: false, onSave: {}, onShowDetail: {})
     }
     .background(Color(uiColor: .systemGroupedBackground))

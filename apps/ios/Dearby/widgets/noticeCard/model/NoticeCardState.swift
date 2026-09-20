@@ -4,13 +4,10 @@ struct NoticeCardState: Identifiable {
     let category: String
     let contextNames: String
     let targetUser: String
-    let applicationSummary: String
-    let locationSummary: String
     let hasQualityIssues: Bool
     let organizationName: String?
     var saved: Bool
     var schedules: [NoticeCardScheduleState] = []
-    var applicationPeriod: String? = nil
     var summary: NoticeCardSummaryState {
         NoticeCardSummaryState(id: id, title: title, category: category, contextNames: contextNames,
             targetUser: targetUser, hasQualityIssues: hasQualityIssues)
