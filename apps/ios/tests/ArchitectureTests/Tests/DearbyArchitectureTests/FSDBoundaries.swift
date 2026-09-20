@@ -16,7 +16,7 @@ enum FSDBoundaries {
         var parts: [String] { path.split(separator: "/").map(String.init) }
         var layer: String { parts.first ?? "" }
         var slice: String { parts.prefix(layer == "app" || layer == "shared" ? 1 : 2).joined(separator: "/") }
-        var pureUI: Bool { (parts.contains("ui") && ["entities", "shared"].contains(layer)) || path.hasSuffix("Content.swift") }
+        var pureUI: Bool { (parts.contains("ui") && ["entities", "shared"].contains(layer)) }
         init(path: String, text: String) {
             self.path = path
             source = SwiftSourceCode(source: text)
@@ -46,11 +46,22 @@ enum FSDBoundaries {
         }
     }
 
-    static func check(sources: [String: String], exports: [String: [String]]) -> [ArchitectureRules.Violation] {
+    static func check(sources: [String: String], exports: [String: [String]], pureUI: [String] = []) -> [ArchitectureRules.Violation] {
         let files = sources.map { File(path: $0.key, text: $0.value) }
         var declarations: [String: [File]] = [:]
         for file in files { for name in file.names { declarations[name, default: []].append(file) } }
         var errors: [ArchitectureRules.Violation] = []
+        let pureNames = Set(pureUI)
+        if pureNames.count != pureUI.count {
+            errors.append(.init(rule: "pure-ui-contract", path: "pure-ui.json", detail: "duplicate pure UI declarations"))
+        }
+        for name in pureNames {
+            guard let owners = declarations[name], owners.count == 1,
+                  owners[0].parts.contains("ui"), ["pages", "widgets"].contains(owners[0].layer) else {
+                errors.append(.init(rule: "pure-ui-contract", path: "pure-ui.json", detail: "missing/ambiguous presentation UI: \(name)"))
+                continue
+            }
+        }
         for (name, owners) in declarations where owners.count > 1 {
             errors.append(.init(rule: "fsd-ambiguous", path: owners[0].path, detail: "ambiguous top-level declaration \(name)"))
         }
@@ -94,14 +105,28 @@ enum FSDBoundaries {
             aliasVisitor.walk(file.syntax)
             for name in aliasVisitor.forbidden { reject("fsd-alias", "cross-slice typealias to \(name)") }
             if file.syntax.hasError { reject("swift-syntax", "source must parse without errors") }
-            if file.pureUI {
-                let forbidden: Set<String> = ["UserDefaults", "Bundle", "FileManager", "URLSession", "UIApplication", "openURL", "SwiftData", "ModelContext", "ModelContainer", "EventKit", "EventKitUI", "EKEventStore", "EKEventEditViewController", "MKMapItem", "CLLocationManager"]
-                for name in file.references where forbidden.contains(name) || name.hasSuffix("Repository") || name.hasSuffix("ViewModel") { reject("pure-ui-effect", "pure UI cannot use \(name)") }
+            let isPureUI = file.pureUI || !file.names.isDisjoint(with: pureNames)
+            let isRoute = file.path.hasPrefix("app/routes/")
+            let effects: Set<String> = ["UserDefaults", "Bundle", "FileManager", "URLSession", "UIApplication", "openURL", "SwiftData", "ModelContext", "ModelContainer", "EventKit", "EventKitUI", "EKEventStore", "EKEventEditViewController", "MapKit", "MKMapItem", "CoreLocation", "CLLocationManager", "UIKit"]
+            for name in file.references {
+                if isPureUI && (effects.contains(name) || name.hasSuffix("Repository") || name.hasSuffix("ViewModel")) {
+                    reject("pure-ui-effect", "pure UI cannot use \(name)")
+                }
+                if isRoute && (effects.contains(name) || name.hasSuffix("Repository")) {
+                    reject("route-effect", "routes compose pages, not storage or OS work: \(name)")
+                }
             }
             for name in file.references {
                 for target in declarations[name] ?? [] where target.path != file.path {
                     guard let targetRank = layers.firstIndex(of: target.layer) else { continue }
-                    if targetRank > rank + 2 && !isProvider {
+                    // Only exported Shared UI declarations: never blanket imports or Shared api/lib.
+                    let sharedDesign = ["pages", "widgets"].contains(file.layer)
+                        && target.path.hasPrefix("shared/ui/") && (exports["shared"] ?? []).contains(name)
+                    // This route only passes the app-owned preferences into the detail Page.
+                    let detailPreferences = file.path == "app/routes/NoticeDestinationView.swift"
+                        && target.path == "features/checkCalendarOverlap/model/CalendarPreferences.swift"
+                        && name == "CalendarPreferences"
+                    if targetRank > rank + 2 && !isProvider && !sharedDesign && !detailPreferences {
                         reject("fsd-distant", "\(name) from \(target.path)")
                     }
                     if targetRank < rank { reject("fsd-upward", "\(name) from \(target.path)") }
@@ -111,7 +136,10 @@ enum FSDBoundaries {
                     if target.slice != file.slice && !(exports[target.slice] ?? []).contains(name) {
                         reject("fsd-public-api", "\(name) is internal to \(target.slice)")
                     }
-                    if file.pureUI && (target.parts.contains("api") || name.hasSuffix("Repository") || name.hasSuffix("ViewModel")) {
+                    if isRoute && target.parts.contains("api") {
+                        reject("route-effect", "routes cannot access API implementation \(name)")
+                    }
+                    if isPureUI && (target.parts.contains("api") || name.hasSuffix("Repository") || name.hasSuffix("ViewModel")) {
                         reject("pure-ui-effect", "pure UI cannot access \(name)")
                     }
                 }

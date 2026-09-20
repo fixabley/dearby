@@ -1,6 +1,12 @@
 # iOS 구현 인계
 
-## 현재 — 설계 재검토 완료, 구현 미착수
+## 현재 — 승인된 설계 단순화 구현 중
+
+2026-09-20 KST: `75ca705`에서 `feat/ios-design-simplification` 생성, 기존 미커밋 검토 문서 보존. 새 task `task_5680a3ed1580`, dispatch `ctx_77f89952ed32`, terminal `term_13ba3b4a-9172-4a99-bff8-485358963ea0`. 자기 apps/ios와 역할 문서만 수정하며 commit 승인, push/PR/merge는 Root 담당이다. 새 승인 좁은 예외가 오래된 모든 하위 허용 문구보다 우선한다.
+
+공통 선행 변경은 공개 Shared UI의 Pages/Widgets 직접참조, 명시적 pure UI 선언 계약, State 보조타입 접미사 강제 완화다. 컴포넌트 이동에 필요한 검사 기반이므로 별도 선행 커밋으로 묶는다. 현재 실제 VM은 공유 참조/Observation/구독 수명이 있어 class를 유지하되 선언 검사는 class/struct를 허용한다. 주타입/파일명/model 위치는 검사하며 enum/actor를 새로 허용하지 않는다. 선행 표시필드/export 커밋 `920b6bf`는 standalone 전체 exit0으로 Root에 전달했다. 정책 최종 architecture16 tests/5 suites와 확장 production gate(exit0)를 실행했다. strict lint는 VM 소유형식 조정 전 1차 exit0이며 최종 재실행 예정이다. 정책 로그 `/tmp/dearby-simplification-policy-{architecture,gate,lint}.log`; empty/stale 계약, rename 후 pure 위반, Shared 비표시/route OS/provider 내부·UI 위반 거절 및 원상복구를 확인했다. 최종 빌드/UI는 아직 미실행이며 이전 PASS는 재사용하지 않는다.
+
+## 이전 검토 — 구현 승인 전 기록
 
 2026-09-20 KST, 자기 checkout `dearby-ios-architecture-tests`, branch `feat/ios-state-lifecycles`, HEAD `75ca7057daea85ae3225cf94b05be5635aaca7c0`에서 검토했다. 시작 시 Git 변경 없음, Orca runtime ready와 현재 worktree 연결을 확인했다. 이번 terminal `term_13ba3b4a-9172-4a99-bff8-485358963ea0`, task `task_ba39e8fd4fba`, dispatch `ctx_41ab5059821a`이며 재개 시 다시 확인한다. 이전 단락의 terminal/Dispatch와 검증은 과거 기록이다.
 
