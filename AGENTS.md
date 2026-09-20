@@ -3,7 +3,7 @@
 사용자는 API·Android·iOS 작업을 별도 Orca 세션과 Git worktree로 나누고,
 메인 세션에서 공통 규격과 진행 상황을 조율하도록 요청했다.
 
-- 플랫폼 작업은 해당 Orca 담당 세션에 배정한다. 여러 플랫폼의 독립 작업은 Orca orchestration으로 병렬 배정할 수 있다.
+- 플랫폼 작업은 메인 Dearby의 하위 Orca worktree·담당 세션에 배정한다. Git base와 Orca 부모 연결은 별개이며 새 세션 생성 시 하위 연결을 확인한다. 여러 플랫폼의 독립 작업은 Orca orchestration으로 병렬 배정할 수 있다.
 - 새 에이전트를 만들기 전에 기존 담당 worktree와 세션을 확인한다. 현재 연결은 `docs/workstreams/README.md`를 참고하고 런타임 상태는 Orca CLI에서 다시 확인한다.
 - Orca 감독을 내장 서브에이전트로 중복 실행하지 않는다. 감독 요청은 orchestration 스킬, worktree·세션 관리는 orca-cli 스킬을 따른다.
 - API의 기본 소유 범위는 `apps/dearby-api/`, Android는 `apps/android/`, iOS는 `apps/ios/`다.
