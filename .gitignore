@@ -15,3 +15,6 @@ test-results/
 /dearby-web/
 /orca-worktree-trash/
 /.orca-worktree-trash/
+
+# Next generates environment references for dev and production.
+next-env.d.ts

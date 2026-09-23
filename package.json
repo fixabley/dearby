@@ -6,10 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint src tests next.config.ts playwright.config.ts eslint.config.mjs",
+    "lint": "eslint src tests next.config.ts playwright*.config.ts eslint.config.mjs",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "tsx --test tests/*.test.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:dev": "playwright test -c playwright.dev.config.ts"
   },
   "dependencies": {
     "next": "16.3.6",
