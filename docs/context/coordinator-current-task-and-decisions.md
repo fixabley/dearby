@@ -18,18 +18,26 @@
 - npm ci: 취약점 0. ESLint 9 지원 종료 경고가 있다. npm registry의 최신 eslint-plugin-react peer 범위가 아직 9까지여서 ESLint 10 강제 설치를 하지 않았다. npm 12의 install-script 차단 경고도 있으나 실제 lint/test/build는 통과했다.
 - 초기 Task task_c5abe8d83ebe / Dispatch ctx_a529f998bad6는 succeeded 보고를 검토하고 release/ack했다. 해당 worker terminal은 종료·출력 보관, checkout/branch는 유지했다.
 
-## 현재 후속 작업 — 아직 미완료
+## 후속 반영·검증 완료
 
-동일 dearby-web checkout에서 새 Task task_2c46a954b462 / Dispatch ctx_a30c192f9930 / terminal term_f94fe84b-50b8-486d-90aa-0595ce675676에 대상 확대·카드 가독성 보완을 배정했다. 자기 src/public/tests/README/web 역할 문서만 수정하고 제품 정본/AGENTS/메인 문서는 메인이 소유한다. 새로운 worker_start는 ready·input accepted·turn started가 확인됐다. 이전 핸들을 재사용하지 않는다.
+고등학생/대학생/취준생 대상·한국어 활동 카드·대표 현재 공고·저장 hydration 개선을 root 00d7c29/502b207/a56c9a1에 통합했다. 메인에서 lint/typecheck/unit12/build/production E2E26/dev Chromium·WebKit12 통과를 재확인했다. 실제 Orca 새 페이지에서도 저장 클릭·새로고침 복원·활성 버튼·console error 0을 확인했다. 기존 탭 console에는 수정 전 기록이 남아 있어 새 탭에서 구분 검증했다.
 
-메인 Orca 브라우저로 개발서버를 확인하던 중 hydration mismatch(서버 SaveButton disabled, 클라이언트 false)와 버튼 DOM 비활성 고착을 추가 발견했다. production Chromium 12개 통과가 이 개발모드/WebKit 문제를 검증한 것은 아니다. 후속 worker에 원인 검증과 근본 수정, dev 새 진입/저장 복원 console 오류 회귀를 함께 배정했다. suppressHydrationWarning으로 숨기지 않는다.
+저장 문제는 소비자별 useSyncExternalStore 서버 snapshot으로 수정했고 새 dev 회귀를 CI에 연결했다. CI 원격 실행은 아직 하지 않았다. Next dev가 생성하는 next-env.d.ts는 추적 제외하고 파일 없는 상태 typegen을 검증했다. Next 자동 AGENTS 안내는 메인에서 보존한다.
 
-다음: 후속 worker 보고·코드·스크린샷 검토, 기능 커밋 root 통합, 변경 관련 검증과 Orca 개발서버 실제 조작, 최종 실행 링크 제공. worker mailbox는 처리한 Delivery를 ack해야 다음 후속이 전달된다.
+## 현재 추가 작업 — 컨퍼런스
+
+사용자가 컨퍼런스도 포함한다고 확인했다. 동일 dearby-web checkout의 Task task_3f3b5dfe71b8 / Dispatch ctx_e9759a9998a5 / terminal term_db69f423-a4bc-45ae-910d-ede154eab9d9에서 컨퍼런스 샘플과 참가등록형 안내를 추가 중이다. 참가 대상·분야·등록 마감·개최일·장소를 표시하고 결제/신청실행은 추가하지 않는다. 이전 Task task_2c46a954b462 / Dispatch ctx_a30c192f9930는 succeeded·release·ack 완료했다.
+
+사용자가 하위 세션에서도 진행내용이 보이길 원하므로 새 웹 담당 세션을 열어 현재 인계를 표시했고 앞으로 완료 후에도 사용자 요청에 따른 retain으로 유지한다. 실제 세션과 worktree 카드도 해당 창으로 전환했다. 기존 종료 핸들은 다시 쓰지 않는다.
+
+shadcn/ui 사용도 허용했으나 필수 전환 요청은 아니어서 검증된 컨트롤을 일괄 교체하지 않는다. 선택지로 AGENTS에 기록했고 아직 설치하지 않았다.
+
+다음: 컨퍼런스 변경·테스트·스크린샷 검토, 기능 커밋 root 통합, 관련 회귀와 최종 실행 확인, 역할 문서/하위 세션 상태 업데이트. 완료 worker는 release 대신 retain한다. 현재 root CI와 공통 정책 문서 수정도 커밋해야 한다.
 
 ## 로컬 실행과 보존
 
-- root 개발서버: http://127.0.0.1:3000, Orca terminal term_60a40728-7163-45a2-a690-7721f7d41230. 2026-09-24 00:56 KST ready/HTTP200 확인. 후속 작업 중 유지하며 현재 초기 웹 코드가 표시된다.
-- root Orca page b99a9e23-82b0-4349-a854-b6bfa204ef82가 위 URL을 표시한다. 처음 CUA IAB는 미연결 실패했으나 Orca 내장 브라우저로 우회했다. 실제 YouTube 비로그인 헤더·접힌 메뉴만 확인했고 추천 그리드는 없어서 전체 대조하지 못했다.
+- root 개발서버: http://127.0.0.1:3000, Orca terminal term_22a33928-5c20-48bf-bc14-dd693744754a. 2026-09-24 00:56 KST ready/HTTP200 확인. 후속 작업 중 유지하며 현재 초기 웹 코드가 표시된다.
+- root Orca 새 page d26f381c-df01-4020-9115-53457b1007ba가 위 URL을 표시한다(기존 page b99a9e23-82b0-4349-a854-b6bfa204ef82도 보존). 처음 CUA IAB는 미연결 실패했으나 Orca 내장 브라우저로 우회했다. 실제 YouTube 비로그인 헤더·접힌 메뉴만 확인했고 추천 그리드는 없어서 전체 대조하지 못했다.
 - 기존 apps/scripts/shared/root Node 설정·의존성과 잔여 dearby-ios는 /Users/jominjun/Documents/dearby-backups/2026-09-24-before-web-rebuild/에 이동 보존했다. repository.bundle 검증, 사용자 Xcode 변경 binary diff·원본, 700개 소스/로컬 파일 해시 대조를 보존했다. main f1d9a63에도 추적 코드가 남아 있다.
 - 기획·발표 자료·Git 이력은 유지한다. dearby-ir은 별도 저장소이며 변경하지 않았다. 과거 네이티브 규칙은 archive로 보존하고 새 웹에 적용하지 않는다.
 - GitHub main에는 기존 iOS architecture 필수 체크가 남아 있다. 향후 PR 병합 시 실제 web CI에 맞는 보호규칙 변경을 별도 조율하며 가짜 iOS 체크로 우회하지 않는다.
