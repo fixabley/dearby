@@ -22,6 +22,8 @@ npm run test:dev
 
 프로덕션은 build 다음 `npm run start -- --port 3000`으로 실행합니다. production E2E는 자체 3210 서버와 Chromium 1440×1000/390×844를, dev 회귀는 3211 서버와 Chromium/WebKit을 사용하고 종료 시 정리합니다. 개인 브라우저와 메인 3000 서버를 사용하지 않습니다.
 
+[기획 결정](docs/product/conference-first-web-2026-09.md) · [기업/조직별 조사 목록](docs/research/korea-it-conferences-2026-09.md)
+
 ## 데이터와 출처
 
 18개 프로그램·20개 회차 공고·16개 조직입니다. FEConf, 우아콘, NAVER DAN, if(kakao), Toss Makers, Tech-Verse, PyCon Korea, Spring Camp, Let’Swift, GopherCon Korea, AWS Summit Seoul, kt cloud summit, Droid Knights, DevFest Cloud x Seoul, DevFest Korea Android, Samsung AI Forum, Samsung Tech Conference, DEVIEW를 포함합니다.

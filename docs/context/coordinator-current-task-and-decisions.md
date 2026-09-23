@@ -1,49 +1,36 @@
 # 현재 작업과 결정
 
-2026-09-24 KST. 사용자가 기존 실행 코드를 제거하고 웹으로 재구현하도록 요청했다. 첫 범위는 최근 재기획 중심 프로그램 탐색·필터·상세·조직/프로그램 스크랩이며 인터페이스는 YouTube 같은 가독성 있는 탐색 구조다.
+2026-09-24 01:47 KST. **컨퍼런스 우선 웹 구현·조사·메인 검증 완료**, 사용자 검토 대기.
 
-## 진행 중: 공식 컨퍼런스 조사·웹 전환 (2026-09-24)
+## 사용자 목적과 승인
 
-사용자는 회사/조직별 컨퍼런스 조사와 지금까지 기획 기반 구현을 요청했고, 잠든 동안 범위 내 의사결정은 자율적으로 진행하도록 승인했다. 컨퍼런스부터 시작하며 공식 OG/포스터→실제 랜딩 캡처→표시된 기본 이미지 순서다. 교육 과정은 후속 범위다. 조사 정본: [국내 IT 컨퍼런스 조사](../research/korea-it-conferences-2026-09.md). 전체 누락 없음이나 실시간 모집 정보를 보장하지 않는다.
+기존 네이티브/API 실행 코드를 보존 후 제거하고 최근 재기획의 프로그램 탐색·필터·상세·조직/프로그램 스크랩을 웹으로 구현한다. 고등학생·대학생·취준생을 포함하며 YouTube처럼 읽기 쉬운 썸네일 탐색 구조를 원한다. 첫 콘텐츠는 컨퍼런스, 교육 과정은 후속이다. 잠든 동안 범위 내 미정 사항은 자율 판단하도록 승인했다.
 
-Orca run_469a74207c03, 웹 Task task_11416b48d24f / Dispatch ctx_259771a9ca90이 dearby-web에서 진행 중이다. terminal term_db69f423-a4bc-45ae-910d-ede154eab9d9를 재사용했고 실제 turn_started 확인. 18개 공식 행사 데이터·공식 이미지·회차·모집 판정·모바일 참가 정보 우선 배치를 구현/검증 중이다. 완료 보고 전이며 이전 테스트 통과를 이 변경의 결과로 간주하지 않는다. child base 1dae183 이후 커밋만 root 4ec1c5c 기반에 검토 통합한다. root는 조사/공통 문서만 수정한다. 완료 세션은 retain하며 사용자 확인용 localhost:3000 미리보기를 유지한다. 원격 push/PR/merge/배포 요청은 현재 없다.
+최신 제품 정본: [컨퍼런스 우선 웹](../product/conference-first-web-2026-09.md). 조사: [국내 IT 컨퍼런스](../research/korea-it-conferences-2026-09.md). 기업·커뮤니티·학회 등 공식 자료 60행과 검증 대기 후보를 분리했다. 계보/지역 회차를 포함하여 고유 행사 60개나 전체 누락 없음의 뜻은 아니다.
 
-## 최신 사용자 의도
+## 구현과 통합
 
-- 고등학생·대학생·취준생 등 대외활동 경험을 찾는 사람들을 대상으로 한다. 대학생으로 한정하지 않는다.
-- 영상 서비스를 재현하기보다 썸네일→제목→주최 조직→참여 판단에 필요한 정보 순서를 활용한다. 가짜 재생·조회수·로그인은 만들지 않는다.
-- 현재 영문 장식 포스터 비중을 줄이고 활동 내용이 드러나는 한국어 포스터와 모집 직무·지원 대상·마감·장소를 카드에 보완한다. 공고별 자격을 표시하며 자격 미충족으로 자동 제외하지 않는다.
-- 프로그램 카드와 상세의 회차/직무별 공고, 조직/프로그램 스크랩 분리는 유지한다. 실제 데이터 수집·API·인증·추천 학습·프로필/자격 자동 판정은 이번 프로토타입 구현 범위 밖이다.
+- Root `/Users/jominjun/Documents/dearby`, `feat/web-rebuild`. 실제 데이터 통합 커밋 `e829b74`, 인계 `b4ecc3a`, Toss/DEVIEW 근거 보완 `703c136`. child 원본은 `f0489a5`, `d9a8627`, `4a6df2d`; 기준 `1dae183` 이후만 cherry-pick했다.
+- Next.js 16.3.6·React 19.2.8·TypeScript. 공식 컨퍼런스 18개, 회차 20개, 조직 16개. 공식 OG14·실제 랜딩 캡처4, 출처·확인일 기록. shadcn 허용이나 필수 아님; 현재 HTML 기본 컨트롤과 CSS.
+- 검색(조직 포함), 주제/경험 필터, 결과 없음의 유효 부분 조건과 개수·되돌리기, URL 복원, 회차별 참가 정보, 독립 조직/프로그램 스크랩. 같은 공고 안에서 조건을 결합한다.
+- 등록 중/예정/미확인/마감/행사 종료를 구분한다. 자격 미충족으로 자동 제외하지 않는다. 무료·무제한 참가·발표 경험을 임의 추정하지 않는다. 카카오26·우아콘26·드로이드26은 확인일 기준 접수 중. FEConf는 접수 예정, 삼성 AI 포럼은 등록 미확인.
+- 실제 API·인증·신청/결제·자동 크롤러·일일 개인화 추천·기기간 동기화·프로필 자동 자격 판정은 미구현. 정적 2026-09-24 스냅샷이고 취소/매진은 자동 반영되지 않는다.
+- 원격 push/PR/merge/배포는 이번에 수행하지 않았다. GitHub main에는 과거 iOS architecture 필수 체크가 남아 있어 향후 web CI 보호규칙 조율이 필요하며 가짜 체크로 우회하지 않는다.
 
-## 완료한 초기 웹 구현·통합
+## 이번 메인 검증
 
-- root feat/web-rebuild, 코드 통합 HEAD f7826df. 기존 실행코드 제거 be10837, root 조율 문서 366e91d/e0e0669, 웹 담당 기능 커밋 8개를 88f7ee0..f7826df로 cherry-pick했다. 원격 push/PR/merge/배포는 수행하지 않았다.
-- root Next.js 16.3.6·TypeScript, 가상 조직 4개/프로그램 12개/공고 25개, 명시적인 2026-09-24 기준 샘플과 브라우저 저장이다.
-- 검색·같은 현재 공고 단위 방향/경험 필터·결과 없음 부분 조합/되돌리기·URL 상태 복원·상세·독립 스크랩·저장 오류 복구를 구현했다. 상세 근거/제약은 web-implementation-and-handoff.md.
-- 메인 checkout에서 npm ci, lint, typecheck, 단위 테스트 11개, production build, Playwright 12개(1440/390 및 axe)가 통과했다. root test-results/에 실제 캡처가 있다. 최초 담당 검증과 별개로 실행했다.
-- npm ci: 취약점 0. ESLint 9 지원 종료 경고가 있다. npm registry의 최신 eslint-plugin-react peer 범위가 아직 9까지여서 ESLint 10 강제 설치를 하지 않았다. npm 12의 install-script 차단 경고도 있으나 실제 lint/test/build는 통과했다.
-- 초기 Task task_c5abe8d83ebe / Dispatch ctx_a529f998bad6는 succeeded 보고를 검토하고 release/ack했다. 해당 worker terminal은 종료·출력 보관, checkout/branch는 유지했다.
+703c136 통합 후 lint, typecheck, 단위12, production build, production E2E32, dev Chromium9+WebKit9가 모두 통과했다. 1440×1000/390×844 캡처를 실제 확인했고 axe AA·overflow·console/hydration·저장 실패/복구/탭 동기화 회귀를 유지했다. 원격 CI·실기기·수동 스크린리더는 미실행이다.
 
-## 후속 반영·검증 완료
+Orca 실제 브라우저에서 전체 목록→우아콘 상세→스크랩→새로고침 복원을 확인하고 테스트 저장만 해제한 뒤 전체 목록으로 복귀했다. 현재 페이지 console error0. 최종 캡처 `/tmp/dearby-final-orca-screen.png`를 확인했다. Ponytail 최종 변경 검토: 추가 삭제 후보 없음. 공식 아트워크의 작은 글씨는 카드 텍스트로 보완하며 모바일 상세의 참가 정보는 긴 설명보다 앞에 둔다.
 
-고등학생/대학생/취준생 대상·한국어 활동 카드·대표 현재 공고·저장 hydration 개선을 root 00d7c29/502b207/a56c9a1에 통합했다. 메인에서 lint/typecheck/unit12/build/production E2E26/dev Chromium·WebKit12 통과를 재확인했다. 실제 Orca 새 페이지에서도 저장 클릭·새로고침 복원·활성 버튼·console error 0을 확인했다. 기존 탭 console에는 수정 전 기록이 남아 있어 새 탭에서 구분 검증했다.
+## 세션과 미리보기
 
-저장 문제는 소비자별 useSyncExternalStore 서버 snapshot으로 수정했고 새 dev 회귀를 CI에 연결했다. CI 원격 실행은 아직 하지 않았다. Next dev가 생성하는 next-env.d.ts는 추적 제외하고 파일 없는 상태 typegen을 검증했다. Next 자동 AGENTS 안내는 메인에서 보존한다.
+- http://127.0.0.1:3000 실행 중. 서버 terminal `term_835adde4-93db-42d6-85c5-9d3e51a76fbc`, root browser page `d26f381c-df01-4020-9115-53457b1007ba`.
+- Orca `run_469a74207c03`, Task `task_11416b48d24f`, Dispatch `ctx_259771a9ca90`: succeeded 보고 수신·검토·retain·delivery ack 완료. 하위 웹 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9` 유지. 회수 대기 worker 없음.
+- 하위 checkout `dearby-web`, `fixabley/dearby-web`, 메인 부모 연결. 문서/커밋은 자동 동기화되지 않는다. child의 Next 자동 AGENTS diff는 기존대로 보존하며 root 통합 대상에서 제외했다.
 
-## 컨퍼런스 반영·최종 검증 완료
+## 보존과 다음 행동
 
-2026-09-24 01:10 KST. Task task_3f3b5dfe71b8 / Dispatch ctx_e9759a9998a5가 succeeded로 완료되었다. 담당 1dae183을 root c380756에 통합했다. 프로그램 13개·공고 26개·조직 4개이며 참가 대상·주제·등록 마감·개최일·장소를 표시하고 선발형 지원과 참가등록을 구분한다.
+이전 실행코드는 `/Users/jominjun/Documents/dearby-backups/2026-09-24-before-web-rebuild/`에 bundle·사용자 Xcode diff·원본·700파일 해시 확인과 함께 보존했다. main f1d9a63에도 추적 이력이 남는다. dearby-ir은 별도 저장소로 변경하지 않았다.
 
-메인에서 이번 통합 후 lint/typecheck/unit13/build/production E2E28/dev Chromium·WebKit14를 실제 실행해 모두 통과했다. Orca 실제 페이지에서 컨퍼런스 상세·활성 스크랩 버튼·등록 정보·console error 0을 확인했다. 1440/390 스크린샷을 검토했으며 모바일 참가 정보가 설명 아래에 있어 스크롤이 필요한 점은 후속 가독성 개선 후보다. Ponytail 최종 diff 검토에서는 추가 삭제 후보가 없었다.
-
-웹 담당 terminal term_db69f423-a4bc-45ae-910d-ede154eab9d9는 사용자 요청으로 명시적 retain 후 delivery ack했다. 완료 세션을 닫지 않는다. 진행 중 Dispatch와 reclaimable worker는 없다. root CI의 dev 회귀 연결 및 shadcn 선택권·세션 유지 정책은 e9866e8에 기록했다. shadcn은 허용 사항으로 아직 설치하지 않았다.
-
-다음: 사용자 화면 검토 및 후속 변경. 실제 데이터 수집·API·인증·지원/등록 실행·배포는 미구현이며 이번 원격 push/PR/merge는 수행하지 않았다.
-
-## 로컬 실행과 보존
-
-- root 개발서버: http://127.0.0.1:3000, Orca terminal term_bbab9abc-a0a6-4916-9404-fb7f193bacf8. 2026-09-24 01:10 KST 재시작 후 실제 페이지 접근 확인. 최종 웹 코드를 표시한다.
-- root Orca 새 page d26f381c-df01-4020-9115-53457b1007ba가 위 URL을 표시한다(기존 page b99a9e23-82b0-4349-a854-b6bfa204ef82도 보존). 처음 CUA IAB는 미연결 실패했으나 Orca 내장 브라우저로 우회했다. 실제 YouTube 비로그인 헤더·접힌 메뉴만 확인했고 추천 그리드는 없어서 전체 대조하지 못했다.
-- 기존 apps/scripts/shared/root Node 설정·의존성과 잔여 dearby-ios는 /Users/jominjun/Documents/dearby-backups/2026-09-24-before-web-rebuild/에 이동 보존했다. repository.bundle 검증, 사용자 Xcode 변경 binary diff·원본, 700개 소스/로컬 파일 해시 대조를 보존했다. main f1d9a63에도 추적 코드가 남아 있다.
-- 기획·발표 자료·Git 이력은 유지한다. dearby-ir은 별도 저장소이며 변경하지 않았다. 과거 네이티브 규칙은 archive로 보존하고 새 웹에 적용하지 않는다.
-- GitHub main에는 기존 iOS architecture 필수 체크가 남아 있다. 향후 PR 병합 시 실제 web CI에 맞는 보호규칙 변경을 별도 조율하며 가짜 iOS 체크로 우회하지 않는다.
+사용자 화면 검토 이후 우선순위를 정한다. 후보는 조사 목록의 추가 검증/수록, 운영 갱신 정책, 개인정보/이미지별 재사용 조건 확인, 서버 저장·개인화다. 과거 초기 샘플·통합 이력은 [보관본](archive/2026-09-24-web-prototype/coordinator-current-task-and-decisions.md)에 있다. 재개 시 runtime·Git 상태를 다시 확인한다.
