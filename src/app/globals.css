@@ -1030,4 +1030,19 @@ select {
   }
 }
 
-@media(max-width:720px){.filter-open{order:-1}.chip-divider{display:none}}
+@media (max-width: 720px) {
+  .filter-open {
+    order: -1;
+  }
+  .chip-divider {
+    display: none;
+  }
+}
+.storage-message button {
+  background: white;
+  color: #553b87;
+  padding: 7px 10px;
+  border-radius: 6px;
+  margin: 8px 0 0 10px;
+  font-size: 12px;
+}

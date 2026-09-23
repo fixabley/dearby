@@ -9,7 +9,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const router = useRouter(),
     params = useSearchParams(),
     path = usePathname();
-  const { message } = useSaved();
+  const { message, issue, retry, reset } = useSaved();
   const section = params.get("view") || "all";
   return (
     <div className={collapsed ? "app collapsed" : "app"}>
@@ -109,6 +109,10 @@ export function Shell({ children }: { children: ReactNode }) {
         {message && (
           <div className="storage-message" role="status">
             {message}
+            {issue && <button onClick={retry}>다시 시도</button>}
+            {issue === "corrupt" && (
+              <button onClick={reset}>손상된 스크랩 초기화</button>
+            )}
           </div>
         )}
         {children}

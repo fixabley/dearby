@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { programs, organizations } from "@/features/catalog/data";
-import { SaveButton } from "@/features/saved/provider";
+import { SaveButton } from "@/features/saved/save-button";
 export function generateStaticParams() {
   return programs.map((p) => ({ id: p.id }));
 }
