@@ -1,10 +1,10 @@
 # Dearby 컨텍스트 목차
 
-갱신: 2026-09-20 KST. 재개할 때 **조율 문서 → 담당 역할 문서 → 필요한 검증 기록** 순서로 읽는다.
+갱신: 2026-09-23 KST. 재개할 때 **조율 문서 → 담당 역할 문서 → 필요한 검증 기록** 순서로 읽는다.
 
 ## 재개 지점
 
-2026-09-20: PR27~33 병합 완료. iOS 설계 단순화 완료, Android 같은 기준 구현·검증 완료, 통합·병합 상태는 PR34를 따른다. 제품 재기획은 메인 하위 `dearby-product-replanning`에서 사용자와 직접 진행한다. 현재 PR·세션·검증 한계는 조율 문서를 따른다. Ponytail은 변경 후 리뷰 전용이며 상시 hook은 없다.
+2026-09-23: PR27~34의 iOS·Android 설계 단순화는 병합 완료다. 사용자가 남은 기획·발표 문서의 커밋·push·병합과 Dearby 하위 세션·worktree 정리를 승인했다. 진행 결과는 [조율 문서](coordinator-current-task-and-decisions.md), 기획 정본과 미정 항목은 [제품 역할 문서](product-planning-and-github-issues.md), 백업·세션 상태는 [Git·Orca 운영](orca-sessions-and-worktrees.md)을 따른다. 신규 앱 구현 승인은 없으며 dearby-ir의 후속 발표 작업은 별도다. Ponytail은 변경 후 리뷰 전용이며 상시 hook은 없다.
 
 | 문서 | 담당 정보 |
 | --- | --- |
