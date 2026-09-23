@@ -1,26 +1,22 @@
 # 현재 작업과 결정
 
-갱신: 2026-09-23 KST.
+2026-09-24 KST. 사용자가 기존 코드를 제거하고 웹으로 재구현하도록 요청했다. 최근 재기획 중심의 프로그램 탐색·필터·상세·조직/프로그램 스크랩을 첫 범위로 선택했고, 이후 인터페이스를 YouTube 클론으로 지정했다.
 
-## 현재 요청과 범위
+## 승인·진행
 
-사용자가 작업 중인 Dearby 세션·worktree의 변경을 커밋·push·병합하고 정리하도록 승인했다. iOS·Android 구현은 PR27~34로 이미 병합되어 있다. 이번 추가 반영은 기획 문서·발표 산출물과 인계 문서이며 신규 앱 구현은 승인되지 않았다.
+- root feat/web-rebuild에서 작업한다. 원격 fetch 시 main은 f1d9a63, 기존 플랫폼 worktree는 없다.
+- 기존 apps(iOS/Android/NestJS), scripts, shared, Node manifest/lock/dependencies, 잔여 dearby-ios 로컬 폴더와 iOS CI를 저장소 밖 백업으로 이동했다. Git 이력·binary diff와 700개 소스/로컬 파일 해시 대조를 보존했다.
+- 백업: /Users/jominjun/Documents/dearby-backups/2026-09-24-before-web-rebuild/. 사용자 Xcode 수정과 ArchitectureTests/.swiftpm 원본도 files/apps 아래에 유지한다. 사라진 코드의 복구는 이 위치 또는 Git f1d9a63을 사용한다.
+- 기획·발표자료·역사 문서는 보존하며 과거 네이티브 구조검사는 새 웹에 적용하지 않는다. AGENTS.md를 웹 기준으로 전환했다.
+- 웹 담당을 메인 하위 Orca 세션으로 배정한다. Next.js/TypeScript, 명시적인 샘플 데이터·브라우저 저장 기반 첫 버전. API/인증/크롤링은 이번 범위 밖이며 기존 데이터의 웹 저장 마이그레이션은 하지 않는다.
+- YouTube와 비슷한 검색 헤더·좌측 탐색·가로 칩·썸네일 그리드·상세 배치를 사용한다. 영상 전용 재생·조회수 대신 모집 상태/조직/스크랩을 표시한다.
 
-- iOS와 Android worktree는 미커밋 변경이 없고 각 플랫폼 전체 경로의 Git tree가 origin/main과 동일함을 이번에 확인했다. 원본 작업 브랜치도 원격에 push했다.
-- 제품 재기획 담당은 주제별 4커밋과 서식 보정 1커밋을 push하고 PR35를 작성했다. 메인이 공통 인계·정리 결과를 같은 PR의 별도 커밋으로 통합한다. 승인 내용과 제안·미정 항목은 구분해 유지한다.
-- 발표 후속 작업은 별도 저장소 dearby-ir에 인계되어 있으며 이번 Dearby worktree 정리 대상이 아니다.
-- root의 사용자 Xcode project/scheme 및 ArchitectureTests/.swiftpm 변경은 보존하고 커밋에서 제외한다.
+## 검토할 제약
 
-담당 세션은 모두 종료했고 플랫폼 2개·기획 1개 worktree를 제거했다. 원격 원본 브랜치와 저장소 밖 로컬 백업을 보존했다. [PR35](https://github.com/fixabley/dearby/pull/35)의 최종 CI·병합 상태는 GitHub를 확인한다.
+- 웹 전환으로 기기 캘린더 읽기·네이티브 OS 연동의 동등 기능은 제공하지 않는다.
+- 필터는 동일 모집 공고 안에서 판정하고 프로그램 수를 고유 집계한다. OR/AND·선택 직무 모집 우선·0건 부분 조합/되돌리기는 기획 정본을 따른다.
+- 미정 정렬/태그 세부는 프로토타입 선택으로 기록하고 확정 요구사항이라고 주장하지 않는다.
+- 로컬 저장은 기기·브라우저별이며 계정 동기화가 아니다. 저장 실패·잘못된 데이터·hydration을 검증한다.
+- 원격 main 보호규칙에는 아직 iOS architecture가 필수다. 웹 CI 교체 이후 PR 병합 시 필요한 규칙 전환을 별도 조율한다. 현재 요청은 구현이며 배포·자동 병합을 시작하지 않는다.
 
-## 제품 기획 정본
-
-기획 정본은 [제품 역할 문서](product-planning-and-github-issues.md), docs/product/replanning-2026-09.md 및 .symposium/scratch/socrates.md다. 기획의 상세 승인·미정 목록은 제품 역할 문서에서 관리한다. 기존 공고 카드에서 프로그램 카드 중심 탐색으로 바꾸는 기획이 앱에 반영되었다는 뜻은 아니다.
-
-후속 구현 지시가 오면 프로그램·회차/직군 공고 관계, 선택 직무별 모집 판정·정렬, 조직/프로그램 스크랩과 기존 저장값, 필터 조합·개수, 자격 정보 처리에 필요한 공통 계약을 먼저 조율한다. 이후 API·iOS·Android 담당을 각각 메인 하위 Orca 세션·worktree로 구성한다. 최종 기술 스택 등 미정 항목을 정리 작업을 이유로 확정하지 않는다.
-
-## 검증과 보존
-
-이번에는 원격 fetch, PR 병합 상태, worktree별 변경 및 플랫폼 소스 일치 여부를 확인했다. 과거 앱 검증은 [iOS 인계](ios-implementation-and-handoff.md), [Android 인계](android-implementation-and-handoff.md)를 따른다. 이번 문서 정리에서 앱의 로컬 빌드·기기 회귀를 새로 실행한 것으로 기록하지 않는다.
-
-정리 전 세션 연결·세부 이력은 [보관본](archive/2026-09-23-before-worktree-cleanup/coordinator-current-task-and-decisions.md)에 보존한다. 백업·실시간 정리 결과는 [Git·Orca 운영](orca-sessions-and-worktrees.md)에서 관리한다. 보호 규칙 우회·강제 push는 하지 않는다.
+이번 실행: 원격/로컬 상태 확인, 백업 및 해시 대조. 신규 웹 빌드/테스트는 아직 미실행. 다음: 웹 구현 배정, 기획 계약 검토, 구현·브라우저 회귀·Ponytail 검토 및 root 통합.

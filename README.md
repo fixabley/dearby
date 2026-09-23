@@ -1,61 +1,10 @@
 # Dearby
 
-Kotlin Android 앱, Swift iOS 앱과 NestJS API 서버를 함께 관리하는 모노레포입니다.
-실행 방법은 [Android README](apps/android/README.md), [iOS README](apps/ios/README.md),
-[API README](apps/dearby-api/README.md)를 참고하세요.
+IT·개발에 관심 있는 대학생을 위한 프로그램 탐색 웹. 2026-09-24 최근 재기획을 기준으로 웹 재구현 중입니다.
 
-## 디렉터리 구조
+현재 구현 범위는 프로그램 탐색·검색/필터·상세의 회차/직군별 공고·조직/프로그램 스크랩입니다. 인터페이스는 유튜브의 탐색 구조를 참고합니다. 샘플 데이터와 브라우저 저장으로 시작하며 실제 모집·계정 동기화 서비스가 아닙니다.
 
-```text
-apps/
-  android/       Android 클라이언트
-  ios/           Swift iOS 클라이언트
-  dearby-api/    NestJS API 서버
-shared/
-  contracts/     두 클라이언트가 사용하는 API 명세와 예제 데이터
-docs/            개발 및 설계 문서
-```
+- 기획: [최근 재기획](docs/product/replanning-2026-09.md)
+- 진행: [조율 인계](docs/context/coordinator-current-task-and-decisions.md)
 
-플랫폼별 네이티브 앱의 빌드와 의존성은 독립적으로 관리합니다.
-API 명세와 개발 문서는 두 클라이언트가 함께 사용합니다.
-
-## 프로젝트 추가
-
-- Android 프로젝트는 `apps/android/`에서 관리합니다.
-  Android Studio에서 이 디렉터리를 열어 개발합니다.
-- iOS 프로젝트는 `apps/ios/Dearby.xcodeproj`에서 관리합니다.
-- API 서버는 `apps/dearby-api/`에서 npm으로 의존성과 빌드를 관리합니다.
-- 앱을 옮길 때 중첩된 `.git` 디렉터리를 포함하지 않습니다.
-  기존 저장소의 커밋 기록을 보존해야 한다면 먼저 이관 방식을 결정합니다.
-- API 명세와 공통 예제 데이터는 `shared/contracts/`에서 관리합니다.
-
-## 개발 흐름
-
-저장소 전체를 일반 `git clone`으로 가져오고, 루트에서 브랜치·커밋·PR을 관리합니다.
-Android·iOS·공통 명세의 연관된 변경은 하나의 커밋이나 PR에 함께 포함할 수 있습니다.
-원격 저장소는 [fixabley/dearby](https://github.com/fixabley/dearby)이며, 기본 브랜치는 `main`입니다.
-
-```sh
-git clone https://github.com/fixabley/dearby.git
-```
-
-작업과 업데이트 절차는 [모노레포 운영 가이드](docs/monorepo.md)를 참고하세요.
-플랫폼별 Orca 세션과 담당 범위는 [작업 세션 안내](docs/workstreams/README.md)에 기록합니다.
-
-## 첫 기능: 공고 탐색과 조직 즐겨찾기
-
-두 앱에서 검토한 공고 샘플을 세로로 넘기고, 더블탭 또는 저장 버튼으로 조직을 저장합니다.
-즐겨찾기는 기기에 보관하며 API 연결 없이 실행할 수 있습니다.
-
-- [활동 공고 규격과 원문 검토](docs/product/activity-data-v1.md)
-- [첫 반복의 동작·검증·남은 결정](docs/product/iteration-01.md)
-- [관심 대상 선정·분류 규칙과 추론 도구](docs/product/interest-target-rules.md)
-- [공통 샘플](shared/contracts/activities/sample.json) / [JSON Schema](shared/contracts/activities/schema.json)
-
-루트 npm은 공통 데이터 검증용입니다. 네이티브 앱 빌드에는 필요하지 않습니다.
-
-```sh
-npm ci
-python3 scripts/sync-activity-samples.py
-npm test
-```
+이전 네이티브·NestJS·공통 실행 코드는 Git 이력 f1d9a63에 보존합니다. 미커밋 Xcode 변경과 로컬 파일까지 `/Users/jominjun/Documents/dearby-backups/2026-09-24-before-web-rebuild/`에 이동·보존했습니다. 기획·발표 문서는 유지합니다. 이전 아키텍처 문서는 역사 자료이며 새 웹에 적용하지 않습니다.
