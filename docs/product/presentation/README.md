@@ -40,3 +40,5 @@ python3 build_html.py
 ```
 
 `build_html.py`, JSON, assets 폴더는 같은 디렉터리 구조를 유지하세요. HTML을 직접 수정하면 재생성 시 덮어써지므로 내용은 JSON에서 수정하는 편이 좋습니다. MD와 PPTX는 이 명령으로 갱신되지 않습니다.
+
+2026-09-23 보존 후 정리: Markdown 원고의 강제 줄바꿈은 `<br>`로 표기하고 파일 끝의 빈 줄을 정리했다. 원고 내용과 PPTX/HTML은 유지했으며 dearby-ir 사본에는 이 서식 변경을 전파하지 않았다.
