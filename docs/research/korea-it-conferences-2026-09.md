@@ -24,6 +24,7 @@
 | 토스 | SLASH 2024 | 개발 행사 과거 기록. TMC와 별개 현행 회차로 오인하지 않도록 관리 | [공식](https://toss.im/slash-24) |
 | LY Corporation | Tech-Verse 2026 | 2026-06-29 온라인, 과거 회차. LINE/Yahoo 관련 공동 기술 행사 | [한국어 공식](https://tech-verse.lycorp.co.jp/2026/ko/) |
 | 삼성전자 | Samsung Tech Conference 2025 | 2025-11-20 온라인 기술 행사. 미국 SDC와 구분 | [공식 뉴스](https://news.samsung.com/kr/삼성전자-삼성-테크-콘퍼런스-2025-개최) |
+| 삼성전자 | Samsung AI Forum 2026 | 2026-09-30 온라인 생중계. 현장은 사전 초청자·신청 임직원 중 확정자 제한, 일반 등록 조건 미확인 | [공식](https://saif2026.com/) |
 | 삼성SDS | REAL Summit 2026 | 2026-09-08 COEX, AI·AX 중심. 후원 비용을 참가비로 해석하지 않음 | [공식 발표](https://www.samsungsds.com/kr/news/sds-260901.html) |
 | SK | SK AI Summit 2025 | 2025-11-03~04 COEX. 2026 확정 공지 미확인 | [SKT 공식 기록](https://news.sktelecom.com/tag/ai-summit) |
 | NHN | NHN FORWARD 2022 | 제5회 개발자 컨퍼런스 확인. 이후 회차 미확인 | [NHN 공식](https://inside.nhn.com/service/129) |
@@ -60,12 +61,13 @@ Databricks Data + AI World Tour, ElasticON, Oracle AI World는 글로벌 행사�
 |---|---|---|---|
 | FEDG | FEConf 2026 | 2026-10-24 롯데타워 31층, 프론트엔드 | [공식](https://2026.feconf.kr/) |
 | 파이콘 한국 준비위원회 | PyCon Korea 2026 | 2026-08-15~17 동국대, 회차 내 프로그램별 일정 구분 | [공식](https://2026.pycon.kr/), [PSF](https://www.python.org/events/python-events/2176/) |
-| KSUG | SpringCamp | 2025 공식 회차 확인. 2026 CFP도 발견했으므로 2025가 최신이라고 단정하지 않음 | [2025 공식](https://springcamp.ksug.org/2025/) |
+| KSUG | SpringCamp 2026 | 2026-06-13 모나코스페이스 강남. 추첨 선정·현장 등록 불가, 과거 회차 | [2026 공식](https://springcamp.ksug.org/2026/ko/), [주최자 티켓](https://ticketa.co/event/tufmarzt) |
 | LetSwift | LetSwift 2025 / 2026 10주년 모임 | 2025 컨퍼런스와 2026-04-01 Apple Korea 10주년 모임은 성격·규모가 다름 | [2025](https://letswift.kr/2025/), [현재 사이트](https://letswift.kr/) |
 | DroidKnights 운영진 | DroidKnights 2026 | Android. 공식 안내상 현장 참가, 영상 녹화/공개하지 않음. 입장권 유형별 비용 구분 | [공식](https://droidknights.dev/) |
 | Golang Korea | GopherCon Korea 2025 | 2025-11-09 COEX 마곡, Go | [공식](https://gophercon.kr/?lang=ko) |
 | JSConf Korea 운영진 | JSConf Korea 2022 | 공식 아카이브. 신규 개최 일정 미확인 | [공식 아카이브](https://2022.jsconf.kr/en/about) |
 | GDG Cloud Korea·GDG Seoul | DevFest Cloud × Seoul 2025 | 지역 커뮤니티 주최이며 Google 기업 주최로 뭉치지 않음 | [Cloud 챕터](https://gdg.community.dev/gdg-cloud-korea/), [Seoul 챕터](https://gdg.community.dev/gdg-seoul/) |
+| GDG Korea Android | DevFest Korea Android 2025 | 2025-12-14 기술 세션·모임. 맥주 파티 콘셉트, 미성년 참가 조건 별도 확인 필요 | [공식](https://gdg.community.dev/events/details/google-gdg-korea-android-presents-gdg-devfest-korea-android-2025-beoteomaegjupati/) |
 | GDG Busan | DevFest Busan 2025 | 지역 회차 별도 프로그램·조직으로 관리 | [공식 이벤트](https://gdg.community.dev/events/details/google-gdg-busan-presents-devfest-busan-2025-modureul-wihan-gemini-hwalyonghagi/) |
 | GDG Daegu | DevFest Daegu 2025 | 공식 챕터 행사 목록, 세부 정보 추가 확인 | [공식 챕터](https://gdg.community.dev/gdg-daegu/) |
 | GDG Daejeon | DevFest Daejeon 2025 | AI × Reality, 지역 회차 | [공식 이벤트](https://gdg.community.dev/events/details/google-gdg-daejeon-presents-ai-x-reality-mandeulgo-giyeohago-hwalyonghada-google-devfest-2025-in-daejeon/) |
@@ -115,4 +117,4 @@ Databricks Data + AI World Tour, ElasticON, Oracle AI World는 글로벌 행사�
 4. 필드별로 확인된 정보만 게시한다. CFP·후원·학생 지원·교육·참가 등록 공고를 서로 구분한다.
 5. 고정 스냅샷 이후의 취소·매진·장소 변경은 자동 반영되지 않는다고 안내하고 원문을 쉽게 열게 한다. 갱신 주기는 후속 운영 정책으로 정한다.
 
-이 문서에는 핵심·인접 공식 행사/프로그램 **58개 행**이 있으며, 중복 계보(DEVIEW/DAN, SLASH/TMC), 지역 회차, 공동 개최가 포함되어 고유 컨퍼런스 개수와 같지 않다. 별도 대기 후보는 게시 검증을 통과한 데이터가 아니다.
+이 문서에는 핵심·인접 공식 행사/프로그램 **60개 행**이 있으며, 중복 계보(DEVIEW/DAN, SLASH/TMC), 지역 회차, 공동 개최가 포함되어 고유 컨퍼런스 개수와 같지 않다. 별도 대기 후보는 게시 검증을 통과한 데이터가 아니다.
