@@ -1,140 +1,62 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { programs, organizations } from "@/features/catalog/data";
-import { noticeStatus } from "@/features/catalog/model";
+import { programs, organizations, snapshotDate } from "@/features/catalog/data";
+import { noticeStatus, eventDates, displayDate } from "@/features/catalog/model";
 import { SaveButton } from "@/features/saved/save-button";
-export function generateStaticParams() {
-  return programs.map((p) => ({ id: p.id }));
-}
-export default async function ProgramPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export function generateStaticParams() { return programs.map(p => ({ id: p.id })); }
+export default async function ProgramPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const p = programs.find((p) => p.id === id);
+  const p = programs.find(p => p.id === id);
   if (!p) notFound();
-  const org = organizations.find((o) => o.id === p.orgId)!;
-  return (
-    <>
-      <Link href="/" className="back-link">
-        ← 전체 탐색
-      </Link>
-      <div className="watch-layout">
-        <section className="watch-main">
-          <Image
-            className="detail-cover"
-            src={p.cover}
-            alt={`${p.title} 프로그램 포스터`}
-            width={1200}
-            height={675}
-            priority
-          />
-          <div className="detail-heading">
-            <span className="eyebrow">
-              {p.category} · {p.location}
-            </span>
-            <h1>{p.title}</h1>
-            <p>{p.subtitle}</p>
+  const org = organizations.find(o => o.id === p.orgId)!;
+  return <>
+    <Link href="/" className="back-link">← 전체 탐색</Link>
+    <div className="watch-layout">
+      <section className="watch-main">
+        <Image className="detail-cover" src={p.cover} alt={`${p.title} 공식 ${p.coverSource.kind === "og" ? "공유이미지" : "페이지 캡처"}`} width={1200} height={675} sizes="(max-width: 720px) 100vw, 65vw" preload />
+        <div className="detail-heading"><span className="eyebrow">IT 컨퍼런스</span><h1>{p.title}</h1><p>{p.subtitle}</p></div>
+        <div className="channel-row">
+          <span className="avatar large" style={{ background: org.color }} aria-hidden="true">{org.initial}</span>
+          <div><strong>{org.name}</strong><p>등록된 프로그램 {programs.filter(x => x.orgId === org.id).length}개</p></div>
+          <SaveButton kind="organizations" id={org.id} /><SaveButton kind="programs" id={p.id} />
+        </div>
+      </section>
+      <aside className="notice-list" aria-labelledby="notices-title">
+        <h2 id="notices-title">회차별 참가 정보 <span>{p.notices.length}</span></h2>
+        <p className="muted">확인된 대표 회차의 정보로 검색합니다. 지난 행사도 볼 수 있어요.</p>
+        {p.notices.map(n => <article className={`notice ${n.status === "ended" ? "past" : ""}`} key={n.id} data-notice-id={n.id}>
+          <div className="notice-top"><span>{n.round} · {n.current ? "확인된 대표 회차" : "이전 회차"}</span><b className={`event-status status-${n.status}`}>{noticeStatus(n)}</b></div>
+          <h3>{p.title} {n.round}</h3>
+          {n.status === "ended" && <div className="past-note">지난 행사입니다. 남아 있는 신청 링크나 다시보기 등록은 현재 행사 모집을 뜻하지 않습니다.</div>}
+          <dl className="event-facts">
+            <div><dt>개최일</dt><dd>{eventDates(n)}</dd></div>
+            <div><dt>장소</dt><dd>{n.location ?? "미확인"}</dd></div>
+            <div><dt>신청 시작</dt><dd>{displayDate(n.start)}</dd></div>
+            <div><dt>신청 마감</dt><dd>{displayDate(n.deadline)}</dd></div>
+            <div><dt>비용</dt><dd>{n.cost ?? "미확인"}</dd></div>
+            <div><dt>참가 대상</dt><dd>{n.audience?.join(" · ") ?? "미확인 · 제한 없음을 뜻하지 않습니다"}</dd></div>
+            <div><dt>참가 조건</dt><dd>{n.qualification ?? "미확인 · 공식 안내를 확인해 주세요"}</dd></div>
+          </dl>
+          <div className="official-links">
+            <a className="primary" href={n.officialUrl} target="_blank" rel="noreferrer">공식 사이트 ↗<span className="sr-only"> (새 창)</span></a>
+            {n.registrationUrl && <a href={n.registrationUrl} target="_blank" rel="noreferrer">{n.status === "ended" ? "당시 등록 안내" : n.status === "open" ? "공식 참가 신청" : "등록 안내 확인"} ↗<span className="sr-only"> (새 창)</span></a>}
           </div>
-          <div className="channel-row">
-            <span className="avatar large" style={{ background: org.color }}>
-              {org.initial}
-            </span>
-            <div>
-              <strong>{org.name}</strong>
-              <p>
-                샘플 조직 · 프로그램{" "}
-                {programs.filter((x) => x.orgId === org.id).length}개
-              </p>
-            </div>
-            <SaveButton kind="organizations" id={org.id} />
-            <SaveButton kind="programs" id={p.id} />
-          </div>
-          <div className="description">
-            <h2>어떤 경험을 하게 되나요?</h2>
-            <p>
-              {p.subtitle}. 관심 있는 분야의 사람들과 새로운 경험을 시작하는
-              샘플 프로그램입니다. 구체적인 활동과 참여 조건은 회차별 공고에서
-              확인하세요.
-            </p>
-            <p>{org.description}</p>
-            <h3>참여 전 확인해 주세요</h3>
-            <p>
-              참여 조건은 공고별로 다릅니다. 자격을 자동 판정하거나 조건에 따라
-              탐색에서 제외하지 않으며, 제공 경험과 참여에 필요한 경험은 별개입니다.
-            </p>
-            <p className="muted">
-              이 페이지는 가상 데이터입니다. 실제 지원·등록이나 외부 공고 페이지는
-              제공하지 않습니다. 주소를 복사하면 이 프로그램을 다시 열 수
-              있습니다.
-            </p>
-          </div>
-        </section>
-        <aside className="notice-list" aria-labelledby="notices-title">
-          <h2 id="notices-title">
-            회차별 공고 <span>{p.notices.length}</span>
-          </h2>
-          <p className="muted">현재 회차의 근거만 검색에 반영해요.</p>
-          {p.notices.map((n) => (
-            <article
-              className={`notice ${!n.current ? "past" : ""}`}
-              key={n.id}
-              data-notice-id={n.id}
-            >
-              <div className="notice-top">
-                <span>
-                  {n.round} · {n.current ? "현재 회차" : "지난 회차"}
-                </span>
-                <b className={n.open ? "open-text" : ""}>
-                  {noticeStatus(n)}
-                </b>
-              </div>
-              <h3>{n.participationType === "registration" && "주제·분야 · "}{n.roles.join(" · ")}</h3>
-              <p className="notice-date">
-                {n.participationType === "registration" ? "등록 시작" : "모집"} {n.start.replaceAll("-", ".")}
-                {n.participationType === "application" && <> — {n.deadline.replaceAll("-", ".")}</>}
-              </p>
-              {n.participationType === "registration" && (
-                <p className="notice-date">
-                  등록 마감 {n.deadline.replaceAll("-", ".")}<br />
-                  개최일 {n.eventDate.replaceAll("-", ".")}<br />
-                  장소 {p.location}
-                </p>
-              )}
-              <p>
-                <strong>{n.participationType === "registration" ? "참가 대상" : "지원 대상"}</strong>
-                <br />
-                {n.audience.join(" · ")}
-              </p>
-              <p>
-                <strong>{n.participationType === "registration" ? "참가 안내" : "지원 조건"}</strong>
-                <br />
-                {n.qualification}
-              </p>
-              {!n.current && (
-                <div className="past-note">
-                  지난 기수에서 제공 · 이번 기수 미확인
-                </div>
-              )}
-              <details open={n.current}>
-                <summary>제공 경험과 근거</summary>
-                {n.activities.map((a, i) => (
-                  <div className="activity" key={i}>
-                    <b>
-                      {a.action}
-                      {a.target ? " | " + a.target : ""}
-                      {a.method ? " · " + a.method : ""}
-                    </b>
-                    <p>{a.evidence}</p>
-                  </div>
-                ))}
-              </details>
-            </article>
-          ))}
-        </aside>
-      </div>
-    </>
-  );
+          <p>주제·분야: {n.roles.join(" · ") || "미확인"}</p>
+          <details open={n.current}><summary>제공 경험과 근거</summary>
+            {n.activities.length ? n.activities.map((a, i) => <div className="activity" key={i}><b>{a.action}{a.target ? ` | ${a.target}` : ""}</b><p>{a.evidence}</p></div>) : <p>이 회차에서 확인한 제공 경험이 없습니다.</p>}
+          </details>
+          <details className="source-details"><summary>공식 출처 · 확인일 {displayDate(n.sources[0].checkedAt)}</summary>
+            {n.sources.map(source => <div className="source-item" key={source.url}><a href={source.url} target="_blank" rel="noreferrer">{source.label} ↗<span className="sr-only"> (새 창)</span></a><p>{source.evidence}</p><small>확인일 {displayDate(source.checkedAt)}</small></div>)}
+          </details>
+        </article>)}
+      </aside>
+      <section className="description">
+        <h2>참여 전 확인해 주세요</h2>
+        <p>고등학생·대학생·취준생 모두 탐색할 수 있지만, 실제 참가 자격은 행사별로 다릅니다. 자격을 자동 판정하거나 탐색 결과에서 제외하지 않습니다. 연사의 발표는 참가자의 발표 경험으로 간주하지 않습니다.</p>
+        <p>{displayDate(snapshotDate)}에 공식 출처를 일회성으로 확인한 정보입니다. 실시간 등록 가능 여부와 변경된 조건은 공식 사이트에서 확인하세요. 신청·결제는 주최자의 사이트에서 진행합니다.</p>
+        <p className="muted">이미지: {p.coverSource.kind === "og" ? "공식 페이지 공유이미지" : p.coverSource.kind === "capture" ? "공식 페이지 대표영역 캡처" : "기본 썸네일"} · <a href={p.coverSource.pageUrl} target="_blank" rel="noreferrer">출처 ↗ (새 창)</a> · 확인일 {displayDate(p.coverSource.checkedAt)}. 이미지 권리는 원 권리자에게 있으며 재사용 허용 여부를 확인한 것은 아닙니다.</p>
+      </section>
+    </div>
+  </>;
 }

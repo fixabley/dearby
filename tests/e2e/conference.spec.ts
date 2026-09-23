@@ -2,49 +2,89 @@ import AxeBuilder from "@axe-core/playwright";
 import { test, expect } from "@playwright/test";
 import path from "node:path";
 
-test("conference search, registration facts, topic filters and separate saved restoration", async ({ page }, info) => {
+test("official conference company search, facts, sources and independent saved restoration", async ({ page }, info) => {
   const errors: string[] = [];
   page.on("console", msg => { if (msg.type() === "error") errors.push(msg.text()); });
   page.on("pageerror", error => errors.push(error.message));
   await page.goto("/");
-  await page.getByRole("textbox", { name: "프로그램 검색" }).fill("컨퍼런스");
+  await page.getByRole("textbox", { name: "프로그램 검색" }).fill("우아한형제들");
   await page.getByRole("button", { name: "검색", exact: true }).click();
   const card = page.locator(".program-card");
   await expect(card).toHaveCount(1);
-  await expect(card).toContainText("넥스트 스텝 컨퍼런스");
-  for (const text of ["등록 중", "주제·분야 프론트엔드 · 디자인 · 기획", "참가 대상 고등학생 · 대학생 · 취준생", "10.20 등록 마감", "10.24 개최", "서울 · 넥스트 홀"])
+  for (const text of ["WOOWACON · 우아콘 2026", "참가 신청 중", "2026.10.28", "무료", "2026.10.13", "서울 그랜드 인터컨티넨탈"])
     await expect(card).toContainText(text);
-  await expect(card).not.toContainText(/직무 모집|지원 조건|선발/);
-  await page.getByRole("button", { name: "디자인", exact: true }).click();
+  await page.getByRole("button", { name: "Android", exact: true }).click();
   await page.getByRole("button", { name: /경험·상세 필터/ }).click();
-  await page.getByLabel("청강 | 업무 소개", { exact: true }).check();
+  await page.getByLabel("멘토링", { exact: true }).check();
   await page.getByRole("button", { name: "결과 보기" }).click();
   await expect(card).toHaveCount(1);
   await card.locator("img").evaluate((img: HTMLImageElement) => img.decode());
-  await page.screenshot({ path: path.join("test-results", `${info.project.name}-conference-card.png`), fullPage: true });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await page.screenshot({ path: path.join("test-results", `${info.project.name}-official-card.png`), fullPage: true });
   await card.getByRole("button", { name: "프로그램 스크랩", exact: true }).click();
   await card.locator(".card-title").click();
-  await expect(page).toHaveURL(/programs\/next-step-conference$/);
-  const notice = page.locator('.notice[data-notice-id="next-step-conference-2026"]');
-  for (const text of ["등록 중", "주제·분야", "등록 마감 2026.10.20", "개최일 2026.10.24", "장소 서울 · 넥스트 홀", "참가 대상", "고등학생 · 대학생 · 취준생", "참가 안내", "사전 경험은 필요하지 않습니다"])
+  await expect(page).toHaveURL(/programs\/woowacon$/);
+  const notice = page.locator('.notice[data-notice-id="woowacon-2026"]');
+  for (const text of ["참가 신청 중", "2026.10.13", "2026.10.28", "그랜드 인터컨티넨탈", "참가 대상", "직군 제한 없이", "추첨", "멘토링", "별도 신청"])
     await expect(notice).toContainText(text);
-  await expect(notice).not.toContainText(/지원 조건|지원 대상|모집|선발/);
+  await expect(notice.getByRole("link", { name: /공식 참가 신청/ })).toHaveAttribute("href", "https://woowacon.com/apply");
+  await expect(notice.getByRole("link", { name: /공식 사이트/ })).toHaveAttribute("href", "https://woowacon.com/");
+  await notice.getByText("공식 출처 · 확인일 2026.09.24", { exact: true }).click();
+  await expect(notice.locator(".source-item")).toContainText("무료");
   await page.getByRole("button", { name: "조직 스크랩", exact: true }).click();
   await page.locator(".detail-cover").evaluate((img: HTMLImageElement) => img.decode());
-  await page.screenshot({ path: path.join("test-results", `${info.project.name}-conference-detail.png`), fullPage: true });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: path.join("test-results", `${info.project.name}-official-detail.png`), fullPage: true });
+  await page.screenshot({ path: path.join("test-results", `${info.project.name}-official-detail-viewport.png`) });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  const decisionBeforeDescription = await page.locator(".notice-list").evaluate(el => !!(el.compareDocumentPosition(document.querySelector(".description")!) & Node.DOCUMENT_POSITION_FOLLOWING));
+  expect(decisionBeforeDescription).toBeTruthy();
   expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
   await page.reload();
   await expect(page.getByRole("button", { name: "프로그램 스크랩 해제", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("button", { name: "조직 스크랩 해제", exact: true })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("link", { name: "스크랩", exact: true }).click();
   await expect(card).toHaveCount(1);
-  await expect(card).toContainText("넥스트 스텝 컨퍼런스");
+  await expect(card).toContainText("WOOWACON");
   await card.getByRole("button", { name: "프로그램 스크랩 해제" }).click();
   await page.getByRole("button", { name: "조직 1", exact: true }).click();
-  await expect(page.locator(".organization-list article")).toContainText("넥스트 테이블");
+  await expect(page.locator(".organization-list article")).toContainText("우아한형제들");
   await page.getByRole("button", { name: "조직 스크랩 해제" }).click();
   await expect(page.getByText("아직 스크랩한 조직이 없어요")).toBeVisible();
   expect(errors).toEqual([]);
+});
+
+test("upcoming, unknown and ended events remain distinct and unknowns are visible", async ({ page }) => {
+  await page.goto("/?view=open");
+  await expect(page.locator(".program-card")).toHaveCount(3);
+  await expect(page.locator(".program-grid")).not.toContainText("AWS Summit");
+  await page.goto("/programs/feconf");
+  await expect(page.locator(".notice")).toContainText("등록 예정");
+  await expect(page.locator(".event-facts")).toContainText("비용미확인");
+  await expect(page.locator(".event-facts")).toContainText("제한 없음을 뜻하지 않습니다");
+  await page.goto("/programs/saif");
+  await expect(page.locator(".notice")).toContainText("등록 미확인");
+  await expect(page.locator(".notice")).toContainText("현장은 사전 초청자");
+  await page.goto("/programs/aws");
+  await expect(page.locator(".notice")).toContainText("행사 종료");
+  await expect(page.locator(".notice")).toContainText("현재 행사 모집을 뜻하지 않습니다");
+  await page.goto("/programs/toss");
+  await expect(page.locator(".event-facts")).toContainText("개최일미확인");
+  await expect(page.locator(".event-facts")).toContainText("장소미확인");
+});
+
+test("expanded fields and experience state survive reload and back, without blending rounds", async ({ page }) => {
+  await page.goto("/?roles=Android,AI&all=1&experiences=lecture&priority=lecture");
+  const ids = await page.locator(".program-card").evaluateAll(nodes => nodes.map(n => n.getAttribute("data-notice-id")));
+  expect(ids).toEqual(["woowacon-2026", "droid-2026"]);
+  await page.locator(".card-title").last().click();
+  await expect(page).toHaveURL(/programs\/droid$/);
+  await expect(page.locator(".event-facts")).toContainText("69,000원");
+  await page.goBack();
+  await expect(page).toHaveURL(/roles=Android,AI/);
+  await page.reload();
+  await expect(page.locator(".program-card")).toHaveCount(2);
+  await page.getByRole("button", { name: /경험·상세 필터/ }).click();
+  await expect(page.getByLabel("선택한 분야 모두 포함", { exact: false })).toBeChecked();
+  await expect(page.getByLabel("가장 원하는 경험")).toHaveValue("lecture");
+  await page.keyboard.press("Escape");
 });

@@ -7,14 +7,14 @@ test("explore, detail, separate saved entities and reload restoration", async ({
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
-  await expect(page.locator(".program-card")).toHaveCount(13);
+  await expect(page.locator(".program-card")).toHaveCount(18);
   await expect(
-    page.getByText("가상 조직·프로그램입니다.", { exact: false }),
+    page.getByText("2026.09.24 기준", { exact: false }),
   ).toBeVisible();
   await page
     .locator("img")
     .evaluateAll((imgs) =>
-      Promise.all(imgs.map((img) => (img as HTMLImageElement).decode())),
+      Promise.all(imgs.map((img) => { (img as HTMLImageElement).loading = "eager"; return (img as HTMLImageElement).decode(); })),
     );
   await page.screenshot({
     path: path.join("test-results", `${info.project.name}-explore.png`),
@@ -39,13 +39,13 @@ test("explore, detail, separate saved entities and reload restoration", async ({
   await page.locator(".card-title").first().click();
   await expect(page).toHaveURL(/\/programs\//);
   await expect(
-    page.getByRole("heading", { name: "회차별 공고", exact: false }),
+    page.getByRole("heading", { name: "회차별 참가 정보", exact: false }),
   ).toBeVisible();
   await page.getByRole("button", { name: "조직 스크랩", exact: true }).click();
   await page
     .locator("img")
     .evaluateAll((imgs) =>
-      Promise.all(imgs.map((img) => (img as HTMLImageElement).decode())),
+      Promise.all(imgs.map((img) => { (img as HTMLImageElement).loading = "eager"; return (img as HTMLImageElement).decode(); })),
     );
   await page.screenshot({
     path: path.join("test-results", `${info.project.name}-detail.png`),
@@ -91,7 +91,7 @@ test("filter subset suggestions apply and undo, search and recruitment", async (
   await page
     .locator("img")
     .evaluateAll((imgs) =>
-      Promise.all(imgs.map((img) => (img as HTMLImageElement).decode())),
+      Promise.all(imgs.map((img) => { (img as HTMLImageElement).loading = "eager"; return (img as HTMLImageElement).decode(); })),
     );
   await page.screenshot({
     path: path.join("test-results", `${info.project.name}-empty.png`),
@@ -103,22 +103,22 @@ test("filter subset suggestions apply and undo, search and recruitment", async (
   await page.getByRole("button", { name: "되돌리기" }).click();
   await expect(page.locator(".program-card")).toHaveCount(0);
   await page.getByRole("button", { name: "필터 초기화" }).first().click();
-  await expect(page.locator(".program-card")).toHaveCount(13);
+  await expect(page.locator(".program-card")).toHaveCount(18);
   await page.getByRole("button", { name: /경험·상세 필터/ }).click();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
-  await page.getByRole("textbox", { name: "프로그램 검색" }).fill("백엔드");
+  await page.getByRole("textbox", { name: "프로그램 검색" }).fill("FEConf");
   await page.getByRole("button", { name: "검색", exact: true }).click();
   await expect(page.locator(".program-card")).toHaveCount(1);
   await page.getByRole("link", { name: "모집·등록 중", exact: true }).click();
-  await expect(page.locator(".program-card")).toHaveCount(11);
+  await expect(page.locator(".program-card")).toHaveCount(3);
   await page.getByRole("button", { name: "iOS", exact: true }).click();
   await expect(page.locator(".program-card")).toHaveCount(1);
   await page.getByRole("button", { name: "필터 초기화", exact: true }).click();
   await expect(page).toHaveURL("http://127.0.0.1:3210/");
-  await expect(page.locator(".program-card")).toHaveCount(13);
+  await expect(page.locator(".program-card")).toHaveCount(18);
   await expect(
-    page.getByRole("heading", { name: "당신의 다음 경험", exact: true }),
+    page.getByRole("heading", { name: "다음 컨퍼런스를 만나보세요", exact: true }),
   ).toBeVisible();
 });
 test("corrupt storage and write failure are visible, keyboard focus is reachable", async ({
@@ -190,7 +190,7 @@ test("accessible explore, modal and detail; menu toggles and focus returns", asy
   await audit();
   await page.keyboard.press("Escape");
   await expect(trigger).toBeFocused();
-  await page.goto("/programs/app-club");
+  await page.goto("/programs/kakao");
   await audit();
 });
 
@@ -269,18 +269,17 @@ test("another tab clear is reflected and denied storage can be retried", async (
   );
 });
 
-test("card and detail share representative recruitment and audience", async ({ page }) => {
-  await page.goto("/?roles=iOS");
-  const card = page.locator('.program-card[data-notice-id="app-club-2"]');
-  await expect(card).toContainText("모집 종료");
-  await expect(card).toContainText("선택 직무 종료 · 다른 직무 모집 중");
-  await expect(card).toContainText("모집 iOS · 디자인");
-  await expect(card).toContainText("대상 대학생");
-  await expect(card).toContainText("10.07 마감");
+test("card and detail use the latest verified round without claiming unrestricted eligibility", async ({ page }) => {
+  await page.goto("/?q=if(kakao)");
+  const card = page.locator('.program-card[data-notice-id="kakao-2026"]');
+  await expect(card).toContainText("참가 신청 중");
+  await expect(card).toContainText("2026.10.13 – 2026.10.14");
+  await expect(card).toContainText("무료");
+  await expect(card).toContainText("2026.09.28");
   await card.locator(".card-title").click();
-  const notice = page.locator('.notice[data-notice-id="app-club-2"]');
-  await expect(notice).toContainText("모집 종료");
-  await expect(notice).toContainText("대학생");
-  await expect(notice).toContainText("사전 과제 제출");
-  await expect(notice).toContainText("2026.10.07");
+  const notice = page.locator('.notice[data-notice-id="kakao-2026"]');
+  await expect(notice).toContainText("만 18세 이상");
+  await expect(notice).toContainText("낮 12시");
+  await expect(page.locator('.notice[data-notice-id="kakao-2025"]')).toContainText("행사 종료");
+  await expect(page.locator('.notice[data-notice-id="kakao-2025"]')).toContainText("2025.09.23");
 });

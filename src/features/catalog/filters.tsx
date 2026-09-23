@@ -24,7 +24,7 @@ export function FilterControls({
   };
   return (
     <>
-      <div className="chip-row" aria-label="방향 빠른 필터">
+      <div className="chip-row" aria-label="분야 빠른 필터">
         <button
           className={!f.roles.length ? "chip selected" : "chip"}
           onClick={() => onChange({ ...f, roles: [] })}
@@ -65,9 +65,9 @@ export function FilterControls({
             ✕
           </button>
         </div>
-        <p className="muted">방향과 경험을 함께 충족하는 프로그램을 찾아요.</p>
+        <p className="muted">분야와 경험을 함께 충족하는 프로그램을 찾아요.</p>
         <fieldset>
-          <legend>나아갈 방향</legend>
+          <legend>관심 분야</legend>
           <div className="filter-options">
             {roles.map((r) => (
               <label key={r}>
@@ -86,7 +86,7 @@ export function FilterControls({
               checked={f.allRoles}
               onChange={(e) => onChange({ ...f, allRoles: e.target.checked })}
             />
-            선택한 방향 모두 포함 <small>같은 공고 기준</small>
+            선택한 분야 모두 포함 <small>같은 공고 기준</small>
           </label>
         </fieldset>
         <fieldset>

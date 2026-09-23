@@ -43,7 +43,7 @@ export function Shell({ children }: { children: ReactNode }) {
             name="q"
             defaultValue={params.get("q") || ""}
             aria-label="프로그램 검색"
-            placeholder="어떤 경험을 찾고 있나요?"
+            placeholder="행사·회사·조직 검색"
           />
           <button aria-label="검색">
             <Icon name="search" />
@@ -93,18 +93,18 @@ export function Shell({ children }: { children: ReactNode }) {
           </p>
           <hr />
           <p>
-            샘플 데이터로 둘러보는
+            공식 출처로 살펴보는
             <br />
-            Dearby 웹 프로토타입
+            국내 IT 컨퍼런스
           </p>
           <small>© 2026 Dearby</small>
         </div>
       </aside>
       <main id="main" className="main">
-        <div className="sample-notice">
-          <span className="sample-dot" />
-          샘플 둘러보기{" "}
-          <span>가상 조직·프로그램입니다. 모집·등록 상태 기준 2026.09.24</span>
+        <div className="snapshot-notice">
+          <span className="snapshot-dot" />
+          공식 출처 확인{" "}
+          <span>2026.09.24 기준 · 실시간 정보가 아니에요</span>
         </div>
         {message && (
           <div className="storage-message" role="status">

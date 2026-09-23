@@ -1,4 +1,5 @@
-export const roles = ["프론트엔드", "백엔드", "디자인", "기획", "iOS"] as const;
+import { organizations } from "./organizations";
+export const roles = ["프론트엔드", "백엔드", "iOS", "Android", "AI", "데이터", "클라우드", "보안", "디자인", "기획", "Python", "Go"] as const;
 export type Activity = {
   action: string;
   target?: string;
@@ -27,35 +28,49 @@ export const experiences: Record<string, Activity & { label: string }> = {
     target: "서비스 기획",
     label: "과제수행 | 서비스 기획",
   },
-  lecture: { action: "청강", target: "업무 소개", label: "청강 | 업무 소개" },
+  lecture: { action: "청강", target: "기술 세션", label: "청강 | 기술 세션" },
+  mentoring: { action: "멘토링", label: "멘토링" },
+  practice: { action: "실습", label: "실습" },
   presentation: { action: "발표", label: "발표 전체" },
 };
+export type Source = { url: string; label: string; checkedAt: string; evidence: string };
 export type Notice = {
   id: string;
   round: string;
+  // Latest verified round, not a claim that the event is upcoming.
   current: boolean;
-  open: boolean;
-  // Registration notices use the same direction taxonomy for topics, not vacancies.
+  participationType: "application" | "registration";
+  status: "open" | "scheduled" | "closed" | "ended" | "unknown";
   roles: string[];
   activities: Activity[];
-  start: string;
-  deadline: string;
-  audience: string[];
-  qualification: string;
-} & (
-  | { participationType: "application" }
-  | { participationType: "registration"; eventDate: string }
-);
+  start: string | null;
+  deadline: string | null;
+  eventDate: string | null;
+  eventEndDate: string | null;
+  location: string | null;
+  cost: string | null;
+  audience: string[] | null;
+  qualification: string | null;
+  officialUrl: string;
+  registrationUrl: string | null;
+  sources: Source[];
+};
 export type Program = {
   id: string;
   orgId: string;
   title: string;
   subtitle: string;
   category: string;
-  location: string;
   cover: string;
+  coverSource: { url: string; pageUrl: string; kind: "og" | "capture" | "fallback"; checkedAt: string };
   notices: Notice[];
 };
+export function displayDate(value: string | null) {
+  return value?.replaceAll("-", ".") ?? "미확인";
+}
+export function eventDates(n: Notice) {
+  return displayDate(n.eventDate) + (n.eventEndDate && n.eventEndDate !== n.eventDate ? ` – ${displayDate(n.eventEndDate)}` : "");
+}
 export type Filters = {
   query: string;
   roles: string[];
@@ -98,22 +113,14 @@ export function matchingNotices(p: Program, f: Filters) {
     (n) =>
       n.current &&
       roleMatches(n, f) &&
-      (!f.openOnly || n.open) &&
+      (!f.openOnly || n.status === "open") &&
       (!f.experiences.length ||
         f.experiences.some((e) => experienceMatches(n, e))),
   );
 }
 export function noticeStatus(n: Notice) {
-  return n.participationType === "registration"
-    ? n.open ? "등록 중" : "등록 마감"
-    : n.open ? "모집 중" : "모집 종료";
-}
-export function recruitment(p: Program, f: Filters) {
-  if (p.notices.some((n) => n.current && n.open && roleMatches(n, f)))
-    return f.roles.length ? "선택 직무 모집 중" : "모집 중";
-  return p.notices.some((n) => n.current && n.open)
-    ? "선택 직무 종료 · 다른 직무 모집 중"
-    : "모집 종료";
+  const labels = { open: n.participationType === "application" ? "참가 신청 중" : "등록 중", scheduled: "등록 예정", closed: "등록 마감", ended: "행사 종료", unknown: "등록 미확인" };
+  return labels[n.status];
 }
 export function representativeNotice(p: Program, f: Filters) {
   return matchingNotices(p, f).sort((a, b) => compare(score(a, f), score(b, f)) || a.id.localeCompare(b.id))[0];
@@ -130,11 +137,11 @@ function score(n: Notice, f: Filters) {
       ),
   ).length;
   return [
-    Number(n.open),
+    ({ open: 4, scheduled: 3, unknown: 2, closed: 1, ended: 0 })[n.status],
     Number(!!f.priority && experienceMatches(n, f.priority)),
     count,
-    -Date.parse(n.deadline),
-    Date.parse(n.start),
+    n.status === "ended" ? Date.parse(n.eventDate ?? "1970-01-01") : -Date.parse(n.deadline ?? n.eventDate ?? "9999-12-31"),
+    Date.parse(n.start ?? "1970-01-01"),
   ];
 }
 function compare(a: number[], b: number[]) {
@@ -146,7 +153,7 @@ export function searchPrograms(data: Program[], f: Filters) {
   return data
     .filter(
       (p) =>
-        `${p.title} ${p.subtitle} ${p.category}`
+        `${p.title} ${p.subtitle} ${p.category} ${organizations.find(o => o.id === p.orgId)?.name ?? ""} ${p.notices.filter(n => n.current).map(n => n.round).join(" ")}`
           .toLocaleLowerCase()
           .includes(query) && matchingNotices(p, f).length,
     )
@@ -167,15 +174,12 @@ export function filterLabels(f: Filters) {
   ];
 }
 export function suggestions(data: Program[], f: Filters) {
-  // Removing individual OR terms only narrows results. Keep or drop each OR group;
-  // only the AND direction group needs subsets (at most 2^5 in this prototype).
+  // For AND, retain the largest selected subset supported by each real notice.
+  // Smaller subsets lose more conditions without creating a new matching notice.
+  const supported = data.flatMap(p => p.notices.filter(n => n.current).map(n => f.roles.filter(r => n.roles.includes(r))));
   const roleOptions = f.allRoles
-    ? Array.from({ length: 2 ** f.roles.length }, (_, mask) =>
-        f.roles.filter((_, i) => Math.floor(mask / 2 ** i) % 2),
-      )
-    : f.roles.length
-      ? [f.roles, []]
-      : [[]];
+    ? [...new Map([f.roles, ...supported, []].map(values => [values.join(","), values])).values()]
+    : f.roles.length ? [f.roles, []] : [[]];
   const experienceOptions = f.experiences.length ? [f.experiences, []] : [[]];
   const queryOptions = f.query ? [f.query, ""] : [""];
   const openOptions = f.openOnly ? [true, false] : [false];

@@ -8,10 +8,10 @@ test("saved data validates shape and isolates organization IDs", () => {
   assert.deepEqual(
     parseSaved(
       JSON.stringify({
-        programs: ["build-together", "build-together", "org-orbit"],
-        organizations: ["org-orbit", "build-together"],
+        programs: ["feconf", "feconf", "org-fedg"],
+        organizations: ["org-fedg", "feconf"],
       }),
     ),
-    { programs: ["build-together"], organizations: ["org-orbit"] },
+    { programs: ["feconf"], organizations: ["org-fedg"] },
   );
 });

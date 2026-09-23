@@ -55,12 +55,12 @@ export function Explore() {
                 ? "지금, 함께할 수 있는 경험"
                 : f.query
                   ? `“${f.query}” 검색 결과`
-                  : "당신의 다음 경험"}
+                  : "다음 컨퍼런스를 만나보세요"}
           </h1>
           <p>
             {view === "saved"
               ? "이 브라우저에 저장한 프로그램과 조직"
-              : "작은 관심이 새로운 가능성이 되는 곳"}
+              : "기술과 사람을 만나는 자리 · 종료된 행사도 함께 탐색해요"}
           </p>
         </div>
         <span className="result-count" aria-live="polite">
@@ -127,7 +127,7 @@ export function Explore() {
                   <h2>{o.name}</h2>
                   <p>{o.description}</p>
                   <p>
-                    샘플 조직 · 프로그램{" "}
+                    프로그램{" "}
                     {programs.filter((p) => p.orgId === o.id).length}개
                   </p>
                   <div className="org-programs">
@@ -152,8 +152,8 @@ export function Explore() {
         </div>
       ) : results.length ? (
         <div className="program-grid">
-          {results.map((p) => (
-            <ProgramCard key={p.id} program={p} filters={f} />
+          {results.map((p, index) => (
+            <ProgramCard key={p.id} program={p} filters={f} eager={index < 4} />
           ))}
         </div>
       ) : (
