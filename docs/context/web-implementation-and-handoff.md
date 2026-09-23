@@ -1,5 +1,21 @@
 # Dearby 웹 구현 인계
 
+## 최신 후속 작업 — 2026-09-24 01:02 KST
+
+담당 세션 `term_f94fe84b-50b8-486d-90aa-0595ce675676`, Task `task_2c46a954b462`, Dispatch `ctx_a30c192f9930`; 아래 초기 구현 기록과 구분한다.
+
+- 대학생 한정 조직 카피를 제거하고 Notice.audience에 고등학생·대학생·취준생의 서로 다른 허용 조합을 명시했다. 추가 조건은 qualification이며 카드와 상세가 동일 공고를 사용한다. 대상 자동판정·프로필·필터는 추가하지 않았다.
+- 한국어 활동 요약 포스터 12개, 제목·조직 다음 모집직무/대상/마감·장소의 세 줄과 경험 라벨을 표시한다. 대표 공고는 현재 필터와 기존 점수에 맞는 하나로 선택한다. 선택 직무 종료·다른 직무 모집 중 안내는 별도로 유지했다.
+- 수정 전 Chromium 개발모드 새 페이지 회귀 6개 중 5개 실패: 서버 disabled 속성이 그대로 남고 기존 저장 복원도 hydration 불일치했다. 수정 후 개발모드 Chromium/WebKit 각각 6개(총 12개) 통과, console.error/pageerror 없음, 저장 버튼 DOM enabled·aria-pressed·실제 localStorage 변경 확인. 홈/상세/스크랩에서 저장 없음·있음 모두 포함한다.
+- lint, typecheck, 단위 12개, production build, production E2E 26개 통과. 기존 12개 흐름과 axe 두 viewport 검사를 유지했다. 생성 next-env.d.ts를 삭제한 뒤 typecheck가 재생성하고 통과함도 확인했다.
+- Ponytail review에서 단일 필드 setter 래퍼 4개를 제거하고 snapshot patch를 직접 묶었다. 최종 검토: Lean already. Ship. 별도로 저장 오류/복구·다른 탭 동기화·조건 혼합 회귀를 검사했다.
+- 1440×1000 / 390×844 목록·상세 스크린샷을 실제 열어 확인했다. 초기 포스터 3개의 전경색 오류를 발견·수정하고 재캡처했다. 메인 소유 3000 서버 및 Orca page는 조작하지 않았다. Playwright WebKit 검증은 실제 Orca WKWebView 검증을 대신하지 않으므로 메인 통합 후 직접 진입 확인이 남는다.
+- Next dev가 AGENTS.md에 자동 추가한 내용은 커밋에 넣지 않는다. next-env.d.ts는 dev/prod 생성 경로가 바뀌므로 추적 제외했으며 typecheck는 next typegen을 먼저 실행한다. 개발 테스트 출력은 기존 ignore 아래 test-results/dev로 지정했다.
+
+스크린샷: `/Users/jominjun/Documents/dearby/dearby-web/test-results/desktop-explore.png`, `desktop-explore-viewport.png`, `desktop-detail.png`, `desktop-detail-viewport.png`, `mobile-explore.png`, `mobile-explore-viewport.png`, `mobile-detail.png`, `mobile-detail-viewport.png` (모두 같은 디렉터리).
+
+초기 구현의 상세 기록은 아래에 보존한다.
+
 완료 기록: 2026-09-24 00:55 KST. 기준 커밋 `be10837e0c1ff498a13622ab9feb50b8f4338ea3`, 작업 브랜치 `fixabley/dearby-web`, checkout `/Users/jominjun/Documents/dearby/dearby-web`. 담당 세션은 `term_c0008d89-171d-424f-8ddc-122136963514`, Task `task_c5abe8d83ebe`, Dispatch `ctx_a529f998bad6`이다. 세션 식별자와 실제 검증 시각은 별개다.
 
 ## 구현 결과
@@ -28,7 +44,7 @@ root Next.js App Router + TypeScript 웹이다. 2026-09-24 npm registry에서 Ne
 
 ## 저장·접근성·구조
 
-`src/features/saved/provider.tsx`가 상태를 소유하고 `save-button.tsx`는 표시한다. `dearby:saved:v1` 아래 프로그램/조직 ID 배열을 분리 저장한다. 서버와 클라이언트의 첫 렌더를 동일하게 유지한 후 effect에서 읽고 복원 전 저장 버튼을 비활성화한다. 이 외부 브라우저 저장소 초기화 한 줄에만 이유를 명시한 `react-hooks/set-state-in-effect` 예외를 둔다.
+`src/features/saved/provider.tsx`가 상태를 소유하고 `save-button.tsx`는 표시한다. `dearby:saved:v1` 아래 프로그램/조직 ID 배열을 분리 저장한다. 각 소비자가 useSyncExternalStore로 구독하며 고정 serverSnapshot(빈 저장·ready=false)을 hydration 동안 사용한다. provider별 저장 객체의 첫 구독에서 localStorage를 읽고 이후 실제 스냅샷으로 갱신한다. 상위 effect 기반 복원과 lint 예외는 제거했다.
 
 JSON/스키마 손상은 원문을 유지하며 저장을 차단하고 재시도/손상된 스크랩 초기화를 제공한다. 접근 차단도 구별하고 재시도를 제공한다. 알 수 없는 ID와 중복은 읽기 결과에서 제외한다. 쓰기 실패는 메모리에만 반영되었다고 명시하고 같은 상태로 저장 재시도를 제공한다. 다른 탭의 값 변경 및 `localStorage.clear()`의 `key=null` 이벤트를 반영한다. 여러 탭이 동시에 저장하는 충돌은 마지막 쓰기 우선이며 서버 동기화는 없다.
 
