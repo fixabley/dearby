@@ -33,8 +33,10 @@ Ponytail: HTML 생성기와 보존 PPTX 생성 흐름을 검토했으며 이번 
 
 과거 결과(이번 재실행 아님): 2026-09-22 PPTX 렌더/시각 검사·Artifact Tool import, HTML 877×939/1440×900/390×844 조작·화면 검사. 이번에는 새 렌더, 브라우저 상호작용, PowerPoint 원어플리케이션, 전체화면·인쇄, 웹 출처 재조회, 앱 빌드/테스트를 실행하지 않았다.
 
-## 보존할 로컬 파일과 다음 행동
+## 정리 결과와 다음 행동
 
-임시 렌더·중간 빌드는 `.symposium/scratch/presentation-build/` 전체를 미커밋으로 남긴다. 정확한 파일 목록은 [백업 목록](../../.symposium/scratch/archive/2026-09-23-product-preservation/local-backup-manifest.md)에 있다. ignored 파일은 이번 확인에서 없다. 원본 build.mjs/write_content.py와 정리 전 역할 인계는 [보관함](../../.symposium/scratch/archive/2026-09-23-product-preservation/README.md)에 별도로 보존했다.
+담당 최종 커밋 e1f5724까지 [PR #35](https://github.com/fixabley/dearby/pull/35)에 push했다. 메인은 공통 인계 문서를 후속 커밋으로 통합하고 CI·병합을 담당한다. 신규 기획 구현은 시작하지 않았다.
 
-[PR #35](https://github.com/fixabley/dearby/pull/35)를 main 대상으로 작성하고 push했다. 발표 Markdown 줄바꿈·EOF 서식을 후속 커밋으로 정리했으며 최종 범위 `git diff --check origin/main...HEAD`를 통과했다. 최종 SHA는 완료 보고에서 메인에 전달하며 CI 대기·병합은 메인 담당이다. PR 병합 및 위 로컬 폴더 백업이 확인되면 세션/worktree 종료 가능하다. 기획 명세 미완료는 문서로 인계하며 이 세션에서 추가 구현하지 않는다. 완료 Dispatch 뒤에는 새 지시를 기다린다.
+임시 렌더·중간 빌드 44개 파일은 Git에 넣지 않고 메인이 전체 checkout과 함께 외부 백업했다. 각 파일의 archive 내용과 SHA-256을 대조한 뒤 담당 세션과 worktree를 제거했다. 정확한 중간물 목록은 [백업 목록](../../.symposium/scratch/archive/2026-09-23-product-preservation/local-backup-manifest.md), 백업 위치·복원 방법은 [Git·Orca 운영](orca-sessions-and-worktrees.md)을 따른다. 원본 build.mjs/write_content.py와 정리 전 역할 인계는 [보관함](../../.symposium/scratch/archive/2026-09-23-product-preservation/README.md)에 보존했다.
+
+기획 명세 미완료 항목은 위에 남겼다. 후속 기획은 이 문서와 정본에서 재개하며, 앱 구현은 사용자 지시 후 공통 계약과 플랫폼 범위를 조율한다. 이전 terminal handle을 활성 세션으로 재사용하지 않는다.
