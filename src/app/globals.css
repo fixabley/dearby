@@ -1046,3 +1046,8 @@ select {
   margin: 8px 0 0 10px;
   font-size: 12px;
 }
+
+/* Keep recruitment facts readable beneath the stronger activity title. */
+.card-title { font-size: 16px; }
+.card-meta { font-size: 13px; line-height: 1.65; }
+.card-meta strong { font-weight: 600; color: #383838; }

@@ -39,6 +39,7 @@ export type Notice = {
   activities: Activity[];
   start: string;
   deadline: string;
+  audience: string[];
   qualification: string;
 };
 export type Program = {
@@ -104,6 +105,9 @@ export function recruitment(p: Program, f: Filters) {
   return p.notices.some((n) => n.current && n.open)
     ? "선택 직무 종료 · 다른 직무 모집 중"
     : "모집 종료";
+}
+export function representativeNotice(p: Program, f: Filters) {
+  return matchingNotices(p, f).sort((a, b) => compare(score(a, f), score(b, f)) || a.id.localeCompare(b.id))[0];
 }
 function score(n: Notice, f: Filters) {
   const matched = f.experiences.filter((e) => experienceMatches(n, e));

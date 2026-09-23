@@ -268,3 +268,19 @@ test("another tab clear is reflected and denied storage can be retried", async (
     "0s",
   );
 });
+
+test("card and detail share representative recruitment and audience", async ({ page }) => {
+  await page.goto("/?roles=iOS");
+  const card = page.locator('.program-card[data-notice-id="app-club-2"]');
+  await expect(card).toContainText("모집 종료");
+  await expect(card).toContainText("선택 직무 종료 · 다른 직무 모집 중");
+  await expect(card).toContainText("모집 iOS · 디자인");
+  await expect(card).toContainText("대상 대학생");
+  await expect(card).toContainText("10.07 마감");
+  await card.locator(".card-title").click();
+  const notice = page.locator('.notice[data-notice-id="app-club-2"]');
+  await expect(notice).toContainText("모집 종료");
+  await expect(notice).toContainText("대학생");
+  await expect(notice).toContainText("사전 과제 제출");
+  await expect(notice).toContainText("2026.10.07");
+});

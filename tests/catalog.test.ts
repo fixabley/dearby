@@ -7,6 +7,7 @@ import {
   searchPrograms,
   suggestions,
   activityMatches,
+  representativeNotice,
   recruitment,
 } from "../src/features/catalog/model";
 test("unique programs, direction OR and AND", () => {
@@ -26,9 +27,10 @@ test("same notice prevents invented cross-role matches and past evidence", () =>
     searchPrograms([p], { ...f, roles: ["iOS"], openOnly: true }).length,
     0,
   );
+  assert.equal(recruitment(p, { ...f, roles: ["iOS"] }), "선택 직무 종료 · 다른 직무 모집 중");
   assert.equal(
-    recruitment(p, { ...f, roles: ["iOS"] }),
-    "선택 직무 종료 · 다른 직무 모집 중",
+    representativeNotice(p, { ...f, roles: ["iOS"] })?.open,
+    false,
   );
   assert.equal(
     searchPrograms([programs[5]], { ...f, experiences: ["mentor"] }).length,
@@ -166,4 +168,14 @@ test("OR subset suggestions keep complete OR groups and worst selection remains 
       option.filters.roles.length === 0 ||
         option.filters.roles.length === orFilters.roles.length,
     );
+});
+
+test("representative notice uses the same matching current notice for all card facts", () => {
+  const p = programs[3];
+  assert.equal(representativeNotice(p, f)?.id, "app-club-design");
+  assert.equal(representativeNotice(p, { ...f, roles: ["iOS"] })?.id, "app-club-2");
+  const restricted = { ...p, notices: p.notices.map(n => ({ ...n, activities: n.open ? [experiences.peer] : [experiences.app] })) };
+  assert.equal(representativeNotice(restricted, { ...f, experiences: ["app"] })?.open, false);
+  assert.ok(programs.some(p => p.notices[0].audience.includes("고등학생")));
+  assert.ok(programs.some(p => !p.notices[0].audience.includes("대학생")));
 });

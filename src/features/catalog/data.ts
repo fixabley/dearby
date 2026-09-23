@@ -5,7 +5,7 @@ export const organizations = [
     name: "오빗 컬렉티브",
     initial: "O",
     color: "#6451c9",
-    description: "작은 아이디어를 함께 만드는 가상의 대학생 커뮤니티입니다.",
+    description: "작은 아이디어를 함께 만드는 가상의 프로젝트 커뮤니티입니다.",
   },
   {
     id: "org-layer",
@@ -165,10 +165,11 @@ export const programs: Program[] = rows.map((r, i) => {
     })),
     start: "2026-09-01",
     deadline: `2026-10-${String(4 + i).padStart(2, "0")}`,
-    qualification:
-      i % 2
-        ? "대학생 및 휴학생 · 사전 과제 제출"
-        : "대학생 · 주 1회 모임 참여 가능",
+    audience: [
+      ["고등학생", "대학생"], ["대학생", "취준생"], ["취준생"],
+      ["대학생"], ["고등학생", "대학생", "취준생"], ["고등학생"],
+    ][i % 6],
+    qualification: i % 2 ? "사전 과제 제출" : "주 1회 모임 참여 가능",
   };
   const past: Notice = {
     ...current,

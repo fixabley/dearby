@@ -3,8 +3,8 @@ import Image from "next/image";
 import { organizations } from "./data";
 import {
   emptyFilters,
+  representativeNotice,
   recruitment,
-  matchingNotices,
   type Program,
   type Filters,
 } from "./model";
@@ -17,8 +17,9 @@ export function ProgramCard({
   filters?: Filters;
 }) {
   const org = organizations.find((o) => o.id === p.orgId)!;
-  const status = recruitment(p, filters);
-  const notice = matchingNotices(p, filters)[0] ?? p.notices[0];
+  const notice = representativeNotice(p, filters);
+  if (!notice) return null;
+  const status = `${notice.round} · ${notice.open ? "모집 중" : "모집 종료"}`;
   const groups = new Map<string, Set<string>>();
   for (const activity of notice.activities) {
     const values = groups.get(activity.action) ?? new Set<string>();
@@ -34,7 +35,7 @@ export function ProgramCard({
       `${action}${values.size ? " | " + [...values].join(", ") : ""}`,
   );
   return (
-    <article className="program-card">
+    <article className="program-card" data-notice-id={notice.id}>
       <Link href={`/programs/${p.id}`} className="cover-link">
         <Image
           src={p.cover}
@@ -65,8 +66,17 @@ export function ProgramCard({
             {org.name} <span aria-label="샘플">· 샘플</span>
           </div>
           <div className="card-meta">
-            {p.category} · {p.location} · {notice.round}
+            <strong>모집</strong> {notice.roles.join(" · ")}
           </div>
+          <div className="card-meta">
+            <strong>대상</strong> {notice.audience.join(" · ")}
+          </div>
+          <div className="card-meta card-deadline">
+            <strong>{notice.deadline.slice(5).replace("-", ".")} 마감</strong> · {p.location}
+          </div>
+          {!notice.open && recruitment(p, filters) === "선택 직무 종료 · 다른 직무 모집 중" && (
+            <div className="card-meta">선택 직무 종료 · 다른 직무 모집 중</div>
+          )}
           <div className="card-experience">
             {grouped.slice(0, 2).join(" / ")}
             {grouped.length > 2 ? ` 외 ${grouped.length - 2}개` : ""}

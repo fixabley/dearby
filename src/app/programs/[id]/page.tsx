@@ -80,6 +80,7 @@ export default async function ProgramPage({
             <article
               className={`notice ${!n.current ? "past" : ""}`}
               key={n.id}
+              data-notice-id={n.id}
             >
               <div className="notice-top">
                 <span>
@@ -93,6 +94,11 @@ export default async function ProgramPage({
               <p className="notice-date">
                 모집 {n.start.replaceAll("-", ".")} —{" "}
                 {n.deadline.replaceAll("-", ".")}
+              </p>
+              <p>
+                <strong>지원 대상</strong>
+                <br />
+                {n.audience.join(" · ")}
               </p>
               <p>
                 <strong>지원 조건</strong>
