@@ -1,5 +1,13 @@
 # 웹 구현
 
+## 공식 컨퍼런스 전환 완료 — 2026-09-24 01:43 KST
+
+Task `task_11416b48d24f`, Dispatch `ctx_259771a9ca90`, 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9`. 자기 checkout 기준1dae183에서 공식 컨퍼런스18개·20회차·16조직으로 전환했다. OG14/대표영역 캡처4 및 출처·확인일을 기록했다. 회사검색·12분야·등록5상태·실제 비용/조건·모바일 참가정보 우선·공식 링크를 제공하고 공고단위필터/URL/대안/독립스크랩을 유지한다.
+
+담당 검증: lint/typecheck/unit12/build/prodE2E32/dev Chromium9+WebKit9 모두 통과, 1440/390 실제 이미지 검토, console.error/pageerror0·hydration·overflow·axe AA0 확인. Ponytail: 미사용helper/스타일/가상포스터 제거 후 Lean already. Ship. 3210/3211 종료, 자동AGENTS diff 커밋제외. 정확한 출처·회차·미확인값·검증한계는 [최신 웹 인계](../context/web-implementation-and-handoff.md) 첫 절을 따른다.
+
+이전1dae183의 root통합(c380756)과 root unit13/prod28/dev14/실제Orca통과는 메인이 전달한 이전 기능 검증이다. 이번18개 전환은 메인 통합/Orca 최종확인이 남으며, 메인 연구58행의 후속확대는 별도 범위다. 완료보고 후 사용자에게 보이는 세션으로 유지하고 다음 요청을 기다린다. 아래는 이전 시점 기록이다.
+
 ## 컨퍼런스 후속 완료 — 2026-09-24 01:08 KST
 
 새 Dispatch `ctx_e9759a9998a5`(Task `task_3f3b5dfe71b8`, 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9`)로 아래 대기 지시를 대체하여 컨퍼런스 샘플/한국어 포스터와 등록형 공고를 구현했다. 기존 탐색·공고 단위 필터·분리 스크랩을 유지하고 참가 대상/주제·분야/등록 마감/개최일/장소 및 등록형 문구를 표시한다.
