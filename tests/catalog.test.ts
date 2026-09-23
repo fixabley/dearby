@@ -141,3 +141,29 @@ test("attributes from separate activities or notices cannot combine", () => {
     0,
   );
 });
+
+test("OR subset suggestions keep complete OR groups and worst selection remains responsive", () => {
+  const filters = {
+    ...f,
+    query: "존재하지않는검색",
+    roles: ["프론트엔드", "백엔드", "디자인", "기획", "iOS"],
+    experiences: Object.keys(experiences),
+    allRoles: true,
+    openOnly: true,
+  };
+  const start = performance.now();
+  const options = suggestions(programs, filters);
+  assert.ok(performance.now() - start < 1000);
+  assert.ok(options.length);
+  for (const option of options)
+    assert.ok(
+      option.filters.experiences.length === 0 ||
+        option.filters.experiences.length === filters.experiences.length,
+    );
+  const orFilters = { ...filters, allRoles: false };
+  for (const option of suggestions(programs, orFilters))
+    assert.ok(
+      option.filters.roles.length === 0 ||
+        option.filters.roles.length === orFilters.roles.length,
+    );
+});

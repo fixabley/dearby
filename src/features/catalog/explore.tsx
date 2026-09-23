@@ -1,5 +1,6 @@
 "use client";
 import { useSearchParams } from "next/navigation";
+import { readFilters, filtersUrl } from "./search-state";
 import { useState } from "react";
 import { organizations, programs } from "./data";
 import {
@@ -11,27 +12,27 @@ import {
 } from "./model";
 import { FilterControls } from "./filters";
 import { ProgramCard } from "./card";
-import { SaveButton, useSaved } from "../saved/provider";
+import { useSaved } from "../saved/provider";
+import { SaveButton } from "../saved/save-button";
 export function Explore() {
   const params = useSearchParams();
-  return (
-    <ExploreView
-      key={`${params.get("view")}:${params.get("q")}`}
-      view={params.get("view") || "all"}
-      query={params.get("q") || ""}
-    />
-  );
-}
-function ExploreView({ view, query }: { view: string; query: string }) {
-  const [f, setF] = useState<Filters>({
-      ...emptyFilters,
-      query,
-      openOnly: view === "open",
-    }),
-    [undo, setUndo] = useState<Filters | null>(null),
-    [removed, setRemoved] = useState<string[]>([]),
-    [savedTab, setSavedTab] = useState("programs");
+  const view = params.get("view") || "all";
+  const savedTab = params.get("tab") || "programs";
+  const f = readFilters(params);
+  const currentUrl = "/" + (params.size ? "?" + params.toString() : "");
+  const [undo, setUndo] = useState<{
+    previous: string;
+    applied: string;
+    removed: string[];
+  } | null>(null);
   const { saved, ready } = useSaved();
+  const showOrganizations = view === "saved" && savedTab === "organizations";
+  const setSavedTab = (tab: string) => {
+    const next = new URLSearchParams(params.toString());
+    next.set("tab", tab);
+    window.history.replaceState(null, "", "/?" + next.toString());
+    setUndo(null);
+  };
   const data =
     view === "saved"
       ? programs.filter((p) => saved.programs.includes(p.id))
@@ -39,18 +40,18 @@ function ExploreView({ view, query }: { view: string; query: string }) {
   const results = searchPrograms(data, f);
   const options = !results.length ? suggestions(data, f) : [];
   const change = (next: Filters) => {
-    setF(next);
+    window.history.replaceState(null, "", filtersUrl(next, params.toString()));
     setUndo(null);
   };
   return (
     <>
-      <FilterControls filters={f} onChange={change} />
+      {!showOrganizations && <FilterControls filters={f} onChange={change} />}
       <div className="listing-heading">
         <div>
           <h1>
             {view === "saved"
               ? "나의 스크랩"
-              : view === "open"
+              : f.openOnly
                 ? "지금, 함께할 수 있는 경험"
                 : f.query
                   ? `“${f.query}” 검색 결과`
@@ -63,7 +64,9 @@ function ExploreView({ view, query }: { view: string; query: string }) {
           </p>
         </div>
         <span className="result-count" aria-live="polite">
-          프로그램 {results.length}개
+          {showOrganizations
+            ? `조직 ${saved.organizations.length}개`
+            : `프로그램 ${results.length}개`}
         </span>
       </div>
       {view === "saved" && (
@@ -83,7 +86,7 @@ function ExploreView({ view, query }: { view: string; query: string }) {
           <span>스크랩은 추천 학습에 사용되지 않아요.</span>
         </div>
       )}
-      {filterLabels(f).length > 0 && (
+      {!showOrganizations && filterLabels(f).length > 0 && (
         <div className="applied-filters">
           <span>적용 중</span>
           {filterLabels(f).map((x) => (
@@ -96,12 +99,12 @@ function ExploreView({ view, query }: { view: string; query: string }) {
           </button>
         </div>
       )}
-      {undo && (
+      {undo && undo.applied === currentUrl && (
         <div className="undo-notice" role="status">
-          해제된 조건: {removed.join(", ")}
+          해제된 조건: {undo.removed.join(", ")}
           <button
             onClick={() => {
-              setF(undo);
+              window.history.replaceState(null, "", undo.previous);
               setUndo(null);
             }}
           >
@@ -171,9 +174,13 @@ function ExploreView({ view, query }: { view: string; query: string }) {
               <button
                 key={i}
                 onClick={() => {
-                  setUndo(f);
-                  setF(s.filters);
-                  setRemoved(s.removed);
+                  const applied = filtersUrl(s.filters, params.toString());
+                  setUndo({
+                    previous: currentUrl,
+                    applied,
+                    removed: s.removed,
+                  });
+                  window.history.replaceState(null, "", applied);
                 }}
               >
                 <b>{filterLabels(s.filters).join(" + ")}</b>

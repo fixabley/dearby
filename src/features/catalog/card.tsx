@@ -8,7 +8,7 @@ import {
   type Program,
   type Filters,
 } from "./model";
-import { SaveButton } from "../saved/provider";
+import { SaveButton } from "../saved/save-button";
 export function ProgramCard({
   program: p,
   filters = emptyFilters,
@@ -19,18 +19,20 @@ export function ProgramCard({
   const org = organizations.find((o) => o.id === p.orgId)!;
   const status = recruitment(p, filters);
   const notice = matchingNotices(p, filters)[0] ?? p.notices[0];
-  const grouped = Object.entries(
-    Object.groupBy(notice.activities, (a) => a.action),
-  ).map(([action, items]) => {
-    const values = [
-      ...new Set(
-        items!
-          .map((a) => [a.target, a.method].filter(Boolean).join(" · "))
-          .filter(Boolean),
-      ),
-    ];
-    return `${action}${values.length ? " | " + values.join(", ") : ""}`;
-  });
+  const groups = new Map<string, Set<string>>();
+  for (const activity of notice.activities) {
+    const values = groups.get(activity.action) ?? new Set<string>();
+    const value = [activity.target, activity.method]
+      .filter(Boolean)
+      .join(" · ");
+    if (value) values.add(value);
+    groups.set(activity.action, values);
+  }
+  const grouped = Array.from(
+    groups,
+    ([action, values]) =>
+      `${action}${values.size ? " | " + [...values].join(", ") : ""}`,
+  );
   return (
     <article className="program-card">
       <Link href={`/programs/${p.id}`} className="cover-link">

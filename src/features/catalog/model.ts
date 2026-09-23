@@ -154,32 +154,40 @@ export function filterLabels(f: Filters) {
   ];
 }
 export function suggestions(data: Program[], f: Filters) {
-  const atoms = [
-    ...(f.query ? ["query"] : []),
-    ...f.roles.map((r) => "r:" + r),
-    ...f.experiences.map((e) => "e:" + e),
-    ...(f.openOnly ? ["open"] : []),
-  ];
+  // Removing individual OR terms only narrows results. Keep or drop each OR group;
+  // only the AND direction group needs subsets (at most 2^5 in this prototype).
+  const roleOptions = f.allRoles
+    ? Array.from({ length: 2 ** f.roles.length }, (_, mask) =>
+        f.roles.filter((_, i) => Math.floor(mask / 2 ** i) % 2),
+      )
+    : f.roles.length
+      ? [f.roles, []]
+      : [[]];
+  const experienceOptions = f.experiences.length ? [f.experiences, []] : [[]];
+  const queryOptions = f.query ? [f.query, ""] : [""];
+  const openOptions = f.openOnly ? [true, false] : [false];
+  const originalLabels = filterLabels(f);
   const results: { filters: Filters; count: number; removed: string[] }[] = [];
-  // Generate subsets only of explicitly selected conditions, preserving the original boolean logic.
-  for (let mask = 1; mask < 2 ** atoms.length - 1; mask++) {
-    const kept = atoms.filter((_, i) => Math.floor(mask / 2 ** i) % 2);
-    const next = {
-      ...f,
-      query: kept.includes("query") ? f.query : "",
-      roles: f.roles.filter((r) => kept.includes("r:" + r)),
-      experiences: f.experiences.filter((e) => kept.includes("e:" + e)),
-      openOnly: kept.includes("open"),
-    };
-    if (!next.experiences.includes(next.priority)) next.priority = "";
-    const count = searchPrograms(data, next).length;
-    if (count)
-      results.push({
-        filters: next,
-        count,
-        removed: filterLabels(f).filter((x) => !filterLabels(next).includes(x)),
-      });
-  }
+  for (const roles of roleOptions)
+    for (const experiences of experienceOptions)
+      for (const query of queryOptions)
+        for (const openOnly of openOptions) {
+          const next = {
+            ...f,
+            roles,
+            experiences,
+            query,
+            openOnly,
+            priority: experiences.includes(f.priority) ? f.priority : "",
+          };
+          const labels = filterLabels(next);
+          const removed = originalLabels.filter(
+            (label) => !labels.includes(label),
+          );
+          if (!labels.length || !removed.length) continue;
+          const count = searchPrograms(data, next).length;
+          if (count) results.push({ filters: next, count, removed });
+        }
   return results
     .sort((a, b) => a.removed.length - b.removed.length || b.count - a.count)
     .slice(0, 4);
