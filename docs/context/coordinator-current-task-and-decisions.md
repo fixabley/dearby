@@ -24,19 +24,19 @@
 
 저장 문제는 소비자별 useSyncExternalStore 서버 snapshot으로 수정했고 새 dev 회귀를 CI에 연결했다. CI 원격 실행은 아직 하지 않았다. Next dev가 생성하는 next-env.d.ts는 추적 제외하고 파일 없는 상태 typegen을 검증했다. Next 자동 AGENTS 안내는 메인에서 보존한다.
 
-## 현재 추가 작업 — 컨퍼런스
+## 컨퍼런스 반영·최종 검증 완료
 
-사용자가 컨퍼런스도 포함한다고 확인했다. 동일 dearby-web checkout의 Task task_3f3b5dfe71b8 / Dispatch ctx_e9759a9998a5 / terminal term_db69f423-a4bc-45ae-910d-ede154eab9d9에서 컨퍼런스 샘플과 참가등록형 안내를 추가 중이다. 참가 대상·분야·등록 마감·개최일·장소를 표시하고 결제/신청실행은 추가하지 않는다. 이전 Task task_2c46a954b462 / Dispatch ctx_a30c192f9930는 succeeded·release·ack 완료했다.
+2026-09-24 01:10 KST. Task task_3f3b5dfe71b8 / Dispatch ctx_e9759a9998a5가 succeeded로 완료되었다. 담당 1dae183을 root c380756에 통합했다. 프로그램 13개·공고 26개·조직 4개이며 참가 대상·주제·등록 마감·개최일·장소를 표시하고 선발형 지원과 참가등록을 구분한다.
 
-사용자가 하위 세션에서도 진행내용이 보이길 원하므로 새 웹 담당 세션을 열어 현재 인계를 표시했고 앞으로 완료 후에도 사용자 요청에 따른 retain으로 유지한다. 실제 세션과 worktree 카드도 해당 창으로 전환했다. 기존 종료 핸들은 다시 쓰지 않는다.
+메인에서 이번 통합 후 lint/typecheck/unit13/build/production E2E28/dev Chromium·WebKit14를 실제 실행해 모두 통과했다. Orca 실제 페이지에서 컨퍼런스 상세·활성 스크랩 버튼·등록 정보·console error 0을 확인했다. 1440/390 스크린샷을 검토했으며 모바일 참가 정보가 설명 아래에 있어 스크롤이 필요한 점은 후속 가독성 개선 후보다. Ponytail 최종 diff 검토에서는 추가 삭제 후보가 없었다.
 
-shadcn/ui 사용도 허용했으나 필수 전환 요청은 아니어서 검증된 컨트롤을 일괄 교체하지 않는다. 선택지로 AGENTS에 기록했고 아직 설치하지 않았다.
+웹 담당 terminal term_db69f423-a4bc-45ae-910d-ede154eab9d9는 사용자 요청으로 명시적 retain 후 delivery ack했다. 완료 세션을 닫지 않는다. 진행 중 Dispatch와 reclaimable worker는 없다. root CI의 dev 회귀 연결 및 shadcn 선택권·세션 유지 정책은 e9866e8에 기록했다. shadcn은 허용 사항으로 아직 설치하지 않았다.
 
-다음: 컨퍼런스 변경·테스트·스크린샷 검토, 기능 커밋 root 통합, 관련 회귀와 최종 실행 확인, 역할 문서/하위 세션 상태 업데이트. 완료 worker는 release 대신 retain한다. 현재 root CI와 공통 정책 문서 수정도 커밋해야 한다.
+다음: 사용자 화면 검토 및 후속 변경. 실제 데이터 수집·API·인증·지원/등록 실행·배포는 미구현이며 이번 원격 push/PR/merge는 수행하지 않았다.
 
 ## 로컬 실행과 보존
 
-- root 개발서버: http://127.0.0.1:3000, Orca terminal term_22a33928-5c20-48bf-bc14-dd693744754a. 2026-09-24 00:56 KST ready/HTTP200 확인. 후속 작업 중 유지하며 현재 초기 웹 코드가 표시된다.
+- root 개발서버: http://127.0.0.1:3000, Orca terminal term_bbab9abc-a0a6-4916-9404-fb7f193bacf8. 2026-09-24 01:10 KST 재시작 후 실제 페이지 접근 확인. 최종 웹 코드를 표시한다.
 - root Orca 새 page d26f381c-df01-4020-9115-53457b1007ba가 위 URL을 표시한다(기존 page b99a9e23-82b0-4349-a854-b6bfa204ef82도 보존). 처음 CUA IAB는 미연결 실패했으나 Orca 내장 브라우저로 우회했다. 실제 YouTube 비로그인 헤더·접힌 메뉴만 확인했고 추천 그리드는 없어서 전체 대조하지 못했다.
 - 기존 apps/scripts/shared/root Node 설정·의존성과 잔여 dearby-ios는 /Users/jominjun/Documents/dearby-backups/2026-09-24-before-web-rebuild/에 이동 보존했다. repository.bundle 검증, 사용자 Xcode 변경 binary diff·원본, 700개 소스/로컬 파일 해시 대조를 보존했다. main f1d9a63에도 추적 코드가 남아 있다.
 - 기획·발표 자료·Git 이력은 유지한다. dearby-ir은 별도 저장소이며 변경하지 않았다. 과거 네이티브 규칙은 archive로 보존하고 새 웹에 적용하지 않는다.
