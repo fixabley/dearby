@@ -4,7 +4,7 @@
 
 Task `task_11416b48d24f`, Dispatch `ctx_259771a9ca90`, 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9`. 자기 checkout 기준1dae183에서 공식 컨퍼런스18개·20회차·16조직으로 전환했다. OG14/대표영역 캡처4 및 출처·확인일을 기록했다. 회사검색·12분야·등록5상태·실제 비용/조건·모바일 참가정보 우선·공식 링크를 제공하고 공고단위필터/URL/대안/독립스크랩을 유지한다.
 
-담당 검증: lint/typecheck/unit12/build/prodE2E32/dev Chromium9+WebKit9 모두 통과, 1440/390 실제 이미지 검토, console.error/pageerror0·hydration·overflow·axe AA0 확인. Ponytail: 미사용helper/스타일/가상포스터 제거 후 Lean already. Ship. 3210/3211 종료, 자동AGENTS diff 커밋제외. 정확한 출처·회차·미확인값·검증한계는 [최신 웹 인계](../context/web-implementation-and-handoff.md) 첫 절을 따른다.
+담당 검증: lint/typecheck/unit12/build/prodE2E32/dev Chromium9+WebKit9 모두 통과, 1440/390 실제 이미지 검토, console.error/pageerror0·hydration·overflow·axe AA0 확인. Ponytail: 미사용helper/스타일/가상포스터 제거 후 Lean already. Ship. 3210/3211 종료, 자동AGENTS diff 커밋제외. 기능 f0489a5·인계 d9a8627 이후 토스 공식 보도자료로 날짜/장소/경험을 보완하고 DEVIEW의 DAN 통합 계보를 명시한 뒤 동일 검증을 모두 재통과했다. 정확한 출처·회차·미확인값·검증한계는 [최신 웹 인계](../context/web-implementation-and-handoff.md) 첫 절을 따른다.
 
 이전1dae183의 root통합(c380756)과 root unit13/prod28/dev14/실제Orca통과는 메인이 전달한 이전 기능 검증이다. 이번18개 전환은 메인 통합/Orca 최종확인이 남으며, 메인 연구58행의 후속확대는 별도 범위다. 완료보고 후 사용자에게 보이는 세션으로 유지하고 다음 요청을 기다린다. 아래는 이전 시점 기록이다.
 

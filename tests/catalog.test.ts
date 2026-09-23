@@ -47,8 +47,11 @@ test("verified latest rounds, costs and restrictions are not invented from stale
   assert.equal(get("saif").audience, null);
   assert.equal(get("aws").status, "ended");
   assert.equal(get("dan").round, "2025");
-  assert.equal(get("toss").eventDate, null);
-  assert.equal(eventDates(get("toss")), "미확인");
+  assert.equal(get("toss").eventDate, "2025-07-23");
+  assert.equal(get("toss").eventEndDate, "2025-07-25");
+  assert.deepEqual(get("toss").roles, ["기획", "디자인", "데이터"]);
+  assert.equal(get("toss").cost, null);
+  assert.equal(eventDates(notice({ eventDate: null, eventEndDate: null })), "미확인");
   assert.ok(searchPrograms(programs, f).some(p => p.id === "kakao")); // No profile/eligibility exclusion.
 });
 test("all five registration states are distinct and open filter excludes unknown/ended/scheduled", () => {

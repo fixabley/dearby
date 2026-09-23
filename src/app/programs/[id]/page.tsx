@@ -55,7 +55,7 @@ export default async function ProgramPage({ params }: { params: Promise<{ id: st
         <h2>참여 전 확인해 주세요</h2>
         <p>고등학생·대학생·취준생 모두 탐색할 수 있지만, 실제 참가 자격은 행사별로 다릅니다. 자격을 자동 판정하거나 탐색 결과에서 제외하지 않습니다. 연사의 발표는 참가자의 발표 경험으로 간주하지 않습니다.</p>
         <p>{displayDate(snapshotDate)}에 공식 출처를 일회성으로 확인한 정보입니다. 실시간 등록 가능 여부와 변경된 조건은 공식 사이트에서 확인하세요. 신청·결제는 주최자의 사이트에서 진행합니다.</p>
-        <p className="muted">이미지: {p.coverSource.kind === "og" ? "공식 페이지 공유이미지" : p.coverSource.kind === "capture" ? "공식 페이지 대표영역 캡처" : "기본 썸네일"} · <a href={p.coverSource.pageUrl} target="_blank" rel="noreferrer">출처 ↗ (새 창)</a> · 확인일 {displayDate(p.coverSource.checkedAt)}. 이미지 권리는 원 권리자에게 있으며 재사용 허용 여부를 확인한 것은 아닙니다.</p>
+        <p className="muted">이미지: {p.coverSource.kind === "og" ? "공식 페이지 공유이미지" : p.coverSource.kind === "capture" ? "공식 페이지 대표영역 캡처" : "기본 썸네일"} · <a href={p.coverSource.pageUrl} target="_blank" rel="noreferrer">출처 ↗ (새 창)</a> · 확인일 {displayDate(p.coverSource.checkedAt)}.</p>
       </section>
     </div>
   </>;

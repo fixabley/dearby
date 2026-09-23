@@ -68,8 +68,8 @@ test("upcoming, unknown and ended events remain distinct and unknowns are visibl
   await expect(page.locator(".notice")).toContainText("행사 종료");
   await expect(page.locator(".notice")).toContainText("현재 행사 모집을 뜻하지 않습니다");
   await page.goto("/programs/toss");
-  await expect(page.locator(".event-facts")).toContainText("개최일미확인");
-  await expect(page.locator(".event-facts")).toContainText("장소미확인");
+  await expect(page.locator(".event-facts")).toContainText("2025.07.23 – 2025.07.25");
+  await expect(page.locator(".event-facts")).toContainText("서울 코엑스 그랜드볼룸");
 });
 
 test("expanded fields and experience state survive reload and back, without blending rounds", async ({ page }) => {

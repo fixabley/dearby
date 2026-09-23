@@ -290,19 +290,28 @@ export const programs: Program[] = [
         "current": true,
         "participationType": "registration",
         "status": "ended",
-        "roles": [],
+        "roles": [
+          "기획",
+          "디자인",
+          "데이터"
+        ],
         "activities": [
           {
             "action": "청강",
             "target": "기술 세션",
-            "evidence": "공식 사이트에서 세션 다시보기를 제공합니다."
+            "evidence": "공식 종료 보도자료에서 제품·디자인·엔지니어링·데이터 분야 발표 세션을 확인했습니다."
+          },
+          {
+            "action": "네트워킹",
+            "target": "현직자",
+            "evidence": "공식 종료 보도자료에 발표자와 참석자가 직접 소통하는 네트워킹 세션이 명시되어 있습니다."
           }
         ],
         "start": null,
         "deadline": null,
-        "eventDate": null,
-        "eventEndDate": null,
-        "location": null,
+        "eventDate": "2025-07-23",
+        "eventEndDate": "2025-07-25",
+        "location": "서울 코엑스 그랜드볼룸",
         "cost": null,
         "audience": null,
         "qualification": null,
@@ -314,6 +323,12 @@ export const programs: Program[] = [
             "label": "공식 행사 안내",
             "checkedAt": "2026-09-24",
             "evidence": "공식 페이지의 행사 종료 인사와 세션 다시보기 안내 확인. 현재 첫 화면에서 개최일·장소·비용·자격은 미확인."
+          },
+          {
+            "url": "https://toss.im/tossfeed/article/tmc25__",
+            "label": "토스 공식 종료 보도자료 (2025.07.27)",
+            "checkedAt": "2026-09-24",
+            "evidence": "7월 23–25일 코엑스 그랜드볼룸 개최, PO·디자인·엔지니어·DA 발표 및 발표자/참석자 네트워킹 확인. 비용·참가 자격은 미확인."
           }
         ]
       }
@@ -1018,7 +1033,7 @@ export const programs: Program[] = [
     "id": "deview",
     "orgId": "org-naver",
     "title": "DEVIEW",
-    "subtitle": "네이버와 개발자들의 기술 경험 아카이브",
+    "subtitle": "2023 과거 아카이브 · 2024부터 DAN으로 이어진 기술 컨퍼런스",
     "category": "컨퍼런스",
     "cover": "/conferences/deview.jpg",
     "coverSource": {
@@ -1065,6 +1080,12 @@ export const programs: Program[] = [
             "label": "공식 행사 안내",
             "checkedAt": "2026-09-24",
             "evidence": "공식 DEVIEW 2023 페이지의 종료 안내·2월 27–28일·코엑스·세션 자료 공개 확인. 최신 회차로 추정하지 않는 과거 자료."
+          },
+          {
+            "url": "https://d2.naver.com/news/9328071",
+            "label": "NAVER D2 · DEVIEW와 DAN 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "2024년 10월 22일 공식 안내에서 DEVIEW가 DAN으로 확대되고 DEVIEW 기술 세션을 제공한다고 설명합니다. 이 카드는 통합 전 2023 아카이브입니다."
           }
         ]
       }
