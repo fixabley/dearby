@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { programs, organizations } from "@/features/catalog/data";
+import { noticeStatus } from "@/features/catalog/model";
 import { SaveButton } from "@/features/saved/save-button";
 export function generateStaticParams() {
   return programs.map((p) => ({ id: p.id }));
@@ -55,17 +56,17 @@ export default async function ProgramPage({
             <h2>어떤 경험을 하게 되나요?</h2>
             <p>
               {p.subtitle}. 관심 있는 분야의 사람들과 새로운 경험을 시작하는
-              샘플 프로그램입니다. 구체적인 활동과 지원 조건은 회차별 공고에서
+              샘플 프로그램입니다. 구체적인 활동과 참여 조건은 회차별 공고에서
               확인하세요.
             </p>
             <p>{org.description}</p>
             <h3>참여 전 확인해 주세요</h3>
             <p>
-              지원 조건은 공고별로 다릅니다. 자격을 자동 판정하지 않으며, 제공
-              경험과 지원에 필요한 경험은 별개입니다.
+              참여 조건은 공고별로 다릅니다. 자격을 자동 판정하거나 조건에 따라
+              탐색에서 제외하지 않으며, 제공 경험과 참여에 필요한 경험은 별개입니다.
             </p>
             <p className="muted">
-              이 페이지는 가상 데이터입니다. 실제 지원이나 외부 모집 페이지는
+              이 페이지는 가상 데이터입니다. 실제 지원·등록이나 외부 공고 페이지는
               제공하지 않습니다. 주소를 복사하면 이 프로그램을 다시 열 수
               있습니다.
             </p>
@@ -73,7 +74,7 @@ export default async function ProgramPage({
         </section>
         <aside className="notice-list" aria-labelledby="notices-title">
           <h2 id="notices-title">
-            회차별 모집 공고 <span>{p.notices.length}</span>
+            회차별 공고 <span>{p.notices.length}</span>
           </h2>
           <p className="muted">현재 회차의 근거만 검색에 반영해요.</p>
           {p.notices.map((n) => (
@@ -87,21 +88,28 @@ export default async function ProgramPage({
                   {n.round} · {n.current ? "현재 회차" : "지난 회차"}
                 </span>
                 <b className={n.open ? "open-text" : ""}>
-                  {n.open ? "모집 중" : "모집 종료"}
+                  {noticeStatus(n)}
                 </b>
               </div>
-              <h3>{n.roles.join(" · ")}</h3>
+              <h3>{n.participationType === "registration" && "주제·분야 · "}{n.roles.join(" · ")}</h3>
               <p className="notice-date">
-                모집 {n.start.replaceAll("-", ".")} —{" "}
-                {n.deadline.replaceAll("-", ".")}
+                {n.participationType === "registration" ? "등록 시작" : "모집"} {n.start.replaceAll("-", ".")}
+                {n.participationType === "application" && <> — {n.deadline.replaceAll("-", ".")}</>}
               </p>
+              {n.participationType === "registration" && (
+                <p className="notice-date">
+                  등록 마감 {n.deadline.replaceAll("-", ".")}<br />
+                  개최일 {n.eventDate.replaceAll("-", ".")}<br />
+                  장소 {p.location}
+                </p>
+              )}
               <p>
-                <strong>지원 대상</strong>
+                <strong>{n.participationType === "registration" ? "참가 대상" : "지원 대상"}</strong>
                 <br />
                 {n.audience.join(" · ")}
               </p>
               <p>
-                <strong>지원 조건</strong>
+                <strong>{n.participationType === "registration" ? "참가 안내" : "지원 조건"}</strong>
                 <br />
                 {n.qualification}
               </p>

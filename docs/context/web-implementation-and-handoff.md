@@ -1,5 +1,30 @@
 # Dearby 웹 구현 인계
 
+## 컨퍼런스 후속 구현·검증 — 2026-09-24 01:08 KST
+
+담당 checkout `/Users/jominjun/Documents/dearby/dearby-web`, 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9`, Task `task_3f3b5dfe71b8`, Dispatch `ctx_e9759a9998a5`. 새 구현 요청으로 직전 대기 지시를 대체했으며 완료 후 사용자 요청에 따라 보이는 인계 세션으로 유지한다. 아래 가시적 인계는 직전 시점 기록이다.
+
+- `next-step-conference` 가상 컨퍼런스 1개와 한국어 SVG 포스터 추가: 프로그램 13개·공고 26개·조직 4개. 기존 넥스트 테이블 조직을 재사용한다. 행사명/컨퍼런스 검색, 카드→2026 가을 회차 공고를 제공한다.
+- 공고의 `participationType`은 application/registration, registration의 `eventDate`는 필수다. 카드/상세에 참가 대상(고등학생·대학생·취준생), 주제·분야, 등록 마감 10월 20일, 개최일 10월 24일, 서울의 가상 장소를 표시한다. 등록 중/등록 마감·참가 안내로 구분하고 전체 메뉴는 모집·등록 중, 상세 제목은 회차별 공고로 조정했다.
+- 가역적인 샘플 선택: 기존 roles 분류를 행사의 주제·분야로도 사용한다. 제공 경험은 현직자 강연 청강과 참가자 교류이며 직접 발표하는 경험을 만들어 넣지 않았다. 공고 단위 직무/경험 필터·자격 자동 제외 없음·조직/프로그램 분리 스크랩을 유지한다. 결제·등록 실행·외부 수집·프로필·shadcn 전환은 추가하지 않았다.
+- 이 checkout에서 실제 실행: lint/typecheck/단위 13개/production build(프로그램 13개 SSG)/production E2E 28개/dev Chromium 7개+WebKit 7개(총 14개) 통과. 기존 26/12개 검사를 유지하고 컨퍼런스 흐름을 각각 2개 추가했다. 전체 목록 13개, 모집·등록 중 11개 등 fixture에 맞춘 기대값을 명시적으로 갱신했다. 컨퍼런스 흐름은 검색·분야/경험 결합·참가 정보·스크랩 분리/해제/복원·가로 overflow 없음·axe AA 위반 0·console.error/pageerror 0을 검사한다.
+- 1440×1000/390×844 카드·상세 캡처를 실제 열어 확인했다. 최초 포스터 오른쪽 하단 날짜가 상태 배지에 가려져 왼쪽으로 이동했고, 변경 후 production 컨퍼런스 2개 재검증과 재캡처 확인을 완료했다. 모바일 상세는 기존대로 설명 아래 회차 공고까지 스크롤이 필요하다.
+- Ponytail 검토: `model.ts`의 실제 호출이 없는 등록형 recruitment 보조 분기 2줄을 제거했다(카드/상세는 공통 noticeStatus 사용). 최종: **Lean already. Ship.** 정확성·저장·접근성은 위 검사로 별도 확인했다. `git diff --check` 통과.
+- 01:08 KST `lsof -nP -iTCP:3210 -iTCP:3211 -sTCP:LISTEN` 결과 listener 없음. 메인 3000 서버·Orca page·다른 checkout·AGENTS·제품 정본·CI는 수정하지 않았다. Next 자동 AGENTS 변경은 기존 미커밋 상태 그대로 커밋에서 제외한다. push/PR/merge는 하지 않는다.
+
+최종 스크린샷(로컬 Git 제외): `test-results/desktop-conference-card.png`, `mobile-conference-card.png`, `desktop-conference-detail.png`, `mobile-conference-detail.png`. 모두 담당 checkout 아래다.
+
+메인 전달 근거는 별도: 새 작업 지시에서 이전 기능의 실제 Orca 새 페이지 저장 클릭·새로고침 복원·console.error 0 확인 완료를 전달받았다. 이는 이번 컨퍼런스의 root 검증 결과가 아니다. 이번 기능은 메인 통합 및 실제 Orca 최종 확인이 남는다. 이 세션은 완료 보고 후 새 요청을 기다리며 메인 전달 요약용으로 유지한다.
+
+
+## 가시적 인계·대기 역할 — 2026-09-24
+
+사용자 요청으로 웹 담당 세션을 완료 후에도 보이는 인계·상태 요약 세션으로 유지한다. 새 구현 착수 요청이 아니다. 최신 목적은 고등학생·대학생·취준생 등 대외활동 경험을 찾는 사람에게 YouTube처럼 읽기 쉬운 탐색, 프로그램 카드에서 회차/직무별 공고 상세로의 이동, 조직/프로그램 스크랩을 제공하는 것이다. shadcn/ui는 허용 사항이며 전환 지시가 없어 설치하지 않는다.
+
+메인 전달 상태(이 세션에서 재실행한 검증과 구분): 초기 작업 `81368c2`와 후속 `61f0035`/`36277a9`/`f3a0ba7`이 메인 checkout의 `feat/web-rebuild`에 모두 cherry-pick되었다. 메인에서도 lint/typecheck/단위 12개/build/production E2E 26개/dev Chromium·WebKit 총 12개가 통과했다고 전달받았다. 정확한 root 검증 시각은 전달되지 않았다. root 개발서버는 `http://127.0.0.1:3000`에서 실행 중이며, 메인은 실제 Orca 브라우저 저장 버튼 최종 확인·조율 문서 갱신·CI 개발모드 회귀 연결을 진행 중이다.
+
+이 세션은 다음 사용자 또는 메인 요청까지 대기하며 새 전달 사항을 요약한다. 별도 구현·빌드·commit·push·PR·merge·서버 시작 및 다른 checkout 수정은 하지 않는다. 기존 Dispatch는 모두 종료되어 lifecycle `worker_done`을 다시 보내지 않는다. 아래 담당 checkout의 원본 구현·검증 기록은 보존한다.
+
 ## 최신 후속 작업 — 2026-09-24 01:02 KST
 
 담당 세션 `term_f94fe84b-50b8-486d-90aa-0595ce675676`, Task `task_2c46a954b462`, Dispatch `ctx_a30c192f9930`; 아래 초기 구현 기록과 구분한다.

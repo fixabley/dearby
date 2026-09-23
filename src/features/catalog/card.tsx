@@ -5,6 +5,7 @@ import {
   emptyFilters,
   representativeNotice,
   recruitment,
+  noticeStatus,
   type Program,
   type Filters,
 } from "./model";
@@ -19,7 +20,8 @@ export function ProgramCard({
   const org = organizations.find((o) => o.id === p.orgId)!;
   const notice = representativeNotice(p, filters);
   if (!notice) return null;
-  const status = `${notice.round} · ${notice.open ? "모집 중" : "모집 종료"}`;
+  const registration = notice.participationType === "registration";
+  const status = `${notice.round} · ${noticeStatus(notice)}`;
   const groups = new Map<string, Set<string>>();
   for (const activity of notice.activities) {
     const values = groups.get(activity.action) ?? new Set<string>();
@@ -45,7 +47,7 @@ export function ProgramCard({
           loading="eager"
         />
         <span
-          className={`cover-status ${status.includes("종료") ? "ended" : ""}`}
+          className={`cover-status ${!notice.open ? "ended" : ""}`}
         >
           {status}
         </span>
@@ -66,15 +68,21 @@ export function ProgramCard({
             {org.name} <span aria-label="샘플">· 샘플</span>
           </div>
           <div className="card-meta">
-            <strong>모집</strong> {notice.roles.join(" · ")}
+            <strong>{registration ? "주제·분야" : "모집"}</strong> {notice.roles.join(" · ")}
           </div>
           <div className="card-meta">
-            <strong>대상</strong> {notice.audience.join(" · ")}
+            <strong>{registration ? "참가 대상" : "대상"}</strong> {notice.audience.join(" · ")}
           </div>
           <div className="card-meta card-deadline">
-            <strong>{notice.deadline.slice(5).replace("-", ".")} 마감</strong> · {p.location}
+            <strong>{notice.deadline.slice(5).replace("-", ".")} {registration ? "등록 마감" : "마감"}</strong>
+            {!registration && <> · {p.location}</>}
           </div>
-          {!notice.open && recruitment(p, filters) === "선택 직무 종료 · 다른 직무 모집 중" && (
+          {notice.participationType === "registration" && (
+            <div className="card-meta">
+              <strong>{notice.eventDate.slice(5).replace("-", ".")} 개최</strong> · {p.location}
+            </div>
+          )}
+          {!registration && !notice.open && recruitment(p, filters) === "선택 직무 종료 · 다른 직무 모집 중" && (
             <div className="card-meta">선택 직무 종료 · 다른 직무 모집 중</div>
           )}
           <div className="card-experience">

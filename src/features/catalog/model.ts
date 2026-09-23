@@ -35,13 +35,17 @@ export type Notice = {
   round: string;
   current: boolean;
   open: boolean;
+  // Registration notices use the same direction taxonomy for topics, not vacancies.
   roles: string[];
   activities: Activity[];
   start: string;
   deadline: string;
   audience: string[];
   qualification: string;
-};
+} & (
+  | { participationType: "application" }
+  | { participationType: "registration"; eventDate: string }
+);
 export type Program = {
   id: string;
   orgId: string;
@@ -99,6 +103,11 @@ export function matchingNotices(p: Program, f: Filters) {
         f.experiences.some((e) => experienceMatches(n, e))),
   );
 }
+export function noticeStatus(n: Notice) {
+  return n.participationType === "registration"
+    ? n.open ? "등록 중" : "등록 마감"
+    : n.open ? "모집 중" : "모집 종료";
+}
 export function recruitment(p: Program, f: Filters) {
   if (p.notices.some((n) => n.current && n.open && roleMatches(n, f)))
     return f.roles.length ? "선택 직무 모집 중" : "모집 중";
@@ -154,7 +163,7 @@ export function filterLabels(f: Filters) {
     ...(f.query ? [`검색: ${f.query}`] : []),
     ...f.roles,
     ...f.experiences.map((e) => experiences[e].label),
-    ...(f.openOnly ? ["모집 중"] : []),
+    ...(f.openOnly ? ["모집·등록 중"] : []),
   ];
 }
 export function suggestions(data: Program[], f: Filters) {

@@ -1,0 +1,50 @@
+import AxeBuilder from "@axe-core/playwright";
+import { test, expect } from "@playwright/test";
+import path from "node:path";
+
+test("conference search, registration facts, topic filters and separate saved restoration", async ({ page }, info) => {
+  const errors: string[] = [];
+  page.on("console", msg => { if (msg.type() === "error") errors.push(msg.text()); });
+  page.on("pageerror", error => errors.push(error.message));
+  await page.goto("/");
+  await page.getByRole("textbox", { name: "프로그램 검색" }).fill("컨퍼런스");
+  await page.getByRole("button", { name: "검색", exact: true }).click();
+  const card = page.locator(".program-card");
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText("넥스트 스텝 컨퍼런스");
+  for (const text of ["등록 중", "주제·분야 프론트엔드 · 디자인 · 기획", "참가 대상 고등학생 · 대학생 · 취준생", "10.20 등록 마감", "10.24 개최", "서울 · 넥스트 홀"])
+    await expect(card).toContainText(text);
+  await expect(card).not.toContainText(/직무 모집|지원 조건|선발/);
+  await page.getByRole("button", { name: "디자인", exact: true }).click();
+  await page.getByRole("button", { name: /경험·상세 필터/ }).click();
+  await page.getByLabel("청강 | 업무 소개", { exact: true }).check();
+  await page.getByRole("button", { name: "결과 보기" }).click();
+  await expect(card).toHaveCount(1);
+  await card.locator("img").evaluate((img: HTMLImageElement) => img.decode());
+  await page.screenshot({ path: path.join("test-results", `${info.project.name}-conference-card.png`), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  await card.getByRole("button", { name: "프로그램 스크랩", exact: true }).click();
+  await card.locator(".card-title").click();
+  await expect(page).toHaveURL(/programs\/next-step-conference$/);
+  const notice = page.locator('.notice[data-notice-id="next-step-conference-2026"]');
+  for (const text of ["등록 중", "주제·분야", "등록 마감 2026.10.20", "개최일 2026.10.24", "장소 서울 · 넥스트 홀", "참가 대상", "고등학생 · 대학생 · 취준생", "참가 안내", "사전 경험은 필요하지 않습니다"])
+    await expect(notice).toContainText(text);
+  await expect(notice).not.toContainText(/지원 조건|지원 대상|모집|선발/);
+  await page.getByRole("button", { name: "조직 스크랩", exact: true }).click();
+  await page.locator(".detail-cover").evaluate((img: HTMLImageElement) => img.decode());
+  await page.screenshot({ path: path.join("test-results", `${info.project.name}-conference-detail.png`), fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+  await page.reload();
+  await expect(page.getByRole("button", { name: "프로그램 스크랩 해제", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "조직 스크랩 해제", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("link", { name: "스크랩", exact: true }).click();
+  await expect(card).toHaveCount(1);
+  await expect(card).toContainText("넥스트 스텝 컨퍼런스");
+  await card.getByRole("button", { name: "프로그램 스크랩 해제" }).click();
+  await page.getByRole("button", { name: "조직 1", exact: true }).click();
+  await expect(page.locator(".organization-list article")).toContainText("넥스트 테이블");
+  await page.getByRole("button", { name: "조직 스크랩 해제" }).click();
+  await expect(page.getByText("아직 스크랩한 조직이 없어요")).toBeVisible();
+  expect(errors).toEqual([]);
+});

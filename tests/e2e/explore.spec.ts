@@ -7,7 +7,7 @@ test("explore, detail, separate saved entities and reload restoration", async ({
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
-  await expect(page.locator(".program-card")).toHaveCount(12);
+  await expect(page.locator(".program-card")).toHaveCount(13);
   await expect(
     page.getByText("가상 조직·프로그램입니다.", { exact: false }),
   ).toBeVisible();
@@ -39,7 +39,7 @@ test("explore, detail, separate saved entities and reload restoration", async ({
   await page.locator(".card-title").first().click();
   await expect(page).toHaveURL(/\/programs\//);
   await expect(
-    page.getByRole("heading", { name: "회차별 모집 공고", exact: false }),
+    page.getByRole("heading", { name: "회차별 공고", exact: false }),
   ).toBeVisible();
   await page.getByRole("button", { name: "조직 스크랩", exact: true }).click();
   await page
@@ -103,20 +103,20 @@ test("filter subset suggestions apply and undo, search and recruitment", async (
   await page.getByRole("button", { name: "되돌리기" }).click();
   await expect(page.locator(".program-card")).toHaveCount(0);
   await page.getByRole("button", { name: "필터 초기화" }).first().click();
-  await expect(page.locator(".program-card")).toHaveCount(12);
+  await expect(page.locator(".program-card")).toHaveCount(13);
   await page.getByRole("button", { name: /경험·상세 필터/ }).click();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
   await page.getByRole("textbox", { name: "프로그램 검색" }).fill("백엔드");
   await page.getByRole("button", { name: "검색", exact: true }).click();
   await expect(page.locator(".program-card")).toHaveCount(1);
-  await page.getByRole("link", { name: "모집 중", exact: true }).click();
-  await expect(page.locator(".program-card")).toHaveCount(10);
+  await page.getByRole("link", { name: "모집·등록 중", exact: true }).click();
+  await expect(page.locator(".program-card")).toHaveCount(11);
   await page.getByRole("button", { name: "iOS", exact: true }).click();
   await expect(page.locator(".program-card")).toHaveCount(1);
   await page.getByRole("button", { name: "필터 초기화", exact: true }).click();
   await expect(page).toHaveURL("http://127.0.0.1:3210/");
-  await expect(page.locator(".program-card")).toHaveCount(12);
+  await expect(page.locator(".program-card")).toHaveCount(13);
   await expect(
     page.getByRole("heading", { name: "당신의 다음 경험", exact: true }),
   ).toBeVisible();

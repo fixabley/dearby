@@ -1,5 +1,19 @@
 # 웹 구현
 
+## 컨퍼런스 후속 완료 — 2026-09-24 01:08 KST
+
+새 Dispatch `ctx_e9759a9998a5`(Task `task_3f3b5dfe71b8`, 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9`)로 아래 대기 지시를 대체하여 컨퍼런스 샘플/한국어 포스터와 등록형 공고를 구현했다. 기존 탐색·공고 단위 필터·분리 스크랩을 유지하고 참가 대상/주제·분야/등록 마감/개최일/장소 및 등록형 문구를 표시한다.
+
+자기 checkout 실제 검증: lint/typecheck/unit 13/build/production E2E 28/dev Chromium·WebKit 14 통과. 1440/390 카드·상세 이미지를 열어 확인하고 포스터 날짜 가림을 수정한 뒤 컨퍼런스 production 2개 재검증·재캡처, Ponytail 최종 Lean already. Ship. 완료. 3210/3211 listener 없음. 상세 근거는 [웹 인계](../context/web-implementation-and-handoff.md)의 최신 절에 있다.
+
+메인 전달 검증은 이전 기능의 실제 Orca 저장·복원·console.error 0이며 이번 컨퍼런스 통합 검증과 구분한다. 이번 기능의 메인 통합/Orca 확인은 남는다. 완료 보고 후 사용자가 보도록 세션을 유지하고 다음 요청까지 대기한다. 아래는 직전 가시적 인계 기록이다.
+
+## 현재 역할 — 2026-09-24 가시적 인계 후 대기
+
+사용자가 완료 후에도 보이도록 유지한 웹 담당 세션이다. 다음 사용자/메인 요청을 기다리며 메인의 새 작업·변경 상태를 요약한다. 새 구현·빌드·commit·push·PR·merge·서버 시작은 하지 않고 다른 checkout은 수정하지 않는다. 종료된 Dispatch의 `worker_done`도 재전송하지 않는다. shadcn/ui는 허용만 되었으므로 설치하지 않는다.
+
+메인 전달 기준: `81368c2`, `61f0035`, `36277a9`, `f3a0ba7`은 메인 `feat/web-rebuild`에 통합되었고 root lint/typecheck/unit 12/build/production E2E 26/dev Chromium·WebKit 12가 통과했다. 이는 이 세션의 재검증 결과가 아니다. root `http://127.0.0.1:3000` 개발서버가 실행 중이며 메인은 실제 Orca 브라우저 저장 버튼 최종 확인, 조율 문서 갱신, CI dev 회귀 연결 중이다. 아래 원본 구현 검증 기록과 상세 [웹 인계](../context/web-implementation-and-handoff.md)를 구분해 보존한다.
+
 완료: 2026-09-24 00:53 KST. 담당 checkout `/Users/jominjun/Documents/dearby/dearby-web`, 기준 `be10837`, 담당 세션 `term_c0008d89-171d-424f-8ddc-122136963514`. 세션 ID는 검증 시점과 별개다.
 
 Next/create-next-app stable 16.3.6을 npm registry에서 확인하고 공식 CLI scaffold를 root로 옮겼다. npm·App Router·TypeScript·시스템 한국어 폰트·로컬 SVG 포스터를 사용한다. 상세 실행과 인계는 [웹 인계](../context/web-implementation-and-handoff.md)에 기록한다.

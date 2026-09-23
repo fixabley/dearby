@@ -9,9 +9,11 @@ import {
   activityMatches,
   representativeNotice,
   recruitment,
+  noticeStatus,
 } from "../src/features/catalog/model";
 test("unique programs, direction OR and AND", () => {
-  assert.equal(searchPrograms(programs, f).length, 12);
+  assert.equal(searchPrograms(programs, f).length, 13);
+  assert.equal(new Set(searchPrograms(programs, f).map(p => p.id)).size, 13);
   assert.ok(
     searchPrograms(programs, { ...f, roles: ["iOS", "백엔드"] }).length >
       searchPrograms(programs, {
@@ -178,4 +180,25 @@ test("representative notice uses the same matching current notice for all card f
   assert.equal(representativeNotice(restricted, { ...f, experiences: ["app"] })?.open, false);
   assert.ok(programs.some(p => p.notices[0].audience.includes("고등학생")));
   assert.ok(programs.some(p => !p.notices[0].audience.includes("대학생")));
+});
+
+
+test("conference remains searchable by name/category and uses current topic/experience filters", () => {
+  const conference = programs.find(p => p.id === "next-step-conference")!;
+  for (const query of ["넥스트 스텝", "컨퍼런스"])
+    assert.deepEqual(searchPrograms(programs, { ...f, query }).map(p => p.id), [conference.id]);
+  const filters = { ...f, query: "컨퍼런스", roles: ["디자인"], experiences: ["lecture"], openOnly: true };
+  assert.deepEqual(searchPrograms(programs, filters).map(p => p.id), [conference.id]);
+  assert.equal(searchPrograms(programs, { ...filters, roles: ["iOS"] }).length, 0);
+  assert.equal(searchPrograms(programs, { ...filters, experiences: ["app"] }).length, 0);
+  const n = representativeNotice(conference, filters)!;
+  assert.equal(n.participationType, "registration");
+  assert.deepEqual(n.audience, ["고등학생", "대학생", "취준생"]);
+  assert.equal(n.deadline, "2026-10-20");
+  assert.ok(n.participationType === "registration" && n.eventDate === "2026-10-24");
+  assert.equal(noticeStatus(n), "등록 중");
+  const closed = { ...conference, notices: [{ ...n, open: false }] };
+  assert.equal(noticeStatus(closed.notices[0]), "등록 마감");
+  assert.equal(searchPrograms([closed], filters).length, 0);
+  assert.equal(searchPrograms([closed], { ...filters, openOnly: false }).length, 1);
 });

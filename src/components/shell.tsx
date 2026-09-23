@@ -58,7 +58,7 @@ export function Shell({ children }: { children: ReactNode }) {
               { id: "all", label: "전체 탐색", icon: "home", href: "/" },
               {
                 id: "open",
-                label: "모집 중",
+                label: "모집·등록 중",
                 icon: "compass",
                 href: "/?view=open",
               },
@@ -104,7 +104,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="sample-notice">
           <span className="sample-dot" />
           샘플 둘러보기{" "}
-          <span>가상 조직·프로그램입니다. 모집 상태 기준 2026.09.24</span>
+          <span>가상 조직·프로그램입니다. 모집·등록 상태 기준 2026.09.24</span>
         </div>
         {message && (
           <div className="storage-message" role="status">

@@ -144,6 +144,7 @@ export const programs: Program[] = rows.map((r, i) => {
     id: `${r[0]}-2`,
     round: "2기",
     current: true,
+    participationType: "application",
     open: ![3, 8, 10].includes(i),
     roles: r[5].split(","),
     activities: r[6].split(",").map((k) => ({
@@ -202,4 +203,31 @@ export const programs: Program[] = rows.map((r, i) => {
     cover: `/posters/${r[0]}.svg`,
     notices: [current, ...extra, past],
   };
+});
+
+programs.push({
+  id: "next-step-conference",
+  orgId: "org-next",
+  title: "넥스트 스텝 컨퍼런스",
+  subtitle: "기술과 디자인으로 만나는 첫 커리어 이야기",
+  category: "컨퍼런스",
+  location: "서울 · 넥스트 홀 (가상 장소)",
+  cover: "/posters/next-step-conference.svg",
+  notices: [{
+    id: "next-step-conference-2026",
+    round: "2026 가을",
+    current: true,
+    open: true,
+    participationType: "registration",
+    roles: ["프론트엔드", "디자인", "기획"],
+    start: "2026-09-20",
+    deadline: "2026-10-20",
+    eventDate: "2026-10-24",
+    audience: ["고등학생", "대학생", "취준생"],
+    qualification: "기술·디자인 분야에 관심 있는 누구나 참가 등록 가능. 사전 경험은 필요하지 않습니다.",
+    activities: [
+      { ...experiences.lecture, evidence: "기술·디자인 현직자가 제품을 만드는 과정과 커리어 시작 경험을 소개하는 강연을 듣습니다." },
+      { ...experiences.peer, evidence: "참가자끼리 관심 분야를 소개하고 쉬는 시간에 자유롭게 교류합니다." },
+    ],
+  }],
 });
