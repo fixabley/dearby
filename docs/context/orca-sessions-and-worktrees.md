@@ -1,13 +1,13 @@
 # Git·Orca 현재 상태
 
-2026-09-24 KST 확인. 이전 세션 기록은 docs/context/archive/2026-09-24-before-web-rebuild/context-orca-sessions-and-worktrees.md에 보존한다.
+2026-09-24 00:58 KST 확인. 재개 시 runtime을 다시 확인한다.
 
-- Root: /Users/jominjun/Documents/dearby, feat/web-rebuild. 기존 실행코드 보존·제거 be10837. 사용자 미커밋 Xcode 변경은 별도 백업 원본에 보존했다.
-- Web: /Users/jominjun/Documents/dearby/dearby-web, refs/heads/fixabley/dearby-web. Git base feat/web-rebuild, Orca 부모는 메인 Dearby다. 자기 checkout의 웹 앱·설정·검증·web 역할 문서 소유.
-- Runtime: a185645e-381f-46ad-b638-34be2cf40910. Run run_469a74207c03 / Task task_c5abe8d83ebe / Dispatch ctx_a529f998bad6 / terminal term_c0008d89-171d-424f-8ddc-122136963514.
-- root terminal: term_a4c93b27-6d82-45be-a321-16dbc6a4bed9.
-- dearby-ir은 별도 저장소/세션이며 이번 변경 대상이 아니다.
+- Root: /Users/jominjun/Documents/dearby, feat/web-rebuild, 초기 웹 통합 f7826df. root terminal term_a4c93b27-6d82-45be-a321-16dbc6a4bed9.
+- Web: /Users/jominjun/Documents/dearby/dearby-web, fixabley/dearby-web. 초기 구현 81368c2가 root에 동등 cherry-pick됐다. Orca 부모는 메인 Dearby. 최신 대상 확대/카드 가독성/hydration 보완 진행 중.
+- Runtime a185645e-381f-46ad-b638-34be2cf40910 / Run run_469a74207c03.
+- 현재 Task task_2c46a954b462 / Dispatch ctx_a30c192f9930 / worker terminal term_f94fe84b-50b8-486d-90aa-0595ce675676.
+- 이전 Task task_c5abe8d83ebe / Dispatch ctx_a529f998bad6는 succeeded, worker terminal release 완료. 과거 핸들은 사용하지 않는다.
+- root 개발서버 terminal term_60a40728-7163-45a2-a690-7721f7d41230, http://127.0.0.1:3000. root 브라우저 page b99a9e23-82b0-4349-a854-b6bfa204ef82.
+- dearby-ir은 이번 범위 밖 별도 저장소/세션이다.
 
-백업: /Users/jominjun/Documents/dearby-backups/2026-09-24-before-web-rebuild/. repository.bundle, uncommitted.patch, files 아래 전체 옛 실행 폴더·설정·의존성·로컬 파일, manifest.json을 보존한다. 삭제 대신 외부 이동한 것이며 700개 소스/로컬 파일 SHA-256을 대조했다. Git main f1d9a63에도 기존 추적 코드가 남아 있다.
-
-진행: 웹 구현 중. 원격 push/PR/병합/배포는 수행하지 않았다. 실제 다음 행동은 조율 문서를 따른다. 세션 handle은 재개 시 반드시 실시간 재확인한다.
+백업·구현·검증·다음 행동은 [현재 조율 문서](coordinator-current-task-and-decisions.md)를 따른다. 원격 push/PR/병합/배포는 하지 않았다. worktree 간 문서·대화는 자동 동기화되지 않는다.
