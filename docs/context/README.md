@@ -21,7 +21,7 @@
 
 ## 정본과 이력
 
-설계의 상세 정본은 [공통 아키텍처](../architecture/native-apps.md), 각 앱 ARCHITECTURE.md, [제품 규격](../product/activity-data-v1.md)이다. 이 폴더에는 재개에 필요한 결정과 파일 위치를 요약한다.
+새 웹의 제품 정본은 [최근 재기획](../product/replanning-2026-09.md)과 연결된 태그/경험 문서다. [기존 네이티브 아키텍처](../architecture/native-apps.md)와 [이전 데이터 규격](../product/activity-data-v1.md)은 역사 자료이며 웹의 실행 계약으로 해석하지 않는다. 이 폴더에는 현재 역할별 재개 지점을 관리한다.
 
 정리 전 문서 17개와 workstreams 원문은 [날짜별 보관함](archive/2026-09-14-before-consolidation/README.md)에 그대로 보존했다. 과거 인터뷰·Seed 변화·중간 커밋·세션 ID가 필요할 때만 읽는다.
 
