@@ -60,6 +60,7 @@ export const organizations: Organization[] = [
   },
   {
     "id": "org-ksug",
+    "logo": "/organizations/ksug.png",
     "name": "한국 스프링 사용자 모임 · KSUG",
     "description": "JVM 개발자 커뮤니티",
     "initial": "S",

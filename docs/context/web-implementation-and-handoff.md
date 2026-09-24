@@ -1,5 +1,13 @@
 # Dearby 웹 구현 인계
 
+## Spring Camp 주최 KSUG 로고 추가 — 2026-09-24 11:12 KST
+
+Task `task_7bdc3443d670`, Dispatch `ctx_49877680dea4`, 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9`, 기준 `2373bc5`. https://ksug.org/ 의 한국 스프링 사용자 모임 소개와 상단 조직 로고를 직접 확인했다. 원본 https://ksug.org/assets/images/logo.png 를 `public/organizations/ksug.png`로 그대로 저장하고 org-ksug.logo만 추가했다. Spring 프레임워크/Pivotal/행사 포스터 대신 KSUG / KOREA SPRING USER GROUP 마크를 사용한다. 출처·확인일은 public/organizations/SOURCES.md에 기록했다.
+
+기존 OrganizationAvatar를 재사용해 카드·상세·스크랩에 반영되며 레이아웃/동작은 변경하지 않았다. 담당 실제검증: lint/typecheck/build 통과, 분리한 production3210 Chromium에서1440×1000/390×844 각각 카드/상세/스크랩 이미지 decode·조직저장/새로고침복원·console.error/pageerror0·가로overflow없음 확인. `test-results/desktop-ksug-card.png`, `mobile-ksug-saved.png`를 실제 열어 검토했다(카드/상세/스크랩 모두 양 viewport 캡처, Git제외). 원본 하단 영문은 작은아바타에서 작지만 KSUG 마크와 인접조직명으로 식별된다. 단순 데이터/자산 변경으로 새unit/전체E2E는 추가·재실행하지 않았다. Ponytail diff: **Lean already. Ship.**
+
+3210 테스트서버 종료, 기존 AGENTS자동diff는 보존·미커밋. 다른checkout/root3000/Orca브라우저는 건드리지 않았다. 이전기업로고의 root1f9cbdc 통합검증완료는 메인 전달사항이며 이번 KSUG 변경의 메인통합/최종확인은 남는다. 완료보고 후 사용자요청대로 세션을 유지하고 대기한다.
+
 ## 기업 로고 아바타 완료 — 2026-09-24 10:24 KST
 
 Task `task_9caee518b4c1`, Dispatch `ctx_beeec3876c97`, 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9`, 자기 checkout 기준 `4a6df2d`. 사용자 기업 아바타 요청으로 이전 대기를 대체했다.

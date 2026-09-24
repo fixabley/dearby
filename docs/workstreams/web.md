@@ -1,5 +1,9 @@
 # 웹 구현
 
+## KSUG 로고 추가 완료 — 2026-09-24 11:12 KST
+
+기준2373bc5, Task task_7bdc3443d670 / Dispatch ctx_49877680dea4. KSUG 공식홈페이지 조직로고를 원본그대로 로컬저장하고 기존공통아바타에 경로1개를 추가해 Spring Camp 카드/상세/조직스크랩에 적용했다. lint/typecheck/build 및1440/390 production Chromium 이미지로드·저장복원·console/pageerror0·overflow없음 통과, 실제캡처/Ponytail검토 완료. 3210종료·AGENTS자동diff보존. 상세출처·한계는 [최신 인계](../context/web-implementation-and-handoff.md) 참고. 메인통합확인 대기·세션유지.
+
 ## 기업 로고 아바타 완료 — 2026-09-24 10:24 KST
 
 Task `task_9caee518b4c1`, Dispatch `ctx_beeec3876c97`, 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9`, 기준4a6df2d. 기업8개 공식로고를 로컬저장하고 공통OrganizationAvatar를 카드/상세/스크랩조직에 적용했다. 35/44px·contain·흰배경·실패이니셜·장식이미지 처리, 커뮤니티이니셜 유지. 출처와 한계는 [웹 인계](../context/web-implementation-and-handoff.md) 최신절과 public/organizations/SOURCES.md를 따른다.
