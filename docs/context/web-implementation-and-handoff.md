@@ -1,5 +1,18 @@
 # Dearby 웹 구현 인계
 
+## 기업 로고 아바타 완료 — 2026-09-24 10:24 KST
+
+Task `task_9caee518b4c1`, Dispatch `ctx_beeec3876c97`, 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9`, 자기 checkout 기준 `4a6df2d`. 사용자 기업 아바타 요청으로 이전 대기를 대체했다.
+
+- 기업8개(우아한형제들/NAVER/Kakao/Toss/LY/AWS/ktcloud/Samsung) 공식 사이트의 기업 로고를 로컬 SVG6/PNG2로 저장했다. 행사 포스터나 임의 생성 텍스트가 아니다. 원본URL·추출위치·2026-09-24 확인일은 [로고 출처](../../public/organizations/SOURCES.md)에 있다. 우아한형제들 홈페이지의 진입 오류 때문에 최초HTML→공식CDN header-logo 모듈로 확인해 원본 path/clipPath/viewBox를 옮겼다. 재사용 권리를 확인했다고 주장하지 않는다.
+- 공통 `OrganizationAvatar`를 카드·상세·스크랩 조직 목록 3곳에 적용했다. Organization의 optional logo 경로만 추가했다. 기존35/44px, 흰 배경·3px여백·contain 유지. 로고없음/이미지오류는 기존initial+조직색으로 표시한다. 인접 조직명이 있어 aria-hidden 및 빈alt로 중복읽기를 피한다. 커뮤니티/GDG는 회사로 오인해 로고를 붙이지 않았다. 새 dependency·범용디자인시스템·수집기는 없다.
+- 담당 실제검증: lint/typecheck/unit12/build 통과. production E2E36(기존32+로고/실패회귀 각viewport2개), dev Chromium9+WebKit9=18 통과. 기업8개 naturalWidth 로드·커뮤니티fallback·이미지404fallback·조직/프로그램 독립저장·새로고침복원/해제 검사. 정상경로 console.error/pageerror0, 기존hydration/저장오류회귀 및 axe AA0·overflow없음 확인. 의도적인404 테스트에서는 네트워크에러 자체를 무오류라고 주장하지 않는다.
+- 최초검사는 기존 포스터locator가 추가된 로고까지 선택해 prod2/dev2가 실패했고, 새 로고src 기대값이 Next의 절대URL 처리와 달라 prod2가 실패했다. 포스터 선택자를 `.cover-link img`로 구체화하고 로고원본 경로를 현재 origin의 절대URL로 비교한 뒤 모든 검사를 재통과했다. 검사완화나 구현복제unit은 추가하지 않았다.
+- 실제 열어 본1440/390 캡처: `test-results/desktop-logos-cards.png`, `desktop-logos-saved.png`, `mobile-logos-saved.png`, `mobile-logos-detail.png`. 로컬 Git제외. 긴워드마크는 기존35px내에서 작게 보이지만 잘리지 않으며 인접조직명으로 보완한다. fullPage 모바일 고정하단탭은 viewport위치에 찍히는 캡처 특성이 있다.
+- Ponytail diff review: **Lean already. Ship.** 실제3곳에서 공통컴포넌트를 사용하고 로고경로와 실패상태만 둔다. 정확성·접근성·저장은 별도 브라우저검사로 확인했다. `git diff --check` 통과. 10:24 KST 3210/3211 listener없음. AGENTS 자동diff는 보존·미커밋, 다른checkout/root3000/Orca page/제품정본/CI는 수정하지 않았다.
+
+메인 전달상태는 별도: 이전 컨퍼런스 변경이 root703c136에 통합되고 root전체검증·실제Orca확인이 완료됐으며 최신root문서b8e6e7a라는 지시를 받았다. 이번 로고의 root통합·실제Orca최종확인은 메인에 남는다. 완료보고 후 사용자에게 보이는 세션으로 유지하고 다음 요청을 기다린다.
+
 ## 공식 컨퍼런스 카탈로그 완료 — 2026-09-24 01:43 KST
 
 기능 커밋: `f0489a5` (기준 `1dae183` 다음). 인계 커밋 `d9a8627` 뒤 메인 후속 근거를 받아 Toss/DEVIEW 데이터를 보완했다. 보완 후 lint/typecheck/unit12/build/prod32/dev18 전부 재통과했으며 목록 캡처를 다시 열어 확인했다. Ponytail 재검토에서 추가 추상화/의존성은 없었다.

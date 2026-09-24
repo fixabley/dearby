@@ -1,4 +1,9 @@
-export const organizations = [
+export type Organization = {
+  id: string; name: string; description: string; initial: string; color: string;
+  logo?: string;
+};
+
+export const organizations: Organization[] = [
   {
     "id": "org-fedg",
     "name": "FEConf 준비위원회 · FEDG",
@@ -8,6 +13,7 @@ export const organizations = [
   },
   {
     "id": "org-woowa",
+    "logo": "/organizations/woowa.svg",
     "name": "우아한형제들",
     "description": "배달의민족 기술과 경험을 공유하는 조직",
     "initial": "우",
@@ -15,6 +21,7 @@ export const organizations = [
   },
   {
     "id": "org-naver",
+    "logo": "/organizations/naver.svg",
     "name": "NAVER · 네이버",
     "description": "네이버 기술·서비스 컨퍼런스 주최 조직",
     "initial": "N",
@@ -22,6 +29,7 @@ export const organizations = [
   },
   {
     "id": "org-kakao",
+    "logo": "/organizations/kakao.svg",
     "name": "카카오",
     "description": "카카오 기술·서비스 컨퍼런스 주최 조직",
     "initial": "K",
@@ -29,6 +37,7 @@ export const organizations = [
   },
   {
     "id": "org-toss",
+    "logo": "/organizations/toss.png",
     "name": "토스 · 비바리퍼블리카",
     "description": "토스 메이커스 컨퍼런스 주최 조직",
     "initial": "T",
@@ -36,6 +45,7 @@ export const organizations = [
   },
   {
     "id": "org-ly",
+    "logo": "/organizations/ly.png",
     "name": "LY Corporation · 라인야후",
     "description": "Tech-Verse 주최 조직",
     "initial": "LY",
@@ -71,6 +81,7 @@ export const organizations = [
   },
   {
     "id": "org-aws",
+    "logo": "/organizations/aws.svg",
     "name": "Amazon Web Services · AWS",
     "description": "AWS Summit 주최 조직",
     "initial": "A",
@@ -78,6 +89,7 @@ export const organizations = [
   },
   {
     "id": "org-kt",
+    "logo": "/organizations/ktcloud.svg",
     "name": "kt cloud",
     "description": "클라우드·AX 컨퍼런스 주최 조직",
     "initial": "kt",
@@ -106,6 +118,7 @@ export const organizations = [
   },
   {
     "id": "org-samsung",
+    "logo": "/organizations/samsung.svg",
     "name": "삼성전자 · Samsung",
     "description": "AI·소프트웨어 기술 컨퍼런스 주최 조직",
     "initial": "S",

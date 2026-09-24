@@ -1,3 +1,4 @@
+import { OrganizationAvatar } from "@/features/catalog/organization-avatar";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -17,7 +18,7 @@ export default async function ProgramPage({ params }: { params: Promise<{ id: st
         <Image className="detail-cover" src={p.cover} alt={`${p.title} 공식 ${p.coverSource.kind === "og" ? "공유이미지" : "페이지 캡처"}`} width={1200} height={675} sizes="(max-width: 720px) 100vw, 65vw" preload />
         <div className="detail-heading"><span className="eyebrow">IT 컨퍼런스</span><h1>{p.title}</h1><p>{p.subtitle}</p></div>
         <div className="channel-row">
-          <span className="avatar large" style={{ background: org.color }} aria-hidden="true">{org.initial}</span>
+          <OrganizationAvatar organization={org} large />
           <div><strong>{org.name}</strong><p>등록된 프로그램 {programs.filter(x => x.orgId === org.id).length}개</p></div>
           <SaveButton kind="organizations" id={org.id} /><SaveButton kind="programs" id={p.id} />
         </div>

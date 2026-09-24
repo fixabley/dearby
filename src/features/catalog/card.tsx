@@ -1,3 +1,4 @@
+import { OrganizationAvatar } from "./organization-avatar";
 import Link from "next/link";
 import Image from "next/image";
 import { organizations } from "./data";
@@ -13,7 +14,7 @@ export function ProgramCard({ program: p, filters = emptyFilters, eager = false 
         <Image src={p.cover} alt={`${p.title} ${notice.round} ${p.coverSource.kind === "og" ? "공식 공유이미지" : p.coverSource.kind === "capture" ? "공식 페이지 캡처" : "기본 썸네일"}`} width={800} height={450} loading={eager ? "eager" : "lazy"} sizes="(max-width: 720px) 100vw, (max-width: 1699px) 33vw, 25vw" />
       </Link>
       <div className="card-body">
-        <span className="avatar" style={{ background: org.color }} aria-hidden="true">{org.initial}</span>
+        <OrganizationAvatar organization={org} />
         <div className="card-copy">
           <Link href={`/programs/${p.id}`} className="card-title">{p.title} {notice.round}</Link>
           <div className="card-org">{org.name}</div>

@@ -1,4 +1,5 @@
 "use client";
+import { OrganizationAvatar } from "./organization-avatar";
 import { useSearchParams } from "next/navigation";
 import { readFilters, filtersUrl } from "./search-state";
 import { useState } from "react";
@@ -120,9 +121,7 @@ export function Explore() {
             .filter((o) => saved.organizations.includes(o.id))
             .map((o) => (
               <article key={o.id}>
-                <span className="avatar large" style={{ background: o.color }}>
-                  {o.initial}
-                </span>
+                <OrganizationAvatar organization={o} large />
                 <div>
                   <h2>{o.name}</h2>
                   <p>{o.description}</p>

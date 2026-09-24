@@ -47,3 +47,7 @@ npm run test:dev
 저장 실패·손상·접근 차단을 구분하고 재시도/명시적 초기화, 다른 탭 동기화를 유지합니다. 각 소비자의 `useSyncExternalStore` 서버 스냅샷으로 새 페이지 직접 진입 hydration을 검증합니다. 접근성 검사는 axe WCAG AA와 키보드 흐름을 포함하지만 수동 스크린리더·실기기 검증을 대신하지 않습니다.
 
 최신 검증과 인계는 [웹 인계](docs/context/web-implementation-and-handoff.md)에 기록합니다. 제품 정본·조사 문서·CI는 메인 세션 소유입니다.
+
+## 기업 로고 아바타
+
+우아한형제들·NAVER·Kakao·Toss·LY·AWS·kt cloud·Samsung의 공식 기업 로고를 로컬 저장해 카드·상세·스크랩 조직 목록에 공통 적용합니다. [공식 출처와 확인일](public/organizations/SOURCES.md)을 기록했습니다. 커뮤니티는 이니셜을 유지하고 이미지 실패도 이니셜로 대체합니다. 기존 35/44px 크기·흰 배경·contain으로 비율을 유지하며, 인접 조직명과 중복해서 읽지 않도록 로고는 장식 이미지입니다. 긴 워드마크는 작은 크기로 표시되므로 조직명을 함께 제공합니다.

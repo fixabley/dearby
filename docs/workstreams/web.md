@@ -1,5 +1,11 @@
 # 웹 구현
 
+## 기업 로고 아바타 완료 — 2026-09-24 10:24 KST
+
+Task `task_9caee518b4c1`, Dispatch `ctx_beeec3876c97`, 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9`, 기준4a6df2d. 기업8개 공식로고를 로컬저장하고 공통OrganizationAvatar를 카드/상세/스크랩조직에 적용했다. 35/44px·contain·흰배경·실패이니셜·장식이미지 처리, 커뮤니티이니셜 유지. 출처와 한계는 [웹 인계](../context/web-implementation-and-handoff.md) 최신절과 public/organizations/SOURCES.md를 따른다.
+
+담당검증 lint/typecheck/unit12/build/prod36/dev Chromium·WebKit18 통과, 1440/390 실제화면·저장복원/해제·이미지404fallback·axe AA·overflow·Ponytail 확인. 최초locator/절대URL 기대값 실패 후 수정·재통과 기록을 인계에 남겼다. 3210/3211종료, AGENTS자동diff미커밋. 이전root703c136검증완료는 메인전달이며 이번로고의 root통합/Orca최종확인은 남는다. 완료후 사용자요청으로 세션유지·대기한다.
+
 ## 공식 컨퍼런스 전환 완료 — 2026-09-24 01:43 KST
 
 Task `task_11416b48d24f`, Dispatch `ctx_259771a9ca90`, 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9`. 자기 checkout 기준1dae183에서 공식 컨퍼런스18개·20회차·16조직으로 전환했다. OG14/대표영역 캡처4 및 출처·확인일을 기록했다. 회사검색·12분야·등록5상태·실제 비용/조건·모바일 참가정보 우선·공식 링크를 제공하고 공고단위필터/URL/대안/독립스크랩을 유지한다.

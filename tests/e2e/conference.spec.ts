@@ -18,7 +18,7 @@ test("official conference company search, facts, sources and independent saved r
   await page.getByLabel("멘토링", { exact: true }).check();
   await page.getByRole("button", { name: "결과 보기" }).click();
   await expect(card).toHaveCount(1);
-  await card.locator("img").evaluate((img: HTMLImageElement) => img.decode());
+  await card.locator(".cover-link img").evaluate((img: HTMLImageElement) => img.decode());
   await page.screenshot({ path: path.join("test-results", `${info.project.name}-official-card.png`), fullPage: true });
   await card.getByRole("button", { name: "프로그램 스크랩", exact: true }).click();
   await card.locator(".card-title").click();
