@@ -6,6 +6,10 @@
 
 사용자가 기업 주최기관의 Avatar를 기업 로고로 바꾸도록 요청했다. 기업8개 공식 로고를 카드·상세·스크랩 조직 목록에 공통 적용하고 커뮤니티는 initial 유지, 이미지 실패시 fallback과 비율보존을 적용한다. 기존 웹 세션 재사용: Task `task_9caee518b4c1` / Dispatch `ctx_beeec3876c97`, child 기준 `4a6df2d`. 담당 `2373bc5`를 root `1f9cbdc`에 통합했다. 공식 SVG6/PNG2 출처는 public/organizations/SOURCES.md. 담당 lint/typecheck/unit12/build/prod36/dev18 통과, 메인 lint/typecheck/build 및 아바타 브라우저4개 재통과. 데스크톱/모바일 실제 캡처 확인, Orca 새로고침 후 화면 안 로고 로딩 확인. 긴 워드마크는 작게 보이지만 비율과 조직명 텍스트를 유지한다. Ponytail 추가 삭제 후보 없음. succeeded·retain·ack 완료, 원격 push 없음.
 
+## Spring Camp 로고 추가 — 2026-09-24 11:13 KST 완료
+
+사용자의 후속 요청으로 공식 ksug.org/assets/images/logo.png를 org-ksug에 적용했다. 카드·상세·스크랩은 기존 OrganizationAvatar 재사용. child95fead2 → root432d00a 통합, 담당 lint/typecheck/build 및 1440/390 로고·저장복원 검증 통과. 메인은 diff/Ponytail 검토·이미지 캡처 확인 및 localhost3000 자산200·Orca 검색결과 KSUG 이미지 실제로드 확인. Task task_7bdc3443d670 / Dispatch ctx_49877680dea4 succeeded·retain·ack 완료.
+
 ## 사용자 목적과 승인
 
 기존 네이티브/API 실행 코드를 보존 후 제거하고 최근 재기획의 프로그램 탐색·필터·상세·조직/프로그램 스크랩을 웹으로 구현한다. 고등학생·대학생·취준생을 포함하며 YouTube처럼 읽기 쉬운 썸네일 탐색 구조를 원한다. 첫 콘텐츠는 컨퍼런스, 교육 과정은 후속이다. 잠든 동안 범위 내 미정 사항은 자율 판단하도록 승인했다.
