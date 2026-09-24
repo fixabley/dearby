@@ -1,50 +1,29 @@
 # 현재 작업과 결정
 
-2026-09-24 01:47 KST. **컨퍼런스 우선 웹 구현·조사·메인 검증 완료**, 사용자 검토 대기.
+2026-09-24 KST. **컨퍼런스·연합동아리 웹 통합과 메인 검증 완료.** 사용자 검토 대기.
 
-## 완료: 기업 로고 아바타 — 2026-09-24 10:26 KST
+## 최신 통합
 
-사용자가 기업 주최기관의 Avatar를 기업 로고로 바꾸도록 요청했다. 기업8개 공식 로고를 카드·상세·스크랩 조직 목록에 공통 적용하고 커뮤니티는 initial 유지, 이미지 실패시 fallback과 비율보존을 적용한다. 기존 웹 세션 재사용: Task `task_9caee518b4c1` / Dispatch `ctx_beeec3876c97`, child 기준 `4a6df2d`. 담당 `2373bc5`를 root `1f9cbdc`에 통합했다. 공식 SVG6/PNG2 출처는 public/organizations/SOURCES.md. 담당 lint/typecheck/unit12/build/prod36/dev18 통과, 메인 lint/typecheck/build 및 아바타 브라우저4개 재통과. 데스크톱/모바일 실제 캡처 확인, Orca 새로고침 후 화면 안 로고 로딩 확인. 긴 워드마크는 작게 보이지만 비율과 조직명 텍스트를 유지한다. Ponytail 추가 삭제 후보 없음. succeeded·retain·ack 완료, 원격 push 없음.
+웹 하위 세션의 사용자 직접 후속 승인 커밋 `6a1f74f`를 root `2433301`로 충돌 없이 cherry-pick했다. 이전 `6fbf5ce`는 이미 root `253daa0`에 통합되어 있다. 현재 28프로그램·30공고·26조직이다. SOPT·피로그래밍·COTATO·YAPP·디프만·Mash-Up 추가, 전체/컨퍼런스/연합동아리 유형 필터와 URL 복원·0건 대안, 지원조건·선발 과정·회비·활동 일정 표시를 포함한다.
 
-## Spring Camp 로고 추가 — 2026-09-24 11:13 KST 완료
+디프만19기 10/2–8은 모집 예정, SOPT39기는 확인된 OB 서버 전형만 표시한다. 피로그래밍 연도·COTATO 기수·Mash-Up 비정상 날짜는 추정하지 않는다. 최신 제품 정본은 [웹 범위](../product/conference-first-web-2026-09.md), 조사 출처는 웹 인계와 public 이미지 SOURCES 문서에 있다.
 
-사용자의 후속 요청으로 공식 ksug.org/assets/images/logo.png를 org-ksug에 적용했다. 카드·상세·스크랩은 기존 OrganizationAvatar 재사용. child95fead2 → root432d00a 통합, 담당 lint/typecheck/build 및 1440/390 로고·저장복원 검증 통과. 메인은 diff/Ponytail 검토·이미지 캡처 확인 및 localhost3000 자산200·Orca 검색결과 KSUG 이미지 실제로드 확인. Task task_7bdc3443d670 / Dispatch ctx_49877680dea4 succeeded·retain·ack 완료.
+## 메인에서 실행한 검증
 
-## GitHub 후보 4개 보강 통합 — 2026-09-24 완료
+- lint/typecheck/unit14/production build 통과.
+- production E2E 최초 34통과·4실패(이미지 decode 대기 시간 초과). 코드 변경 없이 실패4개만 재실행하여 모두 통과. 이미지 요청 일부가 대기 중이었으나 원인은 확정하지 않았다. 첫 실행 전체 통과로 기록하지 않는다.
+- dev Chromium10+WebKit10 모두 통과.
+- root localhost3000 Orca 실제 연합동아리 필터·6개 결과·상태 표시·공식 이미지 캡처 확인, console 메시지 없음. 모바일 상세 캡처도 검토했다.
+- diff/Ponytail 검토에서 추가 삭제 후보 없음. 카드에 활동·회비·선발을 모두 표시하여 길어진 점은 사용자에게 알렸으며 향후 선발 요약을 상세로 옮기는 대안이 있다. 이번에 임의 축소하지 않았다.
 
-하위 세션 사용자 직접 후속 `6fbf5ce`를 root `253daa0`에 충돌 없이 통합했다. UbuCon×MiniDebConf2026, KCD×Ceph×OpenInfra2026, REAL Summit2026, SK AI Summit2025 추가: 현재22프로그램·24공고·20조직. Linux필터 및 공식이미지4·기업로고2 추가. 공동행사 중복 방지·삼성SDS 분리·종료/미확인 표시를 검토했다. Ponytail 추가 삭제 후보 없음.
+사용자 직접 후속이므로 새 Dispatch나 완료 lifecycle 재전송 없음. 유지 중인 웹 세션에 통합 결과를 직접 전달한다. 원격 push/PR/merge/배포는 이번 범위에서 수행하지 않았다.
 
-메인 lint/typecheck/unit13/build/prodE2E36 재통과. 담당 dev18 결과는 별도이며 이번 메인에서는 반복하지 않았다. Orca 전체22개/신규4개 종료표시 및 별도 Chromium 신규4개 상세·이미지로드·pageerror0 확인. 사용자 직접 작업이므로 새 Dispatch나 종료 lifecycle 재전송 없음. 웹 세션 유지. 원격 push/PR/배포 없음.
+## 목적·한계·다음 행동
 
-## 사용자 목적과 승인
+고등학생·대학생·취준생의 프로그램 탐색·필터·상세·조직/프로그램 스크랩을 YouTube처럼 읽기 쉬운 웹으로 제공한다. 기업 주최기관 로고와 Spring Camp KSUG 로고는 통합 완료다. 공식 출처 수동 확인 스냅샷이며 자동 갱신·API·인증·신청/결제·개인화·기기간 동기화는 미구현이다. 후보 조사 목록은 전체 행사를 빠짐없이 수록했다는 의미가 아니다.
 
-기존 네이티브/API 실행 코드를 보존 후 제거하고 최근 재기획의 프로그램 탐색·필터·상세·조직/프로그램 스크랩을 웹으로 구현한다. 고등학생·대학생·취준생을 포함하며 YouTube처럼 읽기 쉬운 썸네일 탐색 구조를 원한다. 첫 콘텐츠는 컨퍼런스, 교육 과정은 후속이다. 잠든 동안 범위 내 미정 사항은 자율 판단하도록 승인했다.
+사용자 화면 검토를 기다린다. 추가 자료 검증·정보 갱신 정책·개인화/서버는 후속 범위다. GitHub main의 과거 iOS 필수 체크는 향후 웹 PR 전에 조율해야 하며 가짜 체크로 우회하지 않는다.
 
-최신 제품 정본: [컨퍼런스 우선 웹](../product/conference-first-web-2026-09.md). 조사: [국내 IT 컨퍼런스](../research/korea-it-conferences-2026-09.md). 기업·커뮤니티·학회 등 공식 자료 60행과 검증 대기 후보를 분리했다. 계보/지역 회차를 포함하여 고유 행사 60개나 전체 누락 없음의 뜻은 아니다.
+Root는 `feat/web-rebuild`, 웹 담당은 별도 checkout·세션을 유지한다. 실제 핸들은 [Git·Orca 운영](orca-sessions-and-worktrees.md)을 따른다. child 자동 AGENTS diff는 미커밋 보존하며 건드리지 않는다.
 
-## 구현과 통합
-
-- Root `/Users/jominjun/Documents/dearby`, `feat/web-rebuild`. 실제 데이터 통합 커밋 `e829b74`, 인계 `b4ecc3a`, Toss/DEVIEW 근거 보완 `703c136`. child 원본은 `f0489a5`, `d9a8627`, `4a6df2d`; 기준 `1dae183` 이후만 cherry-pick했다.
-- Next.js 16.3.6·React 19.2.8·TypeScript. 공식 컨퍼런스 18개, 회차 20개, 조직 16개. 공식 OG14·실제 랜딩 캡처4, 출처·확인일 기록. shadcn 허용이나 필수 아님; 현재 HTML 기본 컨트롤과 CSS.
-- 검색(조직 포함), 주제/경험 필터, 결과 없음의 유효 부분 조건과 개수·되돌리기, URL 복원, 회차별 참가 정보, 독립 조직/프로그램 스크랩. 같은 공고 안에서 조건을 결합한다.
-- 등록 중/예정/미확인/마감/행사 종료를 구분한다. 자격 미충족으로 자동 제외하지 않는다. 무료·무제한 참가·발표 경험을 임의 추정하지 않는다. 카카오26·우아콘26·드로이드26은 확인일 기준 접수 중. FEConf는 접수 예정, 삼성 AI 포럼은 등록 미확인.
-- 실제 API·인증·신청/결제·자동 크롤러·일일 개인화 추천·기기간 동기화·프로필 자동 자격 판정은 미구현. 정적 2026-09-24 스냅샷이고 취소/매진은 자동 반영되지 않는다.
-- 원격 push/PR/merge/배포는 이번에 수행하지 않았다. GitHub main에는 과거 iOS architecture 필수 체크가 남아 있어 향후 web CI 보호규칙 조율이 필요하며 가짜 체크로 우회하지 않는다.
-
-## 이번 메인 검증
-
-703c136 통합 후 lint, typecheck, 단위12, production build, production E2E32, dev Chromium9+WebKit9가 모두 통과했다. 1440×1000/390×844 캡처를 실제 확인했고 axe AA·overflow·console/hydration·저장 실패/복구/탭 동기화 회귀를 유지했다. 원격 CI·실기기·수동 스크린리더는 미실행이다.
-
-Orca 실제 브라우저에서 전체 목록→우아콘 상세→스크랩→새로고침 복원을 확인하고 테스트 저장만 해제한 뒤 전체 목록으로 복귀했다. 현재 페이지 console error0. 최종 캡처 `/tmp/dearby-final-orca-screen.png`를 확인했다. Ponytail 최종 변경 검토: 추가 삭제 후보 없음. 공식 아트워크의 작은 글씨는 카드 텍스트로 보완하며 모바일 상세의 참가 정보는 긴 설명보다 앞에 둔다.
-
-## 세션과 미리보기
-
-- http://127.0.0.1:3000 실행 중. 서버 terminal `term_a6ff6181-bf0a-4cd1-a5a6-cf641025916a`, root browser page `b99a9e23-82b0-4349-a854-b6bfa204ef82`.
-- Orca `run_469a74207c03`, Task `task_11416b48d24f`, Dispatch `ctx_259771a9ca90`: succeeded 보고 수신·검토·retain·delivery ack 완료. 하위 웹 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9` 유지. 회수 대기 worker 없음.
-- 하위 checkout `dearby-web`, `fixabley/dearby-web`, 메인 부모 연결. 문서/커밋은 자동 동기화되지 않는다. child의 Next 자동 AGENTS diff는 기존대로 보존하며 root 통합 대상에서 제외했다.
-
-## 보존과 다음 행동
-
-이전 실행코드는 `/Users/jominjun/Documents/dearby-backups/2026-09-24-before-web-rebuild/`에 bundle·사용자 Xcode diff·원본·700파일 해시 확인과 함께 보존했다. main f1d9a63에도 추적 이력이 남는다. dearby-ir은 별도 저장소로 변경하지 않았다.
-
-사용자 화면 검토 이후 우선순위를 정한다. 후보는 조사 목록의 추가 검증/수록, 운영 갱신 정책, 개인정보/이미지별 재사용 조건 확인, 서버 저장·개인화다. 과거 초기 샘플·통합 이력은 [보관본](archive/2026-09-24-web-prototype/coordinator-current-task-and-decisions.md)에 있다. 재개 시 runtime·Git 상태를 다시 확인한다.
+이전 실행코드는 `/Users/jominjun/Documents/dearby-backups/2026-09-24-before-web-rebuild/`와 main `f1d9a63` 이력에 보존했다. dearby-ir은 범위 밖이다. 상세 통합 이력은 [이번 정리 전 보관본](archive/2026-09-24-before-clubs-integration/coordinator-current-task-and-decisions.md)에 있다.
