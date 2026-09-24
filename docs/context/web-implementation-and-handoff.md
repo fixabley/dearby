@@ -1,5 +1,21 @@
 # Dearby 웹 구현 인계
 
+## GitHub 목록 참고 카탈로그 보강 — 2026-09-24 16:44 KST
+
+사용자가 이 하위세션에 직접 요청한 후속 작업: 한국 IT 컨퍼런스 GitHub repository를 참고해 보강. 기준95fead2이며 새 Dispatch 없이 사용자 소유 작업으로 수행했다. 종료된Task/Dispatch lifecycle을 재전송하지 않는다.
+
+참고한 저장소:
+- https://github.com/brave-people/Dev-Event : 컨퍼런스 외 교육/대회/밋업도 있어 범위를 선별해야 한다. UbuCon·MiniDebConf 후보를 발견했다.
+- https://github.com/hibuz/dev-conf-replay : 다시보기 중심 목록으로 과거회차/기업별 행사를 찾는 데 유용하다. OpenInfra/KCD, REAL Summit, SK AI Summit 후보를 발견했다. 저장소의 과거 날짜를 최신회차로 옮기지 않고 공식페이지로 재확인했다.
+
+4프로그램/4공고/4조직 추가로22프로그램·24공고·20조직. UbuCon×MiniDebConf2026 및 KCD×Ceph×OpenInfra2026 공동행사는 각1카드로 중복제거했다. REAL Summit2026은 삼성전자와 다른 삼성SDS 조직, SK AI Summit은 확인된2025회차다. 모두 종료행사로 전체탐색에 나타나고 모집·등록중에는 제외된다. Linux분야를 추가했으며 미확인 비용/자격은null 유지한다. 공식OG4개와 SK/삼성SDS 기업로고2개를 로컬저장, 원본/확인일은 public/conferences/SOURCES.md와 public/organizations/SOURCES.md에 기록했다. 자동수집·저장소복제·데이터동기화는 없다.
+
+핵심 재확인: UbuCon최종8/25 0시 마감은 이전8/16안내보다 우선하고 AWS센터필드18층 최신확정장소를 사용한다. OpenInfra의 남은등록중버튼은9/1종료행사로 해석한다. REAL9/8코엑스종료·체험프로그램은 공식SDS보도자료로 확인했으며 가격은추정하지 않았다. SK는2025년11/3–4일코엑스·온라인중계이며2026개최를추정하지 않는다. 출처별 사실근거는 공고sources에 기록했다.
+
+담당검증: lint/typecheck/unit13/build(22프로그램SSG)/productionE2E36/dev Chromium9+WebKit9=18 통과. 기존18개 기대값을22개로 갱신하고 공동행사중복방지/최종공식공지우선/모집상태/삼성SDS조직분리/Linux검색의 의미규칙unit1개를 추가했다. 추가4개 모두1440×1000/390×844에서 검색→상세→종료표시·공식링크→스크랩새로고침복원과console.error/pageerror0·overflow없음 확인. 실제 `test-results/desktop-added-openinfra.png`, `desktop-added-real.png`, `mobile-added-ubucon.png`를 열어 썸네일/로고를 검토했다(추가4개×2viewport캡처,Git제외). 기존E2E의저장오류/hydration/axe검사도 통과했다.
+
+Ponytail diff: **Lean already. Ship.** 정적데이터와분야1개만 추가하고 새추상화/의존성없음. git diff --check 통과,3210/3211종료,AGENTS자동diff미커밋보존. root3000/다른checkout/Orca page는 건드리지 않았으며 메인통합·실제앱반영은 별도다. 이번4개가한국전체목록을완성한것은아니며 공식정보를확인한보강분이다.
+
 ## Spring Camp 주최 KSUG 로고 추가 — 2026-09-24 11:12 KST
 
 Task `task_7bdc3443d670`, Dispatch `ctx_49877680dea4`, 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9`, 기준 `2373bc5`. https://ksug.org/ 의 한국 스프링 사용자 모임 소개와 상단 조직 로고를 직접 확인했다. 원본 https://ksug.org/assets/images/logo.png 를 `public/organizations/ksug.png`로 그대로 저장하고 org-ksug.logo만 추가했다. Spring 프레임워크/Pivotal/행사 포스터 대신 KSUG / KOREA SPRING USER GROUP 마크를 사용한다. 출처·확인일은 public/organizations/SOURCES.md에 기록했다.

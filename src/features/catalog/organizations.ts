@@ -124,5 +124,35 @@ export const organizations: Organization[] = [
     "description": "AI·소프트웨어 기술 컨퍼런스 주최 조직",
     "initial": "S",
     "color": "#265a85"
+  },
+  {
+    "id": "org-ubuntu-debian",
+    "name": "Ubuntu Korea · Debian Korea",
+    "description": "우분투·데비안 공동 행사 주최 커뮤니티",
+    "initial": "U/D",
+    "color": "#984d2b"
+  },
+  {
+    "id": "org-kcd-ceph-openinfra",
+    "name": "Kubernetes Korea · Ceph Korea · OpenInfra Korea",
+    "description": "세 오픈소스 커뮤니티의 공동 컨퍼런스",
+    "initial": "KCO",
+    "color": "#265a85"
+  },
+  {
+    "id": "org-sds",
+    "name": "삼성SDS · Samsung SDS",
+    "description": "엔터프라이즈 AI·클라우드 컨퍼런스 주최 기업",
+    "initial": "SDS",
+    "color": "#265a85",
+    "logo": "/organizations/sds.png"
+  },
+  {
+    "id": "org-sk",
+    "name": "SK",
+    "description": "AI 기술·산업 컨퍼런스 주최 그룹",
+    "initial": "SK",
+    "color": "#984d2b",
+    "logo": "/organizations/sk.svg"
   }
 ];

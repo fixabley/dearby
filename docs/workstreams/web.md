@@ -1,5 +1,9 @@
 # 웹 구현
 
+## GitHub 참고 데이터 보강 — 2026-09-24 16:44 KST
+
+사용자 직접후속(새Dispatch없음), 기준95fead2. Dev-Event/dev-conf-replay 후보를 공식출처로 검증해 UbuCon×MiniDebConf2026·KCD×Ceph×OpenInfra2026·REAL Summit2026·SK AI Summit2025 추가:22프로그램/24공고/20조직. 공식OG4·기업로고2·Linux필터,공동행사중복제거·미확인값null·종료분류 유지. lint/typecheck/unit13/build/prod36/dev18과 추가4개의1440/390 검색/상세/스크랩복원·실제캡처/Ponytail검토 완료.3210/3211종료·AGENTS자동diff미커밋. [최신인계](../context/web-implementation-and-handoff.md)에 후보저장소/공식출처/한계기록. root통합은별도이며 종료된lifecycle재전송하지않는다.
+
 ## KSUG 로고 추가 완료 — 2026-09-24 11:12 KST
 
 기준2373bc5, Task task_7bdc3443d670 / Dispatch ctx_49877680dea4. KSUG 공식홈페이지 조직로고를 원본그대로 로컬저장하고 기존공통아바타에 경로1개를 추가해 Spring Camp 카드/상세/조직스크랩에 적용했다. lint/typecheck/build 및1440/390 production Chromium 이미지로드·저장복원·console/pageerror0·overflow없음 통과, 실제캡처/Ponytail검토 완료. 3210종료·AGENTS자동diff보존. 상세출처·한계는 [최신 인계](../context/web-implementation-and-handoff.md) 참고. 메인통합확인 대기·세션유지.

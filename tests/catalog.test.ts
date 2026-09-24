@@ -8,9 +8,9 @@ const notice = (patch: Partial<Notice> = {}): Notice => ({ ...base.notices[0], .
 const program = (id: string, notices: Notice[]): Program => ({ ...base, id, notices });
 
 test("official snapshot has unique programs/rounds, valid source provenance and local artwork", () => {
-  assert.equal(programs.length, 18);
-  assert.equal(new Set(programs.map(p => p.id)).size, 18);
-  assert.equal(searchPrograms(programs, f).length, 18);
+  assert.equal(programs.length, 22);
+  assert.equal(new Set(programs.map(p => p.id)).size, 22);
+  assert.equal(searchPrograms(programs, f).length, 22);
   const ids = programs.flatMap(p => p.notices.map(n => n.id));
   assert.equal(new Set(ids).size, ids.length);
   for (const p of programs) {
@@ -126,4 +126,17 @@ test("AND alternatives retain the most supported fields rather than joining sepa
   const options = suggestions(data, filters);
   assert.deepEqual(options[0].filters.roles, ["AI", "데이터"]);
   assert.ok(!options.some(o => o.filters.roles.includes("Android") && o.filters.roles.includes("클라우드")));
+});
+
+test("repository-discovered joint events are deduplicated and official corrections win", () => {
+  const get = (id: string) => programs.find(p => p.id === id)!.notices[0];
+  assert.equal(searchPrograms(programs, { ...f, query: "MiniDebConf" }).length, 1);
+  assert.equal(searchPrograms(programs, { ...f, query: "Ceph" }).length, 1);
+  assert.equal(get("ubucon").deadline, "2026-08-25");
+  assert.match(get("ubucon").location!, /AWS/);
+  assert.equal(get("openinfra").status, "ended");
+  assert.equal(get("real").cost, null);
+  assert.equal(get("skai").round, "2025");
+  assert.equal(programs.find(p => p.id === "real")!.orgId, "org-sds");
+  assert.deepEqual(searchPrograms(programs, { ...f, roles: ["Linux"] }).map(p => p.id), ["ubucon"]);
 });

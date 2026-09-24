@@ -1,5 +1,5 @@
 import { organizations } from "./organizations";
-export const roles = ["프론트엔드", "백엔드", "iOS", "Android", "AI", "데이터", "클라우드", "보안", "디자인", "기획", "Python", "Go"] as const;
+export const roles = ["프론트엔드", "백엔드", "iOS", "Android", "AI", "데이터", "클라우드", "보안", "디자인", "기획", "Python", "Go", "Linux"] as const;
 export type Activity = {
   action: string;
   target?: string;

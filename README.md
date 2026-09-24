@@ -26,7 +26,7 @@ npm run test:dev
 
 ## 데이터와 출처
 
-18개 프로그램·20개 회차 공고·16개 조직입니다. FEConf, 우아콘, NAVER DAN, if(kakao), Toss Makers, Tech-Verse, PyCon Korea, Spring Camp, Let’Swift, GopherCon Korea, AWS Summit Seoul, kt cloud summit, Droid Knights, DevFest Cloud x Seoul, DevFest Korea Android, Samsung AI Forum, Samsung Tech Conference, DEVIEW를 포함합니다.
+22개 프로그램·24개 회차 공고·20개 조직입니다. FEConf, 우아콘, NAVER DAN, if(kakao), Toss Makers, Tech-Verse, PyCon Korea, Spring Camp, Let’Swift, GopherCon Korea, AWS Summit Seoul, kt cloud summit, Droid Knights, DevFest Cloud x Seoul, DevFest Korea Android, Samsung AI Forum, Samsung Tech Conference, DEVIEW를 포함합니다.
 
 - 행사별 원문 URL·확인일·확인 근거는 `src/features/catalog/data.ts`의 `notices[].sources`와 상세의 공식 출처에 있습니다.
 - 공식 공유이미지 14개와 공식 대표영역 캡처 4개를 로컬 저장했습니다. [이미지 출처 목록](public/conferences/SOURCES.md)에 원본 URL과 확인일, 대체 이유를 기록했습니다. 사용 허가나 자유 재배포 가능 여부를 확인한 것은 아닙니다.
@@ -51,3 +51,5 @@ npm run test:dev
 ## 기업 로고 아바타
 
 우아한형제들·NAVER·Kakao·Toss·LY·AWS·kt cloud·Samsung의 공식 기업 로고를 로컬 저장해 카드·상세·스크랩 조직 목록에 공통 적용합니다. [공식 출처와 확인일](public/organizations/SOURCES.md)을 기록했습니다. 커뮤니티는 이니셜을 유지하고 이미지 실패도 이니셜로 대체합니다. 기존 35/44px 크기·흰 배경·contain으로 비율을 유지하며, 인접 조직명과 중복해서 읽지 않도록 로고는 장식 이미지입니다. 긴 워드마크는 작은 크기로 표시되므로 조직명을 함께 제공합니다.
+
+국내 행사 후보 발굴에 [Dev-Event](https://github.com/brave-people/Dev-Event)와 [dev-conf-replay](https://github.com/hibuz/dev-conf-replay)를 참고했습니다. 공식 출처로 재확인한 UbuCon × MiniDebConf, KCD × Ceph × OpenInfra, REAL Summit, SK AI Summit을 추가했습니다. 공동행사는 한 카드로 묶고 종료 여부·과거회차·미확인 필드는 공식 출처를 기준으로 표시합니다. Linux 분야 필터도 제공합니다.

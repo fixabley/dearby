@@ -26,3 +26,12 @@
 드로이드나이츠의 OG 경로는 확인 당시 404였습니다. AWS Summit과 Spring Camp 2026은 회차용 OG를 확보하지 못했고, GDG Android는 범용 GDG 공유이미지여서 행사가 보이는 랜딩페이지를 캡처했습니다. CSS object-fit: contain으로 원본 비율을 유지하고 카드 영역은 16:9로 표시합니다.
 
 과거 회차의 상세 정보는 src/features/catalog/data.ts의 해당 공고 sources에 별도로 기록합니다. 현재 카드 이미지는 확인된 대표 회차의 이미지입니다.
+
+## GitHub 후보 조사 후 공식 확인 추가 — 2026-09-24
+
+참고 목록: https://github.com/brave-people/Dev-Event 및 https://github.com/hibuz/dev-conf-replay (발견 경로이며 행사 사실의 최종 출처는 아님). 원문 README를 일괄 복제하거나 자동 동기화하지 않는다. 아래4개는 공식 OG 원본을 저장했다.
+
+- UbuCon Korea × MiniDebConf Korea 2026: `/conferences/ubucon.png` · 공식페이지 https://2026.ubuntu-kr.org/ko/ · OG https://2026.ubuntu-kr.org/og.png · 확인일 2026-09-24
+- KCD × Ceph × OpenInfra Day Korea 2026: `/conferences/openinfra.png` · 공식페이지 https://community2.cncf.io/events/details/cncf-kcd-south-korea-presents-kcd-x-ceph-x-openinfra-day-korea-2026/ · OG https://res.cloudinary.com/startup-grind/image/upload/c_fill,dpr_2.0,f_auto,g_center,h_1080,q_100,w_1080/v1/gcs/platform-data-cncf/events/blob_UiLtkr4 · 확인일 2026-09-24
+- REAL Summit 2026: `/conferences/real.png` · 공식페이지 https://www.realsummit2026.com/ · OG https://www.realsummit2026.com/images/og.png · 확인일 2026-09-24
+- SK AI Summit 2025: `/conferences/skai.png` · 공식페이지 https://skaisummit.com/ · OG https://www.skaisummit.com/image/common/OG.png · 확인일 2026-09-24

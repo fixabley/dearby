@@ -1090,5 +1090,277 @@ export const programs: Program[] = [
         ]
       }
     ]
+  },
+  {
+    "id": "ubucon",
+    "orgId": "org-ubuntu-debian",
+    "title": "UbuCon Korea × MiniDebConf Korea",
+    "subtitle": "우분투·데비안 공동 컨퍼런스 · 리눅스와 오픈소스",
+    "category": "컨퍼런스",
+    "cover": "/conferences/ubucon.png",
+    "coverSource": {
+      "url": "https://2026.ubuntu-kr.org/og.png",
+      "pageUrl": "https://2026.ubuntu-kr.org/ko/",
+      "kind": "og",
+      "checkedAt": "2026-09-24"
+    },
+    "notices": [
+      {
+        "id": "ubucon-2026",
+        "round": "2026",
+        "current": true,
+        "participationType": "registration",
+        "status": "ended",
+        "roles": [
+          "Linux",
+          "AI"
+        ],
+        "activities": [
+          {
+            "action": "청강",
+            "target": "기술 세션",
+            "evidence": "공식 일정에 리눅스 운영·PyTorch 메모리·오픈소스 기여 기술 발표가 안내되어 있습니다."
+          }
+        ],
+        "start": null,
+        "deadline": "2026-08-25",
+        "eventDate": "2026-08-29",
+        "eventEndDate": null,
+        "location": "서울 센터필드 EAST · AWS 코리아 18층",
+        "cost": "일반 30,000원 · 개인후원 100,000원 (권종별 조건 상이)",
+        "audience": [
+          "우분투·리눅스·자유 및 오픈소스 기술에 관심 있는 사람"
+        ],
+        "qualification": "공동 개최 행사로 한 번의 등록으로 참가. 최종 마감은 8월 25일 0시이며 현장 등록 불가. 후기 티켓은 식사·티셔츠를 보장하지 않음.",
+        "officialUrl": "https://2026.ubuntu-kr.org/ko/",
+        "registrationUrl": "https://2026.ubuntu-kr.org/tickets",
+        "sources": [
+          {
+            "url": "https://2026.ubuntu-kr.org/ko/",
+            "label": "공식 행사 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "8월29일 AWS 코리아 개최 및 행사 종료, MiniDebConf 공동 개최 확인."
+          },
+          {
+            "url": "https://korea2026.mini.debconf.org/",
+            "label": "공식 행사 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "공동행사 및 일반3만원·개인후원10만원 확인. 이 페이지의 초기마감보다 주최 측 최종연장공지 우선."
+          },
+          {
+            "url": "https://2026.ubuntu-kr.org/en/about/",
+            "label": "공식 행사 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "우분투·리눅스·자유/오픈소스 기술에 관심 있는 참가자를 위한 커뮤니티 행사."
+          },
+          {
+            "url": "https://discourse.ubuntu-kr.org/t/ubucon-korea-x-minidebconf-korea-2026-8-25-0/52295",
+            "label": "공식 행사 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "최종등록 마감8월25일0시, 현장등록과 추가연장불가 공지."
+          },
+          {
+            "url": "https://discourse.ubuntu-kr.org/t/ubucon-korea-x-minidebconf-korea-2026-latebird/52292",
+            "label": "공식 행사 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "8월17일부터 후기티켓의 식사·티셔츠 제공은 보장하지 않는다고 안내."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "openinfra",
+    "orgId": "org-kcd-ceph-openinfra",
+    "title": "KCD × Ceph × OpenInfra Day Korea",
+    "subtitle": "쿠버네티스·분산 스토리지·개방형 인프라 공동 컨퍼런스",
+    "category": "컨퍼런스",
+    "cover": "/conferences/openinfra.png",
+    "coverSource": {
+      "url": "https://res.cloudinary.com/startup-grind/image/upload/c_fill,dpr_2.0,f_auto,g_center,h_1080,q_100,w_1080/v1/gcs/platform-data-cncf/events/blob_UiLtkr4",
+      "pageUrl": "https://community2.cncf.io/events/details/cncf-kcd-south-korea-presents-kcd-x-ceph-x-openinfra-day-korea-2026/",
+      "kind": "og",
+      "checkedAt": "2026-09-24"
+    },
+    "notices": [
+      {
+        "id": "openinfra-2026",
+        "round": "2026",
+        "current": true,
+        "participationType": "registration",
+        "status": "ended",
+        "roles": [
+          "클라우드",
+          "AI",
+          "데이터",
+          "보안"
+        ],
+        "activities": [
+          {
+            "action": "청강",
+            "target": "기술 세션",
+            "evidence": "공식 프로그램에서 쿠버네티스·Ceph·OpenInfra 기술 세션을 확인했습니다."
+          },
+          {
+            "action": "네트워킹",
+            "target": "현직자",
+            "evidence": "공식 행사 소개에 오픈소스 기여자와 분야 전문가의 직접 교류를 안내합니다."
+          }
+        ],
+        "start": null,
+        "deadline": "2026-09-01",
+        "eventDate": "2026-09-01",
+        "eventEndDate": null,
+        "location": "서울 용산구 백범김구기념관",
+        "cost": "스탠다드 70,000원",
+        "audience": [
+          "클라우드·스토리지·인프라 엔지니어",
+          "오픈소스에 관심 있는 개발자·학생·연구자"
+        ],
+        "qualification": null,
+        "officialUrl": "https://community2.cncf.io/events/details/cncf-kcd-south-korea-presents-kcd-x-ceph-x-openinfra-day-korea-2026/",
+        "registrationUrl": "https://event.plan9.co.kr/#/kcd_odk2026",
+        "sources": [
+          {
+            "url": "https://community2.cncf.io/events/details/cncf-kcd-south-korea-presents-kcd-x-ceph-x-openinfra-day-korea-2026/",
+            "label": "공식 행사 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "9월1일 백범김구기념관, 세 커뮤니티 공동주최, 기술세션·네트워킹 및 권장참가대상 확인."
+          },
+          {
+            "url": "https://openinfra-kr.org/",
+            "label": "공식 행사 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "스탠다드7만원 확인. 남아 있는 등록중 표시는 지난9월1일행사의 현재모집으로 사용하지 않음."
+          },
+          {
+            "url": "https://wiki.ceph.com/en/community/events/2026/ceph-days-korea/",
+            "label": "공식 행사 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "주최커뮤니티가 게시한9월1일 행사일·등록마감 확인."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "real",
+    "orgId": "org-sds",
+    "title": "REAL Summit",
+    "subtitle": "삼성SDS의 엔터프라이즈 AI·클라우드 혁신 컨퍼런스",
+    "category": "컨퍼런스",
+    "cover": "/conferences/real.png",
+    "coverSource": {
+      "url": "https://www.realsummit2026.com/images/og.png",
+      "pageUrl": "https://www.realsummit2026.com/",
+      "kind": "og",
+      "checkedAt": "2026-09-24"
+    },
+    "notices": [
+      {
+        "id": "real-2026",
+        "round": "2026",
+        "current": true,
+        "participationType": "registration",
+        "status": "ended",
+        "roles": [
+          "AI",
+          "클라우드",
+          "데이터"
+        ],
+        "activities": [
+          {
+            "action": "청강",
+            "target": "기술 세션",
+            "evidence": "공식 홈페이지에 키노트·산업별 AX 기술 세션이 안내되어 있습니다."
+          },
+          {
+            "action": "실습",
+            "evidence": "삼성SDS 공식 보도자료에서 AI 에이전트 제작과 클라우드 자원 생성·배포 체험을 안내합니다."
+          }
+        ],
+        "start": null,
+        "deadline": null,
+        "eventDate": "2026-09-08",
+        "eventEndDate": null,
+        "location": "서울 코엑스 컨벤션센터",
+        "cost": null,
+        "audience": null,
+        "qualification": "개별 체험 프로그램의 참가 조건은 미확인.",
+        "officialUrl": "https://www.realsummit2026.com/",
+        "registrationUrl": null,
+        "sources": [
+          {
+            "url": "https://www.realsummit2026.com/",
+            "label": "공식 행사 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "9월8일 코엑스 개최·행사종료 및 키노트/세션자료 공개 확인. 비용·등록기간·자격 미확인."
+          },
+          {
+            "url": "https://www.samsungsds.com/kr/news/sds-260901.html",
+            "label": "공식 행사 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "삼성SDS 주최, AI·클라우드 체험형 프로그램 확인."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "skai",
+    "orgId": "org-sk",
+    "title": "SK AI Summit",
+    "subtitle": "SK의 AI 인프라·모델·산업 적용 컨퍼런스",
+    "category": "컨퍼런스",
+    "cover": "/conferences/skai.png",
+    "coverSource": {
+      "url": "https://www.skaisummit.com/image/common/OG.png",
+      "pageUrl": "https://skaisummit.com/",
+      "kind": "og",
+      "checkedAt": "2026-09-24"
+    },
+    "notices": [
+      {
+        "id": "skai-2025",
+        "round": "2025",
+        "current": true,
+        "participationType": "registration",
+        "status": "ended",
+        "roles": [
+          "AI"
+        ],
+        "activities": [
+          {
+            "action": "청강",
+            "target": "기술 세션",
+            "evidence": "공식 FAQ에서 AI Infra·AI Model·AIX 트랙의 발표 및 온라인 중계를 확인했습니다."
+          }
+        ],
+        "start": null,
+        "deadline": null,
+        "eventDate": "2025-11-03",
+        "eventEndDate": "2025-11-04",
+        "location": "서울 코엑스 · 온라인 스트리밍",
+        "cost": null,
+        "audience": null,
+        "qualification": "당시 키노트·세션은 현장 선착순 입장. 2026 회차 개최 여부는 미확인.",
+        "officialUrl": "https://skaisummit.com/",
+        "registrationUrl": null,
+        "sources": [
+          {
+            "url": "https://eng.sk.com/news/sk-hosts-sk-ai-summit-2025-with-vision-to-solve-ai-challenges-through-memory-infrastructure-and-advanced-ai-solutions",
+            "label": "공식 행사 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "SK 공식보도자료의2025년11월3–4일 코엑스 개최 확인. 2026년회차를 추정하지 않음."
+          },
+          {
+            "url": "https://skaisummit.com/faq",
+            "label": "공식 행사 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "키노트/세션 현장선착순·온라인중계 및 녹화영상 공개안내 확인. 현재 남아 있는 참가신청버튼은 종료된2025행사로 분류."
+          }
+        ]
+      }
+    ]
   }
 ];

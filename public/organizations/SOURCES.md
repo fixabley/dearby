@@ -21,3 +21,9 @@
 - 원본: https://ksug.org/assets/images/logo.png → 로컬 `ksug.png`
 - 홈페이지 상단에서 사용하는 KSUG / KOREA SPRING USER GROUP 조직 식별 로고를 원본 그대로 저장했다. Spring Camp를 주최하는 `org-ksug`에 적용하며 Spring 프레임워크·Pivotal 로고나 행사 포스터가 아니다.
 - 기업8개 외에 공식 로고를 확인한 커뮤니티 KSUG만 추가했다. 다른 커뮤니티 이니셜은 유지한다. 원본은 가로로 긴 워드마크라 작은 아바타에서는 하단 영문이 작으며 인접 조직명이 식별을 보완한다. 확인일 2026-09-24, 사용권 허용을 별도로 확인했다는 의미는 아니다.
+
+## 추가 기업 로고 — 2026-09-24
+
+- SK: 공식 행사 https://skaisummit.com/faq 의 기업식별 SK 로고 https://skaisummit.com/image/common/logo-sk.svg → sk.svg.
+- 삼성SDS: 공식 행사 https://www.realsummit2026.com/ 푸터의 Samsung SDS 로고 https://www.realsummit2026.com/images/pre_register/footer_logo.png → sds.png. 삼성전자와 별개 조직으로 저장한다.
+- 공동주최 커뮤니티2개에는 한 기업의 로고를 대신 붙이지 않고 이니셜을 사용한다.
