@@ -6,7 +6,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Dearby · 나의 다음 경험",
   description:
-    "공식 출처를 확인한 국내 IT 컨퍼런스. 분야와 경험으로 탐색하고 프로그램과 조직을 스크랩하세요.",
+    "공식 출처를 확인한 IT 컨퍼런스 · 연합동아리. 분야와 경험으로 탐색하고 프로그램과 조직을 스크랩하세요.",
 };
 export default function RootLayout({
   children,

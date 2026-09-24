@@ -24,6 +24,9 @@ export function FilterControls({
   };
   return (
     <>
+      <div className="category-tabs" role="group" aria-label="프로그램 유형">
+        {["", "컨퍼런스", "연합동아리"].map(category => <button key={category} aria-pressed={f.category === category} className={f.category === category ? "selected" : ""} onClick={() => onChange({ ...f, category })}>{category || "전체 경험"}</button>)}
+      </div>
       <div className="chip-row" aria-label="분야 빠른 필터">
         <button
           className={!f.roles.length ? "chip selected" : "chip"}

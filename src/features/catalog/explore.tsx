@@ -56,12 +56,12 @@ export function Explore() {
                 ? "지금, 함께할 수 있는 경험"
                 : f.query
                   ? `“${f.query}” 검색 결과`
-                  : "다음 컨퍼런스를 만나보세요"}
+                  : "다음 경험을 만나보세요"}
           </h1>
           <p>
             {view === "saved"
               ? "이 브라우저에 저장한 프로그램과 조직"
-              : "기술과 사람을 만나는 자리 · 종료된 행사도 함께 탐색해요"}
+              : "기술을 듣고, 동료와 만들고 · 컨퍼런스부터 연합동아리까지"}
           </p>
         </div>
         <span className="result-count" aria-live="polite">

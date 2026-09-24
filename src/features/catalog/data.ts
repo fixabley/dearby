@@ -1362,5 +1362,413 @@ export const programs: Program[] = [
         ]
       }
     ]
+  },
+
+  {
+    "id": "sopt",
+    "orgId": "org-sopt",
+    "title": "SOPT · 솝트",
+    "subtitle": "대학생 IT 벤처창업 동아리 · 확인된 OB 서버 전형",
+    "category": "연합동아리",
+    "cover": "/clubs/sopt.png",
+    "coverSource": {
+      "url": "https://www.sopt.org/39th_og.png",
+      "pageUrl": "https://www.sopt.org",
+      "kind": "og",
+      "checkedAt": "2026-09-24"
+    },
+    "notices": [
+      {
+        "id": "sopt-verified",
+        "round": "39기 OB · 서버",
+        "current": true,
+        "participationType": "application",
+        "status": "closed",
+        "roles": [
+          "백엔드"
+        ],
+        "activities": [],
+        "start": "2026-08-08",
+        "deadline": "2026-08-11",
+        "eventDate": null,
+        "eventEndDate": null,
+        "activitySchedule": "9월 19일 OT · 전체 활동 기간 미확인",
+        "selectionProcess": [
+          "서류",
+          "면접",
+          "최종 발표"
+        ],
+        "location": null,
+        "cost": null,
+        "audience": [
+          "대학생 · OB 전형"
+        ],
+        "qualification": "신규 YB 모집 안내가 아닌 OB 서버 파트 공고입니다. 휴학·졸업 및 OB 자격 상세는 공식 안내를 확인하세요.",
+        "officialUrl": "https://www.sopt.org",
+        "registrationUrl": "https://recruit.sopt.org/part/Server",
+        "sources": [
+          {
+            "url": "https://recruit.sopt.org/part/Server",
+            "label": "공식 모집 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "39기 OB 서버 파트: 8/8–11 접수, 8/15–16 면접, 8/19 최종 발표. 신규 회원 전형으로 확대 해석하지 않음."
+          },
+          {
+            "url": "https://www.sopt.org",
+            "label": "공식 소개",
+            "checkedAt": "2026-09-24",
+            "evidence": "대학생 IT 벤처창업 동아리 · 확인된 OB 서버 전형의 활동 소개와 프로그램 정체성을 확인했습니다."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "piro",
+    "orgId": "org-piro",
+    "title": "피로그래밍",
+    "subtitle": "대학생 웹 개발 학습과 팀 프로젝트",
+    "category": "연합동아리",
+    "cover": "/clubs/piro.png",
+    "coverSource": {
+      "url": "https://pirogramming.com",
+      "pageUrl": "https://pirogramming.com",
+      "kind": "capture",
+      "checkedAt": "2026-09-24"
+    },
+    "notices": [
+      {
+        "id": "piro-verified",
+        "round": "25기",
+        "current": true,
+        "participationType": "application",
+        "status": "unknown",
+        "roles": [
+          "프론트엔드",
+          "백엔드",
+          "Python"
+        ],
+        "activities": [
+          {
+            "action": "제작",
+            "target": "웹 서비스",
+            "method": "팀협업",
+            "evidence": "공식 소개에 웹 개발 학습 후 팀을 구성해 웹 서비스를 제작하고 발표한다고 안내합니다."
+          }
+        ],
+        "start": null,
+        "deadline": null,
+        "eventDate": null,
+        "eventEndDate": null,
+        "activitySchedule": "방학 중 약 2개월 · 주 3회 세션",
+        "selectionProcess": [
+          "서류 · 코딩테스트 안내 확인",
+          "면접",
+          "최종 발표"
+        ],
+        "location": null,
+        "cost": null,
+        "audience": [
+          "대학생"
+        ],
+        "qualification": "코딩테스트 안내가 있습니다. 테스트 방식·제출물과 상세 자격은 공식 모집 안내에서 확인하세요.",
+        "officialUrl": "https://pirogramming.com",
+        "registrationUrl": "https://pirogramming.com/recruit/",
+        "sources": [
+          {
+            "url": "https://pirogramming.com/recruit/",
+            "label": "공식 모집 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "25기 5/25–6/5 서류, 6/13–14 면접 안내. 본문 연도 미표기로 정확한 날짜값은 미확인 유지. 공식 소개에서 대학생 대상 웹 학습·팀 프로젝트 확인."
+          },
+          {
+            "url": "https://pirogramming.com/about/",
+            "label": "공식 소개",
+            "checkedAt": "2026-09-24",
+            "evidence": "대학생 웹 개발 학습과 팀 프로젝트의 활동 소개와 프로그램 정체성을 확인했습니다."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "cotato",
+    "orgId": "org-cotato",
+    "title": "COTATO · 코테이토",
+    "subtitle": "CS 학습과 기획·디자인·개발 협업",
+    "category": "연합동아리",
+    "cover": "/clubs/cotato.png",
+    "coverSource": {
+      "url": "https://www.cotato.kr/images/meta-data/thumbnail.png",
+      "pageUrl": "https://www.cotato.kr",
+      "kind": "og",
+      "checkedAt": "2026-09-24"
+    },
+    "notices": [
+      {
+        "id": "cotato-verified",
+        "round": "기수 미확인",
+        "current": true,
+        "participationType": "application",
+        "status": "unknown",
+        "roles": [
+          "기획",
+          "디자인",
+          "프론트엔드",
+          "백엔드"
+        ],
+        "activities": [
+          {
+            "action": "제작",
+            "evidence": "공식 FAQ에서 기획 발표와 팀빌딩 후 약 4개월 프로젝트 및 데모데이를 안내합니다."
+          }
+        ],
+        "start": null,
+        "deadline": null,
+        "eventDate": null,
+        "eventEndDate": null,
+        "activitySchedule": "한 기수 6개월 · 매주 금요일 19시",
+        "selectionProcess": [
+          "면접 · 약 30분, 4:2",
+          "기타 선발 단계 미확인"
+        ],
+        "location": "서울",
+        "cost": "기수당 50,000원 · 변경 가능",
+        "audience": [
+          "서울·경기권 대학교 4학기 이상 수료자"
+        ],
+        "qualification": "개발자는 컴퓨터·IT 관련 학과 주·복수전공생. 매주 금요일 19시 서울 오프라인 세션 참여 필수.",
+        "officialUrl": "https://www.cotato.kr",
+        "registrationUrl": "https://www.cotato.kr/recruit",
+        "sources": [
+          {
+            "url": "https://www.cotato.kr/recruit",
+            "label": "공식 모집 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "공식 모집 페이지 자격·FAQ에서 4학기 수료/개발자 전공/면접/회비 확인. 지난 상반기 일정과 남은 지원 버튼만으로 현재 모집을 판정하지 않음."
+          },
+          {
+            "url": "https://www.cotato.kr",
+            "label": "공식 소개",
+            "checkedAt": "2026-09-24",
+            "evidence": "CS 학습과 기획·디자인·개발 협업의 활동 소개와 프로그램 정체성을 확인했습니다."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "yapp",
+    "orgId": "org-yapp",
+    "title": "YAPP · 얍",
+    "subtitle": "기획자·디자이너·개발자의 서비스 제작",
+    "category": "연합동아리",
+    "cover": "/clubs/yapp.png",
+    "coverSource": {
+      "url": "https://www.yapp.co.kr/assets/images/28th/preview.png",
+      "pageUrl": "https://www.yapp.co.kr",
+      "kind": "og",
+      "checkedAt": "2026-09-24"
+    },
+    "notices": [
+      {
+        "id": "yapp-verified",
+        "round": "28기",
+        "current": true,
+        "participationType": "application",
+        "status": "closed",
+        "roles": [
+          "기획",
+          "디자인",
+          "프론트엔드",
+          "백엔드",
+          "Android",
+          "iOS"
+        ],
+        "activities": [
+          {
+            "action": "제작",
+            "target": "웹 서비스",
+            "method": "팀협업",
+            "evidence": "공식 소개에서 PM·디자인·개발 팀으로 웹/앱 서비스를 제작한다고 안내합니다."
+          },
+          {
+            "action": "제작",
+            "target": "앱",
+            "method": "팀협업",
+            "evidence": "공식 소개에서 PM·디자인·개발 팀으로 웹/앱 서비스를 제작한다고 안내합니다."
+          }
+        ],
+        "start": null,
+        "deadline": null,
+        "eventDate": null,
+        "eventEndDate": null,
+        "activitySchedule": "약 4개월 · 토요일 13–17시",
+        "selectionProcess": [
+          "지원서·포트폴리오",
+          "온라인 면접",
+          "최종 합격"
+        ],
+        "location": "수도권 오프라인",
+        "cost": "10만원대 초반 예상 · 확정액 미확인",
+        "audience": [
+          "대학생",
+          "고졸·졸업자",
+          "재직자"
+        ],
+        "qualification": "타 직군과 1회 이상 협업 경험 및 직군별 기술 조건. 토요일 정기 세션 참여 필수. 고졸 가능을 고등학교 재학생 가능으로 해석하지 않습니다.",
+        "officialUrl": "https://www.yapp.co.kr",
+        "registrationUrl": "https://www.yapp.co.kr/recruit",
+        "sources": [
+          {
+            "url": "https://www.yapp.co.kr/recruit",
+            "label": "공식 모집 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "28기 FAQ와 선발 절차/자격/시간/예상회비 확인. 현재 모집기간 아님·29기 알림신청 표시. 다음 기수 접수일은 미확인."
+          },
+          {
+            "url": "https://www.yapp.co.kr",
+            "label": "공식 소개",
+            "checkedAt": "2026-09-24",
+            "evidence": "기획자·디자이너·개발자의 서비스 제작의 활동 소개와 프로그램 정체성을 확인했습니다."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "depromeet",
+    "orgId": "org-depromeet",
+    "title": "디프만 · Depromeet",
+    "subtitle": "디자이너와 개발자가 함께 출시하는 서비스",
+    "category": "연합동아리",
+    "cover": "/clubs/depromeet.png",
+    "coverSource": {
+      "url": "https://www.depromeet.com/og-main.jpg",
+      "pageUrl": "https://www.depromeet.com",
+      "kind": "og",
+      "checkedAt": "2026-09-24"
+    },
+    "notices": [
+      {
+        "id": "depromeet-verified",
+        "round": "19기",
+        "current": true,
+        "participationType": "application",
+        "status": "scheduled",
+        "roles": [
+          "디자인",
+          "프론트엔드",
+          "백엔드",
+          "Android",
+          "iOS"
+        ],
+        "activities": [
+          {
+            "action": "제작",
+            "evidence": "공식 소개는 서비스 기획부터 출시까지 협업하며, 19기 일정에 프리 런칭·런칭데이를 명시합니다."
+          }
+        ],
+        "start": "2026-10-02",
+        "deadline": "2026-10-08",
+        "eventDate": null,
+        "eventEndDate": null,
+        "activitySchedule": "2026.10.31 OT – 2027.02.20 최종 발표 · 토요일",
+        "selectionProcess": [
+          "자기소개서·이력서/포트폴리오",
+          "직무·컬처핏 온라인 인터뷰",
+          "최종 발표"
+        ],
+        "location": "수도권 오프라인·온라인",
+        "cost": null,
+        "audience": null,
+        "qualification": "매주 토요일 세션. 서류에 자기소개서와 이력서/포트폴리오 제출. 학적·나이 제한은 미확인. 마감 10월 8일 23:59:59.",
+        "officialUrl": "https://www.depromeet.com",
+        "registrationUrl": "https://www.depromeet.com/recruit",
+        "sources": [
+          {
+            "url": "https://www.depromeet.com/recruit",
+            "label": "공식 모집 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "19기 공식 공지: 10/2–8 서류, 10/12 서류 발표, 10/17–18 인터뷰, 10/22 최종 발표. 10/31 OT부터 이듬해 2/20 최종 발표 일정."
+          },
+          {
+            "url": "https://www.depromeet.com",
+            "label": "공식 소개",
+            "checkedAt": "2026-09-24",
+            "evidence": "디자이너와 개발자가 함께 출시하는 서비스의 활동 소개와 프로그램 정체성을 확인했습니다."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "mashup",
+    "orgId": "org-mashup",
+    "title": "Mash-Up · 매쉬업",
+    "subtitle": "학생과 직장인이 함께하는 디자인·개발 커뮤니티",
+    "category": "연합동아리",
+    "cover": "/clubs/mashup.png",
+    "coverSource": {
+      "url": "https://mash-up.kr/_next/static/media/mash-up-thumbnail.d72025fe.png",
+      "pageUrl": "https://mash-up.kr",
+      "kind": "og",
+      "checkedAt": "2026-09-24"
+    },
+    "notices": [
+      {
+        "id": "mashup-verified",
+        "round": "16기",
+        "current": true,
+        "participationType": "application",
+        "status": "unknown",
+        "roles": [
+          "디자인",
+          "프론트엔드",
+          "백엔드",
+          "Android",
+          "iOS"
+        ],
+        "activities": [
+          {
+            "action": "제작",
+            "evidence": "공식 소개에서 디자이너와 개발자의 협업 서비스 제작 및 팀 해커톤을 안내합니다."
+          }
+        ],
+        "start": null,
+        "deadline": null,
+        "eventDate": null,
+        "eventEndDate": null,
+        "activitySchedule": null,
+        "selectionProcess": [
+          "서류",
+          "온·오프라인 면접",
+          "최종 합격"
+        ],
+        "location": null,
+        "cost": null,
+        "audience": [
+          "학생",
+          "직장인"
+        ],
+        "qualification": "팀 중복 지원 불가. 세부 나이·학적·직군 조건은 공식 팀별 공고 확인. 공식 페이지의 전형 날짜가 모두 접속일로 표시되어 일정·모집상태를 확정하지 않았습니다.",
+        "officialUrl": "https://mash-up.kr",
+        "registrationUrl": "https://recruit.mash-up.kr/",
+        "sources": [
+          {
+            "url": "https://recruit.mash-up.kr/",
+            "label": "공식 모집 안내",
+            "checkedAt": "2026-09-24",
+            "evidence": "16기 공식 모집 페이지의 서류/면접 절차와 팀/학생·직장인 대상 확인. OPEN 문구와 비정상 날짜를 현재 접수 근거로 사용하지 않음."
+          },
+          {
+            "url": "https://mash-up.kr",
+            "label": "공식 소개",
+            "checkedAt": "2026-09-24",
+            "evidence": "학생과 직장인이 함께하는 디자인·개발 커뮤니티의 활동 소개와 프로그램 정체성을 확인했습니다."
+          }
+        ]
+      }
+    ]
   }
 ];

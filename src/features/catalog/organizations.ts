@@ -154,5 +154,48 @@ export const organizations: Organization[] = [
     "initial": "SK",
     "color": "#984d2b",
     "logo": "/organizations/sk.svg"
+  },
+
+  {
+    "id": "org-sopt",
+    "name": "SOPT · 솝트",
+    "description": "대학생 IT 벤처창업 동아리 · 확인된 OB 서버 전형",
+    "initial": "S",
+    "color": "#315b52"
+  },
+  {
+    "id": "org-piro",
+    "name": "피로그래밍",
+    "description": "대학생 웹 개발 학습과 팀 프로젝트",
+    "initial": "P",
+    "color": "#315b52"
+  },
+  {
+    "id": "org-cotato",
+    "name": "COTATO · 코테이토",
+    "description": "CS 학습과 기획·디자인·개발 협업",
+    "initial": "C",
+    "color": "#315b52"
+  },
+  {
+    "id": "org-yapp",
+    "name": "YAPP · 얍",
+    "description": "기획자·디자이너·개발자의 서비스 제작",
+    "initial": "Y",
+    "color": "#315b52"
+  },
+  {
+    "id": "org-depromeet",
+    "name": "디프만 · Depromeet",
+    "description": "디자이너와 개발자가 함께 출시하는 서비스",
+    "initial": "D",
+    "color": "#315b52"
+  },
+  {
+    "id": "org-mashup",
+    "name": "Mash-Up · 매쉬업",
+    "description": "학생과 직장인이 함께하는 디자인·개발 커뮤니티",
+    "initial": "M",
+    "color": "#315b52"
   }
 ];

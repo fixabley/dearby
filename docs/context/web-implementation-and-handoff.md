@@ -1,5 +1,18 @@
 # Dearby 웹 구현 인계
 
+## 연합동아리 탐색 반영 — 2026-09-24
+
+사용자 직접 요청으로 기존6fbf5ce에서 구현. 새 Dispatch 없이 사용자 소유 작업이므로 종료된 lifecycle 재전송 없음. SOPT·피로그래밍·COTATO·YAPP·디프만·Mash-Up 6프로그램 추가 → 28프로그램/30공고/26조직. 공식 모집/소개 URL·근거는 data.ts, 이미지 OG5+대표영역캡처1 출처는 public/clubs/SOURCES.md. 후보저장소 https://github.com/itsChrisJang/dev-club-schedule 은 발견용이며 모집사실 근거는 공식 출처.
+
+전체/컨퍼런스/연합동아리 유형 필터를 URL·검색·0건 대안에 연결했다. 기존16:9카드/좌측탐색/분야칩 유지, 동아리는 카드 선발요약·활동기간·회비, 상세 기수별지원/선발절차/지원조건/공식모집링크로 구분한다. same-notice semantics, 독립 조직/프로그램 저장·저장실패·SSR hydration 유지. 새 dependency/범용 추상화 없음.
+
+사실 제한: 디프만 공식 페이지가 19기로 갱신됨을 재확인(10/2–8 모집예정, 10/17–18 인터뷰, 10/22 최종,10/31–이듬해2/20활동). SOPT는39기 OB 서버 공고만확인하여 다른파트나 신규YB자격으로 확대하지 않음. YAPP28기모집마감, 피로그래밍25기연도미표기로날짜/현재상태미확인, COTATO기수/현재모집미확인, Mash-Up16기날짜가접속일로반복되어모집미확인. DND는전형순서미확인으로제외. 자격미확인을누구나가능으로해석하지않음.
+
+담당실행검증: lint/typecheck/unit14/build(28상세SSG)/productionE2E38/devChromium10+WebKit10=20 통과. 실제1440/390 screenshots `test-results/desktop-clubs.png`, `mobile-club-detail.png` 열어검토. 공식자산6개도전부열어확인. 신규유형URL/새로고침/뒤로가기/선발정보/독립스크랩복원/console·pageerror0/overflow없음/axeAA0, 기존저장실패·hydration회귀 통과. 앱제공경험 추가로 기존0건fixture를 실제0건인Linux+앱제작으로변경했고검사완화없음. Ponytail review: Lean already. Ship. 기존필터·카드·상세에필요필드만확장.
+
+메인전달검증은별도: 직전6fbf5ce는메인에서22프로그램통합·unit13/브라우저36/실제이미지확인완료했다고 terminalread로확인. 이번동아리의 root통합/3000실제반영은메인에인계. 다른checkout/root3000/Orca page/CI/제품정본미수정. AGENTS자동diff는보존·미커밋. 완료후사용자에게보이는세션으로유지.
+
+
 ## GitHub 목록 참고 카탈로그 보강 — 2026-09-24 16:44 KST
 
 사용자가 이 하위세션에 직접 요청한 후속 작업: 한국 IT 컨퍼런스 GitHub repository를 참고해 보강. 기준95fead2이며 새 Dispatch 없이 사용자 소유 작업으로 수행했다. 종료된Task/Dispatch lifecycle을 재전송하지 않는다.

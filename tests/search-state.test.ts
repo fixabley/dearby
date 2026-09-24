@@ -5,6 +5,7 @@ import { emptyFilters } from "../src/features/catalog/model";
 test("URL retains filters and validates unknown values", () => {
   const f = {
     ...emptyFilters,
+    category: "연합동아리",
     query: "서비스",
     roles: ["iOS"],
     experiences: ["mentor", "app"],
@@ -18,7 +19,7 @@ test("URL retains filters and validates unknown values", () => {
   );
   assert.deepEqual(
     readFilters(
-      new URLSearchParams("roles=unknown&experiences=toString&priority=app"),
+      new URLSearchParams("category=unknown&roles=unknown&experiences=toString&priority=app"),
     ),
     emptyFilters,
   );

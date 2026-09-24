@@ -8,9 +8,9 @@ const notice = (patch: Partial<Notice> = {}): Notice => ({ ...base.notices[0], .
 const program = (id: string, notices: Notice[]): Program => ({ ...base, id, notices });
 
 test("official snapshot has unique programs/rounds, valid source provenance and local artwork", () => {
-  assert.equal(programs.length, 22);
-  assert.equal(new Set(programs.map(p => p.id)).size, 22);
-  assert.equal(searchPrograms(programs, f).length, 22);
+  assert.equal(programs.length, 28);
+  assert.equal(new Set(programs.map(p => p.id)).size, 28);
+  assert.equal(searchPrograms(programs, f).length, 28);
   const ids = programs.flatMap(p => p.notices.map(n => n.id));
   assert.equal(new Set(ids).size, ids.length);
   for (const p of programs) {
@@ -106,12 +106,12 @@ test("priority, nonduplicated parent counts, deadline and latest start ranking",
   assert.deepEqual(searchPrograms([make("missing", [], { eventDate: null, deadline: null }), make("known", [], { deadline: "2026-10-01" })], f).map(p => p.id), ["known", "missing"]);
 });
 test("zero-results alternatives are valid, preserve whole OR groups and never silently relax", () => {
-  const filters = { ...f, roles: ["Android"], experiences: ["app"] };
+  const filters = { ...f, roles: ["Linux"], experiences: ["app"] };
   assert.equal(searchPrograms(programs, filters).length, 0);
   const options = suggestions(programs, filters);
   assert.ok(options.length > 0 && options.length <= 4);
   for (const option of options) { assert.ok(option.removed.length); assert.equal(option.count, searchPrograms(programs, option.filters).length); assert.ok(option.count > 0); }
-  assert.deepEqual(filters.roles, ["Android"]);
+  assert.deepEqual(filters.roles, ["Linux"]);
   const worst = { ...f, query: "없는 행사", roles: [...roles], experiences: Object.keys(experiences), allRoles: true, openOnly: true };
   const start = performance.now();
   const alternatives = suggestions(programs, worst);
@@ -139,4 +139,25 @@ test("repository-discovered joint events are deduplicated and official correctio
   assert.equal(get("skai").round, "2025");
   assert.equal(programs.find(p => p.id === "real")!.orgId, "org-sds");
   assert.deepEqual(searchPrograms(programs, { ...f, roles: ["Linux"] }).map(p => p.id), ["ubucon"]);
+});
+
+
+test("club selection facts and category constraints remain separate from registration", () => {
+  const clubs = searchPrograms(programs, { ...f, category: "연합동아리" });
+  assert.equal(clubs.length, 6);
+  assert.ok(clubs.every(p => p.notices[0].participationType === "application" && p.notices[0].selectionProcess?.length));
+  const get = (id: string) => clubs.find(p => p.id === id)!.notices[0];
+  assert.equal(noticeStatus(get("depromeet")), "모집 예정");
+  assert.equal(get("depromeet").deadline, "2026-10-08");
+  assert.equal(get("mashup").status, "unknown");
+  assert.equal(get("mashup").deadline, null);
+  assert.match(get("sopt").round, /OB/);
+  assert.deepEqual(get("sopt").roles, ["백엔드"]);
+  assert.match(get("cotato").qualification!, /주·복수전공/);
+  assert.equal(get("depromeet").audience, null);
+  assert.equal(searchPrograms(programs, { ...f, category: "연합동아리", openOnly: true }).length, 0);
+  assert.ok(searchPrograms(programs, { ...f, roles: ["Android"], experiences: ["app"] }).some(p => p.id === "yapp"));
+  const zero = { ...f, category: "컨퍼런스", query: "YAPP" };
+  assert.equal(searchPrograms(programs, zero).length, 0);
+  assert.ok(suggestions(programs, zero).some(o => o.filters.query === "YAPP" && !o.filters.category));
 });

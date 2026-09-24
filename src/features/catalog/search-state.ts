@@ -9,6 +9,7 @@ export function readFilters(params: Pick<URLSearchParams, "get">): Filters {
   const priority = params.get("priority") || "";
   return {
     ...emptyFilters,
+    category: ["컨퍼런스", "연합동아리"].includes(params.get("category") || "") ? params.get("category")! : "",
     query: params.get("q") || "",
     roles: selectedRoles,
     experiences: selectedExperiences,
@@ -19,9 +20,10 @@ export function readFilters(params: Pick<URLSearchParams, "get">): Filters {
 }
 export function filtersUrl(filters: Filters, current: string) {
   const params = new URLSearchParams(current);
-  for (const key of ["q", "roles", "experiences", "all", "open", "priority"])
+  for (const key of ["category", "q", "roles", "experiences", "all", "open", "priority"])
     params.delete(key);
   if (params.get("view") === "open" && !filters.openOnly) params.delete("view");
+  if (filters.category) params.set("category", filters.category);
   if (filters.query) params.set("q", filters.query);
   if (filters.roles.length) params.set("roles", filters.roles.join(","));
   if (filters.experiences.length)

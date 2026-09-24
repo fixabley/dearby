@@ -95,7 +95,7 @@ export function Shell({ children }: { children: ReactNode }) {
           <p>
             공식 출처로 살펴보는
             <br />
-            국내 IT 컨퍼런스
+            IT 컨퍼런스 · 연합동아리
           </p>
           <small>© 2026 Dearby</small>
         </div>

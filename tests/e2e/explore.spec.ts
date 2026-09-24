@@ -7,7 +7,7 @@ test("explore, detail, separate saved entities and reload restoration", async ({
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("/");
-  await expect(page.locator(".program-card")).toHaveCount(22);
+  await expect(page.locator(".program-card")).toHaveCount(28);
   await expect(
     page.getByText("2026.09.24 기준", { exact: false }),
   ).toBeVisible();
@@ -81,7 +81,7 @@ test("filter subset suggestions apply and undo, search and recruitment", async (
   page,
 }, info) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "백엔드", exact: true }).click();
+  await page.getByRole("button", { name: "Linux", exact: true }).click();
   await page.getByRole("button", { name: /경험·상세 필터/ }).click();
   await page.getByLabel("제작 | 앱 · 팀협업", { exact: true }).check();
   await page.getByRole("button", { name: "결과 보기" }).click();
@@ -103,7 +103,7 @@ test("filter subset suggestions apply and undo, search and recruitment", async (
   await page.getByRole("button", { name: "되돌리기" }).click();
   await expect(page.locator(".program-card")).toHaveCount(0);
   await page.getByRole("button", { name: "필터 초기화" }).first().click();
-  await expect(page.locator(".program-card")).toHaveCount(22);
+  await expect(page.locator(".program-card")).toHaveCount(28);
   await page.getByRole("button", { name: /경험·상세 필터/ }).click();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).not.toBeVisible();
@@ -116,9 +116,9 @@ test("filter subset suggestions apply and undo, search and recruitment", async (
   await expect(page.locator(".program-card")).toHaveCount(1);
   await page.getByRole("button", { name: "필터 초기화", exact: true }).click();
   await expect(page).toHaveURL("http://127.0.0.1:3210/");
-  await expect(page.locator(".program-card")).toHaveCount(22);
+  await expect(page.locator(".program-card")).toHaveCount(28);
   await expect(
-    page.getByRole("heading", { name: "다음 컨퍼런스를 만나보세요", exact: true }),
+    page.getByRole("heading", { name: "다음 경험을 만나보세요", exact: true }),
   ).toBeVisible();
 });
 test("corrupt storage and write failure are visible, keyboard focus is reachable", async ({

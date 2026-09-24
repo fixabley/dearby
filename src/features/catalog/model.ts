@@ -51,6 +51,8 @@ export type Notice = {
   cost: string | null;
   audience: string[] | null;
   qualification: string | null;
+  selectionProcess?: string[];
+  activitySchedule?: string | null;
   officialUrl: string;
   registrationUrl: string | null;
   sources: Source[];
@@ -72,6 +74,7 @@ export function eventDates(n: Notice) {
   return displayDate(n.eventDate) + (n.eventEndDate && n.eventEndDate !== n.eventDate ? ` – ${displayDate(n.eventEndDate)}` : "");
 }
 export type Filters = {
+  category: string;
   query: string;
   roles: string[];
   experiences: string[];
@@ -80,6 +83,7 @@ export type Filters = {
   priority: string;
 };
 export const emptyFilters: Filters = {
+  category: "",
   query: "",
   roles: [],
   experiences: [],
@@ -119,6 +123,7 @@ export function matchingNotices(p: Program, f: Filters) {
   );
 }
 export function noticeStatus(n: Notice) {
+  if (n.selectionProcess) return ({ open: "모집 중", scheduled: "모집 예정", closed: "모집 마감", ended: "활동 종료", unknown: "모집 미확인" })[n.status];
   const labels = { open: n.participationType === "application" ? "참가 신청 중" : "등록 중", scheduled: "등록 예정", closed: "등록 마감", ended: "행사 종료", unknown: "등록 미확인" };
   return labels[n.status];
 }
@@ -155,7 +160,7 @@ export function searchPrograms(data: Program[], f: Filters) {
       (p) =>
         `${p.title} ${p.subtitle} ${p.category} ${organizations.find(o => o.id === p.orgId)?.name ?? ""} ${p.notices.filter(n => n.current).map(n => n.round).join(" ")}`
           .toLocaleLowerCase()
-          .includes(query) && matchingNotices(p, f).length,
+          .includes(query) && (!f.category || p.category === f.category) && matchingNotices(p, f).length,
     )
     .sort((a, b) => {
       const best = (p: Program) =>
@@ -167,6 +172,7 @@ export function searchPrograms(data: Program[], f: Filters) {
 }
 export function filterLabels(f: Filters) {
   return [
+    ...(f.category ? [f.category] : []),
     ...(f.query ? [`검색: ${f.query}`] : []),
     ...f.roles,
     ...f.experiences.map((e) => experiences[e].label),
@@ -182,15 +188,18 @@ export function suggestions(data: Program[], f: Filters) {
     : f.roles.length ? [f.roles, []] : [[]];
   const experienceOptions = f.experiences.length ? [f.experiences, []] : [[]];
   const queryOptions = f.query ? [f.query, ""] : [""];
+  const categoryOptions = f.category ? [f.category, ""] : [""];
   const openOptions = f.openOnly ? [true, false] : [false];
   const originalLabels = filterLabels(f);
   const results: { filters: Filters; count: number; removed: string[] }[] = [];
   for (const roles of roleOptions)
     for (const experiences of experienceOptions)
       for (const query of queryOptions)
-        for (const openOnly of openOptions) {
+        for (const openOnly of openOptions)
+          for (const category of categoryOptions) {
           const next = {
             ...f,
+            category,
             roles,
             experiences,
             query,
