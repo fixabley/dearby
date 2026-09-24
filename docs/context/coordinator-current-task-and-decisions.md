@@ -10,6 +10,12 @@
 
 사용자의 후속 요청으로 공식 ksug.org/assets/images/logo.png를 org-ksug에 적용했다. 카드·상세·스크랩은 기존 OrganizationAvatar 재사용. child95fead2 → root432d00a 통합, 담당 lint/typecheck/build 및 1440/390 로고·저장복원 검증 통과. 메인은 diff/Ponytail 검토·이미지 캡처 확인 및 localhost3000 자산200·Orca 검색결과 KSUG 이미지 실제로드 확인. Task task_7bdc3443d670 / Dispatch ctx_49877680dea4 succeeded·retain·ack 완료.
 
+## GitHub 후보 4개 보강 통합 — 2026-09-24 완료
+
+하위 세션 사용자 직접 후속 `6fbf5ce`를 root `253daa0`에 충돌 없이 통합했다. UbuCon×MiniDebConf2026, KCD×Ceph×OpenInfra2026, REAL Summit2026, SK AI Summit2025 추가: 현재22프로그램·24공고·20조직. Linux필터 및 공식이미지4·기업로고2 추가. 공동행사 중복 방지·삼성SDS 분리·종료/미확인 표시를 검토했다. Ponytail 추가 삭제 후보 없음.
+
+메인 lint/typecheck/unit13/build/prodE2E36 재통과. 담당 dev18 결과는 별도이며 이번 메인에서는 반복하지 않았다. Orca 전체22개/신규4개 종료표시 및 별도 Chromium 신규4개 상세·이미지로드·pageerror0 확인. 사용자 직접 작업이므로 새 Dispatch나 종료 lifecycle 재전송 없음. 웹 세션 유지. 원격 push/PR/배포 없음.
+
 ## 사용자 목적과 승인
 
 기존 네이티브/API 실행 코드를 보존 후 제거하고 최근 재기획의 프로그램 탐색·필터·상세·조직/프로그램 스크랩을 웹으로 구현한다. 고등학생·대학생·취준생을 포함하며 YouTube처럼 읽기 쉬운 썸네일 탐색 구조를 원한다. 첫 콘텐츠는 컨퍼런스, 교육 과정은 후속이다. 잠든 동안 범위 내 미정 사항은 자율 판단하도록 승인했다.
@@ -33,7 +39,7 @@ Orca 실제 브라우저에서 전체 목록→우아콘 상세→스크랩→�
 
 ## 세션과 미리보기
 
-- http://127.0.0.1:3000 실행 중. 서버 terminal `term_f9504257-412a-4374-ac61-85add5f30816`, root browser page `d26f381c-df01-4020-9115-53457b1007ba`.
+- http://127.0.0.1:3000 실행 중. 서버 terminal `term_a6ff6181-bf0a-4cd1-a5a6-cf641025916a`, root browser page `b99a9e23-82b0-4349-a854-b6bfa204ef82`.
 - Orca `run_469a74207c03`, Task `task_11416b48d24f`, Dispatch `ctx_259771a9ca90`: succeeded 보고 수신·검토·retain·delivery ack 완료. 하위 웹 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9` 유지. 회수 대기 worker 없음.
 - 하위 checkout `dearby-web`, `fixabley/dearby-web`, 메인 부모 연결. 문서/커밋은 자동 동기화되지 않는다. child의 Next 자동 AGENTS diff는 기존대로 보존하며 root 통합 대상에서 제외했다.
 

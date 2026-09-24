@@ -12,3 +12,5 @@
 검증·백업·다음 행동은 [조율 문서](coordinator-current-task-and-decisions.md)를 따른다. 원격 push/PR/병합/배포는 수행하지 않았다. worktree 간 문서·대화는 자동 동기화되지 않는다.
 
 2026-09-24 10:26 KST 추가: 기업 로고 아바타 Task task_9caee518b4c1 / Dispatch ctx_beeec3876c97 succeeded·retain·ack 완료. child2373bc5 → root1f9cbdc 통합. 같은 웹 세션 유지, 위 새 서버 핸들로 재시작.
+
+최신 재확인 2026-09-24: runtime caefeb75-8768-4e65-ada4-dd20162c2563. 사용자 직접 후속 child6fbf5ce → root253daa0 통합·메인검증완료. 서버 term_a6ff6181-bf0a-4cd1-a5a6-cf641025916a, page b99a9e23-82b0-4349-a854-b6bfa204ef82, localhost:3000. 위 이전 runtime/서버/page는 재사용하지 않는다. 웹 terminal은 목록 재확인 결과 기존 term_db69f423-a4bc-45ae-910d-ede154eab9d9 유지. 새 lifecycle 없음.
