@@ -6,7 +6,7 @@ test("explore, detail, separate saved entities and reload restoration", async ({
 }, info) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/");
+  await page.goto("/?view=all");
   await expect(page.locator(".program-card")).toHaveCount(28);
   await expect(
     page.getByText("2026.09.24 기준", { exact: false }),
@@ -80,7 +80,7 @@ test("explore, detail, separate saved entities and reload restoration", async ({
 test("filter subset suggestions apply and undo, search and recruitment", async ({
   page,
 }, info) => {
-  await page.goto("/");
+  await page.goto("/?view=all");
   await page.getByRole("button", { name: "Linux", exact: true }).click();
   await page.getByRole("button", { name: /경험·상세 필터/ }).click();
   await page.getByLabel("제작 | 앱 · 팀협업", { exact: true }).check();
@@ -115,7 +115,7 @@ test("filter subset suggestions apply and undo, search and recruitment", async (
   await page.getByRole("button", { name: "iOS", exact: true }).click();
   await expect(page.locator(".program-card")).toHaveCount(1);
   await page.getByRole("button", { name: "필터 초기화", exact: true }).click();
-  await expect(page).toHaveURL("http://127.0.0.1:3210/");
+  await expect(page).toHaveURL("http://127.0.0.1:3210/?view=all");
   await expect(page.locator(".program-card")).toHaveCount(28);
   await expect(
     page.getByRole("heading", { name: "다음 경험을 만나보세요", exact: true }),
@@ -136,7 +136,7 @@ test("corrupt storage and write failure are visible, keyboard focus is reachable
       return original.call(this, key, value);
     };
   });
-  await page.goto("/");
+  await page.goto("/?view=all");
   await expect(page.getByRole("status")).toContainText("불러오지 못했습니다");
   await expect(
     page
@@ -167,7 +167,7 @@ test("corrupt storage and write failure are visible, keyboard focus is reachable
 test("accessible explore, modal and detail; menu toggles and focus returns", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?view=all");
   await expect(page.locator("body")).toBeVisible();
   const audit = async () => {
     const result = await new AxeBuilder({ page })
@@ -197,7 +197,7 @@ test("accessible explore, modal and detail; menu toggles and focus returns", asy
 test("filters survive details and browser back; saved organization tab has relevant controls", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/?view=all");
   await page.getByRole("button", { name: "백엔드", exact: true }).click();
   const count = await page.locator(".program-card").count();
   await expect(page).toHaveURL(/roles=/);
@@ -220,14 +220,14 @@ test("another tab clear is reflected and denied storage can be retried", async (
   page,
   context,
 }) => {
-  await page.goto("/");
+  await page.goto("/?view=all");
   await page
     .locator(".program-card")
     .first()
     .getByRole("button", { name: "프로그램 스크랩", exact: true })
     .click();
   const other = await context.newPage();
-  await other.goto("/");
+  await other.goto("/?view=all");
   await other.evaluate(() => localStorage.clear());
   await expect(
     page
@@ -273,13 +273,12 @@ test("card and detail use the latest verified round without claiming unrestricte
   await page.goto("/?q=if(kakao)");
   const card = page.locator('.program-card[data-notice-id="kakao-2026"]');
   await expect(card).toContainText("참가 신청 중");
-  await expect(card).toContainText("2026.10.13 – 2026.10.14");
-  await expect(card).toContainText("무료");
   await expect(card).toContainText("2026.09.28");
   await card.locator(".card-title").click();
   const notice = page.locator('.notice[data-notice-id="kakao-2026"]');
+  await expect(notice).toContainText("2026.10.13 – 2026.10.14");
+  await expect(notice).toContainText("무료");
   await expect(notice).toContainText("만 18세 이상");
   await expect(notice).toContainText("낮 12시");
-  await expect(page.locator('.notice[data-notice-id="kakao-2025"]')).toContainText("행사 종료");
-  await expect(page.locator('.notice[data-notice-id="kakao-2025"]')).toContainText("2025.09.23");
+  await expect(page.locator('.notice[data-notice-id="kakao-2025"]')).toHaveCount(0);
 });

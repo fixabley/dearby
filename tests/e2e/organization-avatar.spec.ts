@@ -6,7 +6,7 @@ test("official company logos load across cards, details and saved organizations"
   const errors: string[] = [];
   page.on("pageerror", e => errors.push(e.message));
   page.on("console", m => { if (m.type() === "error") errors.push(m.text()); });
-  await page.goto("/");
+  await page.goto("/?view=all");
   for (const id of ["woowacon", "dan", "kakao", "toss", "techverse", "aws", "ktcloud", "saif"]) {
     const logo = page.locator(`.program-card:has(a[href="/programs/${id}"]) .avatar img`);
     await logo.scrollIntoViewIfNeeded();

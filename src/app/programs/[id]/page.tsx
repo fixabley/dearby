@@ -3,17 +3,18 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { programs, organizations, snapshotDate } from "@/features/catalog/data";
-import { noticeStatus, eventDates, displayDate } from "@/features/catalog/model";
+import { activeNotices, noticeStatus, eventDates, displayDate } from "@/features/catalog/model";
 import { SaveButton } from "@/features/saved/save-button";
 export function generateStaticParams() { return programs.map(p => ({ id: p.id })); }
 export default async function ProgramPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const p = programs.find(p => p.id === id);
   if (!p) notFound();
+  const notices = activeNotices(p);
   const club = p.category === "연합동아리";
   const org = organizations.find(o => o.id === p.orgId)!;
   return <>
-    <Link href="/" className="back-link">← 전체 탐색</Link>
+    <Link href="/?view=all" className="back-link">← 전체 탐색</Link>
     <div className="watch-layout">
       <section className="watch-main">
         <Image className="detail-cover" src={p.cover} alt={`${p.title} 공식 ${p.coverSource.kind === "og" ? "공유이미지" : "페이지 캡처"}`} width={1200} height={675} sizes="(max-width: 720px) 100vw, 65vw" preload />
@@ -25,12 +26,12 @@ export default async function ProgramPage({ params }: { params: Promise<{ id: st
         </div>
       </section>
       <aside className="notice-list" aria-labelledby="notices-title">
-        <h2 id="notices-title">{club ? "기수별 지원 정보" : "회차별 참가 정보"} <span>{p.notices.length}</span></h2>
-        <p className="muted">확인된 대표 회차의 정보로 검색합니다. 이전 모집과 지난 행사도 볼 수 있어요.</p>
-        {p.notices.map(n => <article className={`notice ${n.status === "ended" ? "past" : ""}`} key={n.id} data-notice-id={n.id}>
+        <h2 id="notices-title">{club ? "기수별 지원 정보" : "회차별 참가 정보"} <span>{notices.length}</span></h2>
+        <p className="muted">현재 모집중이거나 공식 모집 예정인 공고만 표시합니다.</p>
+        {!notices.length && <div className="notice-empty"><h3>현재 확인된 모집 공고 없음</h3><p>모집이 마감되었거나 다음 모집 일정이 아직 확인되지 않았어요. 프로그램을 스크랩하고 공식 소식을 살펴보세요.</p><a className="primary" href={p.notices[0].officialUrl} target="_blank" rel="noreferrer">공식 사이트 ↗<span className="sr-only"> (새 창)</span></a></div>}
+        {notices.map(n => <article className="notice" key={n.id} data-notice-id={n.id}>
           <div className="notice-top"><span>{n.round} · {n.current ? "확인된 대표 회차" : "이전 회차"}</span><b className={`event-status status-${n.status}`}>{noticeStatus(n)}</b></div>
           <h3>{p.title} {n.round}</h3>
-          {n.status === "ended" && <div className="past-note">지난 행사입니다. 남아 있는 신청 링크나 다시보기 등록은 현재 행사 모집을 뜻하지 않습니다.</div>}
           {club && <section className="selection-process" aria-label="선발 절차"><h4>선발 절차</h4><ol>{n.selectionProcess?.map(step => <li key={step}>{step}</li>)}</ol></section>}
           <dl className="event-facts">
             <div><dt>{club ? "활동 일정" : "개최일"}</dt><dd>{club ? n.activitySchedule ?? "미확인" : eventDates(n)}</dd></div>
@@ -43,7 +44,7 @@ export default async function ProgramPage({ params }: { params: Promise<{ id: st
           </dl>
           <div className="official-links">
             <a className="primary" href={n.officialUrl} target="_blank" rel="noreferrer">공식 사이트 ↗<span className="sr-only"> (새 창)</span></a>
-            {n.registrationUrl && <a href={n.registrationUrl} target="_blank" rel="noreferrer">{club ? "공식 모집 안내" : n.status === "ended" ? "당시 등록 안내" : n.status === "open" ? "공식 참가 신청" : "등록 안내 확인"} ↗<span className="sr-only"> (새 창)</span></a>}
+            {n.registrationUrl && <a href={n.registrationUrl} target="_blank" rel="noreferrer">{club ? "공식 모집 안내" : n.status === "open" ? "공식 참가 신청" : "등록 안내 확인"} ↗<span className="sr-only"> (새 창)</span></a>}
           </div>
           <p>{club ? "모집 직군·분야" : "주제·분야"}: {n.roles.join(" · ") || "미확인"}</p>
           <details open={n.current}><summary>제공 경험과 근거</summary>

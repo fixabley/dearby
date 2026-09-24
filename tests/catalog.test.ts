@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 import { programs, organizations, snapshotDate } from "../src/features/catalog/data";
-import { emptyFilters as f, roles, experiences, searchPrograms, matchingNotices, suggestions, activityMatches, representativeNotice, noticeStatus, eventDates, type Notice, type Program } from "../src/features/catalog/model";
+import { activeNotices, emptyFilters as f, roles, experiences, searchPrograms, matchingNotices, suggestions, activityMatches, representativeNotice, noticeStatus, eventDates, type Notice, type Program } from "../src/features/catalog/model";
 const base = programs.find(p => p.id === "woowacon")!;
 const notice = (patch: Partial<Notice> = {}): Notice => ({ ...base.notices[0], ...patch });
 const program = (id: string, notices: Notice[]): Program => ({ ...base, id, notices });
@@ -160,4 +160,14 @@ test("club selection facts and category constraints remain separate from registr
   const zero = { ...f, category: "컨퍼런스", query: "YAPP" };
   assert.equal(searchPrograms(programs, zero).length, 0);
   assert.ok(suggestions(programs, zero).some(o => o.filters.query === "YAPP" && !o.filters.category));
+});
+
+
+test("visible notices include only open and scheduled while programs remain discoverable", () => {
+  const states: Notice["status"][] = ["open", "scheduled", "closed", "ended", "unknown"];
+  const p = program("mixed", states.map(status => notice({ id: status, status })));
+  assert.deepEqual(activeNotices(p).map(n => n.id), ["open", "scheduled"]);
+  assert.equal(activeNotices(programs.find(p => p.id === "aws")!).length, 0);
+  assert.equal(searchPrograms(programs, { ...f, query: "AWS Summit" }).length, 1);
+  assert.equal(activeNotices(programs.find(p => p.id === "depromeet")!)[0].status, "scheduled");
 });

@@ -1,10 +1,12 @@
 "use client";
+import { Discovery } from "./discovery";
 import { OrganizationAvatar } from "./organization-avatar";
 import { useSearchParams } from "next/navigation";
 import { readFilters, filtersUrl } from "./search-state";
 import { useState } from "react";
 import { organizations, programs } from "./data";
 import {
+  activeNotices,
   emptyFilters,
   filterLabels,
   searchPrograms,
@@ -37,22 +39,26 @@ export function Explore() {
   const data =
     view === "saved"
       ? programs.filter((p) => saved.programs.includes(p.id))
-      : programs;
+      : view === "available" ? programs.filter(p => activeNotices(p).length) : programs;
   const results = searchPrograms(data, f);
   const options = !results.length ? suggestions(data, f) : [];
   const change = (next: Filters) => {
-    window.history.replaceState(null, "", filtersUrl(next, params.toString()));
+    const current = new URLSearchParams(params.toString());
+    if (view !== "saved" && !filterLabels(next).length) current.set("view", "all");
+    window.history.replaceState(null, "", filtersUrl(next, current.toString()));
     setUndo(null);
   };
+  const discovery = !params.has("view") && !params.has("q") && !filterLabels(f).length;
   return (
     <>
       {!showOrganizations && <FilterControls filters={f} onChange={change} />}
+      {discovery ? <Discovery /> : <>
       <div className="listing-heading">
         <div>
           <h1>
             {view === "saved"
               ? "나의 스크랩"
-              : f.openOnly
+              : view === "available" ? "모집중·예정인 프로그램" : f.openOnly
                 ? "지금, 함께할 수 있는 경험"
                 : f.query
                   ? `“${f.query}” 검색 결과`
@@ -196,6 +202,7 @@ export function Explore() {
           </button>
         </div>
       )}
+      </>}
     </>
   );
 }

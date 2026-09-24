@@ -10,7 +10,7 @@ export function Shell({ children }: { children: ReactNode }) {
     params = useSearchParams(),
     path = usePathname();
   const { message, issue, retry, reset } = useSaved();
-  const section = params.get("view") || "all";
+  const section = params.get("view") || (params.size ? "all" : "home");
   return (
     <div className={collapsed ? "app collapsed" : "app"}>
       <a className="skip-link" href="#main">
@@ -43,7 +43,7 @@ export function Shell({ children }: { children: ReactNode }) {
             name="q"
             defaultValue={params.get("q") || ""}
             aria-label="프로그램 검색"
-            placeholder="행사·회사·조직 검색"
+            placeholder="프로그램·회사·조직 검색"
           />
           <button aria-label="검색">
             <Icon name="search" />
@@ -55,7 +55,8 @@ export function Shell({ children }: { children: ReactNode }) {
         <nav>
           {(
             [
-              { id: "all", label: "전체 탐색", icon: "home", href: "/" },
+              { id: "home", label: "발견", icon: "home", href: "/" },
+              { id: "all", label: "전체 탐색", icon: "compass", href: "/?view=all" },
               {
                 id: "open",
                 label: "모집·등록 중",

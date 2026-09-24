@@ -1,0 +1,58 @@
+import { test, expect } from "@playwright/test";
+import AxeBuilder from "@axe-core/playwright";
+
+test("discovery shelves scroll manually and see-all preserves real program groups", async ({ page }, info) => {
+  const errors: string[] = [];
+  page.on("pageerror", e => errors.push(e.message));
+  page.on("console", e => { if (e.type() === "error") errors.push(e.text()); });
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "새로운 경험을 발견하세요" })).toBeVisible();
+  const rail = page.locator(".hero-rail");
+  await expect(rail.locator(".feature-program")).toHaveCount(5);
+  expect(await rail.evaluate(el => el.scrollWidth > el.clientWidth)).toBe(true);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.getByRole("button", { name: "지금 주목할 모집 · 진행중과 예정 다음", exact: true }).click();
+  await expect.poll(() => rail.evaluate(el => el.scrollLeft)).toBeGreaterThan(100);
+  await page.getByRole("button", { name: "지금 주목할 모집 · 진행중과 예정 이전", exact: true }).click();
+  await expect.poll(() => rail.evaluate(el => el.scrollLeft)).toBeLessThan(10);
+  await rail.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect.poll(() => rail.evaluate(el => el.scrollLeft)).toBeGreaterThan(0);
+  await page.keyboard.press("Tab");
+  await rail.evaluate(el => { el.scrollLeft = 0; });
+  await expect.poll(() => rail.evaluate(el => el.scrollLeft)).toBeLessThan(10);
+  await page.evaluate(() => { (document.activeElement as HTMLElement)?.blur(); window.scrollTo(0, 0); });
+  await rail.locator("img").first().evaluate((img: HTMLImageElement) => img.decode());
+  await expect.poll(() => page.evaluate(() => scrollY)).toBe(0);
+  await page.screenshot({ path: `test-results/${info.project.name}-discovery.png`, fullPage: true });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect((await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21aa"]).analyze()).violations).toEqual([]);
+  await page.getByRole("link", { name: "모두 보기 · 지금 주목할 모집 · 진행중과 예정" }).click();
+  await expect(page.locator(".discovery")).toHaveCount(0);
+  await expect(page.locator(".program-card")).toHaveCount(5);
+  await page.reload();
+  await expect(page.locator(".program-card")).toHaveCount(5);
+  await page.goto("/");
+  await page.getByRole("link", { name: "모두 보기 · 동료와 함께 서비스 만들기" }).click();
+  await expect(page).toHaveURL(/experiences=making/);
+  await expect(page.locator(".program-card")).toHaveCount(5);
+  expect(errors).toEqual([]);
+});
+
+test("inactive programs remain searchable and savable without exposing obsolete notices", async ({ page }) => {
+  await page.goto("/?q=YAPP");
+  await expect(page.locator(".program-card")).toHaveCount(1);
+  await expect(page.locator(".program-card")).toContainText("현재 확인된 모집 공고 없음");
+  await expect(page.locator(".program-card")).not.toContainText("28기");
+  await page.locator(".card-title").click();
+  await expect(page.locator(".notice")).toHaveCount(0);
+  await page.getByRole("button", { name: "프로그램 스크랩", exact: true }).click();
+  await page.reload();
+  await expect(page.getByRole("button", { name: "프로그램 스크랩 해제", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await page.goto("/programs/depromeet");
+  await expect(page.locator(".notice")).toHaveCount(1);
+  await expect(page.locator(".notice")).toContainText("모집 예정");
+  await page.goto("/programs/kakao");
+  await expect(page.locator(".notice")).toHaveCount(1);
+  await expect(page.locator(".notice")).not.toContainText("2025");
+});

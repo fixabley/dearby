@@ -1,5 +1,16 @@
 # 웹 구현
 
+## App Store형 발견 홈·공고 노출 변경 — 2026-09-24
+
+사용자가 제공한 App Store 참고화면 및 좌우스크롤 확인 후 승인한 직접요청. 기준6a1f74f. `/`발견홈, `/?view=all`전체그리드, `/?view=available`모집중/예정그리드 분리. 상단5개모집중/예정프로그램 소개를 큰가로카드로, 서비스제작/컨퍼런스/연합동아리는 공통ProgramCard 가로목록으로 표시. 네이티브 overflow/scroll-snap, 다음카드일부노출, 수동좌우버튼/키보드/감소모션 대응. 자동재생/가짜인기/새의존성없음. 검색/유형/경험조건이있으면홈배너없이그리드. 필터초기화는발견홈대신전체그리드.
+
+모집공고는 activeNotices(open/scheduled)만 상세/카드요약에노출. 프로그램28개자체는남겨검색/스크랩가능. 기수는카드제목에서제외하고모집요약에만표시, 비용/자격/선발절차는활성상세로이동. 없으면현재확인된모집공고없음+공식사이트/스크랩. 마감/종료/미확인데이터는이력근거로보존하나화면공고로표시하지않음. 분야/경험탐색은기존대표공고근거를사용하여모집상태와분리. 기존모집중메뉴는open만유지하고새모집중/예정목록은둘다포함.
+
+담당검증: lint/typecheck/unit15/build, production전체42, devChromium12+WebKit12=24통과. 초기prod38통과/4실패는필터초기화후홈복귀동작및aria-hidden화살표까지기대한테스트selector가원인; 초기화동작/접근성기대값수정후전체42재통과. 1440/390 실제 `test-results/desktop-discovery.png`, `mobile-discovery.png`열어확인. 버튼/키보드스크롤·모두보기조건/새로고침·현재공고5개·종료프로그램검색/독립저장·console.error/pageerror0·overflow없음·axeAA0·기존hydration/저장실패회귀통과. 물리기기터치/트랙패드는직접검증하지않았고네이티브스크롤사용. dev에서카카오이미지LCP eager 권고warning이남아있음(상단동일이미지는eager,하단중복카드는lazy); error무발생과구분.
+
+Ponytail 검토: 숨긴종료공고의도달불가표시분기/스타일삭제. 최종 Lean already. Ship. 새추상화는4개가로섹션에서실제재사용하는Shelf한개. 삭제후lint/typecheck/build및관련production발견/컨퍼런스10개재확인. AGENTS자동diff보존·미커밋,root/3000/Orca page/다른checkout/제품정본/CI미수정. 기존6a1f74f의root2433301통합/검증은메인전달사실이며이번변경과별도. 새Dispatch없으므로lifecycle재전송없이메인에통합인계하고세션retain유지.
+
+
 ## 연합동아리 탐색 반영 — 2026-09-24
 
 사용자 직접 요청으로 기존6fbf5ce에서 구현. 새 Dispatch 없이 사용자 소유 작업이므로 종료된 lifecycle 재전송 없음. SOPT·피로그래밍·COTATO·YAPP·디프만·Mash-Up 6프로그램 추가 → 28프로그램/30공고/26조직. 공식 모집/소개 URL·근거는 data.ts, 이미지 OG5+대표영역캡처1 출처는 public/clubs/SOURCES.md. 후보저장소 https://github.com/itsChrisJang/dev-club-schedule 은 발견용이며 모집사실 근거는 공식 출처.

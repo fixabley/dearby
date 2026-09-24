@@ -5,7 +5,7 @@ test("club types, selection facts, URL and independent saves", async ({ page }, 
   const errors: string[] = [];
   page.on("pageerror", e => errors.push(e.message));
   page.on("console", e => { if (e.type() === "error") errors.push(e.text()); });
-  await page.goto("/");
+  await page.goto("/?view=all");
   await page.getByRole("button", { name: "연합동아리", exact: true }).click();
   await expect(page.locator(".program-card")).toHaveCount(6);
   await page.reload();
@@ -34,7 +34,7 @@ test("club types, selection facts, URL and independent saves", async ({ page }, 
   await page.getByRole("button", { name: "조직 1", exact: true }).click();
   await expect(page.locator(".organization-list article")).toContainText("디프만");
   await page.goto("/programs/mashup");
-  await expect(page.locator(".notice")).toContainText("모집 미확인");
-  await expect(page.locator(".notice")).toContainText("일정·모집상태를 확정하지 않았습니다");
+  await expect(page.locator(".notice")).toHaveCount(0);
+  await expect(page.getByText("현재 확인된 모집 공고 없음", { exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });

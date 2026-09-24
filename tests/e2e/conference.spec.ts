@@ -6,12 +6,12 @@ test("official conference company search, facts, sources and independent saved r
   const errors: string[] = [];
   page.on("console", msg => { if (msg.type() === "error") errors.push(msg.text()); });
   page.on("pageerror", error => errors.push(error.message));
-  await page.goto("/");
+  await page.goto("/?view=all");
   await page.getByRole("textbox", { name: "프로그램 검색" }).fill("우아한형제들");
   await page.getByRole("button", { name: "검색", exact: true }).click();
   const card = page.locator(".program-card");
   await expect(card).toHaveCount(1);
-  for (const text of ["WOOWACON · 우아콘 2026", "참가 신청 중", "2026.10.28", "무료", "2026.10.13", "서울 그랜드 인터컨티넨탈"])
+  for (const text of ["WOOWACON · 우아콘", "참가 신청 중", "2026.10.13"])
     await expect(card).toContainText(text);
   await page.getByRole("button", { name: "Android", exact: true }).click();
   await page.getByRole("button", { name: /경험·상세 필터/ }).click();
@@ -61,15 +61,12 @@ test("upcoming, unknown and ended events remain distinct and unknowns are visibl
   await expect(page.locator(".notice")).toContainText("등록 예정");
   await expect(page.locator(".event-facts")).toContainText("비용미확인");
   await expect(page.locator(".event-facts")).toContainText("제한 없음을 뜻하지 않습니다");
-  await page.goto("/programs/saif");
-  await expect(page.locator(".notice")).toContainText("등록 미확인");
-  await expect(page.locator(".notice")).toContainText("현장은 사전 초청자");
-  await page.goto("/programs/aws");
-  await expect(page.locator(".notice")).toContainText("행사 종료");
-  await expect(page.locator(".notice")).toContainText("현재 행사 모집을 뜻하지 않습니다");
-  await page.goto("/programs/toss");
-  await expect(page.locator(".event-facts")).toContainText("2025.07.23 – 2025.07.25");
-  await expect(page.locator(".event-facts")).toContainText("서울 코엑스 그랜드볼룸");
+  for (const id of ["saif", "aws", "toss"]) {
+    await page.goto(`/programs/${id}`);
+    await expect(page.locator(".notice")).toHaveCount(0);
+    await expect(page.getByText("현재 확인된 모집 공고 없음", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "프로그램 스크랩", exact: true })).toBeEnabled();
+  }
 });
 
 test("expanded fields and experience state survive reload and back, without blending rounds", async ({ page }) => {

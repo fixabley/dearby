@@ -67,6 +67,9 @@ export type Program = {
   coverSource: { url: string; pageUrl: string; kind: "og" | "capture" | "fallback"; checkedAt: string };
   notices: Notice[];
 };
+export function activeNotices(p: Program) {
+  return p.notices.filter(n => n.status === "open" || n.status === "scheduled");
+}
 export function displayDate(value: string | null) {
   return value?.replaceAll("-", ".") ?? "미확인";
 }
