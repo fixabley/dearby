@@ -1,22 +1,18 @@
 # 현재 작업과 결정
 
-2026-09-24 KST. **컨퍼런스·연합동아리 웹 통합과 메인 검증 완료.** 사용자 검토 대기.
+2026-09-24 KST. **발견 홈·활성 모집공고 노출 통합과 메인 검증 완료.** 사용자 검토 대기.
 
 ## 최신 통합
 
-웹 하위 세션의 사용자 직접 후속 승인 커밋 `6a1f74f`를 root `2433301`로 충돌 없이 cherry-pick했다. 이전 `6fbf5ce`는 이미 root `253daa0`에 통합되어 있다. 현재 28프로그램·30공고·26조직이다. SOPT·피로그래밍·COTATO·YAPP·디프만·Mash-Up 추가, 전체/컨퍼런스/연합동아리 유형 필터와 URL 복원·0건 대안, 지원조건·선발 과정·회비·활동 일정 표시를 포함한다.
-
-디프만19기 10/2–8은 모집 예정, SOPT39기는 확인된 OB 서버 전형만 표시한다. 피로그래밍 연도·COTATO 기수·Mash-Up 비정상 날짜는 추정하지 않는다. 최신 제품 정본은 [웹 범위](../product/conference-first-web-2026-09.md), 조사 출처는 웹 인계와 public 이미지 SOURCES 문서에 있다.
+웹 사용자 직접 승인 후속 `e7767bc`를 root `dc688d2`로 충돌 없이 통합했다. App Store형 좌우 스크롤 발견 홈, 전체 그리드(view=all), 모집중·예정 목록(view=available)을 제공한다. 기존 모집중 메뉴는 open만 유지한다. 28프로그램·30공고·26조직 데이터는 보존하며 화면 공고는 open/scheduled만 표시한다. 종료·미확인 프로그램도 계속 검색·스크랩 가능하다. 분야/경험 검색은 대표 회차 근거이며 현재 모집 조건과 동일하다는 의미가 아니다.
 
 ## 메인에서 실행한 검증
 
-- lint/typecheck/unit14/production build 통과.
-- production E2E 최초 34통과·4실패(이미지 decode 대기 시간 초과). 코드 변경 없이 실패4개만 재실행하여 모두 통과. 이미지 요청 일부가 대기 중이었으나 원인은 확정하지 않았다. 첫 실행 전체 통과로 기록하지 않는다.
-- dev Chromium10+WebKit10 모두 통과.
-- root localhost3000 Orca 실제 연합동아리 필터·6개 결과·상태 표시·공식 이미지 캡처 확인, console 메시지 없음. 모바일 상세 캡처도 검토했다.
-- diff/Ponytail 검토에서 추가 삭제 후보 없음. 카드에 활동·회비·선발을 모두 표시하여 길어진 점은 사용자에게 알렸으며 향후 선발 요약을 상세로 옮기는 대안이 있다. 이번에 임의 축소하지 않았다.
+lint/typecheck/unit15/build/prodE2E42/dev Chromium12+WebKit12 모두 첫 실행 통과. worker의 과거 실패 수정 기록과 별개 결과다. root3000 Orca에서 발견 홈·상단5개·다음 버튼 실제 scrollLeft698.5·모두보기→available5개 전환 확인. 모바일 전체 캡처와 Orca 캡처를 실제 검토했다. console error 없음, 카카오 이미지 LCP eager 권고warning은 재현된다. 물리 터치·트랙패드 미검증.
 
-사용자 직접 후속이므로 새 Dispatch나 완료 lifecycle 재전송 없음. 유지 중인 웹 세션에 통합 결과를 직접 전달한다. 원격 push/PR/merge/배포는 이번 범위에서 수행하지 않았다.
+Ponytail: Lean already. Ship. 새 삭제 후보 없음. 모바일 긴 섹션 제목과 긴 프로그램명의 어중간한 줄바꿈은 가독성 개선 후보이며 기능 차단은 아니다. 제목 단축·단어 단위 줄바꿈을 추천하되 담당 구현 범위를 이번 통합에서 임의 변경하지 않았다. LCP 권고와 함께 사용자·웹 세션에 알린다.
+
+원격 push/PR/merge/배포 미수행. 이번은 사용자 직접 후속으로 새 Dispatch/lifecycle 재전송 없음. 웹 세션에 통합 완료를 전달하고 retain 유지한다. 상세 직전 결과는 [보관본](archive/2026-09-24-before-discovery-integration/coordinator-current-task-and-decisions.md)에 있다.
 
 ## 목적·한계·다음 행동
 
