@@ -2,9 +2,9 @@
 
 2026-09-24 01:47 KST. **컨퍼런스 우선 웹 구현·조사·메인 검증 완료**, 사용자 검토 대기.
 
-## 진행 중: 기업 로고 아바타
+## 완료: 기업 로고 아바타 — 2026-09-24 10:26 KST
 
-사용자가 기업 주최기관의 Avatar를 기업 로고로 바꾸도록 요청했다. 기업8개 공식 로고를 카드·상세·스크랩 조직 목록에 공통 적용하고 커뮤니티는 initial 유지, 이미지 실패시 fallback과 비율보존을 적용한다. 기존 웹 세션 재사용: Task `task_9caee518b4c1` / Dispatch `ctx_beeec3876c97`, child 기준 `4a6df2d`. turn_started 확인, 구현·검증·메인 통합은 진행 중이다.
+사용자가 기업 주최기관의 Avatar를 기업 로고로 바꾸도록 요청했다. 기업8개 공식 로고를 카드·상세·스크랩 조직 목록에 공통 적용하고 커뮤니티는 initial 유지, 이미지 실패시 fallback과 비율보존을 적용한다. 기존 웹 세션 재사용: Task `task_9caee518b4c1` / Dispatch `ctx_beeec3876c97`, child 기준 `4a6df2d`. 담당 `2373bc5`를 root `1f9cbdc`에 통합했다. 공식 SVG6/PNG2 출처는 public/organizations/SOURCES.md. 담당 lint/typecheck/unit12/build/prod36/dev18 통과, 메인 lint/typecheck/build 및 아바타 브라우저4개 재통과. 데스크톱/모바일 실제 캡처 확인, Orca 새로고침 후 화면 안 로고 로딩 확인. 긴 워드마크는 작게 보이지만 비율과 조직명 텍스트를 유지한다. Ponytail 추가 삭제 후보 없음. succeeded·retain·ack 완료, 원격 push 없음.
 
 ## 사용자 목적과 승인
 
@@ -29,7 +29,7 @@ Orca 실제 브라우저에서 전체 목록→우아콘 상세→스크랩→�
 
 ## 세션과 미리보기
 
-- http://127.0.0.1:3000 실행 중. 서버 terminal `term_835adde4-93db-42d6-85c5-9d3e51a76fbc`, root browser page `d26f381c-df01-4020-9115-53457b1007ba`.
+- http://127.0.0.1:3000 실행 중. 서버 terminal `term_f9504257-412a-4374-ac61-85add5f30816`, root browser page `d26f381c-df01-4020-9115-53457b1007ba`.
 - Orca `run_469a74207c03`, Task `task_11416b48d24f`, Dispatch `ctx_259771a9ca90`: succeeded 보고 수신·검토·retain·delivery ack 완료. 하위 웹 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9` 유지. 회수 대기 worker 없음.
 - 하위 checkout `dearby-web`, `fixabley/dearby-web`, 메인 부모 연결. 문서/커밋은 자동 동기화되지 않는다. child의 Next 자동 AGENTS diff는 기존대로 보존하며 root 통합 대상에서 제외했다.
 

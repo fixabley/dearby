@@ -38,3 +38,7 @@ Ponytail diff review: 호출 없는 recruitment helper, 이전 cover-status/open
 Root `e829b74/b4ecc3a/703c136`에 통합했다. root에서 lint/typecheck/unit12/build/prod32/dev Chromium9+WebKit9 전부 통과했다. 1440/390 캡처 실제 확인, Orca 실제 목록→우아콘 상세→저장→새로고침 복원·해제·console error0 확인. http://127.0.0.1:3000 실행 중이고 세션은 사용자 요청으로 retain 완료. root 결과는 위 worker 결과와 별개 실행이다. 위의 “root 검증 남음”은 worker 완료 당시 기록이며 이 절이 최신이다.
 
 이전 가상 데이터/초기 구현 기록은 [보관본](archive/2026-09-24-web-prototype/web-implementation-and-handoff.md)을 참고한다. 현재 상태·세션·다음 행동은 [조율 문서](coordinator-current-task-and-decisions.md), 제품 결정은 [컨퍼런스 우선 범위](../product/conference-first-web-2026-09.md)를 따른다.
+
+## 기업 로고 메인 통합 검증 — 2026-09-24 10:26 KST
+
+root1f9cbdc 통합 후 lint/typecheck/build 및 아바타 관련 데스크톱/모바일 브라우저4개 통과. 실제 이미지·Orca 표시를 확인했다. 담당 전체회귀 결과와 메인 부분회귀를 구분한다. localhost:3000 반영, 세션 retain 완료.
