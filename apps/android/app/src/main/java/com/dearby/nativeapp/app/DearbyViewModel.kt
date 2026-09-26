@@ -5,21 +5,21 @@ import androidx.lifecycle.viewModelScope
 import com.dearby.nativeapp.entities.profile.api.ProfileRepository
 import com.dearby.nativeapp.entities.card.api.CardRepository
 import com.dearby.nativeapp.features.account.AuthRepository
-import com.dearby.nativeapp.features.wallet.*
-import com.dearby.nativeapp.entities.profile.model.*
-import com.dearby.nativeapp.entities.card.model.*
+import com.dearby.nativeapp.features.wallet.WalletRepository
+import com.dearby.nativeapp.entities.profile.model.ProfileModel
+import com.dearby.nativeapp.entities.card.model.CardSelectionModel
+import com.dearby.nativeapp.entities.card.model.ExchangeContextModel
+import com.dearby.nativeapp.entities.card.model.importedIds
 import com.dearby.nativeapp.features.account.AccountState
 import com.dearby.nativeapp.features.guest.GuestStore
 import com.dearby.nativeapp.shared.api.ApiFailure
 import com.dearby.nativeapp.shared.storage.TokenVault
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
-import java.util.UUID
 
 class DearbyViewModel(private val profiles: ProfileRepository, private val cardsRepository: CardRepository, private val wallet: WalletRepository, private val auth: AuthRepository, private val guests: GuestStore, private val vault: TokenVault) : ViewModel() {
     private val mutable = MutableStateFlow(AccountState())
     val state = mutable.asStateFlow()
-    private var pendingSend: SendRequest? = null
     init { action {
         val loggedIn = withContext(Dispatchers.IO) { vault.read() != null }
         profiles.accountId = withContext(Dispatchers.IO) { vault.profileId() }
@@ -34,7 +34,12 @@ class DearbyViewModel(private val profiles: ProfileRepository, private val cards
             try { block() } catch (cancelled: CancellationException) { throw cancelled }
             catch (failure: Exception) {
                 mutable.update { it.copy(message = failure.message ?: "처리하지 못했습니다. 다시 시도해 주세요.", ready = true) }
-                if (failure is ApiFailure && failure.status == 401) mutable.update { it.copy(message = "인증이 만료되었거나 유효하지 않습니다. 다시 로그인해 주세요.") }
+                if (failure is ApiFailure && failure.status == 401 && mutable.value.loggedIn) {
+                    withContext(Dispatchers.IO) { vault.clear() }
+                    profiles.accountId = null
+                    val draft = profiles.localProfile(false)
+                    mutable.update { it.copy(loggedIn = false, profile = draft, cards = emptyList(), wallet = emptyList(), selectedCardId = null, importVisible = false, message = "인증이 만료되었습니다. 다시 로그인해 주세요.") }
+                }
             } finally { mutable.update { it.copy(busy = false) } }
         }
     }
@@ -82,7 +87,6 @@ class DearbyViewModel(private val profiles: ProfileRepository, private val cards
         auth.logout()
         withContext(Dispatchers.IO) { vault.clear() }
         profiles.clearAccount()
-        pendingSend = null
         profiles.accountId = null
         val local = profiles.localProfile(false)
         mutable.update { it.copy(loggedIn = false, profile = local, cards = emptyList(), wallet = emptyList(), selectedCardId = null, importVisible = false) }
@@ -114,10 +118,7 @@ class DearbyViewModel(private val profiles: ProfileRepository, private val cards
         onSuccess()
     }
     fun send(cardId: String, recipient: String, context: ExchangeContextModel, onSuccess: () -> Unit) = action {
-        val previous = pendingSend
-        val request = if (previous?.cardId == cardId && previous.recipientProfileId == recipient && previous.context == context) previous else SendRequest(cardId, recipient, context, UUID.randomUUID().toString()).also { pendingSend = it }
-        wallet.send(request)
-        pendingSend = null
+        wallet.send(cardId, recipient, context, requireNotNull(profiles.accountId))
         mutable.update { it.copy(message = "서버가 명함 전달을 확인했습니다. 열람 여부는 알 수 없습니다.") }
         onSuccess()
         // Reciprocal is only read from the server, never optimistically flipped.

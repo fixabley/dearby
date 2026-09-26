@@ -36,6 +36,22 @@ class HttpContractTest {
         try { WalletRepository(HttpClient(base, true) { "test" }, dao).import(store.all()); fail("Should fail") } catch (failure: ApiFailure) { assertEquals(503, failure.status) }
         assertEquals(id, store.all().single().cardId)
     } }
+    @Test fun ambiguousDeliveryRetryKeepsRequestIdAfterRepositoryRecreation() = server { server, base -> runTest {
+        val bodies = mutableListOf<String>()
+        server.createContext("/v1/exchanges") { exchange ->
+            bodies += exchange.requestBody.bufferedReader().readText()
+            if (bodies.size == 1) { exchange.sendResponseHeaders(503, -1); exchange.close() }
+            else {
+                val response = """{"receiptId":"receipt","deliveredAt":"2026-09-27T00:00:00Z"}""".toByteArray()
+                exchange.sendResponseHeaders(201, response.size.toLong()); exchange.responseBody.use { it.write(response) }
+            }
+        }
+        val dao = MemoryDao(); val http = HttpClient(base, true) { "test" }
+        try { WalletRepository(http, dao).send("c", "p", ExchangeContextModel(), "account"); fail() } catch (_: ApiFailure) { }
+        assertNotNull(dao.document("account:account:pending-send"))
+        WalletRepository(http, dao).send("c", "p", ExchangeContextModel(), "account")
+        assertEquals(bodies[0], bodies[1]); assertNull(dao.document("account:account:pending-send"))
+    } }
     @Test fun accountCachesAreIsolatedAndDraftSurvivesClear() = runTest {
         val dao = MemoryDao(); val repo = ProfileRepository(HttpClient("", false) { null }, dao)
         repo.saveDraft(ProfileModel(name = "local"))
