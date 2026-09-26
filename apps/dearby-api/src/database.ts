@@ -7,6 +7,7 @@ export function openDatabase(path: string) {
   const db = new Database(path);
   db.pragma('foreign_keys = ON');
   db.pragma('journal_mode = WAL');
+  db.pragma('synchronous = FULL');
   db.pragma('busy_timeout = 5000');
   db.exec('CREATE TABLE IF NOT EXISTS migrations (name TEXT PRIMARY KEY)');
   const directory = new URL('../migrations/', import.meta.url);

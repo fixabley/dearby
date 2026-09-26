@@ -3,9 +3,9 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { DB } from './database.js';
 import { ApiError, cardInput, id, missing, profileInput, type Card, type Profile } from './validation.js';
 export type Owner = (request: FastifyRequest) => string;
-export function readCard(db: DB, cardId: string, allowRevoked = false): Card {
+export function readCard(db: DB, cardId: string): Card {
   const row = db.prepare('SELECT data, revoked FROM cards WHERE id = ?').get(cardId) as {data:string; revoked:number} | undefined;
-  if (!row || (row.revoked && !allowRevoked)) throw missing();
+  if (!row || row.revoked) throw missing();
   return JSON.parse(row.data);
 }
 export function cardRoutes(app: FastifyInstance, db: DB, owner: Owner, now: () => number) {
