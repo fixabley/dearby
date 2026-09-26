@@ -23,3 +23,9 @@
 API 첫 구현 통합 후 Node 24.21.0: 깨끗한 `npm ci`, TCP HTTP 테스트 10/10, typecheck, lint, build 통과. SMTP는 테스트 sink이며 실제 수신 증거는 #42 미완료다. 공개 필드·철회·권한·멱등성·SQL rollback·부분 가져오기·재시작 보존을 확인했다.
 
 CI는 [checkout](https://github.com/actions/checkout), [setup-node](https://github.com/actions/setup-node), [setup-java](https://github.com/actions/setup-java)의 현재 공식 사용법을 확인해 구성했다. macos-26 runner의 기본 Xcode는 [공식 이미지 목록](https://github.com/actions/runner-images/blob/main/images/macos/macos-26-Readme.md)에 따라 별도로 기록한다. 로컬 Xcode 27 검증과 GitHub runner 검증은 같은 결과로 취급하지 않는다. YAML 구문은 Ruby YAML로 확인했으며 원격 실행 결과는 아직 없다.
+
+## 2026-09-27 06:24 KST 양 플랫폼 로컬 연결
+
+iOS URLSession/AppState와 Android HttpClient/Repository가 같은 격리 API에 접속해 테스트 메일 OTP·프로필 저장·선택 공개 명함 발행·기기 명함 가져오기를 통과했다. 양방향 전달 후 양 앱의 wallet 응답에서 reciprocal=true를 확인했고 동일 요청 재전송 receipt도 일치했다. 실제 메일 발송이나 두 실기기 카메라 스캔 증거는 아니다. 플랫폼별 증거 파일은 각 담당 완료 보고 후 통합한다.
+
+조율 코드 리뷰에서 Android 미확정 전송 A 뒤 B를 전송하면 A 재시도 키가 덮이는 경로를 발견해 수정·회귀 검사를 요청했다. 기본 반복 재시도 통과와 이 추가 경로의 완료를 구분한다. iOS QR 최종 캡처에서 승인된 배치와 차이를 발견해 카드 내부 공유 버튼·작은 메타데이터·하단 명함 목록 배치를 수정 중이다.
