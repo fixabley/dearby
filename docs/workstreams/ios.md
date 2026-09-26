@@ -1,5 +1,7 @@
 # iOS 담당
 
-2026-09-20 승인된 설계 단순화 구현·검증 완료. 미사용 표시필드/export, 좁은 Shared·상세 조립 예외, 명시적 pure UI 계약, State 보조타입/값형 VM 검사, 카드·즐겨찾기·상세 표시 귀속을 기능별 커밋으로 구현했다. [iOS 인계](../context/ios-implementation-and-handoff.md)에 현재 커밋/Dispatch와 재개 지점을 기록했다.
+2026-09-27 issue #37 첫 네이티브 수직 구현. [현재 인계](../context/ios-implementation-and-handoff.md), [실제 검증·화면](../../apps/ios/docs/evidence/README.md).
 
-이번 standalone/busy/detail/architecture16/production gate/strict lint161파일 위반0 및 Simulator build/install/launch 성공. 발견 AX snapshot은 확인했으나 입력 후 전환 확인 실패·Simulator 소실로 상세/즐겨찾기 UI smoke와 큰 글자/VoiceOver·실제 권한은 미검증이다. worker는 자기 checkout만 변경했고 push/PR/merge는 Root 담당, 완료 후 세션 유지.
+Xcode 27/Swift 6/SwiftUI·SwiftData·Keychain, 5탭·계정 프로필·선택 공개 명함·QR·게스트 가져오기·받은 명함/명시적 보내기를 구현했다. 앱 테스트17, 구조16, strict SwiftLint40파일 위반0, Debug/Release Simulator build와 실제 UI 캡처를 확인했다. 격리 로컬 API로 실제 네이티브 인증·공개 projection·가져오기·iOS↔Android 전달/멱등 replay·reciprocal을 검증했다. SMTP 실제 수신이나 운영 배포의 증거는 아니다.
+
+CI는 Simulator 기본 ad-hoc signing을 사용해야 Keychain 회귀가 통과한다. CODE_SIGNING_ALLOWED=NO는 쓰지 않는다. #42 운영 인증/HTTPS, #43 Universal Links·실기 카메라/사진 권한, #41 전체 서비스와 #36 if(kakao)는 남아 있다. 커밋/명령/한계는 인계 정본 참조. push·PR·통합은 coordinator 담당, 완료 뒤에도 사용자 요청으로 세션 유지.
