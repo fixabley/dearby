@@ -2,6 +2,11 @@ package com.dearby.nativeapp.pages.qr
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.graphics.Color
@@ -28,6 +33,7 @@ import com.dearby.nativeapp.shared.ui.FormColumn
         profile.contacts.forEach { contact ->
             Row {
                 Checkbox(contact.id in contacts, { checked -> contacts = if (checked) contacts + contact.id else contacts - contact.id; if (!checked) hidden() })
+                Icon(if (contact.id in contacts) Icons.Outlined.Visibility else Icons.Outlined.VisibilityOff, if (contact.id in contacts) "공개" else "숨김", tint = if (contact.id in contacts) MaterialTheme.colorScheme.primary else Color.Gray, modifier = Modifier.padding(top = 12.dp, end = 8.dp))
                 Text("${contact.label}", color = if (contact.id in contacts) MaterialTheme.colorScheme.onSurface else Color.Gray, textDecoration = if (contact.id in contacts) TextDecoration.None else TextDecoration.LineThrough)
             }
         }

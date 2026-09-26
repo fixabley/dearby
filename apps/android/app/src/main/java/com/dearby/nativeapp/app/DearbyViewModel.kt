@@ -108,7 +108,7 @@ class DearbyViewModel(private val profiles: ProfileRepository, private val cards
         cardsRepository.card(id)
         guests.save(id, context)
         reloadGuests()
-        mutable.update { it.copy(message = "이 기기에 명함 ID를 저장했습니다.") }
+        mutable.update { it.copy(message = "이 기기에 명함을 저장했습니다.") }
     }
     fun selectCard(id: String?) { mutable.update { it.copy(selectedCardId = id) } }
     fun publish(selection: CardSelectionModel, onSuccess: () -> Unit) = action {

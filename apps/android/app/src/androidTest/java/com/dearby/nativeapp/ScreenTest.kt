@@ -17,7 +17,10 @@ import com.dearby.nativeapp.pages.qr.*
 import com.dearby.nativeapp.pages.profile.*
 import com.dearby.nativeapp.pages.wallet.*
 import com.dearby.nativeapp.shared.ui.DearbyTheme
-import com.dearby.nativeapp.widgets.card.CardState
+import com.dearby.nativeapp.widgets.card.cardContent.CardContent
+import com.dearby.nativeapp.widgets.card.cardContent.CardState
+import com.dearby.nativeapp.widgets.card.cardContent.CardHistoryState
+import com.dearby.nativeapp.features.contact.contactAction
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -26,7 +29,7 @@ import java.io.File
 /** Isolated UI fixture tests. These people are never bundled in the production application. */
 class ScreenTest {
     @get:Rule val compose = createComposeRule()
-    private val card = CardState("00000000-0000-0000-0000-000000000001", "owner", "테스트 사용자", "Android 개발자", "컨퍼런스 명함", "만나서 반가워요", "UI 검사 전용 정보", listOf("이메일 · fixture@example.invalid"), listOf("테스트 컨퍼런스 · 발표자"))
+    private val card = CardState("00000000-0000-0000-0000-000000000001", "owner", "테스트 사용자", "Android 개발자", "컨퍼런스 명함", "만나서 반가워요", "UI 검사 전용 정보", listOf(contactAction("email", "email", "이메일", "fixture@example.invalid")), listOf(CardHistoryState("history", "테스트 컨퍼런스", "발표자", "2026-09-27", null, "")))
     private fun screenshot(name: String) {
         compose.waitForIdle()
         val context = InstrumentationRegistry.getInstrumentation().targetContext
@@ -44,7 +47,7 @@ class ScreenTest {
     }
     @Test fun selectingCardNeverAutomaticallySends() {
         var sends = 0
-        compose.setContent { DearbyTheme { SendPage(listOf(card), card.id, "받는 사람", false, {}, { _, _ -> sends++ }, {}, {}) } }
+        compose.setContent { DearbyTheme { SendPage(listOf(card), card.id, "받는 사람", false, {}, { _, _ -> sends++ }, {}, {}, {}) } }
         compose.waitForIdle(); assertEquals(0, sends)
         screenshot("fixture-send-picker")
         compose.onNodeWithText("이 명함 보내기").performClick()
@@ -62,7 +65,7 @@ class ScreenTest {
         assertTrue(selection!!.contactIds.isEmpty()); assertTrue(selection!!.historyIds.isEmpty())
     }
     @Test fun reciprocalOnlyWalletHidesGroupLabelsAndSearchesActivity() {
-        compose.setContent { DearbyTheme { WalletPage(listOf(WalletEntryState("r", card, "Android 컨퍼런스", "2026-09-27", true)), true, 0, {}, {}, {}, {}) } }
+        compose.setContent { DearbyTheme { WalletPage(listOf(WalletEntryState("r", card, "Android 컨퍼런스", "2026-09-27", true)), true, 0, {}, {}, {}, {}, {}) } }
         compose.onNodeWithText("내 명함을 주지 않은 상대").assertDoesNotExist()
         compose.onNodeWithText("서로 주고받은 상대").assertDoesNotExist()
         compose.onNodeWithText("이름·직무·활동 검색").performTextInput("컨퍼런스")
@@ -79,6 +82,17 @@ class ScreenTest {
         compose.onNodeWithText("링크 복사").performClick()
         compose.onNodeWithText("＋\n새 명함").performScrollTo().performClick()
         compose.onNodeWithText("새 명함 만들기").assertIsDisplayed()
+    }
+    @Test fun cardHeaderStaysPutAndContactsAreActionable() {
+        var expanded by mutableStateOf(false)
+        var opened = ""
+        compose.setContent { DearbyTheme { Box(Modifier.fillMaxSize().padding(20.dp)) { CardContent(card, expanded, { expanded = !expanded }, Modifier.fillMaxWidth(), { opened = it.id }) } } }
+        val before = compose.onNodeWithText(card.person).fetchSemanticsNode().boundsInRoot.top
+        compose.onNodeWithText("상세보기").performClick()
+        assertEquals(before, compose.onNodeWithText(card.person).fetchSemanticsNode().boundsInRoot.top)
+        compose.onNodeWithText("이메일").performClick()
+        assertEquals("email", opened)
+        screenshot("fixture-card-expanded")
     }
     @Test fun guestProfileRequiresLogin() {
         compose.setContent { DearbyTheme { ProfilePage(ProfileState("", "", "", emptyList(), emptyList()), false, false, {}, {}, {}, {}) } }

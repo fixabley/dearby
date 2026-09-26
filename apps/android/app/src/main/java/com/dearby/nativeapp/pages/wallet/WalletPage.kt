@@ -3,18 +3,19 @@ package com.dearby.nativeapp.pages.wallet
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.*
 import androidx.compose.material3.*
+import com.dearby.nativeapp.features.contact.ContactActionState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.dearby.nativeapp.widgets.card.CardContent
-import com.dearby.nativeapp.widgets.card.CardState
+import com.dearby.nativeapp.widgets.card.cardContent.CardContent
+import com.dearby.nativeapp.widgets.card.cardContent.CardState
 import com.dearby.nativeapp.shared.ui.Field
 import kotlinx.coroutines.launch
 
 data class WalletEntryState(val id: String, val card: CardState, val context: String, val date: String, val reciprocal: Boolean)
 fun walletMatches(entry: WalletEntryState, query: String): Boolean = listOf(entry.card.person, entry.card.job, entry.card.title, entry.context).any { it.contains(query, ignoreCase = true) }
-@Composable fun WalletPage(entries: List<WalletEntryState>, loggedIn: Boolean, pendingCount: Int, login: () -> Unit, import: () -> Unit, refresh: () -> Unit, send: (CardState) -> Unit) {
+@Composable fun WalletPage(entries: List<WalletEntryState>, loggedIn: Boolean, pendingCount: Int, login: () -> Unit, import: () -> Unit, refresh: () -> Unit, send: (CardState) -> Unit, onContact: (ContactActionState) -> Unit) {
     var query by rememberSaveable { mutableStateOf("") }
     val filtered = entries.filter { walletMatches(it, query) }
     val showGroups = entries.any { !it.reciprocal }
@@ -35,7 +36,7 @@ fun walletMatches(entry: WalletEntryState, query: String): Boolean = listOf(entr
                     val entry = cards[page]
                     var expanded by remember(entry.id) { mutableStateOf(false) }
                     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CardContent(entry.card, expanded, { expanded = !expanded }, Modifier.weight(1f))
+                        Box(Modifier.weight(1f)) { CardContent(entry.card, expanded, { expanded = !expanded }, if (expanded) Modifier.fillMaxSize() else Modifier.fillMaxWidth(), onContact) }
                         Text("${entry.context.ifBlank { "활동 선택 안 함" }} · ${entry.date.take(10)}", style = MaterialTheme.typography.bodySmall)
                         if (!entry.reciprocal) Button({ if (loggedIn) send(entry.card) else login() }, Modifier.fillMaxWidth()) { Text("나도 명함 주기") }
                         Text("${page + 1} / ${cards.size} · 위아래로 넘기기", style = MaterialTheme.typography.labelSmall)

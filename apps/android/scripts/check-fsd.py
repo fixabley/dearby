@@ -16,7 +16,8 @@ API = {
     'pages.qr': {'CardEditor', 'QrPage', 'CardEditorState', 'PublishSelectionState', 'VisibilityChoiceState'},
     'pages.login': {'LoginPage'},
     'pages.wallet': {'ImportPage', 'ImportEntryState', 'WalletPage', 'WalletEntryState', 'SendPage'},
-    'widgets.card': {'CardContent', 'CardState', 'toState'},
+    'widgets.card.cardContent': {'CardContent', 'CardState', 'CardHistoryState', 'toState'},
+    'features.contact': {'ContactActionState', 'contactAction', 'ContactActions'},
     'features.account': {'AccountState', 'AuthRepository'},
     'features.guest': {'GuestStore'},
     'features.qr': {'QrActions'},
@@ -27,7 +28,9 @@ API = {
 
 def owner(name):
     parts = name.split('.')
-    return parts[0] if parts[0] in ('app', 'shared') else '.'.join(parts[:2]) if '.'.join(parts[:2]) in API else None
+    if parts[0] in ('app', 'shared'): return parts[0]
+    key = '.'.join(parts[:3] if parts[0] == 'widgets' else parts[:2])
+    return key if key in API else None
 
 def check_source(path, text):
     expected = PREFIX + '.' + '.'.join(path.parts[:-1])
@@ -67,12 +70,12 @@ def self_test():
         ('pages/qr/Test.kt', 'import com.dearby.nativeapp.features.account.AuthRepository', False),
         ('pages/qr/Test.kt', 'import android.content.Intent', False),
         ('pages/qr/Test.kt', 'val x = LocalContext.current', False),
-        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.widgets.card.CardState', True),
+        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.widgets.card.cardContent.CardState', True),
         ('pages/qr/Test.kt', 'import com.dearby.nativeapp.shared.ui.Field', True),
         ('pages/qr/Test.kt', 'val x: CardEditorState? = null', True),
-        ('widgets/card/Test.kt', 'import com.dearby.nativeapp.entities.card.model.CardModel', False),
-        ('widgets/card/Test.kt', 'import com.dearby.nativeapp.shared.api.HttpClient', False),
-        ('widgets/card/Test.kt', 'import com.dearby.nativeapp.widgets.other.CardState', False),
+        ('widgets/card/cardContent/Test.kt', 'import com.dearby.nativeapp.entities.card.model.CardModel', False),
+        ('widgets/card/cardContent/Test.kt', 'import com.dearby.nativeapp.shared.api.HttpClient', False),
+        ('widgets/card/cardContent/Test.kt', 'import com.dearby.nativeapp.widgets.other.CardState', False),
         ('entities/profile/Test.kt', 'import com.dearby.nativeapp.entities.card.model.CardModel', False),
         ('entities/profile/Test.kt', 'import com.dearby.nativeapp.features.account.AccountState', False),
         ('entities/profile/Test.kt', 'import com.dearby.nativeapp.shared.api.HttpClient', True),

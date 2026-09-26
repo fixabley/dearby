@@ -33,6 +33,8 @@ import com.dearby.nativeapp.app.providers.selectionModel
 import com.dearby.nativeapp.app.providers.visibilityState
 import com.dearby.nativeapp.entities.card.model.ExchangeContextModel
 import com.dearby.nativeapp.features.qr.QrActions
+import com.dearby.nativeapp.features.contact.ContactActions
+import com.dearby.nativeapp.features.contact.ContactActionState
 import com.dearby.nativeapp.pages.login.LoginPage
 import com.dearby.nativeapp.pages.profile.ProfilePage
 import com.dearby.nativeapp.pages.qr.CardEditor
@@ -45,9 +47,9 @@ import com.dearby.nativeapp.pages.wallet.WalletPage
 import com.dearby.nativeapp.shared.ui.EmptyPanel
 import com.dearby.nativeapp.shared.ui.Field
 import com.dearby.nativeapp.shared.ui.FormColumn
-import com.dearby.nativeapp.widgets.card.CardContent
-import com.dearby.nativeapp.widgets.card.CardState
-import com.dearby.nativeapp.widgets.card.toState
+import com.dearby.nativeapp.widgets.card.cardContent.CardContent
+import com.dearby.nativeapp.widgets.card.cardContent.CardState
+import com.dearby.nativeapp.widgets.card.cardContent.toState
 import kotlinx.coroutines.*
 
 @Composable fun DearbyApp(model: DearbyViewModel, incoming: String?, consume: () -> Unit) {
@@ -67,6 +69,9 @@ import kotlinx.coroutines.*
     val chosen = cards.find { it.id == state.selectedCardId }
     val link = chosen?.let { QrActions.link(it.id, ExchangeContextModel(label = contextLabel.ifBlank { null })) }
     val bitmap = remember(link) { link?.let(QrActions::bitmap) }
+    fun openContact(contact: ContactActionState) {
+        runCatching { ContactActions.open(context, contact) }.onSuccess { it?.let(model::report) }.onFailure { model.report("이 연락처를 열 수 있는 앱이 없습니다.") }
+    }
     fun receive(text: String) {
         runCatching { QrActions.parse(text) }.onSuccess { (id, activity) -> model.receive(id, activity); route = ""; tab = 3 }.onFailure { model.report(it.message ?: "QR을 읽을 수 없습니다.") }
     }
@@ -107,7 +112,7 @@ import kotlinx.coroutines.*
     if (enlarged && bitmap != null) Dialog({ enlarged = false }, DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().background(Color.White).clickable { enlarged = false }, contentAlignment = Alignment.Center) { Image(bitmap.asImageBitmap(), "QR 확대. 누르면 돌아갑니다.", Modifier.fillMaxWidth().aspectRatio(1f)) }
     }
-    detail?.let { card -> Dialog({ detail = null }) { CardContent(card, true, { detail = null }, Modifier.fillMaxWidth().heightIn(max = 650.dp)) } }
+    detail?.let { card -> Dialog({ detail = null }) { CardContent(card, true, { detail = null }, Modifier.fillMaxWidth().heightIn(max = 650.dp), ::openContact) } }
     Scaffold(
         snackbarHost = { SnackbarHost(snackbars) },
         topBar = { Column(Modifier.statusBarsPadding().fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) { Text("dearby", Modifier.padding(10.dp), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.headlineSmall); if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth()) } },
@@ -122,13 +127,13 @@ import kotlinx.coroutines.*
             state.importVisible && state.loggedIn -> ImportPage(state.guests.map { guest -> val cached = state.guestCards[guest.cardId]; ImportEntryState(guest.cardId, cached?.profileName ?: "명함 정보 확인 필요", cached?.job.orEmpty(), guest.context.label ?: guest.context.activityId.orEmpty()) }, state.busy, model::importSelected, { model.showImport(false) })
             route == "login" -> LoginPage(state.busy, state.challengeId, state.challengeExpires, model::requestCode, model::login, { route = "" })
             route == "create" -> CardEditor(state.profile.visibilityState(), state.busy, { model.publish(it.selectionModel()) { route = returnRoute } }, { route = returnRoute }, { Toast.makeText(context, "선택 해제한 연락처는 명함에 표시되지 않습니다.", Toast.LENGTH_SHORT).show() })
-            route == "send" && recipient != null -> SendPage(cards, state.selectedCardId, recipient!!.person, state.busy, model::selectCard, { card, label -> model.send(card, recipient!!.ownerId, ExchangeContextModel(label = label.ifBlank { null })) { route = "" } }, ::create, { route = "" })
+            route == "send" && recipient != null -> SendPage(cards, state.selectedCardId, recipient!!.person, state.busy, model::selectCard, { card, label -> model.send(card, recipient!!.ownerId, ExchangeContextModel(label = label.ifBlank { null })) { route = "" } }, ::create, { route = "" }, ::openContact)
             route == "receive" -> FormColumn {
                 TextButton({ route = "" }) { Text("닫기") }
                 Text("QR 찍기", style = MaterialTheme.typography.headlineMedium)
                 Row { Button({ runCatching { camera.launch(null) }.onFailure { model.report("사용 가능한 카메라 앱이 없습니다.") } }) { Text("카메라로 촬영") }; TextButton({ photo.launch("image/*") }) { Text("QR 사진 선택") } }
-                Field("Dearby 명함 링크", input, { input = it }, singleLine = false)
-                Text("명함을 확인한 뒤 이 기기에 ID를 저장합니다. 앱 삭제 시 기기 저장은 복구할 수 없습니다.")
+                Field("명함 링크 붙여넣기", input, { input = it }, singleLine = false)
+                Text("로그인 없이 명함을 저장할 수 있어요. 로그인하지 않고 저장한 명함은 앱을 삭제하면 복구할 수 없어요.")
                 Button({ receive(input) }, enabled = !state.busy && input.isNotBlank()) { Text("명함 확인하고 기기에 저장") }
             }
             tab == 0 -> EmptyPanel("발견", "모집 중 활동을 준비하고 있습니다. 활동 수집 서버 연결 전이며 신청·캘린더 확인을 제공하지 않습니다.")
@@ -139,7 +144,7 @@ import kotlinx.coroutines.*
                 { exportLink = link; saveImage.launch("dearby-qr.png") }, contextLabel, { contextLabel = it }, { route = "receive" })
             tab == 3 -> {
                 val entries = if (state.loggedIn) state.wallet.map { WalletEntryState(it.id, it.card.toState(), it.context.label ?: it.context.activityId.orEmpty(), it.receivedAt, it.reciprocal) } else state.guests.mapNotNull { guest -> state.guestCards[guest.cardId]?.let { WalletEntryState(guest.cardId, it.toState(), guest.context.label ?: guest.context.activityId.orEmpty(), guest.savedAt, false) } }
-                WalletPage(entries, state.loggedIn, state.guests.size, { route = "login" }, { model.showImport(true) }, model::refresh) { recipient = it; route = "send" }
+                WalletPage(entries, state.loggedIn, state.guests.size, { route = "login" }, { model.showImport(true) }, model::refresh, { recipient = it; route = "send" }, ::openContact)
             }
             else -> ProfilePage(state.profile.editorState(), state.busy, state.loggedIn, { model.saveProfile(it.applyTo(state.profile)) }, { route = "login" }, model::logout, { model.showImport(true) })
         }
