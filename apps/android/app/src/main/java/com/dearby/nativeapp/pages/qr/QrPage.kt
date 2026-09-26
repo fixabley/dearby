@@ -15,7 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.widgets.card.CardState
-import com.dearby.nativeapp.shared.ui.*
+import com.dearby.nativeapp.shared.ui.Field
+import com.dearby.nativeapp.shared.ui.FormColumn
 
 @Composable fun QrPage(cards: List<CardState>, selectedId: String?, image: ImageBitmap?, select: (String?) -> Unit, enlarge: () -> Unit, detail: (CardState) -> Unit, create: () -> Unit, share: () -> Unit, copy: () -> Unit, save: () -> Unit, contextLabel: String, contextChange: (String) -> Unit, receive: () -> Unit) {
     var menu by remember { mutableStateOf(false) }

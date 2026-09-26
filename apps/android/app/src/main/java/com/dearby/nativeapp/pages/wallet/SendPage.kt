@@ -7,7 +7,8 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.dearby.nativeapp.widgets.card.*
+import com.dearby.nativeapp.widgets.card.CardContent
+import com.dearby.nativeapp.widgets.card.CardState
 import com.dearby.nativeapp.shared.ui.Field
 
 @Composable fun SendPage(cards: List<CardState>, selectedId: String?, recipient: String, busy: Boolean, select: (String) -> Unit, send: (String, String) -> Unit, create: () -> Unit, close: () -> Unit) {

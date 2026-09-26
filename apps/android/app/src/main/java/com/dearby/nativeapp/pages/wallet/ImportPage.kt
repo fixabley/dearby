@@ -3,7 +3,7 @@ package com.dearby.nativeapp.pages.wallet
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import com.dearby.nativeapp.shared.ui.*
+import com.dearby.nativeapp.shared.ui.FormColumn
 
 data class ImportEntryState(val id: String, val name: String, val job: String, val context: String)
 @Composable fun ImportPage(entries: List<ImportEntryState>, busy: Boolean, import: (Set<String>) -> Unit, later: () -> Unit) {

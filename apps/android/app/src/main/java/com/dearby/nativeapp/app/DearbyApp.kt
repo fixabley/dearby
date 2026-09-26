@@ -27,14 +27,27 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dearby.nativeapp.app.providers.applyTo
+import com.dearby.nativeapp.app.providers.editorState
+import com.dearby.nativeapp.app.providers.selectionModel
+import com.dearby.nativeapp.app.providers.visibilityState
 import com.dearby.nativeapp.entities.card.model.ExchangeContextModel
 import com.dearby.nativeapp.features.qr.QrActions
 import com.dearby.nativeapp.pages.login.LoginPage
 import com.dearby.nativeapp.pages.profile.ProfilePage
-import com.dearby.nativeapp.pages.qr.*
-import com.dearby.nativeapp.pages.wallet.*
-import com.dearby.nativeapp.shared.ui.*
-import com.dearby.nativeapp.widgets.card.*
+import com.dearby.nativeapp.pages.qr.CardEditor
+import com.dearby.nativeapp.pages.qr.QrPage
+import com.dearby.nativeapp.pages.wallet.ImportEntryState
+import com.dearby.nativeapp.pages.wallet.ImportPage
+import com.dearby.nativeapp.pages.wallet.SendPage
+import com.dearby.nativeapp.pages.wallet.WalletEntryState
+import com.dearby.nativeapp.pages.wallet.WalletPage
+import com.dearby.nativeapp.shared.ui.EmptyPanel
+import com.dearby.nativeapp.shared.ui.Field
+import com.dearby.nativeapp.shared.ui.FormColumn
+import com.dearby.nativeapp.widgets.card.CardContent
+import com.dearby.nativeapp.widgets.card.CardState
+import com.dearby.nativeapp.widgets.card.toState
 import kotlinx.coroutines.*
 
 @Composable fun DearbyApp(model: DearbyViewModel, incoming: String?, consume: () -> Unit) {
@@ -108,7 +121,7 @@ import kotlinx.coroutines.*
             !state.ready -> CircularProgressIndicator(Modifier.align(Alignment.Center))
             state.importVisible && state.loggedIn -> ImportPage(state.guests.map { guest -> val cached = state.guestCards[guest.cardId]; ImportEntryState(guest.cardId, cached?.profileName ?: "명함 정보 확인 필요", cached?.job.orEmpty(), guest.context.label ?: guest.context.activityId.orEmpty()) }, state.busy, model::importSelected, { model.showImport(false) })
             route == "login" -> LoginPage(state.busy, state.challengeId, state.challengeExpires, model::requestCode, model::login, { route = "" })
-            route == "create" -> CardEditor(state.profile, state.busy, { model.publish(it) { route = returnRoute } }, { route = returnRoute }, { Toast.makeText(context, "선택 해제한 연락처는 명함에 표시되지 않습니다.", Toast.LENGTH_SHORT).show() })
+            route == "create" -> CardEditor(state.profile.visibilityState(), state.busy, { model.publish(it.selectionModel()) { route = returnRoute } }, { route = returnRoute }, { Toast.makeText(context, "선택 해제한 연락처는 명함에 표시되지 않습니다.", Toast.LENGTH_SHORT).show() })
             route == "send" && recipient != null -> SendPage(cards, state.selectedCardId, recipient!!.person, state.busy, model::selectCard, { card, label -> model.send(card, recipient!!.ownerId, ExchangeContextModel(label = label.ifBlank { null })) { route = "" } }, ::create, { route = "" })
             route == "receive" -> FormColumn {
                 TextButton({ route = "" }) { Text("닫기") }
@@ -128,7 +141,7 @@ import kotlinx.coroutines.*
                 val entries = if (state.loggedIn) state.wallet.map { WalletEntryState(it.id, it.card.toState(), it.context.label ?: it.context.activityId.orEmpty(), it.receivedAt, it.reciprocal) } else state.guests.mapNotNull { guest -> state.guestCards[guest.cardId]?.let { WalletEntryState(guest.cardId, it.toState(), guest.context.label ?: guest.context.activityId.orEmpty(), guest.savedAt, false) } }
                 WalletPage(entries, state.loggedIn, state.guests.size, { route = "login" }, { model.showImport(true) }, model::refresh) { recipient = it; route = "send" }
             }
-            else -> ProfilePage(state.profile, state.busy, state.loggedIn, model::saveProfile, { route = "login" }, model::logout, { model.showImport(true) })
+            else -> ProfilePage(state.profile.editorState(), state.busy, state.loggedIn, { model.saveProfile(it.applyTo(state.profile)) }, { route = "login" }, model::logout, { model.showImport(true) })
         }
     } }
 }

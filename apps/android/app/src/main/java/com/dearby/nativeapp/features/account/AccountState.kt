@@ -1,7 +1,9 @@
 package com.dearby.nativeapp.features.account
 
-import com.dearby.nativeapp.entities.profile.model.*
-import com.dearby.nativeapp.entities.card.model.*
+import com.dearby.nativeapp.entities.profile.model.ProfileModel
+import com.dearby.nativeapp.entities.card.model.CardModel
+import com.dearby.nativeapp.entities.card.model.GuestSavedCardModel
+import com.dearby.nativeapp.entities.card.model.ReceiptModel
 
 data class AccountState(
     val ready: Boolean = false,

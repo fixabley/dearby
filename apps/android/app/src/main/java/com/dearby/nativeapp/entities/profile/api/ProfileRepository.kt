@@ -1,11 +1,14 @@
 package com.dearby.nativeapp.entities.profile.api
 
-import com.dearby.nativeapp.shared.api.*
-import com.dearby.nativeapp.shared.storage.*
+import com.dearby.nativeapp.shared.api.HttpClient
+import com.dearby.nativeapp.shared.api.wireJson
+import com.dearby.nativeapp.shared.storage.DearbyDao
+import com.dearby.nativeapp.shared.storage.DocumentRecord
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import java.util.UUID
-import com.dearby.nativeapp.entities.profile.model.*
+import com.dearby.nativeapp.entities.profile.model.ProfileModel
+import com.dearby.nativeapp.entities.profile.model.update
 
 class ProfileRepository(private val http: HttpClient, private val dao: DearbyDao) {
     var accountId: String? = null

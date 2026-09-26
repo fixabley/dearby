@@ -7,8 +7,9 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.dearby.nativeapp.widgets.card.*
-import com.dearby.nativeapp.shared.ui.*
+import com.dearby.nativeapp.widgets.card.CardContent
+import com.dearby.nativeapp.widgets.card.CardState
+import com.dearby.nativeapp.shared.ui.Field
 import kotlinx.coroutines.launch
 
 data class WalletEntryState(val id: String, val card: CardState, val context: String, val date: String, val reciprocal: Boolean)
