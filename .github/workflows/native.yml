@@ -43,10 +43,11 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - run: python3 scripts/check-fsd.py
       - run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
   ios:
     runs-on: macos-26
-    timeout-minutes: 25
+    timeout-minutes: 40
     defaults:
       run:
         working-directory: apps/ios
@@ -56,9 +57,14 @@ jobs:
           persist-credentials: false
       - name: Record toolchain
         run: xcodebuild -version
+      - name: Swift style and architecture checks
+        run: |
+          bash scripts/setup_swiftlint.sh
+          bash tests/run_swiftlint.sh
+          bash tests/run_architecture.sh
       - name: Select available iPhone simulator
         run: |
           device_id=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for devices in d["devices"].values() for x in devices if x["name"].startswith("iPhone")))')
           echo "DEARBY_SIMULATOR_ID=$device_id" >> "$GITHUB_ENV"
       - name: Build and test
-        run: xcodebuild -project Dearby.xcodeproj -scheme Dearby -destination "platform=iOS Simulator,id=$DEARBY_SIMULATOR_ID" -parallel-testing-enabled NO CODE_SIGNING_ALLOWED=NO test
+        run: xcodebuild -project Dearby.xcodeproj -scheme Dearby -destination "platform=iOS Simulator,id=$DEARBY_SIMULATOR_ID" -parallel-testing-enabled NO test
