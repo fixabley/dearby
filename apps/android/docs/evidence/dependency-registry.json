@@ -1,0 +1,37 @@
+{
+  "agp": {
+    "url": "https://dl.google.com/dl/android/maven2/com/android/tools/build/gradle/maven-metadata.xml",
+    "pinned": "9.1.1",
+    "available": true,
+    "latest": "9.5.0-alpha07",
+    "lastStable": "9.4.1"
+  },
+  "compose": {
+    "url": "https://dl.google.com/dl/android/maven2/androidx/compose/compose-bom/maven-metadata.xml",
+    "pinned": "2026.02.01",
+    "available": true,
+    "latest": "2026.09.00",
+    "lastStable": "2026.09.00"
+  },
+  "room": {
+    "url": "https://dl.google.com/dl/android/maven2/androidx/room/room-runtime/maven-metadata.xml",
+    "pinned": "2.8.5",
+    "available": true,
+    "latest": "2.8.5",
+    "lastStable": "2.8.5"
+  },
+  "activity": {
+    "url": "https://dl.google.com/dl/android/maven2/androidx/activity/activity-compose/maven-metadata.xml",
+    "pinned": "1.12.4",
+    "available": true,
+    "latest": "1.14.0-alpha03",
+    "lastStable": "1.13.0"
+  },
+  "lifecycle": {
+    "url": "https://dl.google.com/dl/android/maven2/androidx/lifecycle/lifecycle-viewmodel-compose/maven-metadata.xml",
+    "pinned": "2.10.0",
+    "available": true,
+    "latest": "2.12.0-alpha04",
+    "lastStable": "2.11.0"
+  }
+}
