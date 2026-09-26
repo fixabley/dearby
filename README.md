@@ -11,7 +11,9 @@
 - [현재 작업·검증·차단 사항](docs/context/native-restart-2026-09-27.md)
 - [iOS #37](https://github.com/fixabley/dearby/issues/37), [Android #38](https://github.com/fixabley/dearby/issues/38), [API #39](https://github.com/fixabley/dearby/issues/39)
 
-앱과 서버 실행·검증 명령은 각 apps 디렉터리 README에서 관리합니다. 실제 생성·검증된 명령만 기록합니다.
+실행: [iOS](apps/ios/README.md), [Android](apps/android/README.md), [API](apps/dearby-api/README.md). 실제 화면과 검증 증거: [iOS](apps/ios/docs/evidence/README.md), [Android](apps/android/docs/VERIFICATION.md), [통합 검증](docs/implementation/verification-matrix.md).
+
+프로필·선택 공개 명함·기기 ID 저장·선택 가져오기·양방향 교환은 격리된 실제 API로 검증했습니다. 기본 앱의 API 주소는 미설정이며 운영 서버·메일·공개 HTTPS 링크를 연결해야 외부 사용자가 사용할 수 있습니다. [통합 PR #40](https://github.com/fixabley/dearby/pull/40)은 Draft입니다.
 
 ## 조사 자료
 

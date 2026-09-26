@@ -4,15 +4,15 @@
 
 | 요구 | 담당/이슈 | 현재 증거·남은 검증 |
 | --- | --- | --- |
-| NAV-01 PROFILE-01 CARD-01 CARD-02 | #37 #38 #39 | 구현 중, 빌드/상대 기기 검증 대기 |
-| AUTH-01 EXCHANGE-01 EXCHANGE-02 GUEST-01 | #37 #38 #39 | 구현 중, 실제 메일·양 플랫폼 HTTP 통합 대기 |
-| QR-01 WALLET-01 SELECT-01 | #37 #38 | 구현 중, 제스처·다운로드·스캔 검증 대기 |
+| NAV-01 PROFILE-01 CARD-01 CARD-02 | #37 #38 #39 | 첫 구현·양 플랫폼 로컬 API 검증 통과. 전체 접근성·실기기 검증 별도 |
+| AUTH-01 EXCHANGE-01 EXCHANGE-02 GUEST-01 | #37 #38 #39 | 로컬 실제 HTTP 양방향 교환·재시도·선택 가져오기 통과. 실제 메일 #42 미완료 |
+| QR-01 WALLET-01 SELECT-01 | #37 #38 | QR/단독 확대·지갑 기본 UI 검증. 물리 스캔·다운로드 권한·전체 제스처 #43/#44 미완료 |
 | CATALOG-01 | 후속 #41 | 과거 9/24 스냅샷만 보존, 수집/갱신 미구현 |
 | NOTIFY-01 | 후속 #41 | 실제 푸시와 구독 미구현 |
 | CALENDAR-01 | #13 #15 참고 | 이전 이슈는 이력, 신규 OS 연동 미검증 |
 | APPLY-01 | #36 | 외부 인증 이후 폼 검증 차단 |
 | APPLY-02 | 후속 #41 | 신청 여부 수동 확인 흐름 미검증 |
-| DELIVERY-01 | 조율 | 웹 실행 코드 제거, 3개 하위 세션 입력 수락; 통합/PR 진행 중 |
+| DELIVERY-01 | 조율 | 웹 실행 코드 제거, 첫 앱/API 통합 및 PR #40 게시. 원격 CI 확인 중 |
 
 개인정보 검증은 선택하지 않은 연락처·이력이 공개 HTTP 응답에 없는지 확인한다. 저장 검증은 실패·취소·재시작·부분 가져오기 원본 보존을 포함한다. UI 검증은 손쉬운 사용 이름과 터치 영역, 큰 글자, 빈 상태 및 실제 화면 캡처를 포함한다. Ponytail은 복잡성만 검토하며 이 검증을 대체하지 않는다.
 
@@ -29,3 +29,12 @@ CI는 [checkout](https://github.com/actions/checkout), [setup-node](https://gith
 iOS URLSession/AppState와 Android HttpClient/Repository가 같은 격리 API에 접속해 테스트 메일 OTP·프로필 저장·선택 공개 명함 발행·기기 명함 가져오기를 통과했다. 양방향 전달 후 양 앱의 wallet 응답에서 reciprocal=true를 확인했고 동일 요청 재전송 receipt도 일치했다. 실제 메일 발송이나 두 실기기 카메라 스캔 증거는 아니다. 플랫폼별 증거 파일은 각 담당 완료 보고 후 통합한다.
 
 조율 코드 리뷰에서 Android 미확정 전송 A 뒤 B를 전송하면 A 재시도 키가 덮이는 경로를 발견해 수정·회귀 검사를 요청했다. 기본 반복 재시도 통과와 이 추가 경로의 완료를 구분한다. iOS QR 최종 캡처에서 승인된 배치와 차이를 발견해 카드 내부 공유 버튼·작은 메타데이터·하단 명함 목록 배치를 수정 중이다.
+
+## 조율 checkout 최종 앱 검증
+
+- iOS: Xcode 27, 자기 전용 Simulator 4712C750-BF32-42A8-8FBA-9AD2BA339EFC, 기본 ad-hoc signing. 최종 코드 단위/계약 17개와 게스트 5탭·로그인 gate XCUITest 1개 통과. build-for-testing, SwiftLint, 구조16도 통과했다. 로그 /tmp/dearby-root-ios-final.log 및 /tmp/dearby-root-{architecture,swiftlint}.log.
+- Android: JBR 25.0.2, 자기 checkout에서 JVM18/실패0/skip0, Lint·Debug·unsigned Release 빌드 통과. 로그 /tmp/dearby-root-android-final.log. 마지막 QR 타일 텍스트 수정 후 JVM/Debug/Lint도 다시 통과했다. 담당 checkout의 에뮬레이터11 및 실제 API 결과는 플랫폼 문서에 별도 기록한다.
+- A/B/A 모호한 전송의 요청 ID 덮어쓰기를 수정하고 회귀 검사를 추가했다. iOS QR 메타데이터·공유 메뉴·하단 카드 타일 최종 화면을 조율에서 직접 검토했다. 밝은 액션 색 대비/큰 글자 전체 흐름은 #14 후속이며 접근성 통과로 표시하지 않는다.
+- Ponytail 검토: 불필요한 새 추상 계층 삭제 후보 없음(Lean already. Ship.). 보안·저장·UI 정확성은 위 별도 검사로 검토했다.
+
+세 담당 Dispatch는 succeeded/retained, 통합 검증 서버와 private mail/DB는 종료·삭제 확인했다. 전체 제품 출시 완료를 뜻하지 않는다.
