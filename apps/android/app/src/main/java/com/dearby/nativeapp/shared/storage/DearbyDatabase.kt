@@ -8,7 +8,7 @@ import androidx.room.*
     @Query("SELECT * FROM documents WHERE `key` = :key") suspend fun document(key: String): DocumentRecord?
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun put(record: DocumentRecord)
     @Query("DELETE FROM documents WHERE `key` = :key") suspend fun removeDocument(key: String)
-    @Query("DELETE FROM documents WHERE `key` LIKE 'account:%'") suspend fun clearAccount()
+    @Query("DELETE FROM documents WHERE `key` LIKE 'account:%:profile'") suspend fun clearAccount()
     @Query("SELECT * FROM guest_cards ORDER BY savedAt DESC") suspend fun guests(): List<GuestRecord>
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun saveGuest(record: GuestRecord)
     @Query("DELETE FROM guest_cards WHERE cardId IN (:ids)") suspend fun removeGuests(ids: Set<String>)

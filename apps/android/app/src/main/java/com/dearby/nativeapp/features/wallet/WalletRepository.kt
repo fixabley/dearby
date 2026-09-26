@@ -7,6 +7,7 @@ import com.dearby.nativeapp.shared.storage.DocumentRecord
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import java.util.UUID
+import java.security.MessageDigest
 import com.dearby.nativeapp.entities.card.model.ExchangeContextModel
 import com.dearby.nativeapp.entities.card.model.GuestSavedCardModel
 import com.dearby.nativeapp.entities.card.model.ImportResultModel
@@ -16,11 +17,17 @@ import com.dearby.nativeapp.entities.card.model.ReceiptModel
 @Serializable data class DeliveryModel(val receiptId: String, val deliveredAt: String)
 
 
+internal fun pendingSendKey(accountId: String, cardId: String, recipientProfileId: String, context: ExchangeContextModel): String {
+    val intent = wireJson.encodeToString(SendRequest(cardId, recipientProfileId, context, ""))
+    val digest = MessageDigest.getInstance("SHA-256").digest(intent.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+    return "account:$accountId:pending-send:$digest"
+}
+
 class WalletRepository(private val http: HttpClient, private val dao: DearbyDao) {
     suspend fun wallet(): List<ReceiptModel> = wireJson.decodeFromString<Items<ReceiptModel>>(http.request("GET", "/wallet")).items
     suspend fun import(items: List<GuestSavedCardModel>): List<ImportResultModel> = wireJson.decodeFromString<Items<ImportResultModel>>(http.request("POST", "/wallet/import", wireJson.encodeToString(Items(items)))).items
     suspend fun send(cardId: String, recipientProfileId: String, context: ExchangeContextModel, accountId: String): DeliveryModel {
-        val key = "account:$accountId:pending-send"
+        val key = pendingSendKey(accountId, cardId, recipientProfileId, context)
         val previous = dao.document(key)?.let { wireJson.decodeFromString<SendRequest>(it.json) }
         val request = if (previous?.cardId == cardId && previous.recipientProfileId == recipientProfileId && previous.context == context) previous
             else SendRequest(cardId, recipientProfileId, context, UUID.randomUUID().toString())

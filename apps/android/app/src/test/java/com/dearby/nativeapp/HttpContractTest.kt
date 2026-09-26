@@ -5,6 +5,7 @@ import com.dearby.nativeapp.entities.card.model.*
 import com.dearby.nativeapp.entities.profile.api.ProfileRepository
 import com.dearby.nativeapp.entities.profile.model.ProfileModel
 import com.dearby.nativeapp.features.wallet.WalletRepository
+import com.dearby.nativeapp.features.wallet.pendingSendKey
 import com.dearby.nativeapp.features.guest.GuestStore
 import com.dearby.nativeapp.shared.api.*
 import com.sun.net.httpserver.HttpServer
@@ -48,9 +49,28 @@ class HttpContractTest {
         }
         val dao = MemoryDao(); val http = HttpClient(base, true) { "test" }
         try { WalletRepository(http, dao).send("c", "p", ExchangeContextModel(), "account"); fail() } catch (_: ApiFailure) { }
-        assertNotNull(dao.document("account:account:pending-send"))
+        assertNotNull(dao.document(pendingSendKey("account", "c", "p", ExchangeContextModel())))
         WalletRepository(http, dao).send("c", "p", ExchangeContextModel(), "account")
-        assertEquals(bodies[0], bodies[1]); assertNull(dao.document("account:account:pending-send"))
+        assertEquals(bodies[0], bodies[1]); assertNull(dao.document(pendingSendKey("account", "c", "p", ExchangeContextModel())))
+    } }
+    @Test fun ambiguousAThenBThenARetainsBothIntentIdentities() = server { server, base -> runTest {
+        val bodies = mutableListOf<String>()
+        server.createContext("/v1/exchanges") { exchange ->
+            bodies += exchange.requestBody.bufferedReader().readText()
+            if (bodies.size == 1) { exchange.sendResponseHeaders(503, -1); exchange.close() }
+            else {
+                val response = """{"receiptId":"receipt","deliveredAt":"2026-09-27T00:00:00Z"}""".toByteArray()
+                exchange.sendResponseHeaders(201, response.size.toLong()); exchange.responseBody.use { it.write(response) }
+            }
+        }
+        val dao = MemoryDao(); val http = HttpClient(base, true) { "test" }
+        val context = ExchangeContextModel(label = "A")
+        try { WalletRepository(http, dao).send("card", "recipientA", context, "account"); fail() } catch (_: ApiFailure) { }
+        WalletRepository(http, dao).send("card", "recipientB", context, "account")
+        assertNotNull(dao.document(pendingSendKey("account", "card", "recipientA", context)))
+        dao.clearAccount() // Logging out clears profile cache, not unresolved idempotency evidence.
+        WalletRepository(http, dao).send("card", "recipientA", context, "account")
+        assertEquals(bodies[0], bodies[2]); assertNotEquals(bodies[0], bodies[1])
     } }
     @Test fun accountCachesAreIsolatedAndDraftSurvivesClear() = runTest {
         val dao = MemoryDao(); val repo = ProfileRepository(HttpClient("", false) { null }, dao)

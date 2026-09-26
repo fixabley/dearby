@@ -45,7 +45,7 @@ internal class MemoryDao : DearbyDao {
     override suspend fun document(key: String) = documents[key]
     override suspend fun put(record: DocumentRecord) { documents[record.key] = record }
     override suspend fun removeDocument(key: String) { documents.remove(key) }
-    override suspend fun clearAccount() { documents.keys.removeAll { it.startsWith("account:") } }
+    override suspend fun clearAccount() { documents.keys.removeAll { it.startsWith("account:") && it.endsWith(":profile") } }
     override suspend fun guests() = guests.values.toList()
     override suspend fun saveGuest(record: GuestRecord) { guests.putIfAbsent(record.cardId, record) }
     override suspend fun removeGuests(ids: Set<String>) { ids.forEach(guests::remove) }

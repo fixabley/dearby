@@ -9,6 +9,7 @@ import com.dearby.nativeapp.entities.profile.model.*
 import com.dearby.nativeapp.features.account.AuthRepository
 import com.dearby.nativeapp.features.guest.GuestStore
 import com.dearby.nativeapp.features.wallet.WalletRepository
+import com.dearby.nativeapp.features.wallet.pendingSendKey
 import com.dearby.nativeapp.features.wallet.SendRequest
 import com.dearby.nativeapp.features.wallet.DeliveryModel
 import kotlinx.serialization.encodeToString
@@ -68,7 +69,7 @@ class LocalApiIntegrationTest {
             val recipient = args.getString("recipientId")!!
             val exchange = ExchangeContextModel(label = "cross-platform test")
             val request = SendRequest(ids[1], recipient, exchange, UUID.randomUUID().toString())
-            db.dao().put(DocumentRecord("account:${ids[0]}:pending-send", wireJson.encodeToString(request)))
+            db.dao().put(DocumentRecord(pendingSendKey(ids[0], ids[1], recipient, exchange), wireJson.encodeToString(request)))
             val delivery = wallet.send(ids[1], recipient, exchange, ids[0])
             val replay = wireJson.decodeFromString<DeliveryModel>(http.request("POST", "/exchanges", wireJson.encodeToString(request)))
             assertEquals(delivery.receiptId, replay.receiptId)
