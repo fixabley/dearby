@@ -18,3 +18,18 @@ test-results/
 
 # Next generates environment references for dev and production.
 next-env.d.ts
+
+# Native child checkouts and local build products
+/dearby-ios/
+/dearby-android/
+/dearby-api/
+.gradle/
+.build/
+DerivedData/
+build/
+local.properties
+xcuserdata/
+*.xcuserstate
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
