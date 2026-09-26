@@ -1,0 +1,684 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0B1D80CF564DAE6E789D24FC /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AAD5D82A81417E2F53FB99D /* CardView.swift */; };
+		0C3F9F85BCBB9067C4BA5050 /* SendCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CE6E34CAB093F457A1A1AFA /* SendCardView.swift */; };
+		0D20822567A36E28862108DA /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1C674F1A6EE0E3F8C933977B /* Foundation.framework */; };
+		129C3B312B6D92FDE3319683 /* ReceiptModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF359E8FF26D3A620084FA47 /* ReceiptModel.swift */; };
+		14B195257B2773E74F8BA465 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2B4B4B57C125C07D95C64CD /* LoginView.swift */; };
+		150FD8526B5C8BF8D8198F36 /* GuestLibraryState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1EABBF09A2F7BEA3578C70E /* GuestLibraryState.swift */; };
+		155C1D49A1E1411C07F52F50 /* DearbyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 323AC53B7A69B528E3976703 /* DearbyApp.swift */; };
+		2EDB5EEFE9E7B92397BF6B40 /* ProfileModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA82E133C13F47F2C41B03A1 /* ProfileModel.swift */; };
+		3BA2D4AC3D6B1D6BD9F98C77 /* StorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2937254073E78004E253B80 /* StorageTests.swift */; };
+		3BEA5687D0C60EBB068E9818 /* CameraScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 696E595CD26AB1187269765C /* CameraScanner.swift */; };
+		42E47154156790CF47CE4051 /* CardModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B97A753A0A1B8B47EAFC5453 /* CardModel.swift */; };
+		4C7D6B38A9A47F343F4E5316 /* SessionVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 288754F339D5953BC0B31E13 /* SessionVault.swift */; };
+		4F375FE493CCF5130A5FD25F /* WalletModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 098A63550984F50262C94FE3 /* WalletModel.swift */; };
+		565F63CB6BD656F6C54AD4E6 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1C674F1A6EE0E3F8C933977B /* Foundation.framework */; };
+		6787D215CA63B2E36A8CC217 /* ContactActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD738D9BDE4DBDEF7664AD6F /* ContactActions.swift */; };
+		73DF7170F3094A27DCCC4387 /* WalletPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CE8F8EAAF7421171FF565F9 /* WalletPage.swift */; };
+		78DB135C4D9ED3CAAA966BD9 /* LoginState.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFCAC0A334FA339A9BB9374E /* LoginState.swift */; };
+		7C60F33F930123FF2B7EC04B /* ProfileFields.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182D61886AE65E1F0CA527EB /* ProfileFields.swift */; };
+		80793D0CD6604022EDB4ABF1 /* CardComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = F637CED251803CF6B826DABA /* CardComposer.swift */; };
+		832477A141C733DF4AC13F2D /* ProfilePage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D58DEE8661379C85394A267 /* ProfilePage.swift */; };
+		8936163F18F66153C34B684D /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F476A55016EFDDCE83B0EA35 /* AppState.swift */; };
+		8DE596AF59703C8461AC3E0F /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02C3D4AE0F5F06E5A5EDD496 /* APIClient.swift */; };
+		95138B1735EAA23048E234B8 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1C674F1A6EE0E3F8C933977B /* Foundation.framework */; };
+		A25E0E6D307BFAD286AE8B2A /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DE85FB55809D7CFCD5C3268 /* RootView.swift */; };
+		A5511ABDA10AC3A8283137E0 /* CardLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FDB5AA799964229A36162D2 /* CardLink.swift */; };
+		AF6A2A5B7B854C31B2B535E8 /* ContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 707318B749BDB306F7B3C9BF /* ContractTests.swift */; };
+		C25758CAC9303C02FA2C2CAB /* LocalAPIIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E096A9159DC985887ECAEE4 /* LocalAPIIntegrationTests.swift */; };
+		CD86E7A4C892049D3C3F72CB /* LocalStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BC673D51B54B363CBF3B2CF /* LocalStore.swift */; };
+		D14CB3130EF9D1889F28615B /* HomePage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9177E0219670CF62DEBC678A /* HomePage.swift */; };
+		D554BACF67013889FF1FE74C /* QRPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49A1B79679414EEFFFA50D66 /* QRPage.swift */; };
+		DE99080BF18F59969EACC023 /* ContactAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = A006A5C0A2D596D3D9EDEB26 /* ContactAction.swift */; };
+		E59B46EA8554E83A036B317D /* NavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A04C2F3F42C54D826775C53A /* NavigationTests.swift */; };
+		E9946191A1EAB7615BA97112 /* ProfileState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0091922403682D215450BE7 /* ProfileState.swift */; };
+		F93C670683735933B8520F0C /* ExchangeState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E388A5D9677DD321372A061 /* ExchangeState.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		61538C4BAF8D358C6C731DBD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A56BB058F0B80C152E09C5CB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0DFAD31C808E94156E11AE92;
+			remoteInfo = Dearby;
+		};
+		B6CB61E6E3DB047D8732B535 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A56BB058F0B80C152E09C5CB /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0DFAD31C808E94156E11AE92;
+			remoteInfo = Dearby;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		02C3D4AE0F5F06E5A5EDD496 /* APIClient.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = APIClient.swift; path = Sources/shared/api/APIClient.swift; sourceTree = "<group>"; };
+		098A63550984F50262C94FE3 /* WalletModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WalletModel.swift; path = Sources/entities/identity/model/WalletModel.swift; sourceTree = "<group>"; };
+		182D61886AE65E1F0CA527EB /* ProfileFields.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProfileFields.swift; path = Sources/entities/identity/model/ProfileFields.swift; sourceTree = "<group>"; };
+		1AAD5D82A81417E2F53FB99D /* CardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CardView.swift; path = Sources/entities/identity/ui/CardView.swift; sourceTree = "<group>"; };
+		1B70F3C5214447C27ED04746 /* DearbyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DearbyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1C674F1A6EE0E3F8C933977B /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		1D58DEE8661379C85394A267 /* ProfilePage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProfilePage.swift; path = Sources/widgets/profile/ui/ProfilePage.swift; sourceTree = "<group>"; };
+		288754F339D5953BC0B31E13 /* SessionVault.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SessionVault.swift; path = Sources/shared/lib/SessionVault.swift; sourceTree = "<group>"; };
+		2CE6E34CAB093F457A1A1AFA /* SendCardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SendCardView.swift; path = Sources/widgets/cardFlow/ui/SendCardView.swift; sourceTree = "<group>"; };
+		323AC53B7A69B528E3976703 /* DearbyApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DearbyApp.swift; path = Sources/app/entrypoint/DearbyApp.swift; sourceTree = "<group>"; };
+		3DE85FB55809D7CFCD5C3268 /* RootView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RootView.swift; path = Sources/app/routes/RootView.swift; sourceTree = "<group>"; };
+		49A1B79679414EEFFFA50D66 /* QRPage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = QRPage.swift; path = Sources/widgets/qr/ui/QRPage.swift; sourceTree = "<group>"; };
+		529CF5DF71C02ACB9D36620B /* DearbyUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DearbyUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5E096A9159DC985887ECAEE4 /* LocalAPIIntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LocalAPIIntegrationTests.swift; path = unitTests/LocalAPIIntegrationTests.swift; sourceTree = "<group>"; };
+		696E595CD26AB1187269765C /* CameraScanner.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CameraScanner.swift; path = Sources/features/scan/ui/CameraScanner.swift; sourceTree = "<group>"; };
+		6E388A5D9677DD321372A061 /* ExchangeState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExchangeState.swift; path = Sources/features/exchange/model/ExchangeState.swift; sourceTree = "<group>"; };
+		707318B749BDB306F7B3C9BF /* ContractTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ContractTests.swift; path = unitTests/ContractTests.swift; sourceTree = "<group>"; };
+		7BC673D51B54B363CBF3B2CF /* LocalStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LocalStore.swift; path = Sources/shared/lib/LocalStore.swift; sourceTree = "<group>"; };
+		8CE8F8EAAF7421171FF565F9 /* WalletPage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WalletPage.swift; path = Sources/widgets/wallet/ui/WalletPage.swift; sourceTree = "<group>"; };
+		9177E0219670CF62DEBC678A /* HomePage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = HomePage.swift; path = Sources/pages/home/ui/HomePage.swift; sourceTree = "<group>"; };
+		9FDB5AA799964229A36162D2 /* CardLink.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CardLink.swift; path = Sources/entities/identity/model/CardLink.swift; sourceTree = "<group>"; };
+		A006A5C0A2D596D3D9EDEB26 /* ContactAction.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ContactAction.swift; path = Sources/entities/identity/model/ContactAction.swift; sourceTree = "<group>"; };
+		A04C2F3F42C54D826775C53A /* NavigationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NavigationTests.swift; path = uiTests/NavigationTests.swift; sourceTree = "<group>"; };
+		A8DFAF7976E1009A11ACA23B /* Dearby.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dearby.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B0091922403682D215450BE7 /* ProfileState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProfileState.swift; path = Sources/features/profile/model/ProfileState.swift; sourceTree = "<group>"; };
+		B1EABBF09A2F7BEA3578C70E /* GuestLibraryState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = GuestLibraryState.swift; path = Sources/features/guestLibrary/model/GuestLibraryState.swift; sourceTree = "<group>"; };
+		B2B4B4B57C125C07D95C64CD /* LoginView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LoginView.swift; path = Sources/widgets/auth/ui/LoginView.swift; sourceTree = "<group>"; };
+		B97A753A0A1B8B47EAFC5453 /* CardModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CardModel.swift; path = Sources/entities/identity/model/CardModel.swift; sourceTree = "<group>"; };
+		C2937254073E78004E253B80 /* StorageTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = StorageTests.swift; path = unitTests/StorageTests.swift; sourceTree = "<group>"; };
+		CD738D9BDE4DBDEF7664AD6F /* ContactActions.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ContactActions.swift; path = Sources/features/contactActions/lib/ContactActions.swift; sourceTree = "<group>"; };
+		CF359E8FF26D3A620084FA47 /* ReceiptModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ReceiptModel.swift; path = Sources/features/wallet/model/ReceiptModel.swift; sourceTree = "<group>"; };
+		CFCAC0A334FA339A9BB9374E /* LoginState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LoginState.swift; path = Sources/features/auth/model/LoginState.swift; sourceTree = "<group>"; };
+		EA82E133C13F47F2C41B03A1 /* ProfileModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProfileModel.swift; path = Sources/entities/identity/model/ProfileModel.swift; sourceTree = "<group>"; };
+		F476A55016EFDDCE83B0EA35 /* AppState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AppState.swift; path = Sources/app/providers/AppState.swift; sourceTree = "<group>"; };
+		F637CED251803CF6B826DABA /* CardComposer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CardComposer.swift; path = Sources/widgets/cardFlow/ui/CardComposer.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		20D14FA017D68048C4236AEF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				565F63CB6BD656F6C54AD4E6 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DB497A6740C0EDBB867C033F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0D20822567A36E28862108DA /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EB10D4CFA8425C73E612EFD3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				95138B1735EAA23048E234B8 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		16F7A07DCE1CB6A92C2DF566 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				1C674F1A6EE0E3F8C933977B /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		218EA80FC82DEDE67E7178D5 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				16F7A07DCE1CB6A92C2DF566 /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		296E57A1E15A3A64C5F072D1 /* uiTests */ = {
+			isa = PBXGroup;
+			children = (
+				A04C2F3F42C54D826775C53A /* NavigationTests.swift */,
+			);
+			name = uiTests;
+			sourceTree = "<group>";
+		};
+		5054176A6B056BA7EBDF0FAA = {
+			isa = PBXGroup;
+			children = (
+				A40CE959F1252959E959A860 /* Products */,
+				218EA80FC82DEDE67E7178D5 /* Frameworks */,
+				7612A628D205449A12ED6A23 /* Sources */,
+				ED58189722681F52C3D47F1F /* unitTests */,
+				296E57A1E15A3A64C5F072D1 /* uiTests */,
+			);
+			sourceTree = "<group>";
+		};
+		7612A628D205449A12ED6A23 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				323AC53B7A69B528E3976703 /* DearbyApp.swift */,
+				F476A55016EFDDCE83B0EA35 /* AppState.swift */,
+				3DE85FB55809D7CFCD5C3268 /* RootView.swift */,
+				9FDB5AA799964229A36162D2 /* CardLink.swift */,
+				B97A753A0A1B8B47EAFC5453 /* CardModel.swift */,
+				A006A5C0A2D596D3D9EDEB26 /* ContactAction.swift */,
+				182D61886AE65E1F0CA527EB /* ProfileFields.swift */,
+				EA82E133C13F47F2C41B03A1 /* ProfileModel.swift */,
+				098A63550984F50262C94FE3 /* WalletModel.swift */,
+				1AAD5D82A81417E2F53FB99D /* CardView.swift */,
+				CFCAC0A334FA339A9BB9374E /* LoginState.swift */,
+				CD738D9BDE4DBDEF7664AD6F /* ContactActions.swift */,
+				6E388A5D9677DD321372A061 /* ExchangeState.swift */,
+				B1EABBF09A2F7BEA3578C70E /* GuestLibraryState.swift */,
+				B0091922403682D215450BE7 /* ProfileState.swift */,
+				696E595CD26AB1187269765C /* CameraScanner.swift */,
+				CF359E8FF26D3A620084FA47 /* ReceiptModel.swift */,
+				9177E0219670CF62DEBC678A /* HomePage.swift */,
+				02C3D4AE0F5F06E5A5EDD496 /* APIClient.swift */,
+				7BC673D51B54B363CBF3B2CF /* LocalStore.swift */,
+				288754F339D5953BC0B31E13 /* SessionVault.swift */,
+				B2B4B4B57C125C07D95C64CD /* LoginView.swift */,
+				F637CED251803CF6B826DABA /* CardComposer.swift */,
+				2CE6E34CAB093F457A1A1AFA /* SendCardView.swift */,
+				1D58DEE8661379C85394A267 /* ProfilePage.swift */,
+				49A1B79679414EEFFFA50D66 /* QRPage.swift */,
+				8CE8F8EAAF7421171FF565F9 /* WalletPage.swift */,
+			);
+			name = Sources;
+			sourceTree = "<group>";
+		};
+		A40CE959F1252959E959A860 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A8DFAF7976E1009A11ACA23B /* Dearby.app */,
+				1B70F3C5214447C27ED04746 /* DearbyTests.xctest */,
+				529CF5DF71C02ACB9D36620B /* DearbyUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		ED58189722681F52C3D47F1F /* unitTests */ = {
+			isa = PBXGroup;
+			children = (
+				707318B749BDB306F7B3C9BF /* ContractTests.swift */,
+				5E096A9159DC985887ECAEE4 /* LocalAPIIntegrationTests.swift */,
+				C2937254073E78004E253B80 /* StorageTests.swift */,
+			);
+			name = unitTests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0DFAD31C808E94156E11AE92 /* Dearby */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8352855976C6C42BDCBD25B8 /* Build configuration list for PBXNativeTarget "Dearby" */;
+			buildPhases = (
+				0D33B79BA284D15F7C51252A /* Sources */,
+				EB10D4CFA8425C73E612EFD3 /* Frameworks */,
+				05F3E947364ED0DEEE326BFA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Dearby;
+			productName = Dearby;
+			productReference = A8DFAF7976E1009A11ACA23B /* Dearby.app */;
+			productType = "com.apple.product-type.application";
+		};
+		23B516621567B3DEE4AF18BF /* DearbyTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 75CF50BEF352DAAF93D0A34A /* Build configuration list for PBXNativeTarget "DearbyTests" */;
+			buildPhases = (
+				5B0A6CE697E100F93CEF729B /* Sources */,
+				DB497A6740C0EDBB867C033F /* Frameworks */,
+				8AA6D21C042B205E433A626A /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5971113555348FD24757A0B8 /* PBXTargetDependency */,
+			);
+			name = DearbyTests;
+			productName = DearbyTests;
+			productReference = 1B70F3C5214447C27ED04746 /* DearbyTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		7D5AC5D139B60DCD4C651F2E /* DearbyUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 08CBAB00D101E28E55DB9927 /* Build configuration list for PBXNativeTarget "DearbyUITests" */;
+			buildPhases = (
+				0028F5C51BE4A4B6124F57AB /* Sources */,
+				20D14FA017D68048C4236AEF /* Frameworks */,
+				D3FBBBAF6060C62BCBCC9749 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				ADD3698893621606AC4C8CDB /* PBXTargetDependency */,
+			);
+			name = DearbyUITests;
+			productName = DearbyUITests;
+			productReference = 529CF5DF71C02ACB9D36620B /* DearbyUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A56BB058F0B80C152E09C5CB /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = 6BF037E4A43565CD45C8239F /* Build configuration list for PBXProject "Dearby" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 5054176A6B056BA7EBDF0FAA;
+			minimizedProjectReferenceProxies = 0;
+			preferredProjectObjectVersion = 100;
+			productRefGroup = A40CE959F1252959E959A860 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0DFAD31C808E94156E11AE92 /* Dearby */,
+				23B516621567B3DEE4AF18BF /* DearbyTests */,
+				7D5AC5D139B60DCD4C651F2E /* DearbyUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		05F3E947364ED0DEEE326BFA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8AA6D21C042B205E433A626A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D3FBBBAF6060C62BCBCC9749 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0028F5C51BE4A4B6124F57AB /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E59B46EA8554E83A036B317D /* NavigationTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0D33B79BA284D15F7C51252A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				155C1D49A1E1411C07F52F50 /* DearbyApp.swift in Sources */,
+				8936163F18F66153C34B684D /* AppState.swift in Sources */,
+				A25E0E6D307BFAD286AE8B2A /* RootView.swift in Sources */,
+				A5511ABDA10AC3A8283137E0 /* CardLink.swift in Sources */,
+				42E47154156790CF47CE4051 /* CardModel.swift in Sources */,
+				DE99080BF18F59969EACC023 /* ContactAction.swift in Sources */,
+				7C60F33F930123FF2B7EC04B /* ProfileFields.swift in Sources */,
+				2EDB5EEFE9E7B92397BF6B40 /* ProfileModel.swift in Sources */,
+				4F375FE493CCF5130A5FD25F /* WalletModel.swift in Sources */,
+				0B1D80CF564DAE6E789D24FC /* CardView.swift in Sources */,
+				78DB135C4D9ED3CAAA966BD9 /* LoginState.swift in Sources */,
+				6787D215CA63B2E36A8CC217 /* ContactActions.swift in Sources */,
+				F93C670683735933B8520F0C /* ExchangeState.swift in Sources */,
+				150FD8526B5C8BF8D8198F36 /* GuestLibraryState.swift in Sources */,
+				E9946191A1EAB7615BA97112 /* ProfileState.swift in Sources */,
+				3BEA5687D0C60EBB068E9818 /* CameraScanner.swift in Sources */,
+				129C3B312B6D92FDE3319683 /* ReceiptModel.swift in Sources */,
+				D14CB3130EF9D1889F28615B /* HomePage.swift in Sources */,
+				8DE596AF59703C8461AC3E0F /* APIClient.swift in Sources */,
+				CD86E7A4C892049D3C3F72CB /* LocalStore.swift in Sources */,
+				4C7D6B38A9A47F343F4E5316 /* SessionVault.swift in Sources */,
+				14B195257B2773E74F8BA465 /* LoginView.swift in Sources */,
+				80793D0CD6604022EDB4ABF1 /* CardComposer.swift in Sources */,
+				0C3F9F85BCBB9067C4BA5050 /* SendCardView.swift in Sources */,
+				832477A141C733DF4AC13F2D /* ProfilePage.swift in Sources */,
+				D554BACF67013889FF1FE74C /* QRPage.swift in Sources */,
+				73DF7170F3094A27DCCC4387 /* WalletPage.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5B0A6CE697E100F93CEF729B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AF6A2A5B7B854C31B2B535E8 /* ContractTests.swift in Sources */,
+				C25758CAC9303C02FA2C2CAB /* LocalAPIIntegrationTests.swift in Sources */,
+				3BA2D4AC3D6B1D6BD9F98C77 /* StorageTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		5971113555348FD24757A0B8 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = Dearby;
+			target = 0DFAD31C808E94156E11AE92 /* Dearby */;
+			targetProxy = B6CB61E6E3DB047D8732B535 /* PBXContainerItemProxy */;
+		};
+		ADD3698893621606AC4C8CDB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = Dearby;
+			target = 0DFAD31C808E94156E11AE92 /* Dearby */;
+			targetProxy = 61538C4BAF8D358C6C731DBD /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0828CA7E2FF2400A66B4DBD0 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		2D1CD3E3AF72828AB29474A5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dearby.dearbyuitests;
+				SDKROOT = iphoneos;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Dearby;
+			};
+			name = Debug;
+		};
+		35055AAC4112EB0A8965DE25 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dearby.dearbyuitests;
+				SDKROOT = iphoneos;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Dearby;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		3D8F83CE6B3FF240C6AB26DA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dearby.dearbytests;
+				SDKROOT = iphoneos;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Dearby.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Dearby";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		6C76F8461523D251CA46EABA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEARBY_API_URL = "";
+				DEARBY_SHARE_URL = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Info-Debug.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = Dearby;
+				INFOPLIST_KEY_DearbyAPIURL = "$(DEARBY_API_URL)";
+				INFOPLIST_KEY_DearbyShareURL = "$(DEARBY_SHARE_URL)";
+				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "명함 QR 코드를 읽기 위해 카메라를 사용합니다.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "선택한 명함의 QR 이미지를 사진에 저장합니다.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dearby.dearby;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A055DE652453800523771B8F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEARBY_API_URL = "";
+				DEARBY_SHARE_URL = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Dearby;
+				INFOPLIST_KEY_DearbyAPIURL = "$(DEARBY_API_URL)";
+				INFOPLIST_KEY_DearbyShareURL = "$(DEARBY_SHARE_URL)";
+				INFOPLIST_KEY_NSCameraUsageDescription = "명함 QR 코드를 읽기 위해 카메라를 사용합니다.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "선택한 명함의 QR 이미지를 사진에 저장합니다.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.dearby.dearby;
+				SDKROOT = iphoneos;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		B34DCDB3D00F06C17AB57C21 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dearby.dearbytests;
+				SDKROOT = iphoneos;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Dearby.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Dearby";
+			};
+			name = Debug;
+		};
+		EA06BE7F085E7196E1218510 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		08CBAB00D101E28E55DB9927 /* Build configuration list for PBXNativeTarget "DearbyUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				35055AAC4112EB0A8965DE25 /* Release */,
+				2D1CD3E3AF72828AB29474A5 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		6BF037E4A43565CD45C8239F /* Build configuration list for PBXProject "Dearby" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EA06BE7F085E7196E1218510 /* Debug */,
+				0828CA7E2FF2400A66B4DBD0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		75CF50BEF352DAAF93D0A34A /* Build configuration list for PBXNativeTarget "DearbyTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3D8F83CE6B3FF240C6AB26DA /* Release */,
+				B34DCDB3D00F06C17AB57C21 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8352855976C6C42BDCBD25B8 /* Build configuration list for PBXNativeTarget "Dearby" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A055DE652453800523771B8F /* Release */,
+				6C76F8461523D251CA46EABA /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A56BB058F0B80C152E09C5CB /* Project object */;
+}

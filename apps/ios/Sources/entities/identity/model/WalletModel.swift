@@ -3,6 +3,12 @@ import Foundation
 struct ExchangeContextModel: Codable, Equatable, Sendable {
     var activityId: String?
     var label: String?
+    private enum CodingKeys: String, CodingKey { case activityId, label }
+    func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(activityId, forKey: .activityId)
+        try values.encode(label, forKey: .label)
+    }
 }
 struct GuestSavedCardModel: Codable, Identifiable, Equatable, Sendable {
     var cardId: String

@@ -11,9 +11,9 @@ import Observation
     }
     func selectAccount(_ accountID: String?) throws {
         let newKey = accountID.map { "profile.\($0)" } ?? "profile.guest"
-        let restored = try store.read(ProfileModel.self, key: newKey) ?? ProfileModel()
         key = newKey
-        value = restored
+        value = ProfileModel()
+        value = try store.read(ProfileModel.self, key: newKey) ?? ProfileModel()
     }
     func save(_ draft: ProfileModel) throws {
         try store.write(draft, key: key)

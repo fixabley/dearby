@@ -18,7 +18,7 @@ import Observation
     }
     func applyImport(_ results: [ImportResult], selected: Set<String>) throws {
         let successful = Set(results.filter {
-            selected.contains($0.cardId) && ["imported", "alreadySaved"].contains($0.status) && $0.receiptId != nil
+            selected.contains($0.cardId) && ["imported", "alreadySaved"].contains($0.status) && UUID(uuidString: $0.receiptId ?? "") != nil
         }.map(\.cardId))
         let remaining = items.filter { !successful.contains($0.cardId) }
         try store.write(remaining, key: "guests")

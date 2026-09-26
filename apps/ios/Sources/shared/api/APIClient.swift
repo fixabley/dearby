@@ -2,7 +2,7 @@ import Foundation
 
 struct APIClient: Sendable {
     var baseURL: URL?
-    var session: URLSession = .shared
+    var session: URLSession = URLSession(configuration: .ephemeral)
     static var configured: APIClient {
         let raw = Bundle.main.object(forInfoDictionaryKey: "DearbyAPIURL") as? String ?? ""
         return APIClient(baseURL: validatedURL(raw))
@@ -16,9 +16,12 @@ struct APIClient: Sendable {
         return nil
     }
     func request<Response: Decodable & Sendable>(_ method: String, _ path: String,
-        token: String? = nil, body: Data? = nil, as type: Response.Type = Response.self) async throws -> Response {
+                                                 token: String? = nil, body: Data? = nil,
+                                                 as type: Response.Type = Response.self) async throws -> Response {
         guard let baseURL else { throw APIError.unconfigured }
-        var request = URLRequest(url: baseURL.appendingPathComponent(path))
+        let versioned = baseURL.path.trimmingCharacters(in: CharacterSet(charactersIn: "/")) == "v1"
+            ? baseURL : baseURL.appendingPathComponent("v1")
+        var request = URLRequest(url: versioned.appendingPathComponent(path))
         request.httpMethod = method
         request.timeoutInterval = 25
         request.httpBody = body
@@ -27,13 +30,13 @@ struct APIClient: Sendable {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
         guard (200..<300).contains(http.statusCode) else { throw APIError.status(http.statusCode) }
-        if Response.self == EmptyResponse.self { return EmptyResponse() as! Response }
+        if Response.self == EmptyResponse.self { return try JSONDecoder().decode(Response.self, from: Data("{}".utf8)) }
         return try JSONDecoder().decode(Response.self, from: data)
     }
 }
 struct EmptyResponse: Decodable, Sendable {}
 struct Items<Value: Codable & Sendable>: Codable, Sendable { var items: [Value] }
-enum APIError: LocalizedError {
+enum APIError: LocalizedError, Equatable {
     case unconfigured, invalidResponse, status(Int), loginRequired
     var errorDescription: String? {
         switch self {

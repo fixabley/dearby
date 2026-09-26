@@ -49,9 +49,9 @@ import SwiftData
         try state.save(cardID: ids[0], context: ExchangeContextModel())
         XCTAssertEqual(state.items.count, 3)
         try state.applyImport([
-            ImportResult(cardId: ids[0], status: "imported", receiptId: "receipt"),
+            ImportResult(cardId: ids[0], status: "imported", receiptId: UUID().uuidString),
             ImportResult(cardId: ids[1], status: "failed"),
-            ImportResult(cardId: ids[2], status: "imported", receiptId: "unexpected")
+            ImportResult(cardId: ids[2], status: "imported", receiptId: UUID().uuidString)
         ], selected: Set(ids.prefix(2)))
         XCTAssertEqual(Set(state.items.map(\.cardId)), Set(ids.suffix(2)))
         XCTAssertEqual(try GuestLibraryState(store: storage).items, state.items)
@@ -63,7 +63,7 @@ import SwiftData
         try state.save(cardID: id, context: ExchangeContextModel())
         storage.beforeSave = { throw CocoaError(.fileWriteOutOfSpace) }
         XCTAssertThrowsError(try state.applyImport([
-            ImportResult(cardId: id, status: "alreadySaved", receiptId: "receipt")
+            ImportResult(cardId: id, status: "alreadySaved", receiptId: UUID().uuidString)
         ], selected: [id]))
         XCTAssertEqual(state.items.map(\.cardId), [id])
         XCTAssertEqual(try GuestLibraryState(store: storage).items.map(\.cardId), [id])

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.dearby.card</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>dearby</string>
+			</array>
+		</dict>
+	</array>
+	<key>DearbyAPIURL</key>
+	<string>$(DEARBY_API_URL)</string>
+	<key>DearbyShareURL</key>
+	<string>$(DEARBY_SHARE_URL)</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>명함 QR 코드를 읽기 위해 카메라를 사용합니다.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>선택한 명함의 QR 이미지를 사진에 저장합니다.</string>
+</dict>
+</plist>

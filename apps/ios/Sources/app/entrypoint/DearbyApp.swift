@@ -1,0 +1,19 @@
+import SwiftUI
+
+@main struct DearbyApp: App {
+    @State private var state: AppState?
+    @State private var failure: String?
+    var body: some Scene {
+        WindowGroup {
+            Group {
+                if let state { RootView(state: state) } else {
+                    ContentUnavailableView("저장소를 열 수 없습니다", systemImage: "externaldrive.badge.exclamationmark",
+                        description: Text(failure ?? "저장소를 준비하고 있습니다."))
+                }
+            }.tint(.teal).task {
+                guard state == nil else { return }
+                do { state = try AppState.open() } catch { failure = error.localizedDescription }
+            }
+        }
+    }
+}
