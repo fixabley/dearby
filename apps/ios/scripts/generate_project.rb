@@ -43,6 +43,8 @@ project.targets.each do |target|
     end
   end
 end
+# The second pass hashes dependency proxies after their target IDs stabilize.
+2.times { project.predictabilize_uuids }
 project.save
 scheme = Xcodeproj::XCScheme.new
 scheme.add_build_target(app)

@@ -16,8 +16,7 @@ struct APIClient: Sendable {
         return nil
     }
     func request<Response: Decodable & Sendable>(_ method: String, _ path: String,
-                                                 token: String? = nil, body: Data? = nil,
-                                                 as type: Response.Type = Response.self) async throws -> Response {
+                                                 token: String? = nil, body: Data? = nil) async throws -> Response {
         guard let baseURL else { throw APIError.unconfigured }
         let versioned = baseURL.path.trimmingCharacters(in: CharacterSet(charactersIn: "/")) == "v1"
             ? baseURL : baseURL.appendingPathComponent("v1")
@@ -30,8 +29,7 @@ struct APIClient: Sendable {
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }
         guard (200..<300).contains(http.statusCode) else { throw APIError.status(http.statusCode) }
-        if Response.self == EmptyResponse.self { return try JSONDecoder().decode(Response.self, from: Data("{}".utf8)) }
-        return try JSONDecoder().decode(Response.self, from: data)
+        return try JSONDecoder().decode(Response.self, from: data.isEmpty ? Data("{}".utf8) : data)
     }
 }
 struct EmptyResponse: Decodable, Sendable {}
