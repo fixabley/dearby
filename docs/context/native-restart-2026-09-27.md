@@ -25,3 +25,5 @@
 사용자가 목표·완료 조건에 “맞아”로 동의하여 Cycle 4 Seed를 확정했다. 개발 중 차단 사항은 GitHub 이슈로 기록하고 의존하지 않는 작업을 계속한다. 질문 대기를 전체 개발 중단으로 전파하지 않는다. 공통 계약 shared/contracts/native-v1.md를 작성하고 플랫폼별 구현을 배정했다. 완료 보고를 검토·통합하고 실제 검증 결과와 남은 범위를 PR에 기록한다.
 
 확인된 차단 이슈: [#36 if(kakao) 실제 폼 검증](https://github.com/fixabley/dearby/issues/36). APPLY-01 실환경 검증에만 영향을 주며 명함·프로필·QR·기기 저장 및 APPLY-02 작업을 막지 않는다. Seed·개발 지침·정본 갱신 후 `git diff --check` 통과. 앱 빌드·기능 테스트는 이번 문서 변경에서 실행하지 않았다.
+
+통합 초안: https://github.com/fixabley/dearby/pull/40 (Draft, main 미병합). 남은 전체 서비스 요구는 #41에서 추적한다. 과거 조사 스냅샷 이관 후 28개 프로그램·30개 공고·26개 조직의 참조·ID·이미지 경로 확인.
