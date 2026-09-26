@@ -12,7 +12,7 @@ val wireJson = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 class ApiFailure(val status: Int, message: String) : Exception(message)
 class HttpClient(private val baseUrl: String, private val allowHttp: Boolean, private val token: () -> String?) {
     suspend fun request(method: String, path: String, body: String? = null, authenticated: Boolean = true): String = withContext(Dispatchers.IO) {
-        require(baseUrl.isNotBlank()) { "서버 주소가 설정되지 않았습니다. 개발 구성의 API 주소를 확인해 주세요." }
+        require(baseUrl.isNotBlank()) { "서비스 연결이 준비되지 않았습니다. 잠시 후 다시 시도해 주세요." }
         val base = URI(baseUrl)
         require(base.scheme == "https" || (allowHttp && base.scheme == "http")) { "HTTPS 서버 주소가 필요합니다." }
         require(base.host != null && base.userInfo == null && base.query == null && base.fragment == null)

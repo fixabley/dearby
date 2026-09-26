@@ -37,7 +37,7 @@ fun walletMatches(entry: WalletEntryState, query: String): Boolean = listOf(entr
                     var expanded by remember(entry.id) { mutableStateOf(false) }
                     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Box(Modifier.weight(1f)) { CardContent(entry.card, expanded, { expanded = !expanded }, if (expanded) Modifier.fillMaxSize() else Modifier.fillMaxWidth(), onContact) }
-                        Text("${entry.context.ifBlank { "활동 선택 안 함" }} · ${entry.date.take(10)}", style = MaterialTheme.typography.bodySmall)
+                        Text("${entry.context.ifBlank { "활동 선택 안 함" }} · ${entry.date}", style = MaterialTheme.typography.bodySmall)
                         if (!entry.reciprocal) Button({ if (loggedIn) send(entry.card) else login() }, Modifier.fillMaxWidth()) { Text("나도 명함 주기") }
                         Text("${page + 1} / ${cards.size} · 위아래로 넘기기", style = MaterialTheme.typography.labelSmall)
                     }

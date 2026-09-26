@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dearby.nativeapp.app.providers.receivedDate
 import com.dearby.nativeapp.app.providers.applyTo
 import com.dearby.nativeapp.app.providers.editorState
 import com.dearby.nativeapp.app.providers.selectionModel
@@ -136,14 +137,14 @@ import kotlinx.coroutines.*
                 Text("로그인 없이 명함을 저장할 수 있어요. 로그인하지 않고 저장한 명함은 앱을 삭제하면 복구할 수 없어요.")
                 Button({ receive(input) }, enabled = !state.busy && input.isNotBlank()) { Text("명함 확인하고 기기에 저장") }
             }
-            tab == 0 -> EmptyPanel("발견", "모집 중 활동을 준비하고 있습니다. 활동 수집 서버 연결 전이며 신청·캘린더 확인을 제공하지 않습니다.")
-            tab == 1 -> EmptyPanel("저장", "저장한 활동이 없습니다. 활동 탐색과 저장 연동은 준비 중입니다.")
+            tab == 0 -> EmptyPanel("발견", "활동 발견 기능을 준비 중입니다. 지금은 명함 교환 기능을 사용할 수 있어요.")
+            tab == 1 -> EmptyPanel("저장", "활동 저장 기능을 준비 중입니다.")
             tab == 2 -> QrPage(cards, state.selectedCardId, bitmap?.asImageBitmap(), model::selectCard, { enlarged = true }, { detail = it }, ::create,
                 { link?.let { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, it) }, "명함 링크 공유")) } },
                 { link?.let { (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Dearby 명함", it)); model.report("명함 링크를 복사했습니다.") } },
                 { exportLink = link; saveImage.launch("dearby-qr.png") }, contextLabel, { contextLabel = it }, { route = "receive" })
             tab == 3 -> {
-                val entries = if (state.loggedIn) state.wallet.map { WalletEntryState(it.id, it.card.toState(), it.context.label ?: it.context.activityId.orEmpty(), it.receivedAt, it.reciprocal) } else state.guests.mapNotNull { guest -> state.guestCards[guest.cardId]?.let { WalletEntryState(guest.cardId, it.toState(), guest.context.label ?: guest.context.activityId.orEmpty(), guest.savedAt, false) } }
+                val entries = if (state.loggedIn) state.wallet.map { WalletEntryState(it.id, it.card.toState(), it.context.label ?: it.context.activityId.orEmpty(), receivedDate(it.receivedAt), it.reciprocal) } else state.guests.mapNotNull { guest -> state.guestCards[guest.cardId]?.let { WalletEntryState(guest.cardId, it.toState(), guest.context.label ?: guest.context.activityId.orEmpty(), receivedDate(guest.savedAt), false) } }
                 WalletPage(entries, state.loggedIn, state.guests.size, { route = "login" }, { model.showImport(true) }, model::refresh, { recipient = it; route = "send" }, ::openContact)
             }
             else -> ProfilePage(state.profile.editorState(), state.busy, state.loggedIn, { model.saveProfile(it.applyTo(state.profile)) }, { route = "login" }, model::logout, { model.showImport(true) })
