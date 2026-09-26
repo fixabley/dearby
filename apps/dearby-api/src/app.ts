@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import { ZodError } from 'zod';
 import type { DB } from './database.js';
 import { ApiError } from './validation.js';
+import { cardRoutes } from './cards.js';
 import { authRoutes, type AuthOptions } from './auth.js';
 
 export function createApp(db: DB, options: AuthOptions) {
@@ -15,5 +16,6 @@ export function createApp(db: DB, options: AuthOptions) {
   });
   app.setNotFoundHandler((_request, reply) => reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Resource not found' } }));
   const owner = authRoutes(app, db, options);
-  return { app, owner };
+  cardRoutes(app, db, owner, options.now ?? Date.now);
+  return { app };
 }
