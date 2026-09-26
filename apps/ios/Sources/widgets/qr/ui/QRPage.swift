@@ -11,6 +11,8 @@ struct QRPage: View {
     let create: () -> Void
     let lookup: (String) async throws -> CardModel
     let saveGuest: (String, ExchangeContextModel) throws -> Void
+    @ScaledMetric(relativeTo: .caption2) private var nameSize = 10.0
+    @ScaledMetric(relativeTo: .caption2) private var descriptionSize = 8.0
     @State private var mode = 0
     @State private var input = ""
     @State private var activity = ""
@@ -25,19 +27,24 @@ struct QRPage: View {
     private var selected: CardModel? { cards.first { $0.id == selectedID } }
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(spacing: 12) {
                 Picker("QR", selection: $mode) { Text("보여주기").tag(0); Text("찍기").tag(1) }.pickerStyle(.segmented)
                 if mode == 0 { display } else { receive }
                 if let message { Text(message).font(.footnote).accessibilityAddTraits(.updatesFrequently) }
             }.padding()
         }.navigationTitle("QR")
-            .toolbar {
-                if let selected, let url = shareURL(selected.id), let image = qrImage(url.absoluteString) {
-                    Menu {
-                        ShareLink(item: url) { Label("링크 공유", systemImage: "square.and.arrow.up") }
-                        Button("링크 복사", systemImage: "doc.on.doc") { UIPasteboard.general.url = url; message = "링크를 복사했습니다." }
-                        Button("QR 이미지 저장", systemImage: "square.and.arrow.down") { Task { await saveImage(image) } }
-                    } label: { Image(systemName: "square.and.arrow.up") }.accessibilityLabel("명함 공유")
+            .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom) {
+                if mode == 0 {
+                    VStack(spacing: 8) {
+                        cardPicker
+                        if selected != nil {
+                            DisclosureGroup("교환한 활동 (선택)") {
+                                TextField("활동 이름", text: $activity).textFieldStyle(.roundedBorder)
+                                Text("활동 입력은 실제 참가 인증을 뜻하지 않습니다.").font(.caption2).foregroundStyle(.secondary)
+                            }.font(.caption)
+                        }
+                    }.padding(.horizontal).padding(.vertical, 8).background(.bar)
                 }
             }
             .fullScreenCover(item: $enlarged) { presentation in
@@ -89,20 +96,26 @@ struct QRPage: View {
     }
     @ViewBuilder private var display: some View {
         if let selected {
-            TextField("교환한 활동 (선택)", text: $activity).textFieldStyle(.roundedBorder)
-            Text("활동 입력은 실제 참가 인증을 뜻하지 않습니다.").font(.caption).foregroundStyle(.secondary)
-            Text(selected.name).font(.headline)
-            Text(selected.description).font(.subheadline).foregroundStyle(.secondary)
-            if let url = shareURL(selected.id), let image = qrImage(url.absoluteString) {
-                Button { enlarged = QRPresentation(image: image) } label: {
-                    Image(uiImage: image).interpolation(.none).resizable().scaledToFit().padding(18)
-                        .frame(maxWidth: .infinity).background(.white, in: RoundedRectangle(cornerRadius: 24))
-                }.accessibilityLabel("QR만 크게 보기")
-            } else {
-                ContentUnavailableView("공유 링크 준비 중", systemImage: "qrcode",
-                    description: Text("공유 주소 설정 후 실제 QR이 표시됩니다."))
-            }
-            Label("앱 설치 후 열 수 있는 링크입니다. QR을 누르면 크게 보여요.", systemImage: "info.circle")
+            VStack(spacing: 8) {
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(selected.name).font(.system(size: nameSize, weight: .semibold))
+                        Text(selected.description).font(.system(size: descriptionSize)).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    shareMenu(for: selected)
+                }
+                if let url = shareURL(selected.id), let image = qrImage(url.absoluteString) {
+                    Button { enlarged = QRPresentation(image: image) } label: {
+                        Image(uiImage: image).interpolation(.none).resizable().scaledToFit().frame(maxWidth: 300)
+                    }.accessibilityLabel("QR만 크게 보기")
+                } else {
+                    Text("활동 이름은 200자 이하로 입력해 주세요.").font(.footnote)
+                }
+            }.padding(16).frame(maxWidth: .infinity)
+                .background(.white, in: RoundedRectangle(cornerRadius: 24))
+                .overlay(RoundedRectangle(cornerRadius: 24).stroke(.teal.opacity(0.25)))
+            Label("QR을 누르면 QR만 크게 보여요.", systemImage: "info.circle")
                 .font(.footnote).foregroundStyle(.secondary)
             Button("명함 보기") { detail = selected }.buttonStyle(.bordered)
         } else {
@@ -114,15 +127,46 @@ struct QRPage: View {
             }.frame(maxWidth: .infinity).padding(.vertical, 70)
                 .padding(.horizontal).background(.teal.opacity(0.06), in: RoundedRectangle(cornerRadius: 24))
         }
-        ScrollView(.horizontal) {
-            HStack {
-                Button("새 명함", systemImage: "plus") { selectedID = nil }.buttonStyle(.bordered)
-                ForEach(cards) { card in
-                    Button(card.name) { selectedID = card.id }
-                        .buttonStyle(.bordered).tint(selected?.id == card.id ? .teal : .gray)
-                }
-            }
+    }
+    @ViewBuilder private func shareMenu(for card: CardModel) -> some View {
+        if let url = shareURL(card.id), let image = qrImage(url.absoluteString) {
+            Menu {
+                ShareLink(item: url) { Label("링크 공유", systemImage: "square.and.arrow.up") }
+                Button("링크 복사", systemImage: "doc.on.doc") { UIPasteboard.general.url = url; message = "링크를 복사했습니다." }
+                Button("QR 이미지 저장", systemImage: "square.and.arrow.down") { Task { await saveImage(image) } }
+                Text("Dearby가 설치된 기기에서 열 수 있어요.")
+            } label: { Image(systemName: "square.and.arrow.up").frame(minWidth: 44, minHeight: 44) }
+                .accessibilityLabel("명함 공유")
         }
+    }
+    private var cardPicker: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 10) {
+                Button { selectedID = nil } label: {
+                    VStack(spacing: 6) {
+                        Image(systemName: "plus").font(.title3)
+                        Text("새 명함").font(.caption)
+                    }.frame(width: 84, height: 76)
+                        .background(.teal.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
+                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(.teal.opacity(0.3)))
+                }.buttonStyle(.plain).accessibilityLabel("새 명함")
+                ForEach(cards) { card in
+                    Button { selectedID = card.id } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(card.profileName).font(.caption.bold()).foregroundStyle(.primary)
+                            Text(card.job).font(.caption2).foregroundStyle(.secondary)
+                            Text(card.name).font(.caption2).foregroundStyle(.teal)
+                        }.lineLimit(1).frame(width: 130, height: 76, alignment: .leading).padding(.horizontal, 12)
+                            .background(selected?.id == card.id ? Color.teal.opacity(0.08) : .white,
+                                in: RoundedRectangle(cornerRadius: 12))
+                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(
+                                selected?.id == card.id ? .teal : .gray.opacity(0.25), lineWidth: selected?.id == card.id ? 2 : 1))
+                    }.buttonStyle(.plain).accessibilityLabel(card.name)
+                        .accessibilityHint(card.profileName + " · " + card.job)
+                        .accessibilityAddTraits(selected?.id == card.id ? .isSelected : [])
+                }
+            }.padding(2)
+        }.scrollIndicators(.hidden)
     }
     private var receive: some View {
         VStack(spacing: 20) {
