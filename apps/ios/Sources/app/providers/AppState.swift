@@ -140,7 +140,7 @@ import Observation
               ISO8601DateFormatter().date(from: response.deliveredAt) != nil || Self.fractionalDate(response.deliveredAt) != nil else {
             throw APIError.invalidResponse
         }
-        try exchangeState.complete(accountID: accountID)
+        try exchangeState.complete(accountID: accountID, request: request)
         message = "서버가 전달을 확인했습니다. 상대가 읽었다는 의미는 아닙니다."
         do { try await refresh() } catch { message = "전달은 확인됐지만 목록을 새로고침하지 못했습니다. 당겨서 다시 불러오세요." }
     }

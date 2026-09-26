@@ -96,7 +96,10 @@ import SwiftData
         XCTAssertEqual(first.requestId, retry.requestId)
         let other = try ExchangeState(store: storage).request(accountID: "b", cardID: "c", recipientID: "r", context: .init())
         XCTAssertNotEqual(first.requestId, other.requestId)
-        try ExchangeState(store: storage).complete(accountID: "a")
+        _ = try ExchangeState(store: storage).request(accountID: "a", cardID: "another", recipientID: "r", context: .init())
+        let resumed = try ExchangeState(store: storage).request(accountID: "a", cardID: "c", recipientID: "r", context: .init())
+        XCTAssertEqual(resumed.requestId, first.requestId, "Changing selection must not overwrite an ambiguous pending send")
+        try ExchangeState(store: storage).complete(accountID: "a", request: first)
         let next = try ExchangeState(store: storage).request(accountID: "a", cardID: "c", recipientID: "r", context: .init())
         XCTAssertNotEqual(first.requestId, next.requestId)
     }
