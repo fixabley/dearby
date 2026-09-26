@@ -1,0 +1,17 @@
+{
+  "pages/home": ["HomePage"],
+  "widgets/profile": ["ProfilePage"],
+  "widgets/cardFlow": ["CardComposer", "SendCardView"],
+  "widgets/qr": ["QRPage"],
+  "widgets/wallet": ["WalletPage", "GuestImportView"],
+  "widgets/auth": ["LoginView"],
+  "features/contactActions": ["ContactActions"],
+  "features/profile": ["ProfileState", "ProfileRequest"],
+  "features/guestLibrary": ["GuestLibraryState"],
+  "features/exchange": ["ExchangeState", "ExchangeRequest"],
+  "features/wallet": ["ReceiptModel"],
+  "features/auth": ["LoginState"],
+  "features/scan": ["CameraScanner"],
+  "entities/identity": ["CardModel", "CardLink", "CardRequest", "CardView", "ProfileModel", "ContactModel", "HistoryModel", "ExchangeContextModel", "GuestSavedCardModel", "ImportResult"],
+  "shared": ["APIClient", "APIError", "Items", "EmptyResponse", "LocalStore", "SessionVault", "SessionModel"]
+}

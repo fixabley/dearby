@@ -3,3 +3,6 @@ DerivedData/
 *.xcuserstate
 xcuserdata/
 *.xcresult
+build/
+tests/ArchitectureTests/.build/
+tests/ArchitectureTests/.swiftpm/
