@@ -43,7 +43,7 @@ import com.dearby.nativeapp.shared.ui.FormColumn
         Text("내 명함", style = MaterialTheme.typography.titleMedium)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             item { OutlinedButton({ select(null) }, Modifier.width(120.dp).height(96.dp), shape = RoundedCornerShape(12.dp)) { Text("＋\n새 명함") } }
-            items(cards, key = { it.id }) { item -> FilterChip(item.id == selectedId, { select(item.id) }, { Column(Modifier.padding(vertical = 12.dp)) { Text(item.person); Text(item.job); Text(item.title, style = MaterialTheme.typography.labelSmall) } }) }
+            items(cards, key = { it.id }) { item -> FilterChip(item.id == selectedId, { select(item.id) }, { Column(Modifier.padding(vertical = 12.dp)) { Text(item.person); Text(item.job); Text(item.title, style = MaterialTheme.typography.labelSmall) } }, modifier = Modifier.width(120.dp).height(96.dp)) }
         }
         Field("교환한 활동 (선택 사항)", contextLabel, contextChange)
         Text("직접 입력한 활동은 참가 인증이 아닙니다.", style = MaterialTheme.typography.bodySmall)
