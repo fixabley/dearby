@@ -44,6 +44,8 @@ test('HTTP validation rejects dangerous schemes, duplicate fields and invalid da
   for (const body of [
     {...input,ownerId:randomUUID()},
     {...input,contacts:[{id:randomUUID(),kind:'github',label:'x',value:'javascript:alert(1)'}]},
+    {...input,contacts:[{id:randomUUID(),kind:'github',label:'x',value:' javascript:alert(1) '}]},
+    {...input,contacts:[{id:randomUUID(),kind:'github',label:'x',value:'java\nscript:alert(1)'}]},
     {...input,histories:[{id:randomUUID(),title:'x',role:'',description:'',startDate:'2026-02-30',endDate:null}]},
   ]) assert.equal((await f.request('PUT','/profile',body,sessionToken)).status,422);
   assert.deepEqual((await f.request('GET','/profile',undefined,sessionToken)).body,initial);

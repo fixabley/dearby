@@ -4,7 +4,7 @@ const text = (max: number) => z.string().max(max);
 const date = z.iso.date();
 const contact = z.strictObject({
   id, kind: z.enum(['phone', 'email', 'kakao', 'instagram', 'github', 'behance']),
-  label: text(100), value: z.string().min(1).max(1000),
+  label: text(100), value: z.string().trim().min(1).max(1000).refine(v => ![...v].some(c => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127), 'Invalid contact characters'),
 }).refine(c => !/^[a-z][a-z\d+.-]*:/i.test(c.value) || /^https:\/\//i.test(c.value), 'Only HTTPS contact URLs are allowed');
 const history = z.strictObject({ id, title: text(200), role: text(200), startDate: date,
   endDate: date.nullable(), description: text(5000),

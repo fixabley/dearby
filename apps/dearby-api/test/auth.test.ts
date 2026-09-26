@@ -60,3 +60,11 @@ test('HTTP resend invalidates prior challenge; mail fails closed and invalid inp
   assert.equal(closed.db.prepare('SELECT * FROM challenges').get(),undefined);
   assert.deepEqual(failure.body,{error:{code:'MAIL_UNAVAILABLE',message:'Email delivery unavailable'}});
 });
+
+test('HTTP IP send and verification quotas bound random-email and random-challenge abuse', async t => {
+  const f = await fixture(); t.after(f.close);
+  for (let i=0;i<20;i++) assert.equal((await f.request('POST','/auth/challenges',{email:`user${i}@example.com`})).status,202);
+  assert.equal((await f.request('POST','/auth/challenges',{email:'other@example.com'})).status,429);
+  for (let i=0;i<60;i++) assert.equal((await f.request('POST','/auth/sessions',{challengeId:randomUUID(),code:'123456'})).status,401);
+  assert.equal((await f.request('POST','/auth/sessions',{challengeId:randomUUID(),code:'123456'})).status,429);
+});
