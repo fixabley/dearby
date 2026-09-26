@@ -4,7 +4,7 @@ Native first slice for #38. Kotlin / Compose, API 26+, compile/target 36. No bun
 
 ## Build
 
-Use JDK 17+ (local verification uses Android Studio JBR 21), Android SDK platform 36 / build-tools 36.0.0. Set `ANDROID_HOME` or local `local.properties`.
+Use JDK 17+ (local verification uses Android Studio JBR 25.0.2), Android SDK platform 36 / build-tools 36.0.0. Set `ANDROID_HOME` or local `local.properties`.
 
 ```sh
 python3 scripts/check-fsd.py --self-test
