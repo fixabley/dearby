@@ -28,7 +28,12 @@ class PersistenceTest {
         database.close()
         database = Room.databaseBuilder(context, DearbyDatabase::class.java, name).build()
         assertEquals(two, GuestStore(database.dao()).all().single().cardId)
-        database.close(); context.deleteDatabase(name)
+        database.close(); context.deleteDatabase(name); Unit
+    }
+    @Test fun qrRejectsAmbiguousAndForeignPayloads() {
+        val id = "00000000-0000-0000-0000-000000000001"
+        val invalid = listOf("https://example.com/$id", "dearby://card/$id?label=a&label=b", "dearby://card/$id?unknown=x", "dearby://card/$id?activityId=$id&label=a", "dearby://card/$id#fragment", "dearby://user@card/$id", "dearby://card/1-1-1-1-1", "dearby://card/$id?label=" + "a".repeat(201))
+        invalid.forEach { value -> assertTrue(value, runCatching { com.dearby.nativeapp.features.qr.QrActions.parse(value) }.isFailure) }
     }
     @Test fun qrPixelsDecodeAndKeystoreTokenSurvivesNewInstance() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext

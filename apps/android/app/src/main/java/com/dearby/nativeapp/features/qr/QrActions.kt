@@ -16,11 +16,13 @@ object QrActions {
     }.build().toString()
     fun parse(text: String): Pair<String, ExchangeContextModel> {
         val uri = Uri.parse(text.trim())
-        require(uri.scheme == "dearby" && uri.host == "card" && uri.pathSegments.size == 1) { "Dearby 명함 QR 또는 링크를 선택해 주세요." }
+        require(uri.isHierarchical && uri.scheme == "dearby" && uri.encodedAuthority == "card" && uri.fragment == null && uri.pathSegments.size == 1) { "Dearby 명함 QR 또는 링크를 선택해 주세요." }
         val id = uri.pathSegments.single()
-        UUID.fromString(id)
+        require(uri.encodedPath == "/$id" && UUID.fromString(id).toString() == id.lowercase()) { "올바른 명함 ID가 아닙니다." }
+        val names = uri.queryParameterNames
+        require(names.all { it in setOf("activityId", "label") } && names.all { uri.getQueryParameters(it).size == 1 }) { "모호한 QR 교환 정보입니다." }
         val activityId = uri.getQueryParameter("activityId")
-        activityId?.let { UUID.fromString(it) }
+        activityId?.let { require(UUID.fromString(it).toString() == it.lowercase()) }
         val label = uri.getQueryParameter("label")
         require(label == null || label.length <= 200) { "활동 이름이 너무 깁니다." }
         return id to ExchangeContextModel(activityId, label)
