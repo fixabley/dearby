@@ -27,3 +27,11 @@
 확인된 차단 이슈: [#36 if(kakao) 실제 폼 검증](https://github.com/fixabley/dearby/issues/36). APPLY-01 실환경 검증에만 영향을 주며 명함·프로필·QR·기기 저장 및 APPLY-02 작업을 막지 않는다. Seed·개발 지침·정본 갱신 후 `git diff --check` 통과. 앱 빌드·기능 테스트는 이번 문서 변경에서 실행하지 않았다.
 
 통합 초안: https://github.com/fixabley/dearby/pull/40 (Draft, main 미병합). 남은 전체 서비스 요구는 #41에서 추적한다. 과거 조사 스냅샷 이관 후 28개 프로그램·30개 공고·26개 조직의 참조·ID·이미지 경로 확인.
+
+## 2026-09-27 06:10 KST 진행 체크포인트
+
+API worker ctx_ce111f22ff1f의 성공 보고를 검토하고 retain했다. 8051170/00e7751/25d2311/b8ace11/88f8895를 메인 작업 checkout에 cherry-pick했고 통합 후 Node24의 ci·HTTP10·typecheck·lint·build가 통과했다. iOS/Android 두 Dispatch는 아직 active이며 완료로 간주하지 않는다. iOS는 SwiftLint/Harmonize 복원 및401복구·QR공통형식 검증, Android는 구조검사·에뮬레이터 검사 후 실제 API 연결을 수행 중이다.
+
+로컬 통합 harness scripts/native-integration.mjs를 실행 중이다. 초기 origin http://127.0.0.1:53634 (Android emulator 10.0.2.2 동일 port). 서버 실행 session 7829. 테스트 메일은 임시 폴더의 private inbox이며 실제 이메일이 아니다. 토큰·코드를 로그/커밋하지 않는다. 두 앱이 통합 검증을 마칠 때까지 유지하고 이후 정확한 해당 서버만 종료·임시파일 정리 확인한다. 재개 시 살아 있다고 가정하지 않고 localhost 상태를 확인한다.
+
+원격 PR40은 Draft, main 미병합. 통합된 최신 커밋의 push 및 native CI 실행은 두 앱 통합 뒤 수행한다. .github/workflows/native.yml은 작성·YAML 구문 검사 완료이나 원격 실행 미완료다. #42 운영 SMTP/HTTPS, #43 운영 공유 링크, #41 전체 서비스 후속, #36 외부 폼을 추적한다.
