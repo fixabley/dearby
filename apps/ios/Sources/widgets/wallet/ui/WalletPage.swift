@@ -3,6 +3,7 @@ import SwiftUI
 struct WalletPage: View {
     let receipts: [ReceiptModel]
     let guests: [GuestSavedCardModel]
+    var activities: [ActivityModel] = []
     let importAction: () -> Void
     let send: (ReceiptModel) -> Void
     let refresh: () async -> Void
@@ -12,7 +13,7 @@ struct WalletPage: View {
     private var shown: [ReceiptModel] {
         receipts.filter { receipt in
             (!hasUnreturned || receipt.reciprocal == group) && (search.isEmpty ||
-                [receipt.card.profileName, receipt.card.job, receipt.context.label ?? ""].joined(separator: " ")
+                [receipt.card.profileName, receipt.card.job, ExchangeActivityState.title(receipt.context, activities: activities)].joined(separator: " ")
                     .localizedCaseInsensitiveContains(search))
         }
     }
@@ -37,7 +38,7 @@ struct WalletPage: View {
                         ForEach(shown) { receipt in
                             VStack(alignment: .leading, spacing: 16) {
                                 CardView(card: receipt.card, onContact: ContactActions.perform)
-                                Text((receipt.context.label ?? "활동 선택 안 함") + " · " + receipt.receivedAt)
+                                Text((ExchangeActivityState.title(receipt.context, activities: activities)) + " · " + receipt.receivedAt)
                                     .font(.caption).foregroundStyle(.secondary)
                                 Button("나도 명함 주기") { send(receipt) }.buttonStyle(.borderedProminent)
                             }.containerRelativeFrame(.vertical, alignment: .top)
@@ -58,6 +59,7 @@ struct WalletPage: View {
 
 struct GuestImportView: View {
     let guests: [GuestSavedCardModel]
+    var activities: [ActivityModel] = []
     let resolve: (String) async throws -> CardModel
     let importAction: (Set<String>) async throws -> Void
     @Environment(\.dismiss) private var dismiss
@@ -83,7 +85,7 @@ struct GuestImportView: View {
                             VStack(alignment: .leading) {
                                 Text(cache[guest.cardId]?.profileName ?? "명함 정보 미확인")
                                 Text(cache[guest.cardId]?.job ?? guest.cardId).font(.caption)
-                                Text(guest.context.label ?? "활동 선택 안 함").font(.caption)
+                                Text(ExchangeActivityState.title(guest.context, activities: activities)).font(.caption)
                             }
                         }
                     }.accessibilityAddTraits(selected.contains(guest.cardId) ? .isSelected : [])

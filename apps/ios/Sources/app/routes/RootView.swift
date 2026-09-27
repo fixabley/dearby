@@ -8,9 +8,9 @@ struct RootView: View {
         HomePage(selectedTab: $state.activeTab, configured: state.api.baseURL != nil,
             discovery: CatalogPage(state: state.catalogState, saved: false),
             saved: CatalogPage(state: state.catalogState, saved: true),
-            qr: QRPage(cards: state.cards, incomingURL: state.incomingURL, selectedID: $state.selectedCardID,
+            qr: QRPage(cards: state.cards, incomingURL: state.incomingURL, activities: state.catalogState.catalog?.activities ?? [], selectedID: $state.selectedCardID,
                 create: openComposer, lookup: state.resolveCard, saveGuest: state.saveGuest),
-            wallet: WalletPage(receipts: state.receipts, guests: state.guests,
+            wallet: WalletPage(receipts: state.receipts, guests: state.guests, activities: state.catalogState.catalog?.activities ?? [],
                 importAction: { if state.session == nil { sheet = .login } else { state.showImport = true } },
                 send: { state.recipientID = $0.card.ownerId; sheet = .send },
                 refresh: { await state.perform { try await state.refresh() } }),
@@ -25,14 +25,14 @@ struct RootView: View {
             })
             case .compose: CardComposer(profile: state.profile, publish: state.publish)
             case .send:
-                if let recipient = state.recipient { SendCardView(recipient: recipient, cards: state.cards, profile: state.profile,
+                if let recipient = state.recipient { SendCardView(recipient: recipient, cards: state.cards, profile: state.profile, activities: state.catalogState.catalog?.activities ?? [],
                     publish: state.publish, send: { id, context in
                         try await state.send(cardID: id, recipientID: recipient.ownerId, context: context)
                     }) }
             }
         }
         .sheet(isPresented: $state.showImport) {
-            GuestImportView(guests: state.guests, resolve: state.resolveCard, importAction: state.importGuests)
+            GuestImportView(guests: state.guests, activities: state.catalogState.catalog?.activities ?? [], resolve: state.resolveCard, importAction: state.importGuests)
         }
         .alert("알림", isPresented: Binding(get: { state.message != nil }, set: { if !$0 { state.message = nil } })) {
             Button("확인") { state.message = nil }

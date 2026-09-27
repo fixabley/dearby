@@ -31,7 +31,9 @@
   ],
   "features/exchange": [
     "ExchangeState",
-    "ExchangeRequest"
+    "ExchangeRequest",
+    "ExchangeActivityState",
+    "ExchangeActivityPicker"
   ],
   "features/wallet": [
     "ReceiptModel"

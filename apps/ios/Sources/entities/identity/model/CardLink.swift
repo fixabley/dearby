@@ -13,6 +13,26 @@ struct CardLink: Equatable {
         // Components above are controlled, but keep malformed local input non-crashing.
         return components.url
     }
+    func url(relativeTo base: URL) -> URL? {
+        guard base.scheme == "https", base.host != nil, base.user == nil, base.password == nil,
+              base.query == nil, base.fragment == nil,
+              var target = URLComponents(url: base.appendingPathComponent(cardID), resolvingAgainstBaseURL: false),
+              let original = url.flatMap({ URLComponents(url: $0, resolvingAgainstBaseURL: false) }) else { return nil }
+        target.queryItems = original.queryItems
+        return target.url
+    }
+    init(parsing url: URL, shareBase: URL) throws {
+        guard url.scheme == "https", url.scheme == shareBase.scheme, url.host == shareBase.host,
+              url.port == shareBase.port, url.user == nil, url.password == nil, url.fragment == nil,
+              url.deletingLastPathComponent().path == shareBase.path,
+              var normalized = URLComponents(url: url, resolvingAgainstBaseURL: false) else { throw ParseError.invalid }
+        normalized.scheme = "dearby"
+        normalized.host = "card"
+        normalized.port = nil
+        normalized.path = "/" + url.lastPathComponent
+        guard let customURL = normalized.url else { throw ParseError.invalid }
+        try self.init(parsing: customURL)
+    }
     init(cardID: String, context: ExchangeContextModel) {
         self.cardID = cardID; self.context = context
     }

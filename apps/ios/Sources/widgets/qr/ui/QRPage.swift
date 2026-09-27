@@ -7,6 +7,7 @@ import Photos
 struct QRPage: View {
     let cards: [CardModel]
     let incomingURL: URL?
+    var activities: [ActivityModel] = []
     @Binding var selectedID: String?
     let create: () -> Void
     let lookup: (String) async throws -> CardModel
@@ -16,6 +17,7 @@ struct QRPage: View {
     @State private var mode = 0
     @State private var input = ""
     @State private var activity = ""
+    @State private var exchangeActivity = ExchangeActivityState()
     @State private var receivedContext = ExchangeContextModel()
     @State private var message: String?
     @State private var enlarged: QRPresentation?
@@ -40,8 +42,7 @@ struct QRPage: View {
                         cardPicker
                         if selected != nil {
                             DisclosureGroup("교환한 활동 (선택)") {
-                                TextField("활동 이름", text: $activity).textFieldStyle(.roundedBorder)
-                                Text("활동 입력은 실제 참가 인증을 뜻하지 않습니다.").font(.caption2).foregroundStyle(.secondary)
+                                ExchangeActivityPicker(activities: activities, state: $exchangeActivity)
                             }.font(.caption)
                         }
                     }.padding(.horizontal).padding(.vertical, 8).background(.bar)
@@ -201,9 +202,8 @@ struct QRPage: View {
         } else if let url = URL(string: raw), let parsed = try? CardLink(parsing: url) {
             id = parsed.cardID; receivedContext = parsed.context
         } else if let url = URL(string: raw), let base = configuredShareURL,
-                url.scheme == base.scheme, url.host == base.host,
-                url.path.hasPrefix(base.path + "/"), UUID(uuidString: url.lastPathComponent) != nil {
-            id = url.lastPathComponent; receivedContext = ExchangeContextModel(label: activity.isEmpty ? nil : activity)
+                  let parsed = try? CardLink(parsing: url, shareBase: base) {
+            id = parsed.cardID; receivedContext = parsed.context
         } else { message = "올바른 Dearby 명함 링크 붙여넣기를 입력해 주세요."; return }
         do { pendingSave = try await lookup(id) } catch { message = error.localizedDescription }
     }
@@ -213,9 +213,10 @@ struct QRPage: View {
         return base
     }
     private func shareURL(_ id: String) -> URL? {
-        guard activity.count <= 200 else { return nil }
-        return configuredShareURL?.appendingPathComponent(id) ?? CardLink(cardID: id,
-            context: ExchangeContextModel(label: activity.isEmpty ? nil : activity)).url
+        guard exchangeActivity.isValid else { return nil }
+        let link = CardLink(cardID: id, context: exchangeActivity.context)
+        if let base = configuredShareURL { return link.url(relativeTo: base) }
+        return link.url
     }
     private func qrImage(_ value: String) -> UIImage? {
         let filter = CIFilter.qrCodeGenerator()

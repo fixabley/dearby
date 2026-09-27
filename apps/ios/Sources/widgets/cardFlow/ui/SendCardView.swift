@@ -4,11 +4,12 @@ struct SendCardView: View {
     let recipient: CardModel
     let cards: [CardModel]
     let profile: ProfileModel
+    var activities: [ActivityModel] = []
     let publish: (CardRequest) async throws -> Void
     let send: (String, ExchangeContextModel) async throws -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var selectedID: String?
-    @State private var activity = ""
+    @State private var activity = ExchangeActivityState()
     @State private var composing = false
     @State private var busy = false
     @State private var error: String?
@@ -24,7 +25,7 @@ struct SendCardView: View {
                                 .buttonStyle(.bordered)
                         }
                     }
-                    TextField("교환한 활동 (선택)", text: $activity).textFieldStyle(.roundedBorder)
+                    ExchangeActivityPicker(activities: activities, state: $activity)
                     if let error { Text(error).foregroundStyle(.red) }
                     Button(busy ? "서버 확인 중…" : "이 명함 보내기") {
                         guard let selectedID else { return }
@@ -32,11 +33,11 @@ struct SendCardView: View {
                         Task {
                             defer { busy = false }
                             do {
-                                try await send(selectedID, ExchangeContextModel(label: activity.isEmpty ? nil : activity))
+                                try await send(selectedID, activity.context)
                                 dismiss()
                             } catch { self.error = error.localizedDescription }
                         }
-                    }.buttonStyle(.borderedProminent).disabled(selectedID == nil || busy)
+                    }.buttonStyle(.borderedProminent).disabled(selectedID == nil || busy || !activity.isValid)
                     Text("상대의 받은 명함함에 직접 전달됩니다. 선택만으로 전송되지 않습니다.").font(.footnote)
                 }.padding()
             }.navigationTitle("내 명함 선택")

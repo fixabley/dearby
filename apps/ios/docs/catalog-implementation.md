@@ -11,3 +11,9 @@ Application and source actions are separate. Both use native SFSafariViewControl
 Apple delegate reference: https://developer.apple.com/documentation/safariservices/sfsafariviewcontrollerdelegate/safariviewcontrollerdidfinish(_:)
 
 Initial validation 2026-09-27: Debug Simulator build, strict SwiftLint and 16 Harmonize/SwiftSyntax structure tests passed; initial 23 catalog/domain/storage/contract tests passed. Corrupt-cache recovery regression and final integration/UI checks are pending at this checkpoint. Default Simulator ad-hoc signing retained for Keychain; no developer account used.
+
+## Registered exchange context
+
+QR and direct-send share a feature-owned picker: all catalog activities (including closed records), direct entry and none. Wire context always contains `activityId` with `label:null`, or direct label with `activityId:null`, or both null. Existing HTTPS-share fallback now preserves and validates context query items rather than losing the activity. Universal Link hosting remains #43. Wallet summary/search and guest-import rows resolve registered IDs to catalog titles; missing records say activity information is unavailable instead of exposing a UUID.
+
+Validation checkpoint: 27 unit/contract/storage tests, 16 architecture tests, strict SwiftLint passed after picker integration. Catalog includes explicit-expiration TimelineView scheduling rather than per-second polling. Copy was clarified by coordinator: fixed banner contains the requested one-line check message only; organizer-confirmation caveat and official-site action remain in detail content.
