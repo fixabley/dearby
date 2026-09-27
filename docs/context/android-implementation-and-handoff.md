@@ -49,3 +49,12 @@ Ponytail에서 중복 factory/database 수명과 미사용 loaded 상태를 줄�
 - Android HttpClient에서 bodyless DELETE에만 `Content-Type: text/plain; charset=UTF-8`을 명시. payload는 0바이트로 유지하며 JSON `{}`나 서버 계약 변경 없이 Fastify의 빈 JSON/미지원 form 파서를 회피.
 - Android 네이티브 framing 회귀 1/1 PASS. 실제 API 로그아웃 → 비로그인 공유 명함 → 저장 경고 취소 → 로그인 취소 복귀 → 실제 이메일 OTP 인증 → 보내기 선택(자동 전송 없음) → 공유 카드로 취소 복귀 1/1 PASS (13초).
 - OTP는 앱 private file로 전달·즉시 삭제, 응답/토큰/private 파일은 evidence에 포함하지 않음. Root는 Issue #52에 공통 추적.
+
+### 최종 완료·인계 (2026-09-27 KST)
+
+- 승인 PNG와 실제 Compose를 비교하며 발견/상세/프로필/QR/명함함/보내기/공유/편집 전체 구성을 교정했다. Root가 최종 QR 크기·동일 소유자 카드 헤더와 variant badge·이력·외부 액션을 승인했고 추가 범위 없이 마무리를 지시했다.
+- QR은 승인 크기를 우선하여 하단 명함 타일을 스크롤로 접근한다. 새 명함은 초대 상태, 공유는 native bottom sheet다. 저장 경고는 복구 제한을 명확히 안내하며 흰색 surface를 사용한다. 전체 선택은 이력만 바꾸며 연락처 공개는 개별 선택이다.
+- 최종 UI 26/26, 최종 경고/메뉴 2/2, JVM28, native HTTP1, 실제 로그인 복귀1, persistence/catalog6 + 별도 재시작1 통과. Debug/AndroidTest/Release build, lintDebug/lintRelease 오류0(각 기존17 warnings), FSD45 files/28 self-test 통과. 큰 글자1.6 및 320×568dp 편집 게시 버튼 접근을 검증했다.
+- [비교 갤러리](../../apps/android/evidence/visual-fidelity/compare.html), [검증 상세·제한](../../apps/android/evidence/visual-fidelity/README.md), [스크린샷 출처·해시](../../apps/android/evidence/visual-fidelity/manifest.json). before는 fresh baseline fixture, after는 rich androidTest fixture와 실제 Activity/API로 구분한다. 개인정보·OTP·토큰·raw response는 포함하지 않는다.
+- API 이미지/분류 부재는 정직한 자리표시자/실제 참여 유형으로 처리했다. 운영 이메일·public HTTPS·실기기 QR·푸시·캘린더·외부 자동입력·전체 TalkBack 검증은 이번 완료에 포함하지 않는다.
+- checkout `/Users/jominjun/Documents/dearby/dearby-android`, branch `feat/android-visual-fidelity`, worker `term_892f9668-7754-4dae-812c-1c6298cd7caa`, task `task_872cf36fa029`, dispatch `ctx_46936e11509f`. push하지 않았으며 통합/PR40은 Root 담당이다. emulator-5554와 격리 API57937을 임의 종료하지 않고 사용자 요청에 따라 세션을 유지한다.
