@@ -4,7 +4,7 @@
 
 ## 최신 재개 지점 — 2026-09-27
 
-[네이티브 재착수](native-restart-2026-09-27.md)와 [확정 제품 명세](../product/native-spec-2026-09.md)가 최신 정본이다. Cycle 4 Seed 확정, iOS·Android 개발·웹 제거 승인. 차단 사항은 이슈로 남기고 독립 작업을 계속한다. 첫 명함 구현은 통합·원격 CI 통과했고 활동 카탈로그와 발견·저장·상세 화면을 구현 중이다. 실행 세션과 다음 행동은 [조율 문서](coordinator-current-task-and-decisions.md)를 따른다. 아래 9월 24일 웹 상태는 이전 이력이다.
+[네이티브 재착수](native-restart-2026-09-27.md)와 [확정 제품 명세](../product/native-spec-2026-09.md)가 최신 정본이다. Cycle 4 Seed 확정, iOS·Android 개발·웹 제거 승인. 차단 사항은 이슈로 남기고 독립 작업을 계속한다. 첫 명함 구현은 통합·원격 CI 통과했고 활동 카탈로그와 발견·저장·상세·신청 기록까지 통합·로컬 검증했다. 최신 원격 CI 상태는 조율 문서와 PR40에서 확인한다. 실행 세션과 다음 행동은 [조율 문서](coordinator-current-task-and-decisions.md)를 따른다. 아래 9월 24일 웹 상태는 이전 이력이다.
 
 ## 이전 재개 지점
 
