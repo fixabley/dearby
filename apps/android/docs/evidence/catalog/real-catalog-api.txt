@@ -1,0 +1,7 @@
+Actual public GET /v1/catalog passed
+Activities: 30
+Current: 1
+Selected: if(kakao)26
+Generated: 2026-09-27T03:26:35.434Z
+Room reopen: catalog/bookmarks/report passed
+No authentication or application submission
