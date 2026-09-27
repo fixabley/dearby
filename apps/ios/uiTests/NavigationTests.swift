@@ -69,12 +69,11 @@ import XCTest
         }
         app.buttons["나도 명함 주기"].tap()
         XCTAssertTrue(app.navigationBars["내 명함 선택"].waitForExistence(timeout: 5))
+        capture("내 명함 선택 상단 구성")
         let nextButtons = app.buttons.matching(identifier: "다음 명함")
         let next = nextButtons.element(boundBy: nextButtons.count - 1)
         if next.isEnabled { reveal(next, in: app); next.tap() }
         capture("실제 내 명함 선택")
-        scrollToTop(app)
-        capture("내 명함 선택 상단 구성")
         app.buttons["새 명함"].tap()
         XCTAssertTrue(app.textFields["명함 이름"].waitForExistence(timeout: 5))
         capture("명함 공개 범위 편집")

@@ -7,11 +7,11 @@ Xcode 27 (27A266a), Swift 6 language mode / compiler 6.4, SwiftUI + Observation 
 - `app/entrypoint`: app launch and storage-load failure UI.
 - `app/providers`: root container/session lifetime, account transitions and HTTP orchestration. Account-changing responses are rejected if the initiating token is no longer active.
 - `app/routes`: composition of pages/widgets, sheets and URL routing; no direct storage/OS implementation.
-- `pages/home`: five independent tab navigation stacks and connection banner, generic supplied content.
+- `pages/home`: flat five-tab bar, native NavigationStack routes and connection banner, generic supplied content. Discovery/saved paths persist across tab selection; feature presentation state remains local and account/domain state remains provider-owned. Detail routes hide the bottom tabs.
 - `widgets`: profile, QR, wallet, card composition/selection and login presentation. Domain values are at most two layers below; actions arrive from providers or features.
 - `features`: ProfileState owns account-scoped master profile; GuestLibraryState owns guest IDs and success-only removal; ExchangeState owns durable account-bound pending request; auth owns challenge requests; wallet owns card/context receipt composition; scanner owns VisionKit camera lifecycle.
 - `entities/identity`: pure profile, public card, contact/history, guest ID/context and link values. Profile and published card are one identity domain slice with independent value types; there is no cross-entity lookup or repository coupling. CardView only renders the published snapshot.
-- `shared`: URLSession HTTP, Keychain and SwiftData document primitives. No domain imports.
+- `shared`: URLSession HTTP, Keychain and SwiftData document primitives. No domain imports. The exported DearbyStyle, DearbyLogo, DearbyButtonStyle and DearbySegments are small pure SwiftUI primitives shared by widgets/pages; there is no theme or navigation engine.
 
 `architecture/public-api.json` enumerates exported declarations, `pure-ui.json` marks HomePage's effect-free contract. Restored Harmonize 1.2.1 + SwiftSyntax 601.0.1 checks declaration rules, explicit two-layer distance (only app/providers construction exception), same-layer slice isolation, exported APIs, effect-free UI and exact path conventions. Fixtures are retained from pre-web f1d9a63. Source inventory changed from deleted Dearby/ to Sources/; obsolete positive cardinality requirements for absent Notice ViewModels/shared design components were removed, while every declaration/boundary rule remains unchanged. Syntax references are not compiler type resolution; inferred dependencies and macros still need review.
 
@@ -30,3 +30,9 @@ API config is an origin; /v1 is appended exactly once (also tolerates an existin
 ## Gates
 
 `bash apps/ios/scripts/setup_swiftlint.sh` installs SHA256-verified SwiftLint 0.65.1. `bash apps/ios/tests/run_swiftlint.sh` runs the unchanged rule set with current source/test roots. `bash apps/ios/tests/run_architecture.sh` runs 16 AST/fixture tests including the real production graph. Unit tests exercise disk reopening, save rollback, account isolation, strict request shape, explicit JSON nulls, import retention, auth recovery, link validation and HTTP errors. The app's iOS SDK tests are separate from macOS architecture-package tests.
+
+## Approved visual contract (2026-09-27)
+
+`docs/design/native-visual-contract.md` and its approved PNGs supersede the previous native-default-appearance rule. Native navigation/sheet semantics remain, with white backgrounds, flat teal controls, the unchanged approved logo and real SwiftUI content. CardDeck and HistoryTimeline are shared identity presentations; selection indices are local UI state. CardDeck locks gestures when disabled and uses explicit paging buttons at accessibility text sizes, where stacks flatten and content scrolls. No design sample data ships in Sources. Rich visual fixtures live exclusively in the opt-in unit-test target and publish through the coordinator-owned local API.
+
+The incoming public card is transient. Saving still requires the irreversible-recovery warning and commits only card ID/context to guest storage. Return-card login cancellation clears the pending presentation intent and never sends. Publishing/sending still depends on authentication and confirmed server success; the durable idempotency request boundary is unchanged. HTTP Content-Type is sent only for nonnil JSON bodies, so bodyless logout reaches the server handler.

@@ -1,0 +1,58 @@
+
+dearby-ios-structure-final.log
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.001) seconds
+✔ Test run with 16 tests in 5 suites passed after 1.542 seconds.
+
+dearby-ios-lint-final.log
+Done linting! Found 0 violations, 0 serious in 57 files.
+
+dearby-ios-build-final.log
+** TEST BUILD SUCCEEDED **
+
+dearby-ios-release-final.log
+** BUILD SUCCEEDED **
+
+dearby-ios-unit-logout-final.log
+Test Suite 'Selected tests' started at 2026-09-27 13:43:34.338.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.085 (0.088) seconds
+	 Executed 7 tests, with 0 failures (0 unexpected) in 0.167 (0.169) seconds
+	 Executed 6 tests, with 0 failures (0 unexpected) in 0.034 (0.036) seconds
+	 Executed 3 tests, with 0 failures (0 unexpected) in 0.002 (0.003) seconds
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.045 (0.046) seconds
+	 Executed 11 tests, with 0 failures (0 unexpected) in 0.096 (0.098) seconds
+	 Executed 29 tests, with 0 failures (0 unexpected) in 0.430 (0.441) seconds
+Test Suite 'Selected tests' passed at 2026-09-27 13:43:34.780.
+	 Executed 29 tests, with 0 failures (0 unexpected) in 0.430 (0.442) seconds
+** TEST SUCCEEDED **
+
+dearby-ios-final-rich-v2.log
+Test Suite 'Selected tests' started at 2026-09-27 13:40:51.761.
+	 Executed 1 test, with 0 failures (0 unexpected) in 85.109 (85.113) seconds
+	 Executed 2 tests, with 0 failures (0 unexpected) in 57.872 (57.874) seconds
+	 Executed 3 tests, with 0 failures (0 unexpected) in 142.981 (142.988) seconds
+Test Suite 'Selected tests' passed at 2026-09-27 13:43:14.750.
+	 Executed 3 tests, with 0 failures (0 unexpected) in 142.981 (142.989) seconds
+** TEST SUCCEEDED **
+
+dearby-ios-guest-storage-verified.log
+Test Suite 'Selected tests' started at 2026-09-27 13:47:44.863.
+	 Executed 1 test, with 0 failures (0 unexpected) in 25.706 (25.709) seconds
+	 Executed 1 test, with 0 failures (0 unexpected) in 25.706 (25.710) seconds
+Test Suite 'Selected tests' passed at 2026-09-27 13:48:10.574.
+	 Executed 1 test, with 0 failures (0 unexpected) in 25.706 (25.711) seconds
+** TEST EXECUTE SUCCEEDED **
+
+dearby-ios-restore-login.log
+Test Suite 'Selected tests' started at 2026-09-27 13:49:03.232.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.078 (0.080) seconds
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.078 (0.081) seconds
+Test Suite 'Selected tests' passed at 2026-09-27 13:49:03.313.
+	 Executed 1 test, with 0 failures (0 unexpected) in 0.078 (0.081) seconds
+** TEST SUCCEEDED **
+
+dearby-ios-final-curated.log
+Test Suite 'Selected tests' started at 2026-09-27 13:51:53.495.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 64.041 (64.045) seconds
+Test Suite 'Selected tests' passed at 2026-09-27 13:52:57.541.
+	 Executed 2 tests, with 0 failures (0 unexpected) in 64.041 (64.046) seconds
+** TEST SUCCEEDED **

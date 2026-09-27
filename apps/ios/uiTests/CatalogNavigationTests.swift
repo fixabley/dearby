@@ -74,6 +74,7 @@ import XCTest
         }
         let activity = app.buttons["activity-ed43a1d2-213c-5511-bfe2-e80aa26cd866"].firstMatch
         XCTAssertTrue(activity.waitForExistence(timeout: 25))
+        capture("실제 API 모집 중 발견")
         activity.tap()
         scrollTo(app.buttons["신청 상태 수정"], in: app)
         app.buttons["신청 상태 수정"].tap()
