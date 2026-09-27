@@ -45,6 +45,7 @@ import com.dearby.nativeapp.pages.wallet.ImportPage
 import com.dearby.nativeapp.pages.wallet.SendPage
 import com.dearby.nativeapp.pages.wallet.WalletEntryState
 import com.dearby.nativeapp.pages.wallet.WalletPage
+import com.dearby.nativeapp.shared.ui.DearbyLogo
 import com.dearby.nativeapp.shared.ui.EmptyPanel
 import com.dearby.nativeapp.shared.ui.Field
 import com.dearby.nativeapp.shared.ui.FormColumn
@@ -122,11 +123,14 @@ import kotlinx.coroutines.*
     detail?.let { card -> Dialog({ detail = null }) { CardContent(card, true, { detail = null }, Modifier.fillMaxWidth().heightIn(max = 650.dp), ::openContact) } }
     Scaffold(
         snackbarHost = { SnackbarHost(snackbars) },
-        topBar = { Column(Modifier.statusBarsPadding().fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) { Text("dearby", Modifier.padding(10.dp), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.headlineSmall); if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth()) } },
-        bottomBar = { if (route.isEmpty() && !state.importVisible && !catalogDetail) NavigationBar {
+        topBar = { Column(Modifier.statusBarsPadding().fillMaxWidth()) {
+            if (route.isEmpty() && !catalogDetail && (tab == 0 || tab == 2)) Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), contentAlignment = if (tab == 0) Alignment.CenterStart else Alignment.Center) { DearbyLogo() }
+            if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+        } },
+        bottomBar = { if (route.isEmpty() && !state.importVisible && !catalogDetail) NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
             val names = listOf("발견", "저장", "QR", "받은 명함", "내 프로필")
             val icons = listOf(Icons.Outlined.Explore, Icons.Outlined.BookmarkBorder, Icons.Outlined.QrCode, Icons.Outlined.Badge, Icons.Outlined.PersonOutline)
-            names.forEachIndexed { index, name -> NavigationBarItem(tab == index, { tab = index }, { Icon(icons[index], name) }, label = { Text(name, maxLines = 1, style = MaterialTheme.typography.labelSmall) }) }
+            names.forEachIndexed { index, name -> NavigationBarItem(colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent, selectedIconColor = MaterialTheme.colorScheme.primary, selectedTextColor = MaterialTheme.colorScheme.primary), selected = tab == index, onClick = { tab = index }, icon = { Icon(icons[index], name) }, label = { Text(name, maxLines = 1, style = MaterialTheme.typography.labelSmall) }) }
         } }
     ) { padding -> Box(Modifier.padding(padding).fillMaxSize()) {
         when {

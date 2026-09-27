@@ -24,3 +24,11 @@ Ponytail에서 중복 factory/database 수명과 미사용 loaded 상태를 줄�
 #36 외부 인증/검증된 폼 자동입력, OS 캘린더/푸시, #42 운영 이메일/HTTPS, #44/#43 public links와 실기기 스캔은 별도 후속이다. 모든 TalkBack/실제 휴대폰/운영 서버 검증을 완료했다고 주장하지 않는다. #38 이전 검증은 [보존 인계](../../apps/android/docs/archive/android-handoff-38-2026-09-27.md)에 있다.
 
 실시간 연결 확인 시점 2026-09-27 KST: checkout `/Users/jominjun/Documents/dearby/dearby-android`; worker `term_a4ea575a-6b18-4abd-87ea-a0cc5503b02a`, task `task_e3bf1ed7f722`, dispatch `ctx_e1187d1fd488`, coordinator `term_1cbabda3-9f12-4f38-9655-ef8a0a3548fd`. 재개 때 런타임·git log를 다시 확인한다. 조율 담당의 격리 API52777은 worker가 종료하지 않는다. 통합은 조율 담당 소유이고 사용자는 완료 후 세션 retain을 요청했다.
+
+## 2026-09-27 시각 교정 진행 (Issue #50 / PR40)
+
+- 배정: task_872cf36fa029 / ctx_46936e11509f, Android checkout만 수정. clean 확인 후 c86f809에서 feat/android-visual-fidelity 생성.
+- 승인 근거: docs/design/native-visual-contract.md 및 approved PNG. 기본 Material 외형 지침보다 우선. 승인 로고 원본 PNG를 drawable-nodpi에 복사.
+- 이번 실행 baseline: ScreenTest + CatalogScreenTest 14/14 PASS. Gradle 실행은 앱 제거로 파일을 지워 baseline APK 직접 install/instrument로 다시 캡처. `apps/android/evidence/visual-fidelity/before/fixtures`는 테스트 타깃 전용 데이터의 실제 Compose 렌더링이며 production 데이터가 아님.
+- 공통 흰색/청록/10dp 버튼, 프로필 연락처 행·연표, 발견 좌측 썸네일 자리표시자/우측 정보, 상세 고정 하단 CTA 구현 중. API는 conference/club 분류·이미지 URL이 없어 실제 participation 타입 칩과 정직한 이미지 미제공 표시 사용.
+- Debug/AndroidTest 빌드 1차 성공. 전체 회귀·Release·lint·최종 캡처는 아직 진행 중. 세션 유지 요청 유효.
