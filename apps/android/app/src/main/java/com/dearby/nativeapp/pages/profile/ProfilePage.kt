@@ -5,35 +5,63 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Badge
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.Info
+import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.shared.ui.Field
 import com.dearby.nativeapp.shared.ui.FormColumn
 import java.util.UUID
 
 @Composable fun ProfilePage(profile: ProfileState, busy: Boolean, loggedIn: Boolean, save: (ProfileState) -> Unit, login: () -> Unit, logout: () -> Unit, openImport: () -> Unit) {
     if (!loggedIn) {
-        FormColumn {
-            Text("내 프로필", style = MaterialTheme.typography.headlineMedium)
-            Text("로그인하고 나를 소개해 보세요", style = MaterialTheme.typography.titleLarge)
-            Text("연락처와 활동 이력을 정리하고, 명함마다 공개할 정보를 직접 고를 수 있어요.")
-            Button(login, enabled = !busy) { Text("이메일로 로그인") }
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("내 프로필", style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.height(100.dp))
+            Icon(Icons.Outlined.Badge, null, Modifier.size(112.dp), tint = Teal)
+            Spacer(Modifier.height(28.dp))
+            Text("나를 소개하는 명함을 만들어보세요.", style = MaterialTheme.typography.headlineSmall, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Spacer(Modifier.height(18.dp))
+            Text("연락처와 활동 이력을 정리하고,\n상황에 맞는 명함으로 공유할 수 있어요.", color = Quiet, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Spacer(Modifier.height(40.dp))
+            DearbyButton(login, Modifier.fillMaxWidth(), enabled = !busy) { Text("이메일로 로그인") }
+            Spacer(Modifier.height(12.dp))
+            Text("명함 받기와 기기 저장은 로그인 없이 이용할 수 있어요.", color = Quiet, style = MaterialTheme.typography.bodySmall, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         }
         return
     }
     var editing by rememberSaveable { mutableStateOf(false) }
     var draft by remember(profile) { mutableStateOf(profile) }
     FormColumn {
-        Text("내 프로필", style = MaterialTheme.typography.headlineMedium)
-        Text(if (loggedIn) "전체 프로필 · 명함마다 공개 범위를 고를 수 있어요" else "기기 초안 · 명함 게시에는 로그인이 필요해요")
-        Row { TextButton({ editing = !editing }) { Text(if (editing) "편집 닫기" else "편집") }; TextButton(if (loggedIn) logout else login, enabled = !busy) { Text(if (loggedIn) "로그아웃" else "이메일 로그인") } }
-        if (loggedIn) TextButton(openImport) { Text("기기에 저장한 명함 가져오기") }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("내 프로필", Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium)
+            TextButton({ editing = !editing }) { Text(if (editing) "편집 닫기" else "편집") }
+        }
         if (!editing) {
-            Text(profile.name.ifBlank { "이름을 입력해 주세요" }, style = MaterialTheme.typography.headlineSmall)
-            Text(profile.job); Text(profile.introduction)
-            Text("연락처", style = MaterialTheme.typography.titleLarge)
-            profile.contacts.forEach { Text("${it.label.ifBlank { contactKindLabel(it.kind) }} · ${it.value}") }
-            Text("활동 이력", style = MaterialTheme.typography.titleLarge)
-            profile.histories.forEach { Text("${it.title} · ${it.role}\n${it.startDate} – ${it.endDate ?: "현재"}\n${it.description}") }
+            PersonHeader(profile.name.ifBlank { "이름을 입력해 주세요" }, profile.job, profile.introduction)
+            Surface(color = Mint, shape = MaterialTheme.shapes.small) { Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { Icon(Icons.Outlined.Info, null, Modifier.size(18.dp), tint = Teal); Text("저장한 정보는 명함에서 선택한 항목만 공개돼요.", color = Teal, style = MaterialTheme.typography.bodySmall) } }
+            Row(verticalAlignment = Alignment.CenterVertically) { Text("연락처", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge); TextButton({ editing = true }) { Text("추가") } }
+            profile.contacts.forEach { contact ->
+                Surface(onClick = { editing = true }, color = Soft, shape = MaterialTheme.shapes.small) {
+                    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        ContactSymbol(contact.kind, Modifier.size(22.dp))
+                        Text(contact.label.ifBlank { contactKindLabel(contact.kind) }, Modifier.weight(0.35f), style = MaterialTheme.typography.bodySmall)
+                        Text(contact.value, Modifier.weight(0.65f), style = MaterialTheme.typography.bodySmall)
+                        Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp), tint = Quiet)
+                    }
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) { Text("활동 이력", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge); TextButton({ editing = true }) { Text("추가") } }
+            Column { profile.histories.forEachIndexed { index, history -> TimelineEntry("${history.startDate} – ${history.endDate ?: "현재"}", history.title, listOf(history.role, history.description).filter { it.isNotBlank() }.joinToString("\n"), index == profile.histories.lastIndex) } }
             TextButton({ editing = true }) { Text("연락처 / 활동 이력 추가") }
+            HorizontalDivider()
+            TextButton(openImport) { Text("기기에 저장한 명함 가져오기") }
+            TextButton(logout, enabled = !busy) { Text("로그아웃") }
         } else {
             Field("이름", draft.name, { draft = draft.copy(name = it) })
             Field("직무", draft.job, { draft = draft.copy(job = it) })
@@ -51,7 +79,7 @@ import java.util.UUID
                     TextButton({ draft = draft.copy(contacts = draft.contacts.filterNot { it.id == contact.id }) }) { Text("연락처 삭제") }
                 }
             }
-            OutlinedButton({ draft = draft.copy(contacts = draft.contacts + ContactState(UUID.randomUUID().toString(), "email", "", "")) }) { Text("연락처 추가") }
+            DearbyOutlineButton({ draft = draft.copy(contacts = draft.contacts + ContactState(UUID.randomUUID().toString(), "email", "", "")) }) { Text("연락처 추가") }
             Text("활동 이력", style = MaterialTheme.typography.titleLarge)
             draft.histories.forEachIndexed { index, history ->
                 key(history.id) {
@@ -64,8 +92,8 @@ import java.util.UUID
                     TextButton({ draft = draft.copy(histories = draft.histories.filterNot { it.id == history.id }) }) { Text("활동 이력 삭제") }
                 }
             }
-            OutlinedButton({ draft = draft.copy(histories = draft.histories + HistoryState(UUID.randomUUID().toString(), "", "", "")) }) { Text("활동 이력 추가") }
-            Button({ save(draft) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("프로필 저장") }
+            DearbyOutlineButton({ draft = draft.copy(histories = draft.histories + HistoryState(UUID.randomUUID().toString(), "", "", "")) }) { Text("활동 이력 추가") }
+            DearbyButton({ save(draft) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text("프로필 저장") }
         }
     }
 }
