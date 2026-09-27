@@ -1,6 +1,6 @@
 // Local native/API integration only. No real mail and no public inbox endpoint.
 import { randomBytes } from 'node:crypto';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createApp } from '../apps/dearby-api/dist/app.js';
@@ -25,6 +25,15 @@ app.addHook('onClose', async () => {
   rmSync(directory, { recursive: true, force: true });
 });
 try {
+  if (process.argv.includes('--catalog')) {
+    const { importLegacy } = await import('../apps/dearby-api/dist/catalog-legacy.js');
+    const { officialSources, refreshSource } = await import('../apps/dearby-api/dist/catalog-sources.js');
+    const { readCatalog } = await import('../apps/dearby-api/dist/catalog.js');
+    importLegacy(db, JSON.parse(readFileSync(new URL('../shared/data/catalog-snapshot-2026-09-24.json', import.meta.url), 'utf8')));
+    for (const source of Object.keys(officialSources)) console.log(JSON.stringify(await refreshSource(db, source)));
+    const catalog = readCatalog(db);
+    console.log(JSON.stringify({ activities: catalog.activities.length, recruiting: catalog.activities.filter(activity => activity.isRecruiting).length }));
+  }
   const address = await app.listen({ host: '127.0.0.1', port: 0 });
   // Metadata only. Never print inbox contents, OTPs, session tokens or profiles.
   console.log(JSON.stringify({ apiOrigin: address, inboxDirectory: inbox, testAccounts: [...accounts] }));
