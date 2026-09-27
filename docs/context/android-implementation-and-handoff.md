@@ -41,3 +41,11 @@ Ponytail에서 중복 factory/database 수명과 미사용 loaded 상태를 줄�
 - 공유 카드 조회와 기기 저장 분리: 성공한 공개 조회 후 프리뷰, 명시적 저장만 기존 GuestStore에 ID 추가. 인증/서버 전달/idempotency는 기존 계약 유지. 실제 외부 카메라·사진 기능만 제공.
 - 이번 실행 기존 화면14 + rich fixture10 + 실제 Activity 흐름1 = 25/25 통과. 첫 full-app 실행은 snackbar가 새명함 클릭을 가린 테스트 실패였고 snackbar 사라짐을 기다려 재실행 성공. 최종 작은화면/넘김 회귀 및 artifact 정리는 진행 중.
 - JVM28, FSD45 files/28 self-test, Debug/Release assemble, lintDebug/lintRelease 성공(기존 버전/KTX warning 17개씩, 오류0). UI 최종 조정 후 필요한 재실행 결과는 아래 완료 보고에 기록.
+
+### Issue #52: 실제 Android 로그아웃 교정
+
+- 실제 UI 회귀에서 logout이 `Invalid request`로 실패하여 계정 상태를 안전하게 유지하는 것을 확인. 단순 클릭 타이밍 문제가 아니었음.
+- Android ServerSocket 기반 HTTP 검사에서 `HttpURLConnection`이 본문 없는 DELETE에도 `Content-Type: application/x-www-form-urlencoded`, `Content-Length: 0`을 자동 전송함을 재현. JVM 구현과 달라 기존 JVM 회귀만으로 잡히지 않음.
+- Android HttpClient에서 bodyless DELETE에만 `Content-Type: text/plain; charset=UTF-8`을 명시. payload는 0바이트로 유지하며 JSON `{}`나 서버 계약 변경 없이 Fastify의 빈 JSON/미지원 form 파서를 회피.
+- Android 네이티브 framing 회귀 1/1 PASS. 실제 API 로그아웃 → 비로그인 공유 명함 → 저장 경고 취소 → 로그인 취소 복귀 → 실제 이메일 OTP 인증 → 보내기 선택(자동 전송 없음) → 공유 카드로 취소 복귀 1/1 PASS (13초).
+- OTP는 앱 private file로 전달·즉시 삭제, 응답/토큰/private 파일은 evidence에 포함하지 않음. Root는 Issue #52에 공통 추적.

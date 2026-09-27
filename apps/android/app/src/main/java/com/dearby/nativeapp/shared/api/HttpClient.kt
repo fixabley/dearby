@@ -29,6 +29,9 @@ class HttpClient(private val baseUrl: String, private val allowHttp: Boolean, pr
             connection.readTimeout = 20_000
             connection.setRequestProperty("Accept", "application/json")
             session?.let { connection.setRequestProperty("Authorization", "Bearer $it") }
+            // Android URLConnection otherwise invents form-urlencoded for an empty DELETE.
+            // Explicit empty text keeps the zero-byte contract and avoids unsupported/empty-JSON parsing.
+            if (method == "DELETE" && body == null) connection.setRequestProperty("Content-Type", "text/plain; charset=UTF-8")
             if (body != null) {
                 connection.doOutput = true
                 connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
