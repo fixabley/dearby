@@ -7,6 +7,7 @@ import com.dearby.nativeapp.entities.card.api.CardRepository
 import com.dearby.nativeapp.features.account.AuthRepository
 import com.dearby.nativeapp.features.wallet.WalletRepository
 import com.dearby.nativeapp.entities.profile.model.ProfileModel
+import com.dearby.nativeapp.entities.card.model.CardModel
 import com.dearby.nativeapp.entities.card.model.CardSelectionModel
 import com.dearby.nativeapp.entities.card.model.ExchangeContextModel
 import com.dearby.nativeapp.entities.card.model.importedIds
@@ -103,12 +104,14 @@ class DearbyViewModel(private val profiles: ProfileRepository, private val cards
         val wallet = wallet.wallet()
         mutable.update { it.copy(wallet = wallet) }
     }
-    fun receive(id: String, context: ExchangeContextModel) = action {
+    fun previewCard(id: String, found: (CardModel) -> Unit) = action { found(cardsRepository.card(id)) }
+    fun receive(id: String, context: ExchangeContextModel, onSuccess: () -> Unit = {}) = action {
         // Only validated public cards enter the wallet; existing saved IDs survive later failures.
         cardsRepository.card(id)
         guests.save(id, context)
         reloadGuests()
         mutable.update { it.copy(message = "이 기기에 명함을 저장했습니다.") }
+        onSuccess()
     }
     fun selectCard(id: String?) { mutable.update { it.copy(selectedCardId = id) } }
     fun publish(selection: CardSelectionModel, onSuccess: () -> Unit) = action {

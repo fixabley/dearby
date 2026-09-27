@@ -40,6 +40,8 @@ import com.dearby.nativeapp.pages.login.LoginPage
 import com.dearby.nativeapp.pages.profile.ProfilePage
 import com.dearby.nativeapp.pages.qr.CardEditor
 import com.dearby.nativeapp.pages.qr.QrPage
+import com.dearby.nativeapp.pages.qr.ScanPage
+import com.dearby.nativeapp.pages.wallet.SharedCardPage
 import com.dearby.nativeapp.pages.wallet.ImportEntryState
 import com.dearby.nativeapp.pages.wallet.ImportPage
 import com.dearby.nativeapp.pages.wallet.SendPage
@@ -68,6 +70,8 @@ import kotlinx.coroutines.*
     var route by rememberSaveable { mutableStateOf("") }
     var returnRoute by rememberSaveable { mutableStateOf("") }
     var recipient by remember { mutableStateOf<CardState?>(null) }
+    var sharedCard by remember { mutableStateOf<CardState?>(null) }
+    var sharedContext by remember { mutableStateOf(ExchangeContextModel()) }
     var detail by remember { mutableStateOf<CardState?>(null) }
     var enlarged by rememberSaveable { mutableStateOf(false) }
     var contextActivityId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -81,7 +85,7 @@ import kotlinx.coroutines.*
         runCatching { ContactActions.open(context, contact) }.onSuccess { it?.let(model::report) }.onFailure { model.report("이 연락처를 열 수 있는 앱이 없습니다.") }
     }
     fun receive(text: String) {
-        runCatching { QrActions.parse(text) }.onSuccess { (id, activity) -> model.receive(id, activity); route = ""; tab = 3 }.onFailure { model.report(it.message ?: "QR을 읽을 수 없습니다.") }
+        runCatching { QrActions.parse(text) }.onSuccess { (id, activity) -> model.previewCard(id) { sharedCard = it.toState(); sharedContext = activity; route = "shared" } }.onFailure { model.report(it.message ?: "QR을 읽을 수 없습니다.") }
     }
     fun readImage(bitmap: android.graphics.Bitmap?) {
         if (bitmap == null) return
@@ -139,14 +143,8 @@ import kotlinx.coroutines.*
             route == "login" -> LoginPage(state.busy, state.challengeId, state.challengeExpires, model::requestCode, model::login, { route = "" })
             route == "create" -> CardEditor(state.profile.visibilityState(), state.busy, { model.publish(it.selectionModel()) { route = returnRoute } }, { route = returnRoute }, { Toast.makeText(context, "선택 해제한 연락처는 명함에 표시되지 않습니다.", Toast.LENGTH_SHORT).show() })
             route == "send" && recipient != null -> SendPage(cards, state.selectedCardId, recipient!!.person, state.busy, model::selectCard, { card, activityId, label -> model.send(card, recipient!!.ownerId, ExchangeContextModel(activityId = activityId, label = label.ifBlank { null })) { route = "" } }, ::create, { route = "" }, ::openContact, activities)
-            route == "receive" -> FormColumn {
-                TextButton({ route = "" }) { Text("닫기") }
-                Text("QR 찍기", style = MaterialTheme.typography.headlineMedium)
-                Row { Button({ runCatching { camera.launch(null) }.onFailure { model.report("사용 가능한 카메라 앱이 없습니다.") } }) { Text("카메라로 촬영") }; TextButton({ photo.launch("image/*") }) { Text("QR 사진 선택") } }
-                Field("명함 링크 붙여넣기", input, { input = it }, singleLine = false)
-                Text("로그인 없이 명함을 저장할 수 있어요. 로그인하지 않고 저장한 명함은 앱을 삭제하면 복구할 수 없어요.")
-                Button({ receive(input) }, enabled = !state.busy && input.isNotBlank()) { Text("명함 확인하고 기기에 저장") }
-            }
+            route == "shared" && sharedCard != null -> SharedCardPage(sharedCard!!, state.busy, { route = "receive" }, { model.receive(sharedCard!!.id, sharedContext) { route = ""; tab = 3 } }, { recipient = sharedCard; route = if (state.loggedIn) "send" else "login" }, ::openContact)
+            route == "receive" -> ScanPage(input, { input = it }, state.busy, { route = ""; tab = 2 }, { runCatching { camera.launch(null) }.onFailure { model.report("사용 가능한 카메라 앱이 없습니다.") } }, { photo.launch("image/*") }, { receive(input) })
             tab == 0 || tab == 1 -> CatalogRoute(catalog, tab == 1) { catalogDetail = it }
             tab == 2 -> QrPage(cards, state.selectedCardId, bitmap?.asImageBitmap(), model::selectCard, { enlarged = true }, { detail = it }, ::create,
                 { link?.let { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, it) }, "명함 링크 공유")) } },
