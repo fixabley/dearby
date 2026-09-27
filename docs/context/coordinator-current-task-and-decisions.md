@@ -22,10 +22,24 @@ Run run_2817352ae397 / coordinator term_1cbabda3-9f12-4f38-9655-ef8a0a3548fd.
 
 ## 다음 행동 / 미완료
 
-PR40 갱신 및 최신 head의 원격 CI 확인을 진행한다. 변경 후 Ponytail 검토에서 추가 삭제 후보는 없고 정확성·저장·접근성 범위는 검증 문서를 따른다. .github/workflows/native.yml은 PR 및 main push만 실행해 중복 feature push 검증을 제거했다.
+f315825 원격 PR CI 36291919730의 API/iOS/Android가 모두 통과했고 PR40 댓글에 기록했다. 변경 후 Ponytail 검토에서 추가 삭제 후보는 없고 정확성·저장·접근성 범위는 검증 문서를 따른다. .github/workflows/native.yml은 PR 및 main push만 실행해 중복 feature push 검증을 제거했다.
 
 격리 통합 서버는 양 플랫폼 검증 후 PID27463의 명령을 확인하고 SIGTERM으로 정상 종료했다. session72494 종료0, 임시 DB/메일 디렉터리 삭제를 확인했다. 과거 포트52777은 이제 실행 중이 아니다. 조율 Simulator4712C750-BF32-42A8-8FBA-9AD2BA339EFC도 Shutdown 상태를 확인했다. 다른 기기나 retained 세션은 종료하지 않았다. 실제 공식 수집 마지막 확인은 2026-09-27T03:21:49Z, 당시 30공고/28프로그램/26조직/모집중1이었다. 운영 최신성을 의미하지 않는다.
 
 주요 증거: [검증 매트릭스](../implementation/verification-matrix.md), [iOS 실제 화면](../../apps/ios/docs/evidence/catalog/README.md), [Android 검증](../../apps/android/docs/VERIFICATION.md).
 
 전체 제품 #41, 외부 폼 #36, 운영 조건 #42/#43/#44, 접근성 #14, 운영 수집/경보 #49를 계속 추적한다. 이슈 작성은 해결 완료가 아니다. 차단 사항은 이슈에 남기고 독립 작업을 계속한다.
+
+
+## 2026-09-27 컨펌 시안 복구 진행 (#50)
+
+사용자가 실제 화면과 렌더링 시안의 차이를 지적했고 수정 후 컨펌된 화면을 기준으로 지정했다. [시각 계약](../design/native-visual-contract.md)과 원본 18종/출처 manifest를 c86f809에 보존했다. 기본 native appearance를 우선하던 구 문서는 이 기준 아래에 둔다. 초기/반려 시안과 최신 명시적 수정의 우선순위를 표로 남겼다.
+
+Run `run_2cda4f7a8687`, coordinator `term_1cbabda3-9f12-4f38-9655-ef8a0a3548fd`.
+
+- iOS: task_517938ce17a9 / ctx_af275322501e / term_472cad7d-204b-4362-975d-4661f37b6aad / feat/ios-visual-fidelity.
+- Android: task_872cf36fa029 / ctx_46936e11509f / term_892f9668-7754-4dae-812c-1c6298cd7caa / feat/android-visual-fidelity.
+
+기존 worktree·retained terminal 상태 확인 후 같은 하위 checkout에 새 supervised 담당 세션을 시작했고 양쪽 input_accepted/turn_started를 확인했다. 과거 세션은 그대로 유지한다. 이번 변경 전 캡처 → 기준 시안 비교 → 실제 UI 교정 → 변경 후 캡처와 기능 회귀가 완료 조건이다. 실제 실행/통합은 아직 진행 중이며 시안 복구 완료로 표현하지 않는다.
+
+Root 격리 API는 포트57937, session73883으로 실행 중이다. 공식 수집 checkedAt 2026-09-27T04:04:39Z, 30개 중 모집중1개. 테스트 이메일만 허용한 임시 데이터이며 production 기본값이 아니다. 양 담당 완료 후 root가 정상 종료한다.
