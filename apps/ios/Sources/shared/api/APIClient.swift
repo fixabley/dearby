@@ -24,7 +24,7 @@ struct APIClient: Sendable {
         request.httpMethod = method
         request.timeoutInterval = 25
         request.httpBody = body
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if body != nil { request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
         if let token { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw APIError.invalidResponse }

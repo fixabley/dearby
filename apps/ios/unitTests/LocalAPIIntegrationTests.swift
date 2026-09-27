@@ -4,6 +4,61 @@ import XCTest
 /// Opt-in real TCP integration, using a coordinator-owned test-only mail sink.
 /// The host supplies a private ephemeral file to the Simulator Documents folder.
 @MainActor final class LocalAPIIntegrationTests: XCTestCase {
+    func testRestoreVisualAuditLogin() async throws {
+        let file = URL.documentsDirectory.appendingPathComponent("dearby-integration.json")
+        guard FileManager.default.fileExists(atPath: file.path) else { throw XCTSkip("No explicit local login fixture") }
+        struct Fixture: Decodable { let origin: String; let challengeId: String; let code: String }
+        let fixture = try JSONDecoder().decode(Fixture.self, from: Data(contentsOf: file))
+        try FileManager.default.removeItem(at: file)
+        let state = try AppState(store: LocalStore())
+        XCTAssertEqual(state.api.baseURL?.absoluteString, fixture.origin)
+        try await state.login(challengeID: fixture.challengeId, code: fixture.code)
+        XCTAssertNotNil(state.session)
+        XCTAssertFalse(state.cards.isEmpty)
+    }
+    func testActualBodylessLogout() async throws {
+        let marker = URL.documentsDirectory.appendingPathComponent("dearby-logout-opt-in")
+        guard FileManager.default.fileExists(atPath: marker.path) else { throw XCTSkip("No explicit logout verification request") }
+        try FileManager.default.removeItem(at: marker)
+        let state = try AppState(store: LocalStore())
+        guard state.api.baseURL?.host == "127.0.0.1", state.session != nil else { throw XCTSkip("Requires local test account") }
+        let token = try state.token()
+        try await state.logout()
+        XCTAssertNil(state.session)
+        XCTAssertNil(state.message, "Remote revocation must succeed without fallback warning")
+        do {
+            let _: ProfileModel = try await state.api.request("GET", "profile", token: token)
+            XCTFail("Logged-out token must be rejected")
+        } catch { XCTAssertEqual(error as? APIError, .status(401)) }
+    }
+    func testPrepareVisualAuditCards() async throws {
+        let marker = URL.documentsDirectory.appendingPathComponent("dearby-visual-audit-opt-in")
+        guard FileManager.default.fileExists(atPath: marker.path) else { throw XCTSkip("No explicit visual audit fixture request") }
+        try FileManager.default.removeItem(at: marker)
+        let state = try AppState(store: LocalStore())
+        guard state.api.baseURL?.host == "127.0.0.1", state.session != nil else { throw XCTSkip("Requires local test account") }
+        try await state.refresh()
+        var profile = state.profile
+        profile.introduction = "사람을 연결하는 경험을 만듭니다."
+        profile.contacts = profile.contacts.filter { ["공개 이메일", "비공개 이메일"].contains($0.label) } + [ContactModel(kind: "github", label: "GitHub", value: "https://github.com/example"),
+                             ContactModel(kind: "behance", label: "Behance", value: "https://www.behance.net/example")]
+        profile.histories = [HistoryModel(title: "네이티브 앱 검증", role: "개발자", startDate: "2026-09-01"),
+                            HistoryModel(title: "공개 범위 검증", role: "테스트", startDate: "2026-06-01"),
+                            HistoryModel(title: "명함 교환 검증", role: "테스트", startDate: "2026-03-01")]
+        try state.saveProfile(profile)
+        for title in ["프로젝트 소개", "네트워킹"] where !state.cards.contains(where: { $0.name == title }) {
+            try await state.publish(CardRequest(name: title, description: "로컬 시각 검증용 명함입니다.",
+                contactIds: profile.contacts.filter { $0.label != "비공개 이메일" }.map(\.id), historyIds: profile.histories.map(\.id)))
+            let card = try XCTUnwrap(state.cards.last)
+            try state.saveGuest(cardID: card.id, context: ExchangeContextModel(label: "시각 검증"))
+            try await state.importGuests(selected: [card.id])
+        }
+        XCTAssertGreaterThanOrEqual(state.cards.count, 3)
+        let card = try XCTUnwrap(state.cards.last)
+        let link = try XCTUnwrap(CardLink(cardID: card.id, context: ExchangeContextModel()).url)
+        try Data(link.absoluteString.utf8)
+            .write(to: URL.documentsDirectory.appendingPathComponent("dearby-visual-card-url.txt"))
+    }
     func testCrossPlatformExchangeAndReplay() async throws {
         let marker = URL.documentsDirectory.appendingPathComponent("dearby-cross-platform.json")
         guard FileManager.default.fileExists(atPath: marker.path) else { throw XCTSkip("No explicit cross-platform test marker") }
