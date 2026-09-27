@@ -2,7 +2,7 @@ name: Native verification
 on:
   pull_request:
   push:
-    branches: [main, feat/native-rebuild]
+    branches: [main]
 permissions:
   contents: read
 concurrency:
