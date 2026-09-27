@@ -58,7 +58,8 @@
     "IdentityHeading",
     "HistoryTimeline",
     "ContactIcons",
-    "CardDeck"
+    "CardDeck",
+    "ContactSymbol"
   ],
   "shared": [
     "APIClient",

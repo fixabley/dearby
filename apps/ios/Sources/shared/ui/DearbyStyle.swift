@@ -2,6 +2,7 @@ import SwiftUI
 
 enum DearbyStyle {
     static let teal = Color(red: 0, green: 0.45, blue: 0.45)
+    static let quiet = Color(red: 0.396, green: 0.439, blue: 0.471)
     static let mint = Color(red: 0.94, green: 0.99, blue: 0.98)
     static let line = Color(red: 0.87, green: 0.9, blue: 0.91)
     static let muted = Color(red: 0.95, green: 0.96, blue: 0.97)
@@ -35,7 +36,7 @@ struct DearbySegments: View {
                 Button { selection = index } label: {
                     Text(labels[index]).font(.subheadline.weight(.semibold))
                         .frame(maxWidth: .infinity, minHeight: 44).padding(.horizontal, 4)
-                        .foregroundStyle(selection == index ? .white : .secondary)
+                        .foregroundStyle(selection == index ? .white : DearbyStyle.quiet)
                         .background(selection == index ? DearbyStyle.teal : .clear, in: RoundedRectangle(cornerRadius: 11))
                 }.buttonStyle(.plain).accessibilityAddTraits(selection == index ? .isSelected : [])
             }

@@ -7,40 +7,57 @@ struct ProfilePage<Account: View>: View {
     let account: Account
     @State private var editing = false
     var body: some View {
-        Group {
+        ScrollView {
             if isAuthenticated { profileContent } else {
-                ContentUnavailableView {
-                    Label("내 프로필", systemImage: "person.crop.circle")
-                } description: {
-                    Text("이메일로 로그인하고 나를 소개할 프로필을 작성하세요.")
-                } actions: { account }
+                VStack(spacing: 24) {
+                    Image(systemName: "person.text.rectangle").font(.system(size: 76, weight: .light))
+                        .foregroundStyle(DearbyStyle.teal).padding(.top, 110).padding(.bottom, 16)
+                    Text("나를 소개하는 명함을 만들어보세요.").font(.title2.bold()).multilineTextAlignment(.center)
+                    Text("연락처와 활동 이력을 정리하고\n상황에 맞는 명함으로 공유할 수 있어요.")
+                        .foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
+                    account.buttonStyle(DearbyButtonStyle()).padding(.top, 24)
+                    Text("명함 받기와 기기 저장은 로그인 없이 이용할 수 있어요.")
+                        .font(.caption).foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
+                }.padding(20)
             }
-        }.navigationTitle("내 프로필")
+        }.background(.white).navigationTitle("내 프로필").navigationBarTitleDisplayMode(.inline)
+            .toolbar { if isAuthenticated { Button("편집") { editing = true } } }
+            .sheet(isPresented: $editing) { ProfileEditor(draft: profile, save: save) }
     }
     private var profileContent: some View {
-        List {
-            Section {
-                Text(profile.name.isEmpty ? "내 이름을 입력해 주세요" : profile.name).font(.title2.bold())
-                Text(profile.job.isEmpty ? "직무를 추가해 주세요" : profile.job).foregroundStyle(.secondary)
-                Text(profile.introduction)
+        VStack(alignment: .leading, spacing: 24) {
+            IdentityHeading(name: profile.name, job: profile.job, introduction: profile.introduction, isFullProfile: true)
+            Label("저장한 정보는 명함에서 선택한 항목만 공개돼요.", systemImage: "info.circle")
+                .font(.caption).foregroundStyle(DearbyStyle.teal).padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(DearbyStyle.mint, in: RoundedRectangle(cornerRadius: 9))
+            HStack {
+                Text("연락처").font(.title3.bold())
+                Spacer()
+                Button("추가") { editing = true }.accessibilityLabel("연락처 추가")
             }
-            Section("연락처") {
+            VStack(spacing: 4) {
                 ForEach(profile.contacts) { contact in
-                    LabeledContent(contact.label.isEmpty ? contact.kind : contact.label, value: contact.value)
+                    Button { editing = true } label: {
+                        HStack(spacing: 12) {
+                            ContactSymbol(contact: contact, size: 22).foregroundStyle(DearbyStyle.teal).frame(width: 24)
+                            Text(contact.displayLabel).font(.subheadline)
+                            Spacer(minLength: 8)
+                            Text(contact.value).font(.subheadline).foregroundStyle(DearbyStyle.quiet)
+                            Image(systemName: "chevron.right").font(.caption).foregroundStyle(DearbyStyle.quiet)
+                        }.padding(12).frame(minHeight: 44).background(DearbyStyle.muted, in: RoundedRectangle(cornerRadius: 8))
+                    }.buttonStyle(.plain)
                 }
-                Button("연락처 추가") { editing = true }
             }
-            Section("활동 이력") {
-                ForEach(profile.histories) { history in
-                    VStack(alignment: .leading) { Text(history.title); Text(history.role).foregroundStyle(.secondary) }
-                }
-                Button("활동 이력 추가") { editing = true }
+            HStack {
+                Text("활동 이력").font(.title3.bold())
+                Spacer()
+                Button("추가") { editing = true }.accessibilityLabel("활동 이력 추가")
             }
-            Section("계정") { account }
-        }
-        .navigationTitle("내 프로필")
-        .toolbar { Button("편집") { editing = true } }
-        .sheet(isPresented: $editing) { ProfileEditor(draft: profile, save: save) }
+            HistoryTimeline(histories: profile.histories, compact: true)
+            Divider()
+            account.frame(minHeight: 44)
+        }.padding(20)
     }
 }
 
