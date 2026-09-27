@@ -16,6 +16,7 @@ struct HomePage<Discovery: View, Saved: View, QR: View, Wallet: View, Profile: V
             NavigationStack { wallet }.tabItem { Label("받은 명함", systemImage: "rectangle.stack") }.tag(3)
             NavigationStack { profile }.tabItem { Label("내 프로필", systemImage: "person.crop.circle") }.tag(4)
         }
+        .tint(Color(red: 0, green: 0.36, blue: 0.34))
         .safeAreaInset(edge: .top) {
             if !configured {
                 Text("서버 미설정 · 저장된 정보는 유지됩니다").font(.caption).frame(maxWidth: .infinity)

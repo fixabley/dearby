@@ -7,7 +7,7 @@ import XCTest
         XCTAssertTrue(app.tabBars.buttons["발견"].waitForExistence(timeout: 10))
         capture("발견")
         app.tabBars.buttons["저장"].tap()
-        XCTAssertTrue(app.staticTexts["저장한 활동"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.navigationBars["저장"].waitForExistence(timeout: 3))
         capture("저장")
         app.tabBars.buttons["QR"].tap()
         XCTAssertTrue(app.buttons["새 명함 만들기"].waitForExistence(timeout: 3))

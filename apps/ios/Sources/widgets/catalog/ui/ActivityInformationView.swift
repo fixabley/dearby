@@ -9,11 +9,18 @@ struct ActivityInformationView: View {
             field("모집 마감", ActivityText.date(activity.recruitmentEndAt))
             ForEach(activity.schedules) { schedule in
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(schedule.title).font(.headline)
-                    Text(schedule.dateLabel.isEmpty ? "일정 미확인" : schedule.dateLabel)
-                    Text("시작: \(ActivityText.date(schedule.startAt, timeZone: schedule.timeZone))").font(.footnote)
-                    Text("종료: \(ActivityText.date(schedule.endAt, timeZone: schedule.timeZone))").font(.footnote)
-                    if !schedule.timeZone.isEmpty { Text(schedule.timeZone).font(.caption).foregroundStyle(.secondary) }
+                    if schedule.title != activity.title { Text(schedule.title).font(.headline) }
+                    if schedule.dateLabel != activity.dateLabel {
+                        Text(schedule.dateLabel.isEmpty ? "일정 미확인" : schedule.dateLabel)
+                    }
+                    if schedule.startAt == nil && schedule.endAt == nil {
+                        Text("시간 미정").font(.footnote).foregroundStyle(.secondary)
+                    } else {
+                        Text(schedule.startAt.map { "시작: " + ActivityText.date($0, timeZone: schedule.timeZone) }
+                            ?? "시작 시각 미정").font(.footnote)
+                        Text(schedule.endAt.map { "종료: " + ActivityText.date($0, timeZone: schedule.timeZone) }
+                            ?? "종료 시각 미정").font(.footnote)
+                    }
                 }
             }
             Text("기기 캘린더와의 일정 비교는 아직 제공하지 않아요.").font(.caption).foregroundStyle(.secondary)
@@ -38,6 +45,9 @@ struct ActivityInformationView: View {
 enum ActivityText {
     static func date(_ raw: String?, timeZone: String? = nil) -> String {
         guard let date = CatalogModel.date(raw) else { return "미확인" }
+        return self.date(date, timeZone: timeZone)
+    }
+    static func date(_ date: Date, timeZone: String? = nil) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "ko_KR")
         formatter.timeZone = timeZone.flatMap(TimeZone.init(identifier:)) ?? .current

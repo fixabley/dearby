@@ -1,43 +1,31 @@
-# iOS 네이티브 첫 구현 인계
+# iOS 활동 구현 인계 — issue #46
 
-검증 시점: 2026-09-27 KST. 역할: issue #37 dispatched iOS worker. checkout `/Users/jominjun/Documents/dearby/dearby-ios`, branch `fixabley/dearby-ios`. Terminal `term_f4a86928-cda8-47c3-bff7-517d91c5f2d0`, Task `task_416545ae77df`, Dispatch `ctx_741102b1b057`. 이 값은 이번 세션 기록이며 재개 시 Orca 런타임에서 재확인한다. 완료 후 사용자 요청대로 세션 유지, push/PR/통합은 coordinator 담당이다.
+검증 시점: 2026-09-27 KST. checkout `/Users/jominjun/Documents/dearby/dearby-ios`, branch `feat/ios-activities` from `dcb590f`. 시작 시 clean 확인, 이전 `fixabley/dearby-ios`와 `6f090fa` 이력 보존. Terminal `term_a08d43fc-ce31-4077-9bac-a2446ed0b9a6`, Task `task_12d3471fcfb1`, Dispatch `ctx_a33d870a32de`. Coordinator `term_1cbabda3-9f12-4f38-9655-ef8a0a3548fd`. 완료 후 세션 retain, push/PR/통합은 coordinator 담당.
 
-이전 역할 문서는 [앱 소유 archive](../../apps/ios/docs/context-archive/ios-before-2026-09-27.md)에 보존했다. 과거 웹 전환 전 검사 결과를 이번 실행으로 재사용하지 않았다.
+이전 #37 인계는 [보존 문서](../../apps/ios/docs/context-archive/ios-before-activities-2026-09-27.md). 현재 기능 설명은 [활동 구현 계약](../../apps/ios/docs/catalog-implementation.md).
 
-## 구현
+## 구현과 커밋
 
-- Xcode 27/Swift 6, iOS 18+ SwiftUI 앱과 실제 5탭. 발견/활동 저장은 서비스 미연결을 명시한다.
-- 이메일 OTP 실제 HTTP 요청과 device-only Keychain. 미설정/오프라인/401은 성공으로 표시하지 않는다. 로그아웃/인증 만료가 계정 초안이나 게스트 ID를 지우지 않는다. 내 프로필/게시에는 로그인 필요.
-- 마스터 프로필·6종 연락처·활동 이력 편집, 별도 draft, 명시적 SwiftData save/rollback·계정별 재시작 복원. 게시 시 strict PUT DTO로 개인 프로필 업로드 후 선택 ID만 POST /cards.
-- 명함 생성 공개 아이콘/숨김/토스트, 이력 선택과 tri-state 전체 선택. 이름·직무 상단 유지, 연락처 44pt 안전 액션, 활동 타임라인.
-- QR 카드 내 우상단 공유·링크/복사/사진 저장, 작고 확장 가능한 10/8pt 메타데이터, QR 단독 확대/복귀, 고정 하단 명함 선택·+ 생성 안내. 설치된 앱 간 dearby://card 링크와 맥락 파서. HTTPS 공유 도메인은 임의 생성하지 않음.
-- 카메라/VisionKit와 사진/Vision 입력 코드, 공개 명함 조회 후 비로그인 저장 경고와 ID 영속 저장. 선택 가져오기 전체 선택/해제/나중에, 유효한 성공 receipt UUID만 제거; 실패·미선택·저장 실패 보존.
-- 받은 명함 검색·서버 reciprocal 영역·명시적 내 명함 선택/보내기. API 성공만 전달 확인, 후속 목록 refresh 실패를 구분. 다른 명함을 선택해도 이전 모호한 전송의 account/payload별 requestId가 재시작 후 유지됨.
-- 기존 FSD 의미·두 레이어/공개 API/pure UI/동위 slice 검사 복구. provider 조립, HomePage 탭 수명, 기능 상태, identity 모델 경계를 분리. [구조 설명](../../apps/ios/ARCHITECTURE.md).
+- `12fd90e` 실제 GET /v1/catalog, domain DTO/검증, atomic SwiftData cache/local library, 발견·저장·상세·native Safari와 신청 자기기록. failed refresh/commit 보존, corrupt cache 복구, 유효시각/마감/최대24시간을 클라이언트에서 재검사.
+- `d4374b1` 등록·지난 활동/직접 입력/없음 교환 선택, QR URL context 보존, 받은 명함·가져오기 표시 및 활동 검색. 등록 ID와 직접 label 동시 전송 금지 회귀.
+- 후속 검증 커밋: source-only prompt 없음, 나중에 명시적 버튼, Korean date, 얇은 신청 배너, root 수명에서 초기 refresh, native UI captures와 최종 문서. 최종 commit ID는 git log/worker_done을 확인한다.
 
-## 기능별 커밋
+## 실제 검증
 
-1. `1b975a2` 계정 프로필·게스트 ID·전송 재시도 저장 기반과 회귀 테스트.
-2. `9385d3d` SwiftUI 앱·인증·프로필/명함·QR·지갑·실제 HTTP 통합 및 UI 테스트.
-3. `b5162e4` 선택 변경 뒤에도 모호한 전송의 요청 ID 보존.
-4. `6cbb6f8` 고정 SwiftLint와 native Harmonize 구조 검사 복원.
-5. `98db26a` QR 카드와 동일 높이 명함 타일의 기본 화면 배치 수정.
-6. `6175d6f` HTTP decoding 단순화와 재생성 가능한 안정된 Xcode project UUID.
-7. 최종 검증/인계 기록 커밋은 worker_done과 git log로 확인한다.
+정본: [이번 검증·명령·스크린샷](../../apps/ios/docs/evidence/catalog/README.md).
 
-## 검증
+- 27 unit/domain/storage/contract tests, 16 Harmonize/SwiftSyntax 구조 검사, strict SwiftLint 통과.
+- Debug 및 Release Simulator build 통과. 기본 ad-hoc 서명 유지, CODE_SIGNING_ALLOWED=NO 사용하지 않음.
+- 실제 격리 API `http://127.0.0.1:52777`: 30개 활동, 현재 모집 if(kakao)26 1개, 실제 HTTP decode/관계검증·SwiftData 재열기 저장/신청 복원 통과.
+- 활동 XCUITest 12:28:53 KST 통과, 54.784초/실패0: 출처 닫기 질문 없음, 신청 닫기 질문, 나중에 미변경, 직접 신청 기록과 체크 배너, 저장 조직·프로그램·신청 기록 재시작 복원, 신청하지 않음으로 수정. 원본11장 보존.
+- 기존 실제 auth/profile/card HTTP 회귀 12:29:12 통과. 실제 메일 수신이 아닌 coordinator test mail sink 사용, 코드·토큰 비기록.
+- 기존 profile/QR/wallet XCUITest 12:30:56 통과,28.174초/실패0. 편집/QR 확대·복귀/공개 필드/받은 명함 확인.
+- 마지막 출처 화면에서 내부 validUntil 표시가 모집 마감과 혼동될 수 있어 화면 표시 한 줄만 제거. freshness 판정/DTO는 유지. 해당 화면 별도 캡처가 원본 전체 흐름 이미지보다 최신이다.
+- UI 초기 실패 원인과 복구를 evidence README에 구분했다. 브라우저 한국어 닫기 선택자, cancel-role 나중에 미노출, 팝오버 등장 중 이른 tap, 가상화된 화면 밖 row 확인을 수정/검증했다. 혼합 unit/UI cleanup 지연은 대상 분리와 `-parallel-testing-enabled NO`로 해결했다. 중단/실패 번들은 성공 증거 아님.
+- Ponytail 검토는 테스트용 임시 PNG 직접 기록·중복 진단 캡처만 제거하고 필요한 SwiftData/State/FSD 경계를 보존했다. 최종 추가 삭제 후보 없음.
 
-[검증 정본·명령·실제 스크린샷](../../apps/ios/docs/evidence/README.md), [요약 로그](../../apps/ios/docs/evidence/verification.txt).
+## 남은 범위
 
-- 17 앱 단위/계약 테스트, 16 구조 테스트, SwiftLint 40파일 위반0.
-- Debug 및 Release Simulator build, 실제 install/launch, guest/인증 XCUITest 각각 통과.
-- 실제 임시 API `http://127.0.0.1:53634` + 격리 테스트 메일 sink로 네이티브 로그인/Keychain/프로필 PUT/선택 공개/GET/가져오기/wallet 조회 통과. 실제 이메일 수신 검증 아님.
-- iOS→Android 전달, 같은 persisted request 두 번 replay 동일 receipt, Android→iOS 역방향 명함 reciprocal=true 확인. Android도 역방향 갱신을 확인했다고 coordinator가 전달했다.
-- 최종 QR screenshot을 Vision으로 디코드해 실제 발행 cardId 일치 확인.
-- **CI Simulator 테스트에서 CODE_SIGNING_ALLOWED=NO를 사용하지 않는다.** 기본 ad-hoc 서명으로 Keychain 검사 통과. 외부 Apple 개발자 계정은 사용하지 않았다.
+이번 slice에 calendar/알림/외부 폼 autofill/운영 인증을 포함하지 않는다. 등록활동 selector는 domain/wire/링크·과거기록 표시 회귀를 확인했고 두 계정 간 등록활동 전송/전체 picker UI·VoiceOver/극대 글자는 이번 실행 범위 밖이다. #36 if(kakao) 외부 인증 이후 폼 검증, #42 운영 auth/HTTPS, #43 Universal Links/실기 권한 검증과 #41 전체 서비스는 남는다. 외부 신청/로그인/최종 제출을 자동 실행하지 않았고 사용자 신청 자기기록은 주최 측 접수·선정·결제 확인이 아니다.
 
-## 남은 조건
-
-#42 SMTP 실제 수신·운영 HTTPS, #43 Universal Links/HTTPS fallback·물리 QR/사진 권한 검증, #41 활동/알림/캘린더 등 전체 서비스 추적, #36 if(kakao) 실제 폼 차단. 등록 활동 선택은 현재 서비스 미연결이며 직접 활동명/없음만 가능하다. 큰 글자/VoiceOver·카드 제스처 충돌·새 명함 생성 후 선택·취소/오류의 전체 UI 왕복은 남아 있다. local API와 Simulator 증거를 운영·실기기 완료로 보지 않는다.
-
-`ponytail-review` 적용 후 불필요한 AnyView/중복 store 보유를 없앴고, 마지막 검토에 추가 삭제 후보는 없었다. 전체 서비스나 issue #37의 모든 운영 검증 완료를 선언하지 않는다. 다음은 coordinator 통합/CI와 남은 실기기 UI·OS 검증이며 이 worker는 자기 checkout만 변경했다.
+개인정보·OTP·token은 문서/로그에 기록하지 않는다. localhost 테스트 mail sink를 사용할 경우 private fixture 준비 스크립트만 사용하고 실제 메일 수신으로 표현하지 않는다.

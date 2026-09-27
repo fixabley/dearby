@@ -38,6 +38,7 @@ struct RootView: View {
             Button("확인") { state.message = nil }
         } message: { Text(state.message ?? "") }
         .onOpenURL { state.receiveURL($0) }
+        .task { await state.catalogState.refresh() }
         .task { if state.session != nil { await state.perform { try await state.refresh() } } }
     }
     @ViewBuilder private var account: some View {

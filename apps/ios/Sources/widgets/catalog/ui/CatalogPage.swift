@@ -18,7 +18,6 @@ struct CatalogPage: View {
         .listStyle(.insetGrouped).scrollContentBackground(.hidden).background(.white)
         .tint(teal).navigationTitle(saved ? "저장" : "발견")
         .refreshable { await state.refresh() }
-        .task { if state.catalog == nil && !state.loading { await state.refresh() } }
         .alert("저장하지 못했어요", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
             Button("확인") { message = nil }
         } message: { Text(message ?? "") }
@@ -36,7 +35,7 @@ struct CatalogPage: View {
             Text("기기에 보관한 정보 · 만료된 활동은 발견에 표시하지 않아요.").font(.footnote).foregroundStyle(.secondary)
         }
         if let fetched = state.fetchedAt {
-            Text("마지막 수신 \(fetched.formatted(date: .abbreviated, time: .shortened))")
+            Text("마지막 수신 \(ActivityText.date(fetched))")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

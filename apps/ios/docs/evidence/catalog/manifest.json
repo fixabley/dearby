@@ -1,0 +1,107 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "AE362FC5-9B2E-4ADA-9AC9-272FB6A76216.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "신청 기록 수정_0_7E6450AA-F783-497F-BDC2-51816220EFAC.png",
+        "timestamp" : 1790479732.733
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "5D2BC2BB-D4B9-4C77-8B6E-5C7E9B01B42A.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "재시작 후 신청 기록 복원_0_7CD428D4-8D4C-432E-876B-9B9260314FA1.png",
+        "timestamp" : 1790479725.48
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "491FFC69-D857-4515-9230-80924F8C4BD7.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "신청 기록 현재 화면_0_D4AEB4FA-26CF-4929-AAA3-6A94A23D9C11.png",
+        "timestamp" : 1790479724.301
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "034A1E90-AF5F-49B1-8753-4005E8EDA9D6.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "재시작 후 저장 프로그램 조직_0_509F8185-3259-4B49-879D-F1FA2B821F81.png",
+        "timestamp" : 1790479723.222
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "D462D56B-40B5-4D3D-A8AF-9A213B1303F4.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "신청 기록 얇은 고정 안내_0_71A0C211-70A5-4D6C-A06A-FA43239305D4.png",
+        "timestamp" : 1790479712.867
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "EF5F1C9A-7507-41BB-AD09-DC26038FF36B.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "신청 기록 현재 화면_0_AB1D222B-BB0F-4C11-B77C-F365BA8E8CFF.png",
+        "timestamp" : 1790479711.531
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "ACFB4583-208D-48D8-BD3A-B197730EA5B1.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "신청 여부 직접 기록_0_88CD06C1-8702-4062-A57F-36B1B0B68721.png",
+        "timestamp" : 1790479705.786
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "A63FF787-E88B-4140-BF95-F7F37C2D4DA0.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "외부 신청 앱 내 브라우저_0_43B60AAF-0328-4647-931C-2B71C1713074.png",
+        "timestamp" : 1790479702.33
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "CEEADA82-14F5-4928-870C-3F6803E3EB82.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "프로그램 조직 기기 저장_0_43C768FD-EAA6-437B-8ABD-EDC7A41D8E30.png",
+        "timestamp" : 1790479697.293
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "AB114ED6-C05F-4CC2-8EC6-6A5D849F209F.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "실제 활동 상세 기본 정보_0_975E50BD-EE82-4C08-9B4C-D0864922D00B.png",
+        "timestamp" : 1790479687.547
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "BBADCB11-72C6-42CC-912C-1FEBC0E50AAE.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "실제 API 모집 중 발견_0_EDB1DF42-003E-4F92-A6FF-5DFC378B5B20.png",
+        "timestamp" : 1790479685.515
+      }
+    ],
+    "testIdentifier" : "CatalogNavigationTests/testActualCatalogSourceApplicationAndPersistence()",
+    "testIdentifierURL" : "test://com.apple.xcode/Dearby/DearbyUITests/CatalogNavigationTests/testActualCatalogSourceApplicationAndPersistence"
+  }
+]

@@ -6,11 +6,11 @@ Device-local SwiftData library and API-namespaced catalog snapshot, both publish
 
 Discovery excludes unverified/future/expired/deadline-reached records and enforces the maximum 24-hour verification lifetime independently from fetch time. Saved groups can display historical records and unknown IDs without dropping saves. Details provide unknown values honestly and no calendar/no-conflict or autofill success claims. User report is activity-keyed, independent of program and organization bookmarks and login.
 
-Application and source actions are separate. Both use native SFSafariViewController after http(s), host and credential validation; only the application sheet dismissal asks for applied/not applied/later. Later/cancel preserves prior report. Exact banner copy: “이 활동은 이미 신청한 활동이에요.” with checkmark, official-site action and user-report/acceptance distinction; state can be corrected. External login may require Safari using the native browser menu; app cannot observe completion, share external authentication automatically or verify acceptance. Source opening never prompts. if(kakao) autofill remains #36.
+Application and source actions are separate. Both use native SFSafariViewController after http(s), host and credential validation; only the application sheet dismissal asks for applied/not applied/later. Later/cancel preserves prior report. Exact thin banner copy: “이 활동은 이미 신청한 활동이에요.” with checkmark only. Official-site action, user-report/acceptance distinction and editable status remain in detail content. External login may require Safari using the native browser menu; app cannot observe completion, share external authentication automatically or verify acceptance. Source opening never prompts. if(kakao) autofill remains #36.
 
 Apple delegate reference: https://developer.apple.com/documentation/safariservices/sfsafariviewcontrollerdelegate/safariviewcontrollerdidfinish(_:)
 
-Initial validation 2026-09-27: Debug Simulator build, strict SwiftLint and 16 Harmonize/SwiftSyntax structure tests passed; initial 23 catalog/domain/storage/contract tests passed. Corrupt-cache recovery regression and final integration/UI checks are pending at this checkpoint. Default Simulator ad-hoc signing retained for Keychain; no developer account used.
+Final validation 2026-09-27: Debug/Release Simulator builds, strict SwiftLint, 16 Harmonize/SwiftSyntax structure tests and 27 unit/contract/storage tests passed. Corrupt-cache recovery, actual catalog HTTP/disk restoration and actual source/application/report/restart UI flow passed. See [evidence](evidence/catalog/README.md). Default Simulator ad-hoc signing retained for Keychain; no developer account used.
 
 ## Registered exchange context
 

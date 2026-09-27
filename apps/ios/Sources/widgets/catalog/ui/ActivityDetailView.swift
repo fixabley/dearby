@@ -54,7 +54,7 @@ struct ActivityDetailView: View {
         .confirmationDialog("신청을 완료하셨나요?", isPresented: $showReport, titleVisibility: .visible) {
             Button("신청했어요") { report(.applied) }
             Button("신청하지 않았어요") { report(.notApplied) }
-            Button("나중에", role: .cancel) {}
+            Button("나중에") {}
         } message: { Text("직접 남기는 기록이에요. 주최 측의 접수·선정·결제 확인과는 달라요.") }
         .alert("저장하지 못했어요", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
             Button("확인") { message = nil }
@@ -86,7 +86,6 @@ struct ActivityDetailView: View {
     private func source(_ activity: ActivityModel) -> some View {
         Section("출처") {
             Text("공식 출처 확인: \(ActivityText.date(activity.sourceCheckedAt))").font(.footnote)
-            Text("정보 유효 기한: \(ActivityText.date(activity.validUntil))").font(.footnote)
             if !activity.sourceNote.isEmpty { Text(activity.sourceNote).font(.footnote) }
             if let url = ActivityModel.safeURL(activity.officialUrl) {
                 Text(url.host ?? "").font(.caption).foregroundStyle(.secondary)

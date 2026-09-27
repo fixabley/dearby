@@ -41,7 +41,7 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "903157DAE329DCF0510420BC0B671796"
+               BlueprintIdentifier = "F56AF7E14EED9F658FE3900477DD275F"
                BuildableName = "DearbyTests.xctest"
                BlueprintName = "DearbyTests"
                ReferencedContainer = "container:Dearby.xcodeproj">
@@ -51,7 +51,7 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "F0F88FEF346D9AC6202EAE6E35F67E05"
+               BlueprintIdentifier = "F6EA7A098C6F1E9BBBCE1F0543B96A71"
                BuildableName = "DearbyUITests.xctest"
                BlueprintName = "DearbyUITests"
                ReferencedContainer = "container:Dearby.xcodeproj">
