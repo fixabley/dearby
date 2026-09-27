@@ -4,6 +4,7 @@ import Observation
 @MainActor @Observable final class AppState {
     let api: APIClient
     let loginState: LoginState
+    let catalogState: CatalogState
     var activeTab = 0
     var incomingURL: URL?
     func receiveURL(_ url: URL) {
@@ -33,6 +34,7 @@ import Observation
     init(store: LocalStore, api: APIClient = .configured) throws {
         self.api = api
         loginState = LoginState(api: api)
+        catalogState = try CatalogState(store: store, api: api)
         vault = SessionVault(namespace: api.baseURL?.absoluteString ?? "unconfigured")
         profileState = try ProfileState(store: store)
         guestLibrary = try GuestLibraryState(store: store)

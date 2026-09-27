@@ -6,6 +6,8 @@ struct RootView: View {
     @State private var importAfterLogin = false
     var body: some View {
         HomePage(selectedTab: $state.activeTab, configured: state.api.baseURL != nil,
+            discovery: CatalogPage(state: state.catalogState, saved: false),
+            saved: CatalogPage(state: state.catalogState, saved: true),
             qr: QRPage(cards: state.cards, incomingURL: state.incomingURL, selectedID: $state.selectedCardID,
                 create: openComposer, lookup: state.resolveCard, saveGuest: state.saveGuest),
             wallet: WalletPage(receipts: state.receipts, guests: state.guests,
