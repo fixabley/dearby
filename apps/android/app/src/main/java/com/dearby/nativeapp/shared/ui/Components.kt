@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -37,32 +38,33 @@ val Soft = Color(0xFFF5F7F8)
 @Composable fun FormColumn(content: @Composable ColumnScope.() -> Unit) = Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
 @Composable fun Field(label: String, value: String, change: (String) -> Unit, modifier: Modifier = Modifier, singleLine: Boolean = true) = OutlinedTextField(value, change, modifier.fillMaxWidth(), label = { Text(label) }, singleLine = singleLine, shape = RoundedCornerShape(10.dp))
 @Composable fun EmptyPanel(title: String, explanation: String) = FormColumn { Text(title, style = MaterialTheme.typography.headlineMedium); Text(explanation, color = Quiet) }
-@Composable fun PersonHeader(name: String, job: String, introduction: String) {
+@Composable fun PersonHeader(name: String, job: String, introduction: String, filled: Boolean = false) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-        Box(Modifier.size(76.dp).background(Mint, CircleShape), contentAlignment = Alignment.Center) { Text(name.take(1), color = Teal, fontSize = 32.sp, fontWeight = FontWeight.Bold) }
+        Box(Modifier.size(76.dp).background(if (filled) Teal else Mint, CircleShape), contentAlignment = Alignment.Center) { Text(name.take(1), color = if (filled) Color.White else Teal, fontSize = 32.sp, fontWeight = FontWeight.Bold) }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) { Text(name, style = MaterialTheme.typography.headlineMedium); if (introduction.isNotBlank()) Text(introduction); if (job.isNotBlank()) Text(job, color = Quiet, style = MaterialTheme.typography.bodyMedium) }
     }
 }
 @Composable fun ContactSymbol(kind: String, modifier: Modifier = Modifier, tint: Color = Teal) {
     when (kind) {
-        "github" -> Text("GH", modifier, color = tint, fontWeight = FontWeight.Bold)
+        "github" -> Icon(painterResource(R.drawable.github_mark), null, modifier, tint = tint)
         "behance" -> Text("Bē", modifier, color = tint, fontWeight = FontWeight.Bold)
         else -> Icon(when (kind) { "phone" -> Icons.Outlined.Phone; "email" -> Icons.Outlined.Email; "kakao" -> Icons.Outlined.ChatBubbleOutline; "instagram" -> Icons.Outlined.CameraAlt; else -> Icons.Outlined.Link }, null, modifier, tint = tint)
     }
 }
-@Composable fun TimelineEntry(date: String, title: String, subtitle: String, last: Boolean, modifier: Modifier = Modifier) {
+@Composable fun TimelineEntry(date: String, title: String, subtitle: String, last: Boolean, modifier: Modifier = Modifier, compact: Boolean = false) {
     Row(modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
         Box(Modifier.width(12.dp).fillMaxHeight(), contentAlignment = Alignment.TopCenter) {
             if (!last) Box(Modifier.padding(top = 8.dp).width(1.dp).fillMaxHeight().background(Line))
             Box(Modifier.padding(top = 5.dp).size(8.dp).background(Teal, CircleShape))
         }
-        Column(Modifier.weight(1f).padding(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) { if (date.isNotBlank()) Text(date, color = Quiet, style = MaterialTheme.typography.bodySmall); Text(title, style = MaterialTheme.typography.titleMedium); if (subtitle.isNotBlank()) Text(subtitle, color = Quiet, style = MaterialTheme.typography.bodyMedium) }
+        if (compact) Row(Modifier.weight(1f).padding(bottom = 14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) { Text(date, Modifier.weight(0.42f), color = Quiet, style = MaterialTheme.typography.bodySmall); Text(title, Modifier.weight(0.58f), style = MaterialTheme.typography.bodyMedium) }
+        else Column(Modifier.weight(1f).padding(bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) { if (date.isNotBlank()) Text(date, color = Quiet, style = MaterialTheme.typography.bodySmall); Text(title, style = MaterialTheme.typography.titleMedium); if (subtitle.isNotBlank()) Text(subtitle, color = Quiet, style = MaterialTheme.typography.bodyMedium) }
     }
 }
 @Composable fun QrModeSwitch(show: Boolean, change: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth().background(Soft, RoundedCornerShape(12.dp))) {
         listOf(true to "QR 보여주기", false to "QR 찍기").forEach { (value, title) ->
-            TextButton({ change(value) }, Modifier.weight(1f).heightIn(min = 48.dp), shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.textButtonColors(containerColor = if (show == value) Teal else Color.Transparent, contentColor = if (show == value) Color.White else Quiet)) { Text(title, fontWeight = FontWeight.SemiBold) }
+            TextButton({ change(value) }, Modifier.weight(1f).heightIn(min = 48.dp).semantics { selected = show == value; role = Role.Tab }, shape = RoundedCornerShape(12.dp), colors = ButtonDefaults.textButtonColors(containerColor = if (show == value) Teal else Color.Transparent, contentColor = if (show == value) Color.White else Quiet)) { Text(title, fontWeight = FontWeight.SemiBold) }
         }
     }
 }

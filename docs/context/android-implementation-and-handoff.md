@@ -32,3 +32,12 @@ Ponytail에서 중복 factory/database 수명과 미사용 loaded 상태를 줄�
 - 이번 실행 baseline: ScreenTest + CatalogScreenTest 14/14 PASS. Gradle 실행은 앱 제거로 파일을 지워 baseline APK 직접 install/instrument로 다시 캡처. `apps/android/evidence/visual-fidelity/before/fixtures`는 테스트 타깃 전용 데이터의 실제 Compose 렌더링이며 production 데이터가 아님.
 - 공통 흰색/청록/10dp 버튼, 프로필 연락처 행·연표, 발견 좌측 썸네일 자리표시자/우측 정보, 상세 고정 하단 CTA 구현 중. API는 conference/club 분류·이미지 URL이 없어 실제 participation 타입 칩과 정직한 이미지 미제공 표시 사용.
 - Debug/AndroidTest 빌드 1차 성공. 전체 회귀·Release·lint·최종 캡처는 아직 진행 중. 세션 유지 요청 유효.
+
+### 중간 시각 리뷰 반영
+
+- Root의 actual/reference 비교 후 QR 활동 선택 기본 접힘, 프로필 중복 추가 제거/청록 아바타, wallet의 0개 가져오기 숨김과 작은 새로고침, 명함 밖 상세/전달 액션을 반영.
+- GitHub 심볼은 공식 primer/octicons의 mark-github-16 vector (MIT 원문 apps/android/docs/octicons-LICENSE.txt). 새 라이브러리 없음.
+- 명함 묶음은 실제 인접 카드만 표시하며 큰 글자에 따라 겹친 헤더 간격을 늘림. 요약 이력 월 표시와 상세 원본 일자 구분. 상대 그룹 숫자는 distinct ownerId, 페이지 숫자는 카드 수.
+- 공유 카드 조회와 기기 저장 분리: 성공한 공개 조회 후 프리뷰, 명시적 저장만 기존 GuestStore에 ID 추가. 인증/서버 전달/idempotency는 기존 계약 유지. 실제 외부 카메라·사진 기능만 제공.
+- 이번 실행 기존 화면14 + rich fixture10 + 실제 Activity 흐름1 = 25/25 통과. 첫 full-app 실행은 snackbar가 새명함 클릭을 가린 테스트 실패였고 snackbar 사라짐을 기다려 재실행 성공. 최종 작은화면/넘김 회귀 및 artifact 정리는 진행 중.
+- JVM28, FSD45 files/28 self-test, Debug/Release assemble, lintDebug/lintRelease 성공(기존 버전/KTX warning 17개씩, 오류0). UI 최종 조정 후 필요한 재실행 결과는 아래 완료 보고에 기록.
