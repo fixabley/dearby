@@ -32,3 +32,10 @@
 캘린더 충돌/추가, 푸시, 외부 신청 폼 자동 입력/제출, 운영 메일/HTTPS 인증, Universal Links/실기 카메라·사진 권한을 완료로 주장하지 않는다. 생성·발행·상대 전달은 기존 auth/server success/지속 idempotency 조건을 유지한다. 비로그인 저장은 카드ID/context만 저장하며, 확인 취소·실패로 저장 완료 처리하지 않는다. 이름/연락처값/날짜 등 시안 샘플은 제품 데이터로 복제하지 않았다.
 
 iOS27 native toolbar/sheet chrome는 시스템 동작을 유지해 시안의 그림과 완전히 동일하지 않다. 가장 큰 글자에서 스크롤·수직 헤더·명시적 카드 이동이 동작한다. 별도 작은 화면 기기와 VoiceOver 음성 순회는 실행하지 않았고 다른 세션 기기를 건드리지 않았다. QR 크기를 줄여 타일을 억지로 한 화면에 넣지 않았으며 긴 이력/명함은 스크롤된다.
+
+
+## CardDeck 후속 수정 — 2026-09-27 13:59 KST
+
+담당 terminal `term_87063272-bb44-49fe-a5f6-b2be9d02a0e0`, task `task_94395276c3ad`, dispatch `ctx_d9a62d0bc9d9`. 소스 commit `02cd13082aad54f92fff25577d326d9e0620d41b`: 중간 카드 불투명 mint, title3 기준 scaled56pt 노출, 뒤 헤더 한 줄/minimumScaleFactor0.8. 이름·직업·명함 배지를 유지하며 glyph 잘림/비침을 수정했다. 카드 선택/스와이프/전송 idempotency/접근성 크기 뒤 카드 숨김은 미변경.
+
+지정 Simulator/API로 Debug build 및 파일 단위 strict lint0건, 최종 rebuild와 인증·sheet title 확인 후 상단 캡처 단일 XCUITest13:59:15 통과(10.079초). 기존 테스트는 캡처 전용으로 임시 축소 후 원문 복구; 전체 회귀는 재실행하지 않았다. Orca helper의 SimulatorKit 로드 실패는 XCUITest로 우회하고 설정 미변경. [수정 PNG](../../apps/ios/docs/evidence/visual-fidelity/after/send-card-picker-top.png)와 manifest를 교체했으며 보고서에 첫 캡처의 줄바꿈 발견/수정, 실제 실행 범위와 제한을 기록했다. Ponytail review: Lean already. Ship. 세션은 사용자 요청대로 유지하며 coordinator가 통합·retain한다.

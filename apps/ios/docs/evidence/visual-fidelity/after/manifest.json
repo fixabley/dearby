@@ -234,9 +234,12 @@
     "configurationName": "Test Scheme Action",
     "deviceId": "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
     "deviceName": "iPhone 17",
-    "exportedFileName": "EEF4A934-C1DF-47D2-8CD0-E8CC69E3B7C4.png",
+    "exportedFileName": "F4F91E3D-2043-4693-836B-4A03866D1BE7.png",
     "isAssociatedWithFailure": false,
-    "suggestedHumanReadableName": "내 명함 선택 상단 구성_0_E351A6C4-8E02-4AF8-9D45-9891A63950CC.png",
-    "timestamp": 1790484769.204
+    "suggestedHumanReadableName": "내 명함 선택 헤더 잘림 수정_0_B37C2AEE-EE88-4FBA-AB6F-2775A5D15E43.png",
+    "timestamp": 1790485155.277,
+    "captureScope": "Temporary capture-only body: authenticated profile assertion, wallet, send sheet title assertion, one screenshot; original test source restored.",
+    "sourceCommit": "02cd13082aad54f92fff25577d326d9e0620d41b",
+    "sha256": "19aa9d5a2d1f51d96c4ec6bab7a307629cfd0589b1dd545e4792ef2c20415130"
   }
 }
