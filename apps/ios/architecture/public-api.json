@@ -54,7 +54,11 @@
     "HistoryModel",
     "ExchangeContextModel",
     "GuestSavedCardModel",
-    "ImportResult"
+    "ImportResult",
+    "IdentityHeading",
+    "HistoryTimeline",
+    "ContactIcons",
+    "CardDeck"
   ],
   "shared": [
     "APIClient",
@@ -63,7 +67,11 @@
     "EmptyResponse",
     "LocalStore",
     "SessionVault",
-    "SessionModel"
+    "SessionModel",
+    "DearbyStyle",
+    "DearbyLogo",
+    "DearbyButtonStyle",
+    "DearbySegments"
   ],
   "entities/catalog": [
     "CatalogModel",

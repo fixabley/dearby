@@ -10,6 +10,8 @@ ui_tests.add_dependency(app)
   group = project.main_group.new_group(folder)
   Dir.glob("#{folder}/**/*.swift").sort.each { |file| target.source_build_phase.add_file_reference(group.new_file(file)) }
 end
+resources = project.main_group.new_group('Resources')
+app.resources_build_phase.add_file_reference(resources.new_file('Resources/Assets.xcassets'))
 project.targets.each do |target|
   target.build_configurations.each do |config|
     config.build_settings.merge!({
@@ -21,6 +23,7 @@ project.targets.each do |target|
     if target == app
       config.build_settings.merge!({
         'INFOPLIST_FILE' => 'Info.plist',
+        'ASSETCATALOG_COMPILER_APPICON_NAME' => '',
         'INFOPLIST_KEY_CFBundleDisplayName' => 'Dearby',
         'INFOPLIST_KEY_UILaunchScreen_Generation' => 'YES',
         'INFOPLIST_KEY_UIApplicationSceneManifest_Generation' => 'YES',
