@@ -56,3 +56,5 @@ iOS URLSession/AppState와 Android HttpClient/Repository가 같은 격리 API에
 - 로그아웃 파싱 회귀는 #52에서 추적한다. Android의 본문 없는 DELETE 자동 form 헤더를 교정했고 실제 로그인 복귀까지 통과했다. iOS 결과와 전체 통합/원격 CI는 뒤에 기록한다.
 - 썸네일/콘텐츠 분류 계약 #51과 운영 이메일·앱 링크·캘린더·푸시·자동입력은 이번 시각 수정으로 완료되지 않는다.
 - iOS: 1c2de21까지의 최종 production source 통합 후 조율 Xcode27/전용 Simulator에서33개 중27통과, 별도 fixture 없는6개 명시 skip, 실패0. 구조16·strict SwiftLint57파일 위반0·test 빌드 통과. `/tmp/dearby-root-visual-ios.log`, `/tmp/dearby-root-visual-{architecture,swiftlint}.log`. 담당이 별도 준비한 로컬 API29검사(로그아웃204/폐기 토큰401 포함), catalog/인증화면/최대글자 UI3, 게스트 저장 취소·로그인 취소를 통과했으며 결과는 [플랫폼 보고서](../../apps/ios/docs/evidence/visual-fidelity/README.md)에 구분했다.
+- iOS 후속 카드 묶음 헤더:02cd130/8b63646의 간격·불투명 배경 교정 및 실제 picker-top 캡처를 통합했다. 담당의 제한된 상단 캡처/빌드/strict lint와 조율 최종 Debug build 및 strict lint0위반 통과. 저장/전송 로직 변경은 없다. 로그 `/tmp/dearby-root-visual-final-build.log`, `/tmp/dearby-root-visual-swiftlint-final.log`.
+- 원격 최종 결과는 PR40의 Native verification checks와 해당 실행 링크를 정본으로 삼는다. 로컬 통과를 원격 통과로 대체하지 않는다.

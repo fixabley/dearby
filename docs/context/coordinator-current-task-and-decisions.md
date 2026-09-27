@@ -50,3 +50,10 @@ Root 격리 API는 포트57937, session73883으로 실행 중이다. 공식 수�
 - Android 담당 c1ec7c6까지 통합. 최종 UI26·실제 로그인 복귀·저장/재시작 및 조율 JVM28/FSD45/Debug/lint0errors 확인, ctx_46936e11509f succeeded/retained. 정상 동작의 사진/카메라/시스템 시트는 기본 플랫폼 기능이며 미구현 운영 기능을 꾸미지 않는다.
 - iOS production source1c2de21까지 통합. 조율 단위27pass/6fixture skip, 구조16, lint57files0위반. 담당의 실제 API/로그아웃과 최대글자/게스트취소 UI 결과는 별도 증거로 기록했다. 캡처 이름만 믿지 않고 이미지를 직접 열어 잘못 매핑된 picker-top 파일을 교정 요청했다.
 - 모든 원본/전/후 증거와 한계는 docs/design/visual-fidelity-review.md 및 플랫폼 gallery/report로 연결한다. 원격 CI와 마지막 세션 정리 상태는 다음 기록을 따른다.
+
+### 컨펌 교정 완료 인계 — 2026-09-27 14:01 KST
+
+- Android/iOS 본 작업과 iOS 카드 헤더 후속 작업을 통합하고 실제 최종 캡처를 직접 대조했다. iOS 후속02cd130/8b63646은 뒤쪽 헤더 잘림/투과만 교정했으며 조율 최종 Debug build/SwiftLint도 통과했다.
+- run_2cda4f7a8687의 성공 담당들은 사용자 요청대로 retained, reclaimable0. 기존 iOS 터미널 재사용 시도 ctx_4cfa2eac646c는 readiness timeout으로 실패하여 #48에 재현을 남겼다. 새 후속 ctx_d9a62d0bc9d9는 시작 관찰이 불확실했지만 실제 terminal live를 확인해 중복 실행하지 않았고 succeeded/retained로 정리했다.
+- 조율 소유 로컬 API PID87011/57937을 정상 종료하고 private mail/DB 임시 디렉터리 삭제를 확인했다. 조율 전용 Simulator는 Shutdown이며 다른 담당 기기/터미널은 임의 종료하지 않았다.
+- 최신 참조/검증: docs/design/native-visual-contract.md, docs/design/visual-fidelity-review.md, docs/implementation/verification-matrix.md. 최종 원격 CI 결과는 PR40 checks 및 조율 댓글의 실행 URL을 확인한다. #51 등 운영/데이터 후속은 아직 미완료다.
