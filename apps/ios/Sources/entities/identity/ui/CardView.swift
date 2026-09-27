@@ -26,6 +26,7 @@ struct CardView: View {
 }
 
 struct CardDeck: View {
+    @ScaledMetric(relativeTo: .title3) private var headerReveal: CGFloat = 56
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.isEnabled) private var isEnabled
     let cards: [CardModel]
@@ -36,17 +37,17 @@ struct CardDeck: View {
             if !cards.isEmpty {
                 ZStack(alignment: .top) {
                     ForEach(Array(upcoming.reversed()), id: \.offset) { item in
-                        header(item.element).padding(16)
-                            .background(item.offset == 1 ? DearbyStyle.teal.opacity(0.1) : DearbyStyle.muted,
+                        header(item.element).lineLimit(1).minimumScaleFactor(0.8).padding(16)
+                            .background(item.offset == 1 ? DearbyStyle.mint : DearbyStyle.muted,
                                 in: RoundedRectangle(cornerRadius: 12))
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(DearbyStyle.line))
                             .padding(.horizontal, CGFloat(item.offset) * 10)
-                            .offset(y: CGFloat(upcoming.count - item.offset) * 34)
+                            .offset(y: CGFloat(upcoming.count - item.offset) * headerReveal)
                     }
                     summary(cards[min(selection, cards.count - 1)])
                         .padding(20).background(DearbyStyle.mint, in: RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(DearbyStyle.teal.opacity(0.25)))
-                        .padding(.top, CGFloat(upcoming.count) * 34)
+                        .padding(.top, CGFloat(upcoming.count) * headerReveal)
                 }.contentShape(Rectangle()).gesture(DragGesture(minimumDistance: 30).onEnded { value in
                     guard isEnabled, abs(value.translation.height) > abs(value.translation.width) else { return }
                     move(value.translation.height < 0 ? 1 : -1)
