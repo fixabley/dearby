@@ -1,0 +1,5 @@
+# Catalog storage and freshness
+
+CatalogRepository reads public `/v1/catalog`, validates references and duplicates, and stores one atomic Room document before replacing L1. Server origin namespaces separate caches and local reports/bookmarks; changing the configured server cannot carry over server-specific state. Local writes are serialized by CatalogViewModel and publish only after durable success. A failed write leaves the previous state and an actionable error. A failed refresh retains the cache, and a corrupt cache does not prevent a network recovery attempt.
+
+Current recruitment requires explicit open/verified flags, checked <= now < validUntil, at most 24 hours since verification, and valid start/end boundaries. A foreground projection runs each second to expire discovery while open. Date-only information remains a source label; null time/cost/location fields are never inferred. Tests cover public HTTP/no bearer, cache versus empty response, failed cache/local writes, origin isolation, duplicates/reference errors, expiry and Room reopen.

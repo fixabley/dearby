@@ -11,6 +11,10 @@ import java.net.URI
 val wireJson = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 class ApiFailure(val status: Int, message: String) : Exception(message)
 class HttpClient(private val baseUrl: String, private val allowHttp: Boolean, private val token: () -> String?) {
+    val cacheNamespace: String = runCatching {
+        val uri = URI(baseUrl).normalize()
+        URI(uri.scheme?.lowercase(), null, uri.host?.lowercase(), uri.port, uri.path.trimEnd('/'), null, null).toString()
+    }.getOrDefault("unconfigured")
     suspend fun request(method: String, path: String, body: String? = null, authenticated: Boolean = true): String = withContext(Dispatchers.IO) {
         require(baseUrl.isNotBlank()) { "서비스 연결이 준비되지 않았습니다. 잠시 후 다시 시도해 주세요." }
         val base = URI(baseUrl)
