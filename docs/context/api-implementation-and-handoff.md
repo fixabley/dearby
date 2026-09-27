@@ -1,6 +1,6 @@
 # API — 구현과 인계
 
-검증 시점: **2026-09-27 12:18 KST / 03:18 UTC**. #45 로컬 카탈로그 구현과 검증이며 전체 서비스·운영 배포 완료가 아니다. 정본은 `docs/product/native-spec-2026-09.md`, `shared/contracts/catalog-v1.md`, `shared/contracts/native-v1.md`다. 이전 #39 인증·명함·교환 구현은 유지하며 아래 현재 검증이 기존 회귀를 포함한다.
+검증 시점: **2026-09-27 12:21 KST / 03:21 UTC**. #45 로컬 카탈로그 구현과 검증이며 전체 서비스·운영 배포 완료가 아니다. 정본은 `docs/product/native-spec-2026-09.md`, `shared/contracts/catalog-v1.md`, `shared/contracts/native-v1.md`다. 이전 #39 인증·명함·교환 구현은 유지하며 아래 현재 검증이 기존 회귀를 포함한다.
 
 ## 담당과 통합
 
@@ -10,7 +10,7 @@
 - 소유 범위 `apps/dearby-api`, 이 문서, `docs/workstreams/api.md`. 다른 checkout·shared 계약/데이터·root/CI 변경 없음. 하위 agent 없음.
 - `73b2082`: 영속 공식 카탈로그·수집/과거 가져오기 CLI·HTTP 테스트. 조율자에게 usable commit으로 전달했다.
 - `582a527`: 거절된 HTTP body 취소, 실제 마감·초기 실패·과거 식별자/참조 입력 회귀, UUIDv5 golden check.
-- 마지막 read snapshot transaction 및 이 인계 문서는 후속 commit. push/PR/main merge 없음. 조율자가 cherry-pick·공통 서버·플랫폼 통합을 담당한다.
+- `2f26fb6`: read snapshot transaction 및 인계 문서. 후속 문구 commit은 앱에 직접 보이는 sourceNote에서 null·파서·자동입력 구현 용어를 제거하고 검증된 기간·시간·선발 조건만 남긴다. push/PR/main merge 없음. 조율자가 cherry-pick·공통 서버·플랫폼 통합을 담당한다.
 - 완료 후 사용자 요청으로 이 세션을 유지하며 조율자가 retain 처리한다.
 
 ## 구현과 가역적 결정
@@ -29,7 +29,7 @@ if(kakao)는 참가 신청 영역의 OPEN과 FAQ 선발 조건을 확인하여 s
 
 기존 snapshot은 명시적 `import-legacy`로만 가져온다. 30개 모두 stale/unknown, semantic checked/expiry null이며 기존 open/current는 신뢰하지 않는다. audience 배열은 개별 공고 안에서만 읽기 쉬운 문자열로 합치고 round를 사람용 제목에 사용한다. duplicate identity/missing reference는 전체 rollback, 재import는 기존 정상/실패 자료를 덮어쓰지 않는다. 서버 기본 시작에는 fixture/과거 자료 자동 seed가 없다.
 
-ExchangeContext/receipt DTO와 기존 UUID-format validation은 변경하지 않았다. 등록 활동 선택은 참가 인증이 아니다. 앱 캐시도 validUntil 외 모집 시작/마감 시각을 확인해야 한다는 리뷰 의견을 조율자에게 전달했다. 그렇지 않으면 알려진 deadline이 24시간 freshness보다 먼저 도달할 때 cached OPEN이 잘못 남을 수 있다.
+ExchangeContext/receipt DTO와 기존 UUID-format validation은 변경하지 않았다. 등록 활동 선택은 참가 인증이 아니다. 앱 캐시도 validUntil 외 모집 시작/마감 시각을 확인해야 한다는 리뷰 의견을 조율자에게 전달했다. 조율자는 두 앱 모두 이 경계를 검사하고 화면 만료 갱신도 구현했다고 회신했다. 이는 조율자 회신이며 worker가 앱 코드를 직접 검증한 것은 아니다.
 
 ## 실제 실행한 명령과 결과
 

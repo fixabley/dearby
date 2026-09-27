@@ -32,7 +32,7 @@ export function importLegacy(db:DB, input:unknown, now=Date.now()) {
         dateLabel,location:n.location,cost:n.cost,audience:n.audience,qualification:n.qualification,
         roles:n.roles,schedules:[],officialUrl:n.officialUrl,applicationUrl:n.registrationUrl,
         sourceCheckedAt:null,validUntil:null,freshness:'stale',
-        sourceNote:`${snapshot.snapshotDate} 과거 수동 스냅샷. 현재 원문/모집 상태 미검증; 실시간 자료 아님. 날짜만 보존, 일정 시각/시간대 미확인.`,
+        sourceNote:`${snapshot.snapshotDate}에 확인한 과거 안내입니다. 현재 모집 여부와 일정의 정확한 시각은 다시 확인이 필요합니다.`,
       }};
       storeSource(db,n.id,record,new Date(now).toISOString(),null,true);
       count++;

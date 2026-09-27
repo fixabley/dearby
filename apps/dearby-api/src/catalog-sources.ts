@@ -51,7 +51,7 @@ export function parseOfficial(sourceKey:SourceKey, html:string, checkedAt:string
     requireEvidence(page.includes('참가 신청은 1일만 가능합니다') && page.includes('오프라인, 온라인 모두 무료'));
     activity.cost = '무료';
     activity.applicationUrl = officialSources[sourceKey];
-    activity.sourceNote = '공식 신청 영역 OPEN 및 9월 28일 낮 12시 마감 확인; 한국 현지 시각(Asia/Seoul)으로 해석. FAQ 신청 시작일 9월 7일은 시각 미확인으로 null. 행사 시간 미확인. 참가 신청 버튼은 카카오 로그인 필요, 자동입력 미검증.';
+    activity.sourceNote = '공식 신청 기간은 9월 7일부터 9월 28일 낮 12시까지(한국 시간)입니다. 정확한 신청 시작 시각과 행사 시간은 확인되지 않았습니다. 신청자 중 참가자를 선정합니다.';
   } else {
     requireEvidence(page.includes('FECONF 2026') && page.includes('FECONF BY FEDG. 2026.10.24 SAT. 10:00 OPEN. LOTTE TOWER 31F SEOUL, KOREA'));
     const countdowns = [...page.matchAll(/TICKET OPEN D-(\d+)\b/g)];
@@ -61,7 +61,7 @@ export function parseOfficial(sourceKey:SourceKey, html:string, checkedAt:string
     activity.dateLabel = '2026.10.24 SAT. 10:00 OPEN';
     activity.location = 'LOTTE TOWER 31F SEOUL, KOREA';
     activity.summary = 'FEDG 프론트엔드 개발자 컨퍼런스';
-    activity.sourceNote = `공식 TICKET OPEN D-${countdowns[0][1]} 확인: 티켓 오픈 전. 상대 카운트다운으로 정확한 모집 시작/마감 시각을 추정하지 않음. 10:00 OPEN은 행사 개장으로 모집 오픈이 아님; 종료 시각 미확인.`;
+    activity.sourceNote = '공식 사이트는 티켓 오픈 전으로 안내하고 있습니다. 정확한 신청 시작일과 마감일은 아직 확인되지 않았습니다. 행사장은 10월 24일 오전 10시(한국 시간)에 열리며, 종료 시각은 확인되지 않았습니다.';
   }
   activity.schedules = [{id:catalogId('schedule',`${sourceKey}/main`),title:activity.title,
     startAt:kakao ? null : '2026-10-24T01:00:00.000Z',endAt:null,dateLabel:activity.dateLabel,timeZone:'Asia/Seoul'}];

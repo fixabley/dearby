@@ -44,7 +44,7 @@ export function atTime(activity:Activity, now:number, failed=false):Activity {
   else if (activity.recruitmentStartAt !== null && now < Date.parse(activity.recruitmentStartAt) && recruitmentStatus === 'open') recruitmentStatus = 'scheduled';
   const isRecruiting = freshness === 'verified' && recruitmentStatus === 'open';
   return {...activity, freshness, recruitmentStatus, isRecruiting,
-    sourceNote:activity.sourceNote + (failed ? ' 최근 수집/해석 실패: 마지막 정상 자료 보존, 현재 모집 미확인.' : '')};
+    sourceNote:activity.sourceNote + (failed ? ' 현재 공식 안내를 다시 확인할 수 없어 마지막 확인 내용을 표시합니다.' : '')};
 }
 
 export function readCatalog(db:DB, now=Date.now()):Catalog {
