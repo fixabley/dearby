@@ -28,7 +28,7 @@
 
 ## 정본과 이력
 
-새 웹의 제품 정본은 [최근 재기획](../product/replanning-2026-09.md)과 연결된 태그/경험 문서다. [기존 네이티브 아키텍처](../architecture/native-apps.md)와 [이전 데이터 규격](../product/activity-data-v1.md)은 역사 자료이며 웹의 실행 계약으로 해석하지 않는다. 이 폴더에는 현재 역할별 재개 지점을 관리한다.
+현재 제품 정본은 [네이티브 명세](../product/native-spec-2026-09.md), 데이터 계약은 [명함](../../shared/contracts/native-v1.md)·[활동 카탈로그](../../shared/contracts/catalog-v1.md)다. [9월 24일 웹 재기획](../product/replanning-2026-09.md)과 당시 웹 구현 인계는 역사 자료다. 플랫폼별 현재 역할 문서와 실제 검사 증거를 우선한다.
 
 정리 전 문서 17개와 workstreams 원문은 [날짜별 보관함](archive/2026-09-14-before-consolidation/README.md)에 그대로 보존했다. 과거 인터뷰·Seed 변화·중간 커밋·세션 ID가 필요할 때만 읽는다.
 
