@@ -4,5 +4,3 @@ com.dearby.nativeapp.CatalogRealUiTest:.
 Time: 6.752
 
 OK (1 test)
-
-
