@@ -67,7 +67,7 @@ class FullAppVisualTest {
         compose.onNodeWithText("명함 확인").performScrollTo().performClick()
         compose.waitUntil(30_000) { compose.onAllNodesWithText("공유 카드").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("카드 저장").performClick()
-        compose.onNodeWithText("명함 ID를 이 기기에 저장합니다. 앱을 삭제하면 복구할 수 없어요.").assertIsDisplayed()
+        compose.onNodeWithText("이 기기에 명함을 저장해요. 로그인하지 않고 저장한 명함은 앱을 삭제하면 복구할 수 없어요.").assertIsDisplayed()
         compose.onNodeWithText("취소").performClick()
         compose.onNodeWithText("나도 카드 주기").performClick()
         compose.onNodeWithText("닫기").performClick()

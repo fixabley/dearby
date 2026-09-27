@@ -36,7 +36,7 @@ class VisualFidelityTest {
     private fun capture(name: String) {
         compose.waitForIdle()
         val folder = File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null), "evidence").apply { mkdirs() }
-        File(folder, "visual-$name.png").outputStream().use { compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it) }
+        File(folder, "visual-$name.png").outputStream().use { (if (compose.onAllNodes(isDialog()).fetchSemanticsNodes().isNotEmpty()) compose.onNode(isDialog()) else compose.onRoot()).captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
     private fun content(large: Boolean = false, block: @Composable () -> Unit) = compose.setContent { DearbyTheme { val density = LocalDensity.current; CompositionLocalProvider(LocalDensity provides Density(density.density, if (large) 1.6f else density.fontScale)) { Surface(Modifier.fillMaxSize()) { block() } } } }
     @Test fun walletThreeCardsAndSwipe() {
@@ -65,7 +65,7 @@ class VisualFidelityTest {
     @Test fun qrAndInvitation() {
         var selected by mutableStateOf<String?>(cards.first().id)
         content { QrPage(cards, selected, QrActions.bitmap(QrActions.link(cards.first().id, ExchangeContextModel())).asImageBitmap(), { selected = it }, {}, {}, {}, {}, {}, {}, "", {}, {}) }
-        capture("qr"); compose.onNodeWithText("＋\n새 명함").performScrollTo().performClick(); capture("new-card")
+        capture("qr"); compose.onNodeWithContentDescription("공유 메뉴").performClick(); capture("qr-share-menu"); compose.onNodeWithText("링크 복사").performClick(); compose.onNodeWithText("＋\n새 명함").performScrollTo().performClick(); capture("new-card")
     }
     @Test fun editorPrivateByDefault() {
         content { CardEditor(CardEditorState(contacts.map { VisibilityChoiceState(it.id, it.label, it.kind, it.value) }, histories.map { VisibilityChoiceState(it.id, it.title, detail = it.role, date = it.startDate) }, cards.first().person, cards.first().job, cards.first().introduction), false, {}, {}, {}) }
@@ -74,7 +74,7 @@ class VisualFidelityTest {
     @Test fun sharedCardRequiresExplicitSave() {
         var saves = 0
         content { SharedCardPage(cards.first(), false, {}, { saves++ }, {}, {}) }
-        capture("shared-card"); assertEquals(0, saves); compose.onNodeWithText("카드 저장").performClick(); assertEquals(0, saves); compose.onNodeWithText("이 기기에 저장").performClick(); assertEquals(1, saves)
+        capture("shared-card"); assertEquals(0, saves); compose.onNodeWithText("카드 저장").performClick(); assertEquals(0, saves); capture("shared-save-warning"); compose.onNodeWithText("이 기기에 저장").performClick(); assertEquals(1, saves)
     }
     @Test fun largeTextSharedCardKeepsSaveReachable() {
         content(true) { SharedCardPage(cards.first(), false, {}, {}, {}, {}) }

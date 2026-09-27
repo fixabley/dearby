@@ -15,7 +15,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardState
 
 @Composable fun SharedCardPage(card: CardState, busy: Boolean, back: () -> Unit, save: () -> Unit, send: () -> Unit, onContact: (ContactActionState) -> Unit) {
     var confirmSave by rememberSaveable { mutableStateOf(false) }
-    if (confirmSave) AlertDialog(onDismissRequest = { confirmSave = false }, title = { Text("이 기기에 저장할까요?") }, text = { Text("명함 ID를 이 기기에 저장합니다. 앱을 삭제하면 복구할 수 없어요.") }, confirmButton = { TextButton({ confirmSave = false; save() }, enabled = !busy) { Text("이 기기에 저장") } }, dismissButton = { TextButton({ confirmSave = false }) { Text("취소") } })
+    if (confirmSave) AlertDialog(containerColor = MaterialTheme.colorScheme.surface, onDismissRequest = { confirmSave = false }, title = { Text("이 기기에 저장할까요?") }, text = { Text("이 기기에 명함을 저장해요. 로그인하지 않고 저장한 명함은 앱을 삭제하면 복구할 수 없어요.") }, confirmButton = { TextButton({ confirmSave = false; save() }, enabled = !busy) { Text("이 기기에 저장") } }, dismissButton = { TextButton({ confirmSave = false }) { Text("취소") } })
     Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { TextButton(back) { Text("닫기") }; Text("공유 카드", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge); DearbyLogo(Modifier.width(64.dp)) }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(24.dp)) {
