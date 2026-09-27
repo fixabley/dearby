@@ -18,7 +18,7 @@ struct ActivityDetailView: View {
                             VStack(spacing: 12) {
                                 Image(systemName: "photo").font(.largeTitle)
                                 Text("공식 활동 이미지 미제공").font(.caption)
-                            }.foregroundStyle(.secondary).frame(maxWidth: .infinity).frame(height: 170)
+                            }.foregroundStyle(DearbyStyle.quiet).frame(maxWidth: .infinity).frame(height: 170)
                                 .background(DearbyStyle.muted)
                             VStack(alignment: .leading, spacing: 24) {
                                 identity(activity, at: timeline.date)
@@ -26,9 +26,9 @@ struct ActivityDetailView: View {
                                 source(activity)
                                 Divider()
                                 Text("직접 남긴 신청 기록은 주최 측의 접수·선정·결제 확인과 달라요.")
-                                    .font(.footnote).foregroundStyle(.secondary)
+                                    .font(.footnote).foregroundStyle(DearbyStyle.quiet)
                                 Button("신청 상태 수정") { showReport = true }.frame(minHeight: 44)
-                                Text("신청 기록은 이 기기에만 저장됩니다.").font(.caption).foregroundStyle(.secondary)
+                                Text("신청 기록은 이 기기에만 저장됩니다.").font(.caption).foregroundStyle(DearbyStyle.quiet)
                             }.padding(.horizontal, 20).padding(.bottom, 24)
                         }
                     }
@@ -43,6 +43,12 @@ struct ActivityDetailView: View {
             }
         }
         .navigationTitle("활동 상세").navigationBarTitleDisplayMode(.inline)
+        .toolbarBackground(.white, for: .navigationBar).toolbarBackground(.visible, for: .navigationBar)
+        .toolbar {
+            if let activity, let url = ActivityModel.safeURL(activity.officialUrl) {
+                ShareLink(item: url) { Image(systemName: "square.and.arrow.up") }.accessibilityLabel("공식 활동 링크 공유")
+            }
+        }
         .background(.white)
         .tint(Color(red: 0, green: 0.36, blue: 0.34))
         .sheet(item: $browser, onDismiss: {
@@ -110,19 +116,19 @@ struct ActivityDetailView: View {
             if let url = ActivityModel.safeURL(activity.officialUrl) {
                 Button("공식 사이트 보기", systemImage: "arrow.up.right") { open(activity.officialUrl, application: false) }
                     .frame(minHeight: 44)
-                Text(url.host ?? "").font(.caption).foregroundStyle(.secondary)
+                Text(url.host ?? "").font(.caption).foregroundStyle(DearbyStyle.quiet)
             } else { Text("공식 출처 링크 미확인") }
             Text("공식 출처 확인: \(ActivityText.date(activity.sourceCheckedAt))").font(.footnote)
-            if !activity.sourceNote.isEmpty { Text(activity.sourceNote).font(.footnote).foregroundStyle(.secondary) }
+            if !activity.sourceNote.isEmpty { Text(activity.sourceNote).font(.footnote).foregroundStyle(DearbyStyle.quiet) }
             Text("공식 페이지에서 로그인·동의·최종 제출을 직접 진행하세요. 자동입력은 아직 지원하지 않아요.")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(DearbyStyle.quiet)
         }
     }
     private var applicationBanner: some View {
         Label("이 활동은 이미 신청한 활동이에요.", systemImage: "checkmark.circle.fill")
             .font(.subheadline).frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal).padding(.vertical, 8)
-            .background(Color(red: 0.9, green: 0.97, blue: 0.95))
+            .background(Color(red: 0.9, green: 0.97, blue: 0.95), ignoresSafeAreaEdges: [])
     }
     private func open(_ raw: String?, application: Bool) {
         guard let url = ActivityModel.safeURL(raw) else { return }

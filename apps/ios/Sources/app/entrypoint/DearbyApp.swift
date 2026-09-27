@@ -10,7 +10,7 @@ import SwiftUI
                     ContentUnavailableView("저장소를 열 수 없습니다", systemImage: "externaldrive.badge.exclamationmark",
                         description: Text(failure ?? "저장소를 준비하고 있습니다."))
                 }
-            }.tint(.teal).task {
+            }.tint(Color(red: 0, green: 0.45, blue: 0.45)).preferredColorScheme(.light).task {
                 guard state == nil else { return }
                 do { state = try AppState.open() } catch { failure = error.localizedDescription }
             }

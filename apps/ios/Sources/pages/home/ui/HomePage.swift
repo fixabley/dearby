@@ -8,18 +8,23 @@ struct HomePage<Discovery: View, Saved: View, QR: View, Wallet: View, Profile: V
     let qr: QR
     let wallet: Wallet
     let profile: Profile
+    @State private var discoveryPath: [String] = []
+    @State private var savedPath: [String] = []
+    private var showsTabs: Bool { selectedTab > 1 || (selectedTab == 0 ? discoveryPath.isEmpty : savedPath.isEmpty) }
     private let titles = ["발견", "저장", "QR", "받은 명함", "내 프로필"]
     private let symbols = ["safari", "bookmark", "qrcode.viewfinder", "person.text.rectangle", "person.crop.circle"]
     var body: some View {
-        TabView(selection: $selectedTab) {
-            NavigationStack { discovery }.tag(0)
-            NavigationStack { saved }.tag(1)
-            NavigationStack { qr }.tag(2)
-            NavigationStack { wallet }.tag(3)
-            NavigationStack { profile }.tag(4)
-        }
-        .toolbar(.hidden, for: .tabBar)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        VStack(spacing: 0) {
+            Group {
+                switch selectedTab {
+                case 0: NavigationStack(path: $discoveryPath) { discovery }
+                case 1: NavigationStack(path: $savedPath) { saved }
+                case 2: NavigationStack { qr }
+                case 3: NavigationStack { wallet }
+                default: NavigationStack { profile }
+                }
+            }.frame(maxWidth: .infinity, maxHeight: .infinity)
+            if showsTabs {
             VStack(spacing: 0) {
                 Divider()
                 HStack(spacing: 0) {
@@ -28,14 +33,17 @@ struct HomePage<Discovery: View, Saved: View, QR: View, Wallet: View, Profile: V
                             VStack(spacing: 5) {
                                 Image(systemName: symbols[index]).font(.system(size: 23, weight: .regular))
                                 Text(titles[index]).font(.caption2.weight(selectedTab == index ? .semibold : .regular))
+                                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                             }.frame(maxWidth: .infinity, minHeight: 57)
-                                .foregroundStyle(selectedTab == index ? DearbyStyle.teal : .secondary)
+                                .foregroundStyle(selectedTab == index ? DearbyStyle.teal : DearbyStyle.quiet)
                                 .background(selectedTab == index ? DearbyStyle.mint : .clear, in: RoundedRectangle(cornerRadius: 10))
                         }.buttonStyle(.plain).accessibilityIdentifier("tab-\(index)")
                             .accessibilityAddTraits(selectedTab == index ? .isSelected : [])
+                            .accessibilityShowsLargeContentViewer { Label(titles[index], systemImage: symbols[index]) }
                     }
                 }.padding(.horizontal, 12).padding(.top, 8).padding(.bottom, 4)
             }.background(.white)
+            }
         }
         .tint(DearbyStyle.teal).preferredColorScheme(.light)
         .safeAreaInset(edge: .top) {

@@ -84,7 +84,7 @@ struct ContactSymbol: View {
             if contact.kind == "github" {
                 Image("GitHubMark").resizable().scaledToFit().frame(width: size, height: size)
             } else if contact.kind == "behance" {
-                Text("Bē").font(.system(size: size, weight: .bold))
+                Text("Bē").font(.system(size: size, weight: .bold)).fixedSize()
             } else {
                 Image(systemName: contact.symbol).font(.system(size: size))
             }

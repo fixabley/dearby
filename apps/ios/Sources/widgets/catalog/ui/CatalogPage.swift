@@ -21,7 +21,7 @@ struct CatalogPage: View {
                                         Button { filter = index } label: {
                                             Text(title).font(.subheadline.weight(.semibold)).padding(.horizontal, 20).frame(minHeight: 44)
                                                 .background(filter == index ? DearbyStyle.teal : DearbyStyle.muted, in: Capsule())
-                                                .foregroundStyle(filter == index ? .white : .secondary)
+                                                .foregroundStyle(filter == index ? .white : DearbyStyle.quiet)
                                         }.buttonStyle(.plain).accessibilityAddTraits(filter == index ? .isSelected : [])
                                     }
                                 }
@@ -55,11 +55,11 @@ struct CatalogPage: View {
             }
         }
         if state.fromCache {
-            Text("기기에 보관한 정보 · 만료된 활동은 발견에 표시하지 않아요.").font(.footnote).foregroundStyle(.secondary)
+            Text("기기에 보관한 정보 · 만료된 활동은 발견에 표시하지 않아요.").font(.footnote).foregroundStyle(DearbyStyle.quiet)
         }
         if let fetched = state.fetchedAt {
             Text("마지막 수신 \(ActivityText.date(fetched))")
-                .font(.caption).foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(DearbyStyle.quiet)
         }
     }
     @ViewBuilder private func discovery(at now: Date) -> some View {
@@ -79,7 +79,7 @@ struct CatalogPage: View {
     @ViewBuilder private func savedSections(at now: Date) -> some View {
         Section {
             Text("프로그램과 조직을 이 기기에 저장해요. 계정 동기화나 모집 알림은 제공하지 않아요.")
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.footnote).foregroundStyle(DearbyStyle.quiet)
         }
         if state.local.programIDs.isEmpty && state.local.organizationIDs.isEmpty {
             ContentUnavailableView("저장한 활동", systemImage: "bookmark",
@@ -111,16 +111,16 @@ struct CatalogPage: View {
                     VStack(spacing: 8) {
                         Image(systemName: "photo").font(.title2)
                         Text("이미지 미제공").font(.caption2)
-                    }.foregroundStyle(.secondary).frame(width: 96, height: 114)
+                    }.foregroundStyle(DearbyStyle.quiet).frame(width: 104, height: 104)
                         .background(DearbyStyle.muted, in: RoundedRectangle(cornerRadius: 9))
                     VStack(alignment: .leading, spacing: 7) {
-                        Text(activity.title).font(.headline).foregroundStyle(.primary)
-                        Text(activity.audience ?? activity.summary).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        Text(activity.title).font(.headline).foregroundStyle(Color.primary)
+                        Text(activity.audience ?? activity.summary).font(.caption).foregroundStyle(DearbyStyle.quiet).lineLimit(2)
                         Divider()
                         Label("마감 " + ActivityText.shortDate(activity.recruitmentEndAt), systemImage: "calendar")
                         Label(activity.dateLabel.isEmpty ? "일정 미확인" : activity.dateLabel, systemImage: "mappin.and.ellipse")
                         if saved { Text(activity.status(at: now)).foregroundStyle(DearbyStyle.teal) }
-                    }.font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                    }.font(.caption).foregroundStyle(DearbyStyle.quiet).frame(maxWidth: .infinity, alignment: .leading)
                 }
             }.buttonStyle(.plain).accessibilityIdentifier("activity-\(activity.id)")
             Button {

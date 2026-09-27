@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ActivityInformationView: View {
     let activity: ActivityModel
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Divider()
@@ -16,7 +17,7 @@ struct ActivityInformationView: View {
                         Text(schedule.dateLabel.isEmpty ? "일정 미확인" : schedule.dateLabel)
                     }
                     if schedule.startAt == nil && schedule.endAt == nil {
-                        Text("시간 미정").font(.footnote).foregroundStyle(.secondary)
+                        Text("시간 미정").font(.footnote).foregroundStyle(DearbyStyle.quiet)
                     } else {
                         Text(schedule.startAt.map { "시작: " + ActivityText.date($0, timeZone: schedule.timeZone) }
                             ?? "시작 시각 미정").font(.footnote)
@@ -25,7 +26,7 @@ struct ActivityInformationView: View {
                     }
                 }
             }
-            Text("기기 캘린더와의 일정 비교는 아직 제공하지 않아요.").font(.caption).foregroundStyle(.secondary)
+            Text("기기 캘린더와의 일정 비교는 아직 제공하지 않아요.").font(.caption).foregroundStyle(DearbyStyle.quiet)
         }
         VStack(alignment: .leading, spacing: 16) {
             Divider()
@@ -34,13 +35,19 @@ struct ActivityInformationView: View {
             field("지원 조건", activity.qualification)
             field("모집 직군", activity.roles.isEmpty ? nil : activity.roles.joined(separator: ", "))
             field("비용", activity.cost)
-            field("장소", activity.location)
+            Divider()
+            Text("장소").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
+            Text(activity.location ?? "장소 미확인")
         }
     }
     private func field(_ title: String, _ value: String?) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title).font(.caption).foregroundStyle(.secondary)
-            Text(value.flatMap { $0.isEmpty ? nil : $0 } ?? "미확인")
+        let layout = dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 16))
+        return layout {
+            Text(title).font(.subheadline).foregroundStyle(DearbyStyle.quiet)
+                .frame(minWidth: 76, alignment: .leading)
+            Text(value.flatMap { $0.isEmpty ? nil : $0 } ?? "미확인").font(.subheadline)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }.padding(.vertical, 2)
     }
 }

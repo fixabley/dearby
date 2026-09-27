@@ -20,6 +20,7 @@ import XCTest
         capture("실제 활동 상세 기본 정보")
         scrollTo(app.buttons["신청 상태 수정"], in: app)
         app.buttons["신청 상태 수정"].tap()
+        XCTAssertTrue(app.buttons["신청하지 않았어요"].waitForExistence(timeout: 5))
         app.buttons["신청하지 않았어요"].tap()
         scrollTo(app.buttons["프로그램 저장"], alternate: app.buttons["프로그램 저장됨 · 해제"], in: app)
         if app.buttons["프로그램 저장"].isHittable { app.buttons["프로그램 저장"].tap() }
@@ -37,7 +38,7 @@ import XCTest
         XCTAssertTrue(app.buttons["신청했어요"].waitForExistence(timeout: 5))
         capture("신청 여부 직접 기록")
         app.buttons["나중에"].tap()
-        XCTAssertFalse(app.staticTexts["이 활동은 이미 신청한 활동이에요."].exists)
+        XCTAssertTrue(app.staticTexts["이 활동은 이미 신청한 활동이에요."].waitForNonExistence(timeout: 5))
         app.buttons["신청 페이지 열기"].tap()
         closeBrowser(app)
         XCTAssertTrue(app.buttons["신청했어요"].waitForExistence(timeout: 5))
@@ -60,8 +61,9 @@ import XCTest
         capture("재시작 후 신청 기록 복원")
         scrollTo(app.buttons["신청 상태 수정"], in: app)
         app.buttons["신청 상태 수정"].tap()
+        XCTAssertTrue(app.buttons["신청하지 않았어요"].waitForExistence(timeout: 5))
         app.buttons["신청하지 않았어요"].tap()
-        XCTAssertFalse(app.staticTexts["이 활동은 이미 신청한 활동이에요."].exists)
+        XCTAssertTrue(app.staticTexts["이 활동은 이미 신청한 활동이에요."].waitForNonExistence(timeout: 5))
         capture("신청 기록 수정")
     }
     func testSourcePresentation() throws {
@@ -92,14 +94,22 @@ import XCTest
     }
     private func scrollTo(_ element: XCUIElement, alternate: XCUIElement? = nil, in app: XCUIApplication) {
         for _ in 0..<8 {
-            if (element.exists && element.isHittable) || (alternate?.exists == true && alternate?.isHittable == true) { return }
+            if visible(element, in: app) || (alternate.map { visible($0, in: app) } ?? false) { return }
             app.swipeUp()
         }
         for _ in 0..<8 {
-            if (element.exists && element.isHittable) || (alternate?.exists == true && alternate?.isHittable == true) { return }
+            if visible(element, in: app) || (alternate.map { visible($0, in: app) } ?? false) { return }
             app.swipeDown()
         }
-        XCTFail("Control unavailable: " + element.description)
+        XCTFail("Control unavailable: " + element.description + "\n" + app.debugDescription)
+    }
+    private func visible(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
+        guard element.exists && element.isHittable else { return false }
+        let pinned = ["프로그램 저장", "프로그램 저장됨 · 해제", "신청 페이지 열기", "공식 사이트에서 확인하기"]
+        if pinned.contains(element.label) { return element.frame.minY >= 120 && element.frame.maxY < app.frame.height - 25 }
+        let tab = app.buttons["tab-1"]
+        let bottom = tab.exists && tab.isHittable ? tab.frame.minY : app.frame.height - 105
+        return element.frame.minY >= 130 && element.frame.maxY <= bottom
     }
     private func capture(_ name: String) {
         let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
