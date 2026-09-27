@@ -1,51 +1,71 @@
 package com.dearby.nativeapp.widgets.card.cardContent
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.ui.Alignment
 import com.dearby.nativeapp.features.contact.ContactActionState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.dearby.nativeapp.shared.ui.*
 
-@Composable fun CardContent(state: CardState, expanded: Boolean, onExpand: () -> Unit, modifier: Modifier = Modifier, onContact: (ContactActionState) -> Unit) {
-    OutlinedCard(modifier.fillMaxWidth()) {
-        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            // Header stays outside the expanding/scrolling body.
-            Text(state.person.ifBlank { "이름 없음" }, style = MaterialTheme.typography.headlineSmall)
-            Text(state.job, style = MaterialTheme.typography.bodyLarge)
+@Composable fun CardContent(state: CardState, expanded: Boolean, onExpand: () -> Unit, modifier: Modifier = Modifier, onContact: (ContactActionState) -> Unit, showExpand: Boolean = true) {
+    OutlinedCard(modifier.fillMaxWidth(), colors = CardDefaults.outlinedCardColors(containerColor = Mint, contentColor = MaterialTheme.colorScheme.onSurface), border = BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFFB6E4DF))) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // The identity stays outside the body scroll and keeps its position when details expand.
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(state.person.ifBlank { "이름 없음" }, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
+                Text(state.job, Modifier.weight(1f), color = Quiet, style = MaterialTheme.typography.bodySmall)
+            }
             HorizontalDivider()
-            Text(state.title, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge)
-            if (!expanded) { Text(state.description, maxLines = 2); Text(state.introduction, maxLines = 2) }
-            if (expanded) Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text(state.description)
-                Text(state.introduction)
-                state.contacts.forEach { contact ->
-                    OutlinedButton({ onContact(contact) }, Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                        val icon = when (contact.kind) { "phone" -> Icons.Outlined.Phone; "email" -> Icons.Outlined.Email; else -> if (contact.target == null) Icons.Outlined.ContentCopy else Icons.Outlined.OpenInNew }
-                        Icon(icon, null)
-                        Spacer(Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) { Text(contact.label + if (contact.target == null) " · 복사" else ""); Text(contact.value, style = MaterialTheme.typography.bodySmall) }
-                    }
-                }
-                if (state.histories.isNotEmpty()) Text("활동 이력", style = MaterialTheme.typography.titleMedium)
-                state.histories.forEach { history ->
-                    Row(verticalAlignment = Alignment.Top) {
-                        Text("●", color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(end = 12.dp))
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text("${history.startDate} – ${history.endDate ?: "현재"}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Text(history.title, style = MaterialTheme.typography.titleMedium)
-                            Text(history.role, style = MaterialTheme.typography.bodyMedium)
-                            if (history.description.isNotBlank()) Text(history.description, style = MaterialTheme.typography.bodySmall)
+            Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(state.title, color = Teal, style = MaterialTheme.typography.titleLarge)
+                if (state.description.isNotBlank()) Text(state.description, color = Quiet)
+                if (expanded && state.introduction.isNotBlank()) Text(state.introduction)
+                if (state.contacts.isNotEmpty()) {
+                    HorizontalDivider()
+                    Text("연락처", style = MaterialTheme.typography.titleMedium, color = Quiet)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        state.contacts.forEach { contact ->
+                            TextButton({ onContact(contact) }, Modifier.heightIn(min = 48.dp)) {
+                                ContactSymbol(contact.kind, Modifier.size(24.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Column { Text(contact.label + if (contact.target == null) " · 복사" else ""); if (expanded) Text(contact.value, style = MaterialTheme.typography.bodySmall) }
+                            }
                         }
                     }
                 }
+                if (state.histories.isNotEmpty()) {
+                    HorizontalDivider()
+                    Text("활동 이력", style = MaterialTheme.typography.titleMedium, color = Quiet)
+                    Column { state.histories.forEachIndexed { index, history -> TimelineEntry(if (expanded) "${history.startDate} – ${history.endDate ?: "현재"}" else historyMonth(history), history.title, if (expanded) listOf(history.role, history.description).filter { it.isNotBlank() }.joinToString("\n") else "", index == state.histories.lastIndex, compact = !expanded) } }
+                }
             }
-            TextButton(onClick = onExpand) { Text(if (expanded) "접기" else "상세보기") }
+            if (showExpand) TextButton(onClick = onExpand) { Text(if (expanded) "접기" else "상세보기") }
         }
     }
+}
+
+/** Only real neighboring cards are shown behind the current card. No decorative fake identities. */
+@Composable fun CardStack(cards: List<CardState>, index: Int, modifier: Modifier = Modifier, onContact: (ContactActionState) -> Unit) {
+    val headerStep = (40 * LocalDensity.current.fontScale.coerceAtLeast(1f)).dp
+    val behind = cards.drop(index + 1).take(2).reversed()
+    Box(modifier.fillMaxWidth()) {
+        behind.forEachIndexed { depth, card ->
+            Surface(Modifier.padding(top = headerStep * depth, start = ((behind.size - depth) * 10).dp, end = ((behind.size - depth) * 10).dp).fillMaxWidth(), color = if (depth == 0) Soft else Mint, shape = MaterialTheme.shapes.medium, border = BorderStroke(1.dp, Line)) {
+                Row(Modifier.padding(horizontal = 20.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) { Text(card.person, style = MaterialTheme.typography.titleMedium, maxLines = 1); Text(card.job, color = Quiet, style = MaterialTheme.typography.bodySmall, maxLines = 1) }
+            }
+        }
+        CardContent(cards[index], false, {}, Modifier.padding(top = headerStep * behind.size).fillMaxWidth().heightIn(max = 460.dp), onContact, showExpand = false)
+    }
+}
+
+private fun historyMonth(history: CardHistoryState): String {
+    val start = history.startDate.take(7).replace('-', '.')
+    val end = history.endDate?.take(7)?.replace('-', '.') ?: "현재"
+    return if (start == end) start else "$start – $end"
 }
