@@ -18,7 +18,7 @@ Run run_2817352ae397 / coordinator term_1cbabda3-9f12-4f38-9655-ef8a0a3548fd.
 | iOS | task_12d3471fcfb1 / ctx_a33d870a32de | term_a08d43fc-ce31-4077-9bac-a2446ed0b9a6 | feat/ios-activities |
 | Android | task_e3bf1ed7f722 / ctx_e1187d1fd488 | term_a4ea575a-6b18-4abd-87ea-a0cc5503b02a | feat/android-activities |
 
-세 작업 입력 수락과 turn_started를 확인했다. 기존 retained 터미널 재사용은 readiness timeout으로 실패했고 코드 실행 전에 실패한 것을 확인했다. #48로 추적하고 같은 하위 checkout에 새 담당 세션을 열었다. 기존 세션은 삭제하지 않았다. 재개 시 실제 상태를 다시 확인하고 완료 세션도 retain한다.
+API와 Android는 succeeded/retained, iOS는 화면 회귀 검증 중이다. API 652c0ac까지와 Android c8cf82a까지 소유 커밋을 순서대로 통합했다. 조율 checkout API HTTP20/typecheck/lint/build 및 Android JVM/Debug/Lint/FSD43 통과. 세 작업 입력 수락과 turn_started를 확인했다. 기존 retained 터미널 재사용은 readiness timeout으로 실패했고 코드 실행 전에 실패한 것을 확인했다. #48로 추적하고 같은 하위 checkout에 새 담당 세션을 열었다. 기존 세션은 삭제하지 않았다. 재개 시 실제 상태를 다시 확인하고 완료 세션도 retain한다.
 
 ## 다음 행동 / 미완료
 
