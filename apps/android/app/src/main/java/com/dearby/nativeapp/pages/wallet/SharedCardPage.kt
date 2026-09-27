@@ -4,7 +4,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -13,6 +14,8 @@ import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.card.cardContent.CardState
 
 @Composable fun SharedCardPage(card: CardState, busy: Boolean, back: () -> Unit, save: () -> Unit, send: () -> Unit, onContact: (ContactActionState) -> Unit) {
+    var confirmSave by rememberSaveable { mutableStateOf(false) }
+    if (confirmSave) AlertDialog(onDismissRequest = { confirmSave = false }, title = { Text("이 기기에 저장할까요?") }, text = { Text("명함 ID를 이 기기에 저장합니다. 앱을 삭제하면 복구할 수 없어요.") }, confirmButton = { TextButton({ confirmSave = false; save() }, enabled = !busy) { Text("이 기기에 저장") } }, dismissButton = { TextButton({ confirmSave = false }) { Text("취소") } })
     Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { TextButton(back) { Text("닫기") }; Text("공유 카드", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge); DearbyLogo(Modifier.width(64.dp)) }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -26,7 +29,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardState
         }
         HorizontalDivider()
         Text("로그인 없이 카드를 저장할 수 있어요.", Modifier.align(Alignment.CenterHorizontally), color = Quiet, style = MaterialTheme.typography.bodySmall)
-        DearbyButton(save, Modifier.fillMaxWidth(), enabled = !busy) { Text("카드 저장") }
+        DearbyButton({ confirmSave = true }, Modifier.fillMaxWidth(), enabled = !busy) { Text("카드 저장") }
         DearbyOutlineButton(send, Modifier.fillMaxWidth(), enabled = !busy) { Text("나도 카드 주기") }
     }
 }

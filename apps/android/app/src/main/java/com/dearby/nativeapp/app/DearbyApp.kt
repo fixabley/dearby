@@ -48,9 +48,6 @@ import com.dearby.nativeapp.pages.wallet.SendPage
 import com.dearby.nativeapp.pages.wallet.WalletEntryState
 import com.dearby.nativeapp.pages.wallet.WalletPage
 import com.dearby.nativeapp.shared.ui.DearbyLogo
-import com.dearby.nativeapp.shared.ui.EmptyPanel
-import com.dearby.nativeapp.shared.ui.Field
-import com.dearby.nativeapp.shared.ui.FormColumn
 import com.dearby.nativeapp.widgets.activity.contextPicker.ActivityChoiceState
 import com.dearby.nativeapp.widgets.card.cardContent.CardContent
 import com.dearby.nativeapp.widgets.card.cardContent.CardState
@@ -68,6 +65,8 @@ import kotlinx.coroutines.*
     var catalogDetail by remember { mutableStateOf(false) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var route by rememberSaveable { mutableStateOf("") }
+    var loginReturn by rememberSaveable { mutableStateOf("") }
+    var sendReturn by rememberSaveable { mutableStateOf("") }
     var returnRoute by rememberSaveable { mutableStateOf("") }
     var recipient by remember { mutableStateOf<CardState?>(null) }
     var sharedCard by remember { mutableStateOf<CardState?>(null) }
@@ -117,10 +116,10 @@ import kotlinx.coroutines.*
         }
     }
     LaunchedEffect(incoming) { if (incoming != null) { input = incoming; route = "receive"; consume() } }
-    LaunchedEffect(state.loggedIn) { if (state.loggedIn && route == "login") route = "" }
+    LaunchedEffect(state.loggedIn) { if (state.loggedIn && route == "login") { route = if (recipient != null) loginReturn else ""; loginReturn = "" } }
     LaunchedEffect(state.message) { state.message?.let { snackbars.showSnackbar(it); model.clearMessage() } }
-    fun create() { if (!state.loggedIn) route = "login" else { returnRoute = route; route = "create" } }
-    BackHandler(route.isNotEmpty()) { route = if (route == "create") returnRoute else "" }
+    fun create() { if (!state.loggedIn) { loginReturn = ""; route = "login" } else { returnRoute = route; route = "create" } }
+    BackHandler(route.isNotEmpty()) { if (!(route == "send" && state.busy)) route = when (route) { "create" -> returnRoute; "send" -> sendReturn; "login" -> if (loginReturn == "send") "shared" else ""; else -> "" } }
     if (enlarged && bitmap != null) Dialog({ enlarged = false }, DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().background(Color.White).clickable { enlarged = false }, contentAlignment = Alignment.Center) { Image(bitmap.asImageBitmap(), "QR 확대. 누르면 돌아갑니다.", Modifier.fillMaxWidth().aspectRatio(1f)) }
     }
@@ -131,19 +130,19 @@ import kotlinx.coroutines.*
             if (route.isEmpty() && !catalogDetail && (tab == 0 || tab == 2)) Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), contentAlignment = if (tab == 0) Alignment.CenterStart else Alignment.Center) { DearbyLogo() }
             if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
         } },
-        bottomBar = { if (route.isEmpty() && !state.importVisible && !catalogDetail) NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
+        bottomBar = { if ((route.isEmpty() || route == "receive") && !state.importVisible && !catalogDetail) NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
             val names = listOf("발견", "저장", "QR", "받은 명함", "내 프로필")
             val icons = listOf(Icons.Outlined.Explore, Icons.Outlined.BookmarkBorder, Icons.Outlined.QrCode, Icons.Outlined.Badge, Icons.Outlined.PersonOutline)
-            names.forEachIndexed { index, name -> NavigationBarItem(colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent, selectedIconColor = MaterialTheme.colorScheme.primary, selectedTextColor = MaterialTheme.colorScheme.primary), selected = tab == index, onClick = { tab = index }, icon = { Icon(icons[index], name) }, label = { Text(name, maxLines = 1, style = MaterialTheme.typography.labelSmall) }) }
+            names.forEachIndexed { index, name -> NavigationBarItem(colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent, selectedIconColor = MaterialTheme.colorScheme.primary, selectedTextColor = MaterialTheme.colorScheme.primary), selected = tab == index, onClick = { route = ""; tab = index }, icon = { Icon(icons[index], name) }, label = { Text(name, maxLines = 1, style = MaterialTheme.typography.labelSmall) }) }
         } }
     ) { padding -> Box(Modifier.padding(padding).fillMaxSize()) {
         when {
             !state.ready -> CircularProgressIndicator(Modifier.align(Alignment.Center))
-            state.importVisible && state.loggedIn -> ImportPage(state.guests.map { guest -> val cached = state.guestCards[guest.cardId]; ImportEntryState(guest.cardId, cached?.profileName ?: "명함 정보 확인 필요", cached?.job.orEmpty(), activityLabel(guest.context)) }, state.busy, model::importSelected, { model.showImport(false) })
-            route == "login" -> LoginPage(state.busy, state.challengeId, state.challengeExpires, model::requestCode, model::login, { route = "" })
-            route == "create" -> CardEditor(state.profile.visibilityState(), state.busy, { model.publish(it.selectionModel()) { route = returnRoute } }, { route = returnRoute }, { Toast.makeText(context, "선택 해제한 연락처는 명함에 표시되지 않습니다.", Toast.LENGTH_SHORT).show() })
-            route == "send" && recipient != null -> SendPage(cards, state.selectedCardId, recipient!!.person, state.busy, model::selectCard, { card, activityId, label -> model.send(card, recipient!!.ownerId, ExchangeContextModel(activityId = activityId, label = label.ifBlank { null })) { route = "" } }, ::create, { route = "" }, ::openContact, activities)
-            route == "shared" && sharedCard != null -> SharedCardPage(sharedCard!!, state.busy, { route = "receive" }, { model.receive(sharedCard!!.id, sharedContext) { route = ""; tab = 3 } }, { recipient = sharedCard; route = if (state.loggedIn) "send" else "login" }, ::openContact)
+            state.importVisible && state.loggedIn && route.isEmpty() -> ImportPage(state.guests.map { guest -> val cached = state.guestCards[guest.cardId]; ImportEntryState(guest.cardId, cached?.profileName ?: "명함 정보 확인 필요", cached?.job.orEmpty(), activityLabel(guest.context)) }, state.busy, model::importSelected, { model.showImport(false) })
+            route == "login" -> LoginPage(state.busy, state.challengeId, state.challengeExpires, model::requestCode, model::login, { route = if (loginReturn == "send") "shared" else ""; loginReturn = "" })
+            route == "create" -> CardEditor(state.profile.visibilityState(), state.busy, { model.publish(it.selectionModel()) { route = returnRoute } }, { route = returnRoute }, { visible -> Toast.makeText(context, if (visible) "이 연락처를 명함에 공개해요." else "이 연락처를 이번 명함에서 숨겼어요.", Toast.LENGTH_SHORT).show() })
+            route == "send" && recipient != null -> SendPage(cards, state.selectedCardId, recipient!!.person, state.busy, model::selectCard, { card, activityId, label -> model.send(card, recipient!!.ownerId, ExchangeContextModel(activityId = activityId, label = label.ifBlank { null })) { route = "" } }, ::create, { route = sendReturn }, ::openContact, activities)
+            route == "shared" && sharedCard != null -> SharedCardPage(sharedCard!!, state.busy, { route = "receive" }, { model.receive(sharedCard!!.id, sharedContext) { route = ""; tab = 3 } }, { recipient = sharedCard; sendReturn = "shared"; loginReturn = if (state.loggedIn) "" else "send"; route = if (state.loggedIn) "send" else "login" }, ::openContact)
             route == "receive" -> ScanPage(input, { input = it }, state.busy, { route = ""; tab = 2 }, { runCatching { camera.launch(null) }.onFailure { model.report("사용 가능한 카메라 앱이 없습니다.") } }, { photo.launch("image/*") }, { receive(input) })
             tab == 0 || tab == 1 -> CatalogRoute(catalog, tab == 1) { catalogDetail = it }
             tab == 2 -> QrPage(cards, state.selectedCardId, bitmap?.asImageBitmap(), model::selectCard, { enlarged = true }, { detail = it }, ::create,
@@ -152,9 +151,9 @@ import kotlinx.coroutines.*
                 { exportLink = link; saveImage.launch("dearby-qr.png") }, contextLabel, { contextLabel = it }, { route = "receive" }, activities, contextActivityId, { contextActivityId = it })
             tab == 3 -> {
                 val entries = if (state.loggedIn) state.wallet.map { WalletEntryState(it.id, it.card.toState(), activityLabel(it.context), receivedDate(it.receivedAt), it.reciprocal) } else state.guests.mapNotNull { guest -> state.guestCards[guest.cardId]?.let { WalletEntryState(guest.cardId, it.toState(), activityLabel(guest.context), receivedDate(guest.savedAt), false) } }
-                WalletPage(entries, state.loggedIn, state.guests.size, { route = "login" }, { model.showImport(true) }, model::refresh, { recipient = it; route = "send" }, ::openContact)
+                WalletPage(entries, state.loggedIn, state.guests.size, { loginReturn = ""; route = "login" }, { model.showImport(true) }, model::refresh, { recipient = it; sendReturn = ""; route = "send" }, ::openContact)
             }
-            else -> ProfilePage(state.profile.editorState(), state.busy, state.loggedIn, { model.saveProfile(it.applyTo(state.profile)) }, { route = "login" }, model::logout, { model.showImport(true) })
+            else -> ProfilePage(state.profile.editorState(), state.busy, state.loggedIn, { model.saveProfile(it.applyTo(state.profile)) }, { loginReturn = ""; route = "login" }, model::logout, { model.showImport(true) })
         }
     } }
 }
