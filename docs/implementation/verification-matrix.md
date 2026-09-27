@@ -47,3 +47,11 @@ iOS URLSession/AppState와 Android HttpClient/Repository가 같은 격리 API에
 - Ponytail: API/Android 통합 코드에서 추가 추상화 삭제 후보 없음. Android 매초 전체 변환은 다음 경계 갱신으로 교체했다. 저장·출처·UI 정확성 검토와 복잡성 검토는 구분한다.
 
 세 담당 succeeded/retained, 새로운 미회수 리소스0을 확인했다. 격리 API PID27463 정상 종료와 임시 DB/메일 삭제, 조율 Simulator Shutdown 상태 확인. 마지막 공식 확인 시각은 해당 로컬 실행의 증거이며 운영 최신성 보장이 아니다. 최신 원격 CI는 PR40에서 별도로 확인한다.
+
+## 2026-09-27 컨펌 화면 교정 — #50
+
+정본은 [수정 후 시안](../design/native-visual-contract.md)과 [조율 대조 기록](../design/visual-fidelity-review.md)이다. 새 생성 시안을 승인 자료로 간주하지 않는다.
+
+- Android: 담당 최종 UI26, 경고·메뉴2, 실제 로그인 복귀1, HTTP framing1, 저장/catalog6 및 별도 재시작1 통과. [원본/전/후 비교](../../apps/android/evidence/visual-fidelity/compare.html), [검증 출처와 한계](../../apps/android/evidence/visual-fidelity/README.md). 최종 c1ec7c6까지 통합한 조율 checkout에서 JVM28(실패0/skip0), FSD45파일 및 self-test28, Debug 빌드, lint 오류0/경고17을 다시 확인했다. 조율 로그 `/tmp/dearby-root-visual-android.log`. 담당 세션 succeeded/retained.
+- 로그아웃 파싱 회귀는 #52에서 추적한다. Android의 본문 없는 DELETE 자동 form 헤더를 교정했고 실제 로그인 복귀까지 통과했다. iOS 결과와 전체 통합/원격 CI는 뒤에 기록한다.
+- 썸네일/콘텐츠 분류 계약 #51과 운영 이메일·앱 링크·캘린더·푸시·자동입력은 이번 시각 수정으로 완료되지 않는다.
