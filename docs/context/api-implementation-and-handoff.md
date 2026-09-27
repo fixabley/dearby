@@ -1,58 +1,77 @@
 # API — 구현과 인계
 
-검증 시점: 2026-09-27 05:55 KST (2026-09-26 20:55 UTC). #39 첫 수직 구현이며 제품 전체·운영 배포 완료가 아니다. 정본은 `docs/product/native-spec-2026-09.md`, 전송 계약은 `shared/contracts/native-v1.md`다. 이전 scaffold 설명은 현재 트리와 달라 교체했다.
+검증 시점: **2026-09-27 12:18 KST / 03:18 UTC**. #45 로컬 카탈로그 구현과 검증이며 전체 서비스·운영 배포 완료가 아니다. 정본은 `docs/product/native-spec-2026-09.md`, `shared/contracts/catalog-v1.md`, `shared/contracts/native-v1.md`다. 이전 #39 인증·명함·교환 구현은 유지하며 아래 현재 검증이 기존 회귀를 포함한다.
 
-## 담당 및 상태
+## 담당과 통합
 
-- checkout: `/Users/jominjun/Documents/dearby/dearby-api`, branch `fixabley/dearby-api`, 시작 base `8bb694c`.
-- Orca worker terminal: `term_ae3d042f-c8ad-44cc-82e1-686f8be3b249`; task `task_588982931d2d`, dispatch `ctx_ce111f22ff1f`. 이는 세션 식별자이며 검증 시각과 별개다.
-- 소유 범위: `apps/dearby-api`, 이 문서, `docs/workstreams/api.md`만 변경. root/shared/다른 앱은 변경하지 않았다. 하위 worker 없음.
-- 완료 보고 뒤 세션은 사용자 요청에 따라 유지하며 조율자가 retain 처리한다. push/PR은 하지 않았고 조율자가 통합한다.
+- checkout `/Users/jominjun/Documents/dearby/dearby-api`, branch `feat/api-activities`, base `dcb590f4379a5e8e8e37476691791143e8bb373a`.
+- 시작 시 `git status --short` 빈 출력 확인 후 `git switch -c feat/api-activities dcb590f`. 이전 `fixabley/dearby-api` 브랜치/커밋을 reset/delete하지 않았다.
+- worker terminal `term_8f4dc959-3adb-4109-ba29-8321fc911357`, task `task_8cc6572cb14f`, dispatch `ctx_deaf5c8ca5dd`. 세션 식별자와 검증 시각은 별개다.
+- 소유 범위 `apps/dearby-api`, 이 문서, `docs/workstreams/api.md`. 다른 checkout·shared 계약/데이터·root/CI 변경 없음. 하위 agent 없음.
+- `73b2082`: 영속 공식 카탈로그·수집/과거 가져오기 CLI·HTTP 테스트. 조율자에게 usable commit으로 전달했다.
+- `582a527`: 거절된 HTTP body 취소, 실제 마감·초기 실패·과거 식별자/참조 입력 회귀, UUIDv5 golden check.
+- 마지막 read snapshot transaction 및 이 인계 문서는 후속 commit. push/PR/main merge 없음. 조율자가 cherry-pick·공통 서버·플랫폼 통합을 담당한다.
+- 완료 후 사용자 요청으로 이 세션을 유지하며 조율자가 retain 처리한다.
 
-## 구현
+## 구현과 가역적 결정
 
-Node 24.21.0 LTS, Fastify 5.12.5, better-sqlite3 13.0.3, Zod 4.6.5, Nodemailer 10.0.10, TypeScript 7.0.2/tsx 4.23.15를 공식 npm registry/문서로 확인 후 고정했다. `@types/node`는 런타임과 맞는 24.19.0이다. Node 26은 호스트 기본값이지만 Current이므로 검증 명령에서 Node 24를 명시했다. 근거 링크는 [API README](../../apps/dearby-api/README.md)에 있다.
+인증 없는 `GET /v1/catalog`는 정확한 typed DTO와 JSON null을 반환한다. 초기 DB는 200 빈 배열, DB 오류는 500이다. closed/unknown 자료도 상세·저장·교환 맥락용으로 남는다. 조직/프로그램/활동은 분리하고 SQL 외래키와 입력 참조 검증을 사용한다. 읽기도 하나의 SQLite snapshot transaction이므로 외부 CLI commit 중 세 배열을 서로 다른 snapshot에서 읽지 않는다.
 
-SQL migration + foreign keys + WAL + synchronous FULL + 짧은 동기 transaction을 사용한다. ORM/Repository/DI 계층 없이 인증, 공개 projection, wallet 라우트를 나눴다. 개인 프로필·계정·세션 해시·OTP 해시/시도/만료·rate limit·발행 스냅샷·수신 이력·멱등 키가 SQLite 파일에 영속된다.
+SQLite migration 002, WAL/FULL·출처별 transaction, 원자적 과거 import를 사용한다. UUIDv5 DNS namespace와 `dearby/catalog/{kind}/{source key}` 이름으로 안정된 ID를 만든다. 기존 slug `kakao-2026`, `feconf-2026`를 그대로 source key로 유지해 과거/실수집 순서와 재시작에 상관없이 중복을 방지한다. if(kakao) activity UUID는 `ed43a1d2-213c-5511-bfe2-e80aa26cd866`, FEConf는 `39c7261a-7d5c-510e-8e97-1982fb8f99d3`다. 프로그램/조직/schedule 규칙은 API README 참조.
 
-계약의 모든 첫 수직 endpoint를 구현했다: challenge/session/revoke, owner profile GET/PUT, own cards list/publish, public read/owner revoke, authenticated wallet/import, direct exchanges. OTP는 응답하지 않으며 로그인 성공만 계약대로 sessionToken을 반환한다. 로그에 토큰·코드·HTTP 본문을 남기지 않는다. OTP HMAC-SHA256, 5분 만료/5회 시도/1회 사용, 메일당 분당 1회·시간당 5회/발신 IP 시간당 20회/확인 IP 분당 60회 제한. 세션은 무작위 256비트, SHA256 저장, 30일 만료·개별 폐기다.
+`sourceCheckedAt`은 본문 근거 해석 성공 시각이고 `validUntil`은 최대 24시간 후다. HTTP 200만으로 갱신하지 않는다. source note는 근거·시간 해석·미확인을 설명하고 `good_body_sha256`은 마지막 정상 HTML hash를 보존한다. `catalog_refreshes`는 가장 최근 시도와 성공/실패 사유다. 원본 HTML 장기 archive나 전체 시도 이력은 구현하지 않았다.
 
-SMTP는 명시적 설정 없으면 HTTP 503으로 실패한다. 실제 SMTP 어댑터는 TLS 필수·인증서 검증·timeout을 사용하며 원본 오류를 클라이언트에 노출하지 않는다. 메모리 메일 sink는 test 폴더 안에서 NODE_ENV=test를 확인하고 주입하며 서버 실행 경로/환경 옵션에는 없다. `.env.example`만 검토·작성했고 비밀을 탐색하지 않았다.
+읽을 때 `sourceCheckedAt <= now < validUntil`, 명시적 OPEN, 미래 시작/경과 마감을 확인한다. 시작 inclusive·마감 exclusive·24시간 exact expiry를 검증했다. 실패는 정상 내용/checkedAt/validUntil/hash를 유지하고 `unavailable`, 모집 false로 표시한다. DB 자체가 쓰기를 거부해 실패 표지도 저장할 수 없으면 CLI가 실패하며 정상 수집으로 표시하지 않는다. 과거 deadline이 확인되면 closed이고, 미확인/오래된 모집은 unknown이다.
 
-공개 카드에는 선택한 연락처·이력만 포함하고 프로필 수정이 기존 카드에 전파되지 않는다. 철회는 공개 재조회 404, 새 wallet 응답에서 필터링하며 DB 수신 이력은 보존한다. 조율 피드백을 반영해 revoked 내용을 wallet으로 재노출하던 초안 경로와 allowRevoked 옵션을 제거했다. tombstone 모델이 없어 숨겨진 카드 안내 UX는 #41 후속이다.
+공식 collector는 `if.kakao.com/2026`, `2026.feconf.kr/` 두 URL만 순차 요청한다. 요청별 15초, decoded HTML 1MiB, redirect 금지, HTML content type 확인. 외부 링크 수집·임의 URL·JavaScript 실행·로그인·개인정보 제출·자동 retry·범용 crawler framework 없음. 검토한 2026 원문 구조/일자가 달라지면 파서는 보수적으로 실패하며 새 구조 검토가 필요하다.
 
-import는 항목별 transaction과 순서 보존 결과를 사용한다. 실패/유효하지 않은 항목은 failed/null이며 다른 항목 성공을 되돌리지 않는다. 동일 사용자/card 중복은 기존 직접 전달까지 포함해 alreadySaved다. 앱은 성공한 선택 항목만 기기에서 제거해야 한다. savedAt은 guest 수신 시각으로 보존하고 direct exchange는 서버 시각을 사용한다. sender/requestId 재시도는 같은 receipt/time, 검증된 본문 변경은 409. 새 requestId는 별도 반복 이력을 만든다. receipt 및 idempotency 저장은 원자적이다. 철회 전 완료된 요청의 재시도는 기존 receipt/time만 반환하며 새 전달은 404다. reciprocal은 양방향 실제 수신 이력에서 계산한다.
+if(kakao)는 참가 신청 영역의 OPEN과 FAQ 선발 조건을 확인하여 selection으로 표시한다. 9월 28일 낮 12시는 한국 현지 기준 03:00Z로 해석했다. 신청 시작 9월 7일은 시각이 없어 null이고 행사 10월 13–14일도 start/end null이다. 후원 감사 영역 문구는 모집 종료 근거가 아니다. FEConf는 TICKET OPEN D-14와 행사 개장을 구분해 scheduled이며 상대 카운트다운으로 모집 날짜를 계산하지 않는다. 행사 개장 2026-10-24 10:00 Seoul만 01:00Z로 기록하고 종료 시각은 null이다.
 
-ExchangeContext는 activity UUID/자유 label/둘 다 null 중 하나이며 양쪽 동시 입력은 422다. 등록 활동의 실제 존재/참가를 검증했다고 주장하지 않는다. 이전 catalog slug는 공통 UUID 매핑 후 연결해야 한다. 직접 자기 자신에게 전달은 422인 가역적 초기 선택이다. contact URL scheme은 HTTPS만 허용하고 일반 전화/이메일/핸들 텍스트는 지원한다. 외부 URL을 여는 네이티브 측 검증도 필요하다.
+기존 snapshot은 명시적 `import-legacy`로만 가져온다. 30개 모두 stale/unknown, semantic checked/expiry null이며 기존 open/current는 신뢰하지 않는다. audience 배열은 개별 공고 안에서만 읽기 쉬운 문자열로 합치고 round를 사람용 제목에 사용한다. duplicate identity/missing reference는 전체 rollback, 재import는 기존 정상/실패 자료를 덮어쓰지 않는다. 서버 기본 시작에는 fixture/과거 자료 자동 seed가 없다.
 
-## 실제 실행한 검증
+ExchangeContext/receipt DTO와 기존 UUID-format validation은 변경하지 않았다. 등록 활동 선택은 참가 인증이 아니다. 앱 캐시도 validUntil 외 모집 시작/마감 시각을 확인해야 한다는 리뷰 의견을 조율자에게 전달했다. 그렇지 않으면 알려진 deadline이 24시간 freshness보다 먼저 도달할 때 cached OPEN이 잘못 남을 수 있다.
 
-`apps/dearby-api`에서 Node 24.21.0으로 실행했다. 호스트 재현은 `npm exec --yes --package=node@24.21.0 -- npm --prefix apps/dearby-api <command>`; 해당 디렉터리에서 nvm use 후 일반 npm 명령도 가능하다.
+## 실제 실행한 명령과 결과
 
-- `npm ci`: 깨끗한 의존성 재설치 통과, npm audit 결과 0 vulnerabilities. npm 11의 install-scripts 승인 안내는 출력됐지만 native DB 로드와 전체 테스트가 실제 통과했다.
-- `npm test`: 10/10. Fastify inject가 아닌 임시 포트의 TCP listener + fetch, 파일 SQLite, 테스트별 임시 디렉터리를 사용한다.
-- `npm run typecheck`, `npm run lint`, `npm run build`: 모두 exit 0. lint 경고 없음.
-- HTTP 검증: OTP 비반환/해시/한 번 사용/오입력 누적/만료/재전송/계정 재로그인 동일 ID/세션 만료·폐기, 이메일·IP quotas, SMTP 미설정 fail-closed.
-- HTTP 검증: owner 보호, 숨긴 필드/로그인 이메일 비노출, 스냅샷 불변, 타인 revoke 차단, 철회 공개/지갑 비노출, 입력 오류 및 위험 scheme/공백·제어문자 차단.
-- HTTP 검증: import 부분 실패·중복·동시 요청·수신 시각/맥락 보존, 직접 전달 후 import 중복, 다른 사용자 wallet 분리, 반복 교환·동시 replay·키 순서 무관 동일 요청·body mismatch, reciprocal.
-- SQL trigger 실패 주입 후 실제 HTTP: exchange receipt와 멱등 키 모두 rollback, import 실패 항목만 rollback 및 재시도 성공.
-- DB/서버 재개방 후 HTTP: 프로필·세션·wallet·철회·멱등 replay·quota·단일 migration 적용 유지.
-- 별도 compiled `dist/server.js` 프로세스 smoke: HTTP 인증 없는 profile 401, SMTP 미설정 challenge 503, SQLite 파일 mode 0600, stdout/stderr 요청/비밀 로그 없음, SIGTERM 종료 확인. 이 smoke는 이번 실행의 증거이며 자동 test suite에는 포함하지 않았다.
-- `git diff --check`: 통과.
-- ponytail-review: 실제 모듈·diff·호출 흐름을 검토했고 추가 제거 후보 없음 — `Lean already. Ship.` 보안/정확성은 위 회귀로 따로 확인했다.
+호스트 기본 Node는 26.10.0이므로 모든 실행/테스트는 Node **24.21.0**, npm **11.19.1**을 명시했다. 의존성을 추가/업그레이드하지 않았다. 설치된 버전: Fastify 5.12.5, better-sqlite3 13.0.3, Zod 4.6.5, Nodemailer 10.0.10, TypeScript 7.0.2, tsx 4.23.15, oxlint 1.85.0, @types/node 24.19.0, @types/better-sqlite3 9.6.0, @types/nodemailer 8.0.2.
 
-초기 TypeScript unknown 오류 처리와 persistence test의 빈 DELETE에 잘못 붙인 JSON Content-Type은 수정 후 재실행했다. 최종 결과에 실패를 숨기지 않으며 이전 9/10 실행은 최종 통과 증거가 아니다.
+checkout root에서:
 
-## 통합 커밋
+```sh
+npm exec --yes --package=node@24.21.0 -- npm --prefix apps/dearby-api run typecheck
+npm exec --yes --package=node@24.21.0 -- npm --prefix apps/dearby-api run lint
+npm exec --yes --package=node@24.21.0 -- npm --prefix apps/dearby-api run build
+npm exec --yes --package=node@24.21.0 -- npm --prefix apps/dearby-api test
+npm exec --yes --package=node@24.21.0 -- npm --prefix apps/dearby-api run catalog -- import-legacy --db /tmp/dearby-api-activities-final-history.sqlite
+npm exec --yes --package=node@24.21.0 -- npm --prefix apps/dearby-api run catalog -- refresh --db /tmp/dearby-api-activities-final-live.sqlite
+git diff --check
+```
 
-- `8051170`: SQLite/migration/runtime 및 안전한 이메일 OTP·세션·HTTP 테스트.
-- `00e7751`: owner profile 및 공개 명함 projection/철회·HTTP 테스트.
-- `25d2311`: 항목별 import, 멱등 direct exchange/상호성, 재시작·rollback 회귀.
-- `b8ace11`: Node LTS 타입 정렬과 quota/위험 입력 회귀.
-- 이 인계 문서 갱신은 별도 docs 커밋으로 뒤따른다. 조율자는 브랜치 전체를 통합하며 shared 계약을 담당자가 변경하지 않았음을 확인한다.
+모두 최종 통과. **20/20 tests**, lint warning 없음. 새 카탈로그 10개 테스트와 기존 auth/card/wallet/persistence 10개가 포함된다. Fastify inject 대체가 아닌 TCP listener + fetch, 테스트별 실제 임시 디스크 SQLite를 사용했다. source parsing fixture는 test 폴더에만 있고 real source 검증과 구분했다.
 
-## 남은 조건
+검증: exact DTO/빈 성공과 서버 오류 구분, 시작·마감·24시간·역방향 clock, 실제 if(kakao) noon 경계, scheduled 상세 유지, fetch/파싱 실패 및 복구, 정상 내용/hash 보존, SQL trigger write 실패 rollback, 참조/UUID golden/dedup/재import, 실제 snapshot 30건과 invalid input rollback, DB+HTTP 재시작, URL allowlist/HTTP status/type/body size/실제 로컬 HTTP redirect 거부. 기존 OTP·공개 projection·소유권·교환 멱등성·부분 import·저장 재개방 회귀 통과.
 
-[이슈 #42](https://github.com/fixabley/dearby/issues/42): SMTP 실제 수신, HTTPS 운영 환경/비밀 주입·교체, 단일 호스트 SQLite 저장/백업·복구, trusted proxy IP 제한, 운영 모니터링·데이터 수명 관리, 두 플랫폼 실제 기기/서버 연동 증거가 필요하다. 생성만으로 해결 처리하지 않았다. 운영 DB scaling/고가용성/백업 검증은 미완료다. 이 실행은 메일 테스트 sink로만 인증했으므로 AUTH-01 실메일 수신 완료를 뜻하지 않는다.
+최초 과거 import 시 audience가 배열인 공고를 문자열 schema가 거부했다. union 변환을 수정하고 실제 preserved snapshot 테스트와 CLI import를 다시 통과시켰다. 이 초기 실패는 최종 성공 증거로 대체 표시하지 않는다. 이번에는 npm ci/audit 재실행하지 않았으므로 과거 #39 결과를 이번 결과로 주장하지 않는다.
 
-활동 수집·푸시 APNs/FCM·캘린더·if(kakao)는 이 vertical API 계약 범위에 없다. 관련 전체 서비스 조건은 여전히 남아 있고, 실 SMTP/APNs/배포 비밀은 확보하지 않았다. 이 작업은 로컬 HTTP 수직 구현 완료로만 인계한다.
+## 공식 수집 증거 — fixture와 별도
+
+웹 도구로 [if(kakao) 공식 페이지](https://if.kakao.com/2026)를 열어 신청/마감/선정 조건을 확인했다. FEConf 웹 도구는 internal access error였지만 실제 shell/Node HTTPS 수집은 성공했다. 이를 공식 사이트 다운으로 해석하지 않았다.
+
+compiled collector 실제 실행 후 같은 격리 DB를 `dist/server.js`에서 제공하는 별도 process smoke도 실행했다. Node 24.21.0 inline script가 임시 디렉터리 SQLite 생성, 두 `refreshSource` 호출, 독립 임시 OTP_SECRET 생성, PORT=4319 서버 시작, 실제 fetch 검증, SIGTERM/임시 DB 삭제를 수행했다. 공통 integration server는 시작하거나 변경하지 않았다.
+
+| Source | Semantic checked UTC | HTTP/body | SHA256 | 실제 결과 |
+| --- | --- | --- | --- | --- |
+| https://if.kakao.com/2026 | 2026-09-27T03:16:36.246Z | 200, 573993 bytes | a60a6aed76e113e2b24e3ae5b6d75e681ed031b29f68a50886c516e30d42d97b | verified/open, 모집 true, deadline 2026-09-28T03:00:00Z |
+| https://2026.feconf.kr/ | 2026-09-27T03:16:36.287Z | 200, 60694 bytes | 5e80b9d7e75bdbcdbc55800a409ff8349bac56113152dda42282feb62f8b2b97 | verified/scheduled, 모집 false |
+
+compiled HTTP는 2 organizations/2 programs/2 activities/1 recruiting, strict schema 통과, 미인증 profile 401, stdout/stderr 비어 있음, 종료 성공. 이 smoke 이후 최종 read snapshot transaction 변경은 위 20 HTTP tests/build/typecheck/lint로 재검증했고 compiled process smoke를 반복하지 않았다. `/tmp` CLI DB들은 검사 전용이며 운영 DB나 지속 서비스로 사용하지 않는다.
+
+조율자 메시지에 따르면 통합 checkout에서 별도 실제 source 수집 서버를 52777에 제공하여 양 앱 검증을 진행 중이다. 이는 조율자가 실행한 결과이며 이 worker가 플랫폼 실행을 확인한 증거가 아니다.
+
+## 리뷰·남은 조건
+
+ponytail-review로 최종 추가 모듈/SQL/CLI/호출 흐름을 읽었다. 불필요한 dependency·Repository·generic crawler·cache abstraction을 추가하지 않았고 추가 삭제 후보 없음 — **Lean already. Ship.** 정확성/저장 회귀는 위 테스트로 별도 검증했다. 별도 CLI가 갱신할 때 API read가 일관된 참조 집합을 반환하도록 read transaction을 보강했다.
+
+[#49](https://github.com/fixabley/dearby/issues/49): 수집은 수동 CLI만 구현. 운영 scheduler/중복 실행 방지/실패 경보/파서 변경 대응/장기 backup·복구 미검증. 명령 실행을 지속적 최신화로 주장하지 않는다. issue에 원인·영향·실제 evidence·해소 조건·#41/#42/#45 의존성을 기록했다.
+
+[#42](https://github.com/fixabley/dearby/issues/42): 실제 SMTP 수신·운영 HTTPS/비밀·영속 저장/backup·두 플랫폼 실기 서버 검증은 여전히 미완료. [#41](https://github.com/fixabley/dearby/issues/41)의 푸시·캘린더·전체 서비스와 [#36](https://github.com/fixabley/dearby/issues/36)의 외부 로그인 이후 자동입력도 미완료다. 외부 인증·동의·제출을 실행하지 않았다. 두 네이티브 앱 UI/기기 검증은 해당 담당자와 조율자의 소유다.

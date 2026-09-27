@@ -48,12 +48,14 @@ export function atTime(activity:Activity, now:number, failed=false):Activity {
 }
 
 export function readCatalog(db:DB, now=Date.now()):Catalog {
-  const organizations = db.prepare('SELECT content FROM catalog_organizations ORDER BY id').all() as {content:string}[];
-  const programs = db.prepare('SELECT content FROM catalog_programs ORDER BY id').all() as {content:string}[];
-  const activities = db.prepare('SELECT content, last_failure FROM catalog_activities ORDER BY id').all() as {content:string;last_failure:string|null}[];
-  return {generatedAt:new Date(now).toISOString(), organizations:organizations.map(r => organizationSchema.parse(JSON.parse(r.content))),
-    programs:programs.map(r => programSchema.parse(JSON.parse(r.content))),
-    activities:activities.map(r => atTime(activitySchema.parse(JSON.parse(r.content)), now, r.last_failure !== null))};
+  return db.transaction(():Catalog => {
+    const organizations = db.prepare('SELECT content FROM catalog_organizations ORDER BY id').all() as {content:string}[];
+    const programs = db.prepare('SELECT content FROM catalog_programs ORDER BY id').all() as {content:string}[];
+    const activities = db.prepare('SELECT content, last_failure FROM catalog_activities ORDER BY id').all() as {content:string;last_failure:string|null}[];
+    return {generatedAt:new Date(now).toISOString(), organizations:organizations.map(r => organizationSchema.parse(JSON.parse(r.content))),
+      programs:programs.map(r => programSchema.parse(JSON.parse(r.content))),
+      activities:activities.map(r => atTime(activitySchema.parse(JSON.parse(r.content)), now, r.last_failure !== null))};
+  }).deferred();
 }
 
 // One source record per round: a failure cannot replace the last good content or checked time.
