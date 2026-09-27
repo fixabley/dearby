@@ -29,7 +29,7 @@ import com.dearby.nativeapp.widgets.activity.contextPicker.ActivityChoiceState
         Text("어떤 명함을 건넬까요?", Modifier.align(Alignment.CenterHorizontally), style = MaterialTheme.typography.headlineSmall)
         var expanded by remember { mutableStateOf(false) }
         if (cards.isEmpty()) Text("먼저 내 명함을 만들어 주세요.") else VerticalPager(pager, Modifier.weight(1f).testTag("sendPager"), userScrollEnabled = !busy) { index ->
-            CardStack(cards, index, Modifier.fillMaxSize(), onContact)
+            CardStack(cards, index, Modifier.fillMaxSize(), onContact, titleBadge = true)
         }
         if (cards.isNotEmpty()) Text("${pager.currentPage + 1} / ${cards.size} · 위아래로 넘기기", Modifier.align(Alignment.CenterHorizontally), color = Quiet, style = MaterialTheme.typography.bodySmall)
         if (expanded && cards.isNotEmpty()) Dialog({ expanded = false }) { CardContent(cards[pager.currentPage], true, { expanded = false }, Modifier.fillMaxWidth().heightIn(max = 650.dp), onContact) }

@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.window.Dialog
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.ui.unit.dp
@@ -35,7 +36,7 @@ fun walletMatches(entry: WalletEntryState, query: String): Boolean = listOf(entr
         TextField(query, { query = it }, Modifier.fillMaxWidth(), placeholder = { Text("이름·직무·활동 검색", style = MaterialTheme.typography.bodyMedium) }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, singleLine = true, shape = MaterialTheme.shapes.medium, colors = TextFieldDefaults.colors(focusedContainerColor = Soft, unfocusedContainerColor = Soft, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent))
         if (pendingCount > 0 && loggedIn) TextButton(import) { Text("기기 명함 가져오기 ($pendingCount)") }
         if (!loggedIn) Text("기기에 저장한 명함은 앱 삭제 시 복구할 수 없습니다.", style = MaterialTheme.typography.bodySmall)
-        if (showGroups) Row { listOf("내 명함을 주지 않은 상대", "서로 주고받은 상대").forEachIndexed { index, title -> Column(Modifier.weight(1f)) { TextButton({ scope.launch { horizontal.animateScrollToPage(index) } }, Modifier.fillMaxWidth()) { Text(title + " ${groups[index].map { it.card.ownerId }.distinct().size}", style = MaterialTheme.typography.labelSmall, color = if (horizontal.currentPage == index) Teal else Quiet) }; HorizontalDivider(thickness = if (horizontal.currentPage == index) 2.dp else 1.dp, color = if (horizontal.currentPage == index) Teal else Line) } } }
+        if (showGroups) Row { listOf("내 명함을 주지 않은 상대", "서로 주고받은 상대").forEachIndexed { index, title -> Column(Modifier.weight(1f)) { TextButton({ scope.launch { horizontal.animateScrollToPage(index) } }, Modifier.fillMaxWidth().semantics { selected = horizontal.currentPage == index; role = Role.Tab }) { Text(title + " ${groups[index].map { it.card.ownerId }.distinct().size}", style = MaterialTheme.typography.labelSmall, color = if (horizontal.currentPage == index) Teal else Quiet) }; HorizontalDivider(thickness = if (horizontal.currentPage == index) 2.dp else 1.dp, color = if (horizontal.currentPage == index) Teal else Line) } } }
         HorizontalPager(horizontal, Modifier.weight(1f)) { group ->
             val cards = groups[group]
             if (cards.isEmpty()) Text("표시할 명함이 없습니다.") else {

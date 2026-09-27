@@ -14,8 +14,6 @@ import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.Info
 import com.dearby.nativeapp.shared.ui.*
-import com.dearby.nativeapp.shared.ui.Field
-import com.dearby.nativeapp.shared.ui.FormColumn
 import java.util.UUID
 
 @Composable fun ProfilePage(profile: ProfileState, busy: Boolean, loggedIn: Boolean, save: (ProfileState) -> Unit, login: () -> Unit, logout: () -> Unit, openImport: () -> Unit) {

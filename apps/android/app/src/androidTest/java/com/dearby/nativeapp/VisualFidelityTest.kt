@@ -32,6 +32,7 @@ class VisualFidelityTest {
     private val contacts = listOf(contactAction("email", "email", "이메일", "fixture@example.invalid"), contactAction("github", "github", "GitHub", "dearby-fixture"))
     private val histories = listOf(CardHistoryState("h1", "기술 컨퍼런스", "운영 스태프", "2026-09-01", "2026-09-02", ""), CardHistoryState("h2", "연합동아리", "서비스 기획", "2026-03-01", "2026-08-31", ""), CardHistoryState("h3", "캠퍼스 해커톤", "서비스 기획", "2025-11-01", "2025-11-02", ""))
     private val cards = listOf("김지민" to "서비스 기획", "박서연" to "프로덕트 디자인", "이도윤" to "프론트엔드 개발").mapIndexed { i, (name, job) -> CardState("00000000-0000-0000-0000-00000000000${i + 1}", "owner-$i", name, job, listOf("네트워킹", "디자인과 협업", "커뮤니티")[i], "새로운 인연에게 나를 소개해요.", "사람을 연결하는 경험을 만듭니다.", contacts, histories) }
+    private val ownCards = cards.map { it.copy(person = cards.first().person, job = cards.first().job, ownerId = cards.first().ownerId) }
     private fun capture(name: String) {
         compose.waitForIdle()
         val folder = File(InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null), "evidence").apply { mkdirs() }
@@ -46,14 +47,14 @@ class VisualFidelityTest {
     }
     @Test fun sendThreeCardsNeverSendsOnSelection() {
         var sent = 0
-        content { SendPage(cards, cards.first().id, "최유진", false, {}, { _, _, _ -> sent++ }, {}, {}, {}) }
+        content { SendPage(ownCards, cards.first().id, "최유진", false, {}, { _, _, _ -> sent++ }, {}, {}, {}) }
         capture("send-picker"); assertEquals(0, sent)
         compose.onNodeWithTag("sendPager").performTouchInput { swipeUp() }
-        compose.onNodeWithText("디자인과 협업").assertIsDisplayed(); assertEquals(0, sent)
+        compose.onNodeWithText("2 / 3 · 위아래로 넘기기").assertIsDisplayed(); assertEquals(0, sent)
         compose.onNodeWithText("이 명함 보내기").performClick(); assertEquals(1, sent)
     }
     @Test fun sendBusyLocksActions() {
-        content { SendPage(cards, cards.first().id, "최유진", true, {}, { _, _, _ -> fail("sent while busy") }, { fail("create while busy") }, {}, {}) }
+        content { SendPage(ownCards, cards.first().id, "최유진", true, {}, { _, _, _ -> fail("sent while busy") }, { fail("create while busy") }, {}, {}) }
         compose.onNodeWithText("＋ 새 명함").assertIsNotEnabled(); compose.onNodeWithText("이 명함 보내기").assertIsNotEnabled()
     }
     @Test fun profileContactsAndTimeline() {
@@ -73,7 +74,7 @@ class VisualFidelityTest {
     @Test fun sharedCardRequiresExplicitSave() {
         var saves = 0
         content { SharedCardPage(cards.first(), false, {}, { saves++ }, {}, {}) }
-        capture("shared-card"); assertEquals(0, saves); compose.onNodeWithText("카드 저장").performClick(); assertEquals(1, saves)
+        capture("shared-card"); assertEquals(0, saves); compose.onNodeWithText("카드 저장").performClick(); assertEquals(0, saves); compose.onNodeWithText("이 기기에 저장").performClick(); assertEquals(1, saves)
     }
     @Test fun largeTextSharedCardKeepsSaveReachable() {
         content(true) { SharedCardPage(cards.first(), false, {}, {}, {}, {}) }

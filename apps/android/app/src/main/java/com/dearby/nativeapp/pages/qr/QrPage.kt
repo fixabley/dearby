@@ -26,8 +26,18 @@ import com.dearby.nativeapp.widgets.activity.contextPicker.ActivityContextPicker
 import com.dearby.nativeapp.widgets.activity.contextPicker.ActivityChoiceState
 import com.dearby.nativeapp.shared.ui.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable fun QrPage(cards: List<CardState>, selectedId: String?, image: ImageBitmap?, select: (String?) -> Unit, enlarge: () -> Unit, detail: (CardState) -> Unit, create: () -> Unit, share: () -> Unit, copy: () -> Unit, save: () -> Unit, contextLabel: String, contextChange: (String) -> Unit, receive: () -> Unit, activities: List<ActivityChoiceState> = emptyList(), activityId: String? = null, activityChange: (String?) -> Unit = {}) {
     var menu by remember { mutableStateOf(false) }
+    if (menu) ModalBottomSheet(onDismissRequest = { menu = false }, containerColor = Color.White) {
+        Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("명함 공유", style = MaterialTheme.typography.titleLarge)
+            listOf(Triple("링크 공유", Icons.Outlined.IosShare, share), Triple("링크 복사", Icons.Outlined.ContentCopy, copy), Triple("QR 이미지 저장", Icons.Outlined.Download, save)).forEach { (label, icon, action) ->
+                HorizontalDivider()
+                TextButton({ menu = false; action() }, Modifier.fillMaxWidth().heightIn(min = 56.dp)) { Icon(icon, null, tint = Teal); Spacer(Modifier.width(16.dp)); Text(label, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium) }
+            }
+        }
+    }
     val card = cards.find { it.id == selectedId }
     FormColumn {
         Text("명함 교환", style = MaterialTheme.typography.headlineMedium)
@@ -47,9 +57,9 @@ import com.dearby.nativeapp.shared.ui.*
                 Column(Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) { Text(card.title, fontSize = 10.sp, fontWeight = FontWeight.SemiBold); Text(card.description, color = Quiet, fontSize = 8.sp) }
-                        Box { IconButton({ menu = true }) { Icon(Icons.Outlined.IosShare, "공유 메뉴") }; DropdownMenu(menu, { menu = false }) { DropdownMenuItem({ Text("링크 공유") }, { menu = false; share() }); DropdownMenuItem({ Text("링크 복사") }, { menu = false; copy() }); DropdownMenuItem({ Text("QR 이미지 저장") }, { menu = false; save() }) } }
+                        IconButton({ menu = true }) { Icon(Icons.Outlined.IosShare, "공유 메뉴") }
                     }
-                    image?.let { Image(it, "명함 QR, 누르면 확대", Modifier.widthIn(max = 250.dp).fillMaxWidth().aspectRatio(1f).clickable(onClick = enlarge)) }
+                    image?.let { Image(it, "명함 QR, 누르면 확대", Modifier.fillMaxWidth().aspectRatio(1f).clickable(onClick = enlarge)) }
                     Text("ⓘ QR을 누르면 QR만 크게 보여요", color = Quiet, style = MaterialTheme.typography.bodySmall)
                 }
             }
