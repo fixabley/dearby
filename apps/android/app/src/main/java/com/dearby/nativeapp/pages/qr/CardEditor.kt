@@ -2,6 +2,8 @@ package com.dearby.nativeapp.pages.qr
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.selection.triStateToggleable
+import androidx.compose.ui.state.ToggleableState
 import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -14,7 +16,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.text.style.TextDecoration
 import com.dearby.nativeapp.shared.ui.*
 
-@Composable fun CardEditor(profile: CardEditorState, busy: Boolean, publish: (PublishSelectionState) -> Unit, close: () -> Unit, hidden: () -> Unit) {
+@Composable fun CardEditor(profile: CardEditorState, busy: Boolean, publish: (PublishSelectionState) -> Unit, close: () -> Unit, visibilityChanged: (Boolean) -> Unit) {
     var name by rememberSaveable { mutableStateOf("") }
     var description by rememberSaveable { mutableStateOf("") }
     // Empty is intentional: nothing is publicly selected without an explicit action.
@@ -29,7 +31,7 @@ import com.dearby.nativeapp.shared.ui.*
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             profile.contacts.forEach { contact ->
                 val checked = contact.id in contacts
-                Column(Modifier.widthIn(min = 64.dp, max = 120.dp).toggleable(checked, role = Role.Checkbox) { selected -> contacts = if (selected) contacts + contact.id else contacts - contact.id; if (!selected) hidden() }.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.widthIn(min = 64.dp, max = 120.dp).toggleable(checked, role = Role.Checkbox) { selected -> contacts = if (selected) contacts + contact.id else contacts - contact.id; visibilityChanged(selected) }.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     ContactSymbol(contact.kind, Modifier.size(32.dp).drawWithContent { drawContent(); if (!checked) drawLine(Quiet, Offset(0f, size.height), Offset(size.width, 0f), 2.dp.toPx()) }, tint = if (checked) Teal else Quiet)
                     Text(contact.label, color = if (checked) Teal else Quiet, style = MaterialTheme.typography.bodySmall, textDecoration = if (checked) TextDecoration.None else TextDecoration.LineThrough)
                 }
@@ -38,8 +40,11 @@ import com.dearby.nativeapp.shared.ui.*
         HorizontalDivider()
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("활동 이력", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-            TextButton({ contacts = profile.contacts.map { it.id }.toSet(); histories = profile.histories.map { it.id }.toSet() }) { Text("전체 선택") }
-            TextButton({ contacts = emptySet(); histories = emptySet(); hidden() }) { Text("전체 해제") }
+            val selection = when { histories.isEmpty() -> ToggleableState.Off; histories.size == profile.histories.size -> ToggleableState.On; else -> ToggleableState.Indeterminate }
+            Row(Modifier.heightIn(min = 48.dp).triStateToggleable(selection, role = Role.Checkbox, enabled = profile.histories.isNotEmpty()) { histories = if (selection == ToggleableState.On) emptySet() else profile.histories.map { it.id }.toSet() }, verticalAlignment = Alignment.CenterVertically) {
+                TriStateCheckbox(selection, onClick = null)
+                Text("전체 선택", style = MaterialTheme.typography.bodySmall)
+            }
         }
         profile.histories.forEachIndexed { index, history ->
             Row(verticalAlignment = Alignment.Top) {
