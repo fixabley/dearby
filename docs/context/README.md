@@ -43,3 +43,5 @@
 - [기기 캘린더: 동의·내 일정 ON/OFF·바쁜 시간 겹침](issue-10-device-calendar.md) — #10 완료 규격과 후속 이슈.
 
 - [FSD 구조 개편 설계안](../architecture/fsd-domain-rules-draft.md) — 2026-09-16 iOS Harmonize 리팩터링의 목표 규칙. 구현·검증 완료 여부는 조율/플랫폼 문서에서 확인한다.
+
+- [컨펌 화면별 시각 구현 기준](../design/native-visual-contract.md): 수정 후 원본 시안, 최신 문구/레이아웃 우선순위, 실제 캡처 비교 조건.
