@@ -22,6 +22,6 @@ Run run_2817352ae397 / coordinator term_1cbabda3-9f12-4f38-9655-ef8a0a3548fd.
 
 ## 다음 행동 / 미완료
 
-각 담당 변경 리뷰·선택적 통합, 실제 API 격리 서버를 이용한 양 앱 검증, 조율 checkout 검사, PR40 갱신 및 원격 CI 확인. 새로운 API 서버는 아직 열지 않았으며 과거 포트가 살아 있다고 가정하지 않는다. .github/workflows/native.yml은 PR 및 main push만 실행하도록 중복 feature push 트리거를 제거한다.
+각 담당 변경 리뷰·선택적 통합, 실제 API 격리 서버를 이용한 양 앱 검증, 조율 checkout 검사, PR40 갱신 및 원격 CI 확인. API 73b2082를 d72a3eb로 통합했고 조율 build/typecheck/HTTP17 통과. Lint 경고 1개는 담당에게 정리 요청했다. 격리 서버 session72494, http://127.0.0.1:52777 (Android 10.0.2.2:52777), 테스트 자료 경로 /var/folders/_c/7hpdsqq9491gzj5z2wh2kf2m0000gn/T/dearby-native-integration-KhUBun. 실제 공식 갱신 2026-09-27T03:15:13Z, 30공고/28프로그램/26조직/모집중1. 양 앱 검증 뒤 정확한 이 서버만 종료하고 임시자료 삭제를 확인한다. 재개 시 서버가 살아 있다고 가정하지 않는다. .github/workflows/native.yml은 PR 및 main push만 실행하도록 중복 feature push 트리거를 제거한다.
 
 전체 제품 #41, 외부 폼 #36, 운영 조건 #42/#43/#44, 접근성 #14를 계속 추적한다. 이슈 작성은 해결 완료가 아니다. 차단 사항은 이슈에 남기고 독립 작업을 계속한다.
