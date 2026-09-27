@@ -33,7 +33,7 @@ export async function fixture(send?: SendCode) {
     assert.equal(session.status,200);
     return session.body as {sessionToken:string; profileId:string};
   };
-  return {db,path,codes,app,request,login, advance:(ms:number) => { clock += ms; }, close:async () => {
+  return {db,path,codes,app,request,login, setClock:(ms:number) => { clock = ms; }, advance:(ms:number) => { clock += ms; }, close:async () => {
     await app.close(); if (db.open) db.close(); rmSync(directory,{recursive:true,force:true});
   }};
 }

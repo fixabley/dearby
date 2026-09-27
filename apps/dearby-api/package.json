@@ -12,7 +12,8 @@
     "start": "node --env-file-if-exists=.env dist/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint src test",
-    "test": "NODE_ENV=test node --import tsx --test test/*.test.ts"
+    "test": "NODE_ENV=test node --import tsx --test test/*.test.ts",
+    "catalog": "node --import tsx src/catalog-cli.ts"
   },
   "dependencies": {
     "better-sqlite3": "13.0.3",
