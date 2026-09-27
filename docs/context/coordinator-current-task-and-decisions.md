@@ -43,3 +43,10 @@ Run `run_2cda4f7a8687`, coordinator `term_1cbabda3-9f12-4f38-9655-ef8a0a3548fd`.
 기존 worktree·retained terminal 상태 확인 후 같은 하위 checkout에 새 supervised 담당 세션을 시작했고 양쪽 input_accepted/turn_started를 확인했다. 과거 세션은 그대로 유지한다. 이번 변경 전 캡처 → 기준 시안 비교 → 실제 UI 교정 → 변경 후 캡처와 기능 회귀가 완료 조건이다. 실제 실행/통합은 아직 진행 중이며 시안 복구 완료로 표현하지 않는다.
 
 Root 격리 API는 포트57937, session73883으로 실행 중이다. 공식 수집 checkedAt 2026-09-27T04:04:39Z, 30개 중 모집중1개. 테스트 이메일만 허용한 임시 데이터이며 production 기본값이 아니다. 양 담당 완료 후 root가 정상 종료한다.
+
+### 컨펌 화면 교정 통합 — 2026-09-27 후속
+
+- 승인 원본18장과 마지막 지시 우선 기준을 docs/design에 보존했다. #50 구현 대조, #51 실제 이미지/콘텐츠 분류 계약, #52 bodyless logout 오류를 추적한다.
+- Android 담당 c1ec7c6까지 통합. 최종 UI26·실제 로그인 복귀·저장/재시작 및 조율 JVM28/FSD45/Debug/lint0errors 확인, ctx_46936e11509f succeeded/retained. 정상 동작의 사진/카메라/시스템 시트는 기본 플랫폼 기능이며 미구현 운영 기능을 꾸미지 않는다.
+- iOS production source1c2de21까지 통합. 조율 단위27pass/6fixture skip, 구조16, lint57files0위반. 담당의 실제 API/로그아웃과 최대글자/게스트취소 UI 결과는 별도 증거로 기록했다. 캡처 이름만 믿지 않고 이미지를 직접 열어 잘못 매핑된 picker-top 파일을 교정 요청했다.
+- 모든 원본/전/후 증거와 한계는 docs/design/visual-fidelity-review.md 및 플랫폼 gallery/report로 연결한다. 원격 CI와 마지막 세션 정리 상태는 다음 기록을 따른다.
