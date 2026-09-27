@@ -26,14 +26,14 @@ class CatalogRealUiTest {
         compose.onNodeWithText("if(kakao)", substring = true).performScrollTo().performClick()
         compose.onNodeWithText("선발형 · 신청 후 선정 필요", substring = true).assertExists()
         capture("real-catalog-detail")
-        if (compose.onAllNodesWithText("프로그램 저장").fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithText("프로그램 저장").performScrollTo().performClick()
-        compose.waitUntil(10_000) { compose.onAllNodesWithText("프로그램 저장 해제").fetchSemanticsNodes().isNotEmpty() }
+        if (compose.onAllNodesWithContentDescription("프로그램 저장").fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithContentDescription("프로그램 저장").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithContentDescription("프로그램 저장 해제").fetchSemanticsNodes().isNotEmpty() }
         if (compose.onAllNodesWithText("조직 저장").fetchSemanticsNodes().isNotEmpty()) compose.onNodeWithText("조직 저장").performScrollTo().performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("조직 저장 해제").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("신청 상태 수정").performScrollTo().performClick()
         compose.onNodeWithText("신청하지 않았어요").performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("내 기록: 신청하지 않음").fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithText("신청 사이트 열기").performScrollTo().performClick()
+        compose.onNodeWithText("신청 사이트 열기").performClick()
         compose.onNodeWithText("외부 브라우저").assertExists()
         compose.onNodeWithText("닫기").performClick()
         compose.onNodeWithText("신청하셨나요?").assertExists()
@@ -44,10 +44,11 @@ class CatalogRealUiTest {
         compose.onNodeWithText("신청했어요").performClick()
         compose.waitUntil(10_000) { compose.onAllNodesWithText("이 활동은 이미 신청한 활동이에요.").fetchSemanticsNodes().isNotEmpty() }
         capture("real-catalog-self-report")
-        compose.onNodeWithText("목록으로").performClick()
+        compose.onNodeWithContentDescription("목록으로").performClick()
         compose.onNodeWithText("저장", useUnmergedTree = true).performClick()
         capture("real-catalog-saved")
         compose.onNodeWithText("QR", useUnmergedTree = true).performClick()
+        compose.onNodeWithText("교환한 활동 ·", substring = true).performScrollTo().performClick()
         compose.onNodeWithText("등록 활동").performScrollTo().performClick()
         compose.onNodeWithText("YAPP · 얍 · 28기").performClick()
         compose.onNodeWithText("YAPP · 얍 · 28기").assertExists()
@@ -58,7 +59,7 @@ class CatalogRealUiTest {
         compose.waitUntil(30_000) { compose.onAllNodesWithText("모집 중", substring = true).fetchSemanticsNodes().size >= 2 }
         compose.onNodeWithText("if(kakao)", substring = true).performScrollTo().performClick()
         compose.onNodeWithText("이 활동은 이미 신청한 활동이에요.").assertExists()
-        compose.onNodeWithText("프로그램 저장 해제").performScrollTo().assertExists()
+        compose.onNodeWithContentDescription("프로그램 저장 해제").assertExists()
         compose.onNodeWithText("조직 저장 해제").performScrollTo().assertExists()
         capture("real-catalog-restarted")
     }

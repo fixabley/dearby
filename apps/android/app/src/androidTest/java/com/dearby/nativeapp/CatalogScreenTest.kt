@@ -53,7 +53,7 @@ class CatalogScreenTest {
     @Test fun discoveryOnlyCurrentAndSavedIncludesClosed() {
         var saved by mutableStateOf(false)
         val closed = activity.copy(id = "closed", title = "종료된 활동", current = false, status = "모집 종료", programSaved = true)
-        compose.setContent { DearbyTheme { CatalogPage(CatalogState(activities = listOf(activity, closed), storageReady = true), saved, {}, {}, {}) } }
+        compose.setContent { DearbyTheme { CatalogPage(CatalogState(activities = listOf(activity, closed), storageReady = true), saved, {}, {}, {}, {}) } }
         compose.onNodeWithText(activity.title).assertExists()
         compose.onNodeWithText("종료된 활동").assertDoesNotExist()
         capture("fixture-catalog-discovery")
@@ -83,7 +83,7 @@ class CatalogScreenTest {
     }
     @Test fun failedRefreshAndLoadingAreDistinctFromEmpty() {
         var state by mutableStateOf(CatalogState(loading = true))
-        compose.setContent { DearbyTheme { CatalogPage(state, false, {}, {}, {}) } }
+        compose.setContent { DearbyTheme { CatalogPage(state, false, {}, {}, {}, {}) } }
         compose.onNodeWithText("불러오는 중…").assertIsNotEnabled()
         compose.runOnIdle { state = CatalogState() }
         compose.onNodeWithText("현재 모집 중으로 확인된 활동이 없습니다.").assertExists()

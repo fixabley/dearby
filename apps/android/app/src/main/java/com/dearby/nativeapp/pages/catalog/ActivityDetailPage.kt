@@ -9,7 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Bookmark
 import androidx.compose.material.icons.outlined.BookmarkBorder
@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable fun ActivityDetailPage(activity: ActivityState, writing: Boolean, canSave: Boolean, error: String?, back: () -> Unit, saveProgram: () -> Unit, saveOrganization: () -> Unit, source: () -> Unit, apply: () -> Unit, editReport: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { IconButton(back) { Icon(Icons.Outlined.ArrowBack, "목록으로") }; Text("활동 상세", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, color = Teal) }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { IconButton(back) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "목록으로") }; Text("활동 상세", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, color = Teal) }
         if (activity.report == "applied") Surface(color = MaterialTheme.colorScheme.primaryContainer) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { Icon(Icons.Outlined.CheckCircle, "신청 기록됨"); Text("이 활동은 이미 신청한 활동이에요.", style = MaterialTheme.typography.labelLarge) }

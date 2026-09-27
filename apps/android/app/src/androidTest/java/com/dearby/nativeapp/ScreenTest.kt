@@ -68,7 +68,7 @@ class ScreenTest {
         compose.setContent { DearbyTheme { WalletPage(listOf(WalletEntryState("r", card, "Android 컨퍼런스", "2026-09-27", true)), true, 0, {}, {}, {}, {}, {}) } }
         compose.onNodeWithText("내 명함을 주지 않은 상대").assertDoesNotExist()
         compose.onNodeWithText("서로 주고받은 상대").assertDoesNotExist()
-        compose.onNodeWithText("이름·직무·활동 검색").performTextInput("컨퍼런스")
+        compose.onNode(hasSetTextAction()).performTextInput("컨퍼런스")
         compose.onNodeWithText("테스트 사용자").assertIsDisplayed()
         screenshot("fixture-wallet")
     }

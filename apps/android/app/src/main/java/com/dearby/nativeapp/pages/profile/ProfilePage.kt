@@ -43,11 +43,11 @@ import java.util.UUID
             TextButton({ editing = !editing }) { Text(if (editing) "편집 닫기" else "편집") }
         }
         if (!editing) {
-            PersonHeader(profile.name.ifBlank { "이름을 입력해 주세요" }, profile.job, profile.introduction)
+            PersonHeader(profile.name.ifBlank { "이름을 입력해 주세요" }, profile.job, profile.introduction, filled = true)
             Surface(color = Mint, shape = MaterialTheme.shapes.small) { Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) { Icon(Icons.Outlined.Info, null, Modifier.size(18.dp), tint = Teal); Text("저장한 정보는 명함에서 선택한 항목만 공개돼요.", color = Teal, style = MaterialTheme.typography.bodySmall) } }
             Row(verticalAlignment = Alignment.CenterVertically) { Text("연락처", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge); TextButton({ editing = true }) { Text("추가") } }
             profile.contacts.forEach { contact ->
-                Surface(onClick = { editing = true }, color = Soft, shape = MaterialTheme.shapes.small) {
+                Surface(onClick = { editing = true }, color = Soft, contentColor = MaterialTheme.colorScheme.onSurface, shape = MaterialTheme.shapes.small) {
                     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 10.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         ContactSymbol(contact.kind, Modifier.size(22.dp))
                         Text(contact.label.ifBlank { contactKindLabel(contact.kind) }, Modifier.weight(0.35f), style = MaterialTheme.typography.bodySmall)
@@ -58,7 +58,6 @@ import java.util.UUID
             }
             Row(verticalAlignment = Alignment.CenterVertically) { Text("활동 이력", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge); TextButton({ editing = true }) { Text("추가") } }
             Column { profile.histories.forEachIndexed { index, history -> TimelineEntry("${history.startDate} – ${history.endDate ?: "현재"}", history.title, listOf(history.role, history.description).filter { it.isNotBlank() }.joinToString("\n"), index == profile.histories.lastIndex) } }
-            TextButton({ editing = true }) { Text("연락처 / 활동 이력 추가") }
             HorizontalDivider()
             TextButton(openImport) { Text("기기에 저장한 명함 가져오기") }
             TextButton(logout, enabled = !busy) { Text("로그아웃") }

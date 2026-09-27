@@ -17,7 +17,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 
-@Composable fun CatalogPage(state: CatalogState, saved: Boolean, refresh: () -> Unit, open: (String) -> Unit, removeGroup: (SavedGroupState) -> Unit, saveProgram: (String) -> Unit = {}) {
+@Composable fun CatalogPage(state: CatalogState, saved: Boolean, refresh: () -> Unit, open: (String) -> Unit, removeGroup: (SavedGroupState) -> Unit, saveProgram: (String) -> Unit) {
     var type by rememberSaveable { mutableStateOf("전체") }
     val activities = state.activities.filter { if (saved) it.programSaved || it.organizationSaved else it.current }.filter { type == "전체" || it.participation.startsWith(type) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
