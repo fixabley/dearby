@@ -73,8 +73,8 @@ export async function fetchOfficial(sourceKey:SourceKey, fetcher:typeof fetch=fe
   // No redirects, discovered links, credentials, scripts, retries or unbounded response bodies.
   const response = await fetcher(officialSources[sourceKey], {redirect:'error',signal:AbortSignal.timeout(15000),
     headers:{Accept:'text/html','User-Agent':'DearbyCatalog/1.0 (bounded official-source verification)'}});
-  if (!response.ok) throw new Error('SOURCE_HTTP_ERROR');
-  if (!response.headers.get('content-type')?.toLowerCase().startsWith('text/html')) throw new Error('SOURCE_CONTENT_TYPE');
+  if (!response.ok) { await response.body?.cancel(); throw new Error('SOURCE_HTTP_ERROR'); }
+  if (!response.headers.get('content-type')?.toLowerCase().startsWith('text/html')) { await response.body?.cancel(); throw new Error('SOURCE_CONTENT_TYPE'); }
   if (Number(response.headers.get('content-length')) > MAX_BYTES) { await response.body?.cancel(); throw new Error('SOURCE_TOO_LARGE'); }
   if (!response.body) throw new Error('SOURCE_EMPTY');
   const reader = response.body.getReader();

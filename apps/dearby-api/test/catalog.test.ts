@@ -55,6 +55,7 @@ test('HTTP recruitment starts inclusive, deadline exclusive, semantic freshness 
 });
 
 test('offline parsers distinguish real application opening from event opening, dates and uncertainty',() => {
+  assert.equal(catalogId('activity','kakao-2026'),'ed43a1d2-213c-5511-bfe2-e80aa26cd866');
   const kakao = parseOfficial('kakao-2026',html('kakao-2026'),checkedAt).activity;
   assert.equal(kakao.recruitmentStatus,'open'); assert.equal(kakao.participationType,'selection');
   assert.equal(kakao.recruitmentEndAt,'2026-09-28T03:00:00.000Z');
@@ -133,4 +134,34 @@ test('bounded collector rejects unknown URLs, redirects, types, status and overs
     assert.equal(await fetchOfficial('kakao-2026',(_input,options) => fetch(`${base}/ok`,options)),html('kakao-2026'));
     await assert.rejects(fetchOfficial('kakao-2026',(_input,options) => fetch(`${base}/redirect`,options)));
   } finally { await new Promise<void>((resolve,reject) => server.close(error => error ? reject(error) : resolve())); }
+});
+
+test('official noon deadline closes at exact instant even with fresh OPEN source; scheduled details stay available',async () => {
+  const f = await fixture();
+  try {
+    const start = Date.parse('2026-09-27T04:00:00.000Z');
+    const deadline = Date.parse('2026-09-28T03:00:00.000Z');
+    await refreshSource(f.db,'kakao-2026',() => start,goodFetch);
+    await refreshSource(f.db,'feconf-2026',() => start,goodFetch);
+    f.setClock(deadline - 1);
+    let result = catalogSchema.parse((await f.request('GET','/catalog')).body);
+    assert.equal(result.activities.filter(a => a.isRecruiting).length,1);
+    f.advance(1);
+    result = catalogSchema.parse((await f.request('GET','/catalog')).body);
+    assert.equal(result.activities.length,2);
+    assert.ok(result.activities.every(a => !a.isRecruiting && a.freshness === 'verified'));
+    assert.equal(result.activities.find(a => a.title === 'if(kakao)26')?.recruitmentStatus,'closed');
+    assert.equal(result.activities.find(a => a.title === 'FECONF 2026')?.recruitmentStatus,'scheduled');
+  } finally { await f.close(); }
+});
+
+test('failed initial collection leaves truthful empty discovery with durable failure evidence',async () => {
+  const f = await fixture();
+  try {
+    assert.equal((await refreshSource(f.db,'kakao-2026',() => checked,badFetch)).succeeded,false);
+    const result = await f.request('GET','/catalog');
+    assert.equal(result.status,200); assert.deepEqual(result.body.activities,[]);
+    assert.deepEqual(f.db.prepare('SELECT source_key,succeeded,note FROM catalog_refreshes').get(),
+      {source_key:'kakao-2026',succeeded:0,note:'SOURCE_REFRESH_FAILED'});
+  } finally { await f.close(); }
 });

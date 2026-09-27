@@ -49,3 +49,23 @@ test('legacy is always stale, idempotent and cannot overwrite live data; UUID re
   } finally { await f.close(); }
 });
 
+
+test('invalid or duplicate historical identities roll back the entire import',async () => {
+  const f = await fixture();
+  try {
+    const legacy = JSON.parse(readFileSync(new URL('../../../shared/data/catalog-snapshot-2026-09-24.json',import.meta.url),'utf8'));
+    for (const kind of ['organizations','programs'] as const) {
+      const duplicate = structuredClone(legacy);
+      duplicate[kind].push(duplicate[kind][0]);
+      assert.throws(() => importLegacy(f.db,duplicate,checked),/Duplicate/);
+    }
+    const duplicateNotice = structuredClone(legacy);
+    duplicateNotice.programs[1].notices.push(duplicateNotice.programs[0].notices[0]);
+    assert.throws(() => importLegacy(f.db,duplicateNotice,checked),/Duplicate/);
+    const missing = structuredClone(legacy);
+    missing.programs.at(-1).orgId = 'not-in-snapshot';
+    assert.throws(() => importLegacy(f.db,missing,checked),/Missing/);
+    assert.deepEqual((await f.request('GET','/catalog')).body.activities,[]);
+    assert.equal((f.db.prepare('SELECT COUNT(*) AS n FROM catalog_organizations').get() as {n:number}).n,0);
+  } finally { await f.close(); }
+});
