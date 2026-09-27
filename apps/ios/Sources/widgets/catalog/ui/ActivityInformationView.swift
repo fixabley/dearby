@@ -3,7 +3,9 @@ import SwiftUI
 struct ActivityInformationView: View {
     let activity: ActivityModel
     var body: some View {
-        Section("일정") {
+        VStack(alignment: .leading, spacing: 16) {
+            Divider()
+            Text("행사 일정").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
             field("활동 일정", activity.dateLabel)
             field("모집 시작", ActivityText.date(activity.recruitmentStartAt))
             field("모집 마감", ActivityText.date(activity.recruitmentEndAt))
@@ -25,7 +27,9 @@ struct ActivityInformationView: View {
             }
             Text("기기 캘린더와의 일정 비교는 아직 제공하지 않아요.").font(.caption).foregroundStyle(.secondary)
         }
-        Section("참가 안내") {
+        VStack(alignment: .leading, spacing: 16) {
+            Divider()
+            Text("참가 안내").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
             field("대상", activity.audience)
             field("지원 조건", activity.qualification)
             field("모집 직군", activity.roles.isEmpty ? nil : activity.roles.joined(separator: ", "))
@@ -43,6 +47,13 @@ struct ActivityInformationView: View {
 
 // Display formatting stays in the owning widget; wire timestamps remain unchanged.
 enum ActivityText {
+    static func shortDate(_ raw: String?) -> String {
+        guard let date = CatalogModel.date(raw) else { return "미확인" }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.dateFormat = "M.dd HH:mm"
+        return formatter.string(from: date)
+    }
     static func date(_ raw: String?, timeZone: String? = nil) -> String {
         guard let date = CatalogModel.date(raw) else { return "미확인" }
         return self.date(date, timeZone: timeZone)

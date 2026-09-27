@@ -48,7 +48,7 @@ import XCTest
         capture("신청 기록 얇은 고정 안내")
         app.terminate()
         app.launch()
-        app.tabBars.buttons["저장"].tap()
+        app.buttons["tab-1"].tap()
         XCTAssertTrue(app.buttons["프로그램 저장 해제"].waitForExistence(timeout: 10))
         scrollTo(app.buttons["조직 저장 해제"], in: app)
         XCTAssertTrue(app.buttons["조직 저장 해제"].exists)

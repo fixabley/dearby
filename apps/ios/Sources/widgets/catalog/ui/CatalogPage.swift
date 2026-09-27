@@ -4,19 +4,42 @@ struct CatalogPage: View {
     let state: CatalogState
     let saved: Bool
     @State private var message: String?
-    private let teal = Color(red: 0, green: 0.36, blue: 0.34)
+    @State private var filter = 0
     var body: some View {
         TimelineView(.explicit(state.expirationDates)) { timeline in
-            List {
-                connection
-                if saved { savedSections(at: timeline.date) } else { discovery(at: timeline.date) }
+            Group {
+                if saved {
+                    List { connection; savedSections(at: timeline.date) }.listStyle(.plain)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            DearbyLogo(width: 96).padding(.bottom, 8)
+                            Text("모집 중인 활동").font(.title2.bold())
+                            ScrollView(.horizontal) {
+                                HStack(spacing: 8) {
+                                    ForEach(Array(["전체", "참가등록형", "선발형"].enumerated()), id: \.offset) { index, title in
+                                        Button { filter = index } label: {
+                                            Text(title).font(.subheadline.weight(.semibold)).padding(.horizontal, 20).frame(minHeight: 44)
+                                                .background(filter == index ? DearbyStyle.teal : DearbyStyle.muted, in: Capsule())
+                                                .foregroundStyle(filter == index ? .white : .secondary)
+                                        }.buttonStyle(.plain).accessibilityAddTraits(filter == index ? .isSelected : [])
+                                    }
+                                }
+                            }.scrollIndicators(.hidden)
+                            discovery(at: timeline.date)
+                            connection
+                        }.padding(20)
+                    }
+                }
             }
             .navigationDestination(for: String.self) { id in
                 ActivityDetailView(state: state, activityID: id)
             }
         }
-        .listStyle(.insetGrouped).scrollContentBackground(.hidden).background(.white)
-        .tint(teal).navigationTitle(saved ? "저장" : "발견")
+        .scrollContentBackground(.hidden).background(.white)
+        .tint(DearbyStyle.teal).navigationTitle(saved ? "저장" : "")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar(saved ? .visible : .hidden, for: .navigationBar)
         .refreshable { await state.refresh() }
         .alert("저장하지 못했어요", isPresented: Binding(get: { message != nil }, set: { if !$0 { message = nil } })) {
             Button("확인") { message = nil }
@@ -41,13 +64,13 @@ struct CatalogPage: View {
     }
     @ViewBuilder private func discovery(at now: Date) -> some View {
         if let catalog = state.catalog {
-            let activities = catalog.activities.filter { $0.isOpen(at: now) }
+            let activities = catalog.activities.filter { $0.isOpen(at: now) && (filter == 0 || (filter == 1 ? $0.participationType == .registration : $0.participationType == .selection)) }
             if activities.isEmpty {
                 ContentUnavailableView("확인된 모집 중 활동이 없어요", systemImage: "safari",
                     description: Text(state.fromCache ? "보관한 정보만으로 현재 모집을 확인할 수 없어요. 다시 불러와 주세요."
                         : "공식 출처에서 모집 여부와 최신성이 확인된 활동이 표시됩니다."))
             } else {
-                Section("모집 중 활동") { ForEach(activities) { row($0, at: now) } }
+                ForEach(activities) { row($0, at: now) }
             }
         } else if !state.loading && state.error == nil {
             Button("활동 불러오기") { Task { await state.refresh() } }
@@ -82,16 +105,33 @@ struct CatalogPage: View {
         ForEach(activities) { row($0, at: now) }
     }
     private func row(_ activity: ActivityModel, at now: Date) -> some View {
-        NavigationLink(value: activity.id) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(activity.status(at: now)).font(.caption.bold()).foregroundStyle(teal)
-                Text(activity.title).font(.headline).foregroundStyle(.primary)
-                Text(activity.summary).font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
-                Text(activity.dateLabel.isEmpty ? "일정 미확인" : activity.dateLabel).font(.caption)
-                Text(activity.participationType == .selection ? "선발형 활동" : "참가등록형 행사").font(.caption)
-                Text("출처 확인: \(ActivityText.date(activity.sourceCheckedAt))").font(.caption2).foregroundStyle(.secondary)
-            }.padding(.vertical, 8)
-        }.accessibilityIdentifier("activity-\(activity.id)")
+        HStack(alignment: .top, spacing: 12) {
+            NavigationLink(value: activity.id) {
+                HStack(alignment: .top, spacing: 12) {
+                    VStack(spacing: 8) {
+                        Image(systemName: "photo").font(.title2)
+                        Text("이미지 미제공").font(.caption2)
+                    }.foregroundStyle(.secondary).frame(width: 96, height: 114)
+                        .background(DearbyStyle.muted, in: RoundedRectangle(cornerRadius: 9))
+                    VStack(alignment: .leading, spacing: 7) {
+                        Text(activity.title).font(.headline).foregroundStyle(.primary)
+                        Text(activity.audience ?? activity.summary).font(.caption).foregroundStyle(.secondary).lineLimit(2)
+                        Divider()
+                        Label("마감 " + ActivityText.shortDate(activity.recruitmentEndAt), systemImage: "calendar")
+                        Label(activity.dateLabel.isEmpty ? "일정 미확인" : activity.dateLabel, systemImage: "mappin.and.ellipse")
+                        if saved { Text(activity.status(at: now)).foregroundStyle(DearbyStyle.teal) }
+                    }.font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }.buttonStyle(.plain).accessibilityIdentifier("activity-\(activity.id)")
+            Button {
+                mutate { try state.toggleProgram(activity.programId) }
+            } label: {
+                Image(systemName: state.local.programIDs.contains(activity.programId) ? "bookmark.fill" : "bookmark")
+                    .font(.title3).frame(width: 44, height: 44)
+            }.buttonStyle(.plain).foregroundStyle(DearbyStyle.teal)
+                .accessibilityLabel(state.local.programIDs.contains(activity.programId) ? "프로그램 저장됨 · 해제" : "프로그램 저장")
+        }.padding(10).background(.white, in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(DearbyStyle.line))
     }
     private func mutate(_ action: () throws -> Void) {
         do { try action() } catch { message = error.localizedDescription }

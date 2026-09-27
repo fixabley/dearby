@@ -13,30 +13,27 @@ struct ActivityDetailView: View {
         Group {
             if let activity {
                 TimelineView(.explicit(state.expirationDates)) { timeline in
-                    List {
-                        identity(activity, at: timeline.date)
-                        ActivityInformationView(activity: activity)
-                        bookmarks(activity)
-                        source(activity)
-                        Section("신청") {
-                            if applied {
-                                Button("공식 사이트에서 확인하기", systemImage: "safari") {
-                                    open(activity.officialUrl, application: false)
-                                }.frame(minHeight: 44).disabled(ActivityModel.safeURL(activity.officialUrl) == nil)
-                                Text("직접 남긴 신청 기록이에요. 주최 측의 접수·선정·결제 확인과는 달라요.")
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 24) {
+                            VStack(spacing: 12) {
+                                Image(systemName: "photo").font(.largeTitle)
+                                Text("공식 활동 이미지 미제공").font(.caption)
+                            }.foregroundStyle(.secondary).frame(maxWidth: .infinity).frame(height: 170)
+                                .background(DearbyStyle.muted)
+                            VStack(alignment: .leading, spacing: 24) {
+                                identity(activity, at: timeline.date)
+                                ActivityInformationView(activity: activity)
+                                source(activity)
+                                Divider()
+                                Text("직접 남긴 신청 기록은 주최 측의 접수·선정·결제 확인과 달라요.")
                                     .font(.footnote).foregroundStyle(.secondary)
-                            } else if ActivityModel.safeURL(activity.applicationUrl) != nil {
-                                Button("신청 페이지 열기", systemImage: "arrow.up.right.square") {
-                                    open(activity.applicationUrl, application: true)
-                                }.frame(minHeight: 44)
-                                Text("공식 페이지에서 로그인·동의·최종 제출을 직접 진행하세요. 자동입력은 아직 지원하지 않아요.")
-                                    .font(.footnote).foregroundStyle(.secondary)
-                            } else { Text("신청 링크 미확인 · 공식 출처에서 확인해 주세요.") }
-                            Button("신청 상태 수정") { showReport = true }.frame(minHeight: 44)
-                            Text("신청 기록은 이 기기에만 저장됩니다.").font(.caption).foregroundStyle(.secondary)
+                                Button("신청 상태 수정") { showReport = true }.frame(minHeight: 44)
+                                Text("신청 기록은 이 기기에만 저장됩니다.").font(.caption).foregroundStyle(.secondary)
+                            }.padding(.horizontal, 20).padding(.bottom, 24)
                         }
                     }
                 }
+                .safeAreaInset(edge: .bottom, spacing: 0) { applicationActions(activity) }
                 .safeAreaInset(edge: .top, spacing: 0) {
                     if applied { applicationBanner }
                 }
@@ -46,7 +43,7 @@ struct ActivityDetailView: View {
             }
         }
         .navigationTitle("활동 상세").navigationBarTitleDisplayMode(.inline)
-        .listStyle(.insetGrouped).scrollContentBackground(.hidden).background(.white)
+        .background(.white)
         .tint(Color(red: 0, green: 0.36, blue: 0.34))
         .sheet(item: $browser, onDismiss: {
             if applicationAttempt { applicationAttempt = false; showReport = true }
@@ -61,37 +58,64 @@ struct ActivityDetailView: View {
         } message: { Text(message ?? "") }
     }
     private func identity(_ activity: ActivityModel, at now: Date) -> some View {
-        Section {
-            Text(activity.title).font(.title2.bold())
-            Text(state.catalog?.organizations.first { $0.id == activity.organizationId }?.name ?? "조직 미확인")
-                .font(.subheadline).foregroundStyle(.secondary)
-            Text(activity.status(at: now)).font(.subheadline.bold())
-            Text(activity.participationType == .selection ? "선발형 · 신청 후 주최 측 선정이 필요해요" : "참가등록형 · 등록 조건을 확인해 주세요")
-                .font(.footnote)
-            Text(activity.summary)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text(activity.status(at: now))
+                Text(activity.participationType == .selection ? "선발형" : "참가등록형")
+            }.font(.caption.weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+                .padding(8).background(DearbyStyle.mint, in: RoundedRectangle(cornerRadius: 8))
+            Text(activity.title).font(.title.bold())
+            HStack {
+                Text(state.catalog?.organizations.first { $0.id == activity.organizationId }?.name ?? "조직 미확인")
+                    .font(.headline)
+                Spacer()
+                Button(state.local.organizationIDs.contains(activity.organizationId) ? "조직 저장됨 · 해제" : "조직 저장",
+                       systemImage: "bookmark") { mutate { try state.toggleOrganization(activity.organizationId) } }
+                    .font(.caption).frame(minHeight: 44)
+            }
+            Divider()
+            Label(activity.audience ?? "참가 대상 미확인", systemImage: "person.2")
+            Label(activity.cost ?? "참가비 미확인", systemImage: "creditcard")
+            Label("모집 마감 " + ActivityText.date(activity.recruitmentEndAt), systemImage: "calendar")
+            Label(activity.dateLabel.isEmpty ? "활동 일정 미확인" : activity.dateLabel, systemImage: "clock")
+            Label(activity.location ?? "장소 미확인", systemImage: "mappin.and.ellipse")
+            Divider()
+            Text("소개").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
+            Text(activity.summary).lineSpacing(5)
         }
     }
-    private func bookmarks(_ activity: ActivityModel) -> some View {
-        Section("관심 활동 저장") {
-            Button(state.local.programIDs.contains(activity.programId) ? "프로그램 저장됨 · 해제" : "프로그램 저장",
-                   systemImage: state.local.programIDs.contains(activity.programId) ? "bookmark.fill" : "bookmark") {
-                mutate { try state.toggleProgram(activity.programId) }
-            }.frame(minHeight: 44)
-            Button(state.local.organizationIDs.contains(activity.organizationId) ? "조직 저장됨 · 해제" : "조직 저장",
-                   systemImage: state.local.organizationIDs.contains(activity.organizationId) ? "bookmark.fill" : "bookmark") {
-                mutate { try state.toggleOrganization(activity.organizationId) }
-            }.frame(minHeight: 44)
-        }
+    private func applicationActions(_ activity: ActivityModel) -> some View {
+        VStack(spacing: 0) {
+            Divider()
+            HStack(spacing: 12) {
+                Button {
+                    mutate { try state.toggleProgram(activity.programId) }
+                } label: {
+                    Image(systemName: state.local.programIDs.contains(activity.programId) ? "bookmark.fill" : "bookmark")
+                        .font(.title2).frame(width: 50, height: 50)
+                        .overlay(RoundedRectangle(cornerRadius: 11).stroke(DearbyStyle.line))
+                }.accessibilityLabel(state.local.programIDs.contains(activity.programId) ? "프로그램 저장됨 · 해제" : "프로그램 저장")
+                Button(applied ? "공식 사이트에서 확인하기" : "공식 사이트에서 신청") {
+                    open(applied ? activity.officialUrl : activity.applicationUrl, application: !applied)
+                }.buttonStyle(DearbyButtonStyle())
+                    .accessibilityLabel(applied ? "공식 사이트에서 확인하기" : "신청 페이지 열기")
+                    .disabled(ActivityModel.safeURL(applied ? activity.officialUrl : activity.applicationUrl) == nil)
+            }.padding(.horizontal, 20).padding(.vertical, 12)
+        }.background(.white)
     }
     private func source(_ activity: ActivityModel) -> some View {
-        Section("출처") {
-            Text("공식 출처 확인: \(ActivityText.date(activity.sourceCheckedAt))").font(.footnote)
-            if !activity.sourceNote.isEmpty { Text(activity.sourceNote).font(.footnote) }
+        VStack(alignment: .leading, spacing: 12) {
+            Divider()
+            Text("정보 출처").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
             if let url = ActivityModel.safeURL(activity.officialUrl) {
-                Text(url.host ?? "").font(.caption).foregroundStyle(.secondary)
-                Button("공식 사이트 보기", systemImage: "safari") { open(activity.officialUrl, application: false) }
+                Button("공식 사이트 보기", systemImage: "arrow.up.right") { open(activity.officialUrl, application: false) }
                     .frame(minHeight: 44)
+                Text(url.host ?? "").font(.caption).foregroundStyle(.secondary)
             } else { Text("공식 출처 링크 미확인") }
+            Text("공식 출처 확인: \(ActivityText.date(activity.sourceCheckedAt))").font(.footnote)
+            if !activity.sourceNote.isEmpty { Text(activity.sourceNote).font(.footnote).foregroundStyle(.secondary) }
+            Text("공식 페이지에서 로그인·동의·최종 제출을 직접 진행하세요. 자동입력은 아직 지원하지 않아요.")
+                .font(.caption).foregroundStyle(.secondary)
         }
     }
     private var applicationBanner: some View {
