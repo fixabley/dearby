@@ -10,11 +10,14 @@ import androidx.compose.runtime.mutableStateOf
 
 class MainActivity : ComponentActivity() {
     private val incoming = mutableStateOf<String?>(null)
-    private val model: DearbyViewModel by viewModels { com.dearby.nativeapp.app.providers.AppViewModelFactory(applicationContext) }
+    private val factory by lazy { com.dearby.nativeapp.app.providers.AppViewModelFactory(applicationContext) }
+    private val model: DearbyViewModel by viewModels { factory }
+    private val catalog: CatalogViewModel by viewModels { factory }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         incoming.value = intent?.dataString
-        setContent { DearbyTheme { DearbyApp(model, incoming.value) { incoming.value = null } } }
+        setContent { DearbyTheme { DearbyApp(model, catalog, incoming.value) { incoming.value = null } } }
     }
+    override fun onResume() { super.onResume(); catalog.recheckTime() }
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); incoming.value = intent.dataString }
 }

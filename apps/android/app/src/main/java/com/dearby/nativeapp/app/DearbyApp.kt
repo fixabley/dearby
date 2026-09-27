@@ -48,27 +48,33 @@ import com.dearby.nativeapp.pages.wallet.WalletPage
 import com.dearby.nativeapp.shared.ui.EmptyPanel
 import com.dearby.nativeapp.shared.ui.Field
 import com.dearby.nativeapp.shared.ui.FormColumn
+import com.dearby.nativeapp.widgets.activity.contextPicker.ActivityChoiceState
 import com.dearby.nativeapp.widgets.card.cardContent.CardContent
 import com.dearby.nativeapp.widgets.card.cardContent.CardState
 import com.dearby.nativeapp.widgets.card.cardContent.toState
 import kotlinx.coroutines.*
 
-@Composable fun DearbyApp(model: DearbyViewModel, incoming: String?, consume: () -> Unit) {
+@Composable fun DearbyApp(model: DearbyViewModel, catalog: CatalogViewModel, incoming: String?, consume: () -> Unit) {
     val state by model.state.collectAsStateWithLifecycle()
+    val catalogState by catalog.state.collectAsStateWithLifecycle()
+    val activities = catalogState.activities.map { ActivityChoiceState(it.id, it.title) }
+    fun activityLabel(activity: ExchangeContextModel): String = activity.label ?: activity.activityId?.let { id -> activities.find { it.id == id }?.title ?: "활동 정보 확인 필요" }.orEmpty()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbars = remember { SnackbarHostState() }
+    var catalogDetail by remember { mutableStateOf(false) }
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var route by rememberSaveable { mutableStateOf("") }
     var returnRoute by rememberSaveable { mutableStateOf("") }
     var recipient by remember { mutableStateOf<CardState?>(null) }
     var detail by remember { mutableStateOf<CardState?>(null) }
     var enlarged by rememberSaveable { mutableStateOf(false) }
+    var contextActivityId by rememberSaveable { mutableStateOf<String?>(null) }
     var contextLabel by rememberSaveable { mutableStateOf("") }
     var input by rememberSaveable { mutableStateOf("") }
     val cards = state.cards.map { it.toState() }
     val chosen = cards.find { it.id == state.selectedCardId }
-    val link = chosen?.let { QrActions.link(it.id, ExchangeContextModel(label = contextLabel.ifBlank { null })) }
+    val link = chosen?.let { QrActions.link(it.id, ExchangeContextModel(activityId = contextActivityId, label = contextLabel.ifBlank { null })) }
     val bitmap = remember(link) { link?.let(QrActions::bitmap) }
     fun openContact(contact: ContactActionState) {
         runCatching { ContactActions.open(context, contact) }.onSuccess { it?.let(model::report) }.onFailure { model.report("이 연락처를 열 수 있는 앱이 없습니다.") }
@@ -117,7 +123,7 @@ import kotlinx.coroutines.*
     Scaffold(
         snackbarHost = { SnackbarHost(snackbars) },
         topBar = { Column(Modifier.statusBarsPadding().fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) { Text("dearby", Modifier.padding(10.dp), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.headlineSmall); if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth()) } },
-        bottomBar = { if (route.isEmpty() && !state.importVisible) NavigationBar {
+        bottomBar = { if (route.isEmpty() && !state.importVisible && !catalogDetail) NavigationBar {
             val names = listOf("발견", "저장", "QR", "받은 명함", "내 프로필")
             val icons = listOf(Icons.Outlined.Explore, Icons.Outlined.BookmarkBorder, Icons.Outlined.QrCode, Icons.Outlined.Badge, Icons.Outlined.PersonOutline)
             names.forEachIndexed { index, name -> NavigationBarItem(tab == index, { tab = index }, { Icon(icons[index], name) }, label = { Text(name, maxLines = 1, style = MaterialTheme.typography.labelSmall) }) }
@@ -125,10 +131,10 @@ import kotlinx.coroutines.*
     ) { padding -> Box(Modifier.padding(padding).fillMaxSize()) {
         when {
             !state.ready -> CircularProgressIndicator(Modifier.align(Alignment.Center))
-            state.importVisible && state.loggedIn -> ImportPage(state.guests.map { guest -> val cached = state.guestCards[guest.cardId]; ImportEntryState(guest.cardId, cached?.profileName ?: "명함 정보 확인 필요", cached?.job.orEmpty(), guest.context.label ?: guest.context.activityId.orEmpty()) }, state.busy, model::importSelected, { model.showImport(false) })
+            state.importVisible && state.loggedIn -> ImportPage(state.guests.map { guest -> val cached = state.guestCards[guest.cardId]; ImportEntryState(guest.cardId, cached?.profileName ?: "명함 정보 확인 필요", cached?.job.orEmpty(), activityLabel(guest.context)) }, state.busy, model::importSelected, { model.showImport(false) })
             route == "login" -> LoginPage(state.busy, state.challengeId, state.challengeExpires, model::requestCode, model::login, { route = "" })
             route == "create" -> CardEditor(state.profile.visibilityState(), state.busy, { model.publish(it.selectionModel()) { route = returnRoute } }, { route = returnRoute }, { Toast.makeText(context, "선택 해제한 연락처는 명함에 표시되지 않습니다.", Toast.LENGTH_SHORT).show() })
-            route == "send" && recipient != null -> SendPage(cards, state.selectedCardId, recipient!!.person, state.busy, model::selectCard, { card, label -> model.send(card, recipient!!.ownerId, ExchangeContextModel(label = label.ifBlank { null })) { route = "" } }, ::create, { route = "" }, ::openContact)
+            route == "send" && recipient != null -> SendPage(cards, state.selectedCardId, recipient!!.person, state.busy, model::selectCard, { card, activityId, label -> model.send(card, recipient!!.ownerId, ExchangeContextModel(activityId = activityId, label = label.ifBlank { null })) { route = "" } }, ::create, { route = "" }, ::openContact, activities)
             route == "receive" -> FormColumn {
                 TextButton({ route = "" }) { Text("닫기") }
                 Text("QR 찍기", style = MaterialTheme.typography.headlineMedium)
@@ -137,14 +143,13 @@ import kotlinx.coroutines.*
                 Text("로그인 없이 명함을 저장할 수 있어요. 로그인하지 않고 저장한 명함은 앱을 삭제하면 복구할 수 없어요.")
                 Button({ receive(input) }, enabled = !state.busy && input.isNotBlank()) { Text("명함 확인하고 기기에 저장") }
             }
-            tab == 0 -> EmptyPanel("발견", "활동 발견 기능을 준비 중입니다. 지금은 명함 교환 기능을 사용할 수 있어요.")
-            tab == 1 -> EmptyPanel("저장", "활동 저장 기능을 준비 중입니다.")
+            tab == 0 || tab == 1 -> CatalogRoute(catalog, tab == 1) { catalogDetail = it }
             tab == 2 -> QrPage(cards, state.selectedCardId, bitmap?.asImageBitmap(), model::selectCard, { enlarged = true }, { detail = it }, ::create,
                 { link?.let { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, it) }, "명함 링크 공유")) } },
                 { link?.let { (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Dearby 명함", it)); model.report("명함 링크를 복사했습니다.") } },
-                { exportLink = link; saveImage.launch("dearby-qr.png") }, contextLabel, { contextLabel = it }, { route = "receive" })
+                { exportLink = link; saveImage.launch("dearby-qr.png") }, contextLabel, { contextLabel = it }, { route = "receive" }, activities, contextActivityId, { contextActivityId = it })
             tab == 3 -> {
-                val entries = if (state.loggedIn) state.wallet.map { WalletEntryState(it.id, it.card.toState(), it.context.label ?: it.context.activityId.orEmpty(), receivedDate(it.receivedAt), it.reciprocal) } else state.guests.mapNotNull { guest -> state.guestCards[guest.cardId]?.let { WalletEntryState(guest.cardId, it.toState(), guest.context.label ?: guest.context.activityId.orEmpty(), receivedDate(guest.savedAt), false) } }
+                val entries = if (state.loggedIn) state.wallet.map { WalletEntryState(it.id, it.card.toState(), activityLabel(it.context), receivedDate(it.receivedAt), it.reciprocal) } else state.guests.mapNotNull { guest -> state.guestCards[guest.cardId]?.let { WalletEntryState(guest.cardId, it.toState(), activityLabel(guest.context), receivedDate(guest.savedAt), false) } }
                 WalletPage(entries, state.loggedIn, state.guests.size, { route = "login" }, { model.showImport(true) }, model::refresh, { recipient = it; route = "send" }, ::openContact)
             }
             else -> ProfilePage(state.profile.editorState(), state.busy, state.loggedIn, { model.saveProfile(it.applyTo(state.profile)) }, { route = "login" }, model::logout, { model.showImport(true) })

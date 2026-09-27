@@ -47,7 +47,7 @@ class ScreenTest {
     }
     @Test fun selectingCardNeverAutomaticallySends() {
         var sends = 0
-        compose.setContent { DearbyTheme { SendPage(listOf(card), card.id, "받는 사람", false, {}, { _, _ -> sends++ }, {}, {}, {}) } }
+        compose.setContent { DearbyTheme { SendPage(listOf(card), card.id, "받는 사람", false, {}, { _, _, _ -> sends++ }, {}, {}, {}) } }
         compose.waitForIdle(); assertEquals(0, sends)
         screenshot("fixture-send-picker")
         compose.onNodeWithText("이 명함 보내기").performClick()

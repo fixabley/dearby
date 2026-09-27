@@ -18,12 +18,18 @@ class CatalogViewModel(private val repository: CatalogRepository, private val no
     val state = mutable.asStateFlow()
     private var catalog: CatalogModel? = null
     private var local = CatalogLocalModel()
-    init {
-        refresh()
-        viewModelScope.launch { while (isActive) { delay(1_000); project() } }
-    }
+    private var expiry: Job? = null
+    init { refresh() }
+    fun recheckTime() = project()
     private fun project() {
-        mutable.update { it.copy(activities = catalog?.activityStates(local, now()).orEmpty(), savedGroups = catalog?.savedGroups(local).orEmpty(), generatedAt = catalog?.generatedAt?.let(::catalogDate)) }
+        val instant = now()
+        mutable.update { it.copy(activities = catalog?.activityStates(local, instant).orEmpty(), savedGroups = catalog?.savedGroups(local).orEmpty(), generatedAt = catalog?.generatedAt?.let { catalogDate(it) }) }
+        expiry?.cancel()
+        val boundary = catalog?.activities?.mapNotNull { it.nextChange(instant) }?.minOrNull()
+        expiry = boundary?.let { viewModelScope.launch {
+            delay(java.time.Duration.between(instant, it).toMillis().coerceAtLeast(1))
+            project()
+        } }
     }
     fun refresh() {
         if (mutable.value.loading) return
@@ -39,10 +45,10 @@ class CatalogViewModel(private val repository: CatalogRepository, private val no
                     try { catalog = repository.cached() }
                     catch (cancelled: CancellationException) { throw cancelled }
                     catch (_: Exception) { /* A corrupt cache must not prevent network recovery. */ }
-                    mutable.update { it.copy(cached = catalog != null, loaded = catalog != null) }; project()
+                    mutable.update { it.copy(cached = catalog != null) }; project()
                 }
                 catalog = repository.refresh()
-                mutable.update { it.copy(cached = false, loaded = true) }
+                mutable.update { it.copy(cached = false) }
                 project()
             } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { mutable.update { it.copy(error = "활동을 새로 불러오지 못했습니다. 이전 기록이 있으면 보존됩니다.", cached = catalog != null) }; project() }

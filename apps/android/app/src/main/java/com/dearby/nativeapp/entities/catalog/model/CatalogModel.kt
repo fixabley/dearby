@@ -16,14 +16,17 @@ import java.time.Instant
     val schedules: List<ScheduleModel>, val officialUrl: String, val applicationUrl: String?,
     val sourceCheckedAt: String?, val validUntil: String?, val freshness: String, val sourceNote: String,
 ) {
-    fun current(now: Instant): Boolean {
+    fun nextChange(now: Instant): Instant? = listOfNotNull(sourceCheckedAt.instant(), validUntil.instant(), sourceCheckedAt.instant()?.plusSeconds(86_400), recruitmentStartAt.instant(), recruitmentEndAt.instant()).filter { it.isAfter(now) }.minOrNull()
+    fun fresh(now: Instant): Boolean {
         val checked = sourceCheckedAt.instant() ?: return false
         val until = validUntil.instant() ?: return false
-        return isRecruiting && recruitmentStatus == "open" && freshness == "verified" &&
-            !now.isBefore(checked) && now.isBefore(until) && now.isBefore(checked.plusSeconds(86_400)) &&
+        return freshness == "verified" &&
+            !now.isBefore(checked) && now.isBefore(until) && now.isBefore(checked.plusSeconds(86_400))
+    }
+    fun closed(now: Instant): Boolean = recruitmentStatus == "closed" || recruitmentEndAt.instant()?.let { !now.isBefore(it) } == true
+    fun current(now: Instant): Boolean = isRecruiting && recruitmentStatus == "open" && fresh(now) &&
             (recruitmentStartAt == null || recruitmentStartAt.instant()?.let { !now.isBefore(it) } == true) &&
             (recruitmentEndAt == null || recruitmentEndAt.instant()?.let { now.isBefore(it) } == true)
-    }
 }
 private fun String?.instant(): Instant? = this?.let { runCatching { Instant.parse(it) }.getOrNull() }
 @Serializable data class CatalogModel(val generatedAt: String, val organizations: List<OrganizationModel>, val programs: List<ProgramModel>, val activities: List<ActivityModel>) {

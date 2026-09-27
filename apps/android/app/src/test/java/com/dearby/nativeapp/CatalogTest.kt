@@ -1,6 +1,8 @@
 package com.dearby.nativeapp
 
 import androidx.lifecycle.ViewModelStore
+import com.dearby.nativeapp.app.providers.activityStates
+import com.dearby.nativeapp.app.providers.catalogDate
 import com.dearby.nativeapp.app.CatalogViewModel
 import com.dearby.nativeapp.entities.catalog.api.CatalogRepository
 import com.dearby.nativeapp.entities.catalog.model.*
@@ -22,6 +24,15 @@ private fun fixture() = CatalogModel(checked.toString(), listOf(OrganizationMode
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CatalogTest {
+    @Test fun statusAndDatesRemainHonestAfterDeadlineAndAcrossTimezones() {
+        val catalog = fixture()
+        val expired = catalog.copy(activities = catalog.activities.map { it.copy(recruitmentEndAt = checked.toString()) })
+        assertEquals("모집 종료", expired.activityStates(CatalogLocalModel(), checked).single().status)
+        val scheduled = catalog.copy(activities = catalog.activities.map { it.copy(isRecruiting = false, recruitmentStatus = "scheduled") })
+        assertEquals("모집 예정", scheduled.activityStates(CatalogLocalModel(), checked).single().status)
+        assertTrue(catalogDate(checked.toString(), "Asia/Seoul").contains("09:00"))
+        assertTrue(catalogDate(checked.toString(), "UTC").contains("00:00"))
+    }
     @Test fun rejectsDuplicateAndCrossOrganizationReferences() {
         val value = fixture()
         assertTrue(runCatching { value.copy(activities = value.activities + value.activities).validated() }.isFailure)
@@ -95,6 +106,41 @@ class CatalogTest {
             assertEquals(fixture(), repository.cached())
         } finally { server.stop(0) }
     }
+    @Test fun corruptCacheStillRecoversFromNetworkWithoutErasingLocalSaves() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val store = ViewModelStore()
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        server.createContext("/v1/catalog") { exchange ->
+            val bytes = wireJson.encodeToString(fixture()).toByteArray()
+            exchange.sendResponseHeaders(200, bytes.size.toLong()); exchange.responseBody.use { it.write(bytes) }
+        }; server.start()
+        try {
+            val memory = MemoryDao()
+            val http = HttpClient("http://127.0.0.1:${server.address.port}", true) { null }
+            memory.put(DocumentRecord("catalog:v1:${http.cacheNamespace}", "broken JSON"))
+            val repository = CatalogRepository(http, memory)
+            repository.save(CatalogLocalModel(programs = setOf("p")))
+            val model = CatalogViewModel(repository) { checked }; store.put("catalog", model)
+            model.state.first { !it.loading }
+            assertNull(model.state.value.error)
+            assertTrue(model.state.value.activities.single().programSaved)
+            assertEquals(fixture(), repository.cached())
+        } finally { store.clear(); Dispatchers.resetMain(); server.stop(0) }
+    }
+    @Test fun unreadableLocalStateCannotBeOverwritten() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val store = ViewModelStore()
+        try {
+            val memory = MemoryDao()
+            memory.put(DocumentRecord("catalog:local:v1:", "broken JSON"))
+            val repository = CatalogRepository(HttpClient("", true) { null }, memory)
+            val model = CatalogViewModel(repository) { checked }; store.put("catalog", model)
+            model.state.first { !it.loading }
+            assertFalse(model.state.value.storageReady)
+            model.toggleProgram("p"); runCurrent()
+            assertEquals("broken JSON", memory.document("catalog:local:v1:")!!.json)
+        } finally { store.clear(); Dispatchers.resetMain() }
+    }
     @Test fun savedStatePublishesOnlyAfterCommitAndFailuresRetainPriorReport() = runTest {
         Dispatchers.setMain(StandardTestDispatcher(testScheduler))
         val store = ViewModelStore()
@@ -125,7 +171,7 @@ class CatalogTest {
             assertEquals("applied", model.state.value.activities.single().report)
             assertNotNull(model.state.value.storageError)
             assertEquals("applied", repo.local().reports["a"])
-            time = checked.plusSeconds(3600); advanceTimeBy(1000); runCurrent()
+            time = checked.plusSeconds(3600); advanceTimeBy(3_600_000); runCurrent()
             assertFalse(model.state.value.activities.single().current)
             assertTrue(model.state.value.activities.single().programSaved)
             assertEquals(setOf("p"), CatalogRepository(HttpClient("", true) { null }, memory).local().programs)

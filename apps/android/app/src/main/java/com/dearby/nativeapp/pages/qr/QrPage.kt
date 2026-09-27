@@ -17,10 +17,11 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextOverflow
 import com.dearby.nativeapp.widgets.card.cardContent.CardState
-import com.dearby.nativeapp.shared.ui.Field
+import com.dearby.nativeapp.widgets.activity.contextPicker.ActivityContextPicker
+import com.dearby.nativeapp.widgets.activity.contextPicker.ActivityChoiceState
 import com.dearby.nativeapp.shared.ui.FormColumn
 
-@Composable fun QrPage(cards: List<CardState>, selectedId: String?, image: ImageBitmap?, select: (String?) -> Unit, enlarge: () -> Unit, detail: (CardState) -> Unit, create: () -> Unit, share: () -> Unit, copy: () -> Unit, save: () -> Unit, contextLabel: String, contextChange: (String) -> Unit, receive: () -> Unit) {
+@Composable fun QrPage(cards: List<CardState>, selectedId: String?, image: ImageBitmap?, select: (String?) -> Unit, enlarge: () -> Unit, detail: (CardState) -> Unit, create: () -> Unit, share: () -> Unit, copy: () -> Unit, save: () -> Unit, contextLabel: String, contextChange: (String) -> Unit, receive: () -> Unit, activities: List<ActivityChoiceState> = emptyList(), activityId: String? = null, activityChange: (String?) -> Unit = {}) {
     var menu by remember { mutableStateOf(false) }
     val card = cards.find { it.id == selectedId }
     FormColumn {
@@ -46,7 +47,6 @@ import com.dearby.nativeapp.shared.ui.FormColumn
             item { OutlinedButton({ select(null) }, Modifier.width(144.dp).height(112.dp), shape = RoundedCornerShape(12.dp)) { Text("＋\n새 명함") } }
             items(cards, key = { it.id }) { item -> FilterChip(item.id == selectedId, { select(item.id) }, { Column(Modifier.padding(vertical = 12.dp)) { Text(item.person, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(item.job, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(item.title, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis) } }, modifier = Modifier.width(144.dp).height(112.dp)) }
         }
-        Field("교환한 활동 (선택 사항)", contextLabel, contextChange)
-        Text("직접 입력한 활동은 참가 인증이 아닙니다.", style = MaterialTheme.typography.bodySmall)
+        ActivityContextPicker(activities, activityId, contextLabel) { id, label -> activityChange(id); contextChange(label) }
     }
 }

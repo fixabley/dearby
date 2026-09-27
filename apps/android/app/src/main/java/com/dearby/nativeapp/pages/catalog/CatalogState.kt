@@ -11,7 +11,7 @@ data class ActivityState(
 data class SavedGroupState(val id: String, val title: String, val organization: Boolean)
 data class CatalogState(
     val activities: List<ActivityState> = emptyList(), val savedGroups: List<SavedGroupState> = emptyList(),
-    val loading: Boolean = false, val writing: Boolean = false, val loaded: Boolean = false,
+    val loading: Boolean = false, val writing: Boolean = false,
     val cached: Boolean = false, val generatedAt: String? = null, val error: String? = null,
     val storageReady: Boolean = false, val storageError: String? = null,
 )

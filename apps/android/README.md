@@ -1,6 +1,6 @@
 # Dearby Android
 
-Native first slice for #38. Kotlin / Compose, API 26+, compile/target 36. No bundled accounts, login bypass, seeded people, or delivery simulation. The default API URL is empty and requests report configuration errors.
+Native card exchange (#38) and activity catalog (#47). Kotlin / Compose, API 26+, compile/target 36. No bundled accounts, login bypass, seeded people, or delivery simulation. The default API URL is empty and requests report configuration errors.
 
 ## Build
 
@@ -20,7 +20,7 @@ The shared protocol is `shared/contracts/native-v1.md`. QR temporarily encodes `
 
 The logged-out profile tab requires email login; internal recoverable local drafts are not exposed as guest profile creation. Room stores local profile drafts, account-keyed profile cache, public card display cache, and guest card IDs. Guest IDs are only inserted after a successful public lookup; later import/network errors preserve existing IDs. Duplicate scans retain the first saved context/date. A local draft is not silently uploaded during sign-in. Profile edits do not mutate published cards. Selection defaults empty, import defaults empty, successful imports remove only selected confirmed IDs. Account logout waits for server revocation before clearing local session. The one active mutation gate serializes login/logout/profile/import/send to prevent stale cross-account results.
 
-Five tabs are present. Discovery/saved activity integration, push, calendar, external application forms, registered activity selection, production email receipt, real two-device exchange, and production links are explicitly unfinished; #41/#42/#44 track them.
+Five tabs include live API activity discovery, program/organization bookmarks, source-rich detail, application WebView with explicit local self-report, and registered/past activity context selection for QR/direct-send. No home search or own-card module is added. Push, OS calendar, external login compatibility/autofill (#36), production email/HTTPS and real-device scanning remain separate work. See docs/catalog-implementation.md and docs/VERIFICATION.md.
 
 ## Dependency evidence
 

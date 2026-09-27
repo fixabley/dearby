@@ -10,9 +10,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.widgets.card.cardContent.CardContent
 import com.dearby.nativeapp.widgets.card.cardContent.CardState
-import com.dearby.nativeapp.shared.ui.Field
+import com.dearby.nativeapp.widgets.activity.contextPicker.ActivityContextPicker
+import com.dearby.nativeapp.widgets.activity.contextPicker.ActivityChoiceState
 
-@Composable fun SendPage(cards: List<CardState>, selectedId: String?, recipient: String, busy: Boolean, select: (String) -> Unit, send: (String, String) -> Unit, create: () -> Unit, close: () -> Unit, onContact: (ContactActionState) -> Unit) {
+@Composable fun SendPage(cards: List<CardState>, selectedId: String?, recipient: String, busy: Boolean, select: (String) -> Unit, send: (String, String?, String) -> Unit, create: () -> Unit, close: () -> Unit, onContact: (ContactActionState) -> Unit, activities: List<ActivityChoiceState> = emptyList()) {
+    var activityId by rememberSaveable { mutableStateOf<String?>(null) }
     var context by rememberSaveable { mutableStateOf("") }
     val pager = rememberPagerState(initialPage = cards.indexOfFirst { it.id == selectedId }.coerceAtLeast(0)) { cards.size }
     LaunchedEffect(pager.currentPage, cards.size) { cards.getOrNull(pager.currentPage)?.let { select(it.id) } }
@@ -23,8 +25,8 @@ import com.dearby.nativeapp.shared.ui.Field
             var expanded by remember(cards[index].id) { mutableStateOf(false) }
             Box(Modifier.fillMaxSize()) { CardContent(cards[index], expanded, { expanded = !expanded }, if (expanded) Modifier.fillMaxSize() else Modifier.fillMaxWidth(), onContact) }
         }
-        Field("교환한 활동 (선택 사항)", context, { context = it })
-        Button({ cards.getOrNull(pager.currentPage)?.let { send(it.id, context) } }, enabled = !busy && cards.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text("이 명함 보내기") }
+        ActivityContextPicker(activities, activityId, context) { id, label -> activityId = id; context = label }
+        Button({ cards.getOrNull(pager.currentPage)?.let { send(it.id, activityId, context) } }, enabled = !busy && cards.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text("이 명함 보내기") }
         Text("선택만으로 전송되지 않습니다. 서버 확인 후 전달 완료로 표시합니다.", style = MaterialTheme.typography.bodySmall)
     }
 }

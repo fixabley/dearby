@@ -12,10 +12,14 @@ PREFIX = 'com.dearby.nativeapp'
 ROOT = Path(__file__).resolve().parents[1] / 'app/src/main/java/com/dearby/nativeapp'
 LAYERS = {name: i for i, name in enumerate(('app', 'pages', 'widgets', 'features', 'entities', 'shared'))}
 API = {
+    'pages.catalog': {'CatalogPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'SavedGroupState', 'CatalogState'},
+    'features.application': {'ApplicationBrowser', 'safeWebUrl'},
+    'entities.catalog': {'model.CatalogModel', 'model.CatalogLocalModel', 'model.ActivityModel', 'model.ProgramModel', 'model.OrganizationModel', 'model.ScheduleModel', 'api.CatalogRepository'},
     'pages.profile': {'ProfilePage', 'ProfileState', 'ContactState', 'HistoryState', 'contactKindLabel'},
     'pages.qr': {'CardEditor', 'QrPage', 'CardEditorState', 'PublishSelectionState', 'VisibilityChoiceState'},
     'pages.login': {'LoginPage'},
     'pages.wallet': {'ImportPage', 'ImportEntryState', 'WalletPage', 'WalletEntryState', 'SendPage'},
+    'widgets.activity.contextPicker': {'ActivityContextPicker', 'ActivityChoiceState'},
     'widgets.card.cardContent': {'CardContent', 'CardState', 'CardHistoryState', 'toState'},
     'features.contact': {'ContactActionState', 'contactAction', 'ContactActions'},
     'features.account': {'AccountState', 'AuthRepository'},
@@ -63,6 +67,10 @@ def check_source(path, text):
 
 def self_test():
     cases = [
+        ('pages/catalog/Test.kt', 'import com.dearby.nativeapp.entities.catalog.model.ActivityModel', False),
+        ('pages/catalog/Test.kt', 'import com.dearby.nativeapp.shared.storage.DearbyDao', False),
+        ('widgets/activity/contextPicker/Test.kt', 'import com.dearby.nativeapp.app.CatalogViewModel', False),
+        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.widgets.activity.contextPicker.ActivityChoiceState', True),
         ('pages/qr/Test.kt', 'import com.dearby.nativeapp.app.DearbyApp', False),
         ('pages/qr/Test.kt', 'import com.dearby.nativeapp.pages.profile.ProfileState', False),
         ('pages/qr/Test.kt', 'import com.dearby.nativeapp.entities.card.model.CardModel', False),
