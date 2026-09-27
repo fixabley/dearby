@@ -12,6 +12,8 @@ struct QRPage: View {
     let create: () -> Void
     let lookup: (String) async throws -> CardModel
     let saveGuest: (String, ExchangeContextModel) throws -> Void
+    let send: (CardModel) -> Void
+    @State private var returnCard: CardModel?
     @ScaledMetric(relativeTo: .caption2) private var nameSize = 10.0
     @ScaledMetric(relativeTo: .caption2) private var descriptionSize = 8.0
     @State private var mode = 0
@@ -22,6 +24,8 @@ struct QRPage: View {
     @State private var message: String?
     @State private var enlarged: QRPresentation?
     @State private var detail: CardModel?
+    @State private var sharing: CardModel?
+    @State private var confirmSave = false
     @State private var pendingSave: CardModel?
     @State private var busy = false
     @State private var scanning = false
@@ -29,25 +33,25 @@ struct QRPage: View {
     private var selected: CardModel? { cards.first { $0.id == selectedID } }
     var body: some View {
         ScrollView {
-            VStack(spacing: 12) {
-                Picker("QR", selection: $mode) { Text("보여주기").tag(0); Text("찍기").tag(1) }.pickerStyle(.segmented)
-                if mode == 0 { display } else { receive }
-                if let message { Text(message).font(.footnote).accessibilityAddTraits(.updatesFrequently) }
-            }.padding()
-        }.navigationTitle("QR")
-            .navigationBarTitleDisplayMode(.inline)
-            .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 10) {
+                DearbyLogo(width: 90)
+                Text("명함 교환").font(.title2.bold()).frame(maxWidth: .infinity, alignment: .leading)
+                DearbySegments(labels: ["QR 보여주기", "QR 찍기"], selection: $mode)
                 if mode == 0 {
-                    VStack(spacing: 8) {
-                        cardPicker
-                        if selected != nil {
-                            DisclosureGroup("교환한 활동 (선택)") {
-                                ExchangeActivityPicker(activities: activities, state: $exchangeActivity)
-                            }.font(.caption)
-                        }
-                    }.padding(.horizontal).padding(.vertical, 8).background(.bar)
-                }
-            }
+                    display
+                    Text("내 명함").font(.headline).frame(maxWidth: .infinity, alignment: .leading)
+                    cardPicker
+                    if selected != nil {
+                        DisclosureGroup("교환한 활동 (선택)") {
+                            ExchangeActivityPicker(activities: activities, state: $exchangeActivity)
+                        }.font(.caption)
+                    }
+                } else { receive }
+                if let message { Text(message).font(.footnote).accessibilityAddTraits(.updatesFrequently) }
+            }.padding(.horizontal, 20).padding(.bottom, 16)
+        }.background(.white).navigationTitle("")
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationBarTitleDisplayMode(.inline)
             .fullScreenCover(item: $enlarged) { presentation in
                 ZStack {
                     Color.white.ignoresSafeArea()
@@ -62,22 +66,70 @@ struct QRPage: View {
             .onChange(of: scanning) { old, new in
                 if old && !new && !input.isEmpty { Task { await inspect() } }
             }
+            .sheet(item: $sharing) { card in
+                NavigationStack {
+                    VStack(alignment: .leading, spacing: 0) {
+                        if let url = shareURL(card.id), let image = qrImage(url.absoluteString) {
+                            ShareLink(item: url) { shareRow("링크 공유", symbol: "square.and.arrow.up") }
+                            Divider()
+                            Button { UIPasteboard.general.url = url; message = "링크를 복사했습니다."; sharing = nil } label: {
+                                shareRow("링크 복사", symbol: "doc.on.doc")
+                            }
+                            Divider()
+                            Button { sharing = nil; Task { await saveImage(image) } } label: {
+                                shareRow("QR 이미지 저장", symbol: "square.and.arrow.down")
+                            }
+                            Divider()
+                            Text("Dearby가 설치된 기기에서 열 수 있어요.")
+                                .font(.footnote).foregroundStyle(DearbyStyle.quiet).padding(.top, 16)
+                        }
+                        Spacer(minLength: 0)
+                    }.buttonStyle(.plain).padding(20).background(.white)
+                        .navigationTitle("명함 공유").navigationBarTitleDisplayMode(.inline)
+                        .toolbar { Button("닫기") { sharing = nil } }
+                }.presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
+            }
             .sheet(item: $detail) { card in
-                NavigationStack { ScrollView { CardView(card: card, onContact: ContactActions.perform).padding() }
+                NavigationStack { ScrollView { CardView(card: card, onContact: ContactActions.perform).padding(20) }
+                    .navigationTitle("공유 카드").navigationBarTitleDisplayMode(.inline)
                     .toolbar { Button("닫기") { detail = nil } } }
             }
-            .confirmationDialog("이 명함을 기기에 저장할까요?", isPresented: Binding(
-                get: { pendingSave != nil }, set: { if !$0 { pendingSave = nil } }), titleVisibility: .visible) {
-                    Button("기기에 저장") {
-                        guard let card = pendingSave else { return }
-                        do {
-                            try saveGuest(card.id, receivedContext)
-                            message = "\(card.profileName)님의 명함을 기기에 저장했습니다."
-                        } catch { message = error.localizedDescription }
-                        pendingSave = nil
+            .sheet(item: $pendingSave, onDismiss: {
+                if let card = returnCard { returnCard = nil; send(card) }
+            }) { card in
+                NavigationStack {
+                    ScrollView {
+                        VStack(spacing: 22) {
+                            CardView(card: card, onContact: ContactActions.perform)
+                            Divider()
+                            Text("로그인 없이 카드를 저장할 수 있어요.").font(.footnote).foregroundStyle(DearbyStyle.quiet)
+                            Button("카드 저장") { confirmSave = true }.buttonStyle(DearbyButtonStyle())
+                            Button("나도 카드 주기") { returnCard = card; pendingSave = nil }
+                                .buttonStyle(DearbyButtonStyle(outlined: true))
+                            Text("기기에 저장한 명함은 앱을 삭제하면 복구할 수 없어요. 로그인 후 선택하여 계정으로 가져올 수 있습니다.")
+                                .font(.caption).foregroundStyle(DearbyStyle.quiet)
+                            if let message { Text(message).font(.footnote) }
+                        }.padding(20)
                     }
-                    Button("취소", role: .cancel) { pendingSave = nil }
-                } message: { Text("로그인하지 않고 저장한 명함은 앱을 삭제하면 복구할 수 없어요. 로그인 후 선택하여 계정으로 가져올 수 있습니다.") }
+                    .confirmationDialog("이 명함을 기기에 저장할까요?", isPresented: $confirmSave, titleVisibility: .visible) {
+                        Button("기기에 저장") {
+                            do {
+                                try saveGuest(card.id, receivedContext)
+                                message = "\(card.profileName)님의 명함을 기기에 저장했습니다."
+                                pendingSave = nil
+                            } catch { message = error.localizedDescription }
+                        }
+                        Button("취소") { confirmSave = false }
+                    } message: {
+                        Text("로그인하지 않고 저장한 명함은 앱을 삭제하면 복구할 수 없어요. 로그인 후 선택하여 계정으로 가져올 수 있습니다.")
+                    }
+                    .navigationTitle("공유 카드").navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) { Button("닫기") { pendingSave = nil } }
+                            ToolbarItem(placement: .primaryAction) { DearbyLogo(width: 66) }
+                        }
+                }
+            }
             .task(id: incomingURL) {
                 if let incomingURL { mode = 1; input = incomingURL.absoluteString; await inspect() }
             }
@@ -101,44 +153,44 @@ struct QRPage: View {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(selected.name).font(.system(size: nameSize, weight: .semibold))
-                        Text(selected.description).font(.system(size: descriptionSize)).foregroundStyle(.secondary)
+                        Text(selected.description).font(.system(size: descriptionSize)).foregroundStyle(DearbyStyle.quiet)
                     }
                     Spacer()
                     shareMenu(for: selected)
                 }
                 if let url = shareURL(selected.id), let image = qrImage(url.absoluteString) {
                     Button { enlarged = QRPresentation(image: image) } label: {
-                        Image(uiImage: image).interpolation(.none).resizable().scaledToFit().frame(maxWidth: 300)
+                        Image(uiImage: image).interpolation(.none).resizable().scaledToFit().frame(maxWidth: 320)
                     }.accessibilityLabel("QR만 크게 보기")
                 } else {
                     Text("활동 이름은 200자 이하로 입력해 주세요.").font(.footnote)
                 }
+                Label("QR을 누르면 다른 정보 없이 QR만 크게 보여줘요.", systemImage: "info.circle")
+                    .font(.caption).foregroundStyle(DearbyStyle.quiet)
             }.padding(16).frame(maxWidth: .infinity)
-                .background(.white, in: RoundedRectangle(cornerRadius: 24))
-                .overlay(RoundedRectangle(cornerRadius: 24).stroke(.teal.opacity(0.25)))
-            Label("QR을 누르면 QR만 크게 보여요.", systemImage: "info.circle")
-                .font(.footnote).foregroundStyle(.secondary)
-            Button("명함 보기") { detail = selected }.buttonStyle(.bordered)
+                .background(.white, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(.teal.opacity(0.25)))
+            Button("명함 보기") { detail = selected }.buttonStyle(DearbyButtonStyle())
         } else {
             VStack(spacing: 20) {
                 Image(systemName: "person.text.rectangle").font(.system(size: 56)).foregroundStyle(.teal)
                 Text("이번에 공유할 명함을 만드세요").font(.title2.bold())
-                Text("공개할 연락처와 활동 이력을 골라 나를 소개하세요.").foregroundStyle(.secondary)
-                Button("새 명함 만들기", action: create).buttonStyle(.borderedProminent)
+                Text("공개할 연락처와 활동 이력을 골라 나를 소개하세요.").foregroundStyle(DearbyStyle.quiet)
+                Button("새 명함 만들기", action: create).buttonStyle(DearbyButtonStyle())
             }.frame(maxWidth: .infinity).padding(.vertical, 70)
-                .padding(.horizontal).background(.teal.opacity(0.06), in: RoundedRectangle(cornerRadius: 24))
+                .padding(.horizontal).background(.white, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(DearbyStyle.line))
         }
     }
-    @ViewBuilder private func shareMenu(for card: CardModel) -> some View {
-        if let url = shareURL(card.id), let image = qrImage(url.absoluteString) {
-            Menu {
-                ShareLink(item: url) { Label("링크 공유", systemImage: "square.and.arrow.up") }
-                Button("링크 복사", systemImage: "doc.on.doc") { UIPasteboard.general.url = url; message = "링크를 복사했습니다." }
-                Button("QR 이미지 저장", systemImage: "square.and.arrow.down") { Task { await saveImage(image) } }
-                Text("Dearby가 설치된 기기에서 열 수 있어요.")
-            } label: { Image(systemName: "square.and.arrow.up").frame(minWidth: 44, minHeight: 44) }
-                .accessibilityLabel("명함 공유")
-        }
+    private func shareRow(_ title: String, symbol: String) -> some View {
+        Label { Text(title).font(.headline).foregroundStyle(.primary) } icon: {
+            Image(systemName: symbol).font(.title2).foregroundStyle(DearbyStyle.teal).frame(width: 44)
+        }.frame(maxWidth: .infinity, minHeight: 64, alignment: .leading).contentShape(Rectangle())
+    }
+    private func shareMenu(for card: CardModel) -> some View {
+        Button { sharing = card } label: {
+            Image(systemName: "square.and.arrow.up").frame(minWidth: 44, minHeight: 44)
+        }.accessibilityLabel("명함 공유")
     }
     private var cardPicker: some View {
         ScrollView(.horizontal) {
@@ -147,21 +199,20 @@ struct QRPage: View {
                     VStack(spacing: 6) {
                         Image(systemName: "plus").font(.title3)
                         Text("새 명함").font(.caption)
-                    }.frame(width: 84, height: 76)
+                    }.frame(width: 100, height: 88)
                         .background(.teal.opacity(0.06), in: RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(.teal.opacity(0.3)))
                 }.buttonStyle(.plain).accessibilityLabel("새 명함")
                 ForEach(cards) { card in
                     Button { selectedID = card.id } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(card.profileName).font(.caption.bold()).foregroundStyle(.primary)
-                            Text(card.job).font(.caption2).foregroundStyle(.secondary)
-                            Text(card.name).font(.caption2).foregroundStyle(.teal)
-                        }.lineLimit(1).frame(width: 130, height: 76, alignment: .leading).padding(.horizontal, 12)
-                            .background(selected?.id == card.id ? Color.teal.opacity(0.08) : .white,
-                                in: RoundedRectangle(cornerRadius: 12))
+                        VStack(spacing: 7) {
+                            Image(systemName: "person").font(.title2).foregroundStyle(DearbyStyle.teal)
+                            Text(card.name).font(.subheadline.bold()).foregroundStyle(.primary)
+                            Text(card.description).font(.caption2).foregroundStyle(DearbyStyle.quiet).lineLimit(2)
+                        }.frame(width: 106, alignment: .center).frame(minHeight: 88).padding(.horizontal, 10)
+                            .background(selected?.id == card.id ? DearbyStyle.mint : .white, in: RoundedRectangle(cornerRadius: 12))
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(
-                                selected?.id == card.id ? .teal : .gray.opacity(0.25), lineWidth: selected?.id == card.id ? 2 : 1))
+                                selected?.id == card.id ? DearbyStyle.teal : DearbyStyle.line, lineWidth: selected?.id == card.id ? 2 : 1))
                     }.buttonStyle(.plain).accessibilityLabel(card.name)
                         .accessibilityHint(card.profileName + " · " + card.job)
                         .accessibilityAddTraits(selected?.id == card.id ? .isSelected : [])
@@ -171,15 +222,21 @@ struct QRPage: View {
     }
     private var receive: some View {
         VStack(spacing: 20) {
-            Text("명함 QR을 불러오세요").font(.title2.bold())
+            Button { input = ""; scanning = true } label: {
+                VStack(spacing: 28) {
+                    Image(systemName: "viewfinder").font(.system(size: 100, weight: .ultraLight))
+                    Text("카메라로 명함 QR 찍기").font(.headline)
+                    Text("눌러서 카메라를 열어주세요.").font(.caption)
+                }.foregroundStyle(.white).frame(maxWidth: .infinity).frame(minHeight: 300)
+                    .background(Color(white: 0.2), in: RoundedRectangle(cornerRadius: 12))
+            }.buttonStyle(.plain).accessibilityLabel("카메라로 찍기")
             PhotosPicker(selection: $photo, matching: .images) { Label("사진에서 QR 읽기", systemImage: "photo") }
-                .buttonStyle(.borderedProminent)
-            Button("카메라로 찍기", systemImage: "camera") { input = ""; scanning = true }.buttonStyle(.bordered)
+                .buttonStyle(DearbyButtonStyle())
             TextField("명함 링크 붙여넣기", text: $input).textInputAutocapitalization(.never)
                 .autocorrectionDisabled().textFieldStyle(.roundedBorder)
             TextField("교환한 활동 (선택)", text: $activity).textFieldStyle(.roundedBorder)
             Button(busy ? "명함 확인 중…" : "명함 확인하고 저장") { Task { await inspect() } }
-                .buttonStyle(.borderedProminent).disabled(busy || input.isEmpty)
+                .buttonStyle(DearbyButtonStyle()).disabled(busy || input.isEmpty)
         }
     }
     private func saveImage(_ image: UIImage) async {

@@ -10,8 +10,7 @@ import Observation
     func receiveURL(_ url: URL) {
         do { _ = try CardLink(parsing: url); incomingURL = url; activeTab = 2 } catch { message = error.localizedDescription }
     }
-    var recipientID: String?
-    var recipient: CardModel? { receipts.first { $0.card.ownerId == recipientID }?.card }
+    var recipient: CardModel?
     static func open() throws -> AppState { try AppState(store: LocalStore()) }
     func resolveCard(_ id: String) async throws -> CardModel {
         let card: CardModel = try await api.request("GET", "cards/\(id)")
@@ -71,7 +70,7 @@ import Observation
     }
     func clearLocalSession() throws {
         try vault.clear()
-        session = nil; cards = []; receipts = []; selectedCardID = nil
+        session = nil; cards = []; receipts = []; selectedCardID = nil; recipient = nil
         try profileState.selectAccount(nil)
     }
     func logout() async throws {

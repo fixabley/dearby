@@ -4,19 +4,30 @@ struct RootView: View {
     @Bindable var state: AppState
     @State private var sheet: RootSheet?
     @State private var importAfterLogin = false
+    @State private var sendAfterLogin = false
     var body: some View {
         HomePage(selectedTab: $state.activeTab, configured: state.api.baseURL != nil,
             discovery: CatalogPage(state: state.catalogState, saved: false),
             saved: CatalogPage(state: state.catalogState, saved: true),
             qr: QRPage(cards: state.cards, incomingURL: state.incomingURL, activities: state.catalogState.catalog?.activities ?? [], selectedID: $state.selectedCardID,
-                create: openComposer, lookup: state.resolveCard, saveGuest: state.saveGuest),
+                create: openComposer, lookup: state.resolveCard, saveGuest: state.saveGuest,
+                send: { card in
+                    state.recipient = card
+                    sendAfterLogin = state.session == nil
+                    sheet = state.session == nil ? .login : .send
+                }),
             wallet: WalletPage(receipts: state.receipts, guests: state.guests, activities: state.catalogState.catalog?.activities ?? [],
                 importAction: { if state.session == nil { sheet = .login } else { state.showImport = true } },
-                send: { state.recipientID = $0.card.ownerId; sheet = .send },
+                send: { state.recipient = $0.card; sheet = .send },
                 refresh: { await state.perform { try await state.refresh() } }),
             profile: ProfilePage(isAuthenticated: state.session != nil, profile: state.profile, save: state.saveProfile, account: account))
         .sheet(item: $sheet, onDismiss: {
-            if importAfterLogin { state.showImport = true; importAfterLogin = false }
+            if sendAfterLogin && state.session != nil {
+                sendAfterLogin = false; importAfterLogin = false; sheet = .send
+            } else {
+                sendAfterLogin = false
+                if importAfterLogin { state.showImport = true; importAfterLogin = false }
+            }
         }) { destination in
             switch destination {
             case .login: LoginView(state: state.loginState, login: { challenge, code in
