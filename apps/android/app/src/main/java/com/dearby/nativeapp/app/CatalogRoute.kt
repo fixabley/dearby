@@ -29,7 +29,7 @@ import com.dearby.nativeapp.pages.catalog.ApplicationReportDialog
             runCatching { require(safeWebUrl(activity.source)); context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(activity.source))) }
                 .onFailure { linkError = "공식 출처를 열지 못했습니다." }
         }, { activity.application?.let { if (safeWebUrl(it)) browser = it else linkError = "신청 주소를 확인할 수 없습니다." } }, { prompt = true })
-        else -> CatalogPage(state, saved, model::refresh, { selected = it }, { if (it.organization) model.toggleOrganization(it.id) else model.toggleProgram(it.id) })
+        else -> CatalogPage(state, saved, model::refresh, { selected = it }, { if (it.organization) model.toggleOrganization(it.id) else model.toggleProgram(it.id) }, model::toggleProgram)
     }
     if (prompt && activity != null) ApplicationReportDialog(state.writing || !state.storageReady, state.storageError, { value -> model.report(activity.id, value) { prompt = false } }, { if (!state.writing) prompt = false })
 }
