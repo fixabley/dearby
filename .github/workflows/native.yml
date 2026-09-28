@@ -46,6 +46,7 @@ jobs:
       - run: python3 scripts/check-fsd.py
       - run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
   ios:
+    name: iOS architecture
     runs-on: macos-26
     timeout-minutes: 40
     defaults:

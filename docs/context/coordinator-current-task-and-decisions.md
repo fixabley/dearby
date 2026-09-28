@@ -1,5 +1,9 @@
 # 조율 — 2026-09-27
 
+## 2026-09-28 PR 병합 요청
+
+사용자가 PR40 병합을 승인했다. 기존 head 4986572의 API/Android/iOS 원격 CI 성공과 충돌 없음을 확인하고 Draft를 해제했다. main 필수 검사명 `iOS architecture`와 현재 작업명 `ios`의 불일치로 정상 병합이 차단되어 #53에 증거와 해소 조건을 기록했다. 실제 구조·스타일·빌드·테스트를 실행하는 iOS 작업 표시명을 필수 검사명에 맞춘다. 보호 규칙·검사 내용은 유지하며 새 head의 CI 성공 후 정상 merge commit으로 병합한다. 최종 병합 상태와 SHA는 PR40을 확인한다. 기존 retained 세션과 하위 checkout은 변경하지 않는다.
+
 현재 정본은 [네이티브 재착수](native-restart-2026-09-27.md), [제품 명세](../product/native-spec-2026-09.md), [명함 API 계약](../../shared/contracts/native-v1.md), [활동 API 계약](../../shared/contracts/catalog-v1.md)이다.
 
 ## 완료와 현재 범위
