@@ -5,7 +5,7 @@ extension ArchitectureTestSuite {
     struct FSDTests {
         @Test func productionBoundaries() throws {
             let ios = SourceInventory.iosRoot
-            let root = ios.appendingPathComponent("Dearby").path + "/"
+            let root = ios.appendingPathComponent("Sources").path + "/"
             let exports = try JSONDecoder().decode([String: [String]].self,
                 from: Data(contentsOf: ios.appendingPathComponent("architecture/public-api.json")))
             #expect(!FileManager.default.fileExists(atPath: ios.appendingPathComponent("architecture/migration-paths.json").path), "migration mapping must stay removed")

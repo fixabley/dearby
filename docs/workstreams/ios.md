@@ -1,5 +1,5 @@
 # iOS 담당
 
-2026-09-20 승인된 설계 단순화 구현·검증 완료. 미사용 표시필드/export, 좁은 Shared·상세 조립 예외, 명시적 pure UI 계약, State 보조타입/값형 VM 검사, 카드·즐겨찾기·상세 표시 귀속을 기능별 커밋으로 구현했다. [iOS 인계](../context/ios-implementation-and-handoff.md)에 현재 커밋/Dispatch와 재개 지점을 기록했다.
+2026-09-27 issue #46, `feat/ios-activities` from `dcb590f`. [현재 인계](../context/ios-implementation-and-handoff.md), [활동 계약/검증 진행](../../apps/ios/docs/catalog-implementation.md).
 
-이번 standalone/busy/detail/architecture16/production gate/strict lint161파일 위반0 및 Simulator build/install/launch 성공. 발견 AX snapshot은 확인했으나 입력 후 전환 확인 실패·Simulator 소실로 상세/즐겨찾기 UI smoke와 큰 글자/VoiceOver·실제 권한은 미검증이다. worker는 자기 checkout만 변경했고 push/PR/merge는 Root 담당, 완료 후 세션 유지.
+실제 catalog HTTP·발견/저장/상세·신청 자기기록·등록 활동 교환 선택 구현. 단위 27/구조16/SwiftLint 통과, 실제 로컬 API decode와 디스크 복원 통과. 실제 활동 XCUITest의 신청/나중에/저장/재시작/수정 및 기존 profile·QR·wallet UI 회귀도 통과. Debug/Release build 통과. 검증 정본과 현재 한계는 인계 참조. Simulator ad-hoc signing 유지. 사용자 요청에 따라 완료 후 세션 retain, push/PR/통합은 coordinator 담당.

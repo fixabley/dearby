@@ -1,147 +1,115 @@
 #!/usr/bin/env python3
-"""Small source boundary check, not a Kotlin parser or compiler-enforced slicing."""
-import argparse
+"""Adapted from Dearby 2362917 apps/android/scripts/check-fsd.py.
+Lexical source check, not a Kotlin compiler or proof of runtime architecture.
+The historical Android checker checks direction, siblings, exports and pure UI;
+it does not transplant iOS's two-layer-distance rule.
+"""
 from pathlib import Path
 import re
+import argparse
 
-PREFIX = "io.fixabley.dearby"
-ROOT = Path(__file__).resolve().parents[1] / "app/src/main/java/io/fixabley/dearby"
-LAYERS = {name: i for i, name in enumerate(("app", "pages", "widgets", "features", "entities", "shared"))}
-# Native slice entry points; kept in sync with ARCHITECTURE.md, not barrel files.
+PREFIX = 'com.dearby.nativeapp'
+ROOT = Path(__file__).resolve().parents[1] / 'app/src/main/java/com/dearby/nativeapp'
+LAYERS = {name: i for i, name in enumerate(('app', 'pages', 'widgets', 'features', 'entities', 'shared'))}
 API = {
-    "pages.discovery": {"ui.DiscoveryScreen"},
-    "pages.settings": {"ui.SettingsSheet", "ui.CalendarWelcomeDialog", "model.SettingsState"},
-    "pages.favorites": {"ui.FavoritesScreen"},
-    "pages.noticedetail": {"ui.NoticeDetailSheet", "model.NoticeDetailViewModel", "model.NoticeDetailState"},
-    "widgets.notice.noticecard": {"NoticeCard", "NoticeCardState", "NoticeCardViewModel"},
-    "widgets.organization.favoriteorganizationcard": {"FavoriteOrganizationCard", "FavoriteOrganizationCardState", "FavoriteOrganizationCardViewModel"},
-    "features.calendarbusy": {"api.BusyProvider", "api.BusyPermission", "api.BusyQuery", "api.AndroidBusyProvider", "api.BusySession", "api.BusyConnection", "api.BusyLoad", "api.BusyResult"},
-    "features.favoriteorganization": {
-        "model.FavoritesState", "api.FavoriteStore", "api.SharedPreferencesFavoriteStore",
-    },
-    "features.addtocalendar": {"model.CalendarDraft", "model.applicationCalendarDraft", "model.phaseCalendarDraft"},
-    "entities.notice": {"model.NoticeModel", "model.NoticeContext", "model.NoticeApplication", "model.NoticeLocation", "model.NoticePhase", "model.NoticeVenue", "model.VenueCoordinates", "model.NoticeSource", "model.NoticeEvidence", "api.NoticeSource", "api.InMemoryNoticeSource", "api.NoticeRepository", "api.NoticeStorageCodec", "api.NoticeRecord", "api.NoticeDao", "api.RoomNoticeStore", "api.StoredNoticeSource", "ui.NoticeClassification"},
-    "entities.organization": {"model.OrganizationModel", "api.OrganizationSource", "api.InMemoryOrganizationSource", "api.OrganizationRepository", "api.OrganizationRecord", "api.OrganizationDao", "api.RoomOrganizationStore", "api.StoredOrganizationSource"},
-
+    'pages.catalog': {'CatalogPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'SavedGroupState', 'CatalogState'},
+    'features.application': {'ApplicationBrowser', 'safeWebUrl'},
+    'entities.catalog': {'model.CatalogModel', 'model.CatalogLocalModel', 'model.ActivityModel', 'model.ProgramModel', 'model.OrganizationModel', 'model.ScheduleModel', 'api.CatalogRepository'},
+    'pages.profile': {'ProfilePage', 'ProfileState', 'ContactState', 'HistoryState', 'contactKindLabel'},
+    'pages.qr': {'CardEditor', 'ScanPage', 'QrPage', 'CardEditorState', 'PublishSelectionState', 'VisibilityChoiceState'},
+    'pages.login': {'LoginPage'},
+    'pages.wallet': {'ImportPage', 'ImportEntryState', 'WalletPage', 'WalletEntryState', 'SendPage', 'SharedCardPage'},
+    'widgets.activity.contextPicker': {'ActivityContextPicker', 'ActivityChoiceState'},
+    'widgets.card.cardContent': {'CardContent', 'CardStack', 'CardState', 'CardHistoryState', 'toState'},
+    'features.contact': {'ContactActionState', 'contactAction', 'ContactActions'},
+    'features.account': {'AccountState', 'AuthRepository'},
+    'features.guest': {'GuestStore'},
+    'features.qr': {'QrActions'},
+    'features.wallet': {'WalletRepository'},
+    'entities.profile': {'model.ProfileModel', 'model.ContactModel', 'model.HistoryModel', 'api.ProfileRepository'},
+    'entities.card': {'model.CardModel', 'model.CardSelectionModel', 'model.ExchangeContextModel', 'model.ReceiptModel', 'model.GuestSavedCardModel', 'model.ImportResultModel', 'model.importedIds', 'api.CardRepository'},
 }
 
-
 def owner(name):
-    parts = name.split(".")
-    if parts[0] == "MainActivity":  # Keep the existing manifest component identity.
-        return "app"
-    if parts[0] in ("app", "shared"):
-        return parts[0]
-    key = ".".join(parts[:3] if parts[0] == "widgets" else parts[:2])
+    parts = name.split('.')
+    if parts[0] in ('app', 'shared'): return parts[0]
+    key = '.'.join(parts[:3] if parts[0] == 'widgets' else parts[:2])
     return key if key in API else None
 
-
-def check_source(relative_path, text):
-    expected_package = PREFIX + ("." + ".".join(relative_path.parts[:-1]) if len(relative_path.parts) > 1 else "")
+def check_source(path, text):
+    expected = PREFIX + '.' + '.'.join(path.parts[:-1])
+    code = re.sub(r'/\*.*?\*/|//[^\n]*|""".*?"""|"(?:\\.|[^"\\])*"', '', text, flags=re.S)
+    package = re.search(r'^package\s+([\w.]+)', code, re.M)
     errors = []
-    # Ignore ordinary comments/strings. This intentionally does not parse Kotlin interpolation.
-    code = re.sub(r'/\*.*?\*/|//[^\n]*|""".*?"""|"(?:\\.|[^"\\])*"', "", text, flags=re.S)
-    package = re.search(r"^package\s+([\w.]+)", code, re.M)
-    if not package or package.group(1) != expected_package:
-        errors.append("package does not match its directory")
-    source = owner(".".join(relative_path.with_suffix("").parts))
-    if source is None:
-        return errors + ["unknown layer/slice"]
-    layer = source.split(".")[0]
-    code = re.sub(r"^package[^\n]*", "", code, flags=re.M)
-    rendering = layer in ("pages", "widgets") and bool(re.search(r"@(?:androidx\.compose\.runtime\.)?Composable\b", code))
-    references = re.findall(r"\b" + re.escape(PREFIX) + r"\.([\w.*]+)", code)
+    if not package or package[1] != expected: errors.append('package does not match directory')
+    source = owner('.'.join(path.with_suffix('').parts))
+    if source is None: return errors + ['unknown source slice']
+    layer = source.split('.')[0]
+    code = re.sub(r'^package[^\n]*', '', code, flags=re.M)
+    rendering = layer in ('pages', 'widgets') and bool(re.search(r'@Composable\b', code))
+    references = re.findall(r'\b' + re.escape(PREFIX) + r'\.([\w.*]+)', code)
     for ref in references:
-        if ref.split(".")[0] in ("R", "BuildConfig"):
-            continue
+        if ref.split('.')[0] in ('R', 'BuildConfig'): continue
         target = owner(ref)
-        if target is None:
-            errors.append(f"unknown dependency: {ref}")
-            continue
-        target_layer = target.split(".")[0]
-        if LAYERS[target_layer] < LAYERS[layer]:
-            errors.append(f"upward dependency: {ref}")
-        elif layer == target_layer and source != target:
-            errors.append(f"same-layer cross-slice dependency: {ref}")
-        # Pages/Widgets may directly reuse design UI/tokens, not Shared infrastructure.
-        if layer in ("pages", "widgets") and target == "shared" and not ref.startswith("shared.ui."):
-            errors.append(f"Shared dependency must use design UI/tokens: {ref}")
+        if target is None: errors.append('unknown dependency: ' + ref); continue
+        target_layer = target.split('.')[0]
+        if LAYERS[target_layer] < LAYERS[layer]: errors.append('upward dependency: ' + ref)
+        if layer == target_layer and source != target: errors.append('cross-slice dependency: ' + ref)
         if source != target and target in API:
-            exports = [target + "." + entry for entry in API[target]]
-            if not any(ref == entry or ref.startswith(entry + ".") for entry in exports):
-                errors.append(f"non-entry-point dependency: {ref}")
-        if rendering and (
-            (target_layer == "features" and ref != "features.addtocalendar.model.CalendarDraft") or ".api." in ref
-        ):
-            errors.append(f"UI must receive values/callbacks, not state or data providers: {ref}")
-    if rendering and any(ref in {"entities.notice.model.NoticeModel", "entities.organization.model.OrganizationModel"} for ref in references):
-        errors.append("rendering UI must receive State, not raw domain models")
-    if rendering and re.search(
-        r"\b(LocalContext|SharedPreferences|getSharedPreferences|AssetManager|Intent|startActivity|[A-Za-z]+ViewModel|[A-Za-z]+Repository)\b", code
-    ):
-        errors.append("rendering UI directly accesses ViewModel/repository or Android side effects")
+            exports = [target + '.' + entry for entry in API[target]]
+            if not any(ref == entry or ref.startswith(entry + '.') for entry in exports): errors.append('non-public dependency: ' + ref)
+        if rendering and (target_layer == 'entities' or (target_layer == 'shared' and not ref.startswith('shared.ui.')) or (target_layer == 'features' and not ref.endswith('State'))):
+            errors.append('UI requires State/callbacks, not domain/I/O: ' + ref)
+    if rendering and re.search(r'\b(LocalContext|SharedPreferences|getSharedPreferences|AssetManager|Intent|startActivity|\w+ViewModel|\w+Repository)\b', code): errors.append('UI directly accesses provider/OS side effect')
+    if layer == 'shared' and re.search(r'\b(?:Profile|Card|Receipt|GuestSavedCard)Model\b', code): errors.append('shared infrastructure knows domain')
+    if layer == 'app' and 'providers' not in path.parts and re.search(r'\b(?:Room\.databaseBuilder|HttpClient|ProfileRepository|CardRepository|WalletRepository|AuthRepository|TokenVault)\s*\(', code): errors.append('dependency construction belongs to app/providers')
     return errors
 
-
 def self_test():
-    API["widgets.notice.fixture"] = {"OtherCard"}
     cases = [
-        ("pages/discovery/ui/Example.kt", "import io.fixabley.dearby.app.DearbyApp", False),
-        ("pages/discovery/ui/Example.kt", "import io.fixabley.dearby.pages.noticedetail.ui.NoticeDetailSheet", False),
-        ("widgets/notice/noticecard/Example.kt", "import io.fixabley.dearby.widgets.organization.favoriteorganizationcard.FavoriteOrganizationCard", False),
-        ("entities/notice/model/Example.kt", "import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState", False),
-        ("widgets/notice/noticecard/Example.kt", "import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState as State", False),
-        ("widgets/notice/noticecard/Example.kt", "import android.content.SharedPreferences", False),
-        ("app/Example.kt", "import io.fixabley.dearby.pages.noticedetail.ui.NoticeIdentity", False),
-        ("pages/discovery/ui/Example.kt", "fun bad() = io.fixabley.dearby.pages.favorites.ui.FavoritesScreen()", False),
-        ("app/Example.kt", "import io.fixabley.dearby.features.favoriteorganization.model.FavoritesState", True),
-        ("widgets/notice/noticecard/Example.kt", "import io.fixabley.dearby.entities.notice.ui.NoticeClassification", True),
-        ("entities/notice/model/Example.kt", "import io.fixabley.dearby.entities.organization.model.OrganizationModel", False),
-        ("entities/organization/model/Example.kt", "import io.fixabley.dearby.entities.notice.model.NoticeModel", False),
-        ("features/addtocalendar/model/Example.kt", "import io.fixabley.dearby.pages.noticedetail.model.NoticeDetailState", False),
-        ("widgets/notice/noticecard/Example.kt", "import io.fixabley.dearby.entities.notice.api.NoticeRepository", True),
-        ("widgets/notice/noticecard/Example.kt", "import io.fixabley.dearby.entities.organization.model.OrganizationModel", False),
-        ("widgets/notice/noticecard/Example.kt", "import io.fixabley.dearby.widgets.notice.fixture.OtherCard", False),
-        ("widgets/notice/noticecard/Example.kt", "val model: NoticeCardViewModel? = null", False),
-        ("widgets/notice/noticecard/Example.kt", "import android.content.Intent", False),
-        ("shared/ui/Example.kt", "import io.fixabley.dearby.shared.ui.theme.DearbyTheme", True),
-        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.features.addtocalendar.model.CalendarDraft", True),
-        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.features.addtocalendar.model.applicationCalendarDraft", False),
-        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.entities.notice.api.NoticeRepository", False),
-        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.entities.notice.model.NoticeModel", False),
-        ("pages/noticedetail/ui/Example.kt", "import io.fixabley.dearby.pages.noticedetail.model.NoticeDetailState", True),
-        ("pages/discovery/ui/Example.kt", "import io.fixabley.dearby.shared.ui.buttons.PrimaryButton", True),
-        ("widgets/notice/noticecard/Example.kt", "import io.fixabley.dearby.shared.ui.theme.Spacing", True),
-        ("pages/discovery/ui/Example.kt", "import io.fixabley.dearby.shared.storage.Store", False),
-        ("widgets/notice/noticecard/Example.kt", "import io.fixabley.dearby.shared.network.Client", False),
-        ("pages/noticedetail/ui/Example.kt", "fun bad() = io.fixabley.dearby.shared.os.Platform.open()", False),
-        ("pages/favorites/ui/Example.kt", "import io.fixabley.dearby.widgets.organization.favoriteorganizationcard.FavoriteNoticeState", False),
+        ('pages/catalog/Test.kt', 'import com.dearby.nativeapp.entities.catalog.model.ActivityModel', False),
+        ('pages/catalog/Test.kt', 'import com.dearby.nativeapp.shared.storage.DearbyDao', False),
+        ('widgets/activity/contextPicker/Test.kt', 'import com.dearby.nativeapp.app.CatalogViewModel', False),
+        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.widgets.activity.contextPicker.ActivityChoiceState', True),
+        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.app.DearbyApp', False),
+        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.pages.profile.ProfileState', False),
+        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.entities.card.model.CardModel', False),
+        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.shared.storage.DearbyDao', False),
+        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.features.account.AuthRepository', False),
+        ('pages/qr/Test.kt', 'import android.content.Intent', False),
+        ('pages/qr/Test.kt', 'val x = LocalContext.current', False),
+        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.widgets.card.cardContent.CardState', True),
+        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.shared.ui.Field', True),
+        ('pages/qr/Test.kt', 'val x: CardEditorState? = null', True),
+        ('widgets/card/cardContent/Test.kt', 'import com.dearby.nativeapp.entities.card.model.CardModel', False),
+        ('widgets/card/cardContent/Test.kt', 'import com.dearby.nativeapp.shared.api.HttpClient', False),
+        ('widgets/card/cardContent/Test.kt', 'import com.dearby.nativeapp.widgets.other.CardState', False),
+        ('entities/profile/Test.kt', 'import com.dearby.nativeapp.entities.card.model.CardModel', False),
+        ('entities/profile/Test.kt', 'import com.dearby.nativeapp.features.account.AccountState', False),
+        ('entities/profile/Test.kt', 'import com.dearby.nativeapp.shared.api.HttpClient', True),
+        ('features/wallet/Test.kt', 'import com.dearby.nativeapp.entities.card.model.CardModel', True),
+        ('features/wallet/Test.kt', 'import com.dearby.nativeapp.features.account.AccountState', False),
+        ('features/wallet/Test.kt', 'import com.dearby.nativeapp.entities.card.api.PrivateDao', False),
+        ('features/wallet/Test.kt', 'import com.dearby.nativeapp.pages.wallet.WalletEntryState', False),
+        ('shared/ui/Test.kt', 'val profile: ProfileModel? = null', False),
+        ('app/Test.kt', 'val client = HttpClient("", false) {}', False),
+        ('app/providers/Test.kt', 'val client = HttpClient("", false) {}', True),
+        ('app/Test.kt', 'import com.dearby.nativeapp.pages.wallet.WalletPage', True),
     ]
     for filename, snippet, allowed in cases:
         path = Path(filename)
-        package = PREFIX + "." + ".".join(path.parts[:-1])
-        if filename.startswith(("pages/", "widgets/")) and not (allowed and "NoticeRepository" in snippet):
-            snippet += "\n@Composable fun Render() {}"
-        errors = check_source(path, f"package {package}\n{snippet}\n")
-        assert (not errors) == allowed, (filename, snippet, errors)
-    del API["widgets.notice.fixture"]
-    allowed_count = sum(allowed for _, _, allowed in cases)
-    print(f"Boundary self-test: {len(cases)} cases passed ({len(cases) - allowed_count} forbidden, {allowed_count} allowed)")
+        if path.parts[0] in ('pages', 'widgets'): snippet += '\n@Composable fun Render() {}'
+        errors = check_source(path, 'package ' + PREFIX + '.' + '.'.join(path.parts[:-1]) + '\n' + snippet)
+        assert bool(errors) != allowed, (filename, snippet, errors)
+    print(f'Boundary self-test: {len(cases)} cases passed')
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--self-test", action="store_true")
+    parser.add_argument('--self-test', action='store_true')
     args = parser.parse_args()
-    if args.self_test:
-        self_test()
-    failures = []
-    files = sorted(ROOT.rglob("*.kt"))
-    if not files:
-        raise SystemExit("No production Kotlin sources found")
-    for path in files:
-        for error in check_source(path.relative_to(ROOT), path.read_text()):
-            failures.append(f"{path.relative_to(ROOT)}: {error}")
-    if failures:
-        raise SystemExit("\n".join(failures))
-    print(f"FSD boundaries: {len(files)} Kotlin files passed")
+    if args.self_test: self_test()
+    files = sorted(ROOT.rglob('*.kt'))
+    if not files: raise SystemExit('No production Kotlin source')
+    errors = [f'{path.relative_to(ROOT)}: {error}' for path in files for error in check_source(path.relative_to(ROOT), path.read_text())]
+    if errors: raise SystemExit('\n'.join(errors))
+    print(f'FSD boundaries: {len(files)} Kotlin files passed')

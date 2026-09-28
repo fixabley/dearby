@@ -1,6 +1,0 @@
-PASS: actual production probe rejected [fsd-distant]
-PASS: actual production probe rejected [fsd-distant]
-PASS: provider construction reference accepted
-PASS: actual production probe rejected [fsd-public-api]
-PASS: actual production probe rejected [provider-ui]
-PASS: restored production accepted

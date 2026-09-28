@@ -12,7 +12,7 @@ enum SourceInventory {
 
     static func productionFiles(iosRoot: URL) throws -> [URL] {
         let manager = FileManager.default
-        let root = iosRoot.appendingPathComponent("Dearby", isDirectory: true).standardizedFileURL
+        let root = iosRoot.appendingPathComponent("Sources", isDirectory: true).standardizedFileURL
         guard manager.fileExists(atPath: iosRoot.appendingPathComponent("ARCHITECTURE.md").path),
               manager.fileExists(atPath: root.appendingPathComponent("app/entrypoint/DearbyApp.swift").path) else {
             throw InventoryError.invalidRoot(iosRoot.path)

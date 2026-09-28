@@ -1,0 +1,1025 @@
+{
+  "id": "09a1e789-21a2-4950-9420-fc1fbc061389",
+  "ok": true,
+  "result": {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [
+                                  {
+                                    "children": [],
+                                    "className": "android.widget.TextView",
+                                    "text": "명함 교환",
+                                    "packageName": "com.dearby.nativeapp",
+                                    "clickable": false,
+                                    "enabled": true,
+                                    "focused": false,
+                                    "bounds": {
+                                      "left": 53,
+                                      "top": 331,
+                                      "right": 339,
+                                      "bottom": 438
+                                    }
+                                  },
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [],
+                                        "className": "android.widget.TextView",
+                                        "text": "QR 보여주기",
+                                        "packageName": "com.dearby.nativeapp",
+                                        "clickable": false,
+                                        "enabled": true,
+                                        "focused": false,
+                                        "bounds": {
+                                          "left": 251,
+                                          "top": 512,
+                                          "right": 443,
+                                          "bottom": 565
+                                        }
+                                      },
+                                      {
+                                        "children": [],
+                                        "className": "android.widget.Button",
+                                        "packageName": "com.dearby.nativeapp",
+                                        "clickable": false,
+                                        "enabled": true,
+                                        "focused": false,
+                                        "bounds": {
+                                          "left": 188,
+                                          "top": 486,
+                                          "right": 506,
+                                          "bottom": 591
+                                        }
+                                      }
+                                    ],
+                                    "className": "android.view.View",
+                                    "packageName": "com.dearby.nativeapp",
+                                    "clickable": true,
+                                    "enabled": true,
+                                    "focused": false,
+                                    "bounds": {
+                                      "left": 188,
+                                      "top": 476,
+                                      "right": 506,
+                                      "bottom": 602
+                                    }
+                                  },
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [],
+                                        "className": "android.widget.TextView",
+                                        "text": "QR 찍기",
+                                        "packageName": "com.dearby.nativeapp",
+                                        "clickable": false,
+                                        "enabled": true,
+                                        "focused": false,
+                                        "bounds": {
+                                          "left": 703,
+                                          "top": 512,
+                                          "right": 829,
+                                          "bottom": 565
+                                        }
+                                      },
+                                      {
+                                        "children": [],
+                                        "className": "android.widget.Button",
+                                        "packageName": "com.dearby.nativeapp",
+                                        "clickable": false,
+                                        "enabled": true,
+                                        "focused": false,
+                                        "bounds": {
+                                          "left": 640,
+                                          "top": 486,
+                                          "right": 892,
+                                          "bottom": 591
+                                        }
+                                      }
+                                    ],
+                                    "className": "android.view.View",
+                                    "packageName": "com.dearby.nativeapp",
+                                    "clickable": true,
+                                    "enabled": true,
+                                    "focused": false,
+                                    "bounds": {
+                                      "left": 640,
+                                      "top": 476,
+                                      "right": 892,
+                                      "bottom": 602
+                                    }
+                                  },
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [],
+                                        "className": "android.widget.TextView",
+                                        "text": "컨퍼런스 명함",
+                                        "packageName": "com.dearby.nativeapp",
+                                        "clickable": false,
+                                        "enabled": true,
+                                        "focused": false,
+                                        "bounds": {
+                                          "left": 85,
+                                          "top": 679,
+                                          "right": 334,
+                                          "bottom": 742
+                                        }
+                                      },
+                                      {
+                                        "children": [],
+                                        "className": "android.widget.TextView",
+                                        "text": "로컬 서버에 발행한 명함",
+                                        "packageName": "com.dearby.nativeapp",
+                                        "clickable": false,
+                                        "enabled": true,
+                                        "focused": false,
+                                        "bounds": {
+                                          "left": 85,
+                                          "top": 742,
+                                          "right": 413,
+                                          "bottom": 788
+                                        }
+                                      },
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [],
+                                            "className": "android.view.View",
+                                            "contentDesc": "공유 메뉴",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 901,
+                                              "top": 702,
+                                              "right": 964,
+                                              "bottom": 765
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.widget.Button",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 880,
+                                              "top": 681,
+                                              "right": 985,
+                                              "bottom": 786
+                                            }
+                                          }
+                                        ],
+                                        "className": "android.view.View",
+                                        "packageName": "com.dearby.nativeapp",
+                                        "clickable": true,
+                                        "enabled": true,
+                                        "focused": false,
+                                        "bounds": {
+                                          "left": 870,
+                                          "top": 671,
+                                          "right": 996,
+                                          "bottom": 797
+                                        }
+                                      },
+                                      {
+                                        "children": [],
+                                        "className": "android.widget.ImageView",
+                                        "contentDesc": "명함 QR, 누르면 확대",
+                                        "packageName": "com.dearby.nativeapp",
+                                        "clickable": true,
+                                        "enabled": true,
+                                        "focused": false,
+                                        "bounds": {
+                                          "left": 173,
+                                          "top": 796,
+                                          "right": 908,
+                                          "bottom": 1531
+                                        }
+                                      }
+                                    ],
+                                    "className": "android.view.View",
+                                    "packageName": "com.dearby.nativeapp",
+                                    "clickable": false,
+                                    "enabled": true,
+                                    "focused": false,
+                                    "bounds": {
+                                      "left": 53,
+                                      "top": 638,
+                                      "right": 1027,
+                                      "bottom": 1563
+                                    }
+                                  },
+                                  {
+                                    "children": [],
+                                    "className": "android.widget.TextView",
+                                    "text": "ⓘ QR을 누르면 QR만 크게 보여요",
+                                    "packageName": "com.dearby.nativeapp",
+                                    "clickable": false,
+                                    "enabled": true,
+                                    "focused": false,
+                                    "bounds": {
+                                      "left": 53,
+                                      "top": 1600,
+                                      "right": 515,
+                                      "bottom": 1646
+                                    }
+                                  },
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [],
+                                        "className": "android.widget.TextView",
+                                        "text": "명함 보기",
+                                        "packageName": "com.dearby.nativeapp",
+                                        "clickable": false,
+                                        "enabled": true,
+                                        "focused": false,
+                                        "bounds": {
+                                          "left": 468,
+                                          "top": 1720,
+                                          "right": 612,
+                                          "bottom": 1773
+                                        }
+                                      },
+                                      {
+                                        "children": [],
+                                        "className": "android.widget.Button",
+                                        "packageName": "com.dearby.nativeapp",
+                                        "clickable": false,
+                                        "enabled": true,
+                                        "focused": false,
+                                        "bounds": {
+                                          "left": 53,
+                                          "top": 1694,
+                                          "right": 1027,
+                                          "bottom": 1799
+                                        }
+                                      }
+                                    ],
+                                    "className": "android.view.View",
+                                    "packageName": "com.dearby.nativeapp",
+                                    "clickable": true,
+                                    "enabled": true,
+                                    "focused": false,
+                                    "bounds": {
+                                      "left": 53,
+                                      "top": 1684,
+                                      "right": 1027,
+                                      "bottom": 1810
+                                    }
+                                  },
+                                  {
+                                    "children": [],
+                                    "className": "android.widget.TextView",
+                                    "text": "내 명함",
+                                    "packageName": "com.dearby.nativeapp",
+                                    "clickable": false,
+                                    "enabled": true,
+                                    "focused": false,
+                                    "bounds": {
+                                      "left": 53,
+                                      "top": 1846,
+                                      "right": 183,
+                                      "bottom": 1909
+                                    }
+                                  },
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [],
+                                            "className": "android.widget.TextView",
+                                            "text": "＋\n새 명함",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 187,
+                                              "top": 2040,
+                                              "right": 297,
+                                              "bottom": 2146
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.widget.Button",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 53,
+                                              "top": 1946,
+                                              "right": 431,
+                                              "bottom": 2151
+                                            }
+                                          }
+                                        ],
+                                        "className": "android.view.View",
+                                        "packageName": "com.dearby.nativeapp",
+                                        "clickable": true,
+                                        "enabled": true,
+                                        "focused": false,
+                                        "bounds": {
+                                          "left": 53,
+                                          "top": 1946,
+                                          "right": 431,
+                                          "bottom": 2151
+                                        }
+                                      },
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [],
+                                            "className": "android.widget.TextView",
+                                            "text": "Android 검증 계정",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 499,
+                                              "top": 2019,
+                                              "right": 779,
+                                              "bottom": 2072
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.widget.TextView",
+                                            "text": "Android 개발자",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 499,
+                                              "top": 2072,
+                                              "right": 736,
+                                              "bottom": 2125
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.widget.TextView",
+                                            "text": "컨퍼런스 명함",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 499,
+                                              "top": 2125,
+                                              "right": 671,
+                                              "bottom": 2151
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.widget.CheckBox",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 457,
+                                              "top": 1946,
+                                              "right": 835,
+                                              "bottom": 2151
+                                            }
+                                          }
+                                        ],
+                                        "className": "android.view.View",
+                                        "packageName": "com.dearby.nativeapp",
+                                        "clickable": true,
+                                        "enabled": true,
+                                        "focused": false,
+                                        "bounds": {
+                                          "left": 457,
+                                          "top": 1946,
+                                          "right": 835,
+                                          "bottom": 2151
+                                        }
+                                      }
+                                    ],
+                                    "className": "android.view.View",
+                                    "packageName": "com.dearby.nativeapp",
+                                    "clickable": false,
+                                    "enabled": true,
+                                    "focused": false,
+                                    "bounds": {
+                                      "left": 53,
+                                      "top": 1946,
+                                      "right": 835,
+                                      "bottom": 2151
+                                    }
+                                  }
+                                ],
+                                "className": "android.widget.ScrollView",
+                                "packageName": "com.dearby.nativeapp",
+                                "clickable": false,
+                                "enabled": true,
+                                "focused": false,
+                                "bounds": {
+                                  "left": 0,
+                                  "top": 278,
+                                  "right": 1080,
+                                  "bottom": 2151
+                                }
+                              },
+                              {
+                                "children": [],
+                                "className": "android.widget.TextView",
+                                "text": "dearby",
+                                "packageName": "com.dearby.nativeapp",
+                                "clickable": false,
+                                "enabled": true,
+                                "focused": false,
+                                "bounds": {
+                                  "left": 446,
+                                  "top": 168,
+                                  "right": 635,
+                                  "bottom": 252
+                                }
+                              },
+                              {
+                                "children": [
+                                  {
+                                    "children": [
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [],
+                                                "className": "android.widget.TextView",
+                                                "text": "발견",
+                                                "packageName": "com.dearby.nativeapp",
+                                                "clickable": false,
+                                                "enabled": true,
+                                                "focused": false,
+                                                "bounds": {
+                                                  "left": 72,
+                                                  "top": 2277,
+                                                  "right": 127,
+                                                  "bottom": 2319
+                                                }
+                                              }
+                                            ],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 37,
+                                              "top": 2235,
+                                              "right": 163,
+                                              "bottom": 2361
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 68,
+                                              "top": 2193,
+                                              "right": 131,
+                                              "bottom": 2256
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 26,
+                                              "top": 2162,
+                                              "right": 173,
+                                              "bottom": 2288
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 0,
+                                              "top": 2151,
+                                              "right": 200,
+                                              "bottom": 2361
+                                            }
+                                          }
+                                        ],
+                                        "className": "android.view.View",
+                                        "packageName": "com.dearby.nativeapp",
+                                        "clickable": true,
+                                        "enabled": true,
+                                        "focused": false,
+                                        "bounds": {
+                                          "left": 0,
+                                          "top": 2151,
+                                          "right": 200,
+                                          "bottom": 2361
+                                        }
+                                      },
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [],
+                                                "className": "android.widget.TextView",
+                                                "text": "저장",
+                                                "packageName": "com.dearby.nativeapp",
+                                                "clickable": false,
+                                                "enabled": true,
+                                                "focused": false,
+                                                "bounds": {
+                                                  "left": 293,
+                                                  "top": 2277,
+                                                  "right": 348,
+                                                  "bottom": 2319
+                                                }
+                                              }
+                                            ],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 258,
+                                              "top": 2235,
+                                              "right": 384,
+                                              "bottom": 2361
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 289,
+                                              "top": 2193,
+                                              "right": 352,
+                                              "bottom": 2256
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 247,
+                                              "top": 2162,
+                                              "right": 394,
+                                              "bottom": 2288
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 221,
+                                              "top": 2151,
+                                              "right": 420,
+                                              "bottom": 2361
+                                            }
+                                          }
+                                        ],
+                                        "className": "android.view.View",
+                                        "packageName": "com.dearby.nativeapp",
+                                        "clickable": true,
+                                        "enabled": true,
+                                        "focused": false,
+                                        "bounds": {
+                                          "left": 221,
+                                          "top": 2151,
+                                          "right": 420,
+                                          "bottom": 2361
+                                        }
+                                      },
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 467,
+                                              "top": 2161,
+                                              "right": 614,
+                                              "bottom": 2287
+                                            }
+                                          },
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [],
+                                                "className": "android.widget.TextView",
+                                                "text": "QR",
+                                                "packageName": "com.dearby.nativeapp",
+                                                "clickable": false,
+                                                "enabled": true,
+                                                "focused": false,
+                                                "bounds": {
+                                                  "left": 520,
+                                                  "top": 2277,
+                                                  "right": 560,
+                                                  "bottom": 2319
+                                                }
+                                              }
+                                            ],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 477,
+                                              "top": 2235,
+                                              "right": 603,
+                                              "bottom": 2361
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 509,
+                                              "top": 2193,
+                                              "right": 572,
+                                              "bottom": 2256
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 467,
+                                              "top": 2162,
+                                              "right": 614,
+                                              "bottom": 2288
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 441,
+                                              "top": 2151,
+                                              "right": 640,
+                                              "bottom": 2361
+                                            }
+                                          }
+                                        ],
+                                        "className": "android.view.View",
+                                        "packageName": "com.dearby.nativeapp",
+                                        "clickable": false,
+                                        "enabled": true,
+                                        "focused": false,
+                                        "bounds": {
+                                          "left": 441,
+                                          "top": 2151,
+                                          "right": 640,
+                                          "bottom": 2361
+                                        }
+                                      },
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [],
+                                                "className": "android.widget.TextView",
+                                                "text": "받은 명함",
+                                                "packageName": "com.dearby.nativeapp",
+                                                "clickable": false,
+                                                "enabled": true,
+                                                "focused": false,
+                                                "bounds": {
+                                                  "left": 701,
+                                                  "top": 2277,
+                                                  "right": 819,
+                                                  "bottom": 2319
+                                                }
+                                              }
+                                            ],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 697,
+                                              "top": 2235,
+                                              "right": 823,
+                                              "bottom": 2361
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 729,
+                                              "top": 2193,
+                                              "right": 792,
+                                              "bottom": 2256
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 687,
+                                              "top": 2162,
+                                              "right": 834,
+                                              "bottom": 2288
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 661,
+                                              "top": 2151,
+                                              "right": 860,
+                                              "bottom": 2361
+                                            }
+                                          }
+                                        ],
+                                        "className": "android.view.View",
+                                        "packageName": "com.dearby.nativeapp",
+                                        "clickable": true,
+                                        "enabled": true,
+                                        "focused": false,
+                                        "bounds": {
+                                          "left": 661,
+                                          "top": 2151,
+                                          "right": 860,
+                                          "bottom": 2361
+                                        }
+                                      },
+                                      {
+                                        "children": [
+                                          {
+                                            "children": [
+                                              {
+                                                "children": [],
+                                                "className": "android.widget.TextView",
+                                                "text": "내 프로필",
+                                                "packageName": "com.dearby.nativeapp",
+                                                "clickable": false,
+                                                "enabled": true,
+                                                "focused": false,
+                                                "bounds": {
+                                                  "left": 921,
+                                                  "top": 2277,
+                                                  "right": 1039,
+                                                  "bottom": 2319
+                                                }
+                                              }
+                                            ],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 917,
+                                              "top": 2235,
+                                              "right": 1043,
+                                              "bottom": 2361
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 949,
+                                              "top": 2193,
+                                              "right": 1012,
+                                              "bottom": 2256
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 907,
+                                              "top": 2162,
+                                              "right": 1054,
+                                              "bottom": 2288
+                                            }
+                                          },
+                                          {
+                                            "children": [],
+                                            "className": "android.view.View",
+                                            "packageName": "com.dearby.nativeapp",
+                                            "clickable": false,
+                                            "enabled": true,
+                                            "focused": false,
+                                            "bounds": {
+                                              "left": 881,
+                                              "top": 2151,
+                                              "right": 1080,
+                                              "bottom": 2361
+                                            }
+                                          }
+                                        ],
+                                        "className": "android.view.View",
+                                        "packageName": "com.dearby.nativeapp",
+                                        "clickable": true,
+                                        "enabled": true,
+                                        "focused": false,
+                                        "bounds": {
+                                          "left": 881,
+                                          "top": 2151,
+                                          "right": 1080,
+                                          "bottom": 2361
+                                        }
+                                      }
+                                    ],
+                                    "className": "android.view.View",
+                                    "packageName": "com.dearby.nativeapp",
+                                    "clickable": false,
+                                    "enabled": true,
+                                    "focused": false,
+                                    "bounds": {
+                                      "left": 0,
+                                      "top": 2151,
+                                      "right": 1080,
+                                      "bottom": 2361
+                                    }
+                                  }
+                                ],
+                                "className": "android.view.View",
+                                "packageName": "com.dearby.nativeapp",
+                                "clickable": false,
+                                "enabled": true,
+                                "focused": false,
+                                "bounds": {
+                                  "left": 0,
+                                  "top": 2151,
+                                  "right": 1080,
+                                  "bottom": 2424
+                                }
+                              }
+                            ],
+                            "className": "android.view.View",
+                            "packageName": "com.dearby.nativeapp",
+                            "clickable": false,
+                            "enabled": true,
+                            "focused": false,
+                            "bounds": {
+                              "left": 0,
+                              "top": 0,
+                              "right": 1080,
+                              "bottom": 2424
+                            }
+                          }
+                        ],
+                        "className": "android.view.View",
+                        "packageName": "com.dearby.nativeapp",
+                        "clickable": false,
+                        "enabled": true,
+                        "focused": false,
+                        "bounds": {
+                          "left": 0,
+                          "top": 0,
+                          "right": 1080,
+                          "bottom": 2424
+                        }
+                      }
+                    ],
+                    "className": "androidx.compose.ui.platform.ComposeView",
+                    "packageName": "com.dearby.nativeapp",
+                    "clickable": false,
+                    "enabled": true,
+                    "focused": false,
+                    "bounds": {
+                      "left": 0,
+                      "top": 0,
+                      "right": 1080,
+                      "bottom": 2424
+                    }
+                  }
+                ],
+                "className": "android.widget.FrameLayout",
+                "resourceId": "android:id/content",
+                "packageName": "com.dearby.nativeapp",
+                "clickable": false,
+                "enabled": true,
+                "focused": false,
+                "bounds": {
+                  "left": 0,
+                  "top": 0,
+                  "right": 1080,
+                  "bottom": 2424
+                }
+              }
+            ],
+            "className": "android.widget.LinearLayout",
+            "packageName": "com.dearby.nativeapp",
+            "clickable": false,
+            "enabled": true,
+            "focused": false,
+            "bounds": {
+              "left": 0,
+              "top": 0,
+              "right": 1080,
+              "bottom": 2424
+            }
+          }
+        ],
+        "className": "android.widget.FrameLayout",
+        "packageName": "com.dearby.nativeapp",
+        "clickable": false,
+        "enabled": true,
+        "focused": false,
+        "bounds": {
+          "left": 0,
+          "top": 0,
+          "right": 1080,
+          "bottom": 2424
+        }
+      }
+    ]
+  },
+  "_meta": {
+    "runtimeId": "fd0790c6-a096-49ea-83fb-01fbd5d2ef50"
+  }
+}

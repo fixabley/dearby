@@ -1,0 +1,41 @@
+[
+  {
+    "attachments": [
+      {
+        "configurationName": "Test Scheme Action",
+        "deviceId": "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName": "iPhone 17",
+        "exportedFileName": "CC819C5C-CEB7-4528-A60D-AE44F358275F.png",
+        "isAssociatedWithFailure": false,
+        "suggestedHumanReadableName": "최종 공식 출처와 신청 자기기록 안내_0_03403371-D255-4BC8-A23E-268B128EFAE6.png",
+        "timestamp": 1790481956.26
+      }
+    ],
+    "testIdentifier": "CatalogNavigationTests/testSourcePresentation()",
+    "testIdentifierURL": "test://com.apple.xcode/Dearby/DearbyUITests/CatalogNavigationTests/testSourcePresentation"
+  },
+  {
+    "attachments": [
+      {
+        "configurationName": "Test Scheme Action",
+        "deviceId": "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName": "iPhone 17",
+        "exportedFileName": "52834334-8E70-49D8-B63B-A96B70D9C615.png",
+        "isAssociatedWithFailure": false,
+        "suggestedHumanReadableName": "프로필 연락처 이력 편집_0_FBFC2D5A-58EC-4AE0-91A1-20C482C96B33.png",
+        "timestamp": 1790481969.921
+      },
+      {
+        "configurationName": "Test Scheme Action",
+        "deviceId": "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName": "iPhone 17",
+        "exportedFileName": "757F6C4A-003F-41AF-8757-56574C0843A5.png",
+        "isAssociatedWithFailure": false,
+        "suggestedHumanReadableName": "실제 API 로그인 프로필_0_F3292B75-4090-4965-A1FE-69629E9D0F9D.png",
+        "timestamp": 1790481967.498
+      }
+    ],
+    "testIdentifier": "NavigationTests/testAuthenticatedProfileAndQR()",
+    "testIdentifierURL": "test://com.apple.xcode/Dearby/DearbyUITests/NavigationTests/testAuthenticatedProfileAndQR"
+  }
+]

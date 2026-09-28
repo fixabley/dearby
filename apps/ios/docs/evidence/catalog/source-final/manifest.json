@@ -1,0 +1,17 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "792EA408-CA9F-4CDC-AD14-D395F73756F9.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "최종 공식 출처와 신청 자기기록 안내_0_B44C66A1-A910-4371-9DD9-B24C10E1BD40.png",
+        "timestamp" : 1790479973.426
+      }
+    ],
+    "testIdentifier" : "CatalogNavigationTests/testSourcePresentation()",
+    "testIdentifierURL" : "test://com.apple.xcode/Dearby/DearbyUITests/CatalogNavigationTests/testSourcePresentation"
+  }
+]

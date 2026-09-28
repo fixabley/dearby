@@ -1,127 +1,94 @@
 {
-  "entities/notice": [
-    "NoticeContext",
-    "NoticeEvidence",
-    "NoticeLocation",
-    "NoticeModel",
-    "NoticePhase",
-    "NoticeRecordSource",
-    "NoticeRepository",
-    "NoticeSource",
-    "NoticeVenue",
-    "SnapshotNoticeSource",
-    "SwiftDataNoticeSource",
-    "NoticeCacheStorage",
-    "NoticeApplicationState",
-    "NoticeScheduleState",
-    "NoticeSchedulePlaceState",
-    "NoticePlaceState",
-    "NoticeCardScheduleState",
-    "NoticeCardPlaceState",
-    "NoticeParticipationView",
-    "NoticeCardSummaryState",
-    "NoticeCardBody",
-    "NoticePreviewLabel",
-    "NoticeSourceSection",
-    "NoticeScheduleBody"
+  "pages/home": [
+    "HomePage"
   ],
-  "entities/organization": [
-    "OrganizationModel",
-    "OrganizationRepository",
-    "OrganizationSource",
-    "SnapshotOrganizationSource",
-    "SwiftDataOrganizationSource",
-    "OrganizationCacheStorage",
-    "OrganizationSummary"
+  "widgets/profile": [
+    "ProfilePage"
   ],
-  "features/addToCalendar": [
-    "CalendarDraftMapper",
-    "CalendarEditorRequest",
-    "CalendarEventDraft",
-    "CalendarAddButton",
-    "NoticeApplicationView",
-    "CalendarExportPresentation"
+  "widgets/cardFlow": [
+    "CardComposer",
+    "SendCardView"
   ],
-  "features/checkCalendarOverlap": [
-    "BusyCalendarAuthorization",
-    "BusyCalendarFailure",
-    "BusyCalendarLifecycle",
-    "BusyCalendarProvider",
-    "BusyCalendarSession",
-    "EventKitBusyProvider",
-    "CalendarConnectionControl",
-    "CalendarConnectionState",
-    "CalendarOverlapTimeline",
-    "CalendarPreferences",
-    "CalendarPreferenceStore",
-    "MemoryCalendarPreferenceStore",
-    "NoticeScheduleTimeline",
-    "BusyCalendarLifecycleModifier",
-    "CalendarPreferencesLifecycleModifier"
+  "widgets/qr": [
+    "QRPage"
   ],
-  "features/openLocation": [
-    "VenueMapLauncher",
-    "VenueMapButton",
-    "VenueMapPresentation",
-    "NoticeScheduleLocations",
-    "NoticeLocationView"
+  "widgets/wallet": [
+    "WalletPage",
+    "GuestImportView"
   ],
-  "features/saveOrganization": [
-    "FavoriteOrganizations",
-    "FavoriteOrganizationsObservation",
-    "SaveOrganizationResult",
-    "NoticeCardSaveButton"
+  "widgets/auth": [
+    "LoginView"
   ],
-  "pages/discovery": [
-    "DiscoveryView"
+  "features/contactActions": [
+    "ContactActions"
   ],
-  "pages/favorites": [
-    "FavoriteListView"
+  "features/profile": [
+    "ProfileState",
+    "ProfileRequest"
   ],
-  "pages/noticeDetail": [
-    "NoticeDetailPage"
+  "features/guestLibrary": [
+    "GuestLibraryState"
   ],
-  "pages/settings": [
-    "SettingsPresentation",
-    "SettingsViewModel"
+  "features/exchange": [
+    "ExchangeState",
+    "ExchangeRequest",
+    "ExchangeActivityState",
+    "ExchangeActivityPicker"
+  ],
+  "features/wallet": [
+    "ReceiptModel"
+  ],
+  "features/auth": [
+    "LoginState"
+  ],
+  "features/scan": [
+    "CameraScanner"
+  ],
+  "entities/identity": [
+    "CardModel",
+    "CardLink",
+    "CardRequest",
+    "CardView",
+    "ProfileModel",
+    "ContactModel",
+    "HistoryModel",
+    "ExchangeContextModel",
+    "GuestSavedCardModel",
+    "ImportResult",
+    "IdentityHeading",
+    "HistoryTimeline",
+    "ContactIcons",
+    "CardDeck",
+    "ContactSymbol"
   ],
   "shared": [
-    "BusyTimeDisplay",
-    "BusyTimeInterval",
-    "CompactPeriod",
-    "EventDayTimeline",
-    "EventPeriodPresentation",
-    "EventTimeRows",
-    "EventTimelineInterval",
-    "ExternalLinkCard",
-    "InformationRow",
-    "LocationInformation",
-    "NativeSpacing",
-    "NativeSurface",
-    "PrimaryButton",
-    "SecondaryButton",
-    "StatusMessage",
-    "BusyTimeSummaryView"
+    "APIClient",
+    "APIError",
+    "Items",
+    "EmptyResponse",
+    "LocalStore",
+    "SessionVault",
+    "SessionModel",
+    "DearbyStyle",
+    "DearbyLogo",
+    "DearbyButtonStyle",
+    "DearbySegments"
   ],
-  "entities/favorite": [
-    "FavoriteOrganizationStore",
-    "FavoriteOrganizationsRepository",
-    "UserDefaultsFavoriteOrganizationsRepository"
+  "entities/catalog": [
+    "CatalogModel",
+    "OrganizationModel",
+    "ProgramModel",
+    "ActivityModel",
+    "ActivityScheduleModel",
+    "ActivityLibraryModel"
   ],
-  "widgets/noticeDetail": [
-    "NoticeDetail",
-    "NoticeDetailState",
-    "NoticeDetailViewModel"
+  "features/catalog": [
+    "CatalogState"
   ],
-  "widgets/noticeCard": [
-    "NoticeCard",
-    "NoticeCardState",
-    "NoticeCardViewModel"
+  "widgets/catalog": [
+    "CatalogPage"
   ],
-  "widgets/favoriteOrganizationCard": [
-    "FavoriteOrganizationCard",
-    "FavoriteOrganizationCardState",
-    "FavoriteOrganizationCardViewModel",
-    "FavoriteOrganizationListViewModel"
+  "features/application": [
+    "ActivityBrowser"
   ]
 }

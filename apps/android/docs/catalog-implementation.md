@@ -1,0 +1,7 @@
+# Activity catalog implementation (#47)
+
+The client calls public `GET /v1/catalog` with no bearer token. No sample catalog is bundled. The API base URL remains an explicit Gradle property; the default reports a connection error. Room document storage commits the complete catalog before the in-memory cache changes. A failed fetch/write preserves old content; discovery projects only independently valid recruiting records and expires them even while the screen stays open. Saved lists can include past/unknown records. Origin-scoped local program/organization bookmarks and explicit application reports publish after successful writes and survive process/database recreation.
+
+Application URLs open an in-app WebView. Closing invokes an applied/not-applied/later prompt; later leaves the previous report untouched, write failure keeps the dialog open, and source links do not prompt. Applied means the user reported submission, not organizer acceptance. The fixed banner uses the requested Korean copy. Source and application URLs reject credentials, malformed authorities, and non-HTTP(S) schemes. WebView blocks file/content access, mixed content and unsupported login schemes. External-browser fallback cannot observe completion; returning alone never writes a report. External identity login, if(kakao) autofill (#36), calendar conflict checking, notifications and production service deployment remain separate work.
+
+Validation evidence and final counts are maintained in `docs/VERIFICATION.md`; UI fixtures are test-only and must not be described as real API evidence.

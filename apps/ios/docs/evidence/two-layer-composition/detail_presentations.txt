@@ -1,3 +1,0 @@
-PASS: detail date/time hierarchy, same-day/multiday/year/mixed precision/seconds/unknown/conflicting/invalid/reversed; lossless explicit room separation, address deduplication, safe online URL
-PASS: calendar/cache lexical safety (132 Swift files; scope: all), guard fixtures
-PASS: timeline continuous clipping first/middle/last; date selection bounds; year/end-midnight exclusive; short exact duration; unknown/deadline/mixed/invalid/conflict/reversed/zero suppressed; DST23/25 and half-hour ticks; century interval bounded day projection

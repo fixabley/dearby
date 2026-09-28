@@ -1,102 +1,27 @@
-# Dearby 협업 방식
+# Dearby 협업 기준
 
-사용자는 API·Android·iOS 작업을 별도 Orca 세션과 Git worktree로 나누고,
-메인 세션에서 공통 규격과 진행 상황을 조율하도록 요청했다.
+## 2026-09-27 최신 승인
 
-- 플랫폼 작업은 메인 Dearby의 하위 Orca worktree·담당 세션에 배정한다. Git base와 Orca 부모 연결은 별개이며 새 세션 생성 시 하위 연결을 확인한다. 여러 플랫폼의 독립 작업은 Orca orchestration으로 병렬 배정할 수 있다.
-- 새 에이전트를 만들기 전에 기존 담당 worktree와 세션을 확인한다. 현재 연결은 `docs/workstreams/README.md`를 참고하고 런타임 상태는 Orca CLI에서 다시 확인한다.
-- Orca 감독을 내장 서브에이전트로 중복 실행하지 않는다. 감독 요청은 orchestration 스킬, worktree·세션 관리는 orca-cli 스킬을 따른다.
-- API의 기본 소유 범위는 `apps/dearby-api/`, Android는 `apps/android/`, iOS는 `apps/ios/`다.
-- `shared/contracts/`, 공통 추론 규칙, 루트 설정의 변경은 메인 세션에서 먼저 조율한다. 각 worker는 다른 플랫폼이나 다른 checkout에 직접 쓰지 않는다.
-- 자기 worktree에서만 빌드·수정한다. 상대 경로의 기준을 확인하고 플랫폼별 checkout마다 빌드 결과와 로컬 설정을 관리한다.
-- 작업 시작·구현·검증·차단·완료 시 Orca 카드의 짧은 comment와 자기 `docs/workstreams/<platform>.md`를 갱신한다. 세션 응답에도 변경 사항·검증·남은 작업을 한국어로 요약한다.
-- 실행하지 않은 검증을 통과했다고 기록하지 않는다. 기존 기록과 이번 실행을 구별한다.
-- 감독 중에는 live Dispatch preamble의 질문·완료 보고 절차를 따른다. 완료 후에는 다음 지시를 기다리며 사용자 요청에 따라 세션을 유지한다.
-- 사용자가 플랫폼 세션에 직접 지시하면 해당 지시를 따른다. 다른 세션에서도 같은 변경을 동시에 시작하지 않도록 담당 범위를 확인한다.
-- worktree 간 파일·대화는 자동 동기화되지 않는다. 공통 변경과 플랫폼 커밋의 통합은 메인 세션에서 검토 후 수행하며, 강제 푸시나 임의의 기존 변경 삭제를 하지 않는다.
-- 전체 저장소 검색 시 로컬 하위 worktree인 `dearby-api/`, `dearby-android/`, `dearby-ios/`를 중복 검색하지 않는다.
+- 현재 제품 정본은 `docs/product/native-spec-2026-09.md`, 확정 Seed는 `.symposium/scratch/socrates.md` Cycle 4다. 사용자가 iOS·Android 전체 서비스 개발과 기존 웹 제거를 승인했다. 이전 웹 규칙은 docs/context/archive/2026-09-27-before-native-restart/AGENTS.md에 보존한다.
+- 개발 중 차단 사항은 사용자에게 질문하며 멈추지 않고 GitHub 이슈로 남긴다. 원인·영향·재현/확인 증거·해소 조건·의존 작업을 기록하고 독립 작업부터 계속한다. 이슈 작성만으로 해결·완료 처리하지 않는다.
+- 가역적 구현 세부는 근거를 기록해 진행한다. 외부 계정·인증키·권한 또는 개인정보 공개 범위를 임의로 확보·승인됐다고 간주하지 않는다. 그 조건에 의존하는 작업만 보류한다.
+- 이전 네이티브 개발지침은 `docs/context/archive/2026-09-24-before-web-rebuild/AGENTS.md`를 적용하되 최신 제품 명세와 사용자 지시가 우선한다. 실제 존재하지 않는 검사 도구·캐시·연동을 구현 완료로 표현하지 않는다.
 
-## 컨텍스트 보존
+## 현재 구현 경계
 
-사용자는 컨텍스트 압축 전마다 역할별 Markdown 인계를 남기도록 요청했다.
+- apps/ios는 SwiftUI, apps/android는 Kotlin/Compose, apps/dearby-api는 서버 담당이다. shared/contracts/native-v1.md 변경은 조율 세션이 소유한다.
+- 전체 제품 정본의 모든 요구를 이번 첫 구현 완료로 축소하지 않는다. 명함·프로필·저장 첫 구현과 실제 이메일·푸시·캘린더·외부 사이트 검증을 구분한다.
+- 흰색·청록색, 다섯 탭, 공개 범위 선택과 비로그인 ID 저장을 유지한다. 생성·게시·상대 명함함 전달은 인증 및 서버 성공이 필요하다.
+- 모델과 화면 State, 상태 소유권, FSD·SwiftData/Room 저장 실패 계약은 이전 네이티브 지침을 따른다. 단순 레이어 우회용 래퍼를 만들지 않는다.
+- 공식 출처 스냅샷은 shared/data에 보존되며 실시간 수집 결과가 아니다. 현재 모집 여부는 시각·원문 근거로 검증한다.
 
-- 압축이 임박했음을 알 수 있거나 수동으로 컨텍스트를 정리하기 전에는 `docs/context/README.md`를 목차로 사용하여 관련 역할 문서를 갱신한다.
-- 자동 압축 시점을 직접 제어하거나 사전 알림을 보장할 수 없으므로 주요 결정·범위 변경·작업 완료 시점에도 함께 갱신한다.
-- 파일명은 coordinator, ios, android, api, product-planning 등 역할과 내용을 직관적으로 나타내고 기존 파일을 갱신하여 최신 재개 지점을 명확히 한다.
-- 사용자 목적·승인 범위·결정 이유·완료/미완료 작업·관련 파일·실행한 검증과 한계·이슈/PR·다음 행동을 기록한다. 과거 결과를 새로 실행한 결과로 표시하지 않는다.
-- Git/worktree/Orca 연결 정보는 확인 시점을 표시하고 재개 시 실시간 상태를 재확인한다. 토큰·비밀번호 등 비밀 정보는 기록하지 않는다.
-- 플랫폼 담당자는 자기 checkout의 역할 문서와 `docs/workstreams/<platform>.md`를 갱신하고 메인은 공통 결정과 인계 목차를 조율한다. 다른 checkout에 임의로 쓰거나 자동 동기화된 것으로 가정하지 않는다.
-- 압축 후에는 이 파일과 컨텍스트 목차, 담당 역할 문서를 먼저 읽고 완료된 일을 반복하거나 기존 목표를 잃지 않도록 한다.
+## 협업·검증
 
-## PR과 커밋 분리
-
-사용자는 PR 내부 커밋을 작업 단계가 아닌 기능·컴포넌트 단위로 작게 나누길 원한다.
-
-- 예: 공고 카드 컴포넌트 분리, 즐겨찾기 조직 카드/행 컴포넌트 분리, 공고 상세 컴포넌트 분리.
-- 책임 분리 → 상태 변경 → 테스트 → 문서 같은 단계별 커밋을 기본 방식으로 삼지 않는다.
-- 한 기능·컴포넌트 변경에 필요한 코드·테스트·문서는 같은 커밋에 묶는다. 커밋마다 의도가 하나여야 하며 가능한 한 빌드·검증 가능한 상태를 유지한다.
-- 기능 간 공통 의존성 변경은 필요한 경우 별도 선행 커밋으로 두고 해당 필요성을 설명한다. 논리적으로 연결된 변경을 억지로 나누지 않는다.
-- 이 요청은 앞으로의 작업 방식이다. 이미 게시한 PR의 커밋 이력을 임의로 재작성하거나 강제 푸시하지 않는다.
-
-## 네이티브 FSD 구조
-
-사용자는 iOS·Android 컴포넌트를 FSD 기반으로 분리하도록 요청했다. 현재 공통 기준은 docs/architecture/native-apps.md, 실제 플랫폼 트리와 노출 진입점은 각 앱 ARCHITECTURE.md를 따른다. 화면/위젯/사용자행동/도메인/범용 UI 경계를 구분하고 상향 의존·같은 레이어의 다른 슬라이스 직접 참조를 피한다. 화면 간 조립은 App에서 수행한다. 단일 네이티브 모듈의 폴더 경계를 컴파일러가 완전히 강제한다고 주장하지 않고 구조검사 및 리뷰로 보완한다.
-
-
-## Swift 코드 검사
-
-SwiftLint는 일반 Swift 스타일, Harmonize/SwiftSyntax는 FSD 경계·폴더 규칙을 검사한다. `apps/ios/.swiftlint.yml`을 정본으로 사용하며, `scripts/setup_swiftlint.sh`의 고정 버전·체크섬으로 설치 후 `tests/run_swiftlint.sh`를 실행한다(경로는 apps/ios 기준). baseline이나 광범위 disable로 위반을 숨기지 않고 필요한 한 줄 예외는 이유를 기록한다. 코드 수정 후 관련 회귀와 기존 구조 검사를 유지한다.
-
-## Ponytail 변경 후 리뷰 (2026-09-20 승인)
-
-- Ponytail은 구현 후 변경 diff의 과도한 설계를 검토하는 `ponytail-review` 용도로 사용한다. 일반 `ponytail` 스킬의 상시 모드나 자동 주입 hook을 활성화하지 않는다.
-- 기능 단위 변경을 마친 뒤 해당 diff와 관련 호출 흐름을 읽고, 중복·죽은 코드·불필요한 전달 계층·기존 표준/네이티브 기능으로 대체 가능한 코드를 검토한다. 사용자의 별도 요청 없이 전체 저장소 감사나 구현 도중의 일괄 최소화로 범위를 넓히지 않는다.
-- 사용자 요구와 이 저장소의 FSD 경계·공개 API·상태 소유권·화면 수명·독립 Repository·캐시 계약·필수 검증이 우선한다. 구현체/호출자가 하나라는 이유만으로 경계를 삭제하거나 파일 수·줄 수를 줄이기 위해 컴포넌트를 합치지 않는다.
-- 리뷰는 파일/줄, 불필요한 이유, 대체 방법, 유지해야 할 동작·경계를 간결하게 제시한다. 줄 수 절감은 참고치이며 목표나 승인 근거가 아니다. 근거 없는 절감 수치를 만들지 않는다.
-- 정확성·보안·접근성·성능 문제는 기존 리뷰와 관련 회귀 검증으로 확인한다. Ponytail 리뷰가 이를 대체하지 않으며, 줄 수 절감만을 이유로 기존 테스트를 단일 smoke test로 축소하거나 구조 검사·lint 규칙을 완화하지 않는다.
-- 스킬은 수정 후보만 보고한다. 후보를 적용할 때는 현재 사용자 승인 범위와 플랫폼 담당/자기 worktree 원칙을 따르고, 필요한 회귀·구조 검증을 수행한다. 요구사항이나 설계 계약 변경은 별도 제안으로 남긴다.
-- 2026-09-20 추가 승인: 기존 설계 제안 자체도 재평가한다. 기능·저장 복원/실패 보존·개인정보/권한·접근성·상태 수명은 유지할 계약으로 보고, 레이어 거리·파일 분리 단위·접미사/경로 강제·특정 클래스 배치는 목적 달성 수단으로 검토한다. 각 규칙의 해결 문제, 실제 코드 비용, 대안, 동작 보존 검증을 근거로 유지/완화/제거를 제안한다. 기존 규칙이라는 이유만으로 후보를 기각하지 않는다. 새 규칙이 구체화되기 전 검사만 비활성화하지 않으며, 채택한 구조 변경은 코드·규칙·회귀를 함께 맞춘다.
-- 설치 위치·고정 원본·재개 안내는 `docs/context/coordinator-ponytail-review-policy.md`를 따른다. 담당 세션에서 스킬이 보이지 않으면 설치되었다고 가정하지 말고 확인한다.
-
-## 도메인 Model과 화면 State
-
-사용자가 정한 최신 규칙은 공고 NoticeModel과 독립 OrganizationModel, 화면별 ViewModel/State 조립이다. 이전 Notice/NoticeDetail 이중 엔티티 및 상세 생성자 조립 제안보다 우선한다.
-
-- NoticeModel은 공고 정보와 조직 ID/역할만 보유하며 OrganizationModel·조직 이름·경로를 보유하거나 조회하지 않는다.
-- NoticeRepository와 OrganizationRepository의 원본 저장·cache-aside는 별개이며 App이 인스턴스를 공유하고 snapshot 교체 시 캐시를 무효화한다. UI에서 전역 저장소에 직접 접근하지 않는다.
-- NoticeCardViewModel은 두 모델과 공유 즐겨찾기 상태를 조합해 NoticeCardState를 제공한다. 상세도 NoticeDetailViewModel→NoticeDetailState로 같은 규칙을 따른다.
-- 화면별 표시 타입은 State 접미사, 원본 도메인 타입은 Model 접미사를 사용한다. View는 State와 콜백으로 표시하며 작은 하위 View에 불필요한 ViewModel을 만들지 않는다.
-- 즐겨찾기 원본 상태는 하나이고 State.saved는 이를 반영한다. ViewModel마다 복사한 즐겨찾기 목록을 독립적으로 변경하지 않는다.
-- entities/notice와 entities/organization은 서로 직접 참조하지 않고 상위 ViewModel에서 조합한다. Feature가 화면 State에 상향 의존하지 않도록 지도·캘린더에 필요한 모델 값은 App에서 전달한다.
-
-
-## iOS 3계층 캐시
-
-사용자가 SwiftData를 인메모리 캐시 다음 계층으로, 그 다음 외부 저장소(mock-data, 향후 API)를 요청했다. 공고·조직 각각 L1 → L2 → 외부 source 순서로 조회하고, 외부 성공 결과를 명시적으로 영속 저장한 뒤 L1에 반영한다. 저장/조회 오류와 missing을 구분한다. App이 SwiftData 수명과 snapshot 버전/캐시 무효화·화면 표시 상태 교체를 조율하며, domain Model·State·순수 UI 경계를 유지한다. 현재 mock은 동기 번들 기반이며 실제 API 연결의 비동기/취소 정책은 별도 구현 범위다.
-
-## 네이티브 Widget 배치와 Harmonize 개편
-
-2026-09-16 사용자는 FSD 공식 문서 비교 후 Harmonize 규칙 작성과 실제 리팩터링·회귀 검증을 요청했다. 상세 목표는 docs/architecture/fsd-domain-rules-draft.md다. iOS는 widgets/<slice>/ui|model, pages/<slice>/ui|model 및 app 목적별 세그먼트를 사용한다. 2026-09-16 추가 결정으로 소스 폴더는 소문자로 시작하는 lowerCamelCase(noticeCard, addToCalendar)이며 약어는 ui/api/lib로 소문자 표기한다. Swift 타입·파일 이름과 Xcode 프로젝트/asset 규격 이름은 유지한다. Entity 순수 UI는 자기 도메인 값과 콜백을 받으며, Widget/Page 연결 UI는 자기 ViewModel과 Feature 진입점을 사용할 수 있다. 최신 승인인 직접 하위 두 레이어 제한을 적용하며 app/providers의 조립만 예외다. 같은 레이어 다른 슬라이스 직접 참조는 금지한다. 이 결정은 이전 Widget 안의 UI/Model 폴더 금지보다 우선한다. Android는 이번 iOS 작업에 포함하지 않으며 현재 widgets/<domain>/<widget>/ 동위 배치를 유지한다. 구현/검사 완료 여부는 각 플랫폼 인계와 ARCHITECTURE.md를 확인한다.
-
-## Android 3계층 캐시
-사용자는 iOS와 동등한 Android 영속캐시도 승인했다. Room 기반 L1→L2→외부mock 조회와 명시적 저장승격, snapshot transaction 무효화, 실패시 데이터보존, off-main I/O와 취소후 stale publish 방지를 적용한다. Shared UI는 플랫폼 네이티브 디자인버튼, Widgets는 도메인별 화면조합을 담당한다.
-
-## 워크트리 정리 이후 최신 상태 (2026-09-14)
-
-#1의 PR #3/#4/#5/#6을 main에 통합하고 기존 플랫폼 worktree·세션을 제거했다. 이전 terminal handle과 retained 상태는 재사용하지 않는다. 다음 플랫폼 구현은 최신 main에서 이슈 전용 역할별 worktree·Orca 세션을 새로 구성한다. #2와 #10은 PR7/8/9/11/12로 main 통합했고 2026-09-15 완료된 플랫폼 세션과 worktree도 정리했다. 후속 #13/#14/#15는 미착수다. 현재 세션 배정은 docs/context/orca-sessions-and-worktrees.md를 따른다. 재개 시 docs/context/README.md와 coordinator-current-task-and-decisions.md를 먼저 읽는다. 백업 위치는 coordinator-architecture-merged-and-worktrees-cleaned.md에 있다.
-
-## 컨텍스트 문서 유지 방식
-
-현재 상태는 담당 역할 문서에서 교체·갱신하고 동일한 작업 로그를 여러 파일에 복제하지 않는다. 진행·완료·미착수를 구분하며 상세 이력은 docs/context/archive/날짜별-폴더에 보존한다. docs/workstreams는 역할별 context로 연결되는 안내로 유지한다. 과거 스냅샷의 세션 ID·Draft·미병합 상태를 현재 지시로 해석하지 않는다.
-
-## 직접 하위 두 레이어 제한 (2026-09-16 최신 승인)
-
-App→Pages/Widgets, Pages→Widgets/Features, Widgets→Features/Entities, Features→Entities/Shared, Entities→Shared만 직접 참조한다. 동일 슬라이스 내부는 허용하고 형제 슬라이스·상향 참조 금지는 유지한다. app/providers의 의존성 생성·공유 수명 관리·주입만 모든 하위 레이어 조립을 허용한다. app/routes와 entrypoint는 예외가 아니다. providers에 기능 UI를 몰아넣거나 타입 별칭·단순 전달 래퍼로 제한을 우회하지 않는다. ContentView는 시작 상태와 루트 화면 연결만 맡고 저장소 초기화·재시도, 화면별 지도/캘린더 행동, 설정 표시를 책임에 따라 분리한다. 현재 iOS에 적용했으며 Android 적용 완료를 뜻하지 않는다.
-
-## 설계 단순화 구현 승인 (2026-09-20 최신)
-
-사용자가 재평가 후보와 보류 항목까지 변경·병합하도록 승인했다. 이전 두 계층 제한은 기본값으로 유지하되 Pages/Widgets에서 공개된 Shared 디자인 UI·토큰을 직접 사용할 수 있다. Shared 저장소/네트워크/OS API와 lib 전체를 개방하지 않는다. 상세 Route는 앱 소유 CalendarPreferences를 Page에 전달하는 조립만 좁게 허용하고 Repository/OS/API 구현을 직접 실행하지 않는다. 정확한 예외는 iOS 실행 검사와 ARCHITECTURE.md를 함께 갱신한다.
-
-순수 UI는 Entity/Shared UI 기본 경계와 명시적 표시 컴포넌트 계약으로 검사하며 Content 파일명만을 근거로 삼지 않는다. State의 주 타입·위치·값 의미는 보존하되 같은 파일의 보조 타입까지 State 접미사를 강제하지 않는다. ViewModel도 이름만으로 참조형이 필수라고 보지 않고 실제 상태 소유·Observation 수명에 맞춰 판단한다. 기존 동작·원본 모델·캐시/권한/취소·접근성·회귀 검증은 유지한다. 의미있는 표시 컴포넌트는 Feature에서 소유 Widget/Page로 옮길 수 있으며 줄 수를 이유로 무조건 인라인하지 않는다. iOS 구현 완료 여부는 역할 인계와 검증 결과를 따른다. Android까지 이행 완료된 것으로 간주하지 않는다.
-
-2026-09-20 추가 승인: 같은 설계 단순화 기준을 Android에도 적용한다. 실제 Compose 구조에 대응되는 항목만 정리하며 Swift 전용 문법/검사 체계를 억지로 이식하지 않는다. Android 구현·검증 완료 여부는 담당 역할 문서를 따른다.
+- 구현은 메인 하위 Orca worktree·담당 세션에 배정하고 메인은 공통 결정·통합을 맡는다. 생성 전 기존 worktree·세션을 확인한다. 내장 서브에이전트로 Orca 감독을 중복 실행하지 않는다.
+- 사용자는 하위 세션에서도 현재 작업을 볼 수 있도록 완료 후에도 세션 유지를 요청했다. 작업·검증·남은 일을 해당 세션 응답과 카드·역할 문서에 남기고, supervised worker 완료 시 사용자 요청에 따른 retain을 사용한다. 임의 종료하지 않는다.
+- 담당자는 자기 checkout만 수정·빌드한다. root 설정 변경은 배정 시 범위를 조율한다. 다른 checkout 변경·강제 push·기존 변경 삭제는 임의로 하지 않는다.
+- 기능·컴포넌트 단위로 작은 커밋을 만들고 해당 테스트·문서를 함께 묶는다. 게시한 이력은 재작성하지 않는다.
+- 변경 후 ponytail-review로 불필요한 복잡성을 검토하되 정확성·접근성·상태/저장 회귀는 별도로 확인한다. 실제 실행한 검사만 통과로 기록한다.
+- 의미 있는 제품 규칙과 저장 동작을 테스트한다. 플랫폼별 lint·타입/구조 검사·네이티브 빌드·관련 테스트 및 시뮬레이터/에뮬레이터 흐름을 검증한다. 서버는 HTTP·저장·권한 테스트와 build/typecheck를 검증한다. 실행하지 못한 항목은 명시한다.
+- docs/context/README.md를 목차로 현재 역할 문서를 갱신한다. 주요 결정·완료·압축 전 인계를 남기고 과거 기록은 archive에 보존한다. 세션 ID와 검증 시점을 구분한다.
+- 전체 저장소 검색에서 하위 worktree·node_modules·.next·역사 archive를 불필요하게 중복 탐색하지 않는다.

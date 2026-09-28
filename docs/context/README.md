@@ -1,14 +1,21 @@
 # Dearby 컨텍스트 목차
 
-갱신: 2026-09-23 KST. 재개할 때 **조율 문서 → 담당 역할 문서 → 필요한 검증 기록** 순서로 읽는다.
+갱신: 2026-09-27 KST. 재개할 때 **조율 문서 → 담당 역할 문서 → 필요한 검증 기록** 순서로 읽는다.
 
-## 재개 지점
+## 최신 재개 지점 — 2026-09-27
 
-2026-09-23: PR27~34의 iOS·Android 설계 단순화는 병합 완료다. 사용자가 남은 기획·발표 문서의 커밋·push·병합과 Dearby 하위 세션·worktree 정리를 승인했다. 진행 결과는 [조율 문서](coordinator-current-task-and-decisions.md), 기획 정본과 미정 항목은 [제품 역할 문서](product-planning-and-github-issues.md), 백업·세션 상태는 [Git·Orca 운영](orca-sessions-and-worktrees.md)을 따른다. 신규 앱 구현 승인은 없으며 dearby-ir의 후속 발표 작업은 별도다. Ponytail은 변경 후 리뷰 전용이며 상시 hook은 없다.
+[네이티브 재착수](native-restart-2026-09-27.md)와 [확정 제품 명세](../product/native-spec-2026-09.md)가 최신 정본이다. Cycle 4 Seed 확정, iOS·Android 개발·웹 제거 승인. 차단 사항은 이슈로 남기고 독립 작업을 계속한다. 첫 명함 구현은 통합·원격 CI 통과했고 활동 카탈로그와 발견·저장·상세·신청 기록까지 통합·로컬 검증했다. 최신 원격 CI 상태는 조율 문서와 PR40에서 확인한다. 실행 세션과 다음 행동은 [조율 문서](coordinator-current-task-and-decisions.md)를 따른다. 아래 9월 24일 웹 상태는 이전 이력이다.
+
+## 이전 재개 지점
+
+현재 완료: 공식 컨퍼런스·선발형 연합동아리 28프로그램·발견 홈·활성 공고 노출 통합·메인 검증. [조사 정본](../research/korea-it-conferences-2026-09.md), 유지 중인 Orca 웹 세션·미리보기는 조율 문서를 확인한다.
+
+2026-09-24: 사용자 요청으로 네이티브·API 실행 코드를 보존 후 제거하고 최근 재기획 기반 웹을 재구현한다. 인터페이스는 YouTube 클론, 범위는 프로그램 탐색·필터·상세·조직/프로그램 스크랩이다. [조율 문서](coordinator-current-task-and-decisions.md)가 최신 작업 정본이다. 아래 플랫폼 문서는 과거 구현 이력이며 신규 웹 규칙으로 해석하지 않는다.
 
 | 문서 | 담당 정보 |
 | --- | --- |
 | [조율·현재 작업](coordinator-current-task-and-decisions.md) | 완료 상태, 협업 원칙, 다음 행동 |
+| [웹 구현 인계](web-implementation-and-handoff.md) | 새 Next.js 웹의 구현·검증·프로토타입 한계 |
 | [iOS 인계](ios-implementation-and-handoff.md) | SwiftUI 상태·컴포넌트·SwiftData 경계 |
 | [Android 인계](android-implementation-and-handoff.md) | Compose 상태·컴포넌트·Room 경계 |
 | [API 인계](api-implementation-and-handoff.md) | 서버 현황, 미구현 범위, 실행 위치 |
@@ -21,7 +28,7 @@
 
 ## 정본과 이력
 
-설계의 상세 정본은 [공통 아키텍처](../architecture/native-apps.md), 각 앱 ARCHITECTURE.md, [제품 규격](../product/activity-data-v1.md)이다. 이 폴더에는 재개에 필요한 결정과 파일 위치를 요약한다.
+현재 제품 정본은 [네이티브 명세](../product/native-spec-2026-09.md), 데이터 계약은 [명함](../../shared/contracts/native-v1.md)·[활동 카탈로그](../../shared/contracts/catalog-v1.md)다. [9월 24일 웹 재기획](../product/replanning-2026-09.md)과 당시 웹 구현 인계는 역사 자료다. 플랫폼별 현재 역할 문서와 실제 검사 증거를 우선한다.
 
 정리 전 문서 17개와 workstreams 원문은 [날짜별 보관함](archive/2026-09-14-before-consolidation/README.md)에 그대로 보존했다. 과거 인터뷰·Seed 변화·중간 커밋·세션 ID가 필요할 때만 읽는다.
 
@@ -36,3 +43,5 @@
 - [기기 캘린더: 동의·내 일정 ON/OFF·바쁜 시간 겹침](issue-10-device-calendar.md) — #10 완료 규격과 후속 이슈.
 
 - [FSD 구조 개편 설계안](../architecture/fsd-domain-rules-draft.md) — 2026-09-16 iOS Harmonize 리팩터링의 목표 규칙. 구현·검증 완료 여부는 조율/플랫폼 문서에서 확인한다.
+
+- [컨펌 화면별 시각 구현 기준](../design/native-visual-contract.md): 수정 후 원본 시안, 최신 문구/레이아웃 우선순위, 실제 캡처 비교 조건.

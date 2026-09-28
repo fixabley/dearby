@@ -1,56 +1,35 @@
-# macOS
 .DS_Store
-
-# Orca-managed child worktrees (full independent checkouts)
-/dearby-api/
-/dearby-android/
-/dearby-ios/
-/dearby-ios-2/
-/dearby-ios-architecture-tests/
-
-# Node.js / NestJS
 node_modules/
+.next/
+out/
 dist/
 coverage/
+playwright-report/
+test-results/
 *.tsbuildinfo
 *.log
-
-# Local environment
-.env
-.env.*
+.env*
 !.env.example
 !.env.*.example
+.vercel/
+/dearby-web/
+/orca-worktree-trash/
+/.orca-worktree-trash/
 
-# Android / Gradle
+# Next generates environment references for dev and production.
+next-env.d.ts
+
+# Native child checkouts and local build products
+/dearby-ios/
+/dearby-android/
+/dearby-api/
 .gradle/
-.kotlin/
-local.properties
-**/build/
-.cxx/
-.externalNativeBuild/
-*.jks
-*.keystore
-
-# IDE-local settings
-.idea/
-*.iml
-
-# Xcode / Swift
-DerivedData/
 .build/
+DerivedData/
+build/
+local.properties
 xcuserdata/
 *.xcuserstate
-*.ipa
-*.dSYM/
-*.dSYM.zip
-*.xcarchive/
-
-# CocoaPods / Carthage artifacts (keep lockfiles tracked)
-Pods/
-Carthage/Build/
-
-# Signing credentials
-*.p12
-*.p8
-*.mobileprovision
-*.provisionprofile
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal

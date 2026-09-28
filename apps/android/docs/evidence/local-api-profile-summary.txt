@@ -1,0 +1,8 @@
+
+com.dearby.nativeapp.LocalApiIntegrationTest:.
+
+Time: 0.802
+
+OK (1 test)
+
+

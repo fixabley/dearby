@@ -1,0 +1,79 @@
+# 웹 구현
+
+## App Store형 발견 홈·공고 노출 변경 — 2026-09-24
+
+사용자가 제공한 App Store 참고화면 및 좌우스크롤 확인 후 승인한 직접요청. 기준6a1f74f. `/`발견홈, `/?view=all`전체그리드, `/?view=available`모집중/예정그리드 분리. 상단5개모집중/예정프로그램 소개를 큰가로카드로, 서비스제작/컨퍼런스/연합동아리는 공통ProgramCard 가로목록으로 표시. 네이티브 overflow/scroll-snap, 다음카드일부노출, 수동좌우버튼/키보드/감소모션 대응. 자동재생/가짜인기/새의존성없음. 검색/유형/경험조건이있으면홈배너없이그리드. 필터초기화는발견홈대신전체그리드.
+
+모집공고는 activeNotices(open/scheduled)만 상세/카드요약에노출. 프로그램28개자체는남겨검색/스크랩가능. 기수는카드제목에서제외하고모집요약에만표시, 비용/자격/선발절차는활성상세로이동. 없으면현재확인된모집공고없음+공식사이트/스크랩. 마감/종료/미확인데이터는이력근거로보존하나화면공고로표시하지않음. 분야/경험탐색은기존대표공고근거를사용하여모집상태와분리. 기존모집중메뉴는open만유지하고새모집중/예정목록은둘다포함.
+
+담당검증: lint/typecheck/unit15/build, production전체42, devChromium12+WebKit12=24통과. 초기prod38통과/4실패는필터초기화후홈복귀동작및aria-hidden화살표까지기대한테스트selector가원인; 초기화동작/접근성기대값수정후전체42재통과. 1440/390 실제 `test-results/desktop-discovery.png`, `mobile-discovery.png`열어확인. 버튼/키보드스크롤·모두보기조건/새로고침·현재공고5개·종료프로그램검색/독립저장·console.error/pageerror0·overflow없음·axeAA0·기존hydration/저장실패회귀통과. 물리기기터치/트랙패드는직접검증하지않았고네이티브스크롤사용. dev에서카카오이미지LCP eager 권고warning이남아있음(상단동일이미지는eager,하단중복카드는lazy); error무발생과구분.
+
+Ponytail 검토: 숨긴종료공고의도달불가표시분기/스타일삭제. 최종 Lean already. Ship. 새추상화는4개가로섹션에서실제재사용하는Shelf한개. 삭제후lint/typecheck/build및관련production발견/컨퍼런스10개재확인. AGENTS자동diff보존·미커밋,root/3000/Orca page/다른checkout/제품정본/CI미수정. 기존6a1f74f의root2433301통합/검증은메인전달사실이며이번변경과별도. 새Dispatch없으므로lifecycle재전송없이메인에통합인계하고세션retain유지.
+
+
+## 연합동아리 탐색 반영 — 2026-09-24
+
+사용자 직접 요청으로 기존6fbf5ce에서 구현. 새 Dispatch 없이 사용자 소유 작업이므로 종료된 lifecycle 재전송 없음. SOPT·피로그래밍·COTATO·YAPP·디프만·Mash-Up 6프로그램 추가 → 28프로그램/30공고/26조직. 공식 모집/소개 URL·근거는 data.ts, 이미지 OG5+대표영역캡처1 출처는 public/clubs/SOURCES.md. 후보저장소 https://github.com/itsChrisJang/dev-club-schedule 은 발견용이며 모집사실 근거는 공식 출처.
+
+전체/컨퍼런스/연합동아리 유형 필터를 URL·검색·0건 대안에 연결했다. 기존16:9카드/좌측탐색/분야칩 유지, 동아리는 카드 선발요약·활동기간·회비, 상세 기수별지원/선발절차/지원조건/공식모집링크로 구분한다. same-notice semantics, 독립 조직/프로그램 저장·저장실패·SSR hydration 유지. 새 dependency/범용 추상화 없음.
+
+사실 제한: 디프만 공식 페이지가 19기로 갱신됨을 재확인(10/2–8 모집예정, 10/17–18 인터뷰, 10/22 최종,10/31–이듬해2/20활동). SOPT는39기 OB 서버 공고만확인하여 다른파트나 신규YB자격으로 확대하지 않음. YAPP28기모집마감, 피로그래밍25기연도미표기로날짜/현재상태미확인, COTATO기수/현재모집미확인, Mash-Up16기날짜가접속일로반복되어모집미확인. DND는전형순서미확인으로제외. 자격미확인을누구나가능으로해석하지않음.
+
+담당실행검증: lint/typecheck/unit14/build(28상세SSG)/productionE2E38/devChromium10+WebKit10=20 통과. 실제1440/390 screenshots `test-results/desktop-clubs.png`, `mobile-club-detail.png` 열어검토. 공식자산6개도전부열어확인. 신규유형URL/새로고침/뒤로가기/선발정보/독립스크랩복원/console·pageerror0/overflow없음/axeAA0, 기존저장실패·hydration회귀 통과. 앱제공경험 추가로 기존0건fixture를 실제0건인Linux+앱제작으로변경했고검사완화없음. Ponytail review: Lean already. Ship. 기존필터·카드·상세에필요필드만확장.
+
+메인전달검증은별도: 직전6fbf5ce는메인에서22프로그램통합·unit13/브라우저36/실제이미지확인완료했다고 terminalread로확인. 이번동아리의 root통합/3000실제반영은메인에인계. 다른checkout/root3000/Orca page/CI/제품정본미수정. AGENTS자동diff는보존·미커밋. 완료후사용자에게보이는세션으로유지.
+
+
+## GitHub 참고 데이터 보강 — 2026-09-24 16:44 KST
+
+사용자 직접후속(새Dispatch없음), 기준95fead2. Dev-Event/dev-conf-replay 후보를 공식출처로 검증해 UbuCon×MiniDebConf2026·KCD×Ceph×OpenInfra2026·REAL Summit2026·SK AI Summit2025 추가:22프로그램/24공고/20조직. 공식OG4·기업로고2·Linux필터,공동행사중복제거·미확인값null·종료분류 유지. lint/typecheck/unit13/build/prod36/dev18과 추가4개의1440/390 검색/상세/스크랩복원·실제캡처/Ponytail검토 완료.3210/3211종료·AGENTS자동diff미커밋. [최신인계](../context/web-implementation-and-handoff.md)에 후보저장소/공식출처/한계기록. root통합은별도이며 종료된lifecycle재전송하지않는다.
+
+## KSUG 로고 추가 완료 — 2026-09-24 11:12 KST
+
+기준2373bc5, Task task_7bdc3443d670 / Dispatch ctx_49877680dea4. KSUG 공식홈페이지 조직로고를 원본그대로 로컬저장하고 기존공통아바타에 경로1개를 추가해 Spring Camp 카드/상세/조직스크랩에 적용했다. lint/typecheck/build 및1440/390 production Chromium 이미지로드·저장복원·console/pageerror0·overflow없음 통과, 실제캡처/Ponytail검토 완료. 3210종료·AGENTS자동diff보존. 상세출처·한계는 [최신 인계](../context/web-implementation-and-handoff.md) 참고. 메인통합확인 대기·세션유지.
+
+## 기업 로고 아바타 완료 — 2026-09-24 10:24 KST
+
+Task `task_9caee518b4c1`, Dispatch `ctx_beeec3876c97`, 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9`, 기준4a6df2d. 기업8개 공식로고를 로컬저장하고 공통OrganizationAvatar를 카드/상세/스크랩조직에 적용했다. 35/44px·contain·흰배경·실패이니셜·장식이미지 처리, 커뮤니티이니셜 유지. 출처와 한계는 [웹 인계](../context/web-implementation-and-handoff.md) 최신절과 public/organizations/SOURCES.md를 따른다.
+
+담당검증 lint/typecheck/unit12/build/prod36/dev Chromium·WebKit18 통과, 1440/390 실제화면·저장복원/해제·이미지404fallback·axe AA·overflow·Ponytail 확인. 최초locator/절대URL 기대값 실패 후 수정·재통과 기록을 인계에 남겼다. 3210/3211종료, AGENTS자동diff미커밋. 이전root703c136검증완료는 메인전달이며 이번로고의 root통합/Orca최종확인은 남는다. 완료후 사용자요청으로 세션유지·대기한다.
+
+## 공식 컨퍼런스 전환 완료 — 2026-09-24 01:43 KST
+
+Task `task_11416b48d24f`, Dispatch `ctx_259771a9ca90`, 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9`. 자기 checkout 기준1dae183에서 공식 컨퍼런스18개·20회차·16조직으로 전환했다. OG14/대표영역 캡처4 및 출처·확인일을 기록했다. 회사검색·12분야·등록5상태·실제 비용/조건·모바일 참가정보 우선·공식 링크를 제공하고 공고단위필터/URL/대안/독립스크랩을 유지한다.
+
+담당 검증: lint/typecheck/unit12/build/prodE2E32/dev Chromium9+WebKit9 모두 통과, 1440/390 실제 이미지 검토, console.error/pageerror0·hydration·overflow·axe AA0 확인. Ponytail: 미사용helper/스타일/가상포스터 제거 후 Lean already. Ship. 3210/3211 종료, 자동AGENTS diff 커밋제외. 기능 f0489a5·인계 d9a8627 이후 토스 공식 보도자료로 날짜/장소/경험을 보완하고 DEVIEW의 DAN 통합 계보를 명시한 뒤 동일 검증을 모두 재통과했다. 정확한 출처·회차·미확인값·검증한계는 [최신 웹 인계](../context/web-implementation-and-handoff.md) 첫 절을 따른다.
+
+이전1dae183의 root통합(c380756)과 root unit13/prod28/dev14/실제Orca통과는 메인이 전달한 이전 기능 검증이다. 이번18개 전환은 메인 통합/Orca 최종확인이 남으며, 메인 연구58행의 후속확대는 별도 범위다. 완료보고 후 사용자에게 보이는 세션으로 유지하고 다음 요청을 기다린다. 아래는 이전 시점 기록이다.
+
+## 컨퍼런스 후속 완료 — 2026-09-24 01:08 KST
+
+새 Dispatch `ctx_e9759a9998a5`(Task `task_3f3b5dfe71b8`, 세션 `term_db69f423-a4bc-45ae-910d-ede154eab9d9`)로 아래 대기 지시를 대체하여 컨퍼런스 샘플/한국어 포스터와 등록형 공고를 구현했다. 기존 탐색·공고 단위 필터·분리 스크랩을 유지하고 참가 대상/주제·분야/등록 마감/개최일/장소 및 등록형 문구를 표시한다.
+
+자기 checkout 실제 검증: lint/typecheck/unit 13/build/production E2E 28/dev Chromium·WebKit 14 통과. 1440/390 카드·상세 이미지를 열어 확인하고 포스터 날짜 가림을 수정한 뒤 컨퍼런스 production 2개 재검증·재캡처, Ponytail 최종 Lean already. Ship. 완료. 3210/3211 listener 없음. 상세 근거는 [웹 인계](../context/web-implementation-and-handoff.md)의 최신 절에 있다.
+
+메인 전달 검증은 이전 기능의 실제 Orca 저장·복원·console.error 0이며 이번 컨퍼런스 통합 검증과 구분한다. 이번 기능의 메인 통합/Orca 확인은 남는다. 완료 보고 후 사용자가 보도록 세션을 유지하고 다음 요청까지 대기한다. 아래는 직전 가시적 인계 기록이다.
+
+## 현재 역할 — 2026-09-24 가시적 인계 후 대기
+
+사용자가 완료 후에도 보이도록 유지한 웹 담당 세션이다. 다음 사용자/메인 요청을 기다리며 메인의 새 작업·변경 상태를 요약한다. 새 구현·빌드·commit·push·PR·merge·서버 시작은 하지 않고 다른 checkout은 수정하지 않는다. 종료된 Dispatch의 `worker_done`도 재전송하지 않는다. shadcn/ui는 허용만 되었으므로 설치하지 않는다.
+
+메인 전달 기준: `81368c2`, `61f0035`, `36277a9`, `f3a0ba7`은 메인 `feat/web-rebuild`에 통합되었고 root lint/typecheck/unit 12/build/production E2E 26/dev Chromium·WebKit 12가 통과했다. 이는 이 세션의 재검증 결과가 아니다. root `http://127.0.0.1:3000` 개발서버가 실행 중이며 메인은 실제 Orca 브라우저 저장 버튼 최종 확인, 조율 문서 갱신, CI dev 회귀 연결 중이다. 아래 원본 구현 검증 기록과 상세 [웹 인계](../context/web-implementation-and-handoff.md)를 구분해 보존한다.
+
+완료: 2026-09-24 00:53 KST. 담당 checkout `/Users/jominjun/Documents/dearby/dearby-web`, 기준 `be10837`, 담당 세션 `term_c0008d89-171d-424f-8ddc-122136963514`. 세션 ID는 검증 시점과 별개다.
+
+Next/create-next-app stable 16.3.6을 npm registry에서 확인하고 공식 CLI scaffold를 root로 옮겼다. npm·App Router·TypeScript·시스템 한국어 폰트·로컬 SVG 포스터를 사용한다. 상세 실행과 인계는 [웹 인계](../context/web-implementation-and-handoff.md)에 기록한다.
+
+구현 범위는 프로그램 탐색·검색·방향/경험 필터·유효 부분 조합·되돌리기·회차별 상세·조직/프로그램 스크랩이다. 데스크톱 56px 헤더, 224px 접이식 메뉴, 가로 칩과 16:9 포스터 그리드, 모바일 단일 열과 하단 탐색을 제공한다. 모든 데이터는 샘플이며 모집 상태 기준일은 2026-09-24다.
+
+필터는 같은 현재 공고 안에서 방향 OR(모두 포함 시 AND)·경험 OR·유형간 AND를 판정한다. 속성은 같은 활동에서 결합한다. 부모·자식 중복은 가산하지 않되 현직자/동료 같은 별개 묶음은 구분한다. OR 그룹 일부 제거는 결과를 늘리지 못하므로 부분 조합 생성에서 제외하고 AND 방향만 부분집합을 만든다. 최다 선택 조건 테스트의 계산은 이 환경에서 약 3.4ms였다. 필터는 URL에 보존되어 상세에서 뒤로 돌아오기와 새로고침을 지원한다.
+
+저장 Context의 안정된 객체를 각 소비자가 useSyncExternalStore로 구독한다. 서버 스냅샷은 늦은 Suspense hydration에도 동일하게 유지하고 구독 후 저장 값을 복원한다. 손상된 원본은 자동 덮어쓰기하지 않고 재시도·명시적 초기화로 복구한다. 읽기 차단과 쓰기 실패를 구별하고 저장 실패는 현재 화면에만 반영됨을 알린다. 프로그램/조직 ID는 별도이며 다른 탭의 clear 이벤트도 반영한다. 저장 버튼은 표시 컴포넌트로 분리했다.
+
+최종 검증: lint, typecheck, production build, 단위 테스트 11개, Playwright 12개 통과. Playwright는 개인 브라우저와 분리한 Chromium으로 1440×1000 / 390×844에서 실행했고 목록·모달·상세 axe WCAG AA 검사도 포함했다. 최종 이미지 decode 후 스크린샷을 확인했다. 3210 테스트 서버는 종료되어 listener가 없다. 원격 CI·push·PR·merge·배포는 실행하지 않았다.
+
+프로토타입 선택: 방향 5개와 경험 묶음 9개, 명시적 현재 회차, 유지 조건 수·결과 수 순 최대 4개 제안, 최우선 경험 다음 중복 제거한 경험 묶음 수를 정렬에 사용한다. 전체 어휘·최종 점수·프로필·추천 학습·자격 자동 판정·수집/인증/API는 구현하지 않았다. 과거 경험은 상세에만 표시한다.
+
+## 2026-09-24 후속 검증
+
+고등학생·대학생·취준생을 공고별 audience로 분리했고 한국어 활동 요약 포스터와 대표 공고의 직무·대상·마감·장소를 카드에 표시한다. 다른 직무 모집 안내는 대표 공고와 별도로 유지한다. 개발모드 최초 직접 진입 hydration 문제를 수정 전 재현하고 useSyncExternalStore 소비자별 serverSnapshot 계약으로 수정했다. lint/typecheck/unit 12/build/production E2E 26/dev Chromium+WebKit 12 통과, 1440/390 이미지 실제 확인과 Ponytail review 완료; 자세한 근거와 세션은 웹 인계의 최신 절에 있다. 메인의 실제 Orca WKWebView 직접 진입 최종 확인은 남는다.

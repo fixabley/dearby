@@ -1,3 +1,5 @@
 # Android 담당 인계
 
-2026-09-20: 메인 Dearby의 하위 Orca 세션에서 Android 설계 단순화 구현·검증·기능별 커밋을 완료했다. 마지막 통합/PR34/병합은 메인 담당이다. 현재 상태·커밋·검증(전체 계측의 기존 실패와 수정 후 재검증 구분)·남은 OS 한계·재개 지점은 [역할 컨텍스트](../context/android-implementation-and-handoff.md)를 따른다. 완료 보고 후 세션을 임의 종료하지 않는다.
+2026-09-27 #47: 실제 catalog API·모집 목록/상세·기기 프로그램/조직 저장·신청 본인 기록·안전한 신청 WebView·등록 활동 교환 맥락을 구현했다. 기존 명함/프로필/QR/지갑 회귀와 storage/state/expiry 검사, API36 UI 캡처, 실제 격리 API와 강제 종료 복원은 [현재 역할 문서](../context/android-implementation-and-handoff.md)와 [검증 정본](../../apps/android/docs/VERIFICATION.md)을 따른다.
+
+자기 branch `feat/android-activities`, base `dcb590f`; 이전 브랜치는 보존했다. push/PR/main 통합은 메인 담당이며 완료 후 Orca 세션은 사용자 요청에 따라 유지한다. 외부 인증/자동입력·캘린더·푸시·운영 배포를 이 slice 완료로 간주하지 않는다.

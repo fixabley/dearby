@@ -1,0 +1,9 @@
+
+com.dearby.nativeapp.ScreenTest:........
+com.dearby.nativeapp.PersistenceTest:...
+com.dearby.nativeapp.CatalogScreenTest:......
+com.dearby.nativeapp.CatalogPersistenceTest:.
+
+Time: 31.341
+
+OK (18 tests)

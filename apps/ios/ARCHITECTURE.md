@@ -1,87 +1,38 @@
-# iOS domain FSD architecture
+# Native vertical slice (2026-09-27)
 
-Updated 2026-09-16 after the approved domain FSD migration. This replaces the former flat Widget and blanket rendering model/VM rules. The app remains one SwiftUI/Observation module; folder boundaries are enforced by tests and review, not the Swift compiler.
+Xcode 27 (27A266a), Swift 6 language mode / compiler 6.4, SwiftUI + Observation + SwiftData; iOS 18 minimum. No third-party app runtime dependency. Apple current system-requirements page lists Xcode 27 as stable; 27.1/27.2 are beta: https://developer.apple.com/xcode/system-requirements (checked 2026-09-27).
 
-All custom folders below `Dearby/` use lowerCamelCase, including `ui`, `api`, and `resources`. Swift filenames/types and the Xcode target/project root retain their names. Only the root `Assets.xcassets` tool-managed structure keeps Xcode asset naming. Both Python and Swift physical inventories reject invalid directories, including empty/non-Swift directories; there is no FSD source exclusion.
+## Ownership
 
-## Production layout (Dearby/)
+- `app/entrypoint`: app launch and storage-load failure UI.
+- `app/providers`: root container/session lifetime, account transitions and HTTP orchestration. Account-changing responses are rejected if the initiating token is no longer active.
+- `app/routes`: composition of pages/widgets, sheets and URL routing; no direct storage/OS implementation.
+- `pages/home`: flat five-tab bar, native NavigationStack routes and connection banner, generic supplied content. Discovery/saved paths persist across tab selection; feature presentation state remains local and account/domain state remains provider-owned. Detail routes hide the bottom tabs.
+- `widgets`: profile, QR, wallet, card composition/selection and login presentation. Domain values are at most two layers below; actions arrive from providers or features.
+- `features`: ProfileState owns account-scoped master profile; GuestLibraryState owns guest IDs and success-only removal; ExchangeState owns durable account-bound pending request; auth owns challenge requests; wallet owns card/context receipt composition; scanner owns VisionKit camera lifecycle.
+- `entities/identity`: pure profile, public card, contact/history, guest ID/context and link values. Profile and published card are one identity domain slice with independent value types; there is no cross-entity lookup or repository coupling. CardView only renders the published snapshot.
+- `shared`: URLSession HTTP, Keychain and SwiftData document primitives. No domain imports. The exported DearbyStyle, DearbyLogo, DearbyButtonStyle and DearbySegments are small pure SwiftUI primitives shared by widgets/pages; there is no theme or navigation engine.
 
-```text
-app/
-  entrypoint/        DearbyApp
-  routes/            ContentView, AppTabs, NoticeDestinationView
-  providers/         snapshot/container/session, calendar preferences, injected provider factories
-pages/
-  discovery/ui/      feed paging, save-result feedback, navigation callbacks
-  favorites/ui/      saved organization list, empty state and storage disclosure
-  noticeDetail/
-    ui/              NoticeDetailPage: List, navigation title and presentation
-  settings/ui/       connection preference presentation
-widgets/
-  noticeCard/
-    ui/              connected NoticeCard, pure NoticeCardContent and local schedule/save/detail action views
-    model/           NoticeCardViewModel, NoticeCardState, schedule/place states
-  noticeDetail/
-    ui/              detail sections, identity presentation and feature composition
-    model/           NoticeDetailViewModel/State, organization/notice assembly
-  favoriteOrganizationCard/
-    ui/              connected card, pure FavoriteOrganizationCardContent
-    model/           FavoriteOrganizationCardViewModel/State, saved-list ViewModel/index/subscription
-features/
-  saveOrganization/model|ui/       save/remove facade and controls
-  addToCalendar/model|api|ui/      draft/date policy, OS editor bridge, add button
-  openLocation/api|ui/            exact venue map URL/launcher and button
-  checkCalendarOverlap/model|api|ui/ ephemeral busy query/session, authorization/retry UI, EventKit read adapter
-entities/
-  notice/model|api|ui/             independent notice values, repository/cache/source, notice-only display projections and pure content
-  organization/model|api|ui/      organization values, repository/cache/path resolution, summary section
-  favorite/model|api/             single observable ID set and persistent repository
-shared/
-  ui/                            native controls, rows, generic timeline presentation
-  lib/                           domain-free date/time/display values and interval calculations
-```
+`architecture/public-api.json` enumerates exported declarations, `pure-ui.json` marks HomePage's effect-free contract. Restored Harmonize 1.2.1 + SwiftSyntax 601.0.1 checks declaration rules, explicit two-layer distance (only app/providers construction exception), same-layer slice isolation, exported APIs, effect-free UI and exact path conventions. Fixtures are retained from pre-web f1d9a63. Source inventory changed from deleted Dearby/ to Sources/; obsolete positive cardinality requirements for absent Notice ViewModels/shared design components were removed, while every declaration/boundary rule remains unchanged. Syntax references are not compiler type resolution; inferred dependencies and macros still need review.
 
-Empty segments are not created. One-use card content stays in its Widget. Independent UI types added by this migration use separate files; title Text is not extracted into a wrapper.
+## Persistence and transport
 
-## Direction, segments and public API
+Models are value-semantic wire/domain values; feature State classes own save/rollback and lifecycle. UI never mutates SwiftData records. Profile editing has a separate draft and dismisses only after successful explicit save. Store creation/read errors block initial UI instead of silently falling back to empty memory. SwiftData read corruption preserves original disk bytes.
 
-By default only the nearest **two** lower layers may be directly referenced: app→pages/widgets, pages→widgets/features, widgets→features/entities, features→entities/shared, entities→shared. Only `app/providers/` is the composition root exception for constructing, retaining and injecting any lower-layer dependency. `app/routes/` and `app/entrypoint/` obey the two-layer rule, except the exact detail route may pass the exported CalendarPreferences instance into its Page. Routes still reject direct storage/network/OS work and API declarations. Pages/Widgets may use exported Shared UI design components/tokens directly; Shared api/lib/model and blanket imports remain outside that exception. Same-slice UI→Model→API remains allowed; sibling slices remain forbidden. Framework imports such as SwiftUI/Foundation are not FSD layer references. Existing framework safety checks remain.
+Profiles are keyed per account; guest drafts cannot silently upload after login. New account selection loads GET /profile. Existing account-local edits survive refresh until an explicit publishing action uploads the master profile using a request without id/updatedAt. Logged-out profile UI is a login invitation. Keychain sessions are namespaced by configured API URL and device-only when-unlocked accessibility. No tokens in preferences, logs or SwiftData. URLSession uses ephemeral storage. Authenticated 401 clears the active session/UI but preserves account drafts and guest IDs. Local logout works when remote revocation cannot be confirmed and says so.
 
-Provider exceptions never permit unexported internals or UI implementation. AppComposition constructs shared dependencies. NoticeDestinationView constructs its Page directly using its loaded ViewModel and the App-owned CalendarPreferences; its narrow composition exception does not grant repository or OS access. Cross-slice typealias/re-export facades are prohibited. Inferred/member/macro/dynamic dependencies still require review.
+Guest records contain cardId/context/savedAt, not private profiles or images. Public-card previews in import UI are transient. Import removes only selected IDs with a recognized success status and a valid receipt UUID. Transport, malformed response and local-save failure preserve original IDs. Idempotent server retry covers server success followed by local persistence failure.
 
-The executable [public-api.json](architecture/public-api.json) names cross-slice contracts. Swift `internal` does not imply permission to reach another slice's internals; `public` is not required to be an FSD entrypoint. NoticeRecord, OrganizationRecord and NoticeStorageCodec are internal. App uses NoticeCacheStorage/OrganizationCacheStorage schema/deletion/fingerprint contracts instead. The checker rejects unknown/duplicate manifest entries and ambiguous declarations.
+Pending send payload/request ID persists before HTTP and is account-scoped. Same ambiguous send retains its ID across restart; confirmed delivery clears it. No tap changes reciprocal locally; server GET /wallet owns this state. Confirmed delivery and subsequent list-refresh failure have separate messages.
 
-Entity UI may receive its own Model. shared/Entity UI and presentation declarations registered in `architecture/pure-ui.json` are pure: values/callbacks only, no repository/storage/network/OS work. Widget/Page connected UI may access its own VM and lower-layer public contracts. Shared has no upper-domain dependencies. Shared controls/tokens remain below meaningful Entity/Feature UI: NoticeCardBody, OrganizationSummary, NoticePreviewLabel, NoticeSourceSection, save controls. NoticeDetailsButton stays in its owning noticeCard Widget. Widget State retains cross-domain composition and saved values; pure entity UI receives notice-only display values and slots/callbacks. Page canvas uses the native SwiftUI system background. The concrete policy and checker limits are in [architecture/README](architecture/README.md).
+API config is an origin; /v1 is appended exactly once (also tolerates an existing /v1 prefix). Release URL validation requires HTTPS; Debug accepts loopback HTTP and only Debug plist allows local networking. Custom `dearby://card/<UUID>` links work between installed apps, validate query exclusivity and label length, and are not Universal Links. Context is unverified user input. HTTPS deployment/browser fallback is #43.
 
-## State and lifetime
+## Gates
 
-- NoticeModel carries notice values and organization IDs/roles, never OrganizationModel or repository lookup. Organization stays independent; VMs combine them into screen State.
-- Connected NoticeCard reads its VM and delegates save; Discovery retains paging, save feedback/haptic trigger and detail route callback. Connected FavoriteOrganizationCard reads its VM and delegates explicit remove.
-- entities/favorite/FavoriteOrganizationStore is the sole observable saved-ID owner. The shared features/saveOrganization/FavoriteOrganizations facade validates organization targets and exposes that state without a copy. Existing UserDefaults key/array restoration, idempotent insert, explicit delete and unresolved no-write semantics remain. The facade sends synchronous post-mutation changes through weak subscriptions; it does not copy IDs. FavoriteOrganizationListViewModel owns only visible saved cards, a single organization-to-feed index and explicit load failure/retry. Unsaved organizations are not preassembled. AppState switches list subscriptions only after snapshot commit. See [saved list composition](docs/SAVED-ORGANIZATION-LIST.md).
-- Observable `AppState` owns startup/retry and the current cards/favorite cards, snapshot generation and shared dependencies. `AppSnapshotComposition` in app/providers constructs the independent repositories and candidate display models. `NoticeSession` is removed; no replacement Notice Store is introduced. ContentView selects loading/failure/ready; AppTabs owns tab/navigation roots and SettingsPresentation owns prompt/settings lifecycle.
-- `SwiftDataSnapshotStore` owns disk snapshot metadata and transactions only. L1→SwiftData L2→bundled mock is retained per entity. Ordinary external reads persist before L1 promotion; during snapshot replacement, private candidate L1 entries and display models remain unpublished until the combined metadata/L2 save succeeds. Composition/save failure preserves the existing manifest, both L2 slices, published repositories and visible models. Success replaces both repositories and all cards/favorite cards, then advances the routing generation. See [snapshot transactions](docs/SNAPSHOT-TRANSACTIONS.md).
-- Detail ViewModels are created on detail entry, never during feed startup or View body evaluation. A value `NoticeDetailRouteState` in app/routes owns one VM and the loaded `(notice ID, generation)` key for that screen lifetime; it is routing state, distinct from the Widget's pure `NoticeDetailState`. A task loads each key once, body only assembles the page, and a changed snapshot replaces open-detail state without displaying the old generation. Detail-only failure is isolated from cards. The single favorites owner remains shared across every model. See [AppState verification](docs/APP-STATE.md).
-- NoticeDetailPage owns the List/presentation; its Widget combines notice/organization State with calendar/location Features. CalendarExportPresentation/VenueMapPresentation own editor/map actions and failure presentation, and BusyCalendarLifecycleModifier owns detail attach/detach. CalendarPreferencesLifecycleModifier owns the single app scene/EventKit bridge; CalendarPreferences gates background work and resumes attached queries once. Card Widgets resolve exact phase/venue indices and delegate maps to the same feature. Routes only select destinations. No new deep-link scheme, API client, DI library or state framework is introduced.
+`bash apps/ios/scripts/setup_swiftlint.sh` installs SHA256-verified SwiftLint 0.65.1. `bash apps/ios/tests/run_swiftlint.sh` runs the unchanged rule set with current source/test roots. `bash apps/ios/tests/run_architecture.sh` runs 16 AST/fixture tests including the real production graph. Unit tests exercise disk reopening, save rollback, account isolation, strict request shape, explicit JSON nulls, import retention, auth recovery, link validation and HTTP errors. The app's iOS SDK tests are separate from macOS architecture-package tests.
 
-## Privacy and platform behavior
+## Approved visual contract (2026-09-27)
 
-CheckCalendarOverlap retains actor-confined EventKit read access. The shared features/checkCalendarOverlap CalendarPreferences owns first-use consent, permission requests, two boolean preferences and foreground gating; detail BusyCalendarSession owns selected-day queries, cancellation generations and ephemeral intervals, without its own consent/request flow. See [calendar lifetime](docs/CALENDAR-LIFECYCLE.md). OFF, close, background, revocation and stale generations clear/cancel as before. Event metadata is neither displayed nor persisted/sent to a server. Tests use mock busy providers, never personal calendar data.
+`docs/design/native-visual-contract.md` and its approved PNGs supersede the previous native-default-appearance rule. Native navigation/sheet semantics remain, with white backgrounds, flat teal controls, the unchanged approved logo and real SwiftUI content. CardDeck and HistoryTimeline are shared identity presentations; selection indices are local UI state. CardDeck locks gestures when disabled and uses explicit paging buttons at accessibility text sizes, where stacks flatten and content scrolls. No design sample data ships in Sources. Rich visual fixtures live exclusively in the opt-in unit-test target and publish through the coordinator-owned local API.
 
-Calendar export keeps the original source-only HTTP(S) notes, exact phase/date/timezone and existing event URL semantics. The system editor handles edits; app code never saves/removes events directly or requests write-only permission. Maps use exact valid phase/venue coordinates and existing failure feedback. The display retains field-boundary schedule/place rows, native icons, URL host labels, paging/inner AX scroll, doubletap and native controls.
-
-## Verification
-
-```sh
-bash apps/ios/tests/run_architecture.sh
-bash apps/ios/tests/test_layer_distance_gate.sh
-bash apps/ios/tests/run_swiftlint.sh
-bash apps/ios/tests/run_standalone.sh
-bash apps/ios/tests/run_busy_calendar.sh
-bash apps/ios/tests/run_detail_presentations.sh
-```
-
-The macOS architecture package pins Harmonize and SwiftSyntax and scans only this checkout's production source. All physical paths use the final layout; no migration mapping remains. [Current execution evidence](docs/evidence/two-layer-composition/README.md) distinguishes verified model/cache/startup/Observation checks and Simulator build/screenshots from UI input regressions blocked by the local Xcode27 Simulator environment. Prior feature evidence remains under docs/evidence/issue-02, issue-10 and card-lines; those older runs are not new validation.
-
-CalendarConnectionControl/State and BusyTimeStatusView belong to CheckCalendarOverlap. CalendarOverlapTimeline injects query status/retry into Shared EventDayTimeline through a ViewBuilder slot. Generic timeline/date/anonymous interval geometry remains Shared; it neither requests permission nor decides retry behavior.
-
-The pure UI contract follows declaration identity, not the Content filename suffix. Renaming a file preserves enforcement; stale/duplicate/missing declaration entries fail. Review must register newly introduced pure presentation components and check inferred effects. State files retain their main struct/name/location contract while supporting types may use meaningful names without a State suffix.
+The incoming public card is transient. Saving still requires the irreversible-recovery warning and commits only card ID/context to guest storage. Return-card login cancellation clears the pending presentation intent and never sends. Publishing/sending still depends on authentication and confirmed server success; the durable idempotency request boundary is unchanged. HTTP Content-Type is sent only for nonnil JSON bodies, so bodyless logout reaches the server handler.

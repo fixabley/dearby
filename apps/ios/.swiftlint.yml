@@ -1,6 +1,8 @@
 # Project-owned Swift source and tests; dependency/generated/build trees are not app code.
 included:
-  - Dearby
+  - Sources
+  - unitTests
+  - uiTests
   - tests
 excluded:
   - tests/ArchitectureTests/.build

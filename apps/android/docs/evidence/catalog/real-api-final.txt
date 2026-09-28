@@ -1,0 +1,6 @@
+
+com.dearby.nativeapp.CatalogApiIntegrationTest:.
+
+Time: 0.743
+
+OK (1 test)

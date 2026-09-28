@@ -1,2 +1,0 @@
-PASS: detail date/time hierarchy, same-day/multiday/year/mixed precision/seconds/unknown/conflicting/invalid/reversed; lossless explicit room separation, address deduplication, safe online URL
-PASS: FSD lexical boundaries (73 Swift files; scope: all), guard fixtures

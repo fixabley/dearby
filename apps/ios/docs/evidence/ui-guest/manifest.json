@@ -1,0 +1,62 @@
+[
+  {
+    "attachments" : [
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "9F22F643-BC63-45D8-B064-D1260E373DFC.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "내 프로필 로그인 안내_0_7A68C150-5460-4678-83F0-3563ABB37377.png",
+        "timestamp" : 1790456941.768
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "68545F6E-E93E-4985-952E-A4A2389E7DFA.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "받은 명함 빈 상태_0_E1CDC099-791F-4B38-A0CB-24CF11422E18.png",
+        "timestamp" : 1790456938.531
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "B1D57887-8DD0-43B0-80F1-93C69B821F46.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "로그인 필요_0_1C2854EE-BBAE-4C16-919F-41F2F9F69DCA.png",
+        "timestamp" : 1790456934.499
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "95BD25FA-789B-4139-90A8-225BAFB0F19D.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "QR 새 명함_0_335262A2-2A78-4981-9185-6C567503DAB9.png",
+        "timestamp" : 1790456932.67
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "141263E2-FB51-41B4-BAE7-1A8C8A7E8125.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "저장_0_81C1A79E-48F2-46AF-93DE-11643C7BE646.png",
+        "timestamp" : 1790456929.222
+      },
+      {
+        "configurationName" : "Test Scheme Action",
+        "deviceId" : "B3BE9C9D-9B2E-43BE-8D16-D4F89A97C9BE",
+        "deviceName" : "iPhone 17",
+        "exportedFileName" : "07973D8D-0505-492D-A4C6-77EC9EE7036E.png",
+        "isAssociatedWithFailure" : false,
+        "suggestedHumanReadableName" : "발견_0_4A7AA9DA-7C85-4114-9A5C-106545FFEB63.png",
+        "timestamp" : 1790456925.779
+      }
+    ],
+    "testIdentifier" : "NavigationTests/testGuestTabsAndLoginGate()",
+    "testIdentifierURL" : "test://com.apple.xcode/Dearby/DearbyUITests/NavigationTests/testGuestTabsAndLoginGate"
+  }
+]
