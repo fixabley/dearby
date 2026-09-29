@@ -1,12 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { fixture } from './helpers.js';
+import { fixture } from './offline-helpers.js';
 import { catalogId, catalogSchema, storeSource } from '../src/catalog.js';
 import { parseOfficial, refreshSource } from '../src/catalog-sources.js';
 import { importLegacy } from '../src/catalog-legacy.js';
 import { openDatabase } from '../src/database.js';
-import { createApp } from '../src/app.js';
+import { offlineApp } from './offline-helpers.js';
 const checkedAt = '2026-09-27T03:00:00.000Z';
 const checked = Date.parse(checkedAt);
 const html = (_source:string) => readFileSync(new URL('fixtures/kakao-2026.html',import.meta.url),'utf8');
@@ -39,7 +39,7 @@ test('legacy is always stale, idempotent and cannot overwrite live data; UUID re
     assert.throws(() => storeSource(f.db,'kakao-2026',bad,checkedAt,'fixture-sha'),/references/);
     await f.app.close(); f.db.close();
     const db = openDatabase(f.path);
-    const {app} = createApp(db,{otpSecret:'test-only-secret-not-used-outside-tests',sendCode:async () => {},now:() => checked});
+    const {app} = offlineApp(db,() => checked);
     try {
       await app.listen({host:'127.0.0.1',port:0});
       const address = app.server.address(); assert.ok(address && typeof address !== 'string');

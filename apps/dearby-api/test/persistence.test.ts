@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { fixture } from './helpers.js';
-import { openDatabase } from '../src/database.js';
+import { openPostgres } from '../src/postgres.js';
 import { createApp } from '../src/app.js';
 import { smtpMailer } from '../src/mail.js';
 
@@ -16,8 +16,8 @@ test('HTTP sessions/profile/wallet/revocation/idempotency and quotas survive dat
   const sent = await f.request('POST','/exchanges',input,alice.sessionToken);
   const revoked = (await f.request('POST','/cards',{name:'Withdrawn',description:'',contactIds:[],historyIds:[]},alice.sessionToken)).body;
   await f.request('DELETE',`/cards/${revoked.id}`,undefined,alice.sessionToken);
-  await f.app.close(); f.db.close();
-  const db = openDatabase(f.path);
+  await f.app.close(); await f.db.$disconnect();
+  const db = openPostgres({DATABASE_URL:f.connection});
   const {app} = createApp(db,{otpSecret:'test-only-secret-not-used-outside-tests',sendCode:smtpMailer({})});
   try {
     await app.listen({host:'127.0.0.1',port:0});
@@ -32,9 +32,9 @@ test('HTTP sessions/profile/wallet/revocation/idempotency and quotas survive dat
     assert.deepEqual((await request('POST','/exchanges',alice.sessionToken,input)).body,sent.body);
     assert.equal((await request('GET',`/cards/${revoked.id}`,alice.sessionToken)).status,404);
     assert.equal((await request('POST','/auth/challenges',alice.sessionToken,{email:'alice@example.com'})).status,429);
-    assert.equal((db.prepare('SELECT COUNT(*) AS n FROM migrations').get() as {n:number}).n,3);
-    assert.equal((db.prepare('SELECT COUNT(*) AS n FROM receipts').get() as {n:number}).n,1);
+    assert.equal(await db.legacyMigration.count(),0);
+    assert.equal(await db.receipt.count(),1);
     assert.equal((await request('DELETE','/auth/session',alice.sessionToken)).status,204);
     assert.equal((await request('GET','/profile',alice.sessionToken)).status,401);
-  } finally { await app.close(); db.close(); await f.close(); }
+  } finally { await app.close(); await db.$disconnect(); await f.close(); }
 });

@@ -1,6 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import type { DB } from './database.js';
+import { write, type DB } from './postgres.js';
 import { readCard } from './cards.js';
 import { ApiError, id } from './validation.js';
 
@@ -15,12 +15,12 @@ export function guestRoutes(app: FastifyInstance, db: DB, proxySecret: string | 
   let creations = 0;
   const sessionRequests = new Map<string, number>();
   function limited() { throw new ApiError(429, 'RATE_LIMITED', 'Try again later'); }
-  function session(request: FastifyRequest, optional = false): string | undefined {
+  async function session(request: FastifyRequest, optional = false): Promise<string | undefined> {
     const token = request.headers['x-guest-token'];
     if (token === undefined && optional) return undefined;
     if (typeof token !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(token)) throw invalid();
     const key = digest(token);
-    if (!db.prepare('SELECT 1 FROM guest_sessions WHERE digest = ?').get(key)) throw invalid();
+    if (!await db.guestSession.findUnique({where:{digest:key}})) throw invalid();
     const count = (sessionRequests.get(key) ?? 0) + 1;
     if (count > 120) limited();
     sessionRequests.set(key, count);
@@ -40,47 +40,47 @@ export function guestRoutes(app: FastifyInstance, db: DB, proxySecret: string | 
       if (++requests > 1200) limited();
     });
     guest.get('/cards', async request => {
-      const key = session(request)!;
-      const rows = db.prepare(`SELECT g.card_id FROM guest_cards g JOIN cards c ON c.id = g.card_id
-        WHERE g.session_digest = ? AND c.revoked = 0 ORDER BY g.rowid`).all(key) as {card_id: string}[];
-      return {items: rows.map(row => readCard(db, row.card_id))};
+      const key = (await session(request))!;
+      const rows = await db.guestCard.findMany({where:{sessionDigest:key,card:{revoked:false}},include:{card:true},orderBy:{ordinal:'asc'}});
+      return {items:rows.map(row => JSON.parse(row.card.data))};
     });
     guest.put('/cards/:id', async (request, reply) => {
-      const key = session(request, true);
+      const key = await session(request, true);
       const cardId = id.parse((request.params as {id: string}).id).toLowerCase();
-      const result = db.transaction(() => {
-        readCard(db, cardId); // The path identifies public content, never a visitor wallet.
+      const result = await write(db, async tx => {
+        await readCard(tx, cardId); // The path identifies public content, never a visitor wallet.
         let sessionDigest = key;
         let guestToken: string | undefined;
         if (!sessionDigest) {
-          if ((db.prepare('SELECT count(*) AS n FROM guest_sessions').get() as {n: number}).n >= 10000) throw capacity();
+          if (await tx.guestSession.count() >= 10000) throw capacity();
           if (creations >= 60) limited();
           guestToken = randomBytes(32).toString('base64url');
           sessionDigest = digest(guestToken);
-          db.prepare('INSERT INTO guest_sessions VALUES (?)').run(sessionDigest);
+          await tx.guestSession.create({data:{digest:sessionDigest}});
         }
+        if (key && !await tx.guestSession.findUnique({where:{digest:key}})) throw invalid();
         // Withdrawn cards do not consume the active-card capacity.
-        db.prepare('DELETE FROM guest_cards WHERE session_digest = ? AND card_id IN (SELECT id FROM cards WHERE revoked != 0)').run(sessionDigest);
-        if (db.prepare('SELECT 1 FROM guest_cards WHERE session_digest = ? AND card_id = ?').get(sessionDigest, cardId)) {
+        await tx.guestCard.deleteMany({where:{sessionDigest,card:{revoked:true}}});
+        if (await tx.guestCard.findUnique({where:{sessionDigest_cardId:{sessionDigest,cardId}}})) {
           return {cardId, status: 'alreadySaved' as const};
         }
-        if ((db.prepare('SELECT count(*) AS n FROM guest_cards WHERE session_digest = ?').get(sessionDigest) as {n: number}).n >= 100) throw capacity();
-        db.prepare('INSERT INTO guest_cards VALUES (?, ?)').run(sessionDigest, cardId);
+        if (await tx.guestCard.count({where:{sessionDigest}}) >= 100) throw capacity();
+        await tx.guestCard.create({data:{sessionDigest,cardId}});
         return {cardId, status: 'saved' as const, ...(guestToken ? {guestToken} : {})};
-      }).immediate();
+      });
       if ('guestToken' in result) { creations++; reply.code(201); }
       return result;
     });
     guest.delete('/cards/:id', async (request, reply) => {
-      const key = session(request)!;
+      const key = (await session(request))!;
       const cardId = id.parse((request.params as {id: string}).id).toLowerCase();
       // Removing a withdrawn/already-removed reference is intentionally idempotent.
-      db.prepare('DELETE FROM guest_cards WHERE session_digest = ? AND card_id = ?').run(key, cardId);
+      await write(db, tx => tx.guestCard.deleteMany({where:{sessionDigest:key,cardId}}));
       return reply.code(204).send();
     });
     guest.delete('/session', async (request, reply) => {
-      const key = session(request)!;
-      db.prepare('DELETE FROM guest_sessions WHERE digest = ?').run(key);
+      const key = (await session(request))!;
+      await write(db, tx => tx.guestSession.deleteMany({where:{digest:key}}));
       sessionRequests.delete(key);
       return reply.code(204).send();
     });

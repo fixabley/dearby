@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client"
+  output = "../src/generated/prisma"
+  importFileExtension = "js"
+}
+datasource db {
+  provider = "postgresql"
+  schemas = ["dearby_api"]
+}
+model Profile {
+  id String @id
+  email String @unique
+  data String
+  sessions Session[]
+  cards Card[]
+  receipts Receipt[]
+  exchanges Exchange[]
+  @@map("profiles")
+  @@schema("dearby_api")
+}
+model Challenge {
+  id String @id
+  email String
+  digest String
+  expiresAt BigInt @map("expires_at")
+  attempts Int @default(0)
+  consumed Boolean @default(false)
+  @@map("challenges")
+  @@schema("dearby_api")
+}
+model RateLimit {
+  key String @id
+  windowStart BigInt @map("window_start")
+  count Int
+  @@map("rate_limits")
+  @@schema("dearby_api")
+}
+model Session {
+  digest String @id
+  profileId String @map("profile_id")
+  expiresAt BigInt @map("expires_at")
+  profile Profile @relation(fields:[profileId],references:[id],onDelete:Restrict,onUpdate:Restrict)
+  @@map("sessions")
+  @@schema("dearby_api")
+}
+model Card {
+  id String @id
+  ownerId String @map("owner_id")
+  data String
+  revoked Boolean @default(false)
+  ordinal BigInt @default(autoincrement())
+  owner Profile @relation(fields:[ownerId],references:[id],onDelete:Restrict,onUpdate:Restrict)
+  receipts Receipt[]
+  guests GuestCard[]
+  @@map("cards")
+  @@schema("dearby_api")
+}
+model Receipt {
+  id String @id
+  recipientId String @map("recipient_id")
+  cardId String @map("card_id")
+  context String
+  receivedAt String @map("received_at")
+  ordinal BigInt @default(autoincrement())
+  recipient Profile @relation(fields:[recipientId],references:[id],onDelete:Restrict,onUpdate:Restrict)
+  card Card @relation(fields:[cardId],references:[id],onDelete:Restrict,onUpdate:Restrict)
+  exchanges Exchange[]
+  @@index([recipientId,cardId])
+  @@map("receipts")
+  @@schema("dearby_api")
+}
+model Exchange {
+  senderId String @map("sender_id")
+  requestId String @map("request_id")
+  body String
+  receiptId String @map("receipt_id")
+  deliveredAt String @map("delivered_at")
+  sender Profile @relation(fields:[senderId],references:[id],onDelete:Restrict,onUpdate:Restrict)
+  receipt Receipt @relation(fields:[receiptId],references:[id],onDelete:Restrict,onUpdate:Restrict)
+  @@id([senderId,requestId])
+  @@map("exchanges")
+  @@schema("dearby_api")
+}
+model GuestSession {
+  digest String @id
+  cards GuestCard[]
+  @@map("guest_sessions")
+  @@schema("dearby_api")
+}
+model GuestCard {
+  sessionDigest String @map("session_digest")
+  cardId String @map("card_id")
+  ordinal BigInt @default(autoincrement())
+  session GuestSession @relation(fields:[sessionDigest],references:[digest],onDelete:Cascade,onUpdate:Restrict)
+  card Card @relation(fields:[cardId],references:[id],onDelete:Restrict,onUpdate:Restrict)
+  @@id([sessionDigest,cardId])
+  @@map("guest_cards")
+  @@schema("dearby_api")
+}
+// Preserve the offline SQLite catalog/history without merging it into managed public catalog.
+model LegacyOrganization {
+  id String @id
+  content String
+  programs LegacyProgram[]
+  @@map("catalog_organizations")
+  @@schema("dearby_api")
+}
+model LegacyProgram {
+  id String @id
+  organizationId String @map("organization_id")
+  content String
+  organization LegacyOrganization @relation(fields:[organizationId],references:[id],onDelete:Restrict,onUpdate:Restrict)
+  activities LegacyActivity[]
+  @@unique([id,organizationId])
+  @@map("catalog_programs")
+  @@schema("dearby_api")
+}
+model LegacyActivity {
+  id String @id
+  programId String @map("program_id")
+  organizationId String @map("organization_id")
+  sourceKey String @unique @map("source_key")
+  content String
+  lastFailure String? @map("last_failure")
+  goodBodySha256 String? @map("good_body_sha256")
+  program LegacyProgram @relation(fields:[programId,organizationId],references:[id,organizationId],onDelete:Restrict,onUpdate:Restrict)
+  @@map("catalog_activities")
+  @@schema("dearby_api")
+}
+model LegacyRefresh {
+  sourceKey String @id @map("source_key")
+  attemptedAt String @map("attempted_at")
+  succeeded Boolean
+  bodySha256 String? @map("body_sha256")
+  note String
+  @@map("catalog_refreshes")
+  @@schema("dearby_api")
+}
+model LegacyMigration {
+  name String @id
+  @@map("sqlite_migrations")
+  @@schema("dearby_api")
+}

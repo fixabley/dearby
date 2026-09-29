@@ -12,20 +12,29 @@
     "start": "node --env-file-if-exists=.env dist/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint src test",
-    "test": "NODE_ENV=test node --import tsx --test test/*.test.ts",
-    "catalog": "node --import tsx src/catalog-cli.ts"
+    "test": "node test/run-postgres.mjs",
+    "generate": "prisma generate",
+    "pretypecheck": "npm run generate",
+    "prebuild": "npm run generate",
+    "import:sqlite": "node --env-file-if-exists=.env --import tsx src/import-sqlite.ts",
+    "catalog:offline": "node --import tsx src/catalog-cli.ts"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
     "better-sqlite3": "13.0.3",
     "fastify": "5.12.5",
     "nodemailer": "10.0.10",
+    "pg": "8.23.0",
     "zod": "4.6.5"
   },
   "devDependencies": {
     "@types/better-sqlite3": "9.6.0",
     "@types/node": "24.19.0",
     "@types/nodemailer": "8.0.2",
+    "@types/pg": "8.23.1",
     "oxlint": "1.85.0",
+    "prisma": "7.10.0",
     "tsx": "4.23.15",
     "typescript": "7.0.2"
   }

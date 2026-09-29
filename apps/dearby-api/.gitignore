@@ -11,3 +11,7 @@ var/
 *.p8
 *.p12
 *.pfx
+
+/src/generated/
+
+*.crt

@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { fixture } from './helpers.js';
+import { fixture } from './offline-helpers.js';
 import { catalogId, catalogSchema, storeSource, verificationLifetime } from '../src/catalog.js';
 import { fetchOfficial, parseOfficial, refreshSource, type SourceKey } from '../src/catalog-sources.js';
 

@@ -13,7 +13,11 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
-      - data:/data
+      - data:/data:ro
+      - type: bind
+        source: ${DEARBY_DATABASE_CA_FILE:?Set external Supabase CA path}
+        target: /run/secrets/database-ca.crt
+        read_only: true
     read_only: true
     tmpfs:
       - /tmp:size=16m,mode=1777
