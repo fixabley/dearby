@@ -9,6 +9,7 @@ export const programSchema = z.strictObject({id:z.uuid(), organizationId:z.uuid(
 export const scheduleSchema = z.strictObject({id:z.uuid(), title:z.string(), startAt:time.nullable(), endAt:time.nullable(), dateLabel:z.string(), timeZone:z.string()});
 export const activitySchema = z.strictObject({
   id:z.uuid(), programId:z.uuid(), organizationId:z.uuid(), title:z.string(), summary:z.string(),
+  imageUrl:url.nullable().optional(),
   participationType:z.enum(['registration','selection']), recruitmentStatus:z.enum(['open','scheduled','closed','unknown']),
   isRecruiting:z.boolean(), recruitmentStartAt:time.nullable(), recruitmentEndAt:time.nullable(),
   dateLabel:z.string(), location:z.string().nullable(), cost:z.string().nullable(), audience:z.string().nullable(), qualification:z.string().nullable(),
