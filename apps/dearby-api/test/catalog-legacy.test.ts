@@ -44,7 +44,7 @@ test('legacy is always stale, idempotent and cannot overwrite live data; UUID re
       await app.listen({host:'127.0.0.1',port:0});
       const address = app.server.address(); assert.ok(address && typeof address !== 'string');
       assert.deepEqual(await (await fetch(`http://127.0.0.1:${address.port}/v1/catalog`)).json(),catalog);
-      assert.equal((db.prepare('SELECT COUNT(*) AS n FROM migrations').get() as {n:number}).n,2);
+      assert.equal((db.prepare('SELECT COUNT(*) AS n FROM migrations').get() as {n:number}).n,3);
     } finally { await app.close(); db.close(); }
   } finally { await f.close(); }
 });

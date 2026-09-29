@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { guestRoutes } from './guest.js';
 import { readCatalog, type Catalog } from './catalog.js';
 import { ZodError } from 'zod';
 import type { DB } from './database.js';
@@ -7,7 +8,7 @@ import { walletRoutes } from './wallet.js';
 import { cardRoutes } from './cards.js';
 import { authRoutes, type AuthOptions } from './auth.js';
 
-export function createApp(db: DB, options: AuthOptions & {catalogReader?: () => Promise<Catalog>}) {
+export function createApp(db: DB, options: AuthOptions & {catalogReader?: () => Promise<Catalog>; guestProxySecret?: string}) {
   const app = Fastify({ logger: false, bodyLimit: 65536, trustProxy: false });
   app.addHook('onSend', async (_request, reply) => { reply.header('Cache-Control', 'no-store'); });
   app.setErrorHandler((error, _request, reply) => {
@@ -21,5 +22,6 @@ export function createApp(db: DB, options: AuthOptions & {catalogReader?: () => 
   const owner = authRoutes(app, db, options);
   cardRoutes(app, db, owner, options.now ?? Date.now);
   walletRoutes(app, db, owner, options.now ?? Date.now);
+  guestRoutes(app, db, options.guestProxySecret, options.now ?? Date.now);
   return { app };
 }
