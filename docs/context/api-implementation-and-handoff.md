@@ -1,5 +1,6 @@
 # API — 구현과 인계
 
+2026-09-29 최신: CATALOG_BACKEND=supabase로 탐색 읽기만 전환할 수 있다. /v1/catalog 형식/최신성 규칙과 SQLite 계정·명함은 유지한다. 로컬 API58765 실행·RLS/HTTP/브라우저 연결 검증 완료. [어드민 인계](admin-implementation-and-handoff.md).
 검증 시점: **2026-09-27 12:21 KST / 03:21 UTC**. #45 로컬 카탈로그 구현과 검증이며 전체 서비스·운영 배포 완료가 아니다. 정본은 `docs/product/native-spec-2026-09.md`, `shared/contracts/catalog-v1.md`, `shared/contracts/native-v1.md`다. 이전 #39 인증·명함·교환 구현은 유지하며 아래 현재 검증이 기존 회귀를 포함한다.
 
 ## 담당과 통합

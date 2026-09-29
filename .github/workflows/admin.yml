@@ -1,0 +1,46 @@
+name: Discovery admin verification
+on:
+  pull_request:
+    paths: ['apps/admin/**', 'apps/dearby-api/**', 'supabase/**', '.github/workflows/admin.yml']
+  push:
+    branches: [main]
+    paths: ['apps/admin/**', 'apps/dearby-api/**', 'supabase/**', '.github/workflows/admin.yml']
+permissions:
+  contents: read
+jobs:
+  admin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            apps/admin/package-lock.json
+            apps/dearby-api/package-lock.json
+      - run: npm ci --prefix apps/admin
+      - run: npm ci --prefix apps/dearby-api
+      - run: npm run build --prefix apps/admin
+      - run: npm run lint --prefix apps/admin
+      - run: npm test --prefix apps/admin
+      - name: Start isolated Supabase and API
+        run: |
+          npm exec --yes --package=supabase@2.118.0 -- supabase start > /tmp/supabase-start.log 2>&1
+          node supabase/scripts/bootstrap-local.mjs
+          (cd apps/dearby-api && node --env-file=.env.admin-local --import tsx src/server.ts > /tmp/catalog-api.log 2>&1 &)
+          npm run dev --prefix apps/admin > /tmp/admin.log 2>&1 &
+          for i in {1..30}; do
+            if curl -fsS http://127.0.0.1:58765/v1/catalog >/dev/null && curl -fsS http://127.0.0.1:5173 >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - run: node supabase/tests/local.mjs
+      - run: npm exec --prefix apps/admin -- playwright install --with-deps chromium
+      - run: npm run test:e2e --prefix apps/admin
+      - name: Stop local services
+        if: always()
+        run: npm exec --yes --package=supabase@2.118.0 -- supabase stop

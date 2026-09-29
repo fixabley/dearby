@@ -1,6 +1,10 @@
 # Dearby 컨텍스트 목차
 
-## 현재 iOS 시각 수정 — 2026-09-29
+## 현재 탐색 어드민 — 2026-09-29
+
+사용자가 Supabase + Refine 어드민과 기존 API의 탐색 데이터 연결을 승인했다. 로컬 구현·검증을 완료했고, 어드민5173/API58765/Supabase54321을 실행 중이다. iPhone17도58765에 연결했다. [어드민 인계](admin-implementation-and-handoff.md), [설치·사용 안내](../../apps/admin/README.md), [실제 화면·검증](../../apps/admin/docs/evidence/README.md). 과거 출처30건은 초안이며 숨김 예시1건을 남겼다. 기존 목 서버58764는 별도로 남아 있지만 현재 iPhone이 사용하는 데이터 원본이 아니다.
+
+## 이전 iOS 시각 수정 — 2026-09-29
 
 후속 사용자 선택 ‘시안 A’를 겹치는 시간 시트에 적용했다. [캘린더 시안 A 적용·검증](../../apps/ios/docs/evidence/calendar-reference-a/README.md). 실제 기기 캘린더 비교를 유지하며 두 열 시간표/겹침 강조/순차 확인을 제공한다.
 

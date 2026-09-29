@@ -1,5 +1,6 @@
 # 조율 — 2026-09-29
 
+2026-09-29 최신: Supabase + Refine 탐색 어드민 및 기존 API 연결을 로컬로 구현·검증했다. [현재 인계](admin-implementation-and-handoff.md). 어드민5173/API58765, iPhone17도58765. 출처30건은 초안, 숨김 로컬 예시1건. Orca readiness 차단#56은 별도이며 이전 직접 구현 승인으로 root에서 완료.
 2026-09-29 후속: 사용자가 겹치는 시간 시안 A를 선택해 iOS에 적용했다. [승인 원본·검증·실제 캡처](../../apps/ios/docs/evidence/calendar-reference-a/README.md). 현재 feat/conference-mock-data, 목 서버58764/임시 일정2건 유지, Android 시각 동기화는 별도다.
 ## 현재 작업 — 탐색 전용 노출과 실제 일정 겹침 (#54)
 
