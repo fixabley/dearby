@@ -2,6 +2,8 @@
 
 검증일: 2026-09-29 KST. 담당 checkout `/Users/jominjun/Documents/dearby/api-domain-main`, branch `fixabley/api-domain-main`. 시작 기준 `b3094f9` (origin/main 일치 확인). Orca handle `term_ed77215a-daf0-49d7-92da-127ad6e91e3e`는 이번 실행 시점 식별자이며 재개 시 목록을 다시 조회한다. 세션은 유지한다.
 
+서버 PR: [#61](https://github.com/fixabley/dearby/pull/61). 구현 커밋 `6d336a9`, 배포/운영 커밋 `a46e8c6`. 원격 PR diff를 실제 runtime key와 비교해 노출 없음 확인. 최초 push는 macOS keychain의 다른 계정으로 403이었으며, 전역 설정을 바꾸지 않고 해당 명령에서만 활성 `gh` 자격증명 helper로 재실행해 성공했다.
+
 ## 승인·범위
 
 main API 독립 배포와 nginx 변경안. 최신 승인으로 `8984fbf`의 Supabase 탐색 reader만 선별 재사용: app 주입, server 선택, catalog optional imageUrl, reader와 테스트. admin/collector/presentation/mobile 코드는 통합하지 않았다. auth/cards/wallet은 SQLite 유지. public HTTPS는 root 결정에 따라 `https://wid.io.kr/v1/catalog`; DNS/공유기/인증서/shared nginx 변경·reload는 root 소유다.
@@ -33,14 +35,17 @@ main API 독립 배포와 nginx 변경안. 최신 승인으로 `8984fbf`의 Supa
 
 ## 공개 데이터 차단과 남은 작업
 
-실제 Supabase 공개 RPC 결과 조직/프로그램/활동 0. read-only SQL 확인: draft 35 / hidden 4 / published 0, 조직 총 34. 이는 upstream 연결 성공과 별개로 게시 데이터가 없기 때문이다. [#59](https://github.com/fixabley/dearby/issues/59)에 원인·영향·해소조건 기록. 데이터는 임의 게시하지 않았다. root/콘텐츠 담당이 승인된 게시 기준을 충족한 뒤 목록을 검증해야 한다.
+실제 Supabase 공개 RPC 결과 조직/프로그램/활동 0. read-only SQL 확인: draft 35 / hidden 4 / published 0, 조직 총 34. 이는 upstream 연결 성공과 별개로 게시 데이터가 없기 때문이다. [#59](https://github.com/fixabley/dearby/issues/59)에 원인·영향·해소조건 기록. 데이터는 임의 게시하지 않았다. 최신 사용자 지시는 데이터 게시 없이 API 연결만 수행하는 것이므로 draft/hidden/published를 유지한다. #59는 향후 콘텐츠 공개의 추적 항목이며 이번 연결 작업의 완료 조건은 아니다.
 
-SMTP 실제 수신은 [#42](https://github.com/fixabley/dearby/issues/42) 미해소. HTTPS 인증서/공개 nginx 적용 및 외부망 검증은 root 작업으로 이 checkout에서 완료를 주장하지 않는다. 호스트 sleep/재부팅/Docker 기동/기존 Supabase 가용성에 의존한다. 백업·복원 실습, 모니터링, 장기 uptime 검증은 미실행. named volume을 삭제하지 말고 env와 함께 안전 보관해야 한다.
+SMTP 실제 수신은 [#42](https://github.com/fixabley/dearby/issues/42) 미해소. root가 nginx 적용과 로컬 TLS 검증을 완료했다고 전달했다(아래 구분). 공개 신뢰 인증서·외부망 검증은 미완료다. 호스트 sleep/재부팅/Docker 기동/기존 Supabase 가용성에 의존한다. 백업·복원 실습, 모니터링, 장기 uptime 검증은 미실행. named volume을 삭제하지 말고 env와 함께 안전 보관해야 한다.
+
+## root 적용 결과 — root 전달 증거
+
+2026-09-29 root는 `/Users/jominjun/nginx/backups/dearby-20260929-203907/default.conf`에 기존 파일을 백업한 뒤 apex 443 server에 제안 snippet을 삽입하고 `nginx -t`/reload를 수행했다고 전달했다. 자체 인증서를 명시 신뢰한 로컬 TLS에서 GET/HEAD catalog 200 JSON, POST 405, 다른 `/v1/auth` 404, apex `/` 200 확인. 이는 root가 실행한 결과이며 API 담당이 공개 신뢰/외부 도달성을 검증했다는 뜻이 아니다. 공개 신뢰 인증서와 외부 443은 미완료.
 
 ## root 다음 행동
 
-1. 서버 PR 검토/병합(발표/수집/admin 코드가 없는지 변경 목록 확인).
-2. apex 인증서 확인 후 runbook대로 기존 HTTPS block에 location snippet 삽입, `nginx -t` 후 reload. 기존 다른 라우트와 인증서를 유지한다.
-3. HTTPS GET/HEAD 200, POST 405, private /v1 404, 인증서 hostname/체인, 기존 dearby/dev 경로 보존 확인.
-4. iOS API origin `https://wid.io.kr` + `/v1/catalog`, 앱 직접 Supabase 키/URL 제거 및 Release bundle 키 미포함 검증은 iOS 담당과 조율.
-5. #59 공개 콘텐츠와 #42 SMTP는 배포 성공과 분리해 추적.
+1. [서버 PR #61](https://github.com/fixabley/dearby/pull/61) 검토/병합. 발표/수집/admin/앱 코드는 없다. 실제 env/키는 Git에 없다.
+2. 기존 로컬 TLS 검증과 별도로 공개 신뢰 인증서 hostname/체인 및 외부 443 도달성을 검증한다. 자체 인증서 예외 설정을 앱에 넣지 않는다.
+3. iOS origin `https://wid.io.kr` + `/v1/catalog`, 앱 직접 Supabase 키/URL 제거 및 Release bundle 키 미포함 검사는 iOS 담당과 조율한다.
+4. 데이터 게시 없이 현재 상태 유지. #59는 향후 콘텐츠 공개 추적이며 이번 사용자 요청의 차단 조건으로 취급하지 않는다. #42 SMTP는 별도 미완료다.
