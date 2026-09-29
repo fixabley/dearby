@@ -77,3 +77,20 @@ dialog button{display:block;margin:0 0 12px auto;border:0;background:var(--teal)
 .reveal .controls{display:none}
 }
 
+
+.reveal sup{font-size:.55em;vertical-align:super;line-height:0;color:var(--teal);margin-left:2px}
+.reveal .footnotes{position:absolute;bottom:28px;left:50px;right:75px;border-top:1px solid var(--line);padding-top:9px;color:var(--muted);text-align:left}
+.reveal .footnotes p{font-size:18px;line-height:1.4;margin:3px 0;word-break:keep-all}
+.reveal .has-footnotes h2{margin-bottom:24px}
+.reveal .has-footnotes table{font-size:24px;margin:20px 0}
+.reveal .has-footnotes table td,.reveal .has-footnotes table th{padding:12px 14px}
+.reveal .has-footnotes>p{font-size:25px;margin:18px 0}
+.reveal .has-footnotes li{margin-bottom:12px}
+.reveal .has-footnotes pre{font-size:21px;line-height:1.3;margin:15px 0;padding:16px 24px}
+.reveal .quantization.has-footnotes table td{font-size:48px}
+.reveal .screens.has-footnotes h2{margin-bottom:8px}
+.reveal .screens.has-footnotes>p{font-size:23px;margin:0 0 12px}
+.reveal .screens.has-footnotes .screen-grid{height:480px}
+.reveal .screens.has-footnotes .screen-grid img{height:432px}
+.reveal .screens.has-footnotes .footnotes{bottom:35px}
+@media(max-width:600px){.toolbar{gap:7px;font-size:10px}.toolbar .brand{font-size:18px}}

@@ -26,6 +26,9 @@ zoom.addEventListener('click', event => { if (event.target === zoom) zoom.close(
 zoom.addEventListener('keydown', event => event.stopPropagation());
 document.body.append(zoom);
 deck.initialize().then(() => {
+  document.querySelectorAll('.slides section').forEach(section => {
+    if (section.querySelector('.footnotes')) section.classList.add('has-footnotes');
+  });
   document.querySelectorAll('section.screens').forEach(section => {
     const grid = document.createElement('div');
     grid.className = 'screen-grid';
