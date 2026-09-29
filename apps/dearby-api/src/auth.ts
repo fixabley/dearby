@@ -1,9 +1,9 @@
+import {documented,challengeResponse,sessionResponse,ownerSecurity,ownerOnly} from './openapi.js';
 import { createHash, createHmac, randomBytes, randomInt, randomUUID, timingSafeEqual } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
-import { z } from 'zod';
 import { write, type DB } from './postgres.js';
 import type { SendCode } from './mail.js';
-import { ApiError, id } from './validation.js';
+import { ApiError, challengeInput, sessionInput } from './validation.js';
 export type AuthOptions = { otpSecret: string; sendCode: SendCode; now?: () => number };
 const tokenDigest = (value: string) => createHash('sha256').update(value).digest('hex');
 export function authRoutes(app: FastifyInstance, db: DB, options: AuthOptions) {
@@ -28,8 +28,10 @@ export function authRoutes(app: FastifyInstance, db: DB, options: AuthOptions) {
     if (!row || row.expiresAt <= BigInt(now())) throw new ApiError(401, 'UNAUTHORIZED', 'Sign in required');
     return row.profileId;
   };
-  app.post('/v1/auth/challenges', async (request, reply) => {
-    const {email} = z.strictObject({email: z.email().max(254).transform(e => e.trim().toLowerCase())}).parse(request.body);
+  app.post('/v1/auth/challenges', documented({operationId:'createChallenge',summary:'Request an email verification code',tag:'Authentication',
+    description:'Direct/local API only; current public ingress returns 404. Email normalized to lowercase. Code never appears in a response; expires after 5 minutes, at most 5 verification attempts. Limits: 20 sends/IP/hour, 1/email/minute, 5/email/hour. SMTP absent/failure returns 503, never a claimed successful delivery.',
+    body:challengeInput,responses:{202:challengeResponse},errors:[429,503]}), async (request, reply) => {
+    const {email} = challengeInput.parse(request.body);
     await limit(`challenge-ip:${digest(request.ip)}`, 20, 3600000);
     await limit(`challenge-email:${digest(email)}`, 1, 60000);
     await limit(`challenge-hour:${digest(email)}`, 5, 3600000);
@@ -46,8 +48,10 @@ export function authRoutes(app: FastifyInstance, db: DB, options: AuthOptions) {
     await write(db, tx => tx.challenge.updateMany({where:{email,id:{not:challengeId}},data:{consumed:true}}));
     return reply.code(202).send({challengeId, expiresAt: new Date(expires).toISOString()});
   });
-  app.post('/v1/auth/sessions', async (request) => {
-    const input = z.strictObject({challengeId: id, code: z.string().regex(/^\d{6}$/)}).parse(request.body);
+  app.post('/v1/auth/sessions', documented({operationId:'createOwnerSession',summary:'Exchange a one-use email code for an owner session',tag:'Authentication',
+    description:'Direct/local API only; current public ingress returns 404. Returns an opaque 30-day bearer session and profile ID. Code can succeed only once. Wrong attempts persist; consumed/expired/unknown/too-many-attempts returns 401. Verification limit 60/IP/minute.',
+    body:sessionInput,responses:{200:sessionResponse},errors:[401,429]}), async (request) => {
+    const input = sessionInput.parse(request.body);
     await limit(`verify-ip:${digest(request.ip)}`, 60, 60000);
     const result = await write(db, async tx => {
       const row = await tx.challenge.findUnique({where:{id:input.challengeId}});
@@ -67,7 +71,8 @@ export function authRoutes(app: FastifyInstance, db: DB, options: AuthOptions) {
     if (!result) throw new ApiError(401, 'INVALID_CODE', 'Invalid or expired code');
     return result;
   });
-  app.delete('/v1/auth/session', async (request, reply) => {
+  app.delete('/v1/auth/session', documented({operationId:'deleteOwnerSession',summary:'Revoke the current owner session',tag:'Authentication',
+    description:ownerOnly+' Revokes only the supplied bearer token. Reusing a revoked token returns 401.',security:ownerSecurity,responses:{204:null},errors:[401]}), async (request, reply) => {
     await owner(request);
     await write(db, tx => tx.session.deleteMany({where:{digest:tokenDigest(request.headers.authorization!.slice(7))}}));
     return reply.code(204).send();
