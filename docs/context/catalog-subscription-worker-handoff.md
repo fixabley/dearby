@@ -57,3 +57,13 @@ Supabase Cron으로 DB 프로그램별 일일 작업을 등록하고 **ChatGPT �
 - 로그는 ignored 파일로 쌓이며 장기 보관 용량 정책이 필요하다. 구독 한도는 일반 Codex/IR 작업과 공유한다.
 
 [실행·해제·검증 안내](../../apps/catalog-worker/README.md)를 따른다. 기능별 커밋/자기 브랜치 push 결과는 아래 전달 기록과 이 세션 최종 응답에 남긴다. 강제 push·root 통합·기존 서비스 교체는 하지 않는다.
+
+## 전달 기록 — 2026-09-29 13:33 KST
+
+- `403ee92`: 구독 실행·원문 검증·DB 큐/저장 안전성 및 회귀.
+- `d32c9d4`: 프로그램 설정·수집 검토 UI 및 브라우저 검증.
+- `0755157`: launchd·CI·운영 인계.
+- 위 3개 커밋을 `origin/fixabley/catalog-subscription-collector`에 push했고 [Draft PR #58](https://github.com/fixabley/dearby/pull/58)을 `feat/discovery-admin` 기준으로 생성했다. root에 merge/cherry-pick하지 않았다.
+- GitHub CI는 PR에서 실행 중이다. 최종 결과는 PR checks와 이 세션 최종 응답을 따른다. 로컬 검사와 원격 CI를 혼동하지 않는다.
+- root admin5173/API58765의 HTTP200, 로컬 비밀 파일0600, launchd 실제 동작 및 오늘 28개 큐를 재확인했다. 13:32 스냅샷은 succeeded2/failed5/queued21이며 계속 바뀐다. 실패를 성공으로 치환하지 않는다.
+- ponytail 반영 후 추가 불필요한 추상화·의존성은 발견하지 않았다: Lean already. Ship.
