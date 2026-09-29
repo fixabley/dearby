@@ -23,7 +23,10 @@ project.targets.each do |target|
     if target == app
       config.build_settings.merge!({
         'INFOPLIST_FILE' => 'Info.plist',
-        'ASSETCATALOG_COMPILER_APPICON_NAME' => '',
+        'ASSETCATALOG_COMPILER_APPICON_NAME' => 'AppIcon',
+        'ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME' => '',
+        # Provisional: coordinator must check App Store Connect history before upload.
+        'MARKETING_VERSION' => '0.1.0', 'CURRENT_PROJECT_VERSION' => '1',
         'INFOPLIST_KEY_CFBundleDisplayName' => 'Dearby',
         'INFOPLIST_KEY_UILaunchScreen_Generation' => 'YES',
         'INFOPLIST_KEY_UIApplicationSceneManifest_Generation' => 'YES',

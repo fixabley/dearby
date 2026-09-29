@@ -1,6 +1,6 @@
 # iOS 담당
 
-2026-09-29 main TestFlight 준비 검사는 별도 `fixabley/ios-testflight-main` checkout에서 수행. [Release archive 검증·배포 차단 인계](../context/testflight-main-readiness.md). 아래는 기존 기능 구현 기록이다.
+2026-09-29 main TestFlight 배포 메타데이터 보완과 무서명 archive 검증은 별도 `fixabley/ios-testflight-main` checkout에서 수행. 임시 0.1.0 (1)/AppIcon/방향/암호화 설정, Release archive·구조16·lint64·단위33/UI1 통과(7 skip). API/서명·최종 배포는 root 소유. [Release archive 검증·배포 차단 인계](../context/testflight-main-readiness.md). 아래는 기존 기능 구현 기록이다.
 
 2026-09-27 issue #46, `feat/ios-activities` from `dcb590f`. [현재 인계](../context/ios-implementation-and-handoff.md), [활동 계약/검증 진행](../../apps/ios/docs/catalog-implementation.md).
 

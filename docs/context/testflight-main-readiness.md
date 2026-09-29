@@ -1,67 +1,71 @@
-# main iOS TestFlight 배포 준비 검사
+# main iOS TestFlight 배포 준비
 
-검증 시각: 2026-09-29 20:25–20:28 KST. 역할: main 기반 iOS 무서명 archive 검사. Apple 인증·배포·공통 차단 이슈는 root 소유.
+최신 검증: 2026-09-29 20:35 KST. 역할: main 기반 iOS 배포 메타데이터·무서명 archive. Apple 인증·업로드·API 도메인/nginx·공통 차단 이슈는 root 소유.
 
-## 기준과 결과
+## 현재 결과
 
-- checkout: `/Users/jominjun/Documents/dearby/ios-testflight-main`, branch `fixabley/ios-testflight-main`.
-- `git fetch origin main` 후 HEAD와 origin/main 모두 `b3094f9fc3b2eb6eb2de950cd1ad28010d50f8c4`. 발표/어드민/수집 미병합 변경을 가져오지 않았다. 앱 소스·프로젝트·공통 설정은 변경하지 않았다.
-- **일반 iOS 기기 Release 무서명 archive 성공(exit 0). TestFlight 업로드 가능한 산출물이 아니다.**
+- checkout `/Users/jominjun/Documents/dearby/ios-testflight-main`, branch `fixabley/ios-testflight-main`.
+- 시작/재개 시 `git fetch origin main`으로 `b3094f9fc3b2eb6eb2de950cd1ad28010d50f8c4` 확인. 발표/어드민/수집 미병합 변경 없음. iOS 배포 설정/리소스/문서만 보완했다.
+- **원본 main과 메타데이터 보완본 모두 일반 iOS 기기 Release 무서명 archive 성공. TestFlight 업로드 가능한 산출물은 아니다.**
 - Xcode 27.0 (27A266a), iPhoneOS SDK 27.0 (24A430), 최소 iOS 18.0, arm64, iPhone/iPad, Release `-O`, dwarf-with-dsym.
-- archive의 Xcode `Validate` 실행 완료. 이는 App Store Connect 배포 validation이 아니다.
-- 원본 Debug/Release plist, archive/app plist 모두 `plutil -lint` 통과. 실행 파일/dSYM UUID 모두 `A345D902-F6A7-3641-83D4-A0ACAF27ABDF`.
-- `codesign --verify --deep --strict`는 exit 1, `code object is not signed at all`. archive Team/SigningIdentity 빈값, embedded.mobileprovision 및 _CodeSignature 없음. 예상된 무서명 상태이며 서명 검증 통과로 해석 금지.
+- `0.1.0 (1)`은 사용자 승인된 **임시값**. App Store Connect 기존 기록 미확인이므로 최종 업로드 번호 확정/중복 검사 필요.
 
-## 재현과 로컬 증거
+## 보완과 선택 근거
 
-아래 경로는 이 checkout 기준이며 `.build` 산출물은 Git에 넣지 않는다. 동일 resultBundlePath를 재사용하면 Xcode가 거부하므로 재실행은 새 경로를 사용한다.
+| 항목 | 구현·확인 |
+| --- | --- |
+| 버전/빌드 | 앱 타깃 Debug/Release에 MARKETING_VERSION=0.1.0, CURRENT_PROJECT_VERSION=1. generate_project.rb에도 동일 설정. 실제 archive plist에 CFBundleShortVersionString/CFBundleVersion 포함 |
+| AppIcon | 단일 1024×1024 불투명 sRGB PNG와 universal iOS catalog. ASSETCATALOG_COMPILER_APPICON_NAME=AppIcon. archive의 phone/pad 1024 아이콘과 CFBundleIcons/CFBundleIcons~ipad 확인 |
+| 방향 | Debug/Release plist에 iPad 네 방향, iPhone 세로/양쪽 가로 명시. iPad 지원/멀티태스킹을 없애거나 full-screen 강제로 경고를 숨기지 않음. Xcode 방향 경고 해소 |
+| AccentColor | 없는 AccentColor asset의 compiler 참조를 비움. 기존 DearbyApp의 명시적 청록 tint 보존. Xcode 경고 해소 |
+| 암호화 | ITSAppUsesNonExemptEncryption=NO. 앱 전체 소스에서 URLSession HTTPS, OS Keychain SecItem*만 확인. 프로젝트에 외부 Swift package/runtime library 의존성 없음, archive 링크는 Apple 시스템 라이브러리. 자체/번들 암호화 구현을 발견하지 못한 기술적 근거이며 법적 판단이나 최종 수출 선언 승인을 뜻하지 않음 |
+| API/서명 | DEARBY_API_URL 빈값 유지, 팀·인증서·프로파일 미설정 유지. root 외부 조사/공유 서비스 변경 없음 |
+
+승인 manifest의 `logo-teal.png`는 2172×724 가로 워드마크다. 정사각 런처에 전체를 넣으면 작은 크기에서 글자가 작아진다. 기존 후보를 먼저 조사했고, main Android 런처 `apps/android/app/src/main/res/drawable/ic_launcher.xml`(도입 커밋 `911c501`, main 포함)의 청록 바탕/흰색 D를 **형태·색상·even-odd fill 그대로** CoreGraphics로 래스터화했다. 새 로고 생성·워드마크 재디자인·다른 브랜치 자산 반입은 없다. 이 후보가 main에서 이미 사용 중이라는 근거는 있으나, 별도의 시각 디자인 승인 기록까지 발견한 것은 아니다. root가 PR에서 선택을 확인할 수 있다. 과거 iOS AppIcon catalog는 filename 없는 빈 설정, 과거 Android 하트는 네이티브 재착수 이전이라 채택하지 않았다. 앱 내 승인 워드마크는 그대로 유지했다.
+
+원본/결과 SHA256과 출처는 [ASSET-SOURCES](../../apps/ios/Resources/ASSET-SOURCES.md)에 기록했다. 직접 픽셀 검사로 배경 RGB `[0,127,128]`, 1024×1024, alpha 없음 확인. 로컬 재현 렌더 코드는 `.build/testflight-main/render-app-icon.swift`에 보존하며 런타임 코드나 새 의존성은 추가하지 않았다.
+
+## 실제 실행한 검증
+
+- 보완본 Release 일반 iOS 기기 archive exit 0, `** ARCHIVE SUCCEEDED **`. Xcode 제품 Validate 완료. **App Store Connect distribution validation을 실행한 것은 아니다.**
+- 원본/보완 Debug·Release plist 및 archive app plist lint 통과. 보완 archive 메타데이터 assertion 통과: 버전, 빌드, phone/pad AppIcon, iPad 네 방향, 암호화 bool, API 빈값, Release ATS 예외 없음.
+- `assetutil --info`: phone/pad AppIcon 각각 1024×1024 Opaque=true. 원본 PNG alpha 없음. 경고는 AppIntents.framework 의존성이 없어 metadata 추출을 생략한다는 1건만 남음.
+- strict SwiftLint 64파일 0위반, 구조 검사 16개 통과, generator Ruby syntax 및 git diff --check 통과.
+- 전용 iPad Pro 11-inch (M5), iOS 27 Simulator `Dearby-TestFlight-Metadata-iPad` / `327481C4-C796-45D5-AF48-38EC4D98F78F`: Release build/install/launch 성공. 세로 탐색/빈 API 오류 화면 캡처 확인. 다른 사용자 Simulator를 덮어쓰지 않음.
+- 같은 전용 iPad에서 Debug `DearbyTests`와 `DiscoveryNavigationTests/testOnlyDiscoveryIsVisible`: **34 통과(단위33/UI1), 7 skip, 0 실패**. skip은 실제 EventKit fixture 1, catalog HTTP fixture 1, 로컬 인증 API fixture 5. 이를 실서비스 검증으로 해석하지 않음.
+- XcodeBuildMCP snapshot_ui 접근성 트리 조회는 automation session 생성 타임아웃으로 실패. screenshot과 XCUITest 성공과 구별한다. 전체 접근성 감사/회전별 UI/실기기/실제 API/캘린더 허용 흐름은 이번에 검증하지 않았다.
+- `codesign --verify --deep --strict`는 원본/보완 모두 exit 1, `code object is not signed at all`. 예상된 무서명 상태로 서명 검증 통과가 아니다.
+- ponytail-review: 설정·기존 자산·출처 문서만 추가, 새 런타임 래퍼/패키지/추상화 없음. 삭제 후보 없음.
+
+## 재현·증거
+
+아래 경로는 이 checkout 기준. `.build` 산출물은 Git에 포함하지 않는다. 재실행 시 resultBundlePath는 새 경로를 사용한다.
 
 ```sh
 xcodebuild -project apps/ios/Dearby.xcodeproj -scheme Dearby \
   -configuration Release -destination 'generic/platform=iOS' \
   -derivedDataPath apps/ios/.build/testflight-main/DerivedData \
-  -archivePath apps/ios/.build/testflight-main/Dearby-unsigned.xcarchive \
-  -resultBundlePath apps/ios/.build/testflight-main/Archive.xcresult \
+  -archivePath apps/ios/.build/testflight-main/Dearby-metadata-unsigned.xcarchive \
+  -resultBundlePath apps/ios/.build/testflight-main/MetadataArchive.xcresult \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO archive
 ```
 
-- `apps/ios/.build/testflight-main/archive.log`: `** ARCHIVE SUCCEEDED **`, 경고 3건.
-- `apps/ios/.build/testflight-main/release-build-settings.txt`: 무서명 override 전 기본 Release 설정.
-- `apps/ios/.build/testflight-main/inspection.json`: archive 메타데이터/서명 검사 결과.
-- `apps/ios/.build/testflight-main/Dearby-unsigned.xcarchive` 및 `Archive.xcresult`: 원본 main 산출물.
+`apps/ios/.build/testflight-main/` 내 보완 증거: `metadata-archive.log`, `MetadataArchive.xcresult`, `metadata-inspection.json`, `metadata-assets.json`, `lint.log`, `architecture.log`, `MetadataTests.xcresult`, `ipad-release-portrait.jpg`, `Dearby-metadata-unsigned.xcarchive`.
 
-## 발견 사항과 root 해소 조건
+원본 main 검사(20:25 KST)는 `archive.log`, `Archive.xcresult`, `inspection.json`, `release-build-settings.txt`, `Dearby-unsigned.xcarchive`로 보존했다. 당시 버전/아이콘/방향 누락은 이번 소스 보완으로 해소했으며 API/서명 차단은 그대로다. 원본 arm64/dSYM UUID 일치도 확인했다.
 
-| 항목 | 확인 근거·영향 | 해소 조건·의존 작업 |
-| --- | --- | --- |
-| 서명/팀 | Release DEVELOPMENT_TEAM 없음. root가 valid identities 0을 확인했다고 전달함(이 세션 재조사 안 함). 산출물 자체도 무서명 | root가 승인된 Apple 팀·인증서/프로파일·App Store Connect 앱 권한을 확보하고 signed archive/export/validation 수행 |
-| 버전/빌드 번호 | MARKETING_VERSION/CURRENT_PROJECT_VERSION 설정 없음. 실제 app plist에 CFBundleShortVersionString/CFBundleVersion 모두 없음 | root가 기존 App Store Connect 이력과 맞는 버전/중복 없는 빌드 번호 결정. 프로젝트 및 generate_project.rb에 일관되게 반영하고 main 통합 후 재archive |
-| 앱 아이콘 | ASSETCATALOG_COMPILER_APPICON_NAME 빈값, AppIcon.appiconset 없음. archive CFBundleIcons도 없음. DearbyLogo.imageset은 앱 아이콘 설정을 대체하지 않음 | 승인된 기존 로고 기반 앱 아이콘 리소스 구성과 AppIcon 설정을 별도 작은 변경으로 검토/통합. 새 로고 생성 불필요 |
-| API 주소 | archive DearbyAPIURL 빈 문자열. APIClient.validatedURL은 Release HTTPS만 허용. CatalogState.refresh는 API catalog 응답에 의존 | root가 승인된 실제 HTTPS API origin과 catalog 응답 확인 후 배포 빌드에 주입. 빈 주소의 신규 설치에서는 탐색 데이터 로드 불가. 가짜 주소/localhost로 배포 가능하다고 표시 금지 |
-| iPad 방향 | 기기군 1,2이나 UISupportedInterfaceOrientations 및 iPad 설정 없음. Xcode: “All interface orientations must be supported unless the app requires full screen.” | 현재 iPad 지원 유지 기준으로 방향 설정을 명시하고 회전 UI 검증. 배포 validator 통과 여부는 아직 확인하지 않았으며 무조건 upload 거부라고 단정하지 않음 |
-| 암호화 선언 | ITSAppUsesNonExemptEncryption 없음. 검토한 앱 코드에서 URLSession HTTPS/OS Keychain 사용, 별도 암호화 구현·외부 crypto 패키지는 확인되지 않음. 바이너리 링크는 Apple 시스템 라이브러리 | root가 최종 배포 암호화 질문 응답을 확정. 코드 근거상 면제 암호화 후보지만 법적/수출 선언을 임의 확정하지 않음. 키 누락 자체는 컴파일 오류가 아니며 ASC 질문으로 처리 가능 |
+## root 인계·해소 조건
 
-아이콘/버전은 배포 메타데이터 보완 사항이다. 이번에는 정확한 main 원본 검사 증거를 보존하고 소스 수정 없이 보고한다. 버전과 API·팀을 임의 결정하지 않았으며, 모든 보완은 root의 main 통합 이후 배포 archive에 반영해야 한다. 중복 GitHub 이슈·PR·push·업로드는 만들거나 실행하지 않았다.
+1. **Apple 서명/권한**: root 전달상 Xcode의 minjun jo 팀(Admin)은 있으나 인증서 목록은 비어 있음. 이 세션은 인증을 재조사·생성하지 않았다. root가 승인된 팀/서명/프로파일·ASC 앱 레코드/권한으로 signed archive/export/validation을 수행해야 한다.
+2. **API**: archive DearbyAPIURL 빈 문자열. APIClient는 Release HTTPS만 허용하며 신규 설치의 catalog 조회 불가. root가 운영 HTTPS origin과 catalog 응답을 확인해 전달한 뒤 최종 배포 빌드에 주입해야 한다. nginx/DNS/공유기 변경은 이 checkout에서 하지 않는다.
+3. **최종 번호·선언**: root가 ASC 기존 버전/빌드 이력 및 최종 암호화 응답을 확인. `0.1.0 (1)`을 승인된 배포 번호로 오인하지 않는다. 향후 외부 crypto 의존성 추가 시 선언 재검토.
+4. **main 통합 후 배포**: PR을 main에 통합한 commit에서 재archive. 이 브랜치에서 upload하지 않음. 기능/UI/수집/어드민 미병합 변경은 포함하지 않는다.
+5. **검증 잔여**: TestFlight processing/테스터 전달, ASC privacy report 및 배포 validation, 실제 HTTPS API, 실기기/회전별 UI는 별도. 앱 PrivacyInfo.xcprivacy는 현재 없고 검토 범위에서 직접 required-reason API 사용을 찾지 못했으나 이 사실만으로 최종 privacy 통과를 단정하지 않음.
 
-## 캘린더·권한·기타 검사
+캘린더 full-access 한국어 목적 문구와 iOS 18+ requestFullAccessToEvents 대응은 보존했다. 권한은 상세의 사용자 동작 후 요청하고 시각 미확인 활동은 요청 전 unknown 처리하는 기존 main 구현 유지. 카메라/사진 추가 문구와 숨긴 기능/데이터도 삭제하지 않았다.
 
-- archive에 `NSCalendarsFullAccessUsageDescription`의 한국어 목적 문구가 포함됨. iOS 18+에서 사용하는 `requestFullAccessToEvents()`와 대응한다.
-- 코드상 상세의 사용자 동작으로 열리는 CalendarConflictView에서만 권한 연결. 시작/종료 시각이 없으면 요청 전에 unknown 처리. OS EventKit 조회 후 캘린더 선택 정보/바쁜 시간만 화면 상태로 전달하며 종료/비활성 전환에 clear. 이번 검사는 정적 확인이며 실기기 권한 허용·거부나 반복 일정 동작을 새로 검증한 것은 아니다.
-- 카메라/사진 추가 권한 목적 문구도 포함됨. 기존 숨긴 명함 기능의 소스·권한은 삭제하지 않았다.
-- Release archive에 NSAppTransportSecurity 예외 없음. Debug의 로컬 네트워크 예외가 Release에 유입되지 않음.
-- `dearby` URL scheme은 남아 있으나 기본 Discovery 루트와 숨긴 기능 차단은 기존 main 구현 그대로다.
-- 나머지 빌드 경고: 존재하지 않는 AccentColor asset 참조(명시 SwiftUI 색상과 기본 control tint 일관성 점검 권장), AppIntents.framework 의존성 없어 metadata 추출 생략(이 앱에 App Intents 구현을 요구하는 경고가 아님).
-- PrivacyInfo.xcprivacy는 앱 리소스에 없음. 검토 범위에서 UserDefaults/파일 timestamp/시스템 uptime 등 직접 사용은 찾지 못했다. 이것만으로 manifest 불필요나 전체 privacy 검증 통과를 단정하지 않으며, 최종 distribution privacy report는 root 배포 검증에 남긴다.
-- unit/UI/구조/SwiftLint는 이번에 실행하지 않았다(실행 소스 변경 없음). 이전 문서의 통과 결과를 이번 Release archive 검증으로 옮겨 적지 않았다. 실기기 설치, HTTPS 운영 API, TestFlight processing/테스터 배포, Organizer/ASC validation도 미실행.
+## 공식 근거·세션
 
-## 공식 문서와 판단 범위
+[Apple 배포 준비](https://developer.apple.com/documentation/xcode/preparing-your-app-for-distribution), [단일 크기 AppIcon](https://developer.apple.com/documentation/xcode/configuring-your-app-icon), [암호화 선언 안내](https://developer.apple.com/documentation/security/complying-with-encryption-export-regulations)를 참고했다. OS 제공 암호화에 관한 Apple 기술 안내에 따라 구성했으며 배포자의 법적 판단을 대신하지 않는다.
 
-- [Apple 배포 준비](https://developer.apple.com/documentation/xcode/preparing-your-app-for-distribution): 버전·빌드·아이콘 등 배포 메타데이터 기준.
-- [CFBundleVersion](https://developer.apple.com/documentation/bundleresources/information-property-list/cfbundleversion): App Store 필수 빌드 식별 키.
-- [ITSAppUsesNonExemptEncryption](https://developer.apple.com/documentation/bundleresources/information-property-list/itsappusesnonexemptencryption): 키를 넣지 않으면 업로드마다 암호화 질문으로 처리.
-
-## 인계·세션 보존
-
-Orca worktree instance `a46ac287-2318-4c3d-92bd-789038ff1a17`, runtime terminal `term_a6d0db39-eb0d-42ae-88dd-6b760a4eaac0` (2026-09-29 확인, 영구 세션 ID가 아님). 작업 카드에 검사 완료/차단 요약을 남기고 세션·worktree·archive를 유지한다. 공통 이슈 작성과 통합/배포는 root가 진행한다.
-
-문서 diff ponytail-review: 중복 구현·새 래퍼·추상화 없음. 기능 변경 없이 검증 정본 하나로 유지.
+Orca worktree instance `a46ac287-2318-4c3d-92bd-789038ff1a17`, runtime terminal `term_a6d0db39-eb0d-42ae-88dd-6b760a4eaac0` (2026-09-29 확인, 영구 세션 ID 아님). 카드·세션·worktree·archive 유지. 공통 GitHub 차단 이슈는 root가 작성하므로 중복 이슈 없음.
