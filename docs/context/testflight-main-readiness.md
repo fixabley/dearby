@@ -1,12 +1,37 @@
 # main iOS TestFlight 배포 준비
 
-최신 검증: 2026-09-29 20:51 KST. 역할: main 기반 iOS 배포 메타데이터·무서명 archive. Apple 인증·업로드·API 도메인/nginx·공통 차단 이슈는 root 소유.
+최신 검증: 2026-09-29 21:21 KST. 역할: main 기반 iOS 배포 메타데이터·signed archive/local export 검증. Apple 인증·업로드·API 도메인/nginx·공통 차단 이슈는 root 소유.
+
+## 최종 main signed archive/export 완료 — 21:21 KST
+
+root가 PR60 전체 CI 통과 후 main merge `c4a87289c38e6abb1784fdda4dde8c52833af17c`를 배정했다. 미커밋 인계를 외부 `readiness-before-main-merge.md`에 보존 후 자기 checkout을 해당 commit으로 fast-forward했다. **앱 소스/프로젝트 변경 없이 Manual CLI override로 signed Release archive와 app-store-connect local export를 완료했다. 업로드는 실행하지 않았다.**
+
+최초 서명 시도는 CodeSign에서 `errSecInternalComponent`, xcodebuild exit65로 실패했다. 오류만으로 원인을 확정하지 않았고 codesign/SecurityAgent 대기 상태를 root에 알렸다. CUA는 SecurityAgent 접근을 안전상 거부했으며 이를 우회하거나 비밀번호/partition/ACL을 조작하지 않았다. 기존 archive.log/Archive.xcresult/DerivedData를 보존하고 **새 retry-01 경로**로 재시도해 archive/export 모두 exit0으로 완료했다.
+
+모든 signed 산출물/DerivedData/SourcePackages/tmp/log/exportOptions/IPA 압축해제/검사 결과는 `/Users/jominjun/.dearby-signing/build-main/retry-01/`에 보존한다. 인증서/profile을 프로젝트 내부에 넣지 않았고 개인키는 Keychain에서 사용했으며 읽기/복사/추출하지 않았다. public embedded profile은 검증 시 메모리에서만 파싱하고 실제 값/인증서 내용은 출력하지 않았다.
+
+**root 전달 IPA**: `/Users/jominjun/.dearby-signing/build-main/retry-01/export/Dearby.ipa` (991,044 bytes). SHA256 `3b8fc6e9428ff218e885de61de220cc333ae1d9ea44cde3abea2ecf985975974`.
+
+archive 및 최종 IPA의 앱에서 각각 확인:
+
+- `codesign --verify --deep --strict` 통과, Apple Distribution authority/팀 일치.
+- `io.wid.dearby`, `0.1.0 (1)`, `https://wid.io.kr`, AppIcon/iPad 네 방향/캘린더 문구/ATS 예외 없음 유지.
+- root 지정 profile UUID/팀/app ID 일치, 유효기간 내, distribution profile이며 전달 인증서 fingerprint 포함 확인.
+- signed entitlement의 app/team 일치, get-task-allow=false, beta-reports-active=true, keychain groups가 profile 허용범위에 포함됨.
+- archive 실행파일/dSYM UUID 일치.
+- archive 앱8파일 및 IPA 전체9파일(앱8+Symbols1)의 known-pattern 검사에서 Supabase/key prefix/JWT/env 후보0. symlink/중첩압축 후보 없음. 임의 인코딩/미지 키 형식까지 부재를 보증하지 않음.
+
+근거: 위 외부 경로의 `archive.log`, `Archive.xcresult`, `Dearby.xcarchive`, `export.log`, `ExportOptions.plist`, `archive-verification.json`, `ipa-verification.json`, `ipa-container-verification.json`, `ipa-artifact.json`, `verify-signed-bundle.py`, `HANDOFF.md`. archive는 AppIntents metadata 생략 경고1건, export 경고0건. source 변경이 없으므로 구조/단위/UI 검사를 이번 서명 과정에서 재실행했다고 기록하지 않는다.
+
+**root 전달 업로드 완료 증거 — 21:24 KST 인계 갱신**: root가 Xcode Organizer에서 `App upload complete` / `Dearby 0.1.0 (1) uploaded` UI를 확인했다고 전달했다. 대상은 main `c4a87289`의 동일 retry-01 archive이며 기존 profile과 빌드 자동 변경 OFF를 유지했다. **이 내용은 root의 UI 확인을 전달받아 기록한 것으로, 이 세션이 업로드하거나 직접 Organizer 화면을 검증한 것은 아니다.** ASC TestFlight 웹은 root 확인 시 빈 화면이어서 처리 완료·빌드 노출·테스터 사용 가능 여부는 아직 미확인이다. 추가 업로드를 시도하지 않으며 후속 ASC 처리 검증은 root가 계속한다. Symbols/*.symbols 1개는 위 IPA 전체9파일 검사에 이미 포함했다.
+
+**외부 상태와 후속**: root 전달상 정식TLS 로컬200이나 이중NAT 외부접속 차단 이력이 남아 있고 이 세션은 인터넷 연결을 재검증하지 않았다. local export 성공은 ASC upload/processing/테스터 전달 통과가 아니다. 데이터 게시 없음(published=0 전달 상태 유지), AP/공유기 변경 절대 없음. 업로드/외부 네트워크는 root 담당. 공통 #62, 세션/worktree 유지. 이 후속 인계는 문서 전용 브랜치에 별도 커밋/push하며 signed 산출물에는 문서 변경이 들어가지 않는다. 추가 코드 변경·빌드·업로드는 수행하지 않는다.
 
 ## 현재 결과
 
-- checkout `/Users/jominjun/Documents/dearby/ios-testflight-main`, branch `fixabley/ios-testflight-main`.
+- checkout `/Users/jominjun/Documents/dearby/ios-testflight-main`, 빌드 당시 branch `fixabley/ios-testflight-main`; 후속 문서 branch `docs/testflight-main-upload-handoff`.
 - 최초 기반은 `b3094f9fc3b2eb6eb2de950cd1ad28010d50f8c4`. 20:50 KST root 지시로 PR61이 병합된 main `0a045c4`를 포함하는 PR60 원격 `2c57cdf`를 fast-forward 반영했다. 미커밋 번들검사 인계는 `.build`에 백업 후 원문 그대로 보존했다. 발표/어드민/수집 미병합 변경 없음. iOS 배포 설정/리소스/문서만 보완했다.
-- **원본 main과 메타데이터 보완본 모두 일반 iOS 기기 Release 무서명 archive 성공. TestFlight 업로드 가능한 산출물은 아니다.**
+- 현재 최종 main의 signed archive/local IPA export 및 로컬 검증은 위 절처럼 완료했다. 아래 무서명 archive 기록은 이전 준비 단계 증거이며 업로드용 산출물로 사용하지 않는다.
 - Xcode 27.0 (27A266a), iPhoneOS SDK 27.0 (24A430), 최소 iOS 18.0, arm64, iPhone/iPad, Release `-O`, dwarf-with-dsym.
 - 사용자 신규 ASC 앱 등록에 맞춰 Release ID를 `io.wid.dearby`로 변경했다. TestFlight 버전 `0.1.0 (1)`은 root 후속 승인으로 유지하며 ASC Store 초안 `1.0`은 변경하지 않았다. 서명/업로드는 root 담당이다.
 
@@ -19,7 +44,7 @@
 | 방향 | Debug/Release plist에 iPad 네 방향, iPhone 세로/양쪽 가로 명시. iPad 지원/멀티태스킹을 없애거나 full-screen 강제로 경고를 숨기지 않음. Xcode 방향 경고 해소 |
 | AccentColor | 없는 AccentColor asset의 compiler 참조를 비움. 기존 DearbyApp의 명시적 청록 tint 보존. Xcode 경고 해소 |
 | 암호화 | ITSAppUsesNonExemptEncryption=NO. 앱 전체 소스에서 URLSession HTTPS, OS Keychain SecItem*만 확인. 프로젝트에 외부 Swift package/runtime library 의존성 없음, archive 링크는 Apple 시스템 라이브러리. 자체/번들 암호화 구현을 발견하지 못한 기술적 근거이며 법적 판단이나 최종 수출 선언 승인을 뜻하지 않음 |
-| API/서명 | 후속 root 승인으로 Release DEARBY_API_URL=https://wid.io.kr 설정. Debug는 빈값. 팀·인증서·프로파일 미설정 유지. Supabase URL/key 없음. root 외부 조사/공유 서비스 변경 없음 |
+| API/서명 | 후속 root 승인으로 Release DEARBY_API_URL=https://wid.io.kr 설정. Debug는 빈값. 소스 팀 설정은 비워 두고 최종 signed archive/export에서만 CLI Manual override 적용. Supabase URL/key 없음. root 외부 조사/공유 서비스 변경 없음 |
 
 승인 manifest의 `logo-teal.png`는 2172×724 가로 워드마크다. 정사각 런처에 전체를 넣으면 작은 크기에서 글자가 작아진다. 기존 후보를 먼저 조사했고, main Android 런처 `apps/android/app/src/main/res/drawable/ic_launcher.xml`(도입 커밋 `911c501`, main 포함)의 청록 바탕/흰색 D를 **형태·색상·even-odd fill 그대로** CoreGraphics로 래스터화했다. 새 로고 생성·워드마크 재디자인·다른 브랜치 자산 반입은 없다. 이 후보가 main에서 이미 사용 중이라는 근거는 있으나, 별도의 시각 디자인 승인 기록까지 발견한 것은 아니다. root가 PR에서 선택을 확인할 수 있다. 과거 iOS AppIcon catalog는 filename 없는 빈 설정, 과거 Android 하트는 네이티브 재착수 이전이라 채택하지 않았다. 앱 내 승인 워드마크는 그대로 유지했다.
 
@@ -92,12 +117,12 @@ xcodebuild -project apps/ios/Dearby.xcodeproj -scheme Dearby \
 
 ## root 인계·해소 조건
 
-[PR #60](https://github.com/fixabley/dearby/pull/60), base main. 소스 커밋 `81e1c2c9177ba1b0698a0ac32ccdf979b9a54764` push 완료. 20:38 KST 조회에서 MERGEABLE, 원격 Native verification 진행 중(통과로 기록하지 않음). 최초 Git push는 캐시된 다른 GitHub 계정으로 403; 전역 인증 설정 변경 없이 해당 push 명령에만 기존 gh credential helper를 지정해 해결했다. root가 CI 결과를 확인하고 통합한다.
+[PR #60](https://github.com/fixabley/dearby/pull/60)은 root가 최종 소스 `3abbe47`의 API/Android/iOS CI 통과 확인 후 main `c4a87289c38e6abb1784fdda4dde8c52833af17c`로 병합했다. 이 세션도 GitHub에서 MERGED 및 merge commit 일치를 조회했다. 후속 문서 변경은 별도 브랜치/PR로 제출하며 병합된 PR60 head를 변경하지 않는다. 최초 Git push의 다른 계정 403은 해당 명령에만 기존 gh credential helper를 지정해 해결했으며 전역 인증 설정은 변경하지 않았다.
 
-1. **Apple 서명/권한**: root 전달상 Xcode의 minjun jo 팀(Admin)은 있으나 인증서 목록은 비어 있었음. 후속으로 사용자 ASC Dearby 앱 직접 등록(Apple ID6817330226, io.wid.dearby)이 확인되어 Release ID를 일치시켰음. 이 세션은 인증을 재조사·생성하지 않았다. root가 승인된 팀/서명/프로파일·ASC 앱 레코드/권한으로 signed archive/export/validation을 수행해야 한다.
+1. **Apple 서명/권한**: root 전달상 Xcode의 minjun jo 팀(Admin)은 있으나 인증서 목록은 비어 있었음. 후속으로 사용자 ASC Dearby 앱 직접 등록(Apple ID6817330226, io.wid.dearby)이 확인되어 Release ID를 일치시켰음. 이 세션은 인증을 재조사·생성하지 않았다. 후속 root 배정으로 signed archive/local export 및 로컬 서명 검증은 완료했다. root가 Organizer upload 완료를 확인했다고 전달했으며 ASC processing/테스터 사용 가능 여부는 root 검증 대기다.
 2. **API**: Release origin은 https://wid.io.kr 확정/반영. root가 공개 인증서 신뢰와 인터넷에서 실제 catalog 응답을 검증해야 한다. 현재 root 전달 published=0, 게시하지 않았다. nginx/DNS/공유기 변경은 이 checkout에서 하지 않는다.
 3. **최종 번호·선언**: root 후속 승인에 따라 TestFlight `0.1.0 (1)` 유지, ASC Store 초안1.0은 변경하지 않음. root가 실제 업로드의 빌드 번호 사용 가능 여부와 최종 암호화 응답을 확인한다. 향후 외부 crypto 의존성 추가 시 선언 재검토.
-4. **main 통합 후 배포**: PR을 main에 통합한 commit에서 재archive. 이 브랜치에서 upload하지 않음. 기능/UI/수집/어드민 미병합 변경은 포함하지 않는다.
+4. **main 통합 후 배포**: main c4a87289에서 signed archive/export 완료, root 전달 Organizer upload 완료. 이 세션에서 upload하지 않음. 기능/UI/수집/어드민 미병합 변경은 포함하지 않는다.
 5. **검증 잔여**: TestFlight processing/테스터 전달, ASC privacy report 및 배포 validation, 실제 HTTPS API, 실기기/회전별 UI는 별도. 앱 PrivacyInfo.xcprivacy는 현재 없고 검토 범위에서 직접 required-reason API 사용을 찾지 못했으나 이 사실만으로 최종 privacy 통과를 단정하지 않음.
 
 캘린더 full-access 한국어 목적 문구와 iOS 18+ requestFullAccessToEvents 대응은 보존했다. 권한은 상세의 사용자 동작 후 요청하고 시각 미확인 활동은 요청 전 unknown 처리하는 기존 main 구현 유지. 카메라/사진 추가 문구와 숨긴 기능/데이터도 삭제하지 않았다.
