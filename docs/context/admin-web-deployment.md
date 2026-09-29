@@ -51,3 +51,9 @@ ADMIN_TEST_URL=http://127.0.0.1:5187 npm run test:e2e -- deployment.spec.ts
 - 최초 preview 명령의 npm 인자 오류로 연결 실패했으나 명령 수정 후 전체 4개 재실행 통과. 실제 cloud/RLS 쓰기 E2E와 Vercel 원격 배포 검증은 실행하지 않음.
 - ponytail-review: Lean already. Ship. 기존 승인 UI의 재설계나 추상화 추가 없음.
 - root 인계 대상: `term_e1118002-4ecb-4409-a681-976050a7c86e`. 완료 후 세션/worktree retain.
+
+## 최종 인계
+
+[PR #68](https://github.com/fixabley/dearby/pull/68), UI 복원 `d96b6b8`, 배포 구현 `1a58df1`. 2026-09-29 root 전달 기준 `dearby-admin` 프로젝트/Node24/Vite/apps/admin/dist 및 Production 공개 환경변수 설정 완료, 도메인 연결과 Route53 CNAME 생성 제출 완료. 이는 root가 전달한 상태이며 이 checkout에서 원격 배포를 실행하거나 DNS/HTTPS 완료를 검증한 결과가 아니다. root가 PR의 최종 head를 검토·배포하고 공개 HTTPS/SPA 경로를 확인한다.
+
+로컬 preview는 `http://127.0.0.1:5187`에서 합성 공개키로 실행 중이다. 실제 cloud 운영 미리보기가 아니다. 세션·worktree·preview를 유지한다.
