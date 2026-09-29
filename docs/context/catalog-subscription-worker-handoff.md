@@ -1,56 +1,59 @@
-# 구독 Codex 활동 수집 워커 — 구현 중 인계 (2026-09-29)
+# 구독 Codex 활동 수집 워커 — 완료 및 운영 인계
 
-## 사용자 승인 / 최종 요구
+2026-09-29 검증. 소유 checkout `/Users/jominjun/Documents/dearby/catalog-subscription-collector`, 브랜치 `fixabley/catalog-subscription-collector`. root는 IR 작업으로 전환했고 이 세션이 수집 구현을 독립 소유했다. 감독용 orchestration이나 별도 에이전트를 만들지 않았다. 사용자 요청대로 이 세션/worktree를 유지한다.
 
-- DB의 프로그램 이름을 기준으로 매일 활동 수집·최신화.
-- Supabase 주기 작업 사용. API 대신 **ChatGPT 구독 로그인 + codex exec + gpt-6-luna**를 명시적으로 선택.
-- 구현·검증 후 커밋하고 push 승인됨.
-- 사용자는 지금 작업을 하위 세션에 전가하고 root에서는 IR 자료 작업을 진행하길 요청했다. 이것은 완전 소유권 인계이며 감독용 orchestration을 중복 생성하지 않는다. 하위 세션을 완료 후에도 유지한다.
+## 승인과 완료 범위
 
-## 완료 / 현재 상태
+Supabase Cron으로 DB 프로그램별 일일 작업을 등록하고 **ChatGPT 구독 로그인 + 로컬 `codex exec gpt-6-luna`**로 활동을 수집·최신화한다. API 과금 경로/fallback으로 바꾸지 않았다. 기존 root 서비스·데이터를 보존했고, 자기 checkout에서만 수정·빌드했다. JSON 조건 기능 93de583과 WIP 424aee4는 재작성하지 않았다. 최초 WIP 인계는 [보관본](archive/2026-09-29-collector-wip.md)이다.
 
-- JSON 조건 편집기(임의 타입, 중첩, 유사 키 자동완성, GIN)는 **93de583**으로 완료·origin/feat/discovery-admin push됨. admin build/lint/unit6, 실제 DB/HTTP8, Playwright2 통과. 관련 문서 admin-implementation-and-handoff.md.
-- 그 이후 워커는 **WIP**이다. apps/catalog-worker/src/{worker,collect,source}.mjs 및 package.json, supabase/migrations/20260929020000_catalog_collection.sql.
-- SQL migration은 root의 로컬 Supabase에 적용됐다. pg_cron 설치, 일일09:00KST 등록. 그러나 catalog_collection_settings.enabled=false이므로 자동 enqueue 비활성이다. 실제 수집 job enqueue/실행/launchd 설치는 아직 하지 않았다.
-- 현재 실제 프로그램28개 + 로컬 예시1개. 과거 E2E 테스트 조직/프로그램이 몇 개 추가로 남아 있다. 이름이 정확히 `[로컬 테스트] (조직|프로그램|활동) 13자리timestamp`인 이번 E2E 생성물만 안전하게 정리 가능. 기존 데모·실데이터 삭제 금지.
-- 프로그램 collection_hosts는 기존 활동 official_url의 host로 초기화, collection_enabled는 `[로컬` 이름 제외. 새 프로그램은 기본false.
-- 로컬 `codex login status` 결과 Logged in using ChatGPT. auth.json은 읽거나 공유하지 않았다. CLI v0.158 계열의 exec --help/features list에서 --ignore-user-config, --ephemeral, --disable shell_tool, --disable multi_agent 지원 확인.
-- 워커는 별도 임시 디렉터리, subscription login 강제, child env allowlist(HOME/PATH 등), API/DB키 전달 차단, 사용자 config 미로드, shell/multi_agent 비활성, read-only, live web search, low reasoning, standard service tier(default), JSON output-schema 사용. 실제 호출은 미검증.
-- source.mjs는 공식 HTTPS host allowlist, public IPv4 DNS pinning, redirect 제한, 1MB/15s 제한, HTML->text와 증거 구절 확인을 구현했다. 외부 DNS/IP 경계와 타임아웃을 테스트해야 한다.
-- 신규는 초안, collector가 마지막 저장한 버전과 같을 때만 자동 갱신, 관리자 수정/공식확인/게시 이후 변경은 collection_results에 review 제안 보존. 자동 공식확인/게시 없음.
+- 매일 09:00 KST Cron, 프로그램별 당일 unique 큐, 동시 claim 1개, 10분 lease, 제한된 재시도와 만료 회수.
+- 구독 인증/한도 오류 시 전역 일시정지, 관리자 재시도, 시도별 토큰/오류 이력. 인증 저장소 직접 읽기/복사 없음.
+- 공식 HTTPS exact host, public IPv4 DNS pinning, redirect/15초 전체 deadline/1 MB/구절 검증. 신청 링크는 실제 `<a href>` 전체 URL과 대조한다.
+- 새 활동 초안, collector 소유 상태만 갱신, 관리자 수정·공식 확인·게시·JSON 조건 보존. 새 미확인 값으로 기존 내용을 지우지 않고 review 제안을 남긴다. 중복 가능성을 표시하고 회차 분리한다.
+- 0건도 별도 공식 원문 근거를 확인한다. 원문 불가/모든 후보 실패를 성공으로 처리하지 않는다. 후보별 날짜·모집 내용 전체가 검증됐다고 표현하지 않는다.
+- 관리자 프로그램 수집 ON/OFF·호스트, 작업 상태/오류/usage/후보/원문/활동 편집 연결·수동 등록·재시도 UI.
+- ignored 0600 환경 부트스트랩, launchd 설치/상태/해제, 스케줄 ON/OFF 스크립트, CI 단위/DB/브라우저 검사. CI에 구독 credentials나 실검색을 넣지 않는다.
 
-## 남은 작업 (필수)
+## 현재 실행 상태
 
-1. WIP 전체 정확성 리뷰/수정. 특히 DB null 입력 거부·lease 소유권·만료/재시도·중복/정체성·관리자 보존·원자성, 후보가 모두 원문검증 실패했을 때 succeeded로 오인하지 않기. source proof는 현재 짧은 quote 존재만 확인하므로 모집/날짜의 모든 필드가 검증됐다고 표현하지 말 것.
-2. 런타임 실제 codex exec 한 프로그램 검색 smoke. shell disabled/model/service tier/schema 옵션 실제 동작 확인. 요금 API로 fallback 금지. 실패/구독한도는 작업에 명시하고 무한 재시도 금지.
-3. 안전한 worker .env.local 부트스트랩(Node24 + 로컬 supabase CLI status JSON을 메모리에서 읽어 service role 저장; 0600/ignore). 비밀 출력 금지. launchd 설치/해제 도구 또는 명확한 실행 방법. 사용자의 매일 실행 요구에 맞춰 활성화할 수 있으면 실행하고 실제 상태 기록. Mac+Supabase 실행 필요, cloud Supabase는 아직 없음.
-4. 어드민 프로그램 편집에 collection_enabled/collection_hosts, 수집 작업 화면(상태·오류·사용량·pending review/후보·원문), 수동 큐 등록. 원문/수집 결과를 볼 수 있게 할 것. UI에서 임의의 draft 공개/공식확인 금지. 기존 활동으로 연결해 검토 가능하게.
-5. Node 유닛 + 실제 Supabase queue/permission/claim/concurrency/retry/idempotency/manual preservation tests. 실제 관리자 브라우저 흐름. CI에 워커 검사 포함하되 구독 credentials/실검색은 CI에 넣지 말 것.
-6. ponytail-review 필수. 문서/역할/증거 및 한계 갱신. WIP commit은 완료 표시가 아니므로 추가 feature/test commit으로 마무리. 자기 브랜치 push, root에 branch/hash/실행 결과를 전달. 원래 feat/discovery-admin에 자동 force push/다른 checkout 변경 금지. 필요하면 feat/discovery-admin을 base로 draft PR 생성.
-7. 날짜가 알려져도 종료시각·마감시각을 추정하지 말 것. 정기 실행 주기 자체를 OpenAI Batch API 50% 할인과 혼동하지 말 것. 구독 사용량은 평소 Codex와 공유하며 무제한 비용0 보장 금지.
+- Root admin `http://127.0.0.1:5173`, root API `http://127.0.0.1:58765`, Supabase API54321/DB54322/Studio54323을 종료하거나 재시작하지 않았다. iPhone17 연결도 변경하지 않았다.
+- 이 checkout의 새 관리자: **http://127.0.0.1:5174/collection**. 자기 Vite 프로세스만 별도로 실행 중이다. root5173에는 새 UI가 아직 통합되지 않았다.
+- Cron `dearby-daily-program-collection`, `0 0 * * *`, active=true. `catalog_collection_settings.enabled=true`. 오늘 28개 프로그램 작업 등록을 확인했다. 새 프로그램은 기본 수집 OFF다.
+- 사용자 LaunchAgent **com.dearby.catalog-subscription-worker** 설치·실행 확인. 60초 간격, 한 번에 한 작업. 첫 자동 실행 FEConf의 실검색·실패 저장을 확인했다. 나머지 당일 큐는 백그라운드로 계속 처리된다. 다음날 09시의 실제 timer firing과 장기 무중단 운용까지 검증한 것은 아니다.
+- Node24 고정 경로 `/Users/jominjun/.npm/_npx/538786c08bcb9442/node_modules/node/bin/node`, Codex `/opt/homebrew/bin/codex`. 이 캐시/checkout 삭제 전 워커를 해제하고 안정된 Node24/새 checkout에서 재설치해야 한다.
+- migrations 030000/040000/050000을 데이터 reset 없이 적용했다. Docker psql 적용 후 local migration history를 CLI repair로 일치시키고 PostgREST schema를 reload했다. 기존 000000/010000/020000 이력은 유지했다.
+- 환경 생성은 워커 전용 bootstrap을 사용했다. root의 관리자 env/credentials는 자기 checkout의 ignored 파일로만 복사했고 비밀번호·계정을 재생성하지 않았다. 로그는 worker/logs의 ignored .log 파일이다.
 
-## 알려진 검토 사항
+## 실제 구독 실행과 사용량
 
-- collect.mjs randomUUID import 미사용. schedules 안정ID는 SHA256 기반이며 외부 식별은 officialURL+occurrence. occurrence 일관성/이전 회차 혼동 테스트 필요.
-- 알려진 값이 다음 검색에서 null/unknown이 되면 자동 업데이트가 기존 수집 값을 지울 수 있으니 병합 규칙 검토.
-- date/timeZone 현재 Asia/Seoul 고정(한국 프로그램). 임의 다른 시간대 행사는 원문 기준으로 처리하거나 지원 경계 기록.
-- finish function은 lease 10분, exec4분 + 최대10개원문15초(redirect 포함시 더 길어질 수 있음). 전체예산과 lease 일치시킬 것.
-- claim은 전역advisory lock으로 subscription동시1개. 실패30분 지연3회 후blocked. 인증/한도blocked 재개UI 아직 없음.
-- 신규/기존 seed exact title+URL 일치만 연결. 유사 제목 중복을 임의 합치지 않지만 기존seed와 중복초안이 생길 수 있음. 검토 표시/탐지 개선 권장.
-- 최초 JSON migration은 93de583으로 게시됐으므로 이력 수정 금지. 이후 SQL은 WIP지만 로컬에 이미 적용됨. 스키마 수정은 추가 migration으로 남기는 편이 안전.
+드로이드나이츠 실제 실행에서 후보 2개 중 원문 구절을 확인한 **1개가 초안 저장**되고 1개는 구절 불일치로 제외됐다. 저장된 활동은 `2026 이력서 공개 피드백 선정`, source `https://droidknights.dev/en`, publication=draft, source_checked_at=null이다. 모집 상태·날짜는 관리자 검토 전의 제안이다. 초기 substring 검사로 통과했던 불완전한 `https://forms.gle`는 exact anchor 검사 추가 후 이 워커가 만든 미수정 초안 한 건에서만 null로 바로잡았고 collector 저장 버전도 함께 맞췄다.
 
-## 로컬 환경
+이 실행의 CLI usage는 입력 **84,374**(캐시 입력 **58,624**, 입력의 부분집합), 출력 **758**, 웹 도구 시작 이벤트 **3회**다. 초기 5개 프로그램 smoke는 입력 51,525~84,374, 출력 203~758, 웹 도구 2~3회였으나 성공/원문 실패/과거 회차 제외가 섞인 작은 표본이다. 구독 잔여량·실제 크레딧 차감량은 CLI usage에 없으므로 단정할 수 없다. 28개/일이 기본이고 실패에 따라 최대 3시도/프로그램/일이 가능해 사용량이 커질 수 있다. API 단가로 구독 비용을 계산하거나 무제한 비용0으로 설명하지 않는다. 프로그램별 ON/OFF로 범위를 줄이고 구독 한도 오류 시 자동 정지 후 원인 해소 뒤 재개한다.
 
-- Root /Users/jominjun/Documents/dearby; 기존 `discovery-admin-backend` child는 과거 readiness 문제로 미사용(retain). 새 담당자는 자기 checkout만 수정/빌드.
-- Supabase dearby via OrbStack: API54321 DB54322 Studio54323. local container supabase_db_dearby.
-- Admin http://127.0.0.1:5173 (root 프로세스), Supabase-backed API http://127.0.0.1:58765 (root Node24 프로세스), iPhone17는58765 연결. 해당 프로세스 종료/DB reset 금지.
-- 새 checkout 환경은 `node supabase/scripts/bootstrap-local.mjs`로 자기 checkout의 ignored env 생성 가능(기존 행 ignore-duplicates; 계정/비밀번호 재생성 주의: root credentials 파일을 비공개로 보존/재사용해야 기존계정 비밀번호 불일치 방지). 기존 root env/credentials는 읽기만 하여 자기 local env에 복사 가능, Git추적 금지.
-- Node24: /Users/jominjun/.npm/_npx/538786c08bcb9442/node_modules/node/bin/node
-- root imported folder 01a0dd49-8ce1-7263-957a-d63f220da862는 사용자 원본, 추적/삭제 금지.
-- Git push credential helper 필요시 `git -c credential.helper= -c 'credential.helper=!gh auth git-credential' push ...`.
+초기 FEConf/SOPT/Let’Swift 0건 smoke는 강한 빈 결과 근거 검증 전 실행이었다. 성공 표시는 철회했고 기존 토큰을 `unverified_smoke` 이력으로 보존한 뒤 수정된 워커의 재시도 대상으로 전환했다. FEConf 자동 재실행은 허용 host 불일치/원문 불가로 실제 failed가 기록됐다. NAVER DAN 원문 불가도 failed로 기록됐다. 한때 worker가 HTTP204 응답을 JSON으로 읽어 실패 저장 오류를 잘못 출력했으나 DB 저장은 성공했으며 빈 응답 처리와 subprocess 회귀를 추가했다.
 
-## 공식 문서 확인
+## 실행한 검사
 
-- https://supabase.com/docs/guides/cron
-- https://learn.chatgpt.com/docs/non-interactive-mode : 저장된 CLI 인증 재사용, exec output schema, ChatGPT-managed auth. 공용 GitHub runner에 구독 auth복사하지 않고 로컬 로그인 사용.
-- https://learn.chatgpt.com/docs/pricing : GPT-6 Luna 구독은 공통 한도/크레딧, 모델 기본 Standard. 포함한도 내 추가 API요금 없음이나 무제한은 아님.
+모두 자기 checkout, Node 24 기준이다.
+
+- worker 단위/프로세스 검사 **12개 통과**: 날짜/구절/전체 후보 실패/회차/링크, private DNS/redirect/deadline/크기, API/DB키 미전달, 실제 CLI argv 고정, API 로그인 거부, 실패 usage/204 처리.
+- 실제 Supabase queue 통합 **10개 시나리오 + 상위 테스트 = 11개 통과**: anon/viewer/admin 경계, 동시 claim, null/중복/위험 필드 거부와 rollback, idempotency, 관리자/공식 확인/게시 보존, 정보 손실 review, 같은 제목의 다른 회차, 만료/3회 제한/재시도, 구독 전역 pause, 시도별 usage, 일일 중복/과거 backlog/cron, 비활성 프로그램.
+- 기존 DB/Auth/RLS/HTTP/JSON 조건 회귀 **8개 통과**. 기존 관리자 단위 **6개 통과**.
+- 실제 관리자 Playwright **3개 통과**: 기존 전체 편집/게시·숨김·충돌, 모바일, 새 수집 설정/큐/재시도/원문/편집. 새 UI fixture는 UUID로 정리했다. 기존 전체 E2E의 숨긴 테스트 행은 보존했다.
+- admin build/typecheck·oxlint, worker syntax/oxlint, git diff whitespace 통과. Vite의 기존 대형 chunk 경고는 남는다(~1.57 MB JS/~485 KB gzip). 기능과 무관한 전체 번들 개편은 하지 않았다.
+- 새 화면 [데스크톱](../../apps/admin/docs/evidence/collection.png)·[모바일](../../apps/admin/docs/evidence/collection-mobile.png)을 실제로 열어 확인했다. 다른 화면의 재생성 스크린샷은 원래 추적 버전으로 되돌려 불필요한 diff를 제외했다.
+- ponytail-review: 사용하지 않는 randomUUID import 제거, 전체 deadline과 중복인 request idle timeout 3줄 및 해당 mock 1줄 제거. URLSearchParams key 배열은 순회 중 삭제 시 항목 누락을 방지하므로 유지했다. DB/권한/저장/보안 검사는 축소하지 않았다.
+
+네이티브 앱 코드를 바꾸지 않아 iOS/Android 빌드·기기 검사는 이번 작업에서 실행하지 않았다. GitHub CI는 로컬 검사와 구분하며 push 이후 실행 상태를 따로 확인한다.
+
+## 남은 외부 조건 / 운영 경계
+
+[운영 후속 #57](https://github.com/fixabley/dearby/issues/57), 기존 [#49](https://github.com/fixabley/dearby/issues/49) 추적. 이슈 작성으로 해결 처리하지 않는다.
+
+- FEConf 등 현재 공식 host는 관리자가 근거 확인 후 allowlist를 갱신해야 한다. exact host를 임의 확장하지 않았다.
+- 빈 HTML/JS 전용/봇 차단/IPv6-only/로그인 출처는 대체 원문 또는 별도 수집 방식이 필요하다.
+- Mac 로그인/전원/네트워크, 로컬 Supabase 컨테이너, ChatGPT 로그인/구독 한도 유지. cloud Supabase와 상시 호스트는 미제공이다. 외부 이메일/푸시 실패 경보, 운영 DB 백업, 장기 연속 Cron/재부팅 검증은 남는다.
+- 후보 구절 일치는 사실 전체의 검증이 아니다. 자동 공식 확인·게시하지 않는다. 의미상 같은 활동의 URL/회차 이름이 바뀌면 중복 후보가 생길 수 있다. 후보 테이블은 최신 제안만 보존한다.
+- 로그는 ignored 파일로 쌓이며 장기 보관 용량 정책이 필요하다. 구독 한도는 일반 Codex/IR 작업과 공유한다.
+
+[실행·해제·검증 안내](../../apps/catalog-worker/README.md)를 따른다. 기능별 커밋/자기 브랜치 push 결과는 아래 전달 기록과 이 세션 최종 응답에 남긴다. 강제 push·root 통합·기존 서비스 교체는 하지 않는다.
