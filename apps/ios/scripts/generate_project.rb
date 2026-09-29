@@ -23,6 +23,7 @@ project.targets.each do |target|
     if target == app
       config.build_settings.merge!({
         'INFOPLIST_FILE' => 'Info.plist',
+        'PRODUCT_BUNDLE_IDENTIFIER' => config.name == 'Release' ? 'io.wid.dearby' : 'com.dearby.dearby',
         'ASSETCATALOG_COMPILER_APPICON_NAME' => 'AppIcon',
         'ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME' => '',
         # Provisional: coordinator must check App Store Connect history before upload.
