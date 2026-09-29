@@ -33,3 +33,8 @@ xcuserdata/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+
+# Local Supabase runtime and retained Orca checkout
+supabase/.temp/
+supabase/.branches/
+/discovery-admin-backend/

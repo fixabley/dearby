@@ -37,3 +37,13 @@ Tests use fixtures only in test targets. HTTP integration uses the actual API an
 ## 2026-09-29 optional presentation metadata
 
 `imageUrl?: string | null` is an optional source-backed representative image URL; absent/invalid/load-failed values use an honest placeholder. `isPreview?: boolean | null` marks explicitly supplied development examples, displayed as example activities rather than verified recruiting activities. Neither field grants currentness or changes the existing discovery freshness filter. Old payloads and caches without these fields remain valid; clients may ignore unknown fields. The localhost conference fixture supplies both; production API serialization and source collection remain unchanged. The source manifest for fixture artwork is `shared/assets/conferences/SOURCES.md`; images are matched to the same event/year (Toss Makers imagery is not reused for SLASH24).
+
+## 2026-09-29 discovery admin storage
+
+User approved a local Supabase + Refine administrator and connection through the existing catalog API. `CATALOG_BACKEND=supabase` switches only catalog reads; all native authentication/card persistence remains in SQLite. Missing/invalid Supabase configuration fails startup. Upstream transport/schema errors return `503 CATALOG_UNAVAILABLE`, without SQLite fallback or an empty success.
+
+Supabase management rows have `publication_status=draft|published|hidden`. Only published activities and their referenced organizations/programs are exported in one snapshot. A published row may be closed/stale and remain available in the public DTO; the original `atTime` calculation still determines discovery eligibility. Draft/hidden rows are excluded entirely. Existing stable IDs remain unchanged when importing historical records. `imageUrl` is now supported by the API schema as optional/null.
+
+Manual source verification requires an authenticated catalog administrator and a written evidence note; the database assigns the verification time and a 24-hour lifetime. This records the administrator’s source review; it does not claim automated fetching or parser success. Editing activity content, schedules, URLs or recruitment conditions invalidates verification. Publication changes alone do not renew or invalidate it. Current local snapshot imports are drafts/stale with no confirmed start/end times invented.
+
+Admin UI, RLS, migration/setup and verification instructions: `apps/admin/README.md`. Local mock server58764 remains a separate, explicit preview fixture and is never silently used as a Supabase fallback.

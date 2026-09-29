@@ -52,3 +52,9 @@ Only `https://if.kakao.com/2026` and `https://2026.feconf.kr/` are fetched, sequ
 Reviewed adapters are intentionally round-specific: if(kakao) checks the application section and FAQ, and interprets September 28 noon as Korean local time (03:00Z). Its date-only event keeps null start/end. FEConf's event opening at 10:00 is separate from ticket opening; positive ticket countdown means scheduled, never a computed ticket date or open registration. Known explicit deadline closes if(kakao) even while its HTML still says OPEN. Parser changes require reviewed fixtures plus a separate real fetch; offline fixture tests never establish live verification.
 
 IDs use UUIDv5 with DNS namespace `6ba7b810-9dad-11d1-80b4-00c04fd430c8` and UTF-8 name `dearby/catalog/{organization|program|activity|schedule}/{source key}`. Existing snapshot slugs are identities: `org-kakao`, `kakao`, `kakao-2026`; `org-fedg`, `feconf`, `feconf-2026`; schedule keys append `/main` to activity keys. Refresh/import order cannot duplicate those rounds. History import normalizes audience arrays, rejects duplicate identities/missing references, and stays stale with null semantic checked/expiry times. It never trusts the old `current`/`open` flags. Exchange context DTO remains unchanged; this slice does not certify activity attendance or add receipt title fields.
+
+## Supabase 탐색 어드민
+
+`CATALOG_BACKEND=supabase`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`를 지정하면 `/v1/catalog`만 Supabase의 게시된 활동 스냅샷을 조회한다. 계정·명함 저장은 SQLite를 유지한다. 설정을 생략하면 기존 SQLite 카탈로그를 사용한다. Supabase 실패는503이며 자동으로 다른 데이터로 대체하지 않는다. `imageUrl`은 선택적 표시 필드다.
+
+[Refine 어드민 및 로컬 설치](../admin/README.md)를 따른다. `node --env-file=.env.admin-local --import tsx src/server.ts`로 기존 서버와 별도의 localhost58765 인스턴스를 실행한다. `.env.admin-local`은 로컬 bootstrap이 생성하며 Git에 넣지 않는다. Supabase 모드에서 기존 SQLite 수집 CLI는 실행을 거부한다.

@@ -5,6 +5,9 @@ import { importLegacy } from './catalog-legacy.js';
 import { officialSources, refreshSource, type SourceKey } from './catalog-sources.js';
 
 process.umask(0o077);
+if (process.env.CATALOG_BACKEND === 'supabase') {
+  throw new Error('Supabase catalog is managed in the admin. This SQLite collection command cannot update it. Import source records as drafts for review.');
+}
 const {values,positionals} = parseArgs({allowPositionals:true,options:{db:{type:'string'},source:{type:'string'}}});
 const command = positionals[0];
 if (!values.db || positionals.length !== 1 || !['refresh','import-legacy'].includes(command) ||
