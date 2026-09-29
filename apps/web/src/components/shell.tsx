@@ -19,7 +19,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
               width={2172}
               height={724}
               style={{ height: "auto" }}
-              priority
+              sizes="(max-width: 640px) 108px, 124px"
+              loading="eager"
             />
           </Link>
           <nav aria-label="주 메뉴">

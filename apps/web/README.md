@@ -20,6 +20,8 @@ npm run test:e2e
 
 `test:e2e` launches Next dev on localhost:3210 and a **test-only API double** on 127.0.0.1:4319. Its records and in-memory sessions are fixtures, not production persistence evidence. Screenshots are written under ignored `test-results/`. Production code has no fixture imports or fallback data. Run build separately; local E2E uses the development cookie. API persistence, actual HTTPS cookies and cross-network connectivity require deployment verification.
 
+The opt-in `tests/real-api.integration.ts` additionally tests a real isolated local API. It requires explicit `WEB_TEST_ORIGIN`, `API_TEST_ORIGIN` (both localhost HTTP), and `API_TEST_OWNER_TOKEN`; card UUIDs ending 0002/0003 must be disposable test fixtures. It revokes card 0003 and must never target production. On 2026-09-29 this passed against root’s temporary DB API on port 58867 through Next on 3211.
+
 ## Routes and public boundary
 
 - `/`: currently recruiting, verified, unexpired activities only; empty and failure states are distinct, with retry.
@@ -52,7 +54,7 @@ Web Locks serialize mutations across tabs in the same browser origin. Unsupporte
 - Root Directory: `apps/web`; Framework: Next.js; Node: 24.x; install `npm ci`; build `npm run build`; output default.
 - Server-only production env: `DEARBY_API_ORIGIN=https://wid.io.kr` (origin only), `GUEST_PROXY_SECRET` matching the API. No `NEXT_PUBLIC_*` secrets. `.env*` and `.vercel` are gitignored; `.env.example` holds placeholders only.
 - Production only accepts HTTPS API origins. Upstream timeout/redirect/schema/server failure returns an error, never an empty catalog. No caching of card/guest data. No secret values in application logs.
-- [Vercel WAF rate limiting](https://vercel.com/docs/vercel-firewall/vercel-waf/rate-limiting) supports IP fixed-window rules on all plans; Hobby has one rate rule. Suggested deployment rule: `/api/guest/*`, IP, 60 requests per 60 seconds, 429. **Not configured by this code/session.** Root must confirm plan, publish the rule and verify externally. Counters are per-region, not a global persistent limit. API bounded rate/capacity controls are a separate layer.
+- [Vercel WAF rate limiting](https://vercel.com/docs/vercel-firewall/vercel-waf/rate-limiting) supports IP fixed-window rules on all plans; Hobby has one rate rule. Suggested deployment rule: `/api/guest/*`, IP, 60 requests per 60 seconds, 429. **Root reports the production rule has been published; this session did not configure it.** External 429 behavior still needs deployment verification. Counters are per-region, not a global persistent limit. API bounded rate/capacity controls are a separate layer.
 - Root must verify external Vercel→API reachability, actual cookie flags, token/key absence from browser responses, separate browser lists and 404/401/failure UX. Published production data is currently reported as zero; never insert fixtures merely to make the site look populated. A real first-save smoke needs an authorized existing public card.
 - Next server handling uses [Route Handlers](https://nextjs.org/docs/app/api-reference/file-conventions/route). No user data is embedded in the static page shell.
 
