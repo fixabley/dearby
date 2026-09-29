@@ -1,3 +1,4 @@
+import type { Criteria } from "./criteria";
 export type Organization = { id: string; name: string; description: string };
 export type Program = {
   id: string;
@@ -30,6 +31,7 @@ export type Activity = {
   audience: string | null;
   qualification: string | null;
   roles: string[];
+  criteria: Criteria;
   schedules: Schedule[];
   official_url: string;
   application_url: string | null;

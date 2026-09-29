@@ -65,3 +65,15 @@ npm run test:e2e             # 어드민5173·API58765·bootstrap 필요
 새 Supabase 프로젝트 생성, 비밀 키 설정, 운영 데이터 이관 및 배포는 별도다. 검토한 migration을 해당 프로젝트에 적용하고 신뢰할 수 있는 서버/SQL 관리 경로로 관리자 권한을 부여한다. 브라우저에 `VITE_SUPABASE_URL`/공개 키, 기존 API에 `CATALOG_BACKEND=supabase`/`SUPABASE_URL`/`SUPABASE_ANON_KEY`를 설정한다. URL은 로컬을 제외하고 HTTPS여야 한다. 관리자 권한과 공개 DTO를 검증한 뒤 트래픽을 전환한다. 이 저장소의 로컬 bootstrap은 원격 프로젝트에 사용할 수 없다.
 
 공식 문서: [Refine Supabase data provider](https://refine.dev/core/docs/data/packages/supabase/), [Supabase RLS](https://supabase.com/docs/guides/database/postgres/row-level-security), [로컬 개발](https://supabase.com/docs/guides/local-development).
+
+## 구조화된 참가 조건
+
+활동 편집의 참가 대상·지원 자격·모집 역할은 `catalog_activities.criteria` JSONB에 저장한다. 숫자, 문자열, 참/거짓, null, 날짜(YYYY-MM-DD 문자열), 중첩 객체/배열을 선택해 입력한다. 문자열 배열은 태그 UI를 제공한다. ‘범위 객체 만들기’는 `부터`와 `까지` 숫자 항목을 만드는 편의 기능이며 단일 숫자도 허용한다. 한쪽 항목을 제거하면 최소/최대만 표현할 수 있다.
+
+기존 대상/자격 문장은 추가 설명으로 유지하고 기존 역할 배열을 JSON으로 복사한다. JSON과 기본 정보는 같은 행에서 원자적으로 저장하고 기존 수정 충돌·공식 확인 무효화·감사 기록 규칙을 적용한다. 네이티브 API의 audience/qualification/roles 형태는 유지하며 서버에서 JSON을 표시 문자열로 변환한다. 원본 JSON은 관리자 DB에서 보존한다.
+
+자동완성은 같은 분류·중첩 경로의 저장된 키를 부분 일치/pg_trgm 유사도로 추천한다. 문자열·문자열 배열의 기존 값도 추천한다. 없는 이름은 직접 입력할 수 있고 비슷한 이름을 자동 병합하지 않는다. 같은 객체 내 공백/NFC/대소문자 중복 키를 방지한다. 서로 다른 활동의 동일한 키가 다른 타입을 가지면 ‘여러 형식’으로 표시한다. 추천 RPC는 관리자만 호출할 수 있다.
+
+각 분류 기준 중첩 8단계, 객체 30개 키, 배열 100개 원소, 키 80자, 문자열 2,000자, 전체 64KB, 숫자 절댓값 9,007,199,254,740,991까지 지원한다. 임의 정밀도 숫자·Date 객체는 JSON 호환성을 위해 지원하지 않는다. 깊은 구조는 긴 폼이 되므로 실무 항목은 간결하게 유지한다.
+
+JSON 포함 검색용 GIN 인덱스가 있다. 예: `criteria @> '{"qualification":{"연차":3}}'`. 이 인덱스는 모든 숫자 범위·정렬·키 유사도 검색을 자동 가속하지 않는다. 자주 쓰는 숫자/날짜 필터가 정해지면 해당 경로의 타입을 통일하거나 표현식 인덱스를 추가한다. 추천은 현재 규모에 맞춰 JSON에서 계산하며 대규모 부하 검증은 하지 않았다.

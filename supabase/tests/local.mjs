@@ -182,6 +182,109 @@ test("real local Auth/RLS, CRUD, immutable audit, publication, verification and 
       },
     );
     await t.test(
+      "recursive JSON round-trip, fuzzy nested key suggestions and admin-only access",
+      async () => {
+        const criteria = {
+          audience: { 직무: ["개발자", "디자이너"] },
+          qualification: {
+            연차: 3,
+            경력: { 부터: 3, 까지: 4 },
+            입사일: "2026-10-01",
+            재직: true,
+            미정: null,
+            기술: {
+              프론트엔드: {
+                언어: ["TypeScript", "JavaScript"],
+                혼합: [1, false, null, { 이름: "React" }, [1, 2]],
+              },
+            },
+          },
+          roles: { 역할: ["개발자"] },
+        };
+        const write = await request(
+          `/rest/v1/catalog_activities?id=eq.${ids.activity}`,
+          admin,
+          { criteria },
+          "PATCH",
+        );
+        assert.equal(write.status, 200, JSON.stringify(write.body));
+        assert.deepEqual(write.body[0].criteria, criteria);
+        for (const token of [anon, viewer]) {
+          const denied = await request(
+            "/rest/v1/rpc/catalog_criteria_suggestions",
+            token,
+            { category: "qualification", query_text: "연" },
+            "POST",
+          );
+          assert.ok(denied.status >= 400);
+        }
+        const keys = await request(
+          "/rest/v1/rpc/catalog_criteria_suggestions",
+          admin,
+          { category: "qualification", query_text: "연" },
+          "POST",
+        );
+        assert.equal(keys.status, 200, JSON.stringify(keys.body));
+        assert.ok(
+          keys.body.some((k) => k.key === "연차" && k.kind === "number"),
+        );
+        const nested = await request(
+          "/rest/v1/rpc/catalog_criteria_suggestions",
+          admin,
+          {
+            category: "qualification",
+            query_text: "프론트",
+            parent_path: ["기술"],
+          },
+          "POST",
+        );
+        assert.ok(nested.body.some((k) => k.key === "프론트엔드"));
+        const vals = await request(
+          "/rest/v1/rpc/catalog_criteria_suggestions",
+          admin,
+          {
+            category: "qualification",
+            query_text: "언어",
+            parent_path: ["기술", "프론트엔드"],
+          },
+          "POST",
+        );
+        assert.ok(vals.body[0].values.includes("TypeScript"));
+        const contained = await request(
+          `/rest/v1/catalog_activities?id=eq.${ids.activity}&criteria=cs.${encodeURIComponent(JSON.stringify({ qualification: { 연차: 3 } }))}`,
+          admin,
+        );
+        assert.equal(contained.body.length, 1);
+        const before = write.body[0].updated_at;
+        let tooDeep = { leaf: 1 };
+        for (let i = 0; i < 9; i++) tooDeep = { child: tooDeep };
+        for (const invalid of [
+          { ...criteria, qualification: { 연차: { 부터: 4, 까지: 3 } } },
+          { ...criteria, qualification: { 키: 1, " 키 ": 2 } },
+          { ...criteria, qualification: { key: 1, KEY: 2 } },
+          { ...criteria, qualification: { 연차: 9007199254740992 } },
+          { ...criteria, qualification: tooDeep },
+          { ...criteria, qualification: { values: Array(101).fill(1) } },
+          { ...criteria, qualification: { note: "x".repeat(2001) } },
+          { ...criteria, extra: {} },
+        ]) {
+          const denied = await request(
+            `/rest/v1/catalog_activities?id=eq.${ids.activity}`,
+            admin,
+            { criteria: invalid },
+            "PATCH",
+          );
+          assert.ok(denied.status >= 400, JSON.stringify(denied.body));
+        }
+        const after = await request(
+          `/rest/v1/catalog_activities?id=eq.${ids.activity}`,
+          admin,
+        );
+        assert.equal(after.body[0].updated_at, before);
+        assert.deepEqual(after.body[0].criteria, criteria);
+      },
+    );
+    await t.test(
       "database rejects invalid relationships, URLs, schedules and future verification",
       async () => {
         for (const change of [
@@ -259,6 +362,9 @@ test("real local Auth/RLS, CRUD, immutable audit, publication, verification and 
         assert.equal(item.freshness, "verified");
         assert.equal(item.organizationId, ids.org);
         assert.equal(item.programId, ids.program);
+        assert.match(item.qualification, /연차: 3/);
+        assert.match(item.qualification, /경력: 3 ~ 4/);
+        assert.deepEqual(item.roles, ["개발자"]);
         assert.ok(result.organizations.some((o) => o.id === ids.org));
       },
     );

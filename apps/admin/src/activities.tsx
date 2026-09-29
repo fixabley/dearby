@@ -33,6 +33,13 @@ import {
   recruitmentLabels,
 } from "./catalog";
 import { supabase } from "./supabase";
+import { CriteriaEditor } from "./criteria-editor";
+import {
+  criteriaCategories,
+  criteriaRows,
+  serializeCriteria,
+  type CriteriaCategory,
+} from "./criteria";
 const resource = "catalog_activities";
 const options = (values: Record<string, string>) =>
   Object.entries(values).map(([value, label]) => ({ value, label }));
@@ -254,6 +261,7 @@ export function ActivityEditor() {
       setLoadedVersion(activity.updated_at);
       form.setFieldsValue({
         ...activity,
+        conditions: criteriaRows(activity.criteria),
         recruitment_start_at: localInput(activity.recruitment_start_at),
         recruitment_end_at: localInput(activity.recruitment_end_at),
         schedules: activity.schedules.map((s) => ({
@@ -292,6 +300,7 @@ export function ActivityEditor() {
     try {
       const payload: Record<string, any> = {
         ...values,
+        criteria: serializeCriteria(values.conditions),
         recruitment_start_at: instant(values.recruitment_start_at),
         recruitment_end_at: instant(values.recruitment_end_at),
         schedules: normalizeSchedules(
@@ -301,8 +310,8 @@ export function ActivityEditor() {
             endAt: instant(s.endAt),
           })),
         ),
-        roles: values.roles ?? [],
       };
+      delete payload.conditions;
       for (const field of [
         "location",
         "cost",
@@ -404,7 +413,7 @@ export function ActivityEditor() {
           publication_status: "draft",
           summary: "",
           date_label: "",
-          roles: [],
+          conditions: { audience: [], qualification: [], roles: [] },
           schedules: [],
         }}
       >
@@ -478,18 +487,47 @@ export function ActivityEditor() {
               <p className="field-note">
                 입력 시각 기준: {localZone}. 확인되지 않은 시각은 비워 두세요.
               </p>
-              <Form.Item label="참가 대상" name="audience">
-                <Input />
-              </Form.Item>
-              <Form.Item label="지원 자격" name="qualification">
+              <p className="field-note">
+                항목 이름을 검색하거나 직접 추가하세요.
+                숫자·문자열·날짜·참/거짓·null·객체·배열을 선택할 수 있어요.
+                객체와 배열 안에도 항목을 중첩할 수 있습니다. 비슷한 이름은
+                추천만 하며 자동으로 합치지 않습니다.
+              </p>
+              {Object.entries(criteriaCategories).map(([category, label]) => (
+                <Form.Item
+                  key={category}
+                  label={label}
+                  name={["conditions", category]}
+                >
+                  <CriteriaEditor category={category as CriteriaCategory} />
+                </Form.Item>
+              ))}
+              <Form.Item label="참가 대상 추가 설명" name="audience">
                 <Input.TextArea rows={2} />
               </Form.Item>
-              <Form.Item label="모집 역할" name="roles">
-                <Select
-                  virtual={false}
-                  mode="tags"
-                  placeholder="역할 입력 후 Enter"
-                />
+              <Form.Item label="지원 자격 추가 설명" name="qualification">
+                <Input.TextArea rows={2} />
+              </Form.Item>
+              <Form.Item noStyle shouldUpdate>
+                {() => {
+                  let preview: string;
+                  try {
+                    preview = JSON.stringify(
+                      serializeCriteria(form.getFieldValue("conditions")),
+                      null,
+                      2,
+                    );
+                  } catch {
+                    preview =
+                      "항목 이름과 값을 모두 입력하면 저장할 JSON이 표시됩니다.";
+                  }
+                  return (
+                    <details className="criteria-preview">
+                      <summary>저장할 조건 JSON 보기</summary>
+                      <pre>{preview}</pre>
+                    </details>
+                  );
+                }}
               </Form.Item>
               <div className="two-fields">
                 <Form.Item label="장소" name="location">

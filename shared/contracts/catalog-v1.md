@@ -47,3 +47,7 @@ Supabase management rows have `publication_status=draft|published|hidden`. Only 
 Manual source verification requires an authenticated catalog administrator and a written evidence note; the database assigns the verification time and a 24-hour lifetime. This records the administrator’s source review; it does not claim automated fetching or parser success. Editing activity content, schedules, URLs or recruitment conditions invalidates verification. Publication changes alone do not renew or invalidate it. Current local snapshot imports are drafts/stale with no confirmed start/end times invented.
 
 Admin UI, RLS, migration/setup and verification instructions: `apps/admin/README.md`. Local mock server58764 remains a separate, explicit preview fixture and is never silently used as a Supabase fallback.
+
+### 관리자 구조화 조건 (2026-09-29)
+
+Supabase 관리자 저장소의 `criteria` JSONB는 audience/qualification/roles별 객체이며 임의 JSON 값과 중첩을 지원한다. public `/v1/catalog`는 기존 audience/qualification 문자열 및 roles 문자열 배열을 유지한다. 구조화 조건을 표시 문장으로 변환하고 기존 자유 입력 설명을 덧붙인다. 원본 조건에 대한 자동 지원자격 판정은 구현하지 않았다. `부터`/`까지` 숫자 객체는 양 끝을 포함하는 표시 범위이며 단일 숫자의 의미와 자동 통합하지 않는다.

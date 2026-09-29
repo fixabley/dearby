@@ -333,3 +333,37 @@ a:focus-visible {
     display: none;
   }
 }
+
+.condition-row {
+  padding: 14px;
+  margin-bottom: 10px;
+  border: 1px solid #dce8e5;
+  border-radius: 8px;
+}
+.condition-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 110px auto;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.criteria-preview {
+  margin-bottom: 24px;
+}
+.criteria-preview summary {
+  cursor: pointer;
+  color: #36776b;
+}
+.criteria-preview pre {
+  overflow: auto;
+  padding: 12px;
+  background: #f5f8f7;
+  font-size: 12px;
+}
+@media (max-width: 600px) {
+  .condition-heading {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .condition-heading > :first-child {
+    grid-column: 1 / -1;
+  }
+}

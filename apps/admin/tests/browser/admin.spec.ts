@@ -63,6 +63,75 @@ test("admin can create, edit, verify, publish and hide an activity through real 
   await page.getByLabel("일정 제목", { exact: true }).fill("로컬 데모 세션");
   await page.getByLabel("시작", { exact: true }).fill("2026-10-24T14:00");
   await page.getByLabel("종료", { exact: true }).fill("2026-10-24T16:00");
+  // Typed JSON editor: scalar, range, dates, booleans, null and nested objects/arrays.
+  async function kind(label: string, type: string) {
+    const combo=page.getByRole("combobox",{name:`${label} 값 형식`,exact:true});
+    await combo.press("ArrowDown");
+    const list=await combo.getAttribute("aria-controls");
+    await page.locator(`[id="${list}"]`).getByRole("option",{name:type,exact:true}).click();
+  }
+  await page
+    .getByRole("button", { name: "지원 자격 항목 추가", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "지원 자격 1 항목 이름", exact: true })
+    .fill("연차");
+  await kind("지원 자격 1", "숫자");
+  await page.getByLabel("지원 자격 1 값", { exact: true }).fill("3");
+  await page
+    .getByRole("button", { name: "지원 자격 항목 추가", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "지원 자격 2 항목 이름", exact: true })
+    .fill("경력");
+  await kind("지원 자격 2", "범위 객체 만들기");
+  await page.getByLabel("지원 자격 경력 1 값", { exact: true }).fill("3");
+  await page.getByLabel("지원 자격 경력 2 값", { exact: true }).fill("4");
+  await page
+    .getByRole("button", { name: "지원 자격 항목 추가", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "지원 자격 3 항목 이름", exact: true })
+    .fill("입사일");
+  await kind("지원 자격 3", "날짜");
+  await page.getByLabel("지원 자격 3 값", { exact: true }).fill("2026-10-01");
+  await page
+    .getByRole("button", { name: "참가 대상 항목 추가", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "참가 대상 1 항목 이름", exact: true })
+    .fill("재직");
+  await kind("참가 대상 1", "참/거짓");
+  await page
+    .getByRole("switch", { name: "참가 대상 1 값", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "모집 역할 항목 추가", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "모집 역할 1 항목 이름", exact: true })
+    .fill("기술");
+  await kind("모집 역할 1", "객체");
+  await page
+    .getByRole("button", { name: "기술 항목 추가", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "모집 역할 기술 1 항목 이름", exact: true })
+    .fill("언어");
+  await kind("모집 역할 기술 1", "문자열 배열");
+  await page
+    .getByRole("combobox", { name: "모집 역할 기술 1 값", exact: true })
+    .fill("TypeScript");
+  await page
+    .getByRole("combobox", { name: "모집 역할 기술 1 값", exact: true })
+    .press("Enter");
+  await page
+    .getByRole("button", { name: "기술 항목 추가", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "모집 역할 기술 2 항목 이름", exact: true })
+    .fill("미정");
+  await kind("모집 역할 기술 2", "null");
   await page.getByRole("button", { name: "저장", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "활동 편집", exact: true }),
@@ -91,6 +160,33 @@ test("admin can create, edit, verify, publish and hide an activity through real 
   );
   expect(item.isRecruiting).toBe(true);
   expect(item.schedules).toHaveLength(1);
+  expect(item.qualification).toContain("연차: 3");
+  expect(item.qualification).toContain("경력: 3 ~ 4");
+  expect(item.roles.join(" ")).toContain("TypeScript");
+  await page.reload();
+  const preview = page.locator(".criteria-preview pre");
+  await expect(preview).toContainText('"연차": 3');
+  await expect(preview).toContainText('"미정": null');
+  await expect(preview).toContainText('"재직": true');
+  // Reuse a saved nested key from autocomplete without saving a duplicate.
+  await page
+    .getByRole("button", { name: "기술 항목 추가", exact: true })
+    .click();
+  await page
+    .getByRole("combobox", { name: "모집 역할 기술 3 항목 이름", exact: true })
+    .fill("언");
+  await page.getByRole("option", { name: "언어 · 배열", exact: true }).click();
+  await expect(
+    page.getByRole("combobox", {
+      name: "모집 역할 기술 3 항목 이름",
+      exact: true,
+    }),
+  ).toHaveValue("언어");
+  await page
+    .getByRole("button", { name: "모집 역할 기술 3 제거", exact: true })
+    .click();
+  await page.getByRole("button", { name: "저장", exact: true }).click();
+
   await page.screenshot({
     path: "../../apps/admin/docs/evidence/activity-editor.png",
     fullPage: true,
@@ -166,16 +262,28 @@ test("admin can create, edit, verify, publish and hide an activity through real 
   ).toBeVisible();
 });
 
-
-test("narrow screen keeps navigation and logout reachable", async ({page}) => {
-  await page.setViewportSize({width:390,height:844});
+test("narrow screen keeps navigation and logout reachable", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await page.getByLabel("이메일",{exact:true}).fill(login.email);
-  await page.getByLabel("비밀번호",{exact:true}).fill(login.password);
-  await page.getByRole("button",{name:"관리자로 로그인"}).click();
-  await expect(page.getByRole("heading",{name:"활동 관리",exact:true})).toBeVisible();
-  await expect(page.getByRole("button",{name:"로그아웃",exact:true})).toBeVisible();
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.getByLabel("이메일", { exact: true }).fill(login.email);
+  await page.getByLabel("비밀번호", { exact: true }).fill(login.password);
+  await page.getByRole("button", { name: "관리자로 로그인" }).click();
+  await expect(
+    page.getByRole("heading", { name: "활동 관리", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "로그아웃", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
   await expect(page.locator(".ant-spin-spinning")).toHaveCount(0);
-  await page.screenshot({path:"../../apps/admin/docs/evidence/mobile.png",fullPage:true});
+  await page.screenshot({
+    path: "../../apps/admin/docs/evidence/mobile.png",
+    fullPage: true,
+  });
 });
