@@ -1,6 +1,8 @@
 import type { Criteria } from "./criteria";
 export type Organization = { id: string; name: string; description: string };
 export type Program = {
+  collection_enabled: boolean;
+  collection_hosts: string[];
   id: string;
   organization_id: string;
   title: string;

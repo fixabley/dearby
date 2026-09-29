@@ -29,6 +29,7 @@ import {
 import { supabase, configurationError, authProvider } from "./supabase";
 import { ActivityList, ActivityEditor } from "./activities";
 import { Directory, AuditLog } from "./directories";
+import { CollectionJobs } from "./collection";
 import "./style.css";
 
 function Login() {
@@ -104,6 +105,10 @@ function Shell() {
             <ApartmentOutlined aria-hidden="true" />
             조직
           </NavLink>
+          <NavLink to="/collection">
+            <HistoryOutlined aria-hidden="true" />
+            활동 수집
+          </NavLink>
           <NavLink to="/audit">
             <HistoryOutlined aria-hidden="true" />
             변경 기록
@@ -134,6 +139,7 @@ function Shell() {
             path="/organizations"
             element={<Directory kind="organizations" />}
           />
+          <Route path="/collection" element={<CollectionJobs />} />
           <Route path="/audit" element={<AuditLog />} />
           <Route path="*" element={<Navigate to="/activities" replace />} />
         </Routes>

@@ -1,0 +1,12 @@
+{
+  "name": "@dearby/catalog-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {"node": ">=24 <25"},
+  "scripts": {
+    "start": "node --env-file=.env.local src/worker.mjs --once --catch-up",
+    "test": "node --test test/*.test.mjs",
+    "check": "node --check src/worker.mjs && node --check src/collect.mjs && node --check src/source.mjs"
+  }
+}
