@@ -38,3 +38,5 @@ xcuserdata/
 supabase/.temp/
 supabase/.branches/
 /discovery-admin-backend/
+
+/catalog-subscription-collector/

@@ -65,3 +65,5 @@ PR40 main 병합 완료(849b1fe). 사용자가 기존 파일과 데이터를 보
 - [컨펌 화면별 시각 구현 기준](../design/native-visual-contract.md): 수정 후 원본 시안, 최신 문구/레이아웃 우선순위, 실제 캡처 비교 조건.
 
 - 2026-09-29 후속: [어드민 구조화 JSON 조건·검증](admin-implementation-and-handoff.md#2026-09-29-구조화-조건-후속). 현재 타입 선택/중첩/키 자동완성은 기존 자유 입력 설명보다 우선하는 최신 구현이다.
+
+- 2026-09-29: [캡스톤 발표 자료·Pages](capstone-presentation.md) — 22장, 편집 원본 Markdown과 승인 UI 시안.
