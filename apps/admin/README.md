@@ -1,5 +1,7 @@
 # Dearby 탐색 어드민
 
+> 현재 Vercel/cloud 배포 준비와 검증 경계는 [배포 인계](../../docs/context/admin-web-deployment.md)를 따른다. 아래 로컬 구축·과거 검증 기록은 당시 환경 기준이다.
+
 React + Refine 5 + 공식 Supabase data provider + Ant Design 5. 조직/프로그램/활동 생성·편집, 행사 일정, 게시/숨김, 공식 확인, 제목 검색/게시 필터/페이지 이동, 변경 기록을 제공한다. 데이터는 로컬 Supabase Postgres에 저장하며 기존 API `/v1/catalog`가 동일한 데이터에서 공개 DTO를 만든다. 앱의 계정·명함 데이터는 기존 SQLite에 남는다.
 
 ## 로컬 실행
