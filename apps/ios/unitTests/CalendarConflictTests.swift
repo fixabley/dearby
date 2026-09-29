@@ -4,6 +4,56 @@ import EventKit
 @testable import Dearby
 
 @MainActor final class CalendarConflictTests: XCTestCase {
+    // Explicit user preview only. A one-shot marker is required; ordinary CI skips this.
+    func testSeedPreviewCalendarWhenRequested() async throws {
+        #if targetEnvironment(simulator)
+        let documents = URL.documentsDirectory
+        let marker = documents.appendingPathComponent("dearby-seed-demo-calendar")
+        guard FileManager.default.fileExists(atPath: marker.path) else {
+            throw XCTSkip("No explicit Simulator demo calendar request")
+        }
+        try FileManager.default.removeItem(at: marker)
+        let store = EKEventStore()
+        guard EKEventStore.authorizationStatus(for: .event) == .fullAccess else {
+            XCTFail("Explicit calendar permission required"); return
+        }
+        let receipt = documents.appendingPathComponent("dearby-demo-calendar-id.txt")
+        let previous = try? String(contentsOf: receipt, encoding: .utf8)
+        let calendar: EKCalendar
+        if let previous, let existing = store.calendar(withIdentifier: previous) {
+            calendar = existing
+        } else {
+            calendar = EKCalendar(for: .event, eventStore: store)
+            calendar.title = "Dearby 데모 · 삭제 가능"
+            calendar.source = try XCTUnwrap(store.sources.first { $0.sourceType == .local })
+            try store.saveCalendar(calendar, commit: true)
+            try calendar.calendarIdentifier.write(to: receipt, atomically: true, encoding: .utf8)
+        }
+        let formatter = ISO8601DateFormatter()
+        let start = try XCTUnwrap(formatter.date(from: "2026-09-30T14:00:00+09:00"))
+        let end = start.addingTimeInterval(3 * 3600)
+        let predicate = store.predicateForEvents(withStart: start, end: end, calendars: [calendar])
+        let existing = store.events(matching: predicate)
+        let fixtures: [(String, TimeInterval, TimeInterval)] = [
+            ("[Dearby 데모] 팀 미팅", 1800, 3600),
+            ("[Dearby 데모] 개인 약속", 5400, 9000)
+        ]
+        for (title, begin, finish) in fixtures where !existing.contains(where: { $0.title == title && $0.startDate == start.addingTimeInterval(begin) }) {
+            let event = EKEvent(eventStore: store)
+            event.calendar = calendar; event.title = title
+            event.startDate = start.addingTimeInterval(begin)
+            event.endDate = start.addingTimeInterval(finish)
+            event.timeZone = TimeZone(identifier: "Asia/Seoul")
+            event.notes = "사용자 요청으로 생성한 임시 데모 일정. Dearby 데모 캘린더를 삭제하면 함께 제거됩니다."
+            try store.save(event, span: .thisEvent, commit: true)
+        }
+        let adapter = DeviceCalendarStore()
+        let busy = try await adapter.busy(start: start, end: start.addingTimeInterval(7200), calendarIDs: [calendar.calendarIdentifier])
+        XCTAssertEqual(busy.count, 2)
+        #else
+        throw XCTSkip("Simulator only")
+        #endif
+    }
     private func schedule(start: String? = "2026-10-24T14:00:00+09:00", end: String? = "2026-10-24T16:00:00+09:00", zone: String = "Asia/Seoul") -> ActivityScheduleModel {
         .init(id: "s", title: "검증 활동", startAt: start, endAt: end, dateLabel: "", timeZone: zone)
     }

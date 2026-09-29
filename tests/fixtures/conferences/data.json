@@ -3,6 +3,28 @@
   "researchedAt": "2026-09-29",
   "records": [
     {
+      "key": "calendar-demo-2026",
+      "name": "캘린더 겹침 체험",
+      "organization": "Dearby 데모",
+      "program": "캘린더 체험",
+      "summary": "실제 행사가 아닌 가상 활동입니다. 14:30–15:00 및 15:30–16:00 두 구간의 겹침을 확인하세요.",
+      "date": "2026년 9월 30일 14:00–16:00 · 가상 일정",
+      "location": "시뮬레이터 안에서만 진행",
+      "url": "http://127.0.0.1:58764/apply/calendar-demo-2026",
+      "status": "가상 활동 · 실제 행사 아님",
+      "type": "registration",
+      "roles": [
+        "캘린더 체험"
+      ],
+      "schedules": [
+        {
+          "title": "가상 컨퍼런스 체험",
+          "startAt": "2026-09-30T14:00:00+09:00",
+          "endAt": "2026-09-30T16:00:00+09:00"
+        }
+      ]
+    },
+    {
       "key": "feconf-2026",
       "name": "FEConf 2026",
       "organization": "FEDG",

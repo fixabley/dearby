@@ -27,3 +27,15 @@ python3 tests/fixtures/conferences/serve.py
 ## 검증
 
 2026-09-29:5건 ID/참조/목 라벨/데모 신청 HTTP 검증 통과. iOS Debug build+install+launch 성공, iPhone17의 실제 UI에서 목록 표시 확인. 플랫폼 production 코드 변경 없음. Android 설치·UI 검증은 이번 데이터 작업에서 실행하지 않았다. Ponytail: 표준 라이브러리 HTTP/JSON/UUID만 사용, 별도 의존성/범용 수집 프레임워크 없음. Lean already. Ship.
+
+## 임시 캘린더 겹침 체험 — 2026-09-29 후속
+
+사용자 요청으로 가상 활동1개를 추가해 현재 총6건(공식 행사5 + 가상 활동1)이다. iPhone17의 로컬 `Dearby 데모 · 삭제 가능` 캘린더에 아래 두 일정을 남겼다. 모두 한국 시간2026-09-30이다.
+
+- 목 활동: 14:00–16:00
+- `[Dearby 데모] 팀 미팅`:14:30–15:00 → 겹침14:30–15:00
+- `[Dearby 데모] 개인 약속`:15:30–16:30 → 겹침15:30–16:00
+
+목 목록 첫 번째 `캘린더 겹침 체험` 상세에서 겹치는 시간 확인 → Dearby 데모 캘린더 선택 → 확인. 다른 캘린더에 같은 시간 일정이 있으면 추가 결과가 나올 수 있다. 제거는 iOS 캘린더 앱의 캘린더 목록에서 해당 데모 캘린더만 삭제하면 된다. 기존 캘린더는 수정하지 않았다.
+
+재생성은 앱 Documents에 `dearby-seed-demo-calendar` 빈 파일을 명시적으로 만들고 전체 캘린더 권한을 부여한 Simulator에서 `CalendarConflictTests/testSeedPreviewCalendarWhenRequested`만 실행한다. 실행 후 마커를 삭제하며 생성한 캘린더 ID를 `dearby-demo-calendar-id.txt`에 기록한다. 같은 일정은 중복 생성하지 않는다. 일반 테스트/실기기에서는 skip. 이번 실행1test 통과, 실제 EventKit 조회2건 확인, strict SwiftLint0위반. 앱 production 코드 변경 없음.

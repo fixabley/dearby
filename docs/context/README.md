@@ -2,7 +2,7 @@
 
 ## 현재 시뮬레이터 — 컨퍼런스 목 데이터
 
-PR55는 main b3094f9로 병합됐고 모든 원격 CI가 통과했다. 이후 사용자 요청으로 공식 출처를 조사한 컨퍼런스5개를 개발 전용 목 데이터로 추가했다. [데이터·출처·실행 안내](../../tests/fixtures/conferences/README.md). 현재 iPhone17은 localhost58764 목 서버를 바라보며 앱/서버를 켜 두었다. 실제 API57937 및 운영 데이터는 별개다. 작업 브랜치는 feat/conference-mock-data이며 플랫폼 production 코드는 수정하지 않았다.
+PR55는 main b3094f9로 병합됐고 모든 원격 CI가 통과했다. 이후 사용자 요청으로 공식 출처를 조사한 컨퍼런스5개를 개발 전용 목 데이터로 추가했다. [데이터·출처·실행 안내](../../tests/fixtures/conferences/README.md). 현재 iPhone17은 localhost58764 목 서버를 바라보며 앱/서버를 켜 두었다. 후속 요청으로 가상 캘린더 체험1건을 추가(총6건), 9월30일14–16시 활동과 겹치는 로컬 데모 일정2건을 별도 Dearby 데모 캘린더에 생성했다. 실제 API57937 및 운영 데이터는 별개다. 작업 브랜치는 feat/conference-mock-data이며 플랫폼 production 코드는 수정하지 않았다.
 
 ## 최신 재개 지점 — 2026-09-29
 
