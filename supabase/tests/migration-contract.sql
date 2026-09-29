@@ -16,8 +16,7 @@ BEGIN
     NOT has_function_privilege('service_role','public.claim_catalog_collection(uuid)','EXECUTE') THEN
   RAISE EXCEPTION 'Collection worker boundary invalid';
  END IF;
- IF has_function_privilege('anon','public.verify_catalog_activity(uuid,text)','EXECUTE') OR
-    NOT has_function_privilege('authenticated','public.verify_catalog_activity(uuid,text)','EXECUTE') THEN
+ IF NOT has_function_privilege('authenticated','public.verify_catalog_activity(uuid,text)','EXECUTE') THEN
   RAISE EXCEPTION 'Administrator RPC boundary invalid';
  END IF;
  IF EXISTS(SELECT FROM public.catalog_collection_settings WHERE enabled) THEN
@@ -31,7 +30,12 @@ DO $$ BEGIN
  END IF;
 END $$;
 SET LOCAL ROLE anon;
+-- Supabase default function grants can allow invocation; the definer must reject non-admin callers.
 DO $$ BEGIN
+ BEGIN
+  PERFORM public.verify_catalog_activity('00000000-0000-4000-8000-000000000000','Non-admin must be rejected');
+  RAISE EXCEPTION 'Anonymous administrator mutation allowed';
+ EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  IF jsonb_typeof(public.catalog_public_snapshot()->'activities') IS DISTINCT FROM 'array' THEN
   RAISE EXCEPTION 'Public snapshot shape invalid';
  END IF;
