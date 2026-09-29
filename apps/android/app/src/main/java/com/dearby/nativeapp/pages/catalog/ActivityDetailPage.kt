@@ -16,7 +16,7 @@ import androidx.compose.material.icons.outlined.BookmarkBorder
 import com.dearby.nativeapp.shared.ui.*
 import androidx.compose.ui.unit.dp
 
-@Composable fun ActivityDetailPage(activity: ActivityState, writing: Boolean, canSave: Boolean, error: String?, back: () -> Unit, saveProgram: () -> Unit, saveOrganization: () -> Unit, source: () -> Unit, apply: () -> Unit, editReport: () -> Unit) {
+@Composable fun ActivityDetailPage(activity: ActivityState, writing: Boolean, canSave: Boolean, error: String?, back: () -> Unit, saveProgram: () -> Unit, saveOrganization: () -> Unit, source: () -> Unit, apply: () -> Unit, editReport: () -> Unit, showsSaving: Boolean = true, checkCalendar: () -> Unit = {}) {
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { IconButton(back) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "목록으로") }; Text("활동 상세", Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, color = Teal) }
         if (activity.report == "applied") Surface(color = MaterialTheme.colorScheme.primaryContainer) {
@@ -29,26 +29,27 @@ import androidx.compose.ui.unit.dp
             Text(activity.status + " · " + activity.participation, color = Teal, style = MaterialTheme.typography.labelLarge)
             Text(activity.title, style = MaterialTheme.typography.headlineMedium)
             Text(activity.program, style = MaterialTheme.typography.titleSmall)
-            Row(verticalAlignment = Alignment.CenterVertically) { Text(activity.organization, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium); TextButton(saveOrganization, enabled = canSave && !writing) { Text(if (activity.organizationSaved) "조직 저장 해제" else "조직 저장") } }
+            Row(verticalAlignment = Alignment.CenterVertically) { Text(activity.organization, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium); if (showsSaving) TextButton(saveOrganization, enabled = canSave && !writing) { Text(if (activity.organizationSaved) "조직 저장 해제" else "조직 저장") } }
             HorizontalDivider()
             Text("소개", style = MaterialTheme.typography.titleLarge, color = Teal)
             Text(activity.summary)
             Text("일정", style = MaterialTheme.typography.titleLarge); Text(activity.date)
             activity.fields.forEach { (label, value) -> Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) { Text(label, Modifier.weight(0.35f), color = Quiet, style = MaterialTheme.typography.bodyMedium); Text(value, Modifier.weight(0.65f), style = MaterialTheme.typography.bodyMedium) } }
+            DearbyOutlineButton(checkCalendar) { Text("겹치는 시간 확인하기") }
             HorizontalDivider()
             Text("출처", style = MaterialTheme.typography.titleLarge)
             Text("확인 시각: ${activity.checked}"); Text(activity.sourceNote)
             Text(activity.source, style = MaterialTheme.typography.bodySmall)
             DearbyOutlineButton(source) { Text("공식 사이트 보기") }
-            Text("저장과 신청 기록은 이 기기에만 보관됩니다. 신청 기록은 주최 측의 접수·선정·결제 확인이 아닙니다.", style = MaterialTheme.typography.bodySmall)
+            Text("신청 기록은 이 기기에만 보관됩니다. 신청 기록은 주최 측의 접수·선정·결제 확인이 아닙니다.", style = MaterialTheme.typography.bodySmall)
             Text(when (activity.report) { "applied" -> "내 기록: 신청함"; "not_applied" -> "내 기록: 신청하지 않음"; else -> "내 기록: 아직 확인하지 않음" })
             TextButton(editReport, enabled = canSave && !writing) { Text("신청 상태 수정") }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Text("외부 사이트에서 직접 입력하고 제출해 주세요. 자동 입력과 기기 캘린더 충돌 확인은 아직 지원하지 않습니다.", style = MaterialTheme.typography.bodySmall)
+            Text("외부 사이트에서 직접 입력하고 제출해 주세요. 자동 입력은 아직 지원하지 않습니다.", style = MaterialTheme.typography.bodySmall)
         }
         HorizontalDivider()
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            DearbyOutlineButton(saveProgram, enabled = canSave && !writing) { Icon(if (activity.programSaved) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder, if (activity.programSaved) "프로그램 저장 해제" else "프로그램 저장") }
+            if (showsSaving) DearbyOutlineButton(saveProgram, enabled = canSave && !writing) { Icon(if (activity.programSaved) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder, if (activity.programSaved) "프로그램 저장 해제" else "프로그램 저장") }
             if (activity.report == "applied") DearbyButton(source, Modifier.weight(1f)) { Text("공식 사이트에서 확인") }
             else DearbyButton(apply, Modifier.weight(1f), enabled = activity.application != null) { Text("신청 사이트 열기") }
         }

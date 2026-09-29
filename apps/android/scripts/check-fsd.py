@@ -12,6 +12,7 @@ PREFIX = 'com.dearby.nativeapp'
 ROOT = Path(__file__).resolve().parents[1] / 'app/src/main/java/com/dearby/nativeapp'
 LAYERS = {name: i for i, name in enumerate(('app', 'pages', 'widgets', 'features', 'entities', 'shared'))}
 API = {
+    'features.calendar': {'CalendarConflictSheet'},
     'pages.catalog': {'CatalogPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'SavedGroupState', 'CatalogState'},
     'features.application': {'ApplicationBrowser', 'safeWebUrl'},
     'entities.catalog': {'model.CatalogModel', 'model.CatalogLocalModel', 'model.ActivityModel', 'model.ProgramModel', 'model.OrganizationModel', 'model.ScheduleModel', 'api.CatalogRepository'},

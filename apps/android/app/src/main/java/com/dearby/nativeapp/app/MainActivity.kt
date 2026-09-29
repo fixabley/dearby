@@ -16,7 +16,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         incoming.value = intent?.dataString
-        setContent { DearbyTheme { DearbyApp(model, catalog, incoming.value) { incoming.value = null } } }
+        setContent { DearbyTheme { DiscoveryApp(catalog) } }
     }
     override fun onResume() { super.onResume(); catalog.recheckTime() }
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); incoming.value = intent.dataString }

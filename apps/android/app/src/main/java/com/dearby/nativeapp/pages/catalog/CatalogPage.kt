@@ -17,7 +17,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 
-@Composable fun CatalogPage(state: CatalogState, saved: Boolean, refresh: () -> Unit, open: (String) -> Unit, removeGroup: (SavedGroupState) -> Unit, saveProgram: (String) -> Unit) {
+@Composable fun CatalogPage(state: CatalogState, saved: Boolean, refresh: () -> Unit, open: (String) -> Unit, removeGroup: (SavedGroupState) -> Unit, saveProgram: (String) -> Unit, showsSaving: Boolean = true) {
     var type by rememberSaveable { mutableStateOf("전체") }
     val activities = state.activities.filter { if (saved) it.programSaved || it.organizationSaved else it.current }.filter { type == "전체" || it.participation.startsWith(type) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -48,7 +48,7 @@ import com.dearby.nativeapp.shared.ui.*
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Row(verticalAlignment = Alignment.Top) {
                             Text(activity.title, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            IconButton({ saveProgram(activity.programId) }, enabled = state.storageReady && !state.writing, modifier = Modifier.size(48.dp)) { Icon(if (activity.programSaved) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder, if (activity.programSaved) "프로그램 저장 해제" else "프로그램 저장", tint = if (activity.programSaved) Teal else Quiet) }
+                            if (showsSaving) IconButton({ saveProgram(activity.programId) }, enabled = state.storageReady && !state.writing, modifier = Modifier.size(48.dp)) { Icon(if (activity.programSaved) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder, if (activity.programSaved) "프로그램 저장 해제" else "프로그램 저장", tint = if (activity.programSaved) Teal else Quiet) }
                         }
                         Text(activity.summary, color = Quiet, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
                         HorizontalDivider()
