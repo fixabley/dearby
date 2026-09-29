@@ -1,3 +1,4 @@
+import {documented,guestOnly,guestSecurity,guestFirstSaveSecurity,idParams,cardListSchema,guestSavedSchema,guestCreatedSchema} from './openapi.js';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { write, type DB } from './postgres.js';
@@ -39,12 +40,12 @@ export function guestRoutes(app: FastifyInstance, db: DB, proxySecret: string | 
       }
       if (++requests > 1200) limited();
     });
-    guest.get('/cards', async request => {
+    guest.get('/cards', documented({operationId:'getGuestWallet',summary:'Read one guest wallet via the trusted server proxy',tag:'Guest proxy',description:guestOnly+' No token returns 401. Next returns an empty list without calling this route when its cookie is absent. Withdrawn cards are omitted; private profiles and other wallets cannot be accessed. Request limits 120/token/minute and 1200/proxy/minute are process-local.',security:guestSecurity,responses:{200:cardListSchema},errors:[401,403,429,503]}), async request => {
       const key = (await session(request))!;
       const rows = await db.guestCard.findMany({where:{sessionDigest:key,card:{revoked:false}},include:{card:true},orderBy:{ordinal:'asc'}});
       return {items:rows.map(row => JSON.parse(row.card.data))};
     });
-    guest.put('/cards/:id', async (request, reply) => {
+    guest.put('/cards/:id', documented({operationId:'saveGuestCard',summary:'Atomically save a public card; first save creates a guest session',tag:'Guest proxy',description:guestOnly+' No body required. X-Guest-Token is optional only on first save: 201 returns a new guestToken to the server proxy; existing token returns 200 saved/alreadySaved, without token rotation. Invalid/revoked token returns 401, never automatic replacement. UUID/database existence/withdrawal validated before storage. Max 100 active cards/session and 10000 total sessions; withdrawn cards free active capacity on save. New sessions throttled 60/minute/process independently of indefinite lifetime. Never publish or create a card here.',security:guestFirstSaveSecurity,params:idParams,responses:{200:guestSavedSchema,201:guestCreatedSchema},errors:[401,403,404,409,429,503]}), async (request, reply) => {
       const key = await session(request, true);
       const cardId = id.parse((request.params as {id: string}).id).toLowerCase();
       const result = await write(db, async tx => {
@@ -71,14 +72,14 @@ export function guestRoutes(app: FastifyInstance, db: DB, proxySecret: string | 
       if ('guestToken' in result) { creations++; reply.code(201); }
       return result;
     });
-    guest.delete('/cards/:id', async (request, reply) => {
+    guest.delete('/cards/:id', documented({operationId:'removeGuestCard',summary:'Remove one saved reference from your guest wallet',tag:'Guest proxy',description:guestOnly+' Removal is idempotent, including already-removed or withdrawn card references; valid UUID required. Does not delete the public card.',security:guestSecurity,params:idParams,responses:{204:null},errors:[401,403,429,503]}), async (request, reply) => {
       const key = (await session(request))!;
       const cardId = id.parse((request.params as {id: string}).id).toLowerCase();
       // Removing a withdrawn/already-removed reference is intentionally idempotent.
       await write(db, tx => tx.guestCard.deleteMany({where:{sessionDigest:key,cardId}}));
       return reply.code(204).send();
     });
-    guest.delete('/session', async (request, reply) => {
+    guest.delete('/session', documented({operationId:'deleteGuestSession',summary:'Explicitly discard a guest session and its saved references',tag:'Guest proxy',description:guestOnly+' Cascades its saved references. Reuse returns 401; Next also deletes its cookie on already-revoked 401. No profile, other wallet or public card is deleted.',security:guestSecurity,responses:{204:null},errors:[401,403,429,503]}), async (request, reply) => {
       const key = (await session(request))!;
       await write(db, tx => tx.guestSession.deleteMany({where:{digest:key}}));
       sessionRequests.delete(key);

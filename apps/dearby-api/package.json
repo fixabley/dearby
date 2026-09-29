@@ -20,6 +20,8 @@
     "catalog:offline": "node --import tsx src/catalog-cli.ts"
   },
   "dependencies": {
+    "@fastify/swagger": "9.9.0",
+    "@fastify/swagger-ui": "6.1.1",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
     "better-sqlite3": "13.0.3",
@@ -33,6 +35,8 @@
     "@types/node": "24.19.0",
     "@types/nodemailer": "8.0.2",
     "@types/pg": "8.23.1",
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
     "oxlint": "1.85.0",
     "prisma": "7.10.0",
     "tsx": "4.23.15",

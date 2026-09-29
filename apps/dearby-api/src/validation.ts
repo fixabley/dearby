@@ -12,8 +12,10 @@ const history = z.strictObject({ id, title: text(200), role: text(200), startDat
 export const profileInput = z.strictObject({ name: text(100), job: text(200), introduction: text(5000),
   contacts: z.array(contact).max(100), histories: z.array(history).max(100),
 }).refine(p => new Set(p.contacts.map(c => c.id)).size === p.contacts.length && new Set(p.histories.map(h => h.id)).size === p.histories.length, 'Duplicate IDs');
-export type Profile = z.infer<typeof profileInput> & { id: string; updatedAt: string };
-export type Card = Omit<Profile, 'updatedAt' | 'name'> & { ownerId: string; name: string; description: string; profileName: string; createdAt: string };
+export const profileSchema = profileInput.safeExtend({id,updatedAt:z.iso.datetime()});
+export type Profile = z.infer<typeof profileSchema>;
+export const cardSchema = z.strictObject({...profileInput.shape,id,ownerId:id,name:z.string().min(1).max(100),description:text(2000),profileName:text(100),createdAt:z.iso.datetime()});
+export type Card = z.infer<typeof cardSchema>;
 export const context = z.strictObject({ activityId: id.nullable(), label: z.string().trim().min(1).max(200).nullable() })
   .refine(c => c.activityId === null || c.label === null, 'Choose activity or label');
 export const cardInput = z.strictObject({ name: z.string().trim().min(1).max(100), description: text(2000),
@@ -25,3 +27,8 @@ export class ApiError extends Error {
   constructor(public statusCode: number, public code: string, message: string) { super(message); }
 }
 export const missing = () => new ApiError(404, 'NOT_FOUND', 'Resource not found');
+
+// Shared with documentation; route handlers still own Zod parsing (not Fastify schema validation).
+export const challengeInput = z.strictObject({email:z.email().max(254).transform(e=>e.trim().toLowerCase())});
+export const sessionInput = z.strictObject({challengeId:id,code:z.string().regex(/^\d{6}$/)});
+export const importEnvelope = z.strictObject({items:z.array(z.unknown()).max(100)});

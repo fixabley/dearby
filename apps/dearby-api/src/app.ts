@@ -1,6 +1,7 @@
+import {registerDocumentation,documented} from './openapi.js';
 import Fastify from 'fastify';
 import { guestRoutes } from './guest.js';
-import type { Catalog } from './catalog.js';
+import {catalogSchema,type Catalog} from './catalog.js';
 import { prismaCatalog } from './catalog-prisma.js';
 import { ZodError } from 'zod';
 import type { DB } from './postgres.js';
@@ -19,10 +20,15 @@ export function createApp(db: DB, options: AuthOptions & {catalogReader?: () => 
     reply.code(status).send({ error: { code, message: error instanceof ApiError ? error.message : status === 422 ? 'Invalid request' : 'Request failed' } });
   });
   app.setNotFoundHandler((_request, reply) => reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Resource not found' } }));
-  app.get('/v1/catalog', async () => options.catalogReader ? options.catalogReader() : prismaCatalog(db)());
-  const owner = authRoutes(app, db, options);
-  cardRoutes(app, db, owner, options.now ?? Date.now);
-  walletRoutes(app, db, owner, options.now ?? Date.now);
-  guestRoutes(app, db, options.guestProxySecret, options.now ?? Date.now);
+  void app.register(async api => {
+    await registerDocumentation(api);
+    api.get('/v1/catalog',documented({operationId:'getCatalog',summary:'Read the public activity catalog',tag:'Catalog',
+      description:'Public read; current nginx permits GET/HEAD. Returns only published data; draft/hidden data is excluded. Recalculates freshness and deadlines. Read failures return 503. An empty published catalog is valid 200.',responses:{200:catalogSchema},errors:[503]}),
+      async () => options.catalogReader ? options.catalogReader() : prismaCatalog(db)());
+    const owner = authRoutes(api,db,options);
+    cardRoutes(api,db,owner,options.now??Date.now);
+    walletRoutes(api,db,owner,options.now??Date.now);
+    guestRoutes(api,db,options.guestProxySecret,options.now??Date.now);
+  });
   return { app };
 }

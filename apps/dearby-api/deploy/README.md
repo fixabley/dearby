@@ -54,3 +54,19 @@ Rollback: freeze writes, retain the PostgreSQL state and reselect the previous i
 - All writes use one transaction-scoped advisory lock across API processes, preserving SQLite's prior serialized-write behavior and count-based quotas. SMTP/network calls do not hold it. High write volume will queue; review finer locks if measured contention grows. Guest abuse counters remain process-local; persistent session/card caps and OTP quotas are DB-atomic.
 - The previous `database.ts`, catalog SQLite store/collector, `catalog-supabase.ts` and migrations are retained as offline history/recovery tools. `npm run catalog:offline` is explicitly offline; none is selected by `server.ts`. SMTP remains unconfigured unless root assigns it; failures remain503.
 - Shared nginx route policy is unchanged. External ingress issue65 and real public data availability are independent of this storage migration.
+
+## Read-only Swagger reference
+
+- `/docs/`: Swagger UI, local static assets, no external validator, no Try it out or authorization controls. Authorization is not persisted. Do not enter owner tokens or the server-only guest proxy key in a browser.
+- `/docs/json`: OpenAPI 3.0.3 download; `/docs/yaml`: equivalent YAML. Generated from route metadata/shared Zod contracts at runtime, with no manually maintained spec copy.
+- The reference lists the entire API. Public ingress currently exposes catalog, public card reads and trusted server guest paths only; owner/auth/private profile and card collection remain404 there. A permitted direct/local server connection is required for those operations. The docs do not grant new API access.
+
+Download from an already running permitted API (no credentials needed):
+
+```sh
+curl --fail --silent --show-error http://127.0.0.1:58865/docs/json --output /tmp/dearby-openapi.json
+```
+
+Root may add [nginx-docs.location.conf](nginx-docs.location.conf) inside the existing HTTPS server after reviewing/building the new API image. It redirects exact `/docs` to `/docs/`, proxies only GET/HEAD under `/docs/`, suppresses docs logs and strips Authorization, Cookie and both X-Guest authentication headers. Keep [nginx-web-guest.location.conf](nginx-web-guest.location.conf)'s API restrictions. No shared nginx file is changed by this source PR. Verify `/docs/`, JSON/YAML and static assets after `nginx -t` and root-owned reload. Local TLS checks do not establish external connectivity (tracked separately in issue65).
+
+Documentation schemas are supplied only to the Swagger transform through route config. They are never installed as Fastify validation or response serialization schemas: handlers keep their existing Zod422 validation, private-field projection, partial wallet import and guest token contracts. Zod refinements not expressible in JSON Schema are described in the reference. Existing production Prisma rollout, canonical external compose/env paths and SQLite preservation constraints are recorded in [the Prisma handoff](../../../docs/context/api-prisma-postgres.md).
