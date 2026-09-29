@@ -6,6 +6,7 @@ struct CatalogPage: View {
     var showsSaving = true
     @State private var message: String?
     @State private var filter = 0
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     var body: some View {
         TimelineView(.explicit(state.expirationDates)) { timeline in
             Group {
@@ -14,8 +15,15 @@ struct CatalogPage: View {
                 } else {
                     ScrollView {
                         VStack(alignment: .leading, spacing: 16) {
-                            DearbyLogo(width: 96).padding(.bottom, 8)
-                            Text("모집 중인 활동").font(.title2.bold())
+                            DearbyLogo(width: 96).padding(.bottom, 10)
+                            HStack(spacing: 10) {
+                                Text("모집 중인 활동").font(.title2.bold())
+                                if state.catalog?.activities.contains(where: { $0.isPreview == true }) == true {
+                                    Text("예시").font(.caption).foregroundStyle(DearbyStyle.quiet)
+                                        .padding(.horizontal, 10).padding(.vertical, 5)
+                                        .background(DearbyStyle.muted, in: Capsule())
+                                }
+                            }
                             ScrollView(.horizontal) {
                                 HStack(spacing: 8) {
                                     ForEach(Array(["전체", "참가등록형", "선발형"].enumerated()), id: \.offset) { index, title in
@@ -109,19 +117,18 @@ struct CatalogPage: View {
         HStack(alignment: .top, spacing: 12) {
             NavigationLink(value: activity.id) {
                 HStack(alignment: .top, spacing: 12) {
-                    VStack(spacing: 8) {
-                        Image(systemName: "photo").font(.title2)
-                        Text("이미지 미제공").font(.caption2)
-                    }.foregroundStyle(DearbyStyle.quiet).frame(width: 104, height: 104)
-                        .background(DearbyStyle.muted, in: RoundedRectangle(cornerRadius: 9))
+                    if !dynamicTypeSize.isAccessibilitySize {
+                        ActivityArtwork(url: activity.imageUrl, preview: activity.isPreview == true)
+                            .frame(width: 112, height: 116).clipShape(RoundedRectangle(cornerRadius: 9))
+                    }
                     VStack(alignment: .leading, spacing: 7) {
-                        Text(activity.title).font(.headline).foregroundStyle(Color.primary)
-                        Text(activity.audience ?? activity.summary).font(.caption).foregroundStyle(DearbyStyle.quiet).lineLimit(2)
+                        Text(ActivityText.title(activity)).font(.headline).foregroundStyle(Color.primary)
+                        Text(activity.audience ?? activity.summary).font(.subheadline).foregroundStyle(DearbyStyle.quiet).lineLimit(2)
                         Divider()
                         Label("마감 " + ActivityText.shortDate(activity.recruitmentEndAt), systemImage: "calendar")
                         Label(activity.dateLabel.isEmpty ? "일정 미확인" : activity.dateLabel, systemImage: "mappin.and.ellipse")
                         if saved { Text(activity.status(at: now)).foregroundStyle(DearbyStyle.teal) }
-                    }.font(.caption).foregroundStyle(DearbyStyle.quiet).frame(maxWidth: .infinity, alignment: .leading)
+                    }.font(.caption).foregroundStyle(DearbyStyle.quiet).frame(minHeight: 116).frame(maxWidth: .infinity, alignment: .leading)
                 }
             }.buttonStyle(.plain).accessibilityIdentifier("activity-\(activity.id)")
             if showsSaving {
@@ -138,5 +145,23 @@ struct CatalogPage: View {
     }
     private func mutate(_ action: () throws -> Void) {
         do { try action() } catch { message = error.localizedDescription }
+    }
+}
+
+// One image treatment shared by discovery thumbnails and the detail hero.
+struct ActivityArtwork: View {
+    let url: String?
+    let preview: Bool
+    var body: some View {
+        GeometryReader { geometry in
+            AsyncImage(url: ActivityModel.safeURL(url)) { image in
+                image.resizable().scaledToFit().frame(width: geometry.size.width, height: geometry.size.height)
+            } placeholder: {
+                VStack(spacing: 10) {
+                    Image(systemName: preview ? "calendar.badge.clock" : "photo").font(.largeTitle)
+                    Text(preview ? "DEARBY DEMO" : "이미지 미제공").font(.caption2.weight(.medium))
+                }.foregroundStyle(DearbyStyle.teal).frame(width: geometry.size.width, height: geometry.size.height)
+            }
+        }.background(DearbyStyle.muted).accessibilityHidden(true)
     }
 }

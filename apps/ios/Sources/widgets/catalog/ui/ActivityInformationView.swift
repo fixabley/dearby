@@ -3,42 +3,54 @@ import SwiftUI
 struct ActivityInformationView: View {
     let activity: ActivityModel
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    let checkCalendar: () -> Void
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 20) {
             Divider()
             Text("행사 일정").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
-            field("활동 일정", activity.dateLabel)
-            field("모집 시작", ActivityText.date(activity.recruitmentStartAt))
-            field("모집 마감", ActivityText.date(activity.recruitmentEndAt))
-            ForEach(activity.schedules) { schedule in
-                VStack(alignment: .leading, spacing: 6) {
-                    if schedule.title != activity.title { Text(schedule.title).font(.headline) }
-                    if schedule.dateLabel != activity.dateLabel {
-                        Text(schedule.dateLabel.isEmpty ? "일정 미확인" : schedule.dateLabel)
-                    }
-                    if schedule.startAt == nil && schedule.endAt == nil {
-                        Text("시간 미정").font(.footnote).foregroundStyle(DearbyStyle.quiet)
-                    } else {
-                        Text(schedule.startAt.map { "시작: " + ActivityText.date($0, timeZone: schedule.timeZone) }
-                            ?? "시작 시각 미정").font(.footnote)
-                        Text(schedule.endAt.map { "종료: " + ActivityText.date($0, timeZone: schedule.timeZone) }
-                            ?? "종료 시각 미정").font(.footnote)
-                    }
+            Text(activity.dateLabel.isEmpty ? "일정 미확인" : activity.dateLabel).font(.subheadline)
+            if activity.schedules.isEmpty {
+                Text("세부 시간은 아직 확인되지 않았어요.").font(.subheadline).foregroundStyle(DearbyStyle.quiet)
+            }
+            VStack(spacing: 0) {
+                ForEach(activity.schedules) { schedule in
+                    scheduleRow(schedule)
                 }
             }
-            Text("기기 캘린더와의 일정 비교는 아직 제공하지 않아요.").font(.caption).foregroundStyle(DearbyStyle.quiet)
+            Button("겹치는 시간 확인하기", action: checkCalendar).buttonStyle(DearbyButtonStyle(outlined: true))
+            Text("선택한 기기 캘린더 일정과 비교해요.").font(.caption).foregroundStyle(DearbyStyle.quiet)
+                .frame(maxWidth: .infinity)
         }
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 20) {
             Divider()
             Text("참가 안내").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
-            field("대상", activity.audience)
+            field("참가비", activity.cost)
+            field("등록 방법", activity.participationType == .selection ? "신청 후 주최 측 선정" : "공식 사이트에서 참가 등록")
             field("지원 조건", activity.qualification)
-            field("모집 직군", activity.roles.isEmpty ? nil : activity.roles.joined(separator: ", "))
-            field("비용", activity.cost)
-            Divider()
+            if !activity.roles.isEmpty { field("관심 분야", activity.roles.joined(separator: " · ")) }
+            Divider().padding(.top, 4)
             Text("장소").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
-            Text(activity.location ?? "장소 미확인")
+            Text(activity.location ?? "장소 미확인").font(.subheadline)
         }
+    }
+    private func scheduleRow(_ schedule: ActivityScheduleModel) -> some View {
+        let layout = dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: 12))
+        return layout {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(ActivityText.clock(schedule.startAt, timeZone: schedule.timeZone))
+                Text("– " + ActivityText.clock(schedule.endAt, timeZone: schedule.timeZone))
+            }.font(.subheadline).foregroundStyle(DearbyStyle.quiet).frame(minWidth: 90, alignment: .leading)
+            VStack(spacing: 0) {
+                Circle().fill(DearbyStyle.teal).frame(width: 7, height: 7)
+                Rectangle().fill(DearbyStyle.line).frame(width: 1).frame(minHeight: 44)
+            }.padding(.top, 6).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 5) {
+                Text(schedule.title).font(.subheadline)
+                if schedule.dateLabel != activity.dateLabel { Text(schedule.dateLabel).font(.caption).foregroundStyle(DearbyStyle.quiet) }
+                Text(ActivityText.day(schedule.startAt, timeZone: schedule.timeZone) + " · " + schedule.timeZone).font(.caption2).foregroundStyle(DearbyStyle.quiet)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        }.padding(.bottom, 10)
     }
     private func field(_ title: String, _ value: String?) -> some View {
         let layout = dynamicTypeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
@@ -54,6 +66,29 @@ struct ActivityInformationView: View {
 
 // Display formatting stays in the owning widget; wire timestamps remain unchanged.
 enum ActivityText {
+    static func title(_ activity: ActivityModel) -> String {
+        let prefix = "[목 데이터] "
+        if activity.isPreview == true && activity.title.hasPrefix(prefix) {
+            return String(activity.title.dropFirst(prefix.count))
+        }
+        return activity.title
+    }
+    static func day(_ raw: String?, timeZone: String) -> String {
+        guard let date = CatalogModel.date(raw) else { return "날짜 미확인" }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.timeZone = TimeZone(identifier: timeZone)
+        formatter.dateFormat = "M월 d일"
+        return formatter.string(from: date)
+    }
+    static func clock(_ raw: String?, timeZone: String) -> String {
+        guard let date = CatalogModel.date(raw) else { return "시간 미정" }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.timeZone = TimeZone(identifier: timeZone)
+        formatter.dateFormat = "HH:mm"
+        return formatter.string(from: date)
+    }
     static func shortDate(_ raw: String?) -> String {
         guard let date = CatalogModel.date(raw) else { return "미확인" }
         let formatter = DateFormatter()

@@ -7,6 +7,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
+ASSETS = Path(__file__).resolve().parents[3] / 'shared/assets/conferences'
+ARTWORK = {'feconf-2026': 'feconf.png', 'kakao-2026': 'kakao-2026.png', 'pycon-2026': 'pycon.png', 'dan-2025': 'dan.png'}
+
 RECORDS = json.loads(Path(__file__).with_name('data.json').read_text())['records']
 
 
@@ -27,15 +30,16 @@ def catalog(origin):
                      for index, schedule in enumerate(record['schedules'])]
         result['activities'].append(dict(
             id=activity, programId=program, organizationId=org,
-            title='[목 데이터] ' + record['name'],
-            summary='데모용 노출 · 실제 모집 아님. ' + record['summary'] + ' 실제 상태: ' + record['status'],
+            title='[목 데이터] ' + record['name'], isPreview=True,
+            imageUrl=origin + '/artwork/' + key if key in ARTWORK else None,
+            summary=record['summary'] + ' 실제 상태: ' + record['status'],
             participationType=record['type'], recruitmentStatus='open', isRecruiting=True,
             recruitmentStartAt=None, recruitmentEndAt=None, dateLabel=record['date'], location=record['location'],
             cost=record.get('cost'), audience=None, qualification='목 데이터의 신청 페이지는 연습용이며 접수되지 않습니다.',
             roles=record['roles'], schedules=schedules, officialUrl=record['url'], applicationUrl=origin + '/apply/' + key,
             sourceCheckedAt=iso(now), validUntil=iso(now + dt.timedelta(hours=1)), freshness='verified',
             sourceNote='목 데이터 생성 시각이며 공식 모집 검증 시각이 아닙니다. 공식 정보 조사: 2026-09-29. 실제 상태: '
-                       + record['status'] + '. 기재 일정은 공식 정보이며 전체 세션을 포함하지 않을 수 있습니다.'))
+                       + record['status'] + ('. 가상 체험 일정입니다.' if key == 'calendar-demo-2026' else '. 기재 일정은 공식 정보이며 전체 세션을 포함하지 않을 수 있습니다.')))
     return result
 
 
@@ -44,6 +48,13 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == '/v1/catalog':
             body = json.dumps(catalog(self.server.origin), ensure_ascii=False).encode()
             kind = 'application/json; charset=utf-8'
+        elif self.path.startswith('/artwork/'):
+            name = ARTWORK.get(self.path.removeprefix('/artwork/'))
+            if name is None:
+                self.send_error(404)
+                return
+            body = (ASSETS / name).read_bytes()
+            kind = 'image/png'
         elif self.path.startswith('/apply/'):
             record = next((item for item in RECORDS if item['key'] == self.path.removeprefix('/apply/')), None)
             if record is None:

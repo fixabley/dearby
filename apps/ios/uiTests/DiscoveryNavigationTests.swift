@@ -18,11 +18,13 @@ import XCTest
         let activity = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'activity-'")).firstMatch
         guard activity.waitForExistence(timeout: 8) else { throw XCTSkip("Requires explicit current test catalog fixture in dedicated Simulator") }
         activity.tap()
+        capture(app, "detail-top")
         let calendar = app.buttons["겹치는 시간 확인하기"]
         for _ in 0..<8 where !calendar.isHittable { app.swipeUp() }
         XCTAssertTrue(calendar.isHittable)
         XCTAssertFalse(app.buttons["프로그램 저장"].exists)
         XCTAssertFalse(app.buttons["조직 저장"].exists)
+        capture(app, "detail-schedule")
         calendar.tap()
         XCTAssertTrue(app.navigationBars["겹치는 시간 확인하기"].waitForExistence(timeout: 5))
         let permission = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
@@ -48,6 +50,30 @@ import XCTest
         XCTAssertTrue(app.buttons["나중에"].waitForExistence(timeout: 5))
         app.buttons["나중에"].tap()
         XCTAssertFalse(app.staticTexts["이 활동은 이미 신청한 활동이에요."].exists)
+    }
+    func testReferenceArtworkDetail() throws {
+        let app = XCUIApplication()
+        app.launch()
+        let activity = app.buttons.matching(NSPredicate(format: "label CONTAINS 'FEConf 2026'")).firstMatch
+        guard activity.waitForExistence(timeout: 8) else { throw XCTSkip("Requires explicit conference preview fixture") }
+        activity.tap()
+        XCTAssertTrue(app.navigationBars["활동 상세"].waitForExistence(timeout: 5))
+        capture(app, "artwork-detail")
+    }
+    func testLargeTypeDiscoveryAndCalendarEntry() throws {
+        let app = XCUIApplication()
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        let activity = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'activity-'")).firstMatch
+        guard activity.waitForExistence(timeout: 8) else { throw XCTSkip("Requires explicit conference preview fixture") }
+        capture(app, "large-discovery")
+        activity.tap()
+        let calendar = app.buttons["겹치는 시간 확인하기"]
+        for _ in 0..<18 where !calendar.isHittable { app.swipeUp() }
+        XCTAssertTrue(calendar.isHittable)
+        capture(app, "large-schedule")
+        calendar.tap()
+        XCTAssertTrue(app.navigationBars["겹치는 시간 확인하기"].waitForExistence(timeout: 5))
     }
     private func capture(_ app: XCUIApplication, _ name: String) {
         let shot = XCTAttachment(screenshot: app.screenshot())

@@ -35,6 +35,11 @@ import SwiftData
         let catalog = try CatalogFixture.catalog()
         try catalog.validate()
         let activity = try XCTUnwrap(catalog.activities.first)
+        XCTAssertNil(activity.imageUrl)
+        XCTAssertNil(activity.isPreview)
+        let preview = try CatalogFixture.catalog(changes: ["imageUrl": "https://catalog.test/cover.png", "isPreview": true]).activities[0]
+        XCTAssertEqual(preview.imageUrl, "https://catalog.test/cover.png")
+        XCTAssertEqual(preview.isPreview, true)
         XCTAssertNil(activity.cost)
         XCTAssertNil(activity.schedules[0].startAt)
         XCTAssertNil(activity.schedules[0].endAt)

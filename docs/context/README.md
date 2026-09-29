@@ -1,5 +1,9 @@
 # Dearby 컨텍스트 목차
 
+## 현재 iOS 시각 수정 — 2026-09-29
+
+사용자가5b837bd 체크포인트 보존 후 승인 렌더링 적용을 요청했다. 탐색 공식 이미지/예시 배지, 상세 항목 정렬/일정 타임라인/캘린더 테두리 버튼을 반영했다. [전후 비교와 검증](../../apps/ios/docs/evidence/discovery-reference/README.md). iPhone17은 localhost58764 목 서버로 실행 중. Android 시각 동기화는 이번 범위에 포함하지 않는다.
+
 ## 현재 시뮬레이터 — 컨퍼런스 목 데이터
 
 PR55는 main b3094f9로 병합됐고 모든 원격 CI가 통과했다. 이후 사용자 요청으로 공식 출처를 조사한 컨퍼런스5개를 개발 전용 목 데이터로 추가했다. [데이터·출처·실행 안내](../../tests/fixtures/conferences/README.md). 현재 iPhone17은 localhost58764 목 서버를 바라보며 앱/서버를 켜 두었다. 후속 요청으로 가상 캘린더 체험1건을 추가(총6건), 9월30일14–16시 활동과 겹치는 로컬 데모 일정2건을 별도 Dearby 데모 캘린더에 생성했다. 실제 API57937 및 운영 데이터는 별개다. 작업 브랜치는 feat/conference-mock-data이며 플랫폼 production 코드는 수정하지 않았다.

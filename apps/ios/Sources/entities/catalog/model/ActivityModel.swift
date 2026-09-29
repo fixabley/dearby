@@ -27,6 +27,8 @@ struct ActivityModel: Codable, Equatable, Identifiable, Sendable {
     let validUntil: String?
     let freshness: Freshness
     let sourceNote: String
+    var imageUrl: String?
+    var isPreview: Bool?
 
     func isCurrent(at now: Date) -> Bool {
         guard freshness == .verified, let checked = CatalogModel.date(sourceCheckedAt),

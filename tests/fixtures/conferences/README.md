@@ -22,11 +22,11 @@ python3 tests/fixtures/conferences/serve.py
 - Android에서 쓰려면 해당 에뮬레이터에 `adb reverse tcp:58764 tcp:58764`, `-PdearbyApiUrl=http://127.0.0.1:58764`로 별도 Debug 빌드.
 - 종료 후 실제 API로 돌아갈 때 해당 API origin으로 다시 빌드한다. production 기본 URL/소스/데이터는 변경하지 않았다.
 
-기존 앱의 모집중 필터를 통과시키기 위해 목 응답만 open/isRecruiting/verified와 단기 유효 시각을 생성한다. **공식 모집 상태/검증 시각이 아니다.** 모든 제목에 `[목 데이터]`, 요약 첫머리에 데모 안내, 상세 sourceNote에 생성 시각과 실제 상태를 명시했다. 목 전용 UUID namespace로 실제 활동의 신청 기록과 충돌하지 않는다. 신청 URL은 제출 기능이 없는 로컬 안내 페이지이고 공식 출처 URL은 실제 사이트다. 과거 행사를 미래로 이동하지 않는다.
+기존 앱의 모집중 필터를 통과시키기 위해 목 응답만 open/isRecruiting/verified와 단기 유효 시각을 생성한다. **공식 모집 상태/검증 시각이 아니다.** 구형 클라이언트용 제목의 `[목 데이터]` 접두사를 유지하며 isPreview=true로 예시 활동을 표시하고, 상세 sourceNote에 생성 시각과 실제 상태를 명시했다. iOS는 목록 제목 옆 예시 배지와 상세 예시 활동 배지를 표시한다. 목 전용 UUID namespace로 실제 활동의 신청 기록과 충돌하지 않는다. 신청 URL은 제출 기능이 없는 로컬 안내 페이지이고 공식 출처 URL은 실제 사이트다. 과거 행사를 미래로 이동하지 않는다.
 
 ## 검증
 
-2026-09-29:5건 ID/참조/목 라벨/데모 신청 HTTP 검증 통과. iOS Debug build+install+launch 성공, iPhone17의 실제 UI에서 목록 표시 확인. 플랫폼 production 코드 변경 없음. Android 설치·UI 검증은 이번 데이터 작업에서 실행하지 않았다. Ponytail: 표준 라이브러리 HTTP/JSON/UUID만 사용, 별도 의존성/범용 수집 프레임워크 없음. Lean already. Ship.
+2026-09-29:초기5건 ID/참조/목 라벨/데모 신청 HTTP 검증 통과. iOS Debug build+install+launch 성공, iPhone17의 실제 UI에서 목록 표시 확인. 플랫폼 production 코드 변경 없음. Android 설치·UI 검증은 이번 데이터 작업에서 실행하지 않았다. Ponytail: 표준 라이브러리 HTTP/JSON/UUID만 사용, 별도 의존성/범용 수집 프레임워크 없음. Lean already. Ship.
 
 ## 임시 캘린더 겹침 체험 — 2026-09-29 후속
 
@@ -39,3 +39,5 @@ python3 tests/fixtures/conferences/serve.py
 목 목록 첫 번째 `캘린더 겹침 체험` 상세에서 겹치는 시간 확인 → Dearby 데모 캘린더 선택 → 확인. 다른 캘린더에 같은 시간 일정이 있으면 추가 결과가 나올 수 있다. 제거는 iOS 캘린더 앱의 캘린더 목록에서 해당 데모 캘린더만 삭제하면 된다. 기존 캘린더는 수정하지 않았다.
 
 재생성은 앱 Documents에 `dearby-seed-demo-calendar` 빈 파일을 명시적으로 만들고 전체 캘린더 권한을 부여한 Simulator에서 `CalendarConflictTests/testSeedPreviewCalendarWhenRequested`만 실행한다. 실행 후 마커를 삭제하며 생성한 캘린더 ID를 `dearby-demo-calendar-id.txt`에 기록한다. 같은 일정은 중복 생성하지 않는다. 일반 테스트/실기기에서는 skip. 이번 실행1test 통과, 실제 EventKit 조회2건 확인, strict SwiftLint0위반. 앱 production 코드 변경 없음.
+
+시안 적용 후 FEConf2026/if(kakao)26/PyCon2026/DAN25의 기존 공식 이미지 스냅샷4종을 localhost `/artwork/<key>`로 제공한다. 연도와 행사가 일치하는 자산만 사용하며 SLASH24에 다른 토스 행사 이미지를 붙이지 않는다. 출처는 `shared/assets/conferences/SOURCES.md`. 원본 비율은 유지한다.
