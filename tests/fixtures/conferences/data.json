@@ -1,0 +1,112 @@
+{
+  "mock": true,
+  "researchedAt": "2026-09-29",
+  "records": [
+    {
+      "key": "feconf-2026",
+      "name": "FEConf 2026",
+      "organization": "FEDG",
+      "program": "FEConf",
+      "summary": "프론트엔드 개발 경험을 공유하는 개발자 컨퍼런스.",
+      "date": "2026년 10월 24일 · 10:00 입장 시작",
+      "location": "서울 롯데타워 31층",
+      "url": "https://2026.feconf.kr/",
+      "status": "티켓 오픈 예정 · 종료 시각 미확인",
+      "type": "registration",
+      "roles": [
+        "프론트엔드"
+      ],
+      "schedules": [
+        {
+          "title": "행사 입장 시작 · 종료 시각 미확인",
+          "startAt": "2026-10-24T10:00:00+09:00",
+          "endAt": null
+        }
+      ]
+    },
+    {
+      "key": "kakao-2026",
+      "name": "if(kakao)26",
+      "organization": "카카오",
+      "program": "if(kakao)",
+      "summary": "카카오의 AI와 서비스 기술을 소개하는 컨퍼런스.",
+      "date": "2026년 10월 13–14일",
+      "location": "카카오 AI 캠퍼스 · 온라인 생중계",
+      "url": "https://if.kakao.com/2026",
+      "status": "신청 마감 · 10월 1일 이후 선정 안내",
+      "type": "selection",
+      "roles": [
+        "AI",
+        "서비스 개발"
+      ],
+      "schedules": [],
+      "cost": "무료"
+    },
+    {
+      "key": "pycon-2026",
+      "name": "PyCon Korea 2026",
+      "organization": "파이콘 한국 준비위원회",
+      "program": "PyCon Korea",
+      "summary": "파이썬 커뮤니티의 발표와 튜토리얼·스프린트 행사.",
+      "date": "2026년 8월 15–17일 · 종료된 행사",
+      "location": "동국대학교 신공학관",
+      "url": "https://2026.pycon.kr/?lang=en-US",
+      "status": "종료 · 공식 페이지 티켓 마감",
+      "type": "registration",
+      "roles": [
+        "Python",
+        "오픈소스"
+      ],
+      "schedules": []
+    },
+    {
+      "key": "dan-2025",
+      "name": "NAVER DAN25",
+      "organization": "NAVER",
+      "program": "NAVER DAN",
+      "summary": "네이버의 AI·검색·서비스 경험을 공유하는 팀 네이버 컨퍼런스.",
+      "date": "2025년 11월 6–7일 · 종료된 행사",
+      "location": "서울 코엑스",
+      "url": "https://dan.naver.com/25",
+      "status": "종료 · 세션 영상 공개",
+      "type": "registration",
+      "roles": [
+        "AI",
+        "검색",
+        "플랫폼"
+      ],
+      "schedules": [
+        {
+          "title": "DAY 1 키노트 · 실제 공개 시간표 일부",
+          "startAt": "2025-11-06T10:00:00+09:00",
+          "endAt": "2025-11-06T12:00:00+09:00"
+        },
+        {
+          "title": "DAY 1 Deep Dive · 실제 공개 시간표 일부",
+          "startAt": "2025-11-06T13:30:00+09:00",
+          "endAt": "2025-11-06T16:10:00+09:00"
+        }
+      ],
+      "scheduleSource": "https://dan.naver.com/25/sessions/698"
+    },
+    {
+      "key": "slash-2024",
+      "name": "토스 SLASH24",
+      "organization": "토스",
+      "program": "SLASH",
+      "summary": "토스 개발팀의 서버·프론트엔드·데이터 문제 해결 경험을 공유하는 컨퍼런스.",
+      "date": "2024년 9월 12일 · 종료된 행사",
+      "location": "서울 코엑스",
+      "url": "https://toss.im/slash-24",
+      "status": "종료 · 세션 영상 공개",
+      "type": "registration",
+      "roles": [
+        "서버",
+        "프론트엔드",
+        "데이터"
+      ],
+      "schedules": [],
+      "dateSource": "https://toss.im/tossfeed/article/slash24-conference"
+    }
+  ]
+}
