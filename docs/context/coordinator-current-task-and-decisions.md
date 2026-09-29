@@ -2,13 +2,21 @@
 
 ## 현재 작업 — 탐색 전용 노출과 실제 일정 겹침 (#54)
 
-PR40은 2026-09-28 사용자 요청으로 main 849b1fe에 병합됐고 필수 검사명 불일치 #53도 해결됐다. 2026-09-29 사용자는 기존 파일을 보존하면서 탐색/상세/신청/겹치는 시간 확인하기만 노출하도록 요청했고 실제 기기 캘린더 연동 추가 구현도 승인했다. 루트는 origin/main에서 feat/discovery-calendar를 생성했고 공통 명세·통합만 담당한다. API/공통 데이터 계약 변경은 필요하지 않다.
+PR40은 2026-09-28 사용자 요청으로 main 849b1fe에 병합됐고 필수 검사명 불일치 #53도 해결됐다. 2026-09-29 사용자는 기존 파일을 보존하면서 탐색/상세/신청/겹치는 시간 확인하기만 노출하도록 요청했고 실제 기기 캘린더 연동 추가 구현도 승인했다. 루트는 origin/main에서 feat/discovery-calendar를 생성했고 아래 사용자 예외 승인에 따라 양 플랫폼을 직접 구현했다. API/공통 데이터 계약 변경은 필요하지 않다.
 
 Run `run_8ba522965ee6`, coordinator `term_1cbabda3-9f12-4f38-9655-ef8a0a3548fd`. 기존 하위 checkout·터미널 목록을 확인했으나 iOS task_e2d4a2436ae4, Android task_f0066409b05f는 업무 실행 전에 시작 실패했다. 최초 두 건은 Codex 업데이트 안내에 입력되어 업무 실행 전 종료된 것을 실제 출력으로 확인하고 abandon/retain 처리했다. 이어진 신규 세션(ctx_4d6d78c277cf/ctx_3b0279ef9065)과 같은 세션 재사용(ctx_7db4243f0414/ctx_254163acf611)은 agent_readiness timeout으로 실패했다. 실패 6건 모두 retained이고 reclaimable은 0이다. #48에 시작 실패를 추적한다.
 
-사용자가 이 작업에 한해 현재 브랜치에서 메인이 양 플랫폼을 직접 구현하도록 명시적으로 승인했다. 이후 워크트리 정리를 먼저 하도록 요청했다. 하위 4개 checkout의 커밋은 git cherry 기준 모두 origin/main에 동일 패치가 있으며 네이티브/API는 clean, web만 Next.js가 생성한 AGENTS.md 변경이 있다. 전체 하위 파일(ignored 검증 자료 포함)과 Git 이력을 별도 로컬 백업하고 세션 보존 선호와 제거 범위를 확인한 뒤 진행한다. 앱 구현은 아직 시작하지 않았으며 승인된 화면/캘린더 목표는 유지한다.
+사용자가 이 작업에 한해 현재 브랜치에서 메인이 양 플랫폼을 직접 구현하도록 명시적으로 승인했다. 이후 워크트리 정리를 먼저 하도록 요청했다. 하위 4개 checkout의 커밋은 git cherry 기준 모두 origin/main에 동일 패치가 있으며 네이티브/API는 clean, web만 Next.js가 생성한 AGENTS.md 변경이 있다. 전체 하위 파일(ignored 검증 자료 포함)과 Git 이력을 `/Users/jominjun/Documents/dearby-worktree-backups/20260929-093612`에 백업하고 읽기 검증했다. 사용자가 4개 모두 제거 및 세션 유지 해제를 승인해 Orca로 제거했다. Git/Orca 현재 checkout 1개, 하위 terminal 0을 확인했다. 이후 메인이 양 플랫폼 구현·로컬 검증을 완료했다.
 
-수락 조건: 파일·데이터 보존, 비노출 기능 딥링크 우회 및 자동 auth/import 차단, 탐색/상세/신청 왕복 유지, 캘린더 권한·선택·실제 바쁜 시간 비교, 빈 결과와 오류/미확인 구별, 반복·종일·시간대·경계 테스트, 개인정보 세션 수명, 두 플랫폼 빌드/검사 및 전용 기기 증거. 아직 구현·검증 진행 중이다.
+수락 조건: 파일·데이터 보존, 비노출 기능 딥링크 우회 및 자동 auth/import 차단, 탐색/상세/신청 왕복 유지, 캘린더 권한·선택·실제 바쁜 시간 비교, 빈 결과와 오류/미확인 구별, 반복·종일·시간대·경계 테스트, 개인정보 세션 수명, 두 플랫폼 빌드/검사 및 전용 기기 증거. 로컬 구현·검증 완료. 플랫폼 인계 및 아래 증거를 참고한다. 원격 CI와 PR 상태는 별도 확인한다.
+
+### 완료 증거 — 2026-09-29
+
+- iOS: 단위40 중33 통과/7skip(기존 명시적 API fixture6 + 별도 권한 거부 조건1), 권한 거부를 따로 실행해1 통과. 실제 EventKit 반복 조회/결과 clear, 기본 UI2 흐름 통과. 구조16, strict lint64파일0, Debug build 성공.
+- Android: JVM32, FSD49/자체28, Debug/lint 성공(기존17경고). OS Calendar Provider 반복/free 필터와 실제 탐색/상세/캘린더/신청/보류 테스트 통과.
+- 증거: [iOS](../../apps/ios/docs/evidence/discovery-calendar/README.md), [Android](../../apps/android/evidence/discovery-calendar/README.md). UI용 localhost fixture는 실제 모집이 아님을 명시하며 테스트의 임시 캘린더는 종료 시 제거한다.
+- Ponytail 검토: 새 추상화/의존성/일반 feature flag 없이 루트 구성과 OS 어댑터로 구현. 추가 삭제 후보 없음(Lean already. Ship.). 기존 숨긴 파일은 사용자 보존 요구이므로 삭제 대상이 아니다. 별도 정확성 검토에서 권한/시각/반복/종일/DST/경계/저장 보존을 검증했다.
+- 실제 동기화 계정/물리 기기/전체 VoiceOver·TalkBack/외부 신청 제출은 미검증. 전체 제품 완료나 과거 #13/#15 전체 해결로 확대하지 않는다.
 
 ## 2026-09-28 PR 병합 요청
 

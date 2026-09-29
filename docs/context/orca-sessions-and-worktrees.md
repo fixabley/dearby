@@ -1,14 +1,12 @@
 # Git·Orca 현재 상태
 
-2026-09-24 KST 확인. 재개 시 런타임을 다시 확인한다.
+2026-09-29 KST 확인. 재개 시 실제 상태를 다시 확인한다.
 
-- Root `/Users/jominjun/Documents/dearby`, `feat/web-rebuild`, childe7767bc → rootdc688d2 통합 완료.
-- Web `/Users/jominjun/Documents/dearby/dearby-web`, `fixabley/dearby-web`, HEADe7767bc. 메인 부모 연결. Next 자동 AGENTS 미커밋 diff 보존.
-- Runtime `caefeb75-8768-4e65-ada4-dd20162c2563`.
-- 유지 중인 웹 terminal `term_db69f423-a4bc-45ae-910d-ede154eab9d9`. 이번 작업은 사용자 직접 후속으로 새 Dispatch·lifecycle 재전송 없음.
-- root 개발서버 terminal `term_238d6376-3a13-4709-ad6d-104eae2b25ab`, http://127.0.0.1:3000. 기존 term_a6ff6181-bf0a-4cd1-a5a6-cf641025916a는 종료했다.
-- root browser page `b99a9e23-82b0-4349-a854-b6bfa204ef82`, 발견 홈 표시.
-- 과거 Dispatch 세 개는 succeeded·retain·ack 완료이며 다시 종료 보고하지 않는다. 자세한 이력은 [보관본](archive/2026-09-24-before-clubs-integration/orca-sessions-and-worktrees.md).
-- 원격 push/PR/병합/배포 미수행. dearby-ir은 별도 범위. worktree 문서·대화는 자동 동기화되지 않는다.
+- 현재 checkout은 `/Users/jominjun/Documents/dearby` 하나이며 브랜치는 `feat/discovery-calendar`다. PR40은 main 849b1fe에 병합됐다.
+- 사용자가 하위 4개(iOS/Android/API/옛 웹)의 전체 백업 후 워크트리와 연결 세션 종료·제거를 승인했다. 이전 retain 요청의 이번 예외다. Orca rm 4건 removed=true, Git/Orca 모두 main checkout 하나, 하위 terminal 0을 확인했다.
+- 백업: `/Users/jominjun/Documents/dearby-worktree-backups/20260929-093612`. 전체 tar 4개(ignored 검증 자료/설정 포함), all-refs.bundle, web AGENTS 미커밋 patch 및 복구 README. bundle verify와 각 tar 목록 읽기 성공. 비공개 로컬 자료이므로 공개 업로드하지 않는다.
+- 하위 소유 커밋은 모두 origin/main에 patch-equivalent임을 git cherry로 확인했다. web AGENTS의 Next 자동 추가 블록만 미커밋이었으며 백업에 포함했다.
+- #54 Orca Run run_8ba522965ee6의 iOS/Android 시작 시도는 업데이트 프롬프트/준비 판정 오류로 업무 실행 전에 실패했다. #48에 증거를 기록했다. 사용자 승인으로 이 작업은 메인이 현재 checkout에서 직접 구현한다. 삭제된 하위 handle/dispatch를 재사용하지 않는다.
+- 현재 coordinator handle은 term_1cbabda3-9f12-4f38-9655-ef8a0a3548fd. 실행 handle은 런타임 값이며 검증 시점과 별개다.
 
-검증·다음 행동은 [조율 문서](coordinator-current-task-and-decisions.md)를 따른다.
+구현 및 검증 결과는 [조율 문서](coordinator-current-task-and-decisions.md)를 따른다. 이전 운영 기록은 [보관본](archive/2026-09-29-before-worktree-cleanup/orca-sessions-and-worktrees.md)에 있다.
