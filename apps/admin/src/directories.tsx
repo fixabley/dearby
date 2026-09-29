@@ -9,6 +9,7 @@ import {
   Modal,
   Select,
   Space,
+  Switch,
   Table,
   Tag,
 } from "antd";
@@ -51,7 +52,13 @@ export function Directory({ kind }: { kind: "organizations" | "programs" }) {
     setEditing(entry);
     setError("");
     form.resetFields();
-    form.setFieldsValue(entry ?? { description: "" });
+    form.setFieldsValue(
+      entry ?? {
+        description: "",
+        collection_enabled: false,
+        collection_hosts: [],
+      },
+    );
   }
   async function save(values: Record<string, unknown>) {
     try {
@@ -185,6 +192,42 @@ export function Directory({ kind }: { kind: "organizations" | "programs" }) {
                 }))}
               />
             </Form.Item>
+          )}
+          {!isOrg && (
+            <>
+              <Form.Item
+                name="collection_enabled"
+                label="매일 활동 수집"
+                valuePropName="checked"
+              >
+                <Switch />
+              </Form.Item>
+              <Form.Item
+                name="collection_hosts"
+                label="공식 출처 호스트"
+                extra="주소 전체 대신 정확한 호스트를 입력하세요. 예: www.sopt.org. 새 호스트는 관리자가 공식 출처인지 확인해 추가합니다."
+                rules={[
+                  {
+                    validator: async (_, values: string[] | undefined) => {
+                      if (
+                        (values?.length ?? 0) > 20 ||
+                        values?.some(
+                          (v) =>
+                            !/^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]([a-z0-9-]*[a-z0-9])?$/.test(
+                              v,
+                            ),
+                        )
+                      )
+                        throw new Error(
+                          "소문자 호스트를 최대 20개 입력하세요.",
+                        );
+                    },
+                  },
+                ]}
+              >
+                <Select mode="tags" tokenSeparators={[",", " "]} open={false} />
+              </Form.Item>
+            </>
           )}
           <Form.Item name="description" label="소개">
             <Input.TextArea rows={4} />

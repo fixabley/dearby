@@ -23,3 +23,7 @@ Ponytail: 별도 ORM/범용 CMS/테마 엔진 없이 Refine 공식 provider와 A
 - 모바일 브라우저390px을 확인했지만 전체 스크린리더 음성 탐색과 실기기는 실행하지 않았다. Android 소스/앱은 이번에 변경·재실행하지 않았다.
 
 2026-09-29 JSON 조건 후속: activity-editor.png는 실제 브라우저에서 숫자 연차3, 경력 범위3~4, ISO 날짜, boolean, 중첩 객체·문자열 배열·null을 저장하고 새로고침한 결과다. 유형별 round-trip6개 단위 검사, RLS/DB/HTTP8개, 브라우저2개 통과. 별도 임시DB fresh migration 및 기존 값 보존 통과. E2E 중 초기 selector 실패는 AntD wrapper/input 중복 및 닫히는 메뉴 선택 범위를 수정하여 해소했다.
+
+## 2026-09-29 구독 활동 수집
+
+`collection.png`, `collection-mobile.png`: 이 checkout의 5174 관리자 화면에서 실제 Supabase 설정 저장·수동 큐·재시도·후보 원문·활동 편집 연결을 검증했다. 화면의 `[로컬 테스트] 수집 UI`는 브라우저 테스트 fixture이며 테스트 종료 후 UUID로 정리했다. 구독 실행 결과를 모방한 UI fixture와 실제 Codex 검색 증거는 구분한다. 실제 검색/토큰/운영 상태는 `docs/context/catalog-subscription-worker-handoff.md`에 기록한다.
