@@ -513,7 +513,7 @@
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEARBY_API_URL = "";
+				DEARBY_API_URL = "https://wid.io.kr";
 				DEARBY_SHARE_URL = "";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Info.plist;

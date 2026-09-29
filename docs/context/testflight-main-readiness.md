@@ -1,6 +1,6 @@
 # main iOS TestFlight 배포 준비
 
-최신 검증: 2026-09-29 20:35 KST. 역할: main 기반 iOS 배포 메타데이터·무서명 archive. Apple 인증·업로드·API 도메인/nginx·공통 차단 이슈는 root 소유.
+최신 검증: 2026-09-29 20:41 KST. 역할: main 기반 iOS 배포 메타데이터·무서명 archive. Apple 인증·업로드·API 도메인/nginx·공통 차단 이슈는 root 소유.
 
 ## 현재 결과
 
@@ -19,13 +19,15 @@
 | 방향 | Debug/Release plist에 iPad 네 방향, iPhone 세로/양쪽 가로 명시. iPad 지원/멀티태스킹을 없애거나 full-screen 강제로 경고를 숨기지 않음. Xcode 방향 경고 해소 |
 | AccentColor | 없는 AccentColor asset의 compiler 참조를 비움. 기존 DearbyApp의 명시적 청록 tint 보존. Xcode 경고 해소 |
 | 암호화 | ITSAppUsesNonExemptEncryption=NO. 앱 전체 소스에서 URLSession HTTPS, OS Keychain SecItem*만 확인. 프로젝트에 외부 Swift package/runtime library 의존성 없음, archive 링크는 Apple 시스템 라이브러리. 자체/번들 암호화 구현을 발견하지 못한 기술적 근거이며 법적 판단이나 최종 수출 선언 승인을 뜻하지 않음 |
-| API/서명 | DEARBY_API_URL 빈값 유지, 팀·인증서·프로파일 미설정 유지. root 외부 조사/공유 서비스 변경 없음 |
+| API/서명 | 후속 root 승인으로 Release DEARBY_API_URL=https://wid.io.kr 설정. Debug는 빈값. 팀·인증서·프로파일 미설정 유지. Supabase URL/key 없음. root 외부 조사/공유 서비스 변경 없음 |
 
 승인 manifest의 `logo-teal.png`는 2172×724 가로 워드마크다. 정사각 런처에 전체를 넣으면 작은 크기에서 글자가 작아진다. 기존 후보를 먼저 조사했고, main Android 런처 `apps/android/app/src/main/res/drawable/ic_launcher.xml`(도입 커밋 `911c501`, main 포함)의 청록 바탕/흰색 D를 **형태·색상·even-odd fill 그대로** CoreGraphics로 래스터화했다. 새 로고 생성·워드마크 재디자인·다른 브랜치 자산 반입은 없다. 이 후보가 main에서 이미 사용 중이라는 근거는 있으나, 별도의 시각 디자인 승인 기록까지 발견한 것은 아니다. root가 PR에서 선택을 확인할 수 있다. 과거 iOS AppIcon catalog는 filename 없는 빈 설정, 과거 Android 하트는 네이티브 재착수 이전이라 채택하지 않았다. 앱 내 승인 워드마크는 그대로 유지했다.
 
 원본/결과 SHA256과 출처는 [ASSET-SOURCES](../../apps/ios/Resources/ASSET-SOURCES.md)에 기록했다. 직접 픽셀 검사로 배경 RGB `[0,127,128]`, 1024×1024, alpha 없음 확인. 로컬 재현 렌더 코드는 `.build/testflight-main/render-app-icon.swift`에 보존하며 런타임 코드나 새 의존성은 추가하지 않았다.
 
 ## 실제 실행한 검증
+
+아래 메타데이터/UI 전체 검증은 API origin 설정 전 20:35 KST 결과다. Release origin 후속 검증은 다음 절에 별도 기록한다.
 
 - 보완본 Release 일반 iOS 기기 archive exit 0, `** ARCHIVE SUCCEEDED **`. Xcode 제품 Validate 완료. **App Store Connect distribution validation을 실행한 것은 아니다.**
 - 원본/보완 Debug·Release plist 및 archive app plist lint 통과. 보완 archive 메타데이터 assertion 통과: 버전, 빌드, phone/pad AppIcon, iPad 네 방향, 암호화 bool, API 빈값, Release ATS 예외 없음.
@@ -36,6 +38,16 @@
 - XcodeBuildMCP snapshot_ui 접근성 트리 조회는 automation session 생성 타임아웃으로 실패. screenshot과 XCUITest 성공과 구별한다. 전체 접근성 감사/회전별 UI/실기기/실제 API/캘린더 허용 흐름은 이번에 검증하지 않았다.
 - `codesign --verify --deep --strict`는 원본/보완 모두 exit 1, `code object is not signed at all`. 예상된 무서명 상태로 서명 검증 통과가 아니다.
 - ponytail-review: 설정·기존 자산·출처 문서만 추가, 새 런타임 래퍼/패키지/추상화 없음. 삭제 후보 없음.
+
+## Release API origin 후속 — 20:41 KST
+
+사용자가 데이터 게시 없이 API 연결만 요청했고 root가 `https://wid.io.kr`를 확정했다. Release 프로젝트 설정과 재생성 스크립트에 origin만 반영했으며 Debug/공유 URL/팀/서명/앱 기능은 변경하지 않았다. 앱에는 Supabase URL/key를 추가하지 않았다. APIClient가 `/v1`을 붙이므로 전체 `/v1/catalog` 경로를 설정값에 중복 입력하지 않았다.
+
+root 전달 증거: nginx 정확 `/v1/catalog` GET/HEAD=200 JSON, POST=405, 다른 `/v1/`=404를 로컬 TLS에서 확인. **이 세션에서 해당 서버 검증을 재실행하지 않았으며 공개 인증서는 준비 중이다. 인터넷 신뢰/연결 성공으로 표시하지 않는다. published=0이고 데이터 게시 작업은 수행하지 않았다.**
+
+후속 일반 iOS 기기 Release 무서명 archive exit 0, archive DearbyAPIURL=https://wid.io.kr 및 Release ATS 예외 없음 확인. 구조16/Ruby syntax/git diff --check 통과. Swift 소스 변경이 없어 이전 전체 테스트·lint를 재실행하지 않았으며 이전 결과와 구분한다.
+
+후속 증거 경로는 `api-origin-archive.log`, `APIOriginArchive.xcresult`, `Dearby-api-origin-unsigned.xcarchive`, `api-origin-architecture.log`. 이전 `Dearby-metadata-unsigned.xcarchive`는 API 빈값이던 시점의 증거로 유지한다. ponytail-review: 기존 설정값과 generator 조건 한 줄만 변경, 추가 런타임 코드/추상화 없음.
 
 ## 재현·증거
 
@@ -52,14 +64,14 @@ xcodebuild -project apps/ios/Dearby.xcodeproj -scheme Dearby \
 
 `apps/ios/.build/testflight-main/` 내 보완 증거: `metadata-archive.log`, `MetadataArchive.xcresult`, `metadata-inspection.json`, `metadata-assets.json`, `lint.log`, `architecture.log`, `MetadataTests.xcresult`, `ipad-release-portrait.jpg`, `Dearby-metadata-unsigned.xcarchive`.
 
-원본 main 검사(20:25 KST)는 `archive.log`, `Archive.xcresult`, `inspection.json`, `release-build-settings.txt`, `Dearby-unsigned.xcarchive`로 보존했다. 당시 버전/아이콘/방향 누락은 이번 소스 보완으로 해소했으며 API/서명 차단은 그대로다. 원본 arm64/dSYM UUID 일치도 확인했다.
+원본 main 검사(20:25 KST)는 `archive.log`, `Archive.xcresult`, `inspection.json`, `release-build-settings.txt`, `Dearby-unsigned.xcarchive`로 보존했다. 당시 버전/아이콘/방향 누락은 이번 소스 보완으로 해소했으며 당시 API/서명 차단이 남아 있었다. 후속으로 Release origin만 확정했으며 공개 TLS/실연결과 서명 차단은 남아 있다. 원본 arm64/dSYM UUID 일치도 확인했다.
 
 ## root 인계·해소 조건
 
 [PR #60](https://github.com/fixabley/dearby/pull/60), base main. 소스 커밋 `81e1c2c9177ba1b0698a0ac32ccdf979b9a54764` push 완료. 20:38 KST 조회에서 MERGEABLE, 원격 Native verification 진행 중(통과로 기록하지 않음). 최초 Git push는 캐시된 다른 GitHub 계정으로 403; 전역 인증 설정 변경 없이 해당 push 명령에만 기존 gh credential helper를 지정해 해결했다. root가 CI 결과를 확인하고 통합한다.
 
 1. **Apple 서명/권한**: root 전달상 Xcode의 minjun jo 팀(Admin)은 있으나 인증서 목록은 비어 있음. 이 세션은 인증을 재조사·생성하지 않았다. root가 승인된 팀/서명/프로파일·ASC 앱 레코드/권한으로 signed archive/export/validation을 수행해야 한다.
-2. **API**: archive DearbyAPIURL 빈 문자열. APIClient는 Release HTTPS만 허용하며 신규 설치의 catalog 조회 불가. root가 운영 HTTPS origin과 catalog 응답을 확인해 전달한 뒤 최종 배포 빌드에 주입해야 한다. nginx/DNS/공유기 변경은 이 checkout에서 하지 않는다.
+2. **API**: Release origin은 https://wid.io.kr 확정/반영. root가 공개 인증서 신뢰와 인터넷에서 실제 catalog 응답을 검증해야 한다. 현재 root 전달 published=0, 게시하지 않았다. nginx/DNS/공유기 변경은 이 checkout에서 하지 않는다.
 3. **최종 번호·선언**: root가 ASC 기존 버전/빌드 이력 및 최종 암호화 응답을 확인. `0.1.0 (1)`을 승인된 배포 번호로 오인하지 않는다. 향후 외부 crypto 의존성 추가 시 선언 재검토.
 4. **main 통합 후 배포**: PR을 main에 통합한 commit에서 재archive. 이 브랜치에서 upload하지 않음. 기능/UI/수집/어드민 미병합 변경은 포함하지 않는다.
 5. **검증 잔여**: TestFlight processing/테스터 전달, ASC privacy report 및 배포 validation, 실제 HTTPS API, 실기기/회전별 UI는 별도. 앱 PrivacyInfo.xcprivacy는 현재 없고 검토 범위에서 직접 required-reason API 사용을 찾지 못했으나 이 사실만으로 최종 privacy 통과를 단정하지 않음.

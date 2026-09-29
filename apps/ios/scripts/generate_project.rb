@@ -34,7 +34,8 @@ project.targets.each do |target|
         'INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription' => '선택한 명함의 QR 이미지를 사진에 저장합니다.',
         'INFOPLIST_KEY_DearbyAPIURL' => '$(DEARBY_API_URL)',
         'INFOPLIST_KEY_DearbyShareURL' => '$(DEARBY_SHARE_URL)',
-        'DEARBY_API_URL' => '', 'DEARBY_SHARE_URL' => ''
+        'DEARBY_API_URL' => config.name == 'Release' ? 'https://wid.io.kr' : '',
+        'DEARBY_SHARE_URL' => ''
       })
       if config.name == 'Debug'
         config.build_settings['SWIFT_ACTIVE_COMPILATION_CONDITIONS'] = 'DEBUG'
