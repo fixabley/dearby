@@ -1,5 +1,34 @@
 # API Prisma/PostgreSQL 전환 인계
 
+## 현재 운영 상태 — 2026-09-30 root 전환 완료 보고
+
+PR69은 main `40b2d191e498bb57d8e6ba4155bb71bf9b7ce3df`에 병합됐다. root는 배포 source `6d85e2e`와 main의 API/snapshot/SQL tree 동일성을 확인했다. API/iOS/Android PR CI 모두 success이며, ECR pull 한도 실패는 job 재실행으로 해소됐다. 로컬 검증35 tests PASS. 아래 구현·게시전 기록의 운영보류 문구는 당시 상태이며 이 항목이 최신 정본이다.
+
+root 실행·검증 보고(본 세션에서 운영 재실행하지 않음):
+
+- Supabase GitHub 자동 migration `20260929150000` success. runtime 최소권한 및 private14테이블 RLS 확인.
+- 최종 `frozen-20260930-003612` SQLite 백업 무결성 정상:14테이블, rate_limits3/migrations3, 나머지0. 백업 **복사본만** WAL→DELETE 정규화하여 readonly importer 사용, 원볼륨 변경 없음. import 후 전체 canonical hash 일치 및 재시작 후 동일 확인.
+- 운영 이미지 `dearby-api-main:prisma-6d85e2e`, image `sha256:789efc4ba7bc455ab6244c5394d812707e2af7876e55cb8e83f966c20bb7a987`. API58865 healthy.
+- catalog200/이전결과동일, wallet401, 없는card404, guest무키403, 유효proxy만/guesttoken없음401. nginx 로컬 신뢰 TLS catalog200은 확인됐으나 외부접속 #65 해결을 의미하지 않는다.
+- 기존 source SQLite volume readonly 보존, OTP_SECRET/GUEST_PROXY_SECRET 동일. 운영 env에서 retired Supabase REST/SQLite 설정 제거.
+
+### 실제 운영 Compose 정본
+
+아래는 root의 repo 밖 운영 경로다. 향후 재시작/복구는 이 정본을 기준으로 root와 조율하며 checkout의 일반 Compose를 임의 실행하지 않는다.
+
+- `/Users/jominjun/.dearby-deploy/api-prisma/runtime-next.env`
+- `/Users/jominjun/.dearby-deploy/api-prisma/source-6d85e2e/apps/dearby-api/deploy/compose.yaml`
+- `/Users/jominjun/.dearby-deploy/api-prisma/runtime-compose.override.yaml`
+- CA: `/Users/jominjun/.dearby-deploy/api-prisma/connection/prod-ca-2021.crt` (외부 readonly bind; 공개인증서0644/상위0700, 연결env·키0600)
+
+root 승인으로 `runtime-next.env`를 자기 checkout `apps/dearby-api/deploy/.env.runtime`에 내용 출력 없이 동기화했다. 복사 전 구형 env는 repo 밖 `~/.dearby-deploy/api-prisma/checkout-env-sync-*`에0600 백업했고 복사 후 byte동일/0600/git check-ignore/미추적을 확인했다. 이 동기화는 서비스 실행·Compose 적용·다른 런타임 변경을 하지 않는다.
+
+**PostgreSQL 전환 후 기존 SQLite로 바로 롤백하지 않는다.** 기존 SQLite와 image/env 백업은 보존하되, 전환 이후 PostgreSQL 쓰기가 있을 수 있으므로 쓰기 freeze·데이터 정합성/역이관 검토 없이 구형 SQLite 이미지로 바꾸면 신규 데이터를 잃는다. 자동 역이관 도구는 제공하지 않는다. 복구는 root 소유다.
+
+운영 증거 PR 댓글은 root가 작성한다. 당시 로컬 인계로 보존했고 이후 승인된 Swagger 소스 PR에 함께 통합했다. 운영 결과만으로 docs-only push하여 CI를 재시작하지 않는다. 세션·worktree retain.
+
+## 구현 및 검증 당시 기록
+
 갱신: 2026-09-30 KST. 담당 checkout `api-domain-main`, branch `feat/api-prisma-postgres`, 최신 기준 main `3d3922c`(PR68 포함). 기존 API/Supabase 인계 미커밋은 외부 `~/.dearby-deploy/api-prisma/20260929-235249/`와 git stash에 보존했다. 세션 retain.
 
 ## 구현
@@ -45,3 +74,15 @@ root 운영 runbook은 `~/.dearby-deploy/api-prisma/PREPARED-NOT-CUTOVER.md`; �
 - [Prisma7 upgrade: Node/ESM/adapter/config/TLS](https://docs.prisma.io/docs/guides/upgrade-prisma-orm/v7)
 - [Prisma tagged raw queries](https://www.prisma.io/docs/orm/v7/prisma-client/using-raw-sql/raw-queries)
 - [Supabase Prisma connection guide](https://supabase.com/docs/guides/database/prisma)
+
+
+## PR69 게시 후 root 이미지 준비 보고 — 로컬 인계
+
+PR69 head `4e109ab462609855e720cf23df40c89baa0ea607`. root가 해당 git archive로 `dearby-api-main:prisma-4e109ab`을 별도 build했고 image는 `sha256:b4d3da24295a8fd9627a6a446cf607f386f0a99fb69b3e840cbd76459abbf392`다. root 보고 기준 `/app`3548files/121584410bytes에서 실제 DB password/URL·OTP·guest·Supabase key 일치0, envfile0. 외부 `source-4e109ab` staging과 runtime Compose `config --quiet` 통과. 이는 root 검증 보고이며 본 세션의 재검사로 표현하지 않는다.
+
+운영API는 여전히 기존 이미지다. root가 CI 확인·merge·자동 migration 배포 검증·final import·cutover를 소유한다. 실제 결함/CI 실패가 없으면 추가push하지 않으며 배포 결과는 로컬인계/필요시 PR comment로 남긴다. 세션 retain.
+
+
+## Wallet 원격DB 왕복 회귀 수정 — 후속 head6d85e2e
+
+root 최종리뷰의 N+1 지적을 반영해 wallet GET의 reciprocal 조회를 distinct owner ID 목록에 대한 Prisma findMany1회와 Set.has 매핑으로 교체했다. 자기명함false, 동일owner의여러명함동일판정, 철회된과거상호전달도판정에포함하는 의미를 유지한다. 여러owner/중복owner/자기명함/철회사례 테스트 추가 후 Node24 lint/typecheck/build 및35 tests PASS(fail0/skip0). 수정은 wallet.ts와 wallet.test.ts 두파일의 작은후속커밋 `6d85e2e`이며 PR69에push했다. 원격CI는 새head로 재실행된다. 이전4e109ab 기반 이미지 검증은 이전소스 근거이며 root가6d85e2e로 재build한다. 추가운영변경없음, 문서갱신은로컬만.
