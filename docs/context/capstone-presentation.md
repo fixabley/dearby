@@ -9,3 +9,7 @@
 - ponytail-review: 발표 엔진은 Reveal.js 사용, 정적 Markdown·CSS·짧은 레이아웃 스크립트만 추가. 별도 앱 프레임워크나 빌드 파이프라인 없음. Lean already. Ship.
 - Pages: `.github/workflows/presentation-pages.yml`에서 발표 폴더만 업로드. GitHub API로 workflow Pages 설정. 공개 범위/저장소 가시성 설정은 변경하지 않음.
 - 배포 예상 URL: https://fixabley.github.io/dearby/ (배포 결과 확인 후 아래 기록).
+- 배포 성공: Actions run 36521245623, https://fixabley.github.io/dearby/ 및 공개 slides.md 원본 바이트 일치 확인. Pages 환경은 기존 main과 발표 브랜치만 배포 허용.
+- 최초 배포의 Actions Node20 폐기 경고를 확인해 각 공식 저장소의 최신 메이저(checkout7/configure-pages6/upload-pages-artifact5/deploy-pages5)로 갱신.
+
+- 공개 사이트 검증: Playwright로 22장·이미지·노트·확대·모바일 검사를 다시 실행해 오류/경계 넘침 없음.
