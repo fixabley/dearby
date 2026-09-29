@@ -67,3 +67,8 @@ Supabase Cron으로 DB 프로그램별 일일 작업을 등록하고 **ChatGPT �
 - GitHub CI는 PR에서 실행 중이다. 최종 결과는 PR checks와 이 세션 최종 응답을 따른다. 로컬 검사와 원격 CI를 혼동하지 않는다.
 - root admin5173/API58765의 HTTP200, 로컬 비밀 파일0600, launchd 실제 동작 및 오늘 28개 큐를 재확인했다. 13:32 스냅샷은 succeeded2/failed5/queued21이며 계속 바뀐다. 실패를 성공으로 치환하지 않는다.
 - ponytail 반영 후 추가 불필요한 추상화·의존성은 발견하지 않았다: Lean already. Ship.
+
+
+### 원격 CI 후속
+
+첫 최신-head CI에서 build/lint/단위/새 DB migration/큐 통합/수집 UI는 통과했으나 기존 JSON 태그 입력 뒤 열린 dropdown이 다음 버튼을 가려 기존 E2E가 실패했다. `admin.spec.ts`에 Enter 뒤 Escape로 dropdown을 닫는 사용자 동작을 명시했다. JSON 조건 구현/저장 계약은 변경하지 않았다. 추가 브라우저 재검증 후 CI 재실행 결과는 PR checks를 따른다.

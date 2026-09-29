@@ -125,6 +125,10 @@ test("admin can create, edit, verify, publish and hide an activity through real 
   await page
     .getByRole("combobox", { name: "모집 역할 기술 1 값", exact: true })
     .press("Enter");
+  // Tags mode keeps its popup open for another value; dismiss it before clicking below.
+  await page
+    .getByRole("combobox", { name: "모집 역할 기술 1 값", exact: true })
+    .press("Escape");
   await page
     .getByRole("button", { name: "기술 항목 추가", exact: true })
     .click();
