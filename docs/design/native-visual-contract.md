@@ -15,6 +15,7 @@
 | --- | --- | --- |
 | 발견 | [discovery](approved/discovery.png) | 검색창과 내 명함 요약 제거. 로고, 모집 중인 활동 제목, 유형 칩, 좌측 썸네일·우측 활동 정보·저장 아이콘의 반복 목록. 탭은 이후 확정한 5개 적용. 미확인 이미지는 임의 사진 대신 정직한 자리표시자. |
 | 상세 | [상단](approved/activity-detail-top.png), [일정](approved/activity-detail-schedule.png), [하단](approved/activity-detail-bottom.png), [신청 기록](approved/activity-applied.png) | 위계 있는 소개·일정·장소·출처와 고정 하단 실제 공식 사이트 CTA. 신청 완료는 상단 얇은 체크 배너. 캘린더 충돌·푸시를 구현한 것으로 꾸미지 않는다. |
+| 겹치는 시간 | [시안 A](approved/calendar-overlap-a.png) | 2026-09-29 명시적 선택. 날짜·겹침 시간 요약, 활동/연결 캘린더 두 열, 주황색 겹침 띠, 확인했어요/다음 겹침. 개인 일정 제목은 가져오지 않으므로 바쁜 시간으로 표시. 큰 글자에서는 읽을 수 있는 세로 목록. |
 | 내 프로필 | [profile](approved/profile.png), [비로그인](approved/profile-guest.png) | 전체 프로필을 탭에서 바로 보여주고 하단 생성 CTA 없음. 연락처는 아이콘·이름·값의 행, 이력은 세로 연표. 상단 편집. |
 | QR 보여주기 | [qr-show](approved/qr-show.png) | 제목/설명은 기존 요청 10pt/8pt를 기본 계층으로 하되 큰 글자 설정에 반응. QR이 카드의 2/3 이상인 주역. 우상단 공유 아이콘, 카드 밖 명함 보기, 하단 좌우 명함 타일. i+회색 안내. QR 탭 시 다른 정보 없이 QR만. |
 | 새 명함 선택 | [qr-new-card](approved/qr-new-card.png) | 좌측 +타일 선택 시 QR 대신 안내 카드와 명함 만들기 CTA. 여기에 편집 폼을 직접 넣는 시안은 반려됨. |

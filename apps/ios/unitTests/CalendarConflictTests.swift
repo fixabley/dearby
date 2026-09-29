@@ -68,6 +68,23 @@ import EventKit
         XCTAssertEqual(item.start, busy.start)
         XCTAssertEqual(item.end, window.end)
     }
+    func testTimelineFocusAndExactOverlapDuration() throws {
+        let window = try XCTUnwrap(CalendarWindowState.parse(schedule()))
+        let item = CalendarOverlapState(id: 0, activity: window,
+                                        busy: .init(start: window.start.addingTimeInterval(5400), end: window.end.addingTimeInterval(1800)))
+        XCTAssertEqual(item.durationText, "30분")
+        XCTAssertEqual(item.timelineStart, item.start.addingTimeInterval(-1800))
+        XCTAssertGreaterThanOrEqual(item.timelineEnd, item.end)
+        XCTAssertEqual(item.timelineEnd.timeIntervalSince(item.timelineStart), 7200)
+        let brief = CalendarOverlapState(id: 1, activity: window,
+                                         busy: .init(start: window.start, end: window.start.addingTimeInterval(20)))
+        XCTAssertEqual(brief.durationText, "1분 미만")
+        let overnight = try XCTUnwrap(CalendarWindowState.parse(schedule(start: "2026-10-24T23:30:00+09:00", end: "2026-10-25T01:00:00+09:00")))
+        let nextDay = CalendarOverlapState(id: 2, activity: overnight, busy: .init(start: overnight.start, end: overnight.end))
+        XCTAssertEqual(nextDay.durationText, "90분")
+        XCTAssertTrue(nextDay.timeRange(nextDay.start, nextDay.end).contains("24"))
+        XCTAssertTrue(nextDay.timeRange(nextDay.start, nextDay.end).contains("25"))
+    }
     func testMissingInvalidAndPartialTimesRemainUnknown() async {
         for value in [schedule(start: nil), schedule(end: nil), schedule(end: "invalid"),
                       schedule(end: "2026-10-24T13:00:00+09:00"), schedule(zone: "invalid")] {

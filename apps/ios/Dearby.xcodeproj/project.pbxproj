@@ -60,6 +60,7 @@
 		BC5BBEFA91A5C2CF5E8803C2636CE567 /* ContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE3D77D0AB3C121B1333A0CD8B807858 /* ContractTests.swift */; };
 		BE74B13B047C629400C94C3B310E2594 /* IdentityPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB917C681DDEC050597FDD97D01C05FC /* IdentityPresentation.swift */; };
 		CA1DDF69DE8C476DE83FC6B2134D0185 /* SharedCardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8CB4D299BDCB9BC5BEA45E3FA5E84E2 /* SharedCardTests.swift */; };
+		CC6C75D08062D99650BA72C0 /* CalendarOverlapTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75E9A3C01F9203DDFC40CF90 /* CalendarOverlapTimeline.swift */; };
 		D0A0375A16CE87B8B165474252FDC83B /* CatalogModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A41BDD4E22179981781AE469A69C12E /* CatalogModel.swift */; };
 		D0C4504CF2B4C6BB0B5C91151DE6A140 /* ExchangeActivityPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C0A4DA29B0981F0879B2B30FD296DCC /* ExchangeActivityPicker.swift */; };
 		DCC3A267753A5A4B18495B039516A2F9 /* ContactAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5ACE48A791FD662F66D9DB1BE38B14A6 /* ContactAction.swift */; };
@@ -111,6 +112,7 @@
 		64540C74A86300D0F70D7540B2FA5443 /* QRPage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = QRPage.swift; path = Sources/widgets/qr/ui/QRPage.swift; sourceTree = "<group>"; };
 		6F59E426E5866F740FF530BF7029901B /* CardComposer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CardComposer.swift; path = Sources/widgets/cardFlow/ui/CardComposer.swift; sourceTree = "<group>"; };
 		75216764FBBC87601C6F8B98 /* DiscoveryNavigationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DiscoveryNavigationTests.swift; path = uiTests/DiscoveryNavigationTests.swift; sourceTree = "<group>"; };
+		75E9A3C01F9203DDFC40CF90 /* CalendarOverlapTimeline.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CalendarOverlapTimeline.swift; path = Sources/features/calendar/ui/CalendarOverlapTimeline.swift; sourceTree = "<group>"; };
 		77715252253AB65769B8EAA7CDB9D0D5 /* CatalogState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CatalogState.swift; path = Sources/features/catalog/model/CatalogState.swift; sourceTree = "<group>"; };
 		798A68636402929A1E86B1BC558B6A47 /* ExchangeActivityTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExchangeActivityTests.swift; path = unitTests/ExchangeActivityTests.swift; sourceTree = "<group>"; };
 		7C0A4DA29B0981F0879B2B30FD296DCC /* ExchangeActivityPicker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExchangeActivityPicker.swift; path = Sources/features/exchange/ui/ExchangeActivityPicker.swift; sourceTree = "<group>"; };
@@ -256,6 +258,7 @@
 				A1E66FCC1D1E9B1A4227A38B /* CalendarConflictState.swift */,
 				8E3F2AB61BC516817809E991 /* CalendarConflictView.swift */,
 				D6FB3B58AA1412A000A84CC7 /* DeviceCalendarStore.swift */,
+				75E9A3C01F9203DDFC40CF90 /* CalendarOverlapTimeline.swift */,
 			);
 			name = Sources;
 			sourceTree = "<group>";
@@ -459,6 +462,7 @@
 				95A92401AFAF1451D8E2D068 /* CalendarConflictState.swift in Sources */,
 				120570A97951AB49BF488192 /* CalendarConflictView.swift in Sources */,
 				4F84F8532454B8771598DC39 /* DeviceCalendarStore.swift in Sources */,
+				CC6C75D08062D99650BA72C0 /* CalendarOverlapTimeline.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

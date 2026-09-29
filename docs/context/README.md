@@ -2,6 +2,8 @@
 
 ## 현재 iOS 시각 수정 — 2026-09-29
 
+후속 사용자 선택 ‘시안 A’를 겹치는 시간 시트에 적용했다. [캘린더 시안 A 적용·검증](../../apps/ios/docs/evidence/calendar-reference-a/README.md). 실제 기기 캘린더 비교를 유지하며 두 열 시간표/겹침 강조/순차 확인을 제공한다.
+
 사용자가5b837bd 체크포인트 보존 후 승인 렌더링 적용을 요청했다. 탐색 공식 이미지/예시 배지, 상세 항목 정렬/일정 타임라인/캘린더 테두리 버튼을 반영했다. [전후 비교와 검증](../../apps/ios/docs/evidence/discovery-reference/README.md). iPhone17은 localhost58764 목 서버로 실행 중. Android 시각 동기화는 이번 범위에 포함하지 않는다.
 
 ## 현재 시뮬레이터 — 컨퍼런스 목 데이터

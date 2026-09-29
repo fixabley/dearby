@@ -20,6 +20,28 @@ struct CalendarOverlapState: Identifiable {
     let busy: DeviceBusyTime
     var start: Date { max(activity.start, busy.start) }
     var end: Date { min(activity.end, busy.end) }
+    var durationText: String {
+        let seconds = Int(end.timeIntervalSince(start).rounded())
+        if seconds < 60 { return "1분 미만" }
+        return seconds.isMultiple(of: 60) ? "\(seconds / 60)분" : "\(seconds / 60)분 \(seconds % 60)초"
+    }
+    func timeRange(_ start: Date, _ end: Date) -> String {
+        let zone = TimeZone(identifier: activity.timeZone) ?? .current
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        let includeDate = !calendar.isDate(start, inSameDayAs: end)
+        return timeText(start, includeDate: includeDate) + " – " + timeText(end, includeDate: includeDate)
+    }
+    func timeText(_ date: Date, includeDate: Bool = false) -> String {
+        let format = DateFormatter()
+        format.locale = Locale(identifier: "ko_KR")
+        format.timeZone = TimeZone(identifier: activity.timeZone) ?? .current
+        format.dateFormat = includeDate ? "M/d HH:mm" : "HH:mm"
+        return format.string(from: date)
+    }
+    // Focus on the overlap, keeping the scale proportional even for multi-day activities.
+    var timelineStart: Date { start.addingTimeInterval(-1800) }
+    var timelineEnd: Date { max(end.addingTimeInterval(1800), timelineStart.addingTimeInterval(7200)) }
     static func matches(_ window: CalendarWindowState, _ busy: DeviceBusyTime) -> Bool {
         busy.start < busy.end && window.start < busy.end && busy.start < window.end
     }

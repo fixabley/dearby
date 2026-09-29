@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct CalendarConflictView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var state: CalendarConflictState
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
@@ -11,8 +12,10 @@ struct CalendarConflictView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    Text("개인 일정의 제목과 내용은 가져오지 않고, 바쁜 시간만 이 화면에서 비교해요.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                    if state.phase != .result {
+                        Text("개인 일정의 제목과 내용은 가져오지 않고, 바쁜 시간만 이 화면에서 비교해요.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
                     if state.unknownCount > 0 && !state.windows.isEmpty {
                         Text("시간이 확인되지 않은 일정 \(state.unknownCount)개는 비교에서 제외됐어요.")
                             .foregroundStyle(.orange)
@@ -20,9 +23,26 @@ struct CalendarConflictView: View {
                     content
                 }.padding(20)
             }
-            .navigationTitle("겹치는 시간 확인하기").navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { state.clear(); dismiss() } } }
+            .id(state.phase == .result ? state.index + 1 : 0)
+            .safeAreaInset(edge: .bottom) {
+                if state.phase == .result && !state.overlaps.isEmpty { confirmation }
+            }
+            .navigationTitle("겹치는 시간").navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    HStack(spacing: 12) {
+                        if state.phase == .result && !state.overlaps.isEmpty {
+                            Text("\(state.index + 1) / \(state.overlaps.count)")
+                                .foregroundStyle(.secondary).accessibilityIdentifier("overlap-position")
+                        }
+                        Button { state.clear(); dismiss() } label: { Image(systemName: "xmark") }
+                            .accessibilityLabel("닫기")
+                    }
+                }
+            }
         }
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
         .task { await state.connect(request: true) }
         .onDisappear { state.clear() }
         .onChange(of: scenePhase) { _, phase in
@@ -47,12 +67,14 @@ struct CalendarConflictView: View {
             Text("캘린더를 확인하지 못했어요. 권한과 연결 상태를 확인하고 다시 시도해 주세요.")
             retry
         case .choose, .result:
-            choices
+            if state.phase == .choose { choices }
             if state.phase == .result {
                 if state.overlaps.isEmpty {
                     Label(state.unknownCount == 0 ? "선택한 캘린더와 겹치는 시간이 없어요" : "확인 가능한 시간에는 겹침이 없어요", systemImage: "checkmark.circle")
                     Text("기기에 동기화된 선택한 캘린더 기준이에요.").font(.caption).foregroundStyle(.secondary)
                 } else { overlap }
+                DisclosureGroup("비교할 캘린더 변경") { choices }
+                    .font(.subheadline)
             }
         }
     }
@@ -73,21 +95,34 @@ struct CalendarConflictView: View {
         if state.overlaps.indices.contains(state.index) {
             let item = state.overlaps[state.index]
             VStack(alignment: .leading, spacing: 16) {
-                Text("겹치는 시간 \(state.index + 1) / \(state.overlaps.count)").font(.headline)
-                Text(item.activity.title).font(.title3.bold())
-                timeRow("활동 일정", start: item.activity.start, end: item.activity.end, zone: item.activity.timeZone)
-                timeRow("내 바쁜 시간", start: item.busy.start, end: item.busy.end, zone: item.activity.timeZone)
-                timeRow("겹치는 시간", start: item.start, end: item.end, zone: item.activity.timeZone)
-                    .padding().background(DearbyStyle.mint, in: RoundedRectangle(cornerRadius: 12))
-                HStack {
-                    if state.index > 0 { Button("이전") { state.index -= 1 }.frame(minHeight: 44) }
-                    Spacer()
-                    Button(state.index + 1 == state.overlaps.count ? "확인 완료" : "다음 겹침") {
-                        if state.index + 1 == state.overlaps.count { state.clear(); dismiss() } else { state.index += 1 }
-                    }.frame(minHeight: 44)
-                }
+                Label(item.start.formatted(Date.FormatStyle(locale: Locale(identifier: "ko_KR"),
+                    timeZone: TimeZone(identifier: item.activity.timeZone) ?? .current).month().day().weekday()), systemImage: "calendar")
+                Text("\(item.durationText)이 겹쳐요").font(.largeTitle.bold())
+                Text("\(item.timeRange(item.start, item.end))에 다른 일정과 겹쳐요.")
+                    .font(.subheadline)
+                if dynamicTypeSize.isAccessibilitySize {
+                    timeRow("이 활동 · " + item.activity.title, start: item.activity.start, end: item.activity.end, zone: item.activity.timeZone)
+                    timeRow("연결한 캘린더 · 바쁜 시간", start: item.busy.start, end: item.busy.end, zone: item.activity.timeZone)
+                    timeRow("겹치는 구간", start: item.start, end: item.end, zone: item.activity.timeZone)
+                        .padding().background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+                } else { CalendarOverlapTimeline(item: item) }
+                Text("시간대 · " + item.activity.timeZone).font(.caption).foregroundStyle(.secondary)
+                Label("개인 일정의 제목은 가져오지 않으며, 캘린더 일정은 변경되지 않아요.", systemImage: "info.circle")
+                    .font(.footnote).foregroundStyle(.secondary)
             }
         }
+    }
+    private var confirmation: some View {
+        VStack(spacing: 8) {
+            Button("확인했어요") {
+                if state.index + 1 == state.overlaps.count { state.clear(); dismiss() } else { state.index += 1 }
+            }.buttonStyle(DearbyButtonStyle())
+            Text(state.index + 1 == state.overlaps.count ? "모든 겹치는 시간을 확인했어요." : "다음 겹치는 시간으로 이동해요.")
+                .font(.caption).foregroundStyle(DearbyStyle.teal)
+            if state.index > 0 {
+                Button("이전 겹치는 시간") { state.index -= 1 }.font(.subheadline).frame(minHeight: 44)
+            }
+        }.padding(.horizontal, 20).padding(.vertical, 12).background(.background)
     }
     private func timeRow(_ title: String, start: Date, end: Date, zone: String) -> some View {
         let format = Date.FormatStyle(date: .abbreviated, time: .shortened, locale: Locale(identifier: "ko_KR"),
@@ -95,7 +130,6 @@ struct CalendarConflictView: View {
         return VStack(alignment: .leading, spacing: 6) {
             Text(title).font(.subheadline.bold())
             Text(start.formatted(format) + " → " + end.formatted(format)).font(.subheadline)
-            Text(zone).font(.caption).foregroundStyle(.secondary)
         }
     }
 }

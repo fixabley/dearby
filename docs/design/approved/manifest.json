@@ -106,5 +106,12 @@
     "source": "exec-e666aaa6-fc46-4895-bd4c-e5ad2f362072.png",
     "file": "send-card-picker.png",
     "chronologyIndex": 64
+  },
+  {
+    "name": "calendar-overlap-a",
+    "source": "exec-0a040111-2b2b-4b22-8cd5-5fbb22344f1d.png",
+    "file": "calendar-overlap-a.png",
+    "approval": "2026-09-29 사용자: 시안 A로 수정해줘",
+    "sha256": "b60d4005f98bf4c3833c463c69469fd87763eccf961717f770fa6ab35ede6cd2"
   }
 ]

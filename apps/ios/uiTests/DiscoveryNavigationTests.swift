@@ -26,7 +26,7 @@ import XCTest
         XCTAssertFalse(app.buttons["조직 저장"].exists)
         capture(app, "detail-schedule")
         calendar.tap()
-        XCTAssertTrue(app.navigationBars["겹치는 시간 확인하기"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["겹치는 시간"].waitForExistence(timeout: 5))
         let permission = XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch
         if permission.waitForExistence(timeout: 2) {
             let allow = permission.buttons.matching(NSPredicate(format: "label CONTAINS '전체' OR label CONTAINS 'Full'")).firstMatch
@@ -69,11 +69,46 @@ import XCTest
         capture(app, "large-discovery")
         activity.tap()
         let calendar = app.buttons["겹치는 시간 확인하기"]
-        for _ in 0..<18 where !calendar.isHittable { app.swipeUp() }
+        for _ in 0..<24 {
+            if calendar.isHittable && calendar.frame.maxY < app.buttons["신청 페이지 열기"].frame.minY { break }
+            app.scrollViews.firstMatch.swipeUp()
+        }
         XCTAssertTrue(calendar.isHittable)
         capture(app, "large-schedule")
         calendar.tap()
-        XCTAssertTrue(app.navigationBars["겹치는 시간 확인하기"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["겹치는 시간"].waitForExistence(timeout: 5))
+        let compare = app.buttons["선택한 캘린더로 확인"]
+        XCTAssertTrue(compare.waitForExistence(timeout: 5))
+        for _ in 0..<12 where !compare.isHittable { app.swipeUp() }
+        compare.tap()
+        XCTAssertTrue(app.staticTexts["30분이 겹쳐요"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["확인했어요"].isHittable)
+        capture(app, "calendar-a-large")
+    }
+    func testCalendarReferenceAPagingAndPrivacy() throws {
+        let app = XCUIApplication()
+        app.launch()
+        let activity = app.buttons.matching(NSPredicate(format: "label CONTAINS '캘린더 겹침 체험'")).firstMatch
+        guard activity.waitForExistence(timeout: 8) else { throw XCTSkip("Requires explicit calendar preview fixture") }
+        activity.tap()
+        let calendar = app.buttons["겹치는 시간 확인하기"]
+        for _ in 0..<8 where !calendar.isHittable { app.swipeUp() }
+        calendar.tap()
+        let compare = app.buttons["선택한 캘린더로 확인"]
+        XCTAssertTrue(compare.waitForExistence(timeout: 5))
+        compare.tap()
+        XCTAssertTrue(app.staticTexts["30분이 겹쳐요"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.staticTexts["overlap-position"].label, "1 / 2")
+        XCTAssertFalse(app.staticTexts["[Dearby 데모] 팀 미팅"].exists)
+        capture(app, "calendar-a-first")
+        app.buttons["확인했어요"].tap()
+        XCTAssertEqual(app.staticTexts["overlap-position"].label, "2 / 2")
+        capture(app, "calendar-a-second")
+        app.buttons["이전 겹치는 시간"].tap()
+        XCTAssertEqual(app.staticTexts["overlap-position"].label, "1 / 2")
+        app.buttons["확인했어요"].tap()
+        app.buttons["확인했어요"].tap()
+        XCTAssertTrue(app.navigationBars["활동 상세"].waitForExistence(timeout: 5))
     }
     private func capture(_ app: XCUIApplication, _ name: String) {
         let shot = XCTAttachment(screenshot: app.screenshot())
