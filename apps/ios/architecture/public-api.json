@@ -72,7 +72,11 @@
     "DearbyStyle",
     "DearbyLogo",
     "DearbyButtonStyle",
-    "DearbySegments"
+    "DearbySegments",
+    "DeviceCalendarStore",
+    "DeviceCalendarOption",
+    "DeviceBusyTime",
+    "DeviceCalendarError"
   ],
   "entities/catalog": [
     "CatalogModel",
@@ -90,5 +94,8 @@
   ],
   "features/application": [
     "ActivityBrowser"
+  ],
+  "features/calendar": [
+    "CalendarConflictView"
   ]
 }

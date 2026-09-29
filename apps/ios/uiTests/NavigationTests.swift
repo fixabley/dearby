@@ -1,6 +1,10 @@
 import XCTest
 
 @MainActor final class NavigationTests: XCTestCase {
+    override func setUpWithError() throws {
+        throw XCTSkip("2026-09-29 기본 노출에서 제외된 명함/저장 흐름의 보존용 회귀입니다. 현재 흐름은 DiscoveryNavigationTests에서 검증합니다.")
+    }
+
     func testGuestTabsAndLoginGate() throws {
         let app = XCUIApplication()
         app.launch()

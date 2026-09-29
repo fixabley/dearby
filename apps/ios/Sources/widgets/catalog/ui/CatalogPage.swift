@@ -3,6 +3,7 @@ import SwiftUI
 struct CatalogPage: View {
     let state: CatalogState
     let saved: Bool
+    var showsSaving = true
     @State private var message: String?
     @State private var filter = 0
     var body: some View {
@@ -33,7 +34,7 @@ struct CatalogPage: View {
                 }
             }
             .navigationDestination(for: String.self) { id in
-                ActivityDetailView(state: state, activityID: id)
+                ActivityDetailView(state: state, activityID: id, showsSaving: showsSaving)
             }
         }
         .scrollContentBackground(.hidden).background(.white)
@@ -123,6 +124,7 @@ struct CatalogPage: View {
                     }.font(.caption).foregroundStyle(DearbyStyle.quiet).frame(maxWidth: .infinity, alignment: .leading)
                 }
             }.buttonStyle(.plain).accessibilityIdentifier("activity-\(activity.id)")
+            if showsSaving {
             Button {
                 mutate { try state.toggleProgram(activity.programId) }
             } label: {
@@ -130,6 +132,7 @@ struct CatalogPage: View {
                     .font(.title3).frame(width: 44, height: 44)
             }.buttonStyle(.plain).foregroundStyle(DearbyStyle.teal)
                 .accessibilityLabel(state.local.programIDs.contains(activity.programId) ? "프로그램 저장됨 · 해제" : "프로그램 저장")
+            }
         }.padding(10).background(.white, in: RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(DearbyStyle.line))
     }
