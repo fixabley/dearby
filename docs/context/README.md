@@ -2,7 +2,7 @@
 
 ## 구독 활동 수집 — 2026-09-29
 
-[독립 워커 구현·운영 인계](catalog-subscription-worker-handoff.md): Supabase 일일 Cron + ChatGPT 구독 Codex Luna 로컬 워커, 수집 UI5174, 실제 검증·사용량·외부 조건 #57. root IR 작업과 분리하여 자기 브랜치에서 완료·push하며 세션을 유지한다.
+[독립 워커 구현·운영 인계](catalog-subscription-worker-handoff.md): Supabase 일일 Cron + ChatGPT 구독 Codex Luna 로컬 워커, cloud Supabase 전환·launchd 재개 및 수집 UI5174, 실제 검증·사용량·외부 조건 #57. root IR 작업과 분리하여 자기 브랜치에서 완료·push하며 세션을 유지한다.
 
 ## 현재 탐색 어드민 — 2026-09-29
 

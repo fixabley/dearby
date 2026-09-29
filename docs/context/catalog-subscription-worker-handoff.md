@@ -14,15 +14,16 @@ Supabase Cron으로 DB 프로그램별 일일 작업을 등록하고 **ChatGPT �
 - 관리자 프로그램 수집 ON/OFF·호스트, 작업 상태/오류/usage/후보/원문/활동 편집 연결·수동 등록·재시도 UI.
 - ignored 0600 환경 부트스트랩, launchd 설치/상태/해제, 스케줄 ON/OFF 스크립트, CI 단위/DB/브라우저 검사. CI에 구독 credentials나 실검색을 넣지 않는다.
 
-## 현재 실행 상태
+## 현재 실행 상태 — 2026-09-29 23:10 KST cloud 전환
 
-- Root admin `http://127.0.0.1:5173`, root API `http://127.0.0.1:58765`, Supabase API54321/DB54322/Studio54323을 종료하거나 재시작하지 않았다. iPhone17 연결도 변경하지 않았다.
-- 이 checkout의 새 관리자: **http://127.0.0.1:5174/collection**. 자기 Vite 프로세스만 별도로 실행 중이다. root5173에는 새 UI가 아직 통합되지 않았다.
-- Cron `dearby-daily-program-collection`, `0 0 * * *`, active=true. `catalog_collection_settings.enabled=true`. 오늘 28개 프로그램 작업 등록을 확인했다. 새 프로그램은 기본 수집 OFF다.
-- 사용자 LaunchAgent **com.dearby.catalog-subscription-worker** 설치·실행 확인. 60초 간격, 한 번에 한 작업. 첫 자동 실행 FEConf의 실검색·실패 저장을 확인했다. 나머지 당일 큐는 백그라운드로 계속 처리된다. 다음날 09시의 실제 timer firing과 장기 무중단 운용까지 검증한 것은 아니다.
-- Node24 고정 경로 `/Users/jominjun/.npm/_npx/538786c08bcb9442/node_modules/node/bin/node`, Codex `/opt/homebrew/bin/codex`. 이 캐시/checkout 삭제 전 워커를 해제하고 안정된 Node24/새 checkout에서 재설치해야 한다.
-- migrations 030000/040000/050000을 데이터 reset 없이 적용했다. Docker psql 적용 후 local migration history를 CLI repair로 일치시키고 PostgREST schema를 reload했다. 기존 000000/010000/020000 이력은 유지했다.
-- 환경 생성은 워커 전용 bootstrap을 사용했다. root의 관리자 env/credentials는 자기 checkout의 ignored 파일로만 복사했고 비밀번호·계정을 재생성하지 않았다. 로그는 worker/logs의 ignored .log 파일이다.
+- Root/API 담당자가 cloud `jsoclzeyybgdjxfuvaqs` (서울) 복원·10개 테이블 row hash·RLS/함수/grants·migration 6개 동등성을 확인했다. main PR #67/f880d41 통합은 root 소유이며 이 브랜치 이력은 보존했다.
+- Root가 로컬 Supabase를 backup=true로 종료하고 DB/Storage/edge runtime volumes를 보존했다. 이 세션은 재시작하지 않았다. 검증 시 API54321 listener가 없었다.
+- 자기 checkout의 worker `.env.local`은 cloud URL/service_role, admin `.env.local`은 cloud URL/anon을 사용한다. 두 파일0600, 원본 백업은 repo 밖 `~/.dearby-deploy/supabase-cloud/consumer-backups/20260929-230120` (디렉터리0700/파일0600)에 보존했다. 비밀 값은 문서·로그에 기록하지 않았다.
+- **http://127.0.0.1:5174/collection** 실행 중. 기존 계정 UI 로그인200, `is_catalog_admin=true`, 프로그램36/활동39/작업28/결과8 조회, 실제 표21행을 확인했다. Supabase 요청 origin은 cloud뿐이었다. 검증 세션만 local scope logout했다.
+- API 담당자의 완료 통지: enabled=true/pause_reason=null, Cron `dearby-daily-program-collection`, `0 0 * * *`, GMT 기준 매일09KST, active=true. 이 세션은 설정/Cron을 수정하지 않았다.
+- 승인 후 보존한 `~/Library/LaunchAgents/com.dearby.catalog-subscription-worker.plist`를 `launchctl bootstrap gui/501`로 재등록했다. 60초 간격, runs=2, last exit code=0, 유휴 `No collection job ready.`를 확인했다. blocked18 재개나 수동 enqueue를 하지 않았다. 기존 plist의 정상 `--catch-up` 경로는 그대로이며 당일 unique 작업은 중복 등록하지 않는다.
+- 재개 전후 성공10/blocked18/running0, 작업·설정 전체 snapshot 불변을 확인했다. 배포 검증 JSON은 위 repo 밖 백업 폴더에 보존한다. 다음날09시 실제 timer firing/장기 무중단은 아직 미검증이다.
+- Node24 고정 경로 `/Users/jominjun/.npm/_npx/538786c08bcb9442/node_modules/node/bin/node`, Codex `/opt/homebrew/bin/codex`. 캐시/checkout 삭제 전 안정된 Node 경로로 이전해야 한다. root API/SQLite와 다른 checkout은 변경하지 않았다.
 
 ## 실제 구독 실행과 사용량
 
@@ -52,7 +53,7 @@ Supabase Cron으로 DB 프로그램별 일일 작업을 등록하고 **ChatGPT �
 
 - FEConf 등 현재 공식 host는 관리자가 근거 확인 후 allowlist를 갱신해야 한다. exact host를 임의 확장하지 않았다.
 - 빈 HTML/JS 전용/봇 차단/IPv6-only/로그인 출처는 대체 원문 또는 별도 수집 방식이 필요하다.
-- Mac 로그인/전원/네트워크, 로컬 Supabase 컨테이너, ChatGPT 로그인/구독 한도 유지. cloud Supabase와 상시 호스트는 미제공이다. 외부 이메일/푸시 실패 경보, 운영 DB 백업, 장기 연속 Cron/재부팅 검증은 남는다.
+- Mac 로그인/전원/네트워크와 ChatGPT 로그인/구독 한도 유지가 필요하다. DB는 cloud로 전환했지만 워커 상시 호스트, 외부 이메일/푸시 실패 경보, 정기 백업 정책 및 장기 연속 Cron/재부팅 검증은 남는다.
 - 후보 구절 일치는 사실 전체의 검증이 아니다. 자동 공식 확인·게시하지 않는다. 의미상 같은 활동의 URL/회차 이름이 바뀌면 중복 후보가 생길 수 있다. 후보 테이블은 최신 제안만 보존한다.
 - 로그는 ignored 파일로 쌓이며 장기 보관 용량 정책이 필요하다. 구독 한도는 일반 Codex/IR 작업과 공유한다.
 
