@@ -32,7 +32,7 @@ test('HTTP sessions/profile/wallet/revocation/idempotency and quotas survive dat
     assert.deepEqual((await request('POST','/exchanges',alice.sessionToken,input)).body,sent.body);
     assert.equal((await request('GET',`/cards/${revoked.id}`,alice.sessionToken)).status,404);
     assert.equal((await request('POST','/auth/challenges',alice.sessionToken,{email:'alice@example.com'})).status,429);
-    assert.equal((db.prepare('SELECT COUNT(*) AS n FROM migrations').get() as {n:number}).n,2);
+    assert.equal((db.prepare('SELECT COUNT(*) AS n FROM migrations').get() as {n:number}).n,3);
     assert.equal((db.prepare('SELECT COUNT(*) AS n FROM receipts').get() as {n:number}).n,1);
     assert.equal((await request('DELETE','/auth/session',alice.sessionToken)).status,204);
     assert.equal((await request('GET','/profile',alice.sessionToken)).status,401);

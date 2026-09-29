@@ -56,3 +56,7 @@ IDs use UUIDv5 with DNS namespace `6ba7b810-9dad-11d1-80b4-00c04fd430c8` and UTF
 ## Main deployment / Supabase read boundary
 
 See [deployment runbook](deploy/README.md) for the isolated Docker service and root-owned apex nginx location. `CATALOG_BACKEND=supabase` selects the existing public snapshot RPC using a server-only anon key; missing/malformed configuration fails startup and upstream failures return sanitized 503 without SQLite fallback. The optional image URL is accepted from the existing RPC; native contracts and app code are not changed here. Auth/cards/wallet remain in the independent SQLite volume.
+
+## Web guest card storage
+
+The [web guest contract](../../shared/contracts/native-v1.md#웹-비로그인-명함-저장--2026-09-29-승인) defines a separate digest-authenticated store of public card IDs. Guest sessions are created atomically on the first valid save and never expire automatically. The trusted Next proxy owns cookie/CSRF behavior; `GUEST_PROXY_SECRET` must be configured privately at deployment, otherwise guest requests fail closed. Private profiles/member wallets remain protected. See the deployment runbook for capacity, ingress and rollout conditions.

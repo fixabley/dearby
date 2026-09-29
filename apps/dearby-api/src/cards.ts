@@ -42,10 +42,10 @@ export function cardRoutes(app: FastifyInstance, db: DB, owner: Owner, now: () =
     }).immediate();
     return reply.code(201).send(card);
   });
-  app.get('/v1/cards/:id', async request => readCard(db,id.parse((request.params as {id:string}).id)));
+  app.get('/v1/cards/:id', async request => readCard(db,id.parse((request.params as {id:string}).id).toLowerCase()));
   app.delete('/v1/cards/:id', async (request, reply) => {
     const profileId = owner(request);
-    const card = readCard(db,id.parse((request.params as {id:string}).id));
+    const card = readCard(db,id.parse((request.params as {id:string}).id).toLowerCase());
     if (card.ownerId !== profileId) throw new ApiError(403,'FORBIDDEN','Card owner required');
     db.prepare('UPDATE cards SET revoked = 1 WHERE id = ?').run(card.id);
     return reply.code(204).send();

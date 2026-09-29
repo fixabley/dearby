@@ -5,14 +5,14 @@ import assert from 'node:assert/strict';
 import { openDatabase } from '../src/database.js';
 import { createApp } from '../src/app.js';
 import type { SendCode } from '../src/mail.js';
-export async function fixture(send?: SendCode) {
+export async function fixture(send?: SendCode, guestProxySecret?: string) {
   if (process.env.NODE_ENV !== 'test') throw new Error('Test mail sink requires NODE_ENV=test');
   const directory = mkdtempSync(join(tmpdir(), 'dearby-test-'));
   const path = join(directory, 'test.sqlite');
   let clock = Date.now();
   const codes = new Map<string, string>();
   const db = openDatabase(path);
-  const {app} = createApp(db, {otpSecret:'test-only-secret-not-used-outside-tests', now:() => clock,
+  const {app} = createApp(db, {otpSecret:'test-only-secret-not-used-outside-tests', guestProxySecret, now:() => clock,
     sendCode: send ?? (async (email, code) => { codes.set(email, code); }),
   });
   await app.listen({host:'127.0.0.1',port:0});
