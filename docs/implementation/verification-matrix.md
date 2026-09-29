@@ -9,7 +9,7 @@
 | QR-01 WALLET-01 SELECT-01 | #37 #38 | QR/단독 확대·지갑 기본 UI 검증. 물리 스캔·다운로드 권한·전체 제스처 #43/#44 미완료 |
 | CATALOG-01 | #45 #46 #47 | 공식 수집·카탈로그·양 앱 실제 HTTP/저장 검증 통과. 세 플랫폼 통합 검사 통과. 정기 운영 갱신 #49 미완료 |
 | NOTIFY-01 | 후속 #41 | 실제 푸시와 구독 미구현 |
-| CALENDAR-01 | #13 #15 참고 | 이전 이슈는 이력, 신규 OS 연동 미검증 |
+| CALENDAR-01 | #54, #13 #15 이력 | 양 플랫폼 실제 OS 반복 일정/선택/결과 초기화 검증. 시각 미확인·권한 거부 구분, 경계/DST 단위 검증. 실기기·클라우드 계정/전체 접근성 별도 |
 | APPLY-01 | #36 | 외부 인증 이후 폼 검증 차단 |
 | APPLY-02 | #46 #47 | 두 담당 checkout에서 실제 앱 내 브라우저 종료·보류·신청 기록·수정·재시작 검증 통과. 조율 통합 검사와 캡처 검토 완료 |
 | DELIVERY-01 | 조율 | 웹 실행 코드 제거, 첫 앱/API 통합 및 PR #40 게시. 82ef32a 원격 API/iOS/Android CI 통과, 두 번째 구현은 진행 중 |
@@ -58,3 +58,7 @@ iOS URLSession/AppState와 Android HttpClient/Repository가 같은 격리 API에
 - iOS: 1c2de21까지의 최종 production source 통합 후 조율 Xcode27/전용 Simulator에서33개 중27통과, 별도 fixture 없는6개 명시 skip, 실패0. 구조16·strict SwiftLint57파일 위반0·test 빌드 통과. `/tmp/dearby-root-visual-ios.log`, `/tmp/dearby-root-visual-{architecture,swiftlint}.log`. 담당이 별도 준비한 로컬 API29검사(로그아웃204/폐기 토큰401 포함), catalog/인증화면/최대글자 UI3, 게스트 저장 취소·로그인 취소를 통과했으며 결과는 [플랫폼 보고서](../../apps/ios/docs/evidence/visual-fidelity/README.md)에 구분했다.
 - iOS 후속 카드 묶음 헤더:02cd130/8b63646의 간격·불투명 배경 교정 및 실제 picker-top 캡처를 통합했다. 담당의 제한된 상단 캡처/빌드/strict lint와 조율 최종 Debug build 및 strict lint0위반 통과. 저장/전송 로직 변경은 없다. 로그 `/tmp/dearby-root-visual-final-build.log`, `/tmp/dearby-root-visual-swiftlint-final.log`.
 - 원격 최종 결과는 PR40의 Native verification checks와 해당 실행 링크를 정본으로 삼는다. 로컬 통과를 원격 통과로 대체하지 않는다.
+
+## 2026-09-29 탐색 전용 노출 및 캘린더
+
+사용자 승인으로 다섯 탭 기본 노출을 탐색/상세/신청/겹침 확인으로 제한하며 기존 소스/저장 데이터는 유지한다. iOS 단위33pass/7skip + 별도 권한 거부1pass, UI2pass, 구조16, lint64파일0위반. Android JVM32, FSD49/자체28, Debug/lint0오류·기존17경고, 실제 OS/UI2pass. [iOS 상세](../../apps/ios/docs/evidence/discovery-calendar/README.md), [Android 상세](../../apps/android/evidence/discovery-calendar/README.md). 테스트 fixture는 운영 모집/신청 제출 증거가 아니다. 서버 변경 없음.

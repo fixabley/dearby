@@ -20,6 +20,7 @@ class CatalogViewModel(private val repository: CatalogRepository, private val no
     private var local = CatalogLocalModel()
     private var expiry: Job? = null
     init { refresh() }
+    fun schedules(id: String) = catalog?.activities?.find { it.id == id }?.schedules.orEmpty()
     fun recheckTime() = project()
     private fun project() {
         val instant = now()

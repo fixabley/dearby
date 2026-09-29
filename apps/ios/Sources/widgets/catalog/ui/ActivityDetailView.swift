@@ -3,10 +3,12 @@ import SwiftUI
 struct ActivityDetailView: View {
     let state: CatalogState
     let activityID: String
+    var showsSaving = true
     @State private var browser: ActivityBrowserDestination?
     @State private var applicationAttempt = false
     @State private var showReport = false
     @State private var message: String?
+    @State private var showCalendar = false
     private var activity: ActivityModel? { state.catalog?.activities.first { $0.id == activityID } }
     private var applied: Bool { state.local.applications[activityID] == .applied }
     var body: some View {
@@ -23,6 +25,8 @@ struct ActivityDetailView: View {
                             VStack(alignment: .leading, spacing: 24) {
                                 identity(activity, at: timeline.date)
                                 ActivityInformationView(activity: activity)
+                                Button("겹치는 시간 확인하기", systemImage: "calendar.badge.clock") { showCalendar = true }
+                                    .frame(minHeight: 44)
                                 source(activity)
                                 Divider()
                                 Text("직접 남긴 신청 기록은 주최 측의 접수·선정·결제 확인과 달라요.")
@@ -48,6 +52,9 @@ struct ActivityDetailView: View {
             if let activity, let url = ActivityModel.safeURL(activity.officialUrl) {
                 ShareLink(item: url) { Image(systemName: "square.and.arrow.up") }.accessibilityLabel("공식 활동 링크 공유")
             }
+        }
+        .sheet(isPresented: $showCalendar) {
+            if let activity { CalendarConflictView(schedules: activity.schedules) }
         }
         .background(.white)
         .tint(Color(red: 0, green: 0.36, blue: 0.34))
@@ -75,9 +82,11 @@ struct ActivityDetailView: View {
                 Text(state.catalog?.organizations.first { $0.id == activity.organizationId }?.name ?? "조직 미확인")
                     .font(.headline)
                 Spacer()
+                if showsSaving {
                 Button(state.local.organizationIDs.contains(activity.organizationId) ? "조직 저장됨 · 해제" : "조직 저장",
                        systemImage: "bookmark") { mutate { try state.toggleOrganization(activity.organizationId) } }
                     .font(.caption).frame(minHeight: 44)
+                }
             }
             Divider()
             Label(activity.audience ?? "참가 대상 미확인", systemImage: "person.2")
@@ -94,6 +103,7 @@ struct ActivityDetailView: View {
         VStack(spacing: 0) {
             Divider()
             HStack(spacing: 12) {
+                if showsSaving {
                 Button {
                     mutate { try state.toggleProgram(activity.programId) }
                 } label: {
@@ -101,6 +111,7 @@ struct ActivityDetailView: View {
                         .font(.title2).frame(width: 50, height: 50)
                         .overlay(RoundedRectangle(cornerRadius: 11).stroke(DearbyStyle.line))
                 }.accessibilityLabel(state.local.programIDs.contains(activity.programId) ? "프로그램 저장됨 · 해제" : "프로그램 저장")
+                }
                 Button(applied ? "공식 사이트에서 확인하기" : "공식 사이트에서 신청") {
                     open(applied ? activity.officialUrl : activity.applicationUrl, application: !applied)
                 }.buttonStyle(DearbyButtonStyle())

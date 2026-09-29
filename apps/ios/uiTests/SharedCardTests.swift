@@ -1,6 +1,10 @@
 import XCTest
 
 @MainActor final class SharedCardTests: XCTestCase {
+    override func setUpWithError() throws {
+        throw XCTSkip("2026-09-29 기본 노출에서 제외된 명함/저장 흐름의 보존용 회귀입니다. 현재 흐름은 DiscoveryNavigationTests에서 검증합니다.")
+    }
+
     func testGuestSaveConfirmationAndReturnLoginCancellation() throws {
         guard let link = ProcessInfo.processInfo.environment["DEARBY_AUDIT_CARD_URL"] else {
             throw XCTSkip("Requires explicit public card URL from local integration")
