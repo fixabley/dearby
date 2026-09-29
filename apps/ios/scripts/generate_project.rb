@@ -23,7 +23,11 @@ project.targets.each do |target|
     if target == app
       config.build_settings.merge!({
         'INFOPLIST_FILE' => 'Info.plist',
-        'ASSETCATALOG_COMPILER_APPICON_NAME' => '',
+        'PRODUCT_BUNDLE_IDENTIFIER' => config.name == 'Release' ? 'io.wid.dearby' : 'com.dearby.dearby',
+        'ASSETCATALOG_COMPILER_APPICON_NAME' => 'AppIcon',
+        'ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME' => '',
+        # Provisional: coordinator must check App Store Connect history before upload.
+        'MARKETING_VERSION' => '0.1.0', 'CURRENT_PROJECT_VERSION' => '1',
         'INFOPLIST_KEY_CFBundleDisplayName' => 'Dearby',
         'INFOPLIST_KEY_UILaunchScreen_Generation' => 'YES',
         'INFOPLIST_KEY_UIApplicationSceneManifest_Generation' => 'YES',
@@ -31,7 +35,8 @@ project.targets.each do |target|
         'INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription' => '선택한 명함의 QR 이미지를 사진에 저장합니다.',
         'INFOPLIST_KEY_DearbyAPIURL' => '$(DEARBY_API_URL)',
         'INFOPLIST_KEY_DearbyShareURL' => '$(DEARBY_SHARE_URL)',
-        'DEARBY_API_URL' => '', 'DEARBY_SHARE_URL' => ''
+        'DEARBY_API_URL' => config.name == 'Release' ? 'https://wid.io.kr' : '',
+        'DEARBY_SHARE_URL' => ''
       })
       if config.name == 'Debug'
         config.build_settings['SWIFT_ACTIVE_COMPILATION_CONDITIONS'] = 'DEBUG'

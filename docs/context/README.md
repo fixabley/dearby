@@ -21,6 +21,7 @@ PR40 main 병합 완료(849b1fe). 사용자가 기존 파일과 데이터를 보
 | [조율·현재 작업](coordinator-current-task-and-decisions.md) | 완료 상태, 협업 원칙, 다음 행동 |
 | [웹 구현 인계](web-implementation-and-handoff.md) | 새 Next.js 웹의 구현·검증·프로토타입 한계 |
 | [iOS 인계](ios-implementation-and-handoff.md) | SwiftUI 상태·컴포넌트·SwiftData 경계 |
+| [main TestFlight 준비](testflight-main-readiness.md) | main 기반 배포 메타데이터 보완·무서명 archive 검증·root 인계 |
 | [Android 인계](android-implementation-and-handoff.md) | Compose 상태·컴포넌트·Room 경계 |
 | [main API 도메인 배포](api-domain-main.md) | 독립 컨테이너·Supabase read·root nginx 인계 |
 | [API 인계](api-implementation-and-handoff.md) | 서버 현황, 미구현 범위, 실행 위치 |
