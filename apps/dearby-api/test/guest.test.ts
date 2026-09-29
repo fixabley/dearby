@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { fixture } from './helpers.js';
 import { createApp } from '../src/app.js';
-import { openDatabase } from '../src/database.js';
+import { openPostgres } from '../src/postgres.js';
 
 const secret = 'test-only-guest-proxy-secret-not-for-runtime';
 const hash = (token: string) => createHash('sha256').update(token).digest('hex');
@@ -28,15 +28,15 @@ test('guest first save validates public ID, requires proxy, stores only digest, 
     assert.equal((await f.guest('GET','/cards')).statusCode,401);
     assert.equal((await f.guest('PUT','/cards/not-a-uuid')).statusCode,422);
     assert.equal((await f.guest('PUT',`/cards/${randomUUID()}`)).statusCode,404);
-    assert.equal((f.db.prepare('SELECT count(*) AS n FROM guest_sessions').get() as {n:number}).n,0);
+    assert.equal(await f.db.guestSession.count(),0);
     const saved = await f.guest('PUT',`/cards/${f.card.id}`);
     assert.equal(saved.statusCode,201);
     const token = saved.json().guestToken;
     assert.match(token,/^[A-Za-z0-9_-]{43}$/);
     assert.equal(saved.headers['cache-control'],'no-store');
     assert.equal(saved.headers['set-cookie'],undefined); // Next owns the secure cookie.
-    assert.deepEqual(f.db.prepare('SELECT * FROM guest_sessions').all(),[{digest:hash(token)}]);
-    assert.deepEqual(f.db.prepare('SELECT * FROM guest_cards').all(),[{session_digest:hash(token),card_id:f.card.id}]);
+    assert.deepEqual(await f.db.guestSession.findMany(),[{digest:hash(token)}]);
+    assert.deepEqual(await f.db.guestCard.findMany({select:{sessionDigest:true,cardId:true}}),[{sessionDigest:hash(token),cardId:f.card.id}]);
     assert.equal((await f.request('GET',`/cards/${f.card.id.toUpperCase()}`)).status,200);
     const duplicate = await f.guest('PUT',`/cards/${f.card.id.toUpperCase()}`,token);
     assert.equal(duplicate.statusCode,200);
@@ -57,7 +57,7 @@ test('guest first save validates public ID, requires proxy, stores only digest, 
     assert.equal((await f.guest('DELETE','/session',second)).statusCode,204);
     assert.equal((await f.guest('GET','/cards',second)).statusCode,401);
     assert.equal((await f.guest('PUT',`/cards/${f.card.id}`,second)).statusCode,401);
-    assert.equal((f.db.prepare('SELECT count(*) AS n FROM guest_cards').get() as {n:number}).n,0);
+    assert.equal(await f.db.guestCard.count(),0);
   } finally {await f.close();}
 });
 
@@ -67,15 +67,15 @@ test('same guest token survives cookie renewal, arbitrary elapsed time and datab
   f.advance(10 * 366 * 86400000);
   assert.deepEqual((await f.guest('GET','/cards',token)).json(),{items:[f.card]});
   assert.deepEqual((await f.guest('PUT',`/cards/${f.card.id}`,token)).json(),{cardId:f.card.id,status:'alreadySaved'});
-  assert.equal((f.db.prepare('SELECT count(*) AS n FROM guest_sessions').get() as {n:number}).n,1);
-  await f.app.close(); f.db.close();
-  const db = openDatabase(f.path);
+  assert.equal(await f.db.guestSession.count(),1);
+  await f.app.close(); await f.db.$disconnect();
+  const db = openPostgres({DATABASE_URL:f.connection});
   const {app} = createApp(db,{otpSecret:'test-only-secret-not-for-runtime',guestProxySecret:secret,sendCode:async()=>{throw Error('No SMTP');}});
   try {
     const response = await app.inject({url:'/v1/guest/cards',headers:{'x-guest-proxy-key':secret,'x-guest-token':token}});
     assert.deepEqual(response.json(),{items:[f.card]});
-    assert.deepEqual(db.prepare('SELECT * FROM guest_sessions').all(),[{digest:hash(token)}]);
-  } finally {await app.close();db.close();await f.close();}
+    assert.deepEqual(await db.guestSession.findMany(),[{digest:hash(token)}]);
+  } finally {await app.close();await db.$disconnect();await f.close();}
 });
 
 test('withdrawal, per-session capacity, idempotent removal and transaction failure preserve boundaries', async () => {
@@ -83,7 +83,7 @@ test('withdrawal, per-session capacity, idempotent removal and transaction failu
   try {
     const token = (await f.guest('PUT',`/cards/${f.card.id}`)).json().guestToken;
     const cards = Array.from({length:100},()=>({...f.card,id:randomUUID()}));
-    f.db.transaction(()=>{for(const c of cards) f.db.prepare('INSERT INTO cards(id,owner_id,data) VALUES(?,?,?)').run(c.id,f.alice.profileId,JSON.stringify(c));})();
+    await f.db.card.createMany({data:cards.map(c=>({id:c.id,ownerId:f.alice.profileId,data:JSON.stringify(c)}))});
     for(const c of cards.slice(0,99)) assert.equal((await f.guest('PUT',`/cards/${c.id}`,token)).statusCode,200);
     const full = await f.guest('PUT',`/cards/${cards[99].id}`,token);
     assert.equal(full.statusCode,409);assert.equal(full.json().error.code,'GUEST_CAPACITY_EXCEEDED');
@@ -96,11 +96,11 @@ test('withdrawal, per-session capacity, idempotent removal and transaction failu
     assert.equal((await f.guest('PUT',`/cards/${cards[99].id}`,token)).statusCode,200);
     assert.equal((await f.guest('DELETE',`/cards/${f.card.id}`,token)).statusCode,204);
     assert.equal((await f.guest('DELETE',`/cards/${randomUUID()}`,token)).statusCode,204);
-    f.db.exec("CREATE TRIGGER fail_guest BEFORE INSERT ON guest_cards BEGIN SELECT RAISE(ABORT,'private DB details'); END");
+    await f.admin.query("CREATE FUNCTION dearby_api.fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'private DB details'; END $$; CREATE TRIGGER fail_guest BEFORE INSERT ON dearby_api.guest_cards FOR EACH ROW EXECUTE FUNCTION dearby_api.fail()");
     const failure = await f.guest('PUT',`/cards/${cards[0].id}`);
     assert.equal(failure.statusCode,500);assert.ok(!failure.body.includes('private DB details'));
-    assert.equal((f.db.prepare('SELECT count(*) AS n FROM guest_sessions').get() as {n:number}).n,1);
-    assert.equal((f.db.prepare('SELECT count(*) AS n FROM guest_cards').get() as {n:number}).n,100);
+    assert.equal(await f.db.guestSession.count(),1);
+    assert.equal(await f.db.guestCard.count(),100);
   } finally {await f.close();}
 });
 
@@ -108,7 +108,7 @@ test('global capacity blocks new sessions only; secret absence fails closed; hea
   const f = await setup();
   try {
     const token = (await f.guest('PUT',`/cards/${f.card.id}`)).json().guestToken;
-    f.db.transaction(()=>{for(let i=0;i<9999;i++) f.db.prepare('INSERT INTO guest_sessions VALUES (?)').run(i.toString(16).padStart(64,'0'));})();
+    await f.db.guestSession.createMany({data:Array.from({length:9999},(_,i)=>({digest:i.toString(16).padStart(64,'0')}))});
     assert.equal((await f.guest('PUT',`/cards/${f.card.id}`)).statusCode,409);
     assert.equal((await f.guest('GET','/cards',token)).statusCode,200);
     assert.equal((await f.guest('PUT',`/cards/${f.card.id}`,token)).json().status,'alreadySaved');
@@ -133,31 +133,14 @@ test('session creation throttle is independent of lifetime; concurrent saves rem
       assert.equal(result.statusCode,201);token=result.json().guestToken;
     }
     assert.equal((await f.guest('PUT',`/cards/${f.card.id}`)).statusCode,429);
-    assert.equal((f.db.prepare('SELECT count(*) AS n FROM guest_sessions').get() as {n:number}).n,60);
+    assert.equal(await f.db.guestSession.count(),60);
     f.advance(60000);
     await f.guest('DELETE',`/cards/${f.card.id}`,token);
     const results = await Promise.all([f.guest('PUT',`/cards/${f.card.id}`,token),f.guest('PUT',`/cards/${f.card.id}`,token)]);
     assert.deepEqual(results.map(r=>r.json().status).sort(),['alreadySaved','saved']);
-    assert.equal((f.db.prepare('SELECT count(*) AS n FROM guest_cards WHERE session_digest=?').get(hash(token)) as {n:number}).n,1);
+    assert.equal(await f.db.guestCard.count({where:{sessionDigest:hash(token)}}),1);
     assert.equal((await f.guest('PUT',`/cards/${f.card.id}`)).statusCode,201);
   } finally {await f.close();}
-});
-
-test('additive guest migration preserves existing owner session and published card', async () => {
-  const f = await setup();
-  await f.app.close();
-  // Isolated fixture restored to the pre-guest schema; never touches runtime data.
-  f.db.exec("DROP TABLE guest_cards; DROP TABLE guest_sessions; DELETE FROM migrations WHERE name='003_guest_cards.sql'");
-  f.db.close();
-  const db = openDatabase(f.path);
-  const {app} = createApp(db,{otpSecret:'test-only-secret-not-for-runtime',guestProxySecret:secret,sendCode:async()=>{}});
-  try {
-    const profile = await app.inject({url:'/v1/profile',headers:{authorization:`Bearer ${f.alice.sessionToken}`}});
-    assert.equal(profile.statusCode,200);assert.equal(profile.json().id,f.alice.profileId);
-    assert.deepEqual((await app.inject(`/v1/cards/${f.card.id}`)).json(),f.card);
-    assert.equal((db.prepare('SELECT count(*) AS n FROM guest_sessions').get() as {n:number}).n,0);
-    assert.equal((db.prepare('SELECT count(*) AS n FROM migrations').get() as {n:number}).n,3);
-  } finally {await app.close();db.close();await f.close();}
 });
 
 test('global abuse bound covers invalid tokens and read failure is never an empty wallet', async () => {
@@ -165,10 +148,10 @@ test('global abuse bound covers invalid tokens and read failure is never an empt
   try {
     for (let i=0;i<1200;i++) assert.equal((await f.guest('GET','/cards','invalid-token')).statusCode,401);
     assert.equal((await f.guest('GET','/cards','another-invalid-token')).statusCode,429);
-    assert.equal((f.db.prepare('SELECT count(*) AS n FROM guest_sessions').get() as {n:number}).n,0);
+    assert.equal(await f.db.guestSession.count(),0);
     f.advance(60000);
     const token=(await f.guest('PUT',`/cards/${f.card.id}`)).json().guestToken;
-    f.db.exec('DROP TABLE guest_cards');
+    await f.admin.query('DROP TABLE dearby_api.guest_cards');
     const failure=await f.guest('GET','/cards',token);
     assert.equal(failure.statusCode,500);
     assert.deepEqual(failure.json(),{error:{code:'INTERNAL_ERROR',message:'Request failed'}});

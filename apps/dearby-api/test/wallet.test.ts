@@ -68,25 +68,48 @@ test('HTTP direct exchange idempotency, mismatch, reciprocal detection and repea
   // History remains durable but withdrawn contents are never newly returned.
   assert.equal((await f.request('GET',`/cards/${f.cardA.id}`)).status,404);
   assert.equal((await f.request('GET','/wallet',undefined,f.bob.sessionToken)).body.items.length,0);
-  assert.equal((f.db.prepare('SELECT COUNT(*) AS n FROM receipts WHERE recipient_id = ?').get(f.bob.profileId) as {n:number}).n,2);
+  assert.equal(await f.db.receipt.count({where:{recipientId:f.bob.profileId}}),2);
 });
 
 test('HTTP exchange SQL failure rolls back receipt and idempotency; import failures preserve siblings', async t => {
   const f = await setup(); t.after(f.close);
   const input = {cardId:f.cardA.id,recipientProfileId:f.bob.profileId,context:emptyContext,requestId:randomUUID()};
-  f.db.exec("CREATE TRIGGER fail_exchange BEFORE INSERT ON exchanges BEGIN SELECT RAISE(ABORT, 'injected failure'); END");
+  await f.admin.query("CREATE FUNCTION dearby_api.fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected failure'; END $$; CREATE TRIGGER fail_exchange BEFORE INSERT ON dearby_api.exchanges FOR EACH ROW EXECUTE FUNCTION dearby_api.fail()");
   const failed = await f.request('POST','/exchanges',input,f.alice.sessionToken);
   assert.equal(failed.status,500); assert.equal(JSON.stringify(failed.body).includes('injected'),false);
   assert.equal((await f.request('GET','/wallet',undefined,f.bob.sessionToken)).body.items.length,0);
-  assert.equal(f.db.prepare('SELECT * FROM exchanges').get(),undefined);
-  f.db.exec('DROP TRIGGER fail_exchange');
+  assert.equal(await f.db.exchange.count(),0);
+  await f.admin.query('DROP TRIGGER fail_exchange ON dearby_api.exchanges');
   assert.equal((await f.request('POST','/exchanges',input,f.alice.sessionToken)).status,201);
   // Fixed UUIDs come from the API, not external SQL input.
-  f.db.exec(`CREATE TRIGGER fail_import BEFORE INSERT ON receipts WHEN NEW.card_id = '${f.cardB.id}' BEGIN SELECT RAISE(ABORT, 'injected failure'); END`);
+  await f.admin.query(`CREATE TRIGGER fail_import BEFORE INSERT ON dearby_api.receipts FOR EACH ROW WHEN (NEW.card_id = '${f.cardB.id}') EXECUTE FUNCTION dearby_api.fail()`);
   const result = await f.request('POST','/wallet/import',{items:[f.cardA,f.cardB].map(card => ({cardId:card.id,context:emptyContext,savedAt:'2026-09-01T00:00:00Z'}))},f.charlie.sessionToken);
   assert.deepEqual(result.body.items.map((x:{status:string}) => x.status),['imported','failed']);
   assert.equal((await f.request('GET','/wallet',undefined,f.charlie.sessionToken)).body.items.length,1);
-  f.db.exec('DROP TRIGGER fail_import');
+  await f.admin.query('DROP TRIGGER fail_import ON dearby_api.receipts');
   const retry = await f.request('POST','/wallet/import',{items:[{cardId:f.cardB.id,context:emptyContext,savedAt:'2026-09-01T00:00:00Z'}]},f.charlie.sessionToken);
   assert.equal(retry.body.items[0].status,'imported');
+});
+
+
+test('wallet batches reciprocal owners while preserving self, repeated owners and withdrawn delivery history', async t => {
+  const f = await setup(); t.after(f.close);
+  const aliceSecond = await f.makeCard(f.alice.sessionToken);
+  const charlieCard = await f.makeCard(f.charlie.sessionToken);
+  const imported = await f.request('POST','/wallet/import',{items:[f.cardA,aliceSecond,charlieCard,f.cardB].map(card => ({
+    cardId:card.id,context:emptyContext,savedAt:'2026-09-01T00:00:00Z',
+  }))},f.bob.sessionToken);
+  assert.ok(imported.body.items.every((item:{status:string}) => item.status === 'imported'));
+  // Bob's own imported card must remain non-reciprocal, despite a self receipt.
+  let wallet = (await f.request('GET','/wallet',undefined,f.bob.sessionToken)).body.items;
+  assert.deepEqual(wallet.map((item:{reciprocal:boolean}) => item.reciprocal),[false,false,false,false]);
+  const historical = await f.makeCard(f.bob.sessionToken);
+  for (let i=0;i<2;i++) {
+    assert.equal((await f.request('POST','/exchanges',{cardId:historical.id,recipientProfileId:f.alice.profileId,
+      context:emptyContext,requestId:randomUUID()},f.bob.sessionToken)).status,201);
+  }
+  await f.request('DELETE',`/cards/${historical.id}`,undefined,f.bob.sessionToken);
+  wallet = (await f.request('GET','/wallet',undefined,f.bob.sessionToken)).body.items;
+  assert.deepEqual(wallet.map((item:{card:{id:string};reciprocal:boolean}) => [item.card.id,item.reciprocal]),
+    [[f.cardA.id,true],[aliceSecond.id,true],[charlieCard.id,false],[f.cardB.id,false]]);
 });

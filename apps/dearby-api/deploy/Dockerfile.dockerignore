@@ -20,3 +20,9 @@
 **/*.p8
 **/*.p12
 **/*.pfx
+
+!apps/dearby-api/prisma.config.ts
+!apps/dearby-api/prisma/
+!apps/dearby-api/prisma/*.prisma
+apps/dearby-api/src/generated/**
+**/*.crt

@@ -1,8 +1,9 @@
 import Fastify from 'fastify';
 import { guestRoutes } from './guest.js';
-import { readCatalog, type Catalog } from './catalog.js';
+import type { Catalog } from './catalog.js';
+import { prismaCatalog } from './catalog-prisma.js';
 import { ZodError } from 'zod';
-import type { DB } from './database.js';
+import type { DB } from './postgres.js';
 import { ApiError } from './validation.js';
 import { walletRoutes } from './wallet.js';
 import { cardRoutes } from './cards.js';
@@ -18,7 +19,7 @@ export function createApp(db: DB, options: AuthOptions & {catalogReader?: () => 
     reply.code(status).send({ error: { code, message: error instanceof ApiError ? error.message : status === 422 ? 'Invalid request' : 'Request failed' } });
   });
   app.setNotFoundHandler((_request, reply) => reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Resource not found' } }));
-  app.get('/v1/catalog', async () => options.catalogReader ? options.catalogReader() : readCatalog(db, (options.now ?? Date.now)()));
+  app.get('/v1/catalog', async () => options.catalogReader ? options.catalogReader() : prismaCatalog(db)());
   const owner = authRoutes(app, db, options);
   cardRoutes(app, db, owner, options.now ?? Date.now);
   walletRoutes(app, db, owner, options.now ?? Date.now);
