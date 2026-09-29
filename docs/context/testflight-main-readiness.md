@@ -56,6 +56,8 @@ xcodebuild -project apps/ios/Dearby.xcodeproj -scheme Dearby \
 
 ## root 인계·해소 조건
 
+[PR #60](https://github.com/fixabley/dearby/pull/60), base main. 소스 커밋 `81e1c2c9177ba1b0698a0ac32ccdf979b9a54764` push 완료. 20:38 KST 조회에서 MERGEABLE, 원격 Native verification 진행 중(통과로 기록하지 않음). 최초 Git push는 캐시된 다른 GitHub 계정으로 403; 전역 인증 설정 변경 없이 해당 push 명령에만 기존 gh credential helper를 지정해 해결했다. root가 CI 결과를 확인하고 통합한다.
+
 1. **Apple 서명/권한**: root 전달상 Xcode의 minjun jo 팀(Admin)은 있으나 인증서 목록은 비어 있음. 이 세션은 인증을 재조사·생성하지 않았다. root가 승인된 팀/서명/프로파일·ASC 앱 레코드/권한으로 signed archive/export/validation을 수행해야 한다.
 2. **API**: archive DearbyAPIURL 빈 문자열. APIClient는 Release HTTPS만 허용하며 신규 설치의 catalog 조회 불가. root가 운영 HTTPS origin과 catalog 응답을 확인해 전달한 뒤 최종 배포 빌드에 주입해야 한다. nginx/DNS/공유기 변경은 이 checkout에서 하지 않는다.
 3. **최종 번호·선언**: root가 ASC 기존 버전/빌드 이력 및 최종 암호화 응답을 확인. `0.1.0 (1)`을 승인된 배포 번호로 오인하지 않는다. 향후 외부 crypto 의존성 추가 시 선언 재검토.
