@@ -1,5 +1,5 @@
 import Fastify from 'fastify';
-import { readCatalog } from './catalog.js';
+import { readCatalog, type Catalog } from './catalog.js';
 import { ZodError } from 'zod';
 import type { DB } from './database.js';
 import { ApiError } from './validation.js';
@@ -7,7 +7,7 @@ import { walletRoutes } from './wallet.js';
 import { cardRoutes } from './cards.js';
 import { authRoutes, type AuthOptions } from './auth.js';
 
-export function createApp(db: DB, options: AuthOptions) {
+export function createApp(db: DB, options: AuthOptions & {catalogReader?: () => Promise<Catalog>}) {
   const app = Fastify({ logger: false, bodyLimit: 65536, trustProxy: false });
   app.addHook('onSend', async (_request, reply) => { reply.header('Cache-Control', 'no-store'); });
   app.setErrorHandler((error, _request, reply) => {
@@ -17,7 +17,7 @@ export function createApp(db: DB, options: AuthOptions) {
     reply.code(status).send({ error: { code, message: error instanceof ApiError ? error.message : status === 422 ? 'Invalid request' : 'Request failed' } });
   });
   app.setNotFoundHandler((_request, reply) => reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Resource not found' } }));
-  app.get('/v1/catalog', async () => readCatalog(db, (options.now ?? Date.now)()));
+  app.get('/v1/catalog', async () => options.catalogReader ? options.catalogReader() : readCatalog(db, (options.now ?? Date.now)()));
   const owner = authRoutes(app, db, options);
   cardRoutes(app, db, owner, options.now ?? Date.now);
   walletRoutes(app, db, owner, options.now ?? Date.now);

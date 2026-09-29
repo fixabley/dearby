@@ -10,7 +10,6 @@ test-results/
 *.log
 .env*
 !.env.example
-!.env.*.example
 .vercel/
 /dearby-web/
 /orca-worktree-trash/
@@ -33,3 +32,10 @@ xcuserdata/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+
+# Private signing keys and credentials must never enter Git.
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
