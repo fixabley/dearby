@@ -90,3 +90,26 @@ test('HTTP exchange SQL failure rolls back receipt and idempotency; import failu
   const retry = await f.request('POST','/wallet/import',{items:[{cardId:f.cardB.id,context:emptyContext,savedAt:'2026-09-01T00:00:00Z'}]},f.charlie.sessionToken);
   assert.equal(retry.body.items[0].status,'imported');
 });
+
+
+test('wallet batches reciprocal owners while preserving self, repeated owners and withdrawn delivery history', async t => {
+  const f = await setup(); t.after(f.close);
+  const aliceSecond = await f.makeCard(f.alice.sessionToken);
+  const charlieCard = await f.makeCard(f.charlie.sessionToken);
+  const imported = await f.request('POST','/wallet/import',{items:[f.cardA,aliceSecond,charlieCard,f.cardB].map(card => ({
+    cardId:card.id,context:emptyContext,savedAt:'2026-09-01T00:00:00Z',
+  }))},f.bob.sessionToken);
+  assert.ok(imported.body.items.every((item:{status:string}) => item.status === 'imported'));
+  // Bob's own imported card must remain non-reciprocal, despite a self receipt.
+  let wallet = (await f.request('GET','/wallet',undefined,f.bob.sessionToken)).body.items;
+  assert.deepEqual(wallet.map((item:{reciprocal:boolean}) => item.reciprocal),[false,false,false,false]);
+  const historical = await f.makeCard(f.bob.sessionToken);
+  for (let i=0;i<2;i++) {
+    assert.equal((await f.request('POST','/exchanges',{cardId:historical.id,recipientProfileId:f.alice.profileId,
+      context:emptyContext,requestId:randomUUID()},f.bob.sessionToken)).status,201);
+  }
+  await f.request('DELETE',`/cards/${historical.id}`,undefined,f.bob.sessionToken);
+  wallet = (await f.request('GET','/wallet',undefined,f.bob.sessionToken)).body.items;
+  assert.deepEqual(wallet.map((item:{card:{id:string};reciprocal:boolean}) => [item.card.id,item.reciprocal]),
+    [[f.cardA.id,true],[aliceSecond.id,true],[charlieCard.id,false],[f.cardB.id,false]]);
+});

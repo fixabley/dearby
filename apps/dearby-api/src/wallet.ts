@@ -8,9 +8,15 @@ export function walletRoutes(app: FastifyInstance, db: DB, owner: Owner, now: ()
   app.get('/v1/wallet', async request => {
     const profileId = await owner(request);
     const rows = await db.receipt.findMany({where:{recipientId:profileId,card:{revoked:false}},include:{card:true},orderBy:[{receivedAt:'asc'},{ordinal:'asc'}]});
-    return {items:await Promise.all(rows.map(async row => ({id:row.id,card:JSON.parse(row.card.data),context:JSON.parse(row.context),receivedAt:row.receivedAt,
-      reciprocal:row.card.ownerId !== profileId && Boolean(await db.receipt.findFirst({where:{recipientId:row.card.ownerId,card:{ownerId:profileId}}})),
-    })))};
+    const ownerIds = [...new Set(rows.map(row => row.card.ownerId).filter(id => id !== profileId))];
+    // Historical reciprocal deliveries count even when the sender later withdraws that card.
+    const reciprocalRows = ownerIds.length ? await db.receipt.findMany({
+      where:{recipientId:{in:ownerIds},card:{ownerId:profileId}},select:{recipientId:true},
+    }) : [];
+    const reciprocalOwners = new Set(reciprocalRows.map(row => row.recipientId));
+    return {items:rows.map(row => ({id:row.id,card:JSON.parse(row.card.data),context:JSON.parse(row.context),receivedAt:row.receivedAt,
+      reciprocal:row.card.ownerId !== profileId && reciprocalOwners.has(row.card.ownerId),
+    }))};
   });
   app.post('/v1/wallet/import', async request => {
     const profileId = await owner(request);
