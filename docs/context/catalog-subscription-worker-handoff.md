@@ -61,7 +61,7 @@ Supabase Cron으로 DB 프로그램별 일일 작업을 등록하고 **ChatGPT �
 - 후보 구절 일치는 사실 전체의 검증이 아니다. 자동 공식 확인·게시하지 않는다. 의미상 같은 활동의 URL/회차 이름이 바뀌면 중복 후보가 생길 수 있다. 후보 테이블은 최신 제안만 보존한다.
 - 로그는 ignored 파일로 쌓이며 장기 보관 용량 정책이 필요하다. 구독 한도는 일반 Codex/IR 작업과 공유한다.
 
-[실행·해제·검증 안내](../../apps/catalog-worker/README.md)를 따른다. 기능별 커밋/자기 브랜치 push 결과는 아래 전달 기록과 이 세션 최종 응답에 남긴다. 강제 push·root 통합·기존 서비스 교체는 하지 않는다.
+[실행·해제·검증 안내](https://github.com/fixabley/dearby/blob/d7e5da7beae2feb2a6887b8a6d5694c71654a920/apps/catalog-worker/README.md)를 따른다. 기능별 커밋/자기 브랜치 push 결과는 아래 전달 기록과 이 세션 최종 응답에 남긴다. 강제 push·root 통합·기존 서비스 교체는 하지 않는다.
 
 ## 전달 기록 — 2026-09-29 13:33 KST
 
