@@ -1,5 +1,7 @@
 # Dearby 컨텍스트 목차
 
+- [도메인 도식도](database-and-domains.md) — 탐색·수집·운영 관리·참여 판단·계정·명함·게스트 보관함의 업무 관계를 표현한 Mermaid 다이어그램.
+
 ## 현재 탐색 어드민 — 2026-09-29
 
 사용자가 Supabase + Refine 어드민과 기존 API의 탐색 데이터 연결을 승인했다. 로컬 구현·검증을 완료했고, 어드민5173/API58765/Supabase54321을 실행 중이다. iPhone17도58765에 연결했다. [어드민 인계](admin-implementation-and-handoff.md), [설치·사용 안내](../../apps/admin/README.md), [실제 화면·검증](../../apps/admin/docs/evidence/README.md). 과거 출처30건은 초안이며 숨김 예시1건을 남겼다. 기존 목 서버58764는 별도로 남아 있지만 현재 iPhone이 사용하는 데이터 원본이 아니다.
