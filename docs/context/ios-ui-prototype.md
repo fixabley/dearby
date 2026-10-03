@@ -61,3 +61,24 @@ Ponytail 후보로 남은 단일 자식 카드 HStack과 미사용 버튼 outlin
 
 요청된 iOS 프로토타입 구현과 검증 완료. 로컬 커밋은 worker_done에 보고.
 push/PR/merge, 실기기 설치와 추가 UI 검증, 세션 retain은 조율 세션 소유.
+
+## 2026-10-04 추가 승인 — selected 디자인 전체
+
+새 dispatch `ctx_9d06642750f2`, task `task_1caf2d331938`는 최초 calendar 요청에 더해
+조율 메시지 `msg_b7c1bf674d59`로 selected의 5탭·명함·프로필·QR 전체 UI까지 확대됨.
+이전 숨김 경계보다 최신 사용자 승인이 우선하며 서비스/영구저장 금지는 유지.
+`selected/01-current-flow` 5장, `02-other-approved` 11장, `03-logos` 2장 및
+직접 지정한 calendar 시안 A를 열어 확인함. 다른 calendar 후보는 적용하지 않음.
+
+Calendar 구현: 결과에서 선택폼을 숨기고 둥근 시트·핸들·건수·닫기·60분 요약,
+Asia/Seoul 30분 2열 격자, 청록 활동/파랑 바쁜시간, 주황 밴드/점선/라벨,
+긴 활동 이어짐 표시와 확인 버튼을 배치. 원본 fixture 13–17시/14–15시 유지.
+마지막 확인은 닫기, 여러 결과는 다음으로 이동, 0건도 별도 정상 결과.
+기존 선택 단계는 유지. 도표는 접근성 시간 설명을 제공하고 큰 글씨는 large 시트 사용.
+
+Calendar 검증(2026-10-04 00:01 KST): Debug 빌드+단위 5개+UI 3개, SwiftLint 0건,
+구조 17개 통과. `timeline-tests.xcresult` / `timeline-evidence`에 결과 보존.
+`13A1A245-4F3B-4BF8-AD47-4F89F681F2D0.png`를 시안 A와 직접 비교:
+헤더/큰분수/2열격자/주황점선/확인 CTA 보존, 현재 fixture에 맞는 60분과 1/1 표시,
+13:00~15:30 창에서 17:00까지 계속됨 표시 확인, 잘림 없음.
+Ponytail: 범용 calendar renderer/repository 없이 한 도표 View와 계산 프로퍼티로 구현, 추가 제거 후보 없음.

@@ -59,10 +59,15 @@ import XCTest
             XCTAssertFalse(app.buttons["선택한 캘린더로 확인"].isEnabled)
             toggle.tap()
             app.buttons["선택한 캘린더로 확인"].tap()
-            let result = id == "conference" ? "겹치는 시간 1 / 1" : "예시 캘린더와 겹치는 시간이 없어요"
+            let result = id == "conference" ? "60분이 겹쳐요" : "예시 캘린더와 겹치는 시간이 없어요"
             XCTAssertTrue(app.staticTexts[result].waitForExistence(timeout: 5))
-            capture(app, "prototype-calendar-\(id)")
-            app.buttons["닫기"].tap()
+            XCTAssertFalse(app.buttons["선택한 캘린더로 확인"].exists)
+            XCTAssertFalse(app.switches["예시 캘린더"].exists)
+            if id == "conference" { XCTAssertTrue(app.staticTexts["1 / 1"].exists) }
+            // Sheet detent animation can still be drawing after accessibility settles.
+            Thread.sleep(forTimeInterval: 0.6)
+            capture(app, "timeline-calendar-\(id)")
+            app.buttons["확인했어요"].tap()
             XCTAssertTrue(app.navigationBars["활동 상세"].exists)
             app.terminate()
         }

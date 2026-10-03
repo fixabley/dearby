@@ -35,6 +35,23 @@ import XCTest
             XCTAssertFalse(state.compared)
         }
     }
+    func testTimelineAndAdvancingResults() {
+        let activity = DemoActivities.all[0].schedules[0]
+        let state = CalendarConflictState(schedules: [activity, activity])
+        state.compare()
+        let result = state.overlaps[0]
+        XCTAssertEqual(result.minutes, 60)
+        XCTAssertEqual(result.time(result.gridStart), "13:00")
+        XCTAssertEqual(result.time(result.gridEnd), "15:30")
+        XCTAssertEqual(result.gridSteps, 5)
+        XCTAssertGreaterThan(activity.end, result.gridEnd)
+        XCTAssertTrue(state.advance())
+        XCTAssertEqual(state.index, 1)
+        XCTAssertFalse(state.advance())
+        let empty = CalendarConflictState(schedules: DemoActivities.all[1].schedules)
+        empty.compare()
+        XCTAssertFalse(empty.advance())
+    }
     func testTouchingEndpointsDoNotOverlap() {
         let activity = DemoActivities.all[0].schedules[0]
         XCTAssertFalse(CalendarOverlapState.matches(activity, DateInterval(start: activity.end, duration: 3600)))
