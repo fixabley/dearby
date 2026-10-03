@@ -8,10 +8,11 @@
 
 - [확정 제품 명세](docs/product/native-spec-2026-09.md)
 - [공통 API 계약](shared/contracts/native-v1.md)
-- [현재 작업·검증·차단 사항](docs/context/native-restart-2026-09-27.md)
+- [현재 모바일 작업·검증](docs/context/mobile-ui-prototype.md)
+- [시안별 화면과 공통 컴포넌트 위치](docs/design/mobile-prototype-reference-map.md)
 - [iOS #37](https://github.com/fixabley/dearby/issues/37), [Android #38](https://github.com/fixabley/dearby/issues/38), [API #39](https://github.com/fixabley/dearby/issues/39)
 
-실행: [iOS](apps/ios/README.md), [Android](apps/android/README.md), [API](apps/dearby-api/README.md). 실제 화면과 검증 증거: [iOS](apps/ios/docs/evidence/README.md), [Android](apps/android/docs/VERIFICATION.md), [통합 검증](docs/implementation/verification-matrix.md).
+실행: [iOS](apps/ios/README.md), [Android](apps/android/README.md), [API](apps/dearby-api/README.md). 현재 모바일 검증: [iOS](docs/context/ios-ui-prototype.md), [Android](docs/context/android-ui-prototype.md). 과거 서비스 [통합 검증](docs/implementation/verification-matrix.md)은 별도 이력입니다.
 
 과거 실제 서비스 검증·명함 교환 계약은 아래 문서와 Git 이력에 보존합니다. 과거 기능의 구현 기록을 현재 모바일 프로토타입의 기능으로 해석하지 않습니다.
 
