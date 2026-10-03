@@ -11,7 +11,8 @@
 - checkout `/Users/jominjun/Documents/dearby/web-vercel`, branch `fixabley/web-vercel`.
 - 확인한 웹 세션 handle `term_cfab069e-7400-430d-a19a-dffb56a54960`; API 협업 `term_ed77215a-daf0-49d7-92da-127ad6e91e3e`. 런타임 handle은 재시작 시 재확인한다.
 - root가 Vercel 프로젝트·DNS·production env·main 통합·실제 배포를 담당한다. 이 세션은 배포/DNS/운영 데이터 변경을 실행하지 않았다. 완료 후 세션/worktree 유지 요청을 따른다.
-- 코드/빌드/로컬 검증 완료 후 PR로 root 인계한다. 실제 운영 연결 및 저장 성공 검증은 별도다.
+- 웹 소스 `d03b4ca`까지 push·PR 인계 완료. 2026-09-29 root 전달: GitHub merge API로 API `70af9ac`을 PR64 브랜치에 통합하여 원격 head는 `097f955`. 이후 root 전달: PR64 모든 통합 CI 통과 후 main `a7b61b329be7b8305b81c5b4cec36a0ceba3a060`에 병합 완료. PR66 source도 포함되므로 별도 main 병합하지 않는다. API runtime 배정 source는 `70af9ac`을 유지한다.
+- 현재 로컬 HEAD는 직접 확인한 `d03b4ca`이며 원격 통합본을 checkout/build했다고 주장하지 않는다. 최신 root 지시로 추가 코드/commit/push는 불필요하다. 이번 상태 갱신은 로컬 인계 문서와 카드에만 남기며 세션/worktree를 유지한다. 로컬 미커밋 인계를 보존하고 있으며 원격 통합 이력으로 fast-forward는 수행하지 않았다.
 
 ## 구현 계약
 
@@ -36,7 +37,9 @@
 
 ## Root 다음 작업
 
-PR main 통합 후 `apps/web`로 배포, 두 서버 env 주입, Vercel에서 `https://wid.io.kr` 외부 연결 검증. GET 빈목록과 upstream503/502를 구분하고, 운영 공개명함이 승인되어 존재할 때 실제 저장/격리 확인. WAF IP60req/60sec `/api/guest/*` 제한은 root가 게시완료했다고 전달했으며, 외부429 실검증은 root가 배포 후 수행한다. 브라우저 제한을 무기한 보존으로 표현하지 않는다.
+root 전달 배포 증거(이 세션의 재실행 결과가 아님): Vercel `d03b4ca` 배포 완료, 배포 source와 main의 `apps/web` 동일. `https://dearby.wid.io.kr` HTTPS 루트200·무쿠키 guest 목록200·WAF 실제429 및 정상 복귀 확인, static 12파일 약1MB에서 실키 노출0. 무쿠키 guest 목록은 upstream을 호출하지 않으므로 이200은 외부 API 연결 성공 증거가 아니다.
+
+남은 차단: Vercel→외부 API 502, [#65](https://github.com/fixabley/dearby/issues/65) 미해결. root가 외부 연결 해소와 실제 운영 저장 검증을 계속 담당한다. 웹+API 통합 CI 및 PR64 main 병합은 완료되었다. 새 사용자 요청인 로컬 Supabase→cloud 전환은 API/수집 담당이 진행하며 웹 세션은 해당 코드·설정에 개입하지 않는다. 운영 공개명함이 승인되어 존재할 때 실제 저장/격리 확인이 필요하며, 운영 데이터나 mock을 임의 삽입하지 않는다. 브라우저 제한을 무기한 보존으로 표현하지 않는다. 웹 세션의 추가 코드/push는 요청되지 않았으며 로컬 인계·카드 갱신 후 retain한다.
 
 ## PR·리뷰
 
