@@ -1,5 +1,7 @@
 # Dearby 컨텍스트 목차
 
+- [워크트리 정리·보존 기록](worktree-cleanup-2026-10-03.md) — 세션 종료, 백업, 문서 통합과 워커 실행 경로 이전.
+- [수집 워커 인계](catalog-subscription-worker-handoff.md) — cloud 전환 및 워크트리 밖 실행 경로.
 - [도메인 도식도](database-and-domains.md) — 탐색·수집·계정·명함·게스트 보관함의 업무 관계.
 
 ## 최신 재개 지점 — 2026-09-29

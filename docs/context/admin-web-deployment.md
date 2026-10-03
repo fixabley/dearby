@@ -57,3 +57,16 @@ ADMIN_TEST_URL=http://127.0.0.1:5187 npm run test:e2e -- deployment.spec.ts
 [PR #68](https://github.com/fixabley/dearby/pull/68), UI 복원 `d96b6b8`, 배포 구현 `1a58df1`. 2026-09-29 root 전달 기준 `dearby-admin` 프로젝트/Node24/Vite/apps/admin/dist 및 Production 공개 환경변수 설정 완료, 도메인 연결과 Route53 CNAME 생성 제출 완료. 이는 root가 전달한 상태이며 이 checkout에서 원격 배포를 실행하거나 DNS/HTTPS 완료를 검증한 결과가 아니다. root가 PR의 최종 head를 검토·배포하고 공개 HTTPS/SPA 경로를 확인한다.
 
 로컬 preview는 `http://127.0.0.1:5187`에서 합성 공개키로 실행 중이다. 실제 cloud 운영 미리보기가 아니다. 세션·worktree·preview를 유지한다.
+
+## Root 최종 배포 검증 — 2026-09-29 전달
+
+root 확인 결과이며 담당 checkout의 추가 실행 결과가 아니다.
+
+- Production: https://admin.dearby.wid.io.kr READY, deployment `dpl_CoMSHCA4sxHHSM6XcXsAtwmRmqqT`, source `1a58df1` (`apps/admin`은 최종 PR head `99398a9`와 동일).
+- Route53 `admin.dearby` CNAME `1588c031dca3967d.vercel-dns-017.com`, TTL 300. Vercel 인증서 90일·자동 갱신 활성.
+- 정상 TLS curl: `/`, `/collection`, `/activities/new`, `/audit`, JS/CSS 성공. Chrome 실제 로그인 폼 표시 확인.
+- 실제 JS 1,568,567 bytes / CSS 4,665 bytes. 번들에서 실제 service_role 및 guest-proxy 값 일치 0건, 대상 cloud URL 포함 확인.
+- 기존 관리자 read-only 로그인 200, `is_catalog_admin=true`, catalog 조직 34 / 프로그램 36 / 활동 39건 모두 200. anon raw table 401. 테스트 세션 local logout 204. 데이터 쓰기 없음.
+- 비공개 근거: `~/.dearby-deploy/admin-main/verification.json`, `~/.dearby-deploy/admin-main/auth-verification.json`. 이 checkout에서는 보호 파일을 열거나 복사하지 않았다.
+- CI 진행 중. root가 PR 댓글·auto merge를 담당한다. 지시에 따라 이 갱신은 로컬에만 유지하며 추가 commit/push/재시작하지 않는다. 세션·worktree·preview retain.
+- 기존 비관리자 차단 근거는 mock 브라우저 테스트다. 위 실제 배포 검증은 기존 관리자와 anon 대상이며 실제 비관리자 계정 테스트 완료를 뜻하지 않는다.
