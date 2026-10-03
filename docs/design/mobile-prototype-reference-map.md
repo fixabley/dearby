@@ -65,6 +65,21 @@ SwiftUI와 Compose의 UI 소스는 각 플랫폼 안에서 공유하고, 이미�
 각 앱의 기존 스타일 상수로 적용한다. 별도 토큰 로더나 런타임 설정은 추가하지 않는다.
 운영체제 글자 확대·뒤로가기·터치 영역 기준은 유지한다.
 
+## 화면을 수정할 때
+
+| 변경 대상 | iOS | Android |
+| --- | --- | --- |
+| 색상·주요 버튼·로고 | `Sources/shared/ui/DearbyStyle.swift` | `shared/ui/Components.kt` |
+| 배지·아바타·정보 행·시트 헤더 | `Sources/shared/ui/DearbyComponents.swift` | `shared/ui/Components.kt` |
+| 명함·연락처·활동 이력 조합 | `Sources/entities/identity/ui` | `widgets/card/cardContent` |
+| 활동 목록·상세 | `Sources/widgets/catalog/ui` | `pages/catalog` |
+| 프로필·QR·명함함 | `Sources/widgets/identity/ui` | `pages/profile`, `pages/qr`, `pages/wallet` |
+| 공통 이미지 원본 | 저장소 루트 `shared/assets/prototype` | 저장소 루트 `shared/assets/prototype` |
+
+Swift 경로는 `apps/ios`, Kotlin 경로는 `apps/android/app/src/main/java/com/dearby/nativeapp` 기준이다.
+먼저 공통 표현을 수정하고 해당 화면들이 이를 참조하도록 한다. 화면 이동과 예시 상태는 공통 UI 컴포넌트에 넣지 않는다.
+이미지 원본을 바꿀 때에는 iOS 이미지 세트와 Android drawable 사본도 함께 갱신한다.
+
 ## 검증 상태
 
 추가 디자인 구현 중이다. 캡처와 시안의 직접 비교, 탭과 핵심 이동 검증, 플랫폼 검사 결과는
