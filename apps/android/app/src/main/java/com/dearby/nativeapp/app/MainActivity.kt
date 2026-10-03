@@ -8,8 +8,9 @@ import com.dearby.nativeapp.shared.ui.DearbyTheme
 
 class MainActivity : ComponentActivity() {
     private val catalog: CatalogViewModel by viewModels()
+    private val demo: DemoViewModel by viewModels()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { DearbyTheme { DiscoveryApp(catalog) } }
+        setContent { DearbyTheme { DearbyApp(catalog, demo) } }
     }
 }

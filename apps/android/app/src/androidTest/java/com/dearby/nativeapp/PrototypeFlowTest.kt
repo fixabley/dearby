@@ -5,23 +5,11 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.dearby.nativeapp.app.MainActivity
 import org.junit.Rule
 import org.junit.Test
-import androidx.test.platform.app.InstrumentationRegistry
-import android.graphics.Bitmap
-import java.io.File
 
 class PrototypeFlowTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
-    private fun screenshot(name: String) {
-        val directory = InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null)!!
-        compose.mainClock.advanceTimeBy(500)
-        compose.waitForIdle()
-        android.os.SystemClock.sleep(350) // Let platform dialog/window animations settle before capture.
-        File(directory, "$name.png").outputStream().use {
-            requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
-                .compress(Bitmap.CompressFormat.PNG, 100, it)
-        }
-    }
+    private fun screenshot(name: String) = capturePrototype(compose, name)
 
     @Test fun discoveryApplicationAndMemoryReport() {
         compose.onNodeWithText("활동 둘러보기").assertIsDisplayed()
