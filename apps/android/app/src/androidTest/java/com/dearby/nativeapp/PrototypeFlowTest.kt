@@ -5,7 +5,6 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import com.dearby.nativeapp.app.MainActivity
 import org.junit.Rule
 import org.junit.Test
-import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.test.platform.app.InstrumentationRegistry
 import android.graphics.Bitmap
 import java.io.File
@@ -15,8 +14,10 @@ class PrototypeFlowTest {
 
     private fun screenshot(name: String) {
         val directory = InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null)!!
+        compose.waitForIdle()
         File(directory, "$name.png").outputStream().use {
-            compose.onRoot().captureToImage().asAndroidBitmap().compress(Bitmap.CompressFormat.PNG, 100, it)
+            requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+                .compress(Bitmap.CompressFormat.PNG, 100, it)
         }
     }
 
