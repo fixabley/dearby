@@ -15,3 +15,9 @@
 
 
 완료 근거: `apps/android/docs/VERIFICATION.md`, `apps/android/evidence/ui-prototype/`(빌드·unit·lint·구조·UI runner 출력 및 5개 PNG). 최종 UI 실행은 `OK (2 tests)` / 8.095초. Ponytail 검토도 완료했으며 불필요한 wrapper/repository를 남기지 않았습니다. 테스트 헬퍼와 Espresso 복원 외 추가 제품 코드 변경은 없습니다. 물리 기기·다른 OS·큰 글꼴·스크린리더·외부 페이지 네트워크는 이번 worker 검증 범위 밖입니다. root의 통합·push·PR·실제 폰 검증이 남습니다.
+
+## 2026-10-04 latest scope expansion — active
+
+Coordinator delivered latest user approval to implement all selected references (5 current-flow, 11 card/profile/QR, 2 logo, plus selected calendar A) as native five-tab UI, with only fixtures and memory state. This overrides the former hide-tabs/removal boundary for visible UI, but never restores HTTP/auth/Room/Keystore/camera/calendar/persistence. Read all selected reference images directly. Shared UI primitives and card/history reusable widgets will serve the screens; no wrapper/repository substitution.
+
+Calendar A checkpoint implemented and verified: native result bottom sheet with 30-minute timetable, orange overlap band, continued block, 60-minute/1-of-1 current example and compact zero case. Build/unit/lint/FSD/UI2 all passed; `apps/android/evidence/calendar-timetable`. Remaining: selected discovery/detail redesign, five tabs, saved activity memory, QR show/new/scan/share demo, guest/profile demo switch/edit, card editor/contact/history selection, shared card save, wallet search/groups/reciprocity, send picker. Root is preparing common photo assets and owns shared/root docs. No worker_done until expanded scope is complete.

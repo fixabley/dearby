@@ -13,3 +13,5 @@ Tests and boundary checks are retained for the remaining behavior. This review d
 Lint cleanup uses the existing AndroidX `String.toUri()` extension. The intentionally preserved unused GitHub image asset and dependency upgrade notices remain warnings; no suppression or test disabling was added.
 
 Runtime correction: the explicit Espresso 3.7 dependency is necessary on Android 16. Removing it selected an older transitive version and both UI tests failed with `InputManager.getInstance` reflection errors; restored it instead of suppressing tests.
+
+Calendar reference follow-up: the timetable is one feature-owned visual component using the existing overlap values; it adds no calendar framework or data layer. Lean already. Ship.

@@ -15,3 +15,9 @@ UI validation uses the existing `Dearby_Calendar_Verify` Android 16 AVD, `emulat
 The software-GPU attempt exposed an Android 16 test dependency issue: removing the direct Espresso 3.7 declaration selected an older transitive version, which failed at `InputManager.getInstance`. Espresso 3.7 was restored. Both functional UI tests then passed, including filter preservation, demo application recording, one-hour conference overlap and zero-overlap meetup. The screenshot helper was subsequently changed to Android UiAutomation screen capture to include the foreground dialog reliably (Compose root selection also included its background Activity). Final screenshots and runner output are in `evidence/ui-prototype`.
 
 Scope: one existing Android 16 emulator at default font scale. External browser network content, physical phones, other OS versions, larger text scales and screen-reader traversal were not verified by this worker. Existing local assets were kept intentionally; there is no real service integration to validate.
+
+## 2026-10-04 calendar reference follow-up
+
+The newly approved timetable reference is implemented as a native bottom sheet: rounded top/handle, count/close, date, 60-minute overlap summary, 30-minute two-column grid, teal/blue blocks, orange interval/dashes and continued-activity edge. Selection stays in its previous screen and is absent from the result. Zero overlap has a compact summary; confirmation closes the sheet. No calendar permission or data access was added.
+
+Build/unit/lint/AndroidTest APK passed again; FSD 14 files/19 self-tests passed. Existing emulator UI tests: 2 passed in 10.423 seconds. Captures in `evidence/calendar-timetable` were compared with the supplied reference. Fixture-specific values intentionally differ: October 24, 13–17 activity, 14–15 busy time, 60 minutes and 1/1. This is a checkpoint before the newly requested five-tab/card/profile UI expansion.
