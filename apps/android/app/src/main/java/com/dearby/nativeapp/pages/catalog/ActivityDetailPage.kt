@@ -50,7 +50,7 @@ import com.dearby.nativeapp.shared.ui.*
                 Column { activity.sessions.forEachIndexed { index, item ->
                     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         Text(item.first, Modifier.width(106.dp), color = Quiet, style = MaterialTheme.typography.bodySmall)
-                        TimelineEntry("", item.second, last = index == activity.sessions.lastIndex, modifier = Modifier.weight(1f), compact = false)
+                        TimelineEntry("", item.second, "", last = index == activity.sessions.lastIndex, modifier = Modifier.weight(1f), compact = false)
                     }
                 } }
                 DearbyOutlineButton(checkCalendar, Modifier.fillMaxWidth()) { Text("겹치는 시간 확인하기", fontWeight = FontWeight.SemiBold) }

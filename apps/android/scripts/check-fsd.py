@@ -12,6 +12,10 @@ PREFIX = 'com.dearby.nativeapp'
 ROOT = Path(__file__).resolve().parents[1] / 'app/src/main/java/com/dearby/nativeapp'
 LAYERS = {name: i for i, name in enumerate(('app', 'pages', 'widgets', 'features', 'entities', 'shared'))}
 API = {
+    'widgets.card.cardContent': {'CardState', 'CardHistoryState', 'ContactState', 'CardContent', 'CardStack'},
+    'pages.profile': {'ProfileState', 'ProfilePage'},
+    'pages.qr': {'QrPage', 'CardEditor'},
+    'pages.wallet': {'WalletEntryState', 'walletMatches', 'WalletPage', 'SharedCardPage', 'SendPage'},
     'features.calendar': {'CalendarConflictSheet'},
     'pages.catalog': {'CatalogPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'CatalogState'},
     'features.application': {'ApplicationBrowser', 'safeWebUrl'},
@@ -54,6 +58,12 @@ def check_source(path, text):
 
 def self_test():
     cases = [
+        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.widgets.card.cardContent.CardContent', True),
+        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.pages.profile.ProfileState', False),
+        ('widgets/card/cardContent/Test.kt', 'import com.dearby.nativeapp.shared.ui.TimelineEntry', True),
+        ('widgets/card/cardContent/Test.kt', 'import com.dearby.nativeapp.pages.wallet.WalletEntryState', False),
+        ('widgets/card/cardContent/Test.kt', 'val x = LocalContext.current', False),
+        ('app/Test.kt', 'import com.dearby.nativeapp.widgets.card.cardContent.PrivateCard', False),
         ('pages/catalog/Test.kt', 'import com.dearby.nativeapp.entities.catalog.model.ActivityModel', False),
         ('pages/catalog/Test.kt', 'import com.dearby.nativeapp.shared.storage.DearbyDao', False),
         ('pages/catalog/Test.kt', 'import com.dearby.nativeapp.app.CatalogViewModel', False),

@@ -34,11 +34,14 @@ val Soft = Color(0xFFF5F7F8)
 @Composable fun DearbyOutlineButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) = OutlinedButton(onClick, modifier.heightIn(min = 50.dp), enabled = enabled, shape = RoundedCornerShape(11.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = Teal), border = androidx.compose.foundation.BorderStroke(1.dp, if (enabled) Teal else Line), content = content)
 
 @Composable fun ScreenHeader(title: String, back: (() -> Unit)? = null, actions: @Composable RowScope.() -> Unit = {}) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-        if (back != null) IconButton(back) { Icon(androidx.compose.material.icons.Icons.AutoMirrored.Outlined.ArrowBack, "뒤로", tint = Teal) }
-        else Spacer(Modifier.width(20.dp))
-        Text(title, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge, color = if (back == null) MaterialTheme.colorScheme.onSurface else Teal)
-        actions()
+    Box(Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            if (back != null) IconButton(back) { Icon(androidx.compose.material.icons.Icons.AutoMirrored.Outlined.ArrowBack, "뒤로", tint = Teal) }
+            else Text(title, Modifier.padding(start = 20.dp), style = MaterialTheme.typography.titleLarge)
+            Spacer(Modifier.weight(1f))
+            actions()
+        }
+        if (back != null) Text(title, Modifier.align(androidx.compose.ui.Alignment.Center), style = MaterialTheme.typography.titleLarge, color = Teal)
     }
 }
 
@@ -89,7 +92,7 @@ val Soft = Color(0xFFF5F7F8)
     }
 }
 
-@Composable fun TimelineEntry(date: String, title: String, subtitle: String = "", last: Boolean, modifier: Modifier = Modifier, compact: Boolean = false) {
+@Composable fun TimelineEntry(date: String, title: String, subtitle: String, last: Boolean, modifier: Modifier = Modifier, compact: Boolean = false) {
     Row(modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         Box(Modifier.width(10.dp).fillMaxHeight(), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
             if (!last) Box(Modifier.padding(top = 8.dp).width(1.dp).fillMaxHeight().background(Line))
