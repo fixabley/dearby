@@ -1,5 +1,12 @@
 # Dearby 협업 기준
 
+## 2026-10-03 모바일 프로토타입 승인
+
+- 최신 사용자 승인: iOS·Android는 현재 디자인·예시 데이터·화면 이동만 남기는 클릭형 프로토타입으로 단순화한다. 모바일의 실제 API·로그인·영구 저장·기기 캘린더 접근 요구보다 이 승인이 우선한다.
+- 기본 탐색 → 상세 → 신청 안내와 겹치는 시간 확인 화면을 유지한다. 고정 예시 데이터와 세션 메모리 상태를 사용하며 예시 신청·일정 비교를 실제 접수·개인 일정 조회로 표현하지 않는다.
+- 서버·사용자 웹·어드민·수집 워커 및 운영 데이터는 보존한다. 기존 기기의 앱 저장 데이터는 삭제하거나 마이그레이션하지 않는다.
+- 이전 모바일 구현 복구 지점은 origin의 `backup/mobile-service-before-prototype-20261003` 태그다. 구현·검증 현황은 `docs/context/mobile-ui-prototype.md`를 따른다.
+
 ## 2026-09-27 최신 승인
 
 - 현재 제품 정본은 `docs/product/native-spec-2026-09.md`, 확정 Seed는 `.symposium/scratch/socrates.md` Cycle 4다. 사용자가 iOS·Android 전체 서비스 개발과 기존 웹 제거를 승인했다. 이전 웹 규칙은 docs/context/archive/2026-09-27-before-native-restart/AGENTS.md에 보존한다.
