@@ -14,7 +14,9 @@ class PrototypeFlowTest {
 
     private fun screenshot(name: String) {
         val directory = InstrumentationRegistry.getInstrumentation().targetContext.getExternalFilesDir(null)!!
+        compose.mainClock.advanceTimeBy(500)
         compose.waitForIdle()
+        android.os.SystemClock.sleep(350) // Let platform dialog/window animations settle before capture.
         File(directory, "$name.png").outputStream().use {
             requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
                 .compress(Bitmap.CompressFormat.PNG, 100, it)
@@ -28,16 +30,29 @@ class PrototypeFlowTest {
         compose.onNodeWithText("선발형", useUnmergedTree = true).performClick()
         compose.onNodeWithText("Dearby 메이커 캠프").assertIsDisplayed().performClick()
         screenshot("prototype-detail")
-        compose.onNodeWithText("신청 사이트 열기").performClick()
+        compose.onNodeWithText("공식 사이트에서 신청").performClick()
         compose.onNodeWithText("신청 흐름 살펴보기").assertIsDisplayed()
         screenshot("prototype-application")
         compose.onNodeWithText("닫기").performClick()
-        compose.onNodeWithText("예시 신청함").performClick()
+        compose.onNodeWithText("신청함").performClick()
         compose.onNodeWithText("예시 신청 상태를 기록했어요.").assertIsDisplayed()
-        compose.onNodeWithContentDescription("목록으로").performClick()
+        compose.onNodeWithContentDescription("뒤로").performClick()
         compose.onNodeWithText("Dearby 개발자 컨퍼런스").assertDoesNotExist()
         compose.onNodeWithText("전체", useUnmergedTree = true).performClick()
         compose.onNodeWithText("Dearby 개발자 컨퍼런스").assertIsDisplayed()
+    }
+    @Test fun catalogReferenceScreens() {
+        compose.onNodeWithText("Dearby 개발자 컨퍼런스").performClick()
+        screenshot("activity-detail-top")
+        compose.onNodeWithText("겹치는 시간 확인하기").performScrollTo()
+        screenshot("activity-detail-schedule")
+        compose.onNodeWithText("신청 상태 수정").performScrollTo()
+        screenshot("activity-detail-bottom")
+        compose.onNodeWithText("공식 사이트에서 신청").performClick()
+        compose.onNodeWithText("닫기").performClick()
+        compose.onNodeWithText("신청함").performClick()
+        compose.onNodeWithText("Dearby 개발자 컨퍼런스").performScrollTo()
+        screenshot("activity-applied")
     }
     @Test fun conferenceConflictAndMeetupZeroConflict() {
         compose.onNodeWithText("Dearby 개발자 컨퍼런스").performClick()
@@ -48,7 +63,7 @@ class PrototypeFlowTest {
         compose.onNodeWithText("선택한 캘린더로 확인").assertDoesNotExist()
         screenshot("prototype-overlap")
         compose.onNodeWithText("확인했어요").performClick()
-        compose.onNodeWithContentDescription("목록으로").performClick()
+        compose.onNodeWithContentDescription("뒤로").performClick()
         compose.onNodeWithText("Dearby 커뮤니티 밋업").performScrollTo().performClick()
         compose.onNodeWithText("겹치는 시간 확인하기").performScrollTo().performClick()
         compose.onNodeWithText("선택한 캘린더로 확인").performClick()

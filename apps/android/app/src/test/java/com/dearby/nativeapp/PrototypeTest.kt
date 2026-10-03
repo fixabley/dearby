@@ -31,6 +31,16 @@ class PrototypeTest {
         assertEquals("전체", fresh.filter)
         assertFalse(fresh.activities.any { it.report })
     }
+    @Test fun savedActivitiesAndOrganizationsOnlyLiveInMemory() {
+        val model = CatalogViewModel()
+        model.save("conference")
+        assertTrue(model.state.value.activities.first().saved)
+        model.saveOrganization()
+        assertTrue(model.state.value.activities.all { it.organizationSaved })
+        model.save("conference")
+        assertFalse(model.state.value.activities.first().saved)
+        assertFalse(CatalogViewModel().state.value.activities.any { it.saved || it.organizationSaved })
+    }
     @Test fun conferenceHasOneHourConflictOthersHaveNone() {
         val conflict = demoOverlaps(listOf(demoActivities[0].schedule)).single()
         assertEquals(Instant.parse("2026-10-24T05:00:00Z").toEpochMilli(), conflict.start)
