@@ -30,18 +30,11 @@ project.targets.each do |target|
         'MARKETING_VERSION' => '0.1.0', 'CURRENT_PROJECT_VERSION' => '1',
         'INFOPLIST_KEY_CFBundleDisplayName' => 'Dearby',
         'INFOPLIST_KEY_UILaunchScreen_Generation' => 'YES',
-        'INFOPLIST_KEY_UIApplicationSceneManifest_Generation' => 'YES',
-        'INFOPLIST_KEY_NSCameraUsageDescription' => '명함 QR 코드를 읽기 위해 카메라를 사용합니다.',
-        'INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription' => '선택한 명함의 QR 이미지를 사진에 저장합니다.',
-        'INFOPLIST_KEY_DearbyAPIURL' => '$(DEARBY_API_URL)',
-        'INFOPLIST_KEY_DearbyShareURL' => '$(DEARBY_SHARE_URL)',
-        'DEARBY_API_URL' => config.name == 'Release' ? 'https://wid.io.kr' : '',
-        'DEARBY_SHARE_URL' => ''
+        'INFOPLIST_KEY_UIApplicationSceneManifest_Generation' => 'YES'
       })
       if config.name == 'Debug'
         config.build_settings['SWIFT_ACTIVE_COMPILATION_CONDITIONS'] = 'DEBUG'
         config.build_settings['INFOPLIST_FILE'] = 'Info-Debug.plist'
-        config.build_settings['INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking'] = 'YES'
       end
     elsif target == ui_tests
       config.build_settings['TEST_TARGET_NAME'] = 'Dearby'

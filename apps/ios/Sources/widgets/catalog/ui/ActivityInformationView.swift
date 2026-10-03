@@ -8,36 +8,28 @@ struct ActivityInformationView: View {
             Divider()
             Text("행사 일정").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
             field("활동 일정", activity.dateLabel)
-            field("모집 시작", ActivityText.date(activity.recruitmentStartAt))
-            field("모집 마감", ActivityText.date(activity.recruitmentEndAt))
+            field("모집 상태", activity.demoStatus)
             ForEach(activity.schedules) { schedule in
                 VStack(alignment: .leading, spacing: 6) {
                     if schedule.title != activity.title { Text(schedule.title).font(.headline) }
                     if schedule.dateLabel != activity.dateLabel {
                         Text(schedule.dateLabel.isEmpty ? "일정 미확인" : schedule.dateLabel)
                     }
-                    if schedule.startAt == nil && schedule.endAt == nil {
-                        Text("시간 미정").font(.footnote).foregroundStyle(DearbyStyle.quiet)
-                    } else {
-                        Text(schedule.startAt.map { "시작: " + ActivityText.date($0, timeZone: schedule.timeZone) }
-                            ?? "시작 시각 미정").font(.footnote)
-                        Text(schedule.endAt.map { "종료: " + ActivityText.date($0, timeZone: schedule.timeZone) }
-                            ?? "종료 시각 미정").font(.footnote)
-                    }
+                    Text("시작: " + ActivityText.date(schedule.start, timeZone: schedule.timeZone)).font(.footnote)
+                    Text("종료: " + ActivityText.date(schedule.end, timeZone: schedule.timeZone)).font(.footnote)
                 }
             }
-            Text("기기 캘린더와의 일정 비교는 아직 제공하지 않아요.").font(.caption).foregroundStyle(DearbyStyle.quiet)
+            Text("예시 바쁜 시간과 비교할 수 있어요. 실제 캘린더에 접근하지 않아요.").font(.caption).foregroundStyle(DearbyStyle.quiet)
         }
         VStack(alignment: .leading, spacing: 16) {
             Divider()
             Text("참가 안내").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
             field("대상", activity.audience)
-            field("지원 조건", activity.qualification)
             field("모집 직군", activity.roles.isEmpty ? nil : activity.roles.joined(separator: ", "))
             field("비용", activity.cost)
             Divider()
             Text("장소").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
-            Text(activity.location ?? "장소 미확인")
+            Text(activity.location)
         }
     }
     private func field(_ title: String, _ value: String?) -> some View {
@@ -52,19 +44,8 @@ struct ActivityInformationView: View {
     }
 }
 
-// Display formatting stays in the owning widget; wire timestamps remain unchanged.
+// Keep the activity time zone explicit, regardless of the device locale.
 enum ActivityText {
-    static func shortDate(_ raw: String?) -> String {
-        guard let date = CatalogModel.date(raw) else { return "미확인" }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.dateFormat = "M.dd HH:mm"
-        return formatter.string(from: date)
-    }
-    static func date(_ raw: String?, timeZone: String? = nil) -> String {
-        guard let date = CatalogModel.date(raw) else { return "미확인" }
-        return self.date(date, timeZone: timeZone)
-    }
     static func date(_ date: Date, timeZone: String? = nil) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "ko_KR")

@@ -17,26 +17,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<key>CFBundleURLTypes</key>
-	<array>
-		<dict>
-			<key>CFBundleURLName</key>
-			<string>com.dearby.card</string>
-			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>dearby</string>
-			</array>
-		</dict>
-	</array>
-	<key>DearbyAPIURL</key>
-	<string>$(DEARBY_API_URL)</string>
-	<key>DearbyShareURL</key>
-	<string>$(DEARBY_SHARE_URL)</string>
-	<key>NSCameraUsageDescription</key>
-	<string>명함 QR 코드를 읽기 위해 카메라를 사용합니다.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>선택한 명함의 QR 이미지를 사진에 저장합니다.</string>
-	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>선택한 캘린더의 바쁜 시간과 활동 일정이 겹치는지 확인합니다. 개인 일정은 저장·전송하거나 수정하지 않습니다.</string>
 </dict>
 </plist>

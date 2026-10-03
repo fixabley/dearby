@@ -35,7 +35,7 @@ enum SourceInventory {
         }
         try visit(root, atRoot: true)
         guard !files.isEmpty else { throw InventoryError.emptySources }
-        for layer in ["app", "pages", "widgets", "features", "entities", "shared"] {
+        for layer in ["app", "widgets", "features", "entities", "shared"] {
             let prefix = root.appendingPathComponent(layer).path + "/"
             guard files.contains(where: { $0.path.hasPrefix(prefix) }) else {
                 throw InventoryError.missingLayer(layer)

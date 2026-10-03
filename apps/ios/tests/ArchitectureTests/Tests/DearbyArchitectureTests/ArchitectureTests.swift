@@ -126,11 +126,11 @@ extension ArchitectureTestSuite {
             try write("checkout/dearby-ios/apps/ios/Sources/Bad.swift")
             try write("other-worktree/apps/ios/Sources/Bad.swift")
             #expect(throws: (any Error).self) { try SourceInventory.productionFiles(iosRoot: ios) }
-            for layer in ["pages", "widgets", "features", "entities", "shared"] {
+            for layer in ["widgets", "features", "entities", "shared"] {
                 try write("checkout/apps/ios/Sources/\(layer)/Fixture.swift")
             }
             let files = try SourceInventory.productionFiles(iosRoot: ios)
-            #expect(files.count == 6)
+            #expect(files.count == 5)
             #expect(files.allSatisfy { $0.path.hasPrefix(ios.appendingPathComponent("Sources").path + "/") })
             #expect(throws: (any Error).self) { try SourceInventory.productionFiles(iosRoot: temporary) }
             // Empty and non-Swift directories must not evade physical inventory checks.
@@ -141,7 +141,7 @@ extension ArchitectureTestSuite {
                 try manager.removeItem(at: directory)
             }
             try write("checkout/apps/ios/Sources/Assets.xcassets/AppIcon.appiconset/Contents.json", "{}")
-            #expect(try SourceInventory.productionFiles(iosRoot: ios).count == 6)
+            #expect(try SourceInventory.productionFiles(iosRoot: ios).count == 5)
             try manager.createSymbolicLink(at: ios.appendingPathComponent("Sources/External"), withDestinationURL: temporary.appendingPathComponent("other-worktree"))
             #expect(throws: (any Error).self) { try SourceInventory.productionFiles(iosRoot: ios) }
         }

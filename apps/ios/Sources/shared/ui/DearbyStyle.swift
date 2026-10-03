@@ -17,29 +17,10 @@ struct DearbyLogo: View {
 
 struct DearbyButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
-    var outlined = false
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.font(.headline).frame(maxWidth: .infinity, minHeight: 50)
-            .foregroundStyle(outlined ? DearbyStyle.teal : .white)
-            .background(outlined ? Color.white : DearbyStyle.teal, in: RoundedRectangle(cornerRadius: 11))
-            .overlay(RoundedRectangle(cornerRadius: 11).stroke(DearbyStyle.teal, lineWidth: outlined ? 1 : 0))
+            .foregroundStyle(.white)
+            .background(DearbyStyle.teal, in: RoundedRectangle(cornerRadius: 11))
             .opacity(!isEnabled ? 0.45 : (configuration.isPressed ? 0.7 : 1))
-    }
-}
-
-struct DearbySegments: View {
-    let labels: [String]
-    @Binding var selection: Int
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(labels.indices, id: \.self) { index in
-                Button { selection = index } label: {
-                    Text(labels[index]).font(.subheadline.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 44).padding(.horizontal, 4)
-                        .foregroundStyle(selection == index ? .white : DearbyStyle.quiet)
-                        .background(selection == index ? DearbyStyle.teal : .clear, in: RoundedRectangle(cornerRadius: 11))
-                }.buttonStyle(.plain).accessibilityAddTraits(selection == index ? .isSelected : [])
-            }
-        }.background(DearbyStyle.muted, in: RoundedRectangle(cornerRadius: 11))
     }
 }
