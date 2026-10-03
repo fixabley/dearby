@@ -1,19 +1,13 @@
-# #47 review — 2026-09-27
+# Prototype ponytail review — 2026-10-03
 
-Reviewed catalog HTTP/Room ownership, UI projections, expiry scheduling, browser route, activity context picker and tests. Removed unused `loaded` state; reused one provider factory/Room database for the two app ViewModels. A single next-boundary coroutine replaces per-second remapping (performance review); no scheduler framework, new persistence abstraction, DI framework or duplicated bookmark owners added. Domain references stay flat, pure pages receive State/callbacks, and real storage/HTTP/expiry tests are retained.
+Reviewed the conversion diff and remaining callers, separately from correctness/UI validation.
 
-Final over-engineering pass: **Lean already. Ship.**
+- `pages/catalog/CatalogPage.kt`: shrink: title-only Row left after removing the hidden bookmark. Replace with a full-width Text; applied without changing card padding.
+- `app/build.gradle.kts`: delete: unused preview, ViewModel Compose and direct Espresso dependencies, plus Android resource unit-test setup. Use the plain lifecycle ViewModel dependency and Compose test dependencies; applied.
+- Service repositories, cache models, clocks/timers, error/retry machinery, login/card/profile/QR UI and unused common UI functions were removed rather than mocked.
 
-Separate correctness checks cover durable-write publication, failure rollback, origin isolation, cache corruption recovery, URL schemes, source/application distinction, report semantics, deadline boundaries and context ID/label exclusivity. Accessibility evidence includes 1.6× font scale, native controls and reachable scroll actions; full TalkBack remains unverified.
+Final review: Lean already. Ship.
 
----
+Tests and boundary checks are retained for the remaining behavior. This review does not substitute for build, lint, unit, emulator or visual checks; see VERIFICATION.md.
 
-## Previous #38 review
-
-# Ponytail review — 2026-09-27
-
-Scope: new Android first-slice diff and its call paths, including HTTP/Room/Keystore, profile/public selection, guest import and contact UI. The review found and removed the unused AuthRepository DAO argument and its storage import. Required independent domain ownership, pure State UI, success-only import, idempotent send persistence and security storage were retained; no line-count-driven removal of tests or boundaries.
-
-Post-fix complexity review: Lean already. Ship.
-
-Correctness, accessibility and state preservation are separate checks recorded in VERIFICATION.md; this review is not a claim of production or full accessibility completion.
+Lint cleanup uses the existing AndroidX `String.toUri()` extension. The intentionally preserved unused GitHub image asset and dependency upgrade notices remain warnings; no suppression or test disabling was added.

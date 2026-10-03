@@ -20,7 +20,7 @@ import com.dearby.nativeapp.shared.ui.DearbyLogo
     Surface(Modifier.fillMaxSize()) {
         Column(Modifier.statusBarsPadding().navigationBarsPadding()) {
             if (!detail) DearbyLogo(Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
-            CatalogRoute(catalog, false, showsSaving = false) { detail = it }
+            CatalogRoute(catalog) { detail = it }
         }
     }
 }

@@ -1,38 +1,36 @@
 package com.dearby.nativeapp.app
 
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dearby.nativeapp.features.application.ApplicationBrowser
-import com.dearby.nativeapp.features.application.safeWebUrl
 import com.dearby.nativeapp.features.calendar.CalendarConflictSheet
 import com.dearby.nativeapp.pages.catalog.CatalogPage
 import com.dearby.nativeapp.pages.catalog.ActivityDetailPage
 import com.dearby.nativeapp.pages.catalog.ApplicationReportDialog
 
-@Composable fun CatalogRoute(model: CatalogViewModel, saved: Boolean, showsSaving: Boolean = true, active: (Boolean) -> Unit) {
+@Composable fun CatalogRoute(model: CatalogViewModel, active: (Boolean) -> Unit) {
     val state by model.state.collectAsStateWithLifecycle()
-    var selected by rememberSaveable(saved) { mutableStateOf<String?>(null) }
-    var browser by rememberSaveable { mutableStateOf<String?>(null) }
-    var prompt by rememberSaveable { mutableStateOf(false) }
+    var selected by remember { mutableStateOf<String?>(null) }
+    var browser by remember { mutableStateOf(false) }
+    var prompt by remember { mutableStateOf(false) }
     var calendar by remember { mutableStateOf(false) }
     var linkError by remember { mutableStateOf<String?>(null) }
-    DisposableEffect(selected, browser) { active(selected != null || browser != null); onDispose { active(false) } }
+    DisposableEffect(selected) { active(selected != null); onDispose { active(false) } }
     val context = LocalContext.current
     val activity = state.activities.find { it.id == selected }
-    BackHandler(selected != null && browser == null && !prompt) { selected = null }
+    BackHandler(selected != null && !browser && !prompt && !calendar) { selected = null }
     when {
-        browser != null -> ApplicationBrowser(browser!!) { browser = null; prompt = true }
-        activity != null -> ActivityDetailPage(activity, state.writing, state.storageReady, state.storageError ?: linkError, { selected = null }, { model.toggleProgram(activity.programId) }, { model.toggleOrganization(activity.organizationId) }, {
-            runCatching { require(safeWebUrl(activity.source)); context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(activity.source))) }
-                .onFailure { linkError = "공식 출처를 열지 못했습니다." }
-        }, { activity.application?.let { if (safeWebUrl(it)) browser = it else linkError = "신청 주소를 확인할 수 없습니다." } }, { prompt = true }, showsSaving = showsSaving, checkCalendar = { calendar = true })
-        else -> CatalogPage(state, saved, model::refresh, { selected = it }, { if (it.organization) model.toggleOrganization(it.id) else model.toggleProgram(it.id) }, model::toggleProgram, showsSaving = showsSaving)
+        browser && activity != null -> ApplicationBrowser(activity.source) { browser = false; prompt = true }
+        activity != null -> ActivityDetailPage(activity, linkError, { selected = null }, {
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, activity.source.toUri())) }
+                .onFailure { linkError = "예시 링크를 열지 못했습니다." }
+        }, { browser = true }, { prompt = true }, { calendar = true })
+        else -> CatalogPage(state, { selected = it; linkError = null }, model::filter)
     }
     if (calendar && activity != null) CalendarConflictSheet(model.schedules(activity.id)) { calendar = false }
-    if (prompt && activity != null) ApplicationReportDialog(state.writing || !state.storageReady, state.storageError, { value -> model.report(activity.id, value) { prompt = false } }, { if (!state.writing) prompt = false })
+    if (prompt && activity != null) ApplicationReportDialog({ model.report(activity.id, it); prompt = false }, { prompt = false })
 }

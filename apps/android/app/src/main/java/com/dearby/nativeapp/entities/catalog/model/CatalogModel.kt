@@ -1,47 +1,21 @@
 package com.dearby.nativeapp.entities.catalog.model
 
-import kotlinx.serialization.Serializable
-import java.time.Instant
+data class ScheduleModel(val title: String, val startAt: String, val endAt: String, val timeZone: String = "Asia/Seoul")
+data class ActivityModel(
+    val id: String, val title: String, val summary: String, val participation: String,
+    val status: String, val date: String, val location: String, val audience: String,
+    val url: String, val schedule: ScheduleModel,
+)
 
-@Serializable data class OrganizationModel(val id: String, val name: String, val description: String)
-@Serializable data class ProgramModel(val id: String, val organizationId: String, val title: String, val description: String)
-@Serializable data class ScheduleModel(val id: String, val title: String, val startAt: String?, val endAt: String?, val dateLabel: String, val timeZone: String)
-@Serializable data class ActivityModel(
-    val id: String, val programId: String, val organizationId: String,
-    val title: String, val summary: String, val participationType: String,
-    val recruitmentStatus: String, val isRecruiting: Boolean,
-    val recruitmentStartAt: String?, val recruitmentEndAt: String?,
-    val dateLabel: String, val location: String?, val cost: String?,
-    val audience: String?, val qualification: String?, val roles: List<String>,
-    val schedules: List<ScheduleModel>, val officialUrl: String, val applicationUrl: String?,
-    val sourceCheckedAt: String?, val validUntil: String?, val freshness: String, val sourceNote: String,
-) {
-    fun nextChange(now: Instant): Instant? = listOfNotNull(sourceCheckedAt.instant(), validUntil.instant(), sourceCheckedAt.instant()?.plusSeconds(86_400), recruitmentStartAt.instant(), recruitmentEndAt.instant()).filter { it.isAfter(now) }.minOrNull()
-    fun fresh(now: Instant): Boolean {
-        val checked = sourceCheckedAt.instant() ?: return false
-        val until = validUntil.instant() ?: return false
-        return freshness == "verified" &&
-            !now.isBefore(checked) && now.isBefore(until) && now.isBefore(checked.plusSeconds(86_400))
-    }
-    fun closed(now: Instant): Boolean = recruitmentStatus == "closed" || recruitmentEndAt.instant()?.let { !now.isBefore(it) } == true
-    fun current(now: Instant): Boolean = isRecruiting && recruitmentStatus == "open" && fresh(now) &&
-            (recruitmentStartAt == null || recruitmentStartAt.instant()?.let { !now.isBefore(it) } == true) &&
-            (recruitmentEndAt == null || recruitmentEndAt.instant()?.let { now.isBefore(it) } == true)
-}
-private fun String?.instant(): Instant? = this?.let { runCatching { Instant.parse(it) }.getOrNull() }
-@Serializable data class CatalogModel(val generatedAt: String, val organizations: List<OrganizationModel>, val programs: List<ProgramModel>, val activities: List<ActivityModel>) {
-    fun validated(): CatalogModel {
-        require(organizations.map { it.id }.toSet().size == organizations.size && organizations.all { it.id.isNotBlank() })
-        require(programs.map { it.id }.toSet().size == programs.size && programs.all { it.id.isNotBlank() })
-        require(activities.map { it.id }.toSet().size == activities.size && activities.all { it.id.isNotBlank() })
-        val organizationIds = organizations.map { it.id }.toSet()
-        val programsById = programs.associateBy { it.id }
-        require(programs.all { it.organizationId in organizationIds })
-        require(activities.all { it.organizationId in organizationIds && programsById[it.programId]?.organizationId == it.organizationId })
-        return this
-    }
-}
-@Serializable data class CatalogLocalModel(
-    val programs: Set<String> = emptySet(), val organizations: Set<String> = emptySet(),
-    val reports: Map<String, String> = emptyMap(),
+// Fixed examples: deliberately independent of the device clock and network.
+val demoActivities = listOf(
+    ActivityModel("conference", "Dearby 개발자 컨퍼런스", "개발자·디자이너·기획자가 함께하는 컨퍼런스", "참가등록형", "모집 중",
+        "2026년 10월 24일 13:00~17:00", "서울 코엑스", "개발자 · 디자이너 · 기획자", "https://example.com",
+        ScheduleModel("Dearby 개발자 컨퍼런스", "2026-10-24T13:00:00+09:00", "2026-10-24T17:00:00+09:00")),
+    ActivityModel("camp", "Dearby 메이커 캠프", "함께 아이디어를 만들고 나누는 메이커 캠프", "선발형 · 신청 후 선정 필요", "모집 중",
+        "2026년 11월 7일 10:00~18:00", "서울", "개발 · 디자인 · 기획", "https://example.com",
+        ScheduleModel("Dearby 메이커 캠프", "2026-11-07T10:00:00+09:00", "2026-11-07T18:00:00+09:00")),
+    ActivityModel("meetup", "Dearby 커뮤니티 밋업", "온라인에서 만나는 Dearby 커뮤니티", "참가등록형", "모집 예정",
+        "2026년 11월 21일 14:00~17:00", "온라인", "누구나", "https://example.com",
+        ScheduleModel("Dearby 커뮤니티 밋업", "2026-11-21T14:00:00+09:00", "2026-11-21T17:00:00+09:00")),
 )

@@ -13,22 +13,9 @@ ROOT = Path(__file__).resolve().parents[1] / 'app/src/main/java/com/dearby/nativ
 LAYERS = {name: i for i, name in enumerate(('app', 'pages', 'widgets', 'features', 'entities', 'shared'))}
 API = {
     'features.calendar': {'CalendarConflictSheet'},
-    'pages.catalog': {'CatalogPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'SavedGroupState', 'CatalogState'},
+    'pages.catalog': {'CatalogPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'CatalogState'},
     'features.application': {'ApplicationBrowser', 'safeWebUrl'},
-    'entities.catalog': {'model.CatalogModel', 'model.CatalogLocalModel', 'model.ActivityModel', 'model.ProgramModel', 'model.OrganizationModel', 'model.ScheduleModel', 'api.CatalogRepository'},
-    'pages.profile': {'ProfilePage', 'ProfileState', 'ContactState', 'HistoryState', 'contactKindLabel'},
-    'pages.qr': {'CardEditor', 'ScanPage', 'QrPage', 'CardEditorState', 'PublishSelectionState', 'VisibilityChoiceState'},
-    'pages.login': {'LoginPage'},
-    'pages.wallet': {'ImportPage', 'ImportEntryState', 'WalletPage', 'WalletEntryState', 'SendPage', 'SharedCardPage'},
-    'widgets.activity.contextPicker': {'ActivityContextPicker', 'ActivityChoiceState'},
-    'widgets.card.cardContent': {'CardContent', 'CardStack', 'CardState', 'CardHistoryState', 'toState'},
-    'features.contact': {'ContactActionState', 'contactAction', 'ContactActions'},
-    'features.account': {'AccountState', 'AuthRepository'},
-    'features.guest': {'GuestStore'},
-    'features.qr': {'QrActions'},
-    'features.wallet': {'WalletRepository'},
-    'entities.profile': {'model.ProfileModel', 'model.ContactModel', 'model.HistoryModel', 'api.ProfileRepository'},
-    'entities.card': {'model.CardModel', 'model.CardSelectionModel', 'model.ExchangeContextModel', 'model.ReceiptModel', 'model.GuestSavedCardModel', 'model.ImportResultModel', 'model.importedIds', 'api.CardRepository'},
+    'entities.catalog': {'model.ActivityModel', 'model.ScheduleModel', 'model.demoActivities'},
 }
 
 def owner(name):
@@ -62,40 +49,30 @@ def check_source(path, text):
         if rendering and (target_layer == 'entities' or (target_layer == 'shared' and not ref.startswith('shared.ui.')) or (target_layer == 'features' and not ref.endswith('State'))):
             errors.append('UI requires State/callbacks, not domain/I/O: ' + ref)
     if rendering and re.search(r'\b(LocalContext|SharedPreferences|getSharedPreferences|AssetManager|Intent|startActivity|\w+ViewModel|\w+Repository)\b', code): errors.append('UI directly accesses provider/OS side effect')
-    if layer == 'shared' and re.search(r'\b(?:Profile|Card|Receipt|GuestSavedCard)Model\b', code): errors.append('shared infrastructure knows domain')
-    if layer == 'app' and 'providers' not in path.parts and re.search(r'\b(?:Room\.databaseBuilder|HttpClient|ProfileRepository|CardRepository|WalletRepository|AuthRepository|TokenVault)\s*\(', code): errors.append('dependency construction belongs to app/providers')
+    if re.search(r'\b(?:Room|HttpClient|HttpURLConnection|WebView|TokenVault|CalendarContract|SQLiteDatabase|getSharedPreferences|rememberSaveable|SavedStateHandle)\b', code): errors.append('prototype must not access service or persisted state')
     return errors
 
 def self_test():
     cases = [
         ('pages/catalog/Test.kt', 'import com.dearby.nativeapp.entities.catalog.model.ActivityModel', False),
         ('pages/catalog/Test.kt', 'import com.dearby.nativeapp.shared.storage.DearbyDao', False),
-        ('widgets/activity/contextPicker/Test.kt', 'import com.dearby.nativeapp.app.CatalogViewModel', False),
-        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.widgets.activity.contextPicker.ActivityChoiceState', True),
-        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.app.DearbyApp', False),
-        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.pages.profile.ProfileState', False),
-        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.entities.card.model.CardModel', False),
-        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.shared.storage.DearbyDao', False),
-        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.features.account.AuthRepository', False),
-        ('pages/qr/Test.kt', 'import android.content.Intent', False),
-        ('pages/qr/Test.kt', 'val x = LocalContext.current', False),
-        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.widgets.card.cardContent.CardState', True),
-        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.shared.ui.Field', True),
-        ('pages/qr/Test.kt', 'val x: CardEditorState? = null', True),
-        ('widgets/card/cardContent/Test.kt', 'import com.dearby.nativeapp.entities.card.model.CardModel', False),
-        ('widgets/card/cardContent/Test.kt', 'import com.dearby.nativeapp.shared.api.HttpClient', False),
-        ('widgets/card/cardContent/Test.kt', 'import com.dearby.nativeapp.widgets.other.CardState', False),
-        ('entities/profile/Test.kt', 'import com.dearby.nativeapp.entities.card.model.CardModel', False),
-        ('entities/profile/Test.kt', 'import com.dearby.nativeapp.features.account.AccountState', False),
-        ('entities/profile/Test.kt', 'import com.dearby.nativeapp.shared.api.HttpClient', True),
-        ('features/wallet/Test.kt', 'import com.dearby.nativeapp.entities.card.model.CardModel', True),
-        ('features/wallet/Test.kt', 'import com.dearby.nativeapp.features.account.AccountState', False),
-        ('features/wallet/Test.kt', 'import com.dearby.nativeapp.entities.card.api.PrivateDao', False),
-        ('features/wallet/Test.kt', 'import com.dearby.nativeapp.pages.wallet.WalletEntryState', False),
-        ('shared/ui/Test.kt', 'val profile: ProfileModel? = null', False),
-        ('app/Test.kt', 'val client = HttpClient("", false) {}', False),
-        ('app/providers/Test.kt', 'val client = HttpClient("", false) {}', True),
-        ('app/Test.kt', 'import com.dearby.nativeapp.pages.wallet.WalletPage', True),
+        ('pages/catalog/Test.kt', 'import com.dearby.nativeapp.app.CatalogViewModel', False),
+        ('pages/catalog/Test.kt', 'import android.content.Intent', False),
+        ('pages/catalog/Test.kt', 'val x = LocalContext.current', False),
+        ('pages/catalog/Test.kt', 'import com.dearby.nativeapp.shared.ui.DearbyButton', True),
+        ('pages/catalog/Test.kt', 'val x: ActivityState? = null', True),
+        ('features/calendar/Test.kt', 'import com.dearby.nativeapp.entities.catalog.model.ScheduleModel', True),
+        ('features/calendar/Test.kt', 'import com.dearby.nativeapp.features.application.ApplicationBrowser', False),
+        ('features/calendar/Test.kt', 'import com.dearby.nativeapp.pages.catalog.ActivityState', False),
+        ('features/calendar/Test.kt', 'import com.dearby.nativeapp.entities.catalog.model.PrivateModel', False),
+        ('entities/catalog/Test.kt', 'import com.dearby.nativeapp.features.calendar.CalendarConflictSheet', False),
+        ('shared/ui/Test.kt', 'import com.dearby.nativeapp.entities.catalog.model.ActivityModel', False),
+        ('app/Test.kt', 'import com.dearby.nativeapp.pages.catalog.CatalogPage', True),
+        ('shared/Test.kt', 'val x = Room.databaseBuilder()', False),
+        ('app/Test.kt', 'val x = getSharedPreferences()', False),
+        ('features/calendar/Test.kt', 'val x = CalendarContract.Instances', False),
+        ('features/application/Test.kt', 'val x = WebView(context)', False),
+        ('app/Test.kt', 'val x = rememberSaveable { true }', False),
     ]
     for filename, snippet, allowed in cases:
         path = Path(filename)
