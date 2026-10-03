@@ -17,6 +17,32 @@
   "shared": [
     "DearbyStyle",
     "DearbyLogo",
-    "DearbyButtonStyle"
+    "DearbyButtonStyle",
+    "DearbyBadge",
+    "DearbyAvatar",
+    "DearbyInfoRow",
+    "DearbySheetHeader",
+    "DearbySegments"
+  ],
+  "entities/identity": [
+    "CardModel",
+    "ContactModel",
+    "HistoryModel",
+    "DemoIdentity",
+    "IdentityHeading",
+    "HistoryTimeline",
+    "ContactIcons",
+    "ContactSymbol",
+    "CardView",
+    "CardDeck"
+  ],
+  "pages/home": [
+    "HomePage"
+  ],
+  "widgets/identity": [
+    "IdentityViewModel",
+    "QRPage",
+    "WalletPage",
+    "ProfilePage"
   ]
 }

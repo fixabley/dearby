@@ -42,15 +42,7 @@ struct CalendarConflictView: View {
     }
     private var result: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                Text("겹치는 시간").font(.title2.bold())
-                Spacer()
-                Text(state.overlaps.isEmpty ? "0 / 0" : "\(state.index + 1) / \(state.overlaps.count)")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                Button { dismiss() } label: {
-                    Image(systemName: "xmark").font(.title3).foregroundStyle(.secondary).frame(width: 44, height: 44)
-                }.accessibilityLabel("닫기")
-            }.padding(.leading, 20).padding(.trailing, 8).padding(.top, 20)
+            DearbySheetHeader(title: "겹치는 시간", detail: state.overlaps.isEmpty ? "0 / 0" : "\(state.index + 1) / \(state.overlaps.count)") { dismiss() }
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     if state.overlaps.indices.contains(state.index) {

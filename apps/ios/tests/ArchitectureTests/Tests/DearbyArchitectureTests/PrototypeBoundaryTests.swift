@@ -8,7 +8,7 @@ extension ArchitectureTestSuite {
             let forbidden: Set<String> = ["URLSession", "UserDefaults", "AppStorage", "SceneStorage", "FileManager",
                 "SwiftData", "ModelContainer", "ModelContext", "EventKit", "EKEventStore", "AVFoundation",
                 "AVCaptureSession", "Security", "SecItemCopyMatching", "SecItemAdd", "SecItemDelete",
-                "Photos", "PhotosUI", "SafariServices", "SFSafariViewController", "WKWebView", "WebKit"]
+                "Photos", "PhotosUI", "UIPasteboard", "CoreImage", "SafariServices", "SFSafariViewController", "WKWebView", "WebKit"]
             for file in files {
                 let source = FSDBoundaries.File(path: file.path, text: try String(contentsOf: file, encoding: .utf8))
                 #expect(source.references.isDisjoint(with: forbidden), "Unexpected service/device access in \(file.lastPathComponent)")

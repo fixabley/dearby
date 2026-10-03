@@ -16,7 +16,7 @@ struct CalendarOverlapState: Identifiable {
     var gridSteps: Int { Int(gridEnd.timeIntervalSince(gridStart) / 1800) }
     var dateFormat: Date.FormatStyle {
         Date.FormatStyle(locale: Locale(identifier: "ko_KR"), timeZone: TimeZone(identifier: activity.timeZone)!)
-            .month(.defaultDigits).day().weekday(.abbreviated)
+            .month(.wide).day().weekday(.abbreviated)
     }
     func time(_ date: Date) -> String {
         let formatter = DateFormatter()

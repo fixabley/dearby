@@ -13,19 +13,14 @@ struct ActivityDetailView: View {
             if let activity {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
-                        VStack(spacing: 12) {
-                            Image(systemName: "photo").font(.largeTitle)
-                            Text("공식 활동 이미지 미제공").font(.caption)
-                        }.foregroundStyle(DearbyStyle.quiet).frame(maxWidth: .infinity).frame(height: 170)
-                            .background(DearbyStyle.muted)
+                        ActivityArtwork(activityID: activity.id)
+                            .frame(height: 210).clipped()
                         VStack(alignment: .leading, spacing: 24) {
                             identity(activity)
-                            ActivityInformationView(activity: activity)
-                            Button("겹치는 시간 확인하기", systemImage: "calendar.badge.clock") { showCalendar = true }
-                                .frame(minHeight: 44)
+                            ActivityInformationView(activity: activity, checkCalendar: { showCalendar = true })
                             source(activity)
                             Divider()
-                            Text("데모 신청 기록은 실제 접수·선정·결제와 무관해요.")
+                            Text("신청 기록은 화면 체험용이며 실제 접수와 무관해요.")
                                 .font(.footnote).foregroundStyle(DearbyStyle.quiet)
                             Button("신청 상태 수정") { showReport = true }.frame(minHeight: 44)
                             Text("예시 기록은 앱을 종료하면 사라집니다.").font(.caption).foregroundStyle(DearbyStyle.quiet)
@@ -61,7 +56,7 @@ struct ActivityDetailView: View {
                 }
             }
         }
-        .background(.white).tint(Color(red: 0, green: 0.36, blue: 0.34))
+        .background(.white).tint(DearbyStyle.teal)
         .confirmationDialog("데모 신청 상태", isPresented: $showReport, titleVisibility: .visible) {
             Button("신청했어요 (예시)") { state.appliedIDs.insert(activityID) }
             Button("신청하지 않았어요") { state.appliedIDs.remove(activityID) }
@@ -71,18 +66,26 @@ struct ActivityDetailView: View {
     private func identity(_ activity: ActivityModel) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text(activity.demoStatus)
-                Text(activity.participationType == .selection ? "선발형" : "참가등록형")
-            }.font(.caption.weight(.semibold)).foregroundStyle(DearbyStyle.teal)
-                .padding(8).background(DearbyStyle.mint, in: RoundedRectangle(cornerRadius: 8))
+                DearbyBadge(title: "예시 활동")
+                DearbyBadge(title: activity.participationType == .selection ? "선발형" : "참가등록형")
+            }
             Text(activity.title).font(.title.bold())
-            Text("Dearby · 예시 활동").font(.headline)
+            HStack {
+                Image(systemName: "infinity").font(.title).foregroundStyle(DearbyStyle.teal)
+                    .frame(width: 44, height: 44).background(DearbyStyle.mint, in: Circle())
+                Text("Dearby 커뮤니티").font(.headline)
+                Spacer()
+                Button { state.savedOrganization.toggle() } label: {
+                    Label(state.savedOrganization ? "조직 저장됨" : "조직 저장", systemImage: state.savedOrganization ? "bookmark.fill" : "bookmark")
+                        .font(.caption).padding(10).overlay(Capsule().stroke(DearbyStyle.teal))
+                }.accessibilityIdentifier("save-organization")
+            }
             Divider()
-            Label(activity.audience, systemImage: "person.2")
-            Label(activity.cost, systemImage: "creditcard")
-            Label(activity.demoStatus, systemImage: "calendar")
-            Label(activity.dateLabel, systemImage: "clock")
-            Label(activity.location, systemImage: "mappin.and.ellipse")
+            DearbyInfoRow(title: "참가 대상", value: activity.audience, symbol: "person.2")
+            DearbyInfoRow(title: "참가비", value: activity.cost, symbol: "cylinder")
+            DearbyInfoRow(title: "모집 상태", value: activity.demoStatus, symbol: "calendar")
+            DearbyInfoRow(title: "개최 일시", value: activity.dateLabel, symbol: "clock")
+            DearbyInfoRow(title: "장소", value: activity.location, symbol: "mappin.and.ellipse")
             Divider()
             Text("소개").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
             Text(activity.summary).lineSpacing(5)
@@ -92,7 +95,11 @@ struct ActivityDetailView: View {
         VStack(spacing: 0) {
             Divider()
             HStack(spacing: 12) {
-                Button(applied ? "데모 신청 확인하기" : "신청하기 (예시)") { showApplication = true }
+                Button { state.toggleSaved(activityID) } label: {
+                    Image(systemName: state.savedIDs.contains(activityID) ? "bookmark.fill" : "bookmark")
+                        .font(.title2).frame(width: 48, height: 50).overlay(RoundedRectangle(cornerRadius: 11).stroke(DearbyStyle.teal))
+                }.accessibilityLabel("활동 저장").accessibilityIdentifier("detail-save")
+                Button(applied ? "공식 사이트 보기" : "공식 사이트에서 신청") { showApplication = true }
                     .buttonStyle(DearbyButtonStyle()).accessibilityIdentifier("open-application")
             }.padding(.horizontal, 20).padding(.vertical, 12)
         }.background(.white)
