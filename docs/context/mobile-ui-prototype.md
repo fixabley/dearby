@@ -18,6 +18,19 @@
 
 ## 공통 예시
 
+```mermaid
+flowchart LR
+    LIST["탐색 · 유형 필터"] --> DETAIL["활동 상세"]
+    DETAIL --> APPLY["예시 신청 안내"]
+    APPLY --> LINK["예시 링크 · 외부 브라우저"]
+    APPLY --> MARK["이번 실행의 예시 신청 표시"]
+    MARK --> DETAIL
+    DETAIL --> CALENDAR["겹치는 시간 확인"]
+    CALENDAR --> RESULT["고정 예시 일정과 비교"]
+    RESULT --> DETAIL
+    DETAIL --> LIST
+```
+
 | 활동 | 유형 | 표시 상태 | 일정 (서울 시간) |
 | --- | --- | --- | --- |
 | Dearby 개발자 컨퍼런스 | 참가등록형 | 예시 모집 중 | 2026-10-24 13:00–17:00 |
