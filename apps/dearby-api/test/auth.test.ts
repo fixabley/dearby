@@ -10,14 +10,14 @@ test('HTTP OTP never returned, is hashed, one use; session expires and revokes',
   assert.equal(challenge.status,202);
   assert.deepEqual(Object.keys(challenge.body).sort(),['challengeId','expiresAt']);
   const code = f.codes.get('owner@example.com')!;
-  const stored = f.db.prepare('SELECT digest FROM challenges').get() as {digest:string};
+  const stored = (await f.db.challenge.findFirstOrThrow());
   assert.equal(stored.digest.length,64); assert.notEqual(stored.digest,code);
   const input = {challengeId:challenge.body.challengeId,code};
   const session = await f.request('POST','/auth/sessions',input);
   assert.equal(session.status,200); assert.equal(session.headers.get('cache-control'),'no-store');
   assert.equal((await f.request('POST','/auth/sessions',input)).status,401);
   const token = session.body.sessionToken;
-  assert.equal(f.db.prepare('SELECT digest FROM sessions WHERE digest = ?').get(token),undefined);
+  assert.equal(await f.db.session.findUnique({where:{digest:token}}),null);
   assert.equal((await f.request('DELETE','/auth/session',undefined,token)).status,204);
   assert.equal((await f.request('DELETE','/auth/session',undefined,token)).status,401);
   f.advance(61000);
@@ -35,7 +35,7 @@ test('HTTP OTP wrong attempts commit, expiry and resend limits persist', async t
   const wrong = actual === '000000' ? '000001' : '000000';
   for (let i=0;i<5;i++) assert.equal((await f.request('POST','/auth/sessions',{challengeId:a.body.challengeId,code:wrong})).status,401);
   assert.equal((await f.request('POST','/auth/sessions',{challengeId:a.body.challengeId,code:actual})).status,401);
-  const row = f.db.prepare('SELECT attempts FROM challenges WHERE id = ?').get(a.body.challengeId) as {attempts:number};
+  const row = await f.db.challenge.findUniqueOrThrow({where:{id:a.body.challengeId}});
   assert.equal(row.attempts,5);
   f.advance(61000);
   const b = await f.request('POST','/auth/challenges',{email:'a@example.com'});
@@ -57,7 +57,7 @@ test('HTTP resend invalidates prior challenge; mail fails closed and invalid inp
   const closed = await fixture(smtpMailer({})); t.after(closed.close);
   const failure = await closed.request('POST','/auth/challenges',{email:'a@example.com'});
   assert.equal(failure.status,503);
-  assert.equal(closed.db.prepare('SELECT * FROM challenges').get(),undefined);
+  assert.equal(await closed.db.challenge.count(),0);
   assert.deepEqual(failure.body,{error:{code:'MAIL_UNAVAILABLE',message:'Email delivery unavailable'}});
 });
 

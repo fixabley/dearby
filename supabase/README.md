@@ -1,0 +1,17 @@
+# Supabase migration baseline
+
+The six migrations are copied unchanged from reviewed collector commit `8302f2b`; their versions match the existing local database. They cover the catalog, administrator RLS, public snapshot RPC, structured criteria and leased collection queue. Administrator/worker UI code is not included in this baseline PR. Native API SQLite profiles/cards/guest sessions are not Supabase data and are not migrated.
+
+For the [official GitHub integration](https://supabase.com/docs/guides/deployment/branching/github-integration), select repository `fixabley/dearby`, working directory `.`, and production branch `main`. Root enables the integration only after this directory is merged and the cloud migration history matches these six versions. Do not reapply the non-idempotent baseline to a database whose objects were already restored. Automatic migration deployment does not transfer production rows, Auth settings or Storage object bytes.
+
+`config.toml` preserves the local development configuration with seeding disabled: there is no checked-in production seed or fixture. Its local Auth/SMTP/network defaults are not a claim of cloud configuration parity. Production URL/key/SMTP/redirect settings are operator-managed. Never commit env, CLI access tokens, database dumps, Auth data/password hashes or cloud service keys.
+
+Migration `20260929020000` installs one cron entry, but the collection settings default to disabled. During data restoration an existing enabled setting must be explicitly held disabled with a migration pause reason, and the cloud cron must remain inactive until root approves cutover. Stop/drain the local subscription worker before the final data snapshot; switching credentials without pausing both sides can duplicate collection. Preserve blocked jobs, result identities, usage and attempt history instead of restarting them.
+
+Validation performed for this baseline: all three local database archives restored into an isolated network-disabled PostgreSQL 17.6; the primary archive reproduced all 61 table counts. Replaying the six migrations into a separate fresh Supabase 17.6 produced an exactly matching normalized public schema. `tests/migration-contract.sql` is a read-only grant/RLS/RPC and paused-settings check, for example:
+
+```sh
+psql -X --set ON_ERROR_STOP=1 --file supabase/tests/migration-contract.sql
+```
+
+Supply connections privately via an operator-managed service/password file, not a literal URI with a password in terminal history. Do not run `supabase db reset`, local bootstrap scripts or seed helpers against the cloud project. Cloud restoration and consumer env switching are separate root-coordinated operations with protected backups and a rollback record outside Git.

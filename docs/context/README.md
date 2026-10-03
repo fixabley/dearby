@@ -19,11 +19,14 @@ PR40 main 병합 완료(849b1fe). 사용자가 기존 파일과 데이터를 보
 | 문서 | 담당 정보 |
 | --- | --- |
 | [조율·현재 작업](coordinator-current-task-and-decisions.md) | 완료 상태, 협업 원칙, 다음 행동 |
-| [웹 구현 인계](web-implementation-and-handoff.md) | 새 Next.js 웹의 구현·검증·프로토타입 한계 |
+| [관리자 웹 Vercel 배포](admin-web-deployment.md) | 승인 관리자 UI 복원·Node24·SPA·권한 검증·root 배포 인계 |
+| [웹 구현 인계](web-implementation-and-handoff.md) | 2026-09-29 공개 웹·guest 저장·Vercel root 인계 |
 | [iOS 인계](ios-implementation-and-handoff.md) | SwiftUI 상태·컴포넌트·SwiftData 경계 |
 | [main TestFlight 준비](testflight-main-readiness.md) | main 기반 배포 메타데이터 보완·무서명 archive 검증·root 인계 |
 | [Android 인계](android-implementation-and-handoff.md) | Compose 상태·컴포넌트·Room 경계 |
 | [main API 도메인 배포](api-domain-main.md) | 독립 컨테이너·Supabase read·root nginx 인계 |
+| [API Swagger](api-swagger.md) | 읽기 전용 UI·OpenAPI·HTTP 계약 일치·root nginx 인계 |
+| [API Prisma 전환](api-prisma-postgres.md) | 전체 API 저장 PostgreSQL 전환 완료·운영 Compose 정본·SQLite 보존 |
 | [API 인계](api-implementation-and-handoff.md) | 서버 현황, 미구현 범위, 실행 위치 |
 | [제품·기획](product-planning-and-github-issues.md) | 제품 목적, 구현 범위, Symposium 정본 |
 | [공통 데이터](shared-data-and-source-decisions.md) | 조직·공고 관계, 승인 사례, 데이터 정본 |

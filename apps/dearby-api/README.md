@@ -1,6 +1,6 @@
-# Dearby native API — local vertical slice
+# Dearby API — Fastify 5 + Prisma PostgreSQL
 
-Implements `shared/contracts/native-v1.md`. This is a local SQLite HTTP runtime, not production delivery or overall product completion.
+Implements `shared/contracts/native-v1.md`. Runtime storage uses Prisma/PostgreSQL in the private `dearby_api` schema; catalog reads use the public snapshot function. See the [deployment runbook](deploy/README.md) and [Prisma rollout handoff](../../docs/context/api-prisma-postgres.md) for the current operational boundary.
 
 ## Run
 
@@ -9,7 +9,7 @@ Use Node **24.21.0 LTS** (`nvm use` with this directory's `.nvmrc`). From `apps/
 ```sh
 npm ci
 cp .env.example .env
-# Set OTP_SECRET to independently generated random secret and configure SMTP.
+# Configure a permitted development PostgreSQL connection, external TLS CA, OTP_SECRET and SMTP.
 # openssl rand -hex 32 (store result privately, never commit it)
 npm run dev
 npm run typecheck
@@ -19,11 +19,11 @@ npm run build
 npm start
 ```
 
-SQLite migrations in `migrations/*.sql` run atomically once on startup; preserve that directory beside `dist`. Runtime binds loopback by default. No SMTP settings means challenge requests return 503. No development HTTP endpoint reveals OTPs; only the test harness (`NODE_ENV=test`) injects an in-memory mail sink, never server startup. SMTP requires TLS and certificate validation. Authentication success necessarily returns `sessionToken` as specified; no other response or logger exposes tokens/codes. Access logging is disabled; never add raw HTTP bodies/Authorization to infrastructure logs.
+DDL is owned solely by `supabase/migrations`; runtime startup does not run migrations. Never use Prisma db push/reset on production. `npm test` creates isolated PostgreSQL fixtures and does not use production env. Runtime binds loopback by default. No SMTP settings means challenge requests return 503. No development HTTP endpoint reveals OTPs; only the test harness (`NODE_ENV=test`) injects an in-memory mail sink, never server startup. SMTP requires TLS and certificate validation. Authentication success necessarily returns `sessionToken` as specified; no other response or logger exposes tokens/codes. Access logging is disabled; never add raw HTTP bodies/Authorization to infrastructure logs.
 
 OTP: 6 random decimal digits, HMAC-SHA256 with server secret and challenge ID, 5-minute expiry, max 5 guesses, single use, new successful send invalidates prior challenge. Persistent quotas: one send/email/minute, five/email/hour, twenty/IP/hour, sixty verifications/IP/minute. Failed deliveries consume quotas to limit provider abuse. Unknown/expired/used/locked challenges use the same 401 response, and new/existing emails follow the same challenge response. Session tokens are 256-bit random, SHA256 persisted, expire after 30 days, and revoke individually.
 
-SQLite uses foreign keys, WAL, busy timeout, synchronous short transactions and numbered migrations. Single host/local disk only: shared-network filesystems, multi-host scaling, production backup/restore, TLS ingress, secret management, actual email delivery and operational limits remain unvalidated. File permissions are restricted by startup umask; database contains private profiles and requires protected storage/backups. Reverse-proxy trust is disabled; configure/test a trusted ingress before deployment so IP quotas reflect clients.
+API writes use Prisma transactions and a shared advisory lock to preserve atomic quotas and storage limits. Keep DATABASE_URL, OTP_SECRET and GUEST_PROXY_SECRET outside Git and images. The external CA is readonly-mounted. Reverse-proxy trust remains disabled; forwarded client headers cannot bypass IP quotas. SQLite files/tools remain offline recovery/history only.
 
 Dependencies were checked against official npm registry on 2026-09-27, pinned with package-lock: Fastify 5.12.5, better-sqlite3 13.0.3, Zod 4.6.5, Nodemailer 10.0.10, TypeScript 7.0.2, tsx 4.23.15. Node 24 is LTS; local host Node 26 is Current, so checks use Node 24 explicitly. Sources: [Node release policy](https://nodejs.org/en/about/previous-releases), [Fastify docs](https://fastify.dev/docs/latest/), [SQLite driver](https://github.com/WiseLibs/better-sqlite3), [SMTP transport](https://nodemailer.com/smtp).
 
@@ -35,16 +35,17 @@ Withdrawn cards are 404 publicly and omitted from fresh wallet responses; receip
 
 ## Public catalog and bounded official collection (#45)
 
-`GET /v1/catalog` follows `shared/contracts/catalog-v1.md`, requires no authentication and includes closed/unknown details. Empty DB returns empty arrays; database failures return 500. Reads recalculate exclusive deadlines and freshness; consumers must also expire cached discovery at `validUntil`. Only semantically verified explicit opening can be recruiting, for at most 24 hours. Failed collection preserves the prior content/check time/hash but marks it unavailable and hides it from discovery until a successful verification.
+`GET /v1/catalog` follows `shared/contracts/catalog-v1.md`, requires no authentication and includes published closed/unknown details. Empty published catalog returns empty arrays; upstream failures return 503. Reads recalculate exclusive deadlines and freshness; consumers must also expire cached discovery at `validUntil`. Only semantically verified explicit opening can be recruiting, for at most 24 hours. Failed collection preserves the prior content/check time/hash but marks it unavailable and hides it from discovery until a successful verification.
+
+The following commands are preserved offline tools; they do not populate the running Prisma API.
 
 ```sh
 # Explicit isolated SQLite path is required; commands do not read DATABASE_PATH.
-npm run catalog -- refresh --db /tmp/dearby-catalog.sqlite
-npm run catalog -- refresh --db /tmp/dearby-catalog.sqlite --source kakao-2026
+npm run catalog:offline -- refresh --db /tmp/dearby-catalog.sqlite
+npm run catalog:offline -- refresh --db /tmp/dearby-catalog.sqlite --source kakao-2026
 # Optional historical import. Never verifies or overwrites existing source records.
-npm run catalog -- import-legacy --db /tmp/dearby-catalog.sqlite
-# Serve this DB with the normal server, an independently generated OTP_SECRET,
-# DATABASE_PATH=/tmp/dearby-catalog.sqlite and an available loopback PORT.
+npm run catalog:offline -- import-legacy --db /tmp/dearby-catalog.sqlite
+# Do not supply this SQLite file to the Prisma runtime.
 ```
 
 Only `https://if.kakao.com/2026` and `https://2026.feconf.kr/` are fetched, sequentially, with 15-second timeout, 1 MiB decoded-body limit and no redirects, linked-page crawling, JavaScript execution, retries, login or submission. Changed/uncertain source structure fails closed with nonzero CLI exit. `catalog_refreshes` stores the most recent attempt; `catalog_activities.good_body_sha256` retains the last good HTML SHA256 across failed attempts. Structured source notes capture interpretation; raw HTML is not a permanent archive. Run refresh explicitly or from an operator-owned scheduler; no scheduler/monitoring deployment is included.
@@ -55,4 +56,14 @@ IDs use UUIDv5 with DNS namespace `6ba7b810-9dad-11d1-80b4-00c04fd430c8` and UTF
 
 ## Main deployment / Supabase read boundary
 
-See [deployment runbook](deploy/README.md) for the isolated Docker service and root-owned apex nginx location. `CATALOG_BACKEND=supabase` selects the existing public snapshot RPC using a server-only anon key; missing/malformed configuration fails startup and upstream failures return sanitized 503 without SQLite fallback. The optional image URL is accepted from the existing RPC; native contracts and app code are not changed here. Auth/cards/wallet remain in the independent SQLite volume.
+See [deployment runbook](deploy/README.md) for the isolated Docker service, least-privilege PostgreSQL runtime role and root-owned nginx locations. All API storage uses Prisma; catalog failures return sanitized 503 without a second backend. Original SQLite volume and backups remain preserved readonly. Existing owner and guest token contracts are unchanged.
+
+## Web guest card storage
+
+The [web guest contract](../../shared/contracts/native-v1.md#웹-비로그인-명함-저장--2026-09-29-승인) defines a separate digest-authenticated store of public card IDs. Guest sessions are created atomically on the first valid save and never expire automatically. The trusted Next proxy owns cookie/CSRF behavior; `GUEST_PROXY_SECRET` must be configured privately at deployment, otherwise guest requests fail closed. Private profiles/member wallets remain protected. See the deployment runbook for capacity, ingress and rollout conditions.
+
+## Swagger / OpenAPI
+
+Open `/docs/` on a permitted running API connection. Download `/docs/json` (OpenAPI 3.0.3) or `/docs/yaml`; the spec is generated from shared Zod contracts and route metadata, never maintained as a second JSON file. The UI is read-only, has no authorization controls, does not persist authorization, and uses local assets without an external validator. Never supply the trusted guest proxy secret to a browser.
+
+The full API is documented, but public ingress currently permits only catalog, public card reads and server-proxy guest routes. Owner/auth routes require a permitted direct/local connection and return404 at public ingress. Root owns rollout of the optional [docs nginx locations](deploy/nginx-docs.location.conf). See [documentation handoff](../../docs/context/api-swagger.md) for validation and scope.
