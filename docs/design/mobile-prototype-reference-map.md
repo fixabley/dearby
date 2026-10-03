@@ -82,6 +82,8 @@ Swift 경로는 `apps/ios`, Kotlin 경로는 `apps/android/app/src/main/java/com
 
 ## 검증 상태
 
-추가 디자인 구현 중이다. 캡처와 시안의 직접 비교, 탭과 핵심 이동 검증, 플랫폼 검사 결과는
-[iOS 인계](../context/ios-ui-prototype.md)와 [Android 인계](../context/android-ui-prototype.md)에 기록한다.
-이 문서는 구현 전 대응표이며 자체로 화면 구현이나 시각 검증 완료를 뜻하지 않는다.
+시안 대응 화면과 공통 UI 분리를 구현하고 실제 캡처로 배치와 주요 이동을 확인했다.
+[iOS 캡처](../../apps/ios/docs/evidence/ui-prototype-selected/README.md),
+[Android 캡처](../../apps/android/evidence/selected-card-flows/README.md)를 함께 본다.
+플랫폼 검사 범위와 후속 재검증은 [iOS 인계](../context/ios-ui-prototype.md)와
+[Android 인계](../context/android-ui-prototype.md)에 기록했다. 운영체제 기본 아이콘·서체·시트 동작에 따른 차이가 있으며 픽셀 단위 동일성을 뜻하지 않는다.

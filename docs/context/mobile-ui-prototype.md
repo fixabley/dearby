@@ -69,7 +69,27 @@ flowchart LR
 
 ## 진행 상태
 
-iOS·Android 담당이 각각 독립 하위 worktree에서 구현과 검증을 진행 중이다. root가 결과를 검토·통합하고 연결된 실기기에 설치한다. 현재 단계에서 구현·빌드·설치 완료로 기록하지 않는다.
+2026-10-04 iOS·Android의 다섯 탭과 시안별 예시 흐름을 root 작업 브랜치에 통합했다.
+실제 계정·캘린더·카메라·영구 저장 대신 고정 예시와 메모리 상태를 사용한다.
+
+| 검증 | 결과 |
+| --- | --- |
+| iOS | SwiftLint 위반 0, 구조 17, 단위 9, 화면 흐름 9 통과. 후속 여백 조정과 큰 글씨의 관련 재검사 이력은 iOS 인계에 구분 기록. |
+| Android | 빌드, 단위 12, 구조 자가검사 25, 화면 흐름 9 및 최종 QR/글자 1.3배 검사 통과. lint 오류 0, 의존성 버전 안내 경고 6. |
+| root 통합 빌드 | iOS 실기기 Release 개발 서명 빌드와 Android Debug APK 빌드 성공. |
+| iPhone 14 Pro Max | Wi-Fi로 기존 앱에 업데이트 설치·실행, 활동 상세와 일정/겹침 확인 진입 화면 캡처 확인. |
+| Android SM-S938N | Wi-Fi 업데이트 설치·실행 성공. 사용자 잠금 해제 후 실제 탐색 화면의 사진·유형 필터·다섯 탭 캡처를 확인했다. |
+| 자산 | 공통 원본 4개와 양쪽 네이티브 사본의 SHA-256 일치. |
+| 변경 범위 | 서버·웹·어드민·Supabase·기존 데이터/계약·워크플로 파일 변경 없음. 운영 DB 작업 없음. |
+
+서명 앱과 APK의 바이트 패턴 검사에서 Supabase 문자열·키 접두사·JWT 후보·env 파일 후보는 0개였다.
+임의 인코딩 또는 알려지지 않은 키 형식의 부재까지 보증하는 검사는 아니다.
+iOS API 주소·권한 설명 키·ATS 예외가 없고 Android APK에 인터넷·카메라·캘린더 권한이 없음을 확인했다.
+실기기 설치는 기존 데이터 삭제 없이 수행했다. TestFlight 업로드는 이번 범위가 아니다.
+
+서명 및 설치 기록은 `~/.dearby-signing/mobile-ui-prototype`, Android 빌드/자산 검토 기록은
+`~/.dearby-deploy/mobile-ui-prototype`에 보존한다. 기기 잠금 화면 등 개인 화면은 저장소에 게시하지 않는다.
+원격 검사·병합 결과는 해당 PR에서 확인한다.
 
 ## 통합 검토 기록
 
@@ -85,3 +105,5 @@ iOS·Android 담당이 각각 독립 하위 worktree에서 구현과 검증을 �
 루트 Xcode 프로젝트에 생긴 로컬 자동 서명 메타데이터 변경은 통합 전 Git stash에 보존했다
 (`Preserve Xcode local provisioning metadata before prototype integration`). 플랫폼 소스 통합에 섞지 않는다.
 인증서·프로파일·서명 빌드 산출물은 프로젝트 밖 `~/.dearby-signing`에서 취급한다.
+
+복잡성 검토(ponytail-review): `Lean already. Ship.` 공통 표현은 반복 사용되는 작은 컴포넌트로 제한했다. 정확성·접근성 검토는 위 테스트와 시각 검토로 별도 수행했다.
