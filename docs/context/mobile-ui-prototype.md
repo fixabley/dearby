@@ -39,6 +39,28 @@ flowchart LR
 
 고정 바쁜 시간은 2026-10-24 14:00–15:00이며 실제 사용자 일정이 아니다. 날짜가 지나도 예시 모집 상태는 바뀌지 않는다. 예시 URL은 `https://example.com`이며 실제 신청 사이트가 아니다.
 
+## 명함 화면 이동
+
+후속 승인으로 다음 흐름도 예시 화면으로 포함한다. 실제 계정과 명함 데이터에는 접근하지 않는다.
+
+```mermaid
+flowchart LR
+    PROFILE["내 프로필"] --> EDIT["프로필 편집 · 메모리"]
+    QR["QR · 내 명함 선택"] --> CARD["명함 상세"]
+    QR --> NEW["새 명함 안내"]
+    NEW --> COMPOSE["공개 연락처·이력 선택"]
+    COMPOSE --> PREVIEW["미리보기 · 예시 생성"]
+    PREVIEW --> QR
+    QR --> SCAN["스캔 화면 · 예시 명함 열기"]
+    SCAN --> CARD
+    WALLET["받은 명함 · 검색·그룹"] --> CARD
+    CARD --> SAVE["이번 실행에 저장"]
+    SAVE --> WALLET
+    CARD --> PICK["나도 주기 · 내 명함 선택"]
+    PICK --> SENT["예시 보내기 표시"]
+    SENT --> WALLET
+```
+
 ## 디자인 기준
 
 `01a0dd49-8ce1-7263-957a-d63f220da862/selected` 재귀 조사: 현재 흐름 5장, 기타 화면 11장, 로고 2장, 캘린더 후보 4장. 화면 16장과 로고 2장은 기존 `docs/design/approved` 사본과 대응한다. 캘린더는 사용자 직접 지정 [A안](../design/approved/calendar-overlap-a.png)을 적용한다. B/C 및 다른 후보를 섞지 않는다.
