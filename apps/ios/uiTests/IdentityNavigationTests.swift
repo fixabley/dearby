@@ -47,7 +47,7 @@ import XCTest
         XCTAssertTrue(create.isHittable); create.tap()
         XCTAssertTrue(app.buttons["QR 확대"].waitForExistence(timeout: 5))
     }
-    func testWalletSearchSendAndGroups() {
+    func testWalletSendPickerVisibilityAndSearch() {
         let app = XCUIApplication()
         app.launch(); app.buttons["tab-3"].tap()
         XCTAssertTrue(app.buttons["wallet-group-0"].waitForExistence(timeout: 5))
@@ -55,8 +55,13 @@ import XCTest
         capture(app, "wallet")
         app.buttons["나도 명함 주기"].tap()
         XCTAssertTrue(app.buttons["이 명함 보내기"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["명함 상세보기"].isHittable)
+        let detail = app.buttons["send-card-preview"]
+        let visible = XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: detail)
+        XCTAssertEqual(XCTWaiter.wait(for: [visible], timeout: 5), .completed)
         capture(app, "send-card-picker")
+        detail.tap()
+        XCTAssertTrue(app.navigationBars["공유 카드"].waitForExistence(timeout: 5))
+        app.buttons["닫기"].firstMatch.tap()
         app.buttons["이 명함 보내기"].tap(); app.alerts.buttons["확인"].tap()
         app.buttons["wallet-group-1"].tap(); capture(app, "wallet-reciprocal")
         let search = app.textFields["wallet-search"]

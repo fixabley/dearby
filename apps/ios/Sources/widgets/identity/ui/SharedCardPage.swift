@@ -40,6 +40,7 @@ struct SendCardPage: View {
                 Text("위아래로 밀어 명함을 골라주세요.").font(.subheadline).foregroundStyle(DearbyStyle.quiet)
                 CardDeck(cards: state.cards, selection: $selection, showNameBadge: true)
                 Button("명함 상세보기") { preview = true }.buttonStyle(DearbyButtonStyle(outlined: true))
+                    .accessibilityIdentifier("send-card-preview")
             }.padding(.horizontal, 20).padding(.vertical, 12)
         }.safeAreaInset(edge: .bottom) {
             VStack(spacing: 8) {

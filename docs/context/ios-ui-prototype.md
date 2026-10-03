@@ -1,6 +1,6 @@
 # iOS selected UI 프로토타입 인계
 
-현재 작업: 2026-10-04, checkout `ios-ui-prototype`, 기준 `82ae19f`.
+최종 검증: 2026-10-04 00:27 KST, checkout `ios-ui-prototype`, 기준 `82ae19f`.
 Orca terminal `term_235408d9-1d3e-45d3-a451-b376d51bff65`, task `task_1caf2d331938`, dispatch `ctx_9d06642750f2`.
 소유: `apps/ios/**`, 이 문서. root workflow/다른 앱/운영 데이터/서명 설정은 수정하지 않음.
 
@@ -58,8 +58,21 @@ Orca terminal `term_235408d9-1d3e-45d3-a451-b376d51bff65`, task `task_1caf2d3319
   `final-ui-evidence`의 QR 타일/명함함 CTA/프로필 단일 제목/calendar를 직접 비교했고 root도 확인함.
 - 후속 시각 보정 후 `review-ui-tests.xcresult`: 단위 9개, 기본 calendar/QR 흐름 통과.
   최대 글씨 calendar 부분 노출 버튼 탭이 빗나가 시트 미표시 실패 1회 발생.
-  첫 전체검사는 같은 흐름을 통과했으나 재검사는 아직 완료로 표시하지 않음.
-  하단 고정 CTA를 피해 버튼 중심을 이동시키고 시트 표시를 기다리도록 테스트 보정, 재검사 중.
+  AX hierarchy에서 calendar y712–838과 sticky CTA y679–866의 겹침을 확인함.
+  하단 고정 CTA를 피해 버튼 중심을 이동시키고 시트 표시를 기다리도록 테스트만 보정.
+- `handoff-ui-tests.xcresult`: 최대 글씨 calendar→명함 상세, QR/공유/편집 흐름 통과.
+  보낼명함 상세 버튼의 이름 기반 hittable assertion은 실패했으나 정지 캡처에서
+  상세/보내기 CTA 모두 완전히 보이는 것을 확인함. predicate 대기만으로도 실패하여
+  배경 명함함과 같은 이름의 버튼을 구분하는 `send-card-preview` 접근성 식별자 1줄을 추가함.
+  기존 DerivedData가 이전 assertion/줄번호를 출력한 정황도 있어 VerifyDerivedData로 분리 재빌드함.
+- `identified-send-tests.xcresult`: 고유 버튼 조회/실제 상세 열기/닫기/예시 보내기/검색 UI 1개 통과.
+  앞의 최대 글씨/QR 통과와 합쳐 후속 변경 흐름을 모두 확인. 대기 또는 이름 조회 실패를
+  앱 기능 성공으로 간주하지 않고 실제 화면 이동까지 검사했으며 미해결 검사 실패 없음.
+  실패 런(review/handoff/send/verify)의 로그와 attachments는 보존했고,
+  장시간 자동 simctl diagnose 자식만 중단함. Simulator 자체를 종료/삭제하지 않음.
+- `apps/ios/docs/evidence/ui-prototype-selected/`: root 추가 요청에 따라 주요 PNG 10장과 README 보존.
+  원본 시안과 정지 캡처를 직접 비교해 기본 글씨의 타일/CTA 가시성, 단일 제목,
+  불투명 시트, 정확한 Asia/Seoul 시간표를 확인함. 큰 글씨는 스크롤과 화면 이동을 검증함.
 - 최신 Release 무서명 빌드 통과(`handoff-release.log`), SwiftLint 0건(`handoff-lint.log`),
   구조 17개/6 suites 통과(`handoff-architecture.log`). 검사 규칙 disable 없음.
 - generator 재생성 pbxproj/scheme 동일, 자산 4장 root 원본과 SHA256 동일,
@@ -70,7 +83,7 @@ Orca terminal `term_235408d9-1d3e-45d3-a451-b376d51bff65`, task `task_1caf2d3319
 ponytail-review: 미사용 이력 설명 필드/분기, 중복 ColorScheme 지정,
 이미 배열인 filter 결과의 Array 래핑, init과 중복된 State 초기값을 제거함.
 검사 목적으로 규칙을 비활성화하거나 mock repository/범용 일정 생성기를 추가하지 않음.
-일정 fixture 5세션·화면 state·실제 반복 UI만 유지. 최종 추가 제거 후보 없음.
+일정 fixture 5세션·화면 state·실제 반복 UI만 유지. 최종 추가 제거 후보 없음: Lean already. Ship.
 정확성은 별도로 ID 보존 편집, 선택 정보만 노출, 상태 초기화, 0건/경계시간,
 권한·서비스 API 부재, 기본/큰 글씨 동작을 검사함.
 
@@ -79,8 +92,9 @@ ponytail-review: 미사용 이력 설명 필드/분기, 중복 ColorScheme 지�
 - 기존 서비스 단순화: `2bf32d9` (이전 task 완료).
 - calendar 시안 A: `04a0f16`.
 - 사진/QR 자산 및 출처: `357888e`.
-- selected 전체 UI 체크포인트: 구현·검사·문서를 함께 커밋, hash는 조율 메시지에 기록.
-  최대 접근성 글씨 및 마지막 여백 보정 재검증은 후속 기록으로 전달.
+- selected 전체 UI 구현·검사·문서: `f8701df` (root 통합 완료).
+- 후속은 접근성 식별자 1줄·그 버튼의 실제 이동 검사·PNG/검증 기록만 포함.
+  디자인/데이터/동작 변경 없음. 요청된 구현·검증 완료.
 
 복구 태그 `backup/mobile-service-before-prototype-20261003` 보존.
 push/통합/실기기 설치·서명과 세션 retain은 root 소유.
