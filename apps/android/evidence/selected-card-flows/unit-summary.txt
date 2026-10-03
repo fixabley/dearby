@@ -1,0 +1,2 @@
+{'name': 'com.dearby.nativeapp.PrototypeTest', 'tests': '6', 'skipped': '0', 'failures': '0', 'errors': '0', 'timestamp': '2026-10-03T15:19:21.218Z', 'hostname': 'jominjuns-Mac-Studio.local', 'time': '0.013'}
+{'name': 'com.dearby.nativeapp.CardPrototypeTest', 'tests': '6', 'skipped': '0', 'failures': '0', 'errors': '0', 'timestamp': '2026-10-03T15:19:21.100Z', 'hostname': 'jominjuns-Mac-Studio.local', 'time': '0.116'}

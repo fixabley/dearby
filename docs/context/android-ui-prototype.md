@@ -2,7 +2,10 @@
 
 담당 checkout: `/Users/jominjun/Documents/dearby/android-ui-prototype`. Orca worker terminal `term_6ffd3ac2-247f-446d-ba7b-d9eddfa52d29`, task `task_61e6cd5b0981`, dispatch `ctx_ea8dcd777824`. 위 ID는 이번 작업 연결이며 검증 시점과 다릅니다.
 
-최신 사용자 승인에 따라 Android를 고정 예시 기반 클릭형 프로토타입으로 단순화했습니다. 기존 탐색 카드·상세·신청·겹침 시트의 색·간격·아이콘·로고 자산을 유지하고, 숨겨진 계정·명함·프로필·QR와 서버/Room/Keystore/기기 캘린더/WebView 실행 코드를 제거했습니다. 앱 ID는 그대로이며 기존 설치 데이터는 읽기/삭제/마이그레이션하지 않습니다. 서버·웹·어드민·공통 규격과 root 설정은 수정하지 않았습니다.
+**현재 결과(2026-10-04 00:22 KST):** 최신 승인된 다섯 탭(발견/저장/QR/받은 명함/내 프로필), 상세·신청·겹침 시트, 새 명함/선택 명함 편집, 공개 카드·전달 선택·검색/교환 그룹을 모두 네이티브 Compose로 구성했습니다. 고정 예시와 메모리 상태만 사용하며 서비스 코드·권한·영속 저장은 복구하지 않았습니다. 공통 카드/헤더/이력 UI 커밋 `13af4d0`; 아래 초기 체크포인트의 숨김 요구는 이후 확장 승인으로 대체되었습니다. 최종 근거는 `apps/android/docs/VERIFICATION.md`, 시안별 캡처는 `apps/android/evidence/selected-card-flows/README.md`입니다.
+
+
+초기 단순화 체크포인트에서는 Android를 고정 예시 기반 클릭형 프로토타입으로 전환했습니다. 기존 탐색 카드·상세·신청·겹침 시트의 색·간격·아이콘·로고 자산을 유지하고, 숨겨진 계정·명함·프로필·QR와 서버/Room/Keystore/기기 캘린더/WebView 실행 코드를 제거했습니다. 앱 ID는 그대로이며 기존 설치 데이터는 읽기/삭제/마이그레이션하지 않습니다. 서버·웹·어드민·공통 규격과 root 설정은 수정하지 않았습니다.
 
 고정 예시는 `apps/android/app/src/main/java/com/dearby/nativeapp/entities/catalog/model/CatalogModel.kt`, 필터/신청 메모리 상태는 `app/CatalogViewModel.kt`입니다. 컨퍼런스 10/24, 캠프 11/7, 밋업 11/21 모두 Asia/Seoul이며 모집 상태는 날짜와 무관합니다. 바쁜 시간은 `features/calendar/CalendarConflictState.kt`의 10/24 14–15시로 고정되어 있고, 0건 결과도 제공합니다. 신청 화면은 로컬 안내와 명시적 예시 URL 외부 이동만 제공합니다.
 
@@ -16,7 +19,7 @@
 
 완료 근거: `apps/android/docs/VERIFICATION.md`, `apps/android/evidence/ui-prototype/`(빌드·unit·lint·구조·UI runner 출력 및 5개 PNG). 최종 UI 실행은 `OK (2 tests)` / 8.095초. Ponytail 검토도 완료했으며 불필요한 wrapper/repository를 남기지 않았습니다. 테스트 헬퍼와 Espresso 복원 외 추가 제품 코드 변경은 없습니다. 물리 기기·다른 OS·큰 글꼴·스크린리더·외부 페이지 네트워크는 이번 worker 검증 범위 밖입니다. root의 통합·push·PR·실제 폰 검증이 남습니다.
 
-## 2026-10-04 latest scope expansion — active
+## 2026-10-04 latest scope expansion — implemented
 
 Coordinator delivered latest user approval to implement all selected references (5 current-flow, 11 card/profile/QR, 2 logo, plus selected calendar A) as native five-tab UI, with only fixtures and memory state. This overrides the former hide-tabs/removal boundary for visible UI, but never restores HTTP/auth/Room/Keystore/camera/calendar/persistence. Read all selected reference images directly. Shared UI primitives and card/history reusable widgets will serve the screens; no wrapper/repository substitution.
 
@@ -26,3 +29,7 @@ Current-flow implementation checkpoint: root photos copied as prototype_conferen
 
 
 2026-10-04 five-tab implementation checkpoint: shared CardState/CardContent/CardStack plus native profile/guest/editor/QR/wallet/shared/send pages are implemented. DemoViewModel owns fictional session data, new cards and same-ID edits; no service or persistence layer returned. Header titles are centered with back navigation, QR reduced to208dp and tiles116dp, card spacing16/8 keeps three timeline rows visible. Current verification has JVM12 passing, FSD25 files/25 self-tests, and final default-font/1.3 UI runs pending. Root-reviewed clipping and final-page group bounds were corrected; no .idea files staged.
+
+최종 검증: assembleDebug/AndroidTest APK·JVM12·lint 오류0 경고6(버전 알림)·FSD25파일/25자가검사 통과. 기본 글꼴 UI9(51.335초)와 font_scale1.3 핵심 명함 흐름(6.158초) 통과; 큰 글꼴 QR 설명 잘림은 최소 높이/말줄임으로 수정하고 재검증했습니다. 사용자 폰은 조작하지 않았고 기존 AVD만 사용했으며 font_scale은1.0으로 복원했습니다. Ponytail 검토 및 별도 정확성/시각 검토를 완료했습니다. root가 통합·push/PR·실제 폰 확인을 맡습니다. 세션은 완료 후 retain하며 .idea는 보존/커밋 제외합니다.
+
+후속 구현 커밋 `c09da86`: 다섯 탭·예시 프로필/명함/QR·검색/교환 흐름, README/구조 설명, JVM6개 추가, 실제 UI9개 흐름 및 큰 글꼴 검증. 최종 QR 기본 글꼴 대상 재검증1개는11.301초에 통과했습니다. 프로토타입 구현 잔여 작업은 없으며 검증 한계와 root 담당 배포/기기 확인은 위 최종 보고에 명시했습니다.
