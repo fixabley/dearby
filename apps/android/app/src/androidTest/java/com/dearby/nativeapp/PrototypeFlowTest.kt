@@ -21,6 +21,7 @@ class PrototypeFlowTest {
     }
 
     @Test fun discoveryApplicationAndMemoryReport() {
+        compose.onNodeWithText("활동 둘러보기").assertIsDisplayed()
         compose.onNodeWithText("예시").assertIsDisplayed()
         screenshot("prototype-discovery")
         compose.onNodeWithText("선발형", useUnmergedTree = true).performClick()

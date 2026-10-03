@@ -20,7 +20,7 @@ import com.dearby.nativeapp.shared.ui.*
     val activities = state.visibleActivities
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("모집 중인 활동", Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium)
+            Text("활동 둘러보기", Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium)
             Text("예시", color = Quiet, style = MaterialTheme.typography.labelSmall)
         } }
         item { LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { items(listOf("전체", "참가등록형", "선발형")) { label ->
