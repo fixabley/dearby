@@ -3,16 +3,10 @@ import SwiftUI
 struct CardView: View {
     let card: CardModel
     let onContact: (ContactModel) -> Void
-    @State private var notice: String?
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            IdentityHeading(name: card.profileName, job: card.job, introduction: card.introduction)
-            if !card.description.isEmpty { Text(card.description).foregroundStyle(DearbyStyle.quiet) }
-            ContactIcons(contacts: card.contacts) { contact in
-                onContact(contact)
-                if case .copy = contact.action { notice = "카카오톡 ID를 복사했습니다." }
-            }
-            if let notice { Text(notice).font(.caption).foregroundStyle(DearbyStyle.quiet) }
+        VStack(alignment: .leading, spacing: 18) {
+            IdentityHeading(name: card.profileName, job: "", introduction: card.introduction)
+            ContactIcons(contacts: card.contacts, action: onContact)
             Divider()
             HStack {
                 Text("활동 이력").font(.title2.bold())
@@ -26,7 +20,7 @@ struct CardView: View {
 }
 
 struct CardDeck: View {
-    @ScaledMetric(relativeTo: .title3) private var headerReveal: CGFloat = 56
+    @ScaledMetric(relativeTo: .title3) private var headerReveal: CGFloat = 40
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.isEnabled) private var isEnabled
     let cards: [CardModel]
@@ -37,7 +31,7 @@ struct CardDeck: View {
             if !cards.isEmpty {
                 ZStack(alignment: .top) {
                     ForEach(Array(upcoming.reversed()), id: \.offset) { item in
-                        header(item.element).lineLimit(1).minimumScaleFactor(0.8).padding(16)
+                        header(item.element).lineLimit(1).minimumScaleFactor(0.8).padding(10)
                             .background(item.offset == 1 ? DearbyStyle.mint : DearbyStyle.muted,
                                 in: RoundedRectangle(cornerRadius: 12))
                             .overlay(RoundedRectangle(cornerRadius: 12).stroke(DearbyStyle.line))
@@ -45,7 +39,7 @@ struct CardDeck: View {
                             .offset(y: CGFloat(upcoming.count - item.offset) * headerReveal)
                     }
                     summary(cards[min(selection, cards.count - 1)])
-                        .padding(20).background(DearbyStyle.mint, in: RoundedRectangle(cornerRadius: 12))
+                        .padding(16).background(DearbyStyle.mint, in: RoundedRectangle(cornerRadius: 12))
                         .overlay(RoundedRectangle(cornerRadius: 12).stroke(DearbyStyle.teal.opacity(0.25)))
                         .padding(.top, CGFloat(upcoming.count) * headerReveal)
                 }.contentShape(Rectangle()).gesture(DragGesture(minimumDistance: 30).onEnded { value in
@@ -83,16 +77,16 @@ struct CardDeck: View {
         }
     }
     private func summary(_ card: CardModel) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 8) {
             header(card)
             Divider()
             Text(card.name).font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
             Text(card.description).font(.subheadline).foregroundStyle(DearbyStyle.quiet)
             Text("연락처").font(.subheadline.bold())
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), alignment: .leading)], alignment: .leading, spacing: 10) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 75), alignment: .leading)], alignment: .leading, spacing: 6) {
                 ForEach(card.contacts) { contact in
-                    HStack(spacing: 8) { ContactSymbol(contact: contact, size: 24); Text(contact.displayLabel) }.font(.subheadline)
-                        .foregroundStyle(DearbyStyle.quiet).frame(minHeight: 32)
+                    HStack(spacing: 5) { ContactSymbol(contact: contact, size: 16); Text(contact.displayLabel) }.font(.caption)
+                        .foregroundStyle(DearbyStyle.quiet).frame(minHeight: 24)
                 }
             }
             Divider()

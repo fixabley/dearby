@@ -1,38 +1,29 @@
-# Native vertical slice (2026-09-27)
+# iOS prototype structure
 
-Xcode 27 (27A266a), Swift 6 language mode / compiler 6.4, SwiftUI + Observation + SwiftData; iOS 18 minimum. No third-party app runtime dependency. Apple current system-requirements page lists Xcode 27 as stable; 27.1/27.2 are beta: https://developer.apple.com/xcode/system-requirements (checked 2026-09-27).
+2026-10-04 승인: selected 전체 화면을 구현하는 네이티브 클릭형 프로토타입.
+Repository/API/인증/영구 저장/OS 개인정보 접근 계층 없이 fixture + 화면 메모리로 구성합니다.
 
-## Ownership
+- `app/entrypoint`: CatalogViewModel과 IdentityViewModel의 앱 실행 수명, 탭 조립.
+- `pages/home`: 탭/NavigationStack과 탐색 상세에서 탭 숨김을 조합하는 HomePage.
+- `widgets/catalog`: 활동 목록·상세·예시 사진·일정표와 메모리 북마크/신청 상태.
+- `widgets/identity`: 프로필·QR·받은 명함·명함 편집/선택/상세 화면과 IdentityViewModel.
+- `features/application`: 로컬 신청 안내/완료 표시, 외부 HTTPS Link.
+- `features/calendar`: 고정 바쁜 시간 비교, 선택 단계/결과 시트/시간 격자.
+- `entities/catalog`: 활동 값 모델과 fixture 3개.
+- `entities/identity`: 순수 명함/연락처/이력 fixture 및 CardView/CardDeck/HistoryTimeline/ContactIcons.
+- `shared/ui`: DearbyStyle 색상, DearbyLogo, 버튼(채움/테두리), 배지, 아바타,
+  정보행, 세그먼트, 시트 헤더. 도메인을 import하지 않으며 실제 재사용 요소만 둡니다.
 
-- `app/entrypoint`: app launch and storage-load failure UI.
-- `app/providers`: root container/session lifetime, account transitions and HTTP orchestration. Account-changing responses are rejected if the initiating token is no longer active.
-- `app/routes`: composition of pages/widgets, sheets and URL routing; no direct storage/OS implementation.
-- `pages/home`: flat five-tab bar, native NavigationStack routes and connection banner, generic supplied content. Discovery/saved paths persist across tab selection; feature presentation state remains local and account/domain state remains provider-owned. Detail routes hide the bottom tabs.
-- `widgets`: profile, QR, wallet, card composition/selection and login presentation. Domain values are at most two layers below; actions arrive from providers or features.
-- `features`: ProfileState owns account-scoped master profile; GuestLibraryState owns guest IDs and success-only removal; ExchangeState owns durable account-bound pending request; auth owns challenge requests; wallet owns card/context receipt composition; scanner owns VisionKit camera lifecycle.
-- `entities/identity`: pure profile, public card, contact/history, guest ID/context and link values. Profile and published card are one identity domain slice with independent value types; there is no cross-entity lookup or repository coupling. CardView only renders the published snapshot.
-- `shared`: URLSession HTTP, Keychain and SwiftData document primitives. No domain imports. The exported DearbyStyle, DearbyLogo, DearbyButtonStyle and DearbySegments are small pure SwiftUI primitives shared by widgets/pages; there is no theme or navigation engine.
+프로필과 명함은 앱 수명 동안만 존재합니다. 저장/공개 선택/프리셋/보낸 표시도 메모리뿐입니다.
+명함 스냅샷은 생성/편집 시 선택한 연락처와 이력을 복사하며, 기존 명함은 프로필 변경을 자동 반영하지 않습니다.
+OS 공유는 활동의 HTTPS 예시 링크 ShareLink만 사용합니다. 명함 공유 메뉴는 외부 동작 없는 UI 예시입니다.
+사진과 QR은 로컬 assets만 표시합니다. QR runtime 생성·스캔·파일 쓰기는 없습니다.
 
-`architecture/public-api.json` enumerates exported declarations, `pure-ui.json` marks HomePage's effect-free contract. Restored Harmonize 1.2.1 + SwiftSyntax 601.0.1 checks declaration rules, explicit two-layer distance (only app/providers construction exception), same-layer slice isolation, exported APIs, effect-free UI and exact path conventions. Fixtures are retained from pre-web f1d9a63. Source inventory changed from deleted Dearby/ to Sources/; obsolete positive cardinality requirements for absent Notice ViewModels/shared design components were removed, while every declaration/boundary rule remains unchanged. Syntax references are not compiler type resolution; inferred dependencies and macros still need review.
+FSD 상향/동일 계층 다른 슬라이스 직접 참조 금지, 하위 2계층 제한, Pages/Widgets 공개 Shared UI
+예외와 순수 UI 계약을 유지합니다. 공개 타입은 `architecture/public-api.json`, 입력+콜백만 그리는
+HomePage/ActivityInformationView는 `pure-ui.json`에 기록합니다. Scene/서비스 우회 wrapper는 없습니다.
 
-## Persistence and transport
-
-Models are value-semantic wire/domain values; feature State classes own save/rollback and lifecycle. UI never mutates SwiftData records. Profile editing has a separate draft and dismisses only after successful explicit save. Store creation/read errors block initial UI instead of silently falling back to empty memory. SwiftData read corruption preserves original disk bytes.
-
-Profiles are keyed per account; guest drafts cannot silently upload after login. New account selection loads GET /profile. Existing account-local edits survive refresh until an explicit publishing action uploads the master profile using a request without id/updatedAt. Logged-out profile UI is a login invitation. Keychain sessions are namespaced by configured API URL and device-only when-unlocked accessibility. No tokens in preferences, logs or SwiftData. URLSession uses ephemeral storage. Authenticated 401 clears the active session/UI but preserves account drafts and guest IDs. Local logout works when remote revocation cannot be confirmed and says so.
-
-Guest records contain cardId/context/savedAt, not private profiles or images. Public-card previews in import UI are transient. Import removes only selected IDs with a recognized success status and a valid receipt UUID. Transport, malformed response and local-save failure preserve original IDs. Idempotent server retry covers server success followed by local persistence failure.
-
-Pending send payload/request ID persists before HTTP and is account-scoped. Same ambiguous send retains its ID across restart; confirmed delivery clears it. No tap changes reciprocal locally; server GET /wallet owns this state. Confirmed delivery and subsequent list-refresh failure have separate messages.
-
-API config is an origin; /v1 is appended exactly once (also tolerates an existing /v1 prefix). Release URL validation requires HTTPS; Debug accepts loopback HTTP and only Debug plist allows local networking. Custom `dearby://card/<UUID>` links work between installed apps, validate query exclusivity and label length, and are not Universal Links. Context is unverified user input. HTTPS deployment/browser fallback is #43.
-
-## Gates
-
-`bash apps/ios/scripts/setup_swiftlint.sh` installs SHA256-verified SwiftLint 0.65.1. `bash apps/ios/tests/run_swiftlint.sh` runs the unchanged rule set with current source/test roots. `bash apps/ios/tests/run_architecture.sh` runs 16 AST/fixture tests including the real production graph. Unit tests exercise disk reopening, save rollback, account isolation, strict request shape, explicit JSON nulls, import retention, auth recovery, link validation and HTTP errors. The app's iOS SDK tests are separate from macOS architecture-package tests.
-
-## Approved visual contract (2026-09-27)
-
-`docs/design/native-visual-contract.md` and its approved PNGs supersede the previous native-default-appearance rule. Native navigation/sheet semantics remain, with white backgrounds, flat teal controls, the unchanged approved logo and real SwiftUI content. CardDeck and HistoryTimeline are shared identity presentations; selection indices are local UI state. CardDeck locks gestures when disabled and uses explicit paging buttons at accessibility text sizes, where stacks flatten and content scrolls. No design sample data ships in Sources. Rich visual fixtures live exclusively in the opt-in unit-test target and publish through the coordinator-owned local API.
-
-The incoming public card is transient. Saving still requires the irreversible-recovery warning and commits only card ID/context to guest storage. Return-card login cancellation clears the pending presentation intent and never sends. Publishing/sending still depends on authentication and confirmed server success; the durable idempotency request boundary is unchanged. HTTP Content-Type is sent only for nonnil JSON bodies, so bodyless logout reaches the server handler.
+`SourceInventory`는 checkout-local Sources를 검사합니다. `PrototypeBoundaryTests`는 서비스/기기 API와
+권한 문구/API origin/URL scheme/ATS가 다시 들어오는 것을 방지합니다.
+단위 테스트는 선택한 정보만 명함에 포함, 메모리 수명, 저장/교환 그룹, HTTPS, 일정 계산/다음 결과를 확인합니다.
+UI 테스트는 실제 기존 Simulator에서 탭/필터/저장/신청/QR/편집/명함함/프로필/일정 비교를 확인합니다.

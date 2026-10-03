@@ -1,29 +1,38 @@
-# Dearby iOS
+# Dearby iOS 클릭형 프로토타입
 
-Open `Dearby.xcodeproj`, scheme `Dearby`. Xcode 27 / Swift 6, iOS 18+.
+2026-10-04 최신 승인으로 selected 시안의 발견·저장·QR·받은 명함·내 프로필 5탭과
+활동 상세/신청/일정 비교, 명함 편집/보기/선택/공유 메뉴를 SwiftUI로 제공합니다.
+모든 사람·활동·연락처는 예시이며, 앱을 종료하면 변경 상태가 사라집니다.
+
+- 활동 fixture: `Sources/entities/catalog/model/DemoActivities.swift`의 3개 고정 예시.
+  날짜가 지나도 모집 상태가 변하지 않습니다. 실제 모집 정보가 아닙니다.
+- 명함 fixture: `Sources/entities/identity/model/DemoIdentity.swift`의 가상 사람·연락처·이력.
+- 상태: `CatalogViewModel`의 저장/신청 표시, `IdentityViewModel`의 예시 로그인·프로필·명함·교환·프리셋.
+  View의 탭·필터·선택·검색도 모두 메모리만 사용합니다.
+- 일정: `CalendarConflictState.swift`의 2026-10-24 14–15시 Asia/Seoul 고정 바쁜 시간.
+  컨퍼런스 60분/1건, 캠프·밋업 0건. 결과는 30분 2열 격자로 표시합니다.
+- 신청: 기존 하단 CTA→예시 안내 시트→완료 표시. HTTPS 예시 링크만 외부 브라우저로 열 수 있습니다.
+- QR: 고정 `https://example.com` PNG를 표시/확대합니다. 스캔/사진 버튼은 예시 명함을 엽니다.
+  카메라·사진 접근/QR 디코딩은 없습니다. 공유 메뉴도 외부 전달·클립보드·이미지 저장 없이 안내만 표시합니다.
+- 예시 로그인은 서버 인증 없이 화면 상태를 전환합니다. 명함 보내기는 받은 명함의 메모리 그룹만 바꿉니다.
+
+API·인증/Keychain·영구 저장·실제 캘린더·카메라·푸시는 없습니다.
+이전 앱의 기기 데이터는 읽기·초기화·삭제·마이그레이션하지 않습니다.
+복구 태그: `backup/mobile-service-before-prototype-20261003`.
+서버/웹/어드민/운영 DB는 변경하지 않습니다.
+사진·QR은 root가 준비한 `shared/assets/prototype` 원본의 앱 번들 사본이며 런타임 다운로드가 없습니다.
+
+## 검증
 
 ```sh
-xcodebuild -project apps/ios/Dearby.xcodeproj -scheme Dearby -destination 'generic/platform=iOS Simulator' -derivedDataPath apps/ios/.build build
-xcodebuild -project apps/ios/Dearby.xcodeproj -scheme Dearby -destination 'platform=iOS Simulator,name=iPhone 17' -derivedDataPath apps/ios/.build test
+ruby apps/ios/scripts/generate_project.rb
 bash apps/ios/scripts/setup_swiftlint.sh
 bash apps/ios/tests/run_swiftlint.sh
 bash apps/ios/tests/run_architecture.sh
 ```
 
-Use normal Simulator ad-hoc signing for Keychain tests; disabling signing causes Keychain writes to fail. The committed project needs no generator to build. After adding source files, `gem install --user-install xcodeproj -v 1.28.1` then `ruby apps/ios/scripts/generate_project.rb` regenerates it (review changes; this replaces project settings).
-
-Set `DEARBY_API_URL` build setting to the real API **origin**, e.g. Debug loopback `http://127.0.0.1:<port>`; client appends `/v1` exactly once. Debug defaults to empty; Release uses the coordinator-approved `https://wid.io.kr`. Release requires HTTPS. Public certificate trust and internet connectivity are still pending; origin configuration does not prove service availability. No data was published for this change (coordinator reports published count 0). `Info-Debug.plist` alone permits local networking. Optional `DEARBY_SHARE_URL` is the approved HTTPS card URL prefix; otherwise generated QR uses the agreed `dearby://card/<UUID>?label=...` installed-app development link. No bundled credentials or fake logged-in identity.
-
-Email OTP uses actual HTTP and Keychain. Logged-out profile and creation show login. Guest QR/photo/ID reception queries the public card then asks before durable ID saving. Camera uses VisionKit; photos use PhotosPicker/Vision; image saving requests add-only Photos permission. Physical camera/photo/permission combinations are unverified (#43). Discovery/saved activity tabs explicitly show unavailable states; this is not the complete service (#41).
-
-## Opt-in local API integration
-
-A coordinator must start a **test-only** loopback API with isolated database and private mail sink. Prepare the Simulator fixture with `scripts/prepare_local_integration.py --origin <loopback-origin> --inbox <private-mail-json> --simulator <UDID>`, then run `-only-testing:DearbyTests/LocalAPIIntegrationTests` with matching `DEARBY_API_URL`. The script requests only `ios@example.test`, never prints codes/tokens, and the native test deletes the private credential file before use. Only public test card/profile IDs are exported to Documents/dearby-integration-result.json. This does not prove real email delivery or production auth. Without the explicit private fixture this integration test skips.
-
-`DearbyUITests/NavigationTests/testGuestTabsAndLoginGate` verifies the default unconfigured guest build. `testAuthenticatedProfileAndQR` requires the real local integration session; it skips without one. Evidence and precise limits are in docs/evidence/README.md.
-
-## Distribution metadata
-
-`MARKETING_VERSION=0.1.0` and `CURRENT_PROJECT_VERSION=1` are retained for the initial TestFlight build. Release uses `io.wid.dearby` to match the user-registered App Store Connect app (Apple ID `6817330226`, SKU `dearby01`); Debug keeps `com.dearby.dearby`. The App Store draft version `1.0` is unchanged. The coordinator owns signing, final upload, and checking build-number reuse. The project and generator both select `AppIcon`; provenance and the existing Android launcher choice are documented in `Resources/ASSET-SOURCES.md`. iPad declares all four orientations, iPhone portrait and both landscapes. The missing AccentColor asset reference is cleared; the app's explicit teal tint remains.
-
-`ITSAppUsesNonExemptEncryption=NO` is based on this app's OS-provided URLSession HTTPS and Keychain use, with no bundled crypto implementation or third-party runtime dependency found. This is a technical configuration, not a legal determination; the distributor must confirm the final declaration when uploading and reassess when dependencies change. Team/signing and the real HTTPS API origin remain coordinator-owned. See `../../docs/context/testflight-main-readiness.md` for actual archive checks and remaining blockers.
+Dearby scheme에서 unitTests/uiTests 실행. 기존 Simulator ID 명시 및 `-parallel-testing-enabled NO` 사용.
+Debug ID `com.dearby.dearby`, Release ID `io.wid.dearby`, 버전 `0.1.0 (1)` 유지.
+실기기 설치·서명·배포는 조율 세션 소유입니다.
+검증 결과와 인계: `../../docs/context/ios-ui-prototype.md`.
+기존 `docs/evidence`/`docs/context-archive`는 과거 기록으로 현재 증거가 아닙니다.

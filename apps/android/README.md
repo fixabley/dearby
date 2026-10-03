@@ -1,31 +1,36 @@
-# Dearby Android
+# Dearby Android 클릭형 프로토타입
 
-Native card exchange (#38) and activity catalog (#47). Kotlin / Compose, API 26+, compile/target 36. No bundled accounts, login bypass, seeded people, or delivery simulation. The default API URL is empty and requests report configuration errors.
+선택된 시안의 흰색·청록색, 사진 카드, 상세 시간표, 신청 화면, 명함 화면을 Kotlin/Compose로 구현합니다. 서버 없이 고정 예시와 메모리 상태로 동작합니다.
 
-## Build
+- 발견: 활동 3개 → 상세 → 신청 안내 → 예시 신청 상태 선택. 명시적으로 누른 공식 링크만 외부 브라우저로 엽니다.
+- 저장: 발견·상세에서 저장한 활동과 주최자 선택을 이번 실행 중 유지합니다.
+- QR: 예시 QR 표시·확대, 명함 선택·신규 생성·같은 ID 편집, 공유 메뉴, 예시 스캔 → 공개 카드. 카메라·파일·클립보드·공유 API는 사용하지 않습니다.
+- 받은 명함: 이름·직무·활동 검색, 위아래 카드 넘김, 미교환/상호 교환 그룹, 상세 → 내 명함 선택 → 로컬 교환 상태. 외부 전달은 없습니다.
+- 내 프로필: 비로그인 안내 → 예시 프로필, 이름·소개·연락처·활동 편집. 계정 연결이나 인증은 없습니다.
+- 겹치는 시간: 고정 바쁜 시간 `2026-10-24 14:00~15:00 Asia/Seoul`을 비교합니다. 컨퍼런스는 1시간 겹치고 캠프·밋업은 겹침이 없습니다. OS 권한을 요청하지 않습니다.
 
-Use JDK 17+ (local verification uses Android Studio JBR 25.0.2), Android SDK platform 36 / build-tools 36.0.0. Set `ANDROID_HOME` or local `local.properties`.
+예시 모집 상태는 날짜가 지나도 바뀌지 않습니다. 모든 편집·저장·신청·교환 상태는 프로세스 종료 후 초기화됩니다. 실제 접수·선정·계정 생성·전송 완료를 주장하지 않습니다.
+
+## 수정할 위치
+
+| 대상 | 위치 (`app/src/main/java/com/dearby/nativeapp/` 기준) |
+| --- | --- |
+| 활동 3개·일정·링크 | `entities/catalog/model/CatalogModel.kt`의 `demoActivities` |
+| 가상 인물·연락처·명함·활동 이력 | `app/DemoFixtures.kt` |
+| 메모리 필터·신청·활동 저장 | `app/CatalogViewModel.kt` |
+| 메모리 프로필·명함 작성/편집·교환 그룹 | `app/DemoViewModel.kt` |
+| 다섯 탭·화면 연결 | `app/DearbyApp.kt`, `app/CatalogRoute.kt` |
+| 화면과 공통 표시 | `pages/`, `widgets/card/cardContent/`, `shared/ui/` |
+
+사진·QR 리소스는 `app/src/main/res/drawable-nodpi/prototype_*.png`이며 로고와 기존 이미지 자산도 보존합니다. 모든 예시 링크/QR 목적지는 `https://example.com`입니다.
+
+HTTP/Repository/Room/Keystore/기기 캘린더/WebView·인증 실행 코드와 미사용 의존성·INTERNET/READ_CALENDAR 권한·명함 딥링크를 제거했습니다. 명함·프로필·저장·QR은 화면 흐름만 다시 구성했습니다. applicationId `com.dearby.nativeapp`은 유지하며 이전 설치 데이터는 읽거나 삭제하거나 마이그레이션하지 않습니다. 과거 서비스 문서와 증거는 `docs/archive`와 기존 evidence에 보존되며 현재 구현 증거가 아닙니다.
 
 ```sh
+export JAVA_HOME='/Applications/Android Studio.app/Contents/jbr/Contents/Home'
+export ANDROID_HOME=/Users/jominjun/Library/Android/sdk
+./gradlew assembleDebug testDebugUnitTest lintDebug assembleDebugAndroidTest
 python3 scripts/check-fsd.py --self-test
-./gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug :app:assembleDebugAndroidTest
-./gradlew :app:connectedDebugAndroidTest
 ```
 
-Configure an origin **without `/v1`** via `-PdearbyApiUrl=https://your-authorized-server.example`. No production hostname is assumed. Emulator development may use `-PdearbyApiUrl=http://10.0.2.2:PORT`; HTTP is allowed only in debug and release transport rejects HTTP. Session tokens are Keystore encrypted, backups disabled. Do not put tokens in Gradle properties.
-
-The shared protocol is `shared/contracts/native-v1.md`. QR temporarily encodes `dearby://card/UUID?label=...` and is app-only; public HTTPS/App Links and cross-platform scanning are blocked in #44/#43. Photos and external camera results are decoded with ZXing; this is not a continuous camera scanner. The camera preview is lower resolution and photo selection can be used when recognition fails.
-
-## Persistence and safety
-
-The logged-out profile tab requires email login; internal recoverable local drafts are not exposed as guest profile creation. Room stores local profile drafts, account-keyed profile cache, public card display cache, and guest card IDs. Guest IDs are only inserted after a successful public lookup; later import/network errors preserve existing IDs. Duplicate scans retain the first saved context/date. A local draft is not silently uploaded during sign-in. Profile edits do not mutate published cards. Selection defaults empty, import defaults empty, successful imports remove only selected confirmed IDs. Account logout waits for server revocation before clearing local session. The one active mutation gate serializes login/logout/profile/import/send to prevent stale cross-account results.
-
-Five tabs include live API activity discovery, program/organization bookmarks, source-rich detail, application WebView with explicit local self-report, and registered/past activity context selection for QR/direct-send. No home search or own-card module is added. Push, OS calendar, external login compatibility/autofill (#36), production email/HTTPS and real-device scanning remain separate work. See docs/catalog-implementation.md and docs/VERIFICATION.md.
-
-## Dependency evidence
-
-`docs/evidence/dependency-registry.json` records Google Maven metadata fetched 2026-09-27 KST, including newer available stable versions. AGP 9.1.1 + Gradle 9.3.1 + built-in Kotlin 2.2.10 match the [official compatibility table](https://developer.android.com/build/releases/agp-9-1-0-release-notes) and installed SDK. [Built-in Kotlin guidance](https://developer.android.com/build/migrate-to-built-in-kotlin) avoids applying a duplicate Kotlin Android plugin. Room 2.8.5 uses KSP 2.3.12; [Room release docs](https://developer.android.com/jetpack/androidx/releases/room), [KSP release](https://github.com/google/ksp/releases/tag/2.3.12). [Compose BOM map](https://developer.android.com/develop/ui/compose/bom/bom-mapping), [Activity](https://developer.android.com/jetpack/androidx/releases/activity), [Lifecycle](https://developer.android.com/jetpack/androidx/releases/lifecycle), [ZXing](https://github.com/zxing/zxing/releases) were checked.
-
-These are available stable pins, not claims of newest releases: existing local compiler/SDK-compatible Compose 2026.02.01, Activity 1.12.4 and Lifecycle 2.10.0 keep the first slice reproducible; a newer BOM/toolchain upgrade needs its own SDK/behavior verification. No prerelease was selected.
-
-UI instrumentation explicitly pins Espresso 3.7.0: the transitive older version failed on API36 with InputManager.getInstance; [official AndroidX Test release notes](https://developer.android.com/jetpack/androidx/releases/test) document the replacement with getSystemService.
+실제 실행 결과는 `docs/VERIFICATION.md`, 구조는 `ARCHITECTURE.md`를 참고하세요.

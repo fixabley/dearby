@@ -12,9 +12,7 @@ struct IdentityHeading: View {
     }
     var body: some View {
         layout {
-            Text(name.isEmpty ? "?" : String(name.prefix(1))).font(.largeTitle.bold())
-                .foregroundStyle(isFullProfile ? .white : DearbyStyle.teal).frame(width: 82, height: 82)
-                .background(isFullProfile ? DearbyStyle.teal : DearbyStyle.teal.opacity(0.12), in: Circle())
+            DearbyAvatar(name: String(name.suffix(2)), filled: isFullProfile, size: 82)
             VStack(alignment: .leading, spacing: 7) {
                 Text(name.isEmpty ? "내 이름을 입력해 주세요" : name).font(.title2.bold())
                 if !introduction.isEmpty { Text(introduction).font(.subheadline) }
@@ -39,17 +37,14 @@ struct HistoryTimeline: View {
                     if compact && !dynamicTypeSize.isAccessibilitySize {
                         Text(item.startDate.prefix(7).replacingOccurrences(of: "-", with: "."))
                             .font(.caption).foregroundStyle(DearbyStyle.quiet).frame(width: 64, alignment: .leading)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(item.title).font(.subheadline.weight(.semibold))
-                            Text(item.role).font(.caption).foregroundStyle(DearbyStyle.quiet)
-                        }.padding(.bottom, 18).frame(maxWidth: .infinity, alignment: .leading)
+                        Text(item.title).font(.subheadline.weight(.semibold))
+                            .padding(.bottom, 10).frame(maxWidth: .infinity, alignment: .leading)
                     } else {
                         VStack(alignment: .leading, spacing: 5) {
                             Text(item.startDate + (item.endDate.map { " – " + $0 } ?? ""))
                                 .font(.caption).foregroundStyle(DearbyStyle.quiet)
                             Text(item.title).font(.headline)
                             Text(item.role).font(.subheadline).foregroundStyle(DearbyStyle.quiet)
-                            if !item.description.isEmpty { Text(item.description).font(.footnote).foregroundStyle(DearbyStyle.quiet) }
                         }.padding(.bottom, 22).frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }.fixedSize(horizontal: false, vertical: true)
@@ -70,7 +65,6 @@ struct ContactIcons: View {
                         Text(contact.displayLabel).font(.caption).foregroundStyle(.primary)
                     }.frame(maxWidth: .infinity, minHeight: 68)
                 }.buttonStyle(.plain).accessibilityLabel(contact.displayLabel + ": " + contact.value)
-                    .disabled({ if case .unavailable = contact.action { true } else { false } }())
             }
         }
     }

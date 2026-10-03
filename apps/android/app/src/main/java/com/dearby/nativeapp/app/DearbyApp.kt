@@ -1,159 +1,83 @@
 package com.dearby.nativeapp.app
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
-import android.content.Intent
-import android.graphics.BitmapFactory
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dearby.nativeapp.app.providers.receivedDate
-import com.dearby.nativeapp.app.providers.applyTo
-import com.dearby.nativeapp.app.providers.editorState
-import com.dearby.nativeapp.app.providers.selectionModel
-import com.dearby.nativeapp.app.providers.visibilityState
-import com.dearby.nativeapp.entities.card.model.ExchangeContextModel
-import com.dearby.nativeapp.features.qr.QrActions
-import com.dearby.nativeapp.features.contact.ContactActions
-import com.dearby.nativeapp.features.contact.ContactActionState
-import com.dearby.nativeapp.pages.login.LoginPage
 import com.dearby.nativeapp.pages.profile.ProfilePage
 import com.dearby.nativeapp.pages.qr.CardEditor
 import com.dearby.nativeapp.pages.qr.QrPage
-import com.dearby.nativeapp.pages.qr.ScanPage
-import com.dearby.nativeapp.pages.wallet.SharedCardPage
-import com.dearby.nativeapp.pages.wallet.ImportEntryState
-import com.dearby.nativeapp.pages.wallet.ImportPage
 import com.dearby.nativeapp.pages.wallet.SendPage
-import com.dearby.nativeapp.pages.wallet.WalletEntryState
+import com.dearby.nativeapp.pages.wallet.SharedCardPage
 import com.dearby.nativeapp.pages.wallet.WalletPage
-import com.dearby.nativeapp.shared.ui.DearbyLogo
-import com.dearby.nativeapp.widgets.activity.contextPicker.ActivityChoiceState
+import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.card.cardContent.CardContent
 import com.dearby.nativeapp.widgets.card.cardContent.CardState
-import com.dearby.nativeapp.widgets.card.cardContent.toState
-import kotlinx.coroutines.*
+import com.dearby.nativeapp.widgets.card.cardContent.ContactState
 
-@Composable fun DearbyApp(model: DearbyViewModel, catalog: CatalogViewModel, incoming: String?, consume: () -> Unit) {
-    val state by model.state.collectAsStateWithLifecycle()
-    val catalogState by catalog.state.collectAsStateWithLifecycle()
-    val activities = catalogState.activities.map { ActivityChoiceState(it.id, it.title) }
-    fun activityLabel(activity: ExchangeContextModel): String = activity.label ?: activity.activityId?.let { id -> activities.find { it.id == id }?.title ?: "활동 정보 확인 필요" }.orEmpty()
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val snackbars = remember { SnackbarHostState() }
+private enum class Tab(val label: String, val icon: ImageVector) {
+    Discovery("발견", Icons.Outlined.Explore), Saved("저장", Icons.Outlined.BookmarkBorder),
+    Qr("QR", Icons.Outlined.QrCodeScanner), Wallet("받은 명함", Icons.Outlined.Badge), Profile("내 프로필", Icons.Outlined.PersonOutline),
+}
+private sealed interface CardRoute {
+    data class Detail(val card: CardState) : CardRoute
+    data class Send(val recipient: CardState) : CardRoute
+    data class Editor(val returnTo: CardRoute?, val existing: CardState? = null) : CardRoute
+}
+
+@Composable fun DearbyApp(catalog: CatalogViewModel, demo: DemoViewModel) {
+    val state by demo.state.collectAsStateWithLifecycle()
+    var tab by remember { mutableStateOf(Tab.Discovery) }
+    var route by remember { mutableStateOf<CardRoute?>(null) }
     var catalogDetail by remember { mutableStateOf(false) }
-    var tab by rememberSaveable { mutableIntStateOf(0) }
-    var route by rememberSaveable { mutableStateOf("") }
-    var loginReturn by rememberSaveable { mutableStateOf("") }
-    var sendReturn by rememberSaveable { mutableStateOf("") }
-    var returnRoute by rememberSaveable { mutableStateOf("") }
-    var recipient by remember { mutableStateOf<CardState?>(null) }
-    var sharedCard by remember { mutableStateOf<CardState?>(null) }
-    var sharedContext by remember { mutableStateOf(ExchangeContextModel()) }
-    var detail by remember { mutableStateOf<CardState?>(null) }
-    var enlarged by rememberSaveable { mutableStateOf(false) }
-    var contextActivityId by rememberSaveable { mutableStateOf<String?>(null) }
-    var contextLabel by rememberSaveable { mutableStateOf("") }
-    var input by rememberSaveable { mutableStateOf("") }
-    val cards = state.cards.map { it.toState() }
-    val chosen = cards.find { it.id == state.selectedCardId }
-    val link = chosen?.let { QrActions.link(it.id, ExchangeContextModel(activityId = contextActivityId, label = contextLabel.ifBlank { null })) }
-    val bitmap = remember(link) { link?.let(QrActions::bitmap) }
-    fun openContact(contact: ContactActionState) {
-        runCatching { ContactActions.open(context, contact) }.onSuccess { it?.let(model::report) }.onFailure { model.report("이 연락처를 열 수 있는 앱이 없습니다.") }
-    }
-    fun receive(text: String) {
-        runCatching { QrActions.parse(text) }.onSuccess { (id, activity) -> model.previewCard(id) { sharedCard = it.toState(); sharedContext = activity; route = "shared" } }.onFailure { model.report(it.message ?: "QR을 읽을 수 없습니다.") }
-    }
-    fun readImage(bitmap: android.graphics.Bitmap?) {
-        if (bitmap == null) return
-        scope.launch {
-            try { val text = withContext(Dispatchers.Default) { QrActions.decode(bitmap) }; input = text; route = "receive" }
-            catch (_: Exception) { model.report("사진에서 QR을 찾지 못했습니다. 선명한 QR 사진을 선택해 주세요.") }
-        }
-    }
-    val photo = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        uri?.let { scope.launch {
-            try {
-                val decoded = withContext(Dispatchers.IO) {
-                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-                    context.contentResolver.openInputStream(it)?.use { stream -> BitmapFactory.decodeStream(stream, null, bounds) }
-                    val options = BitmapFactory.Options().apply { inSampleSize = (maxOf(bounds.outWidth, bounds.outHeight) / 1600).coerceAtLeast(1) }
-                    context.contentResolver.openInputStream(it)?.use { stream -> BitmapFactory.decodeStream(stream, null, options) }
+    var notice by remember { mutableStateOf<String?>(null) }
+    var preview by remember { mutableStateOf<CardState?>(null) }
+    val contact: (ContactState) -> Unit = { notice = "${it.label}\n${it.value}\n예시 연락처입니다." }
+    BackHandler(route != null && preview == null) { route = (route as? CardRoute.Editor)?.returnTo }
+    Surface(Modifier.fillMaxSize()) {
+        Column(Modifier.statusBarsPadding().navigationBarsPadding()) {
+            Box(Modifier.weight(1f)) {
+                when (val screen = route) {
+                    is CardRoute.Detail -> SharedCardPage(screen.card, state.wallet.any { it.card.id == screen.card.id }, { route = null }, { demo.saveCard(screen.card) }, { route = CardRoute.Send(screen.card) }, contact)
+                    is CardRoute.Send -> SendPage(state.cards, screen.recipient.person, { id ->
+                        demo.send(id, screen.recipient); route = null; tab = Tab.Wallet; notice = "명함을 건네는 예시를 확인했어요.\n실제 전송은 하지 않았어요."
+                    }, { route = CardRoute.Editor(screen) }, { route = null }, { preview = it }, contact)
+                    is CardRoute.Editor -> {
+                        val profile = state.profile
+                        val card = CardState("draft", profile.name, profile.job, "네트워킹", "새로운 인연에게 나를 소개해요.", profile.introduction, profile.contacts, profile.histories)
+                        CardEditor(card, screen.existing, { contacts, histories, name ->
+                            if (screen.existing == null) demo.createCard(contacts, histories, name) else demo.editCard(screen.existing.id, contacts, histories, name); route = screen.returnTo; if (route == null) tab = Tab.Qr }, { route = screen.returnTo })
+                    }
+                    null -> when (tab) {
+                        Tab.Discovery, Tab.Saved -> Column {
+                            if (!catalogDetail) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                                DearbyLogo(); Spacer(Modifier.weight(1f)); IconButton({ notice = "새 알림이 없어요.\n이 앱은 고정 예시로 둘러보는 프로토타입입니다." }) { Icon(Icons.Outlined.NotificationsNone, "알림") }
+                            }
+                            key(tab) { CatalogRoute(catalog, savedOnly = tab == Tab.Saved) { catalogDetail = it } }
+                        }
+                        Tab.Qr -> QrPage(state.cards, state.selectedCardId, demo::selectCard, { route = CardRoute.Detail(it) }, { route = CardRoute.Editor(null) }, { route = CardRoute.Editor(null, it) }, { route = CardRoute.Detail(demoPublicCard) }, { notice = "$it 동작을 확인했어요.\nhttps://example.com\n실제 전송·복사·파일 저장은 하지 않았어요." })
+                        Tab.Wallet -> WalletPage(state.wallet, state.query, state.reciprocalGroup, demo::query, demo::group, { route = CardRoute.Detail(it) }, { route = CardRoute.Send(it) }, contact)
+                        Tab.Profile -> ProfilePage(state.profile, state.loggedIn, demo::profile, { demo.login(true) }, { demo.login(false) })
+                    }
                 }
-                readImage(decoded)
-            } catch (_: Exception) { model.report("사진을 열 수 없습니다.") }
-        } }
-    }
-    val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { readImage(it) }
-    var exportLink by rememberSaveable { mutableStateOf<String?>(null) }
-    val saveImage = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("image/png")) { uri ->
-        val value = exportLink
-        if (uri != null && value != null) scope.launch {
-            try { withContext(Dispatchers.IO) { QrActions.save(context, uri, value) }; model.report("QR 이미지를 저장했습니다.") }
-            catch (_: Exception) { model.report("QR 이미지를 저장하지 못했습니다.") }
-        }
-    }
-    LaunchedEffect(incoming) { if (incoming != null) { input = incoming; route = "receive"; consume() } }
-    LaunchedEffect(state.loggedIn) { if (state.loggedIn && route == "login") { route = if (recipient != null) loginReturn else ""; loginReturn = "" } }
-    LaunchedEffect(state.message) { state.message?.let { snackbars.showSnackbar(it); model.clearMessage() } }
-    fun create() { if (!state.loggedIn) { loginReturn = ""; route = "login" } else { returnRoute = route; route = "create" } }
-    BackHandler(route.isNotEmpty()) { if (!(route == "send" && state.busy)) route = when (route) { "create" -> returnRoute; "send" -> sendReturn; "login" -> if (loginReturn == "send") "shared" else ""; else -> "" } }
-    if (enlarged && bitmap != null) Dialog({ enlarged = false }, DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().background(Color.White).clickable { enlarged = false }, contentAlignment = Alignment.Center) { Image(bitmap.asImageBitmap(), "QR 확대. 누르면 돌아갑니다.", Modifier.fillMaxWidth().aspectRatio(1f)) }
-    }
-    detail?.let { card -> Dialog({ detail = null }) { CardContent(card, true, { detail = null }, Modifier.fillMaxWidth().heightIn(max = 650.dp), ::openContact) } }
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbars) },
-        topBar = { Column(Modifier.statusBarsPadding().fillMaxWidth()) {
-            if (route.isEmpty() && !catalogDetail && (tab == 0 || tab == 2)) Box(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), contentAlignment = if (tab == 0) Alignment.CenterStart else Alignment.Center) { DearbyLogo() }
-            if (state.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-        } },
-        bottomBar = { if ((route.isEmpty() || route == "receive") && !state.importVisible && !catalogDetail) NavigationBar(containerColor = Color.White, tonalElevation = 0.dp) {
-            val names = listOf("발견", "저장", "QR", "받은 명함", "내 프로필")
-            val icons = listOf(Icons.Outlined.Explore, Icons.Outlined.BookmarkBorder, Icons.Outlined.QrCode, Icons.Outlined.Badge, Icons.Outlined.PersonOutline)
-            names.forEachIndexed { index, name -> NavigationBarItem(colors = NavigationBarItemDefaults.colors(indicatorColor = Color.Transparent, selectedIconColor = MaterialTheme.colorScheme.primary, selectedTextColor = MaterialTheme.colorScheme.primary), selected = tab == index, onClick = { route = ""; tab = index }, icon = { Icon(icons[index], name) }, label = { Text(name, maxLines = 1, style = MaterialTheme.typography.labelSmall) }) }
-        } }
-    ) { padding -> Box(Modifier.padding(padding).fillMaxSize()) {
-        when {
-            !state.ready -> CircularProgressIndicator(Modifier.align(Alignment.Center))
-            state.importVisible && state.loggedIn && route.isEmpty() -> ImportPage(state.guests.map { guest -> val cached = state.guestCards[guest.cardId]; ImportEntryState(guest.cardId, cached?.profileName ?: "명함 정보 확인 필요", cached?.job.orEmpty(), activityLabel(guest.context)) }, state.busy, model::importSelected, { model.showImport(false) })
-            route == "login" -> LoginPage(state.busy, state.challengeId, state.challengeExpires, model::requestCode, model::login, { route = if (loginReturn == "send") "shared" else ""; loginReturn = "" })
-            route == "create" -> CardEditor(state.profile.visibilityState(), state.busy, { model.publish(it.selectionModel()) { route = returnRoute } }, { route = returnRoute }, { visible -> Toast.makeText(context, if (visible) "이 연락처를 명함에 공개해요." else "이 연락처를 이번 명함에서 숨겼어요.", Toast.LENGTH_SHORT).show() })
-            route == "send" && recipient != null -> SendPage(cards, state.selectedCardId, recipient!!.person, state.busy, model::selectCard, { card, activityId, label -> model.send(card, recipient!!.ownerId, ExchangeContextModel(activityId = activityId, label = label.ifBlank { null })) { route = "" } }, ::create, { route = sendReturn }, ::openContact, activities)
-            route == "shared" && sharedCard != null -> SharedCardPage(sharedCard!!, state.busy, { route = "receive" }, { model.receive(sharedCard!!.id, sharedContext) { route = ""; tab = 3 } }, { recipient = sharedCard; sendReturn = "shared"; loginReturn = if (state.loggedIn) "" else "send"; route = if (state.loggedIn) "send" else "login" }, ::openContact)
-            route == "receive" -> ScanPage(input, { input = it }, state.busy, { route = ""; tab = 2 }, { runCatching { camera.launch(null) }.onFailure { model.report("사용 가능한 카메라 앱이 없습니다.") } }, { photo.launch("image/*") }, { receive(input) })
-            tab == 0 || tab == 1 -> CatalogRoute(catalog, tab == 1) { catalogDetail = it }
-            tab == 2 -> QrPage(cards, state.selectedCardId, bitmap?.asImageBitmap(), model::selectCard, { enlarged = true }, { detail = it }, ::create,
-                { link?.let { context.startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, it) }, "명함 링크 공유")) } },
-                { link?.let { (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("Dearby 명함", it)); model.report("명함 링크를 복사했습니다.") } },
-                { exportLink = link; saveImage.launch("dearby-qr.png") }, contextLabel, { contextLabel = it }, { route = "receive" }, activities, contextActivityId, { contextActivityId = it })
-            tab == 3 -> {
-                val entries = if (state.loggedIn) state.wallet.map { WalletEntryState(it.id, it.card.toState(), activityLabel(it.context), receivedDate(it.receivedAt), it.reciprocal) } else state.guests.mapNotNull { guest -> state.guestCards[guest.cardId]?.let { WalletEntryState(guest.cardId, it.toState(), activityLabel(guest.context), receivedDate(guest.savedAt), false) } }
-                WalletPage(entries, state.loggedIn, state.guests.size, { loginReturn = ""; route = "login" }, { model.showImport(true) }, model::refresh, { recipient = it; sendReturn = ""; route = "send" }, ::openContact)
             }
-            else -> ProfilePage(state.profile.editorState(), state.busy, state.loggedIn, { model.saveProfile(it.applyTo(state.profile)) }, { loginReturn = ""; route = "login" }, model::logout, { model.showImport(true) })
+            if (route == null && !catalogDetail) {
+                HorizontalDivider()
+                NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp, windowInsets = WindowInsets(0, 0, 0, 0)) {
+                    Tab.entries.forEach { item -> NavigationBarItem(selected = tab == item, onClick = { tab = item }, icon = { Icon(item.icon, null) }, label = { Text(item.label, fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Teal, selectedTextColor = Teal, indicatorColor = Mint, unselectedIconColor = Quiet, unselectedTextColor = Quiet)) }
+                }
+            }
         }
-    } }
+    }
+    notice?.let { value -> AlertDialog(onDismissRequest = { notice = null }, title = { Text("안내") }, text = { Text(value) }, confirmButton = { TextButton({ notice = null }) { Text("확인") } }) }
+    preview?.let { card -> Dialog({ preview = null }) { Surface { Column(Modifier.padding(12.dp)) { CardContent(card, Modifier.heightIn(max = 540.dp), contact, expanded = true); TextButton({ preview = null }) { Text("닫기") } } } } }
 }

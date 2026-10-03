@@ -2,7 +2,6 @@ import SwiftUI
 
 struct HomePage<Discovery: View, Saved: View, QR: View, Wallet: View, Profile: View>: View {
     @Binding var selectedTab: Int
-    let configured: Bool
     let discovery: Discovery
     let saved: Saved
     let qr: QR
@@ -45,12 +44,6 @@ struct HomePage<Discovery: View, Saved: View, QR: View, Wallet: View, Profile: V
             }.background(.white)
             }
         }
-        .tint(DearbyStyle.teal).preferredColorScheme(.light)
-        .safeAreaInset(edge: .top) {
-            if !configured {
-                Text("서버 미설정 · 저장된 정보는 유지됩니다").font(.caption).frame(maxWidth: .infinity)
-                    .padding(6).background(DearbyStyle.mint)
-            }
-        }
+        .tint(DearbyStyle.teal).foregroundStyle(DearbyStyle.ink).preferredColorScheme(.light)
     }
 }

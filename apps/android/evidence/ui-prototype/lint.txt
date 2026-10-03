@@ -1,0 +1,8 @@
+/Users/jominjun/Documents/dearby/android-ui-prototype/apps/android/gradle/wrapper/gradle-wrapper.properties:3: Warning: A newer version of Gradle than 9.3.1 is available: 9.8.0 [AndroidGradlePluginVersion]
+/Users/jominjun/Documents/dearby/android-ui-prototype/apps/android/app/build.gradle.kts:21: Warning: A newer version of androidx.compose:compose-bom than 2026.02.01 is available: 2026.09.00 [GradleDependency]
+/Users/jominjun/Documents/dearby/android-ui-prototype/apps/android/app/build.gradle.kts:22: Warning: A newer version of androidx.activity:activity-compose than 1.12.4 is available: 1.13.0 [GradleDependency]
+/Users/jominjun/Documents/dearby/android-ui-prototype/apps/android/app/build.gradle.kts:26: Warning: A newer version of androidx.lifecycle:lifecycle-viewmodel than 2.10.0 is available: 2.11.0 [GradleDependency]
+/Users/jominjun/Documents/dearby/android-ui-prototype/apps/android/app/build.gradle.kts:27: Warning: A newer version of androidx.lifecycle:lifecycle-runtime-compose than 2.10.0 is available: 2.11.0 [GradleDependency]
+/Users/jominjun/Documents/dearby/android-ui-prototype/apps/android/app/build.gradle.kts:31: Warning: A newer version of androidx.compose:compose-bom than 2026.02.01 is available: 2026.09.00 [GradleDependency]
+/Users/jominjun/Documents/dearby/android-ui-prototype/apps/android/app/src/main/res/drawable/github_mark.xml:3: Warning: The resource R.drawable.github_mark appears to be unused [UnusedResources]
+0 errors, 7 warnings

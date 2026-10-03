@@ -1,101 +1,48 @@
 {
-  "pages/home": [
-    "HomePage"
-  ],
-  "widgets/profile": [
-    "ProfilePage"
-  ],
-  "widgets/cardFlow": [
-    "CardComposer",
-    "SendCardView"
-  ],
-  "widgets/qr": [
-    "QRPage"
-  ],
-  "widgets/wallet": [
-    "WalletPage",
-    "GuestImportView"
-  ],
-  "widgets/auth": [
-    "LoginView"
-  ],
-  "features/contactActions": [
-    "ContactActions"
-  ],
-  "features/profile": [
-    "ProfileState",
-    "ProfileRequest"
-  ],
-  "features/guestLibrary": [
-    "GuestLibraryState"
-  ],
-  "features/exchange": [
-    "ExchangeState",
-    "ExchangeRequest",
-    "ExchangeActivityState",
-    "ExchangeActivityPicker"
-  ],
-  "features/wallet": [
-    "ReceiptModel"
-  ],
-  "features/auth": [
-    "LoginState"
-  ],
-  "features/scan": [
-    "CameraScanner"
-  ],
-  "entities/identity": [
-    "CardModel",
-    "CardLink",
-    "CardRequest",
-    "CardView",
-    "ProfileModel",
-    "ContactModel",
-    "HistoryModel",
-    "ExchangeContextModel",
-    "GuestSavedCardModel",
-    "ImportResult",
-    "IdentityHeading",
-    "HistoryTimeline",
-    "ContactIcons",
-    "CardDeck",
-    "ContactSymbol"
-  ],
-  "shared": [
-    "APIClient",
-    "APIError",
-    "Items",
-    "EmptyResponse",
-    "LocalStore",
-    "SessionVault",
-    "SessionModel",
-    "DearbyStyle",
-    "DearbyLogo",
-    "DearbyButtonStyle",
-    "DearbySegments",
-    "DeviceCalendarStore",
-    "DeviceCalendarOption",
-    "DeviceBusyTime",
-    "DeviceCalendarError"
-  ],
-  "entities/catalog": [
-    "CatalogModel",
-    "OrganizationModel",
-    "ProgramModel",
-    "ActivityModel",
-    "ActivityScheduleModel",
-    "ActivityLibraryModel"
-  ],
-  "features/catalog": [
-    "CatalogState"
-  ],
   "widgets/catalog": [
-    "CatalogPage"
-  ],
-  "features/application": [
-    "ActivityBrowser"
+    "CatalogPage",
+    "CatalogViewModel"
   ],
   "features/calendar": [
     "CalendarConflictView"
+  ],
+  "features/application": [
+    "DemoApplicationView"
+  ],
+  "entities/catalog": [
+    "ActivityModel",
+    "ActivityScheduleModel",
+    "DemoActivities"
+  ],
+  "shared": [
+    "DearbyStyle",
+    "DearbyLogo",
+    "DearbyButtonStyle",
+    "DearbyBadge",
+    "DearbyAvatar",
+    "DearbyInfoRow",
+    "DearbySheetHeader",
+    "DearbySegments"
+  ],
+  "entities/identity": [
+    "CardModel",
+    "ContactModel",
+    "HistoryModel",
+    "DemoIdentity",
+    "IdentityHeading",
+    "HistoryTimeline",
+    "ContactIcons",
+    "ContactSymbol",
+    "CardView",
+    "CardDeck"
+  ],
+  "pages/home": [
+    "HomePage"
+  ],
+  "widgets/identity": [
+    "IdentityViewModel",
+    "QRPage",
+    "WalletPage",
+    "ProfilePage"
   ]
 }
