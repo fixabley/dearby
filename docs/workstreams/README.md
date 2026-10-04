@@ -1,10 +1,9 @@
-# Dearby 작업 세션 안내
+# 담당 작업 안내
 
-2026-09-24 사용자가 기존 코드를 제거하고 최근 기획 기반 웹으로 재구현하도록 승인했다. 새 구현은 웹 담당, 공통 결정·검토·통합은 메인이 소유한다. 기존 iOS·Android·API 역할 문서는 종료된 네이티브 프로젝트의 이력이다.
+현재 작업·플랫폼 인계는 [컨텍스트 목차](../context/README.md)에서 관리한다. 이 폴더에 진행 상태를 중복 기록하지 않는다.
 
-- 현재 목표: [조율 문서](../context/coordinator-current-task-and-decisions.md)
-- 웹 구현·검증: [웹 인계](../context/web-implementation-and-handoff.md)
-- 런타임/checkout: [Git·Orca 운영](../context/orca-sessions-and-worktrees.md)
-- 제품 정본: [최근 재기획](../product/replanning-2026-09.md)
+- 모바일: [iOS](../context/ios-ui-prototype.md), [Android](../context/android-ui-prototype.md)
+- 서비스: [API](../context/api-prisma-postgres.md), [사용자 웹](../context/web-implementation-and-handoff.md), [어드민](../context/admin-web-deployment.md)
+- 배정·통합: [현재 작업](../context/coordinator-current-task-and-decisions.md), [협업 규칙](../../AGENTS.md)
 
-웹 담당은 자기 docs/context/web-implementation-and-handoff.md와 docs/workstreams/web.md에 변경·실행한 검증·한계를 기록한다. 새 세션을 만들기 전 실시간 연결을 재확인한다.
+이 폴더의 날짜가 있는 과거 기록은 당시 구현 이력이다. 이전 담당 경로·세션 유지 지시는 현재 작업에 적용하지 않는다.
