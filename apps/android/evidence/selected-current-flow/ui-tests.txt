@@ -1,8 +1,0 @@
-
-com.dearby.nativeapp.PrototypeFlowTest:...
-
-Time: 16.21
-
-OK (3 tests)
-
-

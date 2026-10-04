@@ -1,2 +1,0 @@
-Boundary self-test: 24 cases passed
-FSD boundaries: 32 Kotlin files passed
