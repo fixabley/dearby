@@ -4,7 +4,7 @@
 - [시안 적용·공통 컴포넌트](../design/mobile-prototype-reference-map.md) — selected 전체 화면과 5탭 예시 흐름. [iOS](ios-ui-prototype.md) · [Android](android-ui-prototype.md) 검증 인계.
 - [불필요 파일 정리](mobile-ui-prototype.md#불필요-파일-정리--2026-10-04) — 대체된 캡처·보고서와 이전 모바일 연동 스크립트 제거, 삭제 전 자료의 Git 복구 지점.
 
-- [현재 Git·워크트리 상태](orca-sessions-and-worktrees.md) — 2026-10-04 main 통합, 하위 워크트리 2개 제거와 외부 백업. [이전 정리](worktree-cleanup-2026-10-03.md)에는 수집 워커 실행 경로 이전 기록을 보존한다.
+- [현재 Git·워크트리 상태](orca-sessions-and-worktrees.md) — 2026-10-04 main 통합, 하위 워크트리 2개와 복구 전용 백업 제거. [이전 정리](worktree-cleanup-2026-10-03.md)에는 수집 워커 실행 경로 이전 기록을 보존한다.
 - [수집 워커 인계](catalog-subscription-worker-handoff.md) — cloud 전환 및 워크트리 밖 실행 경로.
 - [도메인 도식도](database-and-domains.md) — 탐색·수집·계정·명함·게스트 보관함의 업무 관계.
 
