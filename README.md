@@ -1,23 +1,26 @@
 # Dearby
 
-활동 탐색과 명함 공유를 다루는 프로젝트입니다. **현재 iOS·Android는 디자인과 화면 이동을 확인하는 오프라인 프로토타입입니다.**
+활동 탐색과 명함 공유를 다루는 프로젝트입니다. **현재 iOS·Android는 디자인과 화면 이동을 확인하는 오프라인 프로토타입입니다.** 고정 예시와 메모리 상태로 활동·일정 겹침·프로필·명함·QR 화면을 확인합니다.
 
-모바일에서는 고정 예시로 활동 탐색·상세·신청 안내·일정 겹침과 프로필·명함·QR·명함함 화면을 확인합니다. 실제 서버·로그인·영구 저장·기기 캘린더 연결은 제거했고, 서버·사용자 웹·어드민은 별도로 보존합니다. [모바일 프로토타입 범위와 복구 지점](docs/context/mobile-ui-prototype.md)을 먼저 확인하세요.
+## 시작하기
 
-## 정본과 작업
+1. [현재 모바일 범위와 화면 흐름](docs/context/mobile-ui-prototype.md)을 읽습니다.
+2. [iOS 실행](apps/ios/README.md) 또는 [Android 실행](apps/android/README.md)을 따릅니다.
+3. 화면을 수정할 때는 [시안·공통 컴포넌트 적용표](docs/design/mobile-prototype-reference-map.md)를 참고합니다.
+4. [검증 기록과 한계](docs/context/verification-and-local-devices.md), [현재 작업](docs/context/coordinator-current-task-and-decisions.md)을 확인합니다.
 
-- [확정 제품 명세](docs/product/native-spec-2026-09.md)
-- [공통 API 계약](shared/contracts/native-v1.md)
-- [현재 모바일 작업·검증](docs/context/mobile-ui-prototype.md)
-- [시안별 화면과 공통 컴포넌트 위치](docs/design/mobile-prototype-reference-map.md)
-- [iOS #37](https://github.com/fixabley/dearby/issues/37), [Android #38](https://github.com/fixabley/dearby/issues/38), [API #39](https://github.com/fixabley/dearby/issues/39)
+## 프로젝트 구성
 
-실행: [iOS](apps/ios/README.md), [Android](apps/android/README.md), [API](apps/dearby-api/README.md). 현재 모바일 검증: [iOS](docs/context/ios-ui-prototype.md), [Android](docs/context/android-ui-prototype.md). 과거 서비스 [통합 검증](docs/implementation/verification-matrix.md)은 별도 이력입니다.
+| 경로 | 역할 |
+| --- | --- |
+| `apps/ios`, `apps/android` | 오프라인 모바일 프로토타입 |
+| `shared/assets/prototype` | 양쪽 앱이 사용하는 이미지 원본 |
+| `apps/dearby-api` | 별도 보존한 API 서버. [실행 안내](apps/dearby-api/README.md) |
+| `apps/web`, `apps/admin` | 별도 보존한 사용자 웹·어드민 |
+| `docs/context` | [모바일·서비스 운영·과거 기록 목차](docs/context/README.md) |
 
-과거 실제 서비스 검증·명함 교환 계약은 아래 문서와 Git 이력에 보존합니다. 과거 기능의 구현 기록을 현재 모바일 프로토타입의 기능으로 해석하지 않습니다.
+모바일의 실제 인증·서버·영구 저장·기기 캘린더·카메라 연결은 제거했습니다. 서버·웹·어드민·수집 워커와 운영 데이터는 보존합니다. [전체 서비스 제품 요구](docs/product/native-spec-2026-09.md)와 [API 계약](shared/contracts/native-v1.md)은 서비스 연결을 검토할 때 참고하며, 현재 모바일에서 모두 구현된 기능을 뜻하지 않습니다.
 
 ## 조사 자료
 
-`shared/data/catalog-snapshot-2026-09-24.json`은 과거 공식 출처 조사 스냅샷이며 실시간 모집 현황이 아닙니다. 프로그램·공고·조직 관계와 확인일을 보존했습니다. `shared/assets`의 이미지 출처 문서를 함께 확인하세요. 이미지의 자유 재배포 허가를 확인했다는 뜻은 아닙니다.
-
-개발 중 차단 사항은 GitHub 이슈에 기록하고 독립 작업을 계속합니다. 미검증 연동을 성공으로 표시하지 않습니다.
+`shared/data/catalog-snapshot-2026-09-24.json`은 과거 공식 출처 조사 스냅샷입니다. 프로그램·공고·조직 관계와 확인일을 보존하며 실시간 모집 현황은 아닙니다. 이미지 사용 시 [프로토타입 자산](shared/assets/prototype/README.md), [컨퍼런스](shared/assets/conferences/SOURCES.md), [동아리](shared/assets/clubs/SOURCES.md), [조직](shared/assets/organizations/SOURCES.md)의 출처를 확인하세요. 출처 기록이 자유 재배포 허가를 의미하지는 않습니다.

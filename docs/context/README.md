@@ -1,64 +1,41 @@
-# Dearby 컨텍스트 목차
+# Dearby 문서 길잡이
 
-- [모바일 UI 프로토타입](mobile-ui-prototype.md) — 2026-10-03 최신 승인: iOS·Android의 디자인·예시 데이터·화면 이동 유지, 실제 서비스 연결 제거. 서버·웹·어드민은 보존.
-- [시안 적용·공통 컴포넌트](../design/mobile-prototype-reference-map.md) — selected 전체 화면과 5탭 예시 흐름. [iOS](ios-ui-prototype.md) · [Android](android-ui-prototype.md) 검증 인계.
-- [불필요 파일 정리](mobile-ui-prototype.md#불필요-파일-정리--2026-10-04) — 대체된 캡처·보고서와 이전 모바일 연동 스크립트 제거, 삭제 전 자료의 Git 복구 지점.
+현재 모바일은 오프라인 예시 화면입니다. 서버·사용자 웹·어드민·수집 워커는 별도로 보존합니다. 아래에서 작업 목적에 맞는 문서를 선택하세요.
 
-- [현재 Git·워크트리 상태](orca-sessions-and-worktrees.md) — 2026-10-04 main 통합, 하위 워크트리 2개와 복구 전용 백업 제거. [이전 정리](worktree-cleanup-2026-10-03.md)에는 수집 워커 실행 경로 이전 기록을 보존한다.
-- [수집 워커 인계](catalog-subscription-worker-handoff.md) — cloud 전환 및 워크트리 밖 실행 경로.
-- [도메인 도식도](database-and-domains.md) — 탐색·수집·계정·명함·게스트 보관함의 업무 관계.
+## 모바일 개발·검증
 
-## 최신 재개 지점 — 2026-09-29
-
-PR40 main 병합 완료(849b1fe). 사용자가 기존 파일과 데이터를 보존하며 기본 앱을 탐색/상세/신청/실제 기기 캘린더 겹침 확인으로 좁히도록 승인했다. [제품 명세의 최신 승인](../product/native-spec-2026-09.md)이 기존 다섯 탭 노출 요구보다 우선한다. #54 로컬 구현·검증 완료. 하위4개 워크트리는 백업 후 승인 제거했고 root만 유지한다. 구현·검증과 실행 세션은 [조율 문서](coordinator-current-task-and-decisions.md)를 따른다. 아래 기록은 이전 구현 시점이다.
-
-갱신: 2026-09-27 KST. 재개할 때 **조율 문서 → 담당 역할 문서 → 필요한 검증 기록** 순서로 읽는다.
-
-## 최신 재개 지점 — 2026-09-27
-
-[네이티브 재착수](native-restart-2026-09-27.md)와 [확정 제품 명세](../product/native-spec-2026-09.md)가 최신 정본이다. Cycle 4 Seed 확정, iOS·Android 개발·웹 제거 승인. 차단 사항은 이슈로 남기고 독립 작업을 계속한다. 첫 명함 구현은 통합·원격 CI 통과했고 활동 카탈로그와 발견·저장·상세·신청 기록까지 통합·로컬 검증했다. 최신 원격 CI 상태는 조율 문서와 PR40에서 확인한다. 실행 세션과 다음 행동은 [조율 문서](coordinator-current-task-and-decisions.md)를 따른다. 아래 9월 24일 웹 상태는 이전 이력이다.
-
-## 이전 재개 지점
-
-현재 완료: 공식 컨퍼런스·선발형 연합동아리 28프로그램·발견 홈·활성 공고 노출 통합·메인 검증. [조사 정본](../research/korea-it-conferences-2026-09.md), 유지 중인 Orca 웹 세션·미리보기는 조율 문서를 확인한다.
-
-2026-09-24: 사용자 요청으로 네이티브·API 실행 코드를 보존 후 제거하고 최근 재기획 기반 웹을 재구현한다. 인터페이스는 YouTube 클론, 범위는 프로그램 탐색·필터·상세·조직/프로그램 스크랩이다. [조율 문서](coordinator-current-task-and-decisions.md)가 최신 작업 정본이다. 아래 플랫폼 문서는 과거 구현 이력이며 신규 웹 규칙으로 해석하지 않는다.
-
-| 문서 | 담당 정보 |
+| 먼저 읽을 문서 | 찾을 정보 |
 | --- | --- |
-| [조율·현재 작업](coordinator-current-task-and-decisions.md) | 완료 상태, 협업 원칙, 다음 행동 |
-| [관리자 웹 Vercel 배포](admin-web-deployment.md) | 승인 관리자 UI 복원·Node24·SPA·권한 검증·root 배포 인계 |
-| [웹 구현 인계](web-implementation-and-handoff.md) | 2026-09-29 공개 웹·guest 저장·Vercel root 인계 |
-| [iOS 인계](ios-implementation-and-handoff.md) | SwiftUI 상태·컴포넌트·SwiftData 경계 |
-| [main TestFlight 준비](testflight-main-readiness.md) | main 기반 배포 메타데이터 보완·무서명 archive 검증·root 인계 |
-| [Android 인계](android-implementation-and-handoff.md) | Compose 상태·컴포넌트·Room 경계 |
-| [main API 도메인 배포](api-domain-main.md) | 독립 컨테이너·Supabase read·root nginx 인계 |
-| [API Swagger](api-swagger.md) | 읽기 전용 UI·OpenAPI·HTTP 계약 일치·root nginx 인계 |
-| [API Prisma 전환](api-prisma-postgres.md) | 전체 API 저장 PostgreSQL 전환 완료·운영 Compose 정본·SQLite 보존 |
-| [API 인계](api-implementation-and-handoff.md) | 서버 현황, 미구현 범위, 실행 위치 |
-| [제품·기획](product-planning-and-github-issues.md) | 제품 목적, 구현 범위, Symposium 정본 |
-| [공통 데이터](shared-data-and-source-decisions.md) | 조직·공고 관계, 승인 사례, 데이터 정본 |
-| [검증·기기](verification-and-local-devices.md) | 실행한 검증, 한계, 사용자 기기 보존 |
-| [Git·Orca 운영](orca-sessions-and-worktrees.md) | 현재 checkout, 역할 배정, 세션 재구성 |
-| [#2 네이티브 UI](issue-02-native-ui.md) | 구현 범위·디자인 참고·완료 기준 |
-| [백업·통합 기록](coordinator-architecture-merged-and-worktrees-cleaned.md) | 병합 기준, 전체 worktree 백업, 복원 방법 |
+| [모바일 프로토타입 범위](mobile-ui-prototype.md) | 다섯 탭, 예시 데이터, 실제 기능과의 경계 |
+| [시안·공통 컴포넌트 적용표](../design/mobile-prototype-reference-map.md) | 화면별 원본과 구현 위치 |
+| [iOS 인계](ios-ui-prototype.md) · [Android 인계](android-ui-prototype.md) | 플랫폼 구조, 실행·검증 근거 |
+| [검증·기기 안내](verification-and-local-devices.md) | 검사 재현 위치, 확인 시점과 한계 |
+| [Git·워크트리 상태](orca-sessions-and-worktrees.md) | 통합·폴더 정리 기록 |
+| [현재 작업과 결정](coordinator-current-task-and-decisions.md) | 통합 상태, 남은 일, 주의할 로컬 변경 |
 
-## 정본과 이력
+## 보존한 서비스와 운영
 
-현재 제품 정본은 [네이티브 명세](../product/native-spec-2026-09.md), 데이터 계약은 [명함](../../shared/contracts/native-v1.md)·[활동 카탈로그](../../shared/contracts/catalog-v1.md)다. [9월 24일 웹 재기획](../product/replanning-2026-09.md)과 당시 웹 구현 인계는 역사 자료다. 플랫폼별 현재 역할 문서와 실제 검사 증거를 우선한다.
+| 문서 | 찾을 정보 |
+| --- | --- |
+| [API Prisma 전환](api-prisma-postgres.md) | PostgreSQL 저장·운영 Compose |
+| [API Swagger](api-swagger.md) · [API 도메인](api-domain-main.md) | 계약 확인·외부 연결 인계 |
+| [API 구현 인계](api-implementation-and-handoff.md) | 구현 범위·한계·검증 기록 |
+| [사용자 웹](web-implementation-and-handoff.md) | 공개 이력·게스트 명함 보관 |
+| [관리자 웹](admin-web-deployment.md) | 탐색 관리·배포 인계 |
+| [수집 워커](catalog-subscription-worker-handoff.md) | 주기 수집·실행 경로 |
+| [도메인 도식도](database-and-domains.md) | 프로그램·활동·명함·계정 관계 |
+| [공통 데이터](shared-data-and-source-decisions.md) | 출처·데이터 결정 |
 
-정리 전 문서 17개와 workstreams 원문은 [날짜별 보관함](archive/2026-09-14-before-consolidation/README.md)에 그대로 보존했다. 과거 인터뷰·Seed 변화·중간 커밋·세션 ID가 필요할 때만 읽는다.
+각 운영 문서의 확인 시점을 따릅니다. 보존된 배포 기록은 현재 서버가 정상 작동한다는 새 검증이 아닙니다.
+
+## 제품 요구와 과거 근거
+
+- [전체 서비스 제품 요구](../product/native-spec-2026-09.md), [제품 기획](product-planning-and-github-issues.md), [명함 계약](../../shared/contracts/native-v1.md), [활동 계약](../../shared/contracts/catalog-v1.md): 실제 서비스를 연결할 때 참고합니다.
+- [기존 TestFlight 배포](testflight-main-readiness.md), [기기 캘린더 구현](issue-10-device-calendar.md), [네이티브 재착수](native-restart-2026-09-27.md), [이전 UI 작업](issue-02-native-ui.md): 당시 구현 기록입니다.
+- [시각 구현 기준](../design/native-visual-contract.md), [구조 개편 설계](../architecture/fsd-domain-rules-draft.md): 날짜와 현재 코드의 적용 범위를 함께 확인합니다.
+- [이전 워크트리 정리](worktree-cleanup-2026-10-03.md), [날짜별 문서 보관함](archive/2026-09-14-before-consolidation/README.md), [정리 전 목차](https://github.com/fixabley/dearby/blob/ec9dfec98c13661ab332c2567bfba1bb35f1329a/docs/context/README.md): 과거 작업을 추적할 때 읽습니다.
+- [이번 문서 정리·스킬 적용 기록](documentation-maintenance.md): 삭제·통합 근거와 확인한 범위입니다.
 
 ## 갱신 규칙
 
-- 진행 상태는 조율 문서, 플랫폼 구현은 역할 문서, 검증 결과는 검증 문서에 기록한다. 같은 작업 로그를 모든 파일에 복제하지 않는다.
-- 완료·진행·미착수를 명시하고 기존 상태를 교체한다. 새로운 “최신” 단락을 끝없이 덧붙이지 않는다.
-- 상세 이력은 날짜별 archive에 보존하고 현재 문서에는 결정·이유·다음 행동을 남긴다.
-- 컨텍스트 압축 전과 주요 결정·작업 완료 때 갱신한다. 자동 압축 시점의 사전 감지는 보장할 수 없다.
-- 이전 테스트 결과를 이번 실행으로 표시하지 않는다. Git·GitHub·Orca·기기는 작업을 재개할 때 다시 확인한다.
-
-- [기기 캘린더: 동의·내 일정 ON/OFF·바쁜 시간 겹침](issue-10-device-calendar.md) — #10 완료 규격과 후속 이슈.
-
-- [FSD 구조 개편 설계안](../architecture/fsd-domain-rules-draft.md) — 2026-09-16 iOS Harmonize 리팩터링의 목표 규칙. 구현·검증 완료 여부는 조율/플랫폼 문서에서 확인한다.
-
-- [컨펌 화면별 시각 구현 기준](../design/native-visual-contract.md): 수정 후 원본 시안, 최신 문구/레이아웃 우선순위, 실제 캡처 비교 조건.
+현재 범위는 모바일 범위 문서, 실행 방법은 앱 README, 진행 상태는 조율 문서, 검증은 [작성 위치 안내](verification-and-local-devices.md#기록을-갱신할-때)에 따라 해당 실행 기록에 남깁니다. 같은 작업 로그를 여러 문서에 복제하지 않습니다. 상태가 바뀌면 기존 설명을 교체하고 이전 내용은 날짜가 있는 기록이나 Git 고정 링크로 보존합니다. 과거 테스트·기기·세션 상태를 현재 확인 결과로 표시하지 않습니다.
