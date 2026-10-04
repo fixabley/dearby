@@ -1,6 +1,0 @@
-2026-09-27 KST; JBR25.0.2 / API36
-Default URL unset: assembleDebug / assembleRelease / lintDebug passed
-Configured actual API: testDebugUnitTest / assembleDebug / lintDebug / assembleDebugAndroidTest passed
-FSD: 43 files / 28 self-tests passed
-Ponytail and git diff --check completed
-Unsigned release is not a deployment

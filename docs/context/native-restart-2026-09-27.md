@@ -42,6 +42,6 @@ API worker ctx_ce111f22ff1f의 성공 보고를 검토하고 retain했다. 80511
 
 조율 checkout: API HTTP10/typecheck/lint/build, iOS 단위17+guest UI1/구조16/SwiftLint/Simulator 테스트 빌드, Android JVM18/구조32파일+24자체회귀/Lint/Debug·unsigned Release 빌드 통과. 최종 QR 타일 변경 후 iOS UI/Android 빌드·Lint 재확인. 담당 checkout의 인증 UI·에뮬레이터11·양 플랫폼 실제 HTTP 교환 증거는 각 플랫폼 검증 문서에 있다. A/B/A 전송 재시도 덮어쓰기 수정·회귀도 통합했다. 밝은 액션 색 대비와 전체 큰 글자/VoiceOver/TalkBack은 #14 후속이다.
 
-격리 통합 서버 PID96761의 명령을 확인한 뒤 SIGTERM으로 종료했고 임시 DB/메일 디렉터리 삭제를 확인했다. 조율 전용 Simulator 4712C750-BF32-42A8-8FBA-9AD2BA339EFC는 테스트 종료 뒤 Shutdown 상태다. 다른 기기/세션을 종료하지 않았다. 이제 이전 로컬 포트는 실행 중이 아니므로 다시 재현하려면 scripts/native-integration.mjs를 새로 시작해야 한다.
+격리 통합 서버 PID96761의 명령을 확인한 뒤 SIGTERM으로 종료했고 임시 DB/메일 디렉터리 삭제를 확인했다. 조율 전용 Simulator 4712C750-BF32-42A8-8FBA-9AD2BA339EFC는 테스트 종료 뒤 Shutdown 상태다. 다른 기기/세션을 종료하지 않았다. 2026-10-04 정리에서 이 SQLite 기반 모바일 연동 스크립트는 제거했다. 현재 API는 Prisma PostgreSQL, 모바일은 오프라인 프로토타입이므로 당시 재현 방법을 적용하지 않는다. 당시 스크립트는 Git 커밋 `a385835630b4cf2e193a8f02d39a5cd6a98796b1`에 보존되어 있다.
 
 PR40은 구현 범위/증거/남은 요구 중심으로 갱신했다. 첫 원격 CI run 36273266684 (b1dd81f): API 성공, iOS/Android 진행 중인 시점에 확인했다. 최종 원격 상태는 GitHub에서 재확인한다. #37/#38/#39 댓글에 조율 검증을 기록했다. 실제 운영 조건 #42/#43/#44, 전체 제품 #41, if(kakao) #36은 미완료다.

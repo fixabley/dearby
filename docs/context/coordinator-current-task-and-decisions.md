@@ -14,7 +14,7 @@ Run `run_8ba522965ee6`, coordinator `term_1cbabda3-9f12-4f38-9655-ef8a0a3548fd`.
 
 - iOS: 단위40 중33 통과/7skip(기존 명시적 API fixture6 + 별도 권한 거부 조건1), 권한 거부를 따로 실행해1 통과. 실제 EventKit 반복 조회/결과 clear, 기본 UI2 흐름 통과. 구조16, strict lint64파일0, Debug build 성공.
 - Android: JVM32, FSD49/자체28, Debug/lint 성공(기존17경고). OS Calendar Provider 반복/free 필터와 실제 탐색/상세/캘린더/신청/보류 테스트 통과.
-- 증거: [iOS](../../apps/ios/docs/evidence/discovery-calendar/README.md), [Android](../../apps/android/evidence/discovery-calendar/README.md). UI용 localhost fixture는 실제 모집이 아님을 명시하며 테스트의 임시 캘린더는 종료 시 제거한다.
+- 증거: [iOS](https://github.com/fixabley/dearby/blob/a385835630b4cf2e193a8f02d39a5cd6a98796b1/apps/ios/docs/evidence/discovery-calendar/README.md), [Android](https://github.com/fixabley/dearby/blob/a385835630b4cf2e193a8f02d39a5cd6a98796b1/apps/android/evidence/discovery-calendar/README.md). UI용 localhost fixture는 실제 모집이 아님을 명시하며 테스트의 임시 캘린더는 종료 시 제거한다.
 - Ponytail 검토: 새 추상화/의존성/일반 feature flag 없이 루트 구성과 OS 어댑터로 구현. 추가 삭제 후보 없음(Lean already. Ship.). 기존 숨긴 파일은 사용자 보존 요구이므로 삭제 대상이 아니다. 별도 정확성 검토에서 권한/시각/반복/종일/DST/경계/저장 보존을 검증했다.
 - 실제 동기화 계정/물리 기기/전체 VoiceOver·TalkBack/외부 신청 제출은 미검증. 전체 제품 완료나 과거 #13/#15 전체 해결로 확대하지 않는다.
 
@@ -48,7 +48,7 @@ f315825 원격 PR CI 36291919730의 API/iOS/Android가 모두 통과했고 PR40 
 
 격리 통합 서버는 양 플랫폼 검증 후 PID27463의 명령을 확인하고 SIGTERM으로 정상 종료했다. session72494 종료0, 임시 DB/메일 디렉터리 삭제를 확인했다. 과거 포트52777은 이제 실행 중이 아니다. 조율 Simulator4712C750-BF32-42A8-8FBA-9AD2BA339EFC도 Shutdown 상태를 확인했다. 다른 기기나 retained 세션은 종료하지 않았다. 실제 공식 수집 마지막 확인은 2026-09-27T03:21:49Z, 당시 30공고/28프로그램/26조직/모집중1이었다. 운영 최신성을 의미하지 않는다.
 
-주요 증거: [검증 매트릭스](../implementation/verification-matrix.md), [iOS 실제 화면](../../apps/ios/docs/evidence/catalog/README.md), [Android 검증](../../apps/android/docs/VERIFICATION.md).
+주요 증거: [검증 매트릭스](../implementation/verification-matrix.md), [iOS 실제 화면](https://github.com/fixabley/dearby/blob/a385835630b4cf2e193a8f02d39a5cd6a98796b1/apps/ios/docs/evidence/catalog/README.md), [Android 검증](../../apps/android/docs/VERIFICATION.md).
 
 전체 제품 #41, 외부 폼 #36, 운영 조건 #42/#43/#44, 접근성 #14, 운영 수집/경보 #49를 계속 추적한다. 이슈 작성은 해결 완료가 아니다. 차단 사항은 이슈에 남기고 독립 작업을 계속한다.
 

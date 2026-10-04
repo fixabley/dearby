@@ -38,8 +38,8 @@ Android 전 화면은 실제 Compose instrumentation test fixture 캡처다. bef
 
 조율 세션에서 양 플랫폼의 실제 캡처를 원본과 함께 열어 확인했다. 로고·흰 배경·연락처 행·연표·큰 QR·공유 메뉴·명함 타일·민트 카드 묶음·별도 상세/전송 행동을 반영했다. 일반 명함 헤더는 이름·직무를 유지하고 내 명함 선택에는 구성 이름표를 추가했다. iOS는 상세의 탭 영역을 제거했고 Android는 빈 공간까지 늘어나던 카드 높이를 줄였다. 긴 내용/큰 글자는 스크롤되며 QR 비중 때문에 아래 타일이 첫 화면 밖에 놓일 수 있다.
 
-- [Android 비교 갤러리](../../apps/android/evidence/visual-fidelity/compare.html), [최종 검증·제한](../../apps/android/evidence/visual-fidelity/README.md). 원본, 변경 전 fixture, 변경 후 fixture/실제 MainActivity를 구분한다. 조율은 최종 QR/명함 선택/편집 화면과 실제 시스템 바 포함 캡처도 확인했다.
-- [iOS 비교 갤러리](../../apps/ios/docs/evidence/visual-fidelity/comparison.html), [최종 검증·제한](../../apps/ios/docs/evidence/visual-fidelity/README.md). 실제 API 테스트 계정으로 렌더링했으며 스크롤 상단/하단 캡처는 별도다. 조율은 초기에 잘못 붙은 send-card-picker-top 이름이 실제 받은 명함 화면임을 발견해 증거 교정을 요청했다.
+- [Android 비교 갤러리](https://github.com/fixabley/dearby/blob/a385835630b4cf2e193a8f02d39a5cd6a98796b1/apps/android/evidence/visual-fidelity/compare.html), [최종 검증·제한](https://github.com/fixabley/dearby/blob/a385835630b4cf2e193a8f02d39a5cd6a98796b1/apps/android/evidence/visual-fidelity/README.md). 원본, 변경 전 fixture, 변경 후 fixture/실제 MainActivity를 구분한다. 조율은 최종 QR/명함 선택/편집 화면과 실제 시스템 바 포함 캡처도 확인했다.
+- [iOS 비교 갤러리](https://github.com/fixabley/dearby/blob/a385835630b4cf2e193a8f02d39a5cd6a98796b1/apps/ios/docs/evidence/visual-fidelity/comparison.html), [최종 검증·제한](https://github.com/fixabley/dearby/blob/a385835630b4cf2e193a8f02d39a5cd6a98796b1/apps/ios/docs/evidence/visual-fidelity/README.md). 실제 API 테스트 계정으로 렌더링했으며 스크롤 상단/하단 캡처는 별도다. 조율은 초기에 잘못 붙은 send-card-picker-top 이름이 실제 받은 명함 화면임을 발견해 증거 교정을 요청했다.
 - 원본의 샘플 데이터, 생성된 기기 프레임/질감, OS 시스템 시트 모양까지 일치한다고 주장하지 않는다. 데이터 계약 차이 #51과 운영 연동은 위 한계를 유지한다. iOS 별도 작은 기기/VoiceOver 음성 탐색, Android 실기기/TalkBack은 이번 결과에 포함되지 않는다.
 
 기능 회귀는 이미지 대조와 별도로 확인했다. 이력 전체선택의 연락처 공개 변경을 제거하고, 저장 전 안내/취소, 로그인 복귀, 서버 성공 후 상태 변경, 전송 중 선택 잠금, 고유 상대 집계를 교정했다. 양 플랫폼의 본문 없는 로그아웃을 교정했으며 iOS 실제204 후 폐기 토큰401, Android 실제 로그아웃/OTP 로그인/전송 선택 복귀가 통과했다. 조율 checkout 검사와 원격 CI 상태는 [검증 추적](../implementation/verification-matrix.md)에 기록한다.

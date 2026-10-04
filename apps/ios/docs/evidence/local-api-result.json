@@ -1,5 +1,0 @@
-{
-  "cardId": "8452e571-3924-4101-b792-3e80ef19f588",
-  "checks": "real URLSession OTP fixture login, Keychain, profile PUT, selected public GET, guest import and wallet GET",
-  "profileId": "c4d0f524-119f-42f2-9e3a-1b0808700f1b"
-}
