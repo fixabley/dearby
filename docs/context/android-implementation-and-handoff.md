@@ -4,7 +4,7 @@
 
 정확한 시작·종료 시각이 있는 활동만 기기 일정과 비교한다. 권한 거부/캘린더 없음/시각 미확인/부분 확인/조회 실패는 겹침 없음과 구분한다. 선택 캘린더의 바쁜 시간만 화면에서 사용하고 닫기·백그라운드 전환 시 선택과 결과를 지운다. 반복 일정은 OS가 확장하며 긴 조회는 366일 단위로 나눈다. 서버 전송/개인 일정 영구 저장/일정 수정은 없다.
 
-검증: JVM32 통과, FSD49파일/자체회귀28, Debug build/lint0오류·기존17경고 통과; 실제 Calendar Provider/UI 검증은 증거 문서 참고. 명시적 localhost 카탈로그 fixture와 OS 임시 캘린더 fixture를 구분했다. 실제 공식 모집/외부 제출/클라우드 동기화/실기기/전체 접근성 검증으로 확대하지 않는다. [실행 증거](../../apps/android/evidence/discovery-calendar/README.md).
+검증: JVM32 통과, FSD49파일/자체회귀28, Debug build/lint0오류·기존17경고 통과; 실제 Calendar Provider/UI 검증은 증거 문서 참고. 명시적 localhost 카탈로그 fixture와 OS 임시 캘린더 fixture를 구분했다. 실제 공식 모집/외부 제출/클라우드 동기화/실기기/전체 접근성 검증으로 확대하지 않는다. [실행 증거](https://github.com/fixabley/dearby/blob/a385835630b4cf2e193a8f02d39a5cd6a98796b1/apps/android/evidence/discovery-calendar/README.md).
 
 하위4개 워크트리/연결 세션은 별도 전체 백업 검증 후 사용자 승인으로 제거했다. 현재 root만 유지하며 과거 세션 retain 지시는 이번 정리에 한해 해제됐다. [현재 워크트리](orca-sessions-and-worktrees.md).
 

@@ -69,7 +69,7 @@ flowchart LR
 
 ## 진행 상태
 
-2026-10-04 iOS·Android의 다섯 탭과 시안별 예시 흐름을 root 작업 브랜치에 통합했다.
+2026-10-04 iOS·Android의 다섯 탭과 시안별 예시 흐름을 PR #72로 main에 병합했다 (`a385835`).
 실제 계정·캘린더·카메라·영구 저장 대신 고정 예시와 메모리 상태를 사용한다.
 
 | 검증 | 결과 |
@@ -107,3 +107,16 @@ iOS API 주소·권한 설명 키·ATS 예외가 없고 Android APK에 인터넷
 인증서·프로파일·서명 빌드 산출물은 프로젝트 밖 `~/.dearby-signing`에서 취급한다.
 
 복잡성 검토(ponytail-review): `Lean already. Ship.` 공통 표현은 반복 사용되는 작은 컴포넌트로 제한했다. 정확성·접근성 검토는 위 테스트와 시각 검토로 별도 수행했다.
+
+## 불필요 파일 정리 — 2026-10-04
+
+현재 소스·이미지·검사 스크립트는 실제 참조되어 유지한다. 최신 화면 증거는 iOS의
+`docs/evidence/ui-prototype-selected`, Android의 `evidence/selected-card-flows`에 모으고,
+대체된 이전 캡처·중간 보고서는 제거한다. 삭제 전 자료는 Git 커밋 `a385835630b4cf2e193a8f02d39a5cd6a98796b1`에서 복구할 수 있다.
+
+루트의 `scripts/native-integration.mjs`와 전용 README도 제거했다. 이 스크립트는 SQLite DB를 현재 Prisma API에 전달하는 오래된 모바일 연동 방식이며, 현재 오프라인 화면이나 자동 검사에서 호출하지 않는다. 서버 자체의 SQLite 이관 도구·테스트는 유지한다.
+
+공통 이미지 원본과 플랫폼 번들 사본은 각각 편집과 실행에 필요하다. 승인 시안, 원본 사용자 폴더, 과거 텍스트 기록, 환경 파일, 기존 작업 세션·워크트리와 운영 데이터는 이번 삭제 대상이 아니다. 시작 시점에 이미 삭제되어 있던 root의 Xcode 프로젝트·scheme 두 파일도 정리 커밋에 포함하지 않는다.
+
+삭제한 파일은 총 189개, 25,686,948 bytes (24.50 MiB)이며 Git 이력 용량을 줄인 것은 아니다.
+[iOS 정리·검증](../../apps/ios/docs/cleanup-2026-10-04.md)과 [Android 정리·검증](../../apps/android/docs/cleanup-2026-10-04.md)에 삭제 근거와 보존 대상을 기록했다. 양쪽 빌드·구조 검사는 통과했고, Android 단위/lint는 소스 불변으로 기존 Gradle 결과를 재사용했다. root에서는 실행 코드·최신 캡처·서비스 범위 무변경과 과거 자료 링크 15개의 Git 대상을 확인했다. 이번 정리는 로컬 `chore/remove-unused-mobile-files` 브랜치에서 커밋했으며 원격 push·병합·실기기 재설치는 수행하지 않았다.
