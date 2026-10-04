@@ -35,4 +35,6 @@ Dearby scheme에서 unitTests/uiTests 실행. 기존 Simulator ID 명시 및 `-p
 Debug ID `com.dearby.dearby`, Release ID `io.wid.dearby`, 버전 `0.1.0 (1)` 유지.
 실기기 설치·서명·배포는 조율 세션 소유입니다.
 검증 결과와 인계: `../../docs/context/ios-ui-prototype.md`.
-기존 `docs/evidence`/`docs/context-archive`는 과거 기록으로 현재 증거가 아닙니다.
+현재 화면 증거는 [selected UI](docs/evidence/ui-prototype-selected/README.md)에 있습니다.
+[중간 증거 정리 내역](docs/cleanup-2026-10-04.md)을 참고하세요.
+`docs/context-archive`의 과거 텍스트 기록은 그대로 보존합니다.
