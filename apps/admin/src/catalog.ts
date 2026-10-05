@@ -1,5 +1,46 @@
 import type { Criteria } from "./criteria";
-export type Organization = { id: string; name: string; description: string };
+export type Organization = {
+  id: string;
+  name: string;
+  description: string;
+  /** Absent until migration 20261006000000_catalog_organization_tree is applied. */
+  parent_id?: string | null;
+};
+export const maxOrganizationDepth = 4;
+/** Root → id chain. Stops on a cycle, which the database already forbids. */
+export function organizationPath(
+  organizations: Organization[],
+  id: string | null,
+): Organization[] {
+  const byId = new Map(organizations.map((o) => [o.id, o]));
+  const path: Organization[] = [];
+  let o = id ? byId.get(id) : undefined;
+  while (o && !path.includes(o)) {
+    path.unshift(o);
+    o = o.parent_id ? byId.get(o.parent_id) : undefined;
+  }
+  return path;
+}
+function subtreeHeight(organizations: Organization[], id: string): number {
+  const children = organizations.filter((o) => o.parent_id === id);
+  return (
+    1 + Math.max(0, ...children.map((c) => subtreeHeight(organizations, c.id)))
+  );
+}
+/** Valid parents: not itself or a descendant, and the moved subtree stays within four levels. */
+export function parentCandidates(
+  organizations: Organization[],
+  id?: string,
+): Organization[] {
+  const height = id ? subtreeHeight(organizations, id) : 1;
+  return organizations.filter((candidate) => {
+    const path = organizationPath(organizations, candidate.id);
+    return (
+      !path.some((o) => o.id === id) &&
+      path.length + height <= maxOrganizationDepth
+    );
+  });
+}
 export type Program = {
   collection_enabled: boolean;
   collection_hosts: string[];
