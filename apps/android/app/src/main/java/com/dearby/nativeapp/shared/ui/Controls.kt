@@ -2,6 +2,11 @@ package com.dearby.nativeapp.shared.ui
 
 import android.provider.Settings
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.*
 import androidx.compose.ui.draw.alpha
@@ -53,11 +58,20 @@ data class DearbyChoice(val id: String, val title: String)
     }
 }
 
-@Composable fun DearbySectionHeader(title: String, count: Int, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth().padding(top = 8.dp).semantics(mergeDescendants = true) { heading(); contentDescription = "$title, ${count}개" },
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.titleMedium)
-        Text("$count", Modifier.background(Mint, RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 2.dp), color = Teal, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
+/** 묶음 머리글. [expanded]를 주면 누를 때 [onToggle]을 부르는 접고 펴는 버튼이 되고, 펼침 상태를 화살표와 접근성 상태로 알린다. */
+@Composable fun DearbySectionHeader(title: String, count: Int, modifier: Modifier = Modifier, expanded: Boolean? = null, onToggle: () -> Unit = {}) {
+    val reduceMotion = rememberReduceMotion()
+    val rotation by animateFloatAsState(if (expanded == false) -90f else 0f, if (reduceMotion) snap() else spring(), label = "chevron")
+    val toggle = if (expanded == null) Modifier else Modifier.clickable(onClickLabel = if (expanded) "접기" else "펼치기", role = Role.Button, onClick = onToggle)
+    Row(modifier.fillMaxWidth().heightIn(min = 44.dp).then(toggle).padding(top = 8.dp).semantics(mergeDescendants = true) {
+        heading(); contentDescription = "$title, ${count}개"
+        if (expanded != null) stateDescription = if (expanded) "펼침" else "접힘"
+    }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.titleMedium)
+            Text("$count", Modifier.background(Mint, RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 2.dp), color = Teal, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
+        }
+        if (expanded != null) Icon(Icons.Outlined.KeyboardArrowDown, null, Modifier.rotate(rotation), tint = Quiet)
     }
 }
 

@@ -10,10 +10,10 @@ export function TogetherActivityLabel({
 }) {
   const suffix = otherCount > 0 ? ` 외 ${otherCount}개` : "";
   return (
-    <p className={styles.label} title={`함께한 활동 · ${title}${suffix}`}>
+    <span className={styles.label} title={`함께한 활동 · ${title}${suffix}`}>
       <span className={styles.fixed}>함께한 활동 · </span>
       <span className={styles.title}>{title}</span>
       {suffix && <span className={styles.fixed}>{suffix}</span>}
-    </p>
+    </span>
   );
 }
