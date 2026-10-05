@@ -14,7 +14,7 @@ import XCTest
         XCTAssertTrue(app.navigationBars["프로필 편집"].waitForExistence(timeout: 5))
         app.buttons["완료"].tap()
         app.terminate(); app.launch(); app.buttons["tab-4"].tap()
-        XCTAssertTrue(app.buttons["로그인하고 시작하기"].exists)
+        XCTAssertTrue(app.buttons["로그인하고 시작하기"].waitForExistence(timeout: 5))
     }
     func testQRSharingScanAndCardEditor() {
         let app = XCUIApplication()
@@ -34,7 +34,7 @@ import XCTest
         XCTAssertTrue(app.buttons["나도 카드 주기"].isHittable)
         capture(app, "shared-card")
         app.buttons["save-shared-card"].tap()
-        XCTAssertTrue(app.buttons["카드 저장됨"].exists)
+        XCTAssertTrue(app.buttons["카드 저장됨"].waitForExistence(timeout: 5))
         app.buttons["닫기"].tap(); app.buttons["QR 보여주기"].tap()
         let tile = app.buttons["새 명함"]
         for _ in 0..<4 where !tile.isHittable { app.swipeUp() }
@@ -78,12 +78,13 @@ import XCTest
             XCTAssertTrue(app.buttons["이 명함 보내기"].waitForExistence(timeout: 5))
             app.buttons["이 명함 보내기"].tap(); app.alerts.buttons["확인"].tap()
         }
-        XCTAssertFalse(app.buttons["wallet-group-0"].exists)
+        XCTAssertTrue(app.buttons["wallet-group-0"].waitForNonExistence(timeout: 5))
         capture(app, "wallet-reciprocal-only")
         app.buttons["tab-2"].tap(); app.buttons["명함 편집"].tap()
         XCTAssertTrue(app.buttons["수정 완료"].waitForExistence(timeout: 5))
         app.buttons["contact-email"].tap(); app.buttons["수정 완료"].tap()
         app.buttons["명함 편집"].tap()
+        XCTAssertTrue(app.buttons["수정 완료"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["contact-email"].isSelected)
         app.buttons["닫기"].tap()
     }

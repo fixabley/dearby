@@ -12,12 +12,12 @@ import XCTest
         for title in ["이메일 로그인", "프로그램 저장", "새 명함 만들기"] { XCTAssertFalse(app.buttons[title].exists) }
         capture(app, "prototype-discovery")
         app.buttons["선발형"].tap()
+        XCTAssertTrue(app.buttons["activity-conference"].waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.buttons["activity-camp"].exists)
-        XCTAssertFalse(app.buttons["activity-conference"].exists)
         app.buttons["참가등록형"].tap()
-        XCTAssertTrue(app.buttons["activity-conference"].exists)
+        XCTAssertTrue(app.buttons["activity-camp"].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["activity-conference"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["activity-meetup"].exists)
-        XCTAssertFalse(app.buttons["activity-camp"].exists)
     }
     func testApplicationCompletionIsLocalAndResetsOnRelaunch() {
         let app = XCUIApplication()
@@ -29,9 +29,10 @@ import XCTest
         capture(app, "prototype-detail")
         app.buttons["open-application"].tap()
         XCTAssertTrue(app.navigationBars["신청 (예시)"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["예시 링크를 외부 브라우저로 열기"].exists)
+        XCTAssertTrue(app.buttons["예시 링크를 외부 브라우저로 열기"].waitForExistence(timeout: 5))
         capture(app, "prototype-application")
         app.buttons["닫기"].tap()
+        XCTAssertTrue(app.navigationBars["신청 (예시)"].waitForNonExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["데모 신청 완료 · 실제 접수가 아닙니다"].exists)
         app.buttons["open-application"].tap()
         app.buttons["데모 신청 완료로 표시"].tap()
@@ -39,10 +40,11 @@ import XCTest
         capture(app, "activity-applied")
         app.navigationBars.buttons.element(boundBy: 0).tap()
         app.buttons["activity-camp"].tap()
-        XCTAssertTrue(app.staticTexts["데모 신청 완료 · 실제 접수가 아닙니다"].exists)
+        XCTAssertTrue(app.staticTexts["데모 신청 완료 · 실제 접수가 아닙니다"].waitForExistence(timeout: 5))
         app.terminate()
         app.launch()
         app.buttons["activity-camp"].tap()
+        XCTAssertTrue(app.navigationBars["활동 상세"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["데모 신청 완료 · 실제 접수가 아닙니다"].exists)
     }
     func testCalendarExampleWithAndWithoutOverlap() {
@@ -60,19 +62,21 @@ import XCTest
             XCTAssertFalse(XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch.exists)
             let toggle = app.switches["예시 캘린더"]
             toggle.tap()
-            XCTAssertFalse(app.buttons["선택한 캘린더로 확인"].isEnabled)
+            let disabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == false"),
+                                                     object: app.buttons["선택한 캘린더로 확인"])
+            XCTAssertEqual(XCTWaiter.wait(for: [disabled], timeout: 5), .completed)
             toggle.tap()
             app.buttons["선택한 캘린더로 확인"].tap()
             let result = id == "conference" ? "60분이 겹쳐요" : "예시 캘린더와 겹치는 시간이 없어요"
             XCTAssertTrue(app.staticTexts[result].waitForExistence(timeout: 5))
-            XCTAssertFalse(app.buttons["선택한 캘린더로 확인"].exists)
-            XCTAssertFalse(app.switches["예시 캘린더"].exists)
+            XCTAssertTrue(app.buttons["선택한 캘린더로 확인"].waitForNonExistence(timeout: 5))
+            XCTAssertTrue(app.switches["예시 캘린더"].waitForNonExistence(timeout: 5))
             if id == "conference" { XCTAssertTrue(app.staticTexts["1 / 1"].exists) }
             // Sheet detent animation can still be drawing after accessibility settles.
             Thread.sleep(forTimeInterval: 0.6)
             capture(app, "timeline-calendar-\(id)")
             app.buttons["확인했어요"].tap()
-            XCTAssertTrue(app.navigationBars["활동 상세"].exists)
+            XCTAssertTrue(app.navigationBars["활동 상세"].waitForExistence(timeout: 5))
             app.terminate()
         }
     }
