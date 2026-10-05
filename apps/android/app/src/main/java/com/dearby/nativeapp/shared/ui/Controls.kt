@@ -22,6 +22,7 @@ import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 data class DearbyChoice(val id: String, val title: String)
@@ -62,6 +63,16 @@ data class DearbyChoice(val id: String, val title: String)
                 leadingIcon = if (active) ({ Icon(Icons.Outlined.Check, null, Modifier.size(18.dp)) }) else null, shape = RoundedCornerShape(22.dp), border = null,
                 colors = FilterChipDefaults.filterChipColors(containerColor = Soft, labelColor = Quiet, selectedContainerColor = Teal, selectedLabelColor = Color.White, selectedLeadingIconColor = Color.White))
         }
+    }
+}
+
+/** 받은 명함의 "함께한 활동 · ○○ 외 N개" 라벨. 확인 아이콘 없이 긴 활동 이름만 말줄임한다. 첫 활동(일정이 가장 이른 것) 선택은 호출하는 쪽 모델이 정한다. */
+@Composable fun DearbyTogetherActivityLabel(title: String, modifier: Modifier = Modifier, otherCount: Int = 0) {
+    val suffix = if (otherCount > 0) " 외 ${otherCount}개" else ""
+    Row(modifier.clearAndSetSemantics { contentDescription = "함께한 활동, $title$suffix" }) {
+        Text("함께한 활동 · ", color = Quiet, maxLines = 1, softWrap = false, style = MaterialTheme.typography.bodyMedium)
+        Text(title, Modifier.weight(1f, fill = false), fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+        if (suffix.isNotEmpty()) Text(suffix, color = Quiet, maxLines = 1, softWrap = false, style = MaterialTheme.typography.bodyMedium)
     }
 }
 

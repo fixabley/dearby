@@ -68,8 +68,10 @@
 | 검색 칸 | `DearbySearchField(prompt: String, text: Binding<String>, identifier: String = "search")` | `DearbySearchField(query: String, onQueryChange: (String) -> Unit, placeholder: String, modifier)` |
 | 활동 선택 칩 | `DearbyChoiceChips(items: [DearbyChoice], selection: Binding<Set<String>>, label: String)` | `DearbyChoiceChips(items: List<DearbyChoice>, selected: Set<String>, onToggle: (String) -> Unit, label: String, modifier)` |
 | 인라인 입력 칸 | `DearbyInlineField(label: String, text: Binding<String>, editing: Bool, prompt: String = "", multiline: Bool = false, font: Font = .body)` | `DearbyInlineField(label: String, value: String, onValueChange: (String) -> Unit, editing: Boolean, modifier, placeholder: String = "", singleLine: Boolean = true, style: TextStyle = bodyLarge)` |
+| 함께한 활동 라벨 | `DearbyTogetherActivityLabel(title: String, otherCount: Int = 0)` | `DearbyTogetherActivityLabel(title: String, modifier, otherCount: Int = 0)` |
 
 - `DearbyChoice`는 `id`·`title`만 가진다. 활동 모델을 `shared`에 들이지 않도록 화면이 활동을 변환해 넘긴다. 칩은 줄바꿈 배치이며 선택은 색과 체크 표시로 함께 구분한다. 읽기 전용 표시는 기존 `DearbyBadge`/`ExampleBadge`를 쓴다.
 - 인라인 입력 칸은 읽기·편집에서 같은 여백을 써 위치가 바뀌지 않는다. 편집 중에만 옅은 배경과 밑줄을 보인다. `label`은 입력 칸의 접근성 이름이다. 편집 상태 전환 알림, `완료`/`취소`, 이름이 비었을 때의 이유 문구는 화면(플로우 담당)이 맡는다.
 - 묶음 머리글은 "제목, N개"로 읽히는 머리글이다. 검색 칸은 내용이 있을 때 `검색어 지우기` 버튼을 보인다. 검색 규칙은 화면이 적용한다.
-- 웹은 `/saved` 활동별 보기와 `/s/:shareId`용으로 같은 모양의 `SectionHeader({title, count})`, `Segments({labels, selected, onSelect})`를 `apps/web/src/shared/ui`에 둔다.
+- 함께한 활동 라벨은 `함께한 활동 · ○○`(2개 이상이면 뒤에 ` 외 N개`)를 확인 아이콘 없이 보여 주고 긴 활동 이름만 말줄임한다. 첫 활동(일정이 가장 이른 것) 선택, 활동이 없을 때 생략, 상세의 전체 목록·이동은 화면이 맡는다. iOS 명함 앞면이 `entities`에 있어 상위 계층 참조를 피하려고 `shared/ui`에 둔다.
+- 웹은 `/saved` 활동별 보기와 `/s/:shareId`용으로 같은 모양의 `SectionHeader({title, count})`, `Segments({labels, selected, onSelect})`를 `apps/web/src/shared/ui`에, `TogetherActivityLabel({title, otherCount})`를 `apps/web/src/widgets/card/together-activity.tsx`에 둔다.

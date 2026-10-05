@@ -36,6 +36,8 @@ class SharedControlsTest {
         compose.onNodeWithContentDescription("검색어 지우기").performClick()
         compose.onNodeWithContentDescription("검색어 지우기").assertDoesNotExist()
         compose.onNodeWithContentDescription("이름").assertTextEquals("김지민")
+        compose.onNodeWithContentDescription("함께한 활동, Dearby 개발자 컨퍼런스").assertExists()
+        compose.onNodeWithContentDescription("함께한 활동, Dearby 메이커 캠프 여름 시즌 집중 프로그램 외 2개").assertExists()
         capture("android-controls-edit")
     }
 

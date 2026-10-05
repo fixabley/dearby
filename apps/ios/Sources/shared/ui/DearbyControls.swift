@@ -94,6 +94,22 @@ struct DearbyInlineField: View {
     }
 }
 
+/// 받은 명함의 "함께한 활동 · ○○ 외 N개" 라벨. 보낸 사람이 고른 정보라 확인 아이콘 없이 글자만 쓰고, 긴 활동 이름만 말줄임한다.
+/// 첫 활동(일정이 가장 이른 것) 선택은 호출하는 쪽 모델이 정한다.
+struct DearbyTogetherActivityLabel: View {
+    let title: String
+    var otherCount = 0
+    private var suffix: String { otherCount > 0 ? " 외 \(otherCount)개" : "" }
+    var body: some View {
+        HStack(spacing: 0) {
+            Text("함께한 활동 · ").foregroundStyle(DearbyStyle.quiet).lineLimit(1).fixedSize()
+            Text(title).fontWeight(.semibold).foregroundStyle(DearbyStyle.ink).lineLimit(1).truncationMode(.tail)
+            Text(suffix).foregroundStyle(DearbyStyle.quiet).lineLimit(1).fixedSize()
+        }.font(.subheadline)
+            .accessibilityElement(children: .ignore).accessibilityLabel("함께한 활동, \(title)\(suffix)")
+    }
+}
+
 /// 칩처럼 폭이 다른 항목을 줄바꿈해 배치한다. 큰 글씨에서는 한 줄에 한 개만 놓일 수 있다.
 struct DearbyFlowLayout: Layout {
     var spacing: CGFloat = 8
@@ -143,6 +159,8 @@ struct DearbyControlsGallery: View {
             DearbySectionHeader(title: "Dearby 개발자 컨퍼런스", count: 3)
             DearbyChoiceChips(items: [.init(id: "conference", title: "Dearby 개발자 컨퍼런스"), .init(id: "camp", title: "Dearby 메이커 캠프"),
                                       .init(id: "meetup", title: "Dearby 커뮤니티 밋업")], selection: $chosen, label: "함께 보낼 활동")
+            DearbyTogetherActivityLabel(title: "Dearby 개발자 컨퍼런스")
+            DearbyTogetherActivityLabel(title: "Dearby 메이커 캠프 여름 시즌 집중 프로그램", otherCount: 2)
             DearbyInlineField(label: "이름", text: $name, editing: editing, font: .title2.bold())
             DearbyInlineField(label: "소개", text: $introduction, editing: editing, prompt: "한 줄 소개를 적어 주세요", multiline: true)
         }.padding(20).background(.white)
