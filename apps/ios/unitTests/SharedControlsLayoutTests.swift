@@ -10,7 +10,8 @@ import XCTest
             let host = UIHostingController(rootView: view)
             host.safeAreaRegions = []
             let fitted = host.sizeThatFits(in: CGSize(width: 390, height: CGFloat.greatestFiniteMagnitude))
-            XCTAssertLessThanOrEqual(fitted.width, 390, name)
+            // 3배 화면 픽셀 반올림(1/3pt)까지는 넘침으로 보지 않는다.
+            XCTAssertLessThanOrEqual(fitted.width, 390 + 1.0 / 3 + 0.01, name)
             XCTAssertGreaterThan(fitted.height, 0)
             guard let directory = ProcessInfo.processInfo.environment["DEARBY_CAPTURE_DIR"] else { continue }
             let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
