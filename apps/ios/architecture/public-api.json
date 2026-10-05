@@ -22,7 +22,8 @@
     "DearbyAvatar",
     "DearbyInfoRow",
     "DearbySheetHeader",
-    "DearbySegments"
+    "DearbySegments",
+    "SearchQuery"
   ],
   "entities/identity": [
     "CardModel",
@@ -34,7 +35,8 @@
     "ContactIcons",
     "ContactSymbol",
     "CardView",
-    "CardDeck"
+    "CardDeck",
+    "WalletGroup"
   ],
   "pages/home": [
     "HomePage"
