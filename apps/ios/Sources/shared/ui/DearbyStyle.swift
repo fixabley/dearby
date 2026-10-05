@@ -9,6 +9,30 @@ enum DearbyStyle {
     static let ink = Color(red: 23.0 / 255, green: 32.0 / 255, blue: 39.0 / 255)
 }
 
+extension Font {
+    /// Pretendard로 기존 글자 스타일의 크기·굵기를 그대로 쓰고 시스템 글자 크기 설정을 따른다. 원본: 저장소 루트 shared/assets/fonts/pretendard.
+    static func dearby(_ style: Font.TextStyle) -> Font {
+        let (size, weight): (CGFloat, Font.Weight) = switch style {
+        case .largeTitle: (34, .regular)
+        case .title: (28, .regular)
+        case .title2: (22, .regular)
+        case .title3: (20, .regular)
+        case .headline: (17, .semibold)
+        case .callout: (16, .regular)
+        case .subheadline: (15, .regular)
+        case .footnote: (13, .regular)
+        case .caption: (12, .regular)
+        case .caption2: (11, .regular)
+        default: (17, .regular)
+        }
+        return .custom("Pretendard", size: size, relativeTo: style).weight(weight)
+    }
+    /// 글자 크기 설정과 무관하게 고정 크기를 쓰던 곳(`.system(size:)`)의 Pretendard 대응.
+    static func dearby(fixedSize size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        .custom("Pretendard", fixedSize: size).weight(weight)
+    }
+}
+
 struct DearbyLogo: View {
     var width: CGFloat = 92
     var body: some View {
@@ -20,7 +44,7 @@ struct DearbyButtonStyle: ButtonStyle {
     var outlined = false
     @Environment(\.isEnabled) private var isEnabled
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.headline).frame(maxWidth: .infinity, minHeight: 50)
+        configuration.label.font(.dearby(.headline)).frame(maxWidth: .infinity, minHeight: 50)
             .foregroundStyle(outlined ? DearbyStyle.teal : .white)
             .background(outlined ? .white : DearbyStyle.teal, in: RoundedRectangle(cornerRadius: 11))
             .overlay(RoundedRectangle(cornerRadius: 11).stroke(DearbyStyle.teal, lineWidth: outlined ? 1 : 0))

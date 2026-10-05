@@ -14,6 +14,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -25,9 +29,24 @@ val Quiet = Color(0xFF657078)
 val Line = Color(0xFFE3E8EA)
 val Soft = Color(0xFFF5F7F8)
 
+/** Pretendard 가변 글꼴 하나에서 앱이 쓰는 굵기(400·500·600·700)를 뽑는다. 원본: 저장소 루트 shared/assets/fonts/pretendard. */
+@OptIn(ExperimentalTextApi::class)
+val Pretendard = FontFamily(listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold).map {
+    Font(R.font.pretendard_variable, it, variationSettings = FontVariation.Settings(FontVariation.weight(it.weight)))
+})
+
+// 크기·굵기는 기존 값 그대로 두고 모든 글자 스타일의 글꼴만 Pretendard로 바꾼다.
+private val DearbyTypography = Typography(headlineMedium = TextStyle(fontSize = 24.sp, lineHeight = 32.sp, fontWeight = FontWeight.Bold), headlineSmall = TextStyle(fontSize = 22.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold), titleLarge = TextStyle(fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold), titleMedium = TextStyle(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold)).run {
+    Typography(displayLarge.copy(fontFamily = Pretendard), displayMedium.copy(fontFamily = Pretendard), displaySmall.copy(fontFamily = Pretendard),
+        headlineLarge.copy(fontFamily = Pretendard), headlineMedium.copy(fontFamily = Pretendard), headlineSmall.copy(fontFamily = Pretendard),
+        titleLarge.copy(fontFamily = Pretendard), titleMedium.copy(fontFamily = Pretendard), titleSmall.copy(fontFamily = Pretendard),
+        bodyLarge.copy(fontFamily = Pretendard), bodyMedium.copy(fontFamily = Pretendard), bodySmall.copy(fontFamily = Pretendard),
+        labelLarge.copy(fontFamily = Pretendard), labelMedium.copy(fontFamily = Pretendard), labelSmall.copy(fontFamily = Pretendard))
+}
+
 @Composable fun DearbyTheme(content: @Composable () -> Unit) = MaterialTheme(
-    colorScheme = lightColorScheme(primary = Teal, secondary = Teal, background = Color.White, surface = Color.White, onSurface = Color(0xFF172027), onSurfaceVariant = Quiet, surfaceVariant = Soft, outlineVariant = Line, surfaceContainer = Color.White, secondaryContainer = Mint, onSecondaryContainer = Teal, primaryContainer = Mint, onPrimaryContainer = Teal),
-    typography = Typography(headlineMedium = TextStyle(fontSize = 24.sp, lineHeight = 32.sp, fontWeight = FontWeight.Bold), headlineSmall = TextStyle(fontSize = 22.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold), titleLarge = TextStyle(fontSize = 20.sp, lineHeight = 28.sp, fontWeight = FontWeight.Bold), titleMedium = TextStyle(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold)),
+    colorScheme = lightColorScheme(primary = Teal, secondary = Teal, background = Color.White, surface = Color.White, onSurface = Color(0xFF172027), onSurfaceVariant = Quiet, surfaceVariant = Soft, outlineVariant = Line, surfaceContainer = Color.White, secondaryContainer = Mint, onSecondaryContainer = Teal, primaryContainer = Mint, onPrimaryContainer = Teal, surfaceContainerHighest = Line, outline = Quiet),
+    typography = DearbyTypography,
     shapes = Shapes(small = RoundedCornerShape(10.dp), medium = RoundedCornerShape(12.dp), large = RoundedCornerShape(12.dp)), content = content)
 @Composable fun DearbyLogo(modifier: Modifier = Modifier) = Image(painterResource(R.drawable.dearby_logo), "dearby", modifier.width(92.dp).height(34.dp))
 @Composable fun DearbyButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) = Button(onClick, modifier.heightIn(min = 50.dp), enabled = enabled, shape = RoundedCornerShape(11.dp), content = content)
