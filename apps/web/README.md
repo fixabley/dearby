@@ -34,7 +34,12 @@ Zod validates public DTOs and strips extra fields before returning JSON. React e
 
 ## Home-screen web app
 
-`src/app/manifest.ts` (`start_url` `/saved`, standalone) and `src/app/apple-icon.png` make the site installable. Icons are resized copies of the iOS app icon. There is deliberately no service worker, so saved cards are never cached on the device. On 2026-10-06 Chromium 153 (Playwright) reported no installability errors without one (`tests/e2e/install.spec.ts`); a real Android Chrome install prompt and iOS home-screen cookie separation are not yet verified. `src/lib/install.ts` detects known in-app browsers by user agent (best effort, never blocks saving) and exposes the install prompt/installed state; the screens that show them come after the web layer split.
+`src/app/manifest.ts` (`start_url` `/saved`, standalone) and `src/app/apple-icon.png` make the site installable. Icons are resized copies of the iOS app icon. There is deliberately no service worker, so saved cards are never cached on the device. On 2026-10-06 Chromium 153 (Playwright) reported no installability errors without one (`tests/e2e/install.spec.ts`); a real Android Chrome install prompt is not yet verified.
+
+iOS home-screen cookie separation, checked 2026-10-06 on the iOS 26.5 simulator (iPhone Air, Xcode 27.0) with a throwaway local page using server-set `HttpOnly; SameSite=Lax` cookies like the guest cookie, Safari → Share → 홈 화면에 추가 with 웹 앱으로 열기 on:
+- Not copied on add: Safari held `safari=1`, but the home-screen app's first request had no cookies.
+- Separate afterwards: a cookie set for the home-screen app did not appear in Safari, which still sent only `safari=1`.
+- So cards saved in Safari do not appear in the installed app, and vice versa; the iOS install guidance must say `홈 화면 앱은 Safari와 따로 저장돼요`. No session merging is built. Not checked: a real device, HTTPS with `__Host-` cookies, and whether the app's own cookie survives relaunch (the probe could not reload reliably inside the app). `src/lib/install.ts` detects known in-app browsers by user agent (best effort, never blocks saving) and exposes the install prompt/installed state; the screens that show them come after the web layer split.
 
 ## Guest protocol (root/API agreed 2026-09-29)
 
