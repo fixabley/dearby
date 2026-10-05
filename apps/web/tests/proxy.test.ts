@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 import { proxy } from "../src/lib/proxy";
-import { card, cardId } from "./fixtures";
+import { card, cardId, secondCardId } from "./fixtures";
 const originalFetch = globalThis.fetch;
 const originalEnv = { ...process.env };
 const token = "a".repeat(43);
@@ -67,7 +67,7 @@ test("no-cookie saved list is empty with no upstream call/session creation", asy
     throw new Error("should not call");
   };
   const response = await call("guest/cards");
-  assert.deepEqual(await response.json(), { items: [] });
+  assert.deepEqual(await response.json(), { items: [], shares: [] });
   assert.equal(response.headers.get("set-cookie"), null);
 });
 test("first save consumes token, strips secrets, and sets host-only secure cookie", async () => {
@@ -107,7 +107,7 @@ test("existing token forwards only cookie token and renews the same session", as
   };
   const response = await call("guest/cards", "GET", token);
   assert.match(response.headers.get("set-cookie")!, new RegExp(token));
-  assert.deepEqual(await response.json(), { items: [card] });
+  assert.deepEqual(await response.json(), { items: [card], shares: [] });
 });
 test("cross-origin, missing custom header, non-JSON and invalid UUID requests never reach API", async () => {
   globalThis.fetch = async () => {
@@ -176,4 +176,79 @@ test("empty or malformed existing cookies cannot silently start a replacement se
       401,
     );
   }
+});
+const shareId = "d0000000-0000-4000-8000-000000000001";
+const share = {
+  id: shareId,
+  cardId,
+  activities: [{ id: secondCardId, title: "커넥트 IT 컨퍼런스 (테스트)" }],
+  createdAt: "2026-10-02T00:00:00.000Z",
+};
+test("share page is public, validated, and rejects a share pointing at another card", async () => {
+  globalThis.fetch = async (url) => {
+    assert.equal(String(url), `https://wid.io.kr/v1/shares/${shareId}`);
+    return Response.json({ share: { ...share, ownerId: "private" }, card });
+  };
+  const response = await call(`shares/${shareId}`);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { share, card });
+  globalThis.fetch = async () =>
+    Response.json({ share: { ...share, cardId: secondCardId }, card });
+  assert.equal((await call(`shares/${shareId}`)).status, 502);
+  assert.equal((await call("shares/not-a-uuid")).status, 422);
+  for (const path of [`cards/${cardId}/shares`, `guest/shares/${shareId}/x`])
+    assert.equal((await call(path, "POST")).status, 404);
+  assert.equal((await call(`shares/${shareId}`, "PUT")).status, 404);
+});
+test("saving a share keeps guest rules: first save sets the cookie and echoes the share", async () => {
+  globalThis.fetch = async (url, init) => {
+    assert.equal(String(url), `https://wid.io.kr/v1/guest/shares/${shareId}`);
+    assert.equal(init?.method, "PUT");
+    assert.equal(new Headers(init?.headers).get("X-Guest-Token"), null);
+    return Response.json(
+      { cardId, shareId, status: "saved", guestToken: token },
+      { status: 201 },
+    );
+  };
+  const response = await call(`guest/shares/${shareId}`, "PUT");
+  assert.equal(response.status, 201);
+  assert.deepEqual(await response.json(), {
+    cardId,
+    shareId,
+    status: "saved",
+  });
+  assert.match(response.headers.get("set-cookie")!, new RegExp(token));
+  globalThis.fetch = async () =>
+    Response.json({ cardId, shareId: secondCardId, status: "saved" });
+  assert.equal(
+    (await call(`guest/shares/${shareId}`, "PUT", token)).status,
+    502,
+  );
+  assert.equal(
+    (
+      await call(`guest/shares/${shareId}`, "PUT", undefined, {
+        origin: "https://evil.test",
+      })
+    ).status,
+    403,
+  );
+});
+test("saved list carries share records and strips unknown fields", async () => {
+  globalThis.fetch = async () =>
+    Response.json({
+      items: [card],
+      shares: [
+        {
+          cardId,
+          shareId,
+          activities: share.activities,
+          savedAt: "x",
+          token: "secret",
+        },
+      ],
+    });
+  assert.deepEqual(await (await call("guest/cards", "GET", token)).json(), {
+    items: [card],
+    shares: [{ cardId, shareId, activities: share.activities, savedAt: "x" }],
+  });
 });
