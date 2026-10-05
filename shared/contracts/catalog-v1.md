@@ -3,7 +3,7 @@
 Additive to native-v1.md. Public `GET /v1/catalog` returns the complete small catalog, including closed/unknown records needed by saved lists and historical exchange context. No auth required. No production bundled fake activities. Return `200` with empty arrays when no source has been imported; transport/server failure is not empty success.
 
 ```ts
-type Organization = { id: string; name: string; description: string };
+type Organization = { id: string; name: string; description: string; parentId: string | null };
 type Program = { id: string; organizationId: string; title: string; description: string };
 type Schedule = { id: string; title: string; startAt: string | null; endAt: string | null; dateLabel: string; timeZone: string };
 type Activity = {
