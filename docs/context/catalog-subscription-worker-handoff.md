@@ -2,6 +2,10 @@
 
 2026-09-29 검증. 소유 checkout `/Users/jominjun/Documents/dearby/catalog-subscription-collector`, 브랜치 `fixabley/catalog-subscription-collector`. root는 IR 작업으로 전환했고 이 세션이 수집 구현을 독립 소유했다. 감독용 orchestration이나 별도 에이전트를 만들지 않았다. 사용자 요청대로 이 세션/worktree를 유지한다.
 
+## 2026-10-06 main 소스 이전
+
+사용자 승인으로 수집기 담당 에이전트가 main 기준으로 작업하도록 `d7e5da7`의 `apps/catalog-worker/`만 main에 옮겼다. 해당 브랜치의 나머지 변경(iOS·Supabase 테스트·어드민)은 main에 더 새 버전이 있어 가져오지 않았다. 배포 사본과 브랜치 파일의 SHA-256 일치를 다시 확인했다. LaunchAgent는 계속 배포 사본을 실행하며 이번 이전으로 실행 중인 워커·환경 파일·Cron은 바뀌지 않는다. 로컬 `npm run check`·`npm test` 12개 통과(Node 26으로 실행, engines는 24). CI에 같은 검사를 Node 24로 추가했다. 큐 통합 테스트는 로컬 Supabase가 필요해 실행하지 않았다.
+
 ## 2026-10-03 워크트리 정리를 위한 실행 경로 이전
 
 사용자 요청으로 담당 세션을 종료하고 워크트리 정리를 진행한다. 위 retain 지시는 이전 시점 기록이다. 워커 파일을 `~/.dearby-deploy/catalog-worker-d7e5da7/apps/catalog-worker/`로 복사하고 소스 파일별 SHA-256 일치를 확인했다. 유휴 상태에서 LaunchAgent를 해제한 뒤 경로만 바꾸어 재등록했다. 환경 파일은 외부 경로에서 0600으로 보존하고 기존 60초 실행 주기·구독 모델·수집 계약은 유지한다.

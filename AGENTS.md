@@ -10,7 +10,7 @@
 
 ## 구현 소유권
 
-- `apps/ios`는 SwiftUI, `apps/android`는 Kotlin/Compose, `apps/dearby-api`는 서버 담당이다. 공통 계약 `shared/contracts/native-v1.md` 변경은 조율 세션이 소유한다.
+- 2026-10-06 승인에 따라 UI·유저플로우·수집기·어드민 담당을 Orca 상주 세션으로 운영한다. UI와 유저플로우는 iOS·Android·웹을 함께 맡고 FSD 계층으로 경계를 나눈다. 담당 경로·웹 일관성 범위·금지 작업은 [에이전트 운영](docs/context/agent-roster.md)을 따른다. `apps/dearby-api`와 공통 계약 `shared/contracts` 변경은 조율 세션이 소유한다.
 - 공통 UI 표현은 각 플랫폼의 `shared/ui`에 먼저 분리한다. 명함·활동 도메인 조합은 `entities`/`widgets`에서 재사용하며 `shared`에서 상위 계층을 참조하지 않는다. 공통 이미지 원본은 `shared/assets/prototype`에 둔다. 단순 우회용 래퍼는 만들지 않는다.
 - 구현은 하위 Orca worktree·담당 세션에 배정하고 메인은 공통 결정·통합을 맡는다. 생성 전 기존 worktree·세션을 확인하며 내장 서브에이전트로 Orca 감독을 중복 실행하지 않는다.
 - 담당자는 자기 checkout만 수정·빌드한다. root 설정 변경은 배정 시 조율한다. 다른 checkout 변경·강제 push·기존 사용자 변경 삭제는 임의로 하지 않는다.
