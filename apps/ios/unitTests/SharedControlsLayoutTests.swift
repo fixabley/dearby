@@ -5,11 +5,12 @@ import XCTest
 /// 공통 입력 컴포넌트가 390pt 폭을 넘지 않는지 확인하고, 요청 시 검토용 캡처를 남긴다.
 @MainActor final class SharedControlsLayoutTests: XCTestCase {
     func testControlsFitPhoneWidth() throws {
-        for editing in [true, false] {
-            let host = UIHostingController(rootView: DearbyControlsGallery(editing: editing))
+        for (name, view) in [("edit", AnyView(DearbyControlsGallery())), ("read", AnyView(DearbyControlsGallery(editing: false))),
+                             ("received-groups", AnyView(ReceivedCardGroupsSample()))] {
+            let host = UIHostingController(rootView: view)
             host.safeAreaRegions = []
             let fitted = host.sizeThatFits(in: CGSize(width: 390, height: CGFloat.greatestFiniteMagnitude))
-            XCTAssertLessThanOrEqual(fitted.width, 390, "editing=\(editing)")
+            XCTAssertLessThanOrEqual(fitted.width, 390, name)
             XCTAssertGreaterThan(fitted.height, 0)
             guard let directory = ProcessInfo.processInfo.environment["DEARBY_CAPTURE_DIR"] else { continue }
             let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
@@ -21,7 +22,7 @@ import XCTest
             let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
                 window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
             }
-            let file = URL(fileURLWithPath: directory).appendingPathComponent("ios-controls-\(editing ? "edit" : "read").png")
+            let file = URL(fileURLWithPath: directory).appendingPathComponent("ios-\(name).png")
             try XCTUnwrap(image.pngData()).write(to: file)
         }
     }

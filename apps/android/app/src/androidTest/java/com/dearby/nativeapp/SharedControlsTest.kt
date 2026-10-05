@@ -11,6 +11,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.runtime.*
 import com.dearby.nativeapp.shared.ui.DearbyControlsGallery
 import com.dearby.nativeapp.shared.ui.DearbySearchField
+import com.dearby.nativeapp.widgets.card.cardContent.ReceivedCardGroupsSample
+import androidx.compose.ui.semantics.SemanticsProperties
 import com.dearby.nativeapp.shared.ui.rememberDearbySearchReveal
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
@@ -74,6 +76,17 @@ class SharedControlsTest {
         compose.onNodeWithTag("list").performTouchInput { swipeUp(startY = bottom - 10f, endY = bottom - 400f, durationMillis = 400) }
         compose.waitForIdle()
         compose.onNodeWithContentDescription("검색").assertExists()
+    }
+
+    @Test fun groupHeaderTogglesAndAnnouncesState() {
+        compose.setContent { DearbyTheme { Box(Modifier.testTag("gallery")) { ReceivedCardGroupsSample() } } }
+        val header = compose.onNodeWithContentDescription("Dearby 개발자 컨퍼런스, 2개")
+        header.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "펼침")).assert(isHeading())
+        compose.onNodeWithText("이서연").assertExists()
+        capture("android-received-groups")
+        header.performClick().assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "접힘"))
+        compose.onNodeWithText("이서연").assertDoesNotExist()
+        compose.onNodeWithText("최유나").assertExists()
     }
 
     @Test fun readingStateKeepsLabels() {

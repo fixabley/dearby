@@ -22,7 +22,14 @@
     "DearbyAvatar",
     "DearbyInfoRow",
     "DearbySheetHeader",
-    "DearbySegments"
+    "DearbySegments",
+    "DearbySectionHeader",
+    "DearbySearchField",
+    "DearbySearchReveal",
+    "DearbyChoice",
+    "DearbyChoiceChips",
+    "DearbyInlineField",
+    "DearbyTogetherActivityLabel"
   ],
   "entities/identity": [
     "CardModel",
@@ -43,6 +50,7 @@
     "IdentityViewModel",
     "QRPage",
     "WalletPage",
-    "ProfilePage"
+    "ProfilePage",
+    "ReceivedCardRow"
   ]
 }
