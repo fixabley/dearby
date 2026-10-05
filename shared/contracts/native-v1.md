@@ -84,3 +84,36 @@ GET과 성공 mutation 모두 `Cache-Control: no-store`다(API는 오류 응답�
 - 저장 실패는 500 `INTERNAL_ERROR`이며 새 세션과 명함 참조를 함께 rollback한다. DB·proxy secret·guest token 등 내부값은 오류 응답/로그에 넣지 않는다.
 
 HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로만 좁혀 공개한다. 기존 `/v1/profile`, 회원 `/v1/wallet`, 명함 생성/철회, SMTP/auth는 열지 않는다. guest proxy secret 생성·배포와 nginx 운영 변경은 root가 수행하며 앱서버 구현 PR만으로 운영 반영됐다고 표시하지 않는다.
+
+## 명함 공유 기록과 게스트 공유 정보 저장 — 2026-10-06 승인
+
+사용자 결정: 비로그인 웹 게스트 저장에 "어떤 공유로 받았는지와 그 공유에 담긴 활동"을 함께 저장하고 `/saved`에서 활동별로 묶어 보여 준다. 위 웹 게스트 계약의 쿠키·프록시 secret·Origin·캐시·오류·상한 규칙을 그대로 적용하고 아래만 추가한다. 기존 `/v1/cards/:id`와 `/v1/guest/cards*` 동작은 바꾸지 않는다.
+
+### 모델
+
+- CardShare: `id`(UUID), `cardId`, `activities: [{id, title}]`(0~10개), `createdAt`. 소유자가 명함을 공유할 때 만드는 기록이다. `activities`는 생성 시점의 카탈로그 활동 ID와 제목 사본이며 이후 카탈로그 변경을 따라가지 않는다. 활동은 사용자가 고른 정보이며 참가 확인이 아니다.
+- 공유 ID는 명함 ID처럼 공개 조회 가능 여부만 판정하며 방문자 인증 수단이 아니다. 명함이 철회되면 그 명함의 모든 공유도 공개 조회·저장에서 404다. 공유 단건 철회는 이번 범위가 아니다.
+- 게스트 저장은 세션당 명함 1건을 유지하고, 그 명함에 연결된 공유 ID를 0개 이상 기록한다. 같은 명함을 여러 공유로 받으면 공유 기록이 늘어나며 명함은 중복되지 않는다. 명함당 공유 기록 최대 20개. DB에는 세션 digest·명함 ID·공유 ID 연결만 저장한다.
+
+### API
+
+| 메서드·경로 | 인증 | 성공 응답 | 의미 |
+| --- | --- | --- | --- |
+| POST /v1/cards/:id/shares | 로그인·소유자만 | 201 CardShare | body `{activityIds: string[]}`. 중복 없이 0~10개, 모두 현재 카탈로그에 있는 활동이어야 한다(아니면 422). 철회·타인 명함은 404/403 |
+| GET /v1/shares/:id | 비로그인 가능 | 200 `{share: CardShare, card: Card}` | 공유와 공개 명함 사본. 없거나 명함 철회 시 404 |
+| PUT /v1/guest/shares/:id | 게스트 프록시 | 무토큰 첫 저장 201 `{cardId, shareId, status:"saved", guestToken}`, 기존 토큰 200 `{cardId, shareId, status:"saved"\|"alreadySaved"}` | 공유를 확인해 그 명함을 저장하고 공유 기록을 연결한다. 명함이 이미 저장돼 있고 공유가 새로우면 `saved`, 둘 다 있으면 `alreadySaved` |
+| GET /v1/guest/cards | 게스트 프록시 | 200 `{items: Card[], shares: GuestShare[]}` | 기존 `items`는 그대로 두고 `shares`를 추가한다 |
+
+- GuestShare: `{cardId, shareId, activities: [{id, title}], savedAt}`. 철회된 명함의 공유는 `items`와 함께 제외한다. `/v1/guest/cards/:id` 저장(공유 없이 받은 명함)은 공유 기록 없이 계속 동작한다.
+- `DELETE /v1/guest/cards/:id`는 그 명함의 공유 기록도 함께 지운다. `DELETE /v1/guest/session`은 모두 지운다.
+- 409 `GUEST_CAPACITY_EXCEEDED`에 명함당 공유 기록 20개 상한을 추가한다. 이미 연결된 공유의 재저장은 상한에서도 성공한다. 요청 제한은 기존 게스트 규칙과 같은 카운터를 쓴다.
+- HTTPS ingress에는 `GET/HEAD /v1/shares/:id`, `PUT /v1/guest/shares/:id`만 추가한다. `POST /v1/cards/:id/shares`는 회원 경로이므로 열지 않는다.
+
+### 웹
+
+- 공유 링크는 `/s/:shareId`다. 공개 명함과 "함께 공유된 활동"을 보여 주고, 저장 버튼은 `PUT /v1/guest/shares/:id`를 쓴다. 기존 `/cards/:id`는 공유 정보 없이 유지한다.
+- `/saved`는 `전체 | 활동별` 보기를 제공한다. 활동별 보기는 공유 기록의 활동으로 묶고, 여러 활동에 걸친 명함은 각 묶음에 모두 나오며, 활동이 없는 명함은 마지막 `활동 없음` 묶음에 둔다(모바일 명함함 규칙과 같다).
+
+### 현재 한계
+
+모바일 앱은 오프라인 프로토타입이라 실제 공유 기록을 만드는 클라이언트가 없다. 운영에서는 데이터가 쌓이지 않으며 기능은 테스트 데이터로 검증한다. 앱의 공유 QR(`dearby://card/...?activityId=`는 활동 1개만 허용)은 서버 연결 시 `dearby://share/<UUID>`로 확장하는 것을 별도로 결정한다. 운영 DB 마이그레이션·ingress 변경·배포는 사용자 승인 후 root가 수행한다.
