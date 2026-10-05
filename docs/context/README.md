@@ -10,6 +10,7 @@
 | [시안·공통 컴포넌트 적용표](../design/mobile-prototype-reference-map.md) | 화면별 원본과 구현 위치 |
 | [iOS 인계](ios-ui-prototype.md) · [Android 인계](android-ui-prototype.md) | 플랫폼 구조, 실행·검증 근거 |
 | [검증·기기 안내](verification-and-local-devices.md) | 검사 재현 위치, 확인 시점과 한계 |
+| [신청 활동·명함 공유·인라인 편집](feature-applied-activities-and-cards.md) | 2026-10-06 기능 요구와 플랫폼 공통 기준 |
 | [에이전트 운영](agent-roster.md) | UI·유저플로우·수집기·어드민 담당 경로와 금지 작업 |
 | [Git·워크트리 상태](orca-sessions-and-worktrees.md) | 통합·폴더 정리 기록 |
 | [현재 작업과 결정](coordinator-current-task-and-decisions.md) | 통합 상태, 남은 일, 주의할 로컬 변경 |
