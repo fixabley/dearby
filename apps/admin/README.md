@@ -60,6 +60,14 @@ npx playwright install chromium
 npm run test:e2e             # 어드민5173·API58765·bootstrap 필요
 ```
 
+조직 트리 회귀(`organizations.spec.ts`)는 스스로 관리자·조직·프로그램·활동을 만들고 끝나면 지운다. 어드민 dev 서버와 같은 로컬 Supabase를 지정해야 하며, localhost가 아니면 실행을 거부하고 환경값이 없으면 건너뛴다.
+
+```sh
+ADMIN_TEST_URL=http://127.0.0.1:5173 ADMIN_TEST_SUPABASE_URL=http://127.0.0.1:54321 \
+ADMIN_TEST_SERVICE_ROLE_KEY=<로컬 supabase status의 SERVICE_ROLE_KEY> npm run test:e2e -- organizations.spec.ts
+docker exec -i supabase_db_dearby psql -U postgres -X -v ON_ERROR_STOP=1 < ../../supabase/tests/organization-tree.sql
+```
+
 브라우저 회귀는 명시적인 로컬 테스트 조직/프로그램/활동을 만들고 활동을 숨김으로 남긴다. 운영 환경을 대상으로 실행하지 않는다. RLS 테스트의 임시 사용자와 레코드는 테스트 종료 시 정리하며 감사 기록은 보존한다. [실제 화면·검증 기록](docs/evidence/README.md).
 
 ## 추후 클라우드 연결
