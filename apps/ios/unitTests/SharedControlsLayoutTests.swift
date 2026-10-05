@@ -1,0 +1,28 @@
+import SwiftUI
+import XCTest
+@testable import Dearby
+
+/// 공통 입력 컴포넌트가 390pt 폭을 넘지 않는지 확인하고, 요청 시 검토용 캡처를 남긴다.
+@MainActor final class SharedControlsLayoutTests: XCTestCase {
+    func testControlsFitPhoneWidth() throws {
+        for editing in [true, false] {
+            let host = UIHostingController(rootView: DearbyControlsGallery(editing: editing))
+            host.safeAreaRegions = []
+            let fitted = host.sizeThatFits(in: CGSize(width: 390, height: CGFloat.greatestFiniteMagnitude))
+            XCTAssertLessThanOrEqual(fitted.width, 390, "editing=\(editing)")
+            XCTAssertGreaterThan(fitted.height, 0)
+            guard let directory = ProcessInfo.processInfo.environment["DEARBY_CAPTURE_DIR"] else { continue }
+            let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first)
+            let window = UIWindow(windowScene: scene)
+            window.frame = CGRect(origin: .zero, size: CGSize(width: 390, height: fitted.height))
+            window.rootViewController = host
+            window.makeKeyAndVisible()
+            RunLoop.main.run(until: Date().addingTimeInterval(0.5))
+            let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
+                window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
+            }
+            let file = URL(fileURLWithPath: directory).appendingPathComponent("ios-controls-\(editing ? "edit" : "read").png")
+            try XCTUnwrap(image.pngData()).write(to: file)
+        }
+    }
+}
