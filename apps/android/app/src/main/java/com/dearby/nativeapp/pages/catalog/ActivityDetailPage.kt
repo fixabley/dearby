@@ -16,12 +16,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 
-@Composable fun ActivityDetailPage(activity: ActivityState, error: String?, back: () -> Unit, source: () -> Unit, apply: () -> Unit, editReport: () -> Unit, checkCalendar: () -> Unit, save: () -> Unit, saveOrganization: () -> Unit, share: () -> Unit) {
+@Composable fun ActivityDetailPage(activity: ActivityState, error: String?, back: () -> Unit, source: () -> Unit, apply: () -> Unit, editReport: () -> Unit, confirm: (Boolean) -> Unit, checkCalendar: () -> Unit, share: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("활동 상세", back) { IconButton(share) { Icon(Icons.Outlined.IosShare, "활동 공유", tint = Teal) } }
-        if (activity.report) Surface(color = Mint) {
-            Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.CheckCircle, null, tint = Teal); Text("예시 신청 상태를 기록했어요.", color = Teal, style = MaterialTheme.typography.bodyMedium)
+        if (activity.applied) Surface(color = Mint) {
+            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.CheckCircle, null, tint = Teal); Text("예시 신청 상태를 기록했어요.", color = Teal, style = MaterialTheme.typography.bodyMedium)
+                }
+                ConfirmToggle(activity, confirm)
+                Text(CONFIRM_NOTE, color = Quiet, style = MaterialTheme.typography.bodySmall)
             }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
@@ -32,7 +36,6 @@ import com.dearby.nativeapp.shared.ui.*
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Icon(Icons.Outlined.AllInclusive, null, Modifier.size(38.dp), tint = Teal)
                     Text("Dearby 커뮤니티", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
-                    DearbyOutlineButton(saveOrganization) { Text(if (activity.organizationSaved) "조직 저장됨" else "조직 저장", style = MaterialTheme.typography.labelMedium) }
                 }
                 HorizontalDivider()
                 InfoRow("참가 대상", activity.fields.first { it.first == "참가 대상" }.second, Icons.Outlined.PeopleOutline)
@@ -72,8 +75,7 @@ import com.dearby.nativeapp.shared.ui.*
         }
         HorizontalDivider()
         Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            DearbyOutlineButton(save) { Icon(if (activity.saved) Icons.Outlined.Bookmark else Icons.Outlined.BookmarkBorder, if (activity.saved) "활동 저장 해제" else "활동 저장") }
-            DearbyButton(apply, Modifier.weight(1f)) { Text(if (activity.report) "신청 화면 보기" else "공식 사이트에서 신청") }
+            DearbyButton(apply, Modifier.weight(1f)) { Text(if (activity.applied) "신청 화면 보기" else "공식 사이트에서 신청") }
         }
     }
 }
