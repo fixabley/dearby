@@ -22,8 +22,9 @@ import XCTest
     func testApplicationCompletionIsLocalAndResetsOnRelaunch() {
         let app = XCUIApplication()
         app.launch()
-        XCTAssertTrue(app.buttons["activity-conference"].waitForExistence(timeout: 10))
-        app.buttons["activity-conference"].tap()
+        // The conference starts applied, so this flow uses the camp.
+        XCTAssertTrue(app.buttons["activity-camp"].waitForExistence(timeout: 10))
+        app.buttons["activity-camp"].tap()
         Thread.sleep(forTimeInterval: 0.6)
         capture(app, "prototype-detail")
         app.buttons["open-application"].tap()
@@ -37,11 +38,11 @@ import XCTest
         XCTAssertTrue(app.staticTexts["데모 신청 완료 · 실제 접수가 아닙니다"].waitForExistence(timeout: 5))
         capture(app, "activity-applied")
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        app.buttons["activity-conference"].tap()
+        app.buttons["activity-camp"].tap()
         XCTAssertTrue(app.staticTexts["데모 신청 완료 · 실제 접수가 아닙니다"].exists)
         app.terminate()
         app.launch()
-        app.buttons["activity-conference"].tap()
+        app.buttons["activity-camp"].tap()
         XCTAssertFalse(app.staticTexts["데모 신청 완료 · 실제 접수가 아닙니다"].exists)
     }
     func testCalendarExampleWithAndWithoutOverlap() {
