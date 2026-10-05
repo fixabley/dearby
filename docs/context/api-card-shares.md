@@ -29,4 +29,4 @@
 
 ## 검증
 
-2026-10-06 KST, Node 24.21.0, `apps/dearby-api`에서 실제 실행: `npm run typecheck`·`npm run lint`(경고 0)·`npm run build`·`npm test`(격리 임시 Supabase PostgreSQL 컨테이너, **41 tests pass, fail 0**)·`git diff --check` 통과. 기존 테스트 중 `GET /v1/guest/cards` 응답을 `{items}`로만 비교하던 4곳은 계약상 추가된 `shares: []`를 포함하도록 고쳤다. `DROP TABLE guest_cards` 오류 주입은 새 FK 때문에 `CASCADE`를 붙였다. 권한 테스트의 RLS 테이블 수는 14에서 16으로 바뀌었다. 운영 DB·ingress·배포·secret은 확인하거나 바꾸지 않았다. 큰 글씨 접근성 테스트는 이 API 작업에 해당하지 않는다.
+2026-10-06 KST, Node 24.21.0, `apps/dearby-api`에서 실제 실행: `npm run typecheck`·`npm run lint`(경고 0)·`npm run build`·`npm test`(격리 임시 Supabase PostgreSQL 컨테이너, **41 tests pass, fail 0**)·`git diff --check` 통과. 기존 테스트 중 `GET /v1/guest/cards` 응답을 `{items}`로만 비교하던 5곳(`guest.test.ts` 4, `prisma-import.test.ts` 1)은 계약상 추가된 `shares: []`를 포함하도록 고쳤다. `DROP TABLE guest_cards` 오류 주입은 새 FK 때문에 `CASCADE`를 붙였다. 권한 테스트의 RLS 테이블 수는 14에서 16으로 바뀌었다. 운영 DB·ingress·배포·secret은 확인하거나 바꾸지 않았다. 큰 글씨 접근성 테스트는 이 API 작업에 해당하지 않는다.
