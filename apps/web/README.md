@@ -32,6 +32,10 @@ The opt-in `tests/real-api.integration.ts` additionally tests a real isolated lo
 
 Zod validates public DTOs and strips extra fields before returning JSON. React escapes all text. External links permit only http(s), no credentials; contact schemes are explicit. API responses use no-store, private, and Vary: Cookie/Origin. Browser calls never include a Supabase key or upstream URL.
 
+## Home-screen web app
+
+`src/app/manifest.ts` (`start_url` `/saved`, standalone) and `src/app/apple-icon.png` make the site installable. Icons are resized copies of the iOS app icon. There is deliberately no service worker, so saved cards are never cached on the device. On 2026-10-06 Chromium 153 (Playwright) reported no installability errors without one (`tests/e2e/install.spec.ts`); a real Android Chrome install prompt and iOS home-screen cookie separation are not yet verified. `src/lib/install.ts` detects known in-app browsers by user agent (best effort, never blocks saving) and exposes the install prompt/installed state; the screens that show them come after the web layer split.
+
 ## Guest protocol (root/API agreed 2026-09-29)
 
 The API verifies UUID, database existence and non-revocation. A public card ID only identifies a publicly readable card; it never authenticates a visitor's wallet.
