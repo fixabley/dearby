@@ -8,7 +8,16 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.compose.runtime.*
 import com.dearby.nativeapp.shared.ui.DearbyControlsGallery
+import com.dearby.nativeapp.shared.ui.DearbySearchField
+import com.dearby.nativeapp.shared.ui.rememberDearbySearchReveal
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Text
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.DearbyTheme
 import org.junit.Rule
 import org.junit.Test
@@ -17,6 +26,7 @@ import java.io.File
 /** 공통 입력 컴포넌트의 접근성 이름·선택 상태를 확인하고 검토용 캡처를 남긴다. */
 class SharedControlsTest {
     @get:Rule val compose = createComposeRule()
+    private var query by mutableStateOf("")
 
     private fun show(editing: Boolean) = compose.setContent { DearbyTheme { Box(Modifier.testTag("gallery")) { DearbyControlsGallery(editing) } } }
 
@@ -37,6 +47,31 @@ class SharedControlsTest {
         compose.onNodeWithContentDescription("검색어 지우기").assertDoesNotExist()
         compose.onNodeWithContentDescription("이름").assertTextEquals("김지민")
         capture("android-controls-edit")
+    }
+
+    @Test fun collapsedSearchIsButtonThatExpandsAndStaysOpenWhileTyping() {
+        var expansion by mutableFloatStateOf(0f)
+        compose.setContent { DearbyTheme { DearbySearchField(query, { query = it }, "명함 검색", expansion = expansion, onExpand = { expansion = 1f }) } }
+        compose.onNodeWithContentDescription("검색").assertHasClickAction().performClick()
+        compose.onNodeWithContentDescription("명함 검색").assertIsFocused().performTextInput("지민")
+        expansion = 0f
+        compose.onNodeWithContentDescription("명함 검색").assertExists()
+        compose.onNodeWithContentDescription("검색").assertDoesNotExist()
+    }
+
+    @Test fun pullingListTopRevealsSearchAndScrollingUpCollapsesIt() {
+        compose.setContent { DearbyTheme { Column {
+            val reveal = rememberDearbySearchReveal()
+            DearbySearchField(query, { query = it }, "명함 검색", expansion = reveal.expansion, onExpand = reveal::expand)
+            LazyColumn(Modifier.nestedScroll(reveal.connection).testTag("list")) { items(40) { Text("항목 $it", Modifier.height(56.dp)) } }
+        } } }
+        compose.onNodeWithContentDescription("검색").assertExists()
+        compose.onNodeWithTag("list").performTouchInput { swipeDown(startY = top + 10f, endY = top + 400f, durationMillis = 400) }
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("명함 검색").assertExists()
+        compose.onNodeWithTag("list").performTouchInput { swipeUp(startY = bottom - 10f, endY = bottom - 400f, durationMillis = 400) }
+        compose.waitForIdle()
+        compose.onNodeWithContentDescription("검색").assertExists()
     }
 
     @Test fun readingStateKeepsLabels() {

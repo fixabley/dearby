@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.sp
     Column(Modifier.background(Color.White).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         DearbySegments(listOf("저장한 활동", "신청한 활동"), segment, { segment = it })
         DearbySearchField(query, { query = it }, "이름, 직무, 활동으로 검색")
+        DearbySearchField("", {}, "이름, 직무, 활동으로 검색", expansion = 0f)
+        DearbySearchField("", {}, "이름, 직무, 활동으로 검색", expansion = .7f)
         DearbySectionHeader("Dearby 개발자 컨퍼런스", 3)
         DearbyChoiceChips(listOf(DearbyChoice("conference", "Dearby 개발자 컨퍼런스"), DearbyChoice("camp", "Dearby 메이커 캠프"), DearbyChoice("meetup", "Dearby 커뮤니티 밋업")),
             chosen, { id -> chosen = if (id in chosen) chosen - id else chosen + id }, "함께 보낼 활동")

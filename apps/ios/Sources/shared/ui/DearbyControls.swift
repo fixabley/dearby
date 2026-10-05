@@ -20,14 +20,30 @@ struct DearbySectionHeader: View {
     }
 }
 
+/// 검색 칸. `expansion` 0은 돋보기만 보이는 얇은 막대, 1은 입력 칸이다. 검색어가 있거나 입력 중이면 항상 펼친다.
+/// 동작 줄이기에서는 중간 크기 없이 바로 바뀐다. 줄어든 막대는 접근성 도구에서 `검색` 버튼으로 읽힌다.
 struct DearbySearchField: View {
     let prompt: String
     @Binding var text: String
     var identifier = "search"
+    var expansion: Double = 1
+    var onExpand: () -> Void = {}
+    @FocusState private var focused: Bool
+    @State private var focusOnAppear = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private var progress: Double {
+        if !text.isEmpty || focused || focusOnAppear { return 1 }
+        let value = min(max(expansion, 0), 1)
+        return reduceMotion ? (value >= 0.5 ? 1 : 0) : value
+    }
     var body: some View {
+        if progress >= 1 { field } else { bar }
+    }
+    private var field: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass").foregroundStyle(DearbyStyle.quiet).accessibilityHidden(true)
-            TextField(prompt, text: $text).font(.body).accessibilityLabel(prompt).accessibilityIdentifier(identifier)
+            TextField(prompt, text: $text).font(.body).focused($focused)
+                .accessibilityLabel(prompt).accessibilityIdentifier(identifier)
             if !text.isEmpty {
                 Button { text = "" } label: {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(DearbyStyle.quiet).frame(width: 44, height: 44)
@@ -35,7 +51,47 @@ struct DearbySearchField: View {
             }
         }.padding(.leading, 14).padding(.trailing, text.isEmpty ? 14 : 0).frame(minHeight: 48)
             .background(DearbyStyle.muted, in: Capsule())
+            .onAppear { if focusOnAppear { focused = true; focusOnAppear = false } }
     }
+    private var bar: some View {
+        let height = 28 + 20 * progress
+        return Button { focusOnAppear = true; onExpand() } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "magnifyingglass").imageScale(progress < 0.5 ? .small : .medium)
+                Text(prompt).font(.body).lineLimit(1).opacity(max(0, progress * 2 - 1))
+                Spacer(minLength: 0)
+            }.foregroundStyle(DearbyStyle.quiet).padding(.horizontal, 14)
+                .frame(maxWidth: .infinity).frame(height: height).background(DearbyStyle.muted, in: Capsule())
+                .padding(.vertical, max(0, (44 - height) / 2)).contentShape(Rectangle())
+        }.buttonStyle(.plain).accessibilityElement(children: .ignore).accessibilityLabel("검색")
+            .accessibilityAddTraits(.isButton).accessibilityIdentifier(identifier)
+    }
+}
+
+/// 목록 맨 위에서 아래로 당기면 검색 칸을 펼치고, 목록을 위로 밀면 줄인다. 손을 떼면 0.5를 기준으로 0 또는 1로 맞춘다.
+struct DearbySearchReveal: ViewModifier {
+    @Binding var expansion: Double
+    var distance: CGFloat = 56
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    func body(content: Content) -> some View {
+        content.scrollBounceBehavior(.always, axes: .vertical)
+            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { old, new in
+                if new < 0 {
+                    expansion = max(expansion, min(1, -new / distance))
+                } else if new > old, expansion > 0 {
+                    expansion = max(0, expansion - (new - old) / distance)
+                }
+            }
+            .onScrollPhaseChange { _, phase in
+                guard phase != .interacting, expansion > 0, expansion < 1 else { return }
+                let target: Double = expansion >= 0.5 ? 1 : 0
+                if reduceMotion { expansion = target } else { withAnimation(.snappy) { expansion = target } }
+            }
+    }
+}
+
+extension View {
+    func dearbySearchReveal(_ expansion: Binding<Double>) -> some View { modifier(DearbySearchReveal(expansion: expansion)) }
 }
 
 struct DearbyChoiceChips: View {
@@ -132,6 +188,7 @@ struct DearbyFlowLayout: Layout {
 struct DearbyControlsGallery: View {
     @State var segment = 0
     @State var query = ""
+    @State var collapsedQuery = ""
     @State var chosen: Set<String> = ["conference"]
     @State var name = "김지민"
     @State var introduction = ""
@@ -140,6 +197,8 @@ struct DearbyControlsGallery: View {
         VStack(alignment: .leading, spacing: 16) {
             DearbySegments(labels: ["저장한 활동", "신청한 활동"], selection: $segment)
             DearbySearchField(prompt: "이름, 직무, 활동으로 검색", text: $query)
+            DearbySearchField(prompt: "이름, 직무, 활동으로 검색", text: $collapsedQuery, expansion: 0)
+            DearbySearchField(prompt: "이름, 직무, 활동으로 검색", text: $collapsedQuery, expansion: 0.7)
             DearbySectionHeader(title: "Dearby 개발자 컨퍼런스", count: 3)
             DearbyChoiceChips(items: [.init(id: "conference", title: "Dearby 개발자 컨퍼런스"), .init(id: "camp", title: "Dearby 메이커 캠프"),
                                       .init(id: "meetup", title: "Dearby 커뮤니티 밋업")], selection: $chosen, label: "함께 보낼 활동")
