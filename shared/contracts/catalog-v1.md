@@ -33,3 +33,15 @@ Detail: identity, participation type, summary, schedule(s)/dateLabel, roles, aud
 Registered activity picker for QR/direct-send context may use the same catalog (including past activities); label direct-entry and none distinctly. Persist registered = activityId with label null under native-v1 context exclusivity. Resolve the activity title through the catalog for receipt summaries, detail and search. Missing catalog references say activity information is unavailable rather than displaying a UUID as a title. A future durable title snapshot would require an explicit additive native-v1 contract change; do not silently add a label to registered context requests.
 
 Tests use fixtures only in test targets. HTTP integration uses the actual API and isolated DB. Shared catalog contract changes belong to coordinator; workers request adjustments by Orca message. OS calendar/push/form autofill are separate follow-ups, not completed by this slice.
+
+## Organization hierarchy — 2026-10-06 승인
+
+사용자 결정: 조직은 하위 조직을 가질 수 있다(예: 회사 → 사업부·팀). 프로그램은 어느 깊이의 조직에도 속할 수 있다. 기존 필드는 그대로 두고 아래만 추가한다.
+
+- `Organization.parentId: string | null`. 최상위 조직은 null. 응답에는 항상 이 필드가 있다.
+- 깊이는 최상위를 1로 세어 최대 4단계다. 자기 자신이나 자기 하위 조직을 부모로 지정할 수 없다(순환 금지). DB가 이를 거부하고 어드민도 선택지에서 제외한다.
+- 하위 조직이나 프로그램이 있는 조직은 삭제할 수 없다. 부모를 바꾸는 이동은 허용하며 위 깊이·순환 규칙을 다시 검사한다.
+- 공개 스냅샷은 게시된 활동이 참조하는 조직과 **그 모든 상위 조직**을 포함한다. 모든 `parentId`는 같은 스냅샷 안의 조직을 가리킨다.
+- 소비자 반영 순서: API의 조직 검증(`apps/dearby-api/src/catalog.ts`의 strict schema)이 먼저 `parentId`를 받아야 한다. 그 전에 스냅샷이 필드를 내보내면 API 동기화가 실패하므로, API 반영이 운영에 배포된 뒤 스냅샷 함수를 운영 DB에 적용한다. 웹은 모르는 필드를 무시하므로 같은 시점에 깨지지 않는다.
+- 웹·앱의 표시(예: `NAVER · DAN`)와 상위 조직 이름으로 하위 조직 활동까지 검색하는 기능은 별도 작업으로 결정한다. 수집기는 프로그램 단위로 동작하므로 영향이 없다.
+- 운영 Supabase 마이그레이션 적용은 사용자 승인 후 root가 수행한다.
