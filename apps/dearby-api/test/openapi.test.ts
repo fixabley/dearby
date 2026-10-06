@@ -35,7 +35,7 @@ test('OpenAPI covers every live API method without adding runtime validators/ser
     else if(path==='/v1/catalog'||(['/v1/cards/{id}','/v1/shares/{id}'].includes(path)&&['get','head'].includes(method))||['/v1/auth/challenges','/v1/auth/sessions'].includes(path))assert.deepEqual(operation.security,[]);
     else assert.deepEqual(operation.security,[{OwnerSession:[]}]);
   }
-  assert.equal(routes.size,29);assert.deepEqual(documented,routes);
+  assert.equal(routes.size,30);assert.deepEqual(documented,routes);
   assert.match(spec.info.description,/Owner\/auth paths remain 404/);
   assert.equal(spec.components.securitySchemes.GuestProxy.name,'X-Guest-Proxy-Key');
   const example=spec.paths['/v1/wallet/import'].post.requestBody.content['application/json'].schema.example;
@@ -101,6 +101,10 @@ test('Real PostgreSQL HTTP successes/errors match OpenAPI, including partial imp
   const share=await call('POST',`/cards/${card.id}/shares`,201,{activityIds:[activity]},owner);
   await call('GET',`/shares/${share.id}`,200);await call('GET',`/shares/${randomUUID()}`,404);
   await call('GET','/wallet',200,undefined,owner);
+  await call('PUT',`/wallet/shares/${share.id}`,201,undefined,other.sessionToken);
+  await call('PUT',`/wallet/shares/${share.id}`,200,undefined,other.sessionToken);
+  await call('PUT',`/wallet/shares/${share.id}`,422,undefined,owner);
+  await call('PUT',`/wallet/shares/${randomUUID()}`,404,undefined,other.sessionToken);
   const input={cardId:card.id,recipientProfileId:other.profileId,context:{activityId:null,label:'Meeting'},requestId:randomUUID()};
   await call('POST','/exchanges',201,input,owner);
   await call('POST','/exchanges',409,{...input,context:{activityId:null,label:'Changed'}},owner);
@@ -126,7 +130,7 @@ test('Real PostgreSQL HTTP successes/errors match OpenAPI, including partial imp
   await call('DELETE',`/cards/${card.id}`,403,undefined,other.sessionToken);
   await call('DELETE',`/cards/${card.id}`,204,undefined,owner);await call('GET',`/cards/${card.id}`,404);await call('GET',`/shares/${share.id}`,404);
   await call('DELETE','/auth/session',204,undefined,owner);
-  assert.equal(seen.size,29);
+  assert.equal(seen.size,30);
   // Dependency failures keep the established sanitized error contract.
   for(const failure of [new ApiError(503,'CATALOG_UNAVAILABLE','Catalog unavailable'),Error('fixture-private-storage-detail')]){
     const {app}=createApp(f.db,{otpSecret,sendCode:async()=>{},catalogReader:async()=>{throw failure;}});

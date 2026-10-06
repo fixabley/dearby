@@ -66,6 +66,10 @@ The [web guest contract](../../shared/contracts/native-v1.md#웹-비로그인-�
 
 The [share contract](../../shared/contracts/native-v1.md#명함-공유-기록과-게스트-공유-정보-저장--2026-10-06-승인) adds owner `POST /v1/cards/:id/shares` (0-10 current-catalog activities, title snapshot), public `GET /v1/shares/:id` and proxy `PUT /v1/guest/shares/:id`; `GET /v1/guest/cards` gains `shares`. Share links cascade with their saved guest card and session; max 20 links per saved card. Withdrawn cards make all their shares 404. DDL is `supabase/migrations/20261006000000_api_card_shares.sql`; test data for web is `test/fixtures/card-shares.json`. See [handoff](../../docs/context/api-card-shares.md).
 
+## Member wallet share saves
+
+`PUT /v1/wallet/shares/:id` saves a shared card to the signed-in member's wallet (one receipt per member and card, reusing the earliest receipt) and links the share; `GET /v1/wallet` adds `shares` with the activity snapshots. Max 20 share links per card (409 `WALLET_CAPACITY_EXCEEDED`), own cards 422, missing/withdrawn 404. DDL: `supabase/migrations/20261006040000_api_wallet_shares.sql`.
+
 ## Guest home-screen handoff
 
 `POST /v1/guest/handoffs` (existing guest token) issues a 10-minute single-use code; `POST /v1/guest/handoffs/redeem` returns the same guest token so the iOS home-screen web app shares the Safari session. Storage holds the code digest and the token encrypted with a key derived from the code (HKDF-SHA256, AES-256-GCM). All failures are the same 404. See [handoff](../../docs/context/api-guest-handoff.md).

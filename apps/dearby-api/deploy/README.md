@@ -136,6 +136,7 @@ Headers: the upstream never received Authorization or Cookie. Catalog, public sh
 | `/v1/cards/:id/shares` | POST |
 | `/v1/wallet` | GET/HEAD |
 | `/v1/wallet/import` | POST |
+| `/v1/wallet/shares/:id` | PUT (save a received share, #142) |
 
 Other methods return 405. `/v1/exchanges` and any other `/v1` path stay 404. [member.proxy.conf](nginx/dearby-api/member.proxy.conf) is shared by these locations:
 - `Authorization` is forwarded only here.

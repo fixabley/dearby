@@ -8,7 +8,8 @@ export const idParams = z.strictObject({id});
 export const cardListSchema = z.strictObject({items:z.array(cardSchema)});
 export const walletSchema = z.strictObject({items:z.array(z.strictObject({
   id,card:cardSchema,context,receivedAt:z.iso.datetime({offset:true}),reciprocal:z.boolean(),
-}))});
+})),shares:z.array(z.strictObject({receiptId:id,cardId:id,shareId:id,activities:z.array(shareActivity).max(10),savedAt:z.iso.datetime()}))});
+export const walletShareSavedSchema = z.strictObject({receiptId:id,cardId:id,shareId:id,status:z.enum(['saved','alreadySaved'])});
 export const importResultSchema = z.strictObject({items:z.array(z.strictObject({
   cardId:z.string(),status:z.enum(['imported','alreadySaved','failed']),receiptId:id.nullable(),
 }))});
@@ -26,7 +27,7 @@ const descriptions:Record<number,string> = {
   401:'UNAUTHORIZED / INVALID_CODE / GUEST_SESSION_INVALID: missing, expired, consumed or revoked credentials. Invalid guest tokens never create a replacement session.',
   403:'FORBIDDEN: owner required or missing/incorrect trusted server proxy credential.',
   404:'NOT_FOUND: resource missing or public card withdrawn (including every share of a withdrawn card).',
-  409:'IDEMPOTENCY_CONFLICT / GUEST_CAPACITY_EXCEEDED: conflicting replay or persistent storage limit.',
+  409:'IDEMPOTENCY_CONFLICT / GUEST_CAPACITY_EXCEEDED / WALLET_CAPACITY_EXCEEDED: conflicting replay or persistent storage limit.',
   422:'INVALID_INPUT / INVALID_SELECTION / INVALID_RECIPIENT: invalid JSON, media type, body size, Zod input or domain selection (including activities missing from the current catalog).',
   429:'RATE_LIMITED: request, creation or OTP quota exceeded.',
   500:'INTERNAL_ERROR: sanitized storage/internal failure; never an empty successful response.',
