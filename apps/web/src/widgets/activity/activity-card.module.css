@@ -1,0 +1,55 @@
+.withApply {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.withApply:hover,
+.withApply:focus-within {
+  border-color: var(--teal);
+}
+.withApply :global(.activity-card) {
+  border: 0;
+}
+.apply {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--line);
+}
+.deadline {
+  color: var(--muted);
+  font-size: 14px;
+}
+.apply :global(.button) {
+  min-height: 44px;
+  padding: 8px 16px;
+  font-size: 15px;
+}
+.tile {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 8px;
+  text-align: center;
+}
+.organization {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.35;
+  word-break: keep-all;
+}
+.organization {
+  color: var(--teal-dark);
+}
+/* 좁은 화면에서는 타일이 작아 이름이 단어 중간에서 끊기므로, 이미 제목 위에 보이는 조직 이름을 타일에서는 숨긴다. */
+@media (max-width: 640px) {
+  .organization {
+    display: none;
+  }
+}

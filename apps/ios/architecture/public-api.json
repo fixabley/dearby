@@ -2,6 +2,7 @@
   "widgets/catalog": [
     "CatalogPage",
     "CatalogViewModel",
+    "ActivityCard",
     "MyActivitiesPage"
   ],
   "features/calendar": [
@@ -30,9 +31,10 @@
     "DearbyChoice",
     "DearbyChoiceChips",
     "DearbyInlineField",
+    "DearbyTogetherActivityLabel",
+    "DearbyQRCode",
     "AppOrigins",
     "SharedCardLink",
-    "DearbyTogetherActivityLabel",
     "SearchQuery"
   ],
   "entities/identity": [
@@ -56,7 +58,12 @@
     "QRPage",
     "WalletPage",
     "ProfilePage",
-    "ReceivedCardRow"
+    "ReceivedCardRow",
+    "QRShareCard",
+    "QRScanOverlay",
+    "CardComposer",
+    "CardComposerContact",
+    "CardComposerHistory"
   ],
   "entities/account": [
     "AccountSession",
