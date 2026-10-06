@@ -1,7 +1,8 @@
 import Foundation
 
 enum AccountError: Error, Equatable {
-    case unauthorized, invalidInput, notFound, rateLimited, unavailable
+    /// `invalidContacts`: the profile's required phone or email is missing or malformed (422 "Invalid contacts").
+    case unauthorized, invalidInput, invalidContacts, notFound, rateLimited, unavailable
 }
 
 /// Owner API (contract native-v1): email code sign-in, profile and card publishing.
@@ -61,6 +62,7 @@ struct AccountClient: Sendable {
     }
     private struct Challenge: Decodable { let challengeId: String }
     private struct CardList: Decodable { let items: [PublishedCard] }
+    private struct ErrorBody: Decodable { struct Detail: Decodable { let message: String }; let error: Detail }
 
     private func send<Response: Decodable>(_ path: String, method: String = "GET", body: (any Encodable)? = nil,
                                            session: AccountSession? = nil, as type: Response.Type) async throws -> Response {
@@ -82,7 +84,9 @@ struct AccountClient: Sendable {
         case 200..<300: return data
         case 401: throw AccountError.unauthorized
         case 404: throw AccountError.notFound
-        case 422: throw AccountError.invalidInput
+        case 422:
+            let body = try? JSONDecoder().decode(ErrorBody.self, from: data)
+            throw body?.error.message == "Invalid contacts" ? AccountError.invalidContacts : AccountError.invalidInput
         case 429: throw AccountError.rateLimited
         default: throw AccountError.unavailable
         }

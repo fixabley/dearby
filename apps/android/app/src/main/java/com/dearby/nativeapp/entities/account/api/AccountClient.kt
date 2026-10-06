@@ -17,7 +17,8 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
-enum class AccountError { UNAUTHORIZED, INVALID_INPUT, NOT_FOUND, RATE_LIMITED, UNAVAILABLE }
+/** [INVALID_CONTACTS]: the profile's required phone or email is missing or malformed (422 "Invalid contacts"). */
+enum class AccountError { UNAUTHORIZED, INVALID_INPUT, INVALID_CONTACTS, NOT_FOUND, RATE_LIMITED, UNAVAILABLE }
 class AccountException(val error: AccountError) : Exception(error.name)
 
 data class HttpRequest(val method: String, val url: String, val token: String?, val body: String?)
@@ -81,7 +82,9 @@ class AccountClient(private val api: String, private val transport: Transport = 
             in 200..299 -> response.body
             401 -> throw AccountException(AccountError.UNAUTHORIZED)
             404 -> throw AccountException(AccountError.NOT_FOUND)
-            422 -> throw AccountException(AccountError.INVALID_INPUT)
+            422 -> throw AccountException(
+                if (runCatching { JSONObject(response.body).getJSONObject("error").getString("message") }.getOrNull() == "Invalid contacts") AccountError.INVALID_CONTACTS
+                else AccountError.INVALID_INPUT)
             429 -> throw AccountException(AccountError.RATE_LIMITED)
             else -> throw AccountException(AccountError.UNAVAILABLE)
         }
