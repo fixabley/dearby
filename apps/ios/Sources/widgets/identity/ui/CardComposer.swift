@@ -28,6 +28,8 @@ struct CardComposer: View {
     var requiresLogin = false
     var publishing = false
     var errorMessage: String?
+    /// 명함 이름. 주면 맨 위에 선택 입력 칸을 보이고, 비워 두면 화면이 '내 명함'을 쓴다.
+    var cardTitle: Binding<String>?
     let publish: () -> Void
     private var nameMissing: Bool { name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     var body: some View {
@@ -41,6 +43,11 @@ struct CardComposer: View {
                         Text(job.isEmpty ? "직함" : job).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
                     }
                 }.accessibilityHidden(true)
+                if let cardTitle {
+                    section("명함") {
+                        field("명함 이름 (선택)", text: cardTitle, prompt: "비워 두면 '내 명함'으로 저장해요")
+                    }
+                }
                 section("기본 정보") {
                     field("이름", text: $name, prompt: "실명 또는 활동명")
                     field("직함", text: $job, prompt: "예: 서비스 기획 · 커뮤니티")
@@ -116,10 +123,11 @@ struct CardComposerSample: View {
     @State var contacts = [CardComposerContact(id: "email", kind: "email", label: "이메일", value: "jimin@example.invalid", isPublic: true),
                            CardComposerContact(id: "phone", kind: "phone", label: "전화", value: "", isPublic: false)]
     @State var histories = [CardComposerHistory(id: "camp", title: "Dearby 메이커 캠프", detail: "2025 · 운영진", isPublic: true)]
+    @State var cardTitle = ""
     var requiresLogin = true
     var body: some View {
         CardComposer(name: $name, job: $job, introduction: $introduction, contacts: $contacts, histories: $histories,
-                     requiresLogin: requiresLogin) {}
+                     requiresLogin: requiresLogin, cardTitle: $cardTitle) {}
             .background(.white)
     }
 }

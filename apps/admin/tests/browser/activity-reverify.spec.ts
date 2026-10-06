@@ -46,7 +46,8 @@ test("activities show automatic re-check results and verification sends the evid
     source_checked_at: new Date(now - 20 * 3600000).toISOString(),
     valid_until: new Date(now + 4 * 3600000).toISOString(),
     freshness: "verified",
-    source_note: "공식 공지에서 마감일을 확인했습니다.",
+    source_note: "내부 메모: 담당자가 공지 확인",
+    public_note: "공식 공지에 따르면 지원은 10월 24일 오후 6시에 마감합니다.",
     updated_at: new Date(now - 20 * 3600000).toISOString(),
   };
   // Published without any confirmation record: never shown in discovery.
@@ -122,13 +123,18 @@ test("activities show automatic re-check results and verification sends the evid
 
   await row.getByRole("link", { name: "편집" }).click();
   await expect(page.getByText(evidence.quote)).toBeVisible();
+  // The visitor-facing note is edited with the activity; the internal evidence is labelled as such.
+  await expect(
+    page.getByLabel("방문자에게 보일 확인 안내", { exact: true }),
+  ).toHaveValue(activity.public_note);
+  await expect(page.getByText("내부 확인 근거", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "공식 정보 확인 기록" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByLabel("재확인 기준 구절")).toHaveValue(
     evidence.quote,
   );
   await dialog
-    .getByLabel("확인 근거")
+    .getByLabel("내부 확인 근거 (방문자에게 보이지 않음)")
     .fill("공식 공지 본문 두 번째 문단에서 마감 일시를 확인했습니다.");
   await dialog
     .getByLabel("재확인 기준 구절")

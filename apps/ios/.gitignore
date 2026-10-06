@@ -6,3 +6,4 @@ xcuserdata/
 build/
 tests/ArchitectureTests/.build/
 tests/ArchitectureTests/.swiftpm/
+Dearby.xcodeproj/
