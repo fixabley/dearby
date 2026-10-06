@@ -30,7 +30,9 @@
     "DearbyChoice",
     "DearbyChoiceChips",
     "DearbyInlineField",
-    "DearbyTogetherActivityLabel"
+    "DearbyTogetherActivityLabel",
+    "AppOrigins",
+    "SharedCardLink"
   ],
   "entities/identity": [
     "CardModel",
