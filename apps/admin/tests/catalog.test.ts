@@ -1,6 +1,9 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  collectionBlock,
+  organizationPath,
+  parentCandidates,
   discoveryStatus,
   normalizeSchedules,
   type Activity,
@@ -45,7 +48,17 @@ test("admin eligibility follows native API clock boundaries and publication", ()
   );
 });
 test("closed recruitment is not relabeled scheduled by a future opening", () => {
-  assert.equal(discoveryStatus({...item,recruitment_status:"closed",recruitment_start_at:new Date(now+3600000).toISOString()},now).label,"모집 마감");
+  assert.equal(
+    discoveryStatus(
+      {
+        ...item,
+        recruitment_status: "closed",
+        recruitment_start_at: new Date(now + 3600000).toISOString(),
+      },
+      now,
+    ).label,
+    "모집 마감",
+  );
 });
 
 test("unknown schedule times stay null and invalid/reversed intervals fail", () => {
@@ -71,4 +84,80 @@ test("unknown schedule times stay null and invalid/reversed intervals fail", () 
     ]),
   );
   assert.throws(() => normalizeSchedules([{ ...s, timeZone: "invalid" }]));
+});
+
+test("blocked collection jobs distinguish subscription, source and host setup", () => {
+  assert.equal(
+    collectionBlock(
+      "BLOCKED: Codex subscription quota or login requires attention",
+    ).label,
+    "구독 차단 · 전체 일시정지",
+  );
+  assert.equal(
+    collectionBlock("BLOCKED: Official source unavailable: JS only").label,
+    "원문 차단 · 이 프로그램만",
+  );
+  assert.equal(
+    collectionBlock("BLOCKED: Official page exceeds 3 MB").label,
+    "원문 차단 · 이 프로그램만",
+  );
+  assert.equal(
+    collectionBlock("BLOCKED: All candidates failed").label,
+    "원문 차단 · 이 프로그램만",
+  );
+  assert.equal(
+    collectionBlock("BLOCKED: Configure official hosts for this program").label,
+    "설정 필요 · 이 프로그램만",
+  );
+  for (const reason of [
+    "Official source unavailable: JS only",
+    "Official page exceeds 3 MB",
+    "Official host did not resolve to a public address",
+    "All candidates failed source verification",
+  ])
+    assert.equal(
+      collectionBlock(`BLOCKED: ${reason}`).label,
+      "원문 차단 · 이 프로그램만",
+    );
+  assert.equal(
+    collectionBlock("BLOCKED: Source must use a configured official HTTPS host")
+      .label,
+    "설정 필요 · 이 프로그램만",
+  );
+  assert.deepEqual(collectionBlock(null), { label: "조치 필요", hint: "" });
+});
+
+test("organization parents exclude self, descendants and moves deeper than four levels", () => {
+  const org = (id: string, parent_id: string | null) => ({
+    id,
+    name: id,
+    description: "",
+    parent_id,
+  });
+  const all = [
+    org("A", null),
+    org("B", "A"),
+    org("C", "B"),
+    org("D", "C"),
+    org("X", null),
+    org("Y", "X"),
+  ];
+  assert.deepEqual(
+    organizationPath(all, "D").map((o) => o.id),
+    ["A", "B", "C", "D"],
+  );
+  // B carries C and D, so only level-1 parents keep it within four levels.
+  assert.deepEqual(
+    parentCandidates(all, "B").map((o) => o.id),
+    ["A", "X"],
+  );
+  // X has two levels, so it fits only under a level-1 or level-2 parent.
+  assert.deepEqual(
+    parentCandidates(all, "X").map((o) => o.id),
+    ["A", "B"],
+  );
+  assert.deepEqual(
+    parentCandidates(all).map((o) => o.id),
+    ["A", "B", "C", "X", "Y"],
+  );
 });

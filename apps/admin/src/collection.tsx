@@ -3,7 +3,7 @@ import { useList } from "@refinedev/core";
 import { Alert, App, Button, Select, Space, Table, Tag } from "antd";
 import { Link } from "react-router";
 import { supabase } from "./supabase";
-import { dateText, type Program } from "./catalog";
+import { collectionBlock, dateText, type Program } from "./catalog";
 
 type Job = {
   id: string;
@@ -251,17 +251,24 @@ export function CollectionJobs() {
             {
               title: "상태",
               dataIndex: "status",
-              render: (value) => (
-                <Tag
-                  color={
-                    value === "blocked" || value === "failed"
-                      ? "orange"
-                      : "default"
-                  }
-                >
-                  {labels[value] ?? value}
-                </Tag>
-              ),
+              render: (value, row) => {
+                const block =
+                  value === "blocked" ? collectionBlock(row.error) : null;
+                return (
+                  <>
+                    <Tag
+                      color={
+                        value === "blocked" || value === "failed"
+                          ? "orange"
+                          : "default"
+                      }
+                    >
+                      {block?.label ?? labels[value] ?? value}
+                    </Tag>
+                    {block?.hint && <div className="muted">{block.hint}</div>}
+                  </>
+                );
+              },
             },
             { title: "시도", dataIndex: "attempts", width: 70 },
             { title: "오류", dataIndex: "error", ellipsis: true, width: 240 },
