@@ -23,10 +23,11 @@ final class AppLinksTests: XCTestCase {
     func testShareLinksOnlyMatchTheWebOriginAndAUUID() {
         func shareID(_ raw: String) -> String? { SharedCardLink.shareID(from: URL(string: raw)!, web: web) }
         XCTAssertEqual(shareID("https://web.example.test/s/\(id)"), id)
-        XCTAssertEqual(shareID("https://web.example.test/s/\(id.uppercased())/?utm=x#top"), id)
+        XCTAssertEqual(shareID("https://web.example.test/s/\(id.uppercased())/"), id)
         for raw in ["https://other.example.test/s/\(id)", "http://web.example.test/s/\(id)",
                     "https://web.example.test/cards/\(id)", "https://web.example.test/s/not-a-uuid",
-                    "https://web.example.test/s/\(id)/extra", "https://web.example.test:8443/s/\(id)"] {
+                    "https://web.example.test/s/\(id)/extra", "https://web.example.test:8443/s/\(id)",
+                    "https://web.example.test/s/\(id)?utm=x", "https://web.example.test/s/\(id)#top"] {
             XCTAssertNil(shareID(raw), raw)
         }
     }

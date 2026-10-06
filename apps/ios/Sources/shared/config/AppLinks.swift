@@ -27,11 +27,12 @@ struct AppOrigins: Equatable {
     }
 }
 
-/// Shared-card links: `<web origin>/s/<UUID>` → lower-case share ID; anything else is ignored.
+/// Shared-card links: exactly `<web origin>/s/<UUID>` → lower-case share ID; query, fragment or anything else is ignored.
 enum SharedCardLink {
     static func shareID(from url: URL, web: URL) -> String? {
         guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              parts.scheme == web.scheme, parts.host?.lowercased() == web.host, parts.port == web.port else { return nil }
+              parts.scheme == web.scheme, parts.host?.lowercased() == web.host, parts.port == web.port,
+              parts.query == nil, parts.fragment == nil else { return nil }
         let path = parts.path.split(separator: "/", omittingEmptySubsequences: true)
         guard path.count == 2, path[0] == "s", let id = UUID(uuidString: String(path[1])) else { return nil }
         return id.uuidString.lowercased()
