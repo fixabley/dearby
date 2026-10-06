@@ -38,6 +38,13 @@ android {
         }
     }
     buildFeatures { compose = true; buildConfig = true }
+    // Test-only catalog fixture shared by unit and instrumented tests; never in the app.
+    sourceSets {
+        for (name in listOf("test", "androidTest")) getByName(name) {
+            java.srcDir("src/testShared/java")
+            kotlin.srcDir("src/testShared/java")
+        }
+    }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
 }
 // Release needs https://<domain> without IP, port, path or upper case; checked only when a release build runs.

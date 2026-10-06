@@ -9,10 +9,10 @@ extension ArchitectureTestSuite {
                 "SwiftData", "ModelContainer", "ModelContext", "EventKit", "EKEventStore", "AVFoundation",
                 "AVCaptureSession", "Security", "SecItemCopyMatching", "SecItemAdd", "SecItemDelete",
                 "Photos", "PhotosUI", "UIPasteboard", "CoreImage", "SafariServices", "SFSafariViewController", "WKWebView", "WebKit"]
-            // #95: 공유 URL을 QR로 그리는 표시 파일만 CoreImage를, 로그인·명함 발행 클라이언트만 네트워크를,
+            // #95: 공유 URL을 QR로 그리는 표시 파일만 CoreImage를, 카탈로그·로그인·명함 발행 클라이언트만 네트워크를,
             // 세션 보관 파일만 Keychain을 쓴다.
-            let allowed: [String: Set<String>] = ["DearbyQRCode.swift": ["CoreImage"], "AccountClient.swift": ["URLSession"],
-                "SessionVault.swift": ["Security", "SecItemCopyMatching", "SecItemAdd", "SecItemDelete"]]
+            let allowed: [String: Set<String>] = ["DearbyQRCode.swift": ["CoreImage"], "CatalogClient.swift": ["URLSession"],
+                "AccountClient.swift": ["URLSession"], "SessionVault.swift": ["Security", "SecItemCopyMatching", "SecItemAdd", "SecItemDelete"]]
             for file in files {
                 let source = FSDBoundaries.File(path: file.path, text: try String(contentsOf: file, encoding: .utf8))
                 let blocked = forbidden.subtracting(allowed[file.lastPathComponent] ?? [])

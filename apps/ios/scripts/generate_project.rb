@@ -10,6 +10,12 @@ ui_tests.add_dependency(app)
   group = project.main_group.new_group(folder)
   Dir.glob("#{folder}/**/*.swift").sort.each { |file| target.source_build_phase.add_file_reference(group.new_file(file)) }
 end
+# Test-only fixtures shared by unit and UI tests; never part of the app target.
+fixtures = project.main_group.new_group('testFixtures')
+Dir.glob('testFixtures/**/*.swift').sort.each do |file|
+  reference = fixtures.new_file(file)
+  [tests, ui_tests].each { |target| target.source_build_phase.add_file_reference(reference) }
+end
 # Release builds must get https domain origins from the build environment (contract "연결 설정").
 validate = app.new_shell_script_build_phase('Validate connection origins')
 validate.shell_script = 'bash "$SRCROOT/scripts/validate_origins.sh"'

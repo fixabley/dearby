@@ -16,11 +16,11 @@
 
 | 시안 | 적용 화면과 예시 동작 |
 | --- | --- |
-| [탐색](approved/discovery.png) | 로고·제목·유형 칩·사진 카드. 카드 → 상세. 활동 즐겨찾기는 없다(2026-10-06 결정). |
-| [상세 상단](approved/activity-detail-top.png) | 큰 사진·분류 배지·조직·정렬된 정보 행·소개·고정 신청 버튼. |
+| [탐색](approved/discovery.png) | 로고·제목·유형 칩·활동 카드. 카드 → 상세. 활동 즐겨찾기는 없다(2026-10-06 결정). 2026-10-06부터 실제 `GET /v1/catalog`를 쓰고 모집 중 활동만 보인다(웹 `isRecruiting`과 같은 규칙). 불러오는 중·오류(다시 시도)·빈 결과 상태를 두며 예시 활동을 섞지 않는다. 카탈로그에는 사진이 없어 옅은 민트 타일을 둔다(UI 담당 사진 없는 카드 변형 요청 중). iOS·Android 반영. |
+| [상세 상단](approved/activity-detail-top.png) | 큰 사진·분류 배지·조직·정렬된 정보 행·소개·고정 신청 버튼. 실제 카탈로그 값이며 없는 값은 "미확인". 신청 버튼은 모집 중이고 https 신청 주소가 있을 때 공식 신청 페이지를 외부 브라우저로 열고, 아니면 공식 안내를 연다. |
 | [상세 일정](approved/activity-detail-schedule.png) | 세로 일정표와 겹침 확인 버튼 → 예시 캘린더 선택/결과. |
 | [상세 하단](approved/activity-detail-bottom.png) | 참가 안내·장소·출처, 예시 외부 링크. |
-| [신청 상태](approved/activity-applied.png) | 신청 예시 표시 후 상세 상단의 얇은 체크 배너. |
+| [신청 상태](approved/activity-applied.png) | 사용자가 `신청 상태 수정`으로 남긴 표시 뒤 상세 상단의 얇은 체크 배너. 앱 안 메모리 표시이며 접수 확인이 아니다. |
 | [겹침 A](approved/calendar-overlap-a.png) | 하단 시트, 두 열의 시간표, 주황 겹침 구간, 날짜·분수·건수, 확인/닫기. |
 | [프로필](approved/profile.png) | 연락처 행·활동 연표·편집/추가 화면. 변경은 메모리만 사용. |
 | [비로그인 프로필](approved/profile-guest.png) | 시작 버튼으로 예시 프로필 전환. 실제 계정 입력 없음. |
@@ -77,6 +77,7 @@ SwiftUI와 Compose의 UI 소스는 각 플랫폼 안에서 공유하고, 이미�
 | 명함 제작(한 화면 발행) | `Sources/widgets/identity/ui/CardComposer.swift` | `widgets/card/cardContent/CardComposer.kt` |
 | 받은 명함 목록 항목 | `Sources/widgets/identity/ui/ReceivedCardRow.swift` | `widgets/card/cardContent/ReceivedCardRow.kt` |
 | 명함·연락처·활동 이력 조합 | `Sources/entities/identity/ui` | `widgets/card/cardContent` |
+| 활동 카드(빠른 신청) | `Sources/widgets/catalog/ui/ActivityCard.swift` | `widgets/activity/activityCard/ActivityCard.kt` |
 | 활동 목록·상세 | `Sources/widgets/catalog/ui` | `pages/catalog` |
 | 프로필·QR·명함함 | `Sources/widgets/identity/ui` | `pages/profile`, `pages/qr`, `pages/wallet` |
 | 공통 이미지 원본 | 저장소 루트 `shared/assets/prototype` | 저장소 루트 `shared/assets/prototype` |
