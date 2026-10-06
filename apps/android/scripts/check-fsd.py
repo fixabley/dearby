@@ -17,9 +17,9 @@ API = {
     'pages.qr': {'QrPage', 'CardEditor'},
     'pages.wallet': {'WalletEntryState', 'walletMatches', 'WalletPage', 'SharedCardPage', 'SendPage'},
     'features.calendar': {'CalendarConflictSheet'},
-    'pages.catalog': {'CatalogPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'CatalogState'},
+    'pages.catalog': {'CatalogPage', 'MyActivitiesPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'CatalogState'},
     'features.application': {'ApplicationBrowser', 'safeWebUrl'},
-    'entities.catalog': {'model.ActivityModel', 'model.ScheduleModel', 'model.demoActivities'},
+    'entities.catalog': {'model.ActivityModel', 'model.ScheduleModel', 'model.demoActivities', 'model.demoAppliedActivityIds'},
 }
 
 def owner(name):
