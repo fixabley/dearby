@@ -175,6 +175,25 @@ nav .anticon {
   color: #657e79;
   margin-top: 0;
 }
+.recruitment-period {
+  padding: 16px 18px 4px;
+  margin-bottom: 18px;
+  border: 1px solid #b8dcd6;
+  border-radius: 10px;
+  background: #f2faf8;
+}
+.recruitment-period > strong {
+  display: block;
+  margin-bottom: 12px;
+}
+.recruitment-preview {
+  margin: 0 0 8px;
+}
+.field-error {
+  font-size: 12px;
+  color: #b42318;
+  margin-top: 0;
+}
 .back {
   display: inline-block;
   margin-top: 25px;

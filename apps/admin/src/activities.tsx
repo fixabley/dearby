@@ -24,10 +24,14 @@ import {
 } from "@ant-design/icons";
 import {
   type Activity,
+  type ActivityEvidence,
+  evidenceQuoteError,
+  recheckState,
   type Program,
   type Schedule,
   dateText,
   discoveryStatus,
+  inferredRecruitment,
   normalizeSchedules,
   publicationLabels,
   recruitmentLabels,
@@ -82,6 +86,13 @@ export function ActivityList() {
         : []),
     ],
     queryOptions: { refetchInterval: 30000 },
+  });
+  const ids = result.data.map((a) => a.id);
+  const evidence = useList<ActivityEvidence>({
+    resource: "catalog_activity_evidence",
+    filters: [{ field: "activity_id", operator: "in", value: ids }],
+    pagination: { pageSize: 15 },
+    queryOptions: { enabled: ids.length > 0, refetchInterval: 30000 },
   });
   return (
     <>
@@ -191,7 +202,7 @@ export function ActivityList() {
               ),
             },
             {
-              title: "탐색 노출",
+              title: "발견 노출",
               render: (_, a) => {
                 const s = discoveryStatus(a);
                 return <Tag color={s.color}>{s.label}</Tag>;
@@ -202,9 +213,22 @@ export function ActivityList() {
               dataIndex: "source_checked_at",
               render: dateText,
             },
+            {
+              title: "자동 재확인",
+              width: 220,
+              render: (_, a) => (
+                <Recheck
+                  state={recheckState(
+                    a,
+                    evidence.result.data.find((e) => e.activity_id === a.id),
+                  )}
+                />
+              ),
+            },
             { title: "수정", dataIndex: "updated_at", render: dateText },
             {
               title: "",
+              width: 64,
               render: (_, a) => <Link to={`/activities/${a.id}`}>편집</Link>,
             },
           ]}
@@ -218,19 +242,37 @@ export function ActivityEditor() {
   const navigate = useNavigate();
   const { message } = App.useApp();
   const [form] = Form.useForm();
+  const watched = {
+    recruitment_status: Form.useWatch("recruitment_status", form) ?? "unknown",
+    recruitment_start_at: instant(Form.useWatch("recruitment_start_at", form)),
+    recruitment_end_at: instant(Form.useWatch("recruitment_end_at", form)),
+  };
+  const inferred = inferredRecruitment(watched);
+  const recruitmentPreview = inferred.byPeriod
+    ? `기간 기준 ${recruitmentLabels[inferred.status]}`
+    : inferred.status === "closed"
+      ? "조기 마감 (관리자 선택)"
+      : `날짜 없음 · ${recruitmentLabels[inferred.status]}`;
   const [loadedVersion, setLoadedVersion] = useState<string>();
   const [dirty, setDirty] = useState(false),
     [error, setError] = useState(""),
     [programSearch, setProgramSearch] = useState("");
   const [verifyOpen, setVerifyOpen] = useState(false),
     [evidence, setEvidence] = useState(""),
+    [quote, setQuote] = useState(""),
     [verifying, setVerifying] = useState(false);
+  const quoteError = evidenceQuoteError(quote);
   const { query } = useOne<Activity>({
     resource,
     id: id ?? "",
     queryOptions: { enabled: !!id },
   });
   const activity = query.data?.data;
+  const evidenceRow = useList<ActivityEvidence>({
+    resource: "catalog_activity_evidence",
+    filters: [{ field: "activity_id", operator: "eq", value: id }],
+    queryOptions: { enabled: !!id },
+  }).result.data[0];
   const programs = useList<Program>({
     resource: "catalog_programs",
     pagination: { pageSize: 50 },
@@ -357,14 +399,17 @@ export function ActivityEditor() {
       const { error } = await supabase!.rpc("verify_catalog_activity", {
         activity_id: id,
         evidence_note: evidence,
+        evidence_quote: quote.trim() || null,
       });
       if (error) throw error;
       setVerifyOpen(false);
       await query.refetch();
       message.success("공식 정보 확인을 기록했어요.");
-    } catch {
+    } catch (e) {
       setError(
-        "공식 확인을 저장하지 못했어요. 근거를 10자 이상 입력하고 연결 상태를 확인해 주세요.",
+        (e as { message?: string })?.message?.startsWith("Evidence quote")
+          ? "재확인 기준 구절은 줄바꿈·생략부호 없는 20~200자 한 구절이어야 해요."
+          : "공식 확인을 저장하지 못했어요. 근거를 10자 이상 입력하고 연결 상태를 확인해 주세요.",
       );
     } finally {
       setVerifying(false);
@@ -469,24 +514,42 @@ export function ActivityEditor() {
                     ]}
                   />
                 </Form.Item>
-                <Form.Item label="모집 상태" name="recruitment_status">
+              </div>
+              <section className="recruitment-period" aria-label="모집 기간">
+                <strong>모집 기간</strong>
+                <div className="two-fields">
+                  <Form.Item label="모집 시작" name="recruitment_start_at">
+                    <Input type="datetime-local" />
+                  </Form.Item>
+                  <Form.Item label="모집 마감" name="recruitment_end_at">
+                    <Input type="datetime-local" />
+                  </Form.Item>
+                </div>
+                <Form.Item
+                  label="모집 상태"
+                  name="recruitment_status"
+                  extra="보통은 자동을 두고 기간만 입력하세요. 조기 마감은 기간과 관계없이 마감으로 표시돼요. 상시 모집 중은 날짜가 없을 때만 의미가 있어요."
+                >
                   <Select
                     virtual={false}
-                    options={options(recruitmentLabels)}
+                    options={[
+                      { value: "unknown", label: "자동 (기간 기준)" },
+                      { value: "open", label: "상시 모집 중 (날짜 없음)" },
+                      { value: "closed", label: "조기 마감" },
+                      // Legacy value: shown so editing does not silently change it.
+                      ...(watched.recruitment_status === "scheduled"
+                        ? [{ value: "scheduled", label: "모집 예정 (기존 값)" }]
+                        : []),
+                    ]}
                   />
                 </Form.Item>
-              </div>
-              <div className="two-fields">
-                <Form.Item label="모집 시작" name="recruitment_start_at">
-                  <Input type="datetime-local" />
-                </Form.Item>
-                <Form.Item label="모집 마감" name="recruitment_end_at">
-                  <Input type="datetime-local" />
-                </Form.Item>
-              </div>
-              <p className="field-note">
-                입력 시각 기준: {localZone}. 확인되지 않은 시각은 비워 두세요.
-              </p>
+                <p className="recruitment-preview" role="status">
+                  현재 상태: <strong>{recruitmentPreview}</strong>
+                </p>
+                <p className="field-note">
+                  입력 시각 기준: {localZone}. 확인되지 않은 시각은 비워 두세요.
+                </p>
+              </section>
               <p className="field-note">
                 항목 이름을 검색하거나 직접 추가하세요.
                 숫자·문자열·날짜·참/거짓·null·객체·배열을 선택할 수 있어요.
@@ -679,6 +742,20 @@ export function ActivityEditor() {
                     <dd>{dateText(activity.source_checked_at)}</dd>
                     <dt>확인 유효기간</dt>
                     <dd>{dateText(activity.valid_until)}</dd>
+                    <dt>자동 재확인</dt>
+                    <dd>
+                      {activity.publication_status === "published" ? (
+                        <Recheck state={recheckState(activity, evidenceRow)} />
+                      ) : (
+                        "게시한 활동만 자동 재확인해요."
+                      )}
+                    </dd>
+                    {evidenceRow && (
+                      <>
+                        <dt>재확인 기준 구절</dt>
+                        <dd>{evidenceRow.quote}</dd>
+                      </>
+                    )}
                   </dl>
                   {activity.source_note && (
                     <Typography.Paragraph className="source-note">
@@ -698,6 +775,7 @@ export function ActivityEditor() {
                       disabled={dirty || saving}
                       onClick={() => {
                         setEvidence("");
+                        setQuote(evidenceRow?.quote ?? "");
                         setVerifyOpen(true);
                       }}
                     >
@@ -723,7 +801,9 @@ export function ActivityEditor() {
         confirmLoading={verifying}
         okText="확인 기록"
         cancelText="취소"
-        okButtonProps={{ disabled: evidence.trim().length < 10 }}
+        okButtonProps={{
+          disabled: evidence.trim().length < 10 || !!quoteError,
+        }}
       >
         <p>
           공식 원문에서 모집 상태·마감·행사 일정을 확인하고 근거를 남겨 주세요.
@@ -737,7 +817,36 @@ export function ActivityEditor() {
           rows={4}
           placeholder="공식 원문에서 확인한 내용과 해당 위치를 적어 주세요."
         />
+        <label htmlFor="evidence-quote">재확인 기준 구절</label>
+        <Input.TextArea
+          id="evidence-quote"
+          value={quote}
+          onChange={(e) => setQuote(e.target.value)}
+          rows={2}
+          status={quoteError ? "error" : undefined}
+          aria-describedby="evidence-quote-help"
+          placeholder="모집 상태나 마감이 드러나는 원문 문장을 그대로 복사해 붙여 넣어 주세요."
+        />
+        <p
+          id="evidence-quote-help"
+          className={quoteError ? "field-error" : "field-note"}
+        >
+          {quoteError ??
+            (quote.trim()
+              ? "수집 워커가 이 구절이 원문에 그대로 남아 있는지 확인해 24시간 확인을 자동으로 연장해요. 20~200자, 줄바꿈·생략부호·마크다운 기호 없이 입력하세요."
+              : "비워 두면 자동 재확인 대상이 아니에요. 24시간마다 직접 다시 확인해야 해요. 기존 구절도 삭제돼요.")}
+        </p>
       </Modal>
+    </>
+  );
+}
+
+function Recheck({ state }: { state: ReturnType<typeof recheckState> }) {
+  if (!state) return <span className="muted">게시 전</span>;
+  return (
+    <>
+      <Tag color={state.color}>{state.label}</Tag>
+      <div className="muted">{state.detail}</div>
     </>
   );
 }

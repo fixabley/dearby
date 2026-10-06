@@ -16,7 +16,7 @@ export async function fixture(send?:SendCode,guestProxySecret?:string) {
   const url=new URL(source);url.pathname='/'+name;
   const admin=new pg.Pool({connectionString:url.toString()});
   await admin.query("CREATE SCHEMA auth; CREATE SCHEMA extensions; CREATE TABLE auth.users(id uuid PRIMARY KEY,raw_app_meta_data jsonb); CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT null::uuid $$;");
-  for(const file of ['20260929000000_discovery_admin.sql','20260929010000_catalog_criteria.sql','20260929150000_api_prisma.sql','20261006000000_api_card_shares.sql']) await admin.query(readFileSync(new URL('../../../supabase/migrations/'+file,import.meta.url),'utf8'));
+  for(const file of ['20260929000000_discovery_admin.sql','20260929010000_catalog_criteria.sql','20260929150000_api_prisma.sql','20261006000000_api_card_shares.sql','20261006010000_api_guest_handoffs.sql','20261006020000_catalog_organization_tree.sql','20261006030000_catalog_snapshot_organization_parents.sql']) await admin.query(readFileSync(new URL('../../../supabase/migrations/'+file,import.meta.url),'utf8'));
   url.username='dearby_api_runtime';
   const connection=url.toString();const db=openPostgres({DATABASE_URL:connection});await verifyRuntimeRole(db);
   let clock=Date.now(); const codes=new Map<string,string>();

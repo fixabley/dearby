@@ -1,14 +1,32 @@
-import {documented,guestOnly,guestSecurity,guestFirstSaveSecurity,idParams,guestListSchema,guestSavedSchema,guestCreatedSchema,guestShareSavedSchema,guestShareCreatedSchema} from './openapi.js';
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import {documented,guestOnly,guestSecurity,guestFirstSaveSecurity,guestProxySecurity,idParams,handoffSchema,handoffRedeemedSchema,guestListSchema,guestSavedSchema,guestCreatedSchema,guestShareSavedSchema,guestShareCreatedSchema} from './openapi.js';
+import { createCipheriv, createDecipheriv, createHash, hkdfSync, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { write, type DB, type Transaction } from './postgres.js';
 import { readCard } from './cards.js';
 import { readShare } from './shares.js';
-import { ApiError, id } from './validation.js';
+import { ApiError, handoffInput, id, missing } from './validation.js';
 
 const digest = (token: string) => createHash('sha256').update(token).digest('hex');
 const invalid = () => new ApiError(401, 'GUEST_SESSION_INVALID', 'Guest session unavailable');
 const capacity = () => new ApiError(409, 'GUEST_CAPACITY_EXCEEDED', 'Guest storage limit reached');
+const handoffLifetime = 10 * 60 * 1000;
+// The 256-bit code is the only key material: the database holds its digest, never the code, so it cannot decrypt the token.
+// The session digest is authenticated data, binding a ciphertext to its own row.
+const handoffKey = (code: string) => Buffer.from(hkdfSync('sha256', code, 'dearby/guest-handoff', 'v1 token key', 32));
+function seal(token: string, code: string, sessionDigest: string) {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv('aes-256-gcm', handoffKey(code), iv).setAAD(Buffer.from(sessionDigest));
+  const body = Buffer.concat([cipher.update(token, 'utf8'), cipher.final()]);
+  return [iv, body, cipher.getAuthTag()].map(part => part.toString('base64url')).join('.');
+}
+function unseal(sealed: string, code: string, sessionDigest: string) {
+  const [iv, body, tag] = sealed.split('.').map(part => Buffer.from(part, 'base64url'));
+  const decipher = createDecipheriv('aes-256-gcm', handoffKey(code), iv).setAAD(Buffer.from(sessionDigest)).setAuthTag(tag);
+  return Buffer.concat([decipher.update(body), decipher.final()]).toString('utf8');
+}
+// Expired ciphertexts are cleared by the next handoff request; a row without the code is already undecryptable.
+const clearExpired = (tx: Transaction, time: number) =>
+  tx.guestHandoff.updateMany({where:{expiresAt:{lte:BigInt(time)},tokenCiphertext:{not:null}},data:{tokenCiphertext:null}});
 
 export function guestRoutes(app: FastifyInstance, db: DB, proxySecret: string | undefined, now: () => number) {
   // Bounded, single-process abuse limits. No visitor IP is trusted or persisted.
@@ -109,6 +127,34 @@ export function guestRoutes(app: FastifyInstance, db: DB, proxySecret: string | 
       await write(db, tx => tx.guestSession.deleteMany({where:{digest:key}}));
       sessionRequests.delete(key);
       return reply.code(204).send();
+    });
+    guest.post('/handoffs', documented({operationId:'createGuestHandoff',summary:'Issue a one-time code that hands this guest session to the home-screen web app',tag:'Guest proxy',description:guestOnly+' Existing token required. 201 returns a 256-bit base64url code valid for 10 minutes, single use. One live code per session: issuing again invalidates the previous code. Stores only the code digest, expiry, use time and the token encrypted with a key derived from the code. Next puts the code only into the no-store manifest start_url; never log it.',security:guestSecurity,responses:{201:handoffSchema},errors:[401,403,429,503]}), async (request, reply) => {
+      const key = (await session(request))!;
+      const code = randomBytes(32).toString('base64url');
+      const time = now();
+      const data = {digest:digest(code),tokenCiphertext:seal(request.headers['x-guest-token'] as string,code,key),expiresAt:BigInt(time + handoffLifetime),usedAt:null};
+      await write(db, async tx => {
+        await clearExpired(tx, time);
+        if (!await tx.guestSession.findUnique({where:{digest:key}})) throw invalid();
+        await tx.guestHandoff.upsert({where:{sessionDigest:key},create:{...data,sessionDigest:key},update:data});
+      });
+      return reply.code(201).send({code,expiresAt:new Date(time + handoffLifetime).toISOString()});
+    });
+    guest.post('/handoffs/redeem', documented({operationId:'redeemGuestHandoff',summary:'Exchange a one-time handoff code for the same guest token',tag:'Guest proxy',description:guestOnly+' No guest token. Returns the exact token of the issuing session so Next can set the same cookie. Unknown, expired, used, superseded and discarded-session codes all return the same 404. Success marks the code used and erases its ciphertext. Every attempt, including failures, counts towards the 1200/proxy/minute guest limit.',security:guestProxySecurity,body:handoffInput,bodyExample:{code:'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'},responses:{200:handoffRedeemedSchema},errors:[403,404,429,503]}), async request => {
+      const {code} = handoffInput.parse(request.body);
+      const time = now();
+      // Failures return null instead of throwing so the expired-ciphertext cleanup still commits.
+      const guestToken = await write(db, async tx => {
+        await clearExpired(tx, time);
+        const row = await tx.guestHandoff.findUnique({where:{digest:digest(code)}});
+        if (!row?.tokenCiphertext || row.usedAt !== null || BigInt(time) >= row.expiresAt) return null;
+        let token: string;
+        try { token = unseal(row.tokenCiphertext, code, row.sessionDigest); } catch { return null; }
+        await tx.guestHandoff.update({where:{digest:row.digest},data:{usedAt:BigInt(time),tokenCiphertext:null}});
+        return token;
+      });
+      if (guestToken === null) throw missing();
+      return {guestToken};
     });
   }, {prefix: '/v1/guest'});
 }

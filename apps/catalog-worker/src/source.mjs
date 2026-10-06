@@ -117,8 +117,8 @@ export async function fetchOfficialPage(
           const chunks = [];
           res.on("data", (chunk) => {
             size += chunk.length;
-            if (size > 1_000_000) {
-              res.destroy(new Error("Official page exceeds 1 MB"));
+            if (size > 3_000_000) {
+              res.destroy(new Error("Official page exceeds 3 MB"));
               return;
             }
             chunks.push(chunk);

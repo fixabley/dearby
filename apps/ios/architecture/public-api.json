@@ -32,7 +32,8 @@
     "DearbyTogetherActivityLabel",
     "DearbyQRCode",
     "AppOrigins",
-    "SharedCardLink"
+    "SharedCardLink",
+    "SearchQuery"
   ],
   "entities/identity": [
     "CardModel",
@@ -44,7 +45,8 @@
     "ContactIcons",
     "ContactSymbol",
     "CardView",
-    "CardDeck"
+    "CardDeck",
+    "WalletGroup"
   ],
   "pages/home": [
     "HomePage"
@@ -60,5 +62,19 @@
     "CardComposer",
     "CardComposerContact",
     "CardComposerHistory"
+  ],
+  "entities/account": [
+    "AccountSession",
+    "AccountContact",
+    "AccountHistory",
+    "AccountProfile",
+    "PublishedCard",
+    "AccountError",
+    "AccountClient",
+    "SessionStore",
+    "SessionVault"
+  ],
+  "features/account": [
+    "AccountViewModel"
   ]
 }

@@ -35,7 +35,7 @@ Withdrawn cards are 404 publicly and omitted from fresh wallet responses; receip
 
 ## Public catalog and bounded official collection (#45)
 
-`GET /v1/catalog` follows `shared/contracts/catalog-v1.md`, requires no authentication and includes published closed/unknown details. Empty published catalog returns empty arrays; upstream failures return 503. Reads recalculate exclusive deadlines and freshness; consumers must also expire cached discovery at `validUntil`. Recruitment status follows the verified recruitment window (start inclusive, end exclusive), or the administrator status when there are no dates; a selected close always wins. Only verified data can be recruiting, for at most 24 hours. Failed collection preserves the prior content/check time/hash but marks it unavailable and hides it from discovery until a successful verification.
+`GET /v1/catalog` follows `shared/contracts/catalog-v1.md`, requires no authentication and includes published closed/unknown details. Empty published catalog returns empty arrays; upstream failures return 503. `Organization.parentId` (catalog-v1 Organization hierarchy) is always returned; snapshots without the field are read as `null` (top level), so this API must be deployed before the snapshot function emits it. Reads recalculate exclusive deadlines and freshness; consumers must also expire cached discovery at `validUntil`. Recruitment status follows the verified recruitment window (start inclusive, end exclusive), or the administrator status when there are no dates; a selected close always wins. Only verified data can be recruiting, for at most 24 hours. Failed collection preserves the prior content/check time/hash but marks it unavailable and hides it from discovery until a successful verification.
 
 The following commands are preserved offline tools; they do not populate the running Prisma API.
 
@@ -65,6 +65,10 @@ The [web guest contract](../../shared/contracts/native-v1.md#웹-비로그인-�
 ## Card shares and guest share links
 
 The [share contract](../../shared/contracts/native-v1.md#명함-공유-기록과-게스트-공유-정보-저장--2026-10-06-승인) adds owner `POST /v1/cards/:id/shares` (0-10 current-catalog activities, title snapshot), public `GET /v1/shares/:id` and proxy `PUT /v1/guest/shares/:id`; `GET /v1/guest/cards` gains `shares`. Share links cascade with their saved guest card and session; max 20 links per saved card. Withdrawn cards make all their shares 404. DDL is `supabase/migrations/20261006000000_api_card_shares.sql`; test data for web is `test/fixtures/card-shares.json`. See [handoff](../../docs/context/api-card-shares.md).
+
+## Guest home-screen handoff
+
+`POST /v1/guest/handoffs` (existing guest token) issues a 10-minute single-use code; `POST /v1/guest/handoffs/redeem` returns the same guest token so the iOS home-screen web app shares the Safari session. Storage holds the code digest and the token encrypted with a key derived from the code (HKDF-SHA256, AES-256-GCM). All failures are the same 404. See [handoff](../../docs/context/api-guest-handoff.md).
 
 ## Swagger / OpenAPI
 
