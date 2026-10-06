@@ -9,7 +9,9 @@ import XCTest
                              ("received-groups", AnyView(ReceivedCardGroupsSample())),
                              ("qr-share", AnyView(QRShareSample())), ("qr-share-loading", AnyView(QRShareSample(url: nil))),
                              ("qr-share-error", AnyView(QRShareSample(url: nil, errorMessage: "공유를 만들지 못했어요."))),
-                             ("qr-scan", AnyView(QRScanOverlay(scanFromPhotos: {}) { Color.gray }.frame(width: 390, height: 560)))] {
+                             ("qr-scan", AnyView(QRScanOverlay(scanFromPhotos: {}) { Color.gray }.frame(width: 390, height: 560))),
+                             ("card-composer", AnyView(CardComposerSample().frame(width: 390, height: 844))),
+                             ("card-composer-empty", AnyView(CardComposerSample(name: "").frame(width: 390, height: 844)))] {
             let host = UIHostingController(rootView: view)
             host.safeAreaRegions = []
             let fitted = host.sizeThatFits(in: CGSize(width: 390, height: CGFloat.greatestFiniteMagnitude))

@@ -14,6 +14,8 @@ import com.dearby.nativeapp.shared.ui.DearbySearchField
 import com.dearby.nativeapp.widgets.card.cardContent.ReceivedCardGroupsSample
 import com.dearby.nativeapp.widgets.card.cardContent.QrShareCard
 import com.dearby.nativeapp.widgets.card.cardContent.QrShareSample
+import com.dearby.nativeapp.widgets.card.cardContent.CardComposerSample
+import androidx.compose.foundation.layout.size
 import com.dearby.nativeapp.shared.ui.DearbyChoice
 import androidx.compose.ui.semantics.SemanticsProperties
 import com.dearby.nativeapp.shared.ui.rememberDearbySearchReveal
@@ -109,6 +111,18 @@ class SharedControlsTest {
     @Test fun qrShareSampleCaptures() {
         compose.setContent { DearbyTheme { Box(Modifier.testTag("gallery")) { QrShareSample() } } }
         capture("android-qr-share")
+    }
+
+    @Test fun cardComposerBlocksPublishUntilNamedAndTogglesContacts() {
+        compose.setContent { DearbyTheme { Box(Modifier.size(390.dp, 844.dp).testTag("gallery")) { CardComposerSample("") } } }
+        compose.onNodeWithText("이름을 입력하면 발행할 수 있어요.").assertExists()
+        compose.onNodeWithText("로그인하고 명함 발행").assertIsNotEnabled()
+        capture("android-card-composer-empty")
+        compose.onNodeWithContentDescription("이름").performTextInput("김지민")
+        compose.onNodeWithText("로그인하고 명함 발행").assertIsEnabled()
+        compose.onNodeWithContentDescription("전화 공개").assertIsOff().performClick().assertIsOn()
+        compose.onNodeWithContentDescription("전화 공개").performClick()
+        capture("android-card-composer")
     }
 
     @Test fun readingStateKeepsLabels() {

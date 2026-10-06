@@ -54,6 +54,9 @@
     "ProfilePage",
     "ReceivedCardRow",
     "QRShareCard",
-    "QRScanOverlay"
+    "QRScanOverlay",
+    "CardComposer",
+    "CardComposerContact",
+    "CardComposerHistory"
   ]
 }

@@ -74,6 +74,7 @@ SwiftUI와 Compose의 UI 소스는 각 플랫폼 안에서 공유하고, 이미�
 | 배지·아바타·정보 행·시트 헤더 | `Sources/shared/ui/DearbyComponents.swift` | `shared/ui/Components.kt` |
 | 두 항목 전환·검색 칸·묶음 머리글·선택 칩·인라인 입력 칸·함께한 활동 라벨 | `Sources/shared/ui/DearbyControls.swift`(두 항목 전환은 `DearbyComponents.swift`) | `shared/ui/Controls.kt` |
 | QR 공유 카드·스캔 틀 | `Sources/widgets/identity/ui/QRShareCard.swift`, QR 이미지 `shared/ui/DearbyQRCode.swift` | `widgets/card/cardContent/QrShareCard.kt`, QR 이미지 `shared/ui/QrCode.kt` |
+| 명함 제작(한 화면 발행) | `Sources/widgets/identity/ui/CardComposer.swift` | `widgets/card/cardContent/CardComposer.kt` |
 | 받은 명함 목록 항목 | `Sources/widgets/identity/ui/ReceivedCardRow.swift` | `widgets/card/cardContent/ReceivedCardRow.kt` |
 | 명함·연락처·활동 이력 조합 | `Sources/entities/identity/ui` | `widgets/card/cardContent` |
 | 활동 목록·상세 | `Sources/widgets/catalog/ui` | `pages/catalog` |
