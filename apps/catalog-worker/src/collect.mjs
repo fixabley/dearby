@@ -107,7 +107,7 @@ const instant = (value) => {
   return new Date(value).toISOString();
 };
 // The model reads a markdown rendering of pages; match against the HTML text instead.
-const plainQuote = (value) =>
+export const plainQuote = (value) =>
   normalizeText(
     bounded(value, 200)
       .replace(/^\s*(#{1,6}|>|[-*])\s+/gm, "")
@@ -269,8 +269,8 @@ export async function prepareCollection(
 }
 // Same-day retries cannot fix these: the page shape or host list needs an operator.
 // BLOCKED stops today's retries; the global pause only applies to subscription errors.
-const structural = (reason) =>
-  /Official page exceeds|configured official HTTPS host|did not resolve to a public address/.test(
+export const structural = (reason) =>
+  /Official page exceeds|Official page has no readable text|configured official HTTPS host|did not resolve to a public address/.test(
     reason,
   );
 function stableScheduleId(source, occurrence) {
