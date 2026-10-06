@@ -1,7 +1,8 @@
 import Foundation
 
 enum AccountError: Error, Equatable {
-    case unauthorized, invalidInput, notFound, rateLimited, unavailable
+    /// `conflict`: a card already holds the most share links (409).
+    case unauthorized, invalidInput, notFound, conflict, rateLimited, unavailable
 }
 
 /// Owner API (contract native-v1): email code sign-in, profile and card publishing.
@@ -44,6 +45,13 @@ struct AccountClient: Sendable {
     func share(_ cardID: String, activityIds: [String], _ session: AccountSession) async throws -> CardShare {
         try await send("cards/\(cardID)/shares", method: "POST", body: ["activityIds": activityIds], session: session, as: CardShare.self)
     }
+    /// Saves a received share to the account's wallet (contract #141).
+    func saveShare(_ id: String, _ session: AccountSession) async throws -> SavedShare {
+        try await send("wallet/shares/\(id)", method: "PUT", session: session, as: SavedShare.self)
+    }
+    func wallet(_ session: AccountSession) async throws -> Wallet {
+        try await send("wallet", session: session, as: Wallet.self)
+    }
     /// Public: a share and its card, for links and scanned QR codes. No session.
     func publicShare(_ id: String) async throws -> ReceivedShare {
         try await send("shares/\(id)", as: ReceivedShare.self)
@@ -82,6 +90,7 @@ struct AccountClient: Sendable {
         case 200..<300: return data
         case 401: throw AccountError.unauthorized
         case 404: throw AccountError.notFound
+        case 409: throw AccountError.conflict
         case 422: throw AccountError.invalidInput
         case 429: throw AccountError.rateLimited
         default: throw AccountError.unavailable

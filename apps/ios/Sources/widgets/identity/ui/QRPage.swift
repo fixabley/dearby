@@ -2,7 +2,6 @@ import PhotosUI
 import SwiftUI
 
 struct QRPage: View {
-    @Bindable var state: IdentityViewModel
     let share: QRShareModel
     /// Candidates to send along with the card: the activities the user marked as applied.
     let activities: [ActivityModel]
@@ -36,7 +35,7 @@ struct QRPage: View {
                 NavigationStack { CardComposerPage(account: share.account) }
             }
             .sheet(item: $received, onDismiss: { scanRound += 1 }) { link in
-                NavigationStack { ReceivedSharePage(model: ReceivedShareModel(link: link, client: share.account.client)) }
+                NavigationStack { ReceivedSharePage(model: ReceivedShareModel(link: link, account: share.account)) }
             }
     }
     @ViewBuilder private var show: some View {

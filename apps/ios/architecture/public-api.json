@@ -21,7 +21,6 @@
     "DemoActivities"
   ],
   "entities/identity": [
-    "CardDeck",
     "CardModel",
     "CardView",
     "ContactIcons",
@@ -91,6 +90,7 @@
     "ReceivedCardRow",
     "ReceivedShareModel",
     "ReceivedSharePage",
+    "WalletModel",
     "WalletPage"
   ]
 }
