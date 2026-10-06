@@ -44,6 +44,8 @@ API·인증/Keychain·영구 저장·실제 캘린더·카메라·푸시는 없�
 
 ## 검증
 
+`Dearby.xcodeproj`는 저장소에 두지 않는 생성물이다(병합 충돌 방지). Xcode로 열거나 빌드하기 전에 생성한다. `xcodeproj` gem이 필요하다(`gem install --user-install xcodeproj`). 시뮬레이터 단위·UI 테스트는 CI가 아니라 push 전 `.githooks/pre-push`가 `apps/ios/tests/run_simulator_tests.sh`로 돌린다.
+
 ```sh
 ruby apps/ios/scripts/generate_project.rb
 bash apps/ios/scripts/setup_swiftlint.sh
