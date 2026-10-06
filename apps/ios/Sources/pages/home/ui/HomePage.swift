@@ -2,7 +2,8 @@ import SwiftUI
 
 struct HomePage<Discovery: View, Mine: View, QR: View, Wallet: View, Profile: View>: View {
     @Binding var selectedTab: Int
-    let discovery: Discovery
+    // Discovery opens details from card buttons, so it gets the navigation path.
+    let discovery: (Binding<[String]>) -> Discovery
     let mine: Mine
     let qr: QR
     let wallet: Wallet
@@ -16,7 +17,7 @@ struct HomePage<Discovery: View, Mine: View, QR: View, Wallet: View, Profile: Vi
         VStack(spacing: 0) {
             Group {
                 switch selectedTab {
-                case 0: NavigationStack(path: $discoveryPath) { discovery }
+                case 0: NavigationStack(path: $discoveryPath) { discovery($discoveryPath) }
                 case 1: NavigationStack(path: $minePath) { mine }
                 case 2: NavigationStack { qr }
                 case 3: NavigationStack { wallet }

@@ -2,14 +2,23 @@ import SwiftUI
 
 struct ActivityArtwork: View {
     let activityID: String
-    private var name: String {
+    // Example photos belong to example activities only; catalog activities have no images.
+    private var name: String? {
         switch activityID {
         case "conference": "ConferencePhoto"
         case "camp": "CampPhoto"
-        default: "MeetupPhoto"
+        case "meetup": "MeetupPhoto"
+        default: nil
         }
     }
     var body: some View {
-        Image(name).resizable().scaledToFill().accessibilityLabel("활동 소개용 예시 사진")
+        if let name {
+            Image(name).resizable().scaledToFill().accessibilityLabel("활동 소개용 예시 사진")
+        } else {
+            ZStack {
+                DearbyStyle.mint
+                Image(systemName: "calendar").font(.dearby(.largeTitle)).foregroundStyle(DearbyStyle.teal)
+            }.accessibilityHidden(true)
+        }
     }
 }

@@ -2,18 +2,16 @@
   "widgets/catalog": [
     "CatalogPage",
     "CatalogViewModel",
-    "ActivityCard",
-    "MyActivitiesPage"
+    "MyActivitiesPage",
+    "ActivityCard"
   ],
   "features/calendar": [
     "CalendarConflictView"
   ],
-  "features/application": [
-    "DemoApplicationView"
-  ],
   "entities/catalog": [
     "ActivityModel",
     "ActivityScheduleModel",
+    "CatalogClient",
     "DemoActivities"
   ],
   "shared": [

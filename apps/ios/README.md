@@ -4,14 +4,15 @@
 활동 상세/신청/일정 비교, 명함 편집/보기/선택/공유 메뉴를 SwiftUI로 제공합니다.
 모든 사람·활동·연락처는 예시이며, 앱을 종료하면 변경 상태가 사라집니다.
 
-- 활동 fixture: `Sources/entities/catalog/model/DemoActivities.swift`의 3개 고정 예시.
+- 발견·상세: `GET /v1/catalog`(`entities/catalog/api/CatalogClient.swift`)의 실제 활동. 모집 중 판정은 웹과 같다. 실패하면 오류와 다시 시도이며 예시를 섞지 않는다. `DemoActivities`는 예시로 남은 화면(받은 명함 묶음·캘린더 테스트)용이다.
   날짜가 지나도 모집 상태가 변하지 않습니다. 실제 모집 정보가 아닙니다.
 - 명함 fixture: `Sources/entities/identity/model/DemoIdentity.swift`의 가상 사람·연락처·이력.
 - 상태: `CatalogViewModel`의 신청·참여 확정 표시(컨퍼런스 1건 신청으로 시작, 주최 측 확정 아님), `IdentityViewModel`의 예시 로그인·프로필·명함·교환·프리셋.
   View의 탭·필터·선택·검색도 모두 메모리만 사용합니다.
 - 일정: `CalendarConflictState.swift`의 2026-10-24 14–15시 Asia/Seoul 고정 바쁜 시간.
   컨퍼런스 60분/1건, 캠프·밋업 0건. 결과는 30분 2열 격자로 표시합니다.
-- 신청: 기존 하단 CTA→예시 안내 시트→완료 표시. HTTPS 예시 링크만 외부 브라우저로 열 수 있습니다.
+- 신청: 하단 CTA와 목록의 빠른 신청은 https 공식 신청 주소를 외부 브라우저로 연다. `신청 상태 수정`의 표시는 메모리만 쓰는 사용자 표시다.
+- 테스트: catalog fixture는 `testFixtures/`(단위·UI 테스트 target 전용)에 있고, UI 테스트는 러너 안의 `FixtureServer`와 Debug 전용 launch 환경값 `DEARBY_API_ORIGIN`으로 앱을 연결한다. Release에는 덮어쓰기가 없다.
 - QR: 고정 `https://example.com` PNG를 표시/확대합니다. 스캔/사진 버튼은 예시 명함을 엽니다.
   카메라·사진 접근/QR 디코딩은 없습니다. 공유 메뉴도 외부 전달·클립보드·이미지 저장 없이 안내만 표시합니다.
 - 예시 로그인은 서버 인증 없이 화면 상태를 전환합니다. 명함 보내기는 받은 명함의 메모리 그룹만 바꿉니다.

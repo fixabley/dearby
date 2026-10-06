@@ -1,24 +1,46 @@
 package com.dearby.nativeapp.entities.catalog.model
 
+import java.net.URI
+import java.time.Instant
+import java.time.OffsetDateTime
+
+/** A timed schedule; date-only schedules stay in [ActivityModel.dateLabel]. */
 data class ScheduleModel(val title: String, val startAt: String, val endAt: String, val timeZone: String = "Asia/Seoul")
+
+/** One activity from `GET /v1/catalog` (contract catalog-v1). Missing values stay null and read as unconfirmed. */
 data class ActivityModel(
-    val id: String, val title: String, val summary: String, val participation: String,
-    val status: String, val date: String, val location: String, val audience: String,
-    val url: String, val schedule: ScheduleModel,
-)
+    val id: String, val title: String, val summary: String, val organization: String?,
+    val participation: String, val recruitmentStatus: String, val isRecruiting: Boolean, val freshness: String,
+    // Raw ISO 8601 strings: a present but unreadable time must not count as absent.
+    val recruitmentStartAt: String?, val recruitmentEndAt: String?, val sourceCheckedAt: String?, val validUntil: String?,
+    val dateLabel: String, val location: String?, val cost: String?, val audience: String?, val roles: List<String>,
+    val schedules: List<ScheduleModel>, val officialUrl: String, val applicationUrl: String?, val sourceNote: String,
+) {
+    /** Same rule as web discovery (`apps/web/src/lib/models.ts` `isRecruiting`). */
+    fun isOpen(now: Instant): Boolean {
+        if (!isRecruiting || recruitmentStatus != "open" || freshness != "verified") return false
+        val checked = instant(sourceCheckedAt) ?: return false
+        val valid = instant(validUntil) ?: return false
+        if (checked > now || now >= valid) return false
+        if (recruitmentStartAt != null && instant(recruitmentStartAt)?.let { it <= now } != true) return false
+        if (recruitmentEndAt != null && instant(recruitmentEndAt)?.let { now < it } != true) return false
+        return true
+    }
+    fun statusLabel(now: Instant) = if (isOpen(now)) "모집 중" else when (recruitmentStatus) {
+        "scheduled" -> "모집 예정"
+        "closed" -> "모집 마감"
+        else -> "모집 여부 확인 필요"
+    }
+    /** The official application link, only while recruiting and only over https. */
+    fun applyUrl(now: Instant) = if (isOpen(now)) safeHttpsUrl(applicationUrl) else null
+    /** Quick apply on the discovery card: registration activities only. */
+    fun quickApplyUrl(now: Instant) = if (participation == "registration") applyUrl(now) else null
+    val recruitmentEnd get() = instant(recruitmentEndAt)
+}
 
-// Same on iOS: the app starts with one example application.
-val demoAppliedActivityIds = setOf("conference")
+fun instant(raw: String?): Instant? = raw?.let { runCatching { OffsetDateTime.parse(it).toInstant() }.getOrNull() }
 
-// Fixed examples: deliberately independent of the device clock and network.
-val demoActivities = listOf(
-    ActivityModel("conference", "Dearby 개발자 컨퍼런스", "개발자·디자이너·기획자가 함께하는 컨퍼런스", "참가등록형", "모집 중",
-        "2026년 10월 24일 13:00~17:00", "서울 코엑스", "개발자 · 디자이너 · 기획자", "https://example.com",
-        ScheduleModel("Dearby 개발자 컨퍼런스", "2026-10-24T13:00:00+09:00", "2026-10-24T17:00:00+09:00")),
-    ActivityModel("camp", "Dearby 메이커 캠프", "함께 아이디어를 만들고 나누는 메이커 캠프", "선발형 · 신청 후 선정 필요", "모집 중",
-        "2026년 11월 7일 10:00~18:00", "서울", "개발 · 디자인 · 기획", "https://example.com",
-        ScheduleModel("Dearby 메이커 캠프", "2026-11-07T10:00:00+09:00", "2026-11-07T18:00:00+09:00")),
-    ActivityModel("meetup", "Dearby 커뮤니티 밋업", "온라인에서 만나는 Dearby 커뮤니티", "참가등록형", "모집 예정",
-        "2026년 11월 21일 14:00~17:00", "온라인", "누구나", "https://example.com",
-        ScheduleModel("Dearby 커뮤니티 밋업", "2026-11-21T14:00:00+09:00", "2026-11-21T17:00:00+09:00")),
-)
+fun safeHttpsUrl(raw: String?): String? = raw?.takeIf { value ->
+    runCatching { URI(value) }.getOrNull()?.let { it.scheme == "https" && !it.host.isNullOrBlank() && it.userInfo == null } == true &&
+        value.none { it.isISOControl() }
+}

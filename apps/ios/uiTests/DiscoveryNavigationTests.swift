@@ -1,56 +1,68 @@
 import XCTest
 
 @MainActor final class DiscoveryNavigationTests: XCTestCase {
-    func testDiscoveryFiltersAndFiveTabs() {
+    private let conference = "activity-\(CatalogFixture.conference)"
+    private let camp = "activity-\(CatalogFixture.camp)"
+    func testDiscoveryShowsOnlyOpenActivitiesFiltersAndQuickApply() throws {
+        let server = try FixtureServer()
         let app = XCUIApplication()
-        app.launch()
-        XCTAssertTrue(app.staticTexts["활동 둘러보기"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["activity-conference"].exists)
-        XCTAssertTrue(app.buttons["activity-camp"].exists)
-        XCTAssertTrue(app.buttons["activity-meetup"].exists)
+        app.launch(with: server)
+        XCTAssertTrue(app.buttons[conference].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons[camp].exists)
+        XCTAssertFalse(app.buttons["activity-\(CatalogFixture.scheduled)"].exists)
+        XCTAssertFalse(app.buttons["activity-\(CatalogFixture.stale)"].exists)
+        // Quick apply only for the open registration activity.
+        XCTAssertTrue(link(app, "apply-\(CatalogFixture.conference)").exists)
+        XCTAssertFalse(link(app, "apply-\(CatalogFixture.camp)").exists)
         for index in 0...4 { XCTAssertTrue(app.buttons["tab-\(index)"].exists) }
-        for title in ["이메일 로그인", "프로그램 저장", "새 명함 만들기"] { XCTAssertFalse(app.buttons[title].exists) }
-        capture(app, "prototype-discovery")
+        capture(app, "catalog-discovery")
         app.buttons["선발형"].tap()
-        XCTAssertTrue(app.buttons["activity-conference"].waitForNonExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["activity-camp"].exists)
-        app.buttons["참가등록형"].tap()
-        XCTAssertTrue(app.buttons["activity-camp"].waitForNonExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["activity-conference"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["activity-meetup"].exists)
+        XCTAssertTrue(app.buttons[conference].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons[camp].exists)
+        app.buttons["바로 신청"].tap()
+        XCTAssertTrue(app.buttons[camp].waitForNonExistence(timeout: 5))
+        XCTAssertTrue(app.buttons[conference].waitForExistence(timeout: 5))
     }
-    func testApplicationCompletionIsLocalAndResetsOnRelaunch() {
+    func testCatalogFailureShowsRetryAndNoExamples() throws {
+        let server = try FixtureServer()
+        server.failing = true
         let app = XCUIApplication()
-        app.launch()
-        // The conference starts applied, so this flow uses the camp.
-        XCTAssertTrue(app.buttons["activity-camp"].waitForExistence(timeout: 10))
-        app.buttons["activity-camp"].tap()
-        Thread.sleep(forTimeInterval: 0.6)
-        capture(app, "prototype-detail")
-        app.buttons["open-application"].tap()
-        XCTAssertTrue(app.navigationBars["신청 (예시)"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["예시 링크를 외부 브라우저로 열기"].waitForExistence(timeout: 5))
-        capture(app, "prototype-application")
-        app.buttons["닫기"].tap()
-        XCTAssertTrue(app.navigationBars["신청 (예시)"].waitForNonExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["데모 신청 완료 · 실제 접수가 아닙니다"].exists)
-        app.buttons["open-application"].tap()
-        app.buttons["데모 신청 완료로 표시"].tap()
-        XCTAssertTrue(app.staticTexts["데모 신청 완료 · 실제 접수가 아닙니다"].waitForExistence(timeout: 5))
-        capture(app, "activity-applied")
-        app.navigationBars.buttons.element(boundBy: 0).tap()
-        app.buttons["activity-camp"].tap()
-        XCTAssertTrue(app.staticTexts["데모 신청 완료 · 실제 접수가 아닙니다"].waitForExistence(timeout: 5))
-        app.terminate()
-        app.launch()
-        app.buttons["activity-camp"].tap()
+        app.launch(with: server)
+        XCTAssertTrue(app.staticTexts["활동을 불러오지 못했어요"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["activity-conference"].exists)
+        XCTAssertFalse(app.buttons[conference].exists)
+        capture(app, "catalog-error")
+        server.failing = false
+        app.buttons["catalog-retry"].tap()
+        XCTAssertTrue(app.buttons[conference].waitForExistence(timeout: 10))
+    }
+    func testDetailLinksToOfficialApplicationAndKeepsTheMarkLocal() throws {
+        let server = try FixtureServer()
+        let app = XCUIApplication()
+        app.launch(with: server)
+        XCTAssertTrue(app.buttons[conference].waitForExistence(timeout: 10))
+        app.buttons[conference].tap()
         XCTAssertTrue(app.navigationBars["활동 상세"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.staticTexts["데모 신청 완료 · 실제 접수가 아닙니다"].exists)
+        XCTAssertTrue(app.staticTexts["테스트 주최"].exists)
+        XCTAssertTrue(link(app, "open-application").waitForExistence(timeout: 5))
+        XCTAssertEqual(link(app, "open-application").label, "공식 사이트에서 신청")
+        capture(app, "catalog-detail")
+        let report = app.buttons["신청 상태 수정"]
+        for _ in 0..<8 where !report.isHittable { app.swipeUp() }
+        report.tap(); app.buttons["신청했어요"].tap()
+        XCTAssertTrue(app.staticTexts["신청했다고 표시했어요 · 실제 접수 확인이 아니에요"].waitForExistence(timeout: 5))
+        app.terminate()
+        app.launch(with: server)
+        XCTAssertTrue(app.buttons[conference].waitForExistence(timeout: 10))
+        app.buttons[conference].tap()
+        XCTAssertTrue(app.navigationBars["활동 상세"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["신청했다고 표시했어요 · 실제 접수 확인이 아니에요"].exists)
     }
-    func testCalendarExampleWithAndWithoutOverlap() {
+    func testCalendarExampleWithAndWithoutOverlap() throws {
+        let server = try FixtureServer()
         let app = XCUIApplication()
-        for id in ["conference", "camp"] {
-            app.launch()
+        for id in [CatalogFixture.conference, CatalogFixture.camp] {
+            app.launch(with: server)
             XCTAssertTrue(app.buttons["activity-\(id)"].waitForExistence(timeout: 10))
             app.buttons["activity-\(id)"].tap()
             let calendar = app.buttons["겹치는 시간 확인하기"]
@@ -68,11 +80,11 @@ import XCTest
             XCTAssertEqual(XCTWaiter.wait(for: [disabled], timeout: 5), .completed)
             toggle.tap()
             app.buttons["선택한 캘린더로 확인"].tap()
-            let result = id == "conference" ? "60분이 겹쳐요" : "예시 캘린더와 겹치는 시간이 없어요"
+            let result = id == CatalogFixture.conference ? "60분이 겹쳐요" : "예시 캘린더와 겹치는 시간이 없어요"
             XCTAssertTrue(app.staticTexts[result].waitForExistence(timeout: 5))
             XCTAssertTrue(app.buttons["선택한 캘린더로 확인"].waitForNonExistence(timeout: 5))
             XCTAssertTrue(app.switches["예시 캘린더"].waitForNonExistence(timeout: 5))
-            if id == "conference" { XCTAssertTrue(app.staticTexts["1 / 1"].exists) }
+            if id == CatalogFixture.conference { XCTAssertTrue(app.staticTexts["1 / 1"].exists) }
             // Sheet detent animation can still be drawing after accessibility settles.
             Thread.sleep(forTimeInterval: 0.6)
             capture(app, "timeline-calendar-\(id)")
@@ -81,10 +93,12 @@ import XCTest
             app.terminate()
         }
     }
-    func testAccessibilityTextCalendarAndWalletRemainUsable() {
+    func testAccessibilityTextCalendarAndWalletRemainUsable() throws {
+        let server = try FixtureServer()
         let app = XCUIApplication()
         app.launchArguments = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
-        app.launch(); app.buttons["activity-conference"].tap()
+        app.launch(with: server)
+        XCTAssertTrue(app.buttons[conference].waitForExistence(timeout: 10)); app.buttons[conference].tap()
         let calendar = app.buttons["겹치는 시간 확인하기"]
         for _ in 0..<15 where !calendar.isHittable { app.swipeUp() }
         // A partially exposed large label may be hittable while its center is behind the sticky CTA.
@@ -105,6 +119,8 @@ import XCTest
         capture(app, "wallet-accessibility-text")
         detail.tap(); XCTAssertTrue(app.navigationBars["공유 카드"].waitForExistence(timeout: 5))
     }
+    /// SwiftUI `Link` is a button on iOS 26 and a link on iOS 27, so match the identifier on any element type.
+    private func link(_ app: XCUIApplication, _ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
     private func capture(_ app: XCUIApplication, _ name: String) {
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = name; shot.lifetime = .keepAlways; add(shot)

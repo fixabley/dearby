@@ -1,6 +1,5 @@
 package com.dearby.nativeapp.app
 
-import com.dearby.nativeapp.entities.catalog.model.demoActivities
 import com.dearby.nativeapp.pages.profile.ProfileState
 import com.dearby.nativeapp.pages.wallet.WalletEntryState
 import com.dearby.nativeapp.widgets.card.cardContent.CardHistoryState
@@ -26,8 +25,8 @@ val demoCards = listOf("네트워킹" to "새로운 인연에게 나를 소개�
 val demoPublicCard = demoCards.first().copy(id = "public-jimin", contacts = demoProfile.contacts.filter { it.id in setOf("email", "kakao", "github", "behance") })
 // Same IDs on iOS: one card spans two activities and one has none.
 private val demoWalletActivityIds = listOf(listOf("conference", "camp"), listOf("conference"), emptyList(), listOf("camp"), listOf("meetup"))
-// Wallet groups follow the activity schedule order.
-val walletActivities = demoActivities.sortedBy { it.schedule.startAt }.map { it.id to it.title }
+// Example wallet groups in schedule order; received cards are still example data, not the real catalog.
+val walletActivities = listOf("conference" to "Dearby 개발자 컨퍼런스", "camp" to "Dearby 메이커 캠프", "meetup" to "Dearby 커뮤니티 밋업")
 val demoWallet = listOf(
     Triple("최유진", "프로덕트 디자이너", "디자인과 협업"), Triple("박서연", "서비스 기획", "프로젝트 이야기"),
     Triple("이도윤", "프론트엔드 개발", "함께 만드는 서비스"), Triple("정하린", "커뮤니티 운영", "함께하는 커뮤니티"), Triple("김현우", "개발자", "배움과 연결"),
