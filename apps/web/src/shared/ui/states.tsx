@@ -16,6 +16,9 @@ export function Failure({
 }) {
   return (
     <div className="state" role="alert">
+      <span className="state-icon">
+        <Icon name="alert" size={32} />
+      </span>
       <h2>다시 확인해 주세요</h2>
       <p>{message}</p>
       <button className="button secondary" onClick={retry}>

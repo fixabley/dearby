@@ -22,8 +22,9 @@ import XCTest
     func testApplicationCompletionIsLocalAndResetsOnRelaunch() {
         let app = XCUIApplication()
         app.launch()
-        XCTAssertTrue(app.buttons["activity-conference"].waitForExistence(timeout: 10))
-        app.buttons["activity-conference"].tap()
+        // The conference starts applied, so this flow uses the camp.
+        XCTAssertTrue(app.buttons["activity-camp"].waitForExistence(timeout: 10))
+        app.buttons["activity-camp"].tap()
         Thread.sleep(forTimeInterval: 0.6)
         capture(app, "prototype-detail")
         app.buttons["open-application"].tap()
@@ -38,11 +39,11 @@ import XCTest
         XCTAssertTrue(app.staticTexts["데모 신청 완료 · 실제 접수가 아닙니다"].waitForExistence(timeout: 5))
         capture(app, "activity-applied")
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        app.buttons["activity-conference"].tap()
+        app.buttons["activity-camp"].tap()
         XCTAssertTrue(app.staticTexts["데모 신청 완료 · 실제 접수가 아닙니다"].waitForExistence(timeout: 5))
         app.terminate()
         app.launch()
-        app.buttons["activity-conference"].tap()
+        app.buttons["activity-camp"].tap()
         XCTAssertTrue(app.navigationBars["활동 상세"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["데모 신청 완료 · 실제 접수가 아닙니다"].exists)
     }
@@ -59,7 +60,8 @@ import XCTest
             calendar.tap()
             XCTAssertTrue(app.buttons["선택한 캘린더로 확인"].waitForExistence(timeout: 5))
             XCTAssertFalse(XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch.exists)
-            let toggle = app.switches["예시 캘린더"]
+            // Tap the switch itself: the element's center can fall on the row label, which does not toggle.
+            let toggle = app.switches["예시 캘린더"].switches.firstMatch
             toggle.tap()
             let disabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == false"),
                                                      object: app.buttons["선택한 캘린더로 확인"])

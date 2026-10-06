@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.runtime.*
 import com.dearby.nativeapp.shared.ui.DearbyControlsGallery
+import com.dearby.nativeapp.shared.ui.DearbyStatesSample
 import com.dearby.nativeapp.shared.ui.DearbySearchField
 import com.dearby.nativeapp.shared.ui.rememberDearbySearchReveal
 import androidx.compose.foundation.layout.Column
@@ -72,6 +73,17 @@ class SharedControlsTest {
         compose.onNodeWithTag("list").performTouchInput { swipeUp(startY = bottom - 10f, endY = bottom - 400f, durationMillis = 400) }
         compose.waitForIdle()
         compose.onNodeWithContentDescription("검색").assertExists()
+    }
+
+    @Test fun listStatesShowCallerTextAndRetry() {
+        var retried = 0
+        compose.setContent { DearbyTheme { Box(Modifier.testTag("gallery")) { DearbyStatesSample { retried++ } } } }
+        compose.onNodeWithText("활동을 불러오는 중이에요.").assertExists()
+        compose.onNodeWithText("활동을 불러오지 못했어요").assert(isHeading())
+        compose.onNodeWithText("모집 중인 활동이 없어요").assert(isHeading())
+        compose.onNodeWithText("다시 시도").performClick()
+        assert(retried == 1)
+        capture("android-list-states")
     }
 
     @Test fun readingStateKeepsLabels() {
