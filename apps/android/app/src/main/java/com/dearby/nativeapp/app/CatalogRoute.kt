@@ -12,8 +12,9 @@ import com.dearby.nativeapp.features.calendar.CalendarConflictSheet
 import com.dearby.nativeapp.pages.catalog.CatalogPage
 import com.dearby.nativeapp.pages.catalog.ActivityDetailPage
 import com.dearby.nativeapp.pages.catalog.ApplicationReportDialog
+import com.dearby.nativeapp.pages.catalog.MyActivitiesPage
 
-@Composable fun CatalogRoute(model: CatalogViewModel, savedOnly: Boolean = false, active: (Boolean) -> Unit) {
+@Composable fun CatalogRoute(model: CatalogViewModel, mine: Boolean = false, explore: () -> Unit = {}, active: (Boolean) -> Unit) {
     val state by model.state.collectAsStateWithLifecycle()
     var selected by remember { mutableStateOf<String?>(null) }
     var browser by remember { mutableStateOf(false) }
@@ -30,10 +31,11 @@ import com.dearby.nativeapp.pages.catalog.ApplicationReportDialog
         activity != null -> ActivityDetailPage(activity, linkError, { selected = null }, {
             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, activity.source.toUri())) }
                 .onFailure { linkError = "예시 링크를 열지 못했습니다." }
-        }, { browser = true }, { prompt = true }, { calendar = true }, { model.save(activity.id) }, model::saveOrganization, { sharing = true })
-        else -> CatalogPage(state, { selected = it; linkError = null }, model::filter, model::save, savedOnly)
+        }, { browser = true }, { prompt = true }, { model.confirm(activity.id, it) }, { calendar = true }, { sharing = true })
+        mine -> MyActivitiesPage(state.appliedActivities, { selected = it; linkError = null }, model::confirm, explore)
+        else -> CatalogPage(state, { selected = it; linkError = null }, model::filter)
     }
     if (sharing && activity != null) AlertDialog(onDismissRequest = { sharing = false }, title = { Text("활동 링크") }, text = { Text(activity.source + "\n예시 공유 화면입니다.") }, confirmButton = { TextButton({ sharing = false }) { Text("닫기") } })
     if (calendar && activity != null) CalendarConflictSheet(model.schedules(activity.id)) { calendar = false }
-    if (prompt && activity != null) ApplicationReportDialog({ model.report(activity.id, it); prompt = false }, { prompt = false })
+    if (prompt && activity != null) ApplicationReportDialog({ model.apply(activity.id, it); prompt = false }, { prompt = false })
 }

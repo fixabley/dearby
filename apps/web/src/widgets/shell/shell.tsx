@@ -2,7 +2,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Icon } from "./icon";
+import { Icon } from "@/shared/ui/icon";
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   return (

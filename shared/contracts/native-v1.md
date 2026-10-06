@@ -84,3 +84,91 @@ GET과 성공 mutation 모두 `Cache-Control: no-store`다(API는 오류 응답�
 - 저장 실패는 500 `INTERNAL_ERROR`이며 새 세션과 명함 참조를 함께 rollback한다. DB·proxy secret·guest token 등 내부값은 오류 응답/로그에 넣지 않는다.
 
 HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로만 좁혀 공개한다. 기존 `/v1/profile`, 회원 `/v1/wallet`, 명함 생성/철회, SMTP/auth는 열지 않는다. guest proxy secret 생성·배포와 nginx 운영 변경은 root가 수행하며 앱서버 구현 PR만으로 운영 반영됐다고 표시하지 않는다.
+
+## 명함 공유 기록과 게스트 공유 정보 저장 — 2026-10-06 승인
+
+사용자 결정: 비로그인 웹 게스트 저장에 "어떤 공유로 받았는지와 그 공유에 담긴 활동"을 함께 저장하고 `/saved`에서 활동별로 묶어 보여 준다. 위 웹 게스트 계약의 쿠키·프록시 secret·Origin·캐시·오류·상한 규칙을 그대로 적용하고 아래만 추가한다. 기존 `/v1/cards/:id`와 `/v1/guest/cards*` 동작은 바꾸지 않는다.
+
+### 모델
+
+- CardShare: `id`(UUID), `cardId`, `activities: [{id, title}]`(0~10개), `createdAt`. 소유자가 명함을 공유할 때 만드는 기록이다. `activities`는 생성 시점의 카탈로그 활동 ID와 제목 사본이며 이후 카탈로그 변경을 따라가지 않는다. 활동은 사용자가 고른 정보이며 참가 확인이 아니다.
+- 공유 ID는 명함 ID처럼 공개 조회 가능 여부만 판정하며 방문자 인증 수단이 아니다. 명함이 철회되면 그 명함의 모든 공유도 공개 조회·저장에서 404다. 공유 단건 철회는 이번 범위가 아니다.
+- 게스트 저장은 세션당 명함 1건을 유지하고, 그 명함에 연결된 공유 ID를 0개 이상 기록한다. 같은 명함을 여러 공유로 받으면 공유 기록이 늘어나며 명함은 중복되지 않는다. 명함당 공유 기록 최대 20개. DB에는 세션 digest·명함 ID·공유 ID 연결만 저장한다.
+
+### API
+
+| 메서드·경로 | 인증 | 성공 응답 | 의미 |
+| --- | --- | --- | --- |
+| POST /v1/cards/:id/shares | 로그인·소유자만 | 201 CardShare | body `{activityIds: string[]}`. 중복 없이 0~10개, 모두 현재 카탈로그에 있는 활동이어야 한다(아니면 422). 철회·타인 명함은 404/403 |
+| GET /v1/shares/:id | 비로그인 가능 | 200 `{share: CardShare, card: Card}` | 공유와 공개 명함 사본. 없거나 명함 철회 시 404 |
+| PUT /v1/guest/shares/:id | 게스트 프록시 | 무토큰 첫 저장 201 `{cardId, shareId, status:"saved", guestToken}`, 기존 토큰 200 `{cardId, shareId, status:"saved"\|"alreadySaved"}` | 공유를 확인해 그 명함을 저장하고 공유 기록을 연결한다. 명함이 이미 저장돼 있고 공유가 새로우면 `saved`, 둘 다 있으면 `alreadySaved` |
+| GET /v1/guest/cards | 게스트 프록시 | 200 `{items: Card[], shares: GuestShare[]}` | 기존 `items`는 그대로 두고 `shares`를 추가한다 |
+
+- GuestShare: `{cardId, shareId, activities: [{id, title}], savedAt}`. 철회된 명함의 공유는 `items`와 함께 제외한다. `/v1/guest/cards/:id` 저장(공유 없이 받은 명함)은 공유 기록 없이 계속 동작한다.
+- `DELETE /v1/guest/cards/:id`는 그 명함의 공유 기록도 함께 지운다. `DELETE /v1/guest/session`은 모두 지운다.
+- 409 `GUEST_CAPACITY_EXCEEDED`에 명함당 공유 기록 20개 상한을 추가한다. 이미 연결된 공유의 재저장은 상한에서도 성공한다. 요청 제한은 기존 게스트 규칙과 같은 카운터를 쓴다.
+- HTTPS ingress에는 `GET/HEAD /v1/shares/:id`, `PUT /v1/guest/shares/:id`만 추가한다. `POST /v1/cards/:id/shares`는 회원 경로이므로 열지 않는다.
+
+### 웹
+
+- 공유 링크는 `/s/:shareId`다. 공개 명함과 "함께 공유된 활동"을 보여 주고, 저장 버튼은 `PUT /v1/guest/shares/:id`를 쓴다. 기존 `/cards/:id`는 공유 정보 없이 유지한다.
+- `/saved`는 `전체 | 활동별` 보기를 제공한다. 활동별 보기는 공유 기록의 활동으로 묶고, 여러 활동에 걸친 명함은 각 묶음에 모두 나오며, 활동이 없는 명함은 마지막 `활동 없음` 묶음에 둔다(모바일 명함함 규칙과 같다).
+
+### 현재 한계
+
+앱의 공유 QR은 아래 "모바일 실제 연결 경계"에서 `https://<웹 origin>/s/<shareId>`로 정했다(`dearby://share/` scheme은 만들지 않는다). 운영 DB 마이그레이션·ingress 변경·배포는 사용자 승인 후 root가 수행한다.
+
+## 모바일 실제 연결 경계 — 2026-10-06 사용자 결정 반영
+
+사용자 결정: "QR 공유는 실제 동작까지", "활동 신청이 쉽고 명함 제작·교환이 간결해야 한다", "비로그인 사용자는 세션 기준으로 저장이 유지되어야 한다", "유니버설 링크를 적용한다". 이 절은 iOS·Android 오프라인 프로토타입 범위([모바일 프로토타입](../../docs/context/mobile-ui-prototype.md)) 중 아래 항목만 실제 서비스로 바꾼다. 나머지 화면은 예시로 남는다. 근거 조사: `docs/research/activity-and-qr-friction-2026-10-06.md`(PR #94).
+
+### 실제로 바꾸는 것
+
+| 영역 | 동작 | 사용 API |
+| --- | --- | --- |
+| 발견·활동 상세 | 공개 카탈로그를 보여 주고, 신청 CTA는 활동의 공식 신청 URL을 외부 브라우저로 연다. 실패하면 오류와 다시 시도를 보여 주며 예시 활동을 섞지 않는다. | GET /v1/catalog |
+| 로그인 | 이메일 인증번호. 명함 발행·공유와 받은 명함 저장을 할 때만 요구하고, 발견·신청·받은 명함 보기는 로그인 없이 쓴다. 토큰은 OS 보안 저장소에 둔다. | /v1/auth/* |
+| 명함 제작 | 프로필 입력과 공개할 연락처·이력 선택을 한 흐름으로 마치고 바로 발행한다. 수정은 새 발행본을 만든다(기존 스냅샷 규칙 유지). | /v1/profile, POST /v1/cards |
+| QR 공유 | QR 화면에 들어오면 현재 명함으로 공유를 만들고 `https://<웹 origin>/s/<shareId>`를 QR로 보여 준다. 활동 선택은 선택 사항이다. 공유 버튼은 같은 URL을 OS 공유 시트로 넘긴다. | POST /v1/cards/:id/shares |
+| 받기 | 앱 안 스캐너(카메라·사진)와 유니버설 링크/App Links는 같은 `/s/<shareId>` URL을 해석해 공유 명함 화면을 연다. 기존 `dearby://card/<UUID>`도 계속 해석한다. 앱이 없거나 연결 검증에 실패하면 같은 URL이 웹 공유 명함으로 열린다. | GET /v1/shares/:id |
+
+- 앱은 `https`, 설정한 웹 도메인, 경로 `/s/<UUID>`만 받고 query·fragment·다른 host를 거부한다. 도메인은 아래 "연결 설정"의 환경값으로 정한다.
+- 유니버설 링크·App Links 경로는 `/s/*` 하나다. 웹은 `/.well-known/apple-app-site-association`, `/.well-known/assetlinks.json`을 환경값(Apple Team ID·번들 ID, Android 패키지·서명 SHA-256)으로 만든다. 값이 없으면 404다. 값 제공은 #90, 배포는 #91에 묶인다.
+
+### 비로그인 사용자의 저장 유지
+
+2026-10-06 사용자 결정: 비로그인 사용자는 앱을 설치하지 않았고 로그인하지 않은 사람이다. QR을 기본 카메라로 읽으면 기본 브라우저에서 웹 `/s/<shareId>`가 열린다. 서버가 만료 없는 게스트 세션 ID를 발급하고, 저장 데이터는 DB에 두며 API가 세션 ID로 조회한다. 브라우저에는 세션 ID 쿠키만 둔다.
+
+- 웹: 위 "웹 비로그인 명함 저장" 계약의 서버 게스트 세션(`__Host-dearby_guest` 쿠키)을 그대로 쓴다. 서버 세션은 만료되지 않는다. 브라우저는 쿠키 수명을 최대 400일로 제한하므로, 방문할 때마다 Max-Age를 갱신한다(기존 규칙). 1년 넘게 방문하지 않거나 사용자가 쿠키를 지우면 접근이 끊긴다.
+- 홈 화면 추가: Android Chrome은 바로가기·설치 모두 Chrome과 같은 쿠키를 쓴다. iOS는 '웹 앱으로 열기'가 기본으로 켜져 있고 사이트가 바꿀 수 없어서, 그대로 추가하면 Safari와 쿠키가 분리된다(2026-10-06 iOS 26.5 시뮬레이터 확인). 사용자 결정으로 아래 "홈 화면 세션 잇기"를 둔다. manifest `display`는 Android 설치 버튼을 위해 `standalone`을 유지한다. iOS는 공유 메뉴에서 직접 추가해야 하므로 1번 클릭 설치는 불가하고 안내로 제공한다.
+- 홈 화면 세션 잇기(2026-10-06 사용자 결정): 홈 화면 앱이 처음 열릴 때 1회용 코드로 Safari와 같은 게스트 세션 ID 쿠키를 받는다. 이후 두 곳은 같은 세션을 쓰며, 한쪽에서 세션을 지우면 다른 쪽도 끊긴다.
+  - 발급: 웹 manifest는 요청마다 만든다. 게스트 쿠키가 있고 저장한 명함이 1개 이상이면 Next가 `POST /v1/guest/handoffs`(게스트 프록시)로 코드를 받아 `start_url`을 `/saved?handoff=<code>`로 넣는다. 아니면 `/saved`. manifest 응답은 `Cache-Control: private, no-store`와 `Vary: Cookie`이다.
+  - API `POST /v1/guest/handoffs`: 기존 토큰 필요, 201 `{code, expiresAt}`. 코드는 32바이트 이상 무작위 base64url, 수명 10분, 1회용. 세션당 유효 코드는 1개이며 새로 발급하면 이전 코드는 무효다. DB에는 코드의 SHA-256 digest·세션·만료·사용 시각과, 발급 요청의 게스트 토큰을 코드에서 파생한 키(HKDF)로 AES-256-GCM 암호화한 값만 둔다. DB만으로는 토큰을 복원할 수 없고, 사용·만료 시 암호문을 지운다.
+  - API `POST /v1/guest/handoffs/redeem`: body `{code}`, 게스트 프록시, 토큰 없이 호출. 200 `{guestToken}`(코드로 복호화한, Safari와 같은 토큰). 없음·만료·사용됨·세션 폐기는 모두 404 `NOT_FOUND`(구분하지 않음). 성공하면 즉시 사용 처리한다. 요청 제한은 게스트 카운터와 같고, 실패도 센다.
+  - 웹 `/saved?handoff=<code>`: 게스트 쿠키가 없을 때만 교환한다. 성공하면 쿠키를 설정하고, 성공·실패 모두 303으로 쿼리 없는 `/saved`로 보낸다. 이미 쿠키가 있으면 교환하지 않고 바로 보낸다. 페이지는 `Referrer-Policy: no-referrer`를 쓰고, 서버 로그에서 `handoff` 쿼리를 가린다.
+  - 위험: 코드는 유효 시간 동안 게스트 세션 전체(저장한 명함과 공유 기록)를 넘겨받는 열쇠다. 다른 기기에서의 사용을 막을 수 없다. 1회용·10분·digest 저장·요청 제한·manifest 캐시 금지로 줄인다. 마이그레이션은 운영 DB 변경이므로 별도 PR로 사용자 승인 뒤 병합한다.
+- 앱을 설치한 사람은 같은 `/s/` URL이 유니버설 링크·App Links로 앱에서 열린다. 앱에서 받은 명함 저장은 로그인 계정의 wallet에 한다. 앱의 게스트 세션·게스트 API는 만들지 않는다.
+- 2026-10-03 이전 기기에 남은 앱 저장 데이터는 읽거나 지우거나 이관하지 않는다.
+
+### 연결 설정 — 도메인 기반, 환경값으로 지정
+
+2026-10-06 사용자 결정: 모든 연결은 도메인 기반이며 환경값으로 지정한다. 코드에 운영 도메인·IP·포트를 고정하지 않는다.
+
+| 환경값 | 쓰는 곳 | 의미 |
+| --- | --- | --- |
+| `DEARBY_API_ORIGIN` | 웹 서버, iOS·Android 빌드 | API origin(scheme+도메인, `/v1` 제외). 예: `https://wid.io.kr` |
+| `DEARBY_WEB_ORIGIN` | iOS·Android 빌드 | 공유 URL `/s/<shareId>`를 만들고 받는 웹 origin. 유니버설 링크·App Links 도메인도 이 값의 host에서 만든다. 예: `https://dearby.wid.io.kr` |
+| `DEARBY_APPLE_TEAM_ID`, `DEARBY_IOS_BUNDLE_IDS`, `DEARBY_ANDROID_PACKAGE`, `DEARBY_ANDROID_CERT_SHA256` | 웹 서버 | `/.well-known` 연결 파일(#96) |
+
+- 운영·배포 빌드는 `https`와 도메인 host만 허용한다. IP 주소 host, `http`, 포트 지정, 경로가 있는 값은 빌드 또는 시작 시 실패시킨다. 개발 구성만 `http://localhost`·`127.0.0.1`·Android 에뮬레이터 `10.0.2.2`를 허용한다.
+- iOS: 빌드 환경값을 Info.plist 키(`DearbyAPIOrigin`, `DearbyWebOrigin`)로 넣고, Associated Domains는 `applinks:$(DEARBY_WEB_HOST)`로 만든다. 값이 없으면 Release 빌드는 실패하고, Debug는 로컬 개발 기본값을 쓴다.
+- Android: Gradle이 같은 환경값(또는 같은 이름의 Gradle 속성)을 읽어 `BuildConfig`와 manifest placeholder(App Links host)로 넣는다. 값이 없으면 release 빌드는 실패한다.
+- 웹은 요청이 들어온 자기 origin을 기준으로 동작하므로 웹 도메인 환경값이 따로 필요 없다. API 서버의 `HOST`·`PORT`는 내부 바인딩이며, 외부에서는 ingress 도메인으로만 접근한다.
+
+### 예시로 남는 것
+
+캘린더 일정 겹침, 참여 확정 표시(사용자 직접 표시이며 주최 측 확인이 아님), 명함 서버 간 직접 전달(POST /v1/exchanges)은 이번 범위가 아니다. 예시 화면은 실제 동작으로 표현하지 않는다.
+
+### 운영 의존
+
+운영 경로 공개 #88, 인증 메일 #89, 연결 파일 값 #90, 마이그레이션·배포 승인 #91, 외부 도달성 #65. 해소 전에는 로컬 API와 테스트 데이터로 검증하며 운영 동작 완료로 표시하지 않는다.
