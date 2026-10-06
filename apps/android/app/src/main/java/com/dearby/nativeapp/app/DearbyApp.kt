@@ -18,6 +18,7 @@ import com.dearby.nativeapp.pages.wallet.SendPage
 import com.dearby.nativeapp.pages.wallet.SharedCardPage
 import com.dearby.nativeapp.pages.wallet.WalletPage
 import com.dearby.nativeapp.shared.ui.*
+import com.dearby.nativeapp.widgets.activity.applyPrompt.ApplyConfirmationSheet
 import com.dearby.nativeapp.widgets.card.cardContent.CardContent
 import com.dearby.nativeapp.widgets.card.cardContent.CardState
 import com.dearby.nativeapp.widgets.card.cardContent.ContactState
@@ -32,6 +33,7 @@ private sealed interface CardRoute {
     data object Composer : CardRoute
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable fun DearbyApp(catalog: CatalogViewModel, demo: DemoViewModel, account: AccountViewModel, publish: CardPublishViewModel, qrShare: QrShareViewModel) {
     val state by demo.state.collectAsStateWithLifecycle()
     var tab by remember { mutableStateOf(Tab.Discovery) }
@@ -87,13 +89,10 @@ private sealed interface CardRoute {
     }
     val catalogState by catalog.state.collectAsStateWithLifecycle()
     catalogState.asking?.let { asking ->
-        AlertDialog(onDismissRequest = { catalog.answer(CatalogViewModel.ApplyAnswer.NOT_YET) }, title = { Text("신청하셨나요?") },
-            text = { Text("${asking.title}\n신청했다고 표시하면 내 활동에 모아 보여 줘요. 주최 측 접수 확인은 아니에요.") },
-            confirmButton = { Column(horizontalAlignment = Alignment.End) {
-                TextButton({ catalog.answer(CatalogViewModel.ApplyAnswer.APPLIED) }) { Text("신청했어요") }
-                TextButton({ catalog.answer(CatalogViewModel.ApplyAnswer.NOT_YET) }) { Text("아직이에요") }
-                TextButton({ catalog.answer(CatalogViewModel.ApplyAnswer.NEVER_ASK) }) { Text("다시 묻지 않기") }
-            } })
+        ModalBottomSheet({ catalog.answer(CatalogViewModel.ApplyAnswer.NOT_YET) }, containerColor = MaterialTheme.colorScheme.surface) {
+            ApplyConfirmationSheet(asking.title, onApplied = { catalog.answer(CatalogViewModel.ApplyAnswer.APPLIED) },
+                onNotYet = { catalog.answer(CatalogViewModel.ApplyAnswer.NOT_YET) }, onNeverAsk = { catalog.answer(CatalogViewModel.ApplyAnswer.NEVER_ASK) })
+        }
     }
     notice?.let { value -> AlertDialog(onDismissRequest = { notice = null }, title = { Text("안내") }, text = { Text(value) }, confirmButton = { TextButton({ notice = null }) { Text("확인") } }) }
     preview?.let { card -> Dialog({ preview = null }) { Surface { Column(Modifier.padding(12.dp)) { CardContent(card, Modifier.heightIn(max = 540.dp), contact, expanded = true); TextButton({ preview = null }) { Text("닫기") } } } } }

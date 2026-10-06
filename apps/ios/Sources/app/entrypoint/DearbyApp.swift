@@ -28,13 +28,10 @@ import SwiftUI
             .onChange(of: scene) { _, phase in
                 if phase == .background { catalog.appLeft() } else if phase == .active { catalog.appReturned() }
             }
-            .alert("신청하셨나요?", isPresented: Binding(get: { catalog.asking != nil }, set: { if !$0 { catalog.answer(.notYet) } }),
-                   presenting: catalog.asking) { _ in
-                Button("신청했어요") { catalog.answer(.applied) }
-                Button("아직이에요", role: .cancel) { catalog.answer(.notYet) }
-                Button("다시 묻지 않기") { catalog.answer(.neverAsk) }
-            } message: { activity in
-                Text("\(activity.title)\n신청했다고 표시하면 내 활동에 모아 보여 줘요. 주최 측 접수 확인은 아니에요.")
+            .sheet(item: Binding(get: { catalog.asking }, set: { if $0 == nil { catalog.answer(.notYet) } })) { activity in
+                ApplyConfirmationSheet(activityTitle: activity.title, applied: { catalog.answer(.applied) },
+                                       notYet: { catalog.answer(.notYet) }, neverAsk: { catalog.answer(.neverAsk) })
+                    .presentationDetents([.medium])
             }
         }
     }
