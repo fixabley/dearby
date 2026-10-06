@@ -82,7 +82,10 @@ export type Activity = {
   source_checked_at: string | null;
   valid_until: string | null;
   freshness: "verified" | "stale" | "unavailable";
+  /** Internal verification evidence; never shown to visitors. */
   source_note: string;
+  /** Shown to visitors as the confirmation note (web falls back to default text when empty). */
+  public_note: string;
   updated_at: string;
 };
 export const publicationLabels = {

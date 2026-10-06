@@ -119,5 +119,10 @@ jobs:
           bash tests/run_architecture.sh
       # Simulator tests (unit + UI) run on the developer Mac before push (.githooks/pre-push);
       # CI only compiles the app and test targets so no simulator is booted here.
+      # The Xcode project is generated, not tracked (avoids merge conflicts on project.pbxproj).
+      - name: Generate Xcode project
+        run: |
+          gem install --user-install --no-document xcodeproj
+          ruby scripts/generate_project.rb
       - name: Build app and tests
         run: xcodebuild -project Dearby.xcodeproj -scheme Dearby -destination 'generic/platform=iOS Simulator' build-for-testing

@@ -7,6 +7,8 @@ enum DearbyStyle {
     static let line = Color(red: 227.0 / 255, green: 232.0 / 255, blue: 234.0 / 255)
     static let muted = Color(red: 245.0 / 255, green: 247.0 / 255, blue: 248.0 / 255)
     static let ink = Color(red: 23.0 / 255, green: 32.0 / 255, blue: 39.0 / 255)
+    /// 오류 글자·테두리. 웹 `--danger`와 같은 값(#A12A2A).
+    static let danger = Color(red: 161.0 / 255, green: 42.0 / 255, blue: 42.0 / 255)
 }
 
 extension Font {

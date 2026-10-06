@@ -363,6 +363,7 @@ export function ActivityEditor() {
         "image_url",
       ])
         payload[field] = values[field]?.trim() || null;
+      payload.public_note = values.public_note?.trim() ?? "";
       if (
         payload.recruitment_start_at &&
         payload.recruitment_end_at &&
@@ -409,7 +410,7 @@ export function ActivityEditor() {
       setError(
         (e as { message?: string })?.message?.startsWith("Evidence quote")
           ? "재확인 기준 구절은 줄바꿈·생략부호 없는 20~200자 한 구절이어야 해요."
-          : "공식 확인을 저장하지 못했어요. 근거를 10자 이상 입력하고 연결 상태를 확인해 주세요.",
+          : "공식 확인을 저장하지 못했어요. 내부 확인 근거를 10자 이상 입력하고 연결 상태를 확인해 주세요.",
       );
     } finally {
       setVerifying(false);
@@ -735,6 +736,17 @@ export function ActivityEditor() {
               >
                 <Input type="url" />
               </Form.Item>
+              <Form.Item
+                label="방문자에게 보일 확인 안내"
+                name="public_note"
+                extra="웹 활동 상세의 '공식 출처'에 그대로 보여요. 자동 재확인은 이 문장을 다시 검사하지 않으니 마감 일시처럼 바뀌기 쉬운 사실 대신 어디서 확인했는지를 적어 주세요. 비워 두면 기본 안내가 보여요. 바꾸면 공식 확인이 해제되니 저장 후 다시 확인해 주세요."
+              >
+                <Input.TextArea
+                  rows={3}
+                  maxLength={1000}
+                  placeholder="예: 주최 측 공식 모집 공고에서 모집 기간과 신청 방법을 확인했어요."
+                />
+              </Form.Item>
               {activity && (
                 <>
                   <dl>
@@ -759,6 +771,8 @@ export function ActivityEditor() {
                   </dl>
                   {activity.source_note && (
                     <Typography.Paragraph className="source-note">
+                      <strong>내부 확인 근거</strong>
+                      <br />
                       {activity.source_note}
                     </Typography.Paragraph>
                   )}
@@ -806,16 +820,18 @@ export function ActivityEditor() {
         }}
       >
         <p>
-          공식 원문에서 모집 상태·마감·행사 일정을 확인하고 근거를 남겨 주세요.
-          저장하면 현재 시각부터 최대 24시간 유효합니다.
+          공식 원문에서 모집 상태·마감·행사 일정을 확인해 주세요. 저장하면 현재
+          시각부터 최대 24시간 유효합니다.
         </p>
-        <label htmlFor="evidence">확인 근거</label>
+        <label htmlFor="evidence">
+          내부 확인 근거 (방문자에게 보이지 않음)
+        </label>
         <Input.TextArea
           id="evidence"
           value={evidence}
           onChange={(e) => setEvidence(e.target.value)}
           rows={4}
-          placeholder="공식 원문에서 확인한 내용과 해당 위치를 적어 주세요."
+          placeholder="공식 원문에서 확인한 내용과 위치를 적어 주세요. 방문자에게 보일 안내는 활동 편집의 '방문자에게 보일 확인 안내' 칸에 써요."
         />
         <label htmlFor="evidence-quote">재확인 기준 구절</label>
         <Input.TextArea

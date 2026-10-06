@@ -17,10 +17,6 @@ struct SignInSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 if codeStep { codeForm } else { emailForm }
-                if let message = account.message {
-                    Text(message).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.ink)
-                        .accessibilityIdentifier("sign-in-message")
-                }
             }.padding(20)
         }
         .navigationTitle("로그인").navigationBarTitleDisplayMode(.inline)
@@ -29,12 +25,21 @@ struct SignInSheet: View {
             if phase == .signedIn { dismiss(); signedIn() }
         }
     }
+    @ViewBuilder private var errorMessage: some View {
+        if let message = account.message {
+            DearbyFieldError(text: message).accessibilityIdentifier("sign-in-message")
+        }
+    }
     private var emailForm: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("이메일로 받은 인증번호로 로그인해요.").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("이메일로 로그인").font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.ink).accessibilityAddTraits(.isHeader)
+                Text("인증번호를 메일로 보내 드려요. 비밀번호는 필요 없어요.").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
+            }
             DearbyInlineField(label: "이메일", text: $email, editing: true, prompt: "name@example.com")
                 .keyboardType(.emailAddress).textContentType(.emailAddress)
                 .textInputAutocapitalization(.never).autocorrectionDisabled().accessibilityIdentifier("sign-in-email")
+            errorMessage
             Button { send() } label: {
                 if account.phase == .sendingCode { ProgressView().tint(.white) } else { Text("인증번호 받기") }
             }.buttonStyle(DearbyButtonStyle()).disabled(busy || email.isEmpty)
@@ -42,20 +47,25 @@ struct SignInSheet: View {
     }
     private var codeForm: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("\(account.email)으로 보낸 인증번호 6자리를 입력해 주세요. 5분 동안 쓸 수 있어요.")
-                .font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
-            DearbyInlineField(label: "인증번호", text: $code, editing: true, prompt: "6자리 숫자")
-                .keyboardType(.numberPad).textContentType(.oneTimeCode).accessibilityIdentifier("sign-in-code")
+            VStack(alignment: .leading, spacing: 6) {
+                Text("메일함을 확인해 주세요").font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.ink).accessibilityAddTraits(.isHeader)
+                (Text(account.email).bold().foregroundColor(DearbyStyle.ink) + Text("으로 보낸 6자리 인증번호를 입력해 주세요. 5분 동안 쓸 수 있어요."))
+                    .font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
+                Button("이메일 바꾸기") { code = ""; account.changeEmail() }
+                    .font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal).frame(minHeight: 44)
+            }
+            DearbyCodeField(code: $code, label: "인증번호", isError: account.message != nil, identifier: "sign-in-code")
+            errorMessage
             Button { Task { await account.verify(code) } } label: {
                 if account.phase == .verifying { ProgressView().tint(.white) } else { Text("로그인") }
             }.buttonStyle(DearbyButtonStyle()).disabled(busy || code.count != 6)
             TimelineView(.periodic(from: .now, by: 1)) { context in
-                let wait = Int(resendAt.timeIntervalSince(context.date).rounded(.up))
+                let wait = max(0, Int(resendAt.timeIntervalSince(context.date).rounded(.up)))
                 Button(wait > 0 ? "\(wait)초 후 다시 받을 수 있어요" : "인증번호 다시 받기") { send() }
-                    .buttonStyle(DearbyButtonStyle(outlined: true)).disabled(busy || wait > 0)
+                    .font(.dearby(.subheadline).weight(.semibold))
+                    .foregroundStyle(wait > 0 || busy ? DearbyStyle.quiet : DearbyStyle.teal)
+                    .frame(maxWidth: .infinity, minHeight: 44).disabled(busy || wait > 0)
             }
-            Button("이메일 바꾸기") { code = ""; account.changeEmail() }
-                .font(.dearby(.subheadline)).frame(maxWidth: .infinity, minHeight: 44)
         }
     }
     private func send() {

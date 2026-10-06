@@ -50,7 +50,8 @@ export function atTime(activity:Activity, now:number, failed=false):Activity {
   else if (start !== null || end !== null) recruitmentStatus = 'open';
   const isRecruiting = freshness === 'verified' && recruitmentStatus === 'open';
   return {...activity, freshness, recruitmentStatus, isRecruiting,
-    sourceNote:activity.sourceNote + (failed ? ' 현재 공식 안내를 다시 확인할 수 없어 마지막 확인 내용을 표시합니다.' : '')};
+    // Trimmed so an empty public note does not start with a space.
+    sourceNote:failed ? `${activity.sourceNote} 현재 공식 안내를 다시 확인할 수 없어 마지막 확인 내용을 표시합니다.`.trim() : activity.sourceNote};
 }
 
 export function readCatalog(db:DB, now=Date.now()):Catalog {
