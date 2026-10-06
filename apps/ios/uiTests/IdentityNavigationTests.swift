@@ -38,14 +38,66 @@ import XCTest
         app.buttons["닫기"].tap(); app.buttons["QR 보여주기"].tap()
         let tile = app.buttons["새 명함"]
         for _ in 0..<4 where !tile.isHittable { app.swipeUp() }
-        tile.tap(); capture(app, "qr-new-card")
-        app.buttons["명함 만들기"].tap()
-        XCTAssertTrue(app.navigationBars["직접 만들기"].waitForExistence(timeout: 5))
-        capture(app, "card-editor")
-        app.buttons["contact-email"].tap()
-        let create = app.buttons["공유 카드 만들기"]
-        XCTAssertTrue(create.isHittable); create.tap()
+        tile.tap()
+        XCTAssertTrue(app.navigationBars["명함 만들기"].waitForExistence(timeout: 5))
+        app.buttons["닫기"].firstMatch.tap()
         XCTAssertTrue(app.buttons["QR 확대"].waitForExistence(timeout: 5))
+    }
+    func testComposerAsksSignInOnlyOnPublishThenPublishes() throws {
+        let server = try FixtureServer()
+        let app = XCUIApplication()
+        app.launch(with: server); app.buttons["tab-2"].tap()
+        let tile = app.buttons["새 명함"]
+        XCTAssertTrue(tile.waitForExistence(timeout: 5))
+        for _ in 0..<4 where !tile.isHittable { app.swipeUp() }
+        tile.tap()
+        XCTAssertTrue(app.navigationBars["명함 만들기"].waitForExistence(timeout: 5))
+        let publish = app.buttons["로그인하고 명함 발행"]
+        XCTAssertFalse(publish.isEnabled)
+        XCTAssertFalse(server.recorded().contains { $0.contains("/v1/auth") || $0.contains("/v1/profile") })
+        app.textFields["이름"].tap(); app.textFields["이름"].typeText("김지민")
+        capture(app, "card-composer")
+        publish.tap()
+        XCTAssertTrue(app.navigationBars["로그인"].waitForExistence(timeout: 5))
+        app.textFields["sign-in-email"].tap(); app.textFields["sign-in-email"].typeText("me@example.test")
+        app.buttons["인증번호 받기"].tap()
+        let code = app.textFields["sign-in-code"]
+        XCTAssertTrue(code.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label ENDSWITH '초 후 다시 받을 수 있어요'")).firstMatch.exists)
+        capture(app, "sign-in-code")
+        code.tap(); code.typeText("000000"); app.buttons["로그인"].tap()
+        XCTAssertTrue(app.staticTexts["인증번호가 맞지 않거나 만료됐어요."].waitForExistence(timeout: 5))
+        code.tap(); code.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: 6) + FixtureServer.code)
+        app.buttons["로그인"].tap()
+        XCTAssertTrue(app.staticTexts["명함을 발행했어요"].waitForExistence(timeout: 10))
+        capture(app, "card-published")
+        let calls = server.recorded().filter { $0 != "GET /v1/catalog" }
+        XCTAssertEqual(calls, ["POST /v1/auth/challenges", "POST /v1/auth/sessions", "POST /v1/auth/sessions",
+                               "GET /v1/profile", "PUT /v1/profile", "POST /v1/cards"])
+        app.buttons["확인"].tap()
+        XCTAssertTrue(app.buttons["QR 확대"].waitForExistence(timeout: 5))
+    }
+    func testCardFailureAfterProfileSaveRetriesOnlyTheCard() throws {
+        let server = try FixtureServer()
+        server.failingCards = true
+        let app = XCUIApplication()
+        app.launch(with: server); app.buttons["tab-2"].tap()
+        let tile = app.buttons["새 명함"]
+        XCTAssertTrue(tile.waitForExistence(timeout: 5))
+        for _ in 0..<4 where !tile.isHittable { app.swipeUp() }
+        tile.tap()
+        app.textFields["이름"].tap(); app.textFields["이름"].typeText("김지민")
+        app.buttons["로그인하고 명함 발행"].tap()
+        app.textFields["sign-in-email"].tap(); app.textFields["sign-in-email"].typeText("me@example.test")
+        app.buttons["인증번호 받기"].tap()
+        let code = app.textFields["sign-in-code"]
+        XCTAssertTrue(code.waitForExistence(timeout: 5))
+        code.tap(); code.typeText(FixtureServer.code); app.buttons["로그인"].tap()
+        XCTAssertTrue(app.staticTexts["프로필은 저장했어요. 명함 발행만 다시 시도해 주세요."].waitForExistence(timeout: 10))
+        server.failingCards = false
+        app.buttons["명함 발행"].tap()
+        XCTAssertTrue(app.staticTexts["명함을 발행했어요"].waitForExistence(timeout: 10))
+        XCTAssertEqual(server.recorded().filter { $0 == "PUT /v1/profile" }.count, 1)
     }
     func testWalletSendPickerVisibilityAndSearch() {
         let app = XCUIApplication()
@@ -68,7 +120,7 @@ import XCTest
         search.tap(); search.typeText("없는사람")
         XCTAssertTrue(app.staticTexts["찾는 명함이 없어요"].waitForExistence(timeout: 5))
     }
-    func testAllReciprocalWalletAndExistingCardEdit() {
+    func testAllReciprocalWalletAndCardEditOpensComposer() {
         let app = XCUIApplication()
         app.launch(); app.buttons["tab-3"].tap()
         for _ in 0..<3 {
@@ -81,12 +133,8 @@ import XCTest
         XCTAssertTrue(app.buttons["wallet-group-0"].waitForNonExistence(timeout: 5))
         capture(app, "wallet-reciprocal-only")
         app.buttons["tab-2"].tap(); app.buttons["명함 편집"].tap()
-        XCTAssertTrue(app.buttons["수정 완료"].waitForExistence(timeout: 5))
-        app.buttons["contact-email"].tap(); app.buttons["수정 완료"].tap()
-        app.buttons["명함 편집"].tap()
-        XCTAssertTrue(app.buttons["수정 완료"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["contact-email"].isSelected)
-        app.buttons["닫기"].tap()
+        XCTAssertTrue(app.navigationBars["명함 만들기"].waitForExistence(timeout: 5))
+        app.buttons["닫기"].firstMatch.tap()
     }
     func testMyActivitiesStartEmptyThenListMarkedActivities() throws {
         let server = try FixtureServer()

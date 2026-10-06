@@ -98,4 +98,53 @@ private final class MemoryStore: SessionStore, @unchecked Sendable {
         try vault.clear()
         XCTAssertNil(try vault.load())
     }
+
+    private let storedProfile = #"{"id":"p1","name":"저장된 이름","job":"","introduction":"","contacts":[{"id":"c-old","kind":"phone","label":"전화번호","value":"010-0000-0000"}],"histories":[{"id":"h-old","title":"캠프","role":"","startDate":"2025-01","endDate":null,"description":""}],"updatedAt":"2026-10-06T00:00:00Z"}"#
+    private let cardBody = #"{"id":"card-1","name":"내 명함","description":"","profileName":"김지민","job":"","contacts":[],"histories":[],"createdAt":"2026-10-06T00:00:00Z"}"#
+    private func json(_ request: URLRequest) throws -> [String: Any] {
+        try XCTUnwrap(JSONSerialization.jsonObject(with: XCTUnwrap(request.httpBody)) as? [String: Any])
+    }
+    func testGuestDraftMergesOntoTheAccountAndKeepsUnseenRowsPrivate() async throws {
+        let fake = FakeTransport(), store = MemoryStore()
+        let account = AccountViewModel(client: client(fake), vault: store)
+        let model = CardPublishModel(account: account)
+        model.draft.name = "김지민"
+        let email = try XCTUnwrap(model.draft.contacts.firstIndex { $0.kind == "email" })
+        model.draft.contacts[email].value = "me@example.test"
+        store.session = AccountSession(sessionToken: "t", profileId: "p1")
+        let signedIn = AccountViewModel(client: client(fake), vault: store)
+        let resumed = CardPublishModel(account: signedIn)
+        resumed.draft = model.draft
+        fake.answers = [(200, storedProfile), (200, storedProfile), (201, cardBody)]
+        await resumed.continueAfterSignIn()
+        XCTAssertEqual(fake.requests.map(\.httpMethod), ["GET", "PUT", "POST"])
+        let profile = try json(fake.requests[1])
+        XCTAssertEqual(profile["name"] as? String, "김지민")
+        let saved = try XCTUnwrap(profile["contacts"] as? [[String: Any]]).compactMap { $0["value"] as? String }
+        XCTAssertEqual(Set(saved), ["010-0000-0000", "me@example.test"])
+        XCTAssertEqual((profile["histories"] as? [[String: Any]])?.count, 1)
+        let card = try json(fake.requests[2])
+        XCTAssertEqual((card["contactIds"] as? [String])?.count, 1)
+        XCTAssertNotEqual((card["contactIds"] as? [String])?.first, "c-old")
+        XCTAssertEqual(card["historyIds"] as? [String], [])
+        guard case .published(let published) = resumed.phase else { return XCTFail("\(resumed.phase)") }
+        XCTAssertEqual(published.id, "card-1")
+    }
+    func testCardFailureAfterProfileSaveRetriesOnlyTheCard() async throws {
+        let fake = FakeTransport(), store = MemoryStore()
+        store.session = AccountSession(sessionToken: "t", profileId: "p1")
+        let model = CardPublishModel(account: AccountViewModel(client: client(fake), vault: store))
+        fake.answers = [(200, storedProfile)]
+        await model.load()
+        XCTAssertEqual(model.draft.name, "저장된 이름")
+        model.draft.job = "기획"
+        fake.answers = [(200, storedProfile), (500, "{}")]
+        await model.publish()
+        XCTAssertEqual(model.phase, .failed("프로필은 저장했어요. 명함 발행만 다시 시도해 주세요."))
+        fake.requests = []
+        fake.answers = [(201, cardBody)]
+        await model.publish()
+        XCTAssertEqual(fake.requests.map(\.httpMethod), ["POST"])
+        guard case .published = model.phase else { return XCTFail("\(model.phase)") }
+    }
 }

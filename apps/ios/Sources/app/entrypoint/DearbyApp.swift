@@ -3,6 +3,7 @@ import SwiftUI
 @main struct DearbyApp: App {
     @State private var catalog: CatalogViewModel
     @State private var identity = IdentityViewModel()
+    @State private var account: AccountViewModel
     @State private var tab = 0
     // Captured from /s/<UUID> universal links; the shared-card screen is connected in a later step.
     @State private var incomingShareID: String?
@@ -11,12 +12,13 @@ import SwiftUI
         let links = AppLinkProvider()
         self.links = links
         _catalog = State(initialValue: CatalogViewModel(fetch: links.catalog))
+        _account = State(initialValue: links.account())
     }
     var body: some Scene {
         WindowGroup {
             HomePage(selectedTab: $tab,
                 discovery: { CatalogPage(state: catalog, path: $0) }, mine: MyActivitiesPage(state: catalog, explore: { tab = 0 }),
-                qr: QRPage(state: identity), wallet: WalletPage(state: identity), profile: ProfilePage(state: identity))
+                qr: QRPage(state: identity, account: account), wallet: WalletPage(state: identity), profile: ProfilePage(state: identity))
             .onOpenURL { incomingShareID = links.shareID($0) }
             .alert("공유 명함 링크", isPresented: Binding(get: { incomingShareID != nil }, set: { if !$0 { incomingShareID = nil } })) {
                 Button("확인") {}

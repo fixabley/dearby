@@ -59,7 +59,9 @@
     "QRScanOverlay",
     "CardComposer",
     "CardComposerContact",
-    "CardComposerHistory"
+    "CardComposerHistory",
+    "AccountViewModel",
+    "CardComposerPage"
   ],
   "entities/account": [
     "AccountSession",
@@ -71,8 +73,5 @@
     "AccountClient",
     "SessionStore",
     "SessionVault"
-  ],
-  "features/account": [
-    "AccountViewModel"
   ]
 }
