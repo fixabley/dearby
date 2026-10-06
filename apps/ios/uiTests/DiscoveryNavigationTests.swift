@@ -60,7 +60,8 @@ import XCTest
             calendar.tap()
             XCTAssertTrue(app.buttons["선택한 캘린더로 확인"].waitForExistence(timeout: 5))
             XCTAssertFalse(XCUIApplication(bundleIdentifier: "com.apple.springboard").alerts.firstMatch.exists)
-            let toggle = app.switches["예시 캘린더"]
+            // Tap the switch itself: the element's center can fall on the row label, which does not toggle.
+            let toggle = app.switches["예시 캘린더"].switches.firstMatch
             toggle.tap()
             let disabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == false"),
                                                      object: app.buttons["선택한 캘린더로 확인"])

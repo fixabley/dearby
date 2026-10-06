@@ -23,7 +23,13 @@
     "DearbyAvatar",
     "DearbyInfoRow",
     "DearbySheetHeader",
-    "DearbySegments"
+    "DearbySegments",
+    "DearbySectionHeader",
+    "DearbySearchField",
+    "DearbySearchReveal",
+    "DearbyChoice",
+    "DearbyChoiceChips",
+    "DearbyInlineField"
   ],
   "entities/identity": [
     "CardModel",
