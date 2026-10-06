@@ -1,5 +1,46 @@
 import type { Criteria } from "./criteria";
-export type Organization = { id: string; name: string; description: string };
+export type Organization = {
+  id: string;
+  name: string;
+  description: string;
+  /** Absent until the catalog_organization_tree migration is applied. */
+  parent_id?: string | null;
+};
+export const maxOrganizationDepth = 4;
+/** Root → id chain. Stops on a cycle, which the database already forbids. */
+export function organizationPath(
+  organizations: Organization[],
+  id: string | null,
+): Organization[] {
+  const byId = new Map(organizations.map((o) => [o.id, o]));
+  const path: Organization[] = [];
+  let o = id ? byId.get(id) : undefined;
+  while (o && !path.includes(o)) {
+    path.unshift(o);
+    o = o.parent_id ? byId.get(o.parent_id) : undefined;
+  }
+  return path;
+}
+function subtreeHeight(organizations: Organization[], id: string): number {
+  const children = organizations.filter((o) => o.parent_id === id);
+  return (
+    1 + Math.max(0, ...children.map((c) => subtreeHeight(organizations, c.id)))
+  );
+}
+/** Valid parents: not itself or a descendant, and the moved subtree stays within four levels. */
+export function parentCandidates(
+  organizations: Organization[],
+  id?: string,
+): Organization[] {
+  const height = id ? subtreeHeight(organizations, id) : 1;
+  return organizations.filter((candidate) => {
+    const path = organizationPath(organizations, candidate.id);
+    return (
+      !path.some((o) => o.id === id) &&
+      path.length + height <= maxOrganizationDepth
+    );
+  });
+}
 export type Program = {
   collection_enabled: boolean;
   collection_hosts: string[];
@@ -127,4 +168,27 @@ export function normalizeSchedules(schedules: Schedule[]): Schedule[] {
       endAt: end,
     };
   });
+}
+/** Blocked collection jobs share status=blocked; the worker's error prefix says what to fix. */
+export function collectionBlock(error: string | null) {
+  if (error?.startsWith("BLOCKED: Codex subscription"))
+    return {
+      label: "구독 차단 · 전체 일시정지",
+      hint: "Mac의 Codex 로그인·구독 한도를 확인한 뒤 재시도하세요. 해소 전까지 모든 프로그램 수집이 멈춥니다.",
+    };
+  if (/^BLOCKED: (Official|All candidates)/.test(error ?? ""))
+    return {
+      label: "원문 차단 · 이 프로그램만",
+      hint: "공식 원문의 호스트·크기(3 MB 이하)·JS 전용 여부를 확인하고 출처를 고친 뒤 재시도하세요.",
+    };
+  if (
+    /^BLOCKED: (Configure official hosts|Source must use a configured official HTTPS host)/.test(
+      error ?? "",
+    )
+  )
+    return {
+      label: "설정 필요 · 이 프로그램만",
+      hint: "프로그램 관리에서 공식 출처 호스트를 입력하거나 고친 뒤 재시도하세요. 원문은 등록된 HTTPS 호스트여야 합니다.",
+    };
+  return { label: "조치 필요", hint: "" };
 }
