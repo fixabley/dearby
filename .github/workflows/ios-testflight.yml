@@ -1,0 +1,91 @@
+name: iOS TestFlight
+on:
+  push:
+    branches: [main]
+    paths:
+      - apps/ios/**
+      - shared/assets/**
+      - .github/workflows/ios-testflight.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ios-testflight
+  cancel-in-progress: true
+jobs:
+  testflight:
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      # Origins come from repository/environment variables; secrets never live in the repo.
+      DEARBY_API_ORIGIN: ${{ vars.DEARBY_API_ORIGIN }}
+      DEARBY_WEB_ORIGIN: ${{ vars.DEARBY_WEB_ORIGIN }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+      HAS_DIST_P12: ${{ secrets.IOS_DIST_P12_BASE64 != '' }}
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Prepare App Store Connect key
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: |
+          test -n "$ASC_KEY_ID" && test -n "$ASC_ISSUER_ID" && test -n "$ASC_KEY_P8" && test -n "$TEAM_ID"
+          key="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          printf '%s' "$ASC_KEY_P8" > "$key" && chmod 600 "$key"
+          echo "ASC_KEY_PATH=$key" >> "$GITHUB_ENV"
+      # Optional: an exported Apple Distribution certificate. Without it, the API key must be an
+      # Admin key so Xcode can use an Apple cloud-managed distribution certificate.
+      - name: Import distribution certificate
+        env:
+          DIST_P12: ${{ secrets.IOS_DIST_P12_BASE64 }}
+          DIST_P12_PASSWORD: ${{ secrets.IOS_DIST_P12_PASSWORD }}
+        if: env.HAS_DIST_P12 == 'true'
+        run: |
+          kc="$RUNNER_TEMP/signing.keychain-db"; pw=$(uuidgen)
+          security create-keychain -p "$pw" "$kc"
+          security set-keychain-settings -lut 3600 "$kc"
+          security unlock-keychain -p "$pw" "$kc"
+          printf '%s' "$DIST_P12" | base64 --decode > "$RUNNER_TEMP/dist.p12"
+          security import "$RUNNER_TEMP/dist.p12" -k "$kc" -P "$DIST_P12_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$pw" "$kc" >/dev/null
+          security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+          rm -f "$RUNNER_TEMP/dist.p12"
+      - name: Archive
+        run: |
+          # Monotonic build number above the manual uploads (1, 2); re-runs get a new suffix.
+          build="$((GITHUB_RUN_NUMBER + 2)).$GITHUB_RUN_ATTEMPT"
+          echo "BUILD_NUMBER=$build" >> "$GITHUB_ENV"
+          xcodebuild -project Dearby.xcodeproj -scheme Dearby -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Dearby.xcarchive" \
+            -allowProvisioningUpdates -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic CURRENT_PROJECT_VERSION="$build" archive
+      - name: Upload to TestFlight
+        run: |
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+          <key>method</key><string>app-store-connect</string>
+          <key>destination</key><string>upload</string>
+          <key>teamID</key><string>$TEAM_ID</string>
+          <key>signingStyle</key><string>automatic</string>
+          <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          EOF
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Dearby.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          echo "Uploaded build $BUILD_NUMBER" >> "$GITHUB_STEP_SUMMARY"
+      - name: Clean up signing material
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP"/AuthKey_*.p8
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
