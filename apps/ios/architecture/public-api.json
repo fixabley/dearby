@@ -42,6 +42,8 @@
     "DearbyButtonStyle",
     "DearbyChoice",
     "DearbyChoiceChips",
+    "DearbyCodeField",
+    "DearbyFieldError",
     "DearbyInfoRow",
     "DearbyInlineField",
     "DearbyLogo",
