@@ -2,7 +2,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Card } from "@/lib/models";
-import { errorMessage, mutateGuest, request, RequestError } from "@/lib/client";
+import {
+  errorMessage,
+  mutateGuest,
+  request,
+  RequestError,
+  saveFailure,
+} from "@/lib/client";
 import { Failure, Loading } from "@/shared/ui/states";
 import { Icon } from "@/shared/ui/icon";
 import { MissingCard } from "@/widgets/card/missing-card";
@@ -38,29 +44,11 @@ export function PublicCard({ id }: { id: string }) {
         throw new Error("COOKIE_UNAVAILABLE");
       setSaved(true);
     } catch (error) {
-      if (error instanceof RequestError && error.status === 404) {
+      const failure = saveFailure(error);
+      if (failure === "missing") {
         setMissing(true);
         setCard(undefined);
-      } else if (error instanceof RequestError && error.status === 401)
-        setSaveError(
-          "저장 세션을 사용할 수 없어요. 저장한 명함 화면에서 세션을 초기화해 주세요.",
-        );
-      else if (error instanceof RequestError && error.status === 409)
-        setSaveError(
-          "저장 가능한 한도에 도달했어요. 저장한 명함을 정리하거나 잠시 후 다시 시도해 주세요.",
-        );
-      else if (error instanceof Error && error.message === "COOKIE_UNAVAILABLE")
-        setSaveError(
-          "저장을 확인하지 못했어요. 브라우저에서 쿠키를 허용한 뒤 다시 시도해 주세요.",
-        );
-      else if (
-        error instanceof Error &&
-        error.message === "WEB_LOCKS_UNAVAILABLE"
-      )
-        setSaveError(
-          "이 브라우저에서는 안전한 저장을 지원하지 않아요. 최신 브라우저에서 열어 주세요.",
-        );
-      else setSaveError(errorMessage(error));
+      } else setSaveError(failure);
     } finally {
       setBusy(false);
     }
