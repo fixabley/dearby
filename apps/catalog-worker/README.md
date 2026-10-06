@@ -41,9 +41,6 @@ node scripts/bootstrap.mjs
 codex login status  # Logged in using ChatGPT
 node --env-file=.env.local src/worker.mjs --enqueue --program PROGRAM_UUID
 npm run check
-npm test
-# 저장소 루트에서 실제 로컬 DB·권한·HTTP 계약 검사
-node --test apps/catalog-worker/test/queue.integration.mjs
 ```
 
 `.env.local`은 ignored/0600이고 service-role 키는 워커만 사용한다. 자식 Codex에는 HOME/PATH 등 허용된 환경 변수만 전달한다. API/DB키를 전달하지 않으며 사용자 config·rules·shell·multi_agent·apps·js_repl을 비활성화하고 별도 임시 디렉터리에서 read-only/ephemeral로 실행한다. 인증 저장소는 CLI가 직접 사용하며 워커가 auth.json을 읽거나 복사하지 않는다.
@@ -77,4 +74,4 @@ node scripts/launchd.mjs uninstall
 
 로그는 ignored `logs/worker.log`, `logs/worker-error.log`에 쌓인다. service-role/auth 파일은 로그에 출력하지 않는다. 장기 운용 시 로그 용량 관리가 필요하다. DB는 cloud Supabase이고 워커는 로그인된 Mac에서 돈다. 24시간 가동 호스트·외부 실패 알림·자동 DB 백업은 별도 운영 조건이다.
 
-CI는 워커의 구문·단위 검사만 실행한다(`native.yml`의 `catalog-worker` job). 큐 통합 검사는 CI에 없어 로컬 Supabase에서 수동 실행한다. 구독 인증이나 실검색을 공용 runner에 복사하지 않는다. 실제 DB 통합 검사는 운영 워커와 경쟁하지 않도록 별도 테스트 Supabase에서 수행한다. 로컬 DB를 다른 작업과 공유할 경우 워커가 유휴이고 예약 실행이 중단된 상태에서만 실행한다.
+CI는 워커의 구문 검사만 실행한다(`native.yml`의 `catalog-worker` job). 자동 테스트는 2026-10-06 사용자 요청으로 모두 지웠다. 사용자와 하나씩 다시 만든다. 구독 인증이나 실검색을 공용 runner에 복사하지 않는다. 실제 DB 통합 검사는 운영 워커와 경쟁하지 않도록 별도 테스트 Supabase에서 수행한다. 로컬 DB를 다른 작업과 공유할 경우 워커가 유휴이고 예약 실행이 중단된 상태에서만 실행한다.

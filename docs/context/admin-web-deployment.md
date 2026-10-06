@@ -32,14 +32,10 @@ Node 24에서 `apps/admin` 기준:
 npm ci
 npm run lint
 npm run typecheck
-npm test
 VITE_SUPABASE_URL=http://localhost:54321 VITE_SUPABASE_ANON_KEY=sb_publishable_test npm run build
-npx vite preview --host 127.0.0.1 --port 5187 --strictPort
-# 별도 터미널; 실제 Supabase 없이 mock으로 실행
-ADMIN_TEST_URL=http://127.0.0.1:5187 npm run test:e2e -- deployment.spec.ts
 ```
 
-테스트용 공개키 문자열은 합성 fixture이며 운영 배포에 사용하지 않는다.
+테스트용 공개키 문자열은 합성 fixture이며 운영 배포에 사용하지 않는다. 2026-10-06 사용자 요청으로 `npm test`·`test:e2e`(`deployment.spec.ts` 포함)를 지웠다.
 
 ## 상태
 

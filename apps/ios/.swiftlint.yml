@@ -1,12 +1,6 @@
-# Project-owned Swift source and tests; dependency/generated/build trees are not app code.
+# Project-owned Swift source; dependency/generated/build trees are not app code.
 included:
   - Sources
-  - unitTests
-  - uiTests
-  - tests
-excluded:
-  - tests/ArchitectureTests/.build
-  - tests/ArchitectureTests/.swiftpm
 
 # Explicit, versioned initial policy: correctness and local readability.
 # FSD paths/dependencies/public APIs remain the architecture gate's responsibility.
