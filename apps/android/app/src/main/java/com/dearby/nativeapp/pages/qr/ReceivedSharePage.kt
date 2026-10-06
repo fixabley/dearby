@@ -21,8 +21,11 @@ import com.dearby.nativeapp.widgets.card.cardContent.ContactState
 enum class ReceivedPhase { LOADING, LOADED, MISSING, FAILED }
 /** A received card from a scanned QR or `/s/<id>` link, with the activities its sender chose. */
 data class ReceivedShareState(val phase: ReceivedPhase = ReceivedPhase.LOADING, val card: CardState? = null, val activities: List<String> = emptyList())
+/** Saving to the account's wallet: shown for shares only. [done] is the saved message, [error] the failure text. */
+data class ReceivedSaveState(val signedIn: Boolean, val saving: Boolean = false, val done: String? = null, val error: String? = null)
 
-@Composable fun ReceivedSharePage(state: ReceivedShareState, close: () -> Unit, retry: () -> Unit, contact: (ContactState) -> Unit) {
+@Composable fun ReceivedSharePage(state: ReceivedShareState, close: () -> Unit, retry: () -> Unit, contact: (ContactState) -> Unit,
+                                  save: ReceivedSaveState? = null, onSave: () -> Unit = {}) {
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("공유 명함", close)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -47,6 +50,22 @@ data class ReceivedShareState(val phase: ReceivedPhase = ReceivedPhase.LOADING, 
                     }
                 }
             }
+        }
+        if (save != null && state.phase == ReceivedPhase.LOADED) SaveBar(save, onSave)
+    }
+}
+
+@Composable private fun SaveBar(save: ReceivedSaveState, onSave: () -> Unit) {
+    HorizontalDivider()
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (save.done != null) {
+            Text(save.done, Modifier.fillMaxWidth(), color = Teal, textAlign = TextAlign.Center, style = MaterialTheme.typography.titleSmall)
+        } else {
+            save.error?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            DearbyButton(onSave, Modifier.fillMaxWidth(), enabled = !save.saving) {
+                if (save.saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text("받은 명함에 저장")
+            }
+            if (!save.signedIn) Text("저장할 때만 이메일 인증번호로 로그인해요.", Modifier.fillMaxWidth(), color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
         }
     }
 }

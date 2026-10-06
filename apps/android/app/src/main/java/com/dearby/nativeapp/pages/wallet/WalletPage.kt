@@ -1,57 +1,59 @@
 package com.dearby.nativeapp.pages.wallet
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.pager.VerticalPager
-import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.card.cardContent.CardState
-import com.dearby.nativeapp.widgets.card.cardContent.CardStack
-import com.dearby.nativeapp.widgets.card.cardContent.ContactState
-import kotlinx.coroutines.launch
+import com.dearby.nativeapp.widgets.card.cardContent.ReceivedCardRow
 
-data class WalletEntryState(val card: CardState, val reciprocal: Boolean, val activityIds: List<String> = emptyList())
-fun walletMatches(entry: WalletEntryState, query: String) = listOf(entry.card.person, entry.card.job, entry.card.title).plus(entry.card.histories.map { it.title }).any { it.contains(query, ignoreCase = true) }
+/** A saved card and the activity IDs its shares carried. */
+data class WalletEntryState(val card: CardState, val activityIds: List<String> = emptyList())
+enum class WalletPhase { SIGNED_OUT, LOADING, LOADED, FAILED }
+/** 받은 명함: the account's wallet; [activities] are (id, title) in the order they were first saved. */
+data class WalletState(val phase: WalletPhase = WalletPhase.LOADING, val entries: List<WalletEntryState> = emptyList(), val activities: List<Pair<String, String>> = emptyList())
 
-@Composable fun WalletPage(entries: List<WalletEntryState>, query: String, reciprocal: Boolean, changeQuery: (String) -> Unit, changeGroup: (Boolean) -> Unit, detail: (CardState) -> Unit, send: (CardState) -> Unit, contact: (ContactState) -> Unit) {
-    val showGroups = entries.any { !it.reciprocal }
-    val cards = entries.filter { walletMatches(it, query) && (!showGroups || it.reciprocal == reciprocal) }.map { it.card }
-    val pager = rememberPagerState { cards.size }
-    val scope = rememberCoroutineScope()
-    LaunchedEffect(query, reciprocal) { if (cards.isNotEmpty()) pager.scrollToPage(0) }
-    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text("받은 명함", Modifier.fillMaxWidth().padding(vertical = 14.dp), textAlign = TextAlign.Center, style = MaterialTheme.typography.titleLarge)
-        TextField(query, changeQuery, Modifier.fillMaxWidth(), placeholder = { Text("이름, 직무, 활동으로 검색", style = MaterialTheme.typography.bodyMedium) }, leadingIcon = { Icon(Icons.Outlined.Search, null) }, singleLine = true, shape = MaterialTheme.shapes.large,
-            colors = TextFieldDefaults.colors(focusedContainerColor = Soft, unfocusedContainerColor = Soft, focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent))
-        if (showGroups) Row { listOf(false to "내 명함을 주지 않은 상대", true to "서로 주고받은 상대").forEach { (value, label) ->
-            Column(Modifier.weight(1f)) {
-                TextButton({ changeGroup(value) }, Modifier.fillMaxWidth(), contentPadding = PaddingValues(0.dp)) { Text("$label ${entries.count { it.reciprocal == value }}", style = MaterialTheme.typography.labelSmall, color = if (value == reciprocal) Teal else Quiet) }
-                HorizontalDivider(thickness = if (value == reciprocal) 2.dp else 1.dp, color = if (value == reciprocal) Teal else Line)
+@Composable fun WalletPage(state: WalletState, query: String, collapsed: Set<String>, changeQuery: (String) -> Unit, toggle: (String) -> Unit,
+                           open: (CardState) -> Unit, signIn: () -> Unit, retry: () -> Unit) {
+    Column(Modifier.fillMaxSize()) {
+        ScreenHeader("받은 명함")
+        when (state.phase) {
+            WalletPhase.SIGNED_OUT -> Notice("받은 명함은 계정에 저장돼요", "로그인하면 저장한 명함을 볼 수 있어요. QR 탭에서 명함을 찍어 저장할 수 있어요.") {
+                DearbyButton(signIn, Modifier.fillMaxWidth()) { Text("로그인") }
             }
-        } }
-        if (cards.isEmpty()) Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { Text("표시할 명함이 없어요.", color = Quiet) }
-        else {
-            val currentCard = cards[pager.currentPage.coerceIn(cards.indices)]
-            VerticalPager(pager, Modifier.weight(1f).testTag("walletPager"), pageSpacing = 12.dp) { index -> CardStack(cards, index, Modifier.fillMaxWidth(), contact) }
-            Row(Modifier.align(Alignment.CenterHorizontally)) {
-                IconButton({ scope.launch { pager.animateScrollToPage((pager.currentPage - 1).coerceAtLeast(0)) } }, enabled = pager.currentPage > 0) { Icon(Icons.Outlined.KeyboardArrowUp, "이전 명함", tint = Quiet) }
-                IconButton({ scope.launch { pager.animateScrollToPage((pager.currentPage + 1).coerceAtMost(cards.lastIndex)) } }, enabled = pager.currentPage < cards.lastIndex) { Icon(Icons.Outlined.KeyboardArrowDown, "다음 명함", tint = Quiet) }
+            WalletPhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Teal) }
+            WalletPhase.FAILED -> Notice("받은 명함을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.") {
+                DearbyOutlineButton(retry, Modifier.fillMaxWidth()) { Text("다시 시도") }
             }
-            Text("위아래로 밀어 명함을 넘겨요.  ${pager.currentPage + 1} / ${cards.size}", Modifier.align(Alignment.CenterHorizontally), color = Quiet, style = MaterialTheme.typography.bodySmall)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                DearbyOutlineButton({ detail(currentCard) }, Modifier.weight(1f)) { Text("명함 상세보기", style = MaterialTheme.typography.labelLarge) }
-                if (showGroups && !reciprocal) DearbyButton({ send(currentCard) }, Modifier.weight(1f)) { Text("나도 명함 주기", style = MaterialTheme.typography.labelLarge) }
+            WalletPhase.LOADED -> if (state.entries.isEmpty()) Notice("아직 받은 명함이 없어요", "QR 탭에서 명함을 찍고 '받은 명함에 저장'을 눌러 보세요.") {} else {
+                val groups = walletGroups(state.entries, state.activities, query, collapsed)
+                DearbySearchField(query, changeQuery, "이름, 직무, 활동으로 검색", Modifier.padding(horizontal = 20.dp))
+                LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp)) {
+                    if (groups.isEmpty()) item { Notice("찾는 명함이 없어요", "이름이나 활동으로 다시 검색해 주세요.") {} }
+                    groups.forEach { group ->
+                        item(key = "header-${group.id}") { DearbySectionHeader(group.title, group.entries.size, expanded = group.expanded, onToggle = { toggle(group.id) }) }
+                        if (group.expanded) items(group.entries, key = group::key) { entry ->
+                            ReceivedCardRow(entry.card.person, entry.card.job, { open(entry.card) })
+                        }
+                    }
+                }
             }
         }
-        Spacer(Modifier.height(4.dp))
+    }
+}
+
+@Composable private fun Notice(title: String, detail: String, action: @Composable () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+        Text(detail, color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+        action()
     }
 }
