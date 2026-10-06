@@ -10,7 +10,8 @@ extension ArchitectureTestSuite {
                 "AVCaptureSession", "Security", "SecItemCopyMatching", "SecItemAdd", "SecItemDelete",
                 "Photos", "PhotosUI", "UIPasteboard", "CoreImage", "SafariServices", "SFSafariViewController", "WKWebView", "WebKit"]
             // #95 실제 QR 공유: 공유 URL을 QR 이미지로 그리는 표시 파일 하나만 OS 기본 QR 생성기(CoreImage)를 쓴다.
-            let allowed: [String: Set<String>] = ["DearbyQRCode.swift": ["CoreImage"]]
+            // #95 모바일 실제 연결 경계: 카탈로그 클라이언트 하나만 GET /v1/catalog에 네트워크(URLSession)를 쓴다.
+            let allowed: [String: Set<String>] = ["DearbyQRCode.swift": ["CoreImage"], "CatalogClient.swift": ["URLSession"]]
             for file in files {
                 let source = FSDBoundaries.File(path: file.path, text: try String(contentsOf: file, encoding: .utf8))
                 let blocked = forbidden.subtracting(allowed[file.lastPathComponent] ?? [])

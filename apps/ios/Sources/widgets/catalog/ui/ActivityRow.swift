@@ -11,10 +11,10 @@ struct ActivityRow<Footer: View>: View {
                         .clipShape(RoundedRectangle(cornerRadius: 9))
                     VStack(alignment: .leading, spacing: 7) {
                         Text(activity.title).font(.headline).foregroundStyle(Color.primary)
-                        Text(activity.audience).font(.caption).foregroundStyle(DearbyStyle.quiet).lineLimit(2)
+                        Text(activity.organization ?? activity.summary).font(.caption).foregroundStyle(DearbyStyle.quiet).lineLimit(2)
                         Divider()
-                        Label(activity.demoStatus, systemImage: "calendar")
-                        Label(activity.dateLabel + " · " + activity.location, systemImage: "mappin.and.ellipse")
+                        Label(activity.dateLabel.isEmpty ? "일정 미확인" : activity.dateLabel, systemImage: "calendar")
+                        Label(activity.location ?? "장소 미확인", systemImage: "mappin.and.ellipse")
                     }.font(.caption).foregroundStyle(DearbyStyle.quiet).frame(maxWidth: .infinity, alignment: .leading)
                 }
             }.buttonStyle(.plain).accessibilityIdentifier("activity-\(activity.id)")

@@ -8,12 +8,10 @@
   "features/calendar": [
     "CalendarConflictView"
   ],
-  "features/application": [
-    "DemoApplicationView"
-  ],
   "entities/catalog": [
     "ActivityModel",
     "ActivityScheduleModel",
+    "CatalogClient",
     "DemoActivities"
   ],
   "shared": [

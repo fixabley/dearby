@@ -4,18 +4,13 @@ struct ActivityInformationView: View {
     let activity: ActivityModel
     let checkCalendar: () -> Void
     private var sessions: [(start: Date, end: Date, title: String)] {
-        guard let schedule = activity.schedules.first else { return [] }
-        guard activity.id == "conference" else { return [(schedule.start, schedule.end, "활동 진행")] }
-        let agenda = [(0, 30, "등록 및 오프닝"), (30, 90, "개발 세션"), (90, 120, "휴식"),
-                      (120, 180, "디자인 세션"), (180, 240, "네트워킹")]
-        return agenda.map { (schedule.start.addingTimeInterval(Double($0.0) * 60),
-                             schedule.start.addingTimeInterval(Double($0.1) * 60), $0.2) }
+        activity.schedules.map { ($0.start, $0.end, $0.title) }
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Divider()
             Text("행사 일정").font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.teal)
-            Text(activity.dateLabel).font(.dearby(.subheadline))
+            Text(activity.dateLabel.isEmpty ? "일정 미확인" : activity.dateLabel).font(.dearby(.subheadline))
             VStack(spacing: 0) {
                 ForEach(sessions.indices, id: \.self) { index in
                     let session = sessions[index]
@@ -30,25 +25,33 @@ struct ActivityInformationView: View {
                     }.fixedSize(horizontal: false, vertical: true)
                 }
             }
-            Button("겹치는 시간 확인하기", action: checkCalendar).buttonStyle(DearbyButtonStyle(outlined: true))
-            Text("예시 캘린더 일정과 비교해요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
-                .frame(maxWidth: .infinity)
+            // The overlap check stays an example and needs timed schedules.
+            if !sessions.isEmpty {
+                Button("겹치는 시간 확인하기", action: checkCalendar).buttonStyle(DearbyButtonStyle(outlined: true))
+                Text("예시 캘린더 일정과 비교해요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
+                    .frame(maxWidth: .infinity)
+            }
         }
         VStack(alignment: .leading, spacing: 16) {
             Divider()
             Text("참가 안내").font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.teal)
-            DearbyInfoRow(title: "참가비", value: activity.cost)
-            DearbyInfoRow(title: "등록 방법", value: "신청 화면에서 흐름 체험")
-            DearbyInfoRow(title: "준비물", value: "별도 준비물 없음")
-            DearbyInfoRow(title: "세부 일정", value: "디자인 확인용 예시예요.")
+            DearbyInfoRow(title: "참가비", value: activity.cost ?? "미확인")
+            DearbyInfoRow(title: "참여 방식", value: activity.participationType == .selection ? "선발형 · 신청 후 선정" : "참가등록형")
+            DearbyInfoRow(title: "역할", value: activity.roles.isEmpty ? "미확인" : activity.roles.joined(separator: ", "))
             Divider()
             Text("장소").font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.teal)
-            Text(activity.location)
-            Text("실제 예약·접수와 무관한 예시입니다.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
+            Text(activity.location ?? "장소 미확인")
         }
     }
 }
 enum ActivityText {
+    static func checked(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+        formatter.dateFormat = "M월 d일 HH:mm (한국 시간)"
+        return formatter.string(from: date)
+    }
     static func time(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "ko_KR")

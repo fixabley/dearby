@@ -2,19 +2,6 @@ import XCTest
 @testable import Dearby
 
 @MainActor final class PrototypeTests: XCTestCase {
-    func testFixedActivitiesAndSessionOnlyApplicationState() {
-        let state = CatalogViewModel()
-        XCTAssertEqual(state.activities.map(\.title), ["Dearby 개발자 컨퍼런스", "Dearby 메이커 캠프", "Dearby 커뮤니티 밋업"])
-        XCTAssertEqual(state.activities.map(\.demoStatus), ["예시 모집중", "예시 모집중", "예시 모집예정"])
-        XCTAssertEqual(state.activities.map(\.participationType), [.registration, .selection, .registration])
-        XCTAssertEqual(state.activities.map(\.location), ["서울 코엑스", "서울", "온라인"])
-        XCTAssertTrue(state.activities.allSatisfy { $0.cost == "무료" && $0.schedules.first?.timeZone == "Asia/Seoul" })
-        XCTAssertEqual(state.activities.map(\.applicationUrl), Array(repeating: "https://example.com", count: 3))
-        XCTAssertEqual(state.appliedIDs, ["conference"])
-        state.apply("camp", true)
-        XCTAssertEqual(state.appliedActivities.map(\.id), ["conference", "camp"])
-        XCTAssertEqual(CatalogViewModel().appliedIDs, ["conference"])
-    }
     func testFixedBusyTimeAndZeroOverlapActivities() {
         let formatter = ISO8601DateFormatter()
         XCTAssertEqual(CalendarConflictState.exampleBusy.start, formatter.date(from: "2026-10-24T14:00:00+09:00"))
