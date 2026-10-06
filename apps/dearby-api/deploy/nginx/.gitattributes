@@ -1,0 +1,2 @@
+# Unified diffs carry a leading space on blank context lines.
+*.diff -whitespace
