@@ -13,7 +13,8 @@ async function setup() {
   const publicId = randomUUID(); const privateId = randomUUID();
   await f.request('PUT', '/profile', {name:'Alice',job:'Engineer',introduction:'Public introduction',
     contacts:[{id:publicId,kind:'email',label:'Public',value:'public@example.com'},
-      {id:privateId,kind:'email',label:'Private',value:'hidden@example.com'}], histories:[]}, alice.sessionToken);
+      {id:privateId,kind:'email',label:'Private',value:'hidden@example.com'},
+      {id:randomUUID(),kind:'phone',label:'Private phone',value:'010-0000-0000'}], histories:[]}, alice.sessionToken);
   const card = (await f.request('POST', '/cards', {name:'Public card',description:'Selected fields',contactIds:[publicId],historyIds:[]}, alice.sessionToken)).body;
   const request = (method: 'GET'|'PUT'|'DELETE', path: string, token?: string, proxy = secret) => f.app.inject({method, url:`/v1/guest${path}`,
     headers:{'x-guest-proxy-key':proxy,...(token === undefined ? {} : {'x-guest-token':token})}});

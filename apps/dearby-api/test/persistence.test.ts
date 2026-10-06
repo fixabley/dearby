@@ -10,7 +10,7 @@ test('HTTP sessions/profile/wallet/revocation/idempotency and quotas survive dat
   const f = await fixture();
   const alice = await f.login('alice@example.com');
   const bob = await f.login('bob@example.com');
-  await f.request('PUT','/profile',{name:'Persistent Alice',job:'Engineer',introduction:'',contacts:[],histories:[]},alice.sessionToken);
+  await f.request('PUT','/profile',{name:'Persistent Alice',job:'Engineer',introduction:'',contacts:[{id:randomUUID(),kind:'phone',label:'',value:'010-1234-5678'},{id:randomUUID(),kind:'email',label:'',value:'alice@example.com'}],histories:[]},alice.sessionToken);
   const card = (await f.request('POST','/cards',{name:'Persistent card',description:'',contactIds:[],historyIds:[]},alice.sessionToken)).body;
   const input = {cardId:card.id,recipientProfileId:bob.profileId,context:{activityId:null,label:'Meetup'},requestId:randomUUID()};
   const sent = await f.request('POST','/exchanges',input,alice.sessionToken);
