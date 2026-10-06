@@ -18,6 +18,10 @@ data class PublishedCard(val id: String, val name: String, val description: Stri
 /** A catalog activity copied into a share when it was made; never follows later catalog edits. */
 data class ShareActivity(val id: String, val title: String)
 /** A recorded share of one card (`POST /v1/cards/:id/shares`); its ID is the public `/s/<id>` link. */
+/** `GET /v1/wallet` (contract #141): saved cards and the shares they came with. */
+data class Wallet(val items: List<WalletReceipt>, val shares: List<WalletShare>)
+data class WalletReceipt(val id: String, val card: PublishedCard, val receivedAt: String)
+data class WalletShare(val receiptId: String, val cardId: String, val shareId: String, val activities: List<ShareActivity>, val savedAt: String)
 /** `GET /v1/shares/:id`: a share and the public card it points at. */
 data class ReceivedShare(val share: CardShare, val card: PublishedCard)
 data class CardShare(val id: String, val cardId: String, val activities: List<ShareActivity>, val createdAt: String)
@@ -35,6 +39,10 @@ fun JSONObject.toPublishedCard() = PublishedCard(getString("id"), getString("nam
     getString("createdAt"), optString("introduction"))
 
 fun JSONObject.toReceivedShare() = ReceivedShare(getJSONObject("share").toCardShare(), getJSONObject("card").toPublishedCard())
+fun JSONObject.toWallet() = Wallet(
+    getJSONArray("items").objects().map { WalletReceipt(it.getString("id"), it.getJSONObject("card").toPublishedCard(), it.getString("receivedAt")) },
+    getJSONArray("shares").objects().map { share -> WalletShare(share.getString("receiptId"), share.getString("cardId"), share.getString("shareId"),
+        share.getJSONArray("activities").objects().map { ShareActivity(it.getString("id"), it.getString("title")) }, share.getString("savedAt")) })
 fun JSONObject.toCardList() = getJSONArray("items").objects().map { it.toPublishedCard() }
 fun JSONObject.toCardShare() = CardShare(getString("id"), getString("cardId"),
     getJSONArray("activities").objects().map { ShareActivity(it.getString("id"), it.getString("title")) }, getString("createdAt"))

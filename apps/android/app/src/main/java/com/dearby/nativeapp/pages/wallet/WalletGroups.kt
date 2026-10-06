@@ -10,7 +10,7 @@ data class WalletGroupState(val id: String, val title: String, val entries: List
 }
 
 /**
- * Groups one tab's cards by shared activity. [activities] are (id, title) in schedule order.
+ * Groups the wallet by shared activity. [activities] are (id, title) in the order they were first saved.
  * Empty groups are hidden; while searching every remaining group is shown expanded
  * without touching [collapsed].
  */

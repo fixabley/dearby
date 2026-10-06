@@ -7,6 +7,7 @@ import com.dearby.nativeapp.entities.account.model.CardShare
 import com.dearby.nativeapp.entities.account.model.toCardList
 import com.dearby.nativeapp.entities.account.model.toCardShare
 import com.dearby.nativeapp.entities.account.model.toReceivedShare
+import com.dearby.nativeapp.entities.account.model.toWallet
 import com.dearby.nativeapp.entities.account.model.toJson
 import com.dearby.nativeapp.entities.account.model.toProfile
 import com.dearby.nativeapp.entities.account.model.toPublishedCard
@@ -17,7 +18,9 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
-enum class AccountError { UNAUTHORIZED, INVALID_INPUT, NOT_FOUND, RATE_LIMITED, UNAVAILABLE }
+/** [CONFLICT]: a card already holds the most share links (409). */
+/** [OWN_CARD]: the share points at the signed-in account's own card (422 INVALID_RECIPIENT). */
+enum class AccountError { UNAUTHORIZED, INVALID_INPUT, OWN_CARD, NOT_FOUND, CONFLICT, RATE_LIMITED, UNAVAILABLE }
 class AccountException(val error: AccountError) : Exception(error.name)
 
 data class HttpRequest(val method: String, val url: String, val token: String?, val body: String?)
@@ -65,6 +68,10 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun cards(session: AccountSession) = send("GET", "cards", null, session).toCardList()
     suspend fun share(cardId: String, activityIds: List<String>, session: AccountSession): CardShare =
         send("POST", "cards/$cardId/shares", JSONObject().put("activityIds", JSONArray(activityIds)), session).toCardShare()
+    /** Saves a received share to the account's wallet (contract #141); returns `saved` or `alreadySaved`. */
+    // An explicit {}: HttpURLConnection otherwise sends a PUT body the API rejects.
+    suspend fun saveShare(id: String, session: AccountSession) = send("PUT", "wallet/shares/$id", JSONObject(), session).getString("status")
+    suspend fun wallet(session: AccountSession) = send("GET", "wallet", null, session).toWallet()
     /** Public: a share and its card, for links and scanned QR codes. No session. */
     suspend fun publicShare(id: String) = send("GET", "shares/$id", null).toReceivedShare()
     /** Public: a card by ID, for legacy `dearby://card/<UUID>` codes. No session. */
@@ -81,7 +88,10 @@ class AccountClient(private val api: String, private val transport: Transport = 
             in 200..299 -> response.body
             401 -> throw AccountException(AccountError.UNAUTHORIZED)
             404 -> throw AccountException(AccountError.NOT_FOUND)
-            422 -> throw AccountException(AccountError.INVALID_INPUT)
+            409 -> throw AccountException(AccountError.CONFLICT)
+            422 -> throw AccountException(
+                if (runCatching { JSONObject(response.body).getJSONObject("error").getString("code") }.getOrNull() == "INVALID_RECIPIENT") AccountError.OWN_CARD
+                else AccountError.INVALID_INPUT)
             429 -> throw AccountException(AccountError.RATE_LIMITED)
             else -> throw AccountException(AccountError.UNAVAILABLE)
         }
