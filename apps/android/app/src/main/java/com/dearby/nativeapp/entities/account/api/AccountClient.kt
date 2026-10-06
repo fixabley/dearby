@@ -6,6 +6,7 @@ import com.dearby.nativeapp.entities.account.model.PublishedCard
 import com.dearby.nativeapp.entities.account.model.CardShare
 import com.dearby.nativeapp.entities.account.model.toCardList
 import com.dearby.nativeapp.entities.account.model.toCardShare
+import com.dearby.nativeapp.entities.account.model.toReceivedShare
 import com.dearby.nativeapp.entities.account.model.toJson
 import com.dearby.nativeapp.entities.account.model.toProfile
 import com.dearby.nativeapp.entities.account.model.toPublishedCard
@@ -16,7 +17,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
-enum class AccountError { UNAUTHORIZED, INVALID_INPUT, RATE_LIMITED, UNAVAILABLE }
+enum class AccountError { UNAUTHORIZED, INVALID_INPUT, NOT_FOUND, RATE_LIMITED, UNAVAILABLE }
 class AccountException(val error: AccountError) : Exception(error.name)
 
 data class HttpRequest(val method: String, val url: String, val token: String?, val body: String?)
@@ -64,6 +65,10 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun cards(session: AccountSession) = send("GET", "cards", null, session).toCardList()
     suspend fun share(cardId: String, activityIds: List<String>, session: AccountSession): CardShare =
         send("POST", "cards/$cardId/shares", JSONObject().put("activityIds", JSONArray(activityIds)), session).toCardShare()
+    /** Public: a share and its card, for links and scanned QR codes. No session. */
+    suspend fun publicShare(id: String) = send("GET", "shares/$id", null).toReceivedShare()
+    /** Public: a card by ID, for legacy `dearby://card/<UUID>` codes. No session. */
+    suspend fun publicCard(id: String) = send("GET", "cards/$id", null).toPublishedCard()
 
     private suspend fun send(method: String, path: String, body: JSONObject?, session: AccountSession? = null): JSONObject {
         val text = request(method, path, body, session)
@@ -75,6 +80,7 @@ class AccountClient(private val api: String, private val transport: Transport = 
         return when (response.status) {
             in 200..299 -> response.body
             401 -> throw AccountException(AccountError.UNAUTHORIZED)
+            404 -> throw AccountException(AccountError.NOT_FOUND)
             422 -> throw AccountException(AccountError.INVALID_INPUT)
             429 -> throw AccountException(AccountError.RATE_LIMITED)
             else -> throw AccountException(AccountError.UNAVAILABLE)

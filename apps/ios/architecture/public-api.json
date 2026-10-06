@@ -6,9 +6,13 @@
     "AccountHistory",
     "AccountProfile",
     "AccountSession",
+    "CardShare",
     "PublishedCard",
+    "ReceivedShare",
+    "ScannedLink",
     "SessionStore",
-    "SessionVault"
+    "SessionVault",
+    "ShareActivity"
   ],
   "entities/catalog": [
     "ActivityModel",
@@ -31,6 +35,10 @@
   ],
   "features/calendar": [
     "CalendarConflictView"
+  ],
+  "features/scan": [
+    "QRCameraView",
+    "QRImageReader"
   ],
   "pages/home": [
     "HomePage"
@@ -81,6 +89,8 @@
     "QRShareCard",
     "QRShareModel",
     "ReceivedCardRow",
+    "ReceivedShareModel",
+    "ReceivedSharePage",
     "WalletPage"
   ]
 }

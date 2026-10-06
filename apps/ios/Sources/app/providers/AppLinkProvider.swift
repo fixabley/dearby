@@ -18,6 +18,7 @@ struct AppLinkProvider: Sendable {
         self.origins = origins
     }
     func shareURL(_ shareID: String) -> URL { SharedCardLink.url(shareID: shareID, web: origins.web) }
+    func scanned(_ text: String) -> ScannedLink? { ScannedLink.parse(text, web: origins.web) }
     func shareID(_ url: URL) -> String? { SharedCardLink.shareID(from: url, web: origins.web) }
     @MainActor func account() -> AccountViewModel {
         var vault = SessionVault()

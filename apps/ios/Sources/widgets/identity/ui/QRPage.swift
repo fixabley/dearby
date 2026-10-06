@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 
 struct QRPage: View {
@@ -5,10 +6,17 @@ struct QRPage: View {
     let share: QRShareModel
     /// Candidates to send along with the card: the activities the user marked as applied.
     let activities: [ActivityModel]
+    /// Turns scanned text into a share or legacy card link for this build's web origin.
+    let parse: (String) -> ScannedLink?
+    /// A `/s/<UUID>` universal link the app was opened with.
+    @Binding var opened: URL?
     @State private var mode = 0
     @State private var editor = false
-    @State private var detail: CardModel?
-    @State private var torch = false
+    @State private var camera: QRCameraView.Access?
+    @State private var scanRound = 0
+    @State private var photo: PhotosPickerItem?
+    @State private var scanError: String?
+    @State private var received: ScannedLink?
     var body: some View {
         ScrollView {
             VStack(spacing: 12) {
@@ -19,14 +27,16 @@ struct QRPage: View {
             }.padding(20)
         }.background(.white).toolbar(.hidden, for: .navigationBar)
             .task { await share.load() }
+            .onChange(of: opened, initial: true) { _, url in
+                guard let url else { return }
+                opened = nil
+                scanned(url.absoluteString)
+            }
             .sheet(isPresented: $editor, onDismiss: { Task { await share.load() } }) {
                 NavigationStack { CardComposerPage(account: share.account) }
             }
-            .sheet(item: $detail) { card in
-                NavigationStack {
-                    SharedCardPage(card: card, state: state)
-                        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { detail = nil } } }
-                }
+            .sheet(item: $received, onDismiss: { scanRound += 1 }) { link in
+                NavigationStack { ReceivedSharePage(model: ReceivedShareModel(link: link, client: share.account.client)) }
             }
     }
     @ViewBuilder private var show: some View {
@@ -63,21 +73,42 @@ struct QRPage: View {
     }
     private var scan: some View {
         VStack(spacing: 14) {
-            VStack(spacing: 20) {
-                Spacer(minLength: 20)
-                Image(systemName: "viewfinder").font(.system(size: 120, weight: .ultraLight))
-                Text("명함의 QR 코드를 화면에 맞춰주세요.").font(.subheadline)
-                Button("예시 QR 읽기") { detail = state.received[0] }.buttonStyle(DearbyButtonStyle())
-                Button { torch.toggle() } label: {
-                    Image(systemName: torch ? "flashlight.on.fill" : "flashlight.off.fill").font(.title2)
-                        .padding(16).background(.white.opacity(torch ? 0.35 : 0.15), in: Circle())
-                }.accessibilityLabel("예시 손전등")
-                Spacer(minLength: 0)
-            }.padding(20).foregroundStyle(.white).frame(maxWidth: .infinity, minHeight: 370)
-                .background(Color(white: 0.2), in: RoundedRectangle(cornerRadius: 12))
-            Button("사진에서 선택", systemImage: "photo") { detail = state.received[0] }.buttonStyle(DearbyButtonStyle(outlined: true))
-            Text("카메라·사진에 접근하지 않고 예시 명함을 보여줘요.").font(.caption).foregroundStyle(DearbyStyle.quiet)
+            ZStack {
+                switch camera {
+                case .allowed?: QRCameraView { scanned($0) }.id(scanRound)
+                case .denied?: cameraNotice("카메라를 쓸 수 없어요", "설정에서 Dearby의 카메라 접근을 켜거나 사진에서 스캔해 주세요.")
+                case .unavailable?: cameraNotice("카메라가 없어요", "사진에서 스캔해 주세요.")
+                case nil: ProgressView().tint(.white)
+                }
+            }.frame(maxWidth: .infinity, minHeight: 370).background(Color(white: 0.2))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .accessibilityElement(children: .contain).accessibilityLabel("QR 스캔 화면")
+            PhotosPicker(selection: $photo, matching: .images) {
+                Label("사진에서 스캔", systemImage: "photo").frame(maxWidth: .infinity)
+            }.buttonStyle(DearbyButtonStyle(outlined: true))
+            if let scanError { Text(scanError).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.ink) }
+            Text("Dearby 명함 QR을 비추면 바로 열려요.").font(.caption).foregroundStyle(DearbyStyle.quiet)
         }
+        .task {
+            camera = await QRCameraView.requestAccess()
+        }
+        .onChange(of: photo) { _, item in
+            guard let item else { return }
+            Task {
+                let data = try? await item.loadTransferable(type: Data.self)
+                photo = nil
+                if let text = data.flatMap(QRImageReader.text) { scanned(text) } else { scanError = "사진에서 QR을 찾지 못했어요." }
+            }
+        }
+    }
+    private func cameraNotice(_ title: String, _ detail: String) -> some View {
+        VStack(spacing: 8) {
+            Text(title).font(.dearby(.headline))
+            Text(detail).font(.dearby(.subheadline)).multilineTextAlignment(.center)
+        }.foregroundStyle(.white).padding(24)
+    }
+    private func scanned(_ text: String) {
+        if let link = parse(text) { scanError = nil; received = link } else { scanError = "Dearby 명함 QR이 아니에요." }
     }
     private func tile(title: String, subtitle: String, symbol: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {

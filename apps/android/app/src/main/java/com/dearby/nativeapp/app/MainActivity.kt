@@ -9,12 +9,10 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.dearby.nativeapp.entities.account.api.AccountClient
 import com.dearby.nativeapp.entities.account.api.SessionVault
+import com.dearby.nativeapp.entities.account.model.ScannedLink
 import com.dearby.nativeapp.entities.catalog.api.fetchCatalog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -35,20 +33,14 @@ class MainActivity : ComponentActivity() {
     private val qrShare: QrShareViewModel by viewModels {
         viewModelFactory { initializer { QrShareViewModel(account) { sharedCardUrl(it, BuildConfig.WEB_ORIGIN) } } }
     }
-    // Captured from /s/<UUID> App Links; the shared-card screen is connected in a later step.
-    private var incomingShareId by mutableStateOf<String?>(null)
+    // Captured from /s/<UUID> App Links and shown as the shared-card screen.
+    private var incoming by mutableStateOf<ScannedLink?>(null)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         receive(intent)
         setContent {
             DearbyTheme {
-                DearbyApp(catalog, demo, account, publish, qrShare)
-                if (incomingShareId != null) AlertDialog(
-                    onDismissRequest = { incomingShareId = null },
-                    title = { Text("공유 명함 링크") },
-                    text = { Text("공유 명함 화면은 아직 연결되지 않았어요.") },
-                    confirmButton = { TextButton({ incomingShareId = null }) { Text("확인") } },
-                )
+                DearbyApp(catalog, demo, account, publish, qrShare, incoming) { incoming = null }
             }
         }
     }
@@ -57,6 +49,6 @@ class MainActivity : ComponentActivity() {
         receive(intent)
     }
     private fun receive(intent: Intent?) {
-        intent?.dataString?.let { incomingShareId = sharedCardId(it, BuildConfig.WEB_ORIGIN) }
+        intent?.dataString?.let { link -> sharedCardId(link, BuildConfig.WEB_ORIGIN)?.let { incoming = ScannedLink.Share(it) } }
     }
 }
