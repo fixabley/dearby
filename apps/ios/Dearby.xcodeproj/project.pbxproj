@@ -8,46 +8,47 @@
 
 /* Begin PBXBuildFile section */
 		024F8011C89F6C6B61A425C119756C72 /* CatalogViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 053751703539BD5009838DE016BAB2C8 /* CatalogViewModel.swift */; };
+		047DDB11AB2FDC7C57BBCCA25052109B /* AccountRealAPITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B56B5187FCAB7FB9007448A5EEFE0EAA /* AccountRealAPITests.swift */; };
 		113FBC41394B77BCEB8A46A0F694F956 /* CalendarTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75C79AE36C9344F331B89D8AC12D7201 /* CalendarTimelineView.swift */; };
+		1E14F1AB3C32DE9C5A51E93BC110406C /* PrototypeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 978BED74935D30CB36A80AB1C2C3F8DB /* PrototypeTests.swift */; };
 		21F7006ECC67F4F1C5D0E0E120F57870 /* AccountClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E8A2692D80A39FB7CA8E319F3AD89EB /* AccountClient.swift */; };
 		2223C5CFBD4B7E0CB19E181CED95A402 /* CalendarConflictState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F022BE5B50A2522B1434E8B1DF8B1A8 /* CalendarConflictState.swift */; };
 		3137B75BE7C65A93B59E03B5F5076FAF /* ProfilePage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 340D8DA80D4584003E6F7250B017E625 /* ProfilePage.swift */; };
 		330BC2435159BF2AAB0F6B1D75B30F59 /* ActivityArtwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE2251C834E12A4837B57BBA2AF785DA /* ActivityArtwork.swift */; };
 		357AC53CAD6E62094FC16BD296F45217 /* DemoApplicationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8224E809AE6AE3EC7681507295090D42 /* DemoApplicationView.swift */; };
-		3A40B8F09875A37741221F5256D694BF /* IdentityPrototypeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E8426790359B7CF38E476428A06C243 /* IdentityPrototypeTests.swift */; };
 		3B3EC95EC2BFF0905378F356F4EF9012 /* DemoIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99A7B49B3B51DF760FAB8B6CEC93C148 /* DemoIdentity.swift */; };
 		46B0D06F00A83DFFDCED80FEF31D836D /* CardEditorPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CB04900E4A319665A4E906A3EB8AE52 /* CardEditorPage.swift */; };
 		48532031337BF48866D1A9E93E8F2606 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E74338EE1A0DC84747CA06745D09ADB7 /* Foundation.framework */; };
 		492273E43C03AC2A2A25FFE066FBCE06 /* IdentityPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 795F9A5B919DE6FA38B644000E836069 /* IdentityPresentation.swift */; };
-		4C5AAFC61CA507131B0F1010CB0C18DC /* PrototypeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FAFCC383BD92145CB61FAE6A259A8DC /* PrototypeTests.swift */; };
 		574FFA20ECD47962008A4FC1D996FB3D /* WalletPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09BD2E12FC7A4F0DB30CDD9EA114AE00 /* WalletPage.swift */; };
 		592A8474FD55226D0407005AC2AAD9A4 /* SessionVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82C1616BCBF6DBDE4753B1322F0C8BE /* SessionVault.swift */; };
 		59BF094B573DD274155FBE8B4B1B483B /* CatalogPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = F75F00BB9EAD0C3B1B04038D7C53431F /* CatalogPage.swift */; };
 		5B2A1758471BF45AE52F8588B024BDE5 /* CardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9B7DBCE2C8261A4A9DAAC5BEEAF0508 /* CardView.swift */; };
 		5DB7E143C2F0F312A3D330CD5D8F57B1 /* DearbyControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 608E7AF00F3B9D41C8AD8CE5D5941798 /* DearbyControls.swift */; };
+		64E662322EC5F5C6316D9670314D9887 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E74338EE1A0DC84747CA06745D09ADB7 /* Foundation.framework */; };
 		65C8439933C9AC6499DB9B92B23BE244 /* IdentityNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 239302520DB0B98BC20A07DBE4D1648F /* IdentityNavigationTests.swift */; };
 		66301DBB378C7D46E09C60CA71813701 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E74338EE1A0DC84747CA06745D09ADB7 /* Foundation.framework */; };
 		6F9608C0DA645E58CBE14AD409B2B776 /* DearbyStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC82C499D2909A1867F90D21FAF59445 /* DearbyStyle.swift */; };
 		7694EA0018B448EE5A4EB874FA5ED756 /* ActivityDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 661A055AC73772F7E17455AF6616C76D /* ActivityDetailView.swift */; };
-		7938E61348B5B75A8C0F532161A64152 /* SharedControlsLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96D540339885789F6E26462E0BC10DF9 /* SharedControlsLayoutTests.swift */; };
 		79754012CCB77CDCCD3EAEE712FE542D /* AppLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F93036B4B01BC7FD9E165D4A81D805F /* AppLinks.swift */; };
 		7B0B95DE8ABFA03F095EFCEBDB780686 /* ActivityModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F2AE5D5BD77387A4AA95C86B87D0C6C /* ActivityModel.swift */; };
+		86562C57275E8FAFECDB6726FBAB36AC /* AccountTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FDB1646F6B89D9F730B544B1754486A /* AccountTests.swift */; };
 		92A5F1517F2C4F37DD5581EAA0EE4B92 /* DearbyComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7C37286F0E3864A8B81D368E03795BD /* DearbyComponents.swift */; };
 		9B52379E28B72600D31CA3FF21857EBC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 561201309CA6C1938F6EDABE5707BB5C /* Assets.xcassets */; };
 		A4ED95940C95340636E3381CDB3BC365 /* DearbyApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F5B518140BB6ED68B03F0C1C5630E5D /* DearbyApp.swift */; };
 		A553F63A61ABBE6F93677564547E36E4 /* AccountViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE6433D97B9C416720DF58C99A8CC02A /* AccountViewModel.swift */; };
 		A7AE31E874A23BC7EEF9F57458846E49 /* AppLinkProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC1B6AC58A2946DFB227564176976E5D /* AppLinkProvider.swift */; };
 		A98E033B983CE19F49EBBC03E3C3470B /* DemoActivities.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C44C7959831802D61033865742BC6CB /* DemoActivities.swift */; };
-		AAE786F06DC6731C24F70A272CB7CF94 /* AccountTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 879414E121010535551669C26581C9F0 /* AccountTests.swift */; };
 		ACAF17E6973256AFD18AF1DCDB2B6EED /* QRPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90CABC36082971EEB254740B8F310502 /* QRPage.swift */; };
-		ACE4573C3BF4657C7AD31576A5300A63 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E74338EE1A0DC84747CA06745D09ADB7 /* Foundation.framework */; };
+		B75463FFB4FA73FF88A7488F39D58CA3 /* IdentityPrototypeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C73CC63F2BB9EE30AFC5747F735DFC46 /* IdentityPrototypeTests.swift */; };
 		C8AD8EAE716B3529884956B0412770FF /* AccountModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D12499A80BF73AAB2E021AEC1F2605B /* AccountModels.swift */; };
-		CE937EF48AB2341B8FDAE7E6852C570D /* AppLinksTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17AD456E06B69AA5C1AEB589367FD103 /* AppLinksTests.swift */; };
 		E03A237515EF432877813E53F7F5CB1A /* ActivityRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = F21D2E6FF816E81FE74EC3CB94269414 /* ActivityRow.swift */; };
 		E0BBC97693074A2DC20E099ED270B7E3 /* CalendarConflictView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B0BC6B7D3BDB6045932CFF9A641FBCF /* CalendarConflictView.swift */; };
 		E4DDBD01302837017017041DE28696AB /* HomePage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69A840F1CFD5D13F68659E625FA8F5AE /* HomePage.swift */; };
 		E53CCCE0AB2F34B5DAD1B4F9F9DED3C9 /* DiscoveryNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F65112174D4A54E6056C91B7175F93C3 /* DiscoveryNavigationTests.swift */; };
+		E72FAAC7DA1F3C7DBD81A23104EEF50F /* AppLinksTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5265F2918766A98A1ABAA9E23A7D86F4 /* AppLinksTests.swift */; };
 		E7B2CB80F158F564311630C34E1B22FF /* SharedCardPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BE5F107089ED3726E5D9E5D96460C5B /* SharedCardPage.swift */; };
+		E9F8484A5CED9543D18C2C24DA52803D /* SharedControlsLayoutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2F8BF45C02276E56BC1F6C491E2B1D /* SharedControlsLayoutTests.swift */; };
 		FADBD075419FDA16E5F3AC420B6BFD3E /* MyActivitiesPage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 789E5A705A72EBFBBB0094064B2150DE /* MyActivitiesPage.swift */; };
 		FC8C9DD7C0FDB32FD961E2F4C5929714 /* ActivityInformationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA3A084864F9900CA48C704980DE993C /* ActivityInformationView.swift */; };
 		FDA83D2015D4A02D7AEB9D69ABE3EE9E /* IdentityViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64FDD15B5A43C0D66431FED7337D632E /* IdentityViewModel.swift */; };
@@ -61,7 +62,7 @@
 			remoteGlobalIDString = 461E128953BEE5F4C8C3C06BB079C2BE;
 			remoteInfo = Dearby;
 		};
-		D7515BD16818A8720033749F9BB4077C /* PBXContainerItemProxy */ = {
+		AFF92B67E8E5B8AE39D5756275EF9F00 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A3CEDBB63E4F6FDBB16A1A5A8F9EDEA6 /* Project object */;
 			proxyType = 1;
@@ -75,16 +76,15 @@
 		09BD2E12FC7A4F0DB30CDD9EA114AE00 /* WalletPage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = WalletPage.swift; path = Sources/widgets/identity/ui/WalletPage.swift; sourceTree = "<group>"; };
 		0EC0A14C40C1E6A227D18FCFA2314518 /* Dearby.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Dearby.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0F5B518140BB6ED68B03F0C1C5630E5D /* DearbyApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DearbyApp.swift; path = Sources/app/entrypoint/DearbyApp.swift; sourceTree = "<group>"; };
-		17AD456E06B69AA5C1AEB589367FD103 /* AppLinksTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AppLinksTests.swift; path = unitTests/AppLinksTests.swift; sourceTree = "<group>"; };
 		1B0BC6B7D3BDB6045932CFF9A641FBCF /* CalendarConflictView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CalendarConflictView.swift; path = Sources/features/calendar/ui/CalendarConflictView.swift; sourceTree = "<group>"; };
 		1CB04900E4A319665A4E906A3EB8AE52 /* CardEditorPage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CardEditorPage.swift; path = Sources/widgets/identity/ui/CardEditorPage.swift; sourceTree = "<group>"; };
 		1D12499A80BF73AAB2E021AEC1F2605B /* AccountModels.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AccountModels.swift; path = Sources/entities/account/model/AccountModels.swift; sourceTree = "<group>"; };
 		239302520DB0B98BC20A07DBE4D1648F /* IdentityNavigationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = IdentityNavigationTests.swift; path = uiTests/IdentityNavigationTests.swift; sourceTree = "<group>"; };
+		2F2F8BF45C02276E56BC1F6C491E2B1D /* SharedControlsLayoutTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SharedControlsLayoutTests.swift; path = unitTests/SharedControlsLayoutTests.swift; sourceTree = "<group>"; };
 		340D8DA80D4584003E6F7250B017E625 /* ProfilePage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ProfilePage.swift; path = Sources/widgets/identity/ui/ProfilePage.swift; sourceTree = "<group>"; };
-		3E8426790359B7CF38E476428A06C243 /* IdentityPrototypeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = IdentityPrototypeTests.swift; path = unitTests/IdentityPrototypeTests.swift; sourceTree = "<group>"; };
+		5265F2918766A98A1ABAA9E23A7D86F4 /* AppLinksTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AppLinksTests.swift; path = unitTests/AppLinksTests.swift; sourceTree = "<group>"; };
 		561201309CA6C1938F6EDABE5707BB5C /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; name = Assets.xcassets; path = Resources/Assets.xcassets; sourceTree = "<group>"; };
 		5C44C7959831802D61033865742BC6CB /* DemoActivities.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DemoActivities.swift; path = Sources/entities/catalog/model/DemoActivities.swift; sourceTree = "<group>"; };
-		5FAFCC383BD92145CB61FAE6A259A8DC /* PrototypeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PrototypeTests.swift; path = unitTests/PrototypeTests.swift; sourceTree = "<group>"; };
 		608E7AF00F3B9D41C8AD8CE5D5941798 /* DearbyControls.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DearbyControls.swift; path = Sources/shared/ui/DearbyControls.swift; sourceTree = "<group>"; };
 		6289792D8D33D858797301901B2488A0 /* DearbyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = DearbyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		64FDD15B5A43C0D66431FED7337D632E /* IdentityViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = IdentityViewModel.swift; path = Sources/widgets/identity/model/IdentityViewModel.swift; sourceTree = "<group>"; };
@@ -95,15 +95,17 @@
 		75C79AE36C9344F331B89D8AC12D7201 /* CalendarTimelineView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CalendarTimelineView.swift; path = Sources/features/calendar/ui/CalendarTimelineView.swift; sourceTree = "<group>"; };
 		789E5A705A72EBFBBB0094064B2150DE /* MyActivitiesPage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = MyActivitiesPage.swift; path = Sources/widgets/catalog/ui/MyActivitiesPage.swift; sourceTree = "<group>"; };
 		795F9A5B919DE6FA38B644000E836069 /* IdentityPresentation.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = IdentityPresentation.swift; path = Sources/entities/identity/ui/IdentityPresentation.swift; sourceTree = "<group>"; };
+		7FDB1646F6B89D9F730B544B1754486A /* AccountTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AccountTests.swift; path = unitTests/AccountTests.swift; sourceTree = "<group>"; };
 		8224E809AE6AE3EC7681507295090D42 /* DemoApplicationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DemoApplicationView.swift; path = Sources/features/application/ui/DemoApplicationView.swift; sourceTree = "<group>"; };
-		879414E121010535551669C26581C9F0 /* AccountTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AccountTests.swift; path = unitTests/AccountTests.swift; sourceTree = "<group>"; };
 		8BE5F107089ED3726E5D9E5D96460C5B /* SharedCardPage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SharedCardPage.swift; path = Sources/widgets/identity/ui/SharedCardPage.swift; sourceTree = "<group>"; };
 		8F022BE5B50A2522B1434E8B1DF8B1A8 /* CalendarConflictState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CalendarConflictState.swift; path = Sources/features/calendar/model/CalendarConflictState.swift; sourceTree = "<group>"; };
 		90CABC36082971EEB254740B8F310502 /* QRPage.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = QRPage.swift; path = Sources/widgets/identity/ui/QRPage.swift; sourceTree = "<group>"; };
-		96D540339885789F6E26462E0BC10DF9 /* SharedControlsLayoutTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SharedControlsLayoutTests.swift; path = unitTests/SharedControlsLayoutTests.swift; sourceTree = "<group>"; };
+		978BED74935D30CB36A80AB1C2C3F8DB /* PrototypeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = PrototypeTests.swift; path = unitTests/PrototypeTests.swift; sourceTree = "<group>"; };
 		99A7B49B3B51DF760FAB8B6CEC93C148 /* DemoIdentity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DemoIdentity.swift; path = Sources/entities/identity/model/DemoIdentity.swift; sourceTree = "<group>"; };
 		9F2AE5D5BD77387A4AA95C86B87D0C6C /* ActivityModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ActivityModel.swift; path = Sources/entities/catalog/model/ActivityModel.swift; sourceTree = "<group>"; };
 		AE6433D97B9C416720DF58C99A8CC02A /* AccountViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AccountViewModel.swift; path = Sources/features/account/model/AccountViewModel.swift; sourceTree = "<group>"; };
+		B56B5187FCAB7FB9007448A5EEFE0EAA /* AccountRealAPITests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AccountRealAPITests.swift; path = unitTests/AccountRealAPITests.swift; sourceTree = "<group>"; };
+		C73CC63F2BB9EE30AFC5747F735DFC46 /* IdentityPrototypeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = IdentityPrototypeTests.swift; path = unitTests/IdentityPrototypeTests.swift; sourceTree = "<group>"; };
 		C82C1616BCBF6DBDE4753B1322F0C8BE /* SessionVault.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = SessionVault.swift; path = Sources/entities/account/api/SessionVault.swift; sourceTree = "<group>"; };
 		C9B7DBCE2C8261A4A9DAAC5BEEAF0508 /* CardView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = CardView.swift; path = Sources/entities/identity/ui/CardView.swift; sourceTree = "<group>"; };
 		DA3A084864F9900CA48C704980DE993C /* ActivityInformationView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ActivityInformationView.swift; path = Sources/widgets/catalog/ui/ActivityInformationView.swift; sourceTree = "<group>"; };
@@ -127,11 +129,11 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A5CE128ECB0A8D069FD0091E06F1F36A /* Frameworks */ = {
+		8DAB5ACC8B6536AA9BC4D678AA6D4428 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				ACE4573C3BF4657C7AD31576A5300A63 /* Foundation.framework in Frameworks */,
+				64E662322EC5F5C6316D9670314D9887 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -152,18 +154,6 @@
 				E74338EE1A0DC84747CA06745D09ADB7 /* Foundation.framework */,
 			);
 			name = iOS;
-			sourceTree = "<group>";
-		};
-		136CDD4A7A2388062E73E5155CD5423B /* unitTests */ = {
-			isa = PBXGroup;
-			children = (
-				879414E121010535551669C26581C9F0 /* AccountTests.swift */,
-				17AD456E06B69AA5C1AEB589367FD103 /* AppLinksTests.swift */,
-				3E8426790359B7CF38E476428A06C243 /* IdentityPrototypeTests.swift */,
-				5FAFCC383BD92145CB61FAE6A259A8DC /* PrototypeTests.swift */,
-				96D540339885789F6E26462E0BC10DF9 /* SharedControlsLayoutTests.swift */,
-			);
-			name = unitTests;
 			sourceTree = "<group>";
 		};
 		1A8D98290730476D1DE92E00B2ECD74E /* Sources */ = {
@@ -238,7 +228,7 @@
 				6D8019C4DFC001FB98E7C993097BE0C0 /* Products */,
 				80E5F736C614F64399D3267F2F294958 /* Frameworks */,
 				1A8D98290730476D1DE92E00B2ECD74E /* Sources */,
-				136CDD4A7A2388062E73E5155CD5423B /* unitTests */,
+				F143DE1A15691333B2AB506363D059E8 /* unitTests */,
 				94E70C72FDAFF7FA89B6ABA5AAA01CC4 /* uiTests */,
 				73F778D38E1051DC3B2D09A27729A582 /* Resources */,
 			);
@@ -251,6 +241,19 @@
 				239302520DB0B98BC20A07DBE4D1648F /* IdentityNavigationTests.swift */,
 			);
 			name = uiTests;
+			sourceTree = "<group>";
+		};
+		F143DE1A15691333B2AB506363D059E8 /* unitTests */ = {
+			isa = PBXGroup;
+			children = (
+				B56B5187FCAB7FB9007448A5EEFE0EAA /* AccountRealAPITests.swift */,
+				7FDB1646F6B89D9F730B544B1754486A /* AccountTests.swift */,
+				5265F2918766A98A1ABAA9E23A7D86F4 /* AppLinksTests.swift */,
+				C73CC63F2BB9EE30AFC5747F735DFC46 /* IdentityPrototypeTests.swift */,
+				978BED74935D30CB36A80AB1C2C3F8DB /* PrototypeTests.swift */,
+				2F2F8BF45C02276E56BC1F6C491E2B1D /* SharedControlsLayoutTests.swift */,
+			);
+			name = unitTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -274,18 +277,18 @@
 			productReference = 0EC0A14C40C1E6A227D18FCFA2314518 /* Dearby.app */;
 			productType = "com.apple.product-type.application";
 		};
-		903157DAE329DCF0510420BC0B671796 /* DearbyTests */ = {
+		F56AF7E14EED9F658FE3900477DD275F /* DearbyTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = DD4097B2891D0190EB4C65CEF6EA608A /* Build configuration list for PBXNativeTarget "DearbyTests" */;
+			buildConfigurationList = 1CFFB7C381B42A2CAAC2559135BFD201 /* Build configuration list for PBXNativeTarget "DearbyTests" */;
 			buildPhases = (
-				78AEF95979FA066942D70C329ADAB274 /* Sources */,
-				A5CE128ECB0A8D069FD0091E06F1F36A /* Frameworks */,
-				D11A94E3D6FB2AFEA93C5C9AE02F41A6 /* Resources */,
+				4AFDE96580F009427C476F7A82EB670F /* Sources */,
+				8DAB5ACC8B6536AA9BC4D678AA6D4428 /* Frameworks */,
+				9456354F78C254A37C8126D3BB0C4ECE /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				9343E0EDB3A818D273932982BEB951BA /* PBXTargetDependency */,
+				6D7A99DCA5941C1721672B1F9A3EA731 /* PBXTargetDependency */,
 			);
 			name = DearbyTests;
 			productName = DearbyTests;
@@ -335,7 +338,7 @@
 			projectRoot = "";
 			targets = (
 				461E128953BEE5F4C8C3C06BB079C2BE /* Dearby */,
-				903157DAE329DCF0510420BC0B671796 /* DearbyTests */,
+				F56AF7E14EED9F658FE3900477DD275F /* DearbyTests */,
 				F6EA7A098C6F1E9BBBCE1F0543B96A71 /* DearbyUITests */,
 			);
 		};
@@ -349,7 +352,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		D11A94E3D6FB2AFEA93C5C9AE02F41A6 /* Resources */ = {
+		9456354F78C254A37C8126D3BB0C4ECE /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -429,15 +432,16 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		78AEF95979FA066942D70C329ADAB274 /* Sources */ = {
+		4AFDE96580F009427C476F7A82EB670F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AAE786F06DC6731C24F70A272CB7CF94 /* AccountTests.swift in Sources */,
-				CE937EF48AB2341B8FDAE7E6852C570D /* AppLinksTests.swift in Sources */,
-				3A40B8F09875A37741221F5256D694BF /* IdentityPrototypeTests.swift in Sources */,
-				4C5AAFC61CA507131B0F1010CB0C18DC /* PrototypeTests.swift in Sources */,
-				7938E61348B5B75A8C0F532161A64152 /* SharedControlsLayoutTests.swift in Sources */,
+				047DDB11AB2FDC7C57BBCCA25052109B /* AccountRealAPITests.swift in Sources */,
+				86562C57275E8FAFECDB6726FBAB36AC /* AccountTests.swift in Sources */,
+				E72FAAC7DA1F3C7DBD81A23104EEF50F /* AppLinksTests.swift in Sources */,
+				B75463FFB4FA73FF88A7488F39D58CA3 /* IdentityPrototypeTests.swift in Sources */,
+				1E14F1AB3C32DE9C5A51E93BC110406C /* PrototypeTests.swift in Sources */,
+				E9F8484A5CED9543D18C2C24DA52803D /* SharedControlsLayoutTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -453,38 +457,21 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		6D7A99DCA5941C1721672B1F9A3EA731 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = Dearby;
+			target = 461E128953BEE5F4C8C3C06BB079C2BE /* Dearby */;
+			targetProxy = AFF92B67E8E5B8AE39D5756275EF9F00 /* PBXContainerItemProxy */;
+		};
 		8DF35E41C05095F0E70CCF0F4D03D3D1 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = Dearby;
 			target = 461E128953BEE5F4C8C3C06BB079C2BE /* Dearby */;
 			targetProxy = 63EBED741CC900E5AC771F650F15B63D /* PBXContainerItemProxy */;
 		};
-		9343E0EDB3A818D273932982BEB951BA /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = Dearby;
-			target = 461E128953BEE5F4C8C3C06BB079C2BE /* Dearby */;
-			targetProxy = D7515BD16818A8720033749F9BB4077C /* PBXContainerItemProxy */;
-		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		03910EE9B62BA360554E3C3D808E3303 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGN_STYLE = Automatic;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.dearby.dearbytests;
-				SDKROOT = iphoneos;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Dearby.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Dearby";
-			};
-			name = Debug;
-		};
 		11E39BF9EBC19C3B065F4ED4B9A5AF43 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -554,6 +541,41 @@
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
+		};
+		2A4AC4F1E96074A0DE38B2EB0AB39D3E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dearby.dearbytests;
+				SDKROOT = iphoneos;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Dearby.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Dearby";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		694FE13F8C01D71A196B3C736EE5EC93 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dearby.dearbytests;
+				SDKROOT = iphoneos;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Dearby.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Dearby";
+			};
+			name = Debug;
 		};
 		6ECEBFABC274003C57C5512DE85B8743 /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -686,27 +708,18 @@
 			};
 			name = Release;
 		};
-		FF9FAD94641CAAAB77AD325EEB325018 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CLANG_ENABLE_OBJC_WEAK = NO;
-				CODE_SIGN_STYLE = Automatic;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.dearby.dearbytests;
-				SDKROOT = iphoneos;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Dearby.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Dearby";
-				VALIDATE_PRODUCT = YES;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		1CFFB7C381B42A2CAAC2559135BFD201 /* Build configuration list for PBXNativeTarget "DearbyTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2A4AC4F1E96074A0DE38B2EB0AB39D3E /* Release */,
+				694FE13F8C01D71A196B3C736EE5EC93 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		37F415A5473060E6BE56B4081D0BB1C3 /* Build configuration list for PBXNativeTarget "Dearby" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -721,15 +734,6 @@
 			buildConfigurations = (
 				AACAA6051421545E9AE1829ABC644489 /* Release */,
 				11E39BF9EBC19C3B065F4ED4B9A5AF43 /* Debug */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		DD4097B2891D0190EB4C65CEF6EA608A /* Build configuration list for PBXNativeTarget "DearbyTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				FF9FAD94641CAAAB77AD325EEB325018 /* Release */,
-				03910EE9B62BA360554E3C3D808E3303 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
