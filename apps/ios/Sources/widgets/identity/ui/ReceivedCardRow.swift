@@ -12,12 +12,12 @@ struct ReceivedCardRow: View {
             HStack(spacing: 12) {
                 DearbyAvatar(name: name, size: 44)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(name).font(.headline).foregroundStyle(DearbyStyle.ink)
-                    if !job.isEmpty { Text(job).font(.subheadline).foregroundStyle(DearbyStyle.quiet).lineLimit(1) }
+                    Text(name).font(.dearby(.headline)).foregroundStyle(DearbyStyle.ink)
+                    if !job.isEmpty { Text(job).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).lineLimit(1) }
                     if let activityTitle { DearbyTogetherActivityLabel(title: activityTitle, otherCount: otherActivityCount) }
                 }
                 Spacer(minLength: 0)
-                Image(systemName: "chevron.right").font(.footnote.weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
+                Image(systemName: "chevron.right").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
                     .accessibilityHidden(true)
             }.padding(.vertical, 10).frame(minHeight: 44).contentShape(Rectangle())
         }.buttonStyle(.plain).accessibilityElement(children: .combine)
