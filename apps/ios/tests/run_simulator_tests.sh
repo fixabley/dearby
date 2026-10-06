@@ -13,6 +13,17 @@ if [ -z "$sim" ]; then
 fi
 mkdir -p .build/prepush
 log=.build/prepush/test.log
+# One simulator test run at a time on this Mac: parallel runs from several checkouts starve each other.
+lock=${TMPDIR:-/tmp}/dearby-simulator-tests.lock
+waited=0
+until mkdir "$lock" 2>/dev/null; do
+  owner=$(cat "$lock/pid" 2>/dev/null || true)
+  if [ -n "$owner" ] && ! kill -0 "$owner" 2>/dev/null; then rm -rf "$lock"; continue; fi
+  [ $((waited % 30)) -eq 0 ] && echo "waiting for another simulator test run (pid ${owner:-?}) ... ${waited}s"
+  sleep 5; waited=$((waited + 5))
+done
+echo $$ > "$lock/pid"
+trap 'rm -rf "$lock"' EXIT
 # Large-text test paused by user request (2026-10-06) until asked again.
 status=0
 xcodebuild -project Dearby.xcodeproj -scheme Dearby -destination "platform=iOS Simulator,id=$sim" \
