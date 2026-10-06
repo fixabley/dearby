@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.runtime.*
 import com.dearby.nativeapp.shared.ui.DearbyControlsGallery
+import com.dearby.nativeapp.shared.ui.DearbyStatesSample
 import com.dearby.nativeapp.shared.ui.DearbySearchField
 import com.dearby.nativeapp.widgets.card.cardContent.ReceivedCardGroupsSample
 import com.dearby.nativeapp.widgets.card.cardContent.QrShareCard
@@ -134,6 +135,17 @@ class SharedControlsTest {
         compose.onNodeWithContentDescription("Dearby 개발자 컨퍼런스 공식 사이트에서 신청, 외부 브라우저로 열려요").performClick()
         assert(applied == "https://example.invalid/apply")
         capture("android-activity-quick-apply")
+    }
+
+    @Test fun listStatesShowCallerTextAndRetry() {
+        var retried = 0
+        compose.setContent { DearbyTheme { Box(Modifier.testTag("gallery")) { DearbyStatesSample { retried++ } } } }
+        compose.onNodeWithText("활동을 불러오는 중이에요.").assertExists()
+        compose.onNodeWithText("활동을 불러오지 못했어요").assert(isHeading())
+        compose.onNodeWithText("모집 중인 활동이 없어요").assert(isHeading())
+        compose.onNodeWithText("다시 시도").performClick()
+        assert(retried == 1)
+        capture("android-list-states")
     }
 
     @Test fun readingStateKeepsLabels() {
