@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "C324A8B6A0D9AF417DF25CF908314679"
+               BlueprintIdentifier = "C3D85360FC6763183772BD35C907E163"
                BuildableName = "Dearby.app"
                BlueprintName = "Dearby"
                ReferencedContainer = "container:Dearby.xcodeproj">
@@ -30,7 +30,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "C324A8B6A0D9AF417DF25CF908314679"
+            BlueprintIdentifier = "C3D85360FC6763183772BD35C907E163"
             BuildableName = "Dearby.app"
             BlueprintName = "Dearby"
             ReferencedContainer = "container:Dearby.xcodeproj">
@@ -73,7 +73,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "C324A8B6A0D9AF417DF25CF908314679"
+            BlueprintIdentifier = "C3D85360FC6763183772BD35C907E163"
             BuildableName = "Dearby.app"
             BlueprintName = "Dearby"
             ReferencedContainer = "container:Dearby.xcodeproj">
@@ -90,7 +90,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "C324A8B6A0D9AF417DF25CF908314679"
+            BlueprintIdentifier = "C3D85360FC6763183772BD35C907E163"
             BuildableName = "Dearby.app"
             BlueprintName = "Dearby"
             ReferencedContainer = "container:Dearby.xcodeproj">
