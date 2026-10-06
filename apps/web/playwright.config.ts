@@ -24,6 +24,9 @@ export default defineConfig({
       env: {
         DEARBY_API_ORIGIN: "http://127.0.0.1:4319",
         GUEST_PROXY_SECRET: "test-proxy-secret-with-more-than-32-characters",
+        // Apple values only, so the Android file stays unpublished (404).
+        DEARBY_APPLE_TEAM_ID: "ABCDE12345",
+        DEARBY_IOS_BUNDLE_IDS: "com.example.app",
       },
     },
   ],
