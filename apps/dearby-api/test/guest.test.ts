@@ -44,9 +44,9 @@ test('guest first save validates public ID, requires proxy, stores only digest, 
     const second = (await f.guest('PUT',`/cards/${f.card.id}`)).json().guestToken;
     assert.notEqual(second,token);
     await f.guest('DELETE',`/cards/${f.card.id}`,token);
-    assert.deepEqual((await f.guest('GET','/cards',token)).json(),{items:[]});
+    assert.deepEqual((await f.guest('GET','/cards',token)).json(),{items:[],shares:[]});
     const list = await f.guest('GET','/cards',second);
-    assert.deepEqual(list.json(),{items:[f.card]});
+    assert.deepEqual(list.json(),{items:[f.card],shares:[]});
     assert.ok(!list.body.includes('hidden@example.com'));
     assert.ok(!list.body.includes('private-owner@example.com'));
     assert.ok(!list.body.includes(second));
@@ -65,7 +65,7 @@ test('same guest token survives cookie renewal, arbitrary elapsed time and datab
   const f = await setup();
   const token = (await f.guest('PUT',`/cards/${f.card.id}`)).json().guestToken;
   f.advance(10 * 366 * 86400000);
-  assert.deepEqual((await f.guest('GET','/cards',token)).json(),{items:[f.card]});
+  assert.deepEqual((await f.guest('GET','/cards',token)).json(),{items:[f.card],shares:[]});
   assert.deepEqual((await f.guest('PUT',`/cards/${f.card.id}`,token)).json(),{cardId:f.card.id,status:'alreadySaved'});
   assert.equal(await f.db.guestSession.count(),1);
   await f.app.close(); await f.db.$disconnect();
@@ -73,7 +73,7 @@ test('same guest token survives cookie renewal, arbitrary elapsed time and datab
   const {app} = createApp(db,{otpSecret:'test-only-secret-not-for-runtime',guestProxySecret:secret,sendCode:async()=>{throw Error('No SMTP');}});
   try {
     const response = await app.inject({url:'/v1/guest/cards',headers:{'x-guest-proxy-key':secret,'x-guest-token':token}});
-    assert.deepEqual(response.json(),{items:[f.card]});
+    assert.deepEqual(response.json(),{items:[f.card],shares:[]});
     assert.deepEqual(await db.guestSession.findMany(),[{digest:hash(token)}]);
   } finally {await app.close();await db.$disconnect();await f.close();}
 });
@@ -151,7 +151,7 @@ test('global abuse bound covers invalid tokens and read failure is never an empt
     assert.equal(await f.db.guestSession.count(),0);
     f.advance(60000);
     const token=(await f.guest('PUT',`/cards/${f.card.id}`)).json().guestToken;
-    await f.admin.query('DROP TABLE dearby_api.guest_cards');
+    await f.admin.query('DROP TABLE dearby_api.guest_cards CASCADE');
     const failure=await f.guest('GET','/cards',token);
     assert.equal(failure.statusCode,500);
     assert.deepEqual(failure.json(),{error:{code:'INTERNAL_ERROR',message:'Request failed'}});

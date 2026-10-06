@@ -3,6 +3,7 @@ import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { collectionSchema, promptFor, prepareCollection } from "./collect.mjs";
+import { reverifyPublished } from "./reverify.mjs";
 const base = process.env.SUPABASE_URL,
   service = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!base || !service)
@@ -22,6 +23,7 @@ const childEnv = Object.fromEntries(
     .filter((key) => process.env[key])
     .map((key) => [key, process.env[key]]),
 );
+const at = () => new Date().toISOString();
 async function rpc(name, body = {}) {
   const response = await fetch(base + "/rest/v1/rpc/" + name, {
     method: "POST",
@@ -32,6 +34,8 @@ async function rpc(name, body = {}) {
     },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(20000),
+  }).catch((error) => {
+    throw new Error(`${name}: ${error.message}`);
   });
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
@@ -44,26 +48,43 @@ const programIndex = process.argv.indexOf("--program");
 const target = programIndex >= 0 ? process.argv[programIndex + 1] : null;
 if (programIndex >= 0 && (!target || !/^[0-9a-f-]{36}$/i.test(target)))
   throw new Error("--program requires a UUID");
-if (process.argv.includes("--enqueue"))
-  await rpc("enqueue_catalog_collection", { target_program: target });
-if (process.argv.includes("--catch-up")) {
-  const res = await fetch(
-    base + "/rest/v1/catalog_collection_settings?select=enabled&id=eq.true",
-    {
-      headers: { apikey: service, Authorization: `Bearer ${service}` },
-      signal: AbortSignal.timeout(10000),
-    },
-  );
-  if (!res.ok) throw new Error("Cannot read collection schedule settings");
-  const hour = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Asia/Seoul", hour: "2-digit", hourCycle: "h23",
-  }).format(new Date());
-  if ((await res.json())[0]?.enabled && hour >= "09")
-    await rpc("enqueue_catalog_collection");
+// Every scheduled run first extends due published activities; this needs no Codex call.
+if (!target) {
+  try {
+    for (const result of await reverifyPublished(rpc))
+      console.log(at(), JSON.stringify({ reverify: result }));
+  } catch (error) {
+    console.error(`${at()} Re-verification failed: ${error.message}`);
+  }
+  if (process.argv.includes("--reverify")) process.exit(0);
 }
-const task = await rpc("claim_catalog_collection", { target_program: target });
+let task;
+// Network failures before a claim are logged, not crashed: an orphaned lease is recovered by the DB.
+try {
+  if (process.argv.includes("--enqueue"))
+    await rpc("enqueue_catalog_collection", { target_program: target });
+  if (process.argv.includes("--catch-up")) {
+    const res = await fetch(
+      base + "/rest/v1/catalog_collection_settings?select=enabled&id=eq.true",
+      {
+        headers: { apikey: service, Authorization: `Bearer ${service}` },
+        signal: AbortSignal.timeout(10000),
+      },
+    );
+    if (!res.ok) throw new Error("Cannot read collection schedule settings");
+    const hour = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Seoul", hour: "2-digit", hourCycle: "h23",
+    }).format(new Date());
+    if ((await res.json())[0]?.enabled && hour >= "09")
+      await rpc("enqueue_catalog_collection");
+  }
+  task = await rpc("claim_catalog_collection", { target_program: target });
+} catch (error) {
+  console.error(`${at()} Collection setup failed: ${error.message}`);
+  process.exit(1);
+}
 if (!task) {
-  console.log("No collection job ready.");
+  console.log(`${at()} No collection job ready.`);
   process.exit(0);
 }
 const identity = { job_id: task.job.id, token: task.job.lease_token };
@@ -234,6 +255,7 @@ try {
     },
   });
   console.log(
+    at(),
     JSON.stringify({ program: task.program.title, job: task.job.id, ...stats }),
   );
 } catch (error) {
@@ -251,12 +273,12 @@ try {
     });
   } catch {
     console.error(
-      "Could not persist failure; lease recovery will handle the job.",
+      `${at()} Could not persist failure; lease recovery will handle the job.`,
     );
   }
-  console.error(JSON.stringify({ usage, web_search_calls: searches }));
+  console.error(at(), JSON.stringify({ usage, web_search_calls: searches }));
   console.error(
-    `Collection failed for ${task.program.title}: ${error.message}`,
+    `${at()} Collection failed for ${task.program.title}: ${error.message}`,
   );
   process.exitCode = 1;
 } finally {

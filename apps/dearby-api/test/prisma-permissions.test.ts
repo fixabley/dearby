@@ -14,10 +14,10 @@ test('runtime owns no objects, cannot bypass RLS/DDL/public/Auth; browser roles 
   "SELECT setval('dearby_api.cards_ordinal_seq',1,false)",
  ]) await assert.rejects(f.db.$executeRawUnsafe(sql)); // Fixed test-only statements.
  const owned=await f.admin.query("SELECT count(*)::int AS n FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner WHERE r.rolname='dearby_api_runtime'");assert.equal(owned.rows[0].n,0);
- const policies=await f.admin.query("SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='dearby_api' AND rowsecurity");assert.equal(policies.rows[0].n,14);
+ const policies=await f.admin.query("SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='dearby_api' AND rowsecurity");assert.equal(policies.rows[0].n,17);
  for(const role of ['anon','authenticated','service_role']){
   const conn=await f.admin.connect();
-  try {await conn.query('SET ROLE '+role);await assert.rejects(conn.query('SELECT * FROM dearby_api.profiles'));await assert.rejects(conn.query('SELECT * FROM dearby_api.guest_sessions'));}
+  try {await conn.query('SET ROLE '+role);await assert.rejects(conn.query('SELECT * FROM dearby_api.profiles'));await assert.rejects(conn.query('SELECT * FROM dearby_api.guest_sessions'));await assert.rejects(conn.query('SELECT * FROM dearby_api.card_shares'));await assert.rejects(conn.query('SELECT * FROM dearby_api.guest_card_shares'));await assert.rejects(conn.query('SELECT * FROM dearby_api.guest_handoffs'));}
   finally {await conn.query('RESET ROLE');conn.release();}
  }
  const admin=openPostgres({DATABASE_URL:f.connection.replace('dearby_api_runtime:','postgres:')});

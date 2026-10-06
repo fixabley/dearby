@@ -10,6 +10,11 @@ ui_tests.add_dependency(app)
   group = project.main_group.new_group(folder)
   Dir.glob("#{folder}/**/*.swift").sort.each { |file| target.source_build_phase.add_file_reference(group.new_file(file)) }
 end
+# Release builds must get https domain origins from the build environment (contract "연결 설정").
+validate = app.new_shell_script_build_phase('Validate connection origins')
+validate.shell_script = 'bash "$SRCROOT/scripts/validate_origins.sh"'
+validate.always_out_of_date = '1'
+app.build_phases.move(validate, 0)
 resources = project.main_group.new_group('Resources')
 app.resources_build_phase.add_file_reference(resources.new_file('Resources/Assets.xcassets'))
 # Pretendard copies of shared/assets/fonts/pretendard; also listed in UIAppFonts.
@@ -32,8 +37,12 @@ project.targets.each do |target|
         'MARKETING_VERSION' => '0.1.0', 'CURRENT_PROJECT_VERSION' => '1',
         'INFOPLIST_KEY_CFBundleDisplayName' => 'Dearby',
         'INFOPLIST_KEY_UILaunchScreen_Generation' => 'YES',
-        'INFOPLIST_KEY_UIApplicationSceneManifest_Generation' => 'YES'
+        'INFOPLIST_KEY_UIApplicationSceneManifest_Generation' => 'YES',
+        # Universal links for shared cards: the host is the last path component of the web origin.
+        'DEARBY_WEB_HOST' => '$(DEARBY_WEB_ORIGIN:file)'
       })
+      # Release only, where the origin is validated; Debug device builds need no extra capability.
+      config.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'Dearby.entitlements' if config.name == 'Release'
       if config.name == 'Debug'
         config.build_settings['SWIFT_ACTIVE_COMPILATION_CONDITIONS'] = 'DEBUG'
         config.build_settings['INFOPLIST_FILE'] = 'Info-Debug.plist'
