@@ -19,9 +19,10 @@ test('Prisma public RPC reads only published catalog; no SQLite or REST fallback
 });
 test('HTTP upstream and mail failures sanitized, forwarded IP never trusted',async t=>{
  const f=await fixture(smtpMailer({}));t.after(f.close);
- for(let i=0;i<21;i++){
-  const r=await f.app.inject({method:'POST',url:'/v1/auth/challenges',headers:{'x-forwarded-for':`192.0.2.${i}`},payload:{email:`proxy${i}@example.com`}});
-  assert.equal(r.statusCode,i<20?503:429);
+ // A failed delivery still consumes the address quota, and a forwarded header cannot reset it.
+ for(let i=0;i<2;i++){
+  const r=await f.app.inject({method:'POST',url:'/v1/auth/challenges',headers:{'x-forwarded-for':`192.0.2.${i}`},payload:{email:'proxy@example.com'}});
+  assert.equal(r.statusCode,i<1?503:429);
  }
  assert.equal(await f.db.challenge.count(),0);
 });

@@ -2,6 +2,16 @@
 
 2026-09-29 검증. 소유 checkout `/Users/jominjun/Documents/dearby/catalog-subscription-collector`, 브랜치 `fixabley/catalog-subscription-collector`. root는 IR 작업으로 전환했고 이 세션이 수집 구현을 독립 소유했다. 감독용 orchestration이나 별도 에이전트를 만들지 않았다. 사용자 요청대로 이 세션/worktree를 유지한다.
 
+## 현재 상태 — 2026-10-06 수집기 담당 확인
+
+아래 날짜별 절은 당시 기록이다. 이 절은 2026-10-06 오전(배포 로그 마지막 기록 03:05 KST 직후)에 읽기 전용으로 확인한 결과다.
+
+- 소스: main `apps/catalog-worker`가 정본이다. 배포 사본 `~/.dearby-deploy/catalog-worker-d7e5da7/apps/catalog-worker`와 내용이 같다(`diff -rq`, logs·.env.local 제외). main 변경은 사용자 승인 후 재배포해야 운영에 반영된다.
+- 실행: LaunchAgent가 배포 사본을 `--once --catch-up`으로 60초마다 실행한다(runs 3096, last exit 0). DB는 cloud Supabase다. 로컬 Supabase 컨테이너나 이 checkout은 운영 경로가 아니다. 09-29 절의 어드민 5174 실행 상태는 당시 기록이다.
+- Node: launchd가 npx 캐시의 Node 24.21.0(`~/.npm/_npx/538786c08bcb9442/...`)에 고정되어 있다. npm 캐시를 정리하면 워커가 멈춘다. 안정된 Node 24 경로로 재설치하는 일은 사용자 승인 대상이다.
+- 실패 양상: 배포 오류 로그에 실패 405줄, 결과 로그에 처리 70줄이 있다. 같은 프로그램이 매일 3회씩 같은 이유로 실패한다. 주요 원인은 원문 본문 없음(JS 렌더링 추정), 1 MB 초과, 설정 호스트 불일치, 빈 결과 근거 구절 확인 실패다. 구조적 실패를 재시도하지 않는 작업은 수집기 담당 작업 1번으로 진행한다. 로그에 시각이 없어 실패 시점은 알 수 없다(PR #115로 시각 추가).
+- 검사: 이 checkout에서 `npm run check`, `npm test` 12개 통과(Node 24.21.0·26.10.0). 큐 통합 테스트는 로컬 Supabase가 꺼져 있어 실행하지 않았다.
+
 ## 2026-10-06 main 소스 이전
 
 사용자 승인으로 수집기 담당 에이전트가 main 기준으로 작업하도록 `d7e5da7`의 `apps/catalog-worker/`만 main에 옮겼다. 해당 브랜치의 나머지 변경(iOS·Supabase 테스트·어드민)은 main에 더 새 버전이 있어 가져오지 않았다. 배포 사본과 브랜치 파일의 SHA-256 일치를 다시 확인했다. LaunchAgent는 계속 배포 사본을 실행하며 이번 이전으로 실행 중인 워커·환경 파일·Cron은 바뀌지 않는다. 로컬 `npm run check`·`npm test` 12개 통과(Node 26으로 실행, engines는 24). CI에 같은 검사를 Node 24로 추가했다. 큐 통합 테스트는 로컬 Supabase가 필요해 실행하지 않았다.

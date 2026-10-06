@@ -42,7 +42,7 @@ Node24, 자기 API cwd에서 설치/실행. 운영에 연결하지 않는 임시
 
 ## root 배포 인계
 
-[nginx-docs.location.conf](../../apps/dearby-api/deploy/nginx-docs.location.conf)는 HTTPS server 안에 추가할 최소 제안이다. exact `/docs`308→`/docs/`, `^~ /docs/` GET/HEAD proxy58865, Authorization/Cookie/X-Guest-Token/X-Guest-Proxy-Key 제거, access/error 로그 비활성. 기존 `/v1` allowlist를 바꾸지 않는다. 실제 shared nginx 파일/인증서/DB/운영 컨테이너는 root만 변경한다.
+`nginx-docs.location.conf`(2026-10-06 이후 [api.locations.conf](../../apps/dearby-api/deploy/nginx/dearby-api/api.locations.conf)로 통합)는 HTTPS server 안에 추가할 최소 제안이다. exact `/docs`308→`/docs/`, `^~ /docs/` GET/HEAD proxy58865, Authorization/Cookie/X-Guest-Token/X-Guest-Proxy-Key 제거, access/error 로그 비활성. 기존 `/v1` allowlist를 바꾸지 않는다. 실제 shared nginx 파일/인증서/DB/운영 컨테이너는 root만 변경한다.
 
 root가 source/image 검토·CI 확인·merge·런타임 배포 후 `/docs/`, JSON/YAML, 정적 자산과 nginx 제한을 검증한다. 외부 Vercel→API 연결 #65는 문서 구현이나 로컬 TLS 성공으로 해결된 것으로 표현하지 않는다. 앞선 운영 전환 완료와 외부 Compose/env 정본, SQLite 원본 보존·신규 PG 쓰기 후 단순 SQLite rollback 금지는 [Prisma 인계](api-prisma-postgres.md)를 따른다.
 

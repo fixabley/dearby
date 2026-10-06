@@ -7,6 +7,18 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 const worker = fileURLToPath(new URL("../src/worker.mjs", import.meta.url));
+const run = (env) =>
+  new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [worker], {
+      env: { ...process.env, SUPABASE_SERVICE_ROLE_KEY: "test-private", ...env },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let output = "";
+    child.stdout.on("data", (b) => (output += b));
+    child.stderr.on("data", (b) => (output += b));
+    child.on("error", reject);
+    child.on("close", (code) => resolve({ code, output }));
+  });
 async function scenario(auth) {
   const calls = [];
   const server = createServer(async (req, res) => {
@@ -52,23 +64,11 @@ process.stdin.resume();process.stdin.on('end',()=>{
 `,
       { mode: 0o700 },
     );
-    const result = await new Promise((resolve, reject) => {
-      const child = spawn(process.execPath, [worker], {
-        env: {
-          ...process.env,
-          CODEX_BIN: bin,
-          SUPABASE_URL: `http://127.0.0.1:${server.address().port}`,
-          SUPABASE_SERVICE_ROLE_KEY: "test-private",
-          OPENAI_API_KEY: "must-not-forward",
-          CODEX_API_KEY: "must-not-forward",
-        },
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-      let output = "";
-      child.stdout.on("data", (b) => (output += b));
-      child.stderr.on("data", (b) => (output += b));
-      child.on("error", reject);
-      child.on("close", (code) => resolve({ code, output }));
+    const result = await run({
+      CODEX_BIN: bin,
+      SUPABASE_URL: `http://127.0.0.1:${server.address().port}`,
+      OPENAI_API_KEY: "must-not-forward",
+      CODEX_API_KEY: "must-not-forward",
     });
     return { calls, ...result };
   } finally {
@@ -85,7 +85,9 @@ test("exec isolates secrets, pins subscription model/tools, and records failed-r
   assert.match(fail.body.reason, /Official source unavailable/);
   assert.equal(fail.body.run_usage.input_tokens, 123);
   assert.equal(fail.body.run_usage.web_search_calls, 1);
-  assert.equal(fail.body.blocked, false);
+  // Structural source failure: no same-day retry, but never the subscription-wide pause.
+  assert.equal(fail.body.blocked, true);
+  assert.doesNotMatch(fail.body.reason, /^BLOCKED: Codex subscription/);
   assert.ok(!result.calls.some((c) => c.name === "finish_catalog_collection"));
 });
 test("API login cannot execute; authentication failure is blocked for operator attention", async () => {
@@ -96,4 +98,19 @@ test("API login cannot execute; authentication failure is blocked for operator a
   assert.equal(fail.body.blocked, true);
   assert.match(fail.body.reason, /subscription login required/);
   assert.equal(fail.body.run_usage.web_search_calls, 0);
+});
+test("claim network failure is logged with a timestamp instead of crashing", async () => {
+  const server = createServer((req) => req.socket.destroy());
+  await new Promise((r) => server.listen(0, "127.0.0.1", r));
+  try {
+    const result = await run({ SUPABASE_URL: `http://127.0.0.1:${server.address().port}` });
+    assert.equal(result.code, 1);
+    assert.match(
+      result.output,
+      /^\d{4}-\d\d-\d\dT[\d:.]+Z Collection setup failed: claim_catalog_collection: /,
+    );
+    assert.ok(!result.output.includes("triggerUncaughtException"));
+  } finally {
+    server.close();
+  }
 });
