@@ -3,8 +3,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Card } from "@/lib/models";
 import { errorMessage, mutateGuest, request, RequestError } from "@/lib/client";
-import { Empty, Failure, Loading } from "./states";
-import { Icon } from "./icon";
+import { Empty, Failure, Loading } from "@/shared/ui/states";
+import { Icon } from "@/shared/ui/icon";
 export function SavedCards() {
   const [cards, setCards] = useState<Card[]>();
   const [error, setError] = useState("");

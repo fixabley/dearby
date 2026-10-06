@@ -16,7 +16,7 @@
 
 | 시안 | 적용 화면과 예시 동작 |
 | --- | --- |
-| [탐색](approved/discovery.png) | 로고·제목·유형 칩·사진 카드. 카드 → 상세, 책갈피 → 이번 실행의 저장 목록. |
+| [탐색](approved/discovery.png) | 로고·제목·유형 칩·사진 카드. 카드 → 상세. 활동 즐겨찾기는 없다(2026-10-06 결정). |
 | [상세 상단](approved/activity-detail-top.png) | 큰 사진·분류 배지·조직·정렬된 정보 행·소개·고정 신청 버튼. |
 | [상세 일정](approved/activity-detail-schedule.png) | 세로 일정표와 겹침 확인 버튼 → 예시 캘린더 선택/결과. |
 | [상세 하단](approved/activity-detail-bottom.png) | 참가 안내·장소·출처, 예시 외부 링크. |
@@ -34,7 +34,7 @@
 | [반환 완료 명함함](approved/wallet-reciprocal-only.png) | 예시 보내기로 미반환이 0이 되면 그룹 문구 숨김. |
 | [보낼 명함 선택](approved/send-card-picker.png) | 내 명함 묶음·이름/직무 헤더·선택·상세·새 명함·예시 보내기. |
 
-기본 탭은 발견·저장·QR·받은 명함·내 프로필이다. 별도 저장 화면 시안은 없으므로 탐색 카드 스타일을 재사용한다.
+기본 탭은 발견·내 활동·QR·받은 명함·내 프로필이다(2026-10-06 결정, iOS·Android 반영). 내 활동은 신청한 활동을 일정순으로 보여 주고 항목·상세에서 `참여 확정 표시`를 켜고 끈다. 별도 시안이 없으므로 탐색 카드 스타일을 재사용한다.
 화면에 보이는 문구는 예시 목적에 맞게 조정한다. 휴대폰 프레임·상태 표시줄·생성 이미지의 노이즈는 재현하지 않는다.
 실제 접수·기기 저장·전송 완료로 오해할 문구는 예시임을 알 수 있도록 바꾼다.
 
@@ -71,11 +71,13 @@ SwiftUI와 Compose의 UI 소스는 각 플랫폼 안에서 공유하고, 이미�
 | --- | --- | --- |
 | 색상·주요 버튼·로고 | `Sources/shared/ui/DearbyStyle.swift` | `shared/ui/Components.kt` |
 | 배지·아바타·정보 행·시트 헤더 | `Sources/shared/ui/DearbyComponents.swift` | `shared/ui/Components.kt` |
+| 두 항목 전환·검색 칸·묶음 머리글·선택 칩·인라인 입력 칸 | `Sources/shared/ui/DearbyControls.swift`(두 항목 전환은 `DearbyComponents.swift`) | `shared/ui/Controls.kt` |
 | 명함·연락처·활동 이력 조합 | `Sources/entities/identity/ui` | `widgets/card/cardContent` |
 | 활동 목록·상세 | `Sources/widgets/catalog/ui` | `pages/catalog` |
 | 프로필·QR·명함함 | `Sources/widgets/identity/ui` | `pages/profile`, `pages/qr`, `pages/wallet` |
 | 공통 이미지 원본 | 저장소 루트 `shared/assets/prototype` | 저장소 루트 `shared/assets/prototype` |
 
+2026-10-06 추가한 공통 입력 컴포넌트의 이름·인자는 [신청 활동·명함 공유 정본](../context/feature-applied-activities-and-cards.md#ui-컴포넌트-공개-api)을 따른다. 웹 `SectionHeader`·`Segments`는 `미반영`이다.
 Swift 경로는 `apps/ios`, Kotlin 경로는 `apps/android/app/src/main/java/com/dearby/nativeapp` 기준이다.
 먼저 공통 표현을 수정하고 해당 화면들이 이를 참조하도록 한다. 화면 이동과 예시 상태는 공통 UI 컴포넌트에 넣지 않는다.
 이미지 원본을 바꿀 때에는 iOS 이미지 세트와 Android drawable 사본도 함께 갱신한다.
