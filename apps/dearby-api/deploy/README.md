@@ -71,9 +71,9 @@ Root may add the `/docs` locations (now in [nginx/dearby-api/api.locations.conf]
 
 Documentation schemas are supplied only to the Swagger transform through route config. They are never installed as Fastify validation or response serialization schemas: handlers keep their existing Zod422 validation, private-field projection, partial wallet import and guest token contracts. Zod refinements not expressible in JSON Schema are described in the reference. Existing production Prisma rollout, canonical external compose/env paths and SQLite preservation constraints are recorded in [the Prisma handoff](../../../docs/context/api-prisma-postgres.md).
 
-## Production nginx: api.dearby.wid.io.kr and public API routes — prepared, not applied
+## Production nginx: API host and public API routes
 
-2026-10-06 user decisions: add a dedicated API host and tidy the production nginx at the next API deployment. Main (root) applies it; this repository only holds the finished files. The production file was read, never changed.
+2026-10-06 user decisions: add a dedicated API host and tidy the production nginx at the next API deployment. Main (root) applies it; this repository only holds the finished files. Environment values (origins, keys, secrets) are not committed; deployment env files hold names and fake values only. The host names in `nginx/default.conf` are the nginx configuration itself, not environment values.
 
 | File | Production path | Role |
 | --- | --- | --- |
@@ -90,11 +90,11 @@ Apply in order:
 2. **Certificate SAN:** reissue `/etc/nginx/certs/fullchain.pem` with `wid.io.kr` and `api.dearby.wid.io.kr`. Until then only the new host fails TLS (name mismatch); `wid.io.kr` is unaffected.
 3. **Stage 1:** deploy the API image containing the share routes (#84). Copy the files above with the handoff include still commented, then run `nginx -t` and reload. Without the matching API image, the new share paths only reach Fastify's 404.
 4. **Stage 2:** after the #110 API image is deployed, uncomment the handoff `include` line, then run `nginx -t` and reload.
-5. **Consumers:** set the web (Vercel) and app `DEARBY_API_ORIGIN` to `https://api.dearby.wid.io.kr` and verify catalog and guest save through the web. Keep `wid.io.kr` routes until a separate decision removes them.
+5. **Consumers:** point `DEARBY_API_ORIGIN` at the API host origin, then verify catalog and guest save through the web. The value itself is never committed: it lives in Vercel environment variables (web), GitHub Actions Variables/Secrets (app builds) and the ignored server env file. Keep `wid.io.kr` routes until a separate decision removes them.
 
 **Certificate risk (checked read-only 2026-10-06):** the current certificate has only `DNS:wid.io.kr` and expires **2026-12-28 10:55 UTC**. The renewal config is `authenticator = manual` with `pref_challs = dns-01`, so the existing `certbot renew --non-interactive` loop cannot answer the challenge and will not renew it. Both hosts fail TLS at expiry unless root renews it by hand or moves to an automatic method, for example the Route 53 DNS plugin with a credential limited to this zone, which works without inbound reachability. HTTP-01 webroot would also need the external reachability below.
 
-**External reachability:** until [#65](https://github.com/fixabley/dearby/issues/65) is resolved, the new host is no more reachable from outside than `wid.io.kr` (same public IP and router path). Local `nginx -t` and routing checks prove only the configuration.
+**External reachability:** [#65](https://github.com/fixabley/dearby/issues/65) was resolved on 2026-10-06 according to main's report (public IP changed, double NAT removed). Stage 1 (API host, share routes, removal of the unused blocks) was applied to production by main on the same day. A read-only file comparison on 2026-10-06 found the production `conf.d/default.conf` and `conf.d/dearby-api/api.locations.conf` identical to this repository (the handoff file is not deployed yet). Live HTTP behaviour was not re-checked here. Local `nginx -t` and routing checks prove only the configuration.
 
 ### Local verification (temporary containers only)
 

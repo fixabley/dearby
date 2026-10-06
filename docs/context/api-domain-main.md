@@ -47,6 +47,6 @@ root 요청으로 독립 `dearby-api-guest-review`를 `http://127.0.0.1:58867`�
   - #110 세션 잇기 경로(2단계, include 주석 해제)를 연다.
   - 쓰지 않는 `dearby.wid.io.kr`·`dev.dearby.wid.io.kr` 블록을 삭제한다.
 - 회원 경로(`/v1/auth/*`, `/v1/profile`, 명함 생성 등)는 404로 둔다. #89 뒤에 따로 연다.
-- 적용 순서: Route 53 A → 인증서 SAN → API 이미지(#84) 배포와 1단계 nginx → #110 배포 뒤 2단계 → 웹·앱 `DEARBY_API_ORIGIN` 변경. 상태 코드 표와 순서는 [deploy README](../../apps/dearby-api/deploy/README.md)에 있다.
+- 적용 순서: Route 53 A → 인증서 SAN → API 이미지(#84) 배포와 1단계 nginx → #110 배포 뒤 2단계 → 웹·앱 `DEARBY_API_ORIGIN` 변경. 이 값은 git에 넣지 않고 Vercel 환경변수, GitHub Actions Variables/Secrets, 서버의 무시되는 env 파일에만 둔다. 상태 코드 표와 순서는 [deploy README](../../apps/dearby-api/deploy/README.md)에 있다.
 - 위험: 현재 인증서는 `wid.io.kr`만 포함하고 2026-12-28에 만료된다. 갱신 설정이 `authenticator = manual`(dns-01)이라 자동 갱신이 되지 않는다(2026-10-06 읽기 전용 확인).
-- 외부 도달성 [#65](https://github.com/fixabley/dearby/issues/65)가 풀리기 전에는 새 도메인도 밖에서 열리지 않는다.
+- 외부 도달성 [#65](https://github.com/fixabley/dearby/issues/65)는 2026-10-06 메인 보고에 따르면 해결됐다(공인 IP 변경, 이중 NAT 제거). 같은 날 메인이 nginx 1단계(api host, 공유 경로, 쓰지 않는 블록 정리)를 운영에 적용했다. 같은 날 읽기 전용 파일 비교로 운영 `default.conf`·`dearby-api/api.locations.conf`가 저장소와 같음을 확인했다(handoff 파일은 아직 없음). 운영 HTTP 동작은 다시 확인하지 않았다. 2단계(handoff)는 #110 배포 뒤 적용한다.
