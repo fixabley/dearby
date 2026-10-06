@@ -1,12 +1,14 @@
 {
-  "widgets/catalog": [
-    "CatalogPage",
-    "CatalogViewModel",
-    "MyActivitiesPage",
-    "ActivityCard"
-  ],
-  "features/calendar": [
-    "CalendarConflictView"
+  "entities/account": [
+    "AccountClient",
+    "AccountContact",
+    "AccountError",
+    "AccountHistory",
+    "AccountProfile",
+    "AccountSession",
+    "PublishedCard",
+    "SessionStore",
+    "SessionVault"
   ],
   "entities/catalog": [
     "ActivityModel",
@@ -14,66 +16,64 @@
     "CatalogClient",
     "DemoActivities"
   ],
-  "shared": [
-    "DearbyStyle",
-    "DearbyLogo",
-    "DearbyButtonStyle",
-    "DearbyBadge",
-    "DearbyAvatar",
-    "DearbyInfoRow",
-    "DearbySheetHeader",
-    "DearbySegments",
-    "DearbySectionHeader",
-    "DearbySearchField",
-    "DearbySearchReveal",
-    "DearbyChoice",
-    "DearbyChoiceChips",
-    "DearbyInlineField",
-    "DearbyTogetherActivityLabel",
-    "DearbyQRCode",
-    "AppOrigins",
-    "SharedCardLink",
-    "SearchQuery"
-  ],
   "entities/identity": [
-    "CardModel",
-    "ContactModel",
-    "HistoryModel",
-    "DemoIdentity",
-    "IdentityHeading",
-    "HistoryTimeline",
-    "ContactIcons",
-    "ContactSymbol",
-    "CardView",
     "CardDeck",
+    "CardModel",
+    "CardView",
+    "ContactIcons",
+    "ContactModel",
+    "ContactSymbol",
+    "DemoIdentity",
+    "HistoryModel",
+    "HistoryTimeline",
+    "IdentityHeading",
     "WalletGroup"
+  ],
+  "features/calendar": [
+    "CalendarConflictView"
   ],
   "pages/home": [
     "HomePage"
   ],
+  "shared": [
+    "AppOrigins",
+    "DearbyAvatar",
+    "DearbyBadge",
+    "DearbyButtonStyle",
+    "DearbyChoice",
+    "DearbyChoiceChips",
+    "DearbyInfoRow",
+    "DearbyInlineField",
+    "DearbyLogo",
+    "DearbyQRCode",
+    "DearbySearchField",
+    "DearbySearchReveal",
+    "DearbySectionHeader",
+    "DearbySegments",
+    "DearbySheetHeader",
+    "DearbyStyle",
+    "DearbyTogetherActivityLabel",
+    "SearchQuery",
+    "SharedCardLink"
+  ],
+  "widgets/catalog": [
+    "ActivityCard",
+    "CatalogPage",
+    "CatalogViewModel",
+    "MyActivitiesPage"
+  ],
   "widgets/identity": [
-    "IdentityViewModel",
-    "QRPage",
-    "WalletPage",
-    "ProfilePage",
-    "ReceivedCardRow",
-    "QRShareCard",
-    "QRScanOverlay",
+    "AccountViewModel",
     "CardComposer",
     "CardComposerContact",
     "CardComposerHistory",
-    "AccountViewModel",
-    "CardComposerPage"
-  ],
-  "entities/account": [
-    "AccountSession",
-    "AccountContact",
-    "AccountHistory",
-    "AccountProfile",
-    "PublishedCard",
-    "AccountError",
-    "AccountClient",
-    "SessionStore",
-    "SessionVault"
+    "CardComposerPage",
+    "IdentityViewModel",
+    "ProfilePage",
+    "QRPage",
+    "QRScanOverlay",
+    "QRShareCard",
+    "ReceivedCardRow",
+    "WalletPage"
   ]
 }

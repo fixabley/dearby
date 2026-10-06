@@ -87,6 +87,9 @@ jobs:
           echo "PROFILE_NAME=$name" >> "$GITHUB_ENV"
       - name: Archive
         run: |
+          # The Xcode project is generated, not tracked.
+          gem install --user-install --no-document xcodeproj
+          ruby scripts/generate_project.rb
           # Monotonic build number above the manual uploads (1, 2); re-runs get a new suffix.
           build="$((GITHUB_RUN_NUMBER + 2)).$GITHUB_RUN_ATTEMPT"
           echo "BUILD_NUMBER=$build" >> "$GITHUB_ENV"
