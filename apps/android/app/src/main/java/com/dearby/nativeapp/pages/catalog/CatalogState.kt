@@ -14,7 +14,9 @@ data class ActivityState(
     // Example application, plus the user's own (not the organizer's) participation mark.
     val applied: Boolean = false, val confirmed: Boolean = false,
 )
-data class CatalogState(val phase: CatalogPhase = CatalogPhase.LOADING, val activities: List<ActivityState> = emptyList(), val filter: String = "전체") {
+/** [askingId]: the activity whose application link was opened, asked about once when the app comes back (contract #148). */
+data class CatalogState(val phase: CatalogPhase = CatalogPhase.LOADING, val activities: List<ActivityState> = emptyList(), val filter: String = "전체", val askingId: String? = null) {
+    val asking get() = activities.find { it.id == askingId }
     val visibleActivities get() = activities.filter { it.open && (filter == "전체" || it.participation == filter) }
     val appliedActivities get() = activities.filter { it.applied }.sortedBy { it.startAt ?: "~" }
 }

@@ -93,6 +93,11 @@ struct ActivityDetailView: View {
                 }
                 .buttonStyle(DearbyButtonStyle()).accessibilityIdentifier("open-application")
                 .accessibilityHint("외부 브라우저로 열려요")
+                // Only the application link (not the official notice) leads to the "신청하셨나요?" prompt.
+                .environment(\.openURL, OpenURLAction { opened in
+                    if apply != nil { state.openedApplication(activity.id) }
+                    return .systemAction(opened)
+                })
                 .padding(.horizontal, 20).padding(.vertical, 12)
             }.background(.white)
         }
