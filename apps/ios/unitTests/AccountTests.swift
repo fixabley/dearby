@@ -1,4 +1,5 @@
 import CoreImage
+import SwiftUI
 import XCTest
 @testable import Dearby
 
@@ -217,5 +218,16 @@ private final class MemoryStore: SessionStore, @unchecked Sendable {
         await gone.load()
         XCTAssertEqual(gone.phase, .missing)
         XCTAssertEqual(fake.requests[1].url?.path, "/v1/cards/card-9")
+    }
+    /// The QR the app shows decodes to exactly `<web origin>/s/<UUID>`, which the scanner opens as a share.
+    func testShownQRDecodesToTheWebShareLinkAndScansBackAsAShare() throws {
+        let web = URL(string: "https://dearby.wid.io.kr")!
+        let url = SharedCardLink.url(shareID: "5a1e0000-0000-4000-8000-000000000001", web: web)
+        let renderer = ImageRenderer(content: DearbyQRCode(text: url.absoluteString).frame(width: 300, height: 300).padding(40).background(.white))
+        let image = try XCTUnwrap(renderer.uiImage?.pngData())
+        let text = try XCTUnwrap(QRImageReader.text(in: image))
+        XCTAssertEqual(text, "https://dearby.wid.io.kr/s/5a1e0000-0000-4000-8000-000000000001")
+        XCTAssertFalse(text.hasPrefix("dearby://"))
+        XCTAssertEqual(ScannedLink.parse(text, web: web), .share("5a1e0000-0000-4000-8000-000000000001"))
     }
 }
