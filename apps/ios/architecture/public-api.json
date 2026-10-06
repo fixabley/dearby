@@ -1,7 +1,8 @@
 {
   "widgets/catalog": [
     "CatalogPage",
-    "CatalogViewModel"
+    "CatalogViewModel",
+    "MyActivitiesPage"
   ],
   "features/calendar": [
     "CalendarConflictView"
@@ -22,7 +23,15 @@
     "DearbyAvatar",
     "DearbyInfoRow",
     "DearbySheetHeader",
-    "DearbySegments"
+    "DearbySegments",
+    "DearbySectionHeader",
+    "DearbySearchField",
+    "DearbySearchReveal",
+    "DearbyChoice",
+    "DearbyChoiceChips",
+    "DearbyInlineField",
+    "AppOrigins",
+    "SharedCardLink"
   ],
   "entities/identity": [
     "CardModel",

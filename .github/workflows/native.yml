@@ -9,6 +9,28 @@ concurrency:
   group: native-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ios: ${{ steps.diff.outputs.ios }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      # The macOS runner is scarce; run the iOS job only when iOS inputs change.
+      # A job skipped by its `if` still satisfies the required "iOS architecture" check.
+      - id: diff
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ "${{ github.event_name }}" != pull_request ]; then echo "ios=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if git diff --name-only "$BASE" HEAD | grep -qE '^(apps/ios/|shared/assets/|\.github/workflows/native\.yml$)'; then
+            echo "ios=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ios=false" >> "$GITHUB_OUTPUT"
+          fi
   api:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -77,6 +99,8 @@ jobs:
       - run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
   ios:
     name: iOS architecture
+    needs: changes
+    if: always() && (needs.changes.result != 'success' || needs.changes.outputs.ios == 'true')
     runs-on: macos-26
     timeout-minutes: 40
     defaults:
@@ -97,5 +121,6 @@ jobs:
         run: |
           device_id=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for devices in d["devices"].values() for x in devices if x["name"].startswith("iPhone")))')
           echo "DEARBY_SIMULATOR_ID=$device_id" >> "$GITHUB_ENV"
+      # Large-text test paused by user request (2026-10-06) until asked again.
       - name: Build and test
-        run: xcodebuild -project Dearby.xcodeproj -scheme Dearby -destination "platform=iOS Simulator,id=$DEARBY_SIMULATOR_ID" -parallel-testing-enabled NO test
+        run: xcodebuild -project Dearby.xcodeproj -scheme Dearby -destination "platform=iOS Simulator,id=$DEARBY_SIMULATOR_ID" -parallel-testing-enabled NO test -skip-testing:DearbyUITests/DiscoveryNavigationTests/testAccessibilityTextCalendarAndWalletRemainUsable
