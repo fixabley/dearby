@@ -18,7 +18,7 @@ main 변경은 이 절차로 배포 사본을 바꿔야 운영에 반영된다. 
 
 0. 전제
    - 배포할 PR이 모두 main에 병합되어 있어야 한다.
-   - 재확인 워커(#124)는 migration `20261006000000_catalog_reverify`가 cloud에 적용된 뒤에만 배포한다. 적용 여부는 서비스 키로 `POST /rest/v1/rpc/catalog_reverify_candidates`를 호출해 JSON 배열이 오는지로 읽기 전용 확인한다.
+   - 재확인 워커(#124)는 migration `20261006005000_catalog_reverify`가 cloud에 적용된 뒤에만 배포한다. 적용 여부는 서비스 키로 `POST /rest/v1/rpc/catalog_reverify_candidates`를 호출해 JSON 배열이 오는지로 읽기 전용 확인한다.
    - `codex login status`가 `Logged in using ChatGPT`여야 한다.
 1. 유휴 확인: `launchctl print gui/501/com.dearby.catalog-subscription-worker`에서 `state = not running`이고, 배포 로그 마지막 줄이 `No collection job ready.`일 때 진행한다.
 2. 새 배포 사본
