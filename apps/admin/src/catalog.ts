@@ -138,7 +138,7 @@ export function collectionBlock(error: string | null) {
   if (/^BLOCKED: (Official|All candidates)/.test(error ?? ""))
     return {
       label: "원문 차단 · 이 프로그램만",
-      hint: "공식 원문의 호스트·크기(1 MB 이하)·JS 전용 여부를 확인하고 출처를 고친 뒤 재시도하세요.",
+      hint: "공식 원문의 호스트·크기(3 MB 이하)·JS 전용 여부를 확인하고 출처를 고친 뒤 재시도하세요.",
     };
   if (error?.startsWith("BLOCKED: Configure official hosts"))
     return {

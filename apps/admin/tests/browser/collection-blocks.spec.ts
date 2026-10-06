@@ -48,7 +48,7 @@ test("collection jobs label subscription and source blocks with next steps", asy
           job(
             "00000000-0000-4000-8000-0000000000a2",
             "원문 프로그램",
-            "BLOCKED: Official page exceeds 1 MB",
+            "BLOCKED: Official page exceeds 3 MB",
           ),
         ],
         headers: { "content-range": "0-1/2" },

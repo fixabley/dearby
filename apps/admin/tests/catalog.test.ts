@@ -86,7 +86,7 @@ test("blocked collection jobs distinguish subscription, source and host setup", 
     "원문 차단 · 이 프로그램만",
   );
   assert.equal(
-    collectionBlock("BLOCKED: Official page exceeds 1 MB").label,
+    collectionBlock("BLOCKED: Official page exceeds 3 MB").label,
     "원문 차단 · 이 프로그램만",
   );
   assert.equal(
