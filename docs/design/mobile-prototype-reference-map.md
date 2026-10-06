@@ -85,7 +85,7 @@ SwiftUI와 Compose의 UI 소스는 각 플랫폼 안에서 공유하고, 이미�
 2026-10-06 추가한 공통 입력 컴포넌트의 이름·인자는 [신청 활동·명함 공유 정본](../context/feature-applied-activities-and-cards.md#ui-컴포넌트-공개-api)을 따른다. 웹은 `shared/ui/section-header.tsx`, `widgets/card`의 `TogetherActivityLabel`·`ReceivedCardRow`로 반영했다.
 Swift 경로는 `apps/ios`, Kotlin 경로는 `apps/android/app/src/main/java/com/dearby/nativeapp` 기준이다.
 먼저 공통 표현을 수정하고 해당 화면들이 이를 참조하도록 한다. 화면 이동과 예시 상태는 공통 UI 컴포넌트에 넣지 않는다.
-이미지 원본을 바꿀 때에는 iOS 이미지 세트와 Android drawable 사본도 함께 갱신한다.
+이미지 원본을 바꿀 때에는 iOS 이미지 세트와 Android drawable 사본도 함께 갱신한다. Android 예시 활동 사진(`prototype_conference·camp·meetup`)은 2026-10-06부터 debug 미리보기 전용이라 `app/src/debug/res/drawable-nodpi`에 두며 release APK에 들어가지 않는다.
 
 ## 검증 상태
 
