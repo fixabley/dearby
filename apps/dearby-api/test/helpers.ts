@@ -1,10 +1,17 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import pg from 'pg';
-import {readFileSync} from 'node:fs';
+import {readFileSync,readdirSync} from 'node:fs';
 import { openPostgres,verifyRuntimeRole } from '../src/postgres.js';
 import { createApp } from '../src/app.js';
 import type { SendCode } from '../src/mail.js';
+// Every Supabase migration in name order, so new ones apply automatically (run-postgres.mjs applies the same set
+// to the cluster). pg_cron can only be created in the cluster's postgres database, so per-test databases get a
+// no-op cron.schedule instead of that one extension statement; nothing is scheduled in tests.
+const migrationDir=new URL('../../../supabase/migrations/',import.meta.url);
+const cronExtension='create extension if not exists pg_cron with schema pg_catalog;';
+const migrations=readdirSync(migrationDir).filter(f=>f.endsWith('.sql')).sort()
+  .map(f=>readFileSync(new URL(f,migrationDir),'utf8').replace(cronExtension,''));
 export async function fixture(send?:SendCode,guestProxySecret?:string) {
   const source=process.env.PG_TEST_ADMIN_URL;
   if(process.env.NODE_ENV!=='test'||!source)throw Error('Isolated PostgreSQL test harness required');
@@ -16,7 +23,8 @@ export async function fixture(send?:SendCode,guestProxySecret?:string) {
   const url=new URL(source);url.pathname='/'+name;
   const admin=new pg.Pool({connectionString:url.toString()});
   await admin.query("CREATE SCHEMA auth; CREATE SCHEMA extensions; CREATE TABLE auth.users(id uuid PRIMARY KEY,raw_app_meta_data jsonb); CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT null::uuid $$;");
-  for(const file of ['20260929000000_discovery_admin.sql','20260929010000_catalog_criteria.sql','20260929150000_api_prisma.sql','20261006000000_api_card_shares.sql','20261006010000_api_guest_handoffs.sql','20261006020000_catalog_organization_tree.sql','20261006030000_catalog_snapshot_organization_parents.sql','20261006040000_api_wallet_shares.sql']) await admin.query(readFileSync(new URL('../../../supabase/migrations/'+file,import.meta.url),'utf8'));
+  await admin.query("CREATE SCHEMA cron; CREATE FUNCTION cron.schedule(text,text,text) RETURNS bigint LANGUAGE sql AS 'SELECT 0::bigint';");
+  for(const sql of migrations) await admin.query(sql);
   url.username='dearby_api_runtime';
   const connection=url.toString();const db=openPostgres({DATABASE_URL:connection});await verifyRuntimeRole(db);
   let clock=Date.now(); const codes=new Map<string,string>();
