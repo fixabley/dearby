@@ -29,7 +29,9 @@
     "DearbySearchReveal",
     "DearbyChoice",
     "DearbyChoiceChips",
-    "DearbyInlineField"
+    "DearbyInlineField",
+    "AppOrigins",
+    "SharedCardLink"
   ],
   "entities/identity": [
     "CardModel",
