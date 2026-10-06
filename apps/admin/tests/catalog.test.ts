@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  collectionBlock,
   discoveryStatus,
   normalizeSchedules,
   type Activity,
@@ -71,4 +72,30 @@ test("unknown schedule times stay null and invalid/reversed intervals fail", () 
     ]),
   );
   assert.throws(() => normalizeSchedules([{ ...s, timeZone: "invalid" }]));
+});
+
+test("blocked collection jobs distinguish subscription, source and host setup", () => {
+  assert.equal(
+    collectionBlock(
+      "BLOCKED: Codex subscription quota or login requires attention",
+    ).label,
+    "구독 차단 · 전체 일시정지",
+  );
+  assert.equal(
+    collectionBlock("BLOCKED: Official source unavailable: JS only").label,
+    "원문 차단 · 이 프로그램만",
+  );
+  assert.equal(
+    collectionBlock("BLOCKED: Official page exceeds 1 MB").label,
+    "원문 차단 · 이 프로그램만",
+  );
+  assert.equal(
+    collectionBlock("BLOCKED: All candidates failed").label,
+    "원문 차단 · 이 프로그램만",
+  );
+  assert.equal(
+    collectionBlock("BLOCKED: Configure official hosts for this program").label,
+    "설정 필요 · 이 프로그램만",
+  );
+  assert.deepEqual(collectionBlock(null), { label: "조치 필요", hint: "" });
 });

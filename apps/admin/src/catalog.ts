@@ -128,3 +128,22 @@ export function normalizeSchedules(schedules: Schedule[]): Schedule[] {
     };
   });
 }
+/** Blocked collection jobs share status=blocked; the worker's error prefix says what to fix. */
+export function collectionBlock(error: string | null) {
+  if (error?.startsWith("BLOCKED: Codex subscription"))
+    return {
+      label: "구독 차단 · 전체 일시정지",
+      hint: "Mac의 Codex 로그인·구독 한도를 확인한 뒤 재시도하세요. 해소 전까지 모든 프로그램 수집이 멈춥니다.",
+    };
+  if (/^BLOCKED: (Official|All candidates)/.test(error ?? ""))
+    return {
+      label: "원문 차단 · 이 프로그램만",
+      hint: "공식 원문의 호스트·크기(1 MB 이하)·JS 전용 여부를 확인하고 출처를 고친 뒤 재시도하세요.",
+    };
+  if (error?.startsWith("BLOCKED: Configure official hosts"))
+    return {
+      label: "설정 필요 · 이 프로그램만",
+      hint: "프로그램 관리에서 공식 출처 호스트를 입력한 뒤 재시도하세요.",
+    };
+  return { label: "조치 필요", hint: "" };
+}
