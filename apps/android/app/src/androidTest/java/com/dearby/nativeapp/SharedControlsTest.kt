@@ -11,6 +11,14 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.runtime.*
 import com.dearby.nativeapp.shared.ui.DearbyControlsGallery
 import com.dearby.nativeapp.shared.ui.DearbySearchField
+import com.dearby.nativeapp.widgets.card.cardContent.ReceivedCardGroupsSample
+import com.dearby.nativeapp.widgets.card.cardContent.QrShareCard
+import com.dearby.nativeapp.widgets.card.cardContent.QrShareSample
+import com.dearby.nativeapp.widgets.card.cardContent.CardComposerSample
+import com.dearby.nativeapp.widgets.activity.activityCard.ActivityCardSample
+import androidx.compose.foundation.layout.size
+import com.dearby.nativeapp.shared.ui.DearbyChoice
+import androidx.compose.ui.semantics.SemanticsProperties
 import com.dearby.nativeapp.shared.ui.rememberDearbySearchReveal
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
@@ -46,6 +54,8 @@ class SharedControlsTest {
         compose.onNodeWithContentDescription("검색어 지우기").performClick()
         compose.onNodeWithContentDescription("검색어 지우기").assertDoesNotExist()
         compose.onNodeWithContentDescription("이름").assertTextEquals("김지민")
+        compose.onNodeWithContentDescription("함께한 활동, Dearby 개발자 컨퍼런스").assertExists()
+        compose.onNodeWithContentDescription("함께한 활동, Dearby 메이커 캠프 여름 시즌 집중 프로그램 외 2개").assertExists()
         capture("android-controls-edit")
     }
 
@@ -72,6 +82,58 @@ class SharedControlsTest {
         compose.onNodeWithTag("list").performTouchInput { swipeUp(startY = bottom - 10f, endY = bottom - 400f, durationMillis = 400) }
         compose.waitForIdle()
         compose.onNodeWithContentDescription("검색").assertExists()
+    }
+
+    @Test fun groupHeaderTogglesAndAnnouncesState() {
+        compose.setContent { DearbyTheme { Box(Modifier.testTag("gallery")) { ReceivedCardGroupsSample() } } }
+        val header = compose.onNodeWithContentDescription("Dearby 개발자 컨퍼런스, 2개")
+        header.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "펼침")).assert(isHeading())
+        compose.onNodeWithText("이서연").assertExists()
+        capture("android-received-groups")
+        header.performClick().assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "접힘"))
+        compose.onNodeWithText("이서연").assertDoesNotExist()
+        compose.onNodeWithText("최유나").assertExists()
+    }
+
+    @Test fun qrShareCardShowsCodeAndKeepsActivitiesFolded() {
+        var shared = 0
+        compose.setContent { DearbyTheme { Box(Modifier.testTag("gallery")) {
+            QrShareCard("김지민", "서비스 기획", "https://example.invalid/s/6f1c2a9e-0b7d-4f3e-9a51-2c8e7d4b1a60", { shared++ },
+                activities = listOf(DearbyChoice("conference", "Dearby 개발자 컨퍼런스")), selectedActivityIds = emptySet())
+        } } }
+        compose.onNodeWithContentDescription("명함 QR").assertIsDisplayed()
+        compose.onNodeWithText("Dearby 개발자 컨퍼런스").assertDoesNotExist()
+        compose.onNodeWithText("공유").performClick()
+        assert(shared == 1)
+        compose.onNodeWithText("함께 보낼 활동 (선택)").performClick()
+        compose.onNodeWithText("Dearby 개발자 컨퍼런스").assertIsDisplayed()
+    }
+
+    @Test fun qrShareSampleCaptures() {
+        compose.setContent { DearbyTheme { Box(Modifier.testTag("gallery")) { QrShareSample() } } }
+        capture("android-qr-share")
+    }
+
+    @Test fun cardComposerBlocksPublishUntilNamedAndTogglesContacts() {
+        compose.setContent { DearbyTheme { Box(Modifier.size(390.dp, 844.dp).testTag("gallery")) { CardComposerSample("") } } }
+        compose.onNodeWithText("이름을 입력하면 발행할 수 있어요.").assertExists()
+        compose.onNodeWithText("로그인하고 명함 발행").assertIsNotEnabled()
+        capture("android-card-composer-empty")
+        compose.onNodeWithContentDescription("이름").performTextInput("김지민")
+        compose.onNodeWithText("로그인하고 명함 발행").assertIsEnabled()
+        compose.onNodeWithContentDescription("전화 공개").assertIsOff().performClick().assertIsOn()
+        compose.onNodeWithContentDescription("전화 공개").performClick()
+        capture("android-card-composer")
+    }
+
+    @Test fun quickApplyAppearsOnlyWithUrlAndPassesIt() {
+        var applied: String? = null
+        compose.setContent { DearbyTheme { Box(Modifier.testTag("gallery")) { ActivityCardSample { applied = it } } } }
+        compose.onAllNodesWithText("공식 사이트에서 신청", substring = true, useUnmergedTree = true).assertCountEquals(1)
+        compose.onNodeWithText("10월 20일 (화) 마감").assertExists()
+        compose.onNodeWithContentDescription("Dearby 개발자 컨퍼런스 공식 사이트에서 신청, 외부 브라우저로 열려요").performClick()
+        assert(applied == "https://example.invalid/apply")
+        capture("android-activity-quick-apply")
     }
 
     @Test fun readingStateKeepsLabels() {

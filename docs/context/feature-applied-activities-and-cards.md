@@ -81,15 +81,22 @@
 | 용도 | iOS (SwiftUI) | Android (Compose) |
 | --- | --- | --- |
 | 두 항목 전환 | `DearbySegments(labels: [String], selection: Binding<Int>)` 기존 것 재사용 | `DearbySegments(labels: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier)` |
-| 묶음 머리글(개수) | `DearbySectionHeader(title: String, count: Int)` | `DearbySectionHeader(title: String, count: Int, modifier)` |
+| 묶음 머리글(개수, 접고 펴기) | `DearbySectionHeader(title: String, count: Int, expanded: Bool? = nil, onToggle: () -> Void = {})` | `DearbySectionHeader(title: String, count: Int, modifier, expanded: Boolean? = null, onToggle: () -> Unit = {})` |
 | 검색 칸 | `DearbySearchField(prompt: String, text: Binding<String>, identifier: String = "search", expansion: Double = 1, onExpand: () -> Void = {})` | `DearbySearchField(query: String, onQueryChange: (String) -> Unit, placeholder: String, modifier, expansion: Float = 1f, onExpand: () -> Unit = {})` |
 | 당김으로 검색 펼치기 | 목록 `ScrollView`에 `.dearbySearchReveal($expansion)` | `val reveal = rememberDearbySearchReveal()` → 목록에 `Modifier.nestedScroll(reveal.connection)`, 검색 칸에 `reveal.expansion`·`reveal::expand` |
 | 활동 선택 칩 | `DearbyChoiceChips(items: [DearbyChoice], selection: Binding<Set<String>>, label: String)` | `DearbyChoiceChips(items: List<DearbyChoice>, selected: Set<String>, onToggle: (String) -> Unit, label: String, modifier)` |
 | 인라인 입력 칸 | `DearbyInlineField(label: String, text: Binding<String>, editing: Bool, prompt: String = "", multiline: Bool = false, font: Font = .body)` | `DearbyInlineField(label: String, value: String, onValueChange: (String) -> Unit, editing: Boolean, modifier, placeholder: String = "", singleLine: Boolean = true, style: TextStyle = bodyLarge)` |
+| 함께한 활동 라벨 | `DearbyTogetherActivityLabel(title: String, otherCount: Int = 0)` | `DearbyTogetherActivityLabel(title: String, modifier, otherCount: Int = 0)` |
+| 받은 명함 목록 항목(widgets) | `ReceivedCardRow(name: String, job: String, activityTitle: String? = nil, otherActivityCount: Int = 0, open: () -> Void)` (`widgets/identity`) | `ReceivedCardRow(name: String, job: String, open: () -> Unit, modifier, activityTitle: String? = null, otherActivityCount: Int = 0)` (`widgets/card/cardContent`) |
+| QR 이미지 | `DearbyQRCode(text: String)` (CoreImage) | `DearbyQrCode(text: String, modifier)` (zxing core 3.5.3) |
+| QR 공유 카드(widgets) | `QRShareCard(name:job:url: URL?, errorMessage:retry:activities:selectedActivityIDs:)` — 공유 버튼은 `ShareLink` | `QrShareCard(name, job, url: String?, onShare, modifier, errorMessage, onRetry, activities, selectedActivityIds, onToggleActivity)` — `onShare`에서 화면이 ACTION_SEND chooser를 연다 |
+| 스캔 틀(widgets) | `QRScanOverlay(scanFromPhotos:preview:)` | `QrScanOverlay(scanFromPhotos, modifier, preview)` |
+| 명함 제작(widgets) | `CardComposer(name:job:introduction:contacts:histories:requiresLogin:publishing:errorMessage:publish:)` + `CardComposerContact`·`CardComposerHistory` | `CardComposer(name, job, introduction, contacts, histories, onNameChange, onJobChange, onIntroductionChange, onContactChange, onHistoryChange, onPublish, modifier, requiresLogin, publishing, errorMessage)` |
+| 활동 카드·빠른 신청(widgets) | `ActivityCard(activityID:title:summary:status:dateAndPlace:applyURL:recruitmentEnd:open:)` (`widgets/catalog`) | `ActivityCard(title, summary, status, dateAndPlace, artwork, open, modifier, applyUrl, recruitmentEnd, onApply)` (`widgets/activity/activityCard`) |
 
 - `DearbyChoice`는 `id`·`title`만 가진다. 활동 모델을 `shared`에 들이지 않도록 화면이 활동을 변환해 넘긴다. 칩은 줄바꿈 배치이며 선택은 색과 체크 표시로 함께 구분한다. 읽기 전용 표시는 기존 `DearbyBadge`/`ExampleBadge`를 쓴다.
 - 인라인 입력 칸은 읽기·편집에서 같은 여백을 써 위치가 바뀌지 않는다. 편집 중에만 옅은 배경과 밑줄을 보인다. `label`은 입력 칸의 접근성 이름이다. 편집 상태 전환 알림, `완료`/`취소`, 이름이 비었을 때의 이유 문구는 화면(플로우 담당)이 맡는다.
-- 묶음 머리글은 "제목, N개"로 읽히는 머리글이다. 검색 칸은 내용이 있을 때 `검색어 지우기` 버튼을 보인다. 검색 규칙은 화면이 적용한다.
+- 묶음 머리글은 "제목, N개"로 읽히는 머리글이다. `expanded`를 주면 누를 때 `onToggle`을 부르는 버튼이 되고 화살표(펼침 아래, 접힘 오른쪽)와 접근성 상태 `펼침`/`접힘`을 보인다. 동작 줄이기에서는 화살표 회전 애니메이션이 없다. 묶음 내용을 숨기는 일과 펼침 상태 보관·검색 시 자동 펼침은 화면이 맡는다. 검색 칸은 내용이 있을 때 `검색어 지우기` 버튼을 보인다. 검색 규칙은 화면이 적용한다.
 - 접히는 검색 칸: `expansion` 0~1을 받고, 검색어가 있거나 입력 중이면 컴포넌트가 1로 고정한다. 1 미만에서는 `검색` 버튼으로 읽히는 막대이고, 누르면 `onExpand`를 부르고 펼친 뒤 입력 칸에 초점을 준다. 동작 줄이기(iOS 동작 줄이기, Android 애니메이션 배율 0)에서는 0.5 기준으로 0 또는 1만 쓴다. 두 플랫폼 수치:
 
   | 값 | 수치 |
@@ -98,3 +105,9 @@
   | 안내 문구 | `expansion` 0.5부터 나타나 1에서 불투명 |
   | 완전히 펼치는 당김 거리 | 56 pt/dp, 위로 민 거리만큼 같은 비율로 줄어듦 |
   | 손을 뗀 뒤 | 0.5 이상이면 1, 미만이면 0으로 맞춤 |
+- 함께한 활동 라벨은 `함께한 활동 · ○○`(2개 이상이면 뒤에 ` 외 N개`)를 확인 아이콘 없이 보여 주고 긴 활동 이름만 말줄임한다. 첫 활동(일정이 가장 이른 것) 선택, 활동이 없을 때 생략, 상세의 전체 목록·이동은 화면이 맡는다. iOS 명함 앞면이 `entities`에 있어 상위 계층 참조를 피하려고 `shared/ui`에 둔다.
+- 받은 명함 목록 항목은 이니셜·이름·직무·함께한 활동 라벨·오른쪽 화살표이며 전체가 눌리는 한 줄이다. 화면이 명함 모델을 값으로 바꿔 넘긴다.
+- 웹은 같은 모양으로 `SectionHeader({title, count, expanded?, onToggle?, controls?})`(`aria-expanded`)를 `apps/web/src/shared/ui/section-header.tsx`에, `TogetherActivityLabel({title, otherCount})`와 `ReceivedCardRow({href, name, job, activity?})`를 `apps/web/src/widgets/card`에 둔다. `/saved`에 `전체 | 활동별` 전환이 없어 웹 `Segments`는 만들지 않는다.
+- QR 화면은 `DearbySegments(['내 코드', '스캔'])` 아래에 QR 공유 카드나 스캔 틀을 둔다. 카드는 호출 측이 넘긴 공유 URL(`https://<웹 origin>/s/<shareId>`) 문자열을 그대로 QR과 글자로 보이며 도메인을 고정하지 않는다. `url`이 없으면 만드는 중, `errorMessage`가 있으면 다시 시도를 보인다. 공유 버튼 하나로 OS 공유 시트를 바로 열고(QR 진입 1 → 공유 2탭), 함께 보낼 활동은 접힌 선택 칩이다. 카메라 미리보기·사진 선택·공유 만들기·로그인은 화면이 맡는다.
+- 명함 제작은 한 화면에서 이름·직함·소개를 입력하고 연락처·활동 이력마다 공개 스위치를 고른 뒤 하단의 `명함 발행` 하나로 끝난다. 로그인이 필요하면 버튼이 `로그인하고 명함 발행`으로 바뀌고 '발행할 때만 로그인' 안내를 보인다. 이름이 비면 버튼을 끄고 이유를 보인다. 로그인·발행 요청·오류 문구 결정은 화면이 맡는다.
+- 빠른 신청(조사 보고서 A안, 2026-10-06 승인): 활동 카드는 `applyUrl`과 마감일(`recruitmentEndAt`)을 선택 인자로만 받는다. 값을 주면 카드 아래에 `M월 d일 (요일) 마감`(서울 시간, 없으면 `마감일 미확인`)과 외부 링크 아이콘이 있는 44 이상 높이의 `공식 사이트에서 신청`을 붙인다. 보이는 조건(`participationType == registration`, 모집 중, `applicationUrl` 있음)은 호출 측이 카탈로그 값으로 판정한다. 카드 본문을 누르면 지금처럼 상세로 간다. 웹은 `widgets/activity/activity-card.tsx`의 같은 인자(`applyUrl`, `recruitmentEndAt`)를 쓴다.

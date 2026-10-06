@@ -2,7 +2,8 @@
   "widgets/catalog": [
     "CatalogPage",
     "CatalogViewModel",
-    "MyActivitiesPage"
+    "MyActivitiesPage",
+    "ActivityCard"
   ],
   "features/calendar": [
     "CalendarConflictView"
@@ -29,7 +30,9 @@
     "DearbySearchReveal",
     "DearbyChoice",
     "DearbyChoiceChips",
-    "DearbyInlineField"
+    "DearbyInlineField",
+    "DearbyTogetherActivityLabel",
+    "DearbyQRCode"
   ],
   "entities/identity": [
     "CardModel",
@@ -50,6 +53,12 @@
     "IdentityViewModel",
     "QRPage",
     "WalletPage",
-    "ProfilePage"
+    "ProfilePage",
+    "ReceivedCardRow",
+    "QRShareCard",
+    "QRScanOverlay",
+    "CardComposer",
+    "CardComposerContact",
+    "CardComposerHistory"
   ]
 }

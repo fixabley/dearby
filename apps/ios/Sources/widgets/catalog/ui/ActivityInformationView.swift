@@ -14,37 +14,37 @@ struct ActivityInformationView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Divider()
-            Text("행사 일정").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
-            Text(activity.dateLabel).font(.subheadline)
+            Text("행사 일정").font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.teal)
+            Text(activity.dateLabel).font(.dearby(.subheadline))
             VStack(spacing: 0) {
                 ForEach(sessions.indices, id: \.self) { index in
                     let session = sessions[index]
                     HStack(alignment: .top, spacing: 14) {
                         Text(ActivityText.time(session.start) + " – " + ActivityText.time(session.end))
-                            .font(.caption).foregroundStyle(DearbyStyle.quiet).frame(width: 92, alignment: .leading)
+                            .font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet).frame(width: 92, alignment: .leading)
                         VStack(spacing: 0) {
                             Circle().fill(DearbyStyle.teal).frame(width: 7, height: 7)
                             Rectangle().fill(index < sessions.count - 1 ? DearbyStyle.line : .clear).frame(width: 1)
                         }.padding(.top, 5)
-                        Text(session.title).font(.subheadline).padding(.bottom, 18).frame(maxWidth: .infinity, alignment: .leading)
+                        Text(session.title).font(.dearby(.subheadline)).padding(.bottom, 18).frame(maxWidth: .infinity, alignment: .leading)
                     }.fixedSize(horizontal: false, vertical: true)
                 }
             }
             Button("겹치는 시간 확인하기", action: checkCalendar).buttonStyle(DearbyButtonStyle(outlined: true))
-            Text("예시 캘린더 일정과 비교해요.").font(.caption).foregroundStyle(DearbyStyle.quiet)
+            Text("예시 캘린더 일정과 비교해요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
                 .frame(maxWidth: .infinity)
         }
         VStack(alignment: .leading, spacing: 16) {
             Divider()
-            Text("참가 안내").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
+            Text("참가 안내").font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.teal)
             DearbyInfoRow(title: "참가비", value: activity.cost)
             DearbyInfoRow(title: "등록 방법", value: "신청 화면에서 흐름 체험")
             DearbyInfoRow(title: "준비물", value: "별도 준비물 없음")
             DearbyInfoRow(title: "세부 일정", value: "디자인 확인용 예시예요.")
             Divider()
-            Text("장소").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
+            Text("장소").font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.teal)
             Text(activity.location)
-            Text("실제 예약·접수와 무관한 예시입니다.").font(.caption).foregroundStyle(DearbyStyle.quiet)
+            Text("실제 예약·접수와 무관한 예시입니다.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
         }
     }
 }
