@@ -21,7 +21,7 @@ npm start
 
 DDL is owned solely by `supabase/migrations`; runtime startup does not run migrations. Never use Prisma db push/reset on production. `npm test` creates isolated PostgreSQL fixtures and does not use production env. Runtime binds loopback by default. No SMTP settings means challenge requests return 503. No development HTTP endpoint reveals OTPs; only the test harness (`NODE_ENV=test`) injects an in-memory mail sink, never server startup. SMTP requires TLS and certificate validation. Authentication success necessarily returns `sessionToken` as specified; no other response or logger exposes tokens/codes. Access logging is disabled; never add raw HTTP bodies/Authorization to infrastructure logs.
 
-OTP: 6 random decimal digits, HMAC-SHA256 with server secret and challenge ID, 5-minute expiry, max 5 guesses, single use, new successful send invalidates prior challenge. Persistent quotas: one send/email/minute, five/email/hour, twenty/IP/hour, sixty verifications/IP/minute. Failed deliveries consume quotas to limit provider abuse. Unknown/expired/used/locked challenges use the same 401 response, and new/existing emails follow the same challenge response. Session tokens are 256-bit random, SHA256 persisted, expire after 30 days, and revoke individually.
+OTP: 6 random decimal digits, HMAC-SHA256 with server secret and challenge ID, 5-minute expiry, max 5 guesses, single use, new successful send invalidates prior challenge. Persistent quotas (2026-10-06, no IP keys because the proxy hides client IPs): per normalized email 1 send/minute, 5/hour, 10/day; service-wide 100 sends/hour and 400/day, below a personal Gmail sender's ~500/day; 5 guesses per code and 600 verifications/minute service-wide. All rules are checked before any counter moves. Failed deliveries consume quotas to limit provider abuse. Unknown/expired/used/locked challenges use the same 401 response, and new/existing emails follow the same challenge response. Session tokens are 256-bit random, SHA256 persisted, expire after 30 days, and revoke individually.
 
 API writes use Prisma transactions and a shared advisory lock to preserve atomic quotas and storage limits. Keep DATABASE_URL, OTP_SECRET and GUEST_PROXY_SECRET outside Git and images. The external CA is readonly-mounted. Reverse-proxy trust remains disabled; forwarded client headers cannot bypass IP quotas. SQLite files/tools remain offline recovery/history only.
 
@@ -35,7 +35,7 @@ Withdrawn cards are 404 publicly and omitted from fresh wallet responses; receip
 
 ## Public catalog and bounded official collection (#45)
 
-`GET /v1/catalog` follows `shared/contracts/catalog-v1.md`, requires no authentication and includes published closed/unknown details. Empty published catalog returns empty arrays; upstream failures return 503. Reads recalculate exclusive deadlines and freshness; consumers must also expire cached discovery at `validUntil`. Only semantically verified explicit opening can be recruiting, for at most 24 hours. Failed collection preserves the prior content/check time/hash but marks it unavailable and hides it from discovery until a successful verification.
+`GET /v1/catalog` follows `shared/contracts/catalog-v1.md`, requires no authentication and includes published closed/unknown details. Empty published catalog returns empty arrays; upstream failures return 503. `Organization.parentId` (catalog-v1 Organization hierarchy) is always returned; snapshots without the field are read as `null` (top level), so this API must be deployed before the snapshot function emits it. Reads recalculate exclusive deadlines and freshness; consumers must also expire cached discovery at `validUntil`. Recruitment status follows the verified recruitment window (start inclusive, end exclusive), or the administrator status when there are no dates; a selected close always wins. Only verified data can be recruiting, for at most 24 hours. Failed collection preserves the prior content/check time/hash but marks it unavailable and hides it from discovery until a successful verification.
 
 The following commands are preserved offline tools; they do not populate the running Prisma API.
 
@@ -61,6 +61,10 @@ See [deployment runbook](deploy/README.md) for the isolated Docker service, leas
 ## Web guest card storage
 
 The [web guest contract](../../shared/contracts/native-v1.md#웹-비로그인-명함-저장--2026-09-29-승인) defines a separate digest-authenticated store of public card IDs. Guest sessions are created atomically on the first valid save and never expire automatically. The trusted Next proxy owns cookie/CSRF behavior; `GUEST_PROXY_SECRET` must be configured privately at deployment, otherwise guest requests fail closed. Private profiles/member wallets remain protected. See the deployment runbook for capacity, ingress and rollout conditions.
+
+## Card shares and guest share links
+
+The [share contract](../../shared/contracts/native-v1.md#명함-공유-기록과-게스트-공유-정보-저장--2026-10-06-승인) adds owner `POST /v1/cards/:id/shares` (0-10 current-catalog activities, title snapshot), public `GET /v1/shares/:id` and proxy `PUT /v1/guest/shares/:id`; `GET /v1/guest/cards` gains `shares`. Share links cascade with their saved guest card and session; max 20 links per saved card. Withdrawn cards make all their shares 404. DDL is `supabase/migrations/20261006000000_api_card_shares.sql`; test data for web is `test/fixtures/card-shares.json`. See [handoff](../../docs/context/api-card-shares.md).
 
 ## Swagger / OpenAPI
 

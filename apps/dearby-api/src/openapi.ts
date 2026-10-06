@@ -2,7 +2,7 @@ import swagger from '@fastify/swagger';
 import swaggerUI from '@fastify/swagger-ui';
 import type { FastifyInstance, FastifySchema } from 'fastify';
 import { z } from 'zod';
-import { cardSchema, context, id } from './validation.js';
+import { cardSchema, cardShareSchema, context, id, shareActivity } from './validation.js';
 export const tokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
 export const idParams = z.strictObject({id});
 export const cardListSchema = z.strictObject({items:z.array(cardSchema)});
@@ -12,15 +12,20 @@ export const walletSchema = z.strictObject({items:z.array(z.strictObject({
 export const importResultSchema = z.strictObject({items:z.array(z.strictObject({
   cardId:z.string(),status:z.enum(['imported','alreadySaved','failed']),receiptId:id.nullable(),
 }))});
+export const publicShareSchema = z.strictObject({share:cardShareSchema,card:cardSchema});
+export const guestShareSchema = z.strictObject({cardId:id,shareId:id,activities:z.array(shareActivity).max(10),savedAt:z.iso.datetime()});
+export const guestListSchema = z.strictObject({items:z.array(cardSchema),shares:z.array(guestShareSchema)});
+export const guestShareSavedSchema = z.strictObject({cardId:id,shareId:id,status:z.enum(['saved','alreadySaved'])});
+export const guestShareCreatedSchema = guestShareSavedSchema.extend({status:z.literal('saved'),guestToken:tokenSchema.describe('Server-proxy consumption only. Next sets the HttpOnly cookie and must omit this field from browser JSON.')});
 export const guestSavedSchema = z.strictObject({cardId:id,status:z.enum(['saved','alreadySaved'])});
 export const guestCreatedSchema = z.strictObject({cardId:id,status:z.literal('saved'),guestToken:tokenSchema.describe('Server-proxy consumption only. Next sets the HttpOnly cookie and must omit this field from browser JSON.')});
 const errorSchema = z.strictObject({error:z.strictObject({code:z.string(),message:z.string()})});
 const descriptions:Record<number,string> = {
   401:'UNAUTHORIZED / INVALID_CODE / GUEST_SESSION_INVALID: missing, expired, consumed or revoked credentials. Invalid guest tokens never create a replacement session.',
   403:'FORBIDDEN: owner required or missing/incorrect trusted server proxy credential.',
-  404:'NOT_FOUND: resource missing or public card withdrawn.',
+  404:'NOT_FOUND: resource missing or public card withdrawn (including every share of a withdrawn card).',
   409:'IDEMPOTENCY_CONFLICT / GUEST_CAPACITY_EXCEEDED: conflicting replay or persistent storage limit.',
-  422:'INVALID_INPUT / INVALID_SELECTION / INVALID_RECIPIENT: invalid JSON, media type, body size, Zod input or domain selection.',
+  422:'INVALID_INPUT / INVALID_SELECTION / INVALID_RECIPIENT: invalid JSON, media type, body size, Zod input or domain selection (including activities missing from the current catalog).',
   429:'RATE_LIMITED: request, creation or OTP quota exceeded.',
   500:'INTERNAL_ERROR: sanitized storage/internal failure; never an empty successful response.',
   503:'CATALOG_UNAVAILABLE / MAIL_UNAVAILABLE / GUEST_UNAVAILABLE: dependency unavailable or not configured.',

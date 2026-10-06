@@ -1,0 +1,15 @@
+.activities {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.activities a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+}
+.saved {
+  display: grid;
+  gap: 12px;
+  text-align: left;
+}

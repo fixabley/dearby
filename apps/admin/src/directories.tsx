@@ -14,13 +14,18 @@ import {
   Tag,
 } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import { type Organization, type Program, dateText } from "./catalog";
+import {
+  type Organization,
+  type Program,
+  dateText,
+  organizationPath,
+} from "./catalog";
 
-type Entry = Organization & Partial<Program>;
-export function Directory({ kind }: { kind: "organizations" | "programs" }) {
-  const isOrg = kind === "organizations",
-    resource = `catalog_${kind}`,
-    label = isOrg ? "조직" : "프로그램";
+type Entry = Program;
+const resource = "catalog_programs",
+  label = "프로그램";
+/** Programs with collection settings. Organizations are managed in the organization tree. */
+export function Directory() {
   const [page, setPage] = useState(1),
     [search, setSearch] = useState(""),
     [editing, setEditing] = useState<Entry | null | undefined>();
@@ -32,20 +37,17 @@ export function Directory({ kind }: { kind: "organizations" | "programs" }) {
     pagination: { currentPage: page, pageSize: 15 },
     sorters: [{ field: "updated_at", order: "desc" }],
     filters: search
-      ? [
-          {
-            field: isOrg ? "name" : "title",
-            operator: "contains",
-            value: search,
-          },
-        ]
+      ? [{ field: "title", operator: "contains", value: search }]
       : [],
   });
   const organizations = useList<Organization>({
     resource: "catalog_organizations",
     pagination: { pageSize: 1000 },
-    queryOptions: { enabled: !isOrg },
   });
+  const organizationLabel = (id: string) =>
+    organizationPath(organizations.result.data, id)
+      .map((o) => o.name)
+      .join(" › ");
   const create = useCreate<Entry, any, Record<string, unknown>>(),
     update = useUpdate<Entry, any, Record<string, unknown>>();
   function open(entry: Entry | null) {
@@ -77,15 +79,9 @@ export function Directory({ kind }: { kind: "organizations" | "programs" }) {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">
-            {isOrg ? "ORGANIZATIONS" : "PROGRAMS"}
-          </span>
+          <span className="eyebrow">PROGRAMS</span>
           <h1>{label} 관리</h1>
-          <p>
-            {isOrg
-              ? "활동을 운영하는 조직의 이름과 소개를 관리하세요."
-              : "같은 조직의 반복되는 활동을 하나의 프로그램으로 묶으세요."}
-          </p>
+          <p>같은 조직의 반복되는 활동을 하나의 프로그램으로 묶으세요.</p>
         </div>
         <Button
           type="primary"
@@ -131,21 +127,15 @@ export function Directory({ kind }: { kind: "organizations" | "programs" }) {
               title: `${label} 이름`,
               render: (_, entry) => (
                 <Button type="link" onClick={() => open(entry)}>
-                  {isOrg ? entry.name : entry.title}
+                  {entry.title}
                 </Button>
               ),
             },
-            ...(!isOrg
-              ? [
-                  {
-                    title: "운영 조직",
-                    render: (_: unknown, entry: Entry) =>
-                      organizations.result.data.find(
-                        (o) => o.id === entry.organization_id,
-                      )?.name ?? "조직 확인 중",
-                  },
-                ]
-              : []),
+            {
+              title: "운영 조직",
+              render: (_: unknown, entry: Entry) =>
+                organizationLabel(entry.organization_id) || "조직 확인 중",
+            },
             { title: "소개", dataIndex: "description" },
             {
               title: "",
@@ -169,66 +159,58 @@ export function Directory({ kind }: { kind: "organizations" | "programs" }) {
         <Form form={form} layout="vertical" onFinish={save}>
           {error && <Alert type="error" message={error} />}
           <Form.Item
-            name={isOrg ? "name" : "title"}
+            name="title"
             label={`${label} 이름`}
             rules={[{ required: true, message: "이름을 입력해 주세요." }]}
           >
             <Input />
           </Form.Item>
-          {!isOrg && (
-            <Form.Item
-              name="organization_id"
-              label="운영 조직"
-              rules={[{ required: true, message: "조직을 선택해 주세요." }]}
-            >
-              <Select
-                virtual={false}
-                showSearch
-                optionFilterProp="label"
-                loading={organizations.query.isLoading}
-                options={organizations.result.data.map((o) => ({
-                  value: o.id,
-                  label: o.name,
-                }))}
-              />
-            </Form.Item>
-          )}
-          {!isOrg && (
-            <>
-              <Form.Item
-                name="collection_enabled"
-                label="매일 활동 수집"
-                valuePropName="checked"
-              >
-                <Switch />
-              </Form.Item>
-              <Form.Item
-                name="collection_hosts"
-                label="공식 출처 호스트"
-                extra="주소 전체 대신 정확한 호스트를 입력하세요. 예: www.sopt.org. 새 호스트는 관리자가 공식 출처인지 확인해 추가합니다."
-                rules={[
-                  {
-                    validator: async (_, values: string[] | undefined) => {
-                      if (
-                        (values?.length ?? 0) > 20 ||
-                        values?.some(
-                          (v) =>
-                            !/^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]([a-z0-9-]*[a-z0-9])?$/.test(
-                              v,
-                            ),
-                        )
-                      )
-                        throw new Error(
-                          "소문자 호스트를 최대 20개 입력하세요.",
-                        );
-                    },
-                  },
-                ]}
-              >
-                <Select mode="tags" tokenSeparators={[",", " "]} open={false} />
-              </Form.Item>
-            </>
-          )}
+          <Form.Item
+            name="organization_id"
+            label="운영 조직"
+            rules={[{ required: true, message: "조직을 선택해 주세요." }]}
+          >
+            <Select
+              virtual={false}
+              showSearch
+              optionFilterProp="label"
+              loading={organizations.query.isLoading}
+              options={organizations.result.data.map((o) => ({
+                value: o.id,
+                label: organizationLabel(o.id),
+              }))}
+            />
+          </Form.Item>
+          <Form.Item
+            name="collection_enabled"
+            label="매일 활동 수집"
+            valuePropName="checked"
+          >
+            <Switch />
+          </Form.Item>
+          <Form.Item
+            name="collection_hosts"
+            label="공식 출처 호스트"
+            extra="주소 전체 대신 정확한 호스트를 입력하세요. 예: www.sopt.org. 새 호스트는 관리자가 공식 출처인지 확인해 추가합니다."
+            rules={[
+              {
+                validator: async (_, values: string[] | undefined) => {
+                  if (
+                    (values?.length ?? 0) > 20 ||
+                    values?.some(
+                      (v) =>
+                        !/^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]([a-z0-9-]*[a-z0-9])?$/.test(
+                          v,
+                        ),
+                    )
+                  )
+                    throw new Error("소문자 호스트를 최대 20개 입력하세요.");
+                },
+              },
+            ]}
+          >
+            <Select mode="tags" tokenSeparators={[",", " "]} open={false} />
+          </Form.Item>
           <Form.Item name="description" label="소개">
             <Input.TextArea rows={4} />
           </Form.Item>
@@ -298,13 +280,14 @@ export function AuditLog() {
             {
               title: "변경",
               dataIndex: "operation",
-              render: (value) => (
+              render: (value: string) => (
                 <Tag>
-                  {value === "INSERT"
-                    ? "생성"
-                    : value === "UPDATE"
-                      ? "수정"
-                      : "삭제"}
+                  {{
+                    INSERT: "생성",
+                    UPDATE: "수정",
+                    DELETE: "삭제",
+                    reverify: "자동 재확인",
+                  }[value] ?? value}
                 </Tag>
               ),
             },

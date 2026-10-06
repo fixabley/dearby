@@ -3,8 +3,8 @@ BEGIN READ ONLY;
 DO $$
 DECLARE relation regclass;
 BEGIN
- IF (SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tablename LIKE 'catalog_%') <> 7 THEN
-  RAISE EXCEPTION 'Expected seven catalog tables';
+ IF (SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tablename LIKE 'catalog_%') <> 8 THEN
+  RAISE EXCEPTION 'Expected eight catalog tables';
  END IF;
  FOR relation IN SELECT oid FROM pg_class WHERE relnamespace='public'::regnamespace AND relkind='r' LOOP
   IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid=relation) THEN RAISE EXCEPTION 'Catalog RLS missing'; END IF;
@@ -16,7 +16,13 @@ BEGIN
     NOT has_function_privilege('service_role','public.claim_catalog_collection(uuid)','EXECUTE') THEN
   RAISE EXCEPTION 'Collection worker boundary invalid';
  END IF;
- IF NOT has_function_privilege('authenticated','public.verify_catalog_activity(uuid,text)','EXECUTE') THEN
+ IF has_function_privilege('authenticated','public.reverify_catalog_activity(uuid,boolean,text,text)','EXECUTE') OR
+    has_function_privilege('anon','public.catalog_reverify_candidates()','EXECUTE') OR
+    has_function_privilege('authenticated','public.catalog_reverify_candidates()','EXECUTE') OR
+    NOT has_function_privilege('service_role','public.reverify_catalog_activity(uuid,boolean,text,text)','EXECUTE') THEN
+  RAISE EXCEPTION 'Re-verification worker boundary invalid';
+ END IF;
+ IF NOT has_function_privilege('authenticated','public.verify_catalog_activity(uuid,text,text)','EXECUTE') THEN
   RAISE EXCEPTION 'Administrator RPC boundary invalid';
  END IF;
  IF EXISTS(SELECT FROM public.catalog_collection_settings WHERE enabled) THEN
