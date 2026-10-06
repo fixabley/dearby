@@ -58,7 +58,11 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
             profile.contacts.filter { it.id != phone?.id && it.id != email?.id }.map { ProfileExtraContact(it.id, it.kind, it.value) },
             profile.histories.map { HistoryFormState(it.id, it.title, it.role, date(it.startDate), it.endDate?.let(::date), it.endDate == null, it.description) }))
     }
-    fun change(form: ProfileFormState) = editing.update { it?.copy(form = form, errors = it.errors?.let { errors(form) }) }
+    // After a save attempt, messages follow the form; the summary clears once everything is fixed.
+    fun change(form: ProfileFormState) = editing.update { current ->
+        val problems = current?.errors?.let { errors(form) }
+        current?.copy(form = form, errors = problems, error = if (problems == ProfileErrors()) null else current.error)
+    }
     fun addContact(kind: String) = editing.update { it?.copy(form = it.form.copy(extras = it.form.extras + ProfileExtraContact(newId(), kind, ""))) }
     fun addHistory() = editing.update { it?.copy(form = it.form.copy(histories = it.form.histories + HistoryFormState(newId(), "", "", null, null, true, ""))) }
     fun close() { editing.value = null }

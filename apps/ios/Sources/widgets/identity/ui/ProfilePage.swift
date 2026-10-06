@@ -108,6 +108,7 @@ struct ProfileEditPage: View {
                 }.buttonStyle(DearbyButtonStyle()).disabled(saving)
             }.padding(.horizontal, 20).padding(.vertical, 12).background(.white)
         }
+        .onChange(of: form) { _, next in if tried && next.isValid && error == "빨간 안내를 확인해 주세요." { error = nil } }
         .background(.white).navigationTitle("프로필 편집").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
     }

@@ -42,9 +42,10 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileExtraContact
                 DearbyOutlineButton(retry, Modifier.fillMaxWidth()) { Text("다시 시도") }
             }
             ProfilePhase.LOADED -> state.profile?.let { profile ->
-                Column(Modifier.verticalScroll(rememberScrollState()).padding(20.dp)) {
+                // CardContent scrolls inside itself, so it gets the remaining height rather than an outer scroll.
+                Column(Modifier.weight(1f).padding(20.dp)) {
                     CardContent(CardState("profile", profile.name.ifBlank { "이름 없음" }, profile.job, "", "", profile.introduction, profile.contacts, profile.histories),
-                        onContact = contact, expanded = true)
+                        Modifier.weight(1f, fill = false), onContact = contact, expanded = true)
                 }
             }
         }
