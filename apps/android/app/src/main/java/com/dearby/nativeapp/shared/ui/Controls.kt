@@ -2,6 +2,11 @@ package com.dearby.nativeapp.shared.ui
 
 import android.provider.Settings
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.*
 import androidx.compose.ui.draw.alpha
@@ -36,6 +41,7 @@ import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 data class DearbyChoice(val id: String, val title: String)
@@ -52,11 +58,20 @@ data class DearbyChoice(val id: String, val title: String)
     }
 }
 
-@Composable fun DearbySectionHeader(title: String, count: Int, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth().padding(top = 8.dp).semantics(mergeDescendants = true) { heading(); contentDescription = "$title, ${count}개" },
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(title, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.titleMedium)
-        Text("$count", Modifier.background(Mint, RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 2.dp), color = Teal, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
+/** 묶음 머리글. [expanded]를 주면 누를 때 [onToggle]을 부르는 접고 펴는 버튼이 되고, 펼침 상태를 화살표와 접근성 상태로 알린다. */
+@Composable fun DearbySectionHeader(title: String, count: Int, modifier: Modifier = Modifier, expanded: Boolean? = null, onToggle: () -> Unit = {}) {
+    val reduceMotion = rememberReduceMotion()
+    val rotation by animateFloatAsState(if (expanded == false) -90f else 0f, if (reduceMotion) snap() else spring(), label = "chevron")
+    val toggle = if (expanded == null) Modifier else Modifier.clickable(onClickLabel = if (expanded) "접기" else "펼치기", role = Role.Button, onClick = onToggle)
+    Row(modifier.fillMaxWidth().heightIn(min = 44.dp).then(toggle).padding(top = 8.dp).semantics(mergeDescendants = true) {
+        heading(); contentDescription = "$title, ${count}개"
+        if (expanded != null) stateDescription = if (expanded) "펼침" else "접힘"
+    }, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, Modifier.weight(1f, fill = false), style = MaterialTheme.typography.titleMedium)
+            Text("$count", Modifier.background(Mint, RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 2.dp), color = Teal, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
+        }
+        if (expanded != null) Icon(Icons.Outlined.KeyboardArrowDown, null, Modifier.rotate(rotation), tint = Quiet)
     }
 }
 
@@ -141,6 +156,16 @@ data class DearbyChoice(val id: String, val title: String)
                 leadingIcon = if (active) ({ Icon(Icons.Outlined.Check, null, Modifier.size(18.dp)) }) else null, shape = RoundedCornerShape(22.dp), border = null,
                 colors = FilterChipDefaults.filterChipColors(containerColor = Soft, labelColor = Quiet, selectedContainerColor = Teal, selectedLabelColor = Color.White, selectedLeadingIconColor = Color.White))
         }
+    }
+}
+
+/** 받은 명함의 "함께한 활동 · ○○ 외 N개" 라벨. 확인 아이콘 없이 긴 활동 이름만 말줄임한다. 첫 활동(일정이 가장 이른 것) 선택은 호출하는 쪽 모델이 정한다. */
+@Composable fun DearbyTogetherActivityLabel(title: String, modifier: Modifier = Modifier, otherCount: Int = 0) {
+    val suffix = if (otherCount > 0) " 외 ${otherCount}개" else ""
+    Row(modifier.clearAndSetSemantics { contentDescription = "함께한 활동, $title$suffix" }) {
+        Text("함께한 활동 · ", color = Quiet, maxLines = 1, softWrap = false, style = MaterialTheme.typography.bodyMedium)
+        Text(title, Modifier.weight(1f, fill = false), fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+        if (suffix.isNotEmpty()) Text(suffix, color = Quiet, maxLines = 1, softWrap = false, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
