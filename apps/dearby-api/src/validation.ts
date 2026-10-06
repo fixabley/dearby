@@ -27,6 +27,8 @@ export const shareInput = z.strictObject({activityIds: z.array(id).max(10)})
 export const shareActivity = z.strictObject({id, title: z.string()});
 export const cardShareSchema = z.strictObject({id, cardId: id, activities: z.array(shareActivity).max(10), createdAt: z.iso.datetime()});
 export type CardShare = z.infer<typeof cardShareSchema>;
+// Format errors are 422; any well-formed but unusable code is an indistinguishable 404.
+export const handoffInput = z.strictObject({code: z.string().min(1).max(100)});
 export const importItem = z.strictObject({cardId: id, context, savedAt: z.iso.datetime()});
 export const exchangeInput = z.strictObject({ cardId: id, recipientProfileId: id, context, requestId: id });
 export class ApiError extends Error {
