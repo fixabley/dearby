@@ -12,7 +12,7 @@
 - 일정: `CalendarConflictState.swift`의 2026-10-24 14–15시 Asia/Seoul 고정 바쁜 시간.
   컨퍼런스 60분/1건, 캠프·밋업 0건. 결과는 30분 2열 격자로 표시합니다.
 - 신청: 하단 CTA와 목록의 빠른 신청은 https 공식 신청 주소를 외부 브라우저로 연다. `신청 상태 수정`의 표시는 메모리만 쓰는 사용자 표시다.
-- 테스트: catalog fixture는 `testFixtures/`(단위·UI 테스트 target 전용)에 있고, UI 테스트는 러너 안의 `FixtureServer`와 Debug 전용 launch 환경값 `DEARBY_API_ORIGIN`으로 앱을 연결한다. Release에는 덮어쓰기가 없다.
+- 테스트: 자동 테스트는 2026-10-06 사용자 요청으로 모두 지웠다. 사용자와 하나씩 다시 만든다. Debug 전용 launch 환경값 `DEARBY_API_ORIGIN` 덮어쓰기는 남겨 두었다. Release에는 덮어쓰기가 없다.
 - QR: 고정 `https://example.com` PNG를 표시/확대합니다. 스캔/사진 버튼은 예시 명함을 엽니다.
   카메라·사진 접근/QR 디코딩은 없습니다. 공유 메뉴도 외부 전달·클립보드·이미지 저장 없이 안내만 표시합니다.
 - 예시 로그인은 서버 인증 없이 화면 상태를 전환합니다. 명함 보내기는 받은 명함의 메모리 그룹만 바꿉니다.
@@ -37,23 +37,21 @@ API·인증/Keychain·영구 저장·실제 캘린더·카메라·푸시는 없�
 `entities/account`의 `AccountClient`(인증번호 로그인·`/v1/profile`·`POST /v1/cards`)와 Keychain `SessionVault`, `features/account`의 `AccountViewModel`이 있다. 화면 연결은 다음 PR이다. 세션은 새 Keychain 서비스 `dearby.account.session`에 두며, 2026-10-03 이전 앱이 남긴 세션은 읽거나 지우지 않는다. 소유자 호출이 401이면 다시 시도하지 않고 로그아웃한다. 운영 `/v1/auth`는 ingress에서 닫혀 있고 인증 메일(#89)도 미설정이므로 운영 동작 완료가 아니다.
 
 로컬 실제 API 확인(선택, 운영 연결 금지): 격리 컨테이너 두 개를 띄운다. 이름은 다른 세션과 겹치지 않게 한다.
-1. `public.ecr.aws/supabase/postgres:17.6.1.171`을 tmpfs로 띄우고 `apps/dearby-api/test/run-postgres.mjs`와 같은 순서로 `supabase/migrations`·cron 비활성·`dearby_api_runtime` 비밀번호를 적용한다.
+1. `public.ecr.aws/supabase/postgres:17.6.1.171`을 tmpfs로 띄우고 `supabase/migrations`를 버전 순서로 적용한 뒤 cron을 끄고 `dearby_api_runtime` 비밀번호를 정한다.
 2. 자체 CA로 `localhost` 인증서를 만들어 `public.ecr.aws/supabase/mailpit`을 `--smtp-tls-cert --smtp-tls-key --smtp-require-starttls --smtp-auth-accept-any`로 띄운다.
 3. API를 `PORT=4310`, `DATABASE_URL`(runtime 역할), 32자 이상 임시 `OTP_SECRET`, `SMTP_HOST=localhost`·포트·임의 사용자, `NODE_EXTRA_CA_CERTS=<CA>`로 실행한다.
-4. `TEST_RUNNER_DEARBY_REAL_API_ORIGIN=http://127.0.0.1:4310 TEST_RUNNER_DEARBY_REAL_MAILPIT=http://127.0.0.1:<mailpit http 포트>`를 주고 `AccountRealAPITests`를 실행한다. 값이 없으면 건너뛴다. 발송 한도(같은 이메일 1분 1회, IP 1시간 20회)가 DB에 남으므로 새 DB에서 돌린다.
+4. Debug 빌드를 `DEARBY_API_ORIGIN=http://127.0.0.1:4310`으로 실행해 화면에서 확인한다. 발송 한도(같은 이메일 1분 1회, IP 1시간 20회)가 DB에 남으므로 새 DB에서 돌린다.
 
 ## 검증
 
-`Dearby.xcodeproj`는 저장소에 두지 않는 생성물이다(병합 충돌 방지). Xcode로 열거나 빌드하기 전에 생성한다. `xcodeproj` gem이 필요하다(`gem install --user-install xcodeproj`). 시뮬레이터 단위·UI 테스트는 CI가 아니라 push 전 `.githooks/pre-push`가 `apps/ios/tests/run_simulator_tests.sh`로 돌린다.
+`Dearby.xcodeproj`는 저장소에 두지 않는 생성물이다(병합 충돌 방지). Xcode로 열거나 빌드하기 전에 생성한다. `xcodeproj` gem이 필요하다(`gem install --user-install xcodeproj`). 자동 테스트는 2026-10-06 사용자 요청으로 모두 지웠다. 사용자와 하나씩 다시 만든다.
 
 ```sh
 ruby apps/ios/scripts/generate_project.rb
 bash apps/ios/scripts/setup_swiftlint.sh
-bash apps/ios/tests/run_swiftlint.sh
-bash apps/ios/tests/run_architecture.sh
+bash apps/ios/scripts/run_swiftlint.sh
 ```
 
-Dearby scheme에서 unitTests/uiTests 실행. 기존 Simulator ID 명시 및 `-parallel-testing-enabled NO` 사용.
 Debug ID `com.dearby.dearby`, Release ID `io.wid.dearby`, 버전 `0.1.0 (1)` 유지.
 실기기 설치·서명·배포는 조율 세션 소유입니다.
 검증 결과와 인계: `../../docs/context/ios-ui-prototype.md`.
