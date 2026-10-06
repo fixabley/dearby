@@ -125,3 +125,31 @@ test("prompt binds untrusted program data and known rounds", () => {
   assert.match(p, /시각을 추정하지/);
   assert.match(p, /FEConf/);
 });
+test("structural source failures block today's retries; quote or transient failures stay retryable", async () => {
+  const opts = (fetchPage) => ({ fetchPage, now: new Date("2026-09-29T00:00:00Z") });
+  const tooLarge = async () => {
+    throw new Error("Official page exceeds 1 MB");
+  };
+  const empty = {
+    outcome: "no_current_activity",
+    activities: [],
+    checkedSources: [{ url: "https://official.example/", quote }],
+  };
+  await assert.rejects(
+    prepareCollection({ outcome: "source_unavailable", summary: "JS only", activities: [] }, hosts, opts(fetchPage)),
+    /^Error: BLOCKED: Official source unavailable: JS only/,
+  );
+  await assert.rejects(prepareCollection(empty, hosts, opts(tooLarge)), /^Error: BLOCKED: Official page exceeds 1 MB/);
+  await assert.rejects(
+    prepareCollection(empty, hosts, opts(async () => { throw new Error("Official page deadline exceeded"); })),
+    /^Error: Official page deadline exceeded/,
+  );
+  await assert.rejects(
+    prepareCollection({ activities: [row, { ...row, occurrence: "b", officialUrl: "https://other.example/" }] }, hosts, opts(tooLarge)),
+    /^Error: BLOCKED: All candidates failed/,
+  );
+  await assert.rejects(
+    prepareCollection({ activities: [row, { ...row, occurrence: "b", officialUrl: "https://official.example/b", evidenceQuote: "An invented quote not present anywhere" }] }, hosts, opts(async (url) => (url.endsWith("2026") ? tooLarge() : fetchPage(url)))),
+    /^Error: All candidates failed/,
+  );
+});

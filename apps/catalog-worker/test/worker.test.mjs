@@ -85,7 +85,9 @@ test("exec isolates secrets, pins subscription model/tools, and records failed-r
   assert.match(fail.body.reason, /Official source unavailable/);
   assert.equal(fail.body.run_usage.input_tokens, 123);
   assert.equal(fail.body.run_usage.web_search_calls, 1);
-  assert.equal(fail.body.blocked, false);
+  // Structural source failure: no same-day retry, but never the subscription-wide pause.
+  assert.equal(fail.body.blocked, true);
+  assert.doesNotMatch(fail.body.reason, /^BLOCKED: Codex subscription/);
   assert.ok(!result.calls.some((c) => c.name === "finish_catalog_collection"));
 });
 test("API login cannot execute; authentication failure is blocked for operator attention", async () => {
