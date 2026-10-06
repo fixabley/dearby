@@ -41,7 +41,7 @@ class CardPublishViewModel(private val account: AccountViewModel) : ViewModel() 
         try {
             val stored = account.authorized { account.client.profile(it) }
             savedProfile = stored
-            mutable.update { it.copy(draft = CardDraft.from(stored), phase = PublishPhase.Editing) }
+            mutable.update { it.copy(draft = CardDraft.from(stored).prefill(account.state.value.email), phase = PublishPhase.Editing) }
         } catch (e: AccountException) {
             mutable.update { it.copy(phase = PublishPhase.Failed("프로필을 불러오지 못했어요. 다시 시도해 주세요.")) }
         }
@@ -49,7 +49,12 @@ class CardPublishViewModel(private val account: AccountViewModel) : ViewModel() 
     fun edit(draft: CardDraft) = mutable.update { it.copy(draft = draft) }
     fun cancelSignIn() = mutable.update { it.copy(signingIn = false) }
     fun publish() {
-        if (!signedIn) { mutable.update { it.copy(signingIn = true) }; return }
+        if (!signedIn) {
+            // Fix the form first; the sign-in address fills an empty email afterwards.
+            val problem = mutable.value.draft.problem(checkingEmail = false)
+            mutable.update { if (problem != null) it.copy(phase = PublishPhase.Failed(problem)) else it.copy(signingIn = true) }
+            return
+        }
         launch { send() }
     }
     /** Signed in from the composer: merge what was typed onto the account, then publish. */
@@ -58,7 +63,7 @@ class CardPublishViewModel(private val account: AccountViewModel) : ViewModel() 
         try {
             val stored = account.authorized { account.client.profile(it) }
             savedProfile = stored
-            mutable.update { it.copy(draft = it.draft.merged(stored)) }
+            mutable.update { it.copy(draft = it.draft.merged(stored).prefill(account.state.value.email)) }
         } catch (e: AccountException) {
             mutable.update { it.copy(phase = PublishPhase.Failed("프로필을 불러오지 못했어요. 다시 시도해 주세요.")) }
             return@launch
@@ -67,7 +72,7 @@ class CardPublishViewModel(private val account: AccountViewModel) : ViewModel() 
     }
     private suspend fun send() {
         val draft = mutable.value.draft
-        if (!draft.canPublish) return
+        draft.problem()?.let { problem -> mutable.update { it.copy(phase = PublishPhase.Failed(problem)) }; return }
         mutable.update { it.copy(phase = PublishPhase.Publishing) }
         val profile = draft.profile
         try {
@@ -75,12 +80,13 @@ class CardPublishViewModel(private val account: AccountViewModel) : ViewModel() 
                 account.authorized { account.client.saveProfile(profile, it) }
                 savedProfile = profile
             }
-            val card = account.authorized { account.client.publish("내 명함", "", draft.contactIds, draft.historyIds, it) }
+            val card = account.authorized { account.client.publish(draft.cardName, "", draft.contactIds, draft.historyIds, it) }
             mutable.update { it.copy(phase = PublishPhase.Published(card)) }
         } catch (e: AccountException) {
             mutable.update { when (e.error) {
                 // The session expired: sign in again and the draft is kept.
                 AccountError.UNAUTHORIZED -> it.copy(phase = PublishPhase.Editing, signingIn = true)
+                AccountError.INVALID_CONTACTS -> it.copy(phase = PublishPhase.Failed("전화번호와 이메일을 확인해 주세요."))
                 AccountError.INVALID_INPUT -> it.copy(phase = PublishPhase.Failed("입력한 내용을 확인해 주세요. 링크는 https 주소만 쓸 수 있어요."))
                 else -> it.copy(phase = PublishPhase.Failed(if (savedProfile == profile) "프로필은 저장했어요. 명함 발행만 다시 시도해 주세요." else "발행하지 못했어요. 잠시 후 다시 시도해 주세요."))
             } }

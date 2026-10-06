@@ -1,6 +1,7 @@
 package com.dearby.nativeapp.entities.account.api
 
 import android.content.Context
+import androidx.core.content.edit
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
@@ -43,7 +44,8 @@ class SessionVault(context: Context, name: String = "account.session.v2") : Sess
         val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE, key()) }
         val sealed = cipher.doFinal("${session.profileId}\n${session.sessionToken}".toByteArray())
         val value = Base64.encodeToString(cipher.iv, Base64.NO_WRAP) + ":" + Base64.encodeToString(sealed, Base64.NO_WRAP)
-        check(preferences.edit().putString("ciphertext", value).commit()) { "Session could not be stored" }
+        preferences.edit(commit = true) { putString("ciphertext", value) }
+        check(preferences.getString("ciphertext", null) == value) { "Session could not be stored" }
     }
-    override fun clear() { check(preferences.edit().clear().commit()) }
+    override fun clear() { preferences.edit(commit = true) { clear() } }
 }

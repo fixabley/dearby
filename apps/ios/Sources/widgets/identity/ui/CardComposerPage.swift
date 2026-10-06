@@ -22,7 +22,7 @@ struct CardComposerPage: View {
                              contacts: $model.draft.contacts, histories: $model.draft.histories,
                              requiresLogin: model.account.session == nil,
                              publishing: model.phase == .publishing || model.phase == .loading,
-                             errorMessage: failure ?? model.account.message) { publish() }
+                             errorMessage: failure ?? model.account.message, cardTitle: $model.draft.cardTitle) { publish() }
             }
         }
         .background(.white)
@@ -34,7 +34,10 @@ struct CardComposerPage: View {
         }
     }
     private func publish() {
-        guard model.account.session != nil else { signingIn = true; return }
+        guard model.account.session != nil else {
+            if let problem = model.problemBeforeSignIn { model.showProblem(problem) } else { signingIn = true }
+            return
+        }
         Task {
             await model.publish()
             // The session expired during publishing: sign in again and the draft is kept.

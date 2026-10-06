@@ -18,9 +18,9 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** [CONFLICT]: a card already holds the most share links (409). */
-/** [OWN_CARD]: the share points at the signed-in account's own card (422 INVALID_RECIPIENT). */
-enum class AccountError { UNAUTHORIZED, INVALID_INPUT, OWN_CARD, NOT_FOUND, CONFLICT, RATE_LIMITED, UNAVAILABLE }
+/** [INVALID_CONTACTS]: required phone or email missing or malformed (422 "Invalid contacts"); [OWN_CARD]: the share is your own
+ *  card (422 INVALID_RECIPIENT); [CONFLICT]: a card already holds the most share links (409). */
+enum class AccountError { UNAUTHORIZED, INVALID_INPUT, INVALID_CONTACTS, OWN_CARD, NOT_FOUND, CONFLICT, RATE_LIMITED, UNAVAILABLE }
 class AccountException(val error: AccountError) : Exception(error.name)
 
 data class HttpRequest(val method: String, val url: String, val token: String?, val body: String?)
@@ -90,8 +90,13 @@ class AccountClient(private val api: String, private val transport: Transport = 
             404 -> throw AccountException(AccountError.NOT_FOUND)
             409 -> throw AccountException(AccountError.CONFLICT)
             422 -> throw AccountException(
-                if (runCatching { JSONObject(response.body).getJSONObject("error").getString("code") }.getOrNull() == "INVALID_RECIPIENT") AccountError.OWN_CARD
-                else AccountError.INVALID_INPUT)
+                runCatching { JSONObject(response.body).getJSONObject("error") }.getOrNull().let { error ->
+                    when {
+                        error?.optString("code") == "INVALID_RECIPIENT" -> AccountError.OWN_CARD
+                        error?.optString("message") == "Invalid contacts" -> AccountError.INVALID_CONTACTS
+                        else -> AccountError.INVALID_INPUT
+                    }
+                })
             429 -> throw AccountException(AccountError.RATE_LIMITED)
             else -> throw AccountException(AccountError.UNAVAILABLE)
         }

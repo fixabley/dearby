@@ -1,9 +1,10 @@
 import Foundation
 
 enum AccountError: Error, Equatable {
-    /// `conflict`: a card already holds the most share links (409).
+    /// `invalidContacts`: the profile's required phone or email is missing or malformed (422 "Invalid contacts").
     /// `ownCard`: the share points at the signed-in account's own card (422 INVALID_RECIPIENT).
-    case unauthorized, invalidInput, ownCard, notFound, conflict, rateLimited, unavailable
+    /// `conflict`: a card already holds the most share links (409).
+    case unauthorized, invalidInput, invalidContacts, ownCard, notFound, conflict, rateLimited, unavailable
 }
 
 /// Owner API (contract native-v1): email code sign-in, profile and card publishing.
@@ -95,8 +96,9 @@ struct AccountClient: Sendable {
         case 404: throw AccountError.notFound
         case 409: throw AccountError.conflict
         case 422:
-            let code = (try? JSONDecoder().decode(ErrorBody.self, from: data))?.error.code
-            throw code == "INVALID_RECIPIENT" ? AccountError.ownCard : AccountError.invalidInput
+            let detail = (try? JSONDecoder().decode(ErrorBody.self, from: data))?.error
+            if detail?.code == "INVALID_RECIPIENT" { throw AccountError.ownCard }
+            throw detail?.message == "Invalid contacts" ? AccountError.invalidContacts : AccountError.invalidInput
         case 429: throw AccountError.rateLimited
         default: throw AccountError.unavailable
         }
