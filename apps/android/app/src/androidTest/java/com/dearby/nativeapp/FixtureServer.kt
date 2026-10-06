@@ -11,7 +11,7 @@ import org.json.JSONObject
  * (Debug `ApiOrigin.debugOverride`). Code [CODE] signs in; anything else is rejected.
  */
 class FixtureServer : AutoCloseable {
-    companion object { const val CODE = "123456" }
+    companion object { const val CODE = "123456"; const val SHARE_ID = "5a1e0000-0000-4000-8000-000000000001" }
     private val socket = ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))
     /** When true every request answers 503, to exercise the error and retry state. */
     @Volatile var failing = false
@@ -20,6 +20,8 @@ class FixtureServer : AutoCloseable {
     /** "METHOD /path" of every request, in order. */
     val requests: MutableList<String> = Collections.synchronizedList(mutableListOf())
     @Volatile private var profile = """{"id":"p1","name":"","job":"","introduction":"","contacts":[],"histories":[],"updatedAt":"2026-10-06T00:00:00Z"}"""
+    /** Cards published through this server, in creation order. */
+    private val cards = Collections.synchronizedList(mutableListOf<JSONObject>())
     val origin get() = "http://127.0.0.1:${socket.localPort}"
 
     init {
@@ -60,10 +62,20 @@ class FixtureServer : AutoCloseable {
             "POST /v1/auth/sessions" -> if (json.optString("code") == CODE) 200 to """{"sessionToken":"fixture-token","profileId":"p1"}""" else 401 to "{}"
             "GET /v1/profile" -> 200 to profile
             "PUT /v1/profile" -> { profile = json.put("id", "p1").put("updatedAt", "2026-10-06T00:00:00Z").toString(); 200 to profile }
-            "POST /v1/cards" -> if (failingCards) 503 to "{}" else 201 to JSONObject().put("id", "c1000000-0000-4000-8000-000000000001").put("name", "내 명함")
-                .put("description", "").put("profileName", JSONObject(profile).optString("name")).put("job", "")
-                .put("contacts", org.json.JSONArray()).put("histories", org.json.JSONArray()).put("createdAt", "2026-10-06T00:00:00Z").toString()
-            else -> 404 to "{}"
+            "POST /v1/cards" -> if (failingCards) 503 to "{}" else {
+                val card = JSONObject().put("id", "c1000000-0000-4000-8000-00000000000${cards.size + 1}").put("name", "내 명함")
+                    .put("description", "").put("profileName", JSONObject(profile).optString("name")).put("job", "")
+                    .put("contacts", org.json.JSONArray()).put("histories", org.json.JSONArray()).put("createdAt", "2026-10-06T00:00:00Z")
+                cards += card
+                201 to card.toString()
+            }
+            "GET /v1/cards" -> 200 to JSONObject().put("items", org.json.JSONArray(cards.toList())).toString()
+            // POST /v1/cards/<id>/shares: activities come back as an {id, title} snapshot.
+            else -> if (route.startsWith("POST /v1/cards/") && route.endsWith("/shares")) {
+                val ids = json.optJSONArray("activityIds") ?: org.json.JSONArray()
+                val activities = org.json.JSONArray((0 until ids.length()).map { JSONObject().put("id", ids.getString(it)).put("title", "활동 ${ids.getString(it)}") })
+                201 to JSONObject().put("id", SHARE_ID).put("cardId", route.split("/")[3]).put("activities", activities).put("createdAt", "2026-10-06T00:00:00Z").toString()
+            } else 404 to "{}"
         }
     }
     override fun close() = socket.close()

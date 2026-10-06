@@ -14,6 +14,10 @@ import com.dearby.nativeapp.entities.account.model.AccountSession
 import com.dearby.nativeapp.entities.account.model.toJson
 import com.dearby.nativeapp.app.CardPublishViewModel
 import com.dearby.nativeapp.app.PublishPhase
+import com.dearby.nativeapp.app.QrShareViewModel
+import com.dearby.nativeapp.pages.qr.QrSharePhase
+import com.dearby.nativeapp.shared.config.sharedCardId
+import com.dearby.nativeapp.shared.config.sharedCardUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
@@ -147,5 +151,37 @@ class AccountTest {
         model.publish()
         assertEquals(listOf("GET", "PUT", "POST", "POST"), fake.requests.map { it.method })
         assertTrue(model.state.value.phase is PublishPhase.Published)
+    }
+
+    @Test fun shareLinkRoundTripsThroughTheParser() {
+        val url = sharedCardUrl("5a1e0000-0000-4000-8000-000000000001", "https://dearby.example.test")
+        assertEquals("https://dearby.example.test/s/5a1e0000-0000-4000-8000-000000000001", url)
+        assertEquals("5a1e0000-0000-4000-8000-000000000001", sharedCardId(url, "https://dearby.example.test"))
+    }
+    @Test fun qrShareUsesNewestCardAndReusesASharePerActivityChoice() = runBlocking {
+        val share = """{"id":"5a1e0000-0000-4000-8000-000000000001","cardId":"card-2","activities":[],"createdAt":"2026-10-06T00:00:00Z"}"""
+        val other = """{"id":"5a1e0000-0000-4000-8000-000000000002","cardId":"card-2","activities":[{"id":"a1","title":"활동"}],"createdAt":"2026-10-06T00:00:00Z"}"""
+        val fake = FakeTransport(200 to """{"items":[$cardBody,${cardBody.replace("card-1", "card-2")}]}""", 201 to share, 201 to other)
+        val model = QrShareViewModel(AccountViewModel(client(fake), MemoryStore(AccountSession("t", "p1")))) { sharedCardUrl(it, "https://dearby.example.test") }
+        model.load()
+        assertEquals("card-2", model.state.value.selectedCardId)
+        assertEquals("https://dearby.example.test/s/5a1e0000-0000-4000-8000-000000000001", model.state.value.url)
+        assertEquals("https://api.example.test/v1/cards/card-2/shares", fake.requests[1].url)
+        assertEquals("""{"activityIds":[]}""", fake.requests[1].body)
+        model.toggle("a1")
+        assertEquals("""{"activityIds":["a1"]}""", fake.requests[2].body)
+        model.toggle("a1")
+        assertEquals(3, fake.requests.size)
+        assertEquals("https://dearby.example.test/s/5a1e0000-0000-4000-8000-000000000001", model.state.value.url)
+    }
+    @Test fun qrShareSignedOutOrWithoutCardsAsksToMakeOne() = runBlocking {
+        val fake = FakeTransport(200 to """{"items":[]}""")
+        val signedOut = QrShareViewModel(AccountViewModel(client(fake), MemoryStore())) { it }
+        signedOut.load()
+        assertEquals(QrSharePhase.SIGNED_OUT, signedOut.state.value.phase)
+        assertTrue(fake.requests.isEmpty())
+        val empty = QrShareViewModel(AccountViewModel(client(fake), MemoryStore(AccountSession("t", "p1")))) { it }
+        empty.load()
+        assertEquals(QrSharePhase.NO_CARD, empty.state.value.phase)
     }
 }
