@@ -85,6 +85,7 @@ model Exchange {
 model GuestSession {
   digest String @id
   cards GuestCard[]
+  handoff GuestHandoff?
   @@map("guest_sessions")
   @@schema("dearby_api")
 }
@@ -122,6 +123,16 @@ model GuestCardShare {
   @@id([sessionDigest,shareId])
   @@index([sessionDigest,cardId])
   @@map("guest_card_shares")
+  @@schema("dearby_api")
+}
+model GuestHandoff {
+  digest String @id
+  sessionDigest String @unique @map("session_digest")
+  tokenCiphertext String? @map("token_ciphertext")
+  expiresAt BigInt @map("expires_at")
+  usedAt BigInt? @map("used_at")
+  session GuestSession @relation(fields:[sessionDigest],references:[digest],onDelete:Cascade,onUpdate:Restrict)
+  @@map("guest_handoffs")
   @@schema("dearby_api")
 }
 // Preserve the offline SQLite catalog/history without merging it into managed public catalog.
