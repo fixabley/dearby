@@ -25,14 +25,14 @@
 | [프로필](approved/profile.png) | 연락처 행·활동 연표·편집/추가 화면. 변경은 메모리만 사용. |
 | [비로그인 프로필](approved/profile-guest.png) | 시작 버튼으로 예시 프로필 전환. 실제 계정 입력 없음. |
 | [QR 보여주기](approved/qr-show.png) | 큰 예시 QR, 확대, 명함 보기, 내 명함 타일 선택. |
-| [새 명함](approved/qr-new-card.png) | + 타일 → 안내 → 명함 편집. |
+| [새 명함](approved/qr-new-card.png) | 2026-10-06부터 + 타일·`명함 만들기`·명함 편집 버튼이 모두 실제 명함 제작 화면(`CardComposer`)을 연다. 로그인은 발행을 누를 때만 이메일 인증번호 시트로 묻고, 로그인 뒤 발행을 이어 간다(`PUT /v1/profile` → `POST /v1/cards`, 명함 실패 시 명함만 다시 시도). 명함 이름 입력 칸이 없어 이름은 `내 명함`으로 고정한다. iOS·Android 반영. |
 | [QR 찍기](approved/qr-scan.png) | 스캔 영역과 예시 명함 열기. 카메라·사진 권한 요청 없음. |
 | [공유 메뉴](approved/qr-share-menu.png) | 링크/복사/이미지 메뉴와 예시 피드백. 실제 명함 게시 없음. |
 | [공유 명함](approved/shared-card.png) | 큰 연락처 아이콘·연표, 저장/나도 주기 → 예시 명함 선택. |
-| [명함 편집](approved/card-editor.png) | 연락처 공개 선택·이력 개별/전체 선택·미리보기·예시 생성. |
+| [명함 편집](approved/card-editor.png) | 2026-10-06 예시 편집기(iOS `CardEditorPage`, Android `CardEditor`)를 지우고 위 명함 제작 화면 하나로 모았다. 미리보기·명함 이름 입력은 아직 없다. iOS·Android 반영. |
 | [받은 명함](approved/wallet.png) | 검색·두 그룹·겹친 명함 카드·넘기기·상세·나도 주기. |
 | [반환 완료 명함함](approved/wallet-reciprocal-only.png) | 예시 보내기로 미반환이 0이 되면 그룹 문구 숨김. |
-| [보낼 명함 선택](approved/send-card-picker.png) | 내 명함 묶음·이름/직무 헤더·선택·상세·새 명함·예시 보내기. |
+| [보낼 명함 선택](approved/send-card-picker.png) | 내 명함 묶음·이름/직무 헤더·선택·상세·예시 보내기. 2026-10-06 명함 제작을 QR 탭 하나로 모으면서 우상단 `+ 새 명함`을 뺐다(메인 승인). iOS·Android 반영. |
 
 기본 탭은 발견·내 활동·QR·받은 명함·내 프로필이다(2026-10-06 결정, iOS·Android 반영). 내 활동은 신청한 활동을 일정순으로 보여 주고 항목·상세에서 `참여 확정 표시`를 켜고 끈다. 별도 시안이 없으므로 탐색 카드 스타일을 재사용한다.
 화면에 보이는 문구는 예시 목적에 맞게 조정한다. 휴대폰 프레임·상태 표시줄·생성 이미지의 노이즈는 재현하지 않는다.
