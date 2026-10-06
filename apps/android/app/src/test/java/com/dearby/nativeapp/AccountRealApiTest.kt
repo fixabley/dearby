@@ -7,7 +7,20 @@ import com.dearby.nativeapp.entities.account.model.AccountContact
 import com.dearby.nativeapp.entities.account.model.AccountHistory
 import java.net.URL
 import java.util.UUID
+import com.dearby.nativeapp.app.AccountViewModel
+import com.dearby.nativeapp.app.CardPublishViewModel
+import com.dearby.nativeapp.app.PublishPhase
+import com.dearby.nativeapp.entities.account.api.SessionStore
+import com.dearby.nativeapp.entities.account.model.AccountProfile
+import com.dearby.nativeapp.entities.account.model.AccountSession
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
@@ -54,5 +67,45 @@ class AccountRealApiTest {
         client.signOut(session)
         val expired = runCatching { client.profile(session) }.exceptionOrNull()
         assertEquals(AccountError.UNAUTHORIZED, (expired as AccountException).error)
+    }
+
+    /** 5b: a draft typed before signing in is merged onto the account's saved profile and published. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test fun guestDraftMergesOntoSavedProfileAndPublishes() = runBlocking {
+        assumeTrue(api != null && mailpit != null)
+        require(api!!.startsWith("http://127.0.0.1") && mailpit!!.startsWith("http://127.0.0.1")) { "local only" }
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+        try {
+            val store = object : SessionStore {
+                var session: AccountSession? = null
+                override fun load() = session
+                override fun save(session: AccountSession) { this.session = session }
+                override fun clear() { session = null }
+            }
+            val client = AccountClient(api)
+            val account = AccountViewModel(client, store)
+            val model = CardPublishViewModel(account)
+            model.start()
+            val email = "android-merge-${UUID.randomUUID()}@example.test"
+            val draft = model.state.value.draft
+            model.edit(draft.copy(name = "안드로이드 발행", contacts = draft.contacts.map { if (it.kind == "email") it.copy(value = email) else it }))
+            account.requestCode(email)
+            account.verify(code(email))
+            val session = store.session!!
+            val phone = AccountContact(UUID.randomUUID().toString(), "phone", "전화번호", "010-1234-5678")
+            val history = AccountHistory(UUID.randomUUID().toString(), "저장된 활동", "", "2026-09-01", null, "")
+            client.saveProfile(AccountProfile("저장된 이름", "", "", listOf(phone), listOf(history)), session)
+            model.continueAfterSignIn()
+            // The real transport hops to the IO dispatcher, so wait for the publish to finish.
+            val phase = withTimeout(20_000) { model.state.first { it.phase is PublishPhase.Published || it.phase is PublishPhase.Failed } }.phase
+            val card = (phase as PublishPhase.Published).card
+            assertEquals("안드로이드 발행", card.profileName)
+            assertEquals(listOf(email), card.contacts.map { it.value })
+            assertTrue(card.histories.isEmpty())
+            val stored = client.profile(session)
+            assertEquals(setOf(phone.value, email), stored.contacts.map { it.value }.toSet())
+            assertEquals(listOf(history.id), stored.histories.map { it.id })
+            client.signOut(session)
+        } finally { Dispatchers.resetMain() }
     }
 }

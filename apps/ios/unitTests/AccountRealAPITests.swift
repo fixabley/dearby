@@ -6,7 +6,7 @@ import XCTest
 final class AccountRealAPITests: XCTestCase {
     private let environment = ProcessInfo.processInfo.environment
 
-    private func code(for email: String, mailpit: URL) async throws -> String {
+    private static func code(for email: String, mailpit: URL) async throws -> String {
         for _ in 0..<40 {
             var search = URLComponents(url: mailpit.appending(path: "api/v1/search"), resolvingAgainstBaseURL: false)!
             search.queryItems = [URLQueryItem(name: "query", value: "to:\(email)")]
@@ -30,7 +30,7 @@ final class AccountRealAPITests: XCTestCase {
         let client = AccountClient.live(api: URL(string: apiRaw)!)
         let email = "ios-\(UUID().uuidString.lowercased())@example.test"
         let challenge = try await client.requestCode(email: email)
-        let session = try await client.signIn(challengeId: challenge, code: try await code(for: email, mailpit: URL(string: mailRaw)!))
+        let session = try await client.signIn(challengeId: challenge, code: try await Self.code(for: email, mailpit: URL(string: mailRaw)!))
         var profile = try await client.profile(session)
         XCTAssertEqual(profile.name, "")
         let contact = AccountContact(id: UUID().uuidString.lowercased(), kind: "email", label: "이메일", value: email)
@@ -51,5 +51,41 @@ final class AccountRealAPITests: XCTestCase {
         do { _ = try await client.profile(session); XCTFail("revoked session must fail") } catch {
             XCTAssertEqual(error as? AccountError, .unauthorized)
         }
+    }
+
+    /// 5b: a draft typed before signing in is merged onto the account's saved profile and published.
+    @MainActor func testGuestDraftMergesOntoSavedProfileAndPublishes() async throws {
+        guard let apiRaw = environment["DEARBY_REAL_API_ORIGIN"], let mailRaw = environment["DEARBY_REAL_MAILPIT"],
+              apiRaw.hasPrefix("http://127.0.0.1"), mailRaw.hasPrefix("http://127.0.0.1") else {
+            throw XCTSkip("Set loopback DEARBY_REAL_API_ORIGIN and DEARBY_REAL_MAILPIT to run against a local API.")
+        }
+        final class Memory: SessionStore, @unchecked Sendable {
+            var session: AccountSession?
+            func load() throws -> AccountSession? { session }
+            func save(_ session: AccountSession) throws { self.session = session }
+            func clear() throws { session = nil }
+        }
+        let client = AccountClient.live(api: URL(string: apiRaw)!)
+        let account = AccountViewModel(client: client, vault: Memory())
+        let model = CardPublishModel(account: account)
+        model.draft.name = "iOS 발행"
+        let email = "ios-merge-\(UUID().uuidString.lowercased())@example.test"
+        let row = try XCTUnwrap(model.draft.contacts.firstIndex { $0.kind == "email" })
+        model.draft.contacts[row].value = email
+        await account.requestCode(email)
+        await account.verify(try await Self.code(for: email, mailpit: URL(string: mailRaw)!))
+        let session = try XCTUnwrap(account.session)
+        let phone = AccountContact(id: UUID().uuidString.lowercased(), kind: "phone", label: "전화번호", value: "010-1234-5678")
+        let history = AccountHistory(id: UUID().uuidString.lowercased(), title: "저장된 활동", role: "", startDate: "2026-09-01", endDate: nil, description: "")
+        _ = try await client.saveProfile(AccountProfile(name: "저장된 이름", job: "", introduction: "", contacts: [phone], histories: [history]), session)
+        await model.continueAfterSignIn()
+        guard case .published(let card) = model.phase else { return XCTFail("\(model.phase)") }
+        XCTAssertEqual(card.profileName, "iOS 발행")
+        XCTAssertEqual(card.contacts.map(\.value), [email])
+        XCTAssertTrue(card.histories.isEmpty)
+        let stored = try await client.profile(session)
+        XCTAssertEqual(Set(stored.contacts.map(\.value)), [phone.value, email])
+        XCTAssertEqual(stored.histories.map(\.id), [history.id])
+        try await client.signOut(session)
     }
 }
