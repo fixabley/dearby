@@ -12,6 +12,7 @@ data class DemoState(
     val loggedIn: Boolean = false, val profile: ProfileState = demoProfile,
     val cards: List<CardState> = demoCards, val selectedCardId: String? = demoCards.first().id,
     val wallet: List<WalletEntryState> = demoWallet, val query: String = "", val reciprocalGroup: Boolean = false,
+    val collapsedGroupIds: Set<String> = emptySet(),
 )
 class DemoViewModel : ViewModel() {
     private val mutable = MutableStateFlow(DemoState())
@@ -21,6 +22,7 @@ class DemoViewModel : ViewModel() {
     fun selectCard(id: String?) { mutable.update { it.copy(selectedCardId = id) } }
     fun query(value: String) { mutable.update { it.copy(query = value) } }
     fun group(reciprocal: Boolean) { mutable.update { it.copy(reciprocalGroup = reciprocal) } }
+    fun toggleGroup(id: String) { mutable.update { it.copy(collapsedGroupIds = if (id in it.collapsedGroupIds) it.collapsedGroupIds - id else it.collapsedGroupIds + id) } }
     fun createCard(contactIds: Set<String>, historyIds: Set<String>, name: String): CardState {
         val current = mutable.value
         val card = CardState("mine-${current.cards.size}", current.profile.name, current.profile.job, name.ifBlank { "네트워킹" }, "새로운 인연에게 나를 소개해요.", current.profile.introduction,

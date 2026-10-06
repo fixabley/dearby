@@ -19,7 +19,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardStack
 import com.dearby.nativeapp.widgets.card.cardContent.ContactState
 import kotlinx.coroutines.launch
 
-data class WalletEntryState(val card: CardState, val reciprocal: Boolean)
+data class WalletEntryState(val card: CardState, val reciprocal: Boolean, val activityIds: List<String> = emptyList())
 fun walletMatches(entry: WalletEntryState, query: String) = listOf(entry.card.person, entry.card.job, entry.card.title).plus(entry.card.histories.map { it.title }).any { it.contains(query, ignoreCase = true) }
 
 @Composable fun WalletPage(entries: List<WalletEntryState>, query: String, reciprocal: Boolean, changeQuery: (String) -> Unit, changeGroup: (Boolean) -> Unit, detail: (CardState) -> Unit, send: (CardState) -> Unit, contact: (ContactState) -> Unit) {
