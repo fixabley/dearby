@@ -31,11 +31,16 @@ data class CardComposerHistory(val id: String, val title: String, val detail: St
     onContactChange: (CardComposerContact) -> Unit, onHistoryChange: (CardComposerHistory) -> Unit,
     onPublish: () -> Unit, modifier: Modifier = Modifier,
     requiresLogin: Boolean = false, publishing: Boolean = false, errorMessage: String? = null,
+    cardTitle: String? = null, onCardTitleChange: (String) -> Unit = {},
 ) {
     val nameMissing = name.isBlank()
     Column(modifier.fillMaxSize()) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
             PersonHeader(if (nameMissing) "이름" else name, if (job.isBlank()) "직함" else job, "")
+            // 명함 이름은 [cardTitle]을 줄 때만 보이는 선택 칸이며, 비워 두면 화면이 '내 명함'을 쓴다.
+            if (cardTitle != null) Section("명함") {
+                Labeled("명함 이름 (선택)") { DearbyInlineField("명함 이름", cardTitle, onCardTitleChange, editing = true, placeholder = "비워 두면 '내 명함'으로 저장해요") }
+            }
             Section("기본 정보") {
                 Labeled("이름") { DearbyInlineField("이름", name, onNameChange, editing = true, placeholder = "실명 또는 활동명") }
                 Labeled("직함") { DearbyInlineField("직함", job, onJobChange, editing = true, placeholder = "예: 서비스 기획 · 커뮤니티") }
