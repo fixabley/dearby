@@ -2,6 +2,8 @@ import Foundation
 
 // Deliberately fixed examples: dates never change the displayed recruitment status.
 enum DemoActivities {
+    // Same on Android: the app starts with one example application.
+    static let appliedIDs: Set<String> = ["conference"]
     static let all: [ActivityModel] = [
         activity(id: "conference", title: "Dearby 개발자 컨퍼런스", type: .registration,
                  status: "예시 모집중", day: "2026-10-24", start: "13:00", end: "17:00",

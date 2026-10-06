@@ -7,7 +7,7 @@ import SwiftUI
     var body: some Scene {
         WindowGroup {
             HomePage(selectedTab: $tab,
-                discovery: CatalogPage(state: catalog), saved: CatalogPage(state: catalog, saved: true),
+                discovery: CatalogPage(state: catalog), mine: MyActivitiesPage(state: catalog, explore: { tab = 0 }),
                 qr: QRPage(state: identity), wallet: WalletPage(state: identity), profile: ProfilePage(state: identity))
         }
     }

@@ -1,13 +1,13 @@
 # Dearby iOS 클릭형 프로토타입
 
-2026-10-04 최신 승인으로 selected 시안의 발견·저장·QR·받은 명함·내 프로필 5탭과
+2026-10-04 최신 승인으로 selected 시안의 발견·내 활동·QR·받은 명함·내 프로필 5탭과
 활동 상세/신청/일정 비교, 명함 편집/보기/선택/공유 메뉴를 SwiftUI로 제공합니다.
 모든 사람·활동·연락처는 예시이며, 앱을 종료하면 변경 상태가 사라집니다.
 
 - 활동 fixture: `Sources/entities/catalog/model/DemoActivities.swift`의 3개 고정 예시.
   날짜가 지나도 모집 상태가 변하지 않습니다. 실제 모집 정보가 아닙니다.
 - 명함 fixture: `Sources/entities/identity/model/DemoIdentity.swift`의 가상 사람·연락처·이력.
-- 상태: `CatalogViewModel`의 저장/신청 표시, `IdentityViewModel`의 예시 로그인·프로필·명함·교환·프리셋.
+- 상태: `CatalogViewModel`의 신청·참여 확정 표시(컨퍼런스 1건 신청으로 시작, 주최 측 확정 아님), `IdentityViewModel`의 예시 로그인·프로필·명함·교환·프리셋.
   View의 탭·필터·선택·검색도 모두 메모리만 사용합니다.
 - 일정: `CalendarConflictState.swift`의 2026-10-24 14–15시 Asia/Seoul 고정 바쁜 시간.
   컨퍼런스 60분/1건, 캠프·밋업 0건. 결과는 30분 2열 격자로 표시합니다.
