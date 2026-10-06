@@ -8,6 +8,7 @@ import type { DB } from './postgres.js';
 import { ApiError } from './validation.js';
 import { walletRoutes } from './wallet.js';
 import { cardRoutes } from './cards.js';
+import { shareRoutes } from './shares.js';
 import { authRoutes, type AuthOptions } from './auth.js';
 
 export function createApp(db: DB, options: AuthOptions & {catalogReader?: () => Promise<Catalog>; guestProxySecret?: string}) {
@@ -20,13 +21,15 @@ export function createApp(db: DB, options: AuthOptions & {catalogReader?: () => 
     reply.code(status).send({ error: { code, message: error instanceof ApiError ? error.message : status === 422 ? 'Invalid request' : 'Request failed' } });
   });
   app.setNotFoundHandler((_request, reply) => reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Resource not found' } }));
+  const catalog = options.catalogReader ?? prismaCatalog(db);
   void app.register(async api => {
     await registerDocumentation(api);
     api.get('/v1/catalog',documented({operationId:'getCatalog',summary:'Read the public activity catalog',tag:'Catalog',
       description:'Public read; current nginx permits GET/HEAD. Returns only published data; draft/hidden data is excluded. Recalculates freshness and deadlines. Read failures return 503. An empty published catalog is valid 200.',responses:{200:catalogSchema},errors:[503]}),
-      async () => options.catalogReader ? options.catalogReader() : prismaCatalog(db)());
+      async () => catalog());
     const owner = authRoutes(api,db,options);
     cardRoutes(api,db,owner,options.now??Date.now);
+    shareRoutes(api,db,owner,catalog,options.now??Date.now);
     walletRoutes(api,db,owner,options.now??Date.now);
     guestRoutes(api,db,options.guestProxySecret,options.now??Date.now);
   });

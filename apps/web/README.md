@@ -27,10 +27,24 @@ The opt-in `tests/real-api.integration.ts` additionally tests a real isolated lo
 - `/`: currently recruiting, verified, unexpired activities only; empty and failure states are distinct, with retry.
 - `/activities/:id`: public catalog detail and safe official/application links. Opening a link never claims application completion. Calendar comparison is explicitly unavailable in the browser.
 - `/cards/:id`: public Card projection: name/job/introduction, selected contacts and activity history. Revoked/missing API 404 becomes an unavailable-card screen. Invalid IDs never reach upstream. No private profile fetch.
+- `/s/:shareId`: a shared card with the activities its sender chose (not proof of participation). One button saves via PUT `/api/guest/shares/:id`, then the list is re-read to confirm the cookie, the "이 브라우저에만 저장됐어요" notice replaces the button and focus moves to "저장한 명함 보기". Revoked/missing shares and malformed IDs show the unavailable-card screen. Known in-app browsers (`src/lib/in-app-browser.ts`) get an external-browser notice; saving is never blocked. The optional home-screen prompt after saving is added with the install PR (#87).
 - `/saved`: this browser's public saved cards. No-cookie visits return an empty list without creating a database session.
-- `/api/[...path]`: fixed method/path allowlist for catalog, single public card and guest wallet only. Private profiles, owner card lists, wallet/auth/publishing endpoints are inaccessible through this proxy.
+- `/api/[...path]`: fixed method/path allowlist for catalog, single public card and guest wallet only. Private profiles, owner card lists, wallet/auth/publishing endpoints are inaccessible through this proxy Card shares (contract "명함 공유 기록과 게스트 공유 정보 저장"): GET `/api/shares/:id` (share must point at the returned card) and PUT `/api/guest/shares/:id` (same Origin/header/body/cookie rules as card saves; the response echoes the share ID). Creating shares (`POST /v1/cards/:id/shares`) is not proxied. The guest list adds `shares`, defaulting to empty against an API without share records. `src/lib/saved-groups.ts` groups saved cards by shared activity for `/saved`, in the order activities were first saved, with `활동 없음` last. The `/s/:shareId` and `/saved` screens come after the web layer split. Test share data in `tests/card-shares.json` is copied from API PR #84.
 
 Zod validates public DTOs and strips extra fields before returning JSON. React escapes all text. External links permit only http(s), no credentials; contact schemes are explicit. API responses use no-store, private, and Vary: Cookie/Origin. Browser calls never include a Supabase key or upstream URL.
+
+## Home-screen web app
+
+`src/app/manifest.ts` (`start_url` `/saved`, standalone) and `src/app/apple-icon.png` make the site installable. Icons are resized copies of the iOS app icon. There is deliberately no service worker, so saved cards are never cached on the device. On 2026-10-06 Chromium 153 (Playwright) reported no installability errors without one (`tests/e2e/install.spec.ts`); a real Android Chrome install prompt is not yet verified.
+
+iOS home-screen cookie separation, checked 2026-10-06 on the iOS 26.5 simulator (iPhone Air, Xcode 27.0) with a throwaway local page using server-set `HttpOnly; SameSite=Lax` cookies like the guest cookie, Safari → Share → 홈 화면에 추가 with 웹 앱으로 열기 on:
+- Not copied on add: Safari held `safari=1`, but the home-screen app's first request had no cookies.
+- Separate afterwards: a cookie set for the home-screen app did not appear in Safari, which still sent only `safari=1`.
+- So cards saved in Safari do not appear in the installed app, and vice versa; the iOS install guidance must say `홈 화면 앱은 Safari와 따로 저장돼요`. No session merging is built. Not checked: a real device, HTTPS with `__Host-` cookies, and whether the app's own cookie survives relaunch (the probe could not reload reliably inside the app). `src/lib/install.ts` detects known in-app browsers by user agent (best effort, never blocks saving) and exposes the install prompt/installed state; the screens that show them come after the web layer split.
+
+## App link association
+
+`/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` declare shared-card links (`/s/*`) for the iOS and Android apps. Values come only from server env (`DEARBY_APPLE_TEAM_ID`, `DEARBY_IOS_BUNDLE_IDS`, `DEARBY_ANDROID_PACKAGE`, `DEARBY_ANDROID_CERT_SHA256`; see `.env.example`). Each file returns 404 until its values are set and valid, and is served as `application/json` without redirects, read per request. Android path scoping lives in the app's intent filter because Digital Asset Links has no paths.
 
 ## Guest protocol (root/API agreed 2026-09-29)
 
@@ -52,7 +66,7 @@ Web Locks serialize mutations across tabs in the same browser origin. Unsupporte
 ## Vercel handoff (root owns deployment)
 
 - Root Directory: `apps/web`; Framework: Next.js; Node: 24.x; install `npm ci`; build `npm run build`; output default.
-- Server-only production env: `DEARBY_API_ORIGIN=https://wid.io.kr` (origin only), `GUEST_PROXY_SECRET` matching the API. No `NEXT_PUBLIC_*` secrets. `.env*` and `.vercel` are gitignored; `.env.example` holds placeholders only.
+- Server-only production env: `DEARBY_API_ORIGIN` (API origin only, e.g. `https://api.example.test`), `GUEST_PROXY_SECRET` matching the API. Production values live only in the Vercel project environment (and GitHub Actions Variables/Secrets where needed), never in Git. No `NEXT_PUBLIC_*` secrets. `.env*` and `.vercel` are gitignored; `.env.example` holds placeholders only.
 - Production only accepts HTTPS API origins. Upstream timeout/redirect/schema/server failure returns an error, never an empty catalog. No caching of card/guest data. No secret values in application logs.
 - [Vercel WAF rate limiting](https://vercel.com/docs/vercel-firewall/vercel-waf/rate-limiting) supports IP fixed-window rules on all plans; Hobby has one rate rule. Suggested deployment rule: `/api/guest/*`, IP, 60 requests per 60 seconds, 429. **Root reports the production rule has been published; this session did not configure it.** External 429 behavior still needs deployment verification. Counters are per-region, not a global persistent limit. API bounded rate/capacity controls are a separate layer.
 - Root must verify external Vercel→API reachability, actual cookie flags, token/key absence from browser responses, separate browser lists and 404/401/failure UX. Published production data is currently reported as zero; never insert fixtures merely to make the site look populated. A real first-save smoke needs an authorized existing public card.

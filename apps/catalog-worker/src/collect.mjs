@@ -125,7 +125,8 @@ export async function prepareCollection(
     throw new Error("Invalid structured collection output");
   if (output.outcome === "source_unavailable")
     throw new Error(
-      "Official source unavailable: " + String(output.summary).slice(0, 1500),
+      "BLOCKED: Official source unavailable: " +
+        String(output.summary).slice(0, 1500),
     );
   const items = [],
     warnings = [],
@@ -141,7 +142,13 @@ export async function prepareCollection(
         "Empty result requires verified official source evidence",
       );
     for (const source of output.checkedSources) {
-      const page = await fetchPage(officialUrl(source.url, hosts), hosts);
+      const page = await fetchPage(officialUrl(source.url, hosts), hosts).catch(
+        (error) => {
+          throw structural(error.message)
+            ? new Error("BLOCKED: " + error.message)
+            : error;
+        },
+      );
       const quote = normalizeText(bounded(source.quote, 200));
       if (
         quote.length < 20 ||
@@ -244,7 +251,8 @@ export async function prepareCollection(
   }
   if (output.activities.length && !items.length)
     throw new Error(
-      "All candidates failed source verification: " +
+      (warnings.every((w) => structural(w.reason)) ? "BLOCKED: " : "") +
+        "All candidates failed source verification: " +
         warnings
           .map((w) => w.reason)
           .join("; ")
@@ -252,6 +260,12 @@ export async function prepareCollection(
     );
   return { items, warnings };
 }
+// Same-day retries cannot fix these: the page shape or host list needs an operator.
+// BLOCKED stops today's retries; the global pause only applies to subscription errors.
+const structural = (reason) =>
+  /exceeds 1 MB|configured official HTTPS host|did not resolve to a public address/.test(
+    reason,
+  );
 function stableScheduleId(source, occurrence) {
   const bytes = createHash("sha256")
     .update(source + "\n" + occurrence)

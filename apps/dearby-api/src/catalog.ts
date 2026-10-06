@@ -40,10 +40,14 @@ export function atTime(activity:Activity, now:number, failed=false):Activity {
   const until = activity.validUntil === null ? NaN : Date.parse(activity.validUntil);
   const verified = activity.freshness === 'verified' && !failed && checked <= now && now < until && until <= checked + verificationLifetime;
   const freshness = failed ? 'unavailable' : verified ? 'verified' : activity.freshness === 'unavailable' ? 'unavailable' : 'stale';
+  // The verified recruitment window decides the status; the selected status applies only without dates (2026-10-06).
+  // A selected 'closed' always wins (early close). Start is inclusive, end exclusive.
+  const start = activity.recruitmentStartAt, end = activity.recruitmentEndAt;
   let recruitmentStatus = activity.recruitmentStatus;
-  if (activity.recruitmentEndAt !== null && now >= Date.parse(activity.recruitmentEndAt)) recruitmentStatus = 'closed';
-  else if (freshness !== 'verified') recruitmentStatus = recruitmentStatus === 'closed' ? 'closed' : 'unknown';
-  else if (activity.recruitmentStartAt !== null && now < Date.parse(activity.recruitmentStartAt) && recruitmentStatus === 'open') recruitmentStatus = 'scheduled';
+  if (recruitmentStatus === 'closed' || (end !== null && now >= Date.parse(end))) recruitmentStatus = 'closed';
+  else if (freshness !== 'verified') recruitmentStatus = 'unknown';
+  else if (start !== null && now < Date.parse(start)) recruitmentStatus = 'scheduled';
+  else if (start !== null || end !== null) recruitmentStatus = 'open';
   const isRecruiting = freshness === 'verified' && recruitmentStatus === 'open';
   return {...activity, freshness, recruitmentStatus, isRecruiting,
     sourceNote:activity.sourceNote + (failed ? ' 현재 공식 안내를 다시 확인할 수 없어 마지막 확인 내용을 표시합니다.' : '')};

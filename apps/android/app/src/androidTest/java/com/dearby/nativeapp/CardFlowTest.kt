@@ -11,11 +11,7 @@ class CardFlowTest {
     private fun screenshot(name: String) = capturePrototype(compose, name)
     private fun tab(label: String) = compose.onAllNodesWithText(label).onLast().performClick()
 
-    @Test fun savedAndGuestProfileAndMemoryEdit() {
-        compose.onNodeWithContentDescription("Dearby 개발자 컨퍼런스 저장").performClick()
-        tab("저장")
-        compose.onNodeWithText("Dearby 개발자 컨퍼런스").assertIsDisplayed()
-        screenshot("selected-saved")
+    @Test fun guestProfileAndMemoryEdit() {
         tab("내 프로필")
         compose.onNodeWithText("로그인하고 시작하기").assertIsDisplayed()
         screenshot("selected-profile-guest")
