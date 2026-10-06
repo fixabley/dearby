@@ -140,10 +140,14 @@ export function collectionBlock(error: string | null) {
       label: "원문 차단 · 이 프로그램만",
       hint: "공식 원문의 호스트·크기(3 MB 이하)·JS 전용 여부를 확인하고 출처를 고친 뒤 재시도하세요.",
     };
-  if (error?.startsWith("BLOCKED: Configure official hosts"))
+  if (
+    /^BLOCKED: (Configure official hosts|Source must use a configured official HTTPS host)/.test(
+      error ?? "",
+    )
+  )
     return {
       label: "설정 필요 · 이 프로그램만",
-      hint: "프로그램 관리에서 공식 출처 호스트를 입력한 뒤 재시도하세요.",
+      hint: "프로그램 관리에서 공식 출처 호스트를 입력하거나 고친 뒤 재시도하세요. 원문은 등록된 HTTPS 호스트여야 합니다.",
     };
   return { label: "조치 필요", hint: "" };
 }

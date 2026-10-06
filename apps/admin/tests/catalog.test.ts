@@ -97,5 +97,16 @@ test("blocked collection jobs distinguish subscription, source and host setup", 
     collectionBlock("BLOCKED: Configure official hosts for this program").label,
     "설정 필요 · 이 프로그램만",
   );
+  for (const reason of [
+    "Official source unavailable: JS only",
+    "Official page exceeds 3 MB",
+    "Official host did not resolve to a public address",
+    "All candidates failed source verification",
+  ])
+    assert.equal(collectionBlock(`BLOCKED: ${reason}`).label, "원문 차단 · 이 프로그램만");
+  assert.equal(
+    collectionBlock("BLOCKED: Source must use a configured official HTTPS host").label,
+    "설정 필요 · 이 프로그램만",
+  );
   assert.deepEqual(collectionBlock(null), { label: "조치 필요", hint: "" });
 });
