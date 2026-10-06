@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { inAppBrowser, isIosSafari } from "../src/lib/install";
+import { inAppBrowser } from "../src/lib/in-app-browser";
+import { isIosSafari } from "../src/lib/install";
 const iosSafari =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1";
 const androidChrome =
