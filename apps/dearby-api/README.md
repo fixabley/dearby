@@ -66,6 +66,10 @@ The [web guest contract](../../shared/contracts/native-v1.md#웹-비로그인-�
 
 The [share contract](../../shared/contracts/native-v1.md#명함-공유-기록과-게스트-공유-정보-저장--2026-10-06-승인) adds owner `POST /v1/cards/:id/shares` (0-10 current-catalog activities, title snapshot), public `GET /v1/shares/:id` and proxy `PUT /v1/guest/shares/:id`; `GET /v1/guest/cards` gains `shares`. Share links cascade with their saved guest card and session; max 20 links per saved card. Withdrawn cards make all their shares 404. DDL is `supabase/migrations/20261006000000_api_card_shares.sql`; test data for web is `test/fixtures/card-shares.json`. See [handoff](../../docs/context/api-card-shares.md).
 
+## Guest home-screen handoff
+
+`POST /v1/guest/handoffs` (existing guest token) issues a 10-minute single-use code; `POST /v1/guest/handoffs/redeem` returns the same guest token so the iOS home-screen web app shares the Safari session. Storage holds the code digest and the token encrypted with a key derived from the code (HKDF-SHA256, AES-256-GCM). All failures are the same 404. See [handoff](../../docs/context/api-guest-handoff.md).
+
 ## Swagger / OpenAPI
 
 Open `/docs/` on a permitted running API connection. Download `/docs/json` (OpenAPI 3.0.3) or `/docs/yaml`; the spec is generated from shared Zod contracts and route metadata, never maintained as a second JSON file. The UI is read-only, has no authorization controls, does not persist authorization, and uses local assets without an external validator. Never supply the trusted guest proxy secret to a browser.
