@@ -85,7 +85,7 @@ test('Real PostgreSQL HTTP successes/errors match OpenAPI, including partial imp
   const owner=session.sessionToken;const other=await f.login('other-docs@example.com');
   await call('GET','/profile',401);await call('GET','/profile',200,undefined,owner);
   const contact={id:randomUUID(),kind:'email',label:'Example',value:'fictional@example.com'};
-  await call('PUT','/profile',200,{name:'Fixture',job:'Tester',introduction:'Example only',contacts:[contact],histories:[]},owner);
+  await call('PUT','/profile',200,{name:'Fixture',job:'Tester',introduction:'Example only',contacts:[contact,{id:randomUUID(),kind:'phone',label:'Example',value:'+82 10-0000-0000'}],histories:[]},owner);
   await call('PUT','/profile',422,{unexpected:true},owner);
   const card=await call('POST','/cards',201,{name:'Example',description:'Fixture',contactIds:[contact.id],historyIds:[]},owner);
   assert.equal(card.contacts[0].value,contact.value);assert.equal(card.profileName,'Fixture');

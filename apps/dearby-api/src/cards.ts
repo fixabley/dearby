@@ -2,7 +2,7 @@ import {documented,ownerOnly,ownerSecurity,idParams,cardListSchema} from './open
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { write, type DB, type Transaction } from './postgres.js';
-import { ApiError, cardInput, id, missing, profileInput, profileSchema, cardSchema, type Card, type Profile } from './validation.js';
+import { ApiError, cardInput, id, missing, profileSchema, profileUpdate, cardSchema, type Card, type Profile } from './validation.js';
 export type Owner = (request: FastifyRequest) => Promise<string>;
 export async function readCard(db: DB | Transaction, cardId: string): Promise<Card> {
   const row = await db.card.findUnique({where:{id:cardId}});
@@ -15,9 +15,11 @@ export function cardRoutes(app: FastifyInstance, db: DB, owner: Owner, now: () =
     return JSON.parse(row.data);
   }
   app.get('/v1/profile', documented({operationId:'getProfile',summary:'Read your private profile',tag:'Profiles',description:ownerOnly+' Never returned by public-card or guest-wallet routes.',security:ownerSecurity,responses:{200:profileSchema},errors:[401]}), async request => profile(await owner(request)));
-  app.put('/v1/profile', documented({operationId:'updateProfile',summary:'Replace your private profile',tag:'Profiles',description:ownerOnly+' Contact/history IDs must be unique. End dates cannot precede start dates; contact values reject control characters and non-HTTPS URI schemes. Existing card snapshots remain unchanged.',security:ownerSecurity,body:profileInput,responses:{200:profileSchema},errors:[401]}), async request => {
+  app.put('/v1/profile', documented({operationId:'updateProfile',summary:'Replace your private profile',tag:'Profiles',description:ownerOnly+' At least one phone (digits, +, -, spaces; 8-15 digits) and one email contact are required, otherwise 422 INVALID_INPUT with message "Invalid contacts". Previously stored profiles are still returned as stored. Contact/history IDs must be unique. History startDate is a required YYYY-MM-DD date. End dates cannot precede start dates; contact values reject control characters and non-HTTPS URI schemes. Existing card snapshots remain unchanged.',security:ownerSecurity,body:profileUpdate,responses:{200:profileSchema},errors:[401]}), async request => {
     const profileId = await owner(request);
-    const input = profileInput.parse(request.body);
+    const parsed = profileUpdate.safeParse(request.body);
+    if (!parsed.success) throw new ApiError(422,'INVALID_INPUT',parsed.error.issues.some(i => i.path[0] === 'contacts') ? 'Invalid contacts' : 'Invalid request');
+    const input = parsed.data;
     const result = {...input,id:profileId,updatedAt:new Date(now()).toISOString()};
     await write(db, tx => tx.profile.update({where:{id:profileId},data:{data:JSON.stringify(result)}}));
     return result;

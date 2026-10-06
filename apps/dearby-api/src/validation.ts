@@ -12,6 +12,12 @@ const history = z.strictObject({ id, title: text(200), role: text(200), startDat
 export const profileInput = z.strictObject({ name: text(100), job: text(200), introduction: text(5000),
   contacts: z.array(contact).max(100), histories: z.array(history).max(100),
 }).refine(p => new Set(p.contacts.map(c => c.id)).size === p.contacts.length && new Set(p.histories.map(h => h.id)).size === p.histories.length, 'Duplicate IDs');
+// Saving requires at least one phone and one email (2026-10-06); stored profiles are read back unvalidated.
+const phone = (v: string) => /^[\d+\- ]+$/.test(v) && /^\d{8,15}$/.test(v.replace(/\D/g, ''));
+const email = (v: string) => z.email().safeParse(v).success;
+export const profileUpdate = profileInput
+  .refine(p => p.contacts.some(c => c.kind === 'phone') && p.contacts.some(c => c.kind === 'email'), {path:['contacts'], message:'Phone and email required'})
+  .refine(p => p.contacts.every(c => c.kind === 'phone' ? phone(c.value) : c.kind === 'email' ? email(c.value) : true), {path:['contacts'], message:'Invalid phone or email'});
 export const profileSchema = profileInput.safeExtend({id,updatedAt:z.iso.datetime()});
 export type Profile = z.infer<typeof profileSchema>;
 export const cardSchema = z.strictObject({...profileInput.shape,id,ownerId:id,name:z.string().min(1).max(100),description:text(2000),profileName:text(100),createdAt:z.iso.datetime()});
