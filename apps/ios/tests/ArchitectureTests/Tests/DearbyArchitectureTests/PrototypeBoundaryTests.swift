@@ -19,7 +19,9 @@ extension ArchitectureTestSuite {
             for name in ["Info.plist", "Info-Debug.plist"] {
                 let data = try Data(contentsOf: SourceInventory.iosRoot.appendingPathComponent(name))
                 let plist = try #require(PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
-                #expect(!plist.keys.contains { $0.hasSuffix("UsageDescription") || $0.hasPrefix("Dearby") || $0 == "NSAppTransportSecurity" || $0 == "CFBundleURLTypes" })
+                // Only the build-injected connection origins (contract "연결 설정") may use the Dearby prefix.
+                let origins: Set<String> = ["DearbyAPIOrigin", "DearbyWebOrigin"]
+                #expect(!plist.keys.contains { $0.hasSuffix("UsageDescription") || ($0.hasPrefix("Dearby") && !origins.contains($0)) || $0 == "NSAppTransportSecurity" || $0 == "CFBundleURLTypes" })
             }
         }
     }
