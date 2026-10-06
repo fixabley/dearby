@@ -1,11 +1,28 @@
 import { z } from "zod";
-import { cardSchema, catalogSchema, uuid } from "./models";
+import {
+  cardSchema,
+  catalogSchema,
+  guestShareSchema,
+  sharePageSchema,
+  uuid,
+} from "./models";
+import {
+  apiOrigin,
+  guestCookie,
+  guestProxyKey,
+  readGuestCookie,
+  TOKEN,
+  upstreamFetch,
+} from "./guest-upstream";
 
-const TOKEN = /^[A-Za-z0-9_-]{43}$/;
-const MAX_AGE = 34_560_000;
-const savedSchema = z.object({ items: z.array(cardSchema) });
+// `shares` defaults to empty so the list still works against an API without share records.
+const savedSchema = z.object({
+  items: z.array(cardSchema),
+  shares: z.array(guestShareSchema).default([]),
+});
 const saveSchema = z.object({
   cardId: uuid,
+  shareId: uuid.optional(),
   status: z.enum(["saved", "alreadySaved"]),
   guestToken: z.string().regex(TOKEN).optional(),
 });
@@ -23,20 +40,27 @@ export async function proxy(
 ): Promise<Response> {
   const path = segments.join("/");
   const guest = segments[0] === "guest";
-  const cardId = segments[guest ? 2 : 1];
+  // Card ID, or share ID for share routes.
+  const id = segments[guest ? 2 : 1];
+  const shareRoute = segments[guest ? 1 : 0] === "shares";
   const method = request.method;
   const allowed =
     (path === "catalog" && method === "GET") ||
-    (segments.length === 2 && segments[0] === "cards" && method === "GET") ||
+    (segments.length === 2 &&
+      ["cards", "shares"].includes(segments[0]) &&
+      method === "GET") ||
     (path === "guest/cards" && method === "GET") ||
     (segments.length === 3 &&
       segments[0] === "guest" &&
       segments[1] === "cards" &&
       ["PUT", "DELETE"].includes(method)) ||
+    (segments.length === 3 &&
+      segments[0] === "guest" &&
+      segments[1] === "shares" &&
+      method === "PUT") ||
     (path === "guest/session" && method === "DELETE");
   if (!allowed) return failure(404, "NOT_FOUND");
-  if (cardId && !uuid.safeParse(cardId).success)
-    return failure(422, "INVALID_INPUT");
+  if (id && !uuid.safeParse(id).success) return failure(422, "INVALID_INPUT");
   const mutation = method !== "GET";
   if (
     mutation &&
@@ -60,70 +84,28 @@ export async function proxy(
       return failure(422, "INVALID_INPUT");
     }
   }
-  const cookieName =
-    process.env.NODE_ENV === "production"
-      ? "__Host-dearby_guest"
-      : "dearby_guest_dev";
-  const cookie = request.headers
-    .get("cookie")
-    ?.split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${cookieName}=`));
-  const token = cookie?.slice(cookieName.length + 1);
-  function setCookie(value: string, remove = false) {
-    return `${cookieName}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${remove ? 0 : MAX_AGE}${process.env.NODE_ENV === "production" ? "; Secure" : ""}`;
-  }
-  if (guest && cookie !== undefined && !TOKEN.test(token ?? "")) {
+  const token = readGuestCookie(request.headers.get("cookie"));
+  if (guest && token !== undefined && !TOKEN.test(token)) {
     if (path === "guest/session" && method === "DELETE")
       return new Response(null, {
         status: 204,
-        headers: { ...headers, "Set-Cookie": setCookie("", true) },
+        headers: { ...headers, "Set-Cookie": guestCookie("", true) },
       });
     return failure(401, "GUEST_SESSION_INVALID");
   }
   if (path === "guest/cards" && !token)
-    return Response.json({ items: [] }, { headers });
+    return Response.json({ items: [], shares: [] }, { headers });
   if (path === "guest/session" && !token)
     return new Response(null, { status: 204, headers });
-  const origin = process.env.DEARBY_API_ORIGIN;
-  const secret = process.env.GUEST_PROXY_SECRET;
-  if (!origin || (guest && (!secret || secret.length < 32)))
+  if (!process.env.DEARBY_API_ORIGIN || (guest && !guestProxyKey()))
     return failure(503, "GUEST_UNAVAILABLE");
+  if (!apiOrigin()) return failure(503, "SERVICE_UNAVAILABLE");
   try {
-    const upstream = new URL(origin);
-    if (
-      upstream.username ||
-      upstream.password ||
-      upstream.pathname !== "/" ||
-      upstream.search ||
-      upstream.hash ||
-      (upstream.protocol !== "https:" &&
-        !(
-          process.env.NODE_ENV !== "production" &&
-          upstream.protocol === "http:" &&
-          ["localhost", "127.0.0.1"].includes(upstream.hostname)
-        ))
-    ) {
-      return failure(503, "SERVICE_UNAVAILABLE");
-    }
-    const upstreamHeaders: Record<string, string> = {
-      Accept: "application/json",
-    };
-    if (guest) {
-      upstreamHeaders["X-Guest-Proxy-Key"] = secret!;
-      if (token) upstreamHeaders["X-Guest-Token"] = token;
-    }
-    const result = await fetch(new URL(`/v1/${path}`, upstream), {
-      method,
-      headers: upstreamHeaders,
-      cache: "no-store",
-      redirect: "error",
-      signal: AbortSignal.timeout(10_000),
-    });
+    const result = await upstreamFetch(path, { method, guest, token });
     if (path === "guest/session" && (result.ok || result.status === 401)) {
       return new Response(null, {
         status: 204,
-        headers: { ...headers, "Set-Cookie": setCookie("", true) },
+        headers: { ...headers, "Set-Cookie": guestCookie("", true) },
       });
     }
     if (!result.ok) {
@@ -137,20 +119,32 @@ export async function proxy(
       );
     }
     const outputHeaders: Record<string, string> = { ...headers };
-    if (guest && token) outputHeaders["Set-Cookie"] = setCookie(token);
+    if (guest && token) outputHeaders["Set-Cookie"] = guestCookie(token);
     if (method === "DELETE")
       return new Response(null, { status: 204, headers: outputHeaders });
     const json: unknown = await result.json();
     if (guest && method === "PUT") {
       const saved = saveSchema.parse(json);
-      if (saved.cardId.toLowerCase() !== cardId.toLowerCase())
-        throw new Error("Mismatched card");
+      const echoed = shareRoute ? saved.shareId : saved.cardId;
+      if (echoed?.toLowerCase() !== id.toLowerCase())
+        throw new Error("Mismatched save");
       if (!token && !saved.guestToken) throw new Error("Missing session");
-      if (!token) outputHeaders["Set-Cookie"] = setCookie(saved.guestToken!);
+      if (!token) outputHeaders["Set-Cookie"] = guestCookie(saved.guestToken!);
       return Response.json(
-        { cardId: saved.cardId, status: saved.status },
+        shareRoute
+          ? { cardId: saved.cardId, shareId: id, status: saved.status }
+          : { cardId: saved.cardId, status: saved.status },
         { status: result.status, headers: outputHeaders },
       );
+    }
+    if (shareRoute) {
+      const page = sharePageSchema.parse(json);
+      if (
+        page.share.id.toLowerCase() !== id.toLowerCase() ||
+        page.card.id.toLowerCase() !== page.share.cardId.toLowerCase()
+      )
+        throw new Error("Mismatched share");
+      return Response.json(page, { headers: outputHeaders });
     }
     const output =
       path === "catalog"

@@ -52,6 +52,7 @@ model Card {
   owner Profile @relation(fields:[ownerId],references:[id],onDelete:Restrict,onUpdate:Restrict)
   receipts Receipt[]
   guests GuestCard[]
+  shares CardShare[]
   @@map("cards")
   @@schema("dearby_api")
 }
@@ -84,6 +85,7 @@ model Exchange {
 model GuestSession {
   digest String @id
   cards GuestCard[]
+  handoff GuestHandoff?
   @@map("guest_sessions")
   @@schema("dearby_api")
 }
@@ -93,8 +95,44 @@ model GuestCard {
   ordinal BigInt @default(autoincrement())
   session GuestSession @relation(fields:[sessionDigest],references:[digest],onDelete:Cascade,onUpdate:Restrict)
   card Card @relation(fields:[cardId],references:[id],onDelete:Restrict,onUpdate:Restrict)
+  shares GuestCardShare[]
   @@id([sessionDigest,cardId])
   @@map("guest_cards")
+  @@schema("dearby_api")
+}
+model CardShare {
+  id String @id
+  cardId String @map("card_id")
+  activities String
+  createdAt String @map("created_at")
+  ordinal BigInt @default(autoincrement())
+  card Card @relation(fields:[cardId],references:[id],onDelete:Restrict,onUpdate:Restrict)
+  guests GuestCardShare[]
+  @@unique([id,cardId])
+  @@map("card_shares")
+  @@schema("dearby_api")
+}
+model GuestCardShare {
+  sessionDigest String @map("session_digest")
+  cardId String @map("card_id")
+  shareId String @map("share_id")
+  savedAt String @map("saved_at")
+  ordinal BigInt @default(autoincrement())
+  guestCard GuestCard @relation(fields:[sessionDigest,cardId],references:[sessionDigest,cardId],onDelete:Cascade,onUpdate:Restrict)
+  share CardShare @relation(fields:[shareId,cardId],references:[id,cardId],onDelete:Restrict,onUpdate:Restrict)
+  @@id([sessionDigest,shareId])
+  @@index([sessionDigest,cardId])
+  @@map("guest_card_shares")
+  @@schema("dearby_api")
+}
+model GuestHandoff {
+  digest String @id
+  sessionDigest String @unique @map("session_digest")
+  tokenCiphertext String? @map("token_ciphertext")
+  expiresAt BigInt @map("expires_at")
+  usedAt BigInt? @map("used_at")
+  session GuestSession @relation(fields:[sessionDigest],references:[digest],onDelete:Cascade,onUpdate:Restrict)
+  @@map("guest_handoffs")
   @@schema("dearby_api")
 }
 // Preserve the offline SQLite catalog/history without merging it into managed public catalog.

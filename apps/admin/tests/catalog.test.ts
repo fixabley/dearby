@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   collectionBlock,
+  organizationPath,
+  parentCandidates,
   discoveryStatus,
   evidenceQuoteError,
   inferredRecruitment,
@@ -316,5 +318,40 @@ test("recruitment status follows the period unless an administrator closed it", 
       now,
     ).label,
     "발견 노출 중",
+  );
+});
+
+test("organization parents exclude self, descendants and moves deeper than four levels", () => {
+  const org = (id: string, parent_id: string | null) => ({
+    id,
+    name: id,
+    description: "",
+    parent_id,
+  });
+  const all = [
+    org("A", null),
+    org("B", "A"),
+    org("C", "B"),
+    org("D", "C"),
+    org("X", null),
+    org("Y", "X"),
+  ];
+  assert.deepEqual(
+    organizationPath(all, "D").map((o) => o.id),
+    ["A", "B", "C", "D"],
+  );
+  // B carries C and D, so only level-1 parents keep it within four levels.
+  assert.deepEqual(
+    parentCandidates(all, "B").map((o) => o.id),
+    ["A", "X"],
+  );
+  // X has two levels, so it fits only under a level-1 or level-2 parent.
+  assert.deepEqual(
+    parentCandidates(all, "X").map((o) => o.id),
+    ["A", "B"],
+  );
+  assert.deepEqual(
+    parentCandidates(all).map((o) => o.id),
+    ["A", "B", "C", "X", "Y"],
   );
 });

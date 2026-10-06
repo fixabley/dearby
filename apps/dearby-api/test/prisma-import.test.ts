@@ -38,7 +38,7 @@ test('nonempty 14-table SQLite import is exact, atomic, repeatable and conflict 
  } finally {await f.admin.query('REVOKE UPDATE ON ALL SEQUENCES IN SCHEMA dearby_api FROM dearby_api_runtime');}
  assert.equal((await f.request('GET','/profile',undefined,authToken)).body.contacts[0].value,'private@example.com');
  assert.deepEqual((await f.request('GET',`/cards/${cardId}`)).body,card);assert.equal((await f.request('GET',`/cards/${revoked}`)).status,404);
- const wallet=await f.app.inject({url:'/v1/guest/cards',headers:{'x-guest-proxy-key':'test-only-proxy-secret-not-for-runtime','x-guest-token':guestToken}});assert.deepEqual(wallet.json(),{items:[card]});
+ const wallet=await f.app.inject({url:'/v1/guest/cards',headers:{'x-guest-proxy-key':'test-only-proxy-secret-not-for-runtime','x-guest-token':guestToken}});assert.deepEqual(wallet.json(),{items:[card],shares:[]});
  assert.equal((await f.request('POST','/auth/sessions',{challengeId:challenge,code})).status,200);
  const newCard=await f.request('POST','/cards',{name:'After import',description:'',contactIds:[],historyIds:[]},authToken);assert.equal(newCard.status,201);assert.ok((await f.db.card.findUniqueOrThrow({where:{id:newCard.body.id}})).ordinal>88n);
  await assert.rejects(importSQLite(f.db,path,true)); // Changed target is never overwritten.

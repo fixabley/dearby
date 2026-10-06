@@ -29,7 +29,10 @@
     "DearbySearchReveal",
     "DearbyChoice",
     "DearbyChoiceChips",
-    "DearbyInlineField"
+    "DearbyInlineField",
+    "DearbyTogetherActivityLabel",
+    "AppOrigins",
+    "SharedCardLink"
   ],
   "entities/identity": [
     "CardModel",
@@ -50,6 +53,7 @@
     "IdentityViewModel",
     "QRPage",
     "WalletPage",
-    "ProfilePage"
+    "ProfilePage",
+    "ReceivedCardRow"
   ]
 }
