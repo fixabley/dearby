@@ -4,10 +4,13 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 [ -f Dearby.xcodeproj/project.pbxproj ] || ruby scripts/generate_project.rb
-name="Dearby-PrePush-$(printf '%s' "$PWD" | shasum | cut -c1-8)"
+# Runtime: DEARBY_SIM_RUNTIME (e.g. iOS-27-0) or the newest installed iOS 26.x. The iOS 27 runtime keeps
+# respawning lock-screen poster extensions under load, adding ~300 s between UI tests (2026-10-06).
+want=${DEARBY_SIM_RUNTIME:-iOS-26-}
+runtime=$(xcrun simctl list runtimes available -j | python3 -c "import json,sys; r=[x['identifier'] for x in json.load(sys.stdin)['runtimes'] if x['platform']=='iOS']; m=[x for x in r if '$want' in x]; print((m or r)[-1])")
+name="Dearby-PrePush-$(printf '%s' "$PWD" | shasum | cut -c1-8)-${runtime##*.}"
 sim=$(xcrun simctl list devices available -j | python3 -c "import json,sys; print(next((x['udid'] for v in json.load(sys.stdin)['devices'].values() for x in v if x['name']=='$name'), ''))")
 if [ -z "$sim" ]; then
-  runtime=$(xcrun simctl list runtimes available -j | python3 -c "import json,sys; print([r['identifier'] for r in json.load(sys.stdin)['runtimes'] if r['platform']=='iOS'][-1])")
   devtype=$(xcrun simctl list devicetypes -j | python3 -c "import json,sys; print(next(d['identifier'] for d in json.load(sys.stdin)['devicetypes'] if d['name'].startswith('iPhone')))")
   sim=$(xcrun simctl create "$name" "$devtype" "$runtime")
 fi
