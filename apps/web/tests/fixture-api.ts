@@ -6,6 +6,10 @@ import { card, cardId, secondCardId, revokedId, catalog } from "./fixtures";
 import shareData from "./card-shares.json";
 type Wallet = { cards: Set<string>; shares: Map<string, string> };
 const wallets = new Map<string, Wallet>();
+const handoffs = new Map<
+  string,
+  { token: string; expires: number; used: boolean }
+>();
 const cards = new Map<string, unknown>([
   [cardId, card],
   [secondCardId, { ...card, id: secondCardId, profileName: "테스트 서연" }],
@@ -20,7 +24,7 @@ const publicShare = (id: string) => {
   const share = shares.get(id);
   return share && !revoked.has(share.cardId) ? share : undefined;
 };
-createServer((req, res) => {
+createServer(async (req, res) => {
   const path = req.url!;
   const json = (status: number, data: unknown) => {
     res.writeHead(status, { "Content-Type": "application/json" });
@@ -46,6 +50,33 @@ createServer((req, res) => {
     return json(403, {});
   let token = req.headers["x-guest-token"] as string | undefined;
   if (token && !wallets.has(token)) return json(401, {});
+  if (path === "/v1/guest/handoffs/redeem" && req.method === "POST") {
+    let body = "";
+    for await (const chunk of req) body += chunk;
+    const code = JSON.parse(body || "{}").code;
+    const entry = handoffs.get(code);
+    if (
+      !entry ||
+      entry.used ||
+      entry.expires < Date.now() ||
+      !wallets.has(entry.token)
+    )
+      return json(404, { error: { code: "NOT_FOUND" } });
+    entry.used = true;
+    return json(200, { guestToken: entry.token });
+  }
+  if (path === "/v1/guest/handoffs" && req.method === "POST") {
+    if (!token) return json(401, {});
+    // One live code per session: issuing again invalidates the previous one.
+    for (const entry of handoffs.values())
+      if (entry.token === token) entry.used = true;
+    const code = randomBytes(32).toString("base64url");
+    handoffs.set(code, { token, expires: Date.now() + 600_000, used: false });
+    return json(201, {
+      code,
+      expiresAt: new Date(Date.now() + 600_000).toISOString(),
+    });
+  }
   if (path === "/v1/guest/cards" && req.method === "GET") {
     const wallet = wallets.get(token!);
     const items = [...(wallet?.cards ?? [])].filter((id) => !revoked.has(id));

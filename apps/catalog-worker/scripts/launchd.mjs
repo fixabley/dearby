@@ -61,6 +61,12 @@ if (
   !/Logged in using ChatGPT/.test(auth.stdout + auth.stderr)
 )
   throw new Error("ChatGPT subscription login required");
+// Homebrew resolves node to a versioned Cellar path that brew upgrade deletes; pin the stable opt link.
+const cellar = process.execPath.match(/^(.+)\/Cellar\/([^/]+)\/[^/]+\/bin\/node$/);
+const node =
+  cellar && existsSync(`${cellar[1]}/opt/${cellar[2]}/bin/node`)
+    ? `${cellar[1]}/opt/${cellar[2]}/bin/node`
+    : process.execPath;
 const logs = join(directory, "logs");
 mkdirSync(logs, { recursive: true, mode: 0o700 });
 mkdirSync(dirname(file), { recursive: true });
@@ -72,7 +78,7 @@ const esc = (v) =>
     .replaceAll('"', "&quot;");
 const str = (v) => `<string>${esc(v)}</string>`;
 const args = [
-  process.execPath,
+  node,
   "--env-file=" + join(directory, ".env.local"),
   join(directory, "src/worker.mjs"),
   "--once",
@@ -82,7 +88,7 @@ writeFileSync(
   file,
   `<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict>
 <key>Label</key>${str(label)}<key>ProgramArguments</key><array>${args.map(str).join("")}</array>
-<key>WorkingDirectory</key>${str(directory)}<key>EnvironmentVariables</key><dict><key>HOME</key>${str(homedir())}<key>PATH</key>${str(dirname(process.execPath) + ":/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin")}<key>CODEX_BIN</key>${str(codex)}${env.CODEX_HOME ? "<key>CODEX_HOME</key>" + str(env.CODEX_HOME) : ""}</dict>
+<key>WorkingDirectory</key>${str(directory)}<key>EnvironmentVariables</key><dict><key>HOME</key>${str(homedir())}<key>PATH</key>${str(dirname(node) + ":/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin")}<key>CODEX_BIN</key>${str(codex)}${env.CODEX_HOME ? "<key>CODEX_HOME</key>" + str(env.CODEX_HOME) : ""}</dict>
 <key>StartInterval</key><integer>60</integer><key>RunAtLoad</key><true/><key>ProcessType</key><string>Background</string>
 <key>StandardOutPath</key>${str(join(logs, "worker.log"))}<key>StandardErrorPath</key>${str(join(logs, "worker-error.log"))}
 </dict></plist>`,
