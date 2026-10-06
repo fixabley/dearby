@@ -91,10 +91,6 @@ struct QRPage: View {
         }
         .task {
             camera = await QRCameraView.requestAccess()
-            #if DEBUG
-            // UI tests stand in for the camera with the text a QR would carry.
-            if let text = ProcessInfo.processInfo.environment["DEARBY_SCAN_TEXT"] { scanned(text) }
-            #endif
         }
         .onChange(of: photo) { _, item in
             guard let item else { return }

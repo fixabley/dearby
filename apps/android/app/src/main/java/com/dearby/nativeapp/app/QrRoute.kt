@@ -3,7 +3,7 @@ package com.dearby.nativeapp.app
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.ImageDecoder
+import android.graphics.BitmapFactory
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -45,16 +45,13 @@ import com.dearby.nativeapp.shared.ui.DearbyChoice
     }
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         uri ?: return@rememberLauncherForActivityResult
-        val bitmap = runCatching {
-            ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri)) { decoder, _, _ -> decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE }
-        }.getOrNull()
+        // BitmapFactory works on every supported version (ImageDecoder needs API 28; minSdk is 26).
+        val bitmap = runCatching { context.contentResolver.openInputStream(uri)?.use(BitmapFactory::decodeStream) }.getOrNull()
         bitmap?.let(::decodeQr)?.let(scanned) ?: run { scanError = "사진에서 QR을 찾지 못했어요." }
     }
     LaunchedEffect(Unit) { model.load() }
     LaunchedEffect(scanning) {
         if (!scanning) return@LaunchedEffect
-        // Instrumented tests stand in for the camera with the text a QR would carry.
-        ApiOrigin.debugScanText?.takeIf { BuildConfig.DEBUG }?.let { scanned(it); return@LaunchedEffect }
         if (hasCamera && !camera) ask.launch(Manifest.permission.CAMERA)
     }
     QrPage(state, applied.appliedActivities.map { DearbyChoice(it.id, it.title) }, model::select, model::toggle,

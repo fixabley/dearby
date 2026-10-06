@@ -13,14 +13,10 @@ cp .env.example .env.local
 npm run dev
 npm run lint
 npm run typecheck
-npm test
 npm run build
-npm run test:e2e
 ```
 
-`test:e2e` launches Next dev on localhost:3210 and a **test-only API double** on 127.0.0.1:4319. Its records and in-memory sessions are fixtures, not production persistence evidence. Screenshots are written under ignored `test-results/`. Production code has no fixture imports or fallback data. Run build separately; local E2E uses the development cookie. API persistence, actual HTTPS cookies and cross-network connectivity require deployment verification.
-
-The opt-in `tests/real-api.integration.ts` additionally tests a real isolated local API. It requires explicit `WEB_TEST_ORIGIN`, `API_TEST_ORIGIN` (both localhost HTTP), and `API_TEST_OWNER_TOKEN`; card UUIDs ending 0002/0003 must be disposable test fixtures. It revokes card 0003 and must never target production. On 2026-09-29 this passed against root’s temporary DB API on port 58867 through Next on 3211.
+All automated tests were removed on 2026-10-06 at the user's request; they are being rebuilt one at a time with the user. API persistence, actual HTTPS cookies and cross-network connectivity require deployment verification.
 
 ## Routes and public boundary
 
@@ -29,13 +25,13 @@ The opt-in `tests/real-api.integration.ts` additionally tests a real isolated lo
 - `/cards/:id`: public Card projection: name/job/introduction, selected contacts and activity history. Revoked/missing API 404 becomes an unavailable-card screen. Invalid IDs never reach upstream. No private profile fetch.
 - `/s/:shareId`: a shared card with the activities its sender chose (not proof of participation). One button saves via PUT `/api/guest/shares/:id`, then the list is re-read to confirm the cookie, the "이 브라우저에만 저장됐어요" notice replaces the button and focus moves to "저장한 명함 보기". Revoked/missing shares and malformed IDs show the unavailable-card screen. Known in-app browsers (`src/lib/in-app-browser.ts`) get an external-browser notice; saving is never blocked. The optional home-screen prompt after saving is added with the install PR (#87).
 - `/saved`: this browser's public saved cards. No-cookie visits return an empty list without creating a database session.
-- `/api/[...path]`: fixed method/path allowlist for catalog, single public card and guest wallet only. Private profiles, owner card lists, wallet/auth/publishing endpoints are inaccessible through this proxy Card shares (contract "명함 공유 기록과 게스트 공유 정보 저장"): GET `/api/shares/:id` (share must point at the returned card) and PUT `/api/guest/shares/:id` (same Origin/header/body/cookie rules as card saves; the response echoes the share ID). Creating shares (`POST /v1/cards/:id/shares`) is not proxied. The guest list adds `shares`, defaulting to empty against an API without share records. `src/lib/saved-groups.ts` groups saved cards by shared activity for `/saved`, in the order activities were first saved, with `활동 없음` last. The `/s/:shareId` and `/saved` screens come after the web layer split. Test share data in `tests/card-shares.json` is copied from API PR #84.
+- `/api/[...path]`: fixed method/path allowlist for catalog, single public card and guest wallet only. Private profiles, owner card lists, wallet/auth/publishing endpoints are inaccessible through this proxy Card shares (contract "명함 공유 기록과 게스트 공유 정보 저장"): GET `/api/shares/:id` (share must point at the returned card) and PUT `/api/guest/shares/:id` (same Origin/header/body/cookie rules as card saves; the response echoes the share ID). Creating shares (`POST /v1/cards/:id/shares`) is not proxied. The guest list adds `shares`, defaulting to empty against an API without share records. `src/lib/saved-groups.ts` groups saved cards by shared activity for `/saved`, in the order activities were first saved, with `활동 없음` last. The `/s/:shareId` and `/saved` screens come after the web layer split.
 
 Zod validates public DTOs and strips extra fields before returning JSON. React escapes all text. External links permit only http(s), no credentials; contact schemes are explicit. API responses use no-store, private, and Vary: Cookie/Origin. Browser calls never include a Supabase key or upstream URL.
 
 ## Home-screen web app
 
-`src/app/manifest.webmanifest/route.ts` (`start_url` `/saved`, standalone, built per request; see below) and `src/app/apple-icon.png` make the site installable. Icons are resized copies of the iOS app icon. There is deliberately no service worker, so saved cards are never cached on the device. On 2026-10-06 Chromium 153 (Playwright) reported no installability errors without one (`tests/e2e/install.spec.ts`); a real Android Chrome install prompt is not yet verified.
+`src/app/manifest.webmanifest/route.ts` (`start_url` `/saved`, standalone, built per request; see below) and `src/app/apple-icon.png` make the site installable. Icons are resized copies of the iOS app icon. There is deliberately no service worker, so saved cards are never cached on the device. On 2026-10-06 Chromium 153 reported no installability errors without one (that test has since been removed); a real Android Chrome install prompt is not yet verified.
 
 iOS home-screen cookie separation, checked 2026-10-06 on the iOS 26.5 simulator (iPhone Air, Xcode 27.0) with a throwaway local page using server-set `HttpOnly; SameSite=Lax` cookies like the guest cookie, Safari → Share → 홈 화면에 추가 with 웹 앱으로 열기 on:
 - Not copied on add: Safari held `safari=1`, but the home-screen app's first request had no cookies.
