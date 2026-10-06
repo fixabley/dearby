@@ -67,30 +67,58 @@ Download from an already running permitted API (no credentials needed):
 curl --fail --silent --show-error http://127.0.0.1:58865/docs/json --output /tmp/dearby-openapi.json
 ```
 
-Root may add [nginx-docs.location.conf](nginx-docs.location.conf) inside the existing HTTPS server after reviewing/building the new API image. It redirects exact `/docs` to `/docs/`, proxies only GET/HEAD under `/docs/`, suppresses docs logs and strips Authorization, Cookie and both X-Guest authentication headers. Keep [nginx-web-guest.location.conf](nginx-web-guest.location.conf)'s API restrictions. No shared nginx file is changed by this source PR. Verify `/docs/`, JSON/YAML and static assets after `nginx -t` and root-owned reload. Local TLS checks do not establish external connectivity (tracked separately in issue65).
+Root may add the `/docs` locations (now in [nginx/dearby-api/api.locations.conf](nginx/dearby-api/api.locations.conf)) inside the existing HTTPS server after reviewing/building the new API image. It redirects exact `/docs` to `/docs/`, proxies only GET/HEAD under `/docs/`, suppresses docs logs and strips Authorization, Cookie and both X-Guest authentication headers. Keep the API restrictions in the same file. No shared nginx file is changed by this source PR. Verify `/docs/`, JSON/YAML and static assets after `nginx -t` and root-owned reload. Local TLS checks do not establish external connectivity (tracked separately in issue65).
 
 Documentation schemas are supplied only to the Swagger transform through route config. They are never installed as Fastify validation or response serialization schemas: handlers keep their existing Zod422 validation, private-field projection, partial wallet import and guest token contracts. Zod refinements not expressible in JSON Schema are described in the reference. Existing production Prisma rollout, canonical external compose/env paths and SQLite preservation constraints are recorded in [the Prisma handoff](../../../docs/context/api-prisma-postgres.md).
 
-## Dedicated API host api.dearby.wid.io.kr — prepared, not applied
+## Production nginx: api.dearby.wid.io.kr and public API routes — prepared, not applied
 
-2026-10-06 user decision. [nginx-api-domain.server.conf](nginx-api-domain.server.conf) is the review copy for root. It adds port 80 (acme-challenge passthrough, everything else 308 to https) and 443 for `api.dearby.wid.io.kr`. The 443 server `include`s the two existing snippets ([nginx-web-guest.location.conf](nginx-web-guest.location.conf), [nginx-docs.location.conf](nginx-docs.location.conf)), so the public surface stays exactly what wid.io.kr exposes today: catalog GET/HEAD, public card GET/HEAD, guest proxy paths and read-only `/docs/`. Everything else is 404, with the same upstream 58865 and header stripping. A future route added to a snippet (for example the share routes) reaches both hosts. The wid.io.kr locations stay in place during the transition; remove them only in a separate, later decision. No CORS change is needed: the web calls the API from its Next server, and apps are not browsers.
+2026-10-06 user decisions: add a dedicated API host and tidy the production nginx at the next API deployment. Main (root) applies it; this repository only holds the finished files. The production file was read, never changed.
 
-Root applies these steps in order. This PR does not change nginx, DNS or certificates.
+| File | Production path | Role |
+| --- | --- | --- |
+| [nginx/default.conf](nginx/default.conf) | `conf.d/default.conf` (replace) | Complete file. Ports 80 and 443 for `wid.io.kr` and `api.dearby.wid.io.kr`. The unused `dearby.wid.io.kr`/`dev.dearby.wid.io.kr` blocks are removed: nothing listens on upstream 3000/3001, their DNS points to Vercel and the certificate does not list them. Their port-80 requests now fall to the `wid.io.kr` default server. |
+| [nginx/dearby-api/api.locations.conf](nginx/dearby-api/api.locations.conf) | `conf.d/dearby-api/api.locations.conf` | Public API surface included by both HTTPS hosts. It has the read-only `/docs/`, catalog GET/HEAD, public card **and share** GET/HEAD, and guest cards/**shares**/session. Everything else under `/v1` is 404, including `/v1/auth/*`, `/v1/profile`, the card collection, share creation, wallet and exchanges (to be opened separately after #89). |
+| [nginx/dearby-api/handoff.locations.conf](nginx/dearby-api/handoff.locations.conf) | `conf.d/dearby-api/handoff.locations.conf` | **Stage 2.** POST `/v1/guest/handoffs` and `/v1/guest/handoffs/redeem` with the same guest header handling. Its `include` line in `api.locations.conf` stays commented out until the PR #110 API image is deployed. |
+| [nginx/default.conf.diff](nginx/default.conf.diff) | — | Review diff: production file to stage 1, with the include expanded. |
+
+The snippets live in `conf.d/dearby-api/`, so the `conf.d/*.conf` glob never loads them as standalone files; the existing `conf.d` mount already covers that directory. Compared with production, the only change to an existing route is that catalog now also strips the `X-Guest-*` headers; the API ignores them there. The previous single-purpose snippets (`nginx-catalog`, `nginx-web-guest`, `nginx-docs`, `nginx-api-domain`) are replaced by these files.
+
+Apply in order:
 
 1. **DNS:** add an `A` record `api.dearby.wid.io.kr` in Route 53 with the same public IP as `wid.io.kr`.
-2. **Certificate SAN:** reissue the certificate with both `wid.io.kr` and `api.dearby.wid.io.kr`. nginx uses the http-level `/etc/nginx/certs/fullchain.pem`, so the server block needs no certificate lines once the SAN exists. Applying the server block before the SAN exists makes clients see a name-mismatch error.
-3. **nginx:** copy the server file into `conf.d/`, and the two snippets into `conf.d/dearby-api/`. The snippets must not sit directly in `conf.d/`, because the `*.conf` glob would load them as standalone files. Then run `nginx -t` and reload.
-4. **Consumers:** switch the web (Vercel) and app `DEARBY_API_ORIGIN` / API base setting to `https://api.dearby.wid.io.kr`, then verify `/v1/catalog` and a guest save through the web.
+2. **Certificate SAN:** reissue `/etc/nginx/certs/fullchain.pem` with `wid.io.kr` and `api.dearby.wid.io.kr`. Until then only the new host fails TLS (name mismatch); `wid.io.kr` is unaffected.
+3. **Stage 1:** deploy the API image containing the share routes (#84). Copy the files above with the handoff include still commented, then run `nginx -t` and reload. Without the matching API image, the new share paths only reach Fastify's 404.
+4. **Stage 2:** after the #110 API image is deployed, uncomment the handoff `include` line, then run `nginx -t` and reload.
+5. **Consumers:** set the web (Vercel) and app `DEARBY_API_ORIGIN` to `https://api.dearby.wid.io.kr` and verify catalog and guest save through the web. Keep `wid.io.kr` routes until a separate decision removes them.
 
-**Certificate risk (checked read-only 2026-10-06):** the current certificate has only `DNS:wid.io.kr` and expires **2026-12-28 10:55 UTC**. The renewal config is `authenticator = manual` with `pref_challs = dns-01`. The existing `certbot renew --non-interactive` loop therefore cannot answer the challenge, and the certificate will not renew by itself. Both hosts will fail TLS at expiry unless root renews it by hand or moves to an automatic method. For example, the Route 53 DNS plugin with a credential limited to this zone works without inbound reachability. HTTP-01 webroot would also need the external reachability below.
+**Certificate risk (checked read-only 2026-10-06):** the current certificate has only `DNS:wid.io.kr` and expires **2026-12-28 10:55 UTC**. The renewal config is `authenticator = manual` with `pref_challs = dns-01`, so the existing `certbot renew --non-interactive` loop cannot answer the challenge and will not renew it. Both hosts fail TLS at expiry unless root renews it by hand or moves to an automatic method, for example the Route 53 DNS plugin with a credential limited to this zone, which works without inbound reachability. HTTP-01 webroot would also need the external reachability below.
 
-**External reachability:** until [#65](https://github.com/fixabley/dearby/issues/65) is resolved, this host is no more reachable from outside than wid.io.kr. The same public IP/router path applies, so DNS and server-block success only proves local TLS and routing.
+**External reachability:** until [#65](https://github.com/fixabley/dearby/issues/65) is resolved, the new host is no more reachable from outside than `wid.io.kr` (same public IP and router path). Local `nginx -t` and routing checks prove only the configuration.
 
-Local check performed for this PR, temporary containers only: `nginx:stable-alpine` with a self-signed test certificate and a stub upstream aliased as `host.docker.internal` (no production API contact). `nginx -t` succeeded. Routing matched expectations:
-- port 80: 308 to https, with the query string kept; acme file 200;
-- `/v1/catalog` GET/HEAD 200, POST 405;
-- public card GET 200, DELETE 405;
-- `/v1/cards`, `/v1/profile`, `/v1/auth/*`, `/v1` and `/` all 404;
-- guest GET/PUT/DELETE 200, POST 405;
-- `/docs` 308, `/docs/json` 200, POST 405;
-- the upstream received no Authorization or Cookie header, and `/docs/` received no `X-Guest-Proxy-Key`. The existing catalog location strips only Authorization and Cookie; the catalog route ignores guest headers.
+### Local verification (temporary containers only)
+
+`nginx:stable-alpine` loaded the files, with a self-signed certificate for both names and a stub upstream aliased as `host.docker.internal`; production and the API were never contacted. `nginx -t` succeeded for stage 1 and stage 2. Status codes are nginx routing results; `200` means the request reached the upstream stub, where the API still enforces methods, the proxy secret and tokens.
+
+| Request | wid.io.kr stage 1 | api stage 1 | wid.io.kr stage 2 | api stage 2 |
+| --- | --- | --- | --- | --- |
+| `GET`/`HEAD /v1/catalog` | 200 | 200 | 200 | 200 |
+| `POST /v1/catalog` | 405 | 405 | 405 | 405 |
+| `GET /v1/cards/:id` | 200 | 200 | 200 | 200 |
+| `DELETE /v1/cards/:id` | 405 | 405 | 405 | 405 |
+| `GET`/`HEAD /v1/shares/:id` | 200 | 200 | 200 | 200 |
+| `POST /v1/shares/:id` | 405 | 405 | 405 | 405 |
+| `POST /v1/cards/:id/shares` | 404 | 404 | 404 | 404 |
+| `GET /v1/guest/cards`, `PUT`/`DELETE /v1/guest/cards/:id`, `DELETE /v1/guest/session`, `PUT /v1/guest/shares/:id` | 200 | 200 | 200 | 200 |
+| `POST /v1/guest/cards` | 405 | 405 | 405 | 405 |
+| `POST /v1/guest/handoffs`, `POST /v1/guest/handoffs/redeem` | 404 | 404 | 200 | 200 |
+| `GET /v1/guest/handoffs` | 404 | 404 | 405 | 405 |
+| `POST /v1/auth/challenges`, `POST /v1/auth/sessions`, `GET /v1/profile`, `GET`/`POST /v1/cards`, `GET /v1/wallet`, `POST /v1/exchanges`, `GET /v1` | 404 | 404 | 404 | 404 |
+| `GET /docs` | 308 | 308 | 308 | 308 |
+| `GET /docs/json` | 200 | 200 | 200 | 200 |
+| `POST /docs/json` | 405 | 405 | 405 | 405 |
+| `GET /` | 200 | 404 | 200 | 404 |
+
+Port 80: `wid.io.kr` and `api.dearby.wid.io.kr` redirect 308 to their own https host, keeping the query string, and serve the acme file with 200. The removed `dearby`/`dev.dearby` names now get 308 to `https://wid.io.kr` on port 80 and the `wid.io.kr` default on 443.
+
+Headers: the upstream never received Authorization or Cookie. Catalog, public share and `/docs/` received no `X-Guest-*`, while guest shares and handoff redeem received `X-Guest-Proxy-Key` and `X-Guest-Token`.
