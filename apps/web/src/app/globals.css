@@ -602,8 +602,30 @@ a {
   gap: 16px;
   padding: 24px;
 }
-.saved-card h2 {
+.saved-card :is(h2, h3) {
   font-size: 21px;
+}
+.view-toggle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 12px;
+  background: var(--soft);
+  border-radius: 12px;
+}
+.view-toggle button {
+  min-height: 44px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+}
+.view-toggle button[aria-pressed="true"] {
+  background: var(--teal);
+  color: #fff;
 }
 .saved-card p {
   font-size: 14px;
