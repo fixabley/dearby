@@ -43,3 +43,10 @@ test('unverified data is unknown unless closed; never recruiting', () => {
   const failed = atTime(activity(window),now,true);
   assert.deepEqual([failed.freshness,failed.recruitmentStatus,failed.isRecruiting],['unavailable','unknown',false]);
 });
+
+test('failed re-verification note has no leading space when the public note is empty', () => {
+  const notice = '현재 공식 안내를 다시 확인할 수 없어 마지막 확인 내용을 표시합니다.';
+  assert.equal(atTime(activity({sourceNote:''}),now,true).sourceNote,notice);
+  assert.equal(atTime(activity({sourceNote:'공식 안내 기준.'}),now,true).sourceNote,'공식 안내 기준. '+notice);
+  assert.equal(atTime(activity({sourceNote:''}),now).sourceNote,'');
+});
