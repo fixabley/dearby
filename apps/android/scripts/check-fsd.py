@@ -18,7 +18,7 @@ API = {
     'pages.qr': {'QrPage'},
     'pages.account': {'SignInSheet'},
     'pages.wallet': {'WalletEntryState', 'walletMatches', 'WalletPage', 'SharedCardPage', 'SendPage'},
-    'features.calendar': {'CalendarConflictSheet'},
+    'features.calendar': {'CalendarConflictSheet', 'CalendarOverlapResult', 'CalendarOverlapItem', 'CalendarOverlapDisplay'},
     'pages.catalog': {'CatalogPage', 'CatalogPhase', 'MyActivitiesPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'CatalogState'},
     'entities.catalog': {'model.ActivityModel', 'model.ScheduleModel', 'model.instant', 'model.safeHttpsUrl', 'api.fetchCatalog'},
     'entities.account': {'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.AccountProfile', 'model.PublishedCard', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault'},

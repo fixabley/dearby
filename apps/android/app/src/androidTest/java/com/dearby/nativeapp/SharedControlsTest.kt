@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.runtime.*
 import com.dearby.nativeapp.shared.ui.DearbyControlsGallery
+import com.dearby.nativeapp.features.calendar.*
 import com.dearby.nativeapp.shared.ui.DearbyStatesSample
 import com.dearby.nativeapp.shared.ui.DearbySearchField
 import com.dearby.nativeapp.widgets.card.cardContent.ReceivedCardGroupsSample
@@ -149,6 +150,20 @@ class SharedControlsTest {
         compose.onNodeWithText("다시 시도").performClick()
         assert(retried == 1)
         capture("android-list-states")
+    }
+
+    @Test fun calendarOverlapShowsRowsAndDeniedSettings() {
+        var settings = 0
+        var display by mutableStateOf<CalendarOverlapDisplay>(CalendarOverlapDisplay.Overlaps(CalendarOverlapSampleItems))
+        compose.setContent { DearbyTheme { Box(Modifier.testTag("gallery")) { CalendarOverlapResult(display, {}, zone = CalendarOverlapSampleZone, openSettings = { settings++ }) } } }
+        compose.onNodeWithText("2개 일정이 겹쳐요").assert(isHeading())
+        compose.onNodeWithText("팀 주간 회의").assertExists()
+        compose.onNodeWithText("14:00–15:00").assertExists()
+        capture("android-calendar-overlaps")
+        display = CalendarOverlapDisplay.Denied
+        compose.onNodeWithText("설정 열기").performClick()
+        assert(settings == 1)
+        capture("android-calendar-denied")
     }
 
     @Test fun readingStateKeepsLabels() {

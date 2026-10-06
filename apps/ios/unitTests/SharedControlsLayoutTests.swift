@@ -12,7 +12,9 @@ import XCTest
                              ("qr-scan", AnyView(QRScanOverlay(scanFromPhotos: {}) { Color.gray }.frame(width: 390, height: 560))),
                              ("card-composer", AnyView(CardComposerSample().frame(width: 390, height: 844))),
                              ("card-composer-empty", AnyView(CardComposerSample(name: "").frame(width: 390, height: 844))),
-                             ("activity-quick-apply", AnyView(ActivityCardSample()))] {
+                             ("activity-quick-apply", AnyView(ActivityCardSample())),
+                             ("calendar-overlaps", AnyView(CalendarOverlapResultView(display: .overlaps(CalendarOverlapSample.items), timeZone: CalendarOverlapSample.seoul) {}.frame(width: 390, height: 700).background(.white))),
+                             ("calendar-denied", AnyView(CalendarOverlapResultView(display: .denied) {}.frame(width: 390, height: 600).background(.white)))] {
             let host = UIHostingController(rootView: view)
             host.safeAreaRegions = []
             let fitted = host.sizeThatFits(in: CGSize(width: 390, height: CGFloat.greatestFiniteMagnitude))
