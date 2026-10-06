@@ -165,6 +165,21 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 - Android: Gradle이 같은 환경값(또는 같은 이름의 Gradle 속성)을 읽어 `BuildConfig`와 manifest placeholder(App Links host)로 넣는다. 값이 없으면 release 빌드는 실패한다.
 - 웹은 요청이 들어온 자기 origin을 기준으로 동작하므로 웹 도메인 환경값이 따로 필요 없다. API 서버의 `HOST`·`PORT`는 내부 바인딩이며, 외부에서는 ingress 도메인으로만 접근한다.
 
+### 앱에서 받은 공유 저장 (회원 wallet) — 2026-10-06
+
+앱 설치자는 스캔·유니버설 링크로 연 공유 명함을 로그인 계정의 wallet에 저장한다. 웹 게스트의 공유 저장(`PUT /v1/guest/shares/:id`)과 같은 의미를 회원 경로로 둔다.
+
+| 메서드·경로 | 인증 | 성공 응답 | 의미 |
+| --- | --- | --- | --- |
+| PUT /v1/wallet/shares/:id | 로그인 | 첫 저장 201 `{receiptId, cardId, shareId, status:"saved"}`, 이후 200 `{…, status:"saved"\|"alreadySaved"}` | 공유를 확인하고 그 명함을 wallet에 저장하며 공유 기록을 연결한다. 명함이 이미 있고 공유가 새로우면 `saved`, 둘 다 있으면 `alreadySaved`. 자기 명함의 공유는 422, 없거나 철회되면 404 |
+| GET /v1/wallet | 로그인 | 200 `{items: Receipt[], shares: WalletShare[]}` | 기존 `items`는 그대로 두고 `shares`를 추가한다 |
+
+- WalletShare: `{receiptId, cardId, shareId, activities: [{id, title}], savedAt}`. 철회된 명함은 `items`와 함께 제외한다.
+- 한 명함(Receipt)에 공유 기록을 0개 이상 연결하고, 명함당 20개까지 둔다(웹 게스트와 같다). 동일 사용자+명함은 Receipt 하나다.
+- `reciprocal`은 이 저장만으로 true가 되지 않는다(기존 규칙 유지).
+- 받은 명함함의 활동별 묶음은 `shares[].activities`로 만든다. 활동이 없는 명함은 `활동 없음` 묶음이다.
+- HTTPS ingress에는 `PUT /v1/wallet/shares/:id`를 회원 경로로 추가한다(Authorization만 전달). 마이그레이션은 운영 DB 변경이므로 사용자 승인 뒤 병합한다.
+
 ### 예시로 남는 것
 
 캘린더 일정 겹침, 참여 확정 표시(사용자 직접 표시이며 주최 측 확인이 아님), 명함 서버 간 직접 전달(POST /v1/exchanges)은 이번 범위가 아니다. 예시 화면은 실제 동작으로 표현하지 않는다.
