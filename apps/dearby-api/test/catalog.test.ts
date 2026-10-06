@@ -165,3 +165,20 @@ test('failed initial collection leaves truthful empty discovery with durable fai
       {source_key:'kakao-2026',succeeded:0,note:'SOURCE_REFRESH_FAILED'});
   } finally { await f.close(); }
 });
+
+test('SQLite store/read keeps organization parentId and reads pre-hierarchy content as top level',async () => {
+  const f = await fixture();
+  try {
+    f.setClock(checked);
+    const kakao = parseOfficial('kakao-2026',html('kakao-2026'),checkedAt);
+    const feconf = parseOfficial('feconf-2026',html('feconf-2026'),checkedAt);
+    const parent = catalogId('organization','fixture-parent');
+    storeSource(f.db,'kakao-2026',{...kakao,organization:{...kakao.organization,parentId:parent}},checkedAt,'hash');
+    storeSource(f.db,'feconf-2026',feconf,checkedAt,'hash');
+    const parents = async () => Object.fromEntries((await f.request('GET','/catalog')).body.organizations.map((o:{id:string;parentId:string|null}) => [o.id,o.parentId]));
+    assert.deepEqual(await parents(),{[kakao.organization.id]:parent,[feconf.organization.id]:null});
+    const {parentId:_,...old} = {...kakao.organization,parentId:parent};
+    f.db.prepare('UPDATE catalog_organizations SET content=? WHERE id=?').run(JSON.stringify(old),kakao.organization.id);
+    assert.deepEqual(await parents(),{[kakao.organization.id]:null,[feconf.organization.id]:null});
+  } finally { await f.close(); }
+});

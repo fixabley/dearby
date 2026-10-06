@@ -4,7 +4,8 @@ import type { DB } from './database.js';
 
 const time = z.iso.datetime({offset:true});
 const url = z.url({protocol:/^https?$/});
-export const organizationSchema = z.strictObject({id:z.uuid(), name:z.string(), description:z.string()});
+// parentId is always present in responses; snapshots published before the hierarchy omit it and mean top level.
+export const organizationSchema = z.strictObject({id:z.uuid(), name:z.string(), description:z.string(), parentId:z.uuid().nullable().default(null)});
 export const programSchema = z.strictObject({id:z.uuid(), organizationId:z.uuid(), title:z.string(), description:z.string()});
 export const scheduleSchema = z.strictObject({id:z.uuid(), title:z.string(), startAt:time.nullable(), endAt:time.nullable(), dateLabel:z.string(), timeZone:z.string()});
 export const activitySchema = z.strictObject({
@@ -21,7 +22,7 @@ export type Activity = z.infer<typeof activitySchema>;
 export type Organization = z.infer<typeof organizationSchema>;
 export type Program = z.infer<typeof programSchema>;
 export type Catalog = z.infer<typeof catalogSchema>;
-export type SourceRecord = {organization:Organization; program:Program; activity:Activity};
+export type SourceRecord = {organization:z.input<typeof organizationSchema>; program:Program; activity:Activity};
 export const verificationLifetime = 24 * 60 * 60 * 1000;
 
 // UUIDv5 DNS namespace. Slugs are source identities, never titles or refresh timestamps.
