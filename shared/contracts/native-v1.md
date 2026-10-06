@@ -132,7 +132,7 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 | QR 공유 | QR 화면에 들어오면 현재 명함으로 공유를 만들고 `https://<웹 origin>/s/<shareId>`를 QR로 보여 준다. 활동 선택은 선택 사항이다. 공유 버튼은 같은 URL을 OS 공유 시트로 넘긴다. | POST /v1/cards/:id/shares |
 | 받기 | 앱 안 스캐너(카메라·사진)와 유니버설 링크/App Links는 같은 `/s/<shareId>` URL을 해석해 공유 명함 화면을 연다. 기존 `dearby://card/<UUID>`도 계속 해석한다. 앱이 없거나 연결 검증에 실패하면 같은 URL이 웹 공유 명함으로 열린다. | GET /v1/shares/:id |
 
-- 웹 origin은 앱 빌드 설정값이다(운영 `https://dearby.wid.io.kr`). 앱은 `https`, 설정 host, 경로 `/s/<UUID>`만 받고 query·fragment·다른 host를 거부한다.
+- 앱은 `https`, 설정한 웹 도메인, 경로 `/s/<UUID>`만 받고 query·fragment·다른 host를 거부한다. 도메인은 아래 "연결 설정"의 환경값으로 정한다.
 - 유니버설 링크·App Links 경로는 `/s/*` 하나다. 웹은 `/.well-known/apple-app-site-association`, `/.well-known/assetlinks.json`을 환경값(Apple Team ID·번들 ID, Android 패키지·서명 SHA-256)으로 만든다. 값이 없으면 404다. 값 제공은 #90, 배포는 #91에 묶인다.
 
 ### 비로그인 사용자의 저장 유지
@@ -143,6 +143,21 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 - 홈 화면 추가는 브라우저 바로가기로 동작해야 한다. 같은 브라우저에서 열려 같은 쿠키를 쓴다. 독립 웹 앱 모드는 iOS에서 Safari와 저장소가 분리되므로 쓰지 않는다(2026-10-06 iOS 26.5 시뮬레이터 확인). manifest `display` 값과 iOS 기본 동작은 플로우 담당이 확인해 정한다. 1회용 전달 코드나 세션 병합은 만들지 않는다. iOS는 사용자가 공유 메뉴에서 직접 추가해야 하므로 1번 클릭 설치는 불가하고 안내로 제공한다.
 - 앱을 설치한 사람은 같은 `/s/` URL이 유니버설 링크·App Links로 앱에서 열린다. 앱에서 받은 명함 저장은 로그인 계정의 wallet에 한다. 앱의 게스트 세션·게스트 API는 만들지 않는다.
 - 2026-10-03 이전 기기에 남은 앱 저장 데이터는 읽거나 지우거나 이관하지 않는다.
+
+### 연결 설정 — 도메인 기반, 환경값으로 지정
+
+2026-10-06 사용자 결정: 모든 연결은 도메인 기반이며 환경값으로 지정한다. 코드에 운영 도메인·IP·포트를 고정하지 않는다.
+
+| 환경값 | 쓰는 곳 | 의미 |
+| --- | --- | --- |
+| `DEARBY_API_ORIGIN` | 웹 서버, iOS·Android 빌드 | API origin(scheme+도메인, `/v1` 제외). 예: `https://wid.io.kr` |
+| `DEARBY_WEB_ORIGIN` | iOS·Android 빌드 | 공유 URL `/s/<shareId>`를 만들고 받는 웹 origin. 유니버설 링크·App Links 도메인도 이 값의 host에서 만든다. 예: `https://dearby.wid.io.kr` |
+| `DEARBY_APPLE_TEAM_ID`, `DEARBY_IOS_BUNDLE_IDS`, `DEARBY_ANDROID_PACKAGE`, `DEARBY_ANDROID_CERT_SHA256` | 웹 서버 | `/.well-known` 연결 파일(#96) |
+
+- 운영·배포 빌드는 `https`와 도메인 host만 허용한다. IP 주소 host, `http`, 포트 지정, 경로가 있는 값은 빌드 또는 시작 시 실패시킨다. 개발 구성만 `http://localhost`·`127.0.0.1`·Android 에뮬레이터 `10.0.2.2`를 허용한다.
+- iOS: 빌드 환경값을 Info.plist 키(`DearbyAPIOrigin`, `DearbyWebOrigin`)로 넣고, Associated Domains는 `applinks:$(DEARBY_WEB_HOST)`로 만든다. 값이 없으면 Release 빌드는 실패하고, Debug는 로컬 개발 기본값을 쓴다.
+- Android: Gradle이 같은 환경값(또는 같은 이름의 Gradle 속성)을 읽어 `BuildConfig`와 manifest placeholder(App Links host)로 넣는다. 값이 없으면 release 빌드는 실패한다.
+- 웹은 요청이 들어온 자기 origin을 기준으로 동작하므로 웹 도메인 환경값이 따로 필요 없다. API 서버의 `HOST`·`PORT`는 내부 바인딩이며, 외부에서는 ingress 도메인으로만 접근한다.
 
 ### 예시로 남는 것
 
