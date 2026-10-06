@@ -37,7 +37,8 @@ data class ReceivedSaveState(val signedIn: Boolean, val saving: Boolean = false,
                     DearbyOutlineButton(retry, Modifier.fillMaxWidth()) { Text("다시 시도") }
                 }
                 ReceivedPhase.LOADED -> {
-                    state.card?.let { CardContent(it, onContact = contact, expanded = true) }
+                    // CardContent scrolls inside itself; inside this scrolling page it needs a bounded height.
+                    state.card?.let { CardContent(it, Modifier.heightIn(max = 560.dp), onContact = contact, expanded = true) }
                     if (state.activities.isNotEmpty()) {
                         HorizontalDivider()
                         Text("함께 공유된 활동", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
