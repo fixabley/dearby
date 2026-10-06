@@ -50,8 +50,8 @@ deck.initialize().then(() => {
     section.append(grid);
     const status = document.createElement('div');
     status.className = 'screen-status';
-    const isCard = Boolean(section.querySelector('img[src*="profile"],img[src*="card"],img[src*="qr-"],img[src*="wallet"]')) && !section.querySelector('img[src*="calendar"]');
-    status.textContent = isCard ? '승인 시안 · 명함/프로필은 현재 기본 화면에서 숨김' : '승인 시안 · 이미지의 활동·일정은 예시';
+    // Real captures declare their source with data-status; approved mockups use the default.
+    status.textContent = section.dataset.status || '승인 시안 · 실제 실행 화면이 아니며 이미지의 활동·일정·인물은 예시';
     section.append(status);
   });
   update();

@@ -42,6 +42,9 @@ body{margin:0;background:#edf3f2;color:var(--ink);font-family:var(--r-main-font)
 .screen-grid figcaption{font-size:19px;color:var(--muted);margin-top:9px}
 .reveal .screens.single .screen-grid{justify-content:center}
 .reveal .screens.single figure{max-width:360px}
+.reveal .screens.wide figure{max-width:none}
+.reveal .screens.wide .screen-grid img{height:auto;max-height:484px}
+.reveal .screens.wide .screen-grid{gap:24px}
 .screen-status{position:absolute;bottom:4px;left:46px;right:46px;text-align:left;font-size:17px;color:#687c80}
 .reveal .progress{color:var(--teal);height:3px}
 .reveal .controls{color:var(--teal);bottom:18px;right:15px}
