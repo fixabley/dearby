@@ -32,7 +32,8 @@
     "DearbyTogetherActivityLabel",
     "DearbyQRCode",
     "AppOrigins",
-    "SharedCardLink"
+    "SharedCardLink",
+    "SearchQuery"
   ],
   "entities/identity": [
     "CardModel",
@@ -44,7 +45,8 @@
     "ContactIcons",
     "ContactSymbol",
     "CardView",
-    "CardDeck"
+    "CardDeck",
+    "WalletGroup"
   ],
   "pages/home": [
     "HomePage"
