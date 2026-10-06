@@ -26,7 +26,7 @@ import com.dearby.nativeapp.shared.ui.*
             }
         } else item { Text(CONFIRM_NOTE, color = Quiet, style = MaterialTheme.typography.bodySmall) }
         items(activities, key = { it.id }) { activity ->
-            ActivityCard(activity, open) {
+            ActivityRow(activity, open) {
                 ExampleBadge(if (activity.confirmed) "참여 확정" else "신청함", accent = activity.confirmed)
                 ConfirmToggle(activity) { confirm(activity.id, it) }
             }

@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Contract "모바일 실제 연결 경계": network only for the real-service scope (GET /v1/catalog so far). -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application android:label="Dearby" android:icon="@drawable/ic_launcher" android:dataExtractionRules="@xml/data_extraction_rules" android:allowBackup="false" android:fullBackupContent="false" android:supportsRtl="true" android:theme="@style/Theme.Dearby" android:usesCleartextTraffic="false">
         <activity android:name=".app.MainActivity" android:exported="true">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>

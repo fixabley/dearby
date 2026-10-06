@@ -5,6 +5,11 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import com.dearby.nativeapp.entities.catalog.api.fetchCatalog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -16,7 +21,9 @@ import com.dearby.nativeapp.shared.config.sharedCardId
 import com.dearby.nativeapp.shared.ui.DearbyTheme
 
 class MainActivity : ComponentActivity() {
-    private val catalog: CatalogViewModel by viewModels()
+    private val catalog: CatalogViewModel by viewModels {
+        viewModelFactory { initializer { CatalogViewModel { withContext(Dispatchers.IO) { fetchCatalog(ApiOrigin.current) } } } }
+    }
     private val demo: DemoViewModel by viewModels()
     // Captured from /s/<UUID> App Links; the shared-card screen is connected in a later step.
     private var incomingShareId by mutableStateOf<String?>(null)

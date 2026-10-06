@@ -18,9 +18,8 @@ API = {
     'pages.qr': {'QrPage', 'CardEditor'},
     'pages.wallet': {'WalletEntryState', 'walletMatches', 'WalletPage', 'SharedCardPage', 'SendPage'},
     'features.calendar': {'CalendarConflictSheet'},
-    'pages.catalog': {'CatalogPage', 'MyActivitiesPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'CatalogState'},
-    'features.application': {'ApplicationBrowser', 'safeWebUrl'},
-    'entities.catalog': {'model.ActivityModel', 'model.ScheduleModel', 'model.demoActivities', 'model.demoAppliedActivityIds'},
+    'pages.catalog': {'CatalogPage', 'CatalogPhase', 'MyActivitiesPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'CatalogState'},
+    'entities.catalog': {'model.ActivityModel', 'model.ScheduleModel', 'model.instant', 'model.safeHttpsUrl', 'api.fetchCatalog'},
 }
 
 def owner(name):
@@ -54,7 +53,9 @@ def check_source(path, text):
         if rendering and (target_layer == 'entities' or (target_layer == 'shared' and not ref.startswith('shared.ui.')) or (target_layer == 'features' and not ref.endswith('State'))):
             errors.append('UI requires State/callbacks, not domain/I/O: ' + ref)
     if rendering and re.search(r'\b(LocalContext|SharedPreferences|getSharedPreferences|AssetManager|Intent|startActivity|\w+ViewModel|\w+Repository)\b', code): errors.append('UI directly accesses provider/OS side effect')
-    if re.search(r'\b(?:Room|HttpClient|HttpURLConnection|WebView|TokenVault|CalendarContract|SQLiteDatabase|getSharedPreferences|rememberSaveable|SavedStateHandle)\b', code): errors.append('prototype must not access service or persisted state')
+    # Contract "모바일 실제 연결 경계": only the catalog client reads the network, for GET /v1/catalog.
+    network = '' if path.as_posix() == 'entities/catalog/api/CatalogClient.kt' else 'HttpURLConnection|'
+    if re.search(r'\b(?:Room|HttpClient|' + network + r'WebView|TokenVault|CalendarContract|SQLiteDatabase|getSharedPreferences|rememberSaveable|SavedStateHandle)\b', code): errors.append('prototype must not access service or persisted state')
     return errors
 
 def self_test():

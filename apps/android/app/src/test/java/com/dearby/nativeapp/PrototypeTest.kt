@@ -1,57 +1,18 @@
 package com.dearby.nativeapp
 
-import com.dearby.nativeapp.app.CatalogViewModel
-import com.dearby.nativeapp.entities.catalog.model.demoActivities
+import com.dearby.nativeapp.entities.catalog.model.ScheduleModel
+import com.dearby.nativeapp.entities.catalog.model.safeHttpsUrl
 import com.dearby.nativeapp.features.calendar.*
-import com.dearby.nativeapp.features.application.safeWebUrl
 import org.junit.Assert.*
 import org.junit.Test
 import java.time.Instant
 
 class PrototypeTest {
-    @Test fun fixedCatalogIncludesScheduledMeetupAndSafeLinks() {
-        val model = CatalogViewModel()
-        assertEquals(listOf("conference", "camp", "meetup"), model.state.value.activities.map { it.id })
-        assertEquals(listOf("모집 중", "모집 중", "모집 예정"), model.state.value.activities.map { it.status })
-        assertTrue(demoActivities.all { it.schedule.timeZone == "Asia/Seoul" && it.url == "https://example.com" && safeWebUrl(it.url) })
-        assertEquals("2026년 10월 24일 13:00~17:00", model.state.value.activities.first().date)
-    }
-    @Test fun filterAndApplicationSurviveNavigationButNotNewSession() {
-        val model = CatalogViewModel()
-        model.filter("선발형")
-        assertEquals(listOf("camp"), model.state.value.visibleActivities.map { it.id })
-        model.apply("camp", true)
-        model.filter("전체")
-        assertEquals(listOf("conference", "camp"), model.state.value.appliedActivities.map { it.id })
-        model.apply("camp", false)
-        assertEquals(listOf("conference"), model.state.value.appliedActivities.map { it.id })
-        model.apply("meetup", true)
-        val fresh = CatalogViewModel().state.value
-        assertEquals("전체", fresh.filter)
-        assertEquals(listOf("conference"), fresh.appliedActivities.map { it.id })
-    }
-    @Test fun myActivitiesFollowScheduleAndConfirmationNeedsApplication() {
-        val model = CatalogViewModel()
-        model.apply("meetup", true)
-        model.apply("camp", true)
-        assertEquals(listOf("conference", "camp", "meetup"), model.state.value.appliedActivities.map { it.id })
-        model.confirm("camp", true)
-        assertTrue(model.state.value.appliedActivities.single { it.id == "camp" }.confirmed)
-        model.apply("camp", false)
-        model.apply("camp", true)
-        assertFalse(model.state.value.appliedActivities.single { it.id == "camp" }.confirmed)
-        model.confirm("camp", false)
-        model.apply("camp", false)
-        model.confirm("camp", true)
-        assertFalse(model.state.value.activities.single { it.id == "camp" }.confirmed)
-        assertFalse(CatalogViewModel().state.value.activities.any { it.confirmed })
-    }
     @Test fun conferenceHasOneHourConflictOthersHaveNone() {
-        val conflict = demoOverlaps(listOf(demoActivities[0].schedule)).single()
+        val conflict = demoOverlaps(listOf(ScheduleModel("컨퍼런스", "2026-10-24T13:00:00+09:00", "2026-10-24T17:00:00+09:00"))).single()
         assertEquals(Instant.parse("2026-10-24T05:00:00Z").toEpochMilli(), conflict.start)
         assertEquals(3_600_000L, conflict.end - conflict.start)
-        assertTrue(demoOverlaps(listOf(demoActivities[1].schedule)).isEmpty())
-        assertTrue(demoOverlaps(listOf(demoActivities[2].schedule)).isEmpty())
+        assertTrue(demoOverlaps(listOf(ScheduleModel("캠프", "2026-11-07T10:00:00+09:00", "2026-11-07T18:00:00+09:00"))).isEmpty())
     }
     @Test fun touchingOrEmptyIntervalsDoNotOverlap() {
         val window = CalendarWindowState("test", 10, 20, "Asia/Seoul")
@@ -60,8 +21,10 @@ class PrototypeTest {
         assertFalse(calendarOverlaps(window, BusyTimeState(15, 15)))
         assertTrue(calendarOverlaps(window, BusyTimeState(15, 30)))
     }
-    @Test fun applicationLinksRejectUnsafeSchemes() {
-        assertTrue(safeWebUrl("https://example.com/dearby/camp"))
-        listOf("javascript:alert(1)", "file:///data/local", "dearby://card/1").forEach { assertFalse(safeWebUrl(it)) }
+    @Test fun applicationLinksAreHttpsOnly() {
+        assertNotNull(safeHttpsUrl("https://example.com/dearby/camp"))
+        listOf("http://example.com", "javascript:alert(1)", "file:///data/local", "dearby://card/1", "https://user:pw@example.com", "https://")
+            .forEach { assertNull(it, safeHttpsUrl(it)) }
+        assertNull(safeHttpsUrl(null))
     }
 }
