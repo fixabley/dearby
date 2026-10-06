@@ -1,6 +1,5 @@
 package com.dearby.nativeapp.app
 
-import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.*
@@ -79,13 +78,3 @@ import kotlinx.coroutines.launch
 fun PublishedCard.toState() = CardState(id, profileName, job, name, description, introduction,
     contacts.map { ContactState(it.id, it.kind, it.label, it.value) },
     histories.map { CardHistoryState(it.id, it.title, it.role, listOfNotNull(it.startDate, it.endDate).joinToString(" – ")) })
-
-/** Phone and email open the phone or mail app; links open only when they are https. */
-fun openContact(context: Context, contact: ContactState) {
-    val target = when (contact.kind) {
-        "phone" -> "tel:" + contact.value.filter { it.isDigit() || it == '+' }
-        "email" -> "mailto:" + contact.value
-        else -> contact.value.takeIf { it.startsWith("https://") }
-    }
-    target?.let { runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, it.toUri())) } }
-}
