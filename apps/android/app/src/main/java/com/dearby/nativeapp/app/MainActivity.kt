@@ -1,6 +1,7 @@
 package com.dearby.nativeapp.app
 
 import android.content.Intent
+import android.util.Log
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -38,6 +39,10 @@ class MainActivity : ComponentActivity() {
     private var incoming by mutableStateOf<ScannedLink?>(null)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // A Debug build without DEARBY_API_ORIGIN talks to the emulator host's local API; say so once.
+        if (BuildConfig.DEBUG && ApiOrigin.current.startsWith("http://10.0.2.2")) {
+            Log.w("Dearby", "Debug build uses the local API fallback ${ApiOrigin.current}; set DEARBY_API_ORIGIN when building to use another API.")
+        }
         receive(intent)
         setContent {
             DearbyTheme {
