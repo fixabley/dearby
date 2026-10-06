@@ -22,6 +22,25 @@ API·인증/Keychain·영구 저장·실제 캘린더·카메라·푸시는 없�
 서버/웹/어드민/운영 DB는 변경하지 않습니다.
 사진·QR은 root가 준비한 `shared/assets/prototype` 원본의 앱 번들 사본이며 런타임 다운로드가 없습니다.
 
+## 연결 설정
+
+계약 `shared/contracts/native-v1.md`의 "연결 설정"을 따른다. 코드에는 운영 도메인을 두지 않는다.
+
+- 빌드 환경값 `DEARBY_API_ORIGIN`, `DEARBY_WEB_ORIGIN`이 Info.plist `DearbyAPIOrigin`, `DearbyWebOrigin`으로 들어간다. 명령행 `xcodebuild`는 환경값을 빌드 설정으로 읽는다. Xcode 화면에서 빌드할 때는 scheme의 환경값이 아니라 빌드 설정으로 넘겨야 한다.
+- Release: `scripts/validate_origins.sh` 빌드 단계가 두 값이 `https://<도메인>`(IP·포트·경로·대문자 없음)인지 검사하고, 아니면 빌드를 실패시킨다. Associated Domains는 `Dearby.entitlements`의 `applinks:$(DEARBY_WEB_HOST)`이고, `DEARBY_WEB_HOST`는 `$(DEARBY_WEB_ORIGIN:file)`(origin의 host)이다. 기기 Release 빌드는 provisioning profile에 Associated Domains 기능이 있어야 한다.
+- Debug: 값이 없으면 `http://localhost:3000`(API 기본 포트)과 `http://localhost:3210`(웹 e2e 포트)을 쓴다. http는 localhost·127.0.0.1만 허용한다. Debug에는 entitlement를 붙이지 않는다.
+- 들어온 `<웹 origin>/s/<UUID>` 링크는 `AppLinkProvider`가 공유 ID로 바꾼다. 공유 명함 화면은 아직 연결하지 않았고, 링크를 받으면 그 사실만 안내한다. 실제 유니버설 링크 동작은 AASA 배포(#90·#91) 뒤에만 확인할 수 있다.
+
+## 로그인·명함 발행 연결 (2026-10-06)
+
+`entities/account`의 `AccountClient`(인증번호 로그인·`/v1/profile`·`POST /v1/cards`)와 Keychain `SessionVault`, `features/account`의 `AccountViewModel`이 있다. 화면 연결은 다음 PR이다. 세션은 새 Keychain 서비스 `dearby.account.session`에 두며, 2026-10-03 이전 앱이 남긴 세션은 읽거나 지우지 않는다. 소유자 호출이 401이면 다시 시도하지 않고 로그아웃한다. 운영 `/v1/auth`는 ingress에서 닫혀 있고 인증 메일(#89)도 미설정이므로 운영 동작 완료가 아니다.
+
+로컬 실제 API 확인(선택, 운영 연결 금지): 격리 컨테이너 두 개를 띄운다. 이름은 다른 세션과 겹치지 않게 한다.
+1. `public.ecr.aws/supabase/postgres:17.6.1.171`을 tmpfs로 띄우고 `apps/dearby-api/test/run-postgres.mjs`와 같은 순서로 `supabase/migrations`·cron 비활성·`dearby_api_runtime` 비밀번호를 적용한다.
+2. 자체 CA로 `localhost` 인증서를 만들어 `public.ecr.aws/supabase/mailpit`을 `--smtp-tls-cert --smtp-tls-key --smtp-require-starttls --smtp-auth-accept-any`로 띄운다.
+3. API를 `PORT=4310`, `DATABASE_URL`(runtime 역할), 32자 이상 임시 `OTP_SECRET`, `SMTP_HOST=localhost`·포트·임의 사용자, `NODE_EXTRA_CA_CERTS=<CA>`로 실행한다.
+4. `TEST_RUNNER_DEARBY_REAL_API_ORIGIN=http://127.0.0.1:4310 TEST_RUNNER_DEARBY_REAL_MAILPIT=http://127.0.0.1:<mailpit http 포트>`를 주고 `AccountRealAPITests`를 실행한다. 값이 없으면 건너뛴다. 발송 한도(같은 이메일 1분 1회, IP 1시간 20회)가 DB에 남으므로 새 DB에서 돌린다.
+
 ## 검증
 
 ```sh

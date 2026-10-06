@@ -31,7 +31,9 @@
     "DearbyChoiceChips",
     "DearbyInlineField",
     "DearbyTogetherActivityLabel",
-    "DearbyQRCode"
+    "DearbyQRCode",
+    "AppOrigins",
+    "SharedCardLink"
   ],
   "entities/identity": [
     "CardModel",
@@ -59,5 +61,19 @@
     "CardComposer",
     "CardComposerContact",
     "CardComposerHistory"
+  ],
+  "entities/account": [
+    "AccountSession",
+    "AccountContact",
+    "AccountHistory",
+    "AccountProfile",
+    "PublishedCard",
+    "AccountError",
+    "AccountClient",
+    "SessionStore",
+    "SessionVault"
+  ],
+  "features/account": [
+    "AccountViewModel"
   ]
 }
