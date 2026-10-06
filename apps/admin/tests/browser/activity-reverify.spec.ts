@@ -49,6 +49,15 @@ test("activities show automatic re-check results and verification sends the evid
     source_note: "공식 공지에서 마감일을 확인했습니다.",
     updated_at: new Date(now - 20 * 3600000).toISOString(),
   };
+  // Published without any confirmation record: never shown in discovery.
+  const unverified = {
+    ...activity,
+    id: "00000000-0000-4000-8000-0000000000a2",
+    title: "Let'Swift 2026",
+    source_checked_at: null,
+    valid_until: null,
+    freshness: "stale",
+  };
   const evidence = {
     activity_id: activity.id,
     quote: "하반기 펠로우십 지원은 10월 24일 오후 6시에 마감합니다.",
@@ -84,7 +93,12 @@ test("activities show automatic re-check results and verification sends the evid
       calls.push(request.postDataJSON());
       return route.fulfill({ json: activity });
     }
-    if (path === "/rest/v1/catalog_activities") return rows([activity]);
+    if (path === "/rest/v1/catalog_activities")
+      return rows(
+        new URL(request.url()).searchParams.get("id")
+          ? [activity]
+          : [activity, unverified],
+      );
     if (path === "/rest/v1/catalog_activity_evidence") return rows([evidence]);
     if (path === "/rest/v1/catalog_programs") return rows([program]);
     return route.fulfill({ json: [], headers: { "content-range": "0-0/0" } });
@@ -100,6 +114,11 @@ test("activities show automatic re-check results and verification sends the evid
     fullPage: true,
     animations: "disabled",
   });
+
+  await expect(row).toContainText("발견 노출 중");
+  await expect(
+    page.getByRole("row").filter({ hasText: unverified.title }),
+  ).toContainText("미노출 · 공식 확인 없음");
 
   await row.getByRole("link", { name: "편집" }).click();
   await expect(page.getByText(evidence.quote)).toBeVisible();
@@ -136,4 +155,28 @@ test("activities show automatic re-check results and verification sends the evid
       evidence_quote: evidence.quote,
     },
   ]);
+
+  // The period decides the status; the preview follows the inputs before saving.
+  const preview = page.getByRole("status").filter({ hasText: "현재 상태" });
+  await expect(preview).toContainText("날짜 없음 · 모집 중");
+  // The selected value overlays the search input, so open the select box itself.
+  await page
+    .locator(".ant-select")
+    .filter({ has: page.getByRole("combobox", { name: "모집 상태" }) })
+    .click();
+  await expect(page.getByRole("option")).toHaveText([
+    "자동 (기간 기준)",
+    "상시 모집 중 (날짜 없음)",
+    "조기 마감",
+  ]);
+  await page.getByRole("option", { name: "자동 (기간 기준)" }).click();
+  await expect(preview).toContainText("날짜 없음 · 미확인");
+  await page.getByLabel("모집 시작", { exact: true }).fill("2099-01-01T09:00");
+  await expect(preview).toContainText("기간 기준 모집 예정");
+  await page.screenshot({
+    path: testInfo.outputPath("recruitment-period-1440.png"),
+    animations: "disabled",
+  });
+  await page.getByLabel("모집 시작", { exact: true }).fill("");
+  await expect(preview).toContainText("날짜 없음");
 });
