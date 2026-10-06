@@ -34,7 +34,10 @@
     "WalletGroup"
   ],
   "features/calendar": [
-    "CalendarConflictView"
+    "CalendarConflictView",
+    "CalendarOverlapDisplay",
+    "CalendarOverlapItem",
+    "CalendarOverlapResultView"
   ],
   "features/scan": [
     "QRCameraView",
