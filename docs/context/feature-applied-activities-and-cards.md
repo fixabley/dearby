@@ -63,9 +63,12 @@
 
 - **저장 순간 안내:** 받은 명함을 저장하면 그 자리에서 `이 브라우저에만 저장됐어요. 쿠키를 지우거나 다른 브라우저·앱에서 열면 보이지 않아요.`를 보여 준다. `/saved` 상단의 기존 안내는 유지한다.
 - **앱 내장 브라우저:** 카카오톡 등 앱 안의 브라우저로 감지되면 저장 전에 외부 브라우저로 열도록 안내한다. 감지는 알려진 user agent로만 하고, 감지하지 못해도 저장은 막지 않는다.
-- **홈 화면 웹앱:** manifest(이름 Dearby, `start_url` `/saved`, `display` `standalone`, 기존 로고 원본으로 만든 아이콘)와 iOS용 홈 화면 아이콘·메타를 추가한다. Android Chrome은 설치 안내 이벤트로 `홈 화면에 추가` 버튼을 보여 주고, iOS Safari는 `공유 → 홈 화면에 추가` 안내를 보여 준다. 이미 설치된 앱으로 열렸으면 버튼과 안내를 숨긴다.
-- **iOS 저장 분리:** iOS 홈 화면 웹앱이 Safari와 쿠키를 따로 쓰는지 실제 기기·시뮬레이터에서 확인해 기록한다. 따로 쓰면 iOS 설치 안내에 `홈 화면 앱은 Safari와 따로 저장돼요`를 적는다. 저장 목록을 옮기는 기능은 별도 결정이다.
-- **오프라인 캐시 없음:** 개인 명함 데이터를 기기에 따로 보관하지 않도록 service worker 캐시는 두지 않는다. 설치 가능 조건에 service worker가 필요한지는 현재 Chrome 기준으로 확인해 기록한다.
+- **홈 화면 웹앱:** manifest(이름 Dearby, `start_url` `/saved`, `display` `standalone`, 아이콘은 iOS 앱 아이콘을 줄인 사본)와 iOS용 홈 화면 아이콘·메타를 둔다. Android Chrome은 설치 안내 이벤트로 `홈 화면에 추가` 버튼을 보여 주고, iOS Safari는 `공유 → 홈 화면에 추가`만 안내한다(`웹 앱으로 열기`를 끄라는 안내는 넣지 않는다). 이미 설치된 앱으로 열렸으면 버튼과 안내를 숨긴다. `display`는 Android 설치 버튼을 위해 `standalone`을 유지한다.
+- **홈 화면 세션 잇기(2026-10-06 사용자 결정):** 홈 화면 항목은 브라우저 바로가기처럼 같은 게스트 세션을 써야 한다. 확인 결과(iOS 26.5 시뮬레이터)
+  - iOS는 `웹 앱으로 열기`가 manifest·메타와 관계없이 기본으로 켜져 있고 사이트가 바꿀 수 없다. 그대로 추가하면 홈 화면 앱은 빈 쿠키로 시작하고 이후에도 Safari와 쿠키를 따로 쓴다. 끄고 추가하면 Safari로 열리고 같은 쿠키를 쓴다.
+  - Android Chrome 154는 바로가기와 설치 모두 Chrome과 같은 쿠키를 썼다.
+  - 그래서 [계약](../../shared/contracts/native-v1.md)의 `홈 화면 세션 잇기`를 따른다. manifest는 요청마다 만들고, 게스트 쿠키와 저장 명함이 있으면 `start_url`에 1회용 코드를 넣는다. 홈 화면 앱이 처음 `/saved?handoff=`로 열리면 쿠키가 없을 때만 코드를 교환해 같은 세션 쿠키를 받는다. 저장소가 따로라는 안내 문구는 두지 않는다.
+- **오프라인 캐시 없음:** 개인 명함 데이터를 기기에 따로 보관하지 않도록 service worker 캐시는 두지 않는다. 2026-10-06 Chromium 153 기준으로 service worker 없이도 설치 가능 판정이었다(실제 Android Chrome의 설치 안내 이벤트는 미확인).
 
 ## 담당과 순서
 
@@ -81,15 +84,17 @@
 | 용도 | iOS (SwiftUI) | Android (Compose) |
 | --- | --- | --- |
 | 두 항목 전환 | `DearbySegments(labels: [String], selection: Binding<Int>)` 기존 것 재사용 | `DearbySegments(labels: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier)` |
-| 묶음 머리글(개수) | `DearbySectionHeader(title: String, count: Int)` | `DearbySectionHeader(title: String, count: Int, modifier)` |
+| 묶음 머리글(개수, 접고 펴기) | `DearbySectionHeader(title: String, count: Int, expanded: Bool? = nil, onToggle: () -> Void = {})` | `DearbySectionHeader(title: String, count: Int, modifier, expanded: Boolean? = null, onToggle: () -> Unit = {})` |
 | 검색 칸 | `DearbySearchField(prompt: String, text: Binding<String>, identifier: String = "search", expansion: Double = 1, onExpand: () -> Void = {})` | `DearbySearchField(query: String, onQueryChange: (String) -> Unit, placeholder: String, modifier, expansion: Float = 1f, onExpand: () -> Unit = {})` |
 | 당김으로 검색 펼치기 | 목록 `ScrollView`에 `.dearbySearchReveal($expansion)` | `val reveal = rememberDearbySearchReveal()` → 목록에 `Modifier.nestedScroll(reveal.connection)`, 검색 칸에 `reveal.expansion`·`reveal::expand` |
 | 활동 선택 칩 | `DearbyChoiceChips(items: [DearbyChoice], selection: Binding<Set<String>>, label: String)` | `DearbyChoiceChips(items: List<DearbyChoice>, selected: Set<String>, onToggle: (String) -> Unit, label: String, modifier)` |
 | 인라인 입력 칸 | `DearbyInlineField(label: String, text: Binding<String>, editing: Bool, prompt: String = "", multiline: Bool = false, font: Font = .body)` | `DearbyInlineField(label: String, value: String, onValueChange: (String) -> Unit, editing: Boolean, modifier, placeholder: String = "", singleLine: Boolean = true, style: TextStyle = bodyLarge)` |
+| 함께한 활동 라벨 | `DearbyTogetherActivityLabel(title: String, otherCount: Int = 0)` | `DearbyTogetherActivityLabel(title: String, modifier, otherCount: Int = 0)` |
+| 받은 명함 목록 항목(widgets) | `ReceivedCardRow(name: String, job: String, activityTitle: String? = nil, otherActivityCount: Int = 0, open: () -> Void)` (`widgets/identity`) | `ReceivedCardRow(name: String, job: String, open: () -> Unit, modifier, activityTitle: String? = null, otherActivityCount: Int = 0)` (`widgets/card/cardContent`) |
 
 - `DearbyChoice`는 `id`·`title`만 가진다. 활동 모델을 `shared`에 들이지 않도록 화면이 활동을 변환해 넘긴다. 칩은 줄바꿈 배치이며 선택은 색과 체크 표시로 함께 구분한다. 읽기 전용 표시는 기존 `DearbyBadge`/`ExampleBadge`를 쓴다.
 - 인라인 입력 칸은 읽기·편집에서 같은 여백을 써 위치가 바뀌지 않는다. 편집 중에만 옅은 배경과 밑줄을 보인다. `label`은 입력 칸의 접근성 이름이다. 편집 상태 전환 알림, `완료`/`취소`, 이름이 비었을 때의 이유 문구는 화면(플로우 담당)이 맡는다.
-- 묶음 머리글은 "제목, N개"로 읽히는 머리글이다. 검색 칸은 내용이 있을 때 `검색어 지우기` 버튼을 보인다. 검색 규칙은 화면이 적용한다.
+- 묶음 머리글은 "제목, N개"로 읽히는 머리글이다. `expanded`를 주면 누를 때 `onToggle`을 부르는 버튼이 되고 화살표(펼침 아래, 접힘 오른쪽)와 접근성 상태 `펼침`/`접힘`을 보인다. 동작 줄이기에서는 화살표 회전 애니메이션이 없다. 묶음 내용을 숨기는 일과 펼침 상태 보관·검색 시 자동 펼침은 화면이 맡는다. 검색 칸은 내용이 있을 때 `검색어 지우기` 버튼을 보인다. 검색 규칙은 화면이 적용한다.
 - 접히는 검색 칸: `expansion` 0~1을 받고, 검색어가 있거나 입력 중이면 컴포넌트가 1로 고정한다. 1 미만에서는 `검색` 버튼으로 읽히는 막대이고, 누르면 `onExpand`를 부르고 펼친 뒤 입력 칸에 초점을 준다. 동작 줄이기(iOS 동작 줄이기, Android 애니메이션 배율 0)에서는 0.5 기준으로 0 또는 1만 쓴다. 두 플랫폼 수치:
 
   | 값 | 수치 |
@@ -98,3 +103,6 @@
   | 안내 문구 | `expansion` 0.5부터 나타나 1에서 불투명 |
   | 완전히 펼치는 당김 거리 | 56 pt/dp, 위로 민 거리만큼 같은 비율로 줄어듦 |
   | 손을 뗀 뒤 | 0.5 이상이면 1, 미만이면 0으로 맞춤 |
+- 함께한 활동 라벨은 `함께한 활동 · ○○`(2개 이상이면 뒤에 ` 외 N개`)를 확인 아이콘 없이 보여 주고 긴 활동 이름만 말줄임한다. 첫 활동(일정이 가장 이른 것) 선택, 활동이 없을 때 생략, 상세의 전체 목록·이동은 화면이 맡는다. iOS 명함 앞면이 `entities`에 있어 상위 계층 참조를 피하려고 `shared/ui`에 둔다.
+- 받은 명함 목록 항목은 이니셜·이름·직무·함께한 활동 라벨·오른쪽 화살표이며 전체가 눌리는 한 줄이다. 화면이 명함 모델을 값으로 바꿔 넘긴다.
+- 웹은 같은 모양으로 `SectionHeader({title, count, expanded?, onToggle?, controls?})`(`aria-expanded`)를 `apps/web/src/shared/ui/section-header.tsx`에, `TogetherActivityLabel({title, otherCount})`와 `ReceivedCardRow({href, name, job, activity?})`를 `apps/web/src/widgets/card`에 둔다. `/saved`에 `전체 | 활동별` 전환이 없어 웹 `Segments`는 만들지 않는다.

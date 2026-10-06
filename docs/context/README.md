@@ -22,6 +22,7 @@
 | [API Prisma 전환](api-prisma-postgres.md) | PostgreSQL 저장·운영 Compose |
 | [API Swagger](api-swagger.md) · [API 도메인](api-domain-main.md) | 계약 확인·외부 연결 인계 |
 | [API 구현 인계](api-implementation-and-handoff.md) | 구현 범위·한계·검증 기록 |
+| [API 명함 공유](api-card-shares.md) | 공유 기록·게스트 공유 저장, 웹 테스트 데이터 |
 | [사용자 웹](web-implementation-and-handoff.md) | 공개 이력·게스트 명함 보관 |
 | [관리자 웹](admin-web-deployment.md) | 탐색 관리·배포 인계 |
 | [수집 워커](catalog-subscription-worker-handoff.md) | 주기 수집·실행 경로 |

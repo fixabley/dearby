@@ -22,9 +22,13 @@ import androidx.compose.ui.unit.sp
         DearbySearchField(query, { query = it }, "이름, 직무, 활동으로 검색")
         DearbySearchField("", {}, "이름, 직무, 활동으로 검색", expansion = 0f)
         DearbySearchField("", {}, "이름, 직무, 활동으로 검색", expansion = .7f)
-        DearbySectionHeader("Dearby 개발자 컨퍼런스", 3)
+        var groupOpen by remember { mutableStateOf(true) }
+        DearbySectionHeader("Dearby 개발자 컨퍼런스", 3, expanded = groupOpen, onToggle = { groupOpen = !groupOpen })
+        DearbySectionHeader("활동 없음", 1, expanded = false)
         DearbyChoiceChips(listOf(DearbyChoice("conference", "Dearby 개발자 컨퍼런스"), DearbyChoice("camp", "Dearby 메이커 캠프"), DearbyChoice("meetup", "Dearby 커뮤니티 밋업")),
             chosen, { id -> chosen = if (id in chosen) chosen - id else chosen + id }, "함께 보낼 활동")
+        DearbyTogetherActivityLabel("Dearby 개발자 컨퍼런스")
+        DearbyTogetherActivityLabel("Dearby 메이커 캠프 여름 시즌 집중 프로그램", otherCount = 2)
         DearbyInlineField("이름", name, { name = it }, editing, style = androidx.compose.ui.text.TextStyle(fontSize = 22.sp, lineHeight = 30.sp, fontWeight = FontWeight.Bold))
         DearbyInlineField("소개", introduction, { introduction = it }, editing, placeholder = "한 줄 소개를 적어 주세요", singleLine = false)
     }

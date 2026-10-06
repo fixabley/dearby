@@ -21,6 +21,12 @@ export const context = z.strictObject({ activityId: id.nullable(), label: z.stri
 export const cardInput = z.strictObject({ name: z.string().trim().min(1).max(100), description: text(2000),
   contactIds: z.array(id).max(100), historyIds: z.array(id).max(100),
 }).refine(c => new Set(c.contactIds).size === c.contactIds.length && new Set(c.historyIds).size === c.historyIds.length, 'Duplicate IDs');
+// Activity IDs are compared lowercase against catalog UUIDs; duplicates differing only by case are rejected.
+export const shareInput = z.strictObject({activityIds: z.array(id).max(10)})
+  .refine(s => new Set(s.activityIds.map(a => a.toLowerCase())).size === s.activityIds.length, 'Duplicate IDs');
+export const shareActivity = z.strictObject({id, title: z.string()});
+export const cardShareSchema = z.strictObject({id, cardId: id, activities: z.array(shareActivity).max(10), createdAt: z.iso.datetime()});
+export type CardShare = z.infer<typeof cardShareSchema>;
 export const importItem = z.strictObject({cardId: id, context, savedAt: z.iso.datetime()});
 export const exchangeInput = z.strictObject({ cardId: id, recipientProfileId: id, context, requestId: id });
 export class ApiError extends Error {

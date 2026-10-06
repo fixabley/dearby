@@ -95,10 +95,15 @@ test("TLS request is pinned and response is bounded", async () => {
   await assert.rejects(
     fetchOfficialPage("https://official.example", hosts, {
       resolve,
-      httpsRequest: transport({ html: "x".repeat(1000001) }),
+      httpsRequest: transport({ html: "x".repeat(3000001) }),
     }),
-    /1 MB/,
+    /3 MB/,
   );
+  const large = await fetchOfficialPage("https://official.example", hosts, {
+    resolve,
+    httpsRequest: transport({ html: "x".repeat(2_500_000) }),
+  });
+  assert.equal(large.html.length, 2_500_000);
   await assert.rejects(
     fetchOfficialPage("https://official.example", hosts, {
       resolve,
