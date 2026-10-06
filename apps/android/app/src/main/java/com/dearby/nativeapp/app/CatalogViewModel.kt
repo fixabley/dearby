@@ -1,5 +1,6 @@
 package com.dearby.nativeapp.app
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.dearby.nativeapp.entities.catalog.model.ActivityModel
 import com.dearby.nativeapp.entities.catalog.model.ScheduleModel
@@ -29,6 +30,8 @@ class CatalogViewModel(private val fetch: suspend () -> List<ActivityModel>) : V
     suspend fun load() {
         mutable.update { it.copy(phase = CatalogPhase.LOADING) }
         val activities = try { fetch() } catch (e: CancellationException) { throw e } catch (e: Exception) {
+            // Only the origin and the failure kind: nothing personal is in a catalog request.
+            Log.w("Dearby", "Catalog load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}: ${e.message}")
             mutable.update { it.copy(phase = CatalogPhase.FAILED) }
             return
         }
