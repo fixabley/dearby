@@ -22,12 +22,12 @@ struct DearbySectionHeader: View {
     }
     private func label(expanded: Bool?) -> some View {
         HStack(spacing: 8) {
-            Text(title).font(.headline).foregroundStyle(DearbyStyle.ink).fixedSize(horizontal: false, vertical: true)
-            Text("\(count)").font(.caption.weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+            Text(title).font(.dearby(.headline)).foregroundStyle(DearbyStyle.ink).fixedSize(horizontal: false, vertical: true)
+            Text("\(count)").font(.dearby(.caption).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
                 .padding(.horizontal, 8).padding(.vertical, 2).background(DearbyStyle.mint, in: Capsule())
             Spacer(minLength: 0)
             if let expanded {
-                Image(systemName: "chevron.down").font(.subheadline.weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
+                Image(systemName: "chevron.down").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
                     .rotationEffect(.degrees(expanded ? 0 : -90))
                     .animation(reduceMotion ? nil : .snappy, value: expanded)
             }
@@ -59,7 +59,7 @@ struct DearbySearchField: View {
     private var field: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass").foregroundStyle(DearbyStyle.quiet).accessibilityHidden(true)
-            TextField(prompt, text: $text).font(.body).focused($focused)
+            TextField(prompt, text: $text).font(.dearby(.body)).focused($focused)
                 .accessibilityLabel(prompt).accessibilityIdentifier(identifier)
             if !text.isEmpty {
                 Button { text = "" } label: {
@@ -75,7 +75,7 @@ struct DearbySearchField: View {
         return Button { focusOnAppear = true; onExpand() } label: {
             HStack(spacing: 8) {
                 Image(systemName: "magnifyingglass").imageScale(progress < 0.5 ? .small : .medium)
-                Text(prompt).font(.body).lineLimit(1).opacity(max(0, progress * 2 - 1))
+                Text(prompt).font(.dearby(.body)).lineLimit(1).opacity(max(0, progress * 2 - 1))
                 Spacer(minLength: 0)
             }.foregroundStyle(DearbyStyle.quiet).padding(.horizontal, 14)
                 .frame(maxWidth: .infinity).frame(height: height).background(DearbyStyle.muted, in: Capsule())
@@ -125,7 +125,7 @@ struct DearbyChoiceChips: View {
                     HStack(spacing: 6) {
                         if selected { Image(systemName: "checkmark").accessibilityHidden(true) }
                         Text(item.title).multilineTextAlignment(.leading)
-                    }.font(.subheadline.weight(.semibold))
+                    }.font(.dearby(.subheadline).weight(.semibold))
                         .padding(.horizontal, 14).padding(.vertical, 8).frame(minHeight: 44)
                         .foregroundStyle(selected ? .white : DearbyStyle.quiet)
                         .background(selected ? DearbyStyle.teal : DearbyStyle.muted, in: RoundedRectangle(cornerRadius: 22))
@@ -141,7 +141,7 @@ struct DearbyInlineField: View {
     let editing: Bool
     var prompt = ""
     var multiline = false
-    var font: Font = .body
+    var font: Font = .dearby(.body)
     @FocusState private var focused: Bool
     var body: some View {
         Group {
@@ -178,7 +178,7 @@ struct DearbyTogetherActivityLabel: View {
             Text("함께한 활동 · ").foregroundStyle(DearbyStyle.quiet).lineLimit(1).fixedSize()
             Text(title).fontWeight(.semibold).foregroundStyle(DearbyStyle.ink).lineLimit(1).truncationMode(.tail)
             Text(suffix).foregroundStyle(DearbyStyle.quiet).lineLimit(1).fixedSize()
-        }.font(.subheadline)
+        }.font(.dearby(.subheadline))
             .accessibilityElement(children: .ignore).accessibilityLabel("함께한 활동, \(title)\(suffix)")
     }
 }
@@ -239,7 +239,7 @@ struct DearbyControlsGallery: View {
                                       .init(id: "meetup", title: "Dearby 커뮤니티 밋업")], selection: $chosen, label: "함께 보낼 활동")
             DearbyTogetherActivityLabel(title: "Dearby 개발자 컨퍼런스")
             DearbyTogetherActivityLabel(title: "Dearby 메이커 캠프 여름 시즌 집중 프로그램", otherCount: 2)
-            DearbyInlineField(label: "이름", text: $name, editing: editing, font: .title2.bold())
+            DearbyInlineField(label: "이름", text: $name, editing: editing, font: .dearby(.title2).bold())
             DearbyInlineField(label: "소개", text: $introduction, editing: editing, prompt: "한 줄 소개를 적어 주세요", multiline: true)
         }.padding(20).background(.white)
     }

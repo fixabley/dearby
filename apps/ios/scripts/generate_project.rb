@@ -17,6 +17,8 @@ validate.always_out_of_date = '1'
 app.build_phases.move(validate, 0)
 resources = project.main_group.new_group('Resources')
 app.resources_build_phase.add_file_reference(resources.new_file('Resources/Assets.xcassets'))
+# Pretendard copies of shared/assets/fonts/pretendard; also listed in UIAppFonts.
+Dir.glob('Resources/Fonts/*.otf').sort.each { |file| app.resources_build_phase.add_file_reference(resources.new_file(file)) }
 project.targets.each do |target|
   target.build_configurations.each do |config|
     config.build_settings.merge!({

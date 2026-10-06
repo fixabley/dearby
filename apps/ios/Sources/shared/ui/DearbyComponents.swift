@@ -3,7 +3,7 @@ import SwiftUI
 struct DearbyBadge: View {
     let title: String
     var body: some View {
-        Text(title).font(.caption.weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+        Text(title).font(.dearby(.caption).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
             .padding(.horizontal, 10).padding(.vertical, 6).background(DearbyStyle.mint, in: Capsule())
     }
 }
@@ -12,7 +12,7 @@ struct DearbyAvatar: View {
     var filled = false
     var size: CGFloat = 76
     var body: some View {
-        Text(String(name.prefix(1))).font(.system(size: size * 0.42, weight: .bold))
+        Text(String(name.prefix(1))).font(.dearby(fixedSize: size * 0.42, weight: .bold))
             .foregroundStyle(filled ? .white : DearbyStyle.teal).frame(width: size, height: size)
             .background(filled ? DearbyStyle.teal : DearbyStyle.teal.opacity(0.12), in: Circle())
             .accessibilityHidden(true)
@@ -32,7 +32,7 @@ struct DearbyInfoRow: View {
                 Text(title)
             }.foregroundStyle(DearbyStyle.quiet).frame(minWidth: 92, alignment: .leading)
             Text(value).frame(maxWidth: .infinity, alignment: .leading)
-        }.font(.subheadline).padding(.vertical, 4)
+        }.font(.dearby(.subheadline)).padding(.vertical, 4)
     }
 }
 struct DearbySheetHeader: View {
@@ -41,11 +41,11 @@ struct DearbySheetHeader: View {
     let close: () -> Void
     var body: some View {
         HStack(spacing: 12) {
-            Text(title).font(.title2.bold())
+            Text(title).font(.dearby(.title2).bold())
             Spacer()
-            if !detail.isEmpty { Text(detail).font(.subheadline).foregroundStyle(.secondary) }
+            if !detail.isEmpty { Text(detail).font(.dearby(.subheadline)).foregroundStyle(.secondary) }
             Button(action: close) {
-                Image(systemName: "xmark").font(.title3).foregroundStyle(DearbyStyle.quiet).frame(width: 44, height: 44)
+                Image(systemName: "xmark").font(.dearby(.title3)).foregroundStyle(DearbyStyle.quiet).frame(width: 44, height: 44)
             }.accessibilityLabel("닫기")
         }.padding(.leading, 20).padding(.trailing, 8).padding(.top, 20)
     }
@@ -57,7 +57,7 @@ struct DearbySegments: View {
         HStack(spacing: 0) {
             ForEach(labels.indices, id: \.self) { index in
                 Button { selection = index } label: {
-                    Text(labels[index]).font(.subheadline.weight(.semibold))
+                    Text(labels[index]).font(.dearby(.subheadline).weight(.semibold))
                         .frame(maxWidth: .infinity, minHeight: 44).padding(.horizontal, 4)
                         .foregroundStyle(selection == index ? .white : DearbyStyle.quiet)
                         .background(selection == index ? DearbyStyle.teal : .clear, in: RoundedRectangle(cornerRadius: 11))

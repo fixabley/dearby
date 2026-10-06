@@ -62,6 +62,7 @@ SwiftUI와 Compose의 UI 소스는 각 플랫폼 안에서 공유하고, 이미�
 | 화면 여백 / 주요 간격 | 20 / 8·12·16·24 pt 또는 dp |
 | 주요 버튼 | 최소 높이 50, 모서리 11 pt 또는 dp |
 
+글꼴은 Pretendard 1.3.9다(2026-10-06). 원본·라이선스·SHA-256은 [저장소 루트 `shared/assets/fonts/pretendard`](../../shared/assets/fonts/pretendard/README.md)에 있다. Android는 테마 전체, 웹은 `globals.css`, iOS는 `Font.dearby(_:)`로 바꾼다. iOS의 상태를 가진 화면(`widgets`의 `*Page`·`ActivityDetailView`)과 `features`·`entities`·`pages`·앱 기본 글꼴·탐색 막대는 `미반영`이다.
 각 앱의 기존 스타일 상수로 적용한다. 별도 토큰 로더나 런타임 설정은 추가하지 않는다.
 운영체제 글자 확대·뒤로가기·터치 영역 기준은 유지한다.
 

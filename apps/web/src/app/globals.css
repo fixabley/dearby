@@ -1,3 +1,4 @@
+@import "../shared/ui/pretendard.css";
 :root {
   --teal: #007f7b;
   --teal-dark: #006763;
@@ -16,7 +17,7 @@ body {
   background: #fff;
   color: var(--ink);
   font:
-    16px/1.6 Arial,
+    16px/1.6 "Pretendard Variable",
     "Apple SD Gothic Neo",
     "Noto Sans KR",
     sans-serif;
