@@ -11,13 +11,15 @@ data class AccountContact(val id: String, val kind: String, val label: String, v
 data class AccountHistory(val id: String, val title: String, val role: String, val startDate: String, val endDate: String?, val description: String)
 /** `PUT /v1/profile` replaces the whole profile; `GET` returns the same fields plus id and updatedAt. */
 data class AccountProfile(val name: String, val job: String, val introduction: String, val contacts: List<AccountContact>, val histories: List<AccountHistory>)
-/** A published card snapshot from `POST /v1/cards`. */
+/** A published card snapshot from `POST /v1/cards`; [introduction] comes with public reads. */
 data class PublishedCard(val id: String, val name: String, val description: String, val profileName: String, val job: String,
-    val contacts: List<AccountContact>, val histories: List<AccountHistory>, val createdAt: String)
+    val contacts: List<AccountContact>, val histories: List<AccountHistory>, val createdAt: String, val introduction: String = "")
 
 /** A catalog activity copied into a share when it was made; never follows later catalog edits. */
 data class ShareActivity(val id: String, val title: String)
 /** A recorded share of one card (`POST /v1/cards/:id/shares`); its ID is the public `/s/<id>` link. */
+/** `GET /v1/shares/:id`: a share and the public card it points at. */
+data class ReceivedShare(val share: CardShare, val card: PublishedCard)
 data class CardShare(val id: String, val cardId: String, val activities: List<ShareActivity>, val createdAt: String)
 
 fun AccountProfile.toJson(): JSONObject = JSONObject().put("name", name).put("job", job).put("introduction", introduction)
@@ -30,8 +32,9 @@ fun JSONObject.toProfile() = AccountProfile(getString("name"), getString("job"),
     getJSONArray("contacts").objects().map { it.toContact() }, getJSONArray("histories").objects().map { it.toHistory() })
 fun JSONObject.toPublishedCard() = PublishedCard(getString("id"), getString("name"), getString("description"), getString("profileName"),
     getString("job"), getJSONArray("contacts").objects().map { it.toContact() }, getJSONArray("histories").objects().map { it.toHistory() },
-    getString("createdAt"))
+    getString("createdAt"), optString("introduction"))
 
+fun JSONObject.toReceivedShare() = ReceivedShare(getJSONObject("share").toCardShare(), getJSONObject("card").toPublishedCard())
 fun JSONObject.toCardList() = getJSONArray("items").objects().map { it.toPublishedCard() }
 fun JSONObject.toCardShare() = CardShare(getString("id"), getString("cardId"),
     getJSONArray("activities").objects().map { ShareActivity(it.getString("id"), it.getString("title")) }, getString("createdAt"))

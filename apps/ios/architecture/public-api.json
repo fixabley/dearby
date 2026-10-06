@@ -6,9 +6,13 @@
     "AccountHistory",
     "AccountProfile",
     "AccountSession",
+    "CardShare",
     "PublishedCard",
+    "ReceivedShare",
+    "ScannedLink",
     "SessionStore",
-    "SessionVault"
+    "SessionVault",
+    "ShareActivity"
   ],
   "entities/catalog": [
     "ActivityModel",
@@ -34,6 +38,10 @@
     "CalendarOverlapDisplay",
     "CalendarOverlapItem",
     "CalendarOverlapResultView"
+  ],
+  "features/scan": [
+    "QRCameraView",
+    "QRImageReader"
   ],
   "pages/home": [
     "HomePage"
@@ -63,6 +71,7 @@
   ],
   "widgets/catalog": [
     "ActivityCard",
+    "ApplyConfirmationSheet",
     "CatalogPage",
     "CatalogViewModel",
     "MyActivitiesPage"
@@ -73,13 +82,18 @@
     "CardComposerContact",
     "CardComposerHistory",
     "CardComposerPage",
+    "HistoryPeriodFields",
     "IdentityViewModel",
+    "ProfileContactFields",
+    "ProfileExtraContact",
     "ProfilePage",
     "QRPage",
     "QRScanOverlay",
     "QRShareCard",
     "QRShareModel",
     "ReceivedCardRow",
+    "ReceivedShareModel",
+    "ReceivedSharePage",
     "WalletPage"
   ]
 }

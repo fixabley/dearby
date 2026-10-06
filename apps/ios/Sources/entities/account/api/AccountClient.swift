@@ -1,7 +1,7 @@
 import Foundation
 
 enum AccountError: Error, Equatable {
-    case unauthorized, invalidInput, rateLimited, unavailable
+    case unauthorized, invalidInput, notFound, rateLimited, unavailable
 }
 
 /// Owner API (contract native-v1): email code sign-in, profile and card publishing.
@@ -44,6 +44,14 @@ struct AccountClient: Sendable {
     func share(_ cardID: String, activityIds: [String], _ session: AccountSession) async throws -> CardShare {
         try await send("cards/\(cardID)/shares", method: "POST", body: ["activityIds": activityIds], session: session, as: CardShare.self)
     }
+    /// Public: a share and its card, for links and scanned QR codes. No session.
+    func publicShare(_ id: String) async throws -> ReceivedShare {
+        try await send("shares/\(id)", as: ReceivedShare.self)
+    }
+    /// Public: a card by ID, for legacy `dearby://card/<UUID>` codes. No session.
+    func publicCard(_ id: String) async throws -> PublishedCard {
+        try await send("cards/\(id)", as: PublishedCard.self)
+    }
 
     struct CardInput: Encodable, Equatable, Sendable {
         let name: String
@@ -73,6 +81,7 @@ struct AccountClient: Sendable {
         switch response.statusCode {
         case 200..<300: return data
         case 401: throw AccountError.unauthorized
+        case 404: throw AccountError.notFound
         case 422: throw AccountError.invalidInput
         case 429: throw AccountError.rateLimited
         default: throw AccountError.unavailable

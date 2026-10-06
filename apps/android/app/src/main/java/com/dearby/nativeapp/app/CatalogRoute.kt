@@ -27,11 +27,16 @@ import kotlinx.coroutines.launch
     DisposableEffect(selected) { active(selected != null); onDispose { active(false) } }
     val context = LocalContext.current
     // Links are already https-only from the catalog model; failure to open stays on screen.
+    val activity = state.activities.find { it.id == selected }
     val openLink: (String) -> Unit = { url ->
         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
+            .onSuccess {
+                // Only application links (detail CTA or quick apply), not the official notice, lead to the prompt.
+                val applied = activity?.takeIf { it.applyUrl == url } ?: state.activities.find { selected == null && it.quickApplyUrl == url }
+                applied?.let { model.openedApplication(it.id) }
+            }
             .onFailure { linkError = "링크를 열지 못했어요." }
     }
-    val activity = state.activities.find { it.id == selected }
     BackHandler(selected != null && !prompt && !calendar) { selected = null }
     when {
         activity != null -> ActivityDetailPage(activity, linkError, { selected = null }, openLink, { prompt = true },

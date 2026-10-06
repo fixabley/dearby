@@ -2,7 +2,6 @@ package com.dearby.nativeapp.pages.qr
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -13,6 +12,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -27,26 +29,22 @@ import com.dearby.nativeapp.widgets.card.cardContent.QrShareCard
  */
 @Composable fun QrPage(
     share: QrShareState, activities: List<DearbyChoice>, selectCard: (String) -> Unit, toggleActivity: (String) -> Unit,
-    onShare: (String) -> Unit, retry: () -> Unit, create: () -> Unit, scanned: () -> Unit,
+    onShare: (String) -> Unit, retry: () -> Unit, create: () -> Unit,
+    scanning: Boolean, onScanning: (Boolean) -> Unit, scanner: @Composable () -> Unit, pickPhoto: () -> Unit, scanError: String?,
 ) {
-    var scanning by remember { mutableStateOf(false) }
-    var light by remember { mutableStateOf(false) }
     FormColumn {
         DearbyLogo(Modifier.align(Alignment.CenterHorizontally))
         Text("명함 교환", style = MaterialTheme.typography.headlineMedium)
         Row(Modifier.fillMaxWidth().background(Soft, RoundedCornerShape(12.dp))) {
             listOf(false to "QR 보여주기", true to "QR 찍기").forEach { (value, label) ->
-                TextButton({ scanning = value }, Modifier.weight(1f).heightIn(min = 48.dp), shape = RoundedCornerShape(11.dp), colors = ButtonDefaults.textButtonColors(containerColor = if (scanning == value) Teal else Color.Transparent, contentColor = if (scanning == value) Color.White else Quiet)) { Text(label, fontWeight = FontWeight.SemiBold) }
+                TextButton({ onScanning(value) }, Modifier.weight(1f).heightIn(min = 48.dp), shape = RoundedCornerShape(11.dp), colors = ButtonDefaults.textButtonColors(containerColor = if (scanning == value) Teal else Color.Transparent, contentColor = if (scanning == value) Color.White else Quiet)) { Text(label, fontWeight = FontWeight.SemiBold) }
             }
         }
         if (scanning) {
-            Box(Modifier.fillMaxWidth().height(365.dp).background(Color(0xFF34393B), RoundedCornerShape(14.dp)).clickable(onClick = scanned)) {
-                Icon(Icons.Outlined.CropFree, null, Modifier.size(220.dp).align(Alignment.Center), tint = Color.White)
-                Text("명함의 QR 코드를 화면에 맞춰주세요.", Modifier.align(Alignment.Center).padding(20.dp), color = Color.White, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
-                IconButton({ light = !light }, Modifier.align(Alignment.BottomCenter).padding(16.dp)) { Icon(if (light) Icons.Outlined.FlashlightOn else Icons.Outlined.FlashlightOff, "예시 조명 전환", tint = Color.White) }
-            }
-            DearbyOutlineButton(scanned, Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Image, null); Spacer(Modifier.width(8.dp)); Text("사진에서 선택") }
-            Text("카메라를 켜지 않는 예시예요. 화면을 누르면 명함을 볼 수 있어요.", color = Quiet, style = MaterialTheme.typography.bodySmall)
+            Box(Modifier.fillMaxWidth().height(365.dp).background(Color(0xFF34393B), RoundedCornerShape(14.dp)).clip(RoundedCornerShape(14.dp)).semantics { contentDescription = "QR 스캔 화면" }, contentAlignment = Alignment.Center) { scanner() }
+            DearbyOutlineButton(pickPhoto, Modifier.fillMaxWidth()) { Icon(Icons.Outlined.Image, null); Spacer(Modifier.width(8.dp)); Text("사진에서 스캔") }
+            scanError?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+            Text("Dearby 명함 QR을 비추면 바로 열려요.", color = Quiet, style = MaterialTheme.typography.bodySmall)
         } else if (share.phase == QrSharePhase.SIGNED_OUT || share.phase == QrSharePhase.NO_CARD) {
             OutlinedCard(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, Line)) {
                 Column(Modifier.fillMaxWidth().heightIn(min = 320.dp).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
