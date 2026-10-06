@@ -30,6 +30,7 @@ class MainActivity : ComponentActivity() {
         viewModelFactory { initializer { AccountViewModel(AccountClient(ApiOrigin.current), SessionVault(applicationContext, ApiOrigin.sessionName)) } }
     }
     private val publish: CardPublishViewModel by viewModels { viewModelFactory { initializer { CardPublishViewModel(account) } } }
+    private val profile: ProfileViewModel by viewModels { viewModelFactory { initializer { ProfileViewModel(account) } } }
     private val qrShare: QrShareViewModel by viewModels {
         viewModelFactory { initializer { QrShareViewModel(account) { sharedCardUrl(it, BuildConfig.WEB_ORIGIN) } } }
     }
@@ -40,7 +41,7 @@ class MainActivity : ComponentActivity() {
         receive(intent)
         setContent {
             DearbyTheme {
-                DearbyApp(catalog, demo, account, publish, qrShare, incoming) { incoming = null }
+                DearbyApp(catalog, demo, account, publish, qrShare, profile, incoming) { incoming = null }
             }
         }
     }

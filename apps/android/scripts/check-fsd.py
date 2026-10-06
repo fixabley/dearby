@@ -16,7 +16,7 @@ API = {
     'widgets.profile.profileFields': {'ProfileContactFields', 'ProfileExtraContact', 'ProfileContactKinds', 'HistoryPeriodFields', 'historyPeriod'},
     'widgets.activity.activityCard': {'ActivityCard'},
     'widgets.card.cardContent': {'CardState', 'CardHistoryState', 'ContactState', 'CardContent', 'CardStack', 'ReceivedCardRow', 'QrShareCard', 'QrScanOverlay', 'CardComposer', 'CardComposerContact', 'CardComposerHistory'},
-    'pages.profile': {'ProfileState', 'ProfilePage'},
+    'pages.profile': {'ProfilePage', 'ProfileEditPage', 'ProfileState', 'ProfilePhase', 'ProfileViewState', 'ProfileFormState', 'HistoryFormState', 'ProfileErrors'},
     'pages.qr': {'QrPage', 'QrShareState', 'QrSharePhase', 'QrCardChoice', 'ReceivedSharePage', 'ReceivedShareState', 'ReceivedPhase'},
     'features.scan': {'QrCameraPreview', 'decodeQr'},
     'pages.account': {'SignInSheet'},
