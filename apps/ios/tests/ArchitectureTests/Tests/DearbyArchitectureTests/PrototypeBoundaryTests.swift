@@ -9,9 +9,13 @@ extension ArchitectureTestSuite {
                 "SwiftData", "ModelContainer", "ModelContext", "EventKit", "EKEventStore", "AVFoundation",
                 "AVCaptureSession", "Security", "SecItemCopyMatching", "SecItemAdd", "SecItemDelete",
                 "Photos", "PhotosUI", "UIPasteboard", "CoreImage", "SafariServices", "SFSafariViewController", "WKWebView", "WebKit"]
+            // #95 모바일 실제 연결 경계: 로그인·명함 발행 클라이언트만 네트워크를, 세션 보관 파일만 Keychain을 쓴다.
+            let allowed: [String: Set<String>] = ["AccountClient.swift": ["URLSession"],
+                "SessionVault.swift": ["Security", "SecItemCopyMatching", "SecItemAdd", "SecItemDelete"]]
             for file in files {
                 let source = FSDBoundaries.File(path: file.path, text: try String(contentsOf: file, encoding: .utf8))
-                #expect(source.references.isDisjoint(with: forbidden), "Unexpected service/device access in \(file.lastPathComponent)")
+                let blocked = forbidden.subtracting(allowed[file.lastPathComponent] ?? [])
+                #expect(source.references.isDisjoint(with: blocked), "Unexpected service/device access in \(file.lastPathComponent)")
             }
             for name in ["Info.plist", "Info-Debug.plist"] {
                 let data = try Data(contentsOf: SourceInventory.iosRoot.appendingPathComponent(name))

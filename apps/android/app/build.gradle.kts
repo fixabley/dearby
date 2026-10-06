@@ -60,6 +60,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.10.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
     testImplementation("junit:junit:4.13.2")
+    // Android ships org.json; local unit tests need the real implementation.
+    testImplementation("org.json:json:20250517")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test:runner:1.7.0")
     // Compose transitively selects older Espresso without the Android 16 input fix.

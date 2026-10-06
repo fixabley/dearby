@@ -35,6 +35,10 @@ HTTP/Repository/Room/Keystore/기기 캘린더/WebView·인증 실행 코드와 
 - debug: 값이 없으면 에뮬레이터 호스트의 `http://10.0.2.2:3000`(API)과 `http://10.0.2.2:3210`(웹)을 쓴다.
 - App Links: `MainActivity`에 `https://${dearbyWebHost}/s/` intent filter(`autoVerify`)가 있다. 받은 `<웹 origin>/s/<UUID>`는 `shared/config/AppLinks.kt`가 공유 ID로 바꾼다. 공유 명함 화면은 아직 연결하지 않았고, 링크를 받으면 그 사실만 안내한다. debug의 http origin은 https 전용 App Links와 맞지 않으므로 debug에서는 명시 intent(계측 테스트 `LinkRoutingTest`)로 확인한다. 실제 검증은 `assetlinks.json` 배포(#90·#91) 뒤에만 가능하다.
 
+## 로그인·명함 발행 연결 (2026-10-06)
+
+`entities/account`의 `AccountClient`와 Keystore AES-GCM `SessionVault`(새 이름 `account.session.v2`, 이전 앱의 `session` 저장은 읽거나 지우지 않음), `app/AccountViewModel`이 있다. 화면 연결은 다음 PR이다. 운영 `/v1/auth`는 닫혀 있고 #89 미설정이라 운영 동작 완료가 아니다. 로컬 실제 API 확인 준비는 [iOS README](../ios/README.md#로그인명함-발행-연결-2026-10-06)와 같고, `DEARBY_REAL_API_ORIGIN`·`DEARBY_REAL_MAILPIT`을 주고 `./gradlew testDebugUnitTest --tests com.dearby.nativeapp.AccountRealApiTest`를 실행한다(값이 없으면 건너뜀).
+
 ```sh
 export JAVA_HOME='/Applications/Android Studio.app/Contents/jbr/Contents/Home'
 export ANDROID_HOME=/Users/jominjun/Library/Android/sdk

@@ -30,9 +30,9 @@
     "DearbyChoice",
     "DearbyChoiceChips",
     "DearbyInlineField",
-    "DearbyTogetherActivityLabel",
     "AppOrigins",
     "SharedCardLink",
+    "DearbyTogetherActivityLabel",
     "SearchQuery"
   ],
   "entities/identity": [
@@ -57,5 +57,19 @@
     "WalletPage",
     "ProfilePage",
     "ReceivedCardRow"
+  ],
+  "entities/account": [
+    "AccountSession",
+    "AccountContact",
+    "AccountHistory",
+    "AccountProfile",
+    "PublishedCard",
+    "AccountError",
+    "AccountClient",
+    "SessionStore",
+    "SessionVault"
+  ],
+  "features/account": [
+    "AccountViewModel"
   ]
 }
