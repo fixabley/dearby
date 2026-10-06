@@ -1,0 +1,20 @@
+#!/bin/bash
+# Run iOS simulator tests before pushing commits that touch iOS inputs.
+# Enable once per clone: git config core.hooksPath .githooks
+# Skip in an emergency: DEARBY_SKIP_SIM_TESTS=1 git push  (or git push --no-verify)
+[ "${DEARBY_SKIP_SIM_TESTS:-}" = 1 ] && exit 0
+root=$(git rev-parse --show-toplevel)
+zero=0000000000000000000000000000000000000000
+ios=""
+while read -r _ local_sha _ remote_sha; do
+  [ "$local_sha" = "$zero" ] && continue   # deleting a ref
+  if [ "$remote_sha" = "$zero" ]; then
+    base=$(git merge-base "$local_sha" origin/main 2>/dev/null) || base=""
+  else
+    base=$remote_sha
+  fi
+  if git diff --name-only "${base:-$local_sha^}" "$local_sha" 2>/dev/null | grep -qE '^(apps/ios/|shared/assets/)'; then ios=1; fi
+done
+[ -z "$ios" ] && exit 0
+echo "pre-push: iOS changes found; running simulator tests (DEARBY_SKIP_SIM_TESTS=1 to skip)"
+bash "$root/apps/ios/tests/run_simulator_tests.sh" || { echo "pre-push: iOS simulator tests failed; push aborted"; exit 1; }

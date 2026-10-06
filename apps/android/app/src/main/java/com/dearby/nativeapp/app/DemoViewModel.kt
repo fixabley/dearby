@@ -12,6 +12,7 @@ data class DemoState(
     val loggedIn: Boolean = false, val profile: ProfileState = demoProfile,
     val cards: List<CardState> = demoCards,
     val wallet: List<WalletEntryState> = demoWallet, val query: String = "", val reciprocalGroup: Boolean = false,
+    val collapsedGroupIds: Set<String> = emptySet(),
 )
 class DemoViewModel : ViewModel() {
     private val mutable = MutableStateFlow(DemoState())
@@ -20,6 +21,7 @@ class DemoViewModel : ViewModel() {
     fun profile(value: ProfileState) { mutable.update { it.copy(profile = value) } }
     fun query(value: String) { mutable.update { it.copy(query = value) } }
     fun group(reciprocal: Boolean) { mutable.update { it.copy(reciprocalGroup = reciprocal) } }
+    fun toggleGroup(id: String) { mutable.update { it.copy(collapsedGroupIds = if (id in it.collapsedGroupIds) it.collapsedGroupIds - id else it.collapsedGroupIds + id) } }
     fun saveCard(card: CardState) { mutable.update { if (it.wallet.any { entry -> entry.card.id == card.id }) it else it.copy(wallet = it.wallet + WalletEntryState(card, false)) } }
     fun send(cardId: String, recipient: CardState) {
         require(mutable.value.cards.any { it.id == cardId })

@@ -117,10 +117,7 @@ jobs:
           bash scripts/setup_swiftlint.sh
           bash tests/run_swiftlint.sh
           bash tests/run_architecture.sh
-      - name: Select available iPhone simulator
-        run: |
-          device_id=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["udid"] for devices in d["devices"].values() for x in devices if x["name"].startswith("iPhone")))')
-          echo "DEARBY_SIMULATOR_ID=$device_id" >> "$GITHUB_ENV"
-      # Large-text test paused by user request (2026-10-06) until asked again.
-      - name: Build and test
-        run: xcodebuild -project Dearby.xcodeproj -scheme Dearby -destination "platform=iOS Simulator,id=$DEARBY_SIMULATOR_ID" -parallel-testing-enabled NO test -skip-testing:DearbyUITests/DiscoveryNavigationTests/testAccessibilityTextCalendarAndWalletRemainUsable
+      # Simulator tests (unit + UI) run on the developer Mac before push (.githooks/pre-push);
+      # CI only compiles the app and test targets so no simulator is booted here.
+      - name: Build app and tests
+        run: xcodebuild -project Dearby.xcodeproj -scheme Dearby -destination 'generic/platform=iOS Simulator' build-for-testing
