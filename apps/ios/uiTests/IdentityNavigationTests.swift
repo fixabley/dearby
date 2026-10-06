@@ -14,7 +14,7 @@ import XCTest
         XCTAssertTrue(app.navigationBars["프로필 편집"].waitForExistence(timeout: 5))
         app.buttons["완료"].tap()
         app.terminate(); app.launch(); app.buttons["tab-4"].tap()
-        XCTAssertTrue(app.buttons["로그인하고 시작하기"].exists)
+        XCTAssertTrue(app.buttons["로그인하고 시작하기"].waitForExistence(timeout: 5))
     }
     func testQRSharingScanAndCardEditor() {
         let app = XCUIApplication()
@@ -34,7 +34,7 @@ import XCTest
         XCTAssertTrue(app.buttons["나도 카드 주기"].isHittable)
         capture(app, "shared-card")
         app.buttons["save-shared-card"].tap()
-        XCTAssertTrue(app.buttons["카드 저장됨"].exists)
+        XCTAssertTrue(app.buttons["카드 저장됨"].waitForExistence(timeout: 5))
         app.buttons["닫기"].tap(); app.buttons["QR 보여주기"].tap()
         let tile = app.buttons["새 명함"]
         for _ in 0..<4 where !tile.isHittable { app.swipeUp() }
@@ -78,26 +78,40 @@ import XCTest
             XCTAssertTrue(app.buttons["이 명함 보내기"].waitForExistence(timeout: 5))
             app.buttons["이 명함 보내기"].tap(); app.alerts.buttons["확인"].tap()
         }
-        XCTAssertFalse(app.buttons["wallet-group-0"].exists)
+        XCTAssertTrue(app.buttons["wallet-group-0"].waitForNonExistence(timeout: 5))
         capture(app, "wallet-reciprocal-only")
         app.buttons["tab-2"].tap(); app.buttons["명함 편집"].tap()
         XCTAssertTrue(app.buttons["수정 완료"].waitForExistence(timeout: 5))
         app.buttons["contact-email"].tap(); app.buttons["수정 완료"].tap()
         app.buttons["명함 편집"].tap()
+        XCTAssertTrue(app.buttons["수정 완료"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.buttons["contact-email"].isSelected)
         app.buttons["닫기"].tap()
     }
-    func testSavedTabAndDetailBottom() {
+    func testMyActivitiesConfirmMarkAndEmptyState() {
         let app = XCUIApplication()
-        app.launch(); app.buttons["save-conference"].tap(); app.buttons["tab-1"].tap()
-        XCTAssertTrue(app.buttons["activity-conference"].exists)
-        capture(app, "saved")
+        app.launch(); app.buttons["tab-1"].tap()
+        XCTAssertTrue(app.buttons["activity-conference"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["신청함"].exists)
+        let confirm = app.switches["confirm-conference"]
+        XCTAssertEqual(confirm.value as? String, "0")
+        confirm.switches.firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["참여 확정"].waitForExistence(timeout: 5))
+        capture(app, "my-activities")
         app.buttons["activity-conference"].tap()
-        let source = app.buttons["예시 사이트 보기"]
-        for _ in 0..<8 where !source.isHittable { app.swipeUp() }
+        XCTAssertTrue(app.navigationBars["활동 상세"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.switches["confirm-conference"].value as? String, "1")
+        let report = app.buttons["신청 상태 수정"]
+        for _ in 0..<8 where !report.isHittable { app.swipeUp() }
         capture(app, "activity-detail-bottom")
+        report.tap(); app.buttons["신청하지 않았어요"].tap()
+        XCTAssertTrue(app.switches["confirm-conference"].waitForNonExistence(timeout: 5))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.staticTexts["신청한 활동이 없어요"].waitForExistence(timeout: 5))
+        app.buttons["explore"].tap()
+        XCTAssertTrue(app.staticTexts["활동 둘러보기"].waitForExistence(timeout: 5))
         app.terminate(); app.launch(); app.buttons["tab-1"].tap()
-        XCTAssertTrue(app.staticTexts["저장한 활동이 없어요"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["activity-conference"].waitForExistence(timeout: 5))
     }
     private func capture(_ app: XCUIApplication, _ name: String) {
         Thread.sleep(forTimeInterval: 0.6)

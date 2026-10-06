@@ -1,10 +1,18 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { type Card, contactHref } from "@/lib/models";
-import { errorMessage, mutateGuest, request, RequestError } from "@/lib/client";
-import { Failure, Loading, MissingCard } from "./states";
-import { Icon } from "./icon";
+import type { Card } from "@/lib/models";
+import {
+  errorMessage,
+  mutateGuest,
+  request,
+  RequestError,
+  saveFailure,
+} from "@/lib/client";
+import { Failure, Loading } from "@/shared/ui/states";
+import { Icon } from "@/shared/ui/icon";
+import { MissingCard } from "@/widgets/card/missing-card";
+import { PublicCardBody } from "@/widgets/card/public-card-body";
 export function PublicCard({ id }: { id: string }) {
   const [card, setCard] = useState<Card>();
   const [error, setError] = useState("");
@@ -36,29 +44,11 @@ export function PublicCard({ id }: { id: string }) {
         throw new Error("COOKIE_UNAVAILABLE");
       setSaved(true);
     } catch (error) {
-      if (error instanceof RequestError && error.status === 404) {
+      const failure = saveFailure(error);
+      if (failure === "missing") {
         setMissing(true);
         setCard(undefined);
-      } else if (error instanceof RequestError && error.status === 401)
-        setSaveError(
-          "저장 세션을 사용할 수 없어요. 저장한 명함 화면에서 세션을 초기화해 주세요.",
-        );
-      else if (error instanceof RequestError && error.status === 409)
-        setSaveError(
-          "저장 가능한 한도에 도달했어요. 저장한 명함을 정리하거나 잠시 후 다시 시도해 주세요.",
-        );
-      else if (error instanceof Error && error.message === "COOKIE_UNAVAILABLE")
-        setSaveError(
-          "저장을 확인하지 못했어요. 브라우저에서 쿠키를 허용한 뒤 다시 시도해 주세요.",
-        );
-      else if (
-        error instanceof Error &&
-        error.message === "WEB_LOCKS_UNAVAILABLE"
-      )
-        setSaveError(
-          "이 브라우저에서는 안전한 저장을 지원하지 않아요. 최신 브라우저에서 열어 주세요.",
-        );
-      else setSaveError(errorMessage(error));
+      } else setSaveError(failure);
     } finally {
       setBusy(false);
     }
@@ -81,88 +71,7 @@ export function PublicCard({ id }: { id: string }) {
         <Icon name="arrow" size={20} />
         저장한 명함
       </Link>
-      <div className="resume-heading">
-        <p className="eyebrow">공유받은 공개 명함 · 이력서</p>
-        <div className="person">
-          <span className="avatar" aria-hidden="true">
-            {Array.from(card.profileName)[0] || <Icon name="card" />}
-          </span>
-          <div>
-            <h1>{card.profileName || "이름 미등록"}</h1>
-            <p className="job">{card.job}</p>
-          </div>
-        </div>
-        <p className="lead">{card.introduction}</p>
-        {card.description && <p className="muted">{card.description}</p>}
-      </div>
-      <section className="detail-section">
-        <h2>연락처</h2>
-        {!card.contacts.length ? (
-          <p className="muted">공개된 연락처가 없어요.</p>
-        ) : (
-          <ul className="contacts">
-            {card.contacts.map((contact) => {
-              const href = contactHref(contact);
-              const content = (
-                <>
-                  <span className="contact-label">
-                    {contact.label ||
-                      {
-                        email: "이메일",
-                        phone: "전화",
-                        kakao: "카카오톡",
-                        instagram: "Instagram",
-                        github: "GitHub",
-                        behance: "Behance",
-                      }[contact.kind]}
-                  </span>
-                  <span className="contact-value">{contact.value}</span>
-                  {href && <Icon name="external" size={16} />}
-                </>
-              );
-              return (
-                <li key={contact.id}>
-                  {href ? (
-                    <a
-                      href={href}
-                      target={href.startsWith("http") ? "_blank" : undefined}
-                      rel="noopener noreferrer"
-                    >
-                      {content}
-                    </a>
-                  ) : (
-                    <div>{content}</div>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-      <section className="detail-section">
-        <div className="section-heading">
-          <h2>활동 이력</h2>
-          <span className="muted">직접 작성</span>
-        </div>
-        {!card.histories.length ? (
-          <p className="muted">공개된 활동 이력이 없어요.</p>
-        ) : (
-          <ol className="timeline">
-            {card.histories.map((history) => (
-              <li key={history.id}>
-                <p className="muted">
-                  {history.startDate} — {history.endDate ?? "현재"}
-                </p>
-                <h3>{history.title}</h3>
-                <p>{history.role}</p>
-                {history.description && (
-                  <p className="history-description">{history.description}</p>
-                )}
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
+      <PublicCardBody card={card} />
       <div className="save-area">
         <p className="muted">로그인 없이 명함을 저장할 수 있어요.</p>
         {saveError && (

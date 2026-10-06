@@ -30,6 +30,7 @@ import { supabase, configurationError, authProvider } from "./supabase";
 import { ActivityList, ActivityEditor } from "./activities";
 import { Directory, AuditLog } from "./directories";
 import { CollectionJobs } from "./collection";
+import { OrganizationTree } from "./organization-tree";
 import "./style.css";
 
 function Login() {
@@ -134,11 +135,8 @@ function Shell() {
           <Route path="/activities" element={<ActivityList />} />
           <Route path="/activities/new" element={<ActivityEditor />} />
           <Route path="/activities/:id" element={<ActivityEditor />} />
-          <Route path="/programs" element={<Directory kind="programs" />} />
-          <Route
-            path="/organizations"
-            element={<Directory kind="organizations" />}
-          />
+          <Route path="/programs" element={<Directory />} />
+          <Route path="/organizations" element={<OrganizationTree />} />
           <Route path="/collection" element={<CollectionJobs />} />
           <Route path="/audit" element={<AuditLog />} />
           <Route path="*" element={<Navigate to="/activities" replace />} />
