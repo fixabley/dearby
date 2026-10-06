@@ -6,4 +6,5 @@
 
 - SwiftLint: `bash apps/ios/scripts/setup_swiftlint.sh`로 고정 버전(0.65.1, SHA256 확인)을 설치하고 `bash apps/ios/scripts/run_swiftlint.sh`로 `Sources`를 검사한다. 규칙은 `apps/ios/.swiftlint.yml`이다.
 - Android FSD: `python3 apps/android/scripts/check-fsd.py`.
-- CI(`.github/workflows/native.yml`): API·웹·어드민 typecheck·lint·build, 수집 워커 구문 검사, Android lint·assemble, iOS SwiftLint·앱 빌드(`iOS build`), Supabase 마이그레이션 재생(`Supabase migrations`). 필수 검사는 `iOS build`, `Supabase migrations`다.
+- CI(`.github/workflows/native.yml`): API typecheck·lint·build, 수집 워커 구문 검사, Android lint·assemble, iOS SwiftLint·앱 빌드(`iOS build`), Supabase 마이그레이션 재생(`Supabase migrations`). 필수 검사는 `iOS build`, `Supabase migrations`다. 웹·어드민은 CI job이 없어 로컬에서 lint·typecheck·build를 돌린다.
+- `apps/ios/architecture/*.json`(공개 API·순수 UI 목록)은 삭제한 ArchitectureTests가 읽던 규칙 목록이다. 지금은 아무 검사도 읽지 않으며, 구조 검사를 다시 만들 때 쓸지 정한다.
