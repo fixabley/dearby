@@ -55,42 +55,51 @@ export const recruitmentLabels = {
   closed: "모집 마감",
   unknown: "미확인",
 };
+/**
+ * Recruitment status from the period (2026-10-06 user decision, mirrors the API's atTime):
+ * an administrator's "closed" always wins, then the dates decide; without dates the stored choice stands.
+ */
+export function inferredRecruitment(
+  activity: Pick<
+    Activity,
+    "recruitment_status" | "recruitment_start_at" | "recruitment_end_at"
+  >,
+  now = Date.now(),
+): { status: Activity["recruitment_status"]; byPeriod: boolean } {
+  const start = Date.parse(activity.recruitment_start_at ?? "");
+  const end = Date.parse(activity.recruitment_end_at ?? "");
+  if (activity.recruitment_status === "closed")
+    return { status: "closed", byPeriod: false };
+  if (now >= end) return { status: "closed", byPeriod: true };
+  if (now < start) return { status: "scheduled", byPeriod: true };
+  if (start || end) return { status: "open", byPeriod: true };
+  return { status: activity.recruitment_status, byPeriod: false };
+}
+/** Discovery shows an activity only when published, verified within 24 hours and recruiting now. */
 export function discoveryStatus(
   activity: Activity,
   now = Date.now(),
 ): { label: string; color: string } {
+  const hidden = (reason: string, color = "default") => ({
+    label: `미노출 · ${reason}`,
+    color,
+  });
   if (activity.publication_status !== "published")
-    return {
-      label: publicationLabels[activity.publication_status],
-      color: "default",
-    };
-  const start = activity.recruitment_start_at
-    ? Date.parse(activity.recruitment_start_at)
-    : null;
-  const end = activity.recruitment_end_at
-    ? Date.parse(activity.recruitment_end_at)
-    : null;
-  if (end !== null && now >= end)
-    return { label: "마감 · 탐색 제외", color: "default" };
+    return hidden(publicationLabels[activity.publication_status]);
+  const { status } = inferredRecruitment(activity, now);
+  if (status === "closed") return hidden("마감");
   const checked = Date.parse(activity.source_checked_at ?? "");
   const until = Date.parse(activity.valid_until ?? "");
   if (
     activity.freshness !== "verified" ||
     !(checked <= now && now < until && until <= checked + 86400000)
   )
-    return { label: "재확인 필요", color: "orange" };
-  if (
-    activity.recruitment_status === "open" &&
-    (start === null || start <= now)
-  )
-    return { label: "탐색 노출", color: "cyan" };
-  return {
-    label:
-      activity.recruitment_status === "open" && start !== null && start > now
-        ? "모집 예정"
-        : recruitmentLabels[activity.recruitment_status],
-    color: "default",
-  };
+    return hidden(
+      activity.source_checked_at ? "공식 확인 만료" : "공식 확인 없음",
+      "orange",
+    );
+  if (status === "open") return { label: "발견 노출 중", color: "cyan" };
+  return hidden(recruitmentLabels[status]);
 }
 export function dateText(value: string | null | undefined) {
   return value
@@ -192,7 +201,9 @@ export function recheckState(
     return {
       label: "수동 확인 필요",
       color: "red",
-      detail: "공식 확인이 만료되어 자동 재확인으로 연장되지 않아요.",
+      detail: activity.source_checked_at
+        ? "공식 확인이 만료되어 자동 재확인으로 연장되지 않아요."
+        : "공식 확인 기록이 없어요. 확인을 기록해야 발견에 노출돼요.",
     };
   const expiry = remaining(until, now);
   if (!evidence)

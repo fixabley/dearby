@@ -4,6 +4,7 @@ import {
   collectionBlock,
   discoveryStatus,
   evidenceQuoteError,
+  inferredRecruitment,
   recheckState,
   normalizeSchedules,
   type Activity,
@@ -19,36 +20,49 @@ const item = {
   recruitment_end_at: null,
 } as Activity;
 test("admin eligibility follows native API clock boundaries and publication", () => {
-  assert.equal(discoveryStatus(item, now).label, "탐색 노출");
-  assert.equal(discoveryStatus(item, now + 86400000).label, "재확인 필요");
+  assert.equal(discoveryStatus(item, now).label, "발견 노출 중");
+  assert.equal(
+    discoveryStatus(item, now + 86400000).label,
+    "미노출 · 공식 확인 만료",
+  );
   assert.equal(
     discoveryStatus({ ...item, publication_status: "draft" }, now).label,
-    "초안",
+    "미노출 · 초안",
   );
   assert.equal(
     discoveryStatus(
       { ...item, recruitment_end_at: new Date(now).toISOString() },
       now,
     ).label,
-    "마감 · 탐색 제외",
+    "미노출 · 마감",
   );
   assert.equal(
     discoveryStatus(
       { ...item, recruitment_start_at: new Date(now + 1).toISOString() },
       now,
     ).label,
-    "모집 예정",
+    "미노출 · 모집 예정",
   );
   assert.equal(
     discoveryStatus(
       { ...item, valid_until: new Date(now + 86400001).toISOString() },
       now,
     ).label,
-    "재확인 필요",
+    "미노출 · 공식 확인 만료",
   );
 });
 test("closed recruitment is not relabeled scheduled by a future opening", () => {
-  assert.equal(discoveryStatus({...item,recruitment_status:"closed",recruitment_start_at:new Date(now+3600000).toISOString()},now).label,"모집 마감");
+  assert.equal(
+    discoveryStatus(
+      {
+        ...item,
+        recruitment_status: "closed",
+        recruitment_start_at: new Date(now + 3600000).toISOString(),
+      },
+      now,
+    ).label,
+    "미노출 · 마감",
+  );
 });
 
 test("unknown schedule times stay null and invalid/reversed intervals fail", () => {
@@ -219,5 +233,88 @@ test("automatic re-check status flags activities that need manual verification",
   assert.equal(
     recheckState({ ...published, freshness: "stale" }, evidence, now)!.label,
     "수동 확인 필요",
+  );
+});
+
+test("recruitment status follows the period unless an administrator closed it", () => {
+  const at = (offset: number) => new Date(now + offset).toISOString();
+  const period = (
+    status: Activity["recruitment_status"],
+    start: string | null,
+    end: string | null,
+  ) =>
+    inferredRecruitment(
+      {
+        recruitment_status: status,
+        recruitment_start_at: start,
+        recruitment_end_at: end,
+      },
+      now,
+    );
+  assert.deepEqual(period("open", at(-1), at(1)), {
+    status: "open",
+    byPeriod: true,
+  });
+  assert.deepEqual(period("unknown", at(-1), at(1)), {
+    status: "open",
+    byPeriod: true,
+  });
+  assert.deepEqual(period("open", at(1), at(2)), {
+    status: "scheduled",
+    byPeriod: true,
+  });
+  assert.deepEqual(period("open", at(-2), at(0)), {
+    status: "closed",
+    byPeriod: true,
+  });
+  assert.deepEqual(period("unknown", null, at(1)), {
+    status: "open",
+    byPeriod: true,
+  });
+  assert.deepEqual(period("closed", at(-1), at(1)), {
+    status: "closed",
+    byPeriod: false,
+  });
+  assert.deepEqual(period("scheduled", null, null), {
+    status: "scheduled",
+    byPeriod: false,
+  });
+  // Published and verified, but no confirmation recorded: the Let'Swift case.
+  assert.equal(
+    discoveryStatus(
+      {
+        ...item,
+        freshness: "stale",
+        source_checked_at: null,
+        valid_until: null,
+      },
+      now,
+    ).label,
+    "미노출 · 공식 확인 없음",
+  );
+  assert.match(
+    recheckState(
+      {
+        ...item,
+        freshness: "stale",
+        source_checked_at: null,
+        valid_until: null,
+      },
+      undefined,
+      now,
+    )!.detail,
+    /확인 기록이 없어요/,
+  );
+  assert.equal(
+    discoveryStatus(
+      {
+        ...item,
+        recruitment_status: "unknown",
+        recruitment_start_at: at(-1),
+        recruitment_end_at: at(1),
+      },
+      now,
+    ).label,
+    "발견 노출 중",
   );
 });

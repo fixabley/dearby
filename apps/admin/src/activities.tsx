@@ -31,6 +31,7 @@ import {
   type Schedule,
   dateText,
   discoveryStatus,
+  inferredRecruitment,
   normalizeSchedules,
   publicationLabels,
   recruitmentLabels,
@@ -201,7 +202,7 @@ export function ActivityList() {
               ),
             },
             {
-              title: "탐색 노출",
+              title: "발견 노출",
               render: (_, a) => {
                 const s = discoveryStatus(a);
                 return <Tag color={s.color}>{s.label}</Tag>;
@@ -241,6 +242,17 @@ export function ActivityEditor() {
   const navigate = useNavigate();
   const { message } = App.useApp();
   const [form] = Form.useForm();
+  const watched = {
+    recruitment_status: Form.useWatch("recruitment_status", form) ?? "unknown",
+    recruitment_start_at: instant(Form.useWatch("recruitment_start_at", form)),
+    recruitment_end_at: instant(Form.useWatch("recruitment_end_at", form)),
+  };
+  const inferred = inferredRecruitment(watched);
+  const recruitmentPreview = inferred.byPeriod
+    ? `기간 기준 ${recruitmentLabels[inferred.status]}`
+    : inferred.status === "closed"
+      ? "조기 마감 (관리자 선택)"
+      : `날짜 없음 · 선택한 상태 ${recruitmentLabels[inferred.status]}`;
   const [loadedVersion, setLoadedVersion] = useState<string>();
   const [dirty, setDirty] = useState(false),
     [error, setError] = useState(""),
@@ -502,24 +514,34 @@ export function ActivityEditor() {
                     ]}
                   />
                 </Form.Item>
-                <Form.Item label="모집 상태" name="recruitment_status">
+              </div>
+              <section className="recruitment-period" aria-label="모집 기간">
+                <strong>모집 기간</strong>
+                <div className="two-fields">
+                  <Form.Item label="모집 시작" name="recruitment_start_at">
+                    <Input type="datetime-local" />
+                  </Form.Item>
+                  <Form.Item label="모집 마감" name="recruitment_end_at">
+                    <Input type="datetime-local" />
+                  </Form.Item>
+                </div>
+                <Form.Item
+                  label="모집 상태"
+                  name="recruitment_status"
+                  extra="기간을 입력하면 기간이 상태를 정해요. 조기 마감은 기간과 관계없이 마감으로 표시돼요. 날짜가 없을 때만 선택한 상태를 그대로 써요."
+                >
                   <Select
                     virtual={false}
                     options={options(recruitmentLabels)}
                   />
                 </Form.Item>
-              </div>
-              <div className="two-fields">
-                <Form.Item label="모집 시작" name="recruitment_start_at">
-                  <Input type="datetime-local" />
-                </Form.Item>
-                <Form.Item label="모집 마감" name="recruitment_end_at">
-                  <Input type="datetime-local" />
-                </Form.Item>
-              </div>
-              <p className="field-note">
-                입력 시각 기준: {localZone}. 확인되지 않은 시각은 비워 두세요.
-              </p>
+                <p className="recruitment-preview" role="status">
+                  현재 상태: <strong>{recruitmentPreview}</strong>
+                </p>
+                <p className="field-note">
+                  입력 시각 기준: {localZone}. 확인되지 않은 시각은 비워 두세요.
+                </p>
+              </section>
               <p className="field-note">
                 항목 이름을 검색하거나 직접 추가하세요.
                 숫자·문자열·날짜·참/거짓·null·객체·배열을 선택할 수 있어요.
