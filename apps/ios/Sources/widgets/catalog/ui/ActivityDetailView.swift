@@ -30,10 +30,14 @@ struct ActivityDetailView: View {
                 .safeAreaInset(edge: .bottom, spacing: 0) { applicationActions }
                 .safeAreaInset(edge: .top, spacing: 0) {
                     if applied {
-                        Label("데모 신청 완료 · 실제 접수가 아닙니다", systemImage: "checkmark.circle.fill")
-                            .font(.subheadline).frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal).padding(.vertical, 8)
-                            .background(Color(red: 0.9, green: 0.97, blue: 0.95), ignoresSafeAreaEdges: [])
+                        VStack(alignment: .leading, spacing: 4) {
+                            Label("데모 신청 완료 · 실제 접수가 아닙니다", systemImage: "checkmark.circle.fill").font(.subheadline)
+                            ConfirmToggle(state: state, activityID: activityID)
+                            Text(ConfirmToggle.note).font(.caption).foregroundStyle(DearbyStyle.quiet)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal).padding(.vertical, 8)
+                        .background(Color(red: 0.9, green: 0.97, blue: 0.95), ignoresSafeAreaEdges: [])
                     }
                 }
             }
@@ -52,14 +56,14 @@ struct ActivityDetailView: View {
         .sheet(isPresented: $showApplication) {
             if let activity {
                 DemoApplicationView(title: activity.title, url: ActivityModel.safeURL(activity.applicationUrl), applied: applied) {
-                    state.appliedIDs.insert(activityID)
+                    state.apply(activityID, true)
                 }
             }
         }
         .background(.white).tint(DearbyStyle.teal)
         .confirmationDialog("데모 신청 상태", isPresented: $showReport, titleVisibility: .visible) {
-            Button("신청했어요 (예시)") { state.appliedIDs.insert(activityID) }
-            Button("신청하지 않았어요") { state.appliedIDs.remove(activityID) }
+            Button("신청했어요 (예시)") { state.apply(activityID, true) }
+            Button("신청하지 않았어요") { state.apply(activityID, false) }
             Button("나중에", role: .cancel) {}
         } message: { Text("앱 안에서만 보여주는 예시예요. 실제 신청은 이루어지지 않아요.") }
     }
@@ -74,11 +78,6 @@ struct ActivityDetailView: View {
                 Image(systemName: "infinity").font(.title).foregroundStyle(DearbyStyle.teal)
                     .frame(width: 44, height: 44).background(DearbyStyle.mint, in: Circle())
                 Text("Dearby 커뮤니티").font(.headline)
-                Spacer()
-                Button { state.savedOrganization.toggle() } label: {
-                    Label(state.savedOrganization ? "조직 저장됨" : "조직 저장", systemImage: state.savedOrganization ? "bookmark.fill" : "bookmark")
-                        .font(.caption).padding(10).overlay(Capsule().stroke(DearbyStyle.teal))
-                }.accessibilityIdentifier("save-organization")
             }
             Divider()
             DearbyInfoRow(title: "참가 대상", value: activity.audience, symbol: "person.2")
@@ -94,14 +93,9 @@ struct ActivityDetailView: View {
     private var applicationActions: some View {
         VStack(spacing: 0) {
             Divider()
-            HStack(spacing: 12) {
-                Button { state.toggleSaved(activityID) } label: {
-                    Image(systemName: state.savedIDs.contains(activityID) ? "bookmark.fill" : "bookmark")
-                        .font(.title2).frame(width: 48, height: 50).overlay(RoundedRectangle(cornerRadius: 11).stroke(DearbyStyle.teal))
-                }.accessibilityLabel("활동 저장").accessibilityIdentifier("detail-save")
-                Button(applied ? "공식 사이트 보기" : "공식 사이트에서 신청") { showApplication = true }
-                    .buttonStyle(DearbyButtonStyle()).accessibilityIdentifier("open-application")
-            }.padding(.horizontal, 20).padding(.vertical, 12)
+            Button(applied ? "공식 사이트 보기" : "공식 사이트에서 신청") { showApplication = true }
+                .buttonStyle(DearbyButtonStyle()).accessibilityIdentifier("open-application")
+                .padding(.horizontal, 20).padding(.vertical, 12)
         }.background(.white)
     }
     private func source(_ activity: ActivityModel) -> some View {

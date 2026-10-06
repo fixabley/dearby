@@ -16,30 +16,35 @@ class PrototypeTest {
         assertTrue(demoActivities.all { it.schedule.timeZone == "Asia/Seoul" && it.url == "https://example.com" && safeWebUrl(it.url) })
         assertEquals("2026년 10월 24일 13:00~17:00", model.state.value.activities.first().date)
     }
-    @Test fun filterAndReportSurviveNavigationButNotNewSession() {
+    @Test fun filterAndApplicationSurviveNavigationButNotNewSession() {
         val model = CatalogViewModel()
         model.filter("선발형")
         assertEquals(listOf("camp"), model.state.value.visibleActivities.map { it.id })
-        model.report("camp", true)
+        model.apply("camp", true)
         model.filter("전체")
-        assertTrue(model.state.value.activities.single { it.id == "camp" }.report)
-        assertFalse(model.state.value.activities.first().report)
-        model.report("camp", false)
-        assertFalse(model.state.value.activities.any { it.report })
-        model.report("camp", true)
+        assertEquals(listOf("conference", "camp"), model.state.value.appliedActivities.map { it.id })
+        model.apply("camp", false)
+        assertEquals(listOf("conference"), model.state.value.appliedActivities.map { it.id })
+        model.apply("meetup", true)
         val fresh = CatalogViewModel().state.value
         assertEquals("전체", fresh.filter)
-        assertFalse(fresh.activities.any { it.report })
+        assertEquals(listOf("conference"), fresh.appliedActivities.map { it.id })
     }
-    @Test fun savedActivitiesAndOrganizationsOnlyLiveInMemory() {
+    @Test fun myActivitiesFollowScheduleAndConfirmationNeedsApplication() {
         val model = CatalogViewModel()
-        model.save("conference")
-        assertTrue(model.state.value.activities.first().saved)
-        model.saveOrganization()
-        assertTrue(model.state.value.activities.all { it.organizationSaved })
-        model.save("conference")
-        assertFalse(model.state.value.activities.first().saved)
-        assertFalse(CatalogViewModel().state.value.activities.any { it.saved || it.organizationSaved })
+        model.apply("meetup", true)
+        model.apply("camp", true)
+        assertEquals(listOf("conference", "camp", "meetup"), model.state.value.appliedActivities.map { it.id })
+        model.confirm("camp", true)
+        assertTrue(model.state.value.appliedActivities.single { it.id == "camp" }.confirmed)
+        model.apply("camp", false)
+        model.apply("camp", true)
+        assertFalse(model.state.value.appliedActivities.single { it.id == "camp" }.confirmed)
+        model.confirm("camp", false)
+        model.apply("camp", false)
+        model.confirm("camp", true)
+        assertFalse(model.state.value.activities.single { it.id == "camp" }.confirmed)
+        assertFalse(CatalogViewModel().state.value.activities.any { it.confirmed })
     }
     @Test fun conferenceHasOneHourConflictOthersHaveNone() {
         val conflict = demoOverlaps(listOf(demoActivities[0].schedule)).single()

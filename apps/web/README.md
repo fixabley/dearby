@@ -32,6 +32,10 @@ The opt-in `tests/real-api.integration.ts` additionally tests a real isolated lo
 
 Zod validates public DTOs and strips extra fields before returning JSON. React escapes all text. External links permit only http(s), no credentials; contact schemes are explicit. API responses use no-store, private, and Vary: Cookie/Origin. Browser calls never include a Supabase key or upstream URL.
 
+## App link association
+
+`/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` declare shared-card links (`/s/*`) for the iOS and Android apps. Values come only from server env (`DEARBY_APPLE_TEAM_ID`, `DEARBY_IOS_BUNDLE_IDS`, `DEARBY_ANDROID_PACKAGE`, `DEARBY_ANDROID_CERT_SHA256`; see `.env.example`). Each file returns 404 until its values are set and valid, and is served as `application/json` without redirects, read per request. Android path scoping lives in the app's intent filter because Digital Asset Links has no paths.
+
 ## Guest protocol (root/API agreed 2026-09-29)
 
 The API verifies UUID, database existence and non-revocation. A public card ID only identifies a publicly readable card; it never authenticates a visitor's wallet.
