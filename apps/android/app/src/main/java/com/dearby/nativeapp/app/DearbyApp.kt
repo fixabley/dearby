@@ -19,6 +19,7 @@ import com.dearby.nativeapp.pages.wallet.SharedCardPage
 import com.dearby.nativeapp.pages.wallet.WalletPage
 import com.dearby.nativeapp.entities.account.model.ScannedLink
 import com.dearby.nativeapp.shared.ui.*
+import com.dearby.nativeapp.widgets.activity.applyPrompt.ApplyConfirmationSheet
 import com.dearby.nativeapp.widgets.card.cardContent.CardContent
 import com.dearby.nativeapp.widgets.card.cardContent.CardState
 import com.dearby.nativeapp.widgets.card.cardContent.ContactState
@@ -34,6 +35,7 @@ private sealed interface CardRoute {
     data class Received(val link: ScannedLink) : CardRoute
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable fun DearbyApp(catalog: CatalogViewModel, demo: DemoViewModel, account: AccountViewModel, publish: CardPublishViewModel, qrShare: QrShareViewModel, incoming: ScannedLink? = null, opened: () -> Unit = {}) {
     val state by demo.state.collectAsStateWithLifecycle()
     var tab by remember { mutableStateOf(Tab.Discovery) }
@@ -75,6 +77,26 @@ private sealed interface CardRoute {
                     Tab.entries.forEach { item -> NavigationBarItem(selected = tab == item, onClick = { tab = item }, icon = { Icon(item.icon, null) }, label = { Text(item.label, fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Teal, selectedTextColor = Teal, indicatorColor = Mint, unselectedIconColor = Quiet, unselectedTextColor = Quiet)) }
                 }
             }
+        }
+    }
+    // Contract #148 "신청 확인": ask once when the app comes back from the official application page.
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycle) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> catalog.appLeft()
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> catalog.appReturned()
+                else -> Unit
+            }
+        }
+        lifecycle.lifecycle.addObserver(observer)
+        onDispose { lifecycle.lifecycle.removeObserver(observer) }
+    }
+    val catalogState by catalog.state.collectAsStateWithLifecycle()
+    catalogState.asking?.let { asking ->
+        ModalBottomSheet({ catalog.answer(CatalogViewModel.ApplyAnswer.NOT_YET) }, containerColor = MaterialTheme.colorScheme.surface) {
+            ApplyConfirmationSheet(asking.title, onApplied = { catalog.answer(CatalogViewModel.ApplyAnswer.APPLIED) },
+                onNotYet = { catalog.answer(CatalogViewModel.ApplyAnswer.NOT_YET) }, onNeverAsk = { catalog.answer(CatalogViewModel.ApplyAnswer.NEVER_ASK) })
         }
     }
     notice?.let { value -> AlertDialog(onDismissRequest = { notice = null }, title = { Text("안내") }, text = { Text(value) }, confirmButton = { TextButton({ notice = null }) { Text("확인") } }) }

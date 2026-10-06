@@ -5,6 +5,7 @@ import SwiftUI
     @State private var identity = IdentityViewModel()
     @State private var share: QRShareModel
     @State private var tab = 0
+    @Environment(\.scenePhase) private var scene
     // A universal link opened the app; the QR tab turns it into the shared-card screen.
     @State private var opened: URL?
     private let links: AppLinkProvider
@@ -24,6 +25,14 @@ import SwiftUI
                 guard links.shareID(url) != nil else { return }
                 tab = 2
                 opened = url
+            }
+            .onChange(of: scene) { _, phase in
+                if phase == .background { catalog.appLeft() } else if phase == .active { catalog.appReturned() }
+            }
+            .sheet(item: Binding(get: { catalog.asking }, set: { if $0 == nil { catalog.answer(.notYet) } })) { activity in
+                ApplyConfirmationSheet(activityTitle: activity.title, applied: { catalog.answer(.applied) },
+                                       notYet: { catalog.answer(.notYet) }, neverAsk: { catalog.answer(.neverAsk) })
+                    .presentationDetents([.medium])
             }
         }
     }

@@ -52,6 +52,10 @@ struct CatalogPage: View {
                             applyURL: activity.quickApplyURL(at: state.loadedAt), recruitmentEnd: activity.recruitmentEnd) {
                             path.append(activity.id)
                         }
+                        .environment(\.openURL, OpenURLAction { url in
+                            state.openedApplication(activity.id)
+                            return .systemAction(url)
+                        })
                     }
                 }
             }.padding(20)
