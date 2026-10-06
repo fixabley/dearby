@@ -1,5 +1,5 @@
 import { PublicCard } from "@/components/public-card";
-import { MissingCard } from "@/components/states";
+import { MissingCard } from "@/widgets/card/missing-card";
 import { uuid } from "@/lib/models";
 export const metadata = {
   title: "공개 명함 · 이력서",
