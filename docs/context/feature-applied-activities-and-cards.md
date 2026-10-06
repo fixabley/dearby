@@ -73,3 +73,28 @@
 - **유저플로우 담당:** 예시 모델·초기값, 위 1~7 흐름, 검색 규칙을 iOS·Android에 구현한다. UI 컴포넌트가 통합되기 전에는 모델·상태·이동부터 진행하고, 통합된 뒤 화면에 연결한다.
 - 기능 단위 PR로 나눈다. 각 PR은 두 플랫폼을 함께 바꾸거나, 남은 플랫폼을 [디자인 적용표](../design/mobile-prototype-reference-map.md)에 `미반영`으로 표시한다.
 - 검증: iOS UI 테스트·Android 계측 테스트에 위 흐름별 시나리오를 추가한다. 실제로 실행한 검사만 통과로 기록한다.
+
+## UI 컴포넌트 공개 API
+
+2026-10-06 UI 담당 확정. 이름은 두 플랫폼이 같고 모두 각 플랫폼 `shared/ui`에 있다. 상태는 호출하는 화면이 가지고, 컴포넌트는 값과 변경 콜백만 받는다. 시안이 없어 기존 토큰(청록·민트·옅은 배경·보조 글자, 최소 높이 44)으로 구성한다.
+
+| 용도 | iOS (SwiftUI) | Android (Compose) |
+| --- | --- | --- |
+| 두 항목 전환 | `DearbySegments(labels: [String], selection: Binding<Int>)` 기존 것 재사용 | `DearbySegments(labels: List<String>, selected: Int, onSelect: (Int) -> Unit, modifier)` |
+| 묶음 머리글(개수) | `DearbySectionHeader(title: String, count: Int)` | `DearbySectionHeader(title: String, count: Int, modifier)` |
+| 검색 칸 | `DearbySearchField(prompt: String, text: Binding<String>, identifier: String = "search", expansion: Double = 1, onExpand: () -> Void = {})` | `DearbySearchField(query: String, onQueryChange: (String) -> Unit, placeholder: String, modifier, expansion: Float = 1f, onExpand: () -> Unit = {})` |
+| 당김으로 검색 펼치기 | 목록 `ScrollView`에 `.dearbySearchReveal($expansion)` | `val reveal = rememberDearbySearchReveal()` → 목록에 `Modifier.nestedScroll(reveal.connection)`, 검색 칸에 `reveal.expansion`·`reveal::expand` |
+| 활동 선택 칩 | `DearbyChoiceChips(items: [DearbyChoice], selection: Binding<Set<String>>, label: String)` | `DearbyChoiceChips(items: List<DearbyChoice>, selected: Set<String>, onToggle: (String) -> Unit, label: String, modifier)` |
+| 인라인 입력 칸 | `DearbyInlineField(label: String, text: Binding<String>, editing: Bool, prompt: String = "", multiline: Bool = false, font: Font = .body)` | `DearbyInlineField(label: String, value: String, onValueChange: (String) -> Unit, editing: Boolean, modifier, placeholder: String = "", singleLine: Boolean = true, style: TextStyle = bodyLarge)` |
+
+- `DearbyChoice`는 `id`·`title`만 가진다. 활동 모델을 `shared`에 들이지 않도록 화면이 활동을 변환해 넘긴다. 칩은 줄바꿈 배치이며 선택은 색과 체크 표시로 함께 구분한다. 읽기 전용 표시는 기존 `DearbyBadge`/`ExampleBadge`를 쓴다.
+- 인라인 입력 칸은 읽기·편집에서 같은 여백을 써 위치가 바뀌지 않는다. 편집 중에만 옅은 배경과 밑줄을 보인다. `label`은 입력 칸의 접근성 이름이다. 편집 상태 전환 알림, `완료`/`취소`, 이름이 비었을 때의 이유 문구는 화면(플로우 담당)이 맡는다.
+- 묶음 머리글은 "제목, N개"로 읽히는 머리글이다. 검색 칸은 내용이 있을 때 `검색어 지우기` 버튼을 보인다. 검색 규칙은 화면이 적용한다.
+- 접히는 검색 칸: `expansion` 0~1을 받고, 검색어가 있거나 입력 중이면 컴포넌트가 1로 고정한다. 1 미만에서는 `검색` 버튼으로 읽히는 막대이고, 누르면 `onExpand`를 부르고 펼친 뒤 입력 칸에 초점을 준다. 동작 줄이기(iOS 동작 줄이기, Android 애니메이션 배율 0)에서는 0.5 기준으로 0 또는 1만 쓴다. 두 플랫폼 수치:
+
+  | 값 | 수치 |
+  | --- | --- |
+  | 막대 높이 → 입력 칸 높이 | 28 → 48 pt/dp (터치 영역 최소 44) |
+  | 안내 문구 | `expansion` 0.5부터 나타나 1에서 불투명 |
+  | 완전히 펼치는 당김 거리 | 56 pt/dp, 위로 민 거리만큼 같은 비율로 줄어듦 |
+  | 손을 뗀 뒤 | 0.5 이상이면 1, 미만이면 0으로 맞춤 |
