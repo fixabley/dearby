@@ -3,6 +3,7 @@ import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { collectionSchema, promptFor, prepareCollection } from "./collect.mjs";
+import { reverifyPublished } from "./reverify.mjs";
 const base = process.env.SUPABASE_URL,
   service = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!base || !service)
@@ -47,6 +48,16 @@ const programIndex = process.argv.indexOf("--program");
 const target = programIndex >= 0 ? process.argv[programIndex + 1] : null;
 if (programIndex >= 0 && (!target || !/^[0-9a-f-]{36}$/i.test(target)))
   throw new Error("--program requires a UUID");
+// Every scheduled run first extends due published activities; this needs no Codex call.
+if (!target) {
+  try {
+    for (const result of await reverifyPublished(rpc))
+      console.log(at(), JSON.stringify({ reverify: result }));
+  } catch (error) {
+    console.error(`${at()} Re-verification failed: ${error.message}`);
+  }
+  if (process.argv.includes("--reverify")) process.exit(0);
+}
 let task;
 // Network failures before a claim are logged, not crashed: an orphaned lease is recovered by the DB.
 try {

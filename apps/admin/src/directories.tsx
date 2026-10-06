@@ -280,13 +280,14 @@ export function AuditLog() {
             {
               title: "변경",
               dataIndex: "operation",
-              render: (value) => (
+              render: (value: string) => (
                 <Tag>
-                  {value === "INSERT"
-                    ? "생성"
-                    : value === "UPDATE"
-                      ? "수정"
-                      : "삭제"}
+                  {{
+                    INSERT: "생성",
+                    UPDATE: "수정",
+                    DELETE: "삭제",
+                    reverify: "자동 재확인",
+                  }[value] ?? value}
                 </Tag>
               ),
             },

@@ -1,9 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  collectionBlock,
   organizationPath,
   parentCandidates,
   discoveryStatus,
+  evidenceQuoteError,
+  recheckState,
   normalizeSchedules,
   type Activity,
 } from "../src/catalog";
@@ -83,6 +86,152 @@ test("unknown schedule times stay null and invalid/reversed intervals fail", () 
     ]),
   );
   assert.throws(() => normalizeSchedules([{ ...s, timeZone: "invalid" }]));
+});
+
+test("blocked collection jobs distinguish subscription, source and host setup", () => {
+  assert.equal(
+    collectionBlock(
+      "BLOCKED: Codex subscription quota or login requires attention",
+    ).label,
+    "구독 차단 · 전체 일시정지",
+  );
+  assert.equal(
+    collectionBlock("BLOCKED: Official source unavailable: JS only").label,
+    "원문 차단 · 이 프로그램만",
+  );
+  assert.equal(
+    collectionBlock("BLOCKED: Official page exceeds 3 MB").label,
+    "원문 차단 · 이 프로그램만",
+  );
+  assert.equal(
+    collectionBlock("BLOCKED: All candidates failed").label,
+    "원문 차단 · 이 프로그램만",
+  );
+  assert.equal(
+    collectionBlock("BLOCKED: Configure official hosts for this program").label,
+    "설정 필요 · 이 프로그램만",
+  );
+  for (const reason of [
+    "Official source unavailable: JS only",
+    "Official page exceeds 3 MB",
+    "Official host did not resolve to a public address",
+    "All candidates failed source verification",
+  ])
+    assert.equal(
+      collectionBlock(`BLOCKED: ${reason}`).label,
+      "원문 차단 · 이 프로그램만",
+    );
+  assert.equal(
+    collectionBlock("BLOCKED: Source must use a configured official HTTPS host")
+      .label,
+    "설정 필요 · 이 프로그램만",
+  );
+  assert.deepEqual(collectionBlock(null), {
+    kind: "other",
+    label: "조치 필요",
+    hint: "",
+  });
+});
+
+test("evidence quotes follow the database rule and reject Markdown", () => {
+  assert.equal(evidenceQuoteError("   "), null);
+  assert.equal(
+    evidenceQuoteError(
+      "  2026년 하반기 모집은 10월 24일 오후 6시에 마감합니다.  ",
+    ),
+    null,
+  );
+  assert.match(evidenceQuoteError("짧은 문장")!, /20~200자/);
+  assert.match(evidenceQuoteError("가".repeat(201))!, /20~200자/);
+  assert.match(
+    evidenceQuoteError("모집은 10월 24일까지입니다.\n자세한 내용은 공지 참고")!,
+    /줄바꿈/,
+  );
+  assert.match(
+    evidenceQuoteError("모집은 10월 24일까지 진행하며 자세한 내용은…")!,
+    /생략부호/,
+  );
+  assert.match(
+    evidenceQuoteError("모집은 10월 24일까지 진행하며 자세한 내용은...")!,
+    /생략부호/,
+  );
+  assert.match(
+    evidenceQuoteError("**모집 마감** 2026년 10월 24일 오후 6시까지")!,
+    /마크다운/,
+  );
+});
+
+test("automatic re-check status flags activities that need manual verification", () => {
+  const until = now + 3 * 3600000 + 5 * 60000;
+  const published = { ...item, valid_until: new Date(until).toISOString() };
+  const evidence = {
+    activity_id: "a",
+    quote: "2026년 하반기 모집은 10월 24일 오후 6시에 마감합니다.",
+    verified_at: new Date(now).toISOString(),
+    last_check_at: null,
+    last_check_ok: null,
+    last_error: null,
+  };
+  assert.equal(
+    recheckState({ ...published, publication_status: "draft" }, evidence, now),
+    null,
+  );
+  assert.deepEqual(recheckState(published, evidence, now), {
+    label: "자동 재확인 대기",
+    color: "default",
+    detail: "만료까지 3시간 5분",
+  });
+  assert.equal(
+    recheckState(
+      published,
+      {
+        ...evidence,
+        last_check_ok: true,
+        last_check_at: new Date(now).toISOString(),
+      },
+      now,
+    )!.label,
+    "자동 재확인 성공",
+  );
+  const missing = recheckState(published, undefined, now)!;
+  assert.equal(missing.label, "수동 확인 필요");
+  assert.match(missing.detail, /구절이 없어.*만료까지 3시간 5분/);
+  const blocked = recheckState(
+    published,
+    {
+      ...evidence,
+      last_check_ok: false,
+      last_error: "BLOCKED: Official page exceeds 3 MB",
+    },
+    now,
+  )!;
+  assert.equal(blocked.label, "수동 확인 필요");
+  assert.match(blocked.detail, /^재확인 불가\(원문 차단\)/);
+  const transient = recheckState(
+    published,
+    {
+      ...evidence,
+      last_check_ok: false,
+      last_error: "Evidence quote not found",
+    },
+    now,
+  )!;
+  assert.match(
+    transient.detail,
+    /^자동 재확인 실패 · 1시간 뒤 다시 시도: Evidence quote not found/,
+  );
+  assert.match(
+    recheckState(
+      { ...published, valid_until: new Date(now - 1).toISOString() },
+      evidence,
+      now,
+    )!.detail,
+    /만료/,
+  );
+  assert.equal(
+    recheckState({ ...published, freshness: "stale" }, evidence, now)!.label,
+    "수동 확인 필요",
+  );
 });
 
 test("organization parents exclude self, descendants and moves deeper than four levels", () => {

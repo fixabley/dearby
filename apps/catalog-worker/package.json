@@ -7,6 +7,6 @@
   "scripts": {
     "start": "node --env-file=.env.local src/worker.mjs --once --catch-up",
     "test": "node --test test/*.test.mjs",
-    "check": "node --check src/worker.mjs && node --check src/collect.mjs && node --check src/source.mjs"
+    "check": "node --check src/worker.mjs && node --check src/collect.mjs && node --check src/source.mjs && node --check src/reverify.mjs"
   }
 }

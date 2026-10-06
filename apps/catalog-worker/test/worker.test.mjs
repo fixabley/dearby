@@ -107,8 +107,9 @@ test("claim network failure is logged with a timestamp instead of crashing", asy
     assert.equal(result.code, 1);
     assert.match(
       result.output,
-      /^\d{4}-\d\d-\d\dT[\d:.]+Z Collection setup failed: claim_catalog_collection: /,
+      /^\d{4}-\d\d-\d\dT[\d:.]+Z Collection setup failed: claim_catalog_collection: /m,
     );
+    assert.match(result.output, /Re-verification failed: catalog_reverify_candidates: /);
     assert.ok(!result.output.includes("triggerUncaughtException"));
   } finally {
     server.close();
