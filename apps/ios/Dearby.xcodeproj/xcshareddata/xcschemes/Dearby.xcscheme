@@ -14,7 +14,7 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "1C2069F0273FEABF9936D9C4448E8E27"
+               BlueprintIdentifier = "C324A8B6A0D9AF417DF25CF908314679"
                BuildableName = "Dearby.app"
                BlueprintName = "Dearby"
                ReferencedContainer = "container:Dearby.xcodeproj">
@@ -30,7 +30,7 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "1C2069F0273FEABF9936D9C4448E8E27"
+            BlueprintIdentifier = "C324A8B6A0D9AF417DF25CF908314679"
             BuildableName = "Dearby.app"
             BlueprintName = "Dearby"
             ReferencedContainer = "container:Dearby.xcodeproj">
@@ -41,7 +41,7 @@
             skipped = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "068784EEBAA352435DF314F5B9F832B8"
+               BlueprintIdentifier = "6D1080488FDA58490CCD221CE4CD1DBE"
                BuildableName = "DearbyTests.xctest"
                BlueprintName = "DearbyTests"
                ReferencedContainer = "container:Dearby.xcodeproj">
@@ -73,7 +73,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "1C2069F0273FEABF9936D9C4448E8E27"
+            BlueprintIdentifier = "C324A8B6A0D9AF417DF25CF908314679"
             BuildableName = "Dearby.app"
             BlueprintName = "Dearby"
             ReferencedContainer = "container:Dearby.xcodeproj">
@@ -90,7 +90,7 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "1C2069F0273FEABF9936D9C4448E8E27"
+            BlueprintIdentifier = "C324A8B6A0D9AF417DF25CF908314679"
             BuildableName = "Dearby.app"
             BlueprintName = "Dearby"
             ReferencedContainer = "container:Dearby.xcodeproj">

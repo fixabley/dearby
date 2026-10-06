@@ -51,6 +51,10 @@ enum DemoIdentity {
                   introduction: "사람을 연결하는 경험을 만듭니다.", description: "새로운 인연에게 나를 소개해요.",
                   contacts: contacts.filter { ["email", "chat", "github", "behance"].contains($0.id) }, histories: histories)
     }
+    // Same IDs on Android: one card spans two activities and one has none.
+    static let receivedActivityIDs: [String: [String]] = [
+        "received-0": ["conference", "camp"], "received-1": ["conference"], "received-3": ["camp"], "received-4": ["meetup"]
+    ]
     static let received = ["최유진", "박서연", "이도윤", "정하린", "김현우"].enumerated().map { index, name in
         CardModel(id: "received-\(index)", name: index == 0 ? "디자인과 협업" : "함께하는 커뮤니티",
                   profileName: name, job: index == 0 ? "프로덕트 디자이너" : "커뮤니티 운영",
