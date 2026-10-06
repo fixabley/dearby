@@ -1,0 +1,76 @@
+package com.dearby.nativeapp.entities.account.api
+
+import com.dearby.nativeapp.entities.account.model.AccountProfile
+import com.dearby.nativeapp.entities.account.model.AccountSession
+import com.dearby.nativeapp.entities.account.model.PublishedCard
+import com.dearby.nativeapp.entities.account.model.toJson
+import com.dearby.nativeapp.entities.account.model.toProfile
+import com.dearby.nativeapp.entities.account.model.toPublishedCard
+import java.net.HttpURLConnection
+import java.net.URL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+
+enum class AccountError { UNAUTHORIZED, INVALID_INPUT, RATE_LIMITED, UNAVAILABLE }
+class AccountException(val error: AccountError) : Exception(error.name)
+
+data class HttpRequest(val method: String, val url: String, val token: String?, val body: String?)
+data class HttpResponse(val status: Int, val body: String)
+fun interface Transport { suspend fun send(request: HttpRequest): HttpResponse }
+
+/** Real transport. Tokens, emails and bodies are never logged. */
+val httpTransport = Transport { request ->
+    withContext(Dispatchers.IO) {
+        val connection = URL(request.url).openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = request.method
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 15_000
+            connection.useCaches = false
+            connection.instanceFollowRedirects = false
+            connection.setRequestProperty("Accept", "application/json")
+            request.token?.let { connection.setRequestProperty("Authorization", "Bearer $it") }
+            request.body?.let { body ->
+                connection.doOutput = true
+                connection.setRequestProperty("Content-Type", "application/json")
+                connection.outputStream.use { it.write(body.toByteArray()) }
+            }
+            val status = connection.responseCode
+            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+            HttpResponse(status, stream?.bufferedReader()?.use { it.readText() }.orEmpty())
+        } finally {
+            connection.disconnect()
+        }
+    }
+}
+
+/** Owner API (contract native-v1): email code sign-in, profile and card publishing. */
+class AccountClient(private val api: String, private val transport: Transport = httpTransport) {
+    suspend fun requestCode(email: String) = send("POST", "auth/challenges", JSONObject().put("email", email)).getString("challengeId")
+    suspend fun signIn(challengeId: String, code: String) = send("POST", "auth/sessions", JSONObject().put("challengeId", challengeId).put("code", code))
+        .let { AccountSession(it.getString("sessionToken"), it.getString("profileId")) }
+    suspend fun signOut(session: AccountSession) { request("DELETE", "auth/session", null, session) }
+    suspend fun profile(session: AccountSession) = send("GET", "profile", null, session).toProfile()
+    suspend fun saveProfile(profile: AccountProfile, session: AccountSession) = send("PUT", "profile", profile.toJson(), session).toProfile()
+    suspend fun publish(name: String, description: String, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =
+        send("POST", "cards", JSONObject().put("name", name).put("description", description)
+            .put("contactIds", JSONArray(contactIds)).put("historyIds", JSONArray(historyIds)), session).toPublishedCard()
+
+    private suspend fun send(method: String, path: String, body: JSONObject?, session: AccountSession? = null): JSONObject {
+        val text = request(method, path, body, session)
+        return try { JSONObject(text) } catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
+    }
+    private suspend fun request(method: String, path: String, body: JSONObject?, session: AccountSession?): String {
+        val response = try { transport.send(HttpRequest(method, "$api/v1/$path", session?.sessionToken, body?.toString())) }
+            catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
+        return when (response.status) {
+            in 200..299 -> response.body
+            401 -> throw AccountException(AccountError.UNAUTHORIZED)
+            422 -> throw AccountException(AccountError.INVALID_INPUT)
+            429 -> throw AccountException(AccountError.RATE_LIMITED)
+            else -> throw AccountException(AccountError.UNAVAILABLE)
+        }
+    }
+}

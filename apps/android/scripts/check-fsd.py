@@ -20,6 +20,7 @@ API = {
     'features.calendar': {'CalendarConflictSheet'},
     'pages.catalog': {'CatalogPage', 'MyActivitiesPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'CatalogState'},
     'features.application': {'ApplicationBrowser', 'safeWebUrl'},
+    'entities.account': {'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.AccountProfile', 'model.PublishedCard', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault'},
     'entities.catalog': {'model.ActivityModel', 'model.ScheduleModel', 'model.demoActivities', 'model.demoAppliedActivityIds'},
 }
 
@@ -54,7 +55,10 @@ def check_source(path, text):
         if rendering and (target_layer == 'entities' or (target_layer == 'shared' and not ref.startswith('shared.ui.')) or (target_layer == 'features' and not ref.endswith('State'))):
             errors.append('UI requires State/callbacks, not domain/I/O: ' + ref)
     if rendering and re.search(r'\b(LocalContext|SharedPreferences|getSharedPreferences|AssetManager|Intent|startActivity|\w+ViewModel|\w+Repository)\b', code): errors.append('UI directly accesses provider/OS side effect')
-    if re.search(r'\b(?:Room|HttpClient|HttpURLConnection|WebView|TokenVault|CalendarContract|SQLiteDatabase|getSharedPreferences|rememberSaveable|SavedStateHandle)\b', code): errors.append('prototype must not access service or persisted state')
+    # Contract "모바일 실제 연결 경계": only the account client may open connections and only its vault keeps the session.
+    allowed = {'entities/account/api/AccountClient.kt': {'HttpURLConnection'}, 'entities/account/api/SessionVault.kt': {'getSharedPreferences'}}.get(path.as_posix(), set())
+    blocked = [term for term in ('Room', 'HttpClient', 'HttpURLConnection', 'WebView', 'TokenVault', 'CalendarContract', 'SQLiteDatabase', 'getSharedPreferences', 'rememberSaveable', 'SavedStateHandle') if term not in allowed]
+    if re.search(r'\b(?:' + '|'.join(blocked) + r')\b', code): errors.append('prototype must not access service or persisted state')
     return errors
 
 def self_test():

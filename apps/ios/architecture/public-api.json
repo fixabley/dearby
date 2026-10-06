@@ -64,5 +64,19 @@
     "CardComposer",
     "CardComposerContact",
     "CardComposerHistory"
+  ],
+  "entities/account": [
+    "AccountSession",
+    "AccountContact",
+    "AccountHistory",
+    "AccountProfile",
+    "PublishedCard",
+    "AccountError",
+    "AccountClient",
+    "SessionStore",
+    "SessionVault"
+  ],
+  "features/account": [
+    "AccountViewModel"
   ]
 }
