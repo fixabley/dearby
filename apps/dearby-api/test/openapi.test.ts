@@ -32,10 +32,10 @@ test('OpenAPI covers every live API method without adding runtime validators/ser
     assert.ok(operation.responses['500']);assert.ok(operation.responses['422']);
     for(const [status,response] of Object.entries(operation.responses as Record<string,any>))if(method==='head'||status==='204')assert.equal(response.content,undefined);
     if(path.includes('/guest/'))assert.ok(operation.security.every((s:object)=>'GuestProxy' in s));
-    else if(path==='/v1/catalog'||(path==='/v1/cards/{id}'&&['get','head'].includes(method))||['/v1/auth/challenges','/v1/auth/sessions'].includes(path))assert.deepEqual(operation.security,[]);
+    else if(path==='/v1/catalog'||(['/v1/cards/{id}','/v1/shares/{id}'].includes(path)&&['get','head'].includes(method))||['/v1/auth/challenges','/v1/auth/sessions'].includes(path))assert.deepEqual(operation.security,[]);
     else assert.deepEqual(operation.security,[{OwnerSession:[]}]);
   }
-  assert.equal(routes.size,23);assert.deepEqual(documented,routes);
+  assert.equal(routes.size,27);assert.deepEqual(documented,routes);
   assert.match(spec.info.description,/Owner\/auth paths remain 404/);
   assert.equal(spec.components.securitySchemes.GuestProxy.name,'X-Guest-Proxy-Key');
   const example=spec.paths['/v1/wallet/import'].post.requestBody.content['application/json'].schema.example;
@@ -72,7 +72,7 @@ test('Real PostgreSQL HTTP successes/errors match OpenAPI, including partial imp
   async function call(method:'GET'|'HEAD'|'POST'|'PUT'|'DELETE',path:string,status:number,body?:unknown,token?:string,guest?:string):Promise<any>{
     const r=await f.app.inject({method,url:'/v1'+path,headers:{...(body!==undefined?{'content-type':'application/json'}:{}),...(token?{authorization:'Bearer '+token}:{}),...(guest!==undefined?{'x-guest-proxy-key':secret,...(guest?{'x-guest-token':guest}:{})}:{})},...(body!==undefined?{payload:JSON.stringify(body)}:{})});
     assert.equal(r.statusCode,status,`${method} ${path}: ${r.body}`);assert.equal(r.headers['cache-control'],'no-store');
-    const template=('/v1'+path).replace(/\/[0-9a-f-]{36}$/,'/{id}');
+    const template=('/v1'+path).replace(/\/[0-9a-f-]{36}(?=$|\/)/,'/{id}');
     const response=spec.paths[template][method.toLowerCase()].responses[String(status)];assert.ok(response,`${method} ${template} ${status}`);
     seen.add(`${method} ${template}`);
     if(method==='HEAD'||status===204){assert.equal(r.body,'');return null;}
@@ -93,8 +93,13 @@ test('Real PostgreSQL HTTP successes/errors match OpenAPI, including partial imp
   const organization=randomUUID(),program=randomUUID();
   await f.admin.query('INSERT INTO public.catalog_organizations(id,name) VALUES($1,$2)',[organization,'Documentation fixture']);
   await f.admin.query('INSERT INTO public.catalog_programs(id,organization_id,title) VALUES($1,$2,$3)',[program,organization,'Documentation fixture']);
-  await f.admin.query('INSERT INTO public.catalog_activities(id,program_id,organization_id,title,official_url,publication_status) VALUES($1,$2,$3,$4,$5,$6)',[randomUUID(),program,organization,'Example activity','https://example.com/fixture','published']);
+  const activity=randomUUID();
+  await f.admin.query('INSERT INTO public.catalog_activities(id,program_id,organization_id,title,official_url,publication_status) VALUES($1,$2,$3,$4,$5,$6)',[activity,program,organization,'Example activity','https://example.com/fixture','published']);
   const catalog=await call('GET','/catalog',200);assert.equal(catalog.activities.length,1);
+  await call('POST',`/cards/${card.id}/shares`,422,{activityIds:[randomUUID()]},owner);
+  await call('POST',`/cards/${card.id}/shares`,403,{activityIds:[]},other.sessionToken);
+  const share=await call('POST',`/cards/${card.id}/shares`,201,{activityIds:[activity]},owner);
+  await call('GET',`/shares/${share.id}`,200);await call('GET',`/shares/${randomUUID()}`,404);
   await call('GET','/wallet',200,undefined,owner);
   const input={cardId:card.id,recipientProfileId:other.profileId,context:{activityId:null,label:'Meeting'},requestId:randomUUID()};
   await call('POST','/exchanges',201,input,owner);
@@ -105,15 +110,19 @@ test('Real PostgreSQL HTTP successes/errors match OpenAPI, including partial imp
   await call('GET','/guest/cards',403);await call('GET','/guest/cards',401,undefined,undefined,'');
   const guest=await call('PUT',`/guest/cards/${card.id}`,201,undefined,undefined,'');
   await call('PUT',`/guest/cards/${card.id}`,200,undefined,undefined,guest.guestToken);
-  await call('GET','/guest/cards',200,undefined,undefined,guest.guestToken);
-  for(const path of ['/catalog','/profile','/cards',`/cards/${card.id}`,'/wallet','/guest/cards'])await call('HEAD',path,200,undefined,owner,guest.guestToken);
+  const shared=await call('PUT',`/guest/shares/${share.id}`,201,undefined,undefined,'');
+  await call('PUT',`/guest/shares/${share.id}`,200,undefined,undefined,guest.guestToken);
+  await call('PUT',`/guest/shares/${randomUUID()}`,404,undefined,undefined,guest.guestToken);
+  assert.equal((await call('GET','/guest/cards',200,undefined,undefined,guest.guestToken)).shares.length,1);
+  await call('DELETE','/guest/session',204,undefined,undefined,shared.guestToken);
+  for(const path of ['/catalog','/profile','/cards',`/cards/${card.id}`,`/shares/${share.id}`,'/wallet','/guest/cards'])await call('HEAD',path,200,undefined,owner,guest.guestToken);
   await call('DELETE',`/guest/cards/${card.id}`,204,undefined,undefined,guest.guestToken);
   await call('DELETE','/guest/session',204,undefined,undefined,guest.guestToken);
   await call('GET','/guest/cards',401,undefined,undefined,guest.guestToken);
   await call('DELETE',`/cards/${card.id}`,403,undefined,other.sessionToken);
-  await call('DELETE',`/cards/${card.id}`,204,undefined,owner);await call('GET',`/cards/${card.id}`,404);
+  await call('DELETE',`/cards/${card.id}`,204,undefined,owner);await call('GET',`/cards/${card.id}`,404);await call('GET',`/shares/${share.id}`,404);
   await call('DELETE','/auth/session',204,undefined,owner);
-  assert.equal(seen.size,23);
+  assert.equal(seen.size,27);
   // Dependency failures keep the established sanitized error contract.
   for(const failure of [new ApiError(503,'CATALOG_UNAVAILABLE','Catalog unavailable'),Error('fixture-private-storage-detail')]){
     const {app}=createApp(f.db,{otpSecret,sendCode:async()=>{},catalogReader:async()=>{throw failure;}});

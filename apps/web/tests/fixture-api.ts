@@ -2,22 +2,42 @@
 import { createServer } from "node:http";
 import { randomBytes } from "node:crypto";
 import { card, cardId, secondCardId, revokedId, catalog } from "./fixtures";
-const wallets = new Map<string, Set<string>>();
-const cards = new Map([
+// Copied from apps/dearby-api/test/fixtures/card-shares.json (API PR #84).
+import shareData from "./card-shares.json";
+type Wallet = { cards: Set<string>; shares: Map<string, string> };
+const wallets = new Map<string, Wallet>();
+const cards = new Map<string, unknown>([
   [cardId, card],
   [secondCardId, { ...card, id: secondCardId, profileName: "테스트 서연" }],
+  // ownerId is private and dropped like the real public projection.
+  ...shareData.cards.map(
+    (shared) => [shared.id, { ...shared, ownerId: undefined }] as const,
+  ),
 ]);
+const revoked = new Set([revokedId, shareData.revokedCardId]);
+const shares = new Map(shareData.shares.map((share) => [share.id, share]));
+const publicShare = (id: string) => {
+  const share = shares.get(id);
+  return share && !revoked.has(share.cardId) ? share : undefined;
+};
 createServer((req, res) => {
   const path = req.url!;
   const json = (status: number, data: unknown) => {
     res.writeHead(status, { "Content-Type": "application/json" });
     res.end(JSON.stringify(data));
   };
+  const id = path.split("/").at(-1)!;
   if (path === "/v1/catalog") return json(200, catalog());
   if (path.startsWith("/v1/cards/"))
-    return cards.has(path.split("/").at(-1)!)
-      ? json(200, cards.get(path.split("/").at(-1)!))
+    return cards.has(id) && !revoked.has(id)
+      ? json(200, cards.get(id))
       : json(404, {});
+  if (path.startsWith("/v1/shares/")) {
+    const share = publicShare(id);
+    return share
+      ? json(200, { share, card: cards.get(share.cardId) })
+      : json(404, {});
+  }
   if (!path.startsWith("/v1/guest/")) return json(404, {});
   if (
     req.headers["x-guest-proxy-key"] !==
@@ -26,36 +46,59 @@ createServer((req, res) => {
     return json(403, {});
   let token = req.headers["x-guest-token"] as string | undefined;
   if (token && !wallets.has(token)) return json(401, {});
-  if (path === "/v1/guest/cards" && req.method === "GET")
+  if (path === "/v1/guest/cards" && req.method === "GET") {
+    const wallet = wallets.get(token!);
+    const items = [...(wallet?.cards ?? [])].filter((id) => !revoked.has(id));
     return json(200, {
-      items: [...(wallets.get(token!) ?? [])]
-        .map((id) => cards.get(id))
-        .filter(Boolean),
+      items: items.map((id) => cards.get(id)),
+      shares: [...(wallet?.shares ?? [])]
+        .map(([shareId, savedAt]) => ({ share: shares.get(shareId)!, savedAt }))
+        .filter(({ share }) => items.includes(share.cardId))
+        .map(({ share, savedAt }) => ({
+          cardId: share.cardId,
+          shareId: share.id,
+          activities: share.activities,
+          savedAt,
+        })),
     });
+  }
   if (path === "/v1/guest/session" && req.method === "DELETE") {
     wallets.delete(token!);
     res.writeHead(204);
     return res.end();
   }
-  const id = path.split("/").at(-1)!;
   if (req.method === "DELETE") {
-    wallets.get(token!)?.delete(id);
+    const wallet = wallets.get(token!);
+    wallet?.cards.delete(id);
+    for (const shareId of wallet?.shares.keys() ?? [])
+      if (shares.get(shareId)?.cardId === id) wallet!.shares.delete(shareId);
     res.writeHead(204);
     return res.end();
   }
   if (req.method !== "PUT") return json(405, {});
-  if (!cards.has(id) || id === revokedId) return json(404, {});
+  const share = path.startsWith("/v1/guest/shares/")
+    ? publicShare(id)
+    : undefined;
+  const savedCard = share ? share.cardId : id;
+  if (
+    path.startsWith("/v1/guest/shares/")
+      ? !share
+      : !cards.has(id) || revoked.has(id)
+  )
+    return json(404, {});
   const fresh = !token;
   if (!token) {
     token = randomBytes(32).toString("base64url");
-    wallets.set(token, new Set());
+    wallets.set(token, { cards: new Set(), shares: new Map() });
   }
   const wallet = wallets.get(token)!;
-  const status = wallet.has(id) ? "alreadySaved" : "saved";
-  wallet.add(id);
+  const known = share ? wallet.shares.has(id) : wallet.cards.has(id);
+  wallet.cards.add(savedCard);
+  if (share && !known) wallet.shares.set(id, new Date().toISOString());
   return json(fresh ? 201 : 200, {
-    cardId: id,
-    status,
+    cardId: savedCard,
+    ...(share ? { shareId: id } : {}),
+    status: known ? "alreadySaved" : "saved",
     ...(fresh ? { guestToken: token } : {}),
   });
 }).listen(4319, "127.0.0.1");
