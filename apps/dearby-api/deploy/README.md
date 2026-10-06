@@ -80,7 +80,7 @@ Documentation schemas are supplied only to the Swagger transform through route c
 | [nginx/default.conf](nginx/default.conf) | `conf.d/default.conf` (replace) | Complete file. Ports 80 and 443 for `wid.io.kr` and `api.dearby.wid.io.kr`. The unused `dearby.wid.io.kr`/`dev.dearby.wid.io.kr` blocks are removed: nothing listens on upstream 3000/3001, their DNS points to Vercel and the certificate does not list them. Their port-80 requests now fall to the `wid.io.kr` default server. |
 | [nginx/dearby-api/api.locations.conf](nginx/dearby-api/api.locations.conf) | `conf.d/dearby-api/api.locations.conf` | Public API surface included by both HTTPS hosts. It has the read-only `/docs/`, catalog GET/HEAD, public card **and share** GET/HEAD, and guest cards/**shares**/session. Everything else under `/v1` is 404, including `/v1/auth/*`, `/v1/profile`, the card collection, share creation, wallet and exchanges (to be opened separately after #89). |
 | [nginx/dearby-api/handoff.locations.conf](nginx/dearby-api/handoff.locations.conf) | `conf.d/dearby-api/handoff.locations.conf` | **Stage 2.** POST `/v1/guest/handoffs` and `/v1/guest/handoffs/redeem` with the same guest header handling. Its `include` line in `api.locations.conf` stays commented out until the PR #110 API image is deployed. |
-| [nginx/default.conf.diff](nginx/default.conf.diff) | — | Review diff: production file to stage 1, with the include expanded. |
+| [nginx/default.conf.diff](nginx/default.conf.diff) | — | Review diff from the current production `default.conf` to this repository's version. |
 
 The snippets live in `conf.d/dearby-api/`, so the `conf.d/*.conf` glob never loads them as standalone files; the existing `conf.d` mount already covers that directory. Compared with production, the only change to an existing route is that catalog now also strips the `X-Guest-*` headers; the API ignores them there. The previous single-purpose snippets (`nginx-catalog`, `nginx-web-guest`, `nginx-docs`, `nginx-api-domain`) are replaced by these files.
 
@@ -122,3 +122,56 @@ Apply in order:
 Port 80: `wid.io.kr` and `api.dearby.wid.io.kr` redirect 308 to their own https host, keeping the query string, and serve the acme file with 200. The removed `dearby`/`dev.dearby` names now get 308 to `https://wid.io.kr` on port 80 and the `wid.io.kr` default on 443.
 
 Headers: the upstream never received Authorization or Cookie. Catalog, public share and `/docs/` received no `X-Guest-*`, while guest shares and handoff redeem received `X-Guest-Proxy-Key` and `X-Guest-Token`.
+
+## Member routes (#88) — prepared, not applied
+
+[nginx/dearby-api/member.locations.conf](nginx/dearby-api/member.locations.conf) opens the native-v1 member routes on both hosts. Its `include` line in `api.locations.conf` stays commented out until main applies it, and must stay above the public card regex: nginx tries regex locations in order, and the member card location also serves `DELETE /v1/cards/:id`. The `limit_req_zone` line in `default.conf` must be added together with it.
+
+| Route | Methods |
+| --- | --- |
+| `/v1/auth/challenges`, `/v1/auth/sessions` | POST |
+| `/v1/auth/session` | DELETE |
+| `/v1/profile` | GET/HEAD, PUT |
+| `/v1/cards` | GET/HEAD, POST |
+| `/v1/cards/:id` | GET/HEAD (public), DELETE (owner) |
+| `/v1/cards/:id/shares` | POST |
+| `/v1/wallet` | GET/HEAD |
+| `/v1/wallet/import` | POST |
+
+Other methods return 405. `/v1/exchanges` and any other `/v1` path stay 404. [member.proxy.conf](nginx/dearby-api/member.proxy.conf) is shared by these locations:
+- `Authorization` is forwarded only here.
+- `Cookie` and `X-Guest-*` are cleared.
+- `X-Forwarded-For` is overwritten with `$remote_addr`.
+- The body limit is 64 KiB, matching the API.
+- Read timeout is 30 s, because a code request waits for SMTP.
+
+With the stage enabled, the public `GET /v1/cards/:id` also receives `Authorization`; the API ignores it on that route.
+
+### Abuse limits and client IP
+
+API limits, persisted in the database (per `src/auth.ts`):
+- A 6-digit code expires after 5 minutes, allows 5 guesses, is single-use, and a newer successful send invalidates it.
+- Sends: 1 per email per minute, 5 per email per hour, 20 per IP per hour. Failed deliveries count.
+- Verifications: 60 per IP per minute.
+- A session lasts 30 days and can be revoked.
+
+`trustProxy` is `false`, so "IP" is the TCP peer of the API container. Behind nginx (`proxy_pass http://host.docker.internal:58865`), that peer is the Docker gateway for **every** user. So the per-IP limits act as **service-wide** limits today: 20 code sends per hour and 60 verifications per minute for everyone together. A single client can therefore block every login for up to an hour. This is inferred from the topology and has not been measured on the API.
+
+nginx: `limit_req` allows 6 code requests per minute per `$binary_remote_addr` (burst 5, no delay), answering 429 with the API's JSON error envelope. It protects the SMTP account's sending quota. It is not added to `/v1/auth/sessions`, because guesses are already bounded per code (5) and per window.
+
+However, the production access log shows only the container gateway address (`192.168.97.1`, all entries, read-only check on 2026-10-06), and the temporary test container saw its own gateway too. If nginx never sees real client IPs, its per-IP limit is also service-wide. Before opening member routes publicly, root should:
+
+1. Request from an external network and confirm `$remote_addr` is the real client IP.
+2. If it is, decide whether the API may trust `X-Forwarded-For` from that one proxy peer only (a small API change: `trustProxy` restricted to the gateway address; nginx already overwrites the header in member locations).
+3. If it is not, fix source-IP preservation at the container or network layer first.
+
+Until then the limits still bound the abuse; their failure mode is denial of login for everyone, not bypass.
+
+Separately, the public card and share location forwards a client-supplied `X-Forwarded-For` unchanged. That is harmless today (`trustProxy=false`) but must be overwritten before any proxy trust is enabled.
+
+Local verification (temporary containers only; self-signed certificate and stub upstream; production never contacted):
+- `nginx -t` succeeded with the stage off (current production) and on.
+- With the stage on, each route above returned the stub's 200 for its contract methods and 405 otherwise. `POST /v1/exchanges` and unknown `/v1/auth/*` returned 404.
+- With the stage off, every member route returned 404 and public `DELETE /v1/cards/:id` returned 405.
+- The upstream received `Authorization` on member routes only (plus public card GET), never `Cookie` or `X-Guest-*`, and `X-Forwarded-For` was replaced by the peer address.
+- Repeated `POST /v1/auth/challenges` got 429 with `{"error":{"code":"RATE_LIMITED",...}}`, `Content-Type: application/json` and `Cache-Control: no-store` once the burst was used. Wrong-method requests returned 405 without consuming the limit.
