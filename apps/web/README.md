@@ -41,6 +41,10 @@ iOS home-screen cookie separation, checked 2026-10-06 on the iOS 26.5 simulator 
 - Separate afterwards: a cookie set for the home-screen app did not appear in Safari, which still sent only `safari=1`.
 - So cards saved in Safari do not appear in the installed app, and vice versa; the iOS install guidance must say `홈 화면 앱은 Safari와 따로 저장돼요`. No session merging is built. Not checked: a real device, HTTPS with `__Host-` cookies, and whether the app's own cookie survives relaunch (the probe could not reload reliably inside the app). `src/lib/install.ts` detects known in-app browsers by user agent (best effort, never blocks saving) and exposes the install prompt/installed state; the screens that show them come after the web layer split.
 
+## App link association
+
+`/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` declare shared-card links (`/s/*`) for the iOS and Android apps. Values come only from server env (`DEARBY_APPLE_TEAM_ID`, `DEARBY_IOS_BUNDLE_IDS`, `DEARBY_ANDROID_PACKAGE`, `DEARBY_ANDROID_CERT_SHA256`; see `.env.example`). Each file returns 404 until its values are set and valid, and is served as `application/json` without redirects, read per request. Android path scoping lives in the app's intent filter because Digital Asset Links has no paths.
+
 ## Guest protocol (root/API agreed 2026-09-29)
 
 The API verifies UUID, database existence and non-revocation. A public card ID only identifies a publicly readable card; it never authenticates a visitor's wallet.
