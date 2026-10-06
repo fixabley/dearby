@@ -10,7 +10,8 @@ export function Icon({
     | "pin"
     | "external"
     | "card"
-    | "check";
+    | "check"
+    | "alert";
   size?: number;
 }) {
   const paths = {
@@ -47,6 +48,12 @@ export function Icon({
       </>
     ),
     check: <path d="m5 12 4 4L20 5" />,
+    alert: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v6m0 4h.01" />
+      </>
+    ),
   };
   return (
     <svg

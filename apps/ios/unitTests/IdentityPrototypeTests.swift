@@ -36,14 +36,20 @@ import XCTest
         XCTAssertFalse(fresh.reciprocalIDs.contains(card.id))
         XCTAssertTrue(fresh.savedCardIDs.isEmpty)
     }
-    func testActivityBookmarksAreIndependentOfApplicationAndReset() {
+    func testMyActivitiesFollowScheduleAndConfirmationNeedsApplication() {
         let state = CatalogViewModel()
-        state.toggleSaved("conference")
-        XCTAssertTrue(state.savedIDs.contains("conference"))
-        XCTAssertTrue(state.appliedIDs.isEmpty)
-        state.toggleSaved("conference")
-        XCTAssertTrue(state.savedIDs.isEmpty)
-        state.savedOrganization = true
-        XCTAssertFalse(CatalogViewModel().savedOrganization)
+        state.apply("meetup", true)
+        state.apply("camp", true)
+        XCTAssertEqual(state.appliedActivities.map(\.id), ["conference", "camp", "meetup"])
+        state.confirm("camp", true)
+        XCTAssertTrue(state.confirmedIDs.contains("camp"))
+        state.apply("camp", false)
+        state.apply("camp", true)
+        XCTAssertFalse(state.confirmedIDs.contains("camp"))
+        state.apply("camp", false)
+        state.confirm("camp", true)
+        XCTAssertFalse(state.confirmedIDs.contains("camp"))
+        state.confirm("conference", true)
+        XCTAssertTrue(CatalogViewModel().confirmedIDs.isEmpty)
     }
 }

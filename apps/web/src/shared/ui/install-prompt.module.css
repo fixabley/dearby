@@ -1,0 +1,60 @@
+.prompt {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  font-size: 15px;
+  line-height: 1.55;
+  word-break: keep-all;
+}
+.logo {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: contain;
+  background: var(--mint);
+}
+.body {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.share {
+  vertical-align: -3px;
+  color: var(--teal-dark);
+}
+.note {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+.actions:empty {
+  display: none;
+}
+.primary,
+.secondary {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 600;
+}
+.primary {
+  border: 1px solid var(--teal);
+  background: var(--teal);
+  color: #fff;
+}
+.secondary {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--muted);
+}
