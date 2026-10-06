@@ -25,7 +25,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardState
 import com.dearby.nativeapp.widgets.card.cardContent.ContactState
 
 private enum class Tab(val label: String, val icon: ImageVector) {
-    Discovery("발견", Icons.Outlined.Explore), Saved("저장", Icons.Outlined.BookmarkBorder),
+    Discovery("발견", Icons.Outlined.Explore), Mine("내 활동", Icons.Outlined.EventAvailable),
     Qr("QR", Icons.Outlined.QrCodeScanner), Wallet("받은 명함", Icons.Outlined.Badge), Profile("내 프로필", Icons.Outlined.PersonOutline),
 }
 private sealed interface CardRoute {
@@ -58,11 +58,11 @@ private sealed interface CardRoute {
                             if (screen.existing == null) demo.createCard(contacts, histories, name) else demo.editCard(screen.existing.id, contacts, histories, name); route = screen.returnTo; if (route == null) tab = Tab.Qr }, { route = screen.returnTo })
                     }
                     null -> when (tab) {
-                        Tab.Discovery, Tab.Saved -> Column {
+                        Tab.Discovery, Tab.Mine -> Column {
                             if (!catalogDetail) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                                 DearbyLogo(); Spacer(Modifier.weight(1f)); IconButton({ notice = "새 알림이 없어요.\n이 앱은 고정 예시로 둘러보는 프로토타입입니다." }) { Icon(Icons.Outlined.NotificationsNone, "알림") }
                             }
-                            key(tab) { CatalogRoute(catalog, savedOnly = tab == Tab.Saved) { catalogDetail = it } }
+                            key(tab) { CatalogRoute(catalog, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }) { catalogDetail = it } }
                         }
                         Tab.Qr -> QrPage(state.cards, state.selectedCardId, demo::selectCard, { route = CardRoute.Detail(it) }, { route = CardRoute.Editor(null) }, { route = CardRoute.Editor(null, it) }, { route = CardRoute.Detail(demoPublicCard) }, { notice = "$it 동작을 확인했어요.\nhttps://example.com\n실제 전송·복사·파일 저장은 하지 않았어요." })
                         Tab.Wallet -> WalletPage(state.wallet, state.query, state.reciprocalGroup, demo::query, demo::group, { route = CardRoute.Detail(it) }, { route = CardRoute.Send(it) }, contact)

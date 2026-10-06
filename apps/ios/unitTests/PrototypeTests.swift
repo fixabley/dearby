@@ -10,9 +10,10 @@ import XCTest
         XCTAssertEqual(state.activities.map(\.location), ["서울 코엑스", "서울", "온라인"])
         XCTAssertTrue(state.activities.allSatisfy { $0.cost == "무료" && $0.schedules.first?.timeZone == "Asia/Seoul" })
         XCTAssertEqual(state.activities.map(\.applicationUrl), Array(repeating: "https://example.com", count: 3))
-        state.appliedIDs.insert("conference")
-        XCTAssertTrue(state.appliedIDs.contains("conference"))
-        XCTAssertTrue(CatalogViewModel().appliedIDs.isEmpty)
+        XCTAssertEqual(state.appliedIDs, ["conference"])
+        state.apply("camp", true)
+        XCTAssertEqual(state.appliedActivities.map(\.id), ["conference", "camp"])
+        XCTAssertEqual(CatalogViewModel().appliedIDs, ["conference"])
     }
     func testFixedBusyTimeAndZeroOverlapActivities() {
         let formatter = ISO8601DateFormatter()
