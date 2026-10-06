@@ -60,6 +60,7 @@
   ],
   "widgets/catalog": [
     "ActivityCard",
+    "ApplyConfirmationSheet",
     "CatalogPage",
     "CatalogViewModel",
     "MyActivitiesPage"
@@ -70,7 +71,10 @@
     "CardComposerContact",
     "CardComposerHistory",
     "CardComposerPage",
+    "HistoryPeriodFields",
     "IdentityViewModel",
+    "ProfileContactFields",
+    "ProfileExtraContact",
     "ProfilePage",
     "QRPage",
     "QRScanOverlay",
