@@ -5,8 +5,8 @@ Supabase `pg_cron`이 한국 시간 매일 09:00에 수집 ON 프로그램별 �
 ## 저장 규칙
 
 - 프로그램·한국 날짜당 한 작업. 오늘의 대기/실패 작업만 claim하며 전역 동시 실행은 1개다.
-- lease 10분. Codex 4분, 원문별 DNS·리다이렉트 포함 15초/1 MB. 최대 10개 후보, 빈 결과는 최대 3개 출처 확인. 실제 웹 도구 시작 이벤트 12회에서 중단한다(프롬프트 목표 8회).
-- 실패 30분 뒤 재시도, 시도 3회 뒤 blocked. 프로세스 중단·lease 만료는 5분 뒤 재시도하며 이전 소유자의 쓰기는 거부한다. 구독 로그인/한도 오류는 전체 claim을 일시정지한다. 어드민에서 원인 해소 후 재시도하면 해제한다.
+- lease 10분. Codex 4분, 원문별 DNS·리다이렉트 포함 15초/3 MB. 최대 10개 후보, 빈 결과는 최대 3개 출처 확인. 실제 웹 도구 시작 이벤트 12회에서 중단한다(프롬프트 목표 8회).
+- 실패 30분 뒤 재시도, 시도 3회 뒤 blocked. 프로세스 중단·lease 만료는 5분 뒤 재시도하며 이전 소유자의 쓰기는 거부한다. 구독 로그인/한도 오류는 전체 claim을 일시정지한다. 어드민에서 원인 해소 후 재시도하면 해제한다. 원문 구조 문제(모델이 보고한 원문 불가, 3 MB 초과, 설정 호스트 밖, 공인 IPv4 없음, 모든 후보가 이 사유로 실패)는 그날 다시 시도해도 같으므로 `BLOCKED:`로 바로 멈추고 전체 일시정지는 하지 않는다. 다음 날 작업은 다시 1회 실행된다. 일시적 실패(시간 초과, 구절 불일치 등)는 기존대로 다시 시도한다.
 - `source_unavailable`, 빈 결과의 원문 근거 부재, 모든 후보의 검증 실패는 성공으로 기록하지 않는다. 일부만 통과하면 적용 수와 제외 사유를 함께 남긴다.
 - 신규는 초안. 마지막 collector 저장 시각과 현재 `updated_at`이 같고, 게시·공식 확인되지 않은 초안만 갱신한다. 정보가 null/unknown/빈 배열로 바뀌면 삭제하지 않고 검토 제안을 남긴다.
 - 관리자가 수정한 내용·게시 상태·공식 확인·JSON 조건은 자동으로 덮어쓰지 않는다. 공식 확인·게시 승인은 기존 활동 편집에서 수행한다.
@@ -23,7 +23,7 @@ Supabase `pg_cron`이 한국 시간 매일 09:00에 수집 ON 프로그램별 �
 
 ## 수동 실행과 검사
 
-Node 24와 Supabase CLI, 로컬 Supabase가 필요하다. 기존 관리자 비밀번호·DB를 바꾸지 않는 워커 전용 부트스트랩이다.
+Node 24와 실행 중인 로컬 Supabase가 필요하다(CLI는 `npm exec supabase@2.118.0`으로 받는다). `bootstrap.mjs`는 로컬 Supabase 전용이며 기존 관리자 비밀번호·DB를 바꾸지 않는다. 운영 워커는 cloud Supabase를 쓰고, 그 `.env.local`은 배포 사본에 따로 둔다. 부트스트랩으로 덮어쓰지 않는다.
 
 ```sh
 cd apps/catalog-worker
@@ -62,8 +62,8 @@ node --env-file=.env.local scripts/schedule.mjs off
 node scripts/launchd.mjs uninstall
 ```
 
-사용자 LaunchAgent `com.dearby.catalog-subscription-worker`가 로그인 시와 60초 간격으로 실행된다. 동일 label의 중복 프로세스를 launchd가 막고, 수동 워커와의 경쟁은 DB lease가 막는다. 현재 checkout 경로를 고정하므로 worktree를 삭제/이동하기 전에 uninstall 후 새 경로에서 재설치해야 한다. Node/npm 캐시 정리로 고정 Node 실행 파일이 사라지면 Node24를 다시 준비하고 재설치한다. Mac 로그인·네트워크·Supabase 컨테이너·ChatGPT 인증이 유지되어야 한다. 절전 중 실행을 보장하지 않으며 절전 방지 설정을 임의 변경하지 않는다.
+사용자 LaunchAgent `com.dearby.catalog-subscription-worker`가 로그인 시와 60초 간격으로 실행된다. 동일 label의 중복 프로세스를 launchd가 막고, 수동 워커와의 경쟁은 DB lease가 막는다. 설치한 checkout 경로를 고정한다. 운영은 repo 밖 배포 사본 `~/.dearby-deploy/catalog-worker-<commit>/apps/catalog-worker`에서 실행하므로 main 변경은 재배포 전까지 반영되지 않는다. 경로를 바꾸려면 uninstall 후 새 경로에서 재설치한다. Node/npm 캐시 정리로 고정 Node 실행 파일이 사라지면 Node24를 다시 준비하고 재설치한다. Mac 로그인·네트워크·ChatGPT 인증이 유지되어야 한다. 절전 중 실행을 보장하지 않으며 절전 방지 설정을 임의 변경하지 않는다.
 
-로그는 ignored `logs/worker.log`, `logs/worker-error.log`에 쌓인다. service-role/auth 파일은 로그에 출력하지 않는다. 장기 운용 시 로그 용량 관리가 필요하다. 현재 로컬 배치이며 cloud Supabase 배포·24시간 가동 호스트·외부 실패 알림·자동 DB 백업은 별도 운영 조건이다.
+로그는 ignored `logs/worker.log`, `logs/worker-error.log`에 쌓인다. service-role/auth 파일은 로그에 출력하지 않는다. 장기 운용 시 로그 용량 관리가 필요하다. DB는 cloud Supabase이고 워커는 로그인된 Mac에서 돈다. 24시간 가동 호스트·외부 실패 알림·자동 DB 백업은 별도 운영 조건이다.
 
-CI에서는 단위/구문·실제 로컬 DB·관리자 브라우저 검사만 실행한다. 구독 인증이나 실검색을 공용 runner에 복사하지 않는다. 실제 DB 통합 검사는 운영 워커와 경쟁하지 않도록 별도 테스트 Supabase에서 수행한다. 공유 로컬 DB에서 검사할 경우 워커가 유휴이고 예약 실행이 중단된 상태에서만 실행한다.
+CI는 워커의 구문·단위 검사만 실행한다(`native.yml`의 `catalog-worker` job). 큐 통합 검사는 CI에 없어 로컬 Supabase에서 수동 실행한다. 구독 인증이나 실검색을 공용 runner에 복사하지 않는다. 실제 DB 통합 검사는 운영 워커와 경쟁하지 않도록 별도 테스트 Supabase에서 수행한다. 로컬 DB를 다른 작업과 공유할 경우 워커가 유휴이고 예약 실행이 중단된 상태에서만 실행한다.

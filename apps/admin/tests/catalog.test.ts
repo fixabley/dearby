@@ -2,6 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   collectionBlock,
+  organizationPath,
+  parentCandidates,
   discoveryStatus,
   evidenceQuoteError,
   recheckState,
@@ -48,7 +50,17 @@ test("admin eligibility follows native API clock boundaries and publication", ()
   );
 });
 test("closed recruitment is not relabeled scheduled by a future opening", () => {
-  assert.equal(discoveryStatus({...item,recruitment_status:"closed",recruitment_start_at:new Date(now+3600000).toISOString()},now).label,"모집 마감");
+  assert.equal(
+    discoveryStatus(
+      {
+        ...item,
+        recruitment_status: "closed",
+        recruitment_start_at: new Date(now + 3600000).toISOString(),
+      },
+      now,
+    ).label,
+    "모집 마감",
+  );
 });
 
 test("unknown schedule times stay null and invalid/reversed intervals fail", () => {
@@ -219,5 +231,40 @@ test("automatic re-check status flags activities that need manual verification",
   assert.equal(
     recheckState({ ...published, freshness: "stale" }, evidence, now)!.label,
     "수동 확인 필요",
+  );
+});
+
+test("organization parents exclude self, descendants and moves deeper than four levels", () => {
+  const org = (id: string, parent_id: string | null) => ({
+    id,
+    name: id,
+    description: "",
+    parent_id,
+  });
+  const all = [
+    org("A", null),
+    org("B", "A"),
+    org("C", "B"),
+    org("D", "C"),
+    org("X", null),
+    org("Y", "X"),
+  ];
+  assert.deepEqual(
+    organizationPath(all, "D").map((o) => o.id),
+    ["A", "B", "C", "D"],
+  );
+  // B carries C and D, so only level-1 parents keep it within four levels.
+  assert.deepEqual(
+    parentCandidates(all, "B").map((o) => o.id),
+    ["A", "X"],
+  );
+  // X has two levels, so it fits only under a level-1 or level-2 parent.
+  assert.deepEqual(
+    parentCandidates(all, "X").map((o) => o.id),
+    ["A", "B"],
+  );
+  assert.deepEqual(
+    parentCandidates(all).map((o) => o.id),
+    ["A", "B", "C", "X", "Y"],
   );
 });

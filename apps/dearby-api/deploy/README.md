@@ -80,7 +80,6 @@ Documentation schemas are supplied only to the Swagger transform through route c
 | [nginx/default.conf](nginx/default.conf) | `conf.d/default.conf` (replace) | Complete file. Ports 80 and 443 for `wid.io.kr` and `api.dearby.wid.io.kr`. The unused `dearby.wid.io.kr`/`dev.dearby.wid.io.kr` blocks are removed: nothing listens on upstream 3000/3001, their DNS points to Vercel and the certificate does not list them. Their port-80 requests now fall to the `wid.io.kr` default server. |
 | [nginx/dearby-api/api.locations.conf](nginx/dearby-api/api.locations.conf) | `conf.d/dearby-api/api.locations.conf` | Public API surface included by both HTTPS hosts. It has the read-only `/docs/`, catalog GET/HEAD, public card **and share** GET/HEAD, and guest cards/**shares**/session. Everything else under `/v1` is 404, including `/v1/auth/*`, `/v1/profile`, the card collection, share creation, wallet and exchanges (to be opened separately after #89). |
 | [nginx/dearby-api/handoff.locations.conf](nginx/dearby-api/handoff.locations.conf) | `conf.d/dearby-api/handoff.locations.conf` | **Stage 2.** POST `/v1/guest/handoffs` and `/v1/guest/handoffs/redeem` with the same guest header handling. Its `include` line in `api.locations.conf` stays commented out until the PR #110 API image is deployed. |
-| [nginx/default.conf.diff](nginx/default.conf.diff) | — | Review diff: production file to stage 1, with the include expanded. |
 
 The snippets live in `conf.d/dearby-api/`, so the `conf.d/*.conf` glob never loads them as standalone files; the existing `conf.d` mount already covers that directory. Compared with production, the only change to an existing route is that catalog now also strips the `X-Guest-*` headers; the API ignores them there. The previous single-purpose snippets (`nginx-catalog`, `nginx-web-guest`, `nginx-docs`, `nginx-api-domain`) are replaced by these files.
 
@@ -122,3 +121,47 @@ Apply in order:
 Port 80: `wid.io.kr` and `api.dearby.wid.io.kr` redirect 308 to their own https host, keeping the query string, and serve the acme file with 200. The removed `dearby`/`dev.dearby` names now get 308 to `https://wid.io.kr` on port 80 and the `wid.io.kr` default on 443.
 
 Headers: the upstream never received Authorization or Cookie. Catalog, public share and `/docs/` received no `X-Guest-*`, while guest shares and handoff redeem received `X-Guest-Proxy-Key` and `X-Guest-Token`.
+
+## Member routes (#88) — prepared, not applied
+
+[nginx/dearby-api/member.locations.conf](nginx/dearby-api/member.locations.conf) opens the native-v1 member routes on both hosts. Its `include` line in `api.locations.conf` stays commented out until main applies it, and must stay above the public card regex: nginx tries regex locations in order, and the member card location also serves `DELETE /v1/cards/:id`.
+
+| Route | Methods |
+| --- | --- |
+| `/v1/auth/challenges`, `/v1/auth/sessions` | POST |
+| `/v1/auth/session` | DELETE |
+| `/v1/profile` | GET/HEAD, PUT |
+| `/v1/cards` | GET/HEAD, POST |
+| `/v1/cards/:id` | GET/HEAD (public), DELETE (owner) |
+| `/v1/cards/:id/shares` | POST |
+| `/v1/wallet` | GET/HEAD |
+| `/v1/wallet/import` | POST |
+
+Other methods return 405. `/v1/exchanges` and any other `/v1` path stay 404. [member.proxy.conf](nginx/dearby-api/member.proxy.conf) is shared by these locations:
+- `Authorization` is forwarded only here.
+- `Cookie` and `X-Guest-*` are cleared.
+- `X-Forwarded-For` is overwritten with `$remote_addr`.
+- The body limit is 64 KiB, matching the API.
+- Read timeout is 30 s, because a code request waits for SMTP.
+
+With the stage enabled, the public `GET /v1/cards/:id` also receives `Authorization`; the API ignores it on that route.
+
+### Abuse limits and client IP
+
+OrbStack replaces every client's source address with its gateway, in both bridge and host networking (main's test, 2026-10-06). Neither nginx nor the API (`trustProxy=false`) can see real client IPs, so there is **no per-IP limit** at either layer. A per-IP `limit_req` would have acted as one service-wide bucket, so none is configured.
+
+Code limits are enforced by the API in the database (#131):
+- Per normalized email: 1 send per minute, 5 per hour, 10 per day.
+- Service-wide: 100 sends per hour and 400 per day, below a personal Gmail sender's ~500/day.
+- Verification: 5 guesses per code, and 600 verifications per minute service-wide.
+
+A single client can still fill the service-wide caps with random addresses. That fails as denial of new codes, not as bypass. CAPTCHA or app attestation would be a separate decision.
+
+The public card and share location forwards a client-supplied `X-Forwarded-For` unchanged; it is harmless while `trustProxy` stays `false`.
+
+Local verification (temporary containers only; self-signed certificate and stub upstream; production never contacted):
+- `nginx -t` succeeded with the stage off (current production) and on.
+- With the stage on, each route above returned the stub's 200 for its contract methods and 405 otherwise. `POST /v1/exchanges` and unknown `/v1/auth/*` returned 404.
+- With the stage off, every member route returned 404 and public `DELETE /v1/cards/:id` returned 405.
+- The upstream received `Authorization` on member routes only (plus public card GET), never `Cookie` or `X-Guest-*`, and `X-Forwarded-For` was replaced by the peer address.
+- After dropping `limit_req`, `nginx -t` passed again for the stage off and on. The same routes returned the same codes, and 20 rapid code requests all reached the upstream (limits are the API's job).

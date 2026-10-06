@@ -4,7 +4,8 @@ import type { DB } from './database.js';
 
 const time = z.iso.datetime({offset:true});
 const url = z.url({protocol:/^https?$/});
-export const organizationSchema = z.strictObject({id:z.uuid(), name:z.string(), description:z.string()});
+// parentId is always present in responses; snapshots published before the hierarchy omit it and mean top level.
+export const organizationSchema = z.strictObject({id:z.uuid(), name:z.string(), description:z.string(), parentId:z.uuid().nullable().default(null)});
 export const programSchema = z.strictObject({id:z.uuid(), organizationId:z.uuid(), title:z.string(), description:z.string()});
 export const scheduleSchema = z.strictObject({id:z.uuid(), title:z.string(), startAt:time.nullable(), endAt:time.nullable(), dateLabel:z.string(), timeZone:z.string()});
 export const activitySchema = z.strictObject({
@@ -21,7 +22,7 @@ export type Activity = z.infer<typeof activitySchema>;
 export type Organization = z.infer<typeof organizationSchema>;
 export type Program = z.infer<typeof programSchema>;
 export type Catalog = z.infer<typeof catalogSchema>;
-export type SourceRecord = {organization:Organization; program:Program; activity:Activity};
+export type SourceRecord = {organization:z.input<typeof organizationSchema>; program:Program; activity:Activity};
 export const verificationLifetime = 24 * 60 * 60 * 1000;
 
 // UUIDv5 DNS namespace. Slugs are source identities, never titles or refresh timestamps.
@@ -39,10 +40,14 @@ export function atTime(activity:Activity, now:number, failed=false):Activity {
   const until = activity.validUntil === null ? NaN : Date.parse(activity.validUntil);
   const verified = activity.freshness === 'verified' && !failed && checked <= now && now < until && until <= checked + verificationLifetime;
   const freshness = failed ? 'unavailable' : verified ? 'verified' : activity.freshness === 'unavailable' ? 'unavailable' : 'stale';
+  // The verified recruitment window decides the status; the selected status applies only without dates (2026-10-06).
+  // A selected 'closed' always wins (early close). Start is inclusive, end exclusive.
+  const start = activity.recruitmentStartAt, end = activity.recruitmentEndAt;
   let recruitmentStatus = activity.recruitmentStatus;
-  if (activity.recruitmentEndAt !== null && now >= Date.parse(activity.recruitmentEndAt)) recruitmentStatus = 'closed';
-  else if (freshness !== 'verified') recruitmentStatus = recruitmentStatus === 'closed' ? 'closed' : 'unknown';
-  else if (activity.recruitmentStartAt !== null && now < Date.parse(activity.recruitmentStartAt) && recruitmentStatus === 'open') recruitmentStatus = 'scheduled';
+  if (recruitmentStatus === 'closed' || (end !== null && now >= Date.parse(end))) recruitmentStatus = 'closed';
+  else if (freshness !== 'verified') recruitmentStatus = 'unknown';
+  else if (start !== null && now < Date.parse(start)) recruitmentStatus = 'scheduled';
+  else if (start !== null || end !== null) recruitmentStatus = 'open';
   const isRecruiting = freshness === 'verified' && recruitmentStatus === 'open';
   return {...activity, freshness, recruitmentStatus, isRecruiting,
     sourceNote:activity.sourceNote + (failed ? ' 현재 공식 안내를 다시 확인할 수 없어 마지막 확인 내용을 표시합니다.' : '')};
