@@ -1,11 +1,19 @@
+import Foundation
 import Observation
 
 @MainActor @Observable final class CatalogViewModel {
     let activities = DemoActivities.all
-    var savedIDs: Set<String> = []
-    var savedOrganization = false
-    func toggleSaved(_ id: String) {
-        if !savedIDs.insert(id).inserted { savedIDs.remove(id) }
+    var appliedIDs = DemoActivities.appliedIDs
+    // The user's own participation mark, not an organizer confirmation.
+    var confirmedIDs: Set<String> = []
+    var appliedActivities: [ActivityModel] {
+        activities.filter { appliedIDs.contains($0.id) }
+            .sorted { ($0.schedules.first?.start ?? .distantFuture) < ($1.schedules.first?.start ?? .distantFuture) }
     }
-    var appliedIDs: Set<String> = []
+    func apply(_ id: String, _ value: Bool) {
+        if value { appliedIDs.insert(id) } else { appliedIDs.remove(id); confirmedIDs.remove(id) }
+    }
+    func confirm(_ id: String, _ value: Bool) {
+        if value && appliedIDs.contains(id) { confirmedIDs.insert(id) } else { confirmedIDs.remove(id) }
+    }
 }
