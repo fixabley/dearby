@@ -22,6 +22,9 @@ class CatalogViewModel(private val fetch: suspend () -> List<ActivityModel>) : V
     private val mutable = MutableStateFlow(CatalogState())
     val state = mutable.asStateFlow()
     private var schedules: Map<String, List<ScheduleModel>> = emptyMap()
+    private var opened: String? = null
+    private var leftApp = false
+    private val neverAsk = mutableSetOf<String>()
 
     suspend fun load() {
         mutable.update { it.copy(phase = CatalogPhase.LOADING) }
@@ -41,6 +44,31 @@ class CatalogViewModel(private val fetch: suspend () -> List<ActivityModel>) : V
     fun schedules(id: String) = schedules[id].orEmpty()
     fun filter(value: String) { require(value in listOf("전체", "바로 신청", "선발형")); mutable.update { it.copy(filter = value) } }
     fun apply(id: String, value: Boolean) = update(id) { it.copy(applied = value, confirmed = value && it.confirmed) }
+    /** An application link for [id] was handed to the browser. Applied or "never ask" activities are not asked. */
+    fun openedApplication(id: String) {
+        if (state.value.activities.any { it.id == id && it.applied } || id in neverAsk) return
+        opened = id
+        leftApp = false
+    }
+    /** The app went to the background, e.g. because the browser opened. */
+    fun appLeft() { if (opened != null) leftApp = true }
+    /** The app is in front again: ask about the last opened application, once. */
+    fun appReturned() {
+        val id = opened?.takeIf { leftApp } ?: return
+        opened = null
+        leftApp = false
+        mutable.update { it.copy(askingId = id) }
+    }
+    enum class ApplyAnswer { APPLIED, NOT_YET, NEVER_ASK }
+    fun answer(answer: ApplyAnswer) {
+        val id = state.value.askingId ?: return
+        mutable.update { it.copy(askingId = null) }
+        when (answer) {
+            ApplyAnswer.APPLIED -> apply(id, true)
+            ApplyAnswer.NOT_YET -> Unit
+            ApplyAnswer.NEVER_ASK -> neverAsk += id
+        }
+    }
     fun confirm(id: String, value: Boolean) = update(id) { it.copy(confirmed = it.applied && value) }
     private fun update(id: String, change: (ActivityState) -> ActivityState) {
         mutable.update { state -> state.copy(activities = state.activities.map { if (it.id == id) change(it) else it }) }

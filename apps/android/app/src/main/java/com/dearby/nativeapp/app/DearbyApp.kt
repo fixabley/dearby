@@ -72,6 +72,29 @@ private sealed interface CardRoute {
             }
         }
     }
+    // Contract #148 "신청 확인": ask once when the app comes back from the official application page.
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycle) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            when (event) {
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> catalog.appLeft()
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> catalog.appReturned()
+                else -> Unit
+            }
+        }
+        lifecycle.lifecycle.addObserver(observer)
+        onDispose { lifecycle.lifecycle.removeObserver(observer) }
+    }
+    val catalogState by catalog.state.collectAsStateWithLifecycle()
+    catalogState.asking?.let { asking ->
+        AlertDialog(onDismissRequest = { catalog.answer(CatalogViewModel.ApplyAnswer.NOT_YET) }, title = { Text("신청하셨나요?") },
+            text = { Text("${asking.title}\n신청했다고 표시하면 내 활동에 모아 보여 줘요. 주최 측 접수 확인은 아니에요.") },
+            confirmButton = { Column(horizontalAlignment = Alignment.End) {
+                TextButton({ catalog.answer(CatalogViewModel.ApplyAnswer.APPLIED) }) { Text("신청했어요") }
+                TextButton({ catalog.answer(CatalogViewModel.ApplyAnswer.NOT_YET) }) { Text("아직이에요") }
+                TextButton({ catalog.answer(CatalogViewModel.ApplyAnswer.NEVER_ASK) }) { Text("다시 묻지 않기") }
+            } })
+    }
     notice?.let { value -> AlertDialog(onDismissRequest = { notice = null }, title = { Text("안내") }, text = { Text(value) }, confirmButton = { TextButton({ notice = null }) { Text("확인") } }) }
     preview?.let { card -> Dialog({ preview = null }) { Surface { Column(Modifier.padding(12.dp)) { CardContent(card, Modifier.heightIn(max = 540.dp), contact, expanded = true); TextButton({ preview = null }) { Text("닫기") } } } } }
 }
