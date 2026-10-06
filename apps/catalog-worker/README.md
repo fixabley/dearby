@@ -63,6 +63,7 @@ node --test apps/catalog-worker/test/queue.integration.mjs
 ```sh
 cd apps/catalog-worker
 # Node 24로 실행: 설치 시 현재 node와 codex 절대 경로를 plist에 고정한다.
+# Homebrew Cellar 경로는 brew upgrade 후 사라지므로 /opt/homebrew/opt/<formula>/bin/node 링크로 바꿔 고정한다(node@24 formula 권장).
 node scripts/launchd.mjs install
 node --env-file=.env.local scripts/schedule.mjs on
 node scripts/launchd.mjs status
