@@ -28,7 +28,7 @@ struct QRCameraView: UIViewRepresentable {
 
     final class PreviewView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
-        var preview: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
+        var preview: AVCaptureVideoPreviewLayer? { layer as? AVCaptureVideoPreviewLayer }
     }
     final class Coordinator: NSObject, AVCaptureMetadataOutputObjectsDelegate, @unchecked Sendable {
         private let session = AVCaptureSession()
@@ -45,8 +45,8 @@ struct QRCameraView: UIViewRepresentable {
             session.addOutput(output)
             output.setMetadataObjectsDelegate(self, queue: .main)
             output.metadataObjectTypes = [.qr]
-            view.preview.session = session
-            view.preview.videoGravity = .resizeAspectFill
+            view.preview?.session = session
+            view.preview?.videoGravity = .resizeAspectFill
             // startRunning blocks, so it stays off the main thread.
             DispatchQueue.global(qos: .userInitiated).async { self.session.startRunning() }
         }
