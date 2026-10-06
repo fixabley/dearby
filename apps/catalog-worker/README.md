@@ -21,7 +21,7 @@ Supabase `pg_cron`이 한국 시간 매일 09:00에 수집 ON 프로그램별 �
 - 공식 원문을 위와 같은 경계로 받는다. 비교 전 마크다운 기호를 정규화한 구절이 본문에 있으면 `reverify_catalog_activity`가 24시간 연장한다. `updated_at`은 유지하고 감사 로그에 `reverify`를 남긴다.
 - 실패하면 사유만 `catalog_activity_evidence.last_error`에 남기고 활동은 자연 만료된다. 본문 없음(JS 렌더링 추정)·3 MB 초과·호스트 밖은 `BLOCKED:`로 표시되며 관리자가 직접 확인해야 한다. 일시적 실패는 1시간 뒤 다시 시도한다.
 - 구절 존재는 관리자가 확인한 내용 중 그 구절이 아직 원문에 있다는 뜻일 뿐, 모집 상태 전체를 다시 확인한 것은 아니다(2026-10-06 사용자 결정으로 B안 채택).
-- `node --env-file=.env.local src/worker.mjs --reverify`는 재확인만 하고 끝난다. 재확인 함수 migration(`20261006000000_catalog_reverify`)이 적용되기 전에는 매 실행마다 `Re-verification failed`를 기록하므로, 배포는 migration을 먼저 적용한 뒤 진행한다.
+- `node --env-file=.env.local src/worker.mjs --reverify`는 재확인만 하고 끝난다. 재확인 함수 migration(`20261006005000_catalog_reverify`)이 적용되기 전에는 매 실행마다 `Re-verification failed`를 기록하므로, 배포는 migration을 먼저 적용한 뒤 진행한다.
 
 ## 원문 검증 경계
 
