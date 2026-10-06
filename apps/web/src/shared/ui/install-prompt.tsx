@@ -23,7 +23,7 @@ export function InstallPrompt({
       <div className={styles.body}>
         <strong>홈 화면에서 바로 열기</strong>
         {platform === "android" ? (
-          <p>저장한 명함을 앱처럼 열 수 있어요.</p>
+          <p>저장한 명함을 홈 화면에서 바로 열 수 있어요.</p>
         ) : (
           <p>
             Safari의{" "}
