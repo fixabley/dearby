@@ -270,7 +270,7 @@ export async function prepareCollection(
 // Same-day retries cannot fix these: the page shape or host list needs an operator.
 // BLOCKED stops today's retries; the global pause only applies to subscription errors.
 const structural = (reason) =>
-  /exceeds 1 MB|configured official HTTPS host|did not resolve to a public address/.test(
+  /Official page exceeds|configured official HTTPS host|did not resolve to a public address/.test(
     reason,
   );
 function stableScheduleId(source, occurrence) {

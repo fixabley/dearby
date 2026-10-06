@@ -128,7 +128,7 @@ test("prompt binds untrusted program data and known rounds", () => {
 test("structural source failures block today's retries; quote or transient failures stay retryable", async () => {
   const opts = (fetchPage) => ({ fetchPage, now: new Date("2026-09-29T00:00:00Z") });
   const tooLarge = async () => {
-    throw new Error("Official page exceeds 1 MB");
+    throw new Error("Official page exceeds 3 MB");
   };
   const empty = {
     outcome: "no_current_activity",
@@ -139,7 +139,7 @@ test("structural source failures block today's retries; quote or transient failu
     prepareCollection({ outcome: "source_unavailable", summary: "JS only", activities: [] }, hosts, opts(fetchPage)),
     /^Error: BLOCKED: Official source unavailable: JS only/,
   );
-  await assert.rejects(prepareCollection(empty, hosts, opts(tooLarge)), /^Error: BLOCKED: Official page exceeds 1 MB/);
+  await assert.rejects(prepareCollection(empty, hosts, opts(tooLarge)), /^Error: BLOCKED: Official page exceeds 3 MB/);
   await assert.rejects(
     prepareCollection(empty, hosts, opts(async () => { throw new Error("Official page deadline exceeded"); })),
     /^Error: Official page deadline exceeded/,
