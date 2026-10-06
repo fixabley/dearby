@@ -61,7 +61,8 @@
     "CardComposerContact",
     "CardComposerHistory",
     "AccountViewModel",
-    "CardComposerPage"
+    "CardComposerPage",
+    "QRShareModel"
   ],
   "entities/account": [
     "AccountSession",

@@ -29,6 +29,8 @@ struct AppOrigins: Equatable {
 
 /// Shared-card links: exactly `<web origin>/s/<UUID>` → lower-case share ID; query, fragment or anything else is ignored.
 enum SharedCardLink {
+    /// The link a share's QR carries: `<web origin>/s/<share ID>`.
+    static func url(shareID: String, web: URL) -> URL { web.appending(path: "s/\(shareID)") }
     static func shareID(from url: URL, web: URL) -> String? {
         guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false),
               parts.scheme == web.scheme, parts.host?.lowercased() == web.host, parts.port == web.port,
