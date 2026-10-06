@@ -91,23 +91,25 @@ struct HistoryPeriodFields: View {
                 Text(Self.period(start: start, end: ongoing ? nil : end, ongoing: ongoing))
                     .font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(start == nil ? DearbyStyle.quiet : DearbyStyle.ink)
             }.accessibilityElement(children: .combine)
-            dateRow("시작일", required: true, date: $start)
+            dateRow("시작일", required: true, date: $start, earliest: nil)
             Toggle("진행 중", isOn: $ongoing).font(.dearby(.subheadline)).tint(DearbyStyle.teal).frame(minHeight: 44)
-            if !ongoing { dateRow("종료일", required: false, date: $end) }
+            if !ongoing { dateRow("종료일", required: false, date: $end, earliest: start) }
             if let error { DearbyFieldError(text: error) }
         }
     }
-    @ViewBuilder private func dateRow(_ label: String, required: Bool, date: Binding<Date?>) -> some View {
+    /// `earliest`가 있으면(종료일) 그보다 앞선 날을 고를 수 없다.
+    @ViewBuilder private func dateRow(_ label: String, required: Bool, date: Binding<Date?>, earliest: Date?) -> some View {
         HStack {
             Text(label).font(.dearby(.subheadline))
             if required { Text("필수").font(.dearby(.caption2).weight(.bold)).foregroundStyle(DearbyStyle.danger) }
             Spacer()
             if let value = date.wrappedValue {
-                DatePicker(label, selection: Binding(get: { value }, set: { date.wrappedValue = $0 }), displayedComponents: .date)
+                DatePicker(label, selection: Binding(get: { value }, set: { date.wrappedValue = $0 }),
+                           in: (earliest ?? .distantPast)..., displayedComponents: .date)
                     .labelsHidden().environment(\.locale, Locale(identifier: "ko_KR")).tint(DearbyStyle.teal)
                     .accessibilityLabel(required ? "\(label), 필수" : label)
             } else {
-                Button("날짜 선택") { date.wrappedValue = .now }.font(.dearby(.subheadline).weight(.semibold))
+                Button("날짜 선택") { date.wrappedValue = max(.now, earliest ?? .distantPast) }.font(.dearby(.subheadline).weight(.semibold))
                     .foregroundStyle(DearbyStyle.teal).frame(minHeight: 44).accessibilityLabel("\(label) 선택\(required ? ", 필수" : "")")
             }
         }.frame(minHeight: 44)

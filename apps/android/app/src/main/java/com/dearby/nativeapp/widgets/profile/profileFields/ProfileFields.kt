@@ -2,6 +2,7 @@ package com.dearby.nativeapp.widgets.profile.profileFields
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -96,16 +97,22 @@ val ProfileContactKinds = listOf(
             Text(historyPeriod(start, if (ongoing) null else end, ongoing), color = if (start == null) Quiet else MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
         }
         DateRow("시작일", required = true, value = start) { picking = "start" }
-        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+        // 글자를 눌러도 바뀌도록 줄 전체를 하나의 스위치로 만든다.
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(ongoing, role = Role.Switch, onValueChange = onOngoingChange), verticalAlignment = Alignment.CenterVertically) {
             Text("진행 중", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            Switch(ongoing, onOngoingChange, Modifier.semantics { contentDescription = "진행 중" })
+            Switch(ongoing, null)
         }
         if (!ongoing) DateRow("종료일", required = false, value = end) { picking = "end" }
         error?.let { DearbyFieldError(it) }
     }
     picking?.let { which ->
         val initial = (if (which == "start") start else end ?: start)?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
-        val state = rememberDatePickerState(initialSelectedDateMillis = initial)
+        // 종료일은 시작일보다 앞선 날을 고를 수 없게 한다.
+        val earliest = if (which == "end") start?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli() else null
+        val state = rememberDatePickerState(initialSelectedDateMillis = initial, selectableDates = object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long) = earliest == null || utcTimeMillis >= earliest
+            override fun isSelectableYear(year: Int) = start == null || which != "end" || year >= start.year
+        })
         DatePickerDialog({ picking = null }, confirmButton = {
             TextButton({
                 state.selectedDateMillis?.let { millis ->

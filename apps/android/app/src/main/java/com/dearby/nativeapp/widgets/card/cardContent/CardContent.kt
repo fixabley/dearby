@@ -16,15 +16,17 @@ import com.dearby.nativeapp.shared.ui.*
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(state.person, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-                Text(state.job, Modifier.weight(1f), color = Quiet, style = MaterialTheme.typography.bodySmall)
-                if (titleBadge) ExampleBadge(state.title, true)
+                if (state.job.isNotBlank()) Text(state.job, Modifier.weight(1f), color = Quiet, style = MaterialTheme.typography.bodySmall)
+                if (titleBadge && state.title.isNotBlank()) ExampleBadge(state.title, true)
             }
             HorizontalDivider()
             Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(state.title, color = Teal, style = MaterialTheme.typography.titleLarge)
-                Text(state.description, color = Quiet, style = MaterialTheme.typography.bodyMedium)
-                if (expanded) Text(state.introduction, style = MaterialTheme.typography.bodyMedium)
-                HorizontalDivider()
+                // 프로필처럼 명함 이름·설명·소개가 없는 경우 빈 줄과 겹친 구분선을 그리지 않는다.
+                val showIntroduction = expanded && state.introduction.isNotBlank()
+                if (state.title.isNotBlank()) Text(state.title, color = Teal, style = MaterialTheme.typography.titleLarge)
+                if (state.description.isNotBlank()) Text(state.description, color = Quiet, style = MaterialTheme.typography.bodyMedium)
+                if (showIntroduction) Text(state.introduction, style = MaterialTheme.typography.bodyMedium)
+                if (state.title.isNotBlank() || state.description.isNotBlank() || showIntroduction) HorizontalDivider()
                 Text("연락처", style = MaterialTheme.typography.titleSmall, color = Quiet)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     state.contacts.forEach { contact -> TextButton({ onContact(contact) }, contentPadding = PaddingValues(0.dp)) {
