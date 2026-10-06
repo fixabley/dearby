@@ -1,19 +1,42 @@
 name: iOS TestFlight
 on:
-  push:
-    branches: [main]
-    paths:
-      - apps/ios/**
-      - shared/assets/**
-      - .github/workflows/ios-testflight.yml
+  # Daily 09:00 KST, only when iOS inputs changed since the last successful upload; or on demand.
+  schedule:
+    - cron: "0 0 * * *"
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: ios-testflight
   cancel-in-progress: true
 jobs:
+  # Cheap ubuntu gate so a scheduled day without iOS changes never starts a macOS runner.
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" != schedule ]; then echo "run=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          last=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ios-testflight.yml --status success --limit 1 --json headSha --jq '.[0].headSha // ""')
+          if [ -z "$last" ] || git diff --name-only "$last" HEAD | grep -qE '^(apps/ios/|shared/assets/)'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "No iOS changes since $last; skipping." >> "$GITHUB_STEP_SUMMARY"
+          fi
   testflight:
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
     runs-on: macos-26
     timeout-minutes: 60
     env:
