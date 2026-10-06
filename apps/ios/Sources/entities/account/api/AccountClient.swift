@@ -2,7 +2,9 @@ import Foundation
 
 enum AccountError: Error, Equatable {
     /// `invalidContacts`: the profile's required phone or email is missing or malformed (422 "Invalid contacts").
-    case unauthorized, invalidInput, invalidContacts, notFound, rateLimited, unavailable
+    /// `ownCard`: the share points at the signed-in account's own card (422 INVALID_RECIPIENT).
+    /// `conflict`: a card already holds the most share links (409).
+    case unauthorized, invalidInput, invalidContacts, ownCard, notFound, conflict, rateLimited, unavailable
 }
 
 /// Owner API (contract native-v1): email code sign-in, profile and card publishing.
@@ -45,6 +47,14 @@ struct AccountClient: Sendable {
     func share(_ cardID: String, activityIds: [String], _ session: AccountSession) async throws -> CardShare {
         try await send("cards/\(cardID)/shares", method: "POST", body: ["activityIds": activityIds], session: session, as: CardShare.self)
     }
+    /// Saves a received share to the account's wallet (contract #141).
+    func saveShare(_ id: String, _ session: AccountSession) async throws -> SavedShare {
+        // An explicit empty JSON body: some HTTP stacks send a PUT body the API rejects otherwise.
+        try await send("wallet/shares/\(id)", method: "PUT", body: [String: String](), session: session, as: SavedShare.self)
+    }
+    func wallet(_ session: AccountSession) async throws -> Wallet {
+        try await send("wallet", session: session, as: Wallet.self)
+    }
     /// Public: a share and its card, for links and scanned QR codes. No session.
     func publicShare(_ id: String) async throws -> ReceivedShare {
         try await send("shares/\(id)", as: ReceivedShare.self)
@@ -61,8 +71,8 @@ struct AccountClient: Sendable {
         let historyIds: [String]
     }
     private struct Challenge: Decodable { let challengeId: String }
+    private struct ErrorBody: Decodable { struct Detail: Decodable { let code: String?; let message: String? }; let error: Detail }
     private struct CardList: Decodable { let items: [PublishedCard] }
-    private struct ErrorBody: Decodable { struct Detail: Decodable { let message: String }; let error: Detail }
 
     private func send<Response: Decodable>(_ path: String, method: String = "GET", body: (any Encodable)? = nil,
                                            session: AccountSession? = nil, as type: Response.Type) async throws -> Response {
@@ -84,9 +94,11 @@ struct AccountClient: Sendable {
         case 200..<300: return data
         case 401: throw AccountError.unauthorized
         case 404: throw AccountError.notFound
+        case 409: throw AccountError.conflict
         case 422:
-            let body = try? JSONDecoder().decode(ErrorBody.self, from: data)
-            throw body?.error.message == "Invalid contacts" ? AccountError.invalidContacts : AccountError.invalidInput
+            let detail = (try? JSONDecoder().decode(ErrorBody.self, from: data))?.error
+            if detail?.code == "INVALID_RECIPIENT" { throw AccountError.ownCard }
+            throw detail?.message == "Invalid contacts" ? AccountError.invalidContacts : AccountError.invalidInput
         case 429: throw AccountError.rateLimited
         default: throw AccountError.unavailable
         }

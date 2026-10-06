@@ -22,13 +22,11 @@
     "DemoActivities"
   ],
   "entities/identity": [
-    "CardDeck",
     "CardModel",
     "CardView",
     "ContactIcons",
     "ContactModel",
     "ContactSymbol",
-    "DemoIdentity",
     "HistoryModel",
     "HistoryTimeline",
     "IdentityHeading",
@@ -81,7 +79,6 @@
     "CardComposerHistory",
     "CardComposerPage",
     "HistoryPeriodFields",
-    "IdentityViewModel",
     "ProfileContactFields",
     "ProfileEditPage",
     "ProfileExtraContact",
@@ -95,6 +92,7 @@
     "ReceivedCardRow",
     "ReceivedShareModel",
     "ReceivedSharePage",
+    "WalletModel",
     "WalletPage"
   ]
 }

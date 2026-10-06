@@ -11,17 +11,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dearby.nativeapp.pages.wallet.SendPage
-import com.dearby.nativeapp.pages.wallet.SharedCardPage
-import com.dearby.nativeapp.pages.wallet.WalletPage
+import com.dearby.nativeapp.pages.qr.ReceivedPhase
+import com.dearby.nativeapp.pages.qr.ReceivedSharePage
+import com.dearby.nativeapp.pages.qr.ReceivedShareState
 import com.dearby.nativeapp.entities.account.model.ScannedLink
 import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.activity.applyPrompt.ApplyConfirmationSheet
-import com.dearby.nativeapp.widgets.card.cardContent.CardContent
 import com.dearby.nativeapp.widgets.card.cardContent.CardState
-import com.dearby.nativeapp.widgets.card.cardContent.ContactState
 
 private enum class Tab(val label: String, val icon: ImageVector) {
     Discovery("발견", Icons.Outlined.Explore), Mine("내 활동", Icons.Outlined.EventAvailable),
@@ -29,21 +26,18 @@ private enum class Tab(val label: String, val icon: ImageVector) {
 }
 private sealed interface CardRoute {
     data class Detail(val card: CardState) : CardRoute
-    data class Send(val recipient: CardState) : CardRoute
     data object Composer : CardRoute
     data class Received(val link: ScannedLink) : CardRoute
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun DearbyApp(catalog: CatalogViewModel, demo: DemoViewModel, account: AccountViewModel, publish: CardPublishViewModel, qrShare: QrShareViewModel, profile: ProfileViewModel, incoming: ScannedLink? = null, opened: () -> Unit = {}) {
-    val state by demo.state.collectAsStateWithLifecycle()
+@Composable fun DearbyApp(catalog: CatalogViewModel, account: AccountViewModel, publish: CardPublishViewModel, qrShare: QrShareViewModel, wallet: WalletViewModel, profile: ProfileViewModel, incoming: ScannedLink? = null, opened: () -> Unit = {}) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     var route by remember { mutableStateOf<CardRoute?>(null) }
     var catalogDetail by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<String?>(null) }
-    var preview by remember { mutableStateOf<CardState?>(null) }
-    val contact: (ContactState) -> Unit = { notice = "${it.label}\n${it.value}\n예시 연락처입니다." }
-    BackHandler(route != null && route != CardRoute.Composer && route !is CardRoute.Received && preview == null) { route = null }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    BackHandler(route != null && route != CardRoute.Composer && route !is CardRoute.Received) { route = null }
     val compose = { publish.start(); route = CardRoute.Composer }
     // A /s/<UUID> App Link opens the shared card over whatever is showing.
     LaunchedEffect(incoming) { incoming?.let { route = CardRoute.Received(it); opened() } }
@@ -51,12 +45,9 @@ private sealed interface CardRoute {
         Column(Modifier.statusBarsPadding().navigationBarsPadding()) {
             Box(Modifier.weight(1f)) {
                 when (val screen = route) {
-                    is CardRoute.Detail -> SharedCardPage(screen.card, state.wallet.any { it.card.id == screen.card.id }, { route = null }, { demo.saveCard(screen.card) }, { route = CardRoute.Send(screen.card) }, contact)
-                    is CardRoute.Send -> SendPage(state.cards, screen.recipient.person, { id ->
-                        demo.send(id, screen.recipient); route = null; tab = Tab.Wallet; notice = "명함을 건네는 예시를 확인했어요.\n실제 전송은 하지 않았어요."
-                    }, { route = null }, { preview = it }, contact)
+                    is CardRoute.Detail -> ReceivedSharePage(ReceivedShareState(ReceivedPhase.LOADED, screen.card), { route = null }, {}, { openContact(context, it) })
                     CardRoute.Composer -> CardComposerRoute(publish, account) { route = null }
-                    is CardRoute.Received -> ReceivedShareRoute(screen.link, account.client) { route = null }
+                    is CardRoute.Received -> ReceivedShareRoute(screen.link, account) { route = null }
                     null -> when (tab) {
                         Tab.Discovery, Tab.Mine -> Column {
                             if (!catalogDetail) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -65,7 +56,7 @@ private sealed interface CardRoute {
                             key(tab) { CatalogRoute(catalog, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }) { catalogDetail = it } }
                         }
                         Tab.Qr -> QrRoute(qrShare, catalog, compose) { route = CardRoute.Received(it) }
-                        Tab.Wallet -> WalletPage(state.wallet, state.query, state.reciprocalGroup, demo::query, demo::group, { route = CardRoute.Detail(it) }, { route = CardRoute.Send(it) }, contact)
+                        Tab.Wallet -> WalletRoute(wallet, account) { route = CardRoute.Detail(it) }
                         Tab.Profile -> ProfileRoute(profile, account, compose)
                     }
                 }
@@ -99,5 +90,4 @@ private sealed interface CardRoute {
         }
     }
     notice?.let { value -> AlertDialog(onDismissRequest = { notice = null }, title = { Text("안내") }, text = { Text(value) }, confirmButton = { TextButton({ notice = null }) { Text("확인") } }) }
-    preview?.let { card -> Dialog({ preview = null }) { Surface { Column(Modifier.padding(12.dp)) { CardContent(card, Modifier.heightIn(max = 540.dp), contact, expanded = true); TextButton({ preview = null }) { Text("닫기") } } } } }
 }

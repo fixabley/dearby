@@ -51,6 +51,28 @@ struct CardShare: Decodable, Equatable, Sendable {
     let activities: [ShareActivity]
     let createdAt: String
 }
+/// `GET /v1/wallet` (contract #141): the cards saved to the account and the shares they came with.
+struct Wallet: Decodable, Equatable, Sendable {
+    struct Receipt: Decodable, Equatable, Identifiable, Sendable {
+        let id: String
+        let card: PublishedCard
+        let receivedAt: String
+    }
+    struct Share: Decodable, Equatable, Sendable {
+        let receiptId: String
+        let cardId: String
+        let shareId: String
+        let activities: [ShareActivity]
+        let savedAt: String
+    }
+    let items: [Receipt]
+    let shares: [Share]
+}
+/// `PUT /v1/wallet/shares/:id`: `saved` when the card or this share is new, `alreadySaved` otherwise.
+struct SavedShare: Decodable, Equatable, Sendable {
+    let cardId: String
+    let status: String
+}
 /// `GET /v1/shares/:id`: a share and the public card it points at.
 struct ReceivedShare: Decodable, Equatable, Sendable {
     let share: CardShare
