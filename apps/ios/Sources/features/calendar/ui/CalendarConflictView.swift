@@ -5,6 +5,7 @@ struct CalendarConflictView: View {
     @State private var detent = PresentationDetent.large
     @Environment(\.dismiss) private var dismiss
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.openURL) private var openURL
     init(schedules: [ActivityScheduleModel]) {
         _state = State(initialValue: CalendarConflictState(schedules: schedules))
     }
@@ -22,17 +23,19 @@ struct CalendarConflictView: View {
     private var selection: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    Text("예시 바쁜 시간만 비교해요. 실제 캘린더를 읽거나 권한을 요청하지 않아요.")
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("이 활동 일정과 내 캘린더 일정이 겹치는지 기기 안에서만 비교해요. 일정을 저장하거나 보내지 않고, 캘린더에 쓰지 않아요.")
                         .font(.subheadline).foregroundStyle(.secondary)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("비교할 캘린더").font(.headline)
-                        Toggle("예시 캘린더", isOn: $state.selected).frame(minHeight: 44)
-                        Text("2026년 10월 24일 14:00~15:00 · Asia/Seoul")
-                            .font(.caption).foregroundStyle(.secondary)
-                        if !state.selected { Text("비교할 캘린더를 하나 이상 선택해 주세요.").font(.caption) }
-                        Button("선택한 캘린더로 확인") { state.compare() }
-                            .buttonStyle(DearbyButtonStyle()).disabled(!state.selected)
+                    if state.phase == .denied {
+                        Text("캘린더 접근이 꺼져 있어요").font(.headline)
+                        Text("설정에서 Dearby의 캘린더 접근을 켜면 겹치는 시간을 확인할 수 있어요. 신청은 그대로 할 수 있어요.")
+                            .font(.subheadline)
+                        Button("설정 열기") { if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) } }
+                            .buttonStyle(DearbyButtonStyle(outlined: true))
+                    } else {
+                        Button { Task { await state.compare() } } label: {
+                            if state.phase == .checking { ProgressView().tint(.white) } else { Text("내 캘린더로 확인") }
+                        }.buttonStyle(DearbyButtonStyle()).disabled(state.phase == .checking)
                     }
                 }.padding(20)
             }
@@ -55,15 +58,13 @@ struct CalendarConflictView: View {
                             .font(.subheadline)
                         CalendarTimelineView(item: item).padding(.top, 4)
                     } else {
-                        Label("예시 캘린더와 겹치는 시간이 없어요", systemImage: "checkmark.circle")
+                        Label("내 캘린더와 겹치는 시간이 없어요", systemImage: "checkmark.circle")
                             .font(.title3.bold()).padding(.vertical, 32)
-                        Text("고정 예시 기준이며 실제 개인 일정과는 무관해요.")
-                            .font(.subheadline).foregroundStyle(.secondary)
                     }
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(20)
             }
             VStack(spacing: 12) {
-                Label("예시 일정 · 실제 캘린더를 읽거나 변경하지 않아요.", systemImage: "info.circle")
+                Label("기기 안에서만 비교했고 일정을 저장하거나 보내지 않아요.", systemImage: "info.circle")
                     .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
                 Button("확인했어요") {
                     if !state.advance() { dismiss() }

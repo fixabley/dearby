@@ -30,28 +30,41 @@ struct CalendarOverlapState: Identifiable {
     }
 }
 
+/// Compares an activity's sessions with the device calendar's busy times, on the device only.
 @MainActor @Observable final class CalendarConflictState {
-    // 2026-10-24 14:00–15:00 Asia/Seoul, fixed independently of the device calendar.
-    static let exampleBusy = DateInterval(start: Date(timeIntervalSince1970: 1_792_818_000), duration: 3_600)
+    enum Phase: Equatable { case idle, checking, denied, compared }
     let schedules: [ActivityScheduleModel]
-    var selected = true {
-        didSet { compared = false; overlaps = []; index = 0 }
-    }
-    private(set) var compared = false
+    private(set) var phase = Phase.idle
     private(set) var overlaps: [CalendarOverlapState] = []
     var index = 0
-    init(schedules: [ActivityScheduleModel]) { self.schedules = schedules }
+    private let calendar: DeviceCalendar
+    init(schedules: [ActivityScheduleModel], calendar: DeviceCalendar = .live) {
+        self.schedules = schedules
+        self.calendar = calendar
+    }
+    var compared: Bool { phase == .compared }
     // False means the final result (including zero overlaps) should dismiss.
     func advance() -> Bool {
         guard index + 1 < overlaps.count else { return false }
         index += 1
         return true
     }
-    func compare() {
-        guard selected else { return }
-        overlaps = schedules.filter { CalendarOverlapState.matches($0, Self.exampleBusy) }
-            .map { CalendarOverlapState(id: $0.id, activity: $0, busy: Self.exampleBusy) }
+    /// Asks for calendar access (once, by the system) and compares every session with every busy time.
+    func compare() async {
+        let sessions = schedules.filter { $0.start < $0.end }
+        guard let first = sessions.map(\.start).min(), let last = sessions.map(\.end).max() else { return }
+        phase = .checking
+        guard await calendar.requestAccess() == .allowed else { phase = .denied; return }
+        let busy = await calendar.busy(DateInterval(start: first, end: last))
+        overlaps = Self.overlaps(sessions, busy)
         index = 0
-        compared = true
+        phase = .compared
+    }
+    /// Every (session, busy time) pair that shares time, in session then start order. Touching ends do not overlap.
+    static func overlaps(_ sessions: [ActivityScheduleModel], _ busy: [DateInterval]) -> [CalendarOverlapState] {
+        sessions.flatMap { session in
+            busy.filter { CalendarOverlapState.matches(session, $0) }.sorted { $0.start < $1.start }
+                .enumerated().map { CalendarOverlapState(id: "\(session.id)-\($0.offset)", activity: session, busy: $0.element) }
+        }
     }
 }

@@ -30,10 +30,10 @@ struct ActivityInformationView: View {
                     }.fixedSize(horizontal: false, vertical: true)
                 }
             }
-            // The overlap check stays an example and needs timed schedules.
+            // The device-calendar overlap check needs timed schedules (contract #148).
             if !sessions.isEmpty {
                 Button("겹치는 시간 확인하기", action: checkCalendar).buttonStyle(DearbyButtonStyle(outlined: true))
-                Text("예시 캘린더 일정과 비교해요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
+                Text("내 캘린더 일정과 기기 안에서만 비교해요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
                     .frame(maxWidth: .infinity)
             }
         }
