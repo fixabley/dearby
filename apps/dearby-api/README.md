@@ -62,6 +62,10 @@ See [deployment runbook](deploy/README.md) for the isolated Docker service, leas
 
 The [web guest contract](../../shared/contracts/native-v1.md#웹-비로그인-명함-저장--2026-09-29-승인) defines a separate digest-authenticated store of public card IDs. Guest sessions are created atomically on the first valid save and never expire automatically. The trusted Next proxy owns cookie/CSRF behavior; `GUEST_PROXY_SECRET` must be configured privately at deployment, otherwise guest requests fail closed. Private profiles/member wallets remain protected. See the deployment runbook for capacity, ingress and rollout conditions.
 
+## Card shares and guest share links
+
+The [share contract](../../shared/contracts/native-v1.md#명함-공유-기록과-게스트-공유-정보-저장--2026-10-06-승인) adds owner `POST /v1/cards/:id/shares` (0-10 current-catalog activities, title snapshot), public `GET /v1/shares/:id` and proxy `PUT /v1/guest/shares/:id`; `GET /v1/guest/cards` gains `shares`. Share links cascade with their saved guest card and session; max 20 links per saved card. Withdrawn cards make all their shares 404. DDL is `supabase/migrations/20261006000000_api_card_shares.sql`; test data for web is `test/fixtures/card-shares.json`. See [handoff](../../docs/context/api-card-shares.md).
+
 ## Swagger / OpenAPI
 
 Open `/docs/` on a permitted running API connection. Download `/docs/json` (OpenAPI 3.0.3) or `/docs/yaml`; the spec is generated from shared Zod contracts and route metadata, never maintained as a second JSON file. The UI is read-only, has no authorization controls, does not persist authorization, and uses local assets without an external validator. Never supply the trusted guest proxy secret to a browser.
