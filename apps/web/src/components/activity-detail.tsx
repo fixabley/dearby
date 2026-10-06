@@ -3,8 +3,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { type Catalog, isRecruiting, safeWebUrl } from "@/lib/models";
 import { errorMessage, request } from "@/lib/client";
-import { Failure, Loading } from "./states";
-import { Icon } from "./icon";
+import { Failure, Loading } from "@/shared/ui/states";
+import { Icon } from "@/shared/ui/icon";
 export function ActivityDetail({ id }: { id: string }) {
   const [catalog, setCatalog] = useState<Catalog>();
   const [error, setError] = useState("");
