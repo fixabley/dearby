@@ -158,7 +158,19 @@ test("activities show automatic re-check results and verification sends the evid
 
   // The period decides the status; the preview follows the inputs before saving.
   const preview = page.getByRole("status").filter({ hasText: "현재 상태" });
-  await expect(preview).toContainText("날짜 없음 · 선택한 상태 모집 중");
+  await expect(preview).toContainText("날짜 없음 · 모집 중");
+  // The selected value overlays the search input, so open the select box itself.
+  await page
+    .locator(".ant-select")
+    .filter({ has: page.getByRole("combobox", { name: "모집 상태" }) })
+    .click();
+  await expect(page.getByRole("option")).toHaveText([
+    "자동 (기간 기준)",
+    "상시 모집 중 (날짜 없음)",
+    "조기 마감",
+  ]);
+  await page.getByRole("option", { name: "자동 (기간 기준)" }).click();
+  await expect(preview).toContainText("날짜 없음 · 미확인");
   await page.getByLabel("모집 시작", { exact: true }).fill("2099-01-01T09:00");
   await expect(preview).toContainText("기간 기준 모집 예정");
   await page.screenshot({

@@ -252,7 +252,7 @@ export function ActivityEditor() {
     ? `기간 기준 ${recruitmentLabels[inferred.status]}`
     : inferred.status === "closed"
       ? "조기 마감 (관리자 선택)"
-      : `날짜 없음 · 선택한 상태 ${recruitmentLabels[inferred.status]}`;
+      : `날짜 없음 · ${recruitmentLabels[inferred.status]}`;
   const [loadedVersion, setLoadedVersion] = useState<string>();
   const [dirty, setDirty] = useState(false),
     [error, setError] = useState(""),
@@ -528,11 +528,19 @@ export function ActivityEditor() {
                 <Form.Item
                   label="모집 상태"
                   name="recruitment_status"
-                  extra="기간을 입력하면 기간이 상태를 정해요. 조기 마감은 기간과 관계없이 마감으로 표시돼요. 날짜가 없을 때만 선택한 상태를 그대로 써요."
+                  extra="보통은 자동을 두고 기간만 입력하세요. 조기 마감은 기간과 관계없이 마감으로 표시돼요. 상시 모집 중은 날짜가 없을 때만 의미가 있어요."
                 >
                   <Select
                     virtual={false}
-                    options={options(recruitmentLabels)}
+                    options={[
+                      { value: "unknown", label: "자동 (기간 기준)" },
+                      { value: "open", label: "상시 모집 중 (날짜 없음)" },
+                      { value: "closed", label: "조기 마감" },
+                      // Legacy value: shown so editing does not silently change it.
+                      ...(watched.recruitment_status === "scheduled"
+                        ? [{ value: "scheduled", label: "모집 예정 (기존 값)" }]
+                        : []),
+                    ]}
                   />
                 </Form.Item>
                 <p className="recruitment-preview" role="status">
