@@ -7,7 +7,6 @@ import androidx.compose.runtime.*
 import androidx.compose.material3.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dearby.nativeapp.features.calendar.BusyTimeState
 import com.dearby.nativeapp.features.calendar.CalendarConflictSheet
 import com.dearby.nativeapp.features.calendar.CalendarOverlapState
 import com.dearby.nativeapp.features.calendar.CalendarPhase
@@ -15,14 +14,12 @@ import com.dearby.nativeapp.features.calendar.calendarOverlaps
 import com.dearby.nativeapp.features.calendar.calendarWindows
 import com.dearby.nativeapp.features.calendar.deviceBusyTimes
 import com.dearby.nativeapp.entities.catalog.model.ScheduleModel
-import com.dearby.nativeapp.BuildConfig
 import android.Manifest
 import android.content.pm.PackageManager
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
-import java.time.Instant
 import com.dearby.nativeapp.pages.catalog.CatalogPage
 import com.dearby.nativeapp.pages.catalog.CatalogPhase
 import com.dearby.nativeapp.pages.catalog.ActivityDetailPage
@@ -56,13 +53,6 @@ import kotlinx.coroutines.launch
     }
     suspend fun checkCalendar(schedules: List<ScheduleModel>) {
         calendarPhase = CalendarPhase.CHECKING
-        ApiOrigin.debugCalendarBusy?.takeIf { BuildConfig.DEBUG }?.let { fixture ->
-            if (fixture == "denied") { calendarPhase = CalendarPhase.DENIED; return }
-            overlaps = calendarOverlaps(schedules, fixture.split(';').map { it.split('/') }
-                .map { BusyTimeState(Instant.parse(it[0]).toEpochMilli(), Instant.parse(it[1]).toEpochMilli()) })
-            calendarPhase = CalendarPhase.COMPARED
-            return
-        }
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED) compare(schedules)
         else { pendingSchedules = schedules; askCalendar.launch(Manifest.permission.READ_CALENDAR) }
     }

@@ -9,10 +9,6 @@ struct DeviceCalendar: Sendable {
     let busy: @Sendable (DateInterval) async -> [DateInterval]
 
     static let live: DeviceCalendar = {
-        #if DEBUG
-        // UI tests replace the calendar: "denied", or busy times as "start/end;start/end" in ISO 8601.
-        if let fixture = ProcessInfo.processInfo.environment["DEARBY_CALENDAR_BUSY"] { return .fixture(fixture) }
-        #endif
         let store = EKEventStore()
         return DeviceCalendar(
             requestAccess: {
@@ -29,14 +25,4 @@ struct DeviceCalendar: Sendable {
                     .map { DateInterval(start: $0.startDate, end: $0.endDate) }
             })
     }()
-
-    static func fixture(_ text: String) -> DeviceCalendar {
-        let parser = ISO8601DateFormatter()
-        let intervals = text.split(separator: ";").compactMap { pair -> DateInterval? in
-            let parts = pair.split(separator: "/").map(String.init)
-            guard parts.count == 2, let start = parser.date(from: parts[0]), let end = parser.date(from: parts[1]), start < end else { return nil }
-            return DateInterval(start: start, end: end)
-        }
-        return DeviceCalendar(requestAccess: { text == "denied" ? .denied : .allowed }, busy: { _ in intervals })
-    }
 }
