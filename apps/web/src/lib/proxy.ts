@@ -6,9 +6,15 @@ import {
   sharePageSchema,
   uuid,
 } from "./models";
+import {
+  apiOrigin,
+  guestCookie,
+  guestProxyKey,
+  readGuestCookie,
+  TOKEN,
+  upstreamFetch,
+} from "./guest-upstream";
 
-const TOKEN = /^[A-Za-z0-9_-]{43}$/;
-const MAX_AGE = 34_560_000;
 // `shares` defaults to empty so the list still works against an API without share records.
 const savedSchema = z.object({
   items: z.array(cardSchema),
@@ -78,24 +84,12 @@ export async function proxy(
       return failure(422, "INVALID_INPUT");
     }
   }
-  const cookieName =
-    process.env.NODE_ENV === "production"
-      ? "__Host-dearby_guest"
-      : "dearby_guest_dev";
-  const cookie = request.headers
-    .get("cookie")
-    ?.split(";")
-    .map((part) => part.trim())
-    .find((part) => part.startsWith(`${cookieName}=`));
-  const token = cookie?.slice(cookieName.length + 1);
-  function setCookie(value: string, remove = false) {
-    return `${cookieName}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${remove ? 0 : MAX_AGE}${process.env.NODE_ENV === "production" ? "; Secure" : ""}`;
-  }
-  if (guest && cookie !== undefined && !TOKEN.test(token ?? "")) {
+  const token = readGuestCookie(request.headers.get("cookie"));
+  if (guest && token !== undefined && !TOKEN.test(token)) {
     if (path === "guest/session" && method === "DELETE")
       return new Response(null, {
         status: 204,
-        headers: { ...headers, "Set-Cookie": setCookie("", true) },
+        headers: { ...headers, "Set-Cookie": guestCookie("", true) },
       });
     return failure(401, "GUEST_SESSION_INVALID");
   }
@@ -103,45 +97,15 @@ export async function proxy(
     return Response.json({ items: [], shares: [] }, { headers });
   if (path === "guest/session" && !token)
     return new Response(null, { status: 204, headers });
-  const origin = process.env.DEARBY_API_ORIGIN;
-  const secret = process.env.GUEST_PROXY_SECRET;
-  if (!origin || (guest && (!secret || secret.length < 32)))
+  if (!process.env.DEARBY_API_ORIGIN || (guest && !guestProxyKey()))
     return failure(503, "GUEST_UNAVAILABLE");
+  if (!apiOrigin()) return failure(503, "SERVICE_UNAVAILABLE");
   try {
-    const upstream = new URL(origin);
-    if (
-      upstream.username ||
-      upstream.password ||
-      upstream.pathname !== "/" ||
-      upstream.search ||
-      upstream.hash ||
-      (upstream.protocol !== "https:" &&
-        !(
-          process.env.NODE_ENV !== "production" &&
-          upstream.protocol === "http:" &&
-          ["localhost", "127.0.0.1"].includes(upstream.hostname)
-        ))
-    ) {
-      return failure(503, "SERVICE_UNAVAILABLE");
-    }
-    const upstreamHeaders: Record<string, string> = {
-      Accept: "application/json",
-    };
-    if (guest) {
-      upstreamHeaders["X-Guest-Proxy-Key"] = secret!;
-      if (token) upstreamHeaders["X-Guest-Token"] = token;
-    }
-    const result = await fetch(new URL(`/v1/${path}`, upstream), {
-      method,
-      headers: upstreamHeaders,
-      cache: "no-store",
-      redirect: "error",
-      signal: AbortSignal.timeout(10_000),
-    });
+    const result = await upstreamFetch(path, { method, guest, token });
     if (path === "guest/session" && (result.ok || result.status === 401)) {
       return new Response(null, {
         status: 204,
-        headers: { ...headers, "Set-Cookie": setCookie("", true) },
+        headers: { ...headers, "Set-Cookie": guestCookie("", true) },
       });
     }
     if (!result.ok) {
@@ -155,7 +119,7 @@ export async function proxy(
       );
     }
     const outputHeaders: Record<string, string> = { ...headers };
-    if (guest && token) outputHeaders["Set-Cookie"] = setCookie(token);
+    if (guest && token) outputHeaders["Set-Cookie"] = guestCookie(token);
     if (method === "DELETE")
       return new Response(null, { status: 204, headers: outputHeaders });
     const json: unknown = await result.json();
@@ -165,7 +129,7 @@ export async function proxy(
       if (echoed?.toLowerCase() !== id.toLowerCase())
         throw new Error("Mismatched save");
       if (!token && !saved.guestToken) throw new Error("Missing session");
-      if (!token) outputHeaders["Set-Cookie"] = setCookie(saved.guestToken!);
+      if (!token) outputHeaders["Set-Cookie"] = guestCookie(saved.guestToken!);
       return Response.json(
         shareRoute
           ? { cardId: saved.cardId, shareId: id, status: saved.status }
