@@ -9,5 +9,7 @@ object ApiOrigin {
     val current: String get() = debugOverride?.takeIf { BuildConfig.DEBUG } ?: BuildConfig.API_ORIGIN
     /** Debug instrumentation tests keep their sign-in in a vault of their own so it never leaks between tests. */
     @VisibleForTesting var debugSessionName: String? = null
+    /** Debug instrumentation tests replace the device calendar: "denied", or busy times as "start/end;start/end" (ISO 8601). */
+    @VisibleForTesting var debugCalendarBusy: String? = null
     val sessionName: String get() = debugSessionName?.takeIf { BuildConfig.DEBUG } ?: "account.session.v2"
 }

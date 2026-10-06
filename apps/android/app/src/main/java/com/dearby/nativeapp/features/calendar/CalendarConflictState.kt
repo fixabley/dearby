@@ -9,12 +9,17 @@ data class CalendarOverlapState(val activity: CalendarWindowState, val busy: Bus
     val start get() = maxOf(activity.start, busy.start)
     val end get() = minOf(activity.end, busy.end)
 }
-val demoBusyTime = BusyTimeState(
-    Instant.parse("2026-10-24T14:00:00+09:00").toEpochMilli(),
-    Instant.parse("2026-10-24T15:00:00+09:00").toEpochMilli(),
-)
+/** Where the overlap check is: asking, denied (offer settings) or compared. */
+enum class CalendarPhase { IDLE, CHECKING, DENIED, COMPARED }
+
+/** Touching ends do not overlap. */
 fun calendarOverlaps(window: CalendarWindowState, busy: BusyTimeState): Boolean =
     window.start < window.end && busy.start < busy.end && window.start < busy.end && busy.start < window.end
-fun demoOverlaps(schedules: List<ScheduleModel>): List<CalendarOverlapState> = schedules.map {
+
+fun calendarWindows(schedules: List<ScheduleModel>) = schedules.map {
     CalendarWindowState(it.title, Instant.parse(it.startAt).toEpochMilli(), Instant.parse(it.endAt).toEpochMilli(), it.timeZone)
-}.filter { calendarOverlaps(it, demoBusyTime) }.map { CalendarOverlapState(it, demoBusyTime) }
+}.filter { it.start < it.end }
+
+/** Every (session, busy time) pair that shares time, in session then start order. */
+fun calendarOverlaps(schedules: List<ScheduleModel>, busy: List<BusyTimeState>): List<CalendarOverlapState> =
+    calendarWindows(schedules).flatMap { window -> busy.filter { calendarOverlaps(window, it) }.sortedBy { it.start }.map { CalendarOverlapState(window, it) } }
