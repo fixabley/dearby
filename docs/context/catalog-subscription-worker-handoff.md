@@ -12,6 +12,36 @@
 - 실패 양상: 배포 오류 로그에 실패 405줄, 결과 로그에 처리 70줄이 있다. 같은 프로그램이 매일 3회씩 같은 이유로 실패한다. 주요 원인은 원문 본문 없음(JS 렌더링 추정), 1 MB 초과, 설정 호스트 불일치, 빈 결과 근거 구절 확인 실패다. 구조적 실패를 재시도하지 않는 작업은 수집기 담당 작업 1번으로 진행한다. 로그에 시각이 없어 실패 시점은 알 수 없다(PR #115로 시각 추가).
 - 검사: 이 checkout에서 `npm run check`, `npm test` 12개 통과(Node 24.21.0·26.10.0). 큐 통합 테스트는 로컬 Supabase가 꺼져 있어 실행하지 않았다.
 
+## 재배포 절차 — 2026-10-06 정리
+
+main 변경은 이 절차로 배포 사본을 바꿔야 운영에 반영된다. 실행은 메인이 사용자 승인 범위 안에서 한다. `<Node24>`는 사용할 Node 24 실행 파일이다. 현재 경로는 npx 캐시이고, 안정된 경로로 옮길지는 사용자 결정 사항이다.
+
+0. 전제
+   - 배포할 PR이 모두 main에 병합되어 있어야 한다.
+   - 재확인 워커(#124)는 migration `20261006000000_catalog_reverify`가 cloud에 적용된 뒤에만 배포한다. 적용 여부는 서비스 키로 `POST /rest/v1/rpc/catalog_reverify_candidates`를 호출해 JSON 배열이 오는지로 읽기 전용 확인한다.
+   - `codex login status`가 `Logged in using ChatGPT`여야 한다.
+1. 유휴 확인: `launchctl print gui/501/com.dearby.catalog-subscription-worker`에서 `state = not running`이고, 배포 로그 마지막 줄이 `No collection job ready.`일 때 진행한다.
+2. 새 배포 사본
+   ```sh
+   SHA=$(git rev-parse --short origin/main); NEW=~/.dearby-deploy/catalog-worker-$SHA
+   mkdir -p "$NEW" && git archive origin/main apps/catalog-worker | tar -x -C "$NEW"
+   cp -p <기존 배포 사본>/apps/catalog-worker/.env.local "$NEW/apps/catalog-worker/"   # 0600 유지 확인
+   ```
+   origin/main의 `apps/catalog-worker`와 `diff -rq`로 일치하는지 확인한다(.env.local 제외).
+3. Codex 없는 사전 검사: 새 디렉터리에서 `<Node24> --env-file=.env.local src/worker.mjs --reverify`를 실행한다. exit 0이고 `Re-verification failed`가 없어야 한다. 이 모드는 구독을 쓰지 않는다.
+4. 교체
+   - `<Node24> scripts/launchd.mjs uninstall` (label 기준이라 어느 디렉터리에서 실행해도 된다)
+   - 새 디렉터리에서 `<Node24> scripts/launchd.mjs install`
+   - install은 실행 중인 node 경로와 `which codex`를 plist에 고정하고, ChatGPT 로그인을 확인한다.
+5. 확인
+   - `launchctl print`의 arguments가 새 경로이고 `last exit code = 0`인지 본다.
+   - 새 `logs/worker.log`에 시각이 붙은 줄이 쌓이는지 본다.
+   - `worker-error.log`에 `Re-verification failed`나 `Collection setup failed`가 반복되지 않는지 본다.
+   - 다음 09:00 KST 큐에서 원문 구조 실패가 BLOCKED로 1회만 기록되는지 확인한다(다음 날에야 확인된다).
+6. 롤백: uninstall 후 기존 디렉터리에서 기존 Node로 install한다. 기존 배포 사본은 하루 정상 동작을 확인한 뒤 정리한다. 로그 보존 여부는 별도로 결정한다.
+
+배포할 때마다 이 문서의 현재 상태 절에 배포 commit·경로·확인 시각을 기록한다.
+
 ## 2026-10-06 main 소스 이전
 
 사용자 승인으로 수집기 담당 에이전트가 main 기준으로 작업하도록 `d7e5da7`의 `apps/catalog-worker/`만 main에 옮겼다. 해당 브랜치의 나머지 변경(iOS·Supabase 테스트·어드민)은 main에 더 새 버전이 있어 가져오지 않았다. 배포 사본과 브랜치 파일의 SHA-256 일치를 다시 확인했다. LaunchAgent는 계속 배포 사본을 실행하며 이번 이전으로 실행 중인 워커·환경 파일·Cron은 바뀌지 않는다. 로컬 `npm run check`·`npm test` 12개 통과(Node 26으로 실행, engines는 24). CI에 같은 검사를 Node 24로 추가했다. 큐 통합 테스트는 로컬 Supabase가 필요해 실행하지 않았다.
