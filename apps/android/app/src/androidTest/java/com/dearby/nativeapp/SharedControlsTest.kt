@@ -118,6 +118,7 @@ class SharedControlsTest {
     @Test fun cardComposerBlocksPublishUntilNamedAndTogglesContacts() {
         compose.setContent { DearbyTheme { Box(Modifier.size(390.dp, 844.dp).testTag("gallery")) { CardComposerSample("") } } }
         compose.onNodeWithText("이름을 입력하면 발행할 수 있어요.").assertExists()
+        compose.onNodeWithContentDescription("명함 이름").assertExists()
         compose.onNodeWithText("로그인하고 명함 발행").assertIsNotEnabled()
         capture("android-card-composer-empty")
         compose.onNodeWithContentDescription("이름").performTextInput("김지민")
