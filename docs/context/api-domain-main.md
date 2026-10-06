@@ -35,3 +35,18 @@ root 요청으로 독립 `dearby-api-guest-review`를 `http://127.0.0.1:58867`�
 - root가 `GUEST_PROXY_SECRET` 운영값을 보호파일에 생성하고 Vercel production에 등록했다고 전달. API 담당은 그 파일을 **읽지 않았고 출력/복사/런타임적용하지 않았다**. 소스에는 env 이름과 빈 .env.example만 있음.
 - 소스 PR 검토/통합 후 root의 별도 배정에만 runtime key 전달/배포를 진행. 기존 SQLite volume/OTP_SECRET 보존과 consistent backup 필요. `nginx-web-guest.location.conf`는 기존 catalog-only snippet의 **교체안**: 기존 `location ^~ /v1/`를 남기면 regex guest/public routes가 막힘. root가 적용하며 API 담당은 shared 파일 수정/reload 안 함.
 - 회원인증/생성/SMTP/개인profile 경로를 공개하지 않는다. Fastify trustProxy=false 유지. 웹 실제브라우저 cookie/CSRF/탭간잠금·Vercel배포 검증은 웹담당 소유.
+
+## 운영 nginx 정리와 API 전용 도메인 — 2026-10-06 준비
+
+사용자 결정에 따라 API 전용 host `api.dearby.wid.io.kr`을 추가하고, 다음 API 배포 때 운영 nginx를 정리한다. 적용은 메인(root)이 하며, 담당은 완성본만 준비했다. 운영 파일은 읽기만 했다.
+
+- 완성본은 `apps/dearby-api/deploy/nginx/`에 있다: `default.conf` 전체, `dearby-api/api.locations.conf`(두 host가 공유하는 공개 API 경로), `dearby-api/handoff.locations.conf`(2단계), `default.conf.diff`(운영 → 1단계).
+- 바뀌는 점은 네 가지다.
+  - api host의 80·443 블록을 추가한다.
+  - #84 공유 경로(GET/HEAD `/v1/shares/:id`, PUT `/v1/guest/shares/:id`)를 두 host에 연다.
+  - #110 세션 잇기 경로(2단계, include 주석 해제)를 연다.
+  - 쓰지 않는 `dearby.wid.io.kr`·`dev.dearby.wid.io.kr` 블록을 삭제한다.
+- 회원 경로(`/v1/auth/*`, `/v1/profile`, 명함 생성 등)는 404로 둔다. #89 뒤에 따로 연다.
+- 적용 순서: Route 53 A → 인증서 SAN → API 이미지(#84) 배포와 1단계 nginx → #110 배포 뒤 2단계 → 웹·앱 `DEARBY_API_ORIGIN` 변경. 이 값은 git에 넣지 않고 Vercel 환경변수, GitHub Actions Variables/Secrets, 서버의 무시되는 env 파일에만 둔다. 상태 코드 표와 순서는 [deploy README](../../apps/dearby-api/deploy/README.md)에 있다.
+- 위험: 현재 인증서는 `wid.io.kr`만 포함하고 2026-12-28에 만료된다. 갱신 설정이 `authenticator = manual`(dns-01)이라 자동 갱신이 되지 않는다(2026-10-06 읽기 전용 확인).
+- 외부 도달성 [#65](https://github.com/fixabley/dearby/issues/65)는 2026-10-06 메인 보고에 따르면 해결됐다(공인 IP 변경, 이중 NAT 제거). 같은 날 메인이 nginx 1단계(api host, 공유 경로, 쓰지 않는 블록 정리)를 운영에 적용했다. 같은 날 읽기 전용 파일 비교로 운영 `default.conf`·`dearby-api/api.locations.conf`가 저장소와 같음을 확인했다(handoff 파일은 아직 없음). 운영 HTTP 동작은 다시 확인하지 않았다. 2단계(handoff)는 #110 배포 뒤 적용한다.
