@@ -1,3 +1,4 @@
+import CoreImage
 import XCTest
 @testable import Dearby
 
@@ -185,5 +186,36 @@ private final class MemoryStore: SessionStore, @unchecked Sendable {
         let empty = QRShareModel(account: AccountViewModel(client: client(fake), vault: store)) { _ in URL(string: "https://x.test")! }
         await empty.load()
         XCTAssertEqual(empty.phase, .noCard)
+    }
+    func testScannedTextBecomesAShareOrALegacyCardOnly() {
+        let web = URL(string: "https://dearby.example.test")!
+        let id = "5A1E0000-0000-4000-8000-000000000001"
+        XCTAssertEqual(ScannedLink.parse("https://dearby.example.test/s/\(id)", web: web), .share(id.lowercased()))
+        XCTAssertEqual(ScannedLink.parse(" dearby://card/\(id)\n", web: web), .card(id.lowercased()))
+        for text in ["https://evil.test/s/\(id)", "dearby://card/not-a-uuid", "dearby://share/\(id)", "dearby://card/\(id)?x=1", "hello"] {
+            XCTAssertNil(ScannedLink.parse(text, web: web), text)
+        }
+    }
+    func testPhotoQRReadsBackItsText() throws {
+        let filter = CIFilter(name: "CIQRCodeGenerator", parameters: ["inputMessage": Data("https://dearby.example.test/s/x".utf8)])!
+        let image = filter.outputImage!.transformed(by: CGAffineTransform(scaleX: 10, y: 10))
+        let data = try XCTUnwrap(CIContext().pngRepresentation(of: image, format: .RGBA8, colorSpace: CGColorSpaceCreateDeviceRGB()))
+        XCTAssertEqual(QRImageReader.text(in: data), "https://dearby.example.test/s/x")
+        XCTAssertNil(QRImageReader.text(in: Data("not an image".utf8)))
+    }
+    func testReceivedShareLoadsWithoutSessionAndMissingIsDistinct() async throws {
+        let fake = FakeTransport()
+        let share = #"{"share":{"id":"s1","cardId":"card-1","activities":[{"id":"a1","title":"활동"}],"createdAt":"2026-10-06T00:00:00Z"},"card":\#(cardBody)}"#
+        fake.answers = [(200, share), (404, "{}")]
+        let found = ReceivedShareModel(link: .share("s1"), client: client(fake))
+        await found.load()
+        guard case .loaded(let card, let activities) = found.phase else { return XCTFail("\(found.phase)") }
+        XCTAssertEqual(card.id, "card-1")
+        XCTAssertEqual(activities.map(\.title), ["활동"])
+        XCTAssertNil(fake.requests[0].value(forHTTPHeaderField: "Authorization"))
+        let gone = ReceivedShareModel(link: .card("card-9"), client: client(fake))
+        await gone.load()
+        XCTAssertEqual(gone.phase, .missing)
+        XCTAssertEqual(fake.requests[1].url?.path, "/v1/cards/card-9")
     }
 }

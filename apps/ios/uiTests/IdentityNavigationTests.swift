@@ -16,24 +16,40 @@ import XCTest
         app.terminate(); app.launch(); app.buttons["tab-4"].tap()
         XCTAssertTrue(app.buttons["로그인하고 시작하기"].waitForExistence(timeout: 5))
     }
-    func testQRSignedOutOffersCardCreationAndScanStaysExample() {
+    func testQRSignedOutOffersCardCreation() {
         let app = XCUIApplication()
         app.launch(); app.buttons["tab-2"].tap()
         XCTAssertTrue(app.buttons["명함 만들기"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.images["명함 QR"].exists)
         capture(app, "qr-signed-out")
-        app.buttons["QR 찍기"].tap(); capture(app, "qr-scan")
-        app.buttons["예시 QR 읽기"].tap()
-        XCTAssertTrue(app.buttons["save-shared-card"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["나도 카드 주기"].isHittable)
-        capture(app, "shared-card")
-        app.buttons["save-shared-card"].tap()
-        XCTAssertTrue(app.buttons["카드 저장됨"].waitForExistence(timeout: 5))
-        app.buttons["닫기"].tap(); app.buttons["QR 보여주기"].tap()
         app.buttons["명함 만들기"].tap()
         XCTAssertTrue(app.navigationBars["명함 만들기"].waitForExistence(timeout: 5))
         app.buttons["닫기"].firstMatch.tap()
         XCTAssertTrue(app.buttons["명함 만들기"].waitForExistence(timeout: 5))
+    }
+    func testScannedShareOpensTheCardWithItsActivitiesWithoutSignIn() throws {
+        let server = try FixtureServer()
+        let app = XCUIApplication()
+        app.launchEnvironment["DEARBY_SCAN_TEXT"] = "\(XCUIApplication.debugWeb)/s/\(FixtureServer.shareID)"
+        app.launch(with: server); app.buttons["tab-2"].tap(); app.buttons["QR 찍기"].tap()
+        XCTAssertTrue(app.navigationBars["공유 명함"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["이서연"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["함께 공유된 활동"].exists)
+        XCTAssertTrue(app.staticTexts["테스트 컨퍼런스"].exists)
+        XCTAssertFalse(server.recorded().contains { $0.contains("/v1/auth") })
+        capture(app, "received-share")
+    }
+    func testLegacyCardCodeAndForeignCodes() throws {
+        let server = try FixtureServer()
+        let app = XCUIApplication()
+        app.launchEnvironment["DEARBY_SCAN_TEXT"] = "dearby://card/\(FixtureServer.sharedCardID)"
+        app.launch(with: server); app.buttons["tab-2"].tap(); app.buttons["QR 찍기"].tap()
+        XCTAssertTrue(app.staticTexts["이서연"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["함께 공유된 활동"].exists)
+        app.terminate()
+        app.launchEnvironment["DEARBY_SCAN_TEXT"] = "https://example.test/not-dearby"
+        app.launch(with: server); app.buttons["tab-2"].tap(); app.buttons["QR 찍기"].tap()
+        XCTAssertTrue(app.staticTexts["Dearby 명함 QR이 아니에요."].waitForExistence(timeout: 10))
     }
     func testComposerAsksSignInOnlyOnPublishThenPublishes() throws {
         let server = try FixtureServer()

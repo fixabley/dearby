@@ -15,6 +15,9 @@ final class FixtureServer: @unchecked Sendable {
     private(set) var requests: [String] = []
     private var profile = #"{"id":"p1","name":"","job":"","introduction":"","contacts":[],"histories":[],"updatedAt":"2026-10-06T00:00:00Z"}"#
     static let shareID = "5a1e0000-0000-4000-8000-000000000001"
+    /// Someone else's card that `GET /v1/shares/<shareID>` and `GET /v1/cards/<id>` return.
+    static let sharedCardID = "c2000000-0000-4000-8000-000000000001"
+    static let sharedCard = #"{"id":"\#(sharedCardID)","ownerId":"p2","name":"네트워킹","description":"","profileName":"이서연","job":"프로덕트 디자이너","introduction":"함께 만드는 일을 좋아해요.","contacts":[{"id":"e1","kind":"email","label":"이메일","value":"seoyeon@example.test"}],"histories":[],"createdAt":"2026-10-06T00:00:00Z"}"#
     /// Cards published through this server, in creation order.
     private var cards: [String] = []
     private(set) var port: UInt16 = 0
@@ -74,6 +77,9 @@ final class FixtureServer: @unchecked Sendable {
             cards.append(card)
             return (201, card)
         case "GET /v1/cards": return (200, #"{"items":[\#(cards.joined(separator: ","))]}"#)
+        case "GET /v1/shares/\(Self.shareID)":
+            return (200, #"{"share":{"id":"\#(Self.shareID)","cardId":"\#(Self.sharedCardID)","activities":[{"id":"\#(CatalogFixture.conference)","title":"테스트 컨퍼런스"}],"createdAt":"2026-10-06T00:00:00Z"},"card":\#(Self.sharedCard)}"#)
+        case "GET /v1/cards/\(Self.sharedCardID)": return (200, Self.sharedCard)
         default:
             // POST /v1/cards/<id>/shares: activities come back as an {id, title} snapshot.
             if route.hasPrefix("POST /v1/cards/"), route.hasSuffix("/shares") {

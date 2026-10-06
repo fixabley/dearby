@@ -51,6 +51,11 @@ struct CardShare: Decodable, Equatable, Sendable {
     let activities: [ShareActivity]
     let createdAt: String
 }
+/// `GET /v1/shares/:id`: a share and the public card it points at.
+struct ReceivedShare: Decodable, Equatable, Sendable {
+    let share: CardShare
+    let card: PublishedCard
+}
 /// A published card snapshot from `POST /v1/cards`.
 struct PublishedCard: Decodable, Equatable, Identifiable, Sendable {
     let id: String
@@ -58,6 +63,8 @@ struct PublishedCard: Decodable, Equatable, Identifiable, Sendable {
     let description: String
     let profileName: String
     let job: String
+    /// Present on public reads (`GET /v1/shares/:id`, `GET /v1/cards/:id`).
+    var introduction: String? = nil
     let contacts: [AccountContact]
     let histories: [AccountHistory]
     let createdAt: String

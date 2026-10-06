@@ -6,6 +6,8 @@
 	<string>$(DEARBY_API_ORIGIN)</string>
 	<key>DearbyWebOrigin</key>
 	<string>$(DEARBY_WEB_ORIGIN)</string>
+	<key>NSCameraUsageDescription</key>
+	<string>받은 명함의 QR 코드를 읽을 때만 카메라를 사용해요.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>UIAppFonts</key>

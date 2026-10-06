@@ -62,7 +62,9 @@
     "CardComposerHistory",
     "AccountViewModel",
     "CardComposerPage",
-    "QRShareModel"
+    "QRShareModel",
+    "ReceivedShareModel",
+    "ReceivedSharePage"
   ],
   "entities/account": [
     "AccountSession",
@@ -73,6 +75,14 @@
     "AccountError",
     "AccountClient",
     "SessionStore",
-    "SessionVault"
+    "SessionVault",
+    "ShareActivity",
+    "CardShare",
+    "ReceivedShare",
+    "ScannedLink"
+  ],
+  "features/scan": [
+    "QRCameraView",
+    "QRImageReader"
   ]
 }

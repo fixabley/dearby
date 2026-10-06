@@ -12,7 +12,10 @@ extension ArchitectureTestSuite {
             // #95: 공유 URL을 QR로 그리는 표시 파일만 CoreImage를, 카탈로그·로그인·명함 발행 클라이언트만 네트워크를,
             // 세션 보관 파일만 Keychain을 쓴다.
             let allowed: [String: Set<String>] = ["DearbyQRCode.swift": ["CoreImage"], "CatalogClient.swift": ["URLSession"],
-                "AccountClient.swift": ["URLSession"], "SessionVault.swift": ["Security", "SecItemCopyMatching", "SecItemAdd", "SecItemDelete"]]
+                "AccountClient.swift": ["URLSession"], "SessionVault.swift": ["Security", "SecItemCopyMatching", "SecItemAdd", "SecItemDelete"],
+                // #95 "받기": the in-app scanner alone uses the camera, a picked photo is read with the OS QR detector,
+                // and the scan screen uses the system photo picker, which needs no photo library permission.
+                "QRCameraView.swift": ["AVFoundation", "AVCaptureSession"], "QRImageReader.swift": ["CoreImage"], "QRPage.swift": ["PhotosUI"]]
             for file in files {
                 let source = FSDBoundaries.File(path: file.path, text: try String(contentsOf: file, encoding: .utf8))
                 let blocked = forbidden.subtracting(allowed[file.lastPathComponent] ?? [])
@@ -23,7 +26,8 @@ extension ArchitectureTestSuite {
                 let plist = try #require(PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
                 // Only the build-injected connection origins (contract "연결 설정") may use the Dearby prefix.
                 let origins: Set<String> = ["DearbyAPIOrigin", "DearbyWebOrigin"]
-                #expect(!plist.keys.contains { $0.hasSuffix("UsageDescription") || ($0.hasPrefix("Dearby") && !origins.contains($0)) || $0 == "NSAppTransportSecurity" || $0 == "CFBundleURLTypes" })
+                // #95 "받기": camera access for the in-app QR scanner is the only permission the app asks for.
+                #expect(!plist.keys.contains { ($0.hasSuffix("UsageDescription") && $0 != "NSCameraUsageDescription") || ($0.hasPrefix("Dearby") && !origins.contains($0)) || $0 == "NSAppTransportSecurity" || $0 == "CFBundleURLTypes" })
             }
         }
     }
