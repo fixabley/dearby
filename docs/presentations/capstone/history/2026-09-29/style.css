@@ -42,9 +42,6 @@ body{margin:0;background:#edf3f2;color:var(--ink);font-family:var(--r-main-font)
 .screen-grid figcaption{font-size:19px;color:var(--muted);margin-top:9px}
 .reveal .screens.single .screen-grid{justify-content:center}
 .reveal .screens.single figure{max-width:360px}
-.reveal .screens.wide figure{max-width:none}
-.reveal .screens.wide .screen-grid img{height:auto;max-height:484px}
-.reveal .screens.wide .screen-grid{gap:24px}
 .screen-status{position:absolute;bottom:4px;left:46px;right:46px;text-align:left;font-size:17px;color:#687c80}
 .reveal .progress{color:var(--teal);height:3px}
 .reveal .controls{color:var(--teal);bottom:18px;right:15px}
@@ -97,4 +94,3 @@ dialog button{display:block;margin:0 0 12px auto;border:0;background:var(--teal)
 .reveal .screens.has-footnotes .screen-grid img{height:432px}
 .reveal .screens.has-footnotes .footnotes{bottom:35px}
 @media(max-width:600px){.toolbar{gap:7px;font-size:10px}.toolbar .brand{font-size:18px}}
-.reveal .slides a{color:var(--teal);text-underline-offset:4px}
