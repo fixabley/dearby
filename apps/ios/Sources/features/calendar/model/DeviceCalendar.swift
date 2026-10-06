@@ -8,21 +8,20 @@ struct DeviceCalendar: Sendable {
     let requestAccess: @Sendable () async -> Access
     let busy: @Sendable (DateInterval) async -> [DateInterval]
 
-    static let live: DeviceCalendar = {
-        let store = EKEventStore()
-        return DeviceCalendar(
-            requestAccess: {
+    // EKEventStore is not Sendable, so each call makes its own; access is granted per app, not per store.
+    static let live = DeviceCalendar(
+        requestAccess: {
                 switch EKEventStore.authorizationStatus(for: .event) {
                 case .fullAccess: return .allowed
-                case .notDetermined: return (try? await store.requestFullAccessToEvents()) == true ? .allowed : .denied
+                case .notDetermined: return (try? await EKEventStore().requestFullAccessToEvents()) == true ? .allowed : .denied
                 default: return .denied
                 }
             },
-            busy: { range in
+        busy: { range in
+                let store = EKEventStore()
                 let predicate = store.predicateForEvents(withStart: range.start, end: range.end, calendars: nil)
                 return store.events(matching: predicate)
                     .filter { $0.availability != .free && $0.startDate < $0.endDate }
                     .map { DateInterval(start: $0.startDate, end: $0.endDate) }
-            })
-    }()
+        })
 }
