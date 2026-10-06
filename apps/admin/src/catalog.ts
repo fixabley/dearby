@@ -3,7 +3,7 @@ export type Organization = {
   id: string;
   name: string;
   description: string;
-  /** Absent until migration 20261006000000_catalog_organization_tree is applied. */
+  /** Absent until the catalog_organization_tree migration is applied. */
   parent_id?: string | null;
 };
 export const maxOrganizationDepth = 4;
