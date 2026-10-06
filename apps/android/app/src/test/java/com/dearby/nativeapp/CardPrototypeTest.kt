@@ -11,32 +11,10 @@ class CardPrototypeTest {
         val demo = DemoViewModel()
         demo.login(true)
         demo.profile(demo.state.value.profile.copy(name = "예시 이름"))
-        demo.createCard(setOf("email"), setOf("conference"), "새 명함")
         val fresh = DemoViewModel().state.value
         assertFalse(fresh.loggedIn)
         assertEquals("김지민", fresh.profile.name)
         assertEquals(3, fresh.cards.size)
-    }
-    @Test fun cardCreationSnapshotsOnlyChosenContactAndHistory() {
-        val demo = DemoViewModel()
-        val card = demo.createCard(setOf("email"), setOf("conference"), "새 명함")
-        assertEquals(listOf("email"), card.contacts.map { it.id })
-        assertEquals(listOf("conference"), card.histories.map { it.id })
-        demo.profile(demo.state.value.profile.copy(name = "바뀐 이름"))
-        assertEquals("김지민", demo.state.value.cards.last().person)
-        assertEquals(card.id, demo.state.value.selectedCardId)
-    }
-    @Test fun editingKeepsIdentityAndDoesNotCreateAnotherCard() {
-        val demo = DemoViewModel()
-        val before = demo.state.value.cards
-        demo.editCard(before.first().id, setOf("email"), emptySet(), "수정한 명함")
-        val after = demo.state.value.cards
-        assertEquals(before.size, after.size)
-        assertEquals(before.map { it.id }, after.map { it.id })
-        assertEquals("수정한 명함", after.first().title)
-        assertEquals(listOf("email"), after.first().contacts.map { it.id })
-        assertTrue(after.first().histories.isEmpty())
-        assertEquals(before.drop(1), after.drop(1))
     }
     @Test fun cardSaveIsIdempotentAndSendMovesRecipientGroup() {
         val demo = DemoViewModel()

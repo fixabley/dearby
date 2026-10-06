@@ -14,10 +14,10 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardStack
 import com.dearby.nativeapp.widgets.card.cardContent.CardState
 import com.dearby.nativeapp.widgets.card.cardContent.ContactState
 
-@Composable fun SendPage(cards: List<CardState>, recipient: String, send: (String) -> Unit, create: () -> Unit, close: () -> Unit, detail: (CardState) -> Unit, contact: (ContactState) -> Unit) {
+@Composable fun SendPage(cards: List<CardState>, recipient: String, send: (String) -> Unit, close: () -> Unit, detail: (CardState) -> Unit, contact: (ContactState) -> Unit) {
     val pager = rememberPagerState { cards.size }
     Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        ScreenHeader("내 명함 선택", close) { TextButton(create) { Text("＋ 새 명함") } }
+        ScreenHeader("내 명함 선택", close)
         Text("${recipient}님에게 보낼 명함", Modifier.align(Alignment.CenterHorizontally), color = Quiet, style = MaterialTheme.typography.bodyMedium)
         Text("어떤 명함을 건넬까요?", Modifier.align(Alignment.CenterHorizontally), style = MaterialTheme.typography.headlineSmall)
         Text("위아래로 밀어 명함을 골라주세요.", Modifier.align(Alignment.CenterHorizontally), color = Quiet, style = MaterialTheme.typography.bodySmall)

@@ -14,7 +14,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dearby.nativeapp.pages.profile.ProfilePage
-import com.dearby.nativeapp.pages.qr.CardEditor
 import com.dearby.nativeapp.pages.qr.QrPage
 import com.dearby.nativeapp.pages.wallet.SendPage
 import com.dearby.nativeapp.pages.wallet.SharedCardPage
@@ -31,10 +30,10 @@ private enum class Tab(val label: String, val icon: ImageVector) {
 private sealed interface CardRoute {
     data class Detail(val card: CardState) : CardRoute
     data class Send(val recipient: CardState) : CardRoute
-    data class Editor(val returnTo: CardRoute?, val existing: CardState? = null) : CardRoute
+    data object Composer : CardRoute
 }
 
-@Composable fun DearbyApp(catalog: CatalogViewModel, demo: DemoViewModel) {
+@Composable fun DearbyApp(catalog: CatalogViewModel, demo: DemoViewModel, account: AccountViewModel, publish: CardPublishViewModel) {
     val state by demo.state.collectAsStateWithLifecycle()
     var tab by remember { mutableStateOf(Tab.Discovery) }
     var route by remember { mutableStateOf<CardRoute?>(null) }
@@ -42,7 +41,8 @@ private sealed interface CardRoute {
     var notice by remember { mutableStateOf<String?>(null) }
     var preview by remember { mutableStateOf<CardState?>(null) }
     val contact: (ContactState) -> Unit = { notice = "${it.label}\n${it.value}\n예시 연락처입니다." }
-    BackHandler(route != null && preview == null) { route = (route as? CardRoute.Editor)?.returnTo }
+    BackHandler(route != null && route != CardRoute.Composer && preview == null) { route = null }
+    val compose = { publish.start(); route = CardRoute.Composer }
     Surface(Modifier.fillMaxSize()) {
         Column(Modifier.statusBarsPadding().navigationBarsPadding()) {
             Box(Modifier.weight(1f)) {
@@ -50,13 +50,8 @@ private sealed interface CardRoute {
                     is CardRoute.Detail -> SharedCardPage(screen.card, state.wallet.any { it.card.id == screen.card.id }, { route = null }, { demo.saveCard(screen.card) }, { route = CardRoute.Send(screen.card) }, contact)
                     is CardRoute.Send -> SendPage(state.cards, screen.recipient.person, { id ->
                         demo.send(id, screen.recipient); route = null; tab = Tab.Wallet; notice = "명함을 건네는 예시를 확인했어요.\n실제 전송은 하지 않았어요."
-                    }, { route = CardRoute.Editor(screen) }, { route = null }, { preview = it }, contact)
-                    is CardRoute.Editor -> {
-                        val profile = state.profile
-                        val card = CardState("draft", profile.name, profile.job, "네트워킹", "새로운 인연에게 나를 소개해요.", profile.introduction, profile.contacts, profile.histories)
-                        CardEditor(card, screen.existing, { contacts, histories, name ->
-                            if (screen.existing == null) demo.createCard(contacts, histories, name) else demo.editCard(screen.existing.id, contacts, histories, name); route = screen.returnTo; if (route == null) tab = Tab.Qr }, { route = screen.returnTo })
-                    }
+                    }, { route = null }, { preview = it }, contact)
+                    CardRoute.Composer -> CardComposerRoute(publish, account) { route = null }
                     null -> when (tab) {
                         Tab.Discovery, Tab.Mine -> Column {
                             if (!catalogDetail) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -64,7 +59,7 @@ private sealed interface CardRoute {
                             }
                             key(tab) { CatalogRoute(catalog, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }) { catalogDetail = it } }
                         }
-                        Tab.Qr -> QrPage(state.cards, state.selectedCardId, demo::selectCard, { route = CardRoute.Detail(it) }, { route = CardRoute.Editor(null) }, { route = CardRoute.Editor(null, it) }, { route = CardRoute.Detail(demoPublicCard) }, { notice = "$it 동작을 확인했어요.\nhttps://example.com\n실제 전송·복사·파일 저장은 하지 않았어요." })
+                        Tab.Qr -> QrPage(state.cards, state.selectedCardId, demo::selectCard, { route = CardRoute.Detail(it) }, compose, { compose() }, { route = CardRoute.Detail(demoPublicCard) }, { notice = "$it 동작을 확인했어요.\nhttps://example.com\n실제 전송·복사·파일 저장은 하지 않았어요." })
                         Tab.Wallet -> WalletPage(state.wallet, state.query, state.reciprocalGroup, demo::query, demo::group, { route = CardRoute.Detail(it) }, { route = CardRoute.Send(it) }, contact)
                         Tab.Profile -> ProfilePage(state.profile, state.loggedIn, demo::profile, { demo.login(true) }, { demo.login(false) })
                     }

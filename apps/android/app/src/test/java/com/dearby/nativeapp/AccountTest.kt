@@ -12,7 +12,16 @@ import com.dearby.nativeapp.entities.account.model.AccountHistory
 import com.dearby.nativeapp.entities.account.model.AccountProfile
 import com.dearby.nativeapp.entities.account.model.AccountSession
 import com.dearby.nativeapp.entities.account.model.toJson
+import com.dearby.nativeapp.app.CardPublishViewModel
+import com.dearby.nativeapp.app.PublishPhase
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Before
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
@@ -94,5 +103,49 @@ class AccountTest {
         val card = client(fake).publish("명함", "", listOf("a"), emptyList(), AccountSession("t", "p1"))
         assertEquals("c1", card.id)
         assertEquals("a", JSONObject(fake.requests[0].body!!).getJSONArray("contactIds").getString(0))
+    }
+
+    private val stored = """{"id":"p1","name":"저장된 이름","job":"","introduction":"","contacts":[{"id":"c-old","kind":"phone","label":"전화번호","value":"010-0000-0000"}],"histories":[{"id":"h-old","title":"캠프","role":"","startDate":"2025-01","endDate":null,"description":""}],"updatedAt":"2026-10-06T00:00:00Z"}"""
+    private val cardBody = """{"id":"card-1","name":"내 명함","description":"","profileName":"김지민","job":"","contacts":[],"histories":[],"createdAt":"2026-10-06T00:00:00Z"}"""
+    @OptIn(ExperimentalCoroutinesApi::class) @Before fun main() = Dispatchers.setMain(UnconfinedTestDispatcher())
+    @OptIn(ExperimentalCoroutinesApi::class) @After fun reset() = Dispatchers.resetMain()
+
+    @Test fun guestPublishAsksSignInThenMergesAndKeepsUnseenRowsPrivate() = runBlocking {
+        val fake = FakeTransport(202 to """{"challengeId":"$challenge"}""", 200 to """{"sessionToken":"t","profileId":"p1"}""",
+            200 to stored, 200 to stored, 201 to cardBody)
+        val account = AccountViewModel(client(fake), MemoryStore())
+        val model = CardPublishViewModel(account)
+        model.start()
+        val draft = model.state.value.draft
+        model.edit(draft.copy(name = "김지민", contacts = draft.contacts.map { if (it.kind == "email") it.copy(value = "me@example.test") else it }))
+        model.publish()
+        assertTrue(model.state.value.signingIn)
+        assertTrue(fake.requests.isEmpty())
+        account.requestCode("me@example.test")
+        account.verify("123456")
+        model.continueAfterSignIn()
+        assertEquals(listOf("POST", "POST", "GET", "PUT", "POST"), fake.requests.map { it.method })
+        val profile = JSONObject(fake.requests[3].body!!)
+        assertEquals("김지민", profile.getString("name"))
+        val values = (0 until profile.getJSONArray("contacts").length()).map { profile.getJSONArray("contacts").getJSONObject(it).getString("value") }
+        assertEquals(setOf("010-0000-0000", "me@example.test"), values.toSet())
+        assertEquals(1, profile.getJSONArray("histories").length())
+        val card = JSONObject(fake.requests[4].body!!)
+        assertEquals(1, card.getJSONArray("contactIds").length())
+        assertNotEquals("c-old", card.getJSONArray("contactIds").getString(0))
+        assertEquals(0, card.getJSONArray("historyIds").length())
+        assertEquals("card-1", (model.state.value.phase as PublishPhase.Published).card.id)
+    }
+    @Test fun cardFailureAfterProfileSaveRetriesOnlyTheCard() = runBlocking {
+        val fake = FakeTransport(200 to stored, 200 to stored, 503 to "{}", 201 to cardBody)
+        val model = CardPublishViewModel(AccountViewModel(client(fake), MemoryStore(AccountSession("t", "p1"))))
+        model.start()
+        assertEquals("저장된 이름", model.state.value.draft.name)
+        model.edit(model.state.value.draft.copy(job = "기획"))
+        model.publish()
+        assertEquals(PublishPhase.Failed("프로필은 저장했어요. 명함 발행만 다시 시도해 주세요."), model.state.value.phase)
+        model.publish()
+        assertEquals(listOf("GET", "PUT", "POST", "POST"), fake.requests.map { it.method })
+        assertTrue(model.state.value.phase is PublishPhase.Published)
     }
 }
