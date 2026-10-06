@@ -173,11 +173,13 @@ export function normalizeSchedules(schedules: Schedule[]): Schedule[] {
 export function collectionBlock(error: string | null) {
   if (error?.startsWith("BLOCKED: Codex subscription"))
     return {
+      kind: "subscription",
       label: "구독 차단 · 전체 일시정지",
       hint: "Mac의 Codex 로그인·구독 한도를 확인한 뒤 재시도하세요. 해소 전까지 모든 프로그램 수집이 멈춥니다.",
     };
   if (/^BLOCKED: (Official|All candidates)/.test(error ?? ""))
     return {
+      kind: "source",
       label: "원문 차단 · 이 프로그램만",
       hint: "공식 원문의 호스트·크기(3 MB 이하)·JS 전용 여부를 확인하고 출처를 고친 뒤 재시도하세요.",
     };
@@ -187,8 +189,76 @@ export function collectionBlock(error: string | null) {
     )
   )
     return {
+      kind: "setup",
       label: "설정 필요 · 이 프로그램만",
       hint: "프로그램 관리에서 공식 출처 호스트를 입력하거나 고친 뒤 재시도하세요. 원문은 등록된 HTTPS 호스트여야 합니다.",
     };
-  return { label: "조치 필요", hint: "" };
+  return { kind: "other", label: "조치 필요", hint: "" };
+}
+
+/** One row per activity (catalog_activity_evidence): the quote the worker re-checks and its last result. */
+export type ActivityEvidence = {
+  activity_id: string;
+  quote: string;
+  verified_at: string;
+  last_check_at: string | null;
+  last_check_ok: boolean | null;
+  last_error: string | null;
+};
+/** Mirrors the database rule, plus Markdown symbols that a copied passage never contains. */
+export function evidenceQuoteError(value: string) {
+  const quote = value.trim();
+  if (!quote) return null;
+  if ([...quote].length < 20 || [...quote].length > 200)
+    return "구절은 20~200자로 입력해 주세요.";
+  if (/[\r\n]/.test(quote)) return "줄바꿈 없이 한 문장으로 입력해 주세요.";
+  if (/…|\.\.\./.test(quote)) return "생략부호(… 또는 ...)는 쓸 수 없어요.";
+  if (/[#*`>|~[\]]/.test(quote))
+    return "마크다운 기호(# * ` > | ~ [ ])는 빼고 원문 그대로 붙여 넣어 주세요.";
+  return null;
+}
+function remaining(until: number, now: number) {
+  const minutes = Math.floor((until - now) / 60000);
+  return `만료까지 ${Math.floor(minutes / 60)}시간 ${minutes % 60}분`;
+}
+/** Automatic re-check only extends a published activity whose verification is still valid. */
+export function recheckState(
+  activity: Activity,
+  evidence: ActivityEvidence | undefined,
+  now = Date.now(),
+): { label: string; color: string; detail: string } | null {
+  if (activity.publication_status !== "published") return null;
+  const until = Date.parse(activity.valid_until ?? "");
+  if (activity.freshness !== "verified" || !(until > now))
+    return {
+      label: "수동 확인 필요",
+      color: "red",
+      detail: "공식 확인이 만료되어 자동 재확인으로 연장되지 않아요.",
+    };
+  const expiry = remaining(until, now);
+  if (!evidence)
+    return {
+      label: "수동 확인 필요",
+      color: "red",
+      detail: `재확인 기준 구절이 없어 자동 재확인 대상이 아니에요 · ${expiry}`,
+    };
+  if (evidence.last_check_ok === null)
+    return { label: "자동 재확인 대기", color: "default", detail: expiry };
+  if (evidence.last_check_ok)
+    return {
+      label: "자동 재확인 성공",
+      color: "cyan",
+      detail: `${dateText(evidence.last_check_at)} · ${expiry}`,
+    };
+  const blocked = evidence.last_error?.startsWith("BLOCKED: ");
+  const kind = collectionBlock(evidence.last_error).kind;
+  return {
+    label: "수동 확인 필요",
+    color: "red",
+    detail: `${
+      blocked
+        ? `재확인 불가${kind === "source" ? "(원문 차단)" : kind === "setup" ? "(호스트 설정 필요)" : ""}`
+        : "자동 재확인 실패 · 1시간 뒤 다시 시도"
+    }: ${evidence.last_error ?? "사유 없음"} · ${expiry}`,
+  };
 }
