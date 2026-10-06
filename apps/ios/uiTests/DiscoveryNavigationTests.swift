@@ -12,8 +12,8 @@ import XCTest
         XCTAssertFalse(app.buttons["activity-\(CatalogFixture.scheduled)"].exists)
         XCTAssertFalse(app.buttons["activity-\(CatalogFixture.stale)"].exists)
         // Quick apply only for the open registration activity.
-        XCTAssertTrue(app.buttons["apply-\(CatalogFixture.conference)"].exists)
-        XCTAssertFalse(app.buttons["apply-\(CatalogFixture.camp)"].exists)
+        XCTAssertTrue(link(app, "apply-\(CatalogFixture.conference)").exists)
+        XCTAssertFalse(link(app, "apply-\(CatalogFixture.camp)").exists)
         for index in 0...4 { XCTAssertTrue(app.buttons["tab-\(index)"].exists) }
         capture(app, "catalog-discovery")
         app.buttons["선발형"].tap()
@@ -44,8 +44,8 @@ import XCTest
         app.buttons[conference].tap()
         XCTAssertTrue(app.navigationBars["활동 상세"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["테스트 주최"].exists)
-        XCTAssertTrue(app.buttons["open-application"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.buttons["open-application"].label, "공식 사이트에서 신청")
+        XCTAssertTrue(link(app, "open-application").waitForExistence(timeout: 5))
+        XCTAssertEqual(link(app, "open-application").label, "공식 사이트에서 신청")
         capture(app, "catalog-detail")
         let report = app.buttons["신청 상태 수정"]
         for _ in 0..<8 where !report.isHittable { app.swipeUp() }
@@ -119,6 +119,8 @@ import XCTest
         capture(app, "wallet-accessibility-text")
         detail.tap(); XCTAssertTrue(app.navigationBars["공유 카드"].waitForExistence(timeout: 5))
     }
+    /// SwiftUI `Link` is a button on iOS 26 and a link on iOS 27, so match the identifier on any element type.
+    private func link(_ app: XCUIApplication, _ id: String) -> XCUIElement { app.descendants(matching: .any)[id].firstMatch }
     private func capture(_ app: XCUIApplication, _ name: String) {
         let shot = XCTAttachment(screenshot: app.screenshot())
         shot.name = name; shot.lifetime = .keepAlways; add(shot)
