@@ -80,4 +80,10 @@ import XCTest
         state.confirm(CatalogFixture.camp, true)
         XCTAssertFalse(state.confirmedIDs.contains(CatalogFixture.camp))
     }
+    func testScheduleTimesUseTheirOwnZone() {
+        let start = ActivityModel.instant("2026-10-24T04:00:00Z")!
+        XCTAssertEqual(ActivityText.time(start, zone: "Asia/Seoul"), "13:00")
+        XCTAssertEqual(ActivityText.day(start, zone: "Asia/Seoul"), "10/24")
+        XCTAssertEqual(ActivityText.time(start, zone: "UTC"), "04:00")
+    }
 }

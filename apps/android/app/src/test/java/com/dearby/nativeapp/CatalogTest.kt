@@ -70,4 +70,12 @@ class CatalogTest {
         runBlocking { model.load() }
         assertTrue(model.state.value.activities.single { it.id == CONFERENCE }.applied)
     }
+    @Test fun multiDaySchedulesShowDatesInTheirOwnZone() {
+        val twoDays = "[" + listOf("2026-10-24T13:00:00+09:00" to "2026-10-24T17:00:00+09:00", "2026-10-25T10:00:00+09:00" to "2026-10-25T12:00:00+09:00")
+            .joinToString(",") { (start, end) -> "{\"id\":\"x\",\"title\":\"세션\",\"startAt\":\"$start\",\"endAt\":\"$end\",\"dateLabel\":\"\",\"timeZone\":\"Asia/Seoul\"}" } + "]"
+        val model = CatalogViewModel { parseCatalog(CatalogFixture.body(listOf(CatalogFixture.activity(CONFERENCE, "이틀", day = "2026-10-24", start = "13:00", end = "17:00", override = mapOf("schedules" to twoDays))))) }
+        runBlocking { model.load() }
+        assertEquals(listOf("10/24 13:00 – 17:00", "10/25 10:00 – 12:00"), model.state.value.activities.single().sessions.map { it.first })
+        assertEquals(listOf("13:00 – 17:00"), loaded().state.value.activities.first().sessions.map { it.first })
+    }
 }

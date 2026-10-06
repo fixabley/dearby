@@ -63,7 +63,7 @@ struct ActivityDetailView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 DearbyBadge(title: activity.statusLabel(at: state.loadedAt))
-                DearbyBadge(title: activity.participationType == .selection ? "선발형" : "참가등록형")
+                DearbyBadge(title: activity.participationType == .selection ? "선발형" : "바로 신청")
             }
             Text(activity.title).font(.title.bold())
             HStack {

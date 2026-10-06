@@ -14,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
@@ -23,7 +22,7 @@ import com.dearby.nativeapp.widgets.activity.activityCard.ActivityCard
 @Composable fun CatalogPage(state: CatalogState, open: (String) -> Unit, filter: (String) -> Unit, retry: () -> Unit, openLink: (String) -> Unit) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { Text("활동 둘러보기", style = MaterialTheme.typography.headlineMedium) }
-        item { LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { items(listOf("전체", "참가등록형", "선발형")) { label ->
+        item { LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) { items(listOf("전체", "바로 신청", "선발형")) { label ->
             FilterChip(state.filter == label, { filter(label) }, { Text(label) }, Modifier.heightIn(min = 48.dp), shape = RoundedCornerShape(24.dp), colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Teal, selectedLabelColor = androidx.compose.ui.graphics.Color.White, containerColor = Soft), border = null)
         } } }
         when {
@@ -31,10 +30,10 @@ import com.dearby.nativeapp.widgets.activity.activityCard.ActivityCard
             state.phase == CatalogPhase.FAILED -> item { DearbyErrorState("활동을 불러오지 못했어요", "연결을 확인한 뒤 다시 시도해 주세요.", retry) }
             state.visibleActivities.isEmpty() -> item { DearbyEmptyState("모집 중인 활동이 없어요", "새 활동이 공개되면 여기에서 볼 수 있어요.") }
             else -> items(state.visibleActivities, key = { it.id }) { activity ->
-                // Catalog activities have no photos; a plain tile stands in until the card offers a no-photo variant.
-                ActivityCard(activity.title, activity.summary, activity.status + " · " + activity.participation,
-                    activity.date + " · " + (activity.location ?: "장소 미확인"), ColorPainter(Mint), { open(activity.id) },
-                    applyUrl = activity.quickApplyUrl, recruitmentEnd = activity.recruitmentEnd, onApply = openLink)
+                // Catalog activities have no photos; the card draws its type and organization tile.
+                ActivityCard(activity.title, activity.organization ?: "주최 정보 미확인", activity.summary, activity.status + " · " + activity.participation,
+                    activity.date + " · " + (activity.location ?: "장소 미확인"), { open(activity.id) },
+                    isSelection = activity.participation == "선발형", applyUrl = activity.quickApplyUrl, recruitmentEnd = activity.recruitmentEnd, onApply = openLink)
             }
         }
     }

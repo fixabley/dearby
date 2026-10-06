@@ -39,7 +39,7 @@ class CatalogViewModel(private val fetch: suspend () -> List<ActivityModel>) : V
         }
     }
     fun schedules(id: String) = schedules[id].orEmpty()
-    fun filter(value: String) { require(value in listOf("전체", "참가등록형", "선발형")); mutable.update { it.copy(filter = value) } }
+    fun filter(value: String) { require(value in listOf("전체", "바로 신청", "선발형")); mutable.update { it.copy(filter = value) } }
     fun apply(id: String, value: Boolean) = update(id) { it.copy(applied = value, confirmed = value && it.confirmed) }
     fun confirm(id: String, value: Boolean) = update(id) { it.copy(confirmed = it.applied && value) }
     private fun update(id: String, change: (ActivityState) -> ActivityState) {
@@ -48,15 +48,19 @@ class CatalogViewModel(private val fetch: suspend () -> List<ActivityModel>) : V
 }
 
 private val sessionTime = DateTimeFormatter.ofPattern("HH:mm", Locale.KOREAN)
+private val sessionDay = DateTimeFormatter.ofPattern("M/d", Locale.KOREAN)
+private fun zoneOf(id: String) = runCatching { ZoneId.of(id) }.getOrDefault(ZoneId.of("Asia/Seoul"))
 private val checkedTime = DateTimeFormatter.ofPattern("M월 d일 HH:mm (한국 시간)", Locale.KOREAN).withZone(ZoneId.of("Asia/Seoul"))
 
 private fun ActivityModel.toState(now: Instant) = ActivityState(
-    id, title, summary, organization, statusLabel(now), if (participation == "selection") "선발형" else "참가등록형", isOpen(now),
+    id, title, summary, organization, statusLabel(now), if (participation == "selection") "선발형" else "바로 신청", isOpen(now),
     dateLabel, location, cost, audience, roles,
     schedules.map { schedule ->
-        val zone = runCatching { ZoneId.of(schedule.timeZone) }.getOrDefault(ZoneId.of("Asia/Seoul"))
+        val zone = zoneOf(schedule.timeZone)
         val range = listOf(schedule.startAt, schedule.endAt).joinToString(" – ") { sessionTime.withZone(zone).format(instant(it)) }
-        range to schedule.title
+        // Several days: prefix the date so sessions are not read as one day (web rule).
+        val days = schedules.map { sessionDay.withZone(zoneOf(it.timeZone)).format(instant(it.startAt)) }.toSet()
+        (if (days.size > 1) sessionDay.withZone(zone).format(instant(schedule.startAt)) + " " + range else range) to schedule.title
     },
     safeHttpsUrl(officialUrl), applyUrl(now), quickApplyUrl(now), recruitmentEnd, sourceNote,
     instant(sourceCheckedAt)?.let(checkedTime::format), schedules.firstOrNull()?.startAt,

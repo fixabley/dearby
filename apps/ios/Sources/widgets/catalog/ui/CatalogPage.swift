@@ -20,7 +20,7 @@ struct CatalogPage: View {
                 Text("활동 둘러보기").font(.title2.bold())
                 ScrollView(.horizontal) {
                     HStack(spacing: 8) {
-                        ForEach(Array(["전체", "참가등록형", "선발형"].enumerated()), id: \.offset) { index, title in
+                        ForEach(Array(["전체", "바로 신청", "선발형"].enumerated()), id: \.offset) { index, title in
                             Button { filter = index } label: {
                                 Text(title).font(.subheadline.weight(.semibold)).padding(.horizontal, 20).frame(minHeight: 44)
                                     .background(filter == index ? DearbyStyle.teal : DearbyStyle.muted, in: Capsule())
@@ -45,8 +45,9 @@ struct CatalogPage: View {
                                            description: Text("새 활동이 공개되면 여기에서 볼 수 있어요."))
                 case .loaded:
                     ForEach(visible) { activity in
-                        ActivityCard(activityID: activity.id, title: activity.title, summary: activity.summary,
-                            status: activity.statusLabel(at: state.loadedAt) + " · " + (activity.participationType == .selection ? "선발형" : "참가등록형"),
+                        ActivityCard(activityID: activity.id, title: activity.title, organization: activity.organization ?? "주최 정보 미확인",
+                            isSelection: activity.participationType == .selection, summary: activity.summary,
+                            status: activity.statusLabel(at: state.loadedAt) + " · " + (activity.participationType == .selection ? "선발형" : "바로 신청"),
                             dateAndPlace: activity.dateLabel + " · " + (activity.location ?? "장소 미확인"),
                             applyURL: activity.quickApplyURL(at: state.loadedAt), recruitmentEnd: activity.recruitmentEnd) {
                             path.append(activity.id)

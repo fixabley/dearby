@@ -17,7 +17,7 @@ struct ActivityArtwork: View {
         } else {
             ZStack {
                 DearbyStyle.mint
-                Image(systemName: "calendar").font(.largeTitle).foregroundStyle(DearbyStyle.teal)
+                Image(systemName: "calendar").font(.dearby(.largeTitle)).foregroundStyle(DearbyStyle.teal)
             }.accessibilityHidden(true)
         }
     }

@@ -19,7 +19,7 @@ import XCTest
         app.buttons["선발형"].tap()
         XCTAssertTrue(app.buttons[conference].waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.buttons[camp].exists)
-        app.buttons["참가등록형"].tap()
+        app.buttons["바로 신청"].tap()
         XCTAssertTrue(app.buttons[camp].waitForNonExistence(timeout: 5))
         XCTAssertTrue(app.buttons[conference].waitForExistence(timeout: 5))
     }

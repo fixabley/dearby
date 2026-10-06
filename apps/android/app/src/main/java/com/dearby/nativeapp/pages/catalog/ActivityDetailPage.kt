@@ -63,7 +63,7 @@ import com.dearby.nativeapp.shared.ui.*
                 HorizontalDivider()
                 Text("참가 안내", style = MaterialTheme.typography.titleLarge, color = Teal)
                 InfoRow("참가비", activity.cost ?: "미확인")
-                InfoRow("참여 방식", if (activity.participation == "선발형") "선발형 · 신청 후 선정" else "참가등록형")
+                InfoRow("참여 방식", if (activity.participation == "선발형") "선발형" else "바로 신청")
                 InfoRow("역할", activity.roles.joinToString(", ").ifEmpty { "미확인" })
                 HorizontalDivider()
                 Text("정보 출처", style = MaterialTheme.typography.titleLarge, color = Teal)
