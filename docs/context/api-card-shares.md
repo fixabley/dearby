@@ -19,7 +19,7 @@
 
 ## 웹 테스트 데이터
 
-`apps/dearby-api/test/fixtures/card-shares.json`에 가상 UUID를 고정한 데이터를 두었다. 명함 3장(3번은 철회 대상)과 공유 5건이 있다. 공유 1은 활동 2개, 활동 2는 명함 두 장에 걸치고, 공유 4는 활동이 없다(`활동 없음` 묶음). 공유 5는 철회 명함의 공유다. `guestSaves`는 저장 순서별 실제 응답(201/200, `saved`·`alreadySaved`)이다. `afterRevocation`은 철회 뒤의 `GET /v1/shares/:id` 404와 `GET /v1/guest/cards` 응답이다(`items`는 명함 ID로 적었다). `test/shares.test.ts` 첫 테스트가 이 파일로 실제 PostgreSQL에 데이터를 넣고 HTTP 응답과 일치하는지 확인한다. 웹 계약 대역 `apps/web/tests/fixture-api.ts`는 유저플로우 담당 소유라 수정하지 않았다.
+(2026-10-06 테스트 전체 삭제로 아래 파일은 지금 저장소에 없다. 당시 기록이다.) `apps/dearby-api/test/fixtures/card-shares.json`에 가상 UUID를 고정한 데이터를 두었다. 명함 3장(3번은 철회 대상)과 공유 5건이 있다. 공유 1은 활동 2개, 활동 2는 명함 두 장에 걸치고, 공유 4는 활동이 없다(`활동 없음` 묶음). 공유 5는 철회 명함의 공유다. `guestSaves`는 저장 순서별 실제 응답(201/200, `saved`·`alreadySaved`)이다. `afterRevocation`은 철회 뒤의 `GET /v1/shares/:id` 404와 `GET /v1/guest/cards` 응답이다(`items`는 명함 ID로 적었다). `test/shares.test.ts` 첫 테스트가 이 파일로 실제 PostgreSQL에 데이터를 넣고 HTTP 응답과 일치하는지 확인한다. 웹 계약 대역 `apps/web/tests/fixture-api.ts`는 유저플로우 담당 소유라 수정하지 않았다.
 
 ## root 운영 인계
 

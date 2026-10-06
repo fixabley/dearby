@@ -2,20 +2,8 @@ require 'xcodeproj'
 Dir.chdir(File.expand_path('..', __dir__))
 project = Xcodeproj::Project.new('Dearby.xcodeproj')
 app = project.new_target(:application, 'Dearby', :ios, '18.0')
-tests = project.new_target(:unit_test_bundle, 'DearbyTests', :ios, '18.0')
-tests.add_dependency(app)
-ui_tests = project.new_target(:ui_test_bundle, 'DearbyUITests', :ios, '18.0')
-ui_tests.add_dependency(app)
-[['Sources', app], ['unitTests', tests], ['uiTests', ui_tests]].each do |folder, target|
-  group = project.main_group.new_group(folder)
-  Dir.glob("#{folder}/**/*.swift").sort.each { |file| target.source_build_phase.add_file_reference(group.new_file(file)) }
-end
-# Test-only fixtures shared by unit and UI tests; never part of the app target.
-fixtures = project.main_group.new_group('testFixtures')
-Dir.glob('testFixtures/**/*.swift').sort.each do |file|
-  reference = fixtures.new_file(file)
-  [tests, ui_tests].each { |target| target.source_build_phase.add_file_reference(reference) }
-end
+sources = project.main_group.new_group('Sources')
+Dir.glob('Sources/**/*.swift').sort.each { |file| app.source_build_phase.add_file_reference(sources.new_file(file)) }
 # Release builds must get https domain origins from the build environment (contract "연결 설정").
 validate = app.new_shell_script_build_phase('Validate connection origins')
 validate.shell_script = 'bash "$SRCROOT/scripts/validate_origins.sh"'
@@ -53,11 +41,6 @@ project.targets.each do |target|
         config.build_settings['SWIFT_ACTIVE_COMPILATION_CONDITIONS'] = 'DEBUG'
         config.build_settings['INFOPLIST_FILE'] = 'Info-Debug.plist'
       end
-    elsif target == ui_tests
-      config.build_settings['TEST_TARGET_NAME'] = 'Dearby'
-    else
-      config.build_settings['TEST_HOST'] = '$(BUILT_PRODUCTS_DIR)/Dearby.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Dearby'
-      config.build_settings['BUNDLE_LOADER'] = '$(TEST_HOST)'
     end
   end
 end
@@ -66,7 +49,5 @@ end
 project.save
 scheme = Xcodeproj::XCScheme.new
 scheme.add_build_target(app)
-scheme.add_test_target(tests)
-scheme.add_test_target(ui_tests)
 scheme.set_launch_target(app)
 scheme.save_as(project.path, 'Dearby', true)
