@@ -62,6 +62,7 @@ SwiftUI와 Compose의 UI 소스는 각 플랫폼 안에서 공유하고, 이미�
 | 화면 여백 / 주요 간격 | 20 / 8·12·16·24 pt 또는 dp |
 | 주요 버튼 | 최소 높이 50, 모서리 11 pt 또는 dp |
 
+글꼴은 Pretendard 1.3.9다(2026-10-06). 원본·라이선스·SHA-256은 [저장소 루트 `shared/assets/fonts/pretendard`](../../shared/assets/fonts/pretendard/README.md)에 있다. Android는 테마 전체, 웹은 `globals.css`, iOS는 `Font.dearby(_:)`로 바꾼다. iOS의 상태를 가진 화면(`widgets`의 `*Page`·`ActivityDetailView`)과 `features`·`entities`·`pages`·앱 기본 글꼴·탐색 막대는 `미반영`이다.
 각 앱의 기존 스타일 상수로 적용한다. 별도 토큰 로더나 런타임 설정은 추가하지 않는다.
 운영체제 글자 확대·뒤로가기·터치 영역 기준은 유지한다.
 
@@ -71,13 +72,14 @@ SwiftUI와 Compose의 UI 소스는 각 플랫폼 안에서 공유하고, 이미�
 | --- | --- | --- |
 | 색상·주요 버튼·로고 | `Sources/shared/ui/DearbyStyle.swift` | `shared/ui/Components.kt` |
 | 배지·아바타·정보 행·시트 헤더 | `Sources/shared/ui/DearbyComponents.swift` | `shared/ui/Components.kt` |
-| 두 항목 전환·검색 칸·묶음 머리글·선택 칩·인라인 입력 칸 | `Sources/shared/ui/DearbyControls.swift`(두 항목 전환은 `DearbyComponents.swift`) | `shared/ui/Controls.kt` |
+| 두 항목 전환·검색 칸·묶음 머리글·선택 칩·인라인 입력 칸·함께한 활동 라벨 | `Sources/shared/ui/DearbyControls.swift`(두 항목 전환은 `DearbyComponents.swift`) | `shared/ui/Controls.kt` |
+| 받은 명함 목록 항목 | `Sources/widgets/identity/ui/ReceivedCardRow.swift` | `widgets/card/cardContent/ReceivedCardRow.kt` |
 | 명함·연락처·활동 이력 조합 | `Sources/entities/identity/ui` | `widgets/card/cardContent` |
 | 활동 목록·상세 | `Sources/widgets/catalog/ui` | `pages/catalog` |
 | 프로필·QR·명함함 | `Sources/widgets/identity/ui` | `pages/profile`, `pages/qr`, `pages/wallet` |
 | 공통 이미지 원본 | 저장소 루트 `shared/assets/prototype` | 저장소 루트 `shared/assets/prototype` |
 
-2026-10-06 추가한 공통 입력 컴포넌트의 이름·인자는 [신청 활동·명함 공유 정본](../context/feature-applied-activities-and-cards.md#ui-컴포넌트-공개-api)을 따른다. 웹 `SectionHeader`·`Segments`는 `미반영`이다.
+2026-10-06 추가한 공통 입력 컴포넌트의 이름·인자는 [신청 활동·명함 공유 정본](../context/feature-applied-activities-and-cards.md#ui-컴포넌트-공개-api)을 따른다. 웹은 `shared/ui/section-header.tsx`, `widgets/card`의 `TogetherActivityLabel`·`ReceivedCardRow`로 반영했다.
 Swift 경로는 `apps/ios`, Kotlin 경로는 `apps/android/app/src/main/java/com/dearby/nativeapp` 기준이다.
 먼저 공통 표현을 수정하고 해당 화면들이 이를 참조하도록 한다. 화면 이동과 예시 상태는 공통 UI 컴포넌트에 넣지 않는다.
 이미지 원본을 바꿀 때에는 iOS 이미지 세트와 Android drawable 사본도 함께 갱신한다.

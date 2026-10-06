@@ -17,6 +17,8 @@ export const guestShareSchema = z.strictObject({cardId:id,shareId:id,activities:
 export const guestListSchema = z.strictObject({items:z.array(cardSchema),shares:z.array(guestShareSchema)});
 export const guestShareSavedSchema = z.strictObject({cardId:id,shareId:id,status:z.enum(['saved','alreadySaved'])});
 export const guestShareCreatedSchema = guestShareSavedSchema.extend({status:z.literal('saved'),guestToken:tokenSchema.describe('Server-proxy consumption only. Next sets the HttpOnly cookie and must omit this field from browser JSON.')});
+export const handoffSchema = z.strictObject({code:tokenSchema.describe('One-time handoff code. Server-proxy consumption only; never log it.'),expiresAt:z.iso.datetime()});
+export const handoffRedeemedSchema = z.strictObject({guestToken:tokenSchema.describe('Same token as the issuing session. Next sets the HttpOnly cookie and must omit this field from browser JSON.')});
 export const guestSavedSchema = z.strictObject({cardId:id,status:z.enum(['saved','alreadySaved'])});
 export const guestCreatedSchema = z.strictObject({cardId:id,status:z.literal('saved'),guestToken:tokenSchema.describe('Server-proxy consumption only. Next sets the HttpOnly cookie and must omit this field from browser JSON.')});
 const errorSchema = z.strictObject({error:z.strictObject({code:z.string(),message:z.string()})});
@@ -32,6 +34,7 @@ const descriptions:Record<number,string> = {
 };
 export const ownerSecurity = [{OwnerSession:[]}];
 export const guestSecurity = [{GuestProxy:[],GuestSession:[]}];
+export const guestProxySecurity = [{GuestProxy:[]}];
 export const guestFirstSaveSecurity:Record<string,string[]>[] = [{GuestProxy:[]},{GuestProxy:[],GuestSession:[]}];
 export const ownerOnly = 'Owner bearer session required. Currently not exposed by the public nginx proxy (404 there); available only through a permitted direct/local API connection.';
 export const guestOnly = 'Trusted Next same-origin server proxy only. X-Guest-Proxy-Key is a server-only secret: never put it in a browser, mobile app, Swagger authorization dialog, example, URL or client bundle. X-Guest-Token is forwarded server-to-server from __Host-dearby_guest. Next owns HttpOnly/Secure/SameSite=Lax/Path=/ cookie renewal (400 days, same token); API stores only the digest, no automatic guest expiry. A card ID alone never authenticates a wallet.';
