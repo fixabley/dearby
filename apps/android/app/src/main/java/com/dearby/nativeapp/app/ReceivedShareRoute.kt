@@ -53,7 +53,7 @@ import kotlinx.coroutines.launch
         } catch (e: AccountException) {
             error = when (e.error) {
                 AccountError.UNAUTHORIZED -> null.also { signingIn = true }
-                AccountError.INVALID_INPUT -> "내 명함은 받은 명함에 저장하지 않아요."
+                AccountError.OWN_CARD -> "내 명함은 받은 명함에 저장하지 않아요."
                 AccountError.CONFLICT -> "이 명함으로 받은 공유가 너무 많아 더 저장할 수 없어요."
                 AccountError.NOT_FOUND -> "공유한 사람이 명함을 거둬들였어요."
                 else -> "저장하지 못했어요. 잠시 후 다시 시도해 주세요."

@@ -41,7 +41,7 @@ import Observation
             saving = result.status == "alreadySaved" ? .alreadySaved : .saved
         } catch AccountError.unauthorized {
             saving = .idle
-        } catch AccountError.invalidInput {
+        } catch AccountError.ownCard {
             saving = .failed("내 명함은 받은 명함에 저장하지 않아요.")
         } catch AccountError.notFound {
             phase = .missing

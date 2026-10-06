@@ -2,7 +2,8 @@ import Foundation
 
 enum AccountError: Error, Equatable {
     /// `conflict`: a card already holds the most share links (409).
-    case unauthorized, invalidInput, notFound, conflict, rateLimited, unavailable
+    /// `ownCard`: the share points at the signed-in account's own card (422 INVALID_RECIPIENT).
+    case unauthorized, invalidInput, ownCard, notFound, conflict, rateLimited, unavailable
 }
 
 /// Owner API (contract native-v1): email code sign-in, profile and card publishing.
@@ -47,7 +48,8 @@ struct AccountClient: Sendable {
     }
     /// Saves a received share to the account's wallet (contract #141).
     func saveShare(_ id: String, _ session: AccountSession) async throws -> SavedShare {
-        try await send("wallet/shares/\(id)", method: "PUT", session: session, as: SavedShare.self)
+        // An explicit empty JSON body: some HTTP stacks send a PUT body the API rejects otherwise.
+        try await send("wallet/shares/\(id)", method: "PUT", body: [String: String](), session: session, as: SavedShare.self)
     }
     func wallet(_ session: AccountSession) async throws -> Wallet {
         try await send("wallet", session: session, as: Wallet.self)
@@ -68,6 +70,7 @@ struct AccountClient: Sendable {
         let historyIds: [String]
     }
     private struct Challenge: Decodable { let challengeId: String }
+    private struct ErrorBody: Decodable { struct Detail: Decodable { let code: String?; let message: String? }; let error: Detail }
     private struct CardList: Decodable { let items: [PublishedCard] }
 
     private func send<Response: Decodable>(_ path: String, method: String = "GET", body: (any Encodable)? = nil,
@@ -91,7 +94,9 @@ struct AccountClient: Sendable {
         case 401: throw AccountError.unauthorized
         case 404: throw AccountError.notFound
         case 409: throw AccountError.conflict
-        case 422: throw AccountError.invalidInput
+        case 422:
+            let code = (try? JSONDecoder().decode(ErrorBody.self, from: data))?.error.code
+            throw code == "INVALID_RECIPIENT" ? AccountError.ownCard : AccountError.invalidInput
         case 429: throw AccountError.rateLimited
         default: throw AccountError.unavailable
         }
