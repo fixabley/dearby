@@ -1,5 +1,6 @@
 package com.dearby.nativeapp.shared.ui
 
+import androidx.compose.foundation.text.KeyboardOptions
 import android.provider.Settings
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
@@ -169,7 +170,7 @@ data class DearbyChoice(val id: String, val title: String)
     }
 }
 
-@Composable fun DearbyInlineField(label: String, value: String, onValueChange: (String) -> Unit, editing: Boolean, modifier: Modifier = Modifier, placeholder: String = "", singleLine: Boolean = true, style: TextStyle = MaterialTheme.typography.bodyLarge) {
+@Composable fun DearbyInlineField(label: String, value: String, onValueChange: (String) -> Unit, editing: Boolean, modifier: Modifier = Modifier, placeholder: String = "", singleLine: Boolean = true, style: TextStyle = MaterialTheme.typography.bodyLarge, keyboardOptions: KeyboardOptions = KeyboardOptions.Default) {
     val hint = placeholder.ifEmpty { label }
     val box = modifier.fillMaxWidth().background(if (editing) Soft else Color.Transparent, RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 6.dp)
     if (!editing) {
@@ -178,7 +179,7 @@ data class DearbyChoice(val id: String, val title: String)
     }
     BasicTextField(value, onValueChange, box.semantics { contentDescription = label }.drawBehind {
         drawLine(Teal, Offset(8.dp.toPx(), size.height), Offset(size.width - 8.dp.toPx(), size.height), 1.dp.toPx())
-    }, textStyle = style, singleLine = singleLine, maxLines = if (singleLine) 1 else 6, cursorBrush = SolidColor(Teal)) { inner ->
+    }, textStyle = style, keyboardOptions = keyboardOptions, singleLine = singleLine, maxLines = if (singleLine) 1 else 6, cursorBrush = SolidColor(Teal)) { inner ->
         Box { if (value.isEmpty()) Text(hint, color = Quiet, style = style); inner() }
     }
 }

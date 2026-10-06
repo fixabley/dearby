@@ -56,6 +56,12 @@ import Observation
             message = Self.text(error, fallback: "로그인하지 못했어요. 잠시 후 다시 시도해 주세요.")
         }
     }
+    /// Back to the email step, e.g. to fix a mistyped address.
+    func changeEmail() {
+        challengeID = nil
+        message = nil
+        phase = .signedOut
+    }
     /// Signing out always forgets the local session, even if the server call fails.
     func signOut() async {
         if let session { try? await client.signOut(session) }

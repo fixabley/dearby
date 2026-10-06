@@ -85,7 +85,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardState
             if (card != null) DearbyButton({ detail(card) }, Modifier.fillMaxWidth()) { Text("명함 보기") }
             Text("내 명함", style = MaterialTheme.typography.titleMedium)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                item { OutlinedButton({ select(null) }, Modifier.width(112.dp).height(116.dp), shape = RoundedCornerShape(12.dp)) { Text("＋\n새 명함", textAlign = TextAlign.Center) } }
+                item { OutlinedButton(create, Modifier.width(112.dp).height(116.dp), shape = RoundedCornerShape(12.dp)) { Text("＋\n새 명함", textAlign = TextAlign.Center) } }
                 items(cards, key = { it.id }) { item ->
                     Surface(onClick = { select(item.id) }, modifier = Modifier.width(112.dp).heightIn(min = 116.dp), color = if (item.id == selectedId) Mint else Color.White, shape = RoundedCornerShape(12.dp), border = BorderStroke(if (item.id == selectedId) 1.5.dp else 1.dp, if (item.id == selectedId) Teal else Line)) {
                         Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {

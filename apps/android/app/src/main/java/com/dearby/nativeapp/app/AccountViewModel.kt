@@ -11,7 +11,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 enum class AccountPhase { SIGNED_OUT, SENDING_CODE, CODE_SENT, VERIFYING, SIGNED_IN }
-data class AccountState(val phase: AccountPhase, val email: String = "", val message: String? = null)
+/** [codeSentAt] is when the last code was sent (epoch ms), for the one-per-minute resend wait. */
+data class AccountState(val phase: AccountPhase, val email: String = "", val message: String? = null, val codeSentAt: Long? = null)
 
 /** Email-code sign-in, asked for only when publishing, sharing or saving a received card. */
 class AccountViewModel(val client: AccountClient, private val vault: SessionStore) : ViewModel() {
@@ -26,7 +27,7 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
         mutable.update { it.copy(phase = AccountPhase.SENDING_CODE, message = null) }
         try {
             challengeId = client.requestCode(email)
-            mutable.update { it.copy(phase = AccountPhase.CODE_SENT, email = email) }
+            mutable.update { it.copy(phase = AccountPhase.CODE_SENT, email = email, codeSentAt = System.currentTimeMillis()) }
         } catch (e: AccountException) {
             mutable.update { it.copy(phase = if (challengeId == null) AccountPhase.SIGNED_OUT else AccountPhase.CODE_SENT,
                 message = text(e, "인증번호를 보내지 못했어요. 잠시 후 다시 시도해 주세요.")) }
@@ -44,11 +45,16 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
             vault.save(signedIn)
             session = signedIn
             challengeId = null
-            mutable.update { it.copy(phase = AccountPhase.SIGNED_IN) }
+            mutable.update { it.copy(phase = AccountPhase.SIGNED_IN, codeSentAt = null) }
         } catch (e: AccountException) {
             mutable.update { it.copy(phase = AccountPhase.CODE_SENT, message =
                 if (e.error == AccountError.UNAUTHORIZED) "인증번호가 맞지 않거나 만료됐어요." else text(e, "로그인하지 못했어요. 잠시 후 다시 시도해 주세요.")) }
         }
+    }
+    /** Back to the email step, e.g. to fix a mistyped address. */
+    fun changeEmail() {
+        challengeId = null
+        mutable.update { it.copy(phase = AccountPhase.SIGNED_OUT, message = null, codeSentAt = null) }
     }
     /** Signing out always forgets the local session, even if the server call fails. */
     suspend fun signOut() {

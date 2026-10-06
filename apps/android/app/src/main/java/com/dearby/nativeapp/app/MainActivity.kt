@@ -7,6 +7,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.viewModels
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.dearby.nativeapp.entities.account.api.AccountClient
+import com.dearby.nativeapp.entities.account.api.SessionVault
 import com.dearby.nativeapp.entities.catalog.api.fetchCatalog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -25,6 +27,10 @@ class MainActivity : ComponentActivity() {
         viewModelFactory { initializer { CatalogViewModel { withContext(Dispatchers.IO) { fetchCatalog(ApiOrigin.current) } } } }
     }
     private val demo: DemoViewModel by viewModels()
+    private val account: AccountViewModel by viewModels {
+        viewModelFactory { initializer { AccountViewModel(AccountClient(ApiOrigin.current), SessionVault(applicationContext, ApiOrigin.sessionName)) } }
+    }
+    private val publish: CardPublishViewModel by viewModels { viewModelFactory { initializer { CardPublishViewModel(account) } } }
     // Captured from /s/<UUID> App Links; the shared-card screen is connected in a later step.
     private var incomingShareId by mutableStateOf<String?>(null)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,7 +38,7 @@ class MainActivity : ComponentActivity() {
         receive(intent)
         setContent {
             DearbyTheme {
-                DearbyApp(catalog, demo)
+                DearbyApp(catalog, demo, account, publish)
                 if (incomingShareId != null) AlertDialog(
                     onDismissRequest = { incomingShareId = null },
                     title = { Text("공유 명함 링크") },

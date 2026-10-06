@@ -7,7 +7,7 @@
 - 활동 예시: `DemoActivities.swift`, 바쁜 시간 예시: `CalendarConflictState.swift`.
 - 가상 프로필·명함: `DemoIdentity.swift`. Catalog/IdentityViewModel과 View state가 실행 중 상태를 소유한다.
 - 공통 표현은 `shared/ui`, 명함·연락처·이력 조합은 `entities/identity/ui`에 둔다. 파일별 대응은 [시안 적용표](../design/mobile-prototype-reference-map.md)를 따른다.
-- 명함 편집은 기존 ID를 보존한다. 명함 공유·스캔은 예시 화면이고, 활동의 HTTPS 링크 공유만 운영체제 공유를 사용한다.
+- 명함 만들기는 실제 API를 쓴다(2026-10-06): `widgets/identity/ui/CardComposerPage.swift`·`SignInSheet.swift`, 상태는 `widgets/identity/model/CardPublishModel.swift`·`CardDraft.swift`·`AccountViewModel.swift`. 명함 공유·스캔은 아직 예시 화면이고, 활동의 HTTPS 링크 공유만 운영체제 공유를 사용한다.
 
 ## 기존 검증과 한계
 

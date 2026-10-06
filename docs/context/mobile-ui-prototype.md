@@ -43,16 +43,17 @@ flowchart LR
 
 ## 명함 화면 이동
 
-다음 명함 흐름도 예시 화면이다.
+명함 만들기(2026-10-06)만 실제 API에 연결했고 나머지 명함 흐름은 예시 화면이다.
 
 ```mermaid
 flowchart LR
     PROFILE["내 프로필"] --> EDIT["프로필 편집 · 메모리"]
     QR["QR · 내 명함 선택"] --> CARD["명함 상세"]
-    QR --> NEW["새 명함 안내"]
-    NEW --> COMPOSE["공개 연락처·이력 선택"]
-    COMPOSE --> PREVIEW["미리보기 · 예시 생성"]
-    PREVIEW --> QR
+    QR --> COMPOSE["명함 만들기 · 실제 프로필"]
+    COMPOSE -->|발행, 비로그인| SIGNIN["이메일 인증번호 로그인 시트"]
+    SIGNIN --> PUBLISH["프로필 저장 → 명함 발행"]
+    COMPOSE -->|발행, 로그인| PUBLISH
+    PUBLISH --> QR
     QR --> SCAN["스캔 화면 · 예시 명함 열기"]
     SCAN --> CARD
     WALLET["받은 명함 · 검색·그룹"] --> CARD

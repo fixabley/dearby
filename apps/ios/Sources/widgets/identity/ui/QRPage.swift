@@ -2,6 +2,7 @@ import SwiftUI
 
 struct QRPage: View {
     @Bindable var state: IdentityViewModel
+    let account: AccountViewModel
     @State private var mode = 0
     @State private var enlarged = false
     @State private var sharing = false
@@ -20,7 +21,7 @@ struct QRPage: View {
                     Text("내 명함").font(.headline).frame(maxWidth: .infinity, alignment: .leading)
                     ScrollView(.horizontal) {
                         HStack(spacing: 10) {
-                            tile(title: "새 명함", subtitle: "", symbol: "plus", selected: selected == nil) { state.selectedCardID = nil }
+                            tile(title: "새 명함", subtitle: "", symbol: "plus", selected: false) { editor = true }
                             ForEach(state.cards) { card in
                                 tile(title: card.name, subtitle: card.description, symbol: "person", selected: card.id == state.selectedCardID) { state.selectedCardID = card.id }
                             }
@@ -29,7 +30,7 @@ struct QRPage: View {
                 } else { scan }
             }.padding(20)
         }.background(.white).toolbar(.hidden, for: .navigationBar)
-            .sheet(isPresented: $editor) { NavigationStack { CardEditorPage(state: state, editing: selected) } }
+            .sheet(isPresented: $editor) { NavigationStack { CardComposerPage(account: account) } }
             .sheet(isPresented: $sharing) { QRShareSheet() }
             .sheet(item: $detail) { card in
                 NavigationStack {

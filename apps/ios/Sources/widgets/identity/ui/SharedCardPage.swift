@@ -28,7 +28,6 @@ struct SendCardPage: View {
     let state: IdentityViewModel
     let recipient: CardModel
     @State private var selection = 0
-    @State private var editor = false
     @State private var preview = false
     @State private var sent = false
     @Environment(\.dismiss) private var dismiss
@@ -51,9 +50,7 @@ struct SendCardPage: View {
         }.navigationTitle("내 명함 선택").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } }
-                ToolbarItem(placement: .primaryAction) { Button("+ 새 명함") { editor = true } }
             }
-            .sheet(isPresented: $editor) { NavigationStack { CardEditorPage(state: state) } }
             .sheet(isPresented: $preview) {
                 NavigationStack {
                     if state.cards.indices.contains(selection) {
