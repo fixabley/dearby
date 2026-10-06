@@ -24,26 +24,15 @@ class CardFlowTest {
         compose.onNodeWithText("김지민 예시").performScrollTo().assertIsDisplayed()
     }
 
-    @Test fun qrShowShareNewCardVisibilityAndPreview() {
+    @Test fun qrSignedOutOffersCardCreation() {
         tab("QR")
-        compose.onNodeWithContentDescription("명함 QR, 누르면 확대").assertIsDisplayed()
-        compose.onNodeWithText("새 명함", substring = true).assertIsDisplayed()
-        screenshot("selected-qr-show")
-        compose.onNodeWithContentDescription("선택 명함 편집").performClick()
+        compose.onNodeWithText("명함 만들기").assertIsDisplayed()
+        compose.onNodeWithContentDescription("명함 QR").assertDoesNotExist()
+        screenshot("selected-qr-signed-out")
+        compose.onNodeWithText("명함 만들기").performClick()
         compose.onNodeWithText("로그인하고 명함 발행").assertIsDisplayed()
         compose.onNodeWithContentDescription("뒤로").performClick()
-        compose.onNodeWithContentDescription("명함 QR, 누르면 확대").performClick()
-        compose.onNodeWithContentDescription("확대된 예시 QR").assertIsDisplayed()
-        compose.onNodeWithText("닫기").performClick()
-        compose.onNodeWithContentDescription("공유 메뉴").performClick()
-        screenshot("selected-qr-share-menu")
-        compose.onNodeWithText("QR 이미지 저장").performClick()
-        compose.onNodeWithText("확인").performClick()
-        compose.onNodeWithText("내 명함").performScrollTo()
-        compose.onNodeWithText("새 명함", substring = true).performClick()
-        compose.onNodeWithText("로그인하고 명함 발행").assertIsDisplayed()
-        compose.onNodeWithContentDescription("뒤로").performClick()
-        compose.onNodeWithContentDescription("명함 QR, 누르면 확대").assertIsDisplayed()
+        compose.onNodeWithText("명함 만들기").assertIsDisplayed()
     }
 
     @Test fun exampleScanPublicCardSaveAndSend() {

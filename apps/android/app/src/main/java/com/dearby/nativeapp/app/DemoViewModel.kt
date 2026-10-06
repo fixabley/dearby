@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.update
 
 data class DemoState(
     val loggedIn: Boolean = false, val profile: ProfileState = demoProfile,
-    val cards: List<CardState> = demoCards, val selectedCardId: String? = demoCards.first().id,
+    val cards: List<CardState> = demoCards,
     val wallet: List<WalletEntryState> = demoWallet, val query: String = "", val reciprocalGroup: Boolean = false,
     val collapsedGroupIds: Set<String> = emptySet(),
 )
@@ -19,7 +19,6 @@ class DemoViewModel : ViewModel() {
     val state = mutable.asStateFlow()
     fun login(value: Boolean) { mutable.update { it.copy(loggedIn = value) } }
     fun profile(value: ProfileState) { mutable.update { it.copy(profile = value) } }
-    fun selectCard(id: String?) { mutable.update { it.copy(selectedCardId = id) } }
     fun query(value: String) { mutable.update { it.copy(query = value) } }
     fun group(reciprocal: Boolean) { mutable.update { it.copy(reciprocalGroup = reciprocal) } }
     fun toggleGroup(id: String) { mutable.update { it.copy(collapsedGroupIds = if (id in it.collapsedGroupIds) it.collapsedGroupIds - id else it.collapsedGroupIds + id) } }

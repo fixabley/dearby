@@ -14,6 +14,9 @@ final class FixtureServer: @unchecked Sendable {
     /// "METHOD /path" of every request, in order.
     private(set) var requests: [String] = []
     private var profile = #"{"id":"p1","name":"","job":"","introduction":"","contacts":[],"histories":[],"updatedAt":"2026-10-06T00:00:00Z"}"#
+    static let shareID = "5a1e0000-0000-4000-8000-000000000001"
+    /// Cards published through this server, in creation order.
+    private var cards: [String] = []
     private(set) var port: UInt16 = 0
     var origin: String { "http://127.0.0.1:\(port)" }
 
@@ -67,8 +70,19 @@ final class FixtureServer: @unchecked Sendable {
         case "POST /v1/cards":
             if failingCards { return (503, "{}") }
             let name = (try? JSONSerialization.jsonObject(with: Data(profile.utf8)) as? [String: Any])?["name"] as? String ?? ""
-            return (201, #"{"id":"c1000000-0000-4000-8000-000000000001","name":"내 명함","description":"","profileName":"\#(name)","job":"","contacts":[],"histories":[],"createdAt":"2026-10-06T00:00:00Z"}"#)
-        default: return (404, "{}")
+            let card = #"{"id":"c1000000-0000-4000-8000-00000000000\#(cards.count + 1)","name":"내 명함","description":"","profileName":"\#(name)","job":"","contacts":[],"histories":[],"createdAt":"2026-10-06T00:00:00Z"}"#
+            cards.append(card)
+            return (201, card)
+        case "GET /v1/cards": return (200, #"{"items":[\#(cards.joined(separator: ","))]}"#)
+        default:
+            // POST /v1/cards/<id>/shares: activities come back as an {id, title} snapshot.
+            if route.hasPrefix("POST /v1/cards/"), route.hasSuffix("/shares") {
+                let cardID = route.split(separator: "/")[3]
+                let ids = json["activityIds"] as? [String] ?? []
+                let activities = ids.map { #"{"id":"\#($0)","title":"활동 \#($0)"}"# }.joined(separator: ",")
+                return (201, #"{"id":"\#(Self.shareID)","cardId":"\#(cardID)","activities":[\#(activities)],"createdAt":"2026-10-06T00:00:00Z"}"#)
+            }
+            return (404, "{}")
         }
     }
 }

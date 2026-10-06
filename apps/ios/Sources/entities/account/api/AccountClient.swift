@@ -37,6 +37,13 @@ struct AccountClient: Sendable {
     func publish(_ card: CardInput, _ session: AccountSession) async throws -> PublishedCard {
         try await send("cards", method: "POST", body: card, session: session, as: PublishedCard.self)
     }
+    /// Your non-withdrawn cards in creation order, so the newest is last.
+    func cards(_ session: AccountSession) async throws -> [PublishedCard] {
+        try await send("cards", session: session, as: CardList.self).items
+    }
+    func share(_ cardID: String, activityIds: [String], _ session: AccountSession) async throws -> CardShare {
+        try await send("cards/\(cardID)/shares", method: "POST", body: ["activityIds": activityIds], session: session, as: CardShare.self)
+    }
 
     struct CardInput: Encodable, Equatable, Sendable {
         let name: String
@@ -45,6 +52,7 @@ struct AccountClient: Sendable {
         let historyIds: [String]
     }
     private struct Challenge: Decodable { let challengeId: String }
+    private struct CardList: Decodable { let items: [PublishedCard] }
 
     private func send<Response: Decodable>(_ path: String, method: String = "GET", body: (any Encodable)? = nil,
                                            session: AccountSession? = nil, as type: Response.Type) async throws -> Response {

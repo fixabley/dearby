@@ -20,6 +20,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.dearby.nativeapp.BuildConfig
 import com.dearby.nativeapp.shared.config.sharedCardId
+import com.dearby.nativeapp.shared.config.sharedCardUrl
 import com.dearby.nativeapp.shared.ui.DearbyTheme
 
 class MainActivity : ComponentActivity() {
@@ -31,6 +32,9 @@ class MainActivity : ComponentActivity() {
         viewModelFactory { initializer { AccountViewModel(AccountClient(ApiOrigin.current), SessionVault(applicationContext, ApiOrigin.sessionName)) } }
     }
     private val publish: CardPublishViewModel by viewModels { viewModelFactory { initializer { CardPublishViewModel(account) } } }
+    private val qrShare: QrShareViewModel by viewModels {
+        viewModelFactory { initializer { QrShareViewModel(account) { sharedCardUrl(it, BuildConfig.WEB_ORIGIN) } } }
+    }
     // Captured from /s/<UUID> App Links; the shared-card screen is connected in a later step.
     private var incomingShareId by mutableStateOf<String?>(null)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -38,7 +42,7 @@ class MainActivity : ComponentActivity() {
         receive(intent)
         setContent {
             DearbyTheme {
-                DearbyApp(catalog, demo, account, publish)
+                DearbyApp(catalog, demo, account, publish, qrShare)
                 if (incomingShareId != null) AlertDialog(
                     onDismissRequest = { incomingShareId = null },
                     title = { Text("공유 명함 링크") },

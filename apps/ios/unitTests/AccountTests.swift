@@ -147,4 +147,43 @@ private final class MemoryStore: SessionStore, @unchecked Sendable {
         XCTAssertEqual(fake.requests.map(\.httpMethod), ["POST"])
         guard case .published = model.phase else { return XCTFail("\(model.phase)") }
     }
+    func testShareLinkRoundTripsThroughTheParser() {
+        let web = URL(string: "https://dearby.example.test")!
+        let url = SharedCardLink.url(shareID: "5a1e0000-0000-4000-8000-000000000001", web: web)
+        XCTAssertEqual(url.absoluteString, "https://dearby.example.test/s/5a1e0000-0000-4000-8000-000000000001")
+        XCTAssertEqual(SharedCardLink.shareID(from: url, web: web), "5a1e0000-0000-4000-8000-000000000001")
+    }
+    func testQRShareUsesNewestCardAndReusesASharePerActivityChoice() async throws {
+        let fake = FakeTransport(), store = MemoryStore()
+        store.session = AccountSession(sessionToken: "t", profileId: "p1")
+        let share = #"{"id":"5a1e0000-0000-4000-8000-000000000001","cardId":"card-2","activities":[],"createdAt":"2026-10-06T00:00:00Z"}"#
+        let other = #"{"id":"5a1e0000-0000-4000-8000-000000000002","cardId":"card-2","activities":[{"id":"a1","title":"활동"}],"createdAt":"2026-10-06T00:00:00Z"}"#
+        let list = #"{"items":[\#(cardBody),\#(cardBody.replacingOccurrences(of: "card-1", with: "card-2"))]}"#
+        fake.answers = [(200, list), (201, share), (201, other)]
+        let model = QRShareModel(account: AccountViewModel(client: client(fake), vault: store)) {
+            SharedCardLink.url(shareID: $0, web: URL(string: "https://dearby.example.test")!)
+        }
+        await model.load()
+        XCTAssertEqual(model.selectedCardID, "card-2")
+        XCTAssertEqual(model.phase, .ready(URL(string: "https://dearby.example.test/s/5a1e0000-0000-4000-8000-000000000001")!))
+        XCTAssertEqual(fake.requests[1].url?.path, "/v1/cards/card-2/shares")
+        XCTAssertEqual(String(data: fake.requests[1].httpBody!, encoding: .utf8), #"{"activityIds":[]}"#)
+        await model.choose(["a1"])
+        XCTAssertEqual(String(data: fake.requests[2].httpBody!, encoding: .utf8), #"{"activityIds":["a1"]}"#)
+        await model.choose([])
+        XCTAssertEqual(fake.requests.count, 3)
+        XCTAssertEqual(model.phase, .ready(URL(string: "https://dearby.example.test/s/5a1e0000-0000-4000-8000-000000000001")!))
+    }
+    func testQRShareSignedOutOrWithoutCardsAsksToMakeOne() async {
+        let fake = FakeTransport(), store = MemoryStore()
+        let signedOut = QRShareModel(account: AccountViewModel(client: client(fake), vault: store)) { _ in URL(string: "https://x.test")! }
+        await signedOut.load()
+        XCTAssertEqual(signedOut.phase, .signedOut)
+        XCTAssertTrue(fake.requests.isEmpty)
+        store.session = AccountSession(sessionToken: "t", profileId: "p1")
+        fake.answers = [(200, #"{"items":[]}"#)]
+        let empty = QRShareModel(account: AccountViewModel(client: client(fake), vault: store)) { _ in URL(string: "https://x.test")! }
+        await empty.load()
+        XCTAssertEqual(empty.phase, .noCard)
+    }
 }

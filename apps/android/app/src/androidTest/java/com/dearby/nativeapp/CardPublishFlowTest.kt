@@ -1,5 +1,7 @@
 package com.dearby.nativeapp
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.test.core.app.ActivityScenario
@@ -29,10 +31,17 @@ class CardPublishFlowTest {
         SessionVault(context, vault).clear(); context.deleteSharedPreferences(vault)
         ApiOrigin.debugOverride = null; ApiOrigin.debugSessionName = null
     }
-    private fun openComposerAndSignIn(code: String = FixtureServer.CODE) {
+    private fun openComposerAndSignIn(code: String = FixtureServer.CODE, markApplied: Boolean = false) {
         scenario = ActivityScenario.launch(MainActivity::class.java)
+        if (markApplied) {
+            waitFor("테스트 컨퍼런스")
+            compose.onNodeWithText("테스트 컨퍼런스").performClick()
+            compose.onNodeWithText("신청 상태 수정").performScrollTo().performClick()
+            compose.onNodeWithText("신청함").performClick()
+            compose.onNodeWithContentDescription("뒤로").performClick()
+        }
         compose.onAllNodesWithText("QR").onLast().performClick()
-        compose.onNodeWithText("새 명함", substring = true).performClick()
+        compose.onNodeWithText("명함 만들기").performClick()
         compose.onNodeWithText("로그인하고 명함 발행").assertIsNotEnabled()
         assertEquals(emptyList<String>(), server.requests.filter { "/v1/auth" in it || "/v1/profile" in it })
         compose.onNodeWithContentDescription("이름").performTextInput("김지민")
@@ -55,7 +64,13 @@ class CardPublishFlowTest {
         assertEquals(listOf("POST /v1/auth/challenges", "POST /v1/auth/sessions", "POST /v1/auth/sessions", "GET /v1/profile", "PUT /v1/profile", "POST /v1/cards"),
             server.requests.filter { it != "GET /v1/catalog" })
         compose.onNodeWithText("확인").performClick()
-        compose.onNodeWithContentDescription("명함 QR, 누르면 확대").assertIsDisplayed()
+        // Back on the QR tab the new card is shared right away as <web>/s/<share ID>.
+        compose.waitUntil(10_000) { compose.onAllNodesWithContentDescription("명함 QR").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithContentDescription("명함 QR").assert(SemanticsMatcher("share URL") {
+            it.config.getOrNull(SemanticsProperties.StateDescription)?.endsWith("/s/${FixtureServer.SHARE_ID}") == true
+        })
+        assertEquals(listOf("GET /v1/cards", "POST /v1/cards/c1000000-0000-4000-8000-000000000001/shares"), server.requests.takeLast(2))
+        capturePrototype(compose, "qr-share")
     }
     @Test fun cardFailureAfterProfileSaveRetriesOnlyTheCard() {
         server.failingCards = true
@@ -65,5 +80,17 @@ class CardPublishFlowTest {
         compose.onNodeWithText("명함 발행").performClick()
         waitFor("명함을 발행했어요")
         assertEquals(1, server.requests.count { it == "PUT /v1/profile" })
+    }
+    @Test fun choosingAnAppliedActivityMakesANewShare() {
+        openComposerAndSignIn(markApplied = true)
+        waitFor("명함을 발행했어요")
+        compose.onNodeWithText("확인").performClick()
+        compose.waitUntil(10_000) { compose.onAllNodesWithContentDescription("명함 QR").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithText("함께 보낼 활동 (선택)").performScrollTo().performClick()
+        compose.onNodeWithText("테스트 컨퍼런스").performScrollTo().performClick()
+        compose.waitUntil(10_000) { server.requests.count { it.endsWith("/shares") } == 2 }
+        compose.onNodeWithText("테스트 컨퍼런스").performClick()
+        compose.waitForIdle()
+        assertEquals(2, server.requests.count { it.endsWith("/shares") })
     }
 }
