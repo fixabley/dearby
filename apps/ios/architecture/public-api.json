@@ -60,6 +60,7 @@
   ],
   "widgets/catalog": [
     "ActivityCard",
+    "ApplyConfirmationSheet",
     "CatalogPage",
     "CatalogViewModel",
     "MyActivitiesPage"
