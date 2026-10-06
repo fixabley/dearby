@@ -3,8 +3,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { type Catalog, isRecruiting } from "@/lib/models";
 import { errorMessage, request } from "@/lib/client";
-import { Empty, Failure, Loading } from "./states";
-import { Icon } from "./icon";
+import { Empty, Failure, Loading } from "@/shared/ui/states";
+import { Icon } from "@/shared/ui/icon";
+import { ActivityCard } from "@/widgets/activity/activity-card";
 export function Discovery() {
   const [catalog, setCatalog] = useState<Catalog>();
   const [error, setError] = useState("");
@@ -76,40 +77,23 @@ export function Discovery() {
         <ul className="activity-list">
           {activities.map((activity) => (
             <li key={activity.id}>
-              <Link
-                className="activity-card"
-                href={`/activities/${activity.id}`}
-              >
-                <span className="activity-art" aria-hidden="true">
-                  <Icon name="calendar" size={34} />
-                </span>
-                <div className="activity-copy">
-                  <p className="eyebrow">
-                    {catalog.organizations.find(
-                      (org) => org.id === activity.organizationId,
-                    )?.name ?? "주최 정보 미확인"}{" "}
-                    <span className="dot">·</span>{" "}
-                    {activity.participationType === "registration"
-                      ? "바로 신청"
-                      : "선발형"}
-                  </p>
-                  <h2>{activity.title}</h2>
-                  <p className="summary">{activity.summary}</p>
-                  <div className="activity-meta">
-                    <span>
-                      <Icon name="calendar" size={17} />
-                      {activity.dateLabel || "일정 미확인"}
-                    </span>
-                    <span>
-                      <Icon name="pin" size={17} />
-                      {activity.location || "장소 미확인"}
-                    </span>
-                  </div>
-                </div>
-                <span className="card-chevron" aria-hidden="true">
-                  ›
-                </span>
-              </Link>
+              <ActivityCard
+                id={activity.id}
+                title={activity.title}
+                summary={activity.summary}
+                organizationName={
+                  catalog.organizations.find(
+                    (org) => org.id === activity.organizationId,
+                  )?.name ?? "주최 정보 미확인"
+                }
+                participationLabel={
+                  activity.participationType === "registration"
+                    ? "바로 신청"
+                    : "선발형"
+                }
+                dateLabel={activity.dateLabel}
+                location={activity.location}
+              />
             </li>
           ))}
         </ul>

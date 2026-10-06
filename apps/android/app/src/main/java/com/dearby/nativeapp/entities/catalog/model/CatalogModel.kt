@@ -7,6 +7,9 @@ data class ActivityModel(
     val url: String, val schedule: ScheduleModel,
 )
 
+// Same on iOS: the app starts with one example application.
+val demoAppliedActivityIds = setOf("conference")
+
 // Fixed examples: deliberately independent of the device clock and network.
 val demoActivities = listOf(
     ActivityModel("conference", "Dearby 개발자 컨퍼런스", "개발자·디자이너·기획자가 함께하는 컨퍼런스", "참가등록형", "모집 중",
