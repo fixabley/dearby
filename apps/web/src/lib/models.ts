@@ -29,6 +29,25 @@ export const cardSchema = z.object({
   createdAt: text,
 });
 export type Card = z.infer<typeof cardSchema>;
+// Activity copies chosen by the sender; not proof of participation.
+const sharedActivity = z.object({ id: uuid, title: text });
+export const sharePageSchema = z.object({
+  share: z.object({
+    id: uuid,
+    cardId: uuid,
+    activities: z.array(sharedActivity).max(10),
+    createdAt: text,
+  }),
+  card: cardSchema,
+});
+export type SharePage = z.infer<typeof sharePageSchema>;
+export const guestShareSchema = z.object({
+  cardId: uuid,
+  shareId: uuid,
+  activities: z.array(sharedActivity).max(10),
+  savedAt: text,
+});
+export type GuestShare = z.infer<typeof guestShareSchema>;
 export const activitySchema = z.object({
   id: uuid,
   programId: uuid,
