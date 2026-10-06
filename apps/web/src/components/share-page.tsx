@@ -1,4 +1,5 @@
 "use client";
+import { InstallOffer } from "./install-offer";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { Card, SharePage as Share } from "@/lib/models";
 import {
@@ -98,6 +99,7 @@ export function SharePage({ id }: { id: string }) {
         errorMessage={saveError}
         onSave={save}
       />
+      {saveState === "saved" && <InstallOffer />}
     </div>
   );
 }
