@@ -14,7 +14,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dearby.nativeapp.pages.profile.ProfilePage
-import com.dearby.nativeapp.pages.qr.QrPage
 import com.dearby.nativeapp.pages.wallet.SendPage
 import com.dearby.nativeapp.pages.wallet.SharedCardPage
 import com.dearby.nativeapp.pages.wallet.WalletPage
@@ -33,7 +32,7 @@ private sealed interface CardRoute {
     data object Composer : CardRoute
 }
 
-@Composable fun DearbyApp(catalog: CatalogViewModel, demo: DemoViewModel, account: AccountViewModel, publish: CardPublishViewModel) {
+@Composable fun DearbyApp(catalog: CatalogViewModel, demo: DemoViewModel, account: AccountViewModel, publish: CardPublishViewModel, qrShare: QrShareViewModel) {
     val state by demo.state.collectAsStateWithLifecycle()
     var tab by remember { mutableStateOf(Tab.Discovery) }
     var route by remember { mutableStateOf<CardRoute?>(null) }
@@ -59,7 +58,7 @@ private sealed interface CardRoute {
                             }
                             key(tab) { CatalogRoute(catalog, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }) { catalogDetail = it } }
                         }
-                        Tab.Qr -> QrPage(state.cards, state.selectedCardId, demo::selectCard, { route = CardRoute.Detail(it) }, compose, { compose() }, { route = CardRoute.Detail(demoPublicCard) }, { notice = "$it 동작을 확인했어요.\nhttps://example.com\n실제 전송·복사·파일 저장은 하지 않았어요." })
+                        Tab.Qr -> QrRoute(qrShare, catalog, compose) { route = CardRoute.Detail(demoPublicCard) }
                         Tab.Wallet -> WalletPage(state.wallet, state.query, state.reciprocalGroup, demo::query, demo::group, { route = CardRoute.Detail(it) }, { route = CardRoute.Send(it) }, contact)
                         Tab.Profile -> ProfilePage(state.profile, state.loggedIn, demo::profile, { demo.login(true) }, { demo.login(false) })
                     }

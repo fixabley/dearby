@@ -15,6 +15,11 @@ data class AccountProfile(val name: String, val job: String, val introduction: S
 data class PublishedCard(val id: String, val name: String, val description: String, val profileName: String, val job: String,
     val contacts: List<AccountContact>, val histories: List<AccountHistory>, val createdAt: String)
 
+/** A catalog activity copied into a share when it was made; never follows later catalog edits. */
+data class ShareActivity(val id: String, val title: String)
+/** A recorded share of one card (`POST /v1/cards/:id/shares`); its ID is the public `/s/<id>` link. */
+data class CardShare(val id: String, val cardId: String, val activities: List<ShareActivity>, val createdAt: String)
+
 fun AccountProfile.toJson(): JSONObject = JSONObject().put("name", name).put("job", job).put("introduction", introduction)
     .put("contacts", JSONArray(contacts.map { JSONObject().put("id", it.id).put("kind", it.kind).put("label", it.label).put("value", it.value) }))
     // The API requires `endDate` to be present, as null when ongoing.
@@ -26,6 +31,10 @@ fun JSONObject.toProfile() = AccountProfile(getString("name"), getString("job"),
 fun JSONObject.toPublishedCard() = PublishedCard(getString("id"), getString("name"), getString("description"), getString("profileName"),
     getString("job"), getJSONArray("contacts").objects().map { it.toContact() }, getJSONArray("histories").objects().map { it.toHistory() },
     getString("createdAt"))
+
+fun JSONObject.toCardList() = getJSONArray("items").objects().map { it.toPublishedCard() }
+fun JSONObject.toCardShare() = CardShare(getString("id"), getString("cardId"),
+    getJSONArray("activities").objects().map { ShareActivity(it.getString("id"), it.getString("title")) }, getString("createdAt"))
 
 private fun JSONObject.toContact() = AccountContact(getString("id"), getString("kind"), getString("label"), getString("value"))
 private fun JSONObject.toHistory() = AccountHistory(getString("id"), getString("title"), getString("role"), getString("startDate"),

@@ -16,18 +16,12 @@ import XCTest
         app.terminate(); app.launch(); app.buttons["tab-4"].tap()
         XCTAssertTrue(app.buttons["로그인하고 시작하기"].waitForExistence(timeout: 5))
     }
-    func testQRSharingScanAndCardEditor() {
+    func testQRSignedOutOffersCardCreationAndScanStaysExample() {
         let app = XCUIApplication()
         app.launch(); app.buttons["tab-2"].tap()
-        XCTAssertTrue(app.buttons["QR 확대"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["새 명함"].isHittable)
-        capture(app, "qr-show")
-        app.buttons["QR 확대"].tap(); XCTAssertTrue(app.buttons["닫기"].waitForExistence(timeout: 5))
-        capture(app, "qr-enlarged"); app.buttons["닫기"].tap()
-        app.buttons["명함 공유"].tap()
-        XCTAssertTrue(app.buttons["QR 이미지 저장"].waitForExistence(timeout: 5))
-        capture(app, "qr-share-menu")
-        app.buttons["링크 복사"].tap(); app.buttons["닫기"].tap()
+        XCTAssertTrue(app.buttons["명함 만들기"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.images["명함 QR"].exists)
+        capture(app, "qr-signed-out")
         app.buttons["QR 찍기"].tap(); capture(app, "qr-scan")
         app.buttons["예시 QR 읽기"].tap()
         XCTAssertTrue(app.buttons["save-shared-card"].waitForExistence(timeout: 5))
@@ -36,21 +30,19 @@ import XCTest
         app.buttons["save-shared-card"].tap()
         XCTAssertTrue(app.buttons["카드 저장됨"].waitForExistence(timeout: 5))
         app.buttons["닫기"].tap(); app.buttons["QR 보여주기"].tap()
-        let tile = app.buttons["새 명함"]
-        for _ in 0..<4 where !tile.isHittable { app.swipeUp() }
-        tile.tap()
+        app.buttons["명함 만들기"].tap()
         XCTAssertTrue(app.navigationBars["명함 만들기"].waitForExistence(timeout: 5))
         app.buttons["닫기"].firstMatch.tap()
-        XCTAssertTrue(app.buttons["QR 확대"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["명함 만들기"].waitForExistence(timeout: 5))
     }
     func testComposerAsksSignInOnlyOnPublishThenPublishes() throws {
         let server = try FixtureServer()
         let app = XCUIApplication()
         app.launch(with: server); app.buttons["tab-2"].tap()
-        let tile = app.buttons["새 명함"]
-        XCTAssertTrue(tile.waitForExistence(timeout: 5))
-        for _ in 0..<4 where !tile.isHittable { app.swipeUp() }
-        tile.tap()
+        let create = app.buttons["명함 만들기"]
+        XCTAssertTrue(create.waitForExistence(timeout: 5))
+        XCTAssertFalse(server.recorded().contains { $0.contains("/v1/cards") })
+        create.tap()
         XCTAssertTrue(app.navigationBars["명함 만들기"].waitForExistence(timeout: 5))
         let publish = app.buttons["로그인하고 명함 발행"]
         XCTAssertFalse(publish.isEnabled)
@@ -75,17 +67,53 @@ import XCTest
         XCTAssertEqual(calls, ["POST /v1/auth/challenges", "POST /v1/auth/sessions", "POST /v1/auth/sessions",
                                "GET /v1/profile", "PUT /v1/profile", "POST /v1/cards"])
         app.buttons["확인"].tap()
-        XCTAssertTrue(app.buttons["QR 확대"].waitForExistence(timeout: 5))
+        // Back on the QR tab the new card is shared right away as <web>/s/<share ID>.
+        let qr = app.images["명함 QR"]
+        XCTAssertTrue(qr.waitForExistence(timeout: 10))
+        XCTAssertTrue((qr.value as? String ?? "").hasSuffix("/s/\(FixtureServer.shareID)"))
+        XCTAssertEqual(server.recorded().suffix(2), ["GET /v1/cards", "POST /v1/cards/c1000000-0000-4000-8000-000000000001/shares"])
+        capture(app, "qr-share")
+    }
+    func testChoosingAnAppliedActivityMakesANewShare() throws {
+        let server = try FixtureServer()
+        let app = XCUIApplication()
+        app.launch(with: server)
+        let conference = app.buttons["activity-\(CatalogFixture.conference)"]
+        XCTAssertTrue(conference.waitForExistence(timeout: 10)); conference.tap()
+        let report = app.buttons["신청 상태 수정"]
+        for _ in 0..<8 where !report.isHittable { app.swipeUp() }
+        report.tap(); app.buttons["신청했어요"].tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["tab-2"].tap(); app.buttons["명함 만들기"].tap()
+        app.textFields["이름"].tap(); app.textFields["이름"].typeText("김지민")
+        app.buttons["로그인하고 명함 발행"].tap()
+        app.textFields["sign-in-email"].tap(); app.textFields["sign-in-email"].typeText("me@example.test")
+        app.buttons["인증번호 받기"].tap()
+        let code = app.textFields["sign-in-code"]
+        XCTAssertTrue(code.waitForExistence(timeout: 5))
+        code.tap(); code.typeText(FixtureServer.code); app.buttons["로그인"].tap()
+        XCTAssertTrue(app.buttons["확인"].waitForExistence(timeout: 10)); app.buttons["확인"].tap()
+        XCTAssertTrue(app.images["명함 QR"].waitForExistence(timeout: 10))
+        let picker = app.buttons["함께 보낼 활동 (선택)"]
+        for _ in 0..<4 where !picker.isHittable { app.swipeUp() }
+        picker.tap()
+        let chip = app.buttons["테스트 컨퍼런스"]
+        XCTAssertTrue(chip.waitForExistence(timeout: 5)); chip.tap()
+        let shares = NSPredicate { _, _ in server.recorded().filter { $0.hasSuffix("/shares") }.count == 2 }
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: shares, object: nil)], timeout: 10), .completed)
+        capture(app, "qr-share-activity")
+        // Unchoosing returns to the first share without making another.
+        chip.tap()
+        Thread.sleep(forTimeInterval: 1)
+        XCTAssertEqual(server.recorded().filter { $0.hasSuffix("/shares") }.count, 2)
     }
     func testCardFailureAfterProfileSaveRetriesOnlyTheCard() throws {
         let server = try FixtureServer()
         server.failingCards = true
         let app = XCUIApplication()
         app.launch(with: server); app.buttons["tab-2"].tap()
-        let tile = app.buttons["새 명함"]
-        XCTAssertTrue(tile.waitForExistence(timeout: 5))
-        for _ in 0..<4 where !tile.isHittable { app.swipeUp() }
-        tile.tap()
+        XCTAssertTrue(app.buttons["명함 만들기"].waitForExistence(timeout: 5))
+        app.buttons["명함 만들기"].tap()
         app.textFields["이름"].tap(); app.textFields["이름"].typeText("김지민")
         app.buttons["로그인하고 명함 발행"].tap()
         app.textFields["sign-in-email"].tap(); app.textFields["sign-in-email"].typeText("me@example.test")
@@ -132,7 +160,7 @@ import XCTest
         }
         XCTAssertTrue(app.buttons["wallet-group-0"].waitForNonExistence(timeout: 5))
         capture(app, "wallet-reciprocal-only")
-        app.buttons["tab-2"].tap(); app.buttons["명함 편집"].tap()
+        app.buttons["tab-2"].tap(); app.buttons["명함 만들기"].tap()
         XCTAssertTrue(app.navigationBars["명함 만들기"].waitForExistence(timeout: 5))
         app.buttons["닫기"].firstMatch.tap()
     }

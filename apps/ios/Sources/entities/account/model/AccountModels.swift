@@ -39,6 +39,18 @@ struct AccountProfile: Codable, Equatable, Sendable {
     var contacts: [AccountContact]
     var histories: [AccountHistory]
 }
+/// A catalog activity copied into a share when it was made; never follows later catalog edits.
+struct ShareActivity: Codable, Equatable, Sendable {
+    let id: String
+    let title: String
+}
+/// A recorded share of one card (`POST /v1/cards/:id/shares`); its ID is the public `/s/<id>` link.
+struct CardShare: Decodable, Equatable, Sendable {
+    let id: String
+    let cardId: String
+    let activities: [ShareActivity]
+    let createdAt: String
+}
 /// A published card snapshot from `POST /v1/cards`.
 struct PublishedCard: Decodable, Equatable, Identifiable, Sendable {
     let id: String

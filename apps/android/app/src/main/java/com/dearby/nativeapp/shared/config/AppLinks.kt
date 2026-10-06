@@ -3,6 +3,9 @@ package com.dearby.nativeapp.shared.config
 import java.net.URI
 import java.util.UUID
 
+/** The link a share's QR carries: `<web origin>/s/<share ID>`. */
+fun sharedCardUrl(shareId: String, webOrigin: String) = "$webOrigin/s/$shareId"
+
 /** Exactly `<web origin>/s/<UUID>` → lower-case share ID; query, fragment or anything else is ignored. */
 fun sharedCardId(link: String, webOrigin: String): String? = runCatching {
     val uri = URI(link)
