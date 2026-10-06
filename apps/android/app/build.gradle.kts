@@ -65,6 +65,10 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     // #95 실제 QR 공유: 공유 URL을 QR로 그린다(Apache-2.0).
     implementation("com.google.zxing:core:3.5.3")
+    // #95 받기: in-app QR scanner preview and frames (Apache-2.0); zxing above decodes them.
+    implementation("androidx.camera:camera-camera2:1.5.1")
+    implementation("androidx.camera:camera-lifecycle:1.5.1")
+    implementation("androidx.camera:camera-view:1.5.1")
     debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.10.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")

@@ -3,6 +3,7 @@ package com.dearby.nativeapp
 import com.dearby.nativeapp.app.AccountPhase
 import com.dearby.nativeapp.app.AccountViewModel
 import com.dearby.nativeapp.entities.account.api.AccountClient
+import com.dearby.nativeapp.entities.account.api.AccountError
 import com.dearby.nativeapp.entities.account.api.AccountException
 import com.dearby.nativeapp.entities.account.api.HttpRequest
 import com.dearby.nativeapp.entities.account.api.HttpResponse
@@ -15,6 +16,10 @@ import com.dearby.nativeapp.entities.account.model.toJson
 import com.dearby.nativeapp.app.CardPublishViewModel
 import com.dearby.nativeapp.app.PublishPhase
 import com.dearby.nativeapp.app.QrShareViewModel
+import com.dearby.nativeapp.entities.account.model.ScannedLink
+import com.dearby.nativeapp.features.scan.decodeQr
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.qrcode.QRCodeWriter
 import com.dearby.nativeapp.pages.qr.QrSharePhase
 import com.dearby.nativeapp.shared.config.sharedCardId
 import com.dearby.nativeapp.shared.config.sharedCardUrl
@@ -183,5 +188,30 @@ class AccountTest {
         val empty = QrShareViewModel(AccountViewModel(client(fake), MemoryStore(AccountSession("t", "p1")))) { it }
         empty.load()
         assertEquals(QrSharePhase.NO_CARD, empty.state.value.phase)
+    }
+
+    @Test fun scannedTextBecomesAShareOrALegacyCardOnly() {
+        val web = "https://dearby.example.test"
+        val id = "5A1E0000-0000-4000-8000-000000000001"
+        assertEquals(ScannedLink.Share(id.lowercase()), ScannedLink.parse("$web/s/$id", web))
+        assertEquals(ScannedLink.Card(id.lowercase()), ScannedLink.parse(" dearby://card/$id\n", web))
+        for (text in listOf("https://evil.test/s/$id", "dearby://card/not-a-uuid", "dearby://share/$id", "dearby://card/$id?x=1", "hello"))
+            assertNull(text, ScannedLink.parse(text, web))
+    }
+    @Test fun cameraFrameQrReadsBackItsText() {
+        val matrix = QRCodeWriter().encode("https://dearby.example.test/s/x", BarcodeFormat.QR_CODE, 200, 200)
+        val luminance = ByteArray(matrix.width * matrix.height) { if (matrix[it % matrix.width, it / matrix.width]) 0 else -1 }
+        assertEquals("https://dearby.example.test/s/x", decodeQr(luminance, matrix.width, matrix.height))
+        assertNull(decodeQr(ByteArray(100 * 100) { -1 }, 100, 100))
+    }
+    @Test fun publicShareNeedsNoSessionAndMissingIsDistinct() = runBlocking {
+        val share = """{"share":{"id":"s1","cardId":"card-1","activities":[{"id":"a1","title":"활동"}],"createdAt":"2026-10-06T00:00:00Z"},"card":$cardBody}"""
+        val fake = FakeTransport(200 to share, 404 to "{}")
+        val received = client(fake).publicShare("s1")
+        assertEquals(listOf("활동"), received.share.activities.map { it.title })
+        assertNull(fake.requests[0].token)
+        val missing = runCatching { client(fake).publicCard("card-9") }.exceptionOrNull() as AccountException
+        assertEquals(AccountError.NOT_FOUND, missing.error)
+        assertEquals("https://api.example.test/v1/cards/card-9", fake.requests[1].url)
     }
 }

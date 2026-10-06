@@ -11,7 +11,16 @@ import org.json.JSONObject
  * (Debug `ApiOrigin.debugOverride`). Code [CODE] signs in; anything else is rejected.
  */
 class FixtureServer : AutoCloseable {
-    companion object { const val CODE = "123456"; const val SHARE_ID = "5a1e0000-0000-4000-8000-000000000001" }
+    companion object {
+        const val CODE = "123456"
+        const val SHARE_ID = "5a1e0000-0000-4000-8000-000000000001"
+        /** Someone else's card that `GET /v1/shares/<SHARE_ID>` and `GET /v1/cards/<id>` return. */
+        const val SHARED_CARD_ID = "c2000000-0000-4000-8000-000000000001"
+        val sharedCard: JSONObject get() = JSONObject().put("id", SHARED_CARD_ID).put("ownerId", "p2").put("name", "네트워킹").put("description", "")
+            .put("profileName", "이서연").put("job", "프로덕트 디자이너").put("introduction", "함께 만드는 일을 좋아해요.")
+            .put("contacts", org.json.JSONArray(listOf(JSONObject().put("id", "e1").put("kind", "email").put("label", "이메일").put("value", "seoyeon@example.test"))))
+            .put("histories", org.json.JSONArray()).put("createdAt", "2026-10-06T00:00:00Z")
+    }
     private val socket = ServerSocket(0, 50, InetAddress.getByName("127.0.0.1"))
     /** When true every request answers 503, to exercise the error and retry state. */
     @Volatile var failing = false
@@ -69,6 +78,9 @@ class FixtureServer : AutoCloseable {
                 cards += card
                 201 to card.toString()
             }
+            "GET /v1/shares/$SHARE_ID" -> 200 to JSONObject().put("card", sharedCard).put("share", JSONObject().put("id", SHARE_ID).put("cardId", SHARED_CARD_ID)
+                .put("activities", org.json.JSONArray(listOf(JSONObject().put("id", CatalogFixture.CONFERENCE).put("title", "테스트 컨퍼런스")))).put("createdAt", "2026-10-06T00:00:00Z")).toString()
+            "GET /v1/cards/$SHARED_CARD_ID" -> 200 to sharedCard.toString()
             "GET /v1/cards" -> 200 to JSONObject().put("items", org.json.JSONArray(cards.toList())).toString()
             // POST /v1/cards/<id>/shares: activities come back as an {id, title} snapshot.
             else -> if (route.startsWith("POST /v1/cards/") && route.endsWith("/shares")) {

@@ -35,23 +35,6 @@ class CardFlowTest {
         compose.onNodeWithText("명함 만들기").assertIsDisplayed()
     }
 
-    @Test fun exampleScanPublicCardSaveAndSend() {
-        tab("QR")
-        compose.onNodeWithText("QR 찍기").performClick()
-        screenshot("selected-qr-scan")
-        compose.onNodeWithText("사진에서 선택").performScrollTo().performClick()
-        compose.onNodeWithText("공유 카드").assertIsDisplayed()
-        screenshot("selected-shared-card")
-        compose.onNodeWithText("카드 저장").performClick()
-        compose.onNodeWithText("카드 저장됨").assertIsDisplayed()
-        compose.onNodeWithText("나도 카드 주기").performClick()
-        compose.onNodeWithText("내 명함 선택").assertIsDisplayed()
-        screenshot("selected-send-card-picker")
-        compose.onNodeWithText("이 명함 보내기").performClick()
-        compose.onNodeWithText("확인").performClick()
-        compose.onNodeWithText("내 명함을 주지 않은 상대 3").assertIsDisplayed()
-    }
-
     @Test fun sendingLastWalletCardKeepsRemainingGroupUsable() {
         tab("받은 명함")
         repeat(2) { compose.onNodeWithContentDescription("다음 명함").performClick(); compose.waitForIdle() }
