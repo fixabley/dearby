@@ -14,12 +14,11 @@ cp .env.example .env
 npm run dev
 npm run typecheck
 npm run lint
-npm test
 npm run build
 npm start
 ```
 
-DDL is owned solely by `supabase/migrations`; runtime startup does not run migrations. Never use Prisma db push/reset on production. `npm test` creates isolated PostgreSQL fixtures and does not use production env. Runtime binds loopback by default. No SMTP settings means challenge requests return 503. No development HTTP endpoint reveals OTPs; only the test harness (`NODE_ENV=test`) injects an in-memory mail sink, never server startup. SMTP requires TLS and certificate validation. Authentication success necessarily returns `sessionToken` as specified; no other response or logger exposes tokens/codes. Access logging is disabled; never add raw HTTP bodies/Authorization to infrastructure logs.
+DDL is owned solely by `supabase/migrations`; runtime startup does not run migrations. Never use Prisma db push/reset on production. Automated tests were removed on 2026-10-06 at the user's request and are being rebuilt one at a time. Runtime binds loopback by default. No SMTP settings means challenge requests return 503. No development HTTP endpoint reveals OTPs. SMTP requires TLS and certificate validation. Authentication success necessarily returns `sessionToken` as specified; no other response or logger exposes tokens/codes. Access logging is disabled; never add raw HTTP bodies/Authorization to infrastructure logs.
 
 OTP: 6 random decimal digits, HMAC-SHA256 with server secret and challenge ID, 5-minute expiry, max 5 guesses, single use, new successful send invalidates prior challenge. Persistent quotas (2026-10-06, no IP keys because the proxy hides client IPs): per normalized email 1 send/minute, 5/hour, 10/day; service-wide 100 sends/hour and 400/day, below a personal Gmail sender's ~500/day; 5 guesses per code and 600 verifications/minute service-wide. All rules are checked before any counter moves. Failed deliveries consume quotas to limit provider abuse. Unknown/expired/used/locked challenges use the same 401 response, and new/existing emails follow the same challenge response. Session tokens are 256-bit random, SHA256 persisted, expire after 30 days, and revoke individually.
 
@@ -64,7 +63,7 @@ The [web guest contract](../../shared/contracts/native-v1.md#웹-비로그인-�
 
 ## Card shares and guest share links
 
-The [share contract](../../shared/contracts/native-v1.md#명함-공유-기록과-게스트-공유-정보-저장--2026-10-06-승인) adds owner `POST /v1/cards/:id/shares` (0-10 current-catalog activities, title snapshot), public `GET /v1/shares/:id` and proxy `PUT /v1/guest/shares/:id`; `GET /v1/guest/cards` gains `shares`. Share links cascade with their saved guest card and session; max 20 links per saved card. Withdrawn cards make all their shares 404. DDL is `supabase/migrations/20261006000000_api_card_shares.sql`; test data for web is `test/fixtures/card-shares.json`. See [handoff](../../docs/context/api-card-shares.md).
+The [share contract](../../shared/contracts/native-v1.md#명함-공유-기록과-게스트-공유-정보-저장--2026-10-06-승인) adds owner `POST /v1/cards/:id/shares` (0-10 current-catalog activities, title snapshot), public `GET /v1/shares/:id` and proxy `PUT /v1/guest/shares/:id`; `GET /v1/guest/cards` gains `shares`. Share links cascade with their saved guest card and session; max 20 links per saved card. Withdrawn cards make all their shares 404. DDL is `supabase/migrations/20261006000000_api_card_shares.sql`. See [handoff](../../docs/context/api-card-shares.md).
 
 ## Member wallet share saves
 

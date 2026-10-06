@@ -34,7 +34,7 @@ node --env-file=.env.admin-local --import tsx src/server.ts
 
 1. 조직 → 프로그램을 등록하고 활동을 만든다. 기존 스냅샷 활동은 바로 편집할 수 있다. `/organizations`는 조직 → 하위 조직(최대 4단계) → 프로그램 → 활동 트리이며, 조직·프로그램의 이름·소개·상위 조직을 행에서 바로 고친다. 수집 설정이 있는 프로그램 생성·편집은 `/programs`에서 한다. 계층 마이그레이션(`catalog_organization_tree`) 적용 전에는 조직이 평면 목록으로 보이고 상위 조직 편집을 숨기며 `parent_id`를 보내지 않는다.
 2. 행사/모집 시각·지원 조건·공식 및 신청 URL을 입력한다. 미확인 시각은 비워 둔다. 시각 입력은 브라우저의 현재 시간대이며 UTC로 저장한다. 행사 시간대는 앱의 표시 기준이다.
-3. 저장 후 ‘공식 안내 열기’로 실제 원문을 확인한다. ‘공식 정보 확인 기록’에 모집 상태·마감·행사 일정의 근거를 남긴다. 버튼이 원문을 자동 검사하는 것은 아니다.
+3. 저장 후 ‘공식 안내 열기’로 실제 원문을 확인한다. ‘공식 정보 확인 기록’에 모집 상태·마감·행사 일정의 내부 근거를 남긴다(방문자에게 보이지 않음). 방문자에게 보일 문장은 활동 편집의 ‘방문자에게 보일 확인 안내’에 쓰며, 바꾸면 공식 확인이 해제된다. 버튼이 원문을 자동 검사하는 것은 아니다.
 4. 게시로 저장한다. **게시 + 현재 모집 중 + 최대24시간 이내의 유효한 확인 + 아직 지나지 않은 마감**만 탐색에 노출된다. 활동 본문/일정/URL/모집 상태 변경은 기존 확인을 해제한다.
 5. 숨김은 공개 API에서 제외한다. 기본 어드민은 물리 삭제를 제공하지 않는다. 변경 기록은 서버에서 자동 기록하며 클라이언트 수정/삭제는 금지한다.
 
@@ -52,23 +52,11 @@ node --env-file=.env.admin-local --import tsx src/server.ts
 ## 검증
 
 ```sh
+npm run lint --prefix apps/admin
 npm run build --prefix apps/admin
-npm test --prefix apps/admin
-node supabase/tests/local.mjs  # 로컬 Supabase와 API58765 실행 필요
-cd apps/admin
-npx playwright install chromium
-npm run test:e2e             # 어드민5173·API58765·bootstrap 필요
 ```
 
-조직 트리 회귀(`organizations.spec.ts`)는 스스로 관리자·조직·프로그램·활동을 만들고 끝나면 지운다. 어드민 dev 서버와 같은 로컬 Supabase를 지정해야 하며, localhost가 아니면 실행을 거부하고 환경값이 없으면 건너뛴다.
-
-```sh
-ADMIN_TEST_URL=http://127.0.0.1:5173 ADMIN_TEST_SUPABASE_URL=http://127.0.0.1:54321 \
-ADMIN_TEST_SERVICE_ROLE_KEY=<로컬 supabase status의 SERVICE_ROLE_KEY> npm run test:e2e -- organizations.spec.ts
-docker exec -i supabase_db_dearby psql -U postgres -X -v ON_ERROR_STOP=1 < ../../supabase/tests/organization-tree.sql
-```
-
-브라우저 회귀는 명시적인 로컬 테스트 조직/프로그램/활동을 만들고 활동을 숨김으로 남긴다. 운영 환경을 대상으로 실행하지 않는다. RLS 테스트의 임시 사용자와 레코드는 테스트 종료 시 정리하며 감사 기록은 보존한다. [실제 화면·검증 기록](docs/evidence/README.md).
+자동 테스트는 2026-10-06 사용자 요청으로 모두 지웠다. 사용자와 하나씩 다시 만든다. [이전 화면·검증 기록](docs/evidence/README.md).
 
 ## 추후 클라우드 연결
 

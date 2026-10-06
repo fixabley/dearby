@@ -78,6 +78,7 @@
     "QRPage",
     "QRScanOverlay",
     "QRShareCard",
+    "QRShareModel",
     "ReceivedCardRow",
     "WalletPage"
   ]

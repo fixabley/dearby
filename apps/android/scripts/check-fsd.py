@@ -15,7 +15,7 @@ API = {
     'widgets.activity.activityCard': {'ActivityCard'},
     'widgets.card.cardContent': {'CardState', 'CardHistoryState', 'ContactState', 'CardContent', 'CardStack', 'ReceivedCardRow', 'QrShareCard', 'QrScanOverlay', 'CardComposer', 'CardComposerContact', 'CardComposerHistory'},
     'pages.profile': {'ProfileState', 'ProfilePage'},
-    'pages.qr': {'QrPage'},
+    'pages.qr': {'QrPage', 'QrShareState', 'QrSharePhase', 'QrCardChoice'},
     'pages.account': {'SignInSheet'},
     'pages.wallet': {'WalletEntryState', 'walletMatches', 'WalletPage', 'SharedCardPage', 'SendPage'},
     'features.calendar': {'CalendarConflictSheet', 'CalendarOverlapResult', 'CalendarOverlapItem', 'CalendarOverlapDisplay'},

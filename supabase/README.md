@@ -8,10 +8,6 @@ For the [official GitHub integration](https://supabase.com/docs/guides/deploymen
 
 Migration `20260929020000` installs one cron entry, but the collection settings default to disabled. During data restoration an existing enabled setting must be explicitly held disabled with a migration pause reason, and the cloud cron must remain inactive until root approves cutover. Stop/drain the local subscription worker before the final data snapshot; switching credentials without pausing both sides can duplicate collection. Preserve blocked jobs, result identities, usage and attempt history instead of restarting them.
 
-Validation performed for this baseline: all three local database archives restored into an isolated network-disabled PostgreSQL 17.6; the primary archive reproduced all 61 table counts. Replaying the six migrations into a separate fresh Supabase 17.6 produced an exactly matching normalized public schema. `tests/migration-contract.sql` is a read-only grant/RLS/RPC and paused-settings check, for example:
-
-```sh
-psql -X --set ON_ERROR_STOP=1 --file supabase/tests/migration-contract.sql
-```
+Validation performed for this baseline: all three local database archives restored into an isolated network-disabled PostgreSQL 17.6; the primary archive reproduced all 61 table counts. Replaying the six migrations into a separate fresh Supabase 17.6 produced an exactly matching normalized public schema. CI (`native.yml`, job "Supabase migrations") replays every migration on a fresh Supabase Postgres. The SQL tests were removed on 2026-10-06 at the user's request and are being rebuilt one at a time.
 
 Supply connections privately via an operator-managed service/password file, not a literal URI with a password in terminal history. Do not run `supabase db reset`, local bootstrap scripts or seed helpers against the cloud project. Cloud restoration and consumer env switching are separate root-coordinated operations with protected backups and a rollback record outside Git.

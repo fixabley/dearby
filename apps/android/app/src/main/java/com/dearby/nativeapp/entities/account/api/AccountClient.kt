@@ -3,6 +3,9 @@ package com.dearby.nativeapp.entities.account.api
 import com.dearby.nativeapp.entities.account.model.AccountProfile
 import com.dearby.nativeapp.entities.account.model.AccountSession
 import com.dearby.nativeapp.entities.account.model.PublishedCard
+import com.dearby.nativeapp.entities.account.model.CardShare
+import com.dearby.nativeapp.entities.account.model.toCardList
+import com.dearby.nativeapp.entities.account.model.toCardShare
 import com.dearby.nativeapp.entities.account.model.toJson
 import com.dearby.nativeapp.entities.account.model.toProfile
 import com.dearby.nativeapp.entities.account.model.toPublishedCard
@@ -57,6 +60,10 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun publish(name: String, description: String, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =
         send("POST", "cards", JSONObject().put("name", name).put("description", description)
             .put("contactIds", JSONArray(contactIds)).put("historyIds", JSONArray(historyIds)), session).toPublishedCard()
+    /** Your non-withdrawn cards in creation order, so the newest is last. */
+    suspend fun cards(session: AccountSession) = send("GET", "cards", null, session).toCardList()
+    suspend fun share(cardId: String, activityIds: List<String>, session: AccountSession): CardShare =
+        send("POST", "cards/$cardId/shares", JSONObject().put("activityIds", JSONArray(activityIds)), session).toCardShare()
 
     private suspend fun send(method: String, path: String, body: JSONObject?, session: AccountSession? = null): JSONObject {
         val text = request(method, path, body, session)

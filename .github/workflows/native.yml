@@ -14,41 +14,33 @@ jobs:
     timeout-minutes: 5
     outputs:
       ios: ${{ steps.diff.outputs.ios }}
+      supabase: ${{ steps.diff.outputs.supabase }}
     steps:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
           fetch-depth: 0
       # The macOS runner is scarce; run the iOS job only when iOS inputs change.
-      # A job skipped by its `if` still satisfies the required "iOS architecture" check.
+      # A job skipped by its `if` still satisfies the required "iOS build" check.
       - id: diff
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
-          if [ "${{ github.event_name }}" != pull_request ]; then echo "ios=true" >> "$GITHUB_OUTPUT"; exit 0; fi
-          if git diff --name-only "$BASE" HEAD | grep -qE '^(apps/ios/|shared/assets/|\.github/workflows/native\.yml$)'; then
+          if [ "${{ github.event_name }}" != pull_request ]; then echo "ios=true" >> "$GITHUB_OUTPUT"; echo "supabase=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          changed=$(git diff --name-only "$BASE" HEAD)
+          if echo "$changed" | grep -qE '^(apps/ios/|shared/assets/|\.github/workflows/native\.yml$)'; then
             echo "ios=true" >> "$GITHUB_OUTPUT"
           else
             echo "ios=false" >> "$GITHUB_OUTPUT"
           fi
+          if echo "$changed" | grep -qE '^(supabase/|\.github/workflows/native\.yml$)'; then
+            echo "supabase=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "supabase=false" >> "$GITHUB_OUTPUT"
+          fi
   api:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    services:
-      postgres:
-        image: public.ecr.aws/supabase/postgres:17.6.1.171
-        env:
-          POSTGRES_PASSWORD: fixture-only-password
-          JWT_SECRET: fixture-only-jwt-secret-at-least-32-characters
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 20
-    env:
-      PG_TEST_ADMIN_URL: postgresql://postgres:fixture-only-password@127.0.0.1:5432/postgres
     defaults:
       run:
         working-directory: apps/dearby-api
@@ -64,8 +56,39 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
-      - run: npm test
       - run: npm run build
+  # Replays every migration in version order on a fresh Supabase Postgres.
+  # Fixture-only database; never pointed at the cloud project.
+  supabase-sql:
+    name: Supabase migrations
+    needs: changes
+    if: always() && (needs.changes.result != 'success' || needs.changes.outputs.supabase == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: public.ecr.aws/supabase/postgres:17.6.1.171
+        env:
+          POSTGRES_PASSWORD: fixture-only-password
+          JWT_SECRET: fixture-only-jwt-secret-at-least-32-characters
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: 127.0.0.1
+      PGUSER: postgres
+      PGPASSWORD: fixture-only-password
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Apply migrations
+        run: for f in supabase/migrations/*.sql; do echo "$f"; psql -X -q -v ON_ERROR_STOP=1 -f "$f"; done
   catalog-worker:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -80,7 +103,6 @@ jobs:
         with:
           node-version: 24
       - run: npm run check
-      - run: npm test
   android:
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -96,9 +118,9 @@ jobs:
           distribution: temurin
           java-version: '21'
       - run: python3 scripts/check-fsd.py
-      - run: ./gradlew --no-daemon testDebugUnitTest lintDebug assembleDebug
+      - run: ./gradlew --no-daemon lintDebug assembleDebug
   ios:
-    name: iOS architecture
+    name: iOS build
     needs: changes
     if: always() && (needs.changes.result != 'success' || needs.changes.outputs.ios == 'true')
     runs-on: macos-26
@@ -112,17 +134,14 @@ jobs:
           persist-credentials: false
       - name: Record toolchain
         run: xcodebuild -version
-      - name: Swift style and architecture checks
+      - name: Swift style
         run: |
           bash scripts/setup_swiftlint.sh
-          bash tests/run_swiftlint.sh
-          bash tests/run_architecture.sh
-      # Simulator tests (unit + UI) run on the developer Mac before push (.githooks/pre-push);
-      # CI only compiles the app and test targets so no simulator is booted here.
+          bash scripts/run_swiftlint.sh
       # The Xcode project is generated, not tracked (avoids merge conflicts on project.pbxproj).
       - name: Generate Xcode project
         run: |
           gem install --user-install --no-document xcodeproj
           ruby scripts/generate_project.rb
-      - name: Build app and tests
-        run: xcodebuild -project Dearby.xcodeproj -scheme Dearby -destination 'generic/platform=iOS Simulator' build-for-testing
+      - name: Build app
+        run: xcodebuild -project Dearby.xcodeproj -scheme Dearby -destination 'generic/platform=iOS Simulator' build

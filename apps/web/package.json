@@ -6,10 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint src tests next.config.ts playwright.config.ts eslint.config.mjs",
-    "typecheck": "next typegen && tsc --noEmit",
-    "test": "tsx --test tests/*.test.ts",
-    "test:e2e": "playwright test"
+    "lint": "eslint src next.config.ts eslint.config.mjs",
+    "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "next": "16.3.6",
@@ -18,14 +16,11 @@
     "zod": "4.6.5"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.13.0",
-    "@playwright/test": "^1.63.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
-    "tsx": "^4.23.15",
     "typescript": "^5"
   },
   "engines": {
