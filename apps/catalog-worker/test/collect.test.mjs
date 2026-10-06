@@ -153,3 +153,29 @@ test("structural source failures block today's retries; quote or transient failu
     /^Error: All candidates failed/,
   );
 });
+test("markdown-rendered quotes match the HTML text; the prompt states the quote format", async () => {
+  const { pageText } = await import("../src/source.mjs");
+  // Shapes reported by the deployed worker (2026-10 logs); page HTML is a fixture.
+  const html =
+    "<h3>다음에 또 만나요!</h3><p>세션 영상은 8월 중 홈페이지에 순차적으로 오픈 될 예정이에요.</p>" +
+    "<p>2026년 8월 29일</p><h3>센터필드 EAST, AWS 코리아 18층</h3><p>올해로 4년차를 맞이한 우부콘 코리아</p>";
+  const page = async (url) => ({ url, html, text: pageText(html) });
+  const empty = (quotes) =>
+    prepareCollection(
+      {
+        outcome: "no_current_activity",
+        activities: [],
+        checkedSources: quotes.map((q) => ({ url: "https://official.example/", quote: q })),
+      },
+      hosts,
+      { fetchPage: page },
+    );
+  await empty([
+    "### 다음에 또 만나요! 세션 영상은 8월 중 홈페이지에 순차적으로 오픈 될 예정이에요.",
+    "2026년 8월 29일\n\n### 센터필드 EAST, AWS 코리아 18층\n\n올해로 4년차를 맞이한 우부콘 코리아",
+    "**다음에 또 만나요!** 세션 영상은 8월 중",
+  ]);
+  for (const bad of ["2026년 8월 29일", "2026년 8월 29일 … 올해로 4년차를 맞이한 우부콘 코리아"])
+    await assert.rejects(empty([bad]), /could not be confirmed/);
+  assert.match(promptFor({ program: { title: "p", description: "", collection_hosts: hosts }, knownActivities: [] }, "2026-10-06"), /마크다운 기호/);
+});
