@@ -12,7 +12,8 @@ import XCTest
                              ("qr-scan", AnyView(QRScanOverlay(scanFromPhotos: {}) { Color.gray }.frame(width: 390, height: 560))),
                              ("card-composer", AnyView(CardComposerSample().frame(width: 390, height: 844))),
                              ("card-composer-empty", AnyView(CardComposerSample(name: "").frame(width: 390, height: 844))),
-                             ("activity-quick-apply", AnyView(ActivityCardSample()))] {
+                             ("activity-quick-apply", AnyView(ActivityCardSample())),
+                             ("apply-confirmation", AnyView(ApplyConfirmationSheet(activityTitle: "주말 데이터 분석 스터디", applied: {}, notYet: {}, neverAsk: {}).background(.white)))] {
             let host = UIHostingController(rootView: view)
             host.safeAreaRegions = []
             let fitted = host.sizeThatFits(in: CGSize(width: 390, height: CGFloat.greatestFiniteMagnitude))

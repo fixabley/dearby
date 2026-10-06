@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.compose.runtime.*
 import com.dearby.nativeapp.shared.ui.DearbyControlsGallery
+import com.dearby.nativeapp.widgets.activity.applyPrompt.ApplyConfirmationSheet
 import com.dearby.nativeapp.shared.ui.DearbyStatesSample
 import com.dearby.nativeapp.shared.ui.DearbySearchField
 import com.dearby.nativeapp.widgets.card.cardContent.ReceivedCardGroupsSample
@@ -149,6 +150,20 @@ class SharedControlsTest {
         compose.onNodeWithText("다시 시도").performClick()
         assert(retried == 1)
         capture("android-list-states")
+    }
+
+    @Test fun applyConfirmationOffersThreeChoices() {
+        val picks = mutableListOf<String>()
+        compose.setContent { DearbyTheme { Box(Modifier.testTag("gallery")) {
+            ApplyConfirmationSheet("주말 데이터 분석 스터디", { picks += "applied" }, { picks += "notYet" }, { picks += "never" })
+        } } }
+        compose.onNodeWithText("신청하셨나요?").assert(isHeading())
+        compose.onNodeWithText("주최 측 접수 확인은 아니에요", substring = true).assertExists()
+        compose.onNodeWithText("신청했어요").performClick()
+        compose.onNodeWithText("아직이에요").performClick()
+        compose.onNodeWithText("다시 묻지 않기").performClick()
+        assert(picks == listOf("applied", "notYet", "never"))
+        capture("android-apply-confirmation")
     }
 
     @Test fun readingStateKeepsLabels() {
