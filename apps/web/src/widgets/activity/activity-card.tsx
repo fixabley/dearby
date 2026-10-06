@@ -5,6 +5,7 @@ import styles from "./activity-card.module.css";
 /**
  * 활동 목록의 카드 한 장. 화면이 조직 이름·참여 방식 문구를 계산해 넘기고, 누르면 활동 상세로 간다.
  * `applyUrl`을 주면 카드 아래에 공식 신청 바로가기와 마감일 한 줄을 붙인다. 보일지 여부는 화면이 정한다.
+ * 사진이 없는 카탈로그라 왼쪽 타일은 유형 아이콘과 조직 이름을 보이며, 카드 글자와 같은 정보라 접근성에서 숨긴다.
  */
 export function ActivityCard({
   id,
@@ -16,6 +17,7 @@ export function ActivityCard({
   location,
   applyUrl,
   recruitmentEndAt,
+  isSelection = false,
 }: {
   id: string;
   title: string;
@@ -26,11 +28,15 @@ export function ActivityCard({
   location: string | null;
   applyUrl?: string;
   recruitmentEndAt?: string | null;
+  isSelection?: boolean;
 }) {
   const card = (
     <Link className="activity-card" href={`/activities/${id}`}>
       <span className="activity-art" aria-hidden="true">
-        <Icon name="calendar" size={34} />
+        <span className={styles.tile}>
+          <Icon name={isSelection ? "card" : "calendar"} size={34} />
+          <span className={styles.organization}>{organizationName}</span>
+        </span>
       </span>
       <div className="activity-copy">
         <p className="eyebrow">

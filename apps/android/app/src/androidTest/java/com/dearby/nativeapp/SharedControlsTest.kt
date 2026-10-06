@@ -130,8 +130,10 @@ class SharedControlsTest {
     @Test fun quickApplyAppearsOnlyWithUrlAndPassesIt() {
         var applied: String? = null
         compose.setContent { DearbyTheme { Box(Modifier.testTag("gallery")) { ActivityCardSample { applied = it } } } }
-        compose.onAllNodesWithText("공식 사이트에서 신청", substring = true, useUnmergedTree = true).assertCountEquals(1)
+        compose.onAllNodesWithText("공식 사이트에서 신청", substring = true, useUnmergedTree = true).assertCountEquals(2)
         compose.onNodeWithText("10월 20일 (화) 마감").assertExists()
+        compose.onNodeWithText("마감일 미확인").assertExists()
+        compose.onNodeWithText("서울창업허브").assertExists()
         compose.onNodeWithContentDescription("Dearby 개발자 컨퍼런스 공식 사이트에서 신청, 외부 브라우저로 열려요").performClick()
         assert(applied == "https://example.invalid/apply")
         capture("android-activity-quick-apply")
