@@ -5,7 +5,6 @@ Existing `Dearby_Calendar_Verify` AVD, Android 16, emulator-5554, 1080×2400, 42
 | Approved reference | Current evidence |
 | --- | --- |
 | Discovery / detail top, schedule, bottom / applied | `prototype-discovery.png`, `activity-detail-top.png`, `activity-detail-schedule.png`, `activity-detail-bottom.png`, `activity-applied.png` |
-| Saved | `selected-saved.png` |
 | Profile / guest | `selected-profile.png`, `selected-profile-guest.png` |
 | QR show / new card / scan / share | `selected-qr-show.png`, `selected-qr-new-card.png`, `selected-qr-scan.png`, `selected-qr-share-menu.png` |
 | Card editor / public card | `selected-card-editor.png`, `selected-shared-card.png` |

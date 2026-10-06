@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Shell } from "@/components/shell";
+import { Shell } from "@/widgets/shell/shell";
 import "./globals.css";
 export const metadata: Metadata = {
   title: { default: "dearby · 탐색", template: "%s · dearby" },
