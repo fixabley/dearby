@@ -16,7 +16,7 @@ API = {
     'widgets.profile.profileFields': {'ProfileContactFields', 'ProfileExtraContact', 'ProfileContactKinds', 'HistoryPeriodFields', 'historyPeriod'},
     'widgets.activity.activityCard': {'ActivityCard'},
     'widgets.card.cardContent': {'CardState', 'CardHistoryState', 'ContactState', 'CardContent', 'CardStack', 'ReceivedCardRow', 'QrShareCard', 'QrScanOverlay', 'CardComposer', 'CardComposerContact', 'CardComposerHistory'},
-    'pages.profile': {'ProfileState', 'ProfilePage'},
+    'pages.profile': {'ProfilePage', 'ProfileEditPage', 'ProfileState', 'ProfilePhase', 'ProfileViewState', 'ProfileFormState', 'HistoryFormState', 'ProfileErrors'},
     'pages.qr': {'QrPage', 'QrShareState', 'QrSharePhase', 'QrCardChoice', 'ReceivedSharePage', 'ReceivedShareState', 'ReceivedPhase', 'ReceivedSaveState'},
     'features.scan': {'QrCameraPreview', 'decodeQr'},
     'pages.account': {'SignInSheet'},
@@ -24,7 +24,7 @@ API = {
     'features.calendar': {'CalendarConflictSheet'},
     'pages.catalog': {'CatalogPage', 'CatalogPhase', 'MyActivitiesPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'CatalogState'},
     'entities.catalog': {'model.ActivityModel', 'model.ScheduleModel', 'model.instant', 'model.safeHttpsUrl', 'api.fetchCatalog'},
-    'entities.account': {'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.AccountProfile', 'model.PublishedCard', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault', 'model.ScannedLink', 'model.ReceivedShare', 'model.CardShare', 'model.ShareActivity'},
+    'entities.account': {'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.AccountProfile', 'model.PublishedCard', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault', 'model.ScannedLink', 'model.ReceivedShare', 'model.CardShare', 'model.ShareActivity', 'model.ContactRules'},
 }
 
 def owner(name):

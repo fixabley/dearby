@@ -25,12 +25,12 @@ class MainActivity : ComponentActivity() {
     private val catalog: CatalogViewModel by viewModels {
         viewModelFactory { initializer { CatalogViewModel { withContext(Dispatchers.IO) { fetchCatalog(ApiOrigin.current) } } } }
     }
-    private val demo: DemoViewModel by viewModels()
     private val account: AccountViewModel by viewModels {
         viewModelFactory { initializer { AccountViewModel(AccountClient(ApiOrigin.current), SessionVault(applicationContext, ApiOrigin.sessionName)) } }
     }
     private val publish: CardPublishViewModel by viewModels { viewModelFactory { initializer { CardPublishViewModel(account) } } }
     private val wallet: WalletViewModel by viewModels { viewModelFactory { initializer { WalletViewModel(account) } } }
+    private val profile: ProfileViewModel by viewModels { viewModelFactory { initializer { ProfileViewModel(account) } } }
     private val qrShare: QrShareViewModel by viewModels {
         viewModelFactory { initializer { QrShareViewModel(account) { sharedCardUrl(it, BuildConfig.WEB_ORIGIN) } } }
     }
@@ -41,7 +41,7 @@ class MainActivity : ComponentActivity() {
         receive(intent)
         setContent {
             DearbyTheme {
-                DearbyApp(catalog, demo, account, publish, qrShare, wallet, incoming) { incoming = null }
+                DearbyApp(catalog, account, publish, qrShare, wallet, profile, incoming) { incoming = null }
             }
         }
     }

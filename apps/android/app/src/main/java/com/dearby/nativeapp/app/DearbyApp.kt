@@ -12,7 +12,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dearby.nativeapp.pages.profile.ProfilePage
 import com.dearby.nativeapp.pages.qr.ReceivedPhase
 import com.dearby.nativeapp.pages.qr.ReceivedSharePage
 import com.dearby.nativeapp.pages.qr.ReceivedShareState
@@ -32,8 +31,7 @@ private sealed interface CardRoute {
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun DearbyApp(catalog: CatalogViewModel, demo: DemoViewModel, account: AccountViewModel, publish: CardPublishViewModel, qrShare: QrShareViewModel, wallet: WalletViewModel, incoming: ScannedLink? = null, opened: () -> Unit = {}) {
-    val state by demo.state.collectAsStateWithLifecycle()
+@Composable fun DearbyApp(catalog: CatalogViewModel, account: AccountViewModel, publish: CardPublishViewModel, qrShare: QrShareViewModel, wallet: WalletViewModel, profile: ProfileViewModel, incoming: ScannedLink? = null, opened: () -> Unit = {}) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     var route by remember { mutableStateOf<CardRoute?>(null) }
     var catalogDetail by remember { mutableStateOf(false) }
@@ -59,7 +57,7 @@ private sealed interface CardRoute {
                         }
                         Tab.Qr -> QrRoute(qrShare, catalog, compose) { route = CardRoute.Received(it) }
                         Tab.Wallet -> WalletRoute(wallet, account) { route = CardRoute.Detail(it) }
-                        Tab.Profile -> ProfilePage(state.profile, state.loggedIn, demo::profile, { demo.login(true) }, { demo.login(false) })
+                        Tab.Profile -> ProfileRoute(profile, account, compose)
                     }
                 }
             }

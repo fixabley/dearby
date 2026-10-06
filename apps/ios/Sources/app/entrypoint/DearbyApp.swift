@@ -2,8 +2,8 @@ import SwiftUI
 
 @main struct DearbyApp: App {
     @State private var catalog: CatalogViewModel
-    @State private var identity = IdentityViewModel()
     @State private var share: QRShareModel
+    @State private var profile: ProfileModel
     @State private var wallet: WalletModel
     @State private var tab = 0
     @Environment(\.scenePhase) private var scene
@@ -17,13 +17,14 @@ import SwiftUI
         let account = links.account()
         _share = State(initialValue: QRShareModel(account: account, link: links.shareURL))
         _wallet = State(initialValue: WalletModel(account: account))
+        _profile = State(initialValue: ProfileModel(account: account))
     }
     var body: some Scene {
         WindowGroup {
             HomePage(selectedTab: $tab,
                 discovery: { CatalogPage(state: catalog, path: $0) }, mine: MyActivitiesPage(state: catalog, explore: { tab = 0 }),
                 qr: QRPage(share: share,
-                    activities: catalog.appliedActivities, parse: links.scanned, opened: $opened), wallet: WalletPage(state: wallet), profile: ProfilePage(state: identity))
+                    activities: catalog.appliedActivities, parse: links.scanned, opened: $opened), wallet: WalletPage(state: wallet), profile: ProfilePage(state: profile))
             .onOpenURL { url in
                 guard links.shareID(url) != nil else { return }
                 tab = 2

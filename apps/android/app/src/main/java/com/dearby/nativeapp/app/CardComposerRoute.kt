@@ -46,6 +46,7 @@ import kotlinx.coroutines.launch
                 onPublish = model::publish, modifier = Modifier.weight(1f),
                 requiresLogin = auth.phase != AccountPhase.SIGNED_IN,
                 publishing = phase == PublishPhase.Publishing || phase == PublishPhase.Loading,
+                cardTitle = draft.cardTitle, onCardTitleChange = { model.edit(draft.copy(cardTitle = it)) },
                 errorMessage = (phase as? PublishPhase.Failed)?.message ?: auth.message.takeIf { auth.phase == AccountPhase.SIGNED_OUT })
         }
     }
