@@ -147,7 +147,7 @@ test("admin can create, edit, verify, publish and hide an activity through real 
     .getByRole("button", { name: "공식 정보 확인 기록", exact: true })
     .click();
   await page
-    .getByLabel("확인 근거", { exact: true })
+    .getByLabel("내부 확인 근거 (방문자에게 보이지 않음)", { exact: true })
     .fill(
       "실제 공식 모집이 아닌 로컬 테스트입니다. 어드민과 API의 상태 연결만 검증합니다.",
     );
