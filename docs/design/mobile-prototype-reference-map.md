@@ -77,6 +77,7 @@ SwiftUI와 Compose의 UI 소스는 각 플랫폼 안에서 공유하고, 이미�
 | 명함 제작(한 화면 발행) | `Sources/widgets/identity/ui/CardComposer.swift` | `widgets/card/cardContent/CardComposer.kt` |
 | 받은 명함 목록 항목 | `Sources/widgets/identity/ui/ReceivedCardRow.swift` | `widgets/card/cardContent/ReceivedCardRow.kt` |
 | 명함·연락처·활동 이력 조합 | `Sources/entities/identity/ui` | `widgets/card/cardContent` |
+| 활동 카드(빠른 신청) | `Sources/widgets/catalog/ui/ActivityCard.swift` | `widgets/activity/activityCard/ActivityCard.kt` |
 | 활동 목록·상세 | `Sources/widgets/catalog/ui` | `pages/catalog` |
 | 프로필·QR·명함함 | `Sources/widgets/identity/ui` | `pages/profile`, `pages/qr`, `pages/wallet` |
 | 공통 이미지 원본 | 저장소 루트 `shared/assets/prototype` | 저장소 루트 `shared/assets/prototype` |

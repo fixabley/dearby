@@ -15,6 +15,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.ReceivedCardGroupsSample
 import com.dearby.nativeapp.widgets.card.cardContent.QrShareCard
 import com.dearby.nativeapp.widgets.card.cardContent.QrShareSample
 import com.dearby.nativeapp.widgets.card.cardContent.CardComposerSample
+import com.dearby.nativeapp.widgets.activity.activityCard.ActivityCardSample
 import androidx.compose.foundation.layout.size
 import com.dearby.nativeapp.shared.ui.DearbyChoice
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -123,6 +124,16 @@ class SharedControlsTest {
         compose.onNodeWithContentDescription("전화 공개").assertIsOff().performClick().assertIsOn()
         compose.onNodeWithContentDescription("전화 공개").performClick()
         capture("android-card-composer")
+    }
+
+    @Test fun quickApplyAppearsOnlyWithUrlAndPassesIt() {
+        var applied: String? = null
+        compose.setContent { DearbyTheme { Box(Modifier.testTag("gallery")) { ActivityCardSample { applied = it } } } }
+        compose.onAllNodesWithText("공식 사이트에서 신청", substring = true, useUnmergedTree = true).assertCountEquals(1)
+        compose.onNodeWithText("10월 20일 (화) 마감").assertExists()
+        compose.onNodeWithContentDescription("Dearby 개발자 컨퍼런스 공식 사이트에서 신청, 외부 브라우저로 열려요").performClick()
+        assert(applied == "https://example.invalid/apply")
+        capture("android-activity-quick-apply")
     }
 
     @Test fun readingStateKeepsLabels() {

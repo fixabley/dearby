@@ -1,7 +1,8 @@
 {
   "widgets/catalog": [
     "CatalogPage",
-    "CatalogViewModel"
+    "CatalogViewModel",
+    "ActivityCard"
   ],
   "features/calendar": [
     "CalendarConflictView"

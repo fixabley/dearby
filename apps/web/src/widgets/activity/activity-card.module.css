@@ -1,0 +1,29 @@
+.withApply {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.withApply:hover,
+.withApply:focus-within {
+  border-color: var(--teal);
+}
+.withApply :global(.activity-card) {
+  border: 0;
+}
+.apply {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--line);
+}
+.deadline {
+  color: var(--muted);
+  font-size: 14px;
+}
+.apply :global(.button) {
+  min-height: 44px;
+  padding: 8px 16px;
+  font-size: 15px;
+}
