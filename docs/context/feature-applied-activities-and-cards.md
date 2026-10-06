@@ -71,6 +71,9 @@
 | 인라인 입력 칸 | `DearbyInlineField(label: String, text: Binding<String>, editing: Bool, prompt: String = "", multiline: Bool = false, font: Font = .body)` | `DearbyInlineField(label: String, value: String, onValueChange: (String) -> Unit, editing: Boolean, modifier, placeholder: String = "", singleLine: Boolean = true, style: TextStyle = bodyLarge)` |
 | 함께한 활동 라벨 | `DearbyTogetherActivityLabel(title: String, otherCount: Int = 0)` | `DearbyTogetherActivityLabel(title: String, modifier, otherCount: Int = 0)` |
 | 받은 명함 목록 항목(widgets) | `ReceivedCardRow(name: String, job: String, activityTitle: String? = nil, otherActivityCount: Int = 0, open: () -> Void)` (`widgets/identity`) | `ReceivedCardRow(name: String, job: String, open: () -> Unit, modifier, activityTitle: String? = null, otherActivityCount: Int = 0)` (`widgets/card/cardContent`) |
+| QR 이미지 | `DearbyQRCode(text: String)` (CoreImage) | `DearbyQrCode(text: String, modifier)` (zxing core 3.5.3) |
+| QR 공유 카드(widgets) | `QRShareCard(name:job:url: URL?, errorMessage:retry:activities:selectedActivityIDs:)` — 공유 버튼은 `ShareLink` | `QrShareCard(name, job, url: String?, onShare, modifier, errorMessage, onRetry, activities, selectedActivityIds, onToggleActivity)` — `onShare`에서 화면이 ACTION_SEND chooser를 연다 |
+| 스캔 틀(widgets) | `QRScanOverlay(scanFromPhotos:preview:)` | `QrScanOverlay(scanFromPhotos, modifier, preview)` |
 
 - `DearbyChoice`는 `id`·`title`만 가진다. 활동 모델을 `shared`에 들이지 않도록 화면이 활동을 변환해 넘긴다. 칩은 줄바꿈 배치이며 선택은 색과 체크 표시로 함께 구분한다. 읽기 전용 표시는 기존 `DearbyBadge`/`ExampleBadge`를 쓴다.
 - 인라인 입력 칸은 읽기·편집에서 같은 여백을 써 위치가 바뀌지 않는다. 편집 중에만 옅은 배경과 밑줄을 보인다. `label`은 입력 칸의 접근성 이름이다. 편집 상태 전환 알림, `완료`/`취소`, 이름이 비었을 때의 이유 문구는 화면(플로우 담당)이 맡는다.
@@ -86,3 +89,4 @@
 - 함께한 활동 라벨은 `함께한 활동 · ○○`(2개 이상이면 뒤에 ` 외 N개`)를 확인 아이콘 없이 보여 주고 긴 활동 이름만 말줄임한다. 첫 활동(일정이 가장 이른 것) 선택, 활동이 없을 때 생략, 상세의 전체 목록·이동은 화면이 맡는다. iOS 명함 앞면이 `entities`에 있어 상위 계층 참조를 피하려고 `shared/ui`에 둔다.
 - 받은 명함 목록 항목은 이니셜·이름·직무·함께한 활동 라벨·오른쪽 화살표이며 전체가 눌리는 한 줄이다. 화면이 명함 모델을 값으로 바꿔 넘긴다.
 - 웹은 같은 모양으로 `SectionHeader({title, count, expanded?, onToggle?, controls?})`(`aria-expanded`)를 `apps/web/src/shared/ui/section-header.tsx`에, `TogetherActivityLabel({title, otherCount})`와 `ReceivedCardRow({href, name, job, activity?})`를 `apps/web/src/widgets/card`에 둔다. `/saved`에 `전체 | 활동별` 전환이 없어 웹 `Segments`는 만들지 않는다.
+- QR 화면은 `DearbySegments(['내 코드', '스캔'])` 아래에 QR 공유 카드나 스캔 틀을 둔다. 카드는 호출 측이 넘긴 공유 URL(`https://<웹 origin>/s/<shareId>`) 문자열을 그대로 QR과 글자로 보이며 도메인을 고정하지 않는다. `url`이 없으면 만드는 중, `errorMessage`가 있으면 다시 시도를 보인다. 공유 버튼 하나로 OS 공유 시트를 바로 열고(QR 진입 1 → 공유 2탭), 함께 보낼 활동은 접힌 선택 칩이다. 카메라 미리보기·사진 선택·공유 만들기·로그인은 화면이 맡는다.

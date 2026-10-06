@@ -12,6 +12,9 @@ import androidx.compose.runtime.*
 import com.dearby.nativeapp.shared.ui.DearbyControlsGallery
 import com.dearby.nativeapp.shared.ui.DearbySearchField
 import com.dearby.nativeapp.widgets.card.cardContent.ReceivedCardGroupsSample
+import com.dearby.nativeapp.widgets.card.cardContent.QrShareCard
+import com.dearby.nativeapp.widgets.card.cardContent.QrShareSample
+import com.dearby.nativeapp.shared.ui.DearbyChoice
 import androidx.compose.ui.semantics.SemanticsProperties
 import com.dearby.nativeapp.shared.ui.rememberDearbySearchReveal
 import androidx.compose.foundation.layout.Column
@@ -87,6 +90,25 @@ class SharedControlsTest {
         header.performClick().assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "접힘"))
         compose.onNodeWithText("이서연").assertDoesNotExist()
         compose.onNodeWithText("최유나").assertExists()
+    }
+
+    @Test fun qrShareCardShowsCodeAndKeepsActivitiesFolded() {
+        var shared = 0
+        compose.setContent { DearbyTheme { Box(Modifier.testTag("gallery")) {
+            QrShareCard("김지민", "서비스 기획", "https://example.invalid/s/6f1c2a9e-0b7d-4f3e-9a51-2c8e7d4b1a60", { shared++ },
+                activities = listOf(DearbyChoice("conference", "Dearby 개발자 컨퍼런스")), selectedActivityIds = emptySet())
+        } } }
+        compose.onNodeWithContentDescription("명함 QR").assertIsDisplayed()
+        compose.onNodeWithText("Dearby 개발자 컨퍼런스").assertDoesNotExist()
+        compose.onNodeWithText("공유").performClick()
+        assert(shared == 1)
+        compose.onNodeWithText("함께 보낼 활동 (선택)").performClick()
+        compose.onNodeWithText("Dearby 개발자 컨퍼런스").assertIsDisplayed()
+    }
+
+    @Test fun qrShareSampleCaptures() {
+        compose.setContent { DearbyTheme { Box(Modifier.testTag("gallery")) { QrShareSample() } } }
+        capture("android-qr-share")
     }
 
     @Test fun readingStateKeepsLabels() {

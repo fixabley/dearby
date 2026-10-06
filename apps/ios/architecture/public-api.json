@@ -29,7 +29,8 @@
     "DearbyChoice",
     "DearbyChoiceChips",
     "DearbyInlineField",
-    "DearbyTogetherActivityLabel"
+    "DearbyTogetherActivityLabel",
+    "DearbyQRCode"
   ],
   "entities/identity": [
     "CardModel",
@@ -51,6 +52,8 @@
     "QRPage",
     "WalletPage",
     "ProfilePage",
-    "ReceivedCardRow"
+    "ReceivedCardRow",
+    "QRShareCard",
+    "QRScanOverlay"
   ]
 }

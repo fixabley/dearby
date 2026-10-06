@@ -6,7 +6,10 @@ import XCTest
 @MainActor final class SharedControlsLayoutTests: XCTestCase {
     func testControlsFitPhoneWidth() throws {
         for (name, view) in [("edit", AnyView(DearbyControlsGallery())), ("read", AnyView(DearbyControlsGallery(editing: false))),
-                             ("received-groups", AnyView(ReceivedCardGroupsSample()))] {
+                             ("received-groups", AnyView(ReceivedCardGroupsSample())),
+                             ("qr-share", AnyView(QRShareSample())), ("qr-share-loading", AnyView(QRShareSample(url: nil))),
+                             ("qr-share-error", AnyView(QRShareSample(url: nil, errorMessage: "공유를 만들지 못했어요."))),
+                             ("qr-scan", AnyView(QRScanOverlay(scanFromPhotos: {}) { Color.gray }.frame(width: 390, height: 560)))] {
             let host = UIHostingController(rootView: view)
             host.safeAreaRegions = []
             let fitted = host.sizeThatFits(in: CGSize(width: 390, height: CGFloat.greatestFiniteMagnitude))
