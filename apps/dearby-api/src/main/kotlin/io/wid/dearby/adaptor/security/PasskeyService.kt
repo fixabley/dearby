@@ -1,6 +1,8 @@
 package io.wid.dearby.adaptor.security
 
 import com.webauthn4j.util.exception.WebAuthnException
+import io.wid.dearby.application.TokenPair
+import io.wid.dearby.application.TokenService
 import io.wid.dearby.application.UserRepository
 import io.wid.dearby.domain.User
 import io.wid.dearby.domain.UserRole

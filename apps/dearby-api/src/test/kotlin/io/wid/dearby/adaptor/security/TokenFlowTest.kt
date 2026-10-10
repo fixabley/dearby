@@ -1,5 +1,7 @@
 package io.wid.dearby.adaptor.security
 
+import io.wid.dearby.application.TokenPair
+import io.wid.dearby.application.TokenService
 import io.wid.dearby.domain.User
 import io.wid.dearby.domain.UserRole
 import org.springframework.beans.factory.annotation.Autowired
@@ -59,6 +61,19 @@ class TokenFlowTest(
 
         refresh(issued.refreshToken).andExpect { status { isUnauthorized() } }
         refresh(UUID.randomUUID().toString()).andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `refresh는 사용자를 다시 읽어 바뀐 역할로 access token을 서명한다`() {
+        val user = createUser(UserRole.USER)
+        val issued = tokens.issue(user)
+        jdbc.sql("insert into user_roles (user_id, role) values (?, ?)").params(user.id, UserRole.ADMIN.name).update()
+
+        val body = refresh(issued.refreshToken).andExpect { status { isOk() } }.andReturn().response.contentAsString
+        val jwt = decoder.decode(json.readValue(body, TokenPair::class.java).accessToken)
+
+        assertEquals(user.id.toString(), jwt.subject)
+        assertEquals(listOf("ADMIN", "USER"), jwt.getClaimAsStringList("roles")?.sorted())
     }
 
     @Test
