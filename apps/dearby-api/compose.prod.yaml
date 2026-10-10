@@ -13,7 +13,7 @@ services:
     volumes:
       - ./data/prod/postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      test: [ "CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\"" ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -39,4 +39,4 @@ services:
       # mkdir -p data/prod/jwt && sudo chown 10001 data/prod/jwt
       - ./data/prod/jwt:/app/data/jwt
     ports:
-      - "127.0.0.1:${API_PORT:-8080}:8080"
+      - "127.0.0.1:${API_PORT:?}:8080"
