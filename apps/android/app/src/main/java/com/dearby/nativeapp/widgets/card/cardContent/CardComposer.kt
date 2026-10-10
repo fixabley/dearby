@@ -77,7 +77,7 @@ data class CardComposerHistory(val id: String, val title: String, val detail: St
             DearbyButton(onPublish, Modifier.fillMaxWidth().semantics { if (publishing) stateDescription = "발행 중" }, enabled = !nameMissing && !publishing) {
                 if (publishing) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text(label, style = MaterialTheme.typography.titleMedium)
             }
-            if (requiresLogin) Text("발행할 때만 이메일 인증번호로 로그인해요.", color = Quiet, style = MaterialTheme.typography.labelSmall)
+            if (requiresLogin) Text("발행할 때만 패스키로 로그인해요.", color = Quiet, style = MaterialTheme.typography.labelSmall)
         }
     }
 }

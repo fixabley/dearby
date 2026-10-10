@@ -51,7 +51,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.QrShareCard
                     Icon(Icons.Outlined.Badge, null, Modifier.size(72.dp), tint = Teal)
                     Spacer(Modifier.height(24.dp))
                     Text("이번에 공유할\n명함을 만드세요.", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
-                    Text("명함을 만들면 QR로 바로 건넬 수 있어요. 발행할 때 이메일로 로그인해요.", Modifier.padding(vertical = 18.dp), color = Quiet, textAlign = TextAlign.Center)
+                    Text("명함을 만들면 QR로 바로 건넬 수 있어요. 발행할 때 패스키로 로그인해요.", Modifier.padding(vertical = 18.dp), color = Quiet, textAlign = TextAlign.Center)
                     DearbyButton(create, Modifier.fillMaxWidth()) { Text("명함 만들기") }
                 }
             }

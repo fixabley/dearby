@@ -217,13 +217,13 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 | POST /v1/auth/refresh | 없음 | `{refreshToken}` | 200 TokenPair. 쓴 refresh token은 폐기된다(회전) |
 | POST /v1/auth/logout | 없음 | `{refreshToken}` | 204. 이미 무효여도 204 |
 
-- TokenPair: `{accessToken, refreshToken, expiresIn, userId}`. `expiresIn`은 access token 남은 초다.
+- TokenPair: `{accessToken, refreshToken}`(2026-10-10 사용자 결정: 토큰만 준다). access token은 API가 RS256으로 서명한 JWT이고, 사용자 id는 `sub`, 역할은 `roles`, 만료는 `exp` 클레임에 있다. refresh는 받은 refresh token을 폐기하고 새 access·refresh token을 준다.
 - 실패: challenge 없음·만료·재사용, 서명 검증 실패, 모르는 패스키는 401. 형식이 틀린 요청은 400. 오류 본문 형식은 Kotlin API 전체의 오류 형식 정리(RFC 9457 ProblemDetail로 통일 여부)가 끝날 때까지 정하지 않는다. 앱은 상태 코드로만 분기한다.
 - `displayName`은 OS 패스키 목록에 보이는 이름이다. 없으면 `Dearby 사용자`. 패스키의 `user.name`·`user.id`는 서버가 정하며 앱이 정하지 않는다.
 
 ### 앱 동작
 
 - 로그인이 필요한 동작(명함 발행·공유, 받은 명함 저장)에서 로그인 화면을 띄운다. "패스키로 로그인"이 기본이고, 패스키가 없거나 사용자가 고르면 "새 패스키로 시작"(가입)을 한다.
-- access token이 만료돼 401을 받으면 refresh를 한 번 시도하고, 실패하면 토큰을 지우고 로그인 화면으로 돌아간다.
+- access token이 만료돼 401을 받으면 refresh를 한 번 시도한다. refresh가 401로 거절되면 토큰을 지우고 로그인 화면으로 돌아간다. 네트워크 오류·5xx면 토큰을 남기고 그 요청만 실패시킨다(불안정한 연결에서 로그아웃되지 않게). refresh token이 회전하므로 동시에 여러 요청이 401을 받아도 refresh는 한 번만 한다.
 - 로그아웃은 `/v1/auth/logout` 뒤 기기 토큰을 지운다. 네트워크 실패여도 기기 토큰은 지운다.
 - 기존 이메일 로그인 화면·저장 토큰(`sessionToken`)은 쓰지 않는다. 이전 앱 저장 데이터는 읽거나 지우지 않는다는 저장소 원칙을 따른다.

@@ -30,10 +30,10 @@ struct AppLinkProvider: Sendable {
     func scanned(_ text: String) -> ScannedLink? { ScannedLink.parse(text, web: origins.web) }
     func shareID(_ url: URL) -> String? { SharedCardLink.shareID(from: url, web: origins.web) }
     @MainActor func account() -> AccountViewModel {
-        var vault = SessionVault()
+        var vault = TokenVault()
         #if DEBUG
         // UI tests use a fresh Keychain item per run so one test's sign-in never leaks into another.
-        if let service = ProcessInfo.processInfo.environment["DEARBY_SESSION_SERVICE"] { vault.service = service }
+        if let service = ProcessInfo.processInfo.environment["DEARBY_TOKEN_SERVICE"] { vault.service = service }
         #endif
         return AccountViewModel(client: .live(api: origins.api), vault: vault)
     }

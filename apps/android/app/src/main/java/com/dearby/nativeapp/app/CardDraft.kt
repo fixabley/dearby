@@ -24,7 +24,7 @@ data class CardDraft(
     private val filled get() = contacts.filter { it.value.isNotBlank() }
     val canPublish get() = problem() == null
     /** Why the profile cannot be saved yet (contract #149: name, a phone and an email), or null. Before signing in
-     *  the email may still be empty: the sign-in address fills it. */
+     *  the email may still be empty: a returning account's saved email fills it when [merged], and publishing checks again. */
     fun problem(checkingEmail: Boolean = true): String? {
         val phone = contacts.firstOrNull { it.kind == "phone" }?.value.orEmpty()
         val email = contacts.firstOrNull { it.kind == "email" }?.value.orEmpty()
@@ -37,10 +37,6 @@ data class CardDraft(
             else -> null
         }
     }
-    /** The sign-in email fills an empty email row. */
-    fun prefill(email: String) = if (email.isEmpty()) this else copy(contacts = contacts.mapIndexed { i, row ->
-        if (row.kind == "email" && row.value.isEmpty() && contacts.indexOfFirst { it.kind == "email" } == i) row.copy(value = email) else row
-    })
     /** `PUT /v1/profile` body: filled contacts only, saved histories unchanged. */
     val profile get() = AccountProfile(name.trim(), job, introduction,
         filled.map { AccountContact(it.id, it.kind, it.label, it.value.trim()) }, saved)

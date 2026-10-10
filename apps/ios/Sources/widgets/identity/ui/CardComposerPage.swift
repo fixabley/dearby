@@ -35,7 +35,7 @@ struct CardComposerPage: View {
     }
     private func publish() {
         guard model.account.session != nil else {
-            if let problem = model.problemBeforeSignIn { model.showProblem(problem) } else { signingIn = true }
+            if let problem = model.draft.problem { model.showProblem(problem) } else { signingIn = true }
             return
         }
         Task {

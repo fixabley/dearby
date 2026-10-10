@@ -6,7 +6,7 @@
 
 - 활동 예시는 `entities/catalog/model/CatalogModel.kt`, 필터·신청 상태는 `app/CatalogViewModel.kt`에 있다.
 - 바쁜 시간 예시는 `features/calendar/CalendarConflictState.kt`, 가상 프로필·예시 명함 상태는 `DemoViewModel`이 맡는다.
-- 명함 만들기는 실제 API를 쓴다(2026-10-06): 화면 `app/CardComposerRoute.kt`, 로그인 시트 `pages/account/SignInSheet.kt`, 상태 `app/CardPublishViewModel.kt`·`CardDraft.kt`·`AccountViewModel.kt`.
+- 명함 만들기는 실제 API를 쓴다(2026-10-06): 화면 `app/CardComposerRoute.kt`, 로그인 시트 `pages/account/SignInSheet.kt`, 상태 `app/CardPublishViewModel.kt`·`CardDraft.kt`·`AccountViewModel.kt`. 2026-10-10부터 로그인 시트는 패스키 전용이다(#179, 계약 "패스키 로그인").
 - 공통 표현은 `shared/ui`, 명함·이력 조합은 도메인 컴포넌트에서 재사용한다. [구조 안내](../../apps/android/ARCHITECTURE.md)와 [시안 적용표](../design/mobile-prototype-reference-map.md)에서 위치를 확인한다.
 
 ## 기존 검증과 한계

@@ -5,15 +5,16 @@
     "AccountError",
     "AccountHistory",
     "AccountProfile",
-    "AccountSession",
     "CardShare",
     "ContactRules",
+    "Passkey",
     "PublishedCard",
     "ReceivedShare",
     "ScannedLink",
-    "SessionStore",
-    "SessionVault",
-    "ShareActivity"
+    "ShareActivity",
+    "TokenPair",
+    "TokenStore",
+    "TokenVault"
   ],
   "entities/catalog": [
     "ActivityModel",
@@ -49,7 +50,6 @@
     "DearbyButtonStyle",
     "DearbyChoice",
     "DearbyChoiceChips",
-    "DearbyCodeField",
     "DearbyFieldError",
     "DearbyInfoRow",
     "DearbyInlineField",

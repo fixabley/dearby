@@ -35,8 +35,9 @@ project.targets.each do |target|
         # Universal links for shared cards: the host is the last path component of the web origin.
         'DEARBY_WEB_HOST' => '$(DEARBY_WEB_ORIGIN:file)'
       })
-      # Release only, where the origin is validated; Debug device builds need no extra capability.
-      config.build_settings['CODE_SIGN_ENTITLEMENTS'] = 'Dearby.entitlements' if config.name == 'Release'
+      # Passkeys need webcredentials for the RP ID (contract "패스키 로그인") in both builds. Universal links
+      # stay Release only, where the web origin is validated; Debug may have no web origin at all.
+      config.build_settings['CODE_SIGN_ENTITLEMENTS'] = config.name == 'Release' ? 'Dearby.entitlements' : 'Dearby-Debug.entitlements'
       if config.name == 'Debug'
         config.build_settings['SWIFT_ACTIVE_COMPILATION_CONDITIONS'] = 'DEBUG'
         config.build_settings['INFOPLIST_FILE'] = 'Info-Debug.plist'

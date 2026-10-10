@@ -18,7 +18,6 @@ import Observation
         do {
             let stored = try await account.authorized { [client = account.client] in try await client.profile($0) }
             draft = CardDraft(profile: stored)
-            draft.prefill(email: account.email)
             savedProfile = stored
             phase = .editing
         } catch {
@@ -30,7 +29,6 @@ import Observation
         do {
             let stored = try await account.authorized { [client = account.client] in try await client.profile($0) }
             draft = draft.merged(onto: stored)
-            draft.prefill(email: account.email)
             savedProfile = stored
         } catch {
             phase = .failed("프로필을 불러오지 못했어요. 다시 시도해 주세요.")
@@ -38,8 +36,6 @@ import Observation
         }
         await publish()
     }
-    /// Checked before asking a signed-out user to sign in, so they fix the form first.
-    var problemBeforeSignIn: String? { draft.problem(checkingEmail: false) }
     func showProblem(_ text: String) { phase = .failed(text) }
     func publish() async {
         if let problem = draft.problem { phase = .failed(problem); return }

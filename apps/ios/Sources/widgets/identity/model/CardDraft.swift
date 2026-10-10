@@ -37,22 +37,15 @@ struct CardDraft: Equatable {
                                 historyIds: histories.filter(\.isPublic).map(\.id))
     }
     var canPublish: Bool { problem == nil }
-    var problem: String? { problem(checkingEmail: true) }
-    /// Why the profile cannot be saved yet (contract #149: name, a phone and an email), or nil. Before signing in
-    /// the email may still be empty: the sign-in address fills it.
-    func problem(checkingEmail: Bool) -> String? {
+    /// Why the profile cannot be saved yet (contract #149: name, a phone and an email), or nil.
+    var problem: String? {
         if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "이름을 입력해 주세요." }
         let phone = contacts.first { $0.kind == "phone" }?.value ?? "", email = contacts.first { $0.kind == "email" }?.value ?? ""
         if phone.trimmingCharacters(in: .whitespaces).isEmpty { return "전화번호를 입력해 주세요." }
         if !ContactRules.validPhone(phone) { return "전화번호는 숫자 8~15자리로 입력해 주세요." }
-        if email.trimmingCharacters(in: .whitespaces).isEmpty { return checkingEmail ? "이메일을 입력해 주세요." : nil }
+        if email.trimmingCharacters(in: .whitespaces).isEmpty { return "이메일을 입력해 주세요." }
         if !ContactRules.validEmail(email) { return "이메일 주소를 확인해 주세요." }
         return nil
-    }
-    /// The sign-in email fills an empty email row.
-    mutating func prefill(email: String) {
-        guard !email.isEmpty, let row = contacts.firstIndex(where: { $0.kind == "email" }), contacts[row].value.isEmpty else { return }
-        contacts[row].value = email
     }
     private var filled: [CardComposerContact] { contacts.filter { !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } }
 
