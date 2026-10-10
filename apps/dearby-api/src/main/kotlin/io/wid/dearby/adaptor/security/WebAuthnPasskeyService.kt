@@ -2,9 +2,9 @@ package io.wid.dearby.adaptor.security
 
 import com.webauthn4j.util.exception.WebAuthnException
 import io.wid.dearby.application.Ceremony
-import io.wid.dearby.application.InvalidPasskeyRequestException
+import io.wid.dearby.application.AuthenticationFailedException
+import io.wid.dearby.application.InvalidInputException
 import io.wid.dearby.application.PasskeyOptions
-import io.wid.dearby.application.PasskeyRejectedException
 import io.wid.dearby.application.PasskeyService
 import io.wid.dearby.application.PasskeyService.Companion.DEFAULT_DISPLAY_NAME
 import io.wid.dearby.application.PasskeyService.Companion.MAX_DISPLAY_NAME
@@ -45,7 +45,7 @@ class WebAuthnPasskeyService(
     // 계정은 아직 없다. 새 UserId와 user handle을 정해 challenge와 함께 저장하고, 가입 완료 때 계정을 만든다
     override fun registrationOptions(displayName: String?): PasskeyOptions {
         val name = displayName?.trim().takeUnless { it.isNullOrEmpty() } ?: DEFAULT_DISPLAY_NAME
-        if (name.length > MAX_DISPLAY_NAME) throw InvalidPasskeyRequestException("displayName이 너무 깁니다")
+        if (name.length > MAX_DISPLAY_NAME) throw InvalidInputException("displayName이 너무 깁니다")
         val stored = StoredChallenge(
             challenge = Bytes.random().bytes,
             userId = UUID.randomUUID(),
@@ -59,7 +59,7 @@ class WebAuthnPasskeyService(
     override fun register(challengeId: UUID, credentialJson: JsonNode): TokenPair {
         val credential = parse(credentialJson, AuthenticatorAttestationResponse::class.java)
         val stored = challenges.consume(challengeId, Ceremony.REGISTRATION)
-            ?: throw PasskeyRejectedException("challenge가 없거나 만료되었습니다")
+            ?: throw AuthenticationFailedException("challenge가 없거나 만료되었습니다")
         val user = User(stored.userId!!, listOf(UserRole.USER))
         val options = creationOptions(stored)
         // 검증이 실패하면 계정·user entity도 함께 롤백된다
@@ -84,14 +84,14 @@ class WebAuthnPasskeyService(
     override fun authenticate(challengeId: UUID, credentialJson: JsonNode): TokenPair {
         val credential = parse(credentialJson, AuthenticatorAssertionResponse::class.java)
         val stored = challenges.consume(challengeId, Ceremony.AUTHENTICATION)
-            ?: throw PasskeyRejectedException("challenge가 없거나 만료되었습니다")
+            ?: throw AuthenticationFailedException("challenge가 없거나 만료되었습니다")
         return transaction.execute {
             // 모르는 패스키는 IllegalArgumentException
             val entity = rejectOnFailure {
                 operations.authenticate(RelyingPartyAuthenticationRequest(requestOptions(stored), credential))
             }
             val user = runCatching { UUID.fromString(entity.name) }.getOrNull()?.let(users::findById)
-                ?: throw PasskeyRejectedException("패스키에 연결된 계정이 없습니다")
+                ?: throw AuthenticationFailedException("패스키에 연결된 계정이 없습니다")
             tokens.issue(user)
         }!!
     }
@@ -138,17 +138,18 @@ class WebAuthnPasskeyService(
         return try {
             mapper.treeToValue(json, type)
         } catch (e: RuntimeException) {
-            throw InvalidPasskeyRequestException("credential 형식이 올바르지 않습니다")
+            throw InvalidInputException("credential 형식이 올바르지 않습니다")
         }
     }
 
     // 검증 실패(webauthn4j)와 모르는/중복 credential(IllegalArgumentException)은 인증 실패로 다룬다
+    // InvalidInputException도 IllegalArgumentException이라 이 블록 안에서 던지면 401이 된다. 형식 검사는 블록 밖에서 한다
     private inline fun <T> rejectOnFailure(block: () -> T): T = try {
         block()
     } catch (e: WebAuthnException) {
-        throw PasskeyRejectedException("패스키 검증에 실패했습니다")
+        throw AuthenticationFailedException("패스키 검증에 실패했습니다")
     } catch (e: IllegalArgumentException) {
-        throw PasskeyRejectedException("패스키 검증에 실패했습니다")
+        throw AuthenticationFailedException("패스키 검증에 실패했습니다")
     }
 
     companion object {

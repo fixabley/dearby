@@ -7,5 +7,5 @@ import org.springframework.stereotype.Service
 @Service
 class UserService(private val users: UserRepository) {
 
-    fun getById(id: UserId): User = users.findById(id) ?: throw UserNotFoundException(id)
+    fun getById(id: UserId): User = users.findById(id) ?: throw NotFoundException("사용자를 찾을 수 없습니다", "User not found: $id")
 }
