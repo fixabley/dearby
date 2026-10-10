@@ -54,7 +54,7 @@ struct ReceivedSharePage: View {
                     if model.saving == .saving { ProgressView().tint(.white) } else { Text("받은 명함에 저장") }
                 }.buttonStyle(DearbyButtonStyle()).disabled(model.saving == .saving)
                 if model.account.session == nil {
-                    Text("저장할 때만 이메일 인증번호로 로그인해요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
+                    Text("저장할 때만 패스키로 로그인해요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
                 }
             }
         }.padding(.horizontal, 20).padding(.vertical, 12).background(.white)

@@ -95,7 +95,7 @@ struct CardComposer: View {
             }.buttonStyle(DearbyButtonStyle()).disabled(nameMissing || publishing)
                 .accessibilityLabel(publishing ? "명함 발행 중" : (requiresLogin ? "로그인하고 명함 발행" : "명함 발행"))
             if requiresLogin {
-                Text("발행할 때만 이메일 인증번호로 로그인해요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
+                Text("발행할 때만 패스키로 로그인해요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
             }
         }.padding(.horizontal, 20).padding(.vertical, 12).background(.white)
             .overlay(alignment: .top) { Rectangle().fill(DearbyStyle.line).frame(height: 1) }
