@@ -3,14 +3,14 @@ package io.wid.dearby.adaptor.security
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.REFRESH_TOKENS
 import io.wid.dearby.domain.UserId
 import org.jooq.DSLContext
-import org.springframework.stereotype.Component
+import org.springframework.stereotype.Repository
 import java.security.MessageDigest
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.*
 
-@Component
-class RefreshTokenStore(private val dsl: DSLContext, private val properties: JwtProperties) {
+@Repository
+class RefreshTokenRepository(private val dsl: DSLContext, private val properties: JwtProperties) {
 
     fun issue(userId: UserId): String {
         val token = UUID.randomUUID().toString()

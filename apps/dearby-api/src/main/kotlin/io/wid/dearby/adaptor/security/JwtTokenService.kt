@@ -7,7 +7,7 @@ import io.wid.dearby.domain.UserId
 import org.springframework.stereotype.Service
 
 @Service
-class JwtTokenService(private val jwtIssuer: JwtIssuer, private val refreshTokens: RefreshTokenStore) : TokenService {
+class JwtTokenService(private val jwtIssuer: JwtIssuer, private val refreshTokens: RefreshTokenRepository) : TokenService {
 
     override fun issue(user: User) = TokenPair(
         accessToken = jwtIssuer.issueAccessToken(user),

@@ -29,7 +29,7 @@ class InvalidPasskeyRequestException(message: String) : RuntimeException(message
 class PasskeyService(
     private val operations: WebAuthnRelyingPartyOperations,
     private val userEntities: PublicKeyCredentialUserEntityRepository,
-    private val challenges: WebAuthnChallengeStore,
+    private val challenges: WebAuthnChallengeRepository,
     private val users: UserRepository,
     private val tokens: TokenService,
     private val transaction: TransactionTemplate,
@@ -112,7 +112,7 @@ class PasskeyService(
             )
             .challenge(Bytes(stored.challenge))
             .extensions(ImmutableAuthenticationExtensionsClientInputs(ImmutableAuthenticationExtensionsClientInput.credProps))
-            .timeout(WebAuthnChallengeStore.TTL)
+            .timeout(WebAuthnChallengeRepository.TTL)
             .user(
                 ImmutablePublicKeyCredentialUserEntity.builder()
                     .id(Bytes.fromBase64(stored.userEntityId!!))
@@ -128,7 +128,7 @@ class PasskeyService(
         PublicKeyCredentialRequestOptions.builder()
             .challenge(Bytes(stored.challenge))
             .rpId(properties.rpId)
-            .timeout(WebAuthnChallengeStore.TTL)
+            .timeout(WebAuthnChallengeRepository.TTL)
             .userVerification(USER_VERIFICATION)
             .build()
 

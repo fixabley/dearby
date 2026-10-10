@@ -3,7 +3,7 @@ package io.wid.dearby.adaptor.security
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.WEBAUTHN_CHALLENGES
 import io.wid.dearby.domain.UserId
 import org.jooq.DSLContext
-import org.springframework.stereotype.Component
+import org.springframework.stereotype.Repository
 import java.time.Duration
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -19,8 +19,8 @@ data class StoredChallenge(
     val displayName: String?,
 )
 
-@Component
-class WebAuthnChallengeStore(private val dsl: DSLContext) {
+@Repository
+class WebAuthnChallengeRepository(private val dsl: DSLContext) {
 
     fun issue(ceremony: Ceremony, challenge: StoredChallenge): UUID {
         val id = UUID.randomUUID()
