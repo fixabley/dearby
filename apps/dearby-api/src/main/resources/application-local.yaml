@@ -1,0 +1,8 @@
+# 로컬 개발용(local 프로필). 값은 .env에서 읽는다(.env.example 참고). 운영은 환경변수로 넣는다
+spring:
+  config:
+    import: optional:file:.env[.properties]
+
+dearby:
+  webauthn:
+    rp-name: Dearby (local)

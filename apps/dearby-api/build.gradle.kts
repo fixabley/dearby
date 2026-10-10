@@ -70,6 +70,11 @@ tasks.withType<Test> {
     useJUnitPlatform()
 }
 
+// 로컬 실행은 local 프로필(application-local.yaml). SPRING_PROFILES_ACTIVE로 바꿀 수 있다
+tasks.bootRun {
+    environment("SPRING_PROFILES_ACTIVE", System.getenv("SPRING_PROFILES_ACTIVE") ?: "local")
+}
+
 // jOOQ 코드 생성: 마이그레이션을 H2(PostgreSQL 모드)에 적용한 뒤 그 스키마로 생성
 // https://www.jooq.org/doc/latest/manual/getting-started/tutorials/jooq-with-flyway/
 val migrations = layout.projectDirectory.dir("src/main/resources/db/migration")
