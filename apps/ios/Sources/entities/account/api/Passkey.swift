@@ -39,6 +39,7 @@ enum Passkey {
         guard let challenge = Data(base64URL: options.challenge), let userID = Data(base64URL: options.user.id) else { throw Failure.failed }
         let request = provider.createCredentialRegistrationRequest(challenge: challenge, name: options.user.name, userID: userID)
         request.displayName = options.user.displayName
+        request.userVerificationPreference = .required  // The API requires user verification.
         guard case .passkeyRegistration(let result) = try await perform(request, controller),
               let attestation = result.rawAttestationObject else { throw Failure.failed }
         return Credential(id: result.credentialID.base64URL, rawId: result.credentialID.base64URL,
@@ -46,8 +47,9 @@ enum Passkey {
     }
     @MainActor static func assert(_ options: RequestOptions, with controller: AuthorizationController) async throws -> Credential {
         guard let challenge = Data(base64URL: options.challenge) else { throw Failure.failed }
-        guard case .passkeyAssertion(let result) = try await perform(provider.createCredentialAssertionRequest(challenge: challenge), controller)
-        else { throw Failure.failed }
+        let request = provider.createCredentialAssertionRequest(challenge: challenge)
+        request.userVerificationPreference = .required
+        guard case .passkeyAssertion(let result) = try await perform(request, controller) else { throw Failure.failed }
         return Credential(id: result.credentialID.base64URL, rawId: result.credentialID.base64URL,
                           response: .init(clientDataJSON: result.rawClientDataJSON.base64URL, authenticatorData: result.rawAuthenticatorData.base64URL,
                                           signature: result.signature.base64URL, userHandle: result.userID?.base64URL))
