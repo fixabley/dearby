@@ -4,3 +4,15 @@ spring:
   threads:
     virtual:
       enabled: true
+
+dearby:
+  webauthn:
+    rp-id: wid.io.kr
+    rp-name: Dearby
+    allowed-origins:
+      - https://dearby.wid.io.kr
+  jwt:
+    key-path: data/jwt/private.pem
+    issuer: https://dearby.wid.io.kr
+    access-token-ttl: 1m
+    refresh-token-ttl: 90d
