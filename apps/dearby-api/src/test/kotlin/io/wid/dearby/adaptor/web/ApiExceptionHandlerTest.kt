@@ -1,9 +1,9 @@
 package io.wid.dearby.adaptor.web
 
-import io.wid.dearby.application.AuthenticationFailedException
-import io.wid.dearby.application.InvalidInputException
-import io.wid.dearby.application.NotFoundException
-import io.wid.dearby.application.PermissionDeniedException
+import io.wid.dearby.domain.AuthenticationFailedException
+import io.wid.dearby.domain.InvalidInputException
+import io.wid.dearby.domain.NotFoundException
+import io.wid.dearby.domain.PermissionDeniedException
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.bind.annotation.GetMapping

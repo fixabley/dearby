@@ -1,9 +1,9 @@
 package io.wid.dearby.adaptor.security
 
-import io.wid.dearby.application.TokenPair
-import io.wid.dearby.application.TokenService
-import io.wid.dearby.domain.User
-import io.wid.dearby.domain.UserRole
+import io.wid.dearby.application.auth.TokenPair
+import io.wid.dearby.application.auth.TokenService
+import io.wid.dearby.domain.user.User
+import io.wid.dearby.domain.user.UserRole
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc

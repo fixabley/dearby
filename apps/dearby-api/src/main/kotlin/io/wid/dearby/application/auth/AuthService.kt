@@ -1,5 +1,7 @@
-package io.wid.dearby.application
+package io.wid.dearby.application.auth
 
+import io.wid.dearby.application.user.UserService
+import io.wid.dearby.domain.AuthenticationFailedException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 

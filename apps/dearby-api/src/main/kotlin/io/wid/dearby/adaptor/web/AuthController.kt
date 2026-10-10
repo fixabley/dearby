@@ -1,9 +1,9 @@
 package io.wid.dearby.adaptor.web
 
-import io.wid.dearby.application.AuthService
-import io.wid.dearby.application.PasskeyOptions
-import io.wid.dearby.application.PasskeyService
-import io.wid.dearby.application.TokenPair
+import io.wid.dearby.application.auth.AuthService
+import io.wid.dearby.application.auth.PasskeyOptions
+import io.wid.dearby.application.auth.PasskeyService
+import io.wid.dearby.application.auth.TokenPair
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
 import tools.jackson.databind.JsonNode

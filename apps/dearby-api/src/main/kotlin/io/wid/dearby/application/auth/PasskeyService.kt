@@ -1,4 +1,4 @@
-package io.wid.dearby.application
+package io.wid.dearby.application.auth
 
 import tools.jackson.databind.JsonNode
 import java.util.*

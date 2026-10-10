@@ -1,22 +1,13 @@
 package io.wid.dearby.adaptor.security
 
-import com.webauthn4j.data.AttestationConveyancePreference
-import com.webauthn4j.data.AuthenticatorSelectionCriteria
-import com.webauthn4j.data.PublicKeyCredentialCreationOptions
-import com.webauthn4j.data.PublicKeyCredentialParameters
-import com.webauthn4j.data.PublicKeyCredentialRequestOptions
-import com.webauthn4j.data.PublicKeyCredentialRpEntity
-import com.webauthn4j.data.PublicKeyCredentialType
-import com.webauthn4j.data.PublicKeyCredentialUserEntity
-import com.webauthn4j.data.ResidentKeyRequirement
-import com.webauthn4j.data.UserVerificationRequirement
+import com.webauthn4j.data.*
 import com.webauthn4j.data.attestation.statement.COSEAlgorithmIdentifier
 import com.webauthn4j.data.client.Origin
 import com.webauthn4j.data.client.challenge.DefaultChallenge
 import com.webauthn4j.test.authenticator.webauthn.NoneAttestationAuthenticator
 import com.webauthn4j.test.authenticator.webauthn.WebAuthnAuthenticatorAdaptor
 import com.webauthn4j.test.client.ClientPlatform
-import io.wid.dearby.application.PasskeyService
+import io.wid.dearby.application.auth.PasskeyService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
@@ -47,7 +38,8 @@ class PasskeyFlowTest(
     private val b64d = Base64.getUrlDecoder()
 
     // 앱의 OS 패스키 API 역할. 같은 인스턴스가 만든 패스키를 기억한다
-    private val device = ClientPlatform(Origin("http://localhost"), WebAuthnAuthenticatorAdaptor(NoneAttestationAuthenticator()))
+    private val device =
+        ClientPlatform(Origin("http://localhost"), WebAuthnAuthenticatorAdaptor(NoneAttestationAuthenticator()))
 
     private fun post(path: String, body: String? = null) = mvc.post(path) {
         contentType = MediaType.APPLICATION_JSON
@@ -71,7 +63,12 @@ class PasskeyFlowTest(
                     options["user"]["displayName"].asString(),
                 ),
                 DefaultChallenge(b64d.decode(options["challenge"].asString())),
-                listOf(PublicKeyCredentialParameters(PublicKeyCredentialType.PUBLIC_KEY, COSEAlgorithmIdentifier.ES256)),
+                listOf(
+                    PublicKeyCredentialParameters(
+                        PublicKeyCredentialType.PUBLIC_KEY,
+                        COSEAlgorithmIdentifier.ES256
+                    )
+                ),
                 options["timeout"].asLong(),
                 emptyList(),
                 AuthenticatorSelectionCriteria(
@@ -229,8 +226,10 @@ class PasskeyFlowTest(
         complete("/v1/auth/passkeys/registration", other["challengeId"].asString(), createCredential(signed["options"]))
             .andExpect { status { isUnauthorized() } }
         assertEquals(users, count("users"))
-        assertEquals(0, jdbc.sql("select count(*) from user_entities where name = ?")
-            .param(other["options"]["user"]["name"].asString()).query(Long::class.java).single())
+        assertEquals(
+            0, jdbc.sql("select count(*) from user_entities where name = ?")
+                .param(other["options"]["user"]["name"].asString()).query(Long::class.java).single()
+        )
     }
 
     @Test

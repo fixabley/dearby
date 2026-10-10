@@ -1,7 +1,7 @@
 package io.wid.dearby.adaptor.security
 
-import io.wid.dearby.domain.User
-import io.wid.dearby.domain.UserRole
+import io.wid.dearby.domain.user.User
+import io.wid.dearby.domain.user.UserRole
 import org.junit.jupiter.api.io.TempDir
 import org.springframework.security.oauth2.jwt.BadJwtException
 import java.nio.file.Files
