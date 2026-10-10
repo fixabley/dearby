@@ -4,6 +4,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dearby.nativeapp.features.passkey.Passkeys
 import com.dearby.nativeapp.pages.account.SignInSheet
 import com.dearby.nativeapp.pages.profile.ProfileEditPage
 import com.dearby.nativeapp.pages.profile.ProfilePage
@@ -23,11 +24,8 @@ import kotlinx.coroutines.launch
         BackHandler(onBack = model::close)
         ProfileEditPage(current.form, current.errors, current.saving, current.error, model::change, model::addContact, model::addHistory, model::save, model::close)
     } ?: ProfilePage(state, model::startEdit, compose, { signingIn = true }, { model.load() }) { openContact(context, it) }
-    if (signingIn && !signedIn) SignInSheet(
-        codeStep = auth.phase == AccountPhase.CODE_SENT || auth.phase == AccountPhase.VERIFYING,
-        busy = auth.phase == AccountPhase.SENDING_CODE || auth.phase == AccountPhase.VERIFYING,
-        email = auth.email, message = auth.message, codeSentAt = auth.codeSentAt,
-        requestCode = { scope.launch { account.requestCode(it) } }, verify = { scope.launch { account.verify(it) } },
-        changeEmail = account::changeEmail, close = { signingIn = false },
+    if (signingIn && !signedIn) SignInSheet(auth.phase == AccountPhase.WORKING, auth.message,
+        signIn = { scope.launch { account.signIn(Passkeys(context)) } }, signUp = { scope.launch { account.signUp(Passkeys(context)) } },
+        close = { signingIn = false },
     )
 }

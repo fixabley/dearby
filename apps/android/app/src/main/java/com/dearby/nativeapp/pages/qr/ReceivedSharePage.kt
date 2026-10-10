@@ -66,7 +66,7 @@ data class ReceivedSaveState(val signedIn: Boolean, val saving: Boolean = false,
             DearbyButton(onSave, Modifier.fillMaxWidth(), enabled = !save.saving) {
                 if (save.saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text("받은 명함에 저장")
             }
-            if (!save.signedIn) Text("저장할 때만 이메일 인증번호로 로그인해요.", Modifier.fillMaxWidth(), color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
+            if (!save.signedIn) Text("저장할 때만 패스키로 로그인해요.", Modifier.fillMaxWidth(), color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
         }
     }
 }

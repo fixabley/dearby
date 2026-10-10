@@ -36,14 +36,48 @@ HTTP/Repository/Room/Keystore/기기 캘린더/WebView·인증 실행 코드와 
 - debug: 값이 없으면 에뮬레이터 호스트의 `http://10.0.2.2:3000`(API)과 `http://10.0.2.2:3210`(웹)을 쓴다.
 - App Links: `MainActivity`에 `https://${dearbyWebHost}/s/` intent filter(`autoVerify`)가 있다. 받은 `<웹 origin>/s/<UUID>`는 `shared/config/AppLinks.kt`가 공유 ID로 바꾼다. 공유 명함 화면은 아직 연결하지 않았고, 링크를 받으면 그 사실만 안내한다. debug의 http origin은 https 전용 App Links와 맞지 않으므로 debug에서는 명시 intent(계측 테스트 `LinkRoutingTest`)로 확인한다. 실제 검증은 `assetlinks.json` 배포(#90·#91) 뒤에만 가능하다.
 
-## 로그인·명함 발행 연결 (2026-10-06)
+## 패스키 로그인 (2026-10-10)
 
-`entities/account`의 `AccountClient`와 Keystore AES-GCM `SessionVault`(새 이름 `account.session.v2`, 이전 앱의 `session` 저장은 읽거나 지우지 않음), `app/AccountViewModel`이 있다. 화면 연결은 다음 PR이다. 운영 `/v1/auth`는 닫혀 있고 #89 미설정이라 운영 동작 완료가 아니다. 로컬 실제 API 확인 준비는 [iOS README](../ios/README.md#로그인명함-발행-연결-2026-10-06)와 같고, `DEARBY_REAL_API_ORIGIN`·`DEARBY_REAL_MAILPIT`을 주고 `./gradlew testDebugUnitTest --tests com.dearby.nativeapp.AccountRealApiTest`를 실행한다(값이 없으면 건너뜀).
+계약 [native-v1 "패스키 로그인"](../../shared/contracts/native-v1.md)을 따른다. 이메일 인증번호 로그인은 없앴다.
+
+- 흐름: 로그인 시트 `pages/account/SignInSheet.kt`의 "패스키로 로그인"(기본)·"새 패스키로 시작"(가입) → `app/AccountViewModel` → `entities/account/api/AccountClient`의 `/v1/auth/passkeys/*` 옵션 요청 → `features/passkey/Passkeys`(Credential Manager)에 `options` JSON을 그대로 넘김 → 결과 JSON을 `credential`로 완료 요청 → TokenPair.
+- 저장: Keystore AES-GCM `SessionVault` 새 이름 `account.tokens.v3`에 access·refresh token만 둔다(서버 응답도 토큰 두 개뿐이다). 사용자 id·만료는 access token 클레임에 있고, 401을 받으면 갱신한다. 이전 저장(`session`, 이메일 로그인의 `account.session.v2`)은 읽거나 지우지 않는다.
+- 401: `/v1/auth/refresh`를 한 번 시도하고(동시에 401을 받아도 갱신은 한 번), 거절되면 토큰을 지우고 로그인 시트로 돌아간다. 네트워크 오류면 토큰을 남긴다. 로그아웃(`AccountViewModel.signOut`)은 `/v1/auth/logout` 뒤 네트워크 실패여도 기기 토큰을 지운다. 지금 로그아웃 버튼은 없다.
+- 사용자가 패스키 창을 닫으면 오류 없이 시트로 돌아간다. 기기에 패스키가 없으면 "새 패스키로 시작"을 안내한다. 패스키는 Android 9(API 28) 이상에서만 쓸 수 있다(minSdk 26).
+
+### 도메인 연결 (`wid.io.kr`)
+
+패스키는 RP ID `wid.io.kr`이 이 앱을 신뢰해야 동작한다. 아래 두 값을 서명 인증서마다(디버그, 배포) 넣는다. Play 앱 서명을 쓰면 배포 값은 업로드 키가 아니라 Play Console의 "앱 서명 키 인증서" SHA-256이다.
+
+1. `https://wid.io.kr/.well-known/assetlinks.json`(운영 ingress가 낸다):
+
+   ```json
+   [{
+     "relation": ["delegate_permission/common.get_login_creds"],
+     "target": { "namespace": "android_app", "package_name": "com.dearby.nativeapp",
+       "sha256_cert_fingerprints": ["<서명 SHA-256, AA:BB:… 형식>"] }
+   }]
+   ```
+
+2. API `WEBAUTHN_ALLOWED_ORIGINS`에 `android:apk-key-hash:<같은 SHA-256의 base64url, 패딩 없음>`.
+
+`sha256_cert_fingerprints`는 배열이라 디버그·배포 지문을 한 항목에 함께 넣을 수 있다. 두 값을 구하는 명령(디버그 키스토어 예시, 배포는 키스토어·alias·비밀번호를 바꾼다):
+
+```sh
+KEYTOOL="$JAVA_HOME/bin/keytool"
+# assetlinks용 hex. 한국어 로캘에서 keytool -v가 실패하면 -J-Duser.language=en을 붙인다.
+"$KEYTOOL" -J-Duser.language=en -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android | grep SHA256:
+# 허용 origin용 base64url
+"$KEYTOOL" -exportcert -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android \
+  | openssl sha256 -binary | openssl base64 | tr '+/' '-_' | tr -d '='
+```
+
+디버그 키스토어는 개발 기기마다 다르므로 각자 값을 넣는다. Play Console 값(hex)만 있으면 `echo <hex 콜론 제거> | xxd -r -p | openssl base64 | tr '+/' '-_' | tr -d '='`로 바꾼다. 로컬 API로 확인하려면 `DEARBY_API_ORIGIN`을 지정한다(Debug 기본 `http://10.0.2.2:3000`은 Kotlin API 포트와 다르다). 그래도 RP ID가 `wid.io.kr`이므로 assetlinks가 배포되기 전에는 패스키 창이 실패한다.
 
 ```sh
 export JAVA_HOME='/Applications/Android Studio.app/Contents/jbr/Contents/Home'
 export ANDROID_HOME=/Users/jominjun/Library/Android/sdk
-./gradlew assembleDebug testDebugUnitTest lintDebug assembleDebugAndroidTest
+./gradlew :app:assembleDebug :app:lintDebug
 python3 scripts/check-fsd.py --self-test
 ```
 

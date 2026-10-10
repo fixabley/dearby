@@ -10,6 +10,7 @@ import com.dearby.nativeapp.entities.account.api.AccountError
 import com.dearby.nativeapp.entities.account.api.AccountException
 import com.dearby.nativeapp.entities.account.model.PublishedCard
 import com.dearby.nativeapp.entities.account.model.ScannedLink
+import com.dearby.nativeapp.features.passkey.Passkeys
 import com.dearby.nativeapp.pages.account.SignInSheet
 import com.dearby.nativeapp.pages.qr.ReceivedPhase
 import com.dearby.nativeapp.pages.qr.ReceivedSaveState
@@ -66,12 +67,9 @@ import kotlinx.coroutines.launch
     BackHandler(onBack = close)
     ReceivedSharePage(state, close, { attempt++ }, { openContact(context, it) }, save = (link as? ScannedLink.Share)?.let { ReceivedSaveState(signedIn, saving, done, error) },
         onSave = { if (signedIn) save() else signingIn = true })
-    if (signingIn && !signedIn) SignInSheet(
-        codeStep = auth.phase == AccountPhase.CODE_SENT || auth.phase == AccountPhase.VERIFYING,
-        busy = auth.phase == AccountPhase.SENDING_CODE || auth.phase == AccountPhase.VERIFYING,
-        email = auth.email, message = auth.message, codeSentAt = auth.codeSentAt,
-        requestCode = { scope.launch { account.requestCode(it) } }, verify = { scope.launch { account.verify(it) } },
-        changeEmail = account::changeEmail, close = { signingIn = false },
+    if (signingIn && !signedIn) SignInSheet(auth.phase == AccountPhase.WORKING, auth.message,
+        signIn = { scope.launch { account.signIn(Passkeys(context)) } }, signUp = { scope.launch { account.signUp(Passkeys(context)) } },
+        close = { signingIn = false },
     )
 }
 

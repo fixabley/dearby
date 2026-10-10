@@ -11,6 +11,8 @@ import com.dearby.nativeapp.entities.account.model.toWallet
 import com.dearby.nativeapp.entities.account.model.toJson
 import com.dearby.nativeapp.entities.account.model.toProfile
 import com.dearby.nativeapp.entities.account.model.toPublishedCard
+import com.dearby.nativeapp.entities.account.model.toPasskeyChallenge
+import com.dearby.nativeapp.entities.account.model.toSession
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlinx.coroutines.Dispatchers
@@ -27,7 +29,7 @@ data class HttpRequest(val method: String, val url: String, val token: String?, 
 data class HttpResponse(val status: Int, val body: String)
 fun interface Transport { suspend fun send(request: HttpRequest): HttpResponse }
 
-/** Real transport. Tokens, emails and bodies are never logged. */
+/** Real transport. Tokens, credentials and bodies are never logged. */
 val httpTransport = Transport { request ->
     withContext(Dispatchers.IO) {
         val connection = URL(request.url).openConnection() as HttpURLConnection
@@ -53,12 +55,18 @@ val httpTransport = Transport { request ->
     }
 }
 
-/** Owner API (contract native-v1): email code sign-in, profile and card publishing. */
+/** Owner API (contract native-v1): passkey sign-in, profile and card publishing. */
 class AccountClient(private val api: String, private val transport: Transport = httpTransport) {
-    suspend fun requestCode(email: String) = send("POST", "auth/challenges", JSONObject().put("email", email)).getString("challengeId")
-    suspend fun signIn(challengeId: String, code: String) = send("POST", "auth/sessions", JSONObject().put("challengeId", challengeId).put("code", code))
-        .let { AccountSession(it.getString("sessionToken"), it.getString("profileId")) }
-    suspend fun signOut(session: AccountSession) { request("DELETE", "auth/session", null, session) }
+    /** Passkey sign-up; the account is made when [register] succeeds. The server names the passkey (`Dearby 사용자`). */
+    suspend fun registrationOptions() = send("POST", "auth/passkeys/registration/options", JSONObject()).toPasskeyChallenge()
+    suspend fun register(challengeId: String, credential: String) = send("POST", "auth/passkeys/registration", passkeyBody(challengeId, credential)).toSession()
+    // The contract has no request body; an explicit {} keeps HttpURLConnection from sending a bodiless POST.
+    suspend fun authenticationOptions() = send("POST", "auth/passkeys/authentication/options", JSONObject()).toPasskeyChallenge()
+    suspend fun authenticate(challengeId: String, credential: String) = send("POST", "auth/passkeys/authentication", passkeyBody(challengeId, credential)).toSession()
+    /** Rotates the pair: the refresh token sent here stops working. */
+    suspend fun refresh(refreshToken: String) = send("POST", "auth/refresh", JSONObject().put("refreshToken", refreshToken)).toSession()
+    /** 204 with no body, also when the token is already invalid. */
+    suspend fun logout(refreshToken: String) { request("POST", "auth/logout", JSONObject().put("refreshToken", refreshToken), null) }
     suspend fun profile(session: AccountSession) = send("GET", "profile", null, session).toProfile()
     suspend fun saveProfile(profile: AccountProfile, session: AccountSession) = send("PUT", "profile", profile.toJson(), session).toProfile()
     suspend fun publish(name: String, description: String, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =
@@ -77,12 +85,14 @@ class AccountClient(private val api: String, private val transport: Transport = 
     /** Public: a card by ID, for legacy `dearby://card/<UUID>` codes. No session. */
     suspend fun publicCard(id: String) = send("GET", "cards/$id", null).toPublishedCard()
 
+    private fun passkeyBody(challengeId: String, credential: String) = JSONObject().put("challengeId", challengeId).put("credential", JSONObject(credential))
+
     private suspend fun send(method: String, path: String, body: JSONObject?, session: AccountSession? = null): JSONObject {
         val text = request(method, path, body, session)
         return try { JSONObject(text) } catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
     }
     private suspend fun request(method: String, path: String, body: JSONObject?, session: AccountSession?): String {
-        val response = try { transport.send(HttpRequest(method, "$api/v1/$path", session?.sessionToken, body?.toString())) }
+        val response = try { transport.send(HttpRequest(method, "$api/v1/$path", session?.accessToken, body?.toString())) }
             catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
         return when (response.status) {
             in 200..299 -> response.body
