@@ -1,9 +1,18 @@
 package io.wid.dearby.adaptor.security
 
 import com.webauthn4j.util.exception.WebAuthnException
+import io.wid.dearby.application.Ceremony
+import io.wid.dearby.application.InvalidPasskeyRequestException
+import io.wid.dearby.application.PasskeyOptions
+import io.wid.dearby.application.PasskeyRejectedException
+import io.wid.dearby.application.PasskeyService
+import io.wid.dearby.application.PasskeyService.Companion.DEFAULT_DISPLAY_NAME
+import io.wid.dearby.application.PasskeyService.Companion.MAX_DISPLAY_NAME
+import io.wid.dearby.application.StoredChallenge
 import io.wid.dearby.application.TokenPair
 import io.wid.dearby.application.TokenService
 import io.wid.dearby.application.UserRepository
+import io.wid.dearby.application.WebAuthnChallengeRepository
 import io.wid.dearby.domain.User
 import io.wid.dearby.domain.UserRole
 import org.springframework.security.web.webauthn.api.*
@@ -16,17 +25,9 @@ import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 import java.util.*
 
-data class PasskeyOptions(val challengeId: UUID, val options: JsonNode)
-
-// challenge 없음·만료·재사용, 검증 실패, 모르는 패스키 → 401
-class PasskeyRejectedException(message: String) : RuntimeException(message)
-
-// credential·displayName 형식 오류 → 400
-class InvalidPasskeyRequestException(message: String) : RuntimeException(message)
-
-// 세션 없이 challengeId로 이어지는 패스키 가입·로그인. 검증은 Spring Security(webauthn4j)에 맡긴다
+// 패스키 검증은 Spring Security(webauthn4j)에 맡긴다
 @Service
-class PasskeyService(
+class WebAuthnPasskeyService(
     private val operations: WebAuthnRelyingPartyOperations,
     private val userEntities: PublicKeyCredentialUserEntityRepository,
     private val challenges: WebAuthnChallengeRepository,
@@ -34,7 +35,7 @@ class PasskeyService(
     private val tokens: TokenService,
     private val transaction: TransactionTemplate,
     private val properties: WebAuthnProperties,
-) {
+) : PasskeyService {
     // options 직렬화와 credential 역직렬화에 WebAuthn 표준 JSON(base64url) 형식을 쓰는 전용 매퍼
     private val mapper = JsonMapper.builder()
         .addModule(WebauthnJacksonModule())
@@ -42,7 +43,7 @@ class PasskeyService(
         .build()
 
     // 계정은 아직 없다. 새 UserId와 user handle을 정해 challenge와 함께 저장하고, 가입 완료 때 계정을 만든다
-    fun registrationOptions(displayName: String?): PasskeyOptions {
+    override fun registrationOptions(displayName: String?): PasskeyOptions {
         val name = displayName?.trim().takeUnless { it.isNullOrEmpty() } ?: DEFAULT_DISPLAY_NAME
         if (name.length > MAX_DISPLAY_NAME) throw InvalidPasskeyRequestException("displayName이 너무 깁니다")
         val stored = StoredChallenge(
@@ -55,7 +56,7 @@ class PasskeyService(
         return PasskeyOptions(challengeId, mapper.valueToTree(creationOptions(stored)))
     }
 
-    fun register(challengeId: UUID, credentialJson: JsonNode): TokenPair {
+    override fun register(challengeId: UUID, credentialJson: JsonNode): TokenPair {
         val credential = parse(credentialJson, AuthenticatorAttestationResponse::class.java)
         val stored = challenges.consume(challengeId, Ceremony.REGISTRATION)
             ?: throw PasskeyRejectedException("challenge가 없거나 만료되었습니다")
@@ -74,13 +75,13 @@ class PasskeyService(
         }!!
     }
 
-    fun authenticationOptions(): PasskeyOptions {
+    override fun authenticationOptions(): PasskeyOptions {
         val stored = StoredChallenge(Bytes.random().bytes, null, null, null)
         val challengeId = challenges.issue(Ceremony.AUTHENTICATION, stored)
         return PasskeyOptions(challengeId, mapper.valueToTree(requestOptions(stored)))
     }
 
-    fun authenticate(challengeId: UUID, credentialJson: JsonNode): TokenPair {
+    override fun authenticate(challengeId: UUID, credentialJson: JsonNode): TokenPair {
         val credential = parse(credentialJson, AuthenticatorAssertionResponse::class.java)
         val stored = challenges.consume(challengeId, Ceremony.AUTHENTICATION)
             ?: throw PasskeyRejectedException("challenge가 없거나 만료되었습니다")
@@ -151,9 +152,6 @@ class PasskeyService(
     }
 
     companion object {
-        const val DEFAULT_DISPLAY_NAME = "Dearby 사용자"
-        const val MAX_DISPLAY_NAME = 64
-
         // 패스키만으로 로그인하므로 기기 잠금(생체·PIN) 확인을 요구한다
         val USER_VERIFICATION: UserVerificationRequirement = UserVerificationRequirement.REQUIRED
     }

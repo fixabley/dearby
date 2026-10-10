@@ -16,6 +16,7 @@ import com.webauthn4j.data.client.challenge.DefaultChallenge
 import com.webauthn4j.test.authenticator.webauthn.NoneAttestationAuthenticator
 import com.webauthn4j.test.authenticator.webauthn.WebAuthnAuthenticatorAdaptor
 import com.webauthn4j.test.client.ClientPlatform
+import io.wid.dearby.application.PasskeyService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc

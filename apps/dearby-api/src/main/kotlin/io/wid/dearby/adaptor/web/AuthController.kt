@@ -1,8 +1,8 @@
 package io.wid.dearby.adaptor.web
 
-import io.wid.dearby.adaptor.security.PasskeyOptions
-import io.wid.dearby.adaptor.security.PasskeyService
 import io.wid.dearby.application.AuthService
+import io.wid.dearby.application.PasskeyOptions
+import io.wid.dearby.application.PasskeyService
 import io.wid.dearby.application.TokenPair
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
