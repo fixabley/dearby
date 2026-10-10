@@ -1,7 +1,7 @@
 package io.wid.dearby.adaptor.web
 
-import io.wid.dearby.application.TokenService
-import io.wid.dearby.domain.TokenPair
+import io.wid.dearby.adaptor.security.TokenPair
+import io.wid.dearby.adaptor.security.TokenService
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping

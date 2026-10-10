@@ -1,7 +1,6 @@
-package io.wid.dearby.adaptor.persistence
+package io.wid.dearby.adaptor.security
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.REFRESH_TOKENS
-import io.wid.dearby.adaptor.security.JwtProperties
 import io.wid.dearby.domain.UserId
 import org.jooq.DSLContext
 import org.springframework.stereotype.Component
