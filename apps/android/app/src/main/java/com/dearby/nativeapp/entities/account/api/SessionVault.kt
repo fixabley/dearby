@@ -44,7 +44,7 @@ class SessionVault(context: Context, name: String = "account.tokens.v3") : Sessi
     }
     override fun save(session: AccountSession) {
         val cipher = Cipher.getInstance("AES/GCM/NoPadding").apply { init(Cipher.ENCRYPT_MODE, key()) }
-        val plain = JSONObject().put("accessToken", session.accessToken).put("refreshToken", session.refreshToken).put("userId", session.userId)
+        val plain = JSONObject().put("accessToken", session.accessToken).put("refreshToken", session.refreshToken)
         val sealed = cipher.doFinal(plain.toString().toByteArray())
         val value = Base64.encodeToString(cipher.iv, Base64.NO_WRAP) + ":" + Base64.encodeToString(sealed, Base64.NO_WRAP)
         preferences.edit(commit = true) { putString("ciphertext", value) }

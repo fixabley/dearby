@@ -4,10 +4,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /**
- * TokenPair from the passkey and refresh endpoints; stored only through the Keystore-backed vault.
- * `expiresIn` is not kept: an expired access token is renewed when the API answers 401.
+ * TokenPair from the passkey and refresh endpoints: only the two tokens. Stored only through the Keystore-backed vault.
+ * The user id and expiry live in the access token's claims; an expired access token is renewed when the API answers 401.
  */
-data class AccountSession(val accessToken: String, val refreshToken: String, val userId: String)
+data class AccountSession(val accessToken: String, val refreshToken: String)
 /** `{challengeId, options}` from a passkey options call; [options] is the WebAuthn JSON handed to the OS as is. */
 data class PasskeyChallenge(val id: String, val options: String)
 
@@ -31,7 +31,7 @@ data class WalletShare(val receiptId: String, val cardId: String, val shareId: S
 data class ReceivedShare(val share: CardShare, val card: PublishedCard)
 data class CardShare(val id: String, val cardId: String, val activities: List<ShareActivity>, val createdAt: String)
 
-fun JSONObject.toSession() = AccountSession(getString("accessToken"), getString("refreshToken"), getString("userId"))
+fun JSONObject.toSession() = AccountSession(getString("accessToken"), getString("refreshToken"))
 fun JSONObject.toPasskeyChallenge() = PasskeyChallenge(getString("challengeId"), getJSONObject("options").toString())
 
 fun AccountProfile.toJson(): JSONObject = JSONObject().put("name", name).put("job", job).put("introduction", introduction)

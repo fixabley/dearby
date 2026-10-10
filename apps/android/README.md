@@ -41,7 +41,7 @@ HTTP/Repository/Room/Keystore/기기 캘린더/WebView·인증 실행 코드와 
 계약 [native-v1 "패스키 로그인"](../../shared/contracts/native-v1.md)을 따른다. 이메일 인증번호 로그인은 없앴다.
 
 - 흐름: 로그인 시트 `pages/account/SignInSheet.kt`의 "패스키로 로그인"(기본)·"새 패스키로 시작"(가입) → `app/AccountViewModel` → `entities/account/api/AccountClient`의 `/v1/auth/passkeys/*` 옵션 요청 → `features/passkey/Passkeys`(Credential Manager)에 `options` JSON을 그대로 넘김 → 결과 JSON을 `credential`로 완료 요청 → TokenPair.
-- 저장: Keystore AES-GCM `SessionVault` 새 이름 `account.tokens.v3`에 access·refresh token과 userId를 둔다. `expiresIn`은 저장하지 않고 401을 받으면 갱신한다. 이전 저장(`session`, 이메일 로그인의 `account.session.v2`)은 읽거나 지우지 않는다.
+- 저장: Keystore AES-GCM `SessionVault` 새 이름 `account.tokens.v3`에 access·refresh token만 둔다(서버 응답도 토큰 두 개뿐이다). 사용자 id·만료는 access token 클레임에 있고, 401을 받으면 갱신한다. 이전 저장(`session`, 이메일 로그인의 `account.session.v2`)은 읽거나 지우지 않는다.
 - 401: `/v1/auth/refresh`를 한 번 시도하고(동시에 401을 받아도 갱신은 한 번), 거절되면 토큰을 지우고 로그인 시트로 돌아간다. 네트워크 오류면 토큰을 남긴다. 로그아웃(`AccountViewModel.signOut`)은 `/v1/auth/logout` 뒤 네트워크 실패여도 기기 토큰을 지운다. 지금 로그아웃 버튼은 없다.
 - 사용자가 패스키 창을 닫으면 오류 없이 시트로 돌아간다. 기기에 패스키가 없으면 "새 패스키로 시작"을 안내한다. 패스키는 Android 9(API 28) 이상에서만 쓸 수 있다(minSdk 26).
 
