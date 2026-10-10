@@ -4,7 +4,6 @@
 <dict>
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>applinks:$(DEARBY_WEB_HOST)</string>
 		<string>webcredentials:wid.io.kr</string>
 	</array>
 </dict>

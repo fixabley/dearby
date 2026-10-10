@@ -1,9 +1,10 @@
 import Foundation
 
-/// Owner session from `POST /v1/auth/sessions`; stored only in the Keychain.
-struct AccountSession: Codable, Equatable, Sendable {
-    let sessionToken: String
-    let profileId: String
+/// TokenPair from the passkey and refresh endpoints: only the two tokens. Stored only in the Keychain.
+/// The user id and expiry live in the access token's claims; the app refreshes on 401 instead of by the clock.
+struct TokenPair: Codable, Equatable, Sendable {
+    let accessToken: String
+    let refreshToken: String
 }
 /// Profile contact. IDs are client-generated UUIDs; the server keeps them as given.
 struct AccountContact: Codable, Equatable, Identifiable, Sendable {

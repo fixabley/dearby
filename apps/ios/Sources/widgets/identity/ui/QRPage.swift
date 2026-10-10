@@ -64,7 +64,7 @@ struct QRPage: View {
         VStack(spacing: 24) {
             Image(systemName: "person.crop.rectangle.badge.plus").font(.system(size: 64)).foregroundStyle(DearbyStyle.teal)
             Text("이번에 공유할\n명함을 만드세요.").font(.title.bold()).multilineTextAlignment(.center)
-            Text("명함을 만들면 QR로 바로 건넬 수 있어요. 발행할 때 이메일로 로그인해요.").font(.subheadline)
+            Text("명함을 만들면 QR로 바로 건넬 수 있어요. 발행할 때 패스키로 로그인해요.").font(.subheadline)
                 .foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
             Button("명함 만들기") { editor = true }.buttonStyle(DearbyButtonStyle())
         }.padding(24).padding(.vertical, 32).frame(maxWidth: .infinity)
