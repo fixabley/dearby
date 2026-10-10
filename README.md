@@ -15,7 +15,7 @@
 | --- | --- |
 | `apps/ios`, `apps/android` | 오프라인 모바일 프로토타입 |
 | `shared/assets/prototype` | 양쪽 앱이 사용하는 이미지 원본 |
-| `apps/dearby-api` | 별도 보존한 API 서버. [실행 안내](apps/dearby-api/README.md) |
+| `apps/dearby-api` | Kotlin·Spring으로 새로 작성 중인 API 서버 |
 | `apps/web`, `apps/admin` | 별도 보존한 사용자 웹·어드민 |
 | `docs/context` | [모바일·서비스 운영·과거 기록 목차](docs/context/README.md) |
 
