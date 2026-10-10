@@ -45,7 +45,7 @@ out/
 ### 비밀 값 ###
 .env
 .env.*
-!.env.example
+!.env.local.example
 !.env.prod.example
 *.pem
 *.key

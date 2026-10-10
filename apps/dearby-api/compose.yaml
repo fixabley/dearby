@@ -1,4 +1,5 @@
-# 로컬 개발용 인프라(DB만). API는 ./gradlew bootRun으로 띄운다. 접속 정보는 .env(.env.example 참고)
+# 로컬 개발용 인프라(DB만). API는 ./gradlew bootRun으로 띄운다
+# 실행: docker compose --env-file .env.local up -d (.env.local.example 참고)
 # 운영은 compose.prod.yaml
 name: dearby-api-dev
 
