@@ -31,6 +31,7 @@
 | [수집 워커](catalog-subscription-worker-handoff.md) | 주기 수집·실행 경로 |
 | [도메인 도식도](database-and-domains.md) | 프로그램·활동·명함·계정 관계 |
 | [공통 데이터](shared-data-and-source-decisions.md) | 출처·데이터 결정 |
+| [앱 간 공유 환경값](env-shared-keys.md) | 앱별 env 위치, 여러 앱에서 같아야 하는 값, 로컬 포트 |
 
 각 운영 문서의 확인 시점을 따릅니다. 보존된 배포 기록은 현재 서버가 정상 작동한다는 새 검증이 아닙니다.
 
