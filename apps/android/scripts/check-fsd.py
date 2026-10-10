@@ -19,6 +19,7 @@ API = {
     'pages.profile': {'ProfilePage', 'ProfileEditPage', 'ProfileState', 'ProfilePhase', 'ProfileViewState', 'ProfileFormState', 'HistoryFormState', 'ProfileErrors'},
     'pages.qr': {'QrPage', 'QrShareState', 'QrSharePhase', 'QrCardChoice', 'ReceivedSharePage', 'ReceivedShareState', 'ReceivedPhase', 'ReceivedSaveState'},
     'features.scan': {'QrCameraPreview', 'decodeQr'},
+    'features.passkey': {'Passkeys'},
     'pages.account': {'SignInSheet'},
     'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletEntryState'},
     'features.calendar': {'CalendarConflictSheet'},
