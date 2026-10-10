@@ -4,13 +4,13 @@
 
 ## 전송
 
-JSON camelCase, UUID 문자열 식별자, UTC ISO8601 시각. 기본 `/v1`. 인증은 `Authorization: Bearer <sessionToken>`. HTTPS 운영 URL은 환경 설정이며 임의 실서비스 도메인을 만들지 않는다. 로컬 개발 HTTP 허용은 개발 구성에만 한정한다. 오류는 `{ "error": { "code": "...", "message": "..." } }`, 인증 오류 401, 권한 403, 없음/철회 404, 잘못된 입력 422, 충돌 409, rate limit 429. 민감값은 로그에 기록하지 않는다.
+JSON camelCase, UUID 문자열 식별자, UTC ISO8601 시각. 기본 `/v1`. 인증은 `Authorization: Bearer <accessToken>`(2026-10-10부터 패스키 로그인이 발급하는 JWT, 아래 "패스키 로그인"). HTTPS 운영 URL은 환경 설정이며 임의 실서비스 도메인을 만들지 않는다. 로컬 개발 HTTP 허용은 개발 구성에만 한정한다. 오류는 `{ "error": { "code": "...", "message": "..." } }`, 인증 오류 401, 권한 403, 없음/철회 404, 잘못된 입력 422, 충돌 409, rate limit 429. 민감값은 로그에 기록하지 않는다.
 
 ## 모델
 
 - Profile: `id`, `name`, `job`, `introduction`, `contacts: Contact[]`, `histories: History[]`, `updatedAt`.
 - Contact: `id`, `kind`(phone/email/kakao/instagram/github/behance), `label`, `value`. kakao value는 URL 또는 ID, label로 구분. 외부 URL 열기는 허용 scheme 검증.
-- 필수 연락처(2026-10-06 사용자 결정): 프로필은 `phone`과 `email`을 각각 하나 이상 가져야 한다. 나머지 종류는 사용자가 골라 추가한다. `PUT /profile`에서 빠지면 422 `INVALID_INPUT`(필드 `contacts`)이다. phone은 숫자·`+`·`-`·공백만 허용하고 숫자 8~15자리, email은 기본 형식을 검사한다. 앱은 로그인 이메일을 email 기본값으로 미리 채운다. 명함 발행 때 공개할 연락처를 고르는 방식은 그대로이며, 필수는 프로필 기준이지 명함 공개 의무가 아니다.
+- 필수 연락처(2026-10-06 사용자 결정): 프로필은 `phone`과 `email`을 각각 하나 이상 가져야 한다. 나머지 종류는 사용자가 골라 추가한다. `PUT /profile`에서 빠지면 422 `INVALID_INPUT`(필드 `contacts`)이다. phone은 숫자·`+`·`-`·공백만 허용하고 숫자 8~15자리, email은 기본 형식을 검사한다. (2026-10-10 패스키 로그인 전환으로 로그인 이메일이 없어져, 앱이 email을 미리 채우던 규칙은 없앴다.) 명함 발행 때 공개할 연락처를 고르는 방식은 그대로이며, 필수는 프로필 기준이지 명함 공개 의무가 아니다.
 - History: `id`, `title`, `role`, `startDate`(YYYY-MM-DD), `endDate`(nullable), `description`.
 - 활동 이력 날짜 입력(2026-10-06 사용자 결정): 앱 프로필 편집에서 이력마다 시작일(필수)과 종료일(선택, `진행 중`이면 비움)을 날짜 선택기로 입력한다. 연·월만 고르는 경우 일은 1일로 저장한다. 종료일은 시작일보다 앞설 수 없다(API도 422). 표시는 `2026.03 – 2026.06`, 진행 중이면 `2026.03 – 진행 중`이다.
 - Card: `id`, `ownerId`, `name`(명함 이름), `description`, `profileName`, `job`, `introduction`, `contacts: Contact[]`, `histories: History[]`, `createdAt`. 공개 연락처·이력만 포함. 원본 프로필 전체를 클라이언트에서 가리는 방식 금지.
@@ -24,9 +24,7 @@ JSON camelCase, UUID 문자열 식별자, UTC ISO8601 시각. 기본 `/v1`. 인�
 
 | 메서드·경로 | 요청 | 성공 응답 |
 | --- | --- | --- |
-| POST /auth/challenges | `{email}` | 202 `{challengeId, expiresAt}` |
-| POST /auth/sessions | `{challengeId, code}` | 200 `{sessionToken, profileId}` |
-| DELETE /auth/session | 없음 | 204 |
+| (인증) | 아래 "패스키 로그인"의 `/auth/passkeys/*`, `/auth/refresh`, `/auth/logout` | 2026-10-10 이메일 인증번호(`/auth/challenges`, `/auth/sessions`, `DELETE /auth/session`)를 대체 |
 | GET /profile | 없음 | 200 Profile |
 | PUT /profile | `{name,job,introduction,contacts,histories}` | 200 Profile |
 | GET /cards | 없음 | 200 `{items: Card[]}` (자신의 명함) |
@@ -129,7 +127,7 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 | 영역 | 동작 | 사용 API |
 | --- | --- | --- |
 | 발견·활동 상세 | 공개 카탈로그를 보여 주고, 신청 CTA는 활동의 공식 신청 URL을 외부 브라우저로 연다. 실패하면 오류와 다시 시도를 보여 주며 예시 활동을 섞지 않는다. | GET /v1/catalog |
-| 로그인 | 이메일 인증번호. 명함 발행·공유와 받은 명함 저장을 할 때만 요구하고, 발견·신청·받은 명함 보기는 로그인 없이 쓴다. 토큰은 OS 보안 저장소에 둔다. | /v1/auth/* |
+| 로그인 | 패스키(2026-10-10 결정, 아래 "패스키 로그인"). 명함 발행·공유와 받은 명함 저장을 할 때만 요구하고, 발견·신청·받은 명함 보기는 로그인 없이 쓴다. access·refresh 토큰은 OS 보안 저장소에 둔다. | /v1/auth/* |
 | 명함 제작 | 프로필 입력과 공개할 연락처·이력 선택을 한 흐름으로 마치고 바로 발행한다. 수정은 새 발행본을 만든다(기존 스냅샷 규칙 유지). | /v1/profile, POST /v1/cards |
 | QR 공유 | QR 화면에 들어오면 현재 명함으로 공유를 만들고 `https://<웹 origin>/s/<shareId>`를 QR로 보여 준다. 활동 선택은 선택 사항이다. 공유 버튼은 같은 URL을 OS 공유 시트로 넘긴다. | POST /v1/cards/:id/shares |
 | 받기 | 앱 안 스캐너(카메라·사진)와 유니버설 링크/App Links는 같은 `/s/<shareId>` URL을 해석해 공유 명함 화면을 연다. 기존 `dearby://card/<UUID>`도 계속 해석한다. 앱이 없거나 연결 검증에 실패하면 같은 URL이 웹 공유 명함으로 열린다. | GET /v1/shares/:id |
@@ -194,3 +192,38 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 ### 운영 의존
 
 운영 경로 공개 #88, 인증 메일 #89, 연결 파일 값 #90, 마이그레이션·배포 승인 #91, 외부 도달성 #65. 해소 전에는 로컬 API와 테스트 데이터로 검증하며 운영 동작 완료로 표시하지 않는다.
+
+## 패스키 로그인 — 2026-10-10 사용자 결정
+
+계정은 패스키로만 만들고 로그인한다. 이메일 인증번호 로그인은 없앤다. 처음 패스키를 만들 때 계정도 함께 생기고, 이후에는 그 패스키로 로그인한다. 기기를 잃으면 OS의 패스키 동기화(iCloud 키체인·Google 비밀번호 관리자)에 의존하며, 별도 계정 복구 경로는 없다.
+
+### 신뢰 당사자와 연결
+
+- RP ID는 `wid.io.kr`(API `WEBAUTHN_RP_ID`). 바꾸면 등록된 패스키를 모두 쓸 수 없다.
+- `https://wid.io.kr/.well-known/apple-app-site-association`에 `webcredentials.apps`(`<TeamID>.<bundle ID>`)를, `https://wid.io.kr/.well-known/assetlinks.json`에 `delegate_permission/common.get_login_creds`(패키지·서명 SHA-256)를 둔다. `wid.io.kr`은 웹(Vercel)이 아니라 운영 ingress(nginx)가 내준다. 유니버설 링크 `/s/*`의 `applinks`는 기존대로 웹 도메인에 둔다.
+- iOS entitlements에 `webcredentials:wid.io.kr`, Android는 Credential Manager를 쓴다.
+- API 허용 origin(`WEBAUTHN_ALLOWED_ORIGINS`)에 iOS의 `https://wid.io.kr`과 Android의 `android:apk-key-hash:<서명 SHA-256의 base64url>`을 넣는다. 웹에서 패스키를 쓰면 웹 origin도 넣는다.
+
+### API
+
+브라우저 세션 쿠키에 기대지 않는다. 옵션 요청이 `challengeId`를 돌려주고, 완료 요청이 그 값을 다시 보낸다. challenge는 한 번만 쓸 수 있고 5분 뒤 만료된다. `options`와 `credential`은 WebAuthn 표준 JSON 형식(`PublicKeyCredentialCreationOptionsJSON`·`RequestOptionsJSON`, `RegistrationResponseJSON`·`AuthenticationResponseJSON`, base64url)이다.
+
+| 메서드·경로 | 인증 | 요청 | 성공 응답 |
+| --- | --- | --- | --- |
+| POST /v1/auth/passkeys/registration/options | 없음 | `{displayName?}` | 200 `{challengeId, options}` |
+| POST /v1/auth/passkeys/registration | 없음 | `{challengeId, credential}` | 201 TokenPair. 이때 계정이 생긴다 |
+| POST /v1/auth/passkeys/authentication/options | 없음 | 없음 | 200 `{challengeId, options}` (`allowCredentials`는 비움, 기기에 있는 패스키 중 고름) |
+| POST /v1/auth/passkeys/authentication | 없음 | `{challengeId, credential}` | 200 TokenPair |
+| POST /v1/auth/refresh | 없음 | `{refreshToken}` | 200 TokenPair. 쓴 refresh token은 폐기된다(회전) |
+| POST /v1/auth/logout | 없음 | `{refreshToken}` | 204. 이미 무효여도 204 |
+
+- TokenPair: `{accessToken, refreshToken}`(2026-10-10 사용자 결정: 토큰만 준다). access token은 API가 RS256으로 서명한 JWT이고, 사용자 id는 `sub`, 역할은 `roles`, 만료는 `exp` 클레임에 있다. refresh는 받은 refresh token을 폐기하고 새 access·refresh token을 준다.
+- 실패: challenge 없음·만료·재사용, 서명 검증 실패, 모르는 패스키는 401. 형식이 틀린 요청은 400. 오류 본문 형식은 Kotlin API 전체의 오류 형식 정리(RFC 9457 ProblemDetail로 통일 여부)가 끝날 때까지 정하지 않는다. 앱은 상태 코드로만 분기한다.
+- `displayName`은 OS 패스키 목록에 보이는 이름이다. 없으면 `Dearby 사용자`. 패스키의 `user.name`·`user.id`는 서버가 정하며 앱이 정하지 않는다.
+
+### 앱 동작
+
+- 로그인이 필요한 동작(명함 발행·공유, 받은 명함 저장)에서 로그인 화면을 띄운다. "패스키로 로그인"이 기본이고, 패스키가 없거나 사용자가 고르면 "새 패스키로 시작"(가입)을 한다.
+- access token이 만료돼 401을 받으면 refresh를 한 번 시도한다. refresh가 401로 거절되면 토큰을 지우고 로그인 화면으로 돌아간다. 네트워크 오류·5xx면 토큰을 남기고 그 요청만 실패시킨다(불안정한 연결에서 로그아웃되지 않게). refresh token이 회전하므로 동시에 여러 요청이 401을 받아도 refresh는 한 번만 한다.
+- 로그아웃은 `/v1/auth/logout` 뒤 기기 토큰을 지운다. 네트워크 실패여도 기기 토큰은 지운다.
+- 기존 이메일 로그인 화면·저장 토큰(`sessionToken`)은 쓰지 않는다. 이전 앱 저장 데이터는 읽거나 지우지 않는다는 저장소 원칙을 따른다.
