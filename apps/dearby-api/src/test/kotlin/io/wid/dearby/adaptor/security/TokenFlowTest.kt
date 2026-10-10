@@ -1,5 +1,7 @@
 package io.wid.dearby.adaptor.security
 
+import io.wid.dearby.application.TokenPair
+import io.wid.dearby.application.TokenService
 import io.wid.dearby.domain.User
 import io.wid.dearby.domain.UserRole
 import org.springframework.beans.factory.annotation.Autowired

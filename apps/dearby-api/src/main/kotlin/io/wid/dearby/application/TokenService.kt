@@ -1,11 +1,13 @@
-package io.wid.dearby.adaptor.security
+package io.wid.dearby.application
 
-import io.wid.dearby.application.UserService
+import io.wid.dearby.adaptor.persistence.RefreshTokenStore
+import io.wid.dearby.adaptor.security.JwtIssuer
+import io.wid.dearby.adaptor.security.JwtProperties
+import io.wid.dearby.domain.TokenPair
 import io.wid.dearby.domain.User
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
-data class TokenPair(val accessToken: String, val refreshToken: String, val expiresIn: Long)
 
 @Service
 class TokenService(
