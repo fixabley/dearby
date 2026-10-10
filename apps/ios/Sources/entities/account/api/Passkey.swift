@@ -50,7 +50,7 @@ enum Passkey {
         else { throw Failure.failed }
         return Credential(id: result.credentialID.base64URL, rawId: result.credentialID.base64URL,
                           response: .init(clientDataJSON: result.rawClientDataJSON.base64URL, authenticatorData: result.rawAuthenticatorData.base64URL,
-                                          signature: result.signature.base64URL, userHandle: result.userID.base64URL))
+                                          signature: result.signature.base64URL, userHandle: result.userID?.base64URL))
     }
 
     private static var provider: ASAuthorizationPlatformPublicKeyCredentialProvider {
