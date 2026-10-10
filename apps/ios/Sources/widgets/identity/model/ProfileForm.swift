@@ -22,14 +22,13 @@ struct ProfileForm: Equatable {
     private var phoneID: String
     private var emailID: String
 
-    /// The saved profile; an empty email is filled with the sign-in address.
-    init(profile: AccountProfile, signInEmail: String = "") {
+    init(profile: AccountProfile) {
         name = profile.name
         job = profile.job
         introduction = profile.introduction
         let phoneRow = profile.contacts.first { $0.kind == "phone" }, emailRow = profile.contacts.first { $0.kind == "email" }
         phone = phoneRow?.value ?? ""
-        email = emailRow?.value ?? signInEmail
+        email = emailRow?.value ?? ""
         phoneID = phoneRow?.id ?? UUID().uuidString.lowercased()
         emailID = emailRow?.id ?? UUID().uuidString.lowercased()
         extras = profile.contacts.filter { $0.id != phoneRow?.id && $0.id != emailRow?.id }

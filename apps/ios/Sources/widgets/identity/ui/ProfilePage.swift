@@ -29,7 +29,7 @@ struct ProfilePage: View {
                     HStack {
                         Text("내 프로필").font(.dearby(.title2).bold()).accessibilityAddTraits(.isHeader)
                         Spacer()
-                        Button("편집") { form = ProfileForm(profile: profile, signInEmail: state.account.email) }
+                        Button("편집") { form = ProfileForm(profile: profile) }
                     }
                     IdentityHeading(name: profile.name.isEmpty ? "이름 없음" : profile.name, job: profile.job,
                                     introduction: profile.introduction, isFullProfile: true)
