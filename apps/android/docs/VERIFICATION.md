@@ -24,5 +24,7 @@ Final targeted rerun after QR tile minimum-height adjustment: default QR flow1 p
 
 - 실행: `./gradlew :app:assembleDebug :app:lintDebug` BUILD SUCCESSFUL. lint 오류 0, 경고는 의존성·Gradle 새 버전 알림뿐이다(`PublicKeyCredential` API 28 경고는 버전 검사로 해소).
 - 실행: `python3 scripts/check-fsd.py --self-test` 25 cases, 57 Kotlin files passed.
+- 병합 debug manifest 권한: 기존 INTERNET·CAMERA·AndroidX 내부 receiver 권한에 `USE_BIOMETRIC`·`USE_FINGERPRINT`가 더해졌다. `androidx.credentials`가 끌어오는 `androidx.biometric`의 일반(normal) 권한이라 실행 중 요청 창은 없다.
+- ponytail-review(복잡성): Lean already. Ship.
 - 실행하지 않음: 자동 테스트는 2026-10-06 사용자 요청으로 지운 상태라 새로 만들거나 돌리지 않았다. `LargeTextFlowTest`(큰 글씨) 미실행. 에뮬레이터 화면 흐름 미확인.
 - 확인 불가: 실제 패스키 생성·로그인·refresh·logout은 `wid.io.kr` assetlinks 배포와 Kotlin API 새 엔드포인트가 있어야 해서 확인하지 못했다.
