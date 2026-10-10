@@ -1,0 +1,42 @@
+# 운영용: API + DB. 실행: docker compose -f compose.prod.yaml --env-file .env.prod up -d --build
+# DB 포트는 열지 않고 API만 127.0.0.1에 연다(앞단 nginx가 프록시). 데이터는 ./data/prod 아래에 남는다
+name: dearby-api-prod
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:?}
+      POSTGRES_USER: ${DB_USERNAME:?}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?}
+    volumes:
+      - ./data/prod/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\"" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:?}
+      DB_USERNAME: ${DB_USERNAME:?}
+      DB_PASSWORD: ${DB_PASSWORD:?}
+      JWT_KEY_PATH: /app/data/jwt/private.pem
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:?}
+      WEBAUTHN_ALLOWED_ORIGINS: ${WEBAUTHN_ALLOWED_ORIGINS:?}
+      JWT_ISSUER: ${JWT_ISSUER:?}
+    volumes:
+      # 컨테이너는 uid 10001로 실행된다. Linux 호스트는 첫 실행 전에 소유자를 맞춘다:
+      # mkdir -p data/prod/jwt && sudo chown 10001 data/prod/jwt
+      - ./data/prod/jwt:/app/data/jwt
+    ports:
+      - "127.0.0.1:${API_PORT:?}:8080"

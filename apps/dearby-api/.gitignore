@@ -46,6 +46,7 @@ out/
 .env
 .env.*
 !.env.local.example
+!.env.prod.example
 *.pem
 *.key
 *.p8
