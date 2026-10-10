@@ -1,0 +1,8 @@
+certs/*
+!certs/.gitkeep
+logs/*
+!logs/.gitkeep
+.DS_Store
+certbot/*
+!certbot/.gitkeep
+backups/
