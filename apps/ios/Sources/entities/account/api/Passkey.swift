@@ -33,10 +33,10 @@ enum Passkey {
         let response: Response
         let clientExtensionResults = [String: String]()
     }
-    enum Failure: Error { case canceled, badOptions, failed }
+    enum Failure: Error { case canceled, failed }
 
     @MainActor static func register(_ options: CreationOptions, with controller: AuthorizationController) async throws -> Credential {
-        guard let challenge = Data(base64URL: options.challenge), let userID = Data(base64URL: options.user.id) else { throw Failure.badOptions }
+        guard let challenge = Data(base64URL: options.challenge), let userID = Data(base64URL: options.user.id) else { throw Failure.failed }
         let request = provider.createCredentialRegistrationRequest(challenge: challenge, name: options.user.name, userID: userID)
         request.displayName = options.user.displayName
         guard case .passkeyRegistration(let result) = try await perform(request, controller),
@@ -45,7 +45,7 @@ enum Passkey {
                           response: .init(clientDataJSON: result.rawClientDataJSON.base64URL, attestationObject: attestation.base64URL))
     }
     @MainActor static func assert(_ options: RequestOptions, with controller: AuthorizationController) async throws -> Credential {
-        guard let challenge = Data(base64URL: options.challenge) else { throw Failure.badOptions }
+        guard let challenge = Data(base64URL: options.challenge) else { throw Failure.failed }
         guard case .passkeyAssertion(let result) = try await perform(provider.createCredentialAssertionRequest(challenge: challenge), controller)
         else { throw Failure.failed }
         return Credential(id: result.credentialID.base64URL, rawId: result.credentialID.base64URL,
