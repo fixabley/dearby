@@ -1,49 +1,48 @@
 package io.wid.dearby.adaptor.security
 
-import io.wid.dearby.application.UserService
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
 import org.springframework.jdbc.core.JdbcOperations
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.invoke
-import org.springframework.security.core.userdetails.User
-import org.springframework.security.core.userdetails.UserDetailsService
-import org.springframework.security.core.userdetails.UsernameNotFoundException
+import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter
 import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter
+import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver
 import org.springframework.security.web.SecurityFilterChain
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialRpEntity
 import org.springframework.security.web.webauthn.management.JdbcPublicKeyCredentialUserEntityRepository
 import org.springframework.security.web.webauthn.management.JdbcUserCredentialRepository
-import java.util.*
+import org.springframework.security.web.webauthn.management.PublicKeyCredentialUserEntityRepository
+import org.springframework.security.web.webauthn.management.UserCredentialRepository
+import org.springframework.security.web.webauthn.management.Webauthn4JRelyingPartyOperations
 
 @Configuration
 @EnableConfigurationProperties(WebAuthnProperties::class)
 class SecurityConfig {
 
+    // 패스키 가입·로그인은 AuthController가 받고 JWT를 발급한다. Spring Security의 세션 기반 webAuthn {} 경로는 쓰지 않는다
     @Bean
-    fun securityFilterChain(
-        http: HttpSecurity,
-        properties: WebAuthnProperties,
-        userService: UserService
-    ): SecurityFilterChain {
-        // 패스키 검증 뒤 user_entities.name(= UserId)으로 사용자를 만든다. users에 없으면 거부.
-        // 빈으로 등록하면 전역 비밀번호 인증에도 쓰이므로 이 체인의 공유 객체로만 둔다.
-        http.setSharedObject(UserDetailsService::class.java, UserDetailsService { username ->
-            val userId = runCatching { UUID.fromString(username) }.getOrNull()
-                ?: throw UsernameNotFoundException(username)
-            // 없으면 UserNotFoundException. WebAuthnAuthenticationProvider가 BadCredentialsException(401)으로 바꾼다
-            val user = userService.getById(userId)
-            User.withUsername(user.id.toString()).roles(*user.roles.map { it.name }.toTypedArray()).build()
-        })
+    fun securityFilterChain(http: HttpSecurity): SecurityFilterChain {
+        val bearerTokens = DefaultBearerTokenResolver()
         http {
             csrf { disable() }
             cors { disable() }
+            sessionManagement { sessionCreationPolicy = SessionCreationPolicy.STATELESS }
             authorizeHttpRequests {
-                authorize("/v1/auth/refresh", permitAll)
+                authorize(HttpMethod.POST, "$AUTH_PATH/**", permitAll)
+                // 400 등 오류 응답을 만드는 /error 전달이 401로 바뀌지 않게 연다
+                authorize("/error", permitAll)
                 authorize(anyRequest, authenticated)
             }
             oauth2ResourceServer {
+                // 인증 경로에는 만료된 access token이 붙어 와도 무시한다. 그렇지 않으면 refresh 요청이 401로 막힌다
+                bearerTokenResolver = BearerTokenResolver { request ->
+                    if (request.requestURI.startsWith("$AUTH_PATH/")) null else bearerTokens.resolve(request)
+                }
                 jwt {
                     jwtAuthenticationConverter = JwtAuthenticationConverter().apply {
                         setJwtGrantedAuthoritiesConverter(JwtGrantedAuthoritiesConverter().apply {
@@ -53,15 +52,21 @@ class SecurityConfig {
                     }
                 }
             }
-            webAuthn {
-                rpId = properties.rpId
-                rpName = properties.rpName
-                allowedOrigins = properties.allowedOrigins
-                disableDefaultRegistrationPage = true
-            }
         }
         return http.build()
     }
+
+    @Bean
+    fun relyingPartyOperations(
+        userEntities: PublicKeyCredentialUserEntityRepository,
+        userCredentials: UserCredentialRepository,
+        properties: WebAuthnProperties,
+    ) = Webauthn4JRelyingPartyOperations(
+        userEntities,
+        userCredentials,
+        PublicKeyCredentialRpEntity.builder().id(properties.rpId).name(properties.rpName).build(),
+        properties.allowedOrigins,
+    )
 
     @Bean
     fun userCredentialRepository(jdbc: JdbcOperations) = JdbcUserCredentialRepository(jdbc)
@@ -69,4 +74,8 @@ class SecurityConfig {
     @Bean
     fun publicKeyCredentialUserEntityRepository(jdbc: JdbcOperations) =
         JdbcPublicKeyCredentialUserEntityRepository(jdbc)
+
+    companion object {
+        const val AUTH_PATH = "/v1/auth"
+    }
 }

@@ -20,4 +20,11 @@ class JooqUserRepository(private val dsl: DSLContext) : UserRepository {
             .fetchInto(UserRole::class.java)
         return User(id, roles)
     }
+
+    override fun create(user: User) {
+        dsl.insertInto(USERS).set(USERS.ID, user.id).execute()
+        user.roles.forEach {
+            dsl.insertInto(USER_ROLES).set(USER_ROLES.USER_ID, user.id).set(USER_ROLES.ROLE, it.name).execute()
+        }
+    }
 }

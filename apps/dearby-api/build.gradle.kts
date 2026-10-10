@@ -48,6 +48,8 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testImplementation("org.springframework.modulith:spring-modulith-starter-test")
+    // 테스트용 패스키 인증기. 버전은 spring-security-webauthn이 쓰는 webauthn4j-core와 맞춘다
+    testImplementation("com.webauthn4j:webauthn4j-test:0.31.9.RELEASE")
     testRuntimeOnly("com.h2database:h2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     flywayMigration("com.h2database:h2")
