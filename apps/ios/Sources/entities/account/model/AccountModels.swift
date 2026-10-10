@@ -1,12 +1,10 @@
 import Foundation
 
-/// TokenPair from the passkey and refresh endpoints; stored only in the Keychain. `expiresIn` is the access
-/// token's remaining seconds when issued; the app refreshes on 401 instead of by the clock.
+/// TokenPair from the passkey and refresh endpoints: only the two tokens. Stored only in the Keychain.
+/// The user id and expiry live in the access token's claims; the app refreshes on 401 instead of by the clock.
 struct TokenPair: Codable, Equatable, Sendable {
     let accessToken: String
     let refreshToken: String
-    let expiresIn: Int
-    let userId: String
 }
 /// Profile contact. IDs are client-generated UUIDs; the server keeps them as given.
 struct AccountContact: Codable, Equatable, Identifiable, Sendable {
