@@ -2,10 +2,10 @@ package io.wid.dearby.adaptor.persistence
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.USERS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.USER_ROLES
-import io.wid.dearby.application.UserRepository
-import io.wid.dearby.domain.User
+import io.wid.dearby.application.user.UserRepository
 import io.wid.dearby.domain.UserId
-import io.wid.dearby.domain.UserRole
+import io.wid.dearby.domain.user.User
+import io.wid.dearby.domain.user.UserRole
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 

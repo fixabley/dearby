@@ -1,10 +1,10 @@
 package io.wid.dearby.adaptor.persistence
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.WEBAUTHN_CHALLENGES
-import io.wid.dearby.application.Ceremony
-import io.wid.dearby.application.StoredChallenge
-import io.wid.dearby.application.WebAuthnChallengeRepository
-import io.wid.dearby.application.WebAuthnChallengeRepository.Companion.TTL
+import io.wid.dearby.application.auth.Ceremony
+import io.wid.dearby.application.auth.StoredChallenge
+import io.wid.dearby.application.auth.WebAuthnChallengeRepository
+import io.wid.dearby.application.auth.WebAuthnChallengeRepository.Companion.TTL
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import java.time.OffsetDateTime

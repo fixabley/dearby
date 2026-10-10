@@ -1,20 +1,14 @@
 package io.wid.dearby.adaptor.security
 
 import com.webauthn4j.util.exception.WebAuthnException
-import io.wid.dearby.application.Ceremony
-import io.wid.dearby.application.AuthenticationFailedException
-import io.wid.dearby.application.InvalidInputException
-import io.wid.dearby.application.PasskeyOptions
-import io.wid.dearby.application.PasskeyService
-import io.wid.dearby.application.PasskeyService.Companion.DEFAULT_DISPLAY_NAME
-import io.wid.dearby.application.PasskeyService.Companion.MAX_DISPLAY_NAME
-import io.wid.dearby.application.StoredChallenge
-import io.wid.dearby.application.TokenPair
-import io.wid.dearby.application.TokenService
-import io.wid.dearby.application.UserRepository
-import io.wid.dearby.application.WebAuthnChallengeRepository
-import io.wid.dearby.domain.User
-import io.wid.dearby.domain.UserRole
+import io.wid.dearby.domain.AuthenticationFailedException
+import io.wid.dearby.domain.InvalidInputException
+import io.wid.dearby.application.auth.*
+import io.wid.dearby.application.auth.PasskeyService.Companion.DEFAULT_DISPLAY_NAME
+import io.wid.dearby.application.auth.PasskeyService.Companion.MAX_DISPLAY_NAME
+import io.wid.dearby.application.user.UserRepository
+import io.wid.dearby.domain.user.User
+import io.wid.dearby.domain.user.UserRole
 import org.springframework.security.web.webauthn.api.*
 import org.springframework.security.web.webauthn.jackson.WebauthnJacksonModule
 import org.springframework.security.web.webauthn.management.*
@@ -56,8 +50,8 @@ class WebAuthnPasskeyService(
         return PasskeyOptions(challengeId, mapper.valueToTree(creationOptions(stored)))
     }
 
-    override fun register(challengeId: UUID, credentialJson: JsonNode): TokenPair {
-        val credential = parse(credentialJson, AuthenticatorAttestationResponse::class.java)
+    override fun register(challengeId: UUID, credential: JsonNode): TokenPair {
+        val parsed = parse(credential, AuthenticatorAttestationResponse::class.java)
         val stored = challenges.consume(challengeId, Ceremony.REGISTRATION)
             ?: throw AuthenticationFailedException("challenge가 없거나 만료되었습니다")
         val user = User(stored.userId!!, listOf(UserRole.USER))
@@ -68,11 +62,14 @@ class WebAuthnPasskeyService(
             userEntities.save(options.user)
             rejectOnFailure {
                 operations.registerCredential(
-                    ImmutableRelyingPartyRegistrationRequest(options, RelyingPartyPublicKey(credential, stored.displayName!!))
+                    ImmutableRelyingPartyRegistrationRequest(
+                        options,
+                        RelyingPartyPublicKey(parsed, stored.displayName!!)
+                    )
                 )
             }
             tokens.issue(user)
-        }!!
+        }
     }
 
     override fun authenticationOptions(): PasskeyOptions {
@@ -81,19 +78,19 @@ class WebAuthnPasskeyService(
         return PasskeyOptions(challengeId, mapper.valueToTree(requestOptions(stored)))
     }
 
-    override fun authenticate(challengeId: UUID, credentialJson: JsonNode): TokenPair {
-        val credential = parse(credentialJson, AuthenticatorAssertionResponse::class.java)
+    override fun authenticate(challengeId: UUID, credential: JsonNode): TokenPair {
+        val parsed = parse(credential, AuthenticatorAssertionResponse::class.java)
         val stored = challenges.consume(challengeId, Ceremony.AUTHENTICATION)
             ?: throw AuthenticationFailedException("challenge가 없거나 만료되었습니다")
         return transaction.execute {
             // 모르는 패스키는 IllegalArgumentException
             val entity = rejectOnFailure {
-                operations.authenticate(RelyingPartyAuthenticationRequest(requestOptions(stored), credential))
+                operations.authenticate(RelyingPartyAuthenticationRequest(requestOptions(stored), parsed))
             }
             val user = runCatching { UUID.fromString(entity.name) }.getOrNull()?.let(users::findById)
                 ?: throw AuthenticationFailedException("패스키에 연결된 계정이 없습니다")
             tokens.issue(user)
-        }!!
+        }
     }
 
     // 완료 요청에서 같은 값으로 다시 만들어 검증한다. registerCredential은 rp.id·challenge·UV·pubKeyCredParams·user.id를 쓴다

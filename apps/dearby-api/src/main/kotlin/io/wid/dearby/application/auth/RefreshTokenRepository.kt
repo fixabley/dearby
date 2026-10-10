@@ -1,4 +1,4 @@
-package io.wid.dearby.application
+package io.wid.dearby.application.auth
 
 import io.wid.dearby.domain.UserId
 import java.time.Duration

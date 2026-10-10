@@ -1,7 +1,8 @@
-package io.wid.dearby.application
+package io.wid.dearby.application.user
 
-import io.wid.dearby.domain.User
 import io.wid.dearby.domain.UserId
+import io.wid.dearby.domain.user.User
+import io.wid.dearby.domain.NotFoundException
 import org.springframework.stereotype.Service
 
 @Service

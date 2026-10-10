@@ -1,10 +1,10 @@
 package io.wid.dearby.adaptor.security
 
-import io.wid.dearby.application.RefreshTokenRepository
-import io.wid.dearby.application.TokenPair
-import io.wid.dearby.application.TokenService
-import io.wid.dearby.domain.User
+import io.wid.dearby.application.auth.RefreshTokenRepository
+import io.wid.dearby.application.auth.TokenPair
+import io.wid.dearby.application.auth.TokenService
 import io.wid.dearby.domain.UserId
+import io.wid.dearby.domain.user.User
 import org.springframework.stereotype.Service
 
 @Service
