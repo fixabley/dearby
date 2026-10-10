@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: dearby-api
+  threads:
+    virtual:
+      enabled: true
