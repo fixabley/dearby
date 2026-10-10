@@ -54,7 +54,7 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
         phoneId = phone?.id ?: newId()
         emailId = email?.id ?: newId()
         editing.value = ProfileEditState(ProfileFormState(profile.name, profile.job, profile.introduction, phone?.value.orEmpty(),
-            email?.value ?: account.state.value.email,
+            email?.value.orEmpty(),
             profile.contacts.filter { it.id != phone?.id && it.id != email?.id }.map { ProfileExtraContact(it.id, it.kind, it.value) },
             profile.histories.map { HistoryFormState(it.id, it.title, it.role, date(it.startDate), it.endDate?.let(::date), it.endDate == null, it.description) }))
     }

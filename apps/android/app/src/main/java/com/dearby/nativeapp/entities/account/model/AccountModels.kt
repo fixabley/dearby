@@ -3,8 +3,13 @@ package com.dearby.nativeapp.entities.account.model
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** Owner session from `POST /v1/auth/sessions`; stored only through the Keystore-backed vault. */
-data class AccountSession(val sessionToken: String, val profileId: String)
+/**
+ * TokenPair from the passkey and refresh endpoints; stored only through the Keystore-backed vault.
+ * `expiresIn` is not kept: an expired access token is renewed when the API answers 401.
+ */
+data class AccountSession(val accessToken: String, val refreshToken: String, val userId: String)
+/** `{challengeId, options}` from a passkey options call; [options] is the WebAuthn JSON handed to the OS as is. */
+data class PasskeyChallenge(val id: String, val options: String)
 
 /** Profile contact. IDs are client-generated UUIDs; the server keeps them as given. */
 data class AccountContact(val id: String, val kind: String, val label: String, val value: String)
@@ -25,6 +30,9 @@ data class WalletShare(val receiptId: String, val cardId: String, val shareId: S
 /** `GET /v1/shares/:id`: a share and the public card it points at. */
 data class ReceivedShare(val share: CardShare, val card: PublishedCard)
 data class CardShare(val id: String, val cardId: String, val activities: List<ShareActivity>, val createdAt: String)
+
+fun JSONObject.toSession() = AccountSession(getString("accessToken"), getString("refreshToken"), getString("userId"))
+fun JSONObject.toPasskeyChallenge() = PasskeyChallenge(getString("challengeId"), getJSONObject("options").toString())
 
 fun AccountProfile.toJson(): JSONObject = JSONObject().put("name", name).put("job", job).put("introduction", introduction)
     .put("contacts", JSONArray(contacts.map { JSONObject().put("id", it.id).put("kind", it.kind).put("label", it.label).put("value", it.value) }))

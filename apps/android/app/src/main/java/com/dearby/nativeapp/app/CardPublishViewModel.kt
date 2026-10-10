@@ -41,7 +41,7 @@ class CardPublishViewModel(private val account: AccountViewModel) : ViewModel() 
         try {
             val stored = account.authorized { account.client.profile(it) }
             savedProfile = stored
-            mutable.update { it.copy(draft = CardDraft.from(stored).prefill(account.state.value.email), phase = PublishPhase.Editing) }
+            mutable.update { it.copy(draft = CardDraft.from(stored), phase = PublishPhase.Editing) }
         } catch (e: AccountException) {
             mutable.update { it.copy(phase = PublishPhase.Failed("프로필을 불러오지 못했어요. 다시 시도해 주세요.")) }
         }
@@ -50,7 +50,7 @@ class CardPublishViewModel(private val account: AccountViewModel) : ViewModel() 
     fun cancelSignIn() = mutable.update { it.copy(signingIn = false) }
     fun publish() {
         if (!signedIn) {
-            // Fix the form first; the sign-in address fills an empty email afterwards.
+            // Fix the form first; an empty email may come from the account's saved profile after signing in.
             val problem = mutable.value.draft.problem(checkingEmail = false)
             mutable.update { if (problem != null) it.copy(phase = PublishPhase.Failed(problem)) else it.copy(signingIn = true) }
             return
@@ -63,7 +63,7 @@ class CardPublishViewModel(private val account: AccountViewModel) : ViewModel() 
         try {
             val stored = account.authorized { account.client.profile(it) }
             savedProfile = stored
-            mutable.update { it.copy(draft = it.draft.merged(stored).prefill(account.state.value.email)) }
+            mutable.update { it.copy(draft = it.draft.merged(stored)) }
         } catch (e: AccountException) {
             mutable.update { it.copy(phase = PublishPhase.Failed("프로필을 불러오지 못했어요. 다시 시도해 주세요.")) }
             return@launch
