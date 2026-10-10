@@ -48,7 +48,6 @@ class TokenFlowTest(
         val renewed = json.readValue(body, TokenPair::class.java)
 
         assertNotEquals(issued.refreshToken, renewed.refreshToken)
-        assertEquals(60, renewed.expiresIn)
         refresh(issued.refreshToken).andExpect { status { isUnauthorized() } }
         refresh(renewed.refreshToken).andExpect { status { isOk() } }
     }

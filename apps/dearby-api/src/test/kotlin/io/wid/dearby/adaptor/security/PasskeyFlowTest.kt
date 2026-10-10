@@ -135,14 +135,15 @@ class PasskeyFlowTest(
         )
     }
 
+    private fun subject(tokens: JsonNode) = decoder.decode(tokens["accessToken"].asString()).subject
+
     private fun count(table: String) = jdbc.sql("select count(*) from $table").query(Long::class.java).single()
 
     @Test
     fun `가입하면 계정이 생기고 그 패스키로 로그인한 뒤 refresh와 logout을 한다`() {
         val signedUp = register("민준")
-        val userId = signedUp["userId"].asString()
-        assertEquals(userId, decoder.decode(signedUp["accessToken"].asString()).subject)
-        assertEquals(60, signedUp["expiresIn"].asLong())
+        assertEquals(setOf("accessToken", "refreshToken"), signedUp.propertyNames().toSet())
+        val userId = subject(signedUp)
         assertEquals(
             listOf("USER"),
             jdbc.sql("select role from user_roles where user_id = ?").param(UUID.fromString(userId))
@@ -155,7 +156,7 @@ class PasskeyFlowTest(
         )
 
         val loggedIn = authenticate().andExpect { status { isOk() } }.body()
-        assertEquals(userId, loggedIn["userId"].asString())
+        assertEquals(userId, subject(loggedIn))
         val access = loggedIn["accessToken"].asString()
         // 발급한 access token으로 인증된다(없는 경로라 404)
         mvc.get("/v1/none") { header("Authorization", "Bearer $access") }.andExpect { status { isNotFound() } }
@@ -166,7 +167,8 @@ class PasskeyFlowTest(
             header("Authorization", "Bearer invalid")
             content = """{"refreshToken":"${loggedIn["refreshToken"].asString()}"}"""
         }.andExpect { status { isOk() } }.body()
-        assertEquals(userId, refreshed["userId"].asString())
+        assertEquals(setOf("accessToken", "refreshToken"), refreshed.propertyNames().toSet())
+        assertEquals(userId, subject(refreshed))
         assertNotEquals(loggedIn["refreshToken"].asString(), refreshed["refreshToken"].asString())
 
         val logout = """{"refreshToken":"${refreshed["refreshToken"].asString()}"}"""
@@ -232,7 +234,7 @@ class PasskeyFlowTest(
 
     @Test
     fun `모르는 패스키로 로그인하면 401`() {
-        val userId = register()["userId"].asString()
+        val userId = subject(register())
         jdbc.sql("delete from user_credentials where user_entity_user_id = (select id from user_entities where name = ?)")
             .param(userId).update()
 
