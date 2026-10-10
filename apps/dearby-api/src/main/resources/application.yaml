@@ -1,18 +1,21 @@
 spring:
   application:
     name: dearby-api
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   threads:
     virtual:
       enabled: true
 
 dearby:
   webauthn:
-    rp-id: wid.io.kr
+    rp-id: ${WEBAUTHN_RP_ID}
     rp-name: Dearby
-    allowed-origins:
-      - https://dearby.wid.io.kr
+    allowed-origins: ${WEBAUTHN_ALLOWED_ORIGINS} # 쉼표로 구분
   jwt:
-    key-path: data/jwt/private.pem
-    issuer: https://dearby.wid.io.kr
+    key-path: ${JWT_KEY_PATH}
+    issuer: ${JWT_ISSUER}
     access-token-ttl: 1m
     refresh-token-ttl: 90d

@@ -39,6 +39,14 @@ out/
 ### Kotlin ###
 .kotlin
 
-### JWT 서명키 (기동 시 생성) ###
+### 로컬 데이터: JWT 서명키(기동 시 생성)·Postgres 볼륨 ###
 /data/
 
+### 비밀 값 ###
+.env
+.env.*
+!.env.local.example
+*.pem
+*.key
+*.p8
+*.p12
