@@ -12,11 +12,11 @@ struct IdentityHeading: View {
     }
     var body: some View {
         layout {
-            DearbyAvatar(name: String(name.suffix(2)), filled: isFullProfile, size: 82)
+            DearbyAvatar(name: name, filled: isFullProfile, size: 82)
             VStack(alignment: .leading, spacing: 7) {
                 Text(name.isEmpty ? "내 이름을 입력해 주세요" : name).font(.title2.bold())
-                if !introduction.isEmpty { Text(introduction).font(.subheadline) }
                 if !job.isEmpty { Text(job).font(.subheadline).foregroundStyle(DearbyStyle.quiet) }
+                if !introduction.isEmpty { Text(introduction).font(.subheadline) }
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
     }

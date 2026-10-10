@@ -30,7 +30,7 @@ private sealed interface CardRoute {
     data class Received(val link: ScannedLink) : CardRoute
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable fun DearbyApp(catalog: CatalogViewModel, account: AccountViewModel, publish: CardPublishViewModel, qrShare: QrShareViewModel, wallet: WalletViewModel, profile: ProfileViewModel, incoming: ScannedLink? = null, opened: () -> Unit = {}) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     var route by remember { mutableStateOf<CardRoute?>(null) }
@@ -42,7 +42,8 @@ private sealed interface CardRoute {
     // A /s/<UUID> App Link opens the shared card over whatever is showing.
     LaunchedEffect(incoming) { incoming?.let { route = CardRoute.Received(it); opened() } }
     Surface(Modifier.fillMaxSize()) {
-        Column(Modifier.statusBarsPadding().navigationBarsPadding()) {
+        // 키보드가 열리면 화면 아래 저장·확인 버튼이 키보드 위에 남도록 탭 바를 숨기고 그만큼 올린다.
+        Column(Modifier.statusBarsPadding().navigationBarsPadding().imePadding()) {
             Box(Modifier.weight(1f)) {
                 when (val screen = route) {
                     is CardRoute.Detail -> ReceivedSharePage(ReceivedShareState(ReceivedPhase.LOADED, screen.card), { route = null }, {}, { openContact(context, it) })
@@ -61,7 +62,7 @@ private sealed interface CardRoute {
                     }
                 }
             }
-            if (route == null && !catalogDetail) {
+            if (route == null && !catalogDetail && !WindowInsets.isImeVisible) {
                 HorizontalDivider()
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp, windowInsets = WindowInsets(0, 0, 0, 0)) {
                     Tab.entries.forEach { item -> NavigationBarItem(selected = tab == item, onClick = { tab = item }, icon = { Icon(item.icon, null) }, label = { Text(item.label, fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Teal, selectedTextColor = Teal, indicatorColor = Mint, unselectedIconColor = Quiet, unselectedTextColor = Quiet)) }

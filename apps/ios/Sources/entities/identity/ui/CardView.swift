@@ -5,7 +5,7 @@ struct CardView: View {
     let onContact: (ContactModel) -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            IdentityHeading(name: card.profileName, job: "", introduction: card.introduction)
+            IdentityHeading(name: card.profileName, job: card.job, introduction: card.introduction)
             ContactIcons(contacts: card.contacts, action: onContact)
             Divider()
             HStack {
