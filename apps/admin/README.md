@@ -10,21 +10,14 @@ Node24와 Docker/OrbStack이 필요하다. 저장소 root에서:
 
 ```sh
 npm ci --prefix apps/admin
-npm ci --prefix apps/dearby-api
 npm exec --yes --package=supabase@2.118.0 -- supabase start
 node supabase/scripts/bootstrap-local.mjs
 npm run dev --prefix apps/admin
 ```
 
-다른 터미널에서:
-
-```sh
-cd apps/dearby-api
-node --env-file=.env.admin-local --import tsx src/server.ts
-```
+2026-10-10 TypeScript API 서버를 삭제했다. 공개 `/v1/catalog`는 Kotlin·Spring으로 새로 작성 중인 `apps/dearby-api`에 아직 없어 로컬에서 함께 띄울 수 없다.
 
 - 어드민: http://127.0.0.1:5173
-- 기존 API의 Supabase 연결 인스턴스: http://127.0.0.1:58765/v1/catalog
 - Supabase Studio: http://127.0.0.1:54323
 - 로그인: `supabase/.env.credentials.json`에 생성한 로컬 전용 이메일·비밀번호. 파일은 Git에서 제외한다. 일반 공개 회원가입/권한 부여 UI는 없다.
 - bootstrap은 localhost만 허용하며 과거 공식 출처30건을 **초안/미확인**으로 가져온다. 같은 ID가 있으면 관리자 수정 내용을 덮어쓰지 않는다. 현행 모집이나 실시간 수집 결과가 아니다.
