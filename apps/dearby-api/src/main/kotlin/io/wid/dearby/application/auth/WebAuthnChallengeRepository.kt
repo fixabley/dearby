@@ -1,18 +1,7 @@
 package io.wid.dearby.application.auth
 
-import io.wid.dearby.domain.UserId
 import java.time.Duration
 import java.util.*
-
-enum class Ceremony { REGISTRATION, AUTHENTICATION }
-
-// 가입 challenge는 새 계정 정보를 함께 가진다. 로그인 challenge는 challenge만 가진다
-data class StoredChallenge(
-    val challenge: ByteArray,
-    val userId: UserId?,
-    val userEntityId: String?,
-    val displayName: String?,
-)
 
 // 한 번만 쓸 수 있는 패스키 challenge 저장. 구현은 adaptor/persistence
 interface WebAuthnChallengeRepository {

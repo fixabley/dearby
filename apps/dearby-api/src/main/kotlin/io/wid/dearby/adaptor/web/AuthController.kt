@@ -6,15 +6,6 @@ import io.wid.dearby.application.auth.PasskeyService
 import io.wid.dearby.application.auth.TokenPair
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
-import tools.jackson.databind.JsonNode
-import java.util.*
-
-data class RefreshRequest(val refreshToken: String)
-
-data class RegistrationOptionsRequest(val displayName: String? = null)
-
-// credential은 WebAuthn 표준 JSON(RegistrationResponseJSON·AuthenticationResponseJSON)
-data class PasskeyRequest(val challengeId: UUID, val credential: JsonNode)
 
 // 모두 인증 없이 받는다(SecurityConfig). 세션 쿠키를 쓰지 않고 challengeId로 옵션 요청과 완료 요청을 잇는다
 @RestController

@@ -3,9 +3,6 @@ package io.wid.dearby.application.auth
 import tools.jackson.databind.JsonNode
 import java.util.*
 
-// options·credential은 WebAuthn 표준 JSON(base64url)
-data class PasskeyOptions(val challengeId: UUID, val options: JsonNode)
-
 // 세션 없이 challengeId로 이어지는 패스키 가입·로그인. 구현은 adaptor/security
 interface PasskeyService {
 
