@@ -16,6 +16,7 @@ jobs:
       ios: ${{ steps.diff.outputs.ios }}
       android: ${{ steps.diff.outputs.android }}
       supabase: ${{ steps.diff.outputs.supabase }}
+      api: ${{ steps.diff.outputs.api }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -28,7 +29,7 @@ jobs:
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
-          if [ "${{ github.event_name }}" != pull_request ]; then echo "ios=true" >> "$GITHUB_OUTPUT"; echo "android=true" >> "$GITHUB_OUTPUT"; echo "supabase=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [ "${{ github.event_name }}" != pull_request ]; then echo "ios=true" >> "$GITHUB_OUTPUT"; echo "android=true" >> "$GITHUB_OUTPUT"; echo "supabase=true" >> "$GITHUB_OUTPUT"; echo "api=true" >> "$GITHUB_OUTPUT"; exit 0; fi
           changed=$(git diff --name-only "$BASE" HEAD)
           if echo "$changed" | grep -qE '^(apps/ios/|shared/assets/|\.github/workflows/native\.yml$)'; then
             echo "ios=true" >> "$GITHUB_OUTPUT"
@@ -39,6 +40,11 @@ jobs:
             echo "android=true" >> "$GITHUB_OUTPUT"
           else
             echo "android=false" >> "$GITHUB_OUTPUT"
+          fi
+          if echo "$changed" | grep -qE '^(apps/dearby-api/|\.github/workflows/native\.yml$)'; then
+            echo "api=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "api=false" >> "$GITHUB_OUTPUT"
           fi
           if echo "$changed" | grep -qE '^(supabase/|\.github/workflows/native\.yml$)'; then
             echo "supabase=true" >> "$GITHUB_OUTPUT"
@@ -111,6 +117,26 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - run: python3 scripts/check-fsd.py
       - run: ./gradlew lintDebug assembleDebug
+  # Kotlin API: compile, jOOQ codegen from the Flyway migrations, and tests on in-memory H2.
+  api:
+    name: API test
+    needs: changes
+    if: always() && (needs.changes.result != 'success' || needs.changes.outputs.api == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/dearby-api
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
+      - run: ./gradlew test
   ios:
     name: iOS build
     needs: changes
