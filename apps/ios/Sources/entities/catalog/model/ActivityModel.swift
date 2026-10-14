@@ -1,53 +1,45 @@
 import Foundation
 
-/// One activity from `GET /v1/catalog` (contract catalog-v1). Missing values stay nil and read as unconfirmed.
+/// One activity from `GET /v1/activities` (contract "활동 조회 — 2026-10-14"). Missing values stay nil and read as unconfirmed.
 struct ActivityModel: Equatable, Identifiable, Sendable {
-    enum Participation: String, Sendable, Decodable { case registration, selection }
+    enum Recruitment: Equatable, Sendable { case upcoming, open, closed, unknown }
+    /// The API's numeric id as a string: share requests and navigation already use string ids.
     let id: String
     let title: String
     let summary: String
-    let organization: String?
-    let participationType: Participation
-    let recruitmentStatus: String
-    let isRecruiting: Bool
-    let freshness: String
-    // Raw ISO 8601 strings: a present but unreadable time must not count as absent.
+    let organization: String
+    // The recruitment window from `application`. Raw ISO 8601: a present but unreadable time must not count as absent.
     let recruitmentStartAt: String?
     let recruitmentEndAt: String?
-    let sourceCheckedAt: String?
-    let validUntil: String?
+    /// `activitySchedule.dateLabel`; empty when unknown.
     let dateLabel: String
-    let location: String?
-    let cost: String?
-    let audience: String?
-    let roles: [String]
     /// Timed schedules only; date-only schedules stay in `dateLabel`.
     let schedules: [ActivityScheduleModel]
     let officialUrl: String
-    let applicationUrl: String?
-    let sourceNote: String
+    let imageUrl: String?
 
-    /// Same rule as web discovery (`apps/web/src/lib/models.ts` `isRecruiting`).
-    func isOpen(at now: Date) -> Bool {
-        guard isRecruiting, recruitmentStatus == "open", freshness == "verified",
-              let checked = Self.instant(sourceCheckedAt), checked <= now,
-              let valid = Self.instant(validUntil), now < valid else { return false }
-        if recruitmentStartAt != nil { guard let start = Self.instant(recruitmentStartAt), start <= now else { return false } }
-        if recruitmentEndAt != nil { guard let end = Self.instant(recruitmentEndAt), now < end else { return false } }
-        return true
+    /// Recruitment only from the application window against now. A missing bound is open on that side;
+    /// no window at all, or an unreadable bound, needs checking.
+    func recruitment(at now: Date) -> Recruitment {
+        let start = Self.instant(recruitmentStartAt), end = Self.instant(recruitmentEndAt)
+        guard start != nil || end != nil, (start == nil) == (recruitmentStartAt == nil),
+              (end == nil) == (recruitmentEndAt == nil) else { return .unknown }
+        if let start, now < start { return .upcoming }
+        if let end, now >= end { return .closed }
+        return .open
     }
     func statusLabel(at now: Date) -> String {
-        if isOpen(at: now) { return "모집 중" }
-        switch recruitmentStatus {
-        case "scheduled": return "모집 예정"
-        case "closed": return "모집 마감"
-        default: return "모집 여부 확인 필요"
+        switch recruitment(at: now) {
+        case .upcoming: "모집 예정"
+        case .open: "모집 중"
+        case .closed: "모집 마감"
+        case .unknown: "모집 여부 확인 필요"
         }
     }
-    /// The official application link, only while recruiting and only over https.
-    func applicationURL(at now: Date) -> URL? { isOpen(at: now) ? Self.safeURL(applicationUrl) : nil }
-    /// Quick apply on the discovery card: registration activities only.
-    func quickApplyURL(at now: Date) -> URL? { participationType == .registration ? applicationURL(at: now) : nil }
+    /// The official link (https only); applying goes through it only while recruiting.
+    var officialURL: URL? { Self.safeURL(officialUrl) }
+    func applicationURL(at now: Date) -> URL? { recruitment(at: now) == .open ? officialURL : nil }
+    var imageURL: URL? { Self.safeURL(imageUrl) }
     var recruitmentEnd: Date? { Self.instant(recruitmentEndAt) }
 
     static func safeURL(_ raw: String?) -> URL? {
@@ -69,4 +61,9 @@ struct ActivityScheduleModel: Equatable, Identifiable, Sendable {
     let end: Date
     let dateLabel: String
     let timeZone: String
+}
+/// One page of `GET /v1/activities`. A nil `nextCursor` is the last page.
+struct ActivityPage: Sendable {
+    let items: [ActivityModel]
+    let nextCursor: Int64?
 }

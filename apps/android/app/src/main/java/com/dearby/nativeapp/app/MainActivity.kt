@@ -11,7 +11,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.dearby.nativeapp.entities.account.api.AccountClient
 import com.dearby.nativeapp.entities.account.api.SessionVault
 import com.dearby.nativeapp.entities.account.model.ScannedLink
-import com.dearby.nativeapp.entities.catalog.api.fetchCatalog
+import com.dearby.nativeapp.entities.catalog.api.fetchActivities
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.getValue
@@ -24,7 +24,7 @@ import com.dearby.nativeapp.shared.ui.DearbyTheme
 
 class MainActivity : ComponentActivity() {
     private val catalog: CatalogViewModel by viewModels {
-        viewModelFactory { initializer { CatalogViewModel { withContext(Dispatchers.IO) { fetchCatalog(ApiOrigin.current) } } } }
+        viewModelFactory { initializer { CatalogViewModel { query, cursor -> withContext(Dispatchers.IO) { fetchActivities(ApiOrigin.current, query, cursor) } } } }
     }
     private val account: AccountViewModel by viewModels {
         viewModelFactory { initializer { AccountViewModel(AccountClient(ApiOrigin.current), SessionVault(applicationContext, ApiOrigin.sessionName)) } }

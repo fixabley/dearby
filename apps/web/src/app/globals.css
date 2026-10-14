@@ -186,24 +186,31 @@ a {
 .page-heading h1 {
   margin: 8px 0 10px;
 }
-.chips {
+.search {
   display: flex;
   gap: 8px;
   margin-bottom: 24px;
-  flex-wrap: wrap;
 }
-.chips button {
-  border: 0;
-  border-radius: 24px;
-  background: var(--soft);
+.search input {
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font: inherit;
+}
+.search input:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 2px;
+}
+.load-more {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  margin-top: 24px;
   color: var(--muted);
-  padding: 10px 22px;
-  min-height: 44px;
-  font-weight: 600;
-}
-.chips button[aria-pressed="true"] {
-  background: var(--teal);
-  color: white;
+  font-size: 14px;
 }
 .state {
   display: flex;
@@ -353,6 +360,14 @@ a {
 }
 .detail-heading {
   padding-bottom: 32px;
+}
+.detail-image {
+  display: block;
+  width: 100%;
+  max-height: 360px;
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 24px;
 }
 .detail-heading .badge {
   margin: 14px 0;
@@ -717,13 +732,6 @@ a {
     margin-bottom: 24px;
   }
   .page-heading > .muted {
-    font-size: 14px;
-  }
-  .chips {
-    gap: 7px;
-  }
-  .chips button {
-    padding: 9px 18px;
     font-size: 14px;
   }
   .state {

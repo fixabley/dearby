@@ -61,6 +61,9 @@ dependencies {
     implementation("androidx.camera:camera-camera2:1.5.1")
     implementation("androidx.camera:camera-lifecycle:1.5.1")
     implementation("androidx.camera:camera-view:1.5.1")
+    // 활동 이미지(`imageUrl`) 표시 (Apache-2.0).
+    implementation("io.coil-kt.coil3:coil-compose:3.4.0")
+    implementation("io.coil-kt.coil3:coil-network-okhttp:3.4.0")
     // 패스키 로그인(계약 "패스키 로그인"): Credential Manager, and Play services for Android 13 and lower.
     implementation("androidx.credentials:credentials:1.6.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.6.0")

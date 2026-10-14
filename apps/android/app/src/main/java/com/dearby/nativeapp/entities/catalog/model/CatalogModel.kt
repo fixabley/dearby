@@ -4,39 +4,44 @@ import java.net.URI
 import java.time.Instant
 import java.time.OffsetDateTime
 
-/** A timed schedule; date-only schedules stay in [ActivityModel.dateLabel]. */
+/** A timed schedule with both ends; all-day and undated schedules stay in [ActivityModel.dateLabel]. */
 data class ScheduleModel(val title: String, val startAt: String, val endAt: String, val timeZone: String = "Asia/Seoul")
 
-/** One activity from `GET /v1/catalog` (contract catalog-v1). Missing values stay null and read as unconfirmed. */
+/** Recruitment period from `application`; either end may be unknown. */
+data class ApplicationWindow(val startAt: String?, val endAt: String?)
+
+/** One activity from `GET /v1/activities` (contract "활동 조회"). [id] is the API's number as text. */
 data class ActivityModel(
-    val id: String, val title: String, val summary: String, val organization: String?,
-    val participation: String, val recruitmentStatus: String, val isRecruiting: Boolean, val freshness: String,
-    // Raw ISO 8601 strings: a present but unreadable time must not count as absent.
-    val recruitmentStartAt: String?, val recruitmentEndAt: String?, val sourceCheckedAt: String?, val validUntil: String?,
-    val dateLabel: String, val location: String?, val cost: String?, val audience: String?, val roles: List<String>,
-    val schedules: List<ScheduleModel>, val officialUrl: String, val applicationUrl: String?, val sourceNote: String,
+    val id: String, val name: String, val description: String, val organization: String, val program: String,
+    val officialUrl: String, val imageUrl: String?, val application: ApplicationWindow?,
+    val dateLabel: String, val address: String?, val schedules: List<ScheduleModel>,
 ) {
-    /** Same rule as web discovery (`apps/web/src/lib/models.ts` `isRecruiting`). */
-    fun isOpen(now: Instant): Boolean {
-        if (!isRecruiting || recruitmentStatus != "open" || freshness != "verified") return false
-        val checked = instant(sourceCheckedAt) ?: return false
-        val valid = instant(validUntil) ?: return false
-        if (checked > now || now >= valid) return false
-        if (recruitmentStartAt != null && instant(recruitmentStartAt)?.let { it <= now } != true) return false
-        if (recruitmentEndAt != null && instant(recruitmentEndAt)?.let { now < it } != true) return false
-        return true
+    /**
+     * 2026-10-14 rule: only `application` against [now]. No application or no times, or a time that cannot be
+     * read, is unknown; a missing bound is open on that side.
+     */
+    fun statusLabel(now: Instant): String {
+        val window = application ?: return UNKNOWN
+        if (window.startAt == null && window.endAt == null) return UNKNOWN
+        val start = window.startAt?.let { instant(it) ?: return UNKNOWN }
+        val end = window.endAt?.let { instant(it) ?: return UNKNOWN }
+        return when {
+            start != null && now < start -> "모집 예정"
+            end != null && now >= end -> "모집 마감"
+            else -> OPEN
+        }
     }
-    fun statusLabel(now: Instant) = if (isOpen(now)) "모집 중" else when (recruitmentStatus) {
-        "scheduled" -> "모집 예정"
-        "closed" -> "모집 마감"
-        else -> "모집 여부 확인 필요"
-    }
-    /** The official application link, only while recruiting and only over https. */
-    fun applyUrl(now: Instant) = if (isOpen(now)) safeHttpsUrl(applicationUrl) else null
-    /** Quick apply on the discovery card: registration activities only. */
-    fun quickApplyUrl(now: Instant) = if (participation == "registration") applyUrl(now) else null
-    val recruitmentEnd get() = instant(recruitmentEndAt)
+    fun isOpen(now: Instant) = statusLabel(now) == OPEN
+    /** The official page, offered as the application link only while recruiting. */
+    fun applyUrl(now: Instant) = if (isOpen(now)) safeHttpsUrl(officialUrl) else null
+    val recruitmentEnd get() = instant(application?.endAt)
 }
+
+/** One page of `GET /v1/activities`; a null [nextCursor] is the last page. */
+data class ActivityPage(val items: List<ActivityModel>, val nextCursor: String?)
+
+private const val OPEN = "모집 중"
+private const val UNKNOWN = "모집 여부 확인 필요"
 
 fun instant(raw: String?): Instant? = raw?.let { runCatching { OffsetDateTime.parse(it).toInstant() }.getOrNull() }
 

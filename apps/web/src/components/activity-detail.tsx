@@ -1,19 +1,34 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { type Catalog, isRecruiting, safeWebUrl } from "@/lib/models";
+import {
+  type Activity,
+  type ActivityPage,
+  httpsUrl,
+  recruitment,
+  scheduleLabel,
+} from "@/lib/models";
 import { errorMessage, request } from "@/lib/client";
 import { Failure, Loading } from "@/shared/ui/states";
 import { Icon } from "@/shared/ui/icon";
-export function ActivityDetail({ id }: { id: string }) {
-  const [catalog, setCatalog] = useState<Catalog>();
+
+/**
+ * There is no single-activity endpoint. The search cursor is "after this activity id" in ascending
+ * order, so `cursor=id-1&size=1` returns the activity itself or the next one (then it is missing).
+ */
+export function ActivityDetail({ id }: { id: number }) {
+  const [activity, setActivity] = useState<Activity | null>();
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const controller = new AbortController();
-    request<Catalog>("/catalog", { signal: controller.signal })
-      .then(setCatalog)
+    request<ActivityPage>(`/activities?cursor=${id - 1}&size=1`, {
+      signal: controller.signal,
+    })
+      .then((page) =>
+        setActivity(page.items[0]?.id === id ? page.items[0] : null),
+      )
       .catch((error) => {
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
@@ -22,7 +37,7 @@ export function ActivityDetail({ id }: { id: string }) {
       controller.abort();
       clearInterval(timer);
     };
-  }, [attempt]);
+  }, [id, attempt]);
   if (error)
     return (
       <Failure
@@ -33,10 +48,7 @@ export function ActivityDetail({ id }: { id: string }) {
         }}
       />
     );
-  if (!catalog) return <Loading />;
-  const activity = catalog.activities.find(
-    (item) => item.id.toLowerCase() === id,
-  );
+  if (activity === undefined) return <Loading />;
   if (!activity)
     return (
       <div className="state">
@@ -46,9 +58,9 @@ export function ActivityDetail({ id }: { id: string }) {
         </Link>
       </div>
     );
-  const open = isRecruiting(activity, now);
-  const official = safeWebUrl(activity.officialUrl);
-  const application = safeWebUrl(activity.applicationUrl);
+  const status = recruitment(activity.application, now);
+  const official = httpsUrl(activity.officialUrl);
+  const image = httpsUrl(activity.imageUrl);
   return (
     <article className="detail">
       <Link className="back-link" href="/">
@@ -56,32 +68,26 @@ export function ActivityDetail({ id }: { id: string }) {
         활동 탐색
       </Link>
       <div className="detail-heading">
-        <p className="eyebrow">
-          {catalog.organizations.find(
-            (org) => org.id === activity.organizationId,
-          )?.name ?? "주최 정보 미확인"}
-        </p>
-        <span className={`badge ${open ? "" : "neutral"}`}>
-          {open ? "모집 중" : "현재 모집 여부 확인 필요"}
+        {image && (
+          // Activity images come from arbitrary official hosts, so next/image optimization is not configured for them.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img className="detail-image" src={image} alt="" />
+        )}
+        <p className="eyebrow">{activity.organization.name}</p>
+        <span className={`badge ${status.open ? "" : "neutral"}`}>
+          {status.label}
         </span>
-        <h1>{activity.title}</h1>
-        <p className="lead">{activity.summary}</p>
+        <h1>{activity.name}</h1>
+        <p className="lead">{activity.description}</p>
       </div>
       <section className="detail-section">
         <h2>활동 안내</h2>
         <dl className="facts">
           {[
-            [
-              "참여 방식",
-              activity.participationType === "registration"
-                ? "바로 신청"
-                : "선발형",
-            ],
-            ["대상", activity.audience],
-            ["지원 자격", activity.qualification],
-            ["역할", activity.roles.join(", ")],
-            ["비용", activity.cost],
-            ["장소", activity.location],
+            ["주최", activity.organization.name],
+            ["프로그램", activity.program.name],
+            ["모집 기간", scheduleLabel(activity.application)],
+            ["활동 기간", scheduleLabel(activity.activitySchedule)],
           ].map(([label, value]) => (
             <div key={label}>
               <dt>{label}</dt>
@@ -99,29 +105,19 @@ export function ActivityDetail({ id }: { id: string }) {
                 <Icon name="calendar" />
                 <div>
                   <h3>{schedule.title}</h3>
-                  <p>{schedule.dateLabel || "일정 미확인"}</p>
+                  <p>{scheduleLabel(schedule) || "일정 미확인"}</p>
+                  {schedule.address && <p>{schedule.address}</p>}
                 </div>
               </li>
             ))}
           </ul>
         ) : (
-          <p>{activity.dateLabel || "일정 미확인"}</p>
+          <p>{scheduleLabel(activity.activitySchedule) || "일정 미확인"}</p>
         )}
       </section>
       <section className="detail-section source">
         <h2>공식 출처</h2>
-        <p>
-          {activity.sourceNote ||
-            "신청 조건과 최신 일정은 공식 사이트에서 확인해 주세요."}
-        </p>
-        <p className="muted">
-          확인 시각:{" "}
-          {activity.sourceCheckedAt
-            ? new Date(activity.sourceCheckedAt).toLocaleString("ko-KR", {
-                timeZone: "Asia/Seoul",
-              }) + " (한국 시간)"
-            : "미확인"}
-        </p>
+        <p>신청 조건과 최신 일정은 공식 사이트에서 확인해 주세요.</p>
         {official && (
           <a
             className="text-link"
@@ -139,23 +135,17 @@ export function ActivityDetail({ id }: { id: string }) {
           <br />
           웹에서는 개인 캘린더의 겹치는 시간을 확인할 수 없어요.
         </p>
-        {open && application ? (
+        {official ? (
           <a
-            className="button"
-            href={application}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            공식 사이트에서 신청하기 <Icon name="external" size={18} />
-          </a>
-        ) : official ? (
-          <a
-            className="button secondary"
+            className={`button ${status.open ? "" : "secondary"}`}
             href={official}
             target="_blank"
             rel="noopener noreferrer"
           >
-            공식 사이트에서 모집 확인 <Icon name="external" size={18} />
+            {status.open
+              ? "공식 사이트에서 신청하기"
+              : "공식 사이트에서 모집 확인"}{" "}
+            <Icon name="external" size={18} />
           </a>
         ) : (
           <p role="status">연결 가능한 공식 링크가 없어요.</p>

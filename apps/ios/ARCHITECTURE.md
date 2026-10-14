@@ -5,11 +5,11 @@ Repository/API/인증/영구 저장/OS 개인정보 접근 계층 없이 fixture
 
 - `app/entrypoint`: CatalogViewModel과 IdentityViewModel의 앱 실행 수명, 탭 조립.
 - `pages/home`: 탭/NavigationStack과 탐색 상세에서 탭 숨김을 조합하는 HomePage.
-- `widgets/catalog`: 활동 목록·상세·예시 사진·일정표와 메모리 북마크/신청 상태.
+- `widgets/catalog`: 활동 목록(서버 검색·페이지)·상세·이미지·일정표와 메모리 신청 상태.
 - `widgets/identity`: 프로필·QR·받은 명함·명함 편집/선택/상세 화면과 IdentityViewModel.
 - `features/application`: 로컬 신청 안내/완료 표시, 외부 HTTPS Link.
 - `features/calendar`: 고정 바쁜 시간 비교, 선택 단계/결과 시트/시간 격자.
-- `entities/catalog`: 활동 값 모델과 fixture 3개.
+- `entities/catalog`: 활동 값 모델·페이지와 `GET /v1/activities` 클라이언트.
 - `entities/identity`: 순수 명함/연락처/이력 fixture 및 CardView/CardDeck/HistoryTimeline/ContactIcons.
 - `shared/ui`: DearbyStyle 색상, DearbyLogo, 버튼(채움/테두리), 배지, 아바타,
   정보행, 세그먼트, 시트 헤더. 도메인을 import하지 않으며 실제 재사용 요소만 둡니다.

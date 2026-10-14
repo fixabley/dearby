@@ -4,19 +4,25 @@ import java.time.Instant
 
 enum class CatalogPhase { LOADING, FAILED, LOADED }
 
-/** One catalog activity as shown; recruiting and links are judged once at load time. */
+/** One activity as shown; recruiting and links are judged once at load time. */
 data class ActivityState(
-    val id: String, val title: String, val summary: String, val organization: String?, val status: String,
-    val participation: String, val open: Boolean, val date: String, val location: String?, val cost: String?,
-    val audience: String?, val roles: List<String>, val sessions: List<Pair<String, String>>,
-    val officialUrl: String?, val applyUrl: String?, val quickApplyUrl: String?, val recruitmentEnd: Instant?,
-    val sourceNote: String, val checkedAt: String?, val startAt: String?,
+    val id: String, val title: String, val summary: String, val organization: String, val program: String, val status: String,
+    val date: String, val location: String?, val imageUrl: String?, val sessions: List<Pair<String, String>>,
+    val officialUrl: String?, val applyUrl: String?, val period: String?, val recruitmentEnd: Instant?, val startAt: String?,
     // Example application, plus the user's own (not the organizer's) participation mark.
     val applied: Boolean = false, val confirmed: Boolean = false,
 )
-/** [askingId]: the activity whose application link was opened, asked about once when the app comes back (contract #148). */
-data class CatalogState(val phase: CatalogPhase = CatalogPhase.LOADING, val activities: List<ActivityState> = emptyList(), val filter: String = "전체", val askingId: String? = null) {
-    val asking get() = activities.find { it.id == askingId }
-    val visibleActivities get() = activities.filter { it.open && (filter == "전체" || it.participation == filter) }
-    val appliedActivities get() = activities.filter { it.applied }.sortedBy { it.startAt ?: "~" }
+/**
+ * Discovery results for [query] in server order ([ids]); [known] keeps every loaded activity with its marks so
+ * 내 활동 survives a new search. [nextCursor] is null on the last page; a failed next page sets [moreFailed] only.
+ * [askingId]: the activity whose application link was opened, asked about once when the app comes back (contract #148).
+ */
+data class CatalogState(
+    val phase: CatalogPhase = CatalogPhase.LOADING, val query: String = "", val ids: List<String> = emptyList(),
+    val known: Map<String, ActivityState> = emptyMap(), val nextCursor: String? = null, val loadingMore: Boolean = false,
+    val moreFailed: Boolean = false, val askingId: String? = null,
+) {
+    val asking get() = askingId?.let(known::get)
+    val activities get() = ids.mapNotNull(known::get)
+    val appliedActivities get() = known.values.filter { it.applied }.sortedBy { it.startAt ?: "~" }
 }

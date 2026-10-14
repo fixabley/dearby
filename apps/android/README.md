@@ -2,7 +2,7 @@
 
 선택된 시안의 흰색·청록색, 사진 카드, 상세 시간표, 신청 화면, 명함 화면을 Kotlin/Compose로 구현합니다. 서버 없이 고정 예시와 메모리 상태로 동작합니다.
 
-- 발견: `GET /v1/catalog`(`entities/catalog/api/CatalogClient.kt`)의 모집 중 활동(웹과 같은 판정) → 상세. 빠른 신청과 상세 CTA는 https 공식 신청 주소를 외부 브라우저로 연다. 실패하면 오류와 다시 시도이며 예시를 섞지 않는다. `INTERNET` 권한은 실제 연결 범위에 한해 쓰고, http는 debug의 10.0.2.2·localhost·127.0.0.1만 허용한다(`src/debug` network security config).
+- 발견: `GET /v1/activities`(`entities/catalog/api/CatalogClient.kt`, 계약 "활동 조회")를 페이지 단위로 읽는다. 검색창 입력은 300ms 쉰 뒤 `q`로 보내고 첫 페이지부터 다시 읽으며, 목록 끝에 가까워지면 `nextCursor`로 다음 페이지를 붙인다. 모든 결과를 모집 상태와 함께 보인다. 상태는 `application` 기간만으로 정한다(시작 전 모집 예정, 기간 안 모집 중, 끝난 뒤 모집 마감, 기간이 없으면 모집 여부 확인 필요). 카드·상세 CTA는 모집 중일 때 https `officialUrl`을 외부 브라우저로 열고, 그 밖에는 상세에서 공식 안내로 연다. `imageUrl`이 있으면 Coil로 보이고 없으면 일정 타일을 그린다. 실패하면 오류와 다시 시도, 결과가 없으면 빈 화면이며 예시를 섞지 않는다. 다른 검색어를 넣어도 내 활동의 신청 표시는 남는다. `INTERNET` 권한은 실제 연결 범위에 한해 쓰고, http는 debug의 10.0.2.2·localhost·127.0.0.1만 허용한다(`src/debug` network security config).
 - 테스트: 자동 테스트는 2026-10-06 사용자 요청으로 모두 지웠다. 사용자와 하나씩 다시 만든다. debug 전용 `ApiOrigin.debugOverride`는 남겨 두었다.
 - 내 활동: 신청한 활동을 일정순으로 보여 줍니다. 컨퍼런스 1건이 신청된 상태로 시작합니다. 목록과 상세에서 켜고 끄는 `참여 확정 표시`는 사용자가 스스로 남기는 예시 표시이며 주최 측 확정이 아닙니다. 활동 즐겨찾기·조직 저장은 없습니다.
 - QR: 예시 QR 표시·확대, 명함 선택·신규 생성·같은 ID 편집, 공유 메뉴, 예시 스캔 → 공개 카드. 카메라·파일·클립보드·공유 API는 사용하지 않습니다.
@@ -16,9 +16,9 @@
 
 | 대상 | 위치 (`app/src/main/java/com/dearby/nativeapp/` 기준) |
 | --- | --- |
-| 활동 3개·일정·링크 | `entities/catalog/model/CatalogModel.kt`의 `demoActivities` |
+| 활동 응답 해석·모집 상태 | `entities/catalog/api/CatalogClient.kt`, `entities/catalog/model/CatalogModel.kt` |
 | 가상 인물·연락처·명함·활동 이력 | `app/DemoFixtures.kt` |
-| 메모리 필터·신청·참여 확정 표시 | `app/CatalogViewModel.kt` |
+| 검색·페이지·신청·참여 확정 표시 | `app/CatalogViewModel.kt` |
 | 메모리 프로필·명함 작성/편집·교환 그룹 | `app/DemoViewModel.kt` |
 | 다섯 탭·화면 연결 | `app/DearbyApp.kt`, `app/CatalogRoute.kt` |
 | 화면과 공통 표시 | `pages/`, `widgets/card/cardContent/`, `shared/ui/` |
