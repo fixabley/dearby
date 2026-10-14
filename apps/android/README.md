@@ -36,6 +36,12 @@ HTTP/Repository/Room/Keystore/기기 캘린더/WebView·인증 실행 코드와 
 - debug: 값이 없으면 에뮬레이터 호스트의 `http://10.0.2.2:3000`(API)과 `http://10.0.2.2:3210`(웹)을 쓴다.
 - App Links: `MainActivity`에 `https://${dearbyWebHost}/s/` intent filter(`autoVerify`)가 있다. 받은 `<웹 origin>/s/<UUID>`는 `shared/config/AppLinks.kt`가 공유 ID로 바꾼다. 공유 명함 화면은 아직 연결하지 않았고, 링크를 받으면 그 사실만 안내한다. debug의 http origin은 https 전용 App Links와 맞지 않으므로 debug에서는 명시 intent(계측 테스트 `LinkRoutingTest`)로 확인한다. 실제 검증은 `assetlinks.json` 배포(#90·#91) 뒤에만 가능하다.
 
+## 시작 화면 (2026-10-14)
+
+- 스플래시: 실행할 때마다 AndroidX SplashScreen(`Theme.Dearby.Starting`)이 흰 배경에 로고(`drawable/splash_logo.xml`, `dearby_logo` 워드마크를 원형 마스크 안에 맞춤)를 보여 주고 바로 `Theme.Dearby`로 넘어간다. 인위적인 지연은 없다.
+- 첫 실행 소개: 새 저장소 `dearby.onboarding`의 `dearby.onboarding.shown`이 없으면 `pages/onboarding/IntroPage`(로고, "패스키로 시작하기", "둘러보기")를 띄운다. "패스키로 시작하기"는 기존 로그인 시트(`SignInSheet`·`AccountViewModel`)를 연다. 로그인에 성공하거나 "둘러보기"를 누르면 값을 남기고 탭 화면으로 간다. 시트를 닫거나 실패하면 소개 화면에 남는다. 이미 토큰이 있으면 소개 없이 값만 남긴다. 로그인 없이도 앱을 쓸 수 있다.
+- 소개 중에 받은 `/s/<UUID>` 링크는 소개가 끝난 뒤 열린다.
+
 ## 패스키 로그인 (2026-10-10)
 
 계약 [native-v1 "패스키 로그인"](../../shared/contracts/native-v1.md)을 따른다. 이메일 인증번호 로그인은 없앴다.

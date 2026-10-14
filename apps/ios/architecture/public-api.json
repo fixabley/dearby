@@ -43,6 +43,9 @@
   "pages/home": [
     "HomePage"
   ],
+  "pages/intro": [
+    "IntroPage"
+  ],
   "shared": [
     "AppOrigins",
     "DearbyAvatar",

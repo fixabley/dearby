@@ -53,6 +53,8 @@ kotlin { compilerOptions { jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2026.02.01"))
     implementation("androidx.activity:activity-compose:1.12.4")
+    // Launch splash (logo on the app background) on every Android version.
+    implementation("androidx.core:core-splashscreen:1.2.0")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
     // #95 실제 QR 공유: 공유 URL을 QR로 그린다(Apache-2.0).
