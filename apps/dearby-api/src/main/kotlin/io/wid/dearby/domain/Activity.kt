@@ -1,5 +1,6 @@
 package io.wid.dearby.domain
 
+import java.time.Duration
 import java.time.OffsetDateTime
 
 data class Activity(
@@ -32,4 +33,33 @@ data class Activity(
 
     // 사용자가 캘린더에 추가할 일정을 고르는 후보
     val calendarCandidates: List<Schedule> get() = listOfNotNull(application, activitySchedule) + schedules
+
+    // 확인 내용은 확인 시각부터 validUntil 전까지, 최대 VERIFICATION_LIFETIME 동안만 VERIFIED로 본다.
+    // 모집 기간이 있으면 기간이 상태를 정하고(시작 포함·끝 제외), 운영자가 고른 상태는 기간이 없을 때만 쓴다. CLOSED는 항상 우선(조기 마감)
+    fun recruitmentAt(now: OffsetDateTime): Recruitment {
+        val checked = sourceCheckedAt
+        val until = validUntil
+        val verified = freshness == Freshness.VERIFIED && checked != null && until != null &&
+            !checked.isAfter(now) && now.isBefore(until) && !until.isAfter(checked.plus(VERIFICATION_LIFETIME))
+        val currentFreshness = when {
+            verified -> Freshness.VERIFIED
+            freshness == Freshness.UNAVAILABLE -> Freshness.UNAVAILABLE
+            else -> Freshness.STALE
+        }
+        val window = application?.time as? ScheduleTime.Timed
+        val start = window?.start?.toOffsetDateTime()
+        val end = window?.end?.toOffsetDateTime()
+        val status = when {
+            recruitmentStatus == RecruitmentStatus.CLOSED || (end != null && !now.isBefore(end)) -> RecruitmentStatus.CLOSED
+            !verified -> RecruitmentStatus.UNKNOWN
+            start != null && now.isBefore(start) -> RecruitmentStatus.SCHEDULED
+            start != null || end != null -> RecruitmentStatus.OPEN
+            else -> recruitmentStatus
+        }
+        return Recruitment(status, currentFreshness, verified && status == RecruitmentStatus.OPEN)
+    }
+
+    companion object {
+        val VERIFICATION_LIFETIME: Duration = Duration.ofHours(24)
+    }
 }
