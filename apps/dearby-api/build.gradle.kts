@@ -1,3 +1,10 @@
+// Flyway Gradle 플러그인은 DB 지원 모듈을 빌드 스크립트 클래스패스에서만 찾는다
+buildscript {
+    dependencies {
+        classpath("org.flywaydb:flyway-database-postgresql:12.4.0")
+    }
+}
+
 plugins {
     kotlin("jvm") version "2.3.21"
     kotlin("plugin.spring") version "2.3.21"
@@ -50,10 +57,9 @@ dependencies {
     testImplementation("org.springframework.modulith:spring-modulith-starter-test")
     // 테스트용 패스키 인증기. 버전은 spring-security-webauthn이 쓰는 webauthn4j-core와 맞춘다
     testImplementation("com.webauthn4j:webauthn4j-test:0.31.9.RELEASE")
-    testRuntimeOnly("com.h2database:h2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    flywayMigration("com.h2database:h2")
-    jooqCodegen("com.h2database:h2")
+    flywayMigration("org.postgresql:postgresql")
+    jooqCodegen("org.postgresql:postgresql")
 }
 
 dependencyManagement {
@@ -77,61 +83,56 @@ tasks.bootRun {
     environment("SPRING_PROFILES_ACTIVE", System.getenv("SPRING_PROFILES_ACTIVE") ?: "local")
 }
 
-// jOOQ 코드 생성: 마이그레이션을 H2(PostgreSQL 모드)에 적용한 뒤 그 스키마로 생성
-// https://www.jooq.org/doc/latest/manual/getting-started/tutorials/jooq-with-flyway/
+// 테스트·코드 생성용 PostgreSQL: compose.yaml의 postgres-test(127.0.0.1:5433). CI는 같은 값의 서비스 컨테이너를 띄운다
+val testDbUrl = "jdbc:postgresql://localhost:${System.getenv("TEST_DB_PORT") ?: "5433"}/dearby_test"
+val testDbUser = "dearby_test"
+
+// jOOQ 코드 생성: 테스트 DB를 비우고 마이그레이션을 적용한 뒤 그 스키마로 생성한다. 결과(src/generated/jooq)는 커밋한다.
+// 그래서 컴파일·운영 이미지 빌드에는 DB가 필요 없다. 마이그레이션을 바꾸면 ./gradlew jooqCodegen 후 함께 커밋한다(CI가 확인)
 val migrations = layout.projectDirectory.dir("src/main/resources/db/migration")
-val codegenDbDir = layout.buildDirectory.dir("jooq-codegen-db")
-val codegenDbUrl = codegenDbDir.map {
-    "jdbc:h2:file:${it.asFile.absolutePath}/db;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;NON_KEYWORDS=VALUE"
-}
-val jooqOutput = layout.buildDirectory.dir("generated-src/jooq/main")
+val jooqOutput = layout.projectDirectory.dir("src/generated/jooq")
 
 flyway {
-    url = codegenDbUrl.get()
-    user = "sa"
+    url = testDbUrl
+    user = testDbUser
+    password = testDbUser
     locations = arrayOf("filesystem:${migrations.asFile.absolutePath}")
     configurations = arrayOf(flywayMigration.name)
+    cleanDisabled = false
 }
 
 jooq {
     configuration {
         jdbc {
-            driver = "org.h2.Driver"
-            url = codegenDbUrl.get()
-            user = "sa"
+            driver = "org.postgresql.Driver"
+            url = testDbUrl
+            user = testDbUser
+            password = testDbUser
         }
         generator {
             name = "org.jooq.codegen.KotlinGenerator"
             database {
-                name = "org.jooq.meta.h2.H2Database"
+                name = "org.jooq.meta.postgres.PostgresDatabase"
                 inputSchema = "public"
                 includes = ".*"
                 excludes = "flyway_schema_history"
             }
             target {
                 packageName = "io.wid.dearby.adaptor.persistence.jooq"
-                directory = jooqOutput.get().asFile.absolutePath
+                directory = jooqOutput.asFile.absolutePath
             }
         }
     }
 }
 
 tasks.flywayMigrate {
-    inputs.dir(migrations)
-    outputs.dir(codegenDbDir)
-    doFirst { delete(codegenDbDir) } // 매번 빈 DB에서 전체 마이그레이션
+    dependsOn(tasks.flywayClean) // 매번 빈 스키마에서 전체 마이그레이션
 }
 
 tasks.jooqCodegen {
     dependsOn(tasks.flywayMigrate)
-    inputs.dir(migrations)
-    outputs.dir(jooqOutput)
 }
 
 sourceSets.main {
     kotlin.srcDir(jooqOutput)
-}
-
-tasks.compileKotlin {
-    dependsOn(tasks.jooqCodegen)
 }
