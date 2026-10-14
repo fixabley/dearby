@@ -9,7 +9,7 @@ create table user_roles
 create table refresh_tokens
 (
     token_hash varchar(64) primary key,
-    user_id    uuid                     not null references users (id) on delete cascade,
+    user_id    uuid                     not null, -- 논리키 users
     expires_at timestamp with time zone not null,
     created_at timestamp with time zone not null,
     revoked_at timestamp with time zone
