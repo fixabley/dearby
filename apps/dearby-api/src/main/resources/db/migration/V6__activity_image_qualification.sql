@@ -3,4 +3,6 @@
 -- 운영자용 도메인(ActivityCuration)이 다룬다. 공개 API는 이 열을 내보내지 않는다
 alter table activities add column image_url varchar(2000); -- 대표 이미지. 없으면 null
 -- 자격요건. JSON 객체: 키는 조건 이름, 값은 문자열 배열. 예: {"나이": ["만 19세 이상"], "지역": ["서울", "경기"]}. 없으면 null
-alter table activities add column qualification json;
+-- 값 배열의 원소 타입까지는 검사하지 않는다(쓰는 코드가 검증). 조건으로 찾을 수 있게 GIN 인덱스를 둔다
+alter table activities add column qualification jsonb check (qualification is null or jsonb_typeof(qualification) = 'object');
+create index activities_qualification_idx on activities using gin (qualification);

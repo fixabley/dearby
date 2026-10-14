@@ -10,6 +10,7 @@ import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.util.UUID
 
+import org.jooq.JSONB
 import org.jooq.Record1
 import org.jooq.impl.UpdatableRecordImpl
 
@@ -92,6 +93,14 @@ open class ActivitiesRecord() : UpdatableRecordImpl<ActivitiesRecord>(Activities
         set(value): Unit = set(17, value)
         get(): LocalDateTime? = get(17) as LocalDateTime?
 
+    open var imageUrl: String?
+        set(value): Unit = set(18, value)
+        get(): String? = get(18) as String?
+
+    open var qualification: JSONB?
+        set(value): Unit = set(19, value)
+        get(): JSONB? = get(19) as JSONB?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -101,7 +110,7 @@ open class ActivitiesRecord() : UpdatableRecordImpl<ActivitiesRecord>(Activities
     /**
      * Create a detached, initialised ActivitiesRecord
      */
-    constructor(id: Long? = null, sourceId: UUID? = null, programId: Long? = null, name: String? = null, description: String? = null, participationType: String? = null, recruitmentStatus: String? = null, location: String? = null, cost: String? = null, audience: String? = null, officialUrl: String? = null, applicationUrl: String? = null, sourceCheckedAt: OffsetDateTime? = null, validUntil: OffsetDateTime? = null, freshness: String? = null, sourceNote: String? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null): this() {
+    constructor(id: Long? = null, sourceId: UUID? = null, programId: Long? = null, name: String? = null, description: String? = null, participationType: String? = null, recruitmentStatus: String? = null, location: String? = null, cost: String? = null, audience: String? = null, officialUrl: String? = null, applicationUrl: String? = null, sourceCheckedAt: OffsetDateTime? = null, validUntil: OffsetDateTime? = null, freshness: String? = null, sourceNote: String? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null, imageUrl: String? = null, qualification: JSONB? = null): this() {
         this.id = id
         this.sourceId = sourceId
         this.programId = programId
@@ -120,6 +129,8 @@ open class ActivitiesRecord() : UpdatableRecordImpl<ActivitiesRecord>(Activities
         this.sourceNote = sourceNote
         this.createdAt = createdAt
         this.updatedAt = updatedAt
+        this.imageUrl = imageUrl
+        this.qualification = qualification
         resetTouchedOnNotNull()
     }
 }

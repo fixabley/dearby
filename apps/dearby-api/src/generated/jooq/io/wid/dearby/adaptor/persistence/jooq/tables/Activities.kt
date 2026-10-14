@@ -6,6 +6,7 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.indexes.ACTIVITIES_PROGRAM_ID_IDX
+import io.wid.dearby.adaptor.persistence.jooq.indexes.ACTIVITIES_QUALIFICATION_IDX
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_SOURCE_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_CONTACTS__ACTIVITY_CONTACTS_ACTIVITY_ID_FKEY
@@ -30,6 +31,7 @@ import org.jooq.ForeignKey
 import org.jooq.Identity
 import org.jooq.Index
 import org.jooq.InverseForeignKey
+import org.jooq.JSONB
 import org.jooq.Name
 import org.jooq.Path
 import org.jooq.PlainSQL
@@ -176,6 +178,16 @@ open class Activities(
      */
     val UPDATED_AT: TableField<ActivitiesRecord, LocalDateTime?> = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "")
 
+    /**
+     * The column <code>public.activities.image_url</code>.
+     */
+    val IMAGE_URL: TableField<ActivitiesRecord, String?> = createField(DSL.name("image_url"), SQLDataType.VARCHAR(2000), this, "")
+
+    /**
+     * The column <code>public.activities.qualification</code>.
+     */
+    val QUALIFICATION: TableField<ActivitiesRecord, JSONB?> = createField(DSL.name("qualification"), SQLDataType.JSONB, this, "")
+
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -208,7 +220,7 @@ open class Activities(
         override fun `as`(alias: Table<*>): ActivitiesPath = ActivitiesPath(alias.qualifiedName, this)
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
-    override fun getIndexes(): List<Index> = listOf(ACTIVITIES_PROGRAM_ID_IDX)
+    override fun getIndexes(): List<Index> = listOf(ACTIVITIES_PROGRAM_ID_IDX, ACTIVITIES_QUALIFICATION_IDX)
     override fun getIdentity(): Identity<ActivitiesRecord, Long?> = super.getIdentity() as Identity<ActivitiesRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<ActivitiesRecord> = ACTIVITIES_PKEY
     override fun getUniqueKeys(): List<UniqueKey<ActivitiesRecord>> = listOf(ACTIVITIES_SOURCE_ID_KEY)
@@ -263,6 +275,7 @@ open class Activities(
     override fun getChecks(): List<Check<ActivitiesRecord>> = listOf(
         Internal.createCheck(this, DSL.name("activities_freshness_check"), "(((freshness)::text = ANY ((ARRAY['VERIFIED'::character varying, 'STALE'::character varying, 'UNAVAILABLE'::character varying])::text[])))", true),
         Internal.createCheck(this, DSL.name("activities_participation_type_check"), "(((participation_type)::text = ANY ((ARRAY['REGISTRATION'::character varying, 'SELECTION'::character varying])::text[])))", true),
+        Internal.createCheck(this, DSL.name("activities_qualification_check"), "(((qualification IS NULL) OR (jsonb_typeof(qualification) = 'object'::text)))", true),
         Internal.createCheck(this, DSL.name("activities_recruitment_status_check"), "(((recruitment_status)::text = ANY ((ARRAY['OPEN'::character varying, 'SCHEDULED'::character varying, 'CLOSED'::character varying, 'UNKNOWN'::character varying])::text[])))", true)
     )
     override fun `as`(alias: String): Activities = Activities(DSL.name(alias), this)

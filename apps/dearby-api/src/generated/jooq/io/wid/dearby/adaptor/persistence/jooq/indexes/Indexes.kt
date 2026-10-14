@@ -34,6 +34,7 @@ import org.jooq.impl.Internal
 // -------------------------------------------------------------------------
 
 val ACTIVITIES_PROGRAM_ID_IDX: Index = Internal.createIndex(DSL.name("activities_program_id_idx"), Activities.ACTIVITIES, arrayOf(Activities.ACTIVITIES.PROGRAM_ID), false)
+val ACTIVITIES_QUALIFICATION_IDX: Index = Internal.createIndex(DSL.name("activities_qualification_idx"), Activities.ACTIVITIES, arrayOf(Activities.ACTIVITIES.QUALIFICATION), false)
 val ACTIVITY_CONTACTS_ACTIVITY_ID_IDX: Index = Internal.createIndex(DSL.name("activity_contacts_activity_id_idx"), ActivityContacts.ACTIVITY_CONTACTS, arrayOf(ActivityContacts.ACTIVITY_CONTACTS.ACTIVITY_ID), false)
 val ACTIVITY_PARTICIPATIONS_ACTIVITY_ID_IDX: Index = Internal.createIndex(DSL.name("activity_participations_activity_id_idx"), ActivityParticipations.ACTIVITY_PARTICIPATIONS, arrayOf(ActivityParticipations.ACTIVITY_PARTICIPATIONS.ACTIVITY_ID), false)
 val BUSINESS_CARD_ACTIVITY_HISTORIES_HISTORY_ID_IDX: Index = Internal.createIndex(DSL.name("business_card_activity_histories_history_id_idx"), BusinessCardActivityHistories.BUSINESS_CARD_ACTIVITY_HISTORIES, arrayOf(BusinessCardActivityHistories.BUSINESS_CARD_ACTIVITY_HISTORIES.PROFILE_ACTIVITY_HISTORY_ID), false)
