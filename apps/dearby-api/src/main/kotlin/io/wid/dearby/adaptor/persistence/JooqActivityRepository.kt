@@ -4,7 +4,6 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivitiesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.SchedulesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITIES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITY_CONTACTS
-import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITY_ROLES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.PROGRAMS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.SCHEDULES
 import io.wid.dearby.application.activity.ActivityRepository
@@ -42,11 +41,6 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             .orderBy(SCHEDULES.START_AT.nullsLast(), SCHEDULES.ID)
             .fetch()
             .groupBy { it.activityId!! }
-        val roles = dsl.selectFrom(ACTIVITY_ROLES)
-            .where(ACTIVITY_ROLES.ACTIVITY_ID.`in`(ids))
-            .orderBy(ACTIVITY_ROLES.POSITION)
-            .fetch()
-            .groupBy({ it.activityId!! }, { it.name!! })
         val contacts = dsl.selectFrom(ACTIVITY_CONTACTS)
             .where(ACTIVITY_CONTACTS.ACTIVITY_ID.`in`(ids))
             .orderBy(ACTIVITY_CONTACTS.ID)
@@ -54,13 +48,12 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             .groupBy({ it.activityId!! }) {
                 ActivityContact(it.id!!, it.activityId!!, ContactKind.valueOf(it.kind!!), it.label!!, it.value!!)
             }
-        return rows.map { toActivity(it, schedules[it.id].orEmpty(), roles[it.id].orEmpty(), contacts[it.id].orEmpty()) }
+        return rows.map { toActivity(it, schedules[it.id].orEmpty(), contacts[it.id].orEmpty()) }
     }
 
     private fun toActivity(
         row: ActivitiesRecord,
         schedules: List<SchedulesRecord>,
-        roles: List<String>,
         contacts: List<ActivityContact>,
     ): Activity {
         val bySlot = schedules.groupBy { it.slot }
@@ -72,18 +65,8 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             name = row.name!!,
             description = row.description!!,
             contacts = contacts,
-            participationType = ParticipationType.valueOf(row.participationType!!),
-            recruitmentStatus = RecruitmentStatus.valueOf(row.recruitmentStatus!!),
-            location = row.location,
-            cost = row.cost,
-            audience = row.audience,
-            roles = roles,
             officialUrl = row.officialUrl!!,
-            applicationUrl = row.applicationUrl,
-            sourceCheckedAt = row.sourceCheckedAt,
-            validUntil = row.validUntil,
-            freshness = Freshness.valueOf(row.freshness!!),
-            sourceNote = row.sourceNote!!,
+            imageUrl = row.imageUrl,
             application = bySlot[SLOT_APPLICATION]?.single()?.let(::toSchedule),
             activitySchedule = activitySchedule,
             schedules = bySlot[null].orEmpty().map(::toSchedule),

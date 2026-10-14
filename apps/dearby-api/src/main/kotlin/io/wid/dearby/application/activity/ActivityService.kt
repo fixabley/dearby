@@ -5,8 +5,6 @@ import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.domain.InvalidInputException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.OffsetDateTime
-import java.time.ZoneOffset
 
 @Service
 class ActivityService(
@@ -22,13 +20,13 @@ class ActivityService(
         val found = activities.search(condition.copy(size = condition.size + 1))
         val page = found.take(condition.size)
         val programById = programs.findAllById(page.map { it.programId }.toSet()).associateBy { it.id }
-        val organizationById = organizations.findAllById(programById.values.map { it.organizationId }.toSet()).associateBy { it.id }
-        val now = OffsetDateTime.now(ZoneOffset.UTC)
+        val organizationById =
+            organizations.findAllById(programById.values.map { it.organizationId }.toSet()).associateBy { it.id }
         // 프로그램·기관은 논리키라 없을 수 있다. 소속을 찾지 못한 활동은 목록에서 뺀다
         val items = page.mapNotNull { activity ->
             val program = programById[activity.programId] ?: return@mapNotNull null
             val organization = organizationById[program.organizationId] ?: return@mapNotNull null
-            ActivityListing(activity, program, organization, activity.recruitmentAt(now))
+            ActivityListing(activity, program, organization)
         }
         return ActivityPage(items, if (found.size > condition.size) page.last().id else null)
     }

@@ -26,9 +26,8 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
     private fun createActivity(name: String): Long {
         val id = jdbc.sql(
             """
-            insert into activities (program_id, name, description, participation_type, recruitment_status, official_url,
-                                    freshness, source_note, created_at, updated_at)
-            select id, ?, '', 'SELECTION', 'UNKNOWN', 'https://example.com', 'STALE', '', localtimestamp, localtimestamp
+            insert into activities (program_id, name, description, official_url, created_at, updated_at)
+            select id, ?, '', 'https://example.com', localtimestamp, localtimestamp
             from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'
             """
         ).param(name).update().let {
@@ -50,10 +49,9 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals("Let'Swift 2026 · 개발 환경의 변화 워크숍", item["name"].asString())
         assertEquals("Let’Swift 준비위원회", item["organization"]["name"].asString())
         assertEquals("Let’Swift", item["program"]["name"].asString())
-        assertEquals("REGISTRATION", item["participationType"].asString())
-        // 모집은 2026-10-07에 끝났다
-        assertEquals("CLOSED", item["recruitmentStatus"].asString())
-        assertEquals(false, item["isRecruiting"].asBoolean())
+        assertEquals("https://letswift.kr/2026/", item["officialUrl"].asString())
+        // 관리자만 보는 정보는 내보내지 않는다
+        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "imageUrl", "application", "activitySchedule", "schedules"), item.propertyNames().toSet())
         // 시각은 일정의 시간대로 표기한다(같은 순간)
         assertEquals("2026-10-08T00:00:00+09:00", item["application"]["endAt"].asString())
         assertEquals("2026-10-08", item["activitySchedule"]["dateLabel"].asString())

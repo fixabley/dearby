@@ -1,10 +1,6 @@
-package io.wid.dearby.adaptor.web
+package io.wid.dearby.adaptor.web.v1.activities
 
-import io.wid.dearby.domain.Address
-import io.wid.dearby.domain.Schedule
-import io.wid.dearby.domain.ScheduleKind
-import io.wid.dearby.domain.ScheduleStatus
-import io.wid.dearby.domain.ScheduleTime
+import io.wid.dearby.domain.*
 import java.time.LocalDate
 import java.time.OffsetDateTime
 

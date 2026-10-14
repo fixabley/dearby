@@ -239,8 +239,8 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 - 순서는 활동 id 오름차순이다. 다음 페이지는 `nextCursor`를 `cursor`로 보낸다. `nextCursor`가 null이면 마지막 페이지다. `size`가 범위를 벗어나면 400.
 - `q`는 활동 이름·설명에서 대소문자 없이 부분 일치로 찾는다. `%`·`_`도 글자 그대로 찾는다.
 - id는 숫자(bigint)다. 기존 카탈로그 UUID는 쓰지 않는다.
-- Activity: `{id, name, description, organization{id,name}, program{id,name}, participationType, recruitmentStatus, freshness, isRecruiting, location, cost, audience, roles[], officialUrl, applicationUrl, sourceCheckedAt, validUntil, sourceNote, application, activitySchedule, schedules[]}`. 한 항목만으로 목록·상세를 그릴 수 있어 기관·프로그램을 따로 조회하지 않는다.
-  - enum은 대문자다. `participationType`: `REGISTRATION`·`SELECTION`. `recruitmentStatus`: `OPEN`·`SCHEDULED`·`CLOSED`·`UNKNOWN`. `freshness`: `VERIFIED`·`STALE`·`UNAVAILABLE`.
-  - `recruitmentStatus`·`freshness`·`isRecruiting`은 서버가 응답 시각 기준으로 계산한다. 확인 내용은 `sourceCheckedAt`부터 `validUntil` 전까지(최대 24시간)만 `VERIFIED`이고, 아니면 상태는 `UNKNOWN`이다. 모집 기간이 있으면 기간이 상태를 정하고(시작 포함·끝 제외), 운영자가 고른 `CLOSED`는 항상 우선한다. `isRecruiting`은 `VERIFIED`이면서 `OPEN`일 때만 true다.
+- Activity: `{id, name, description, organization{id,name}, program{id,name}, officialUrl, imageUrl, application, activitySchedule, schedules[]}`. 2026-10-14 사용자 결정으로 원래 도메인 필드에 공식 안내 링크(`officialUrl`)와 이미지(`imageUrl`)만 더한다. 모집 상태·참여 방식·확인 시각·장소·비용·대상·역할·신청 링크·안내 문구는 내보내지 않는다(서버에도 저장하지 않음, V6).
+  - 모집 여부는 `application`(모집 기간: 시작·끝 중 아는 쪽)으로 판단한다. 신청은 `officialUrl`을 연다.
+  - 한 항목만으로 목록·상세를 그릴 수 있어 기관·프로그램을 따로 조회하지 않는다.
   - `application`(모집 기간, 없으면 null), `activitySchedule`(활동 기간·날짜 문구), `schedules[]`(개별 일정)는 Schedule이다.
 - Schedule: `{id, title, kind, status, startAt, endAt, timeZone, startDate, endDateExclusive, dateLabel, address, conferenceUrl}`. 시각 일정은 `startAt`·`endAt` 중 하나 이상과 `timeZone`이 있고, 시각은 그 시간대 오프셋으로 표기한다(예: `2026-10-08T00:00:00+09:00`). 종일 일정은 `startDate`·`endDateExclusive`. 날짜 미정은 모두 null이고 `dateLabel`만 있다.

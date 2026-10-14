@@ -1,4 +1,4 @@
-package io.wid.dearby.adaptor.web
+package io.wid.dearby.adaptor.web.v1.activities
 
 import io.wid.dearby.application.activity.ActivitySearch
 import io.wid.dearby.application.activity.ActivityService
