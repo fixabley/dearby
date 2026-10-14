@@ -23,7 +23,7 @@ enum class AccountPhase { SIGNED_OUT, WORKING, SIGNED_IN }
 data class AccountState(val phase: AccountPhase, val message: String? = null)
 private const val UNSUPPORTED = "이 기기에서는 패스키를 쓸 수 없어요. Android 9 이상이 필요해요."
 
-/** Passkey sign-in (contract "패스키 로그인"), asked for only when publishing, sharing or saving a received card. */
+/** Passkey sign-in (contract "패스키 로그인"): asked for when publishing, sharing or saving a received card, and offered (never required) on the first-launch intro. */
 class AccountViewModel(val client: AccountClient, private val vault: SessionStore) : ViewModel() {
     private var session: AccountSession? = runCatching { vault.load() }.getOrNull()
     private val refreshing = Mutex()

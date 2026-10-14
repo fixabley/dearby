@@ -21,6 +21,7 @@ API = {
     'features.scan': {'QrCameraPreview', 'decodeQr'},
     'features.passkey': {'Passkeys'},
     'pages.account': {'SignInSheet'},
+    'pages.onboarding': {'IntroPage'},
     'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletEntryState'},
     'features.calendar': {'CalendarConflictSheet'},
     'pages.catalog': {'CatalogPage', 'CatalogPhase', 'MyActivitiesPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'CatalogState'},
@@ -59,9 +60,10 @@ def check_source(path, text):
         if rendering and (target_layer == 'entities' or (target_layer == 'shared' and not ref.startswith('shared.ui.')) or (target_layer == 'features' and not ref.endswith('State'))):
             errors.append('UI requires State/callbacks, not domain/I/O: ' + ref)
     if rendering and re.search(r'\b(LocalContext|SharedPreferences|getSharedPreferences|AssetManager|Intent|startActivity|\w+ViewModel|\w+Repository)\b', code): errors.append('UI directly accesses provider/OS side effect')
-    # Contract "모바일 실제 연결 경계": only the catalog and account clients open connections; only the account vault keeps the session.
+    # Contract "모바일 실제 연결 경계": only the catalog and account clients open connections; only the account vault keeps the session
+    # and MainActivity keeps only the first-launch intro flag (2026-10-14).
     allowed = {'entities/catalog/api/CatalogClient.kt': {'HttpURLConnection'}, 'entities/account/api/AccountClient.kt': {'HttpURLConnection'},
-               'entities/account/api/SessionVault.kt': {'getSharedPreferences'}}.get(path.as_posix(), set())
+               'entities/account/api/SessionVault.kt': {'getSharedPreferences'}, 'app/MainActivity.kt': {'getSharedPreferences'}}.get(path.as_posix(), set())
     blocked = [term for term in ('Room', 'HttpClient', 'HttpURLConnection', 'WebView', 'TokenVault', 'CalendarContract', 'SQLiteDatabase', 'getSharedPreferences', 'rememberSaveable', 'SavedStateHandle') if term not in allowed]
     if re.search(r'\b(?:' + '|'.join(blocked) + r')\b', code): errors.append('prototype must not access service or persisted state')
     return errors
