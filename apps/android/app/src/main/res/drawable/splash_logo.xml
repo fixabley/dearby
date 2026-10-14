@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Splash icon: the 3:1 wordmark at half the square icon's width (1/6 its height), well inside the icon's circular mask. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android" android:drawable="@drawable/dearby_logo"
+    android:insetLeft="25%" android:insetRight="25%" android:insetTop="41.67%" android:insetBottom="41.67%"/>

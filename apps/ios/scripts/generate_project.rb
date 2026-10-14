@@ -30,7 +30,6 @@ project.targets.each do |target|
         # Provisional: coordinator must check App Store Connect history before upload.
         'MARKETING_VERSION' => '0.1.0', 'CURRENT_PROJECT_VERSION' => '1',
         'INFOPLIST_KEY_CFBundleDisplayName' => 'Dearby',
-        'INFOPLIST_KEY_UILaunchScreen_Generation' => 'YES',
         'INFOPLIST_KEY_UIApplicationSceneManifest_Generation' => 'YES',
         # Universal links for shared cards: the host is the last path component of the web origin.
         'DEARBY_WEB_HOST' => '$(DEARBY_WEB_ORIGIN:file)'

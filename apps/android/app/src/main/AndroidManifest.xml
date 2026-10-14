@@ -5,7 +5,7 @@
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application android:label="Dearby" android:icon="@drawable/ic_launcher" android:dataExtractionRules="@xml/data_extraction_rules" android:allowBackup="false" android:fullBackupContent="false" android:supportsRtl="true" android:theme="@style/Theme.Dearby" android:usesCleartextTraffic="false">
-        <activity android:name=".app.MainActivity" android:exported="true">
+        <activity android:name=".app.MainActivity" android:exported="true" android:theme="@style/Theme.Dearby.Starting">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
             <!-- Shared-card App Links: https://<DEARBY_WEB_ORIGIN host>/s/<UUID>. -->
             <intent-filter android:autoVerify="true">

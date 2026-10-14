@@ -6,6 +6,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.core.content.edit
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.dearby.nativeapp.entities.account.api.AccountClient
@@ -37,8 +39,20 @@ class MainActivity : ComponentActivity() {
     }
     // Captured from /s/<UUID> App Links and shown as the shared-card screen.
     private var incoming by mutableStateOf<ScannedLink?>(null)
+    // First-launch intro, remembered in its own new preferences file; no earlier stored data is read.
+    private val onboarding by lazy { getSharedPreferences("dearby.onboarding", MODE_PRIVATE) }
+    private var intro by mutableStateOf(false)
+    private fun introShown() {
+        onboarding.edit { putBoolean("dearby.onboarding.shown", true) }
+        intro = false
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
+        // Someone already signed in (tokens in the vault) never needs the intro.
+        if (!onboarding.getBoolean("dearby.onboarding.shown", false)) {
+            if (account.state.value.phase == AccountPhase.SIGNED_IN) introShown() else intro = true
+        }
         // A Debug build without DEARBY_API_ORIGIN talks to the emulator host's local API; say so once.
         if (BuildConfig.DEBUG && ApiOrigin.current.startsWith("http://10.0.2.2")) {
             Log.w("Dearby", "Debug build uses the local API fallback ${ApiOrigin.current}; set DEARBY_API_ORIGIN when building to use another API.")
@@ -46,7 +60,8 @@ class MainActivity : ComponentActivity() {
         receive(intent)
         setContent {
             DearbyTheme {
-                DearbyApp(catalog, account, publish, qrShare, wallet, profile, incoming) { incoming = null }
+                if (intro) IntroRoute(account, ::introShown)
+                else DearbyApp(catalog, account, publish, qrShare, wallet, profile, incoming) { incoming = null }
             }
         }
     }
