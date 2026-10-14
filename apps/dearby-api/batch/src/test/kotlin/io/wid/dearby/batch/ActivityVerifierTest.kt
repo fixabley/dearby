@@ -32,22 +32,22 @@ class ActivityVerifierTest {
 
     @Test
     fun `근거 구절은 공백·마크다운 차이를 무시하고 원문에서 찾는다`() {
-        val result = assertIs<Verification.Accepted>(ActivityVerifier.verify(candidate(), page, now))
+        val result = assertIs<Verification.Accepted>(ActivityVerifier.verify(candidate(), page, true, now))
         assertEquals("https://letswift.kr/2026/", result.activity.officialUrl)
         assertEquals(OffsetDateTime.parse("2026-10-07T15:00:00Z").toInstant(), result.activity.recruitmentEndAt!!.toInstant())
     }
 
     @Test
     fun `원문에 없는 구절, 너무 짧은 구절, 끝이 시작보다 앞선 기간은 뺀다`() {
-        assertIs<Verification.Rejected>(ActivityVerifier.verify(candidate(quote = "참가비는 무료입니다. 누구나 오세요"), page, now))
-        assertIs<Verification.Rejected>(ActivityVerifier.verify(candidate(quote = "신청"), page, now))
-        assertIs<Verification.Rejected>(ActivityVerifier.verify(candidate(start = "2026-10-09T00:00:00+09:00"), page, now))
+        assertIs<Verification.Rejected>(ActivityVerifier.verify(candidate(quote = "참가비는 무료입니다. 누구나 오세요"), page, true, now))
+        assertIs<Verification.Rejected>(ActivityVerifier.verify(candidate(quote = "신청"), page, true, now))
+        assertIs<Verification.Rejected>(ActivityVerifier.verify(candidate(start = "2026-10-09T00:00:00+09:00"), page, true, now))
     }
 
     @Test
     fun `신청 주소는 원문 페이지의 링크일 때만 남기고, 읽을 수 없는 시각은 비운다`() {
         val result = assertIs<Verification.Accepted>(
-            ActivityVerifier.verify(candidate(applicationUrl = "https://elsewhere.example/apply", start = "10월 1일"), page, now)
+            ActivityVerifier.verify(candidate(applicationUrl = "https://elsewhere.example/apply", start = "10월 1일"), page, true, now)
         )
         assertNull(result.activity.applicationUrl)
         assertNull(result.activity.recruitmentStartAt)

@@ -1,18 +1,31 @@
 package io.wid.dearby.batch.adaptor.claude
 
-import io.wid.dearby.domain.ProgramSource
+import io.wid.dearby.domain.CollectionTarget
+import java.net.URI
 
 // API·CLI 두 방식이 같은 지시문과 출력 스키마를 쓴다
 object CollectionPrompts {
 
     val DISCOVER_SYSTEM = """
-        한국에서 열리는 활동(행사·교육·공모·모집)의 공식 공지를 찾는다.
+        한국에서 열리는 활동(행사·교육·공모·모집)의 공지를 찾는다.
         주어진 프로그램의 현재 또는 다가오는 회차 모집 공지, 신청 안내, 일정 안내 페이지를 웹 검색으로 찾아라.
-        허용된 공식 도메인 안에서만 검색한다. 찾은 페이지를 짧게 나열하고 끝낸다.
+        허용 도메인이 주어지면 그 안에서만 검색한다. 없으면 주최 기관의 공식 사이트를 가장 먼저 찾고,
+        블로그·뉴스·모음 사이트보다 공식 공지를 우선한다. 찾은 페이지를 짧게 나열하고 끝낸다.
     """.trimIndent()
 
-    fun discoverRequest(source: ProgramSource, programName: String) =
-        "프로그램: $programName\n공식 안내 페이지: ${source.officialUrl}\n허용 도메인: ${source.allowedHosts.joinToString(", ")}"
+    fun discoverRequest(target: CollectionTarget) = buildString {
+        append("프로그램: ${target.programName}")
+        target.organizationName?.let { append("\n주최 기관: $it") }
+        target.officialUrl?.let { append("\n공식 안내 페이지: $it") }
+        if (target.officialOnly) append("\n허용 도메인: ${target.allowedHosts.joinToString(", ")}")
+    }
+
+    // 찾은 주소 중 https이고, 허용 호스트가 있으면 그 안의 것만 쓴다
+    fun usableUrls(urls: List<String>, target: CollectionTarget): List<String> =
+        urls.filter { url ->
+            val uri = runCatching { URI(url) }.getOrNull() ?: return@filter false
+            uri.scheme == "https" && (!target.officialOnly || uri.host?.lowercase() in target.allowedHosts.map { it.lowercase() })
+        }.distinct()
 
     // CLI는 검색 결과 블록을 직접 주지 않아 찾은 주소를 이 형식으로 받는다
     val DISCOVER_SCHEMA: Map<String, Any> = obj(mapOf("urls" to mapOf("type" to "array", "items" to mapOf("type" to "string"))))

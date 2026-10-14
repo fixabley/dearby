@@ -1,7 +1,7 @@
 package io.wid.dearby.batch.job
 
 import io.wid.dearby.application.collection.CollectionRunRepository
-import io.wid.dearby.application.collection.ProgramSourceRepository
+import io.wid.dearby.application.collection.CollectionTargetRepository
 import io.wid.dearby.batch.application.CollectActivitiesService
 import io.wid.dearby.domain.CollectionOutcome
 import io.wid.dearby.domain.CollectionReport
@@ -17,11 +17,11 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import java.time.LocalDate
 
-// 활동 수집 잡. 켜진 수집 설정마다 한 번씩 수집하고 결과를 collection_runs에 남긴다.
-// 한 설정이 실패해도 다음 설정을 계속한다. 같은 설정·날짜는 collection_runs가 한 번만 허용한다
+// 활동 수집 잡. 수집이 켜져 있고 주기가 지난 프로그램마다 한 번씩 수집하고 결과를 collection_runs에 남긴다.
+// 한 프로그램이 실패해도 다음 프로그램을 계속한다. 같은 프로그램·날짜는 collection_runs가 한 번만 허용한다
 @Configuration
 class CollectionJobConfig(
-    private val sources: ProgramSourceRepository,
+    private val targets: CollectionTargetRepository,
     private val runs: CollectionRunRepository,
     private val collector: CollectActivitiesService,
 ) {
@@ -36,18 +36,18 @@ class CollectionJobConfig(
     private fun collectStep(jobRepository: JobRepository): Step =
         StepBuilder("collectActivities", jobRepository).tasklet({ _, chunkContext ->
             val runDate = LocalDate.parse(chunkContext.stepContext.jobParameters[RUN_DATE] as String)
-            for (source in sources.findEnabled()) {
-                val runId = runs.start(source.id, runDate) ?: continue
+            for (target in targets.findDue(runDate)) {
+                val runId = runs.start(target.programId, runDate, target.officialOnly) ?: continue
                 val report = try {
-                    collector.collect(source)
+                    collector.collect(target)
                 } catch (e: Exception) {
-                    log.warn("Collection failed for program source {}", source.id, e)
+                    log.warn("Collection failed for program {}", target.programId, e)
                     CollectionReport(CollectionOutcome.FAILED, error = e.message ?: e.javaClass.simpleName)
                 }
                 runs.finish(runId, report)
                 log.info(
-                    "Collected program source {}: {} found {} saved {}",
-                    source.id,
+                    "Collected program {}: {} found {} saved {}",
+                    target.programId,
                     report.outcome,
                     report.foundCount,
                     report.savedCount

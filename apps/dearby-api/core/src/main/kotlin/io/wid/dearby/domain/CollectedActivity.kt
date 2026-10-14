@@ -8,6 +8,7 @@ data class CollectedActivity(
     val name: String,
     val description: String,
     val officialUrl: String, // 원문을 확인한 페이지
+    val officialSource: Boolean, // 그 페이지가 프로그램의 공식 도메인(허용 호스트)인지. 웹 전체 검색이면 false
     val applicationUrl: String?, // 원문 페이지의 링크로 확인된 신청 주소만
     val participationType: ParticipationType,
     val recruitmentStartAt: OffsetDateTime?,

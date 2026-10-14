@@ -13,11 +13,12 @@ import java.time.ZoneOffset
 @Repository
 class JooqCollectionRunRepository(private val dsl: DSLContext) : CollectionRunRepository {
 
-    // unique(program_source_id, run_date)라 같은 날 두 번 시작하지 않는다(동시에 실행돼도)
-    override fun start(programSourceId: Id, runDate: LocalDate): Id? =
+    // unique(program_id, run_date)라 같은 날 두 번 시작하지 않는다(동시에 실행돼도)
+    override fun start(programId: Id, runDate: LocalDate, officialOnly: Boolean): Id? =
         dsl.insertInto(COLLECTION_RUNS)
-            .set(COLLECTION_RUNS.PROGRAM_SOURCE_ID, programSourceId)
+            .set(COLLECTION_RUNS.PROGRAM_ID, programId)
             .set(COLLECTION_RUNS.RUN_DATE, runDate)
+            .set(COLLECTION_RUNS.OFFICIAL_ONLY, officialOnly)
             .set(COLLECTION_RUNS.STARTED_AT, OffsetDateTime.now(ZoneOffset.UTC))
             .onConflictDoNothing()
             .returning(COLLECTION_RUNS.ID)

@@ -44,6 +44,7 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             .set(ACTIVITIES.NAME, activity.name)
             .set(ACTIVITIES.DESCRIPTION, activity.description)
             .set(ACTIVITIES.OFFICIAL_URL, activity.officialUrl)
+            .set(ACTIVITIES.OFFICIAL_SOURCE, activity.officialSource)
             .set(ACTIVITIES.APPLICATION_URL, activity.applicationUrl)
             .set(ACTIVITIES.PARTICIPATION_TYPE, activity.participationType.name)
             .set(ACTIVITIES.LOCATION, activity.location)

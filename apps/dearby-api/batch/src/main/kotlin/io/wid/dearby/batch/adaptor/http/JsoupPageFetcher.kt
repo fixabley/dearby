@@ -14,7 +14,7 @@ import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 import java.time.Duration
 
-// 공식 페이지를 직접 받는다. 허용 호스트 밖으로의 리다이렉트·사설 IP·큰 응답은 거부한다(기존 수집기의 원문 경계).
+// 페이지를 직접 받는다. 허용 호스트 밖으로의 리다이렉트(허용 호스트가 있을 때)·사설 IP·큰 응답은 거부한다(기존 수집기의 원문 경계).
 // JavaScript로만 그려지는 페이지는 본문이 비어 근거 구절 대조에서 걸러진다
 @Component
 class JsoupPageFetcher : PageFetcher {
@@ -55,7 +55,7 @@ class JsoupPageFetcher : PageFetcher {
     private fun check(uri: URI, allowedHosts: List<String>): URI {
         if (uri.scheme != "https") throw PageFetchException("https가 아님: $uri")
         val host = uri.host?.lowercase() ?: throw PageFetchException("호스트 없음: $uri")
-        if (host !in allowedHosts.map { it.lowercase() }) throw PageFetchException("허용 호스트 밖: $host")
+        if (allowedHosts.isNotEmpty() && host !in allowedHosts.map { it.lowercase() }) throw PageFetchException("허용 호스트 밖: $host")
         val addresses = InetAddress.getAllByName(host)
         if (addresses.any { it.isLoopbackAddress || it.isSiteLocalAddress || it.isLinkLocalAddress || it.isAnyLocalAddress }) {
             throw PageFetchException("사설·내부 주소로 연결됨: $host")

@@ -12,7 +12,7 @@ object ActivityVerifier {
 
     private val QUOTE_LENGTH = 10..200
 
-    fun verify(candidate: ExtractedActivity, page: FetchedPage, checkedAt: OffsetDateTime): Verification {
+    fun verify(candidate: ExtractedActivity, page: FetchedPage, officialSource: Boolean, checkedAt: OffsetDateTime): Verification {
         if (candidate.roundKey.isBlank() || candidate.name.isBlank()) return Verification.Rejected("회차 식별자나 이름이 없음")
         val quote = candidate.evidenceQuote.trim()
         if (quote.length !in QUOTE_LENGTH) return Verification.Rejected("근거 구절 길이가 ${QUOTE_LENGTH}자 밖")
@@ -26,6 +26,7 @@ object ActivityVerifier {
                 name = candidate.name.trim(),
                 description = candidate.description.trim(),
                 officialUrl = page.url,
+                officialSource = officialSource,
                 // 신청 주소는 원문 페이지에 실제 링크로 있을 때만 쓴다
                 applicationUrl = candidate.applicationUrl?.trim()?.takeIf { it.startsWith("https://") && it in page.links },
                 participationType = if (candidate.participationType == ParticipationType.SELECTION.name) ParticipationType.SELECTION else ParticipationType.REGISTRATION,
