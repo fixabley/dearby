@@ -1,5 +1,5 @@
 # 운영용: API + DB. 실행: docker compose -f compose.prod.yaml --env-file .env.prod up -d --build
-# DB 포트는 열지 않고 API만 127.0.0.1에 연다(앞단 nginx가 프록시). 데이터는 ./data/prod 아래에 남는다
+# API와 DB 모두 127.0.0.1에만 연다. API는 앞단 nginx가 프록시하고, DB 포트는 이 서버에서 IntelliJ 등으로 직접 볼 때 쓴다. 데이터는 ./data/prod 아래에 남는다
 name: dearby-api-prod
 
 services:
@@ -12,6 +12,8 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:?}
     volumes:
       - ./data/prod/postgres:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:${DB_PUBLISH_PORT:?}:5432"
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\"" ]
       interval: 5s
