@@ -1,4 +1,4 @@
-# 운영용: API + DB. 실행: docker compose -f compose.prod.yaml --env-file .env.prod up -d --build
+# 운영용: API + 수집 배치 + DB. 실행: docker compose -f compose.prod.yaml --env-file .env.prod up -d --build
 # API와 DB 모두 127.0.0.1에만 연다. API는 앞단 nginx가 프록시하고, DB 포트는 이 서버에서 IntelliJ 등으로 직접 볼 때 쓴다. 데이터는 ./data/prod 아래에 남는다
 name: dearby-api-prod
 
@@ -45,3 +45,21 @@ services:
       - ./data/prod/jwt:/app/data/jwt
     ports:
       - "127.0.0.1:${API_PORT:?}:8080"
+
+  # 활동 수집(Spring Batch). 매일 한국 시간 자정에 켜진 수집 설정을 수집해 초안으로 저장한다.
+  # ANTHROPIC_API_KEY가 비어 있으면 실행하지 않고 경고만 남긴다. 바로 한 번 돌리려면: docker compose ... run --rm batch --collect-now
+  batch:
+    build:
+      context: .
+      dockerfile: batch/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:?}
+      DB_USERNAME: ${DB_USERNAME:?}
+      DB_PASSWORD: ${DB_PASSWORD:?}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}

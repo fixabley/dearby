@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: dearby-batch
+  main:
+    web-application-type: none
+    keep-alive: true # 스케줄러만 도는 앱이라 할 일이 없어도 내려가지 않게
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  batch:
+    job:
+      enabled: false # 기동 때 잡을 자동 실행하지 않는다(CollectionLauncher가 실행)
+    jdbc:
+      initialize-schema: never # Spring Batch 테이블은 core 마이그레이션(V9)이 만든다
+  threads:
+    virtual:
+      enabled: true
+
+dearby:
+  collection:
+    model: claude-haiku-4-5
