@@ -3,19 +3,14 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   type Activity,
-  type ActivityPage,
   httpsUrl,
   recruitment,
   scheduleLabel,
 } from "@/lib/models";
-import { errorMessage, request } from "@/lib/client";
+import { errorMessage, request, RequestError } from "@/lib/client";
 import { Failure, Loading } from "@/shared/ui/states";
 import { Icon } from "@/shared/ui/icon";
 
-/**
- * There is no single-activity endpoint. The search cursor is "after this activity id" in ascending
- * order, so `cursor=id-1&size=1` returns the activity itself or the next one (then it is missing).
- */
 export function ActivityDetail({ id }: { id: number }) {
   const [activity, setActivity] = useState<Activity | null>();
   const [error, setError] = useState("");
@@ -23,14 +18,12 @@ export function ActivityDetail({ id }: { id: number }) {
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const controller = new AbortController();
-    request<ActivityPage>(`/activities?cursor=${id - 1}&size=1`, {
-      signal: controller.signal,
-    })
-      .then((page) =>
-        setActivity(page.items[0]?.id === id ? page.items[0] : null),
-      )
+    request<Activity>(`/activities/${id}`, { signal: controller.signal })
+      .then(setActivity)
       .catch((error) => {
-        if (!controller.signal.aborted) setError(errorMessage(error));
+        if (controller.signal.aborted) return;
+        if (error instanceof RequestError && error.status === 404) setActivity(null);
+        else setError(errorMessage(error));
       });
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => {
