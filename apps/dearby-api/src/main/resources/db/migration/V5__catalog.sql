@@ -51,6 +51,48 @@ create table activity_roles
     primary key (activity_id, position)
 );
 
--- 원본 activities[].schedules[].id. 원본 일정에는 종류·상태가 없어 kind = 'EVENT', status = 'CONFIRMED'로 넣는다
-alter table schedules add column source_id uuid;
+-- 시각 일정(TIMED)의 시작을 비울 수 있게 schedules를 다시 만든다. 모집 기간처럼 끝(마감)만 알려진 일정이 있다.
+-- V2의 이름 없는 check는 DB마다 이름이 달라 고칠 수 없고, 이 시점까지 schedules를 쓰는 코드가 없어 행이 없다.
+-- V2와 달라진 점: source_id 추가, TIMED는 start_at·end_at 중 하나 이상(둘 다 있으면 end_at >= start_at)
+drop table schedules;
+create table schedules
+(
+    id                 bigint generated always as identity primary key,
+    activity_id        bigint       not null references activities (id) on delete cascade,
+    source_id          uuid,        -- 원본 activities[].schedules[].id. 원본 일정에는 종류·상태가 없어 kind = 'EVENT', status = 'CONFIRMED'로 넣는다
+    slot               varchar(20) check (slot in ('APPLICATION', 'ACTIVITY')),
+    title              varchar(200) not null,
+    kind               varchar(20)  not null check (kind in ('DEADLINE', 'ANNOUNCEMENT', 'INTERVIEW', 'EVENT')),
+    status             varchar(20)  not null check (status in ('TENTATIVE', 'CONFIRMED', 'CANCELLED')),
+    time_type          varchar(20) check (time_type in ('TIMED', 'ALL_DAY')),
+    start_at           timestamp with time zone,
+    end_at             timestamp with time zone,
+    time_zone          varchar(64),
+    start_date         date,
+    end_date_exclusive date,
+    date_label         varchar(200) not null,
+    lat                double precision,
+    lng                double precision,
+    address_line1      varchar(300),
+    address_line2      varchar(300),
+    conference_url     varchar(2000),
+    sequence           integer      not null,
+    created_at         timestamp    not null,
+    updated_at         timestamp    not null,
+    unique (activity_id, slot),
+    check (
+        (time_type is null and start_at is null and end_at is null and time_zone is null
+            and start_date is null and end_date_exclusive is null)
+            or (time_type = 'TIMED' and (start_at is not null or end_at is not null) and time_zone is not null
+            and (start_at is null or end_at is null or end_at >= start_at)
+            and start_date is null and end_date_exclusive is null)
+            or (time_type = 'ALL_DAY' and start_date is not null and end_date_exclusive > start_date
+            and start_at is null and end_at is null and time_zone is null)
+        ),
+    check (slot is distinct from 'ACTIVITY' or time_type is distinct from 'TIMED'),
+    check (
+        (lat is null and lng is null and address_line1 is null and address_line2 is null)
+            or (lat is not null and lng is not null and address_line1 is not null and address_line2 is not null)
+        )
+);
 create unique index schedules_source_id_idx on schedules (source_id);

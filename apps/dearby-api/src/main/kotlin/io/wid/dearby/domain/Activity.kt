@@ -23,7 +23,7 @@ data class Activity(
     val validUntil: OffsetDateTime?, // 확인 내용이 유효한 끝 시각 · 사용: iOS·Android·웹
     val freshness: Freshness, // 사용: iOS·Android·웹
     val sourceNote: String, // 공개 안내 문구 · 사용: iOS·Android·웹
-    val application: Schedule?, // 신청 기간(kind = DEADLINE). 카탈로그 원본 recruitmentStartAt·EndAt. null: 상시 모집 등 신청 기간 없음
+    val application: Schedule?, // 신청 기간(kind = DEADLINE). 카탈로그 원본 recruitmentStartAt·EndAt → Timed(start, end), 하나만 있으면 그쪽만. null: 상시 모집 등 신청 기간 없음
     val activitySchedule: Schedule, // 활동 기간(kind = EVENT, 종일 일정). 활동 장소의 기준
     val schedules: List<Schedule>, // 면접·발표 등 개별 일정
     val timestamps: Timestamps,
