@@ -33,6 +33,8 @@ import org.jooq.impl.Internal
 // INDEX definitions
 // -------------------------------------------------------------------------
 
+val ACTIVITIES_DESCRIPTION_TRGM_IDX: Index = Internal.createIndex(DSL.name("activities_description_trgm_idx"), Activities.ACTIVITIES, arrayOf(Activities.ACTIVITIES.DESCRIPTION), false)
+val ACTIVITIES_NAME_TRGM_IDX: Index = Internal.createIndex(DSL.name("activities_name_trgm_idx"), Activities.ACTIVITIES, arrayOf(Activities.ACTIVITIES.NAME), false)
 val ACTIVITIES_PROGRAM_ID_IDX: Index = Internal.createIndex(DSL.name("activities_program_id_idx"), Activities.ACTIVITIES, arrayOf(Activities.ACTIVITIES.PROGRAM_ID), false)
 val ACTIVITIES_QUALIFICATION_IDX: Index = Internal.createIndex(DSL.name("activities_qualification_idx"), Activities.ACTIVITIES, arrayOf(Activities.ACTIVITIES.QUALIFICATION), false)
 val ACTIVITY_CONTACTS_ACTIVITY_ID_IDX: Index = Internal.createIndex(DSL.name("activity_contacts_activity_id_idx"), ActivityContacts.ACTIVITY_CONTACTS, arrayOf(ActivityContacts.ACTIVITY_CONTACTS.ACTIVITY_ID), false)

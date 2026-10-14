@@ -5,6 +5,8 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
+import io.wid.dearby.adaptor.persistence.jooq.indexes.ACTIVITIES_DESCRIPTION_TRGM_IDX
+import io.wid.dearby.adaptor.persistence.jooq.indexes.ACTIVITIES_NAME_TRGM_IDX
 import io.wid.dearby.adaptor.persistence.jooq.indexes.ACTIVITIES_PROGRAM_ID_IDX
 import io.wid.dearby.adaptor.persistence.jooq.indexes.ACTIVITIES_QUALIFICATION_IDX
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_PKEY
@@ -220,7 +222,7 @@ open class Activities(
         override fun `as`(alias: Table<*>): ActivitiesPath = ActivitiesPath(alias.qualifiedName, this)
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
-    override fun getIndexes(): List<Index> = listOf(ACTIVITIES_PROGRAM_ID_IDX, ACTIVITIES_QUALIFICATION_IDX)
+    override fun getIndexes(): List<Index> = listOf(ACTIVITIES_DESCRIPTION_TRGM_IDX, ACTIVITIES_NAME_TRGM_IDX, ACTIVITIES_PROGRAM_ID_IDX, ACTIVITIES_QUALIFICATION_IDX)
     override fun getIdentity(): Identity<ActivitiesRecord, Long?> = super.getIdentity() as Identity<ActivitiesRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<ActivitiesRecord> = ACTIVITIES_PKEY
     override fun getUniqueKeys(): List<UniqueKey<ActivitiesRecord>> = listOf(ACTIVITIES_SOURCE_ID_KEY)

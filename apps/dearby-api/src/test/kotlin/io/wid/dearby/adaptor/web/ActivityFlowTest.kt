@@ -66,6 +66,13 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
     }
 
     @Test
+    fun `오타나 띄어쓰기가 달라도 비슷한 활동을 찾고, 관계없는 말로는 찾지 않는다`() {
+        assertEquals(1, search("q=워크샵")["items"].size())
+        assertEquals(1, search("q=개발환경")["items"].size())
+        assertEquals(0, search("q=디자인 컨퍼런스")["items"].size())
+    }
+
+    @Test
     fun `cursor로 다음 페이지를 이어 받는다`() {
         val first = createActivity("페이지 확인 A")
         val second = createActivity("페이지 확인 B")

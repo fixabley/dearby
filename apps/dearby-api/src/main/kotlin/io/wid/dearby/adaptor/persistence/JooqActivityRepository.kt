@@ -20,8 +20,16 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
 
     override fun search(condition: ActivitySearch): List<Activity> {
         val conditions = buildList<Condition> {
-            condition.q?.takeIf { it.isNotBlank() }?.trim()?.let {
-                add(ACTIVITIES.NAME.containsIgnoreCase(it).or(ACTIVITIES.DESCRIPTION.containsIgnoreCase(it)))
+            condition.q?.takeIf { it.isNotBlank() }?.trim()?.let { q ->
+                // 부분 일치 또는 단어 유사도(pg_trgm, V7). `<%`는 word_similarity(q, 열) >= 아래 기준값이면 참이고 GIN 인덱스를 탄다
+                add(
+                    DSL.or(
+                        ACTIVITIES.NAME.containsIgnoreCase(q),
+                        ACTIVITIES.DESCRIPTION.containsIgnoreCase(q),
+                        DSL.condition("{0} <% {1}", DSL.`val`(q), ACTIVITIES.NAME),
+                        DSL.condition("{0} <% {1}", DSL.`val`(q), ACTIVITIES.DESCRIPTION),
+                    )
+                )
             }
             condition.programId?.let { add(ACTIVITIES.PROGRAM_ID.eq(it)) }
             condition.organizationId?.let {
@@ -29,6 +37,8 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             }
             condition.after?.let { add(ACTIVITIES.ID.gt(it)) }
         }
+        // 기본값 0.6은 오타("워크샵" 0.5)·띄어쓰기 차이("개발환경" 0.4)를 놓친다. 이 트랜잭션에만 적용
+        dsl.execute("select set_config('pg_trgm.word_similarity_threshold', ?, true)", WORD_SIMILARITY_THRESHOLD)
         val rows = dsl.selectFrom(ACTIVITIES)
             .where(conditions)
             .orderBy(ACTIVITIES.ID)
@@ -95,6 +105,7 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
     )
 
     private companion object {
+        const val WORD_SIMILARITY_THRESHOLD = "0.4"
         const val SLOT_APPLICATION = "APPLICATION"
         const val SLOT_ACTIVITY = "ACTIVITY"
         const val TIME_TIMED = "TIMED"
