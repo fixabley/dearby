@@ -26,8 +26,9 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
     private fun createActivity(name: String): Long {
         val id = jdbc.sql(
             """
-            insert into activities (program_id, name, description, official_url, created_at, updated_at)
-            select id, ?, '', 'https://example.com', localtimestamp, localtimestamp
+            insert into activities (program_id, name, description, participation_type, recruitment_status, official_url,
+                                    freshness, source_note, created_at, updated_at)
+            select id, ?, '', 'SELECTION', 'UNKNOWN', 'https://example.com', 'STALE', '', localtimestamp, localtimestamp
             from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'
             """
         ).param(name).update().let {
