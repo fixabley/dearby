@@ -117,7 +117,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - run: python3 scripts/check-fsd.py
       - run: ./gradlew lintDebug assembleDebug
-  # Kotlin API: compile, jOOQ codegen from the Flyway migrations, and tests on in-memory H2.
+  # Kotlin API: tests on PostgreSQL, plus a check that the committed jOOQ code matches the migrations.
   api:
     name: API test
     needs: changes
@@ -127,6 +127,19 @@ jobs:
     defaults:
       run:
         working-directory: apps/dearby-api
+    # Same database as compose.yaml postgres-test.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: dearby_test
+          POSTGRES_USER: dearby_test
+          POSTGRES_PASSWORD: dearby_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U dearby_test -d dearby_test"
+          --health-interval 2s --health-timeout 5s --health-retries 15
     steps:
       - uses: actions/checkout@v7
         with:
@@ -136,6 +149,11 @@ jobs:
           distribution: temurin
           java-version: '25'
       - uses: gradle/actions/setup-gradle@v6
+      - name: jOOQ code matches the migrations
+        run: |
+          ./gradlew jooqCodegen
+          git diff --exit-code -- src/generated || { echo "Run ./gradlew jooqCodegen and commit src/generated"; exit 1; }
+          test -z "$(git status --porcelain -- src/generated)" || { git status --porcelain -- src/generated; echo "Untracked generated files; commit src/generated"; exit 1; }
       - run: ./gradlew test
   ios:
     name: iOS build
