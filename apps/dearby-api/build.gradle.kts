@@ -116,6 +116,7 @@ jooq {
                 inputSchema = "public"
                 includes = ".*"
                 excludes = "flyway_schema_history"
+                includeRoutines = false // 확장(pg_trgm 등) 함수는 쓰지 않는다
             }
             target {
                 packageName = "io.wid.dearby.adaptor.persistence.jooq"
