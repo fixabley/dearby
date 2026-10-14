@@ -5,7 +5,10 @@
 | 결정 | 내용 |
 | --- | --- |
 | 실행 | `apps/dearby-api/batch`, 별도 이미지(`batch/Dockerfile`)·compose 서비스 `batch`. 매일 한국 시간 00:00(`@Scheduled`, Asia/Seoul) |
-| 모델 | Claude Haiku 4.5(`claude-haiku-4-5`), Anthropic Java SDK. 키는 `.env.prod`의 `ANTHROPIC_API_KEY`. 비어 있으면 수집하지 않고 경고만 남긴다 |
+| 모델 | Claude Haiku 4.5(`claude-haiku-4-5`). 엔진은 `COLLECTION_ENGINE`으로 고른다(2026-10-15 사용자 결정, 둘 다 지원) |
+| 엔진 `api` | Anthropic Java SDK. `ANTHROPIC_API_KEY`, 사용량 과금. 웹 검색을 서버 도구 `allowed_domains`로 정확히 제한하고 검색 결과 블록에서 주소를 읽는다 |
+| 엔진 `cli` | Claude Code CLI(`claude -p`), 구독 사용량. 로컬 Mac은 로그인만으로, 컨테이너는 `claude setup-token`으로 만든 `CLAUDE_CODE_OAUTH_TOKEN`. 기본 시스템 프롬프트·사용자 설정·MCP·세션 저장을 끄고 빈 임시 폴더에서 돌린다(시스템 프롬프트를 바꾸기 전 3.9만 → 1.1천 입력 토큰). 내장 WebSearch만 허용하며 검색 범위는 지시문으로만 좁혀지므로 받은 주소를 허용 호스트로 다시 거른다. 구독 계정으로 서버 무인 작업을 돌려도 되는지는 이용 조건 확인 필요 |
+| 준비 안 됨 | 엔진을 쓸 수 없으면(API 키 없음, CLI 없음, 컨테이너에 토큰 없음) 수집하지 않고 경고만 남긴다 |
 | 검토 | 수집 결과는 초안(`activities.publication_status = DRAFT`). 관리자가 `PUBLISHED`로 바꿔야 공개 API에 보인다. 게시된 활동은 다시 수집해도 덮어쓰지 않는다 |
 | 수집 설정 | `program_sources`(프로그램별 공식 URL·정확한 허용 호스트·켜기/끄기). 새로 입력한다(Supabase 설정은 가져오지 않음) |
 | 기록 | `collection_runs`(설정 하나 × 한국 날짜 하루당 한 행: 결과·찾은 수·저장 수·제외 사유·오류·토큰·검색 횟수). Spring Batch 실행 기록은 `batch_*` 테이블 |
@@ -23,7 +26,7 @@
 ```sh
 cd apps/dearby-api
 # 로컬: 개발 DB를 띄우고 .env.local에 ANTHROPIC_API_KEY를 넣은 뒤 바로 한 번 수집
-./gradlew :batch:bootRun --args=--collect-now
+COLLECTION_ENGINE=cli ./gradlew :batch:bootRun --args=--collect-now   # 또는 .env.local의 COLLECTION_ENGINE
 # 운영: 상시 실행(매일 자정). 바로 한 번 돌리기
 docker compose -f compose.prod.yaml --env-file .env.prod up -d batch
 docker compose -f compose.prod.yaml --env-file .env.prod run --rm batch --collect-now
@@ -35,5 +38,6 @@ docker compose -f compose.prod.yaml --env-file .env.prod run --rm batch --collec
 
 - 수집 설정 입력과 초안 검토·게시 화면(admin 모듈). 그전까지는 DB에 직접 넣고 바꾼다.
 - 게시 활동의 매일 재확인(기존 워커의 `--reverify`), 실패 알림, 비용 상한.
-- 실제 Claude 호출 검증: API 키가 생기면 한 번 돌려 결과와 토큰 사용량을 확인해야 한다. Haiku 4.5에서 웹 검색 도구·structured outputs 동작은 문서 기준이며 실제 호출로 확인하지 않았다.
+- `api` 엔진의 실제 호출 검증: API 키가 생기면 한 번 돌려 확인해야 한다(Haiku 4.5의 서버 웹 검색·structured outputs는 문서 기준).
+- `cli` 엔진은 2026-10-15 로컬 개발 DB에서 Let'Swift(`https://letswift.kr/2026/`, 허용 `letswift.kr`)로 실제 수집했다: 59초, 찾은 1·저장 1(DRAFT), 일정 7개 시각 정상(19:00 KST), 입력 14,776·출력 6,183 토큰, 웹 검색 0회(모델이 공식 페이지만으로 충분하다고 판단). 신청 주소는 원문 링크와 맞지 않아 비워졌다.
 - 기존 TS 워커의 launchd 작업(`com.dearby.catalog-subscription-worker`)이 아직 설치되어 있어 Supabase에 계속 쓴다. 새 배치가 동작하면 `node scripts/launchd.mjs uninstall`로 내린다.

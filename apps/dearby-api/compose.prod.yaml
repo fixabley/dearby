@@ -47,7 +47,8 @@ services:
       - "127.0.0.1:${API_PORT:?}:8080"
 
   # 활동 수집(Spring Batch). 매일 한국 시간 자정에 켜진 수집 설정을 수집해 초안으로 저장한다.
-  # ANTHROPIC_API_KEY가 비어 있으면 실행하지 않고 경고만 남긴다. 바로 한 번 돌리려면: docker compose ... run --rm batch --collect-now
+  # COLLECTION_ENGINE=api는 ANTHROPIC_API_KEY, cli는 CLAUDE_CODE_OAUTH_TOKEN(claude setup-token)을 쓴다. 없으면 실행하지 않고 경고만 남긴다.
+  # 바로 한 번 돌리려면: docker compose ... run --rm batch --collect-now
   batch:
     build:
       context: .
@@ -62,4 +63,6 @@ services:
       DB_NAME: ${DB_NAME:?}
       DB_USERNAME: ${DB_USERNAME:?}
       DB_PASSWORD: ${DB_PASSWORD:?}
+      COLLECTION_ENGINE: ${COLLECTION_ENGINE:-api}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
