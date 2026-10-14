@@ -130,7 +130,7 @@ jobs:
     # Same database as compose.yaml postgres-test.
     services:
       postgres:
-        image: postgres:17-alpine
+        image: pgvector/pgvector:pg17
         env:
           POSTGRES_DB: dearby_test
           POSTGRES_USER: dearby_test
