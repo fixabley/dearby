@@ -34,23 +34,27 @@ class CollectionJobConfig(
 
     // 모델·페이지 호출이 길어 DB 트랜잭션으로 감싸지 않는다. 저장은 저장소가 각자 트랜잭션으로 한다
     private fun collectStep(jobRepository: JobRepository): Step =
-        StepBuilder("collectActivities", jobRepository)
-            .tasklet({ _, chunkContext ->
-                val runDate = LocalDate.parse(chunkContext.stepContext.jobParameters[RUN_DATE] as String)
-                for (source in sources.findEnabled()) {
-                    val runId = runs.start(source.id, runDate) ?: continue
-                    val report = try {
-                        collector.collect(source)
-                    } catch (e: Exception) {
-                        log.warn("Collection failed for program source {}", source.id, e)
-                        CollectionReport(CollectionOutcome.FAILED, error = e.message ?: e.javaClass.simpleName)
-                    }
-                    runs.finish(runId, report)
-                    log.info("Collected program source {}: {} found {} saved {}", source.id, report.outcome, report.foundCount, report.savedCount)
+        StepBuilder("collectActivities", jobRepository).tasklet({ _, chunkContext ->
+            val runDate = LocalDate.parse(chunkContext.stepContext.jobParameters[RUN_DATE] as String)
+            for (source in sources.findEnabled()) {
+                val runId = runs.start(source.id, runDate) ?: continue
+                val report = try {
+                    collector.collect(source)
+                } catch (e: Exception) {
+                    log.warn("Collection failed for program source {}", source.id, e)
+                    CollectionReport(CollectionOutcome.FAILED, error = e.message ?: e.javaClass.simpleName)
                 }
-                RepeatStatus.FINISHED
-            }, ResourcelessTransactionManager())
-            .build()
+                runs.finish(runId, report)
+                log.info(
+                    "Collected program source {}: {} found {} saved {}",
+                    source.id,
+                    report.outcome,
+                    report.foundCount,
+                    report.savedCount
+                )
+            }
+            RepeatStatus.FINISHED
+        }, ResourcelessTransactionManager()).build()
 
     companion object {
         const val JOB_NAME = "collectActivities"
