@@ -23,7 +23,7 @@ open class CollectionRunsRecord() : UpdatableRecordImpl<CollectionRunsRecord>(Co
         set(value): Unit = set(0, value)
         get(): Long? = get(0) as Long?
 
-    open var programSourceId: Long?
+    open var programId: Long?
         set(value): Unit = set(1, value)
         get(): Long? = get(1) as Long?
 
@@ -31,45 +31,49 @@ open class CollectionRunsRecord() : UpdatableRecordImpl<CollectionRunsRecord>(Co
         set(value): Unit = set(2, value)
         get(): LocalDate? = get(2) as LocalDate?
 
-    open var startedAt: OffsetDateTime?
+    open var officialOnly: Boolean?
         set(value): Unit = set(3, value)
-        get(): OffsetDateTime? = get(3) as OffsetDateTime?
+        get(): Boolean? = get(3) as Boolean?
 
-    open var finishedAt: OffsetDateTime?
+    open var startedAt: OffsetDateTime?
         set(value): Unit = set(4, value)
         get(): OffsetDateTime? = get(4) as OffsetDateTime?
 
-    open var outcome: String?
+    open var finishedAt: OffsetDateTime?
         set(value): Unit = set(5, value)
-        get(): String? = get(5) as String?
+        get(): OffsetDateTime? = get(5) as OffsetDateTime?
+
+    open var outcome: String?
+        set(value): Unit = set(6, value)
+        get(): String? = get(6) as String?
 
     open var foundCount: Int?
-        set(value): Unit = set(6, value)
-        get(): Int? = get(6) as Int?
-
-    open var savedCount: Int?
         set(value): Unit = set(7, value)
         get(): Int? = get(7) as Int?
 
-    open var rejectedReasons: Array<String?>?
+    open var savedCount: Int?
         set(value): Unit = set(8, value)
-        get(): Array<String?>? = get(8) as Array<String?>?
+        get(): Int? = get(8) as Int?
+
+    open var rejectedReasons: Array<String?>?
+        set(value): Unit = set(9, value)
+        get(): Array<String?>? = get(9) as Array<String?>?
 
     open var error: String?
-        set(value): Unit = set(9, value)
-        get(): String? = get(9) as String?
+        set(value): Unit = set(10, value)
+        get(): String? = get(10) as String?
 
     open var inputTokens: Long?
-        set(value): Unit = set(10, value)
-        get(): Long? = get(10) as Long?
-
-    open var outputTokens: Long?
         set(value): Unit = set(11, value)
         get(): Long? = get(11) as Long?
 
-    open var webSearchRequests: Int?
+    open var outputTokens: Long?
         set(value): Unit = set(12, value)
-        get(): Int? = get(12) as Int?
+        get(): Long? = get(12) as Long?
+
+    open var webSearchRequests: Int?
+        set(value): Unit = set(13, value)
+        get(): Int? = get(13) as Int?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -80,10 +84,11 @@ open class CollectionRunsRecord() : UpdatableRecordImpl<CollectionRunsRecord>(Co
     /**
      * Create a detached, initialised CollectionRunsRecord
      */
-    constructor(id: Long? = null, programSourceId: Long? = null, runDate: LocalDate? = null, startedAt: OffsetDateTime? = null, finishedAt: OffsetDateTime? = null, outcome: String? = null, foundCount: Int? = null, savedCount: Int? = null, rejectedReasons: Array<String?>? = null, error: String? = null, inputTokens: Long? = null, outputTokens: Long? = null, webSearchRequests: Int? = null): this() {
+    constructor(id: Long? = null, programId: Long? = null, runDate: LocalDate? = null, officialOnly: Boolean? = null, startedAt: OffsetDateTime? = null, finishedAt: OffsetDateTime? = null, outcome: String? = null, foundCount: Int? = null, savedCount: Int? = null, rejectedReasons: Array<String?>? = null, error: String? = null, inputTokens: Long? = null, outputTokens: Long? = null, webSearchRequests: Int? = null): this() {
         this.id = id
-        this.programSourceId = programSourceId
+        this.programId = programId
         this.runDate = runDate
+        this.officialOnly = officialOnly
         this.startedAt = startedAt
         this.finishedAt = finishedAt
         this.outcome = outcome

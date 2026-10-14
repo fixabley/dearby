@@ -20,8 +20,8 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileActivityHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileActivityHistoryRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Profiles
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCollectionSettings
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts
-import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramSources
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaffRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
@@ -135,14 +135,14 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val PROFILES: Profiles get() = Profiles.PROFILES
 
     /**
+     * The table <code>public.program_collection_settings</code>.
+     */
+    val PROGRAM_COLLECTION_SETTINGS: ProgramCollectionSettings get() = ProgramCollectionSettings.PROGRAM_COLLECTION_SETTINGS
+
+    /**
      * The table <code>public.program_contacts</code>.
      */
     val PROGRAM_CONTACTS: ProgramContacts get() = ProgramContacts.PROGRAM_CONTACTS
-
-    /**
-     * The table <code>public.program_sources</code>.
-     */
-    val PROGRAM_SOURCES: ProgramSources get() = ProgramSources.PROGRAM_SOURCES
 
     /**
      * The table <code>public.program_staff</code>.
@@ -213,8 +213,8 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         ProfileActivityHistories.PROFILE_ACTIVITY_HISTORIES,
         ProfileActivityHistoryRoles.PROFILE_ACTIVITY_HISTORY_ROLES,
         Profiles.PROFILES,
+        ProgramCollectionSettings.PROGRAM_COLLECTION_SETTINGS,
         ProgramContacts.PROGRAM_CONTACTS,
-        ProgramSources.PROGRAM_SOURCES,
         ProgramStaff.PROGRAM_STAFF,
         ProgramStaffRoles.PROGRAM_STAFF_ROLES,
         Programs.PROGRAMS,

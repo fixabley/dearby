@@ -7,6 +7,7 @@ import java.time.OffsetDateTime
 data class ActivityCuration(
     val activityId: Id,
     val publicationStatus: PublicationStatus, // DRAFT는 공개 API에 보이지 않는다
+    val officialSource: Boolean, // 출처가 프로그램의 공식 도메인인지. 웹 전체 검색에서 나온 초안은 false
     val participationType: ParticipationType,
     val recruitmentStatus: RecruitmentStatus,
     val location: String?, // 장소 문구(좌표 없음)
