@@ -151,9 +151,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
       - name: jOOQ code matches the migrations
         run: |
-          ./gradlew jooqCodegen
-          git diff --exit-code -- src/generated || { echo "Run ./gradlew jooqCodegen and commit src/generated"; exit 1; }
-          test -z "$(git status --porcelain -- src/generated)" || { git status --porcelain -- src/generated; echo "Untracked generated files; commit src/generated"; exit 1; }
+          ./gradlew :core:jooqCodegen
+          git diff --exit-code -- core/src/generated || { echo "Run ./gradlew :core:jooqCodegen and commit core/src/generated"; exit 1; }
+          test -z "$(git status --porcelain -- core/src/generated)" || { git status --porcelain -- core/src/generated; echo "Untracked generated files; commit core/src/generated"; exit 1; }
       - run: ./gradlew test
   ios:
     name: iOS build

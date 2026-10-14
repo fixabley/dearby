@@ -33,7 +33,7 @@
 | --- | --- | --- |
 | API (`./gradlew bootRun`) | 8080 | Spring 기본값 |
 | API 로컬 DB (`compose.yaml`) | 5432 | `127.0.0.1`에서만 받음 |
-| API 테스트 DB (`compose.yaml` postgres-test) | 5433 | `127.0.0.1`에서만 받음. `./gradlew test`·`jooqCodegen` 전용, 메모리 저장 |
+| API 테스트 DB (`compose.yaml` postgres-test) | 5433 | `127.0.0.1`에서만 받음. `./gradlew test`·`:core:jooqCodegen` 전용, 메모리 저장 |
 | API 운영 (`compose.prod.yaml`) | 58866 | `127.0.0.1`에서만 받음. 기존 TS API는 58865 |
 | API 운영 DB (`compose.prod.yaml`) | 58867 | `127.0.0.1`에서만 받음. IntelliJ 등 직접 조회용 |
 

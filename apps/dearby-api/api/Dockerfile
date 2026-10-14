@@ -1,9 +1,11 @@
+# 빌드 컨텍스트는 apps/dearby-api(멀티모듈 루트). compose.prod.yaml: build.context=., dockerfile=api/Dockerfile
 FROM eclipse-temurin:25-jdk AS build
 WORKDIR /src
 COPY gradlew settings.gradle.kts build.gradle.kts ./
 COPY gradle gradle
-COPY src src
-RUN ./gradlew --no-daemon bootJar && mv build/libs/*.jar app.jar
+COPY core core
+COPY api api
+RUN ./gradlew --no-daemon :api:bootJar && mv api/build/libs/*.jar app.jar
 
 FROM eclipse-temurin:25-jre
 WORKDIR /app
