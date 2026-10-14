@@ -1,3 +1,5 @@
 /gradlew text eol=lf
 *.bat text eol=crlf
 *.jar binary
+# jOOQ 생성 코드(./gradlew jooqCodegen)
+src/generated/** linguist-generated=true

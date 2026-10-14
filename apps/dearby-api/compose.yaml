@@ -1,5 +1,6 @@
 # 로컬 개발용 인프라(DB만). API는 ./gradlew bootRun으로 띄운다
 # 실행: docker compose --env-file .env.local up -d (.env.local.example 참고)
+# postgres: 개발용(데이터 유지). postgres-test: ./gradlew test·jooqCodegen 전용(127.0.0.1:5433, 메모리에만 두어 재시작하면 비워짐)
 # 운영은 compose.prod.yaml
 name: dearby-api-dev
 
@@ -19,3 +20,20 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # 테스트와 jOOQ 코드 생성이 쓰는 DB. 값은 build.gradle.kts·src/test/resources/application.properties와 같아야 한다(비밀 아님)
+  postgres-test:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: dearby_test
+      POSTGRES_USER: dearby_test
+      POSTGRES_PASSWORD: dearby_test
+    ports:
+      - "127.0.0.1:${TEST_DB_PORT:-5433}:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dearby_test -d dearby_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
