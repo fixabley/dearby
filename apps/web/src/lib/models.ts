@@ -48,68 +48,78 @@ export const guestShareSchema = z.object({
   savedAt: text,
 });
 export type GuestShare = z.infer<typeof guestShareSchema>;
-export const activitySchema = z.object({
-  id: uuid,
-  programId: uuid,
-  organizationId: uuid,
+// Public activity from GET /v1/activities (contract "활동 조회 — 2026-10-14"). Timed values carry a zone offset.
+const scheduleSchema = z.object({
+  id: z.number().int(),
   title: text,
-  summary: text,
-  participationType: z.enum(["registration", "selection"]),
-  recruitmentStatus: z.enum(["open", "scheduled", "closed", "unknown"]),
-  isRecruiting: z.boolean(),
-  recruitmentStartAt: text.nullable(),
-  recruitmentEndAt: text.nullable(),
+  startAt: text.nullable(),
+  endAt: text.nullable(),
+  timeZone: text.nullable(),
+  startDate: text.nullable(),
+  endDateExclusive: text.nullable(),
   dateLabel: text,
-  location: text.nullable(),
-  cost: text.nullable(),
-  audience: text.nullable(),
-  qualification: text.nullable(),
-  roles: z.array(text),
-  schedules: z.array(
-    z.object({
-      id: uuid,
-      title: text,
-      startAt: text.nullable(),
-      endAt: text.nullable(),
-      dateLabel: text,
-      timeZone: text,
-    }),
-  ),
-  officialUrl: text,
-  applicationUrl: text.nullable(),
-  sourceCheckedAt: text.nullable(),
-  validUntil: text.nullable(),
-  freshness: z.enum(["verified", "stale", "unavailable"]),
-  sourceNote: text,
+  address: text.nullable(),
 });
-export const catalogSchema = z.object({
-  generatedAt: text,
-  organizations: z.array(z.object({ id: uuid, name: text, description: text })),
-  programs: z.array(
-    z.object({
-      id: uuid,
-      organizationId: uuid,
-      title: text,
-      description: text,
-    }),
-  ),
-  activities: z.array(activitySchema),
+export type Schedule = z.infer<typeof scheduleSchema>;
+const named = z.object({ id: z.number().int(), name: text });
+export const activitySchema = z.object({
+  id: z.number().int().positive(),
+  name: text,
+  description: text,
+  organization: named,
+  program: named,
+  officialUrl: text,
+  imageUrl: text.nullable(),
+  application: scheduleSchema.nullable(),
+  activitySchedule: scheduleSchema,
+  schedules: z.array(scheduleSchema),
+});
+export const activityPageSchema = z.object({
+  items: z.array(activitySchema),
+  nextCursor: z.number().int().nullable(),
 });
 export type Activity = z.infer<typeof activitySchema>;
-export type Catalog = z.infer<typeof catalogSchema>;
-export function isRecruiting(activity: Activity, now = Date.now()): boolean {
-  return (
-    activity.isRecruiting &&
-    activity.recruitmentStatus === "open" &&
-    activity.freshness === "verified" &&
-    !!activity.sourceCheckedAt &&
-    Date.parse(activity.sourceCheckedAt) <= now &&
-    !!activity.validUntil &&
-    now < Date.parse(activity.validUntil) &&
-    (!activity.recruitmentStartAt ||
-      Date.parse(activity.recruitmentStartAt) <= now) &&
-    (!activity.recruitmentEndAt || now < Date.parse(activity.recruitmentEndAt))
-  );
+export type ActivityPage = z.infer<typeof activityPageSchema>;
+/** Numeric activity ID from a URL segment, or undefined. */
+export function activityId(value: string): number | undefined {
+  const id = Number(value);
+  return /^[1-9]\d*$/.test(value) && Number.isSafeInteger(id) ? id : undefined;
+}
+/** Recruitment state comes only from the application period; a missing bound is open on that side. */
+export function recruitment(
+  application: Schedule | null,
+  now = Date.now(),
+): { open: boolean; label: string } {
+  const start = application?.startAt ? Date.parse(application.startAt) : NaN;
+  const end = application?.endAt ? Date.parse(application.endAt) : NaN;
+  if (Number.isNaN(start) && Number.isNaN(end))
+    return { open: false, label: "모집 여부 확인 필요" };
+  if (now < start) return { open: false, label: "모집 예정" };
+  if (now >= end) return { open: false, label: "모집 마감" };
+  return { open: true, label: "모집 중" };
+}
+const dateTime = (value: string, timeZone: string | null) =>
+  new Date(value).toLocaleString("ko-KR", {
+    timeZone: timeZone ?? "Asia/Seoul",
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+/** Readable schedule text: the API label first, otherwise its times or all-day start. */
+export function scheduleLabel(schedule: Schedule | null): string {
+  if (!schedule) return "";
+  if (schedule.dateLabel) return schedule.dateLabel;
+  const { startAt, endAt, timeZone } = schedule;
+  if (startAt || endAt)
+    return `${startAt ? dateTime(startAt, timeZone) : ""} ~ ${endAt ? dateTime(endAt, timeZone) : ""}`.trim();
+  return schedule.startDate ?? "";
+}
+/** HTTPS-only link for activity official pages and images. */
+export function httpsUrl(value: string | null): string | undefined {
+  const url = safeWebUrl(value);
+  return url?.startsWith("https:") ? url : undefined;
 }
 export function safeWebUrl(value: string | null): string | undefined {
   if (!value) return;

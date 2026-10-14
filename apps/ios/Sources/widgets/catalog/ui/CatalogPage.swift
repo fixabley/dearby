@@ -4,13 +4,10 @@ struct CatalogPage: View {
     let state: CatalogViewModel
     @Binding var path: [String]
     @State private var showNotice = false
-    @State private var filter = 0
-    private var visible: [ActivityModel] {
-        state.discoverable.filter { filter == 0 || (filter == 1 ? $0.participationType == .registration : $0.participationType == .selection) }
-    }
     var body: some View {
+        @Bindable var state = state
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
+            LazyVStack(alignment: .leading, spacing: 16) {
                 HStack {
                     DearbyLogo(width: 96)
                     Spacer()
@@ -18,17 +15,8 @@ struct CatalogPage: View {
                         .accessibilityLabel("알림")
                 }.padding(.bottom, 8)
                 Text("활동 둘러보기").font(.title2.bold())
-                ScrollView(.horizontal) {
-                    HStack(spacing: 8) {
-                        ForEach(Array(["전체", "바로 신청", "선발형"].enumerated()), id: \.offset) { index, title in
-                            Button { filter = index } label: {
-                                Text(title).font(.subheadline.weight(.semibold)).padding(.horizontal, 20).frame(minHeight: 44)
-                                    .background(filter == index ? DearbyStyle.teal : DearbyStyle.muted, in: Capsule())
-                                    .foregroundStyle(filter == index ? .white : DearbyStyle.quiet)
-                            }.buttonStyle(.plain).accessibilityAddTraits(filter == index ? .isSelected : [])
-                        }
-                    }
-                }.scrollIndicators(.hidden)
+                DearbySearchField(prompt: "활동 이름이나 설명으로 검색", text: $state.searchText, identifier: "catalog-search")
+                    .submitLabel(.search)
                 switch state.phase {
                 case .loading:
                     ProgressView("활동을 불러오는 중이에요").frame(maxWidth: .infinity).padding(.vertical, 40)
@@ -38,33 +26,56 @@ struct CatalogPage: View {
                     } description: {
                         Text("연결을 확인한 뒤 다시 시도해 주세요.")
                     } actions: {
-                        Button("다시 시도") { Task { await state.load() } }.accessibilityIdentifier("catalog-retry")
+                        Button("다시 시도") { state.reload() }.accessibilityIdentifier("catalog-retry")
                     }
-                case .loaded where visible.isEmpty:
-                    ContentUnavailableView("모집 중인 활동이 없어요", systemImage: "calendar",
-                                           description: Text("새 활동이 공개되면 여기에서 볼 수 있어요."))
+                case .loaded where state.activities.isEmpty:
+                    if let query = state.query, !query.isEmpty {
+                        ContentUnavailableView("‘\(query)’에 맞는 활동이 없어요", systemImage: "magnifyingglass",
+                                               description: Text("다른 검색어로 찾아보세요."))
+                    } else {
+                        ContentUnavailableView("등록된 활동이 없어요", systemImage: "calendar",
+                                               description: Text("새 활동이 공개되면 여기에서 볼 수 있어요."))
+                    }
                 case .loaded:
-                    ForEach(visible) { activity in
-                        ActivityCard(activityID: activity.id, title: activity.title, organization: activity.organization ?? "주최 정보 미확인",
-                            isSelection: activity.participationType == .selection, summary: activity.summary,
-                            status: activity.statusLabel(at: state.loadedAt) + " · " + (activity.participationType == .selection ? "선발형" : "바로 신청"),
-                            dateAndPlace: activity.dateLabel + " · " + (activity.location ?? "장소 미확인"),
-                            applyURL: activity.quickApplyURL(at: state.loadedAt), recruitmentEnd: activity.recruitmentEnd) {
-                            path.append(activity.id)
-                        }
-                        .environment(\.openURL, OpenURLAction { url in
-                            state.openedApplication(activity.id)
-                            return .systemAction(url)
-                        })
+                    ForEach(Array(state.activities.enumerated()), id: \.element.id) { index, activity in
+                        card(activity)
+                            // Near the end of the list: fetch the next page.
+                            .onAppear { if index >= state.activities.count - 3 { state.loadMore() } }
+                    }
+                    if state.loadingMore {
+                        ProgressView().frame(maxWidth: .infinity, minHeight: 44)
+                    } else if state.moreFailed {
+                        Button("활동 더 불러오기") { state.loadMore() }.frame(maxWidth: .infinity, minHeight: 44)
+                            .accessibilityIdentifier("catalog-more-retry")
                     }
                 }
             }.padding(20)
         }
-        .task { if state.phase == .loading && state.activities.isEmpty { await state.load() } }
+        .scrollDismissesKeyboard(.immediately)
+        // Typing waits ~300ms before searching; the first load does not wait.
+        .task(id: state.searchText) {
+            if state.query != nil {
+                try? await Task.sleep(for: .milliseconds(300))
+                guard !Task.isCancelled else { return }
+            }
+            state.search(state.searchText)
+        }
         .alert("알림", isPresented: $showNotice) { Button("확인") {} } message: { Text("새로운 알림이 없어요.") }
         .navigationDestination(for: String.self) { id in ActivityDetailView(state: state, activityID: id) }
         .scrollContentBackground(.hidden).background(.white)
         .tint(DearbyStyle.teal).navigationTitle("")
         .navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .navigationBar)
+    }
+    private func card(_ activity: ActivityModel) -> some View {
+        ActivityCard(activityID: activity.id, title: activity.title, organization: activity.organization,
+            imageURL: activity.imageURL, summary: activity.summary, status: activity.statusLabel(at: state.loadedAt),
+            date: activity.dateLabel.isEmpty ? "일정 미확인" : activity.dateLabel,
+            applyURL: activity.applicationURL(at: state.loadedAt), recruitmentEnd: activity.recruitmentEnd) {
+            path.append(activity.id)
+        }
+        .environment(\.openURL, OpenURLAction { url in
+            state.openedApplication(activity.id)
+            return .systemAction(url)
+        })
     }
 }

@@ -37,26 +37,9 @@ struct ActivityInformationView: View {
                     .frame(maxWidth: .infinity)
             }
         }
-        VStack(alignment: .leading, spacing: 16) {
-            Divider()
-            Text("참가 안내").font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.teal)
-            DearbyInfoRow(title: "참가비", value: activity.cost ?? "미확인")
-            DearbyInfoRow(title: "참여 방식", value: activity.participationType == .selection ? "선발형" : "바로 신청")
-            DearbyInfoRow(title: "역할", value: activity.roles.isEmpty ? "미확인" : activity.roles.joined(separator: ", "))
-            Divider()
-            Text("장소").font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.teal)
-            Text(activity.location ?? "장소 미확인")
-        }
     }
 }
 enum ActivityText {
-    static func checked(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-        formatter.dateFormat = "M월 d일 HH:mm (한국 시간)"
-        return formatter.string(from: date)
-    }
     static func time(_ date: Date, zone: String = "Asia/Seoul") -> String { format(date, "HH:mm", zone) }
     static func day(_ date: Date, zone: String) -> String { format(date, "M/d", zone) }
     private static func format(_ date: Date, _ pattern: String, _ zone: String) -> String {

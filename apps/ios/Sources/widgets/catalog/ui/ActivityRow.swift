@@ -7,14 +7,13 @@ struct ActivityRow<Footer: View>: View {
         VStack(alignment: .leading, spacing: 8) {
             NavigationLink(value: activity.id) {
                 HStack(alignment: .top, spacing: 12) {
-                    ActivityArtwork(activityID: activity.id).frame(width: 104, height: 112).clipped()
+                    ActivityArtwork(imageURL: activity.imageURL).frame(width: 104, height: 112).clipped()
                         .clipShape(RoundedRectangle(cornerRadius: 9))
                     VStack(alignment: .leading, spacing: 7) {
                         Text(activity.title).font(.headline).foregroundStyle(Color.primary)
-                        Text(activity.organization ?? activity.summary).font(.caption).foregroundStyle(DearbyStyle.quiet).lineLimit(2)
+                        Text(activity.organization).font(.caption).foregroundStyle(DearbyStyle.quiet).lineLimit(2)
                         Divider()
                         Label(activity.dateLabel.isEmpty ? "일정 미확인" : activity.dateLabel, systemImage: "calendar")
-                        Label(activity.location ?? "장소 미확인", systemImage: "mappin.and.ellipse")
                     }.font(.caption).foregroundStyle(DearbyStyle.quiet).frame(maxWidth: .infinity, alignment: .leading)
                 }
             }.buttonStyle(.plain).accessibilityIdentifier("activity-\(activity.id)")

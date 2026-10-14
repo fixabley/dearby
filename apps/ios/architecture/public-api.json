@@ -18,9 +18,9 @@
   ],
   "entities/catalog": [
     "ActivityModel",
+    "ActivityPage",
     "ActivityScheduleModel",
-    "CatalogClient",
-    "DemoActivities"
+    "CatalogClient"
   ],
   "entities/identity": [
     "CardModel",

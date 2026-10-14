@@ -48,7 +48,7 @@ export function apiOrigin() {
   }
 }
 
-/** One upstream call; guest calls carry the server-held proxy key and, if given, the cookie token. */
+/** One upstream call with an already validated query; guest calls carry the server-held proxy key and, if given, the cookie token. */
 export function upstreamFetch(
   path: string,
   {
@@ -56,7 +56,14 @@ export function upstreamFetch(
     guest = false,
     token,
     body,
-  }: { method?: string; guest?: boolean; token?: string; body?: unknown },
+    query,
+  }: {
+    method?: string;
+    guest?: boolean;
+    token?: string;
+    body?: unknown;
+    query?: URLSearchParams;
+  },
 ) {
   const origin = apiOrigin();
   const key = guestProxyKey();
@@ -65,7 +72,9 @@ export function upstreamFetch(
   if (guest) headers["X-Guest-Proxy-Key"] = key!;
   if (guest && token) headers["X-Guest-Token"] = token;
   if (body !== undefined) headers["Content-Type"] = "application/json";
-  return fetch(new URL(`/v1/${path}`, origin), {
+  const url = new URL(`/v1/${path}`, origin);
+  if (query) url.search = query.toString();
+  return fetch(url, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),

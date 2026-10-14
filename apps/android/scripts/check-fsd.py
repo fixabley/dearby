@@ -25,7 +25,7 @@ API = {
     'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletEntryState'},
     'features.calendar': {'CalendarConflictSheet'},
     'pages.catalog': {'CatalogPage', 'CatalogPhase', 'MyActivitiesPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'CatalogState'},
-    'entities.catalog': {'model.ActivityModel', 'model.ScheduleModel', 'model.instant', 'model.safeHttpsUrl', 'api.fetchCatalog'},
+    'entities.catalog': {'model.ActivityModel', 'model.ActivityPage', 'model.ScheduleModel', 'model.instant', 'model.safeHttpsUrl', 'api.fetchActivities'},
     'entities.account': {'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.AccountProfile', 'model.PublishedCard', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault', 'model.ScannedLink', 'model.ReceivedShare', 'model.CardShare', 'model.ShareActivity', 'model.ContactRules'},
 }
 
