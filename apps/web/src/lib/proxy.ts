@@ -1,5 +1,7 @@
 import { z } from "zod";
 import {
+  activityId,
+  activitySchema,
   cardSchema,
   activityPageSchema,
   guestShareSchema,
@@ -58,9 +60,11 @@ export async function proxy(
   // Card ID, or share ID for share routes.
   const id = segments[guest ? 2 : 1];
   const shareRoute = segments[guest ? 1 : 0] === "shares";
+  const activityRoute = segments.length === 2 && segments[0] === "activities";
   const method = request.method;
   const allowed =
     (path === "activities" && method === "GET") ||
+    (activityRoute && method === "GET") ||
     (segments.length === 2 &&
       ["cards", "shares"].includes(segments[0]) &&
       method === "GET") ||
@@ -75,7 +79,8 @@ export async function proxy(
       method === "PUT") ||
     (path === "guest/session" && method === "DELETE");
   if (!allowed) return failure(404, "NOT_FOUND");
-  if (id && !uuid.safeParse(id).success) return failure(422, "INVALID_INPUT");
+  if (id && !(activityRoute ? activityId(id) : uuid.safeParse(id).success))
+    return failure(422, "INVALID_INPUT");
   const query =
     path === "activities" ? activityQuery(new URL(request.url)) : undefined;
   if (path === "activities" && !query) return failure(422, "INVALID_INPUT");
@@ -172,7 +177,9 @@ export async function proxy(
     const output =
       path === "activities"
         ? activityPageSchema.parse(json)
-        : guest
+        : activityRoute
+          ? activitySchema.parse(json)
+          : guest
           ? savedSchema.parse(json)
           : cardSchema.parse(json);
     return Response.json(output, { headers: outputHeaders });

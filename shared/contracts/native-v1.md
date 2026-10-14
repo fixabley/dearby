@@ -236,6 +236,7 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 | 메서드·경로 | 인증 | 요청 | 성공 응답 |
 | --- | --- | --- | --- |
 | GET /v1/activities | 없음 | query `q?`, `organizationId?`, `programId?`, `cursor?`, `size?`(1–100, 기본 20) | 200 `{items: Activity[], nextCursor}` |
+| GET /v1/activities/:id | 없음 | 숫자 id | 200 Activity(목록 항목과 같은 형태). 없거나 소속 프로그램·기관이 없으면 404, 숫자가 아니면 400 |
 
 - 순서는 활동 id 오름차순이다. 다음 페이지는 `nextCursor`를 `cursor`로 보낸다. `nextCursor`가 null이면 마지막 페이지다. `size`가 범위를 벗어나면 400.
 - `q`는 활동 이름·설명에서 찾는다. 대소문자 없는 부분 일치(`%`·`_`도 글자 그대로) 또는 단어 유사도(PostgreSQL `pg_trgm` `word_similarity` 0.4 이상)면 결과에 넣는다. 그래서 오타("워크샵"→"워크숍")·띄어쓰기 차이("개발환경")도 찾는다. 순서는 여전히 id 순이다(유사도 순 정렬은 하지 않음).

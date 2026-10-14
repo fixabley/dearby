@@ -2,7 +2,9 @@ package io.wid.dearby.application.activity
 
 import io.wid.dearby.application.organization.OrganizationRepository
 import io.wid.dearby.application.program.ProgramRepository
+import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.InvalidInputException
+import io.wid.dearby.domain.NotFoundException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -29,6 +31,16 @@ class ActivityService(
             ActivityListing(activity, program, organization)
         }
         return ActivityPage(items, if (found.size > condition.size) page.last().id else null)
+    }
+
+    @Transactional(readOnly = true)
+    fun getById(id: Id): ActivityListing {
+        val notFound = { NotFoundException("활동을 찾을 수 없습니다", "Activity not found: $id") }
+        val activity = activities.findById(id) ?: throw notFound()
+        // 목록과 같이, 소속을 찾지 못한 활동은 없는 것으로 본다
+        val program = programs.findAllById(listOf(activity.programId)).singleOrNull() ?: throw notFound()
+        val organization = organizations.findAllById(listOf(program.organizationId)).singleOrNull() ?: throw notFound()
+        return ActivityListing(activity, program, organization)
     }
 
     companion object {
