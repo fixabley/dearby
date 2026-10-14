@@ -3,6 +3,7 @@ package io.wid.dearby.adaptor.web.v1.activities
 import io.wid.dearby.application.activity.ActivitySearch
 import io.wid.dearby.application.activity.ActivityService
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -23,4 +24,7 @@ class ActivityController(private val activities: ActivityService) {
         val page = activities.search(ActivitySearch(q, organizationId, programId, cursor, size))
         return ActivityPageResponse(page.items.map(ActivityResponse::from), page.nextCursor)
     }
+
+    @GetMapping("/{id}")
+    fun get(@PathVariable id: Long): ActivityResponse = ActivityResponse.from(activities.getById(id))
 }

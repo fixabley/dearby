@@ -44,6 +44,14 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             .orderBy(ACTIVITIES.ID)
             .limit(condition.size)
             .fetch()
+        return withDetails(rows)
+    }
+
+    override fun findById(id: Id): Activity? =
+        withDetails(dsl.selectFrom(ACTIVITIES).where(ACTIVITIES.ID.eq(id)).fetch()).singleOrNull()
+
+    // 일정·연락처를 한 번에 읽어 붙인다
+    private fun withDetails(rows: List<ActivitiesRecord>): List<Activity> {
         if (rows.isEmpty()) return emptyList()
         val ids = rows.map { it.id!! }
         val schedules = dsl.selectFrom(SCHEDULES)

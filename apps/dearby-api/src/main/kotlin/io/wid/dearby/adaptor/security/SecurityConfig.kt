@@ -35,6 +35,7 @@ class SecurityConfig {
             authorizeHttpRequests {
                 authorize(HttpMethod.POST, "$AUTH_PATH/**", permitAll)
                 authorize(HttpMethod.GET, "/v1/activities", permitAll)
+                authorize(HttpMethod.GET, "/v1/activities/*", permitAll)
                 // 400 등 오류 응답을 만드는 /error 전달이 401로 바뀌지 않게 연다
                 authorize("/error", permitAll)
                 authorize(anyRequest, authenticated)

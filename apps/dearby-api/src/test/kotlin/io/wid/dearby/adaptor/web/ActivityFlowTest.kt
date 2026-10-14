@@ -92,6 +92,17 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
     }
 
     @Test
+    fun `id로 활동 하나를 목록 항목과 같은 형태로 받고, 없으면 404`() {
+        val listed = search("q=개발 환경의 변화")["items"].single()
+        val id = listed["id"].asLong()
+
+        val item = json.readTree(mvc.get("/v1/activities/$id").andExpect { status { isOk() } }.andReturn().response.contentAsString)
+        assertEquals(listed, item)
+        mvc.get("/v1/activities/999999").andExpect { status { isNotFound() } }
+        mvc.get("/v1/activities/abc").andExpect { status { isBadRequest() } }
+    }
+
+    @Test
     fun `size가 범위를 벗어나면 400`() {
         mvc.get("/v1/activities?size=0").andExpect { status { isBadRequest() } }
         mvc.get("/v1/activities?size=101").andExpect { status { isBadRequest() } }
