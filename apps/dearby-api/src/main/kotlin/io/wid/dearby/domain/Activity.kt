@@ -14,9 +14,7 @@ data class Activity(
     val location: String?, // 주소 문구(좌표 없음) · 사용: iOS·Android·웹
     val cost: String?, // 사용: iOS·Android·웹
     val audience: String?, // 사용: iOS·Android·웹
-    val qualification: String?, // 사용: 웹
     val roles: List<String>, // 모집 역할 문구 · 사용: iOS·Android·웹
-    val imageUrl: String?, // 사용: 없음
     val officialUrl: String, // 공식 안내 · 사용: iOS·Android·웹
     val applicationUrl: String?, // 신청 링크 · 사용: iOS·Android·웹
     val sourceCheckedAt: OffsetDateTime?, // 공식 안내를 마지막으로 확인한 시각 · 사용: iOS·Android·웹

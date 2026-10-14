@@ -36,7 +36,6 @@ create table organizations
     source_id              uuid unique,             -- 원본 id
     parent_organization_id bigint,                  -- 논리키 organizations. 원본 parentId
     name                   varchar(200)     not null, -- 원본 name · 사용: iOS·Android·웹
-    description            varchar          not null, -- 원본 description · 사용: 없음
     lat                    double precision,
     lng                    double precision,
     address_line1          varchar(300),
@@ -81,7 +80,6 @@ create table programs
     source_id       uuid unique,           -- 원본 id
     organization_id bigint       not null, -- 논리키 organizations. 원본 organizationId
     name            varchar(200) not null, -- 원본 title · 사용: 웹
-    description     varchar      not null, -- 원본 description · 사용: 없음
     period_from     timestamp,
     period_to       timestamp,
     created_at      timestamp    not null,
@@ -123,8 +121,6 @@ create table activities
     location           varchar(300),           -- 원본 location(주소 문구, 좌표 없음) · 사용: iOS·Android·웹
     cost               varchar(300),           -- 원본 cost · 사용: iOS·Android·웹
     audience           varchar(1000),          -- 원본 audience · 사용: iOS·Android·웹
-    qualification      varchar(1000),          -- 원본 qualification · 사용: 웹
-    image_url          varchar(2000),          -- 원본 imageUrl · 사용: 없음
     official_url       varchar(2000) not null, -- 원본 officialUrl · 사용: iOS·Android·웹
     application_url    varchar(2000),          -- 원본 applicationUrl · 사용: iOS·Android·웹
     source_checked_at  timestamp with time zone, -- 원본 sourceCheckedAt · 사용: iOS·Android·웹
