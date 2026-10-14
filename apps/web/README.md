@@ -65,6 +65,8 @@ Web Locks serialize mutations across tabs in the same browser origin. Unsupporte
 
 ## Vercel handoff (root owns deployment)
 
+- 2026-10-14: the Vercel project `dearby-web` (Root Directory `apps/web`) is connected to this repository, so pushes deploy (main → production, other branches → preview). `vercel.json` `ignoreCommand` skips a build when nothing under `apps/web` changed since the last successful deployment of that branch (`VERCEL_GIT_PREVIOUS_SHA`, falling back to the previous commit). If that commit is missing from the shallow clone, `git diff` fails and the build runs, so a web change is never skipped.
+
 - Root Directory: `apps/web`; Framework: Next.js; Node: 24.x; install `npm ci`; build `npm run build`; output default.
 - Server-only production env: `DEARBY_API_ORIGIN` (API origin only, e.g. `https://api.example.test`), `GUEST_PROXY_SECRET` matching the API. Production values live only in the Vercel project environment (and GitHub Actions Variables/Secrets where needed), never in Git. No `NEXT_PUBLIC_*` secrets. `.env*` and `.vercel` are gitignored; `.env.example` holds placeholders only.
 - Production only accepts HTTPS API origins. Upstream timeout/redirect/schema/server failure returns an error, never an empty activity list. No caching of card/guest data. No secret values in application logs.
