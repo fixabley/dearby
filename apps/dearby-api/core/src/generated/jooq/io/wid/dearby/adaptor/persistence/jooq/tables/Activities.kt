@@ -196,6 +196,11 @@ open class Activities(
      */
     val PUBLICATION_STATUS: TableField<ActivitiesRecord, String?> = createField(DSL.name("publication_status"), SQLDataType.VARCHAR(20).nullable(false).defaultValue(DSL.field(DSL.raw("'DRAFT'::character varying"), SQLDataType.VARCHAR)), this, "")
 
+    /**
+     * The column <code>public.activities.official_source</code>.
+     */
+    val OFFICIAL_SOURCE: TableField<ActivitiesRecord, Boolean?> = createField(DSL.name("official_source"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("true"), SQLDataType.BOOLEAN)), this, "")
+
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)

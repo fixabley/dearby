@@ -7,26 +7,30 @@ alter table activities add column publication_status varchar(20) not null defaul
 alter table activities alter column publication_status set default 'DRAFT';
 create index activities_publication_status_idx on activities (publication_status);
 
--- 프로그램별 수집 설정(2026-10-15 사용자 결정: 새로 입력, Supabase 설정은 가져오지 않음).
--- 수집은 allowed_hosts 안의 https 페이지만 검색·확인한다
-create table program_sources
-(
-    id            bigint generated always as identity primary key,
-    program_id    bigint        not null, -- 논리키 programs
-    official_url  varchar(2000) not null, -- 수집을 시작할 공식 안내 페이지(https)
-    allowed_hosts varchar(253)[] not null, -- 검색·원문 확인을 허용하는 정확한 호스트. 비어 있으면 수집하지 않는다
-    enabled       boolean       not null default true,
-    created_at    timestamp     not null,
-    updated_at    timestamp     not null
-);
-create index program_sources_program_id_idx on program_sources (program_id);
+-- 수집한 활동의 출처가 프로그램의 공식 도메인(허용 호스트)인지. 웹 전체 검색에서 나온 초안은 false로, 관리자가 출처를 확인해야 한다
+alter table activities add column official_source boolean not null default true;
 
--- 수집 한 번(프로그램 설정 하나 × 한국 날짜 하루)의 결과. Spring Batch 실행 기록과 별개로 관리자가 보는 기록이다
+-- 프로그램별 수집 설정(2026-10-15 사용자 결정). 모든 프로그램이 수집 대상이고, 이 행이 없으면 아래 기본값을 쓴다.
+-- allowed_hosts가 있으면 그 호스트 안에서만 검색·원문 확인, 비어 있으면 "프로그램 이름 + 기관 이름"으로 웹 전체를 검색한다.
+-- interval_days: 수집에 성공한 날부터 이 일수 동안은 다시 수집하지 않는다(1 = 매일)
+create table program_collection_settings
+(
+    program_id    bigint primary key, -- 논리키 programs
+    official_url  varchar(2000),  -- 수집을 시작할 공식 안내 페이지(https). 없으면 검색 결과만 쓴다
+    allowed_hosts varchar(253)[] not null default '{}', -- 검색·원문 확인을 허용하는 정확한 호스트
+    interval_days integer        not null default 1 check (interval_days >= 1),
+    enabled       boolean        not null default true,
+    created_at    timestamp      not null,
+    updated_at    timestamp      not null
+);
+
+-- 수집 한 번(프로그램 하나 × 한국 날짜 하루)의 결과. Spring Batch 실행 기록과 별개로 관리자가 보는 기록이다
 create table collection_runs
 (
     id                  bigint generated always as identity primary key,
-    program_source_id   bigint                   not null, -- 논리키 program_sources
+    program_id          bigint                   not null, -- 논리키 programs
     run_date            date                     not null, -- 한국 날짜
+    official_only       boolean                  not null, -- 허용 호스트 안에서만 수집했는지(false: 웹 전체 검색)
     started_at          timestamp with time zone not null,
     finished_at         timestamp with time zone,
     outcome             varchar(20) check (outcome in ('SUCCEEDED', 'FAILED', 'SKIPPED')), -- null: 실행 중
@@ -37,5 +41,6 @@ create table collection_runs
     input_tokens        bigint                   not null default 0,
     output_tokens       bigint                   not null default 0,
     web_search_requests integer                  not null default 0,
-    unique (program_source_id, run_date)
+    unique (program_id, run_date)
 );
+create index collection_runs_program_id_run_date_idx on collection_runs (program_id, run_date desc);

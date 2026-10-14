@@ -11,13 +11,13 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardActivityHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
+import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMembers
 import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileActivityHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts
-import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramSources
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
@@ -44,6 +44,7 @@ val ACTIVITY_PARTICIPATIONS_ACTIVITY_ID_IDX: Index = Internal.createIndex(DSL.na
 val BUSINESS_CARD_ACTIVITY_HISTORIES_HISTORY_ID_IDX: Index = Internal.createIndex(DSL.name("business_card_activity_histories_history_id_idx"), BusinessCardActivityHistories.BUSINESS_CARD_ACTIVITY_HISTORIES, arrayOf(BusinessCardActivityHistories.BUSINESS_CARD_ACTIVITY_HISTORIES.PROFILE_ACTIVITY_HISTORY_ID), false)
 val BUSINESS_CARD_CONTACTS_CONTACT_ID_IDX: Index = Internal.createIndex(DSL.name("business_card_contacts_contact_id_idx"), BusinessCardContacts.BUSINESS_CARD_CONTACTS, arrayOf(BusinessCardContacts.BUSINESS_CARD_CONTACTS.CONTACT_ID), false)
 val BUSINESS_CARDS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("business_cards_user_id_idx"), BusinessCards.BUSINESS_CARDS, arrayOf(BusinessCards.BUSINESS_CARDS.USER_ID), false)
+val COLLECTION_RUNS_PROGRAM_ID_RUN_DATE_IDX: Index = Internal.createIndex(DSL.name("collection_runs_program_id_run_date_idx"), CollectionRuns.COLLECTION_RUNS, arrayOf(CollectionRuns.COLLECTION_RUNS.PROGRAM_ID, CollectionRuns.COLLECTION_RUNS.RUN_DATE.desc()), false)
 val CONTACTS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("contacts_user_id_idx"), Contacts.CONTACTS, arrayOf(Contacts.CONTACTS.USER_ID), false)
 val ORGANIZATION_CONTACTS_ORGANIZATION_ID_IDX: Index = Internal.createIndex(DSL.name("organization_contacts_organization_id_idx"), OrganizationContacts.ORGANIZATION_CONTACTS, arrayOf(OrganizationContacts.ORGANIZATION_CONTACTS.ORGANIZATION_ID), false)
 val ORGANIZATION_MEMBERS_ORGANIZATION_ID_IDX: Index = Internal.createIndex(DSL.name("organization_members_organization_id_idx"), OrganizationMembers.ORGANIZATION_MEMBERS, arrayOf(OrganizationMembers.ORGANIZATION_MEMBERS.ORGANIZATION_ID), false)
@@ -52,7 +53,6 @@ val ORGANIZATIONS_PARENT_ORGANIZATION_ID_IDX: Index = Internal.createIndex(DSL.n
 val PROFILE_ACTIVITY_HISTORIES_ACTIVITY_ID_IDX: Index = Internal.createIndex(DSL.name("profile_activity_histories_activity_id_idx"), ProfileActivityHistories.PROFILE_ACTIVITY_HISTORIES, arrayOf(ProfileActivityHistories.PROFILE_ACTIVITY_HISTORIES.ACTIVITY_ID), false)
 val PROFILE_ACTIVITY_HISTORIES_USER_ID_IDX: Index = Internal.createIndex(DSL.name("profile_activity_histories_user_id_idx"), ProfileActivityHistories.PROFILE_ACTIVITY_HISTORIES, arrayOf(ProfileActivityHistories.PROFILE_ACTIVITY_HISTORIES.USER_ID), false)
 val PROGRAM_CONTACTS_PROGRAM_ID_IDX: Index = Internal.createIndex(DSL.name("program_contacts_program_id_idx"), ProgramContacts.PROGRAM_CONTACTS, arrayOf(ProgramContacts.PROGRAM_CONTACTS.PROGRAM_ID), false)
-val PROGRAM_SOURCES_PROGRAM_ID_IDX: Index = Internal.createIndex(DSL.name("program_sources_program_id_idx"), ProgramSources.PROGRAM_SOURCES, arrayOf(ProgramSources.PROGRAM_SOURCES.PROGRAM_ID), false)
 val PROGRAM_STAFF_PROGRAM_ID_IDX: Index = Internal.createIndex(DSL.name("program_staff_program_id_idx"), ProgramStaff.PROGRAM_STAFF, arrayOf(ProgramStaff.PROGRAM_STAFF.PROGRAM_ID), false)
 val PROGRAM_STAFF_USER_ID_IDX: Index = Internal.createIndex(DSL.name("program_staff_user_id_idx"), ProgramStaff.PROGRAM_STAFF, arrayOf(ProgramStaff.PROGRAM_STAFF.USER_ID), false)
 val PROGRAMS_ORGANIZATION_ID_IDX: Index = Internal.createIndex(DSL.name("programs_organization_id_idx"), Programs.PROGRAMS, arrayOf(Programs.PROGRAMS.ORGANIZATION_ID), false)

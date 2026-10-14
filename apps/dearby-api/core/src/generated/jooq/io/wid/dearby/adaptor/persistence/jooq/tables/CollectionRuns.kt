@@ -5,8 +5,9 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
+import io.wid.dearby.adaptor.persistence.jooq.indexes.COLLECTION_RUNS_PROGRAM_ID_RUN_DATE_IDX
 import io.wid.dearby.adaptor.persistence.jooq.keys.COLLECTION_RUNS_PKEY
-import io.wid.dearby.adaptor.persistence.jooq.keys.COLLECTION_RUNS_PROGRAM_SOURCE_ID_RUN_DATE_KEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.COLLECTION_RUNS_PROGRAM_ID_RUN_DATE_KEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.CollectionRunsRecord
 
 import java.time.LocalDate
@@ -20,6 +21,7 @@ import org.jooq.Condition
 import org.jooq.Field
 import org.jooq.ForeignKey
 import org.jooq.Identity
+import org.jooq.Index
 import org.jooq.InverseForeignKey
 import org.jooq.Name
 import org.jooq.PlainSQL
@@ -82,14 +84,19 @@ open class CollectionRuns(
     val ID: TableField<CollectionRunsRecord, Long?> = createField(DSL.name("id"), SQLDataType.BIGINT.nullable(false).generatedAlwaysAsIdentity(), this, "")
 
     /**
-     * The column <code>public.collection_runs.program_source_id</code>.
+     * The column <code>public.collection_runs.program_id</code>.
      */
-    val PROGRAM_SOURCE_ID: TableField<CollectionRunsRecord, Long?> = createField(DSL.name("program_source_id"), SQLDataType.BIGINT.nullable(false), this, "")
+    val PROGRAM_ID: TableField<CollectionRunsRecord, Long?> = createField(DSL.name("program_id"), SQLDataType.BIGINT.nullable(false), this, "")
 
     /**
      * The column <code>public.collection_runs.run_date</code>.
      */
     val RUN_DATE: TableField<CollectionRunsRecord, LocalDate?> = createField(DSL.name("run_date"), SQLDataType.LOCALDATE.nullable(false), this, "")
+
+    /**
+     * The column <code>public.collection_runs.official_only</code>.
+     */
+    val OFFICIAL_ONLY: TableField<CollectionRunsRecord, Boolean?> = createField(DSL.name("official_only"), SQLDataType.BOOLEAN.nullable(false), this, "")
 
     /**
      * The column <code>public.collection_runs.started_at</code>.
@@ -160,9 +167,10 @@ open class CollectionRuns(
      */
     constructor(): this(DSL.name("collection_runs"), null)
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
+    override fun getIndexes(): List<Index> = listOf(COLLECTION_RUNS_PROGRAM_ID_RUN_DATE_IDX)
     override fun getIdentity(): Identity<CollectionRunsRecord, Long?> = super.getIdentity() as Identity<CollectionRunsRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<CollectionRunsRecord> = COLLECTION_RUNS_PKEY
-    override fun getUniqueKeys(): List<UniqueKey<CollectionRunsRecord>> = listOf(COLLECTION_RUNS_PROGRAM_SOURCE_ID_RUN_DATE_KEY)
+    override fun getUniqueKeys(): List<UniqueKey<CollectionRunsRecord>> = listOf(COLLECTION_RUNS_PROGRAM_ID_RUN_DATE_KEY)
     override fun getChecks(): List<Check<CollectionRunsRecord>> = listOf(
         Internal.createCheck(this, DSL.name("collection_runs_outcome_check"), "(((outcome)::text = ANY ((ARRAY['SUCCEEDED'::character varying, 'FAILED'::character varying, 'SKIPPED'::character varying])::text[])))", true)
     )
