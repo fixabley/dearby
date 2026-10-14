@@ -2,8 +2,9 @@
 -- 시각: LocalDateTime → timestamp, ZonedDateTime → timestamp with time zone + time_zone(존 ID)
 -- 참조: 값 테이블(연락처·역할·일정·명함 구성)만 부모에 FK(on delete cascade)를 건다.
 --   다른 애그리거트를 가리키는 id는 FK 없는 논리키이고 인덱스만 둔다. 함께 지울 데이터는 애플리케이션이 지운다(계정 삭제 등)
--- 카탈로그: organizations·programs·activities·schedules·activity_roles는 Supabase catalog_public_snapshot()을
---   주기 동기화로 복사해 둔다. source_id는 원본 UUID(동기화 키). 열 주석의 "원본"은 스냅샷 필드, "사용"은 그 값을 읽는 앱
+-- 카탈로그: organizations·programs·activities·schedules·activity_roles가 원본이다(2026-10-14 결정, Supabase는 쓰지 않음).
+--   source_id는 수집 워커가 공식 출처마다 정하는 UUID(기존 Supabase 카탈로그 id와 같음)로, 다시 수집할 때 같은 행을 찾는 키다.
+--   열 주석의 "원본"은 기존 Supabase 스냅샷(catalog_public_snapshot) 필드, "사용"은 그 값을 읽는 앱
 
 create table users
 (
