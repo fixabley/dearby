@@ -15,7 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 
-/** [openLink] opens the official application link when recruiting, otherwise the official notice. */
+/** [openLink] opens the official page: as the application link while recruiting, otherwise as the notice. */
 @Composable fun ActivityDetailPage(activity: ActivityState, error: String?, back: () -> Unit, openLink: (String) -> Unit, editReport: () -> Unit, confirm: (Boolean) -> Unit, checkCalendar: () -> Unit, share: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("활동 상세", back) { if (activity.officialUrl != null) IconButton(share) { Icon(Icons.Outlined.IosShare, "활동 공유", tint = Teal) } }
@@ -29,20 +29,20 @@ import com.dearby.nativeapp.shared.ui.*
             }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            ActivityPlaceholder(Modifier.fillMaxWidth().height(205.dp))
+            ActivityImage(activity.imageUrl, Modifier.fillMaxWidth().height(205.dp))
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { ExampleBadge(activity.status, true); ExampleBadge(activity.participation, true) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { ExampleBadge(activity.status, true) }
                 Text(activity.title, style = MaterialTheme.typography.headlineMedium)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Icon(Icons.Outlined.Business, null, Modifier.size(38.dp), tint = Teal)
-                    Text(activity.organization ?: "주최 정보 미확인", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                    Text(activity.organization, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                 }
                 HorizontalDivider()
-                InfoRow("참가 대상", activity.audience ?: "미확인", Icons.Outlined.PeopleOutline)
-                InfoRow("참가비", activity.cost ?: "미확인", Icons.Outlined.Toll)
                 InfoRow("모집 상태", activity.status, Icons.Outlined.CalendarToday)
+                activity.period?.let { InfoRow("모집 기간", it, Icons.Outlined.EventAvailable) }
                 InfoRow("개최 일시", activity.date.ifEmpty { "미확인" }, Icons.Outlined.Schedule)
                 InfoRow("장소", activity.location ?: "미확인", Icons.Outlined.LocationOn)
+                InfoRow("프로그램", activity.program, Icons.Outlined.Badge)
                 HorizontalDivider()
                 Text("소개", style = MaterialTheme.typography.titleLarge, color = Teal)
                 Text(activity.summary)
@@ -61,16 +61,7 @@ import com.dearby.nativeapp.shared.ui.*
                     Text("예시 캘린더의 바쁜 시간과 비교해요.", Modifier.align(Alignment.CenterHorizontally), color = Quiet, style = MaterialTheme.typography.bodySmall)
                 }
                 HorizontalDivider()
-                Text("참가 안내", style = MaterialTheme.typography.titleLarge, color = Teal)
-                InfoRow("참가비", activity.cost ?: "미확인")
-                InfoRow("참여 방식", if (activity.participation == "선발형") "선발형" else "바로 신청")
-                InfoRow("역할", activity.roles.joinToString(", ").ifEmpty { "미확인" })
-                HorizontalDivider()
-                Text("정보 출처", style = MaterialTheme.typography.titleLarge, color = Teal)
-                activity.officialUrl?.let { url -> TextButton({ openLink(url) }, contentPadding = PaddingValues(0.dp)) { Text("공식 안내 보기 ↗") } }
-                Text(activity.sourceNote.ifEmpty { "신청 조건과 최신 일정은 공식 사이트에서 확인해 주세요." }, color = Quiet, style = MaterialTheme.typography.bodySmall)
-                Text("확인 시각: " + (activity.checkedAt ?: "미확인"), color = Quiet, style = MaterialTheme.typography.bodySmall)
-                HorizontalDivider()
+                Text("신청 조건과 최신 일정은 공식 사이트에서 확인해 주세요.", color = Quiet, style = MaterialTheme.typography.bodySmall)
                 Text("신청 표시는 이 앱 안에서만 남기는 기록이에요. 실제 접수 여부와 무관해요.", color = Quiet, style = MaterialTheme.typography.bodySmall)
                 TextButton(editReport) { Text("신청 상태 수정") }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }

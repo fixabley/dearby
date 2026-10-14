@@ -1,7 +1,7 @@
 import { z } from "zod";
 import {
   cardSchema,
-  catalogSchema,
+  activityPageSchema,
   guestShareSchema,
   sharePageSchema,
   uuid,
@@ -33,6 +33,21 @@ const headers = {
 function failure(status: number, code: string) {
   return Response.json({ error: { code } }, { status, headers });
 }
+/** Only `q`, `cursor` and `size` are forwarded to the activity search, rebuilt from validated values. */
+function activityQuery(url: URL): URLSearchParams | undefined {
+  const query = new URLSearchParams();
+  const q = url.searchParams.get("q")?.trim();
+  const cursor = url.searchParams.get("cursor");
+  const size = url.searchParams.get("size");
+  if (q && q.length > 100) return;
+  if (cursor !== null && !/^\d{1,18}$/.test(cursor)) return;
+  if (size !== null && !(/^\d{1,3}$/.test(size) && +size >= 1 && +size <= 100))
+    return;
+  if (q) query.set("q", q);
+  if (cursor !== null) query.set("cursor", cursor);
+  if (size !== null) query.set("size", size);
+  return query;
+}
 
 export async function proxy(
   request: Request,
@@ -45,7 +60,7 @@ export async function proxy(
   const shareRoute = segments[guest ? 1 : 0] === "shares";
   const method = request.method;
   const allowed =
-    (path === "catalog" && method === "GET") ||
+    (path === "activities" && method === "GET") ||
     (segments.length === 2 &&
       ["cards", "shares"].includes(segments[0]) &&
       method === "GET") ||
@@ -61,6 +76,9 @@ export async function proxy(
     (path === "guest/session" && method === "DELETE");
   if (!allowed) return failure(404, "NOT_FOUND");
   if (id && !uuid.safeParse(id).success) return failure(422, "INVALID_INPUT");
+  const query =
+    path === "activities" ? activityQuery(new URL(request.url)) : undefined;
+  if (path === "activities" && !query) return failure(422, "INVALID_INPUT");
   const mutation = method !== "GET";
   if (
     mutation &&
@@ -101,7 +119,12 @@ export async function proxy(
     return failure(503, "GUEST_UNAVAILABLE");
   if (!apiOrigin()) return failure(503, "SERVICE_UNAVAILABLE");
   try {
-    const result = await upstreamFetch(path, { method, guest, token });
+    const result = await upstreamFetch(path, {
+      method,
+      guest,
+      token,
+      query,
+    });
     if (path === "guest/session" && (result.ok || result.status === 401)) {
       return new Response(null, {
         status: 204,
@@ -147,8 +170,8 @@ export async function proxy(
       return Response.json(page, { headers: outputHeaders });
     }
     const output =
-      path === "catalog"
-        ? catalogSchema.parse(json)
+      path === "activities"
+        ? activityPageSchema.parse(json)
         : guest
           ? savedSchema.parse(json)
           : cardSchema.parse(json);
