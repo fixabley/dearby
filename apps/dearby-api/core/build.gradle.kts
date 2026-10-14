@@ -54,7 +54,7 @@ jooq {
                 name = "org.jooq.meta.postgres.PostgresDatabase"
                 inputSchema = "public"
                 includes = ".*"
-                excludes = "flyway_schema_history"
+                excludes = "flyway_schema_history|batch_.*" // Spring Batch 테이블은 Spring Batch가 직접 쓴다
                 includeRoutines = false // 확장(pg_trgm 등) 함수는 쓰지 않는다
             }
             target {

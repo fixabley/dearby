@@ -6,6 +6,7 @@ import java.time.OffsetDateTime
 // 같은 DB를 쓰는 운영자(admin) 모듈이 다룬다
 data class ActivityCuration(
     val activityId: Id,
+    val publicationStatus: PublicationStatus, // DRAFT는 공개 API에 보이지 않는다
     val participationType: ParticipationType,
     val recruitmentStatus: RecruitmentStatus,
     val location: String?, // 장소 문구(좌표 없음)

@@ -11,6 +11,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardActivityHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
+import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
@@ -20,6 +21,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileActivityHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileActivityHistoryRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Profiles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramSources
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaffRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
@@ -88,6 +90,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val BUSINESS_CARDS: BusinessCards get() = BusinessCards.BUSINESS_CARDS
 
     /**
+     * The table <code>public.collection_runs</code>.
+     */
+    val COLLECTION_RUNS: CollectionRuns get() = CollectionRuns.COLLECTION_RUNS
+
+    /**
      * The table <code>public.contacts</code>.
      */
     val CONTACTS: Contacts get() = Contacts.CONTACTS
@@ -131,6 +138,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.program_contacts</code>.
      */
     val PROGRAM_CONTACTS: ProgramContacts get() = ProgramContacts.PROGRAM_CONTACTS
+
+    /**
+     * The table <code>public.program_sources</code>.
+     */
+    val PROGRAM_SOURCES: ProgramSources get() = ProgramSources.PROGRAM_SOURCES
 
     /**
      * The table <code>public.program_staff</code>.
@@ -192,6 +204,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         BusinessCardActivityHistories.BUSINESS_CARD_ACTIVITY_HISTORIES,
         BusinessCardContacts.BUSINESS_CARD_CONTACTS,
         BusinessCards.BUSINESS_CARDS,
+        CollectionRuns.COLLECTION_RUNS,
         Contacts.CONTACTS,
         OrganizationContacts.ORGANIZATION_CONTACTS,
         OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES,
@@ -201,6 +214,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         ProfileActivityHistoryRoles.PROFILE_ACTIVITY_HISTORY_ROLES,
         Profiles.PROFILES,
         ProgramContacts.PROGRAM_CONTACTS,
+        ProgramSources.PROGRAM_SOURCES,
         ProgramStaff.PROGRAM_STAFF,
         ProgramStaffRoles.PROGRAM_STAFF_ROLES,
         Programs.PROGRAMS,

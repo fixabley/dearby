@@ -23,15 +23,15 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         json.readTree(mvc.get("/v1/activities?$query").andExpect { status { isOk() } }.andReturn().response.contentAsString)
 
     // Let'Swift 프로그램 아래에 이름이 다른 활동을 만든다. 모든 활동은 활동 기간 일정(slot ACTIVITY)을 하나 가진다
-    private fun createActivity(name: String): Long {
+    private fun createActivity(name: String, status: String = "PUBLISHED"): Long {
         val id = jdbc.sql(
             """
             insert into activities (program_id, name, description, participation_type, recruitment_status, official_url,
-                                    freshness, source_note, created_at, updated_at)
-            select id, ?, '', 'SELECTION', 'UNKNOWN', 'https://example.com', 'STALE', '', localtimestamp, localtimestamp
+                                    freshness, source_note, publication_status, created_at, updated_at)
+            select id, ?, '', 'SELECTION', 'UNKNOWN', 'https://example.com', 'STALE', '', ?, localtimestamp, localtimestamp
             from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'
             """
-        ).param(name).update().let {
+        ).params(name, status).update().let {
             jdbc.sql("select id from activities where name = ?").param(name).query(Long::class.java).single()
         }
         jdbc.sql(
@@ -100,6 +100,14 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(listed, item)
         mvc.get("/v1/activities/999999").andExpect { status { isNotFound() } }
         mvc.get("/v1/activities/abc").andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `초안(DRAFT) 활동은 목록·검색·단건 어디에도 보이지 않는다`() {
+        val id = createActivity("초안 활동 확인", "DRAFT")
+
+        assertEquals(0, search("q=초안 활동 확인")["items"].size())
+        mvc.get("/v1/activities/$id").andExpect { status { isNotFound() } }
     }
 
     @Test

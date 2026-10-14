@@ -12,6 +12,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardActivityHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
+import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
@@ -21,6 +22,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileActivityHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileActivityHistoryRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Profiles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramSources
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaffRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
@@ -38,6 +40,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivityRolesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.BusinessCardActivityHistoriesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.BusinessCardContactsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.BusinessCardsRecord
+import io.wid.dearby.adaptor.persistence.jooq.tables.records.CollectionRunsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ContactsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.OrganizationContactsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.OrganizationMemberRolesRecord
@@ -47,6 +50,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProfileActivityHist
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProfileActivityHistoryRolesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProfilesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProgramContactsRecord
+import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProgramSourcesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProgramStaffRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProgramStaffRolesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProgramsRecord
@@ -79,6 +83,8 @@ val ACTIVITY_ROLES_PKEY: UniqueKey<ActivityRolesRecord> = Internal.createUniqueK
 val BUSINESS_CARD_ACTIVITY_HISTORIES_PKEY: UniqueKey<BusinessCardActivityHistoriesRecord> = Internal.createUniqueKey(BusinessCardActivityHistories.BUSINESS_CARD_ACTIVITY_HISTORIES, DSL.name("business_card_activity_histories_pkey"), arrayOf(BusinessCardActivityHistories.BUSINESS_CARD_ACTIVITY_HISTORIES.BUSINESS_CARD_ID, BusinessCardActivityHistories.BUSINESS_CARD_ACTIVITY_HISTORIES.PROFILE_ACTIVITY_HISTORY_ID), true)
 val BUSINESS_CARD_CONTACTS_PKEY: UniqueKey<BusinessCardContactsRecord> = Internal.createUniqueKey(BusinessCardContacts.BUSINESS_CARD_CONTACTS, DSL.name("business_card_contacts_pkey"), arrayOf(BusinessCardContacts.BUSINESS_CARD_CONTACTS.BUSINESS_CARD_ID, BusinessCardContacts.BUSINESS_CARD_CONTACTS.CONTACT_ID), true)
 val BUSINESS_CARDS_PKEY: UniqueKey<BusinessCardsRecord> = Internal.createUniqueKey(BusinessCards.BUSINESS_CARDS, DSL.name("business_cards_pkey"), arrayOf(BusinessCards.BUSINESS_CARDS.ID), true)
+val COLLECTION_RUNS_PKEY: UniqueKey<CollectionRunsRecord> = Internal.createUniqueKey(CollectionRuns.COLLECTION_RUNS, DSL.name("collection_runs_pkey"), arrayOf(CollectionRuns.COLLECTION_RUNS.ID), true)
+val COLLECTION_RUNS_PROGRAM_SOURCE_ID_RUN_DATE_KEY: UniqueKey<CollectionRunsRecord> = Internal.createUniqueKey(CollectionRuns.COLLECTION_RUNS, DSL.name("collection_runs_program_source_id_run_date_key"), arrayOf(CollectionRuns.COLLECTION_RUNS.PROGRAM_SOURCE_ID, CollectionRuns.COLLECTION_RUNS.RUN_DATE), true)
 val CONTACTS_PKEY: UniqueKey<ContactsRecord> = Internal.createUniqueKey(Contacts.CONTACTS, DSL.name("contacts_pkey"), arrayOf(Contacts.CONTACTS.ID), true)
 val ORGANIZATION_CONTACTS_PKEY: UniqueKey<OrganizationContactsRecord> = Internal.createUniqueKey(OrganizationContacts.ORGANIZATION_CONTACTS, DSL.name("organization_contacts_pkey"), arrayOf(OrganizationContacts.ORGANIZATION_CONTACTS.ID), true)
 val ORGANIZATION_MEMBER_ROLES_PKEY: UniqueKey<OrganizationMemberRolesRecord> = Internal.createUniqueKey(OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES, DSL.name("organization_member_roles_pkey"), arrayOf(OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES.ORGANIZATION_MEMBER_ID, OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES.ROLE_ID), true)
@@ -90,6 +96,7 @@ val PROFILE_ACTIVITY_HISTORY_ROLES_PKEY: UniqueKey<ProfileActivityHistoryRolesRe
 val PROFILES_PKEY: UniqueKey<ProfilesRecord> = Internal.createUniqueKey(Profiles.PROFILES, DSL.name("profiles_pkey"), arrayOf(Profiles.PROFILES.ID), true)
 val PROFILES_USER_ID_KEY: UniqueKey<ProfilesRecord> = Internal.createUniqueKey(Profiles.PROFILES, DSL.name("profiles_user_id_key"), arrayOf(Profiles.PROFILES.USER_ID), true)
 val PROGRAM_CONTACTS_PKEY: UniqueKey<ProgramContactsRecord> = Internal.createUniqueKey(ProgramContacts.PROGRAM_CONTACTS, DSL.name("program_contacts_pkey"), arrayOf(ProgramContacts.PROGRAM_CONTACTS.ID), true)
+val PROGRAM_SOURCES_PKEY: UniqueKey<ProgramSourcesRecord> = Internal.createUniqueKey(ProgramSources.PROGRAM_SOURCES, DSL.name("program_sources_pkey"), arrayOf(ProgramSources.PROGRAM_SOURCES.ID), true)
 val PROGRAM_STAFF_PKEY: UniqueKey<ProgramStaffRecord> = Internal.createUniqueKey(ProgramStaff.PROGRAM_STAFF, DSL.name("program_staff_pkey"), arrayOf(ProgramStaff.PROGRAM_STAFF.ID), true)
 val PROGRAM_STAFF_ROLES_PKEY: UniqueKey<ProgramStaffRolesRecord> = Internal.createUniqueKey(ProgramStaffRoles.PROGRAM_STAFF_ROLES, DSL.name("program_staff_roles_pkey"), arrayOf(ProgramStaffRoles.PROGRAM_STAFF_ROLES.PROGRAM_STAFF_ID, ProgramStaffRoles.PROGRAM_STAFF_ROLES.ROLE_ID), true)
 val PROGRAMS_PKEY: UniqueKey<ProgramsRecord> = Internal.createUniqueKey(Programs.PROGRAMS, DSL.name("programs_pkey"), arrayOf(Programs.PROGRAMS.ID), true)

@@ -12,6 +12,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardActivityHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
+import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
@@ -21,6 +22,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileActivityHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileActivityHistoryRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Profiles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramSources
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaffRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
@@ -70,6 +72,11 @@ val BUSINESS_CARD_CONTACTS: BusinessCardContacts = BusinessCardContacts.BUSINESS
 val BUSINESS_CARDS: BusinessCards = BusinessCards.BUSINESS_CARDS
 
 /**
+ * The table <code>public.collection_runs</code>.
+ */
+val COLLECTION_RUNS: CollectionRuns = CollectionRuns.COLLECTION_RUNS
+
+/**
  * The table <code>public.contacts</code>.
  */
 val CONTACTS: Contacts = Contacts.CONTACTS
@@ -113,6 +120,11 @@ val PROFILES: Profiles = Profiles.PROFILES
  * The table <code>public.program_contacts</code>.
  */
 val PROGRAM_CONTACTS: ProgramContacts = ProgramContacts.PROGRAM_CONTACTS
+
+/**
+ * The table <code>public.program_sources</code>.
+ */
+val PROGRAM_SOURCES: ProgramSources = ProgramSources.PROGRAM_SOURCES
 
 /**
  * The table <code>public.program_staff</code>.
