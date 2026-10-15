@@ -39,6 +39,15 @@ class JooqProgramRepository(private val dsl: DSLContext) : ProgramRepository {
             .fetchOne()!!.id!!
     }
 
+    override fun update(id: Id, organizationId: Id, name: String) {
+        dsl.update(PROGRAMS)
+            .set(PROGRAMS.ORGANIZATION_ID, organizationId)
+            .set(PROGRAMS.NAME, name)
+            .set(PROGRAMS.UPDATED_AT, LocalDateTime.now())
+            .where(PROGRAMS.ID.eq(id))
+            .execute()
+    }
+
     private fun load(rows: Result<ProgramsRecord>): List<Program> {
         if (rows.isEmpty()) return emptyList()
         val ids = rows.map { it.id!! }

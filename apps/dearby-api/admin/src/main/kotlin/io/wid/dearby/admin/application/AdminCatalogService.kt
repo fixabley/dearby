@@ -23,20 +23,35 @@ class AdminCatalogService(
 ) {
 
     @Transactional(readOnly = true)
-    fun searchOrganizations(q: String?, cursor: Id?, size: Int): Page<Organization> {
+    fun searchOrganizations(q: String?, parentId: Id?, rootsOnly: Boolean, cursor: Id?, size: Int): Page<OrganizationListing> {
         checkSize(size)
-        val found = organizations.search(q, cursor, size + 1)
-        return page(found, size) { it.id }
+        val found = organizations.search(q, parentId, rootsOnly, cursor, size + 1)
+        val page = found.take(size)
+        return Page(organizationListings(page), if (found.size > size) page.last().id else null)
     }
 
     @Transactional
-    fun createOrganization(name: String, parentOrganizationId: Id?): Organization {
+    fun createOrganization(name: String, parentOrganizationId: Id?): OrganizationListing {
         val trimmed = requireName(name)
-        if (parentOrganizationId != null && organizations.findAllById(listOf(parentOrganizationId)).isEmpty()) {
-            throw InvalidInputException("상위 조직을 찾을 수 없습니다", "Parent organization not found: $parentOrganizationId")
-        }
+        parentOrganizationId?.let(::requireOrganization)
         val id = organizations.create(trimmed, parentOrganizationId)
-        return organizations.findAllById(listOf(id)).single()
+        return organizationListing(id)
+    }
+
+    // 보낸 값만 바꾼다. 자기 자신이나 자기 하위 조직을 상위로 지정하면 순환이라 거부한다
+    @Transactional
+    fun updateOrganization(id: Id, name: String?, parentOrganizationId: Id?, clearParent: Boolean): OrganizationListing {
+        val current = organizations.findAllById(listOf(id)).singleOrNull()
+            ?: throw NotFoundException("조직을 찾을 수 없습니다", "Organization not found: $id")
+        val parent = if (clearParent) null else parentOrganizationId ?: current.parentOrganizationId
+        if (parent != null && parent != current.parentOrganizationId) {
+            requireOrganization(parent)
+            if (parent == id || id in organizations.ancestorIds(parent)) {
+                throw InvalidInputException("자기 자신이나 하위 조직 아래로 옮길 수 없습니다", "Cycle: $id under $parent")
+            }
+        }
+        organizations.update(id, name?.let(::requireName) ?: current.name, parent)
+        return organizationListing(id)
     }
 
     @Transactional(readOnly = true)
@@ -50,11 +65,18 @@ class AdminCatalogService(
     @Transactional
     fun createProgram(organizationId: Id, name: String, collection: CollectionSettings?): ProgramListing {
         val trimmed = requireName(name)
-        if (organizations.findAllById(listOf(organizationId)).isEmpty()) {
-            throw InvalidInputException("조직을 찾을 수 없습니다", "Organization not found: $organizationId")
-        }
+        requireOrganization(organizationId)
         val id = programs.create(organizationId, trimmed)
         collection?.let { settings.save(id, validate(it)) }
+        return listing(id)
+    }
+
+    @Transactional
+    fun updateProgram(id: Id, name: String?, organizationId: Id?): ProgramListing {
+        val current = programs.findAllById(listOf(id)).singleOrNull()
+            ?: throw NotFoundException("프로그램을 찾을 수 없습니다", "Program not found: $id")
+        organizationId?.let(::requireOrganization)
+        programs.update(id, organizationId ?: current.organizationId, name?.let(::requireName) ?: current.name)
         return listing(id)
     }
 
@@ -85,6 +107,23 @@ class AdminCatalogService(
     private fun withCuration(items: List<ActivityListing>): List<AdminActivity> {
         val byId = curations.findAllByActivityId(items.map { it.activity.id }).associateBy { it.activityId }
         return items.mapNotNull { listing -> byId[listing.activity.id]?.let { AdminActivity(listing, it) } }
+    }
+
+    private fun requireOrganization(id: Id) {
+        if (organizations.findAllById(listOf(id)).isEmpty()) {
+            throw InvalidInputException("조직을 찾을 수 없습니다", "Organization not found: $id")
+        }
+    }
+
+    private fun organizationListing(id: Id): OrganizationListing =
+        organizationListings(organizations.findAllById(listOf(id))).single()
+
+    private fun organizationListings(page: List<Organization>): List<OrganizationListing> {
+        val ids = page.map { it.id }
+        val children = organizations.childCounts(ids)
+        val programCounts = organizations.programCounts(ids)
+        val ancestors = organizations.ancestors(ids)
+        return page.map { OrganizationListing(it, children[it.id] ?: 0, programCounts[it.id] ?: 0, ancestors[it.id].orEmpty()) }
     }
 
     private fun listing(programId: Id): ProgramListing =
@@ -123,11 +162,6 @@ class AdminCatalogService(
 
     private fun checkSize(size: Int) {
         if (size !in 1..ActivityService.MAX_PAGE_SIZE) throw InvalidInputException("size는 1에서 ${ActivityService.MAX_PAGE_SIZE} 사이여야 합니다")
-    }
-
-    private fun <T> page(found: List<T>, size: Int, id: (T) -> Id): Page<T> {
-        val page = found.take(size)
-        return Page(page, if (found.size > size) id(page.last()) else null)
     }
 
     private companion object {

@@ -2,11 +2,13 @@ package io.wid.dearby.adaptor.persistence
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ORGANIZATIONS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ORGANIZATION_CONTACTS
+import io.wid.dearby.adaptor.persistence.jooq.tables.references.PROGRAMS
 import io.wid.dearby.application.organization.OrganizationRepository
 import io.wid.dearby.domain.*
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.OrganizationsRecord
 import org.jooq.Condition
 import org.jooq.DSLContext
+import org.jooq.impl.DSL
 import org.jooq.Result
 import org.springframework.stereotype.Repository
 import java.time.LocalDateTime
@@ -19,9 +21,11 @@ class JooqOrganizationRepository(private val dsl: DSLContext) : OrganizationRepo
         return load(dsl.selectFrom(ORGANIZATIONS).where(ORGANIZATIONS.ID.`in`(ids)).fetch())
     }
 
-    override fun search(q: String?, after: Id?, size: Int): List<Organization> {
+    override fun search(q: String?, parentId: Id?, rootsOnly: Boolean, after: Id?, size: Int): List<Organization> {
         val conditions = buildList<Condition> {
             q?.takeIf { it.isNotBlank() }?.let { add(ORGANIZATIONS.NAME.containsIgnoreCase(it.trim())) }
+            parentId?.let { add(ORGANIZATIONS.PARENT_ORGANIZATION_ID.eq(it)) }
+            if (rootsOnly) add(ORGANIZATIONS.PARENT_ORGANIZATION_ID.isNull)
             after?.let { add(ORGANIZATIONS.ID.gt(it)) }
         }
         return load(dsl.selectFrom(ORGANIZATIONS).where(conditions).orderBy(ORGANIZATIONS.ID).limit(size).fetch())
@@ -36,6 +40,54 @@ class JooqOrganizationRepository(private val dsl: DSLContext) : OrganizationRepo
             .set(ORGANIZATIONS.UPDATED_AT, now)
             .returning(ORGANIZATIONS.ID)
             .fetchOne()!!.id!!
+    }
+
+    override fun update(id: Id, name: String, parentOrganizationId: Id?) {
+        dsl.update(ORGANIZATIONS)
+            .set(ORGANIZATIONS.NAME, name)
+            .set(ORGANIZATIONS.PARENT_ORGANIZATION_ID, parentOrganizationId)
+            .set(ORGANIZATIONS.UPDATED_AT, LocalDateTime.now())
+            .where(ORGANIZATIONS.ID.eq(id))
+            .execute()
+    }
+
+    override fun ancestorIds(id: Id): List<Id> = walkUp(id, parents())
+
+    override fun ancestors(ids: Collection<Id>): Map<Id, List<Pair<Id, String>>> {
+        if (ids.isEmpty()) return emptyMap()
+        val rows = dsl.select(ORGANIZATIONS.ID, ORGANIZATIONS.PARENT_ORGANIZATION_ID, ORGANIZATIONS.NAME).from(ORGANIZATIONS).fetch()
+        val parents = rows.associate { it.value1()!! to it.value2() }
+        val names = rows.associate { it.value1()!! to it.value3()!! }
+        return ids.associateWith { id -> walkUp(id, parents).reversed().map { it to names.getValue(it) } }
+    }
+
+    // 조직 수가 적어 전체 (id, 상위 id)를 한 번 읽어 따라 올라간다
+    private fun parents(): Map<Id, Id?> =
+        dsl.select(ORGANIZATIONS.ID, ORGANIZATIONS.PARENT_ORGANIZATION_ID).from(ORGANIZATIONS).fetch().associate { it.value1()!! to it.value2() }
+
+    // 가까운 상위부터. 데이터가 이미 순환이어도 멈추도록 본 id는 다시 따라가지 않는다
+    private fun walkUp(id: Id, parents: Map<Id, Id?>): List<Id> {
+        val result = mutableListOf<Id>()
+        var current = parents[id]
+        while (current != null && current != id && current !in result) {
+            result += current
+            current = parents[current]
+        }
+        return result
+    }
+
+    override fun childCounts(ids: Collection<Id>): Map<Id, Int> {
+        if (ids.isEmpty()) return emptyMap()
+        return dsl.select(ORGANIZATIONS.PARENT_ORGANIZATION_ID, DSL.count()).from(ORGANIZATIONS)
+            .where(ORGANIZATIONS.PARENT_ORGANIZATION_ID.`in`(ids)).groupBy(ORGANIZATIONS.PARENT_ORGANIZATION_ID)
+            .fetch().associate { it.value1()!! to it.value2()!! }
+    }
+
+    override fun programCounts(ids: Collection<Id>): Map<Id, Int> {
+        if (ids.isEmpty()) return emptyMap()
+        return dsl.select(PROGRAMS.ORGANIZATION_ID, DSL.count()).from(PROGRAMS)
+            .where(PROGRAMS.ORGANIZATION_ID.`in`(ids)).groupBy(PROGRAMS.ORGANIZATION_ID)
+            .fetch().associate { it.value1()!! to it.value2()!! }
     }
 
     private fun load(rows: Result<OrganizationsRecord>): List<Organization> {

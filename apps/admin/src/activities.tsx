@@ -19,7 +19,7 @@ type Schedule = {
   address: { addressLine1: string; addressLine2: string } | null;
   conferenceUrl: string | null;
 };
-type PublicationStatus = "DRAFT" | "PUBLISHED";
+export type PublicationStatus = "DRAFT" | "PUBLISHED";
 type Activity = {
   id: number;
   name: string;
@@ -39,7 +39,7 @@ type Activity = {
   sourceCheckedAt: string | null;
 };
 
-const statusLabels: Record<PublicationStatus, string> = { DRAFT: "초안", PUBLISHED: "게시됨" };
+export const statusLabels: Record<PublicationStatus, string> = { DRAFT: "초안", PUBLISHED: "게시됨" };
 
 /** Exact times in the schedule's own time zone, all-day ranges as dates, otherwise the label. Never invents a time. */
 function scheduleText(schedule: Schedule | null): string {

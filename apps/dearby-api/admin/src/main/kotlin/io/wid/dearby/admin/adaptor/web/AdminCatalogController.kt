@@ -15,9 +15,11 @@ class AdminCatalogController(private val catalog: AdminCatalogService) {
     @GetMapping("/organizations")
     fun organizations(
         @RequestParam(required = false) q: String?,
+        @RequestParam(required = false) parentId: Long?,
+        @RequestParam(defaultValue = "false") rootsOnly: Boolean,
         @RequestParam(required = false) cursor: Long?,
         @RequestParam(defaultValue = DEFAULT_SIZE) size: Int,
-    ) = catalog.searchOrganizations(q, cursor, size).let { page ->
+    ) = catalog.searchOrganizations(q, parentId, rootsOnly, cursor, size).let { page ->
         PageResponse(page.items.map(OrganizationResponse::from), page.nextCursor)
     }
 
@@ -25,6 +27,10 @@ class AdminCatalogController(private val catalog: AdminCatalogService) {
     @ResponseStatus(HttpStatus.CREATED)
     fun createOrganization(@RequestBody request: OrganizationCreateRequest) =
         OrganizationResponse.from(catalog.createOrganization(request.name, request.parentOrganizationId))
+
+    @PatchMapping("/organizations/{id}")
+    fun updateOrganization(@PathVariable id: Long, @RequestBody request: OrganizationUpdateRequest) =
+        OrganizationResponse.from(catalog.updateOrganization(id, request.name, request.parentOrganizationId, request.clearParent))
 
     @GetMapping("/programs")
     fun programs(
@@ -40,6 +46,10 @@ class AdminCatalogController(private val catalog: AdminCatalogService) {
     @ResponseStatus(HttpStatus.CREATED)
     fun createProgram(@RequestBody request: ProgramCreateRequest) =
         ProgramResponse.from(catalog.createProgram(request.organizationId, request.name, request.collection?.toSettings()))
+
+    @PatchMapping("/programs/{id}")
+    fun updateProgram(@PathVariable id: Long, @RequestBody request: ProgramUpdateRequest) =
+        ProgramResponse.from(catalog.updateProgram(id, request.name, request.organizationId))
 
     @GetMapping("/programs/{id}/collection-settings")
     fun collectionSettings(@PathVariable id: Long) = CollectionSettingsResponse.from(catalog.getCollectionSettings(id))

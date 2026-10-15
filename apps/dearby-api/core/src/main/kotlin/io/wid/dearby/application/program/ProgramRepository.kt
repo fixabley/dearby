@@ -13,4 +13,6 @@ interface ProgramRepository {
     fun search(q: String?, organizationId: Id?, after: Id?, size: Int): List<Program>
 
     fun create(organizationId: Id, name: String): Id
+
+    fun update(id: Id, organizationId: Id, name: String)
 }

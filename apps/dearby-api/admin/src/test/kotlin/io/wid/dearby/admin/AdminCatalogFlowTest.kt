@@ -79,6 +79,52 @@ class AdminCatalogFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: Jdb
         assertEquals(false, letswift["collection"]["officialOnly"].asBoolean())
     }
 
+    private fun createOrganization(name: String, parentId: Long? = null): Long = read(
+        mvc.post("/v1/admin/organizations") { asAdmin(); body("""{"name":"$name","parentOrganizationId":${parentId ?: "null"}}""") }
+            .andExpect { status { isCreated() } }
+    )["id"].asLong()
+
+    private fun MockHttpServletRequestDsl.patchBody(value: String) = body(value)
+
+    @Test
+    fun `조직도는 최상위와 하위를 나눠 주고, 이름·상위 조직을 바꾸되 순환은 막는다`() {
+        val root = createOrganization("트리 최상위")
+        val child = createOrganization("트리 하위", root)
+        val grandchild = createOrganization("트리 손자", child)
+
+        val roots = read(mvc.get("/v1/admin/organizations?rootsOnly=true&q=트리") { asAdmin() })["items"]
+        assertEquals(listOf(root), roots.values().map { it["id"].asLong() })
+        assertEquals(1, roots.single()["childCount"].asInt())
+        assertEquals(listOf(child), read(mvc.get("/v1/admin/organizations?parentId=$root") { asAdmin() })["items"].values().map { it["id"].asLong() })
+        // 검색 결과는 최상위부터의 상위 경로를 함께 준다
+        val found = read(mvc.get("/v1/admin/organizations?q=트리 손자") { asAdmin() })["items"].single()
+        assertEquals(listOf("트리 최상위", "트리 하위"), found["ancestors"].values().map { it["name"].asString() })
+        assertEquals(0, roots.single()["ancestors"].size())
+
+        // 자기 자신·자기 하위 아래로는 못 옮긴다
+        mvc.patch("/v1/admin/organizations/$root") { asAdmin(); patchBody("""{"parentOrganizationId":$grandchild}""") }
+            .andExpect { status { isBadRequest() } }
+        mvc.patch("/v1/admin/organizations/$root") { asAdmin(); patchBody("""{"parentOrganizationId":$root}""") }
+            .andExpect { status { isBadRequest() } }
+        // 이름만 바꾸면 상위는 그대로, clearParent면 최상위로
+        val renamed = read(mvc.patch("/v1/admin/organizations/$child") { asAdmin(); patchBody("""{"name":"트리 하위(수정)"}""") }
+            .andExpect { status { isOk() } })
+        assertEquals(listOf("트리 하위(수정)", root.toString()), listOf(renamed["name"].asString(), renamed["parentOrganizationId"].asString()))
+        val moved = read(mvc.patch("/v1/admin/organizations/$grandchild") { asAdmin(); patchBody("""{"clearParent":true}""") }
+            .andExpect { status { isOk() } })
+        assertEquals(true, moved["parentOrganizationId"].isNull)
+        mvc.patch("/v1/admin/organizations/999999") { asAdmin(); patchBody("""{"name":"x"}""") }.andExpect { status { isNotFound() } }
+
+        // 프로그램은 다른 조직으로 옮기고 이름을 바꿀 수 있다. 조직의 programCount가 따라 바뀐다
+        val program = read(mvc.post("/v1/admin/programs") { asAdmin(); body("""{"organizationId":$child,"name":"트리 프로그램"}""") }
+            .andExpect { status { isCreated() } })["id"].asLong()
+        val updated = read(mvc.patch("/v1/admin/programs/$program") { asAdmin(); patchBody("""{"organizationId":$root,"name":"트리 프로그램(이동)"}""") }
+            .andExpect { status { isOk() } })
+        assertEquals(listOf(root.toString(), "트리 프로그램(이동)"), listOf(updated["organization"]["id"].asString(), updated["name"].asString()))
+        assertEquals(1, read(mvc.get("/v1/admin/organizations?rootsOnly=true&q=트리 최상위") { asAdmin() })["items"].single()["programCount"].asInt())
+        mvc.patch("/v1/admin/programs/$program") { asAdmin(); patchBody("""{"organizationId":999999}""") }.andExpect { status { isBadRequest() } }
+    }
+
     @Test
     fun `수집 설정은 https 주소와 호스트 이름만 받는다`() {
         val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()

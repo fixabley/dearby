@@ -20,6 +20,18 @@ export function useCursorList<T>(path: string, params: Params) {
   return { list, items: list.data?.pages.flatMap((page) => page.items) ?? [] };
 }
 
+/** Loads a whole tree level: follows `nextCursor` until the last page. */
+export async function allPages<T>(path: string, params: Params): Promise<T[]> {
+  const items: T[] = [];
+  let cursor: Page<T>["nextCursor"] = null;
+  do {
+    const page: Page<T> = await api<Page<T>>(`${path}?${query({ ...params, cursor: cursor ?? undefined, size: 100 })}`);
+    items.push(...page.items);
+    cursor = page.nextCursor;
+  } while (cursor != null);
+  return items;
+}
+
 export function CursorTable<T extends { id: number }>({
   cursor: { list, items },
   ...table
@@ -48,13 +60,14 @@ export function CursorTable<T extends { id: number }>({
   );
 }
 
-/** Server-side name search for an organization or program id. Keeps the chosen label while the query changes. */
+/** Server-side name search for an organization or program id. Keeps the chosen label (or `label`, the current value's name) while the query changes. */
 export function SearchSelect({
   path,
   params = {},
   value,
   onChange,
   placeholder,
+  label,
   ...rest
 }: {
   path: "organizations" | "programs";
@@ -62,12 +75,13 @@ export function SearchSelect({
   value?: number;
   onChange?: (value?: number) => void;
   placeholder: string;
+  label?: string;
   style?: CSSProperties;
   "aria-label"?: string;
 }) {
   const [search, setSearch] = useState(""),
     [debounced, setDebounced] = useState(""),
-    [chosen, setChosen] = useState<{ value: number; label: string }>();
+    [chosen, setChosen] = useState(value !== undefined && label ? { value, label } : undefined);
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(search), 250);
     return () => clearTimeout(timer);
