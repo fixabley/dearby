@@ -11,9 +11,18 @@ enum CatalogClient {
         guard let url = components?.url else { throw URLError(.badURL) }
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue(acceptLanguage(Locale.preferredLanguages), forHTTPHeaderField: "Accept-Language")
         let (data, response) = try await URLSession.shared.data(for: request)
         guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
         return try decode(data)
+    }
+    /// The device language order, so the API answers activity text in English when English comes before Korean.
+    /// URLSession's own header follows the app's localizations (Korean only), not the device.
+    static func acceptLanguage(_ languages: [String]) -> String {
+        let tags = languages.prefix(5)
+        guard !tags.isEmpty else { return "ko" }
+        return tags.enumerated().map { index, tag in index == 0 ? tag : "\(tag);q=\(String(format: "%.1f", 1 - Double(index) * 0.1))" }
+            .joined(separator: ", ")
     }
     static func decode(_ data: Data) throws -> ActivityPage {
         let payload = try JSONDecoder().decode(Payload.self, from: data)
