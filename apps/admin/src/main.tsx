@@ -63,21 +63,17 @@ function Forbidden({ userId }: { userId: string }) {
   const { message } = AntApp.useApp();
   const recheck = useMutation({
     mutationFn: recheckRoles,
-    onSuccess: (admin) => admin || message.info("아직 ADMIN 권한이 없어요. 운영자에게 확인해 주세요."),
+    onSuccess: (admin) => admin || message.info("아직 관리자 권한이 없어요. 관리자에게 확인해 주세요."),
   });
   return (
     <main className="login">
       <Brand />
       <h1>관리자 권한이 없어요</h1>
-      <p>
-        로그인은 됐지만 이 계정에 <strong>ADMIN</strong> 역할이 없어요. 어드민에는 권한을 주는 화면이 없어서, 운영자가 DB의{" "}
-        <code>user_roles</code>에 직접 넣어야 해요.
-      </p>
+      <p>로그인은 됐지만 이 계정에는 관리자 권한이 없어요. 관리자에게 아래 계정 ID를 알려 권한을 요청해 주세요.</p>
       <Typography.Paragraph copyable={{ text: userId }}>
-        내 사용자 ID: <code>{userId}</code>
+        계정 ID: <code>{userId}</code>
       </Typography.Paragraph>
-      <pre className="sql">{`insert into user_roles (user_id, role)\nvalues ('${userId}', 'ADMIN');`}</pre>
-      <p className="field-note">권한을 받은 뒤 ‘다시 확인’을 누르면 새 토큰으로 권한을 다시 읽어요.</p>
+      <p className="field-note">권한을 받은 뒤 ‘다시 확인’을 누르면 권한을 다시 읽어요.</p>
       {recheck.error && <Alert className="form-error" type="error" showIcon message={recheck.error.message} />}
       <Button type="primary" block size="large" loading={recheck.isPending} onClick={() => recheck.mutate()}>
         다시 확인
