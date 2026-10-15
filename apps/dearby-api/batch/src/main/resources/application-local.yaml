@@ -1,0 +1,4 @@
+# 로컬 개발용(local 프로필). 값은 .env.local에서 읽는다(.env.local.example 참고)
+spring:
+  config:
+    import: optional:file:.env.local[.properties]
