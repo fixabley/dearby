@@ -4,6 +4,7 @@ WORKDIR /src
 COPY gradlew settings.gradle.kts build.gradle.kts ./
 COPY gradle gradle
 COPY core core
+COPY auth auth
 COPY api api
 RUN ./gradlew --no-daemon :api:bootJar && mv api/build/libs/*.jar app.jar
 

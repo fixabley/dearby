@@ -1,5 +1,6 @@
 package io.wid.dearby.adaptor.web
 
+import io.wid.dearby.auth.web.ApiExceptionHandler
 import io.wid.dearby.domain.AuthenticationFailedException
 import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.NotFoundException

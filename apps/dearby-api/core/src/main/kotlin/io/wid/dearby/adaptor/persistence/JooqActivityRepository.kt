@@ -20,7 +20,7 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
 
     override fun search(condition: ActivitySearch): List<Activity> {
         val conditions = buildList<Condition> {
-            add(PUBLISHED)
+            condition.publicationStatus?.let { add(ACTIVITIES.PUBLICATION_STATUS.eq(it.name)) }
             condition.q?.takeIf { it.isNotBlank() }?.trim()?.let { q ->
                 // 부분 일치 또는 단어 유사도(pg_trgm, V7). `<%`는 word_similarity(q, 열) >= 아래 기준값이면 참이고 GIN 인덱스를 탄다
                 add(
@@ -48,8 +48,12 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
         return withDetails(rows)
     }
 
-    override fun findById(id: Id): Activity? =
-        withDetails(dsl.selectFrom(ACTIVITIES).where(ACTIVITIES.ID.eq(id), PUBLISHED).fetch()).singleOrNull()
+    override fun findById(id: Id, publicationStatus: PublicationStatus?): Activity? =
+        withDetails(
+            dsl.selectFrom(ACTIVITIES)
+                .where(ACTIVITIES.ID.eq(id), publicationStatus?.let { ACTIVITIES.PUBLICATION_STATUS.eq(it.name) } ?: DSL.noCondition())
+                .fetch()
+        ).singleOrNull()
 
     // 일정·연락처를 한 번에 읽어 붙인다
     private fun withDetails(rows: List<ActivitiesRecord>): List<Activity> {
@@ -114,8 +118,6 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
     )
 
     private companion object {
-        // 공개 API는 게시된 활동만 읽는다. 초안(DRAFT)은 관리자 검토 전이다
-        val PUBLISHED: Condition = ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name)
         const val WORD_SIMILARITY_THRESHOLD = "0.4"
         const val SLOT_APPLICATION = "APPLICATION"
         const val SLOT_ACTIVITY = "ACTIVITY"
