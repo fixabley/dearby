@@ -20,6 +20,9 @@ interface OrganizationRepository {
     // id 조직의 상위 조직 id를 가까운 것부터(자기 자신 제외). 순환 지정 확인용
     fun ancestorIds(id: Id): List<Id>
 
+    // 조직별 상위 경로(최상위부터 바로 위 조직까지, 이름 포함). 최상위 조직은 빈 목록
+    fun ancestors(ids: Collection<Id>): Map<Id, List<Pair<Id, String>>>
+
     // 조직별 하위 조직 수·프로그램 수(0이면 빠진다)
     fun childCounts(ids: Collection<Id>): Map<Id, Int>
 

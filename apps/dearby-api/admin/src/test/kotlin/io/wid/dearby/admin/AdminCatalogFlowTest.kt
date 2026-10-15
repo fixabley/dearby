@@ -96,6 +96,10 @@ class AdminCatalogFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: Jdb
         assertEquals(listOf(root), roots.values().map { it["id"].asLong() })
         assertEquals(1, roots.single()["childCount"].asInt())
         assertEquals(listOf(child), read(mvc.get("/v1/admin/organizations?parentId=$root") { asAdmin() })["items"].values().map { it["id"].asLong() })
+        // 검색 결과는 최상위부터의 상위 경로를 함께 준다
+        val found = read(mvc.get("/v1/admin/organizations?q=트리 손자") { asAdmin() })["items"].single()
+        assertEquals(listOf("트리 최상위", "트리 하위"), found["ancestors"].values().map { it["name"].asString() })
+        assertEquals(0, roots.single()["ancestors"].size())
 
         // 자기 자신·자기 하위 아래로는 못 옮긴다
         mvc.patch("/v1/admin/organizations/$root") { asAdmin(); patchBody("""{"parentOrganizationId":$grandchild}""") }

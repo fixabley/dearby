@@ -122,7 +122,8 @@ class AdminCatalogService(
         val ids = page.map { it.id }
         val children = organizations.childCounts(ids)
         val programCounts = organizations.programCounts(ids)
-        return page.map { OrganizationListing(it, children[it.id] ?: 0, programCounts[it.id] ?: 0) }
+        val ancestors = organizations.ancestors(ids)
+        return page.map { OrganizationListing(it, children[it.id] ?: 0, programCounts[it.id] ?: 0, ancestors[it.id].orEmpty()) }
     }
 
     private fun listing(programId: Id): ProgramListing =

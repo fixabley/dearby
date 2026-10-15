@@ -21,7 +21,7 @@
 | POST /v1/admin/organizations | `{name, parentOrganizationId?}` | 201 Organization. 이름이 비었거나 상위 조직이 없으면 400 |
 | PATCH /v1/admin/organizations/:id | `{name?, parentOrganizationId?, clearParent?}` | 200 Organization. 없으면 404. 자기 자신이나 자기 하위 조직을 상위로 지정하면 400 |
 
-- Organization: `{id, name, parentOrganizationId, childCount, programCount}`. `childCount`·`programCount`는 트리에서 펼칠 것이 있는지 보여 주는 값이다.
+- Organization: `{id, name, parentOrganizationId, childCount, programCount, ancestors}`. `childCount`·`programCount`는 트리에서 펼칠 것이 있는지 보여 주는 값이다. `ancestors`는 최상위부터 바로 위 조직까지의 `{id, name}` 목록(최상위 조직은 `[]`)으로, 검색 결과의 상위 이름 표시와 경로 자동 펼침에 쓴다.
 - 조직도(트리): `rootsOnly=true`로 최상위 조직을, `parentId=<id>`로 그 조직의 하위 조직을 받는다. 프로그램은 `GET /programs?organizationId=`, 활동은 `GET /activities?programId=`로 펼친다(2026-10-15 사용자 요청으로 기존 Supabase 어드민의 펼침 조직도 복원).
 - PATCH는 보낸 필드만 바꾼다. 최상위로 옮기려면 `clearParent: true`.
 
