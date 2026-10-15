@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Navigate, NavLink, Route, Routes } from "react-router";
 import { QueryClient, QueryClientProvider, useMutation } from "@tanstack/react-query";
-import { App as AntApp, Alert, Button, ConfigProvider, Typography } from "antd";
+import { App as AntApp, Alert, Button, ConfigProvider } from "antd";
 import koKR from "antd/locale/ko_KR";
 import { ApartmentOutlined, CalendarOutlined, KeyOutlined, LogoutOutlined, ReadOutlined } from "@ant-design/icons";
 import { logout, passkey, recheckRoles, useSession } from "./api";
@@ -59,7 +59,7 @@ function Login() {
   );
 }
 
-function Forbidden({ userId }: { userId: string }) {
+function Forbidden() {
   const { message } = AntApp.useApp();
   const recheck = useMutation({
     mutationFn: recheckRoles,
@@ -69,10 +69,7 @@ function Forbidden({ userId }: { userId: string }) {
     <main className="login">
       <Brand />
       <h1>관리자 권한이 없어요</h1>
-      <p>로그인은 됐지만 이 계정에는 관리자 권한이 없어요. 관리자에게 아래 계정 ID를 알려 권한을 요청해 주세요.</p>
-      <Typography.Paragraph copyable={{ text: userId }}>
-        계정 ID: <code>{userId}</code>
-      </Typography.Paragraph>
+      <p>로그인은 됐지만 이 계정에는 관리자 권한이 없어요. 관리자에게 권한을 요청해 주세요.</p>
       <p className="field-note">권한을 받은 뒤 ‘다시 확인’을 누르면 권한을 다시 읽어요.</p>
       {recheck.error && <Alert className="form-error" type="error" showIcon message={recheck.error.message} />}
       <Button type="primary" block size="large" loading={recheck.isPending} onClick={() => recheck.mutate()}>
@@ -135,7 +132,7 @@ function Root() {
     if (!tokens) queryClient.clear();
   }, [tokens]);
   if (!tokens) return <Login />;
-  if (forbidden) return <Forbidden userId={tokens.user.id} />;
+  if (forbidden) return <Forbidden />;
   return <Shell />;
 }
 

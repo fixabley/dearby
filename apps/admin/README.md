@@ -36,10 +36,12 @@ npm run dev
 ## 로그인과 첫 관리자
 
 1. ‘새 패스키로 시작’으로 계정을 만든다(Dearby 앱과 같은 패스키 계정, RP ID `wid.io.kr`). 이미 앱에서 만든 패스키가 있으면 ‘패스키로 로그인’을 쓴다.
-2. 처음에는 ‘관리자 권한이 없어요’ 화면이 나온다. 화면에 보이는 사용자 ID(로그인 응답의 `user.id`)로 운영자가 DB에 넣는다. 어드민에 권한을 주는 화면은 없다.
+2. 처음에는 ‘관리자 권한이 없어요’ 화면이 나온다. 화면에는 계정 ID·SQL 같은 내부 정보를 보여 주지 않는다(2026-10-15 사용자 결정). 운영자가 DB에서 방금 가입한 사용자를 찾아 역할을 넣는다. 어드민에 권한을 주는 화면은 없다.
 
    ```sql
-   insert into user_roles (user_id, role) values ('<사용자 ID>', 'ADMIN');
+   -- 최근 로그인한 사용자(로그인·가입마다 refresh token이 생긴다)
+   select user_id, created_at from refresh_tokens order by created_at desc limit 5;
+   insert into user_roles (user_id, role) values ('<사용자 UUID>', 'ADMIN');
    ```
 
 3. ‘다시 확인’을 누르면 refresh로 새 토큰을 받아 역할을 다시 읽는다.
