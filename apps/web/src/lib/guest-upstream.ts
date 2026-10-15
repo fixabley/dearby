@@ -57,12 +57,15 @@ export function upstreamFetch(
     token,
     body,
     query,
+    acceptLanguage,
   }: {
     method?: string;
     guest?: boolean;
     token?: string;
     body?: unknown;
     query?: URLSearchParams;
+    /** Already validated; the API answers activity text in ko or en from it. */
+    acceptLanguage?: string;
   },
 ) {
   const origin = apiOrigin();
@@ -72,6 +75,7 @@ export function upstreamFetch(
   if (guest) headers["X-Guest-Proxy-Key"] = key!;
   if (guest && token) headers["X-Guest-Token"] = token;
   if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (acceptLanguage) headers["Accept-Language"] = acceptLanguage;
   const url = new URL(`/v1/${path}`, origin);
   if (query) url.search = query.toString();
   return fetch(url, {

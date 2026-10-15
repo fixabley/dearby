@@ -5,6 +5,7 @@ import com.dearby.nativeapp.entities.catalog.model.ActivityPage
 import com.dearby.nativeapp.entities.catalog.model.ApplicationWindow
 import com.dearby.nativeapp.entities.catalog.model.ScheduleModel
 import com.dearby.nativeapp.entities.catalog.model.instant
+import android.os.LocaleList
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
@@ -25,12 +26,18 @@ fun fetchActivities(api: String, query: String?, cursor: String?): ActivityPage 
         connection.useCaches = false
         connection.instanceFollowRedirects = false
         connection.setRequestProperty("Accept", "application/json")
+        connection.setRequestProperty("Accept-Language", acceptLanguage(LocaleList.getDefault().toLanguageTags().split(',')))
         check(connection.responseCode == 200) { "activities ${connection.responseCode}" }
         return parseActivities(connection.inputStream.bufferedReader().use { it.readText() })
     } finally {
         connection.disconnect()
     }
 }
+
+/** The device language order, so the API answers activity text in English when English comes before Korean. */
+fun acceptLanguage(tags: List<String>): String =
+    tags.filter { it.isNotBlank() }.take(5).mapIndexed { index, tag -> if (index == 0) tag else "$tag;q=0.${10 - index}" }
+        .joinToString(", ").ifEmpty { "ko" }
 
 fun parseActivities(json: String): ActivityPage {
     val body = JSONObject(json)

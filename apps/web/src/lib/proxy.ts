@@ -35,6 +35,10 @@ const headers = {
 function failure(status: number, code: string) {
   return Response.json({ error: { code } }, { status, headers });
 }
+/** The browser's language preference picks ko or en activity text upstream. Anything that is not a plain language list is dropped. */
+function acceptLanguage(value: string | null): string | undefined {
+  return value && /^[A-Za-z0-9*,;=. -]{1,200}$/.test(value) ? value : undefined;
+}
 /** Only `q`, `cursor` and `size` are forwarded to the activity search, rebuilt from validated values. */
 function activityQuery(url: URL): URLSearchParams | undefined {
   const query = new URLSearchParams();
@@ -129,6 +133,10 @@ export async function proxy(
       guest,
       token,
       query,
+      acceptLanguage:
+        path === "activities" || activityRoute
+          ? acceptLanguage(request.headers.get("accept-language"))
+          : undefined,
     });
     if (path === "guest/session" && (result.ok || result.status === 401)) {
       return new Response(null, {
@@ -147,6 +155,8 @@ export async function proxy(
       );
     }
     const outputHeaders: Record<string, string> = { ...headers };
+    if (path === "activities" || activityRoute)
+      outputHeaders.Vary = `${headers.Vary}, Accept-Language`;
     if (guest && token) outputHeaders["Set-Cookie"] = guestCookie(token);
     if (method === "DELETE")
       return new Response(null, { status: 204, headers: outputHeaders });
