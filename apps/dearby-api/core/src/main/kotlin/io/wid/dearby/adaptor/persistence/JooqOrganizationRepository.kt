@@ -51,6 +51,16 @@ class JooqOrganizationRepository(private val dsl: DSLContext) : OrganizationRepo
             .execute()
     }
 
+    override fun existsSiblingName(parentOrganizationId: Id?, name: String, exceptId: Id?): Boolean =
+        dsl.fetchExists(
+            ORGANIZATIONS,
+            parentOrganizationId?.let { ORGANIZATIONS.PARENT_ORGANIZATION_ID.eq(it) } ?: ORGANIZATIONS.PARENT_ORGANIZATION_ID.isNull,
+            withoutSpaces(ORGANIZATIONS.NAME).eq(withoutSpaces(DSL.`val`(name))),
+            exceptId?.let { ORGANIZATIONS.ID.ne(it) } ?: DSL.noCondition(),
+        )
+
+    override fun delete(id: Id): Boolean = dsl.deleteFrom(ORGANIZATIONS).where(ORGANIZATIONS.ID.eq(id)).execute() > 0
+
     override fun ancestorIds(id: Id): List<Id> = walkUp(id, parents())
 
     override fun ancestors(ids: Collection<Id>): Map<Id, List<Pair<Id, String>>> {

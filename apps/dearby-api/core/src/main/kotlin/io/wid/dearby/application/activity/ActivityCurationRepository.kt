@@ -11,4 +11,7 @@ interface ActivityCurationRepository {
 
     // 바뀐 행이 없으면(활동 없음) false
     fun updatePublicationStatus(activityId: Id, status: PublicationStatus): Boolean
+
+    // 활동을 지운다(일정·역할·연락처는 FK로 함께). 수집으로 생긴 활동이면 그 출처를 다시 수집하지 않게 남긴다
+    fun delete(activityId: Id): Boolean
 }

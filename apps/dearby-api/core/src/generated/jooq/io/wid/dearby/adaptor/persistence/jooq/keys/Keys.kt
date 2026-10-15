@@ -14,6 +14,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMembers
@@ -42,6 +43,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.records.BusinessCardContact
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.BusinessCardsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.CollectionRunsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ContactsRecord
+import io.wid.dearby.adaptor.persistence.jooq.tables.records.DismissedActivitySourcesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.OrganizationContactsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.OrganizationMemberRolesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.OrganizationMembersRecord
@@ -86,6 +88,7 @@ val BUSINESS_CARDS_PKEY: UniqueKey<BusinessCardsRecord> = Internal.createUniqueK
 val COLLECTION_RUNS_PKEY: UniqueKey<CollectionRunsRecord> = Internal.createUniqueKey(CollectionRuns.COLLECTION_RUNS, DSL.name("collection_runs_pkey"), arrayOf(CollectionRuns.COLLECTION_RUNS.ID), true)
 val COLLECTION_RUNS_PROGRAM_ID_RUN_DATE_KEY: UniqueKey<CollectionRunsRecord> = Internal.createUniqueKey(CollectionRuns.COLLECTION_RUNS, DSL.name("collection_runs_program_id_run_date_key"), arrayOf(CollectionRuns.COLLECTION_RUNS.PROGRAM_ID, CollectionRuns.COLLECTION_RUNS.RUN_DATE), true)
 val CONTACTS_PKEY: UniqueKey<ContactsRecord> = Internal.createUniqueKey(Contacts.CONTACTS, DSL.name("contacts_pkey"), arrayOf(Contacts.CONTACTS.ID), true)
+val DISMISSED_ACTIVITY_SOURCES_PKEY: UniqueKey<DismissedActivitySourcesRecord> = Internal.createUniqueKey(DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES, DSL.name("dismissed_activity_sources_pkey"), arrayOf(DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES.SOURCE_ID), true)
 val ORGANIZATION_CONTACTS_PKEY: UniqueKey<OrganizationContactsRecord> = Internal.createUniqueKey(OrganizationContacts.ORGANIZATION_CONTACTS, DSL.name("organization_contacts_pkey"), arrayOf(OrganizationContacts.ORGANIZATION_CONTACTS.ID), true)
 val ORGANIZATION_MEMBER_ROLES_PKEY: UniqueKey<OrganizationMemberRolesRecord> = Internal.createUniqueKey(OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES, DSL.name("organization_member_roles_pkey"), arrayOf(OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES.ORGANIZATION_MEMBER_ID, OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES.ROLE_ID), true)
 val ORGANIZATION_MEMBERS_PKEY: UniqueKey<OrganizationMembersRecord> = Internal.createUniqueKey(OrganizationMembers.ORGANIZATION_MEMBERS, DSL.name("organization_members_pkey"), arrayOf(OrganizationMembers.ORGANIZATION_MEMBERS.ID), true)

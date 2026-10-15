@@ -79,6 +79,7 @@ class CollectionJobTest(
     fun clean() {
         jdbc.sql("delete from program_collection_settings").update()
         jdbc.sql("delete from collection_runs").update()
+        jdbc.sql("delete from dismissed_activity_sources").update()
         // V5로 넣은 Let'Swift 활동만 남기고 수집으로 생긴 활동을 지운다(일정은 함께 지워진다)
         jdbc.sql("delete from activities where source_id is distinct from '01b773dc-5e13-4d14-a182-9642b47d596e'").update()
     }
@@ -140,6 +141,22 @@ class CollectionJobTest(
         assertEquals(listOf(false), jdbc.sql("select official_source from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(Boolean::class.java).list())
         assertEquals(listOf("https://blog.example/letswift-2026"), jdbc.sql("select official_url from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
         assertEquals(false, jdbc.sql("select official_only from collection_runs").query(Boolean::class.java).single())
+    }
+
+    @Test
+    fun `관리자가 삭제한 수집 활동은 다음 수집에서 다시 만들지 않는다`() {
+        officialSetting()
+        run("2026-10-21")
+        val sourceId = jdbc.sql("select source_id::text from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).single()
+        // 어드민 삭제와 같은 결과: 활동을 지우고 출처를 남긴다
+        jdbc.sql("insert into dismissed_activity_sources (source_id, dismissed_at) values (?::uuid, now())").param(sourceId).update()
+        jdbc.sql("delete from activities where source_id = ?::uuid").param(sourceId).update()
+
+        run("2026-10-22")
+
+        assertEquals(emptyList(), status("Let'Swift 2026 컨퍼런스"))
+        val reasons = jdbc.sql("select array_to_string(rejected_reasons, '|') from collection_runs where run_date = '2026-10-22'").query(String::class.java).single()
+        assertEquals(true, reasons.contains("관리자가 삭제한 활동"))
     }
 
     @Test

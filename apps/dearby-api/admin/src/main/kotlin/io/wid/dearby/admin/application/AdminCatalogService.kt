@@ -8,6 +8,7 @@ import io.wid.dearby.application.collection.CollectionSettingsRepository
 import io.wid.dearby.application.organization.OrganizationRepository
 import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.domain.*
+import org.springframework.dao.DuplicateKeyException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.net.URI
@@ -34,7 +35,8 @@ class AdminCatalogService(
     fun createOrganization(name: String, parentOrganizationId: Id?): OrganizationListing {
         val trimmed = requireName(name)
         parentOrganizationId?.let(::requireOrganization)
-        val id = organizations.create(trimmed, parentOrganizationId)
+        requireUniqueOrganizationName(parentOrganizationId, trimmed, null)
+        val id = unique { organizations.create(trimmed, parentOrganizationId) }
         return organizationListing(id)
     }
 
@@ -50,7 +52,9 @@ class AdminCatalogService(
                 throw InvalidInputException("자기 자신이나 하위 조직 아래로 옮길 수 없습니다", "Cycle: $id under $parent")
             }
         }
-        organizations.update(id, name?.let(::requireName) ?: current.name, parent)
+        val newName = name?.let(::requireName) ?: current.name
+        if (newName != current.name || parent != current.parentOrganizationId) requireUniqueOrganizationName(parent, newName, id)
+        unique { organizations.update(id, newName, parent) }
         return organizationListing(id)
     }
 
@@ -66,9 +70,34 @@ class AdminCatalogService(
     fun createProgram(organizationId: Id, name: String, collection: CollectionSettings?): ProgramListing {
         val trimmed = requireName(name)
         requireOrganization(organizationId)
-        val id = programs.create(organizationId, trimmed)
+        requireUniqueProgramName(organizationId, trimmed, null)
+        val id = unique { programs.create(organizationId, trimmed) }
         collection?.let { settings.save(id, validate(it)) }
         return listing(id)
+    }
+
+    // 하위 조직이나 프로그램이 있으면 지우지 않는다(논리키라 남은 것이 주인 없는 데이터가 된다)
+    @Transactional
+    fun deleteOrganization(id: Id) {
+        if (organizations.findAllById(listOf(id)).isEmpty()) throw NotFoundException("조직을 찾을 수 없습니다", "Organization not found: $id")
+        if ((organizations.childCounts(listOf(id))[id] ?: 0) > 0 || (organizations.programCounts(listOf(id))[id] ?: 0) > 0) {
+            throw InvalidInputException("하위 조직이나 프로그램이 있어 삭제할 수 없습니다. 먼저 옮기거나 지워 주세요")
+        }
+        organizations.delete(id)
+    }
+
+    // 활동이 있으면 지우지 않는다. 수집 설정·수집 기록은 함께 지운다
+    @Transactional
+    fun deleteProgram(id: Id) {
+        if (programs.findAllById(listOf(id)).isEmpty()) throw NotFoundException("프로그램을 찾을 수 없습니다", "Program not found: $id")
+        if (programs.activityCount(id) > 0) throw InvalidInputException("활동이 있어 삭제할 수 없습니다. 먼저 활동을 지워 주세요")
+        programs.delete(id)
+    }
+
+    // 수집으로 생긴 활동은 다음 수집에서 다시 만들어지지 않는다
+    @Transactional
+    fun deleteActivity(id: Id) {
+        if (!curations.delete(id)) throw NotFoundException("활동을 찾을 수 없습니다", "Activity not found: $id")
     }
 
     @Transactional
@@ -76,7 +105,10 @@ class AdminCatalogService(
         val current = programs.findAllById(listOf(id)).singleOrNull()
             ?: throw NotFoundException("프로그램을 찾을 수 없습니다", "Program not found: $id")
         organizationId?.let(::requireOrganization)
-        programs.update(id, organizationId ?: current.organizationId, name?.let(::requireName) ?: current.name)
+        val newOrganization = organizationId ?: current.organizationId
+        val newName = name?.let(::requireName) ?: current.name
+        if (newName != current.name || newOrganization != current.organizationId) requireUniqueProgramName(newOrganization, newName, id)
+        unique { programs.update(id, newOrganization, newName) }
         return listing(id)
     }
 
@@ -107,6 +139,24 @@ class AdminCatalogService(
     private fun withCuration(items: List<ActivityListing>): List<AdminActivity> {
         val byId = curations.findAllByActivityId(items.map { it.activity.id }).associateBy { it.activityId }
         return items.mapNotNull { listing -> byId[listing.activity.id]?.let { AdminActivity(listing, it) } }
+    }
+
+    // 같은 계위에서 띄어쓰기를 뺀 이름이 같으면 중복(2026-10-15 사용자 결정)
+    private fun requireUniqueOrganizationName(parentOrganizationId: Id?, name: String, exceptId: Id?) {
+        if (organizations.existsSiblingName(parentOrganizationId, name, exceptId)) {
+            throw InvalidInputException(if (parentOrganizationId == null) "같은 이름의 최상위 조직이 있습니다" else "같은 상위 조직 아래에 같은 이름의 조직이 있습니다")
+        }
+    }
+
+    private fun requireUniqueProgramName(organizationId: Id, name: String, exceptId: Id?) {
+        if (programs.existsName(organizationId, name, exceptId)) throw InvalidInputException("같은 조직에 같은 이름의 프로그램이 있습니다")
+    }
+
+    // 확인과 저장 사이에 같은 이름이 동시에 들어오면 DB 유일 인덱스(V12)가 막는다. 같은 안내로 바꾼다
+    private fun <T> unique(write: () -> T): T = try {
+        write()
+    } catch (e: DuplicateKeyException) {
+        throw InvalidInputException("같은 계위에 같은 이름이 있습니다", e.message ?: "duplicate name")
     }
 
     private fun requireOrganization(id: Id) {

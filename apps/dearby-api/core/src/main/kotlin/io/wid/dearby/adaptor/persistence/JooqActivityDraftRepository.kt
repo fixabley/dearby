@@ -1,6 +1,7 @@
 package io.wid.dearby.adaptor.persistence
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITIES
+import io.wid.dearby.adaptor.persistence.jooq.tables.references.DISMISSED_ACTIVITY_SOURCES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.SCHEDULES
 import io.wid.dearby.application.collection.ActivityDraftRepository
 import io.wid.dearby.domain.*
@@ -16,13 +17,16 @@ import java.util.*
 class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRepository {
 
     @Transactional
-    override fun saveDraft(programId: Id, sourceId: UUID, activity: CollectedActivity): Boolean {
+    override fun saveDraft(programId: Id, sourceId: UUID, activity: CollectedActivity): DraftSaveResult {
+        if (dsl.fetchExists(DISMISSED_ACTIVITY_SOURCES, DISMISSED_ACTIVITY_SOURCES.SOURCE_ID.eq(sourceId))) {
+            return DraftSaveResult.SKIPPED_DISMISSED
+        }
         val existing = dsl.select(ACTIVITIES.ID, ACTIVITIES.PUBLICATION_STATUS)
             .from(ACTIVITIES)
             .where(ACTIVITIES.SOURCE_ID.eq(sourceId))
             .forUpdate()
             .fetchOne()
-        if (existing?.value2() == PublicationStatus.PUBLISHED.name) return false
+        if (existing?.value2() == PublicationStatus.PUBLISHED.name) return DraftSaveResult.SKIPPED_PUBLISHED
         val now = LocalDateTime.now()
         val activityId = existing?.value1() ?: dsl.insertInto(ACTIVITIES)
             .set(ACTIVITIES.SOURCE_ID, sourceId)
@@ -68,7 +72,7 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         activity.schedules.forEach {
             insertSchedule(activityId, null, it.title, ScheduleKind.EVENT, it.startAt, it.endAt, it.dateLabel, now)
         }
-        return true
+        return DraftSaveResult.SAVED
     }
 
     private fun insertSchedule(
