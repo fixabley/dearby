@@ -131,6 +131,11 @@ open class Organizations(
      */
     val UPDATED_AT: TableField<OrganizationsRecord, LocalDateTime?> = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "")
 
+    /**
+     * The column <code>public.organizations.name_en</code>.
+     */
+    val NAME_EN: TableField<OrganizationsRecord, String?> = createField(DSL.name("name_en"), SQLDataType.VARCHAR(200), this, "")
+
     private constructor(alias: Name, aliased: Table<OrganizationsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<OrganizationsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<OrganizationsRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)

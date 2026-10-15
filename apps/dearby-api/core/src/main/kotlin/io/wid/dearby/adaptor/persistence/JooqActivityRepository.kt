@@ -23,12 +23,12 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             condition.publicationStatus?.let { add(ACTIVITIES.PUBLICATION_STATUS.eq(it.name)) }
             condition.q?.takeIf { it.isNotBlank() }?.trim()?.let { q ->
                 // 부분 일치 또는 단어 유사도(pg_trgm, V7). `<%`는 word_similarity(q, 열) >= 아래 기준값이면 참이고 GIN 인덱스를 탄다
+                // 한글·영문 이름과 설명 모두에서 찾는다(V13)
                 add(
                     DSL.or(
-                        ACTIVITIES.NAME.containsIgnoreCase(q),
-                        ACTIVITIES.DESCRIPTION.containsIgnoreCase(q),
-                        DSL.condition("{0} <% {1}", DSL.`val`(q), ACTIVITIES.NAME),
-                        DSL.condition("{0} <% {1}", DSL.`val`(q), ACTIVITIES.DESCRIPTION),
+                        listOf(ACTIVITIES.NAME, ACTIVITIES.DESCRIPTION, ACTIVITIES.NAME_EN, ACTIVITIES.DESCRIPTION_EN).flatMap {
+                            listOf(it.containsIgnoreCase(q), DSL.condition("{0} <% {1}", DSL.`val`(q), it))
+                        }
                     )
                 )
             }
@@ -86,7 +86,9 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             id = row.id!!,
             programId = row.programId!!,
             name = row.name!!,
+            nameEn = row.nameEn,
             description = row.description!!,
+            descriptionEn = row.descriptionEn,
             contacts = contacts,
             officialUrl = row.officialUrl!!,
             imageUrl = row.imageUrl,

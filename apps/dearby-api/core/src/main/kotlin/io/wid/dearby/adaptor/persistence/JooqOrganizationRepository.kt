@@ -23,7 +23,7 @@ class JooqOrganizationRepository(private val dsl: DSLContext) : OrganizationRepo
 
     override fun search(q: String?, parentId: Id?, rootsOnly: Boolean, after: Id?, size: Int): List<Organization> {
         val conditions = buildList<Condition> {
-            q?.takeIf { it.isNotBlank() }?.let { add(ORGANIZATIONS.NAME.containsIgnoreCase(it.trim())) }
+            q?.takeIf { it.isNotBlank() }?.trim()?.let { add(ORGANIZATIONS.NAME.containsIgnoreCase(it).or(ORGANIZATIONS.NAME_EN.containsIgnoreCase(it))) }
             parentId?.let { add(ORGANIZATIONS.PARENT_ORGANIZATION_ID.eq(it)) }
             if (rootsOnly) add(ORGANIZATIONS.PARENT_ORGANIZATION_ID.isNull)
             after?.let { add(ORGANIZATIONS.ID.gt(it)) }
@@ -31,10 +31,11 @@ class JooqOrganizationRepository(private val dsl: DSLContext) : OrganizationRepo
         return load(dsl.selectFrom(ORGANIZATIONS).where(conditions).orderBy(ORGANIZATIONS.ID).limit(size).fetch())
     }
 
-    override fun create(name: String, parentOrganizationId: Id?): Id {
+    override fun create(name: String, nameEn: String?, parentOrganizationId: Id?): Id {
         val now = LocalDateTime.now()
         return dsl.insertInto(ORGANIZATIONS)
             .set(ORGANIZATIONS.NAME, name)
+            .set(ORGANIZATIONS.NAME_EN, nameEn)
             .set(ORGANIZATIONS.PARENT_ORGANIZATION_ID, parentOrganizationId)
             .set(ORGANIZATIONS.CREATED_AT, now)
             .set(ORGANIZATIONS.UPDATED_AT, now)
@@ -42,20 +43,21 @@ class JooqOrganizationRepository(private val dsl: DSLContext) : OrganizationRepo
             .fetchOne()!!.id!!
     }
 
-    override fun update(id: Id, name: String, parentOrganizationId: Id?) {
+    override fun update(id: Id, name: String, nameEn: String?, parentOrganizationId: Id?) {
         dsl.update(ORGANIZATIONS)
             .set(ORGANIZATIONS.NAME, name)
+            .set(ORGANIZATIONS.NAME_EN, nameEn)
             .set(ORGANIZATIONS.PARENT_ORGANIZATION_ID, parentOrganizationId)
             .set(ORGANIZATIONS.UPDATED_AT, LocalDateTime.now())
             .where(ORGANIZATIONS.ID.eq(id))
             .execute()
     }
 
-    override fun existsSiblingName(parentOrganizationId: Id?, name: String, exceptId: Id?): Boolean =
+    override fun existsSiblingName(parentOrganizationId: Id?, name: String, exceptId: Id?, english: Boolean): Boolean =
         dsl.fetchExists(
             ORGANIZATIONS,
             parentOrganizationId?.let { ORGANIZATIONS.PARENT_ORGANIZATION_ID.eq(it) } ?: ORGANIZATIONS.PARENT_ORGANIZATION_ID.isNull,
-            withoutSpaces(ORGANIZATIONS.NAME).eq(withoutSpaces(DSL.`val`(name))),
+            withoutSpaces(if (english) ORGANIZATIONS.NAME_EN else ORGANIZATIONS.NAME).eq(withoutSpaces(DSL.`val`(name))),
             exceptId?.let { ORGANIZATIONS.ID.ne(it) } ?: DSL.noCondition(),
         )
 
@@ -114,6 +116,7 @@ class JooqOrganizationRepository(private val dsl: DSLContext) : OrganizationRepo
             Organization(
                 id = it.id!!,
                 name = it.name!!,
+                nameEn = it.nameEn,
                 contacts = contacts[it.id].orEmpty(),
                 parentOrganizationId = it.parentOrganizationId,
                 timestamps = Timestamps(it.createdAt!!, it.updatedAt!!),

@@ -2,7 +2,8 @@ package io.wid.dearby.domain
 
 data class Organization(
     val id: Id,
-    val name: String,
+    val name: String, // 한글 이름
+    val nameEn: String?, // 영문 이름(없으면 null)
     val contacts: List<OrganizationContact>,
     val parentOrganizationId: Id?,
     val timestamps: Timestamps,

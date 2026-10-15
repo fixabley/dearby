@@ -3,6 +3,7 @@ package io.wid.dearby.adaptor.web
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
+import org.springframework.http.HttpHeaders
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
@@ -108,6 +109,26 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
 
         assertEquals(0, search("q=초안 활동 확인")["items"].size())
         mvc.get("/v1/activities/$id").andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `요청 언어가 영어면 영문 이름·설명을, 영문이 없거나 다른 언어면 한글을 준다`() {
+        val id = createActivity("다국어 확인 활동")
+        jdbc.sql("update activities set name_en = 'Language check', description_en = 'In English' where id = ?").param(id).update()
+        fun get(language: String?) = mvc.get("/v1/activities/$id") { language?.let { header(HttpHeaders.ACCEPT_LANGUAGE, it) } }
+            .andExpect { status { isOk() }; header { string(HttpHeaders.VARY, HttpHeaders.ACCEPT_LANGUAGE) } }.andReturn().response
+        fun names(language: String?) = json.readTree(get(language).contentAsString).let {
+            listOf(it["name"].asString(), it["description"].asString(), it["organization"]["name"].asString())
+        }
+
+        // 기관은 영문 이름이 없어 한글로 채운다
+        assertEquals(listOf("Language check", "In English", "Let’Swift 준비위원회"), names("en-US,en;q=0.9"))
+        assertEquals("en", get("en").getHeader(HttpHeaders.CONTENT_LANGUAGE))
+        // 한국어가 더 선호되거나, 헤더가 없거나, 지원하지 않는 언어·읽을 수 없는 값이면 한국어
+        listOf("ko-KR,en;q=0.5", null, "ja", "@@").forEach { assertEquals(listOf("다국어 확인 활동", "", "Let’Swift 준비위원회"), names(it), "$it") }
+        assertEquals("ko", get(null).getHeader(HttpHeaders.CONTENT_LANGUAGE))
+        // 검색은 영문 이름으로도 찾는다
+        assertEquals(listOf(id), search("q=language check")["items"].values().map { it["id"].asLong() })
     }
 
     @Test

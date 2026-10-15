@@ -6,7 +6,9 @@ import java.time.OffsetDateTime
 data class CollectedActivity(
     val roundKey: String, // 같은 페이지의 회차·활동을 구분하는 식별자(예: "2026-본행사"). 다시 수집할 때 같은 행을 찾는 키의 일부
     val name: String,
+    val nameEn: String?, // 수집 때 모델이 번역한 영문 이름(검토 대상)
     val description: String,
+    val descriptionEn: String?, // 수집 때 모델이 번역한 영문 설명(검토 대상)
     val officialUrl: String, // 원문을 확인한 페이지
     val officialSource: Boolean, // 그 페이지가 프로그램의 공식 도메인(허용 호스트)인지. 웹 전체 검색이면 false
     val applicationUrl: String?, // 원문 페이지의 링크로 확인된 신청 주소만

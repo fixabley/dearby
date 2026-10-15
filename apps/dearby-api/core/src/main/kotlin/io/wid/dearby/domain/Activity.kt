@@ -3,8 +3,10 @@ package io.wid.dearby.domain
 data class Activity(
     val id: Id,
     val programId: Id,
-    val name: String,
-    val description: String, // ICS 내보낼 때 각 일정의 DESCRIPTION
+    val name: String, // 한글 이름
+    val nameEn: String?, // 영문 이름(없으면 null)
+    val description: String, // 한글 설명. ICS 내보낼 때 각 일정의 DESCRIPTION
+    val descriptionEn: String?, // 영문 설명(없으면 null)
     val contacts: List<ActivityContact>,
     val officialUrl: String, // 공식 안내 원문 링크
     val imageUrl: String?, // 대표 이미지. 없으면 null

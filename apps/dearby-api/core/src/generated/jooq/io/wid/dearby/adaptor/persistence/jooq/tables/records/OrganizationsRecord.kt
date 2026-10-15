@@ -59,6 +59,10 @@ open class OrganizationsRecord() : UpdatableRecordImpl<OrganizationsRecord>(Orga
         set(value): Unit = set(9, value)
         get(): LocalDateTime? = get(9) as LocalDateTime?
 
+    open var nameEn: String?
+        set(value): Unit = set(10, value)
+        get(): String? = get(10) as String?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -68,7 +72,7 @@ open class OrganizationsRecord() : UpdatableRecordImpl<OrganizationsRecord>(Orga
     /**
      * Create a detached, initialised OrganizationsRecord
      */
-    constructor(id: Long? = null, sourceId: UUID? = null, parentOrganizationId: Long? = null, name: String? = null, lat: Double? = null, lng: Double? = null, addressLine1: String? = null, addressLine2: String? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null): this() {
+    constructor(id: Long? = null, sourceId: UUID? = null, parentOrganizationId: Long? = null, name: String? = null, lat: Double? = null, lng: Double? = null, addressLine1: String? = null, addressLine2: String? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null, nameEn: String? = null): this() {
         this.id = id
         this.sourceId = sourceId
         this.parentOrganizationId = parentOrganizationId
@@ -79,6 +83,7 @@ open class OrganizationsRecord() : UpdatableRecordImpl<OrganizationsRecord>(Orga
         this.addressLine2 = addressLine2
         this.createdAt = createdAt
         this.updatedAt = updatedAt
+        this.nameEn = nameEn
         resetTouchedOnNotNull()
     }
 }

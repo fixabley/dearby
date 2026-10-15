@@ -51,6 +51,10 @@ open class ProgramsRecord() : UpdatableRecordImpl<ProgramsRecord>(Programs.PROGR
         set(value): Unit = set(7, value)
         get(): LocalDateTime? = get(7) as LocalDateTime?
 
+    open var nameEn: String?
+        set(value): Unit = set(8, value)
+        get(): String? = get(8) as String?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -60,7 +64,7 @@ open class ProgramsRecord() : UpdatableRecordImpl<ProgramsRecord>(Programs.PROGR
     /**
      * Create a detached, initialised ProgramsRecord
      */
-    constructor(id: Long? = null, sourceId: UUID? = null, organizationId: Long? = null, name: String? = null, periodFrom: LocalDateTime? = null, periodTo: LocalDateTime? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null): this() {
+    constructor(id: Long? = null, sourceId: UUID? = null, organizationId: Long? = null, name: String? = null, periodFrom: LocalDateTime? = null, periodTo: LocalDateTime? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null, nameEn: String? = null): this() {
         this.id = id
         this.sourceId = sourceId
         this.organizationId = organizationId
@@ -69,6 +73,7 @@ open class ProgramsRecord() : UpdatableRecordImpl<ProgramsRecord>(Programs.PROGR
         this.periodTo = periodTo
         this.createdAt = createdAt
         this.updatedAt = updatedAt
+        this.nameEn = nameEn
         resetTouchedOnNotNull()
     }
 }

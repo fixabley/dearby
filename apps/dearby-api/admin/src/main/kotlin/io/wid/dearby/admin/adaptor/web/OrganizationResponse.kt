@@ -5,6 +5,7 @@ import io.wid.dearby.admin.application.OrganizationListing
 data class OrganizationResponse(
     val id: Long,
     val name: String,
+    val nameEn: String?,
     val parentOrganizationId: Long?,
     val childCount: Int,
     val programCount: Int,
@@ -13,7 +14,7 @@ data class OrganizationResponse(
     companion object {
         fun from(listing: OrganizationListing) = with(listing) {
             OrganizationResponse(
-                organization.id, organization.name, organization.parentOrganizationId, childCount, programCount,
+                organization.id, organization.name, organization.nameEn, organization.parentOrganizationId, childCount, programCount,
                 ancestors.map { (id, name) -> ReferenceResponse(id, name) },
             )
         }
