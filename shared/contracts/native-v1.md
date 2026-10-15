@@ -218,7 +218,7 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 | POST /v1/auth/logout | 없음 | `{refreshToken}` | 204. 이미 무효여도 204 |
 
 - TokenPair: `{accessToken, refreshToken, user: {id, roles}}`(2026-10-15 사용자 결정으로 user 추가, 이전 10-10 결정은 토큰만). `user`는 클라이언트가 화면 권한 등에 쓰는 값이고 서버는 토큰만 믿는다. 역할이 바뀌면 다음 refresh 응답에 반영된다. access token은 API가 RS256으로 서명한 JWT이고, 사용자 id는 `sub`, 역할은 `roles`, 만료는 `exp` 클레임에 있다. refresh는 받은 refresh token을 폐기하고 새 access·refresh token을 준다.
-- 실패: challenge 없음·만료·재사용, 서명 검증 실패, 모르는 패스키는 401. 형식이 틀린 요청은 400. 오류 본문 형식은 Kotlin API 전체의 오류 형식 정리(RFC 9457 ProblemDetail로 통일 여부)가 끝날 때까지 정하지 않는다. 앱은 상태 코드로만 분기한다.
+- 실패: challenge 없음·만료·재사용, 서명 검증 실패, 모르는 패스키는 401. 형식이 틀린 요청은 400. 오류 본문은 RFC 9457 ProblemDetail이고 `detail`이 사용자에게 보여도 되는 문장이다(2026-10-11 통일). 앱은 상태 코드로 분기하고 `detail`은 안내 문구로만 쓴다.
 - `displayName`은 OS 패스키 목록에 보이는 이름이다. 없으면 `Dearby 사용자`. 패스키의 `user.name`·`user.id`는 서버가 정하며 앱이 정하지 않는다.
 
 ### 앱 동작
