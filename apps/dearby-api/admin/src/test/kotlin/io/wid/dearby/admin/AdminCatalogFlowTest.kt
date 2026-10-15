@@ -11,6 +11,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MockHttpServletRequestDsl
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.post
@@ -123,6 +124,70 @@ class AdminCatalogFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: Jdb
         assertEquals(listOf(root.toString(), "트리 프로그램(이동)"), listOf(updated["organization"]["id"].asString(), updated["name"].asString()))
         assertEquals(1, read(mvc.get("/v1/admin/organizations?rootsOnly=true&q=트리 최상위") { asAdmin() })["items"].single()["programCount"].asInt())
         mvc.patch("/v1/admin/programs/$program") { asAdmin(); patchBody("""{"organizationId":999999}""") }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `하위 항목이 있으면 지우지 않고, 안쪽부터 지우면 지워진다`() {
+        val organization = createOrganization("삭제 조직")
+        val child = createOrganization("삭제 하위", organization)
+        val program = read(mvc.post("/v1/admin/programs") {
+            asAdmin()
+            body("""{"organizationId":$organization,"name":"삭제 프로그램","collection":{"allowedHosts":["example.org"],"intervalDays":1,"enabled":true}}""")
+        }.andExpect { status { isCreated() } })["id"].asLong()
+        val activity = jdbc.sql(
+            """
+            insert into activities (program_id, name, description, participation_type, recruitment_status, official_url,
+                                    freshness, source_note, source_id, created_at, updated_at)
+            values (?, '삭제 활동', '', 'REGISTRATION', 'UNKNOWN', 'https://example.org', 'STALE', '', gen_random_uuid(), localtimestamp, localtimestamp)
+            returning id
+            """
+        ).param(program).query(Long::class.java).single()
+        jdbc.sql("insert into schedules (activity_id, slot, title, kind, status, date_label, sequence, created_at, updated_at) values (?, 'ACTIVITY', 't', 'EVENT', 'CONFIRMED', '', 0, localtimestamp, localtimestamp)")
+            .param(activity).update()
+
+        mvc.delete("/v1/admin/organizations/$organization") { asAdmin() }.andExpect { status { isBadRequest() } }
+        mvc.delete("/v1/admin/programs/$program") { asAdmin() }.andExpect { status { isBadRequest() } }
+
+        mvc.delete("/v1/admin/activities/$activity") { asAdmin() }.andExpect { status { isNoContent() } }
+        // 일정은 FK로 함께 지워지고, 수집 출처는 다시 수집하지 않게 남는다
+        assertEquals(0, jdbc.sql("select count(*) from schedules where activity_id = ?").param(activity).query(Int::class.java).single())
+        assertEquals(1, jdbc.sql("select count(*) from dismissed_activity_sources").query(Int::class.java).single())
+
+        mvc.delete("/v1/admin/programs/$program") { asAdmin() }.andExpect { status { isNoContent() } }
+        assertEquals(0, jdbc.sql("select count(*) from program_collection_settings where program_id = ?").param(program).query(Int::class.java).single())
+        mvc.delete("/v1/admin/organizations/$child") { asAdmin() }.andExpect { status { isNoContent() } }
+        mvc.delete("/v1/admin/organizations/$organization") { asAdmin() }.andExpect { status { isNoContent() } }
+        mvc.delete("/v1/admin/organizations/$organization") { asAdmin() }.andExpect { status { isNotFound() } }
+        mvc.delete("/v1/admin/activities/$activity") { asAdmin() }.andExpect { status { isNotFound() } }
+        mvc.delete("/v1/admin/programs/$program") { with(jwt().authorities(SimpleGrantedAuthority("ROLE_USER"))) }
+            .andExpect { status { isForbidden() } }
+    }
+
+    @Test
+    fun `같은 계위에서 띄어쓰기만 다른 이름은 등록·수정·이동이 안 된다`() {
+        val parent = createOrganization("중복 상위")
+        val other = createOrganization("중복 다른 상위")
+        createOrganization("우아한 형제들", parent)
+        // 같은 상위 아래 띄어쓰기만 다름 → 400, 다른 상위 아래는 허용
+        mvc.post("/v1/admin/organizations") { asAdmin(); body("""{"name":"우아한형제들","parentOrganizationId":$parent}""") }
+            .andExpect { status { isBadRequest() } }
+        val elsewhere = createOrganization("우아한형제들", other)
+        // 옮기거나 이름을 바꿔 중복이 되는 것도 막는다
+        mvc.patch("/v1/admin/organizations/$elsewhere") { asAdmin(); patchBody("""{"parentOrganizationId":$parent}""") }
+            .andExpect { status { isBadRequest() } }
+        createOrganization("이름 바꿀 조직")
+            .let { mvc.patch("/v1/admin/organizations/$it") { asAdmin(); patchBody("""{"name":"중복상위"}""") }.andExpect { status { isBadRequest() } } }
+
+        val program = read(mvc.post("/v1/admin/programs") { asAdmin(); body("""{"organizationId":$parent,"name":"테크 코스"}""") }
+            .andExpect { status { isCreated() } })["id"].asLong()
+        mvc.post("/v1/admin/programs") { asAdmin(); body("""{"organizationId":$parent,"name":"테크코스"}""") }
+            .andExpect { status { isBadRequest() } }
+        val moving = read(mvc.post("/v1/admin/programs") { asAdmin(); body("""{"organizationId":$other,"name":"테크코스 "}""") }
+            .andExpect { status { isCreated() } })["id"].asLong()
+        mvc.patch("/v1/admin/programs/$moving") { asAdmin(); patchBody("""{"organizationId":$parent}""") }
+            .andExpect { status { isBadRequest() } }
+        // 자기 이름을 그대로 다시 보내는 것은 괜찮다
+        mvc.patch("/v1/admin/programs/$program") { asAdmin(); patchBody("""{"name":"테크 코스"}""") }.andExpect { status { isOk() } }
     }
 
     @Test

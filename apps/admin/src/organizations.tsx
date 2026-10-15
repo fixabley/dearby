@@ -1,8 +1,8 @@
 import { useState, type Key } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Input, Space, Table, Tag } from "antd";
+import { Alert, App, Button, Input, Popconfirm, Space, Table, Tag } from "antd";
 import { ExportOutlined, PlusOutlined } from "@ant-design/icons";
-import { api } from "./api";
+import { api, useSingleFlight } from "./api";
 import { type PublicationStatus, statusLabels } from "./activities";
 import { SearchSelect, allPages } from "./list";
 
@@ -27,8 +27,22 @@ type Row =
 /** Inline edit of an existing row (`id`) or a new organization/program row (no `id`). */
 type Draft = { key: string; kind: "organization" | "program"; id?: number; name: string; parentId?: number; parentName?: string };
 type Level<T> = { data?: T; isError: boolean };
+type Removal = { key: string; kind: "organization" | "program" | "activity"; id: number };
 
 const kindLabels = { organization: "조직", program: "프로그램", activity: "활동" };
+const removal = {
+  organization: { path: "organizations", note: "하위 조직이나 프로그램이 있으면 삭제할 수 없어요.", stale: [["organizations"]] },
+  program: {
+    path: "programs",
+    note: "수집 설정과 수집 기록도 함께 삭제돼요. 활동이 있으면 삭제할 수 없어요.",
+    stale: [["programs"], ["organizations"]],
+  },
+  activity: {
+    path: "activities",
+    note: "삭제하면 되돌릴 수 없고, 수집으로 생긴 활동은 다시 수집되지 않아요.",
+    stale: [["activities"]],
+  },
+};
 const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name, "ko");
 const lastSegment = (key: Key) => String(key).split("/").at(-1)!;
 const idsOf = (keys: Key[], prefix: string) => [
@@ -102,8 +116,20 @@ export function Organizations() {
       ]);
     },
   });
+  const saveOnce = useSingleFlight();
+  const submit = () => saveOnce(() => save.mutateAsync(draft!));
+  const remove = useMutation({
+    mutationFn: ({ kind, id }: Removal) => api<void>(`${removal[kind].path}/${id}`, "DELETE"),
+    onSuccess: async (_, { key, kind }) => {
+      setExpanded((keys) => keys.filter((k) => k !== key && !String(k).startsWith(`${key}/`)));
+      message.success("삭제했어요.");
+      await Promise.all(removal[kind].stale.map((queryKey) => client.invalidateQueries({ queryKey })));
+    },
+  });
+  const removeOnce = useSingleFlight();
   function start(next: Draft, expand?: string) {
     save.reset();
+    remove.reset();
     setDraft(next);
     if (expand) setExpanded((keys) => (keys.includes(expand) ? keys : [...keys, expand]));
   }
@@ -229,7 +255,7 @@ export function Organizations() {
                           value={draft!.name}
                           disabled={save.isPending}
                           onChange={(e) => setDraft({ ...draft!, name: e.target.value })}
-                          onPressEnter={() => save.mutate(draft!)}
+                          onPressEnter={submit}
                           onKeyDown={(e) => e.key === "Escape" && !save.isPending && setDraft(undefined)}
                         />
                         {save.error && (
@@ -297,11 +323,11 @@ export function Organizations() {
               width: 300,
               className: "actions",
               render: (_, row) => {
-                if (row.kind === "note" || row.kind === "activity") return null;
+                if (row.kind === "note") return null;
                 if (editing(row))
                   return (
                     <Space>
-                      <Button type="primary" size="small" loading={save.isPending} onClick={() => save.mutate(draft!)}>
+                      <Button type="primary" size="small" loading={save.isPending} onClick={submit}>
                         {draft!.id === undefined ? "만들기" : "저장"}
                       </Button>
                       <Button size="small" disabled={save.isPending} onClick={() => setDraft(undefined)}>
@@ -311,36 +337,88 @@ export function Organizations() {
                   );
                 if (row.kind === "new") return null;
                 const { id, name } = row.record;
-                if (row.kind === "program")
-                  return (
+                const target = { key: row.key, kind: row.kind, id };
+                const deletion = (
+                  <Popconfirm
+                    title={`‘${name}’ ${kindLabels[row.kind]}을 삭제할까요?`}
+                    description={removal[row.kind].note}
+                    okText="삭제"
+                    cancelText="취소"
+                    okButtonProps={{ danger: true }}
+                    disabled={!!draft || remove.isPending}
+                    onConfirm={() => removeOnce(() => remove.mutateAsync(target))}
+                  >
                     <Button
                       size="small"
-                      disabled={!!draft}
-                      onClick={() =>
-                        start({ key: row.key, kind: "program", id, name, parentId: row.record.organization.id, parentName: row.record.organization.name })
-                      }
+                      danger
+                      disabled={!!draft || remove.isPending}
+                      loading={remove.isPending && remove.variables?.key === row.key}
                     >
-                      편집
+                      삭제
                     </Button>
+                  </Popconfirm>
+                );
+                const failed = remove.error && remove.variables?.key === row.key && (
+                  <div className="tree-error" role="alert">
+                    {remove.error.message}
+                  </div>
+                );
+                if (row.kind === "activity")
+                  return (
+                    <>
+                      {deletion}
+                      {failed}
+                    </>
+                  );
+                if (row.kind === "program")
+                  return (
+                    <>
+                      <Space>
+                        <Button
+                          size="small"
+                          disabled={!!draft}
+                          onClick={() =>
+                            start({
+                              key: row.key,
+                              kind: "program",
+                              id,
+                              name,
+                              parentId: row.record.organization.id,
+                              parentName: row.record.organization.name,
+                            })
+                          }
+                        >
+                          편집
+                        </Button>
+                        {deletion}
+                      </Space>
+                      {failed}
+                    </>
                   );
                 const parentId = row.record.parentOrganizationId ?? undefined;
                 const under = { key: `${row.key}/new`, name: "", parentId: id, parentName: name };
                 return (
-                  <Space>
-                    <Button
-                      size="small"
-                      disabled={!!draft}
-                      onClick={() => start({ key: row.key, kind: "organization", id, name, parentId, parentName: parentOf(row.record) })}
-                    >
-                      편집
-                    </Button>
-                    <Button size="small" disabled={!!draft} onClick={() => start({ ...under, kind: "organization" }, row.key)}>
-                      하위 조직 추가
-                    </Button>
-                    <Button size="small" disabled={!!draft} onClick={() => start({ ...under, kind: "program" }, row.key)}>
-                      프로그램 추가
-                    </Button>
-                  </Space>
+                  <>
+                    <Space>
+                      <Button
+                        size="small"
+                        disabled={!!draft}
+                        onClick={() =>
+                          start({ key: row.key, kind: "organization", id, name, parentId, parentName: parentOf(row.record) })
+                        }
+                      >
+                        편집
+                      </Button>
+                      <Button size="small" disabled={!!draft} onClick={() => start({ ...under, kind: "organization" }, row.key)}>
+                        하위 조직 추가
+                      </Button>
+                      <Button size="small" disabled={!!draft} onClick={() => start({ ...under, kind: "program" }, row.key)}>
+                        프로그램 추가
+                      </Button>
+                      {deletion}
+                    </Space>
+                    {failed}
+                  </>
                 );
               },
             },

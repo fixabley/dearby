@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider, useMutation } from "@tanstack/react-q
 import { App as AntApp, Alert, Button, ConfigProvider } from "antd";
 import koKR from "antd/locale/ko_KR";
 import { ApartmentOutlined, CalendarOutlined, KeyOutlined, LogoutOutlined, ReadOutlined } from "@ant-design/icons";
-import { logout, passkey, recheckRoles, useSession } from "./api";
+import { logout, passkey, recheckRoles, useSession, useSingleFlight } from "./api";
 import { Activities } from "./activities";
 import { Organizations } from "./organizations";
 import { Programs } from "./programs";
@@ -21,6 +21,7 @@ function Brand() {
 
 function Login() {
   const sign = useMutation({ mutationFn: passkey });
+  const signOnce = useSingleFlight();
   return (
     <main className="login">
       <Brand />
@@ -38,7 +39,7 @@ function Login() {
         icon={<KeyOutlined aria-hidden="true" />}
         loading={sign.isPending && sign.variables === "authentication"}
         disabled={sign.isPending}
-        onClick={() => sign.mutate("authentication")}
+        onClick={() => signOnce(() => sign.mutateAsync("authentication"))}
       >
         패스키로 로그인
       </Button>
@@ -47,7 +48,7 @@ function Login() {
         size="large"
         loading={sign.isPending && sign.variables === "registration"}
         disabled={sign.isPending}
-        onClick={() => sign.mutate("registration")}
+        onClick={() => signOnce(() => sign.mutateAsync("registration"))}
       >
         새 패스키로 시작
       </Button>

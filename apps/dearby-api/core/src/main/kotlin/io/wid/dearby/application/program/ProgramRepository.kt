@@ -14,5 +14,13 @@ interface ProgramRepository {
 
     fun create(organizationId: Id, name: String): Id
 
+    // 같은 조직 아래에 띄어쓰기를 뺀 이름이 같은 프로그램이 있는지. exceptId는 자기 자신
+    fun existsName(organizationId: Id, name: String, exceptId: Id?): Boolean
+
     fun update(id: Id, organizationId: Id, name: String)
+
+    fun activityCount(id: Id): Int
+
+    // 프로그램과 그 연락처·수집 설정·수집 기록을 지운다. 활동 확인은 호출하는 쪽이 한다
+    fun delete(id: Id): Boolean
 }

@@ -32,6 +32,10 @@ class AdminCatalogController(private val catalog: AdminCatalogService) {
     fun updateOrganization(@PathVariable id: Long, @RequestBody request: OrganizationUpdateRequest) =
         OrganizationResponse.from(catalog.updateOrganization(id, request.name, request.parentOrganizationId, request.clearParent))
 
+    @DeleteMapping("/organizations/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deleteOrganization(@PathVariable id: Long) = catalog.deleteOrganization(id)
+
     @GetMapping("/programs")
     fun programs(
         @RequestParam(required = false) q: String?,
@@ -51,6 +55,10 @@ class AdminCatalogController(private val catalog: AdminCatalogService) {
     fun updateProgram(@PathVariable id: Long, @RequestBody request: ProgramUpdateRequest) =
         ProgramResponse.from(catalog.updateProgram(id, request.name, request.organizationId))
 
+    @DeleteMapping("/programs/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deleteProgram(@PathVariable id: Long) = catalog.deleteProgram(id)
+
     @GetMapping("/programs/{id}/collection-settings")
     fun collectionSettings(@PathVariable id: Long) = CollectionSettingsResponse.from(catalog.getCollectionSettings(id))
 
@@ -69,6 +77,10 @@ class AdminCatalogController(private val catalog: AdminCatalogService) {
     ) = catalog.searchActivities(ActivitySearch(q, organizationId, programId, cursor, size, publicationStatus)).let { page ->
         PageResponse(page.items.map(AdminActivityResponse::from), page.nextCursor)
     }
+
+    @DeleteMapping("/activities/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deleteActivity(@PathVariable id: Long) = catalog.deleteActivity(id)
 
     @PatchMapping("/activities/{id}/publication-status")
     fun setPublicationStatus(@PathVariable id: Long, @RequestBody request: PublicationStatusRequest) =

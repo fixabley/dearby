@@ -4,6 +4,7 @@ import io.wid.dearby.application.collection.ActivityDraftRepository
 import io.wid.dearby.domain.CollectionOutcome
 import io.wid.dearby.domain.CollectionReport
 import io.wid.dearby.domain.CollectionTarget
+import io.wid.dearby.domain.DraftSaveResult
 import io.wid.dearby.domain.Id
 import org.springframework.stereotype.Service
 import java.net.URI
@@ -44,8 +45,11 @@ class CollectActivitiesService(
                 when (val result = ActivityVerifier.verify(candidate, page, target.officialOnly, checkedAt)) {
                     is Verification.Rejected -> rejected += "${candidate.name}: ${result.reason}"
                     is Verification.Accepted ->
-                        if (drafts.saveDraft(target.programId, sourceId(target.programId, page.url, candidate.roundKey), result.activity)) saved++
-                        else rejected += "${candidate.name}: 이미 게시된 활동이라 덮어쓰지 않음"
+                        when (drafts.saveDraft(target.programId, sourceId(target.programId, page.url, candidate.roundKey), result.activity)) {
+                            DraftSaveResult.SAVED -> saved++
+                            DraftSaveResult.SKIPPED_PUBLISHED -> rejected += "${candidate.name}: 이미 게시된 활동이라 덮어쓰지 않음"
+                            DraftSaveResult.SKIPPED_DISMISSED -> rejected += "${candidate.name}: 관리자가 삭제한 활동이라 다시 만들지 않음"
+                        }
                 }
             }
         }

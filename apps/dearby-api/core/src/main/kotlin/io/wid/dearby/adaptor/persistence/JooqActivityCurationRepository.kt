@@ -2,13 +2,17 @@ package io.wid.dearby.adaptor.persistence
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITIES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITY_ROLES
+import io.wid.dearby.adaptor.persistence.jooq.tables.references.DISMISSED_ACTIVITY_SOURCES
 import io.wid.dearby.application.activity.ActivityCurationRepository
 import io.wid.dearby.domain.*
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
+import org.springframework.transaction.annotation.Transactional
 import tools.jackson.databind.json.JsonMapper
 import tools.jackson.module.kotlin.readValue
 import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 @Repository
 class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCurationRepository {
@@ -41,6 +45,20 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
                 sourceNote = it.sourceNote!!,
             )
         }
+    }
+
+    @Transactional
+    override fun delete(activityId: Id): Boolean {
+        val sourceId = dsl.select(ACTIVITIES.SOURCE_ID).from(ACTIVITIES).where(ACTIVITIES.ID.eq(activityId)).fetchOne()
+            ?: return false
+        sourceId.value1()?.let {
+            dsl.insertInto(DISMISSED_ACTIVITY_SOURCES)
+                .set(DISMISSED_ACTIVITY_SOURCES.SOURCE_ID, it)
+                .set(DISMISSED_ACTIVITY_SOURCES.DISMISSED_AT, OffsetDateTime.now(ZoneOffset.UTC))
+                .onConflictDoNothing()
+                .execute()
+        }
+        return dsl.deleteFrom(ACTIVITIES).where(ACTIVITIES.ID.eq(activityId)).execute() > 0
     }
 
     override fun updatePublicationStatus(activityId: Id, status: PublicationStatus): Boolean =

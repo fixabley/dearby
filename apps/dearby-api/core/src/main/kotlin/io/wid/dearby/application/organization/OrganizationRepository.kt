@@ -15,7 +15,13 @@ interface OrganizationRepository {
 
     fun create(name: String, parentOrganizationId: Id?): Id
 
+    // 같은 상위 조직 아래(null이면 최상위끼리)에 띄어쓰기를 뺀 이름이 같은 조직이 있는지. exceptId는 자기 자신
+    fun existsSiblingName(parentOrganizationId: Id?, name: String, exceptId: Id?): Boolean
+
     fun update(id: Id, name: String, parentOrganizationId: Id?)
+
+    // 조직과 그 연락처를 지운다. 하위 조직·프로그램 확인은 호출하는 쪽이 한다
+    fun delete(id: Id): Boolean
 
     // id 조직의 상위 조직 id를 가까운 것부터(자기 자신 제외). 순환 지정 확인용
     fun ancestorIds(id: Id): List<Id>

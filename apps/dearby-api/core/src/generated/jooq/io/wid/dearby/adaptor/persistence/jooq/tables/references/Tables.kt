@@ -14,6 +14,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMembers
@@ -80,6 +81,11 @@ val COLLECTION_RUNS: CollectionRuns = CollectionRuns.COLLECTION_RUNS
  * The table <code>public.contacts</code>.
  */
 val CONTACTS: Contacts = Contacts.CONTACTS
+
+/**
+ * The table <code>public.dismissed_activity_sources</code>.
+ */
+val DISMISSED_ACTIVITY_SOURCES: DismissedActivitySources = DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES
 
 /**
  * The table <code>public.organization_contacts</code>.

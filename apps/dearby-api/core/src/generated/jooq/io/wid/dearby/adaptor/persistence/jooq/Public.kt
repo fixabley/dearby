@@ -13,6 +13,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMembers
@@ -98,6 +99,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.contacts</code>.
      */
     val CONTACTS: Contacts get() = Contacts.CONTACTS
+
+    /**
+     * The table <code>public.dismissed_activity_sources</code>.
+     */
+    val DISMISSED_ACTIVITY_SOURCES: DismissedActivitySources get() = DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES
 
     /**
      * The table <code>public.organization_contacts</code>.
@@ -206,6 +212,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         BusinessCards.BUSINESS_CARDS,
         CollectionRuns.COLLECTION_RUNS,
         Contacts.CONTACTS,
+        DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES,
         OrganizationContacts.ORGANIZATION_CONTACTS,
         OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES,
         OrganizationMembers.ORGANIZATION_MEMBERS,
