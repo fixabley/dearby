@@ -17,6 +17,7 @@ import org.springframework.transaction.support.TransactionTemplate
 import tools.jackson.databind.DeserializationFeature
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
+import java.nio.ByteBuffer
 import java.util.*
 
 // 패스키 검증은 Spring Security(webauthn4j)에 맡긴다
@@ -36,14 +37,15 @@ class WebAuthnPasskeyService(
         .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
         .build()
 
-    // 계정은 아직 없다. 새 UserId와 user handle을 정해 challenge와 함께 저장하고, 가입 완료 때 계정을 만든다
+    // 계정은 아직 없다. 새 UserId를 정하고, user handle은 그 UUID의 16바이트로 해 challenge와 함께 저장한다. 가입 완료 때 계정을 만든다
     override fun registrationOptions(displayName: String?): PasskeyOptions {
         val name = displayName?.trim().takeUnless { it.isNullOrEmpty() } ?: DEFAULT_DISPLAY_NAME
         if (name.length > MAX_DISPLAY_NAME) throw InvalidInputException("displayName이 너무 깁니다")
+        val userId = UUID.randomUUID()
         val stored = StoredChallenge(
             challenge = Bytes.random().bytes,
-            userId = UUID.randomUUID(),
-            userEntityId = Bytes.random().toBase64UrlString(),
+            userId = userId,
+            userEntityId = userHandle(userId).toBase64UrlString(),
             displayName = name,
         )
         val challengeId = challenges.issue(Ceremony.REGISTRATION, stored)
@@ -87,7 +89,7 @@ class WebAuthnPasskeyService(
             val entity = rejectOnFailure {
                 operations.authenticate(RelyingPartyAuthenticationRequest(requestOptions(stored), parsed))
             }
-            val user = runCatching { UUID.fromString(entity.name) }.getOrNull()?.let(users::findById)
+            val user = userId(entity)?.let(users::findById)
                 ?: throw AuthenticationFailedException("패스키에 연결된 계정이 없습니다")
             tokens.issue(user)
         }
@@ -114,7 +116,8 @@ class WebAuthnPasskeyService(
             .user(
                 ImmutablePublicKeyCredentialUserEntity.builder()
                     .id(Bytes.fromBase64(stored.userEntityId!!))
-                    .name(stored.userId!!.toString())
+                    // OS 패스키 목록의 계정 이름. 사람이 읽는 이름이고 계정 연결에는 쓰지 않는다(연결은 user handle)
+                    .name(stored.displayName!!)
                     .displayName(stored.displayName!!)
                     .build()
             )
@@ -129,6 +132,14 @@ class WebAuthnPasskeyService(
             .timeout(WebAuthnChallengeRepository.TTL)
             .userVerification(USER_VERIFICATION)
             .build()
+
+    // user handle(16바이트) = 사용자 UUID. 2026-10-15 이전 가입분은 user handle이 무작위라 name에 남은 UUID로 찾는다
+    private fun userId(entity: PublicKeyCredentialUserEntity): UUID? =
+        entity.id.bytes.takeIf { it.size == 16 }?.let { ByteBuffer.wrap(it).let { buffer -> UUID(buffer.long, buffer.long) } }
+            ?: runCatching { UUID.fromString(entity.name) }.getOrNull()
+
+    private fun userHandle(userId: UUID): Bytes =
+        Bytes(ByteBuffer.allocate(16).putLong(userId.mostSignificantBits).putLong(userId.leastSignificantBits).array())
 
     private fun <R : AuthenticatorResponse> parse(json: JsonNode, response: Class<R>): PublicKeyCredential<R> {
         val type = mapper.typeFactory.constructParametricType(PublicKeyCredential::class.java, response)
