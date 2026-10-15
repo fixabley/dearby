@@ -112,6 +112,12 @@ class PasskeyFlowTest(
     private fun complete(path: String, challengeId: String, credential: String) =
         post(path, """{"challengeId":"$challengeId","credential":$credential}""")
 
+    // 사용자 UUID → user handle(user_entities.id, base64url)
+    private fun handle(userId: String?): String {
+        val uuid = UUID.fromString(userId)
+        return b64.encodeToString(java.nio.ByteBuffer.allocate(16).putLong(uuid.mostSignificantBits).putLong(uuid.leastSignificantBits).array())
+    }
+
     private fun register(displayName: String? = null): JsonNode {
         val issued = registrationOptions(displayName)
         return complete(
@@ -152,7 +158,7 @@ class PasskeyFlowTest(
         )
         assertEquals(
             "민준",
-            jdbc.sql("select display_name from user_entities where name = ?").param(userId)
+            jdbc.sql("select display_name from user_entities where id = ?").param(handle(userId))
                 .query(String::class.java).single(),
         )
 
@@ -180,10 +186,13 @@ class PasskeyFlowTest(
     }
 
     @Test
-    fun `가입 options는 서버가 정한 user와 기본 이름을 준다`() {
+    fun `가입 options는 서버가 정한 user handle과 사람이 읽는 이름을 준다`() {
         val options = registrationOptions()["options"]
-        assertEquals(PasskeyService.DEFAULT_DISPLAY_NAME, options["user"]["displayName"].asString())
-        UUID.fromString(options["user"]["name"].asString())
+        // OS 패스키 목록에 보이는 계정 이름은 기본 "Dearby"(2026-10-15), user handle은 사용자 UUID 16바이트
+        assertEquals("Dearby", options["user"]["name"].asString())
+        assertEquals("Dearby", options["user"]["displayName"].asString())
+        assertEquals(16, b64d.decode(options["user"]["id"].asString()).size)
+        assertEquals("민준", registrationOptions("민준")["options"]["user"]["name"].asString())
         assertEquals("localhost", options["rp"]["id"].asString())
         assertEquals("required", options["authenticatorSelection"]["residentKey"].asString())
 
@@ -231,16 +240,15 @@ class PasskeyFlowTest(
             .andExpect { status { isUnauthorized() } }
         assertEquals(users, count("users"))
         assertEquals(
-            0, jdbc.sql("select count(*) from user_entities where name = ?")
-                .param(other["options"]["user"]["name"].asString()).query(Long::class.java).single()
+            0, jdbc.sql("select count(*) from user_entities where id = ?")
+                .param(other["options"]["user"]["id"].asString()).query(Long::class.java).single()
         )
     }
 
     @Test
     fun `모르는 패스키로 로그인하면 401`() {
         val userId = subject(register())
-        jdbc.sql("delete from user_credentials where user_entity_user_id = (select id from user_entities where name = ?)")
-            .param(userId).update()
+        jdbc.sql("delete from user_credentials where user_entity_user_id = ?").param(handle(userId)).update()
 
         authenticate().andExpect { status { isUnauthorized() } }
     }

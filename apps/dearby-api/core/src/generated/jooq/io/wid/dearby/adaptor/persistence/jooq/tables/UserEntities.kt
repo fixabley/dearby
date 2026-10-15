@@ -6,13 +6,11 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_CREDENTIALS__USER_CREDENTIALS_USER_ENTITY_USER_ID_FKEY
-import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ENTITIES_NAME_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ENTITIES_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials.UserCredentialsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.UserEntitiesRecord
 
 import kotlin.collections.Collection
-import kotlin.collections.List
 
 import org.jooq.Condition
 import org.jooq.Field
@@ -122,7 +120,6 @@ open class UserEntities(
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
     override fun getPrimaryKey(): UniqueKey<UserEntitiesRecord> = USER_ENTITIES_PKEY
-    override fun getUniqueKeys(): List<UniqueKey<UserEntitiesRecord>> = listOf(USER_ENTITIES_NAME_KEY)
 
     private lateinit var _userCredentials: UserCredentialsPath
 

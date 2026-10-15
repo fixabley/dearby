@@ -17,7 +17,7 @@ interface PasskeyService {
     fun authenticate(challengeId: UUID, credential: JsonNode): TokenPair
 
     companion object {
-        const val DEFAULT_DISPLAY_NAME = "Dearby 사용자"
+        const val DEFAULT_DISPLAY_NAME = "Dearby" // OS 패스키 목록에 보이는 계정 이름(2026-10-15 사용자 결정)
         const val MAX_DISPLAY_NAME = 64
     }
 }
