@@ -268,15 +268,6 @@ a:focus-visible {
   margin: 0;
   padding-left: 18px;
 }
-.sql {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  font-size: 12px;
-  overflow: auto;
-  padding: 12px;
-  background: #f5f8f7;
-  border-radius: 8px;
-}
 .login code {
   overflow-wrap: anywhere;
 }
