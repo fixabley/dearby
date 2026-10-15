@@ -5,7 +5,9 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
+import io.wid.dearby.adaptor.persistence.jooq.indexes.ACTIVITIES_DESCRIPTION_EN_TRGM_IDX
 import io.wid.dearby.adaptor.persistence.jooq.indexes.ACTIVITIES_DESCRIPTION_TRGM_IDX
+import io.wid.dearby.adaptor.persistence.jooq.indexes.ACTIVITIES_NAME_EN_TRGM_IDX
 import io.wid.dearby.adaptor.persistence.jooq.indexes.ACTIVITIES_NAME_TRGM_IDX
 import io.wid.dearby.adaptor.persistence.jooq.indexes.ACTIVITIES_PROGRAM_ID_IDX
 import io.wid.dearby.adaptor.persistence.jooq.indexes.ACTIVITIES_PUBLICATION_STATUS_IDX
@@ -201,6 +203,16 @@ open class Activities(
      */
     val OFFICIAL_SOURCE: TableField<ActivitiesRecord, Boolean?> = createField(DSL.name("official_source"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("true"), SQLDataType.BOOLEAN)), this, "")
 
+    /**
+     * The column <code>public.activities.name_en</code>.
+     */
+    val NAME_EN: TableField<ActivitiesRecord, String?> = createField(DSL.name("name_en"), SQLDataType.VARCHAR(200), this, "")
+
+    /**
+     * The column <code>public.activities.description_en</code>.
+     */
+    val DESCRIPTION_EN: TableField<ActivitiesRecord, String?> = createField(DSL.name("description_en"), SQLDataType.VARCHAR, this, "")
+
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -233,7 +245,7 @@ open class Activities(
         override fun `as`(alias: Table<*>): ActivitiesPath = ActivitiesPath(alias.qualifiedName, this)
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
-    override fun getIndexes(): List<Index> = listOf(ACTIVITIES_DESCRIPTION_TRGM_IDX, ACTIVITIES_NAME_TRGM_IDX, ACTIVITIES_PROGRAM_ID_IDX, ACTIVITIES_PUBLICATION_STATUS_IDX, ACTIVITIES_QUALIFICATION_IDX)
+    override fun getIndexes(): List<Index> = listOf(ACTIVITIES_DESCRIPTION_EN_TRGM_IDX, ACTIVITIES_DESCRIPTION_TRGM_IDX, ACTIVITIES_NAME_EN_TRGM_IDX, ACTIVITIES_NAME_TRGM_IDX, ACTIVITIES_PROGRAM_ID_IDX, ACTIVITIES_PUBLICATION_STATUS_IDX, ACTIVITIES_QUALIFICATION_IDX)
     override fun getIdentity(): Identity<ActivitiesRecord, Long?> = super.getIdentity() as Identity<ActivitiesRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<ActivitiesRecord> = ACTIVITIES_PKEY
     override fun getUniqueKeys(): List<UniqueKey<ActivitiesRecord>> = listOf(ACTIVITIES_SOURCE_ID_KEY)

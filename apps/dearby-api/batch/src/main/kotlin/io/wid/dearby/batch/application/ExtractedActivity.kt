@@ -4,7 +4,9 @@ package io.wid.dearby.batch.application
 data class ExtractedActivity(
     val roundKey: String,
     val name: String,
+    val nameEn: String?,
     val description: String,
+    val descriptionEn: String?,
     val participationType: String?,
     val applicationUrl: String?,
     val recruitmentStartAt: String?,

@@ -6,6 +6,7 @@ import io.wid.dearby.admin.application.ProgramListing
 data class ProgramResponse(
     val id: Long,
     val name: String,
+    val nameEn: String?,
     val organization: ReferenceResponse?,
     val collection: CollectionSettingsResponse,
 ) {
@@ -13,6 +14,7 @@ data class ProgramResponse(
         fun from(listing: ProgramListing) = ProgramResponse(
             id = listing.program.id,
             name = listing.program.name,
+            nameEn = listing.program.nameEn,
             organization = listing.organization?.let { ReferenceResponse(it.id, it.name) },
             collection = CollectionSettingsResponse.from(listing),
         )

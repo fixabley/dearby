@@ -191,6 +191,49 @@ class AdminCatalogFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: Jdb
     }
 
     @Test
+    fun `영문 이름을 함께 넣고 고치거나 지우며, 같은 계위의 영문 이름도 중복이면 안 된다`() {
+        val organization = read(mvc.post("/v1/admin/organizations") { asAdmin(); body("""{"name":"영문 조직","nameEn":" Woowa Brothers "}""") }
+            .andExpect { status { isCreated() } })
+        assertEquals("Woowa Brothers", organization["nameEn"].asString())
+        val organizationId = organization["id"].asLong()
+        // 영문 이름으로도 찾는다
+        assertEquals(listOf(organizationId), read(mvc.get("/v1/admin/organizations?q=woowa") { asAdmin() })["items"].values().map { it["id"].asLong() })
+        // 한글 이름이 달라도 같은 계위에서 띄어쓰기만 다른 영문 이름은 중복
+        mvc.post("/v1/admin/organizations") { asAdmin(); body("""{"name":"다른 영문 조직","nameEn":"WoowaBrothers"}""") }
+            .andExpect { status { isBadRequest() } }
+        // 보내지 않으면 그대로, 빈 문자열이면 지운다
+        assertEquals("Woowa Brothers", read(mvc.patch("/v1/admin/organizations/$organizationId") { asAdmin(); patchBody("""{"name":"영문 조직(수정)"}""") }
+            .andExpect { status { isOk() } })["nameEn"].asString())
+        assertEquals(true, read(mvc.patch("/v1/admin/organizations/$organizationId") { asAdmin(); patchBody("""{"nameEn":""}""") }
+            .andExpect { status { isOk() } })["nameEn"].isNull)
+
+        val program = read(mvc.post("/v1/admin/programs") { asAdmin(); body("""{"organizationId":$organizationId,"name":"영문 프로그램","nameEn":"Tech Course"}""") }
+            .andExpect { status { isCreated() } })
+        assertEquals("Tech Course", program["nameEn"].asString())
+        mvc.post("/v1/admin/programs") { asAdmin(); body("""{"organizationId":$organizationId,"name":"다른 프로그램","nameEn":"TechCourse"}""") }
+            .andExpect { status { isBadRequest() } }
+        assertEquals("Tech Course 2", read(mvc.patch("/v1/admin/programs/${program["id"].asLong()}") { asAdmin(); patchBody("""{"nameEn":"Tech Course 2"}""") }
+            .andExpect { status { isOk() } })["nameEn"].asString())
+
+        // 활동은 한글·영문 이름과 설명을 고친다. 한글 이름은 비울 수 없다
+        val activity = jdbc.sql(
+            """
+            insert into activities (program_id, name, description, participation_type, recruitment_status, official_url,
+                                    freshness, source_note, created_at, updated_at)
+            values (?, '영문 활동', '설명', 'REGISTRATION', 'UNKNOWN', 'https://example.org', 'STALE', '', localtimestamp, localtimestamp)
+            returning id
+            """
+        ).param(program["id"].asLong()).query(Long::class.java).single()
+        jdbc.sql("insert into schedules (activity_id, slot, title, kind, status, date_label, sequence, created_at, updated_at) values (?, 'ACTIVITY', 't', 'EVENT', 'CONFIRMED', '', 0, localtimestamp, localtimestamp)")
+            .param(activity).update()
+        val edited = read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"nameEn":"Workshop","descriptionEn":" Details "}""") }
+            .andExpect { status { isOk() } })
+        assertEquals(listOf("영문 활동", "Workshop", "설명", "Details"), listOf("name", "nameEn", "description", "descriptionEn").map { edited[it].asString() })
+        mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"name":" "}""") }.andExpect { status { isBadRequest() } }
+        mvc.patch("/v1/admin/activities/999999") { asAdmin(); patchBody("""{"nameEn":"x"}""") }.andExpect { status { isNotFound() } }
+    }
+
+    @Test
     fun `수집 설정은 https 주소와 호스트 이름만 받는다`() {
         val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
         val url = "/v1/admin/programs/$programId/collection-settings"

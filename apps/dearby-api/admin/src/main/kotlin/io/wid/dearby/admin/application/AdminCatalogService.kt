@@ -32,17 +32,18 @@ class AdminCatalogService(
     }
 
     @Transactional
-    fun createOrganization(name: String, parentOrganizationId: Id?): OrganizationListing {
+    fun createOrganization(name: String, nameEn: String?, parentOrganizationId: Id?): OrganizationListing {
         val trimmed = requireName(name)
+        val english = optionalText(nameEn, null)
         parentOrganizationId?.let(::requireOrganization)
-        requireUniqueOrganizationName(parentOrganizationId, trimmed, null)
-        val id = unique { organizations.create(trimmed, parentOrganizationId) }
+        requireUniqueOrganizationName(parentOrganizationId, trimmed, english, null)
+        val id = unique { organizations.create(trimmed, english, parentOrganizationId) }
         return organizationListing(id)
     }
 
-    // 보낸 값만 바꾼다. 자기 자신이나 자기 하위 조직을 상위로 지정하면 순환이라 거부한다
+    // 보낸 값만 바꾼다(nameEn은 빈 문자열이면 지운다). 자기 자신이나 자기 하위 조직을 상위로 지정하면 순환이라 거부한다
     @Transactional
-    fun updateOrganization(id: Id, name: String?, parentOrganizationId: Id?, clearParent: Boolean): OrganizationListing {
+    fun updateOrganization(id: Id, name: String?, nameEn: String?, parentOrganizationId: Id?, clearParent: Boolean): OrganizationListing {
         val current = organizations.findAllById(listOf(id)).singleOrNull()
             ?: throw NotFoundException("조직을 찾을 수 없습니다", "Organization not found: $id")
         val parent = if (clearParent) null else parentOrganizationId ?: current.parentOrganizationId
@@ -53,8 +54,11 @@ class AdminCatalogService(
             }
         }
         val newName = name?.let(::requireName) ?: current.name
-        if (newName != current.name || parent != current.parentOrganizationId) requireUniqueOrganizationName(parent, newName, id)
-        unique { organizations.update(id, newName, parent) }
+        val newNameEn = optionalText(nameEn, current.nameEn)
+        if (newName != current.name || newNameEn != current.nameEn || parent != current.parentOrganizationId) {
+            requireUniqueOrganizationName(parent, newName, newNameEn, id)
+        }
+        unique { organizations.update(id, newName, newNameEn, parent) }
         return organizationListing(id)
     }
 
@@ -67,11 +71,12 @@ class AdminCatalogService(
     }
 
     @Transactional
-    fun createProgram(organizationId: Id, name: String, collection: CollectionSettings?): ProgramListing {
+    fun createProgram(organizationId: Id, name: String, nameEn: String?, collection: CollectionSettings?): ProgramListing {
         val trimmed = requireName(name)
+        val english = optionalText(nameEn, null)
         requireOrganization(organizationId)
-        requireUniqueProgramName(organizationId, trimmed, null)
-        val id = unique { programs.create(organizationId, trimmed) }
+        requireUniqueProgramName(organizationId, trimmed, english, null)
+        val id = unique { programs.create(organizationId, trimmed, english) }
         collection?.let { settings.save(id, validate(it)) }
         return listing(id)
     }
@@ -100,15 +105,19 @@ class AdminCatalogService(
         if (!curations.delete(id)) throw NotFoundException("활동을 찾을 수 없습니다", "Activity not found: $id")
     }
 
+    // 보낸 값만 바꾼다(nameEn은 빈 문자열이면 지운다)
     @Transactional
-    fun updateProgram(id: Id, name: String?, organizationId: Id?): ProgramListing {
+    fun updateProgram(id: Id, name: String?, nameEn: String?, organizationId: Id?): ProgramListing {
         val current = programs.findAllById(listOf(id)).singleOrNull()
             ?: throw NotFoundException("프로그램을 찾을 수 없습니다", "Program not found: $id")
         organizationId?.let(::requireOrganization)
         val newOrganization = organizationId ?: current.organizationId
         val newName = name?.let(::requireName) ?: current.name
-        if (newName != current.name || newOrganization != current.organizationId) requireUniqueProgramName(newOrganization, newName, id)
-        unique { programs.update(id, newOrganization, newName) }
+        val newNameEn = optionalText(nameEn, current.nameEn)
+        if (newName != current.name || newNameEn != current.nameEn || newOrganization != current.organizationId) {
+            requireUniqueProgramName(newOrganization, newName, newNameEn, id)
+        }
+        unique { programs.update(id, newOrganization, newName, newNameEn) }
         return listing(id)
     }
 
@@ -136,20 +145,40 @@ class AdminCatalogService(
         return withCuration(listOf(activities.getById(activityId, publicationStatus = null))).single()
     }
 
+    // 보낸 값만 바꾼다. 영문 값은 빈 문자열이면 지운다. 한글 이름은 비울 수 없다
+    @Transactional
+    fun updateActivityTexts(activityId: Id, name: String?, nameEn: String?, description: String?, descriptionEn: String?): AdminActivity {
+        val current = activities.getById(activityId, publicationStatus = null).activity
+        curations.updateTexts(
+            activityId,
+            name = name?.let(::requireName) ?: current.name,
+            nameEn = optionalText(nameEn, current.nameEn),
+            description = description?.trim() ?: current.description,
+            descriptionEn = optionalText(descriptionEn, current.descriptionEn),
+        )
+        return withCuration(listOf(activities.getById(activityId, publicationStatus = null))).single()
+    }
+
     private fun withCuration(items: List<ActivityListing>): List<AdminActivity> {
         val byId = curations.findAllByActivityId(items.map { it.activity.id }).associateBy { it.activityId }
         return items.mapNotNull { listing -> byId[listing.activity.id]?.let { AdminActivity(listing, it) } }
     }
 
     // 같은 계위에서 띄어쓰기를 뺀 이름이 같으면 중복(2026-10-15 사용자 결정)
-    private fun requireUniqueOrganizationName(parentOrganizationId: Id?, name: String, exceptId: Id?) {
-        if (organizations.existsSiblingName(parentOrganizationId, name, exceptId)) {
-            throw InvalidInputException(if (parentOrganizationId == null) "같은 이름의 최상위 조직이 있습니다" else "같은 상위 조직 아래에 같은 이름의 조직이 있습니다")
-        }
+    // 영문 이름도 같은 규칙으로 영문 이름끼리 비교한다(V13)
+    private fun requireUniqueOrganizationName(parentOrganizationId: Id?, name: String, nameEn: String?, exceptId: Id?) {
+        fun duplicate(kind: String) = InvalidInputException(
+            if (parentOrganizationId == null) "같은 ${kind}의 최상위 조직이 있습니다" else "같은 상위 조직 아래에 같은 ${kind}의 조직이 있습니다"
+        )
+        if (organizations.existsSiblingName(parentOrganizationId, name, exceptId)) throw duplicate("이름")
+        if (nameEn != null && organizations.existsSiblingName(parentOrganizationId, nameEn, exceptId, english = true)) throw duplicate("영문 이름")
     }
 
-    private fun requireUniqueProgramName(organizationId: Id, name: String, exceptId: Id?) {
+    private fun requireUniqueProgramName(organizationId: Id, name: String, nameEn: String?, exceptId: Id?) {
         if (programs.existsName(organizationId, name, exceptId)) throw InvalidInputException("같은 조직에 같은 이름의 프로그램이 있습니다")
+        if (nameEn != null && programs.existsName(organizationId, nameEn, exceptId, english = true)) {
+            throw InvalidInputException("같은 조직에 같은 영문 이름의 프로그램이 있습니다")
+        }
     }
 
     // 확인과 저장 사이에 같은 이름이 동시에 들어오면 DB 유일 인덱스(V12)가 막는다. 같은 안내로 바꾼다
@@ -206,6 +235,10 @@ class AdminCatalogService(
         hosts.firstOrNull { !HOST.matches(it) }?.let { throw InvalidInputException("허용 호스트는 도메인 이름만 씁니다: $it") }
         return collection.copy(officialUrl = url, allowedHosts = hosts)
     }
+
+    // null이면 지금 값 그대로, 빈 문자열이면 지운다(선택 입력인 영문 값)
+    private fun optionalText(value: String?, current: String?): String? =
+        if (value == null) current else value.trim().ifEmpty { null }
 
     private fun requireName(name: String): String =
         name.trim().ifEmpty { throw InvalidInputException("이름을 입력해 주세요") }

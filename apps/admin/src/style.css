@@ -280,6 +280,12 @@ a:focus-visible {
 .tree-input {
   width: 200px;
 }
+.tree-input + .tree-input {
+  margin-top: 6px;
+}
+.name-en {
+  margin-left: 8px;
+}
 .tree-error {
   margin-top: 6px;
   font-size: 12px;

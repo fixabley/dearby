@@ -25,7 +25,7 @@ class ActivityVerifierTest {
         start: String? = "2026-10-01T14:07:00+09:00",
         end: String? = "2026-10-08T00:00:00+09:00",
     ) = ExtractedActivity(
-        roundKey = "2026-워크숍", name = "워크숍", description = "", participationType = "REGISTRATION",
+        roundKey = "2026-워크숍", name = "워크숍", nameEn = " Workshop ", description = "", descriptionEn = " ", participationType = "REGISTRATION",
         applicationUrl = applicationUrl, recruitmentStartAt = start, recruitmentEndAt = end, dateLabel = "2026-10-08",
         schedules = emptyList(), location = null, cost = null, audience = null, evidenceQuote = quote,
     )
@@ -33,6 +33,9 @@ class ActivityVerifierTest {
     @Test
     fun `근거 구절은 공백·마크다운 차이를 무시하고 원문에서 찾는다`() {
         val result = assertIs<Verification.Accepted>(ActivityVerifier.verify(candidate(), page, true, now))
+        // 영문 번역도 앞뒤 공백을 지우고, 빈 값은 없는 것으로 본다
+        assertEquals("Workshop", result.activity.nameEn)
+        assertNull(result.activity.descriptionEn)
         assertEquals("https://letswift.kr/2026/", result.activity.officialUrl)
         assertEquals(OffsetDateTime.parse("2026-10-07T15:00:00Z").toInstant(), result.activity.recruitmentEndAt!!.toInstant())
     }

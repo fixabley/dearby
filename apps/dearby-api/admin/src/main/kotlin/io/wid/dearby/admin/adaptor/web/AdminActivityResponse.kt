@@ -8,7 +8,9 @@ import java.time.OffsetDateTime
 data class AdminActivityResponse(
     val id: Long,
     val name: String,
+    val nameEn: String?,
     val description: String,
+    val descriptionEn: String?,
     val organization: ReferenceResponse,
     val program: ReferenceResponse,
     val officialUrl: String,
@@ -31,7 +33,9 @@ data class AdminActivityResponse(
             return AdminActivityResponse(
                 id = activity.id,
                 name = activity.name,
+                nameEn = activity.nameEn,
                 description = activity.description,
+                descriptionEn = activity.descriptionEn,
                 organization = ReferenceResponse(item.listing.organization.id, item.listing.organization.name),
                 program = ReferenceResponse(item.listing.program.id, item.listing.program.name),
                 officialUrl = activity.officialUrl,

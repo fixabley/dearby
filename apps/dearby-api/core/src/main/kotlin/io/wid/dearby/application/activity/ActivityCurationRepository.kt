@@ -12,6 +12,9 @@ interface ActivityCurationRepository {
     // 바뀐 행이 없으면(활동 없음) false
     fun updatePublicationStatus(activityId: Id, status: PublicationStatus): Boolean
 
+    // 관리자가 고친 한글·영문 이름과 설명. 바뀐 행이 없으면(활동 없음) false
+    fun updateTexts(activityId: Id, name: String, nameEn: String?, description: String, descriptionEn: String?): Boolean
+
     // 활동을 지운다(일정·역할·연락처는 FK로 함께). 수집으로 생긴 활동이면 그 출처를 다시 수집하지 않게 남긴다
     fun delete(activityId: Id): Boolean
 }

@@ -24,7 +24,9 @@ object ActivityVerifier {
             CollectedActivity(
                 roundKey = candidate.roundKey.trim(),
                 name = candidate.name.trim(),
+                nameEn = candidate.nameEn?.trim()?.ifEmpty { null },
                 description = candidate.description.trim(),
+                descriptionEn = candidate.descriptionEn?.trim()?.ifEmpty { null },
                 officialUrl = page.url,
                 officialSource = officialSource,
                 // 신청 주소는 원문 페이지에 실제 링크로 있을 때만 쓴다

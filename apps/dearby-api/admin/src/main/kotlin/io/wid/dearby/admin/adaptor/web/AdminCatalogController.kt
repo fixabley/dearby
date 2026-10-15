@@ -26,11 +26,11 @@ class AdminCatalogController(private val catalog: AdminCatalogService) {
     @PostMapping("/organizations")
     @ResponseStatus(HttpStatus.CREATED)
     fun createOrganization(@RequestBody request: OrganizationCreateRequest) =
-        OrganizationResponse.from(catalog.createOrganization(request.name, request.parentOrganizationId))
+        OrganizationResponse.from(catalog.createOrganization(request.name, request.nameEn, request.parentOrganizationId))
 
     @PatchMapping("/organizations/{id}")
     fun updateOrganization(@PathVariable id: Long, @RequestBody request: OrganizationUpdateRequest) =
-        OrganizationResponse.from(catalog.updateOrganization(id, request.name, request.parentOrganizationId, request.clearParent))
+        OrganizationResponse.from(catalog.updateOrganization(id, request.name, request.nameEn, request.parentOrganizationId, request.clearParent))
 
     @DeleteMapping("/organizations/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -49,11 +49,11 @@ class AdminCatalogController(private val catalog: AdminCatalogService) {
     @PostMapping("/programs")
     @ResponseStatus(HttpStatus.CREATED)
     fun createProgram(@RequestBody request: ProgramCreateRequest) =
-        ProgramResponse.from(catalog.createProgram(request.organizationId, request.name, request.collection?.toSettings()))
+        ProgramResponse.from(catalog.createProgram(request.organizationId, request.name, request.nameEn, request.collection?.toSettings()))
 
     @PatchMapping("/programs/{id}")
     fun updateProgram(@PathVariable id: Long, @RequestBody request: ProgramUpdateRequest) =
-        ProgramResponse.from(catalog.updateProgram(id, request.name, request.organizationId))
+        ProgramResponse.from(catalog.updateProgram(id, request.name, request.nameEn, request.organizationId))
 
     @DeleteMapping("/programs/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -77,6 +77,10 @@ class AdminCatalogController(private val catalog: AdminCatalogService) {
     ) = catalog.searchActivities(ActivitySearch(q, organizationId, programId, cursor, size, publicationStatus)).let { page ->
         PageResponse(page.items.map(AdminActivityResponse::from), page.nextCursor)
     }
+
+    @PatchMapping("/activities/{id}")
+    fun updateActivityTexts(@PathVariable id: Long, @RequestBody request: ActivityTextsRequest) =
+        AdminActivityResponse.from(catalog.updateActivityTexts(id, request.name, request.nameEn, request.description, request.descriptionEn))
 
     @DeleteMapping("/activities/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

@@ -9,16 +9,16 @@ interface OrganizationRepository {
     // 없는 id는 결과에서 빠진다
     fun findAllById(ids: Collection<Id>): List<Organization>
 
-    // q는 이름에서 대소문자 없이 부분 일치. parentId가 있으면 그 조직의 하위만, rootsOnly면 최상위만.
+    // q는 한글·영문 이름에서 대소문자 없이 부분 일치. parentId가 있으면 그 조직의 하위만, rootsOnly면 최상위만.
     // id 오름차순으로 after 다음부터 최대 size개
     fun search(q: String?, parentId: Id?, rootsOnly: Boolean, after: Id?, size: Int): List<Organization>
 
-    fun create(name: String, parentOrganizationId: Id?): Id
+    fun create(name: String, nameEn: String?, parentOrganizationId: Id?): Id
 
-    // 같은 상위 조직 아래(null이면 최상위끼리)에 띄어쓰기를 뺀 이름이 같은 조직이 있는지. exceptId는 자기 자신
-    fun existsSiblingName(parentOrganizationId: Id?, name: String, exceptId: Id?): Boolean
+    // 같은 상위 조직 아래(null이면 최상위끼리)에 띄어쓰기를 뺀 이름이 같은 조직이 있는지. english면 영문 이름끼리 비교. exceptId는 자기 자신
+    fun existsSiblingName(parentOrganizationId: Id?, name: String, exceptId: Id?, english: Boolean = false): Boolean
 
-    fun update(id: Id, name: String, parentOrganizationId: Id?)
+    fun update(id: Id, name: String, nameEn: String?, parentOrganizationId: Id?)
 
     // 조직과 그 연락처를 지운다. 하위 조직·프로그램 확인은 호출하는 쪽이 한다
     fun delete(id: Id): Boolean

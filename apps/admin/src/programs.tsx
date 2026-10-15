@@ -15,7 +15,7 @@ type CollectionSettings = {
   officialOnly: boolean;
   lastSucceededOn: string | null;
 };
-type Program = { id: number; name: string; organization: { id: number; name: string }; collection: CollectionSettings };
+type Program = { id: number; name: string; nameEn: string | null; organization: { id: number; name: string }; collection: CollectionSettings };
 
 const hostPattern = /^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]([a-z0-9-]*[a-z0-9])?$/;
 const defaults: CollectionInput = { allowedHosts: [], intervalDays: 1, enabled: true };
@@ -68,7 +68,15 @@ export function Programs() {
         scroll={{ x: 900 }}
         locale={{ emptyText: "조건에 맞는 프로그램이 없어요." }}
         columns={[
-          { title: "프로그램", dataIndex: "name" },
+          {
+            title: "프로그램",
+            render: (_, program) => (
+              <>
+                {program.name}
+                {program.nameEn && <span className="muted name-en">{program.nameEn}</span>}
+              </>
+            ),
+          },
           { title: "운영 조직", render: (_, program) => program.organization.name },
           {
             title: "수집",
@@ -100,7 +108,7 @@ function CreateProgram({ onClose }: { onClose: () => void }) {
   const { message } = App.useApp();
   const client = useQueryClient();
   const create = useMutation({
-    mutationFn: (body: { organizationId: number; name: string; collection?: CollectionInput }) =>
+    mutationFn: (body: { organizationId: number; name: string; nameEn?: string; collection?: CollectionInput }) =>
       api("programs", "POST", body),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: ["programs"] });
@@ -124,11 +132,12 @@ function CreateProgram({ onClose }: { onClose: () => void }) {
         form={form}
         layout="vertical"
         initialValues={{ withCollection: true, collection: defaults }}
-        onFinish={({ organizationId, name, withCollection, collection }) =>
+        onFinish={({ organizationId, name, nameEn, withCollection, collection }) =>
           createOnce(() =>
             create.mutateAsync({
               organizationId,
               name: name.trim(),
+              nameEn: nameEn?.trim() || undefined,
               collection: withCollection ? collectionBody(collection) : undefined,
             }),
           )
@@ -143,6 +152,9 @@ function CreateProgram({ onClose }: { onClose: () => void }) {
           label="프로그램 이름"
           rules={[{ required: true, whitespace: true, message: "이름을 입력해 주세요." }]}
         >
+          <Input />
+        </Form.Item>
+        <Form.Item name="nameEn" label="영문 이름(선택)">
           <Input />
         </Form.Item>
         <Form.Item name="withCollection" label="수집 설정 함께 입력" valuePropName="checked">

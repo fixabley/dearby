@@ -59,13 +59,13 @@ class CollectionJobTest(
             Extraction(
                 listOf(
                     ExtractedActivity(
-                        roundKey = "2026-컨퍼런스", name = "Let'Swift 2026 컨퍼런스", description = "본행사", participationType = "REGISTRATION",
+                        roundKey = "2026-컨퍼런스", name = "Let'Swift 2026 컨퍼런스", nameEn = "Let'Swift 2026 Conference", description = "본행사", descriptionEn = "Main event", participationType = "REGISTRATION",
                         applicationUrl = "https://letswift.kr/2026/apply", recruitmentStartAt = "2026-11-01T10:00:00+09:00",
                         recruitmentEndAt = "2026-11-10T23:59:00+09:00", dateLabel = "2026-11-29", schedules = emptyList(),
                         location = null, cost = null, audience = null, evidenceQuote = "참가 신청은 11월 1일부터 11월 10일까지입니다",
                     ),
                     ExtractedActivity(
-                        roundKey = "2026-가짜", name = "원문에 없는 활동", description = "", participationType = null,
+                        roundKey = "2026-가짜", name = "원문에 없는 활동", nameEn = null, description = "", descriptionEn = null, participationType = null,
                         applicationUrl = null, recruitmentStartAt = null, recruitmentEndAt = null, dateLabel = "",
                         schedules = emptyList(), location = null, cost = null, audience = null, evidenceQuote = "원문 어디에도 없는 문장입니다",
                     ),
@@ -115,6 +115,7 @@ class CollectionJobTest(
         // 페이지 2개 중 1개는 404, 받은 페이지에서 2건을 찾아 1건 저장·1건 제외
         assertEquals(listOf<Any>("SUCCEEDED", 2, 1, 2, 1100L, 1, true), record)
         assertEquals(listOf(true), jdbc.sql("select official_source from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(Boolean::class.java).list())
+        assertEquals(listOf("Let'Swift 2026 Conference|Main event"), jdbc.sql("select name_en || '|' || description_en from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
         val schedules = jdbc.sql("select slot from schedules s join activities a on a.id = s.activity_id where a.name = ? order by slot")
             .param("Let'Swift 2026 컨퍼런스").query(String::class.java).list()
         assertEquals(listOf("ACTIVITY", "APPLICATION"), schedules)

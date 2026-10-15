@@ -240,7 +240,8 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 
 - 게시된(`PUBLISHED`) 활동만 보인다. 수집 배치가 넣은 초안(`DRAFT`)은 관리자가 게시하기 전까지 목록·검색·단건 조회에 나오지 않는다(2026-10-15).
 - 순서는 활동 id 오름차순이다. 다음 페이지는 `nextCursor`를 `cursor`로 보낸다. `nextCursor`가 null이면 마지막 페이지다. `size`가 범위를 벗어나면 400.
-- `q`는 활동 이름·설명에서 찾는다. 대소문자 없는 부분 일치(`%`·`_`도 글자 그대로) 또는 단어 유사도(PostgreSQL `pg_trgm` `word_similarity` 0.4 이상)면 결과에 넣는다. 그래서 오타("워크샵"→"워크숍")·띄어쓰기 차이("개발환경")도 찾는다. 순서는 여전히 id 순이다(유사도 순 정렬은 하지 않음).
+- 언어(2026-10-15 사용자 결정): 요청 헤더 `Accept-Language`에서 지원 언어(`ko`, `en`) 중 가장 선호하는 것으로 `name`·`description`·`organization.name`·`program.name`을 하나씩 준다. 영문 값이 없는 항목은 한글로 채운다. 헤더가 없거나 읽을 수 없거나 지원 언어가 없으면 한국어. 응답에 `Content-Language`(`ko`·`en`)와 `Vary: Accept-Language`를 붙인다. 앱·웹은 화면 언어를 이 헤더로 보낸다.
+- `q`는 활동 이름·설명(한글·영문 모두)에서 찾는다. 대소문자 없는 부분 일치(`%`·`_`도 글자 그대로) 또는 단어 유사도(PostgreSQL `pg_trgm` `word_similarity` 0.4 이상)면 결과에 넣는다. 그래서 오타("워크샵"→"워크숍")·띄어쓰기 차이("개발환경")도 찾는다. 순서는 여전히 id 순이다(유사도 순 정렬은 하지 않음).
 - id는 숫자(bigint)다. 기존 카탈로그 UUID는 쓰지 않는다.
 - Activity: `{id, name, description, organization{id,name}, program{id,name}, officialUrl, imageUrl, application, activitySchedule, schedules[]}`. 2026-10-14 사용자 결정으로 원래 도메인 필드에 공식 안내 링크(`officialUrl`)와 이미지(`imageUrl`)만 더한다. 모집 상태·참여 방식·확인 시각·장소·비용·대상·자격요건(JSON)·역할·신청 링크·안내 문구는 같은 `activities` 행(+`activity_roles`)에 있지만 운영자용 도메인 `ActivityCuration`이 다루고 공개 API는 내보내지 않는다. 같은 DB를 쓰는 운영자(admin) 모듈용이다.
   - 모집 여부는 `application`(모집 기간: 시작·끝 중 아는 쪽)으로 판단한다. 신청은 `officialUrl`을 연다.

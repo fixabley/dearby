@@ -61,6 +61,16 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
         return dsl.deleteFrom(ACTIVITIES).where(ACTIVITIES.ID.eq(activityId)).execute() > 0
     }
 
+    override fun updateTexts(activityId: Id, name: String, nameEn: String?, description: String, descriptionEn: String?): Boolean =
+        dsl.update(ACTIVITIES)
+            .set(ACTIVITIES.NAME, name)
+            .set(ACTIVITIES.NAME_EN, nameEn)
+            .set(ACTIVITIES.DESCRIPTION, description)
+            .set(ACTIVITIES.DESCRIPTION_EN, descriptionEn)
+            .set(ACTIVITIES.UPDATED_AT, LocalDateTime.now())
+            .where(ACTIVITIES.ID.eq(activityId))
+            .execute() > 0
+
     override fun updatePublicationStatus(activityId: Id, status: PublicationStatus): Boolean =
         dsl.update(ACTIVITIES)
             .set(ACTIVITIES.PUBLICATION_STATUS, status.name)

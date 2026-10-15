@@ -26,38 +26,40 @@ class JooqProgramRepository(private val dsl: DSLContext) : ProgramRepository {
 
     override fun search(q: String?, organizationId: Id?, after: Id?, size: Int): List<Program> {
         val conditions = buildList<Condition> {
-            q?.takeIf { it.isNotBlank() }?.let { add(PROGRAMS.NAME.containsIgnoreCase(it.trim())) }
+            q?.takeIf { it.isNotBlank() }?.trim()?.let { add(PROGRAMS.NAME.containsIgnoreCase(it).or(PROGRAMS.NAME_EN.containsIgnoreCase(it))) }
             organizationId?.let { add(PROGRAMS.ORGANIZATION_ID.eq(it)) }
             after?.let { add(PROGRAMS.ID.gt(it)) }
         }
         return load(dsl.selectFrom(PROGRAMS).where(conditions).orderBy(PROGRAMS.ID).limit(size).fetch())
     }
 
-    override fun create(organizationId: Id, name: String): Id {
+    override fun create(organizationId: Id, name: String, nameEn: String?): Id {
         val now = LocalDateTime.now()
         return dsl.insertInto(PROGRAMS)
             .set(PROGRAMS.ORGANIZATION_ID, organizationId)
             .set(PROGRAMS.NAME, name)
+            .set(PROGRAMS.NAME_EN, nameEn)
             .set(PROGRAMS.CREATED_AT, now)
             .set(PROGRAMS.UPDATED_AT, now)
             .returning(PROGRAMS.ID)
             .fetchOne()!!.id!!
     }
 
-    override fun update(id: Id, organizationId: Id, name: String) {
+    override fun update(id: Id, organizationId: Id, name: String, nameEn: String?) {
         dsl.update(PROGRAMS)
             .set(PROGRAMS.ORGANIZATION_ID, organizationId)
             .set(PROGRAMS.NAME, name)
+            .set(PROGRAMS.NAME_EN, nameEn)
             .set(PROGRAMS.UPDATED_AT, LocalDateTime.now())
             .where(PROGRAMS.ID.eq(id))
             .execute()
     }
 
-    override fun existsName(organizationId: Id, name: String, exceptId: Id?): Boolean =
+    override fun existsName(organizationId: Id, name: String, exceptId: Id?, english: Boolean): Boolean =
         dsl.fetchExists(
             PROGRAMS,
             PROGRAMS.ORGANIZATION_ID.eq(organizationId),
-            withoutSpaces(PROGRAMS.NAME).eq(withoutSpaces(DSL.`val`(name))),
+            withoutSpaces(if (english) PROGRAMS.NAME_EN else PROGRAMS.NAME).eq(withoutSpaces(DSL.`val`(name))),
             exceptId?.let { PROGRAMS.ID.ne(it) } ?: DSL.noCondition(),
         )
 
@@ -85,6 +87,7 @@ class JooqProgramRepository(private val dsl: DSLContext) : ProgramRepository {
                 id = it.id!!,
                 organizationId = it.organizationId!!,
                 name = it.name!!,
+                nameEn = it.nameEn,
                 contacts = contacts[it.id].orEmpty(),
                 period = Period(it.periodFrom, it.periodTo),
                 timestamps = Timestamps(it.createdAt!!, it.updatedAt!!),

@@ -36,6 +36,7 @@ object CollectionPrompts {
         - roundKey는 회차를 구분하는 짧은 식별자다(예: "2026-본행사", "2026-이력서피드백").
         - 시각은 본문에 시각까지 있을 때만 ISO 8601 오프셋 형식(예: 2026-10-08T19:00:00+09:00)으로 쓴다. 날짜만 있으면 시각은 null로 두고 dateLabel에 원문 문구를 쓴다.
         - evidenceQuote는 이 활동이 본문에 있다는 근거로, 본문에서 그대로 복사한 10~200자 연속 구절이다.
+        - name·description은 한국어로 쓴다. nameEn·descriptionEn은 그 영어 번역이다(고유 명사·행사명은 공식 영문 표기가 본문에 있으면 그대로 쓴다). 번역할 수 없으면 null.
         - participationType: 신청하면 참가하면 REGISTRATION, 심사로 선발하면 SELECTION.
         - 활동이 없으면 activities를 빈 배열로 둔다.
     """.trimIndent()
@@ -53,7 +54,9 @@ object CollectionPrompts {
                     mapOf(
                         "roundKey" to string(),
                         "name" to string(),
+                        "nameEn" to nullableString(),
                         "description" to string(),
+                        "descriptionEn" to nullableString(),
                         "participationType" to mapOf("type" to listOf("string", "null"), "enum" to listOf("REGISTRATION", "SELECTION", null)),
                         "applicationUrl" to nullableString(),
                         "recruitmentStartAt" to nullableString(),

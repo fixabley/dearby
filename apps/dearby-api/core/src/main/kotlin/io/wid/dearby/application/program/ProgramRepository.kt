@@ -9,15 +9,15 @@ interface ProgramRepository {
     // 없는 id는 결과에서 빠진다
     fun findAllById(ids: Collection<Id>): List<Program>
 
-    // q는 이름에서 대소문자 없이 부분 일치. id 오름차순으로 after 다음부터 최대 size개
+    // q는 한글·영문 이름에서 대소문자 없이 부분 일치. id 오름차순으로 after 다음부터 최대 size개
     fun search(q: String?, organizationId: Id?, after: Id?, size: Int): List<Program>
 
-    fun create(organizationId: Id, name: String): Id
+    fun create(organizationId: Id, name: String, nameEn: String?): Id
 
-    // 같은 조직 아래에 띄어쓰기를 뺀 이름이 같은 프로그램이 있는지. exceptId는 자기 자신
-    fun existsName(organizationId: Id, name: String, exceptId: Id?): Boolean
+    // 같은 조직 아래에 띄어쓰기를 뺀 이름이 같은 프로그램이 있는지. english면 영문 이름끼리 비교. exceptId는 자기 자신
+    fun existsName(organizationId: Id, name: String, exceptId: Id?, english: Boolean = false): Boolean
 
-    fun update(id: Id, organizationId: Id, name: String)
+    fun update(id: Id, organizationId: Id, name: String, nameEn: String?)
 
     fun activityCount(id: Id): Int
 
