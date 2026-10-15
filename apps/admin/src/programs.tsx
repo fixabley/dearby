@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, App, Button, Form, Input, InputNumber, Modal, Select, Space, Spin, Switch, Tag } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import { api } from "./api";
+import { api, useSingleFlight } from "./api";
 import { CursorTable, SearchSelect, useCursorList } from "./list";
 
 type CollectionInput = { officialUrl?: string; allowedHosts: string[]; intervalDays: number; enabled: boolean };
@@ -108,6 +108,7 @@ function CreateProgram({ onClose }: { onClose: () => void }) {
       onClose();
     },
   });
+  const createOnce = useSingleFlight();
   return (
     <Modal
       open
@@ -124,11 +125,13 @@ function CreateProgram({ onClose }: { onClose: () => void }) {
         layout="vertical"
         initialValues={{ withCollection: true, collection: defaults }}
         onFinish={({ organizationId, name, withCollection, collection }) =>
-          create.mutate({
-            organizationId,
-            name: name.trim(),
-            collection: withCollection ? collectionBody(collection) : undefined,
-          })
+          createOnce(() =>
+            create.mutateAsync({
+              organizationId,
+              name: name.trim(),
+              collection: withCollection ? collectionBody(collection) : undefined,
+            }),
+          )
         }
       >
         {create.error && <Alert className="form-error" type="error" showIcon message={create.error.message} />}
@@ -169,6 +172,7 @@ function CollectionEditor({ program, onClose }: { program: Program; onClose: () 
       onClose();
     },
   });
+  const saveOnce = useSingleFlight();
   const settings = current.data;
   return (
     <Modal
@@ -191,7 +195,7 @@ function CollectionEditor({ program, onClose }: { program: Program; onClose: () 
           form={form}
           layout="vertical"
           initialValues={{ collection: { ...settings, officialUrl: settings.officialUrl ?? undefined } }}
-          onFinish={({ collection }) => save.mutate(collectionBody(collection))}
+          onFinish={({ collection }) => saveOnce(() => save.mutateAsync(collectionBody(collection)))}
         >
           {save.error && <Alert className="form-error" type="error" showIcon message={save.error.message} />}
           <p className="field-note">

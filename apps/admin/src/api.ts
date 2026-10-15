@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useRef, useSyncExternalStore } from "react";
 
 /** Same-origin paths: Vercel rewrites and the Vite dev proxy forward them to the Kotlin API. */
 /** Registration, authentication and refresh all return this; `user.roles` gates the UI (the API still enforces ADMIN). */
@@ -123,7 +123,24 @@ export async function api<T>(path: string, method = "GET", body?: unknown): Prom
     throw new ApiError(403, "관리자 권한이 없어요.");
   }
   if (!response.ok) throw await failure(response);
-  return response.json();
+  return response.status === 204 ? (undefined as T) : response.json();
+}
+
+/**
+ * Runs one request at a time. `isPending` reaches the UI only after a re-render, so a double click or a repeated Enter
+ * inside that gap would send the same POST twice; this lock is set synchronously before the request starts.
+ */
+export function useSingleFlight() {
+  const busy = useRef(false);
+  return (run: () => Promise<unknown>) => {
+    if (busy.current) return;
+    busy.current = true;
+    run()
+      .catch(() => undefined) // The mutation keeps the error for the UI.
+      .finally(() => {
+        busy.current = false;
+      });
+  };
 }
 
 /** Re-reads roles after an operator grants ADMIN: refresh returns the current DB roles. */

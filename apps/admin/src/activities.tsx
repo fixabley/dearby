@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { App, Button, Descriptions, Input, Select, Space, Tag } from "antd";
+import { App, Button, Descriptions, Input, Popconfirm, Select, Space, Tag } from "antd";
 import { ExportOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
-import { api } from "./api";
+import { api, useSingleFlight } from "./api";
 import { CursorTable, SearchSelect, useCursorList } from "./list";
 
 type Schedule = {
@@ -80,6 +80,15 @@ export function Activities() {
     },
     onError: (error) => message.error(error.message),
   });
+  const publishOnce = useSingleFlight();
+  const remove = useMutation({
+    mutationFn: (id: number) => api<void>(`activities/${id}`, "DELETE"),
+    onSuccess: async () => {
+      message.success("삭제했어요.");
+      await client.invalidateQueries({ queryKey: ["activities"] });
+    },
+  });
+  const removeOnce = useSingleFlight();
   function toggle(activity: Activity) {
     const status = activity.publicationStatus === "PUBLISHED" ? "DRAFT" : "PUBLISHED";
     if (status === "PUBLISHED" && !activity.officialSource)
@@ -91,7 +100,7 @@ export function Activities() {
         cancelText: "취소",
         onOk: () => publication.mutateAsync({ id: activity.id, status }),
       });
-    else publication.mutate({ id: activity.id, status });
+    else publishOnce(() => publication.mutateAsync({ id: activity.id, status }));
   }
   return (
     <>
@@ -186,18 +195,43 @@ export function Activities() {
             title: "",
             className: "actions",
             render: (_, activity) => (
-              <Space>
-                <a href={activity.officialUrl} target="_blank" rel="noreferrer">
-                  공식 안내 <ExportOutlined aria-hidden="true" />
-                </a>
-                <Button
-                  type={activity.publicationStatus === "PUBLISHED" ? "default" : "primary"}
-                  loading={publication.isPending && publication.variables?.id === activity.id}
-                  onClick={() => toggle(activity)}
-                >
-                  {activity.publicationStatus === "PUBLISHED" ? "게시 취소" : "게시"}
-                </Button>
-              </Space>
+              <>
+                <Space>
+                  <a href={activity.officialUrl} target="_blank" rel="noreferrer">
+                    공식 안내 <ExportOutlined aria-hidden="true" />
+                  </a>
+                  <Button
+                    type={activity.publicationStatus === "PUBLISHED" ? "default" : "primary"}
+                    loading={publication.isPending && publication.variables?.id === activity.id}
+                    disabled={publication.isPending && publication.variables?.id !== activity.id}
+                    onClick={() => toggle(activity)}
+                  >
+                    {activity.publicationStatus === "PUBLISHED" ? "게시 취소" : "게시"}
+                  </Button>
+                  <Popconfirm
+                    title={`‘${activity.name}’ 활동을 삭제할까요?`}
+                    description="삭제하면 되돌릴 수 없고, 수집으로 생긴 활동은 다시 수집되지 않아요."
+                    okText="삭제"
+                    cancelText="취소"
+                    okButtonProps={{ danger: true }}
+                    disabled={remove.isPending}
+                    onConfirm={() => removeOnce(() => remove.mutateAsync(activity.id))}
+                  >
+                    <Button
+                      danger
+                      loading={remove.isPending && remove.variables === activity.id}
+                      disabled={remove.isPending && remove.variables !== activity.id}
+                    >
+                      삭제
+                    </Button>
+                  </Popconfirm>
+                </Space>
+                {remove.error && remove.variables === activity.id && (
+                  <div className="tree-error" role="alert">
+                    {remove.error.message}
+                  </div>
+                )}
+              </>
             ),
           },
         ]}
