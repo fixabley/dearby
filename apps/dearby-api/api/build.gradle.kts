@@ -3,13 +3,9 @@ plugins {
 }
 
 dependencies {
-    implementation(project(":core"))
+    implementation(project(":auth"))
     implementation("org.springframework.boot:spring-boot-starter-restclient")
-    implementation("org.springframework.boot:spring-boot-starter-security")
-    implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
-    implementation("org.springframework.boot:spring-boot-starter-webmvc")
     implementation("org.springframework.modulith:spring-modulith-starter-core")
-    implementation("org.springframework.security:spring-security-webauthn")
     runtimeOnly("org.postgresql:postgresql")
     runtimeOnly("org.springframework.modulith:spring-modulith-runtime")
     runtimeOnly("org.xerial:sqlite-jdbc")

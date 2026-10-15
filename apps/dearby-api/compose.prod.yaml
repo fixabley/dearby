@@ -1,4 +1,4 @@
-# 운영용: API + 수집 배치 + DB. 실행: docker compose -f compose.prod.yaml --env-file .env.prod up -d --build
+# 운영용: API + 관리자 API + 수집 배치 + DB. 실행: docker compose -f compose.prod.yaml --env-file .env.prod up -d --build
 # API와 DB 모두 127.0.0.1에만 연다. API는 앞단 nginx가 프록시하고, DB 포트는 이 서버에서 IntelliJ 등으로 직접 볼 때 쓴다. 데이터는 ./data/prod 아래에 남는다
 name: dearby-api-prod
 
@@ -66,3 +66,28 @@ services:
       COLLECTION_ENGINE: ${COLLECTION_ENGINE:-api}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+
+  # 관리자 API(shared/contracts/admin-v1.md). nginx가 api.dearby.wid.io.kr/v1/admin/ 을 이 포트로 보낸다.
+  # 공통 인증(auth 모듈)을 쓰므로 api와 같은 서명 키(읽기 전용)·패스키 설정을 쓴다
+  admin:
+    build:
+      context: .
+      dockerfile: admin/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:?}
+      DB_USERNAME: ${DB_USERNAME:?}
+      DB_PASSWORD: ${DB_PASSWORD:?}
+      JWT_KEY_PATH: /app/data/jwt/private.pem
+      WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:?}
+      WEBAUTHN_ALLOWED_ORIGINS: ${WEBAUTHN_ALLOWED_ORIGINS:?}
+      JWT_ISSUER: ${JWT_ISSUER:?}
+    volumes:
+      - ./data/prod/jwt:/app/data/jwt:ro
+    ports:
+      - "127.0.0.1:${ADMIN_PORT:-58868}:8080"

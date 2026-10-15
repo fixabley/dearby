@@ -5,6 +5,7 @@ import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.NotFoundException
+import io.wid.dearby.domain.PublicationStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -34,9 +35,9 @@ class ActivityService(
     }
 
     @Transactional(readOnly = true)
-    fun getById(id: Id): ActivityListing {
+    fun getById(id: Id, publicationStatus: PublicationStatus? = PublicationStatus.PUBLISHED): ActivityListing {
         val notFound = { NotFoundException("활동을 찾을 수 없습니다", "Activity not found: $id") }
-        val activity = activities.findById(id) ?: throw notFound()
+        val activity = activities.findById(id, publicationStatus) ?: throw notFound()
         // 목록과 같이, 소속을 찾지 못한 활동은 없는 것으로 본다
         val program = programs.findAllById(listOf(activity.programId)).singleOrNull() ?: throw notFound()
         val organization = organizations.findAllById(listOf(program.organizationId)).singleOrNull() ?: throw notFound()
