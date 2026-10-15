@@ -6,134 +6,49 @@ buildscript {
 }
 
 plugins {
-    kotlin("jvm") version "2.3.21"
-    kotlin("plugin.spring") version "2.3.21"
-    id("org.springframework.boot") version "4.1.1"
-    id("io.spring.dependency-management") version "1.1.7"
-    id("org.flywaydb.flyway") version "12.4.0"
-    id("org.jooq.jooq-codegen-gradle") version "3.21.7"
+    kotlin("jvm") version "2.3.21" apply false
+    kotlin("plugin.spring") version "2.3.21" apply false
+    id("org.springframework.boot") version "4.1.1" apply false
+    id("io.spring.dependency-management") version "1.1.7" apply false
+    id("org.flywaydb.flyway") version "12.4.0" apply false
+    id("org.jooq.jooq-codegen-gradle") version "3.21.7" apply false
 }
 
-group = "io.wid"
-version = "0.0.1-SNAPSHOT"
-description = "dearby-api"
+subprojects {
+    group = "io.wid"
+    version = "0.0.1-SNAPSHOT"
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(25)
+    apply(plugin = "org.jetbrains.kotlin.jvm")
+    apply(plugin = "org.jetbrains.kotlin.plugin.spring")
+    apply(plugin = "io.spring.dependency-management")
+
+    repositories {
+        mavenCentral()
     }
-}
 
-repositories {
-    mavenCentral()
-}
-
-extra["springModulithVersion"] = "2.1.1"
-
-val flywayMigration: Configuration = configurations.create("flywayMigration")
-
-dependencies {
-    implementation("org.springframework.boot:spring-boot-starter-flyway")
-    implementation("org.springframework.boot:spring-boot-starter-jooq")
-    implementation("org.springframework.boot:spring-boot-starter-restclient")
-    implementation("org.springframework.boot:spring-boot-starter-security")
-    implementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server")
-    implementation("org.springframework.boot:spring-boot-starter-webmvc")
-    implementation("org.flywaydb:flyway-database-postgresql")
-    implementation("org.jetbrains.kotlin:kotlin-reflect")
-    implementation("org.springframework.modulith:spring-modulith-starter-core")
-    implementation("org.springframework.security:spring-security-webauthn")
-    implementation("tools.jackson.module:jackson-module-kotlin")
-    runtimeOnly("org.postgresql:postgresql")
-    runtimeOnly("org.springframework.modulith:spring-modulith-runtime")
-    runtimeOnly("org.xerial:sqlite-jdbc")
-    testImplementation("org.springframework.boot:spring-boot-starter-flyway-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-jooq-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-restclient-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-security-oauth2-resource-server-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-security-test")
-    testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
-    testImplementation("org.springframework.modulith:spring-modulith-starter-test")
-    // 테스트용 패스키 인증기. 버전은 spring-security-webauthn이 쓰는 webauthn4j-core와 맞춘다
-    testImplementation("com.webauthn4j:webauthn4j-test:0.31.9.RELEASE")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    flywayMigration("org.postgresql:postgresql")
-    jooqCodegen("org.postgresql:postgresql")
-}
-
-dependencyManagement {
-    imports {
-        mavenBom("org.springframework.modulith:spring-modulith-bom:${property("springModulithVersion")}")
-    }
-}
-
-kotlin {
-    compilerOptions {
-        freeCompilerArgs.addAll("-Xjsr305=strict", "-Xannotation-default-target=param-property")
-    }
-}
-
-tasks.withType<Test> {
-    useJUnitPlatform()
-}
-
-// 로컬 실행은 local 프로필(application-local.yaml). SPRING_PROFILES_ACTIVE로 바꿀 수 있다
-tasks.bootRun {
-    environment("SPRING_PROFILES_ACTIVE", System.getenv("SPRING_PROFILES_ACTIVE") ?: "local")
-}
-
-// 테스트·코드 생성용 PostgreSQL: compose.yaml의 postgres-test(127.0.0.1:5433). CI는 같은 값의 서비스 컨테이너를 띄운다
-val testDbUrl = "jdbc:postgresql://localhost:${System.getenv("TEST_DB_PORT") ?: "5433"}/dearby_test"
-val testDbUser = "dearby_test"
-
-// jOOQ 코드 생성: 테스트 DB를 비우고 마이그레이션을 적용한 뒤 그 스키마로 생성한다. 결과(src/generated/jooq)는 커밋한다.
-// 그래서 컴파일·운영 이미지 빌드에는 DB가 필요 없다. 마이그레이션을 바꾸면 ./gradlew jooqCodegen 후 함께 커밋한다(CI가 확인)
-val migrations = layout.projectDirectory.dir("src/main/resources/db/migration")
-val jooqOutput = layout.projectDirectory.dir("src/generated/jooq")
-
-flyway {
-    url = testDbUrl
-    user = testDbUser
-    password = testDbUser
-    locations = arrayOf("filesystem:${migrations.asFile.absolutePath}")
-    configurations = arrayOf(flywayMigration.name)
-    cleanDisabled = false
-}
-
-jooq {
-    configuration {
-        jdbc {
-            driver = "org.postgresql.Driver"
-            url = testDbUrl
-            user = testDbUser
-            password = testDbUser
-        }
-        generator {
-            name = "org.jooq.codegen.KotlinGenerator"
-            database {
-                name = "org.jooq.meta.postgres.PostgresDatabase"
-                inputSchema = "public"
-                includes = ".*"
-                excludes = "flyway_schema_history"
-                includeRoutines = false // 확장(pg_trgm 등) 함수는 쓰지 않는다
-            }
-            target {
-                packageName = "io.wid.dearby.adaptor.persistence.jooq"
-                directory = jooqOutput.asFile.absolutePath
-            }
+    extensions.configure<JavaPluginExtension> {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(25)
         }
     }
-}
 
-tasks.flywayMigrate {
-    dependsOn(tasks.flywayClean) // 매번 빈 스키마에서 전체 마이그레이션
-}
+    extensions.configure<io.spring.gradle.dependencymanagement.dsl.DependencyManagementExtension> {
+        imports {
+            mavenBom(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES)
+            mavenBom("org.springframework.modulith:spring-modulith-bom:2.1.1")
+        }
+    }
 
-tasks.jooqCodegen {
-    dependsOn(tasks.flywayMigrate)
-}
+    extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension> {
+        compilerOptions {
+            // 생성자 매개변수 이름을 남긴다(Jackson·Spring 바인딩). Spring Boot 플러그인을 쓰지 않는 core에도 필요
+            javaParameters = true
+            freeCompilerArgs.addAll("-Xjsr305=strict", "-Xannotation-default-target=param-property")
+        }
+    }
 
-sourceSets.main {
-    kotlin.srcDir(jooqOutput)
+    // 모듈 테스트는 모두 같은 테스트 DB(postgres-test)를 비우고 다시 쓰므로 동시에 돌리지 않는다
+    tasks.withType<Test> {
+        useJUnitPlatform()
+    }
 }

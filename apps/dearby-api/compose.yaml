@@ -1,6 +1,6 @@
 # 로컬 개발용 인프라(DB만). API는 ./gradlew bootRun으로 띄운다
 # 실행: docker compose --env-file .env.local up -d (.env.local.example 참고)
-# postgres: 개발용(데이터 유지). postgres-test: ./gradlew test·jooqCodegen 전용(127.0.0.1:5433, 메모리에만 두어 재시작하면 비워짐)
+# postgres: 개발용(데이터 유지). postgres-test: ./gradlew test·:core:jooqCodegen 전용(127.0.0.1:5433, 메모리에만 두어 재시작하면 비워짐)
 # 운영은 compose.prod.yaml
 name: dearby-api-dev
 

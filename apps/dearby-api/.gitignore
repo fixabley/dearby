@@ -51,3 +51,6 @@ out/
 *.key
 *.p8
 *.p12
+
+# IntelliJ MCP 로컬 설정
+.mcp.json

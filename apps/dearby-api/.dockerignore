@@ -1,7 +1,7 @@
-.gradle
-.idea
-.kotlin
-build
+**/.gradle
+**/.idea
+**/.kotlin
+**/build
 data
 .env*
 *.iml
