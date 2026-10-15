@@ -11,6 +11,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardActivityHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
+import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
@@ -19,6 +20,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileActivityHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileActivityHistoryRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Profiles
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCollectionSettings
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaffRoles
@@ -88,6 +90,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val BUSINESS_CARDS: BusinessCards get() = BusinessCards.BUSINESS_CARDS
 
     /**
+     * The table <code>public.collection_runs</code>.
+     */
+    val COLLECTION_RUNS: CollectionRuns get() = CollectionRuns.COLLECTION_RUNS
+
+    /**
      * The table <code>public.contacts</code>.
      */
     val CONTACTS: Contacts get() = Contacts.CONTACTS
@@ -126,6 +133,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.profiles</code>.
      */
     val PROFILES: Profiles get() = Profiles.PROFILES
+
+    /**
+     * The table <code>public.program_collection_settings</code>.
+     */
+    val PROGRAM_COLLECTION_SETTINGS: ProgramCollectionSettings get() = ProgramCollectionSettings.PROGRAM_COLLECTION_SETTINGS
 
     /**
      * The table <code>public.program_contacts</code>.
@@ -192,6 +204,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         BusinessCardActivityHistories.BUSINESS_CARD_ACTIVITY_HISTORIES,
         BusinessCardContacts.BUSINESS_CARD_CONTACTS,
         BusinessCards.BUSINESS_CARDS,
+        CollectionRuns.COLLECTION_RUNS,
         Contacts.CONTACTS,
         OrganizationContacts.ORGANIZATION_CONTACTS,
         OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES,
@@ -200,6 +213,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         ProfileActivityHistories.PROFILE_ACTIVITY_HISTORIES,
         ProfileActivityHistoryRoles.PROFILE_ACTIVITY_HISTORY_ROLES,
         Profiles.PROFILES,
+        ProgramCollectionSettings.PROGRAM_COLLECTION_SETTINGS,
         ProgramContacts.PROGRAM_CONTACTS,
         ProgramStaff.PROGRAM_STAFF,
         ProgramStaffRoles.PROGRAM_STAFF_ROLES,

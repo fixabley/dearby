@@ -101,6 +101,14 @@ open class ActivitiesRecord() : UpdatableRecordImpl<ActivitiesRecord>(Activities
         set(value): Unit = set(19, value)
         get(): JSONB? = get(19) as JSONB?
 
+    open var publicationStatus: String?
+        set(value): Unit = set(20, value)
+        get(): String? = get(20) as String?
+
+    open var officialSource: Boolean?
+        set(value): Unit = set(21, value)
+        get(): Boolean? = get(21) as Boolean?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -110,7 +118,7 @@ open class ActivitiesRecord() : UpdatableRecordImpl<ActivitiesRecord>(Activities
     /**
      * Create a detached, initialised ActivitiesRecord
      */
-    constructor(id: Long? = null, sourceId: UUID? = null, programId: Long? = null, name: String? = null, description: String? = null, participationType: String? = null, recruitmentStatus: String? = null, location: String? = null, cost: String? = null, audience: String? = null, officialUrl: String? = null, applicationUrl: String? = null, sourceCheckedAt: OffsetDateTime? = null, validUntil: OffsetDateTime? = null, freshness: String? = null, sourceNote: String? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null, imageUrl: String? = null, qualification: JSONB? = null): this() {
+    constructor(id: Long? = null, sourceId: UUID? = null, programId: Long? = null, name: String? = null, description: String? = null, participationType: String? = null, recruitmentStatus: String? = null, location: String? = null, cost: String? = null, audience: String? = null, officialUrl: String? = null, applicationUrl: String? = null, sourceCheckedAt: OffsetDateTime? = null, validUntil: OffsetDateTime? = null, freshness: String? = null, sourceNote: String? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null, imageUrl: String? = null, qualification: JSONB? = null, publicationStatus: String? = null, officialSource: Boolean? = null): this() {
         this.id = id
         this.sourceId = sourceId
         this.programId = programId
@@ -131,6 +139,8 @@ open class ActivitiesRecord() : UpdatableRecordImpl<ActivitiesRecord>(Activities
         this.updatedAt = updatedAt
         this.imageUrl = imageUrl
         this.qualification = qualification
+        this.publicationStatus = publicationStatus
+        this.officialSource = officialSource
         resetTouchedOnNotNull()
     }
 }

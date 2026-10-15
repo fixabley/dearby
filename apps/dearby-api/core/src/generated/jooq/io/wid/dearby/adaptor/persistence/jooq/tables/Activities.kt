@@ -8,6 +8,7 @@ import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.indexes.ACTIVITIES_DESCRIPTION_TRGM_IDX
 import io.wid.dearby.adaptor.persistence.jooq.indexes.ACTIVITIES_NAME_TRGM_IDX
 import io.wid.dearby.adaptor.persistence.jooq.indexes.ACTIVITIES_PROGRAM_ID_IDX
+import io.wid.dearby.adaptor.persistence.jooq.indexes.ACTIVITIES_PUBLICATION_STATUS_IDX
 import io.wid.dearby.adaptor.persistence.jooq.indexes.ACTIVITIES_QUALIFICATION_IDX
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_SOURCE_ID_KEY
@@ -190,6 +191,16 @@ open class Activities(
      */
     val QUALIFICATION: TableField<ActivitiesRecord, JSONB?> = createField(DSL.name("qualification"), SQLDataType.JSONB, this, "")
 
+    /**
+     * The column <code>public.activities.publication_status</code>.
+     */
+    val PUBLICATION_STATUS: TableField<ActivitiesRecord, String?> = createField(DSL.name("publication_status"), SQLDataType.VARCHAR(20).nullable(false).defaultValue(DSL.field(DSL.raw("'DRAFT'::character varying"), SQLDataType.VARCHAR)), this, "")
+
+    /**
+     * The column <code>public.activities.official_source</code>.
+     */
+    val OFFICIAL_SOURCE: TableField<ActivitiesRecord, Boolean?> = createField(DSL.name("official_source"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("true"), SQLDataType.BOOLEAN)), this, "")
+
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -222,7 +233,7 @@ open class Activities(
         override fun `as`(alias: Table<*>): ActivitiesPath = ActivitiesPath(alias.qualifiedName, this)
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
-    override fun getIndexes(): List<Index> = listOf(ACTIVITIES_DESCRIPTION_TRGM_IDX, ACTIVITIES_NAME_TRGM_IDX, ACTIVITIES_PROGRAM_ID_IDX, ACTIVITIES_QUALIFICATION_IDX)
+    override fun getIndexes(): List<Index> = listOf(ACTIVITIES_DESCRIPTION_TRGM_IDX, ACTIVITIES_NAME_TRGM_IDX, ACTIVITIES_PROGRAM_ID_IDX, ACTIVITIES_PUBLICATION_STATUS_IDX, ACTIVITIES_QUALIFICATION_IDX)
     override fun getIdentity(): Identity<ActivitiesRecord, Long?> = super.getIdentity() as Identity<ActivitiesRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<ActivitiesRecord> = ACTIVITIES_PKEY
     override fun getUniqueKeys(): List<UniqueKey<ActivitiesRecord>> = listOf(ACTIVITIES_SOURCE_ID_KEY)
@@ -277,6 +288,7 @@ open class Activities(
     override fun getChecks(): List<Check<ActivitiesRecord>> = listOf(
         Internal.createCheck(this, DSL.name("activities_freshness_check"), "(((freshness)::text = ANY ((ARRAY['VERIFIED'::character varying, 'STALE'::character varying, 'UNAVAILABLE'::character varying])::text[])))", true),
         Internal.createCheck(this, DSL.name("activities_participation_type_check"), "(((participation_type)::text = ANY ((ARRAY['REGISTRATION'::character varying, 'SELECTION'::character varying])::text[])))", true),
+        Internal.createCheck(this, DSL.name("activities_publication_status_check"), "(((publication_status)::text = ANY ((ARRAY['DRAFT'::character varying, 'PUBLISHED'::character varying])::text[])))", true),
         Internal.createCheck(this, DSL.name("activities_qualification_check"), "(((qualification IS NULL) OR (jsonb_typeof(qualification) = 'object'::text)))", true),
         Internal.createCheck(this, DSL.name("activities_recruitment_status_check"), "(((recruitment_status)::text = ANY ((ARRAY['OPEN'::character varying, 'SCHEDULED'::character varying, 'CLOSED'::character varying, 'UNKNOWN'::character varying])::text[])))", true)
     )
