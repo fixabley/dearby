@@ -274,3 +274,17 @@ a:focus-visible {
 .actions {
   white-space: nowrap;
 }
+.muted {
+  color: #6b807e;
+}
+.tree-input {
+  width: 200px;
+}
+.tree-error {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #c0392b;
+}
+.ant-table-tbody > tr.tree-match > td {
+  background: #e8f5f2;
+}
