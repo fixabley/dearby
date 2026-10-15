@@ -1,22 +1,23 @@
-import { useState, type Key } from "react";
+import { useState, type Key, type KeyboardEvent } from "react";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, App, Button, Input, Popconfirm, Space, Table, Tag } from "antd";
 import { ExportOutlined, PlusOutlined } from "@ant-design/icons";
 import { api, useSingleFlight } from "./api";
-import { type PublicationStatus, statusLabels } from "./activities";
+import { ActivityTextEditor, type ActivityText, type PublicationStatus, statusLabels } from "./activities";
 import { SearchSelect, allPages } from "./list";
 
 type Organization = {
   id: number;
   name: string;
+  nameEn: string | null;
   parentOrganizationId: number | null;
   childCount: number;
   programCount: number;
   /** Root first, up to the direct parent. */
   ancestors: { id: number; name: string }[];
 };
-type Program = { id: number; name: string; organization: { id: number; name: string } };
-type Activity = { id: number; name: string; officialUrl: string; publicationStatus: PublicationStatus; officialSource: boolean };
+type Program = { id: number; name: string; nameEn: string | null; organization: { id: number; name: string } };
+type Activity = ActivityText & { officialUrl: string; publicationStatus: PublicationStatus; officialSource: boolean };
 /** Keys are tree paths ("o1/o5/p3"): a search match expands every prefix of its ancestors' path. */
 type Row =
   | { key: string; kind: "organization"; record: Organization; children?: Row[] }
@@ -25,7 +26,7 @@ type Row =
   | { key: string; kind: "new" }
   | { key: string; kind: "note"; text: string };
 /** Inline edit of an existing row (`id`) or a new organization/program row (no `id`). */
-type Draft = { key: string; kind: "organization" | "program"; id?: number; name: string; parentId?: number; parentName?: string };
+type Draft = { key: string; kind: "organization" | "program"; id?: number; name: string; nameEn: string; parentId?: number; parentName?: string };
 type Level<T> = { data?: T; isError: boolean };
 type Removal = { key: string; kind: "organization" | "program" | "activity"; id: number };
 
@@ -54,7 +55,8 @@ export function Organizations() {
   const { message } = App.useApp();
   const [expanded, setExpanded] = useState<Key[]>([]),
     [matches, setMatches] = useState<Set<number>>(),
-    [draft, setDraft] = useState<Draft>();
+    [draft, setDraft] = useState<Draft>(),
+    [editingActivity, setEditingActivity] = useState<Activity>();
   const roots = useQuery({
     queryKey: ["organizations", "tree", "roots"],
     queryFn: () => allPages<Organization>("organizations", { rootsOnly: "true" }),
@@ -91,18 +93,20 @@ export function Organizations() {
   });
   const save = useMutation({
     mutationFn: async (draft: Draft) => {
-      const name = draft.name.trim();
+      const name = draft.name.trim(),
+        nameEn = draft.nameEn.trim(); // Empty clears it.
       if (!name) throw new Error("이름을 입력해 주세요.");
       if (draft.kind === "program") {
         if (draft.parentId === undefined) throw new Error("운영 조직을 골라 주세요.");
         return draft.id === undefined
-          ? api("programs", "POST", { organizationId: draft.parentId, name })
-          : api(`programs/${draft.id}`, "PATCH", { name, organizationId: draft.parentId });
+          ? api("programs", "POST", { organizationId: draft.parentId, name, nameEn })
+          : api(`programs/${draft.id}`, "PATCH", { name, nameEn, organizationId: draft.parentId });
       }
       return draft.id === undefined
-        ? api("organizations", "POST", { name, parentOrganizationId: draft.parentId })
+        ? api("organizations", "POST", { name, nameEn, parentOrganizationId: draft.parentId })
         : api(`organizations/${draft.id}`, "PATCH", {
             name,
+            nameEn,
             ...(draft.parentId === undefined ? { clearParent: true } : { parentOrganizationId: draft.parentId }),
           });
     },
@@ -177,6 +181,7 @@ export function Organizations() {
   if (draft?.key === "new") tree.unshift({ key: "new", kind: "new" });
 
   const editing = (row: Row) => draft?.key === row.key;
+  const cancelOnEscape = (e: KeyboardEvent) => e.key === "Escape" && !save.isPending && setDraft(undefined);
   const parentOf = (organization: Organization) => organization.ancestors.at(-1)?.name;
 
   return (
@@ -191,7 +196,7 @@ export function Organizations() {
           type="primary"
           icon={<PlusOutlined aria-hidden="true" />}
           disabled={!!draft}
-          onClick={() => start({ key: "new", kind: "organization", name: "" })}
+          onClick={() => start({ key: "new", kind: "organization", name: "", nameEn: "" })}
         >
           최상위 조직 만들기
         </Button>
@@ -256,7 +261,17 @@ export function Organizations() {
                           disabled={save.isPending}
                           onChange={(e) => setDraft({ ...draft!, name: e.target.value })}
                           onPressEnter={submit}
-                          onKeyDown={(e) => e.key === "Escape" && !save.isPending && setDraft(undefined)}
+                          onKeyDown={cancelOnEscape}
+                        />
+                        <Input
+                          aria-label="영문 이름(선택)"
+                          placeholder="영문 이름(선택)"
+                          className="tree-input"
+                          value={draft!.nameEn}
+                          disabled={save.isPending}
+                          onChange={(e) => setDraft({ ...draft!, nameEn: e.target.value })}
+                          onPressEnter={submit}
+                          onKeyDown={cancelOnEscape}
                         />
                         {save.error && (
                           <div className="tree-error" role="alert">
@@ -265,7 +280,12 @@ export function Organizations() {
                         )}
                       </>
                     ) : (
-                      row.kind !== "new" && row.record.name
+                      row.kind !== "new" && (
+                        <>
+                          {row.record.name}
+                          {row.record.nameEn && <span className="muted name-en">{row.record.nameEn}</span>}
+                        </>
+                      )
                     )}
                   </>
                 );
@@ -336,7 +356,7 @@ export function Organizations() {
                     </Space>
                   );
                 if (row.kind === "new") return null;
-                const { id, name } = row.record;
+                const { id, name, nameEn } = row.record;
                 const target = { key: row.key, kind: row.kind, id };
                 const deletion = (
                   <Popconfirm
@@ -366,7 +386,12 @@ export function Organizations() {
                 if (row.kind === "activity")
                   return (
                     <>
-                      {deletion}
+                      <Space>
+                        <Button size="small" disabled={!!draft} onClick={() => setEditingActivity(row.record)}>
+                          이름·설명 편집
+                        </Button>
+                        {deletion}
+                      </Space>
                       {failed}
                     </>
                   );
@@ -383,6 +408,7 @@ export function Organizations() {
                               kind: "program",
                               id,
                               name,
+                              nameEn: nameEn ?? "",
                               parentId: row.record.organization.id,
                               parentName: row.record.organization.name,
                             })
@@ -396,7 +422,7 @@ export function Organizations() {
                     </>
                   );
                 const parentId = row.record.parentOrganizationId ?? undefined;
-                const under = { key: `${row.key}/new`, name: "", parentId: id, parentName: name };
+                const under = { key: `${row.key}/new`, name: "", nameEn: "", parentId: id, parentName: name };
                 return (
                   <>
                     <Space>
@@ -404,7 +430,15 @@ export function Organizations() {
                         size="small"
                         disabled={!!draft}
                         onClick={() =>
-                          start({ key: row.key, kind: "organization", id, name, parentId, parentName: parentOf(row.record) })
+                          start({
+                            key: row.key,
+                            kind: "organization",
+                            id,
+                            name,
+                            nameEn: nameEn ?? "",
+                            parentId,
+                            parentName: parentOf(row.record),
+                          })
                         }
                       >
                         편집
@@ -425,6 +459,7 @@ export function Organizations() {
           ]}
         />
       )}
+      {editingActivity && <ActivityTextEditor activity={editingActivity} onClose={() => setEditingActivity(undefined)} />}
     </>
   );
 }

@@ -1,5 +1,19 @@
 # 관리자 웹 Vercel 배포 인계
 
+## 현재 상태 — 2026-10-15
+
+아래 2026-09-29 기록(Supabase 어드민)은 과거 이력이다. 지금 어드민 웹은 Kotlin admin API([admin-v1](../../shared/contracts/admin-v1.md))와 패스키 로그인을 쓴다.
+
+- 배포: Vercel 프로젝트 `dearby-admin`(Git 미연결). `git archive origin/main apps/admin`을 임시 폴더에 풀고, 그 루트에서 `vercel link --project dearby-admin` 후 `vercel deploy --prod`로 배포한다(프로젝트 Root Directory가 `apps/admin`). 주소는 `admin.dearby.wid.io.kr`.
+- 기능
+  - 조직도(펼침): #206
+  - 조직·프로그램·활동 삭제와 같은 계위 이름 중복 금지: #207
+  - 중복 제출 방지: #207. `useSingleFlight` ref 잠금으로 막는다.
+  - 영문 이름과 활동 이름·설명 편집: 다국어 PR
+- 남은 일
+  - 좁은 화면에서 행 버튼과 영문 이름이 줄바꿈되는 모양을 다듬어야 한다.
+  - 실제 한국어 IME 입력은 확인하지 않았다.
+
 검증일: 2026-09-29 KST. 담당 checkout: `admin-vercel`, 브랜치: `fixabley/admin-vercel`.
 기준 main `f880d41`, 승인 원본 `8302f2b`의 tracked `apps/admin`만 복원했다. 원본 UI·npm lock·과거 증거 이미지를 보존했다. 과거 증거 이미지는 이번 실행 결과가 아니다.
 

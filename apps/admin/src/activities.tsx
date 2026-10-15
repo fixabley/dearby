@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { App, Button, Descriptions, Input, Popconfirm, Select, Space, Tag } from "antd";
+import { Alert, App, Button, Descriptions, Form, Input, Modal, Popconfirm, Select, Space, Tag } from "antd";
 import { ExportOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import { api, useSingleFlight } from "./api";
 import { CursorTable, SearchSelect, useCursorList } from "./list";
@@ -20,10 +20,9 @@ type Schedule = {
   conferenceUrl: string | null;
 };
 export type PublicationStatus = "DRAFT" | "PUBLISHED";
-type Activity = {
-  id: number;
-  name: string;
-  description: string;
+/** The fields `PATCH activities/:id` edits; the tree and the list both open the editor with them. */
+export type ActivityText = { id: number; name: string; nameEn: string | null; description: string; descriptionEn: string | null };
+type Activity = ActivityText & {
   organization: { id: number; name: string };
   program: { id: number; name: string };
   officialUrl: string;
@@ -67,7 +66,8 @@ export function Activities() {
   const [search, setSearch] = useState(""),
     [organizationId, setOrganizationId] = useState<number>(),
     [programId, setProgramId] = useState<number>(),
-    [publicationStatus, setPublicationStatus] = useState<PublicationStatus>();
+    [publicationStatus, setPublicationStatus] = useState<PublicationStatus>(),
+    [editing, setEditing] = useState<Activity>();
   const cursor = useCursorList<Activity>("activities", { q: search, organizationId, programId, publicationStatus });
   const { modal, message } = App.useApp();
   const client = useQueryClient();
@@ -171,7 +171,10 @@ export function Activities() {
             width: "32%",
             render: (_, activity) => (
               <div className="activity-title">
-                <strong>{activity.name}</strong>
+                <strong>
+                  {activity.name}
+                  {activity.nameEn && <span className="name-en">{activity.nameEn}</span>}
+                </strong>
                 <span>
                   {activity.organization.name} · {activity.program.name}
                 </span>
@@ -208,6 +211,7 @@ export function Activities() {
                   >
                     {activity.publicationStatus === "PUBLISHED" ? "게시 취소" : "게시"}
                   </Button>
+                  <Button onClick={() => setEditing(activity)}>이름·설명 편집</Button>
                   <Popconfirm
                     title={`‘${activity.name}’ 활동을 삭제할까요?`}
                     description="삭제하면 되돌릴 수 없고, 수집으로 생긴 활동은 다시 수집되지 않아요."
@@ -236,7 +240,72 @@ export function Activities() {
           },
         ]}
       />
+      {editing && <ActivityTextEditor activity={editing} onClose={() => setEditing(undefined)} />}
     </>
+  );
+}
+
+export function ActivityTextEditor({ activity, onClose }: { activity: ActivityText; onClose: () => void }) {
+  const [form] = Form.useForm();
+  const { message } = App.useApp();
+  const client = useQueryClient();
+  const save = useMutation({
+    mutationFn: (body: Omit<ActivityText, "id">) => api<ActivityText>(`activities/${activity.id}`, "PATCH", body),
+    onSuccess: async () => {
+      message.success("저장했어요.");
+      onClose();
+      await client.invalidateQueries({ queryKey: ["activities"] }); // The list and every expanded tree level.
+    },
+  });
+  const saveOnce = useSingleFlight();
+  return (
+    <Modal
+      open
+      title={`이름·설명 편집 · ${activity.name}`}
+      onCancel={onClose}
+      onOk={() => form.submit()}
+      confirmLoading={save.isPending}
+      okText="저장"
+      cancelText="취소"
+      width={620}
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={{
+          name: activity.name,
+          nameEn: activity.nameEn ?? "",
+          description: activity.description,
+          descriptionEn: activity.descriptionEn ?? "",
+        }}
+        // Every field is sent: an empty English field clears it.
+        onFinish={(values: Omit<ActivityText, "id">) =>
+          saveOnce(() =>
+            save.mutateAsync({
+              name: values.name.trim(),
+              nameEn: values.nameEn!.trim(),
+              description: values.description.trim(),
+              descriptionEn: values.descriptionEn!.trim(),
+            }),
+          )
+        }
+      >
+        {save.error && <Alert className="form-error" type="error" showIcon message={save.error.message} />}
+        <p className="field-note">초안은 다음 수집 때 덮어써질 수 있어요. 고친 내용을 지키려면 게시해 주세요.</p>
+        <Form.Item name="name" label="한글 이름" rules={[{ required: true, whitespace: true, message: "이름을 입력해 주세요." }]}>
+          <Input />
+        </Form.Item>
+        <Form.Item name="nameEn" label="영문 이름(선택)">
+          <Input />
+        </Form.Item>
+        <Form.Item name="description" label="한글 설명">
+          <Input.TextArea autoSize={{ minRows: 3, maxRows: 10 }} />
+        </Form.Item>
+        <Form.Item name="descriptionEn" label="영문 설명(선택)">
+          <Input.TextArea autoSize={{ minRows: 3, maxRows: 10 }} />
+        </Form.Item>
+      </Form>
+    </Modal>
   );
 }
 
@@ -255,6 +324,7 @@ function ActivityDetail({ activity }: { activity: Activity }) {
       column={{ xs: 1, md: 2 }}
       items={[
         { label: "설명", span: "filled", children: activity.description || "없음" },
+        { label: "영문 설명", span: "filled", children: activity.descriptionEn || "없음" },
         { label: "장소", children: activity.location ?? "미확인" },
         { label: "비용", children: activity.cost ?? "미확인" },
         { label: "대상", children: activity.audience ?? "미확인" },
