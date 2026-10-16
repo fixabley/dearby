@@ -51,6 +51,9 @@ private val DearbyTypography = Typography(headlineMedium = TextStyle(fontSize = 
 @Composable fun DearbyLogo(modifier: Modifier = Modifier) = Image(painterResource(R.drawable.dearby_logo), "dearby", modifier.width(92.dp).height(34.dp))
 @Composable fun DearbyButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) = Button(onClick, modifier.heightIn(min = 50.dp), enabled = enabled, shape = RoundedCornerShape(11.dp), content = content)
 @Composable fun DearbyOutlineButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) = OutlinedButton(onClick, modifier.heightIn(min = 50.dp), enabled = enabled, shape = RoundedCornerShape(11.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = Teal), border = androidx.compose.foundation.BorderStroke(1.dp, if (enabled) Teal else Line), content = content)
+/** Sign in with Apple: black, same size as the other sign-in buttons. No Apple logo asset is in the repo, so the label is text only. */
+@Composable fun AppleSignInButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) = Button(onClick, modifier.heightIn(min = 50.dp),
+    enabled = enabled, shape = RoundedCornerShape(11.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)) { Text("Apple로 계속하기") }
 
 @Composable fun ScreenHeader(title: String, back: (() -> Unit)? = null, actions: @Composable RowScope.() -> Unit = {}) {
     Box(Modifier.fillMaxWidth().heightIn(min = 52.dp)) {

@@ -20,13 +20,14 @@ API = {
     'pages.qr': {'QrPage', 'QrShareState', 'QrSharePhase', 'QrCardChoice', 'ReceivedSharePage', 'ReceivedShareState', 'ReceivedPhase', 'ReceivedSaveState'},
     'features.scan': {'QrCameraPreview', 'decodeQr'},
     'features.passkey': {'Passkeys'},
-    'pages.account': {'SignInSheet'},
+    'features.apple': {'AppleBrowser', 'AppleVerifier'},
+    'pages.account': {'SignInSheet', 'AppleAccountSheet'},
     'pages.onboarding': {'IntroPage'},
     'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletEntryState'},
     'features.calendar': {'CalendarConflictSheet'},
     'pages.catalog': {'CatalogPage', 'CatalogPhase', 'MyActivitiesPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'CatalogState'},
     'entities.catalog': {'model.ActivityModel', 'model.ActivityPage', 'model.ScheduleModel', 'model.instant', 'model.safeHttpsUrl', 'api.fetchActivities'},
-    'entities.account': {'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.AccountProfile', 'model.PublishedCard', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault', 'model.ScannedLink', 'model.ReceivedShare', 'model.CardShare', 'model.ShareActivity', 'model.ContactRules'},
+    'entities.account': {'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.AccountProfile', 'model.PublishedCard', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault', 'model.ScannedLink', 'model.AppleSignIn', 'model.ReceivedShare', 'model.CardShare', 'model.ShareActivity', 'model.ContactRules'},
 }
 
 def owner(name):
@@ -61,9 +62,11 @@ def check_source(path, text):
             errors.append('UI requires State/callbacks, not domain/I/O: ' + ref)
     if rendering and re.search(r'\b(LocalContext|SharedPreferences|getSharedPreferences|AssetManager|Intent|startActivity|\w+ViewModel|\w+Repository)\b', code): errors.append('UI directly accesses provider/OS side effect')
     # Contract "모바일 실제 연결 경계": only the catalog and account clients open connections; only the account vault keeps the session
-    # and MainActivity keeps only the first-launch intro flag (2026-10-14).
+    # and MainActivity keeps only the first-launch intro flag (2026-10-14). AccountViewModel keeps the Apple verifier and pending
+    # link token across process death while Apple's page is open (2026-10-16 "애플 로그인").
     allowed = {'entities/catalog/api/CatalogClient.kt': {'HttpURLConnection'}, 'entities/account/api/AccountClient.kt': {'HttpURLConnection'},
-               'entities/account/api/SessionVault.kt': {'getSharedPreferences'}, 'app/MainActivity.kt': {'getSharedPreferences'}}.get(path.as_posix(), set())
+               'entities/account/api/SessionVault.kt': {'getSharedPreferences'}, 'app/MainActivity.kt': {'getSharedPreferences'},
+               'app/AccountViewModel.kt': {'SavedStateHandle'}}.get(path.as_posix(), set())
     blocked = [term for term in ('Room', 'HttpClient', 'HttpURLConnection', 'WebView', 'TokenVault', 'CalendarContract', 'SQLiteDatabase', 'getSharedPreferences', 'rememberSaveable', 'SavedStateHandle') if term not in allowed]
     if re.search(r'\b(?:' + '|'.join(blocked) + r')\b', code): errors.append('prototype must not access service or persisted state')
     return errors

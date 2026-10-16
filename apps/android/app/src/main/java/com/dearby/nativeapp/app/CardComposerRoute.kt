@@ -11,20 +11,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dearby.nativeapp.features.passkey.Passkeys
-import com.dearby.nativeapp.pages.account.SignInSheet
 import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.card.cardContent.CardComposer
-import kotlinx.coroutines.launch
 
 /** Makes a real card from the QR tab; sign-in is asked for only on publish and publishing continues after. */
 @Composable fun CardComposerRoute(model: CardPublishViewModel, account: AccountViewModel, close: () -> Unit) {
     val state by model.state.collectAsStateWithLifecycle()
     val auth by account.state.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
-    val context = LocalContext.current
     LaunchedEffect(auth.phase, state.signingIn) {
         if (state.signingIn && auth.phase == AccountPhase.SIGNED_IN) model.continueAfterSignIn()
     }
@@ -53,8 +47,5 @@ import kotlinx.coroutines.launch
                 errorMessage = (phase as? PublishPhase.Failed)?.message ?: auth.message.takeIf { auth.phase == AccountPhase.SIGNED_OUT })
         }
     }
-    if (state.signingIn && auth.phase != AccountPhase.SIGNED_IN) SignInSheet(auth.phase == AccountPhase.WORKING, auth.message,
-        signIn = { scope.launch { account.signIn(Passkeys(context)) } }, signUp = { scope.launch { account.signUp(Passkeys(context)) } },
-        close = model::cancelSignIn,
-    )
+    if (state.signingIn && auth.phase != AccountPhase.SIGNED_IN) SignInRoute(account, close = model::cancelSignIn)
 }

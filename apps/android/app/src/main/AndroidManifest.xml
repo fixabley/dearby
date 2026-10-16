@@ -5,7 +5,8 @@
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application android:label="Dearby" android:icon="@drawable/ic_launcher" android:dataExtractionRules="@xml/data_extraction_rules" android:allowBackup="false" android:fullBackupContent="false" android:supportsRtl="true" android:theme="@style/Theme.Dearby" android:usesCleartextTraffic="false">
-        <activity android:name=".app.MainActivity" android:exported="true" android:theme="@style/Theme.Dearby.Starting">
+        <!-- singleTask: Apple's dearby://auth/apple redirect must reach this instance (onNewIntent), which holds the verifier, and close the Custom Tab above it. -->
+        <activity android:name=".app.MainActivity" android:exported="true" android:launchMode="singleTask" android:theme="@style/Theme.Dearby.Starting">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
             <!-- Shared-card App Links: https://<DEARBY_WEB_ORIGIN host>/s/<UUID>. -->
             <intent-filter android:autoVerify="true">
@@ -13,6 +14,13 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="https" android:host="${dearbyWebHost}" android:pathPrefix="/s/"/>
+            </intent-filter>
+            <!-- Apple sign-in web flow returns here (contract "애플 로그인"); MainActivity accepts only ?code=<UUID> or ?error=cancelled|failed. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="dearby" android:host="auth" android:path="/apple"/>
             </intent-filter>
         </activity>
     </application>

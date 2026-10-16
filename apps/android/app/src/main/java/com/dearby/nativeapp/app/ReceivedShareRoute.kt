@@ -10,8 +10,6 @@ import com.dearby.nativeapp.entities.account.api.AccountError
 import com.dearby.nativeapp.entities.account.api.AccountException
 import com.dearby.nativeapp.entities.account.model.PublishedCard
 import com.dearby.nativeapp.entities.account.model.ScannedLink
-import com.dearby.nativeapp.features.passkey.Passkeys
-import com.dearby.nativeapp.pages.account.SignInSheet
 import com.dearby.nativeapp.pages.qr.ReceivedPhase
 import com.dearby.nativeapp.pages.qr.ReceivedSaveState
 import com.dearby.nativeapp.pages.qr.ReceivedSharePage
@@ -67,10 +65,7 @@ import kotlinx.coroutines.launch
     BackHandler(onBack = close)
     ReceivedSharePage(state, close, { attempt++ }, { openContact(context, it) }, save = (link as? ScannedLink.Share)?.let { ReceivedSaveState(signedIn, saving, done, error) },
         onSave = { if (signedIn) save() else signingIn = true })
-    if (signingIn && !signedIn) SignInSheet(auth.phase == AccountPhase.WORKING, auth.message,
-        signIn = { scope.launch { account.signIn(Passkeys(context)) } }, signUp = { scope.launch { account.signUp(Passkeys(context)) } },
-        close = { signingIn = false },
-    )
+    if (signingIn && !signedIn) SignInRoute(account, close = { signingIn = false })
 }
 
 fun PublishedCard.toState() = CardState(id, profileName, job, name, description, introduction,

@@ -11,6 +11,13 @@ data class AccountSession(val accessToken: String, val refreshToken: String)
 /** `{challengeId, options}` from a passkey options call; [options] is the WebAuthn JSON handed to the OS as is. */
 data class PasskeyChallenge(val id: String, val options: String)
 
+/** Apple exchange result: 200 TokenPair, or 202 for an Apple account no Dearby account has yet. The single-use
+ *  [NeedsAccount.linkToken] (10 minutes) then registers a new account or links a passkey account. */
+sealed interface AppleSignIn {
+    data class SignedIn(val session: AccountSession) : AppleSignIn
+    data class NeedsAccount(val linkToken: String, val email: String) : AppleSignIn
+}
+
 /** Profile contact. IDs are client-generated UUIDs; the server keeps them as given. */
 data class AccountContact(val id: String, val kind: String, val label: String, val value: String)
 data class AccountHistory(val id: String, val title: String, val role: String, val startDate: String, val endDate: String?, val description: String)
@@ -32,6 +39,8 @@ data class ReceivedShare(val share: CardShare, val card: PublishedCard)
 data class CardShare(val id: String, val cardId: String, val activities: List<ShareActivity>, val createdAt: String)
 
 fun JSONObject.toSession() = AccountSession(getString("accessToken"), getString("refreshToken"))
+fun JSONObject.toAppleSignIn(): AppleSignIn =
+    if (has("linkToken")) AppleSignIn.NeedsAccount(getString("linkToken"), if (isNull("email")) "" else getString("email")) else AppleSignIn.SignedIn(toSession())
 fun JSONObject.toPasskeyChallenge() = PasskeyChallenge(getString("challengeId"), getJSONObject("options").toString())
 
 fun AccountProfile.toJson(): JSONObject = JSONObject().put("name", name).put("job", job).put("introduction", introduction)
