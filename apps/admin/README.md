@@ -70,6 +70,6 @@ npm run build
 
 ## 이력 검토·역할 (2026-10-16)
 
-- `histories.tsx`: 사용자가 직접 적은 조직·프로그램·활동·역할을 카탈로그 항목에 매핑(검색 또는 새로 만들기)해 승인하거나 사유를 적어 거절한다(`POST histories/:id/approval`). 인증자료는 bearer를 붙여 blob으로 받아 새 탭에서 연다(`apiBlob`). 인증 확인 탭은 `POST histories/:id/verification`.
-- `roles.tsx`: 역할 카탈로그 CRUD. 띄어쓰기만 다른 이름은 서버가 400으로 거부하고 그 사유를 그대로 보인다.
+- `histories.tsx`: 사용자가 직접 적은 조직·프로그램·활동·역할을 활동 정보 항목에 매핑(검색 또는 새로 만들기)해 승인하거나 사유를 적어 거절한다(`POST histories/:id/approval`). 인증자료는 bearer를 붙여 blob으로 받아 새 탭에서 연다(`apiBlob`). 인증 확인 탭은 `POST histories/:id/verification`.
+- `roles.tsx`: 역할 목록 CRUD. 띄어쓰기만 다른 이름은 서버가 400으로 거부하고 그 사유를 그대로 보인다.
 - 계정 id는 화면에 보이지 않는다(작성자 프로필 이름만).

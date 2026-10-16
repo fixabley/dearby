@@ -24,7 +24,7 @@ export function Roles() {
     <>
       <header className="page-heading">
         <div>
-          <span className="eyebrow">CATALOG</span>
+          <span className="eyebrow">ACTIVITY</span>
           <h1>역할</h1>
           <p>이력에서 고르는 역할 목록이에요. 띄어쓰기만 다른 이름은 같은 역할로 봐요.</p>
         </div>
