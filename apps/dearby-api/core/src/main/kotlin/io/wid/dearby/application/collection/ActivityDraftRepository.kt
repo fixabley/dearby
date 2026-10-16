@@ -1,8 +1,8 @@
 package io.wid.dearby.application.collection
 
-import io.wid.dearby.domain.CollectedActivity
-import io.wid.dearby.domain.DraftSaveResult
 import io.wid.dearby.domain.Id
+import io.wid.dearby.domain.collection.CollectedActivity
+import io.wid.dearby.domain.collection.DraftSaveResult
 import java.util.*
 
 // 저장소 포트. 구현은 adaptor/persistence

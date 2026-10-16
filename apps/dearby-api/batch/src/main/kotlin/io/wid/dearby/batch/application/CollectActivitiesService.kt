@@ -1,11 +1,11 @@
 package io.wid.dearby.batch.application
 
 import io.wid.dearby.application.collection.ActivityDraftRepository
-import io.wid.dearby.domain.CollectionOutcome
-import io.wid.dearby.domain.CollectionReport
-import io.wid.dearby.domain.CollectionTarget
-import io.wid.dearby.domain.DraftSaveResult
 import io.wid.dearby.domain.Id
+import io.wid.dearby.domain.collection.CollectionOutcome
+import io.wid.dearby.domain.collection.CollectionReport
+import io.wid.dearby.domain.collection.CollectionTarget
+import io.wid.dearby.domain.collection.DraftSaveResult
 import org.springframework.stereotype.Service
 import java.net.URI
 import java.time.OffsetDateTime

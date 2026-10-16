@@ -5,7 +5,7 @@ import com.anthropic.models.messages.WebSearchTool20250305
 import io.wid.dearby.batch.application.ActivityDiscoverer
 import io.wid.dearby.batch.application.Discovery
 import io.wid.dearby.batch.application.ModelUsage
-import io.wid.dearby.domain.CollectionTarget
+import io.wid.dearby.domain.collection.CollectionTarget
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
 

@@ -3,8 +3,8 @@ package io.wid.dearby.batch.job
 import io.wid.dearby.application.collection.CollectionRunRepository
 import io.wid.dearby.application.collection.CollectionTargetRepository
 import io.wid.dearby.batch.application.CollectActivitiesService
-import io.wid.dearby.domain.CollectionOutcome
-import io.wid.dearby.domain.CollectionReport
+import io.wid.dearby.domain.collection.CollectionOutcome
+import io.wid.dearby.domain.collection.CollectionReport
 import org.slf4j.LoggerFactory
 import org.springframework.batch.core.job.Job
 import org.springframework.batch.core.job.builder.JobBuilder

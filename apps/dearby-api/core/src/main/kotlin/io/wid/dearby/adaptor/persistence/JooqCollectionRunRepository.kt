@@ -2,8 +2,8 @@ package io.wid.dearby.adaptor.persistence
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.COLLECTION_RUNS
 import io.wid.dearby.application.collection.CollectionRunRepository
-import io.wid.dearby.domain.CollectionReport
 import io.wid.dearby.domain.Id
+import io.wid.dearby.domain.collection.CollectionReport
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import java.time.LocalDate

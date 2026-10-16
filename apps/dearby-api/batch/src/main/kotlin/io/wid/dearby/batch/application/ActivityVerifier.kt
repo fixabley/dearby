@@ -1,8 +1,8 @@
 package io.wid.dearby.batch.application
 
-import io.wid.dearby.domain.CollectedActivity
-import io.wid.dearby.domain.CollectedSchedule
 import io.wid.dearby.domain.ParticipationType
+import io.wid.dearby.domain.collection.CollectedActivity
+import io.wid.dearby.domain.collection.CollectedSchedule
 import java.time.OffsetDateTime
 import java.time.format.DateTimeParseException
 

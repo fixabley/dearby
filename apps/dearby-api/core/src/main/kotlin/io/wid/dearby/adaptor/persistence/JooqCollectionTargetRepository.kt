@@ -5,8 +5,8 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.references.ORGANIZATIONS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.PROGRAMS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.PROGRAM_COLLECTION_SETTINGS
 import io.wid.dearby.application.collection.CollectionTargetRepository
-import io.wid.dearby.domain.CollectionOutcome
-import io.wid.dearby.domain.CollectionTarget
+import io.wid.dearby.domain.collection.CollectionOutcome
+import io.wid.dearby.domain.collection.CollectionTarget
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository

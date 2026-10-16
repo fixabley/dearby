@@ -1,4 +1,6 @@
-package io.wid.dearby.domain
+package io.wid.dearby.domain.collection
+
+import io.wid.dearby.domain.ParticipationType
 
 import java.time.OffsetDateTime
 

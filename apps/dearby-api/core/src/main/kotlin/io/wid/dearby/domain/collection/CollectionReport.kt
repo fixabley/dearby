@@ -1,4 +1,4 @@
-package io.wid.dearby.domain
+package io.wid.dearby.domain.collection
 
 // 수집 한 번의 집계. collection_runs 한 행에 기록한다
 data class CollectionReport(

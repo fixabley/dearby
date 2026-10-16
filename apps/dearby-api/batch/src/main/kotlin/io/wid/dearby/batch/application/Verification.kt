@@ -1,6 +1,7 @@
 package io.wid.dearby.batch.application
 
-import io.wid.dearby.domain.CollectedActivity
+import io.wid.dearby.domain.collection.CollectedActivity
+
 
 // 추출 결과를 원문과 대조한 결과
 sealed interface Verification {

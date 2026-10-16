@@ -1,4 +1,6 @@
-package io.wid.dearby.domain
+package io.wid.dearby.domain.collection
+
+import io.wid.dearby.domain.Id
 
 // 오늘 수집할 프로그램과 그 수집 설정. 설정 행이 없는 프로그램은 기본값(웹 전체 검색, 매일)이다
 data class CollectionTarget(

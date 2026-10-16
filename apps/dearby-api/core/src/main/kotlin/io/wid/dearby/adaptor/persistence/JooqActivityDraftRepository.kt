@@ -5,6 +5,8 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.references.DISMISSED_ACTIVI
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.SCHEDULES
 import io.wid.dearby.application.collection.ActivityDraftRepository
 import io.wid.dearby.domain.*
+import io.wid.dearby.domain.collection.CollectedActivity
+import io.wid.dearby.domain.collection.DraftSaveResult
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
