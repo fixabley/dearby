@@ -126,6 +126,16 @@ export async function api<T>(path: string, method = "GET", body?: unknown): Prom
   return response.status === 204 ? (undefined as T) : response.json();
 }
 
+/** A file behind the admin API (evidence): same bearer and refresh handling as `api`, but the body stays a Blob. */
+export async function apiBlob(path: string): Promise<Blob> {
+  const tokens = session.tokens;
+  if (!tokens) throw new ApiError(401, "로그인이 필요해요.");
+  let response = await send(`/api/admin/${path}`, "GET", undefined, tokens.accessToken);
+  if (response.status === 401) response = await send(`/api/admin/${path}`, "GET", undefined, (await refresh(tokens)).accessToken);
+  if (!response.ok) throw await failure(response);
+  return response.blob();
+}
+
 /**
  * Runs one request at a time. `isPending` reaches the UI only after a re-render, so a double click or a repeated Enter
  * inside that gap would send the same POST twice; this lock is set synchronously before the request starts.
