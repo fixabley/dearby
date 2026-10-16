@@ -1,7 +1,7 @@
 package io.wid.dearby.admin.adaptor.web
 
-import io.wid.dearby.domain.CollectionSettings
 import io.wid.dearby.domain.InvalidInputException
+import io.wid.dearby.domain.curation.CollectionSettings
 
 data class CollectionSettingsRequest(
     val officialUrl: String? = null,

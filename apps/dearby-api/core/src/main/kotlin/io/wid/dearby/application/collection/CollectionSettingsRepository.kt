@@ -1,7 +1,7 @@
 package io.wid.dearby.application.collection
 
-import io.wid.dearby.domain.CollectionSettings
 import io.wid.dearby.domain.Id
+import io.wid.dearby.domain.curation.CollectionSettings
 import java.time.LocalDate
 
 // 저장소 포트. 구현은 adaptor/persistence

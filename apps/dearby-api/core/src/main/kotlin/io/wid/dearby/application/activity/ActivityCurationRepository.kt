@@ -1,8 +1,8 @@
 package io.wid.dearby.application.activity
 
-import io.wid.dearby.domain.ActivityCuration
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.PublicationStatus
+import io.wid.dearby.domain.curation.ActivityCuration
 
 // 운영자용 활동 정보 저장소 포트. 구현은 adaptor/persistence
 interface ActivityCurationRepository {

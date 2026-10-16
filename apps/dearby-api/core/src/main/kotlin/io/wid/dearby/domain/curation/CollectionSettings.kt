@@ -1,4 +1,4 @@
-package io.wid.dearby.domain
+package io.wid.dearby.domain.curation
 
 // 프로그램별 수집 설정(program_collection_settings). 행이 없으면 DEFAULT
 data class CollectionSettings(

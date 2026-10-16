@@ -5,6 +5,9 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITY_ROLES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.DISMISSED_ACTIVITY_SOURCES
 import io.wid.dearby.application.activity.ActivityCurationRepository
 import io.wid.dearby.domain.*
+import io.wid.dearby.domain.curation.ActivityCuration
+import io.wid.dearby.domain.curation.Freshness
+import io.wid.dearby.domain.curation.RecruitmentStatus
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
