@@ -2,24 +2,28 @@ package com.dearby.nativeapp.app
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.dearby.nativeapp.entities.account.api.AccountClient
 import com.dearby.nativeapp.entities.account.api.AccountError
 import com.dearby.nativeapp.entities.account.api.AccountException
 import com.dearby.nativeapp.entities.account.model.AccountContact
 import com.dearby.nativeapp.entities.account.model.AccountHistory
 import com.dearby.nativeapp.entities.account.model.AccountProfile
 import com.dearby.nativeapp.entities.account.model.ContactRules
-import com.dearby.nativeapp.pages.profile.HistoryFormState
+import com.dearby.nativeapp.pages.profile.FunnelState
+import com.dearby.nativeapp.pages.profile.HistoryDraft
+import com.dearby.nativeapp.pages.profile.PickerSearchState
 import com.dearby.nativeapp.pages.profile.ProfileErrors
 import com.dearby.nativeapp.pages.profile.ProfileFormState
 import com.dearby.nativeapp.pages.profile.ProfilePhase
-import com.dearby.nativeapp.pages.profile.ProfileState
 import com.dearby.nativeapp.pages.profile.ProfileViewState
-import com.dearby.nativeapp.widgets.card.cardContent.CardHistoryState
-import com.dearby.nativeapp.widgets.card.cardContent.ContactState
+import com.dearby.nativeapp.pages.profile.VersionsState
+import com.dearby.nativeapp.pages.profile.rowState
+import com.dearby.nativeapp.pages.profile.view
 import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactKinds
 import com.dearby.nativeapp.widgets.profile.profileFields.ProfileExtraContact
-import java.time.LocalDate
 import java.util.UUID
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -27,71 +31,166 @@ import kotlinx.coroutines.launch
 
 /** Account deletion in flight, and the one-time result to show. */
 data class DeletionState(val deleting: Boolean = false, val notice: String? = null)
-/** Editing session: the form, the messages once save was tried, and the last save failure. */
-data class ProfileEditState(val form: ProfileFormState, val errors: ProfileErrors? = null, val saving: Boolean = false, val error: String? = null)
 
-/** 내 프로필 (#149): `GET`/`PUT /v1/profile`. Checks match the API; a failed save keeps what was typed. */
+/**
+ * 내 프로필 (contract "프로필과 버전 이력"): the data profile edited in place with `If-Match`, saved versions, the history
+ * funnel with picker searches, and evidence uploads. A failed save keeps what was typed.
+ */
 class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
     private val mutable = MutableStateFlow(ProfileViewState())
     val state = mutable.asStateFlow()
-    private val editing = MutableStateFlow<ProfileEditState?>(null)
-    val edit = editing.asStateFlow()
+    private val funnelState = MutableStateFlow<FunnelState?>(null)
+    val funnel = funnelState.asStateFlow()
+    private val versionsState = MutableStateFlow(VersionsState())
+    val versions = versionsState.asStateFlow()
     private val deletionState = MutableStateFlow(DeletionState())
     val deletion = deletionState.asStateFlow()
-    private var saved: AccountProfile? = null
-    private var phoneId = ""
-    private var emailId = ""
+    private var searchJob: Job? = null
+
+    /** What the server would receive, compared with the loaded profile: drives the 저장/원래대로 bar. */
+    val changed get() = mutable.value.let { it.form != null && it.profile != null && profile(it.form) != profile(ProfileFormState.from(it.profile)) }
 
     fun load() = viewModelScope.launch {
-        if (account.state.value.phase != AccountPhase.SIGNED_IN) { saved = null; mutable.value = ProfileViewState(ProfilePhase.SIGNED_OUT); return@launch }
+        if (account.state.value.phase != AccountPhase.SIGNED_IN) { mutable.value = ProfileViewState(ProfilePhase.SIGNED_OUT); return@launch }
         if (mutable.value.profile == null) mutable.update { it.copy(phase = ProfilePhase.LOADING) }
-        mutable.value = try {
-            account.authorized { account.client.profile(it) }.also { saved = it }.let { ProfileViewState(ProfilePhase.LOADED, it.toState()) }
+        try {
+            val stored = account.authorized { account.client.profile(it) }
+            // A reload resets the form unless an edit is pending.
+            mutable.update { it.copy(phase = ProfilePhase.LOADED, profile = stored, form = if (changed && !it.saving) it.form else ProfileFormState.from(stored), errors = null, error = null) }
         } catch (e: AccountException) {
-            ProfileViewState(if (e.error == AccountError.UNAUTHORIZED) ProfilePhase.SIGNED_OUT else ProfilePhase.FAILED)
+            mutable.update { ProfileViewState(if (e.error == AccountError.UNAUTHORIZED) ProfilePhase.SIGNED_OUT else ProfilePhase.FAILED) }
         }
     }
-    fun startEdit() {
-        val profile = saved ?: return
-        val phone = profile.contacts.firstOrNull { it.kind == "phone" }
-        val email = profile.contacts.firstOrNull { it.kind == "email" }
-        phoneId = phone?.id ?: newId()
-        emailId = email?.id ?: newId()
-        editing.value = ProfileEditState(ProfileFormState(profile.name, profile.job, profile.introduction, phone?.value.orEmpty(),
-            email?.value.orEmpty(),
-            profile.contacts.filter { it.id != phone?.id && it.id != email?.id }.map { ProfileExtraContact(it.id, it.kind, it.value) },
-            profile.histories.map { HistoryFormState(it.id, it.title, it.role, date(it.startDate), it.endDate?.let(::date), it.endDate == null, it.description) }))
+    fun change(form: ProfileFormState) = mutable.update { current ->
+        val problems = current.errors?.let { errors(form) }
+        current.copy(form = form, errors = problems, error = if (problems == ProfileErrors()) null else current.error)
     }
-    // After a save attempt, messages follow the form; the summary clears once everything is fixed.
-    fun change(form: ProfileFormState) = editing.update { current ->
-        val problems = current?.errors?.let { errors(form) }
-        current?.copy(form = form, errors = problems, error = if (problems == ProfileErrors()) null else current.error)
+    fun addContact(kind: String) = mutable.update { it.copy(form = it.form?.let { f -> f.copy(extras = f.extras + ProfileExtraContact(UUID.randomUUID().toString(), kind, "")) }) }
+    fun removeHistory(id: String) = mutable.update { it.copy(form = it.form?.let { f -> f.copy(histories = f.histories.filter { h -> h.id != id }) }) }
+    /** 원래대로: back to the loaded profile; after a 409 it also fetches the newer one. */
+    fun revert() {
+        mutable.update { it.copy(form = it.profile?.let(ProfileFormState::from), errors = null, error = null) }
+        load()
     }
-    fun addContact(kind: String) = editing.update { it?.copy(form = it.form.copy(extras = it.form.extras + ProfileExtraContact(newId(), kind, ""))) }
-    fun addHistory() = editing.update { it?.copy(form = it.form.copy(histories = it.form.histories + HistoryFormState(newId(), "", "", null, null, true, ""))) }
-    fun close() { editing.value = null }
     fun save() {
-        val current = editing.value ?: return
-        val problems = errors(current.form)
-        if (problems != ProfileErrors()) { editing.value = current.copy(errors = problems, error = "빨간 안내를 확인해 주세요."); return }
-        editing.value = current.copy(errors = problems, saving = true, error = null)
+        val current = mutable.value
+        val form = current.form ?: return
+        val problems = errors(form)
+        if (problems != ProfileErrors()) { mutable.value = current.copy(errors = problems, error = "빨간 안내를 확인해 주세요."); return }
+        mutable.value = current.copy(errors = null, saving = true, error = null)
         viewModelScope.launch {
             try {
-                saved = account.authorized { account.client.saveProfile(profile(current.form), it) }
-                mutable.value = ProfileViewState(ProfilePhase.LOADED, saved!!.toState())
-                editing.value = null
+                val saved = account.authorized { account.client.saveProfile(profile(form), form.version, it) }
+                mutable.update { it.copy(profile = saved, form = ProfileFormState.from(saved), saving = false) }
             } catch (e: AccountException) {
-                editing.update { it?.copy(saving = false, error = when (e.error) {
-                    AccountError.UNAUTHORIZED -> "로그인이 만료됐어요. 다시 로그인해 주세요."
-                    AccountError.INVALID_CONTACTS -> "전화번호와 이메일을 확인해 주세요."
-                    AccountError.INVALID_INPUT -> "입력한 내용을 확인해 주세요. 링크는 https 주소만 쓸 수 있어요."
-                    else -> "저장하지 못했어요. 잠시 후 다시 시도해 주세요."
-                }) }
+                mutable.update { it.copy(saving = false, error = message(e, "저장하지 못했어요. 잠시 후 다시 시도해 주세요.")) }
             }
         }
     }
 
-    /** "계정 삭제" after the confirmation dialog; taps while a request runs are ignored. Signing out reloads this tab. */
+    // --- history funnel
+    /** Rows for the profile list: the form's histories, marked saved when the server has them. */
+    val rows get() = mutable.value.let { s -> s.form?.histories?.map { h -> h.rowState(s.profile?.histories?.any { it.id == h.id } == true) }.orEmpty() }
+    fun openHistory(id: String?) {
+        val history = id?.let { hid -> mutable.value.form?.histories?.firstOrNull { it.id == hid } }
+        val saved = history != null && mutable.value.profile?.histories?.any { it.id == history.id } == true
+        funnelState.value = FunnelState(history?.let(HistoryDraft::from) ?: HistoryDraft(), saved, if (saved) HistoryDraft.Step.SUMMARY else HistoryDraft.Step.KIND)
+    }
+    fun closeFunnel() { searchJob?.cancel(); funnelState.value = null }
+    fun changeDraft(draft: HistoryDraft) = funnelState.update { it?.copy(draft = draft) }
+    fun goTo(step: HistoryDraft.Step) {
+        funnelState.update { it?.copy(step = step, tried = false, search = PickerSearchState()) }
+        if (step.isPicker) search("")
+    }
+    fun next() {
+        val current = funnelState.value ?: return
+        if (current.draft.error(current.step) != null) { funnelState.value = current.copy(tried = true); return }
+        if (current.step == HistoryDraft.Step.SUMMARY) {
+            mutable.update { it.copy(form = it.form?.put(current.draft.history)) }
+            closeFunnel()
+        } else {
+            val steps = current.draft.steps
+            goTo(steps[steps.indexOf(current.step) + 1])
+        }
+    }
+    /** Picker search for the current step, debounced; programs narrow to the chosen organization, activities to the program. */
+    fun search(query: String) {
+        funnelState.update { it?.copy(search = it.search.copy(query = query, loading = true, failed = false)) }
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
+            delay(300)
+            val current = funnelState.value ?: return@launch
+            val (kind, parent) = when (current.step) {
+                HistoryDraft.Step.ORGANIZATION -> AccountClient.ActivityInfoKind.ORGANIZATIONS to null
+                HistoryDraft.Step.PROGRAM -> AccountClient.ActivityInfoKind.PROGRAMS to current.draft.organization?.id
+                HistoryDraft.Step.ACTIVITY -> AccountClient.ActivityInfoKind.ACTIVITIES to current.draft.program?.id
+                HistoryDraft.Step.ROLE -> AccountClient.ActivityInfoKind.ROLES to null
+                else -> return@launch
+            }
+            try {
+                val page = account.authorized { account.client.searchActivityInfo(kind, query, parent, it) }
+                funnelState.update { it?.copy(search = it.search.copy(items = page.items, loading = false)) }
+            } catch (e: AccountException) {
+                funnelState.update { it?.copy(search = it.search.copy(loading = false, failed = true)) }
+            }
+        }
+    }
+    /** Evidence for a saved history (the server moves verification to pending); the profile reloads afterwards. */
+    fun upload(fileName: String, contentType: String, bytes: ByteArray) {
+        val current = funnelState.value ?: return
+        if (bytes.size > 5 * 1024 * 1024) { funnelState.value = current.copy(evidenceError = "파일은 5MB까지 올릴 수 있어요."); return }
+        funnelState.value = current.copy(evidenceBusy = true, evidenceError = null)
+        viewModelScope.launch {
+            val error = try {
+                account.authorized { account.client.uploadEvidence(current.draft.id, fileName, contentType, bytes, it) }; null
+            } catch (e: AccountException) { message(e, "파일을 올리지 못했어요. 잠시 후 다시 시도해 주세요.") }
+            refreshEvidence(error)
+        }
+    }
+    fun deleteEvidence(evidenceId: String) {
+        val current = funnelState.value ?: return
+        funnelState.value = current.copy(evidenceBusy = true, evidenceError = null)
+        viewModelScope.launch {
+            val error = try {
+                account.authorized { account.client.deleteEvidence(current.draft.id, evidenceId, it) }; null
+            } catch (e: AccountException) { message(e, "파일을 지우지 못했어요. 잠시 후 다시 시도해 주세요.") }
+            refreshEvidence(error)
+        }
+    }
+    private suspend fun refreshEvidence(error: String?) {
+        load().join()
+        val history = mutable.value.profile?.histories?.firstOrNull { it.id == funnelState.value?.draft?.id }
+        funnelState.update { it?.copy(evidenceBusy = false, evidenceError = error, draft = history?.let { h -> it.draft.copy(evidence = h.evidence, verification = h.verification) } ?: it.draft) }
+        if (history != null) mutable.update { it.copy(form = it.form?.put(history)) }
+    }
+
+    // --- versions
+    fun loadVersions(reset: Boolean) = viewModelScope.launch {
+        if (reset) versionsState.value = VersionsState()
+        versionsState.update { it.copy(loading = true) }
+        try {
+            val page = account.authorized { account.client.profileVersions(versionsState.value.nextCursor, it) }
+            versionsState.update { it.copy(items = it.items + page.items.map { v -> v.version to v.createdAt }, nextCursor = page.nextCursor, loading = false) }
+        } catch (e: AccountException) { versionsState.update { it.copy(loading = false, error = "변경 이력을 불러오지 못했어요.") } }
+    }
+    fun openVersion(version: Int) = viewModelScope.launch {
+        versionsState.update { it.copy(detail = null, detailError = null, error = null) }
+        try { versionsState.update { s -> s.copy(detail = account.authorized { account.client.profileVersion(version, it) }.view()) } }
+        catch (e: AccountException) { versionsState.update { it.copy(detailError = "이 버전을 불러오지 못했어요.") } }
+    }
+    fun closeVersion() = versionsState.update { it.copy(detail = null, detailError = null, error = null) }
+    /** Returns true when restored (the caller closes the screens). */
+    fun restore(version: Int, done: () -> Unit) = viewModelScope.launch {
+        versionsState.update { it.copy(restoring = true, error = null) }
+        try {
+            val restored = account.authorized { account.client.restoreProfile(version, it) }
+            mutable.update { it.copy(profile = restored, form = ProfileFormState.from(restored), errors = null, error = null) }
+            versionsState.update { it.copy(restoring = false) }
+            done()
+        } catch (e: AccountException) { versionsState.update { it.copy(restoring = false, error = message(e, "되돌리지 못했어요. 잠시 후 다시 시도해 주세요.")) } }
+    }
+
+    /** "계정 삭제" after the confirmation dialog; taps while a request runs are ignored. */
     fun deleteAccount() {
         if (deletionState.value.deleting) return
         deletionState.value = DeletionState(deleting = true)
@@ -100,7 +199,6 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
                 account.deleteAccount()
                 "계정을 삭제했어요. 기기에 남은 패스키는 비밀번호 관리자에서 지울 수 있어요."
             } catch (e: AccountException) {
-                // UNAUTHORIZED: the session could not be refreshed and is already forgotten.
                 if (e.error == AccountError.UNAUTHORIZED) "로그인이 만료됐어요. 다시 로그인해 주세요." else "계정을 삭제하지 못했어요. 잠시 후 다시 시도해 주세요."
             }
             deletionState.value = DeletionState(notice = notice)
@@ -108,30 +206,24 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
     }
     fun dismissDeletionNotice() = deletionState.update { it.copy(notice = null) }
 
+    private fun message(e: AccountException, fallback: String) = when (e.error) {
+        AccountError.UNAUTHORIZED -> { mutable.update { it.copy(phase = ProfilePhase.SIGNED_OUT) }; "로그인이 만료됐어요. 다시 로그인해 주세요." }
+        AccountError.BAD_REQUEST -> e.detail ?: "입력한 내용을 확인해 주세요."
+        AccountError.CONFLICT -> "프로필이 다른 곳에서 바뀌었어요. ‘원래대로’를 눌러 새로 불러온 뒤 다시 고쳐 주세요."
+        else -> fallback
+    }
     private fun errors(form: ProfileFormState) = ProfileErrors(
         name = "이름을 입력해 주세요.".takeIf { form.name.isBlank() },
         phone = when { form.phone.isBlank() -> "전화번호를 입력해 주세요."; !ContactRules.validPhone(form.phone) -> "전화번호는 숫자 8~15자리로 입력해 주세요."; else -> null },
         email = when { form.email.isBlank() -> "이메일을 입력해 주세요."; !ContactRules.validEmail(form.email) -> "이메일 주소를 확인해 주세요."; else -> null },
-        histories = form.histories.mapNotNull { history ->
-            when {
-                history.title.isBlank() -> "활동 이름을 입력해 주세요."
-                history.start == null -> "시작일을 골라 주세요."
-                !history.ongoing && history.end != null && history.end < history.start -> "종료일은 시작일 이후로 골라 주세요."
-                else -> null
-            }?.let { history.id to it }
-        }.toMap(),
     )
-    /** `PUT /v1/profile` body. Empty added contacts are left out; dates are saved as picked (`YYYY-MM-DD`). */
+    /** `PUT /v1/profile` body. Empty added contacts are left out. */
     private fun profile(form: ProfileFormState): AccountProfile {
         val labels = ProfileContactKinds.associate { (kind, label, _) -> kind to label }
         return AccountProfile(form.name.trim(), form.job.trim(), form.introduction.trim(),
-            listOf(AccountContact(phoneId, "phone", "전화번호", form.phone.trim()), AccountContact(emailId, "email", "이메일", form.email.trim())) +
+            listOf(AccountContact(form.phoneId, "phone", "전화번호", form.phone.trim()), AccountContact(form.emailId, "email", "이메일", form.email.trim())) +
                 form.extras.filter { it.value.isNotBlank() }.map { AccountContact(it.id, it.kind, labels[it.kind] ?: it.kind, it.value.trim()) },
-            form.histories.map { AccountHistory(it.id, it.title.trim(), it.role.trim(), it.start.toString(), if (it.ongoing) null else it.end?.toString(), it.description) })
+            form.histories, form.version)
     }
-    private fun newId() = UUID.randomUUID().toString()
-    private fun date(text: String) = runCatching { LocalDate.parse(text.take(10)) }.getOrNull()
+    private val HistoryDraft.Step.isPicker get() = this in setOf(HistoryDraft.Step.ORGANIZATION, HistoryDraft.Step.PROGRAM, HistoryDraft.Step.ACTIVITY, HistoryDraft.Step.ROLE)
 }
-
-private fun AccountProfile.toState() = ProfileState(name, job, introduction, contacts.map { ContactState(it.id, it.kind, it.label, it.value) },
-    histories.map { CardHistoryState(it.id, it.title, it.role, ContactRules.period(it.startDate, it.endDate)) })

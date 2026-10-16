@@ -52,13 +52,14 @@ class QrShareViewModel(private val account: AccountViewModel, private val link: 
         links[key]?.let { url -> mutable.update { it.copy(phase = QrSharePhase.READY, url = url, error = null) }; return }
         mutable.update { it.copy(phase = QrSharePhase.LOADING, url = null, error = null) }
         try {
-            val url = link(account.authorized { account.client.share(card.id, ids, it) }.id)
+            // The activity chooser works with the activity model's string ids; the server wants numbers.
+            val url = link(account.authorized { account.client.share(card.id, ids.mapNotNull(String::toLongOrNull), it) }.id)
             links[key] = url
             mutable.update { it.copy(phase = QrSharePhase.READY, url = url) }
         } catch (e: AccountException) {
             mutable.update { when (e.error) {
                 AccountError.UNAUTHORIZED -> QrShareState(QrSharePhase.SIGNED_OUT)
-                AccountError.INVALID_INPUT -> it.copy(phase = QrSharePhase.FAILED, error = "고른 활동 중 지금 모집 정보에 없는 활동이 있어요. 활동 선택을 바꿔 주세요.")
+                AccountError.BAD_REQUEST -> it.copy(phase = QrSharePhase.FAILED, error = e.detail ?: "고른 활동 중 지금 모집 정보에 없는 활동이 있어요. 활동 선택을 바꿔 주세요.")
                 else -> it.copy(phase = QrSharePhase.FAILED, error = "QR을 만들지 못했어요. 다시 시도해 주세요.")
             } }
         }

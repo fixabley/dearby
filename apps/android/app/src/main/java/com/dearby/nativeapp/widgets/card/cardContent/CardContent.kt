@@ -25,7 +25,7 @@ import com.dearby.nativeapp.shared.ui.*
                 val showIntroduction = expanded && state.introduction.isNotBlank()
                 if (state.title.isNotBlank()) Text(state.title, color = Teal, style = MaterialTheme.typography.titleLarge)
                 if (state.description.isNotBlank()) Text(state.description, color = Quiet, style = MaterialTheme.typography.bodyMedium)
-                if (showIntroduction) Text(state.introduction, style = MaterialTheme.typography.bodyMedium)
+                if (showIntroduction) MarkdownBody(state.introduction)
                 if (state.title.isNotBlank() || state.description.isNotBlank() || showIntroduction) HorizontalDivider()
                 Text("연락처", style = MaterialTheme.typography.titleSmall, color = Quiet)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -36,7 +36,11 @@ import com.dearby.nativeapp.shared.ui.*
                 }
                 HorizontalDivider()
                 Text("활동 이력", style = MaterialTheme.typography.titleSmall, color = Quiet)
-                Column { state.histories.forEachIndexed { index, history -> TimelineEntry(history.date, history.title, if (expanded) history.role else "", index == state.histories.lastIndex, compact = !expanded) } }
+                // 미확인: no admin-verified evidence yet.
+                Column { state.histories.forEachIndexed { index, history ->
+                    val tag = if (history.verified) "확인됨" else "미확인"
+                    TimelineEntry(history.date, history.title, if (expanded) listOf(history.role, tag).filter { it.isNotEmpty() }.joinToString(" · ") else tag, index == state.histories.lastIndex, compact = !expanded)
+                } }
             }
         }
     }

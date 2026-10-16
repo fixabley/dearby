@@ -1,75 +1,49 @@
 package com.dearby.nativeapp.app
 
-import com.dearby.nativeapp.entities.account.model.AccountContact
-import com.dearby.nativeapp.entities.account.model.AccountHistory
 import com.dearby.nativeapp.entities.account.model.AccountProfile
 import com.dearby.nativeapp.entities.account.model.ContactRules
-import com.dearby.nativeapp.widgets.card.cardContent.CardComposerContact
-import com.dearby.nativeapp.widgets.card.cardContent.CardComposerHistory
-import java.util.UUID
+import com.dearby.nativeapp.entities.account.model.PublishedCard
+import com.dearby.nativeapp.widgets.card.cardContent.ComposerContact
+import com.dearby.nativeapp.widgets.card.cardContent.ComposerHistory
 
-private val contactKinds = listOf("phone" to "전화번호", "email" to "이메일", "kakao" to "카카오톡",
-    "instagram" to "인스타그램", "github" to "GitHub", "behance" to "Behance")
-
-/** Composer state: the private profile plus which contacts and histories the new card shows. */
+/** Composer state: the saved profile's data, the decoration template and which contacts and histories the card shows. */
 data class CardDraft(
-    val name: String = "", val job: String = "", val introduction: String = "",
-    val contacts: List<CardComposerContact> = withEmptyRows(emptyList()),
-    val histories: List<CardComposerHistory> = emptyList(),
-    val saved: List<AccountHistory> = emptyList(),
-    /** Optional card name (#146); empty means "내 명함". */
-    val cardTitle: String = "",
+    val profile: AccountProfile, val cardTitle: String, val template: String, val publicContactIds: Set<String>, val publicHistoryIds: Set<String>,
+    val initial: Initial,
 ) {
+    data class Initial(val cardTitle: String, val template: String, val contacts: Set<String>, val histories: Set<String>)
+    val changed get() = Initial(cardTitle, template, publicContactIds, publicHistoryIds) != initial
+    fun revert() = copy(cardTitle = initial.cardTitle, template = initial.template, publicContactIds = initial.contacts, publicHistoryIds = initial.histories)
+    val tokenContactIds get() = TemplateDocument.contactIds(template)
+    /** Contacts the template names are always public (the server leaves unselected tokens empty). */
+    val effectiveContactIds: Set<String> get() {
+        val fromTokens: List<String> = profile.contacts.filter { it.id.lowercase() in tokenContactIds }.map { it.id }
+        return publicContactIds + fromTokens
+    }
+    val preview get() = TemplateDocument.fill(template, profile, effectiveContactIds)
     val cardName get() = cardTitle.trim().ifEmpty { "내 명함" }
-    private val filled get() = contacts.filter { it.value.isNotBlank() }
-    val canPublish get() = problem() == null
-    /** Why the profile cannot be saved yet (contract #149: name, a phone and an email), or null. Before signing in
-     *  the email may still be empty: a returning account's saved email fills it when [merged], and publishing checks again. */
-    fun problem(checkingEmail: Boolean = true): String? {
-        val phone = contacts.firstOrNull { it.kind == "phone" }?.value.orEmpty()
-        val email = contacts.firstOrNull { it.kind == "email" }?.value.orEmpty()
-        return when {
-            name.isBlank() -> "이름을 입력해 주세요."
-            phone.isBlank() -> "전화번호를 입력해 주세요."
-            !ContactRules.validPhone(phone) -> "전화번호는 숫자 8~15자리로 입력해 주세요."
-            email.isBlank() -> if (checkingEmail) "이메일을 입력해 주세요." else null
-            !ContactRules.validEmail(email) -> "이메일 주소를 확인해 주세요."
-            else -> null
-        }
+    val contactIds get() = profile.contacts.map { it.id }.filter { it in effectiveContactIds }
+    val historyIds get() = profile.histories.map { it.id }.filter { it in publicHistoryIds }
+    val contacts get() = profile.contacts.map { ComposerContact(it.id, it.label, it.value, it.id in effectiveContactIds, it.id.lowercase() in tokenContactIds) }
+    val histories get() = profile.histories.map {
+        ComposerHistory(it.id, it.chain.joinToString(" · "), listOf(it.roleTitle, ContactRules.period(it.startDate, it.endDate)).filter(String::isNotEmpty).joinToString(" · "),
+            it.id in publicHistoryIds, if (it.isApproved) null else if (it.approval == "rejected") "거절된 이력은 명함에 넣을 수 없어요" else "관리자 승인 뒤 명함에 넣을 수 있어요")
     }
-    /** `PUT /v1/profile` body: filled contacts only, saved histories unchanged. */
-    val profile get() = AccountProfile(name.trim(), job, introduction,
-        filled.map { AccountContact(it.id, it.kind, it.label, it.value.trim()) }, saved)
-    val contactIds get() = filled.filter { it.isPublic }.map { it.id }
-    val historyIds get() = histories.filter { it.isPublic }.map { it.id }
-
-    /**
-     * After signing in: keep what is on screen and the account's other saved data, so publishing never
-     * drops stored contacts or histories. Saved rows that were not on screen stay private.
-     */
-    fun merged(stored: AccountProfile): CardDraft {
-        val base = from(stored)
-        val shown = contacts.associateBy { it.id }
-        val rows = base.contacts.map { if (it.value.isEmpty()) it else it.copy(isPublic = shown[it.id]?.isPublic ?: false) }.toMutableList()
-        for (typed in filled) {
-            val index = rows.indexOfFirst { it.id == typed.id }.takeIf { it >= 0 }
-                ?: rows.indexOfFirst { it.kind == typed.kind && it.value.isEmpty() }.takeIf { it >= 0 }
-            if (index == null) rows += typed else rows[index] = rows[index].copy(value = typed.value, isPublic = typed.isPublic)
-        }
-        val shownHistories = histories.associateBy { it.id }
-        return base.copy(name = name.ifBlank { base.name }, cardTitle = cardTitle, job = job.ifEmpty { base.job },
-            introduction = introduction.ifEmpty { base.introduction }, contacts = rows,
-            histories = base.histories.map { it.copy(isPublic = shownHistories[it.id]?.isPublic ?: false) })
+    /** Why the profile cannot be published yet (name, phone and email are required data), or null. */
+    val problem get() = when {
+        profile.name.isBlank() -> "프로필에서 이름을 먼저 입력해 주세요."
+        profile.contacts.none { it.kind == "phone" } || profile.contacts.none { it.kind == "email" } -> "프로필에서 전화번호와 이메일을 먼저 입력해 주세요."
+        else -> null
     }
-
     companion object {
-        /** Saved contacts first, then one empty row for each kind the profile does not have yet. */
-        fun from(profile: AccountProfile) = CardDraft(profile.name, profile.job, profile.introduction,
-            withEmptyRows(profile.contacts.map { CardComposerContact(it.id, it.kind, it.label, it.value, true) }),
-            profile.histories.map { CardComposerHistory(it.id, it.title, listOf(it.role, ContactRules.period(it.startDate, it.endDate)).filter(String::isNotEmpty).joinToString(" · "), true) },
-            profile.histories)
+        /** A new card starts from the starter template with every contact and approved history public; a republish starts from that card. */
+        fun from(profile: AccountProfile, prefill: PublishedCard? = null): CardDraft {
+            val approved = profile.histories.filter { it.isApproved }.map { it.id }.toSet()
+            val title = prefill?.name.orEmpty()
+            val template = prefill?.template ?: TemplateDocument.starter(profile)
+            val contacts = prefill?.contacts?.map { it.id }?.toSet() ?: profile.contacts.map { it.id }.toSet()
+            val histories = prefill?.histories?.map { it.id }?.toSet()?.intersect(approved) ?: approved
+            return CardDraft(profile, title, template, contacts, histories, Initial(title, template, contacts, histories))
+        }
     }
 }
-
-private fun withEmptyRows(existing: List<CardComposerContact>) = existing + contactKinds.filter { (kind, _) -> existing.none { it.kind == kind } }
-    .map { (kind, label) -> CardComposerContact(UUID.randomUUID().toString(), kind, label, "", true) }

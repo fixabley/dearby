@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dearby.nativeapp.entities.account.api.AccountError
 import com.dearby.nativeapp.entities.account.api.AccountException
-import com.dearby.nativeapp.entities.account.model.AccountProfile
 import com.dearby.nativeapp.entities.account.model.PublishedCard
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,76 +18,44 @@ sealed interface PublishPhase {
     data class Published(val card: PublishedCard) : PublishPhase
     data class Failed(val message: String) : PublishPhase
 }
-data class CardPublishState(val draft: CardDraft = CardDraft(), val phase: PublishPhase = PublishPhase.Editing, val signingIn: Boolean = false)
+data class CardPublishState(val draft: CardDraft? = null, val phase: PublishPhase = PublishPhase.Editing, val signingIn: Boolean = false, val prefill: PublishedCard? = null)
 
-/**
- * Publishes the composer draft: `PUT /v1/profile`, then `POST /v1/cards`. When the profile saved but
- * the card did not, a retry publishes only the card. Sign-in is asked for only on publish.
- */
+/** Publishes the composer draft with `POST /v1/cards` (template included). Profile data is read-only here. */
 class CardPublishViewModel(private val account: AccountViewModel) : ViewModel() {
     private val mutable = MutableStateFlow(CardPublishState())
     val state = mutable.asStateFlow()
-    private var savedProfile: AccountProfile? = null
     private var job: Job? = null
     private val signedIn get() = account.state.value.phase == AccountPhase.SIGNED_IN
 
-    /** Opens a fresh composer; signed in, it starts from the saved profile. */
-    fun start() = launch {
-        mutable.value = CardPublishState()
-        savedProfile = null
-        if (!signedIn) return@launch
-        mutable.update { it.copy(phase = PublishPhase.Loading) }
+    /** Opens the composer; signed in, it starts from the saved profile (and [prefill]'s template when republishing). */
+    fun start(prefill: PublishedCard? = null) = launch {
+        mutable.value = CardPublishState(prefill = prefill)
+        load()
+    }
+    fun load() = launch {
+        if (!signedIn) { mutable.update { it.copy(phase = PublishPhase.Editing, signingIn = true) }; return@launch }
+        mutable.update { it.copy(phase = PublishPhase.Loading, signingIn = false) }
         try {
             val stored = account.authorized { account.client.profile(it) }
-            savedProfile = stored
-            mutable.update { it.copy(draft = CardDraft.from(stored), phase = PublishPhase.Editing) }
+            mutable.update { it.copy(draft = if (it.draft?.profile == stored) it.draft else CardDraft.from(stored, it.prefill), phase = PublishPhase.Editing) }
         } catch (e: AccountException) {
-            mutable.update { it.copy(phase = PublishPhase.Failed("프로필을 불러오지 못했어요. 다시 시도해 주세요.")) }
+            mutable.update { it.copy(phase = if (e.error == AccountError.UNAUTHORIZED) PublishPhase.Editing else PublishPhase.Failed("프로필을 불러오지 못했어요. 다시 시도해 주세요."), signingIn = e.error == AccountError.UNAUTHORIZED) }
         }
     }
-    fun edit(draft: CardDraft) = mutable.update { it.copy(draft = draft) }
+    fun edit(draft: CardDraft) = mutable.update { it.copy(draft = draft, phase = if (it.phase is PublishPhase.Failed) PublishPhase.Editing else it.phase) }
     fun cancelSignIn() = mutable.update { it.copy(signingIn = false) }
-    fun publish() {
-        if (!signedIn) {
-            // Fix the form first; an empty email may come from the account's saved profile after signing in.
-            val problem = mutable.value.draft.problem(checkingEmail = false)
-            mutable.update { if (problem != null) it.copy(phase = PublishPhase.Failed(problem)) else it.copy(signingIn = true) }
-            return
-        }
-        launch { send() }
-    }
-    /** Signed in from the composer: merge what was typed onto the account, then publish. */
-    fun continueAfterSignIn() = launch {
-        mutable.update { it.copy(signingIn = false, phase = PublishPhase.Publishing) }
-        try {
-            val stored = account.authorized { account.client.profile(it) }
-            savedProfile = stored
-            mutable.update { it.copy(draft = it.draft.merged(stored)) }
-        } catch (e: AccountException) {
-            mutable.update { it.copy(phase = PublishPhase.Failed("프로필을 불러오지 못했어요. 다시 시도해 주세요.")) }
-            return@launch
-        }
-        send()
-    }
-    private suspend fun send() {
-        val draft = mutable.value.draft
-        draft.problem()?.let { problem -> mutable.update { it.copy(phase = PublishPhase.Failed(problem)) }; return }
+    fun publish() = launch {
+        val draft = mutable.value.draft ?: run { load(); return@launch }
+        draft.problem?.let { problem -> mutable.update { it.copy(phase = PublishPhase.Failed(problem)) }; return@launch }
         mutable.update { it.copy(phase = PublishPhase.Publishing) }
-        val profile = draft.profile
         try {
-            if (savedProfile != profile) {
-                account.authorized { account.client.saveProfile(profile, it) }
-                savedProfile = profile
-            }
-            val card = account.authorized { account.client.publish(draft.cardName, "", draft.contactIds, draft.historyIds, it) }
+            val card = account.authorized { account.client.publish(draft.cardName, "", draft.template, draft.contactIds, draft.historyIds, it) }
             mutable.update { it.copy(phase = PublishPhase.Published(card)) }
         } catch (e: AccountException) {
             mutable.update { when (e.error) {
-                // The session expired: sign in again and the draft is kept.
                 AccountError.UNAUTHORIZED -> it.copy(phase = PublishPhase.Editing, signingIn = true)
-                AccountError.INVALID_CONTACTS -> it.copy(phase = PublishPhase.Failed("전화번호와 이메일을 확인해 주세요."))
-                AccountError.INVALID_INPUT -> it.copy(phase = PublishPhase.Failed("입력한 내용을 확인해 주세요. 링크는 https 주소만 쓸 수 있어요."))
-                else -> it.copy(phase = PublishPhase.Failed(if (savedProfile == profile) "프로필은 저장했어요. 명함 발행만 다시 시도해 주세요." else "발행하지 못했어요. 잠시 후 다시 시도해 주세요."))
+                AccountError.BAD_REQUEST -> it.copy(phase = PublishPhase.Failed(e.detail ?: "입력한 내용을 확인해 주세요."))
+                else -> it.copy(phase = PublishPhase.Failed("발행하지 못했어요. 잠시 후 다시 시도해 주세요."))
             } }
         }
     }
