@@ -81,6 +81,8 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun refresh(refreshToken: String) = send("POST", "auth/refresh", JSONObject().put("refreshToken", refreshToken)).toSession()
     /** 204 with no body, also when the token is already invalid. */
     suspend fun logout(refreshToken: String) { request("POST", "auth/logout", JSONObject().put("refreshToken", refreshToken), null) }
+    /** "계정 삭제" (contract "계정 삭제"): removes the account and everything it holds; 204 with no body. Irreversible. */
+    suspend fun deleteAccount(session: AccountSession) { request("DELETE", "me", null, session) }
     suspend fun profile(session: AccountSession) = send("GET", "profile", null, session).toProfile()
     suspend fun saveProfile(profile: AccountProfile, session: AccountSession) = send("PUT", "profile", profile.toJson(), session).toProfile()
     suspend fun publish(name: String, description: String, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =

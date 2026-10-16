@@ -183,6 +183,12 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
         forget()
     }
 
+    /** "계정 삭제": DELETE /v1/me through [authorized], then this device's tokens are forgotten. A failure keeps them. */
+    suspend fun deleteAccount() {
+        authorized { client.deleteAccount(it) }
+        forget()
+    }
+
     /** Runs an owner call. On 401 it refreshes once and retries; if that fails too, the tokens are forgotten. */
     suspend fun <T> authorized(call: suspend (AccountSession) -> T): T {
         val current = session ?: throw AccountException(AccountError.UNAUTHORIZED)

@@ -26,7 +26,7 @@ class QrShareViewModel(private val account: AccountViewModel, private val link: 
     private var job: Job? = null
 
     fun load() = launch {
-        if (account.state.value.phase != AccountPhase.SIGNED_IN) { mutable.value = QrShareState(QrSharePhase.SIGNED_OUT); return@launch }
+        if (account.state.value.phase != AccountPhase.SIGNED_IN) { cards = emptyList(); links.clear(); mutable.value = QrShareState(QrSharePhase.SIGNED_OUT); return@launch }
         mutable.update { it.copy(phase = QrSharePhase.LOADING, error = null) }
         cards = try { account.authorized { account.client.cards(it) } } catch (e: AccountException) {
             mutable.update { if (e.error == AccountError.UNAUTHORIZED) QrShareState(QrSharePhase.SIGNED_OUT)

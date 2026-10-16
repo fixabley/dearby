@@ -8,7 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
@@ -27,7 +27,11 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileExtraContact
  * 내 프로필 (#149). Signed out it offers card making or sign-in without blocking the tab; signed in it shows the
  * account's profile with an edit action.
  */
-@Composable fun ProfilePage(state: ProfileViewState, edit: () -> Unit, compose: () -> Unit, signIn: () -> Unit, retry: () -> Unit, contact: (ContactState) -> Unit) {
+@Composable fun ProfilePage(
+    state: ProfileViewState, edit: () -> Unit, compose: () -> Unit, signIn: () -> Unit, retry: () -> Unit, contact: (ContactState) -> Unit,
+    deleting: Boolean, deleteAccount: () -> Unit,
+) {
+    var confirming by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("내 프로필") { if (state.phase == ProfilePhase.LOADED) TextButton(edit) { Text("편집") } }
         when (state.phase) {
@@ -49,7 +53,18 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileExtraContact
                 }
             }
         }
+        // Signed in, even when the profile failed to load: deletion must stay reachable (App Store 5.1.1(v)).
+        if (state.phase == ProfilePhase.LOADED || state.phase == ProfilePhase.FAILED) {
+            TextButton({ confirming = true }, Modifier.align(Alignment.CenterHorizontally).padding(bottom = 8.dp), enabled = !deleting,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                if (deleting) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text("계정 삭제")
+            }
+        }
     }
+    if (confirming) AlertDialog(onDismissRequest = { confirming = false }, title = { Text("계정을 삭제할까요?") },
+        text = { Text("명함과 받은 명함 등 모든 정보가 지워지고 되돌릴 수 없어요.") },
+        confirmButton = { TextButton({ confirming = false; deleteAccount() }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("삭제") } },
+        dismissButton = { TextButton({ confirming = false }) { Text("취소") } })
 }
 
 /** Edits the profile; a failed save keeps the form and shows [error]. */

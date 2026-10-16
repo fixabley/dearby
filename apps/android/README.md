@@ -49,6 +49,7 @@ HTTP/Repository/Room/Keystore/기기 캘린더/WebView·인증 실행 코드와 
 - 흐름: 로그인 시트 `pages/account/SignInSheet.kt`의 "패스키로 로그인"(기본)·"새 패스키로 시작"(가입) → `app/AccountViewModel` → `entities/account/api/AccountClient`의 `/v1/auth/passkeys/*` 옵션 요청 → `features/passkey/Passkeys`(Credential Manager)에 `options` JSON을 그대로 넘김 → 결과 JSON을 `credential`로 완료 요청 → TokenPair.
 - 저장: Keystore AES-GCM `SessionVault` 새 이름 `account.tokens.v3`에 access·refresh token만 둔다(서버 응답도 토큰 두 개뿐이다). 사용자 id·만료는 access token 클레임에 있고, 401을 받으면 갱신한다. 이전 저장(`session`, 이메일 로그인의 `account.session.v2`)은 읽거나 지우지 않는다.
 - 401: `/v1/auth/refresh`를 한 번 시도하고(동시에 401을 받아도 갱신은 한 번), 거절되면 토큰을 지우고 로그인 시트로 돌아간다. 네트워크 오류면 토큰을 남긴다. 로그아웃(`AccountViewModel.signOut`)은 `/v1/auth/logout` 뒤 네트워크 실패여도 기기 토큰을 지운다. 지금 로그아웃 버튼은 없다.
+- 계정 삭제(2026-10-16, 계약 "계정 삭제"): 로그아웃 버튼이 없어서 로그인 상태의 내 프로필(불러오기 실패 화면 포함) 아래에 빨간 "계정 삭제"를 둔다. 확인 창("계정을 삭제할까요?" / 삭제·취소) → `ProfileViewModel.deleteAccount` → `AccountViewModel.deleteAccount`(`authorized`로 `DELETE /v1/me`, 401이면 갱신 후 재시도) → 204면 `SessionVault`를 지우고 로그인하지 않은 상태로 돌아가 "계정을 삭제했어요. 기기에 남은 패스키는 비밀번호 관리자에서 지울 수 있어요."를 한 번 띄운다. 갱신이 거절되면 이미 로그아웃된 것으로 보고 만료 안내, 그 밖의 실패는 "계정을 삭제하지 못했어요. 잠시 후 다시 시도해 주세요."와 함께 토큰을 남긴다. 요청 중에는 버튼을 막는다. 기기에 저장한 계정 데이터는 토큰뿐이고, 로그아웃 상태가 되면 QR 탭의 명함·공유 링크와 프로필 캐시(메모리)도 비운다.
 - 사용자가 패스키 창을 닫으면 오류 없이 시트로 돌아간다. 기기에 패스키가 없으면 "새 패스키로 시작"을 안내한다. 패스키는 Android 9(API 28) 이상에서만 쓸 수 있다(minSdk 26).
 
 ## 애플 로그인 (2026-10-16)
