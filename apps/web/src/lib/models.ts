@@ -8,15 +8,28 @@ const contact = z.object({
   label: text,
   value: text,
 });
+// 카탈로그 참조(id는 숫자) 또는 직접 입력한 이름. 명함에는 승인된 이력만 실리고 evidence는 없다.
+const catalogRef = z.object({ id: z.number().int(), name: text }).nullable();
 const history = z.object({
   id: uuid,
-  title: text,
-  role: text,
+  kind: z.enum(["organization", "activity"]),
+  organization: catalogRef,
+  organizationName: text.nullable(),
+  program: catalogRef,
+  programName: text.nullable(),
+  activity: catalogRef,
+  activityName: text.nullable(),
+  role: catalogRef,
+  roleName: text.nullable(),
   startDate: text,
   endDate: text.nullable(),
   description: text,
+  approval: z.enum(["approved", "pending", "rejected"]),
+  approvalReason: text.nullable(),
+  verification: z.enum(["unverified", "pending", "verified", "rejected"]),
 });
-// Only the public card projection is accepted. Unknown fields are stripped at the proxy.
+export type History = z.infer<typeof history>;
+// Only the public card projection is accepted. Unknown fields are stripped at the proxy. `introduction` is rendered markdown (the card body).
 export const cardSchema = z.object({
   id: uuid,
   name: text,
@@ -30,7 +43,7 @@ export const cardSchema = z.object({
 });
 export type Card = z.infer<typeof cardSchema>;
 // Activity copies chosen by the sender; not proof of participation.
-const sharedActivity = z.object({ id: uuid, title: text });
+const sharedActivity = z.object({ id: z.number().int().positive(), title: text });
 export const sharePageSchema = z.object({
   share: z.object({
     id: uuid,

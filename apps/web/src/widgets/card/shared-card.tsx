@@ -21,7 +21,7 @@ export function SharedCardView({
   afterSave,
 }: {
   card: Card;
-  activities: { id: string; title: string }[];
+  activities: { id: number; title: string }[];
   saveState: SharedCardSaveState;
   errorMessage?: string;
   onSave: () => void;

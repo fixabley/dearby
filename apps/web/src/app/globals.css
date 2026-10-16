@@ -853,3 +853,50 @@ a {
     animation: none;
   }
 }
+
+/* 명함 본문(마크다운)과 이력 배지 — 프로필·명함 v2 */
+.card-body {
+  white-space: normal;
+}
+.card-body h1,
+.card-body h2,
+.card-body h3 {
+  color: var(--ink, inherit);
+  margin: 12px 0 4px;
+}
+.card-body h1 {
+  font-size: 22px;
+}
+.card-body h2 {
+  font-size: 19px;
+}
+.card-body h3 {
+  font-size: 17px;
+}
+.card-body p {
+  margin: 8px 0;
+}
+.card-body ul,
+.card-body ol {
+  margin: 8px 0;
+  padding-left: 22px;
+}
+.card-body a {
+  text-decoration: underline;
+}
+.badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  vertical-align: middle;
+}
+.badge-unverified {
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+  color: var(--muted);
+}
+.badge-verified {
+  background: color-mix(in srgb, #1f8a4c 16%, transparent);
+  color: #1f8a4c;
+}
