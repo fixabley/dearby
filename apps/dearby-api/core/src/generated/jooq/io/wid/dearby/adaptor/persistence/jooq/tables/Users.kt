@@ -6,9 +6,15 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.keys.CONTACTS__CONTACTS_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_HISTORIES__PROFILE_HISTORIES_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_VERSIONS__PROFILE_VERSIONS_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.RECEIPTS__RECEIPTS_RECIPIENT_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ROLES__USER_ROLES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts.ContactsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories.ProfileHistoriesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions.ProfileVersionsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts.ReceiptsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles.UserRolesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.UsersRecord
 
@@ -130,6 +136,54 @@ open class Users(
 
     val contacts: ContactsPath
         get(): ContactsPath = contacts()
+
+    private lateinit var _profileHistories: ProfileHistoriesPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.profile_histories</code> table
+     */
+    fun profileHistories(): ProfileHistoriesPath {
+        if (!this::_profileHistories.isInitialized)
+            _profileHistories = ProfileHistoriesPath(this, null, PROFILE_HISTORIES__PROFILE_HISTORIES_USER_ID_FKEY.inverseKey)
+
+        return _profileHistories;
+    }
+
+    val profileHistories: ProfileHistoriesPath
+        get(): ProfileHistoriesPath = profileHistories()
+
+    private lateinit var _profileVersions: ProfileVersionsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.profile_versions</code> table
+     */
+    fun profileVersions(): ProfileVersionsPath {
+        if (!this::_profileVersions.isInitialized)
+            _profileVersions = ProfileVersionsPath(this, null, PROFILE_VERSIONS__PROFILE_VERSIONS_USER_ID_FKEY.inverseKey)
+
+        return _profileVersions;
+    }
+
+    val profileVersions: ProfileVersionsPath
+        get(): ProfileVersionsPath = profileVersions()
+
+    private lateinit var _receipts: ReceiptsPath
+
+    /**
+     * Get the implicit to-many join path to the <code>public.receipts</code>
+     * table
+     */
+    fun receipts(): ReceiptsPath {
+        if (!this::_receipts.isInitialized)
+            _receipts = ReceiptsPath(this, null, RECEIPTS__RECEIPTS_RECIPIENT_ID_FKEY.inverseKey)
+
+        return _receipts;
+    }
+
+    val receipts: ReceiptsPath
+        get(): ReceiptsPath = receipts()
 
     private lateinit var _userRoles: UserRolesPath
 

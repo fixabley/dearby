@@ -1,6 +1,7 @@
 package io.wid.dearby.auth.web
 
 import io.wid.dearby.domain.AuthenticationFailedException
+import io.wid.dearby.domain.ConflictException
 import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.NotFoundException
 import io.wid.dearby.domain.PermissionDeniedException
@@ -28,6 +29,9 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(PermissionDeniedException::class)
     fun permissionDenied(e: PermissionDeniedException) = problem(HttpStatus.FORBIDDEN, e.detail, e)
+
+    @ExceptionHandler(ConflictException::class)
+    fun conflict(e: ConflictException) = problem(HttpStatus.CONFLICT, e.detail, e)
 
     @ExceptionHandler(ServiceUnavailableException::class)
     fun serviceUnavailable(e: ServiceUnavailableException) = problem(HttpStatus.SERVICE_UNAVAILABLE, e.detail, e)

@@ -51,10 +51,22 @@ class AccountDeletionFlowTest(
         val id = user.id
         jdbc.sql("insert into users (id) values (?)").param(id).update()
         jdbc.sql("insert into user_roles (user_id, role) values (?, 'USER')").param(id).update()
-        jdbc.sql("insert into contacts (user_id, kind, label, value) values (?, 'EMAIL', '메일', 'a@example.com')").param(id).update()
-        jdbc.sql("insert into profiles (user_id, name, created_at, updated_at) values (?, '이름', localtimestamp, localtimestamp)").param(id).update()
-        val card = jdbc.sql("insert into business_cards (user_id, title) values (?, '명함') returning id").param(id).query(Long::class.java).single()
-        jdbc.sql("insert into business_card_contacts (business_card_id, contact_id) values (?, 1)").param(card).update()
+        jdbc.sql("insert into contacts (id, user_id, kind, label, value, position) values (?, ?, 'EMAIL', '메일', 'a@example.com', 0)").params(UUID.randomUUID(), id).update()
+        jdbc.sql("insert into profiles (user_id, name, job, introduction, version, created_at, updated_at) values (?, '이름', '', '', 1, now(), now())").param(id).update()
+        jdbc.sql("insert into profile_versions (user_id, version, snapshot, created_at) values (?, 1, '{}', now())").param(id).update()
+        val history = UUID.randomUUID()
+        jdbc.sql("insert into profile_histories (id, user_id, kind, organization_name, role_name, start_date, description, position, approval_status, verification_status, created_at, updated_at) values (?, ?, 'ORGANIZATION', '조직', '역할', '2026-01-01', '', 0, 'PENDING', 'UNVERIFIED', now(), now())").params(history, id).update()
+        jdbc.sql("insert into history_evidence (id, history_id, user_id, file_name, content_type, size, data, uploaded_at) values (?, ?, ?, 'a.png', 'image/png', 1, '\\x00', now())").params(UUID.randomUUID(), history, id).update()
+        val card = UUID.randomUUID()
+        jdbc.sql("insert into business_cards (id, user_id, name, description, profile_name, job, introduction, contacts, histories, created_at) values (?, ?, '명함', '', '이름', '', '', '[]', '[]', now())").params(card, id).update()
+        val share = UUID.randomUUID()
+        jdbc.sql("insert into card_shares (id, card_id, activities, created_at) values (?, ?, '[]', now())").params(share, card).update()
+        // 다른 사람이 내 명함을 받아 둔 지갑 행
+        val stranger = UUID.randomUUID()
+        jdbc.sql("insert into users (id) values (?)").param(stranger).update()
+        val receipt = UUID.randomUUID()
+        jdbc.sql("insert into receipts (id, recipient_id, card_id, context, received_at) values (?, ?, ?, '{}', now())").params(receipt, stranger, card).update()
+        jdbc.sql("insert into wallet_shares (receipt_id, share_id, card_id, saved_at) values (?, ?, ?, now())").params(receipt, share, card).update()
         // 패스키: user handle = UUID 16바이트(base64url)
         jdbc.sql("insert into user_entities (id, name, display_name) values (?, 'Dearby', 'Dearby')").param(handle(id)).update()
         appleToken?.let {
@@ -80,11 +92,14 @@ class AccountDeletionFlowTest(
 
         assertEquals(listOf("io.wid.dearby:rt-1"), REVOKED)
         for ((table, column) in listOf("users" to "id", "user_roles" to "user_id", "contacts" to "user_id", "profiles" to "user_id",
+            "profile_versions" to "user_id", "profile_histories" to "user_id", "history_evidence" to "user_id",
             "business_cards" to "user_id", "refresh_tokens" to "user_id", "user_identities" to "user_id")) {
             assertEquals(0, count(table, column, user.id), table)
         }
         assertEquals(0, count("user_entities", "id", handle(user.id)))
-        assertEquals(0, jdbc.sql("select count(*) from business_card_contacts c left join business_cards b on b.id = c.business_card_id where b.id is null").query(Int::class.java).single())
+        // 내 명함의 공유 기록과, 그것을 받아 둔 다른 사람의 지갑 행도 함께 지워진다
+        assertEquals(0, jdbc.sql("select count(*) from card_shares s left join business_cards b on b.id = s.card_id where b.id is null").query(Int::class.java).single())
+        assertEquals(0, jdbc.sql("select count(*) from receipts r left join business_cards b on b.id = r.card_id where b.id is null").query(Int::class.java).single())
         assertEquals(1, count("user_entities", "id", handle(other.id)))
         assertEquals(1, count("users", "id", other.id))
         assertEquals(1, count("profiles", "user_id", other.id))

@@ -9,31 +9,34 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
-import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardActivityHistories
-import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
+import io.wid.dearby.adaptor.persistence.jooq.tables.CardShares
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
+import io.wid.dearby.adaptor.persistence.jooq.tables.HistoryEvidence
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMembers
 import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations
-import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileActivityHistories
-import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileActivityHistoryRoles
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions
 import io.wid.dearby.adaptor.persistence.jooq.tables.Profiles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCollectionSettings
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaffRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
+import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
+import io.wid.dearby.adaptor.persistence.jooq.tables.Roles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Users
+import io.wid.dearby.adaptor.persistence.jooq.tables.WalletShares
 import io.wid.dearby.adaptor.persistence.jooq.tables.WebauthnChallenges
 
 import kotlin.collections.List
@@ -83,19 +86,14 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val APPLE_SIGN_IN_STATES: AppleSignInStates get() = AppleSignInStates.APPLE_SIGN_IN_STATES
 
     /**
-     * The table <code>public.business_card_activity_histories</code>.
-     */
-    val BUSINESS_CARD_ACTIVITY_HISTORIES: BusinessCardActivityHistories get() = BusinessCardActivityHistories.BUSINESS_CARD_ACTIVITY_HISTORIES
-
-    /**
-     * The table <code>public.business_card_contacts</code>.
-     */
-    val BUSINESS_CARD_CONTACTS: BusinessCardContacts get() = BusinessCardContacts.BUSINESS_CARD_CONTACTS
-
-    /**
      * The table <code>public.business_cards</code>.
      */
     val BUSINESS_CARDS: BusinessCards get() = BusinessCards.BUSINESS_CARDS
+
+    /**
+     * The table <code>public.card_shares</code>.
+     */
+    val CARD_SHARES: CardShares get() = CardShares.CARD_SHARES
 
     /**
      * The table <code>public.collection_runs</code>.
@@ -111,6 +109,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.dismissed_activity_sources</code>.
      */
     val DISMISSED_ACTIVITY_SOURCES: DismissedActivitySources get() = DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES
+
+    /**
+     * The table <code>public.history_evidence</code>.
+     */
+    val HISTORY_EVIDENCE: HistoryEvidence get() = HistoryEvidence.HISTORY_EVIDENCE
 
     /**
      * The table <code>public.organization_contacts</code>.
@@ -133,14 +136,14 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val ORGANIZATIONS: Organizations get() = Organizations.ORGANIZATIONS
 
     /**
-     * The table <code>public.profile_activity_histories</code>.
+     * The table <code>public.profile_histories</code>.
      */
-    val PROFILE_ACTIVITY_HISTORIES: ProfileActivityHistories get() = ProfileActivityHistories.PROFILE_ACTIVITY_HISTORIES
+    val PROFILE_HISTORIES: ProfileHistories get() = ProfileHistories.PROFILE_HISTORIES
 
     /**
-     * The table <code>public.profile_activity_history_roles</code>.
+     * The table <code>public.profile_versions</code>.
      */
-    val PROFILE_ACTIVITY_HISTORY_ROLES: ProfileActivityHistoryRoles get() = ProfileActivityHistoryRoles.PROFILE_ACTIVITY_HISTORY_ROLES
+    val PROFILE_VERSIONS: ProfileVersions get() = ProfileVersions.PROFILE_VERSIONS
 
     /**
      * The table <code>public.profiles</code>.
@@ -173,9 +176,19 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val PROGRAMS: Programs get() = Programs.PROGRAMS
 
     /**
+     * The table <code>public.receipts</code>.
+     */
+    val RECEIPTS: Receipts get() = Receipts.RECEIPTS
+
+    /**
      * The table <code>public.refresh_tokens</code>.
      */
     val REFRESH_TOKENS: RefreshTokens get() = RefreshTokens.REFRESH_TOKENS
+
+    /**
+     * The table <code>public.roles</code>.
+     */
+    val ROLES: Roles get() = Roles.ROLES
 
     /**
      * The table <code>public.schedules</code>.
@@ -208,6 +221,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val USERS: Users get() = Users.USERS
 
     /**
+     * The table <code>public.wallet_shares</code>.
+     */
+    val WALLET_SHARES: WalletShares get() = WalletShares.WALLET_SHARES
+
+    /**
      * The table <code>public.webauthn_challenges</code>.
      */
     val WEBAUTHN_CHALLENGES: WebauthnChallenges get() = WebauthnChallenges.WEBAUTHN_CHALLENGES
@@ -220,31 +238,34 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         ActivityParticipations.ACTIVITY_PARTICIPATIONS,
         ActivityRoles.ACTIVITY_ROLES,
         AppleSignInStates.APPLE_SIGN_IN_STATES,
-        BusinessCardActivityHistories.BUSINESS_CARD_ACTIVITY_HISTORIES,
-        BusinessCardContacts.BUSINESS_CARD_CONTACTS,
         BusinessCards.BUSINESS_CARDS,
+        CardShares.CARD_SHARES,
         CollectionRuns.COLLECTION_RUNS,
         Contacts.CONTACTS,
         DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES,
+        HistoryEvidence.HISTORY_EVIDENCE,
         OrganizationContacts.ORGANIZATION_CONTACTS,
         OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES,
         OrganizationMembers.ORGANIZATION_MEMBERS,
         Organizations.ORGANIZATIONS,
-        ProfileActivityHistories.PROFILE_ACTIVITY_HISTORIES,
-        ProfileActivityHistoryRoles.PROFILE_ACTIVITY_HISTORY_ROLES,
+        ProfileHistories.PROFILE_HISTORIES,
+        ProfileVersions.PROFILE_VERSIONS,
         Profiles.PROFILES,
         ProgramCollectionSettings.PROGRAM_COLLECTION_SETTINGS,
         ProgramContacts.PROGRAM_CONTACTS,
         ProgramStaff.PROGRAM_STAFF,
         ProgramStaffRoles.PROGRAM_STAFF_ROLES,
         Programs.PROGRAMS,
+        Receipts.RECEIPTS,
         RefreshTokens.REFRESH_TOKENS,
+        Roles.ROLES,
         Schedules.SCHEDULES,
         UserCredentials.USER_CREDENTIALS,
         UserEntities.USER_ENTITIES,
         UserIdentities.USER_IDENTITIES,
         UserRoles.USER_ROLES,
         Users.USERS,
+        WalletShares.WALLET_SHARES,
         WebauthnChallenges.WEBAUTHN_CHALLENGES
     )
 }
