@@ -61,7 +61,7 @@ class HistoryReviewFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: Jd
     }
 
     @Test
-    fun `승인 대기 이력을 보고, 카탈로그 id로 바꿔 승인하면 직접 입력 값이 그 항목으로 바뀐다`() {
+    fun `승인 대기 이력을 보고, 활동 정보 id로 바꿔 승인하면 직접 입력 값이 그 항목으로 바뀐다`() {
         val (_, history) = userWithHistory()
         val organization = read(mvc.post("/v1/admin/organizations") { asAdmin(); body("""{"name":"검토용 조직 ${UUID.randomUUID()}"}""") }.andExpect { status { isCreated() } })["id"].asLong()
         val role = read(mvc.post("/v1/admin/roles") { asAdmin(); body("""{"name":"운영진 ${UUID.randomUUID()}"}""") }.andExpect { status { isCreated() } })["id"].asLong()

@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.dearby.nativeapp.entities.catalog.model.ScheduleModel
+import com.dearby.nativeapp.entities.activity.model.ScheduleModel
 import com.dearby.nativeapp.shared.ui.DearbyButton
 import com.dearby.nativeapp.shared.ui.Quiet
 import com.dearby.nativeapp.shared.ui.Soft

@@ -37,7 +37,7 @@ class HistoryReviewService(
         return ReviewPage(page, if (found.size > size) page.last().history.id else null)
     }
 
-    // 승인 때 준 id는 직접 입력 값을 대신한다. 없는 카탈로그 id는 400. 거절은 사유가 필요하다
+    // 승인 때 준 id는 직접 입력 값을 대신한다. 없는 활동 정보 id는 400. 거절은 사유가 필요하다
     @Transactional
     fun decideApproval(historyId: UUID, approve: Boolean, organizationId: Id?, programId: Id?, activityId: Id?, roleId: Id?, reason: String?): HistoryForReview {
         require(historyId)

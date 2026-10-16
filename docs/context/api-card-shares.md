@@ -6,7 +6,7 @@
 
 - DDL `supabase/migrations/20261006000000_api_card_shares.sql`: `dearby_api.card_shares`(활동 `{id,title}` 사본 JSON, `created_at`)와 `dearby_api.guest_card_shares`(세션 digest·명함 ID·공유 ID·`saved_at`). 처음 API 마이그레이션의 권한 부여는 그때 있던 테이블에만 적용됐으므로, 새 테이블에도 runtime 권한·RLS·시퀀스 권한과 브라우저 role 차단을 다시 적용했다.
 - 연결 테이블은 `(session_digest, card_id) → guest_cards`에 `ON DELETE CASCADE`다. 그래서 `DELETE /v1/guest/cards/:id`, `DELETE /v1/guest/session`, 저장할 때 하는 철회 명함 정리에서 공유 기록도 함께 지워진다. `(share_id, card_id) → card_shares(id, card_id)` FK가 다른 명함의 공유와 연결되는 것을 막는다.
-- `POST /v1/cards/:id/shares`(`src/shares.ts`): 확인 순서는 401 → body 422 → 404 → 403 → 카탈로그 422 `INVALID_SELECTION`이다. 활동 ID는 소문자로 맞춘 뒤 중복을 검사하고, 공개 카탈로그(`catalog_public_snapshot`, published만)와 대조한다. 카탈로그를 읽지 못하면 503 `CATALOG_UNAVAILABLE`이다. 활동이 0개이면 카탈로그를 읽지 않는다.
+- `POST /v1/cards/:id/shares`(`src/shares.ts`): 확인 순서는 401 → body 422 → 404 → 403 → 활동 정보 422 `INVALID_SELECTION`이다. 활동 ID는 소문자로 맞춘 뒤 중복을 검사하고, 공개 활동 정보(`catalog_public_snapshot`, published만)와 대조한다. 활동 정보를 읽지 못하면 503 `CATALOG_UNAVAILABLE`이다. 활동이 0개이면 활동 정보를 읽지 않는다.
 - `GET /v1/shares/:id`: 비로그인. 공유가 없거나 명함이 철회되면 404다. HEAD는 Fastify가 자동으로 제공한다.
 - `PUT /v1/guest/shares/:id`(`src/guest.ts`): 기존 명함 저장 로직(`saveCard`)을 함께 쓴다. 따라서 세션 생성·100장·10,000 세션·생성 60회/분 규칙이 같다. 명함당 공유 기록은 20개까지다. 이미 연결된 공유는 존재 여부를 상한보다 먼저 확인하므로 상한에서도 `alreadySaved`다. 요청 제한은 guest plugin의 같은 카운터를 쓴다.
 - `GET /v1/guest/cards`: `items`는 그대로 두고 `shares`(저장 순서)를 추가했다. 철회 명함의 공유는 빠진다. `/v1/cards*`와 `/v1/guest/cards/:id` 동작은 그대로다.

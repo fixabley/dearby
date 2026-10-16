@@ -27,7 +27,7 @@ data class AccountProfile(val name: String, val job: String, val introduction: S
 data class PublishedCard(val id: String, val name: String, val description: String, val profileName: String, val job: String,
     val contacts: List<AccountContact>, val histories: List<AccountHistory>, val createdAt: String, val introduction: String = "")
 
-/** A catalog activity copied into a share when it was made; never follows later catalog edits. */
+/** An activity copied into a share when it was made; never follows later activity edits. */
 data class ShareActivity(val id: String, val title: String)
 /** A recorded share of one card (`POST /v1/cards/:id/shares`); its ID is the public `/s/<id>` link. */
 /** `GET /v1/wallet` (contract #141): saved cards and the shares they came with. */

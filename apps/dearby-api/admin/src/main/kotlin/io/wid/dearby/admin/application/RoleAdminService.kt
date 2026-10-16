@@ -9,7 +9,7 @@ import org.springframework.dao.DuplicateKeyException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
-// 역할 카탈로그 관리. 이름은 띄어쓰기를 뺀 값으로 유일(조직·프로그램과 같은 규칙)
+// 역할 활동 정보 관리. 이름은 띄어쓰기를 뺀 값으로 유일(조직·프로그램과 같은 규칙)
 @Service
 class RoleAdminService(private val roles: RoleRepository) {
 

@@ -30,9 +30,9 @@ import com.dearby.nativeapp.shared.ui.DearbyChoice
  * QR tab: shares the account's card on entry and scans received codes. The share button hands the link
  * to the system chooser; camera access is asked for only when scanning starts.
  */
-@Composable fun QrRoute(model: QrShareViewModel, catalog: CatalogViewModel, create: () -> Unit, open: (ScannedLink) -> Unit) {
+@Composable fun QrRoute(model: QrShareViewModel, activityModel: ActivityViewModel, create: () -> Unit, open: (ScannedLink) -> Unit) {
     val state by model.state.collectAsStateWithLifecycle()
-    val applied by catalog.state.collectAsStateWithLifecycle()
+    val applied by activityModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var scanning by remember { mutableStateOf(false) }
     var scanError by remember { mutableStateOf<String?>(null) }

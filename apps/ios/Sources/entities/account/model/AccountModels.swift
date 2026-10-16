@@ -40,7 +40,7 @@ struct AccountProfile: Codable, Equatable, Sendable {
     var contacts: [AccountContact]
     var histories: [AccountHistory]
 }
-/// A catalog activity copied into a share when it was made; never follows later catalog edits.
+/// An activity copied into a share when it was made; never follows later activity edits.
 struct ShareActivity: Codable, Equatable, Sendable {
     let id: String
     let title: String

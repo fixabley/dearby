@@ -31,10 +31,10 @@ private sealed interface CardRoute {
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun DearbyApp(catalog: CatalogViewModel, account: AccountViewModel, publish: CardPublishViewModel, qrShare: QrShareViewModel, wallet: WalletViewModel, profile: ProfileViewModel, incoming: ScannedLink? = null, opened: () -> Unit = {}) {
+@Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, qrShare: QrShareViewModel, wallet: WalletViewModel, profile: ProfileViewModel, incoming: ScannedLink? = null, opened: () -> Unit = {}) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     var route by remember { mutableStateOf<CardRoute?>(null) }
-    var catalogDetail by remember { mutableStateOf(false) }
+    var activityDetail by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<String?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
     BackHandler(route != null && route != CardRoute.Composer && route !is CardRoute.Received) { route = null }
@@ -50,18 +50,18 @@ private sealed interface CardRoute {
                     is CardRoute.Received -> ReceivedShareRoute(screen.link, account) { route = null }
                     null -> when (tab) {
                         Tab.Discovery, Tab.Mine -> Column {
-                            if (!catalogDetail) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            if (!activityDetail) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                                 DearbyLogo(); Spacer(Modifier.weight(1f)); IconButton({ notice = "새 알림이 없어요.\n이 앱은 고정 예시로 둘러보는 프로토타입입니다." }) { Icon(Icons.Outlined.NotificationsNone, "알림") }
                             }
-                            key(tab) { CatalogRoute(catalog, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }) { catalogDetail = it } }
+                            key(tab) { ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }) { activityDetail = it } }
                         }
-                        Tab.Qr -> QrRoute(qrShare, catalog, compose) { route = CardRoute.Received(it) }
+                        Tab.Qr -> QrRoute(qrShare, activityModel, compose) { route = CardRoute.Received(it) }
                         Tab.Wallet -> WalletRoute(wallet, account) { route = CardRoute.Detail(it) }
                         Tab.Profile -> ProfileRoute(profile, account, compose)
                     }
                 }
             }
-            if (route == null && !catalogDetail) {
+            if (route == null && !activityDetail) {
                 HorizontalDivider()
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp, windowInsets = WindowInsets(0, 0, 0, 0)) {
                     Tab.entries.forEach { item -> NavigationBarItem(selected = tab == item, onClick = { tab = item }, icon = { Icon(item.icon, null) }, label = { Text(item.label, fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Teal, selectedTextColor = Teal, indicatorColor = Mint, unselectedIconColor = Quiet, unselectedTextColor = Quiet)) }
@@ -74,19 +74,19 @@ private sealed interface CardRoute {
     DisposableEffect(lifecycle) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             when (event) {
-                androidx.lifecycle.Lifecycle.Event.ON_STOP -> catalog.appLeft()
-                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> catalog.appReturned()
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> activityModel.appLeft()
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> activityModel.appReturned()
                 else -> Unit
             }
         }
         lifecycle.lifecycle.addObserver(observer)
         onDispose { lifecycle.lifecycle.removeObserver(observer) }
     }
-    val catalogState by catalog.state.collectAsStateWithLifecycle()
-    catalogState.asking?.let { asking ->
-        ModalBottomSheet({ catalog.answer(CatalogViewModel.ApplyAnswer.NOT_YET) }, containerColor = MaterialTheme.colorScheme.surface) {
-            ApplyConfirmationSheet(asking.title, onApplied = { catalog.answer(CatalogViewModel.ApplyAnswer.APPLIED) },
-                onNotYet = { catalog.answer(CatalogViewModel.ApplyAnswer.NOT_YET) }, onNeverAsk = { catalog.answer(CatalogViewModel.ApplyAnswer.NEVER_ASK) })
+    val activityListState by activityModel.state.collectAsStateWithLifecycle()
+    activityListState.asking?.let { asking ->
+        ModalBottomSheet({ activityModel.answer(ActivityViewModel.ApplyAnswer.NOT_YET) }, containerColor = MaterialTheme.colorScheme.surface) {
+            ApplyConfirmationSheet(asking.title, onApplied = { activityModel.answer(ActivityViewModel.ApplyAnswer.APPLIED) },
+                onNotYet = { activityModel.answer(ActivityViewModel.ApplyAnswer.NOT_YET) }, onNeverAsk = { activityModel.answer(ActivityViewModel.ApplyAnswer.NEVER_ASK) })
         }
     }
     notice?.let { value -> AlertDialog(onDismissRequest = { notice = null }, title = { Text("안내") }, text = { Text(value) }, confirmButton = { TextButton({ notice = null }) { Text("확인") } }) }

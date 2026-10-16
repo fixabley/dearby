@@ -7,7 +7,7 @@ import io.wid.dearby.domain.profile.*
 import org.jooq.DSLContext
 import java.util.*
 
-// profile_histories 행 → History. 카탈로그 이름(조직·프로그램·활동·역할)과 인증자료 목록은 한 번에 모아 읽는다.
+// profile_histories 행 → History. 활동 정보 이름(조직·프로그램·활동·역할)과 인증자료 목록은 한 번에 모아 읽는다.
 // 프로필·관리자 검토 저장소가 함께 쓴다
 class HistoryRows(private val dsl: DSLContext) {
 
@@ -24,7 +24,7 @@ class HistoryRows(private val dsl: DSLContext) {
             History(
                 id = it.id!!,
                 kind = HistoryKind.valueOf(it.kind!!),
-                // 카탈로그 행이 지워졌으면(논리키) 직접 입력처럼 이름만 남긴다
+                // 활동 정보 행이 지워졌으면(논리키) 직접 입력처럼 이름만 남긴다
                 organization = ref(it.organizationId, organizations),
                 organizationName = it.organizationName ?: ref(it.organizationId, organizations)?.name,
                 program = ref(it.programId, programs),
@@ -44,7 +44,7 @@ class HistoryRows(private val dsl: DSLContext) {
         }
     }
 
-    private fun ref(id: Id?, names: Map<Id, String>): CatalogRef? = id?.let { names[it]?.let { name -> CatalogRef(it, name) } }
+    private fun ref(id: Id?, names: Map<Id, String>): ActivityInfoRef? = id?.let { names[it]?.let { name -> ActivityInfoRef(it, name) } }
 
     private fun <R : org.jooq.Record> names(idField: org.jooq.TableField<R, Long?>, nameField: org.jooq.TableField<R, String?>, table: org.jooq.Table<R>, ids: List<Id>): Map<Id, String> {
         if (ids.isEmpty()) return emptyMap()

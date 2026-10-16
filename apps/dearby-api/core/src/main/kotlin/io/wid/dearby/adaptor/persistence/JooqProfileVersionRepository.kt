@@ -12,7 +12,7 @@ import org.springframework.stereotype.Repository
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
-// 프로필 스냅샷을 JSON으로 둔다. 되돌릴 때 입력으로 쓰므로 이름·값·카탈로그 참조를 모두 남긴다(인증자료는 메타만)
+// 프로필 스냅샷을 JSON으로 둔다. 되돌릴 때 입력으로 쓰므로 이름·값·활동 정보 참조를 모두 남긴다(인증자료는 메타만)
 @Repository
 class JooqProfileVersionRepository(private val dsl: DSLContext) : ProfileVersionRepository {
 

@@ -3,7 +3,7 @@ package io.wid.dearby.adaptor.web.v1.profile
 import java.time.LocalDate
 import java.util.*
 
-// 카탈로그 id와 직접 입력 이름을 함께 보내면 id를 쓴다
+// 활동 정보 id와 직접 입력 이름을 함께 보내면 id를 쓴다
 data class HistoryRequest(
     val id: UUID,
     val kind: String,

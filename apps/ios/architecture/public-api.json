@@ -17,11 +17,11 @@
     "TokenStore",
     "TokenVault"
   ],
-  "entities/catalog": [
+  "entities/activity": [
     "ActivityModel",
     "ActivityPage",
     "ActivityScheduleModel",
-    "CatalogClient"
+    "ActivityClient"
   ],
   "entities/identity": [
     "CardModel",
@@ -70,11 +70,11 @@
     "SearchQuery",
     "SharedCardLink"
   ],
-  "widgets/catalog": [
+  "widgets/activity": [
     "ActivityCard",
     "ApplyConfirmationSheet",
-    "CatalogPage",
-    "CatalogViewModel",
+    "ActivityListPage",
+    "ActivityViewModel",
     "MyActivitiesPage"
   ],
   "widgets/identity": [
