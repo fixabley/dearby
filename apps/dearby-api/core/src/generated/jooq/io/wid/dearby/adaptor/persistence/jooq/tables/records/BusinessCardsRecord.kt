@@ -36,37 +36,41 @@ open class BusinessCardsRecord() : UpdatableRecordImpl<BusinessCardsRecord>(Busi
         set(value): Unit = set(3, value)
         get(): String? = get(3) as String?
 
-    open var profileName: String?
+    open var template: String?
         set(value): Unit = set(4, value)
         get(): String? = get(4) as String?
 
-    open var job: String?
+    open var introduction: String?
         set(value): Unit = set(5, value)
         get(): String? = get(5) as String?
 
-    open var introduction: String?
+    open var profileName: String?
         set(value): Unit = set(6, value)
         get(): String? = get(6) as String?
 
-    open var contacts: JSONB?
+    open var job: String?
         set(value): Unit = set(7, value)
-        get(): JSONB? = get(7) as JSONB?
+        get(): String? = get(7) as String?
 
-    open var histories: JSONB?
+    open var contacts: JSONB?
         set(value): Unit = set(8, value)
         get(): JSONB? = get(8) as JSONB?
 
-    open var revoked: Boolean?
+    open var histories: JSONB?
         set(value): Unit = set(9, value)
-        get(): Boolean? = get(9) as Boolean?
+        get(): JSONB? = get(9) as JSONB?
+
+    open var revoked: Boolean?
+        set(value): Unit = set(10, value)
+        get(): Boolean? = get(10) as Boolean?
 
     open var seq: Long?
-        set(value): Unit = set(10, value)
-        get(): Long? = get(10) as Long?
+        set(value): Unit = set(11, value)
+        get(): Long? = get(11) as Long?
 
     open var createdAt: OffsetDateTime?
-        set(value): Unit = set(11, value)
-        get(): OffsetDateTime? = get(11) as OffsetDateTime?
+        set(value): Unit = set(12, value)
+        get(): OffsetDateTime? = get(12) as OffsetDateTime?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -77,14 +81,15 @@ open class BusinessCardsRecord() : UpdatableRecordImpl<BusinessCardsRecord>(Busi
     /**
      * Create a detached, initialised BusinessCardsRecord
      */
-    constructor(id: UUID? = null, userId: UUID? = null, name: String? = null, description: String? = null, profileName: String? = null, job: String? = null, introduction: String? = null, contacts: JSONB? = null, histories: JSONB? = null, revoked: Boolean? = null, seq: Long? = null, createdAt: OffsetDateTime? = null): this() {
+    constructor(id: UUID? = null, userId: UUID? = null, name: String? = null, description: String? = null, template: String? = null, introduction: String? = null, profileName: String? = null, job: String? = null, contacts: JSONB? = null, histories: JSONB? = null, revoked: Boolean? = null, seq: Long? = null, createdAt: OffsetDateTime? = null): this() {
         this.id = id
         this.userId = userId
         this.name = name
         this.description = description
+        this.template = template
+        this.introduction = introduction
         this.profileName = profileName
         this.job = job
-        this.introduction = introduction
         this.contacts = contacts
         this.histories = histories
         this.revoked = revoked

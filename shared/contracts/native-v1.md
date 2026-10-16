@@ -244,7 +244,7 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·공유·지갑 경
 | POST /v1/profile/versions/:n/restore | Bearer | — | 200 Profile. 그 버전 내용으로 새 버전을 만든다(이력은 지우지 않는다) |
 
 - Profile: `{id(=사용자 id), name, job, introduction, contacts: Contact[], histories: History[], version, updatedAt}`.
-- `introduction`은 **마크다운 템플릿**이다(아래 "템플릿"). 모바일에서는 렌더링된 화면에서 바로 고친다.
+- 프로필은 **데이터 입력**만 한다(2026-10-16 사용자 결정). `introduction`은 자기소개 글이고, 꾸미기(마크다운 템플릿)는 명함 제작에서 한다(아래 "템플릿").
 - 저장할 때마다 전체 프로필 스냅샷을 버전으로 남긴다(노션처럼 이전 상태를 보고 되돌린다). 같은 내용이면 저장하지 않고 현재 프로필을 돌려준다.
 - 연락처 규칙은 그대로다: phone·email 각각 하나 이상, phone은 숫자·`+`·`-`·공백만(숫자 8~15자리), email 기본 형식, 값에 제어 문자 금지, URL은 https만. 어기면 400.
 
@@ -275,7 +275,7 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·공유·지갑 경
 | 메서드·경로 | 인증 | 요청 | 응답 |
 | --- | --- | --- | --- |
 | GET /v1/cards | Bearer | — | 200 `{items: Card[]}` 철회 안 한 내 명함, 만든 순 |
-| POST /v1/cards | Bearer | `{name, description, contactIds[], historyIds[]}` | 201 Card. 내 프로필의 id가 아니거나 `approval`이 `approved`가 아닌 이력이면 400 |
+| POST /v1/cards | Bearer | `{name, description, template, contactIds[], historyIds[]}` | 201 Card. 내 프로필의 id가 아니거나 `approval`이 `approved`가 아닌 이력이면 400 |
 | GET /v1/cards/:id | 없음 | — | 200 Card. 없거나 철회면 404 |
 | DELETE /v1/cards/:id | Bearer(소유자) | — | 204 철회. 남의 것 403 |
 | POST /v1/cards/:id/shares | Bearer(소유자) | `{activityIds: number[]}` 0~10개, 게시된 활동만 | 201 CardShare |
@@ -283,18 +283,20 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·공유·지갑 경
 | GET /v1/wallet | Bearer | — | 200 `{items: Receipt[], shares: WalletShare[]}` |
 | PUT /v1/wallet/shares/:id | Bearer | — | 첫 저장 201, 이후 200 `{receiptId, cardId, shareId, status: "saved"\|"alreadySaved"}`. 자기 명함 400, 명함당 공유 20개 넘으면 409 |
 
-- Card: `{id, ownerId, name, description, profileName, job, introduction, contacts: Contact[], histories: History[], createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `introduction`은 템플릿을 **채운 결과**다. 이력에는 `evidence`가 없고 `verification`만 남는다.
+- Card: `{id, ownerId, name, description, template, introduction, profileName, job, contacts: Contact[], histories: History[], createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `template`은 발행할 때 보낸 마크다운 템플릿, `introduction`은 그것을 **채운 결과**(공개 본문)다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`, `GET /v1/shares/:id`)에는 `template`을 싣지 않는다.
 - CardShare: `{id, cardId, activities: [{id(숫자), title}], createdAt}`. **활동 id가 UUID에서 숫자로 바뀌었다**(카탈로그 결정). 앱·웹의 ShareActivity를 맞춘다.
 - Receipt: `{id, card, context: {activityId: null, label: null}, receivedAt, reciprocal: false}`. WalletShare는 "앱에서 받은 공유 저장"과 같다.
 - 아직 없는 것(4단계): 웹 비로그인 저장(`/v1/guest/*`, 홈 화면 세션 잇기), `POST /v1/wallet/import`, `POST /v1/exchanges`. 웹 `/s/` 페이지는 명함을 보여 주되 저장은 그때까지 실패(`REQUEST_FAILED`)한다.
 
-### 템플릿
+### 템플릿 (명함 꾸미기)
 
-- 토큰: `{{profile.name}}`, `{{profile.job}}`, `{{contact:<연락처 id>}}`. 앱 선택 창에서 고르면 토큰이 들어가고, 편집기에서는 고칠 수 없는 칩으로 보인다.
-- 앱은 프로필 화면에서 템플릿과 프로필 데이터를 함께 받아 채워서 렌더링한다. 서버는 **명함을 발행할 때** 채운다. 이때 `{{contact:…}}`는 그 명함에 고른 연락처만 채우고, 고르지 않았거나 없는 연락처·모르는 토큰은 빈 문자열이 된다(원문 토큰을 남기지 않는다).
-- 마크다운 부분집합: 제목(#~###), 굵게, 기울임, 목록, 번호 목록, 링크, 줄바꿈. 원시 HTML은 허용하지 않고 글자로 보여 준다. 링크는 `https`·`mailto`·`tel`만. 서버는 `introduction` 10,000자, 제어 문자(줄바꿈·탭 제외)를 막는다.
-- 앱 편집: 서버의 마지막 버전과 다르면 수정 모드로 들어가 "저장"·"원래대로"를 보여 준다. "원래대로"는 기기 안에서 되돌리는 것이고, 서버 버전 되돌리기는 위 `restore`다.
-- `introduction`이 비어 있으면 앱이 기본 템플릿을 보여 준다(앱에 내장).
+- 꾸미기는 **명함 제작**에서 시작한다. 앱은 명함 제작 화면에서 프로필 데이터를 받아 템플릿을 채워 렌더링한 화면을 보여 주고, 그 화면에서 바로 고친다. 발행하면 `template`과 채운 결과가 명함에 남는다.
+- 토큰: `{{profile.name}}`, `{{profile.job}}`, `{{profile.introduction}}`, `{{contact:<연락처 id>}}`. 앱 선택 창(프로필 데이터)에서 고르면 토큰이 들어가고, 편집기에서는 고칠 수 없는 칩으로 보인다.
+- 서버는 **발행할 때** 채운다. `{{contact:…}}`는 그 명함에 고른 연락처만 채우고, 고르지 않았거나 없는 연락처·모르는 토큰은 빈 문자열이 된다(원문 토큰을 남기지 않는다). 템플릿에만 쓴 연락처는 공개되지 않는다.
+- 발행한 명함은 바뀌지 않는다. 명함을 고치면 앱이 그 `template`을 미리 채운 새 명함을 발행하고, 이전 명함은 사용자가 지울 때까지 남는다(공유 링크 유지).
+- 마크다운 부분집합: 제목(#~###), 굵게, 기울임, 목록, 번호 목록, 링크, 줄바꿈. 원시 HTML은 허용하지 않고 글자로 보여 준다. 링크는 `https`·`mailto`·`tel`만. 서버는 `template`·`introduction` 10,000자, 제어 문자(줄바꿈·탭 제외)를 막는다.
+- 앱 편집: 명함 제작 화면에서 내용이 바뀌면 수정 모드로 들어가 "저장"(발행)·"원래대로"(기기 안에서 되돌림)를 보여 준다. 프로필 데이터 화면도 같은 방식이며, 프로필의 서버 버전 되돌리기는 위 `restore`다.
+- 새 명함의 템플릿 기본값은 앱에 내장한다(이름·직함·소개·연락처 토큰이 들어간 기본 템플릿).
 
 ### 관리자 (admin-v1.md에도 기록)
 

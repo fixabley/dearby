@@ -14,7 +14,7 @@ create table profiles
     user_id      uuid primary key, -- 논리키 users
     name         varchar(100)             not null,
     job          varchar(100)             not null,
-    introduction varchar                  not null, -- 마크다운 템플릿({{profile.name}}, {{contact:<id>}})
+    introduction varchar                  not null, -- 자기소개 글(데이터). 꾸미기 템플릿은 명함에 있다
     version      integer                  not null, -- 저장마다 +1. profile_versions.version과 같다
     created_at   timestamp with time zone not null,
     updated_at   timestamp with time zone not null
@@ -94,16 +94,18 @@ create table profile_versions
     primary key (user_id, version)
 );
 
--- 발행 시점 스냅샷. introduction은 템플릿을 채운 결과, contacts·histories는 공개 선택분의 JSON
+-- 발행 시점 스냅샷. template은 보낸 마크다운 템플릿({{profile.name}}, {{contact:<id>}}), introduction은 그것을 채운 공개 본문,
+-- contacts·histories는 공개 선택분의 JSON
 create table business_cards
 (
     id           uuid primary key,
     user_id      uuid                     not null, -- 논리키 users
     name         varchar(200)             not null,
     description  varchar                  not null,
+    template     varchar                  not null,
+    introduction varchar                  not null,
     profile_name varchar(100)             not null,
     job          varchar(100)             not null,
-    introduction varchar                  not null,
     contacts     jsonb                    not null,
     histories    jsonb                    not null,
     revoked      boolean                  not null default false,

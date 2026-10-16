@@ -101,6 +101,16 @@ open class BusinessCards(
     val DESCRIPTION: TableField<BusinessCardsRecord, String?> = createField(DSL.name("description"), SQLDataType.VARCHAR.nullable(false), this, "")
 
     /**
+     * The column <code>public.business_cards.template</code>.
+     */
+    val TEMPLATE: TableField<BusinessCardsRecord, String?> = createField(DSL.name("template"), SQLDataType.VARCHAR.nullable(false), this, "")
+
+    /**
+     * The column <code>public.business_cards.introduction</code>.
+     */
+    val INTRODUCTION: TableField<BusinessCardsRecord, String?> = createField(DSL.name("introduction"), SQLDataType.VARCHAR.nullable(false), this, "")
+
+    /**
      * The column <code>public.business_cards.profile_name</code>.
      */
     val PROFILE_NAME: TableField<BusinessCardsRecord, String?> = createField(DSL.name("profile_name"), SQLDataType.VARCHAR(100).nullable(false), this, "")
@@ -109,11 +119,6 @@ open class BusinessCards(
      * The column <code>public.business_cards.job</code>.
      */
     val JOB: TableField<BusinessCardsRecord, String?> = createField(DSL.name("job"), SQLDataType.VARCHAR(100).nullable(false), this, "")
-
-    /**
-     * The column <code>public.business_cards.introduction</code>.
-     */
-    val INTRODUCTION: TableField<BusinessCardsRecord, String?> = createField(DSL.name("introduction"), SQLDataType.VARCHAR.nullable(false), this, "")
 
     /**
      * The column <code>public.business_cards.contacts</code>.
