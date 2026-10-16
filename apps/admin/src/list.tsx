@@ -32,7 +32,7 @@ export async function allPages<T>(path: string, params: Params): Promise<T[]> {
   return items;
 }
 
-export function CursorTable<T extends { id: number }>({
+export function CursorTable<T extends { id: number | string }>({
   cursor: { list, items },
   ...table
 }: { cursor: ReturnType<typeof useCursorList<T>> } & TableProps<T>) {
@@ -70,7 +70,7 @@ export function SearchSelect({
   label,
   ...rest
 }: {
-  path: "organizations" | "programs";
+  path: "organizations" | "programs" | "activities" | "roles";
   params?: Params;
   value?: number;
   onChange?: (value?: number) => void;

@@ -294,3 +294,26 @@ a:focus-visible {
 .ant-table-tbody > tr.tree-match > td {
   background: #e8f5f2;
 }
+
+/* 이력 검토 */
+.chain {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+.chain-step .ant-tag {
+  margin-left: 6px;
+}
+.evidence-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.evidence-list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.modal-actions {
+  margin-top: 8px;
+}
