@@ -5,7 +5,7 @@ import io.wid.dearby.domain.InvalidInputException
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
 
-// 역할 카탈로그(native-v1.md "관리자"). ADMIN만
+// 역할 활동 정보(native-v1.md "관리자"). ADMIN만
 @RestController
 @RequestMapping("/v1/admin/roles")
 class RoleAdminController(private val roles: RoleAdminService) {

@@ -54,10 +54,10 @@ object ProfileJson {
     ) {
         fun toHistory() = History(
             id, HistoryKind.valueOf(kind),
-            organization?.let { CatalogRef(it.id, it.name) }, organizationName,
-            program?.let { CatalogRef(it.id, it.name) }, programName,
-            activity?.let { CatalogRef(it.id, it.name) }, activityName,
-            role?.let { CatalogRef(it.id, it.name) }, roleName,
+            organization?.let { ActivityInfoRef(it.id, it.name) }, organizationName,
+            program?.let { ActivityInfoRef(it.id, it.name) }, programName,
+            activity?.let { ActivityInfoRef(it.id, it.name) }, activityName,
+            role?.let { ActivityInfoRef(it.id, it.name) }, roleName,
             startDate, endDate, description,
             ApprovalStatus.valueOf(approval), approvalReason, VerificationStatus.valueOf(verification),
             evidence.map { EvidenceMeta(it.id, it.fileName, it.contentType, it.size, it.uploadedAt) },

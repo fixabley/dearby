@@ -1,6 +1,6 @@
 package com.dearby.nativeapp.features.calendar
 
-import com.dearby.nativeapp.entities.catalog.model.ScheduleModel
+import com.dearby.nativeapp.entities.activity.model.ScheduleModel
 import java.time.Instant
 
 data class CalendarWindowState(val title: String, val start: Long, val end: Long, val zone: String)

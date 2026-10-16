@@ -137,25 +137,25 @@ class ProfileService(
         return Contact(input.id, kind, label, value)
     }
 
-    // 카탈로그 id가 있으면 이름을 카탈로그에서 가져오고 직접 입력 이름은 버린다. 상태는 기존 이력과 비교해 정한다
+    // 활동 정보 id가 있으면 이름을 활동 정보에서 가져오고 직접 입력 이름은 버린다. 상태는 기존 이력과 비교해 정한다
     private fun history(input: HistoryInput, existing: History?): History {
         val kind = HistoryKind.entries.firstOrNull { it.name.equals(input.kind, ignoreCase = true) }
             ?: throw InvalidInputException("이력 종류는 organization 또는 activity입니다")
         val organization = input.organizationId?.let { id ->
-            organizations.findAllById(listOf(id)).singleOrNull()?.let { CatalogRef(it.id, it.name) } ?: throw InvalidInputException("조직을 찾을 수 없습니다", "Organization not found: $id")
+            organizations.findAllById(listOf(id)).singleOrNull()?.let { ActivityInfoRef(it.id, it.name) } ?: throw InvalidInputException("조직을 찾을 수 없습니다", "Organization not found: $id")
         }
         val program = input.programId?.let { id ->
-            programs.findAllById(listOf(id)).singleOrNull()?.let { CatalogRef(it.id, it.name) } ?: throw InvalidInputException("프로그램을 찾을 수 없습니다", "Program not found: $id")
+            programs.findAllById(listOf(id)).singleOrNull()?.let { ActivityInfoRef(it.id, it.name) } ?: throw InvalidInputException("프로그램을 찾을 수 없습니다", "Program not found: $id")
         }
         val activity = input.activityId?.let { id ->
-            activities.findById(id, PublicationStatus.PUBLISHED)?.let { CatalogRef(it.id, it.name) } ?: throw InvalidInputException("활동을 찾을 수 없습니다", "Activity not found: $id")
+            activities.findById(id, PublicationStatus.PUBLISHED)?.let { ActivityInfoRef(it.id, it.name) } ?: throw InvalidInputException("활동을 찾을 수 없습니다", "Activity not found: $id")
         }
         val role = input.roleId?.let { id ->
-            roles.findAllById(listOf(id)).singleOrNull()?.let { CatalogRef(it.id, it.name) } ?: throw InvalidInputException("역할을 찾을 수 없습니다", "Role not found: $id")
+            roles.findAllById(listOf(id)).singleOrNull()?.let { ActivityInfoRef(it.id, it.name) } ?: throw InvalidInputException("역할을 찾을 수 없습니다", "Role not found: $id")
         }
-        val organizationName = if (organization == null) optional(input.organizationName, "조직 이름", MAX_CATALOG_NAME) else null
-        val programName = if (program == null) optional(input.programName, "프로그램 이름", MAX_CATALOG_NAME) else null
-        val activityName = if (activity == null) optional(input.activityName, "활동 이름", MAX_CATALOG_NAME) else null
+        val organizationName = if (organization == null) optional(input.organizationName, "조직 이름", MAX_ACTIVITY_INFO_NAME) else null
+        val programName = if (program == null) optional(input.programName, "프로그램 이름", MAX_ACTIVITY_INFO_NAME) else null
+        val activityName = if (activity == null) optional(input.activityName, "활동 이름", MAX_ACTIVITY_INFO_NAME) else null
         val roleName = if (role == null) optional(input.roleName, "역할 이름", MAX_NAME) else null
         if (organization == null && organizationName == null) throw InvalidInputException("조직을 고르거나 적어 주세요")
         if (role == null && roleName == null) throw InvalidInputException("역할을 고르거나 적어 주세요")
@@ -212,7 +212,7 @@ class ProfileService(
         val EVIDENCE_TYPES = setOf("image/jpeg", "image/png", "image/webp", "application/pdf")
         private const val MAX_NAME = 100
         private const val MAX_VALUE = 500
-        private const val MAX_CATALOG_NAME = 200
+        private const val MAX_ACTIVITY_INFO_NAME = 200
         private const val MAX_INTRODUCTION = 10_000
         private const val MAX_DESCRIPTION = 10_000
         private val PHONE = Regex("^[0-9+\\- ]+$")

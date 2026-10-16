@@ -41,10 +41,10 @@ struct AppLinkProvider: Sendable {
         #endif
         return AccountViewModel(client: .live(api: origins.api), vault: vault, appleSignInEnabled: appleSignInEnabled)
     }
-    func catalog(query: String, cursor: Int64?) async throws -> ActivityPage {
-        do { return try await CatalogClient.fetch(api: origins.api, query: query, cursor: cursor) } catch {
+    func activities(query: String, cursor: Int64?) async throws -> ActivityPage {
+        do { return try await ActivityClient.fetch(api: origins.api, query: query, cursor: cursor) } catch {
             // Only the origin and the failure kind; the search text is not logged.
-            log.warning("Catalog load from \(origins.api.absoluteString, privacy: .public) failed: \(String(describing: error), privacy: .public)")
+            log.warning("Activity load from \(origins.api.absoluteString, privacy: .public) failed: \(String(describing: error), privacy: .public)")
             throw error
         }
     }

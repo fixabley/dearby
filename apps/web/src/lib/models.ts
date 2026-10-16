@@ -9,17 +9,17 @@ const contact = z.object({
   value: text,
 });
 // 카탈로그 참조(id는 숫자) 또는 직접 입력한 이름. 명함에는 승인된 이력만 실리고 evidence는 없다.
-const catalogRef = z.object({ id: z.number().int(), name: text }).nullable();
+const activityInfoRef = z.object({ id: z.number().int(), name: text }).nullable();
 const history = z.object({
   id: uuid,
   kind: z.enum(["organization", "activity"]),
-  organization: catalogRef,
+  organization: activityInfoRef,
   organizationName: text.nullable(),
-  program: catalogRef,
+  program: activityInfoRef,
   programName: text.nullable(),
-  activity: catalogRef,
+  activity: activityInfoRef,
   activityName: text.nullable(),
-  role: catalogRef,
+  role: activityInfoRef,
   roleName: text.nullable(),
   startDate: text,
   endDate: text.nullable(),

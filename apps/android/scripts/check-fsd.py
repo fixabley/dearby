@@ -25,8 +25,8 @@ API = {
     'pages.onboarding': {'IntroPage'},
     'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletEntryState'},
     'features.calendar': {'CalendarConflictSheet'},
-    'pages.catalog': {'CatalogPage', 'CatalogPhase', 'MyActivitiesPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'CatalogState'},
-    'entities.catalog': {'model.ActivityModel', 'model.ActivityPage', 'model.ScheduleModel', 'model.instant', 'model.safeHttpsUrl', 'api.fetchActivities'},
+    'pages.activity': {'ActivityListPage', 'ActivityListPhase', 'MyActivitiesPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'ActivityListState'},
+    'entities.activity': {'model.ActivityModel', 'model.ActivityPage', 'model.ScheduleModel', 'model.instant', 'model.safeHttpsUrl', 'api.fetchActivities'},
     'entities.account': {'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.AccountProfile', 'model.PublishedCard', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault', 'model.ScannedLink', 'model.AppleSignIn', 'model.ReceivedShare', 'model.CardShare', 'model.ShareActivity', 'model.ContactRules'},
 }
 
@@ -61,10 +61,10 @@ def check_source(path, text):
         if rendering and (target_layer == 'entities' or (target_layer == 'shared' and not ref.startswith('shared.ui.')) or (target_layer == 'features' and not ref.endswith('State'))):
             errors.append('UI requires State/callbacks, not domain/I/O: ' + ref)
     if rendering and re.search(r'\b(LocalContext|SharedPreferences|getSharedPreferences|AssetManager|Intent|startActivity|\w+ViewModel|\w+Repository)\b', code): errors.append('UI directly accesses provider/OS side effect')
-    # Contract "모바일 실제 연결 경계": only the catalog and account clients open connections; only the account vault keeps the session
+    # Contract "모바일 실제 연결 경계": only the activity and account clients open connections; only the account vault keeps the session
     # and MainActivity keeps only the first-launch intro flag (2026-10-14). AccountViewModel keeps the Apple verifier and pending
     # link token across process death while Apple's page is open (2026-10-16 "애플 로그인").
-    allowed = {'entities/catalog/api/CatalogClient.kt': {'HttpURLConnection'}, 'entities/account/api/AccountClient.kt': {'HttpURLConnection'},
+    allowed = {'entities/activity/api/ActivityClient.kt': {'HttpURLConnection'}, 'entities/account/api/AccountClient.kt': {'HttpURLConnection'},
                'entities/account/api/SessionVault.kt': {'getSharedPreferences'}, 'app/MainActivity.kt': {'getSharedPreferences'},
                'app/AccountViewModel.kt': {'SavedStateHandle'}}.get(path.as_posix(), set())
     blocked = [term for term in ('Room', 'HttpClient', 'HttpURLConnection', 'WebView', 'TokenVault', 'CalendarContract', 'SQLiteDatabase', 'getSharedPreferences', 'rememberSaveable', 'SavedStateHandle') if term not in allowed]
@@ -79,20 +79,20 @@ def self_test():
         ('widgets/card/cardContent/Test.kt', 'import com.dearby.nativeapp.pages.wallet.WalletEntryState', False),
         ('widgets/card/cardContent/Test.kt', 'val x = LocalContext.current', False),
         ('app/Test.kt', 'import com.dearby.nativeapp.widgets.card.cardContent.PrivateCard', False),
-        ('pages/catalog/Test.kt', 'import com.dearby.nativeapp.entities.catalog.model.ActivityModel', False),
-        ('pages/catalog/Test.kt', 'import com.dearby.nativeapp.shared.storage.DearbyDao', False),
-        ('pages/catalog/Test.kt', 'import com.dearby.nativeapp.app.CatalogViewModel', False),
-        ('pages/catalog/Test.kt', 'import android.content.Intent', False),
-        ('pages/catalog/Test.kt', 'val x = LocalContext.current', False),
-        ('pages/catalog/Test.kt', 'import com.dearby.nativeapp.shared.ui.DearbyButton', True),
-        ('pages/catalog/Test.kt', 'val x: ActivityState? = null', True),
-        ('features/calendar/Test.kt', 'import com.dearby.nativeapp.entities.catalog.model.ScheduleModel', True),
+        ('pages/activity/Test.kt', 'import com.dearby.nativeapp.entities.activity.model.ActivityModel', False),
+        ('pages/activity/Test.kt', 'import com.dearby.nativeapp.shared.storage.DearbyDao', False),
+        ('pages/activity/Test.kt', 'import com.dearby.nativeapp.app.ActivityViewModel', False),
+        ('pages/activity/Test.kt', 'import android.content.Intent', False),
+        ('pages/activity/Test.kt', 'val x = LocalContext.current', False),
+        ('pages/activity/Test.kt', 'import com.dearby.nativeapp.shared.ui.DearbyButton', True),
+        ('pages/activity/Test.kt', 'val x: ActivityState? = null', True),
+        ('features/calendar/Test.kt', 'import com.dearby.nativeapp.entities.activity.model.ScheduleModel', True),
         ('features/calendar/Test.kt', 'import com.dearby.nativeapp.features.application.ApplicationBrowser', False),
-        ('features/calendar/Test.kt', 'import com.dearby.nativeapp.pages.catalog.ActivityState', False),
-        ('features/calendar/Test.kt', 'import com.dearby.nativeapp.entities.catalog.model.PrivateModel', False),
-        ('entities/catalog/Test.kt', 'import com.dearby.nativeapp.features.calendar.CalendarConflictSheet', False),
-        ('shared/ui/Test.kt', 'import com.dearby.nativeapp.entities.catalog.model.ActivityModel', False),
-        ('app/Test.kt', 'import com.dearby.nativeapp.pages.catalog.CatalogPage', True),
+        ('features/calendar/Test.kt', 'import com.dearby.nativeapp.pages.activity.ActivityState', False),
+        ('features/calendar/Test.kt', 'import com.dearby.nativeapp.entities.activity.model.PrivateModel', False),
+        ('entities/activity/Test.kt', 'import com.dearby.nativeapp.features.calendar.CalendarConflictSheet', False),
+        ('shared/ui/Test.kt', 'import com.dearby.nativeapp.entities.activity.model.ActivityModel', False),
+        ('app/Test.kt', 'import com.dearby.nativeapp.pages.activity.ActivityListPage', True),
         ('shared/Test.kt', 'val x = Room.databaseBuilder()', False),
         ('app/Test.kt', 'val x = getSharedPreferences()', False),
         ('features/calendar/Test.kt', 'val x = CalendarContract.Instances', False),

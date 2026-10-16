@@ -5,7 +5,7 @@ import io.wid.dearby.domain.profile.History
 import io.wid.dearby.domain.profile.Profile
 import java.util.*
 
-// 저장소 포트. 구현은 adaptor/persistence. 이력의 카탈로그 이름(CatalogRef.name)은 읽을 때 카탈로그에서 채운다
+// 저장소 포트. 구현은 adaptor/persistence. 이력의 활동 정보 이름(ActivityInfoRef.name)은 읽을 때 활동 정보에서 채운다
 interface ProfileRepository {
 
     fun find(userId: UserId): Profile?

@@ -1,6 +1,6 @@
 # API — 구현과 인계
 
-검증 시점: **2026-09-27 12:21 KST / 03:21 UTC**. #45 로컬 카탈로그 구현과 검증이며 전체 서비스·운영 배포 완료가 아니다. 정본은 `docs/product/native-spec-2026-09.md`, `shared/contracts/catalog-v1.md`, `shared/contracts/native-v1.md`다. 이전 #39 인증·명함·교환 구현은 유지하며 아래 현재 검증이 기존 회귀를 포함한다.
+검증 시점: **2026-09-27 12:21 KST / 03:21 UTC**. #45 로컬 활동 정보 구현과 검증이며 전체 서비스·운영 배포 완료가 아니다. 정본은 `docs/product/native-spec-2026-09.md`, `shared/contracts/catalog-v1.md`, `shared/contracts/native-v1.md`다. 이전 #39 인증·명함·교환 구현은 유지하며 아래 현재 검증이 기존 회귀를 포함한다.
 
 ## 담당과 통합
 
@@ -8,7 +8,7 @@
 - 시작 시 `git status --short` 빈 출력 확인 후 `git switch -c feat/api-activities dcb590f`. 이전 `fixabley/dearby-api` 브랜치/커밋을 reset/delete하지 않았다.
 - worker terminal `term_8f4dc959-3adb-4109-ba29-8321fc911357`, task `task_8cc6572cb14f`, dispatch `ctx_deaf5c8ca5dd`. 세션 식별자와 검증 시각은 별개다.
 - 소유 범위 `apps/dearby-api`, 이 문서, `docs/workstreams/api.md`. 다른 checkout·shared 계약/데이터·root/CI 변경 없음. 하위 agent 없음.
-- `73b2082`: 영속 공식 카탈로그·수집/과거 가져오기 CLI·HTTP 테스트. 조율자에게 usable commit으로 전달했다.
+- `73b2082`: 영속 공식 활동 정보·수집/과거 가져오기 CLI·HTTP 테스트. 조율자에게 usable commit으로 전달했다.
 - `582a527`: 거절된 HTTP body 취소, 실제 마감·초기 실패·과거 식별자/참조 입력 회귀, UUIDv5 golden check.
 - `2f26fb6`: read snapshot transaction 및 인계 문서. 후속 문구 commit은 앱에 직접 보이는 sourceNote에서 null·파서·자동입력 구현 용어를 제거하고 검증된 기간·시간·선발 조건만 남긴다. push/PR/main merge 없음. 조율자가 cherry-pick·공통 서버·플랫폼 통합을 담당한다.
 - 완료 후 사용자 요청으로 이 세션을 유지하며 조율자가 retain 처리한다.
@@ -47,7 +47,7 @@ npm exec --yes --package=node@24.21.0 -- npm --prefix apps/dearby-api run catalo
 git diff --check
 ```
 
-모두 최종 통과. **20/20 tests**, lint warning 없음. 새 카탈로그 10개 테스트와 기존 auth/card/wallet/persistence 10개가 포함된다. Fastify inject 대체가 아닌 TCP listener + fetch, 테스트별 실제 임시 디스크 SQLite를 사용했다. source parsing fixture는 test 폴더에만 있고 real source 검증과 구분했다.
+모두 최종 통과. **20/20 tests**, lint warning 없음. 새 활동 정보 10개 테스트와 기존 auth/card/wallet/persistence 10개가 포함된다. Fastify inject 대체가 아닌 TCP listener + fetch, 테스트별 실제 임시 디스크 SQLite를 사용했다. source parsing fixture는 test 폴더에만 있고 real source 검증과 구분했다.
 
 검증: exact DTO/빈 성공과 서버 오류 구분, 시작·마감·24시간·역방향 clock, 실제 if(kakao) noon 경계, scheduled 상세 유지, fetch/파싱 실패 및 복구, 정상 내용/hash 보존, SQL trigger write 실패 rollback, 참조/UUID golden/dedup/재import, 실제 snapshot 30건과 invalid input rollback, DB+HTTP 재시작, URL allowlist/HTTP status/type/body size/실제 로컬 HTTP redirect 거부. 기존 OTP·공개 projection·소유권·교환 멱등성·부분 import·저장 재개방 회귀 통과.
 

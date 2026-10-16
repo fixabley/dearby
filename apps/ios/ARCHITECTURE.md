@@ -3,14 +3,14 @@
 2026-10-04 승인: selected 전체 화면을 구현하는 네이티브 클릭형 프로토타입.
 Repository/API/인증/영구 저장/OS 개인정보 접근 계층 없이 fixture + 화면 메모리로 구성합니다.
 
-- `app/entrypoint`: CatalogViewModel과 IdentityViewModel의 앱 실행 수명, 탭 조립.
+- `app/entrypoint`: ActivityViewModel과 IdentityViewModel의 앱 실행 수명, 탭 조립.
 - `pages/home`: 탭/NavigationStack과 탐색 상세에서 탭 숨김을 조합하는 HomePage.
 - `pages/intro`: 첫 실행 소개 IntroPage. 패스키 로그인은 `widgets/identity`의 SignInSheet를 띄운다. 애플 로그인(플래그 켠 빌드)은 여기서 바로 시작하고, 처음 보는 애플 계정(202)이면 SignInSheet를 열어 새 계정/패스키 계정 연결을 고르게 한다.
-- `widgets/catalog`: 활동 목록(서버 검색·페이지)·상세·이미지·일정표와 메모리 신청 상태.
+- `widgets/activity`: 활동 목록(서버 검색·페이지)·상세·이미지·일정표와 메모리 신청 상태.
 - `widgets/identity`: 프로필·QR·받은 명함·명함 편집/선택/상세 화면과 IdentityViewModel.
 - `features/application`: 로컬 신청 안내/완료 표시, 외부 HTTPS Link.
 - `features/calendar`: 고정 바쁜 시간 비교, 선택 단계/결과 시트/시간 격자.
-- `entities/catalog`: 활동 값 모델·페이지와 `GET /v1/activities` 클라이언트.
+- `entities/activity`: 활동 값 모델·페이지와 `GET /v1/activities` 클라이언트.
 - `entities/identity`: 순수 명함/연락처/이력 fixture 및 CardView/CardDeck/HistoryTimeline/ContactIcons.
 - `shared/ui`: DearbyStyle 색상, DearbyLogo, 버튼(채움/테두리, Apple 로그인 버튼 DearbyAppleButton), 배지, 아바타,
   정보행, 세그먼트, 시트 헤더. 도메인을 import하지 않으며 실제 재사용 요소만 둡니다.

@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main struct DearbyApp: App {
-    @State private var catalog: CatalogViewModel
+    @State private var activityModel: ActivityViewModel
     @State private var share: QRShareModel
     @State private var profile: ProfileModel
     @State private var wallet: WalletModel
@@ -18,7 +18,7 @@ import SwiftUI
     init() {
         let links = AppLinkProvider()
         self.links = links
-        _catalog = State(initialValue: CatalogViewModel(fetch: links.catalog))
+        _activityModel = State(initialValue: ActivityViewModel(fetch: links.activities))
         let account = links.account()
         self.account = account
         if account.phase == .signedIn { UserDefaults.standard.set(true, forKey: Self.introShownKey) }
@@ -34,9 +34,9 @@ import SwiftUI
                     IntroPage(account: account, done: finishIntro)
                 } else {
                     HomePage(selectedTab: $tab,
-                        discovery: { CatalogPage(state: catalog, path: $0) }, mine: MyActivitiesPage(state: catalog, explore: { tab = 0 }),
+                        discovery: { ActivityListPage(state: activityModel, path: $0) }, mine: MyActivitiesPage(state: activityModel, explore: { tab = 0 }),
                         qr: QRPage(share: share,
-                            activities: catalog.appliedActivities, parse: links.scanned, opened: $opened), wallet: WalletPage(state: wallet), profile: ProfilePage(state: profile))
+                            activities: activityModel.appliedActivities, parse: links.scanned, opened: $opened), wallet: WalletPage(state: wallet), profile: ProfilePage(state: profile))
                 }
             }
             .onOpenURL { url in
@@ -47,11 +47,11 @@ import SwiftUI
                 opened = url
             }
             .onChange(of: scene) { _, phase in
-                if phase == .background { catalog.appLeft() } else if phase == .active { catalog.appReturned() }
+                if phase == .background { activityModel.appLeft() } else if phase == .active { activityModel.appReturned() }
             }
-            .sheet(item: Binding(get: { catalog.asking }, set: { if $0 == nil { catalog.answer(.notYet) } })) { activity in
-                ApplyConfirmationSheet(activityTitle: activity.title, applied: { catalog.answer(.applied) },
-                                       notYet: { catalog.answer(.notYet) }, neverAsk: { catalog.answer(.neverAsk) })
+            .sheet(item: Binding(get: { activityModel.asking }, set: { if $0 == nil { activityModel.answer(.notYet) } })) { activity in
+                ApplyConfirmationSheet(activityTitle: activity.title, applied: { activityModel.answer(.applied) },
+                                       notYet: { activityModel.answer(.notYet) }, neverAsk: { activityModel.answer(.neverAsk) })
                     .presentationDetents([.medium])
             }
         }

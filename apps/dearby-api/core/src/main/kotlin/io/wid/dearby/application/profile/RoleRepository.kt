@@ -3,7 +3,7 @@ package io.wid.dearby.application.profile
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.profile.Role
 
-// 역할 카탈로그 저장소. 구현은 adaptor/persistence
+// 역할 활동 정보 저장소. 구현은 adaptor/persistence
 interface RoleRepository {
 
     fun findAllById(ids: Collection<Id>): List<Role>

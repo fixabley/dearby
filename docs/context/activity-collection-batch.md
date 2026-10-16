@@ -1,6 +1,6 @@
 # 활동 수집 배치 (Kotlin · Spring Batch)
 
-2026-10-15 사용자 결정으로 활동 수집을 TypeScript 구독 워커(`apps/catalog-worker`, Codex·Supabase)에서 Kotlin 멀티모듈의 `batch` 모듈로 옮긴다. 카탈로그 원본은 Kotlin DB다.
+2026-10-15 사용자 결정으로 활동 수집을 TypeScript 구독 워커(`apps/catalog-worker`, Codex·Supabase)에서 Kotlin 멀티모듈의 `batch` 모듈로 옮긴다. 활동 정보 원본은 Kotlin DB다.
 
 | 결정 | 내용 |
 | --- | --- |

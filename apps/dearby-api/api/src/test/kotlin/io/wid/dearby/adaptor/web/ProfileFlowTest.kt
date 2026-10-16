@@ -85,21 +85,21 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
     }
 
     @Test
-    fun `카탈로그 항목만 쓴 이력은 바로 승인되고, 직접 입력은 승인 대기이며 고치면 다시 대기한다`() {
+    fun `활동 정보 항목만 쓴 이력은 바로 승인되고, 직접 입력은 승인 대기이며 고치면 다시 대기한다`() {
         val user = user()
         val (organization, program) = letswift()
         val roleId = role("참가자 ${UUID.randomUUID()}")
-        val catalog = UUID.randomUUID()
+        val picked = UUID.randomUUID()
         val custom = UUID.randomUUID()
         fun body(customOrganization: String) = """{"name":"이력","contacts":${contacts()},"histories":[
-            {"id":"$catalog","kind":"organization","organizationId":$organization,"programId":$program,"roleId":$roleId,"organizationName":"무시됨","startDate":"2026-01-01","endDate":null,"description":""},
+            {"id":"$picked","kind":"organization","organizationId":$organization,"programId":$program,"roleId":$roleId,"organizationName":"무시됨","startDate":"2026-01-01","endDate":null,"description":""},
             {"id":"$custom","kind":"activity","organizationName":"$customOrganization","activityName":"직접 적은 활동","roleName":"운영진","startDate":"2025-03-01","endDate":"2025-06-30","description":"설명"}
         ]}"""
         val saved = read(put(user, body("직접 적은 조직")).andExpect { status { isOk() } })
         val byId = saved["histories"].values().associateBy { it["id"].asString() }
-        val first = byId.getValue(catalog.toString())
+        val first = byId.getValue(picked.toString())
         assertEquals(listOf("approved", "unverified", organization), listOf(first["approval"].asString(), first["verification"].asString(), first["organization"]["id"].asLong()))
-        // id를 주면 직접 입력 이름은 버리고 카탈로그 이름을 쓴다
+        // id를 주면 직접 입력 이름은 버리고 활동 정보 이름을 쓴다
         assertEquals(first["organization"]["name"].asString(), first["organizationName"].asString())
         val second = byId.getValue(custom.toString())
         assertEquals(listOf("pending", true, "직접 적은 조직"), listOf(second["approval"].asString(), second["organization"].isNull, second["organizationName"].asString()))
@@ -109,7 +109,7 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         assertEquals("approved", read(put(user, body("직접 적은 조직").replace("\"설명\"", "\"설명을 고침\"")).andExpect { status { isOk() } })["histories"].values().single { it["id"].asString() == custom.toString() }["approval"].asString())
         assertEquals("pending", read(put(user, body("다른 조직")).andExpect { status { isOk() } })["histories"].values().single { it["id"].asString() == custom.toString() }["approval"].asString())
 
-        // 규칙: 조직·역할 필수, 활동 종류는 활동 필수, 종료일은 시작일 뒤, 없는 카탈로그 id는 400
+        // 규칙: 조직·역할 필수, 활동 종류는 활동 필수, 종료일은 시작일 뒤, 없는 활동 정보 id는 400
         put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","kind":"organization","roleName":"x","startDate":"2026-01-01"}]}""").andExpect { status { isBadRequest() } }
         put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","kind":"organization","organizationName":"o","startDate":"2026-01-01"}]}""").andExpect { status { isBadRequest() } }
         put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","kind":"activity","organizationName":"o","roleName":"r","startDate":"2026-01-01"}]}""").andExpect { status { isBadRequest() } }
