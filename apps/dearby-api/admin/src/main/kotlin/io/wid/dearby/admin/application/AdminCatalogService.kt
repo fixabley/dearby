@@ -8,6 +8,7 @@ import io.wid.dearby.application.collection.CollectionSettingsRepository
 import io.wid.dearby.application.organization.OrganizationRepository
 import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.domain.*
+import io.wid.dearby.domain.curation.CollectionSettings
 import org.springframework.dao.DuplicateKeyException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional

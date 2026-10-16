@@ -1,5 +1,8 @@
-package io.wid.dearby.domain
+package io.wid.dearby.domain.curation
 
+import io.wid.dearby.domain.Id
+import io.wid.dearby.domain.ParticipationType
+import io.wid.dearby.domain.PublicationStatus
 import java.time.OffsetDateTime
 
 // 운영자용 활동 정보. 공개 Activity와 같은 activities 행(+activity_roles)에 저장하지만 공개 API는 내보내지 않는다.

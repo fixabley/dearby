@@ -7,6 +7,8 @@ import io.wid.dearby.application.collection.ActivityDraftRepository
 import io.wid.dearby.domain.*
 import io.wid.dearby.domain.collection.CollectedActivity
 import io.wid.dearby.domain.collection.DraftSaveResult
+import io.wid.dearby.domain.curation.Freshness
+import io.wid.dearby.domain.curation.RecruitmentStatus
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
