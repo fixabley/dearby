@@ -14,6 +14,11 @@ dearby:
     rp-id: ${WEBAUTHN_RP_ID}
     rp-name: Dearby
     allowed-origins: ${WEBAUTHN_ALLOWED_ORIGINS} # 쉼표로 구분
+  # 애플 로그인. APPLE_CLIENT_IDS가 비어 있으면 /v1/auth/apple/*는 503(native-v1.md "애플 로그인")
+  apple:
+    client-ids: ${APPLE_CLIENT_IDS:} # 쉼표로 구분: iOS 번들 ID, Services ID
+    services-id: ${APPLE_SERVICES_ID:}
+    callback-url: ${APPLE_CALLBACK_URL:}
   jwt:
     key-path: ${JWT_KEY_PATH}
     issuer: ${JWT_ISSUER}

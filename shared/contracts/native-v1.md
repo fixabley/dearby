@@ -24,7 +24,7 @@ JSON camelCase, UUID 문자열 식별자, UTC ISO8601 시각. 기본 `/v1`. 인�
 
 | 메서드·경로 | 요청 | 성공 응답 |
 | --- | --- | --- |
-| (인증) | 아래 "패스키 로그인"의 `/auth/passkeys/*`, `/auth/refresh`, `/auth/logout` | 2026-10-10 이메일 인증번호(`/auth/challenges`, `/auth/sessions`, `DELETE /auth/session`)를 대체 |
+| (인증) | 아래 "패스키 로그인"의 `/auth/passkeys/*`, `/auth/refresh`, `/auth/logout`, "애플 로그인"의 `/auth/apple/*` | 2026-10-10 이메일 인증번호(`/auth/challenges`, `/auth/sessions`, `DELETE /auth/session`)를 대체 |
 | GET /profile | 없음 | 200 Profile |
 | PUT /profile | `{name,job,introduction,contacts,histories}` | 200 Profile |
 | GET /cards | 없음 | 200 `{items: Card[]}` (자신의 명함) |
@@ -228,6 +228,41 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 - access token이 만료돼 401을 받으면 refresh를 한 번 시도한다. refresh가 401로 거절되면 토큰을 지우고 로그인 화면으로 돌아간다. 네트워크 오류·5xx면 토큰을 남기고 그 요청만 실패시킨다(불안정한 연결에서 로그아웃되지 않게). refresh token이 회전하므로 동시에 여러 요청이 401을 받아도 refresh는 한 번만 한다.
 - 로그아웃은 `/v1/auth/logout` 뒤 기기 토큰을 지운다. 네트워크 실패여도 기기 토큰은 지운다.
 - 기존 이메일 로그인 화면·저장 토큰(`sessionToken`)은 쓰지 않는다. 이전 앱 저장 데이터는 읽거나 지우지 않는다는 저장소 원칙을 따른다.
+
+## 애플 로그인 — 2026-10-16 사용자 결정
+
+패스키와 함께 쓰는 두 번째 로그인 수단이다. iOS·Android·웹에서 같은 애플 계정은 같은 Dearby 계정이 된다. 애플의 `sub`는 같은 팀의 앱 ID(`io.wid.dearby`)와 Services ID에서 같다. 계정은 이메일로 합치지 않는다(가린 이메일 `@privaterelay.appleid.com`이 올 수 있다). 운영에 `APPLE_CLIENT_IDS`가 없으면 아래 `/auth/apple/*`는 503이다.
+
+| 메서드·경로 | 인증 | 요청 | 응답 |
+| --- | --- | --- | --- |
+| POST /v1/auth/apple/nonce | 없음 | — | 200 `{challengeId, nonce}`. nonce는 10분, 한 번만 |
+| POST /v1/auth/apple | 없음 | `{challengeId, identityToken, displayName?}` | 200 TokenPair(이미 연결된 애플 계정) 또는 202 `{linkToken, email}`(처음 보는 계정). 검증 실패 401 |
+| POST /v1/auth/apple/register | 없음 | `{linkToken}` | 201 TokenPair. 새 Dearby 계정(USER)을 만들고 애플 계정을 연결한다 |
+| POST /v1/me/identities/apple | Bearer | `{linkToken}` | 204. 로그인한 계정(패스키 계정)에 애플 계정을 연결한다. 이미 다른 애플 계정이 연결돼 있으면 400 |
+| POST /v1/auth/apple/web/start | 없음 | `{verifierHash}` | 200 `{authorizeUrl}`. 웹 방식(Android) |
+| POST /v1/auth/apple/callback | 없음 | 애플 form_post | 303 `dearby://auth/apple?code=<1회용>` 또는 `?error=cancelled\|failed` |
+| POST /v1/auth/apple/web/exchange | 없음 | `{code, verifier}` | `POST /v1/auth/apple`과 같은 200·202. 401이면 처음부터 다시 |
+
+- 처음 보는 애플 계정(202): 앱은 "새 계정으로 시작"과 "기존 패스키 계정에 연결"을 보여 준다. 서버는 그 사람에게 패스키 계정이 있는지 알 수 없어 사용자가 고른다.
+  - 새 계정: `register`.
+  - 연결: 패스키로 로그인한 뒤 그 access token으로 `/me/identities/apple`을 부른다. 연결 후 애플 로그인은 그 패스키 계정으로 바로 로그인된다(200).
+  - `linkToken`은 10분, 한 번만 쓴다.
+- identity token 검증
+  - 애플 공개키 서명, `iss = https://appleid.apple.com`, `aud`가 `APPLE_CLIENT_IDS` 중 하나, 만료를 확인한다.
+  - `nonce` 클레임이 발급한 nonce와 같아야 한다. 클라이언트는 받은 nonce를 해시하지 않고 그대로 인가 요청에 넣는다.
+- 이름
+  - 애플은 이름을 첫 인가 때만 준다.
+  - iOS는 받은 `fullName`을 `displayName`으로 보낸다. 웹 방식은 콜백의 `user`에서 서버가 읽는다.
+  - `user_identities.display_name`에 남겨 프로필을 채울 때 쓸 수 있게 한다. 패스키 목록 이름(`Dearby`)과는 관계없다.
+- iOS: `AuthenticationServices`로 `ASAuthorizationAppleIDRequest`(scope `fullName`·`email`, `nonce`)를 보내고 `identityToken`을 `POST /v1/auth/apple`로 보낸다. 앱 ID에 Sign in with Apple 기능과 entitlement `com.apple.developer.applesignin`이 필요하다.
+- Android(웹 방식)
+  1. 무작위 verifier(43자 이상)를 만들고 SHA-256(base64url, 패딩 없음)을 `web/start`로 보낸다.
+  2. 받은 `authorizeUrl`을 Custom Tab으로 연다.
+  3. 애플은 Services ID의 Return URL(`https://api.dearby.wid.io.kr/v1/auth/apple/callback`)로 form_post한다. 서버는 토큰을 확인하고 `dearby://auth/apple?code=…`로 돌려보낸다.
+  4. 앱은 그 code와 verifier로 `web/exchange`를 부른다.
+  - 결과 code는 10분, 한 번만 쓴다. 주소에 토큰을 싣지 않고, verifier가 없는 다른 앱은 code를 바꿔 갈 수 없다.
+- 웹: 사용자 웹은 아직 로그인해서 쓰는 기능이 없다(명함 제작은 앱). 웹 애플 로그인은 웹에 로그인 기능이 생길 때 Apple JS(Services ID, popup)로 `POST /v1/auth/apple`을 쓴다.
+- 앱스토어: 애플 로그인을 쓰면 계정 삭제 때 애플 토큰 폐기(revoke)가 필요하다. 계정 삭제 기능이 아직 없어 심사 전에 별도로 만든다(.p8 키 필요).
 
 ## 활동 조회 — 2026-10-14 사용자 결정
 
