@@ -29,7 +29,7 @@
 ## 시작 화면·첫 실행 소개 (2026-10-14)
 
 - 실행할 때마다 OS 시작 화면(Info.plist `UILaunchScreen`)이 흰 배경(`LaunchBackground`)에 로고(`LaunchLogo`, `DearbyLogo` 원본을 줄인 사본)를 보여 준다. 인위적인 지연은 없다. 두 Info.plist에 같은 값이 있고, 생성 스크립트의 빈 시작 화면 자동 생성은 뺐다.
-- 첫 실행에만 `pages/intro/ui/IntroPage.swift`가 로고와 "패스키로 시작하기"·"둘러보기"를 보여 준다. "패스키로 시작하기"는 기존 `SignInSheet`(패스키 로그인 기본, "새 패스키로 시작" 가능)를 띄운다. 로그인 성공이나 "둘러보기"를 누르면 `dearby.onboarding.shown`을 저장하고 홈 탭으로 간다. 취소·실패면 소개에 남고 오류 문구를 보여 준다. 로그인은 필수가 아니다(App Store 5.1.1).
+- 첫 실행에만 `pages/intro/ui/IntroPage.swift`가 로고와 "패스키로 시작하기"·"둘러보기"(애플 로그인을 켠 빌드는 그 위에 "Apple로 계속하기")를 보여 준다. "패스키로 시작하기"는 기존 `SignInSheet`(패스키 로그인 기본, "새 패스키로 시작" 가능)를 띄운다. 로그인 성공이나 "둘러보기"를 누르면 `dearby.onboarding.shown`을 저장하고 홈 탭으로 간다. 취소·실패면 소개에 남고 오류 문구를 보여 준다. 로그인은 필수가 아니다(App Store 5.1.1).
 - 실행할 때 토큰이 이미 있거나, 공유 명함 링크(`/s/<UUID>`)로 열리면 소개를 건너뛰고 표시를 저장한다.
 - 소개를 다시 보려면 앱을 지우고 다시 설치한다.
 
@@ -51,6 +51,17 @@
 - 토큰(TokenPair)은 새 Keychain 서비스 `dearby.account.tokens`에 둔다. 이메일 로그인 때의 `dearby.account.session`과 2026-10-03 이전 앱이 남긴 값은 읽거나 지우지 않는다.
 - 401이면 refresh를 한 번(동시에 하나만) 하고 다시 호출한다. refresh가 거절(401)되면 토큰을 지우고 로그인 화면으로 돌아간다. refresh 중 네트워크 실패는 토큰을 남기고 그 호출만 실패시킨다. 로그아웃은 `/v1/auth/logout` 뒤 기기 토큰을 지운다(네트워크 실패여도).
 - 서버 쪽 필요 조건(앱 밖): `https://wid.io.kr/.well-known/apple-app-site-association`의 `webcredentials.apps`에 `4V9FVN3VQF.io.wid.dearby`(Release)와 `4V9FVN3VQF.com.dearby.dearby`(Debug), API `WEBAUTHN_ALLOWED_ORIGINS`에 `https://wid.io.kr`. 둘 다 없으면 OS가 패스키 요청을 거절하므로 로컬 API만으로는 실제 패스키를 확인할 수 없다.
+
+## 애플 로그인 (2026-10-16)
+
+계약 `shared/contracts/native-v1.md` "애플 로그인"을 따른다. 패스키와 나란한 로그인 수단이다.
+
+- 코드: `entities/account/api/AppleSignIn.swift`(OS 요청, scope 이름·이메일, 서버 nonce를 해시하지 않고 그대로 넣음), `AccountClient`(`/v1/auth/apple/nonce`·`/auth/apple`·`/auth/apple/register`·`/me/identities/apple`), `AccountViewModel`, `SignInSheet`·`IntroPage`, 버튼 `shared/ui/DearbyAppleButton.swift`.
+- 버튼: Apple의 `ASAuthorizationAppleIDButton`("Apple로 계속하기", 밝은 화면 검정·어두운 화면 흰색). SwiftUI `SignInWithAppleButton`은 요청을 동기로 만들어 서버 nonce를 먼저 받을 수 없어서, 누르면 nonce를 받은 뒤 `AuthorizationController`로 요청한다(패스키와 같은 방식).
+- 흐름: 이미 연결된 애플 계정(200)은 바로 로그인한다. 처음 보는 계정(202)은 로그인 시트에서 "새 계정으로 시작"(`register`)과 "기존 패스키 계정에 연결"(패스키 로그인 → `/me/identities/apple`)을 고른다. 연결이 실패하면 패스키 토큰은 저장하지 않고 로그아웃한다(연결 안 된 채 로그인되지 않게). 연결 단계의 401은 시간 초과로 보고 처음부터 다시 하게 한다. 400(패스키 계정에 이미 다른 애플 계정이 있거나 이 애플 계정이 방금 다른 계정에 연결됨)은 "이미 다른 계정과 연결돼 있어서 연결하지 못했어요."다. 서버는 두 경우 모두 linkToken을 써 버리므로 선택 화면을 닫는다. 사용자 취소는 문구가 없고, 503·연결 실패는 "지금은 애플 로그인을 쓸 수 없어요."다. 이름은 첫 인가 때만 와서 그때만 `displayName`으로 보낸다. 자격 철회 확인(`getCredentialState`)은 아직 없다.
+- **켜기 전 상태**: 두 Info.plist(`Info.plist`, `Info-Debug.plist`)의 `DearbyAppleSignInEnabled`가 `false`라 버튼이 보이지 않고 애플 로그인 코드는 실행되지 않는다. App Store provisioning profile을 Sign in with Apple 포함으로 다시 만들기 전에 entitlement를 넣으면 TestFlight 서명이 깨지기 때문이다.
+- **켜는 방법**(조율 세션, 한 커밋): 앱 ID(`io.wid.dearby`, Debug `com.dearby.dearby`)에 Sign in with Apple 기능을 켜고 profile을 다시 만든 뒤, `Dearby.entitlements`·`Dearby-Debug.entitlements`에 `com.apple.developer.applesignin` = `["Default"]`를 넣고 두 Info.plist의 `DearbyAppleSignInEnabled`를 `true`로 바꾼다.
+- 실제 애플 로그인은 entitlement가 있는 서명 빌드와 운영 API(`APPLE_CLIENT_IDS` 설정)에서만 확인할 수 있다. entitlement 없이 요청하면 OS가 실패로 돌려준다.
 
 ## 검증
 

@@ -11,6 +11,7 @@ import com.dearby.nativeapp.entities.account.model.toWallet
 import com.dearby.nativeapp.entities.account.model.toJson
 import com.dearby.nativeapp.entities.account.model.toProfile
 import com.dearby.nativeapp.entities.account.model.toPublishedCard
+import com.dearby.nativeapp.entities.account.model.toAppleSignIn
 import com.dearby.nativeapp.entities.account.model.toPasskeyChallenge
 import com.dearby.nativeapp.entities.account.model.toSession
 import java.net.HttpURLConnection
@@ -21,8 +22,10 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /** [INVALID_CONTACTS]: required phone or email missing or malformed (422 "Invalid contacts"); [OWN_CARD]: the share is your own
- *  card (422 INVALID_RECIPIENT); [CONFLICT]: a card already holds the most share links (409). */
-enum class AccountError { UNAUTHORIZED, INVALID_INPUT, INVALID_CONTACTS, OWN_CARD, NOT_FOUND, CONFLICT, RATE_LIMITED, UNAVAILABLE }
+ *  card (422 INVALID_RECIPIENT); [CONFLICT]: a card already holds the most share links (409); [BAD_REQUEST]: 400, e.g. linking
+ *  an Apple account that is already linked elsewhere; [TURNED_OFF]: 503, e.g. Apple sign-in without
+ *  `APPLE_CLIENT_IDS` on the server. Network failures and other statuses are [UNAVAILABLE]. */
+enum class AccountError { UNAUTHORIZED, INVALID_INPUT, INVALID_CONTACTS, OWN_CARD, NOT_FOUND, CONFLICT, RATE_LIMITED, BAD_REQUEST, TURNED_OFF, UNAVAILABLE }
 class AccountException(val error: AccountError) : Exception(error.name)
 
 data class HttpRequest(val method: String, val url: String, val token: String?, val body: String?)
@@ -63,6 +66,17 @@ class AccountClient(private val api: String, private val transport: Transport = 
     // The contract has no request body; an explicit {} keeps HttpURLConnection from sending a bodiless POST.
     suspend fun authenticationOptions() = send("POST", "auth/passkeys/authentication/options", JSONObject()).toPasskeyChallenge()
     suspend fun authenticate(challengeId: String, credential: String) = send("POST", "auth/passkeys/authentication", passkeyBody(challengeId, credential)).toSession()
+    /** Apple sign-in, web flow (contract "애플 로그인", Android): Apple's page to open for a SHA-256 of the kept verifier. */
+    suspend fun appleStart(verifierHash: String) = send("POST", "auth/apple/web/start", JSONObject().put("verifierHash", verifierHash)).getString("authorizeUrl")
+    /** The one-time code from `dearby://auth/apple?code=` and its verifier → signed in, or a first-seen Apple account. */
+    suspend fun appleExchange(code: String, verifier: String) =
+        send("POST", "auth/apple/web/exchange", JSONObject().put("code", code).put("verifier", verifier)).toAppleSignIn()
+    /** "새 계정으로 시작" for a first-seen Apple account (201). */
+    suspend fun appleRegister(linkToken: String) = send("POST", "auth/apple/register", JSONObject().put("linkToken", linkToken)).toSession()
+    /** "기존 패스키 계정에 연결": links the Apple account to the signed-in account; 204 with no body. */
+    suspend fun linkApple(linkToken: String, session: AccountSession) {
+        request("POST", "me/identities/apple", JSONObject().put("linkToken", linkToken), session)
+    }
     /** Rotates the pair: the refresh token sent here stops working. */
     suspend fun refresh(refreshToken: String) = send("POST", "auth/refresh", JSONObject().put("refreshToken", refreshToken)).toSession()
     /** 204 with no body, also when the token is already invalid. */
@@ -96,6 +110,7 @@ class AccountClient(private val api: String, private val transport: Transport = 
             catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
         return when (response.status) {
             in 200..299 -> response.body
+            400 -> throw AccountException(AccountError.BAD_REQUEST)
             401 -> throw AccountException(AccountError.UNAUTHORIZED)
             404 -> throw AccountException(AccountError.NOT_FOUND)
             409 -> throw AccountException(AccountError.CONFLICT)
@@ -108,6 +123,7 @@ class AccountClient(private val api: String, private val transport: Transport = 
                     }
                 })
             429 -> throw AccountException(AccountError.RATE_LIMITED)
+            503 -> throw AccountException(AccountError.TURNED_OFF)
             else -> throw AccountException(AccountError.UNAVAILABLE)
         }
     }

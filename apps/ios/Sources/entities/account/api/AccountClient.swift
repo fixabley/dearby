@@ -35,6 +35,27 @@ struct AccountClient: Sendable {
     func authenticate(challengeId: String, credential: Passkey.Credential) async throws -> TokenPair {
         try await send("auth/passkeys/authentication", method: "POST", body: PasskeyAnswer(challengeId: challengeId, credential: credential), as: TokenPair.self)
     }
+    /// Sign in with Apple, step 1: a single-use nonce that lasts ten minutes.
+    func appleNonce() async throws -> AppleChallenge {
+        try await send("auth/apple/nonce", method: "POST", as: AppleChallenge.self)
+    }
+    /// 200: this Apple account already has a Dearby account. 202: first time; the user picks new or link (`AppleLink`).
+    func signInWithApple(challengeId: String, credential: AppleSignIn.Credential) async throws -> AppleSignInResult {
+        let body = AppleAnswer(challengeId: challengeId, identityToken: credential.identityToken, displayName: credential.displayName)
+        let (data, status) = try await request("auth/apple", method: "POST", body: body)
+        do {
+            if status == 202 { return .newAppleAccount(try JSONDecoder().decode(AppleLink.self, from: data)) }
+            return .signedIn(try JSONDecoder().decode(TokenPair.self, from: data))
+        } catch { throw AccountError.unavailable }
+    }
+    /// A new Dearby account for a first-time Apple account (201).
+    func registerWithApple(_ link: AppleLink) async throws -> TokenPair {
+        try await send("auth/apple/register", method: "POST", body: ["linkToken": link.linkToken], as: TokenPair.self)
+    }
+    /// Links a first-time Apple account to the signed-in (passkey) account (204). 400 if it already has another Apple account.
+    func linkApple(_ link: AppleLink, _ session: TokenPair) async throws {
+        _ = try await request("me/identities/apple", method: "POST", body: ["linkToken": link.linkToken], session: session)
+    }
     /// Rotates: the refresh token sent is spent whether or not the answer arrives.
     func refresh(_ tokens: TokenPair) async throws -> TokenPair {
         try await send("auth/refresh", method: "POST", body: ["refreshToken": tokens.refreshToken], as: TokenPair.self)
@@ -86,16 +107,22 @@ struct AccountClient: Sendable {
         let challengeId: String
         let options: Options
     }
+    struct AppleChallenge: Decodable, Sendable { let challengeId: String; let nonce: String }
+    /// From a 202: `linkToken` lasts ten minutes and is spent by `registerWithApple` or `linkApple`.
+    /// `email` may be an Apple private relay address.
+    struct AppleLink: Decodable, Equatable, Sendable { let linkToken: String; let email: String? }
+    enum AppleSignInResult: Equatable, Sendable { case signedIn(TokenPair), newAppleAccount(AppleLink) }
+    private struct AppleAnswer: Encodable { let challengeId: String; let identityToken: String; let displayName: String? }
     private struct PasskeyAnswer: Encodable { let challengeId: String; let credential: Passkey.Credential }
     private struct ErrorBody: Decodable { struct Detail: Decodable { let code: String?; let message: String? }; let error: Detail }
     private struct CardList: Decodable { let items: [PublishedCard] }
 
     private func send<Response: Decodable>(_ path: String, method: String = "GET", body: (any Encodable)? = nil,
                                            session: TokenPair? = nil, as type: Response.Type) async throws -> Response {
-        let data = try await request(path, method: method, body: body, session: session)
+        let (data, _) = try await request(path, method: method, body: body, session: session)
         do { return try JSONDecoder().decode(type, from: data) } catch { throw AccountError.unavailable }
     }
-    private func request(_ path: String, method: String, body: (any Encodable)? = nil, session: TokenPair? = nil) async throws -> Data {
+    private func request(_ path: String, method: String, body: (any Encodable)? = nil, session: TokenPair? = nil) async throws -> (Data, Int) {
         var request = URLRequest(url: api.appending(path: "v1/" + path), cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -107,7 +134,7 @@ struct AccountClient: Sendable {
         let data: Data, response: HTTPURLResponse
         do { (data, response) = try await transport(request) } catch { throw AccountError.unavailable }
         switch response.statusCode {
-        case 200..<300: return data
+        case 200..<300: return (data, response.statusCode)
         case 400: throw AccountError.invalidInput
         case 401: throw AccountError.unauthorized
         case 404: throw AccountError.notFound

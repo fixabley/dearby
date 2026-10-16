@@ -28,3 +28,10 @@ Final targeted rerun after QR tile minimum-height adjustment: default QR flow1 p
 - ponytail-review(복잡성): Lean already. Ship.
 - 실행하지 않음: 자동 테스트는 2026-10-06 사용자 요청으로 지운 상태라 새로 만들거나 돌리지 않았다. `LargeTextFlowTest`(큰 글씨) 미실행. 에뮬레이터 화면 흐름 미확인.
 - 확인 불가: 실제 패스키 생성·로그인·refresh·logout은 `wid.io.kr` assetlinks 배포와 Kotlin API 새 엔드포인트가 있어야 해서 확인하지 못했다.
+
+## 2026-10-16 애플 로그인(웹 방식)
+
+- 실행함: `python3 scripts/check-fsd.py --self-test`(25 cases, 63 files 통과), `./gradlew :app:compileDebugKotlin`, `./gradlew lintDebug assembleDebug`(CI와 같은 명령) BUILD SUCCESSFUL, lint 오류 0(기존 버전 알림·미사용 리소스 경고만). `git diff --check` 통과. ponytail-review: Lean already(`AppleBrowser`는 `Passkeys`와 같은 형태로 둔 한 메서드 클래스). Ship.
+- 임시 JVM 확인(저장소 밖, 남기지 않음): `AppleVerifier.create()` 43자, `hash`가 RFC 7636 부록 B 값(`E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM`)과 일치.
+- 같은 날 iOS에 맞춰 수정: 애플 연결 실패 시 패스키 토큰을 저장하지 않고 logout 시도, 400·401은 선택 화면을 닫고 안내. 다시 check-fsd·`lintDebug assembleDebug` 통과.
+- 실행하지 않음: 단위 테스트 소스가 없어(2026-10-06 사용자 요청으로 삭제) 새로 만들지 않았다. 큰 글씨 테스트 미실행. 에뮬레이터·기기에서 Custom Tab, `dearby://auth/apple` 전달·`singleTask` 동작, 프로세스 종료 뒤 verifier 복원, 실제 애플 로그인(서버 Services ID 필요)은 확인하지 못했다.

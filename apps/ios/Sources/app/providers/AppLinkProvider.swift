@@ -6,6 +6,9 @@ private let log = Logger(subsystem: "com.dearby.app", category: "connection")
 /// Owns the build-injected origins: universal links become share IDs and API calls use the API origin.
 struct AppLinkProvider: Sendable {
     let origins: AppOrigins
+    /// Info.plist `DearbyAppleSignInEnabled`: false until the app ID has Sign in with Apple and the
+    /// entitlements carry `com.apple.developer.applesignin` (see README "애플 로그인").
+    let appleSignInEnabled: Bool
     init(info: [String: Any] = Bundle.main.infoDictionary ?? [:]) {
         var info = info
         #if DEBUG
@@ -19,6 +22,7 @@ struct AppLinkProvider: Sendable {
             preconditionFailure("DearbyAPIOrigin/DearbyWebOrigin are missing or invalid.")
         }
         self.origins = origins
+        appleSignInEnabled = info["DearbyAppleSignInEnabled"] as? Bool ?? false
         #if DEBUG
         // A Debug build without DEARBY_API_ORIGIN talks to a local API; say so once.
         if origins.api.host == "localhost" || origins.api.host == "127.0.0.1" {
@@ -35,7 +39,7 @@ struct AppLinkProvider: Sendable {
         // UI tests use a fresh Keychain item per run so one test's sign-in never leaks into another.
         if let service = ProcessInfo.processInfo.environment["DEARBY_TOKEN_SERVICE"] { vault.service = service }
         #endif
-        return AccountViewModel(client: .live(api: origins.api), vault: vault)
+        return AccountViewModel(client: .live(api: origins.api), vault: vault, appleSignInEnabled: appleSignInEnabled)
     }
     func catalog(query: String, cursor: Int64?) async throws -> ActivityPage {
         do { return try await CatalogClient.fetch(api: origins.api, query: query, cursor: cursor) } catch {
