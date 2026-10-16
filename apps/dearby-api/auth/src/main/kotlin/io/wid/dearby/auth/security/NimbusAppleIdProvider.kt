@@ -29,7 +29,9 @@ class NimbusAppleIdProvider(
             throw AuthenticationFailedException("애플 로그인을 확인하지 못했습니다", "Apple token nonce mismatch")
         }
         val subject = jwt.subject ?: throw AuthenticationFailedException("애플 로그인을 확인하지 못했습니다", "Apple token without sub")
-        return AppleIdentity(subject, jwt.getClaimAsString("email")?.takeIf { it.isNotBlank() }, null)
+        // 토큰을 받은 앱(번들 ID 또는 Services ID). 애플 토큰을 받고 폐기할 때 같은 client_id를 쓴다
+        val clientId = jwt.audience.orEmpty().firstOrNull { it in properties.clientIds }
+        return AppleIdentity(subject, jwt.getClaimAsString("email")?.takeIf { it.isNotBlank() }, null, clientId)
     }
 
     override fun isConfigured(): Boolean = properties.clientIds.any { it.isNotBlank() }

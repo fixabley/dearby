@@ -236,7 +236,7 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 | 메서드·경로 | 인증 | 요청 | 응답 |
 | --- | --- | --- | --- |
 | POST /v1/auth/apple/nonce | 없음 | — | 200 `{challengeId, nonce}`. nonce는 10분, 한 번만 |
-| POST /v1/auth/apple | 없음 | `{challengeId, identityToken, displayName?}` | 200 TokenPair(이미 연결된 애플 계정) 또는 202 `{linkToken, email}`(처음 보는 계정). 검증 실패 401 |
+| POST /v1/auth/apple | 없음 | `{challengeId, identityToken, displayName?, authorizationCode?}` | 200 TokenPair(이미 연결된 애플 계정) 또는 202 `{linkToken, email}`(처음 보는 계정). 검증 실패 401 |
 | POST /v1/auth/apple/register | 없음 | `{linkToken}` | 201 TokenPair. 새 Dearby 계정(USER)을 만들고 애플 계정을 연결한다 |
 | POST /v1/me/identities/apple | Bearer | `{linkToken}` | 204. 로그인한 계정(패스키 계정)에 애플 계정을 연결한다. 이미 다른 애플 계정이 연결돼 있으면 400 |
 | POST /v1/auth/apple/web/start | 없음 | `{verifierHash}` | 200 `{authorizeUrl}`. 웹 방식(Android) |
@@ -262,7 +262,26 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
   4. 앱은 그 code와 verifier로 `web/exchange`를 부른다.
   - 결과 code는 10분, 한 번만 쓴다. 주소에 토큰을 싣지 않고, verifier가 없는 다른 앱은 code를 바꿔 갈 수 없다.
 - 웹: 사용자 웹은 아직 로그인해서 쓰는 기능이 없다(명함 제작은 앱). 웹 애플 로그인은 웹에 로그인 기능이 생길 때 Apple JS(Services ID, popup)로 `POST /v1/auth/apple`을 쓴다.
-- 앱스토어: 애플 로그인을 쓰면 계정 삭제 때 애플 토큰 폐기(revoke)가 필요하다. 계정 삭제 기능이 아직 없어 심사 전에 별도로 만든다(.p8 키 필요).
+- 애플 토큰
+  - iOS는 credential의 `authorizationCode`를 함께 보낸다. 웹 방식은 콜백의 `code`를 서버가 쓴다.
+  - 서버는 `.p8` 키로 서명한 client secret으로 code를 애플 refresh token으로 바꿔 `user_identities`에 둔다. 아래 "계정 삭제" 때 폐기하기 위해서다.
+  - 키가 설정되지 않았거나 교환이 실패해도 로그인은 막지 않는다. 다시 로그인하면 새 토큰으로 바꾼다.
+
+## 계정 삭제 — 2026-10-16 사용자 결정
+
+App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 있어야 한다.
+
+| 메서드·경로 | 인증 | 응답 |
+| --- | --- | --- |
+| DELETE /v1/me | Bearer | 204. 없는 토큰·무효 토큰은 401 |
+
+- 되돌릴 수 없다. 앱은 확인 대화상자("계정을 삭제하면 명함과 받은 명함 등 모든 정보가 지워지고 되돌릴 수 없어요")를 거쳐 부르고, 성공하면 저장한 토큰을 지우고 로그아웃 상태로 돌아간다.
+- 지우는 것
+  - 사용자, 역할, 연락처, 프로필, 명함과 명함 하위 행, 활동 이력, 참여 기록, 기관 멤버·프로그램 스태프 행
+  - refresh token. 이미 발급한 access token은 수명(1분)이 지나면 끝난다.
+  - 패스키 user entity와 credential. 기기에 남은 패스키는 앱이 지울 수 없다. 앱은 "설정 > 암호에서 패스키를 지울 수 있어요"라고 안내한다.
+  - 외부 로그인 연결
+- 애플 계정이 연결돼 있으면 저장한 애플 refresh token을 먼저 폐기한다(`appleid.apple.com/auth/revoke`). 토큰이 없거나 폐기가 실패해도 삭제는 진행하고 서버 로그에 남긴다.
 
 ## 활동 조회 — 2026-10-14 사용자 결정
 

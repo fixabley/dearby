@@ -5,6 +5,7 @@ import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.jose.jwk.gen.RSAKeyGenerator
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet
 import io.wid.dearby.application.auth.AppleSignInService
+import io.wid.dearby.application.auth.AppleTokenClient
 import io.wid.dearby.application.auth.TokenService
 import io.wid.dearby.domain.user.User
 import io.wid.dearby.domain.user.UserRole
@@ -50,6 +51,14 @@ class AppleSignInFlowTest(
         @Primary
         fun testAppleTokenDecoder(): AppleTokenDecoder =
             AppleTokenDecoder.of(NimbusJwtDecoder.withPublicKey(KEY.toRSAPublicKey()).signatureAlgorithm(SignatureAlgorithm.RS256).build(), listOf("io.wid.dearby", "io.wid.dearby.signin"))
+
+        // 애플 토큰 엔드포인트 대신 code를 그대로 담은 토큰을 준다
+        @Bean
+        @Primary
+        fun fakeAppleTokenClient() = object : AppleTokenClient {
+            override fun refreshToken(authorizationCode: String, clientId: String) = "rt-$clientId-$authorizationCode"
+            override fun revoke(refreshToken: String, clientId: String) = true
+        }
     }
 
     private val json = JsonMapper.builder().build()
@@ -79,18 +88,22 @@ class AppleSignInFlowTest(
     private fun nonce(): Pair<String, String> = read(post("/v1/auth/apple/nonce", "").andExpect { status { isOk() } })
         .let { it["challengeId"].asString() to it["nonce"].asString() }
 
-    private fun signIn(subject: String, displayName: String? = null): ResultActionsDsl {
+    private fun signIn(subject: String, displayName: String? = null, code: String? = null): ResultActionsDsl {
         val (challengeId, nonce) = nonce()
         val name = displayName?.let { ""","displayName":"$it"""" } ?: ""
-        return post("/v1/auth/apple", """{"challengeId":"$challengeId","identityToken":"${appleToken(subject, nonce)}"$name}""")
+        val authorization = code?.let { ""","authorizationCode":"$it"""" } ?: ""
+        return post("/v1/auth/apple", """{"challengeId":"$challengeId","identityToken":"${appleToken(subject, nonce)}"$name$authorization}""")
     }
+
+    private fun storedToken(subject: String) =
+        jdbc.sql("select client_id || '|' || refresh_token from user_identities where subject = ?").param(subject).query(String::class.java).single()
 
     private fun subject() = "apple-${UUID.randomUUID()}"
 
     @Test
     fun `처음 보는 애플 계정은 linkToken을 받고, 새 계정을 만들면 다음부터 바로 로그인한다`() {
         val subject = subject()
-        val first = read(signIn(subject, " 조민준 ").andExpect { status { isAccepted() } })
+        val first = read(signIn(subject, " 조민준 ", code = "c1").andExpect { status { isAccepted() } })
         assertEquals("$subject@privaterelay.appleid.com", first["email"].asString())
 
         val linkToken = first["linkToken"].asString()
@@ -101,6 +114,10 @@ class AppleSignInFlowTest(
         val again = read(signIn(subject).andExpect { status { isOk() } })
         assertEquals(created["user"]["id"].asString(), again["user"]["id"].asString())
         assertEquals(listOf("USER"), again["user"]["roles"].values().map { it.asString() })
+        // authorization code로 받은 애플 토큰을 남겨 계정 삭제 때 폐기한다. 다시 로그인하면 새 토큰으로 바꾼다
+        assertEquals("io.wid.dearby|rt-io.wid.dearby-c1", storedToken(subject))
+        signIn(subject, code = "c2").andExpect { status { isOk() } }
+        assertEquals("io.wid.dearby|rt-io.wid.dearby-c2", storedToken(subject))
         assertEquals("조민준", jdbc.sql("select display_name from user_identities where subject = ?").param(subject).query(String::class.java).single())
     }
 
@@ -163,6 +180,7 @@ class AppleSignInFlowTest(
             param("state", stateValue)
             param("id_token", appleToken(subject, nonce, audience = "io.wid.dearby.signin"))
             param("user", """{"name":{"firstName":"Minjun","lastName":"Jo"},"email":"x@privaterelay.appleid.com"}""")
+            param("code", "web-code")
         }.andExpect { status { isSeeOther() } }.andReturn().response.getHeader("Location")!!
 
         val location = callback(state)
@@ -171,7 +189,10 @@ class AppleSignInFlowTest(
         // 같은 state를 다시 쓰면 실패를 돌려준다
         assertEquals("dearby://auth/apple?error=failed", callback(state))
 
-        post("/v1/auth/apple/web/exchange", """{"code":"$code","verifier":"$verifier"}""").andExpect { status { isAccepted() } }
+        val linkToken = read(post("/v1/auth/apple/web/exchange", """{"code":"$code","verifier":"$verifier"}""").andExpect { status { isAccepted() } })["linkToken"].asString()
+        post("/v1/auth/apple/register", """{"linkToken":"$linkToken"}""").andExpect { status { isCreated() } }
+        // 웹 방식은 Services ID로 받은 code라 그 client_id로 토큰을 받는다
+        assertEquals("io.wid.dearby.signin|rt-io.wid.dearby.signin-web-code", storedToken(subject))
         // 코드도 한 번만 쓴다
         post("/v1/auth/apple/web/exchange", """{"code":"$code","verifier":"$verifier"}""").andExpect { status { isUnauthorized() } }
 

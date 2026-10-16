@@ -19,6 +19,10 @@ dearby:
     client-ids: ${APPLE_CLIENT_IDS:} # 쉼표로 구분: iOS 번들 ID, Services ID
     services-id: ${APPLE_SERVICES_ID:}
     callback-url: ${APPLE_CALLBACK_URL:}
+    # 계정 삭제 때 애플 토큰 폐기(.p8 키). 없으면 토큰을 받지도 폐기하지도 않는다
+    team-id: ${APPLE_TEAM_ID:}
+    key-id: ${APPLE_KEY_ID:}
+    private-key-path: ${APPLE_PRIVATE_KEY_PATH:}
   jwt:
     key-path: ${JWT_KEY_PATH}
     issuer: ${JWT_ISSUER}

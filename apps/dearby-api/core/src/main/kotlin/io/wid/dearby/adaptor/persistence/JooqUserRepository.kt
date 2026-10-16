@@ -1,13 +1,15 @@
 package io.wid.dearby.adaptor.persistence
 
-import io.wid.dearby.adaptor.persistence.jooq.tables.references.USERS
-import io.wid.dearby.adaptor.persistence.jooq.tables.references.USER_ROLES
+import io.wid.dearby.adaptor.persistence.jooq.tables.references.*
 import io.wid.dearby.application.user.UserRepository
 import io.wid.dearby.domain.UserId
 import io.wid.dearby.domain.user.User
 import io.wid.dearby.domain.user.UserRole
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
+import org.springframework.transaction.annotation.Transactional
+import java.nio.ByteBuffer
+import java.util.*
 
 @Repository
 class JooqUserRepository(private val dsl: DSLContext) : UserRepository {
@@ -19,6 +21,24 @@ class JooqUserRepository(private val dsl: DSLContext) : UserRepository {
             .where(USER_ROLES.USER_ID.eq(id))
             .fetchInto(UserRole::class.java)
         return User(id, roles)
+    }
+
+    // users를 지우면 user_roles·contacts가, 부모 행을 지우면 명함·이력·멤버·스태프의 하위 행이 FK cascade로 함께 지워진다.
+    // 나머지는 논리키라 직접 지운다. 패스키는 user handle(UUID 16바이트) 또는 2026-10-15 이전 가입분의 name(UUID 문자열)으로 찾는다
+    @Transactional
+    override fun delete(id: UserId) {
+        dsl.deleteFrom(BUSINESS_CARDS).where(BUSINESS_CARDS.USER_ID.eq(id)).execute()
+        dsl.deleteFrom(PROFILE_ACTIVITY_HISTORIES).where(PROFILE_ACTIVITY_HISTORIES.USER_ID.eq(id)).execute()
+        dsl.deleteFrom(ACTIVITY_PARTICIPATIONS).where(ACTIVITY_PARTICIPATIONS.USER_ID.eq(id)).execute()
+        dsl.deleteFrom(ORGANIZATION_MEMBERS).where(ORGANIZATION_MEMBERS.USER_ID.eq(id)).execute()
+        dsl.deleteFrom(PROGRAM_STAFF).where(PROGRAM_STAFF.USER_ID.eq(id)).execute()
+        dsl.deleteFrom(PROFILES).where(PROFILES.USER_ID.eq(id)).execute()
+        dsl.deleteFrom(REFRESH_TOKENS).where(REFRESH_TOKENS.USER_ID.eq(id)).execute()
+        dsl.deleteFrom(USER_IDENTITIES).where(USER_IDENTITIES.USER_ID.eq(id)).execute()
+        val handle = Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(ByteBuffer.allocate(16).putLong(id.mostSignificantBits).putLong(id.leastSignificantBits).array())
+        dsl.deleteFrom(USER_ENTITIES).where(USER_ENTITIES.ID.eq(handle).or(USER_ENTITIES.NAME.eq(id.toString()))).execute()
+        dsl.deleteFrom(USERS).where(USERS.ID.eq(id)).execute()
     }
 
     override fun create(user: User) {

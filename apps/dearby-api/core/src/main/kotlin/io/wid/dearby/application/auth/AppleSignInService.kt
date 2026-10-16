@@ -24,6 +24,7 @@ class AppleSignInService(
     private val apple: AppleIdProvider,
     private val states: AppleSignInStateRepository,
     private val identities: UserIdentityRepository,
+    private val appleTokens: AppleTokenClient,
     private val users: UserRepository,
     private val tokens: TokenService,
     private val transaction: TransactionTemplate,
@@ -37,11 +38,12 @@ class AppleSignInService(
         return states.issue(AppleSignInStep.NONCE, AppleSignInState(nonce = nonce)) to nonce
     }
 
-    fun signIn(challengeId: UUID, identityToken: String, displayName: String?): AppleSignInResult {
+    // authorizationCode는 iOS가 받은 값. 애플 토큰으로 바꿔 두면 계정 삭제 때 폐기할 수 있다
+    fun signIn(challengeId: UUID, identityToken: String, displayName: String?, authorizationCode: String? = null): AppleSignInResult {
         requireConfigured()
         val nonce = states.consume(challengeId, AppleSignInStep.NONCE)?.takeIf { it.verifierHash == null }?.nonce
             ?: throw AuthenticationFailedException("challenge가 없거나 만료되었습니다")
-        return resolve(apple.verify(identityToken, nonce).copy(displayName = displayName(displayName)))
+        return resolve(withToken(apple.verify(identityToken, nonce).copy(displayName = displayName(displayName)), authorizationCode))
     }
 
     // 웹 방식(Android): 앱이 만든 verifier의 SHA-256(base64url)을 받아 두고 애플 인가 주소를 준다. 콜백 결과는 그 verifier를 가진 앱만 바꿔 갈 수 있다
@@ -55,7 +57,7 @@ class AppleSignInService(
 
     // 애플이 form_post로 돌려준 결과를 확인하고 앱으로 돌려보낼 주소를 만든다. 성공이면 1회용 code, 아니면 error(cancelled·failed).
     // 토큰은 주소에 싣지 않는다. 브라우저가 보낸 요청이라 실패도 예외 대신 앱 주소로 알린다
-    fun completeWeb(state: String?, identityToken: String?, displayName: String?, error: String?): URI {
+    fun completeWeb(state: String?, identityToken: String?, displayName: String?, error: String?, authorizationCode: String? = null): URI {
         if (error != null || state == null || identityToken == null) {
             return apple.appRedirect("error", if (error == "user_cancelled_authorize") "cancelled" else "failed")
         }
@@ -63,7 +65,7 @@ class AppleSignInService(
             requireConfigured()
             val started = states.consume(UUID.fromString(state), AppleSignInStep.NONCE)?.takeIf { it.verifierHash != null }
                 ?: throw AuthenticationFailedException("로그인 요청이 없거나 만료되었습니다")
-            val identity = apple.verify(identityToken, started.nonce!!).copy(displayName = displayName(displayName))
+            val identity = withToken(apple.verify(identityToken, started.nonce!!).copy(displayName = displayName(displayName)), authorizationCode)
             val code = states.issue(AppleSignInStep.CALLBACK, AppleSignInState(verifierHash = started.verifierHash, identity = identity))
             apple.appRedirect("code", code.toString())
         } catch (e: AuthenticationFailedException) {
@@ -94,7 +96,7 @@ class AppleSignInService(
             transaction.execute {
                 val user = User(UUID.randomUUID(), listOf(UserRole.USER))
                 users.create(user)
-                identities.create(PROVIDER, identity.subject, user.id, identity.email, identity.displayName)
+                identities.create(PROVIDER, identity.subject, user.id, identity.email, identity.displayName, identity.clientId, identity.refreshToken)
                 user
             }!!
         } catch (_: DuplicateKeyException) {
@@ -112,7 +114,7 @@ class AppleSignInService(
         if (identities.existsForUser(PROVIDER, userId)) throw InvalidInputException("이 계정에는 이미 다른 애플 계정이 연결되어 있습니다")
         users.findById(userId) ?: throw AuthenticationFailedException("계정을 찾을 수 없습니다")
         try {
-            identities.create(PROVIDER, identity.subject, userId, identity.email, identity.displayName)
+            identities.create(PROVIDER, identity.subject, userId, identity.email, identity.displayName, identity.clientId, identity.refreshToken)
         } catch (_: DuplicateKeyException) {
             if (identities.findUserId(PROVIDER, identity.subject) != userId) {
                 throw InvalidInputException("이 애플 계정은 다른 Dearby 계정에 연결되어 있습니다")
@@ -120,9 +122,20 @@ class AppleSignInService(
         }
     }
 
-    private fun resolve(identity: AppleIdentity): AppleSignInResult =
-        existingUser(identity)?.let { AppleSignInResult.SignedIn(tokens.issue(it)) }
-            ?: AppleSignInResult.NeedsAccount(states.issue(AppleSignInStep.LINK, AppleSignInState(identity = identity)), identity.email)
+    private fun resolve(identity: AppleIdentity): AppleSignInResult {
+        val user = existingUser(identity)
+            ?: return AppleSignInResult.NeedsAccount(states.issue(AppleSignInStep.LINK, AppleSignInState(identity = identity)), identity.email)
+        if (identity.clientId != null && identity.refreshToken != null) {
+            identities.updateToken(PROVIDER, identity.subject, identity.clientId, identity.refreshToken)
+        }
+        return AppleSignInResult.SignedIn(tokens.issue(user))
+    }
+
+    private fun withToken(identity: AppleIdentity, authorizationCode: String?): AppleIdentity {
+        val code = authorizationCode?.takeIf { it.isNotBlank() } ?: return identity
+        val clientId = identity.clientId ?: return identity
+        return identity.copy(refreshToken = appleTokens.refreshToken(code, clientId))
+    }
 
     private fun existingUser(identity: AppleIdentity): User? =
         identities.findUserId(PROVIDER, identity.subject)?.let(users::findById)

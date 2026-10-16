@@ -106,6 +106,16 @@ open class UserIdentities(
      */
     val CREATED_AT: TableField<UserIdentitiesRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "")
 
+    /**
+     * The column <code>public.user_identities.client_id</code>.
+     */
+    val CLIENT_ID: TableField<UserIdentitiesRecord, String?> = createField(DSL.name("client_id"), SQLDataType.VARCHAR(255), this, "")
+
+    /**
+     * The column <code>public.user_identities.refresh_token</code>.
+     */
+    val REFRESH_TOKEN: TableField<UserIdentitiesRecord, String?> = createField(DSL.name("refresh_token"), SQLDataType.VARCHAR(1000), this, "")
+
     private constructor(alias: Name, aliased: Table<UserIdentitiesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<UserIdentitiesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<UserIdentitiesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
