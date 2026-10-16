@@ -11,6 +11,8 @@ struct QRPage: View {
     @Binding var opened: URL?
     @State private var mode = 0
     @State private var editor = false
+    /// 명함 고치기: a new publication prefilled from this card's template (cards never change after publishing).
+    @State private var editingCard: PublishedCard?
     @State private var camera: QRCameraView.Access?
     @State private var scanRound = 0
     @State private var photo: PhotosPickerItem?
@@ -33,6 +35,9 @@ struct QRPage: View {
             }
             .sheet(isPresented: $editor, onDismiss: { Task { await share.load() } }) {
                 NavigationStack { CardComposerPage(account: share.account) }
+            }
+            .sheet(item: $editingCard, onDismiss: { Task { await share.load() } }) { card in
+                NavigationStack { CardComposerPage(account: share.account, prefill: card) }
             }
             .sheet(item: $received, onDismiss: { scanRound += 1 }) { link in
                 NavigationStack { ReceivedSharePage(model: ReceivedShareModel(link: link, account: share.account)) }
@@ -58,6 +63,11 @@ struct QRPage: View {
                     }
                 }
             }.scrollIndicators(.hidden)
+            if let card {
+                Button { editingCard = card } label: {
+                    Label("이 명함 고치기", systemImage: "pencil").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal).frame(minHeight: 44)
+                }.accessibilityHint("이 명함의 꾸미기를 가져와 새 명함으로 발행해요")
+            }
         }
     }
     private var newCard: some View {

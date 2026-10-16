@@ -7,12 +7,13 @@ Repository/API/인증/영구 저장/OS 개인정보 접근 계층 없이 fixture
 - `pages/home`: 탭/NavigationStack과 탐색 상세에서 탭 숨김을 조합하는 HomePage.
 - `pages/intro`: 첫 실행 소개 IntroPage. 패스키 로그인은 `widgets/identity`의 SignInSheet를 띄운다. 애플 로그인(플래그 켠 빌드)은 여기서 바로 시작하고, 처음 보는 애플 계정(202)이면 SignInSheet를 열어 새 계정/패스키 계정 연결을 고르게 한다.
 - `widgets/activity`: 활동 목록(서버 검색·페이지)·상세·이미지·일정표와 메모리 신청 상태.
-- `widgets/identity`: 프로필·QR·받은 명함·명함 편집/선택/상세 화면과 IdentityViewModel.
+- `widgets/identity`: 프로필(데이터 입력·변경 이력·단계별 이력 입력·인증자료)·QR·받은 명함·명함 제작(렌더링 편집기 `TemplateEditor`, 템플릿 `TemplateDocument`) 화면과 모델.
 - `features/application`: 로컬 신청 안내/완료 표시, 외부 HTTPS Link.
 - `features/calendar`: 고정 바쁜 시간 비교, 선택 단계/결과 시트/시간 격자.
 - `entities/activity`: 활동 값 모델·페이지와 `GET /v1/activities` 클라이언트.
 - `entities/identity`: 순수 명함/연락처/이력 fixture 및 CardView/CardDeck/HistoryTimeline/ContactIcons.
-- `shared/ui`: DearbyStyle 색상, DearbyLogo, 버튼(채움/테두리, Apple 로그인 버튼 DearbyAppleButton), 배지, 아바타,
+- `shared/lib`: 검색어 비교, 마크다운 부분집합 파서 `MarkdownDocument`.
+- `shared/ui`: DearbyStyle 색상, DearbyLogo, 마크다운 본문 `DearbyMarkdownText`, 버튼(채움/테두리, Apple 로그인 버튼 DearbyAppleButton), 배지, 아바타,
   정보행, 세그먼트, 시트 헤더. 도메인을 import하지 않으며 실제 재사용 요소만 둡니다.
 
 프로필과 명함은 앱 수명 동안만 존재합니다. 저장/공개 선택/프리셋/보낸 표시도 메모리뿐입니다.

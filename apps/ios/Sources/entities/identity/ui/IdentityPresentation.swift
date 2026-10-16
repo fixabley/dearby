@@ -37,18 +37,33 @@ struct HistoryTimeline: View {
                     if compact && !dynamicTypeSize.isAccessibilitySize {
                         Text(item.startDate.prefix(7).replacingOccurrences(of: "-", with: "."))
                             .font(.caption).foregroundStyle(DearbyStyle.quiet).frame(width: 64, alignment: .leading)
-                        Text(item.title).font(.subheadline.weight(.semibold))
-                            .padding(.bottom, 10).frame(maxWidth: .infinity, alignment: .leading)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(item.title).font(.subheadline.weight(.semibold))
+                            badge(item)
+                        }.padding(.bottom, 10).frame(maxWidth: .infinity, alignment: .leading)
                     } else {
                         VStack(alignment: .leading, spacing: 5) {
                             Text(item.startDate + (item.endDate.map { " – " + $0 } ?? ""))
                                 .font(.caption).foregroundStyle(DearbyStyle.quiet)
                             Text(item.title).font(.headline)
-                            Text(item.role).font(.subheadline).foregroundStyle(DearbyStyle.quiet)
+                            HStack(spacing: 8) {
+                                Text(item.role).font(.subheadline).foregroundStyle(DearbyStyle.quiet)
+                                badge(item)
+                            }
                         }.padding(.bottom, 22).frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }.fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+    /// 미확인: no admin-verified evidence yet (contract "이력"). Verified entries get a small check.
+    @ViewBuilder private func badge(_ item: HistoryModel) -> some View {
+        if item.verified {
+            Label("확인됨", systemImage: "checkmark.seal").font(.caption2.weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+        } else {
+            Text("미확인").font(.caption2.weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
+                .padding(.horizontal, 7).padding(.vertical, 2).background(DearbyStyle.muted, in: Capsule())
+                .accessibilityLabel("미확인, 인증자료가 확인되지 않은 이력")
         }
     }
 }
