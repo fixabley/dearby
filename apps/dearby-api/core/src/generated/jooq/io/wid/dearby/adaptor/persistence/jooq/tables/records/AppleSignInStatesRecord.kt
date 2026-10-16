@@ -51,6 +51,14 @@ open class AppleSignInStatesRecord() : UpdatableRecordImpl<AppleSignInStatesReco
         set(value): Unit = set(7, value)
         get(): OffsetDateTime? = get(7) as OffsetDateTime?
 
+    open var clientId: String?
+        set(value): Unit = set(8, value)
+        get(): String? = get(8) as String?
+
+    open var refreshToken: String?
+        set(value): Unit = set(9, value)
+        get(): String? = get(9) as String?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -60,7 +68,7 @@ open class AppleSignInStatesRecord() : UpdatableRecordImpl<AppleSignInStatesReco
     /**
      * Create a detached, initialised AppleSignInStatesRecord
      */
-    constructor(id: UUID? = null, step: String? = null, nonce: String? = null, verifierHash: String? = null, subject: String? = null, email: String? = null, displayName: String? = null, expiresAt: OffsetDateTime? = null): this() {
+    constructor(id: UUID? = null, step: String? = null, nonce: String? = null, verifierHash: String? = null, subject: String? = null, email: String? = null, displayName: String? = null, expiresAt: OffsetDateTime? = null, clientId: String? = null, refreshToken: String? = null): this() {
         this.id = id
         this.step = step
         this.nonce = nonce
@@ -69,6 +77,8 @@ open class AppleSignInStatesRecord() : UpdatableRecordImpl<AppleSignInStatesReco
         this.email = email
         this.displayName = displayName
         this.expiresAt = expiresAt
+        this.clientId = clientId
+        this.refreshToken = refreshToken
         resetTouchedOnNotNull()
     }
 }

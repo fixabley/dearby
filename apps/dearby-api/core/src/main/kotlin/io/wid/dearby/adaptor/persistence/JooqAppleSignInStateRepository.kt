@@ -28,6 +28,8 @@ class JooqAppleSignInStateRepository(private val dsl: DSLContext) : AppleSignInS
             .set(APPLE_SIGN_IN_STATES.SUBJECT, state.identity?.subject)
             .set(APPLE_SIGN_IN_STATES.EMAIL, state.identity?.email)
             .set(APPLE_SIGN_IN_STATES.DISPLAY_NAME, state.identity?.displayName)
+            .set(APPLE_SIGN_IN_STATES.CLIENT_ID, state.identity?.clientId)
+            .set(APPLE_SIGN_IN_STATES.REFRESH_TOKEN, state.identity?.refreshToken)
             .set(APPLE_SIGN_IN_STATES.EXPIRES_AT, now.plus(TTL))
             .execute()
         return id
@@ -47,7 +49,7 @@ class JooqAppleSignInStateRepository(private val dsl: DSLContext) : AppleSignInS
                 AppleSignInState(
                     nonce = it.nonce,
                     verifierHash = it.verifierHash,
-                    identity = it.subject?.let { subject -> AppleIdentity(subject, it.email, it.displayName) },
+                    identity = it.subject?.let { subject -> AppleIdentity(subject, it.email, it.displayName, it.clientId, it.refreshToken) },
                 )
             }
 

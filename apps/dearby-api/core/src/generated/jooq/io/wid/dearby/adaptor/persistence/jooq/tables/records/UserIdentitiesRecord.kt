@@ -43,6 +43,14 @@ open class UserIdentitiesRecord() : UpdatableRecordImpl<UserIdentitiesRecord>(Us
         set(value): Unit = set(5, value)
         get(): OffsetDateTime? = get(5) as OffsetDateTime?
 
+    open var clientId: String?
+        set(value): Unit = set(6, value)
+        get(): String? = get(6) as String?
+
+    open var refreshToken: String?
+        set(value): Unit = set(7, value)
+        get(): String? = get(7) as String?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -52,13 +60,15 @@ open class UserIdentitiesRecord() : UpdatableRecordImpl<UserIdentitiesRecord>(Us
     /**
      * Create a detached, initialised UserIdentitiesRecord
      */
-    constructor(provider: String? = null, subject: String? = null, userId: UUID? = null, email: String? = null, displayName: String? = null, createdAt: OffsetDateTime? = null): this() {
+    constructor(provider: String? = null, subject: String? = null, userId: UUID? = null, email: String? = null, displayName: String? = null, createdAt: OffsetDateTime? = null, clientId: String? = null, refreshToken: String? = null): this() {
         this.provider = provider
         this.subject = subject
         this.userId = userId
         this.email = email
         this.displayName = displayName
         this.createdAt = createdAt
+        this.clientId = clientId
+        this.refreshToken = refreshToken
         resetTouchedOnNotNull()
     }
 }

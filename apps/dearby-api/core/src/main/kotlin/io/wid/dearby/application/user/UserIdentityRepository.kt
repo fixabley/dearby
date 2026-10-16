@@ -9,6 +9,11 @@ interface UserIdentityRepository {
 
     fun existsForUser(provider: String, userId: UserId): Boolean
 
+    fun findAllByUser(userId: UserId): List<StoredIdentity>
+
     // (provider, subject)가 이미 있으면 DuplicateKeyException
-    fun create(provider: String, subject: String, userId: UserId, email: String?, displayName: String?)
+    fun create(provider: String, subject: String, userId: UserId, email: String?, displayName: String?, clientId: String?, refreshToken: String?)
+
+    // 다시 로그인하며 새로 받은 애플 토큰으로 바꾼다
+    fun updateToken(provider: String, subject: String, clientId: String, refreshToken: String)
 }

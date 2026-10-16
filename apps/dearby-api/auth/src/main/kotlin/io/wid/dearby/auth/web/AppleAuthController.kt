@@ -22,7 +22,7 @@ class AppleAuthController(private val apple: AppleSignInService) {
     // 200 TokenPair(연결된 계정) 또는 202 AppleNeedsAccountResponse(처음 보는 계정)
     @PostMapping
     fun signIn(@RequestBody request: AppleSignInRequest): ResponseEntity<Any> =
-        respond(apple.signIn(request.challengeId, request.identityToken, request.displayName))
+        respond(apple.signIn(request.challengeId, request.identityToken, request.displayName, request.authorizationCode))
 
     @PostMapping("/register")
     @ResponseStatus(HttpStatus.CREATED)
@@ -37,10 +37,11 @@ class AppleAuthController(private val apple: AppleSignInService) {
     fun callback(
         @RequestParam(required = false) state: String?,
         @RequestParam("id_token", required = false) idToken: String?,
+        @RequestParam(required = false) code: String?,
         @RequestParam(required = false) user: String?,
         @RequestParam(required = false) error: String?,
     ): ResponseEntity<Void> =
-        ResponseEntity.status(HttpStatus.SEE_OTHER).location(apple.completeWeb(state, idToken, nameFrom(user), error)).build()
+        ResponseEntity.status(HttpStatus.SEE_OTHER).location(apple.completeWeb(state, idToken, nameFrom(user), error, code)).build()
 
     @PostMapping("/web/exchange")
     fun exchangeWeb(@RequestBody request: AppleWebExchangeRequest): ResponseEntity<Any> =

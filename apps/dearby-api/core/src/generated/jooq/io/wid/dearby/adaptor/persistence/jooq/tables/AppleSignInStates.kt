@@ -116,6 +116,16 @@ open class AppleSignInStates(
      */
     val EXPIRES_AT: TableField<AppleSignInStatesRecord, OffsetDateTime?> = createField(DSL.name("expires_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "")
 
+    /**
+     * The column <code>public.apple_sign_in_states.client_id</code>.
+     */
+    val CLIENT_ID: TableField<AppleSignInStatesRecord, String?> = createField(DSL.name("client_id"), SQLDataType.VARCHAR(255), this, "")
+
+    /**
+     * The column <code>public.apple_sign_in_states.refresh_token</code>.
+     */
+    val REFRESH_TOKEN: TableField<AppleSignInStatesRecord, String?> = createField(DSL.name("refresh_token"), SQLDataType.VARCHAR(1000), this, "")
+
     private constructor(alias: Name, aliased: Table<AppleSignInStatesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<AppleSignInStatesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<AppleSignInStatesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
