@@ -35,3 +35,9 @@ Final targeted rerun after QR tile minimum-height adjustment: default QR flow1 p
 - 임시 JVM 확인(저장소 밖, 남기지 않음): `AppleVerifier.create()` 43자, `hash`가 RFC 7636 부록 B 값(`E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM`)과 일치.
 - 같은 날 iOS에 맞춰 수정: 애플 연결 실패 시 패스키 토큰을 저장하지 않고 logout 시도, 400·401은 선택 화면을 닫고 안내. 다시 check-fsd·`lintDebug assembleDebug` 통과.
 - 실행하지 않음: 단위 테스트 소스가 없어(2026-10-06 사용자 요청으로 삭제) 새로 만들지 않았다. 큰 글씨 테스트 미실행. 에뮬레이터·기기에서 Custom Tab, `dearby://auth/apple` 전달·`singleTask` 동작, 프로세스 종료 뒤 verifier 복원, 실제 애플 로그인(서버 Services ID 필요)은 확인하지 못했다.
+
+## 2026-10-16 계정 삭제
+
+- 실행: `python3 scripts/check-fsd.py --self-test` 25 cases, 63 Kotlin files passed.
+- 실행: `./gradlew lintDebug assembleDebug` BUILD SUCCESSFUL. `lintDebug --rerun-tasks`로 다시 돌려 lint 오류 0, 경고 12개는 기존 의존성·Gradle 버전·미사용 리소스 알림뿐이다.
+- 실행하지 않음: 이 checkout에는 단위·기기 테스트 폴더가 없어 새 테스트를 만들거나 돌리지 않았다. 큰 글씨 테스트 미실행. 에뮬레이터 화면 흐름과 운영 서버 `DELETE /v1/me` 호출은 확인하지 않았다(운영 계정을 지우게 되므로).

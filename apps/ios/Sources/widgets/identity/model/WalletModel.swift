@@ -11,7 +11,11 @@ import Observation
     init(account: AccountViewModel) { self.account = account }
 
     func load() async {
-        guard account.session != nil else { phase = .signedOut; return }
+        guard account.session != nil else {
+            wallet = Wallet(items: [], shares: [])  // signed out or deleted: drop the previous account's cards
+            phase = .signedOut
+            return
+        }
         if wallet.items.isEmpty { phase = .loading }
         do {
             wallet = try await account.authorized { [client = account.client] in try await client.wallet($0) }

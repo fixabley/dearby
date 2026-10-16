@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/** Account deletion in flight, and the one-time result to show. */
+data class DeletionState(val deleting: Boolean = false, val notice: String? = null)
 /** Editing session: the form, the messages once save was tried, and the last save failure. */
 data class ProfileEditState(val form: ProfileFormState, val errors: ProfileErrors? = null, val saving: Boolean = false, val error: String? = null)
 
@@ -34,12 +36,14 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
     val state = mutable.asStateFlow()
     private val editing = MutableStateFlow<ProfileEditState?>(null)
     val edit = editing.asStateFlow()
+    private val deletionState = MutableStateFlow(DeletionState())
+    val deletion = deletionState.asStateFlow()
     private var saved: AccountProfile? = null
     private var phoneId = ""
     private var emailId = ""
 
     fun load() = viewModelScope.launch {
-        if (account.state.value.phase != AccountPhase.SIGNED_IN) { mutable.value = ProfileViewState(ProfilePhase.SIGNED_OUT); return@launch }
+        if (account.state.value.phase != AccountPhase.SIGNED_IN) { saved = null; mutable.value = ProfileViewState(ProfilePhase.SIGNED_OUT); return@launch }
         if (mutable.value.profile == null) mutable.update { it.copy(phase = ProfilePhase.LOADING) }
         mutable.value = try {
             account.authorized { account.client.profile(it) }.also { saved = it }.let { ProfileViewState(ProfilePhase.LOADED, it.toState()) }
@@ -86,6 +90,23 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
             }
         }
     }
+
+    /** "계정 삭제" after the confirmation dialog; taps while a request runs are ignored. Signing out reloads this tab. */
+    fun deleteAccount() {
+        if (deletionState.value.deleting) return
+        deletionState.value = DeletionState(deleting = true)
+        viewModelScope.launch {
+            val notice = try {
+                account.deleteAccount()
+                "계정을 삭제했어요. 기기에 남은 패스키는 비밀번호 관리자에서 지울 수 있어요."
+            } catch (e: AccountException) {
+                // UNAUTHORIZED: the session could not be refreshed and is already forgotten.
+                if (e.error == AccountError.UNAUTHORIZED) "로그인이 만료됐어요. 다시 로그인해 주세요." else "계정을 삭제하지 못했어요. 잠시 후 다시 시도해 주세요."
+            }
+            deletionState.value = DeletionState(notice = notice)
+        }
+    }
+    fun dismissDeletionNotice() = deletionState.update { it.copy(notice = null) }
 
     private fun errors(form: ProfileFormState) = ProfileErrors(
         name = "이름을 입력해 주세요.".takeIf { form.name.isBlank() },

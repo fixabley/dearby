@@ -19,7 +19,12 @@ import Observation
     var card: PublishedCard? { cards.first { $0.id == selectedCardID } }
 
     func load() async {
-        guard account.session != nil else { phase = .signedOut; return }
+        guard account.session != nil else {
+            // Signed out or deleted: drop the previous account's cards and share links.
+            cards = []; selectedCardID = nil; activityIDs = []; links = [:]
+            phase = .signedOut
+            return
+        }
         phase = .loading
         do {
             cards = try await account.authorized { [client = account.client] in try await client.cards($0) }

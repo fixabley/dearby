@@ -7,6 +7,8 @@ struct ProfilePage: View {
     @State private var form: ProfileForm?
     @State private var composing = false
     @State private var signingIn = false
+    @State private var confirmingDeletion = false
+    @State private var deletionNotice: String?
     @Environment(\.openURL) private var openURL
     var body: some View {
         ScrollView {
@@ -25,6 +27,7 @@ struct ProfilePage: View {
                 case .failed:
                     Text("프로필을 불러오지 못했어요").font(.dearby(.headline))
                     Button("다시 시도") { Task { await state.load() } }.buttonStyle(DearbyButtonStyle(outlined: true))
+                    deleteButton
                 case .loaded(let profile):
                     HStack {
                         Text("내 프로필").font(.dearby(.title2).bold()).accessibilityAddTraits(.isHeader)
@@ -44,6 +47,8 @@ struct ProfilePage: View {
                         HistoryModel(id: $0.id, title: $0.title, role: $0.role, startDate: String($0.startDate.prefix(7)).replacingOccurrences(of: "-", with: "."),
                                      endDate: $0.endDate.map { String($0.prefix(7)).replacingOccurrences(of: "-", with: ".") } ?? "진행 중")
                     }, compact: true)
+                    Divider()
+                    deleteButton
                 }
             }.padding(20)
         }
@@ -54,6 +59,30 @@ struct ProfilePage: View {
             NavigationStack { CardComposerPage(account: state.account) }
         }
         .sheet(isPresented: $signingIn) { NavigationStack { SignInSheet(account: state.account) { Task { await state.load() } } } }
+        // On the ScrollView, not in the switch: after a deletion the signed-in branch is gone but the notice must stay.
+        .alert("계정을 삭제할까요?", isPresented: $confirmingDeletion) {
+            Button("삭제", role: .destructive) { deleteAccount() }
+            Button("취소", role: .cancel) {}
+        } message: { Text("명함과 받은 명함 등 모든 정보가 지워지고 되돌릴 수 없어요.") }
+        .alert(deletionNotice ?? "", isPresented: Binding(get: { deletionNotice != nil }, set: { if !$0 { deletionNotice = nil } })) {
+            Button("확인", role: .cancel) {}
+        }
+    }
+    /// App Store 5.1.1(v): shown whenever signed in, whether or not Apple sign-in is enabled.
+    private var deleteButton: some View {
+        Button("계정 삭제", role: .destructive) { confirmingDeletion = true }
+            .font(.dearby(.subheadline)).frame(maxWidth: .infinity, minHeight: 44)
+            .disabled(state.account.deleting).accessibilityIdentifier("profile-delete-account")
+    }
+    private func deleteAccount() {
+        Task {
+            switch await state.account.deleteAccount() {
+            case .deleted: deletionNotice = "계정을 삭제했어요. 기기에 남은 패스키는 설정 > 암호에서 지울 수 있어요."
+            case .signedOut: deletionNotice = "로그인이 만료됐어요. 다시 로그인해 주세요."
+            case .failed: deletionNotice = "계정을 삭제하지 못했어요. 잠시 후 다시 시도해 주세요."; return
+            }
+            await state.load()
+        }
     }
 }
 

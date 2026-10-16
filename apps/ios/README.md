@@ -58,10 +58,19 @@
 
 - 코드: `entities/account/api/AppleSignIn.swift`(OS 요청, scope 이름·이메일, 서버 nonce를 해시하지 않고 그대로 넣음), `AccountClient`(`/v1/auth/apple/nonce`·`/auth/apple`·`/auth/apple/register`·`/me/identities/apple`), `AccountViewModel`, `SignInSheet`·`IntroPage`, 버튼 `shared/ui/DearbyAppleButton.swift`.
 - 버튼: Apple의 `ASAuthorizationAppleIDButton`("Apple로 계속하기", 밝은 화면 검정·어두운 화면 흰색). SwiftUI `SignInWithAppleButton`은 요청을 동기로 만들어 서버 nonce를 먼저 받을 수 없어서, 누르면 nonce를 받은 뒤 `AuthorizationController`로 요청한다(패스키와 같은 방식).
-- 흐름: 이미 연결된 애플 계정(200)은 바로 로그인한다. 처음 보는 계정(202)은 로그인 시트에서 "새 계정으로 시작"(`register`)과 "기존 패스키 계정에 연결"(패스키 로그인 → `/me/identities/apple`)을 고른다. 연결이 실패하면 패스키 토큰은 저장하지 않고 로그아웃한다(연결 안 된 채 로그인되지 않게). 연결 단계의 401은 시간 초과로 보고 처음부터 다시 하게 한다. 400(패스키 계정에 이미 다른 애플 계정이 있거나 이 애플 계정이 방금 다른 계정에 연결됨)은 "이미 다른 계정과 연결돼 있어서 연결하지 못했어요."다. 서버는 두 경우 모두 linkToken을 써 버리므로 선택 화면을 닫는다. 사용자 취소는 문구가 없고, 503·연결 실패는 "지금은 애플 로그인을 쓸 수 없어요."다. 이름은 첫 인가 때만 와서 그때만 `displayName`으로 보낸다. 자격 철회 확인(`getCredentialState`)은 아직 없다.
+- 흐름: 이미 연결된 애플 계정(200)은 바로 로그인한다. 처음 보는 계정(202)은 로그인 시트에서 "새 계정으로 시작"(`register`)과 "기존 패스키 계정에 연결"(패스키 로그인 → `/me/identities/apple`)을 고른다. 연결이 실패하면 패스키 토큰은 저장하지 않고 로그아웃한다(연결 안 된 채 로그인되지 않게). 연결 단계의 401은 시간 초과로 보고 처음부터 다시 하게 한다. 400(패스키 계정에 이미 다른 애플 계정이 있거나 이 애플 계정이 방금 다른 계정에 연결됨)은 "이미 다른 계정과 연결돼 있어서 연결하지 못했어요."다. 서버는 두 경우 모두 linkToken을 써 버리므로 선택 화면을 닫는다. 사용자 취소는 문구가 없고, 503·연결 실패는 "지금은 애플 로그인을 쓸 수 없어요."다. 이름은 첫 인가 때만 와서 그때만 `displayName`으로 보낸다. credential의 `authorizationCode`(UTF-8 문자열, 없으면 생략)도 함께 보내 서버가 계정 삭제 때 애플 토큰을 폐기할 수 있게 한다. 자격 철회 확인(`getCredentialState`)은 아직 없다.
 - **켜기 전 상태**: 두 Info.plist(`Info.plist`, `Info-Debug.plist`)의 `DearbyAppleSignInEnabled`가 `false`라 버튼이 보이지 않고 애플 로그인 코드는 실행되지 않는다. App Store provisioning profile을 Sign in with Apple 포함으로 다시 만들기 전에 entitlement를 넣으면 TestFlight 서명이 깨지기 때문이다.
 - **켜는 방법**(조율 세션, 한 커밋): 앱 ID(`io.wid.dearby`, Debug `com.dearby.dearby`)에 Sign in with Apple 기능을 켜고 profile을 다시 만든 뒤, `Dearby.entitlements`·`Dearby-Debug.entitlements`에 `com.apple.developer.applesignin` = `["Default"]`를 넣고 두 Info.plist의 `DearbyAppleSignInEnabled`를 `true`로 바꾼다.
 - 실제 애플 로그인은 entitlement가 있는 서명 빌드와 운영 API(`APPLE_CLIENT_IDS` 설정)에서만 확인할 수 있다. entitlement 없이 요청하면 OS가 실패로 돌려준다.
+
+## 계정 삭제 (2026-10-16)
+
+계약 `shared/contracts/native-v1.md` "계정 삭제"(App Store 5.1.1(v))를 따른다. 애플 로그인 플래그와 관계없이 보인다.
+
+- 위치: 내 프로필 탭 맨 아래 "계정 삭제"(로그인 상태, 프로필을 불러오지 못한 화면에도). 앱에는 아직 로그아웃 버튼이 없다.
+- 확인 창("계정을 삭제할까요?", 삭제/취소) 뒤 `DELETE /v1/me`. 다른 로그인 호출처럼 401이면 refresh를 한 번 하고, refresh가 거절되면 로그아웃 상태로 돌아가 "로그인이 만료됐어요"를 보인다. 요청 중에는 버튼을 막아 한 번에 하나만 보낸다.
+- 204: Keychain 토큰을 지우고(서버가 refresh token을 이미 지워 `/auth/logout`은 부르지 않음) 로그아웃 상태로 돌아가 "계정을 삭제했어요. 기기에 남은 패스키는 설정 > 암호에서 지울 수 있어요."를 한 번 보인다. 받은 명함·QR 탭의 메모리 데이터는 로그아웃 상태로 다시 불러올 때 비운다.
+- 실패: "계정을 삭제하지 못했어요. 잠시 후 다시 시도해 주세요."를 보이고 로그인을 유지한다.
 
 ## 검증
 

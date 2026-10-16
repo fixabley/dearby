@@ -93,6 +93,25 @@ import SwiftUI
         if let session { try? await client.logout(session) }
         forget()
     }
+    enum DeletionResult: Equatable { case deleted, signedOut, failed }
+    /// True while `deleteAccount` waits for the server; the delete button stays disabled.
+    private(set) var deleting = false
+    /// "계정 삭제" (contract "계정 삭제"): one request at a time. 204 forgets the tokens without `/auth/logout`, since
+    /// the server already dropped the refresh token. A refused refresh signs out (`authorized`); any other failure keeps the session.
+    func deleteAccount() async -> DeletionResult {
+        guard !deleting else { return .failed }
+        deleting = true
+        defer { deleting = false }
+        do {
+            try await authorized { [client] in try await client.deleteAccount($0) }
+            forget()
+            return .deleted
+        } catch AccountError.unauthorized {
+            return .signedOut
+        } catch {
+            return .failed
+        }
+    }
     /// Runs an owner call. A 401 refreshes the tokens once and retries; if that is refused, the tokens are
     /// forgotten and the screens fall back to signing in.
     func authorized<Value: Sendable>(_ call: @Sendable (TokenPair) async throws -> Value) async throws -> Value {
