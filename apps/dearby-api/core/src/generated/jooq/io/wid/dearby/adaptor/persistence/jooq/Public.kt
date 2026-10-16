@@ -8,6 +8,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.Activities
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
+import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardActivityHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
@@ -30,6 +31,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Users
 import io.wid.dearby.adaptor.persistence.jooq.tables.WebauthnChallenges
@@ -74,6 +76,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.activity_roles</code>.
      */
     val ACTIVITY_ROLES: ActivityRoles get() = ActivityRoles.ACTIVITY_ROLES
+
+    /**
+     * The table <code>public.apple_sign_in_states</code>.
+     */
+    val APPLE_SIGN_IN_STATES: AppleSignInStates get() = AppleSignInStates.APPLE_SIGN_IN_STATES
 
     /**
      * The table <code>public.business_card_activity_histories</code>.
@@ -186,6 +193,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val USER_ENTITIES: UserEntities get() = UserEntities.USER_ENTITIES
 
     /**
+     * The table <code>public.user_identities</code>.
+     */
+    val USER_IDENTITIES: UserIdentities get() = UserIdentities.USER_IDENTITIES
+
+    /**
      * The table <code>public.user_roles</code>.
      */
     val USER_ROLES: UserRoles get() = UserRoles.USER_ROLES
@@ -207,6 +219,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         ActivityContacts.ACTIVITY_CONTACTS,
         ActivityParticipations.ACTIVITY_PARTICIPATIONS,
         ActivityRoles.ACTIVITY_ROLES,
+        AppleSignInStates.APPLE_SIGN_IN_STATES,
         BusinessCardActivityHistories.BUSINESS_CARD_ACTIVITY_HISTORIES,
         BusinessCardContacts.BUSINESS_CARD_CONTACTS,
         BusinessCards.BUSINESS_CARDS,
@@ -229,6 +242,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         Schedules.SCHEDULES,
         UserCredentials.USER_CREDENTIALS,
         UserEntities.USER_ENTITIES,
+        UserIdentities.USER_IDENTITIES,
         UserRoles.USER_ROLES,
         Users.USERS,
         WebauthnChallenges.WEBAUTHN_CHALLENGES

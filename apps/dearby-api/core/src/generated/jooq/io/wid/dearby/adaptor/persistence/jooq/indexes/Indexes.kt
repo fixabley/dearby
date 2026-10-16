@@ -8,6 +8,7 @@ package io.wid.dearby.adaptor.persistence.jooq.indexes
 import io.wid.dearby.adaptor.persistence.jooq.tables.Activities
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
+import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardActivityHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
@@ -22,6 +23,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
 import io.wid.dearby.adaptor.persistence.jooq.tables.WebauthnChallenges
 
 import org.jooq.Index
@@ -43,6 +45,7 @@ val ACTIVITIES_PUBLICATION_STATUS_IDX: Index = Internal.createIndex(DSL.name("ac
 val ACTIVITIES_QUALIFICATION_IDX: Index = Internal.createIndex(DSL.name("activities_qualification_idx"), Activities.ACTIVITIES, arrayOf(Activities.ACTIVITIES.QUALIFICATION), false)
 val ACTIVITY_CONTACTS_ACTIVITY_ID_IDX: Index = Internal.createIndex(DSL.name("activity_contacts_activity_id_idx"), ActivityContacts.ACTIVITY_CONTACTS, arrayOf(ActivityContacts.ACTIVITY_CONTACTS.ACTIVITY_ID), false)
 val ACTIVITY_PARTICIPATIONS_ACTIVITY_ID_IDX: Index = Internal.createIndex(DSL.name("activity_participations_activity_id_idx"), ActivityParticipations.ACTIVITY_PARTICIPATIONS, arrayOf(ActivityParticipations.ACTIVITY_PARTICIPATIONS.ACTIVITY_ID), false)
+val APPLE_SIGN_IN_STATES_EXPIRES_AT_IDX: Index = Internal.createIndex(DSL.name("apple_sign_in_states_expires_at_idx"), AppleSignInStates.APPLE_SIGN_IN_STATES, arrayOf(AppleSignInStates.APPLE_SIGN_IN_STATES.EXPIRES_AT), false)
 val BUSINESS_CARD_ACTIVITY_HISTORIES_HISTORY_ID_IDX: Index = Internal.createIndex(DSL.name("business_card_activity_histories_history_id_idx"), BusinessCardActivityHistories.BUSINESS_CARD_ACTIVITY_HISTORIES, arrayOf(BusinessCardActivityHistories.BUSINESS_CARD_ACTIVITY_HISTORIES.PROFILE_ACTIVITY_HISTORY_ID), false)
 val BUSINESS_CARD_CONTACTS_CONTACT_ID_IDX: Index = Internal.createIndex(DSL.name("business_card_contacts_contact_id_idx"), BusinessCardContacts.BUSINESS_CARD_CONTACTS, arrayOf(BusinessCardContacts.BUSINESS_CARD_CONTACTS.CONTACT_ID), false)
 val BUSINESS_CARDS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("business_cards_user_id_idx"), BusinessCards.BUSINESS_CARDS, arrayOf(BusinessCards.BUSINESS_CARDS.USER_ID), false)
@@ -60,4 +63,5 @@ val PROGRAM_STAFF_USER_ID_IDX: Index = Internal.createIndex(DSL.name("program_st
 val PROGRAMS_ORGANIZATION_ID_IDX: Index = Internal.createIndex(DSL.name("programs_organization_id_idx"), Programs.PROGRAMS, arrayOf(Programs.PROGRAMS.ORGANIZATION_ID), false)
 val REFRESH_TOKENS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("refresh_tokens_user_id_idx"), RefreshTokens.REFRESH_TOKENS, arrayOf(RefreshTokens.REFRESH_TOKENS.USER_ID), false)
 val USER_CREDENTIALS_USER_ENTITY_USER_ID_IDX: Index = Internal.createIndex(DSL.name("user_credentials_user_entity_user_id_idx"), UserCredentials.USER_CREDENTIALS, arrayOf(UserCredentials.USER_CREDENTIALS.USER_ENTITY_USER_ID), false)
+val USER_IDENTITIES_USER_ID_IDX: Index = Internal.createIndex(DSL.name("user_identities_user_id_idx"), UserIdentities.USER_IDENTITIES, arrayOf(UserIdentities.USER_IDENTITIES.USER_ID), false)
 val WEBAUTHN_CHALLENGES_EXPIRES_AT_IDX: Index = Internal.createIndex(DSL.name("webauthn_challenges_expires_at_idx"), WebauthnChallenges.WEBAUTHN_CHALLENGES, arrayOf(WebauthnChallenges.WEBAUTHN_CHALLENGES.EXPIRES_AT), false)

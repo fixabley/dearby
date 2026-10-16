@@ -4,6 +4,7 @@ import io.wid.dearby.domain.AuthenticationFailedException
 import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.NotFoundException
 import io.wid.dearby.domain.PermissionDeniedException
+import io.wid.dearby.domain.ServiceUnavailableException
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
@@ -28,7 +29,10 @@ class ApiExceptionHandler {
     @ExceptionHandler(PermissionDeniedException::class)
     fun permissionDenied(e: PermissionDeniedException) = problem(HttpStatus.FORBIDDEN, e.detail, e)
 
-    // 4xx는 정상적인 요청 실패라 info로 남긴다
+    @ExceptionHandler(ServiceUnavailableException::class)
+    fun serviceUnavailable(e: ServiceUnavailableException) = problem(HttpStatus.SERVICE_UNAVAILABLE, e.detail, e)
+
+    // 정상적인 요청 실패(4xx)와 설정 없음(503)이라 info로 남긴다
     private fun problem(status: HttpStatus, detail: String, e: RuntimeException): ProblemDetail {
         log.info("{} {}", status.value(), e.message)
         return ProblemDetail.forStatusAndDetail(status, detail)

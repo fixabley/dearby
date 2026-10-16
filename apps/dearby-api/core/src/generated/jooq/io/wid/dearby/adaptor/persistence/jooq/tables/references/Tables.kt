@@ -9,6 +9,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.Activities
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
+import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardActivityHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
@@ -31,6 +32,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Users
 import io.wid.dearby.adaptor.persistence.jooq.tables.WebauthnChallenges
@@ -56,6 +58,11 @@ val ACTIVITY_PARTICIPATIONS: ActivityParticipations = ActivityParticipations.ACT
  * The table <code>public.activity_roles</code>.
  */
 val ACTIVITY_ROLES: ActivityRoles = ActivityRoles.ACTIVITY_ROLES
+
+/**
+ * The table <code>public.apple_sign_in_states</code>.
+ */
+val APPLE_SIGN_IN_STATES: AppleSignInStates = AppleSignInStates.APPLE_SIGN_IN_STATES
 
 /**
  * The table <code>public.business_card_activity_histories</code>.
@@ -166,6 +173,11 @@ val USER_CREDENTIALS: UserCredentials = UserCredentials.USER_CREDENTIALS
  * The table <code>public.user_entities</code>.
  */
 val USER_ENTITIES: UserEntities = UserEntities.USER_ENTITIES
+
+/**
+ * The table <code>public.user_identities</code>.
+ */
+val USER_IDENTITIES: UserIdentities = UserIdentities.USER_IDENTITIES
 
 /**
  * The table <code>public.user_roles</code>.

@@ -9,6 +9,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.Activities
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
+import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardActivityHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
@@ -31,6 +32,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Users
 import io.wid.dearby.adaptor.persistence.jooq.tables.WebauthnChallenges
@@ -38,6 +40,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivitiesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivityContactsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivityParticipationsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivityRolesRecord
+import io.wid.dearby.adaptor.persistence.jooq.tables.records.AppleSignInStatesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.BusinessCardActivityHistoriesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.BusinessCardContactsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.BusinessCardsRecord
@@ -60,6 +63,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.records.RefreshTokensRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.SchedulesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.UserCredentialsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.UserEntitiesRecord
+import io.wid.dearby.adaptor.persistence.jooq.tables.records.UserIdentitiesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.UserRolesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.UsersRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.WebauthnChallengesRecord
@@ -82,6 +86,7 @@ val ACTIVITY_CONTACTS_PKEY: UniqueKey<ActivityContactsRecord> = Internal.createU
 val ACTIVITY_PARTICIPATIONS_PKEY: UniqueKey<ActivityParticipationsRecord> = Internal.createUniqueKey(ActivityParticipations.ACTIVITY_PARTICIPATIONS, DSL.name("activity_participations_pkey"), arrayOf(ActivityParticipations.ACTIVITY_PARTICIPATIONS.ID), true)
 val ACTIVITY_PARTICIPATIONS_USER_ID_ACTIVITY_ID_KEY: UniqueKey<ActivityParticipationsRecord> = Internal.createUniqueKey(ActivityParticipations.ACTIVITY_PARTICIPATIONS, DSL.name("activity_participations_user_id_activity_id_key"), arrayOf(ActivityParticipations.ACTIVITY_PARTICIPATIONS.USER_ID, ActivityParticipations.ACTIVITY_PARTICIPATIONS.ACTIVITY_ID), true)
 val ACTIVITY_ROLES_PKEY: UniqueKey<ActivityRolesRecord> = Internal.createUniqueKey(ActivityRoles.ACTIVITY_ROLES, DSL.name("activity_roles_pkey"), arrayOf(ActivityRoles.ACTIVITY_ROLES.ACTIVITY_ID, ActivityRoles.ACTIVITY_ROLES.POSITION), true)
+val APPLE_SIGN_IN_STATES_PKEY: UniqueKey<AppleSignInStatesRecord> = Internal.createUniqueKey(AppleSignInStates.APPLE_SIGN_IN_STATES, DSL.name("apple_sign_in_states_pkey"), arrayOf(AppleSignInStates.APPLE_SIGN_IN_STATES.ID), true)
 val BUSINESS_CARD_ACTIVITY_HISTORIES_PKEY: UniqueKey<BusinessCardActivityHistoriesRecord> = Internal.createUniqueKey(BusinessCardActivityHistories.BUSINESS_CARD_ACTIVITY_HISTORIES, DSL.name("business_card_activity_histories_pkey"), arrayOf(BusinessCardActivityHistories.BUSINESS_CARD_ACTIVITY_HISTORIES.BUSINESS_CARD_ID, BusinessCardActivityHistories.BUSINESS_CARD_ACTIVITY_HISTORIES.PROFILE_ACTIVITY_HISTORY_ID), true)
 val BUSINESS_CARD_CONTACTS_PKEY: UniqueKey<BusinessCardContactsRecord> = Internal.createUniqueKey(BusinessCardContacts.BUSINESS_CARD_CONTACTS, DSL.name("business_card_contacts_pkey"), arrayOf(BusinessCardContacts.BUSINESS_CARD_CONTACTS.BUSINESS_CARD_ID, BusinessCardContacts.BUSINESS_CARD_CONTACTS.CONTACT_ID), true)
 val BUSINESS_CARDS_PKEY: UniqueKey<BusinessCardsRecord> = Internal.createUniqueKey(BusinessCards.BUSINESS_CARDS, DSL.name("business_cards_pkey"), arrayOf(BusinessCards.BUSINESS_CARDS.ID), true)
@@ -110,6 +115,7 @@ val SCHEDULES_PKEY: UniqueKey<SchedulesRecord> = Internal.createUniqueKey(Schedu
 val SCHEDULES_SOURCE_ID_KEY: UniqueKey<SchedulesRecord> = Internal.createUniqueKey(Schedules.SCHEDULES, DSL.name("schedules_source_id_key"), arrayOf(Schedules.SCHEDULES.SOURCE_ID), true)
 val USER_CREDENTIALS_PKEY: UniqueKey<UserCredentialsRecord> = Internal.createUniqueKey(UserCredentials.USER_CREDENTIALS, DSL.name("user_credentials_pkey"), arrayOf(UserCredentials.USER_CREDENTIALS.CREDENTIAL_ID), true)
 val USER_ENTITIES_PKEY: UniqueKey<UserEntitiesRecord> = Internal.createUniqueKey(UserEntities.USER_ENTITIES, DSL.name("user_entities_pkey"), arrayOf(UserEntities.USER_ENTITIES.ID), true)
+val USER_IDENTITIES_PKEY: UniqueKey<UserIdentitiesRecord> = Internal.createUniqueKey(UserIdentities.USER_IDENTITIES, DSL.name("user_identities_pkey"), arrayOf(UserIdentities.USER_IDENTITIES.PROVIDER, UserIdentities.USER_IDENTITIES.SUBJECT), true)
 val USER_ROLES_PKEY: UniqueKey<UserRolesRecord> = Internal.createUniqueKey(UserRoles.USER_ROLES, DSL.name("user_roles_pkey"), arrayOf(UserRoles.USER_ROLES.USER_ID, UserRoles.USER_ROLES.ROLE), true)
 val USERS_PKEY: UniqueKey<UsersRecord> = Internal.createUniqueKey(Users.USERS, DSL.name("users_pkey"), arrayOf(Users.USERS.ID), true)
 val WEBAUTHN_CHALLENGES_PKEY: UniqueKey<WebauthnChallengesRecord> = Internal.createUniqueKey(WebauthnChallenges.WEBAUTHN_CHALLENGES, DSL.name("webauthn_challenges_pkey"), arrayOf(WebauthnChallenges.WEBAUTHN_CHALLENGES.ID), true)
