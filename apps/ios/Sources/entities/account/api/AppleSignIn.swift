@@ -9,6 +9,8 @@ enum AppleSignIn {
         let identityToken: String
         /// Apple gives the name only on the first authorization for this app; nil afterwards or when left empty.
         let displayName: String?
+        /// Short-lived code the server trades for an Apple refresh token, revoked when the account is deleted. Nil if absent.
+        let authorizationCode: String?
     }
 
     /// `nonce` goes into the request exactly as the server sent it (not hashed); the server compares it to the token's claim.
@@ -25,6 +27,7 @@ enum AppleSignIn {
               let token = String(data: data, encoding: .utf8) else { throw Passkey.Failure.failed }
         let name = credential.fullName.map { PersonNameComponentsFormatter().string(from: $0) }?
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return Credential(identityToken: token, displayName: name?.isEmpty == false ? name : nil)
+        let code = credential.authorizationCode.flatMap { String(data: $0, encoding: .utf8) }
+        return Credential(identityToken: token, displayName: name?.isEmpty == false ? name : nil, authorizationCode: code)
     }
 }

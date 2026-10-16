@@ -41,7 +41,8 @@ struct AccountClient: Sendable {
     }
     /// 200: this Apple account already has a Dearby account. 202: first time; the user picks new or link (`AppleLink`).
     func signInWithApple(challengeId: String, credential: AppleSignIn.Credential) async throws -> AppleSignInResult {
-        let body = AppleAnswer(challengeId: challengeId, identityToken: credential.identityToken, displayName: credential.displayName)
+        let body = AppleAnswer(challengeId: challengeId, identityToken: credential.identityToken,
+                               displayName: credential.displayName, authorizationCode: credential.authorizationCode)
         let (data, status) = try await request("auth/apple", method: "POST", body: body)
         do {
             if status == 202 { return .newAppleAccount(try JSONDecoder().decode(AppleLink.self, from: data)) }
@@ -62,6 +63,10 @@ struct AccountClient: Sendable {
     }
     func logout(_ tokens: TokenPair) async throws {
         _ = try await request("auth/logout", method: "POST", body: ["refreshToken": tokens.refreshToken])
+    }
+    /// Deletes the account and everything it owns (contract "계정 삭제"); 204. The server also drops the refresh token.
+    func deleteAccount(_ session: TokenPair) async throws {
+        _ = try await request("me", method: "DELETE", session: session)
     }
     func profile(_ session: TokenPair) async throws -> AccountProfile {
         try await send("profile", session: session, as: AccountProfile.self)
@@ -112,7 +117,10 @@ struct AccountClient: Sendable {
     /// `email` may be an Apple private relay address.
     struct AppleLink: Decodable, Equatable, Sendable { let linkToken: String; let email: String? }
     enum AppleSignInResult: Equatable, Sendable { case signedIn(TokenPair), newAppleAccount(AppleLink) }
-    private struct AppleAnswer: Encodable { let challengeId: String; let identityToken: String; let displayName: String? }
+    /// Nil optionals are left out of the JSON (synthesized `encodeIfPresent`).
+    private struct AppleAnswer: Encodable {
+        let challengeId: String; let identityToken: String; let displayName: String?; let authorizationCode: String?
+    }
     private struct PasskeyAnswer: Encodable { let challengeId: String; let credential: Passkey.Credential }
     private struct ErrorBody: Decodable { struct Detail: Decodable { let code: String?; let message: String? }; let error: Detail }
     private struct CardList: Decodable { let items: [PublishedCard] }
