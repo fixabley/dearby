@@ -77,3 +77,9 @@ Web Locks serialize mutations across tabs in the same browser origin. Unsupporte
 ## Visual reference
 
 Reuse `docs/design/native-visual-contract.md` and approved discovery/shared-card/detail images: white/teal, original logo, mint cards, simple dividers, history timeline, 52px CTA. `public/logo-teal.png` is an unchanged copy of the approved logo. Activities show `imageUrl` (https only) when present; otherwise an honest calendar placeholder; no stock/mock production activities. Two web navigation destinations reflect this task's scope, not the native app's full tab contract.
+
+## 프로필·명함 v2 (2026-10-16)
+
+- 명함 `introduction`은 서버가 템플릿을 채운 마크다운이다. `src/lib/markdown.tsx`가 계약의 부분집합(제목 #~###, 굵게, 기울임, 목록, 번호 목록, 링크 https·mailto·tel, 줄바꿈)만 React 요소로 그린다. 원시 HTML은 글자로 보이고 허용하지 않는 링크는 글자로 남는다. 외부 라이브러리는 쓰지 않는다.
+- 이력은 조직 → 프로그램 → 활동 이름과 역할, 기간(`2026.03 – 2026.06` / `진행 중`)을 보이고, `verification`이 `verified`가 아니면 "미확인" 배지를 붙인다.
+- 공유 활동 id는 숫자다(`sharedActivity`). 웹 비로그인 저장(`/v1/guest/*`)은 서버 4단계 전까지 실패하며 명함은 그대로 보인다.

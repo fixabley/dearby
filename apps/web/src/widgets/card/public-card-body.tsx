@@ -1,4 +1,5 @@
-import { type Card, contactHref } from "@/lib/models";
+import { type Card, type History, contactHref } from "@/lib/models";
+import { Markdown } from "@/lib/markdown";
 import { Icon } from "@/shared/ui/icon";
 
 /** 공개 명함 본문: 이름·직무·소개, 공개 연락처, 활동 이력. `/cards/:id`와 공유 페이지가 함께 쓴다. */
@@ -16,7 +17,9 @@ export function PublicCardBody({ card }: { card: Card }) {
             <p className="job">{card.job}</p>
           </div>
         </div>
-        <p className="lead">{card.introduction}</p>
+        <div className="lead card-body">
+          <Markdown source={card.introduction} />
+        </div>
         {card.description && <p className="muted">{card.description}</p>}
       </div>
       <section className="detail-section">
@@ -66,7 +69,7 @@ export function PublicCardBody({ card }: { card: Card }) {
       <section className="detail-section">
         <div className="section-heading">
           <h2>활동 이력</h2>
-          <span className="muted">직접 작성</span>
+          <span className="muted">본인 입력 · 미확인 표시는 인증자료가 확인되지 않은 것</span>
         </div>
         {!card.histories.length ? (
           <p className="muted">공개된 활동 이력이 없어요.</p>
@@ -74,11 +77,16 @@ export function PublicCardBody({ card }: { card: Card }) {
           <ol className="timeline">
             {card.histories.map((history) => (
               <li key={history.id}>
-                <p className="muted">
-                  {history.startDate} — {history.endDate ?? "현재"}
+                <p className="muted">{period(history)}</p>
+                <h3>{chain(history).join(" · ")}</h3>
+                <p>
+                  {history.role?.name ?? history.roleName}
+                  {history.verification === "verified" ? (
+                    <span className="badge badge-verified" title="관리자가 인증자료를 확인했어요">✓ 확인됨</span>
+                  ) : (
+                    <span className="badge badge-unverified" title="인증자료가 확인되지 않았어요">미확인</span>
+                  )}
                 </p>
-                <h3>{history.title}</h3>
-                <p>{history.role}</p>
                 {history.description && (
                   <p className="history-description">{history.description}</p>
                 )}
@@ -89,4 +97,19 @@ export function PublicCardBody({ card }: { card: Card }) {
       </section>
     </>
   );
+}
+
+/** 조직 → 프로그램 → 활동 순서로 이름을 모은다(카탈로그 이름 또는 직접 입력). */
+function chain(history: History): string[] {
+  return [
+    history.organization?.name ?? history.organizationName,
+    history.program?.name ?? history.programName,
+    history.activity?.name ?? history.activityName,
+  ].filter((name): name is string => !!name);
+}
+
+/** `2026.03 – 2026.06`, 진행 중이면 `2026.03 – 진행 중`. */
+function period(history: History): string {
+  const month = (date: string) => date.slice(0, 7).replace("-", ".");
+  return `${month(history.startDate)} – ${history.endDate ? month(history.endDate) : "진행 중"}`;
 }

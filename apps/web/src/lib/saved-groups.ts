@@ -19,11 +19,9 @@ export function savedByActivity(
     a.savedAt.localeCompare(b.savedAt),
   ))
     for (const activity of share.activities) {
-      if (!titles.has(activity.id)) titles.set(activity.id, activity.title);
-      members.set(
-        activity.id,
-        (members.get(activity.id) ?? new Set()).add(share.cardId),
-      );
+      const key = String(activity.id);
+      if (!titles.has(key)) titles.set(key, activity.title);
+      members.set(key, (members.get(key) ?? new Set()).add(share.cardId));
     }
   const grouped = new Set([...members.values()].flatMap((ids) => [...ids]));
   const groups = [...titles].map(([id, title]) => ({
