@@ -15,18 +15,21 @@ struct ContactModel: Identifiable, Equatable {
         }
     }
 }
+/// A history as shown on cards and profiles: `title` is 조직 → 프로그램 → 활동, `verified` hides the 미확인 badge.
 struct HistoryModel: Identifiable, Equatable {
     let id: String
     var title: String
     var role: String
     var startDate: String
     var endDate: String?
+    var verified = false
 }
 struct CardModel: Identifiable, Equatable {
     let id: String
     var name: String
     var profileName: String
     var job: String
+    /// Markdown body (the filled-in card template).
     var introduction: String
     var description: String
     var contacts: [ContactModel]

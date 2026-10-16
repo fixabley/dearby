@@ -52,7 +52,8 @@ import Observation
         phase = .loading
         let result: Phase
         do {
-            let share = try await account.authorized { [client = account.client] in try await client.share(card.id, activityIds: ids, $0) }
+            // Activity ids are numeric on the server; the chooser works with the activity model's string ids.
+            let share = try await account.authorized { [client = account.client] in try await client.share(card.id, activityIds: ids.compactMap(Int.init), $0) }
             links[key] = link(share.id)
             result = .ready(link(share.id))
         } catch AccountError.unauthorized {

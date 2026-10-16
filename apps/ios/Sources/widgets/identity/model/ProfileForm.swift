@@ -1,24 +1,16 @@
 import Foundation
 
-/// The 내 프로필 edit form (contract #149): required phone and email, other contacts added by kind, and history
-/// periods picked as dates. Checks and messages live here; the widgets only show them.
+/// 내 프로필 data (contract "프로필과 버전 이력"): name, job, introduction, required phone and email, other contacts
+/// by kind, and histories entered through the step funnel. `version` goes back as `If-Match`.
 struct ProfileForm: Equatable {
-    struct History: Equatable, Identifiable {
-        let id: String
-        var title: String
-        var role: String
-        var start: Date?
-        var end: Date?
-        var ongoing: Bool
-        var description: String
-    }
     var name: String
     var job: String
     var introduction: String
     var phone: String
     var email: String
     var extras: [ProfileExtraContact]
-    var histories: [History]
+    var histories: [AccountHistory]
+    let version: Int
     private var phoneID: String
     private var emailID: String
 
@@ -26,6 +18,7 @@ struct ProfileForm: Equatable {
         name = profile.name
         job = profile.job
         introduction = profile.introduction
+        version = profile.version
         let phoneRow = profile.contacts.first { $0.kind == "phone" }, emailRow = profile.contacts.first { $0.kind == "email" }
         phone = phoneRow?.value ?? ""
         email = emailRow?.value ?? ""
@@ -33,15 +26,15 @@ struct ProfileForm: Equatable {
         emailID = emailRow?.id ?? UUID().uuidString.lowercased()
         extras = profile.contacts.filter { $0.id != phoneRow?.id && $0.id != emailRow?.id }
             .map { ProfileExtraContact(id: $0.id, kind: $0.kind, value: $0.value) }
-        histories = profile.histories.map {
-            History(id: $0.id, title: $0.title, role: $0.role, start: Self.date($0.startDate), end: $0.endDate.flatMap(Self.date),
-                    ongoing: $0.endDate == nil, description: $0.description)
-        }
+        histories = profile.histories
     }
     mutating func addContact(_ kind: String) { extras.append(ProfileExtraContact(id: UUID().uuidString.lowercased(), kind: kind, value: "")) }
-    mutating func addHistory() {
-        histories.append(History(id: UUID().uuidString.lowercased(), title: "", role: "", start: nil, end: nil, ongoing: true, description: ""))
+    /// Puts a finished funnel draft in place (same id) or appends it.
+    mutating func put(_ draft: HistoryDraft) {
+        let history = draft.history
+        if let index = histories.firstIndex(where: { $0.id == history.id }) { histories[index] = history } else { histories.append(history) }
     }
+    mutating func removeHistory(_ id: String) { histories.removeAll { $0.id == id } }
 
     var nameError: String? { name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "이름을 입력해 주세요." : nil }
     var phoneError: String? {
@@ -52,15 +45,9 @@ struct ProfileForm: Equatable {
         if email.trimmingCharacters(in: .whitespaces).isEmpty { return "이메일을 입력해 주세요." }
         return ContactRules.validEmail(email) ? nil : "이메일 주소를 확인해 주세요."
     }
-    func historyError(_ history: History) -> String? {
-        if history.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "활동 이름을 입력해 주세요." }
-        guard let start = history.start else { return "시작일을 골라 주세요." }
-        if !history.ongoing, let end = history.end, end < start { return "종료일은 시작일 이후로 골라 주세요." }
-        return nil
-    }
-    var isValid: Bool { nameError == nil && phoneError == nil && emailError == nil && histories.allSatisfy { historyError($0) == nil } }
+    var isValid: Bool { nameError == nil && phoneError == nil && emailError == nil }
 
-    /// `PUT /v1/profile` body. Empty added contacts are left out; dates are saved as picked (`YYYY-MM-DD`).
+    /// `PUT /v1/profile` body. Empty added contacts are left out.
     var profile: AccountProfile {
         let labels = Dictionary(uniqueKeysWithValues: ProfileContactFields.kinds.map { ($0.kind, $0.label) })
         let trimmed = { (text: String) in text.trimmingCharacters(in: .whitespacesAndNewlines) }
@@ -70,11 +57,12 @@ struct ProfileForm: Equatable {
                        AccountContact(id: emailID, kind: "email", label: "이메일", value: trimmed(email))]
                 + extras.filter { !trimmed($0.value).isEmpty }
                     .map { AccountContact(id: $0.id, kind: $0.kind, label: labels[$0.kind] ?? $0.kind, value: trimmed($0.value)) },
-            histories: histories.map {
-                AccountHistory(id: $0.id, title: trimmed($0.title), role: trimmed($0.role), startDate: $0.start.map(Self.day) ?? "",
-                               endDate: $0.ongoing ? nil : $0.end.map(Self.day), description: $0.description)
-            })
+            histories: histories, version: version)
     }
+    /// What the server would receive, for change detection against the loaded profile.
+    var changed: Bool { ProfileForm(profile: profile).profile != ProfileForm(profile: original).profile }
+    private var original: AccountProfile { AccountProfile(name: name, job: job, introduction: introduction, contacts: [], histories: [], version: version) }
+
     private static func formatter() -> DateFormatter {
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)

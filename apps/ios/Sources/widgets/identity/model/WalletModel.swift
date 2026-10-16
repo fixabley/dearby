@@ -35,8 +35,9 @@ import Observation
         var byCard: [String: [String]] = [:]
         for share in ordered {
             for activity in share.activities {
-                if !activities.contains(where: { $0.id == activity.id }) { activities.append((activity.id, activity.title)) }
-                if !(byCard[share.cardId] ?? []).contains(activity.id) { byCard[share.cardId, default: []].append(activity.id) }
+                let id = String(activity.id)
+                if !activities.contains(where: { $0.id == id }) { activities.append((id, activity.title)) }
+                if !(byCard[share.cardId] ?? []).contains(id) { byCard[share.cardId, default: []].append(id) }
             }
         }
         return WalletGroup.make(cards: cards, activityIDs: byCard, activities: activities, query: query, collapsed: collapsed)
@@ -48,6 +49,6 @@ extension PublishedCard {
     var cardModel: CardModel {
         CardModel(id: id, name: name, profileName: profileName, job: job, introduction: introduction ?? "", description: description,
                   contacts: contacts.map { ContactModel(id: $0.id, kind: $0.kind, displayLabel: $0.label, value: $0.value) },
-                  histories: histories.map { HistoryModel(id: $0.id, title: $0.title, role: $0.role, startDate: $0.startDate, endDate: $0.endDate) })
+                  histories: histories.map(\.historyModel))
     }
 }

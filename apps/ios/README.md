@@ -72,6 +72,17 @@
 - 204: Keychain 토큰을 지우고(서버가 refresh token을 이미 지워 `/auth/logout`은 부르지 않음) 로그아웃 상태로 돌아가 "계정을 삭제했어요. 기기에 남은 패스키는 설정 > 암호에서 지울 수 있어요."를 한 번 보인다. 받은 명함·QR 탭의 메모리 데이터는 로그아웃 상태로 다시 불러올 때 비운다.
 - 실패: "계정을 삭제하지 못했어요. 잠시 후 다시 시도해 주세요."를 보이고 로그인을 유지한다.
 
+## 프로필·명함 v2 (2026-10-17)
+
+계약 `native-v1.md` "프로필·명함 v2". 2026-10-17 사용자 결정으로 유비쿼터스 언어는 "활동"이다(코드에서 조직·프로그램·활동·역할을 아우르는 이름은 `ActivityInfo`).
+
+- 내 프로필(`ProfilePage`)은 데이터 입력만 한다. 칸을 바로 고치고, 불러온 프로필과 달라지면 아래에 "저장"·"원래대로" 막대가 나타난다(`ProfileForm.changed`). 저장은 `If-Match: <version>`을 보내고 409면 다시 불러오라고 안내한다. "변경 이력"(`ProfileVersionsPage`)에서 저장한 버전을 보고 되돌린다(새 버전으로 저장).
+- 이력은 단계별 입력(`HistoryFunnelPage`): 조직/활동 → 조직 → 프로그램 → (활동) → 역할 → 기간 → 설명 → 확인. 각 단계는 `ActivityInfoPickerView`로 등록된 활동 정보를 검색하거나(`GET /v1/organizations|programs|activities|roles`) 그대로 적는다(직접 입력 = 관리자 승인 대기, `approval`). 인증자료(`EvidenceSection`)는 저장된 이력에서 사진·PDF를 3개까지 올리고, `verified`가 아니면 "미확인" 배지가 붙는다.
+- 명함 만들기(`CardComposerPage`)에서 꾸민다. `CardDraft.template`은 `{{profile.name}}`·`{{profile.job}}`·`{{profile.introduction}}`·`{{contact:<id>}}` 토큰이 있는 마크다운이고, 서버가 발행할 때 채운다(`POST /v1/cards {template}`). 본문에 넣은 연락처는 자동으로 공개되고, 승인되지 않은 이력은 고를 수 없다. 내용이 바뀌면 "원래대로"가 나타나며, QR 탭의 "이 명함 고치기"는 그 명함의 `template`으로 새 명함을 발행한다.
+- 렌더링 화면 편집(`TemplateEditor`): iOS 26 이상은 `TextEditor`의 `AttributedString`으로 제목·굵게·목록을 서식 그대로 보이며 고치고, 데이터 토큰은 값이 채워진 칩(토큰 attribute)으로 보인다. 칩 안을 고치면 `TemplateRendering.markdown(from:)`이 감지해 토큰을 되살린다. iOS 18~25는 마크다운 원문 편집 + 미리보기(`DearbyMarkdownText`)로 대체된다. "데이터 넣기"는 본문 끝에 토큰을 붙인다(커서 위치 삽입은 아직 없음).
+- 공유 활동 id는 숫자(`ShareActivity.id: Int`). 오류는 ProblemDetail의 `detail`(`AccountError.rejected`)을 그대로 보인다.
+- 확인하지 못한 것: 실제 서버·기기에서의 흐름, iOS 26 서식 편집기의 실제 입력 동작(시뮬레이터 빌드만 통과).
+
 ## 검증
 
 `Dearby.xcodeproj`는 저장소에 두지 않는 생성물이다(병합 충돌 방지). Xcode로 열거나 빌드하기 전에 생성한다. `xcodeproj` gem이 필요하다(`gem install --user-install xcodeproj`). 자동 테스트는 2026-10-06 사용자 요청으로 모두 지웠다. 사용자와 하나씩 다시 만든다.

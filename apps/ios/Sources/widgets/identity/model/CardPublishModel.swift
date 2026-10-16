@@ -1,61 +1,45 @@
 import Foundation
 import Observation
 
-/// Publishes the composer draft: `PUT /v1/profile`, then `POST /v1/cards`. When the profile saved but
-/// the card did not, a retry publishes only the card.
+/// Publishes the composer draft with `POST /v1/cards`. The profile is read-only here (data lives in 내 프로필).
 @MainActor @Observable final class CardPublishModel {
-    enum Phase: Equatable { case editing, loading, publishing, published(PublishedCard), failed(String) }
-    var draft = CardDraft()
-    private(set) var phase = Phase.editing
-    private var savedProfile: AccountProfile?
+    enum Phase: Equatable { case loading, editing, publishing, published(PublishedCard), failed(String) }
+    var draft: CardDraft?
+    private(set) var phase = Phase.loading
     let account: AccountViewModel
-    init(account: AccountViewModel) { self.account = account }
-
-    /// Signed in: start from the saved profile.
+    let prefill: PublishedCard?
+    init(account: AccountViewModel, prefill: PublishedCard? = nil) {
+        self.account = account
+        self.prefill = prefill
+    }
+    /// Signed in: start from the saved profile. Signed out: nothing to edit until sign-in.
     func load() async {
-        guard account.session != nil else { return }
+        guard account.session != nil else { phase = .editing; return }
         phase = .loading
         do {
             let stored = try await account.authorized { [client = account.client] in try await client.profile($0) }
-            draft = CardDraft(profile: stored)
-            savedProfile = stored
+            if draft == nil || draft?.profile != stored { draft = CardDraft(profile: stored, prefill: prefill) }
+            phase = .editing
+        } catch AccountError.unauthorized {
             phase = .editing
         } catch {
             phase = .failed("프로필을 불러오지 못했어요. 다시 시도해 주세요.")
         }
     }
-    /// Called after signing in from the composer: merge what was typed onto the account, then publish.
-    func continueAfterSignIn() async {
-        do {
-            let stored = try await account.authorized { [client = account.client] in try await client.profile($0) }
-            draft = draft.merged(onto: stored)
-            savedProfile = stored
-        } catch {
-            phase = .failed("프로필을 불러오지 못했어요. 다시 시도해 주세요.")
-            return
-        }
-        await publish()
-    }
-    func showProblem(_ text: String) { phase = .failed(text) }
     func publish() async {
+        guard let draft else { await load(); return }
         if let problem = draft.problem { phase = .failed(problem); return }
         phase = .publishing
-        let profile = draft.profile, card = draft.card, client = account.client
         do {
-            if savedProfile != profile {
-                _ = try await account.authorized { try await client.saveProfile(profile, $0) }
-                savedProfile = profile
-            }
-            let published = try await account.authorized { try await client.publish(card, $0) }
+            let published = try await account.authorized { [client = account.client] in try await client.publish(draft.card, $0) }
             phase = .published(published)
         } catch AccountError.unauthorized {
             phase = .editing
-        } catch AccountError.invalidContacts {
-            phase = .failed("전화번호와 이메일을 확인해 주세요.")
-        } catch AccountError.invalidInput {
-            phase = .failed("입력한 내용을 확인해 주세요. 링크는 https 주소만 쓸 수 있어요.")
+        } catch AccountError.rejected(let detail) {
+            phase = .failed(detail)
         } catch {
-            phase = .failed(savedProfile == profile ? "프로필은 저장했어요. 명함 발행만 다시 시도해 주세요." : "발행하지 못했어요. 잠시 후 다시 시도해 주세요.")
+            phase = .failed("발행하지 못했어요. 잠시 후 다시 시도해 주세요.")
         }
     }
+    func clearFailure() { if case .failed = phase { phase = .editing } }
 }

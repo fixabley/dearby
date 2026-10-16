@@ -1,10 +1,9 @@
 import Foundation
 
 enum AccountError: Error, Equatable {
-    /// `invalidContacts`: the profile's required phone or email is missing or malformed (422 "Invalid contacts").
-    /// `ownCard`: the share points at the signed-in account's own card (422 INVALID_RECIPIENT).
-    /// `conflict`: a card already holds the most share links (409).
-    case unauthorized, invalidInput, invalidContacts, ownCard, notFound, conflict, rateLimited, unavailable
+    /// `rejected`: a 400 with the server's user-facing ProblemDetail `detail` (contact rules, unapproved history, own card…).
+    /// `conflict`: 409 — the profile changed elsewhere (`If-Match`) or a card already holds the most share links.
+    case unauthorized, invalidInput, rejected(String), notFound, conflict, rateLimited, unavailable
 }
 
 /// Owner API (contract native-v1): passkey sign-in, profile and card publishing.
@@ -71,8 +70,50 @@ struct AccountClient: Sendable {
     func profile(_ session: TokenPair) async throws -> AccountProfile {
         try await send("profile", session: session, as: AccountProfile.self)
     }
-    func saveProfile(_ profile: AccountProfile, _ session: TokenPair) async throws -> AccountProfile {
-        try await send("profile", method: "PUT", body: profile, session: session, as: AccountProfile.self)
+    /// `If-Match` carries the version the edit started from; a 409 means the profile changed elsewhere.
+    func saveProfile(_ profile: AccountProfile, ifMatch: Int?, _ session: TokenPair) async throws -> AccountProfile {
+        try await send("profile", method: "PUT", body: profile, session: session, headers: ifMatch.map { ["If-Match": String($0)] } ?? [:], as: AccountProfile.self)
+    }
+    func profileVersions(cursor: Int?, _ session: TokenPair) async throws -> ProfileVersionList {
+        try await send("profile/versions" + (cursor.map { "?cursor=\($0)&size=20" } ?? "?size=20"), session: session, as: ProfileVersionList.self)
+    }
+    func profileVersion(_ version: Int, _ session: TokenPair) async throws -> ProfileVersionDetail {
+        try await send("profile/versions/\(version)", session: session, as: ProfileVersionDetail.self)
+    }
+    /// Makes a new version from an old one (the history is never rewritten).
+    func restoreProfile(_ version: Int, _ session: TokenPair) async throws -> AccountProfile {
+        try await send("profile/versions/\(version)/restore", method: "POST", session: session, as: AccountProfile.self)
+    }
+    /// Multipart upload of one evidence file (max 3 per history, 5MB, image or PDF).
+    func uploadEvidence(historyID: String, fileName: String, contentType: String, data: Data, _ session: TokenPair) async throws -> EvidenceMeta {
+        let boundary = "dearby-" + UUID().uuidString
+        var body = Data()
+        body.append("--\(boundary)\r\nContent-Disposition: form-data; name=\"file\"; filename=\"\(fileName.replacingOccurrences(of: "\"", with: ""))\"\r\nContent-Type: \(contentType)\r\n\r\n".data(using: .utf8)!)
+        body.append(data)
+        body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
+        let (response, _) = try await request("profile/histories/\(historyID)/evidence", method: "POST", raw: body,
+                                              contentType: "multipart/form-data; boundary=\(boundary)", session: session)
+        do { return try JSONDecoder().decode(EvidenceMeta.self, from: response) } catch { throw AccountError.unavailable }
+    }
+    func deleteEvidence(historyID: String, evidenceID: String, _ session: TokenPair) async throws {
+        _ = try await request("profile/histories/\(historyID)/evidence/\(evidenceID)", method: "DELETE", session: session)
+    }
+    /// The file bytes, for an in-app preview.
+    func evidence(historyID: String, evidenceID: String, _ session: TokenPair) async throws -> Data {
+        try await request("profile/histories/\(historyID)/evidence/\(evidenceID)", method: "GET", session: session).0
+    }
+    /// Picker searches for the history steps. Organizations, programs and roles need a session; activities are public.
+    func searchActivityInfo(_ kind: ActivityInfoKind, query: String, parentID: Int? = nil, _ session: TokenPair?) async throws -> ActivityInfoPage {
+        var items = [URLQueryItem(name: "q", value: query), URLQueryItem(name: "size", value: "20")]
+        switch kind {
+        case .organizations: if let parentID { items.append(URLQueryItem(name: "parentId", value: String(parentID))) }
+        case .programs: if let parentID { items.append(URLQueryItem(name: "organizationId", value: String(parentID))) }
+        case .activities: if let parentID { items.append(URLQueryItem(name: "programId", value: String(parentID))) }
+        case .roles: break
+        }
+        var components = URLComponents()
+        components.queryItems = items
+        return try await send("\(kind.rawValue)\(components.percentEncodedQuery.map { "?" + $0 } ?? "")", session: session, as: ActivityInfoPage.self)
     }
     func publish(_ card: CardInput, _ session: TokenPair) async throws -> PublishedCard {
         try await send("cards", method: "POST", body: card, session: session, as: PublishedCard.self)
@@ -81,7 +122,7 @@ struct AccountClient: Sendable {
     func cards(_ session: TokenPair) async throws -> [PublishedCard] {
         try await send("cards", session: session, as: CardList.self).items
     }
-    func share(_ cardID: String, activityIds: [String], _ session: TokenPair) async throws -> CardShare {
+    func share(_ cardID: String, activityIds: [Int], _ session: TokenPair) async throws -> CardShare {
         try await send("cards/\(cardID)/shares", method: "POST", body: ["activityIds": activityIds], session: session, as: CardShare.self)
     }
     /// Saves a received share to the account's wallet (contract #141).
@@ -101,12 +142,15 @@ struct AccountClient: Sendable {
         try await send("cards/\(id)", as: PublishedCard.self)
     }
 
+    /// `POST /v1/cards`: `template` is the decoration markdown the server fills in at publish time.
     struct CardInput: Encodable, Equatable, Sendable {
         let name: String
         let description: String
+        let template: String
         let contactIds: [String]
         let historyIds: [String]
     }
+    enum ActivityInfoKind: String, Sendable { case organizations, programs, activities, roles }
     /// `{challengeId, options}` from an options call; the challenge is single use and lasts five minutes.
     struct PasskeyChallenge<Options: Decodable & Sendable>: Decodable, Sendable {
         let challengeId: String
@@ -122,35 +166,40 @@ struct AccountClient: Sendable {
         let challengeId: String; let identityToken: String; let displayName: String?; let authorizationCode: String?
     }
     private struct PasskeyAnswer: Encodable { let challengeId: String; let credential: Passkey.Credential }
-    private struct ErrorBody: Decodable { struct Detail: Decodable { let code: String?; let message: String? }; let error: Detail }
+    /// RFC 9457 ProblemDetail: `detail` is the user-facing sentence.
+    private struct ProblemBody: Decodable { let detail: String? }
     private struct CardList: Decodable { let items: [PublishedCard] }
 
     private func send<Response: Decodable>(_ path: String, method: String = "GET", body: (any Encodable)? = nil,
-                                           session: TokenPair? = nil, as type: Response.Type) async throws -> Response {
-        let (data, _) = try await request(path, method: method, body: body, session: session)
+                                           session: TokenPair? = nil, headers: [String: String] = [:], as type: Response.Type) async throws -> Response {
+        let (data, _) = try await request(path, method: method, body: body, session: session, headers: headers)
         do { return try JSONDecoder().decode(type, from: data) } catch { throw AccountError.unavailable }
     }
-    private func request(_ path: String, method: String, body: (any Encodable)? = nil, session: TokenPair? = nil) async throws -> (Data, Int) {
-        var request = URLRequest(url: api.appending(path: "v1/" + path), cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+    private func request(_ path: String, method: String, body: (any Encodable)? = nil, raw: Data? = nil, contentType: String? = nil,
+                         session: TokenPair? = nil, headers: [String: String] = [:]) async throws -> (Data, Int) {
+        // Paths may carry a query string; appending(path:) would escape the "?".
+        var request = URLRequest(url: URL(string: "v1/" + path, relativeTo: api.appending(path: ""))!.absoluteURL, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if let body {
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.httpBody = try JSONEncoder().encode(body)
+        } else if let raw {
+            request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+            request.httpBody = raw
         }
+        for (name, value) in headers { request.setValue(value, forHTTPHeaderField: name) }
         if let session { request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization") }
         let data: Data, response: HTTPURLResponse
         do { (data, response) = try await transport(request) } catch { throw AccountError.unavailable }
         switch response.statusCode {
         case 200..<300: return (data, response.statusCode)
-        case 400: throw AccountError.invalidInput
+        case 400:
+            if let detail = (try? JSONDecoder().decode(ProblemBody.self, from: data))?.detail, !detail.isEmpty { throw AccountError.rejected(detail) }
+            throw AccountError.invalidInput
         case 401: throw AccountError.unauthorized
         case 404: throw AccountError.notFound
         case 409: throw AccountError.conflict
-        case 422:
-            let detail = (try? JSONDecoder().decode(ErrorBody.self, from: data))?.error
-            if detail?.code == "INVALID_RECIPIENT" { throw AccountError.ownCard }
-            throw detail?.message == "Invalid contacts" ? AccountError.invalidContacts : AccountError.invalidInput
         case 429: throw AccountError.rateLimited
         default: throw AccountError.unavailable
         }

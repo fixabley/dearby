@@ -13,36 +13,166 @@ struct AccountContact: Codable, Equatable, Identifiable, Sendable {
     var label: String
     var value: String
 }
+/// An activity-info item (organization, program, activity or role) a history points at. Numeric ids are the activity's.
+struct ActivityInfoRef: Codable, Equatable, Hashable, Sendable {
+    let id: Int
+    let name: String
+}
+/// An uploaded evidence file's metadata (contract "인증자료"); the bytes stay on the server.
+struct EvidenceMeta: Codable, Equatable, Identifiable, Sendable {
+    let id: String
+    let fileName: String
+    let contentType: String
+    let size: Int
+    let uploadedAt: String
+}
+/// A step-by-step history (contract "이력"): each of organization/program/activity/role is a activity ref or a
+/// free-typed name. Free-typed values wait for admin approval (`approval`); evidence drives `verification`.
+/// Encoding produces the `PUT /v1/profile` shape (`organizationId` + `organizationName`, …), never the refs.
 struct AccountHistory: Codable, Equatable, Identifiable, Sendable {
     let id: String
-    var title: String
-    var role: String
+    var kind: String
+    var organization: ActivityInfoRef?
+    var organizationName: String?
+    var program: ActivityInfoRef?
+    var programName: String?
+    var activity: ActivityInfoRef?
+    var activityName: String?
+    var role: ActivityInfoRef?
+    var roleName: String?
     var startDate: String
     var endDate: String?
     var description: String
-    private enum CodingKeys: String, CodingKey { case id, title, role, startDate, endDate, description }
-    // The API requires `endDate` to be present, as null when ongoing.
+    var approval = "approved"
+    var approvalReason: String?
+    var verification = "unverified"
+    var evidence: [EvidenceMeta] = []
+
+    init(id: String, kind: String, organization: ActivityInfoRef? = nil, organizationName: String? = nil, program: ActivityInfoRef? = nil,
+         programName: String? = nil, activity: ActivityInfoRef? = nil, activityName: String? = nil, role: ActivityInfoRef? = nil,
+         roleName: String? = nil, startDate: String, endDate: String? = nil, description: String = "", approval: String = "approved",
+         approvalReason: String? = nil, verification: String = "unverified", evidence: [EvidenceMeta] = []) {
+        self.id = id; self.kind = kind; self.organization = organization; self.organizationName = organizationName
+        self.program = program; self.programName = programName; self.activity = activity; self.activityName = activityName
+        self.role = role; self.roleName = roleName; self.startDate = startDate; self.endDate = endDate
+        self.description = description; self.approval = approval; self.approvalReason = approvalReason
+        self.verification = verification; self.evidence = evidence
+    }
+    private enum CodingKeys: String, CodingKey {
+        case id, kind, organization, organizationName, program, programName, activity, activityName, role, roleName
+        case startDate, endDate, description, approval, approvalReason, verification, evidence
+        case organizationId, programId, activityId, roleId
+    }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        kind = try c.decode(String.self, forKey: .kind)
+        organization = try c.decodeIfPresent(ActivityInfoRef.self, forKey: .organization)
+        organizationName = try c.decodeIfPresent(String.self, forKey: .organizationName)
+        program = try c.decodeIfPresent(ActivityInfoRef.self, forKey: .program)
+        programName = try c.decodeIfPresent(String.self, forKey: .programName)
+        activity = try c.decodeIfPresent(ActivityInfoRef.self, forKey: .activity)
+        activityName = try c.decodeIfPresent(String.self, forKey: .activityName)
+        role = try c.decodeIfPresent(ActivityInfoRef.self, forKey: .role)
+        roleName = try c.decodeIfPresent(String.self, forKey: .roleName)
+        startDate = try c.decode(String.self, forKey: .startDate)
+        endDate = try c.decodeIfPresent(String.self, forKey: .endDate)
+        description = try c.decodeIfPresent(String.self, forKey: .description) ?? ""
+        approval = try c.decodeIfPresent(String.self, forKey: .approval) ?? "approved"
+        approvalReason = try c.decodeIfPresent(String.self, forKey: .approvalReason)
+        verification = try c.decodeIfPresent(String.self, forKey: .verification) ?? "unverified"
+        evidence = try c.decodeIfPresent([EvidenceMeta].self, forKey: .evidence) ?? []
+    }
     func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(id, forKey: .id)
-        try container.encode(title, forKey: .title)
-        try container.encode(role, forKey: .role)
-        try container.encode(startDate, forKey: .startDate)
-        try container.encode(endDate, forKey: .endDate)
-        try container.encode(description, forKey: .description)
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(kind, forKey: .kind)
+        try c.encodeIfPresent(organization?.id, forKey: .organizationId)
+        try c.encodeIfPresent(organization == nil ? organizationName : nil, forKey: .organizationName)
+        try c.encodeIfPresent(program?.id, forKey: .programId)
+        try c.encodeIfPresent(program == nil ? programName : nil, forKey: .programName)
+        try c.encodeIfPresent(activity?.id, forKey: .activityId)
+        try c.encodeIfPresent(activity == nil ? activityName : nil, forKey: .activityName)
+        try c.encodeIfPresent(role?.id, forKey: .roleId)
+        try c.encodeIfPresent(role == nil ? roleName : nil, forKey: .roleName)
+        try c.encode(startDate, forKey: .startDate)
+        try c.encode(endDate, forKey: .endDate) // null when ongoing
+        try c.encode(description, forKey: .description)
+    }
+    /// 조직 → 프로그램 → 활동 names, activity or typed.
+    var chain: [String] { [organization?.name ?? organizationName, program?.name ?? programName, activity?.name ?? activityName].compactMap { $0 } }
+    var roleTitle: String { role?.name ?? roleName ?? "" }
+    var isApproved: Bool { approval == "approved" }
+    var isVerified: Bool { verification == "verified" }
+    /// True when any part is free-typed (waits for, or was refused by, admin approval).
+    var hasCustomEntry: Bool {
+        (organization == nil && organizationName != nil) || (program == nil && programName != nil)
+            || (activity == nil && activityName != nil) || (role == nil && roleName != nil)
     }
 }
-/// `PUT /v1/profile` replaces the whole profile; `GET` returns the same fields plus id and updatedAt.
+/// `PUT /v1/profile` replaces the whole profile (data only; card decoration lives on cards). `version` comes from
+/// `GET` and goes back as `If-Match`; it is never part of the body.
 struct AccountProfile: Codable, Equatable, Sendable {
     var name: String
     var job: String
     var introduction: String
     var contacts: [AccountContact]
     var histories: [AccountHistory]
+    var version = 0
+    init(name: String, job: String, introduction: String, contacts: [AccountContact], histories: [AccountHistory], version: Int = 0) {
+        self.name = name; self.job = job; self.introduction = introduction; self.contacts = contacts; self.histories = histories; self.version = version
+    }
+    private enum CodingKeys: String, CodingKey { case name, job, introduction, contacts, histories, version }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        job = try c.decodeIfPresent(String.self, forKey: .job) ?? ""
+        introduction = try c.decodeIfPresent(String.self, forKey: .introduction) ?? ""
+        contacts = try c.decodeIfPresent([AccountContact].self, forKey: .contacts) ?? []
+        histories = try c.decodeIfPresent([AccountHistory].self, forKey: .histories) ?? []
+        version = try c.decodeIfPresent(Int.self, forKey: .version) ?? 0
+    }
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(name, forKey: .name)
+        try c.encode(job, forKey: .job)
+        try c.encode(introduction, forKey: .introduction)
+        try c.encode(contacts, forKey: .contacts)
+        try c.encode(histories, forKey: .histories)
+    }
 }
-/// An activity copied into a share when it was made; never follows later activity edits.
+/// One saved profile version (`GET /v1/profile/versions`), newest first.
+struct ProfileVersionSummary: Decodable, Equatable, Identifiable, Sendable {
+    let version: Int
+    let createdAt: String
+    var id: Int { version }
+}
+struct ProfileVersionList: Decodable, Equatable, Sendable {
+    let items: [ProfileVersionSummary]
+    let nextCursor: Int?
+}
+/// `GET /v1/profile/versions/:n`: the profile as it was then.
+struct ProfileVersionDetail: Decodable, Equatable, Sendable {
+    let version: Int
+    let createdAt: String
+    let profile: AccountProfile
+}
+/// A activity search hit for the history pickers (`GET /v1/organizations|programs|roles|activities`).
+struct ActivityInfoItem: Decodable, Equatable, Identifiable, Sendable {
+    let id: Int
+    let name: String
+    var nameEn: String? = nil
+    var parentOrganizationId: Int? = nil
+    var organization: ActivityInfoRef? = nil
+    var ref: ActivityInfoRef { ActivityInfoRef(id: id, name: name) }
+}
+struct ActivityInfoPage: Decodable, Equatable, Sendable {
+    let items: [ActivityInfoItem]
+    let nextCursor: Int?
+}
+/// An activity copied into a share when it was made; never follows later activity edits. Ids are numeric since 2026-10-16.
 struct ShareActivity: Codable, Equatable, Sendable {
-    let id: String
+    let id: Int
     let title: String
 }
 /// A recorded share of one card (`POST /v1/cards/:id/shares`); its ID is the public `/s/<id>` link.
@@ -79,15 +209,16 @@ struct ReceivedShare: Decodable, Equatable, Sendable {
     let share: CardShare
     let card: PublishedCard
 }
-/// A published card snapshot from `POST /v1/cards`.
+/// A published card snapshot from `POST /v1/cards`. `introduction` is the filled-in template (markdown body);
+/// `template` comes only on owner reads and seeds the editor when the card is republished.
 struct PublishedCard: Decodable, Equatable, Identifiable, Sendable {
     let id: String
     let name: String
     let description: String
     let profileName: String
     let job: String
-    /// Present on public reads (`GET /v1/shares/:id`, `GET /v1/cards/:id`).
     var introduction: String? = nil
+    var template: String? = nil
     let contacts: [AccountContact]
     let histories: [AccountHistory]
     let createdAt: String
