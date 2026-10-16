@@ -10,31 +10,34 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
-import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardActivityHistories
-import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
+import io.wid.dearby.adaptor.persistence.jooq.tables.CardShares
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
+import io.wid.dearby.adaptor.persistence.jooq.tables.HistoryEvidence
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMembers
 import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations
-import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileActivityHistories
-import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileActivityHistoryRoles
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions
 import io.wid.dearby.adaptor.persistence.jooq.tables.Profiles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCollectionSettings
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaffRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
+import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
+import io.wid.dearby.adaptor.persistence.jooq.tables.Roles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Users
+import io.wid.dearby.adaptor.persistence.jooq.tables.WalletShares
 import io.wid.dearby.adaptor.persistence.jooq.tables.WebauthnChallenges
 
 
@@ -65,19 +68,14 @@ val ACTIVITY_ROLES: ActivityRoles = ActivityRoles.ACTIVITY_ROLES
 val APPLE_SIGN_IN_STATES: AppleSignInStates = AppleSignInStates.APPLE_SIGN_IN_STATES
 
 /**
- * The table <code>public.business_card_activity_histories</code>.
- */
-val BUSINESS_CARD_ACTIVITY_HISTORIES: BusinessCardActivityHistories = BusinessCardActivityHistories.BUSINESS_CARD_ACTIVITY_HISTORIES
-
-/**
- * The table <code>public.business_card_contacts</code>.
- */
-val BUSINESS_CARD_CONTACTS: BusinessCardContacts = BusinessCardContacts.BUSINESS_CARD_CONTACTS
-
-/**
  * The table <code>public.business_cards</code>.
  */
 val BUSINESS_CARDS: BusinessCards = BusinessCards.BUSINESS_CARDS
+
+/**
+ * The table <code>public.card_shares</code>.
+ */
+val CARD_SHARES: CardShares = CardShares.CARD_SHARES
 
 /**
  * The table <code>public.collection_runs</code>.
@@ -93,6 +91,11 @@ val CONTACTS: Contacts = Contacts.CONTACTS
  * The table <code>public.dismissed_activity_sources</code>.
  */
 val DISMISSED_ACTIVITY_SOURCES: DismissedActivitySources = DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES
+
+/**
+ * The table <code>public.history_evidence</code>.
+ */
+val HISTORY_EVIDENCE: HistoryEvidence = HistoryEvidence.HISTORY_EVIDENCE
 
 /**
  * The table <code>public.organization_contacts</code>.
@@ -115,14 +118,14 @@ val ORGANIZATION_MEMBERS: OrganizationMembers = OrganizationMembers.ORGANIZATION
 val ORGANIZATIONS: Organizations = Organizations.ORGANIZATIONS
 
 /**
- * The table <code>public.profile_activity_histories</code>.
+ * The table <code>public.profile_histories</code>.
  */
-val PROFILE_ACTIVITY_HISTORIES: ProfileActivityHistories = ProfileActivityHistories.PROFILE_ACTIVITY_HISTORIES
+val PROFILE_HISTORIES: ProfileHistories = ProfileHistories.PROFILE_HISTORIES
 
 /**
- * The table <code>public.profile_activity_history_roles</code>.
+ * The table <code>public.profile_versions</code>.
  */
-val PROFILE_ACTIVITY_HISTORY_ROLES: ProfileActivityHistoryRoles = ProfileActivityHistoryRoles.PROFILE_ACTIVITY_HISTORY_ROLES
+val PROFILE_VERSIONS: ProfileVersions = ProfileVersions.PROFILE_VERSIONS
 
 /**
  * The table <code>public.profiles</code>.
@@ -155,9 +158,19 @@ val PROGRAM_STAFF_ROLES: ProgramStaffRoles = ProgramStaffRoles.PROGRAM_STAFF_ROL
 val PROGRAMS: Programs = Programs.PROGRAMS
 
 /**
+ * The table <code>public.receipts</code>.
+ */
+val RECEIPTS: Receipts = Receipts.RECEIPTS
+
+/**
  * The table <code>public.refresh_tokens</code>.
  */
 val REFRESH_TOKENS: RefreshTokens = RefreshTokens.REFRESH_TOKENS
+
+/**
+ * The table <code>public.roles</code>.
+ */
+val ROLES: Roles = Roles.ROLES
 
 /**
  * The table <code>public.schedules</code>.
@@ -188,6 +201,11 @@ val USER_ROLES: UserRoles = UserRoles.USER_ROLES
  * The table <code>public.users</code>.
  */
 val USERS: Users = Users.USERS
+
+/**
+ * The table <code>public.wallet_shares</code>.
+ */
+val WALLET_SHARES: WalletShares = WalletShares.WALLET_SHARES
 
 /**
  * The table <code>public.webauthn_challenges</code>.

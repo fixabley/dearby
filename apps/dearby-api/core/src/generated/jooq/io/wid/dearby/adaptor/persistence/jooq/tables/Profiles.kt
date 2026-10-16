@@ -6,19 +6,16 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILES_PKEY
-import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILES_USER_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProfilesRecord
 
-import java.time.LocalDateTime
+import java.time.OffsetDateTime
 import java.util.UUID
 
 import kotlin.collections.Collection
-import kotlin.collections.List
 
 import org.jooq.Condition
 import org.jooq.Field
 import org.jooq.ForeignKey
-import org.jooq.Identity
 import org.jooq.InverseForeignKey
 import org.jooq.Name
 import org.jooq.PlainSQL
@@ -76,11 +73,6 @@ open class Profiles(
     override fun getRecordType(): Class<ProfilesRecord> = ProfilesRecord::class.java
 
     /**
-     * The column <code>public.profiles.id</code>.
-     */
-    val ID: TableField<ProfilesRecord, Long?> = createField(DSL.name("id"), SQLDataType.BIGINT.nullable(false).generatedAlwaysAsIdentity(), this, "")
-
-    /**
      * The column <code>public.profiles.user_id</code>.
      */
     val USER_ID: TableField<ProfilesRecord, UUID?> = createField(DSL.name("user_id"), SQLDataType.UUID.nullable(false), this, "")
@@ -91,14 +83,29 @@ open class Profiles(
     val NAME: TableField<ProfilesRecord, String?> = createField(DSL.name("name"), SQLDataType.VARCHAR(100).nullable(false), this, "")
 
     /**
+     * The column <code>public.profiles.job</code>.
+     */
+    val JOB: TableField<ProfilesRecord, String?> = createField(DSL.name("job"), SQLDataType.VARCHAR(100).nullable(false), this, "")
+
+    /**
+     * The column <code>public.profiles.introduction</code>.
+     */
+    val INTRODUCTION: TableField<ProfilesRecord, String?> = createField(DSL.name("introduction"), SQLDataType.VARCHAR.nullable(false), this, "")
+
+    /**
+     * The column <code>public.profiles.version</code>.
+     */
+    val VERSION: TableField<ProfilesRecord, Int?> = createField(DSL.name("version"), SQLDataType.INTEGER.nullable(false), this, "")
+
+    /**
      * The column <code>public.profiles.created_at</code>.
      */
-    val CREATED_AT: TableField<ProfilesRecord, LocalDateTime?> = createField(DSL.name("created_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "")
+    val CREATED_AT: TableField<ProfilesRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "")
 
     /**
      * The column <code>public.profiles.updated_at</code>.
      */
-    val UPDATED_AT: TableField<ProfilesRecord, LocalDateTime?> = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "")
+    val UPDATED_AT: TableField<ProfilesRecord, OffsetDateTime?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "")
 
     private constructor(alias: Name, aliased: Table<ProfilesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ProfilesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
@@ -119,9 +126,7 @@ open class Profiles(
      */
     constructor(): this(DSL.name("profiles"), null)
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
-    override fun getIdentity(): Identity<ProfilesRecord, Long?> = super.getIdentity() as Identity<ProfilesRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<ProfilesRecord> = PROFILES_PKEY
-    override fun getUniqueKeys(): List<UniqueKey<ProfilesRecord>> = listOf(PROFILES_USER_ID_KEY)
     override fun `as`(alias: String): Profiles = Profiles(DSL.name(alias), this)
     override fun `as`(alias: Name): Profiles = Profiles(alias, this)
     override fun `as`(alias: Table<*>): Profiles = Profiles(alias.qualifiedName, this)

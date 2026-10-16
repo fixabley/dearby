@@ -69,6 +69,25 @@ AdminActivity: 공개 Activity(`native-v1.md` "활동 조회")의 필드 `{id, n
 - `officialSource`: 출처가 프로그램의 공식 도메인인지. false면 웹 전체 검색에서 나온 것이라 출처를 확인하고 게시해야 한다
 - `applicationUrl`, `location`, `cost`, `audience`, `sourceCheckedAt`: 수집이 원문에서 확인한 값(없으면 null)
 
+## 이력 검토·역할 — 2026-10-16 사용자 결정
+
+사용자가 프로필 이력을 단계별로 입력할 때 카탈로그에 없는 조직·프로그램·활동·역할을 직접 적으면 관리자 승인 전까지 명함에 넣을 수 없다. 인증자료를 올리면 관리자가 확인한다(`native-v1.md` "프로필·명함 v2" → "관리자"). 화면에는 작성자의 프로필 이름만 보여 주고 계정 id는 싣지 않는다.
+
+| 메서드·경로 | 요청 | 응답 |
+| --- | --- | --- |
+| GET /v1/admin/histories | `approval?`(pending·approved·rejected), `verification?`(unverified·pending·verified·rejected), `cursor?`(이력 id), `size?` | 200 `{items: HistoryForReview[], nextCursor}` |
+| POST /v1/admin/histories/:id/approval | `{decision: "approve"\|"reject", organizationId?, programId?, activityId?, roleId?, reason?}` | 200 HistoryForReview. 없는 카탈로그 id 400, 거절에 사유 없으면 400 |
+| POST /v1/admin/histories/:id/verification | `{decision: "verify"\|"reject"}` | 200 HistoryForReview |
+| GET /v1/admin/histories/:id/evidence/:eid | — | 200 파일(inline) |
+| GET /v1/admin/roles | `q?`, `cursor?`, `size?` | 200 `{items: Role[], nextCursor}` |
+| POST /v1/admin/roles | `{name, nameEn?}` | 201 Role. 띄어쓰기만 다른 이름도 중복 400 |
+| PATCH /v1/admin/roles/:id | `{name?, nameEn?}` | 200 Role |
+| DELETE /v1/admin/roles/:id | — | 204. 이력이 쓰면 400 |
+
+- HistoryForReview: `native-v1.md`의 History에 `profileName`을 더한 것.
+- 승인 때 id를 주면 직접 입력 값을 그 카탈로그 항목으로 바꾼다. 없는 조직·프로그램·역할은 기존 admin API로 먼저 만든다. 활동은 여기서 만들지 않으며, 직접 입력한 활동 이름을 그대로 승인할 수 있다.
+- Role: `{id, name, nameEn}`.
+
 ## 아직 없는 것
 
 활동의 이름·설명 외 내용(일정·장소 등) 편집, 수집 기록(`collection_runs`) 조회, 감사 로그. 기존 Supabase 어드민의 자격요건 편집기·수집 작업 큐·재확인 화면은 이 API로 옮기지 않는다.

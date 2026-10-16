@@ -7,12 +7,11 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.indexes.BUSINESS_CARDS_USER_ID_IDX
 import io.wid.dearby.adaptor.persistence.jooq.keys.BUSINESS_CARDS_PKEY
-import io.wid.dearby.adaptor.persistence.jooq.keys.BUSINESS_CARD_ACTIVITY_HISTORIES__BUSINESS_CARD_ACTIVITY_HISTORIES_BUSINESS_CARD_ID_FKEY
-import io.wid.dearby.adaptor.persistence.jooq.keys.BUSINESS_CARD_CONTACTS__BUSINESS_CARD_CONTACTS_BUSINESS_CARD_ID_FKEY
-import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardActivityHistories.BusinessCardActivityHistoriesPath
-import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCardContacts.BusinessCardContactsPath
+import io.wid.dearby.adaptor.persistence.jooq.keys.CARD_SHARES__CARD_SHARES_CARD_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.tables.CardShares.CardSharesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.BusinessCardsRecord
 
+import java.time.OffsetDateTime
 import java.util.UUID
 
 import kotlin.collections.Collection
@@ -24,6 +23,7 @@ import org.jooq.ForeignKey
 import org.jooq.Identity
 import org.jooq.Index
 import org.jooq.InverseForeignKey
+import org.jooq.JSONB
 import org.jooq.Name
 import org.jooq.Path
 import org.jooq.PlainSQL
@@ -83,7 +83,7 @@ open class BusinessCards(
     /**
      * The column <code>public.business_cards.id</code>.
      */
-    val ID: TableField<BusinessCardsRecord, Long?> = createField(DSL.name("id"), SQLDataType.BIGINT.nullable(false).generatedAlwaysAsIdentity(), this, "")
+    val ID: TableField<BusinessCardsRecord, UUID?> = createField(DSL.name("id"), SQLDataType.UUID.nullable(false), this, "")
 
     /**
      * The column <code>public.business_cards.user_id</code>.
@@ -91,9 +91,59 @@ open class BusinessCards(
     val USER_ID: TableField<BusinessCardsRecord, UUID?> = createField(DSL.name("user_id"), SQLDataType.UUID.nullable(false), this, "")
 
     /**
-     * The column <code>public.business_cards.title</code>.
+     * The column <code>public.business_cards.name</code>.
      */
-    val TITLE: TableField<BusinessCardsRecord, String?> = createField(DSL.name("title"), SQLDataType.VARCHAR(200).nullable(false), this, "")
+    val NAME: TableField<BusinessCardsRecord, String?> = createField(DSL.name("name"), SQLDataType.VARCHAR(200).nullable(false), this, "")
+
+    /**
+     * The column <code>public.business_cards.description</code>.
+     */
+    val DESCRIPTION: TableField<BusinessCardsRecord, String?> = createField(DSL.name("description"), SQLDataType.VARCHAR.nullable(false), this, "")
+
+    /**
+     * The column <code>public.business_cards.template</code>.
+     */
+    val TEMPLATE: TableField<BusinessCardsRecord, String?> = createField(DSL.name("template"), SQLDataType.VARCHAR.nullable(false), this, "")
+
+    /**
+     * The column <code>public.business_cards.introduction</code>.
+     */
+    val INTRODUCTION: TableField<BusinessCardsRecord, String?> = createField(DSL.name("introduction"), SQLDataType.VARCHAR.nullable(false), this, "")
+
+    /**
+     * The column <code>public.business_cards.profile_name</code>.
+     */
+    val PROFILE_NAME: TableField<BusinessCardsRecord, String?> = createField(DSL.name("profile_name"), SQLDataType.VARCHAR(100).nullable(false), this, "")
+
+    /**
+     * The column <code>public.business_cards.job</code>.
+     */
+    val JOB: TableField<BusinessCardsRecord, String?> = createField(DSL.name("job"), SQLDataType.VARCHAR(100).nullable(false), this, "")
+
+    /**
+     * The column <code>public.business_cards.contacts</code>.
+     */
+    val CONTACTS: TableField<BusinessCardsRecord, JSONB?> = createField(DSL.name("contacts"), SQLDataType.JSONB.nullable(false), this, "")
+
+    /**
+     * The column <code>public.business_cards.histories</code>.
+     */
+    val HISTORIES: TableField<BusinessCardsRecord, JSONB?> = createField(DSL.name("histories"), SQLDataType.JSONB.nullable(false), this, "")
+
+    /**
+     * The column <code>public.business_cards.revoked</code>.
+     */
+    val REVOKED: TableField<BusinessCardsRecord, Boolean?> = createField(DSL.name("revoked"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "")
+
+    /**
+     * The column <code>public.business_cards.seq</code>.
+     */
+    val SEQ: TableField<BusinessCardsRecord, Long?> = createField(DSL.name("seq"), SQLDataType.BIGINT.nullable(false).generatedAlwaysAsIdentity(), this, "")
+
+    /**
+     * The column <code>public.business_cards.created_at</code>.
+     */
+    val CREATED_AT: TableField<BusinessCardsRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "")
 
     private constructor(alias: Name, aliased: Table<BusinessCardsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<BusinessCardsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
@@ -131,37 +181,21 @@ open class BusinessCards(
     override fun getIdentity(): Identity<BusinessCardsRecord, Long?> = super.getIdentity() as Identity<BusinessCardsRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<BusinessCardsRecord> = BUSINESS_CARDS_PKEY
 
-    private lateinit var _businessCardActivityHistories: BusinessCardActivityHistoriesPath
+    private lateinit var _cardShares: CardSharesPath
 
     /**
-     * Get the implicit to-many join path to the
-     * <code>public.business_card_activity_histories</code> table
+     * Get the implicit to-many join path to the <code>public.card_shares</code>
+     * table
      */
-    fun businessCardActivityHistories(): BusinessCardActivityHistoriesPath {
-        if (!this::_businessCardActivityHistories.isInitialized)
-            _businessCardActivityHistories = BusinessCardActivityHistoriesPath(this, null, BUSINESS_CARD_ACTIVITY_HISTORIES__BUSINESS_CARD_ACTIVITY_HISTORIES_BUSINESS_CARD_ID_FKEY.inverseKey)
+    fun cardShares(): CardSharesPath {
+        if (!this::_cardShares.isInitialized)
+            _cardShares = CardSharesPath(this, null, CARD_SHARES__CARD_SHARES_CARD_ID_FKEY.inverseKey)
 
-        return _businessCardActivityHistories;
+        return _cardShares;
     }
 
-    val businessCardActivityHistories: BusinessCardActivityHistoriesPath
-        get(): BusinessCardActivityHistoriesPath = businessCardActivityHistories()
-
-    private lateinit var _businessCardContacts: BusinessCardContactsPath
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>public.business_card_contacts</code> table
-     */
-    fun businessCardContacts(): BusinessCardContactsPath {
-        if (!this::_businessCardContacts.isInitialized)
-            _businessCardContacts = BusinessCardContactsPath(this, null, BUSINESS_CARD_CONTACTS__BUSINESS_CARD_CONTACTS_BUSINESS_CARD_ID_FKEY.inverseKey)
-
-        return _businessCardContacts;
-    }
-
-    val businessCardContacts: BusinessCardContactsPath
-        get(): BusinessCardContactsPath = businessCardContacts()
+    val cardShares: CardSharesPath
+        get(): CardSharesPath = cardShares()
     override fun `as`(alias: String): BusinessCards = BusinessCards(DSL.name(alias), this)
     override fun `as`(alias: Name): BusinessCards = BusinessCards(alias, this)
     override fun `as`(alias: Table<*>): BusinessCards = BusinessCards(alias.qualifiedName, this)

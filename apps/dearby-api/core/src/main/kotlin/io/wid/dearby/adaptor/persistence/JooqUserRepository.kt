@@ -23,12 +23,13 @@ class JooqUserRepository(private val dsl: DSLContext) : UserRepository {
         return User(id, roles)
     }
 
-    // users를 지우면 user_roles·contacts가, 부모 행을 지우면 명함·이력·멤버·스태프의 하위 행이 FK cascade로 함께 지워진다.
+    // users를 지우면 user_roles·contacts·이력(+인증자료)·프로필 버전·받은 명함이 FK cascade로 함께 지워진다.
     // 나머지는 논리키라 직접 지운다. 패스키는 user handle(UUID 16바이트) 또는 2026-10-15 이전 가입분의 name(UUID 문자열)으로 찾는다
     @Transactional
     override fun delete(id: UserId) {
+        // 내 명함을 받은 다른 사람의 지갑 행부터(논리키), 그다음 명함(공유 기록은 FK cascade)
+        dsl.deleteFrom(RECEIPTS).where(RECEIPTS.CARD_ID.`in`(dsl.select(BUSINESS_CARDS.ID).from(BUSINESS_CARDS).where(BUSINESS_CARDS.USER_ID.eq(id)))).execute()
         dsl.deleteFrom(BUSINESS_CARDS).where(BUSINESS_CARDS.USER_ID.eq(id)).execute()
-        dsl.deleteFrom(PROFILE_ACTIVITY_HISTORIES).where(PROFILE_ACTIVITY_HISTORIES.USER_ID.eq(id)).execute()
         dsl.deleteFrom(ACTIVITY_PARTICIPATIONS).where(ACTIVITY_PARTICIPATIONS.USER_ID.eq(id)).execute()
         dsl.deleteFrom(ORGANIZATION_MEMBERS).where(ORGANIZATION_MEMBERS.USER_ID.eq(id)).execute()
         dsl.deleteFrom(PROGRAM_STAFF).where(PROGRAM_STAFF.USER_ID.eq(id)).execute()

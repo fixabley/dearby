@@ -18,9 +18,9 @@ import org.jooq.impl.UpdatableRecordImpl
 @Suppress("warnings")
 open class ContactsRecord() : UpdatableRecordImpl<ContactsRecord>(Contacts.CONTACTS) {
 
-    open var id: Long?
+    open var id: UUID?
         set(value): Unit = set(0, value)
-        get(): Long? = get(0) as Long?
+        get(): UUID? = get(0) as UUID?
 
     open var userId: UUID?
         set(value): Unit = set(1, value)
@@ -38,21 +38,26 @@ open class ContactsRecord() : UpdatableRecordImpl<ContactsRecord>(Contacts.CONTA
         set(value): Unit = set(4, value)
         get(): String? = get(4) as String?
 
+    open var position: Int?
+        set(value): Unit = set(5, value)
+        get(): Int? = get(5) as Int?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
 
-    override fun key(): Record1<Long?> = super.key() as Record1<Long?>
+    override fun key(): Record1<UUID?> = super.key() as Record1<UUID?>
 
     /**
      * Create a detached, initialised ContactsRecord
      */
-    constructor(id: Long? = null, userId: UUID? = null, kind: String? = null, label: String? = null, value: String? = null): this() {
+    constructor(id: UUID? = null, userId: UUID? = null, kind: String? = null, label: String? = null, value: String? = null, position: Int? = null): this() {
         this.id = id
         this.userId = userId
         this.kind = kind
         this.label = label
         this.value = value
+        this.position = position
         resetTouchedOnNotNull()
     }
 }

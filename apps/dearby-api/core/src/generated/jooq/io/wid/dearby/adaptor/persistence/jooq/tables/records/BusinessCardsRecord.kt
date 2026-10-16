@@ -6,8 +6,10 @@ package io.wid.dearby.adaptor.persistence.jooq.tables.records
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
 
+import java.time.OffsetDateTime
 import java.util.UUID
 
+import org.jooq.JSONB
 import org.jooq.Record1
 import org.jooq.impl.UpdatableRecordImpl
 
@@ -18,31 +20,81 @@ import org.jooq.impl.UpdatableRecordImpl
 @Suppress("warnings")
 open class BusinessCardsRecord() : UpdatableRecordImpl<BusinessCardsRecord>(BusinessCards.BUSINESS_CARDS) {
 
-    open var id: Long?
+    open var id: UUID?
         set(value): Unit = set(0, value)
-        get(): Long? = get(0) as Long?
+        get(): UUID? = get(0) as UUID?
 
     open var userId: UUID?
         set(value): Unit = set(1, value)
         get(): UUID? = get(1) as UUID?
 
-    open var title: String?
+    open var name: String?
         set(value): Unit = set(2, value)
         get(): String? = get(2) as String?
+
+    open var description: String?
+        set(value): Unit = set(3, value)
+        get(): String? = get(3) as String?
+
+    open var template: String?
+        set(value): Unit = set(4, value)
+        get(): String? = get(4) as String?
+
+    open var introduction: String?
+        set(value): Unit = set(5, value)
+        get(): String? = get(5) as String?
+
+    open var profileName: String?
+        set(value): Unit = set(6, value)
+        get(): String? = get(6) as String?
+
+    open var job: String?
+        set(value): Unit = set(7, value)
+        get(): String? = get(7) as String?
+
+    open var contacts: JSONB?
+        set(value): Unit = set(8, value)
+        get(): JSONB? = get(8) as JSONB?
+
+    open var histories: JSONB?
+        set(value): Unit = set(9, value)
+        get(): JSONB? = get(9) as JSONB?
+
+    open var revoked: Boolean?
+        set(value): Unit = set(10, value)
+        get(): Boolean? = get(10) as Boolean?
+
+    open var seq: Long?
+        set(value): Unit = set(11, value)
+        get(): Long? = get(11) as Long?
+
+    open var createdAt: OffsetDateTime?
+        set(value): Unit = set(12, value)
+        get(): OffsetDateTime? = get(12) as OffsetDateTime?
 
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
 
-    override fun key(): Record1<Long?> = super.key() as Record1<Long?>
+    override fun key(): Record1<UUID?> = super.key() as Record1<UUID?>
 
     /**
      * Create a detached, initialised BusinessCardsRecord
      */
-    constructor(id: Long? = null, userId: UUID? = null, title: String? = null): this() {
+    constructor(id: UUID? = null, userId: UUID? = null, name: String? = null, description: String? = null, template: String? = null, introduction: String? = null, profileName: String? = null, job: String? = null, contacts: JSONB? = null, histories: JSONB? = null, revoked: Boolean? = null, seq: Long? = null, createdAt: OffsetDateTime? = null): this() {
         this.id = id
         this.userId = userId
-        this.title = title
+        this.name = name
+        this.description = description
+        this.template = template
+        this.introduction = introduction
+        this.profileName = profileName
+        this.job = job
+        this.contacts = contacts
+        this.histories = histories
+        this.revoked = revoked
+        this.seq = seq
+        this.createdAt = createdAt
         resetTouchedOnNotNull()
     }
 }

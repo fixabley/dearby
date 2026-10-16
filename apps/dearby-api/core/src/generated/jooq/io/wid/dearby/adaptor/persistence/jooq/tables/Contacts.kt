@@ -20,7 +20,6 @@ import org.jooq.Check
 import org.jooq.Condition
 import org.jooq.Field
 import org.jooq.ForeignKey
-import org.jooq.Identity
 import org.jooq.Index
 import org.jooq.InverseForeignKey
 import org.jooq.Name
@@ -82,7 +81,7 @@ open class Contacts(
     /**
      * The column <code>public.contacts.id</code>.
      */
-    val ID: TableField<ContactsRecord, Long?> = createField(DSL.name("id"), SQLDataType.BIGINT.nullable(false).generatedAlwaysAsIdentity(), this, "")
+    val ID: TableField<ContactsRecord, UUID?> = createField(DSL.name("id"), SQLDataType.UUID.nullable(false), this, "")
 
     /**
      * The column <code>public.contacts.user_id</code>.
@@ -103,6 +102,11 @@ open class Contacts(
      * The column <code>public.contacts.value</code>.
      */
     val VALUE: TableField<ContactsRecord, String?> = createField(DSL.name("value"), SQLDataType.VARCHAR(500).nullable(false), this, "")
+
+    /**
+     * The column <code>public.contacts.position</code>.
+     */
+    val POSITION: TableField<ContactsRecord, Int?> = createField(DSL.name("position"), SQLDataType.INTEGER.nullable(false), this, "")
 
     private constructor(alias: Name, aliased: Table<ContactsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ContactsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
@@ -137,7 +141,6 @@ open class Contacts(
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
     override fun getIndexes(): List<Index> = listOf(CONTACTS_USER_ID_IDX)
-    override fun getIdentity(): Identity<ContactsRecord, Long?> = super.getIdentity() as Identity<ContactsRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<ContactsRecord> = CONTACTS_PKEY
     override fun getReferences(): List<ForeignKey<ContactsRecord, *>> = listOf(CONTACTS__CONTACTS_USER_ID_FKEY)
 

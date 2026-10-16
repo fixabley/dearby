@@ -6,7 +6,7 @@ package io.wid.dearby.adaptor.persistence.jooq.tables.records
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.Profiles
 
-import java.time.LocalDateTime
+import java.time.OffsetDateTime
 import java.util.UUID
 
 import org.jooq.Record1
@@ -19,39 +19,49 @@ import org.jooq.impl.UpdatableRecordImpl
 @Suppress("warnings")
 open class ProfilesRecord() : UpdatableRecordImpl<ProfilesRecord>(Profiles.PROFILES) {
 
-    open var id: Long?
-        set(value): Unit = set(0, value)
-        get(): Long? = get(0) as Long?
-
     open var userId: UUID?
-        set(value): Unit = set(1, value)
-        get(): UUID? = get(1) as UUID?
+        set(value): Unit = set(0, value)
+        get(): UUID? = get(0) as UUID?
 
     open var name: String?
+        set(value): Unit = set(1, value)
+        get(): String? = get(1) as String?
+
+    open var job: String?
         set(value): Unit = set(2, value)
         get(): String? = get(2) as String?
 
-    open var createdAt: LocalDateTime?
+    open var introduction: String?
         set(value): Unit = set(3, value)
-        get(): LocalDateTime? = get(3) as LocalDateTime?
+        get(): String? = get(3) as String?
 
-    open var updatedAt: LocalDateTime?
+    open var version: Int?
         set(value): Unit = set(4, value)
-        get(): LocalDateTime? = get(4) as LocalDateTime?
+        get(): Int? = get(4) as Int?
+
+    open var createdAt: OffsetDateTime?
+        set(value): Unit = set(5, value)
+        get(): OffsetDateTime? = get(5) as OffsetDateTime?
+
+    open var updatedAt: OffsetDateTime?
+        set(value): Unit = set(6, value)
+        get(): OffsetDateTime? = get(6) as OffsetDateTime?
 
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
 
-    override fun key(): Record1<Long?> = super.key() as Record1<Long?>
+    override fun key(): Record1<UUID?> = super.key() as Record1<UUID?>
 
     /**
      * Create a detached, initialised ProfilesRecord
      */
-    constructor(id: Long? = null, userId: UUID? = null, name: String? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null): this() {
-        this.id = id
+    constructor(userId: UUID? = null, name: String? = null, job: String? = null, introduction: String? = null, version: Int? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null): this() {
         this.userId = userId
         this.name = name
+        this.job = job
+        this.introduction = introduction
+        this.version = version
         this.createdAt = createdAt
         this.updatedAt = updatedAt
         resetTouchedOnNotNull()
