@@ -2,7 +2,7 @@ package io.wid.dearby.batch.adaptor.claude
 
 import io.wid.dearby.batch.application.ActivityDiscoverer
 import io.wid.dearby.batch.application.Discovery
-import io.wid.dearby.domain.CollectionTarget
+import io.wid.dearby.domain.collection.CollectionTarget
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
 import tools.jackson.databind.json.JsonMapper

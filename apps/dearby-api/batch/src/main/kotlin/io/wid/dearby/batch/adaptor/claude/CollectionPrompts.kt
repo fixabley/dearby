@@ -1,6 +1,6 @@
 package io.wid.dearby.batch.adaptor.claude
 
-import io.wid.dearby.domain.CollectionTarget
+import io.wid.dearby.domain.collection.CollectionTarget
 import java.net.URI
 
 // API·CLI 두 방식이 같은 지시문과 출력 스키마를 쓴다

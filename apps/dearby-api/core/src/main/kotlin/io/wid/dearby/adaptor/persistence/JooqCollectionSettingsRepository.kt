@@ -3,9 +3,9 @@ package io.wid.dearby.adaptor.persistence
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.COLLECTION_RUNS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.PROGRAM_COLLECTION_SETTINGS
 import io.wid.dearby.application.collection.CollectionSettingsRepository
-import io.wid.dearby.domain.CollectionOutcome
 import io.wid.dearby.domain.CollectionSettings
 import io.wid.dearby.domain.Id
+import io.wid.dearby.domain.collection.CollectionOutcome
 import org.jooq.DSLContext
 import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
