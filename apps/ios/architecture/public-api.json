@@ -5,6 +5,7 @@
     "AccountError",
     "AccountHistory",
     "AccountProfile",
+    "AppleSignIn",
     "CardShare",
     "ContactRules",
     "Passkey",
@@ -48,6 +49,7 @@
   ],
   "shared": [
     "AppOrigins",
+    "DearbyAppleButton",
     "DearbyAvatar",
     "DearbyBadge",
     "DearbyButtonStyle",

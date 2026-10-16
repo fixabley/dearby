@@ -1,10 +1,13 @@
+import AuthenticationServices
 import SwiftUI
 
 /// First-launch intro. Signing in is optional (App Store 5.1.1): "둘러보기" always opens the app.
-/// "패스키로 시작하기" reuses the passkey sign-in sheet; closing it after a cancel or failure stays here.
+/// "패스키로 시작하기" reuses the sign-in sheet; closing it after a cancel or failure stays here.
+/// The Apple button (when the build enables it) signs in here; a first-time Apple account opens the sheet's choice.
 struct IntroPage: View {
     let account: AccountViewModel
     let done: () -> Void
+    @Environment(\.authorizationController) private var authorizationController
     @State private var signingIn = false
     var body: some View {
         VStack(spacing: 0) {
@@ -21,6 +24,10 @@ struct IntroPage: View {
                 if let message = account.message, !signingIn {
                     DearbyFieldError(text: message).accessibilityIdentifier("intro-message")
                 }
+                if account.appleSignInEnabled {
+                    DearbyAppleButton { Task { await account.signInWithApple(using: authorizationController) } }
+                        .disabled(account.phase == .signingIn).accessibilityIdentifier("intro-apple")
+                }
                 Button("패스키로 시작하기") { signingIn = true }
                     .buttonStyle(DearbyButtonStyle()).accessibilityIdentifier("intro-passkey")
                 Button("둘러보기", action: done)
@@ -32,5 +39,8 @@ struct IntroPage: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity).background(.white)
         .tint(DearbyStyle.teal).preferredColorScheme(.light)
         .sheet(isPresented: $signingIn) { NavigationStack { SignInSheet(account: account, signedIn: done) } }
+        // Apple sign-in from this page; while the sheet is open, the sheet finishes instead.
+        .onChange(of: account.phase) { _, phase in if phase == .signedIn && !signingIn { done() } }
+        .onChange(of: account.appleLink) { _, link in if link != nil { signingIn = true } }
     }
 }
