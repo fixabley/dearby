@@ -231,7 +231,7 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 
 ## 프로필·명함 v2 — 2026-10-16 사용자 결정
 
-TypeScript API를 지운 뒤 비어 있던 프로필·명함·공유·지갑 경로를 Kotlin `api`가 다시 제공한다. 위 "모델"·"첫 수직 구현 API"의 Profile·Card 설명은 이 섹션이 대체한다. 오류는 ProblemDetail(400·401·403·404·409)이며 옛 422는 400이 됐다. id는 모두 UUID 문자열이고(카탈로그 조직·프로그램·활동·역할만 숫자), 연락처·이력 id는 클라이언트가 만든 UUID를 서버가 그대로 둔다.
+TypeScript API를 지운 뒤 비어 있던 프로필·명함·공유·지갑 경로를 Kotlin `api`가 다시 제공한다. 위 "모델"·"첫 수직 구현 API"의 Profile·Card 설명은 이 섹션이 대체한다. 오류는 ProblemDetail(400·401·403·404·409)이며 옛 422는 400이 됐다. id는 모두 UUID 문자열이고(조직·프로그램·활동·역할만 숫자), 연락처·이력 id는 클라이언트가 만든 UUID를 서버가 그대로 둔다.
 
 ### 프로필과 버전 이력
 
@@ -250,12 +250,12 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·공유·지갑 경
 
 ### 이력 (History) — 단계별 입력
 
-사용자는 토스 퍼널처럼 단계별로 고른다: **조직인지 활동인지 → 어떤 조직 → 어떤 프로그램 → (활동이면) 어떤 활동 → 역할 → 기간**. 조직·프로그램·활동·역할은 카탈로그에서 검색해 고르고, 없으면 직접 입력한다.
+사용자는 토스 퍼널처럼 단계별로 고른다: **조직인지 활동인지 → 어떤 조직 → 어떤 프로그램 → (활동이면) 어떤 활동 → 역할 → 기간**. 조직·프로그램·활동·역할은 등록된 활동 정보에서 검색해 고르고, 없으면 직접 입력한다.
 
 - History: `{id, kind: "organization"|"activity", organization: Ref|null, organizationName, program: Ref|null, programName, activity: Ref|null, activityName, role: Ref|null, roleName, startDate, endDate, description, approval, approvalReason, verification, evidence: Evidence[]}`
-  - Ref는 `{id(숫자), name}`. 카탈로그에서 고르면 Ref와 이름이 함께 오고, 직접 입력이면 Ref가 null이고 `*Name`만 있다. 요청에서는 `organizationId`·`programId`·`activityId`·`roleId`(숫자, 선택)와 `organizationName`·`programName`·`activityName`·`roleName`(직접 입력, 선택)을 보낸다. 둘 다 보내면 id를 쓴다.
+  - Ref는 `{id(숫자), name}`. 등록된 활동 정보에서 고르면 Ref와 이름이 함께 오고, 직접 입력이면 Ref가 null이고 `*Name`만 있다. 요청에서는 `organizationId`·`programId`·`activityId`·`roleId`(숫자, 선택)와 `organizationName`·`programName`·`activityName`·`roleName`(직접 입력, 선택)을 보낸다. 둘 다 보내면 id를 쓴다.
   - `kind=organization`은 조직(선택으로 프로그램)과 역할, `kind=activity`는 활동(소속 프로그램·조직 포함)과 역할. 조직 또는 조직 이름은 필수, 역할 또는 역할 이름은 필수. `startDate` 필수, `endDate`는 진행 중이면 null, 시작보다 앞설 수 없다.
-  - `approval`: `approved` | `pending` | `rejected`. 직접 입력(`*Name`만 있는 값)이 하나라도 있으면 `pending`으로 저장되고 **관리자가 승인해야 명함에 넣을 수 있다**. 카탈로그 값만 쓰면 바로 `approved`. 승인된 뒤 직접 입력 값을 바꾸면 다시 `pending`. 거절되면 `approvalReason`에 사유가 온다.
+  - `approval`: `approved` | `pending` | `rejected`. 직접 입력(`*Name`만 있는 값)이 하나라도 있으면 `pending`으로 저장되고 **관리자가 승인해야 명함에 넣을 수 있다**. 등록된 활동 정보 값만 쓰면 바로 `approved`. 승인된 뒤 직접 입력 값을 바꾸면 다시 `pending`. 거절되면 `approvalReason`에 사유가 온다.
   - `verification`: `unverified` | `pending` | `verified` | `rejected`. 인증자료를 하나라도 올리면 `pending`, 관리자가 확인하면 `verified`. 앱은 `verified`가 아니면 **미확인 배지**를 붙인다. 미인증이어도 명함에 넣을 수 있다.
 - 검색(로그인, 앱 선택 창용): `GET /v1/organizations?q&parentId&rootsOnly&cursor&size`, `GET /v1/programs?q&organizationId&cursor&size`, `GET /v1/roles?q&cursor&size`, 활동은 기존 `GET /v1/activities`. 응답은 admin과 같은 keyset 페이지(`{items, nextCursor}`), 항목은 `{id, name, nameEn?}`(조직은 `parentOrganizationId`, 프로그램은 `organization` 포함).
 
@@ -284,7 +284,7 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·공유·지갑 경
 | PUT /v1/wallet/shares/:id | Bearer | — | 첫 저장 201, 이후 200 `{receiptId, cardId, shareId, status: "saved"\|"alreadySaved"}`. 자기 명함 400, 명함당 공유 20개 넘으면 409 |
 
 - Card: `{id, ownerId, name, description, template, introduction, profileName, job, contacts: Contact[], histories: History[], createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `template`은 발행할 때 보낸 마크다운 템플릿, `introduction`은 그것을 **채운 결과**(공개 본문)다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`, `GET /v1/shares/:id`)에는 `template`을 싣지 않는다.
-- CardShare: `{id, cardId, activities: [{id(숫자), title}], createdAt}`. **활동 id가 UUID에서 숫자로 바뀌었다**(카탈로그 결정). 앱·웹의 ShareActivity를 맞춘다.
+- CardShare: `{id, cardId, activities: [{id(숫자), title}], createdAt}`. **활동 id가 UUID에서 숫자로 바뀌었다**(2026-10-14 활동 조회 결정). 앱·웹의 ShareActivity를 맞춘다.
 - Receipt: `{id, card, context: {activityId: null, label: null}, receivedAt, reciprocal: false}`. WalletShare는 "앱에서 받은 공유 저장"과 같다.
 - 아직 없는 것(4단계): 웹 비로그인 저장(`/v1/guest/*`, 홈 화면 세션 잇기), `POST /v1/wallet/import`, `POST /v1/exchanges`. 웹 `/s/` 페이지는 명함을 보여 주되 저장은 그때까지 실패(`REQUEST_FAILED`)한다.
 
@@ -301,10 +301,10 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·공유·지갑 경
 ### 관리자 (admin-v1.md에도 기록)
 
 - `GET /v1/admin/histories?approval=pending|rejected|approved&verification=pending|…&cursor&size`: 검토할 이력. 항목은 History에 `profileName`(작성자 프로필 이름)을 더한 것. 계정 id는 싣지 않는다.
-- `POST /v1/admin/histories/:id/approval` `{decision: "approve"|"reject", organizationId?, programId?, activityId?, roleId?, reason?}`: 승인 때 id를 주면 직접 입력 값을 그 카탈로그 항목으로 바꾼다(없는 조직·프로그램·역할은 기존 admin API로 먼저 만든다). 거절은 `reason`을 남긴다.
+- `POST /v1/admin/histories/:id/approval` `{decision: "approve"|"reject", organizationId?, programId?, activityId?, roleId?, reason?}`: 승인 때 id를 주면 직접 입력 값을 그 활동 정보 항목으로 바꾼다(없는 조직·프로그램·역할은 기존 admin API로 먼저 만든다). 거절은 `reason`을 남긴다.
 - `POST /v1/admin/histories/:id/verification` `{decision: "verify"|"reject"}`.
 - `GET /v1/admin/histories/:id/evidence/:eid`: 파일.
-- 역할 카탈로그: `GET /v1/admin/roles?q`, `POST /v1/admin/roles {name, nameEn?}`, `PATCH /v1/admin/roles/:id`, `DELETE /v1/admin/roles/:id`(이력이 쓰면 400). 이름은 띄어쓰기를 뺀 값으로 유일.
+- 역할 목록: `GET /v1/admin/roles?q`, `POST /v1/admin/roles {name, nameEn?}`, `PATCH /v1/admin/roles/:id`, `DELETE /v1/admin/roles/:id`(이력이 쓰면 400). 이름은 띄어쓰기를 뺀 값으로 유일.
 
 ## 애플 로그인 — 2026-10-16 사용자 결정
 

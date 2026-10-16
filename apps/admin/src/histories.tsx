@@ -63,7 +63,7 @@ export function Histories() {
         <div>
           <span className="eyebrow">REVIEW</span>
           <h1>이력 검토</h1>
-          <p>사용자가 직접 적은 조직·프로그램·활동·역할을 카탈로그에 맞춰 승인하고, 올린 인증자료를 확인하세요.</p>
+          <p>사용자가 직접 적은 조직·프로그램·활동·역할을 등록된 활동 정보에 맞춰 승인하고, 올린 인증자료를 확인하세요.</p>
         </div>
       </header>
       <div className="editorial-note">
