@@ -24,8 +24,9 @@ class WalletViewModel(private val account: AccountViewModel) : ViewModel() {
             val wallet = account.authorized { account.client.wallet(it) }
             // Same rule as the web /saved: a card sits under every activity its shares carried, in first-saved order.
             val shares = wallet.shares.sortedBy { it.savedAt }
-            val activities = shares.flatMap { it.activities }.distinctBy { it.id }.map { it.id to it.title }
-            val byCard = shares.groupBy { it.cardId }.mapValues { (_, list) -> list.flatMap { it.activities }.map { it.id }.distinct() }
+            // Activity ids are numeric on the server; the grouping keys stay strings.
+            val activities = shares.flatMap { it.activities }.distinctBy { it.id }.map { it.id.toString() to it.title }
+            val byCard = shares.groupBy { it.cardId }.mapValues { (_, list) -> list.flatMap { it.activities }.map { it.id.toString() }.distinct() }
             WalletState(WalletPhase.LOADED, wallet.items.map { WalletEntryState(it.card.toState(), byCard[it.card.id].orEmpty()) }, activities)
         } catch (e: AccountException) {
             WalletState(if (e.error == AccountError.UNAUTHORIZED) WalletPhase.SIGNED_OUT else WalletPhase.FAILED)

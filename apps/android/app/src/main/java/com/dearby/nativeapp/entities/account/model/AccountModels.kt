@@ -20,16 +20,50 @@ sealed interface AppleSignIn {
 
 /** Profile contact. IDs are client-generated UUIDs; the server keeps them as given. */
 data class AccountContact(val id: String, val kind: String, val label: String, val value: String)
-data class AccountHistory(val id: String, val title: String, val role: String, val startDate: String, val endDate: String?, val description: String)
-/** `PUT /v1/profile` replaces the whole profile; `GET` returns the same fields plus id and updatedAt. */
-data class AccountProfile(val name: String, val job: String, val introduction: String, val contacts: List<AccountContact>, val histories: List<AccountHistory>)
-/** A published card snapshot from `POST /v1/cards`; [introduction] comes with public reads. */
+/** A registered 활동 정보 item (organization, program, activity or role) a history points at; ids are the server's numbers. */
+data class ActivityInfoRef(val id: Long, val name: String)
+/** An uploaded evidence file's metadata (contract "인증자료"); the bytes stay on the server. */
+data class EvidenceMeta(val id: String, val fileName: String, val contentType: String, val size: Int, val uploadedAt: String)
+/**
+ * A step-by-step history (contract "이력"): each of organization/program/activity/role is a ref or a typed name.
+ * Typed names wait for admin approval ([approval]); evidence drives [verification]. [toJson] writes the PUT shape.
+ */
+data class AccountHistory(
+    val id: String, val kind: String,
+    val organization: ActivityInfoRef? = null, val organizationName: String? = null,
+    val program: ActivityInfoRef? = null, val programName: String? = null,
+    val activity: ActivityInfoRef? = null, val activityName: String? = null,
+    val role: ActivityInfoRef? = null, val roleName: String? = null,
+    val startDate: String, val endDate: String?, val description: String = "",
+    val approval: String = "approved", val approvalReason: String? = null,
+    val verification: String = "unverified", val evidence: List<EvidenceMeta> = emptyList(),
+) {
+    /** 조직 → 프로그램 → 활동 names, registered or typed. */
+    val chain get() = listOfNotNull(organization?.name ?: organizationName, program?.name ?: programName, activity?.name ?: activityName)
+    val roleTitle get() = role?.name ?: roleName.orEmpty()
+    val isApproved get() = approval == "approved"
+    val isVerified get() = verification == "verified"
+    val hasCustomEntry get() = (organization == null && organizationName != null) || (program == null && programName != null) ||
+        (activity == null && activityName != null) || (role == null && roleName != null)
+}
+/** `PUT /v1/profile` replaces the whole profile (data only; card decoration lives on cards). [version] goes back as `If-Match`. */
+data class AccountProfile(val name: String, val job: String, val introduction: String, val contacts: List<AccountContact>,
+    val histories: List<AccountHistory>, val version: Int = 0)
+/** A published card snapshot from `POST /v1/cards`; [introduction] is the filled-in template (markdown body), [template] comes on owner reads. */
 data class PublishedCard(val id: String, val name: String, val description: String, val profileName: String, val job: String,
-    val contacts: List<AccountContact>, val histories: List<AccountHistory>, val createdAt: String, val introduction: String = "")
+    val contacts: List<AccountContact>, val histories: List<AccountHistory>, val createdAt: String, val introduction: String = "", val template: String? = null)
+/** One saved profile version (`GET /v1/profile/versions`), newest first. */
+data class ProfileVersionSummary(val version: Int, val createdAt: String)
+data class ProfileVersionList(val items: List<ProfileVersionSummary>, val nextCursor: Int?)
+data class ProfileVersionDetail(val version: Int, val createdAt: String, val profile: AccountProfile)
+/** A search hit for the history pickers (`GET /v1/organizations|programs|roles|activities`). */
+data class ActivityInfoItem(val id: Long, val name: String, val nameEn: String?, val parentOrganizationId: Long?, val organization: ActivityInfoRef?) {
+    val ref get() = ActivityInfoRef(id, name)
+}
+data class ActivityInfoPage(val items: List<ActivityInfoItem>, val nextCursor: Long?)
 
-/** An activity copied into a share when it was made; never follows later activity edits. */
-data class ShareActivity(val id: String, val title: String)
-/** A recorded share of one card (`POST /v1/cards/:id/shares`); its ID is the public `/s/<id>` link. */
+/** An activity copied into a share when it was made; never follows later activity edits. Ids are numeric since 2026-10-16. */
+data class ShareActivity(val id: Long, val title: String)
 /** `GET /v1/wallet` (contract #141): saved cards and the shares they came with. */
 data class Wallet(val items: List<WalletReceipt>, val shares: List<WalletShare>)
 data class WalletReceipt(val id: String, val card: PublishedCard, val receivedAt: String)
@@ -45,26 +79,44 @@ fun JSONObject.toPasskeyChallenge() = PasskeyChallenge(getString("challengeId"),
 
 fun AccountProfile.toJson(): JSONObject = JSONObject().put("name", name).put("job", job).put("introduction", introduction)
     .put("contacts", JSONArray(contacts.map { JSONObject().put("id", it.id).put("kind", it.kind).put("label", it.label).put("value", it.value) }))
-    // The API requires `endDate` to be present, as null when ongoing.
-    .put("histories", JSONArray(histories.map { JSONObject().put("id", it.id).put("title", it.title).put("role", it.role)
-        .put("startDate", it.startDate).put("endDate", it.endDate ?: JSONObject.NULL).put("description", it.description) }))
+    .put("histories", JSONArray(histories.map { it.toJson() }))
+/** The PUT shape: ids for picked items, names only for typed ones, `endDate` null when ongoing. */
+fun AccountHistory.toJson(): JSONObject = JSONObject().put("id", id).put("kind", kind)
+    .put("organizationId", organization?.id ?: JSONObject.NULL).put("organizationName", organization?.let { JSONObject.NULL } ?: organizationName ?: JSONObject.NULL)
+    .put("programId", program?.id ?: JSONObject.NULL).put("programName", program?.let { JSONObject.NULL } ?: programName ?: JSONObject.NULL)
+    .put("activityId", activity?.id ?: JSONObject.NULL).put("activityName", activity?.let { JSONObject.NULL } ?: activityName ?: JSONObject.NULL)
+    .put("roleId", role?.id ?: JSONObject.NULL).put("roleName", role?.let { JSONObject.NULL } ?: roleName ?: JSONObject.NULL)
+    .put("startDate", startDate).put("endDate", endDate ?: JSONObject.NULL).put("description", description)
 
-fun JSONObject.toProfile() = AccountProfile(getString("name"), getString("job"), getString("introduction"),
-    getJSONArray("contacts").objects().map { it.toContact() }, getJSONArray("histories").objects().map { it.toHistory() })
+fun JSONObject.toProfile() = AccountProfile(optString("name"), optString("job"), optString("introduction"),
+    optJSONArray("contacts")?.objects()?.map { it.toContact() }.orEmpty(), optJSONArray("histories")?.objects()?.map { it.toHistory() }.orEmpty(), optInt("version", 0))
 fun JSONObject.toPublishedCard() = PublishedCard(getString("id"), getString("name"), getString("description"), getString("profileName"),
     getString("job"), getJSONArray("contacts").objects().map { it.toContact() }, getJSONArray("histories").objects().map { it.toHistory() },
-    getString("createdAt"), optString("introduction"))
+    getString("createdAt"), optString("introduction"), text("template"))
+fun JSONObject.toVersionList() = ProfileVersionList(getJSONArray("items").objects().map { ProfileVersionSummary(it.getInt("version"), it.getString("createdAt")) },
+    if (isNull("nextCursor")) null else getInt("nextCursor"))
+fun JSONObject.toVersionDetail() = ProfileVersionDetail(getInt("version"), getString("createdAt"), getJSONObject("profile").toProfile())
+fun JSONObject.toEvidence() = EvidenceMeta(getString("id"), getString("fileName"), getString("contentType"), getInt("size"), getString("uploadedAt"))
+fun JSONObject.toActivityInfoPage() = ActivityInfoPage(getJSONArray("items").objects().map {
+    ActivityInfoItem(it.getLong("id"), it.getString("name"), it.text("nameEn"), if (it.isNull("parentOrganizationId")) null else it.getLong("parentOrganizationId"),
+        it.optJSONObject("organization")?.toRef())
+}, if (isNull("nextCursor")) null else getLong("nextCursor"))
 
 fun JSONObject.toReceivedShare() = ReceivedShare(getJSONObject("share").toCardShare(), getJSONObject("card").toPublishedCard())
 fun JSONObject.toWallet() = Wallet(
     getJSONArray("items").objects().map { WalletReceipt(it.getString("id"), it.getJSONObject("card").toPublishedCard(), it.getString("receivedAt")) },
     getJSONArray("shares").objects().map { share -> WalletShare(share.getString("receiptId"), share.getString("cardId"), share.getString("shareId"),
-        share.getJSONArray("activities").objects().map { ShareActivity(it.getString("id"), it.getString("title")) }, share.getString("savedAt")) })
+        share.getJSONArray("activities").objects().map { it.toShareActivity() }, share.getString("savedAt")) })
 fun JSONObject.toCardList() = getJSONArray("items").objects().map { it.toPublishedCard() }
-fun JSONObject.toCardShare() = CardShare(getString("id"), getString("cardId"),
-    getJSONArray("activities").objects().map { ShareActivity(it.getString("id"), it.getString("title")) }, getString("createdAt"))
+fun JSONObject.toCardShare() = CardShare(getString("id"), getString("cardId"), getJSONArray("activities").objects().map { it.toShareActivity() }, getString("createdAt"))
 
+private fun JSONObject.toShareActivity() = ShareActivity(getLong("id"), getString("title"))
+private fun JSONObject.toRef() = ActivityInfoRef(getLong("id"), getString("name"))
 private fun JSONObject.toContact() = AccountContact(getString("id"), getString("kind"), getString("label"), getString("value"))
-private fun JSONObject.toHistory() = AccountHistory(getString("id"), getString("title"), getString("role"), getString("startDate"),
-    if (isNull("endDate")) null else getString("endDate"), getString("description"))
+private fun JSONObject.toHistory() = AccountHistory(getString("id"), getString("kind"),
+    optJSONObject("organization")?.toRef(), text("organizationName"), optJSONObject("program")?.toRef(), text("programName"),
+    optJSONObject("activity")?.toRef(), text("activityName"), optJSONObject("role")?.toRef(), text("roleName"),
+    getString("startDate"), text("endDate"), optString("description"), optString("approval", "approved"), text("approvalReason"),
+    optString("verification", "unverified"), optJSONArray("evidence")?.objects()?.map { it.toEvidence() }.orEmpty())
+private fun JSONObject.text(key: String): String? = if (isNull(key)) null else getString(key)
 private fun JSONArray.objects() = List(length()) { getJSONObject(it) }

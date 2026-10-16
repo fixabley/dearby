@@ -1,3 +1,9 @@
+## 2026-10-17 프로필·명함 v2
+
+- `python3 scripts/check-fsd.py --self-test`: 통과(71 files)
+- `./gradlew lintDebug assembleDebug`: 통과
+- 실행하지 않은 것: 에뮬레이터·기기 화면 흐름, 실제 서버 연결, 큰 글씨 테스트(2026-10-06 지시)
+
 # Android prototype verification
 
 현재 증거: [네이티브 화면 및 검사 기록](../evidence/selected-card-flows/README.md). 대체된 중간 증거/보고서는 [정리 기록](cleanup-2026-10-04.md)에 따라 제거했습니다. 과거 서비스 텍스트 기록은 [archive](archive)에 그대로 보존하며 해당 문서의 이전 evidence 경로는 당시 커밋의 기록입니다.

@@ -8,6 +8,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dearby.nativeapp.entities.account.api.AccountError
 import com.dearby.nativeapp.entities.account.api.AccountException
+import com.dearby.nativeapp.entities.account.model.ContactRules
 import com.dearby.nativeapp.entities.account.model.PublishedCard
 import com.dearby.nativeapp.entities.account.model.ScannedLink
 import com.dearby.nativeapp.pages.qr.ReceivedPhase
@@ -52,7 +53,7 @@ import kotlinx.coroutines.launch
         } catch (e: AccountException) {
             error = when (e.error) {
                 AccountError.UNAUTHORIZED -> null.also { signingIn = true }
-                AccountError.OWN_CARD -> "내 명함은 받은 명함에 저장하지 않아요."
+                AccountError.BAD_REQUEST -> e.detail ?: "내 명함은 받은 명함에 저장하지 않아요."
                 AccountError.CONFLICT -> "이 명함으로 받은 공유가 너무 많아 더 저장할 수 없어요."
                 AccountError.NOT_FOUND -> "공유한 사람이 명함을 거둬들였어요."
                 else -> "저장하지 못했어요. 잠시 후 다시 시도해 주세요."
@@ -70,4 +71,4 @@ import kotlinx.coroutines.launch
 
 fun PublishedCard.toState() = CardState(id, profileName, job, name, description, introduction,
     contacts.map { ContactState(it.id, it.kind, it.label, it.value) },
-    histories.map { CardHistoryState(it.id, it.title, it.role, listOfNotNull(it.startDate, it.endDate).joinToString(" – ")) })
+    histories.map { CardHistoryState(it.id, it.chain.joinToString(" · "), it.roleTitle, ContactRules.period(it.startDate, it.endDate), it.isVerified) })

@@ -1,6 +1,8 @@
 package com.dearby.nativeapp.entities.account.api
 
 import com.dearby.nativeapp.entities.account.model.AccountProfile
+import com.dearby.nativeapp.entities.account.model.ActivityInfoPage
+import com.dearby.nativeapp.entities.account.model.EvidenceMeta
 import com.dearby.nativeapp.entities.account.model.AccountSession
 import com.dearby.nativeapp.entities.account.model.PublishedCard
 import com.dearby.nativeapp.entities.account.model.CardShare
@@ -11,6 +13,10 @@ import com.dearby.nativeapp.entities.account.model.toWallet
 import com.dearby.nativeapp.entities.account.model.toJson
 import com.dearby.nativeapp.entities.account.model.toProfile
 import com.dearby.nativeapp.entities.account.model.toPublishedCard
+import com.dearby.nativeapp.entities.account.model.toActivityInfoPage
+import com.dearby.nativeapp.entities.account.model.toEvidence
+import com.dearby.nativeapp.entities.account.model.toVersionDetail
+import com.dearby.nativeapp.entities.account.model.toVersionList
 import com.dearby.nativeapp.entities.account.model.toAppleSignIn
 import com.dearby.nativeapp.entities.account.model.toPasskeyChallenge
 import com.dearby.nativeapp.entities.account.model.toSession
@@ -21,15 +27,17 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
-/** [INVALID_CONTACTS]: required phone or email missing or malformed (422 "Invalid contacts"); [OWN_CARD]: the share is your own
- *  card (422 INVALID_RECIPIENT); [CONFLICT]: a card already holds the most share links (409); [BAD_REQUEST]: 400, e.g. linking
- *  an Apple account that is already linked elsewhere; [TURNED_OFF]: 503, e.g. Apple sign-in without
- *  `APPLE_CLIENT_IDS` on the server. Network failures and other statuses are [UNAVAILABLE]. */
-enum class AccountError { UNAUTHORIZED, INVALID_INPUT, INVALID_CONTACTS, OWN_CARD, NOT_FOUND, CONFLICT, RATE_LIMITED, BAD_REQUEST, TURNED_OFF, UNAVAILABLE }
-class AccountException(val error: AccountError) : Exception(error.name)
+/** [BAD_REQUEST]: 400 with the server's user-facing ProblemDetail `detail` in [AccountException.detail] (contact rules,
+ *  unapproved history, own card, …); [CONFLICT]: 409 — the profile changed elsewhere (`If-Match`) or a card already holds
+ *  the most share links; [TURNED_OFF]: 503, e.g. Apple sign-in without `APPLE_CLIENT_IDS` on the server.
+ *  Network failures and other statuses are [UNAVAILABLE]. */
+enum class AccountError { UNAUTHORIZED, INVALID_INPUT, NOT_FOUND, CONFLICT, RATE_LIMITED, BAD_REQUEST, TURNED_OFF, UNAVAILABLE }
+class AccountException(val error: AccountError, val detail: String? = null) : Exception(error.name)
 
-data class HttpRequest(val method: String, val url: String, val token: String?, val body: String?)
-data class HttpResponse(val status: Int, val body: String)
+/** [bytes] with [contentType] replaces the JSON [body] (multipart uploads); [headers] are extra request headers. */
+data class HttpRequest(val method: String, val url: String, val token: String?, val body: String?, val bytes: ByteArray? = null,
+    val contentType: String? = null, val headers: Map<String, String> = emptyMap())
+data class HttpResponse(val status: Int, val body: String, val bytes: ByteArray? = null)
 fun interface Transport { suspend fun send(request: HttpRequest): HttpResponse }
 
 /** Real transport. Tokens, credentials and bodies are never logged. */
@@ -44,14 +52,21 @@ val httpTransport = Transport { request ->
             connection.instanceFollowRedirects = false
             connection.setRequestProperty("Accept", "application/json")
             request.token?.let { connection.setRequestProperty("Authorization", "Bearer $it") }
+            request.headers.forEach { (name, value) -> connection.setRequestProperty(name, value) }
             request.body?.let { body ->
                 connection.doOutput = true
                 connection.setRequestProperty("Content-Type", "application/json")
                 connection.outputStream.use { it.write(body.toByteArray()) }
             }
+            request.bytes?.let { bytes ->
+                connection.doOutput = true
+                connection.setRequestProperty("Content-Type", request.contentType)
+                connection.outputStream.use { it.write(bytes) }
+            }
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            HttpResponse(status, stream?.bufferedReader()?.use { it.readText() }.orEmpty())
+            val bytes = stream?.use { it.readBytes() }
+            HttpResponse(status, bytes?.toString(Charsets.UTF_8).orEmpty(), bytes)
         } finally {
             connection.disconnect()
         }
@@ -84,13 +99,35 @@ class AccountClient(private val api: String, private val transport: Transport = 
     /** "계정 삭제" (contract "계정 삭제"): removes the account and everything it holds; 204 with no body. Irreversible. */
     suspend fun deleteAccount(session: AccountSession) { request("DELETE", "me", null, session) }
     suspend fun profile(session: AccountSession) = send("GET", "profile", null, session).toProfile()
-    suspend fun saveProfile(profile: AccountProfile, session: AccountSession) = send("PUT", "profile", profile.toJson(), session).toProfile()
-    suspend fun publish(name: String, description: String, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =
-        send("POST", "cards", JSONObject().put("name", name).put("description", description)
+    /** `If-Match` carries the version the edit started from; a 409 means the profile changed elsewhere. */
+    suspend fun saveProfile(profile: AccountProfile, ifMatch: Int?, session: AccountSession) =
+        send("PUT", "profile", profile.toJson(), session, headers = ifMatch?.let { mapOf("If-Match" to it.toString()) }.orEmpty()).toProfile()
+    suspend fun profileVersions(cursor: Int?, session: AccountSession) = send("GET", "profile/versions?size=20" + (cursor?.let { "&cursor=$it" } ?: ""), null, session).toVersionList()
+    suspend fun profileVersion(version: Int, session: AccountSession) = send("GET", "profile/versions/$version", null, session).toVersionDetail()
+    /** Makes a new version from an old one (the history is never rewritten). */
+    suspend fun restoreProfile(version: Int, session: AccountSession) = send("POST", "profile/versions/$version/restore", JSONObject(), session).toProfile()
+    /** Multipart upload of one evidence file (max 3 per history, 5MB, image or PDF). */
+    suspend fun uploadEvidence(historyId: String, fileName: String, contentType: String, bytes: ByteArray, session: AccountSession): EvidenceMeta {
+        val boundary = "dearby-" + java.util.UUID.randomUUID()
+        val head = "--$boundary\r\nContent-Disposition: form-data; name=\"file\"; filename=\"${fileName.replace("\"", "")}\"\r\nContent-Type: $contentType\r\n\r\n"
+        val body = head.toByteArray() + bytes + "\r\n--$boundary--\r\n".toByteArray()
+        val text = request(HttpRequest("POST", "$api/v1/profile/histories/$historyId/evidence", session.accessToken, null, body, "multipart/form-data; boundary=$boundary"))
+        return try { JSONObject(text).toEvidence() } catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
+    }
+    suspend fun deleteEvidence(historyId: String, evidenceId: String, session: AccountSession) { request("DELETE", "profile/histories/$historyId/evidence/$evidenceId", null, session) }
+    /** Picker searches for the history steps (organizations, programs, roles need a session; activities are public). */
+    suspend fun searchActivityInfo(kind: ActivityInfoKind, query: String, parentId: Long?, session: AccountSession?): ActivityInfoPage {
+        val params = mutableListOf("q=" + java.net.URLEncoder.encode(query, "UTF-8"), "size=20")
+        parentId?.let { params += when (kind) { ActivityInfoKind.PROGRAMS -> "organizationId=$it"; ActivityInfoKind.ACTIVITIES -> "programId=$it"; ActivityInfoKind.ORGANIZATIONS -> "parentId=$it"; ActivityInfoKind.ROLES -> "" } }
+        return send("GET", kind.path + "?" + params.filter { it.isNotEmpty() }.joinToString("&"), null, session).toActivityInfoPage()
+    }
+    /** `POST /v1/cards`: [template] is the decoration markdown the server fills in at publish time. */
+    suspend fun publish(name: String, description: String, template: String, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =
+        send("POST", "cards", JSONObject().put("name", name).put("description", description).put("template", template)
             .put("contactIds", JSONArray(contactIds)).put("historyIds", JSONArray(historyIds)), session).toPublishedCard()
     /** Your non-withdrawn cards in creation order, so the newest is last. */
     suspend fun cards(session: AccountSession) = send("GET", "cards", null, session).toCardList()
-    suspend fun share(cardId: String, activityIds: List<String>, session: AccountSession): CardShare =
+    suspend fun share(cardId: String, activityIds: List<Long>, session: AccountSession): CardShare =
         send("POST", "cards/$cardId/shares", JSONObject().put("activityIds", JSONArray(activityIds)), session).toCardShare()
     /** Saves a received share to the account's wallet (contract #141); returns `saved` or `alreadySaved`. */
     // An explicit {}: HttpURLConnection otherwise sends a PUT body the API rejects.
@@ -103,27 +140,23 @@ class AccountClient(private val api: String, private val transport: Transport = 
 
     private fun passkeyBody(challengeId: String, credential: String) = JSONObject().put("challengeId", challengeId).put("credential", JSONObject(credential))
 
-    private suspend fun send(method: String, path: String, body: JSONObject?, session: AccountSession? = null): JSONObject {
-        val text = request(method, path, body, session)
+    enum class ActivityInfoKind(val path: String) { ORGANIZATIONS("organizations"), PROGRAMS("programs"), ACTIVITIES("activities"), ROLES("roles") }
+
+    private suspend fun send(method: String, path: String, body: JSONObject?, session: AccountSession? = null, headers: Map<String, String> = emptyMap()): JSONObject {
+        val text = request(method, path, body, session, headers)
         return try { JSONObject(text) } catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
     }
-    private suspend fun request(method: String, path: String, body: JSONObject?, session: AccountSession?): String {
-        val response = try { transport.send(HttpRequest(method, "$api/v1/$path", session?.accessToken, body?.toString())) }
-            catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
+    private suspend fun request(method: String, path: String, body: JSONObject?, session: AccountSession?, headers: Map<String, String> = emptyMap()): String =
+        request(HttpRequest(method, "$api/v1/$path", session?.accessToken, body?.toString(), headers = headers))
+    private suspend fun request(http: HttpRequest): String {
+        val response = try { transport.send(http) } catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
         return when (response.status) {
             in 200..299 -> response.body
-            400 -> throw AccountException(AccountError.BAD_REQUEST)
+            // RFC 9457 ProblemDetail: `detail` is the user-facing sentence.
+            400 -> throw AccountException(AccountError.BAD_REQUEST, runCatching { JSONObject(response.body).optString("detail").ifBlank { null } }.getOrNull())
             401 -> throw AccountException(AccountError.UNAUTHORIZED)
             404 -> throw AccountException(AccountError.NOT_FOUND)
             409 -> throw AccountException(AccountError.CONFLICT)
-            422 -> throw AccountException(
-                runCatching { JSONObject(response.body).getJSONObject("error") }.getOrNull().let { error ->
-                    when {
-                        error?.optString("code") == "INVALID_RECIPIENT" -> AccountError.OWN_CARD
-                        error?.optString("message") == "Invalid contacts" -> AccountError.INVALID_CONTACTS
-                        else -> AccountError.INVALID_INPUT
-                    }
-                })
             429 -> throw AccountException(AccountError.RATE_LIMITED)
             503 -> throw AccountException(AccountError.TURNED_OFF)
             else -> throw AccountException(AccountError.UNAVAILABLE)

@@ -1,39 +1,46 @@
 package com.dearby.nativeapp.pages.profile
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
-import com.dearby.nativeapp.widgets.card.cardContent.CardContent
-import com.dearby.nativeapp.widgets.card.cardContent.CardState
-import com.dearby.nativeapp.widgets.card.cardContent.ContactState
-import com.dearby.nativeapp.widgets.profile.profileFields.HistoryPeriodFields
 import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
-import com.dearby.nativeapp.widgets.profile.profileFields.ProfileExtraContact
 
 /**
- * 내 프로필 (#149). Signed out it offers card making or sign-in without blocking the tab; signed in it shows the
- * account's profile with an edit action.
+ * 내 프로필: data only, edited in place. Once [ProfileViewState.form] differs from the loaded profile the 저장/원래대로 bar
+ * appears (contract "프로필과 버전 이력"). Histories come from the step funnel; card decoration lives in 명함 만들기.
  */
 @Composable fun ProfilePage(
-    state: ProfileViewState, edit: () -> Unit, compose: () -> Unit, signIn: () -> Unit, retry: () -> Unit, contact: (ContactState) -> Unit,
-    deleting: Boolean, deleteAccount: () -> Unit,
+    state: ProfileViewState, rows: List<HistoryRowState>, change: (ProfileFormState) -> Unit, addContact: (String) -> Unit, openHistory: (String?) -> Unit,
+    removeHistory: (String) -> Unit, save: () -> Unit, revert: () -> Unit, versions: () -> Unit, compose: () -> Unit, signIn: () -> Unit, retry: () -> Unit,
+    deleting: Boolean, deleteAccount: () -> Unit, changed: Boolean,
 ) {
     var confirming by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("내 프로필") { if (state.phase == ProfilePhase.LOADED) TextButton(edit) { Text("편집") } }
+        ScreenHeader("내 프로필") {
+            if (state.phase == ProfilePhase.LOADED) {
+                IconButton(versions) { Icon(Icons.Outlined.History, "변경 이력", tint = Teal) }
+                TextButton(compose) { Text("명함 만들기") }
+            }
+        }
         when (state.phase) {
             ProfilePhase.SIGNED_OUT -> Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.", color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
@@ -45,20 +52,45 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileExtraContact
                 Text("프로필을 불러오지 못했어요", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
                 DearbyOutlineButton(retry, Modifier.fillMaxWidth()) { Text("다시 시도") }
             }
-            ProfilePhase.LOADED -> state.profile?.let { profile ->
-                // CardContent scrolls inside itself, so it gets the remaining height rather than an outer scroll.
-                Column(Modifier.weight(1f).padding(20.dp)) {
-                    CardContent(CardState("profile", profile.name.ifBlank { "이름 없음" }, profile.job, "", "", profile.introduction, profile.contacts, profile.histories),
-                        Modifier.weight(1f, fill = false), onContact = contact, expanded = true)
+            ProfilePhase.LOADED -> state.form?.let { form ->
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                    Text("기본 정보", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+                    Labeled("이름 · 필수") { DearbyInlineField("이름, 필수", form.name, { change(form.copy(name = it)) }, editing = true, placeholder = "실명 또는 활동명") }
+                    state.errors?.name?.let { DearbyFieldError(it) }
+                    Labeled("직함") { DearbyInlineField("직함", form.job, { change(form.copy(job = it)) }, editing = true, placeholder = "예: 서비스 기획 · 커뮤니티") }
+                    Labeled("소개") { DearbyInlineField("소개", form.introduction, { change(form.copy(introduction = it)) }, editing = true, placeholder = "처음 만난 사람에게 건넬 한두 문장", singleLine = false) }
+                    Text("연락처", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+                    ProfileContactFields(form.phone, form.email, form.extras, { change(form.copy(phone = it)) }, { change(form.copy(email = it)) },
+                        { row -> change(form.copy(extras = form.extras.map { if (it.id == row.id) row else it })) },
+                        { id -> change(form.copy(extras = form.extras.filter { it.id != id })) }, addContact,
+                        phoneError = state.errors?.phone, emailError = state.errors?.email)
+                    Text("활동 이력", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+                    if (form.histories.isEmpty()) Text("아직 이력이 없어요. 조직이나 활동부터 골라 단계별로 적어요.", color = Quiet, style = MaterialTheme.typography.bodyMedium)
+                    rows.forEach { row -> HistoryRow(row, { openHistory(row.id) }) { removeHistory(row.id) } }
+                    DearbyOutlineButton({ openHistory(null) }, Modifier.fillMaxWidth()) { Text("이력 추가") }
+                    HorizontalDivider()
+                    TextButton({ confirming = true }, Modifier.align(Alignment.CenterHorizontally), enabled = !deleting,
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+                        if (deleting) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text("계정 삭제")
+                    }
+                }
+                if (changed) {
+                    HorizontalDivider(color = Line)
+                    Column(Modifier.background(Color.White).padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            DearbyOutlineButton(revert, Modifier.weight(1f), enabled = !state.saving) { Text("원래대로") }
+                            DearbyButton(save, Modifier.weight(1f), enabled = !state.saving) {
+                                if (state.saving) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text("저장")
+                            }
+                        }
+                    }
                 }
             }
         }
-        // Signed in, even when the profile failed to load: deletion must stay reachable (App Store 5.1.1(v)).
-        if (state.phase == ProfilePhase.LOADED || state.phase == ProfilePhase.FAILED) {
+        if (state.phase == ProfilePhase.FAILED) {
             TextButton({ confirming = true }, Modifier.align(Alignment.CenterHorizontally).padding(bottom = 8.dp), enabled = !deleting,
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
-                if (deleting) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text("계정 삭제")
-            }
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("계정 삭제") }
         }
     }
     if (confirming) AlertDialog(onDismissRequest = { confirming = false }, title = { Text("계정을 삭제할까요?") },
@@ -67,49 +99,26 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileExtraContact
         dismissButton = { TextButton({ confirming = false }) { Text("취소") } })
 }
 
-/** Edits the profile; a failed save keeps the form and shows [error]. */
-@Composable fun ProfileEditPage(
-    form: ProfileFormState, errors: ProfileErrors?, saving: Boolean, error: String?,
-    change: (ProfileFormState) -> Unit, addContact: (String) -> Unit, addHistory: () -> Unit, save: () -> Unit, close: () -> Unit,
-) {
-    Column(Modifier.fillMaxSize()) {
-        ScreenHeader("프로필 편집", close)
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            Text("기본 정보", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-            Labeled("이름 · 필수") { DearbyInlineField("이름, 필수", form.name, { change(form.copy(name = it)) }, editing = true, placeholder = "실명 또는 활동명") }
-            errors?.name?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-            Labeled("직무") { DearbyInlineField("직무", form.job, { change(form.copy(job = it)) }, editing = true, placeholder = "예: 서비스 기획 · 커뮤니티") }
-            Labeled("소개") { DearbyInlineField("소개", form.introduction, { change(form.copy(introduction = it)) }, editing = true, placeholder = "처음 만난 사람에게 건넬 한두 문장", singleLine = false) }
-            Text("연락처", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-            ProfileContactFields(form.phone, form.email, form.extras, { change(form.copy(phone = it)) }, { change(form.copy(email = it)) },
-                { row -> change(form.copy(extras = form.extras.map { if (it.id == row.id) row else it })) },
-                { id -> change(form.copy(extras = form.extras.filter { it.id != id })) }, addContact,
-                phoneError = errors?.phone, emailError = errors?.email)
-            Text("활동 이력", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-            form.histories.forEach { history ->
-                fun update(next: HistoryFormState) = change(form.copy(histories = form.histories.map { if (it.id == history.id) next else it }))
-                OutlinedCard(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, Line), shape = RoundedCornerShape(12.dp)) {
-                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Labeled("활동 이름 · 필수", Modifier.weight(1f)) { DearbyInlineField("활동 이름, 필수", history.title, { update(history.copy(title = it)) }, editing = true, placeholder = "예: Dearby 메이커 캠프") }
-                            IconButton({ change(form.copy(histories = form.histories.filter { it.id != history.id })) }) { Icon(Icons.Outlined.RemoveCircleOutline, "활동 이력 삭제", tint = Quiet) }
-                        }
-                        Labeled("역할") { DearbyInlineField("역할", history.role, { update(history.copy(role = it)) }, editing = true, placeholder = "예: 서비스 기획") }
-                        HistoryPeriodFields(history.start, history.end, history.ongoing, { update(history.copy(start = it)) }, { update(history.copy(end = it)) },
-                            { update(history.copy(ongoing = it)) }, error = errors?.histories?.get(history.id))
-                    }
+/** One history: 조직 · 프로그램 · 활동, role, period and the approval / verification tags. Tap to edit or attach evidence. */
+@Composable private fun HistoryRow(row: HistoryRowState, open: () -> Unit, remove: () -> Unit) {
+    OutlinedCard(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, Line), shape = RoundedCornerShape(12.dp)) {
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f).clickable(role = Role.Button, onClickLabel = "고치거나 인증자료 올리기", onClick = open), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(row.title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+                Text(row.detail, color = Quiet, style = MaterialTheme.typography.bodySmall)
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Tag(if (row.verified) "확인됨" else "미확인", row.verified)
+                    row.approvalTag?.let { Tag(it, false) }
+                    if (!row.saved) Tag("저장 전", false)
                 }
             }
-            DearbyOutlineButton(addHistory, Modifier.fillMaxWidth()) { Text("활동 이력 추가") }
-        }
-        HorizontalDivider()
-        Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            error?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
-            DearbyButton(save, Modifier.fillMaxWidth(), enabled = !saving) {
-                if (saving) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text("저장")
-            }
+            IconButton(remove) { Icon(Icons.Outlined.RemoveCircleOutline, "이력 삭제", tint = Quiet) }
         }
     }
+}
+
+@Composable private fun Tag(text: String, strong: Boolean) = Surface(color = if (strong) Mint else Soft, shape = RoundedCornerShape(999.dp)) {
+    Text(text, Modifier.padding(horizontal = 7.dp, vertical = 2.dp), color = if (strong) Teal else Quiet, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelSmall)
 }
 
 @Composable private fun Labeled(label: String, modifier: Modifier = Modifier, field: @Composable () -> Unit) = Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
