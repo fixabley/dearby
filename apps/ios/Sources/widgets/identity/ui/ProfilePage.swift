@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// 내 프로필: data only (name, job, introduction, contacts, histories). Fields are edited in place; once anything
-/// differs from the loaded profile the 저장 / 원래대로 bar appears (contract "프로필과 버전 이력"). Card decoration lives in
+/// 내 프로필: data only (name, job, introduction, contacts, histories). A profile that was never saved (`version` 0)
+/// starts with the step funnel (`ProfileFunnelPage`); afterwards fields are edited in place and once anything differs
+/// from the loaded profile the 저장 / 원래대로 bar appears (contract "프로필과 버전 이력"). Card decoration lives in
 /// 명함 만들기. Sign-in is asked for only from the 로그인 button.
 struct ProfilePage: View {
     let state: ProfileModel
@@ -14,7 +15,39 @@ struct ProfilePage: View {
     @State private var tried = false
     @State private var confirmingDeletion = false
     @State private var deletionNotice: String?
+    /// Never saved yet: the step funnel replaces the editor until the first save.
+    private var settingUp: Bool { state.profile?.version == 0 }
     var body: some View {
+        Group {
+            if settingUp, let binding = Binding($form) {
+                ProfileFunnelPage(form: binding, saving: saving, error: error) { save(binding.wrappedValue) }
+            } else {
+                editorScroll
+            }
+        }
+        .background(.white).toolbar(.hidden, for: .navigationBar)
+        .task { await state.load() }
+        // A reload (first load, save, restore, evidence) resets the form to the server state unless an edit is in flight.
+        .onChange(of: state.profile, initial: true) { _, profile in
+            guard let profile else { form = nil; return }
+            if form == nil || form?.changed == false || saving { form = ProfileForm(profile: profile); error = nil; tried = false }
+        }
+        .sheet(item: $funnel) { target in
+            NavigationStack {
+                HistoryFunnelPage(draft: target.draft, state: state, saved: target.saved, startAtSummary: target.saved) { done in form?.put(done) }
+            }
+        }
+        .sheet(isPresented: $composing, onDismiss: { Task { await state.load() } }) { NavigationStack { CardComposerPage(account: state.account) } }
+        .sheet(isPresented: $signingIn) { NavigationStack { SignInSheet(account: state.account) { Task { await state.load() } } } }
+        .alert("계정을 삭제할까요?", isPresented: $confirmingDeletion) {
+            Button("삭제", role: .destructive) { deleteAccount() }
+            Button("취소", role: .cancel) {}
+        } message: { Text("명함과 받은 명함 등 모든 정보가 지워지고 되돌릴 수 없어요.") }
+        .alert(deletionNotice ?? "", isPresented: Binding(get: { deletionNotice != nil }, set: { if !$0 { deletionNotice = nil } })) {
+            Button("확인", role: .cancel) {}
+        }
+    }
+    private var editorScroll: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 switch state.phase {
@@ -38,27 +71,6 @@ struct ProfilePage: View {
             }.padding(20)
         }
         .safeAreaInset(edge: .bottom) { if let form, form.changed { saveBar(form) } }
-        .background(.white).toolbar(.hidden, for: .navigationBar)
-        .task { await state.load() }
-        // A reload (first load, save, restore, evidence) resets the form to the server state unless an edit is in flight.
-        .onChange(of: state.profile, initial: true) { _, profile in
-            guard let profile else { form = nil; return }
-            if form == nil || form?.changed == false || saving { form = ProfileForm(profile: profile); error = nil; tried = false }
-        }
-        .sheet(item: $funnel) { target in
-            NavigationStack {
-                HistoryFunnelPage(draft: target.draft, state: state, saved: target.saved, startAtSummary: target.saved) { done in form?.put(done) }
-            }
-        }
-        .sheet(isPresented: $composing, onDismiss: { Task { await state.load() } }) { NavigationStack { CardComposerPage(account: state.account) } }
-        .sheet(isPresented: $signingIn) { NavigationStack { SignInSheet(account: state.account) { Task { await state.load() } } } }
-        .alert("계정을 삭제할까요?", isPresented: $confirmingDeletion) {
-            Button("삭제", role: .destructive) { deleteAccount() }
-            Button("취소", role: .cancel) {}
-        } message: { Text("명함과 받은 명함 등 모든 정보가 지워지고 되돌릴 수 없어요.") }
-        .alert(deletionNotice ?? "", isPresented: Binding(get: { deletionNotice != nil }, set: { if !$0 { deletionNotice = nil } })) {
-            Button("확인", role: .cancel) {}
-        }
     }
     @ViewBuilder private func editor(_ form: Binding<ProfileForm>, saved: AccountProfile) -> some View {
         HStack {

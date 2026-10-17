@@ -106,6 +106,7 @@ python3 scripts/check-fsd.py --self-test
 계약 `native-v1.md` "프로필·명함 v2". 유비쿼터스 언어는 "활동"(조직·프로그램·활동·역할을 아우르는 코드 이름은 `ActivityInfo`).
 
 - 내 프로필(`pages/profile/ProfilePage.kt`)은 데이터 입력만 한다. 칸을 바로 고치고, 불러온 프로필과 달라지면 "저장"·"원래대로" 막대가 나타난다(`ProfileViewModel.changed`). 저장은 `If-Match: <version>`을 보내고 409면 다시 불러오라고 안내한다. 변경 이력(`ProfileVersionsPage`)에서 버전을 보고 되돌린다(새 버전으로 저장).
+- 처음 저장하기 전(`version` 0) 프로필 화면은 토스식 단계별 입력(`ProfileSetupPage`, Mobbin Toss 송금 퍼널 참고)으로 이름 → 직함(선택) → 전화번호 → 이메일 → 소개(선택) → 확인·저장을 받는다. 화면마다 질문 하나와 자동 포커스된 입력 하나(`DearbyInlineField`의 `focusRequester`), 하단 이전/다음. 저장되면 인라인 편집기로 바뀐다. 프로필 없이 명함 만들기를 열면 안내만 보여 준다.
 - 이력은 단계별 입력(`HistoryFunnelPage`): 조직/활동 → 조직 → 프로그램 → (활동) → 역할 → 기간 → 설명 → 확인. 각 단계는 `ActivityInfoPicker`로 등록된 활동 정보를 검색(`GET /v1/organizations|programs|activities|roles`, 300ms 디바운스)하거나 그대로 적는다(직접 입력 = 승인 대기). 인증자료(`EvidenceFields`)는 저장된 이력에서 사진·PDF를 3개까지 올린다(파일 고르기는 `ProfileRoute`). `verified`가 아니면 "미확인".
 - 명함 만들기(`CardComposerRoute`)에서 꾸민다. `CardDraft.template`은 토큰(`{{profile.name}}`·`{{profile.job}}`·`{{profile.introduction}}`·`{{contact:<id>}}`)이 있는 마크다운이고 서버가 발행할 때 채운다. 본문에 넣은 연락처는 자동 공개, 미승인 이력은 선택 불가. 내용이 바뀌면 "원래대로"가 나타난다.
 - 렌더링 화면 편집(`widgets/card/cardContent/TemplateEditor.kt`): 줄마다 블록 종류(제목 1~3·글·목록·번호 목록)를 골라 서식 그대로 보며 고친다. 데이터 토큰은 값이 채워진 칩으로 보이고(`VisualTransformation`), 토큰이 깨지는 입력은 무시한다(`TokenGuard`). 굵게·링크 표시(`**`, `[](…)`)는 원문대로 두고 "미리보기"(`MarkdownBody`)로 확인한다. "데이터 넣기"는 본문 끝에 토큰을 붙인다.

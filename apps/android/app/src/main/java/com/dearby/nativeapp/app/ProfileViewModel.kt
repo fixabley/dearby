@@ -8,11 +8,11 @@ import com.dearby.nativeapp.entities.account.api.AccountException
 import com.dearby.nativeapp.entities.account.model.AccountContact
 import com.dearby.nativeapp.entities.account.model.AccountHistory
 import com.dearby.nativeapp.entities.account.model.AccountProfile
-import com.dearby.nativeapp.entities.account.model.ContactRules
 import com.dearby.nativeapp.pages.profile.FunnelState
 import com.dearby.nativeapp.pages.profile.HistoryDraft
 import com.dearby.nativeapp.pages.profile.PickerSearchState
 import com.dearby.nativeapp.pages.profile.ProfileErrors
+import com.dearby.nativeapp.pages.profile.errors
 import com.dearby.nativeapp.pages.profile.ProfileFormState
 import com.dearby.nativeapp.pages.profile.ProfilePhase
 import com.dearby.nativeapp.pages.profile.ProfileViewState
@@ -212,11 +212,7 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
         AccountError.CONFLICT -> "프로필이 다른 곳에서 바뀌었어요. ‘원래대로’를 눌러 새로 불러온 뒤 다시 고쳐 주세요."
         else -> fallback
     }
-    private fun errors(form: ProfileFormState) = ProfileErrors(
-        name = "이름을 입력해 주세요.".takeIf { form.name.isBlank() },
-        phone = when { form.phone.isBlank() -> "전화번호를 입력해 주세요."; !ContactRules.validPhone(form.phone) -> "전화번호는 숫자 8~15자리로 입력해 주세요."; else -> null },
-        email = when { form.email.isBlank() -> "이메일을 입력해 주세요."; !ContactRules.validEmail(form.email) -> "이메일 주소를 확인해 주세요."; else -> null },
-    )
+    private fun errors(form: ProfileFormState) = form.errors()
     /** `PUT /v1/profile` body. Empty added contacts are left out. */
     private fun profile(form: ProfileFormState): AccountProfile {
         val labels = ProfileContactKinds.associate { (kind, label, _) -> kind to label }

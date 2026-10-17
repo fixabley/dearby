@@ -26,6 +26,7 @@
 | [API 구현 인계](api-implementation-and-handoff.md) | 구현 범위·한계·검증 기록 |
 | [API 명함 공유](api-card-shares.md) | 공유 기록·게스트 공유 저장, 웹 테스트 데이터 |
 | [API 홈 화면 세션 잇기](api-guest-handoff.md) | 게스트 1회용 코드 발급·교환 |
+| [명함 계약 "프로필·명함 v2"](../../shared/contracts/native-v1.md) · [관리자 계약 "이력 검토·역할"](../../shared/contracts/admin-v1.md) | 2026-10-16 프로필 데이터·버전, 단계별 이력·인증자료·승인, 명함 템플릿. 서버·웹·어드민·iOS·Android 모두 반영(#218–#224). 웹 비로그인 저장은 2026-10-17 Kotlin API로 복원(#225, 프록시 키는 [앱 간 공유 환경값](env-shared-keys.md)) |
 | [사용자 웹](web-implementation-and-handoff.md) | 공개 이력·게스트 명함 보관 |
 | [관리자 웹](admin-web-deployment.md) | 탐색 관리·배포 인계 |
 | [활동 수집 배치](activity-collection-batch.md) | 2026-10-15 Kotlin Spring Batch + Claude Haiku 수집, 초안 검토, 실행 |

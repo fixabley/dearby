@@ -16,7 +16,7 @@ API = {
     'widgets.profile.profileFields': {'ProfileContactFields', 'ProfileExtraContact', 'ProfileContactKinds', 'HistoryPeriodFields', 'historyPeriod', 'ActivityInfoPicker', 'PickerItem', 'EvidenceFields', 'EvidenceRow'},
     'widgets.activity.activityCard': {'ActivityCard'},
     'widgets.card.cardContent': {'CardState', 'CardHistoryState', 'ContactState', 'CardContent', 'CardStack', 'ReceivedCardRow', 'QrShareCard', 'QrScanOverlay', 'CardComposer', 'ComposerContact', 'ComposerHistory', 'TemplateEditor', 'TemplateToken'},
-    'pages.profile': {'ProfilePage', 'ProfilePhase', 'ProfileViewState', 'ProfileFormState', 'ProfileErrors', 'HistoryDraft', 'FunnelState', 'PickerSearchState', 'VersionsState', 'HistoryFunnelPage', 'ProfileVersionsPage', 'ProfileVersionPage', 'HistoryRowState', 'VersionDetailView', 'rowState', 'view', 'periodText'},
+    'pages.profile': {'ProfilePage', 'ProfilePhase', 'ProfileViewState', 'ProfileFormState', 'ProfileErrors', 'HistoryDraft', 'FunnelState', 'PickerSearchState', 'VersionsState', 'HistoryFunnelPage', 'ProfileVersionsPage', 'ProfileVersionPage', 'HistoryRowState', 'VersionDetailView', 'rowState', 'view', 'periodText', 'errors', 'SetupStep', 'ProfileSetupPage'},
     'pages.qr': {'QrPage', 'QrShareState', 'QrSharePhase', 'QrCardChoice', 'ReceivedSharePage', 'ReceivedShareState', 'ReceivedPhase', 'ReceivedSaveState'},
     'features.scan': {'QrCameraPreview', 'decodeQr'},
     'features.passkey': {'Passkeys'},

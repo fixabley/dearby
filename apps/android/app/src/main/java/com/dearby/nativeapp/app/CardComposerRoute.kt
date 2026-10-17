@@ -37,6 +37,11 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardComposer
                 Text("로그인하면 프로필 데이터로 명함을 꾸밀 수 있어요.", color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
                 DearbyButton({ model.load() }, Modifier.fillMaxWidth()) { Text("로그인") }
             }
+            draft != null && draft.profile.version == 0 -> Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
+                // Signed in from here without ever saving a profile: nothing to fill the template with yet.
+                Text("먼저 내 프로필에서 이름과 연락처를 적어 주세요.", color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                DearbyOutlineButton(close, Modifier.fillMaxWidth()) { Text("닫기") }
+            }
             draft != null -> CardComposer(draft.cardTitle, { model.edit(draft.copy(cardTitle = it)) }, draft.template, { model.edit(draft.copy(template = it)) },
                 TemplateDocument.tokens(draft.profile), draft.preview, draft.contacts,
                 { id, on -> model.edit(draft.copy(publicContactIds = if (on) draft.publicContactIds + id else draft.publicContactIds - id)) },

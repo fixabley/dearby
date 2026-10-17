@@ -2,6 +2,7 @@ package com.dearby.nativeapp.pages.profile
 
 import com.dearby.nativeapp.entities.account.model.AccountHistory
 import com.dearby.nativeapp.entities.account.model.AccountProfile
+import com.dearby.nativeapp.entities.account.model.ContactRules
 import com.dearby.nativeapp.entities.account.model.ActivityInfoItem
 import com.dearby.nativeapp.entities.account.model.ActivityInfoRef
 import com.dearby.nativeapp.entities.account.model.EvidenceMeta
@@ -17,8 +18,15 @@ data class ProfileViewState(
     val phase: ProfilePhase = ProfilePhase.LOADING, val profile: AccountProfile? = null, val form: ProfileFormState? = null,
     val errors: ProfileErrors? = null, val saving: Boolean = false, val error: String? = null,
 )
-/** Messages shown once the user tries to save. */
+/** Messages shown once the user tries to save (editor) or presses 다음 (setup funnel). */
 data class ProfileErrors(val name: String? = null, val phone: String? = null, val email: String? = null)
+fun ProfileFormState.errors() = ProfileErrors(
+    name = "이름을 입력해 주세요.".takeIf { name.isBlank() },
+    phone = when { phone.isBlank() -> "전화번호를 입력해 주세요."; !ContactRules.validPhone(phone) -> "전화번호는 숫자 8~15자리로 입력해 주세요."; else -> null },
+    email = when { email.isBlank() -> "이메일을 입력해 주세요."; !ContactRules.validEmail(email) -> "이메일 주소를 확인해 주세요."; else -> null },
+)
+/** First profile entry (Toss-style, one question per screen) until the profile is saved once. */
+enum class SetupStep { NAME, JOB, PHONE, EMAIL, INTRODUCTION, SUMMARY }
 
 /** The in-place edit form: required phone and email, added contacts by kind, histories from the step funnel, and the version for `If-Match`. */
 data class ProfileFormState(
