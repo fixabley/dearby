@@ -13,6 +13,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.CardShares
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCardShares
 import io.wid.dearby.adaptor.persistence.jooq.tables.HistoryEvidence
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMembers
@@ -50,6 +51,7 @@ val BUSINESS_CARDS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("business_
 val CARD_SHARES_CARD_ID_IDX: Index = Internal.createIndex(DSL.name("card_shares_card_id_idx"), CardShares.CARD_SHARES, arrayOf(CardShares.CARD_SHARES.CARD_ID), false)
 val COLLECTION_RUNS_PROGRAM_ID_RUN_DATE_IDX: Index = Internal.createIndex(DSL.name("collection_runs_program_id_run_date_idx"), CollectionRuns.COLLECTION_RUNS, arrayOf(CollectionRuns.COLLECTION_RUNS.PROGRAM_ID, CollectionRuns.COLLECTION_RUNS.RUN_DATE.desc()), false)
 val CONTACTS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("contacts_user_id_idx"), Contacts.CONTACTS, arrayOf(Contacts.CONTACTS.USER_ID), false)
+val GUEST_CARD_SHARES_CARD_IDX: Index = Internal.createIndex(DSL.name("guest_card_shares_card_idx"), GuestCardShares.GUEST_CARD_SHARES, arrayOf(GuestCardShares.GUEST_CARD_SHARES.SESSION_DIGEST, GuestCardShares.GUEST_CARD_SHARES.CARD_ID), false)
 val HISTORY_EVIDENCE_HISTORY_ID_IDX: Index = Internal.createIndex(DSL.name("history_evidence_history_id_idx"), HistoryEvidence.HISTORY_EVIDENCE, arrayOf(HistoryEvidence.HISTORY_EVIDENCE.HISTORY_ID), false)
 val ORGANIZATION_CONTACTS_ORGANIZATION_ID_IDX: Index = Internal.createIndex(DSL.name("organization_contacts_organization_id_idx"), OrganizationContacts.ORGANIZATION_CONTACTS, arrayOf(OrganizationContacts.ORGANIZATION_CONTACTS.ORGANIZATION_ID), false)
 val ORGANIZATION_MEMBERS_ORGANIZATION_ID_IDX: Index = Internal.createIndex(DSL.name("organization_members_organization_id_idx"), OrganizationMembers.ORGANIZATION_MEMBERS, arrayOf(OrganizationMembers.ORGANIZATION_MEMBERS.ORGANIZATION_ID), false)

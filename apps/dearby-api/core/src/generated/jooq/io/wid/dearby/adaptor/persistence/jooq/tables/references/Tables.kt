@@ -15,6 +15,10 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.CardShares
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
+import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCardShares
+import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCards
+import io.wid.dearby.adaptor.persistence.jooq.tables.GuestHandoffs
+import io.wid.dearby.adaptor.persistence.jooq.tables.GuestSessions
 import io.wid.dearby.adaptor.persistence.jooq.tables.HistoryEvidence
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
@@ -91,6 +95,26 @@ val CONTACTS: Contacts = Contacts.CONTACTS
  * The table <code>public.dismissed_activity_sources</code>.
  */
 val DISMISSED_ACTIVITY_SOURCES: DismissedActivitySources = DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES
+
+/**
+ * The table <code>public.guest_card_shares</code>.
+ */
+val GUEST_CARD_SHARES: GuestCardShares = GuestCardShares.GUEST_CARD_SHARES
+
+/**
+ * The table <code>public.guest_cards</code>.
+ */
+val GUEST_CARDS: GuestCards = GuestCards.GUEST_CARDS
+
+/**
+ * The table <code>public.guest_handoffs</code>.
+ */
+val GUEST_HANDOFFS: GuestHandoffs = GuestHandoffs.GUEST_HANDOFFS
+
+/**
+ * The table <code>public.guest_sessions</code>.
+ */
+val GUEST_SESSIONS: GuestSessions = GuestSessions.GUEST_SESSIONS
 
 /**
  * The table <code>public.history_evidence</code>.

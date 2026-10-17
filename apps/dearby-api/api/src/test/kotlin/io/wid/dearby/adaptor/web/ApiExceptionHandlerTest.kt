@@ -5,6 +5,7 @@ import io.wid.dearby.domain.AuthenticationFailedException
 import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.NotFoundException
 import io.wid.dearby.domain.PermissionDeniedException
+import io.wid.dearby.domain.RateLimitedException
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.bind.annotation.GetMapping
@@ -28,6 +29,9 @@ class ApiExceptionHandlerTest {
         @GetMapping("/forbidden")
         fun forbidden(): Nothing = throw PermissionDeniedException("권한이 없습니다")
 
+        @GetMapping("/too-many")
+        fun tooMany(): Nothing = throw RateLimitedException("요청이 많습니다")
+
         @GetMapping("/library-iae")
         fun libraryIae(): Nothing = throw IllegalArgumentException("internal")
     }
@@ -50,6 +54,7 @@ class ApiExceptionHandlerTest {
         mvc.get("/invalid").andExpect { status { isBadRequest() } }
         mvc.get("/unauthorized").andExpect { status { isUnauthorized() } }
         mvc.get("/forbidden").andExpect { status { isForbidden() } }
+        mvc.get("/too-many").andExpect { status { isTooManyRequests() } }
     }
 
     @Test
