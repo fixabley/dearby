@@ -21,14 +21,19 @@ import kotlinx.coroutines.launch
 }
 
 /**
- * The 202 choice, drawn by MainActivity above every screen: Apple's answer arrives as a link, maybe after the screen that
- * asked was recreated, so it cannot hang off that screen's sheet.
+ * The 202 follow-up, drawn by MainActivity above every screen: Apple's answer arrives as a link, maybe after the screen that
+ * asked was recreated, so it cannot hang off that screen's sheet. First the device-passkey attempt, then the choice.
  */
 @Composable fun AppleAccountRoute(account: AccountViewModel) {
     val auth by account.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val email = auth.appleEmail ?: return
+    if (auth.appleAuto) {
+        // The device-passkey attempt runs first; the choice below is drawn only if it was closed.
+        LaunchedEffect(email) { account.autoLinkApple(Passkeys(context)) }
+        return
+    }
     AppleAccountSheet(email, auth.phase == AccountPhase.WORKING, auth.message,
         startNew = { scope.launch { account.registerApple() } }, linkPasskey = { scope.launch { account.linkAppleWithPasskey(Passkeys(context)) } },
         close = account::dismissApple,

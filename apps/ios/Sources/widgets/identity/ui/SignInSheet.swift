@@ -2,8 +2,9 @@ import AuthenticationServices
 import SwiftUI
 
 /// Sign-in shown only when an action needs an account: Apple (when the build enables it) and an existing passkey
-/// are peers; a new passkey starts a new account. A first-time Apple account asks whether to start a new account
-/// or link an existing passkey account.
+/// are peers; a new passkey starts a new account. A first-time Apple account links to this device's passkey account or
+/// starts a separate one by itself (`AccountViewModel.linkOrStart`); the new-or-link choice below appears only when the
+/// person closed that passkey sheet.
 struct SignInSheet: View {
     let account: AccountViewModel
     let signedIn: () -> Void
@@ -49,11 +50,11 @@ struct SignInSheet: View {
         }.padding(.top, 8)
     }
 
-    /// After a 202: the server cannot tell whether this person already has a passkey account, so they pick.
+    /// After a 202 whose device-passkey sheet was closed: the server cannot tell whether this person already has a passkey account, so they pick.
     @ViewBuilder private func appleChoice(_ link: AccountClient.AppleLink) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("처음 보는 애플 계정이에요").font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.ink).accessibilityAddTraits(.isHeader)
-            Text("이미 패스키로 만든 Dearby 계정이 있으면 연결하고, 없으면 새 계정으로 시작해요.")
+            Text("패스키 확인을 건너뛰었어요. 이미 패스키로 만든 Dearby 계정이 있으면 연결하고, 없으면 새 계정으로 시작해요.")
                 .font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
             if let email = link.email, !email.isEmpty {
                 Text(email).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.ink).accessibilityIdentifier("sign-in-apple-email")
