@@ -106,7 +106,7 @@ struct AccountClient: Sendable {
     func searchActivityInfo(_ kind: ActivityInfoKind, query: String, parentID: Int? = nil, _ session: TokenPair?) async throws -> ActivityInfoPage {
         var items = [URLQueryItem(name: "q", value: query), URLQueryItem(name: "size", value: "20")]
         switch kind {
-        case .organizations: if let parentID { items.append(URLQueryItem(name: "parentId", value: String(parentID))) }
+        case .organizations, .jobs: if let parentID { items.append(URLQueryItem(name: "parentId", value: String(parentID))) }
         case .programs: if let parentID { items.append(URLQueryItem(name: "organizationId", value: String(parentID))) }
         case .activities: if let parentID { items.append(URLQueryItem(name: "programId", value: String(parentID))) }
         case .roles: break
@@ -150,7 +150,7 @@ struct AccountClient: Sendable {
         let contactIds: [String]
         let historyIds: [String]
     }
-    enum ActivityInfoKind: String, Sendable { case organizations, programs, activities, roles }
+    enum ActivityInfoKind: String, Sendable { case organizations, programs, activities, roles, jobs }
     /// `{challengeId, options}` from an options call; the challenge is single use and lasts five minutes.
     struct PasskeyChallenge<Options: Decodable & Sendable>: Decodable, Sendable {
         let challengeId: String

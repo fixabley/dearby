@@ -41,6 +41,7 @@ private sealed interface CardRoute {
     val compose = { publish.start(); route = CardRoute.Composer }
     // A /s/<UUID> App Link opens the shared card over whatever is showing.
     LaunchedEffect(incoming) { incoming?.let { route = CardRoute.Received(it); opened() } }
+    val profileState by profile.state.collectAsStateWithLifecycle()
     Surface(Modifier.fillMaxSize()) {
         Column(Modifier.statusBarsPadding().navigationBarsPadding()) {
             Box(Modifier.weight(1f)) {
@@ -61,7 +62,9 @@ private sealed interface CardRoute {
                     }
                 }
             }
-            if (route == null && !activityDetail) {
+            // The first-profile funnel (never saved) takes the whole screen, like Toss: no tab bar until the profile exists.
+            val settingUp = tab == Tab.Profile && profileState.settingUp
+            if (route == null && !activityDetail && !settingUp) {
                 HorizontalDivider()
                 NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp, windowInsets = WindowInsets(0, 0, 0, 0)) {
                     Tab.entries.forEach { item -> NavigationBarItem(selected = tab == item, onClick = { tab = item }, icon = { Icon(item.icon, null) }, label = { Text(item.label, fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Teal, selectedTextColor = Teal, indicatorColor = Mint, unselectedIconColor = Quiet, unselectedTextColor = Quiet)) }

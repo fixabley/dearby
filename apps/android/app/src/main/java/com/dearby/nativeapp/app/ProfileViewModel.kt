@@ -216,10 +216,25 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
     /** `PUT /v1/profile` body. Empty added contacts are left out. */
     private fun profile(form: ProfileFormState): AccountProfile {
         val labels = ProfileContactKinds.associate { (kind, label, _) -> kind to label }
-        return AccountProfile(form.name.trim(), form.job.trim(), form.introduction.trim(),
+        return AccountProfile(form.name.trim(), "", form.introduction.trim(),
             listOf(AccountContact(form.phoneId, "phone", "전화번호", form.phone.trim()), AccountContact(form.emailId, "email", "이메일", form.email.trim())) +
                 form.extras.filter { it.value.isNotBlank() }.map { AccountContact(it.id, it.kind, labels[it.kind] ?: it.kind, it.value.trim()) },
-            form.histories, form.version)
+            form.histories, form.version, form.jobs)
+    }
+    private var jobSearchJob: Job? = null
+    /** 직무 tag picker search, debounced (`GET /v1/jobs`). */
+    fun searchJobs(query: String) {
+        mutable.update { it.copy(jobSearch = it.jobSearch.copy(query = query, loading = true, failed = false)) }
+        jobSearchJob?.cancel()
+        jobSearchJob = viewModelScope.launch {
+            delay(300)
+            try {
+                val page = account.authorized { account.client.searchActivityInfo(AccountClient.ActivityInfoKind.JOBS, query, null, it) }
+                mutable.update { it.copy(jobSearch = it.jobSearch.copy(items = page.items, loading = false)) }
+            } catch (e: AccountException) {
+                mutable.update { it.copy(jobSearch = it.jobSearch.copy(loading = false, failed = true)) }
+            }
+        }
     }
     private val HistoryDraft.Step.isPicker get() = this in setOf(HistoryDraft.Step.ORGANIZATION, HistoryDraft.Step.PROGRAM, HistoryDraft.Step.ACTIVITY, HistoryDraft.Step.ROLE)
 }

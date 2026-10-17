@@ -5,8 +5,10 @@ import com.dearby.nativeapp.entities.account.model.AccountProfile
 import com.dearby.nativeapp.entities.account.model.ContactRules
 import com.dearby.nativeapp.entities.account.model.ActivityInfoItem
 import com.dearby.nativeapp.entities.account.model.ActivityInfoRef
+import com.dearby.nativeapp.entities.account.model.ProfileJob
 import com.dearby.nativeapp.entities.account.model.EvidenceMeta
 import com.dearby.nativeapp.entities.account.model.ProfileVersionDetail
+import com.dearby.nativeapp.widgets.profile.profileFields.JobTag
 import com.dearby.nativeapp.widgets.profile.profileFields.ProfileExtraContact
 import com.dearby.nativeapp.widgets.profile.profileFields.historyPeriod
 import java.time.LocalDate
@@ -17,7 +19,12 @@ enum class ProfilePhase { SIGNED_OUT, LOADING, LOADED, FAILED }
 data class ProfileViewState(
     val phase: ProfilePhase = ProfilePhase.LOADING, val profile: AccountProfile? = null, val form: ProfileFormState? = null,
     val errors: ProfileErrors? = null, val saving: Boolean = false, val error: String? = null,
-)
+    /** 직무 tag picker search (setup funnel and editor). */
+    val jobSearch: PickerSearchState = PickerSearchState(),
+) {
+    /** Never saved yet: the setup funnel replaces the editor and the tab bar hides. */
+    val settingUp get() = phase == ProfilePhase.LOADED && profile?.version == 0
+}
 /** Messages shown once the user tries to save (editor) or presses 다음 (setup funnel). */
 data class ProfileErrors(val name: String? = null, val phone: String? = null, val email: String? = null)
 fun ProfileFormState.errors() = ProfileErrors(
@@ -25,23 +32,37 @@ fun ProfileFormState.errors() = ProfileErrors(
     phone = when { phone.isBlank() -> "전화번호를 입력해 주세요."; !ContactRules.validPhone(phone) -> "전화번호는 숫자 8~15자리로 입력해 주세요."; else -> null },
     email = when { email.isBlank() -> "이메일을 입력해 주세요."; !ContactRules.validEmail(email) -> "이메일 주소를 확인해 주세요."; else -> null },
 )
-/** First profile entry (Toss-style, one question per screen) until the profile is saved once. */
-enum class SetupStep { NAME, JOB, PHONE, EMAIL, INTRODUCTION, SUMMARY }
+/** First profile entry: accordion sections in this order; completed ones collapse to a row that reopens on tap. */
+enum class SetupStep(val label: String) { NAME("이름"), JOBS("직무"), PHONE("전화번호"), EMAIL("이메일"), INTRODUCTION("소개") }
 
-/** The in-place edit form: required phone and email, added contacts by kind, histories from the step funnel, and the version for `If-Match`. */
+/** The in-place edit form: required phone and email, added contacts by kind, 직무 tags, histories from the step funnel, and the version for `If-Match`. */
 data class ProfileFormState(
-    val name: String, val job: String, val introduction: String, val phone: String, val email: String,
+    val name: String, val jobs: List<ProfileJob>, val introduction: String, val phone: String, val email: String,
     val extras: List<ProfileExtraContact>, val histories: List<AccountHistory>, val version: Int, val phoneId: String, val emailId: String,
 ) {
     companion object {
+        const val MAX_JOBS = 10
         fun from(profile: AccountProfile): ProfileFormState {
             val phone = profile.contacts.firstOrNull { it.kind == "phone" }
             val email = profile.contacts.firstOrNull { it.kind == "email" }
-            return ProfileFormState(profile.name, profile.job, profile.introduction, phone?.value.orEmpty(), email?.value.orEmpty(),
+            return ProfileFormState(profile.name, profile.jobs, profile.introduction, phone?.value.orEmpty(), email?.value.orEmpty(),
                 profile.contacts.filter { it.id != phone?.id && it.id != email?.id }.map { ProfileExtraContact(it.id, it.kind, it.value) },
                 profile.histories, profile.version, phone?.id ?: UUID.randomUUID().toString(), email?.id ?: UUID.randomUUID().toString())
         }
     }
+    /** Chips for the tag picker. */
+    val jobTags get() = jobs.map { JobTag(it.id, it.title, pending = it.isCustom && it.approval == "pending", rejected = it.approval == "rejected") }
+    /** A picked job (same job once) or a typed name (same name once); over [MAX_JOBS] nothing is added. */
+    fun withJob(pickedId: Long?, pickedName: String?, typed: String = ""): ProfileFormState {
+        val picked = if (pickedId != null && pickedName != null) ActivityInfoRef(pickedId, pickedName) else null
+        val name = typed.trim()
+        if (jobs.size >= MAX_JOBS) return this
+        if (picked != null && jobs.any { it.job?.id == picked.id }) return this
+        if (picked == null && (name.isEmpty() || jobs.any { it.job == null && it.jobName == name })) return this
+        return copy(jobs = jobs + ProfileJob(UUID.randomUUID().toString(), picked, if (picked == null) name else null, if (picked == null) "pending" else "approved"))
+    }
+    fun withoutJob(id: String) = copy(jobs = jobs.filter { it.id != id })
+    val jobsText get() = jobs.joinToString(" · ") { it.title }
     /** Puts a finished funnel draft in place (same id) or appends it. */
     fun put(history: AccountHistory) = copy(histories = if (histories.any { it.id == history.id }) histories.map { if (it.id == history.id) history else it } else histories + history)
 }

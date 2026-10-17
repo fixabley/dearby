@@ -118,7 +118,7 @@ class AccountClient(private val api: String, private val transport: Transport = 
     /** Picker searches for the history steps (organizations, programs, roles need a session; activities are public). */
     suspend fun searchActivityInfo(kind: ActivityInfoKind, query: String, parentId: Long?, session: AccountSession?): ActivityInfoPage {
         val params = mutableListOf("q=" + java.net.URLEncoder.encode(query, "UTF-8"), "size=20")
-        parentId?.let { params += when (kind) { ActivityInfoKind.PROGRAMS -> "organizationId=$it"; ActivityInfoKind.ACTIVITIES -> "programId=$it"; ActivityInfoKind.ORGANIZATIONS -> "parentId=$it"; ActivityInfoKind.ROLES -> "" } }
+        parentId?.let { params += when (kind) { ActivityInfoKind.PROGRAMS -> "organizationId=$it"; ActivityInfoKind.ACTIVITIES -> "programId=$it"; ActivityInfoKind.ORGANIZATIONS, ActivityInfoKind.JOBS -> "parentId=$it"; ActivityInfoKind.ROLES -> "" } }
         return send("GET", kind.path + "?" + params.filter { it.isNotEmpty() }.joinToString("&"), null, session).toActivityInfoPage()
     }
     /** `POST /v1/cards`: [template] is the decoration markdown the server fills in at publish time. */
@@ -140,7 +140,7 @@ class AccountClient(private val api: String, private val transport: Transport = 
 
     private fun passkeyBody(challengeId: String, credential: String) = JSONObject().put("challengeId", challengeId).put("credential", JSONObject(credential))
 
-    enum class ActivityInfoKind(val path: String) { ORGANIZATIONS("organizations"), PROGRAMS("programs"), ACTIVITIES("activities"), ROLES("roles") }
+    enum class ActivityInfoKind(val path: String) { ORGANIZATIONS("organizations"), PROGRAMS("programs"), ACTIVITIES("activities"), ROLES("roles"), JOBS("jobs") }
 
     private suspend fun send(method: String, path: String, body: JSONObject?, session: AccountSession? = null, headers: Map<String, String> = emptyMap()): JSONObject {
         val text = request(method, path, body, session, headers)
