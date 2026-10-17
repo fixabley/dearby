@@ -70,7 +70,7 @@ export function SearchSelect({
   label,
   ...rest
 }: {
-  path: "organizations" | "programs" | "activities" | "roles";
+  path: "organizations" | "programs" | "activities" | "roles" | "jobs";
   params?: Params;
   value?: number;
   onChange?: (value?: number) => void;
