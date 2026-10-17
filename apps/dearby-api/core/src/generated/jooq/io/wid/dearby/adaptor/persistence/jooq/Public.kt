@@ -14,6 +14,10 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.CardShares
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
+import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCardShares
+import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCards
+import io.wid.dearby.adaptor.persistence.jooq.tables.GuestHandoffs
+import io.wid.dearby.adaptor.persistence.jooq.tables.GuestSessions
 import io.wid.dearby.adaptor.persistence.jooq.tables.HistoryEvidence
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
@@ -109,6 +113,26 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.dismissed_activity_sources</code>.
      */
     val DISMISSED_ACTIVITY_SOURCES: DismissedActivitySources get() = DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES
+
+    /**
+     * The table <code>public.guest_card_shares</code>.
+     */
+    val GUEST_CARD_SHARES: GuestCardShares get() = GuestCardShares.GUEST_CARD_SHARES
+
+    /**
+     * The table <code>public.guest_cards</code>.
+     */
+    val GUEST_CARDS: GuestCards get() = GuestCards.GUEST_CARDS
+
+    /**
+     * The table <code>public.guest_handoffs</code>.
+     */
+    val GUEST_HANDOFFS: GuestHandoffs get() = GuestHandoffs.GUEST_HANDOFFS
+
+    /**
+     * The table <code>public.guest_sessions</code>.
+     */
+    val GUEST_SESSIONS: GuestSessions get() = GuestSessions.GUEST_SESSIONS
 
     /**
      * The table <code>public.history_evidence</code>.
@@ -243,6 +267,10 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         CollectionRuns.COLLECTION_RUNS,
         Contacts.CONTACTS,
         DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES,
+        GuestCardShares.GUEST_CARD_SHARES,
+        GuestCards.GUEST_CARDS,
+        GuestHandoffs.GUEST_HANDOFFS,
+        GuestSessions.GUEST_SESSIONS,
         HistoryEvidence.HISTORY_EVIDENCE,
         OrganizationContacts.ORGANIZATION_CONTACTS,
         OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES,

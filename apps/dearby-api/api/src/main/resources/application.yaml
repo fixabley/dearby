@@ -27,6 +27,9 @@ dearby:
     team-id: ${APPLE_TEAM_ID:}
     key-id: ${APPLE_KEY_ID:}
     private-key-path: ${APPLE_PRIVATE_KEY_PATH:}
+  # 웹 비로그인 저장. Next 서버의 GUEST_PROXY_SECRET과 같은 값(32자 이상). 비어 있으면 /v1/guest/*는 503
+  guest:
+    proxy-secret: ${GUEST_PROXY_SECRET:}
   jwt:
     key-path: ${JWT_KEY_PATH}
     issuer: ${JWT_ISSUER}

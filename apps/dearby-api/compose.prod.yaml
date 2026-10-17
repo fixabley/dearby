@@ -47,6 +47,8 @@ services:
       APPLE_TEAM_ID: ${APPLE_TEAM_ID:-}
       APPLE_KEY_ID: ${APPLE_KEY_ID:-}
       APPLE_PRIVATE_KEY_PATH: ${APPLE_PRIVATE_KEY_PATH:-}
+      # 웹 비로그인 저장 프록시 키(Vercel의 GUEST_PROXY_SECRET과 같은 값). 비어 있으면 /v1/guest/*만 503
+      GUEST_PROXY_SECRET: ${GUEST_PROXY_SECRET:-}
     volumes:
       # 컨테이너는 uid 10001로 실행된다. Linux 호스트는 첫 실행 전에 소유자를 맞춘다:
       # mkdir -p data/prod/jwt && sudo chown 10001 data/prod/jwt

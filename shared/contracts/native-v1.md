@@ -286,7 +286,8 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·공유·지갑 경
 - Card: `{id, ownerId, name, description, template, introduction, profileName, job, contacts: Contact[], histories: History[], createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `template`은 발행할 때 보낸 마크다운 템플릿, `introduction`은 그것을 **채운 결과**(공개 본문)다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`, `GET /v1/shares/:id`)에는 `template`을 싣지 않는다.
 - CardShare: `{id, cardId, activities: [{id(숫자), title}], createdAt}`. **활동 id가 UUID에서 숫자로 바뀌었다**(2026-10-14 활동 조회 결정). 앱·웹의 ShareActivity를 맞춘다.
 - Receipt: `{id, card, context: {activityId: null, label: null}, receivedAt, reciprocal: false}`. WalletShare는 "앱에서 받은 공유 저장"과 같다.
-- 아직 없는 것(4단계): 웹 비로그인 저장(`/v1/guest/*`, 홈 화면 세션 잇기), `POST /v1/wallet/import`, `POST /v1/exchanges`. 웹 `/s/` 페이지는 명함을 보여 주되 저장은 그때까지 실패(`REQUEST_FAILED`)한다.
+- 웹 비로그인 저장(`/v1/guest/*`, 홈 화면 세션 잇기)은 2026-10-17 Kotlin API에 다시 구현했다(위 "웹 비로그인 명함 저장"·"게스트 공유 정보 저장"·"홈 화면 세션 잇기" 계약 그대로). 오류 본문은 다른 경로와 같은 ProblemDetail이며 웹 프록시는 상태 코드만 옮긴다(401 `GUEST_SESSION_INVALID`, 그 외 `REQUEST_FAILED`). API의 `GUEST_PROXY_SECRET`이 비어 있으면 `/v1/guest/*`만 503이다.
+- 아직 없는 것: `POST /v1/wallet/import`, `POST /v1/exchanges`. 앱이 쓰지 않아 만들지 않는다(교환은 "앱에서 받은 공유 저장" 결정으로 범위 밖).
 
 ### 템플릿 (명함 꾸미기)
 

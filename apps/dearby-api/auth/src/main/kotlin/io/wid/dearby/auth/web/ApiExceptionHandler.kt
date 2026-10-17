@@ -5,6 +5,7 @@ import io.wid.dearby.domain.ConflictException
 import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.NotFoundException
 import io.wid.dearby.domain.PermissionDeniedException
+import io.wid.dearby.domain.RateLimitedException
 import io.wid.dearby.domain.ServiceUnavailableException
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
@@ -32,6 +33,9 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(ConflictException::class)
     fun conflict(e: ConflictException) = problem(HttpStatus.CONFLICT, e.detail, e)
+
+    @ExceptionHandler(RateLimitedException::class)
+    fun rateLimited(e: RateLimitedException) = problem(HttpStatus.TOO_MANY_REQUESTS, e.detail, e)
 
     @ExceptionHandler(ServiceUnavailableException::class)
     fun serviceUnavailable(e: ServiceUnavailableException) = problem(HttpStatus.SERVICE_UNAVAILABLE, e.detail, e)
