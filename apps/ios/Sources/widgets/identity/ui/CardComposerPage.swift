@@ -22,6 +22,12 @@ struct CardComposerPage: View {
                     Text("로그인하면 프로필 데이터로 명함을 꾸밀 수 있어요.").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
                     Button("로그인") { signingIn = true }.buttonStyle(DearbyButtonStyle())
                 }.padding(24).frame(maxHeight: .infinity)
+            } else if let draft = model.draft, draft.profile.version == 0 {
+                // Signed in from here without ever saving a profile: the composer has no data to fill the template with.
+                VStack(spacing: 16) {
+                    Text("먼저 내 프로필 탭에서 이름과 연락처를 적어 주세요.").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
+                    Button("닫기") { dismiss() }.buttonStyle(DearbyButtonStyle(outlined: true))
+                }.padding(24).frame(maxHeight: .infinity)
             } else if let binding = Binding($model.draft) {
                 CardComposer(draft: binding, publishing: model.phase == .publishing, errorMessage: failure ?? model.account.message) { publish() }
             } else if let failure {

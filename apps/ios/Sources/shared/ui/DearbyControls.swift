@@ -142,6 +142,8 @@ struct DearbyInlineField: View {
     var prompt = ""
     var multiline = false
     var font: Font = .dearby(.body)
+    /// 퍼널처럼 화면에 입력이 하나뿐일 때 나타나자마자 키보드를 연다.
+    var autofocus = false
     @FocusState private var focused: Bool
     var body: some View {
         Group {
@@ -157,6 +159,7 @@ struct DearbyInlineField: View {
                         .accessibilityLabel(label).accessibilityHint(prompt).focused($focused)
                 }.contentShape(Rectangle()).onTapGesture { focused = true }
                 .background(alignment: .bottom) { Rectangle().fill(DearbyStyle.teal).frame(height: 1).offset(y: 6) }
+                .onAppear { if autofocus { Task { @MainActor in try? await Task.sleep(for: .milliseconds(80)); focused = true } } }
             } else {
                 Text(text.isEmpty ? prompt : text).foregroundStyle(text.isEmpty ? DearbyStyle.quiet : DearbyStyle.ink)
                     .frame(maxWidth: .infinity, alignment: .leading)

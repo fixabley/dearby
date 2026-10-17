@@ -26,6 +26,7 @@
 | iOS bundle ID | web `DEARBY_IOS_BUNDLE_IDS` | 앱 설정: Release `io.wid.dearby`, Debug `com.dearby.dearby` (`apps/ios/scripts/generate_project.rb`) |
 | Android 패키지·서명 | web `DEARBY_ANDROID_PACKAGE`, `DEARBY_ANDROID_CERT_SHA256`, `wid.io.kr` assetlinks, API `WEBAUTHN_ALLOWED_ORIGINS`의 `android:apk-key-hash:` | 앱 설정 `applicationId = com.dearby.nativeapp`과 배포 서명 인증서 |
 | Supabase 프로젝트 | admin `VITE_SUPABASE_URL`, 워커 `SUPABASE_URL` | 같은 프로젝트. 워커의 `SUPABASE_SERVICE_ROLE_KEY`는 워커에만 둔다 |
+| 게스트 프록시 키 | API `GUEST_PROXY_SECRET`(서버 `.env.prod`), web `GUEST_PROXY_SECRET`(Vercel `dearby-web`, Secret 타입) | 32자 이상 같은 값. 원본은 서버의 `~/.dearby-deploy/guest-proxy-secret`(저장소 밖). 2026-10-17 Kotlin API `/v1/guest/*` 배포 때 두 곳을 이 값으로 맞췄다. Vercel 값은 다시 읽을 수 없으므로 바꿀 때는 두 곳을 함께 바꾼다 |
 
 ## 로컬 개발 포트
 
@@ -44,4 +45,4 @@
 - **앱 Debug 기본 API 주소:** iOS는 `http://localhost:3000`(`AppLinks.swift`), Android는 `http://10.0.2.2:3000`(`app/build.gradle.kts`)이다. 이는 삭제한 TS API의 포트다. Kotlin API는 8080이므로, 지금은 `DEARBY_API_ORIGIN`을 지정해야 로컬 API에 붙는다.
 - **로컬 웹 포트:** 앱 Debug 기본 웹 주소는 3210이다. 반면 API `.env.local.example`의 `WEBAUTHN_ALLOWED_ORIGINS`는 `next dev` 기본값인 3000을 웹으로 가정했다. 웹의 실제 로컬 포트를 정한 뒤 한쪽을 맞춘다.
 - **앱 패스키 도메인 (2026-10-10 해소):** iOS는 `webcredentials:wid.io.kr`(#178), Android는 Credential Manager(#179)로 연결했다. 운영 nginx(`~/nginx`, 이 저장소 밖)가 `https://wid.io.kr/.well-known/apple-app-site-association`(`4V9FVN3VQF.io.wid.dearby`, `4V9FVN3VQF.com.dearby.dearby`)과 `assetlinks.json`(`get_login_creds`)을 정적 파일로 내준다. Apple CDN과 Google Digital Asset Links API가 읽어 가는 것을 확인했다. **assetlinks에는 이 Mac의 디버그 서명(`91:E3:35:…:69:46`)만 있다.** 배포 서명(Play Console 앱 서명 키) 값과 API `WEBAUTHN_ALLOWED_ORIGINS`의 `android:apk-key-hash:` 배포 값은 아직 없다. 디버그 origin은 `android:apk-key-hash:keM1kj8hdWGj0XrQ9-he6ryGQQHqSJZw38rfG5sgaUY`.
-- **web `GUEST_PROXY_SECRET`:** 삭제한 TS API와 함께 쓰던 비밀이다. Kotlin API에는 아직 대응하는 기능이 없다.
+- **web `GUEST_PROXY_SECRET` (2026-10-17 해소):** Kotlin API가 `/v1/guest/*`를 다시 제공하며 위 표의 값으로 맞췄다.

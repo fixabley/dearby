@@ -25,8 +25,9 @@ import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
 
 /**
- * 내 프로필: data only, edited in place. Once [ProfileViewState.form] differs from the loaded profile the 저장/원래대로 bar
- * appears (contract "프로필과 버전 이력"). Histories come from the step funnel; card decoration lives in 명함 만들기.
+ * 내 프로필: data only. A profile never saved (`version` 0) starts with [ProfileSetupPage]; afterwards it is edited in place
+ * and once [ProfileViewState.form] differs from the loaded profile the 저장/원래대로 bar appears (contract "프로필과 버전 이력").
+ * Histories come from the step funnel; card decoration lives in 명함 만들기.
  */
 @Composable fun ProfilePage(
     state: ProfileViewState, rows: List<HistoryRowState>, change: (ProfileFormState) -> Unit, addContact: (String) -> Unit, openHistory: (String?) -> Unit,
@@ -34,9 +35,11 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
     deleting: Boolean, deleteAccount: () -> Unit, changed: Boolean,
 ) {
     var confirming by remember { mutableStateOf(false) }
+    // Never saved yet: the step funnel replaces the editor until the first save.
+    val settingUp = state.profile?.version == 0
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("내 프로필") {
-            if (state.phase == ProfilePhase.LOADED) {
+            if (state.phase == ProfilePhase.LOADED && !settingUp) {
                 IconButton(versions) { Icon(Icons.Outlined.History, "변경 이력", tint = Teal) }
                 TextButton(compose) { Text("명함 만들기") }
             }
@@ -53,6 +56,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
                 DearbyOutlineButton(retry, Modifier.fillMaxWidth()) { Text("다시 시도") }
             }
             ProfilePhase.LOADED -> state.form?.let { form ->
+                if (settingUp) { ProfileSetupPage(form, state.saving, state.error, change, save, Modifier.weight(1f)); return@let }
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     Text("기본 정보", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
                     Labeled("이름 · 필수") { DearbyInlineField("이름, 필수", form.name, { change(form.copy(name = it)) }, editing = true, placeholder = "실명 또는 활동명") }
