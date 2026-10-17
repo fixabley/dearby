@@ -13,8 +13,8 @@ import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 
 /**
- * A first-seen Apple account (contract "애플 로그인", 202). The server cannot tell whether this person already has a passkey
- * account, so they choose: a new account, or passkey sign-in that links Apple to it. [email] may be empty or Apple's relay.
+ * A first-seen Apple account (contract "애플 로그인", 202) whose device-passkey prompt was closed. The server cannot tell whether
+ * this person already has a passkey account, so they choose: a new account, or passkey sign-in that links Apple to it. [email] may be empty or Apple's relay.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun AppleAccountSheet(email: String, busy: Boolean, message: String?, startNew: () -> Unit, linkPasskey: () -> Unit, close: () -> Unit) {
@@ -23,7 +23,7 @@ import com.dearby.nativeapp.shared.ui.*
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("처음 보는 Apple 계정이에요", Modifier.semantics { heading() }, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineSmall)
                 if (email.isNotEmpty()) Text(email, color = Quiet, style = MaterialTheme.typography.bodyMedium)
-                Text("이미 패스키로 만든 계정이 있다면 연결하고, 없다면 새 계정으로 시작해 주세요.", color = Quiet, style = MaterialTheme.typography.bodyMedium)
+                Text("패스키 확인을 건너뛰었어요. 이미 패스키로 만든 계정이 있다면 연결하고, 없다면 새 계정으로 시작해 주세요.", color = Quiet, style = MaterialTheme.typography.bodyMedium)
             }
             message?.let { DearbyFieldError(it) }
             DearbyButton(startNew, Modifier.fillMaxWidth().testTag("apple-start-new"), enabled = !busy) {

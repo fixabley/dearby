@@ -45,11 +45,13 @@ enum Passkey {
         return Credential(id: result.credentialID.base64URL, rawId: result.credentialID.base64URL,
                           response: .init(clientDataJSON: result.rawClientDataJSON.base64URL, attestationObject: attestation.base64URL))
     }
-    @MainActor static func assert(_ options: RequestOptions, with controller: AuthorizationController) async throws -> Credential {
+    /// `localOnly`: only passkeys already on this device (iCloud Keychain). With none, the system comes back as
+    /// `canceled` at once instead of offering a nearby device.
+    @MainActor static func assert(_ options: RequestOptions, with controller: AuthorizationController, localOnly: Bool = false) async throws -> Credential {
         guard let challenge = Data(base64URL: options.challenge) else { throw Failure.failed }
         let request = provider.createCredentialAssertionRequest(challenge: challenge)
         request.userVerificationPreference = .required
-        guard case .passkeyAssertion(let result) = try await perform(request, controller) else { throw Failure.failed }
+        guard case .passkeyAssertion(let result) = try await perform(request, controller, localOnly: localOnly) else { throw Failure.failed }
         return Credential(id: result.credentialID.base64URL, rawId: result.credentialID.base64URL,
                           response: .init(clientDataJSON: result.rawClientDataJSON.base64URL, authenticatorData: result.rawAuthenticatorData.base64URL,
                                           signature: result.signature.base64URL, userHandle: result.userID?.base64URL))
@@ -59,8 +61,10 @@ enum Passkey {
         ASAuthorizationPlatformPublicKeyCredentialProvider(relyingPartyIdentifier: relyingParty)
     }
     /// Closing the OS sheet, or having no passkey for this app on the device, comes back as `canceled`.
-    @MainActor private static func perform(_ request: ASAuthorizationRequest, _ controller: AuthorizationController) async throws -> ASAuthorizationResult {
-        do { return try await controller.performRequest(request) } catch let error as ASAuthorizationError where error.code == .canceled {
+    @MainActor private static func perform(_ request: ASAuthorizationRequest, _ controller: AuthorizationController, localOnly: Bool = false) async throws -> ASAuthorizationResult {
+        do {
+            return try await controller.performRequest(request, options: localOnly ? .preferImmediatelyAvailableCredentials : [])
+        } catch let error as ASAuthorizationError where error.code == .canceled {
             throw Failure.canceled
         } catch { throw Failure.failed }
     }

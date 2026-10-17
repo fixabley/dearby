@@ -50,41 +50,58 @@ import SwiftUI
             let credential = try await AppleSignIn.authorize(nonce: challenge.nonce, with: controller)
             switch try await client.signInWithApple(challengeId: challenge.challengeId, credential: credential) {
             case .signedIn(let tokens): return tokens
-            case .newAppleAccount(let link):
-                appleLink = link
-                return nil
+            case .newAppleAccount(let link): return try await linkOrStart(link, controller)
             }
         }
+    }
+    /// 2026-10-17 decision: a first-time Apple account links to the passkey account already on this device (one Face ID
+    /// pass, no question) and, with no such passkey, starts a separate account right away. The system reports "no passkey
+    /// here" and a closed sheet alike (`canceled`), so a cancel that returns before any sheet could show (under 400 ms)
+    /// counts as "no passkey"; a later one leaves the new-or-link choice open for the person to decide.
+    private func linkOrStart(_ link: AccountClient.AppleLink, _ controller: AuthorizationController) async throws -> TokenPair? {
+        let started = ContinuousClock.now
+        do {
+            return try await linkPasskeyAccount(link, controller, localOnly: true)
+        } catch Passkey.Failure.canceled where ContinuousClock.now - started < .milliseconds(400) {
+            return try await startAppleAccount(link)
+        } catch Passkey.Failure.canceled {
+            appleLink = link
+            return nil
+        }
+    }
+    private func startAppleAccount(_ link: AccountClient.AppleLink) async throws -> TokenPair {
+        let tokens: TokenPair
+        do { tokens = try await client.registerWithApple(link) } catch AccountError.unauthorized { throw AppleLinkFailure.expired }
+        appleLink = nil
+        return tokens
+    }
+    /// Passkey sign-in, then the waiting Apple account is linked to that account. If linking fails the passkey session is
+    /// dropped (not stored), so no one ends up signed in but unlinked by surprise.
+    private func linkPasskeyAccount(_ link: AccountClient.AppleLink, _ controller: AuthorizationController, localOnly: Bool) async throws -> TokenPair {
+        let challenge = try await client.authenticationOptions()
+        let credential = try await Passkey.assert(challenge.options, with: controller, localOnly: localOnly)
+        let tokens = try await client.authenticate(challengeId: challenge.challengeId, credential: credential)
+        do { try await client.linkApple(link, tokens) } catch {
+            try? await client.logout(tokens)
+            switch error as? AccountError {
+            case .invalidInput: throw AppleLinkFailure.alreadyLinked
+            case .unauthorized: throw AppleLinkFailure.expired
+            default: throw error
+            }
+        }
+        appleLink = nil
+        return tokens
     }
     /// "새 계정으로 시작": a new Dearby account for the waiting Apple account.
     func registerWithApple() async {
         guard let link = appleLink else { return }
-        await start(failure: "새 계정을 만들지 못했어요. 다시 시도해 주세요.") { [client] in
-            let tokens: TokenPair
-            do { tokens = try await client.registerWithApple(link) } catch AccountError.unauthorized { throw AppleLinkFailure.expired }
-            appleLink = nil
-            return tokens
-        }
+        await start(failure: "새 계정을 만들지 못했어요. 다시 시도해 주세요.") { try await startAppleAccount(link) }
     }
     /// "기존 패스키 계정에 연결": sign in with a passkey, then link the waiting Apple account to that account.
     /// If linking fails the passkey session is dropped (not stored), so no one ends up signed in but unlinked by surprise.
     func linkAppleToPasskey(using controller: AuthorizationController) async {
         guard let link = appleLink else { return }
-        await start(failure: "패스키 계정에 연결하지 못했어요. 다시 시도해 주세요.") { [client] in
-            let challenge = try await client.authenticationOptions()
-            let credential = try await Passkey.assert(challenge.options, with: controller)
-            let tokens = try await client.authenticate(challengeId: challenge.challengeId, credential: credential)
-            do { try await client.linkApple(link, tokens) } catch {
-                try? await client.logout(tokens)
-                switch error as? AccountError {
-                case .invalidInput: throw AppleLinkFailure.alreadyLinked
-                case .unauthorized: throw AppleLinkFailure.expired
-                default: throw error
-                }
-            }
-            appleLink = nil
-            return tokens
-        }
+        await start(failure: "패스키 계정에 연결하지 못했어요. 다시 시도해 주세요.") { try await linkPasskeyAccount(link, controller, localOnly: false) }
     }
     /// Leaves the new-or-link choice; the link token is simply left to expire.
     func clearAppleLink() { appleLink = nil }

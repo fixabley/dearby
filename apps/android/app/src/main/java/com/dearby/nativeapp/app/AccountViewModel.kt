@@ -28,8 +28,11 @@ import kotlinx.coroutines.sync.withLock
 import org.json.JSONException
 
 enum class AccountPhase { SIGNED_OUT, WORKING, SIGNED_IN }
-/** [appleEmail] is set while a first-seen Apple account waits for "새 계정으로 시작" or "기존 패스키 계정에 연결" (may be empty). */
-data class AccountState(val phase: AccountPhase, val message: String? = null, val appleEmail: String? = null)
+/**
+ * [appleEmail] is set while a first-seen Apple account waits (may be empty). [appleAuto] is true until the automatic
+ * device-passkey attempt ([AccountViewModel.autoLinkApple]) has run; the new-or-link choice is drawn only after it.
+ */
+data class AccountState(val phase: AccountPhase, val message: String? = null, val appleEmail: String? = null, val appleAuto: Boolean = false)
 private const val UNSUPPORTED = "이 기기에서는 패스키를 쓸 수 없어요. Android 9 이상이 필요해요."
 private const val APPLE_RETRY = "애플 로그인을 마치지 못했어요. 다시 시도해 주세요."
 // SavedStateHandle keys: Apple's page is another app, so these must outlive rotation and process death meanwhile.
@@ -89,7 +92,7 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
                         is AppleSignIn.NeedsAccount -> {
                             saved[APPLE_LINK_TOKEN] = result.linkToken
                             saved[APPLE_EMAIL] = result.email
-                            mutable.update { it.copy(appleEmail = result.email) }
+                            mutable.update { it.copy(appleEmail = result.email, appleAuto = true) }
                             null
                         }
                     }
@@ -105,8 +108,8 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
     }
 
     /**
-     * "기존 패스키 계정에 연결": passkey sign-in, then the Apple account is linked with the new access token. A closed passkey
-     * prompt or failed passkey sign-in keeps the choice open. If the link fails, the passkey tokens are dropped (never stored,
+     * "기존 패스키 계정에 연결" (after the automatic attempt): passkey sign-in, then the Apple account is linked with the new
+     * access token. A closed passkey prompt or failed passkey sign-in keeps the choice open. If the link fails, the passkey tokens are dropped (never stored,
      * logged out best-effort) so the person is not signed in to an account Apple was not linked to, as on iOS. A 401
      * (expired or used link token) or 400 (already linked elsewhere; the server spent the token) also closes the choice.
      */
@@ -116,7 +119,28 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
         val credential = try { passkeys.get(challenge.options) } catch (e: NoCredentialException) {
             throw AppleFailure("이 기기에 Dearby 패스키가 없어요. 새 계정으로 시작해 주세요.")
         } ?: return@enter null
-        val tokens = client.authenticate(challenge.id, credential)
+        linkWith(linkToken, challenge.id, credential)
+    }
+
+    /**
+     * 2026-10-17 decision, run once right after the 202: a Dearby passkey on this device signs in and links the Apple
+     * account at once (one prompt, no question); none starts a separate account right away. Closing the passkey prompt
+     * leaves the new-or-link choice open for the person to decide.
+     */
+    suspend fun autoLinkApple(passkeys: Passkeys) {
+        enter(apple = true) {
+            val linkToken = saved.get<String>(APPLE_LINK_TOKEN) ?: return@enter null
+            val challenge = client.authenticationOptions()
+            val credential = try { passkeys.get(challenge.options) } catch (e: NoCredentialException) {
+                return@enter try { client.appleRegister(linkToken) } finally { takeLinkToken() }
+            } ?: return@enter null
+            linkWith(linkToken, challenge.id, credential)
+        }
+        mutable.update { it.copy(appleAuto = false) }
+    }
+
+    private suspend fun linkWith(linkToken: String, challengeId: String, credential: String): AccountSession {
+        val tokens = client.authenticate(challengeId, credential)
         try { client.linkApple(linkToken, tokens) } catch (e: AccountException) {
             runCatching { client.logout(tokens.refreshToken) }
             throw AppleFailure(when (e.error) {
@@ -126,7 +150,7 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
             })
         }
         takeLinkToken()
-        tokens
+        return tokens
     }
 
     /** Closing the choice drops the link token. */
