@@ -40,14 +40,17 @@ struct JobTagPicker: View {
             .background(job.approval == "rejected" ? DearbyStyle.muted : DearbyStyle.mint, in: Capsule())
         }.buttonStyle(.plain).accessibilityLabel("\(job.title) 직무\(job.isCustom && job.approval == "pending" ? ", 승인 대기" : "")").accessibilityHint("눌러서 지워요")
     }
+    // Results show only for a typed query (as on Android), so the editor is not a permanent list under the chips.
     @ViewBuilder private var results: some View {
         let query = search.query.trimmingCharacters(in: .whitespacesAndNewlines)
-        if search.loading && search.items.isEmpty {
+        if query.isEmpty {
+            Text("이름으로 검색해 여러 개 고르거나, 없으면 그대로 적어 주세요.").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).padding(.vertical, 8)
+        } else if search.loading && search.items.isEmpty {
             ProgressView().frame(maxWidth: .infinity, minHeight: 56).tint(DearbyStyle.teal)
         } else if search.failed {
             Text("목록을 불러오지 못했어요. 직접 적어도 돼요.").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
         }
-        VStack(spacing: 0) {
+        if !query.isEmpty { VStack(spacing: 0) {
             ForEach(search.items) { item in
                 Button {
                     form.addJob(picked: item.ref)
@@ -67,10 +70,8 @@ struct JobTagPicker: View {
                     Label("‘\(query)’ 직접 입력", systemImage: "pencil").font(.dearby(.title3).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
                         .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
                 }.buttonStyle(.plain).accessibilityHint("목록에 없으면 적은 이름 그대로 저장해요")
-            } else if query.isEmpty && search.items.isEmpty && !search.loading {
-                Text("이름으로 검색해 여러 개 고르거나, 없으면 그대로 적어 주세요.").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).padding(.vertical, 8)
             }
-        }
+        } }
     }
 }
 
