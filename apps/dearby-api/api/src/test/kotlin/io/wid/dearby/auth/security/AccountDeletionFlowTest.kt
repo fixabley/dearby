@@ -52,7 +52,8 @@ class AccountDeletionFlowTest(
         jdbc.sql("insert into users (id) values (?)").param(id).update()
         jdbc.sql("insert into user_roles (user_id, role) values (?, 'USER')").param(id).update()
         jdbc.sql("insert into contacts (id, user_id, kind, label, value, position) values (?, ?, 'EMAIL', '메일', 'a@example.com', 0)").params(UUID.randomUUID(), id).update()
-        jdbc.sql("insert into profiles (user_id, name, job, introduction, version, created_at, updated_at) values (?, '이름', '', '', 1, now(), now())").param(id).update()
+        jdbc.sql("insert into profiles (user_id, name, introduction, version, created_at, updated_at) values (?, '이름', '', 1, now(), now())").param(id).update()
+        jdbc.sql("insert into profile_jobs (id, user_id, job_name, position, approval_status, created_at, updated_at) values (?, ?, '직접 적은 직무', 0, 'PENDING', now(), now())").params(UUID.randomUUID(), id).update()
         jdbc.sql("insert into profile_versions (user_id, version, snapshot, created_at) values (?, 1, '{}', now())").param(id).update()
         val history = UUID.randomUUID()
         jdbc.sql("insert into profile_histories (id, user_id, kind, organization_name, role_name, start_date, description, position, approval_status, verification_status, created_at, updated_at) values (?, ?, 'ORGANIZATION', '조직', '역할', '2026-01-01', '', 0, 'PENDING', 'UNVERIFIED', now(), now())").params(history, id).update()
@@ -92,7 +93,7 @@ class AccountDeletionFlowTest(
 
         assertEquals(listOf("io.wid.dearby:rt-1"), REVOKED)
         for ((table, column) in listOf("users" to "id", "user_roles" to "user_id", "contacts" to "user_id", "profiles" to "user_id",
-            "profile_versions" to "user_id", "profile_histories" to "user_id", "history_evidence" to "user_id",
+            "profile_versions" to "user_id", "profile_histories" to "user_id", "history_evidence" to "user_id", "profile_jobs" to "user_id",
             "business_cards" to "user_id", "refresh_tokens" to "user_id", "user_identities" to "user_id")) {
             assertEquals(0, count(table, column, user.id), table)
         }

@@ -8,10 +8,14 @@ import java.time.OffsetDateTime
 data class Profile(
     val userId: UserId,
     val name: String,
-    val job: String,
+    val jobs: List<ProfileJob>,
     val introduction: String,
     val contacts: List<Contact>,
     val histories: List<History>,
     val version: Int,
     val updatedAt: OffsetDateTime,
-)
+) {
+    // 명함의 job과 {{profile.job}}: 승인된 직무 이름을 " · "로 잇는다(승인 대기·거절은 뺀다)
+    val jobTitle: String
+        get() = jobs.filter { it.approval == ApprovalStatus.APPROVED }.map { it.title }.filter { it.isNotEmpty() }.joinToString(" · ")
+}

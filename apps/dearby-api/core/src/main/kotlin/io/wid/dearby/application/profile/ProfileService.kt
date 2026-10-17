@@ -5,6 +5,7 @@ import io.wid.dearby.application.organization.OrganizationRepository
 import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.domain.ConflictException
 import io.wid.dearby.domain.ContactKind
+import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.NotFoundException
 import io.wid.dearby.domain.PublicationStatus
@@ -27,6 +28,7 @@ class ProfileService(
     private val programs: ProgramRepository,
     private val activities: ActivityRepository,
     private val roles: RoleRepository,
+    private val jobs: JobRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -63,7 +65,7 @@ class ProfileService(
         val snapshot = version(userId, version).profile
         val input = ProfileInput(
             name = snapshot.name,
-            job = snapshot.job,
+            jobs = snapshot.jobs.map { JobInput(it.id, it.job?.id, it.jobName) },
             introduction = snapshot.introduction,
             contacts = snapshot.contacts.map { ContactInput(it.id, it.kind.name.lowercase(), it.label, it.value) },
             histories = snapshot.histories.map {
@@ -107,11 +109,17 @@ class ProfileService(
     private fun requireHistory(userId: UserId, historyId: UUID): History =
         profiles.findHistory(userId, historyId) ?: throw NotFoundException("이력을 찾을 수 없습니다", "History not found: $userId/$historyId")
 
-    private fun empty(userId: UserId) = Profile(userId, "", "", "", emptyList(), emptyList(), 0, OffsetDateTime.now(ZoneOffset.UTC))
+    private fun empty(userId: UserId) = Profile(userId, "", emptyList(), "", emptyList(), emptyList(), 0, OffsetDateTime.now(ZoneOffset.UTC))
 
     private fun build(userId: UserId, input: ProfileInput, current: Profile): Profile {
         val name = text(input.name, "이름", MAX_NAME)
-        val job = text(input.job, "직함", MAX_NAME, allowEmpty = true)
+        if (input.jobs.size > MAX_JOBS) throw InvalidInputException("직무는 ${MAX_JOBS}개까지입니다")
+        if (input.jobs.map { it.id }.toSet().size != input.jobs.size) throw InvalidInputException("직무 id가 겹칩니다")
+        val jobIds = input.jobs.mapNotNull { it.jobId }
+        if (jobIds.toSet().size != jobIds.size) throw InvalidInputException("같은 직무를 두 번 넣었습니다")
+        val foundJobs = jobs.findAllById(jobIds).associateBy { it.id }
+        val existingJobs = current.jobs.associateBy { it.id }
+        val jobEntries = input.jobs.map { job(it, foundJobs, existingJobs[it.id]) }
         val introduction = multiline(input.introduction, "자기소개", MAX_INTRODUCTION)
         val contacts = input.contacts.map(::contact)
         if (contacts.map { it.id }.toSet().size != contacts.size) throw InvalidInputException("연락처 id가 겹칩니다")
@@ -121,7 +129,20 @@ class ProfileService(
         if (input.histories.map { it.id }.toSet().size != input.histories.size) throw InvalidInputException("이력 id가 겹칩니다")
         val existing = current.histories.associateBy { it.id }
         val histories = input.histories.map { history(it, existing[it.id]) }
-        return Profile(userId, name, job, introduction, contacts, histories, current.version, current.updatedAt)
+        return Profile(userId, name, jobEntries, introduction, contacts, histories, current.version, current.updatedAt)
+    }
+
+    // 직무 id가 있으면 이름을 직무에서 가져오고, 없으면 직접 입력(승인 대기). 직접 입력이 그대로면 승인·거절 결과를 지킨다
+    private fun job(input: JobInput, found: Map<Id, Job>, existing: ProfileJob?): ProfileJob {
+        val ref = input.jobId?.let { id -> found[id]?.let { ActivityInfoRef(it.id, it.name) } ?: throw InvalidInputException("직무를 찾을 수 없습니다", "Job not found: $id") }
+        val typed = if (ref == null) optional(input.jobName, "직무 이름", MAX_NAME) ?: throw InvalidInputException("직무를 고르거나 적어 주세요") else null
+        val draft = ProfileJob(input.id, ref, typed ?: ref?.name, ApprovalStatus.APPROVED, null)
+        if (ref != null) return draft
+        return if (existing != null && existing.customEntry == draft.customEntry) {
+            draft.copy(approval = existing.approval, approvalReason = existing.approvalReason)
+        } else {
+            draft.copy(approval = ApprovalStatus.PENDING)
+        }
     }
 
     private fun contact(input: ContactInput): Contact {
@@ -208,6 +229,7 @@ class ProfileService(
     companion object {
         const val MAX_PAGE_SIZE = 100
         const val MAX_EVIDENCE_PER_HISTORY = 3
+        const val MAX_JOBS = 10
         const val MAX_EVIDENCE_BYTES = 5 * 1024 * 1024
         val EVIDENCE_TYPES = setOf("image/jpeg", "image/png", "image/webp", "application/pdf")
         private const val MAX_NAME = 100

@@ -7,12 +7,14 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.keys.CONTACTS__CONTACTS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_HISTORIES__PROFILE_HISTORIES_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_JOBS__PROFILE_JOBS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_VERSIONS__PROFILE_VERSIONS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECEIPTS__RECEIPTS_RECIPIENT_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ROLES__USER_ROLES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts.ContactsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories.ProfileHistoriesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileJobs.ProfileJobsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions.ProfileVersionsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts.ReceiptsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles.UserRolesPath
@@ -152,6 +154,22 @@ open class Users(
 
     val profileHistories: ProfileHistoriesPath
         get(): ProfileHistoriesPath = profileHistories()
+
+    private lateinit var _profileJobs: ProfileJobsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.profile_jobs</code> table
+     */
+    fun profileJobs(): ProfileJobsPath {
+        if (!this::_profileJobs.isInitialized)
+            _profileJobs = ProfileJobsPath(this, null, PROFILE_JOBS__PROFILE_JOBS_USER_ID_FKEY.inverseKey)
+
+        return _profileJobs;
+    }
+
+    val profileJobs: ProfileJobsPath
+        get(): ProfileJobsPath = profileJobs()
 
     private lateinit var _profileVersions: ProfileVersionsPath
 

@@ -20,11 +20,13 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestHandoffs
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestSessions
 import io.wid.dearby.adaptor.persistence.jooq.tables.HistoryEvidence
+import io.wid.dearby.adaptor.persistence.jooq.tables.Jobs
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMembers
 import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileJobs
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions
 import io.wid.dearby.adaptor.persistence.jooq.tables.Profiles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCollectionSettings
@@ -122,6 +124,11 @@ val GUEST_SESSIONS: GuestSessions = GuestSessions.GUEST_SESSIONS
 val HISTORY_EVIDENCE: HistoryEvidence = HistoryEvidence.HISTORY_EVIDENCE
 
 /**
+ * The table <code>public.jobs</code>.
+ */
+val JOBS: Jobs = Jobs.JOBS
+
+/**
  * The table <code>public.organization_contacts</code>.
  */
 val ORGANIZATION_CONTACTS: OrganizationContacts = OrganizationContacts.ORGANIZATION_CONTACTS
@@ -145,6 +152,11 @@ val ORGANIZATIONS: Organizations = Organizations.ORGANIZATIONS
  * The table <code>public.profile_histories</code>.
  */
 val PROFILE_HISTORIES: ProfileHistories = ProfileHistories.PROFILE_HISTORIES
+
+/**
+ * The table <code>public.profile_jobs</code>.
+ */
+val PROFILE_JOBS: ProfileJobs = ProfileJobs.PROFILE_JOBS
 
 /**
  * The table <code>public.profile_versions</code>.

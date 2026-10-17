@@ -21,6 +21,12 @@ object ProfileJson {
 
     fun readHistories(value: String): List<History> = json.readValue<List<HistoryJson>>(value).map { it.toHistory() }
 
+    fun jobs(jobs: List<ProfileJob>): String = json.writeValueAsString(jobs.map { ProfileJobJson(it.id, it.job?.let { r -> RefJson(r.id, r.name) }, it.jobName, it.approval.name, it.approvalReason) })
+
+    fun readJobs(value: String): List<ProfileJob> = json.readValue<List<ProfileJobJson>>(value).map {
+        ProfileJob(it.id, it.job?.let { r -> ActivityInfoRef(r.id, r.name) }, it.jobName, ApprovalStatus.valueOf(it.approval), it.approvalReason)
+    }
+
     fun <T : Any> write(value: T): String = json.writeValueAsString(value)
 
     inline fun <reified T : Any> read(value: String): T = mapper().readValue<T>(value)
@@ -30,6 +36,8 @@ object ProfileJson {
     data class ContactJson(val id: UUID, val kind: String, val label: String, val value: String)
 
     data class RefJson(val id: Long, val name: String)
+
+    data class ProfileJobJson(val id: UUID, val job: RefJson?, val jobName: String?, val approval: String, val approvalReason: String?)
 
     data class EvidenceJson(val id: UUID, val fileName: String, val contentType: String, val size: Int, val uploadedAt: OffsetDateTime)
 

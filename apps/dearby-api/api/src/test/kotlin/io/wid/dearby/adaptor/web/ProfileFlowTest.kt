@@ -57,7 +57,8 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         assertEquals(listOf(0, "", 0), listOf(empty["version"].asInt(), empty["name"].asString(), empty["contacts"].size()))
         mvc.get("/v1/profile").andExpect { status { isUnauthorized() } }
 
-        val body = """{"name":" 조민준 ","job":"개발자","introduction":"안녕하세요\n반갑습니다","contacts":${contacts()},"histories":[]}"""
+        val jobEntry = UUID.randomUUID()
+        val body = """{"name":" 조민준 ","jobs":[{"id":"$jobEntry","jobName":"개발자"}],"introduction":"안녕하세요\n반갑습니다","contacts":${contacts()},"histories":[]}"""
         val saved = read(put(user, body).andExpect { status { isOk() } })
         assertEquals(listOf(1, "조민준", user.toString()), listOf(saved["version"].asInt(), saved["name"].asString(), saved["id"].asString()))
         assertEquals("phone", saved["contacts"][0]["kind"].asString())
@@ -70,17 +71,17 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         // 연락처 규칙
         put(user, """{"name":"a","contacts":[{"id":"$phone","kind":"phone","label":"","value":"010-1234-5678"}]}""").andExpect { status { isBadRequest() } }
         put(user, """{"name":"a","contacts":${contacts().replace("010-1234-5678", "abc")}}""").andExpect { status { isBadRequest() } }
-        put(user, """{"name":"a","contacts":${contacts(""","{"id":"${UUID.randomUUID()}","kind":"github","label":"깃헙","value":"http://github.com/x"}""")}}""").andExpect { status { isBadRequest() } }
+        put(user, """{"name":"a","contacts":${contacts(""",{"id":"${UUID.randomUUID()}","kind":"github","label":"깃헙","value":"http://github.com/x"}""")}}""").andExpect { status { isBadRequest() } }
         put(user, """{"name":"","contacts":${contacts()}}""").andExpect { status { isBadRequest() } }
 
         val versions = read(mvc.get("/v1/profile/versions") { asUser(user) }.andExpect { status { isOk() } })
         assertEquals(listOf(2, 1), versions["items"].values().map { it["version"].asInt() })
         val first = read(mvc.get("/v1/profile/versions/1") { asUser(user) }.andExpect { status { isOk() } })
-        assertEquals("개발자", first["profile"]["job"].asString())
+        assertEquals("개발자", first["profile"]["jobs"][0]["jobName"].asString())
         mvc.get("/v1/profile/versions/9") { asUser(user) }.andExpect { status { isNotFound() } }
         // 되돌리기는 새 버전을 만든다
         val restored = read(mvc.post("/v1/profile/versions/1/restore") { asUser(user) }.andExpect { status { isOk() } })
-        assertEquals(listOf(3, "개발자"), listOf(restored["version"].asInt(), restored["job"].asString()))
+        assertEquals(listOf(3, "개발자"), listOf(restored["version"].asInt(), restored["jobs"][0]["jobName"].asString()))
         assertEquals(3, jdbc.sql("select count(*) from profile_versions where user_id = ?").param(user).query(Int::class.java).single())
     }
 
@@ -168,5 +169,50 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         val programs = read(mvc.get("/v1/programs?q=Let&size=1") { asUser(user) }.andExpect { status { isOk() } })
         assertEquals(organizations["items"][0]["name"].asString(), programs["items"][0]["organization"]["name"].asString())
         mvc.get("/v1/programs?size=0") { asUser(user) }.andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `직무는 검색해 고르면 승인되고 직접 입력은 승인 대기이며, 명함용 job은 승인된 이름만 잇는다`() {
+        val user = user()
+        val backend = jdbc.sql("select id from jobs where name = '백엔드'").query(Long::class.java).single()
+        val design = jdbc.sql("select id from jobs where name = '프로덕트 디자인'").query(Long::class.java).single()
+        val picked = UUID.randomUUID()
+        val custom = UUID.randomUUID()
+        fun body(customName: String, extra: String = "") = """{"name":"직무","contacts":${contacts()},"jobs":[{"id":"$picked","jobId":$backend,"jobName":"무시됨"},{"id":"$custom","jobName":"$customName"}$extra]}"""
+        val saved = read(put(user, body("커뮤니티 빌더")).andExpect { status { isOk() } })
+        assertEquals(listOf("approved", "백엔드", backend), listOf(saved["jobs"][0]["approval"].asString(), saved["jobs"][0]["jobName"].asString(), saved["jobs"][0]["job"]["id"].asLong()))
+        assertEquals(listOf("pending", "커뮤니티 빌더", true), listOf(saved["jobs"][1]["approval"].asString(), saved["jobs"][1]["jobName"].asString(), saved["jobs"][1]["job"].isNull))
+        assertEquals("백엔드", saved["job"].asString())
+
+        // 관리자 승인 뒤 그대로 저장하면 승인 유지, 이름을 고치면 다시 대기
+        jdbc.sql("update profile_jobs set approval_status = 'APPROVED' where id = ?").param(custom).update()
+        assertEquals("approved", read(put(user, body("커뮤니티 빌더", """,{"id":"${UUID.randomUUID()}","jobId":$design}""")))["jobs"][1]["approval"].asString())
+        val changed = read(put(user, body("커뮤니티 운영자")))
+        assertEquals(listOf("pending", "백엔드"), listOf(changed["jobs"][1]["approval"].asString(), changed["job"].asString()))
+
+        // 규칙: 없는 직무 400, 같은 직무 두 번 400, 비어 있는 직접 입력 400, 11개 400
+        put(user, body("x", """,{"id":"${UUID.randomUUID()}","jobId":999999}""")).andExpect { status { isBadRequest() } }
+        put(user, body("x", """,{"id":"${UUID.randomUUID()}","jobId":$backend}""")).andExpect { status { isBadRequest() } }
+        put(user, """{"name":"직무","contacts":${contacts()},"jobs":[{"id":"${UUID.randomUUID()}","jobName":" "}]}""").andExpect { status { isBadRequest() } }
+        put(user, """{"name":"직무","contacts":${contacts()},"jobs":[${(1..11).joinToString(",") { """{"id":"${UUID.randomUUID()}","jobName":"j$it"}""" }}]}""").andExpect { status { isBadRequest() } }
+
+        // 선택 창 검색: 바로 위 직무가 parent로 온다
+        val found = read(mvc.get("/v1/jobs?q=백엔드") { asUser(user) }.andExpect { status { isOk() } })
+        assertEquals(listOf(backend, "개발"), listOf(found["items"][0]["id"].asLong(), found["items"][0]["parent"]["name"].asString()))
+        assertTrue(read(mvc.get("/v1/jobs?rootsOnly=true&size=100") { asUser(user) })["items"].size() >= 11)
+        mvc.get("/v1/jobs").andExpect { status { isUnauthorized() } }
+    }
+
+    @Test
+    fun `V18 이전 버전 스냅샷의 직함 문자열은 승인된 직접 입력 직무로 읽히고 되돌릴 수 있다`() {
+        val user = user()
+        put(user, """{"name":"지금","contacts":${contacts()}}""").andExpect { status { isOk() } }
+        val snapshot = """{"name":"옛날","job":"옛 직함","introduction":"","contacts":${json.writeValueAsString(contacts().replace("\"phone\"", "\"PHONE\"").replace("\"email\"", "\"EMAIL\""))},"histories":"[]"}""" // 스냅샷 형식은 ProfileJson(대문자 kind)
+        jdbc.sql("insert into profile_versions (user_id, version, snapshot, created_at) values (?, 7, ?::jsonb, now())").params(user, snapshot).update()
+        val old = read(mvc.get("/v1/profile/versions/7") { asUser(user) }.andExpect { status { isOk() } })
+        assertEquals(listOf("옛 직함", "approved"), listOf(old["profile"]["jobs"][0]["jobName"].asString(), old["profile"]["jobs"][0]["approval"].asString()))
+        val restored = read(mvc.post("/v1/profile/versions/7/restore") { asUser(user) }.andExpect { status { isOk() } })
+        // 되돌린 직무는 지금 규칙대로 직접 입력이라 승인 대기가 된다
+        assertEquals(listOf("옛날", "옛 직함", "pending"), listOf(restored["name"].asString(), restored["jobs"][0]["jobName"].asString(), restored["jobs"][0]["approval"].asString()))
     }
 }

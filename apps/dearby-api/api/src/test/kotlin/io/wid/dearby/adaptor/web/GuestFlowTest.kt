@@ -40,7 +40,7 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
         jdbc.sql("insert into users (id) values (?)").param(user).update()
         val contact = Contact(UUID.randomUUID(), ContactKind.EMAIL, "메일", "$user@example.com")
         val history = History(UUID.randomUUID(), HistoryKind.ORGANIZATION, null, "조직", null, null, null, null, null, "역할", LocalDate.of(2026, 1, 1), null, "", ApprovalStatus.APPROVED, null, VerificationStatus.UNVERIFIED, emptyList())
-        profiles.save(Profile(user, "주인", "개발자", "소개", listOf(contact), listOf(history), 1, OffsetDateTime.now()))
+        profiles.save(Profile(user, "주인", emptyList(), "소개", listOf(contact), listOf(history), 1, OffsetDateTime.now()))
         val card = read(mvc.post("/v1/cards") {
             with(jwt().jwt { it.subject(user.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER")))
             contentType = MediaType.APPLICATION_JSON

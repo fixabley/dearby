@@ -17,7 +17,7 @@ object TemplateRenderer {
             when (kind) {
                 "profile" -> when (key) {
                     "name" -> profile.name
-                    "job" -> profile.job
+                    "job" -> profile.jobTitle
                     "introduction" -> profile.introduction
                     else -> ""
                 }

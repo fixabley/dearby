@@ -1,6 +1,7 @@
 package io.wid.dearby.adaptor.web.v1.activityinfo
 
 import io.wid.dearby.application.organization.OrganizationRepository
+import io.wid.dearby.application.profile.JobRepository
 import io.wid.dearby.application.profile.RoleRepository
 import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.domain.InvalidInputException
@@ -17,6 +18,7 @@ class ActivityInfoSearchController(
     private val organizations: OrganizationRepository,
     private val programs: ProgramRepository,
     private val roles: RoleRepository,
+    private val jobs: JobRepository,
 ) {
 
     @GetMapping("/organizations")
@@ -66,6 +68,26 @@ class ActivityInfoSearchController(
         val found = roles.search(q, cursor, size + 1)
         val page = found.take(size)
         return ActivityInfoPageResponse(page.map { ActivityInfoItemResponse(it.id, it.name, it.nameEn) }, if (found.size > size) page.last().id else null)
+    }
+
+    // 직무(계층). parent는 바로 위 직무
+    @GetMapping("/jobs")
+    @Transactional(readOnly = true)
+    fun jobs(
+        @RequestParam(required = false) q: String?,
+        @RequestParam(required = false) parentId: Long?,
+        @RequestParam(defaultValue = "false") rootsOnly: Boolean,
+        @RequestParam(required = false) cursor: Long?,
+        @RequestParam(defaultValue = "20") size: Int,
+    ): ActivityInfoPageResponse {
+        checkSize(size)
+        val found = jobs.search(q, parentId, rootsOnly, cursor, size + 1)
+        val page = found.take(size)
+        val parentById = jobs.findAllById(page.mapNotNull { it.parentId }.toSet()).associateBy { it.id }
+        return ActivityInfoPageResponse(
+            page.map { ActivityInfoItemResponse(it.id, it.name, it.nameEn, parent = parentById[it.parentId]?.let { p -> ActivityInfoParentResponse(p.id, p.name) }) },
+            if (found.size > size) page.last().id else null,
+        )
     }
 
     private fun checkSize(size: Int) {
