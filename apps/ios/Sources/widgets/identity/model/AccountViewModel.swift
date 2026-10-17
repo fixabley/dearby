@@ -59,15 +59,19 @@ import SwiftUI
     /// here" and a closed sheet alike (`canceled`), so a cancel that returns before any sheet could show (under 400 ms)
     /// counts as "no passkey"; a later one leaves the new-or-link choice open for the person to decide.
     private func linkOrStart(_ link: AccountClient.AppleLink, _ controller: AuthorizationController) async throws -> TokenPair? {
+        let challenge = try await client.authenticationOptions()
+        // The clock covers only the OS request, not the challenge round-trip, so a slow network cannot look like a cancel.
         let started = ContinuousClock.now
+        let credential: Passkey.Credential
         do {
-            return try await linkPasskeyAccount(link, controller, localOnly: true)
+            credential = try await Passkey.assert(challenge.options, with: controller, localOnly: true)
         } catch Passkey.Failure.canceled where ContinuousClock.now - started < .milliseconds(400) {
             return try await startAppleAccount(link)
         } catch Passkey.Failure.canceled {
             appleLink = link
             return nil
         }
+        return try await finishLink(link, challengeId: challenge.challengeId, credential: credential)
     }
     private func startAppleAccount(_ link: AccountClient.AppleLink) async throws -> TokenPair {
         let tokens: TokenPair
@@ -77,10 +81,13 @@ import SwiftUI
     }
     /// Passkey sign-in, then the waiting Apple account is linked to that account. If linking fails the passkey session is
     /// dropped (not stored), so no one ends up signed in but unlinked by surprise.
-    private func linkPasskeyAccount(_ link: AccountClient.AppleLink, _ controller: AuthorizationController, localOnly: Bool) async throws -> TokenPair {
+    private func linkPasskeyAccount(_ link: AccountClient.AppleLink, _ controller: AuthorizationController) async throws -> TokenPair {
         let challenge = try await client.authenticationOptions()
-        let credential = try await Passkey.assert(challenge.options, with: controller, localOnly: localOnly)
-        let tokens = try await client.authenticate(challengeId: challenge.challengeId, credential: credential)
+        let credential = try await Passkey.assert(challenge.options, with: controller)
+        return try await finishLink(link, challengeId: challenge.challengeId, credential: credential)
+    }
+    private func finishLink(_ link: AccountClient.AppleLink, challengeId: String, credential: Passkey.Credential) async throws -> TokenPair {
+        let tokens = try await client.authenticate(challengeId: challengeId, credential: credential)
         do { try await client.linkApple(link, tokens) } catch {
             try? await client.logout(tokens)
             switch error as? AccountError {
@@ -101,7 +108,7 @@ import SwiftUI
     /// If linking fails the passkey session is dropped (not stored), so no one ends up signed in but unlinked by surprise.
     func linkAppleToPasskey(using controller: AuthorizationController) async {
         guard let link = appleLink else { return }
-        await start(failure: "패스키 계정에 연결하지 못했어요. 다시 시도해 주세요.") { try await linkPasskeyAccount(link, controller, localOnly: false) }
+        await start(failure: "패스키 계정에 연결하지 못했어요. 다시 시도해 주세요.") { try await linkPasskeyAccount(link, controller) }
     }
     /// Leaves the new-or-link choice; the link token is simply left to expire.
     func clearAppleLink() { appleLink = nil }

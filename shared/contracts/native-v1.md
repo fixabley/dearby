@@ -322,6 +322,7 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·공유·지갑 경
 | POST /v1/auth/apple/web/exchange | 없음 | `{code, verifier}` | `POST /v1/auth/apple`과 같은 200·202. 401이면 처음부터 다시 |
 
 - 처음 보는 애플 계정(202): 앱은 "새 계정으로 시작"과 "기존 패스키 계정에 연결"을 보여 준다. 서버는 그 사람에게 패스키 계정이 있는지 알 수 없어 사용자가 고른다.
+  - 2026-10-17 사용자 결정(iOS·Android, 서버 변경 없음): 202 직후 앱이 먼저 이 기기의 Dearby 패스키만 조용히 묻는다(iOS `preferImmediatelyAvailableCredentials`, Android `setPreferImmediatelyAvailableCredentials`). 있으면 그 패스키로 로그인해 바로 연결하고, 없으면 묻지 않고 새 계정으로 시작한다. 사용자가 패스키 프롬프트를 닫았을 때만 위 선택 화면을 보여 준다. 웹은 조용히 확인할 수단이 없어 그대로 묻는다.
   - 새 계정: `register`.
   - 연결: 패스키로 로그인한 뒤 그 access token으로 `/me/identities/apple`을 부른다. 연결 후 애플 로그인은 그 패스키 계정으로 바로 로그인된다(200).
   - `linkToken`은 10분, 한 번만 쓴다.
