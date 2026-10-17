@@ -110,23 +110,55 @@ struct AccountHistory: Codable, Equatable, Identifiable, Sendable {
             || (activity == nil && activityName != nil) || (role == nil && roleName != nil)
     }
 }
+/// A 직무 tag (contract "직무"): picked from the job tree (`job`) or free-typed (`jobName` only), which waits for admin
+/// approval before it reaches a card. Encodes as the PUT shape `{id, jobId?, jobName?}`.
+struct ProfileJob: Codable, Equatable, Identifiable, Sendable {
+    let id: String
+    var job: ActivityInfoRef?
+    var jobName: String?
+    var approval = "approved"
+    var approvalReason: String?
+    var title: String { job?.name ?? jobName ?? "" }
+    var isCustom: Bool { job == nil }
+    var isApproved: Bool { approval == "approved" }
+    private enum CodingKeys: String, CodingKey { case id, job, jobName, approval, approvalReason, jobId }
+    init(id: String, job: ActivityInfoRef?, jobName: String?, approval: String = "approved", approvalReason: String? = nil) {
+        self.id = id; self.job = job; self.jobName = jobName; self.approval = approval; self.approvalReason = approvalReason
+    }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        job = try c.decodeIfPresent(ActivityInfoRef.self, forKey: .job)
+        jobName = try c.decodeIfPresent(String.self, forKey: .jobName)
+        approval = try c.decodeIfPresent(String.self, forKey: .approval) ?? "approved"
+        approvalReason = try c.decodeIfPresent(String.self, forKey: .approvalReason)
+    }
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        if let job { try c.encode(job.id, forKey: .jobId) } else { try c.encodeIfPresent(jobName, forKey: .jobName) }
+    }
+}
 /// `PUT /v1/profile` replaces the whole profile (data only; card decoration lives on cards). `version` comes from
-/// `GET` and goes back as `If-Match`; it is never part of the body.
+/// `GET` and goes back as `If-Match`; it is never part of the body. `job` is the server's read-only join of approved job
+/// names (what cards show); `jobs` is what the profile edits.
 struct AccountProfile: Codable, Equatable, Sendable {
     var name: String
     var job: String
+    var jobs: [ProfileJob]
     var introduction: String
     var contacts: [AccountContact]
     var histories: [AccountHistory]
     var version = 0
-    init(name: String, job: String, introduction: String, contacts: [AccountContact], histories: [AccountHistory], version: Int = 0) {
-        self.name = name; self.job = job; self.introduction = introduction; self.contacts = contacts; self.histories = histories; self.version = version
+    init(name: String, job: String = "", jobs: [ProfileJob] = [], introduction: String, contacts: [AccountContact], histories: [AccountHistory], version: Int = 0) {
+        self.name = name; self.job = job; self.jobs = jobs; self.introduction = introduction; self.contacts = contacts; self.histories = histories; self.version = version
     }
-    private enum CodingKeys: String, CodingKey { case name, job, introduction, contacts, histories, version }
+    private enum CodingKeys: String, CodingKey { case name, job, jobs, introduction, contacts, histories, version }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
         job = try c.decodeIfPresent(String.self, forKey: .job) ?? ""
+        jobs = try c.decodeIfPresent([ProfileJob].self, forKey: .jobs) ?? []
         introduction = try c.decodeIfPresent(String.self, forKey: .introduction) ?? ""
         contacts = try c.decodeIfPresent([AccountContact].self, forKey: .contacts) ?? []
         histories = try c.decodeIfPresent([AccountHistory].self, forKey: .histories) ?? []
@@ -135,7 +167,7 @@ struct AccountProfile: Codable, Equatable, Sendable {
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(name, forKey: .name)
-        try c.encode(job, forKey: .job)
+        try c.encode(jobs, forKey: .jobs)
         try c.encode(introduction, forKey: .introduction)
         try c.encode(contacts, forKey: .contacts)
         try c.encode(histories, forKey: .histories)
@@ -164,6 +196,8 @@ struct ActivityInfoItem: Decodable, Equatable, Identifiable, Sendable {
     var nameEn: String? = nil
     var parentOrganizationId: Int? = nil
     var organization: ActivityInfoRef? = nil
+    /// Jobs: the job right above in the tree.
+    var parent: ActivityInfoRef? = nil
     var ref: ActivityInfoRef { ActivityInfoRef(id: id, name: name) }
 }
 struct ActivityInfoPage: Decodable, Equatable, Sendable {

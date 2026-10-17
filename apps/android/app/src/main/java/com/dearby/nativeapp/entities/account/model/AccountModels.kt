@@ -46,9 +46,18 @@ data class AccountHistory(
     val hasCustomEntry get() = (organization == null && organizationName != null) || (program == null && programName != null) ||
         (activity == null && activityName != null) || (role == null && roleName != null)
 }
-/** `PUT /v1/profile` replaces the whole profile (data only; card decoration lives on cards). [version] goes back as `If-Match`. */
+/** A 직무 tag (contract "직무"): picked from the job tree ([job]) or free-typed ([jobName] only, approval pending until an admin accepts it). */
+data class ProfileJob(val id: String, val job: ActivityInfoRef?, val jobName: String?, val approval: String = "approved", val approvalReason: String? = null) {
+    val title get() = job?.name ?: jobName.orEmpty()
+    val isCustom get() = job == null
+    val isApproved get() = approval == "approved"
+}
+/**
+ * `PUT /v1/profile` replaces the whole profile (data only; card decoration lives on cards). [version] goes back as `If-Match`.
+ * [job] is the server's read-only join of approved job names (what cards show); [jobs] is what the profile edits.
+ */
 data class AccountProfile(val name: String, val job: String, val introduction: String, val contacts: List<AccountContact>,
-    val histories: List<AccountHistory>, val version: Int = 0)
+    val histories: List<AccountHistory>, val version: Int = 0, val jobs: List<ProfileJob> = emptyList())
 /** A published card snapshot from `POST /v1/cards`; [introduction] is the filled-in template (markdown body), [template] comes on owner reads. */
 data class PublishedCard(val id: String, val name: String, val description: String, val profileName: String, val job: String,
     val contacts: List<AccountContact>, val histories: List<AccountHistory>, val createdAt: String, val introduction: String = "", val template: String? = null)
@@ -57,7 +66,7 @@ data class ProfileVersionSummary(val version: Int, val createdAt: String)
 data class ProfileVersionList(val items: List<ProfileVersionSummary>, val nextCursor: Int?)
 data class ProfileVersionDetail(val version: Int, val createdAt: String, val profile: AccountProfile)
 /** A search hit for the history pickers (`GET /v1/organizations|programs|roles|activities`). */
-data class ActivityInfoItem(val id: Long, val name: String, val nameEn: String?, val parentOrganizationId: Long?, val organization: ActivityInfoRef?) {
+data class ActivityInfoItem(val id: Long, val name: String, val nameEn: String?, val parentOrganizationId: Long?, val organization: ActivityInfoRef?, val parent: ActivityInfoRef? = null) {
     val ref get() = ActivityInfoRef(id, name)
 }
 data class ActivityInfoPage(val items: List<ActivityInfoItem>, val nextCursor: Long?)
@@ -77,7 +86,8 @@ fun JSONObject.toAppleSignIn(): AppleSignIn =
     if (has("linkToken")) AppleSignIn.NeedsAccount(getString("linkToken"), if (isNull("email")) "" else getString("email")) else AppleSignIn.SignedIn(toSession())
 fun JSONObject.toPasskeyChallenge() = PasskeyChallenge(getString("challengeId"), getJSONObject("options").toString())
 
-fun AccountProfile.toJson(): JSONObject = JSONObject().put("name", name).put("job", job).put("introduction", introduction)
+fun AccountProfile.toJson(): JSONObject = JSONObject().put("name", name).put("introduction", introduction)
+    .put("jobs", JSONArray(jobs.map { JSONObject().put("id", it.id).put("jobId", it.job?.id ?: JSONObject.NULL).put("jobName", it.job?.let { JSONObject.NULL } ?: it.jobName ?: JSONObject.NULL) }))
     .put("contacts", JSONArray(contacts.map { JSONObject().put("id", it.id).put("kind", it.kind).put("label", it.label).put("value", it.value) }))
     .put("histories", JSONArray(histories.map { it.toJson() }))
 /** The PUT shape: ids for picked items, names only for typed ones, `endDate` null when ongoing. */
@@ -89,7 +99,9 @@ fun AccountHistory.toJson(): JSONObject = JSONObject().put("id", id).put("kind",
     .put("startDate", startDate).put("endDate", endDate ?: JSONObject.NULL).put("description", description)
 
 fun JSONObject.toProfile() = AccountProfile(optString("name"), optString("job"), optString("introduction"),
-    optJSONArray("contacts")?.objects()?.map { it.toContact() }.orEmpty(), optJSONArray("histories")?.objects()?.map { it.toHistory() }.orEmpty(), optInt("version", 0))
+    optJSONArray("contacts")?.objects()?.map { it.toContact() }.orEmpty(), optJSONArray("histories")?.objects()?.map { it.toHistory() }.orEmpty(), optInt("version", 0),
+    optJSONArray("jobs")?.objects()?.map { it.toProfileJob() }.orEmpty())
+fun JSONObject.toProfileJob() = ProfileJob(getString("id"), optJSONObject("job")?.toRef(), text("jobName"), optString("approval", "approved"), text("approvalReason"))
 fun JSONObject.toPublishedCard() = PublishedCard(getString("id"), getString("name"), getString("description"), getString("profileName"),
     getString("job"), getJSONArray("contacts").objects().map { it.toContact() }, getJSONArray("histories").objects().map { it.toHistory() },
     getString("createdAt"), optString("introduction"), text("template"))
@@ -99,7 +111,7 @@ fun JSONObject.toVersionDetail() = ProfileVersionDetail(getInt("version"), getSt
 fun JSONObject.toEvidence() = EvidenceMeta(getString("id"), getString("fileName"), getString("contentType"), getInt("size"), getString("uploadedAt"))
 fun JSONObject.toActivityInfoPage() = ActivityInfoPage(getJSONArray("items").objects().map {
     ActivityInfoItem(it.getLong("id"), it.getString("name"), it.text("nameEn"), if (it.isNull("parentOrganizationId")) null else it.getLong("parentOrganizationId"),
-        it.optJSONObject("organization")?.toRef())
+        it.optJSONObject("organization")?.toRef(), it.optJSONObject("parent")?.toRef())
 }, if (isNull("nextCursor")) null else getLong("nextCursor"))
 
 fun JSONObject.toReceivedShare() = ReceivedShare(getJSONObject("share").toCardShare(), getJSONObject("card").toPublishedCard())

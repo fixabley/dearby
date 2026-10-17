@@ -22,6 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
+import com.dearby.nativeapp.widgets.profile.profileFields.JobTagPicker
+import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
 import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
 
 /**
@@ -30,13 +32,13 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
  * Histories come from the step funnel; card decoration lives in 명함 만들기.
  */
 @Composable fun ProfilePage(
-    state: ProfileViewState, rows: List<HistoryRowState>, change: (ProfileFormState) -> Unit, addContact: (String) -> Unit, openHistory: (String?) -> Unit,
+    state: ProfileViewState, rows: List<HistoryRowState>, change: (ProfileFormState) -> Unit, searchJobs: (String) -> Unit, addContact: (String) -> Unit, openHistory: (String?) -> Unit,
     removeHistory: (String) -> Unit, save: () -> Unit, revert: () -> Unit, versions: () -> Unit, compose: () -> Unit, signIn: () -> Unit, retry: () -> Unit,
     deleting: Boolean, deleteAccount: () -> Unit, changed: Boolean,
 ) {
     var confirming by remember { mutableStateOf(false) }
     // Never saved yet: the step funnel replaces the editor until the first save.
-    val settingUp = state.profile?.version == 0
+    val settingUp = state.settingUp
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("내 프로필") {
             if (state.phase == ProfilePhase.LOADED && !settingUp) {
@@ -56,12 +58,16 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
                 DearbyOutlineButton(retry, Modifier.fillMaxWidth()) { Text("다시 시도") }
             }
             ProfilePhase.LOADED -> state.form?.let { form ->
-                if (settingUp) { ProfileSetupPage(form, state.saving, state.error, change, save, Modifier.weight(1f)); return@let }
+                if (settingUp) { ProfileSetupPage(form, state.saving, state.error, state.jobSearch, searchJobs, change, save, Modifier.weight(1f)); return@let }
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     Text("기본 정보", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
                     Labeled("이름 · 필수") { DearbyInlineField("이름, 필수", form.name, { change(form.copy(name = it)) }, editing = true, placeholder = "실명 또는 활동명") }
                     state.errors?.name?.let { DearbyFieldError(it) }
-                    Labeled("직함") { DearbyInlineField("직함", form.job, { change(form.copy(job = it)) }, editing = true, placeholder = "예: 서비스 기획 · 커뮤니티") }
+                    Labeled("직무") {
+                        JobTagPicker(form.jobTags, state.jobSearch.query, searchJobs, state.jobSearch.items.map { PickerItem(it.id, it.name, it.parent?.name ?: it.nameEn) },
+                            state.jobSearch.loading, state.jobSearch.failed, { change(form.withJob(it.id, it.name)) }, { change(form.withJob(null, null, it)) },
+                            { change(form.withoutJob(it)) }, full = form.jobs.size >= ProfileFormState.MAX_JOBS)
+                    }
                     Labeled("소개") { DearbyInlineField("소개", form.introduction, { change(form.copy(introduction = it)) }, editing = true, placeholder = "처음 만난 사람에게 건넬 한두 문장", singleLine = false) }
                     Text("연락처", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
                     ProfileContactFields(form.phone, form.email, form.extras, { change(form.copy(phone = it)) }, { change(form.copy(email = it)) },

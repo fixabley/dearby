@@ -44,9 +44,11 @@ struct DearbyLogo: View {
 
 struct DearbyButtonStyle: ButtonStyle {
     var outlined = false
+    /// 퍼널처럼 엄지로 누르는 화면은 56
+    var height: CGFloat = 50
     @Environment(\.isEnabled) private var isEnabled
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.dearby(.headline)).frame(maxWidth: .infinity, minHeight: 50)
+        configuration.label.font(.dearby(.headline)).frame(maxWidth: .infinity, minHeight: height)
             .foregroundStyle(outlined ? DearbyStyle.teal : .white)
             .background(outlined ? .white : DearbyStyle.teal, in: RoundedRectangle(cornerRadius: 11))
             .overlay(RoundedRectangle(cornerRadius: 11).stroke(DearbyStyle.teal, lineWidth: outlined ? 1 : 0))

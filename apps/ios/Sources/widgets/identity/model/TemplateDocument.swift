@@ -23,7 +23,7 @@ enum TemplateDocument {
         return lines.joined(separator: "\n")
     }
     static func tokens(for profile: AccountProfile) -> [Token] {
-        [Token(id: "profile.name", label: "이름", value: profile.name), Token(id: "profile.job", label: "직함", value: profile.job),
+        [Token(id: "profile.name", label: "이름", value: profile.name), Token(id: "profile.job", label: "직무", value: profile.job),
          Token(id: "profile.introduction", label: "소개", value: profile.introduction)]
             + profile.contacts.map { Token(id: "contact:\($0.id)", label: $0.label, value: $0.value) }
     }

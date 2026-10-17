@@ -20,7 +20,7 @@ struct ProfilePage: View {
     var body: some View {
         Group {
             if settingUp, let binding = Binding($form) {
-                ProfileFunnelPage(form: binding, saving: saving, error: error) { save(binding.wrappedValue) }
+                ProfileFunnelPage(form: binding, account: state.account, saving: saving, error: error) { save(binding.wrappedValue) }
             } else {
                 editorScroll
             }
@@ -84,7 +84,10 @@ struct ProfilePage: View {
         section("기본 정보") {
             field("이름", text: form.name, prompt: "실명 또는 활동명", required: true)
             if tried, let message = form.wrappedValue.nameError { DearbyFieldError(text: message) }
-            field("직함", text: form.job, prompt: "예: 서비스 기획 · 커뮤니티")
+            VStack(alignment: .leading, spacing: 4) {
+                Text("직무").font(.dearby(.caption).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
+                JobTagPicker(form: form, account: state.account)
+            }
             field("소개", text: form.introduction, prompt: "처음 만난 사람에게 건넬 한두 문장", multiline: true)
         }
         section("연락처") {

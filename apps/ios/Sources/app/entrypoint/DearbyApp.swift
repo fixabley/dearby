@@ -33,7 +33,7 @@ import SwiftUI
                 if showIntro {
                     IntroPage(account: account, done: finishIntro)
                 } else {
-                    HomePage(selectedTab: $tab,
+                    HomePage(selectedTab: $tab, hidesTabs: tab == 4 && profile.profile?.version == 0,
                         discovery: { ActivityListPage(state: activityModel, path: $0) }, mine: MyActivitiesPage(state: activityModel, explore: { tab = 0 }),
                         qr: QRPage(share: share,
                             activities: activityModel.appliedActivities, parse: links.scanned, opened: $opened), wallet: WalletPage(state: wallet), profile: ProfilePage(state: profile))

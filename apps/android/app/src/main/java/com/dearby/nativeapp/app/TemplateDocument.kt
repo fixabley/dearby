@@ -15,7 +15,7 @@ object TemplateDocument {
         (listOf("# {{profile.name}}", "{{profile.job}}", "", "{{profile.introduction}}", "") +
             profile.contacts.filter { it.kind == "phone" || it.kind == "email" }.map { "- ${it.label}: {{contact:${it.id}}}" }).joinToString("\n")
     fun tokens(profile: AccountProfile): List<TemplateToken> =
-        listOf(TemplateToken("profile.name", "이름", profile.name), TemplateToken("profile.job", "직함", profile.job), TemplateToken("profile.introduction", "소개", profile.introduction)) +
+        listOf(TemplateToken("profile.name", "이름", profile.name), TemplateToken("profile.job", "직무", profile.job), TemplateToken("profile.introduction", "소개", profile.introduction)) +
             profile.contacts.map { TemplateToken("contact:${it.id}", it.label, it.value) }
     /** Contact ids the template refers to; they are always among the card's public contacts. */
     fun contactIds(template: String): Set<String> =

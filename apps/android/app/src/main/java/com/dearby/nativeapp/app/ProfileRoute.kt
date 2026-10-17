@@ -55,7 +55,7 @@ import com.dearby.nativeapp.pages.profile.ProfileVersionsPage
             LaunchedEffect(Unit) { model.loadVersions(reset = true) }
             ProfileVersionsPage(versions, { openVersion = it }, { model.loadVersions(reset = false) }) { versionsOpen = false }
         }
-        else -> ProfilePage(state, model.rows, model::change, model::addContact, model::openHistory, model::removeHistory, model::save, model::revert,
+        else -> ProfilePage(state, model.rows, model::change, model::searchJobs, model::addContact, model::openHistory, model::removeHistory, model::save, model::revert,
             { versionsOpen = true }, compose, { signingIn = true }, { model.load() }, deletion.deleting, model::deleteAccount, model.changed)
     }
     if (signingIn && !signedIn) SignInRoute(account, close = { signingIn = false })
