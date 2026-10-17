@@ -238,12 +238,13 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·공유·지갑 경
 | 메서드·경로 | 인증 | 요청 | 응답 |
 | --- | --- | --- | --- |
 | GET /v1/profile | Bearer | — | 200 Profile. 아직 없으면 빈 프로필(`version` 0) |
-| PUT /v1/profile | Bearer, `If-Match: <version>` 선택 | `{name, job, introduction, contacts[], histories[]}` | 200 Profile(`version`+1). `If-Match`가 현재 버전과 다르면 409 |
+| PUT /v1/profile | Bearer, `If-Match: <version>` 선택 | `{name, jobs[], introduction, contacts[], histories[]}` | 200 Profile(`version`+1). `If-Match`가 현재 버전과 다르면 409 |
 | GET /v1/profile/versions | Bearer | `cursor?`, `size?` | 200 `{items: [{version, createdAt}], nextCursor}` 최신순 |
 | GET /v1/profile/versions/:n | Bearer | — | 200 `{version, createdAt, profile}` 그때의 프로필 |
 | POST /v1/profile/versions/:n/restore | Bearer | — | 200 Profile. 그 버전 내용으로 새 버전을 만든다(이력은 지우지 않는다) |
 
-- Profile: `{id(=사용자 id), name, job, introduction, contacts: Contact[], histories: History[], version, updatedAt}`.
+- Profile: `{id(=사용자 id), name, jobs: ProfileJob[], job, introduction, contacts: Contact[], histories: History[], version, updatedAt}`. `job`은 승인된 직무 이름을 " · "로 이은 읽기 전용 문자열(명함의 `job`과 같다)이고 PUT에서는 무시한다.
+- 직무(2026-10-17 사용자 결정, 이전 "직함" 문자열을 대체): 직무는 조직처럼 계층을 가진 활동 정보이고 프로필은 여러 개를 태그로 둔다. ProfileJob: `{id(클라이언트 UUID), job: {id, name} | null, jobName, approval: approved|pending|rejected, approvalReason}`. PUT에는 `{id, jobId?, jobName?}`를 보낸다(둘 다 보내면 `jobId`). 검색에 없으면 `jobName`만 적는 직접 입력이고 이력과 같은 규칙으로 관리자 승인 전(`pending`)에는 명함 `job`에 들어가지 않는다. 직접 입력 값이 그대로면 승인·거절 결과가 유지되고 바뀌면 다시 `pending`. 최대 10개, 같은 직무 중복 400. 검색은 `GET /v1/jobs`(아래 "이력"의 선택 창 검색과 같은 형식, `q?`, `parentId?`, `rootsOnly?`, `cursor?`, `size?`; 항목에 바로 위 직무 `parent: {id, name}`). V18 이전 버전 스냅샷의 `job` 문자열은 승인된 직접 입력 직무로 읽힌다.
 - 프로필은 **데이터 입력**만 한다(2026-10-16 사용자 결정). `introduction`은 자기소개 글이고, 꾸미기(마크다운 템플릿)는 명함 제작에서 한다(아래 "템플릿").
 - 저장할 때마다 전체 프로필 스냅샷을 버전으로 남긴다(노션처럼 이전 상태를 보고 되돌린다). 같은 내용이면 저장하지 않고 현재 프로필을 돌려준다.
 - 연락처 규칙은 그대로다: phone·email 각각 하나 이상, phone은 숫자·`+`·`-`·공백만(숫자 8~15자리), email 기본 형식, 값에 제어 문자 금지, URL은 https만. 어기면 400.
@@ -292,12 +293,12 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·공유·지갑 경
 ### 템플릿 (명함 꾸미기)
 
 - 꾸미기는 **명함 제작**에서 시작한다. 앱은 명함 제작 화면에서 프로필 데이터를 받아 템플릿을 채워 렌더링한 화면을 보여 주고, 그 화면에서 바로 고친다. 발행하면 `template`과 채운 결과가 명함에 남는다.
-- 토큰: `{{profile.name}}`, `{{profile.job}}`, `{{profile.introduction}}`, `{{contact:<연락처 id>}}`. 앱 선택 창(프로필 데이터)에서 고르면 토큰이 들어가고, 편집기에서는 고칠 수 없는 칩으로 보인다.
+- 토큰: `{{profile.name}}`, `{{profile.job}}`(승인된 직무 이름을 " · "로 이은 값, 앱 표시 이름 "직무"), `{{profile.introduction}}`, `{{contact:<연락처 id>}}`. 앱 선택 창(프로필 데이터)에서 고르면 토큰이 들어가고, 편집기에서는 고칠 수 없는 칩으로 보인다.
 - 서버는 **발행할 때** 채운다. `{{contact:…}}`는 그 명함에 고른 연락처만 채우고, 고르지 않았거나 없는 연락처·모르는 토큰은 빈 문자열이 된다(원문 토큰을 남기지 않는다). 템플릿에만 쓴 연락처는 공개되지 않는다.
 - 발행한 명함은 바뀌지 않는다. 명함을 고치면 앱이 그 `template`을 미리 채운 새 명함을 발행하고, 이전 명함은 사용자가 지울 때까지 남는다(공유 링크 유지).
 - 마크다운 부분집합: 제목(#~###), 굵게, 기울임, 목록, 번호 목록, 링크, 줄바꿈. 원시 HTML은 허용하지 않고 글자로 보여 준다. 링크는 `https`·`mailto`·`tel`만. 서버는 `template`·`introduction` 10,000자, 제어 문자(줄바꿈·탭 제외)를 막는다.
 - 앱 편집: 명함 제작 화면에서 내용이 바뀌면 수정 모드로 들어가 "저장"(발행)·"원래대로"(기기 안에서 되돌림)를 보여 준다. 프로필 데이터 화면도 같은 방식이며, 프로필의 서버 버전 되돌리기는 위 `restore`다.
-- 새 명함의 템플릿 기본값은 앱에 내장한다(이름·직함·소개·연락처 토큰이 들어간 기본 템플릿).
+- 새 명함의 템플릿 기본값은 앱에 내장한다(이름·직무·소개·연락처 토큰이 들어간 기본 템플릿).
 
 ### 관리자 (admin-v1.md에도 기록)
 

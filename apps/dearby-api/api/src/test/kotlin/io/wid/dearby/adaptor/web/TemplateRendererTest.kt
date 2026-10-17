@@ -3,7 +3,9 @@ package io.wid.dearby.adaptor.web
 import io.wid.dearby.application.card.TemplateRenderer
 import io.wid.dearby.domain.ContactKind
 import io.wid.dearby.domain.profile.Contact
+import io.wid.dearby.domain.profile.ApprovalStatus
 import io.wid.dearby.domain.profile.Profile
+import io.wid.dearby.domain.profile.ProfileJob
 import java.time.OffsetDateTime
 import java.util.*
 import kotlin.test.Test
@@ -13,7 +15,7 @@ class TemplateRendererTest {
 
     private val phone = Contact(UUID.randomUUID(), ContactKind.PHONE, "휴대폰", "010-1234-5678")
     private val email = Contact(UUID.randomUUID(), ContactKind.EMAIL, "메일", "me@example.com")
-    private val profile = Profile(UUID.randomUUID(), "조민준", "개발자", "안녕하세요", listOf(phone, email), emptyList(), 1, OffsetDateTime.now())
+    private val profile = Profile(UUID.randomUUID(), "조민준", listOf(ProfileJob(UUID.randomUUID(), null, "개발자", ApprovalStatus.APPROVED, null)), "안녕하세요", listOf(phone, email), emptyList(), 1, OffsetDateTime.now())
 
     @Test
     fun `프로필 토큰과 고른 연락처만 채우고, 고르지 않은 연락처와 모르는 토큰은 비운다`() {

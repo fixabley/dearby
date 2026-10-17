@@ -44,7 +44,7 @@ class HistoryReviewFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: Jd
     private fun userWithHistory(approval: String = "PENDING", verification: String = "UNVERIFIED", withEvidence: Boolean = false): Pair<UUID, UUID> {
         val user = UUID.randomUUID()
         jdbc.sql("insert into users (id) values (?)").param(user).update()
-        jdbc.sql("insert into profiles (user_id, name, job, introduction, version, created_at, updated_at) values (?, '검토 대상', '', '', 1, now(), now())").param(user).update()
+        jdbc.sql("insert into profiles (user_id, name, introduction, version, created_at, updated_at) values (?, '검토 대상', '', 1, now(), now())").param(user).update()
         val history = UUID.randomUUID()
         jdbc.sql(
             """

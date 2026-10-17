@@ -27,25 +27,21 @@ open class ProfilesRecord() : UpdatableRecordImpl<ProfilesRecord>(Profiles.PROFI
         set(value): Unit = set(1, value)
         get(): String? = get(1) as String?
 
-    open var job: String?
+    open var introduction: String?
         set(value): Unit = set(2, value)
         get(): String? = get(2) as String?
 
-    open var introduction: String?
-        set(value): Unit = set(3, value)
-        get(): String? = get(3) as String?
-
     open var version: Int?
-        set(value): Unit = set(4, value)
-        get(): Int? = get(4) as Int?
+        set(value): Unit = set(3, value)
+        get(): Int? = get(3) as Int?
 
     open var createdAt: OffsetDateTime?
-        set(value): Unit = set(5, value)
-        get(): OffsetDateTime? = get(5) as OffsetDateTime?
+        set(value): Unit = set(4, value)
+        get(): OffsetDateTime? = get(4) as OffsetDateTime?
 
     open var updatedAt: OffsetDateTime?
-        set(value): Unit = set(6, value)
-        get(): OffsetDateTime? = get(6) as OffsetDateTime?
+        set(value): Unit = set(5, value)
+        get(): OffsetDateTime? = get(5) as OffsetDateTime?
 
     // -------------------------------------------------------------------------
     // Primary key information
@@ -56,10 +52,9 @@ open class ProfilesRecord() : UpdatableRecordImpl<ProfilesRecord>(Profiles.PROFI
     /**
      * Create a detached, initialised ProfilesRecord
      */
-    constructor(userId: UUID? = null, name: String? = null, job: String? = null, introduction: String? = null, version: Int? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null): this() {
+    constructor(userId: UUID? = null, name: String? = null, introduction: String? = null, version: Int? = null, createdAt: OffsetDateTime? = null, updatedAt: OffsetDateTime? = null): this() {
         this.userId = userId
         this.name = name
-        this.job = job
         this.introduction = introduction
         this.version = version
         this.createdAt = createdAt

@@ -46,7 +46,9 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
             UUID.randomUUID(), HistoryKind.ORGANIZATION, null, "직접 적은 조직", null, null, null, null, null, "운영진",
             LocalDate.of(2026, 1, 1), null, "", approval, null, VerificationStatus.UNVERIFIED, emptyList(),
         )
-        val profile = Profile(user, name, "개발자", "안녕하세요", listOf(phone, email), listOf(history(ApprovalStatus.APPROVED), history(ApprovalStatus.PENDING)), 1, OffsetDateTime.now())
+        // 승인된 직무만 명함의 job에 들어간다
+        val jobs = listOf(ProfileJob(UUID.randomUUID(), null, "개발자", ApprovalStatus.APPROVED, null), ProfileJob(UUID.randomUUID(), null, "디자이너", ApprovalStatus.PENDING, null))
+        val profile = Profile(user, name, jobs, "안녕하세요", listOf(phone, email), listOf(history(ApprovalStatus.APPROVED), history(ApprovalStatus.PENDING)), 1, OffsetDateTime.now())
         profiles.save(profile)
         return user to profile
     }

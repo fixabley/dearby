@@ -83,11 +83,6 @@ open class Profiles(
     val NAME: TableField<ProfilesRecord, String?> = createField(DSL.name("name"), SQLDataType.VARCHAR(100).nullable(false), this, "")
 
     /**
-     * The column <code>public.profiles.job</code>.
-     */
-    val JOB: TableField<ProfilesRecord, String?> = createField(DSL.name("job"), SQLDataType.VARCHAR(100).nullable(false), this, "")
-
-    /**
      * The column <code>public.profiles.introduction</code>.
      */
     val INTRODUCTION: TableField<ProfilesRecord, String?> = createField(DSL.name("introduction"), SQLDataType.VARCHAR.nullable(false), this, "")

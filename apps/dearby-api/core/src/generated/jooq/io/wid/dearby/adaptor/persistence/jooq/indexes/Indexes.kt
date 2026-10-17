@@ -15,10 +15,12 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCardShares
 import io.wid.dearby.adaptor.persistence.jooq.tables.HistoryEvidence
+import io.wid.dearby.adaptor.persistence.jooq.tables.Jobs
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMembers
 import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileJobs
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
@@ -53,12 +55,15 @@ val COLLECTION_RUNS_PROGRAM_ID_RUN_DATE_IDX: Index = Internal.createIndex(DSL.na
 val CONTACTS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("contacts_user_id_idx"), Contacts.CONTACTS, arrayOf(Contacts.CONTACTS.USER_ID), false)
 val GUEST_CARD_SHARES_CARD_IDX: Index = Internal.createIndex(DSL.name("guest_card_shares_card_idx"), GuestCardShares.GUEST_CARD_SHARES, arrayOf(GuestCardShares.GUEST_CARD_SHARES.SESSION_DIGEST, GuestCardShares.GUEST_CARD_SHARES.CARD_ID), false)
 val HISTORY_EVIDENCE_HISTORY_ID_IDX: Index = Internal.createIndex(DSL.name("history_evidence_history_id_idx"), HistoryEvidence.HISTORY_EVIDENCE, arrayOf(HistoryEvidence.HISTORY_EVIDENCE.HISTORY_ID), false)
+val JOBS_PARENT_ID_IDX: Index = Internal.createIndex(DSL.name("jobs_parent_id_idx"), Jobs.JOBS, arrayOf(Jobs.JOBS.PARENT_ID), false)
 val ORGANIZATION_CONTACTS_ORGANIZATION_ID_IDX: Index = Internal.createIndex(DSL.name("organization_contacts_organization_id_idx"), OrganizationContacts.ORGANIZATION_CONTACTS, arrayOf(OrganizationContacts.ORGANIZATION_CONTACTS.ORGANIZATION_ID), false)
 val ORGANIZATION_MEMBERS_ORGANIZATION_ID_IDX: Index = Internal.createIndex(DSL.name("organization_members_organization_id_idx"), OrganizationMembers.ORGANIZATION_MEMBERS, arrayOf(OrganizationMembers.ORGANIZATION_MEMBERS.ORGANIZATION_ID), false)
 val ORGANIZATION_MEMBERS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("organization_members_user_id_idx"), OrganizationMembers.ORGANIZATION_MEMBERS, arrayOf(OrganizationMembers.ORGANIZATION_MEMBERS.USER_ID), false)
 val ORGANIZATIONS_PARENT_ORGANIZATION_ID_IDX: Index = Internal.createIndex(DSL.name("organizations_parent_organization_id_idx"), Organizations.ORGANIZATIONS, arrayOf(Organizations.ORGANIZATIONS.PARENT_ORGANIZATION_ID), false)
 val PROFILE_HISTORIES_REVIEW_IDX: Index = Internal.createIndex(DSL.name("profile_histories_review_idx"), ProfileHistories.PROFILE_HISTORIES, arrayOf(ProfileHistories.PROFILE_HISTORIES.APPROVAL_STATUS, ProfileHistories.PROFILE_HISTORIES.VERIFICATION_STATUS), false)
 val PROFILE_HISTORIES_USER_ID_IDX: Index = Internal.createIndex(DSL.name("profile_histories_user_id_idx"), ProfileHistories.PROFILE_HISTORIES, arrayOf(ProfileHistories.PROFILE_HISTORIES.USER_ID), false)
+val PROFILE_JOBS_APPROVAL_IDX: Index = Internal.createIndex(DSL.name("profile_jobs_approval_idx"), ProfileJobs.PROFILE_JOBS, arrayOf(ProfileJobs.PROFILE_JOBS.APPROVAL_STATUS), false)
+val PROFILE_JOBS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("profile_jobs_user_id_idx"), ProfileJobs.PROFILE_JOBS, arrayOf(ProfileJobs.PROFILE_JOBS.USER_ID), false)
 val PROGRAM_CONTACTS_PROGRAM_ID_IDX: Index = Internal.createIndex(DSL.name("program_contacts_program_id_idx"), ProgramContacts.PROGRAM_CONTACTS, arrayOf(ProgramContacts.PROGRAM_CONTACTS.PROGRAM_ID), false)
 val PROGRAM_STAFF_PROGRAM_ID_IDX: Index = Internal.createIndex(DSL.name("program_staff_program_id_idx"), ProgramStaff.PROGRAM_STAFF, arrayOf(ProgramStaff.PROGRAM_STAFF.PROGRAM_ID), false)
 val PROGRAM_STAFF_USER_ID_IDX: Index = Internal.createIndex(DSL.name("program_staff_user_id_idx"), ProgramStaff.PROGRAM_STAFF, arrayOf(ProgramStaff.PROGRAM_STAFF.USER_ID), false)

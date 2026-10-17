@@ -40,7 +40,7 @@ class CardService(private val cards: CardRepository, private val profiles: Profi
             template = cardTemplate,
             introduction = TemplateRenderer.render(cardTemplate, profile, contacts),
             profileName = profile.name,
-            job = profile.job,
+            job = profile.jobTitle,
             contacts = contacts,
             histories = histories,
             createdAt = OffsetDateTime.now(ZoneOffset.UTC),

@@ -19,11 +19,13 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestHandoffs
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestSessions
 import io.wid.dearby.adaptor.persistence.jooq.tables.HistoryEvidence
+import io.wid.dearby.adaptor.persistence.jooq.tables.Jobs
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMembers
 import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileJobs
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions
 import io.wid.dearby.adaptor.persistence.jooq.tables.Profiles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCollectionSettings
@@ -140,6 +142,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val HISTORY_EVIDENCE: HistoryEvidence get() = HistoryEvidence.HISTORY_EVIDENCE
 
     /**
+     * The table <code>public.jobs</code>.
+     */
+    val JOBS: Jobs get() = Jobs.JOBS
+
+    /**
      * The table <code>public.organization_contacts</code>.
      */
     val ORGANIZATION_CONTACTS: OrganizationContacts get() = OrganizationContacts.ORGANIZATION_CONTACTS
@@ -163,6 +170,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.profile_histories</code>.
      */
     val PROFILE_HISTORIES: ProfileHistories get() = ProfileHistories.PROFILE_HISTORIES
+
+    /**
+     * The table <code>public.profile_jobs</code>.
+     */
+    val PROFILE_JOBS: ProfileJobs get() = ProfileJobs.PROFILE_JOBS
 
     /**
      * The table <code>public.profile_versions</code>.
@@ -272,11 +284,13 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         GuestHandoffs.GUEST_HANDOFFS,
         GuestSessions.GUEST_SESSIONS,
         HistoryEvidence.HISTORY_EVIDENCE,
+        Jobs.JOBS,
         OrganizationContacts.ORGANIZATION_CONTACTS,
         OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES,
         OrganizationMembers.ORGANIZATION_MEMBERS,
         Organizations.ORGANIZATIONS,
         ProfileHistories.PROFILE_HISTORIES,
+        ProfileJobs.PROFILE_JOBS,
         ProfileVersions.PROFILE_VERSIONS,
         Profiles.PROFILES,
         ProgramCollectionSettings.PROGRAM_COLLECTION_SETTINGS,

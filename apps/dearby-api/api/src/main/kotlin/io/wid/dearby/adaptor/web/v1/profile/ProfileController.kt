@@ -2,6 +2,7 @@ package io.wid.dearby.adaptor.web.v1.profile
 
 import io.wid.dearby.application.profile.ContactInput
 import io.wid.dearby.application.profile.HistoryInput
+import io.wid.dearby.application.profile.JobInput
 import io.wid.dearby.application.profile.ProfileInput
 import io.wid.dearby.application.profile.ProfileService
 import io.wid.dearby.domain.InvalidInputException
@@ -47,7 +48,7 @@ class ProfileController(private val profiles: ProfileService) {
 
     private fun toInput(r: ProfileRequest) = ProfileInput(
         name = r.name,
-        job = r.job,
+        jobs = r.jobs.map { JobInput(it.id, it.jobId, it.jobName) },
         introduction = r.introduction,
         contacts = r.contacts.map { ContactInput(it.id, it.kind, it.label, it.value) },
         histories = r.histories.map {
