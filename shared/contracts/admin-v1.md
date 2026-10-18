@@ -142,4 +142,5 @@ AdminActivity: 공개 Activity(`native-v1.md` "활동 조회")의 필드 `{id, n
 - 대상 필드: `eligibility`(대상자 조건)와 `audience`(대상 원문), `participationType`(참여 방식). 기간·장소·비용·신청 링크처럼 기수마다 바뀌는 값은 가져오지 않는다.
 - 출처 활동: 같은 프로그램에서 가장 최근에 만들어진 **다른** 활동(게시 활동 우선, 없으면 초안). 새 초안을 처음 저장할 때만 적용하고, 이미 있는 초안을 갱신할 때는 비어 있는 필드에만 적용한다. 운영자가 지정한 값(`curated` 또는 직접 편집)은 덮어쓰지 않는다.
 - 표시: `activities.inherited_fields jsonb`(가져온 필드 이름 배열, 예 `["eligibility","audience"]`)에 남기고 `AdminActivity.inheritedFields: string[]`로 내보낸다. 어드민은 해당 필드 옆에 "이전 기수에서 가져옴" 표시를 보이고, 운영자가 그 필드를 편집·비우면 목록에서 빠진다. 공개 API에는 표시하지 않는다(값은 그대로 공개).
+- 운영자 지정 필드(2026-10-18 보완): 어드민 `PATCH`로 바꾼 필드 이름을 `activities.curated_fields jsonb`에 남기고 `AdminActivity.curatedFields: string[]`로 내보낸다. 대상은 `name`·`nameEn`·`description`·`descriptionEn`·`eligibility`(활동 기간·모집 기간은 `schedules.curated`가 담당). 수집기는 **`curated_fields`에 있는 필드만 보호**하고 나머지는 페이지에서 뽑은 값으로 갱신한다(가져온 값도 새 수집값이 있으면 갱신). 어드민은 해당 필드 옆에 "운영자 지정" 표시를 보이고, 같은 필드를 다시 저장해도 표시는 유지된다. 비운 필드도 운영자 지정으로 본다(수집이 다시 채우지 않음).
 - 수집 지시문: 추출 요청에 이전 기수의 대상자 조건·대상 원문을 "참고(이전 기수)"로 넘겨, 본문에 같은 내용이 있으면 그대로 쓰고 본문에 없으면 null로 두게 한다. 본문에 없는 내용을 만들어 내지 않는다. 이후 서버가 비어 있는 필드를 위 규칙으로 채운다.
