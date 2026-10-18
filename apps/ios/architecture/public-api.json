@@ -24,7 +24,9 @@
     "ActivityModel",
     "ActivityPage",
     "ActivityScheduleModel",
-    "ActivityClient"
+    "ActivityClient",
+    "ProgramSummary",
+    "ProgramPage"
   ],
   "entities/identity": [
     "CardModel",
@@ -68,7 +70,8 @@
     "ApplyConfirmationSheet",
     "ActivityListPage",
     "ActivityViewModel",
-    "MyActivitiesPage"
+    "MyActivitiesPage",
+    "ProgramHeader"
   ],
   "widgets/identity": [
     "AccountViewModel",

@@ -16,7 +16,7 @@ import SwiftUI
     init() {
         let links = ConnectionProvider()
         self.links = links
-        _activityModel = State(initialValue: ActivityViewModel(fetch: links.activities))
+        _activityModel = State(initialValue: ActivityViewModel(programs: links.programs, activities: links.programActivities))
         let account = links.account()
         self.account = account
         if account.phase == .signedIn { UserDefaults.standard.set(true, forKey: Self.introShownKey) }

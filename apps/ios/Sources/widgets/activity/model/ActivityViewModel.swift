@@ -1,12 +1,20 @@
 import Foundation
 import Observation
 
-/// Discovery over `GET /v1/activities`: server search (`q`) and cursor paging. A new query starts from the first page.
+/// Discovery as a program accordion (contract "발견 프로그램 묶음 — 2026-10-18"): `GET /v1/discovery/programs` with server search (`q`)
+/// and cursor paging; an expanded program loads its activities with `GET /v1/activities?programId=` and keeps the open ones.
+/// Also the session's applied / confirmed marks and the apply-confirmation prompt, shared with 내 활동 and the detail screen.
 @MainActor @Observable final class ActivityViewModel {
     enum Phase: Equatable { case loading, failed, loaded }
     private(set) var phase = Phase.loading
-    /// The current query's pages, in server order.
-    private(set) var activities: [ActivityModel] = []
+    /// The current query's programs, in server order (nearest deadline first).
+    private(set) var programs: [ProgramSummary] = []
+    /// Expanded programs; memory only. Programs with one open activity or a matched activity name start expanded.
+    private(set) var expanded: Set<Int64> = []
+    /// Open activities per program, once loaded.
+    private(set) var openActivities: [Int64: [ActivityModel]] = [:]
+    private(set) var loadingPrograms: Set<Int64> = []
+    private(set) var failedPrograms: Set<Int64> = []
     /// The search field. Kept here so it survives leaving the tab.
     var searchText = ""
     /// The query the list shows (trimmed); nil before the first load.
@@ -31,22 +39,28 @@ import Observation
     var hasMore: Bool { cursor != nil }
     private var firstPage: Task<Void, Never>?
     private var nextPage: Task<Void, Never>?
-    private let fetch: @Sendable (_ query: String, _ cursor: Int64?) async throws -> ActivityPage
-    init(fetch: @escaping @Sendable (_ query: String, _ cursor: Int64?) async throws -> ActivityPage) { self.fetch = fetch }
+    private var programLoads: [Int64: Task<Void, Never>] = [:]
+    private let fetchPrograms: @Sendable (_ query: String, _ cursor: Int64?) async throws -> ProgramPage
+    private let fetchActivities: @Sendable (_ programID: Int64) async throws -> ActivityPage
+    init(programs: @escaping @Sendable (_ query: String, _ cursor: Int64?) async throws -> ProgramPage,
+         activities: @escaping @Sendable (_ programID: Int64) async throws -> ActivityPage) {
+        fetchPrograms = programs
+        fetchActivities = activities
+    }
 
     func activity(_ id: String) -> ActivityModel? { seen[id] }
     var appliedActivities: [ActivityModel] {
         appliedIDs.compactMap { seen[$0] }
             .sorted { ($0.schedules.first?.start ?? .distantFuture, $0.id) < ($1.schedules.first?.start ?? .distantFuture, $1.id) }
     }
-    /// Shows `text`'s results from the first page, unless they are already shown or loading.
+    /// Shows `text`'s programs from the first page, unless they are already shown or loading.
     func search(_ text: String) {
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard query != self.query else { return }
         start(query)
     }
     func reload() { start(query ?? "") }
-    /// Next page while one exists; a stale page (the query changed) is dropped.
+    /// Next page of programs while one exists; a stale page (the query changed) is dropped.
     func loadMore() {
         guard phase == .loaded, let cursor, nextPage == nil, let query else { return }
         loadingMore = true
@@ -54,7 +68,7 @@ import Observation
         nextPage = Task {
             defer { if !Task.isCancelled { loadingMore = false; nextPage = nil } }
             do {
-                let page = try await fetch(query, cursor)
+                let page = try await fetchPrograms(query, cursor)
                 guard !Task.isCancelled else { return }
                 append(page)
             } catch {
@@ -62,19 +76,33 @@ import Observation
             }
         }
     }
+    func isExpanded(_ programID: Int64) -> Bool { expanded.contains(programID) }
+    /// Opens or closes one program; opening loads its activities the first time (or after a failure).
+    func toggle(_ programID: Int64) {
+        if expanded.contains(programID) { expanded.remove(programID); return }
+        expanded.insert(programID)
+        loadActivities(programID)
+    }
+    func retryActivities(_ programID: Int64) { loadActivities(programID) }
     private func start(_ query: String) {
         firstPage?.cancel()
         nextPage?.cancel()
         nextPage = nil
+        programLoads.values.forEach { $0.cancel() }
+        programLoads = [:]
         self.query = query
         phase = .loading
-        activities = []
+        programs = []
+        expanded = []
+        openActivities = [:]
+        loadingPrograms = []
+        failedPrograms = []
         cursor = nil
         loadingMore = false
         moreFailed = false
         firstPage = Task {
             do {
-                let page = try await fetch(query, nil)
+                let page = try await fetchPrograms(query, nil)
                 guard !Task.isCancelled else { return }
                 loadedAt = Date()
                 append(page)
@@ -84,11 +112,32 @@ import Observation
             }
         }
     }
-    private func append(_ page: ActivityPage) {
-        let known = Set(activities.map(\.id))
-        activities += page.items.filter { !known.contains($0.id) }
-        for item in page.items { seen[item.id] = item }
+    private func append(_ page: ProgramPage) {
+        let known = Set(programs.map(\.id))
+        let fresh = page.items.filter { !known.contains($0.id) }
+        programs += fresh
         cursor = page.nextCursor
+        for program in fresh where program.openActivityCount == 1 || !program.matchedActivityIDs.isEmpty {
+            expanded.insert(program.id)
+            loadActivities(program.id)
+        }
+    }
+    private func loadActivities(_ programID: Int64) {
+        guard openActivities[programID] == nil, programLoads[programID] == nil else { return }
+        loadingPrograms.insert(programID)
+        failedPrograms.remove(programID)
+        programLoads[programID] = Task {
+            defer { if !Task.isCancelled { loadingPrograms.remove(programID); programLoads[programID] = nil } }
+            do {
+                let page = try await fetchActivities(programID)
+                guard !Task.isCancelled else { return }
+                let open = page.items.filter { $0.recruitment(at: loadedAt) == .open }
+                for item in page.items { seen[item.id] = item }
+                openActivities[programID] = open
+            } catch {
+                if !Task.isCancelled { failedPrograms.insert(programID) }
+            }
+        }
     }
     func apply(_ id: String, _ value: Bool) {
         if value { appliedIDs.insert(id) } else { appliedIDs.remove(id); confirmedIDs.remove(id) }

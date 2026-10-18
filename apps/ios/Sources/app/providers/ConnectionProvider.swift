@@ -38,9 +38,17 @@ struct ConnectionProvider: Sendable {
         #endif
         return AccountViewModel(client: .live(api: origins.api), vault: vault, appleSignInEnabled: appleSignInEnabled)
     }
-    func activities(query: String, cursor: Int64?) async throws -> ActivityPage {
-        do { return try await ActivityClient.fetch(api: origins.api, query: query, cursor: cursor) } catch {
+    /// Programs with open activities for the discovery accordion (contract "발견 프로그램 묶음").
+    func programs(query: String, cursor: Int64?) async throws -> ProgramPage {
+        do { return try await ActivityClient.fetchPrograms(api: origins.api, query: query, cursor: cursor) } catch {
             // Only the origin and the failure kind; the search text is not logged.
+            log.warning("Program load from \(origins.api.absoluteString, privacy: .public) failed: \(String(describing: error), privacy: .public)")
+            throw error
+        }
+    }
+    /// One program's activities (first page of up to 100), filtered to the open ones by the caller.
+    func programActivities(programID: Int64) async throws -> ActivityPage {
+        do { return try await ActivityClient.fetch(api: origins.api, query: "", cursor: nil, programID: programID, size: 100) } catch {
             log.warning("Activity load from \(origins.api.absoluteString, privacy: .public) failed: \(String(describing: error), privacy: .public)")
             throw error
         }
