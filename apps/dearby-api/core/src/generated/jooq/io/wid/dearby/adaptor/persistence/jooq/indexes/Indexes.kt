@@ -7,6 +7,7 @@ package io.wid.dearby.adaptor.persistence.jooq.indexes
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.Activities
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEligibilityTerms
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
@@ -45,6 +46,9 @@ val ACTIVITIES_PROGRAM_ID_IDX: Index = Internal.createIndex(DSL.name("activities
 val ACTIVITIES_PUBLICATION_STATUS_IDX: Index = Internal.createIndex(DSL.name("activities_publication_status_idx"), Activities.ACTIVITIES, arrayOf(Activities.ACTIVITIES.PUBLICATION_STATUS), false)
 val ACTIVITIES_QUALIFICATION_IDX: Index = Internal.createIndex(DSL.name("activities_qualification_idx"), Activities.ACTIVITIES, arrayOf(Activities.ACTIVITIES.QUALIFICATION), false)
 val ACTIVITY_CONTACTS_ACTIVITY_ID_IDX: Index = Internal.createIndex(DSL.name("activity_contacts_activity_id_idx"), ActivityContacts.ACTIVITY_CONTACTS, arrayOf(ActivityContacts.ACTIVITY_CONTACTS.ACTIVITY_ID), false)
+val ACTIVITY_ELIGIBILITY_TERMS_ACTIVITY_IDX: Index = Internal.createIndex(DSL.name("activity_eligibility_terms_activity_idx"), ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS, arrayOf(ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS.ACTIVITY_ID), false)
+val ACTIVITY_ELIGIBILITY_TERMS_RANGE_IDX: Index = Internal.createIndex(DSL.name("activity_eligibility_terms_range_idx"), ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS, arrayOf(ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS.FIELD_EN, ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS.FROM_VALUE, ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS.TO_VALUE), false)
+val ACTIVITY_ELIGIBILITY_TERMS_VALUE_IDX: Index = Internal.createIndex(DSL.name("activity_eligibility_terms_value_idx"), ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS, arrayOf(ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS.FIELD_EN, ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS.VALUE_EN), false)
 val ACTIVITY_PARTICIPATIONS_ACTIVITY_ID_IDX: Index = Internal.createIndex(DSL.name("activity_participations_activity_id_idx"), ActivityParticipations.ACTIVITY_PARTICIPATIONS, arrayOf(ActivityParticipations.ACTIVITY_PARTICIPATIONS.ACTIVITY_ID), false)
 val APPLE_SIGN_IN_STATES_EXPIRES_AT_IDX: Index = Internal.createIndex(DSL.name("apple_sign_in_states_expires_at_idx"), AppleSignInStates.APPLE_SIGN_IN_STATES, arrayOf(AppleSignInStates.APPLE_SIGN_IN_STATES.EXPIRES_AT), false)
 val BUSINESS_CARDS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("business_cards_user_id_idx"), BusinessCards.BUSINESS_CARDS, arrayOf(BusinessCards.BUSINESS_CARDS.USER_ID), false)

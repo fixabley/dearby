@@ -4,6 +4,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITIES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ORGANIZATIONS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.PROGRAMS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.SCHEDULES
+import io.wid.dearby.application.program.OpenActivity
 import io.wid.dearby.application.program.ProgramSummary
 import io.wid.dearby.application.program.ProgramSummaryRepository
 import io.wid.dearby.application.program.ProgramSummarySearch
@@ -17,17 +18,28 @@ import java.time.OffsetDateTime
 @Repository
 class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummaryRepository {
 
+    // 열린 활동: 게시 + 모집 기간(APPLICATION 시각 일정)이 지금을 포함. 유형 칩이 있으면 그 유형만. 대상자 필터는 1차 판정(terms)만 여기서
+    private fun openConditions(condition: ProgramSummarySearch, now: OffsetDateTime): List<Condition> = buildList {
+        add(ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name))
+        add(SCHEDULES.SLOT.eq(SLOT_APPLICATION))
+        add(SCHEDULES.TIME_TYPE.eq(TIME_TIMED))
+        add(SCHEDULES.START_AT.isNull.or(SCHEDULES.START_AT.le(now)))
+        add(SCHEDULES.END_AT.isNull.or(SCHEDULES.END_AT.gt(now)))
+        condition.participationType?.let { add(ACTIVITIES.PARTICIPATION_TYPE.eq(it.name)) }
+        addAll(EligibilityRows.conditions(condition.eligibility))
+    }
+
+    override fun openActivities(condition: ProgramSummarySearch, now: OffsetDateTime): List<OpenActivity> =
+        dsl.select(ACTIVITIES.ID, ACTIVITIES.PROGRAM_ID, ACTIVITIES.NAME, ACTIVITIES.NAME_EN, SCHEDULES.END_AT, ACTIVITIES.ELIGIBILITY)
+            .from(ACTIVITIES)
+            .join(SCHEDULES).on(SCHEDULES.ACTIVITY_ID.eq(ACTIVITIES.ID))
+            .where(openConditions(condition, now))
+            .orderBy(ACTIVITIES.ID)
+            .fetch { row -> OpenActivity(row.value1()!!, row.value2()!!, row.value3()!!, row.value4(), row.value5(), EligibilityRows.read(row.value6())) }
+
     override fun search(condition: ProgramSummarySearch, now: OffsetDateTime): List<ProgramSummary> {
         val q = condition.q?.trim()?.takeIf { it.isNotBlank() }
-        // 열린 활동: 게시 + 모집 기간(APPLICATION 시각 일정)이 지금을 포함. 유형 칩이 있으면 그 유형만
-        val open = buildList<Condition> {
-            add(ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name))
-            add(SCHEDULES.SLOT.eq(SLOT_APPLICATION))
-            add(SCHEDULES.TIME_TYPE.eq(TIME_TIMED))
-            add(SCHEDULES.START_AT.isNull.or(SCHEDULES.START_AT.le(now)))
-            add(SCHEDULES.END_AT.isNull.or(SCHEDULES.END_AT.gt(now)))
-            condition.participationType?.let { add(ACTIVITIES.PARTICIPATION_TYPE.eq(it.name)) }
-        }
+        val open = openConditions(condition, now)
         val activityMatches = q?.let { ACTIVITIES.NAME.containsIgnoreCase(it).or(ACTIVITIES.NAME_EN.containsIgnoreCase(it)) }
         val openCount = DSL.count(ACTIVITIES.ID)
         val nearestEnd = DSL.min(SCHEDULES.END_AT)

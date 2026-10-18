@@ -57,6 +57,29 @@ const scheduleSchema = z.object({
 });
 export type Schedule = z.infer<typeof scheduleSchema>;
 const named = z.object({ id: z.number().int(), name: text });
+// Eligibility (contract "대상자 조건 — 2026-10-18"): nested all/any groups of conditions with Korean
+// vocabulary plus English twins (`fieldEn`, `valuesEn`, `noteEn`); ranges are `from`/`to`. JSON keys are camelCase; snake_case lives only in the DB.
+const eligibilityConditionSchema = z.object({
+  field: text,
+  fieldEn: text,
+  from: z.number().optional(),
+  to: z.number().optional(),
+  values: z.array(text).optional(),
+  valuesEn: z.array(text).optional(),
+  note: text.optional(),
+  noteEn: text.optional(),
+});
+export type EligibilityCondition = z.infer<typeof eligibilityConditionSchema>;
+export type Eligibility = {
+  op: "all" | "any";
+  items: (Eligibility | EligibilityCondition)[];
+};
+const eligibilitySchema: z.ZodType<Eligibility> = z.lazy(() =>
+  z.object({
+    op: z.enum(["all", "any"]),
+    items: z.array(z.union([eligibilitySchema, eligibilityConditionSchema])),
+  }),
+);
 export const activitySchema = z.object({
   id: z.number().int().positive(),
   name: text,
@@ -68,6 +91,8 @@ export const activitySchema = z.object({
   application: scheduleSchema.nullable(),
   activitySchedule: scheduleSchema,
   schedules: z.array(scheduleSchema),
+  // A malformed eligibility must not break the activity.
+  eligibility: eligibilitySchema.nullable().optional().catch(null),
 });
 export const activityPageSchema = z.object({
   items: z.array(activitySchema),

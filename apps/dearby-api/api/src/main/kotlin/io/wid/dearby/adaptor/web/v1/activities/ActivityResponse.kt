@@ -2,6 +2,8 @@ package io.wid.dearby.adaptor.web.v1.activities
 
 import io.wid.dearby.adaptor.web.ReferenceResponse
 import io.wid.dearby.application.activity.ActivityListing
+import io.wid.dearby.application.eligibility.EligibilityJson
+import tools.jackson.databind.JsonNode
 
 // 모집 여부는 application(모집 기간)으로 판단한다. 이름·설명은 요청 언어 값 하나(영문이 없으면 한글)
 data class ActivityResponse(
@@ -15,6 +17,7 @@ data class ActivityResponse(
     val application: ScheduleResponse?, // 모집 기간
     val activitySchedule: ScheduleResponse, // 활동 기간·날짜 문구
     val schedules: List<ScheduleResponse>,
+    val eligibility: JsonNode?, // 대상자 조건(native-v1.md "대상자 조건"). 없으면 null
 ) {
     companion object {
         fun from(listing: ActivityListing, language: ResponseLanguage): ActivityResponse {
@@ -30,6 +33,7 @@ data class ActivityResponse(
                 application = activity.application?.let(ScheduleResponse::from),
                 activitySchedule = ScheduleResponse.from(activity.activitySchedule),
                 schedules = activity.schedules.map(ScheduleResponse::from),
+                eligibility = activity.eligibility?.let(EligibilityJson::toNode),
             )
         }
     }

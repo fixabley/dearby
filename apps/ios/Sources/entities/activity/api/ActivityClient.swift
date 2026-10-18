@@ -56,7 +56,8 @@ enum ActivityClient {
                     return ActivityScheduleModel(id: String(schedule.id), title: schedule.title, start: start, end: end,
                                                  dateLabel: schedule.dateLabel, timeZone: zone)
                 },
-                officialUrl: activity.officialUrl, imageUrl: activity.imageUrl)
+                officialUrl: activity.officialUrl, imageUrl: activity.imageUrl,
+                eligibility: activity.eligibility?.value.flatMap { $0.eligibility(depth: 0) })
         }
         return ActivityPage(items: items, nextCursor: payload.nextCursor)
     }
@@ -80,5 +81,29 @@ enum ActivityClient {
         let id: Int64; let name: String; let description: String; let organization: Named
         let officialUrl: String; let imageUrl: String?
         let application: Schedule?; let activitySchedule: Schedule?; let schedules: [Schedule]
+        /// Unreadable eligibility JSON must not fail the whole activity.
+        let eligibility: Lenient<EligibilityNode>?
+    }
+    /// Decodes to nil instead of throwing when the value has an unexpected shape.
+    private struct Lenient<Value: Decodable>: Decodable {
+        let value: Value?
+        init(from decoder: Decoder) { value = try? Value(from: decoder) }
+    }
+    /// One eligibility group or condition as sent (camelCase keys, contract "대상자 조건"). Groups carry `op`/`items`.
+    private struct EligibilityNode: Decodable {
+        let op: String?; let items: [EligibilityNode]?
+        let field: String?; let fieldEn: String?; let from: Double?; let to: Double?
+        let values: [String]?; let valuesEn: [String]?; let note: String?; let noteEn: String?
+        /// The top level must be a group; nesting stops at depth 3 (contract). Malformed nodes are dropped.
+        func eligibility(depth: Int) -> Eligibility? {
+            guard depth < 3, let op = op.flatMap(Eligibility.Op.init(rawValue:)), let items else { return nil }
+            return Eligibility(op: op, items: items.compactMap { $0.item(depth: depth + 1) })
+        }
+        func item(depth: Int) -> Eligibility.Item? {
+            if op != nil { return eligibility(depth: depth).map(Eligibility.Item.group) }
+            guard let field, !field.isEmpty else { return nil }
+            return .condition(Eligibility.Condition(field: field, fieldEn: fieldEn ?? "", from: from, to: to,
+                                                    values: values ?? [], valuesEn: valuesEn ?? [], note: note))
+        }
     }
 }

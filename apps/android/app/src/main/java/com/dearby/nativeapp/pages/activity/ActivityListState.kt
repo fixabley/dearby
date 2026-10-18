@@ -12,6 +12,8 @@ data class ActivityState(
     val officialUrl: String?, val applyUrl: String?, val period: String?, val recruitmentEnd: Instant?, val startAt: String?,
     // Example application, plus the user's own (not the organizer's) participation mark.
     val applied: Boolean = false, val confirmed: Boolean = false,
+    /** 대상 lines in Korean (contract "대상자 조건"); empty when the activity has no eligibility. */
+    val eligibility: List<String> = emptyList(),
 )
 /** One program header in discovery (contract "발견 프로그램 묶음"); [matched] when the search hit an open activity's name. */
 data class ProgramState(val id: String, val title: String, val organization: String, val openCount: Int, val deadline: Instant?, val matched: Boolean)

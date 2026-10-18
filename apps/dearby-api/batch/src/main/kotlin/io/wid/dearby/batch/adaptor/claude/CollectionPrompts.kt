@@ -43,6 +43,12 @@ object CollectionPrompts {
         - evidenceQuote는 이 활동이 본문에 있다는 근거로, 본문에서 그대로 복사한 10~200자 연속 구절이다.
         - name·description은 한국어로 쓴다. nameEn·descriptionEn은 그 영어 번역이다(고유 명사·행사명은 공식 영문 표기가 본문에 있으면 그대로 쓴다). 번역할 수 없으면 null.
         - participationType: 신청하면 참가하면 REGISTRATION, 심사로 선발하면 SELECTION.
+        - audience는 대상자 원문 문장 그대로다. eligibility는 그 대상자를 조건 트리로 정리한 것이다(본문에 대상 조건이 없으면 null).
+          - 트리: 그룹은 op("all"=모두 충족, "any"=하나 이상)와 items, 조건은 field(한글 어휘)·fieldEn(영문 어휘)과 범위 from·to(숫자, 포함, 한쪽 생략 가능) 또는 집합 values(한글)·valuesEn(영문, 같은 순서) 중 하나, 선택으로 note·noteEn(원문 구절). 최상위는 그룹이고 3단계까지만 중첩한다.
+          - 어휘(한글 → 영문): 나이 → age(만 나이, 숫자 범위), 출생연도 → birthYear(숫자), 학년 → schoolYear(숫자), 학력 → educationLevel(값 고졸 highSchool·대학 university·대학원 graduateSchool), 재학상태 → educationStatus(재학 enrolled·졸업 graduated·휴학 onLeave·졸업예정 graduating), 전공 → major, 지역 → region, 취업상태 → employment(학생 student·미취업 unemployed·재직 employed·창업 founder), 경력연수 → experienceYears(숫자), 국적 → nationality(ISO 3166-1 alpha-2, 예 KR), 팀규모 → teamSize(숫자), 기타 → other(note만).
+          - 어휘에 없는 조건은 field "기타", fieldEn "other"로 두고 note에 원문을 적는다. 본문에 없는 조건을 만들지 않는다.
+          - 예1 "19세 이상 34세 이하 미취업자 또는 재학생": {"op":"all","items":[{"field":"나이","fieldEn":"age","from":19,"to":34},{"op":"any","items":[{"field":"취업상태","fieldEn":"employment","values":["미취업"],"valuesEn":["unemployed"]},{"field":"재학상태","fieldEn":"educationStatus","values":["재학"],"valuesEn":["enrolled"]}]}]}
+          - 예2 "개발 경력 2년 미만, 대한민국 국적, 풀타임 참여 가능": {"op":"all","items":[{"field":"경력연수","fieldEn":"experienceYears","to":2},{"field":"국적","fieldEn":"nationality","values":["대한민국"],"valuesEn":["KR"]},{"field":"기타","fieldEn":"other","note":"풀타임 참여 가능"}]}
         - 활동이 없으면 activities를 빈 배열로 둔다.
     """.trimIndent()
 
@@ -82,12 +88,40 @@ object CollectionPrompts {
                         "location" to nullableString(),
                         "cost" to nullableString(),
                         "audience" to nullableString(),
+                        "eligibility" to eligibilityGroup(depth = 1),
                         "evidenceQuote" to string(),
                     )
                 ),
             ),
         )
     )
+
+    // 대상자 조건 트리(native-v1.md "대상자 조건"). 재귀 스키마 대신 3단계까지 펼쳐 쓴다. 각 단계의 항목은 조건이거나(items null) 그룹이다(items 배열)
+    private fun eligibilityGroup(depth: Int): Map<String, Any> = mapOf(
+        "type" to listOf("object", "null"),
+        "properties" to mapOf(
+            "op" to mapOf("type" to "string", "enum" to listOf("all", "any")),
+            "items" to mapOf("type" to "array", "items" to eligibilityItem(depth)),
+        ),
+        "required" to listOf("op", "items"),
+        "additionalProperties" to false,
+    )
+
+    private fun eligibilityItem(depth: Int): Map<String, Any> {
+        val condition = mapOf(
+            "op" to mapOf("type" to listOf("string", "null"), "enum" to listOf("all", "any", null)),
+            "items" to if (depth < 3) mapOf("type" to listOf("array", "null"), "items" to eligibilityItem(depth + 1)) else mapOf("type" to "null"),
+            "field" to nullableString(),
+            "fieldEn" to nullableString(),
+            "from" to mapOf("type" to listOf("number", "null")),
+            "to" to mapOf("type" to listOf("number", "null")),
+            "values" to mapOf("type" to listOf("array", "null"), "items" to string()),
+            "valuesEn" to mapOf("type" to listOf("array", "null"), "items" to string()),
+            "note" to nullableString(),
+            "noteEn" to nullableString(),
+        )
+        return obj(condition)
+    }
 
     private fun string() = mapOf("type" to "string")
     private fun nullableString() = mapOf("type" to listOf("string", "null"))

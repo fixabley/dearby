@@ -1,6 +1,8 @@
 package io.wid.dearby.admin.adaptor.web
 
 import io.wid.dearby.admin.application.AdminActivity
+import io.wid.dearby.application.eligibility.EligibilityJson
+import tools.jackson.databind.JsonNode
 import io.wid.dearby.domain.PublicationStatus
 import java.time.OffsetDateTime
 
@@ -24,6 +26,7 @@ data class AdminActivityResponse(
     val location: String?,
     val cost: String?,
     val audience: String?,
+    val eligibility: JsonNode?, // 대상자 조건(native-v1.md "대상자 조건"). 없으면 null
     val sourceCheckedAt: OffsetDateTime?,
 ) {
     companion object {
@@ -49,6 +52,7 @@ data class AdminActivityResponse(
                 location = curation.location,
                 cost = curation.cost,
                 audience = curation.audience,
+                eligibility = activity.eligibility?.let(EligibilityJson::toNode),
                 sourceCheckedAt = curation.sourceCheckedAt,
             )
         }

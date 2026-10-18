@@ -27,7 +27,8 @@
     "ActivityScheduleModel",
     "ActivityClient",
     "ProgramSummary",
-    "ProgramPage"
+    "ProgramPage",
+    "Eligibility"
   ],
   "entities/identity": [
     "CardModel",
@@ -73,7 +74,8 @@
     "ActivityListPage",
     "ActivityViewModel",
     "MyActivitiesPage",
-    "ProgramHeader"
+    "ProgramHeader",
+    "EligibilityText"
   ],
   "widgets/identity": [
     "AccountViewModel",

@@ -2,6 +2,8 @@ package io.wid.dearby.application.program
 
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.ParticipationType
+import io.wid.dearby.domain.eligibility.EligibilityFilter
+import io.wid.dearby.domain.eligibility.EligibilityGroup
 import java.time.OffsetDateTime
 
 // 발견 화면의 프로그램 묶음 한 항목(native-v1.md "발견 프로그램 묶음"). 열린 활동이 1개 이상인 프로그램만 만들어진다
@@ -23,6 +25,17 @@ data class ProgramSummarySearch(
     val participationType: ParticipationType?,
     val cursor: Int,
     val size: Int,
+    val eligibility: EligibilityFilter? = null, // 대상자 검색(native-v1.md "대상자 조건"). 있으면 열린 활동을 2차 판정까지 거쳐 세고 묶는다
+)
+
+// 대상자 필터가 있을 때 묶음을 만들 재료: 열린 활동 한 건(1차 판정을 지난 것)
+data class OpenActivity(
+    val id: Id,
+    val programId: Id,
+    val name: String,
+    val nameEn: String?,
+    val recruitmentEndAt: OffsetDateTime?,
+    val eligibility: EligibilityGroup?,
 )
 
 // nextCursor가 null이면 마지막 페이지

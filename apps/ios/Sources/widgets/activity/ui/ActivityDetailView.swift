@@ -16,6 +16,7 @@ struct ActivityDetailView: View {
                             .frame(height: 210).clipped()
                         VStack(alignment: .leading, spacing: 24) {
                             identity(activity)
+                            if let eligibility = activity.eligibility { audience(eligibility) }
                             ActivityInformationView(activity: activity, checkCalendar: { showCalendar = true })
                             source(activity)
                             Divider()
@@ -74,6 +75,19 @@ struct ActivityDetailView: View {
             Divider()
             Text("소개").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
             Text(activity.summary).lineSpacing(5)
+        }
+    }
+    /// Who may apply (contract "대상자 조건"): one chip per condition, `any` groups joined with 또는.
+    @ViewBuilder private func audience(_ eligibility: Eligibility) -> some View {
+        let chips = EligibilityText.chips(eligibility)
+        if !chips.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Divider()
+                Text("대상").font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.teal)
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(chips, id: \.self) { chip in DearbyBadge(title: chip) }
+                }.accessibilityElement(children: .combine).accessibilityLabel("대상 " + chips.joined(separator: ", "))
+            }
         }
     }
     /// Recruiting with a safe link: apply on the official site. Otherwise only the official notice.

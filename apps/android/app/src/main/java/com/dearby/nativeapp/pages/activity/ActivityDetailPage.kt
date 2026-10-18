@@ -1,6 +1,8 @@
 package com.dearby.nativeapp.pages.activity
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -46,6 +48,11 @@ import com.dearby.nativeapp.shared.ui.*
                 HorizontalDivider()
                 Text("소개", style = MaterialTheme.typography.titleLarge, color = Teal)
                 Text(activity.summary)
+                if (activity.eligibility.isNotEmpty()) {
+                    HorizontalDivider()
+                    Text("대상", style = MaterialTheme.typography.titleLarge, color = Teal)
+                    EligibilityChips(activity.eligibility)
+                }
                 HorizontalDivider()
                 Text("행사 일정", style = MaterialTheme.typography.titleLarge, color = Teal)
                 Text(activity.date.ifEmpty { "일정 미확인" }, style = MaterialTheme.typography.bodyMedium)
@@ -73,6 +80,18 @@ import com.dearby.nativeapp.shared.ui.*
                 DearbyButton({ openLink(url) }, Modifier.weight(1f).semantics { contentDescription = (if (activity.applyUrl != null) "공식 사이트에서 신청" else "공식 안내 보기") + ", 외부 브라우저로 열려요" }) {
                     Text(if (activity.applyUrl != null) "공식 사이트에서 신청" else "공식 안내 보기")
                 }
+            }
+        }
+    }
+}
+
+/** Contract "대상자 조건": each line is one condition (an `any` group already reads `… 또는 …`), shown as a soft chip. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable private fun EligibilityChips(lines: List<String>) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        lines.forEach { line ->
+            Surface(color = Soft, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Line)) {
+                Text(line, Modifier.padding(horizontal = 12.dp, vertical = 8.dp), style = MaterialTheme.typography.bodyMedium)
             }
         }
     }

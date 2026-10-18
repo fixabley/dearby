@@ -1,5 +1,6 @@
 package io.wid.dearby.batch.application
 
+import io.wid.dearby.application.eligibility.EligibilityJson
 import io.wid.dearby.domain.ParticipationType
 import io.wid.dearby.domain.ScheduleKind
 import io.wid.dearby.domain.collection.CollectedActivity
@@ -45,6 +46,8 @@ object ActivityVerifier {
                 location = candidate.location?.trim()?.ifEmpty { null },
                 cost = candidate.cost?.trim()?.ifEmpty { null },
                 audience = candidate.audience?.trim()?.ifEmpty { null },
+                // 모델이 뽑은 대상자 조건을 어휘로 정리한다. 어휘 밖 필드·틀린 모양은 기타(note)로 바꾸고, 쓸 만한 조건이 없으면 null
+                eligibility = EligibilityJson.parse(candidate.eligibility, lenient = true),
                 evidenceQuote = quote,
                 checkedAt = checkedAt,
             )

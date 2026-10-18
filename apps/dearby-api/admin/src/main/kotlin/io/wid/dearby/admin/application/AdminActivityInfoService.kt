@@ -146,9 +146,17 @@ class AdminActivityInfoService(
         return withCuration(listOf(activities.getById(activityId, publicationStatus = null))).single()
     }
 
-    // 보낸 값만 바꾼다. 영문 값은 빈 문자열이면 지운다. 한글 이름은 비울 수 없다
+    // 보낸 값만 바꾼다. 영문 값은 빈 문자열이면 지운다. 한글 이름은 비울 수 없다.
+    // eligibility(native-v1.md "대상자 조건")는 Keep이면 그대로, Clear면 지우고, Set이면 어휘 검증을 지난 값으로 바꾼다
     @Transactional
-    fun updateActivityTexts(activityId: Id, name: String?, nameEn: String?, description: String?, descriptionEn: String?): AdminActivity {
+    fun updateActivityTexts(
+        activityId: Id,
+        name: String?,
+        nameEn: String?,
+        description: String?,
+        descriptionEn: String?,
+        eligibility: EligibilityChange = EligibilityChange.Keep,
+    ): AdminActivity {
         val current = activities.getById(activityId, publicationStatus = null).activity
         curations.updateTexts(
             activityId,
@@ -157,6 +165,11 @@ class AdminActivityInfoService(
             description = description?.trim() ?: current.description,
             descriptionEn = optionalText(descriptionEn, current.descriptionEn),
         )
+        when (eligibility) {
+            EligibilityChange.Keep -> Unit
+            EligibilityChange.Clear -> curations.updateEligibility(activityId, null)
+            is EligibilityChange.Set -> curations.updateEligibility(activityId, eligibility.group)
+        }
         return withCuration(listOf(activities.getById(activityId, publicationStatus = null))).single()
     }
 

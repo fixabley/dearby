@@ -8,6 +8,7 @@ import io.wid.dearby.domain.*
 import io.wid.dearby.domain.curation.ActivityCuration
 import io.wid.dearby.domain.curation.Freshness
 import io.wid.dearby.domain.curation.RecruitmentStatus
+import io.wid.dearby.domain.eligibility.EligibilityGroup
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
@@ -73,6 +74,17 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
             .set(ACTIVITIES.UPDATED_AT, LocalDateTime.now())
             .where(ACTIVITIES.ID.eq(activityId))
             .execute() > 0
+
+    @Transactional
+    override fun updateEligibility(activityId: Id, eligibility: EligibilityGroup?): Boolean {
+        val updated = dsl.update(ACTIVITIES)
+            .set(ACTIVITIES.ELIGIBILITY, EligibilityRows.jsonb(eligibility))
+            .set(ACTIVITIES.UPDATED_AT, LocalDateTime.now())
+            .where(ACTIVITIES.ID.eq(activityId))
+            .execute() > 0
+        if (updated) EligibilityRows.writeTerms(dsl, activityId, eligibility)
+        return updated
+    }
 
     override fun updatePublicationStatus(activityId: Id, status: PublicationStatus): Boolean =
         dsl.update(ACTIVITIES)

@@ -7,6 +7,7 @@ package io.wid.dearby.adaptor.persistence.jooq.keys
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.Activities
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEligibilityTerms
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
@@ -44,6 +45,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.Users
 import io.wid.dearby.adaptor.persistence.jooq.tables.WebauthnChallenges
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivitiesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivityContactsRecord
+import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivityEligibilityTermsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivityParticipationsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivityRolesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.AppleSignInStatesRecord
@@ -95,6 +97,7 @@ import org.jooq.impl.QOM.ForeignKeyRule
 val ACTIVITIES_PKEY: UniqueKey<ActivitiesRecord> = Internal.createUniqueKey(Activities.ACTIVITIES, DSL.name("activities_pkey"), arrayOf(Activities.ACTIVITIES.ID), true)
 val ACTIVITIES_SOURCE_ID_KEY: UniqueKey<ActivitiesRecord> = Internal.createUniqueKey(Activities.ACTIVITIES, DSL.name("activities_source_id_key"), arrayOf(Activities.ACTIVITIES.SOURCE_ID), true)
 val ACTIVITY_CONTACTS_PKEY: UniqueKey<ActivityContactsRecord> = Internal.createUniqueKey(ActivityContacts.ACTIVITY_CONTACTS, DSL.name("activity_contacts_pkey"), arrayOf(ActivityContacts.ACTIVITY_CONTACTS.ID), true)
+val ACTIVITY_ELIGIBILITY_TERMS_PKEY: UniqueKey<ActivityEligibilityTermsRecord> = Internal.createUniqueKey(ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS, DSL.name("activity_eligibility_terms_pkey"), arrayOf(ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS.ID), true)
 val ACTIVITY_PARTICIPATIONS_PKEY: UniqueKey<ActivityParticipationsRecord> = Internal.createUniqueKey(ActivityParticipations.ACTIVITY_PARTICIPATIONS, DSL.name("activity_participations_pkey"), arrayOf(ActivityParticipations.ACTIVITY_PARTICIPATIONS.ID), true)
 val ACTIVITY_PARTICIPATIONS_USER_ID_ACTIVITY_ID_KEY: UniqueKey<ActivityParticipationsRecord> = Internal.createUniqueKey(ActivityParticipations.ACTIVITY_PARTICIPATIONS, DSL.name("activity_participations_user_id_activity_id_key"), arrayOf(ActivityParticipations.ACTIVITY_PARTICIPATIONS.USER_ID, ActivityParticipations.ACTIVITY_PARTICIPATIONS.ACTIVITY_ID), true)
 val ACTIVITY_ROLES_PKEY: UniqueKey<ActivityRolesRecord> = Internal.createUniqueKey(ActivityRoles.ACTIVITY_ROLES, DSL.name("activity_roles_pkey"), arrayOf(ActivityRoles.ACTIVITY_ROLES.ACTIVITY_ID, ActivityRoles.ACTIVITY_ROLES.POSITION), true)
@@ -144,6 +147,7 @@ val WEBAUTHN_CHALLENGES_PKEY: UniqueKey<WebauthnChallengesRecord> = Internal.cre
 // -------------------------------------------------------------------------
 
 val ACTIVITY_CONTACTS__ACTIVITY_CONTACTS_ACTIVITY_ID_FKEY: ForeignKey<ActivityContactsRecord, ActivitiesRecord> = Internal.createForeignKey(ActivityContacts.ACTIVITY_CONTACTS, DSL.name("activity_contacts_activity_id_fkey"), arrayOf(ActivityContacts.ACTIVITY_CONTACTS.ACTIVITY_ID), io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_PKEY, arrayOf(Activities.ACTIVITIES.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
+val ACTIVITY_ELIGIBILITY_TERMS__ACTIVITY_ELIGIBILITY_TERMS_ACTIVITY_ID_FKEY: ForeignKey<ActivityEligibilityTermsRecord, ActivitiesRecord> = Internal.createForeignKey(ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS, DSL.name("activity_eligibility_terms_activity_id_fkey"), arrayOf(ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS.ACTIVITY_ID), io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_PKEY, arrayOf(Activities.ACTIVITIES.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val ACTIVITY_ROLES__ACTIVITY_ROLES_ACTIVITY_ID_FKEY: ForeignKey<ActivityRolesRecord, ActivitiesRecord> = Internal.createForeignKey(ActivityRoles.ACTIVITY_ROLES, DSL.name("activity_roles_activity_id_fkey"), arrayOf(ActivityRoles.ACTIVITY_ROLES.ACTIVITY_ID), io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_PKEY, arrayOf(Activities.ACTIVITIES.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val CONTACTS__CONTACTS_USER_ID_FKEY: ForeignKey<ContactsRecord, UsersRecord> = Internal.createForeignKey(Contacts.CONTACTS, DSL.name("contacts_user_id_fkey"), arrayOf(Contacts.CONTACTS.USER_ID), io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY, arrayOf(Users.USERS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val GUEST_CARDS__GUEST_CARDS_SESSION_DIGEST_FKEY: ForeignKey<GuestCardsRecord, GuestSessionsRecord> = Internal.createForeignKey(GuestCards.GUEST_CARDS, DSL.name("guest_cards_session_digest_fkey"), arrayOf(GuestCards.GUEST_CARDS.SESSION_DIGEST), io.wid.dearby.adaptor.persistence.jooq.keys.GUEST_SESSIONS_PKEY, arrayOf(GuestSessions.GUEST_SESSIONS.DIGEST), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
