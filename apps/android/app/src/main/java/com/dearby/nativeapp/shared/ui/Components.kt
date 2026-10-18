@@ -78,9 +78,10 @@ private val DearbyTypography = Typography(headlineMedium = TextStyle(fontSize = 
     }
 }
 
-@Composable fun ExampleBadge(text: String = "예시", accent: Boolean = false) {
-    Surface(color = if (accent) Mint else Soft, shape = RoundedCornerShape(10.dp)) {
-        Text(text, Modifier.padding(horizontal = 10.dp, vertical = 4.dp), color = if (accent) Teal else Quiet, style = MaterialTheme.typography.labelMedium)
+/** [danger] reads in the danger colour on the quiet background (a 탈락 mark). */
+@Composable fun ExampleBadge(text: String = "예시", accent: Boolean = false, danger: Boolean = false) {
+    Surface(color = if (accent && !danger) Mint else Soft, shape = RoundedCornerShape(10.dp)) {
+        Text(text, Modifier.padding(horizontal = 10.dp, vertical = 4.dp), color = if (danger) Danger else if (accent) Teal else Quiet, style = MaterialTheme.typography.labelMedium)
     }
 }
 

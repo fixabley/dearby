@@ -7,7 +7,7 @@ import com.dearby.nativeapp.entities.activity.model.ActivityPage
 import com.dearby.nativeapp.entities.activity.model.ApplicationWindow
 import com.dearby.nativeapp.entities.activity.model.ProgramPage
 import com.dearby.nativeapp.entities.activity.model.ProgramSummary
-import com.dearby.nativeapp.entities.activity.model.ScheduleModel
+import com.dearby.nativeapp.entities.activity.model.StageSchedule
 import com.dearby.nativeapp.entities.activity.model.instant
 import android.os.LocaleList
 import java.net.HttpURLConnection
@@ -58,26 +58,27 @@ fun parseActivities(json: String): ActivityPage {
     val body = JSONObject(json)
     return ActivityPage(body.getJSONArray("items").objects().map { activity ->
         val period = activity.optJSONObject("activitySchedule")
-        val schedules = activity.getJSONArray("schedules").objects()
+        val raw = activity.getJSONArray("schedules").objects()
+        val schedules = raw.map { it.stageSchedule() }
         ActivityModel(
             activity.getLong("id").toString(), activity.getString("name"), activity.getString("description"),
             activity.getJSONObject("organization").getString("name"), activity.getJSONObject("program").getString("name"),
             activity.getString("officialUrl"), activity.text("imageUrl"),
             activity.optJSONObject("application")?.let { ApplicationWindow(it.text("startAt"), it.text("endAt")) },
-            period?.text("dateLabel") ?: schedules.firstNotNullOfOrNull { it.text("dateLabel") }.orEmpty(),
-            period?.text("address") ?: schedules.firstNotNullOfOrNull { it.text("address") },
-            // Only schedules with both readable ends can be compared on a calendar.
-            schedules.mapNotNull { schedule ->
-                val start = schedule.text("startAt")?.takeIf { instant(it) != null }
-                val end = schedule.text("endAt")?.takeIf { instant(it) != null }
-                if (start == null || end == null) null
-                else ScheduleModel(schedule.getString("title"), start, end, schedule.text("timeZone") ?: "Asia/Seoul")
-            },
+            period?.text("dateLabel") ?: schedules.firstNotNullOfOrNull { it.dateLabel.ifBlank { null } }.orEmpty(),
+            period?.text("address") ?: raw.firstNotNullOfOrNull { it.text("address") },
+            schedules, period?.stageSchedule(),
             // An unreadable eligibility never fails the activity.
             activity.optJSONObject("eligibility")?.let { runCatching { it.eligibilityGroup(0) }.getOrNull() },
         )
     }, body.text("nextCursor"))
 }
+
+/** Only readable times count; a schedule may have none (all-day or undated). */
+private fun JSONObject.stageSchedule() = StageSchedule(
+    optString("title"), text("kind") ?: "EVENT", text("startAt")?.takeIf { instant(it) != null }, text("endAt")?.takeIf { instant(it) != null },
+    text("timeZone") ?: "Asia/Seoul", text("startDate"), text("endDateExclusive"), text("dateLabel").orEmpty(),
+)
 
 /** Contract "대상자 조건": camelCase keys (`field`, `fieldEn`, `from`, `to`, `values`, `valuesEn`, `note`, `noteEn`), groups nest at most 3 deep; anything deeper or malformed is dropped. */
 private fun JSONObject.eligibilityGroup(depth: Int): EligibilityGroup? {

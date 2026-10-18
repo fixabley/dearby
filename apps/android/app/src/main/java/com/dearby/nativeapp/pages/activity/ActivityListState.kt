@@ -1,6 +1,8 @@
 package com.dearby.nativeapp.pages.activity
 
+import com.dearby.nativeapp.widgets.activity.progress.ProgressState
 import java.time.Instant
+import java.time.LocalDate
 
 enum class ActivityListPhase { LOADING, FAILED, LOADED }
 enum class ProgramPhase { LOADING, FAILED, LOADED }
@@ -24,13 +26,18 @@ data class ProgramActivities(val phase: ProgramPhase = ProgramPhase.LOADING, val
  * [programActivities]. [known] keeps every loaded activity with its marks so 내 활동 survives a new search.
  * [nextCursor] is null on the last program page; a failed next page sets [moreFailed] only.
  * [askingId]: the activity whose application link was opened, asked about once when the app comes back (contract #148).
+ * [progress] is every loaded activity's stage track with the user's marks (contract "내 활동 진행 트랙"), memory only.
  */
 data class ActivityListState(
     val phase: ActivityListPhase = ActivityListPhase.LOADING, val query: String = "", val programs: List<ProgramState> = emptyList(),
     val expanded: Set<String> = emptySet(), val programActivities: Map<String, ProgramActivities> = emptyMap(),
     val known: Map<String, ActivityState> = emptyMap(), val nextCursor: String? = null, val loadingMore: Boolean = false,
-    val moreFailed: Boolean = false, val askingId: String? = null,
+    val moreFailed: Boolean = false, val askingId: String? = null, val progress: Map<String, ProgressState> = emptyMap(),
 ) {
     val asking get() = askingId?.let(known::get)
-    val appliedActivities get() = known.values.filter { it.applied }.sortedBy { it.startAt ?: "~" }
+    /** Applied activities, the nearest next stage first; activities without a dated next stage come last. */
+    val appliedActivities get() = known.values.filter { it.applied }
+        .sortedWith(compareBy({ progress[it.id]?.nextDay == null }, { progress[it.id]?.nextDay ?: LocalDate.MAX }, { it.title }))
+    val activeActivities get() = appliedActivities.filter { progress[it.id]?.ended != true }
+    val endedActivities get() = appliedActivities.filter { progress[it.id]?.ended == true }
 }

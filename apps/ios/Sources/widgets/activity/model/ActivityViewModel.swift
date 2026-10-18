@@ -27,6 +27,8 @@ import Observation
     var appliedIDs: Set<String> = []
     // The user's own participation mark, not an organizer confirmation.
     var confirmedIDs: Set<String> = []
+    /// The user's stage marks (contract "내 활동 진행 트랙"), memory only like `appliedIDs`: activity id → stage id → mark.
+    var stageMarks: [String: [String: StageMark]] = [:]
     /// Contract #148 "신청 확인": after an official application link opened, ask once when the app comes back.
     enum ApplyAnswer { case applied, notYet, neverAsk }
     private(set) var asking: ActivityModel?
@@ -49,10 +51,16 @@ import Observation
     }
 
     func activity(_ id: String) -> ActivityModel? { seen[id] }
-    var appliedActivities: [ActivityModel] {
-        appliedIDs.compactMap { seen[$0] }
-            .sorted { ($0.schedules.first?.start ?? .distantFuture, $0.id) < ($1.schedules.first?.start ?? .distantFuture, $1.id) }
+    /// Applied activities with their tracks, nearest next stage first; date-less and ended tracks last, then by id.
+    func appliedProgress(now: Date) -> [AppliedActivity] {
+        appliedIDs.compactMap { seen[$0] }.map { AppliedActivity(activity: $0, progress: progress($0, now: now)) }
+            .sorted { ($0.progress?.nextStart ?? .distantFuture, $0.id) < ($1.progress?.nextStart ?? .distantFuture, $1.id) }
     }
+    func progress(_ activity: ActivityModel, now: Date) -> ActivityProgress? {
+        ActivityStages.build(activity, marks: stageMarks[activity.id] ?? [:], now: now)
+    }
+    func stageMark(_ activityID: String, _ stageID: String) -> StageMark { stageMarks[activityID]?[stageID] ?? .wait }
+    func markStage(_ activityID: String, _ stageID: String, _ mark: StageMark) { stageMarks[activityID, default: [:]][stageID] = mark }
     /// Shows `text`'s programs from the first page, unless they are already shown or loading.
     func search(_ text: String) {
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -140,7 +148,7 @@ import Observation
         }
     }
     func apply(_ id: String, _ value: Bool) {
-        if value { appliedIDs.insert(id) } else { appliedIDs.remove(id); confirmedIDs.remove(id) }
+        if value { appliedIDs.insert(id) } else { appliedIDs.remove(id); confirmedIDs.remove(id); stageMarks[id] = nil }
     }
     /// An application link for `id` was handed to the browser. Applied or "never ask" activities are not asked.
     func openedApplication(_ id: String) {
