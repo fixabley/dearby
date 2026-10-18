@@ -117,9 +117,10 @@ class AccountClient(private val api: String, private val transport: Transport = 
         parentId?.let { params += when (kind) { ActivityInfoKind.PROGRAMS -> "organizationId=$it"; ActivityInfoKind.ACTIVITIES -> "programId=$it"; ActivityInfoKind.ORGANIZATIONS, ActivityInfoKind.JOBS -> "parentId=$it"; ActivityInfoKind.ROLES -> "" } }
         return send("GET", kind.path + "?" + params.filter { it.isNotEmpty() }.joinToString("&"), null, session).toActivityInfoPage()
     }
-    /** `POST /v1/cards`: [template] is the decoration markdown the server fills in at publish time. */
-    suspend fun publish(name: String, description: String, template: String, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =
+    /** `POST /v1/cards`: [template] is the decoration markdown the server fills in at publish time; [webTemplate] is the optional web version (sent only when non-blank). */
+    suspend fun publish(name: String, description: String, template: String, webTemplate: String?, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =
         send("POST", "cards", JSONObject().put("name", name).put("description", description).put("template", template)
+            .apply { if (!webTemplate.isNullOrBlank()) put("webTemplate", webTemplate) }
             .put("contactIds", JSONArray(contactIds)).put("historyIds", JSONArray(historyIds)), session).toPublishedCard()
     /** Your non-withdrawn cards in creation order, so the newest is last. */
     suspend fun cards(session: AccountSession) = send("GET", "cards", null, session).toCardList()
