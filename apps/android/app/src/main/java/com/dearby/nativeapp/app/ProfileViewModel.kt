@@ -113,7 +113,7 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
             goTo(steps[steps.indexOf(current.step) + 1])
         }
     }
-    /** Picker search for the current step, debounced; programs narrow to the chosen organization, activities to the program. */
+    /** Picker search for the current step, debounced; programs narrow to the chosen organization, activities search the whole catalogue. */
     fun search(query: String) {
         funnelState.update { it?.copy(search = it.search.copy(query = query, loading = true, failed = false)) }
         searchJob?.cancel()
@@ -123,7 +123,7 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
             val (kind, parent) = when (current.step) {
                 HistoryDraft.Step.ORGANIZATION -> AccountClient.ActivityInfoKind.ORGANIZATIONS to null
                 HistoryDraft.Step.PROGRAM -> AccountClient.ActivityInfoKind.PROGRAMS to current.draft.organization?.id
-                HistoryDraft.Step.ACTIVITY -> AccountClient.ActivityInfoKind.ACTIVITIES to current.draft.program?.id
+                HistoryDraft.Step.ACTIVITY -> AccountClient.ActivityInfoKind.ACTIVITIES to null
                 HistoryDraft.Step.ROLE -> AccountClient.ActivityInfoKind.ROLES to null
                 else -> return@launch
             }

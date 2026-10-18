@@ -67,7 +67,11 @@ data class ProfileFormState(
     fun put(history: AccountHistory) = copy(histories = if (histories.any { it.id == history.id }) histories.map { if (it.id == history.id) history else it } else histories + history)
 }
 
-/** One history being entered step by step: 조직/활동 → 조직 → 프로그램 → (활동) → 역할 → 기간 → 설명 → 확인. */
+/**
+ * One history being entered step by step (2026-10-18 퍼널 분리). 조직 이력: 조직 → 역할 → 기간 → 설명 → 확인.
+ * 활동 이력: 활동(전체 검색) → 역할 → 기간 → 설명 → 확인; 활동을 직접 적었을 때만 조직(필수)·프로그램(선택)을 활동 다음에 묻는다.
+ * 활동 정보에서 고른 활동은 그 소속 조직·프로그램을 함께 채우고, 서버도 activityId로 소속을 맞춘다.
+ */
 data class HistoryDraft(
     val id: String = UUID.randomUUID().toString(), val kind: String = "organization",
     val organization: ActivityInfoRef? = null, val organizationName: String = "",
@@ -79,9 +83,12 @@ data class HistoryDraft(
 ) {
     enum class Step { KIND, ORGANIZATION, PROGRAM, ACTIVITY, ROLE, PERIOD, DESCRIPTION, SUMMARY }
     val isActivity get() = kind == "activity"
-    val steps get() = Step.entries.filter { it != Step.ACTIVITY || isActivity }
+    /** A hand-typed activity (not from the catalogue) still needs its 조직. */
+    val customActivity get() = isActivity && activity == null && activityName.isNotBlank()
+    val steps get() = if (isActivity) listOfNotNull(Step.KIND, Step.ACTIVITY, Step.ORGANIZATION.takeIf { customActivity }, Step.PROGRAM.takeIf { customActivity }, Step.ROLE, Step.PERIOD, Step.DESCRIPTION, Step.SUMMARY)
+        else listOf(Step.KIND, Step.ORGANIZATION, Step.ROLE, Step.PERIOD, Step.DESCRIPTION, Step.SUMMARY)
     fun error(step: Step): String? = when (step) {
-        Step.ORGANIZATION -> "조직을 고르거나 적어 주세요.".takeIf { organization == null && organizationName.isBlank() }
+        Step.ORGANIZATION -> "조직을 고르거나 적어 주세요.".takeIf { step in steps && organization == null && organizationName.isBlank() }
         Step.ACTIVITY -> "활동을 고르거나 적어 주세요.".takeIf { isActivity && activity == null && activityName.isBlank() }
         Step.ROLE -> "역할을 고르거나 적어 주세요.".takeIf { role == null && roleName.isBlank() }
         Step.PERIOD -> when { start == null -> "시작일을 골라 주세요."; !ongoing && end != null && end < start -> "종료일은 시작일 이후로 골라 주세요."; else -> null }
@@ -98,11 +105,13 @@ data class HistoryDraft(
     val chainText get() = history.chain.joinToString(" · ")
     val roleText get() = history.roleTitle
     val hasCustomEntry get() = history.hasCustomEntry
-    /** A picker choice for [step]; clearing a parent also clears what depended on it. */
-    fun picked(step: Step, id: Long, name: String): HistoryDraft = when (step) {
+    /** A picker choice for [step]; clearing a parent also clears what depended on it. A picked activity brings its 조직·프로그램 along. */
+    fun picked(step: Step, id: Long, name: String, organization: ActivityInfoRef? = null, program: ActivityInfoRef? = null): HistoryDraft = when (step) {
         Step.ORGANIZATION -> copy(organization = ActivityInfoRef(id, name), organizationName = "", program = null, programName = "", activity = null, activityName = "")
         Step.PROGRAM -> copy(program = ActivityInfoRef(id, name), programName = "", activity = null, activityName = "")
-        Step.ACTIVITY -> copy(activity = ActivityInfoRef(id, name), activityName = "")
+        Step.ACTIVITY -> copy(activity = ActivityInfoRef(id, name), activityName = "",
+            organization = organization ?: this.organization, organizationName = if (organization != null) "" else organizationName,
+            program = program ?: this.program, programName = if (program != null) "" else programName)
         Step.ROLE -> copy(role = ActivityInfoRef(id, name), roleName = "")
         else -> this
     }

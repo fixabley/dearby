@@ -70,7 +70,8 @@ data class ProfileVersionSummary(val version: Int, val createdAt: String)
 data class ProfileVersionList(val items: List<ProfileVersionSummary>, val nextCursor: Int?)
 data class ProfileVersionDetail(val version: Int, val createdAt: String, val profile: AccountProfile)
 /** A search hit for the history pickers (`GET /v1/organizations|programs|roles|activities`). */
-data class ActivityInfoItem(val id: Long, val name: String, val nameEn: String?, val parentOrganizationId: Long?, val organization: ActivityInfoRef?, val parent: ActivityInfoRef? = null) {
+/** [organization] comes with programs and activities, [program] with activities (an activity's parents fill a history's 조직·프로그램). */
+data class ActivityInfoItem(val id: Long, val name: String, val nameEn: String?, val parentOrganizationId: Long?, val organization: ActivityInfoRef?, val parent: ActivityInfoRef? = null, val program: ActivityInfoRef? = null) {
     val ref get() = ActivityInfoRef(id, name)
 }
 data class ActivityInfoPage(val items: List<ActivityInfoItem>, val nextCursor: Long?)
@@ -109,7 +110,7 @@ fun JSONObject.toVersionDetail() = ProfileVersionDetail(getInt("version"), getSt
 fun JSONObject.toEvidence() = EvidenceMeta(getString("id"), getString("fileName"), getString("contentType"), getInt("size"), getString("uploadedAt"))
 fun JSONObject.toActivityInfoPage() = ActivityInfoPage(getJSONArray("items").objects().map {
     ActivityInfoItem(it.getLong("id"), it.getString("name"), it.text("nameEn"), if (it.isNull("parentOrganizationId")) null else it.getLong("parentOrganizationId"),
-        it.optJSONObject("organization")?.toRef(), it.optJSONObject("parent")?.toRef())
+        it.optJSONObject("organization")?.toRef(), it.optJSONObject("parent")?.toRef(), it.optJSONObject("program")?.toRef())
 }, if (isNull("nextCursor")) null else getLong("nextCursor"))
 
 fun JSONObject.toWallet() = Wallet(getJSONArray("items").objects().map { WalletReceipt(it.getString("id"), it.getJSONObject("card").toPublishedCard(), it.getString("receivedAt")) })

@@ -162,15 +162,19 @@ class ProfileService(
     private fun history(input: HistoryInput, existing: History?): History {
         val kind = HistoryKind.entries.firstOrNull { it.name.equals(input.kind, ignoreCase = true) }
             ?: throw InvalidInputException("이력 종류는 organization 또는 activity입니다")
-        val organization = input.organizationId?.let { id ->
-            organizations.findAllById(listOf(id)).singleOrNull()?.let { ActivityInfoRef(it.id, it.name) } ?: throw InvalidInputException("조직을 찾을 수 없습니다", "Organization not found: $id")
+        val pickedActivity = input.activityId?.let { id ->
+            activities.findById(id, PublicationStatus.PUBLISHED) ?: throw InvalidInputException("활동을 찾을 수 없습니다", "Activity not found: $id")
         }
-        val program = input.programId?.let { id ->
+        val activity = pickedActivity?.let { ActivityInfoRef(it.id, it.name) }
+        // 활동 정보에서 고른 활동은 소속 프로그램·조직을 서버가 채운다(2026-10-18 퍼널 분리). 요청의 조직·프로그램 id와 달라도 활동의 소속을 쓴다
+        val pickedProgram = pickedActivity?.let { programs.findAllById(listOf(it.programId)).singleOrNull() }
+        val program = pickedProgram?.let { ActivityInfoRef(it.id, it.name) } ?: input.programId?.let { id ->
             programs.findAllById(listOf(id)).singleOrNull()?.let { ActivityInfoRef(it.id, it.name) } ?: throw InvalidInputException("프로그램을 찾을 수 없습니다", "Program not found: $id")
         }
-        val activity = input.activityId?.let { id ->
-            activities.findById(id, PublicationStatus.PUBLISHED)?.let { ActivityInfoRef(it.id, it.name) } ?: throw InvalidInputException("활동을 찾을 수 없습니다", "Activity not found: $id")
-        }
+        val organization = pickedProgram?.let { organizations.findAllById(listOf(it.organizationId)).singleOrNull()?.let { o -> ActivityInfoRef(o.id, o.name) } }
+            ?: input.organizationId?.let { id ->
+                organizations.findAllById(listOf(id)).singleOrNull()?.let { ActivityInfoRef(it.id, it.name) } ?: throw InvalidInputException("조직을 찾을 수 없습니다", "Organization not found: $id")
+            }
         val role = input.roleId?.let { id ->
             roles.findAllById(listOf(id)).singleOrNull()?.let { ActivityInfoRef(it.id, it.name) } ?: throw InvalidInputException("역할을 찾을 수 없습니다", "Role not found: $id")
         }

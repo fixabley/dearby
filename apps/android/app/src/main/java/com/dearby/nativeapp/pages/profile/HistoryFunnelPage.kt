@@ -44,8 +44,9 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
                     Choice("조직 활동", "동아리·학회·회사 같은 조직에서 활동했어요", !draft.isActivity) { change(draft.copy(kind = "organization")) }
                     Choice("활동 참여", "컨퍼런스·해커톤·캠프 같은 활동에 참여했어요", draft.isActivity) { change(draft.copy(kind = "activity")) }
                 }
-                HistoryDraft.Step.ORGANIZATION -> Picker("어떤 조직인가요?", "조직 이름 검색", state, searchQuery, change)
-                HistoryDraft.Step.PROGRAM -> Picker(if (draft.isActivity) "어떤 프로그램인가요?" else "어떤 프로그램인가요? (선택)", "프로그램 이름 검색", state, searchQuery, change)
+                // 조직 이력은 조직만, 활동 이력은 활동만 묻는다; 직접 적은 활동만 소속 조직(필수)·프로그램(선택)을 이어서 묻는다
+                HistoryDraft.Step.ORGANIZATION -> Picker(if (draft.isActivity) "어떤 조직에서 한 활동인가요?" else "어떤 조직인가요?", "조직 이름 검색", state, searchQuery, change)
+                HistoryDraft.Step.PROGRAM -> Picker("어떤 프로그램인가요? (선택)", "프로그램 이름 검색", state, searchQuery, change)
                 HistoryDraft.Step.ACTIVITY -> Picker("어떤 활동인가요?", "활동 이름 검색", state, searchQuery, change)
                 HistoryDraft.Step.ROLE -> Picker("어떤 역할이었나요?", "역할 검색 (예: 운영진, 참가자)", state, searchQuery, change)
                 HistoryDraft.Step.PERIOD -> {
@@ -71,8 +72,11 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
 @Composable private fun Picker(title: String, prompt: String, state: FunnelState, searchQuery: (String) -> Unit, change: (HistoryDraft) -> Unit) {
     val draft = state.draft
     val step = state.step
-    ActivityInfoPicker(title, prompt, state.search.query, searchQuery, state.search.items.map { PickerItem(it.id, it.name, it.organization?.name ?: it.nameEn) },
-        state.search.loading, state.search.failed, draft.pickedName(step), draft.typedName(step), { change(draft.picked(step, it.id, it.name)) },
+    // Rows show where an activity belongs (조직 · 프로그램); picking one carries those parents into the draft.
+    ActivityInfoPicker(title, prompt, state.search.query, searchQuery,
+        state.search.items.map { PickerItem(it.id, it.name, listOfNotNull(it.organization?.name, it.program?.name).joinToString(" · ").ifEmpty { it.nameEn }) },
+        state.search.loading, state.search.failed, draft.pickedName(step), draft.typedName(step),
+        { picked -> val item = state.search.items.firstOrNull { it.id == picked.id }; change(draft.picked(step, picked.id, picked.name, item?.organization, item?.program)) },
         { change(draft.cleared(step)) }, { change(draft.typed(step, it)) })
 }
 

@@ -1,6 +1,7 @@
 import Foundation
 
-/// One history being entered step by step (contract "이력"): 조직/활동 → 조직 → 프로그램 → (활동) → 역할 → 기간 → 설명.
+/// One history being entered step by step (contract "이력", 2026-10-18 funnel split):
+/// 조직 이력은 조직 → 역할 → 기간 → 설명, 활동 이력은 활동 → (직접 입력일 때만 조직 → 프로그램) → 역할 → 기간 → 설명.
 /// Each catalogue step holds either a picked `ActivityInfoRef` or a typed name; typed names wait for admin approval.
 struct HistoryDraft: Equatable, Identifiable {
     enum Step: Int, CaseIterable { case kind, organization, program, activity, role, period, description, summary }
@@ -36,8 +37,13 @@ struct HistoryDraft: Equatable, Identifiable {
         approval = h.approval; approvalReason = h.approvalReason; verification = h.verification; evidence = h.evidence
     }
     var isActivity: Bool { kind == "activity" }
-    /// Steps in order for this kind (the activity step only for activity histories).
-    var steps: [Step] { Step.allCases.filter { $0 != .activity || isActivity } }
+    /// An activity typed by hand (not picked from 활동 정보): the server cannot derive its organization, so the funnel asks.
+    var isCustomActivity: Bool { isActivity && activity == nil && !activityName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    /// Steps in order for this kind. A picked activity carries its organization and program, so they are not asked.
+    var steps: [Step] {
+        let middle: [Step] = isActivity ? ([.activity] + (isCustomActivity ? [.organization, .program] : [])) : [.organization]
+        return [.kind] + middle + [.role, .period, .description, .summary]
+    }
     var history: AccountHistory {
         let trimmed = { (text: String) in text.trimmingCharacters(in: .whitespacesAndNewlines) }
         let name = { (text: String) -> String? in trimmed(text).isEmpty ? nil : trimmed(text) }
@@ -54,7 +60,7 @@ struct HistoryDraft: Equatable, Identifiable {
     func error(at step: Step) -> String? {
         let blank = { (text: String) in text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
         switch step {
-        case .organization: return organization == nil && blank(organizationName) ? "조직을 고르거나 적어 주세요." : nil
+        case .organization: return steps.contains(.organization) && organization == nil && blank(organizationName) ? "조직을 고르거나 적어 주세요." : nil
         case .activity: return isActivity && activity == nil && blank(activityName) ? "활동을 고르거나 적어 주세요." : nil
         case .role: return role == nil && blank(roleName) ? "역할을 고르거나 적어 주세요." : nil
         case .period:

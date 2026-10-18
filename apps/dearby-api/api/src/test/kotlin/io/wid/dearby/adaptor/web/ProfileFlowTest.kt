@@ -90,11 +90,14 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         val user = user()
         val (organization, program) = letswift()
         val roleId = role("참가자 ${UUID.randomUUID()}")
+        val activity = jdbc.sql("select id from activities where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").query(Long::class.java).single()
         val picked = UUID.randomUUID()
         val custom = UUID.randomUUID()
+        val fromActivity = UUID.randomUUID()
         fun body(customOrganization: String) = """{"name":"이력","contacts":${contacts()},"histories":[
             {"id":"$picked","kind":"organization","organizationId":$organization,"programId":$program,"roleId":$roleId,"organizationName":"무시됨","startDate":"2026-01-01","endDate":null,"description":""},
-            {"id":"$custom","kind":"activity","organizationName":"$customOrganization","activityName":"직접 적은 활동","roleName":"운영진","startDate":"2025-03-01","endDate":"2025-06-30","description":"설명"}
+            {"id":"$custom","kind":"activity","organizationName":"$customOrganization","activityName":"직접 적은 활동","roleName":"운영진","startDate":"2025-03-01","endDate":"2025-06-30","description":"설명"},
+            {"id":"$fromActivity","kind":"activity","activityId":$activity,"roleId":$roleId,"startDate":"2026-02-01","endDate":null,"description":""}
         ]}"""
         val saved = read(put(user, body("직접 적은 조직")).andExpect { status { isOk() } })
         val byId = saved["histories"].values().associateBy { it["id"].asString() }
@@ -102,6 +105,9 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         assertEquals(listOf("approved", "unverified", organization), listOf(first["approval"].asString(), first["verification"].asString(), first["organization"]["id"].asLong()))
         // id를 주면 직접 입력 이름은 버리고 활동 정보 이름을 쓴다
         assertEquals(first["organization"]["name"].asString(), first["organizationName"].asString())
+        // 활동만 고르면 소속 프로그램·조직을 서버가 채운다(2026-10-18 퍼널 분리)
+        val third = byId.getValue(fromActivity.toString())
+        assertEquals(listOf("approved", organization, program, activity), listOf(third["approval"].asString(), third["organization"]["id"].asLong(), third["program"]["id"].asLong(), third["activity"]["id"].asLong()))
         val second = byId.getValue(custom.toString())
         assertEquals(listOf("pending", true, "직접 적은 조직"), listOf(second["approval"].asString(), second["organization"].isNull, second["organizationName"].asString()))
 
