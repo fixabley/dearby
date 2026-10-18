@@ -1,7 +1,10 @@
 package io.wid.dearby.admin.adaptor.web
 
 import io.wid.dearby.admin.application.AdminActivityInfoService
+import io.wid.dearby.admin.application.EligibilityChange
 import io.wid.dearby.application.activity.ActivitySearch
+import io.wid.dearby.application.eligibility.EligibilityJson
+import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.application.activity.ActivityService
 import io.wid.dearby.domain.PublicationStatus
 import org.springframework.http.HttpStatus
@@ -79,8 +82,15 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
     }
 
     @PatchMapping("/activities/{id}")
-    fun updateActivityTexts(@PathVariable id: Long, @RequestBody request: ActivityTextsRequest) =
-        AdminActivityResponse.from(activityInfo.updateActivityTexts(id, request.name, request.nameEn, request.description, request.descriptionEn))
+    fun updateActivityTexts(@PathVariable id: Long, @RequestBody request: ActivityTextsRequest): AdminActivityResponse {
+        // 대상자 조건: 생략은 유지, JSON null은 삭제, 객체는 어휘 검증(틀리면 400) 뒤 교체
+        val eligibility = when {
+            request.eligibility == null -> EligibilityChange.Keep
+            request.eligibility.isNull -> EligibilityChange.Clear
+            else -> EligibilityChange.Set(EligibilityJson.parse(request.eligibility, lenient = false) ?: throw InvalidInputException("대상자 조건이 비어 있습니다"))
+        }
+        return AdminActivityResponse.from(activityInfo.updateActivityTexts(id, request.name, request.nameEn, request.description, request.descriptionEn, eligibility))
+    }
 
     @DeleteMapping("/activities/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

@@ -60,6 +60,7 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             .set(ACTIVITIES.LOCATION, activity.location)
             .set(ACTIVITIES.COST, activity.cost)
             .set(ACTIVITIES.AUDIENCE, activity.audience)
+            .set(ACTIVITIES.ELIGIBILITY, EligibilityRows.jsonb(activity.eligibility))
             .set(ACTIVITIES.SOURCE_CHECKED_AT, activity.checkedAt)
             .set(ACTIVITIES.VALID_UNTIL, activity.checkedAt.plus(VERIFICATION_LIFETIME))
             .set(ACTIVITIES.FRESHNESS, Freshness.VERIFIED.name)
@@ -78,6 +79,7 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         activity.schedules.forEach {
             insertSchedule(activityId, null, it.title, it.kind, it.startAt, it.endAt, it.dateLabel, now)
         }
+        EligibilityRows.writeTerms(dsl, activityId, activity.eligibility)
         return DraftSaveResult.SAVED
     }
 

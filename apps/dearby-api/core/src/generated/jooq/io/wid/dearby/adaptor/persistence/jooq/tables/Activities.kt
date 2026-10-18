@@ -15,9 +15,11 @@ import io.wid.dearby.adaptor.persistence.jooq.indexes.ACTIVITIES_QUALIFICATION_I
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_SOURCE_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_CONTACTS__ACTIVITY_CONTACTS_ACTIVITY_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_ELIGIBILITY_TERMS__ACTIVITY_ELIGIBILITY_TERMS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_ROLES__ACTIVITY_ROLES_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES__SCHEDULES_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts.ActivityContactsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEligibilityTerms.ActivityEligibilityTermsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles.ActivityRolesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules.SchedulesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivitiesRecord
@@ -213,6 +215,11 @@ open class Activities(
      */
     val DESCRIPTION_EN: TableField<ActivitiesRecord, String?> = createField(DSL.name("description_en"), SQLDataType.VARCHAR, this, "")
 
+    /**
+     * The column <code>public.activities.eligibility</code>.
+     */
+    val ELIGIBILITY: TableField<ActivitiesRecord, JSONB?> = createField(DSL.name("eligibility"), SQLDataType.JSONB, this, "")
+
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -266,6 +273,22 @@ open class Activities(
     val activityContacts: ActivityContactsPath
         get(): ActivityContactsPath = activityContacts()
 
+    private lateinit var _activityEligibilityTerms: ActivityEligibilityTermsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.activity_eligibility_terms</code> table
+     */
+    fun activityEligibilityTerms(): ActivityEligibilityTermsPath {
+        if (!this::_activityEligibilityTerms.isInitialized)
+            _activityEligibilityTerms = ActivityEligibilityTermsPath(this, null, ACTIVITY_ELIGIBILITY_TERMS__ACTIVITY_ELIGIBILITY_TERMS_ACTIVITY_ID_FKEY.inverseKey)
+
+        return _activityEligibilityTerms;
+    }
+
+    val activityEligibilityTerms: ActivityEligibilityTermsPath
+        get(): ActivityEligibilityTermsPath = activityEligibilityTerms()
+
     private lateinit var _activityRoles: ActivityRolesPath
 
     /**
@@ -298,6 +321,7 @@ open class Activities(
     val schedules: SchedulesPath
         get(): SchedulesPath = schedules()
     override fun getChecks(): List<Check<ActivitiesRecord>> = listOf(
+        Internal.createCheck(this, DSL.name("activities_eligibility_check"), "(((eligibility IS NULL) OR (jsonb_typeof(eligibility) = 'object'::text)))", true),
         Internal.createCheck(this, DSL.name("activities_freshness_check"), "(((freshness)::text = ANY ((ARRAY['VERIFIED'::character varying, 'STALE'::character varying, 'UNAVAILABLE'::character varying])::text[])))", true),
         Internal.createCheck(this, DSL.name("activities_participation_type_check"), "(((participation_type)::text = ANY ((ARRAY['REGISTRATION'::character varying, 'SELECTION'::character varying])::text[])))", true),
         Internal.createCheck(this, DSL.name("activities_publication_status_check"), "(((publication_status)::text = ANY ((ARRAY['DRAFT'::character varying, 'PUBLISHED'::character varying])::text[])))", true),

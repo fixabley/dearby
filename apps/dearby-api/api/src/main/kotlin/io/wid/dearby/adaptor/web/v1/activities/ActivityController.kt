@@ -2,6 +2,7 @@ package io.wid.dearby.adaptor.web.v1.activities
 
 import io.wid.dearby.application.activity.ActivitySearch
 import io.wid.dearby.application.activity.ActivityService
+import io.wid.dearby.domain.eligibility.EligibilityFilter
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -24,10 +25,11 @@ class ActivityController(private val activities: ActivityService) {
         @RequestParam(required = false) programId: Long?,
         @RequestParam(required = false) cursor: Long?,
         @RequestParam(defaultValue = ActivityService.DEFAULT_PAGE_SIZE.toString()) size: Int,
+        @RequestParam params: Map<String, String>, // 대상자 필터(age·educationStatus 등 camelCase 어휘)는 여기서 골라낸다
         @RequestHeader(HttpHeaders.ACCEPT_LANGUAGE, required = false) acceptLanguage: String?,
     ): ResponseEntity<ActivityPageResponse> {
         val language = ResponseLanguage.from(acceptLanguage)
-        val page = activities.search(ActivitySearch(q, organizationId, programId, cursor, size))
+        val page = activities.search(ActivitySearch(q, organizationId, programId, cursor, size, eligibility = EligibilityFilter.from(params)))
         return localized(language, ActivityPageResponse(page.items.map { ActivityResponse.from(it, language) }, page.nextCursor))
     }
 

@@ -53,7 +53,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals("Let’Swift", item["program"]["name"].asString())
         assertEquals("https://letswift.kr/2026/", item["officialUrl"].asString())
         // 관리자만 보는 정보는 내보내지 않는다
-        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "imageUrl", "application", "activitySchedule", "schedules"), item.propertyNames().toSet())
+        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility"), item.propertyNames().toSet())
         // 시각은 일정의 시간대로 표기한다(같은 순간)
         assertEquals("2026-10-08T00:00:00+09:00", item["application"]["endAt"].asString())
         assertEquals("2026-10-08", item["activitySchedule"]["dateLabel"].asString())
@@ -116,6 +116,34 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(1, programs("participationType=selection")["items"].single()["openActivityCount"].asInt())
         mvc.get("/v1/discovery/programs?participationType=ANY").andExpect { status { isBadRequest() } }
         mvc.get("/v1/discovery/programs?size=0").andExpect { status { isBadRequest() } }
+
+        // 대상자 조건(native-v1.md "대상자 조건"): 나이 19~34 이고(재학 또는 미취업)인 활동. 조건이 없는 활동은 어떤 필터에도 통과한다
+        jdbc.sql(
+            """
+            update activities set eligibility = '{"op":"all","items":[{"field":"나이","fieldEn":"age","from":19,"to":34},
+              {"op":"any","items":[{"field":"재학상태","fieldEn":"educationStatus","values":["재학"],"valuesEn":["enrolled"]},
+                                   {"field":"취업상태","fieldEn":"employment","values":["미취업"],"valuesEn":["unemployed"]}]}]}'::jsonb where id = ?
+            """
+        ).param(openId).update()
+        jdbc.sql("insert into activity_eligibility_terms (activity_id, field_en, from_value, to_value, value_en) values (?, 'age', 19, 34, null), (?, 'educationStatus', null, null, 'enrolled'), (?, 'employment', null, null, 'unemployed')")
+            .params(openId, openId, openId).update()
+        val shown = json.readTree(mvc.get("/v1/activities/$openId").andExpect { status { isOk() } }.andReturn().response.contentAsString)["eligibility"]
+        assertEquals("age", shown["items"][0]["fieldEn"].asString())
+        // 검색어는 비슷한 이름의 다른 활동도 찾으므로 이 활동이 들어 있는지만 본다
+        fun listed(query: String) = (0 until search(query)["items"].size()).any { search(query)["items"][it]["id"].asLong() == openId }
+        assertEquals(true, listed("q=묶음 확인&age=24"))
+        assertEquals(false, listed("q=묶음 확인&age=40"))
+        // 요청한 필드마다 그 활동의 조건 중 하나는 맞아야 한다(1차). 맞는 조건이 있으면 op 평가(2차)도 지난다
+        assertEquals(true, listed("q=묶음 확인&age=24&educationStatus=enrolled"))
+        assertEquals(false, listed("q=묶음 확인&age=24&educationStatus=graduated"))
+        assertEquals(false, listed("q=묶음 확인&employment=employed"))
+        // 조건이 없는 Let'Swift 활동은 필터와 상관없이 나온다
+        assertEquals(1, search("q=개발 환경의 변화&age=99")["items"].size())
+        mvc.get("/v1/activities?age=abc").andExpect { status { isBadRequest() } }
+        // 프로그램 묶음도 걸러진 활동으로 센다
+        assertEquals(1, programs("age=24")["items"].single()["openActivityCount"].asInt())
+        assertEquals(0, programs("age=40")["items"].size())
+        mvc.get("/v1/discovery/programs?teamSize=x").andExpect { status { isBadRequest() } }
     }
 
     @Test

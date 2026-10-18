@@ -1,5 +1,7 @@
 package io.wid.dearby.domain
 
+import io.wid.dearby.domain.eligibility.EligibilityGroup
+
 data class Activity(
     val id: Id,
     val programId: Id,
@@ -13,6 +15,7 @@ data class Activity(
     val application: Schedule?, // 신청 기간(kind = DEADLINE). 시작·끝 중 아는 쪽만 있을 수 있다. null: 상시 모집 등 신청 기간 없음
     val activitySchedule: Schedule, // 활동 기간(kind = EVENT, 종일 일정). 활동 장소의 기준
     val schedules: List<Schedule>, // 면접·발표 등 개별 일정
+    val eligibility: EligibilityGroup?, // 대상자 조건(native-v1.md "대상자 조건"). 없으면 null(원문 audience만)
     val timestamps: Timestamps,
 ) {
     init {

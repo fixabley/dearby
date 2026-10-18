@@ -6,6 +6,7 @@ package io.wid.dearby.adaptor.persistence.jooq
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.Activities
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEligibilityTerms
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
@@ -72,6 +73,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.activity_contacts</code>.
      */
     val ACTIVITY_CONTACTS: ActivityContacts get() = ActivityContacts.ACTIVITY_CONTACTS
+
+    /**
+     * The table <code>public.activity_eligibility_terms</code>.
+     */
+    val ACTIVITY_ELIGIBILITY_TERMS: ActivityEligibilityTerms get() = ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS
 
     /**
      * The table <code>public.activity_participations</code>.
@@ -253,6 +259,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     override fun getTables(): List<Table<*>> = listOf(
         Activities.ACTIVITIES,
         ActivityContacts.ACTIVITY_CONTACTS,
+        ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS,
         ActivityParticipations.ACTIVITY_PARTICIPATIONS,
         ActivityRoles.ACTIVITY_ROLES,
         AppleSignInStates.APPLE_SIGN_IN_STATES,

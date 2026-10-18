@@ -21,7 +21,9 @@ class ActivityService(
         if (condition.size !in 1..MAX_PAGE_SIZE) throw InvalidInputException("size는 1에서 ${MAX_PAGE_SIZE} 사이여야 합니다")
         // 다음 페이지가 있는지 알기 위해 하나 더 읽는다
         val found = activities.search(condition.copy(size = condition.size + 1))
-        val page = found.take(condition.size)
+        val raw = found.take(condition.size)
+        // 2차 판정(native-v1.md "대상자 조건"): 1차(SQL)를 지난 활동의 조건 트리를 op대로 평가한다. 걸러진 만큼 이 페이지가 짧아질 수 있고 cursor는 그대로 이어진다
+        val page = condition.eligibility?.let { filter -> raw.filter { it.eligibility?.accepts(filter) ?: true } } ?: raw
         val programById = programs.findAllById(page.map { it.programId }.toSet()).associateBy { it.id }
         val organizationById =
             organizations.findAllById(programById.values.map { it.organizationId }.toSet()).associateBy { it.id }
@@ -31,7 +33,7 @@ class ActivityService(
             val organization = organizationById[program.organizationId] ?: return@mapNotNull null
             ActivityListing(activity, program, organization)
         }
-        return ActivityPage(items, if (found.size > condition.size) page.last().id else null)
+        return ActivityPage(items, if (found.size > condition.size) raw.last().id else null)
     }
 
     @Transactional(readOnly = true)

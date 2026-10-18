@@ -2,6 +2,7 @@ package io.wid.dearby.application.activity
 
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.PublicationStatus
+import io.wid.dearby.domain.eligibility.EligibilityFilter
 
 // q는 활동 이름·설명에서 대소문자 없이 찾는다. after는 이전 페이지의 nextCursor(활동 id, 오름차순).
 // publicationStatus: 공개 API는 PUBLISHED만, 관리자는 null(전부) 또는 원하는 상태
@@ -12,4 +13,5 @@ data class ActivitySearch(
     val after: Id?,
     val size: Int,
     val publicationStatus: PublicationStatus? = PublicationStatus.PUBLISHED,
+    val eligibility: EligibilityFilter? = null, // 대상자 검색. 1차는 저장소(SQL), 2차는 서비스(JSON)
 )

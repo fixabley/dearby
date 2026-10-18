@@ -9,4 +9,7 @@ interface ProgramSummaryRepository {
 
     // 가장 이른 모집 마감 오름차순(마감 없는 프로그램은 뒤), 같으면 이름·id 순. cursor부터 최대 size개
     fun search(condition: ProgramSummarySearch, now: OffsetDateTime): List<ProgramSummary>
+
+    // 대상자 필터가 있을 때: 열린 활동(위 규칙 + 유형 + 대상자 1차 판정)을 모두 돌려준다. 묶음은 서비스가 2차 판정 뒤 만든다
+    fun openActivities(condition: ProgramSummarySearch, now: OffsetDateTime): List<OpenActivity>
 }

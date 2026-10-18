@@ -7,6 +7,7 @@ package io.wid.dearby.adaptor.persistence.jooq.tables.references
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.Activities
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEligibilityTerms
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
@@ -54,6 +55,11 @@ val ACTIVITIES: Activities = Activities.ACTIVITIES
  * The table <code>public.activity_contacts</code>.
  */
 val ACTIVITY_CONTACTS: ActivityContacts = ActivityContacts.ACTIVITY_CONTACTS
+
+/**
+ * The table <code>public.activity_eligibility_terms</code>.
+ */
+val ACTIVITY_ELIGIBILITY_TERMS: ActivityEligibilityTerms = ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS
 
 /**
  * The table <code>public.activity_participations</code>.

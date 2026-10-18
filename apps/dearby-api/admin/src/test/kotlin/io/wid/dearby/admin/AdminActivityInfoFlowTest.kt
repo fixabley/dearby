@@ -231,6 +231,18 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         assertEquals(listOf("영문 활동", "Workshop", "설명", "Details"), listOf("name", "nameEn", "description", "descriptionEn").map { edited[it].asString() })
         mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"name":" "}""") }.andExpect { status { isBadRequest() } }
         mvc.patch("/v1/admin/activities/999999") { asAdmin(); patchBody("""{"nameEn":"x"}""") }.andExpect { status { isNotFound() } }
+
+        // 대상자 조건(native-v1.md "대상자 조건"): 어휘 밖 field는 400, 영문만 보내도 한글이 채워지고 검색용 표가 함께 쓰인다. JSON null이면 지운다
+        mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"eligibility":{"op":"all","items":[{"field":"키","from":170}]}}""") }.andExpect { status { isBadRequest() } }
+        val withEligibility = read(
+            mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"eligibility":{"op":"all","items":[{"fieldEn":"age","from":19,"to":34},{"fieldEn":"employment","valuesEn":["unemployed"]}]}}""") }
+                .andExpect { status { isOk() } }
+        )["eligibility"]
+        assertEquals(listOf("나이", "취업상태"), listOf(withEligibility["items"][0]["field"].asString(), withEligibility["items"][1]["field"].asString()))
+        assertEquals("미취업", withEligibility["items"][1]["values"][0].asString())
+        assertEquals(2, jdbc.sql("select count(*) from activity_eligibility_terms where activity_id = ?").param(activity).query(Int::class.java).single())
+        assertEquals(true, read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"eligibility":null}""") }.andExpect { status { isOk() } })["eligibility"].isNull)
+        assertEquals(0, jdbc.sql("select count(*) from activity_eligibility_terms where activity_id = ?").param(activity).query(Int::class.java).single())
     }
 
     @Test

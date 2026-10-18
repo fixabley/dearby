@@ -5,6 +5,7 @@ import io.wid.dearby.application.program.ProgramSummaryService
 import io.wid.dearby.application.program.ProgramSummarySearch
 import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.ParticipationType
+import io.wid.dearby.domain.eligibility.EligibilityFilter
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping
@@ -26,6 +27,7 @@ class DiscoveryProgramController(private val summaries: ProgramSummaryService) {
         @RequestParam(required = false) participationType: String?,
         @RequestParam(defaultValue = "0") cursor: Int,
         @RequestParam(defaultValue = ProgramSummaryService.DEFAULT_PAGE_SIZE.toString()) size: Int,
+        @RequestParam params: Map<String, String>, // 대상자 필터(age·educationStatus 등 camelCase 어휘)
         @RequestHeader(HttpHeaders.ACCEPT_LANGUAGE, required = false) acceptLanguage: String?,
     ): ResponseEntity<ProgramSummaryPageResponse> {
         val language = ResponseLanguage.from(acceptLanguage)
@@ -33,7 +35,7 @@ class DiscoveryProgramController(private val summaries: ProgramSummaryService) {
             ParticipationType.entries.firstOrNull { it.name.equals(value, ignoreCase = true) }
                 ?: throw InvalidInputException("participationType은 REGISTRATION 또는 SELECTION입니다")
         }
-        val page = summaries.search(ProgramSummarySearch(q, type, cursor, size))
+        val page = summaries.search(ProgramSummarySearch(q, type, cursor, size, EligibilityFilter.from(params)))
         return ResponseEntity.ok().varyBy(HttpHeaders.ACCEPT_LANGUAGE).header(HttpHeaders.CONTENT_LANGUAGE, language.tag)
             .body(ProgramSummaryPageResponse(page.items.map { ProgramSummaryResponse.from(it, language) }, page.nextCursor))
     }
