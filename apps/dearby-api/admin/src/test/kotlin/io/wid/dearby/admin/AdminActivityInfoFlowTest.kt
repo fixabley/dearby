@@ -243,6 +243,10 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         assertEquals(2, jdbc.sql("select count(*) from activity_eligibility_terms where activity_id = ?").param(activity).query(Int::class.java).single())
         assertEquals(true, read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"eligibility":null}""") }.andExpect { status { isOk() } })["eligibility"].isNull)
         assertEquals(0, jdbc.sql("select count(*) from activity_eligibility_terms where activity_id = ?").param(activity).query(Int::class.java).single())
+        // 이전 기수에서 가져온 표시(admin-v1.md "이전 기수 정보 자동완성")는 운영자가 그 필드를 고치면 빠진다
+        jdbc.sql("update activities set inherited_fields = '[\"eligibility\",\"audience\"]'::jsonb where id = ?").param(activity).update()
+        val reset = read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"eligibility":{"op":"all","items":[{"fieldEn":"age","from":20}]}}""") }.andExpect { status { isOk() } })
+        assertEquals("[\"audience\"]", reset["inheritedFields"].toString())
 
         // 일정 직접 지정(admin-v1.md): 날짜만 주면 종일 일정(끝 날짜 포함 → exclusive는 하루 뒤), curated가 켜진다. 모집 기간은 없던 행을 만든다. 섞으면 400, null이면 지정 해제
         val dated = read(

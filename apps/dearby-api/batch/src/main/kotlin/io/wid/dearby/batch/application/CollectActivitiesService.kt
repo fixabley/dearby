@@ -29,6 +29,8 @@ class CollectActivitiesService(
         val discovery = discoverer.discover(target)
         // 조심 목록(admin-v1.md): 운영자가 지정한 제외 이름·다른 표기. 지시문 힌트로 넘기고, 저장 전 이름 대조로 보장한다
         val watched = watchlist.findAllByProgramId(target.programId)
+        // 이전 기수(admin-v1.md "이전 기수 정보 자동완성"): 지시문 힌트. 비어 있는 필드는 저장할 때 서버가 채운다
+        val previous = drafts.findPreviousEdition(target.programId)
         var usage = discovery.usage
         val rejected = mutableListOf<String>()
         var fetched = 0
@@ -42,7 +44,7 @@ class CollectActivitiesService(
                 continue
             }
             fetched++
-            val extraction = extractor.extract(page, target.programName, watched)
+            val extraction = extractor.extract(page, target.programName, watched, previous)
             usage += extraction.usage
             found += extraction.activities.size
             val checkedAt = OffsetDateTime.now(ZoneOffset.UTC)

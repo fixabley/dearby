@@ -55,7 +55,7 @@ class CollectionJobTest(
 
         @Bean
         @Primary
-        fun fakeExtractor() = ActivityExtractor { _, _, _ ->
+        fun fakeExtractor() = ActivityExtractor { _, _, _, _ ->
             Extraction(
                 listOf(
                     ExtractedActivity(
@@ -107,7 +107,14 @@ class CollectionJobTest(
     @Test
     fun `원문으로 확인된 활동만 초안으로 저장하고, 같은 날은 다시 수집하지 않는다`() {
         officialSetting()
+        // 이전 기수(V5의 Let'Swift 활동)에 대상 원문·대상자 조건을 두면, 본문에 없던 새 초안이 그 값을 가져오고 inherited_fields에 남긴다
+        jdbc.sql("update activities set audience = 'Swift 개발자', eligibility = '{\"op\":\"all\",\"items\":[{\"field\":\"나이\",\"fieldEn\":\"age\",\"from\":19}]}'::jsonb where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").update()
         assertEquals(BatchStatus.COMPLETED, run("2026-10-20").status)
+        assertEquals(
+            listOf("Swift 개발자|19|[\"eligibility\", \"audience\"]"),
+            jdbc.sql("select audience || '|' || (eligibility->'items'->0->>'from') || '|' || inherited_fields::text from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list(),
+        )
+        assertEquals(1, jdbc.sql("select count(*) from activity_eligibility_terms t join activities a on a.id = t.activity_id where a.name = ?").param("Let'Swift 2026 컨퍼런스").query(Int::class.java).single())
 
         assertEquals(listOf("DRAFT"), status("Let'Swift 2026 컨퍼런스"))
         assertEquals(emptyList(), status("원문에 없는 활동"))
