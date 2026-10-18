@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, DatePicker, Descriptions, Form, Input, Modal, Popconfirm, Radio, Select, Space, Switch, Tag } from "antd";
+import { Alert, App, Button, Collapse, DatePicker, Descriptions, Form, Input, Modal, Popconfirm, Radio, Select, Space, Switch, Tag } from "antd";
 import { ExportOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { api, useSingleFlight } from "./api";
 import { CursorTable, SearchSelect, useCursorList } from "./list";
+import { type DraftGroup, type Eligibility, eligibilitySummary, fromDraft, newGroup, toDraft, validateDraft } from "./eligibility";
+import { EligibilityEditor } from "./eligibility-editor";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -33,18 +35,8 @@ type Schedule = {
 type ScheduleInput = { startDate: string; endDate: string } | { startAt: string; endAt: string } | null;
 type DuplicateKind = "alias" | "exclude";
 export type PublicationStatus = "DRAFT" | "PUBLISHED";
-/** 대상자 조건(contract "대상자 조건(eligibility)"): a nested group of conditions. JSON keys are camelCase; snake_case is DB-only. */
-export type EligibilityCondition = {
-  field: string;
-  fieldEn: string;
-  from?: number | null;
-  to?: number | null;
-  values?: string[] | null;
-  valuesEn?: string[] | null;
-  note?: string | null;
-  noteEn?: string | null;
-};
-export type Eligibility = { op: "all" | "any"; items: (Eligibility | EligibilityCondition)[] };
+/** 대상자 조건 types live in eligibility.ts (contract "대상자 조건(eligibility)"); re-exported for callers that imported them from here. */
+export type { Eligibility, EligibilityCondition } from "./eligibility";
 /** The fields `PATCH activities/:id` edits; the tree and the list both open the editor with them. */
 export type ActivityText = {
   id: number;
@@ -117,46 +109,6 @@ function scheduleInput({ range, timed }: RangeDraft): ScheduleInput {
     : { startDate: start.format("YYYY-MM-DD"), endDate: end.format("YYYY-MM-DD") };
 }
 
-/** One-line Korean reading of the eligibility JSON for operators: `나이 19~34세 · 재학상태 재학 또는 취업상태 미취업`. */
-export function eligibilitySummary(eligibility: Eligibility | null | undefined): string {
-  if (!eligibility || typeof eligibility !== "object") return "";
-  const unit = (field: string) => (field === "나이" ? "세" : field === "경력연수" ? "년" : "");
-  const condition = (item: EligibilityCondition): string => {
-    const label = item.field || item.fieldEn || "조건";
-    if (item.fieldEn === "other" || item.field === "기타") return item.note || item.noteEn || label;
-    const hasFrom = item.from !== undefined && item.from !== null,
-      hasTo = item.to !== undefined && item.to !== null;
-    if (hasFrom || hasTo) {
-      const suffix = unit(item.field);
-      if (hasFrom && hasTo) return `${label} ${item.from}~${item.to}${suffix}`;
-      if (hasFrom) return `${label} ${item.from}${suffix} 이상`;
-      return `${label} ${item.to}${suffix} 이하`;
-    }
-    if (item.values?.length) return `${label} ${item.values.join("/")}`;
-    return label;
-  };
-  const group = (node: Eligibility): string =>
-    (Array.isArray(node.items) ? node.items : [])
-      .map((item) => ("items" in item && Array.isArray(item.items) ? `(${group(item as Eligibility)})` : condition(item as EligibilityCondition)))
-      .filter(Boolean)
-      .join(node.op === "any" ? " 또는 " : " · ");
-  return group(eligibility);
-}
-
-/** JSON text → eligibility (null for blank). Throws with a Korean message when the text is not valid JSON. */
-function parseEligibility(text: string): Eligibility | null {
-  const trimmed = text.trim();
-  if (!trimmed) return null;
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(trimmed);
-  } catch {
-    throw new Error("JSON 형식이 아니에요. 중괄호·따옴표·쉼표를 확인해 주세요.");
-  }
-  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) || !Array.isArray((parsed as Eligibility).items))
-    throw new Error("최상위는 { \"op\": \"all\"|\"any\", \"items\": [...] } 그룹이어야 해요.");
-  return parsed as Eligibility;
-}
 
 export function Activities() {
   const [search, setSearch] = useState(""),
@@ -455,7 +407,9 @@ type ScheduleBody = { activitySchedule?: ScheduleInput; application?: ScheduleIn
 
 export function ActivityTextEditor({ activity, onClose }: { activity: ActivityText; onClose: () => void }) {
   const [form] = Form.useForm();
-  const eligibilityText: string = Form.useWatch("eligibility", form) ?? "";
+  const [eligibility, setEligibility] = useState<DraftGroup>(() => toDraft(activity.eligibility));
+  const [eligibilityProblems, setEligibilityProblems] = useState<string[]>([]);
+  const eligibilityJson = fromDraft(eligibility);
   const activityTimed: boolean = Form.useWatch("activityTimed", form) ?? false;
   const applicationTimed: boolean = Form.useWatch("applicationTimed", form) ?? false;
   // Only the list passes schedules; the tree does not, so the blocks (and the PATCH keys) are skipped there.
@@ -492,7 +446,6 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
           nameEn: activity.nameEn ?? "",
           description: activity.description,
           descriptionEn: activity.descriptionEn ?? "",
-          eligibility: activity.eligibility ? JSON.stringify(activity.eligibility, null, 2) : "",
           activityRange: initialActivity.range,
           activityTimed: initialActivity.timed,
           applicationRange: initialApplication.range,
@@ -505,12 +458,14 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
           nameEn: string;
           description: string;
           descriptionEn: string;
-          eligibility: string;
           activityRange: RangeDraft["range"];
           activityTimed: boolean;
           applicationRange: RangeDraft["range"];
           applicationTimed: boolean;
         }) => {
+          const problems = validateDraft(eligibility);
+          setEligibilityProblems(problems);
+          if (problems.length) return;
           const schedules: ScheduleBody = {};
           if (withSchedules) {
             const nextActivity = scheduleInput({ range: values.activityRange, timed: values.activityTimed });
@@ -524,7 +479,7 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
               nameEn: values.nameEn.trim(),
               description: values.description.trim(),
               descriptionEn: values.descriptionEn.trim(),
-              eligibility: parseEligibility(values.eligibility ?? ""),
+              eligibility: eligibilityJson,
               ...schedules,
             }),
           );
@@ -562,41 +517,66 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
         <Form.Item name="descriptionEn" label="영문 설명(선택)">
           <Input.TextArea autoSize={{ minRows: 3, maxRows: 10 }} />
         </Form.Item>
-        <Form.Item
-          name="eligibility"
-          label="대상자 조건(JSON, 선택)"
-          extra={
-            <span>
-              {(() => {
-                try {
-                  const summary = eligibilitySummary(parseEligibility(eligibilityText));
-                  return summary ? `읽기: ${summary}` : "비워 두면 조건 없음으로 저장해요. 범위는 from·to, 어휘는 한글 field + 영문 fieldEn(camelCase).";
-                } catch {
-                  return "";
+        <div className="eligibility-field">
+          <div className="eligibility-field-heading">
+            <strong>대상자 조건(선택)</strong>
+            <Button
+              size="small"
+              aria-label="대상자 조건 비우기"
+              disabled={eligibility.items.length === 0}
+              onClick={() => {
+                if (window.confirm("대상자 조건을 모두 지우고 조건 없음으로 저장할까요?")) {
+                  setEligibility(newGroup());
+                  setEligibilityProblems([]);
                 }
-              })()}
-            </span>
-          }
-          rules={[
-            {
-              validator: (_, value: string) => {
-                try {
-                  parseEligibility(value ?? "");
-                  return Promise.resolve();
-                } catch (error) {
-                  return Promise.reject(error instanceof Error ? error.message : "JSON 형식이 아니에요.");
-                }
-              },
-            },
-          ]}
-        >
-          <Input.TextArea
-            autoSize={{ minRows: 4, maxRows: 16 }}
-            spellCheck={false}
-            style={{ fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontSize: 12 }}
-            placeholder={'{ "op": "all", "items": [ { "field": "나이", "fieldEn": "age", "from": 19, "to": 34 } ] }'}
+              }}
+            >
+              비우기
+            </Button>
+          </div>
+          <p className="field-note">
+            공지의 대상 문구를 조건으로 옮겨요. 숫자 항목은 부터·까지 범위, 나머지는 값 선택이에요. 영문 표기는 어휘에서 자동으로 채우고, 조건이 하나도 없으면 조건 없음으로
+            저장해요.
+          </p>
+          <EligibilityEditor
+            value={eligibility}
+            onChange={(next) => {
+              setEligibility(next);
+              if (eligibilityProblems.length) setEligibilityProblems(validateDraft(next));
+            }}
           />
-        </Form.Item>
+          {eligibilityProblems.length > 0 && (
+            <Alert
+              className="form-error"
+              type="error"
+              showIcon
+              message="대상자 조건을 확인해 주세요."
+              description={
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {eligibilityProblems.map((problem) => (
+                    <li key={problem}>{problem}</li>
+                  ))}
+                </ul>
+              }
+            />
+          )}
+          <p className="field-note">읽기: {eligibilitySummary(eligibilityJson) || <span className="muted">조건 없음</span>}</p>
+          <Collapse
+            size="small"
+            ghost
+            items={[
+              {
+                key: "json",
+                label: "JSON 보기",
+                children: (
+                  <pre className="eligibility-json" aria-label="대상자 조건 JSON">
+                    {eligibilityJson ? JSON.stringify(eligibilityJson, null, 2) : "null"}
+                  </pre>
+                ),
+              },
+            ]}
+          />
+        </div>
       </Form>
     </Modal>
   );

@@ -336,3 +336,66 @@ a:focus-visible {
 .watchlist-add {
   row-gap: 8px;
 }
+
+.eligibility-field {
+  margin-top: 8px;
+}
+.eligibility-field-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.eligibility-group {
+  border: 1px solid #dbe9e3;
+  border-radius: 10px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  background: #f7fbf9;
+}
+.eligibility-group.root {
+  background: transparent;
+}
+.eligibility-group .eligibility-group {
+  background: #fff;
+}
+.eligibility-group-heading,
+.eligibility-condition-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.eligibility-group-heading .field-note {
+  flex: 1;
+}
+.eligibility-group-heading > .ant-btn,
+.eligibility-condition-heading > .ant-btn {
+  margin-left: auto;
+}
+.eligibility-condition {
+  border: 1px solid #e3ebe8;
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 8px;
+  background: #fff;
+}
+.eligibility-twin {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+.eligibility-json {
+  margin: 0;
+  padding: 10px 12px;
+  background: #f5f7f7;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
