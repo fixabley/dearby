@@ -60,7 +60,7 @@ OTP 코드는 응답에서 반환하지 않는다. 개발용 메일 수신기는
 
 이 섹션은 웹 전용 게스트 저장 계약이다. 위 로그인·프로필·명함 발행·native wallet 계약은 유지한다. 이력서 열람은 기존 공개 `GET /v1/cards/:id`의 선택된 명함 snapshot만 뜻하며, 원본 개인 Profile이나 선택하지 않은 연락처·이력을 공개하지 않는다. PDF 지원 여부는 별도 결정이다. path UUID는 발행된 미철회 명함의 조회·저장 가능 여부만 판정하며 방문자 인증 수단이 아니다.
 
-웹은 same-origin Next 서버 프록시를 사용한다. API origin은 서버 env `DEARBY_API_ORIGIN`; 브라우저는 API/Supabase 키를 받지 않는다. Next와 API에 동일한 서버 전용 `GUEST_PROXY_SECRET`(최소 32자)을 root가 배포 시 설정한다. 모든 guest API에는 Next가 `X-Guest-Proxy-Key`를 넣고, 쿠키가 있으면 `X-Guest-Token`을 넣는다. 클라이언트가 보낸 동명 헤더는 전달하지 않고 서버 env/cookie로 다시 구성한다. API는 Cookie, Origin, forwarded IP를 방문자 인증으로 신뢰하지 않는다.
+웹은 same-origin Next 서버 프록시를 사용한다. API origin은 서버 env `DEARBY_API_ORIGIN`; 브라우저는 API 키를 받지 않는다. Next와 API에 동일한 서버 전용 `GUEST_PROXY_SECRET`(최소 32자)을 root가 배포 시 설정한다. 모든 guest API에는 Next가 `X-Guest-Proxy-Key`를 넣고, 쿠키가 있으면 `X-Guest-Token`을 넣는다. 클라이언트가 보낸 동명 헤더는 전달하지 않고 서버 env/cookie로 다시 구성한다. API는 Cookie, Origin, forwarded IP를 방문자 인증으로 신뢰하지 않는다.
 
 | 메서드·경로 | 성공 응답 | 의미 |
 | --- | --- | --- |
@@ -319,7 +319,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 ## 활동 조회 — 2026-10-14 사용자 결정
 
-`GET /v1/catalog`(전체 카탈로그 한 번에)를 없애고 `GET /v1/activities`로 바꾼다. 카탈로그 원본은 Kotlin DB다(Supabase는 쓰지 않음). 앱·웹은 아직 `/v1/catalog`를 부르므로 이 계약에 맞춰 바꿔야 한다.
+`GET /v1/catalog`(전체 카탈로그 한 번에)를 없애고 `GET /v1/activities`로 바꾼다. 카탈로그 원본은 Kotlin DB다. 앱·웹은 아직 `/v1/catalog`를 부르므로 이 계약에 맞춰 바꿔야 한다.
 
 | 메서드·경로 | 인증 | 요청 | 성공 응답 |
 | --- | --- | --- | --- |
