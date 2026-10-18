@@ -23,7 +23,7 @@ API = {
     'features.oauth': {'OAuthBrowser', 'OAuthVerifier'},
     'pages.account': {'SignInSheet', 'LinkAccountSheet'},
     'pages.onboarding': {'IntroPage'},
-    'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletCardPage', 'filterWallet'},
+    'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletCardPage', 'filterWallet', 'WalletSection', 'walletSections'},
     'features.calendar': {'CalendarConflictSheet'},
     'pages.activity': {'ActivityListPage', 'ActivityListPhase', 'MyActivitiesPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'ActivityListState', 'ProgramState', 'ProgramPhase', 'ProgramActivities'},
     'entities.activity': {'model.ActivityModel', 'model.ActivityPage', 'model.ScheduleModel', 'model.ProgramSummary', 'model.ProgramPage', 'model.EligibilityItem', 'model.EligibilityGroup', 'model.EligibilityCondition', 'model.lines', 'model.instant', 'model.safeHttpsUrl', 'api.fetchActivities', 'api.fetchPrograms'},

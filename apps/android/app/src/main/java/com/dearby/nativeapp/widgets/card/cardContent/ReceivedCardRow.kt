@@ -4,9 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,17 +16,23 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 
-/** 받은 명함 목록 한 줄. 화면이 명함 모델을 이름·직무 값으로 바꿔 넘기고, 누르면 [open]으로 상세를 연다. */
-@Composable fun ReceivedCardRow(name: String, job: String, open: () -> Unit, modifier: Modifier = Modifier) {
+/**
+ * 받은 명함 목록 한 줄(contract "받은 명함 목록 표시"): 이니셜 아바타, 굵은 이름, 아래 줄에 직무와 소속 칩.
+ * 화면이 명함 모델을 값으로 바꿔 넘기고, 줄 전체를 누르면 [open]으로 상세를 연다. 오른쪽 화살표는 두지 않는다.
+ */
+@Composable fun ReceivedCardRow(name: String, job: String, open: () -> Unit, modifier: Modifier = Modifier, organization: String? = null) {
     Row(modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(role = Role.Button, onClick = open).padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(Modifier.size(44.dp).background(Teal.copy(alpha = .12f), CircleShape), contentAlignment = Alignment.Center) {
             Text(name.take(1), color = Teal, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
         }
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(name, style = MaterialTheme.typography.titleMedium)
-            if (job.isNotBlank()) Text(job, color = Quiet, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
+            if (job.isNotBlank() || !organization.isNullOrBlank()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (job.isNotBlank()) Text(job, Modifier.weight(1f, fill = false), color = Quiet, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+                if (!organization.isNullOrBlank()) Text(organization, Modifier.background(Mint, RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp),
+                    color = Teal, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
+            }
         }
-        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = Quiet)
     }
 }
