@@ -215,6 +215,7 @@ struct Wallet: Decodable, Equatable, Sendable {
 }
 /// A published card snapshot from `POST /v1/cards`. `introduction` is the filled-in template (markdown body);
 /// `template` comes only on owner reads and seeds the editor when the card is republished.
+/// `webTemplate`/`webIntroduction` are the optional web content version (contract "웹 버전"); absent when the card has none.
 struct PublishedCard: Decodable, Equatable, Identifiable, Sendable {
     let id: String
     let name: String
@@ -223,6 +224,8 @@ struct PublishedCard: Decodable, Equatable, Identifiable, Sendable {
     let job: String
     var introduction: String? = nil
     var template: String? = nil
+    var webTemplate: String? = nil
+    var webIntroduction: String? = nil
     let contacts: [AccountContact]
     let histories: [AccountHistory]
     let createdAt: String
