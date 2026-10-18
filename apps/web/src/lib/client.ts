@@ -32,7 +32,7 @@ export async function mutateGuest<T>(
   );
 }
 
-/** Shared failure handling for card and share saves; `missing` means the card or share is gone. */
+/** Failure handling for card saves; `missing` means the card is gone. */
 export function saveFailure(error: unknown): "missing" | string {
   if (error instanceof RequestError && error.status === 404) return "missing";
   if (error instanceof RequestError && error.status === 401)

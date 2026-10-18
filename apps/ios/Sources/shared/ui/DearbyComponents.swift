@@ -50,19 +50,3 @@ struct DearbySheetHeader: View {
         }.padding(.leading, 20).padding(.trailing, 8).padding(.top, 20)
     }
 }
-struct DearbySegments: View {
-    let labels: [String]
-    @Binding var selection: Int
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(labels.indices, id: \.self) { index in
-                Button { selection = index } label: {
-                    Text(labels[index]).font(.dearby(.subheadline).weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 44).padding(.horizontal, 4)
-                        .foregroundStyle(selection == index ? .white : DearbyStyle.quiet)
-                        .background(selection == index ? DearbyStyle.teal : .clear, in: RoundedRectangle(cornerRadius: 11))
-                }.buttonStyle(.plain).accessibilityAddTraits(selection == index ? .isSelected : [])
-            }
-        }.background(DearbyStyle.muted, in: RoundedRectangle(cornerRadius: 11))
-    }
-}

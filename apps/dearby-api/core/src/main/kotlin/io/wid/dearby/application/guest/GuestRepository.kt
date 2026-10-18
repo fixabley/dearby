@@ -25,12 +25,6 @@ interface GuestRepository {
 
     fun removeCard(digest: String, cardId: UUID)
 
-    fun hasShare(digest: String, shareId: UUID): Boolean
-
-    fun shareCount(digest: String, cardId: UUID): Int
-
-    fun addShare(digest: String, cardId: UUID, shareId: UUID, savedAt: OffsetDateTime)
-
     fun wallet(digest: String): GuestWallet
 
     // 세션당 하나. 있으면 바꾼다

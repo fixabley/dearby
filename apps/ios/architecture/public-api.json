@@ -9,7 +9,6 @@
     "ActivityInfoPage",
     "ActivityInfoRef",
     "AppleSignIn",
-    "CardShare",
     "ContactRules",
     "EvidenceMeta",
     "Passkey",
@@ -17,9 +16,6 @@
     "ProfileVersionList",
     "ProfileVersionSummary",
     "PublishedCard",
-    "ReceivedShare",
-    "ScannedLink",
-    "ShareActivity",
     "TokenPair",
     "TokenStore",
     "TokenVault"
@@ -38,15 +34,10 @@
     "ContactSymbol",
     "HistoryModel",
     "HistoryTimeline",
-    "IdentityHeading",
-    "WalletGroup"
+    "IdentityHeading"
   ],
   "features/calendar": [
     "CalendarConflictView"
-  ],
-  "features/scan": [
-    "QRCameraView",
-    "QRImageReader"
   ],
   "pages/home": [
     "HomePage"
@@ -60,24 +51,17 @@
     "DearbyAvatar",
     "DearbyBadge",
     "DearbyButtonStyle",
-    "DearbyChoice",
-    "DearbyChoiceChips",
     "DearbyFieldError",
     "DearbyInfoRow",
     "DearbyInlineField",
     "DearbyLogo",
     "DearbyMarkdownText",
-    "DearbyQRCode",
     "DearbySearchField",
     "DearbySearchReveal",
-    "DearbySectionHeader",
-    "DearbySegments",
     "DearbySheetHeader",
     "DearbyStyle",
-    "DearbyTogetherActivityLabel",
     "MarkdownDocument",
-    "SearchQuery",
-    "SharedCardLink"
+    "SearchQuery"
   ],
   "widgets/activity": [
     "ActivityCard",
@@ -100,6 +84,8 @@
     "HistoryFunnelTarget",
     "HistoryPeriodFields",
     "HistoryRowView",
+    "MyCardsModel",
+    "MyCardsPage",
     "ProfileContactFields",
     "ProfileExtraContact",
     "ProfileForm",
@@ -107,13 +93,7 @@
     "ProfilePage",
     "ProfileVersionPage",
     "ProfileVersionsPage",
-    "QRPage",
-    "QRScanOverlay",
-    "QRShareCard",
-    "QRShareModel",
     "ReceivedCardRow",
-    "ReceivedShareModel",
-    "ReceivedSharePage",
     "TemplateDocument",
     "TemplateEditor",
     "TemplateRendering",

@@ -4,8 +4,6 @@ import {
   activitySchema,
   cardSchema,
   activityPageSchema,
-  guestShareSchema,
-  sharePageSchema,
   uuid,
 } from "./models";
 import {
@@ -17,14 +15,9 @@ import {
   upstreamFetch,
 } from "./guest-upstream";
 
-// `shares` defaults to empty so the list still works against an API without share records.
-const savedSchema = z.object({
-  items: z.array(cardSchema),
-  shares: z.array(guestShareSchema).default([]),
-});
+const savedSchema = z.object({ items: z.array(cardSchema) });
 const saveSchema = z.object({
   cardId: uuid,
-  shareId: uuid.optional(),
   status: z.enum(["saved", "alreadySaved"]),
   guestToken: z.string().regex(TOKEN).optional(),
 });
@@ -61,26 +54,18 @@ export async function proxy(
 ): Promise<Response> {
   const path = segments.join("/");
   const guest = segments[0] === "guest";
-  // Card ID, or share ID for share routes.
   const id = segments[guest ? 2 : 1];
-  const shareRoute = segments[guest ? 1 : 0] === "shares";
   const activityRoute = segments.length === 2 && segments[0] === "activities";
   const method = request.method;
   const allowed =
     (path === "activities" && method === "GET") ||
     (activityRoute && method === "GET") ||
-    (segments.length === 2 &&
-      ["cards", "shares"].includes(segments[0]) &&
-      method === "GET") ||
+    (segments.length === 2 && segments[0] === "cards" && method === "GET") ||
     (path === "guest/cards" && method === "GET") ||
     (segments.length === 3 &&
       segments[0] === "guest" &&
       segments[1] === "cards" &&
       ["PUT", "DELETE"].includes(method)) ||
-    (segments.length === 3 &&
-      segments[0] === "guest" &&
-      segments[1] === "shares" &&
-      method === "PUT") ||
     (path === "guest/session" && method === "DELETE");
   if (!allowed) return failure(404, "NOT_FOUND");
   if (id && !(activityRoute ? activityId(id) : uuid.safeParse(id).success))
@@ -121,7 +106,7 @@ export async function proxy(
     return failure(401, "GUEST_SESSION_INVALID");
   }
   if (path === "guest/cards" && !token)
-    return Response.json({ items: [], shares: [] }, { headers });
+    return Response.json({ items: [] }, { headers });
   if (path === "guest/session" && !token)
     return new Response(null, { status: 204, headers });
   if (!process.env.DEARBY_API_ORIGIN || (guest && !guestProxyKey()))
@@ -163,26 +148,14 @@ export async function proxy(
     const json: unknown = await result.json();
     if (guest && method === "PUT") {
       const saved = saveSchema.parse(json);
-      const echoed = shareRoute ? saved.shareId : saved.cardId;
-      if (echoed?.toLowerCase() !== id.toLowerCase())
+      if (saved.cardId.toLowerCase() !== id.toLowerCase())
         throw new Error("Mismatched save");
       if (!token && !saved.guestToken) throw new Error("Missing session");
       if (!token) outputHeaders["Set-Cookie"] = guestCookie(saved.guestToken!);
       return Response.json(
-        shareRoute
-          ? { cardId: saved.cardId, shareId: id, status: saved.status }
-          : { cardId: saved.cardId, status: saved.status },
+        { cardId: saved.cardId, status: saved.status },
         { status: result.status, headers: outputHeaders },
       );
-    }
-    if (shareRoute) {
-      const page = sharePageSchema.parse(json);
-      if (
-        page.share.id.toLowerCase() !== id.toLowerCase() ||
-        page.card.id.toLowerCase() !== page.share.cardId.toLowerCase()
-      )
-        throw new Error("Mismatched share");
-      return Response.json(page, { headers: outputHeaders });
     }
     const output =
       path === "activities"

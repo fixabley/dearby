@@ -24,17 +24,17 @@
 | [겹침 A](approved/calendar-overlap-a.png) | 하단 시트, 두 열의 시간표, 주황 겹침 구간, 날짜·분수·건수, 확인/닫기. |
 | [프로필](approved/profile.png) | 연락처 행·활동 연표·편집/추가 화면. 변경은 메모리만 사용. |
 | [비로그인 프로필](approved/profile-guest.png) | 시작 버튼으로 예시 프로필 전환. 실제 계정 입력 없음. |
-| [QR 보여주기](approved/qr-show.png) | 큰 예시 QR, 확대, 명함 보기, 내 명함 타일 선택. |
+| [QR 보여주기](approved/qr-show.png) | 2026-10-18 공유 삭제로 QR은 없다. 같은 자리의 `내 명함` 탭이 내 명함 타일 선택·만들기·고치기만 보인다. |
 | [새 명함](approved/qr-new-card.png) | 2026-10-06부터 + 타일·`명함 만들기`·명함 편집 버튼이 모두 실제 명함 제작 화면(`CardComposer`)을 연다. 로그인은 발행을 누를 때만 이메일 인증번호 시트로 묻고, 로그인 뒤 발행을 이어 간다(`PUT /v1/profile` → `POST /v1/cards`, 명함 실패 시 명함만 다시 시도). 명함 이름 입력 칸이 없어 이름은 `내 명함`으로 고정한다. iOS·Android 반영. |
-| [QR 찍기](approved/qr-scan.png) | 스캔 영역과 예시 명함 열기. 카메라·사진 권한 요청 없음. |
-| [공유 메뉴](approved/qr-share-menu.png) | 링크/복사/이미지 메뉴와 예시 피드백. 실제 명함 게시 없음. |
-| [공유 명함](approved/shared-card.png) | 큰 연락처 아이콘·연표, 저장/나도 주기 → 예시 명함 선택. |
+| [QR 찍기](approved/qr-scan.png) | 2026-10-18 삭제(스캔 화면 없음). |
+| [공유 메뉴](approved/qr-share-menu.png) | 2026-10-18 삭제(OS 공유 없음). |
+| [공유 명함](approved/shared-card.png) | 2026-10-18 삭제(공유 명함 화면·나도 주기 없음). 받은 명함 상세는 명함 본문만 보인다. |
 | [명함 편집](approved/card-editor.png) | 2026-10-06 예시 편집기(iOS `CardEditorPage`, Android `CardEditor`)를 지우고 위 명함 제작 화면 하나로 모았다. 미리보기·명함 이름 입력은 아직 없다. iOS·Android 반영. |
-| [받은 명함](approved/wallet.png) | 검색·두 그룹·겹친 명함 카드·넘기기·상세·나도 주기. |
-| [반환 완료 명함함](approved/wallet-reciprocal-only.png) | 예시 보내기로 미반환이 0이 되면 그룹 문구 숨김. |
-| [보낼 명함 선택](approved/send-card-picker.png) | 내 명함 묶음·이름/직무 헤더·선택·상세·예시 보내기. 2026-10-06 명함 제작을 QR 탭 하나로 모으면서 우상단 `+ 새 명함`을 뺐다(메인 승인). iOS·Android 반영. |
+| [받은 명함](approved/wallet.png) | 2026-10-18부터 `GET /v1/wallet`의 기존 항목을 평범한 세로 목록으로만 보인다(활동별 묶음·나도 주기 없음). 새로 받는 경로는 없다. |
+| [반환 완료 명함함](approved/wallet-reciprocal-only.png) | 2026-10-18 삭제(보내기·반환 구분 없음). |
+| [보낼 명함 선택](approved/send-card-picker.png) | 2026-10-18 삭제(보내기 없음). 내 명함 목록은 `내 명함` 탭에 있다. |
 
-기본 탭은 발견·내 활동·QR·받은 명함·내 프로필이다(2026-10-06 결정, iOS·Android 반영). 내 활동은 신청한 활동을 일정순으로 보여 주고 항목·상세에서 `참여 확정 표시`를 켜고 끈다. 별도 시안이 없으므로 탐색 카드 스타일을 재사용한다.
+기본 탭은 발견·내 활동·내 명함·받은 명함·내 프로필이다(2026-10-18, QR 탭을 내 명함 탭으로 바꿈. iOS·Android 반영). 내 활동은 신청한 활동을 일정순으로 보여 주고 항목·상세에서 `참여 확정 표시`를 켜고 끈다. 별도 시안이 없으므로 탐색 카드 스타일을 재사용한다.
 화면에 보이는 문구는 예시 목적에 맞게 조정한다. 휴대폰 프레임·상태 표시줄·생성 이미지의 노이즈는 재현하지 않는다.
 실제 접수·기기 저장·전송 완료로 오해할 문구는 예시임을 알 수 있도록 바꾼다.
 
@@ -72,17 +72,16 @@ SwiftUI와 Compose의 UI 소스는 각 플랫폼 안에서 공유하고, 이미�
 | --- | --- | --- |
 | 색상·주요 버튼·로고 | `Sources/shared/ui/DearbyStyle.swift` | `shared/ui/Components.kt` |
 | 배지·아바타·정보 행·시트 헤더 | `Sources/shared/ui/DearbyComponents.swift` | `shared/ui/Components.kt` |
-| 두 항목 전환·검색 칸·묶음 머리글·선택 칩·인라인 입력 칸·함께한 활동 라벨 | `Sources/shared/ui/DearbyControls.swift`(두 항목 전환은 `DearbyComponents.swift`) | `shared/ui/Controls.kt` |
-| QR 공유 카드·스캔 틀 | `Sources/widgets/identity/ui/QRShareCard.swift`, QR 이미지 `shared/ui/DearbyQRCode.swift` | `widgets/card/cardContent/QrShareCard.kt`, QR 이미지 `shared/ui/QrCode.kt` |
+| 검색 칸·인라인 입력 칸 | `Sources/shared/ui/DearbyControls.swift` | `shared/ui/Controls.kt` |
 | 명함 제작(한 화면 발행) | `Sources/widgets/identity/ui/CardComposer.swift` | `widgets/card/cardContent/CardComposer.kt` |
 | 받은 명함 목록 항목 | `Sources/widgets/identity/ui/ReceivedCardRow.swift` | `widgets/card/cardContent/ReceivedCardRow.kt` |
 | 명함·연락처·활동 이력 조합 | `Sources/entities/identity/ui` | `widgets/card/cardContent` |
 | 활동 카드(빠른 신청) | `Sources/widgets/catalog/ui/ActivityCard.swift` | `widgets/activity/activityCard/ActivityCard.kt` |
 | 활동 목록·상세 | `Sources/widgets/catalog/ui` | `pages/catalog` |
-| 프로필·QR·명함함 | `Sources/widgets/identity/ui` | `pages/profile`, `pages/qr`, `pages/wallet` |
+| 프로필·내 명함·명함함 | `Sources/widgets/identity/ui` | `pages/profile`, `pages/cards`, `pages/wallet` |
 | 공통 이미지 원본 | 저장소 루트 `shared/assets/prototype` | 저장소 루트 `shared/assets/prototype` |
 
-2026-10-06 추가한 공통 입력 컴포넌트의 이름·인자는 [신청 활동·명함 공유 정본](../context/feature-applied-activities-and-cards.md#ui-컴포넌트-공개-api)을 따른다. 웹은 `shared/ui/section-header.tsx`, `widgets/card`의 `TogetherActivityLabel`·`ReceivedCardRow`로 반영했다.
+2026-10-06 추가한 공통 입력 컴포넌트의 이름·인자는 [신청 활동·인라인 편집 정본](../context/feature-applied-activities-and-cards.md#ui-컴포넌트-공개-api)을 따른다(QR 공유 카드·스캔 틀·QR 이미지·함께한 활동 라벨은 2026-10-18 삭제). 웹의 `section-header`·`TogetherActivityLabel`·`ReceivedCardRow`도 같은 날 지웠다.
 Swift 경로는 `apps/ios`, Kotlin 경로는 `apps/android/app/src/main/java/com/dearby/nativeapp` 기준이다.
 먼저 공통 표현을 수정하고 해당 화면들이 이를 참조하도록 한다. 화면 이동과 예시 상태는 공통 UI 컴포넌트에 넣지 않는다.
 이미지 원본을 바꿀 때에는 iOS 이미지 세트와 Android drawable 사본도 함께 갱신한다. Android 예시 활동 사진(`prototype_conference·camp·meetup`)은 2026-10-06부터 debug 미리보기 전용이라 `app/src/debug/res/drawable-nodpi`에 두며 release APK에 들어가지 않는다.

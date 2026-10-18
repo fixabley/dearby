@@ -1,6 +1,6 @@
 # 활동 수집 배치 (Kotlin · Spring Batch)
 
-2026-10-15 사용자 결정으로 활동 수집을 TypeScript 구독 워커(`apps/catalog-worker`, Codex·Supabase)에서 Kotlin 멀티모듈의 `batch` 모듈로 옮긴다. 활동 정보 원본은 Kotlin DB다.
+2026-10-15 사용자 결정으로 활동 수집을 TypeScript 구독 워커에서 Kotlin 멀티모듈의 `batch` 모듈로 옮긴다. 활동 정보 원본은 Kotlin DB다. 2026-10-18 사용자 결정으로 TS 워커 소스(`apps/catalog-worker`)와 `supabase/`를 저장소에서 지웠다([삭제 전](https://github.com/fixabley/dearby/tree/6636e9a6/apps/catalog-worker)).
 
 | 결정 | 내용 |
 | --- | --- |
@@ -39,8 +39,8 @@ docker compose -f compose.prod.yaml --env-file .env.prod run --rm batch --collec
 ## 아직 없는 것
 
 - 프로그램별 수집 설정 입력과 초안 검토·게시 화면(admin 모듈). 그전까지는 DB에 직접 넣고 바꾼다.
-- 게시 활동의 매일 재확인(기존 워커의 `--reverify`), 실패 알림, 비용 상한.
+- 게시 활동의 매일 재확인(삭제한 TS 워커의 `--reverify`에 해당), 실패 알림, 비용 상한.
 - `api` 엔진의 실제 호출 검증: API 키가 생기면 한 번 돌려 확인해야 한다(Haiku 4.5의 서버 웹 검색·structured outputs는 문서 기준).
 - 웹 전체 검색의 실제 결과(2026-10-15, cli, 설정 없는 Let'Swift): 공식 사이트 대신 X 계정(`x.com/letswiftkr`)에서 같은 이름의 초안 2건을 저장했다(`official_source = false`). 2분 45초, 입력 78,210·출력 17,258 토큰. CLI 내장 WebSearch는 사용량에 검색 횟수가 잡히지 않아 0으로 기록된다. 후속 후보: SNS·모음 사이트 제외 목록, 웹 전체 검색에서 찾은 공식 도메인 후보를 관리자에게 제안.
 - `cli` 엔진은 2026-10-15 로컬 개발 DB에서 Let'Swift(`https://letswift.kr/2026/`, 허용 `letswift.kr`)로 실제 수집했다: 59초, 찾은 1·저장 1(DRAFT), 일정 7개 시각 정상(19:00 KST), 입력 14,776·출력 6,183 토큰, 웹 검색 0회(모델이 공식 페이지만으로 충분하다고 판단). 신청 주소는 원문 링크와 맞지 않아 비워졌다.
-- 기존 TS 워커의 launchd 작업(`com.dearby.catalog-subscription-worker`)이 아직 설치되어 있어 Supabase에 계속 쓴다. 새 배치가 동작하면 `node scripts/launchd.mjs uninstall`로 내린다.
+- 이 Mac의 launchd 작업(`com.dearby.catalog-subscription-worker`)과 `~/.dearby-deploy`의 TS 워커 배포 사본은 저장소 밖이라 2026-10-18 소스 삭제로 멈추지 않는다. 사용자가 `launchctl bootout gui/$(id -u)/com.dearby.catalog-subscription-worker`와 plist 삭제로 내린다(저장소의 `scripts/launchd.mjs uninstall`은 더 없다).

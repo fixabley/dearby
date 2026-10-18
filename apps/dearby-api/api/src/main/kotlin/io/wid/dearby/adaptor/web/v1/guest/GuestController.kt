@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.*
 import java.util.*
 
-// 웹 비로그인 저장(native-v1.md "웹 비로그인 명함 저장"·"게스트 공유 정보 저장"·"홈 화면 세션 잇기").
+// 웹 비로그인 저장(native-v1.md "웹 비로그인 명함 저장"·"홈 화면 세션 잇기").
 // 로그인 대신 Next 서버만 아는 프록시 키와 세션 토큰 헤더를 본다. 응답의 Cache-Control: no-store는 보안 필터 기본 헤더가 붙인다
 @RestController
 @RequestMapping("/v1/guest")
@@ -20,7 +20,7 @@ class GuestController(private val guests: GuestService, private val properties: 
     fun list(@RequestHeader(PROXY_KEY, required = false) key: String?, @RequestHeader(TOKEN, required = false) token: String?): GuestWalletResponse {
         guests.admit(properties.proxySecret, key)
         val wallet = guests.wallet(token)
-        return GuestWalletResponse(wallet.items.map { CardResponse.from(it, includeTemplate = false) }, wallet.shares.map(GuestShareResponse::from))
+        return GuestWalletResponse(wallet.items.map { CardResponse.from(it, includeTemplate = false) })
     }
 
     // 토큰 없는 첫 저장은 세션을 만들어 201과 guestToken(Next만 쿠키로 소비)
@@ -30,11 +30,6 @@ class GuestController(private val guests: GuestService, private val properties: 
         return saved(guests.saveCard(token, id))
     }
 
-    @PutMapping("/shares/{id}")
-    fun saveShare(@RequestHeader(PROXY_KEY, required = false) key: String?, @RequestHeader(TOKEN, required = false) token: String?, @PathVariable id: UUID): ResponseEntity<GuestSaveResponse> {
-        guests.admit(properties.proxySecret, key)
-        return saved(guests.saveShare(token, id))
-    }
 
     @DeleteMapping("/cards/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -66,7 +61,7 @@ class GuestController(private val guests: GuestService, private val properties: 
     }
 
     private fun saved(result: GuestSaveResult) = ResponseEntity.status(if (result.guestToken != null) HttpStatus.CREATED else HttpStatus.OK)
-        .body(GuestSaveResponse(result.cardId, result.shareId, result.status, result.guestToken))
+        .body(GuestSaveResponse(result.cardId, result.status, result.guestToken))
 
     companion object {
         const val PROXY_KEY = "X-Guest-Proxy-Key"

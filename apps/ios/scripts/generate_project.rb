@@ -4,7 +4,7 @@ project = Xcodeproj::Project.new('Dearby.xcodeproj')
 app = project.new_target(:application, 'Dearby', :ios, '18.0')
 sources = project.main_group.new_group('Sources')
 Dir.glob('Sources/**/*.swift').sort.each { |file| app.source_build_phase.add_file_reference(sources.new_file(file)) }
-# Release builds must get https domain origins from the build environment (contract "연결 설정").
+# Release builds must get the https API origin from the build environment (contract "연결 설정").
 validate = app.new_shell_script_build_phase('Validate connection origins')
 validate.shell_script = 'bash "$SRCROOT/scripts/validate_origins.sh"'
 validate.always_out_of_date = '1'
@@ -30,12 +30,9 @@ project.targets.each do |target|
         # Provisional: coordinator must check App Store Connect history before upload.
         'MARKETING_VERSION' => '0.1.0', 'CURRENT_PROJECT_VERSION' => '1',
         'INFOPLIST_KEY_CFBundleDisplayName' => 'Dearby',
-        'INFOPLIST_KEY_UIApplicationSceneManifest_Generation' => 'YES',
-        # Universal links for shared cards: the host is the last path component of the web origin.
-        'DEARBY_WEB_HOST' => '$(DEARBY_WEB_ORIGIN:file)'
+        'INFOPLIST_KEY_UIApplicationSceneManifest_Generation' => 'YES'
       })
-      # Passkeys need webcredentials for the RP ID (contract "패스키 로그인") in both builds. Universal links
-      # stay Release only, where the web origin is validated; Debug may have no web origin at all.
+      # Passkeys need webcredentials for the RP ID (contract "패스키 로그인") in both builds.
       config.build_settings['CODE_SIGN_ENTITLEMENTS'] = config.name == 'Release' ? 'Dearby.entitlements' : 'Dearby-Debug.entitlements'
       if config.name == 'Debug'
         config.build_settings['SWIFT_ACTIVE_COMPILATION_CONDITIONS'] = 'DEBUG'

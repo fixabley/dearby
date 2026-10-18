@@ -42,25 +42,6 @@ export const cardSchema = z.object({
   createdAt: text,
 });
 export type Card = z.infer<typeof cardSchema>;
-// Activity copies chosen by the sender; not proof of participation.
-const sharedActivity = z.object({ id: z.number().int().positive(), title: text });
-export const sharePageSchema = z.object({
-  share: z.object({
-    id: uuid,
-    cardId: uuid,
-    activities: z.array(sharedActivity).max(10),
-    createdAt: text,
-  }),
-  card: cardSchema,
-});
-export type SharePage = z.infer<typeof sharePageSchema>;
-export const guestShareSchema = z.object({
-  cardId: uuid,
-  shareId: uuid,
-  activities: z.array(sharedActivity).max(10),
-  savedAt: text,
-});
-export type GuestShare = z.infer<typeof guestShareSchema>;
 // Public activity from GET /v1/activities (contract "활동 조회 — 2026-10-14"). Timed values carry a zone offset.
 const scheduleSchema = z.object({
   id: z.number().int(),

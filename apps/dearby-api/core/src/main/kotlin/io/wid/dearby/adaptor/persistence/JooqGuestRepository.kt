@@ -4,7 +4,6 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.references.*
 import io.wid.dearby.application.card.CardRepository
 import io.wid.dearby.application.guest.GuestHandoff
 import io.wid.dearby.application.guest.GuestRepository
-import io.wid.dearby.application.guest.GuestShare
 import io.wid.dearby.application.guest.GuestWallet
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
@@ -25,7 +24,7 @@ class JooqGuestRepository(private val dsl: DSLContext, private val cards: CardRe
 
     override fun deleteSession(digest: String) = dsl.deleteFrom(GUEST_SESSIONS).where(GUEST_SESSIONS.DIGEST.eq(digest)).execute() > 0
 
-    // 철회됐거나 지워진 명함(논리키)의 참조를 지운다. 공유 기록은 FK로 함께 지워진다
+    // 철회됐거나 지워진 명함(논리키)의 참조를 지운다
     override fun pruneRevoked(digest: String) {
         dsl.deleteFrom(GUEST_CARDS).where(
             GUEST_CARDS.SESSION_DIGEST.eq(digest),
@@ -45,26 +44,11 @@ class JooqGuestRepository(private val dsl: DSLContext, private val cards: CardRe
         dsl.deleteFrom(GUEST_CARDS).where(GUEST_CARDS.SESSION_DIGEST.eq(digest), GUEST_CARDS.CARD_ID.eq(cardId)).execute()
     }
 
-    override fun hasShare(digest: String, shareId: UUID) = dsl.fetchExists(GUEST_CARD_SHARES, GUEST_CARD_SHARES.SESSION_DIGEST.eq(digest), GUEST_CARD_SHARES.SHARE_ID.eq(shareId))
-
-    override fun shareCount(digest: String, cardId: UUID) = dsl.fetchCount(GUEST_CARD_SHARES, GUEST_CARD_SHARES.SESSION_DIGEST.eq(digest), GUEST_CARD_SHARES.CARD_ID.eq(cardId))
-
-    override fun addShare(digest: String, cardId: UUID, shareId: UUID, savedAt: OffsetDateTime) {
-        dsl.insertInto(GUEST_CARD_SHARES)
-            .set(GUEST_CARD_SHARES.SESSION_DIGEST, digest).set(GUEST_CARD_SHARES.CARD_ID, cardId)
-            .set(GUEST_CARD_SHARES.SHARE_ID, shareId).set(GUEST_CARD_SHARES.SAVED_AT, savedAt).execute()
-    }
 
     override fun wallet(digest: String): GuestWallet {
         val cardIds = dsl.select(GUEST_CARDS.CARD_ID).from(GUEST_CARDS).where(GUEST_CARDS.SESSION_DIGEST.eq(digest)).orderBy(GUEST_CARDS.SEQ).fetch { it.value1()!! }
         val byId = cards.findAllById(cardIds).associateBy { it.id }
-        val items = cardIds.mapNotNull { byId[it] }
-        val shares = dsl.select(GUEST_CARD_SHARES.CARD_ID, GUEST_CARD_SHARES.SHARE_ID, GUEST_CARD_SHARES.SAVED_AT, CARD_SHARES.ACTIVITIES)
-            .from(GUEST_CARD_SHARES).join(CARD_SHARES).on(CARD_SHARES.ID.eq(GUEST_CARD_SHARES.SHARE_ID))
-            .where(GUEST_CARD_SHARES.SESSION_DIGEST.eq(digest), GUEST_CARD_SHARES.CARD_ID.`in`(byId.keys))
-            .orderBy(GUEST_CARD_SHARES.SEQ).fetch()
-            .map { GuestShare(it.value1()!!, it.value2()!!, JooqShareRepository.readActivities(it.value4()!!.data()), it.value3()!!) }
-        return GuestWallet(items, shares)
+        return GuestWallet(cardIds.mapNotNull { byId[it] })
     }
 
     override fun putHandoff(handoff: GuestHandoff) {

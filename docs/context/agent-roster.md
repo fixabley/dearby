@@ -1,6 +1,6 @@
 # 에이전트 운영
 
-2026-10-06 사용자 승인. UI·유저플로우·수집기·어드민을 각각 Orca worktree 상주 세션으로 운영한다. 메인 세션은 공통 결정·`AGENTS.md`·`shared/contracts`·root 설정·통합을 맡는다. 진행 상태는 이 문서가 아니라 각 인계 문서와 [현재 작업](coordinator-current-task-and-decisions.md)에 남긴다.
+2026-10-06 사용자 승인. UI·유저플로우·어드민을 각각 Orca worktree 상주 세션으로 운영한다(수집기 담당은 2026-10-18 TS 수집 워커 삭제로 없어졌다. 수집은 Kotlin `batch` 모듈이며 API 담당 범위다). 메인 세션은 공통 결정·`AGENTS.md`·`shared/contracts`·root 설정·통합을 맡는다. 진행 상태는 이 문서가 아니라 각 인계 문서와 [현재 작업](coordinator-current-task-and-decisions.md)에 남긴다.
 
 ## 공통 규칙
 
@@ -13,7 +13,7 @@
 웹은 보존 중인 서비스다. 세 플랫폼에 공통인 요소만 맞춘다.
 
 - 맞춘다: 색·글꼴·간격·모서리·아이콘 같은 디자인 토큰, 활동 카드·배지·버튼·빈 화면 같은 공통 컴포넌트의 모양, 탐색 → 상세 → 신청 링크 흐름.
-- 그대로 둔다: 웹의 스크랩·게스트 명함·실제 데이터 연결, 모바일의 다섯 탭·명함·QR 예시 흐름. 모바일에 서버 호출을 넣지 않고, 웹을 예시 데이터로 바꾸지 않는다.
+- 그대로 둔다: 웹의 스크랩·게스트 명함·실제 데이터 연결, 모바일의 다섯 탭·명함 예시 흐름. 모바일에 서버 호출을 넣지 않고, 웹을 예시 데이터로 바꾸지 않는다.
 
 ## UI 담당
 
@@ -28,16 +28,11 @@
 - 탐색 → 상세 → 신청 링크의 단계·뒤로 가기·필터 유지 방식을 세 플랫폼에서 맞춘다. 모바일 예시 상태는 메모리에만 두고, 웹의 URL·저장 동작은 유지한다.
 - 시각 변경이 필요하면 UI 담당에 요청한다. 화면 흐름 테스트(iOS UI 테스트, Android 계측 테스트, 웹 Playwright)로 확인한다.
 
-## 수집기 담당
-
-- 소유: `apps/catalog-worker`, [수집 워커 인계](catalog-subscription-worker-handoff.md). `supabase/migrations`의 수집 관련 변경은 담당이 작성하고 메인이 검토해 통합한다.
-- 금지: 환경 파일·LaunchAgent·Supabase Cron·`~/.dearby-deploy` 배포 사본 변경, 사용자 승인 없는 실제 구독 실행. 실행 중인 워커는 배포 사본이므로 main 변경은 재배포 승인 전까지 운영에 반영되지 않는다.
-
 ## 어드민 담당
 
-- 소유: `apps/admin`. 수집 화면 `collection.tsx`도 어드민 담당이 고친다. 수집 데이터 구조가 바뀌면 수집기 담당·메인과 맞춘다. 조직·프로그램·활동 활동 정보 테이블의 `supabase/migrations` 변경은 어드민 담당이 작성하고 메인이 검토해 통합한다.
+- 소유: `apps/admin`. 수집 데이터 구조가 바뀌면 API 담당·메인과 맞춘다. 활동 정보 테이블 변경은 Kotlin API의 Flyway 마이그레이션(`apps/dearby-api/core/src/main/resources/db/migration`)이며 API 담당이 작성하고 메인이 검토해 통합한다.
 - 금지: 환경 파일·배포 설정·운영 데이터 변경. 배포는 사용자 승인 후 진행한다. 실제 운영 데이터로 쓰기 테스트를 하지 않는다.
 
 ## API 담당
 
-2026-10-06 명함 공유 기록·게스트 공유 저장 구현을 위해 추가했다. `apps/dearby-api`와 그 인계 문서를 소유한다. 계약 `shared/contracts`는 메인이 정하고, 담당은 계약대로 구현·HTTP 테스트한다. 운영 DB·ingress·배포·secret은 바꾸지 않는다.
+2026-10-06 추가. `apps/dearby-api`(api·admin·batch·core 모듈)와 그 인계 문서를 소유한다. 계약 `shared/contracts`는 메인이 정하고, 담당은 계약대로 구현·HTTP 테스트한다. 운영 DB·ingress·배포·secret은 바꾸지 않는다.

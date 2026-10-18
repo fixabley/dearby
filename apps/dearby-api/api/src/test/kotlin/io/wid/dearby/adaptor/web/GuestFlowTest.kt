@@ -20,7 +20,7 @@ import java.time.OffsetDateTime
 import java.util.*
 import kotlin.test.*
 
-// native-v1.md "웹 비로그인 명함 저장"·"게스트 공유 정보 저장"·"홈 화면 세션 잇기": 프록시 키, 세션 토큰, 저장·상한, 세션 잇기 코드
+// native-v1.md "웹 비로그인 명함 저장"·"홈 화면 세션 잇기": 프록시 키, 세션 토큰, 저장·상한, 세션 잇기 코드
 @SpringBootTest
 @AutoConfigureMockMvc
 class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient, @Autowired val profiles: ProfileRepository, @Autowired val guests: GuestService) {
@@ -49,11 +49,6 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
         return user to card["id"].asString()
     }
 
-    private fun share(owner: UUID, cardId: String): String = read(mvc.post("/v1/cards/$cardId/shares") {
-        with(jwt().jwt { it.subject(owner.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER")))
-        contentType = MediaType.APPLICATION_JSON
-        content = """{"activityIds":[]}"""
-    }.andExpect { status { isCreated() } })["id"].asString()
 
     @Test
     fun `프록시 키가 없거나 다르면 403이고 설정이 없으면 503이며 토큰이 없거나 모르는 토큰이면 401이다`() {
@@ -69,8 +64,8 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
     }
 
     @Test
-    fun `첫 저장은 세션을 만들어 201과 토큰을 주고, 이후 저장·공유 기록·삭제는 그 토큰으로 한다`() {
-        val (owner, cardId) = ownerWithCard()
+    fun `첫 저장은 세션을 만들어 201과 토큰을 주고, 이후 저장·삭제는 그 토큰으로 한다`() {
+        val (_, cardId) = ownerWithCard()
         // 없는 명함은 404이고 세션을 만들지 않는다
         val sessionsBefore = sessionCount()
         mvc.put("/v1/guest/cards/${UUID.randomUUID()}") { guest() }.andExpect { status { isNotFound() } }
@@ -86,31 +81,14 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
         assertEquals("alreadySaved", again["status"].asString())
         assertFalse(again.has("guestToken"))
 
-        val shareId = share(owner, cardId)
-        val saved = read(mvc.put("/v1/guest/shares/$shareId") { guest(token) }.andExpect { status { isOk() } })
-        assertEquals(listOf(cardId, shareId, "saved"), listOf(saved["cardId"].asString(), saved["shareId"].asString(), saved["status"].asString()))
-        assertEquals("alreadySaved", read(mvc.put("/v1/guest/shares/$shareId") { guest(token) })["status"].asString())
-        mvc.put("/v1/guest/shares/${UUID.randomUUID()}") { guest(token) }.andExpect { status { isNotFound() } }
-
         val wallet = read(mvc.get("/v1/guest/cards") { guest(token) }.andExpect { status { isOk() } })
         assertEquals(1, wallet["items"].size())
         assertFalse(wallet["items"][0].has("template"))
-        assertEquals(listOf(cardId, shareId), listOf(wallet["shares"][0]["cardId"].asString(), wallet["shares"][0]["shareId"].asString()))
-
-        // 명함당 공유 기록 20개. 이미 연결된 공유의 재저장은 상한에서도 성공
-        repeat(19) { mvc.put("/v1/guest/shares/${share(owner, cardId)}") { guest(token) }.andExpect { status { isOk() } } }
-        mvc.put("/v1/guest/shares/${share(owner, cardId)}") { guest(token) }.andExpect { status { isConflict() } }
-        mvc.put("/v1/guest/shares/$shareId") { guest(token) }.andExpect { status { isOk() } }
-
-        // 공유로 처음 저장해도 세션이 생긴다
-        val (otherOwner, otherCard) = ownerWithCard()
-        val viaShare = read(mvc.put("/v1/guest/shares/${share(otherOwner, otherCard)}") { guest() }.andExpect { status { isCreated() } })
-        assertTrue(viaShare.has("guestToken"))
+        assertFalse(wallet.has("shares"))
 
         mvc.delete("/v1/guest/cards/$cardId") { guest(token) }.andExpect { status { isNoContent() } }
         mvc.delete("/v1/guest/cards/$cardId") { guest(token) }.andExpect { status { isNoContent() } }
-        val after = read(mvc.get("/v1/guest/cards") { guest(token) })
-        assertEquals(listOf(0, 0), listOf(after["items"].size(), after["shares"].size()))
+        assertEquals(0, read(mvc.get("/v1/guest/cards") { guest(token) })["items"].size())
 
         mvc.delete("/v1/guest/session") { guest(token) }.andExpect { status { isNoContent() } }
         mvc.get("/v1/guest/cards") { guest(token) }.andExpect { status { isUnauthorized() } }
@@ -122,10 +100,8 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
     fun `철회된 명함은 목록에서 빠지고 다음 저장 때 참조가 정리된다`() {
         val (owner, cardId) = ownerWithCard()
         val token = read(mvc.put("/v1/guest/cards/$cardId") { guest() })["guestToken"].asString()
-        mvc.put("/v1/guest/shares/${share(owner, cardId)}") { guest(token) }.andExpect { status { isOk() } }
         mvc.delete("/v1/cards/$cardId") { with(jwt().jwt { it.subject(owner.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER"))) }.andExpect { status { isNoContent() } }
-        val wallet = read(mvc.get("/v1/guest/cards") { guest(token) })
-        assertEquals(listOf(0, 0), listOf(wallet["items"].size(), wallet["shares"].size()))
+        assertEquals(0, read(mvc.get("/v1/guest/cards") { guest(token) })["items"].size())
         mvc.put("/v1/guest/cards/$cardId") { guest(token) }.andExpect { status { isNotFound() } }
 
         val (_, another) = ownerWithCard()

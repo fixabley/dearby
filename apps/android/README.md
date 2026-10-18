@@ -5,8 +5,8 @@
 - 발견: `GET /v1/activities`(`entities/activity/api/ActivityClient.kt`, 계약 "활동 조회")를 페이지 단위로 읽는다. 검색창 입력은 300ms 쉰 뒤 `q`로 보내고 첫 페이지부터 다시 읽으며, 목록 끝에 가까워지면 `nextCursor`로 다음 페이지를 붙인다. 모든 결과를 모집 상태와 함께 보인다. 상태는 `application` 기간만으로 정한다(시작 전 모집 예정, 기간 안 모집 중, 끝난 뒤 모집 마감, 기간이 없으면 모집 여부 확인 필요). 카드·상세 CTA는 모집 중일 때 https `officialUrl`을 외부 브라우저로 열고, 그 밖에는 상세에서 공식 안내로 연다. `imageUrl`이 있으면 Coil로 보이고 없으면 일정 타일을 그린다. 실패하면 오류와 다시 시도, 결과가 없으면 빈 화면이며 예시를 섞지 않는다. 다른 검색어를 넣어도 내 활동의 신청 표시는 남는다. `INTERNET` 권한은 실제 연결 범위에 한해 쓰고, http는 debug의 10.0.2.2·localhost·127.0.0.1만 허용한다(`src/debug` network security config).
 - 테스트: 자동 테스트는 2026-10-06 사용자 요청으로 모두 지웠다. 사용자와 하나씩 다시 만든다. debug 전용 `ApiOrigin.debugOverride`는 남겨 두었다.
 - 내 활동: 신청한 활동을 일정순으로 보여 줍니다. 컨퍼런스 1건이 신청된 상태로 시작합니다. 목록과 상세에서 켜고 끄는 `참여 확정 표시`는 사용자가 스스로 남기는 예시 표시이며 주최 측 확정이 아닙니다. 활동 즐겨찾기·조직 저장은 없습니다.
-- QR: 예시 QR 표시·확대, 명함 선택·신규 생성·같은 ID 편집, 공유 메뉴, 예시 스캔 → 공개 카드. 카메라·파일·클립보드·공유 API는 사용하지 않습니다.
-- 받은 명함: 이름·직무·활동 검색, 위아래 카드 넘김, 미교환/상호 교환 그룹, 상세 → 내 명함 선택 → 로컬 교환 상태. 외부 전달은 없습니다.
+- 내 명함(2026-10-18, 명함 공유 기능 삭제): 로그인한 계정의 발행 명함 목록(`GET /v1/cards`, `pages/cards/MyCardsPage`·`app/MyCardsViewModel`), 새 명함 만들기, 항목을 누르면 같은 꾸밈으로 다시 발행(`CardPublishViewModel.start(prefill)`). QR 표시·OS 공유·스캔·App Links·공유 명함 화면은 없다. 카메라 권한과 zxing·CameraX 의존성도 없앴다.
+- 받은 명함: 계정 지갑(`GET /v1/wallet`)의 명함을 이름·직무로 검색하는 평범한 목록(`pages/wallet`). 항목을 누르면 `WalletCardPage`로 명함을 본다. 활동별 묶음·공유 저장은 없다. 새로 받는 경로는 서버 공유 기능 삭제로 지금은 없다.
 - 내 프로필: 비로그인 안내 → 예시 프로필, 이름·소개·연락처·활동 편집. 계정 연결이나 인증은 없습니다.
 - 겹치는 시간: 고정 바쁜 시간 `2026-10-24 14:00~15:00 Asia/Seoul`을 비교합니다. 컨퍼런스는 1시간 겹치고 캠프·밋업은 겹침이 없습니다. OS 권한을 요청하지 않습니다.
 
@@ -31,16 +31,15 @@ HTTP/Repository/Room/Keystore/기기 캘린더/WebView·인증 실행 코드와 
 
 계약 `shared/contracts/native-v1.md`의 "연결 설정"을 따른다. 코드에는 운영 도메인을 두지 않는다.
 
-- 환경값 `DEARBY_API_ORIGIN`, `DEARBY_WEB_ORIGIN`(없으면 같은 이름의 Gradle 속성 `-P`)이 `BuildConfig.API_ORIGIN`·`WEB_ORIGIN`과 manifest placeholder `dearbyWebHost`로 들어간다.
-- release: 빌드가 실제로 돌 때(`preReleaseBuild`)만 두 값이 `https://<도메인>`(IP·포트·경로·대문자 없음)인지 검사하고, 아니면 실패한다. debug 빌드·단위 테스트·Studio sync에는 영향이 없다.
-- debug: 값이 없으면 에뮬레이터 호스트의 `http://10.0.2.2:3000`(API)과 `http://10.0.2.2:3210`(웹)을 쓴다.
-- App Links: `MainActivity`에 `https://${dearbyWebHost}/s/` intent filter(`autoVerify`)가 있다. 받은 `<웹 origin>/s/<UUID>`는 `shared/config/AppLinks.kt`가 공유 ID로 바꾼다. 공유 명함 화면은 아직 연결하지 않았고, 링크를 받으면 그 사실만 안내한다. debug의 http origin은 https 전용 App Links와 맞지 않으므로 debug에서는 명시 intent(계측 테스트 `LinkRoutingTest`)로 확인한다. 실제 검증은 `assetlinks.json` 배포(#90·#91) 뒤에만 가능하다.
+- 환경값 `DEARBY_API_ORIGIN`(없으면 같은 이름의 Gradle 속성 `-P`)이 `BuildConfig.API_ORIGIN`으로 들어간다. `DEARBY_WEB_ORIGIN`·`WEB_ORIGIN`·`dearbyWebHost`는 공유 링크 전용이었고 2026-10-18 명함 공유 삭제와 함께 없앴다.
+- release: 빌드가 실제로 돌 때(`preReleaseBuild`)만 값이 `https://<도메인>`(IP·포트·경로·대문자 없음)인지 검사하고, 아니면 실패한다. debug 빌드·단위 테스트·Studio sync에는 영향이 없다.
+- debug: 값이 없으면 에뮬레이터 호스트의 `http://10.0.2.2:3000`을 쓴다.
+- App Links(`/s/*`)와 `shared/config/AppLinks.kt`의 공유 링크 해석은 없다. `AppLinks.kt`에는 애플 로그인 복귀(`dearby://auth/apple`) 해석만 남는다.
 
 ## 시작 화면 (2026-10-14)
 
 - 스플래시: 실행할 때마다 AndroidX SplashScreen(`Theme.Dearby.Starting`)이 흰 배경에 로고(`drawable/splash_logo.xml`, `dearby_logo` 워드마크를 원형 마스크 안에 맞춤)를 보여 주고 바로 `Theme.Dearby`로 넘어간다. 인위적인 지연은 없다.
 - 첫 실행 소개: 새 저장소 `dearby.onboarding`의 `dearby.onboarding.shown`이 없으면 `pages/onboarding/IntroPage`(로고, "패스키로 시작하기", "Apple로 계속하기", "둘러보기")를 띄운다. "패스키로 시작하기"는 기존 로그인 시트(`SignInSheet`·`AccountViewModel`)를 연다. 로그인에 성공하거나 "둘러보기"를 누르면 값을 남기고 탭 화면으로 간다. 시트를 닫거나 실패하면 소개 화면에 남는다. 이미 토큰이 있으면 소개 없이 값만 남긴다. 로그인 없이도 앱을 쓸 수 있다.
-- 소개 중에 받은 `/s/<UUID>` 링크는 소개가 끝난 뒤 열린다.
 
 ## 패스키 로그인 (2026-10-10)
 
@@ -112,5 +111,5 @@ python3 scripts/check-fsd.py --self-test
 - 이력은 단계별 입력(`HistoryFunnelPage`): 조직/활동 → 조직 → 프로그램 → (활동) → 역할 → 기간 → 설명 → 확인. 각 단계는 `ActivityInfoPicker`로 등록된 활동 정보를 검색(`GET /v1/organizations|programs|activities|roles`, 300ms 디바운스)하거나 그대로 적는다(직접 입력 = 승인 대기). 인증자료(`EvidenceFields`)는 저장된 이력에서 사진·PDF를 3개까지 올린다(파일 고르기는 `ProfileRoute`). `verified`가 아니면 "미확인".
 - 명함 만들기(`CardComposerRoute`)에서 꾸민다. `CardDraft.template`은 토큰(`{{profile.name}}`·`{{profile.job}}`·`{{profile.introduction}}`·`{{contact:<id>}}`)이 있는 마크다운이고 서버가 발행할 때 채운다. 본문에 넣은 연락처는 자동 공개, 미승인 이력은 선택 불가. 내용이 바뀌면 "원래대로"가 나타난다.
 - 렌더링 화면 편집(`widgets/card/cardContent/TemplateEditor.kt`): 줄마다 블록 종류(제목 1~3·글·목록·번호 목록)를 골라 서식 그대로 보며 고친다. 데이터 토큰은 값이 채워진 칩으로 보이고(`VisualTransformation`), 토큰이 깨지는 입력은 무시한다(`TokenGuard`). 굵게·링크 표시(`**`, `[](…)`)는 원문대로 두고 "미리보기"(`MarkdownBody`)로 확인한다. "데이터 넣기"는 본문 끝에 토큰을 붙인다.
-- 공유 활동 id는 숫자(`ShareActivity.id: Long`). 400 오류는 ProblemDetail의 `detail`(`AccountException.detail`)을 그대로 보인다. 받은 명함·공유 화면은 새 이력 모델(`CardHistoryState.verified`)과 마크다운 본문(`MarkdownBody`)이다.
-- 아직 없는 것: QR 탭의 "이 명함 고치기"(iOS에는 있음). 실제 서버·기기 동작은 확인하지 않았다.
+- 400 오류는 ProblemDetail의 `detail`(`AccountException.detail`)을 그대로 보인다. 받은 명함 화면은 새 이력 모델(`CardHistoryState.verified`)과 마크다운 본문(`MarkdownBody`)이다.
+- 2026-10-18: 명함 공유(공유 기록·QR·스캔·App Links·공유 저장·활동별 묶음)를 지웠다. 내 명함 탭에서 명함을 고친다. 실제 서버·기기 동작은 확인하지 않았다.

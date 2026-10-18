@@ -5,6 +5,14 @@ struct ContactModel: Identifiable, Equatable {
     let kind: String
     var displayLabel: String
     var value: String
+    /// Phone and email open the phone or mail app; links open only when they are https.
+    var actionURL: URL? {
+        switch kind {
+        case "phone": URL(string: "tel:" + value.filter { $0.isNumber || $0 == "+" })
+        case "email": URL(string: "mailto:" + value)
+        default: URL(string: value).flatMap { $0.scheme == "https" ? $0 : nil }
+        }
+    }
     var symbol: String {
         switch kind {
         case "phone": "phone"

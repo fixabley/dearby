@@ -1,5 +1,3 @@
-import java.net.URI
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -8,11 +6,8 @@ plugins {
 fun connection(name: String) = providers.environmentVariable(name).orElse(providers.gradleProperty(name))
     .orNull?.takeIf { it.isNotBlank() }
 val apiOrigin = connection("DEARBY_API_ORIGIN")
-val webOrigin = connection("DEARBY_WEB_ORIGIN")
-// Debug falls back to the API and web dev servers on the emulator host.
+// Debug falls back to the API dev server on the emulator host.
 val debugApiOrigin = apiOrigin ?: "http://10.0.2.2:3000"
-val debugWebOrigin = webOrigin ?: "http://10.0.2.2:3210"
-fun host(origin: String?) = runCatching { URI(origin!!).host }.getOrNull() ?: "invalid.invalid"
 
 android {
     namespace = "com.dearby.nativeapp"
@@ -27,13 +22,9 @@ android {
     buildTypes {
         debug {
             buildConfigField("String", "API_ORIGIN", "\"$debugApiOrigin\"")
-            buildConfigField("String", "WEB_ORIGIN", "\"$debugWebOrigin\"")
-            manifestPlaceholders["dearbyWebHost"] = host(debugWebOrigin)
         }
         release {
             buildConfigField("String", "API_ORIGIN", "\"${apiOrigin.orEmpty()}\"")
-            buildConfigField("String", "WEB_ORIGIN", "\"${webOrigin.orEmpty()}\"")
-            manifestPlaceholders["dearbyWebHost"] = host(webOrigin)
         }
     }
     buildFeatures { compose = true; buildConfig = true }
@@ -41,7 +32,7 @@ android {
 }
 // Release needs https://<domain> without IP, port, path or upper case; checked only when a release build runs.
 val validateReleaseOrigins by tasks.registering {
-    val origins = mapOf("DEARBY_API_ORIGIN" to apiOrigin, "DEARBY_WEB_ORIGIN" to webOrigin)
+    val origins = mapOf("DEARBY_API_ORIGIN" to apiOrigin)
     doLast {
         val domain = Regex("^https://([a-z0-9]([a-z0-9-]*[a-z0-9])?\\.)+[a-z]([a-z0-9-]*[a-z0-9])?$")
         for ((name, value) in origins) if (value == null || !domain.matches(value))
@@ -57,12 +48,6 @@ dependencies {
     implementation("androidx.core:core-splashscreen:1.2.0")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
-    // #95 실제 QR 공유: 공유 URL을 QR로 그린다(Apache-2.0).
-    implementation("com.google.zxing:core:3.5.3")
-    // #95 받기: in-app QR scanner preview and frames (Apache-2.0); zxing above decodes them.
-    implementation("androidx.camera:camera-camera2:1.5.1")
-    implementation("androidx.camera:camera-lifecycle:1.5.1")
-    implementation("androidx.camera:camera-view:1.5.1")
     // 활동 이미지(`imageUrl`) 표시 (Apache-2.0).
     implementation("io.coil-kt.coil3:coil-compose:3.4.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.4.0")

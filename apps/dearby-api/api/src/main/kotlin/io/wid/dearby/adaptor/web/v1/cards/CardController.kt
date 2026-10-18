@@ -1,17 +1,16 @@
 package io.wid.dearby.adaptor.web.v1.cards
 
 import io.wid.dearby.application.card.CardService
-import io.wid.dearby.application.card.ShareService
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.web.bind.annotation.*
 import java.util.*
 
-// native-v1.md "명함·공유·지갑". GET /v1/cards/{id}는 인증 없이(ApiAccessRules), 나머지는 주인만
+// native-v1.md "명함·지갑". GET /v1/cards/{id}는 인증 없이(ApiAccessRules), 나머지는 주인만
 @RestController
 @RequestMapping("/v1/cards")
-class CardController(private val cards: CardService, private val shares: ShareService) {
+class CardController(private val cards: CardService) {
 
     @GetMapping
     fun list(@AuthenticationPrincipal jwt: Jwt) = CardListResponse(cards.list(userId(jwt)).map { CardResponse.from(it, includeTemplate = true) })
@@ -28,10 +27,6 @@ class CardController(private val cards: CardService, private val shares: ShareSe
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun revoke(@AuthenticationPrincipal jwt: Jwt, @PathVariable id: UUID) = cards.revoke(userId(jwt), id)
 
-    @PostMapping("/{id}/shares")
-    @ResponseStatus(HttpStatus.CREATED)
-    fun share(@AuthenticationPrincipal jwt: Jwt, @PathVariable id: UUID, @RequestBody request: ShareCreateRequest) =
-        CardShareResponse.from(shares.create(userId(jwt), id, request.activityIds))
 
     private fun userId(jwt: Jwt): UUID = UUID.fromString(jwt.subject)
 }

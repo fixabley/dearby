@@ -1,7 +1,6 @@
 package io.wid.dearby.application.guest
 
 import io.wid.dearby.application.card.CardRepository
-import io.wid.dearby.application.card.ShareRepository
 import io.wid.dearby.domain.*
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -18,10 +17,10 @@ import javax.crypto.Mac
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-// 웹 비로그인 저장(native-v1.md "웹 비로그인 명함 저장"·"게스트 공유 정보 저장"·"홈 화면 세션 잇기").
+// 웹 비로그인 저장(native-v1.md "웹 비로그인 명함 저장"·"홈 화면 세션 잇기").
 // 세션은 토큰 digest만 저장하고 자동 만료가 없다. 요청 제한은 프로세스 메모리의 1분 창이다
 @Service
-class GuestService(private val guests: GuestRepository, private val cards: CardRepository, private val shares: ShareRepository) {
+class GuestService(private val guests: GuestRepository, private val cards: CardRepository) {
 
     // 1분 창 카운터(재시작 때 초기화). forwarded IP는 믿지 않는다
     private var windowStart = 0L
@@ -48,20 +47,9 @@ class GuestService(private val guests: GuestRepository, private val cards: CardR
         cards.find(cardId) ?: throw NotFoundException("명함을 찾을 수 없습니다", "Card not found for guest: $cardId")
         val (digest, newToken) = sessionOrNew(token)
         val saved = addCard(digest, cardId)
-        return GuestSaveResult(cardId, null, if (saved) "saved" else "alreadySaved", newToken)
+        return GuestSaveResult(cardId, if (saved) "saved" else "alreadySaved", newToken)
     }
 
-    @Transactional
-    fun saveShare(token: String?, shareId: UUID): GuestSaveResult {
-        val share = shares.find(shareId) ?: throw NotFoundException("공유를 찾을 수 없습니다", "Share not found for guest: $shareId")
-        cards.find(share.cardId) ?: throw NotFoundException("공유를 찾을 수 없습니다", "Card revoked for guest share: $shareId")
-        val (digest, newToken) = sessionOrNew(token)
-        addCard(digest, share.cardId)
-        if (guests.hasShare(digest, shareId)) return GuestSaveResult(share.cardId, shareId, "alreadySaved", newToken)
-        if (guests.shareCount(digest, share.cardId) >= MAX_SHARES_PER_CARD) throw ConflictException("이 명함의 공유 기록이 ${MAX_SHARES_PER_CARD}개를 넘었습니다")
-        guests.addShare(digest, share.cardId, shareId, now())
-        return GuestSaveResult(share.cardId, shareId, "saved", newToken)
-    }
 
     // 이미 지웠거나 철회된 참조도 그대로 성공(멱등)
     @Transactional
@@ -148,7 +136,6 @@ class GuestService(private val guests: GuestRepository, private val cards: CardR
         const val MAX_CREATIONS = 60
         const val MAX_SESSIONS = 10_000
         const val MAX_CARDS = 100
-        const val MAX_SHARES_PER_CARD = 20
         val HANDOFF_LIFETIME: Duration = Duration.ofMinutes(10)
         val TOKEN = Regex("^[A-Za-z0-9_-]{43}$")
         val CODE = Regex("^[A-Za-z0-9_-]{43,128}$")

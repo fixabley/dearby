@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     {
       name: "Dearby",
       short_name: "Dearby",
-      description: "공유받은 공개 명함을 이 브라우저에 모아 봐요.",
+      description: "받은 공개 명함을 이 브라우저에 모아 봐요.",
       // Installability only: no service worker, so saved cards are never cached offline.
       start_url: code ? `/saved?handoff=${code}` : "/saved",
       scope: "/",

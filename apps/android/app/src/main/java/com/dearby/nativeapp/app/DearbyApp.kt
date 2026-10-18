@@ -10,45 +10,37 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dearby.nativeapp.pages.qr.ReceivedPhase
-import com.dearby.nativeapp.pages.qr.ReceivedSharePage
-import com.dearby.nativeapp.pages.qr.ReceivedShareState
-import com.dearby.nativeapp.entities.account.model.ScannedLink
+import com.dearby.nativeapp.pages.wallet.WalletCardPage
 import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.activity.applyPrompt.ApplyConfirmationSheet
 import com.dearby.nativeapp.widgets.card.cardContent.CardState
 
 private enum class Tab(val label: String, val icon: ImageVector) {
     Discovery("발견", Icons.Outlined.Explore), Mine("내 활동", Icons.Outlined.EventAvailable),
-    Qr("QR", Icons.Outlined.QrCodeScanner), Wallet("받은 명함", Icons.Outlined.Badge), Profile("내 프로필", Icons.Outlined.PersonOutline),
+    Cards("내 명함", Icons.Outlined.ContactPage), Wallet("받은 명함", Icons.Outlined.Badge), Profile("내 프로필", Icons.Outlined.PersonOutline),
 }
 private sealed interface CardRoute {
     data class Detail(val card: CardState) : CardRoute
     data object Composer : CardRoute
-    data class Received(val link: ScannedLink) : CardRoute
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, qrShare: QrShareViewModel, wallet: WalletViewModel, profile: ProfileViewModel, incoming: ScannedLink? = null, opened: () -> Unit = {}) {
+@Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, myCards: MyCardsViewModel, wallet: WalletViewModel, profile: ProfileViewModel) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     var route by remember { mutableStateOf<CardRoute?>(null) }
     var activityDetail by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<String?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
-    BackHandler(route != null && route != CardRoute.Composer && route !is CardRoute.Received) { route = null }
+    BackHandler(route is CardRoute.Detail) { route = null }
     val compose = { publish.start(); route = CardRoute.Composer }
-    // A /s/<UUID> App Link opens the shared card over whatever is showing.
-    LaunchedEffect(incoming) { incoming?.let { route = CardRoute.Received(it); opened() } }
     val profileState by profile.state.collectAsStateWithLifecycle()
     Surface(Modifier.fillMaxSize()) {
         Column(Modifier.statusBarsPadding().navigationBarsPadding()) {
             Box(Modifier.weight(1f)) {
                 when (val screen = route) {
-                    is CardRoute.Detail -> ReceivedSharePage(ReceivedShareState(ReceivedPhase.LOADED, screen.card), { route = null }, {}, { openContact(context, it) })
+                    is CardRoute.Detail -> WalletCardPage(screen.card, { route = null }) { openContact(context, it) }
                     CardRoute.Composer -> CardComposerRoute(publish, account) { route = null }
-                    is CardRoute.Received -> ReceivedShareRoute(screen.link, account) { route = null }
                     null -> when (tab) {
                         Tab.Discovery, Tab.Mine -> Column {
                             if (!activityDetail) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -56,7 +48,7 @@ private sealed interface CardRoute {
                             }
                             key(tab) { ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }) { activityDetail = it } }
                         }
-                        Tab.Qr -> QrRoute(qrShare, activityModel, compose) { route = CardRoute.Received(it) }
+                        Tab.Cards -> MyCardsRoute(myCards, compose) { card -> publish.start(card); route = CardRoute.Composer }
                         Tab.Wallet -> WalletRoute(wallet, account) { route = CardRoute.Detail(it) }
                         Tab.Profile -> ProfileRoute(profile, account, compose)
                     }
@@ -64,10 +56,10 @@ private sealed interface CardRoute {
             }
             // The first-profile funnel (never saved) takes the whole screen, like Toss: no tab bar until the profile exists.
             val settingUp = tab == Tab.Profile && profileState.settingUp
+            // Stock Material 3 navigation bar with the theme's defaults (2026-10-18 user decision: no custom styling). The Column already pads the system bar.
             if (route == null && !activityDetail && !settingUp) {
-                HorizontalDivider()
-                NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp, windowInsets = WindowInsets(0, 0, 0, 0)) {
-                    Tab.entries.forEach { item -> NavigationBarItem(selected = tab == item, onClick = { tab = item }, icon = { Icon(item.icon, null) }, label = { Text(item.label, fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Teal, selectedTextColor = Teal, indicatorColor = Mint, unselectedIconColor = Quiet, unselectedTextColor = Quiet)) }
+                NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
+                    Tab.entries.forEach { item -> NavigationBarItem(selected = tab == item, onClick = { tab = item }, icon = { Icon(item.icon, null) }, label = { Text(item.label) }) }
                 }
             }
         }

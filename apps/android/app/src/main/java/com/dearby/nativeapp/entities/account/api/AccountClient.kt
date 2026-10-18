@@ -5,10 +5,7 @@ import com.dearby.nativeapp.entities.account.model.ActivityInfoPage
 import com.dearby.nativeapp.entities.account.model.EvidenceMeta
 import com.dearby.nativeapp.entities.account.model.AccountSession
 import com.dearby.nativeapp.entities.account.model.PublishedCard
-import com.dearby.nativeapp.entities.account.model.CardShare
 import com.dearby.nativeapp.entities.account.model.toCardList
-import com.dearby.nativeapp.entities.account.model.toCardShare
-import com.dearby.nativeapp.entities.account.model.toReceivedShare
 import com.dearby.nativeapp.entities.account.model.toWallet
 import com.dearby.nativeapp.entities.account.model.toJson
 import com.dearby.nativeapp.entities.account.model.toProfile
@@ -28,8 +25,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 /** [BAD_REQUEST]: 400 with the server's user-facing ProblemDetail `detail` in [AccountException.detail] (contact rules,
- *  unapproved history, own card, …); [CONFLICT]: 409 — the profile changed elsewhere (`If-Match`) or a card already holds
- *  the most share links; [TURNED_OFF]: 503, e.g. Apple sign-in without `APPLE_CLIENT_IDS` on the server.
+ *  unapproved history, …); [CONFLICT]: 409 — the profile changed elsewhere (`If-Match`); [TURNED_OFF]: 503, e.g. Apple sign-in without `APPLE_CLIENT_IDS` on the server.
  *  Network failures and other statuses are [UNAVAILABLE]. */
 enum class AccountError { UNAUTHORIZED, INVALID_INPUT, NOT_FOUND, CONFLICT, RATE_LIMITED, BAD_REQUEST, TURNED_OFF, UNAVAILABLE }
 class AccountException(val error: AccountError, val detail: String? = null) : Exception(error.name)
@@ -127,16 +123,8 @@ class AccountClient(private val api: String, private val transport: Transport = 
             .put("contactIds", JSONArray(contactIds)).put("historyIds", JSONArray(historyIds)), session).toPublishedCard()
     /** Your non-withdrawn cards in creation order, so the newest is last. */
     suspend fun cards(session: AccountSession) = send("GET", "cards", null, session).toCardList()
-    suspend fun share(cardId: String, activityIds: List<Long>, session: AccountSession): CardShare =
-        send("POST", "cards/$cardId/shares", JSONObject().put("activityIds", JSONArray(activityIds)), session).toCardShare()
-    /** Saves a received share to the account's wallet (contract #141); returns `saved` or `alreadySaved`. */
-    // An explicit {}: HttpURLConnection otherwise sends a PUT body the API rejects.
-    suspend fun saveShare(id: String, session: AccountSession) = send("PUT", "wallet/shares/$id", JSONObject(), session).getString("status")
+    /** The account's received cards (`GET /v1/wallet`). */
     suspend fun wallet(session: AccountSession) = send("GET", "wallet", null, session).toWallet()
-    /** Public: a share and its card, for links and scanned QR codes. No session. */
-    suspend fun publicShare(id: String) = send("GET", "shares/$id", null).toReceivedShare()
-    /** Public: a card by ID, for legacy `dearby://card/<UUID>` codes. No session. */
-    suspend fun publicCard(id: String) = send("GET", "cards/$id", null).toPublishedCard()
 
     private fun passkeyBody(challengeId: String, credential: String) = JSONObject().put("challengeId", challengeId).put("credential", JSONObject(credential))
 

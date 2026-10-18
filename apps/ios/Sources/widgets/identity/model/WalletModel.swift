@@ -1,18 +1,18 @@
 import Foundation
 import Observation
 
-/// 받은 명함: the account's wallet (`GET /v1/wallet`, contract #141), grouped by the activities its shares carried.
+/// 받은 명함: the account's wallet (`GET /v1/wallet`), a plain list of saved cards.
 /// Signed out, there is nothing to show; the cards live with the account, not on the device.
 @MainActor @Observable final class WalletModel {
     enum Phase: Equatable { case signedOut, loading, loaded, failed }
     private(set) var phase = Phase.loading
-    private(set) var wallet = Wallet(items: [], shares: [])
+    private(set) var wallet = Wallet(items: [])
     let account: AccountViewModel
     init(account: AccountViewModel) { self.account = account }
 
     func load() async {
         guard account.session != nil else {
-            wallet = Wallet(items: [], shares: [])  // signed out or deleted: drop the previous account's cards
+            wallet = Wallet(items: [])  // signed out or deleted: drop the previous account's cards
             phase = .signedOut
             return
         }
@@ -26,26 +26,16 @@ import Observation
             phase = .failed
         }
     }
-    var cards: [CardModel] { wallet.items.map(\.card.cardModel) }
-    /// Same rule as the web `/saved`: a card sits under every activity its shares carried; groups follow the order
-    /// activities were first saved, and cards without any go to the last "활동 없음" group.
-    func groups(query: String, collapsed: Set<String>) -> [WalletGroup] {
-        let ordered = wallet.shares.sorted { $0.savedAt < $1.savedAt }
-        var activities: [(id: String, title: String)] = []
-        var byCard: [String: [String]] = [:]
-        for share in ordered {
-            for activity in share.activities {
-                let id = String(activity.id)
-                if !activities.contains(where: { $0.id == id }) { activities.append((id, activity.title)) }
-                if !(byCard[share.cardId] ?? []).contains(id) { byCard[share.cardId, default: []].append(id) }
-            }
+    /// Cards whose name, job, title, body or history titles contain every search term.
+    func cards(query: String) -> [CardModel] {
+        wallet.items.map(\.card.cardModel).filter { card in
+            SearchQuery.matches(query, fields: [card.profileName, card.job, card.name, card.introduction, card.description] + card.histories.map(\.title))
         }
-        return WalletGroup.make(cards: cards, activityIDs: byCard, activities: activities, query: query, collapsed: collapsed)
     }
 }
 
 extension PublishedCard {
-    /// The shared card shown with the identity components.
+    /// The saved or own card shown with the identity components.
     var cardModel: CardModel {
         CardModel(id: id, name: name, profileName: profileName, job: job, introduction: introduction ?? "", description: description,
                   contacts: contacts.map { ContactModel(id: $0.id, kind: $0.kind, displayLabel: $0.label, value: $0.value) },

@@ -6,7 +6,7 @@
 
 ## 2026-10-04 prototype assets
 
-ConferencePhoto/CampPhoto/MeetupPhoto/ExampleQR는 조율 세션 소유
-`shared/assets/prototype/{conference.png,camp.png,meetup.png,qr-example.png}`의 변경 없는 사본입니다.
-생성 prompt/출처/QR 검증은 원본 폴더 README를 따릅니다. ExampleQR은 https://example.com만 포함합니다.
+ConferencePhoto/CampPhoto/MeetupPhoto는 조율 세션 소유
+`shared/assets/prototype/{conference.png,camp.png,meetup.png}`의 변경 없는 사본입니다.
+생성 prompt/출처는 원본 폴더 README를 따릅니다. (ExampleQR 사본은 명함 공유 제거로 더 쓰지 않습니다.)
 기존 DearbyLogo/GitHubMark/AppIcon은 보존했습니다. 화면 전체 screenshot을 UI로 사용하지 않습니다.

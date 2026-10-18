@@ -21,7 +21,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-// native-v1.md "명함·공유·지갑"과 "템플릿": 발행 스냅샷, 공개 조회, 공유, 지갑 저장
+// native-v1.md "명함·지갑"과 "템플릿": 발행 스냅샷, 공개 조회, 철회
 @SpringBootTest
 @AutoConfigureMockMvc
 class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient, @Autowired val profiles: ProfileRepository) {
@@ -56,8 +56,6 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
     private fun publish(user: UUID, profile: Profile, template: String = "# {{profile.name}}\n{{contact:${profile.contacts[0].id}}} / {{contact:${profile.contacts[1].id}}}", contactIds: List<UUID> = listOf(profile.contacts[0].id), historyIds: List<UUID> = listOf(profile.histories[0].id)): JsonNode =
         read(post(user, "/v1/cards", """{"name":"내 명함","description":"설명","template":${json.writeValueAsString(template)},"contactIds":${json.writeValueAsString(contactIds)},"historyIds":${json.writeValueAsString(historyIds)}}""").andExpect { status { isCreated() } })
 
-    private fun letswiftActivity(): Long = jdbc.sql("select id from activities where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").query(Long::class.java).single()
-
     @Test
     fun `발행은 고른 연락처·승인된 이력만 복사하고 템플릿을 채우며, 공개 조회에는 template이 없다`() {
         val (user, profile) = userWithProfile("발행자")
@@ -90,58 +88,32 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
     }
 
     @Test
-    fun `공유는 게시된 활동만 10개까지 담고, 철회된 명함의 공유는 404이며 남의 명함은 403`() {
-        val (user, profile) = userWithProfile("공유자")
+    fun `철회는 주인만 할 수 있고, 철회된 명함은 공개 조회에서 404다`() {
+        val (user, profile) = userWithProfile("주인")
         val (other, _) = userWithProfile("남")
         val cardId = publish(user, profile)["id"].asString()
-        val activity = letswiftActivity()
-        val share = read(post(user, "/v1/cards/$cardId/shares", """{"activityIds":[$activity]}""").andExpect { status { isCreated() } })
-        assertEquals(listOf(cardId, activity), listOf(share["cardId"].asString(), share["activities"][0]["id"].asLong()))
-        assertTrue(share["activities"][0]["title"].asString().isNotEmpty())
-        post(user, "/v1/cards/$cardId/shares", """{"activityIds":[999999]}""").andExpect { status { isBadRequest() } }
-        post(user, "/v1/cards/$cardId/shares", """{"activityIds":[${(1..11).joinToString(",") { "$activity" }}]}""").andExpect { status { isBadRequest() } }
-        post(other, "/v1/cards/$cardId/shares", """{"activityIds":[]}""").andExpect { status { isForbidden() } }
-
-        val page = read(mvc.get("/v1/shares/${share["id"].asString()}").andExpect { status { isOk() } })
-        assertEquals(cardId, page["card"]["id"].asString())
-        assertFalse(page["card"].has("template"))
-        mvc.get("/v1/shares/${UUID.randomUUID()}").andExpect { status { isNotFound() } }
-
         mvc.delete("/v1/cards/$cardId") { asUser(other) }.andExpect { status { isForbidden() } }
         mvc.delete("/v1/cards/$cardId") { asUser(user) }.andExpect { status { isNoContent() } }
         mvc.get("/v1/cards/$cardId").andExpect { status { isNotFound() } }
-        mvc.get("/v1/shares/${share["id"].asString()}").andExpect { status { isNotFound() } }
         mvc.delete("/v1/cards/$cardId") { asUser(user) }.andExpect { status { isNotFound() } }
     }
 
     @Test
-    fun `지갑 저장은 명함마다 한 번 받고 공유 기록을 20개까지 연결하며, 내 명함은 400`() {
+    fun `지갑 목록은 받은 명함만 보여 주고 철회된 명함은 빠진다`() {
         val (owner, profile) = userWithProfile("주인")
         val (receiver, _) = userWithProfile("받는이")
         val cardId = publish(owner, profile)["id"].asString()
-        fun share(): String = read(post(owner, "/v1/cards/$cardId/shares", """{"activityIds":[]}""").andExpect { status { isCreated() } })["id"].asString()
-        val first = share()
-        val saved = read(mvc.put("/v1/wallet/shares/$first") { asUser(receiver) }.andExpect { status { isCreated() } })
-        assertEquals(listOf("saved", cardId), listOf(saved["status"].asString(), saved["cardId"].asString()))
-        assertEquals("alreadySaved", read(mvc.put("/v1/wallet/shares/$first") { asUser(receiver) }.andExpect { status { isOk() } })["status"].asString())
-        assertEquals("saved", read(mvc.put("/v1/wallet/shares/${share()}") { asUser(receiver) }.andExpect { status { isOk() } })["status"].asString())
-        mvc.put("/v1/wallet/shares/$first") { asUser(owner) }.andExpect { status { isBadRequest() } }
-        mvc.put("/v1/wallet/shares/${UUID.randomUUID()}") { asUser(receiver) }.andExpect { status { isNotFound() } }
-        mvc.put("/v1/wallet/shares/$first").andExpect { status { isUnauthorized() } }
+        jdbc.sql("insert into receipts (id, recipient_id, card_id, context, received_at) values (?, ?, ?, '{\"activityId\":null,\"label\":null}', now())").params(UUID.randomUUID(), receiver, UUID.fromString(cardId)).update()
+        mvc.get("/v1/wallet").andExpect { status { isUnauthorized() } }
 
         val wallet = read(mvc.get("/v1/wallet") { asUser(receiver) }.andExpect { status { isOk() } })
         assertEquals(1, wallet["items"].size())
         assertEquals(listOf(cardId, false), listOf(wallet["items"][0]["card"]["id"].asString(), wallet["items"][0]["reciprocal"].asBoolean()))
         assertFalse(wallet["items"][0]["card"].has("template"))
-        assertEquals(2, wallet["shares"].size())
-        assertEquals(saved["receiptId"].asString(), wallet["shares"][0]["receiptId"].asString())
-
-        repeat(18) { mvc.put("/v1/wallet/shares/${share()}") { asUser(receiver) }.andExpect { status { isOk() } } }
-        mvc.put("/v1/wallet/shares/${share()}") { asUser(receiver) }.andExpect { status { isConflict() } }
+        assertFalse(wallet.has("shares"))
 
         // 철회된 명함은 지갑에서 빠진다
         mvc.delete("/v1/cards/$cardId") { asUser(owner) }.andExpect { status { isNoContent() } }
-        val after = read(mvc.get("/v1/wallet") { asUser(receiver) })
-        assertEquals(listOf(0, 0), listOf(after["items"].size(), after["shares"].size()))
+        assertEquals(0, read(mvc.get("/v1/wallet") { asUser(receiver) })["items"].size())
     }
 }

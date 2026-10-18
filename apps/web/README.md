@@ -1,6 +1,6 @@
 # Dearby public web
 
-`apps/web` is a standalone Next.js app for `dearby.wid.io.kr`. It reads published public data from the API and stores shared cards in a server guest wallet. No authentication, card issuing, resume editing, PDF, Supabase client, calendar integration, or production seed data is included.
+`apps/web` is a standalone Next.js app for `dearby.wid.io.kr`. It reads published public data from the API and stores received public cards in a server guest wallet. No authentication, card issuing, resume editing, PDF, calendar integration, or production seed data is included.
 
 ## Run and verify
 
@@ -23,11 +23,10 @@ All automated tests were removed on 2026-10-06 at the user's request; they are b
 - `/`: activity search over `GET /v1/activities` (contract "활동 조회 — 2026-10-14"). The query lives in the URL (`/?q=`) so results can be shared; the API pages by id with `nextCursor` and a "더 보기" button appends the next page. Every activity is listed with a status badge from its `application` period (모집 예정/모집 중/모집 마감/모집 여부 확인 필요); no participation filter. Empty (no activities vs. no match for `q`) and failure states are distinct, with retry.
 - `/activities/:id`: numeric activity id, read from `GET /v1/activities/:id`; 404 shows not-found. Apply/official links open `officialUrl` (https only). Opening a link never claims application completion. Calendar comparison is explicitly unavailable in the browser.
 - `/cards/:id`: public Card projection: name/job/introduction, selected contacts and activity history. Revoked/missing API 404 becomes an unavailable-card screen. Invalid IDs never reach upstream. No private profile fetch.
-- `/s/:shareId`: a shared card with the activities its sender chose (not proof of participation). One button saves via PUT `/api/guest/shares/:id`, then the list is re-read to confirm the cookie, the "이 브라우저에만 저장됐어요" notice replaces the button and focus moves to "저장한 명함 보기". Revoked/missing shares and malformed IDs show the unavailable-card screen. Known in-app browsers (`src/lib/in-app-browser.ts`) get an external-browser notice; saving is never blocked. The optional home-screen prompt after saving is added with the install PR (#87).
 - `/saved`: this browser's public saved cards. No-cookie visits return an empty list without creating a database session.
-- `/api/[...path]`: fixed method/path allowlist for activity search (only validated `q`, `cursor`, `size` are forwarded; invalid values return 422), a single activity by numeric id, single public card and guest wallet only. Private profiles, owner card lists, wallet/auth/publishing endpoints are inaccessible through this proxy Card shares (contract "명함 공유 기록과 게스트 공유 정보 저장"): GET `/api/shares/:id` (share must point at the returned card) and PUT `/api/guest/shares/:id` (same Origin/header/body/cookie rules as card saves; the response echoes the share ID). Creating shares (`POST /v1/cards/:id/shares`) is not proxied. The guest list adds `shares`, defaulting to empty against an API without share records. `src/lib/saved-groups.ts` groups saved cards by shared activity for `/saved`, in the order activities were first saved, with `활동 없음` last. The `/s/:shareId` and `/saved` screens come after the web layer split.
+- `/api/[...path]`: fixed method/path allowlist for activity search (only validated `q`, `cursor`, `size` are forwarded; invalid values return 422), a single activity by numeric id, single public card and guest wallet only. Private profiles, owner card lists, wallet/auth/publishing endpoints are inaccessible through this proxy.
 
-Zod validates public DTOs and strips extra fields before returning JSON. React escapes all text. External links permit only http(s), no credentials; contact schemes are explicit. API responses use no-store, private, and Vary: Cookie/Origin. Browser calls never include a Supabase key or upstream URL.
+Zod validates public DTOs and strips extra fields before returning JSON. React escapes all text. External links permit only http(s), no credentials; contact schemes are explicit. API responses use no-store, private, and Vary: Cookie/Origin. Browser calls never include an upstream URL or server secret.
 
 ## Home-screen web app
 
@@ -41,10 +40,6 @@ iOS home-screen cookie separation, checked 2026-10-06 on the iOS 26.5 simulator 
 ## Home-screen session handoff
 
 Contract "홈 화면 세션 잇기": the iOS home-screen app starts with an empty cookie jar (see above), so `/manifest.webmanifest` is built per request (`private, no-store`, `Vary: Cookie`). With a valid guest cookie and at least one saved card it asks the API (`POST /v1/guest/handoffs`) for a one-time code and sets `start_url` to `/saved?handoff=<code>`; otherwise `/saved`. `src/proxy.ts` handles `/saved?handoff=`: only without a guest cookie it redeems the code (`POST /v1/guest/handoffs/redeem`) and sets the same session cookie, and always 303-redirects to `/saved` without the query (`Referrer-Policy: no-referrer`, the code is never logged by this app). Both share `src/lib/guest-upstream.ts` with the API proxy. Checked 2026-10-06 against the test API double on the iOS 26.5 simulator: a card saved in Safari appeared on the first launch of the home-screen app. Deployment note: platform request logs may still record the query and need redaction there.
-
-## App link association
-
-`/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` declare shared-card links (`/s/*`) for the iOS and Android apps. Values come only from server env (`DEARBY_APPLE_TEAM_ID`, `DEARBY_IOS_BUNDLE_IDS`, `DEARBY_ANDROID_PACKAGE`, `DEARBY_ANDROID_CERT_SHA256`; see `.env.example`). Each file returns 404 until its values are set and valid, and is served as `application/json` without redirects, read per request. Android path scoping lives in the app's intent filter because Digital Asset Links has no paths.
 
 ## Guest protocol (root/API agreed 2026-09-29)
 
@@ -76,10 +71,10 @@ Web Locks serialize mutations across tabs in the same browser origin. Unsupporte
 
 ## Visual reference
 
-Reuse `docs/design/native-visual-contract.md` and approved discovery/shared-card/detail images: white/teal, original logo, mint cards, simple dividers, history timeline, 52px CTA. `public/logo-teal.png` is an unchanged copy of the approved logo. Activities show `imageUrl` (https only) when present; otherwise an honest calendar placeholder; no stock/mock production activities. Two web navigation destinations reflect this task's scope, not the native app's full tab contract.
+Reuse `docs/design/native-visual-contract.md` and approved discovery/card/detail images: white/teal, original logo, mint cards, simple dividers, history timeline, 52px CTA. `public/logo-teal.png` is an unchanged copy of the approved logo. Activities show `imageUrl` (https only) when present; otherwise an honest calendar placeholder; no stock/mock production activities. Two web navigation destinations reflect this task's scope, not the native app's full tab contract.
 
 ## 프로필·명함 v2 (2026-10-16)
 
 - 명함 `introduction`은 서버가 템플릿을 채운 마크다운이다. `src/lib/markdown.tsx`가 계약의 부분집합(제목 #~###, 굵게, 기울임, 목록, 번호 목록, 링크 https·mailto·tel, 줄바꿈)만 React 요소로 그린다. 원시 HTML은 글자로 보이고 허용하지 않는 링크는 글자로 남는다. 외부 라이브러리는 쓰지 않는다.
 - 이력은 조직 → 프로그램 → 활동 이름과 역할, 기간(`2026.03 – 2026.06` / `진행 중`)을 보이고, `verification`이 `verified`가 아니면 "미확인" 배지를 붙인다.
-- 공유 활동 id는 숫자다(`sharedActivity`). 웹 비로그인 저장(`/v1/guest/*`)은 서버 4단계 전까지 실패하며 명함은 그대로 보인다.
+- 웹 비로그인 저장(`/v1/guest/*`)은 서버 4단계 전까지 실패하며 명함은 그대로 보인다.

@@ -2,12 +2,12 @@ import { type Card, type History, contactHref } from "@/lib/models";
 import { Markdown } from "@/lib/markdown";
 import { Icon } from "@/shared/ui/icon";
 
-/** 공개 명함 본문: 이름·직무·소개, 공개 연락처, 활동 이력. `/cards/:id`와 공유 페이지가 함께 쓴다. */
+/** 공개 명함 본문: 이름·직무·소개, 공개 연락처, 활동 이력. `/cards/:id`가 쓴다. */
 export function PublicCardBody({ card }: { card: Card }) {
   return (
     <>
       <div className="resume-heading">
-        <p className="eyebrow">공유받은 공개 명함 · 이력서</p>
+        <p className="eyebrow">공개 명함 · 이력서</p>
         <div className="person">
           <span className="avatar" aria-hidden="true">
             {Array.from(card.profileName)[0] || <Icon name="card" />}
