@@ -24,4 +24,5 @@ data class ActivityCuration(
     val freshness: Freshness,
     val sourceNote: String, // 안내 문구
     val inheritedFields: List<String> = emptyList(), // 이전 기수에서 가져온 필드 이름(admin-v1.md "이전 기수 정보 자동완성")
+    val curatedFields: List<String> = emptyList(), // 어드민이 고친 필드 이름. 수집기는 이 필드만 덮어쓰지 않는다(admin-v1.md "운영자 지정 필드")
 )

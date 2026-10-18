@@ -133,6 +133,16 @@ class CollectionJobTest(
 
         run("2026-10-20") // 같은 날짜를 다시 실행해도 수집하지 않는다
         assertEquals(1, runCount())
+
+        // 운영자 지정 필드(admin-v1.md): curated_fields에 있는 필드만 지키고, 전에 수집·가져온 값은 다시 수집하면 새 값으로 갱신한다
+        jdbc.sql("update activities set curated_fields = '[\"eligibility\",\"nameEn\"]'::jsonb, name_en = 'Curated EN', eligibility = '{\"op\":\"all\",\"items\":[{\"field\":\"나이\",\"fieldEn\":\"age\",\"from\":30}]}'::jsonb, description = '옛 설명', audience = '옛 대상', inherited_fields = '[]'::jsonb where name = ?")
+            .param("Let'Swift 2026 컨퍼런스").update()
+        assertEquals(BatchStatus.COMPLETED, run("2026-10-21").status)
+        assertEquals(2, runCount())
+        assertEquals(
+            listOf("Curated EN|본행사|Swift 개발자|30|[\"audience\"]"),
+            jdbc.sql("select name_en || '|' || description || '|' || audience || '|' || (eligibility->'items'->0->>'from') || '|' || inherited_fields::text from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list(),
+        )
     }
 
     @Test

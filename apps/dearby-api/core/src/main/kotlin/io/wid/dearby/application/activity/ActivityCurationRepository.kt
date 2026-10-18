@@ -14,8 +14,9 @@ interface ActivityCurationRepository {
     // 바뀐 행이 없으면(활동 없음) false
     fun updatePublicationStatus(activityId: Id, status: PublicationStatus): Boolean
 
-    // 관리자가 고친 한글·영문 이름과 설명. 바뀐 행이 없으면(활동 없음) false
-    fun updateTexts(activityId: Id, name: String, nameEn: String?, description: String, descriptionEn: String?): Boolean
+    // 관리자가 고친 한글·영문 이름과 설명. touched는 요청에 실제로 있던 필드 이름(name·nameEn·description·descriptionEn)으로, 운영자 지정 필드에 남긴다.
+    // 바뀐 행이 없으면(활동 없음) false
+    fun updateTexts(activityId: Id, name: String, nameEn: String?, description: String, descriptionEn: String?, touched: Set<String>): Boolean
 
     // 관리자가 고친 대상자 조건(null이면 지운다). 검색용 펼친 조건도 함께 다시 쓴다. 바뀐 행이 없으면(활동 없음) false
     fun updateEligibility(activityId: Id, eligibility: EligibilityGroup?): Boolean
