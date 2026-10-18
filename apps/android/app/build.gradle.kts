@@ -6,6 +6,8 @@ plugins {
 fun connection(name: String) = providers.environmentVariable(name).orElse(providers.gradleProperty(name))
     .orNull?.takeIf { it.isNotBlank() }
 val apiOrigin = connection("DEARBY_API_ORIGIN")
+// Where the public card pages live; the 내 명함 QR encodes `<web origin>/cards/<id>` (contract "명함 교환").
+val webOrigin = connection("DEARBY_WEB_ORIGIN") ?: "https://dearby.wid.io.kr"
 // Debug falls back to the API dev server on the emulator host.
 val debugApiOrigin = apiOrigin ?: "http://10.0.2.2:3000"
 
@@ -22,9 +24,11 @@ android {
     buildTypes {
         debug {
             buildConfigField("String", "API_ORIGIN", "\"$debugApiOrigin\"")
+            buildConfigField("String", "WEB_ORIGIN", "\"$webOrigin\"")
         }
         release {
             buildConfigField("String", "API_ORIGIN", "\"${apiOrigin.orEmpty()}\"")
+            buildConfigField("String", "WEB_ORIGIN", "\"$webOrigin\"")
         }
     }
     buildFeatures { compose = true; buildConfig = true }
@@ -32,7 +36,7 @@ android {
 }
 // Release needs https://<domain> without IP, port, path or upper case; checked only when a release build runs.
 val validateReleaseOrigins by tasks.registering {
-    val origins = mapOf("DEARBY_API_ORIGIN" to apiOrigin)
+    val origins = mapOf("DEARBY_API_ORIGIN" to apiOrigin, "DEARBY_WEB_ORIGIN" to webOrigin)
     doLast {
         val domain = Regex("^https://([a-z0-9]([a-z0-9-]*[a-z0-9])?\\.)+[a-z]([a-z0-9-]*[a-z0-9])?$")
         for ((name, value) in origins) if (value == null || !domain.matches(value))
@@ -56,6 +60,8 @@ dependencies {
     implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
     // 애플 로그인(계약 "애플 로그인", 웹 방식): Apple's page opens in a Custom Tab (Apache-2.0).
     implementation("androidx.browser:browser:1.10.0")
+    // QR encoding only for 내 명함 QR 보이기 (contract "명함 교환"); no camera, no scanning.
+    implementation("com.google.zxing:core:3.5.3")
     debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.10.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")

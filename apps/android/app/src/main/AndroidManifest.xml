@@ -18,6 +18,13 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="dearby" android:host="auth" android:path="/google"/>
             </intent-filter>
+            <!-- 명함 교환 (contract "명함 교환"): the web card page's "Dearby 앱에 저장" opens dearby://cards/<cardId>?activity=<n>. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="dearby" android:host="cards" android:pathPrefix="/"/>
+            </intent-filter>
         </activity>
     </application>
 </manifest>

@@ -28,3 +28,22 @@ fun authRedirect(link: String): AuthRedirect? = runCatching {
         else -> null
     }
 }.getOrNull()
+
+/** A received card link (contract "명함 교환"): `dearby://cards/<cardId>?activity=<n>`; [activityId] is the activity's numeric id or null. */
+data class CardLink(val cardId: String, val activityId: Long?)
+
+/** Exactly `dearby://cards/<UUID>` with an optional numeric `activity`; anything else is not a card link. */
+fun cardLink(link: String): CardLink? = runCatching {
+    val uri = URI(link)
+    if (uri.scheme != "dearby" || uri.rawAuthority != "cards" || uri.rawFragment != null) return null
+    val id = uri.rawPath.removePrefix("/").takeIf { it.isNotEmpty() && '/' !in it } ?: return null
+    val cardId = UUID.fromString(id).toString().takeIf { it.equals(id, ignoreCase = true) } ?: return null
+    val activity = uri.rawQuery?.split('&')?.firstNotNullOfOrNull { pair ->
+        pair.split('=', limit = 2).takeIf { it.size == 2 && it[0] == "activity" }?.get(1)?.toLongOrNull()
+    }
+    CardLink(cardId, activity)
+}.getOrNull()
+
+/** What the 내 명함 QR encodes: the public card page, with the activity the card is handed out at when there is one. */
+fun cardQrUrl(webOrigin: String, cardId: String, activityId: String?): String =
+    "${webOrigin.trimEnd('/')}/cards/$cardId" + (activityId?.let { "?activity=$it" } ?: "")

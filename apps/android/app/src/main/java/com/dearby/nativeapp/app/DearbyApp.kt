@@ -11,17 +11,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dearby.nativeapp.pages.wallet.WalletCardPage
 import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.activity.applyPrompt.ApplyConfirmationSheet
-import com.dearby.nativeapp.widgets.card.cardContent.CardState
+import com.dearby.nativeapp.entities.account.model.PublishedCard
 
 private enum class Tab(val label: String, val icon: ImageVector) {
     Discovery("발견", Icons.Outlined.Explore), Mine("내 활동", Icons.Outlined.EventAvailable),
     Cards("내 명함", Icons.Outlined.ContactPage), Wallet("받은 명함", Icons.Outlined.Badge), Profile("내 프로필", Icons.Outlined.PersonOutline),
 }
 private sealed interface CardRoute {
-    data class Detail(val card: CardState) : CardRoute
+    /** A received card, by receipt id, so 내 명함도 건네기 shows the updated state. */
+    data class Detail(val id: String) : CardRoute
+    /** 내 명함 QR 보이기 for one of the account's cards. */
+    data class Qr(val card: PublishedCard) : CardRoute
     data object Composer : CardRoute
 }
 
@@ -32,14 +34,21 @@ private sealed interface CardRoute {
     var activityDetail by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<String?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
-    BackHandler(route is CardRoute.Detail) { route = null }
+    BackHandler(route is CardRoute.Detail || route is CardRoute.Qr) { route = null }
     val compose = { publish.start(); route = CardRoute.Composer }
     val profileState by profile.state.collectAsStateWithLifecycle()
+    val walletState by wallet.state.collectAsStateWithLifecycle()
+    val auth by account.state.collectAsStateWithLifecycle()
+    // 명함 교환 (contract): a dearby://cards/… link saved a card → open it; signed out → sign in, then the link is saved.
+    LaunchedEffect(walletState.opened) { walletState.opened?.let { tab = Tab.Wallet; activityDetail = false; route = CardRoute.Detail(it); wallet.consumeOpened() } }
+    LaunchedEffect(auth.phase, walletState.needSignIn) { if (auth.phase == AccountPhase.SIGNED_IN && walletState.needSignIn) wallet.retryPending() }
     Surface(Modifier.fillMaxSize()) {
         Column(Modifier.statusBarsPadding().navigationBarsPadding()) {
             Box(Modifier.weight(1f)) {
                 when (val screen = route) {
-                    is CardRoute.Detail -> WalletCardPage(screen.card, { route = null }) { openContact(context, it) }
+                    is CardRoute.Detail -> walletState.cards.firstOrNull { it.id == screen.id }?.let { WalletCardRoute(it, wallet, myCards) { route = null } }
+                        ?: LaunchedEffect(screen) { route = null }
+                    is CardRoute.Qr -> CardQrRoute(screen.card, activityModel) { route = null }
                     CardRoute.Composer -> CardComposerRoute(publish, account) { route = null }
                     null -> when (tab) {
                         Tab.Discovery, Tab.Mine -> Column {
@@ -48,8 +57,8 @@ private sealed interface CardRoute {
                             }
                             key(tab) { ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }) { activityDetail = it } }
                         }
-                        Tab.Cards -> MyCardsRoute(myCards, compose) { card -> publish.start(card); route = CardRoute.Composer }
-                        Tab.Wallet -> WalletRoute(wallet, account) { route = CardRoute.Detail(it) }
+                        Tab.Cards -> MyCardsRoute(myCards, compose, showQr = { route = CardRoute.Qr(it) }) { card -> publish.start(card); route = CardRoute.Composer }
+                        Tab.Wallet -> WalletRoute(wallet, account) { route = CardRoute.Detail(it.id) }
                         Tab.Profile -> ProfileRoute(profile, account, compose)
                     }
                 }
@@ -85,4 +94,6 @@ private sealed interface CardRoute {
         }
     }
     notice?.let { value -> AlertDialog(onDismissRequest = { notice = null }, title = { Text("안내") }, text = { Text(value) }, confirmButton = { TextButton({ notice = null }) { Text("확인") } }) }
+    walletState.notice?.let { value -> AlertDialog(onDismissRequest = wallet::dismissNotice, title = { Text("안내") }, text = { Text(value) }, confirmButton = { TextButton(wallet::dismissNotice) { Text("확인") } }) }
+    if (walletState.needSignIn && auth.phase != AccountPhase.SIGNED_IN) SignInRoute(account, close = wallet::dismissSignIn)
 }

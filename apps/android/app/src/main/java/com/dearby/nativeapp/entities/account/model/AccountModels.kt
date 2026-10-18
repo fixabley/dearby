@@ -76,7 +76,10 @@ data class ActivityInfoPage(val items: List<ActivityInfoItem>, val nextCursor: L
 
 /** `GET /v1/wallet`: the account's saved cards (receipts). */
 data class Wallet(val items: List<WalletReceipt>)
-data class WalletReceipt(val id: String, val card: PublishedCard, val receivedAt: String)
+/** Where a card was exchanged (contract "명함 교환"); names are null when the activity is unknown or was deleted. */
+data class ExchangeContext(val activityId: Long?, val activityName: String?, val programName: String?)
+/** One received card. [reciprocal]: the owner holds one of mine too, so it is never recalled; otherwise [expiresAt] is the recall time. */
+data class WalletReceipt(val id: String, val card: PublishedCard, val receivedAt: String, val context: ExchangeContext, val reciprocal: Boolean, val expiresAt: String?)
 
 fun JSONObject.toSession() = AccountSession(getString("accessToken"), getString("refreshToken"))
 fun JSONObject.toWebSignIn(): WebSignIn =
@@ -111,7 +114,13 @@ fun JSONObject.toActivityInfoPage() = ActivityInfoPage(getJSONArray("items").obj
         it.optJSONObject("organization")?.toRef(), it.optJSONObject("parent")?.toRef(), it.optJSONObject("program")?.toRef())
 }, if (isNull("nextCursor")) null else getLong("nextCursor"))
 
-fun JSONObject.toWallet() = Wallet(getJSONArray("items").objects().map { WalletReceipt(it.getString("id"), it.getJSONObject("card").toPublishedCard(), it.getString("receivedAt")) })
+fun JSONObject.toWallet() = Wallet(getJSONArray("items").objects().map { it.toReceipt() })
+fun JSONObject.toReceipt(): WalletReceipt {
+    val context = optJSONObject("context")
+    return WalletReceipt(getString("id"), getJSONObject("card").toPublishedCard(), getString("receivedAt"),
+        ExchangeContext(context?.takeUnless { it.isNull("activityId") }?.getLong("activityId"), context?.text("activityName"), context?.text("programName")),
+        optBoolean("reciprocal", false), text("expiresAt"))
+}
 fun JSONObject.toCardList() = getJSONArray("items").objects().map { it.toPublishedCard() }
 
 private fun JSONObject.toRef() = ActivityInfoRef(getLong("id"), getString("name"))
