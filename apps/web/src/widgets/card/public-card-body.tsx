@@ -17,16 +17,8 @@ export function PublicCardBody({ card }: { card: Card }) {
             <p className="job">{card.job}</p>
           </div>
         </div>
-        {/* Contract "웹 버전": above 640px the web body shows when the card has one; otherwise the mobile body everywhere. CSS only. */}
-        <div className={`card-bodies${card.webIntroduction ? " has-web" : ""}`}>
-          <div className="lead card-body card-body-mobile">
-            <Markdown source={card.introduction} />
-          </div>
-          {card.webIntroduction && (
-            <div className="lead card-body card-body-web">
-              <Markdown source={card.webIntroduction} />
-            </div>
-          )}
+        <div className="lead card-body">
+          <Markdown source={card.introduction} />
         </div>
         {card.description && <p className="muted">{card.description}</p>}
       </div>
