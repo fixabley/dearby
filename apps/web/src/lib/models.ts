@@ -37,6 +37,8 @@ export const cardSchema = z.object({
   profileName: text,
   job: text,
   introduction: text,
+  // Optional web-width body (contract "웹 버전"); the API omits it when the card has none.
+  webIntroduction: text.nullable().optional(),
   contacts: z.array(contact),
   histories: z.array(history),
   createdAt: text,
