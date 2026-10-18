@@ -78,11 +78,9 @@
 - 처음 저장하기 전(`version` 0) 프로필 탭은 토스식 아코디언 퍼널(`ProfileFunnelPage`, 2026-10-17 결정)이다: 이름 → 직무(선택) → 전화번호 → 이메일 → 소개(선택) 섹션이 순서대로 쌓이고, 열린 섹션은 하나뿐이며 답한 섹션은 56pt 행으로 접혀 탭하면 다시 열린다. 질문 28pt 굵게, 입력 20pt, 좌우 24pt, 하단 버튼 56pt("다음" → 모두 답하면 "프로필 저장"). 퍼널 동안 탭바를 숨긴다(`HomePage.hidesTabs`). 저장되면 인라인 편집기로 바뀐다. 프로필 없이 명함 만들기를 열면 안내만 보여 준다.
 - 직무(계약 "직무", 2026-10-17): 직함 문자열 대신 `jobs` 태그. `JobTagPicker`가 `GET /v1/jobs`를 검색해 칩으로 여러 개(10개) 고르고, 없으면 직접 적는다(시계 아이콘 = 승인 대기, 승인 전에는 명함 `job`에 안 들어감). 퍼널의 직무 섹션과 편집기의 "직무" 항목이 같은 위젯을 쓴다. 명함·버전 화면의 `job`은 서버가 승인된 이름을 이어 준 문자열 그대로다.
 - 이력은 단계별 입력(`HistoryFunnelPage`): 조직/활동 → 조직 → 프로그램 → (활동) → 역할 → 기간 → 설명 → 확인. 각 단계는 `ActivityInfoPickerView`로 등록된 활동 정보를 검색하거나(`GET /v1/organizations|programs|activities|roles`) 그대로 적는다(직접 입력 = 관리자 승인 대기, `approval`). 인증자료(`EvidenceSection`)는 저장된 이력에서 사진·PDF를 3개까지 올리고, `verified`가 아니면 "미확인" 배지가 붙는다.
-- 명함 만들기(`CardComposerPage`)에서 꾸민다. `CardDraft.template`은 `{{profile.name}}`·`{{profile.job}}`·`{{profile.introduction}}`·`{{contact:<id>}}` 토큰이 있는 마크다운이고, 서버가 발행할 때 채운다(`POST /v1/cards {template}`). 본문에 넣은 연락처는 자동으로 공개되고, 승인되지 않은 이력은 고를 수 없다. 내용이 바뀌면 "원래대로"가 나타나며, 내 명함 탭의 "이 명함 고치기"는 그 명함의 `template`으로 새 명함을 발행한다.
-- 웹 버전(2026-10-18, 계약 "웹 버전"): 꾸미기 섹션의 `웹 버전 따로 쓰기` 스위치를 켜면 모바일 템플릿을 복사한 `CardDraft.webTemplate`이 생기고, 기본 세그먼트(`모바일 | 웹`)로 어느 템플릿을 고치는지 고른다. 끄면 웹 템플릿을 버린다. 발행 요청에는 켜져 있고 비어 있지 않을 때만 `webTemplate`을 넣고, 앱은 항상 모바일 본문(`introduction`)을 보인다.
-- 렌더링 화면 편집(`TemplateEditor`): iOS 26 이상은 `TextEditor`의 `AttributedString`으로 제목·굵게·목록을 서식 그대로 보이며 고치고, 데이터 토큰은 값이 채워진 칩(토큰 attribute)으로 보인다. 칩 안을 고치면 `TemplateRendering.markdown(from:)`이 감지해 토큰을 되살린다. iOS 18~25는 마크다운 원문 편집 + 미리보기(`DearbyMarkdownText`)로 대체된다. "데이터 넣기"는 본문 끝에 토큰을 붙인다(커서 위치 삽입은 아직 없음).
+- 명함 만들기(`CardComposerPage`): 명함 이름(선택)과 공개할 연락처·이력만 고른다. 본문은 앱 내장 기본 템플릿(`TemplateDocument.starter`: `{{profile.name}}`·`{{profile.job}}`·`{{profile.introduction}}`·전화·이메일 `{{contact:<id>}}`)이고 화면에는 채운 결과를 읽기 전용 미리보기(`DearbyMarkdownText`)로 보인다. 서버가 발행할 때 채운다(`POST /v1/cards {template}`). 템플릿에 든 연락처는 자동으로 공개되고, 승인되지 않은 이력은 고를 수 없다. 이름·선택이 바뀌면 "원래대로"가 나타나며, 내 명함 탭의 "이 명함 고치기"는 그 명함의 이름·선택으로 새 명함을 발행한다. 2026-10-18 사용자 결정으로 앱 안 꾸미기(렌더링 화면 편집기 `TemplateEditor`, 데이터 넣기)와 같은 날 추가한 웹 버전 스위치를 지웠다(계약 "템플릿 — 2026-10-18 앱 안 꾸미기 삭제").
 - 오류는 ProblemDetail의 `detail`(`AccountError.rejected`)을 그대로 보인다.
-- 확인하지 못한 것: 실제 서버·기기에서의 흐름, iOS 26 서식 편집기의 실제 입력 동작(시뮬레이터 빌드만 통과).
+- 확인하지 못한 것: 실제 서버·기기에서의 흐름(시뮬레이터 대상 빌드만 통과).
 
 ## 검증
 

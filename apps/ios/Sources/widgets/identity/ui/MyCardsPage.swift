@@ -56,7 +56,7 @@ struct MyCardsPage: View {
                 .overlay(RoundedRectangle(cornerRadius: 20).stroke(DearbyStyle.line))
             Button { editingCard = card } label: {
                 Label("이 명함 고치기", systemImage: "pencil").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal).frame(minHeight: 44)
-            }.accessibilityHint("이 명함의 꾸미기를 가져와 새 명함으로 발행해요")
+            }.accessibilityHint("이 명함의 이름과 공개 선택으로 새 명함을 발행해요")
         }
     }
     private var newCard: some View {

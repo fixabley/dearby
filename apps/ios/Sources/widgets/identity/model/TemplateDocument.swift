@@ -1,15 +1,9 @@
 import Foundation
 
-/// The card decoration template (contract "템플릿"): markdown with `{{profile.name}}`, `{{profile.job}}`,
-/// `{{profile.introduction}}` and `{{contact:<id>}}` tokens. The app shows it filled in; the server fills it at publish.
+/// The built-in card template (contract "템플릿"): markdown with `{{profile.name}}`, `{{profile.job}}`,
+/// `{{profile.introduction}}` and `{{contact:<id>}}` tokens. The app previews it filled in; the server fills it at publish.
+/// Users cannot edit it in the app (2026-10-18).
 enum TemplateDocument {
-    /// A token the picker can insert: what it writes and what it shows.
-    struct Token: Equatable, Identifiable {
-        let id: String
-        let label: String
-        let value: String
-        var markdown: String { "{{\(id)}}" }
-    }
     // The pattern is a constant, so it always compiles; the fallback never matches.
     static let pattern = (try? NSRegularExpression(pattern: #"\{\{\s*([a-zA-Z]+)(?:[.:]([^{}\s]+))?\s*\}\}"#))
         ?? NSRegularExpression()
@@ -21,11 +15,6 @@ enum TemplateDocument {
             lines.append("- \(contact.label): {{contact:\(contact.id)}}")
         }
         return lines.joined(separator: "\n")
-    }
-    static func tokens(for profile: AccountProfile) -> [Token] {
-        [Token(id: "profile.name", label: "이름", value: profile.name), Token(id: "profile.job", label: "직무", value: profile.job),
-         Token(id: "profile.introduction", label: "소개", value: profile.introduction)]
-            + profile.contacts.map { Token(id: "contact:\($0.id)", label: $0.label, value: $0.value) }
     }
     /// Contact ids the template refers to; they must be among the card's public contacts.
     static func contactIDs(in template: String) -> Set<String> {
@@ -48,8 +37,8 @@ enum TemplateDocument {
         }
         return result
     }
-    struct Match { let range: Range<String.Index>; let kind: String; let key: String }
-    static func matches(_ template: String) -> [Match] {
+    private struct Match { let range: Range<String.Index>; let kind: String; let key: String }
+    private static func matches(_ template: String) -> [Match] {
         pattern.matches(in: template, range: NSRange(template.startIndex..., in: template)).compactMap { result in
             guard let whole = Range(result.range, in: template), let kindRange = Range(result.range(at: 1), in: template) else { return nil }
             let key = Range(result.range(at: 2), in: template).map { String(template[$0]) } ?? ""
