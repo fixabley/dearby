@@ -47,7 +47,8 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardComposer
                 { id, on -> model.edit(draft.copy(publicContactIds = if (on) draft.publicContactIds + id else draft.publicContactIds - id)) },
                 draft.histories, { id, on -> model.edit(draft.copy(publicHistoryIds = if (on) draft.publicHistoryIds + id else draft.publicHistoryIds - id)) },
                 draft.changed, { model.edit(draft.revert()) }, model::publish, Modifier.weight(1f),
-                publishing = phase == PublishPhase.Publishing || phase == PublishPhase.Loading, errorMessage = (phase as? PublishPhase.Failed)?.message)
+                publishing = phase == PublishPhase.Publishing || phase == PublishPhase.Loading, errorMessage = (phase as? PublishPhase.Failed)?.message,
+                webTemplate = draft.webTemplate, onWebTemplateChange = { model.edit(draft.copy(webTemplate = it)) }, webPreview = draft.webPreview)
             phase is PublishPhase.Failed -> Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
                 Text(phase.message, color = Quiet, textAlign = TextAlign.Center)
                 DearbyOutlineButton({ model.load() }, Modifier.fillMaxWidth()) { Text("다시 시도") }

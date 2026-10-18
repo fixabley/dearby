@@ -126,11 +126,13 @@ struct AccountClient: Sendable {
         try await send("wallet", session: session, as: Wallet.self)
     }
 
-    /// `POST /v1/cards`: `template` is the decoration markdown the server fills in at publish time.
+    /// `POST /v1/cards`: `template` is the decoration markdown the server fills in at publish time;
+    /// `webTemplate` is the optional web content version and is left out of the JSON when nil (synthesized `encodeIfPresent`).
     struct CardInput: Encodable, Equatable, Sendable {
         let name: String
         let description: String
         let template: String
+        var webTemplate: String? = nil
         let contactIds: [String]
         let historyIds: [String]
     }

@@ -7,7 +7,7 @@ import com.fasterxml.jackson.annotation.JsonInclude
 import java.time.OffsetDateTime
 import java.util.*
 
-// 발행 스냅샷(native-v1.md "명함·공유·지갑"). template은 주인만(공개 조회·지갑에는 싣지 않는다)
+// 발행 스냅샷(native-v1.md "명함·지갑"). template·webTemplate은 주인만(공개 조회·지갑에는 싣지 않는다). webIntroduction은 웹 버전이 있을 때만
 @JsonInclude(JsonInclude.Include.NON_NULL)
 data class CardResponse(
     val id: UUID,
@@ -16,6 +16,8 @@ data class CardResponse(
     val description: String,
     val template: String?,
     val introduction: String,
+    val webTemplate: String?,
+    val webIntroduction: String?,
     val profileName: String,
     val job: String,
     val contacts: List<ContactResponse>,
@@ -25,6 +27,7 @@ data class CardResponse(
     companion object {
         fun from(card: BusinessCard, includeTemplate: Boolean) = CardResponse(
             card.id, card.ownerId, card.name, card.description, card.template.takeIf { includeTemplate }, card.introduction,
+            card.webTemplate.takeIf { includeTemplate }, card.webIntroduction,
             card.profileName, card.job, card.contacts.map(ContactResponse::from), card.histories.map(HistoryResponse::from), card.createdAt,
         )
     }

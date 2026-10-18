@@ -49,7 +49,7 @@ class CardPublishViewModel(private val account: AccountViewModel) : ViewModel() 
         draft.problem?.let { problem -> mutable.update { it.copy(phase = PublishPhase.Failed(problem)) }; return@launch }
         mutable.update { it.copy(phase = PublishPhase.Publishing) }
         try {
-            val card = account.authorized { account.client.publish(draft.cardName, "", draft.template, draft.contactIds, draft.historyIds, it) }
+            val card = account.authorized { account.client.publish(draft.cardName, "", draft.template, draft.webTemplate, draft.contactIds, draft.historyIds, it) }
             mutable.update { it.copy(phase = PublishPhase.Published(card)) }
         } catch (e: AccountException) {
             mutable.update { when (e.error) {

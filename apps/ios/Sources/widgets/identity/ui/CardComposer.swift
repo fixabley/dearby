@@ -7,6 +7,11 @@ struct CardComposer: View {
     var publishing = false
     var errorMessage: String?
     let publish: () -> Void
+    /// Which content version the editor, token menu and preview work on (contract "웹 버전").
+    @State private var version = CardDraft.Version.mobile
+    private var editedTemplate: Binding<String> {
+        Binding(get: { draft.template(for: version) }, set: { draft.setTemplate($0, for: version) })
+    }
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
@@ -14,10 +19,24 @@ struct CardComposer: View {
                     field("명함 이름 (선택)", text: $draft.cardTitle, prompt: "비워 두면 '내 명함'으로 저장해요")
                 }
                 section("꾸미기") {
-                    TemplateEditor(template: $draft.template, tokens: TemplateDocument.tokens(for: draft.profile), preview: draft.preview)
+                    Toggle("웹 버전 따로 쓰기", isOn: Binding(get: { draft.hasWebVersion }, set: { on in draft.hasWebVersion = on; if !on { version = .mobile } }))
+                        .font(.dearby(.subheadline)).tint(DearbyStyle.teal).frame(minHeight: 44)
+                    Text("웹에서 넓은 화면(640px 초과)일 때 보이는 내용이에요. 앱은 항상 모바일 버전을 보여요.")
+                        .font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
+                    if draft.hasWebVersion {
+                        Picker("고치는 버전", selection: $version) {
+                            Text("모바일").tag(CardDraft.Version.mobile)
+                            Text("웹").tag(CardDraft.Version.web)
+                        }.pickerStyle(.segmented)
+                    }
+                    TemplateEditor(template: editedTemplate, tokens: TemplateDocument.tokens(for: draft.profile), preview: draft.preview(for: version))
+                        .id(version)
                     Menu {
                         ForEach(TemplateDocument.tokens(for: draft.profile)) { token in
-                            Button("\(token.label)\(token.value.isEmpty ? "" : " · \(token.value)")") { draft.template += (draft.template.hasSuffix("\n") || draft.template.isEmpty ? "" : "\n") + token.markdown }
+                            Button("\(token.label)\(token.value.isEmpty ? "" : " · \(token.value)")") {
+                                let current = draft.template(for: version)
+                                draft.setTemplate(current + (current.hasSuffix("\n") || current.isEmpty ? "" : "\n") + token.markdown, for: version)
+                            }
                         }
                     } label: {
                         Label("데이터 넣기", systemImage: "plus.circle").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal).frame(minHeight: 44)
