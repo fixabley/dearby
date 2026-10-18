@@ -12,7 +12,8 @@ struct HomePage<Discovery: View, Mine: View, Cards: View, Wallet: View, Profile:
     let wallet: Wallet
     let profile: Profile
     @State private var discoveryPath: [String] = []
-    @State private var minePath: [String] = []
+    // 내 활동 pushes two route types (progress track, activity detail).
+    @State private var minePath = NavigationPath()
     var body: some View {
         TabView(selection: $selectedTab) {
             Tab("발견", systemImage: "safari", value: 0) {

@@ -8,6 +8,8 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     let title: String
     let summary: String
     let organization: String
+    /// `program.name`; nil when the API sent none.
+    let program: String?
     // The recruitment window from `application`. Raw ISO 8601: a present but unreadable time must not count as absent.
     let recruitmentStartAt: String?
     let recruitmentEndAt: String?
@@ -15,6 +17,12 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     let dateLabel: String
     /// Timed schedules only; date-only schedules stay in `dateLabel`.
     let schedules: [ActivityScheduleModel]
+    /// True when the API sent an `application` schedule, even a date-less one (contract "내 활동 진행 트랙": a `지원` stage).
+    let hasApplication: Bool
+    /// Every `schedules[]` entry (timed, all-day or date-less) with its kind, in API order: the progress track's middle stages.
+    let stages: [ActivityStageModel]
+    /// `activitySchedule` as the track's last stage (contract "내 활동 진행 트랙": `활동`, or its title); nil only if the API omitted it.
+    let activityStage: ActivityStageModel?
     let officialUrl: String
     let imageUrl: String?
     /// Who may apply (contract "대상자 조건"); nil when the activity has none or the JSON was unreadable.
@@ -63,6 +71,24 @@ struct ActivityScheduleModel: Equatable, Identifiable, Sendable {
     let end: Date
     let dateLabel: String
     let timeZone: String
+}
+/// One stage of the progress track (contract "내 활동 진행 트랙 — 2026-10-18"). Timed stages carry `start`/`end` instants;
+/// all-day stages carry Seoul midnight of `startDate` and of `endDateExclusive`; date-less stages have neither and only `dateLabel`.
+struct ActivityStageModel: Equatable, Identifiable, Sendable {
+    enum Kind: String, Sendable { case deadline = "DEADLINE", announcement = "ANNOUNCEMENT", interview = "INTERVIEW", event = "EVENT" }
+    let id: String
+    let title: String
+    let kind: Kind
+    let start: Date?
+    let end: Date?
+    let allDay: Bool
+    let dateLabel: String
+    let timeZone: String
+    /// The overlap check (`CalendarConflictView`) needs a non-empty interval in a known zone.
+    var schedule: ActivityScheduleModel? {
+        guard let start, let end, start < end else { return nil }
+        return ActivityScheduleModel(id: id, title: title, start: start, end: end, dateLabel: dateLabel, timeZone: timeZone)
+    }
 }
 /// One page of `GET /v1/activities`. A nil `nextCursor` is the last page.
 struct ActivityPage: Sendable {

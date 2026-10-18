@@ -2,9 +2,12 @@ import SwiftUI
 
 struct DearbyBadge: View {
     let title: String
+    /// Danger colouring for a negative mark such as `탈락`.
+    var danger = false
     var body: some View {
-        Text(title).font(.dearby(.caption).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
-            .padding(.horizontal, 10).padding(.vertical, 6).background(DearbyStyle.mint, in: Capsule())
+        Text(title).font(.dearby(.caption).weight(.semibold)).foregroundStyle(danger ? DearbyStyle.danger : DearbyStyle.teal)
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .background(danger ? DearbyStyle.danger.opacity(0.1) : DearbyStyle.mint, in: Capsule())
     }
 }
 struct DearbyAvatar: View {

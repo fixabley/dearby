@@ -7,16 +7,23 @@ import com.dearby.nativeapp.entities.activity.model.ActivityModel
 import com.dearby.nativeapp.entities.activity.model.lines
 import com.dearby.nativeapp.entities.activity.model.ActivityPage
 import com.dearby.nativeapp.entities.activity.model.ProgramPage
-import com.dearby.nativeapp.entities.activity.model.ScheduleModel
+import com.dearby.nativeapp.entities.activity.model.currentStage
 import com.dearby.nativeapp.entities.activity.model.instant
 import com.dearby.nativeapp.entities.activity.model.safeHttpsUrl
+import com.dearby.nativeapp.entities.activity.model.stageBadge
+import com.dearby.nativeapp.entities.activity.model.stages
 import com.dearby.nativeapp.pages.activity.ActivityState
 import com.dearby.nativeapp.pages.activity.ActivityListPhase
 import com.dearby.nativeapp.pages.activity.ActivityListState
 import com.dearby.nativeapp.pages.activity.ProgramActivities
 import com.dearby.nativeapp.pages.activity.ProgramPhase
 import com.dearby.nativeapp.pages.activity.ProgramState
+import com.dearby.nativeapp.widgets.activity.progress.ProgressMark
+import com.dearby.nativeapp.widgets.activity.progress.ProgressStage
+import com.dearby.nativeapp.widgets.activity.progress.ProgressState
+import com.dearby.nativeapp.widgets.activity.progress.ProgressStatus
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -39,7 +46,9 @@ class ActivityViewModel(
 ) : ViewModel() {
     private val mutable = MutableStateFlow(ActivityListState())
     val state = mutable.asStateFlow()
-    private var schedules: Map<String, List<ScheduleModel>> = emptyMap()
+    private var models: Map<String, ActivityModel> = emptyMap()
+    // The user's own stage marks (contract "내 활동 진행 트랙"), memory only like the applied marks.
+    private var marks: Map<String, Map<Int, ProgressMark>> = emptyMap()
     // One program request at a time: a new search cancels the previous search, page and program loads, so late answers are dropped.
     private var job: Job? = null
     private val programJobs = mutableMapOf<String, Job>()
@@ -121,16 +130,27 @@ class ActivityViewModel(
             }
             val now = Instant.now()
             val open = items.filter { it.isOpen(now) }
-            schedules = schedules + open.associate { it.id to it.schedules }
+            models = models + open.associateBy { it.id }
+            val today = today()
             mutable.update { state ->
                 val loaded = open.associate { activity ->
                     activity.id to activity.toState(now).let { shown -> state.known[shown.id]?.let { shown.copy(applied = it.applied, confirmed = it.confirmed) } ?: shown }
                 }
-                state.copy(known = state.known + loaded, programActivities = state.programActivities + (programId to ProgramActivities(ProgramPhase.LOADED, open.map { it.id })))
+                state.copy(known = state.known + loaded, progress = state.progress + open.associate { it.id to it.toProgress(marks[it.id].orEmpty(), today) },
+                    programActivities = state.programActivities + (programId to ProgramActivities(ProgramPhase.LOADED, open.map { it.id })))
             }
         }
     }
-    fun schedules(id: String) = schedules[id].orEmpty()
+    fun schedules(id: String) = models[id]?.schedules.orEmpty()
+    /** The timed range of one stage for the calendar comparison; null for an undated, all-day or unknown stage. */
+    fun stageWindow(id: String, stage: Int) = models[id]?.stages()?.getOrNull(stage)?.window
+    /** The user marks a stage 통과/대기/탈락; the track is rebuilt from today's date. */
+    fun mark(id: String, stage: Int, value: ProgressMark) {
+        val model = models[id] ?: return
+        val own = marks[id].orEmpty() + (stage to value)
+        marks = marks + (id to own)
+        mutable.update { it.copy(progress = it.progress + (id to model.toProgress(own, today()))) }
+    }
     fun apply(id: String, value: Boolean) = update(id) { it.copy(applied = value, confirmed = value && it.confirmed) }
     /** An application link for [id] was handed to the browser. Applied or "never ask" activities are not asked. */
     fun openedApplication(id: String) {
@@ -164,6 +184,7 @@ class ActivityViewModel(
 }
 
 private const val MAX_PROGRAM_PAGES = 5
+private fun today(): LocalDate = LocalDate.now(ZoneId.of("Asia/Seoul"))
 private val sessionTime = DateTimeFormatter.ofPattern("HH:mm", Locale.KOREAN)
 private val sessionDay = DateTimeFormatter.ofPattern("M/d", Locale.KOREAN)
 private val periodTime = DateTimeFormatter.ofPattern("M월 d일 HH:mm", Locale.KOREAN).withZone(ZoneId.of("Asia/Seoul"))
@@ -181,6 +202,28 @@ private fun ActivityModel.toState(now: Instant) = ActivityState(
     safeHttpsUrl(officialUrl), applyUrl(now), period(), recruitmentEnd, schedules.firstOrNull()?.startAt,
     eligibility = eligibility?.lines() ?: emptyList(),
 )
+/**
+ * The stage track with the user's [marks]: a 통과 mark makes the stage past, the earliest other stage not over by [today]
+ * is current, a 탈락 mark or no current stage ends the activity. No stages at all leaves an empty track.
+ */
+private fun ActivityModel.toProgress(marks: Map<Int, ProgressMark>, today: LocalDate): ProgressState {
+    val stages = stages()
+    val passed = marks.filterValues { it == ProgressMark.PASS }.keys
+    val failedAt = marks.filterValues { it == ProgressMark.FAIL }.keys.minOrNull()
+    val current = if (failedAt == null) currentStage(stages, passed, today) else null
+    val ended = stages.isNotEmpty() && (failedAt != null || current == null)
+    val shown = stages.mapIndexed { index, stage ->
+        val status = when {
+            index == current -> ProgressStatus.CURRENT
+            index in passed || stage.finished(today) || index <= (failedAt ?: (current ?: 0) - 1) -> ProgressStatus.PAST
+            else -> ProgressStatus.UPCOMING
+        }
+        ProgressStage(stage.name, stage.kind, stage.dateText, status, marks[index] ?: ProgressMark.WAIT, stage.window != null)
+    }
+    val badge = when { stages.isEmpty() -> ""; failedAt != null -> "탈락"; current == null -> "지남"; else -> stageBadge(stages[current], today) }
+    return ProgressState(id, name, "$program · $organization", shown, current, badge, ended, failedAt != null, current?.let { stages[it].day })
+}
+
 /** "10월 1일 14:07 – 10월 8일 00:00" in Korean time; an unknown end stays blank on its side. */
 private fun ActivityModel.period(): String? {
     val start = instant(application?.startAt)
