@@ -85,38 +85,9 @@ GET과 성공 mutation 모두 `Cache-Control: no-store`다(API는 오류 응답�
 
 HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로만 좁혀 공개한다. 기존 `/v1/profile`, 회원 `/v1/wallet`, 명함 생성/철회, SMTP/auth는 열지 않는다. guest proxy secret 생성·배포와 nginx 운영 변경은 root가 수행하며 앱서버 구현 PR만으로 운영 반영됐다고 표시하지 않는다.
 
-## 명함 공유 기록과 게스트 공유 정보 저장 — 2026-10-06 승인
+## 명함 공유 기록과 게스트 공유 정보 저장 — 2026-10-06 승인, 2026-10-18 삭제
 
-사용자 결정: 비로그인 웹 게스트 저장에 "어떤 공유로 받았는지와 그 공유에 담긴 활동"을 함께 저장하고 `/saved`에서 활동별로 묶어 보여 준다. 위 웹 게스트 계약의 쿠키·프록시 secret·Origin·캐시·오류·상한 규칙을 그대로 적용하고 아래만 추가한다. 기존 `/v1/cards/:id`와 `/v1/guest/cards*` 동작은 바꾸지 않는다.
-
-### 모델
-
-- CardShare: `id`(UUID), `cardId`, `activities: [{id, title}]`(0~10개), `createdAt`. 소유자가 명함을 공유할 때 만드는 기록이다. `activities`는 생성 시점의 카탈로그 활동 ID와 제목 사본이며 이후 카탈로그 변경을 따라가지 않는다. 활동은 사용자가 고른 정보이며 참가 확인이 아니다.
-- 공유 ID는 명함 ID처럼 공개 조회 가능 여부만 판정하며 방문자 인증 수단이 아니다. 명함이 철회되면 그 명함의 모든 공유도 공개 조회·저장에서 404다. 공유 단건 철회는 이번 범위가 아니다.
-- 게스트 저장은 세션당 명함 1건을 유지하고, 그 명함에 연결된 공유 ID를 0개 이상 기록한다. 같은 명함을 여러 공유로 받으면 공유 기록이 늘어나며 명함은 중복되지 않는다. 명함당 공유 기록 최대 20개. DB에는 세션 digest·명함 ID·공유 ID 연결만 저장한다.
-
-### API
-
-| 메서드·경로 | 인증 | 성공 응답 | 의미 |
-| --- | --- | --- | --- |
-| POST /v1/cards/:id/shares | 로그인·소유자만 | 201 CardShare | body `{activityIds: string[]}`. 중복 없이 0~10개, 모두 현재 카탈로그에 있는 활동이어야 한다(아니면 422). 철회·타인 명함은 404/403 |
-| GET /v1/shares/:id | 비로그인 가능 | 200 `{share: CardShare, card: Card}` | 공유와 공개 명함 사본. 없거나 명함 철회 시 404 |
-| PUT /v1/guest/shares/:id | 게스트 프록시 | 무토큰 첫 저장 201 `{cardId, shareId, status:"saved", guestToken}`, 기존 토큰 200 `{cardId, shareId, status:"saved"\|"alreadySaved"}` | 공유를 확인해 그 명함을 저장하고 공유 기록을 연결한다. 명함이 이미 저장돼 있고 공유가 새로우면 `saved`, 둘 다 있으면 `alreadySaved` |
-| GET /v1/guest/cards | 게스트 프록시 | 200 `{items: Card[], shares: GuestShare[]}` | 기존 `items`는 그대로 두고 `shares`를 추가한다 |
-
-- GuestShare: `{cardId, shareId, activities: [{id, title}], savedAt}`. 철회된 명함의 공유는 `items`와 함께 제외한다. `/v1/guest/cards/:id` 저장(공유 없이 받은 명함)은 공유 기록 없이 계속 동작한다.
-- `DELETE /v1/guest/cards/:id`는 그 명함의 공유 기록도 함께 지운다. `DELETE /v1/guest/session`은 모두 지운다.
-- 409 `GUEST_CAPACITY_EXCEEDED`에 명함당 공유 기록 20개 상한을 추가한다. 이미 연결된 공유의 재저장은 상한에서도 성공한다. 요청 제한은 기존 게스트 규칙과 같은 카운터를 쓴다.
-- HTTPS ingress에는 `GET/HEAD /v1/shares/:id`, `PUT /v1/guest/shares/:id`만 추가한다. `POST /v1/cards/:id/shares`는 회원 경로이므로 열지 않는다.
-
-### 웹
-
-- 공유 링크는 `/s/:shareId`다. 공개 명함과 "함께 공유된 활동"을 보여 주고, 저장 버튼은 `PUT /v1/guest/shares/:id`를 쓴다. 기존 `/cards/:id`는 공유 정보 없이 유지한다.
-- `/saved`는 `전체 | 활동별` 보기를 제공한다. 활동별 보기는 공유 기록의 활동으로 묶고, 여러 활동에 걸친 명함은 각 묶음에 모두 나오며, 활동이 없는 명함은 마지막 `활동 없음` 묶음에 둔다(모바일 명함함 규칙과 같다).
-
-### 현재 한계
-
-앱의 공유 QR은 아래 "모바일 실제 연결 경계"에서 `https://<웹 origin>/s/<shareId>`로 정했다(`dearby://share/` scheme은 만들지 않는다). 운영 DB 마이그레이션·ingress 변경·배포는 사용자 승인 후 root가 수행한다.
+2026-10-18 사용자 결정으로 명함 공유 기능을 서버·웹·앱에서 모두 지웠다. CardShare·GuestShare 모델, `POST /v1/cards/:id/shares`, `GET /v1/shares/:id`, `PUT /v1/guest/shares/:id`, `GET /v1/guest/cards`의 `shares`, 웹 `/s/:shareId`와 `/saved`의 `전체 | 활동별` 보기는 더 없다. `GET /v1/guest/cards`는 `{items: Card[]}`만 돌려준다. 운영 DB의 `card_shares`·`guest_card_shares` 테이블은 남아 있으며 삭제 마이그레이션은 별도 승인 PR로 한다. 당시 계약 전문은 [삭제 전 문서](https://github.com/fixabley/dearby/blob/6636e9a6/shared/contracts/native-v1.md#명함-공유-기록과-게스트-공유-정보-저장--2026-10-06-승인)에 있다.
 
 ## 모바일 실제 연결 경계 — 2026-10-06 사용자 결정 반영
 
@@ -127,17 +98,15 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 | 영역 | 동작 | 사용 API |
 | --- | --- | --- |
 | 발견·활동 상세 | 공개 카탈로그를 보여 주고, 신청 CTA는 활동의 공식 신청 URL을 외부 브라우저로 연다. 실패하면 오류와 다시 시도를 보여 주며 예시 활동을 섞지 않는다. | GET /v1/activities (2026-10-14부터, 아래 "활동 조회") |
-| 로그인 | 패스키(2026-10-10 결정, 아래 "패스키 로그인"). 명함 발행·공유와 받은 명함 저장을 할 때만 요구하고, 발견·신청·받은 명함 보기는 로그인 없이 쓴다. access·refresh 토큰은 OS 보안 저장소에 둔다. | /v1/auth/* |
+| 로그인 | 패스키(2026-10-10 결정, 아래 "패스키 로그인"). 명함 발행과 받은 명함 보기를 할 때만 요구하고, 발견·신청은 로그인 없이 쓴다. access·refresh 토큰은 OS 보안 저장소에 둔다. | /v1/auth/* |
 | 명함 제작 | 프로필 입력과 공개할 연락처·이력 선택을 한 흐름으로 마치고 바로 발행한다. 수정은 새 발행본을 만든다(기존 스냅샷 규칙 유지). | /v1/profile, POST /v1/cards |
-| QR 공유 | QR 화면에 들어오면 현재 명함으로 공유를 만들고 `https://<웹 origin>/s/<shareId>`를 QR로 보여 준다. 활동 선택은 선택 사항이다. 공유 버튼은 같은 URL을 OS 공유 시트로 넘긴다. | POST /v1/cards/:id/shares |
-| 받기 | 앱 안 스캐너(카메라·사진)와 유니버설 링크/App Links는 같은 `/s/<shareId>` URL을 해석해 공유 명함 화면을 연다. 기존 `dearby://card/<UUID>`도 계속 해석한다. 앱이 없거나 연결 검증에 실패하면 같은 URL이 웹 공유 명함으로 열린다. | GET /v1/shares/:id |
+| ~~QR 공유 · 받기~~ | 2026-10-18 삭제. QR 표시·OS 공유·앱 안 스캐너·유니버설 링크/App Links·공유 명함 화면은 없다. QR 탭 자리에는 `내 명함` 탭(내 명함 목록·만들기·고치기)이 있다. 당시 계약은 [삭제 전 문서](https://github.com/fixabley/dearby/blob/6636e9a6/shared/contracts/native-v1.md#실제로-바꾸는-것) 참고. | — |
 
-- 앱은 `https`, 설정한 웹 도메인, 경로 `/s/<UUID>`만 받고 query·fragment·다른 host를 거부한다. 도메인은 아래 "연결 설정"의 환경값으로 정한다.
-- 유니버설 링크·App Links 경로는 `/s/*` 하나다. 웹은 `/.well-known/apple-app-site-association`, `/.well-known/assetlinks.json`을 환경값(Apple Team ID·번들 ID, Android 패키지·서명 SHA-256)으로 만든다. 값이 없으면 404다. 값 제공은 #90, 배포는 #91에 묶인다.
+- 2026-10-18부터 앱은 `/s/*` 링크를 받지 않고, 웹도 `/.well-known/apple-app-site-association`·`assetlinks.json`을 만들지 않는다(패스키용 `wid.io.kr` 정적 파일은 별도이며 유지). #90·#91은 이 결정으로 닫는다.
 
 ### 비로그인 사용자의 저장 유지
 
-2026-10-06 사용자 결정: 비로그인 사용자는 앱을 설치하지 않았고 로그인하지 않은 사람이다. QR을 기본 카메라로 읽으면 기본 브라우저에서 웹 `/s/<shareId>`가 열린다. 서버가 만료 없는 게스트 세션 ID를 발급하고, 저장 데이터는 DB에 두며 API가 세션 ID로 조회한다. 브라우저에는 세션 ID 쿠키만 둔다.
+2026-10-06 사용자 결정: 비로그인 사용자는 앱을 설치하지 않았고 로그인하지 않은 사람이다. 공개 명함 링크 `/cards/:id`가 기본 브라우저에서 열린다(2026-10-18까지는 QR의 `/s/<shareId>`였다). 서버가 만료 없는 게스트 세션 ID를 발급하고, 저장 데이터는 DB에 두며 API가 세션 ID로 조회한다. 브라우저에는 세션 ID 쿠키만 둔다.
 
 - 웹: 위 "웹 비로그인 명함 저장" 계약의 서버 게스트 세션(`__Host-dearby_guest` 쿠키)을 그대로 쓴다. 서버 세션은 만료되지 않는다. 브라우저는 쿠키 수명을 최대 400일로 제한하므로, 방문할 때마다 Max-Age를 갱신한다(기존 규칙). 1년 넘게 방문하지 않거나 사용자가 쿠키를 지우면 접근이 끊긴다.
 - 홈 화면 추가: Android Chrome은 바로가기·설치 모두 Chrome과 같은 쿠키를 쓴다. iOS는 '웹 앱으로 열기'가 기본으로 켜져 있고 사이트가 바꿀 수 없어서, 그대로 추가하면 Safari와 쿠키가 분리된다(2026-10-06 iOS 26.5 시뮬레이터 확인). 사용자 결정으로 아래 "홈 화면 세션 잇기"를 둔다. manifest `display`는 Android 설치 버튼을 위해 `standalone`을 유지한다. iOS는 공유 메뉴에서 직접 추가해야 하므로 1번 클릭 설치는 불가하고 안내로 제공한다.
@@ -146,8 +115,8 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
   - API `POST /v1/guest/handoffs`: 기존 토큰 필요, 201 `{code, expiresAt}`. 코드는 32바이트 이상 무작위 base64url, 수명 10분, 1회용. 세션당 유효 코드는 1개이며 새로 발급하면 이전 코드는 무효다. DB에는 코드의 SHA-256 digest·세션·만료·사용 시각과, 발급 요청의 게스트 토큰을 코드에서 파생한 키(HKDF)로 AES-256-GCM 암호화한 값만 둔다. DB만으로는 토큰을 복원할 수 없고, 사용·만료 시 암호문을 지운다.
   - API `POST /v1/guest/handoffs/redeem`: body `{code}`, 게스트 프록시, 토큰 없이 호출. 200 `{guestToken}`(코드로 복호화한, Safari와 같은 토큰). 없음·만료·사용됨·세션 폐기는 모두 404 `NOT_FOUND`(구분하지 않음). 성공하면 즉시 사용 처리한다. 요청 제한은 게스트 카운터와 같고, 실패도 센다.
   - 웹 `/saved?handoff=<code>`: 게스트 쿠키가 없을 때만 교환한다. 성공하면 쿠키를 설정하고, 성공·실패 모두 303으로 쿼리 없는 `/saved`로 보낸다. 이미 쿠키가 있으면 교환하지 않고 바로 보낸다. 페이지는 `Referrer-Policy: no-referrer`를 쓰고, 서버 로그에서 `handoff` 쿼리를 가린다.
-  - 위험: 코드는 유효 시간 동안 게스트 세션 전체(저장한 명함과 공유 기록)를 넘겨받는 열쇠다. 다른 기기에서의 사용을 막을 수 없다. 1회용·10분·digest 저장·요청 제한·manifest 캐시 금지로 줄인다. 마이그레이션은 운영 DB 변경이므로 별도 PR로 사용자 승인 뒤 병합한다.
-- 앱을 설치한 사람은 같은 `/s/` URL이 유니버설 링크·App Links로 앱에서 열린다. 앱에서 받은 명함 저장은 로그인 계정의 wallet에 한다. 앱의 게스트 세션·게스트 API는 만들지 않는다.
+  - 위험: 코드는 유효 시간 동안 게스트 세션 전체(저장한 명함)를 넘겨받는 열쇠다. 다른 기기에서의 사용을 막을 수 없다. 1회용·10분·digest 저장·요청 제한·manifest 캐시 금지로 줄인다. 마이그레이션은 운영 DB 변경이므로 별도 PR로 사용자 승인 뒤 병합한다.
+- 앱의 게스트 세션·게스트 API는 만들지 않는다(2026-10-18 공유 삭제로 앱이 링크를 받는 경로도 없다).
 - 2026-10-03 이전 기기에 남은 앱 저장 데이터는 읽거나 지우거나 이관하지 않는다.
 
 ### 연결 설정 — 도메인 기반, 환경값으로 지정
@@ -157,28 +126,17 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 | 환경값 | 쓰는 곳 | 의미 |
 | --- | --- | --- |
 | `DEARBY_API_ORIGIN` | 웹 서버, iOS·Android 빌드 | API origin(scheme+도메인, `/v1` 제외). 예: `https://wid.io.kr` |
-| `DEARBY_WEB_ORIGIN` | iOS·Android 빌드 | 공유 URL `/s/<shareId>`를 만들고 받는 웹 origin. 유니버설 링크·App Links 도메인도 이 값의 host에서 만든다. 예: `https://dearby.wid.io.kr` |
-| `DEARBY_APPLE_TEAM_ID`, `DEARBY_IOS_BUNDLE_IDS`, `DEARBY_ANDROID_PACKAGE`, `DEARBY_ANDROID_CERT_SHA256` | 웹 서버 | `/.well-known` 연결 파일(#96) |
+
+2026-10-18 공유 삭제로 `DEARBY_WEB_ORIGIN`(앱)과 `DEARBY_APPLE_TEAM_ID`·`DEARBY_IOS_BUNDLE_IDS`·`DEARBY_ANDROID_PACKAGE`·`DEARBY_ANDROID_CERT_SHA256`(웹 `/.well-known` 연결 파일)은 쓰지 않는다.
 
 - 운영·배포 빌드는 `https`와 도메인 host만 허용한다. IP 주소 host, `http`, 포트 지정, 경로가 있는 값은 빌드 또는 시작 시 실패시킨다. 개발 구성만 `http://localhost`·`127.0.0.1`·Android 에뮬레이터 `10.0.2.2`를 허용한다.
-- iOS: 빌드 환경값을 Info.plist 키(`DearbyAPIOrigin`, `DearbyWebOrigin`)로 넣고, Associated Domains는 `applinks:$(DEARBY_WEB_HOST)`로 만든다. 값이 없으면 Release 빌드는 실패하고, Debug는 로컬 개발 기본값을 쓴다.
-- Android: Gradle이 같은 환경값(또는 같은 이름의 Gradle 속성)을 읽어 `BuildConfig`와 manifest placeholder(App Links host)로 넣는다. 값이 없으면 release 빌드는 실패한다.
+- iOS: 빌드 환경값을 Info.plist 키(`DearbyAPIOrigin`)로 넣는다. 값이 없으면 Release 빌드는 실패하고, Debug는 로컬 개발 기본값을 쓴다.
+- Android: Gradle이 같은 환경값(또는 같은 이름의 Gradle 속성)을 읽어 `BuildConfig`로 넣는다. 값이 없으면 release 빌드는 실패한다.
 - 웹은 요청이 들어온 자기 origin을 기준으로 동작하므로 웹 도메인 환경값이 따로 필요 없다. API 서버의 `HOST`·`PORT`는 내부 바인딩이며, 외부에서는 ingress 도메인으로만 접근한다.
 
-### 앱에서 받은 공유 저장 (회원 wallet) — 2026-10-06
+### 앱에서 받은 공유 저장 (회원 wallet) — 2026-10-06, 2026-10-18 삭제
 
-앱 설치자는 스캔·유니버설 링크로 연 공유 명함을 로그인 계정의 wallet에 저장한다. 웹 게스트의 공유 저장(`PUT /v1/guest/shares/:id`)과 같은 의미를 회원 경로로 둔다.
-
-| 메서드·경로 | 인증 | 성공 응답 | 의미 |
-| --- | --- | --- | --- |
-| PUT /v1/wallet/shares/:id | 로그인 | 첫 저장 201 `{receiptId, cardId, shareId, status:"saved"}`, 이후 200 `{…, status:"saved"\|"alreadySaved"}` | 공유를 확인하고 그 명함을 wallet에 저장하며 공유 기록을 연결한다. 명함이 이미 있고 공유가 새로우면 `saved`, 둘 다 있으면 `alreadySaved`. 자기 명함의 공유는 422, 없거나 철회되면 404 |
-| GET /v1/wallet | 로그인 | 200 `{items: Receipt[], shares: WalletShare[]}` | 기존 `items`는 그대로 두고 `shares`를 추가한다 |
-
-- WalletShare: `{receiptId, cardId, shareId, activities: [{id, title}], savedAt}`. 철회된 명함은 `items`와 함께 제외한다.
-- 한 명함(Receipt)에 공유 기록을 0개 이상 연결하고, 명함당 20개까지 둔다(웹 게스트와 같다). 동일 사용자+명함은 Receipt 하나다.
-- `reciprocal`은 이 저장만으로 true가 되지 않는다(기존 규칙 유지).
-- 받은 명함함의 활동별 묶음은 `shares[].activities`로 만든다. 활동이 없는 명함은 `활동 없음` 묶음이다.
-- HTTPS ingress에는 `PUT /v1/wallet/shares/:id`를 회원 경로로 추가한다(Authorization만 전달). 마이그레이션은 운영 DB 변경이므로 사용자 승인 뒤 병합한다.
+`PUT /v1/wallet/shares/:id`와 `GET /v1/wallet`의 `shares`(WalletShare)는 2026-10-18 삭제했다. `GET /v1/wallet`은 `{items: Receipt[]}`만 돌려주고, 새 Receipt를 만드는 경로는 현재 없다(받은 명함 탭은 기존 항목만 보인다). 운영 DB의 `wallet_shares` 테이블은 별도 승인 PR로 지운다. 당시 계약은 [삭제 전 문서](https://github.com/fixabley/dearby/blob/6636e9a6/shared/contracts/native-v1.md#앱에서-받은-공유-저장-회원-wallet--2026-10-06)에 있다.
 
 ### 신청 확인과 기기 캘린더 겹침 — 2026-10-06 사용자 결정
 
@@ -223,15 +181,15 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 
 ### 앱 동작
 
-- 처음 실행할 때 한 번만(2026-10-14 사용자 결정) 로고와 "패스키로 시작하기"·"둘러보기"가 있는 시작 화면을 보여 준다. 로그인은 선택이며, 로그인에 성공하거나 둘러보기를 누르면 다시 보이지 않는다. 이미 로그인되어 있거나 공유 링크로 처음 열리면 건너뛴다. 매 실행의 OS 스플래시에는 로고만 둔다.
-- 로그인이 필요한 동작(명함 발행·공유, 받은 명함 저장)에서 로그인 화면을 띄운다. "패스키로 로그인"이 기본이고, 패스키가 없거나 사용자가 고르면 "새 패스키로 시작"(가입)을 한다.
+- 처음 실행할 때 한 번만(2026-10-14 사용자 결정) 로고와 "패스키로 시작하기"·"둘러보기"가 있는 시작 화면을 보여 준다. 로그인은 선택이며, 로그인에 성공하거나 둘러보기를 누르면 다시 보이지 않는다. 이미 로그인되어 있으면 건너뛴다. 매 실행의 OS 스플래시에는 로고만 둔다.
+- 로그인이 필요한 동작(명함 발행, 받은 명함 보기)에서 로그인 화면을 띄운다. "패스키로 로그인"이 기본이고, 패스키가 없거나 사용자가 고르면 "새 패스키로 시작"(가입)을 한다.
 - access token이 만료돼 401을 받으면 refresh를 한 번 시도한다. refresh가 401로 거절되면 토큰을 지우고 로그인 화면으로 돌아간다. 네트워크 오류·5xx면 토큰을 남기고 그 요청만 실패시킨다(불안정한 연결에서 로그아웃되지 않게). refresh token이 회전하므로 동시에 여러 요청이 401을 받아도 refresh는 한 번만 한다.
 - 로그아웃은 `/v1/auth/logout` 뒤 기기 토큰을 지운다. 네트워크 실패여도 기기 토큰은 지운다.
 - 기존 이메일 로그인 화면·저장 토큰(`sessionToken`)은 쓰지 않는다. 이전 앱 저장 데이터는 읽거나 지우지 않는다는 저장소 원칙을 따른다.
 
 ## 프로필·명함 v2 — 2026-10-16 사용자 결정
 
-TypeScript API를 지운 뒤 비어 있던 프로필·명함·공유·지갑 경로를 Kotlin `api`가 다시 제공한다. 위 "모델"·"첫 수직 구현 API"의 Profile·Card 설명은 이 섹션이 대체한다. 오류는 ProblemDetail(400·401·403·404·409)이며 옛 422는 400이 됐다. id는 모두 UUID 문자열이고(조직·프로그램·활동·역할만 숫자), 연락처·이력 id는 클라이언트가 만든 UUID를 서버가 그대로 둔다.
+TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 Kotlin `api`가 다시 제공한다. 위 "모델"·"첫 수직 구현 API"의 Profile·Card 설명은 이 섹션이 대체한다. 오류는 ProblemDetail(400·401·403·404·409)이며 옛 422는 400이 됐다. id는 모두 UUID 문자열이고(조직·프로그램·활동·역할만 숫자), 연락처·이력 id는 클라이언트가 만든 UUID를 서버가 그대로 둔다.
 
 ### 프로필과 버전 이력
 
@@ -268,10 +226,10 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·공유·지갑 경
 | GET /v1/profile/histories/:id/evidence/:eid | Bearer(소유자) | — | 200 파일 |
 | DELETE /v1/profile/histories/:id/evidence/:eid | Bearer | — | 204 |
 
-- Evidence: `{id, fileName, contentType, size, uploadedAt}`. 파일은 DB에 둔다(bytea). 명함·공유에는 실리지 않는다.
+- Evidence: `{id, fileName, contentType, size, uploadedAt}`. 파일은 DB에 둔다(bytea). 명함에는 실리지 않는다.
 - 올리면 `verification`이 `pending`이 된다(이미 `verified`면 유지). 건너뛰고 나중에 올릴 수 있다. 다 지워도 `verified`는 유지된다.
 
-### 명함·공유·지갑
+### 명함·지갑
 
 | 메서드·경로 | 인증 | 요청 | 응답 |
 | --- | --- | --- | --- |
@@ -279,23 +237,19 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·공유·지갑 경
 | POST /v1/cards | Bearer | `{name, description, template, contactIds[], historyIds[]}` | 201 Card. 내 프로필의 id가 아니거나 `approval`이 `approved`가 아닌 이력이면 400 |
 | GET /v1/cards/:id | 없음 | — | 200 Card. 없거나 철회면 404 |
 | DELETE /v1/cards/:id | Bearer(소유자) | — | 204 철회. 남의 것 403 |
-| POST /v1/cards/:id/shares | Bearer(소유자) | `{activityIds: number[]}` 0~10개, 게시된 활동만 | 201 CardShare |
-| GET /v1/shares/:id | 없음 | — | 200 `{share: CardShare, card: Card}`. 철회된 명함의 공유도 404 |
-| GET /v1/wallet | Bearer | — | 200 `{items: Receipt[], shares: WalletShare[]}` |
-| PUT /v1/wallet/shares/:id | Bearer | — | 첫 저장 201, 이후 200 `{receiptId, cardId, shareId, status: "saved"\|"alreadySaved"}`. 자기 명함 400, 명함당 공유 20개 넘으면 409 |
+| GET /v1/wallet | Bearer | — | 200 `{items: Receipt[]}` (2026-10-18부터 `shares` 없음) |
 
-- Card: `{id, ownerId, name, description, template, introduction, profileName, job, contacts: Contact[], histories: History[], createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `template`은 발행할 때 보낸 마크다운 템플릿, `introduction`은 그것을 **채운 결과**(공개 본문)다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`, `GET /v1/shares/:id`)에는 `template`을 싣지 않는다.
-- CardShare: `{id, cardId, activities: [{id(숫자), title}], createdAt}`. **활동 id가 UUID에서 숫자로 바뀌었다**(2026-10-14 활동 조회 결정). 앱·웹의 ShareActivity를 맞춘다.
-- Receipt: `{id, card, context: {activityId: null, label: null}, receivedAt, reciprocal: false}`. WalletShare는 "앱에서 받은 공유 저장"과 같다.
-- 웹 비로그인 저장(`/v1/guest/*`, 홈 화면 세션 잇기)은 2026-10-17 Kotlin API에 다시 구현했다(위 "웹 비로그인 명함 저장"·"게스트 공유 정보 저장"·"홈 화면 세션 잇기" 계약 그대로). 오류 본문은 다른 경로와 같은 ProblemDetail이며 웹 프록시는 상태 코드만 옮긴다(401 `GUEST_SESSION_INVALID`, 그 외 `REQUEST_FAILED`). API의 `GUEST_PROXY_SECRET`이 비어 있으면 `/v1/guest/*`만 503이다.
-- 아직 없는 것: `POST /v1/wallet/import`, `POST /v1/exchanges`. 앱이 쓰지 않아 만들지 않는다(교환은 "앱에서 받은 공유 저장" 결정으로 범위 밖).
+- Card: `{id, ownerId, name, description, template, introduction, profileName, job, contacts: Contact[], histories: History[], createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `template`은 발행할 때 보낸 마크다운 템플릿, `introduction`은 그것을 **채운 결과**(공개 본문)다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`)에는 `template`을 싣지 않는다.
+- Receipt: `{id, card, context: {activityId: null, label: null}, receivedAt, reciprocal: false}`. 2026-10-18 공유 삭제 뒤 새 Receipt를 만드는 경로는 없다.
+- 웹 비로그인 저장(`/v1/guest/*`, 홈 화면 세션 잇기)은 2026-10-17 Kotlin API에 다시 구현했다(위 "웹 비로그인 명함 저장"·"홈 화면 세션 잇기" 계약 그대로. 게스트 공유 정보 저장은 2026-10-18 삭제). 오류 본문은 다른 경로와 같은 ProblemDetail이며 웹 프록시는 상태 코드만 옮긴다(401 `GUEST_SESSION_INVALID`, 그 외 `REQUEST_FAILED`). API의 `GUEST_PROXY_SECRET`이 비어 있으면 `/v1/guest/*`만 503이다.
+- 아직 없는 것: `POST /v1/wallet/import`, `POST /v1/exchanges`. 앱이 쓰지 않아 만들지 않는다.
 
 ### 템플릿 (명함 꾸미기)
 
 - 꾸미기는 **명함 제작**에서 시작한다. 앱은 명함 제작 화면에서 프로필 데이터를 받아 템플릿을 채워 렌더링한 화면을 보여 주고, 그 화면에서 바로 고친다. 발행하면 `template`과 채운 결과가 명함에 남는다.
 - 토큰: `{{profile.name}}`, `{{profile.job}}`(승인된 직무 이름을 " · "로 이은 값, 앱 표시 이름 "직무"), `{{profile.introduction}}`, `{{contact:<연락처 id>}}`. 앱 선택 창(프로필 데이터)에서 고르면 토큰이 들어가고, 편집기에서는 고칠 수 없는 칩으로 보인다.
 - 서버는 **발행할 때** 채운다. `{{contact:…}}`는 그 명함에 고른 연락처만 채우고, 고르지 않았거나 없는 연락처·모르는 토큰은 빈 문자열이 된다(원문 토큰을 남기지 않는다). 템플릿에만 쓴 연락처는 공개되지 않는다.
-- 발행한 명함은 바뀌지 않는다. 명함을 고치면 앱이 그 `template`을 미리 채운 새 명함을 발행하고, 이전 명함은 사용자가 지울 때까지 남는다(공유 링크 유지).
+- 발행한 명함은 바뀌지 않는다. 명함을 고치면 앱이 그 `template`을 미리 채운 새 명함을 발행하고, 이전 명함은 사용자가 지울 때까지 남는다(공개 링크 `/cards/:id` 유지).
 - 마크다운 부분집합: 제목(#~###), 굵게, 기울임, 목록, 번호 목록, 링크, 줄바꿈. 원시 HTML은 허용하지 않고 글자로 보여 준다. 링크는 `https`·`mailto`·`tel`만. 서버는 `template`·`introduction` 10,000자, 제어 문자(줄바꿈·탭 제외)를 막는다.
 - 앱 편집: 명함 제작 화면에서 내용이 바뀌면 수정 모드로 들어가 "저장"(발행)·"원래대로"(기기 안에서 되돌림)를 보여 준다. 프로필 데이터 화면도 같은 방식이며, 프로필의 서버 버전 되돌리기는 위 `restore`다.
 - 새 명함의 템플릿 기본값은 앱에 내장한다(이름·직무·소개·연락처 토큰이 들어간 기본 템플릿).

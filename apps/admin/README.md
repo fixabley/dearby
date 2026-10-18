@@ -1,6 +1,6 @@
 # Dearby 탐색 어드민
 
-React 19 + Ant Design 5 + TanStack Query + Vite. Kotlin 어드민 API([`shared/contracts/admin-v1.md`](../../shared/contracts/admin-v1.md))만 쓴다. 2026-10-15에 Supabase(데이터·로그인·RLS)와 Refine을 걷어냈다.
+React 19 + Ant Design 5 + TanStack Query + Vite. Kotlin 어드민 API([`shared/contracts/admin-v1.md`](../../shared/contracts/admin-v1.md))만 쓴다. 2026-10-15에 이전 BaaS 데이터·로그인과 Refine을 걷어냈다.
 
 ## 구조
 
@@ -66,7 +66,7 @@ npm run typecheck
 npm run build
 ```
 
-자동 테스트는 2026-10-06 사용자 요청으로 지웠다. [`docs/evidence`](docs/evidence/README.md)는 2026-09 Supabase 어드민 시절 화면 기록이다.
+자동 테스트는 2026-10-06 사용자 요청으로 지웠다. [`docs/evidence`](docs/evidence/README.md)는 2026-09 이전 어드민 시절 화면 기록이다.
 
 ## 이력 검토·역할 (2026-10-16)
 

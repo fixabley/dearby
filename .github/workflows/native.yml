@@ -45,20 +45,6 @@ jobs:
           else
             echo "api=false" >> "$GITHUB_OUTPUT"
           fi
-  catalog-worker:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    defaults:
-      run:
-        working-directory: apps/catalog-worker
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24
-      - run: npm run check
   android:
     needs: changes
     if: always() && (needs.changes.result != 'success' || needs.changes.outputs.android == 'true')
