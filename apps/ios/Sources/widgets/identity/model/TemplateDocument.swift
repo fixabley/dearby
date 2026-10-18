@@ -8,14 +8,9 @@ enum TemplateDocument {
     static let pattern = (try? NSRegularExpression(pattern: #"\{\{\s*([a-zA-Z]+)(?:[.:]([^{}\s]+))?\s*\}\}"#))
         ?? NSRegularExpression()
 
-    /// The starter template for a new card: name, job, introduction and the phone and email tokens.
-    static func starter(for profile: AccountProfile) -> String {
-        var lines = ["# {{profile.name}}", "{{profile.job}}", "", "{{profile.introduction}}", ""]
-        for contact in profile.contacts where contact.kind == "phone" || contact.kind == "email" {
-            lines.append("- \(contact.label): {{contact:\(contact.id)}}")
-        }
-        return lines.joined(separator: "\n")
-    }
+    /// The starter template for a new card: the self-introduction only. Name, job and contacts are drawn by the card face
+    /// itself (contract "명함 표현"), so repeating them here showed the same text twice (2026-10-18).
+    static func starter(for profile: AccountProfile) -> String { "{{profile.introduction}}" }
     /// Contact ids the template refers to; they must be among the card's public contacts.
     static func contactIDs(in template: String) -> Set<String> {
         Set(matches(template).compactMap { $0.kind == "contact" ? $0.key.lowercased() : nil })
