@@ -154,6 +154,15 @@ struct AccountClient: Sendable {
     func wallet(_ session: TokenPair) async throws -> Wallet {
         try await send("wallet", session: session, as: Wallet.self)
     }
+    /// `PUT /v1/wallet/cards/:cardId {activityId}` (contract "명함 교환"): saves a card arriving by QR to the account; 201 or 200 with
+    /// the Receipt, 404 for an unknown or withdrawn card, 409 `OWN_CARD` (surfaces as `conflict`) for my own card.
+    func receiveCard(_ cardID: String, activityID: Int64?, _ session: TokenPair) async throws -> Wallet.Receipt {
+        try await send("wallet/cards/\(cardID)", method: "PUT", body: ReceiveInput(activityId: activityID), session: session, as: Wallet.Receipt.self)
+    }
+    /// `POST /v1/wallet/cards/:cardId/reciprocate {myCardId}`: hands one of my cards back to that card's owner (same activity); 201.
+    func reciprocate(_ cardID: String, myCardID: String, _ session: TokenPair) async throws {
+        _ = try await request("wallet/cards/\(cardID)/reciprocate", method: "POST", body: ReciprocateInput(myCardId: myCardID), session: session)
+    }
 
     /// `POST /v1/cards`: `template` is the app's built-in markdown template the server fills in at publish time.
     struct CardInput: Encodable, Equatable, Sendable {
@@ -187,6 +196,9 @@ struct AccountClient: Sendable {
     /// RFC 9457 ProblemDetail: `detail` is the user-facing sentence.
     private struct ProblemBody: Decodable { let detail: String? }
     private struct CardList: Decodable { let items: [PublishedCard] }
+    /// `activityId` is left out of the JSON when nil (synthesized `encodeIfPresent`).
+    private struct ReceiveInput: Encodable { let activityId: Int64? }
+    private struct ReciprocateInput: Encodable { let myCardId: String }
 
     private func send<Response: Decodable>(_ path: String, method: String = "GET", body: (any Encodable)? = nil,
                                            session: TokenPair? = nil, headers: [String: String] = [:], as type: Response.Type) async throws -> Response {

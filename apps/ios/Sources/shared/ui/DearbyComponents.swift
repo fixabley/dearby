@@ -4,10 +4,12 @@ struct DearbyBadge: View {
     let title: String
     /// Danger colouring for a negative mark such as `탈락`.
     var danger = false
+    /// Quiet colouring for a neutral notice such as `3일 뒤 사라져요`.
+    var quiet = false
     var body: some View {
-        Text(title).font(.dearby(.caption).weight(.semibold)).foregroundStyle(danger ? DearbyStyle.danger : DearbyStyle.teal)
+        Text(title).font(.dearby(.caption).weight(.semibold)).foregroundStyle(danger ? DearbyStyle.danger : quiet ? DearbyStyle.quiet : DearbyStyle.teal)
             .padding(.horizontal, 10).padding(.vertical, 6)
-            .background(danger ? DearbyStyle.danger.opacity(0.1) : DearbyStyle.mint, in: Capsule())
+            .background(danger ? DearbyStyle.danger.opacity(0.1) : quiet ? DearbyStyle.muted : DearbyStyle.mint, in: Capsule())
     }
 }
 struct DearbyAvatar: View {

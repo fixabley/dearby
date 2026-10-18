@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 내 명함: the account's published cards. Pick one to view it, make a new one, republish it with "이 명함 고치기", or delete it.
+/// 내 명함: the account's published cards. Pick one to view it, show its QR, make a new one, republish it with "이 명함 고치기", or delete it.
 struct MyCardsPage: View {
     let state: MyCardsModel
     @State private var editor = false
@@ -10,6 +10,8 @@ struct MyCardsPage: View {
     /// 이 명함 지우기: the card awaiting confirmation; the server removes it and its public link.
     @State private var deletingCard: PublishedCard?
     @State private var deleteFailed = false
+    /// QR 보이기 for the selected card (contract "명함 교환").
+    @State private var showingQR: PublishedCard?
     @Environment(\.openURL) private var openURL
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     var body: some View {
@@ -42,6 +44,9 @@ struct MyCardsPage: View {
             .sheet(isPresented: $signingIn) {
                 NavigationStack { SignInSheet(account: state.account) { Task { await state.load() } } }
             }
+            .sheet(item: $showingQR) { card in
+                NavigationStack { CardQRSheet(cardName: card.name, cardID: card.id, webOrigin: state.webOrigin, activities: state.appliedActivities()) }
+            }
             .confirmationDialog("이 명함을 지울까요?", isPresented: Binding(get: { deletingCard != nil }, set: { if !$0 { deletingCard = nil } }),
                                 titleVisibility: .visible, presenting: deletingCard) { card in
                 Button("지우기", role: .destructive) { Task { deleteFailed = !(await state.delete(card.id)) } }
@@ -68,6 +73,9 @@ struct MyCardsPage: View {
         }
         if let card = state.card {
             CardView(card: card.cardModel) { if let url = $0.actionURL { openURL(url) } }
+            Button { showingQR = card } label: {
+                Label("QR 보이기", systemImage: "qrcode").font(.dearby(.subheadline).weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
+            }.buttonStyle(DearbyButtonStyle()).accessibilityHint("상대가 카메라로 읽어 이 명함을 받아요")
             Button { editingCard = card } label: {
                 Label("이 명함 고치기", systemImage: "pencil").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal).frame(minHeight: 44)
             }.accessibilityHint("이 명함의 이름과 공개 선택으로 새 명함을 발행해요")

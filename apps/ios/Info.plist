@@ -4,6 +4,8 @@
 <dict>
 	<key>DearbyAPIOrigin</key>
 	<string>$(DEARBY_API_ORIGIN)</string>
+	<key>DearbyWebOrigin</key>
+	<string>$(DEARBY_WEB_ORIGIN)</string>
 	<key>DearbyAppleSignInEnabled</key>
 	<true/>
 	<key>ITSAppUsesNonExemptEncryption</key>

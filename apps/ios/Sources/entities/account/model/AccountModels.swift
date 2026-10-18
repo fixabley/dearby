@@ -206,14 +206,25 @@ struct ActivityInfoPage: Decodable, Equatable, Sendable {
     let items: [ActivityInfoItem]
     let nextCursor: Int?
 }
-/// `GET /v1/wallet`: the cards saved to the account.
+/// `GET /v1/wallet`: the cards saved to the account (contract "명함 교환" 2026-10-19).
 struct Wallet: Decodable, Equatable, Sendable {
     struct Receipt: Decodable, Equatable, Identifiable, Sendable {
         let id: String
         let card: PublishedCard
+        /// Where the card was exchanged; names are nil when the activity is gone.
+        let context: ExchangeContext
         let receivedAt: String
+        /// True when the card's owner holds one of mine too; such cards are never recalled.
+        let reciprocal: Bool
+        /// Server-computed recall time (received + 30 days); nil when reciprocal. Not recomputed on the device.
+        let expiresAt: String?
     }
     let items: [Receipt]
+}
+struct ExchangeContext: Decodable, Equatable, Sendable {
+    let activityId: Int64?
+    let activityName: String?
+    let programName: String?
 }
 /// A published card snapshot from `POST /v1/cards`. `introduction` is the filled-in template (markdown body);
 /// `template` comes only on owner reads (the built-in template the card was published with).

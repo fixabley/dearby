@@ -1,11 +1,14 @@
 import SwiftUI
 
-/// 받은 명함 목록 한 줄(contract "받은 명함 목록 표시"): 이니셜 아바타 · 이름 · 직무, 소속이 있으면 민트 칩. 전체가 눌리는 한 줄이고 화살표는 없다.
-/// 화면이 명함 모델을 값으로 바꿔 넘기고, 누르면 `open`으로 상세를 연다.
+/// One received card in the indexed list (contract "받은 명함 목록 표시"): initial avatar, name, job, the organization chip,
+/// the program it was exchanged at (contract "명함 교환") and the recall badge (`맞교환` or `N일 뒤 사라져요`) at the trailing edge.
 struct ReceivedCardRow: View {
     let name: String
     let job: String
     var organization: String?
+    var program: String?
+    /// `맞교환`, `3일 뒤 사라져요`, or empty for none.
+    var badge = ""
     let open: () -> Void
     var body: some View {
         Button(action: open) {
@@ -15,15 +18,18 @@ struct ReceivedCardRow: View {
                     Text(name).font(.dearby(.headline).weight(.bold)).foregroundStyle(DearbyStyle.ink)
                     HStack(spacing: 6) {
                         if !job.isEmpty { Text(job).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).lineLimit(1) }
-                        if let organization, !organization.isEmpty {
-                            Text(organization).font(.dearby(.caption).weight(.semibold)).foregroundStyle(DearbyStyle.teal).lineLimit(1)
-                                .padding(.horizontal, 8).padding(.vertical, 3).background(DearbyStyle.mint, in: Capsule())
-                        }
+                        if let organization, !organization.isEmpty { chip(organization) }
+                        if let program, !program.isEmpty { chip(program) }
                     }
                 }
                 Spacer(minLength: 0)
+                if !badge.isEmpty { DearbyBadge(title: badge, quiet: badge != "맞교환") }
             }.padding(.vertical, 10).frame(minHeight: 44).contentShape(Rectangle())
         }.buttonStyle(.plain).accessibilityElement(children: .combine)
+    }
+    private func chip(_ text: String) -> some View {
+        Text(text).font(.dearby(.caption).weight(.semibold)).foregroundStyle(DearbyStyle.teal).lineLimit(1)
+            .padding(.horizontal, 8).padding(.vertical, 3).background(DearbyStyle.mint, in: Capsule())
     }
 }
 
@@ -32,9 +38,9 @@ struct ReceivedCardRow: View {
 struct ReceivedCardListSample: View {
     var body: some View {
         VStack(spacing: 0) {
-            ReceivedCardRow(name: "이서연", job: "프로덕트 디자이너", organization: "Dearby") {}
+            ReceivedCardRow(name: "이서연", job: "프로덕트 디자이너", organization: "Dearby", program: "부스트캠프", badge: "맞교환") {}
             Divider()
-            ReceivedCardRow(name: "박준호", job: "백엔드 개발") {}
+            ReceivedCardRow(name: "박준호", job: "백엔드 개발", badge: "12일 뒤 사라져요") {}
             Divider()
             ReceivedCardRow(name: "최유나", job: "커뮤니티 매니저", organization: "Let'Swift 준비위원회") {}
         }.padding(20).background(.white)

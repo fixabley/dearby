@@ -9,6 +9,7 @@
     "ActivityInfoPage",
     "ActivityInfoRef",
     "AppleSignIn",
+    "ExchangeContext",
     "GoogleSignIn",
     "ContactRules",
     "EvidenceMeta",
@@ -19,7 +20,8 @@
     "PublishedCard",
     "TokenPair",
     "TokenStore",
-    "TokenVault"
+    "TokenVault",
+    "Wallet"
   ],
   "entities/activity": [
     "ActivityModel",
@@ -94,6 +96,7 @@
     "ActivityInfoSearchModel",
     "CardComposer",
     "CardComposerPage",
+    "CardQRSheet",
     "CardDraft",
     "CardPublishModel",
     "EvidenceSection",
