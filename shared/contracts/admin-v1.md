@@ -107,3 +107,30 @@ AdminActivity: 공개 Activity(`native-v1.md` "활동 조회")의 필드 `{id, n
 ## 아직 없는 것
 
 활동의 이름·설명 외 내용(일정·장소 등) 편집, 수집 기록(`collection_runs`) 조회, 감사 로그. 이전 어드민의 자격요건 편집기·수집 작업 큐·재확인 화면은 이 API로 옮기지 않는다.
+
+## 일정 직접 지정과 조심 목록 — 2026-10-18 사용자 결정
+
+### 일정 직접 지정
+
+수집기는 날짜만 적힌 기간을 구조화하지 못해 `dateLabel` 문구만 남긴다. 운영자가 원문 문구를 보면서 날짜를 직접 지정한다.
+
+- `PATCH /v1/admin/activities/:id`에 `activitySchedule?`와 `application?`을 더한다. 각 값은 `{startDate?, endDate?, startAt?, endAt?}` 또는 `null`(지정 해제, `dateLabel`만 남김). 날짜만 주면 종일 일정(`startDate`, 저장은 `endDateExclusive = endDate + 1일`), 시각까지 주면 시각 일정(`startAt`·`endAt`, Asia/Seoul 오프셋). 한 요청에 날짜와 시각을 섞으면 400, 끝이 시작보다 앞서면 400. `dateLabel`은 보존한다.
+- 운영자가 지정한 일정은 `schedules.curated = true`로 표시하고, 수집기는 초안을 갱신할 때 `curated` 일정을 덮어쓰지 않는다(게시 활동은 원래 덮어쓰지 않는다).
+- `AdminActivity.activitySchedule`·`application`에 `curated: boolean`을 더한다.
+- 어드민 웹 활동 편집 창: "활동 기간"·"모집 기간" 블록마다 원문 `dateLabel`을 보여 주고 날짜 범위 선택기와 "시각 지정" 스위치(켜면 시작·끝 시각)를 둔다. 비우고 저장하면 `null`.
+
+### 조심 목록(수집 제외·별칭)
+
+운영자가 중복이나 잘못 분류된 활동을 지정하면 수집기가 다음부터 피한다.
+
+| 메서드·경로 | 요청 | 응답 |
+| --- | --- | --- |
+| GET /v1/admin/programs/:id/watchlist | — | 200 `{items: WatchEntry[]}` |
+| POST /v1/admin/programs/:id/watchlist | `{name, kind: "alias"\|"exclude", canonicalActivityId?, reason?}` | 201 WatchEntry. `alias`는 `canonicalActivityId` 필수(같은 프로그램의 활동), `exclude`는 없음 |
+| DELETE /v1/admin/watchlist/:entryId | — | 204 |
+| POST /v1/admin/activities/:id/duplicate | `{kind: "alias"\|"exclude", canonicalActivityId?, reason?}` | 204. 그 활동의 이름으로 WatchEntry를 만들고 활동을 지운다(기존 DELETE와 같이 `source_id`를 dismissed에 남긴다). `alias`면 정본은 다른 활동이어야 한다 |
+
+- WatchEntry: `{id, programId, name, normalizedName, kind, canonicalActivityId, canonicalActivityName, reason, createdAt}`. `normalizedName`은 공백 제거·소문자. 같은 프로그램에 같은 `normalizedName`은 하나(409).
+- 수집기: 프로그램을 수집할 때 조심 목록을 읽어 (1) 추출 요청에 "이 프로그램의 활동으로 만들지 않을 이름"(exclude)과 "이미 있는 활동의 다른 표기 → 정본 이름"(alias)을 넘기고, (2) 추출된 활동 이름을 `normalizedName`과 대조해 `exclude`면 저장하지 않고 제외 사유 `조심 목록: 제외 <이름>`을 기록, `alias`면 정본 활동의 초안을 갱신(정본이 게시 상태면 건너뛰고 사유 기록)한다. 이름 대조는 결정적 보장이고 지시문은 힌트다.
+- 어드민 웹: 활동 행 메뉴 "중복으로 지정"(같은 활동이다 → 정본 선택 / 이 프로그램 활동이 아니다), 프로그램 화면에 "조심 목록" 표(이름·종류·정본·사유·지정일·삭제, 직접 추가).
+- 필드 이름은 기존 어드민 API와 같은 camelCase다. DB 표 `collection_watchlist(id, program_id, name, normalized_name, kind, canonical_activity_id, reason, created_at)`와 `schedules.curated`만 snake_case.
