@@ -229,6 +229,8 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         val edited = read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"nameEn":"Workshop","descriptionEn":" Details "}""") }
             .andExpect { status { isOk() } })
         assertEquals(listOf("영문 활동", "Workshop", "설명", "Details"), listOf("name", "nameEn", "description", "descriptionEn").map { edited[it].asString() })
+        // 보낸 필드만 운영자 지정 필드(admin-v1.md "운영자 지정 필드")에 남는다
+        assertEquals("[\"nameEn\",\"descriptionEn\"]", edited["curatedFields"].toString())
         mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"name":" "}""") }.andExpect { status { isBadRequest() } }
         mvc.patch("/v1/admin/activities/999999") { asAdmin(); patchBody("""{"nameEn":"x"}""") }.andExpect { status { isNotFound() } }
 
@@ -247,6 +249,8 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         jdbc.sql("update activities set inherited_fields = '[\"eligibility\",\"audience\"]'::jsonb where id = ?").param(activity).update()
         val reset = read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"eligibility":{"op":"all","items":[{"fieldEn":"age","from":20}]}}""") }.andExpect { status { isOk() } })
         assertEquals("[\"audience\"]", reset["inheritedFields"].toString())
+        // 대상자 조건을 비우거나 다시 저장해도 운영자 지정 표시는 한 번만 남는다
+        assertEquals("[\"nameEn\",\"descriptionEn\",\"eligibility\"]", reset["curatedFields"].toString())
 
         // 일정 직접 지정(admin-v1.md): 날짜만 주면 종일 일정(끝 날짜 포함 → exclusive는 하루 뒤), curated가 켜진다. 모집 기간은 없던 행을 만든다. 섞으면 400, null이면 지정 해제
         val dated = read(

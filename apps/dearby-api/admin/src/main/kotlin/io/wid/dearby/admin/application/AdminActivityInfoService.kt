@@ -167,6 +167,7 @@ class AdminActivityInfoService(
             nameEn = optionalText(nameEn, current.nameEn),
             description = description?.trim() ?: current.description,
             descriptionEn = optionalText(descriptionEn, current.descriptionEn),
+            touched = setOfNotNull(name?.let { "name" }, nameEn?.let { "nameEn" }, description?.let { "description" }, descriptionEn?.let { "descriptionEn" }),
         )
         when (eligibility) {
             EligibilityChange.Keep -> Unit

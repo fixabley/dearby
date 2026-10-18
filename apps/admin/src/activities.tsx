@@ -51,10 +51,22 @@ export type ActivityText = {
   activitySchedule?: Schedule;
   /** Fields the collector copied from the program's previous edition (contract "이전 기수 정보 자동완성"); absent on the tree path. */
   inheritedFields?: string[];
+  /** Fields an operator changed through this editor (contract "운영자 지정 필드"); the collector never overwrites them. */
+  curatedFields?: string[];
 };
 /** True when the collector filled [field] from an earlier edition and no operator has edited it since. */
 const inherited = (activity: { inheritedFields?: string[] }, field: "eligibility" | "audience" | "participationType") =>
   activity.inheritedFields?.includes(field) ?? false;
+type CuratedField = "name" | "nameEn" | "description" | "descriptionEn" | "eligibility";
+/** True when an operator set [field] here; the server keeps that mark even when the field is saved again or emptied. */
+const curated = (activity: { curatedFields?: string[] }, field: CuratedField) => activity.curatedFields?.includes(field) ?? false;
+const curatedFieldLabels: Record<CuratedField, string> = {
+  name: "한글 이름",
+  nameEn: "영문 이름",
+  description: "한글 설명",
+  descriptionEn: "영문 설명",
+  eligibility: "대상자 조건",
+};
 type Activity = ActivityText & {
   organization: { id: number; name: string };
   program: { id: number; name: string };
@@ -252,6 +264,13 @@ export function Activities() {
                     </span>
                   </Tooltip>
                 )}
+                {(activity.curatedFields?.length ?? 0) > 0 && (
+                  <Tooltip title="어드민에서 고친 값이 있어요. 수집이 덮어쓰지 않아요. 상세에서 어떤 항목인지 보여요.">
+                    <span className="muted" aria-label="운영자가 지정한 값 있음" style={{ marginLeft: 6 }}>
+                      운영자 지정
+                    </span>
+                  </Tooltip>
+                )}
               </>
             ),
           },
@@ -326,11 +345,14 @@ export function Activities() {
   );
 }
 
+/** Marks a value an operator set here (a schedule or a text/eligibility field); the collector leaves it alone. */
 function CuratedTag() {
   return (
-    <Tag color="purple" style={{ marginLeft: 6 }}>
-      운영자 지정
-    </Tag>
+    <Tooltip title="어드민에서 고친 값이에요. 수집이 덮어쓰지 않아요.">
+      <Tag color="purple" style={{ marginLeft: 6 }}>
+        운영자 지정
+      </Tag>
+    </Tooltip>
   );
 }
 
@@ -530,22 +552,27 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
             />
           </>
         )}
-        <Form.Item name="name" label="한글 이름" rules={[{ required: true, whitespace: true, message: "이름을 입력해 주세요." }]}>
+        <Form.Item
+          name="name"
+          label={<>한글 이름{curated(activity, "name") && <CuratedTag />}</>}
+          rules={[{ required: true, whitespace: true, message: "이름을 입력해 주세요." }]}
+        >
           <Input />
         </Form.Item>
-        <Form.Item name="nameEn" label="영문 이름(선택)">
+        <Form.Item name="nameEn" label={<>영문 이름(선택){curated(activity, "nameEn") && <CuratedTag />}</>}>
           <Input />
         </Form.Item>
-        <Form.Item name="description" label="한글 설명">
+        <Form.Item name="description" label={<>한글 설명{curated(activity, "description") && <CuratedTag />}</>}>
           <Input.TextArea autoSize={{ minRows: 3, maxRows: 10 }} />
         </Form.Item>
-        <Form.Item name="descriptionEn" label="영문 설명(선택)">
+        <Form.Item name="descriptionEn" label={<>영문 설명(선택){curated(activity, "descriptionEn") && <CuratedTag />}</>}>
           <Input.TextArea autoSize={{ minRows: 3, maxRows: 10 }} />
         </Form.Item>
         <div className="eligibility-field">
           <div className="eligibility-field-heading">
             <strong>대상자 조건(선택)</strong>
             {inherited(activity, "eligibility") && <InheritedTag />}
+            {curated(activity, "eligibility") && <CuratedTag />}
             <Button
               size="small"
               aria-label="대상자 조건 비우기"
@@ -663,8 +690,43 @@ function ActivityDetail({ activity }: { activity: Activity }) {
       size="small"
       column={{ xs: 1, md: 2 }}
       items={[
-        { label: "설명", span: "filled", children: activity.description || "없음" },
-        { label: "영문 설명", span: "filled", children: activity.descriptionEn || "없음" },
+        {
+          label: "설명",
+          span: "filled",
+          children: (
+            <>
+              {activity.description || "없음"}
+              {curated(activity, "description") && <CuratedTag />}
+            </>
+          ),
+        },
+        {
+          label: "영문 설명",
+          span: "filled",
+          children: (
+            <>
+              {activity.descriptionEn || "없음"}
+              {curated(activity, "descriptionEn") && <CuratedTag />}
+            </>
+          ),
+        },
+        ...((["name", "nameEn"] as const).some((field) => curated(activity, field))
+          ? [
+              {
+                label: "운영자 지정 이름",
+                span: "filled" as const,
+                children: (
+                  <>
+                    {(["name", "nameEn"] as const)
+                      .filter((field) => curated(activity, field))
+                      .map((field) => curatedFieldLabels[field])
+                      .join(" · ")}
+                    <CuratedTag />
+                  </>
+                ),
+              },
+            ]
+          : []),
         {
           label: "활동 기간",
           children: (
@@ -694,6 +756,7 @@ function ActivityDetail({ activity }: { activity: Activity }) {
             <>
               {eligibilitySummary(activity.eligibility) || <span className="muted">조건 없음</span>}
               {inherited(activity, "eligibility") && <InheritedTag />}
+              {curated(activity, "eligibility") && <CuratedTag />}
               {activity.audience && (
                 <div className="muted" style={{ marginTop: 4 }}>
                   원문: {activity.audience}

@@ -50,6 +50,7 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
                 freshness = Freshness.valueOf(it.freshness!!),
                 sourceNote = it.sourceNote!!,
                 inheritedFields = InheritedFields.read(it.inheritedFields).toList(),
+                curatedFields = CuratedFields.read(it.curatedFields).toList(),
             )
         }
     }
@@ -68,23 +69,29 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
         return dsl.deleteFrom(ACTIVITIES).where(ACTIVITIES.ID.eq(activityId)).execute() > 0
     }
 
-    override fun updateTexts(activityId: Id, name: String, nameEn: String?, description: String, descriptionEn: String?): Boolean =
-        dsl.update(ACTIVITIES)
+    @Transactional
+    override fun updateTexts(activityId: Id, name: String, nameEn: String?, description: String, descriptionEn: String?, touched: Set<String>): Boolean {
+        // 보낸 필드는 운영자 지정 필드로 남겨 수집기가 덮어쓰지 않게 한다(admin-v1.md "운영자 지정 필드")
+        val curated = dsl.select(ACTIVITIES.CURATED_FIELDS).from(ACTIVITIES).where(ACTIVITIES.ID.eq(activityId)).fetchOne()?.value1() ?: return false
+        return dsl.update(ACTIVITIES)
             .set(ACTIVITIES.NAME, name)
             .set(ACTIVITIES.NAME_EN, nameEn)
             .set(ACTIVITIES.DESCRIPTION, description)
             .set(ACTIVITIES.DESCRIPTION_EN, descriptionEn)
+            .set(ACTIVITIES.CURATED_FIELDS, CuratedFields.jsonb(CuratedFields.read(curated) + touched))
             .set(ACTIVITIES.UPDATED_AT, LocalDateTime.now())
             .where(ACTIVITIES.ID.eq(activityId))
             .execute() > 0
+    }
 
     @Transactional
     override fun updateEligibility(activityId: Id, eligibility: EligibilityGroup?): Boolean {
-        // 운영자가 정한 값이므로 "이전 기수에서 가져옴" 표시를 뺀다(admin-v1.md "이전 기수 정보 자동완성")
-        val inherited = dsl.select(ACTIVITIES.INHERITED_FIELDS).from(ACTIVITIES).where(ACTIVITIES.ID.eq(activityId)).fetchOne()?.value1() ?: return false
+        // 운영자가 정한 값이므로 "이전 기수에서 가져옴" 표시를 빼고 운영자 지정 필드에 남긴다(admin-v1.md "이전 기수 정보 자동완성")
+        val row = dsl.select(ACTIVITIES.INHERITED_FIELDS, ACTIVITIES.CURATED_FIELDS).from(ACTIVITIES).where(ACTIVITIES.ID.eq(activityId)).fetchOne() ?: return false
         val updated = dsl.update(ACTIVITIES)
             .set(ACTIVITIES.ELIGIBILITY, EligibilityRows.jsonb(eligibility))
-            .set(ACTIVITIES.INHERITED_FIELDS, InheritedFields.jsonb(InheritedFields.read(inherited) - InheritedFields.ELIGIBILITY))
+            .set(ACTIVITIES.INHERITED_FIELDS, InheritedFields.jsonb(InheritedFields.read(row.value1()) - InheritedFields.ELIGIBILITY))
+            .set(ACTIVITIES.CURATED_FIELDS, CuratedFields.jsonb(CuratedFields.read(row.value2()) + CuratedFields.ELIGIBILITY))
             .set(ACTIVITIES.UPDATED_AT, LocalDateTime.now())
             .where(ACTIVITIES.ID.eq(activityId))
             .execute() > 0

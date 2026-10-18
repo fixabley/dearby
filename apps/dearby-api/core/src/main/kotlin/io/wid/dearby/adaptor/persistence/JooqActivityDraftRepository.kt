@@ -28,24 +28,33 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         if (dsl.fetchExists(DISMISSED_ACTIVITY_SOURCES, DISMISSED_ACTIVITY_SOURCES.SOURCE_ID.eq(sourceId))) {
             return DraftSaveResult.SKIPPED_DISMISSED
         }
-        val existing = dsl.select(ACTIVITIES.ID, ACTIVITIES.PUBLICATION_STATUS, ACTIVITIES.AUDIENCE, ACTIVITIES.ELIGIBILITY, ACTIVITIES.PARTICIPATION_TYPE, ACTIVITIES.INHERITED_FIELDS)
+        val existing = dsl.select(
+            ACTIVITIES.ID, ACTIVITIES.PUBLICATION_STATUS, ACTIVITIES.NAME, ACTIVITIES.NAME_EN, ACTIVITIES.DESCRIPTION, ACTIVITIES.DESCRIPTION_EN,
+            ACTIVITIES.AUDIENCE, ACTIVITIES.ELIGIBILITY, ACTIVITIES.PARTICIPATION_TYPE, ACTIVITIES.INHERITED_FIELDS, ACTIVITIES.CURATED_FIELDS,
+        )
             .from(ACTIVITIES)
             .where(ACTIVITIES.SOURCE_ID.eq(sourceId))
             .forUpdate()
             .fetchOne()
         if (existing?.get(ACTIVITIES.PUBLICATION_STATUS) == PublicationStatus.PUBLISHED.name) return DraftSaveResult.SKIPPED_PUBLISHED
 
-        // 이전 기수 자동완성(admin-v1.md): 비어 있는 대상자 조건·대상 원문·참여 방식은 같은 프로그램의 이전 기수에서 가져온다.
-        // 이미 있는 값은 가져온 것(inherited_fields에 있음)일 때만 다시 가져오고, 운영자가 정하거나 앞서 수집한 값은 두는다
+        // 운영자 지정 필드(admin-v1.md "이전 기수 정보 자동완성" 보완): curated_fields에 있는 필드만 기존 값을 지키고, 나머지는 수집값으로 갱신한다.
+        // 이전 기수 자동완성: 수집값이 비어 있는 대상자 조건·대상 원문·참여 방식은 같은 프로그램의 이전 기수에서 가져오고 inherited_fields에 남긴다.
+        // 수집값이 있으면 가져온 표시를 뺀다
+        val curated = CuratedFields.read(existing?.get(ACTIVITIES.CURATED_FIELDS))
         val previous = findPreviousEdition(programId, excluding = existing?.get(ACTIVITIES.ID))
-        val wasInherited = InheritedFields.read(existing?.get(ACTIVITIES.INHERITED_FIELDS))
         val inherited = mutableListOf<String>()
+        fun <T : Any> keepOrCollected(field: String, current: T?, collected: T): T = if (field in curated) current ?: collected else collected
         fun <T : Any> resolve(field: String, current: T?, collected: T?, fromPrevious: T?): T? {
-            if (current != null && field !in wasInherited) return current
+            if (field in curated) return current
             if (collected != null) return collected
             if (fromPrevious != null) inherited += field
             return fromPrevious
         }
+        val name = keepOrCollected(CuratedFields.NAME, existing?.get(ACTIVITIES.NAME), activity.name)
+        val nameEn = if (CuratedFields.NAME_EN in curated) existing?.get(ACTIVITIES.NAME_EN) else activity.nameEn
+        val description = keepOrCollected(CuratedFields.DESCRIPTION, existing?.get(ACTIVITIES.DESCRIPTION), activity.description)
+        val descriptionEn = if (CuratedFields.DESCRIPTION_EN in curated) existing?.get(ACTIVITIES.DESCRIPTION_EN) else activity.descriptionEn
         val eligibility = resolve(InheritedFields.ELIGIBILITY, EligibilityRows.read(existing?.get(ACTIVITIES.ELIGIBILITY)), activity.eligibility, previous?.eligibility)
         val audience = resolve(InheritedFields.AUDIENCE, existing?.get(ACTIVITIES.AUDIENCE)?.ifBlank { null }, activity.audience?.ifBlank { null }, previous?.audience?.ifBlank { null })
         val participationType = resolve(
@@ -57,8 +66,8 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         val activityId = existing?.get(ACTIVITIES.ID) ?: dsl.insertInto(ACTIVITIES)
             .set(ACTIVITIES.SOURCE_ID, sourceId)
             .set(ACTIVITIES.PROGRAM_ID, programId)
-            .set(ACTIVITIES.NAME, activity.name)
-            .set(ACTIVITIES.DESCRIPTION, activity.description)
+            .set(ACTIVITIES.NAME, name)
+            .set(ACTIVITIES.DESCRIPTION, description)
             .set(ACTIVITIES.OFFICIAL_URL, activity.officialUrl)
             .set(ACTIVITIES.PARTICIPATION_TYPE, participationType.name)
             .set(ACTIVITIES.RECRUITMENT_STATUS, RecruitmentStatus.UNKNOWN.name)
@@ -71,10 +80,10 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             .fetchOne()!!.id!!
         dsl.update(ACTIVITIES)
             .set(ACTIVITIES.PROGRAM_ID, programId)
-            .set(ACTIVITIES.NAME, activity.name)
-            .set(ACTIVITIES.NAME_EN, activity.nameEn)
-            .set(ACTIVITIES.DESCRIPTION, activity.description)
-            .set(ACTIVITIES.DESCRIPTION_EN, activity.descriptionEn)
+            .set(ACTIVITIES.NAME, name)
+            .set(ACTIVITIES.NAME_EN, nameEn)
+            .set(ACTIVITIES.DESCRIPTION, description)
+            .set(ACTIVITIES.DESCRIPTION_EN, descriptionEn)
             .set(ACTIVITIES.OFFICIAL_URL, activity.officialUrl)
             .set(ACTIVITIES.OFFICIAL_SOURCE, activity.officialSource)
             .set(ACTIVITIES.APPLICATION_URL, activity.applicationUrl)
@@ -95,7 +104,7 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             .where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.CURATED.isTrue).fetch(SCHEDULES.SLOT).toSet()
         dsl.deleteFrom(SCHEDULES).where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.CURATED.isFalse).execute()
         if (SLOT_ACTIVITY !in curatedSlots) {
-            insertSchedule(activityId, SLOT_ACTIVITY, activity.name, ScheduleKind.EVENT, null, null, activity.startDate, activity.endDate, activity.dateLabel, now)
+            insertSchedule(activityId, SLOT_ACTIVITY, name, ScheduleKind.EVENT, null, null, activity.startDate, activity.endDate, activity.dateLabel, now)
         }
         val hasRecruitment = activity.recruitmentStartAt != null || activity.recruitmentEndAt != null || activity.recruitmentStartDate != null || activity.recruitmentEndDate != null
         if (SLOT_APPLICATION !in curatedSlots && hasRecruitment) {
