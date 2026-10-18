@@ -13,7 +13,11 @@ data class ExtractedActivity(
     val applicationUrl: String?,
     val recruitmentStartAt: String?,
     val recruitmentEndAt: String?,
+    val recruitmentStartDate: String? = null, // 시각 없이 날짜만 있는 모집 기간(yyyy-MM-dd)
+    val recruitmentEndDate: String? = null,
     val dateLabel: String,
+    val startDate: String? = null, // 날짜만 있는 활동 기간(yyyy-MM-dd, 포함). 시각이 있는 활동 기간은 받지 않는다(종일 일정만)
+    val endDate: String? = null,
     val schedules: List<ExtractedSchedule>,
     val location: String?,
     val cost: String?,

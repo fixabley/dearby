@@ -1,6 +1,8 @@
 package io.wid.dearby.batch.adaptor.claude
 
 import io.wid.dearby.domain.collection.CollectionTarget
+import io.wid.dearby.domain.collection.WatchEntry
+import io.wid.dearby.domain.collection.WatchKind
 import java.net.URI
 
 // API·CLI 두 방식이 같은 지시문과 출력 스키마를 쓴다
@@ -39,7 +41,11 @@ object CollectionPrompts {
         - roundKey는 그 기수의 식별자다. 같은 기수를 다른 페이지나 다른 날에 다시 만나도 같아야 하므로 기수·연도(·트랙)만 쓴다(예: "10기", "2026", "10기-웹모바일", "8기-AITech"). 페이지 이름이나 단계 이름을 넣지 않는다.
         - schedules[].kind: 서류·신청 마감은 DEADLINE, 결과 발표는 ANNOUNCEMENT, 면접은 INTERVIEW, 테스트·챌린지·교육·행사·세션은 EVENT. 모르면 EVENT.
         - 본문에 적힌 내용만 쓴다. 추측하지 않는다. 모르는 값은 null로 둔다.
-        - 시각은 본문에 시각까지 있을 때만 ISO 8601 오프셋 형식(예: 2026-10-08T19:00:00+09:00)으로 쓴다. 날짜만 있으면 시각은 null로 두고 dateLabel에 원문 문구를 쓴다.
+        - 시각은 본문에 시각까지 있을 때만 ISO 8601 오프셋 형식(예: 2026-10-08T19:00:00+09:00)으로 쓴다(recruitmentStartAt·recruitmentEndAt, schedules[].startAt·endAt).
+        - 기간 필드에는 날짜만 적는다. 날짜만 있으면 startDate·endDate(yyyy-MM-dd, 끝 날짜 포함)를 채운다: 활동 기간은 startDate·endDate, 모집 기간은 recruitmentStartDate·recruitmentEndDate, 개별 일정은 schedules[].startDate·endDate. 하루짜리면 둘을 같게 쓴다. 연도가 없으면 본문의 다른 날짜로 알 수 있을 때만 쓰고 모르면 null.
+        - dateLabel은 원문 문구 그대로다. "2026 신입생 모집"처럼 날짜가 아닌 문구는 dateLabel에만 두고 startDate·endDate는 null로 둔다.
+        - 다른 프로그램의 활동은 뽑지 않는다. 프로그램 이름과 다른 프로그램(예: 같은 회사의 다른 과정)의 기수가 본문에 있어도 제외한다.
+        - 요청에 "활동으로 만들지 않을 이름"이 있으면 그 이름의 활동은 뽑지 않고, "이미 있는 활동의 다른 표기"가 있으면 그 표기 대신 정본 이름을 name으로 쓴다.
         - evidenceQuote는 이 활동이 본문에 있다는 근거로, 본문에서 그대로 복사한 10~200자 연속 구절이다.
         - name·description은 한국어로 쓴다. nameEn·descriptionEn은 그 영어 번역이다(고유 명사·행사명은 공식 영문 표기가 본문에 있으면 그대로 쓴다). 번역할 수 없으면 null.
         - participationType: 신청하면 참가하면 REGISTRATION, 심사로 선발하면 SELECTION.
@@ -54,8 +60,17 @@ object CollectionPrompts {
 
     const val MAX_PAGE_CHARS = 150_000
 
-    fun extractRequest(programName: String, url: String, text: String) =
-        "프로그램: $programName\n페이지: $url\n\n<page>\n${text.take(MAX_PAGE_CHARS)}\n</page>"
+    // 조심 목록(admin-v1.md)은 힌트로만 넘긴다. 저장 전 이름 대조가 보장이다
+    fun extractRequest(programName: String, url: String, text: String, watchlist: List<WatchEntry> = emptyList()) = buildString {
+        append("프로그램: $programName\n페이지: $url")
+        watchlist.filter { it.kind == WatchKind.EXCLUDE }.takeIf { it.isNotEmpty() }?.let { excluded ->
+            append("\n활동으로 만들지 않을 이름: ${excluded.joinToString(", ") { it.name }}")
+        }
+        watchlist.filter { it.kind == WatchKind.ALIAS && it.canonicalActivityName != null }.takeIf { it.isNotEmpty() }?.let { aliases ->
+            append("\n이미 있는 활동의 다른 표기: ${aliases.joinToString(", ") { "${it.name} → ${it.canonicalActivityName}" }}")
+        }
+        append("\n\n<page>\n${text.take(MAX_PAGE_CHARS)}\n</page>")
+    }
 
     val EXTRACT_SCHEMA: Map<String, Any> = obj(
         mapOf(
@@ -72,7 +87,11 @@ object CollectionPrompts {
                         "applicationUrl" to nullableString(),
                         "recruitmentStartAt" to nullableString(),
                         "recruitmentEndAt" to nullableString(),
+                        "recruitmentStartDate" to nullableString(),
+                        "recruitmentEndDate" to nullableString(),
                         "dateLabel" to string(),
+                        "startDate" to nullableString(),
+                        "endDate" to nullableString(),
                         "schedules" to mapOf(
                             "type" to "array",
                             "items" to obj(
@@ -81,6 +100,8 @@ object CollectionPrompts {
                                     "kind" to mapOf("type" to listOf("string", "null"), "enum" to listOf("DEADLINE", "ANNOUNCEMENT", "INTERVIEW", "EVENT", null)),
                                     "startAt" to nullableString(),
                                     "endAt" to nullableString(),
+                                    "startDate" to nullableString(),
+                                    "endDate" to nullableString(),
                                     "dateLabel" to string(),
                                 )
                             ),

@@ -119,6 +119,7 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
         conferenceUrl = row.conferenceUrl,
         sequence = row.sequence!!,
         timestamps = Timestamps(row.createdAt!!, row.updatedAt!!),
+        curated = row.curated ?: false,
     )
 
     private companion object {

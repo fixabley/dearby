@@ -17,10 +17,12 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_SOURCE_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_CONTACTS__ACTIVITY_CONTACTS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_ELIGIBILITY_TERMS__ACTIVITY_ELIGIBILITY_TERMS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_ROLES__ACTIVITY_ROLES_ACTIVITY_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.COLLECTION_WATCHLIST__COLLECTION_WATCHLIST_CANONICAL_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES__SCHEDULES_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts.ActivityContactsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEligibilityTerms.ActivityEligibilityTermsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles.ActivityRolesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist.CollectionWatchlistPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules.SchedulesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivitiesRecord
 
@@ -304,6 +306,22 @@ open class Activities(
 
     val activityRoles: ActivityRolesPath
         get(): ActivityRolesPath = activityRoles()
+
+    private lateinit var _collectionWatchlist: CollectionWatchlistPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.collection_watchlist</code> table
+     */
+    fun collectionWatchlist(): CollectionWatchlistPath {
+        if (!this::_collectionWatchlist.isInitialized)
+            _collectionWatchlist = CollectionWatchlistPath(this, null, COLLECTION_WATCHLIST__COLLECTION_WATCHLIST_CANONICAL_ACTIVITY_ID_FKEY.inverseKey)
+
+        return _collectionWatchlist;
+    }
+
+    val collectionWatchlist: CollectionWatchlistPath
+        get(): CollectionWatchlistPath = collectionWatchlist()
 
     private lateinit var _schedules: SchedulesPath
 

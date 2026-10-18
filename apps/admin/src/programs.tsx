@@ -1,9 +1,24 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Form, Input, InputNumber, Modal, Select, Space, Spin, Switch, Tag } from "antd";
+import { Alert, App, Button, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Spin, Switch, Table, Tag } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { api, useSingleFlight } from "./api";
 import { CursorTable, SearchSelect, useCursorList } from "./list";
+
+/** 조심 목록 entry (contract "조심 목록"): a name the collector treats as an alias of a canonical activity or never collects. */
+type WatchKind = "alias" | "exclude";
+type WatchEntry = {
+  id: number;
+  programId: number;
+  name: string;
+  normalizedName: string;
+  kind: WatchKind;
+  canonicalActivityId: number | null;
+  canonicalActivityName: string | null;
+  reason: string | null;
+  createdAt: string;
+};
+const watchKindLabels: Record<WatchKind, string> = { alias: "별칭", exclude: "제외" };
 
 type CollectionInput = { officialUrl?: string; allowedHosts: string[]; intervalDays: number; enabled: boolean };
 type CollectionSettings = {
@@ -67,6 +82,7 @@ export function Programs() {
         cursor={cursor}
         scroll={{ x: 900 }}
         locale={{ emptyText: "조건에 맞는 프로그램이 없어요." }}
+        expandable={{ expandedRowRender: (program) => <Watchlist program={program} /> }}
         columns={[
           {
             title: "프로그램",
@@ -219,6 +235,126 @@ function CollectionEditor({ program, onClose }: { program: Program; onClose: () 
         </Form>
       )}
     </Modal>
+  );
+}
+
+/** 조심 목록 of one program: what the collector must skip (제외) or fold into an existing activity (별칭), with manual add/remove. */
+function Watchlist({ program }: { program: Program }) {
+  const [form] = Form.useForm();
+  const kind: WatchKind = Form.useWatch("kind", form) ?? "exclude";
+  const { message } = App.useApp();
+  const client = useQueryClient();
+  const path = `programs/${program.id}/watchlist`;
+  const key = ["programs", program.id, "watchlist"];
+  const entries = useQuery({ queryKey: key, queryFn: () => api<{ items: WatchEntry[] }>(path) });
+  const add = useMutation({
+    mutationFn: (body: { name: string; kind: WatchKind; canonicalActivityId?: number; reason?: string }) => api<WatchEntry>(path, "POST", body),
+    onSuccess: () => {
+      form.resetFields(["name", "canonicalActivityId", "reason"]);
+      message.success("조심 목록에 넣었어요. 다음 수집부터 적용돼요.");
+      client.invalidateQueries({ queryKey: key });
+    },
+  });
+  const addOnce = useSingleFlight();
+  const remove = useMutation({
+    mutationFn: (entryId: number) => api<void>(`watchlist/${entryId}`, "DELETE"),
+    onSuccess: () => {
+      message.success("조심 목록에서 뺐어요.");
+      client.invalidateQueries({ queryKey: key });
+    },
+    onError: (error) => message.error(error.message),
+  });
+  const removeOnce = useSingleFlight();
+  return (
+    <div className="watchlist">
+      <p className="field-note">
+        <strong>조심 목록</strong> · 수집기가 이 프로그램에서 피할 이름이에요. 활동 화면의 ‘중복으로 지정’이 여기에 쌓이고, 직접 추가할 수도 있어요.
+        이름은 공백·대소문자를 무시해 대조해요.
+      </p>
+      {entries.isError ? (
+        <Alert type="error" showIcon message="조심 목록을 불러오지 못했어요." description={entries.error.message} />
+      ) : (
+        <Table<WatchEntry>
+          size="small"
+          rowKey="id"
+          pagination={false}
+          loading={entries.isLoading}
+          dataSource={entries.data?.items ?? []}
+          locale={{ emptyText: "아직 지정한 이름이 없어요." }}
+          columns={[
+            { title: "이름", dataIndex: "name" },
+            { title: "종류", render: (_, entry) => <Tag color={entry.kind === "alias" ? "blue" : "orange"}>{watchKindLabels[entry.kind]}</Tag> },
+            { title: "정본 활동", render: (_, entry) => entry.canonicalActivityName ?? <span className="muted">—</span> },
+            { title: "사유", render: (_, entry) => entry.reason ?? <span className="muted">—</span> },
+            { title: "지정일", render: (_, entry) => new Date(entry.createdAt).toLocaleDateString("ko-KR") },
+            {
+              title: "",
+              className: "actions",
+              render: (_, entry) => (
+                <Popconfirm
+                  title={`‘${entry.name}’을(를) 조심 목록에서 뺄까요?`}
+                  description="다음 수집부터 이 이름은 다시 활동으로 만들어질 수 있어요."
+                  okText="빼기"
+                  cancelText="취소"
+                  okButtonProps={{ danger: true }}
+                  disabled={remove.isPending}
+                  onConfirm={() => removeOnce(() => remove.mutateAsync(entry.id))}
+                >
+                  <Button size="small" danger loading={remove.isPending && remove.variables === entry.id}>
+                    삭제
+                  </Button>
+                </Popconfirm>
+              ),
+            },
+          ]}
+        />
+      )}
+      <Form
+        form={form}
+        layout="inline"
+        className="watchlist-add"
+        initialValues={{ kind: "exclude" }}
+        onFinish={(values: { name: string; kind: WatchKind; canonicalActivityId?: number; reason?: string }) =>
+          addOnce(() =>
+            add.mutateAsync({
+              name: values.name.trim(),
+              kind: values.kind,
+              canonicalActivityId: values.kind === "alias" ? values.canonicalActivityId : undefined,
+              reason: values.reason?.trim() || undefined,
+            }),
+          )
+        }
+      >
+        <Form.Item name="name" rules={[{ required: true, whitespace: true, message: "이름을 입력해 주세요." }]}>
+          <Input placeholder="피할 활동 이름" style={{ width: 220 }} />
+        </Form.Item>
+        <Form.Item name="kind">
+          <Select
+            virtual={false}
+            aria-label="종류"
+            options={[
+              { value: "exclude", label: "제외 — 이 프로그램 활동이 아님" },
+              { value: "alias", label: "별칭 — 기존 활동의 다른 표기" },
+            ]}
+            style={{ width: 230 }}
+          />
+        </Form.Item>
+        {kind === "alias" && (
+          <Form.Item name="canonicalActivityId" rules={[{ required: true, message: "정본 활동을 골라 주세요." }]}>
+            <SearchSelect path="activities" params={{ programId: program.id }} placeholder="정본 활동 검색" style={{ width: 240 }} />
+          </Form.Item>
+        )}
+        <Form.Item name="reason">
+          <Input placeholder="사유(선택)" maxLength={200} style={{ width: 200 }} />
+        </Form.Item>
+        <Form.Item>
+          <Button type="primary" htmlType="submit" loading={add.isPending}>
+            추가
+          </Button>
+        </Form.Item>
+      </Form>
+      {add.error && <Alert className="form-error" type="error" showIcon message={add.error.message} />}
+    </div>
   );
 }
 

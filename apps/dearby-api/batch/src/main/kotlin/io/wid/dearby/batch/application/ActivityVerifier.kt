@@ -5,6 +5,7 @@ import io.wid.dearby.domain.ParticipationType
 import io.wid.dearby.domain.ScheduleKind
 import io.wid.dearby.domain.collection.CollectedActivity
 import io.wid.dearby.domain.collection.CollectedSchedule
+import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.format.DateTimeParseException
 
@@ -22,6 +23,9 @@ object ActivityVerifier {
         val start = parse(candidate.recruitmentStartAt)
         val end = parse(candidate.recruitmentEndAt)
         if (start != null && end != null && end.isBefore(start)) return Verification.Rejected("모집 끝이 시작보다 앞섬")
+        // 날짜만 있는 기간은 종일 일정이 된다. 시각이 있으면 날짜는 쓰지 않고, 끝이 시작보다 앞서면 날짜를 버린다(dateLabel만 남는다)
+        val (recruitmentStartDate, recruitmentEndDate) = if (start == null && end == null) dates(candidate.recruitmentStartDate, candidate.recruitmentEndDate) else null to null
+        val (startDate, endDate) = dates(candidate.startDate, candidate.endDate)
         return Verification.Accepted(
             CollectedActivity(
                 roundKey = candidate.roundKey.trim(),
@@ -36,12 +40,17 @@ object ActivityVerifier {
                 participationType = if (candidate.participationType == ParticipationType.SELECTION.name) ParticipationType.SELECTION else ParticipationType.REGISTRATION,
                 recruitmentStartAt = start,
                 recruitmentEndAt = end,
+                recruitmentStartDate = recruitmentStartDate,
+                recruitmentEndDate = recruitmentEndDate,
                 dateLabel = candidate.dateLabel.trim(),
+                startDate = startDate,
+                endDate = endDate,
                 schedules = candidate.schedules.mapNotNull { schedule ->
                     val scheduleStart = parse(schedule.startAt)
                     val scheduleEnd = parse(schedule.endAt)
-                    if (scheduleStart != null && scheduleEnd != null && scheduleEnd.isBefore(scheduleStart)) null
-                    else CollectedSchedule(schedule.title.trim(), kind(schedule.kind), scheduleStart, scheduleEnd, schedule.dateLabel.trim())
+                    if (scheduleStart != null && scheduleEnd != null && scheduleEnd.isBefore(scheduleStart)) return@mapNotNull null
+                    val (dayStart, dayEnd) = if (scheduleStart == null && scheduleEnd == null) dates(schedule.startDate, schedule.endDate) else null to null
+                    CollectedSchedule(schedule.title.trim(), kind(schedule.kind), scheduleStart, scheduleEnd, schedule.dateLabel.trim(), dayStart, dayEnd)
                 },
                 location = candidate.location?.trim()?.ifEmpty { null },
                 cost = candidate.cost?.trim()?.ifEmpty { null },
@@ -59,6 +68,22 @@ object ActivityVerifier {
 
     // 공백·마크다운 기호 차이는 무시한다
     private fun normalize(text: String) = text.replace(Regex("[*_`#>]"), "").replace(Regex("\\s+"), " ").trim()
+
+    // 날짜만 있는 기간. 읽을 수 없는 날짜는 없는 것으로, 끝이 시작보다 앞서면 둘 다 버린다
+    private fun dates(startValue: String?, endValue: String?): Pair<LocalDate?, LocalDate?> {
+        val start = parseDate(startValue)
+        val end = parseDate(endValue)
+        return if (start != null && end != null && end.isBefore(start)) null to null else start to end
+    }
+
+    private fun parseDate(value: String?): LocalDate? =
+        value?.trim()?.takeIf { it.isNotEmpty() }?.let {
+            try {
+                LocalDate.parse(it)
+            } catch (_: DateTimeParseException) {
+                null
+            }
+        }
 
     // 읽을 수 없는 시각은 없는 것으로 본다(날짜만 있는 공지는 dateLabel에 남는다)
     private fun parse(value: String?): OffsetDateTime? =

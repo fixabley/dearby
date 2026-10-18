@@ -12,6 +12,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
+import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCards
@@ -103,6 +104,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.collection_runs</code>.
      */
     val COLLECTION_RUNS: CollectionRuns get() = CollectionRuns.COLLECTION_RUNS
+
+    /**
+     * The table <code>public.collection_watchlist</code>.
+     */
+    val COLLECTION_WATCHLIST: CollectionWatchlist get() = CollectionWatchlist.COLLECTION_WATCHLIST
 
     /**
      * The table <code>public.contacts</code>.
@@ -265,6 +271,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         AppleSignInStates.APPLE_SIGN_IN_STATES,
         BusinessCards.BUSINESS_CARDS,
         CollectionRuns.COLLECTION_RUNS,
+        CollectionWatchlist.COLLECTION_WATCHLIST,
         Contacts.CONTACTS,
         DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES,
         GuestCards.GUEST_CARDS,

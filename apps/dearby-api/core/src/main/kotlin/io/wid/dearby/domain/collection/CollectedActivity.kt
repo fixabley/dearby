@@ -3,6 +3,7 @@ package io.wid.dearby.domain.collection
 import io.wid.dearby.domain.ParticipationType
 import io.wid.dearby.domain.eligibility.EligibilityGroup
 
+import java.time.LocalDate
 import java.time.OffsetDateTime
 
 // 수집이 공식 페이지에서 확인한 활동 한 건. 초안(DRAFT)으로 저장되고 관리자가 게시해야 공개된다
@@ -18,7 +19,11 @@ data class CollectedActivity(
     val participationType: ParticipationType,
     val recruitmentStartAt: OffsetDateTime?,
     val recruitmentEndAt: OffsetDateTime?,
+    val recruitmentStartDate: LocalDate? = null, // 시각 없이 날짜만 있는 모집 기간(종일 일정으로 저장)
+    val recruitmentEndDate: LocalDate? = null,
     val dateLabel: String, // 활동 기간 문구
+    val startDate: LocalDate? = null, // 날짜만 있는 활동 기간(종일 일정). 없으면 dateLabel만
+    val endDate: LocalDate? = null,
     val schedules: List<CollectedSchedule>,
     val location: String?,
     val cost: String?,

@@ -14,6 +14,12 @@
 - **테스트:** API 기존 테스트에서 공유 단계를 뺐다(CardFlowTest 2개는 철회·지갑 목록 검증으로 축소, GuestFlowTest·AccountDeletionFlowTest 공유 단계 삭제). 새 테스트 파일은 만들지 않았다.
 - Orca 세션·워크트리·브랜치(같은 날 사용자 요청): `main`·`admin-agent`·`ux-research`·`api-agent` 워크트리의 터미널 4개를 닫고, `.claude/worktrees/` 아래 완료 워크트리 16개를 제거했다(모두 미커밋·미푸시 변경 없음). 브랜치는 병합된 로컬 129개·원격 14개, 원격 사본이 있는 로컬 10개, 로컬 전용 미병합 7개, PR 없는 미병합 원격 6개, 열린 PR #158·#169·#170의 브랜치 3개를 지웠다(PR은 브랜치 삭제로 닫힘). 남은 브랜치는 `main`과 `chore/drop-share-tables`(PR #235)뿐이다(`chore/remove-card-sharing`은 병합 후 삭제). 지운 미병합 브랜치의 마지막 커밋: feat/capstone-presentation `e9e36ca6`, feat/discovery-admin `ce856b07`, feat/ios-design-simplification `086fd94d`, fixabley/catalog-subscription-collector `d7e5da7b`, fixabley/dearby-android-design-simplification `da438461`, fixabley/ui-agent `ed7b272b`, ui/calendar-overlap `8beacff3`, ui/identity-avatar-order `8d648e95`, feat/mobile-device-calendar `a88c3c02`, feat/android-activities `c8cf82a1`, feat/ios-activities `10cd5dba`, fixabley/dearby-android `6ccf46fa`, fixabley/dearby-api `88f88950`, fixabley/dearby-ios `6f090faa`, fixabley/dearby-ios-architecture-tests `ee9c4e09`, ui/pretendard-flow-screens `31b52dea`(로컬 reflog·GitHub GC 전까지만 복구 가능). 루트 워크스페이스의 `supabase/`(로컬 CLI 상태 포함)와 `~/.supabase`도 지웠다.
 
+## 2026-10-18 결정 — 어드민 일정 직접 지정·조심 목록
+
+- 어드민 "활동 기간"이 문자열인 이유: 수집 추출에 날짜 전용 필드가 없어 날짜만 적힌 기간이 `dateLabel` 문구로만 남는다. 사용자 지시 "애매한 건 문자열 보고 내가 직접 지정": 어드민 활동 편집에 활동 기간·모집 기간 지정(날짜 범위 또는 시각), `schedules.curated`로 보호, 수집기는 날짜 전용 필드(`startDate`·`endDate`)도 뽑고 날짜가 아닌 문구·다른 프로그램 활동을 기간/활동으로 만들지 않도록 지시문 보강.
+- 사용자 제안 "중복은 내가 지정해서 조심하라고 목록에 추가": 조심 목록(`collection_watchlist`, 별칭/제외). 어드민 활동 행 "중복으로 지정", 프로그램 화면 조심 목록 표. 수집기는 지시문 힌트 + 저장 전 이름 대조로 보장. 계약 admin-v1 "일정 직접 지정과 조심 목록". 에이전트 팀 2개(API+batch, 어드민 웹).
+- 재수집 결과(2026-10-18, 새 규칙): 12개 프로그램 중 11개 성공, SSAFY 실패, 초안 11개(부스트캠프 1·AIGEN 5·SW마에스트로 3 등). 이전 122개 초안은 삭제했다.
+
 ## 2026-10-18 결정 — 대상자 조건(eligibility) 규격
 
 사용자 지시: 수집된 활동의 대상자를 중첩 가능한 JSON으로 규격화, 범위는 `from`·`to`, 검색 가능, 필드 어휘는 한글 + 영문 쌍 저장, 카멜케이스 금지(snake_case). 계약 "대상자 조건(eligibility)". `activities.eligibility jsonb` + 검색용 `activity_eligibility_terms`, `GET /v1/activities`·`/v1/discovery/programs` 필터(영문 snake_case 키), 수집 지시문 추출, 어드민 JSON 편집, 세 플랫폼 활동 상세 "대상" 칩. 필터 UI는 다음 범위. 에이전트 팀 5개(API+batch·어드민·iOS·Android·웹).

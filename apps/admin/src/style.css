@@ -317,3 +317,22 @@ a:focus-visible {
 .modal-actions {
   margin-top: 8px;
 }
+.schedule-block {
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  border: 1px solid #e3e8ea;
+  border-radius: 10px;
+}
+.schedule-block-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.watchlist {
+  display: grid;
+  gap: 12px;
+}
+.watchlist-add {
+  row-gap: 8px;
+}

@@ -4,6 +4,7 @@ import io.wid.dearby.application.activity.ActivityCurationRepository
 import io.wid.dearby.application.activity.ActivityListing
 import io.wid.dearby.application.activity.ActivitySearch
 import io.wid.dearby.application.activity.ActivityService
+import io.wid.dearby.application.activity.ScheduleSlot
 import io.wid.dearby.application.collection.CollectionSettingsRepository
 import io.wid.dearby.application.organization.OrganizationRepository
 import io.wid.dearby.application.program.ProgramRepository
@@ -156,6 +157,8 @@ class AdminActivityInfoService(
         description: String?,
         descriptionEn: String?,
         eligibility: EligibilityChange = EligibilityChange.Keep,
+        activitySchedule: ScheduleChange = ScheduleChange.Keep,
+        application: ScheduleChange = ScheduleChange.Keep,
     ): AdminActivity {
         val current = activities.getById(activityId, publicationStatus = null).activity
         curations.updateTexts(
@@ -170,7 +173,18 @@ class AdminActivityInfoService(
             EligibilityChange.Clear -> curations.updateEligibility(activityId, null)
             is EligibilityChange.Set -> curations.updateEligibility(activityId, eligibility.group)
         }
+        // 일정 직접 지정(admin-v1.md): 날짜만이면 종일, 시각까지면 시각 일정. null이면 구조화된 값을 지우고 문구만 남긴다
+        applySchedule(activityId, ScheduleSlot.ACTIVITY, activitySchedule)
+        applySchedule(activityId, ScheduleSlot.APPLICATION, application)
         return withCuration(listOf(activities.getById(activityId, publicationStatus = null))).single()
+    }
+
+    private fun applySchedule(activityId: Id, slot: ScheduleSlot, change: ScheduleChange) {
+        when (change) {
+            ScheduleChange.Keep -> Unit
+            ScheduleChange.Clear -> curations.updateSchedule(activityId, slot, null)
+            is ScheduleChange.Set -> curations.updateSchedule(activityId, slot, change.edit.toTime())
+        }
     }
 
     private fun withCuration(items: List<ActivityListing>): List<AdminActivity> {
