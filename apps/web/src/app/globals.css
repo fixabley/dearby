@@ -697,6 +697,15 @@ a {
   margin-top: 8px;
   white-space: pre-line;
 }
+/* 교환 장소 한 줄은 카드 위, 카드와 같은 너비(contract "명함 교환") */
+.exchange-place {
+  max-width: 480px;
+  margin: 0 auto 12px;
+  color: var(--teal-dark);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
 /* 저장 버튼·쿠키 안내는 카드 아래, 카드와 같은 너비 */
 .save-area {
   text-align: center;
@@ -706,6 +715,19 @@ a {
 .save-area > .button {
   width: 100%;
   margin-top: 16px;
+}
+.save-area > .button + .muted {
+  margin-top: 8px;
+  font-size: 14px;
+}
+.saved-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.saved-meta .badge {
+  margin-left: 0;
 }
 .cookie-note {
   font-size: 13px;

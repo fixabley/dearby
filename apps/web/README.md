@@ -24,7 +24,8 @@ All automated tests were removed on 2026-10-06 at the user's request; they are b
 - `/activities/:id`: numeric activity id, read from `GET /v1/activities/:id`; 404 shows not-found. A "대상" section renders the activity's `eligibility` (contract "대상자 조건 — 2026-10-18") as Korean chips (`나이 19~34세`, `재학상태 재학`, `any` groups joined with `또는`); omitted when the activity has none. Apply/official links open `officialUrl` (https only). Opening a link never claims application completion. Calendar comparison is explicitly unavailable in the browser.
 - `/cards/:id`: public Card projection: name/job/introduction, selected contacts and activity history. Revoked/missing API 404 becomes an unavailable-card screen. Invalid IDs never reach upstream. No private profile fetch.
   - 2026-10-18 명함 표현(contract "명함 표현"): 한 장의 카드 면(흰 바탕·모서리 20·구분선 테두리·최대 480px 가운데)에 가운데 머리(이니셜 아바타 56·이름·`job`을 ` · `로 나눈 직무 칩·가장 최근 승인 이력의 조직), 소개 마크다운, 종류 아이콘이 있는 연락처 행(행 전체가 링크), 활동 이력 행(기간·조직 · 프로그램 · 활동·역할·인증 배지)을 담는다. 저장 버튼과 쿠키 안내는 카드 아래에 두고 `/saved`는 바꾸지 않는다.
-- `/saved`: this browser's public saved cards. No-cookie visits return an empty list without creating a database session.
+  - 2026-10-19 명함 교환(contract "명함 교환"): `?activity=<n>`가 있으면 카드 위에 `<프로그램> <활동>에서 받은 명함`(공개 `GET /v1/activities/:id`로 이름을 찾고, 없으면 줄을 생략), 카드 아래 `Dearby 앱에 저장`(`dearby://cards/<id>?activity=<n>` 커스텀 스킴 링크, 앱이 없으면 아무 일도 없다는 안내)과 `브라우저에 저장`(비로그인 저장, `{activityId}`를 함께 보냄).
+- `/saved`: this browser's public saved cards. No-cookie visits return an empty list without creating a database session. 2026-10-19부터 `GET /v1/guest/cards`는 GuestItem(`{card, context, savedAt, expiresAt}`)이며 행에 프로그램 칩과 `N일 뒤 사라져요`(당일 `오늘 사라져요`) 배지를 보인다. 웹 저장은 맞교환이 없어 저장한 날부터 30일 뒤 서버가 회수한다.
 - `/api/[...path]`: fixed method/path allowlist for activity search (only validated `q`, `cursor`, `size` are forwarded; invalid values return 422), a single activity by numeric id, single public card and guest wallet only. Private profiles, owner card lists, wallet/auth/publishing endpoints are inaccessible through this proxy.
 
 Zod validates public DTOs and strips extra fields before returning JSON. React escapes all text. External links permit only http(s), no credentials; contact schemes are explicit. API responses use no-store, private, and Vary: Cookie/Origin. Browser calls never include an upstream URL or server secret.
@@ -49,7 +50,7 @@ The API verifies UUID, database existence and non-revocation. A public card ID o
 | Web request | API request | Browser result |
 | --- | --- | --- |
 | GET `/api/guest/cards` | GET `/v1/guest/cards` with cookie token; no-cookie skips API | `{items: Card[]}` |
-| PUT `/api/guest/cards/:id` | PUT `/v1/guest/cards/:id` | `{cardId,status}`; first-save `guestToken` becomes cookie only |
+| PUT `/api/guest/cards/:id` | PUT `/v1/guest/cards/:id` | body `{}` or `{activityId}` (the only forwarded body); `{cardId,status}`; first-save `guestToken` becomes cookie only |
 | DELETE `/api/guest/cards/:id` | DELETE `/v1/guest/cards/:id` | 204 after API success |
 | DELETE `/api/guest/session` | DELETE `/v1/guest/session` | Clear cookie after 204 or already-invalid 401 |
 

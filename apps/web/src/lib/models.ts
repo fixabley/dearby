@@ -43,6 +43,27 @@ export const cardSchema = z.object({
   createdAt: text,
 });
 export type Card = z.infer<typeof cardSchema>;
+// 명함 교환(contract "명함 교환 — 2026-10-19"): where a saved card was exchanged and when the server recalls it.
+const exchangeContext = z.object({
+  activityId: z.number().int().nullable(),
+  activityName: text.nullable(),
+  programName: text.nullable(),
+});
+export const guestItemSchema = z.object({
+  card: cardSchema,
+  context: exchangeContext,
+  savedAt: text,
+  expiresAt: text,
+});
+export const guestListSchema = z.object({ items: z.array(guestItemSchema) });
+export type GuestItem = z.infer<typeof guestItemSchema>;
+/** `N일 뒤 사라져요`, or `오늘 사라져요` when the recall is today or already due. */
+export function expiryLabel(expiresAt: string, now = Date.now()): string {
+  const time = Date.parse(expiresAt);
+  if (Number.isNaN(time)) return "";
+  const days = Math.ceil((time - now) / 86_400_000);
+  return days <= 0 ? "오늘 사라져요" : `${days}일 뒤 사라져요`;
+}
 // Public activity from GET /v1/activities (contract "활동 조회 — 2026-10-14"). Timed values carry a zone offset.
 const scheduleSchema = z.object({
   id: z.number().int(),
