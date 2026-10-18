@@ -11,13 +11,12 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardContent
 import com.dearby.nativeapp.widgets.card.cardContent.CardState
 import com.dearby.nativeapp.widgets.card.cardContent.ContactState
 
-/** One received card opened from the wallet list. */
+/** One received card opened from the wallet list: the same card face as 내 명함, with no action button (contract "받은 명함 상세"). */
 @Composable fun WalletCardPage(card: CardState, close: () -> Unit, contact: (ContactState) -> Unit) {
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("받은 명함", close)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp)) {
-            // CardContent scrolls inside itself; inside this scrolling page it needs a bounded height.
-            CardContent(card, Modifier.heightIn(max = 560.dp), onContact = contact, expanded = true)
+            CardContent(card, onContact = contact)
         }
     }
 }

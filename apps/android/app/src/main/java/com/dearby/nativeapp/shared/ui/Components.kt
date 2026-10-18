@@ -111,6 +111,19 @@ private val DearbyTypography = Typography(headlineMedium = TextStyle(fontSize = 
     }
 }
 
+/** 이니셜 아바타(민트 바탕·청록 글자): 명함 머리는 56dp, 목록 줄은 더 작게 쓴다. */
+@Composable fun InitialAvatar(name: String, size: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier) {
+    Box(modifier.size(size).background(Mint, androidx.compose.foundation.shape.CircleShape), contentAlignment = androidx.compose.ui.Alignment.Center) {
+        Text(name.take(1), color = Teal, fontWeight = FontWeight.Bold, style = if (size >= 56.dp) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleMedium)
+    }
+}
+
+/** 연락처 종류 이름(contract "명함 표현"): 라벨이 비었을 때 행 라벨로 쓴다. */
+fun contactKindName(kind: String) = when (kind) {
+    "phone" -> "전화"; "email" -> "메일"; "kakao" -> "카카오톡"; "instagram" -> "Instagram"; "github" -> "GitHub"; "behance" -> "Behance"
+    else -> kind
+}
+
 @Composable fun ContactSymbol(kind: String, modifier: Modifier = Modifier, tint: Color = Teal) {
     when (kind) {
         "github" -> Icon(painterResource(R.drawable.github_mark), null, modifier, tint = tint)
