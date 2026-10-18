@@ -3,7 +3,6 @@ package io.wid.dearby.application.card
 import io.wid.dearby.domain.UserId
 import io.wid.dearby.domain.card.ExchangeContext
 import io.wid.dearby.domain.card.Receipt
-import io.wid.dearby.domain.card.WalletShare
 import java.time.OffsetDateTime
 import java.util.*
 
@@ -15,12 +14,4 @@ interface WalletRepository {
     fun findReceipt(recipientId: UserId, cardId: UUID): Receipt?
 
     fun createReceipt(id: UUID, recipientId: UserId, cardId: UUID, context: ExchangeContext, receivedAt: OffsetDateTime)
-
-    fun shares(recipientId: UserId): List<WalletShare>
-
-    fun existsShare(receiptId: UUID, shareId: UUID): Boolean
-
-    fun countShares(receiptId: UUID): Int
-
-    fun addShare(receiptId: UUID, cardId: UUID, shareId: UUID, savedAt: OffsetDateTime)
 }

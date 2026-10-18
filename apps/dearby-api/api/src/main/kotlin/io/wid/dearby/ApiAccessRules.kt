@@ -12,9 +12,8 @@ class ApiAccessRules : AccessRules {
     override fun apply(rules: AuthorizeHttpRequestsDsl) = with(rules) {
         authorize(HttpMethod.GET, "/v1/activities", permitAll)
         authorize(HttpMethod.GET, "/v1/activities/*", permitAll)
-        // 공개 명함·공유(native-v1.md "프로필·명함 v2")
+        // 공개 명함(native-v1.md "프로필·명함 v2")
         authorize(HttpMethod.GET, "/v1/cards/*", permitAll)
-        authorize(HttpMethod.GET, "/v1/shares/*", permitAll)
         // 웹 비로그인 저장: 로그인 대신 프록시 키·세션 토큰 헤더를 본다(adaptor/web/v1/guest)
         authorize("/v1/guest/**", permitAll)
         authorize(anyRequest, authenticated)

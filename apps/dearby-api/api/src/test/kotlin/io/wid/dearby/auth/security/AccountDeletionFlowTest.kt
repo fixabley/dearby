@@ -60,14 +60,11 @@ class AccountDeletionFlowTest(
         jdbc.sql("insert into history_evidence (id, history_id, user_id, file_name, content_type, size, data, uploaded_at) values (?, ?, ?, 'a.png', 'image/png', 1, '\\x00', now())").params(UUID.randomUUID(), history, id).update()
         val card = UUID.randomUUID()
         jdbc.sql("insert into business_cards (id, user_id, name, description, template, introduction, profile_name, job, contacts, histories, created_at) values (?, ?, '명함', '', '', '', '이름', '', '[]', '[]', now())").params(card, id).update()
-        val share = UUID.randomUUID()
-        jdbc.sql("insert into card_shares (id, card_id, activities, created_at) values (?, ?, '[]', now())").params(share, card).update()
         // 다른 사람이 내 명함을 받아 둔 지갑 행
         val stranger = UUID.randomUUID()
         jdbc.sql("insert into users (id) values (?)").param(stranger).update()
         val receipt = UUID.randomUUID()
         jdbc.sql("insert into receipts (id, recipient_id, card_id, context, received_at) values (?, ?, ?, '{}', now())").params(receipt, stranger, card).update()
-        jdbc.sql("insert into wallet_shares (receipt_id, share_id, card_id, saved_at) values (?, ?, ?, now())").params(receipt, share, card).update()
         // 패스키: user handle = UUID 16바이트(base64url)
         jdbc.sql("insert into user_entities (id, name, display_name) values (?, 'Dearby', 'Dearby')").param(handle(id)).update()
         appleToken?.let {
@@ -98,8 +95,7 @@ class AccountDeletionFlowTest(
             assertEquals(0, count(table, column, user.id), table)
         }
         assertEquals(0, count("user_entities", "id", handle(user.id)))
-        // 내 명함의 공유 기록과, 그것을 받아 둔 다른 사람의 지갑 행도 함께 지워진다
-        assertEquals(0, jdbc.sql("select count(*) from card_shares s left join business_cards b on b.id = s.card_id where b.id is null").query(Int::class.java).single())
+        // 내 명함을 받아 둔 다른 사람의 지갑 행도 함께 지워진다
         assertEquals(0, jdbc.sql("select count(*) from receipts r left join business_cards b on b.id = r.card_id where b.id is null").query(Int::class.java).single())
         assertEquals(1, count("user_entities", "id", handle(other.id)))
         assertEquals(1, count("users", "id", other.id))
