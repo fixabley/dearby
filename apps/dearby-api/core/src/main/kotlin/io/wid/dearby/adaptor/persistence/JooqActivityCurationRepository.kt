@@ -3,7 +3,9 @@ package io.wid.dearby.adaptor.persistence
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITIES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITY_ROLES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.DISMISSED_ACTIVITY_SOURCES
+import io.wid.dearby.adaptor.persistence.jooq.tables.references.SCHEDULES
 import io.wid.dearby.application.activity.ActivityCurationRepository
+import io.wid.dearby.application.activity.ScheduleSlot
 import io.wid.dearby.domain.*
 import io.wid.dearby.domain.curation.ActivityCuration
 import io.wid.dearby.domain.curation.Freshness
@@ -84,6 +86,41 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
             .execute() > 0
         if (updated) EligibilityRows.writeTerms(dsl, activityId, eligibility)
         return updated
+    }
+
+    @Transactional
+    override fun updateSchedule(activityId: Id, slot: ScheduleSlot, time: ScheduleTime?): Boolean {
+        if (!dsl.fetchExists(ACTIVITIES, ACTIVITIES.ID.eq(activityId))) return false
+        val now = LocalDateTime.now()
+        val timed = time as? ScheduleTime.Timed
+        val allDay = time as? ScheduleTime.AllDay
+        val existing = dsl.select(SCHEDULES.ID).from(SCHEDULES).where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.eq(slot.name)).fetchOne()?.value1()
+        val scheduleId = existing ?: dsl.insertInto(SCHEDULES)
+            .set(SCHEDULES.ACTIVITY_ID, activityId)
+            .set(SCHEDULES.SLOT, slot.name)
+            .set(SCHEDULES.TITLE, if (slot == ScheduleSlot.APPLICATION) "신청 기간" else "활동 기간")
+            .set(SCHEDULES.KIND, (if (slot == ScheduleSlot.APPLICATION) ScheduleKind.DEADLINE else ScheduleKind.EVENT).name)
+            .set(SCHEDULES.STATUS, ScheduleStatus.CONFIRMED.name)
+            .set(SCHEDULES.DATE_LABEL, "")
+            .set(SCHEDULES.SEQUENCE, 0)
+            .set(SCHEDULES.CREATED_AT, now)
+            .set(SCHEDULES.UPDATED_AT, now)
+            .returning(SCHEDULES.ID)
+            .fetchOne()!!.id!!
+        dsl.update(SCHEDULES)
+            .set(SCHEDULES.TIME_TYPE, when { timed != null -> "TIMED"; allDay != null -> "ALL_DAY"; else -> null })
+            .set(SCHEDULES.START_AT, timed?.start?.toOffsetDateTime())
+            .set(SCHEDULES.END_AT, timed?.end?.toOffsetDateTime())
+            .set(SCHEDULES.TIME_ZONE, timed?.let { (it.start ?: it.end)!!.zone.id })
+            .set(SCHEDULES.START_DATE, allDay?.start)
+            .set(SCHEDULES.END_DATE_EXCLUSIVE, allDay?.endExclusive)
+            .set(SCHEDULES.CURATED, time != null)
+            .set(SCHEDULES.SEQUENCE, SCHEDULES.SEQUENCE.plus(1))
+            .set(SCHEDULES.UPDATED_AT, now)
+            .where(SCHEDULES.ID.eq(scheduleId))
+            .execute()
+        dsl.update(ACTIVITIES).set(ACTIVITIES.UPDATED_AT, now).where(ACTIVITIES.ID.eq(activityId)).execute()
+        return true
     }
 
     override fun updatePublicationStatus(activityId: Id, status: PublicationStatus): Boolean =

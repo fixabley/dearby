@@ -4,7 +4,7 @@ import io.wid.dearby.domain.*
 import java.time.LocalDate
 import java.time.OffsetDateTime
 
-// 공개 API(api 모듈)의 ScheduleResponse와 같은 형태(admin-v1.md가 native-v1.md의 Schedule을 그대로 쓴다)
+// 공개 API(api 모듈)의 ScheduleResponse와 같은 형태(admin-v1.md가 native-v1.md의 Schedule을 그대로 쓴다) + curated
 data class ScheduleResponse(
     val id: Long,
     val title: String,
@@ -18,6 +18,7 @@ data class ScheduleResponse(
     val dateLabel: String,
     val address: Address?,
     val conferenceUrl: String?,
+    val curated: Boolean, // 운영자가 직접 지정한 일정(admin-v1.md "일정 직접 지정")
 ) {
     companion object {
         fun from(schedule: Schedule): ScheduleResponse {
@@ -36,6 +37,7 @@ data class ScheduleResponse(
                 dateLabel = schedule.dateLabel,
                 address = schedule.address,
                 conferenceUrl = schedule.conferenceUrl,
+                curated = schedule.curated,
             )
         }
     }

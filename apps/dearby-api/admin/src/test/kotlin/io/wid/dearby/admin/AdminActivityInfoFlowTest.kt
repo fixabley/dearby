@@ -243,6 +243,54 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         assertEquals(2, jdbc.sql("select count(*) from activity_eligibility_terms where activity_id = ?").param(activity).query(Int::class.java).single())
         assertEquals(true, read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"eligibility":null}""") }.andExpect { status { isOk() } })["eligibility"].isNull)
         assertEquals(0, jdbc.sql("select count(*) from activity_eligibility_terms where activity_id = ?").param(activity).query(Int::class.java).single())
+
+        // 일정 직접 지정(admin-v1.md): 날짜만 주면 종일 일정(끝 날짜 포함 → exclusive는 하루 뒤), curated가 켜진다. 모집 기간은 없던 행을 만든다. 섞으면 400, null이면 지정 해제
+        val dated = read(
+            mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"activitySchedule":{"startDate":"2026-05-26","endDate":"2027-02-06"},"application":{"startAt":"2026-05-26T00:00:00+09:00","endAt":"2026-06-09T11:00:00+09:00"}}""") }
+                .andExpect { status { isOk() } }
+        )
+        assertEquals(listOf("2026-05-26", "2027-02-07", true), listOf(dated["activitySchedule"]["startDate"].asString(), dated["activitySchedule"]["endDateExclusive"].asString(), dated["activitySchedule"]["curated"].asBoolean()))
+        assertEquals(listOf("Asia/Seoul", true), listOf(dated["application"]["timeZone"].asString(), dated["application"]["curated"].asBoolean()))
+        mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"activitySchedule":{"startDate":"2026-05-26","endAt":"2026-06-09T11:00:00+09:00"}}""") }.andExpect { status { isBadRequest() } }
+        mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"activitySchedule":{"startDate":"2026-05-26","endDate":"2026-05-01"}}""") }.andExpect { status { isBadRequest() } }
+        val cleared = read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"application":null}""") }.andExpect { status { isOk() } })
+        assertEquals(listOf(true, false), listOf(cleared["application"]["startAt"].isNull, cleared["application"]["curated"].asBoolean()))
+    }
+
+    @Test
+    fun `조심 목록은 프로그램별로 이름을 모으고, 중복 지정은 활동을 지우면서 항목을 만든다`() {
+        val program = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        fun activity(name: String) = jdbc.sql(
+            """
+            insert into activities (program_id, name, description, participation_type, recruitment_status, official_url, freshness, source_note, source_id, created_at, updated_at)
+            values (?, ?, '설명', 'REGISTRATION', 'UNKNOWN', 'https://example.org', 'STALE', '', gen_random_uuid(), localtimestamp, localtimestamp)
+            returning id
+            """
+        ).params(program, name).query(Long::class.java).single().also { id ->
+            jdbc.sql("insert into schedules (activity_id, slot, title, kind, status, date_label, sequence, created_at, updated_at) values (?, 'ACTIVITY', ?, 'EVENT', 'CONFIRMED', '', 0, localtimestamp, localtimestamp)")
+                .params(id, name).update()
+        }
+        val canonical = activity("우아한 테크코스 8기")
+        val duplicate = activity("우아한테크코스 8기")
+
+        val created = read(mvc.post("/v1/admin/programs/$program/watchlist") { asAdmin(); body("""{"name":"다른 과정 수료식","kind":"exclude","reason":"다른 프로그램"}""") }.andExpect { status { isCreated() } })
+        assertEquals(listOf("exclude", "다른과정수료식"), listOf(created["kind"].asString(), created["normalizedName"].asString()))
+        mvc.post("/v1/admin/programs/$program/watchlist") { asAdmin(); body("""{"name":"다른 과정  수료식","kind":"exclude"}""") }.andExpect { status { isConflict() } }
+        mvc.post("/v1/admin/programs/$program/watchlist") { asAdmin(); body("""{"name":"x","kind":"alias"}""") }.andExpect { status { isBadRequest() } }
+        mvc.post("/v1/admin/programs/$program/watchlist") { asAdmin(); body("""{"name":"x","kind":"merge"}""") }.andExpect { status { isBadRequest() } }
+
+        val duplicateSource = jdbc.sql("select source_id::text from activities where id = ?").param(duplicate).query(String::class.java).single()
+        mvc.post("/v1/admin/activities/$duplicate/duplicate") { asAdmin(); body("""{"kind":"alias","canonicalActivityId":$duplicate}""") }.andExpect { status { isBadRequest() } }
+        mvc.post("/v1/admin/activities/$duplicate/duplicate") { asAdmin(); body("""{"kind":"alias","canonicalActivityId":$canonical,"reason":"띄어쓰기만 다름"}""") }.andExpect { status { isNoContent() } }
+        assertEquals(0, jdbc.sql("select count(*) from activities where id = ?").param(duplicate).query(Int::class.java).single())
+        assertEquals(1, jdbc.sql("select count(*) from dismissed_activity_sources where source_id = ?::uuid").param(duplicateSource).query(Int::class.java).single())
+
+        val items = read(mvc.get("/v1/admin/programs/$program/watchlist") { asAdmin() }.andExpect { status { isOk() } })["items"]
+        assertEquals(2, items.size())
+        val alias = items.first { it["kind"].asString() == "alias" }
+        assertEquals(listOf("우아한테크코스 8기", canonical, "우아한 테크코스 8기"), listOf(alias["name"].asString(), alias["canonicalActivityId"].asLong(), alias["canonicalActivityName"].asString()))
+        mvc.delete("/v1/admin/watchlist/${alias["id"].asLong()}") { asAdmin() }.andExpect { status { isNoContent() } }
+        mvc.delete("/v1/admin/watchlist/${alias["id"].asLong()}") { asAdmin() }.andExpect { status { isNotFound() } }
     }
 
     @Test

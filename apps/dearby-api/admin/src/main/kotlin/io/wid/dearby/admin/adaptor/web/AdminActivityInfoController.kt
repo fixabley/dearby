@@ -2,6 +2,12 @@ package io.wid.dearby.admin.adaptor.web
 
 import io.wid.dearby.admin.application.AdminActivityInfoService
 import io.wid.dearby.admin.application.EligibilityChange
+import io.wid.dearby.admin.application.ScheduleChange
+import io.wid.dearby.application.activity.ScheduleEdit
+import tools.jackson.databind.JsonNode
+import java.time.LocalDate
+import java.time.OffsetDateTime
+import java.time.format.DateTimeParseException
 import io.wid.dearby.application.activity.ActivitySearch
 import io.wid.dearby.application.eligibility.EligibilityJson
 import io.wid.dearby.domain.InvalidInputException
@@ -89,8 +95,32 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
             request.eligibility.isNull -> EligibilityChange.Clear
             else -> EligibilityChange.Set(EligibilityJson.parse(request.eligibility, lenient = false) ?: throw InvalidInputException("대상자 조건이 비어 있습니다"))
         }
-        return AdminActivityResponse.from(activityInfo.updateActivityTexts(id, request.name, request.nameEn, request.description, request.descriptionEn, eligibility))
+        return AdminActivityResponse.from(
+            activityInfo.updateActivityTexts(
+                id, request.name, request.nameEn, request.description, request.descriptionEn, eligibility,
+                activitySchedule = scheduleChange(request.activitySchedule), application = scheduleChange(request.application),
+            )
+        )
     }
+
+    // 일정 직접 지정(admin-v1.md): {startDate?, endDate?, startAt?, endAt?} 또는 null. 날짜는 yyyy-MM-dd, 시각은 ISO 8601 오프셋
+    private fun scheduleChange(node: JsonNode?): ScheduleChange = when {
+        node == null -> ScheduleChange.Keep
+        node.isNull -> ScheduleChange.Clear
+        !node.isObject -> throw InvalidInputException("일정은 객체 또는 null이어야 합니다")
+        else -> ScheduleChange.Set(
+            ScheduleEdit(
+                startDate = node.text("startDate")?.let(::date),
+                endDate = node.text("endDate")?.let(::date),
+                startAt = node.text("startAt")?.let(::dateTime),
+                endAt = node.text("endAt")?.let(::dateTime),
+            )
+        )
+    }
+
+    private fun JsonNode.text(field: String): String? = get(field)?.takeUnless { it.isNull }?.asString()?.trim()?.ifEmpty { null }
+    private fun date(value: String): LocalDate = try { LocalDate.parse(value) } catch (_: DateTimeParseException) { throw InvalidInputException("날짜 형식이 올바르지 않습니다: $value") }
+    private fun dateTime(value: String): OffsetDateTime = try { OffsetDateTime.parse(value) } catch (_: DateTimeParseException) { throw InvalidInputException("시각 형식이 올바르지 않습니다: $value") }
 
     @DeleteMapping("/activities/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

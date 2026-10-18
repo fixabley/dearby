@@ -192,6 +192,11 @@ open class Schedules(
      */
     val UPDATED_AT: TableField<SchedulesRecord, LocalDateTime?> = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "")
 
+    /**
+     * The column <code>public.schedules.curated</code>.
+     */
+    val CURATED: TableField<SchedulesRecord, Boolean?> = createField(DSL.name("curated"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "")
+
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)

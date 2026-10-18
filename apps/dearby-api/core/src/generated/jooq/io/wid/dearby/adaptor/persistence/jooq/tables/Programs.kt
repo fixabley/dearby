@@ -6,9 +6,11 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.indexes.PROGRAMS_ORGANIZATION_ID_IDX
+import io.wid.dearby.adaptor.persistence.jooq.keys.COLLECTION_WATCHLIST__COLLECTION_WATCHLIST_PROGRAM_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAMS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAMS_SOURCE_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_CONTACTS__PROGRAM_CONTACTS_PROGRAM_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist.CollectionWatchlistPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts.ProgramContactsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProgramsRecord
 
@@ -161,6 +163,22 @@ open class Programs(
     override fun getIdentity(): Identity<ProgramsRecord, Long?> = super.getIdentity() as Identity<ProgramsRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<ProgramsRecord> = PROGRAMS_PKEY
     override fun getUniqueKeys(): List<UniqueKey<ProgramsRecord>> = listOf(PROGRAMS_SOURCE_ID_KEY)
+
+    private lateinit var _collectionWatchlist: CollectionWatchlistPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.collection_watchlist</code> table
+     */
+    fun collectionWatchlist(): CollectionWatchlistPath {
+        if (!this::_collectionWatchlist.isInitialized)
+            _collectionWatchlist = CollectionWatchlistPath(this, null, COLLECTION_WATCHLIST__COLLECTION_WATCHLIST_PROGRAM_ID_FKEY.inverseKey)
+
+        return _collectionWatchlist;
+    }
+
+    val collectionWatchlist: CollectionWatchlistPath
+        get(): CollectionWatchlistPath = collectionWatchlist()
 
     private lateinit var _programContacts: ProgramContactsPath
 

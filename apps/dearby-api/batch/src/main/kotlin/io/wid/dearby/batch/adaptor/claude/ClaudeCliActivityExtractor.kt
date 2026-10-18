@@ -3,6 +3,7 @@ package io.wid.dearby.batch.adaptor.claude
 import io.wid.dearby.batch.application.ActivityExtractor
 import io.wid.dearby.batch.application.Extraction
 import io.wid.dearby.batch.application.FetchedPage
+import io.wid.dearby.domain.collection.WatchEntry
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.stereotype.Component
 import tools.jackson.databind.json.JsonMapper
@@ -13,10 +14,10 @@ import tools.jackson.module.kotlin.treeToValue
 @ConditionalOnProperty("dearby.collection.engine", havingValue = CollectionProperties.ENGINE_CLI)
 class ClaudeCliActivityExtractor(private val cli: ClaudeCli, private val json: JsonMapper) : ActivityExtractor {
 
-    override fun extract(page: FetchedPage, programName: String): Extraction {
+    override fun extract(page: FetchedPage, programName: String, watchlist: List<WatchEntry>): Extraction {
         val result = cli.run(
             CollectionPrompts.EXTRACT_SYSTEM,
-            CollectionPrompts.extractRequest(programName, page.url, page.text),
+            CollectionPrompts.extractRequest(programName, page.url, page.text, watchlist),
             CollectionPrompts.EXTRACT_SCHEMA,
             emptyList(),
         )

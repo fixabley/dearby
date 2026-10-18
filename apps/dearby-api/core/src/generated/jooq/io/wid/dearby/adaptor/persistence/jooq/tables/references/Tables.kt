@@ -13,6 +13,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
+import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCards
@@ -85,6 +86,11 @@ val BUSINESS_CARDS: BusinessCards = BusinessCards.BUSINESS_CARDS
  * The table <code>public.collection_runs</code>.
  */
 val COLLECTION_RUNS: CollectionRuns = CollectionRuns.COLLECTION_RUNS
+
+/**
+ * The table <code>public.collection_watchlist</code>.
+ */
+val COLLECTION_WATCHLIST: CollectionWatchlist = CollectionWatchlist.COLLECTION_WATCHLIST
 
 /**
  * The table <code>public.contacts</code>.

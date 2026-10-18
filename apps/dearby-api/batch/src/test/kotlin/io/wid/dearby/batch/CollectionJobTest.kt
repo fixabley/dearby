@@ -55,13 +55,13 @@ class CollectionJobTest(
 
         @Bean
         @Primary
-        fun fakeExtractor() = ActivityExtractor { _, _ ->
+        fun fakeExtractor() = ActivityExtractor { _, _, _ ->
             Extraction(
                 listOf(
                     ExtractedActivity(
                         roundKey = "2026-컨퍼런스", name = "Let'Swift 2026 컨퍼런스", nameEn = "Let'Swift 2026 Conference", description = "본행사", descriptionEn = "Main event", participationType = "REGISTRATION",
                         applicationUrl = "https://letswift.kr/2026/apply", recruitmentStartAt = "2026-11-01T10:00:00+09:00",
-                        recruitmentEndAt = "2026-11-10T23:59:00+09:00", dateLabel = "2026-11-29", schedules = emptyList(),
+                        recruitmentEndAt = "2026-11-10T23:59:00+09:00", dateLabel = "2026-11-29", startDate = "2026-11-29", endDate = "2026-11-29", schedules = emptyList(),
                         location = null, cost = null, audience = null, evidenceQuote = "참가 신청은 11월 1일부터 11월 10일까지입니다",
                     ),
                     ExtractedActivity(
@@ -80,6 +80,7 @@ class CollectionJobTest(
         jdbc.sql("delete from program_collection_settings").update()
         jdbc.sql("delete from collection_runs").update()
         jdbc.sql("delete from dismissed_activity_sources").update()
+        jdbc.sql("delete from collection_watchlist").update()
         // V5로 넣은 Let'Swift 활동만 남기고 수집으로 생긴 활동을 지운다(일정은 함께 지워진다)
         jdbc.sql("delete from activities where source_id is distinct from '01b773dc-5e13-4d14-a182-9642b47d596e'").update()
     }
@@ -119,6 +120,9 @@ class CollectionJobTest(
         val schedules = jdbc.sql("select slot from schedules s join activities a on a.id = s.activity_id where a.name = ? order by slot")
             .param("Let'Swift 2026 컨퍼런스").query(String::class.java).list()
         assertEquals(listOf("ACTIVITY", "APPLICATION"), schedules)
+        // 날짜만 있는 활동 기간은 종일 일정(끝 날짜 포함 → exclusive는 하루 뒤)
+        assertEquals(listOf("ALL_DAY|2026-11-29|2026-11-30"), jdbc.sql("select time_type || '|' || start_date || '|' || end_date_exclusive from schedules s join activities a on a.id = s.activity_id where a.name = ? and slot = 'ACTIVITY'")
+            .param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
 
         run("2026-10-20") // 같은 날짜를 다시 실행해도 수집하지 않는다
         assertEquals(1, runCount())
@@ -158,6 +162,12 @@ class CollectionJobTest(
         assertEquals(emptyList(), status("Let'Swift 2026 컨퍼런스"))
         val reasons = jdbc.sql("select array_to_string(rejected_reasons, '|') from collection_runs where run_date = '2026-10-22'").query(String::class.java).single()
         assertEquals(true, reasons.contains("관리자가 삭제한 활동"))
+
+        // 조심 목록(admin-v1.md)의 제외 이름은 저장 전에 걸러지고 사유에 남는다(dismissed보다 먼저 판정)
+        jdbc.sql("insert into collection_watchlist (program_id, name, normalized_name, kind, created_at) select id, 'Let''Swift 2026  컨퍼런스', 'let''swift2026컨퍼런스', 'EXCLUDE', now() from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").update()
+        run("2026-10-23")
+        val excluded = jdbc.sql("select array_to_string(rejected_reasons, '|') from collection_runs where run_date = '2026-10-23'").query(String::class.java).single()
+        assertEquals(true, excluded.contains("조심 목록: 제외"))
     }
 
     @Test

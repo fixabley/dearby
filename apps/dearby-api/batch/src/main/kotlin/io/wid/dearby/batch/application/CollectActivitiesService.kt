@@ -1,11 +1,14 @@
 package io.wid.dearby.batch.application
 
 import io.wid.dearby.application.collection.ActivityDraftRepository
+import io.wid.dearby.application.collection.WatchlistRepository
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.collection.CollectionOutcome
 import io.wid.dearby.domain.collection.CollectionReport
 import io.wid.dearby.domain.collection.CollectionTarget
 import io.wid.dearby.domain.collection.DraftSaveResult
+import io.wid.dearby.domain.collection.WatchEntry
+import io.wid.dearby.domain.collection.WatchKind
 import org.springframework.stereotype.Service
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -19,10 +22,13 @@ class CollectActivitiesService(
     private val fetcher: PageFetcher,
     private val extractor: ActivityExtractor,
     private val drafts: ActivityDraftRepository,
+    private val watchlist: WatchlistRepository,
 ) {
 
     fun collect(target: CollectionTarget): CollectionReport {
         val discovery = discoverer.discover(target)
+        // 조심 목록(admin-v1.md): 운영자가 지정한 제외 이름·다른 표기. 지시문 힌트로 넘기고, 저장 전 이름 대조로 보장한다
+        val watched = watchlist.findAllByProgramId(target.programId)
         var usage = discovery.usage
         val rejected = mutableListOf<String>()
         var fetched = 0
@@ -36,19 +42,31 @@ class CollectActivitiesService(
                 continue
             }
             fetched++
-            val extraction = extractor.extract(page, target.programName)
+            val extraction = extractor.extract(page, target.programName, watched)
             usage += extraction.usage
             found += extraction.activities.size
             val checkedAt = OffsetDateTime.now(ZoneOffset.UTC)
             for (candidate in extraction.activities) {
                 when (val result = ActivityVerifier.verify(candidate, page, target.officialOnly, checkedAt)) {
                     is Verification.Rejected -> rejected += "${candidate.name}: ${result.reason}"
-                    is Verification.Accepted ->
-                        when (drafts.saveDraft(target.programId, sourceId(target.programId, candidate.roundKey), result.activity)) {
+                    is Verification.Accepted -> {
+                        val entry = watched.firstOrNull { it.normalizedName == WatchEntry.normalize(candidate.name) }
+                        val (sourceId, activity) = when (entry?.kind) {
+                            WatchKind.EXCLUDE -> { rejected += "${candidate.name}: 조심 목록: 제외 ${entry.name}"; continue }
+                            // 다른 표기: 정본 활동의 초안을 정본 이름으로 갱신한다. 정본이 지워졌거나 수집 출처가 없으면 저장할 곳이 없다
+                            WatchKind.ALIAS -> {
+                                val canonicalSource = entry.canonicalSourceId
+                                if (canonicalSource == null) { rejected += "${candidate.name}: 조심 목록: 정본 활동 없음(${entry.name})"; continue }
+                                canonicalSource to result.activity.copy(name = entry.canonicalActivityName ?: result.activity.name)
+                            }
+                            null -> sourceId(target.programId, candidate.roundKey) to result.activity
+                        }
+                        when (drafts.saveDraft(target.programId, sourceId, activity)) {
                             DraftSaveResult.SAVED -> saved++
                             DraftSaveResult.SKIPPED_PUBLISHED -> rejected += "${candidate.name}: 이미 게시된 활동이라 덮어쓰지 않음"
                             DraftSaveResult.SKIPPED_DISMISSED -> rejected += "${candidate.name}: 관리자가 삭제한 활동이라 다시 만들지 않음"
                         }
+                    }
                 }
             }
         }
