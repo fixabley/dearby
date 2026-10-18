@@ -17,6 +17,8 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     let schedules: [ActivityScheduleModel]
     let officialUrl: String
     let imageUrl: String?
+    /// Who may apply (contract "대상자 조건"); nil when the activity has none or the JSON was unreadable.
+    var eligibility: Eligibility? = nil
 
     /// Recruitment only from the application window against now. A missing bound is open on that side;
     /// no window at all, or an unreadable bound, needs checking.
@@ -85,4 +87,25 @@ struct ProgramSummary: Equatable, Identifiable, Sendable {
 struct ProgramPage: Sendable {
     let items: [ProgramSummary]
     let nextCursor: Int64?
+}
+
+/// Nested eligibility conditions (contract "대상자 조건(eligibility) — 2026-10-18"). JSON keys are camelCase;
+/// `field`/`values` are the Korean vocabulary, `fieldEn`/`valuesEn` the English twins.
+struct Eligibility: Equatable, Sendable {
+    enum Op: String, Sendable { case all, any }
+    indirect enum Item: Equatable, Sendable {
+        case group(Eligibility)
+        case condition(Condition)
+    }
+    struct Condition: Equatable, Sendable {
+        let field: String
+        let fieldEn: String
+        var from: Double? = nil
+        var to: Double? = nil
+        var values: [String] = []
+        var valuesEn: [String] = []
+        var note: String? = nil
+    }
+    let op: Op
+    let items: [Item]
 }
