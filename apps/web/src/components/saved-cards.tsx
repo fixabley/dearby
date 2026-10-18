@@ -1,18 +1,13 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { Card, GuestShare } from "@/lib/models";
-import { savedByActivity } from "@/lib/saved-groups";
-import { SectionHeader } from "@/shared/ui/section-header";
+import type { Card } from "@/lib/models";
 import { InstallOffer } from "./install-offer";
 import { errorMessage, mutateGuest, request, RequestError } from "@/lib/client";
 import { Empty, Failure, Loading } from "@/shared/ui/states";
 import { Icon } from "@/shared/ui/icon";
 export function SavedCards() {
   const [cards, setCards] = useState<Card[]>();
-  const [shares, setShares] = useState<GuestShare[]>([]);
-  const [byActivity, setByActivity] = useState(false);
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [error, setError] = useState("");
   const [invalid, setInvalid] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -21,13 +16,10 @@ export function SavedCards() {
   const [notice, setNotice] = useState("");
   useEffect(() => {
     const controller = new AbortController();
-    request<{ items: Card[]; shares?: GuestShare[] }>("/guest/cards", {
+    request<{ items: Card[] }>("/guest/cards", {
       signal: controller.signal,
     })
-      .then((result) => {
-        setCards(result.items);
-        setShares(result.shares ?? []);
-      })
+      .then((result) => setCards(result.items))
       .catch((error) => {
         if (controller.signal.aborted) return;
         if (error instanceof RequestError && error.status === 401)
@@ -43,7 +35,6 @@ export function SavedCards() {
     try {
       await mutateGuest(`/guest/cards/${id}`, "DELETE");
       setCards((items) => items?.filter((item) => item.id !== id));
-      setShares((items) => items.filter((item) => item.cardId !== id));
       setNotice("명함을 저장 목록에서 삭제했어요.");
     } catch (error) {
       if (error instanceof RequestError && error.status === 401) {
@@ -75,8 +66,7 @@ export function SavedCards() {
       setBusy(false);
     }
   }
-  /** Rows are h2 in the full list and h3 under an activity group heading. */
-  function row(card: Card, Heading: "h2" | "h3" = "h2") {
+  function row(card: Card) {
     return (
       <li key={card.id} className="saved-card">
         <Link href={`/cards/${card.id}`}>
@@ -84,7 +74,7 @@ export function SavedCards() {
             {Array.from(card.profileName)[0] || <Icon name="card" />}
           </span>
           <div>
-            <Heading>{card.profileName || "이름 미등록"}</Heading>
+            <h2>{card.profileName || "이름 미등록"}</h2>
             <p>{card.job}</p>
             <p className="muted">{card.name}</p>
           </div>
@@ -109,7 +99,7 @@ export function SavedCards() {
         <p className="eyebrow">기억하고 싶은 연결</p>
         <h1>저장한 명함</h1>
         <p className="muted">
-          공유받은 사람의 공개 명함과 이력서를 모아 보세요.
+          받은 공개 명함과 이력서를 모아 보세요.
         </p>
       </div>
       <div className="cookie-info">
@@ -156,61 +146,15 @@ export function SavedCards() {
       ) : !cards.length ? (
         <Empty kind="bookmark" title="아직 저장한 명함이 없어요">
           <p>
-            공유받은 명함 링크를 열고
+            받은 명함 링크를 열고
             <br />
             ‘명함 저장’을 눌러 보세요.
           </p>
         </Empty>
       ) : (
         <>
-          <div className="view-toggle" role="group" aria-label="보기">
-            <button
-              type="button"
-              aria-pressed={!byActivity}
-              onClick={() => setByActivity(false)}
-            >
-              전체
-            </button>
-            <button
-              type="button"
-              aria-pressed={byActivity}
-              onClick={() => setByActivity(true)}
-            >
-              활동별
-            </button>
-          </div>
           <p className="list-count">명함 {cards.length}개</p>
-          {byActivity ? (
-            savedByActivity(cards, shares).map((group) => {
-              const open = !collapsed.has(group.id);
-              const listId = `saved-group-${group.id}`;
-              return (
-                <section key={group.id}>
-                  <SectionHeader
-                    title={group.title}
-                    count={group.cards.length}
-                    expanded={open}
-                    controls={listId}
-                    onToggle={() =>
-                      setCollapsed((ids) => {
-                        const next = new Set(ids);
-                        if (open) next.add(group.id);
-                        else next.delete(group.id);
-                        return next;
-                      })
-                    }
-                  />
-                  {open && (
-                    <ul id={listId} className="saved-list">
-                      {group.cards.map((card) => row(card, "h3"))}
-                    </ul>
-                  )}
-                </section>
-              );
-            })
-          ) : (
-            <ul className="saved-list">{cards.map((card) => row(card))}</ul>
-          )}
+          <ul className="saved-list">{cards.map((card) => row(card))}</ul>
           <p className="cookie-note">
             공개가 취소된 명함은 목록에서 표시되지 않아요.
           </p>

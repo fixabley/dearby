@@ -142,7 +142,7 @@ export function Discovery({ q }: { q: string }) {
       <aside className="inline-note">
         <Icon name="card" />
         <p>
-          공유받은 명함 링크에서 공개 이력서를 보고,
+          받은 명함 링크에서 공개 이력서를 보고,
           <br className="mobile-break" /> 로그인 없이 명함을 저장할 수 있어요.
         </p>
         <Link href="/saved">

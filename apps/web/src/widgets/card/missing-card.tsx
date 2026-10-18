@@ -8,7 +8,7 @@ export function MissingCard() {
       <p>
         공개가 취소되었거나 존재하지 않는 명함이에요.
         <br />
-        공유한 분에게 새 링크를 요청해 주세요.
+        명함 주인에게 새 링크를 요청해 주세요.
       </p>
       <Link className="button secondary" href="/saved">
         저장한 명함 보기
