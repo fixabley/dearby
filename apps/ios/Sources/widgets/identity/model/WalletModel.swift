@@ -51,7 +51,7 @@ extension PublishedCard {
     var cardModel: CardModel {
         CardModel(id: id, name: name, profileName: profileName, job: job, introduction: introduction ?? "", description: description,
                   contacts: contacts.map { ContactModel(id: $0.id, kind: $0.kind, displayLabel: $0.label, value: $0.value) },
-                  histories: histories.map(\.historyModel))
+                  histories: histories.map(\.historyModel), organization: latestOrganization)
     }
     /// Organization name of the most recent approved history (start date descending), nil when none names one.
     var latestOrganization: String? {

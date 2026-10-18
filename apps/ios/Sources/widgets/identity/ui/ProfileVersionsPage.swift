@@ -98,7 +98,7 @@ extension AccountHistory {
     var historyModel: HistoryModel {
         let month = { (text: String) in String(text.prefix(7)).replacingOccurrences(of: "-", with: ".") }
         return HistoryModel(id: id, title: chain.joined(separator: " · "), role: roleTitle, startDate: month(startDate),
-                            endDate: endDate.map(month) ?? "진행 중", verified: isVerified)
+                            endDate: endDate.map(month) ?? "진행 중", verified: isVerified, description: description)
     }
 }
 

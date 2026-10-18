@@ -56,31 +56,19 @@ struct HistoryTimeline: View {
             }
         }
     }
-    /// 미확인: no admin-verified evidence yet (contract "이력"). Verified entries get a small check.
-    @ViewBuilder private func badge(_ item: HistoryModel) -> some View {
-        if item.verified {
-            Label("확인됨", systemImage: "checkmark.seal").font(.caption2.weight(.semibold)).foregroundStyle(DearbyStyle.teal)
-        } else {
-            Text("미확인").font(.caption2.weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
-                .padding(.horizontal, 7).padding(.vertical, 2).background(DearbyStyle.muted, in: Capsule())
-                .accessibilityLabel("미확인, 인증자료가 확인되지 않은 이력")
-        }
-    }
+    private func badge(_ item: HistoryModel) -> some View { HistoryBadge(verified: item.verified) }
 }
 
-struct ContactIcons: View {
-    let contacts: [ContactModel]
-    let action: (ContactModel) -> Void
+/// 미확인: no admin-verified evidence yet (contract "이력"). Verified entries get a small check.
+struct HistoryBadge: View {
+    let verified: Bool
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 75), alignment: .center)], spacing: 16) {
-            ForEach(contacts) { contact in
-                Button { action(contact) } label: {
-                    VStack(spacing: 9) {
-                        ContactSymbol(contact: contact).foregroundStyle(DearbyStyle.teal)
-                        Text(contact.displayLabel).font(.caption).foregroundStyle(.primary)
-                    }.frame(maxWidth: .infinity, minHeight: 68)
-                }.buttonStyle(.plain).accessibilityLabel(contact.displayLabel + ": " + contact.value)
-            }
+        if verified {
+            Label("확인됨", systemImage: "checkmark.seal").font(.dearby(.caption2).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+        } else {
+            Text("미확인").font(.dearby(.caption2).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
+                .padding(.horizontal, 7).padding(.vertical, 2).background(DearbyStyle.muted, in: Capsule())
+                .accessibilityLabel("미확인, 인증자료가 확인되지 않은 이력")
         }
     }
 }

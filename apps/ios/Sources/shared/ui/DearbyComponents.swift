@@ -50,3 +50,39 @@ struct DearbySheetHeader: View {
         }.padding(.leading, 20).padding(.trailing, 8).padding(.top, 20)
     }
 }
+
+/// Wraps chips onto new lines (iOS 16 `Layout`); `centered` centers each line (card header), otherwise lines start at the leading edge.
+struct ChipFlow: Layout {
+    var spacing: CGFloat = 8
+    var centered = false
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? 0
+        let lines = lines(in: width, subviews: subviews)
+        return CGSize(width: width, height: lines.reduce(0) { $0 + $1.height } + spacing * CGFloat(max(lines.count - 1, 0)))
+    }
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var y = bounds.minY
+        for line in lines(in: bounds.width, subviews: subviews) {
+            var x = bounds.minX + (centered ? (bounds.width - line.width) / 2 : 0)
+            for index in line.indices {
+                subviews[index].place(at: CGPoint(x: x, y: y), proposal: .unspecified)
+                x += subviews[index].sizeThatFits(.unspecified).width + spacing
+            }
+            y += line.height + spacing
+        }
+    }
+    private struct Line { var indices: [Int] = []; var width: CGFloat = 0; var height: CGFloat = 0 }
+    private func lines(in width: CGFloat, subviews: Subviews) -> [Line] {
+        var lines = [Line()]
+        for (index, view) in subviews.enumerated() {
+            let size = view.sizeThatFits(.unspecified)
+            var line = lines.removeLast()
+            if !line.indices.isEmpty && line.width + spacing + size.width > width { lines.append(line); line = Line() }
+            line.width += (line.indices.isEmpty ? 0 : spacing) + size.width
+            line.height = max(line.height, size.height)
+            line.indices.append(index)
+            lines.append(line)
+        }
+        return lines
+    }
+}

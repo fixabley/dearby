@@ -8,6 +8,7 @@ struct MyCardsPage: View {
     @State private var editingCard: PublishedCard?
     @State private var signingIn = false
     @Environment(\.openURL) private var openURL
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
@@ -39,21 +40,25 @@ struct MyCardsPage: View {
                 NavigationStack { SignInSheet(account: state.account) { Task { await state.load() } } }
             }
     }
+    /// 2-column grid of the account's cards, newest first, behind a "+ 새 명함" tile; the chosen card renders below.
     @ViewBuilder private var cards: some View {
-        ScrollView(.horizontal) {
-            HStack(spacing: 10) {
-                tile(title: "새 명함", subtitle: "", symbol: "plus", selected: false) { editor = true }
-                ForEach(state.cards.reversed()) { item in
-                    tile(title: item.name, subtitle: item.profileName, symbol: "person", selected: item.id == state.selectedCardID) {
-                        state.select(item.id)
-                    }
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: dynamicTypeSize.isAccessibilitySize ? 1 : 2), spacing: 10) {
+            tile(selected: false) { editor = true } label: {
+                Label("새 명함", systemImage: "plus").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+            ForEach(state.cards.reversed()) { item in
+                tile(selected: item.id == state.selectedCardID) { state.select(item.id) } label: {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(item.name).font(.dearby(.subheadline).weight(.bold)).foregroundStyle(DearbyStyle.ink).lineLimit(1)
+                        Text(item.profileName).font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet).lineLimit(1)
+                        if !item.job.isEmpty { Text(item.job).font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet).lineLimit(1) }
+                    }.frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-        }.scrollIndicators(.hidden)
+        }
         if let card = state.card {
             CardView(card: card.cardModel) { if let url = $0.actionURL { openURL(url) } }
-                .padding(20).background(.white, in: RoundedRectangle(cornerRadius: 20))
-                .overlay(RoundedRectangle(cornerRadius: 20).stroke(DearbyStyle.line))
             Button { editingCard = card } label: {
                 Label("이 명함 고치기", systemImage: "pencil").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal).frame(minHeight: 44)
             }.accessibilityHint("이 명함의 이름과 공개 선택으로 새 명함을 발행해요")
@@ -75,16 +80,12 @@ struct MyCardsPage: View {
             Text(detail).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
         }.frame(maxWidth: .infinity, minHeight: 160)
     }
-    private func tile(title: String, subtitle: String, symbol: String, selected: Bool, action: @escaping () -> Void) -> some View {
+    private func tile(selected: Bool, action: @escaping () -> Void, @ViewBuilder label: () -> some View) -> some View {
         Button(action: action) {
-            VStack(spacing: 10) {
-                Image(systemName: symbol).font(.title2)
-                Text(title).font(.subheadline.bold())
-                if !subtitle.isEmpty { Text(subtitle).font(.caption2).lineLimit(2) }
-            }.frame(width: 116, height: 100).padding(8)
-                .foregroundStyle(selected ? DearbyStyle.teal : DearbyStyle.quiet)
-                .background(selected ? DearbyStyle.mint : .white, in: RoundedRectangle(cornerRadius: 10))
-                .overlay(RoundedRectangle(cornerRadius: 10).stroke(selected ? DearbyStyle.teal : DearbyStyle.line, lineWidth: selected ? 1.5 : 1))
+            label().padding(14).frame(maxWidth: .infinity, minHeight: 84, alignment: .leading)
+                .background(selected ? DearbyStyle.mint : .white, in: RoundedRectangle(cornerRadius: 12))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(selected ? DearbyStyle.teal : DearbyStyle.line, lineWidth: selected ? 1.5 : 1))
+                .contentShape(Rectangle())
         }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
     }
 }
