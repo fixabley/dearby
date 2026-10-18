@@ -5,11 +5,13 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
+import io.wid.dearby.adaptor.persistence.jooq.indexes.GUEST_CARDS_RECALL_IDX
 import io.wid.dearby.adaptor.persistence.jooq.keys.GUEST_CARDS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.GUEST_CARDS__GUEST_CARDS_SESSION_DIGEST_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestSessions.GuestSessionsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.GuestCardsRecord
 
+import java.time.OffsetDateTime
 import java.util.UUID
 
 import kotlin.collections.Collection
@@ -19,6 +21,7 @@ import org.jooq.Condition
 import org.jooq.Field
 import org.jooq.ForeignKey
 import org.jooq.Identity
+import org.jooq.Index
 import org.jooq.InverseForeignKey
 import org.jooq.Name
 import org.jooq.Path
@@ -91,6 +94,21 @@ open class GuestCards(
      */
     val SEQ: TableField<GuestCardsRecord, Long?> = createField(DSL.name("seq"), SQLDataType.BIGINT.nullable(false).generatedAlwaysAsIdentity(), this, "")
 
+    /**
+     * The column <code>public.guest_cards.activity_id</code>.
+     */
+    val ACTIVITY_ID: TableField<GuestCardsRecord, Long?> = createField(DSL.name("activity_id"), SQLDataType.BIGINT, this, "")
+
+    /**
+     * The column <code>public.guest_cards.saved_at</code>.
+     */
+    val SAVED_AT: TableField<GuestCardsRecord, OffsetDateTime?> = createField(DSL.name("saved_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
+
+    /**
+     * The column <code>public.guest_cards.recalled_at</code>.
+     */
+    val RECALLED_AT: TableField<GuestCardsRecord, OffsetDateTime?> = createField(DSL.name("recalled_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "")
+
     private constructor(alias: Name, aliased: Table<GuestCardsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<GuestCardsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<GuestCardsRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -123,6 +141,7 @@ open class GuestCards(
         override fun `as`(alias: Table<*>): GuestCardsPath = GuestCardsPath(alias.qualifiedName, this)
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
+    override fun getIndexes(): List<Index> = listOf(GUEST_CARDS_RECALL_IDX)
     override fun getIdentity(): Identity<GuestCardsRecord, Long?> = super.getIdentity() as Identity<GuestCardsRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<GuestCardsRecord> = GUEST_CARDS_PKEY
     override fun getReferences(): List<ForeignKey<GuestCardsRecord, *>> = listOf(GUEST_CARDS__GUEST_CARDS_SESSION_DIGEST_FKEY)

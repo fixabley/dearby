@@ -1,4 +1,4 @@
 package io.wid.dearby.domain
 
-// 응답 409(adaptor/web/ApiExceptionHandler). 버전 불일치, 용량 초과 같은 상태 충돌
-class ConflictException(val detail: String, logMessage: String = detail) : RuntimeException(logMessage)
+// 409. code는 클라이언트가 구분해야 하는 경우만(native-v1.md의 `OWN_CARD`처럼) ProblemDetail의 code 속성으로 실린다
+class ConflictException(val detail: String, logMessage: String = detail, val code: String? = null) : RuntimeException(logMessage)

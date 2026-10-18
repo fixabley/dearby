@@ -13,6 +13,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.HistoryEvidence
 import io.wid.dearby.adaptor.persistence.jooq.tables.Jobs
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
@@ -23,6 +24,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileJobs
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
+import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
@@ -54,6 +56,7 @@ val APPLE_SIGN_IN_STATES_EXPIRES_AT_IDX: Index = Internal.createIndex(DSL.name("
 val BUSINESS_CARDS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("business_cards_user_id_idx"), BusinessCards.BUSINESS_CARDS, arrayOf(BusinessCards.BUSINESS_CARDS.USER_ID), false)
 val COLLECTION_RUNS_PROGRAM_ID_RUN_DATE_IDX: Index = Internal.createIndex(DSL.name("collection_runs_program_id_run_date_idx"), CollectionRuns.COLLECTION_RUNS, arrayOf(CollectionRuns.COLLECTION_RUNS.PROGRAM_ID, CollectionRuns.COLLECTION_RUNS.RUN_DATE.desc()), false)
 val CONTACTS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("contacts_user_id_idx"), Contacts.CONTACTS, arrayOf(Contacts.CONTACTS.USER_ID), false)
+val GUEST_CARDS_RECALL_IDX: Index = Internal.createIndex(DSL.name("guest_cards_recall_idx"), GuestCards.GUEST_CARDS, arrayOf(GuestCards.GUEST_CARDS.SAVED_AT), false)
 val HISTORY_EVIDENCE_HISTORY_ID_IDX: Index = Internal.createIndex(DSL.name("history_evidence_history_id_idx"), HistoryEvidence.HISTORY_EVIDENCE, arrayOf(HistoryEvidence.HISTORY_EVIDENCE.HISTORY_ID), false)
 val JOBS_PARENT_ID_IDX: Index = Internal.createIndex(DSL.name("jobs_parent_id_idx"), Jobs.JOBS, arrayOf(Jobs.JOBS.PARENT_ID), false)
 val ORGANIZATION_CONTACTS_ORGANIZATION_ID_IDX: Index = Internal.createIndex(DSL.name("organization_contacts_organization_id_idx"), OrganizationContacts.ORGANIZATION_CONTACTS, arrayOf(OrganizationContacts.ORGANIZATION_CONTACTS.ORGANIZATION_ID), false)
@@ -68,6 +71,7 @@ val PROGRAM_CONTACTS_PROGRAM_ID_IDX: Index = Internal.createIndex(DSL.name("prog
 val PROGRAM_STAFF_PROGRAM_ID_IDX: Index = Internal.createIndex(DSL.name("program_staff_program_id_idx"), ProgramStaff.PROGRAM_STAFF, arrayOf(ProgramStaff.PROGRAM_STAFF.PROGRAM_ID), false)
 val PROGRAM_STAFF_USER_ID_IDX: Index = Internal.createIndex(DSL.name("program_staff_user_id_idx"), ProgramStaff.PROGRAM_STAFF, arrayOf(ProgramStaff.PROGRAM_STAFF.USER_ID), false)
 val PROGRAMS_ORGANIZATION_ID_IDX: Index = Internal.createIndex(DSL.name("programs_organization_id_idx"), Programs.PROGRAMS, arrayOf(Programs.PROGRAMS.ORGANIZATION_ID), false)
+val RECEIPTS_RECALL_IDX: Index = Internal.createIndex(DSL.name("receipts_recall_idx"), Receipts.RECEIPTS, arrayOf(Receipts.RECEIPTS.RECEIVED_AT), false)
 val REFRESH_TOKENS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("refresh_tokens_user_id_idx"), RefreshTokens.REFRESH_TOKENS, arrayOf(RefreshTokens.REFRESH_TOKENS.USER_ID), false)
 val USER_CREDENTIALS_USER_ENTITY_USER_ID_IDX: Index = Internal.createIndex(DSL.name("user_credentials_user_entity_user_id_idx"), UserCredentials.USER_CREDENTIALS, arrayOf(UserCredentials.USER_CREDENTIALS.USER_ENTITY_USER_ID), false)
 val USER_IDENTITIES_USER_ID_IDX: Index = Internal.createIndex(DSL.name("user_identities_user_id_idx"), UserIdentities.USER_IDENTITIES, arrayOf(UserIdentities.USER_IDENTITIES.USER_ID), false)

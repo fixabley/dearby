@@ -1,5 +1,6 @@
 package io.wid.dearby.adaptor.web
 
+import io.wid.dearby.application.guest.GuestRepository
 import io.wid.dearby.application.guest.GuestService
 import io.wid.dearby.application.profile.ProfileRepository
 import io.wid.dearby.domain.ContactKind
@@ -23,7 +24,7 @@ import kotlin.test.*
 // native-v1.md "웹 비로그인 명함 저장"·"홈 화면 세션 잇기": 프록시 키, 세션 토큰, 저장·상한, 세션 잇기 코드
 @SpringBootTest
 @AutoConfigureMockMvc
-class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient, @Autowired val profiles: ProfileRepository, @Autowired val guests: GuestService) {
+class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient, @Autowired val profiles: ProfileRepository, @Autowired val guests: GuestService, @Autowired val guestRepository: GuestRepository) {
 
     private val json = JsonMapper.builder().build()
     private val key = "test-guest-proxy-secret-0123456789abcdef" // core testFixtures application.properties
@@ -71,7 +72,8 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
         mvc.put("/v1/guest/cards/${UUID.randomUUID()}") { guest() }.andExpect { status { isNotFound() } }
         assertEquals(sessionsBefore, sessionCount())
 
-        val first = read(mvc.put("/v1/guest/cards/$cardId") { guest() }.andExpect { status { isCreated() } })
+        val activity = jdbc.sql("select id from activities where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").query(Long::class.java).single()
+        val first = read(mvc.put("/v1/guest/cards/$cardId") { guest(); contentType = MediaType.APPLICATION_JSON; content = """{"activityId":$activity}""" }.andExpect { status { isCreated() } })
         val token = first["guestToken"].asString()
         assertEquals(listOf(cardId, "saved"), listOf(first["cardId"].asString(), first["status"].asString()))
         assertTrue(GuestService.TOKEN.matches(token))
@@ -81,10 +83,23 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
         assertEquals("alreadySaved", again["status"].asString())
         assertFalse(again.has("guestToken"))
 
+        // 2026-10-19부터 항목은 GuestItem: 교환한 활동·프로그램 이름과 저장일, 회수 예정(저장일 + 30일)
         val wallet = read(mvc.get("/v1/guest/cards") { guest(token) }.andExpect { status { isOk() } })
         assertEquals(1, wallet["items"].size())
-        assertFalse(wallet["items"][0].has("template"))
+        val item = wallet["items"][0]
+        assertEquals(listOf(cardId, activity, "Let'Swift 2026 · 개발 환경의 변화 워크숍"), listOf(item["card"]["id"].asString(), item["context"]["activityId"].asLong(), item["context"]["activityName"].asString()))
+        assertEquals(OffsetDateTime.parse(item["savedAt"].asString()).plusDays(30), OffsetDateTime.parse(item["expiresAt"].asString()))
+        assertFalse(item["card"].has("template"))
         assertFalse(wallet.has("shares"))
+
+        // 회수: 저장일 + 30일이 지나면 목록에서 빠지고 행은 남는다. 다시 저장하면 되살아난다(이미 있던 세션이라 200)
+        jdbc.sql("update guest_cards set saved_at = now() - interval '31 days' where session_digest = ?").param(GuestService.digest(token)).update()
+        val now = OffsetDateTime.now()
+        assertEquals(1, guestRepository.recallExpired(now.minusDays(30), now))
+        assertEquals(0, read(mvc.get("/v1/guest/cards") { guest(token) })["items"].size())
+        assertEquals(1, jdbc.sql("select count(*) from guest_cards where session_digest = ? and recalled_at is not null").param(GuestService.digest(token)).query(Int::class.java).single())
+        assertEquals("saved", read(mvc.put("/v1/guest/cards/$cardId") { guest(token) }.andExpect { status { isOk() } })["status"].asString())
+        assertEquals(1, read(mvc.get("/v1/guest/cards") { guest(token) })["items"].size())
 
         mvc.delete("/v1/guest/cards/$cardId") { guest(token) }.andExpect { status { isNoContent() } }
         mvc.delete("/v1/guest/cards/$cardId") { guest(token) }.andExpect { status { isNoContent() } }

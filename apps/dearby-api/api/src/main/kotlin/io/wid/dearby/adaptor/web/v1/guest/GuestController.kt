@@ -1,6 +1,5 @@
 package io.wid.dearby.adaptor.web.v1.guest
 
-import io.wid.dearby.adaptor.web.v1.cards.CardResponse
 import io.wid.dearby.application.guest.GuestSaveResult
 import io.wid.dearby.application.guest.GuestService
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -19,15 +18,17 @@ class GuestController(private val guests: GuestService, private val properties: 
     @GetMapping("/cards")
     fun list(@RequestHeader(PROXY_KEY, required = false) key: String?, @RequestHeader(TOKEN, required = false) token: String?): GuestWalletResponse {
         guests.admit(properties.proxySecret, key)
-        val wallet = guests.wallet(token)
-        return GuestWalletResponse(wallet.items.map { CardResponse.from(it, includeTemplate = false) })
+        return GuestWalletResponse(guests.wallet(token).items.map(GuestItemResponse::from))
     }
 
     // 토큰 없는 첫 저장은 세션을 만들어 201과 guestToken(Next만 쿠키로 소비)
     @PutMapping("/cards/{id}")
-    fun saveCard(@RequestHeader(PROXY_KEY, required = false) key: String?, @RequestHeader(TOKEN, required = false) token: String?, @PathVariable id: UUID): ResponseEntity<GuestSaveResponse> {
+    fun saveCard(
+        @RequestHeader(PROXY_KEY, required = false) key: String?, @RequestHeader(TOKEN, required = false) token: String?, @PathVariable id: UUID,
+        @RequestBody(required = false) request: GuestSaveRequest?,
+    ): ResponseEntity<GuestSaveResponse> {
         guests.admit(properties.proxySecret, key)
-        return saved(guests.saveCard(token, id))
+        return saved(guests.saveCard(token, id, request?.activityId))
     }
 
 

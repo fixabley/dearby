@@ -3,14 +3,18 @@ package io.wid.dearby.adaptor.persistence
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.*
 import io.wid.dearby.application.card.CardRepository
 import io.wid.dearby.application.guest.GuestHandoff
+import io.wid.dearby.application.guest.GuestItem
 import io.wid.dearby.application.guest.GuestRepository
 import io.wid.dearby.application.guest.GuestWallet
+import io.wid.dearby.domain.Id
+import io.wid.dearby.domain.card.Receipt
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.*
 
+// 회수된 저장(recalled_at)은 목록·개수·중복 판정에서 뺀다. 행은 보존한다(native-v1.md "명함 교환")
 @Repository
 class JooqGuestRepository(private val dsl: DSLContext, private val cards: CardRepository) : GuestRepository {
 
@@ -32,24 +36,39 @@ class JooqGuestRepository(private val dsl: DSLContext, private val cards: CardRe
         ).execute()
     }
 
-    override fun hasCard(digest: String, cardId: UUID) = dsl.fetchExists(GUEST_CARDS, GUEST_CARDS.SESSION_DIGEST.eq(digest), GUEST_CARDS.CARD_ID.eq(cardId))
+    override fun hasCard(digest: String, cardId: UUID) =
+        dsl.fetchExists(GUEST_CARDS, GUEST_CARDS.SESSION_DIGEST.eq(digest), GUEST_CARDS.CARD_ID.eq(cardId), GUEST_CARDS.RECALLED_AT.isNull)
 
-    override fun cardCount(digest: String) = dsl.fetchCount(GUEST_CARDS, GUEST_CARDS.SESSION_DIGEST.eq(digest))
+    override fun cardCount(digest: String) = dsl.fetchCount(GUEST_CARDS, GUEST_CARDS.SESSION_DIGEST.eq(digest), GUEST_CARDS.RECALLED_AT.isNull)
 
-    override fun addCard(digest: String, cardId: UUID) {
-        dsl.insertInto(GUEST_CARDS).set(GUEST_CARDS.SESSION_DIGEST, digest).set(GUEST_CARDS.CARD_ID, cardId).execute()
+    override fun addCard(digest: String, cardId: UUID, activityId: Id?) {
+        val now = OffsetDateTime.now(ZoneOffset.UTC)
+        dsl.insertInto(GUEST_CARDS)
+            .set(GUEST_CARDS.SESSION_DIGEST, digest).set(GUEST_CARDS.CARD_ID, cardId).set(GUEST_CARDS.ACTIVITY_ID, activityId).set(GUEST_CARDS.SAVED_AT, now)
+            .onConflict(GUEST_CARDS.SESSION_DIGEST, GUEST_CARDS.CARD_ID).doUpdate()
+            .set(GUEST_CARDS.ACTIVITY_ID, activityId).set(GUEST_CARDS.SAVED_AT, now).setNull(GUEST_CARDS.RECALLED_AT)
+            .execute()
     }
+
+    override fun activityExists(activityId: Id) = dsl.fetchExists(ACTIVITIES, ACTIVITIES.ID.eq(activityId))
 
     override fun removeCard(digest: String, cardId: UUID) {
         dsl.deleteFrom(GUEST_CARDS).where(GUEST_CARDS.SESSION_DIGEST.eq(digest), GUEST_CARDS.CARD_ID.eq(cardId)).execute()
     }
 
-
     override fun wallet(digest: String): GuestWallet {
-        val cardIds = dsl.select(GUEST_CARDS.CARD_ID).from(GUEST_CARDS).where(GUEST_CARDS.SESSION_DIGEST.eq(digest)).orderBy(GUEST_CARDS.SEQ).fetch { it.value1()!! }
-        val byId = cards.findAllById(cardIds).associateBy { it.id }
-        return GuestWallet(cardIds.mapNotNull { byId[it] })
+        val rows = dsl.select(GUEST_CARDS.CARD_ID, GUEST_CARDS.ACTIVITY_ID, GUEST_CARDS.SAVED_AT).from(GUEST_CARDS)
+            .where(GUEST_CARDS.SESSION_DIGEST.eq(digest), GUEST_CARDS.RECALLED_AT.isNull).orderBy(GUEST_CARDS.SEQ).fetch()
+        val byId = cards.findAllById(rows.map { it.value1()!! }).associateBy { it.id }
+        val contexts = dsl.exchangeContexts(rows.map { it.value2() })
+        return GuestWallet(rows.mapNotNull { row ->
+            val savedAt = row.value3()!!
+            byId[row.value1()]?.let { GuestItem(it, contexts.contextOf(row.value2()), savedAt, savedAt.plus(Receipt.RECALL_AFTER)) }
+        })
     }
+
+    override fun recallExpired(savedBefore: OffsetDateTime, now: OffsetDateTime): Int =
+        dsl.update(GUEST_CARDS).set(GUEST_CARDS.RECALLED_AT, now).where(GUEST_CARDS.RECALLED_AT.isNull, GUEST_CARDS.SAVED_AT.lt(savedBefore)).execute()
 
     override fun putHandoff(handoff: GuestHandoff) {
         dsl.deleteFrom(GUEST_HANDOFFS).where(GUEST_HANDOFFS.SESSION_DIGEST.eq(handoff.sessionDigest)).execute()

@@ -5,6 +5,7 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
+import io.wid.dearby.adaptor.persistence.jooq.indexes.RECEIPTS_RECALL_IDX
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECEIPTS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECEIPTS_RECIPIENT_ID_CARD_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECEIPTS__RECEIPTS_RECIPIENT_ID_FKEY
@@ -21,6 +22,7 @@ import org.jooq.Condition
 import org.jooq.Field
 import org.jooq.ForeignKey
 import org.jooq.Identity
+import org.jooq.Index
 import org.jooq.InverseForeignKey
 import org.jooq.JSONB
 import org.jooq.Name
@@ -109,6 +111,11 @@ open class Receipts(
      */
     val SEQ: TableField<ReceiptsRecord, Long?> = createField(DSL.name("seq"), SQLDataType.BIGINT.nullable(false).generatedAlwaysAsIdentity(), this, "")
 
+    /**
+     * The column <code>public.receipts.recalled_at</code>.
+     */
+    val RECALLED_AT: TableField<ReceiptsRecord, OffsetDateTime?> = createField(DSL.name("recalled_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "")
+
     private constructor(alias: Name, aliased: Table<ReceiptsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ReceiptsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ReceiptsRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -141,6 +148,7 @@ open class Receipts(
         override fun `as`(alias: Table<*>): ReceiptsPath = ReceiptsPath(alias.qualifiedName, this)
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
+    override fun getIndexes(): List<Index> = listOf(RECEIPTS_RECALL_IDX)
     override fun getIdentity(): Identity<ReceiptsRecord, Long?> = super.getIdentity() as Identity<ReceiptsRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<ReceiptsRecord> = RECEIPTS_PKEY
     override fun getUniqueKeys(): List<UniqueKey<ReceiptsRecord>> = listOf(RECEIPTS_RECIPIENT_ID_CARD_ID_KEY)

@@ -32,7 +32,7 @@ class ApiExceptionHandler {
     fun permissionDenied(e: PermissionDeniedException) = problem(HttpStatus.FORBIDDEN, e.detail, e)
 
     @ExceptionHandler(ConflictException::class)
-    fun conflict(e: ConflictException) = problem(HttpStatus.CONFLICT, e.detail, e)
+    fun conflict(e: ConflictException) = problem(HttpStatus.CONFLICT, e.detail, e).also { detail -> e.code?.let { detail.setProperty("code", it) } }
 
     @ExceptionHandler(RateLimitedException::class)
     fun rateLimited(e: RateLimitedException) = problem(HttpStatus.TOO_MANY_REQUESTS, e.detail, e)

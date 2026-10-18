@@ -10,6 +10,7 @@ import io.wid.dearby.batch.application.ModelUsage
 import io.wid.dearby.batch.application.PageFetchException
 import io.wid.dearby.batch.application.PageFetcher
 import io.wid.dearby.batch.job.CollectionJobConfig
+import io.wid.dearby.batch.recall.RecallService
 import org.springframework.batch.core.BatchStatus
 import org.springframework.batch.core.job.Job
 import org.springframework.batch.core.job.parameters.JobParametersBuilder
@@ -34,6 +35,7 @@ class CollectionJobTest(
     @Autowired val jobOperator: JobOperator,
     @Autowired val collectActivitiesJob: Job,
     @Autowired val jdbc: JdbcClient,
+    @Autowired val recall: RecallService,
 ) {
 
     @TestConfiguration
@@ -198,5 +200,18 @@ class CollectionJobTest(
         assertEquals(listOf("PUBLISHED"), status("관리자가 고친 이름"))
         val reasons = jdbc.sql("select array_to_string(rejected_reasons, '|') from collection_runs where run_date = '2026-10-22'").query(String::class.java).single()
         assertEquals(true, reasons.contains("이미 게시된 활동"))
+    }
+
+    // 명함 회수(native-v1.md "명함 교환"): batch가 매일 04:00에 부르는 RecallService. 규칙 자체는 api 모듈의 CardFlowTest·GuestFlowTest가 확인한다
+    @Test
+    fun `회수는 30일이 지난 비로그인 저장을 빼고 그 안의 것은 남긴다`() {
+        jdbc.sql("insert into guest_sessions (digest, created_at) values ('old-session-digest', now()), ('new-session-digest', now())").update()
+        jdbc.sql("insert into guest_cards (session_digest, card_id, saved_at) values ('old-session-digest', gen_random_uuid(), now() - interval '31 days'), ('new-session-digest', gen_random_uuid(), now())").update()
+
+        val report = recall.recall()
+
+        assertEquals(RecallService.Report(receipts = 0, guestCards = 1), report)
+        assertEquals(listOf("old-session-digest"), jdbc.sql("select session_digest from guest_cards where recalled_at is not null").query(String::class.java).list())
+        jdbc.sql("delete from guest_sessions where digest in ('old-session-digest', 'new-session-digest')").update()
     }
 }

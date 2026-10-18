@@ -43,10 +43,11 @@ class GuestService(private val guests: GuestRepository, private val cards: CardR
 
     // 토큰 없이 처음 저장하면 세션을 만든다(201). 기존 토큰이면 세션을 다시 만들지 않는다
     @Transactional
-    fun saveCard(token: String?, cardId: UUID): GuestSaveResult {
+    fun saveCard(token: String?, cardId: UUID, activityId: Id? = null): GuestSaveResult {
         cards.find(cardId) ?: throw NotFoundException("명함을 찾을 수 없습니다", "Card not found for guest: $cardId")
         val (digest, newToken) = sessionOrNew(token)
-        val saved = addCard(digest, cardId)
+        // 활동은 처음 저장할 때만 기록하고, 모르는 id는 null로 둔다(native-v1.md "명함 교환")
+        val saved = addCard(digest, cardId, activityId?.takeIf(guests::activityExists))
         return GuestSaveResult(cardId, if (saved) "saved" else "alreadySaved", newToken)
     }
 
@@ -108,11 +109,11 @@ class GuestService(private val guests: GuestRepository, private val cards: CardR
         return digest to newToken
     }
 
-    private fun addCard(digest: String, cardId: UUID): Boolean {
+    private fun addCard(digest: String, cardId: UUID, activityId: Id?): Boolean {
         guests.pruneRevoked(digest)
         if (guests.hasCard(digest, cardId)) return false
         if (guests.cardCount(digest) >= MAX_CARDS) throw ConflictException("저장할 수 있는 명함 수를 넘었습니다")
-        guests.addCard(digest, cardId)
+        guests.addCard(digest, cardId, activityId)
         return true
     }
 
