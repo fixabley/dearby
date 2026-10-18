@@ -28,7 +28,7 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
             .onSuccess {
                 // Only the official page opened while recruiting (detail or card CTA) leads to the prompt.
-                val applied = activity?.takeIf { it.applyUrl == url } ?: state.activities.find { selected == null && it.applyUrl == url }
+                val applied = activity?.takeIf { it.applyUrl == url } ?: state.known.values.find { selected == null && it.applyUrl == url }
                 applied?.let { model.openedApplication(it.id) }
             }
             .onFailure { linkError = "링크를 열지 못했어요." }
@@ -38,7 +38,7 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
         activity != null -> ActivityDetailPage(activity, linkError, { selected = null }, openLink, { prompt = true },
             { model.confirm(activity.id, it) }, { calendar = true }, { sharing = true })
         mine -> MyActivitiesPage(state.appliedActivities, { selected = it; linkError = null }, model::confirm, explore)
-        else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::loadMore, openLink)
+        else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::loadMore, openLink, model::toggle, model::retryProgram)
     }
     if (sharing && activity?.officialUrl != null) AlertDialog(onDismissRequest = { sharing = false }, title = { Text("활동 링크") }, text = { Text(activity.officialUrl) }, confirmButton = { TextButton({ sharing = false }) { Text("닫기") } })
     if (calendar && activity != null) CalendarConflictSheet(model.schedules(activity.id)) { calendar = false }

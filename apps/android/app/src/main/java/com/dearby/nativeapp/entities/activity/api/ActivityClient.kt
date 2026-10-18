@@ -3,6 +3,8 @@ package com.dearby.nativeapp.entities.activity.api
 import com.dearby.nativeapp.entities.activity.model.ActivityModel
 import com.dearby.nativeapp.entities.activity.model.ActivityPage
 import com.dearby.nativeapp.entities.activity.model.ApplicationWindow
+import com.dearby.nativeapp.entities.activity.model.ProgramPage
+import com.dearby.nativeapp.entities.activity.model.ProgramSummary
 import com.dearby.nativeapp.entities.activity.model.ScheduleModel
 import com.dearby.nativeapp.entities.activity.model.instant
 import android.os.LocaleList
@@ -14,12 +16,23 @@ import org.json.JSONObject
 
 /**
  * `GET /v1/activities` (contract "활동 조회"): [query] searches name and description, [cursor] is the previous
- * page's `nextCursor`. Transport or parsing failure throws, never an empty page. Call off the main thread.
+ * page's `nextCursor`, [programId] narrows to one program (contract "발견 프로그램 묶음"). Transport or parsing
+ * failure throws, never an empty page. Call off the main thread.
  */
-fun fetchActivities(api: String, query: String?, cursor: String?): ActivityPage {
-    val params = listOfNotNull(query?.let { "q" to it }, cursor?.let { "cursor" to it })
-        .joinToString("&") { (name, value) -> name + "=" + URLEncoder.encode(value, "UTF-8") }
-    val connection = URL("$api/v1/activities" + if (params.isEmpty()) "" else "?$params").openConnection() as HttpURLConnection
+fun fetchActivities(api: String, query: String?, cursor: String?, programId: String? = null): ActivityPage =
+    parseActivities(get(api, "activities", listOfNotNull(query?.let { "q" to it }, cursor?.let { "cursor" to it }, programId?.let { "programId" to it })))
+
+/**
+ * `GET /v1/discovery/programs` (contract "발견 프로그램 묶음"): programs that have at least one open activity, with the
+ * count, nearest deadline (UTC ISO 8601 or null) and the activities whose name matched [query]. [participationType] is
+ * REGISTRATION or SELECTION; [cursor] is the previous page's integer offset `nextCursor`, carried as text.
+ */
+fun fetchPrograms(api: String, query: String?, participationType: String?, cursor: String?): ProgramPage =
+    parsePrograms(get(api, "discovery/programs", listOfNotNull(query?.let { "q" to it }, participationType?.let { "participationType" to it }, cursor?.let { "cursor" to it })))
+
+private fun get(api: String, path: String, params: List<Pair<String, String>>): String {
+    val query = params.joinToString("&") { (name, value) -> name + "=" + URLEncoder.encode(value, "UTF-8") }
+    val connection = URL("$api/v1/$path" + if (query.isEmpty()) "" else "?$query").openConnection() as HttpURLConnection
     try {
         connection.connectTimeout = 15_000
         connection.readTimeout = 15_000
@@ -27,8 +40,8 @@ fun fetchActivities(api: String, query: String?, cursor: String?): ActivityPage 
         connection.instanceFollowRedirects = false
         connection.setRequestProperty("Accept", "application/json")
         connection.setRequestProperty("Accept-Language", acceptLanguage(LocaleList.getDefault().toLanguageTags().split(',')))
-        check(connection.responseCode == 200) { "activities ${connection.responseCode}" }
-        return parseActivities(connection.inputStream.bufferedReader().use { it.readText() })
+        check(connection.responseCode == 200) { "$path ${connection.responseCode}" }
+        return connection.inputStream.bufferedReader().use { it.readText() }
     } finally {
         connection.disconnect()
     }
@@ -60,6 +73,18 @@ fun parseActivities(json: String): ActivityPage {
             },
         )
     }, body.text("nextCursor"))
+}
+
+fun parsePrograms(json: String): ProgramPage {
+    val body = JSONObject(json)
+    return ProgramPage(body.getJSONArray("items").objects().map { program ->
+        val matched = program.optJSONArray("matchedActivityIds")
+        ProgramSummary(
+            program.getLong("id").toString(), program.getString("name"), program.text("nameEn"),
+            program.getJSONObject("organization").getString("name"), program.getInt("openActivityCount"),
+            program.text("nearestRecruitmentEndAt"), if (matched == null) emptyList() else List(matched.length()) { matched.getLong(it).toString() },
+        )
+    }, if (body.isNull("nextCursor")) null else body.getLong("nextCursor").toString())
 }
 
 private fun JSONArray.objects() = List(length()) { getJSONObject(it) }

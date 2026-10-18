@@ -14,6 +14,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.dearby.nativeapp.entities.account.api.AccountClient
 import com.dearby.nativeapp.entities.account.api.SessionVault
 import com.dearby.nativeapp.entities.activity.api.fetchActivities
+import com.dearby.nativeapp.entities.activity.api.fetchPrograms
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.getValue
@@ -25,7 +26,7 @@ import com.dearby.nativeapp.shared.ui.DearbyTheme
 
 class MainActivity : ComponentActivity() {
     private val activityModel: ActivityViewModel by viewModels {
-        viewModelFactory { initializer { ActivityViewModel { query, cursor -> withContext(Dispatchers.IO) { fetchActivities(ApiOrigin.current, query, cursor) } } } }
+        viewModelFactory { initializer { ActivityViewModel({ query, cursor -> withContext(Dispatchers.IO) { fetchPrograms(ApiOrigin.current, query, null, cursor) } }) { query, cursor, programId -> withContext(Dispatchers.IO) { fetchActivities(ApiOrigin.current, query, cursor, programId) } } } }
     }
     private val account: AccountViewModel by viewModels {
         viewModelFactory { initializer { AccountViewModel(AccountClient(ApiOrigin.current), SessionVault(applicationContext, ApiOrigin.sessionName), createSavedStateHandle()) } }
