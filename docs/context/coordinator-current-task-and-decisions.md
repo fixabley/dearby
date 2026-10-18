@@ -14,6 +14,14 @@
 - **테스트:** API 기존 테스트에서 공유 단계를 뺐다(CardFlowTest 2개는 철회·지갑 목록 검증으로 축소, GuestFlowTest·AccountDeletionFlowTest 공유 단계 삭제). 새 테스트 파일은 만들지 않았다.
 - Orca 세션·워크트리·브랜치(같은 날 사용자 요청): `main`·`admin-agent`·`ux-research`·`api-agent` 워크트리의 터미널 4개를 닫고, `.claude/worktrees/` 아래 완료 워크트리 16개를 제거했다(모두 미커밋·미푸시 변경 없음). 브랜치는 병합된 로컬 129개·원격 14개, 원격 사본이 있는 로컬 10개, 로컬 전용 미병합 7개, PR 없는 미병합 원격 6개, 열린 PR #158·#169·#170의 브랜치 3개를 지웠다(PR은 브랜치 삭제로 닫힘). 남은 브랜치는 `main`과 `chore/drop-share-tables`(PR #235)뿐이다(`chore/remove-card-sharing`은 병합 후 삭제). 지운 미병합 브랜치의 마지막 커밋: feat/capstone-presentation `e9e36ca6`, feat/discovery-admin `ce856b07`, feat/ios-design-simplification `086fd94d`, fixabley/catalog-subscription-collector `d7e5da7b`, fixabley/dearby-android-design-simplification `da438461`, fixabley/ui-agent `ed7b272b`, ui/calendar-overlap `8beacff3`, ui/identity-avatar-order `8d648e95`, feat/mobile-device-calendar `a88c3c02`, feat/android-activities `c8cf82a1`, feat/ios-activities `10cd5dba`, fixabley/dearby-android `6ccf46fa`, fixabley/dearby-api `88f88950`, fixabley/dearby-ios `6f090faa`, fixabley/dearby-ios-architecture-tests `ee9c4e09`, ui/pretendard-flow-screens `31b52dea`(로컬 reflog·GitHub GC 전까지만 복구 가능). 루트 워크스페이스의 `supabase/`(로컬 CLI 상태 포함)와 `~/.supabase`도 지웠다.
 
+## 2026-10-18 결정 — 명함 표현 (Mobbin 참고)
+
+사용자: "명함 디자인 mobbin 참고해서 가져와줘". 조사한 Mobbin 명함·연락처 화면(이름 크게 + 직무·소속 한 줄 + 하단 액션 행, 그림자 없는 넓은 라운드 카드, 2열 그리드 목록)을 계약 "명함 표현"으로 정리했다. 내 명함 탭은 2열 카드 그리드, 명함 상세·공개 명함 `/cards/:id`는 같은 카드 레이아웃을 쓴다. 에이전트 팀 3개(iOS·Android·웹). 용도별 명함 프리셋은 별도 결정 대기.
+
+## 2026-10-18 결정 — 내 활동 진행 트랙
+
+사용자가 NEXT STEP 참고 이미지와 함께 "활동을 신청한 사람들은 별도 페이지에서 일정 프로세스를 볼 수 있게" 제안, 내 제안("그렇게 해주세요")으로 확정. 신청한 활동을 `진행 중`/`끝난 활동`으로 나누고 단계 트랙·D-day 배지·단계 타임라인 페이지(통과/탈락 표시, 참여 확정 토글)를 둔다. 단계는 `schedules`에서 만든다: APPLICATION 슬롯 = 지원, 세부 일정 = 가운데, ACTIVITY 슬롯 = 마지막 `활동` 단계(세부 일정이 없어도 지원 → 활동 두 단계라 활동 종료 전까지 진행 중). 계약 "내 활동 진행 트랙". PR #255 병합, 두 실기기 설치 완료.
+
 ## 2026-10-18 결정 — 공유는 나중에 다시
 
 사용자: "나중에 공유기능 추가할 예정이야". 옛 구현(QR·/s/·공유 기록)은 복원하지 않고 그때 새로 설계한다. 받은 명함 색인 목록은 PR #252로 병합·기기 설치 완료. 내 명함 탭의 용도별 명함(프리셋·장별 한 줄 소개·기본 명함) 제안은 사용자 결정 대기.
