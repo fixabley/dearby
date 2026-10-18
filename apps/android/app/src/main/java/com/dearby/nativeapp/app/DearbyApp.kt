@@ -10,7 +10,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dearby.nativeapp.pages.wallet.WalletCardPage
 import com.dearby.nativeapp.shared.ui.*
@@ -57,10 +56,10 @@ private sealed interface CardRoute {
             }
             // The first-profile funnel (never saved) takes the whole screen, like Toss: no tab bar until the profile exists.
             val settingUp = tab == Tab.Profile && profileState.settingUp
+            // Stock Material 3 navigation bar with the theme's defaults (2026-10-18 user decision: no custom styling). The Column already pads the system bar.
             if (route == null && !activityDetail && !settingUp) {
-                HorizontalDivider()
-                NavigationBar(containerColor = MaterialTheme.colorScheme.surface, tonalElevation = 0.dp, windowInsets = WindowInsets(0, 0, 0, 0)) {
-                    Tab.entries.forEach { item -> NavigationBarItem(selected = tab == item, onClick = { tab = item }, icon = { Icon(item.icon, null) }, label = { Text(item.label, fontSize = 10.sp) }, colors = NavigationBarItemDefaults.colors(selectedIconColor = Teal, selectedTextColor = Teal, indicatorColor = Mint, unselectedIconColor = Quiet, unselectedTextColor = Quiet)) }
+                NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
+                    Tab.entries.forEach { item -> NavigationBarItem(selected = tab == item, onClick = { tab = item }, icon = { Icon(item.icon, null) }, label = { Text(item.label) }) }
                 }
             }
         }
