@@ -13,7 +13,7 @@ android {
     namespace = "com.dearby.nativeapp"
     compileSdk = 36
     defaultConfig {
-        applicationId = "com.dearby.nativeapp"
+        applicationId = "io.wid.dearby" // 2026-10-18 사용자 결정: iOS 출시 번들 ID와 같게. 코드 패키지(namespace)는 그대로
         minSdk = 26
         targetSdk = 36
         versionCode = 1
