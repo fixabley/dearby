@@ -1,9 +1,17 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Descriptions, Form, Input, Modal, Popconfirm, Select, Space, Tag } from "antd";
+import { Alert, App, Button, DatePicker, Descriptions, Form, Input, Modal, Popconfirm, Radio, Select, Space, Switch, Tag } from "antd";
 import { ExportOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
+import dayjs, { type Dayjs } from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import { api, useSingleFlight } from "./api";
 import { CursorTable, SearchSelect, useCursorList } from "./list";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+/** Operator-entered times are Korea time regardless of the browser's zone (contract "일정 직접 지정"). */
+const SEOUL = "Asia/Seoul";
 
 type Schedule = {
   id: number;
@@ -18,7 +26,12 @@ type Schedule = {
   dateLabel: string;
   address: { addressLine1: string; addressLine2: string } | null;
   conferenceUrl: string | null;
+  /** Set by an operator in the editor; the collector leaves such schedules alone. Absent on older API responses. */
+  curated?: boolean;
 };
+/** `PATCH activities/:id` schedule value: all-day dates, Korea-time instants, or null to drop the structured dates. */
+type ScheduleInput = { startDate: string; endDate: string } | { startAt: string; endAt: string } | null;
+type DuplicateKind = "alias" | "exclude";
 export type PublicationStatus = "DRAFT" | "PUBLISHED";
 /** 대상자 조건(contract "대상자 조건(eligibility)"): a nested group of conditions. JSON keys are camelCase; snake_case is DB-only. */
 export type EligibilityCondition = {
@@ -41,6 +54,9 @@ export type ActivityText = {
   descriptionEn: string | null;
   /** Absent on older API responses; the editor treats that as none. */
   eligibility?: Eligibility | null;
+  /** The tree opens the editor without schedules; then the 활동 기간·모집 기간 blocks are hidden. */
+  application?: Schedule | null;
+  activitySchedule?: Schedule;
 };
 type Activity = ActivityText & {
   organization: { id: number; name: string };
@@ -80,6 +96,25 @@ function scheduleText(schedule: Schedule | null): string {
     return range(schedule.startDate, lastDay);
   }
   return schedule.dateLabel || "미정";
+}
+
+/** Editor state for one schedule block: the picked range and whether it carries times. */
+type RangeDraft = { range: [Dayjs, Dayjs] | null; timed: boolean };
+/** Structured dates of a collected schedule → editor state (dates come back as Korea-time days; `endDateExclusive` becomes the last day). */
+function rangeDraft(schedule: Schedule | null | undefined): RangeDraft {
+  if (!schedule) return { range: null, timed: false };
+  if (schedule.startAt && schedule.endAt) return { range: [dayjs(schedule.startAt).tz(SEOUL), dayjs(schedule.endAt).tz(SEOUL)], timed: true };
+  if (schedule.startDate && schedule.endDateExclusive)
+    return { range: [dayjs.tz(schedule.startDate, SEOUL), dayjs.tz(schedule.endDateExclusive, SEOUL).subtract(1, "day")], timed: false };
+  return { range: null, timed: false };
+}
+/** Editor state → PATCH value. Times keep the +09:00 offset so the server stores Korea time. */
+function scheduleInput({ range, timed }: RangeDraft): ScheduleInput {
+  if (!range) return null;
+  const [start, end] = range.map((value) => value.tz(SEOUL));
+  return timed
+    ? { startAt: start.second(0).millisecond(0).format("YYYY-MM-DDTHH:mm:ssZ"), endAt: end.second(0).millisecond(0).format("YYYY-MM-DDTHH:mm:ssZ") }
+    : { startDate: start.format("YYYY-MM-DD"), endDate: end.format("YYYY-MM-DD") };
 }
 
 /** One-line Korean reading of the eligibility JSON for operators: `나이 19~34세 · 재학상태 재학 또는 취업상태 미취업`. */
@@ -128,7 +163,8 @@ export function Activities() {
     [organizationId, setOrganizationId] = useState<number>(),
     [programId, setProgramId] = useState<number>(),
     [publicationStatus, setPublicationStatus] = useState<PublicationStatus>(),
-    [editing, setEditing] = useState<Activity>();
+    [editing, setEditing] = useState<Activity>(),
+    [marking, setMarking] = useState<Activity>();
   const cursor = useCursorList<Activity>("activities", { q: search, organizationId, programId, publicationStatus });
   const { modal, message } = App.useApp();
   const client = useQueryClient();
@@ -253,8 +289,24 @@ export function Activities() {
               <Tag color={publicationStatus === "PUBLISHED" ? "blue" : undefined}>{statusLabels[publicationStatus]}</Tag>
             ),
           },
-          { title: "모집 기간", render: (_, activity) => scheduleText(activity.application) },
-          { title: "활동 일정", render: (_, activity) => scheduleText(activity.activitySchedule) },
+          {
+            title: "모집 기간",
+            render: (_, activity) => (
+              <>
+                {scheduleText(activity.application)}
+                {activity.application?.curated && <CuratedTag />}
+              </>
+            ),
+          },
+          {
+            title: "활동 일정",
+            render: (_, activity) => (
+              <>
+                {scheduleText(activity.activitySchedule)}
+                {activity.activitySchedule.curated && <CuratedTag />}
+              </>
+            ),
+          },
           {
             title: "",
             className: "actions",
@@ -273,6 +325,7 @@ export function Activities() {
                     {activity.publicationStatus === "PUBLISHED" ? "게시 취소" : "게시"}
                   </Button>
                   <Button onClick={() => setEditing(activity)}>편집</Button>
+                  <Button onClick={() => setMarking(activity)}>중복으로 지정</Button>
                   <Popconfirm
                     title={`‘${activity.name}’ 활동을 삭제할까요?`}
                     description="삭제하면 되돌릴 수 없고, 수집으로 생긴 활동은 다시 수집되지 않아요."
@@ -302,17 +355,117 @@ export function Activities() {
         ]}
       />
       {editing && <ActivityTextEditor activity={editing} onClose={() => setEditing(undefined)} />}
+      {marking && <DuplicateDialog activity={marking} onClose={() => setMarking(undefined)} />}
     </>
   );
 }
 
+function CuratedTag() {
+  return (
+    <Tag color="purple" style={{ marginLeft: 6 }}>
+      운영자 지정
+    </Tag>
+  );
+}
+
+/**
+ * "중복으로 지정": the activity is deleted and its name joins the program's 조심 목록, either as an alias of the
+ * canonical activity (future collections update that one) or as a name this program never collects again.
+ */
+function DuplicateDialog({ activity, onClose }: { activity: Activity; onClose: () => void }) {
+  const [form] = Form.useForm();
+  const kind: DuplicateKind = Form.useWatch("kind", form) ?? "alias";
+  const { message } = App.useApp();
+  const client = useQueryClient();
+  const mark = useMutation({
+    mutationFn: (body: { kind: DuplicateKind; canonicalActivityId?: number; reason?: string }) =>
+      api<void>(`activities/${activity.id}/duplicate`, "POST", body),
+    onSuccess: async () => {
+      message.success(
+        kind === "alias"
+          ? `‘${activity.name}’을(를) 지우고, 이 이름은 정본 활동의 다른 표기로 조심 목록에 넣었어요. 다음 수집부터 정본으로 모여요.`
+          : `‘${activity.name}’을(를) 지우고, 이 이름은 이 프로그램의 제외 이름으로 조심 목록에 넣었어요. 다음 수집부터 만들지 않아요.`,
+        6,
+      );
+      onClose();
+      await Promise.all([client.invalidateQueries({ queryKey: ["activities"] }), client.invalidateQueries({ queryKey: ["programs"] })]);
+    },
+  });
+  const markOnce = useSingleFlight();
+  return (
+    <Modal
+      open
+      title={`중복으로 지정 · ${activity.name}`}
+      onCancel={onClose}
+      onOk={() => form.submit()}
+      confirmLoading={mark.isPending}
+      okText="지정하고 삭제"
+      okButtonProps={{ danger: true }}
+      cancelText="취소"
+      width={560}
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={{ kind: "alias" }}
+        onFinish={(values: { kind: DuplicateKind; canonicalActivityId?: number; reason?: string }) =>
+          markOnce(() =>
+            mark.mutateAsync({
+              kind: values.kind,
+              canonicalActivityId: values.kind === "alias" ? values.canonicalActivityId : undefined,
+              reason: values.reason?.trim() || undefined,
+            }),
+          )
+        }
+      >
+        {mark.error && <Alert className="form-error" type="error" showIcon message={mark.error.message} />}
+        <p className="field-note">
+          이 활동은 삭제되고 되돌릴 수 없어요. 이름 ‘{activity.name}’은 {activity.program.name}의 조심 목록에 남아 수집기가 다음부터 피해요.
+        </p>
+        <Form.Item name="kind" label="어떤 중복인가요?">
+          <Radio.Group
+            options={[
+              { value: "alias", label: "같은 활동이다 — 정본 활동의 다른 표기" },
+              { value: "exclude", label: "이 프로그램 활동이 아니다" },
+            ]}
+          />
+        </Form.Item>
+        {kind === "alias" && (
+          <Form.Item
+            name="canonicalActivityId"
+            label="정본 활동"
+            rules={[
+              { required: true, message: "정본 활동을 골라 주세요." },
+              { validator: async (_, value?: number) => (value === activity.id ? Promise.reject(new Error("자기 자신은 정본이 될 수 없어요.")) : undefined) },
+            ]}
+          >
+            <SearchSelect path="activities" params={{ programId: activity.program.id }} placeholder="같은 프로그램의 활동 이름으로 검색" />
+          </Form.Item>
+        )}
+        <Form.Item name="reason" label="사유(선택)">
+          <Input placeholder="예: 띄어쓰기만 다른 같은 기수" maxLength={200} />
+        </Form.Item>
+      </Form>
+    </Modal>
+  );
+}
+
+type TextBody = { name: string; nameEn: string; description: string; descriptionEn: string; eligibility: Eligibility | null };
+type ScheduleBody = { activitySchedule?: ScheduleInput; application?: ScheduleInput };
+
 export function ActivityTextEditor({ activity, onClose }: { activity: ActivityText; onClose: () => void }) {
   const [form] = Form.useForm();
   const eligibilityText: string = Form.useWatch("eligibility", form) ?? "";
+  const activityTimed: boolean = Form.useWatch("activityTimed", form) ?? false;
+  const applicationTimed: boolean = Form.useWatch("applicationTimed", form) ?? false;
+  // Only the list passes schedules; the tree does not, so the blocks (and the PATCH keys) are skipped there.
+  const withSchedules = activity.activitySchedule !== undefined;
+  const initialActivity = rangeDraft(activity.activitySchedule);
+  const initialApplication = rangeDraft(activity.application);
   const { message } = App.useApp();
   const client = useQueryClient();
   const save = useMutation({
-    mutationFn: (body: Omit<ActivityText, "id">) => api<ActivityText>(`activities/${activity.id}`, "PATCH", body),
+    mutationFn: (body: TextBody & ScheduleBody) => api<ActivityText>(`activities/${activity.id}`, "PATCH", body),
     onSuccess: async () => {
       message.success("저장했어요.");
       onClose();
@@ -340,9 +493,31 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
           description: activity.description,
           descriptionEn: activity.descriptionEn ?? "",
           eligibility: activity.eligibility ? JSON.stringify(activity.eligibility, null, 2) : "",
+          activityRange: initialActivity.range,
+          activityTimed: initialActivity.timed,
+          applicationRange: initialApplication.range,
+          applicationTimed: initialApplication.timed,
         }}
-        // Every field is sent: an empty English field clears it, an empty 대상자 조건 sends null.
-        onFinish={(values: { name: string; nameEn: string; description: string; descriptionEn: string; eligibility: string }) =>
+        // Every text field is sent: an empty English field clears it, an empty 대상자 조건 sends null.
+        // Schedule keys go only when the operator changed them: a cleared picker sends null, untouched blocks are omitted.
+        onFinish={(values: {
+          name: string;
+          nameEn: string;
+          description: string;
+          descriptionEn: string;
+          eligibility: string;
+          activityRange: RangeDraft["range"];
+          activityTimed: boolean;
+          applicationRange: RangeDraft["range"];
+          applicationTimed: boolean;
+        }) => {
+          const schedules: ScheduleBody = {};
+          if (withSchedules) {
+            const nextActivity = scheduleInput({ range: values.activityRange, timed: values.activityTimed });
+            if (JSON.stringify(nextActivity) !== JSON.stringify(scheduleInput(initialActivity))) schedules.activitySchedule = nextActivity;
+            const nextApplication = scheduleInput({ range: values.applicationRange, timed: values.applicationTimed });
+            if (JSON.stringify(nextApplication) !== JSON.stringify(scheduleInput(initialApplication))) schedules.application = nextApplication;
+          }
           saveOnce(() =>
             save.mutateAsync({
               name: values.name.trim(),
@@ -350,12 +525,31 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
               description: values.description.trim(),
               descriptionEn: values.descriptionEn.trim(),
               eligibility: parseEligibility(values.eligibility ?? ""),
+              ...schedules,
             }),
-          )
-        }
+          );
+        }}
       >
         {save.error && <Alert className="form-error" type="error" showIcon message={save.error.message} />}
-        <p className="field-note">초안은 다음 수집 때 덮어써질 수 있어요. 고친 내용을 지키려면 게시해 주세요.</p>
+        <p className="field-note">초안은 다음 수집 때 덮어써질 수 있어요. 고친 내용을 지키려면 게시해 주세요. 직접 지정한 기간은 수집이 덮어쓰지 않아요.</p>
+        {withSchedules && (
+          <>
+            <ScheduleBlock
+              title="활동 기간"
+              schedule={activity.activitySchedule}
+              rangeName="activityRange"
+              timedName="activityTimed"
+              timed={activityTimed}
+            />
+            <ScheduleBlock
+              title="모집 기간"
+              schedule={activity.application}
+              rangeName="applicationRange"
+              timedName="applicationTimed"
+              timed={applicationTimed}
+            />
+          </>
+        )}
         <Form.Item name="name" label="한글 이름" rules={[{ required: true, whitespace: true, message: "이름을 입력해 주세요." }]}>
           <Input />
         </Form.Item>
@@ -408,6 +602,47 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
   );
 }
 
+/** One schedule block of the editor: the collected phrase to read from, a date range, and whether to pin times. */
+function ScheduleBlock({
+  title,
+  schedule,
+  rangeName,
+  timedName,
+  timed,
+}: {
+  title: string;
+  schedule: Schedule | null | undefined;
+  rangeName: string;
+  timedName: string;
+  timed: boolean;
+}) {
+  return (
+    <div className="schedule-block">
+      <div className="schedule-block-heading">
+        <strong>{title}</strong>
+        {schedule?.curated && <CuratedTag />}
+      </div>
+      <p className="field-note">
+        수집 원문: {schedule?.dateLabel ? <q>{schedule.dateLabel}</q> : <span className="muted">없음</span>}
+      </p>
+      <Space align="start" wrap>
+        <Form.Item name={rangeName} label="시작 ~ 종료" style={{ marginBottom: 8 }}>
+          <DatePicker.RangePicker
+            allowClear
+            showTime={timed ? { format: "HH:mm", minuteStep: 5 } : false}
+            format={timed ? "YYYY-MM-DD HH:mm" : "YYYY-MM-DD"}
+            placeholder={["시작", "종료"]}
+          />
+        </Form.Item>
+        <Form.Item name={timedName} label="시각 지정" valuePropName="checked" style={{ marginBottom: 8 }}>
+          <Switch />
+        </Form.Item>
+      </Space>
+      <p className="field-note">날짜만 고르면 종일 일정, 시각을 켜면 한국 시간으로 저장해요. 비워 두면 원문 문구만 남아요.</p>
+    </div>
+  );
+}
+
 function ActivityDetail({ activity }: { activity: Activity }) {
   const link = (url: string | null) =>
     url ? (
@@ -424,6 +659,26 @@ function ActivityDetail({ activity }: { activity: Activity }) {
       items={[
         { label: "설명", span: "filled", children: activity.description || "없음" },
         { label: "영문 설명", span: "filled", children: activity.descriptionEn || "없음" },
+        {
+          label: "활동 기간",
+          children: (
+            <>
+              {scheduleText(activity.activitySchedule)}
+              {activity.activitySchedule.curated && <CuratedTag />}
+              {activity.activitySchedule.dateLabel && <div className="muted">원문: {activity.activitySchedule.dateLabel}</div>}
+            </>
+          ),
+        },
+        {
+          label: "모집 기간",
+          children: (
+            <>
+              {scheduleText(activity.application)}
+              {activity.application?.curated && <CuratedTag />}
+              {activity.application?.dateLabel && <div className="muted">원문: {activity.application.dateLabel}</div>}
+            </>
+          ),
+        },
         { label: "장소", children: activity.location ?? "미확인" },
         { label: "비용", children: activity.cost ?? "미확인" },
         {
