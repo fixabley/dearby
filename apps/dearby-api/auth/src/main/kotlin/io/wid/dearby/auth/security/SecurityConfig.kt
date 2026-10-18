@@ -35,6 +35,8 @@ class SecurityConfig {
             sessionManagement { sessionCreationPolicy = SessionCreationPolicy.STATELESS }
             authorizeHttpRequests {
                 authorize(HttpMethod.POST, "$AUTH_PATH/**", permitAll)
+                // 구글은 인가 결과를 GET 리디렉션으로 돌려보낸다(native-v1.md "구글 로그인")
+                authorize(HttpMethod.GET, "$AUTH_PATH/google/callback", permitAll)
                 // 400 등 오류 응답을 만드는 /error 전달이 401로 바뀌지 않게 연다
                 authorize("/error", permitAll)
                 accessRules.apply(this)

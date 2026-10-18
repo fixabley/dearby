@@ -23,6 +23,7 @@ class JooqAppleSignInStateRepository(private val dsl: DSLContext) : AppleSignInS
         dsl.insertInto(APPLE_SIGN_IN_STATES)
             .set(APPLE_SIGN_IN_STATES.ID, id)
             .set(APPLE_SIGN_IN_STATES.STEP, step.name)
+            .set(APPLE_SIGN_IN_STATES.PROVIDER, state.provider)
             .set(APPLE_SIGN_IN_STATES.NONCE, state.nonce)
             .set(APPLE_SIGN_IN_STATES.VERIFIER_HASH, state.verifierHash)
             .set(APPLE_SIGN_IN_STATES.SUBJECT, state.identity?.subject)
@@ -36,11 +37,12 @@ class JooqAppleSignInStateRepository(private val dsl: DSLContext) : AppleSignInS
     }
 
     // 조건부 delete라 같은 id로 동시에 요청해도 한 번만 성공
-    override fun consume(id: UUID, step: AppleSignInStep): AppleSignInState? =
+    override fun consume(id: UUID, step: AppleSignInStep, provider: String): AppleSignInState? =
         dsl.deleteFrom(APPLE_SIGN_IN_STATES)
             .where(
                 APPLE_SIGN_IN_STATES.ID.eq(id),
                 APPLE_SIGN_IN_STATES.STEP.eq(step.name),
+                APPLE_SIGN_IN_STATES.PROVIDER.eq(provider),
                 APPLE_SIGN_IN_STATES.EXPIRES_AT.gt(now()),
             )
             .returning()
@@ -50,6 +52,7 @@ class JooqAppleSignInStateRepository(private val dsl: DSLContext) : AppleSignInS
                     nonce = it.nonce,
                     verifierHash = it.verifierHash,
                     identity = it.subject?.let { subject -> AppleIdentity(subject, it.email, it.displayName, it.clientId, it.refreshToken) },
+                    provider = it.provider!!,
                 )
             }
 

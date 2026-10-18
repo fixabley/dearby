@@ -160,7 +160,7 @@ class AppleSignInService(
         const val PROVIDER = "APPLE"
         private const val MAX_DISPLAY_NAME = 200
         // SHA-256 base64url(패딩 없음)은 43자
-        private val VERIFIER_HASH = Regex("^[A-Za-z0-9_-]{43}$")
+        val VERIFIER_HASH = Regex("^[A-Za-z0-9_-]{43}$")
 
         fun sha256(value: String): String =
             Base64.getUrlEncoder().withoutPadding().encodeToString(MessageDigest.getInstance("SHA-256").digest(value.toByteArray()))

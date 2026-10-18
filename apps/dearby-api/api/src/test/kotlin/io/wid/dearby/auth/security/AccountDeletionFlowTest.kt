@@ -113,6 +113,8 @@ class AccountDeletionFlowTest(
 
         val noToken = userWithData(null)
         jdbc.sql("insert into user_identities (provider, subject, user_id, created_at) values ('APPLE', ?, ?, now())").params("apple-x-${noToken.id}", noToken.id).update()
+        // 구글 계정(refresh token 없음)도 함께 지워진다. 폐기할 토큰이 없으니 REVOKED에는 남지 않는다
+        jdbc.sql("insert into user_identities (provider, subject, user_id, created_at) values ('GOOGLE', ?, ?, now())").params("google-${noToken.id}", noToken.id).update()
         mvc.delete("/v1/me") { header("Authorization", "Bearer ${tokens.issue(noToken).accessToken}") }.andExpect { status { isNoContent() } }
         assertEquals(0, count("user_identities", "user_id", noToken.id))
         assertEquals(listOf("io.wid.dearby:rejected"), REVOKED)
