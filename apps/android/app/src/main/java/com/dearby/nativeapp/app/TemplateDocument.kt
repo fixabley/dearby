@@ -9,10 +9,11 @@ import com.dearby.nativeapp.entities.account.model.AccountProfile
 object TemplateDocument {
     private val pattern = Regex("""\{\{\s*([a-zA-Z]+)(?:[.:]([^{}\s]+))?\s*}}""")
 
-    /** The starter template for a new card: name, job, introduction and the phone and email tokens. */
-    fun starter(profile: AccountProfile): String =
-        (listOf("# {{profile.name}}", "{{profile.job}}", "", "{{profile.introduction}}", "") +
-            profile.contacts.filter { it.kind == "phone" || it.kind == "email" }.map { "- ${it.label}: {{contact:${it.id}}}" }).joinToString("\n")
+    /**
+     * The starter template for a new card: the self-introduction only. Name, job and contacts are drawn by the card face itself
+     * (contract "명함 표현"), so repeating them here showed the same text twice (2026-10-18).
+     */
+    fun starter(profile: AccountProfile): String = "{{profile.introduction}}"
     /** Contact ids the template refers to; they are always among the card's public contacts. */
     fun contactIds(template: String): Set<String> =
         pattern.findAll(template).filter { it.groupValues[1] == "contact" }.map { it.groupValues[2].lowercase() }.toSet()
