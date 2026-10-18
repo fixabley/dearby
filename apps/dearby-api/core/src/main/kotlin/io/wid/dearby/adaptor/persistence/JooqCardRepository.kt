@@ -21,8 +21,6 @@ class JooqCardRepository(private val dsl: DSLContext) : CardRepository {
             .set(BUSINESS_CARDS.DESCRIPTION, card.description)
             .set(BUSINESS_CARDS.TEMPLATE, card.template)
             .set(BUSINESS_CARDS.INTRODUCTION, card.introduction)
-            .set(BUSINESS_CARDS.WEB_TEMPLATE, card.webTemplate)
-            .set(BUSINESS_CARDS.WEB_INTRODUCTION, card.webIntroduction)
             .set(BUSINESS_CARDS.PROFILE_NAME, card.profileName)
             .set(BUSINESS_CARDS.JOB, card.job)
             .set(BUSINESS_CARDS.CONTACTS, JSONB.valueOf(ProfileJson.contacts(card.contacts)))
@@ -53,8 +51,6 @@ class JooqCardRepository(private val dsl: DSLContext) : CardRepository {
         description = it.description!!,
         template = it.template!!,
         introduction = it.introduction!!,
-        webTemplate = it.webTemplate,
-        webIntroduction = it.webIntroduction,
         profileName = it.profileName!!,
         job = it.job!!,
         contacts = ProfileJson.readContacts(it.contacts!!.data()),

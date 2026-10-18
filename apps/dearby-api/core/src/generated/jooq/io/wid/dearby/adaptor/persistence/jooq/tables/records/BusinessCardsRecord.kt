@@ -72,14 +72,6 @@ open class BusinessCardsRecord() : UpdatableRecordImpl<BusinessCardsRecord>(Busi
         set(value): Unit = set(12, value)
         get(): OffsetDateTime? = get(12) as OffsetDateTime?
 
-    open var webTemplate: String?
-        set(value): Unit = set(13, value)
-        get(): String? = get(13) as String?
-
-    open var webIntroduction: String?
-        set(value): Unit = set(14, value)
-        get(): String? = get(14) as String?
-
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -89,7 +81,7 @@ open class BusinessCardsRecord() : UpdatableRecordImpl<BusinessCardsRecord>(Busi
     /**
      * Create a detached, initialised BusinessCardsRecord
      */
-    constructor(id: UUID? = null, userId: UUID? = null, name: String? = null, description: String? = null, template: String? = null, introduction: String? = null, profileName: String? = null, job: String? = null, contacts: JSONB? = null, histories: JSONB? = null, revoked: Boolean? = null, seq: Long? = null, createdAt: OffsetDateTime? = null, webTemplate: String? = null, webIntroduction: String? = null): this() {
+    constructor(id: UUID? = null, userId: UUID? = null, name: String? = null, description: String? = null, template: String? = null, introduction: String? = null, profileName: String? = null, job: String? = null, contacts: JSONB? = null, histories: JSONB? = null, revoked: Boolean? = null, seq: Long? = null, createdAt: OffsetDateTime? = null): this() {
         this.id = id
         this.userId = userId
         this.name = name
@@ -103,8 +95,6 @@ open class BusinessCardsRecord() : UpdatableRecordImpl<BusinessCardsRecord>(Busi
         this.revoked = revoked
         this.seq = seq
         this.createdAt = createdAt
-        this.webTemplate = webTemplate
-        this.webIntroduction = webIntroduction
         resetTouchedOnNotNull()
     }
 }

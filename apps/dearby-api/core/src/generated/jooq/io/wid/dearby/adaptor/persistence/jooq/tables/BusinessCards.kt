@@ -142,16 +142,6 @@ open class BusinessCards(
      */
     val CREATED_AT: TableField<BusinessCardsRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "")
 
-    /**
-     * The column <code>public.business_cards.web_template</code>.
-     */
-    val WEB_TEMPLATE: TableField<BusinessCardsRecord, String?> = createField(DSL.name("web_template"), SQLDataType.VARCHAR, this, "")
-
-    /**
-     * The column <code>public.business_cards.web_introduction</code>.
-     */
-    val WEB_INTRODUCTION: TableField<BusinessCardsRecord, String?> = createField(DSL.name("web_introduction"), SQLDataType.VARCHAR, this, "")
-
     private constructor(alias: Name, aliased: Table<BusinessCardsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<BusinessCardsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<BusinessCardsRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
