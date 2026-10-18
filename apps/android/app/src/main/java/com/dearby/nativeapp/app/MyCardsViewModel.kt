@@ -31,10 +31,23 @@ class MyCardsViewModel(private val account: AccountViewModel) : ViewModel() {
                 return@launch
             }
             // 다시 불러와도 고른 명함은 유지하고, 없어졌거나 처음이면 가장 새 명함을 고른다.
-            val selected = cards.find { it.id == mutable.value.selectedId } ?: cards.firstOrNull()
-            mutable.value = if (cards.isEmpty()) MyCardsState(MyCardsPhase.NO_CARD)
-                else MyCardsState(MyCardsPhase.LOADED, cards.map { MyCardChoice(it.id, it.name, it.profileName, it.job) }, selected?.id, selected?.toState())
+            show(cards.find { it.id == mutable.value.selectedId } ?: cards.firstOrNull())
         }
+    }
+    /** 이 명함 지우기 (`DELETE /v1/cards/:id`): the public link stops working. On failure the card stays and the page shows a message. */
+    fun delete(id: String) {
+        viewModelScope.launch {
+            try { account.authorized { account.client.deleteCard(id, it) } } catch (e: AccountException) {
+                mutable.update { it.copy(message = "명함을 지우지 못했어요. 연결을 확인하고 다시 시도해 주세요.") }
+                return@launch
+            }
+            cards = cards.filterNot { it.id == id }
+            show(cards.find { it.id == mutable.value.selectedId } ?: cards.firstOrNull())
+        }
+    }
+    private fun show(selected: PublishedCard?) {
+        mutable.value = if (cards.isEmpty()) MyCardsState(MyCardsPhase.NO_CARD)
+            else MyCardsState(MyCardsPhase.LOADED, cards.map { MyCardChoice(it.id, it.name, it.profileName, it.job) }, selected?.id, selected?.toState())
     }
     /** A grid tile was tapped: show that card under the grid. */
     fun select(id: String) {

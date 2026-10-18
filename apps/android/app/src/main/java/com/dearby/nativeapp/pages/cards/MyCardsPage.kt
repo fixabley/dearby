@@ -12,6 +12,10 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -30,13 +34,26 @@ enum class MyCardsPhase { SIGNED_OUT, NO_CARD, LOADING, LOADED, FAILED }
 /** One of the account's published cards as a grid tile: 명함 이름, 프로필 이름, 직무. */
 data class MyCardChoice(val id: String, val title: String, val person: String, val job: String)
 /** 내 명함: the signed-in account's published cards, newest first, the selected one rendered as a card below the grid. */
-data class MyCardsState(val phase: MyCardsPhase = MyCardsPhase.LOADING, val cards: List<MyCardChoice> = emptyList(), val selectedId: String? = null, val selected: CardState? = null)
+data class MyCardsState(
+    val phase: MyCardsPhase = MyCardsPhase.LOADING, val cards: List<MyCardChoice> = emptyList(), val selectedId: String? = null, val selected: CardState? = null,
+    /** Why the last 이 명함 지우기 failed, shown under the buttons. */
+    val message: String? = null,
+)
 
 /**
  * 내 명함 tab (contract "명함 표현" 2026-10-18): a 2-column grid whose first tile is `+ 새 명함`; tapping a tile [select]s it and the card
- * shows under the grid with `이 명함 고치기` ([edit] republishes it with its template). The grid is the page's only scroller.
+ * shows under the grid with `이 명함 고치기` ([edit] republishes it with its template) and `이 명함 지우기` ([delete] after a confirmation
+ * dialog; the public link stops working). The grid is the page's only scroller.
  */
-@Composable fun MyCardsPage(state: MyCardsState, create: () -> Unit, select: (String) -> Unit, edit: (String) -> Unit, contact: (ContactState) -> Unit, retry: () -> Unit) {
+@Composable fun MyCardsPage(
+    state: MyCardsState, create: () -> Unit, select: (String) -> Unit, edit: (String) -> Unit, delete: (String) -> Unit, contact: (ContactState) -> Unit, retry: () -> Unit,
+) {
+    var confirmDelete by remember { mutableStateOf<String?>(null) }
+    confirmDelete?.let { id ->
+        AlertDialog(onDismissRequest = { confirmDelete = null }, title = { Text("이 명함을 지울까요?") }, text = { Text("공개 링크도 더 열리지 않아요. 되돌릴 수 없어요.") },
+            confirmButton = { TextButton({ confirmDelete = null; delete(id) }) { Text("지우기", color = Danger) } },
+            dismissButton = { TextButton({ confirmDelete = null }) { Text("취소") } })
+    }
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("내 명함")
         when (state.phase) {
@@ -63,6 +80,10 @@ data class MyCardsState(val phase: MyCardsPhase = MyCardsPhase.LOADING, val card
                     item(span = { GridItemSpan(maxLineSpan) }) { CardContent(card, Modifier.padding(top = 10.dp), onContact = contact) }
                     item(span = { GridItemSpan(maxLineSpan) }) { DearbyOutlineButton({ edit(card.id) }, Modifier.fillMaxWidth()) { Text("이 명함 고치기") } }
                     item(span = { GridItemSpan(maxLineSpan) }) { Text("명함을 고치면 같은 꾸밈으로 새 명함을 발행해요. 이전 명함은 그대로 남아요.", color = Quiet, style = MaterialTheme.typography.bodySmall) }
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        TextButton({ confirmDelete = card.id }, Modifier.fillMaxWidth()) { Text("이 명함 지우기", color = Danger, fontWeight = FontWeight.SemiBold) }
+                    }
+                    state.message?.let { item(span = { GridItemSpan(maxLineSpan) }) { Text(it, color = Danger, style = MaterialTheme.typography.bodySmall) } }
                 }
             }
         }
