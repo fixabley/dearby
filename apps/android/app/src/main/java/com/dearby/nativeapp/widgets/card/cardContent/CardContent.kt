@@ -1,62 +1,88 @@
 package com.dearby.nativeapp.widgets.card.cardContent
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 
-@Composable fun CardContent(state: CardState, modifier: Modifier = Modifier, onContact: (ContactState) -> Unit, expanded: Boolean = false, titleBadge: Boolean = false) {
-    OutlinedCard(modifier.fillMaxWidth(), colors = CardDefaults.outlinedCardColors(containerColor = Mint), border = BorderStroke(1.dp, androidx.compose.ui.graphics.Color(0xFFB6E4DF))) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(state.person, Modifier.weight(1f), style = MaterialTheme.typography.titleLarge)
-                if (state.job.isNotBlank()) Text(state.job, Modifier.weight(1f), color = Quiet, style = MaterialTheme.typography.bodySmall)
-                if (titleBadge && state.title.isNotBlank()) ExampleBadge(state.title, true)
+/**
+ * 명함 카드 면(contract "명함 표현", 2026-10-18): 흰 바탕·모서리 20·구분선 테두리·안쪽 여백 20. 머리(아바타·이름·직무 칩·소속) →
+ * 소개 마크다운 → 연락처 → 활동 이력. 카드는 자기 높이만큼 펼쳐지고 스크롤은 담는 화면이 맡는다. 행동 버튼은 호출자가 카드 바깥에 둔다.
+ */
+@Composable fun CardContent(state: CardState, modifier: Modifier = Modifier, onContact: (ContactState) -> Unit) {
+    Surface(modifier.fillMaxWidth(), color = Color.White, shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, Line)) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            Header(state)
+            if (state.introduction.isNotBlank()) MarkdownBody(state.introduction)
+            Section("연락처") {
+                if (state.contacts.isEmpty()) Empty("공개된 연락처가 없어요")
+                else state.contacts.forEach { ContactRow(it) { onContact(it) } }
             }
-            HorizontalDivider()
-            Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // 프로필처럼 명함 이름·설명·소개가 없는 경우 빈 줄과 겹친 구분선을 그리지 않는다.
-                val showIntroduction = expanded && state.introduction.isNotBlank()
-                if (state.title.isNotBlank()) Text(state.title, color = Teal, style = MaterialTheme.typography.titleLarge)
-                if (state.description.isNotBlank()) Text(state.description, color = Quiet, style = MaterialTheme.typography.bodyMedium)
-                if (showIntroduction) MarkdownBody(state.introduction)
-                if (state.title.isNotBlank() || state.description.isNotBlank() || showIntroduction) HorizontalDivider()
-                Text("연락처", style = MaterialTheme.typography.titleSmall, color = Quiet)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    state.contacts.forEach { contact -> TextButton({ onContact(contact) }, contentPadding = PaddingValues(0.dp)) {
-                        ContactSymbol(contact.kind, Modifier.size(23.dp)); Spacer(Modifier.width(8.dp))
-                        Column { Text(contact.label, color = Quiet, style = MaterialTheme.typography.bodySmall); if (expanded) Text(contact.value, style = MaterialTheme.typography.bodySmall) }
-                    } }
-                }
-                HorizontalDivider()
-                Text("활동 이력", style = MaterialTheme.typography.titleSmall, color = Quiet)
-                // 미확인: no admin-verified evidence yet.
-                Column { state.histories.forEachIndexed { index, history ->
-                    val tag = if (history.verified) "확인됨" else "미확인"
-                    TimelineEntry(history.date, history.title, if (expanded) listOf(history.role, tag).filter { it.isNotEmpty() }.joinToString(" · ") else tag, index == state.histories.lastIndex, compact = !expanded)
-                } }
+            Section("활동 이력") {
+                if (state.histories.isEmpty()) Empty("공개된 활동 이력이 없어요")
+                else state.histories.forEach { HistoryRow(it) }
             }
         }
     }
 }
 
-@Composable fun CardStack(cards: List<CardState>, index: Int, modifier: Modifier = Modifier, onContact: (ContactState) -> Unit, titleBadge: Boolean = false) {
-    val behind = cards.drop(index + 1).take(2).reversed()
-    Box(modifier.fillMaxWidth()) {
-        behind.forEachIndexed { depth, card ->
-            Surface(Modifier.padding(top = (32 * depth).dp, start = ((behind.size - depth) * 10).dp, end = ((behind.size - depth) * 10).dp).fillMaxWidth(), color = if (depth == 0) Soft else Mint, shape = MaterialTheme.shapes.medium, border = BorderStroke(1.dp, Line)) {
-                Row(Modifier.padding(horizontal = 20.dp, vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(card.person, style = MaterialTheme.typography.titleMedium)
-                    Text(card.job, color = Quiet, style = MaterialTheme.typography.bodySmall, maxLines = 1)
-                }
-            }
+@Composable private fun Header(state: CardState) {
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        InitialAvatar(state.person, 56.dp)
+        Text(state.person, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = MaterialTheme.typography.titleLarge)
+        // `job`은 서버가 승인된 직무 이름을 " · "로 이어 준 문자열이라 항목마다 칩으로 되돌린다.
+        val jobs = state.job.split(" · ").map { it.trim() }.filter { it.isNotEmpty() }
+        if (jobs.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            jobs.forEach { ExampleBadge(it) }
         }
-        CardContent(cards[index], Modifier.padding(top = (32 * behind.size).dp).fillMaxWidth().heightIn(max = 410.dp), onContact, titleBadge = titleBadge)
+        state.organization?.takeIf { it.isNotBlank() }?.let { Text(it, color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall) }
+    }
+}
+
+@Composable private fun Section(title: String, content: @Composable ColumnScope.() -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(title, Modifier.padding(bottom = 4.dp), color = Quiet, style = MaterialTheme.typography.titleSmall)
+        content()
+    }
+}
+
+@Composable private fun Empty(text: String) = Text(text, color = Quiet, style = MaterialTheme.typography.bodyMedium)
+
+/** 행 전체를 눌러 연다; 열 수 있는 값이면 오른쪽에 외부 링크 아이콘을 둔다. */
+@Composable private fun ContactRow(contact: ContactState, open: () -> Unit) {
+    val openable = contact.target != null
+    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(enabled = openable, role = Role.Button, onClick = open).padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        ContactSymbol(contact.kind, Modifier.size(22.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(contact.label.ifBlank { contactKindName(contact.kind) }, color = Quiet, style = MaterialTheme.typography.labelSmall)
+            Text(contact.value, style = MaterialTheme.typography.bodyMedium)
+        }
+        if (openable) Icon(Icons.AutoMirrored.Outlined.OpenInNew, "열기", Modifier.size(18.dp), tint = Quiet)
+    }
+}
+
+@Composable private fun HistoryRow(history: CardHistoryState) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(history.date, color = Quiet, style = MaterialTheme.typography.labelSmall)
+        Text(history.title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (history.role.isNotBlank()) Text(history.role, color = Quiet, style = MaterialTheme.typography.bodySmall)
+            // 미확인: no admin-verified evidence yet.
+            ExampleBadge(if (history.verified) "확인됨" else "미확인", accent = history.verified)
+        }
+        if (history.description.isNotBlank()) Text(history.description, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
     }
 }

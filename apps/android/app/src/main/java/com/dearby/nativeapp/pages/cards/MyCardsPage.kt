@@ -2,30 +2,41 @@ package com.dearby.nativeapp.pages.cards
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Badge
-import androidx.compose.material.icons.outlined.PersonOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
+import com.dearby.nativeapp.widgets.card.cardContent.CardContent
+import com.dearby.nativeapp.widgets.card.cardContent.CardState
+import com.dearby.nativeapp.widgets.card.cardContent.ContactState
 
 enum class MyCardsPhase { SIGNED_OUT, NO_CARD, LOADING, LOADED, FAILED }
-/** One of the account's published cards as a row on the 내 명함 tab. */
-data class MyCardChoice(val id: String, val title: String, val subtitle: String)
-/** 내 명함: the signed-in account's published cards, newest first, or why there are none yet. */
-data class MyCardsState(val phase: MyCardsPhase = MyCardsPhase.LOADING, val cards: List<MyCardChoice> = emptyList())
+/** One of the account's published cards as a grid tile: 명함 이름, 프로필 이름, 직무. */
+data class MyCardChoice(val id: String, val title: String, val person: String, val job: String)
+/** 내 명함: the signed-in account's published cards, newest first, the selected one rendered as a card below the grid. */
+data class MyCardsState(val phase: MyCardsPhase = MyCardsPhase.LOADING, val cards: List<MyCardChoice> = emptyList(), val selectedId: String? = null, val selected: CardState? = null)
 
-/** 내 명함 tab: lists published cards; [edit] republishes one with its template, [create] makes a new one. */
-@Composable fun MyCardsPage(state: MyCardsState, create: () -> Unit, edit: (String) -> Unit, retry: () -> Unit) {
+/**
+ * 내 명함 tab (contract "명함 표현" 2026-10-18): a 2-column grid whose first tile is `+ 새 명함`; tapping a tile [select]s it and the card
+ * shows under the grid with `이 명함 고치기` ([edit] republishes it with its template). The grid is the page's only scroller.
+ */
+@Composable fun MyCardsPage(state: MyCardsState, create: () -> Unit, select: (String) -> Unit, edit: (String) -> Unit, contact: (ContactState) -> Unit, retry: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("내 명함")
         when (state.phase) {
@@ -44,22 +55,37 @@ data class MyCardsState(val phase: MyCardsPhase = MyCardsPhase.LOADING, val card
                     }
                 }
             }
-            MyCardsPhase.LOADED -> LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                item { DearbyOutlineButton(create, Modifier.fillMaxWidth()) { Text("＋ 새 명함") } }
-                items(state.cards, key = { it.id }) { item ->
-                    Surface(onClick = { edit(item.id) }, modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp), shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Line)) {
-                        Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Icon(Icons.Outlined.PersonOutline, null, tint = Teal)
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                Text(item.title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(item.subtitle, color = Quiet, style = MaterialTheme.typography.bodyMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            }
-                            Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, "이 명함 고치기", tint = Quiet)
-                        }
-                    }
+            MyCardsPhase.LOADED -> LazyVerticalGrid(GridCells.Fixed(2), Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                item { NewCardTile(create) }
+                items(state.cards, key = { it.id }) { CardTile(it, it.id == state.selectedId) { select(it.id) } }
+                state.selected?.let { card ->
+                    item(span = { GridItemSpan(maxLineSpan) }) { CardContent(card, Modifier.padding(top = 10.dp), onContact = contact) }
+                    item(span = { GridItemSpan(maxLineSpan) }) { DearbyOutlineButton({ edit(card.id) }, Modifier.fillMaxWidth()) { Text("이 명함 고치기") } }
+                    item(span = { GridItemSpan(maxLineSpan) }) { Text("명함을 고치면 같은 꾸밈으로 새 명함을 발행해요. 이전 명함은 그대로 남아요.", color = Quiet, style = MaterialTheme.typography.bodySmall) }
                 }
-                item { Text("명함을 고치면 같은 꾸밈으로 새 명함을 발행해요. 이전 명함은 그대로 남아요.", color = Quiet, style = MaterialTheme.typography.bodySmall) }
             }
+        }
+    }
+}
+
+@Composable private fun NewCardTile(create: () -> Unit) {
+    Surface(onClick = create, modifier = Modifier.fillMaxWidth().heightIn(min = 96.dp), shape = RoundedCornerShape(12.dp), color = Color.White, border = BorderStroke(1.dp, Line)) {
+        Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+            Icon(Icons.Outlined.Add, null, Modifier.size(18.dp), tint = Teal); Spacer(Modifier.width(4.dp))
+            Text("새 명함", color = Teal, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleSmall)
+        }
+    }
+}
+
+/** 선택 칸은 민트 바탕·청록 테두리, 나머지는 흰 바탕·구분선 테두리. */
+@Composable private fun CardTile(card: MyCardChoice, selected: Boolean, select: () -> Unit) {
+    Surface(onClick = select, modifier = Modifier.fillMaxWidth().heightIn(min = 96.dp).semantics { this.selected = selected }, shape = RoundedCornerShape(12.dp),
+        color = if (selected) Mint else Color.White, border = BorderStroke(1.dp, if (selected) Teal else Line)) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(card.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
+            Text(card.person, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+            if (card.job.isNotBlank()) Text(card.job, color = Quiet, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
         }
     }
 }

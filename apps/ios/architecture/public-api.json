@@ -34,9 +34,9 @@
   "entities/identity": [
     "CardModel",
     "CardView",
-    "ContactIcons",
     "ContactModel",
     "ContactSymbol",
+    "HistoryBadge",
     "HistoryModel",
     "HistoryTimeline",
     "IdentityHeading"
@@ -52,6 +52,7 @@
   ],
   "shared": [
     "AppOrigins",
+    "ChipFlow",
     "DearbyAppleButton",
     "DearbyAvatar",
     "DearbyBadge",

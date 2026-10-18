@@ -17,7 +17,7 @@ API = {
     'widgets.activity.activityCard': {'ActivityCard'},
     'widgets.activity.programHeader': {'ProgramHeaderRow'},
     'widgets.activity.progress': {'ActivityProgressRow', 'ProgressState', 'ProgressStage', 'ProgressStatus', 'ProgressMark', 'stageIcon'},
-    'widgets.card.cardContent': {'CardState', 'CardHistoryState', 'ContactState', 'CardContent', 'CardStack', 'ReceivedCardRow', 'CardComposer', 'ComposerContact', 'ComposerHistory'},
+    'widgets.card.cardContent': {'CardState', 'CardHistoryState', 'ContactState', 'CardContent', 'ReceivedCardRow', 'CardComposer', 'ComposerContact', 'ComposerHistory'},
     'pages.profile': {'ProfilePage', 'ProfilePhase', 'ProfileViewState', 'ProfileFormState', 'ProfileErrors', 'HistoryDraft', 'FunnelState', 'PickerSearchState', 'VersionsState', 'HistoryFunnelPage', 'ProfileVersionsPage', 'ProfileVersionPage', 'HistoryRowState', 'VersionDetailView', 'rowState', 'view', 'periodText', 'errors', 'SetupStep', 'ProfileSetupPage'},
     'pages.cards': {'MyCardsPage', 'MyCardsState', 'MyCardsPhase', 'MyCardChoice'},
     'features.passkey': {'Passkeys'},

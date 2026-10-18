@@ -17,11 +17,25 @@ struct ContactModel: Identifiable, Equatable {
         switch kind {
         case "phone": "phone"
         case "email": "envelope"
-        case "chat": "bubble"
+        case "kakao": "bubble"
         case "instagram": "camera"
         default: "link"
         }
     }
+    /// The kind's name (contract vocabulary phone/email/kakao/instagram/github/behance), shown when `displayLabel` is empty.
+    var kindName: String {
+        switch kind {
+        case "phone": "전화"
+        case "email": "이메일"
+        case "kakao": "카카오톡"
+        case "instagram": "Instagram"
+        case "github": "GitHub"
+        case "behance": "Behance"
+        default: "링크"
+        }
+    }
+    /// Row label: the owner's `label`, or the kind name when none was given.
+    var rowLabel: String { displayLabel.isEmpty ? kindName : displayLabel }
 }
 /// A history as shown on cards and profiles: `title` is 조직 → 프로그램 → 활동, `verified` hides the 미확인 badge.
 struct HistoryModel: Identifiable, Equatable {
@@ -31,6 +45,7 @@ struct HistoryModel: Identifiable, Equatable {
     var startDate: String
     var endDate: String?
     var verified = false
+    var description = ""
 }
 struct CardModel: Identifiable, Equatable {
     let id: String
@@ -42,4 +57,8 @@ struct CardModel: Identifiable, Equatable {
     var description: String
     var contacts: [ContactModel]
     var histories: [HistoryModel]
+    /// Organization of the most recent approved history, shown under the name (contract "명함 표현").
+    var organization: String?
+    /// `job` split on ` · ` for the header chips.
+    var jobs: [String] { job.components(separatedBy: " · ").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
 }
