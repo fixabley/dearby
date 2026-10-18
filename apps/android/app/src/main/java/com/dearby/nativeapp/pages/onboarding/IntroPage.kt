@@ -15,8 +15,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 
-/** First-launch intro: sign in with a passkey or Apple, or look around without an account. [message] is a failed Apple start. */
-@Composable fun IntroPage(start: () -> Unit, apple: () -> Unit, browse: () -> Unit, busy: Boolean = false, message: String? = null) = Surface(Modifier.fillMaxSize()) {
+/** First-launch intro: sign in with a passkey, Apple or Google ([google] null hides it), or look around without an account. [message] is a failed provider start. */
+@Composable fun IntroPage(start: () -> Unit, apple: () -> Unit, google: (() -> Unit)?, browse: () -> Unit, busy: Boolean = false, message: String? = null) = Surface(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 32.dp)) {
         Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
             DearbyLogo(Modifier.width(184.dp).height(68.dp))
@@ -30,6 +30,10 @@ import com.dearby.nativeapp.shared.ui.*
         Spacer(Modifier.height(12.dp))
         AppleSignInButton(apple, Modifier.fillMaxWidth().testTag("intro-apple"), enabled = !busy)
         Spacer(Modifier.height(12.dp))
+        google?.let {
+            DearbyGoogleButton(it, Modifier.fillMaxWidth().testTag("intro-google"), enabled = !busy)
+            Spacer(Modifier.height(12.dp))
+        }
         DearbyOutlineButton(browse, Modifier.fillMaxWidth().testTag("intro-browse")) { Text("둘러보기") }
     }
 }

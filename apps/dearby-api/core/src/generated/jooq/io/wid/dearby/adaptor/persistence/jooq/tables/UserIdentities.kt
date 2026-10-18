@@ -138,7 +138,7 @@ open class UserIdentities(
     override fun getIndexes(): List<Index> = listOf(USER_IDENTITIES_USER_ID_IDX)
     override fun getPrimaryKey(): UniqueKey<UserIdentitiesRecord> = USER_IDENTITIES_PKEY
     override fun getChecks(): List<Check<UserIdentitiesRecord>> = listOf(
-        Internal.createCheck(this, DSL.name("user_identities_provider_check"), "(((provider)::text = 'APPLE'::text))", true)
+        Internal.createCheck(this, DSL.name("user_identities_provider_check"), "(((provider)::text = ANY ((ARRAY['APPLE'::character varying, 'GOOGLE'::character varying])::text[])))", true)
     )
     override fun `as`(alias: String): UserIdentities = UserIdentities(DSL.name(alias), this)
     override fun `as`(alias: Name): UserIdentities = UserIdentities(alias, this)

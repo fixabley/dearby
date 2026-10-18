@@ -3,7 +3,9 @@ import Foundation
 enum AccountError: Error, Equatable {
     /// `rejected`: a 400 with the server's user-facing ProblemDetail `detail` (contact rules, unapproved history, own card…).
     /// `conflict`: 409 — the profile changed elsewhere (`If-Match`).
-    case unauthorized, invalidInput, rejected(String), notFound, conflict, rateLimited, unavailable
+    /// `disabled`: 503 — the server has this feature switched off (e.g. Google sign-in without its client ID), unlike a
+    /// network failure or 5xx, which is `unavailable`.
+    case unauthorized, invalidInput, rejected(String), notFound, conflict, rateLimited, disabled, unavailable
 }
 
 /// Owner API (contract native-v1): passkey sign-in, profile and card publishing.
@@ -55,6 +57,29 @@ struct AccountClient: Sendable {
     /// Links a first-time Apple account to the signed-in (passkey) account (204). 400 if it already has another Apple account.
     func linkApple(_ link: AppleLink, _ session: TokenPair) async throws {
         _ = try await request("me/identities/apple", method: "POST", body: ["linkToken": link.linkToken], session: session)
+    }
+    /// Google web flow, step 1 (contract "구글 로그인"): the authorize URL for this verifier hash. `disabled` when the server
+    /// has no Google client configured.
+    func googleStart(verifierHash: String) async throws -> URL {
+        let start = try await send("auth/google/web/start", method: "POST", body: ["verifierHash": verifierHash], as: GoogleStart.self)
+        guard let url = URL(string: start.authorizeUrl), url.scheme == "https" else { throw AccountError.unavailable }
+        return url
+    }
+    /// Google web flow, step 2. 200: this Google account already has a Dearby account. 202: first time (`GoogleLink`).
+    func signInWithGoogle(code: String, verifier: String) async throws -> GoogleSignInResult {
+        let (data, status) = try await request("auth/google/web/exchange", method: "POST", body: ["code": code, "verifier": verifier])
+        do {
+            if status == 202 { return .newGoogleAccount(try JSONDecoder().decode(GoogleLink.self, from: data)) }
+            return .signedIn(try JSONDecoder().decode(TokenPair.self, from: data))
+        } catch { throw AccountError.unavailable }
+    }
+    /// A new Dearby account for a first-time Google account (201).
+    func registerWithGoogle(_ link: GoogleLink) async throws -> TokenPair {
+        try await send("auth/google/register", method: "POST", body: ["linkToken": link.linkToken], as: TokenPair.self)
+    }
+    /// Links a first-time Google account to the signed-in (passkey) account (204). 400 if it already has another Google account.
+    func linkGoogle(_ link: GoogleLink, _ session: TokenPair) async throws {
+        _ = try await request("me/identities/google", method: "POST", body: ["linkToken": link.linkToken], session: session)
     }
     /// Rotates: the refresh token sent is spent whether or not the answer arrives.
     func refresh(_ tokens: TokenPair) async throws -> TokenPair {
@@ -145,6 +170,11 @@ struct AccountClient: Sendable {
     /// `email` may be an Apple private relay address.
     struct AppleLink: Decodable, Equatable, Sendable { let linkToken: String; let email: String? }
     enum AppleSignInResult: Equatable, Sendable { case signedIn(TokenPair), newAppleAccount(AppleLink) }
+    /// From a 202 of the Google exchange: `linkToken` lasts ten minutes and is spent by `registerWithGoogle` or `linkGoogle`.
+    /// `email` is only present when Google verified it; `displayName` is Google's `name`.
+    struct GoogleLink: Decodable, Equatable, Sendable { let linkToken: String; let email: String?; let displayName: String? }
+    enum GoogleSignInResult: Equatable, Sendable { case signedIn(TokenPair), newGoogleAccount(GoogleLink) }
+    private struct GoogleStart: Decodable { let authorizeUrl: String }
     /// Nil optionals are left out of the JSON (synthesized `encodeIfPresent`).
     private struct AppleAnswer: Encodable {
         let challengeId: String; let identityToken: String; let displayName: String?; let authorizationCode: String?
@@ -185,6 +215,7 @@ struct AccountClient: Sendable {
         case 404: throw AccountError.notFound
         case 409: throw AccountError.conflict
         case 429: throw AccountError.rateLimited
+        case 503: throw AccountError.disabled
         default: throw AccountError.unavailable
         }
     }

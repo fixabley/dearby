@@ -126,6 +126,11 @@ open class AppleSignInStates(
      */
     val REFRESH_TOKEN: TableField<AppleSignInStatesRecord, String?> = createField(DSL.name("refresh_token"), SQLDataType.VARCHAR(1000), this, "")
 
+    /**
+     * The column <code>public.apple_sign_in_states.provider</code>.
+     */
+    val PROVIDER: TableField<AppleSignInStatesRecord, String?> = createField(DSL.name("provider"), SQLDataType.VARCHAR(20).nullable(false).defaultValue(DSL.field(DSL.raw("'APPLE'::character varying"), SQLDataType.VARCHAR)), this, "")
+
     private constructor(alias: Name, aliased: Table<AppleSignInStatesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<AppleSignInStatesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<AppleSignInStatesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -150,6 +155,7 @@ open class AppleSignInStates(
     override fun getIndexes(): List<Index> = listOf(APPLE_SIGN_IN_STATES_EXPIRES_AT_IDX)
     override fun getPrimaryKey(): UniqueKey<AppleSignInStatesRecord> = APPLE_SIGN_IN_STATES_PKEY
     override fun getChecks(): List<Check<AppleSignInStatesRecord>> = listOf(
+        Internal.createCheck(this, DSL.name("apple_sign_in_states_provider_check"), "(((provider)::text = ANY ((ARRAY['APPLE'::character varying, 'GOOGLE'::character varying])::text[])))", true),
         Internal.createCheck(this, DSL.name("apple_sign_in_states_step_check"), "(((step)::text = ANY ((ARRAY['NONCE'::character varying, 'CALLBACK'::character varying, 'LINK'::character varying])::text[])))", true)
     )
     override fun `as`(alias: String): AppleSignInStates = AppleSignInStates(DSL.name(alias), this)

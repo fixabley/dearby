@@ -361,3 +361,24 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - ProgramSummary: `{id, name, nameEn: string|null, organization: {id, name}, openActivityCount, nearestRecruitmentEndAt: ISO-8601(UTC)|null, matchedActivityIds: number[]}`. 열린 활동 판정은 서버가 처음으로 가진다: 게시된 활동의 APPLICATION 시각 일정이 `start_at ≤ now`(없으면 열림)이고 `end_at > now`(없으면 열림). 웹·iOS가 쓰던 클라이언트 규칙과 같다. `openActivityCount`는 위 규칙(과 `participationType`)에 맞는 열린 활동 수이고 1 이상인 프로그램만 돌려준다. `nearestRecruitmentEndAt`은 그 활동들 중 가장 이른 모집 마감(없으면 null). `matchedActivityIds`는 `q`가 활동 이름에 맞은 열린 활동 id(없으면 빈 배열).
 - 펼칠 때는 기존 `GET /v1/activities?programId=<id>`를 쓰고, 클라이언트는 열린 활동만 남긴다.
 - `Cache-Control: no-store`·오류 형식은 활동 조회와 같다.
+
+## 구글 로그인 — 2026-10-18 사용자 결정
+
+애플 로그인·패스키와 함께 쓰는 세 번째 로그인 수단이다. iOS·Android 모두 **웹 방식**(애플의 Android 방식과 같은 서버 코드 흐름)으로 하고 SDK는 넣지 않는다. 같은 구글 계정(`sub`)은 같은 Dearby 계정이 되며, 계정은 이메일로 합치지 않는다. 운영에 `GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`·`GOOGLE_CALLBACK_URL`이 없으면 아래 `/auth/google/*`는 503이다.
+
+| 메서드·경로 | 인증 | 요청 | 응답 |
+| --- | --- | --- | --- |
+| POST /v1/auth/google/web/start | 없음 | `{verifierHash}` | 200 `{authorizeUrl}` |
+| GET /v1/auth/google/callback | 없음 | 구글 리디렉션(`code`, `state`, 또는 `error`) | 303 `dearby://auth/google?code=<1회용>` 또는 `?error=cancelled\|failed` |
+| POST /v1/auth/google/web/exchange | 없음 | `{code, verifier}` | 200 TokenPair(이미 연결된 구글 계정) 또는 202 `{linkToken, email, displayName}`(처음 보는 계정). 401이면 처음부터 다시 |
+| POST /v1/auth/google/register | 없음 | `{linkToken}` | 201 TokenPair. 새 Dearby 계정(USER)을 만들고 구글 계정을 연결한다 |
+| POST /v1/me/identities/google | Bearer | `{linkToken}` | 204. 로그인한 계정에 구글 계정을 연결한다. 이미 다른 구글 계정이 연결돼 있으면 400 |
+
+- 흐름(앱 공통): 무작위 verifier(43자 이상)의 SHA-256(base64url, 패딩 없음)을 `web/start`로 보내고, 받은 `authorizeUrl`을 iOS는 `ASWebAuthenticationSession`(callback scheme `dearby`), Android는 Custom Tab으로 연다. 구글은 `GOOGLE_CALLBACK_URL`(`https://api.dearby.wid.io.kr/v1/auth/google/callback`)로 돌려보내고, 서버는 `code`를 구글 토큰 엔드포인트에서 교환해 ID 토큰을 검증한 뒤 `dearby://auth/google?code=…`로 앱에 돌려보낸다. 앱은 그 code와 verifier로 `web/exchange`를 부른다. 결과 code·linkToken은 10분, 한 번만 쓴다.
+- 인가 요청: `https://accounts.google.com/o/oauth2/v2/auth`, `response_type=code`, `scope=openid email profile`, `state`(서버가 만든 상태 id), `nonce`, `prompt=select_account`. `access_type=offline`은 쓰지 않고 refresh token은 저장하지 않는다(계정 삭제 때 폐기할 토큰이 없다. 애플과 다른 점).
+- ID 토큰 검증: JWKS `https://www.googleapis.com/oauth2/v3/certs` 서명, `iss`가 `https://accounts.google.com` 또는 `accounts.google.com`, `aud = GOOGLE_CLIENT_ID`, 만료, `nonce`가 발급값과 같아야 한다. `email_verified`가 false면 email은 저장하지 않는다. `name`을 `display_name`에 남긴다.
+- 처음 보는 구글 계정(202)의 처리는 애플과 같다: 앱이 이 기기의 Dearby 패스키를 조용히 묻고(있으면 로그인 후 `/me/identities/google`로 연결), 없으면 `register`로 새 계정, 사용자가 프롬프트를 닫았을 때만 선택 화면.
+- DB: `user_identities.provider`에 `GOOGLE`을 허용한다(V22). 로그인 중간 상태는 애플의 상태 저장소와 같은 구조(provider 열 추가 또는 별도 테이블)로 둔다.
+- 앱 화면: 로그인 시트와 시작 화면에 애플 버튼 옆(iOS는 아래)에 `Google로 계속하기` 버튼을 둔다. 구글 브랜드 가이드의 흰 바탕·회색 테두리·"G" 로고 버튼을 따르되, 로고 자산은 공식 파일을 받아 `shared/assets/prototype`에 둔 뒤 적용한다(자산이 없는 동안은 글자 버튼). 빌드에 `GOOGLE_SIGN_IN_ENABLED` 같은 별도 플래그는 두지 않고, 서버가 503이면 버튼을 숨긴다(애플 버튼이 `appleSignInEnabled`를 판단하는 방식과 같게).
+- Android는 `dearby://auth/google` 인텐트 필터를, iOS는 `ASWebAuthenticationSession` 콜백으로 받는다. 애플 콜백 처리(`appleRedirect`)와 같은 자리에서 구글 콜백도 해석한다.
+- 운영 준비(사용자): Google Cloud 콘솔에서 OAuth 클라이언트(종류 "웹 애플리케이션") 생성, 승인된 리디렉션 URI에 `https://api.dearby.wid.io.kr/v1/auth/google/callback` 추가, OAuth 동의 화면(앱 이름 Dearby, scope openid·email·profile). 클라이언트 ID·시크릿은 서버 `.env.prod`에만 둔다.

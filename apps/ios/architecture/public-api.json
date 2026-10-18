@@ -9,6 +9,7 @@
     "ActivityInfoPage",
     "ActivityInfoRef",
     "AppleSignIn",
+    "GoogleSignIn",
     "ContactRules",
     "EvidenceMeta",
     "Passkey",
@@ -50,6 +51,7 @@
   "shared": [
     "AppOrigins",
     "DearbyAppleButton",
+    "DearbyGoogleButton",
     "DearbyAvatar",
     "DearbyBadge",
     "DearbyButtonStyle",

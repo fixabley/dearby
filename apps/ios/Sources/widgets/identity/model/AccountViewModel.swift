@@ -2,16 +2,28 @@ import AuthenticationServices
 import Observation
 import SwiftUI
 
-/// Passkey and Apple sign-in (contract "패스키 로그인", "애플 로그인"), asked for only when an action needs an account.
+/// Passkey, Apple and Google sign-in (contract "패스키 로그인", "애플 로그인", "구글 로그인"), asked for only when an action needs an account.
 @MainActor @Observable final class AccountViewModel {
     enum Phase: Equatable { case signedOut, signingIn, signedIn }
+    /// Which provider a first-time account (202) came from; the new-or-link choice and its wording follow it.
+    enum LinkProvider: Equatable, Sendable { case apple, google }
+    /// A first-time Apple or Google account (202) waiting for the user to pick a new account or linking a passkey account.
+    struct PendingLink: Equatable, Sendable {
+        let provider: LinkProvider
+        let linkToken: String
+        /// Apple: possibly a private relay address. Google: only when Google verified it.
+        let email: String?
+        var providerName: String { provider == .apple ? "애플" : "구글" }
+    }
     private(set) var phase: Phase
     private(set) var message: String?
     private(set) var session: TokenPair?
-    /// A first-time Apple account (202) waiting for the user to pick a new account or linking a passkey account.
-    private(set) var appleLink: AccountClient.AppleLink?
+    private(set) var pendingLink: PendingLink?
     /// Build flag (Info.plist `DearbyAppleSignInEnabled`): shows the Apple button. Off until the app has the entitlement.
     let appleSignInEnabled: Bool
+    /// Shows the Google button. There is no build flag (contract "구글 로그인"): the button is shown until the server answers
+    /// `web/start` with 503 (no Google client configured), then hidden for the rest of this run.
+    private(set) var googleSignInEnabled = true
     let client: AccountClient
     private let vault: any TokenStore
     /// One refresh at a time: refresh tokens rotate, so a second refresh with the same token would fail.
@@ -42,23 +54,44 @@ import SwiftUI
             return try await client.register(challengeId: challenge.challengeId, credential: credential)
         }
     }
-    /// "Apple로 계속하기": an Apple account already linked signs in; a first-time one sets `appleLink` for the user's choice.
+    /// "Apple로 계속하기": an Apple account already linked signs in; a first-time one sets `pendingLink` for the user's choice.
     func signInWithApple(using controller: AuthorizationController) async {
-        appleLink = nil
+        pendingLink = nil
         await start(failure: "애플로 로그인하지 못했어요. 다시 시도해 주세요.", unavailable: "지금은 애플 로그인을 쓸 수 없어요.") { [client] in
             let challenge = try await client.appleNonce()
             let credential = try await AppleSignIn.authorize(nonce: challenge.nonce, with: controller)
             switch try await client.signInWithApple(challengeId: challenge.challengeId, credential: credential) {
             case .signedIn(let tokens): return tokens
-            case .newAppleAccount(let link): return try await linkOrStart(link, controller)
+            case .newAppleAccount(let link):
+                return try await linkOrStart(PendingLink(provider: .apple, linkToken: link.linkToken, email: link.email), controller)
             }
         }
     }
-    /// 2026-10-17 decision: a first-time Apple account links to the passkey account already on this device (one Face ID
-    /// pass, no question) and, with no such passkey, starts a separate account right away. The system reports "no passkey
-    /// here" and a closed sheet alike (`canceled`), so a cancel that returns before any sheet could show (under 400 ms)
-    /// counts as "no passkey"; a later one leaves the new-or-link choice open for the person to decide.
-    private func linkOrStart(_ link: AccountClient.AppleLink, _ controller: AuthorizationController) async throws -> TokenPair? {
+    /// "Google로 계속하기" (contract "구글 로그인", web flow): the server's authorize URL opens in the system browser sheet and
+    /// comes back as a one-time code; the exchange signs in (200) or leaves a first-time account to link or start (202).
+    /// A 503 from `web/start` means the server has no Google client: the button disappears for this run.
+    func signInWithGoogle(using controller: AuthorizationController) async {
+        pendingLink = nil
+        await start(failure: "구글로 로그인하지 못했어요. 다시 시도해 주세요.", unavailable: "지금은 구글 로그인을 쓸 수 없어요.") { [client] in
+            let verifier = GoogleSignIn.makeVerifier()
+            let authorizeURL: URL
+            do { authorizeURL = try await client.googleStart(verifierHash: verifier.hash) } catch AccountError.disabled {
+                googleSignInEnabled = false
+                throw AccountError.disabled
+            }
+            let code = try await GoogleSignIn.authorize(authorizeURL)
+            switch try await client.signInWithGoogle(code: code, verifier: verifier.value) {
+            case .signedIn(let tokens): return tokens
+            case .newGoogleAccount(let link):
+                return try await linkOrStart(PendingLink(provider: .google, linkToken: link.linkToken, email: link.email), controller)
+            }
+        }
+    }
+    /// 2026-10-17 decision: a first-time Apple or Google account links to the passkey account already on this device (one
+    /// Face ID pass, no question) and, with no such passkey, starts a separate account right away. The system reports "no
+    /// passkey here" and a closed sheet alike (`canceled`), so a cancel that returns before any sheet could show (under
+    /// 400 ms) counts as "no passkey"; a later one leaves the new-or-link choice open for the person to decide.
+    private func linkOrStart(_ link: PendingLink, _ controller: AuthorizationController) async throws -> TokenPair? {
         let challenge = try await client.authenticationOptions()
         // The clock covers only the OS request, not the challenge round-trip, so a slow network cannot look like a cancel.
         let started = ContinuousClock.now
@@ -66,52 +99,61 @@ import SwiftUI
         do {
             credential = try await Passkey.assert(challenge.options, with: controller, localOnly: true)
         } catch Passkey.Failure.canceled where ContinuousClock.now - started < .milliseconds(400) {
-            return try await startAppleAccount(link)
+            return try await startAccount(link)
         } catch Passkey.Failure.canceled {
-            appleLink = link
+            pendingLink = link
             return nil
         }
         return try await finishLink(link, challengeId: challenge.challengeId, credential: credential)
     }
-    private func startAppleAccount(_ link: AccountClient.AppleLink) async throws -> TokenPair {
+    private func startAccount(_ link: PendingLink) async throws -> TokenPair {
         let tokens: TokenPair
-        do { tokens = try await client.registerWithApple(link) } catch AccountError.unauthorized { throw AppleLinkFailure.expired }
-        appleLink = nil
+        do {
+            tokens = switch link.provider {
+            case .apple: try await client.registerWithApple(.init(linkToken: link.linkToken, email: link.email))
+            case .google: try await client.registerWithGoogle(.init(linkToken: link.linkToken, email: link.email, displayName: nil))
+            }
+        } catch AccountError.unauthorized { throw LinkFailure.expired }
+        pendingLink = nil
         return tokens
     }
-    /// Passkey sign-in, then the waiting Apple account is linked to that account. If linking fails the passkey session is
+    /// Passkey sign-in, then the waiting account is linked to that account. If linking fails the passkey session is
     /// dropped (not stored), so no one ends up signed in but unlinked by surprise.
-    private func linkPasskeyAccount(_ link: AccountClient.AppleLink, _ controller: AuthorizationController) async throws -> TokenPair {
+    private func linkPasskeyAccount(_ link: PendingLink, _ controller: AuthorizationController) async throws -> TokenPair {
         let challenge = try await client.authenticationOptions()
         let credential = try await Passkey.assert(challenge.options, with: controller)
         return try await finishLink(link, challengeId: challenge.challengeId, credential: credential)
     }
-    private func finishLink(_ link: AccountClient.AppleLink, challengeId: String, credential: Passkey.Credential) async throws -> TokenPair {
+    private func finishLink(_ link: PendingLink, challengeId: String, credential: Passkey.Credential) async throws -> TokenPair {
         let tokens = try await client.authenticate(challengeId: challengeId, credential: credential)
-        do { try await client.linkApple(link, tokens) } catch {
+        do {
+            switch link.provider {
+            case .apple: try await client.linkApple(.init(linkToken: link.linkToken, email: link.email), tokens)
+            case .google: try await client.linkGoogle(.init(linkToken: link.linkToken, email: link.email, displayName: nil), tokens)
+            }
+        } catch {
             try? await client.logout(tokens)
             switch error as? AccountError {
-            case .invalidInput: throw AppleLinkFailure.alreadyLinked
-            case .unauthorized: throw AppleLinkFailure.expired
+            case .invalidInput, .rejected: throw LinkFailure.alreadyLinked
+            case .unauthorized: throw LinkFailure.expired
             default: throw error
             }
         }
-        appleLink = nil
+        pendingLink = nil
         return tokens
     }
-    /// "새 계정으로 시작": a new Dearby account for the waiting Apple account.
-    func registerWithApple() async {
-        guard let link = appleLink else { return }
-        await start(failure: "새 계정을 만들지 못했어요. 다시 시도해 주세요.") { try await startAppleAccount(link) }
+    /// "새 계정으로 시작": a new Dearby account for the waiting Apple or Google account.
+    func registerPendingAccount() async {
+        guard let link = pendingLink else { return }
+        await start(failure: "새 계정을 만들지 못했어요. 다시 시도해 주세요.") { try await startAccount(link) }
     }
-    /// "기존 패스키 계정에 연결": sign in with a passkey, then link the waiting Apple account to that account.
-    /// If linking fails the passkey session is dropped (not stored), so no one ends up signed in but unlinked by surprise.
-    func linkAppleToPasskey(using controller: AuthorizationController) async {
-        guard let link = appleLink else { return }
+    /// "기존 패스키 계정에 연결": sign in with a passkey, then link the waiting account to that account.
+    func linkPendingToPasskey(using controller: AuthorizationController) async {
+        guard let link = pendingLink else { return }
         await start(failure: "패스키 계정에 연결하지 못했어요. 다시 시도해 주세요.") { try await linkPasskeyAccount(link, controller) }
     }
     /// Leaves the new-or-link choice; the link token is simply left to expire.
-    func clearAppleLink() { appleLink = nil }
+    func clearPendingLink() { pendingLink = nil }
     /// Signing out always forgets the device tokens, even if the server call fails.
     func signOut() async {
         if let session { try? await client.logout(session) }
@@ -147,8 +189,8 @@ import SwiftUI
         }
     }
 
-    /// Runs a sign-in. `ceremony` returns nil when it ends without tokens (a first-time Apple account).
-    /// `unavailable`: the message for a 503 or no connection, when it differs from `failure`.
+    /// Runs a sign-in. `ceremony` returns nil when it ends without tokens (a first-time Apple or Google account).
+    /// `unavailable`: the message for a 503, no connection or a disabled provider, when it differs from `failure`.
     private func start(failure: String, unavailable: String? = nil, _ ceremony: () async throws -> TokenPair?) async {
         phase = .signingIn
         message = nil
@@ -162,24 +204,25 @@ import SwiftUI
             }
         } catch Passkey.Failure.canceled {
             phase = .signedOut
-        } catch let failure as AppleLinkFailure {
+        } catch let failure as LinkFailure {
             // Either way the link token cannot be used again, so the new-or-link choice ends.
+            let provider = pendingLink?.providerName ?? "소셜"
             phase = .signedOut
-            appleLink = nil
+            pendingLink = nil
             message = failure == .alreadyLinked ? "이미 다른 계정과 연결돼 있어서 연결하지 못했어요."
-                : "애플 로그인 시간이 지났어요. 애플로 다시 시작해 주세요."
+                : "\(provider) 로그인 시간이 지났어요. 처음부터 다시 시작해 주세요."
         } catch {
             phase = .signedOut
             switch error as? AccountError {
             case .rateLimited: message = "요청이 많아요. 잠시 후 다시 시도해 주세요."
-            case .unavailable where unavailable != nil: message = unavailable
+            case .unavailable, .disabled: message = unavailable ?? failure
             default: message = failure
             }
         }
     }
-    /// After a 202: 400 when the passkey account already has another Apple account (or this Apple account was just
+    /// After a 202: 400 when the passkey account already has another account of that provider (or this account was just
     /// linked elsewhere); 401 when the link token expired or was spent. The server spends the token in both cases.
-    private enum AppleLinkFailure: Error { case alreadyLinked, expired }
+    private enum LinkFailure: Error { case alreadyLinked, expired }
     /// A network failure while refreshing keeps the tokens (the call fails as unavailable); only a refused
     /// refresh token signs out, so a flaky connection does not log anyone out.
     private func renewed(after stale: TokenPair) async throws -> TokenPair {

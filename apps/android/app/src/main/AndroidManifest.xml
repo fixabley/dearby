@@ -2,15 +2,21 @@
     <!-- Contract "모바일 실제 연결 경계": network only for the real-service scope (activities, sign-in, cards). -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application android:label="Dearby" android:icon="@drawable/ic_launcher" android:dataExtractionRules="@xml/data_extraction_rules" android:allowBackup="false" android:fullBackupContent="false" android:supportsRtl="true" android:theme="@style/Theme.Dearby" android:usesCleartextTraffic="false">
-        <!-- singleTask: Apple's dearby://auth/apple redirect must reach this instance (onNewIntent), which holds the verifier, and close the Custom Tab above it. -->
+        <!-- singleTask: the dearby://auth/<apple|google> redirects must reach this instance (onNewIntent), which holds the verifier, and close the Custom Tab above it. -->
         <activity android:name=".app.MainActivity" android:exported="true" android:launchMode="singleTask" android:theme="@style/Theme.Dearby.Starting">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
-            <!-- Apple sign-in web flow returns here (contract "애플 로그인"); MainActivity accepts only ?code=<UUID> or ?error=cancelled|failed. -->
+            <!-- Apple and Google sign-in web flows return here (contract "애플 로그인"·"구글 로그인"); MainActivity accepts only ?code=<UUID> or ?error=cancelled|failed. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="dearby" android:host="auth" android:path="/apple"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="dearby" android:host="auth" android:path="/google"/>
             </intent-filter>
         </activity>
     </application>

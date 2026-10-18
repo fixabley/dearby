@@ -14,6 +14,10 @@
 - **테스트:** API 기존 테스트에서 공유 단계를 뺐다(CardFlowTest 2개는 철회·지갑 목록 검증으로 축소, GuestFlowTest·AccountDeletionFlowTest 공유 단계 삭제). 새 테스트 파일은 만들지 않았다.
 - Orca 세션·워크트리·브랜치(같은 날 사용자 요청): `main`·`admin-agent`·`ux-research`·`api-agent` 워크트리의 터미널 4개를 닫고, `.claude/worktrees/` 아래 완료 워크트리 16개를 제거했다(모두 미커밋·미푸시 변경 없음). 브랜치는 병합된 로컬 129개·원격 14개, 원격 사본이 있는 로컬 10개, 로컬 전용 미병합 7개, PR 없는 미병합 원격 6개, 열린 PR #158·#169·#170의 브랜치 3개를 지웠다(PR은 브랜치 삭제로 닫힘). 남은 브랜치는 `main`과 `chore/drop-share-tables`(PR #235)뿐이다(`chore/remove-card-sharing`은 병합 후 삭제). 지운 미병합 브랜치의 마지막 커밋: feat/capstone-presentation `e9e36ca6`, feat/discovery-admin `ce856b07`, feat/ios-design-simplification `086fd94d`, fixabley/catalog-subscription-collector `d7e5da7b`, fixabley/dearby-android-design-simplification `da438461`, fixabley/ui-agent `ed7b272b`, ui/calendar-overlap `8beacff3`, ui/identity-avatar-order `8d648e95`, feat/mobile-device-calendar `a88c3c02`, feat/android-activities `c8cf82a1`, feat/ios-activities `10cd5dba`, fixabley/dearby-android `6ccf46fa`, fixabley/dearby-api `88f88950`, fixabley/dearby-ios `6f090faa`, fixabley/dearby-ios-architecture-tests `ee9c4e09`, ui/pretendard-flow-screens `31b52dea`(로컬 reflog·GitHub GC 전까지만 복구 가능). 루트 워크스페이스의 `supabase/`(로컬 CLI 상태 포함)와 `~/.supabase`도 지웠다.
 
+## 2026-10-18 결정 — 구글 로그인
+
+사용자 요청 "구글 로그인 추가". 애플 로그인의 Android 웹 방식(서버 코드 흐름, `dearby://auth/google` 콜백)을 iOS·Android 모두에 쓰고 SDK는 넣지 않는다. 계약 "구글 로그인". 처음 보는 계정은 애플과 같이 기기 패스키를 조용히 묻고 연결 또는 새 계정. refresh token은 저장하지 않는다. 운영 반영에는 사용자가 Google Cloud OAuth 클라이언트(웹 애플리케이션, 리디렉션 `https://api.dearby.wid.io.kr/v1/auth/google/callback`)를 만들어 `.env.prod`에 `GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`·`GOOGLE_CALLBACK_URL`을 넣어야 한다. 값이 없으면 503이고 앱은 버튼을 숨긴다. 에이전트 팀(API·iOS·Android fork 3개).
+
 ## 2026-10-18 결정 — 발견 탭 프로그램 묶음
 
 사용자 제안: 발견을 활동 카드 대신 프로그램 단위로 보여 주고 누르면 아코디언으로 열린 활동이 보이게. 메인이 제안한 규칙(열린 활동 없는 프로그램 숨김, 프로그램·조직·활동 이름 검색, 유형 칩은 활동에 적용, 열린 활동 1개면 펼침, 웹도 함께)을 사용자가 그대로 승인했다. 계약 "발견 프로그램 묶음". API `GET /v1/programs`(ProgramSummary) 신설, 펼침은 기존 `GET /v1/activities?programId`. 에이전트 팀(API·iOS·Android·웹 fork 4개)으로 병렬 구현.

@@ -11,11 +11,11 @@ data class AccountSession(val accessToken: String, val refreshToken: String)
 /** `{challengeId, options}` from a passkey options call; [options] is the WebAuthn JSON handed to the OS as is. */
 data class PasskeyChallenge(val id: String, val options: String)
 
-/** Apple exchange result: 200 TokenPair, or 202 for an Apple account no Dearby account has yet. The single-use
- *  [NeedsAccount.linkToken] (10 minutes) then registers a new account or links a passkey account. */
-sealed interface AppleSignIn {
-    data class SignedIn(val session: AccountSession) : AppleSignIn
-    data class NeedsAccount(val linkToken: String, val email: String) : AppleSignIn
+/** Web sign-in exchange result (Apple, Google): 200 TokenPair, or 202 for a provider account no Dearby account has yet.
+ *  The single-use [NeedsAccount.linkToken] (10 minutes) then registers a new account or links a passkey account. */
+sealed interface WebSignIn {
+    data class SignedIn(val session: AccountSession) : WebSignIn
+    data class NeedsAccount(val linkToken: String, val email: String) : WebSignIn
 }
 
 /** Profile contact. IDs are client-generated UUIDs; the server keeps them as given. */
@@ -79,8 +79,8 @@ data class Wallet(val items: List<WalletReceipt>)
 data class WalletReceipt(val id: String, val card: PublishedCard, val receivedAt: String)
 
 fun JSONObject.toSession() = AccountSession(getString("accessToken"), getString("refreshToken"))
-fun JSONObject.toAppleSignIn(): AppleSignIn =
-    if (has("linkToken")) AppleSignIn.NeedsAccount(getString("linkToken"), if (isNull("email")) "" else getString("email")) else AppleSignIn.SignedIn(toSession())
+fun JSONObject.toWebSignIn(): WebSignIn =
+    if (has("linkToken")) WebSignIn.NeedsAccount(getString("linkToken"), if (isNull("email")) "" else getString("email")) else WebSignIn.SignedIn(toSession())
 fun JSONObject.toPasskeyChallenge() = PasskeyChallenge(getString("challengeId"), getJSONObject("options").toString())
 
 fun AccountProfile.toJson(): JSONObject = JSONObject().put("name", name).put("introduction", introduction)

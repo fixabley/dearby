@@ -27,6 +27,11 @@ dearby:
     team-id: ${APPLE_TEAM_ID:}
     key-id: ${APPLE_KEY_ID:}
     private-key-path: ${APPLE_PRIVATE_KEY_PATH:}
+  # 구글 로그인(웹 방식). 셋 중 하나라도 비어 있으면 /v1/auth/google/*는 503(native-v1.md "구글 로그인")
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+    client-secret: ${GOOGLE_CLIENT_SECRET:}
+    callback-url: ${GOOGLE_CALLBACK_URL:}
   # 웹 비로그인 저장. Next 서버의 GUEST_PROXY_SECRET과 같은 값(32자 이상). 비어 있으면 /v1/guest/*는 503
   guest:
     proxy-secret: ${GUEST_PROXY_SECRET:}

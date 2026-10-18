@@ -28,7 +28,7 @@
 ## 시작 화면·첫 실행 소개 (2026-10-14)
 
 - 실행할 때마다 OS 시작 화면(Info.plist `UILaunchScreen`)이 흰 배경(`LaunchBackground`)에 로고(`LaunchLogo`, `DearbyLogo` 원본을 줄인 사본)를 보여 준다. 인위적인 지연은 없다. 두 Info.plist에 같은 값이 있고, 생성 스크립트의 빈 시작 화면 자동 생성은 뺐다.
-- 첫 실행에만 `pages/intro/ui/IntroPage.swift`가 로고와 "패스키로 시작하기"·"둘러보기"(애플 로그인을 켠 빌드는 그 위에 "Apple로 계속하기")를 보여 준다. "패스키로 시작하기"는 기존 `SignInSheet`(패스키 로그인 기본, "새 패스키로 시작" 가능)를 띄운다. 로그인 성공이나 "둘러보기"를 누르면 `dearby.onboarding.shown`을 저장하고 홈 탭으로 간다. 취소·실패면 소개에 남고 오류 문구를 보여 준다. 로그인은 필수가 아니다(App Store 5.1.1).
+- 첫 실행에만 `pages/intro/ui/IntroPage.swift`가 로고와 "패스키로 시작하기"·"둘러보기"(애플 로그인을 켠 빌드는 그 위에 "Apple로 계속하기", 서버가 구글 로그인을 켰으면 "Google로 계속하기")를 보여 준다. "패스키로 시작하기"는 기존 `SignInSheet`(패스키 로그인 기본, "새 패스키로 시작" 가능)를 띄운다. 로그인 성공이나 "둘러보기"를 누르면 `dearby.onboarding.shown`을 저장하고 홈 탭으로 간다. 취소·실패면 소개에 남고 오류 문구를 보여 준다. 로그인은 필수가 아니다(App Store 5.1.1).
 - 실행할 때 토큰이 이미 있으면 소개를 건너뛰고 표시를 저장한다.
 - 소개를 다시 보려면 앱을 지우고 다시 설치한다.
 
@@ -60,6 +60,16 @@
 - **켜짐(2026-10-16)**: 두 entitlements에 `com.apple.developer.applesignin` = `["Default"]`, 두 Info.plist의 `DearbyAppleSignInEnabled` = `true`. App Store profile은 Sign in with Apple 포함으로 다시 만들어 `IOS_APPSTORE_PROFILE_BASE64`에 넣었다(2026-10-16 13:45 UTC). 기기 Debug 빌드는 `com.dearby.dearby` 앱 ID에도 이 기능이 켜져 있어야 서명된다.
 - 끄려면 두 값을 되돌린다. entitlement만 남기고 플래그를 끄면 버튼만 숨는다.
 - 실제 애플 로그인은 entitlement가 있는 서명 빌드와 운영 API(`APPLE_CLIENT_IDS` 설정)에서만 확인할 수 있다. entitlement 없이 요청하면 OS가 실패로 돌려준다.
+
+## 구글 로그인 (2026-10-18)
+
+계약 `shared/contracts/native-v1.md` "구글 로그인"을 따른다. 애플·패스키와 나란한 세 번째 수단이며 SDK 없이 서버의 웹 방식을 쓴다.
+
+- 코드: `entities/account/api/GoogleSignIn.swift`(무작위 verifier 43자와 SHA-256 base64url 해시, `ASWebAuthenticationSession`(callback scheme `dearby`, 비임시 세션이라 Safari의 구글 로그인 상태를 다시 씀), `dearby://auth/google?code=` 해석), `AccountClient`(`/v1/auth/google/web/start`·`/auth/google/web/exchange`·`/auth/google/register`·`/me/identities/google`), `AccountViewModel.signInWithGoogle`, 버튼 `shared/ui/DearbyGoogleButton.swift`.
+- 버튼: 흰 바탕·`line` 테두리·높이 50·모서리 11에 "Google로 계속하기". 앞의 "G"는 공식 로고 파일을 `shared/assets/prototype`에 받아 넣기 전까지의 글자 자리표시다. `SignInSheet`에서 애플 버튼 아래, `IntroPage`에서 애플 버튼 아래에 보인다.
+- 켜짐 판단: 빌드 플래그가 없다. `googleSignInEnabled`는 처음 참이고, `web/start`가 503(`AccountError.disabled`, 서버에 구글 클라이언트 미설정)을 돌려주면 그 실행 동안 버튼을 숨기고 "지금은 구글 로그인을 쓸 수 없어요."를 보인다. 네트워크 실패·5xx(`unavailable`)는 버튼을 숨기지 않는다.
+- 흐름: 이미 연결된 구글 계정(200)은 바로 로그인한다. 처음 보는 계정(202)은 애플과 같은 `linkOrStart`를 탄다(이 기기의 Dearby 패스키를 조용히 묻고, 있으면 연결·없으면 새 계정, 시트를 닫았을 때만 "처음 보는 구글 계정이에요" 선택 화면). 애플·구글이 같은 `AccountViewModel.PendingLink`(provider·linkToken·email)를 쓴다. 사용자가 브라우저 시트를 닫거나 구글이 `error=cancelled`를 돌려주면 문구 없이 끝난다.
+- 서버 쪽 필요 조건(앱 밖): 운영 API의 `GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`·`GOOGLE_CALLBACK_URL`. 없으면 버튼이 숨겨진다. 실기기에서만 확인할 수 있다.
 
 ## 계정 삭제 (2026-10-16)
 

@@ -3,7 +3,8 @@ import SwiftUI
 
 /// First-launch intro. Signing in is optional (App Store 5.1.1): "둘러보기" always opens the app.
 /// "패스키로 시작하기" reuses the sign-in sheet; closing it after a cancel or failure stays here.
-/// The Apple button (when the build enables it) signs in here; a first-time Apple account opens the sheet's choice.
+/// The Apple button (when the build enables it) and the Google button (until the server says it is off) sign in here;
+/// a first-time Apple or Google account opens the sheet's new-or-link choice.
 struct IntroPage: View {
     let account: AccountViewModel
     let done: () -> Void
@@ -28,6 +29,10 @@ struct IntroPage: View {
                     DearbyAppleButton { Task { await account.signInWithApple(using: authorizationController) } }
                         .disabled(account.phase == .signingIn).accessibilityIdentifier("intro-apple")
                 }
+                if account.googleSignInEnabled {
+                    DearbyGoogleButton { Task { await account.signInWithGoogle(using: authorizationController) } }
+                        .disabled(account.phase == .signingIn).accessibilityIdentifier("intro-google")
+                }
                 Button("패스키로 시작하기") { signingIn = true }
                     .buttonStyle(DearbyButtonStyle()).accessibilityIdentifier("intro-passkey")
                 Button("둘러보기", action: done)
@@ -39,8 +44,8 @@ struct IntroPage: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity).background(.white)
         .tint(DearbyStyle.teal).preferredColorScheme(.light)
         .sheet(isPresented: $signingIn) { NavigationStack { SignInSheet(account: account, signedIn: done) } }
-        // Apple sign-in from this page; while the sheet is open, the sheet finishes instead.
+        // Apple or Google sign-in from this page; while the sheet is open, the sheet finishes instead.
         .onChange(of: account.phase) { _, phase in if phase == .signedIn && !signingIn { done() } }
-        .onChange(of: account.appleLink) { _, link in if link != nil { signingIn = true } }
+        .onChange(of: account.pendingLink) { _, link in if link != nil { signingIn = true } }
     }
 }
