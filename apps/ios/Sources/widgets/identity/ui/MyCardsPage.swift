@@ -1,12 +1,15 @@
 import SwiftUI
 
-/// 내 명함: the account's published cards. Pick one to view it, make a new one, or republish it with "이 명함 고치기".
+/// 내 명함: the account's published cards. Pick one to view it, make a new one, republish it with "이 명함 고치기", or delete it.
 struct MyCardsPage: View {
     let state: MyCardsModel
     @State private var editor = false
     /// 명함 고치기: a new publication prefilled from this card's template (cards never change after publishing).
     @State private var editingCard: PublishedCard?
     @State private var signingIn = false
+    /// 이 명함 지우기: the card awaiting confirmation; the server removes it and its public link.
+    @State private var deletingCard: PublishedCard?
+    @State private var deleteFailed = false
     @Environment(\.openURL) private var openURL
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     var body: some View {
@@ -39,6 +42,12 @@ struct MyCardsPage: View {
             .sheet(isPresented: $signingIn) {
                 NavigationStack { SignInSheet(account: state.account) { Task { await state.load() } } }
             }
+            .confirmationDialog("이 명함을 지울까요?", isPresented: Binding(get: { deletingCard != nil }, set: { if !$0 { deletingCard = nil } }),
+                                titleVisibility: .visible, presenting: deletingCard) { card in
+                Button("지우기", role: .destructive) { Task { deleteFailed = !(await state.delete(card.id)) } }
+                Button("취소", role: .cancel) {}
+            } message: { _ in Text("공개 링크도 더 열리지 않아요. 되돌릴 수 없어요.") }
+            .alert("명함을 지우지 못했어요", isPresented: $deleteFailed) { Button("확인") {} } message: { Text("연결을 확인하고 다시 시도해 주세요.") }
     }
     /// 2-column grid of the account's cards, newest first, behind a "+ 새 명함" tile; the chosen card renders below.
     @ViewBuilder private var cards: some View {
@@ -62,6 +71,9 @@ struct MyCardsPage: View {
             Button { editingCard = card } label: {
                 Label("이 명함 고치기", systemImage: "pencil").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal).frame(minHeight: 44)
             }.accessibilityHint("이 명함의 이름과 공개 선택으로 새 명함을 발행해요")
+            Button(role: .destructive) { deletingCard = card } label: {
+                Label("이 명함 지우기", systemImage: "trash").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.danger).frame(minHeight: 44)
+            }.accessibilityHint("확인 뒤 명함과 공개 링크를 지워요")
         }
     }
     private var newCard: some View {
