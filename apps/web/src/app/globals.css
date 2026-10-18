@@ -288,6 +288,74 @@ a {
   display: grid;
   gap: 16px;
 }
+/* 발견 프로그램 묶음(2026-10-18): 머리글 버튼 + 펼친 활동 카드 */
+.program-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.program {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  overflow: hidden;
+}
+.program-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 72px;
+  padding: 16px 20px;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+}
+.program-header:hover {
+  background: var(--soft);
+}
+.program-header[aria-expanded="true"] {
+  background: var(--mint);
+}
+.program-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.program-name {
+  font-size: 18px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.program-meta {
+  color: var(--muted);
+  font-size: 14px;
+}
+.program-chevron {
+  flex: none;
+  color: var(--teal);
+  font-size: 24px;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 0.2s ease;
+}
+.program-header[aria-expanded="true"] .program-chevron {
+  transform: rotate(90deg);
+}
+.program-panel {
+  padding: 4px 16px 16px;
+  border-top: 1px solid var(--line);
+}
+.program-panel .activity-list {
+  margin-top: 12px;
+}
+.program-panel .state {
+  padding: 24px 0;
+}
 .activity-card {
   display: flex;
   align-items: center;
@@ -677,6 +745,15 @@ a {
   margin-top: 16px;
 }
 @media (max-width: 640px) {
+  .program-header {
+    padding: 14px 16px;
+  }
+  .program-name {
+    font-size: 16px;
+  }
+  .program-panel {
+    padding: 4px 12px 12px;
+  }
   h1 {
     font-size: 28px;
   }
@@ -829,6 +906,9 @@ a {
 @media (prefers-reduced-motion: reduce) {
   .loader {
     animation: none;
+  }
+  .program-chevron {
+    transition: none;
   }
 }
 
