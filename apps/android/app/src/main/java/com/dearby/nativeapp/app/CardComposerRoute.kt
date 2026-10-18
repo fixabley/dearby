@@ -16,7 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.card.cardContent.CardComposer
 
-/** Makes a real card from the saved profile: decorate, choose what to show, publish. Signing in is asked for when the composer opens signed out. */
+/** Makes a real card from the saved profile: choose what to show, publish (the body is the built-in template). Signing in is asked for when the composer opens signed out. */
 @Composable fun CardComposerRoute(model: CardPublishViewModel, account: AccountViewModel, close: () -> Unit) {
     val state by model.state.collectAsStateWithLifecycle()
     val auth by account.state.collectAsStateWithLifecycle()
@@ -34,7 +34,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardComposer
                 DearbyButton(close, Modifier.fillMaxWidth()) { Text("확인") }
             }
             auth.phase != AccountPhase.SIGNED_IN -> Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
-                Text("로그인하면 프로필 데이터로 명함을 꾸밀 수 있어요.", color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                Text("로그인하면 프로필 데이터로 명함을 만들 수 있어요.", color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
                 DearbyButton({ model.load() }, Modifier.fillMaxWidth()) { Text("로그인") }
             }
             draft != null && draft.profile.version == 0 -> Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
@@ -42,13 +42,11 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardComposer
                 Text("먼저 내 프로필에서 이름과 연락처를 적어 주세요.", color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
                 DearbyOutlineButton(close, Modifier.fillMaxWidth()) { Text("닫기") }
             }
-            draft != null -> CardComposer(draft.cardTitle, { model.edit(draft.copy(cardTitle = it)) }, draft.template, { model.edit(draft.copy(template = it)) },
-                TemplateDocument.tokens(draft.profile), draft.preview, draft.contacts,
+            draft != null -> CardComposer(draft.cardTitle, { model.edit(draft.copy(cardTitle = it)) }, draft.preview, draft.contacts,
                 { id, on -> model.edit(draft.copy(publicContactIds = if (on) draft.publicContactIds + id else draft.publicContactIds - id)) },
                 draft.histories, { id, on -> model.edit(draft.copy(publicHistoryIds = if (on) draft.publicHistoryIds + id else draft.publicHistoryIds - id)) },
                 draft.changed, { model.edit(draft.revert()) }, model::publish, Modifier.weight(1f),
-                publishing = phase == PublishPhase.Publishing || phase == PublishPhase.Loading, errorMessage = (phase as? PublishPhase.Failed)?.message,
-                webTemplate = draft.webTemplate, onWebTemplateChange = { model.edit(draft.copy(webTemplate = it)) }, webPreview = draft.webPreview)
+                publishing = phase == PublishPhase.Publishing || phase == PublishPhase.Loading, errorMessage = (phase as? PublishPhase.Failed)?.message)
             phase is PublishPhase.Failed -> Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
                 Text(phase.message, color = Quiet, textAlign = TextAlign.Center)
                 DearbyOutlineButton({ model.load() }, Modifier.fillMaxWidth()) { Text("다시 시도") }

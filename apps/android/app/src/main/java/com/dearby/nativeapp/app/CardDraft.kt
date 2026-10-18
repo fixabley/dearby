@@ -7,25 +7,24 @@ import com.dearby.nativeapp.widgets.card.cardContent.ComposerContact
 import com.dearby.nativeapp.widgets.card.cardContent.ComposerHistory
 
 /**
- * Composer state: the saved profile's data, the decoration template and which contacts and histories the card shows.
- * [webTemplate] is the optional web version (contract "웹 버전"); null means the card has none and the web shows the mobile body.
+ * Composer state: the saved profile's data and which contacts and histories the card shows. The body [template] is always the
+ * built-in starter (2026-10-18 앱 안 꾸미기 삭제); the user does not edit it.
  */
 data class CardDraft(
-    val profile: AccountProfile, val cardTitle: String, val template: String, val publicContactIds: Set<String>, val publicHistoryIds: Set<String>,
-    val initial: Initial, val webTemplate: String? = null,
+    val profile: AccountProfile, val cardTitle: String, val publicContactIds: Set<String>, val publicHistoryIds: Set<String>, val initial: Initial,
 ) {
-    data class Initial(val cardTitle: String, val template: String, val contacts: Set<String>, val histories: Set<String>, val webTemplate: String? = null)
-    val changed get() = Initial(cardTitle, template, publicContactIds, publicHistoryIds, webTemplate) != initial
-    fun revert() = copy(cardTitle = initial.cardTitle, template = initial.template, publicContactIds = initial.contacts, publicHistoryIds = initial.histories, webTemplate = initial.webTemplate)
-    /** Contacts named in either template. */
-    val tokenContactIds get() = TemplateDocument.contactIds(template) + (webTemplate?.let(TemplateDocument::contactIds) ?: emptySet())
+    data class Initial(val cardTitle: String, val contacts: Set<String>, val histories: Set<String>)
+    val template get() = TemplateDocument.starter(profile)
+    val changed get() = Initial(cardTitle, publicContactIds, publicHistoryIds) != initial
+    fun revert() = copy(cardTitle = initial.cardTitle, publicContactIds = initial.contacts, publicHistoryIds = initial.histories)
+    /** Contacts the starter template names. */
+    val tokenContactIds get() = TemplateDocument.contactIds(template)
     /** Contacts the template names are always public (the server leaves unselected tokens empty). */
     val effectiveContactIds: Set<String> get() {
         val fromTokens: List<String> = profile.contacts.filter { it.id.lowercase() in tokenContactIds }.map { it.id }
         return publicContactIds + fromTokens
     }
     val preview get() = TemplateDocument.fill(template, profile, effectiveContactIds)
-    val webPreview get() = webTemplate?.let { TemplateDocument.fill(it, profile, effectiveContactIds) }
     val cardName get() = cardTitle.trim().ifEmpty { "내 명함" }
     val contactIds get() = profile.contacts.map { it.id }.filter { it in effectiveContactIds }
     val historyIds get() = profile.histories.map { it.id }.filter { it in publicHistoryIds }
@@ -41,15 +40,13 @@ data class CardDraft(
         else -> null
     }
     companion object {
-        /** A new card starts from the starter template with every contact and approved history public; a republish starts from that card. */
+        /** A new card starts with every contact and approved history public; a republish starts from that card's name and selections. */
         fun from(profile: AccountProfile, prefill: PublishedCard? = null): CardDraft {
             val approved = profile.histories.filter { it.isApproved }.map { it.id }.toSet()
             val title = prefill?.name.orEmpty()
-            val template = prefill?.template ?: TemplateDocument.starter(profile)
-            val webTemplate = prefill?.webTemplate?.takeIf { it.isNotBlank() }
             val contacts = prefill?.contacts?.map { it.id }?.toSet() ?: profile.contacts.map { it.id }.toSet()
             val histories = prefill?.histories?.map { it.id }?.toSet()?.intersect(approved) ?: approved
-            return CardDraft(profile, title, template, contacts, histories, Initial(title, template, contacts, histories, webTemplate), webTemplate)
+            return CardDraft(profile, title, contacts, histories, Initial(title, contacts, histories))
         }
     }
 }

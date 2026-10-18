@@ -7,11 +7,9 @@ import com.dearby.nativeapp.shared.ui.DearbyTheme
 /** 미리보기와 계측 캡처가 함께 쓰는 예시. 연락처는 실제가 아닌 example.invalid 값이다. */
 @Composable fun CardComposerSample(changed: Boolean = false) {
     var cardTitle by remember { mutableStateOf("") }
-    var template by remember { mutableStateOf("# {{profile.name}}\n{{profile.job}}\n\n- 이메일: {{contact:email}}") }
-    val tokens = listOf(TemplateToken("profile.name", "이름", "김지민"), TemplateToken("profile.job", "직함", "서비스 기획 · 커뮤니티"), TemplateToken("contact:email", "이메일", "jimin@example.invalid"))
     var contacts by remember { mutableStateOf(listOf(ComposerContact("email", "이메일", "jimin@example.invalid", true, true), ComposerContact("phone", "전화", "010-0000-0000", false, false))) }
     var histories by remember { mutableStateOf(listOf(ComposerHistory("camp", "Dearby · 메이커 캠프", "운영진 · 2025.03 – 2025.06", true, null), ComposerHistory("x", "직접 적은 조직", "참가자", false, "관리자 승인 뒤 명함에 넣을 수 있어요"))) }
-    CardComposer(cardTitle, { cardTitle = it }, template, { template = it }, tokens, "# 김지민\n서비스 기획 · 커뮤니티\n\n- 이메일: jimin@example.invalid", contacts,
+    CardComposer(cardTitle, { cardTitle = it }, "# 김지민\n서비스 기획 · 커뮤니티\n\n- 이메일: jimin@example.invalid", contacts,
         { id, on -> contacts = contacts.map { if (it.id == id) it.copy(isPublic = on) else it } }, histories,
         { id, on -> histories = histories.map { if (it.id == id) it.copy(isPublic = on) else it } }, changed, {}, {})
 }
