@@ -8,7 +8,7 @@
 
 - **지운 것:** API `POST /v1/cards/:id/shares`·`GET /v1/shares/:id`·`PUT /v1/wallet/shares/:id`·`PUT /v1/guest/shares/:id`와 `GET /v1/wallet`·`GET /v1/guest/cards`의 `shares`, CardShare·WalletShare·GuestShare 도메인; 웹 `/s/:shareId`·`/saved` 활동별 보기·AASA/assetlinks 라우트; nginx 저장소 사본의 공유 location; iOS·Android의 QR 표시·OS 공유·카메라/사진 스캔·유니버설 링크/App Links·공유 명함 화면·공유 저장·활동별 묶음(`DEARBY_WEB_ORIGIN`·카메라 권한·zxing·CameraX 포함); `supabase/`·`apps/catalog-worker`·CI `catalog-worker` job·Supabase 문서 3개.
 - **남긴 것:** 명함 발행·고치기, 공개 명함 `GET /v1/cards/:id`와 웹 `/cards/:id`, 웹 비로그인 저장(`/v1/guest/cards*`·세션·홈 화면 잇기), `GET /v1/wallet`(기존 receipt 목록, 새로 받는 경로 없음), 패스키 `webcredentials`·AASA/assetlinks 정적 파일(wid.io.kr), 애플 로그인 `dearby://auth/apple`.
-- **운영 반영 상태(2026-10-18, PR #234 병합 `c95d128e` 뒤):** 운영 nginx 체크아웃(`~/dearby`, 저장소 사본)은 main으로 당겨 `nginx -t`까지 통과했지만 reload는 하지 않았다. 운영 API(`~/.dearby-deploy/api-kotlin-2a061187`, 컨테이너 `dearby-api-prod-*`)는 아직 `2a061187` 코드라 공유 엔드포인트가 살아 있다. 공유 테이블 삭제는 PR #235(초안, V19)이며 jOOQ 재생성과 사용자 승인 뒤 병합·배포한다. 웹은 Vercel GitHub 연동의 main 배포 여부를 확인하지 못했다. Vercel 환경값 4개(`DEARBY_APPLE_TEAM_ID` 등), GitHub Actions 변수 `DEARBY_WEB_ORIGIN`, 이 Mac의 TS 워커 launchd(`com.dearby.catalog-subscription-worker`)와 `~/.dearby-deploy` 사본은 남아 있다. 자동화 세션에서는 이 운영 변경(nginx reload·API 배포·launchd 해제·변수 삭제·jOOQ 재생성·stash 삭제)이 권한 분류기에 거부되어 사용자가 수행한다. 이미 배포된 QR·`/s/` 링크는 웹·API 배포 뒤 404가 된다.
+- **운영 반영 완료(2026-10-18):** nginx reload로 공유 location 제거(공개 `GET /v1/shares/*` 404), API·admin·batch 이미지를 main으로 재배포(1차 `c95d128e`, 2차 PR #235 병합 `a0f6433b`). Flyway V19 `drop share tables` 적용 성공(마이그레이션 19개), 운영 DB에 `card_shares`·`wallet_shares`·`guest_card_shares`가 없고 `business_cards`·`receipts`·`guest_cards`는 남아 있다. TS 워커 launchd와 plist, Actions 변수 `DEARBY_WEB_ORIGIN`, 공유 Git stash 4개, `~/.supabase`, 루트 `supabase/`도 지웠다. 배포 사본 폴더 이름 `api-kotlin-2a061187`은 그대로지만 내용은 `a0f6433b`다. 남은 사용자 확인: Vercel `dearby-web` 배포가 `c95d128e` 이후인지, Vercel 미사용 환경값 4개 삭제.
 - **하단 탭바(사용자 요청, 같은 날):** 네이티브 기본 탭바를 쓴다. iOS는 직접 그린 버튼 행 대신 `TabView`+`Tab`(상세 진입·첫 프로필 퍼널에서는 `.toolbar(.hidden, for: .tabBar)`), Android는 Material 3 `NavigationBar`를 테마 기본값으로 쓰고 색·글자 크기·구분선 덧씌움을 뺐다.
 - **UI 결정(메인):** QR 탭을 `내 명함` 탭으로 바꿔 명함 목록·만들기·고치기만 남겼다. 받은 명함 탭은 유지했지만 받을 경로가 없어 빈 상태가 기본이다. 탭 제거 여부는 사용자 결정이 필요하다.
 - **테스트:** API 기존 테스트에서 공유 단계를 뺐다(CardFlowTest 2개는 철회·지갑 목록 검증으로 축소, GuestFlowTest·AccountDeletionFlowTest 공유 단계 삭제). 새 테스트 파일은 만들지 않았다.
@@ -46,7 +46,7 @@
 
 - 운영 반영: API 배포(#84·#129·#131 포함) → 회원 경로 nginx 공개(#127) → 세션 잇기(#109·#110·#111) → 조직 계층(#85 배포 뒤 #83) → 어드민 배포(#82·#120·#126·#128). 수집 워커 재배포는 2026-10-18 워커 삭제로 없어졌다.
 - 모바일: 로그인 시트·명함 발행(5b). QR 공유·스캔·wallet 저장은 2026-10-18 삭제.
-- 2026-10-18 이후(사용자): 운영 nginx reload → API 이미지 재배포(`~/.dearby-deploy` 사본을 main으로 맞춘 뒤 `docker compose -f compose.prod.yaml --env-file .env.prod up -d --build api admin batch`) → 웹 배포 확인 → PR #235 jOOQ 재생성·승인·병합·재배포 → Vercel·Actions 미사용 환경값 정리 → TS 워커 launchd 해제 → 공유 Git stash 4개 정리.
+- 2026-10-18 운영 반영은 위 "운영 반영 완료"대로 끝났다. 남은 것은 Vercel 배포 확인과 Vercel 환경값 4개 삭제(사용자), 받은 명함 탭 제거 여부 결정.
 - 사용자: Android Play 앱 서명 SHA-256, 대화에 노출된 메일 비밀번호 정리, 고정 IP(보류), 인증서 갱신 방식.
 
 ## 로컬 상태와 다음 작업
