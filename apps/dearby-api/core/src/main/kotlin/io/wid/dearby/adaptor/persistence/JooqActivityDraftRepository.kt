@@ -76,7 +76,7 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             )
         }
         activity.schedules.forEach {
-            insertSchedule(activityId, null, it.title, ScheduleKind.EVENT, it.startAt, it.endAt, it.dateLabel, now)
+            insertSchedule(activityId, null, it.title, it.kind, it.startAt, it.endAt, it.dateLabel, now)
         }
         return DraftSaveResult.SAVED
     }

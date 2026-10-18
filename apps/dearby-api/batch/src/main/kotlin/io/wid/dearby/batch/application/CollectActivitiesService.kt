@@ -7,7 +7,6 @@ import io.wid.dearby.domain.collection.CollectionReport
 import io.wid.dearby.domain.collection.CollectionTarget
 import io.wid.dearby.domain.collection.DraftSaveResult
 import org.springframework.stereotype.Service
-import java.net.URI
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.*
@@ -45,7 +44,7 @@ class CollectActivitiesService(
                 when (val result = ActivityVerifier.verify(candidate, page, target.officialOnly, checkedAt)) {
                     is Verification.Rejected -> rejected += "${candidate.name}: ${result.reason}"
                     is Verification.Accepted ->
-                        when (drafts.saveDraft(target.programId, sourceId(target.programId, page.url, candidate.roundKey), result.activity)) {
+                        when (drafts.saveDraft(target.programId, sourceId(target.programId, candidate.roundKey), result.activity)) {
                             DraftSaveResult.SAVED -> saved++
                             DraftSaveResult.SKIPPED_PUBLISHED -> rejected += "${candidate.name}: 이미 게시된 활동이라 덮어쓰지 않음"
                             DraftSaveResult.SKIPPED_DISMISSED -> rejected += "${candidate.name}: 관리자가 삭제한 활동이라 다시 만들지 않음"
@@ -72,11 +71,8 @@ class CollectActivitiesService(
     companion object {
         const val MAX_PAGES = 5
 
-        // 프로그램 + 정규화한 페이지 주소 + 회차 식별자. 다시 수집해도 같은 활동이면 같은 값
-        fun sourceId(programId: Id, url: String, roundKey: String): UUID {
-            val uri = URI(url)
-            val normalized = "${uri.scheme}://${uri.host.lowercase()}${uri.path.trimEnd('/')}"
-            return UUID.nameUUIDFromBytes("dearby/activity/$programId|$normalized|${roundKey.trim()}".toByteArray())
-        }
+        // 프로그램 + 회차 식별자(공백·대소문자 정규화). 같은 모집을 다른 페이지나 다른 날에 다시 만나도 같은 초안으로 모인다(2026-10-18, 페이지 주소를 뺐다)
+        fun sourceId(programId: Id, roundKey: String): UUID =
+            UUID.nameUUIDFromBytes("dearby/activity/$programId|${roundKey.trim().lowercase().replace(Regex("\\s+"), " ")}".toByteArray())
     }
 }
