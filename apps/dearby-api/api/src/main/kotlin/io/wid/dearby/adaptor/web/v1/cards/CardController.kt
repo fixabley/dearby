@@ -18,7 +18,7 @@ class CardController(private val cards: CardService) {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     fun publish(@AuthenticationPrincipal jwt: Jwt, @RequestBody request: CardPublishRequest) =
-        CardResponse.from(cards.publish(userId(jwt), request.name, request.description, request.template, request.contactIds, request.historyIds, request.webTemplate), includeTemplate = true)
+        CardResponse.from(cards.publish(userId(jwt), request.name, request.description, request.template, request.contactIds, request.historyIds), includeTemplate = true)
 
     @GetMapping("/{id}")
     fun get(@PathVariable id: UUID) = CardResponse.from(cards.get(id), includeTemplate = false)

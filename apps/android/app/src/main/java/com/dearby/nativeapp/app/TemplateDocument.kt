@@ -1,11 +1,10 @@
 package com.dearby.nativeapp.app
 
 import com.dearby.nativeapp.entities.account.model.AccountProfile
-import com.dearby.nativeapp.widgets.card.cardContent.TemplateToken
 
 /**
- * The card decoration template (contract "템플릿"): markdown with `{{profile.name}}`, `{{profile.job}}`,
- * `{{profile.introduction}}` and `{{contact:<id>}}`. The app shows it filled in; the server fills it at publish.
+ * The built-in card template (contract "템플릿", 2026-10-18 앱 안 꾸미기 삭제): markdown with `{{profile.name}}`, `{{profile.job}}`,
+ * `{{profile.introduction}}` and `{{contact:<id>}}`. The app shows it filled in as a read-only preview; the server fills it at publish.
  */
 object TemplateDocument {
     private val pattern = Regex("""\{\{\s*([a-zA-Z]+)(?:[.:]([^{}\s]+))?\s*}}""")
@@ -14,9 +13,6 @@ object TemplateDocument {
     fun starter(profile: AccountProfile): String =
         (listOf("# {{profile.name}}", "{{profile.job}}", "", "{{profile.introduction}}", "") +
             profile.contacts.filter { it.kind == "phone" || it.kind == "email" }.map { "- ${it.label}: {{contact:${it.id}}}" }).joinToString("\n")
-    fun tokens(profile: AccountProfile): List<TemplateToken> =
-        listOf(TemplateToken("profile.name", "이름", profile.name), TemplateToken("profile.job", "직무", profile.job), TemplateToken("profile.introduction", "소개", profile.introduction)) +
-            profile.contacts.map { TemplateToken("contact:${it.id}", it.label, it.value) }
     /** Contact ids the template refers to; they are always among the card's public contacts. */
     fun contactIds(template: String): Set<String> =
         pattern.findAll(template).filter { it.groupValues[1] == "contact" }.map { it.groupValues[2].lowercase() }.toSet()

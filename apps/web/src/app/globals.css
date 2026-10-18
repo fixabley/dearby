@@ -836,18 +836,6 @@ a {
 .card-body {
   white-space: normal;
 }
-/* 웹 버전(계약 "웹 버전"): 웹 본문이 있는 명함은 640px 초과에서 웹 본문만, 그 이하에서 모바일 본문만 보인다. 숨긴 쪽은 display: none */
-.card-bodies.has-web .card-body-mobile {
-  display: none;
-}
-@media (max-width: 640px) {
-  .card-bodies.has-web .card-body-mobile {
-    display: block;
-  }
-  .card-bodies.has-web .card-body-web {
-    display: none;
-  }
-}
 .card-body h1,
 .card-body h2,
 .card-body h3 {

@@ -14,11 +14,15 @@
 - **테스트:** API 기존 테스트에서 공유 단계를 뺐다(CardFlowTest 2개는 철회·지갑 목록 검증으로 축소, GuestFlowTest·AccountDeletionFlowTest 공유 단계 삭제). 새 테스트 파일은 만들지 않았다.
 - Orca 세션·워크트리·브랜치(같은 날 사용자 요청): `main`·`admin-agent`·`ux-research`·`api-agent` 워크트리의 터미널 4개를 닫고, `.claude/worktrees/` 아래 완료 워크트리 16개를 제거했다(모두 미커밋·미푸시 변경 없음). 브랜치는 병합된 로컬 129개·원격 14개, 원격 사본이 있는 로컬 10개, 로컬 전용 미병합 7개, PR 없는 미병합 원격 6개, 열린 PR #158·#169·#170의 브랜치 3개를 지웠다(PR은 브랜치 삭제로 닫힘). 남은 브랜치는 `main`과 `chore/drop-share-tables`(PR #235)뿐이다(`chore/remove-card-sharing`은 병합 후 삭제). 지운 미병합 브랜치의 마지막 커밋: feat/capstone-presentation `e9e36ca6`, feat/discovery-admin `ce856b07`, feat/ios-design-simplification `086fd94d`, fixabley/catalog-subscription-collector `d7e5da7b`, fixabley/dearby-android-design-simplification `da438461`, fixabley/ui-agent `ed7b272b`, ui/calendar-overlap `8beacff3`, ui/identity-avatar-order `8d648e95`, feat/mobile-device-calendar `a88c3c02`, feat/android-activities `c8cf82a1`, feat/ios-activities `10cd5dba`, fixabley/dearby-android `6ccf46fa`, fixabley/dearby-api `88f88950`, fixabley/dearby-ios `6f090faa`, fixabley/dearby-ios-architecture-tests `ee9c4e09`, ui/pretendard-flow-screens `31b52dea`(로컬 reflog·GitHub GC 전까지만 복구 가능). 루트 워크스페이스의 `supabase/`(로컬 CLI 상태 포함)와 `~/.supabase`도 지웠다.
 
+## 2026-10-18 결정 — 명함 꾸미기 편집기·웹 버전 삭제
+
+실기기 확인 뒤 사용자: "실시간 편집 이런 퀄리티면 그냥 빼는 게 좋을 것 같아" → 선택지 중 "꾸미기 제거 + 웹 버전도 제거"를 확정했다. 명함 제작은 이름·공개 연락처·이력 선택과 읽기 전용 미리보기만 남고, `template`은 앱 내장 기본값을 보낸다. 같은 날 만든 웹 버전(#239, V20)은 API·웹·앱에서 되돌리고 V21로 열을 지운다(삭제 시점 운영 DB에 웹 버전을 쓴 명함 1장이 있었고 그 웹 본문은 사라진다. 사용자 테스트 명함). 사용자 요청으로 에이전트 팀(API·웹·iOS·Android fork 4개) 병렬 작업.
+
 ## 2026-10-18 결정 — 이력 입력 퍼널 분리
 
 실기기 확인 중 사용자 지적: 조직(직장) 이력 퍼널이 프로그램(활동처럼 보임) 단계를 묻고, 활동 이력 퍼널이 조직 단계부터 묻는다. 결정: 조직 퍼널은 조직 → 역할 → 기간 → 설명, 활동 퍼널은 활동(전체 검색, 소속 조직·프로그램 표시) → 역할 → 기간 → 설명만 묻는다. 활동 정보에서 고른 활동은 서버가 `activityId`로 소속 조직·프로그램을 채우고, 직접 입력한 활동만 뒤에 조직(필수)·프로그램(선택)을 묻는다. 계약 "이력" 2026-10-18 항목. 사용자 요청으로 API·iOS·Android 담당 fork 서브에이전트 3개를 동시에 돌렸다(Claude 팀).
 
-## 2026-10-18 결정 — 명함 웹 버전
+## 2026-10-18 결정 — 명함 웹 버전 (같은 날 삭제, 위 항목)
 
 사용자 요청 "명함 제작할 때 모바일 사이즈와 웹 사이즈 버전을 따로, 프레이머 브레이크포인트처럼". 검토 결과 마크다운 템플릿에는 레이아웃이 없어 폭별 레이아웃 브레이크포인트는 불가능하고, 사용자가 **내용 버전 2개**(모바일 기본 + 선택 웹) 안을 골랐다. 웹 버전이 없는 명함은 넓은 화면에서도 모바일 버전을 그대로 보인다. 계약은 [native-v1 "웹 버전"](../../shared/contracts/native-v1.md#웹-버전--2026-10-18-사용자-결정). 구현: API `webTemplate`·`webIntroduction`(V20 열 2개), 웹 `/cards/:id` 640px 초과에서 웹 버전(CSS만), iOS·Android 명함 제작의 `웹 버전 따로 쓰기` 스위치와 `모바일 | 웹` 세그먼트(플랫폼 기본 컨트롤). 앱은 항상 모바일 버전을 보인다. PR #239 병합(`2c2e0d6c`) 뒤 같은 날 운영 반영: API 재배포로 Flyway V20 적용(20개 검증, `business_cards.web_template`·`web_introduction` 확인), Vercel이 main 푸시로 웹 배포 완료. 실기기 화면 확인은 미실행. 사용자 제안 "웹뷰 편집기(터치·드래그)"는 캔버스형 편집이 목표일 때만 레이아웃 모델과 함께 검토하기로 하고 보류했다.
 

@@ -29,7 +29,7 @@
 | [QR 찍기](approved/qr-scan.png) | 2026-10-18 삭제(스캔 화면 없음). |
 | [공유 메뉴](approved/qr-share-menu.png) | 2026-10-18 삭제(OS 공유 없음). |
 | [공유 명함](approved/shared-card.png) | 2026-10-18 삭제(공유 명함 화면·나도 주기 없음). 받은 명함 상세는 명함 본문만 보인다. |
-| [명함 편집](approved/card-editor.png) | 2026-10-06 예시 편집기(iOS `CardEditorPage`, Android `CardEditor`)를 지우고 위 명함 제작 화면 하나로 모았다. 미리보기·명함 이름 입력은 아직 없다. iOS·Android 반영. 2026-10-18 `웹 버전 따로 쓰기` 스위치와 `모바일 | 웹` 세그먼트(플랫폼 기본 컨트롤)를 편집기 위에 추가. 시안 없음, 기존 토큰 사용. |
+| [명함 편집](approved/card-editor.png) | 2026-10-18 실시간 템플릿 편집기와 웹 버전 스위치를 지웠다. 명함 제작은 명함 이름·공개 연락처·이력 선택과 읽기 전용 미리보기만 있고 본문은 앱 내장 기본 템플릿이다. iOS·Android 반영. |
 | [받은 명함](approved/wallet.png) | 2026-10-18부터 `GET /v1/wallet`의 기존 항목을 평범한 세로 목록으로만 보인다(활동별 묶음·나도 주기 없음). 새로 받는 경로는 없다. |
 | [반환 완료 명함함](approved/wallet-reciprocal-only.png) | 2026-10-18 삭제(보내기·반환 구분 없음). |
 | [보낼 명함 선택](approved/send-card-picker.png) | 2026-10-18 삭제(보내기 없음). 내 명함 목록은 `내 명함` 탭에 있다. |
@@ -73,7 +73,7 @@ SwiftUI와 Compose의 UI 소스는 각 플랫폼 안에서 공유하고, 이미�
 | 색상·주요 버튼·로고 | `Sources/shared/ui/DearbyStyle.swift` | `shared/ui/Components.kt` |
 | 배지·아바타·정보 행·시트 헤더 | `Sources/shared/ui/DearbyComponents.swift` | `shared/ui/Components.kt` |
 | 검색 칸·인라인 입력 칸 | `Sources/shared/ui/DearbyControls.swift` | `shared/ui/Controls.kt` |
-| 명함 제작(한 화면 발행) | `Sources/widgets/identity/ui/CardComposer.swift` | `widgets/card/cardContent/CardComposer.kt` |
+| 명함 제작(한 화면 발행, 꾸미기 없음) | `Sources/widgets/identity/ui/CardComposer.swift` | `widgets/card/cardContent/CardComposer.kt` |
 | 받은 명함 목록 항목 | `Sources/widgets/identity/ui/ReceivedCardRow.swift` | `widgets/card/cardContent/ReceivedCardRow.kt` |
 | 명함·연락처·활동 이력 조합 | `Sources/entities/identity/ui` | `widgets/card/cardContent` |
 | 활동 카드(빠른 신청) | `Sources/widgets/catalog/ui/ActivityCard.swift` | `widgets/activity/activityCard/ActivityCard.kt` |

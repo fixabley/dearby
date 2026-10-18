@@ -1,46 +1,22 @@
 import SwiftUI
 
-/// 명함 제작: decorate the card body on the rendered view, insert profile data as tokens, and choose which contacts
-/// and histories the card shows (contract "템플릿"). Sign-in, publishing and errors are the page's job.
+/// 명함 제작: name the card and choose which contacts and histories it shows; the body is the built-in template
+/// filled from the profile (contract "템플릿 — 2026-10-18 앱 안 꾸미기 삭제"). Sign-in, publishing and errors are the page's job.
 struct CardComposer: View {
     @Binding var draft: CardDraft
     var publishing = false
     var errorMessage: String?
     let publish: () -> Void
-    /// Which content version the editor, token menu and preview work on (contract "웹 버전").
-    @State private var version = CardDraft.Version.mobile
-    private var editedTemplate: Binding<String> {
-        Binding(get: { draft.template(for: version) }, set: { draft.setTemplate($0, for: version) })
-    }
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 section("명함") {
                     field("명함 이름 (선택)", text: $draft.cardTitle, prompt: "비워 두면 '내 명함'으로 저장해요")
                 }
-                section("꾸미기") {
-                    Toggle("웹 버전 따로 쓰기", isOn: Binding(get: { draft.hasWebVersion }, set: { on in draft.hasWebVersion = on; if !on { version = .mobile } }))
-                        .font(.dearby(.subheadline)).tint(DearbyStyle.teal).frame(minHeight: 44)
-                    Text("웹에서 넓은 화면(640px 초과)일 때 보이는 내용이에요. 앱은 항상 모바일 버전을 보여요.")
-                        .font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
-                    if draft.hasWebVersion {
-                        Picker("고치는 버전", selection: $version) {
-                            Text("모바일").tag(CardDraft.Version.mobile)
-                            Text("웹").tag(CardDraft.Version.web)
-                        }.pickerStyle(.segmented)
-                    }
-                    TemplateEditor(template: editedTemplate, tokens: TemplateDocument.tokens(for: draft.profile), preview: draft.preview(for: version))
-                        .id(version)
-                    Menu {
-                        ForEach(TemplateDocument.tokens(for: draft.profile)) { token in
-                            Button("\(token.label)\(token.value.isEmpty ? "" : " · \(token.value)")") {
-                                let current = draft.template(for: version)
-                                draft.setTemplate(current + (current.hasSuffix("\n") || current.isEmpty ? "" : "\n") + token.markdown, for: version)
-                            }
-                        }
-                    } label: {
-                        Label("데이터 넣기", systemImage: "plus.circle").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal).frame(minHeight: 44)
-                    }.accessibilityHint("프로필 데이터를 본문 끝에 넣어요")
+                section("미리보기") {
+                    DearbyMarkdownText(source: draft.preview).padding(12).frame(maxWidth: .infinity, alignment: .leading)
+                        .overlay(RoundedRectangle(cornerRadius: 10).stroke(DearbyStyle.line))
+                    Text("프로필의 이름·직무·소개와 아래에서 고른 연락처가 명함 본문이 돼요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
                 }
                 section("공개할 연락처") {
                     if draft.profile.contacts.isEmpty { Text("프로필에 연락처가 없어요.").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet) }

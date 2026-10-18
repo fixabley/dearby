@@ -20,14 +20,14 @@ sealed interface PublishPhase {
 }
 data class CardPublishState(val draft: CardDraft? = null, val phase: PublishPhase = PublishPhase.Editing, val signingIn: Boolean = false, val prefill: PublishedCard? = null)
 
-/** Publishes the composer draft with `POST /v1/cards` (template included). Profile data is read-only here. */
+/** Publishes the composer draft with `POST /v1/cards` (built-in template included). Profile data is read-only here. */
 class CardPublishViewModel(private val account: AccountViewModel) : ViewModel() {
     private val mutable = MutableStateFlow(CardPublishState())
     val state = mutable.asStateFlow()
     private var job: Job? = null
     private val signedIn get() = account.state.value.phase == AccountPhase.SIGNED_IN
 
-    /** Opens the composer; signed in, it starts from the saved profile (and [prefill]'s template when republishing). */
+    /** Opens the composer; signed in, it starts from the saved profile (and [prefill]'s name and selections when republishing). */
     fun start(prefill: PublishedCard? = null) = launch {
         mutable.value = CardPublishState(prefill = prefill)
         load()
@@ -49,7 +49,7 @@ class CardPublishViewModel(private val account: AccountViewModel) : ViewModel() 
         draft.problem?.let { problem -> mutable.update { it.copy(phase = PublishPhase.Failed(problem)) }; return@launch }
         mutable.update { it.copy(phase = PublishPhase.Publishing) }
         try {
-            val card = account.authorized { account.client.publish(draft.cardName, "", draft.template, draft.webTemplate, draft.contactIds, draft.historyIds, it) }
+            val card = account.authorized { account.client.publish(draft.cardName, "", draft.template, draft.contactIds, draft.historyIds, it) }
             mutable.update { it.copy(phase = PublishPhase.Published(card)) }
         } catch (e: AccountException) {
             mutable.update { when (e.error) {

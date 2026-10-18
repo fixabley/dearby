@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -20,57 +20,18 @@ data class ComposerContact(val id: String, val label: String, val value: String,
 data class ComposerHistory(val id: String, val title: String, val detail: String, val isPublic: Boolean, val reason: String?)
 
 /**
- * 명함 제작(contract "템플릿"): 본문을 렌더링 화면에서 바로 꾸미고, 프로필 데이터를 토큰으로 넣고, 공개할 연락처·이력을 고른다.
- * 로그인·발행·오류는 화면이 맡고, 이 위젯은 값과 콜백만 받는다. 내용이 바뀌면 "원래대로"가 나타난다.
- * [webTemplate]이 null이 아니면 웹 버전이 켜진 것이고, `모바일 | 웹` 전환으로 어느 템플릿을 고치는지 고른다(contract "웹 버전").
+ * 명함 제작(contract "템플릿", 2026-10-18 앱 안 꾸미기 삭제): 명함 이름을 적고 공개할 연락처·이력을 고른다. 본문은 앱 내장 기본 템플릿을 채운
+ * 결과를 읽기 전용 미리보기로 보인다. 로그인·발행·오류는 화면이 맡고, 이 위젯은 값과 콜백만 받는다. 내용이 바뀌면 "원래대로"가 나타난다.
  */
 @Composable fun CardComposer(
-    cardTitle: String, onCardTitleChange: (String) -> Unit, template: String, onTemplateChange: (String) -> Unit, tokens: List<TemplateToken>,
-    preview: String, contacts: List<ComposerContact>, onContactPublic: (String, Boolean) -> Unit, histories: List<ComposerHistory>, onHistoryPublic: (String, Boolean) -> Unit,
+    cardTitle: String, onCardTitleChange: (String) -> Unit, preview: String,
+    contacts: List<ComposerContact>, onContactPublic: (String, Boolean) -> Unit, histories: List<ComposerHistory>, onHistoryPublic: (String, Boolean) -> Unit,
     changed: Boolean, onRevert: () -> Unit, onPublish: () -> Unit, modifier: Modifier = Modifier, publishing: Boolean = false, errorMessage: String? = null,
-    webTemplate: String? = null, onWebTemplateChange: (String?) -> Unit = {}, webPreview: String? = null,
 ) {
-    var insertOpen by remember { mutableStateOf(false) }
-    var showPreview by remember { mutableStateOf(false) }
-    // Which version the editor, token insert and preview target (contract "웹 버전"); falls back to 모바일 when the web version is off.
-    var editingWeb by remember { mutableStateOf(false) }
-    val webOn = webTemplate != null
-    val onWeb = webOn && editingWeb
-    val activeTemplate = if (onWeb) webTemplate.orEmpty() else template
-    val onActiveChange: (String) -> Unit = if (onWeb) ({ onWebTemplateChange(it) }) else onTemplateChange
-    val activePreview = if (onWeb) webPreview.orEmpty() else preview
     Column(modifier.fillMaxSize()) {
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
             Section("명함") { Labeled("명함 이름 (선택)") { DearbyInlineField("명함 이름", cardTitle, onCardTitleChange, editing = true, placeholder = "비워 두면 '내 명함'으로 저장해요") } }
-            Section("꾸미기") {
-                Row(Modifier.heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("웹 버전 따로 쓰기", style = MaterialTheme.typography.bodyMedium)
-                        Text("웹에서 넓은 화면(640px 초과)일 때 보이는 내용이에요. 앱은 항상 모바일 버전을 보여요.", color = Quiet, style = MaterialTheme.typography.bodySmall)
-                    }
-                    // Turning on starts the web version from the mobile template; turning off drops it (원래대로 restores).
-                    Switch(webOn, { on -> editingWeb = on; onWebTemplateChange(if (on) template else null) }, Modifier.semantics { contentDescription = "웹 버전 따로 쓰기" })
-                }
-                if (webOn) SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                    listOf("모바일", "웹").forEachIndexed { index, label ->
-                        SegmentedButton(selected = onWeb == (index == 1), onClick = { editingWeb = index == 1 }, shape = SegmentedButtonDefaults.itemShape(index, 2)) { Text(label) }
-                    }
-                }
-                TemplateEditor(activeTemplate, tokens, onActiveChange)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Box {
-                        TextButton({ insertOpen = true }, contentPadding = PaddingValues(0.dp)) { Text("데이터 넣기") }
-                        DropdownMenu(insertOpen, { insertOpen = false }) {
-                            tokens.forEach { token ->
-                                DropdownMenuItem({ Text(token.label + if (token.value.isNotEmpty()) " · ${token.value}" else "") },
-                                    { insertOpen = false; onActiveChange((if (activeTemplate.isEmpty() || activeTemplate.endsWith("\n")) activeTemplate else activeTemplate + "\n") + "{{${token.id}}}") })
-                            }
-                        }
-                    }
-                    TextButton({ showPreview = !showPreview }, contentPadding = PaddingValues(0.dp)) { Text(if (showPreview) "미리보기 닫기" else "미리보기") }
-                }
-                if (showPreview) OutlinedCard(Modifier.fillMaxWidth()) { MarkdownBody(activePreview, Modifier.padding(12.dp)) }
-            }
+            Section("미리보기") { OutlinedCard(Modifier.fillMaxWidth()) { MarkdownBody(preview, Modifier.padding(12.dp)) } }
             Section("공개할 연락처") {
                 if (contacts.isEmpty()) Text("프로필에 연락처가 없어요.", color = Quiet, style = MaterialTheme.typography.bodyMedium)
                 contacts.forEach { contact ->

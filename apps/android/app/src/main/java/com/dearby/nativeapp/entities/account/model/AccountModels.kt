@@ -60,11 +60,9 @@ data class AccountProfile(val name: String, val job: String, val introduction: S
     val histories: List<AccountHistory>, val version: Int = 0, val jobs: List<ProfileJob> = emptyList())
 /**
  * A published card snapshot from `POST /v1/cards`; [introduction] is the filled-in template (markdown body), [template] comes on owner reads.
- * [webTemplate]/[webIntroduction] are the optional web version (contract "웹 버전"); apps always show [introduction].
  */
 data class PublishedCard(val id: String, val name: String, val description: String, val profileName: String, val job: String,
-    val contacts: List<AccountContact>, val histories: List<AccountHistory>, val createdAt: String, val introduction: String = "", val template: String? = null,
-    val webTemplate: String? = null, val webIntroduction: String? = null)
+    val contacts: List<AccountContact>, val histories: List<AccountHistory>, val createdAt: String, val introduction: String = "", val template: String? = null)
 /** One saved profile version (`GET /v1/profile/versions`), newest first. */
 data class ProfileVersionSummary(val version: Int, val createdAt: String)
 data class ProfileVersionList(val items: List<ProfileVersionSummary>, val nextCursor: Int?)
@@ -103,7 +101,7 @@ fun JSONObject.toProfile() = AccountProfile(optString("name"), optString("job"),
 fun JSONObject.toProfileJob() = ProfileJob(getString("id"), optJSONObject("job")?.toRef(), text("jobName"), optString("approval", "approved"), text("approvalReason"))
 fun JSONObject.toPublishedCard() = PublishedCard(getString("id"), getString("name"), getString("description"), getString("profileName"),
     getString("job"), getJSONArray("contacts").objects().map { it.toContact() }, getJSONArray("histories").objects().map { it.toHistory() },
-    getString("createdAt"), optString("introduction"), text("template"), text("webTemplate"), text("webIntroduction"))
+    getString("createdAt"), optString("introduction"), text("template"))
 fun JSONObject.toVersionList() = ProfileVersionList(getJSONArray("items").objects().map { ProfileVersionSummary(it.getInt("version"), it.getString("createdAt")) },
     if (isNull("nextCursor")) null else getInt("nextCursor"))
 fun JSONObject.toVersionDetail() = ProfileVersionDetail(getInt("version"), getString("createdAt"), getJSONObject("profile").toProfile())

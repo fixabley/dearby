@@ -79,7 +79,6 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
 
         val public = read(mvc.get("/v1/cards/${card["id"].asString()}").andExpect { status { isOk() } })
         assertFalse(public.has("template"))
-        assertFalse(public.has("webTemplate"))
         assertEquals("# 발행자\n010-1111-2222 / ", public["introduction"].asString())
         mvc.get("/v1/cards/${UUID.randomUUID()}").andExpect { status { isNotFound() } }
 

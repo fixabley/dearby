@@ -18,13 +18,11 @@ import java.util.*
 class CardService(private val cards: CardRepository, private val profiles: ProfileRepository) {
 
     @Transactional
-    fun publish(ownerId: UserId, name: String, description: String, template: String, contactIds: List<UUID>, historyIds: List<UUID>, webTemplate: String? = null): BusinessCard {
+    fun publish(ownerId: UserId, name: String, description: String, template: String, contactIds: List<UUID>, historyIds: List<UUID>): BusinessCard {
         val profile = profiles.find(ownerId) ?: throw InvalidInputException("프로필을 먼저 만들어 주세요")
         val cardName = text(name, "명함 이름", MAX_NAME)
         val cardDescription = multiline(description, "설명")
         val cardTemplate = multiline(template, "템플릿")
-        // 웹 버전(선택): 비어 있으면 없는 것. 같은 규칙으로 검사하고 같은 선택 연락처로 채운다
-        val cardWebTemplate = webTemplate?.let { multiline(it, "웹 템플릿") }?.takeIf { it.isNotEmpty() }
         if (contactIds.toSet().size != contactIds.size || historyIds.toSet().size != historyIds.size) throw InvalidInputException("같은 항목을 두 번 골랐습니다")
         val contactById = profile.contacts.associateBy { it.id }
         val historyById = profile.histories.associateBy { it.id }
@@ -41,8 +39,6 @@ class CardService(private val cards: CardRepository, private val profiles: Profi
             description = cardDescription,
             template = cardTemplate,
             introduction = TemplateRenderer.render(cardTemplate, profile, contacts),
-            webTemplate = cardWebTemplate,
-            webIntroduction = cardWebTemplate?.let { TemplateRenderer.render(it, profile, contacts) },
             profileName = profile.name,
             job = profile.jobTitle,
             contacts = contacts,
