@@ -90,6 +90,32 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         val organizationId = search("q=개발 환경의 변화")["items"].single()["organization"]["id"].asLong()
         assertEquals(1, search("q=개발 환경의 변화&organizationId=$organizationId")["items"].size())
         assertEquals(0, search("organizationId=-1")["items"].size())
+
+        // 발견 프로그램 묶음(native-v1.md): V5의 Let'Swift 활동은 모집이 끝나 열린 활동이 없다. 지금 모집 중인 활동을 하나 만들면 그 프로그램만 묶음에 나온다
+        fun programs(query: String): JsonNode =
+            json.readTree(mvc.get("/v1/discovery/programs?$query").andExpect { status { isOk() } }.andReturn().response.contentAsString)
+        assertEquals(0, programs("")["items"].size())
+        val openId = createActivity("묶음 확인 모집 중")
+        jdbc.sql(
+            """
+            insert into schedules (activity_id, slot, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, 'APPLICATION', '신청 기간', 'DEADLINE', 'CONFIRMED', 'TIMED', now() - interval '1 day', now() + interval '7 days', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp)
+            """
+        ).param(openId).update()
+        val summary = programs("")["items"].single()
+        assertEquals("Let’Swift", summary["name"].asString())
+        assertEquals(organizationId, summary["organization"]["id"].asLong())
+        assertEquals(1, summary["openActivityCount"].asInt())
+        assertEquals(0, summary["matchedActivityIds"].size())
+        // 활동 이름으로만 맞아도 프로그램이 나오고, 그 활동 id가 함께 온다. 프로그램 이름으로 맞으면 활동 id는 비어 있다
+        val matched = programs("q=묶음 확인")["items"].single()["matchedActivityIds"]
+        assertEquals(listOf(openId), (0 until matched.size()).map { matched[it].asLong() })
+        assertEquals(0, programs("q=swift")["items"].single()["matchedActivityIds"].size())
+        assertEquals(0, programs("q=디자인 컨퍼런스")["items"].size())
+        assertEquals(0, programs("participationType=REGISTRATION")["items"].size())
+        assertEquals(1, programs("participationType=selection")["items"].single()["openActivityCount"].asInt())
+        mvc.get("/v1/discovery/programs?participationType=ANY").andExpect { status { isBadRequest() } }
+        mvc.get("/v1/discovery/programs?size=0").andExpect { status { isBadRequest() } }
     }
 
     @Test
