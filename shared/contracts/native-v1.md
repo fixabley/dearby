@@ -333,7 +333,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - 언어(2026-10-15 사용자 결정): 요청 헤더 `Accept-Language`에서 지원 언어(`ko`, `en`) 중 가장 선호하는 것으로 `name`·`description`·`organization.name`·`program.name`을 하나씩 준다. 영문 값이 없는 항목은 한글로 채운다. 헤더가 없거나 읽을 수 없거나 지원 언어가 없으면 한국어. 응답에 `Content-Language`(`ko`·`en`)와 `Vary: Accept-Language`를 붙인다. 앱은 기기 언어 순서(iOS `Locale.preferredLanguages`, Android `LocaleList`, 최대 5개, 순서대로 q 값)를, 웹 프록시는 브라우저의 `Accept-Language`를 활동 조회에만 그대로 보낸다(언어 목록 형식이 아니면 버린다). 앱 화면 자체는 아직 한국어다.
 - `q`는 활동 이름·설명(한글·영문 모두)에서 찾는다. 대소문자 없는 부분 일치(`%`·`_`도 글자 그대로) 또는 단어 유사도(PostgreSQL `pg_trgm` `word_similarity` 0.4 이상)면 결과에 넣는다. 그래서 오타("워크샵"→"워크숍")·띄어쓰기 차이("개발환경")도 찾는다. 순서는 여전히 id 순이다(유사도 순 정렬은 하지 않음).
 - id는 숫자(bigint)다. 기존 카탈로그 UUID는 쓰지 않는다.
-- Activity: `{id, name, description, organization{id,name}, program{id,name}, officialUrl, imageUrl, application, activitySchedule, schedules[]}`. 2026-10-14 사용자 결정으로 원래 도메인 필드에 공식 안내 링크(`officialUrl`)와 이미지(`imageUrl`)만 더한다. 모집 상태·참여 방식·확인 시각·장소·비용·대상·자격요건(JSON)·역할·신청 링크·안내 문구는 같은 `activities` 행(+`activity_roles`)에 있지만 운영자용 도메인 `ActivityCuration`이 다루고 공개 API는 내보내지 않는다. 같은 DB를 쓰는 운영자(admin) 모듈용이다.
+- Activity: `{id, name, description, organization{id,name}, program{id,name}, officialUrl, imageUrl, application, activitySchedule, schedules[], eligibility}`. 2026-10-14 사용자 결정으로 원래 도메인 필드에 공식 안내 링크(`officialUrl`)와 이미지(`imageUrl`)만 더한다. 2026-10-18 `eligibility`(대상자 조건 JSON, 없으면 null)를 더한다(아래 "대상자 조건"). 모집 상태·참여 방식·확인 시각·장소·비용·대상·자격요건(JSON)·역할·신청 링크·안내 문구는 같은 `activities` 행(+`activity_roles`)에 있지만 운영자용 도메인 `ActivityCuration`이 다루고 공개 API는 내보내지 않는다. 같은 DB를 쓰는 운영자(admin) 모듈용이다.
   - 모집 여부는 `application`(모집 기간: 시작·끝 중 아는 쪽)으로 판단한다. 신청은 `officialUrl`을 연다.
   - 한 항목만으로 목록·상세를 그릴 수 있어 기관·프로그램을 따로 조회하지 않는다.
   - `application`(모집 기간, 없으면 null), `activitySchedule`(활동 기간·날짜 문구), `schedules[]`(개별 일정)는 Schedule이다.
@@ -382,3 +382,37 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - 앱 화면: 로그인 시트와 시작 화면에 애플 버튼 옆(iOS는 아래)에 `Google로 계속하기` 버튼을 둔다. 구글 브랜드 가이드의 흰 바탕·회색 테두리·"G" 로고 버튼을 따르되, 로고 자산은 공식 파일을 받아 `shared/assets/prototype`에 둔 뒤 적용한다(자산이 없는 동안은 글자 버튼). 빌드에 `GOOGLE_SIGN_IN_ENABLED` 같은 별도 플래그는 두지 않고, 서버가 503이면 버튼을 숨긴다(애플 버튼이 `appleSignInEnabled`를 판단하는 방식과 같게).
 - Android는 `dearby://auth/google` 인텐트 필터를, iOS는 `ASWebAuthenticationSession` 콜백으로 받는다. 애플 콜백 처리(`appleRedirect`)와 같은 자리에서 구글 콜백도 해석한다.
 - 운영 준비(사용자): Google Cloud 콘솔에서 OAuth 클라이언트(종류 "웹 애플리케이션") 생성, 승인된 리디렉션 URI에 `https://api.dearby.wid.io.kr/v1/auth/google/callback` 추가, OAuth 동의 화면(앱 이름 Dearby, scope openid·email·profile). 클라이언트 ID·시크릿은 서버 `.env.prod`에만 둔다.
+
+## 대상자 조건(eligibility) — 2026-10-18 사용자 결정
+
+수집된 활동의 "대상자"를 자유 문장(`audience`)만으로 두지 않고, **중첩 가능한 JSON** `eligibility`로 규격화한다. 원문 `audience`는 그대로 남긴다. 사용자 지시: 필드 어휘는 한글이고 영문 버전도 함께 저장하며, 범위는 `from`·`to`로 표현하고, 검색할 수 있어야 한다. 표기 규칙(2026-10-18 사용자 지시): snake_case는 데이터베이스 열 이름에만 쓰고, JSON 키·영문 어휘·쿼리 키는 기존 API처럼 camelCase다.
+
+### 구조
+
+```json
+{ "op": "all", "items": [
+  { "field": "나이", "fieldEn": "age", "from": 19, "to": 34 },
+  { "op": "any", "items": [
+    { "field": "재학상태", "fieldEn": "educationStatus", "values": ["재학"], "valuesEn": ["enrolled"] },
+    { "field": "취업상태", "fieldEn": "employment", "values": ["미취업"], "valuesEn": ["unemployed"] } ] },
+  { "field": "국적", "fieldEn": "nationality", "values": ["대한민국"], "valuesEn": ["KR"] },
+  { "field": "경력연수", "fieldEn": "experienceYears", "to": 2 },
+  { "field": "기타", "fieldEn": "other", "note": "2년 풀타임 참여 가능", "noteEn": "Able to attend full-time for 2 years" } ] }
+```
+
+- 그룹: `op`는 `all`(모두 충족) 또는 `any`(하나 이상), `items`는 조건이나 그룹. 최상위는 그룹이다. 깊이 제한 3.
+- 조건: `field`(한글 어휘)·`fieldEn`(영문 어휘)은 필수. 범위는 `from`·`to`(둘 중 하나 생략 가능, 포함 범위, 숫자) 또는 집합 `values`(한글)·`valuesEn`(영문, 같은 길이) 중 하나. `note`·`noteEn`은 선택이며 원문 구절·보충 설명이다. `기타`는 `note`만 가진다.
+- 어휘(한글 → 영문): 나이 → `age`(만 나이), 출생연도 → `birthYear`, 학년 → `schoolYear`, 학력 → `educationLevel`(값: 고졸 `highSchool`·대학 재학/졸업 `university`·대학원 `graduateSchool`), 재학상태 → `educationStatus`(재학 `enrolled`·졸업 `graduated`·휴학 `onLeave`·졸업예정 `graduating`), 전공 → `major`, 지역 → `region`, 취업상태 → `employment`(학생 `student`·미취업 `unemployed`·재직 `employed`·창업 `founder`), 경력연수 → `experienceYears`, 국적 → `nationality`(ISO 3166-1 alpha-2), 팀규모 → `teamSize`, 기타 → `other`. 어휘에 없는 조건은 `기타`+`note`로 둔다. 서버는 어휘 밖의 `field`를 거절(400)한다.
+- 저장: `activities.eligibility jsonb`(null 가능). 검색용으로 서버가 저장할 때 조건을 DB 표 `activity_eligibility_terms(activity_id, field_en, from_value, to_value, value_en)`(열 이름은 DB라서 snake_case)로 펼친다(그룹 구조는 무시하고 조건만 나열).
+
+### 검색
+
+- `GET /v1/activities`와 `GET /v1/discovery/programs`에 필터를 더한다. 쿼리 키는 영문 어휘(camelCase)다: 숫자 필드는 값 하나(`age=24`, `schoolYear=3`, `experienceYears=1`, `birthYear=2002`, `teamSize=4`), 집합 필드는 영문 값 하나(`educationStatus=enrolled`, `employment=student`, `nationality=KR`, `educationLevel=university`, `major=…`, `region=…`).
+- 1차 판정(SQL): 요청한 필드마다 그 활동의 조건 중 하나라도 맞으면 통과(숫자는 `from ≤ 값 ≤ to`, 없는 쪽은 열림; 집합은 포함). **조건이 없는 활동(`eligibility` null 또는 그 필드의 조건 없음)은 제한이 없는 것으로 보아 통과**한다.
+- 2차 판정(서버, JSON): 1차를 통과한 활동에 대해 `op`를 그대로 평가해 거른다. 요청하지 않은 필드의 조건은 참으로 본다. 프로그램 묶음의 열린 활동 수와 가장 가까운 마감은 2차까지 통과한 활동으로 센다.
+
+### 수집·어드민·앱
+
+- 수집 배치: 추출 스키마에 `eligibility`를 더하고 지시문에 위 어휘와 예시를 넣는다. 모델이 어휘 밖 필드를 내면 서버가 `기타`로 바꿔 저장한다. `audience` 원문도 계속 뽑는다.
+- 어드민: `AdminActivity`에 `eligibility`를 싣고 `PATCH /v1/admin/activities/:id`에 `eligibility`(JSON, null로 지우기)를 받는다. 어드민 웹 활동 화면에서 JSON으로 보고 고친다(검증 오류는 서버 400 메시지 그대로).
+- 공개 `Activity`(활동 조회)에 `eligibility`를 싣는다. iOS·Android·웹 활동 상세는 "대상" 절에 조건을 한글로 칩처럼 보인다: 범위는 `나이 19~34세`·`경력 2년 이하`, 집합은 `재학상태 재학`, 그룹 `any`는 `또는`으로 잇는다. `기타`는 `note`를 그대로. 조건이 없으면 기존 `audience` 문장을 보인다. 필터 UI는 이번 범위가 아니다(API만).
