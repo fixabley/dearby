@@ -204,44 +204,14 @@ struct ActivityInfoPage: Decodable, Equatable, Sendable {
     let items: [ActivityInfoItem]
     let nextCursor: Int?
 }
-/// An activity copied into a share when it was made; never follows later activity edits. Ids are numeric since 2026-10-16.
-struct ShareActivity: Codable, Equatable, Sendable {
-    let id: Int
-    let title: String
-}
-/// A recorded share of one card (`POST /v1/cards/:id/shares`); its ID is the public `/s/<id>` link.
-struct CardShare: Decodable, Equatable, Sendable {
-    let id: String
-    let cardId: String
-    let activities: [ShareActivity]
-    let createdAt: String
-}
-/// `GET /v1/wallet` (contract #141): the cards saved to the account and the shares they came with.
+/// `GET /v1/wallet`: the cards saved to the account.
 struct Wallet: Decodable, Equatable, Sendable {
     struct Receipt: Decodable, Equatable, Identifiable, Sendable {
         let id: String
         let card: PublishedCard
         let receivedAt: String
     }
-    struct Share: Decodable, Equatable, Sendable {
-        let receiptId: String
-        let cardId: String
-        let shareId: String
-        let activities: [ShareActivity]
-        let savedAt: String
-    }
     let items: [Receipt]
-    let shares: [Share]
-}
-/// `PUT /v1/wallet/shares/:id`: `saved` when the card or this share is new, `alreadySaved` otherwise.
-struct SavedShare: Decodable, Equatable, Sendable {
-    let cardId: String
-    let status: String
-}
-/// `GET /v1/shares/:id`: a share and the public card it points at.
-struct ReceivedShare: Decodable, Equatable, Sendable {
-    let share: CardShare
-    let card: PublishedCard
 }
 /// A published card snapshot from `POST /v1/cards`. `introduction` is the filled-in template (markdown body);
 /// `template` comes only on owner reads and seeds the editor when the card is republished.

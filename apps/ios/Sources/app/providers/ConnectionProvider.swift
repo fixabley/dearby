@@ -3,8 +3,8 @@ import OSLog
 
 private let log = Logger(subsystem: "com.dearby.app", category: "connection")
 
-/// Owns the build-injected origins: universal links become share IDs and API calls use the API origin.
-struct AppLinkProvider: Sendable {
+/// Owns the build-injected API origin: the account client and activity loads use it.
+struct ConnectionProvider: Sendable {
     let origins: AppOrigins
     /// Info.plist `DearbyAppleSignInEnabled`: false until the app ID has Sign in with Apple and the
     /// entitlements carry `com.apple.developer.applesignin` (see README "애플 로그인").
@@ -13,13 +13,13 @@ struct AppLinkProvider: Sendable {
         var info = info
         #if DEBUG
         let debug = true
-        // UI tests point Debug builds at their own fixture server; Release has no override.
+        // Debug builds may point at another API through the launch environment; Release has no override.
         if let override = ProcessInfo.processInfo.environment["DEARBY_API_ORIGIN"] { info["DearbyAPIOrigin"] = override }
         #else
         let debug = false
         #endif
         guard let origins = AppOrigins.load(info, debug: debug) else {
-            preconditionFailure("DearbyAPIOrigin/DearbyWebOrigin are missing or invalid.")
+            preconditionFailure("DearbyAPIOrigin is missing or invalid.")
         }
         self.origins = origins
         appleSignInEnabled = info["DearbyAppleSignInEnabled"] as? Bool ?? false
@@ -30,13 +30,10 @@ struct AppLinkProvider: Sendable {
         }
         #endif
     }
-    func shareURL(_ shareID: String) -> URL { SharedCardLink.url(shareID: shareID, web: origins.web) }
-    func scanned(_ text: String) -> ScannedLink? { ScannedLink.parse(text, web: origins.web) }
-    func shareID(_ url: URL) -> String? { SharedCardLink.shareID(from: url, web: origins.web) }
     @MainActor func account() -> AccountViewModel {
         var vault = TokenVault()
         #if DEBUG
-        // UI tests use a fresh Keychain item per run so one test's sign-in never leaks into another.
+        // A fresh Keychain item per launch environment keeps one run's sign-in from leaking into another.
         if let service = ProcessInfo.processInfo.environment["DEARBY_TOKEN_SERVICE"] { vault.service = service }
         #endif
         return AccountViewModel(client: .live(api: origins.api), vault: vault, appleSignInEnabled: appleSignInEnabled)

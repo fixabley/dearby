@@ -3,7 +3,7 @@ import Foundation
 /// One activity from `GET /v1/activities` (contract "활동 조회 — 2026-10-14"). Missing values stay nil and read as unconfirmed.
 struct ActivityModel: Equatable, Identifiable, Sendable {
     enum Recruitment: Equatable, Sendable { case upcoming, open, closed, unknown }
-    /// The API's numeric id as a string: share requests and navigation already use string ids.
+    /// The API's numeric id as a string: navigation uses string ids.
     let id: String
     let title: String
     let summary: String

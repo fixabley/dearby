@@ -2,7 +2,7 @@ import Foundation
 
 enum AccountError: Error, Equatable {
     /// `rejected`: a 400 with the server's user-facing ProblemDetail `detail` (contact rules, unapproved history, own card…).
-    /// `conflict`: 409 — the profile changed elsewhere (`If-Match`) or a card already holds the most share links.
+    /// `conflict`: 409 — the profile changed elsewhere (`If-Match`).
     case unauthorized, invalidInput, rejected(String), notFound, conflict, rateLimited, unavailable
 }
 
@@ -122,24 +122,8 @@ struct AccountClient: Sendable {
     func cards(_ session: TokenPair) async throws -> [PublishedCard] {
         try await send("cards", session: session, as: CardList.self).items
     }
-    func share(_ cardID: String, activityIds: [Int], _ session: TokenPair) async throws -> CardShare {
-        try await send("cards/\(cardID)/shares", method: "POST", body: ["activityIds": activityIds], session: session, as: CardShare.self)
-    }
-    /// Saves a received share to the account's wallet (contract #141).
-    func saveShare(_ id: String, _ session: TokenPair) async throws -> SavedShare {
-        // An explicit empty JSON body: some HTTP stacks send a PUT body the API rejects otherwise.
-        try await send("wallet/shares/\(id)", method: "PUT", body: [String: String](), session: session, as: SavedShare.self)
-    }
     func wallet(_ session: TokenPair) async throws -> Wallet {
         try await send("wallet", session: session, as: Wallet.self)
-    }
-    /// Public: a share and its card, for links and scanned QR codes. No session.
-    func publicShare(_ id: String) async throws -> ReceivedShare {
-        try await send("shares/\(id)", as: ReceivedShare.self)
-    }
-    /// Public: a card by ID, for legacy `dearby://card/<UUID>` codes. No session.
-    func publicCard(_ id: String) async throws -> PublishedCard {
-        try await send("cards/\(id)", as: PublishedCard.self)
     }
 
     /// `POST /v1/cards`: `template` is the decoration markdown the server fills in at publish time.

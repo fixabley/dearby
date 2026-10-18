@@ -1,27 +1,27 @@
 import SwiftUI
 
-struct HomePage<Discovery: View, Mine: View, QR: View, Wallet: View, Profile: View>: View {
+struct HomePage<Discovery: View, Mine: View, Cards: View, Wallet: View, Profile: View>: View {
     @Binding var selectedTab: Int
     /// The first-profile funnel takes the whole screen (no tab bar), like Toss.
     var hidesTabs = false
     // Discovery opens details from card buttons, so it gets the navigation path.
     let discovery: (Binding<[String]>) -> Discovery
     let mine: Mine
-    let qr: QR
+    let cards: Cards
     let wallet: Wallet
     let profile: Profile
     @State private var discoveryPath: [String] = []
     @State private var minePath: [String] = []
     private var showsTabs: Bool { !hidesTabs && (selectedTab > 1 || (selectedTab == 0 ? discoveryPath.isEmpty : minePath.isEmpty)) }
-    private let titles = ["발견", "내 활동", "QR", "받은 명함", "내 프로필"]
-    private let symbols = ["safari", "calendar.badge.checkmark", "qrcode.viewfinder", "person.text.rectangle", "person.crop.circle"]
+    private let titles = ["발견", "내 활동", "내 명함", "받은 명함", "내 프로필"]
+    private let symbols = ["safari", "calendar.badge.checkmark", "person.crop.rectangle", "person.text.rectangle", "person.crop.circle"]
     var body: some View {
         VStack(spacing: 0) {
             Group {
                 switch selectedTab {
                 case 0: NavigationStack(path: $discoveryPath) { discovery($discoveryPath) }
                 case 1: NavigationStack(path: $minePath) { mine }
-                case 2: NavigationStack { qr }
+                case 2: NavigationStack { cards }
                 case 3: NavigationStack { wallet }
                 default: NavigationStack { profile }
                 }
