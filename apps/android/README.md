@@ -72,7 +72,7 @@ HTTP/Repository/Room/Keystore/기기 캘린더/WebView·인증 실행 코드와 
    ```json
    [{
      "relation": ["delegate_permission/common.get_login_creds"],
-     "target": { "namespace": "android_app", "package_name": "com.dearby.nativeapp",
+     "target": { "namespace": "android_app", "package_name": "io.wid.dearby",
        "sha256_cert_fingerprints": ["<서명 SHA-256, AA:BB:… 형식>"] }
    }]
    ```

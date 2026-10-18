@@ -24,7 +24,7 @@
 | 웹 주소 | API `WEBAUTHN_ALLOWED_ORIGINS` | 패스키를 웹에서 쓰면 웹 origin이 API 허용 목록에 있어야 한다. API `JWT_ISSUER`는 API 안에서만 쓰는 식별자라 다른 앱과 맞출 필요가 없다 |
 | 패스키 RP ID | API `WEBAUTHN_RP_ID`, iOS entitlements `webcredentials:`, `wid.io.kr`의 AASA·assetlinks | 웹·앱 도메인과 같거나 그 상위 도메인이어야 한다. **바꾸면 등록된 패스키를 모두 쓸 수 없다** |
 | Apple Team ID | CI secret `TEAM_ID`, `wid.io.kr` AASA `webcredentials.apps` | 같은 Apple 개발자 팀 |
-| Android 패키지·서명 | `wid.io.kr` assetlinks, API `WEBAUTHN_ALLOWED_ORIGINS`의 `android:apk-key-hash:` | 앱 설정 `applicationId = com.dearby.nativeapp`과 배포 서명 인증서 |
+| Android 패키지·서명 | `wid.io.kr` assetlinks, API `WEBAUTHN_ALLOWED_ORIGINS`의 `android:apk-key-hash:` | 앱 설정 `applicationId = io.wid.dearby`(2026-10-18 변경, 코드 패키지는 `com.dearby.nativeapp` 유지)과 배포 서명 인증서. assetlinks의 `package_name`도 `io.wid.dearby` |
 | 게스트 프록시 키 | API `GUEST_PROXY_SECRET`(서버 `.env.prod`), web `GUEST_PROXY_SECRET`(Vercel `dearby-web`, Secret 타입) | 32자 이상 같은 값. 원본은 서버의 `~/.dearby-deploy/guest-proxy-secret`(저장소 밖). 2026-10-17 Kotlin API `/v1/guest/*` 배포 때 두 곳을 이 값으로 맞췄다. Vercel 값은 다시 읽을 수 없으므로 바꿀 때는 두 곳을 함께 바꾼다 |
 
 ## 로컬 개발 포트
