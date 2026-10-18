@@ -23,4 +23,5 @@ data class ActivityCuration(
     val validUntil: OffsetDateTime?, // 확인 내용이 유효한 끝 시각
     val freshness: Freshness,
     val sourceNote: String, // 안내 문구
+    val inheritedFields: List<String> = emptyList(), // 이전 기수에서 가져온 필드 이름(admin-v1.md "이전 기수 정보 자동완성")
 )

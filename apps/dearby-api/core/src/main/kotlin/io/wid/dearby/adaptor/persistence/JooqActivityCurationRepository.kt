@@ -49,6 +49,7 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
                 validUntil = it.validUntil,
                 freshness = Freshness.valueOf(it.freshness!!),
                 sourceNote = it.sourceNote!!,
+                inheritedFields = InheritedFields.read(it.inheritedFields).toList(),
             )
         }
     }
@@ -79,8 +80,11 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
 
     @Transactional
     override fun updateEligibility(activityId: Id, eligibility: EligibilityGroup?): Boolean {
+        // 운영자가 정한 값이므로 "이전 기수에서 가져옴" 표시를 뺀다(admin-v1.md "이전 기수 정보 자동완성")
+        val inherited = dsl.select(ACTIVITIES.INHERITED_FIELDS).from(ACTIVITIES).where(ACTIVITIES.ID.eq(activityId)).fetchOne()?.value1() ?: return false
         val updated = dsl.update(ACTIVITIES)
             .set(ACTIVITIES.ELIGIBILITY, EligibilityRows.jsonb(eligibility))
+            .set(ACTIVITIES.INHERITED_FIELDS, InheritedFields.jsonb(InheritedFields.read(inherited) - InheritedFields.ELIGIBILITY))
             .set(ACTIVITIES.UPDATED_AT, LocalDateTime.now())
             .where(ACTIVITIES.ID.eq(activityId))
             .execute() > 0

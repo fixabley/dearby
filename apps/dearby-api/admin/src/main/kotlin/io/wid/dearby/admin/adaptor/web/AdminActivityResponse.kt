@@ -27,6 +27,7 @@ data class AdminActivityResponse(
     val cost: String?,
     val audience: String?,
     val eligibility: JsonNode?, // 대상자 조건(native-v1.md "대상자 조건"). 없으면 null
+    val inheritedFields: List<String>, // 이전 기수에서 가져온 필드 이름(admin-v1.md "이전 기수 정보 자동완성")
     val sourceCheckedAt: OffsetDateTime?,
 ) {
     companion object {
@@ -53,6 +54,7 @@ data class AdminActivityResponse(
                 cost = curation.cost,
                 audience = curation.audience,
                 eligibility = activity.eligibility?.let(EligibilityJson::toNode),
+                inheritedFields = curation.inheritedFields,
                 sourceCheckedAt = curation.sourceCheckedAt,
             )
         }

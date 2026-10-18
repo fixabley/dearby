@@ -222,6 +222,11 @@ open class Activities(
      */
     val ELIGIBILITY: TableField<ActivitiesRecord, JSONB?> = createField(DSL.name("eligibility"), SQLDataType.JSONB, this, "")
 
+    /**
+     * The column <code>public.activities.inherited_fields</code>.
+     */
+    val INHERITED_FIELDS: TableField<ActivitiesRecord, JSONB?> = createField(DSL.name("inherited_fields"), SQLDataType.JSONB.nullable(false).defaultValue(DSL.field(DSL.raw("'[]'::jsonb"), SQLDataType.JSONB)), this, "")
+
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)

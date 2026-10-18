@@ -1,6 +1,8 @@
 package io.wid.dearby.batch.adaptor.claude
 
 import io.wid.dearby.domain.collection.CollectionTarget
+import io.wid.dearby.application.eligibility.EligibilityJson
+import io.wid.dearby.domain.collection.PreviousEdition
 import io.wid.dearby.domain.collection.WatchEntry
 import io.wid.dearby.domain.collection.WatchKind
 import java.net.URI
@@ -46,6 +48,7 @@ object CollectionPrompts {
         - dateLabel은 원문 문구 그대로다. "2026 신입생 모집"처럼 날짜가 아닌 문구는 dateLabel에만 두고 startDate·endDate는 null로 둔다.
         - 다른 프로그램의 활동은 뽑지 않는다. 프로그램 이름과 다른 프로그램(예: 같은 회사의 다른 과정)의 기수가 본문에 있어도 제외한다.
         - 요청에 "활동으로 만들지 않을 이름"이 있으면 그 이름의 활동은 뽑지 않고, "이미 있는 활동의 다른 표기"가 있으면 그 표기 대신 정본 이름을 name으로 쓴다.
+        - 요청의 "참고(이전 기수)" 값은 힌트다. 본문에 같은 내용이 있으면 그대로 쓰고, 본문에 없으면 null로 둔다. 본문에 없는 내용을 참고에서 베끼지 않는다.
         - evidenceQuote는 이 활동이 본문에 있다는 근거로, 본문에서 그대로 복사한 10~200자 연속 구절이다.
         - name·description은 한국어로 쓴다. nameEn·descriptionEn은 그 영어 번역이다(고유 명사·행사명은 공식 영문 표기가 본문에 있으면 그대로 쓴다). 번역할 수 없으면 null.
         - participationType: 신청하면 참가하면 REGISTRATION, 심사로 선발하면 SELECTION.
@@ -61,8 +64,14 @@ object CollectionPrompts {
     const val MAX_PAGE_CHARS = 150_000
 
     // 조심 목록(admin-v1.md)은 힌트로만 넘긴다. 저장 전 이름 대조가 보장이다
-    fun extractRequest(programName: String, url: String, text: String, watchlist: List<WatchEntry> = emptyList()) = buildString {
+    fun extractRequest(programName: String, url: String, text: String, watchlist: List<WatchEntry> = emptyList(), previous: PreviousEdition? = null) = buildString {
         append("프로그램: $programName\n페이지: $url")
+        // 이전 기수(admin-v1.md "이전 기수 정보 자동완성"): 본문에 같은 내용이 있을 때 같은 어휘로 쓰게 하는 힌트. 서버가 비어 있는 필드를 따로 채운다
+        previous?.takeIf { it.eligibility != null || it.audience != null }?.let { edition ->
+            append("\n참고(이전 기수 \"${edition.name}\"):")
+            edition.audience?.let { append("\n- 대상 원문: $it") }
+            edition.eligibility?.let { append("\n- 대상자 조건: ${EligibilityJson.write(it)}") }
+        }
         watchlist.filter { it.kind == WatchKind.EXCLUDE }.takeIf { it.isNotEmpty() }?.let { excluded ->
             append("\n활동으로 만들지 않을 이름: ${excluded.joinToString(", ") { it.name }}")
         }

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Collapse, DatePicker, Descriptions, Form, Input, Modal, Popconfirm, Radio, Select, Space, Switch, Tag } from "antd";
+import { Alert, App, Button, Collapse, DatePicker, Descriptions, Form, Input, Modal, Popconfirm, Radio, Select, Space, Switch, Tag, Tooltip } from "antd";
 import { ExportOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -49,7 +49,12 @@ export type ActivityText = {
   /** The tree opens the editor without schedules; then the 활동 기간·모집 기간 blocks are hidden. */
   application?: Schedule | null;
   activitySchedule?: Schedule;
+  /** Fields the collector copied from the program's previous edition (contract "이전 기수 정보 자동완성"); absent on the tree path. */
+  inheritedFields?: string[];
 };
+/** True when the collector filled [field] from an earlier edition and no operator has edited it since. */
+const inherited = (activity: { inheritedFields?: string[] }, field: "eligibility" | "audience" | "participationType") =>
+  activity.inheritedFields?.includes(field) ?? false;
 type Activity = ActivityText & {
   organization: { id: number; name: string };
   program: { id: number; name: string };
@@ -237,8 +242,17 @@ export function Activities() {
           },
           {
             title: "게시",
-            render: (_, { publicationStatus }) => (
-              <Tag color={publicationStatus === "PUBLISHED" ? "blue" : undefined}>{statusLabels[publicationStatus]}</Tag>
+            render: (_, activity) => (
+              <>
+                <Tag color={activity.publicationStatus === "PUBLISHED" ? "blue" : undefined}>{statusLabels[activity.publicationStatus]}</Tag>
+                {(activity.inheritedFields?.length ?? 0) > 0 && (
+                  <Tooltip title="이전 기수에서 자동완성한 값이 있어요. 상세에서 어떤 항목인지 보여요.">
+                    <span className="muted" aria-label="이전 기수에서 자동완성한 값 있음">
+                      자동완성
+                    </span>
+                  </Tooltip>
+                )}
+              </>
             ),
           },
           {
@@ -317,6 +331,17 @@ function CuratedTag() {
     <Tag color="purple" style={{ marginLeft: 6 }}>
       운영자 지정
     </Tag>
+  );
+}
+
+/** Marks a value the collector copied from the program's previous edition; editing or clearing the field removes it. */
+function InheritedTag() {
+  return (
+    <Tooltip title="같은 프로그램의 이전 활동에서 자동완성한 값이에요. 고치거나 비우면 표시가 사라져요.">
+      <Tag color="gold" style={{ marginLeft: 6 }}>
+        이전 기수에서 가져옴
+      </Tag>
+    </Tooltip>
   );
 }
 
@@ -520,6 +545,7 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
         <div className="eligibility-field">
           <div className="eligibility-field-heading">
             <strong>대상자 조건(선택)</strong>
+            {inherited(activity, "eligibility") && <InheritedTag />}
             <Button
               size="small"
               aria-label="대상자 조건 비우기"
@@ -667,9 +693,11 @@ function ActivityDetail({ activity }: { activity: Activity }) {
           children: (
             <>
               {eligibilitySummary(activity.eligibility) || <span className="muted">조건 없음</span>}
+              {inherited(activity, "eligibility") && <InheritedTag />}
               {activity.audience && (
                 <div className="muted" style={{ marginTop: 4 }}>
                   원문: {activity.audience}
+                  {inherited(activity, "audience") && <InheritedTag />}
                 </div>
               )}
             </>

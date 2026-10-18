@@ -16,7 +16,7 @@ data class CollectedActivity(
     val officialUrl: String, // 원문을 확인한 페이지
     val officialSource: Boolean, // 그 페이지가 프로그램의 공식 도메인(허용 호스트)인지. 웹 전체 검색이면 false
     val applicationUrl: String?, // 원문 페이지의 링크로 확인된 신청 주소만
-    val participationType: ParticipationType,
+    val participationType: ParticipationType?, // 본문에 없으면 null. 저장할 때 이전 기수 값(없으면 REGISTRATION)으로 채운다
     val recruitmentStartAt: OffsetDateTime?,
     val recruitmentEndAt: OffsetDateTime?,
     val recruitmentStartDate: LocalDate? = null, // 시각 없이 날짜만 있는 모집 기간(종일 일정으로 저장)
