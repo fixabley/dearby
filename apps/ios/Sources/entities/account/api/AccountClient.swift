@@ -143,6 +143,10 @@ struct AccountClient: Sendable {
     func publish(_ card: CardInput, _ session: TokenPair) async throws -> PublishedCard {
         try await send("cards", method: "POST", body: card, session: session, as: PublishedCard.self)
     }
+    /// 이 명함 지우기 (`DELETE /v1/cards/:id`, contract "명함·지갑"): the public link then answers 404; 204 on success.
+    func deleteCard(_ cardID: String, _ session: TokenPair) async throws {
+        _ = try await request("cards/\(cardID)", method: "DELETE", session: session)
+    }
     /// Your non-withdrawn cards in creation order, so the newest is last.
     func cards(_ session: TokenPair) async throws -> [PublishedCard] {
         try await send("cards", session: session, as: CardList.self).items

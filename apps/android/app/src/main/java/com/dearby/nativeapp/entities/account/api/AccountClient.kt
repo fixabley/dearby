@@ -124,6 +124,8 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun publish(name: String, description: String, template: String, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =
         send("POST", "cards", JSONObject().put("name", name).put("description", description).put("template", template)
             .put("contactIds", JSONArray(contactIds)).put("historyIds", JSONArray(historyIds)), session).toPublishedCard()
+    /** 이 명함 지우기 (`DELETE /v1/cards/:id`, contract "명함·지갑"): the public link then answers 404; 204 with no body. */
+    suspend fun deleteCard(id: String, session: AccountSession) { request("DELETE", "cards/$id", null, session) }
     /** Your non-withdrawn cards in creation order, so the newest is last. */
     suspend fun cards(session: AccountSession) = send("GET", "cards", null, session).toCardList()
     /** The account's received cards (`GET /v1/wallet`). */

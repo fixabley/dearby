@@ -13,5 +13,5 @@ import com.dearby.nativeapp.pages.cards.MyCardsPage
     val state by model.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     LaunchedEffect(Unit) { model.load() }
-    MyCardsPage(state, create, select = model::select, edit = { id -> model.card(id)?.let(edit) }, contact = { openContact(context, it) }, retry = model::load)
+    MyCardsPage(state, create, select = model::select, edit = { id -> model.card(id)?.let(edit) }, delete = model::delete, contact = { openContact(context, it) }, retry = model::load)
 }

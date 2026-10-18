@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-/// 내 명함 tab: the signed-in account's published cards. One is selected for viewing and "이 명함 고치기".
+/// 내 명함 tab: the signed-in account's published cards. One is selected for viewing, "이 명함 고치기" and "이 명함 지우기".
 @MainActor @Observable final class MyCardsModel {
     enum Phase: Equatable { case signedOut, noCard, loading, loaded, failed }
     private(set) var phase = Phase.loading
@@ -31,4 +31,13 @@ import Observation
         phase = .loaded
     }
     func select(_ cardID: String) { selectedCardID = cardID }
+    /// 이 명함 지우기: `DELETE /v1/cards/:id`, after which the public link stops working. False when the server or network refused;
+    /// the card then stays in the list.
+    func delete(_ cardID: String) async -> Bool {
+        do { _ = try await account.authorized { [client = account.client] in try await client.deleteCard(cardID, $0) } } catch { return false }
+        cards.removeAll { $0.id == cardID }
+        if selectedCardID == cardID { selectedCardID = cards.last?.id }
+        if cards.isEmpty { phase = .noCard }
+        return true
+    }
 }
