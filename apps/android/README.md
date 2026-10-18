@@ -34,12 +34,12 @@ HTTP/Repository/Room/Keystore/기기 캘린더/WebView·인증 실행 코드와 
 - 환경값 `DEARBY_API_ORIGIN`(없으면 같은 이름의 Gradle 속성 `-P`)이 `BuildConfig.API_ORIGIN`으로 들어간다. `DEARBY_WEB_ORIGIN`·`WEB_ORIGIN`·`dearbyWebHost`는 공유 링크 전용이었고 2026-10-18 명함 공유 삭제와 함께 없앴다.
 - release: 빌드가 실제로 돌 때(`preReleaseBuild`)만 값이 `https://<도메인>`(IP·포트·경로·대문자 없음)인지 검사하고, 아니면 실패한다. debug 빌드·단위 테스트·Studio sync에는 영향이 없다.
 - debug: 값이 없으면 에뮬레이터 호스트의 `http://10.0.2.2:3000`을 쓴다.
-- App Links(`/s/*`)와 `shared/config/AppLinks.kt`의 공유 링크 해석은 없다. `AppLinks.kt`에는 애플 로그인 복귀(`dearby://auth/apple`) 해석만 남는다.
+- App Links(`/s/*`)와 `shared/config/AppLinks.kt`의 공유 링크 해석은 없다. `AppLinks.kt`에는 애플·구글 로그인 복귀(`dearby://auth/<apple|google>`, `authRedirect`) 해석만 남는다.
 
 ## 시작 화면 (2026-10-14)
 
 - 스플래시: 실행할 때마다 AndroidX SplashScreen(`Theme.Dearby.Starting`)이 흰 배경에 로고(`drawable/splash_logo.xml`, `dearby_logo` 워드마크를 원형 마스크 안에 맞춤)를 보여 주고 바로 `Theme.Dearby`로 넘어간다. 인위적인 지연은 없다.
-- 첫 실행 소개: 새 저장소 `dearby.onboarding`의 `dearby.onboarding.shown`이 없으면 `pages/onboarding/IntroPage`(로고, "패스키로 시작하기", "Apple로 계속하기", "둘러보기")를 띄운다. "패스키로 시작하기"는 기존 로그인 시트(`SignInSheet`·`AccountViewModel`)를 연다. 로그인에 성공하거나 "둘러보기"를 누르면 값을 남기고 탭 화면으로 간다. 시트를 닫거나 실패하면 소개 화면에 남는다. 이미 토큰이 있으면 소개 없이 값만 남긴다. 로그인 없이도 앱을 쓸 수 있다.
+- 첫 실행 소개: 새 저장소 `dearby.onboarding`의 `dearby.onboarding.shown`이 없으면 `pages/onboarding/IntroPage`(로고, "패스키로 시작하기", "Apple로 계속하기", "Google로 계속하기", "둘러보기")를 띄운다. "패스키로 시작하기"는 기존 로그인 시트(`SignInSheet`·`AccountViewModel`)를 연다. 로그인에 성공하거나 "둘러보기"를 누르면 값을 남기고 탭 화면으로 간다. 시트를 닫거나 실패하면 소개 화면에 남는다. 이미 토큰이 있으면 소개 없이 값만 남긴다. 로그인 없이도 앱을 쓸 수 있다.
 
 ## 패스키 로그인 (2026-10-10)
 
@@ -56,12 +56,20 @@ HTTP/Repository/Room/Keystore/기기 캘린더/WebView·인증 실행 코드와 
 계약 [native-v1 "애플 로그인"](../../shared/contracts/native-v1.md)의 웹 방식을 따른다. 패스키와 함께 고를 수 있다.
 
 - 버튼: 로그인 시트(`SignInSheet`, 화면마다 `app/SignInRoute`로 연다)와 첫 실행 소개에 검은 "Apple로 계속하기"(`shared/ui/AppleSignInButton`). 저장소에 애플 로고 자산이 없어 글자만 둔다.
-- 시작: `features/apple/AppleVerifier`가 32바이트 무작위 verifier(base64url, 43자)와 SHA-256 해시를 만든다 → `/v1/auth/apple/web/start` → 받은 https `authorizeUrl`을 Custom Tab(`androidx.browser`)으로 연다. 탭을 연 뒤에는 기다리지 않으므로 사용자가 탭을 닫아도 시트가 멈추지 않는다. 503이면 "지금은 애플 로그인을 쓸 수 없어요."
+- 시작: `features/oauth/OAuthVerifier`가 32바이트 무작위 verifier(base64url, 43자)와 SHA-256 해시를 만든다 → `/v1/auth/apple/web/start` → 받은 https `authorizeUrl`을 Custom Tab(`androidx.browser`)으로 연다. 탭을 연 뒤에는 기다리지 않으므로 사용자가 탭을 닫아도 시트가 멈추지 않는다. 503이면 "지금은 애플 로그인을 쓸 수 없어요."
 - verifier 보존: `AccountViewModel`의 `SavedStateHandle`에 둔다(로그에 남기지 않는다). 회전·프로세스 종료 뒤 복원에도 남고, 결과 링크를 받으면 무엇이 오든 지운다(한 번만 쓴다).
-- 돌아오기: `MainActivity`(`launchMode="singleTask"`)의 `dearby://auth/apple` intent filter. 같은 인스턴스가 `onNewIntent`로 받고 위의 Custom Tab이 닫힌다. `shared/config/AppLinks.appleRedirect`는 `?code=<UUID>` 하나 또는 `?error=cancelled|failed`만 받고 나머지는 버린다. 재생성된 Activity가 같은 시작 intent를 다시 받으면 처리하지 않는다.
-- 자동 연결(2026-10-17 사용자 결정): 202 직후 `AppleAccountRoute`가 먼저 `AccountViewModel.autoLinkApple`을 한 번 실행한다. `Passkeys.get`은 `setPreferImmediatelyAvailableCredentials(true)`라 이 기기(비밀번호 관리자)의 Dearby 패스키만 묻는다. 있으면 생체 인증 한 번으로 로그인·연결, `NoCredentialException`이면 묻지 않고 바로 `/v1/auth/apple/register`로 새 계정을 만든다. 사용자가 패스키 프롬프트를 닫으면(null) 그때만 아래 선택 화면을 띄운다(`AccountState.appleAuto`).
-- 교환: `/v1/auth/apple/web/exchange` 200은 패스키와 같은 TokenPair로 `SessionVault`에 저장한다. 202는 `MainActivity`가 모든 화면 위에 `AppleAccountSheet`("새 계정으로 시작" → `/v1/auth/apple/register`, "기존 패스키 계정에 연결" → 패스키 로그인 뒤 그 토큰으로 `/v1/me/identities/apple`)를 띄운다. linkToken도 `SavedStateHandle`에 두고 선택·닫기에서 지운다. 연결이 실패하면 iOS와 같이 패스키 토큰을 저장하지 않고 `/v1/auth/logout`을 시도한 뒤 로그인하지 않은 상태로 안내한다: 401 "애플 로그인 시간이 지났어요. 애플로 다시 시작해 주세요."·400 "이미 다른 계정과 연결돼 있어서 연결하지 못했어요."(둘 다 선택 화면을 닫는다, 400은 `AccountError.BAD_REQUEST`), 503·네트워크 "지금은 애플 로그인을 쓸 수 없어요."(선택 화면 유지). 401·`error=failed`는 다시 시도 안내, `error=cancelled`는 안내 없음.
+- 돌아오기: `MainActivity`(`launchMode="singleTask"`)의 `dearby://auth/apple` intent filter. 같은 인스턴스가 `onNewIntent`로 받고 위의 Custom Tab이 닫힌다. `shared/config/AppLinks.authRedirect`는 `?code=<UUID>` 하나 또는 `?error=cancelled|failed`만 받고 나머지는 버린다. 재생성된 Activity가 같은 시작 intent를 다시 받으면 처리하지 않는다.
+- 자동 연결(2026-10-17 사용자 결정): 202 직후 `PendingAccountRoute`가 먼저 `AccountViewModel.autoLinkPending`을 한 번 실행한다. `Passkeys.get`은 `setPreferImmediatelyAvailableCredentials(true)`라 이 기기(비밀번호 관리자)의 Dearby 패스키만 묻는다. 있으면 생체 인증 한 번으로 로그인·연결, `NoCredentialException`이면 묻지 않고 바로 `/v1/auth/apple/register`로 새 계정을 만든다. 사용자가 패스키 프롬프트를 닫으면(null) 그때만 아래 선택 화면을 띄운다(`AccountState.pending.auto`).
+- 교환: `/v1/auth/apple/web/exchange` 200은 패스키와 같은 TokenPair로 `SessionVault`에 저장한다. 202는 `MainActivity`가 모든 화면 위에 `LinkAccountSheet`("새 계정으로 시작" → `/v1/auth/apple/register`, "기존 패스키 계정에 연결" → 패스키 로그인 뒤 그 토큰으로 `/v1/me/identities/apple`)를 띄운다. linkToken도 `SavedStateHandle`에 두고 선택·닫기에서 지운다. 연결이 실패하면 iOS와 같이 패스키 토큰을 저장하지 않고 `/v1/auth/logout`을 시도한 뒤 로그인하지 않은 상태로 안내한다: 401 "애플 로그인 시간이 지났어요. 애플로 다시 시작해 주세요."·400 "이미 다른 계정과 연결돼 있어서 연결하지 못했어요."(둘 다 선택 화면을 닫는다, 400은 `AccountError.BAD_REQUEST`), 503·네트워크 "지금은 애플 로그인을 쓸 수 없어요."(선택 화면 유지). 401·`error=failed`는 다시 시도 안내, `error=cancelled`는 안내 없음.
 - 실제 로그인은 서버의 Services ID·Return URL(`APPLE_CLIENT_IDS`)이 있어야 확인할 수 있다.
+
+## 구글 로그인 (2026-10-18)
+
+계약 [native-v1 "구글 로그인"](../../shared/contracts/native-v1.md)을 따른다. 애플의 Android 웹 방식과 같은 코드를 쓴다(`features/oauth/OAuthVerifier`·`OAuthBrowser`, `AccountViewModel.startWeb(AuthProvider.GOOGLE, …)`, `/v1/auth/google/web/start` → Custom Tab → `dearby://auth/google` → `/v1/auth/google/web/exchange`). SDK는 없다.
+
+- 버튼: 로그인 시트와 첫 실행 소개의 애플 버튼 아래 흰 "Google로 계속하기"(`shared/ui/DearbyGoogleButton`, 회색 테두리). 공식 "G" 로고 자산이 아직 없어 굵은 G 글자로 대신한다. 빌드 플래그는 없고, 서버가 `web/start`에 503을 돌려주면(`GOOGLE_CLIENT_ID` 미설정) `AccountState.googleAvailable`이 false가 되어 버튼을 숨긴다.
+- 202(처음 보는 구글 계정)·연결·새 계정은 애플과 같은 `PendingAccountRoute`·`LinkAccountSheet`(제목 "처음 보는 Google 계정이에요")를 쓴다. `SavedStateHandle` 키 `web.provider`로 어느 제공자인지 기억한다. 다른 제공자의 code가 돌아오면 버린다.
+- 실제 로그인은 서버의 `GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`·`GOOGLE_CALLBACK_URL`이 있어야 확인할 수 있다.
 
 ### 도메인 연결 (`wid.io.kr`)
 

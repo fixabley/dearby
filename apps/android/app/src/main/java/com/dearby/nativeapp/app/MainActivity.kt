@@ -21,7 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.dearby.nativeapp.BuildConfig
-import com.dearby.nativeapp.shared.config.appleRedirect
+import com.dearby.nativeapp.shared.config.authRedirect
 import com.dearby.nativeapp.shared.ui.DearbyTheme
 
 class MainActivity : ComponentActivity() {
@@ -53,13 +53,13 @@ class MainActivity : ComponentActivity() {
         if (BuildConfig.DEBUG && ApiOrigin.current.startsWith("http://10.0.2.2")) {
             Log.w("Dearby", "Debug build uses the local API fallback ${ApiOrigin.current}; set DEARBY_API_ORIGIN when building to use another API.")
         }
-        // A recreated Activity gets its launch intent again; Apple's code is single-use and was handled the first time.
+        // A recreated Activity gets its launch intent again; the provider's code is single-use and was handled the first time.
         receive(intent, recreated = savedInstanceState != null)
         setContent {
             DearbyTheme {
                 if (intro) IntroRoute(account, ::introShown)
                 else DearbyApp(activityModel, account, publish, myCards, wallet, profile)
-                AppleAccountRoute(account)
+                PendingAccountRoute(account)
             }
         }
     }
@@ -67,9 +67,9 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         receive(intent)
     }
-    /** Apple's `dearby://auth/apple` redirect (singleTask brings this instance back over the Custom Tab). */
+    /** Apple's or Google's `dearby://auth/<provider>` redirect (singleTask brings this instance back over the Custom Tab). */
     private fun receive(intent: Intent?, recreated: Boolean = false) {
         val link = intent?.dataString ?: return
-        appleRedirect(link)?.let { if (!recreated) account.appleReturned(it) }
+        authRedirect(link)?.let { if (!recreated) account.returned(it) }
     }
 }

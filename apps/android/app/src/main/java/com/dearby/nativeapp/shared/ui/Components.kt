@@ -54,6 +54,17 @@ private val DearbyTypography = Typography(headlineMedium = TextStyle(fontSize = 
 /** Sign in with Apple: black, same size as the other sign-in buttons. No Apple logo asset is in the repo, so the label is text only. */
 @Composable fun AppleSignInButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) = Button(onClick, modifier.heightIn(min = 50.dp),
     enabled = enabled, shape = RoundedCornerShape(11.dp), colors = ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)) { Text("Apple로 계속하기") }
+/**
+ * Sign in with Google (contract "구글 로그인"): white, Line border, same size as the other sign-in buttons. The official "G" logo asset is
+ * not in the repo yet (to be placed under shared/assets/prototype), so a bold "G" stands in for it.
+ */
+@Composable fun DearbyGoogleButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) = OutlinedButton(onClick, modifier.heightIn(min = 50.dp),
+    enabled = enabled, shape = RoundedCornerShape(11.dp), colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White, contentColor = MaterialTheme.colorScheme.onSurface),
+    border = androidx.compose.foundation.BorderStroke(1.dp, Line)) {
+    Text("G", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+    Spacer(Modifier.width(8.dp))
+    Text("Google로 계속하기")
+}
 
 @Composable fun ScreenHeader(title: String, back: (() -> Unit)? = null, actions: @Composable RowScope.() -> Unit = {}) {
     Box(Modifier.fillMaxWidth().heightIn(min = 52.dp)) {

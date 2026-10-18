@@ -1,14 +1,14 @@
-package com.dearby.nativeapp.features.apple
+package com.dearby.nativeapp.features.oauth
 
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
 
 /**
- * Apple web-flow proof (contract "애플 로그인", Android): only the hash goes to `web/start`, and only this app, holding the
- * verifier, can exchange the code Apple's redirect carries. Plain JVM so it can be checked without a device.
+ * Web-flow proof shared by Apple and Google sign-in (contract "애플 로그인"·"구글 로그인", Android): only the hash goes to
+ * `web/start`, and only this app, holding the verifier, can exchange the code the provider's redirect carries. Plain JVM.
  */
-object AppleVerifier {
+object OAuthVerifier {
     private val encoder = Base64.getUrlEncoder().withoutPadding()
 
     /** 32 random bytes as base64url without padding: 43 characters. */
