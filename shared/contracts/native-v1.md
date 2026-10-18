@@ -338,3 +338,26 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
   - 한 항목만으로 목록·상세를 그릴 수 있어 기관·프로그램을 따로 조회하지 않는다.
   - `application`(모집 기간, 없으면 null), `activitySchedule`(활동 기간·날짜 문구), `schedules[]`(개별 일정)는 Schedule이다.
 - Schedule: `{id, title, kind, status, startAt, endAt, timeZone, startDate, endDateExclusive, dateLabel, address, conferenceUrl}`. 시각 일정은 `startAt`·`endAt` 중 하나 이상과 `timeZone`이 있고, 시각은 그 시간대 오프셋으로 표기한다(예: `2026-10-08T00:00:00+09:00`). 종일 일정은 `startDate`·`endDateExclusive`. 날짜 미정은 모두 null이고 `dateLabel`만 있다.
+
+## 발견 프로그램 묶음 — 2026-10-18 사용자 결정
+
+사용자 제안: 발견 탭을 활동 카드 목록 대신 **프로그램 단위**로 보여 주고, 누르면 아코디언처럼 펼쳐져 지금 열린 활동이 보이게 한다. 세부 규칙은 메인 제안을 사용자가 그대로 승인했다. iOS·Android·웹 발견 화면에 함께 적용하며 활동 상세와 `내 활동`은 바뀌지 않는다.
+
+### 규칙
+
+- **열린 활동**: 기존 발견 노출 규칙과 같다(게시된 활동, 모집 중, 마감 전. 모집 상태는 모집 기간으로 추론). 열린 활동이 하나도 없는 프로그램은 목록에 나오지 않는다.
+- **머리글**: 프로그램 이름, 조직 이름, 열린 활동 수, 가장 가까운 모집 마감(`M월 d일 (요일) 마감`, 없으면 생략). 정렬은 가장 가까운 마감이 이른 순, 마감 없는 프로그램은 뒤, 같으면 이름순.
+- **펼침**: 머리글을 누르면 그 프로그램의 열린 활동을 기존 활동 카드로 보인다. 기본은 접힘이며, 열린 활동이 1개인 프로그램과 검색어가 활동 이름에 맞은 프로그램은 펼친 채로 시작한다. 펼침 상태는 앱 실행 중 메모리에만 둔다. 동작 줄이기에서는 애니메이션 없이 바뀐다. 머리글은 접근성에서 `펼침`/`접힘` 상태를 가진 버튼으로 읽힌다.
+- **검색**: 검색어는 프로그램 이름·영문 이름, 조직 이름, 열린 활동 이름에 부분 일치(대소문자 무시). 활동 이름으로만 맞은 프로그램도 목록에 나온다.
+- **유형(참가등록·선발)**: 2026-10-18 현재 세 플랫폼의 발견 화면에는 유형 칩이 없다(활동 모델에 `participationType`도 없다). API의 `participationType` 필터는 칩을 다시 넣을 때 쓰도록 둔다. 칩이 생기면 펼친 활동과 열린 활동 수에 함께 적용하고 맞는 활동이 없는 프로그램은 숨긴다.
+
+### API
+
+| 메서드·경로 | 인증 | query | 응답 |
+| --- | --- | --- | --- |
+| GET /v1/discovery/programs | 없음 | `q?`(≤100자), `participationType?`(REGISTRATION\|SELECTION), `cursor?`(정수 오프셋, 기본 0), `size?`(1–100, 기본 20) | 200 `{items: ProgramSummary[], nextCursor: number\|null}` |
+
+- 경로가 `/v1/programs`가 아닌 이유: `/v1/programs`는 이력 선택 창의 활동 정보 검색(로그인)이 이미 쓴다. `nextCursor`는 정렬 결과의 정수 오프셋이다(활동 조회의 id 커서와 다르다).
+- ProgramSummary: `{id, name, nameEn: string|null, organization: {id, name}, openActivityCount, nearestRecruitmentEndAt: ISO-8601(UTC)|null, matchedActivityIds: number[]}`. 열린 활동 판정은 서버가 처음으로 가진다: 게시된 활동의 APPLICATION 시각 일정이 `start_at ≤ now`(없으면 열림)이고 `end_at > now`(없으면 열림). 웹·iOS가 쓰던 클라이언트 규칙과 같다. `openActivityCount`는 위 규칙(과 `participationType`)에 맞는 열린 활동 수이고 1 이상인 프로그램만 돌려준다. `nearestRecruitmentEndAt`은 그 활동들 중 가장 이른 모집 마감(없으면 null). `matchedActivityIds`는 `q`가 활동 이름에 맞은 열린 활동 id(없으면 빈 배열).
+- 펼칠 때는 기존 `GET /v1/activities?programId=<id>`를 쓰고, 클라이언트는 열린 활동만 남긴다.
+- `Cache-Control: no-store`·오류 형식은 활동 조회와 같다.
