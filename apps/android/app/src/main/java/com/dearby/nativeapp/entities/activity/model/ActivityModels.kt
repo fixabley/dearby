@@ -15,6 +15,8 @@ data class ActivityModel(
     val id: String, val name: String, val description: String, val organization: String, val program: String,
     val officialUrl: String, val imageUrl: String?, val application: ApplicationWindow?,
     val dateLabel: String, val address: String?, val schedules: List<ScheduleModel>,
+    /** 대상자 조건; null when the activity has none or the JSON could not be read. */
+    val eligibility: EligibilityGroup? = null,
 ) {
     /**
      * 2026-10-14 rule: only `application` against [now]. No application or no times, or a time that cannot be

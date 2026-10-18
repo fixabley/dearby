@@ -26,7 +26,7 @@ API = {
     'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletCardPage', 'filterWallet'},
     'features.calendar': {'CalendarConflictSheet'},
     'pages.activity': {'ActivityListPage', 'ActivityListPhase', 'MyActivitiesPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'ActivityListState', 'ProgramState', 'ProgramPhase', 'ProgramActivities'},
-    'entities.activity': {'model.ActivityModel', 'model.ActivityPage', 'model.ScheduleModel', 'model.ProgramSummary', 'model.ProgramPage', 'model.instant', 'model.safeHttpsUrl', 'api.fetchActivities', 'api.fetchPrograms'},
+    'entities.activity': {'model.ActivityModel', 'model.ActivityPage', 'model.ScheduleModel', 'model.ProgramSummary', 'model.ProgramPage', 'model.EligibilityItem', 'model.EligibilityGroup', 'model.EligibilityCondition', 'model.lines', 'model.instant', 'model.safeHttpsUrl', 'api.fetchActivities', 'api.fetchPrograms'},
     'entities.account': {'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.ProfileJob', 'model.AccountProfile', 'model.PublishedCard', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault', 'model.WebSignIn', 'model.ContactRules', 'model.ActivityInfoRef', 'model.ActivityInfoItem', 'model.ActivityInfoPage', 'model.EvidenceMeta', 'model.ProfileVersionSummary', 'model.ProfileVersionList', 'model.ProfileVersionDetail'},
 }
 

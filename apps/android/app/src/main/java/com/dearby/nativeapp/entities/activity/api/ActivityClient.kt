@@ -1,6 +1,8 @@
 package com.dearby.nativeapp.entities.activity.api
 
 import com.dearby.nativeapp.entities.activity.model.ActivityModel
+import com.dearby.nativeapp.entities.activity.model.EligibilityCondition
+import com.dearby.nativeapp.entities.activity.model.EligibilityGroup
 import com.dearby.nativeapp.entities.activity.model.ActivityPage
 import com.dearby.nativeapp.entities.activity.model.ApplicationWindow
 import com.dearby.nativeapp.entities.activity.model.ProgramPage
@@ -71,8 +73,24 @@ fun parseActivities(json: String): ActivityPage {
                 if (start == null || end == null) null
                 else ScheduleModel(schedule.getString("title"), start, end, schedule.text("timeZone") ?: "Asia/Seoul")
             },
+            // An unreadable eligibility never fails the activity.
+            activity.optJSONObject("eligibility")?.let { runCatching { it.eligibilityGroup(0) }.getOrNull() },
         )
     }, body.text("nextCursor"))
+}
+
+/** Contract "대상자 조건": camelCase keys (`field`, `fieldEn`, `from`, `to`, `values`, `valuesEn`, `note`, `noteEn`), groups nest at most 3 deep; anything deeper or malformed is dropped. */
+private fun JSONObject.eligibilityGroup(depth: Int): EligibilityGroup? {
+    if (depth > 2 || !has("items")) return null
+    val items = getJSONArray("items").objects().mapNotNull { item ->
+        if (item.has("items")) item.eligibilityGroup(depth + 1)
+        else EligibilityCondition(
+            item.getString("field"), item.optString("fieldEn"),
+            if (item.isNull("from")) null else item.getDouble("from"), if (item.isNull("to")) null else item.getDouble("to"),
+            item.optJSONArray("values")?.let { array -> List(array.length()) { array.getString(it) } } ?: emptyList(), item.text("note"),
+        )
+    }
+    return EligibilityGroup(if (optString("op") == "any") "any" else "all", items)
 }
 
 fun parsePrograms(json: String): ProgramPage {
