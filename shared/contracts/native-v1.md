@@ -234,12 +234,12 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 | 메서드·경로 | 인증 | 요청 | 응답 |
 | --- | --- | --- | --- |
 | GET /v1/cards | Bearer | — | 200 `{items: Card[]}` 철회 안 한 내 명함, 만든 순 |
-| POST /v1/cards | Bearer | `{name, description, template, contactIds[], historyIds[]}` | 201 Card. 내 프로필의 id가 아니거나 `approval`이 `approved`가 아닌 이력이면 400 |
+| POST /v1/cards | Bearer | `{name, description, template, webTemplate?, contactIds[], historyIds[]}` | 201 Card. 내 프로필의 id가 아니거나 `approval`이 `approved`가 아닌 이력이면 400. `webTemplate`은 2026-10-18 "웹 버전"(아래 템플릿 절) |
 | GET /v1/cards/:id | 없음 | — | 200 Card. 없거나 철회면 404 |
 | DELETE /v1/cards/:id | Bearer(소유자) | — | 204 철회. 남의 것 403 |
 | GET /v1/wallet | Bearer | — | 200 `{items: Receipt[]}` (2026-10-18부터 `shares` 없음) |
 
-- Card: `{id, ownerId, name, description, template, introduction, profileName, job, contacts: Contact[], histories: History[], createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `template`은 발행할 때 보낸 마크다운 템플릿, `introduction`은 그것을 **채운 결과**(공개 본문)다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`)에는 `template`을 싣지 않는다.
+- Card: `{id, ownerId, name, description, template, introduction, webTemplate?, webIntroduction?, profileName, job, contacts: Contact[], histories: History[], createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `template`은 발행할 때 보낸 마크다운 템플릿, `introduction`은 그것을 **채운 결과**(공개 본문)다. `webTemplate`·`webIntroduction`은 2026-10-18 추가한 선택 웹 버전이며 없으면 응답에서 생략한다(아래 "웹 버전"). 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`)에는 `template`·`webTemplate`을 싣지 않는다.
 - Receipt: `{id, card, context: {activityId: null, label: null}, receivedAt, reciprocal: false}`. 2026-10-18 공유 삭제 뒤 새 Receipt를 만드는 경로는 없다.
 - 웹 비로그인 저장(`/v1/guest/*`, 홈 화면 세션 잇기)은 2026-10-17 Kotlin API에 다시 구현했다(위 "웹 비로그인 명함 저장"·"홈 화면 세션 잇기" 계약 그대로. 게스트 공유 정보 저장은 2026-10-18 삭제). 오류 본문은 다른 경로와 같은 ProblemDetail이며 웹 프록시는 상태 코드만 옮긴다(401 `GUEST_SESSION_INVALID`, 그 외 `REQUEST_FAILED`). API의 `GUEST_PROXY_SECRET`이 비어 있으면 `/v1/guest/*`만 503이다.
 - 아직 없는 것: `POST /v1/wallet/import`, `POST /v1/exchanges`. 앱이 쓰지 않아 만들지 않는다.
@@ -253,6 +253,15 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 - 마크다운 부분집합: 제목(#~###), 굵게, 기울임, 목록, 번호 목록, 링크, 줄바꿈. 원시 HTML은 허용하지 않고 글자로 보여 준다. 링크는 `https`·`mailto`·`tel`만. 서버는 `template`·`introduction` 10,000자, 제어 문자(줄바꿈·탭 제외)를 막는다.
 - 앱 편집: 명함 제작 화면에서 내용이 바뀌면 수정 모드로 들어가 "저장"(발행)·"원래대로"(기기 안에서 되돌림)를 보여 준다. 프로필 데이터 화면도 같은 방식이며, 프로필의 서버 버전 되돌리기는 위 `restore`다.
 - 새 명함의 템플릿 기본값은 앱에 내장한다(이름·직무·소개·연락처 토큰이 들어간 기본 템플릿).
+
+#### 웹 버전 — 2026-10-18 사용자 결정
+
+사용자 결정: 명함 본문을 모바일·웹 두 **내용 버전**으로 나눌 수 있게 한다(프레이머 브레이크포인트처럼 폭별 레이아웃을 바꾸는 것이 아니라 같은 마크다운 템플릿을 폭별로 따로 쓰는 것이다. 레이아웃 모델은 만들지 않는다). 웹 버전을 따로 쓰지 않은 명함은 넓은 화면에서도 모바일 버전을 그대로 보인다.
+
+- 모델: 기존 `template`·`introduction`이 **모바일 버전**(기본)이다. `webTemplate`(마크다운, 선택)과 서버가 채운 `webIntroduction`을 더한다. 둘은 함께 있거나 함께 없다. 발행 요청의 `webTemplate`이 없거나 비어 있으면 웹 버전이 없는 명함이다.
+- 서버: `webTemplate`도 `template`과 같은 규칙(10,000자, 제어 문자 금지, 같은 토큰, 발행 시 채움, 같은 선택 연락처)으로 검사·채운다. 템플릿이 가리키는 연락처는 두 템플릿의 합집합을 공개 연락처로 본다. 응답은 `introduction`을 싣는 모든 곳(소유자 목록·발행 응답·공개 조회·지갑 Receipt의 card)에 `webIntroduction`을, `template`을 싣는 곳(소유자)에만 `webTemplate`을 넣고, 없으면 두 필드를 생략한다. DB는 `business_cards`에 `web_template`·`web_introduction`(nullable) 열을 더한다(V20). 기존 명함은 바뀌지 않는다.
+- 웹: `/cards/:id`와 `/saved` 상세는 뷰포트 폭이 640px를 넘으면 `webIntroduction`, 그 이하이거나 `webIntroduction`이 없으면 `introduction`을 보인다. 두 본문을 모두 렌더링하고 CSS 미디어 쿼리로 하나만 보이는 방식이며 JS로 폭을 재지 않는다. 숨긴 쪽은 접근성 트리에서도 빠진다(`display: none`).
+- 앱: iOS·Android는 항상 모바일 버전(`introduction`)을 보인다. 명함 제작 화면에 `웹 버전 따로 쓰기` 스위치(기본 꺼짐, 고치는 명함에 `webTemplate`이 있으면 켜짐)를 두고, 켜면 편집기 위에 `모바일 | 웹` 전환(플랫폼 기본 세그먼트 컨트롤)으로 어느 템플릿을 고치는지 고른다. 켤 때 웹 템플릿은 모바일 템플릿을 복사해 시작하고, 끄면 웹 템플릿을 버린다(`원래대로`로 되돌릴 수 있다). 토큰 삽입·미리보기는 지금 고치는 버전에 적용한다. 발행 요청에는 스위치가 켜져 있고 비어 있지 않을 때만 `webTemplate`을 넣는다.
 
 ### 관리자 (admin-v1.md에도 기록)
 

@@ -14,6 +14,10 @@
 - **테스트:** API 기존 테스트에서 공유 단계를 뺐다(CardFlowTest 2개는 철회·지갑 목록 검증으로 축소, GuestFlowTest·AccountDeletionFlowTest 공유 단계 삭제). 새 테스트 파일은 만들지 않았다.
 - Orca 세션·워크트리·브랜치(같은 날 사용자 요청): `main`·`admin-agent`·`ux-research`·`api-agent` 워크트리의 터미널 4개를 닫고, `.claude/worktrees/` 아래 완료 워크트리 16개를 제거했다(모두 미커밋·미푸시 변경 없음). 브랜치는 병합된 로컬 129개·원격 14개, 원격 사본이 있는 로컬 10개, 로컬 전용 미병합 7개, PR 없는 미병합 원격 6개, 열린 PR #158·#169·#170의 브랜치 3개를 지웠다(PR은 브랜치 삭제로 닫힘). 남은 브랜치는 `main`과 `chore/drop-share-tables`(PR #235)뿐이다(`chore/remove-card-sharing`은 병합 후 삭제). 지운 미병합 브랜치의 마지막 커밋: feat/capstone-presentation `e9e36ca6`, feat/discovery-admin `ce856b07`, feat/ios-design-simplification `086fd94d`, fixabley/catalog-subscription-collector `d7e5da7b`, fixabley/dearby-android-design-simplification `da438461`, fixabley/ui-agent `ed7b272b`, ui/calendar-overlap `8beacff3`, ui/identity-avatar-order `8d648e95`, feat/mobile-device-calendar `a88c3c02`, feat/android-activities `c8cf82a1`, feat/ios-activities `10cd5dba`, fixabley/dearby-android `6ccf46fa`, fixabley/dearby-api `88f88950`, fixabley/dearby-ios `6f090faa`, fixabley/dearby-ios-architecture-tests `ee9c4e09`, ui/pretendard-flow-screens `31b52dea`(로컬 reflog·GitHub GC 전까지만 복구 가능). 루트 워크스페이스의 `supabase/`(로컬 CLI 상태 포함)와 `~/.supabase`도 지웠다.
 
+## 2026-10-18 결정 — 명함 웹 버전
+
+사용자 요청 "명함 제작할 때 모바일 사이즈와 웹 사이즈 버전을 따로, 프레이머 브레이크포인트처럼". 검토 결과 마크다운 템플릿에는 레이아웃이 없어 폭별 레이아웃 브레이크포인트는 불가능하고, 사용자가 **내용 버전 2개**(모바일 기본 + 선택 웹) 안을 골랐다. 웹 버전이 없는 명함은 넓은 화면에서도 모바일 버전을 그대로 보인다. 계약은 [native-v1 "웹 버전"](../../shared/contracts/native-v1.md#웹-버전--2026-10-18-사용자-결정). 구현: API `webTemplate`·`webIntroduction`(V20 열 2개), 웹 `/cards/:id` 640px 초과에서 웹 버전(CSS만), iOS·Android 명함 제작의 `웹 버전 따로 쓰기` 스위치와 `모바일 | 웹` 세그먼트(플랫폼 기본 컨트롤). 앱은 항상 모바일 버전을 보인다.
+
 ## 통합된 작업
 
 - 2026-10-17(2): 직무(#230 서버 V18·시드 11/56개, 운영 `2a061187`; #231 어드민 웹 "직무" 메뉴 배포) · 첫 프로필 아코디언 퍼널·탭바 숨김·직무 태그(#232, TestFlight) · Supabase 마이그레이션 CI job 제거와 main 필수 체크 변경(#229). 사용자 결정: 직무 직접 입력 + 관리자 승인, 시작 분류 시드. NFC 공유는 보류(QR 유지).
