@@ -1,6 +1,7 @@
 package io.wid.dearby.batch.application
 
 import io.wid.dearby.domain.ParticipationType
+import io.wid.dearby.domain.ScheduleKind
 import io.wid.dearby.domain.collection.CollectedActivity
 import io.wid.dearby.domain.collection.CollectedSchedule
 import java.time.OffsetDateTime
@@ -39,7 +40,7 @@ object ActivityVerifier {
                     val scheduleStart = parse(schedule.startAt)
                     val scheduleEnd = parse(schedule.endAt)
                     if (scheduleStart != null && scheduleEnd != null && scheduleEnd.isBefore(scheduleStart)) null
-                    else CollectedSchedule(schedule.title.trim(), scheduleStart, scheduleEnd, schedule.dateLabel.trim())
+                    else CollectedSchedule(schedule.title.trim(), kind(schedule.kind), scheduleStart, scheduleEnd, schedule.dateLabel.trim())
                 },
                 location = candidate.location?.trim()?.ifEmpty { null },
                 cost = candidate.cost?.trim()?.ifEmpty { null },
@@ -49,6 +50,9 @@ object ActivityVerifier {
             )
         )
     }
+
+    // 모델이 준 일정 종류. 모르거나 어긋나면 행사(EVENT)로 본다
+    private fun kind(value: String?): ScheduleKind = ScheduleKind.entries.firstOrNull { it.name.equals(value?.trim(), ignoreCase = true) } ?: ScheduleKind.EVENT
 
     // 공백·마크다운 기호 차이는 무시한다
     private fun normalize(text: String) = text.replace(Regex("[*_`#>]"), "").replace(Regex("\\s+"), " ").trim()
