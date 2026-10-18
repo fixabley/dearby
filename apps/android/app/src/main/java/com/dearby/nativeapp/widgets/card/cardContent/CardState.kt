@@ -8,4 +8,6 @@ data class CardState(
     /** [introduction] is the card body: the filled-in markdown template. */
     val description: String, val introduction: String,
     val contacts: List<ContactState>, val histories: List<CardHistoryState>,
+    /** 받은 명함 목록 칩: 가장 최근 승인 이력의 조직 이름(없으면 null). */
+    val organization: String? = null,
 )

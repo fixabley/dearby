@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dearby.nativeapp.entities.account.api.AccountError
 import com.dearby.nativeapp.entities.account.api.AccountException
+import com.dearby.nativeapp.entities.account.model.AccountHistory
 import com.dearby.nativeapp.entities.account.model.ContactRules
 import com.dearby.nativeapp.entities.account.model.PublishedCard
 import com.dearby.nativeapp.pages.wallet.WalletPhase
@@ -35,4 +36,7 @@ class WalletViewModel(private val account: AccountViewModel) : ViewModel() {
 
 fun PublishedCard.toState() = CardState(id, profileName, job, name, description, introduction,
     contacts.map { ContactState(it.id, it.kind, it.label, it.value) },
-    histories.map { CardHistoryState(it.id, it.chain.joinToString(" · "), it.roleTitle, ContactRules.period(it.startDate, it.endDate), it.isVerified) })
+    histories.map { CardHistoryState(it.id, it.chain.joinToString(" · "), it.roleTitle, ContactRules.period(it.startDate, it.endDate), it.isVerified) },
+    // 목록 칩용 소속: 승인된 이력 중 진행 중인 것, 그다음 시작일이 늦은 것(contract "받은 명함 목록 표시")
+    organization = histories.filter { it.isApproved }.sortedWith(compareBy<AccountHistory> { it.endDate != null }.thenByDescending { it.startDate })
+        .firstNotNullOfOrNull { it.organization?.name ?: it.organizationName }?.takeIf { it.isNotBlank() })
