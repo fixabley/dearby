@@ -64,7 +64,7 @@ OTP 코드는 응답에서 반환하지 않는다. 개발용 메일 수신기는
 
 | 메서드·경로 | 성공 응답 | 의미 |
 | --- | --- | --- |
-| GET /v1/guest/cards | 200 `{items: Card[]}` | 자기 세션의 미철회 공개 명함 목록 |
+| GET /v1/guest/cards | 200 `{items: GuestItem[]}` | 자기 세션의 미철회·미회수 공개 명함 목록(2026-10-19부터 GuestItem, 아래 "명함 교환") |
 | PUT /v1/guest/cards/:id | 무토큰 첫 저장 201 `{cardId,status:"saved",guestToken}` | path UUID·DB존재·미철회 확인 후 세션과 저장을 원자 생성 |
 | PUT /v1/guest/cards/:id | 기존 토큰 200 `{cardId,status:"saved"\|"alreadySaved"}` | 중복 없이 저장, 토큰/세션 재생성 없음 |
 | DELETE /v1/guest/cards/:id | 204 | 자기 참조만 제거; 이미 제거·철회된 ID도 멱등 처리 |
@@ -238,10 +238,10 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 | POST /v1/cards | Bearer | `{name, description, template, contactIds[], historyIds[]}` | 201 Card. 내 프로필의 id가 아니거나 `approval`이 `approved`가 아닌 이력이면 400. `template`은 앱 내장 기본 템플릿(아래 "템플릿") |
 | GET /v1/cards/:id | 없음 | — | 200 Card. 없거나 철회면 404 |
 | DELETE /v1/cards/:id | Bearer(소유자) | — | 204 철회. 남의 것 403 |
-| GET /v1/wallet | Bearer | — | 200 `{items: Receipt[]}` (2026-10-18부터 `shares` 없음) |
+| GET /v1/wallet | Bearer | — | 200 `{items: Receipt[]}` (2026-10-18부터 `shares` 없음; 2026-10-19부터 `context`·`reciprocal`·`expiresAt`, 아래 "명함 교환") |
 
 - Card: `{id, ownerId, name, description, template, introduction, profileName, job, contacts: Contact[], histories: History[], createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `template`은 발행할 때 보낸 마크다운 템플릿, `introduction`은 그것을 **채운 결과**(공개 본문)다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`)에는 `template`을 싣지 않는다. (`webTemplate`·`webIntroduction`은 2026-10-18 같은 날 추가 뒤 삭제했다. 아래 "템플릿".)
-- Receipt: `{id, card, context: {activityId: null, label: null}, receivedAt, reciprocal: false}`. 2026-10-18 공유 삭제 뒤 새 Receipt를 만드는 경로는 없다.
+- Receipt: 아래 "명함 교환"(2026-10-19)의 형태. 새 Receipt는 `PUT /v1/wallet/cards/:cardId`와 `reciprocate`가 만든다.
 - 웹 비로그인 저장(`/v1/guest/*`, 홈 화면 세션 잇기)은 2026-10-17 Kotlin API에 다시 구현했다(위 "웹 비로그인 명함 저장"·"홈 화면 세션 잇기" 계약 그대로. 게스트 공유 정보 저장은 2026-10-18 삭제). 오류 본문은 다른 경로와 같은 ProblemDetail이며 웹 프록시는 상태 코드만 옮긴다(401 `GUEST_SESSION_INVALID`, 그 외 `REQUEST_FAILED`). API의 `GUEST_PROXY_SECRET`이 비어 있으면 `/v1/guest/*`만 503이다.
 - 아직 없는 것: `POST /v1/wallet/import`, `POST /v1/exchanges`. 앱이 쓰지 않아 만들지 않는다.
 
@@ -427,6 +427,41 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 - 색인 레일: 오른쪽 가장자리에 묶음 글자를 세로로 나열한다. 누르거나 끌면 그 묶음으로 이동한다. 비어 있는 글자는 보이지 않는다. 접근성에서는 각 글자가 `ㄱ으로 이동` 버튼으로 읽히고, 동작 줄이기에서는 이동 애니메이션이 없다. 묶음이 6개 이하이면 레일을 숨긴다.
 - 검색: 기존 검색 칸을 유지하고 검색 중에도 묶음을 유지한다(빈 묶음은 숨김).
 - 내 명함 탭은 바꾸지 않는다.
+
+## 명함 교환 — 2026-10-19 사용자 결정
+
+2026-10-18 지운 공유 기능을 대신하는 새 설계. 사용자 결정(2026-10-19): 배부(배포) 단위 관리는 두지 않는다. 받은 명함에는 **어느 프로그램(활동)에서 교환했는지만** 표시한다. **단방향**으로 받은 명함은 받은 날부터 30일 뒤 회수한다. 옛 흐름(제작 → 발행 → 공유 화면)이 부자연스러웠다는 이유로 주인 쪽은 "명함 고르기 → QR 보이기" 한 번으로 끝나야 한다. 발행 스냅샷·`/cards/:id` 공개 조회·비로그인 저장 계약은 그대로다.
+
+### 흐름
+
+- **주인(앱)**: 내 명함 탭에서 고른 명함 아래 `QR 보이기`. 전체 화면 QR과 함께 활동 칩이 보인다. 칩은 오늘 진행 중인 내 활동(내 활동 진행 트랙의 `진행 중` 중 현재 단계가 가장 가까운 것)이 자동으로 골라지고, 눌러서 신청한 다른 활동이나 `활동 없이`로 바꿀 수 있다. QR 내용은 `https://<웹 origin>/cards/<cardId>?activity=<activityId>`(활동 없이면 `activity` 생략). 화면을 보는 동안 밝기를 올리고, 닫으면 되돌린다. 배부 기록·수신자 목록·활동별 관리 화면은 만들지 않는다.
+- **받는 사람(웹)**: OS 카메라로 QR을 읽으면 웹 `/cards/:id?activity=…`가 열린다. 카드 위에 `<프로그램 이름> <활동 이름>에서 받은 명함`(활동이 없으면 생략) 한 줄. 카드 아래 버튼 둘: `Dearby 앱에 저장`(`dearby://cards/<cardId>?activity=<activityId>` 커스텀 스킴, 앱이 없으면 아무 일도 없으므로 그 아래 "앱이 없으면 브라우저에 저장할 수 있어요" 안내)과 기존 `브라우저에 저장`(비로그인 저장, `activityId`를 함께 보낸다). 유니버설 링크·App Links·앱 안 카메라 스캔은 쓰지 않는다(#90 미정, 오늘 범위 밖).
+- **받는 사람(앱)**: 스킴 `dearby://cards/<cardId>?activity=<activityId>`를 받으면 로그인 상태에서 `PUT /v1/wallet/cards/:cardId {activityId}`로 계정 지갑에 저장하고 받은 명함 상세를 연다. 상세 아래 `내 명함도 건네기` 버튼: 내 명함이 하나면 바로, 여럿이면 고른 뒤 `POST /v1/wallet/cards/:cardId/reciprocate {myCardId}`. 성공하면 "맞교환했어요" 배지. 로그아웃 상태면 로그인 시트를 먼저 띄우고 이어서 저장한다. 자기 명함을 받으면 "내 명함이에요" 안내만.
+- **회수**: 받은 날(`receivedAt`/`savedAt`)부터 30일이 지나도 맞교환이 아니면 서버가 회수한다. 받은 명함 목록에서 사라지고(`recalled_at` 기록, 행은 보존), 그 사람의 지갑에서만 빠진다. 공개 `/cards/:id`는 그대로 열린다(배부 단위를 두지 않은 결정의 결과이며, 주소를 적어 둔 사람까지 막지는 않는다). 명함 철회(`DELETE /v1/cards/:id`)는 지금처럼 모두에게서 사라진다.
+- **맞교환(reciprocal)**: 받은 명함 R(받는 사람 U, 명함 C, 주인 O)은 "O가 U의 명함(어느 것이든) 하나를 회수·철회되지 않은 상태로 갖고 있으면" 맞교환이다. 계정 쌍 기준이라 활동이 달라도 성립한다. 맞교환이던 것이 상대 명함의 철회·회수로 깨지면 다시 단방향이 되고, 받은 날 기준 30일이 이미 지났으면 다음 회수 때 빠진다. 비로그인 저장자는 명함이 없어 맞교환할 수 없으므로 항상 30일 뒤 회수된다(의도된 결과: 앱 설치를 유도한다).
+
+### API
+
+| 경로 | 인증 | 요청 | 응답 |
+| --- | --- | --- | --- |
+| PUT /v1/wallet/cards/:cardId | Bearer | `{activityId?: number}` | 첫 저장 201 Receipt, 이미 있으면 200 Receipt(받은 날은 유지, 활동이 비어 있었고 새로 왔으면 채운다). 없는/철회된 명함 404, 자기 명함 409 `OWN_CARD` |
+| POST /v1/wallet/cards/:cardId/reciprocate | Bearer | `{myCardId}` | 201 `{reciprocal: true}`. 호출자가 `cardId`를 회수되지 않은 상태로 갖고 있어야 하고(아니면 403), `myCardId`는 호출자의 미철회 명함(아니면 404). 주인의 지갑에 호출자 명함의 Receipt를 같은 활동으로 만든다(이미 있으면 그대로 201) |
+| GET /v1/wallet | Bearer | — | 200 `{items: Receipt[]}`. 회수된 것·철회된 명함 제외, `seq` 순 |
+| GET /v1/guest/cards | 게스트 토큰 | — | 200 `{items: GuestItem[]}`(2026-10-19부터 `Card[]`가 아니다) |
+| PUT /v1/guest/cards/:id | 게스트 토큰 선택 | `{activityId?: number}` | 기존 응답 그대로(201/200). 활동은 처음 저장할 때만 기록 |
+
+- Receipt: `{id, card, context: {activityId: number|null, activityName: string|null, programName: string|null}, receivedAt, reciprocal: boolean, expiresAt: string|null}`. `expiresAt`은 서버가 계산한 회수 예정 시각(`receivedAt` + 30일), 맞교환이면 `null`. 클라이언트는 다시 계산하지 않는다. 활동 id가 있지만 활동이 지워졋으면 이름은 `null`.
+- GuestItem: `{card, context: {activityId, activityName, programName}, savedAt, expiresAt}`(`expiresAt`은 항상 `savedAt` + 30일).
+- 회수 작업: batch 모듈이 매일 04:00(Asia/Seoul)에 돌린다. 조건은 "회수되지 않았고 받은 날 + 30일 < 지금 이고 맞교환이 아님"(`receipts`), "회수되지 않았고 저장일 + 30일 < 지금"(`guest_cards`). `--recall-now` 플래그로 즉시 실행할 수 있다(`--collect-now`와 같은 방식). 결과는 로그에 건수로 남긴다.
+- 저장: V29. `receipts.recalled_at timestamptz null`, `receipts.context`는 기존 jsonb에 `{"activityId": <number>}`만 쓴다(`label`은 쓰지 않는다). `guest_cards`에 `activity_id bigint null`, `saved_at timestamptz not null default now()`, `recalled_at timestamptz null`. 기존 행의 `saved_at`은 마이그레이션 시각이 되어 30일 뒤 회수된다.
+- `activityId`는 활동의 숫자 id다(`GET /v1/activities/:id`). 모르는 id는 400이 아니라 무시하고 `null`로 저장한다(QR을 만든 뒤 활동이 지워진 경우).
+
+### 화면
+
+- **받은 명함 목록(iOS·Android·웹 `/saved`)**: 기존 색인 목록 그대로. 행의 칩 줄에 프로그램 이름 칩(활동 이름은 상세에서)과 상태 배지 하나: 맞교환이면 `맞교환`, 아니면 `N일 뒤 사라져요`(`expiresAt` 기준, 당일은 `오늘 사라져요`). 활동별 필터·묶음은 만들지 않는다.
+- **받은 명함 상세**: 카드 위에 `<프로그램> <활동>에서 받음 · <받은 날>`, 카드 아래 `내 명함도 건네기`(맞교환이면 `맞교환했어요` 배지로 대체).
+- **내 명함 QR 화면**: 위 흐름대로. 색·글꼴은 기존 토큰. QR은 iOS CoreImage `CIQRCodeGenerator`, Android `com.google.zxing:core`(인코딩만, CameraX·카메라 권한 없음)로 그린다. 웹 origin은 `DEARBY_WEB_ORIGIN` 빌드 설정(기본 `https://dearby.wid.io.kr`)이다.
+- 접근성: QR 이미지는 "내 명함 QR 코드, 카메라로 읽으면 명함을 받아요"로 읽히고, 활동 칩은 버튼이다. 배지는 행 접근성 라벨에 포함한다.
 
 ## 명함 표현 — 2026-10-18 사용자 결정
 
