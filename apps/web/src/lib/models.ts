@@ -75,6 +75,34 @@ export const activityPageSchema = z.object({
 });
 export type Activity = z.infer<typeof activitySchema>;
 export type ActivityPage = z.infer<typeof activityPageSchema>;
+// Program with open activities from GET /v1/programs (contract "발견 프로그램 묶음 — 2026-10-18").
+export const programSummarySchema = z.object({
+  id: z.number().int().positive(),
+  name: text,
+  nameEn: text.nullable(),
+  organization: named,
+  openActivityCount: z.number().int().nonnegative(),
+  nearestRecruitmentEndAt: text.nullable(),
+  matchedActivityIds: z.array(z.number().int()),
+});
+export const programPageSchema = z.object({
+  items: z.array(programSummarySchema),
+  nextCursor: z.number().int().nullable(),
+});
+export type ProgramSummary = z.infer<typeof programSummarySchema>;
+export type ProgramPage = z.infer<typeof programPageSchema>;
+/** `10월 24일 (금) 마감` in Seoul time, or undefined when the end is missing or unreadable. */
+export function deadlineLabel(endAt: string | null): string | undefined {
+  if (!endAt) return;
+  const time = Date.parse(endAt);
+  if (Number.isNaN(time)) return;
+  return `${new Date(time).toLocaleDateString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  })} 마감`;
+}
 /** Numeric activity ID from a URL segment, or undefined. */
 export function activityId(value: string): number | undefined {
   const id = Number(value);

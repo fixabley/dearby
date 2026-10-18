@@ -4,6 +4,7 @@ import {
   activitySchema,
   cardSchema,
   activityPageSchema,
+  programPageSchema,
   uuid,
 } from "./models";
 import {
@@ -32,19 +33,34 @@ function failure(status: number, code: string) {
 function acceptLanguage(value: string | null): string | undefined {
   return value && /^[A-Za-z0-9*,;=. -]{1,200}$/.test(value) ? value : undefined;
 }
-/** Only `q`, `cursor` and `size` are forwarded to the activity search, rebuilt from validated values. */
-function activityQuery(url: URL): URLSearchParams | undefined {
+/**
+ * Only `q`, `cursor`, `size`, `programId` (activities) and `participationType` (programs) are forwarded
+ * to the searches, rebuilt from validated values.
+ */
+function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
   const query = new URLSearchParams();
   const q = url.searchParams.get("q")?.trim();
   const cursor = url.searchParams.get("cursor");
   const size = url.searchParams.get("size");
+  const programId = url.searchParams.get("programId");
+  const participationType = url.searchParams.get("participationType");
   if (q && q.length > 100) return;
   if (cursor !== null && !/^\d{1,18}$/.test(cursor)) return;
   if (size !== null && !(/^\d{1,3}$/.test(size) && +size >= 1 && +size <= 100))
     return;
+  if (programId !== null && (programs || !/^[1-9]\d{0,17}$/.test(programId)))
+    return;
+  if (
+    participationType !== null &&
+    (!programs || !["REGISTRATION", "SELECTION"].includes(participationType))
+  )
+    return;
   if (q) query.set("q", q);
   if (cursor !== null) query.set("cursor", cursor);
   if (size !== null) query.set("size", size);
+  if (programId !== null) query.set("programId", programId);
+  if (participationType !== null)
+    query.set("participationType", participationType);
   return query;
 }
 
@@ -56,9 +72,11 @@ export async function proxy(
   const guest = segments[0] === "guest";
   const id = segments[guest ? 2 : 1];
   const activityRoute = segments.length === 2 && segments[0] === "activities";
+  const programs = path === "discovery/programs";
+  const search = path === "activities" || programs;
   const method = request.method;
   const allowed =
-    (path === "activities" && method === "GET") ||
+    (search && method === "GET") ||
     (activityRoute && method === "GET") ||
     (segments.length === 2 && segments[0] === "cards" && method === "GET") ||
     (path === "guest/cards" && method === "GET") ||
@@ -70,9 +88,8 @@ export async function proxy(
   if (!allowed) return failure(404, "NOT_FOUND");
   if (id && !(activityRoute ? activityId(id) : uuid.safeParse(id).success))
     return failure(422, "INVALID_INPUT");
-  const query =
-    path === "activities" ? activityQuery(new URL(request.url)) : undefined;
-  if (path === "activities" && !query) return failure(422, "INVALID_INPUT");
+  const query = search ? searchQuery(new URL(request.url), programs) : undefined;
+  if (search && !query) return failure(422, "INVALID_INPUT");
   const mutation = method !== "GET";
   if (
     mutation &&
@@ -119,7 +136,7 @@ export async function proxy(
       token,
       query,
       acceptLanguage:
-        path === "activities" || activityRoute
+        search || activityRoute
           ? acceptLanguage(request.headers.get("accept-language"))
           : undefined,
     });
@@ -140,7 +157,7 @@ export async function proxy(
       );
     }
     const outputHeaders: Record<string, string> = { ...headers };
-    if (path === "activities" || activityRoute)
+    if (search || activityRoute)
       outputHeaders.Vary = `${headers.Vary}, Accept-Language`;
     if (guest && token) outputHeaders["Set-Cookie"] = guestCookie(token);
     if (method === "DELETE")
@@ -160,7 +177,9 @@ export async function proxy(
     const output =
       path === "activities"
         ? activityPageSchema.parse(json)
-        : activityRoute
+        : programs
+          ? programPageSchema.parse(json)
+          : activityRoute
           ? activitySchema.parse(json)
           : guest
           ? savedSchema.parse(json)

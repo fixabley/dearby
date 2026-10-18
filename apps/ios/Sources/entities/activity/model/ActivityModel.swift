@@ -67,3 +67,22 @@ struct ActivityPage: Sendable {
     let items: [ActivityModel]
     let nextCursor: Int64?
 }
+/// One program with open activities from `GET /v1/discovery/programs` (contract "발견 프로그램 묶음 — 2026-10-18").
+struct ProgramSummary: Equatable, Identifiable, Sendable {
+    let id: Int64
+    let name: String
+    let nameEn: String?
+    let organization: String
+    /// Open activities that match the query and type filter; the API returns only programs with at least one.
+    let openActivityCount: Int
+    /// Raw ISO 8601 of the nearest recruitment deadline among them; nil when none has a deadline.
+    let nearestRecruitmentEndAt: String?
+    /// Open activities whose name matched `q`; such programs start expanded.
+    let matchedActivityIDs: [String]
+    var nearestRecruitmentEnd: Date? { ActivityModel.instant(nearestRecruitmentEndAt) }
+}
+/// One page of `GET /v1/discovery/programs`. A nil `nextCursor` is the last page.
+struct ProgramPage: Sendable {
+    let items: [ProgramSummary]
+    let nextCursor: Int64?
+}

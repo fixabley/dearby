@@ -40,6 +40,19 @@ data class ActivityModel(
 /** One page of `GET /v1/activities`; a null [nextCursor] is the last page. */
 data class ActivityPage(val items: List<ActivityModel>, val nextCursor: String?)
 
+/**
+ * One program with open activities from `GET /v1/discovery/programs` (contract "발견 프로그램 묶음"). [id] is the API's number as
+ * text; [nearestRecruitmentEndAt] is the earliest open deadline (ISO 8601) or null; [matchedActivityIds] are the open
+ * activities whose name matched the search.
+ */
+data class ProgramSummary(
+    val id: String, val name: String, val nameEn: String?, val organization: String, val openActivityCount: Int,
+    val nearestRecruitmentEndAt: String?, val matchedActivityIds: List<String>,
+)
+
+/** One page of `GET /v1/discovery/programs`; [nextCursor] is the next integer offset as text, null on the last page. */
+data class ProgramPage(val items: List<ProgramSummary>, val nextCursor: String?)
+
 private const val OPEN = "모집 중"
 private const val UNKNOWN = "모집 여부 확인 필요"
 

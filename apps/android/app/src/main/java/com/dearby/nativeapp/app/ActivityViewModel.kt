@@ -5,12 +5,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dearby.nativeapp.entities.activity.model.ActivityModel
 import com.dearby.nativeapp.entities.activity.model.ActivityPage
+import com.dearby.nativeapp.entities.activity.model.ProgramPage
 import com.dearby.nativeapp.entities.activity.model.ScheduleModel
 import com.dearby.nativeapp.entities.activity.model.instant
 import com.dearby.nativeapp.entities.activity.model.safeHttpsUrl
 import com.dearby.nativeapp.pages.activity.ActivityState
 import com.dearby.nativeapp.pages.activity.ActivityListPhase
 import com.dearby.nativeapp.pages.activity.ActivityListState
+import com.dearby.nativeapp.pages.activity.ProgramActivities
+import com.dearby.nativeapp.pages.activity.ProgramPhase
+import com.dearby.nativeapp.pages.activity.ProgramState
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -24,15 +28,20 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * Discovery reads GET /v1/activities page by page; a failure is an error state, never example activities.
- * [fetch] takes the search text (null for all) and the cursor (null for the first page).
+ * Discovery (contract "발견 프로그램 묶음"): GET /v1/programs page by page, and GET /v1/activities?programId= when a
+ * program is expanded; a failure is an error state, never example activities. [fetchPrograms] takes the search text
+ * (null for all) and the cursor; [fetch] takes the search text, the cursor and the program id.
  */
-class ActivityViewModel(private val fetch: suspend (String?, String?) -> ActivityPage) : ViewModel() {
+class ActivityViewModel(
+    private val fetchPrograms: suspend (String?, String?) -> ProgramPage,
+    private val fetch: suspend (String?, String?, String?) -> ActivityPage,
+) : ViewModel() {
     private val mutable = MutableStateFlow(ActivityListState())
     val state = mutable.asStateFlow()
     private var schedules: Map<String, List<ScheduleModel>> = emptyMap()
-    // One request at a time: a new search cancels the previous search or page, so late answers are dropped.
+    // One program request at a time: a new search cancels the previous search, page and program loads, so late answers are dropped.
     private var job: Job? = null
+    private val programJobs = mutableMapOf<String, Job>()
     private var opened: String? = null
     private var leftApp = false
     private val neverAsk = mutableSetOf<String>()
@@ -48,40 +57,76 @@ class ActivityViewModel(private val fetch: suspend (String?, String?) -> Activit
     fun reload() = start(debounce = false)
     private fun start(debounce: Boolean) {
         job?.cancel()
+        programJobs.values.forEach { it.cancel() }
+        programJobs.clear()
         job = viewModelScope.launch {
             if (debounce) delay(300)
-            mutable.update { it.copy(phase = ActivityListPhase.LOADING, ids = emptyList(), nextCursor = null, loadingMore = false, moreFailed = false) }
-            val page = page(null) ?: return@launch mutable.update { it.copy(phase = ActivityListPhase.FAILED) }
+            mutable.update { it.copy(phase = ActivityListPhase.LOADING, programs = emptyList(), expanded = emptySet(), programActivities = emptyMap(), nextCursor = null, loadingMore = false, moreFailed = false) }
+            val page = programPage(null) ?: return@launch mutable.update { it.copy(phase = ActivityListPhase.FAILED) }
             show(page, append = false)
         }
     }
-    /** The list is near its end: fetch the next page, if there is one and nothing else is loading. */
+    /** The list is near its end: fetch the next program page, if there is one and nothing else is loading. */
     fun loadMore() {
         val current = state.value
         val cursor = current.nextCursor ?: return
         if (current.phase != ActivityListPhase.LOADED || current.loadingMore || job?.isActive == true) return
         job = viewModelScope.launch {
             mutable.update { it.copy(loadingMore = true, moreFailed = false) }
-            val page = page(cursor) ?: return@launch mutable.update { it.copy(loadingMore = false, moreFailed = true) }
+            val page = programPage(cursor) ?: return@launch mutable.update { it.copy(loadingMore = false, moreFailed = true) }
             show(page, append = true)
         }
     }
-    private suspend fun page(cursor: String?): ActivityPage? = try {
-        fetch(state.value.query.trim().ifEmpty { null }, cursor)
+    private suspend fun programPage(cursor: String?): ProgramPage? = try {
+        fetchPrograms(state.value.query.trim().ifEmpty { null }, cursor)
     } catch (e: CancellationException) { throw e } catch (e: Exception) {
         // Only the origin and the failure kind; the search text is not logged.
-        Log.w("Dearby", "Activities load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
+        Log.w("Dearby", "Programs load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
         null
     }
-    private fun show(page: ActivityPage, append: Boolean) {
-        val now = Instant.now()
-        schedules = schedules + page.items.associate { it.id to it.schedules }
+    /** Programs with one open activity, or whose activity name matched the search, start expanded (contract rule). */
+    private fun show(page: ProgramPage, append: Boolean) {
+        val programs = page.items.map { ProgramState(it.id, it.name, it.organization, it.openActivityCount, instant(it.nearestRecruitmentEndAt), it.matchedActivityIds.isNotEmpty()) }
+        val opening = programs.filter { it.openCount == 1 || it.matched }.map { it.id }
         mutable.update { state ->
-            val loaded = page.items.associate { activity ->
-                activity.id to activity.toState(now).let { shown -> state.known[shown.id]?.let { shown.copy(applied = it.applied, confirmed = it.confirmed) } ?: shown }
+            state.copy(phase = ActivityListPhase.LOADED, programs = (if (append) state.programs else emptyList()) + programs,
+                expanded = state.expanded + opening, nextCursor = page.nextCursor, loadingMore = false)
+        }
+        opening.forEach(::loadProgram)
+    }
+    /** Expand or collapse a program; the first expand loads its open activities. */
+    fun toggle(programId: String) {
+        val expanded = programId in state.value.expanded
+        mutable.update { it.copy(expanded = if (expanded) it.expanded - programId else it.expanded + programId) }
+        if (!expanded && state.value.programActivities[programId]?.phase != ProgramPhase.LOADED) loadProgram(programId)
+    }
+    fun retryProgram(programId: String) = loadProgram(programId)
+    private fun loadProgram(programId: String) {
+        if (programJobs[programId]?.isActive == true) return
+        mutable.update { it.copy(programActivities = it.programActivities + (programId to ProgramActivities())) }
+        programJobs[programId] = viewModelScope.launch {
+            val items = mutableListOf<ActivityModel>()
+            var cursor: String? = null
+            try {
+                // Every page of the program (the open set is small); the client keeps only open activities, as the list did before.
+                repeat(MAX_PROGRAM_PAGES) {
+                    val page = fetch(null, cursor, programId)
+                    items += page.items
+                    cursor = page.nextCursor ?: return@repeat
+                }
+            } catch (e: CancellationException) { throw e } catch (e: Exception) {
+                Log.w("Dearby", "Program activities load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
+                return@launch mutable.update { it.copy(programActivities = it.programActivities + (programId to ProgramActivities(ProgramPhase.FAILED))) }
             }
-            val ids = (if (append) state.ids else emptyList()) + page.items.map { it.id }
-            state.copy(phase = ActivityListPhase.LOADED, ids = ids, known = state.known + loaded, nextCursor = page.nextCursor, loadingMore = false)
+            val now = Instant.now()
+            val open = items.filter { it.isOpen(now) }
+            schedules = schedules + open.associate { it.id to it.schedules }
+            mutable.update { state ->
+                val loaded = open.associate { activity ->
+                    activity.id to activity.toState(now).let { shown -> state.known[shown.id]?.let { shown.copy(applied = it.applied, confirmed = it.confirmed) } ?: shown }
+                }
+                state.copy(known = state.known + loaded, programActivities = state.programActivities + (programId to ProgramActivities(ProgramPhase.LOADED, open.map { it.id })))
+            }
         }
     }
     fun schedules(id: String) = schedules[id].orEmpty()
@@ -117,6 +162,7 @@ class ActivityViewModel(private val fetch: suspend (String?, String?) -> Activit
     }
 }
 
+private const val MAX_PROGRAM_PAGES = 5
 private val sessionTime = DateTimeFormatter.ofPattern("HH:mm", Locale.KOREAN)
 private val sessionDay = DateTimeFormatter.ofPattern("M/d", Locale.KOREAN)
 private val periodTime = DateTimeFormatter.ofPattern("M월 d일 HH:mm", Locale.KOREAN).withZone(ZoneId.of("Asia/Seoul"))
