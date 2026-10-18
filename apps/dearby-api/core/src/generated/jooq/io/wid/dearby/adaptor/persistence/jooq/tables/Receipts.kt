@@ -8,9 +8,7 @@ import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECEIPTS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECEIPTS_RECIPIENT_ID_CARD_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECEIPTS__RECEIPTS_RECIPIENT_ID_FKEY
-import io.wid.dearby.adaptor.persistence.jooq.keys.WALLET_SHARES__WALLET_SHARES_RECEIPT_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.Users.UsersPath
-import io.wid.dearby.adaptor.persistence.jooq.tables.WalletShares.WalletSharesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ReceiptsRecord
 
 import java.time.OffsetDateTime
@@ -153,22 +151,6 @@ open class Receipts(
      */
     fun users(): UsersPath = users
     val users: UsersPath by lazy { UsersPath(this, RECEIPTS__RECEIPTS_RECIPIENT_ID_FKEY, null) }
-
-    private lateinit var _walletShares: WalletSharesPath
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>public.wallet_shares</code> table
-     */
-    fun walletShares(): WalletSharesPath {
-        if (!this::_walletShares.isInitialized)
-            _walletShares = WalletSharesPath(this, null, WALLET_SHARES__WALLET_SHARES_RECEIPT_ID_FKEY.inverseKey)
-
-        return _walletShares;
-    }
-
-    val walletShares: WalletSharesPath
-        get(): WalletSharesPath = walletShares()
     override fun `as`(alias: String): Receipts = Receipts(DSL.name(alias), this)
     override fun `as`(alias: Name): Receipts = Receipts(alias, this)
     override fun `as`(alias: Table<*>): Receipts = Receipts(alias.qualifiedName, this)

@@ -11,11 +11,9 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
-import io.wid.dearby.adaptor.persistence.jooq.tables.CardShares
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
-import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCardShares
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestHandoffs
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestSessions
@@ -43,7 +41,6 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Users
-import io.wid.dearby.adaptor.persistence.jooq.tables.WalletShares
 import io.wid.dearby.adaptor.persistence.jooq.tables.WebauthnChallenges
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivitiesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivityContactsRecord
@@ -51,11 +48,9 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivityParticipati
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivityRolesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.AppleSignInStatesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.BusinessCardsRecord
-import io.wid.dearby.adaptor.persistence.jooq.tables.records.CardSharesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.CollectionRunsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ContactsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.DismissedActivitySourcesRecord
-import io.wid.dearby.adaptor.persistence.jooq.tables.records.GuestCardSharesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.GuestCardsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.GuestHandoffsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.GuestSessionsRecord
@@ -83,7 +78,6 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.records.UserEntitiesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.UserIdentitiesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.UserRolesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.UsersRecord
-import io.wid.dearby.adaptor.persistence.jooq.tables.records.WalletSharesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.WebauthnChallengesRecord
 
 import org.jooq.ForeignKey
@@ -106,12 +100,10 @@ val ACTIVITY_PARTICIPATIONS_USER_ID_ACTIVITY_ID_KEY: UniqueKey<ActivityParticipa
 val ACTIVITY_ROLES_PKEY: UniqueKey<ActivityRolesRecord> = Internal.createUniqueKey(ActivityRoles.ACTIVITY_ROLES, DSL.name("activity_roles_pkey"), arrayOf(ActivityRoles.ACTIVITY_ROLES.ACTIVITY_ID, ActivityRoles.ACTIVITY_ROLES.POSITION), true)
 val APPLE_SIGN_IN_STATES_PKEY: UniqueKey<AppleSignInStatesRecord> = Internal.createUniqueKey(AppleSignInStates.APPLE_SIGN_IN_STATES, DSL.name("apple_sign_in_states_pkey"), arrayOf(AppleSignInStates.APPLE_SIGN_IN_STATES.ID), true)
 val BUSINESS_CARDS_PKEY: UniqueKey<BusinessCardsRecord> = Internal.createUniqueKey(BusinessCards.BUSINESS_CARDS, DSL.name("business_cards_pkey"), arrayOf(BusinessCards.BUSINESS_CARDS.ID), true)
-val CARD_SHARES_PKEY: UniqueKey<CardSharesRecord> = Internal.createUniqueKey(CardShares.CARD_SHARES, DSL.name("card_shares_pkey"), arrayOf(CardShares.CARD_SHARES.ID), true)
 val COLLECTION_RUNS_PKEY: UniqueKey<CollectionRunsRecord> = Internal.createUniqueKey(CollectionRuns.COLLECTION_RUNS, DSL.name("collection_runs_pkey"), arrayOf(CollectionRuns.COLLECTION_RUNS.ID), true)
 val COLLECTION_RUNS_PROGRAM_ID_RUN_DATE_KEY: UniqueKey<CollectionRunsRecord> = Internal.createUniqueKey(CollectionRuns.COLLECTION_RUNS, DSL.name("collection_runs_program_id_run_date_key"), arrayOf(CollectionRuns.COLLECTION_RUNS.PROGRAM_ID, CollectionRuns.COLLECTION_RUNS.RUN_DATE), true)
 val CONTACTS_PKEY: UniqueKey<ContactsRecord> = Internal.createUniqueKey(Contacts.CONTACTS, DSL.name("contacts_pkey"), arrayOf(Contacts.CONTACTS.ID), true)
 val DISMISSED_ACTIVITY_SOURCES_PKEY: UniqueKey<DismissedActivitySourcesRecord> = Internal.createUniqueKey(DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES, DSL.name("dismissed_activity_sources_pkey"), arrayOf(DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES.SOURCE_ID), true)
-val GUEST_CARD_SHARES_PKEY: UniqueKey<GuestCardSharesRecord> = Internal.createUniqueKey(GuestCardShares.GUEST_CARD_SHARES, DSL.name("guest_card_shares_pkey"), arrayOf(GuestCardShares.GUEST_CARD_SHARES.SESSION_DIGEST, GuestCardShares.GUEST_CARD_SHARES.SHARE_ID), true)
 val GUEST_CARDS_PKEY: UniqueKey<GuestCardsRecord> = Internal.createUniqueKey(GuestCards.GUEST_CARDS, DSL.name("guest_cards_pkey"), arrayOf(GuestCards.GUEST_CARDS.SESSION_DIGEST, GuestCards.GUEST_CARDS.CARD_ID), true)
 val GUEST_HANDOFFS_PKEY: UniqueKey<GuestHandoffsRecord> = Internal.createUniqueKey(GuestHandoffs.GUEST_HANDOFFS, DSL.name("guest_handoffs_pkey"), arrayOf(GuestHandoffs.GUEST_HANDOFFS.DIGEST), true)
 val GUEST_HANDOFFS_SESSION_DIGEST_KEY: UniqueKey<GuestHandoffsRecord> = Internal.createUniqueKey(GuestHandoffs.GUEST_HANDOFFS, DSL.name("guest_handoffs_session_digest_key"), arrayOf(GuestHandoffs.GUEST_HANDOFFS.SESSION_DIGEST), true)
@@ -145,7 +137,6 @@ val USER_ENTITIES_PKEY: UniqueKey<UserEntitiesRecord> = Internal.createUniqueKey
 val USER_IDENTITIES_PKEY: UniqueKey<UserIdentitiesRecord> = Internal.createUniqueKey(UserIdentities.USER_IDENTITIES, DSL.name("user_identities_pkey"), arrayOf(UserIdentities.USER_IDENTITIES.PROVIDER, UserIdentities.USER_IDENTITIES.SUBJECT), true)
 val USER_ROLES_PKEY: UniqueKey<UserRolesRecord> = Internal.createUniqueKey(UserRoles.USER_ROLES, DSL.name("user_roles_pkey"), arrayOf(UserRoles.USER_ROLES.USER_ID, UserRoles.USER_ROLES.ROLE), true)
 val USERS_PKEY: UniqueKey<UsersRecord> = Internal.createUniqueKey(Users.USERS, DSL.name("users_pkey"), arrayOf(Users.USERS.ID), true)
-val WALLET_SHARES_PKEY: UniqueKey<WalletSharesRecord> = Internal.createUniqueKey(WalletShares.WALLET_SHARES, DSL.name("wallet_shares_pkey"), arrayOf(WalletShares.WALLET_SHARES.RECEIPT_ID, WalletShares.WALLET_SHARES.SHARE_ID), true)
 val WEBAUTHN_CHALLENGES_PKEY: UniqueKey<WebauthnChallengesRecord> = Internal.createUniqueKey(WebauthnChallenges.WEBAUTHN_CHALLENGES, DSL.name("webauthn_challenges_pkey"), arrayOf(WebauthnChallenges.WEBAUTHN_CHALLENGES.ID), true)
 
 // -------------------------------------------------------------------------
@@ -154,9 +145,7 @@ val WEBAUTHN_CHALLENGES_PKEY: UniqueKey<WebauthnChallengesRecord> = Internal.cre
 
 val ACTIVITY_CONTACTS__ACTIVITY_CONTACTS_ACTIVITY_ID_FKEY: ForeignKey<ActivityContactsRecord, ActivitiesRecord> = Internal.createForeignKey(ActivityContacts.ACTIVITY_CONTACTS, DSL.name("activity_contacts_activity_id_fkey"), arrayOf(ActivityContacts.ACTIVITY_CONTACTS.ACTIVITY_ID), io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_PKEY, arrayOf(Activities.ACTIVITIES.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val ACTIVITY_ROLES__ACTIVITY_ROLES_ACTIVITY_ID_FKEY: ForeignKey<ActivityRolesRecord, ActivitiesRecord> = Internal.createForeignKey(ActivityRoles.ACTIVITY_ROLES, DSL.name("activity_roles_activity_id_fkey"), arrayOf(ActivityRoles.ACTIVITY_ROLES.ACTIVITY_ID), io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_PKEY, arrayOf(Activities.ACTIVITIES.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
-val CARD_SHARES__CARD_SHARES_CARD_ID_FKEY: ForeignKey<CardSharesRecord, BusinessCardsRecord> = Internal.createForeignKey(CardShares.CARD_SHARES, DSL.name("card_shares_card_id_fkey"), arrayOf(CardShares.CARD_SHARES.CARD_ID), io.wid.dearby.adaptor.persistence.jooq.keys.BUSINESS_CARDS_PKEY, arrayOf(BusinessCards.BUSINESS_CARDS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val CONTACTS__CONTACTS_USER_ID_FKEY: ForeignKey<ContactsRecord, UsersRecord> = Internal.createForeignKey(Contacts.CONTACTS, DSL.name("contacts_user_id_fkey"), arrayOf(Contacts.CONTACTS.USER_ID), io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY, arrayOf(Users.USERS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
-val GUEST_CARD_SHARES__GUEST_CARD_SHARES_SESSION_DIGEST_CARD_ID_FKEY: ForeignKey<GuestCardSharesRecord, GuestCardsRecord> = Internal.createForeignKey(GuestCardShares.GUEST_CARD_SHARES, DSL.name("guest_card_shares_session_digest_card_id_fkey"), arrayOf(GuestCardShares.GUEST_CARD_SHARES.SESSION_DIGEST, GuestCardShares.GUEST_CARD_SHARES.CARD_ID), io.wid.dearby.adaptor.persistence.jooq.keys.GUEST_CARDS_PKEY, arrayOf(GuestCards.GUEST_CARDS.SESSION_DIGEST, GuestCards.GUEST_CARDS.CARD_ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val GUEST_CARDS__GUEST_CARDS_SESSION_DIGEST_FKEY: ForeignKey<GuestCardsRecord, GuestSessionsRecord> = Internal.createForeignKey(GuestCards.GUEST_CARDS, DSL.name("guest_cards_session_digest_fkey"), arrayOf(GuestCards.GUEST_CARDS.SESSION_DIGEST), io.wid.dearby.adaptor.persistence.jooq.keys.GUEST_SESSIONS_PKEY, arrayOf(GuestSessions.GUEST_SESSIONS.DIGEST), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val GUEST_HANDOFFS__GUEST_HANDOFFS_SESSION_DIGEST_FKEY: ForeignKey<GuestHandoffsRecord, GuestSessionsRecord> = Internal.createForeignKey(GuestHandoffs.GUEST_HANDOFFS, DSL.name("guest_handoffs_session_digest_fkey"), arrayOf(GuestHandoffs.GUEST_HANDOFFS.SESSION_DIGEST), io.wid.dearby.adaptor.persistence.jooq.keys.GUEST_SESSIONS_PKEY, arrayOf(GuestSessions.GUEST_SESSIONS.DIGEST), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val HISTORY_EVIDENCE__HISTORY_EVIDENCE_HISTORY_ID_FKEY: ForeignKey<HistoryEvidenceRecord, ProfileHistoriesRecord> = Internal.createForeignKey(HistoryEvidence.HISTORY_EVIDENCE, DSL.name("history_evidence_history_id_fkey"), arrayOf(HistoryEvidence.HISTORY_EVIDENCE.HISTORY_ID), io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_HISTORIES_PKEY, arrayOf(ProfileHistories.PROFILE_HISTORIES.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
@@ -172,4 +161,3 @@ val RECEIPTS__RECEIPTS_RECIPIENT_ID_FKEY: ForeignKey<ReceiptsRecord, UsersRecord
 val SCHEDULES__SCHEDULES_ACTIVITY_ID_FKEY: ForeignKey<SchedulesRecord, ActivitiesRecord> = Internal.createForeignKey(Schedules.SCHEDULES, DSL.name("schedules_activity_id_fkey"), arrayOf(Schedules.SCHEDULES.ACTIVITY_ID), io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_PKEY, arrayOf(Activities.ACTIVITIES.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val USER_CREDENTIALS__USER_CREDENTIALS_USER_ENTITY_USER_ID_FKEY: ForeignKey<UserCredentialsRecord, UserEntitiesRecord> = Internal.createForeignKey(UserCredentials.USER_CREDENTIALS, DSL.name("user_credentials_user_entity_user_id_fkey"), arrayOf(UserCredentials.USER_CREDENTIALS.USER_ENTITY_USER_ID), io.wid.dearby.adaptor.persistence.jooq.keys.USER_ENTITIES_PKEY, arrayOf(UserEntities.USER_ENTITIES.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val USER_ROLES__USER_ROLES_USER_ID_FKEY: ForeignKey<UserRolesRecord, UsersRecord> = Internal.createForeignKey(UserRoles.USER_ROLES, DSL.name("user_roles_user_id_fkey"), arrayOf(UserRoles.USER_ROLES.USER_ID), io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY, arrayOf(Users.USERS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
-val WALLET_SHARES__WALLET_SHARES_RECEIPT_ID_FKEY: ForeignKey<WalletSharesRecord, ReceiptsRecord> = Internal.createForeignKey(WalletShares.WALLET_SHARES, DSL.name("wallet_shares_receipt_id_fkey"), arrayOf(WalletShares.WALLET_SHARES.RECEIPT_ID), io.wid.dearby.adaptor.persistence.jooq.keys.RECEIPTS_PKEY, arrayOf(Receipts.RECEIPTS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
