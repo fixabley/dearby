@@ -71,15 +71,9 @@ data class ActivityInfoItem(val id: Long, val name: String, val nameEn: String?,
 }
 data class ActivityInfoPage(val items: List<ActivityInfoItem>, val nextCursor: Long?)
 
-/** An activity copied into a share when it was made; never follows later activity edits. Ids are numeric since 2026-10-16. */
-data class ShareActivity(val id: Long, val title: String)
-/** `GET /v1/wallet` (contract #141): saved cards and the shares they came with. */
-data class Wallet(val items: List<WalletReceipt>, val shares: List<WalletShare>)
+/** `GET /v1/wallet`: the account's saved cards (receipts). */
+data class Wallet(val items: List<WalletReceipt>)
 data class WalletReceipt(val id: String, val card: PublishedCard, val receivedAt: String)
-data class WalletShare(val receiptId: String, val cardId: String, val shareId: String, val activities: List<ShareActivity>, val savedAt: String)
-/** `GET /v1/shares/:id`: a share and the public card it points at. */
-data class ReceivedShare(val share: CardShare, val card: PublishedCard)
-data class CardShare(val id: String, val cardId: String, val activities: List<ShareActivity>, val createdAt: String)
 
 fun JSONObject.toSession() = AccountSession(getString("accessToken"), getString("refreshToken"))
 fun JSONObject.toAppleSignIn(): AppleSignIn =
@@ -114,15 +108,9 @@ fun JSONObject.toActivityInfoPage() = ActivityInfoPage(getJSONArray("items").obj
         it.optJSONObject("organization")?.toRef(), it.optJSONObject("parent")?.toRef())
 }, if (isNull("nextCursor")) null else getLong("nextCursor"))
 
-fun JSONObject.toReceivedShare() = ReceivedShare(getJSONObject("share").toCardShare(), getJSONObject("card").toPublishedCard())
-fun JSONObject.toWallet() = Wallet(
-    getJSONArray("items").objects().map { WalletReceipt(it.getString("id"), it.getJSONObject("card").toPublishedCard(), it.getString("receivedAt")) },
-    getJSONArray("shares").objects().map { share -> WalletShare(share.getString("receiptId"), share.getString("cardId"), share.getString("shareId"),
-        share.getJSONArray("activities").objects().map { it.toShareActivity() }, share.getString("savedAt")) })
+fun JSONObject.toWallet() = Wallet(getJSONArray("items").objects().map { WalletReceipt(it.getString("id"), it.getJSONObject("card").toPublishedCard(), it.getString("receivedAt")) })
 fun JSONObject.toCardList() = getJSONArray("items").objects().map { it.toPublishedCard() }
-fun JSONObject.toCardShare() = CardShare(getString("id"), getString("cardId"), getJSONArray("activities").objects().map { it.toShareActivity() }, getString("createdAt"))
 
-private fun JSONObject.toShareActivity() = ShareActivity(getLong("id"), getString("title"))
 private fun JSONObject.toRef() = ActivityInfoRef(getLong("id"), getString("name"))
 private fun JSONObject.toContact() = AccountContact(getString("id"), getString("kind"), getString("label"), getString("value"))
 private fun JSONObject.toHistory() = AccountHistory(getString("id"), getString("kind"),

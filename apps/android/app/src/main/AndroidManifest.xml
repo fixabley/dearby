@@ -1,20 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- Contract "모바일 실제 연결 경계": network only for the real-service scope (activities, sign-in, cards and shares). -->
+    <!-- Contract "모바일 실제 연결 경계": network only for the real-service scope (activities, sign-in, cards). -->
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- #95 받기: only the in-app QR scanner asks for the camera; devices without one can still scan from a photo. -->
-    <uses-permission android:name="android.permission.CAMERA"/>
-    <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application android:label="Dearby" android:icon="@drawable/ic_launcher" android:dataExtractionRules="@xml/data_extraction_rules" android:allowBackup="false" android:fullBackupContent="false" android:supportsRtl="true" android:theme="@style/Theme.Dearby" android:usesCleartextTraffic="false">
         <!-- singleTask: Apple's dearby://auth/apple redirect must reach this instance (onNewIntent), which holds the verifier, and close the Custom Tab above it. -->
         <activity android:name=".app.MainActivity" android:exported="true" android:launchMode="singleTask" android:theme="@style/Theme.Dearby.Starting">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
-            <!-- Shared-card App Links: https://<DEARBY_WEB_ORIGIN host>/s/<UUID>. -->
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="https" android:host="${dearbyWebHost}" android:pathPrefix="/s/"/>
-            </intent-filter>
             <!-- Apple sign-in web flow returns here (contract "애플 로그인"); MainActivity accepts only ?code=<UUID> or ?error=cancelled|failed. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>

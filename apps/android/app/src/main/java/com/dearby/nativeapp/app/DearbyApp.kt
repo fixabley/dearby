@@ -12,43 +12,36 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dearby.nativeapp.pages.qr.ReceivedPhase
-import com.dearby.nativeapp.pages.qr.ReceivedSharePage
-import com.dearby.nativeapp.pages.qr.ReceivedShareState
-import com.dearby.nativeapp.entities.account.model.ScannedLink
+import com.dearby.nativeapp.pages.wallet.WalletCardPage
 import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.activity.applyPrompt.ApplyConfirmationSheet
 import com.dearby.nativeapp.widgets.card.cardContent.CardState
 
 private enum class Tab(val label: String, val icon: ImageVector) {
     Discovery("발견", Icons.Outlined.Explore), Mine("내 활동", Icons.Outlined.EventAvailable),
-    Qr("QR", Icons.Outlined.QrCodeScanner), Wallet("받은 명함", Icons.Outlined.Badge), Profile("내 프로필", Icons.Outlined.PersonOutline),
+    Cards("내 명함", Icons.Outlined.ContactPage), Wallet("받은 명함", Icons.Outlined.Badge), Profile("내 프로필", Icons.Outlined.PersonOutline),
 }
 private sealed interface CardRoute {
     data class Detail(val card: CardState) : CardRoute
     data object Composer : CardRoute
-    data class Received(val link: ScannedLink) : CardRoute
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, qrShare: QrShareViewModel, wallet: WalletViewModel, profile: ProfileViewModel, incoming: ScannedLink? = null, opened: () -> Unit = {}) {
+@Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, myCards: MyCardsViewModel, wallet: WalletViewModel, profile: ProfileViewModel) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     var route by remember { mutableStateOf<CardRoute?>(null) }
     var activityDetail by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<String?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
-    BackHandler(route != null && route != CardRoute.Composer && route !is CardRoute.Received) { route = null }
+    BackHandler(route is CardRoute.Detail) { route = null }
     val compose = { publish.start(); route = CardRoute.Composer }
-    // A /s/<UUID> App Link opens the shared card over whatever is showing.
-    LaunchedEffect(incoming) { incoming?.let { route = CardRoute.Received(it); opened() } }
     val profileState by profile.state.collectAsStateWithLifecycle()
     Surface(Modifier.fillMaxSize()) {
         Column(Modifier.statusBarsPadding().navigationBarsPadding()) {
             Box(Modifier.weight(1f)) {
                 when (val screen = route) {
-                    is CardRoute.Detail -> ReceivedSharePage(ReceivedShareState(ReceivedPhase.LOADED, screen.card), { route = null }, {}, { openContact(context, it) })
+                    is CardRoute.Detail -> WalletCardPage(screen.card, { route = null }) { openContact(context, it) }
                     CardRoute.Composer -> CardComposerRoute(publish, account) { route = null }
-                    is CardRoute.Received -> ReceivedShareRoute(screen.link, account) { route = null }
                     null -> when (tab) {
                         Tab.Discovery, Tab.Mine -> Column {
                             if (!activityDetail) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -56,7 +49,7 @@ private sealed interface CardRoute {
                             }
                             key(tab) { ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }) { activityDetail = it } }
                         }
-                        Tab.Qr -> QrRoute(qrShare, activityModel, compose) { route = CardRoute.Received(it) }
+                        Tab.Cards -> MyCardsRoute(myCards, compose) { card -> publish.start(card); route = CardRoute.Composer }
                         Tab.Wallet -> WalletRoute(wallet, account) { route = CardRoute.Detail(it) }
                         Tab.Profile -> ProfileRoute(profile, account, compose)
                     }

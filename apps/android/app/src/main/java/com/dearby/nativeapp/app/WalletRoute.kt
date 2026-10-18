@@ -10,11 +10,9 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardState
     val state by model.state.collectAsStateWithLifecycle()
     val auth by account.state.collectAsStateWithLifecycle()
     var query by remember { mutableStateOf("") }
-    var collapsed by remember { mutableStateOf(emptySet<String>()) }
     var signingIn by remember { mutableStateOf(false) }
     val signedIn = auth.phase == AccountPhase.SIGNED_IN
     LaunchedEffect(signedIn) { if (signedIn) signingIn = false; model.load() }
-    WalletPage(state, query, collapsed, { query = it }, { id -> collapsed = if (id in collapsed) collapsed - id else collapsed + id },
-        open, signIn = { signingIn = true }, retry = { model.load() })
+    WalletPage(state, query, { query = it }, open, signIn = { signingIn = true }, retry = { model.load() })
     if (signingIn && auth.phase != AccountPhase.SIGNED_IN) SignInRoute(account, close = { signingIn = false })
 }

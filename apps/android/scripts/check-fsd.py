@@ -15,19 +15,18 @@ API = {
     'widgets.activity.applyPrompt': {'ApplyConfirmationSheet'},
     'widgets.profile.profileFields': {'ProfileContactFields', 'ProfileExtraContact', 'ProfileContactKinds', 'HistoryPeriodFields', 'historyPeriod', 'ActivityInfoPicker', 'PickerItem', 'EvidenceFields', 'EvidenceRow', 'JobTagPicker', 'JobTag'},
     'widgets.activity.activityCard': {'ActivityCard'},
-    'widgets.card.cardContent': {'CardState', 'CardHistoryState', 'ContactState', 'CardContent', 'CardStack', 'ReceivedCardRow', 'QrShareCard', 'QrScanOverlay', 'CardComposer', 'ComposerContact', 'ComposerHistory', 'TemplateEditor', 'TemplateToken'},
+    'widgets.card.cardContent': {'CardState', 'CardHistoryState', 'ContactState', 'CardContent', 'CardStack', 'ReceivedCardRow', 'CardComposer', 'ComposerContact', 'ComposerHistory', 'TemplateEditor', 'TemplateToken'},
     'pages.profile': {'ProfilePage', 'ProfilePhase', 'ProfileViewState', 'ProfileFormState', 'ProfileErrors', 'HistoryDraft', 'FunnelState', 'PickerSearchState', 'VersionsState', 'HistoryFunnelPage', 'ProfileVersionsPage', 'ProfileVersionPage', 'HistoryRowState', 'VersionDetailView', 'rowState', 'view', 'periodText', 'errors', 'SetupStep', 'ProfileSetupPage'},
-    'pages.qr': {'QrPage', 'QrShareState', 'QrSharePhase', 'QrCardChoice', 'ReceivedSharePage', 'ReceivedShareState', 'ReceivedPhase', 'ReceivedSaveState'},
-    'features.scan': {'QrCameraPreview', 'decodeQr'},
+    'pages.cards': {'MyCardsPage', 'MyCardsState', 'MyCardsPhase', 'MyCardChoice'},
     'features.passkey': {'Passkeys'},
     'features.apple': {'AppleBrowser', 'AppleVerifier'},
     'pages.account': {'SignInSheet', 'AppleAccountSheet'},
     'pages.onboarding': {'IntroPage'},
-    'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletEntryState'},
+    'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletCardPage', 'filterWallet'},
     'features.calendar': {'CalendarConflictSheet'},
     'pages.activity': {'ActivityListPage', 'ActivityListPhase', 'MyActivitiesPage', 'ActivityDetailPage', 'ApplicationReportDialog', 'ActivityState', 'ActivityListState'},
     'entities.activity': {'model.ActivityModel', 'model.ActivityPage', 'model.ScheduleModel', 'model.instant', 'model.safeHttpsUrl', 'api.fetchActivities'},
-    'entities.account': {'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.ProfileJob', 'model.AccountProfile', 'model.PublishedCard', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault', 'model.ScannedLink', 'model.AppleSignIn', 'model.ReceivedShare', 'model.CardShare', 'model.ShareActivity', 'model.ContactRules', 'model.ActivityInfoRef', 'model.ActivityInfoItem', 'model.ActivityInfoPage', 'model.EvidenceMeta', 'model.ProfileVersionSummary', 'model.ProfileVersionList', 'model.ProfileVersionDetail'},
+    'entities.account': {'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.ProfileJob', 'model.AccountProfile', 'model.PublishedCard', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault', 'model.AppleSignIn', 'model.ContactRules', 'model.ActivityInfoRef', 'model.ActivityInfoItem', 'model.ActivityInfoPage', 'model.EvidenceMeta', 'model.ProfileVersionSummary', 'model.ProfileVersionList', 'model.ProfileVersionDetail'},
 }
 
 def owner(name):
@@ -73,10 +72,10 @@ def check_source(path, text):
 
 def self_test():
     cases = [
-        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.widgets.card.cardContent.CardContent', True),
-        ('pages/qr/Test.kt', 'import com.dearby.nativeapp.pages.profile.ProfileState', False),
+        ('pages/cards/Test.kt', 'import com.dearby.nativeapp.widgets.card.cardContent.CardContent', True),
+        ('pages/cards/Test.kt', 'import com.dearby.nativeapp.pages.profile.ProfileState', False),
         ('widgets/card/cardContent/Test.kt', 'import com.dearby.nativeapp.shared.ui.TimelineEntry', True),
-        ('widgets/card/cardContent/Test.kt', 'import com.dearby.nativeapp.pages.wallet.WalletEntryState', False),
+        ('widgets/card/cardContent/Test.kt', 'import com.dearby.nativeapp.pages.wallet.WalletState', False),
         ('widgets/card/cardContent/Test.kt', 'val x = LocalContext.current', False),
         ('app/Test.kt', 'import com.dearby.nativeapp.widgets.card.cardContent.PrivateCard', False),
         ('pages/activity/Test.kt', 'import com.dearby.nativeapp.entities.activity.model.ActivityModel', False),

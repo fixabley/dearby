@@ -13,7 +13,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.dearby.nativeapp.entities.account.api.AccountClient
 import com.dearby.nativeapp.entities.account.api.SessionVault
-import com.dearby.nativeapp.entities.account.model.ScannedLink
 import com.dearby.nativeapp.entities.activity.api.fetchActivities
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -22,8 +21,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.dearby.nativeapp.BuildConfig
 import com.dearby.nativeapp.shared.config.appleRedirect
-import com.dearby.nativeapp.shared.config.sharedCardId
-import com.dearby.nativeapp.shared.config.sharedCardUrl
 import com.dearby.nativeapp.shared.ui.DearbyTheme
 
 class MainActivity : ComponentActivity() {
@@ -36,11 +33,7 @@ class MainActivity : ComponentActivity() {
     private val publish: CardPublishViewModel by viewModels { viewModelFactory { initializer { CardPublishViewModel(account) } } }
     private val wallet: WalletViewModel by viewModels { viewModelFactory { initializer { WalletViewModel(account) } } }
     private val profile: ProfileViewModel by viewModels { viewModelFactory { initializer { ProfileViewModel(account) } } }
-    private val qrShare: QrShareViewModel by viewModels {
-        viewModelFactory { initializer { QrShareViewModel(account) { sharedCardUrl(it, BuildConfig.WEB_ORIGIN) } } }
-    }
-    // Captured from /s/<UUID> App Links and shown as the shared-card screen.
-    private var incoming by mutableStateOf<ScannedLink?>(null)
+    private val myCards: MyCardsViewModel by viewModels { viewModelFactory { initializer { MyCardsViewModel(account) } } }
     // First-launch intro, remembered in its own new preferences file; no earlier stored data is read.
     private val onboarding by lazy { getSharedPreferences("dearby.onboarding", MODE_PRIVATE) }
     private var intro by mutableStateOf(false)
@@ -64,7 +57,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             DearbyTheme {
                 if (intro) IntroRoute(account, ::introShown)
-                else DearbyApp(activityModel, account, publish, qrShare, wallet, profile, incoming) { incoming = null }
+                else DearbyApp(activityModel, account, publish, myCards, wallet, profile)
                 AppleAccountRoute(account)
             }
         }
@@ -73,10 +66,9 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         receive(intent)
     }
-    /** `/s/<UUID>` App Links, and Apple's `dearby://auth/apple` redirect (singleTask brings this instance back over the Custom Tab). */
+    /** Apple's `dearby://auth/apple` redirect (singleTask brings this instance back over the Custom Tab). */
     private fun receive(intent: Intent?, recreated: Boolean = false) {
         val link = intent?.dataString ?: return
-        appleRedirect(link)?.let { if (!recreated) account.appleReturned(it); return }
-        sharedCardId(link, BuildConfig.WEB_ORIGIN)?.let { incoming = ScannedLink.Share(it) }
+        appleRedirect(link)?.let { if (!recreated) account.appleReturned(it) }
     }
 }

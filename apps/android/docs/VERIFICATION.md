@@ -47,3 +47,7 @@ Final targeted rerun after QR tile minimum-height adjustment: default QR flow1 p
 - 실행: `python3 scripts/check-fsd.py --self-test` 25 cases, 63 Kotlin files passed.
 - 실행: `./gradlew lintDebug assembleDebug` BUILD SUCCESSFUL. `lintDebug --rerun-tasks`로 다시 돌려 lint 오류 0, 경고 12개는 기존 의존성·Gradle 버전·미사용 리소스 알림뿐이다.
 - 실행하지 않음: 이 checkout에는 단위·기기 테스트 폴더가 없어 새 테스트를 만들거나 돌리지 않았다. 큰 글씨 테스트 미실행. 에뮬레이터 화면 흐름과 운영 서버 `DELETE /v1/me` 호출은 확인하지 않았다(운영 계정을 지우게 되므로).
+
+## 2026-10-18 명함 공유 삭제
+
+위 기록의 QR·스캔·공유·활동별 묶음 검증은 당시 기록이며 해당 화면은 더 없다. 이번 변경 뒤 실제 실행: `python3 scripts/check-fsd.py --self-test`(25 cases, 66 Kotlin files 통과), `./gradlew lintDebug assembleDebug`(성공, lint 오류 0·경고 8: AGP/의존성 버전 안내와 UnusedResources). 기기·에뮬레이터 화면 흐름은 확인하지 않았다.
