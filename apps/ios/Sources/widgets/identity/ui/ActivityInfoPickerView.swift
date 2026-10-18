@@ -8,13 +8,16 @@ struct ActivityInfoPickerView: View {
     @State private var search: ActivityInfoSearchModel
     @Binding var picked: ActivityInfoRef?
     @Binding var typed: String
+    /// Called with the full search hit after a pick, for steps that derive other fields from it (an activity's organization and program).
+    var onPick: ((ActivityInfoItem) -> Void)?
     init(title: String, prompt: String, kind: AccountClient.ActivityInfoKind, parentID: Int?, account: AccountViewModel,
-         picked: Binding<ActivityInfoRef?>, typed: Binding<String>) {
+         picked: Binding<ActivityInfoRef?>, typed: Binding<String>, onPick: ((ActivityInfoItem) -> Void)? = nil) {
         self.title = title
         self.prompt = prompt
         _search = State(initialValue: ActivityInfoSearchModel(kind: kind, parentID: parentID, account: account))
         _picked = picked
         _typed = typed
+        self.onPick = onPick
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -53,10 +56,15 @@ struct ActivityInfoPickerView: View {
                 Button {
                     picked = item.ref
                     typed = ""
+                    onPick?(item)
                 } label: {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.name).font(.dearby(.body)).foregroundStyle(DearbyStyle.ink)
-                        if let parent = item.organization?.name ?? item.nameEn { Text(parent).font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet) }
+                        // Where the hit belongs: activities show 조직 · 프로그램, programs their organization, others the English name.
+                        let parents = [item.organization?.name, item.program?.name].compactMap { $0 }
+                        if let parent = parents.isEmpty ? item.nameEn : parents.joined(separator: " · ") {
+                            Text(parent).font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
+                        }
                     }.frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
                 }.buttonStyle(.plain)
                 Divider()

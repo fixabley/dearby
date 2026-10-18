@@ -196,6 +196,8 @@ struct ActivityInfoItem: Decodable, Equatable, Identifiable, Sendable {
     var nameEn: String? = nil
     var parentOrganizationId: Int? = nil
     var organization: ActivityInfoRef? = nil
+    /// Activities: the program the activity belongs to (contract "이력", 2026-10-18).
+    var program: ActivityInfoRef? = nil
     /// Jobs: the job right above in the tree.
     var parent: ActivityInfoRef? = nil
     var ref: ActivityInfoRef { ActivityInfoRef(id: id, name: name) }

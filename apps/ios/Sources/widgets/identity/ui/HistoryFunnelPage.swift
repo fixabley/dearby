@@ -34,6 +34,12 @@ struct HistoryFunnelPage: View {
         }
         .background(.white).navigationTitle(step == .summary ? "이력 확인" : "이력 입력").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
+        // Un-picking an activity drops the organization and program it brought along, so a typed activity asks for them fresh.
+        .onChange(of: draft.activity) { _, next in
+            guard draft.isActivity, next == nil else { return }
+            draft.organization = nil; draft.organizationName = ""
+            draft.program = nil; draft.programName = ""
+        }
     }
     @ViewBuilder private var content: some View {
         switch step {
@@ -42,14 +48,20 @@ struct HistoryFunnelPage: View {
             choice("조직 활동", "동아리·학회·회사 같은 조직에서 활동했어요", selected: !draft.isActivity) { draft.kind = "organization" }
             choice("활동 참여", "컨퍼런스·해커톤·캠프 같은 활동에 참여했어요", selected: draft.isActivity) { draft.kind = "activity" }
         case .organization:
-            ActivityInfoPickerView(title: "어떤 조직인가요?", prompt: "조직 이름 검색", kind: .organizations, parentID: nil, account: state.account,
-                                   picked: $draft.organization, typed: $draft.organizationName)
+            // 조직 이력의 첫 질문, 또는 직접 입력한 활동의 소속(contract "이력" 2026-10-18).
+            ActivityInfoPickerView(title: draft.isActivity ? "어떤 조직에서 한 활동인가요?" : "어떤 조직인가요?", prompt: "조직 이름 검색",
+                                   kind: .organizations, parentID: nil, account: state.account, picked: $draft.organization, typed: $draft.organizationName)
         case .program:
-            ActivityInfoPickerView(title: draft.isActivity ? "어떤 프로그램인가요?" : "어떤 프로그램인가요? (선택)", prompt: "프로그램 이름 검색",
+            // Only reached for a hand-typed activity; 조직 이력 does not ask for a program.
+            ActivityInfoPickerView(title: "어떤 프로그램인가요? (선택)", prompt: "프로그램 이름 검색",
                                    kind: .programs, parentID: draft.organization?.id, account: state.account, picked: $draft.program, typed: $draft.programName)
         case .activity:
-            ActivityInfoPickerView(title: "어떤 활동인가요?", prompt: "활동 이름 검색", kind: .activities, parentID: draft.program?.id,
-                                   account: state.account, picked: $draft.activity, typed: $draft.activityName)
+            // Searches every published activity; a picked activity brings its organization and program along.
+            ActivityInfoPickerView(title: "어떤 활동인가요?", prompt: "활동 이름 검색", kind: .activities, parentID: nil,
+                                   account: state.account, picked: $draft.activity, typed: $draft.activityName) { item in
+                draft.organization = item.organization; draft.organizationName = ""
+                draft.program = item.program; draft.programName = ""
+            }
         case .role:
             ActivityInfoPickerView(title: "어떤 역할이었나요?", prompt: "역할 검색 (예: 운영진, 참가자)", kind: .roles, parentID: nil,
                                    account: state.account, picked: $draft.role, typed: $draft.roleName)
