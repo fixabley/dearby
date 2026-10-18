@@ -46,7 +46,7 @@ export type ActivityText = {
   descriptionEn: string | null;
   /** Absent on older API responses; the editor treats that as none. */
   eligibility?: Eligibility | null;
-  /** The tree opens the editor without schedules; then the 활동 기간·모집 기간 blocks are hidden. */
+  /** The tree opens the editor without schedules; then the 모집 기간·활동 기간 blocks are hidden. */
   application?: Schedule | null;
   activitySchedule?: Schedule;
   /** Fields the collector copied from the program's previous edition (contract "이전 기수 정보 자동완성"); absent on the tree path. */
@@ -537,18 +537,18 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
         {withSchedules && (
           <>
             <ScheduleBlock
-              title="활동 기간"
-              schedule={activity.activitySchedule}
-              rangeName="activityRange"
-              timedName="activityTimed"
-              timed={activityTimed}
-            />
-            <ScheduleBlock
               title="모집 기간"
               schedule={activity.application}
               rangeName="applicationRange"
               timedName="applicationTimed"
               timed={applicationTimed}
+            />
+            <ScheduleBlock
+              title="활동 기간"
+              schedule={activity.activitySchedule}
+              rangeName="activityRange"
+              timedName="activityTimed"
+              timed={activityTimed}
             />
           </>
         )}
@@ -728,22 +728,22 @@ function ActivityDetail({ activity }: { activity: Activity }) {
             ]
           : []),
         {
-          label: "활동 기간",
-          children: (
-            <>
-              {scheduleText(activity.activitySchedule)}
-              {activity.activitySchedule.curated && <CuratedTag />}
-              {activity.activitySchedule.dateLabel && <div className="muted">원문: {activity.activitySchedule.dateLabel}</div>}
-            </>
-          ),
-        },
-        {
           label: "모집 기간",
           children: (
             <>
               {scheduleText(activity.application)}
               {activity.application?.curated && <CuratedTag />}
               {activity.application?.dateLabel && <div className="muted">원문: {activity.application.dateLabel}</div>}
+            </>
+          ),
+        },
+        {
+          label: "활동 기간",
+          children: (
+            <>
+              {scheduleText(activity.activitySchedule)}
+              {activity.activitySchedule.curated && <CuratedTag />}
+              {activity.activitySchedule.dateLabel && <div className="muted">원문: {activity.activitySchedule.dateLabel}</div>}
             </>
           ),
         },
