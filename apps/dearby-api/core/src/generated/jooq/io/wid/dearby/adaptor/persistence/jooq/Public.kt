@@ -10,11 +10,9 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
-import io.wid.dearby.adaptor.persistence.jooq.tables.CardShares
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
-import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCardShares
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestHandoffs
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestSessions
@@ -42,7 +40,6 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Users
-import io.wid.dearby.adaptor.persistence.jooq.tables.WalletShares
 import io.wid.dearby.adaptor.persistence.jooq.tables.WebauthnChallenges
 
 import kotlin.collections.List
@@ -97,11 +94,6 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val BUSINESS_CARDS: BusinessCards get() = BusinessCards.BUSINESS_CARDS
 
     /**
-     * The table <code>public.card_shares</code>.
-     */
-    val CARD_SHARES: CardShares get() = CardShares.CARD_SHARES
-
-    /**
      * The table <code>public.collection_runs</code>.
      */
     val COLLECTION_RUNS: CollectionRuns get() = CollectionRuns.COLLECTION_RUNS
@@ -115,11 +107,6 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.dismissed_activity_sources</code>.
      */
     val DISMISSED_ACTIVITY_SOURCES: DismissedActivitySources get() = DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES
-
-    /**
-     * The table <code>public.guest_card_shares</code>.
-     */
-    val GUEST_CARD_SHARES: GuestCardShares get() = GuestCardShares.GUEST_CARD_SHARES
 
     /**
      * The table <code>public.guest_cards</code>.
@@ -257,11 +244,6 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val USERS: Users get() = Users.USERS
 
     /**
-     * The table <code>public.wallet_shares</code>.
-     */
-    val WALLET_SHARES: WalletShares get() = WalletShares.WALLET_SHARES
-
-    /**
      * The table <code>public.webauthn_challenges</code>.
      */
     val WEBAUTHN_CHALLENGES: WebauthnChallenges get() = WebauthnChallenges.WEBAUTHN_CHALLENGES
@@ -275,11 +257,9 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         ActivityRoles.ACTIVITY_ROLES,
         AppleSignInStates.APPLE_SIGN_IN_STATES,
         BusinessCards.BUSINESS_CARDS,
-        CardShares.CARD_SHARES,
         CollectionRuns.COLLECTION_RUNS,
         Contacts.CONTACTS,
         DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES,
-        GuestCardShares.GUEST_CARD_SHARES,
         GuestCards.GUEST_CARDS,
         GuestHandoffs.GUEST_HANDOFFS,
         GuestSessions.GUEST_SESSIONS,
@@ -307,7 +287,6 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         UserIdentities.USER_IDENTITIES,
         UserRoles.USER_ROLES,
         Users.USERS,
-        WalletShares.WALLET_SHARES,
         WebauthnChallenges.WEBAUTHN_CHALLENGES
     )
 }

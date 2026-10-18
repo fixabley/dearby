@@ -7,8 +7,6 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.keys.GUEST_CARDS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.GUEST_CARDS__GUEST_CARDS_SESSION_DIGEST_FKEY
-import io.wid.dearby.adaptor.persistence.jooq.keys.GUEST_CARD_SHARES__GUEST_CARD_SHARES_SESSION_DIGEST_CARD_ID_FKEY
-import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCardShares.GuestCardSharesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestSessions.GuestSessionsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.GuestCardsRecord
 
@@ -135,22 +133,6 @@ open class GuestCards(
      */
     fun guestSessions(): GuestSessionsPath = guestSessions
     val guestSessions: GuestSessionsPath by lazy { GuestSessionsPath(this, GUEST_CARDS__GUEST_CARDS_SESSION_DIGEST_FKEY, null) }
-
-    private lateinit var _guestCardShares: GuestCardSharesPath
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>public.guest_card_shares</code> table
-     */
-    fun guestCardShares(): GuestCardSharesPath {
-        if (!this::_guestCardShares.isInitialized)
-            _guestCardShares = GuestCardSharesPath(this, null, GUEST_CARD_SHARES__GUEST_CARD_SHARES_SESSION_DIGEST_CARD_ID_FKEY.inverseKey)
-
-        return _guestCardShares;
-    }
-
-    val guestCardShares: GuestCardSharesPath
-        get(): GuestCardSharesPath = guestCardShares()
     override fun `as`(alias: String): GuestCards = GuestCards(DSL.name(alias), this)
     override fun `as`(alias: Name): GuestCards = GuestCards(alias, this)
     override fun `as`(alias: Table<*>): GuestCards = GuestCards(alias.qualifiedName, this)
