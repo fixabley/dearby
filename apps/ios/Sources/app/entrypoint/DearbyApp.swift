@@ -16,12 +16,16 @@ import SwiftUI
     init() {
         let links = ConnectionProvider()
         self.links = links
-        _activityModel = State(initialValue: ActivityViewModel(programs: links.programs, activities: links.programActivities))
+        let activityModel = ActivityViewModel(programs: links.programs, activities: links.programActivities)
+        _activityModel = State(initialValue: activityModel)
         let account = links.account()
         self.account = account
         if account.phase == .signedIn { UserDefaults.standard.set(true, forKey: Self.introShownKey) }
         _showIntro = State(initialValue: !UserDefaults.standard.bool(forKey: Self.introShownKey))
-        _cards = State(initialValue: MyCardsModel(account: account))
+        // The QR sheet preselects the applied activity whose next stage is nearest; ended ones come last (contract "명함 교환").
+        _cards = State(initialValue: MyCardsModel(account: account, webOrigin: links.origins.web) {
+            activityModel.appliedProgress(now: Date()).map(\.activity)
+        })
         _wallet = State(initialValue: WalletModel(account: account))
         _profile = State(initialValue: ProfileModel(account: account))
     }
@@ -35,6 +39,12 @@ import SwiftUI
                         discovery: { ActivityListPage(state: activityModel, path: $0) }, mine: MyActivitiesPage(state: activityModel, explore: { tab = 0 }),
                         cards: MyCardsPage(state: cards), wallet: WalletPage(state: wallet), profile: ProfilePage(state: profile))
                 }
+            }
+            // "Dearby 앱에 저장" on the web card page: save the card to the account and open it in 받은 명함.
+            .onOpenURL { url in
+                guard let incoming = WalletModel.Incoming(url: url) else { return }
+                tab = 3
+                Task { await wallet.receive(incoming) }
             }
             .onChange(of: scene) { _, phase in
                 if phase == .background { activityModel.appLeft() } else if phase == .active { activityModel.appReturned() }

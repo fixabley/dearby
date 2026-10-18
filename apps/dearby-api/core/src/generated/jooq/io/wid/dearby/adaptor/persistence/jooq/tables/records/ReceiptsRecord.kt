@@ -44,6 +44,10 @@ open class ReceiptsRecord() : UpdatableRecordImpl<ReceiptsRecord>(Receipts.RECEI
         set(value): Unit = set(5, value)
         get(): Long? = get(5) as Long?
 
+    open var recalledAt: OffsetDateTime?
+        set(value): Unit = set(6, value)
+        get(): OffsetDateTime? = get(6) as OffsetDateTime?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -53,13 +57,14 @@ open class ReceiptsRecord() : UpdatableRecordImpl<ReceiptsRecord>(Receipts.RECEI
     /**
      * Create a detached, initialised ReceiptsRecord
      */
-    constructor(id: UUID? = null, recipientId: UUID? = null, cardId: UUID? = null, context: JSONB? = null, receivedAt: OffsetDateTime? = null, seq: Long? = null): this() {
+    constructor(id: UUID? = null, recipientId: UUID? = null, cardId: UUID? = null, context: JSONB? = null, receivedAt: OffsetDateTime? = null, seq: Long? = null, recalledAt: OffsetDateTime? = null): this() {
         this.id = id
         this.recipientId = recipientId
         this.cardId = cardId
         this.context = context
         this.receivedAt = receivedAt
         this.seq = seq
+        this.recalledAt = recalledAt
         resetTouchedOnNotNull()
     }
 }

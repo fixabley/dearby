@@ -8,7 +8,15 @@ import Observation
     private(set) var cards: [PublishedCard] = []
     private(set) var selectedCardID: String?
     let account: AccountViewModel
-    init(account: AccountViewModel) { self.account = account }
+    /// Where the card QR points (contract "명함 교환"): `<webOrigin>/cards/<id>?activity=<n>`.
+    let webOrigin: URL
+    /// Applied activities for the QR sheet's activity chip, the one to preselect first (nearest ongoing stage).
+    let appliedActivities: @MainActor () -> [ActivityModel]
+    init(account: AccountViewModel, webOrigin: URL, appliedActivities: @escaping @MainActor () -> [ActivityModel] = { [] }) {
+        self.account = account
+        self.webOrigin = webOrigin
+        self.appliedActivities = appliedActivities
+    }
     var card: PublishedCard? { cards.first { $0.id == selectedCardID } }
 
     func load() async {

@@ -2,11 +2,15 @@ import SwiftUI
 
 /// 받은 명함: the cards saved to the account as an indexed list (contract "받은 명함 목록 표시"):
 /// first-letter sections with pinned headers, a right-edge index rail, and the existing search field.
+/// Rows carry the program chip and recall badge, the detail offers `내 명함도 건네기`, and a card arriving by
+/// `dearby://cards/…` is saved and opened here (contract "명함 교환" 2026-10-19).
 struct WalletPage: View {
     let state: WalletModel
     @State private var query = ""
-    @State private var detail: CardModel?
     @State private var signingIn = false
+    /// `내 명함도 건네기` with several cards: pick one.
+    @State private var choosingCard: [PublishedCard]?
+    @State private var reciprocating = false
     @Environment(\.openURL) private var openURL
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The rail stays hidden for short lists.
@@ -25,7 +29,7 @@ struct WalletPage: View {
                         notice("받은 명함을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.")
                         Button("다시 시도") { Task { await state.load() } }.buttonStyle(DearbyButtonStyle(outlined: true))
                     case .loaded where state.wallet.items.isEmpty:
-                        notice("아직 받은 명함이 없어요", "계정에 저장된 명함이 여기에 보여요.")
+                        notice("아직 받은 명함이 없어요", "상대의 명함 QR을 카메라로 읽어 저장하면 여기에 보여요.")
                     case .loaded:
                         DearbySearchField(prompt: "이름, 직무, 이력으로 검색", text: $query, identifier: "wallet-search")
                         let sections = state.sections(query: query)
@@ -43,16 +47,15 @@ struct WalletPage: View {
         .background(.white).navigationTitle("받은 명함").navigationBarTitleDisplayMode(.inline)
         .task { await state.load() }
         .refreshable { await state.load() }
-        .sheet(item: $detail) { card in
-            NavigationStack {
-                ScrollView { CardView(card: card) { if let url = $0.actionURL { openURL(url) } }.padding(20) }
-                    .navigationTitle(card.profileName).navigationBarTitleDisplayMode(.inline)
-                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { detail = nil } } }
-            }
+        // A QR-received card while signed out: sign in first, then the save continues.
+        .onChange(of: state.pending, initial: true) { _, pending in if pending != nil { signingIn = true } }
+        .sheet(item: Binding(get: { state.opened }, set: { state.opened = $0 })) { entry in NavigationStack { detail(entry) } }
+        .sheet(isPresented: $signingIn, onDismiss: { state.dropPending() }) {
+            NavigationStack { SignInSheet(account: state.account) { Task { await state.resumePending(); await state.load() } } }
         }
-        .sheet(isPresented: $signingIn) {
-            NavigationStack { SignInSheet(account: state.account) { Task { await state.load() } } }
-        }
+        .alert(outcomeTitle, isPresented: Binding(get: { state.outcome != nil }, set: { if !$0 { state.clearOutcome() } })) {
+            Button("확인") {}
+        } message: { Text(outcomeMessage) }
     }
     private var showsRail: Bool { state.phase == .loaded && state.sections(query: query).count > Self.railThreshold }
     private func list(_ sections: [(key: String, entries: [WalletModel.Entry])]) -> some View {
@@ -60,7 +63,8 @@ struct WalletPage: View {
             ForEach(sections, id: \.key) { section in
                 Section {
                     ForEach(section.entries) { entry in
-                        ReceivedCardRow(name: entry.card.profileName, job: entry.card.job, organization: entry.organization) { detail = entry.card }
+                        ReceivedCardRow(name: entry.card.profileName, job: entry.card.job, organization: entry.organization,
+                                        program: entry.program, badge: entry.badge) { state.opened = entry }
                         Divider()
                     }
                 } header: {
@@ -69,6 +73,63 @@ struct WalletPage: View {
                         .background(DearbyStyle.muted).accessibilityAddTraits(.isHeader).id(section.key)
                 }
             }
+        }
+    }
+    /// The received card: where and when it was exchanged, the card, then `내 명함도 건네기` or the `맞교환했어요` badge.
+    private func detail(_ entry: WalletModel.Entry) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(entry.receivedLine).font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
+                CardView(card: entry.card) { if let url = $0.actionURL { openURL(url) } }
+                if entry.receipt.reciprocal {
+                    DearbyBadge(title: "맞교환했어요")
+                } else {
+                    Button { Task { await offerMyCard(entry) } } label: {
+                        Label("내 명함도 건네기", systemImage: "arrow.left.arrow.right").font(.dearby(.subheadline).weight(.semibold))
+                            .foregroundStyle(DearbyStyle.teal).frame(minHeight: 44)
+                    }.disabled(reciprocating).accessibilityHint("상대의 받은 명함에 내 명함을 넣어요. 맞교환한 명함은 회수되지 않아요")
+                    if !entry.badge.isEmpty {
+                        Text("맞교환하지 않으면 \(entry.badge). 맞교환한 명함은 서로 남아요.").font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
+                    }
+                }
+            }.padding(20)
+        }
+        .navigationTitle(entry.card.profileName).navigationBarTitleDisplayMode(.inline)
+        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { state.opened = nil } } }
+        .confirmationDialog("어떤 명함을 건널까요?", isPresented: Binding(get: { choosingCard != nil }, set: { if !$0 { choosingCard = nil } }),
+                            titleVisibility: .visible, presenting: choosingCard) { cards in
+            ForEach(cards) { card in Button(card.name) { Task { await reciprocate(entry, card) } } }
+            Button("취소", role: .cancel) {}
+        }
+    }
+    /// One card goes straight out; several ask which; none means the composer has to come first.
+    private func offerMyCard(_ entry: WalletModel.Entry) async {
+        guard let cards = await state.myCards() else { return }
+        switch cards.count {
+        case 0: choosingCard = nil
+        case 1: await reciprocate(entry, cards[0])
+        default: choosingCard = cards.reversed()
+        }
+    }
+    private func reciprocate(_ entry: WalletModel.Entry, _ card: PublishedCard) async {
+        reciprocating = true
+        await state.reciprocate(entry, myCardID: card.id)
+        reciprocating = false
+    }
+    private var outcomeTitle: String {
+        switch state.outcome {
+        case .ownCard: "내 명함이에요"
+        case .saveFailed: "명함을 저장하지 못했어요"
+        case .reciprocateFailed: "명함을 건네지 못했어요"
+        case nil: ""
+        }
+    }
+    private var outcomeMessage: String {
+        switch state.outcome {
+        case .ownCard: "내가 발행한 명함은 받은 명함에 넣을 수 없어요."
+        case .saveFailed: "명함이 없거나 연결이 끊겼어요. QR을 다시 읽어 주세요."
+        case .reciprocateFailed: "발행한 명함이 없으면 내 명함 탭에서 먼저 만들어 주세요. 연결도 확인해 주세요."
+        case nil: ""
         }
     }
     private func jump(to key: String, _ proxy: ScrollViewProxy) {

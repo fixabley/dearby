@@ -15,6 +15,7 @@ struct ConnectionProvider: Sendable {
         let debug = true
         // Debug builds may point at another API through the launch environment; Release has no override.
         if let override = ProcessInfo.processInfo.environment["DEARBY_API_ORIGIN"] { info["DearbyAPIOrigin"] = override }
+        if let override = ProcessInfo.processInfo.environment["DEARBY_WEB_ORIGIN"] { info["DearbyWebOrigin"] = override }
         #else
         let debug = false
         #endif

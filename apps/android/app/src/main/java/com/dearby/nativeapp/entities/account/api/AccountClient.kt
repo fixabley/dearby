@@ -6,6 +6,7 @@ import com.dearby.nativeapp.entities.account.model.EvidenceMeta
 import com.dearby.nativeapp.entities.account.model.AccountSession
 import com.dearby.nativeapp.entities.account.model.PublishedCard
 import com.dearby.nativeapp.entities.account.model.toCardList
+import com.dearby.nativeapp.entities.account.model.toReceipt
 import com.dearby.nativeapp.entities.account.model.toWallet
 import com.dearby.nativeapp.entities.account.model.toJson
 import com.dearby.nativeapp.entities.account.model.toProfile
@@ -130,6 +131,13 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun cards(session: AccountSession) = send("GET", "cards", null, session).toCardList()
     /** The account's received cards (`GET /v1/wallet`). */
     suspend fun wallet(session: AccountSession) = send("GET", "wallet", null, session).toWallet()
+    /** Save a card from its QR link (`PUT /v1/wallet/cards/:cardId`, contract "명함 교환"); 409 (CONFLICT) is the account's own card. */
+    suspend fun saveReceipt(cardId: String, activityId: Long?, session: AccountSession) =
+        send("PUT", "wallet/cards/$cardId", JSONObject().apply { activityId?.let { put("activityId", it) } }, session).toReceipt()
+    /** 내 명함도 건네기 (`POST /v1/wallet/cards/:cardId/reciprocate`): the owner of [cardId] receives [myCardId] in the same activity. */
+    suspend fun reciprocate(cardId: String, myCardId: String, session: AccountSession) {
+        request("POST", "wallet/cards/$cardId/reciprocate", JSONObject().put("myCardId", myCardId), session)
+    }
 
     private fun passkeyBody(challengeId: String, credential: String) = JSONObject().put("challengeId", challengeId).put("credential", JSONObject(credential))
 

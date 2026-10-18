@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { Card } from "@/lib/models";
+import { type Activity, type Card, type GuestItem } from "@/lib/models";
 import {
   errorMessage,
   mutateGuest,
@@ -13,8 +13,10 @@ import { Failure, Loading } from "@/shared/ui/states";
 import { Icon } from "@/shared/ui/icon";
 import { MissingCard } from "@/widgets/card/missing-card";
 import { PublicCardBody } from "@/widgets/card/public-card-body";
-export function PublicCard({ id }: { id: string }) {
+/** `activity`: the numeric activity id from the owner's QR; shown as `<프로그램> <활동>에서 받은 명함` and saved with the card. */
+export function PublicCard({ id, activity }: { id: string; activity?: number }) {
   const [card, setCard] = useState<Card>();
+  const [place, setPlace] = useState("");
   const [error, setError] = useState("");
   const [missing, setMissing] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -33,14 +35,28 @@ export function PublicCard({ id }: { id: string }) {
       });
     return () => controller.abort();
   }, [id, attempt]);
+  // The exchange place is decoration: a missing or deleted activity leaves the line out.
+  useEffect(() => {
+    if (activity === undefined) return;
+    const controller = new AbortController();
+    request<Activity>(`/activities/${activity}`, { signal: controller.signal })
+      .then((found) => setPlace(`${found.program.name} ${found.name}`))
+      .catch(() => {});
+    return () => controller.abort();
+  }, [activity]);
+  const appLink = `dearby://cards/${id}${activity === undefined ? "" : `?activity=${activity}`}`;
   async function save() {
     setBusy(true);
     setSaveError("");
     try {
-      await mutateGuest(`/guest/cards/${id}`, "PUT");
+      await mutateGuest(
+        `/guest/cards/${id}`,
+        "PUT",
+        activity === undefined ? {} : { activityId: activity },
+      );
       // A successful write alone is not enough if the browser rejected the cookie.
-      const result = await request<{ items: Card[] }>("/guest/cards");
-      if (!result.items.some((item) => item.id.toLowerCase() === id))
+      const result = await request<{ items: GuestItem[] }>("/guest/cards");
+      if (!result.items.some((item) => item.card.id.toLowerCase() === id))
         throw new Error("COOKIE_UNAVAILABLE");
       setSaved(true);
     } catch (error) {
@@ -71,9 +87,14 @@ export function PublicCard({ id }: { id: string }) {
         <Icon name="arrow" size={20} />
         저장한 명함
       </Link>
+      {place && <p className="exchange-place">{place}에서 받은 명함</p>}
       <PublicCardBody card={card} />
       <div className="save-area">
-        <p className="muted">로그인 없이 명함을 저장할 수 있어요.</p>
+        <a className="button" href={appLink}>
+          <Icon name="card" size={20} />
+          Dearby 앱에 저장
+        </a>
+        <p className="muted">앱이 없으면 브라우저에 저장할 수 있어요.</p>
         {saveError && (
           <p className="error-message" role="alert">
             {saveError} <Link href="/saved">저장한 명함 보기</Link>
@@ -90,13 +111,14 @@ export function PublicCard({ id }: { id: string }) {
             </Link>
           </>
         ) : (
-          <button className="button" disabled={busy} onClick={save}>
+          <button className="button secondary" disabled={busy} onClick={save}>
             <Icon name="bookmark" size={20} />
-            {busy ? "저장 확인 중…" : "명함 저장"}
+            {busy ? "저장 확인 중…" : "브라우저에 저장"}
           </button>
         )}
         <p className="cookie-note">
-          이 브라우저의 쿠키로 저장 목록을 구분해요.
+          이 브라우저의 쿠키로 저장 목록을 구분해요. 브라우저에 저장한 명함은
+          30일 뒤 사라져요.
           <br />
           쿠키를 삭제하거나 다른 브라우저를 사용하면 기존 목록에 접근할 수
           없어요.

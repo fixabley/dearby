@@ -1,9 +1,10 @@
 package io.wid.dearby.application.guest
 
+import io.wid.dearby.domain.Id
 import java.time.OffsetDateTime
 import java.util.*
 
-// 게스트 세션·저장·세션 잇기 저장소 포트. 구현은 adaptor/persistence
+// 게스트 세션·저장·세션 잇기 저장소 포트. 구현은 adaptor/persistence. 회수된 행(recalled_at)은 목록·개수에서 뺀다
 interface GuestRepository {
 
     fun sessionExists(digest: String): Boolean
@@ -21,7 +22,13 @@ interface GuestRepository {
 
     fun cardCount(digest: String): Int
 
-    fun addCard(digest: String, cardId: UUID)
+    // 회수됐던 같은 세션+명함 행이 있으면 되살린다(저장일·활동을 새로 적는다). 모르는 활동 id는 호출 전에 null로 바꾼다
+    fun addCard(digest: String, cardId: UUID, activityId: Id?)
+
+    fun activityExists(activityId: Id): Boolean
+
+    // 저장일이 savedBefore보다 이른 저장을 회수한다(비로그인은 맞교환이 없다). 회수한 행 수
+    fun recallExpired(savedBefore: OffsetDateTime, now: OffsetDateTime): Int
 
     fun removeCard(digest: String, cardId: UUID)
 

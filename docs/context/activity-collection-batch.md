@@ -48,6 +48,14 @@ docker compose -f compose.prod.yaml --env-file .env.prod run --rm batch --collec
 
 같은 프로그램·같은 한국 날짜는 한 번만 수집한다(`collection_runs` 유일 제약). 그날 다시 돌리려면 그날의 `collection_runs` 행을 지운다.
 
+## 명함 회수 — 2026-10-19 사용자 결정
+
+같은 batch 컨테이너가 매일 04:00(Asia/Seoul)에 `RecallService`를 돌려 단방향으로 받은 명함(`receipts`)과 비로그인 저장(`guest_cards`) 중 받은 날·저장일 + 30일이 지난 것을 `recalled_at`으로 회수한다(계약 native-v1.md "명함 교환"). 맞교환(명함 주인이 받는 사람의 미철회 명함을 갖고 있음)은 남긴다. Spring Batch 잡이 아니라 트랜잭션 하나의 UPDATE 두 번이다. `--recall-now`로 띄우면 기동하자마자 한 번 실행하고 건수를 로그에 남긴다:
+
+```sh
+docker compose -f compose.prod.yaml --env-file .env.prod run --rm batch --recall-now
+```
+
 ## 아직 없는 것
 
 - 프로그램별 수집 설정 입력과 초안 검토·게시 화면(admin 모듈). 그전까지는 DB에 직접 넣고 바꾼다.

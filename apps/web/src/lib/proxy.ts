@@ -3,6 +3,7 @@ import {
   activityId,
   activitySchema,
   cardSchema,
+  guestListSchema,
   activityPageSchema,
   programPageSchema,
   uuid,
@@ -16,7 +17,8 @@ import {
   upstreamFetch,
 } from "./guest-upstream";
 
-const savedSchema = z.object({ items: z.array(cardSchema) });
+// PUT /guest/cards/:id may carry the activity the card was exchanged at (contract "명함 교환").
+const guestSaveBody = z.object({ activityId: z.number().int().positive().optional() }).strict();
 const saveSchema = z.object({
   cardId: uuid,
   status: z.enum(["saved", "alreadySaved"]),
@@ -98,17 +100,18 @@ export async function proxy(
       request.headers.get("content-type") !== "application/json")
   )
     return failure(403, "FORBIDDEN");
-  // No client body, bearer token, forwarding header, or proxy key is sent upstream.
+  // Only a guest save forwards a body, and only `{activityId}`; no bearer token, forwarding header, or proxy key goes upstream.
+  let body: { activityId?: number } | undefined;
   if (mutation) {
     try {
-      const body = await request.json();
-      if (
-        typeof body !== "object" ||
-        !body ||
-        Array.isArray(body) ||
-        Object.keys(body).length
-      )
-        return failure(422, "INVALID_INPUT");
+      const parsed: unknown = await request.json();
+      const guestSave = guest && segments[1] === "cards" && method === "PUT";
+      const accepted = guestSave
+        ? guestSaveBody.safeParse(parsed)
+        : z.object({}).strict().safeParse(parsed);
+      if (!accepted.success) return failure(422, "INVALID_INPUT");
+      if (guestSave && "activityId" in accepted.data && accepted.data.activityId !== undefined)
+        body = { activityId: accepted.data.activityId };
     } catch {
       return failure(422, "INVALID_INPUT");
     }
@@ -134,6 +137,7 @@ export async function proxy(
       method,
       guest,
       token,
+      body,
       query,
       acceptLanguage:
         search || activityRoute
@@ -182,7 +186,7 @@ export async function proxy(
           : activityRoute
           ? activitySchema.parse(json)
           : guest
-          ? savedSchema.parse(json)
+          ? guestListSchema.parse(json)
           : cardSchema.parse(json);
     return Response.json(output, { headers: outputHeaders });
   } catch {

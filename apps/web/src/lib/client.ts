@@ -21,13 +21,14 @@ export function errorMessage(error: unknown): string {
 export async function mutateGuest<T>(
   path: string,
   method: "PUT" | "DELETE",
+  body: Record<string, unknown> = {},
 ): Promise<T> {
   if (!navigator.locks) throw new Error("WEB_LOCKS_UNAVAILABLE");
   return navigator.locks.request("dearby-guest-wallet", () =>
     request<T>(path, {
       method,
       headers: { "Content-Type": "application/json", "X-Dearby-Request": "1" },
-      body: "{}",
+      body: JSON.stringify(body),
     }),
   );
 }

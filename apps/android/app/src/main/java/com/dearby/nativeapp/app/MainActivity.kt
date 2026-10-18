@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.dearby.nativeapp.BuildConfig
 import com.dearby.nativeapp.shared.config.authRedirect
+import com.dearby.nativeapp.shared.config.cardLink
 import com.dearby.nativeapp.shared.ui.DearbyTheme
 
 class MainActivity : ComponentActivity() {
@@ -67,9 +68,14 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         receive(intent)
     }
-    /** Apple's or Google's `dearby://auth/<provider>` redirect (singleTask brings this instance back over the Custom Tab). */
+    /**
+     * Apple's or Google's `dearby://auth/<provider>` redirect (singleTask brings this instance back over the Custom Tab), or a
+     * received card `dearby://cards/<id>?activity=<n>` from the web card page (contract "명함 교환").
+     */
     private fun receive(intent: Intent?, recreated: Boolean = false) {
         val link = intent?.dataString ?: return
-        authRedirect(link)?.let { if (!recreated) account.returned(it) }
+        if (recreated) return
+        authRedirect(link)?.let { account.returned(it); return }
+        cardLink(link)?.let { wallet.receive(it) }
     }
 }

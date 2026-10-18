@@ -1,5 +1,6 @@
 package io.wid.dearby.adaptor.web
 
+import io.wid.dearby.application.card.WalletRepository
 import io.wid.dearby.application.profile.ProfileRepository
 import io.wid.dearby.domain.ContactKind
 import io.wid.dearby.domain.profile.*
@@ -19,12 +20,13 @@ import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-// native-v1.md "명함·지갑"과 "템플릿": 발행 스냅샷, 공개 조회, 철회
+// native-v1.md "명함·지갑"·"템플릿"·"명함 교환": 발행 스냅샷, 공개 조회, 철회, 지갑 저장·맞교환·회수
 @SpringBootTest
 @AutoConfigureMockMvc
-class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient, @Autowired val profiles: ProfileRepository) {
+class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient, @Autowired val profiles: ProfileRepository, @Autowired val wallet: WalletRepository) {
 
     private val json = JsonMapper.builder().build()
 
@@ -115,5 +117,58 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         // 철회된 명함은 지갑에서 빠진다
         mvc.delete("/v1/cards/$cardId") { asUser(owner) }.andExpect { status { isNoContent() } }
         assertEquals(0, read(mvc.get("/v1/wallet") { asUser(receiver) })["items"].size())
+    }
+
+    private fun put(user: UUID, path: String, body: String? = null) = mvc.put(path) { asUser(user); body?.let { contentType = MediaType.APPLICATION_JSON; content = it } }
+
+    // V5가 넣은 Let'Swift 활동(프로그램 있음)
+    private fun letSwiftActivityId(): Long = jdbc.sql("select id from activities where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").query(Long::class.java).single()
+
+    @Test
+    fun `지갑 저장은 활동을 기록하고 자기 명함은 409 OWN_CARD이며, 맞교환하면 양쪽 지갑에 같은 활동으로 남고 회수 예정이 사라진다`() {
+        val (owner, ownerProfile) = userWithProfile("주인")
+        val (receiver, receiverProfile) = userWithProfile("받는이")
+        val (stranger, _) = userWithProfile("남")
+        val ownerCard = publish(owner, ownerProfile)["id"].asString()
+        val receiverCard = publish(receiver, receiverProfile)["id"].asString()
+        val activity = letSwiftActivityId()
+
+        put(receiver, "/v1/wallet/cards/${UUID.randomUUID()}", """{"activityId":$activity}""").andExpect { status { isNotFound() } }
+        put(owner, "/v1/wallet/cards/$ownerCard").andExpect { status { isConflict() }; jsonPath("$.code") { value("OWN_CARD") } }
+
+        // 모르는 활동 id는 400이 아니라 null로 저장한다
+        val first = read(put(receiver, "/v1/wallet/cards/$ownerCard", """{"activityId":987654321}""").andExpect { status { isCreated() } })
+        assertEquals(listOf(ownerCard, false, true), listOf(first["card"]["id"].asString(), first["reciprocal"].asBoolean(), first["context"]["activityId"].isNull))
+        assertEquals(OffsetDateTime.parse(first["receivedAt"].asString()).plusDays(30), OffsetDateTime.parse(first["expiresAt"].asString()))
+        // 이미 있으면 200, 받은 날은 그대로, 비어 있던 활동은 채운다
+        val again = read(put(receiver, "/v1/wallet/cards/$ownerCard", """{"activityId":$activity}""").andExpect { status { isOk() } })
+        assertEquals(first["receivedAt"].asString(), again["receivedAt"].asString())
+        assertEquals(activity, again["context"]["activityId"].asLong())
+        assertEquals("Let'Swift 2026 · 개발 환경의 변화 워크숍", again["context"]["activityName"].asString())
+        assertTrue(again["context"]["programName"].asString().isNotBlank())
+
+        // 맞교환: 받은 적 없는 사람은 403, 남의 명함으로는 404
+        mvc.post("/v1/wallet/cards/$ownerCard/reciprocate") { asUser(stranger); contentType = MediaType.APPLICATION_JSON; content = """{"myCardId":"$receiverCard"}""" }.andExpect { status { isForbidden() } }
+        mvc.post("/v1/wallet/cards/$ownerCard/reciprocate") { asUser(receiver); contentType = MediaType.APPLICATION_JSON; content = """{"myCardId":"$ownerCard"}""" }.andExpect { status { isNotFound() } }
+        mvc.post("/v1/wallet/cards/$ownerCard/reciprocate") { asUser(receiver); contentType = MediaType.APPLICATION_JSON; content = """{"myCardId":"$receiverCard"}""" }
+            .andExpect { status { isCreated() }; jsonPath("$.reciprocal") { value(true) } }
+        val ownerWallet = read(mvc.get("/v1/wallet") { asUser(owner) })["items"]
+        assertEquals(listOf(receiverCard, activity, true), listOf(ownerWallet[0]["card"]["id"].asString(), ownerWallet[0]["context"]["activityId"].asLong(), ownerWallet[0]["reciprocal"].asBoolean()))
+        val receiverWallet = read(mvc.get("/v1/wallet") { asUser(receiver) })["items"]
+        assertEquals(true, receiverWallet[0]["reciprocal"].asBoolean())
+        assertTrue(receiverWallet[0]["expiresAt"].isNull)
+
+        // 회수(RecallService가 batch에서 부르는 규칙): 30일이 지난 단방향만. 맞교환 쌍은 남고, 상대 명함이 철회되면 다시 단방향이 되어 회수된다
+        jdbc.sql("update receipts set received_at = now() - interval '31 days' where recipient_id in (?, ?)").params(receiver, owner).update()
+        val now = OffsetDateTime.now()
+        assertEquals(0, wallet.recallOneWay(now.minusDays(30), now))
+        mvc.delete("/v1/cards/$receiverCard") { asUser(receiver) }.andExpect { status { isNoContent() } }
+        assertEquals(1, wallet.recallOneWay(now.minusDays(30), now))
+        assertEquals(0, read(mvc.get("/v1/wallet") { asUser(receiver) })["items"].size())
+        assertNull(wallet.findReceipt(receiver, UUID.fromString(ownerCard)))
+        // 회수된 행은 남아 있고, 다시 저장하면 되살아난다(201)
+        assertEquals(1, jdbc.sql("select count(*) from receipts where recipient_id = ? and recalled_at is not null").param(receiver).query(Int::class.java).single())
+        put(receiver, "/v1/wallet/cards/$ownerCard").andExpect { status { isCreated() } }
+        assertEquals(1, read(mvc.get("/v1/wallet") { asUser(receiver) })["items"].size())
     }
 }

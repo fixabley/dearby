@@ -6,6 +6,7 @@ package io.wid.dearby.adaptor.persistence.jooq.tables.records
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCards
 
+import java.time.OffsetDateTime
 import java.util.UUID
 
 import org.jooq.Record2
@@ -30,6 +31,18 @@ open class GuestCardsRecord() : UpdatableRecordImpl<GuestCardsRecord>(GuestCards
         set(value): Unit = set(2, value)
         get(): Long? = get(2) as Long?
 
+    open var activityId: Long?
+        set(value): Unit = set(3, value)
+        get(): Long? = get(3) as Long?
+
+    open var savedAt: OffsetDateTime?
+        set(value): Unit = set(4, value)
+        get(): OffsetDateTime? = get(4) as OffsetDateTime?
+
+    open var recalledAt: OffsetDateTime?
+        set(value): Unit = set(5, value)
+        get(): OffsetDateTime? = get(5) as OffsetDateTime?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -39,10 +52,13 @@ open class GuestCardsRecord() : UpdatableRecordImpl<GuestCardsRecord>(GuestCards
     /**
      * Create a detached, initialised GuestCardsRecord
      */
-    constructor(sessionDigest: String? = null, cardId: UUID? = null, seq: Long? = null): this() {
+    constructor(sessionDigest: String? = null, cardId: UUID? = null, seq: Long? = null, activityId: Long? = null, savedAt: OffsetDateTime? = null, recalledAt: OffsetDateTime? = null): this() {
         this.sessionDigest = sessionDigest
         this.cardId = cardId
         this.seq = seq
+        this.activityId = activityId
+        this.savedAt = savedAt
+        this.recalledAt = recalledAt
         resetTouchedOnNotNull()
     }
 }
