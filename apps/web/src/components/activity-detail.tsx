@@ -7,6 +7,7 @@ import {
   recruitment,
   scheduleLabel,
 } from "@/lib/models";
+import { eligibilityLines } from "@/lib/eligibility";
 import { errorMessage, request, RequestError } from "@/lib/client";
 import { Failure, Loading } from "@/shared/ui/states";
 import { Icon } from "@/shared/ui/icon";
@@ -54,6 +55,7 @@ export function ActivityDetail({ id }: { id: number }) {
   const status = recruitment(activity.application, now);
   const official = httpsUrl(activity.officialUrl);
   const image = httpsUrl(activity.imageUrl);
+  const eligibility = eligibilityLines(activity.eligibility);
   return (
     <article className="detail">
       <Link className="back-link" href="/">
@@ -89,6 +91,18 @@ export function ActivityDetail({ id }: { id: number }) {
           ))}
         </dl>
       </section>
+      {eligibility.length > 0 && (
+        <section className="detail-section">
+          <h2>대상</h2>
+          <ul className="eligibility-list">
+            {eligibility.map((line) => (
+              <li key={line} className="badge neutral">
+                {line}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <section className="detail-section">
         <h2>일정</h2>
         {activity.schedules.length ? (

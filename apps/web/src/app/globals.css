@@ -483,6 +483,17 @@ a {
 .facts dd {
   margin: 0;
 }
+.eligibility-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.eligibility-list .badge {
+  white-space: pre-line;
+}
 .schedule-list {
   display: grid;
   gap: 16px;
