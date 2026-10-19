@@ -42,6 +42,16 @@
 - **새 규칙(AGENTS.md)**: 사용자 지시 "모바일은 플랫폼 별 네이티브 디자인을 지향해줘. 비슷한 역할이 있으면." 같은 역할의 네이티브 컴포넌트가 있으면 시안의 커스텀 표현 대신 그것을 쓴다. iOS는 SwiftUI 기본 컴포넌트(bordered/borderedProminent 버튼, `LabeledContent`, 시스템 grouped 색, 시스템 스프링, SF Symbols), Android는 Material 3·One UI 관례. 이번 카드에 바로 적용.
 - 남은 일: 프로그램 로고 필드(`programs.logo_url` + 어드민 업로드)는 아직 없어 아바타는 이름 첫 글자.
 
+## 2026-10-19 밤 결정 — 프로그램 로고·태그 칩 줄 제거·탭 제목/배경 통일·색 체계·다크 모드
+
+PR #289(발견 카드 리뉴얼·장소·지오코딩) 배포 직후 사용자 요청 여섯 건. 계약은 native-v1 "프로그램 로고·태그 칩 줄 제거·탭 제목 통일"(색 체계·다크 모드 bullet 포함), admin-v1 "프로그램 로고".
+- **프로그램 로고**: "로고도 어드민에서 추가할 수 있게." `program_logos`(V38, bytea — 인증자료와 같은 방식), 어드민 PUT/DELETE/GET `/v1/admin/programs/:id/logo`, 공개 `GET /v1/programs/:id/logo`(1년 캐시, `?v=` 캐시 깨기), `ProgramSummary.logoUrl`. 세 클라이언트 카드 로고 자리에 표시(없으면 첫 글자 아바타).
+- **태그 칩 줄 제거**: "태그는 직접 보여주지 말고 검색 조건으로" → 카드가 아니라 **검색창 아래 칩 줄**을 말한 것(사용자 정정). 칩 줄·`tagIds` 전송만 없애고 `q` 태그 매칭·카드 칩·API 파라미터는 유지.
+- **탭 제목·머리 여백**: "위쪽 탭바 여백이 너무 많아 활동 둘러보기가 탭바 위치로", "좌상단 메뉴 이름 통일성 없음, 내 명함 기준". 다섯 탭 모두 내 명함의 제목 줄(굵은 제목, 좌우 20, 안전 영역 아래 8)을 공통 컴포넌트로 그린다(iOS `PageTitle` 신설, Android `ScreenHeader`).
+- **배경·색 체계**: "배경색도 통일성이 없어, 테마에 맞춰" + "프라이머리·포인트 색이 아이폰 테마 색과 조합이 안 좋다, 어떻게?" → 추천안 A(중립색은 시스템에 맡기고 청록은 액센트 하나) 승인 "적용해줘". iOS 시스템 grouped 색·`.primary/.secondary/.separator`, 민트는 `teal.opacity(0.12)`; Android 청록 시드 M3 color scheme, 상수 Mint·Soft·Line·Quiet·Ink 제거. 선택지 B(청록 색 자체 변경)·C(다이내믹 컬러)는 로고 변경·브랜드 상실로 비추천.
+- **다크 모드**: "다크모드도 호환되게." 라이트 강제 제거, 시스템 따름, 청록 다크 변형 #3FB3B4, 웹도 `prefers-color-scheme` 토큰.
+- 진행: 워크트리 `logo`(브랜치 `feat/program-logo-compact-header`)에서 API·어드민·iOS·Android·웹 에이전트 동시 작업 → PR → 배포(API V38, 어드민 Vercel, 기기 설치).
+
 ## 남은 일·사용자 결정 대기
 
 - **구현 예정(설계·계약 완료)**: 태그(native-v1 "태그", 어휘 사전·검색·필터·어드민 검색+직접 입력) — API·어드민·iOS·Android·웹.
