@@ -39,6 +39,13 @@ HTTP/Repository/Room/Keystore/기기 캘린더/WebView·인증 실행 코드와 
 - debug: 값이 없으면 에뮬레이터 호스트의 `http://10.0.2.2:3000`을 쓴다.
 - App Links(`/s/*`)와 `shared/config/AppLinks.kt`의 공유 링크 해석은 없다. `AppLinks.kt`에는 애플 로그인 복귀(`dearby://auth/apple`, `authRedirect`)와 받은 명함 링크(`dearby://cards/…`) 해석만 남는다.
 
+## 출시 빌드와 Play 업로드 키 (2026-10-19)
+
+- 업로드 키는 저장소 밖 `~/.dearby-deploy/android-upload.jks`(PKCS12, RSA 4096, alias `upload`)이고, 경로·비밀번호·alias는 `~/.dearby-deploy/android-signing.env`에만 있다(`ANDROID_KEYSTORE_PATH`·`ANDROID_KEYSTORE_PASSWORD`·`ANDROID_KEY_ALIAS`·`ANDROID_KEY_PASSWORD`, 권한 600). 같은 이름의 Gradle 속성으로도 줄 수 있다. 네 값이 모두 있을 때만 release가 이 키로 서명되고, 없으면(CI·lint) 서명 없는 release다.
+- 빌드: `set -a; . ~/.dearby-deploy/android-signing.env; . ~/.dearby-deploy/mobile.env; set +a; DEARBY_API_ORIGIN=https://api.dearby.wid.io.kr DEARBY_WEB_ORIGIN=https://dearby.wid.io.kr ./gradlew bundleRelease` → `app/build/outputs/bundle/release/app-release.aab`. 확인은 `jarsigner -verify` 또는 `apksigner verify --print-certs`.
+- Play Console은 Play 앱 서명을 쓴다: 이 키는 **업로드 키**이고 사용자에게 배포되는 APK는 Google이 보관하는 앱 서명 키로 다시 서명한다. 첫 AAB를 올릴 때 Play 앱 서명에 등록하면 업로드 키 인증서가 고정되며, 잃어버리면 콘솔에서 업로드 키 재설정을 요청해야 한다. OAuth·App Links에는 Play 콘솔 "앱 서명" 화면의 **앱 서명 키** SHA-1·SHA-256을 쓴다(업로드 키 지문이 아니다).
+- `versionCode`는 올릴 때마다 1씩 올린다(같은 값은 거부). `versionName`은 `0.1.0`. 축소(`isMinifyEnabled`)는 켜지 않았다.
+
 ## 시작 화면 (2026-10-14)
 
 - 스플래시: 실행할 때마다 AndroidX SplashScreen(`Theme.Dearby.Starting`)이 흰 배경에 로고(`drawable/splash_logo.xml`, `dearby_logo` 워드마크를 원형 마스크 안에 맞춤)를 보여 주고 바로 `Theme.Dearby`로 넘어간다. 인위적인 지연은 없다.

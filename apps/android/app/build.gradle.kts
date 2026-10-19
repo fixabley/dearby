@@ -12,6 +12,10 @@ val webOrigin = connection("DEARBY_WEB_ORIGIN") ?: "https://dearby.wid.io.kr"
 val googleServerClientId = connection("GOOGLE_SERVER_CLIENT_ID") ?: ""
 // Debug falls back to the API dev server on the emulator host.
 val debugApiOrigin = apiOrigin ?: "http://10.0.2.2:3000"
+// Play upload key (2026-10-19): keystore and passwords live outside the repository (env or same-named Gradle properties).
+// Only when all four are present is the release build signed; otherwise it stays unsigned, which is enough for lint/CI.
+val uploadSigning = listOf("ANDROID_KEYSTORE_PATH", "ANDROID_KEYSTORE_PASSWORD", "ANDROID_KEY_ALIAS", "ANDROID_KEY_PASSWORD")
+    .associateWith(::connection).takeIf { values -> values.values.all { it != null } }?.mapValues { it.value!! }
 
 android {
     namespace = "com.dearby.nativeapp"
@@ -23,6 +27,14 @@ android {
         versionCode = 1
         versionName = "0.1.0"
     }
+    uploadSigning?.let { keys ->
+        signingConfigs.create("upload") {
+            storeFile = file(keys.getValue("ANDROID_KEYSTORE_PATH"))
+            storePassword = keys.getValue("ANDROID_KEYSTORE_PASSWORD")
+            keyAlias = keys.getValue("ANDROID_KEY_ALIAS")
+            keyPassword = keys.getValue("ANDROID_KEY_PASSWORD")
+        }
+    }
     buildTypes {
         debug {
             buildConfigField("String", "API_ORIGIN", "\"$debugApiOrigin\"")
@@ -30,6 +42,7 @@ android {
             buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"$googleServerClientId\"")
         }
         release {
+            uploadSigning?.let { signingConfig = signingConfigs.getByName("upload") }
             buildConfigField("String", "API_ORIGIN", "\"${apiOrigin.orEmpty()}\"")
             buildConfigField("String", "WEB_ORIGIN", "\"$webOrigin\"")
             buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"$googleServerClientId\"")
