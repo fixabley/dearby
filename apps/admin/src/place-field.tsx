@@ -5,7 +5,7 @@ import { api } from "./api";
 
 /** 활동 장소 (contract native-v1.md "활동 장소" 2026-10-19): 이름·도로명 주소·좌표. null = 지정 없음. */
 export type Place = { name: string; address: string; lat: number; lng: number };
-/** One geocoding candidate from `GET /v1/admin/geocode?q=`; `source` names the provider (kakao or osm). */
+/** One geocoding candidate from `GET /v1/admin/geocode?q=`; `source` names the provider (kakao or nominatim). */
 type GeocodeItem = Place & { source: string };
 
 const MIN_QUERY = 2;
