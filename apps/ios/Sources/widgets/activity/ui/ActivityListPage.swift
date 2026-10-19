@@ -50,6 +50,17 @@ struct ActivityListPage: View {
                                                    description: Text("활동이 수집되면 여기에서 볼 수 있어요."))
                         }
                     case .loaded:
+                        if state.refreshFailed {
+                            // Pull to refresh failed: the list stays, this line passes (contract "풀투 리프레시" failure, Android parity).
+                            Label("새로 고치지 못했어요", systemImage: "exclamationmark.triangle")
+                                .font(.dearby(.footnote)).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 6)
+                                .accessibilityIdentifier("activity-refresh-failed").transition(.opacity)
+                                .task {
+                                    AccessibilityNotification.Announcement("새로 고치지 못했어요").post()
+                                    try? await Task.sleep(for: .seconds(3))
+                                    if !Task.isCancelled { state.clearRefreshFailure() }
+                                }
+                        }
                         ForEach(Array(state.programs.enumerated()), id: \.element.id) { index, program in
                             section(program)
                                 // Near the end of the list: fetch the next page.
@@ -63,6 +74,7 @@ struct ActivityListPage: View {
                         }
                     }
                 }.padding(.horizontal, 20).padding(.bottom, 20)
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: state.refreshFailed)
             }
             // A tap on the list outside a card or button puts the keyboard away (contract "키보드 내리기"); the search area is
             // added below this modifier so taps on the field itself are not affected.

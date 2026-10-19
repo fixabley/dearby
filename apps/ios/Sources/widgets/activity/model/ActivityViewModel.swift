@@ -29,6 +29,8 @@ import Observation
     private(set) var query: String?
     private(set) var loadingMore = false
     private(set) var moreFailed = false
+    /// Pull to refresh failed while a list was on screen: the list stays and the page shows a passing notice.
+    private(set) var refreshFailed = false
     // Discovery is judged at load time so the list does not change while it is on screen.
     private(set) var loadedAt = Date()
     // Example application marks, memory only and keyed by real activity IDs.
@@ -89,6 +91,7 @@ import Observation
         programLoads = [:]
         loadingMore = false
         moreFailed = false
+        refreshFailed = false
         let task = Task {
             do {
                 let page = try await fetchPrograms(query, nil, openOnly)
@@ -110,12 +113,15 @@ import Observation
                 // Programs `append` just started loading are skipped by the in-flight guard.
                 for id in expanded { loadActivities(id, reload: true) }
             } catch {
-                if !Task.isCancelled { phase = .failed }
+                guard !Task.isCancelled else { return }
+                // A list already on screen stays; only a refresh with nothing shown falls back to the error screen.
+                if phase == .loaded && !programs.isEmpty { refreshFailed = true } else { phase = .failed }
             }
         }
         firstPage = task
         await task.value
     }
+    func clearRefreshFailure() { refreshFailed = false }
     /// Next page of programs while one exists; a stale page (the query changed) is dropped.
     func loadMore() {
         guard phase == .loaded, let cursor, nextPage == nil, let query else { return }
