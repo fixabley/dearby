@@ -60,6 +60,16 @@ PR #289(발견 카드 리뉴얼·장소·지오코딩) 배포 직후 사용자 �
 - **동의 저장 400 "동의 문서 버전이 현재 버전과 다릅니다"** — 로그 14건 `Consent version mismatch: 2026-10-19/2026-10-19`. 원인: `compose.prod.yaml`이 `CONSENT_*_VERSION: ${…:-}`로 **빈 문자열**을 넣어 application.yaml 기본값(2026-10-19)을 덮어 서버 버전이 ""가 됐다. 수정: compose 기본값을 `2026-10-19`로. 운영은 compose만 바꿔 api·admin 컨테이너를 재생성해 즉시 해소(13:59 KST 확인 `CONSENT=2026-10-19/2026-10-19`). 교훈: `${VAR:-}`는 "없으면 비움"이라 Spring의 `${ENV:기본}`과 겹치면 기본값이 죽는다 — 기본값은 한 곳(compose)에만 둔다.
 - **발견 탭 스크롤 동작**(고정 제목·접히는 검색 영역·풀투 리프레시·맨 위로 버튼) 계약을 같은 PR에 담았고 구현은 워크트리 `scroll`(iOS·Android 에이전트)에서 별도 PR.
 
+## 2026-10-19 밤 결정 — 발견 스크롤·폼·일정 표시·설정·레이아웃 묶음 (PR #293·#294, 후속 폴리시·설정 PR)
+
+- **배포·설치**: PR #289(카드 리뉴얼·장소)·#290(로고·헤더·색 체계·다크)·#291(V39 활동 기간 시각·동의 compose)·#292(applicationUrl)·#293(폼)·#294(스크롤·신청 확인·일정 표시) 모두 main. 운영 API는 #292까지 배포(V39 적용, `applicationUrl` 노출 확인), 어드민 웹은 #290까지. 두 기기 모두 #294·#293 포함 main 빌드 설치(2026-10-19 23:5x KST). 다크 모드·헤더·폼·스크롤 실기기 화면 확인은 사용자 몫으로 남김(시뮬레이터 미사용).
+- **발견 탭 스크롤**(계약 "발견 탭 스크롤 동작"): 제목·알림 고정, 검색 영역 enter-always 접힘, 풀투 리프레시, 맨 위로(iOS는 사용자 요청으로 시스템 원형 `borderedProminent` 버튼, Android `SmallFloatingActionButton`), 새로 고침 실패 시 목록 유지. 검색창은 시스템 검색 모양(iOS 44, Android `SearchBarDefaults.InputField`).
+- **폼은 플랫폼 기본**: iOS `Form` inset grouped + 시스템 필드/버튼, `DearbyInlineField`·`DearbyButtonStyle` 삭제; Android `OutlinedTextField` 기본·`ListItem`·기본 `Button`, `Controls.kt` 삭제, 접근성 라벨만. 키보드는 필드 밖 탭·스크롤로 내림(iOS `dearbyDismissKeyboard`, Android `dismissKeyboardOnTap` + 셸 `imePadding`·`adjustResize`).
+- **신청 확인 완화**: 모집 마감 외 모두 묻고 CTA는 `applicationUrl ?? officialUrl`. 마감 판정은 모집 마감 또는(모집 정보 없을 때) 활동 끝/시작이 지남.
+- **일정 표시 우선순위**(사용자 지적): 구조화 날짜 > 수집 원문. 세 플랫폼 공통 형식(같은 날 접기, 연도는 올해와 다른 날짜에만, 끝만 있으면 모집 `마감`·활동 `까지`). Android 포매터 통합, iOS `ActivityStageModel.text`.
+- **후속 묶음(워크트리 `polish`, 진행 중)**: 청록 채움 면 위 흰 글자(`tealFill`), 비스크롤 화면 중앙 배치·CTA·`CenteredMessage`·카드 최소화, 아이콘 통일(토스 참고, 의미별 고정 이름), 다섯 탭 알림+설정 버튼, 설정 화면(계정·연결된 로그인·패스키·정보). 설정 API(`GET /v1/me`, identities·passkeys 목록/해제/이름/삭제, 409 `LAST_SIGN_IN_METHOD`)는 워크트리 `settings`.
+- **대기 중 사용자 결정**: 이력에 "신청만 한 활동"(역할 선택, 일정 기반 상태, 명함 공개 범위, 내 활동과의 연결) — 제안 6개 항목 중 1·4·5 확정 필요.
+
 ## 남은 일·사용자 결정 대기
 
 - **구현 예정(설계·계약 완료)**: 태그(native-v1 "태그", 어휘 사전·검색·필터·어드민 검색+직접 입력) — API·어드민·iOS·Android·웹.
