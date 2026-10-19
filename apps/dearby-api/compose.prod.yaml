@@ -74,6 +74,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: ${DB_NAME:?}
