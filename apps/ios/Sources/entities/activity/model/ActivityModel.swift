@@ -75,8 +75,8 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     /// The activity period as text (contract "일정 표시 우선순위 — 2026-10-19 밤"): the curated structured dates first, else the collected
     /// `dateLabel`; nil when neither exists so each screen keeps its own `미정`/`일정 미확인`.
     func scheduleText(at now: Date) -> String? { activityStage?.text(now: now) }
-    /// The recruitment window as text by the same rule; nil without a window or any text for it.
-    func recruitmentText(at now: Date) -> String? { applicationStage?.text(now: now) }
+    /// The recruitment window as text by the same rule (`~ … 마감` when only the deadline is known); nil without a window or any text for it.
+    func recruitmentText(at now: Date) -> String? { applicationStage?.text(now: now, recruitment: true) }
     /// `yyyy-MM-dd` as Seoul midnight; nil when absent or unreadable.
     static func seoulDay(_ raw: String?) -> Date? {
         guard let raw else { return nil }
@@ -166,26 +166,27 @@ struct ActivityStageModel: Equatable, Identifiable, Sendable {
         return ActivityScheduleModel(id: id, title: title, start: start, end: end, dateLabel: dateLabel, timeZone: timeZone)
     }
     /// The stage as text (contract "일정 표시 우선순위 — 2026-10-19 밤"): the structured bounds when there are any, else the collected
-    /// `dateLabel`, else nil. Timed: `M월 d일 (요일) HH:mm` in the stage's zone; a range is `A ~ B` (`A ~ HH:mm` on one day), an end alone
-    /// `~ B 마감`. All-day: `M월 d일 (요일)` by Seoul day with the inclusive last day. Both bounds carry the year when either falls outside
-    /// `now`'s Seoul year or they span years (web rule).
-    func text(now: Date) -> String? {
+    /// `dateLabel`, else nil. Timed: `M월 d일 (요일) HH:mm` in the stage's zone; a range is `A ~ B` (`A ~ HH:mm` on one day). All-day:
+    /// `M월 d일 (요일)` by Seoul day with the inclusive last day. Only a date outside `now`'s Seoul year carries its year
+    /// (`12월 30일 (수) ~ 2027년 1월 2일 (토)`). An end alone reads `~ B 마감` for a `recruitment` window, `~ B까지` otherwise.
+    func text(now: Date, recruitment: Bool = false) -> String? {
         guard start != nil || end != nil else { return dateLabel.isEmpty ? nil : dateLabel }
         let zone = allDay ? ActivityText.seoul : TimeZone(identifier: timeZone) ?? ActivityText.seoul
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = zone
-        // All-day `end` is the exclusive midnight; the last day is the one before it.
-        let last = allDay ? end.flatMap { calendar.date(byAdding: .day, value: -1, to: $0) } : end
-        let years = Set([start, last].compactMap { $0 }.map { calendar.component(.year, from: $0) })
         var seoulCalendar = Calendar(identifier: .gregorian)
         seoulCalendar.timeZone = ActivityText.seoul
-        let withYear = years.count > 1 || years != [seoulCalendar.component(.year, from: now)]
-        let pattern = (withYear ? "yyyy년 M월 d일 (E)" : "M월 d일 (E)") + (allDay ? "" : " HH:mm")
-        guard let start else { return last.map { "~ " + ActivityText.format($0, pattern, zone: zone) + " 마감" } }
-        let first = ActivityText.format(start, pattern, zone: zone)
-        guard let last, last > start else { return first }
-        if !allDay, calendar.isDate(start, inSameDayAs: last) { return first + " ~ " + ActivityText.format(last, "HH:mm", zone: zone) }
-        return first + " ~ " + ActivityText.format(last, pattern, zone: zone)
+        let thisYear = seoulCalendar.component(.year, from: now)
+        func day(_ date: Date) -> String {
+            let pattern = (calendar.component(.year, from: date) == thisYear ? "M월 d일 (E)" : "yyyy년 M월 d일 (E)") + (allDay ? "" : " HH:mm")
+            return ActivityText.format(date, pattern, zone: zone)
+        }
+        // All-day `end` is the exclusive midnight; the last day is the one before it.
+        let last = allDay ? end.flatMap { calendar.date(byAdding: .day, value: -1, to: $0) } : end
+        guard let start else { return last.map { "~ " + day($0) + (recruitment ? " 마감" : "까지") } }
+        guard let last, last > start else { return day(start) }
+        if !allDay, calendar.isDate(start, inSameDayAs: last) { return day(start) + " ~ " + ActivityText.format(last, "HH:mm", zone: zone) }
+        return day(start) + " ~ " + day(last)
     }
 }
 /// Korean date text in a schedule's zone.

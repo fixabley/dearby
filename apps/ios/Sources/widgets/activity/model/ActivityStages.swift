@@ -29,8 +29,8 @@ struct ActivityStage: Identifiable, Equatable {
     var anchor: Date? { source.anchor }
     /// For the overlap check; nil without a non-empty interval.
     var schedule: ActivityScheduleModel? { source.schedule }
-    /// Structured dates, else the collected label (contract "일정 표시 우선순위"); `날짜 미확인` with neither.
-    func dateText(now: Date) -> String { source.text(now: now) ?? "날짜 미확인" }
+    /// Structured dates, else the collected label (contract "일정 표시 우선순위"); `날짜 미확인` with neither. `지원` is the recruitment deadline (`~ … 마감`).
+    func dateText(now: Date) -> String { source.text(now: now, recruitment: id == ActivityStages.applicationStageID) ?? "날짜 미확인" }
 }
 
 /// An applied activity's track: stages in order, the current one, and whether it is over.
