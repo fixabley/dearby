@@ -228,8 +228,8 @@ class AdminActivityInfoService(
                 dateLabel = dateLabel, curatedFields = curated,
             )
         )
-        activityTime?.let { curations.updateSchedule(id, ScheduleSlot.ACTIVITY, it) }
-        input.application?.toTime()?.let { curations.updateSchedule(id, ScheduleSlot.APPLICATION, it) }
+        activityTime?.let { curations.updateSchedule(id, ScheduleSlot.ACTIVITY, it, input.activitySchedule?.note) }
+        input.application?.toTime()?.let { curations.updateSchedule(id, ScheduleSlot.APPLICATION, it, input.application.note) }
         input.eligibility?.let { curations.updateEligibility(id, it) }
         return withCuration(listOf(activities.getById(id, publicationStatus = null))).single()
     }
@@ -238,7 +238,7 @@ class AdminActivityInfoService(
         when (change) {
             ScheduleChange.Keep -> Unit
             ScheduleChange.Clear -> curations.updateSchedule(activityId, slot, null)
-            is ScheduleChange.Set -> curations.updateSchedule(activityId, slot, change.edit.toTime())
+            is ScheduleChange.Set -> curations.updateSchedule(activityId, slot, change.edit.toTime(), change.edit.note)
         }
     }
 

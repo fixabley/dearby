@@ -19,6 +19,7 @@ data class ScheduleResponse(
     val address: Address?,
     val conferenceUrl: String?,
     val curated: Boolean, // 운영자가 직접 지정한 일정(admin-v1.md "일정 직접 지정")
+    val curatedNote: String?, // 지정하며 남긴 사유(admin-v1.md "사유")
 ) {
     companion object {
         fun from(schedule: Schedule): ScheduleResponse {
@@ -38,6 +39,7 @@ data class ScheduleResponse(
                 address = schedule.address,
                 conferenceUrl = schedule.conferenceUrl,
                 curated = schedule.curated,
+                curatedNote = schedule.curatedNote,
             )
         }
     }

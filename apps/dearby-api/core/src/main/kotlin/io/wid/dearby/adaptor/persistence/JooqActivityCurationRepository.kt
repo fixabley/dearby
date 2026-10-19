@@ -163,7 +163,7 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
         dsl.fetchExists(ACTIVITIES, ACTIVITIES.PROGRAM_ID.eq(programId), withoutSpaces(ACTIVITIES.NAME).eq(withoutSpaces(DSL.`val`(name))))
 
     @Transactional
-    override fun updateSchedule(activityId: Id, slot: ScheduleSlot, time: ScheduleTime?): Boolean {
+    override fun updateSchedule(activityId: Id, slot: ScheduleSlot, time: ScheduleTime?, note: String?): Boolean {
         if (!dsl.fetchExists(ACTIVITIES, ACTIVITIES.ID.eq(activityId))) return false
         val now = LocalDateTime.now()
         val timed = time as? ScheduleTime.Timed
@@ -189,6 +189,7 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
             .set(SCHEDULES.START_DATE, allDay?.start)
             .set(SCHEDULES.END_DATE_EXCLUSIVE, allDay?.endExclusive)
             .set(SCHEDULES.CURATED, time != null)
+            .set(SCHEDULES.CURATED_NOTE, if (time != null) note?.trim()?.ifEmpty { null } else null)
             .set(SCHEDULES.SEQUENCE, SCHEDULES.SEQUENCE.plus(1))
             .set(SCHEDULES.UPDATED_AT, now)
             .where(SCHEDULES.ID.eq(scheduleId))

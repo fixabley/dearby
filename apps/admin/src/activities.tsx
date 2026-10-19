@@ -31,9 +31,11 @@ type Schedule = {
   conferenceUrl: string | null;
   /** Set by an operator in the editor; the collector leaves such schedules alone. Absent on older API responses. */
   curated?: boolean;
+  /** 사유 the operator left when pinning the period (contract "사유"). */
+  curatedNote?: string | null;
 };
-/** `PATCH activities/:id` schedule value: all-day dates, Korea-time instants, or null to drop the structured dates. */
-type ScheduleInput = { startDate: string; endDate: string } | { startAt: string; endAt: string } | null;
+/** `PATCH activities/:id` schedule value: all-day dates or Korea-time instants (either end may be missing for 모집 기간), an optional 사유, or null to drop the structured dates. */
+type ScheduleInput = { startDate?: string; endDate?: string; startAt?: string; endAt?: string; note?: string } | null;
 type DuplicateKind = "alias" | "exclude";
 export type PublicationStatus = "DRAFT" | "PUBLISHED";
 /** 대상자 조건 types live in eligibility.ts (contract "대상자 조건(eligibility)"); re-exported for callers that imported them from here. */
@@ -117,22 +119,32 @@ function scheduleText(schedule: Schedule | null): string {
 }
 
 /** Editor state for one schedule block: the picked range and whether it carries times. */
-type RangeDraft = { range: [Dayjs, Dayjs] | null; timed: boolean };
+type RangeDraft = { range: [Dayjs | null, Dayjs | null] | null; timed: boolean };
 /** Structured dates of a collected schedule → editor state (dates come back as Korea-time days; `endDateExclusive` becomes the last day). */
 function rangeDraft(schedule: Schedule | null | undefined): RangeDraft {
   if (!schedule) return { range: null, timed: false };
-  if (schedule.startAt && schedule.endAt) return { range: [dayjs(schedule.startAt).tz(SEOUL), dayjs(schedule.endAt).tz(SEOUL)], timed: true };
+  // A deadline-only or start-only window comes back timed with one end missing (contract "마감일만 지정").
+  if (schedule.startAt || schedule.endAt)
+    return { range: [schedule.startAt ? dayjs(schedule.startAt).tz(SEOUL) : null, schedule.endAt ? dayjs(schedule.endAt).tz(SEOUL) : null], timed: true };
   if (schedule.startDate && schedule.endDateExclusive)
     return { range: [dayjs.tz(schedule.startDate, SEOUL), dayjs.tz(schedule.endDateExclusive, SEOUL).subtract(1, "day")], timed: false };
   return { range: null, timed: false };
 }
-/** Editor state → PATCH value. Times keep the +09:00 offset so the server stores Korea time. */
-function scheduleInput({ range, timed }: RangeDraft): ScheduleInput {
-  if (!range) return null;
-  const [start, end] = range.map((value) => value.tz(SEOUL));
-  return timed
-    ? { startAt: start.second(0).millisecond(0).format("YYYY-MM-DDTHH:mm:ssZ"), endAt: end.second(0).millisecond(0).format("YYYY-MM-DDTHH:mm:ssZ") }
-    : { startDate: start.format("YYYY-MM-DD"), endDate: end.format("YYYY-MM-DD") };
+/** Editor state → PATCH value. Times keep the +09:00 offset so the server stores Korea time; a missing end is simply left out; the trimmed 사유 rides along. */
+function scheduleInput({ range, timed }: RangeDraft, note?: string): ScheduleInput {
+  const [start, end] = (range ?? [null, null]).map((value) => value?.tz(SEOUL) ?? null);
+  if (!start && !end) return null;
+  const at = (value: Dayjs) => value.second(0).millisecond(0).format("YYYY-MM-DDTHH:mm:ssZ");
+  const day = (value: Dayjs) => value.format("YYYY-MM-DD");
+  const trimmed = note?.trim();
+  return {
+    ...(timed ? { ...(start && { startAt: at(start) }), ...(end && { endAt: at(end) }) } : { ...(start && { startDate: day(start) }), ...(end && { endDate: day(end) }) }),
+    ...(trimmed && { note: trimmed }),
+  };
+}
+/** 활동 기간 must have both ends (the server stores it as an all-day range); returns the field error or null. */
+function activityRangeError(range: RangeDraft["range"]): string | null {
+  return range && (!range[0] || !range[1]) ? "활동 기간은 시작과 종료를 모두 골라 주세요." : null;
 }
 
 
@@ -537,14 +549,18 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
   const withUrls = activity.officialUrl !== undefined;
   const initialActivity = rangeDraft(activity.activitySchedule);
   const initialApplication = rangeDraft(activity.application);
-  /** 수집이 두 기간을 바꿔 넣었을 때 폼 값만 서로 바꾼다. 활동 기간은 종일만 허용하므로 시각 지정은 끈다. 저장해야 반영된다. */
+  const initialActivityNote = activity.activitySchedule?.curatedNote ?? "";
+  const initialApplicationNote = activity.application?.curatedNote ?? "";
+  /** 수집이 두 기간을 바꿔 넣었을 때 폼 값만 서로 바꾼다(사유 포함). 활동 기간은 종일만 허용하므로 시각 지정은 끈다. 저장해야 반영된다. */
   const swapPeriods = () => {
-    const values = form.getFieldsValue(["activityRange", "activityTimed", "applicationRange", "applicationTimed"]);
+    const values = form.getFieldsValue(["activityRange", "activityTimed", "activityNote", "applicationRange", "applicationTimed", "applicationNote"]);
     form.setFieldsValue({
       activityRange: values.applicationRange,
       activityTimed: false,
+      activityNote: values.applicationNote,
       applicationRange: values.activityRange,
       applicationTimed: values.activityTimed,
+      applicationNote: values.activityNote,
     });
   };
   const { message } = App.useApp();
@@ -582,8 +598,10 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
           category: activity.category ?? null,
           activityRange: initialActivity.range,
           activityTimed: initialActivity.timed,
+          activityNote: initialActivityNote,
           applicationRange: initialApplication.range,
           applicationTimed: initialApplication.timed,
+          applicationNote: initialApplicationNote,
         }}
         // Every text field is sent: an empty English field clears it, an empty 대상자 조건 sends null.
         // Schedule keys go only when the operator changed them: a cleared picker sends null, untouched blocks are omitted.
@@ -597,18 +615,26 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
           category: Category | null;
           activityRange: RangeDraft["range"];
           activityTimed: boolean;
+          activityNote: string;
           applicationRange: RangeDraft["range"];
           applicationTimed: boolean;
+          applicationNote: string;
         }) => {
           const problems = validateDraft(eligibility);
           setEligibilityProblems(problems);
           if (problems.length) return;
           const schedules: ScheduleBody = {};
           if (withSchedules) {
-            const nextActivity = scheduleInput({ range: values.activityRange, timed: values.activityTimed });
-            if (JSON.stringify(nextActivity) !== JSON.stringify(scheduleInput(initialActivity))) schedules.activitySchedule = nextActivity;
-            const nextApplication = scheduleInput({ range: values.applicationRange, timed: values.applicationTimed });
-            if (JSON.stringify(nextApplication) !== JSON.stringify(scheduleInput(initialApplication))) schedules.application = nextApplication;
+            const rangeError = activityRangeError(values.activityRange);
+            if (rangeError) {
+              form.setFields([{ name: "activityRange", errors: [rangeError] }]);
+              return;
+            }
+            // A block goes out when its range or its 사유 changed; the 사유 rides inside the schedule object.
+            const nextActivity = scheduleInput({ range: values.activityRange, timed: values.activityTimed }, values.activityNote);
+            if (JSON.stringify(nextActivity) !== JSON.stringify(scheduleInput(initialActivity, initialActivityNote))) schedules.activitySchedule = nextActivity;
+            const nextApplication = scheduleInput({ range: values.applicationRange, timed: values.applicationTimed }, values.applicationNote);
+            if (JSON.stringify(nextApplication) !== JSON.stringify(scheduleInput(initialApplication, initialApplicationNote))) schedules.application = nextApplication;
           }
           saveOnce(() =>
             save.mutateAsync({
@@ -641,13 +667,16 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
               schedule={activity.application}
               rangeName="applicationRange"
               timedName="applicationTimed"
+              noteName="applicationNote"
               timed={applicationTimed}
+              startOptional
             />
             <ScheduleBlock
               title="활동 기간"
               schedule={activity.activitySchedule}
               rangeName="activityRange"
               timedName="activityTimed"
+              noteName="activityNote"
               timed={activityTimed}
             />
           </>
@@ -783,41 +812,79 @@ function ProgramGroups({
   useEffect(() => {
     if (single !== undefined) setExpanded([single]);
   }, [single]);
+  // 최하위 조직(프로그램 바로 위 조직)별 묶음, 조직 이름순 (contract "어드민 웹 활동 화면" 2026-10-19). Groups cover the loaded pages.
+  const byOrganization = new Map<number, { name: string; items: ProgramRow[] }>();
+  for (const program of programs.items) {
+    const group = byOrganization.get(program.organization.id) ?? { name: program.organization.name, items: [] };
+    group.items.push(program);
+    byOrganization.set(program.organization.id, group);
+  }
+  const groups = [...byOrganization.entries()].sort(([, a], [, b]) => a.name.localeCompare(b.name, "ko"));
+  const programColumns: TableColumnsType<ProgramRow> = [
+    {
+      title: "프로그램",
+      render: (_, program) => (
+        <>
+          {program.name}
+          {program.nameEn && <span className="muted name-en">{program.nameEn}</span>}
+        </>
+      ),
+    },
+    {
+      title: "수집",
+      render: (_, { collection }) => (
+        <span className="muted">
+          {collection.enabled ? `${collection.intervalDays}일마다` : "꺼짐"}
+          {collection.allowedHosts.length ? ` · ${collection.allowedHosts.join(", ")}` : " · 웹 전체 검색"}
+          {collection.lastSucceededOn && ` · 마지막 성공 ${collection.lastSucceededOn}`}
+        </span>
+      ),
+    },
+  ];
+  if (programs.list.isError)
+    return (
+      <Alert
+        type="error"
+        showIcon
+        message="목록을 불러오지 못했어요."
+        description={programs.list.error.message}
+        action={<Button onClick={() => programs.list.refetch()}>다시 시도</Button>}
+      />
+    );
+  if (!programs.list.isLoading && groups.length === 0) return <p className="muted">조건에 맞는 프로그램이 없어요.</p>;
   return (
-    <CursorTable
-      cursor={programs}
-      scroll={{ x: 900 }}
-      locale={{ emptyText: "조건에 맞는 프로그램이 없어요." }}
-      expandable={{
-        expandedRowKeys: expanded,
-        onExpandedRowsChange: (keys) => setExpanded(keys.map(Number)),
-        expandedRowRender: (program) => (
-          <ProgramActivities program={program} publicationStatus={publicationStatus} columns={columns} onCreate={() => onCreate(program)} />
-        ),
-      }}
-      columns={[
-        {
-          title: "프로그램",
-          render: (_, program) => (
-            <>
-              {program.name}
-              {program.nameEn && <span className="muted name-en">{program.nameEn}</span>}
-            </>
-          ),
-        },
-        { title: "조직", render: (_, program) => program.organization.name },
-        {
-          title: "수집",
-          render: (_, { collection }) => (
-            <span className="muted">
-              {collection.enabled ? `${collection.intervalDays}일마다` : "꺼짐"}
-              {collection.allowedHosts.length ? ` · ${collection.allowedHosts.join(", ")}` : " · 웹 전체 검색"}
-              {collection.lastSucceededOn && ` · 마지막 성공 ${collection.lastSucceededOn}`}
-            </span>
-          ),
-        },
-      ]}
-    />
+    <>
+      {programs.list.isLoading && <Table<ProgramRow> rowKey="id" dataSource={[]} loading pagination={false} columns={programColumns} />}
+      {groups.map(([id, group]) => (
+        <section key={id} className="category-group">
+          <h3 className="category-heading">
+            {group.name} ({group.items.length})
+          </h3>
+          <Table<ProgramRow>
+            rowKey="id"
+            dataSource={group.items}
+            pagination={false}
+            scroll={{ x: 900 }}
+            showHeader={false}
+            expandable={{
+              expandedRowKeys: expanded,
+              onExpandedRowsChange: (keys) => setExpanded(keys.map(Number)),
+              expandedRowRender: (program) => (
+                <ProgramActivities program={program} publicationStatus={publicationStatus} columns={columns} onCreate={() => onCreate(program)} />
+              ),
+            }}
+            columns={programColumns}
+          />
+        </section>
+      ))}
+      {programs.list.hasNextPage && (
+        <div className="load-more">
+          <Button onClick={() => programs.list.fetchNextPage()} loading={programs.list.isFetchingNextPage}>
+            더 보기
+          </Button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -932,7 +999,7 @@ function ActivityCreateModal({ programId, programName, onClose }: { programId?: 
       <Form
         form={form}
         layout="vertical"
-        initialValues={{ programId, participationType: "REGISTRATION", category: null, activityTimed: false, applicationTimed: false }}
+        initialValues={{ programId, participationType: "REGISTRATION", category: null, activityTimed: false, applicationTimed: false, activityNote: "", applicationNote: "" }}
         onFinish={(values: {
           programId: number;
           name: string;
@@ -945,9 +1012,11 @@ function ActivityCreateModal({ programId, programName, onClose }: { programId?: 
           category: Category | null;
           activityRange: RangeDraft["range"];
           activityTimed: boolean;
+          activityNote: string;
           activityDateLabel?: string;
           applicationRange: RangeDraft["range"];
           applicationTimed: boolean;
+          applicationNote: string;
           audience?: string;
           location?: string;
           cost?: string;
@@ -956,13 +1025,18 @@ function ActivityCreateModal({ programId, programName, onClose }: { programId?: 
           setEligibilityProblems(problems);
           if (problems.length) return;
           // 활동 기간: dates when picked (plus the typed phrase), otherwise the phrase alone; the server needs one of them.
-          const dates = scheduleInput({ range: values.activityRange, timed: values.activityTimed });
+          const rangeError = activityRangeError(values.activityRange);
+          if (rangeError) {
+            form.setFields([{ name: "activityRange", errors: [rangeError] }]);
+            return;
+          }
+          const dates = scheduleInput({ range: values.activityRange, timed: values.activityTimed }, values.activityNote);
           const dateLabel = optional(values.activityDateLabel);
           if (!dates && !dateLabel) {
             form.setFields([{ name: "activityDateLabel", errors: ["활동 기간의 날짜나 원문 문구 중 하나는 입력해 주세요."] }]);
             return;
           }
-          const application = scheduleInput({ range: values.applicationRange, timed: values.applicationTimed });
+          const application = scheduleInput({ range: values.applicationRange, timed: values.applicationTimed }, values.applicationNote);
           createOnce(() =>
             create.mutateAsync({
               programId: values.programId,
@@ -1018,8 +1092,8 @@ function ActivityCreateModal({ programId, programName, onClose }: { programId?: 
             ]}
           />
         </Form.Item>
-        <ScheduleBlock title="모집 기간" schedule={null} rangeName="applicationRange" timedName="applicationTimed" timed={applicationTimed} />
-        <ScheduleBlock title="활동 기간" schedule={null} rangeName="activityRange" timedName="activityTimed" timed={activityTimed} />
+        <ScheduleBlock title="모집 기간" schedule={null} rangeName="applicationRange" timedName="applicationTimed" noteName="applicationNote" timed={applicationTimed} startOptional />
+        <ScheduleBlock title="활동 기간" schedule={null} rangeName="activityRange" timedName="activityTimed" noteName="activityNote" timed={activityTimed} />
         <Form.Item name="activityDateLabel" label="활동 기간 원문(선택)" extra="날짜를 고르지 않으면 이 문구만 남아요. 예: 2026년 상반기">
           <Input maxLength={200} />
         </Form.Item>
@@ -1074,13 +1148,18 @@ function ScheduleBlock({
   schedule,
   rangeName,
   timedName,
+  noteName,
   timed,
+  startOptional = false,
 }: {
   title: string;
   schedule: Schedule | null | undefined;
   rangeName: string;
   timedName: string;
+  noteName: string;
   timed: boolean;
+  /** 모집 기간 may be a deadline alone (contract "마감일만 지정"); 활동 기간 needs both ends. */
+  startOptional?: boolean;
 }) {
   return (
     <div className="schedule-block">
@@ -1095,16 +1174,22 @@ function ScheduleBlock({
         <Form.Item name={rangeName} label="시작 ~ 종료" style={{ marginBottom: 8 }}>
           <DatePicker.RangePicker
             allowClear
+            allowEmpty={startOptional ? [true, false] : undefined}
             showTime={timed ? { format: "HH:mm", minuteStep: 5 } : false}
             format={timed ? "YYYY-MM-DD HH:mm" : "YYYY-MM-DD"}
-            placeholder={["시작", "종료"]}
+            placeholder={[startOptional ? "시작(선택)" : "시작", "종료"]}
           />
         </Form.Item>
         <Form.Item name={timedName} label="시각 지정" valuePropName="checked" style={{ marginBottom: 8 }}>
           <Switch />
         </Form.Item>
       </Space>
-      <p className="field-note">날짜만 고르면 종일 일정, 시각을 켜면 한국 시간으로 저장해요. 비워 두면 원문 문구만 남아요. 지정한 기간은 다음 수집의 해석 예시로도 쓰여요.</p>
+      <Form.Item name={noteName} label="사유(선택)" style={{ marginBottom: 8 }}>
+        <Input maxLength={300} placeholder="예: 원문의 6/9는 접수 마감이라 모집 종료로 지정" />
+      </Form.Item>
+      <p className="field-note">
+        날짜만 고르면 종일 일정, 시각을 켜면 한국 시간으로 저장해요.{startOptional && " 마감일만 고르면 그날까지로 저장해요."} 비워 두면 원문 문구만 남아요. 지정한 기간은 다음 수집의 해석 예시로도 쓰여요.
+      </p>
     </div>
   );
 }

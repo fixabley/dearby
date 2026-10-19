@@ -197,6 +197,11 @@ open class Schedules(
      */
     val CURATED: TableField<SchedulesRecord, Boolean?> = createField(DSL.name("curated"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "")
 
+    /**
+     * The column <code>public.schedules.curated_note</code>.
+     */
+    val CURATED_NOTE: TableField<SchedulesRecord, String?> = createField(DSL.name("curated_note"), SQLDataType.VARCHAR(300), this, "")
+
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)

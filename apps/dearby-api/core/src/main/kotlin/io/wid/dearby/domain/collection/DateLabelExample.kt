@@ -13,4 +13,5 @@ data class DateLabelExample(
     val startAt: OffsetDateTime?,
     val endAt: OffsetDateTime?,
     val programName: String,
+    val note: String? = null, // 운영자가 남긴 사유(schedules.curated_note). 지시문 예시에 "(이유: …)"로 붙는다
 )
