@@ -34,7 +34,7 @@ private const val RAIL_MIN_SECTIONS = 7
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable fun WalletPage(state: WalletState, query: String, changeQuery: (String) -> Unit, open: (ReceivedCard) -> Unit, signIn: () -> Unit, retry: () -> Unit) {
-    Column(Modifier.fillMaxSize().dismissKeyboardOnTap().imePadding()) {
+    Column(Modifier.fillMaxSize().dismissKeyboardOnTap()) {
         ScreenHeader("받은 명함")
         when (state.phase) {
             WalletPhase.SIGNED_OUT -> Notice("받은 명함은 계정에 저장돼요", "로그인하면 저장한 명함을 볼 수 있어요.") {

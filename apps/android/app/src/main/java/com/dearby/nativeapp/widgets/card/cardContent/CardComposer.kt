@@ -30,7 +30,7 @@ data class ComposerHistory(val id: String, val title: String, val detail: String
     contacts: List<ComposerContact>, onContactPublic: (String, Boolean) -> Unit, histories: List<ComposerHistory>, onHistoryPublic: (String, Boolean) -> Unit,
     changed: Boolean, onRevert: () -> Unit, onPublish: () -> Unit, modifier: Modifier = Modifier, publishing: Boolean = false, errorMessage: String? = null,
 ) {
-    Column(modifier.fillMaxSize().dismissKeyboardOnTap().imePadding()) {
+    Column(modifier.fillMaxSize().dismissKeyboardOnTap()) {
         Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
             Section("명함") {
                 OutlinedTextField(cardTitle, onCardTitleChange, Modifier.fillMaxWidth(), label = { Text("명함 이름") },

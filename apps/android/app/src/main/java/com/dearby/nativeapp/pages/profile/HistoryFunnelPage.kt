@@ -34,7 +34,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
     val draft = state.draft
     val steps = draft.steps
     val index = steps.indexOf(state.step).coerceAtLeast(0)
-    Column(Modifier.fillMaxSize().dismissKeyboardOnTap().imePadding()) {
+    Column(Modifier.fillMaxSize().dismissKeyboardOnTap()) {
         ScreenHeader(if (state.step == HistoryDraft.Step.SUMMARY) "이력 확인" else "이력 입력", close)
         LinearProgressIndicator({ (index + 1f) / steps.size }, Modifier.fillMaxWidth().padding(horizontal = 20.dp).semantics { heading() }, color = MaterialTheme.colorScheme.primary)
         Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {

@@ -40,7 +40,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
     var confirming by remember { mutableStateOf(false) }
     // Never saved yet: the step funnel replaces the editor until the first save.
     val settingUp = state.settingUp
-    Column(Modifier.fillMaxSize().dismissKeyboardOnTap().imePadding()) {
+    Column(Modifier.fillMaxSize().dismissKeyboardOnTap()) {
         ScreenHeader("내 프로필") {
             if (state.phase == ProfilePhase.LOADED && !settingUp) {
                 IconButton(versions) { Icon(Icons.Outlined.History, "변경 이력", tint = MaterialTheme.colorScheme.primary) }
