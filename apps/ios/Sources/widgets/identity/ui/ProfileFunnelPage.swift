@@ -30,7 +30,6 @@ struct ProfileFunnelPage: View {
     private var reachedSteps: [Step] { Step.allCases.filter { reached.contains($0) } }
     var body: some View {
         VStack(spacing: 0) {
-            PageTitle("프로필 만들기")
             Form {
                 // Answered steps before and after the open one are grouped on either side of it.
                 doneRows(Array(reachedSteps.prefix { $0 != open }))
@@ -40,7 +39,8 @@ struct ProfileFunnelPage: View {
             .font(.dearby(.body))
             .safeAreaInset(edge: .bottom) { bar }
         }
-        .dearbyDismissKeyboard().background(Color(.systemGroupedBackground))
+        .dearbyDismissKeyboard().background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .navigationTitle("프로필 만들기").navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: focusOpen)
         .onChange(of: open) { _, _ in focusOpen() }
     }

@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// 내 명함: the account's published cards. Pick one to view it, show its QR, make a new one, republish it with "이 명함 고치기", or delete it.
-/// Signed out, empty and failed states are one centred message under the fixed title line (contract "비스크롤 화면 배치·CTA").
+/// Signed out, empty and failed states are one centred message (contract "비스크롤 화면 배치·CTA"). Shown as the 내 명함 section of the 명함 tab
+/// (`CardsPage`, contract "명함 탭 통합"), which owns the navigation bar.
 struct MyCardsPage: View {
     let state: MyCardsModel
     @State private var editor = false
@@ -16,8 +17,7 @@ struct MyCardsPage: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     var body: some View {
-        VStack(spacing: 0) {
-            PageTitle("내 명함")
+        Group {
             switch state.phase {
             case .signedOut:
                 CenteredMessage(symbol: "person.text.rectangle", title: "명함은 계정에 저장돼요", message: "로그인하면 만든 명함을 볼 수 있어요.",
@@ -36,8 +36,7 @@ struct MyCardsPage: View {
                     VStack(alignment: .leading, spacing: 12) { cards }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 20)
                 }.refreshable { await state.load() }
             }
-        }.background(Color(.systemGroupedBackground)).toolbar(.hidden, for: .navigationBar)
-            .task { await state.load() }
+        }.task { await state.load() }
             .sheet(isPresented: $editor, onDismiss: { Task { await state.load() } }) {
                 NavigationStack { CardComposerPage(account: state.account) }
             }

@@ -28,7 +28,21 @@ struct ProfilePage: View {
                 editorScreen
             }
         }
-        .background(Color(.systemGroupedBackground)).toolbar(.hidden, for: .navigationBar)
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        // System navigation bar on every branch (contract "iOS 상단 바는 시스템 내비게이션 바"); the funnel sets its own title inside.
+        .navigationTitle("내 프로필").navigationBarTitleDisplayMode(.inline)
+        // One block so the order is fixed: 변경 이력 · 명함 만들기 (editor only) left of 설정 · 알림.
+        .toolbar {
+            if case .loaded = state.phase, !state.consentPending, !settingUp {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    NavigationLink { ProfileVersionsPage(state: state) } label: { Image(systemName: "clock") }
+                        .accessibilityLabel("변경 이력").accessibilityIdentifier("profile-versions")
+                    Button { composing = true } label: { Image(systemName: "person.text.rectangle") }
+                        .accessibilityLabel("명함 만들기").accessibilityIdentifier("profile-compose")
+                }
+            }
+            TabRootToolbar()
+        }
         .task { await state.load() }
         // A reload (first load, save, restore, evidence) resets the form to the server state unless an edit is in flight.
         .onChange(of: state.profile, initial: true) { _, profile in
@@ -51,16 +65,7 @@ struct ProfilePage: View {
         }
     }
     private var editorScreen: some View {
-        VStack(spacing: 0) {
-            // 변경 이력 · 명함 만들기 sit on the title line once the profile is loaded (contract "탭 제목 통일").
-            PageTitle("내 프로필") {
-                if case .loaded = state.phase {
-                    NavigationLink { ProfileVersionsPage(state: state) } label: {
-                        Label("변경 이력", systemImage: "clock").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
-                    }
-                    Button("명함 만들기") { composing = true }.font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
-                }
-            }
+        Group {
             switch state.phase {
             case .signedOut:
                 CenteredMessage(symbol: "person.crop.circle", title: "프로필은 계정에 저장돼요", message: "명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.",

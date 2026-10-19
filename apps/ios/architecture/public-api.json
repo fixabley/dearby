@@ -79,7 +79,6 @@
     "DearbyStyle",
     "MarkdownDocument",
     "NameIndex",
-    "PageTitle",
     "SearchQuery",
     "ConsentVersions",
     "SafariView",
@@ -87,7 +86,8 @@
     "StateGlyph",
     "MessageAction",
     "MessageActions",
-    "SettingsRoute"
+    "SettingsRoute",
+    "TabRootToolbar"
   ],
   "widgets/activity": [
     "ActivityCard",
@@ -137,6 +137,8 @@
     "WalletPage",
     "ConsentPage",
     "SettingsModel",
-    "SettingsPage"
+    "SettingsPage",
+    "CardsPage",
+    "CardsSegment"
   ]
 }

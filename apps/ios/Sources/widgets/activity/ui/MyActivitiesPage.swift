@@ -2,7 +2,8 @@ import SwiftUI
 
 /// Applied activities as progress tracks (contract "내 활동 진행 트랙 — 2026-10-18"): `진행 중` first, nearest next stage on top,
 /// `끝난 활동` (every stage past, or a 탈락 mark) collapsed below. Stage-less activities keep the plain row with the participation mark.
-/// With nothing applied the title line stays and the rest is one centred message (contract "비스크롤 화면 배치·CTA").
+/// With nothing applied the whole page is one centred message (contract "비스크롤 화면 배치·CTA"). The bar is the system navigation bar
+/// (contract "iOS 상단 바는 시스템 내비게이션 바"): inline title, `예시` badge then 설정·알림 on the trailing side.
 struct MyActivitiesPage: View {
     let state: ActivityViewModel
     let explore: () -> Void
@@ -12,8 +13,7 @@ struct MyActivitiesPage: View {
         let applied = state.appliedProgress(now: now)
         let active = applied.filter { !($0.progress?.ended ?? false) }
         let ended = applied.filter { $0.progress?.ended ?? false }
-        VStack(spacing: 0) {
-            PageTitle("내 활동") { DearbyBadge(title: "예시") }
+        Group {
             if applied.isEmpty {
                 CenteredMessage(symbol: "checklist", title: "신청한 활동이 없어요", message: "발견에서 관심 있는 활동을 신청해 보세요.",
                                 primary: MessageAction("활동 둘러보기", identifier: "explore", action: explore))
@@ -40,9 +40,12 @@ struct MyActivitiesPage: View {
         }
         .navigationDestination(for: String.self) { id in ActivityDetailView(state: state, activityID: id) }
         .navigationDestination(for: ActivityProgressRoute.self) { route in ActivityProgressPage(state: state, activityID: route.activityID) }
-        .scrollContentBackground(.hidden).background(Color(.systemGroupedBackground))
-        .tint(DearbyStyle.teal).navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .navigationBar)
+        .scrollContentBackground(.hidden).background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .tint(DearbyStyle.teal).navigationTitle("내 활동").navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) { DearbyBadge(title: "예시") }
+            TabRootToolbar()
+        }
     }
     @ViewBuilder private func row(_ item: AppliedActivity, now: Date) -> some View {
         if let progress = item.progress {
