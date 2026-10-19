@@ -3,7 +3,7 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Contract "기기 캘린더 겹침": requested only when 겹치는 시간 확인 is tapped; read-only, compared on device. -->
     <uses-permission android:name="android.permission.READ_CALENDAR"/>
-    <application android:label="Dearby" android:icon="@drawable/ic_launcher" android:dataExtractionRules="@xml/data_extraction_rules" android:allowBackup="false" android:fullBackupContent="false" android:supportsRtl="true" android:theme="@style/Theme.Dearby" android:usesCleartextTraffic="false">
+    <application android:label="Dearby" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:dataExtractionRules="@xml/data_extraction_rules" android:allowBackup="false" android:fullBackupContent="false" android:supportsRtl="true" android:theme="@style/Theme.Dearby" android:usesCleartextTraffic="false">
         <!-- singleTask: the dearby://auth/apple redirect must reach this instance (onNewIntent), which holds the verifier, and close the Custom Tab above it. -->
         <activity android:name=".app.MainActivity" android:exported="true" android:launchMode="singleTask" android:theme="@style/Theme.Dearby.Starting">
             <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
