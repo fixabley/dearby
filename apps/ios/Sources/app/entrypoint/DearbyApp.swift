@@ -42,6 +42,8 @@ import SwiftUI
             }
             // "Dearby 앱에 저장" on the web card page: save the card to the account and open it in 받은 명함.
             .onOpenURL { url in
+                // The Google SDK's own redirect comes back here first (contract "구글 로그인").
+                if GoogleNativeSignIn.handle(url) { return }
                 guard let incoming = WalletModel.Incoming(url: url) else { return }
                 tab = 3
                 Task { await wallet.receive(incoming) }

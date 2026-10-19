@@ -9,6 +9,8 @@ struct ConnectionProvider: Sendable {
     /// Info.plist `DearbyAppleSignInEnabled`: false until the app ID has Sign in with Apple and the
     /// entitlements carry `com.apple.developer.applesignin` (see README "애플 로그인").
     let appleSignInEnabled: Bool
+    /// Info.plist `GIDClientID` (build setting `GOOGLE_IOS_CLIENT_ID`): the Google button needs an iOS client ID.
+    let googleSignInEnabled: Bool
     init(info: [String: Any] = Bundle.main.infoDictionary ?? [:]) {
         var info = info
         #if DEBUG
@@ -24,6 +26,7 @@ struct ConnectionProvider: Sendable {
         }
         self.origins = origins
         appleSignInEnabled = info["DearbyAppleSignInEnabled"] as? Bool ?? false
+        googleSignInEnabled = GoogleNativeSignIn.isConfigured(info)
         #if DEBUG
         // A Debug build without DEARBY_API_ORIGIN talks to a local API; say so once.
         if origins.api.host == "localhost" || origins.api.host == "127.0.0.1" {
@@ -37,7 +40,7 @@ struct ConnectionProvider: Sendable {
         // A fresh Keychain item per launch environment keeps one run's sign-in from leaking into another.
         if let service = ProcessInfo.processInfo.environment["DEARBY_TOKEN_SERVICE"] { vault.service = service }
         #endif
-        return AccountViewModel(client: .live(api: origins.api), vault: vault, appleSignInEnabled: appleSignInEnabled)
+        return AccountViewModel(client: .live(api: origins.api), vault: vault, appleSignInEnabled: appleSignInEnabled, googleSignInEnabled: googleSignInEnabled)
     }
     /// Programs with open activities for the discovery accordion (contract "발견 프로그램 묶음").
     func programs(query: String, cursor: Int64?) async throws -> ProgramPage {

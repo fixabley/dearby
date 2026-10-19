@@ -38,7 +38,7 @@
 
 계약 `shared/contracts/native-v1.md`의 "연결 설정"을 따른다. 코드에는 운영 도메인을 두지 않는다.
 
-- 빌드 환경값 `DEARBY_API_ORIGIN`이 Info.plist `DearbyAPIOrigin`으로, `DEARBY_WEB_ORIGIN`이 `DearbyWebOrigin`(명함 QR 주소, 비어 있으면 `https://dearby.wid.io.kr`)으로 들어간다. 명령행 `xcodebuild`는 환경값을 빌드 설정으로 읽는다. Xcode 화면에서 빌드할 때는 scheme의 환경값이 아니라 빌드 설정으로 넘겨야 한다.
+- 빌드 환경값 `DEARBY_API_ORIGIN`이 Info.plist `DearbyAPIOrigin`으로, `DEARBY_WEB_ORIGIN`이 `DearbyWebOrigin`(명함 QR 주소, 비어 있으면 `https://dearby.wid.io.kr`)으로 들어간다. 구글 로그인의 `GOOGLE_IOS_CLIENT_ID`·`GOOGLE_IOS_URL_SCHEME`은 `generate_project.rb`가 환경에서 읽어 빌드 설정으로 넣는다(아래 "구글 로그인"). 명령행 `xcodebuild`는 환경값을 빌드 설정으로 읽는다. Xcode 화면에서 빌드할 때는 scheme의 환경값이 아니라 빌드 설정으로 넘겨야 한다.
 - Release: `scripts/validate_origins.sh` 빌드 단계가 이 값이 `https://<도메인>`(IP·포트·경로·대문자 없음)인지 검사하고, 아니면 빌드를 실패시킨다. Associated Domains는 두 entitlements 모두 패스키용 `webcredentials:wid.io.kr`만이며 `applinks`는 없다. 기기 빌드는 provisioning profile에 Associated Domains 기능이 있어야 한다.
 - Debug: 값이 없으면 `http://localhost:3000`(API 기본 포트)을 쓴다. http는 localhost·127.0.0.1만 허용한다. 코드는 `shared/config/AppOrigins.swift`, 조립은 `app/providers/ConnectionProvider.swift`다.
 
@@ -63,15 +63,16 @@
 - 끄려면 두 값을 되돌린다. entitlement만 남기고 플래그를 끄면 버튼만 숨는다.
 - 실제 애플 로그인은 entitlement가 있는 서명 빌드와 운영 API(`APPLE_CLIENT_IDS` 설정)에서만 확인할 수 있다. entitlement 없이 요청하면 OS가 실패로 돌려준다.
 
-## 구글 로그인 (2026-10-18)
+## 구글 로그인 (2026-10-19, 네이티브 SDK)
 
-계약 `shared/contracts/native-v1.md` "구글 로그인"을 따른다. 애플·패스키와 나란한 세 번째 수단이며 SDK 없이 서버의 웹 방식을 쓴다.
+계약 `shared/contracts/native-v1.md` "구글 로그인 — 2026-10-19 네이티브 SDK로 전환"을 따른다. 애플·패스키와 나란한 세 번째 수단이며 `GoogleSignIn-iOS`(Swift Package, 10.x — `nonce` 인자는 9.0부터 있다; `scripts/generate_project.rb`가 원격 패키지로 넣는 유일한 의존성)를 쓴다. 2026-10-18의 서버 웹 방식(`ASWebAuthenticationSession`, `web/start`·`web/exchange`, `dearby://auth/google`)은 지웠다.
 
-- 코드: `entities/account/api/GoogleSignIn.swift`(무작위 verifier 43자와 SHA-256 base64url 해시, `ASWebAuthenticationSession`(callback scheme `dearby`, 비임시 세션이라 Safari의 구글 로그인 상태를 다시 씀), `dearby://auth/google?code=` 해석), `AccountClient`(`/v1/auth/google/web/start`·`/auth/google/web/exchange`·`/auth/google/register`·`/me/identities/google`), `AccountViewModel.signInWithGoogle`, 버튼 `shared/ui/DearbyGoogleButton.swift`.
-- 버튼: 흰 바탕·`line` 테두리·높이 50·모서리 11에 "Google로 계속하기". 앞의 "G"는 공식 로고 파일을 `shared/assets/prototype`에 받아 넣기 전까지의 글자 자리표시다. `SignInSheet`에서 애플 버튼 아래, `IntroPage`에서 애플 버튼 아래에 보인다.
-- 켜짐 판단: 빌드 플래그가 없다. `googleSignInEnabled`는 처음 참이고, `web/start`가 503(`AccountError.disabled`, 서버에 구글 클라이언트 미설정)을 돌려주면 그 실행 동안 버튼을 숨기고 "지금은 구글 로그인을 쓸 수 없어요."를 보인다. 네트워크 실패·5xx(`unavailable`)는 버튼을 숨기지 않는다.
-- 흐름: 이미 연결된 구글 계정(200)은 바로 로그인한다. 처음 보는 계정(202)은 애플과 같은 `linkOrStart`를 탄다(이 기기의 Dearby 패스키를 조용히 묻고, 있으면 연결·없으면 새 계정, 시트를 닫았을 때만 "처음 보는 구글 계정이에요" 선택 화면). 애플·구글이 같은 `AccountViewModel.PendingLink`(provider·linkToken·email)를 쓴다. 사용자가 브라우저 시트를 닫거나 구글이 `error=cancelled`를 돌려주면 문구 없이 끝난다.
-- 서버 쪽 필요 조건(앱 밖): 운영 API의 `GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`·`GOOGLE_CALLBACK_URL`. 없으면 버튼이 숨겨진다. 실기기에서만 확인할 수 있다.
+- 코드: `entities/account/api/GoogleNativeSignIn.swift`(`isConfigured`: Info.plist `GIDClientID`가 비어 있지 않은지, `authorize(nonce:)`: `GIDSignIn.sharedInstance.signIn(withPresenting:hint:additionalScopes:nonce:)` → ID 토큰, 시트 닫기는 `Passkey.Failure.canceled`; `handle(_:)`: SDK 리디렉션), `AccountClient`(`/v1/auth/google/nonce`·`/auth/google`·`/auth/google/register`·`/me/identities/google`), `AccountViewModel.signInWithGoogle`, 버튼 `shared/ui/DearbyGoogleButton.swift`. `DearbyApp`의 `onOpenURL`은 구글 SDK 리디렉션을 먼저 넘기고 그 다음 `dearby://cards/…`를 본다.
+- 빌드 설정: `GOOGLE_IOS_CLIENT_ID`(iOS OAuth 클라이언트 id → Info.plist `GIDClientID`)와 `GOOGLE_IOS_URL_SCHEME`(그 역순 표기 `com.googleusercontent.apps.<id>` → `CFBundleURLSchemes`, `dearby` 스킴과 함께). `generate_project.rb`가 환경 변수에서 읽어 빌드 설정에 넣고, 비어 있으면 빈 값이다. 기기 설치 빌드는 `~/.dearby-deploy/mobile.env`를 읽어 두 값을 환경에 올린 뒤 `generate_project.rb`를 실행한다. CI는 값 없이 빌드하며 버튼이 숨겨진다. 값은 저장소·채팅에 적지 않는다.
+- 켜짐 판단: `googleSignInEnabled`는 빌드에 `GIDClientID`가 있으면 참으로 시작하고, `auth/google/nonce`가 503(`AccountError.disabled`, 서버에 `GOOGLE_CLIENT_IDS` 미설정)을 돌려주면 그 실행 동안 버튼을 숨기고 "지금은 구글 로그인을 쓸 수 없어요."를 보인다. 네트워크 실패·5xx(`unavailable`)는 버튼을 숨기지 않는다.
+- 버튼: 흰 바탕·`line` 테두리·높이 50·모서리 11에 "Google로 계속하기". 앞의 "G"는 공식 로고 파일을 `shared/assets/prototype`에 받아 넣기 전까지의 글자 자리표시다. `SignInSheet`와 `IntroPage`에서 애플 버튼 아래에 보인다.
+- 흐름: 이미 연결된 구글 계정(200)은 바로 로그인한다. 처음 보는 계정(202)은 애플과 같은 `linkOrStart`를 탄다(이 기기의 Dearby 패스키를 조용히 묻고, 있으면 연결·없으면 새 계정, 시트를 닫았을 때만 "처음 보는 구글 계정이에요" 선택 화면). 애플·구글이 같은 `AccountViewModel.PendingLink`를 쓴다. 구글 계정 시트를 닫으면 문구 없이 끝난다.
+- 서버 쪽 필요 조건(앱 밖): 운영 API의 `GOOGLE_CLIENT_IDS`에 웹 클라이언트 id와 iOS 클라이언트 id(SDK가 만든 ID 토큰의 `aud`는 iOS 클라이언트 id다). 없으면 버튼이 숨겨진다. 실기기에서만 확인할 수 있다.
 
 ## 계정 삭제 (2026-10-16)
 

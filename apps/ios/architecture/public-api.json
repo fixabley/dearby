@@ -10,7 +10,7 @@
     "ActivityInfoRef",
     "AppleSignIn",
     "ExchangeContext",
-    "GoogleSignIn",
+    "GoogleNativeSignIn",
     "ContactRules",
     "EvidenceMeta",
     "Passkey",
