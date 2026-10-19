@@ -200,7 +200,13 @@ class ActivityViewModel(
         marks = marks + (id to own)
         mutable.update { it.copy(progress = it.progress + (id to model.toProgress(own, today()))) }
     }
-    fun apply(id: String, value: Boolean) = update(id) { it.copy(applied = value, confirmed = value && it.confirmed) }
+    /** Marks [id] applied. Removing it (contract "빼기는 눈에 보이게") also clears 참여 확정 and the stage marks. */
+    fun apply(id: String, value: Boolean) {
+        update(id) { it.copy(applied = value, confirmed = value && it.confirmed) }
+        if (value || id !in marks) return
+        marks = marks - id
+        models[id]?.let { model -> mutable.update { it.copy(progress = it.progress + (id to model.toProgress(emptyMap(), today()))) } }
+    }
     /** An application link for [id] was handed to the browser. Applied or "never ask" activities are not asked. */
     fun openedApplication(id: String) {
         if (state.value.known[id]?.applied == true || id in neverAsk) return

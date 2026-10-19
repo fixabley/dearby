@@ -4,7 +4,7 @@ struct ActivityDetailView: View {
     let state: ActivityViewModel
     let activityID: String
     @State private var showCalendar = false
-    @State private var confirmingRemoval = false
+    @State private var removing: String?
     private var activity: ActivityModel? { state.activity(activityID) }
     private var applied: Bool { state.appliedIDs.contains(activityID) }
     var body: some View {
@@ -48,10 +48,7 @@ struct ActivityDetailView: View {
             if let activity { CalendarConflictView(schedules: activity.schedules) }
         }
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)
-        .confirmationDialog("내 활동에서 뺄까요?", isPresented: $confirmingRemoval, titleVisibility: .visible) {
-            Button("내 활동에서 빼기", role: .destructive) { state.apply(activityID, false) }
-            Button("취소", role: .cancel) {}
-        } message: { Text("참여 확정·단계 표시도 함께 지워져요.") }
+        .removeFromMineDialog($removing, state: state)
     }
     private func identity(_ activity: ActivityModel) -> some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -90,7 +87,7 @@ struct ActivityDetailView: View {
     /// The CTA opens the application link, else the official notice (contract "신청 확인 조건 완화" 2026-10-19 밤). Unless applying
     /// is over it reads as applying and arms the "신청하셨나요?" prompt for when the app comes back from the browser.
     /// Under it, whatever the recruitment state, `내 활동에 추가` marks the activity applied by the same path as "신청했어요" (contract
-    /// "내 활동 직접 추가" 2026-10-20); once applied it becomes `내 활동에서 보기` with `내 활동에서 빼기` in its context menu.
+    /// "내 활동 직접 추가" 2026-10-20); once applied it becomes `내 활동에서 보기` with an always-visible red `내 활동에서 빼기` text button under it.
     @ViewBuilder private func applicationActions(_ activity: ActivityModel) -> some View {
         let site = activity.applicationSiteURL
         let closed = activity.applicationClosed(at: state.loadedAt)
@@ -110,8 +107,8 @@ struct ActivityDetailView: View {
             if applied {
                 Button { state.showInMine = activity.id } label: { Label("내 활동에서 보기", systemImage: "checklist").frame(maxWidth: .infinity) }
                     .buttonStyle(.bordered).accessibilityIdentifier("show-in-mine")
-                    .contextMenu { Button("내 활동에서 빼기", role: .destructive) { confirmingRemoval = true } }
-                    .accessibilityHint("길게 누르면 내 활동에서 뺄 수 있어요")
+                Button("내 활동에서 빼기", role: .destructive) { removing = activity.id }
+                    .buttonStyle(.borderless).accessibilityIdentifier("mine-remove")
             } else {
                 Button { state.apply(activity.id, true) } label: { Label("내 활동에 추가", systemImage: "checklist").frame(maxWidth: .infinity) }
                     .buttonStyle(.bordered).accessibilityIdentifier("add-to-mine")

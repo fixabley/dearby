@@ -28,12 +28,12 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
  * One applied activity's stages as a vertical timeline (contract "내 활동 진행 트랙"): kind icon, name, date or label,
  * status chip and the user's 통과/대기/탈락 choice per stage. The 참여 확정 switch of [activity] sits under the title since
  * the track row replaced the plain row. [openDetail] goes to the activity detail; [checkCalendar] opens the calendar
- * comparison on a stage with a timed window.
+ * comparison on a stage with a timed window. The bottom 내 활동에서 빼기 asks first, then [remove] removes it and leaves the page.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun ActivityProgressPage(
     progress: ProgressState, activity: ActivityState, back: () -> Unit, openDetail: () -> Unit, confirm: (Boolean) -> Unit,
-    mark: (Int, ProgressMark) -> Unit, checkCalendar: (Int) -> Unit,
+    mark: (Int, ProgressMark) -> Unit, checkCalendar: (Int) -> Unit, remove: () -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize()) {
         DearbyTopBar("진행 단계", back)
@@ -51,6 +51,7 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
                 Icon(Icons.Rounded.Info, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("표시는 내가 남긴 것이며 주최 측 결과가 아니에요", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
+            RemoveFromMineButton(remove, Modifier.align(Alignment.CenterHorizontally).padding(top = 16.dp))
         }
     }
 }

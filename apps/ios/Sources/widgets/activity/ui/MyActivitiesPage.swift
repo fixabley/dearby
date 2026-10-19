@@ -10,6 +10,7 @@ struct MyActivitiesPage: View {
     @Binding var path: NavigationPath
     let explore: () -> Void
     @State private var showEnded = false
+    @State private var removing: String?
     var body: some View {
         let now = Date()
         let applied = state.appliedProgress(now: now)
@@ -51,8 +52,16 @@ struct MyActivitiesPage: View {
         .scrollContentBackground(.hidden).background(Color(.systemGroupedBackground).ignoresSafeArea())
         .tint(DearbyStyle.teal).navigationTitle("내 활동").navigationBarTitleDisplayMode(.inline)
         .toolbar { TabRootToolbar() }
+        .removeFromMineDialog($removing, state: state)
     }
-    @ViewBuilder private func row(_ item: AppliedActivity, now: Date) -> some View {
+    /// The list is a `ScrollView`, not a `List`, so each row offers 빼기 by context menu (contract "빼기는 눈에 보이게"); the detail and
+    /// the progress page carry the visible button.
+    private func row(_ item: AppliedActivity, now: Date) -> some View {
+        rowContent(item, now: now).contextMenu {
+            Button("내 활동에서 빼기", systemImage: "trash", role: .destructive) { removing = item.id }
+        }
+    }
+    @ViewBuilder private func rowContent(_ item: AppliedActivity, now: Date) -> some View {
         if let progress = item.progress {
             ActivityProgressRow(activity: item.activity, progress: progress, now: now)
         } else {

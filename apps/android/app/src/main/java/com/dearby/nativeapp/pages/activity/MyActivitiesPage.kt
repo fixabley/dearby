@@ -11,6 +11,7 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,7 +34,7 @@ import com.dearby.nativeapp.widgets.activity.progress.ProgressState
  * [openProgress]; a plain row opens the detail with [open]. The applied marks survive discovery searches (README rule).
  */
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun MyActivitiesPage(state: ActivityListState, open: (String) -> Unit, openProgress: (String) -> Unit, confirm: (String, Boolean) -> Unit, explore: () -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {}) {
+@Composable fun MyActivitiesPage(state: ActivityListState, open: (String) -> Unit, openProgress: (String) -> Unit, confirm: (String, Boolean) -> Unit, explore: () -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {}, remove: (String) -> Unit = {}) {
     val active = state.activeActivities
     val ended = state.endedActivities
     var showEnded by remember { mutableStateOf(false) }
@@ -47,10 +48,10 @@ import com.dearby.nativeapp.widgets.activity.progress.ProgressState
         else LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { Text(PROGRESS_NOTE, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
             if (active.isNotEmpty()) item { Text("진행 중", Modifier.padding(top = 6.dp).semantics { heading() }, style = MaterialTheme.typography.titleMedium) }
-            items(active, key = { it.id }) { MyActivityRow(it, state.progress[it.id], open, openProgress, confirm) }
+            items(active, key = { it.id }) { MyActivityRow(it, state.progress[it.id], open, openProgress, confirm, remove) }
             if (ended.isNotEmpty()) {
                 item { EndedHeader(ended.size, showEnded) { showEnded = !showEnded } }
-                if (showEnded) items(ended, key = { it.id }) { MyActivityRow(it, state.progress[it.id], open, openProgress, confirm) }
+                if (showEnded) items(ended, key = { it.id }) { MyActivityRow(it, state.progress[it.id], open, openProgress, confirm, remove) }
             }
         }
     }
@@ -59,12 +60,37 @@ import com.dearby.nativeapp.widgets.activity.progress.ProgressState
 internal const val CONFIRM_NOTE = "참여 확정 표시는 내가 남기는 예시 표시예요. 주최 측 확정이 아니에요."
 internal const val PROGRESS_NOTE = "단계와 참여 확정 표시는 내가 남기는 것이며 주최 측 결과가 아니에요."
 
-@Composable private fun MyActivityRow(activity: ActivityState, progress: ProgressState?, open: (String) -> Unit, openProgress: (String) -> Unit, confirm: (String, Boolean) -> Unit) {
-    if (progress != null && progress.stages.isNotEmpty()) ActivityProgressRow(progress, { openProgress(activity.id) })
-    else ActivityRow(activity, open) {
+/** A track row or the plain row, each with a trailing `더 보기` menu holding 내 활동에서 빼기 (contract "빼기는 눈에 보이게"). */
+@Composable private fun MyActivityRow(activity: ActivityState, progress: ProgressState?, open: (String) -> Unit, openProgress: (String) -> Unit, confirm: (String, Boolean) -> Unit, remove: (String) -> Unit) {
+    val more: @Composable () -> Unit = { RemoveMenu { remove(activity.id) } }
+    if (progress != null && progress.stages.isNotEmpty()) ActivityProgressRow(progress, { openProgress(activity.id) }, trailing = more)
+    else ActivityRow(activity, open, trailing = more) {
         ExampleBadge(if (activity.confirmed) "참여 확정" else "신청함", accent = activity.confirmed)
         ConfirmToggle(activity) { confirm(activity.id, it) }
     }
+}
+
+@Composable private fun RemoveMenu(remove: () -> Unit) {
+    var menu by remember { mutableStateOf(false) }
+    var removing by remember { mutableStateOf(false) }
+    Box {
+        IconButton({ menu = true }) { Icon(Icons.Rounded.MoreVert, "더 보기") }
+        DropdownMenu(menu, { menu = false }) { DropdownMenuItem({ Text("내 활동에서 빼기", color = MaterialTheme.colorScheme.error) }, { menu = false; removing = true }) }
+    }
+    if (removing) RemoveFromMineDialog({ removing = false; remove() }) { removing = false }
+}
+
+/** The confirmation every 내 활동에서 빼기 goes through (detail, list row, progress page). */
+@Composable internal fun RemoveFromMineDialog(remove: () -> Unit, dismiss: () -> Unit) =
+    AlertDialog(onDismissRequest = dismiss, title = { Text("내 활동에서 뺄까요?") }, text = { Text("단계 표시와 참여 확정도 함께 지워져요.") },
+        confirmButton = { TextButton(remove, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("빼기") } },
+        dismissButton = { TextButton(dismiss) { Text("취소") } })
+
+/** Visible error-coloured text button that asks [RemoveFromMineDialog] before [remove] (detail and progress page). */
+@Composable internal fun RemoveFromMineButton(remove: () -> Unit, modifier: Modifier = Modifier) {
+    var removing by remember { mutableStateOf(false) }
+    TextButton({ removing = true }, modifier, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("내 활동에서 빼기") }
+    if (removing) RemoveFromMineDialog({ removing = false; remove() }) { removing = false }
 }
 
 /** Collapsed group header; the chevron turns at once under reduced motion. */
