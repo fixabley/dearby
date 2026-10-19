@@ -49,9 +49,13 @@
 - Program: `{id, name, nameEn, organization: {id, name}, collection: CollectionSettings}`
 - CollectionSettingsInput: `{officialUrl?, allowedHosts: string[], intervalDays, enabled}`
   - `officialUrl`은 https만. `allowedHosts`는 정확한 호스트 이름(예: `letswift.kr`, 스킴·경로·포트 없음, 소문자로 저장). `intervalDays` ≥ 1. 어기면 400.
-- CollectionSettings: `{configured, officialUrl, allowedHosts, intervalDays, enabled, officialOnly, lastSucceededOn}`
+  - **주소 토큰(2026-10-19 사용자 결정)**: 회차마다 주소가 바뀌는 프로그램(예 `https://toss.im/slash-23`, `slash-24`)은 `officialUrl`에 토큰을 넣는다. `{year}`(네 자리 연도), `{yy}`(두 자리 연도), `{round}`(기수 번호). 수집 때 `{year}`·`{yy}`는 **올해와 내년**(Asia/Seoul) 두 값으로, `{round}`는 **같은 프로그램의 가장 최근 활동 이름에서 읽은 기수 번호(`(\d+)\s*기` 또는 `roundKey` 숫자) + 1과 그 번호** 두 값으로 펼친다. 토큰이 여럿이면 조합한다(최대 4개). 기수 번호를 읽을 수 없으면 `{round}`가 든 주소는 펼치지 않고 수집 보고의 거절 이유에 `기수 번호를 알 수 없음`으로 남긴다. 펼친 주소는 기존 시작 주소 자리에 차례로 들어가며, 없는 주소(404·오류)는 지금처럼 거절 이유에만 남고 수집은 계속된다. 토큰 없는 주소는 그대로 하나다. 검증: 알 수 없는 `{…}` 토큰은 400, 토큰을 샘플 값으로 바꾼 뒤 https 주소여야 한다.
+- CollectionSettings: `{configured, officialUrl, allowedHosts, intervalDays, enabled, officialOnly, lastSucceededOn, previousRound, previewUrls, lastFetchedUrls}`
+  - `lastFetchedUrls`(2026-10-19 사용자 요청 "수집 url은 현시점 수집페이지를 기입하도록"): 가장 최근 수집(결과가 SUCCEEDED인 마지막 `collection_runs` 행)에서 **실제로 받아 읽은 페이지 주소** 목록. 수집기가 `collection_runs.fetched_urls varchar[]`(V30)에 받은 순서로 남긴다(받기 실패한 주소는 제외). 없으면 `[]`. 어드민 웹은 설정 폼과 프로그램 목록에 "현시점 수집 페이지: …"로 읽기 전용으로 보이고, 템플릿 주소(`officialUrl`)는 바꾸지 않는다.
+  - `previousRound`(2026-10-19): 같은 프로그램의 가장 최근 활동에서 읽은 기수 번호, 없으면 `null`. `previewUrls`: 저장된 `officialUrl`을 지금 수집한다면 보게 될 주소 목록(서버가 위 규칙으로 펼침, 토큰이 없으면 그 주소 하나, 주소가 없으면 `[]`). 어드민 웹은 입력 중인 값은 같은 규칙으로 클라이언트에서 미리 계산해 보여 주고(`previousRound` 사용), 저장 뒤에는 서버 값을 쓴다.
   - `configured`: 설정 행이 있는지. 없으면 기본값(`officialUrl` null, `allowedHosts` [], `intervalDays` 1, `enabled` true)을 돌려준다.
-  - `officialOnly` = `allowedHosts`가 비어 있지 않음. **false면 매일 밤 "프로그램 이름 + 주최 기관"으로 웹 전체를 검색한다**(공식 도메인 수집보다 토큰이 약 5배, 공식 출처가 아닌 페이지가 섞인다). 어드민 웹은 비어 있을 때 이 점을 보여 준다.
+  - 어드민 웹 수집 설정 폼(2026-10-19): 주소 입력 위에 토큰 태그 버튼 `{year}`·`{yy}`·`{round}`를 두고 누르면 커서 자리에 토큰이 들어간다. 입력 아래 안내 문구 "회차마다 주소가 바뀌면 토큰을 넣어요. {year} 네 자리 연도, {yy} 두 자리 연도, {round} 기수 번호(이전 활동 이름의 ‘N기’에서 읽음). 올해·내년, 다음 기수·현재 기수로 펼쳐 차례로 봅니다."와 미리보기 "지금 수집하면 이 주소들을 봅니다: …"를 보인다. 기수 번호를 읽을 수 없으면 미리보기에 "기수 번호를 알 수 없어 {round} 주소는 건너뜁니다"를 쓴다.
+- `officialOnly` = `allowedHosts`가 비어 있지 않음. **false면 매일 밤 "프로그램 이름 + 주최 기관"으로 웹 전체를 검색한다**(공식 도메인 수집보다 토큰이 약 5배, 공식 출처가 아닌 페이지가 섞인다). 어드민 웹은 비어 있을 때 이 점을 보여 준다.
   - `lastSucceededOn`: 마지막으로 수집에 성공한 한국 날짜(없으면 null). 이 날짜 + `intervalDays`가 지나야 다시 수집한다.
 
 ## 활동
@@ -59,10 +63,13 @@
 | 메서드·경로 | 요청 | 응답 |
 | --- | --- | --- |
 | GET /v1/admin/activities | `q?`, `organizationId?`, `programId?`, `publicationStatus?`(`DRAFT`·`PUBLISHED`), `cursor?`, `size?` | 200 `{items: AdminActivity[], nextCursor}`. 초안 포함 |
+| POST /v1/admin/activities | ActivityCreateInput | 201 AdminActivity(2026-10-19 사용자 요청 "활동 추가 플로우가 어드민에 없어"). 프로그램이 없으면 400, 같은 프로그램에 띄어쓰기만 다른 같은 이름이 있으면 400 |
 | PATCH /v1/admin/activities/:id | `{name?, nameEn?, description?, descriptionEn?}` | 200 AdminActivity. 없으면 404, 한글 이름을 비우면 400 |
 | PATCH /v1/admin/activities/:id/publication-status | `{publicationStatus}` | 200 AdminActivity. 없으면 404 |
 | DELETE /v1/admin/activities/:id | — | 204. 없으면 404. 일정·역할·연락처도 함께 지워진다. 수집으로 생긴 활동이면 그 출처(`source_id`)를 남겨 다음 수집에서 다시 만들지 않는다 |
 
+- 어드민 웹 활동 화면(2026-10-19 사용자 요청 "탐색메뉴처럼 프로그램 하위에 활동들이 표시되는 형태"): 앱의 발견 탭과 같이 프로그램이 상위 행이고 펼치면 그 프로그램의 활동이 종류별 소제목(native-v1.md "활동 종류", 미분류는 맨 뒤) 아래에 나온다(`GET /v1/admin/programs` 목록 + 펼칠 때 `GET /v1/admin/activities?programId=`를 지연 로딩, 50개씩 `더 보기`). 활동 이름 검색어가 있을 때만 기존 평면 목록을 결과로 보인다. 행 동작(편집·게시·삭제·중복 지정·기간 확인)은 그대로다. API 변경 없음.
+- ActivityCreateInput(2026-10-19): `{programId, name, nameEn?, description, descriptionEn?, officialUrl, applicationUrl?, category?(native-v1.md "활동 종류" 코드), participationType?("REGISTRATION"|"SELECTION", 기본 REGISTRATION), activitySchedule?: ScheduleInput|{dateLabel}, application?: ScheduleInput, eligibility?, audience?, location?, cost?}`. 운영자가 직접 만드는 활동이다. 저장 규칙: `publicationStatus = DRAFT`(기존 게시 전환으로 공개), `source_id` 없음(수집이 다시 만들거나 덮어쓰지 않는다), `official_source = true`, `source_note = "운영자 등록"`, `source_checked_at` = 지금, 보낸 텍스트 필드는 모두 `curated_fields`에, 보낸 기간은 `schedules.curated = true`로 저장한다. `officialUrl`·`applicationUrl`은 https, `activitySchedule`은 날짜 범위 또는 원문 문구(`dateLabel`) 중 하나라도 있어야 한다(둘 다 없으면 400). 어드민 웹은 활동 목록 위 `활동 추가` 버튼으로 모달을 열고(프로그램 검색 선택, 이름·영문 이름·설명·영문 설명, 공식 안내 URL·신청 링크, 참여 방식, 모집 기간·활동 기간 블록과 활동 기간 원문, 대상자 조건 편집기·대상 원문·장소·비용), 만든 뒤 목록을 다시 불러온다.
 AdminActivity: 공개 Activity(`native-v1.md` "활동 조회")의 필드 `{id, name, nameEn, description, descriptionEn, organization, program, officialUrl, imageUrl, application, activitySchedule, schedules}`에 운영자용 필드를 더한다.
 
 - `publicationStatus`: `DRAFT`(수집 초안, 공개 API에 안 보임) / `PUBLISHED`
@@ -149,5 +156,5 @@ AdminActivity: 공개 Activity(`native-v1.md` "활동 조회")의 필드 `{id, n
 - 대상 필드: `eligibility`(대상자 조건)와 `audience`(대상 원문), `participationType`(참여 방식). 기간·장소·비용·신청 링크처럼 기수마다 바뀌는 값은 가져오지 않는다.
 - 출처 활동: 같은 프로그램에서 가장 최근에 만들어진 **다른** 활동(게시 활동 우선, 없으면 초안). 새 초안을 처음 저장할 때만 적용하고, 이미 있는 초안을 갱신할 때는 비어 있는 필드에만 적용한다. 운영자가 지정한 값(`curated` 또는 직접 편집)은 덮어쓰지 않는다.
 - 표시: `activities.inherited_fields jsonb`(가져온 필드 이름 배열, 예 `["eligibility","audience"]`)에 남기고 `AdminActivity.inheritedFields: string[]`로 내보낸다. 어드민은 해당 필드 옆에 "이전 기수에서 가져옴" 표시를 보이고, 운영자가 그 필드를 편집·비우면 목록에서 빠진다. 공개 API에는 표시하지 않는다(값은 그대로 공개).
-- 운영자 지정 필드(2026-10-18 보완): 어드민 `PATCH`로 바꾼 필드 이름을 `activities.curated_fields jsonb`에 남기고 `AdminActivity.curatedFields: string[]`로 내보낸다. 대상은 `name`·`nameEn`·`description`·`descriptionEn`·`eligibility`와 2026-10-19 추가된 `officialUrl`(공식 안내 URL, https 필수, 비울 수 없음)·`applicationUrl`(신청 링크, https, 빈 문자열은 삭제)(활동 기간·모집 기간은 `schedules.curated`가 담당). 두 URL은 같은 `PATCH /v1/admin/activities/:id`로 보낸다(사용자 요청 "공식 안내 url도 내가 수정할 수 있으면 좋겠어"). 수집기는 **`curated_fields`에 있는 필드만 보호**하고 나머지는 페이지에서 뽑은 값으로 갱신한다(가져온 값도 새 수집값이 있으면 갱신). 어드민은 해당 필드 옆에 "운영자 지정" 표시를 보이고, 같은 필드를 다시 저장해도 표시는 유지된다. 비운 필드도 운영자 지정으로 본다(수집이 다시 채우지 않음).
+- 운영자 지정 필드(2026-10-18 보완): 어드민 `PATCH`로 바꾼 필드 이름을 `activities.curated_fields jsonb`에 남기고 `AdminActivity.curatedFields: string[]`로 내보낸다. 대상은 `name`·`nameEn`·`description`·`descriptionEn`·`eligibility`와 2026-10-19 추가된 `officialUrl`(공식 안내 URL, https 필수, 비울 수 없음)·`applicationUrl`(신청 링크, https, 빈 문자열은 삭제)(활동 기간·모집 기간은 `schedules.curated`가 담당). 같은 날 `category`(활동 종류, 코드 또는 null)도 PATCH로 보내고 운영자 지정에 남긴다. 두 URL은 같은 `PATCH /v1/admin/activities/:id`로 보낸다(사용자 요청 "공식 안내 url도 내가 수정할 수 있으면 좋겠어"). 수집기는 **`curated_fields`에 있는 필드만 보호**하고 나머지는 페이지에서 뽑은 값으로 갱신한다(가져온 값도 새 수집값이 있으면 갱신). 어드민은 해당 필드 옆에 "운영자 지정" 표시를 보이고, 같은 필드를 다시 저장해도 표시는 유지된다. 비운 필드도 운영자 지정으로 본다(수집이 다시 채우지 않음).
 - 수집 지시문: 추출 요청에 이전 기수의 대상자 조건·대상 원문을 "참고(이전 기수)"로 넘겨, 본문에 같은 내용이 있으면 그대로 쓰고 본문에 없으면 null로 두게 한다. 본문에 없는 내용을 만들어 내지 않는다. 이후 서버가 비어 있는 필드를 위 규칙으로 채운다.
