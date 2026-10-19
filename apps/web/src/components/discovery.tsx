@@ -3,6 +3,7 @@ import Form from "next/form";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
+  type Activity,
   type ActivityPage,
   type ProgramPage,
   type ProgramSummary,
@@ -169,6 +170,15 @@ export function Discovery({ q }: { q: string }) {
 }
 
 /** Single open activity, or a search hit on an activity name, starts expanded. */
+/** 모집일 순 (contract "활동 종류"): earlier recruitment deadline first, no deadline last, ties by name. */
+function byDeadline(a: Activity, b: Activity): number {
+  return deadline(a.application) - deadline(b.application) || a.name.localeCompare(b.name, "ko");
+}
+function deadline(application: Activity["application"]): number {
+  const end = application?.endAt ?? application?.endDateExclusive;
+  const instant = end ? Date.parse(end) : NaN;
+  return Number.isNaN(instant) ? Infinity : instant;
+}
 function startsOpen(program: ProgramSummary) {
   return program.openActivityCount === 1 || program.matchedActivityIds.length > 0;
 }
@@ -255,7 +265,7 @@ function ProgramRow({
               <section key={group.label} className="category-group">
                 {groups.length > 1 && <h3 className="category-heading">{group.label}</h3>}
                 <ul className="activity-list">
-                  {group.items.map((activity) => (
+                  {[...group.items].sort(byDeadline).map((activity) => (
                     <li key={activity.id}>
                       <ActivityCard
                         id={activity.id}
