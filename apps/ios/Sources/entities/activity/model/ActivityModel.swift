@@ -16,12 +16,11 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     /// The same window when it is date-only (`yyyy-MM-dd`, end exclusive): judged by Seoul days.
     let recruitmentStartDate: String?
     let recruitmentEndDateExclusive: String?
-    /// `activitySchedule.dateLabel`; empty when unknown.
-    let dateLabel: String
-    /// Timed schedules only; date-only schedules stay in `dateLabel`.
+    /// Timed schedules only; date-only schedules stay in their stage's `dateLabel`.
     let schedules: [ActivityScheduleModel]
-    /// True when the API sent an `application` schedule, even a date-less one (contract "내 활동 진행 트랙": a `지원` stage).
-    let hasApplication: Bool
+    /// The `application` schedule with its bounds and collected text, even a date-less one (contract "내 활동 진행 트랙": a `지원` stage);
+    /// nil when the API sent no window.
+    let applicationStage: ActivityStageModel?
     /// Every `schedules[]` entry (timed, all-day or date-less) with its kind, in API order: the progress track's middle stages.
     let stages: [ActivityStageModel]
     /// `activitySchedule` as the track's last stage (contract "내 활동 진행 트랙": `활동`, or its title); nil only if the API omitted it.
@@ -40,8 +39,6 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     var recruitmentDeadline: Date? = nil
     /// What a participant gains (contract "태그"); empty when none or on older responses.
     var tags: [Tag] = []
-    /// `application.dateLabel`: the recruitment window as text for the discovery card's `모집` row; empty when there is no window.
-    var recruitmentLabel: String = ""
     /// Free-text place (collected, or the curated place's name; contract "활동 장소"); nil when unknown.
     var location: String? = nil
     /// The curated place with coordinates (contract "활동 장소"); nil when none.
@@ -73,8 +70,13 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
         if recruitmentStartAt != nil || recruitmentEndAt != nil || recruitmentStartDate != nil || recruitmentEndDateExclusive != nil {
             return Self.instant(recruitmentStartAt) ?? Self.seoulDay(recruitmentStartDate)
         }
-        return activityStage?.start
+        return activityStage?.anchor
     }
+    /// The activity period as text (contract "일정 표시 우선순위 — 2026-10-19 밤"): the curated structured dates first, else the collected
+    /// `dateLabel`; nil when neither exists so each screen keeps its own `미정`/`일정 미확인`.
+    func scheduleText(at now: Date) -> String? { activityStage?.text(now: now) }
+    /// The recruitment window as text by the same rule; nil without a window or any text for it.
+    func recruitmentText(at now: Date) -> String? { applicationStage?.text(now: now) }
     /// `yyyy-MM-dd` as Seoul midnight; nil when absent or unreadable.
     static func seoulDay(_ raw: String?) -> Date? {
         guard let raw else { return nil }
@@ -107,7 +109,6 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
         }
     }
     var imageURL: URL? { Self.safeURL(imageUrl) }
-    var recruitmentEnd: Date? { Self.instant(recruitmentEndAt) }
 
     static func safeURL(_ raw: String?) -> URL? {
         guard let raw, let url = URL(string: raw), url.scheme?.lowercased() == "https",
@@ -144,8 +145,9 @@ struct ActivityScheduleModel: Equatable, Identifiable, Sendable {
     let dateLabel: String
     let timeZone: String
 }
-/// One stage of the progress track (contract "내 활동 진행 트랙 — 2026-10-18"). Timed stages carry `start`/`end` instants;
-/// all-day stages carry Seoul midnight of `startDate` and of `endDateExclusive`; date-less stages have neither and only `dateLabel`.
+/// One stage of the progress track (contract "내 활동 진행 트랙 — 2026-10-18"). Timed stages carry `start`/`end` instants, either of
+/// which may be missing; all-day stages carry Seoul midnight of `startDate` and of `endDateExclusive` (`allDay`), again either may be
+/// missing; date-less stages have neither and only `dateLabel`.
 struct ActivityStageModel: Equatable, Identifiable, Sendable {
     enum Kind: String, Sendable { case deadline = "DEADLINE", announcement = "ANNOUNCEMENT", interview = "INTERVIEW", event = "EVENT" }
     let id: String
@@ -156,10 +158,51 @@ struct ActivityStageModel: Equatable, Identifiable, Sendable {
     let allDay: Bool
     let dateLabel: String
     let timeZone: String
+    /// The day a stage counts from: its start, or its end when only that is known (ordering, D-day, `지난 활동`).
+    var anchor: Date? { start ?? end }
     /// The overlap check (`CalendarConflictView`) needs a non-empty interval in a known zone.
     var schedule: ActivityScheduleModel? {
         guard let start, let end, start < end else { return nil }
         return ActivityScheduleModel(id: id, title: title, start: start, end: end, dateLabel: dateLabel, timeZone: timeZone)
+    }
+    /// The stage as text (contract "일정 표시 우선순위 — 2026-10-19 밤"): the structured bounds when there are any, else the collected
+    /// `dateLabel`, else nil. Timed: `M월 d일 (요일) HH:mm` in the stage's zone; a range is `A ~ B` (`A ~ HH:mm` on one day), an end alone
+    /// `~ B 마감`. All-day: `M월 d일 (요일)` by Seoul day with the inclusive last day. Both bounds carry the year when either falls outside
+    /// `now`'s Seoul year or they span years (web rule).
+    func text(now: Date) -> String? {
+        guard start != nil || end != nil else { return dateLabel.isEmpty ? nil : dateLabel }
+        let zone = allDay ? ActivityText.seoul : TimeZone(identifier: timeZone) ?? ActivityText.seoul
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = zone
+        // All-day `end` is the exclusive midnight; the last day is the one before it.
+        let last = allDay ? end.flatMap { calendar.date(byAdding: .day, value: -1, to: $0) } : end
+        let years = Set([start, last].compactMap { $0 }.map { calendar.component(.year, from: $0) })
+        var seoulCalendar = Calendar(identifier: .gregorian)
+        seoulCalendar.timeZone = ActivityText.seoul
+        let withYear = years.count > 1 || years != [seoulCalendar.component(.year, from: now)]
+        let pattern = (withYear ? "yyyy년 M월 d일 (E)" : "M월 d일 (E)") + (allDay ? "" : " HH:mm")
+        guard let start else { return last.map { "~ " + ActivityText.format($0, pattern, zone: zone) + " 마감" } }
+        let first = ActivityText.format(start, pattern, zone: zone)
+        guard let last, last > start else { return first }
+        if !allDay, calendar.isDate(start, inSameDayAs: last) { return first + " ~ " + ActivityText.format(last, "HH:mm", zone: zone) }
+        return first + " ~ " + ActivityText.format(last, pattern, zone: zone)
+    }
+}
+/// Korean date text in a schedule's zone.
+enum ActivityText {
+    static let seoul = TimeZone(identifier: "Asia/Seoul")!
+    static func time(_ date: Date, zone: String = "Asia/Seoul") -> String { format(date, "HH:mm", zone: zone) }
+    static func day(_ date: Date, zone: String) -> String { format(date, "M/d", zone: zone) }
+    static func format(_ date: Date, _ pattern: String, zone: String) -> String {
+        format(date, pattern, zone: TimeZone(identifier: zone) ?? seoul)
+    }
+    static func format(_ date: Date, _ pattern: String, zone: TimeZone) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.timeZone = zone
+        formatter.dateFormat = pattern
+        return formatter.string(from: date)
     }
 }
 /// One page of `GET /v1/activities`. A nil `nextCursor` is the last page.

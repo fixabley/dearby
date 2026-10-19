@@ -79,7 +79,7 @@ struct ActivityDetailView: View {
             }
             Divider()
             DearbyInfoRow(title: "모집 상태", value: activity.statusLabel(at: state.loadedAt), symbol: "calendar")
-            DearbyInfoRow(title: "개최 일시", value: activity.dateLabel.isEmpty ? "미확인" : activity.dateLabel, symbol: "clock")
+            DearbyInfoRow(title: "개최 일시", value: activity.scheduleText(at: state.loadedAt) ?? "미확인", symbol: "clock")
             Divider()
             Text("소개").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
             Text(activity.summary).lineSpacing(5)

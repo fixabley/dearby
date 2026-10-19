@@ -211,8 +211,8 @@ import Observation
                         .sorted { ($0.upcomingStart ?? .distantFuture, $0.title) < ($1.upcomingStart ?? .distantFuture, $1.title) }
                     let since = Calendar(identifier: .gregorian).date(byAdding: .year, value: -3, to: loadedAt) ?? loadedAt
                     let excluded = openIDs.union(upcoming.map(\.id))
-                    let recent = others.items.filter { !excluded.contains($0.id) && ($0.activityStage?.start ?? .distantPast) >= since }
-                        .sorted { ($0.activityStage?.start ?? .distantPast, $0.title) > ($1.activityStage?.start ?? .distantPast, $1.title) }
+                    let recent = others.items.filter { !excluded.contains($0.id) && ($0.activityStage?.anchor ?? .distantPast) >= since }
+                        .sorted { ($0.activityStage?.anchor ?? .distantPast, $0.title) > ($1.activityStage?.anchor ?? .distantPast, $1.title) }
                     for item in upcoming + recent { seen[item.id] = item }
                     upcomingActivities[programID] = upcoming
                     pastActivities[programID] = recent

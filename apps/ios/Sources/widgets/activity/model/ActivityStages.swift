@@ -21,31 +21,16 @@ struct ActivityStage: Identifiable, Equatable {
     /// Badge suffix: the kind label for 마감·발표·면접, the title for events and `지원`.
     let badgeName: String
     let icon: String
-    let start: Date?
-    let end: Date?
-    let allDay: Bool
-    let dateLabel: String
-    let timeZone: String
-    /// For the overlap check; nil without a non-empty interval.
-    let schedule: ActivityScheduleModel?
+    /// The schedule behind the stage; for `지원` only the application window's end (README: 날짜는 모집 마감).
+    let source: ActivityStageModel
     var mark: StageMark
     var state: State
-    /// Day (+ time for timed stages); the label alone when the stage has no date.
-    var dateText: String {
-        guard let start else { return dateLabel.isEmpty ? "날짜 미확인" : dateLabel }
-        if allDay {
-            // `end` is the exclusive midnight, so the last day is just before it.
-            let last = end.map { $0.addingTimeInterval(-1) } ?? start
-            let first = ActivityText.day(start, zone: timeZone), lastDay = ActivityText.day(last, zone: timeZone)
-            return first == lastDay ? first : "\(first) – \(lastDay)"
-        }
-        var text = ActivityText.day(start, zone: timeZone) + " " + ActivityText.time(start, zone: timeZone)
-        if let end, end != start {
-            let sameDay = ActivityText.day(end, zone: timeZone) == ActivityText.day(start, zone: timeZone)
-            text += " – " + (sameDay ? "" : ActivityText.day(end, zone: timeZone) + " ") + ActivityText.time(end, zone: timeZone)
-        }
-        return text
-    }
+    /// The day the stage counts from: its start, or its end when only that is known.
+    var anchor: Date? { source.anchor }
+    /// For the overlap check; nil without a non-empty interval.
+    var schedule: ActivityScheduleModel? { source.schedule }
+    /// Structured dates, else the collected label (contract "일정 표시 우선순위"); `날짜 미확인` with neither.
+    func dateText(now: Date) -> String { source.text(now: now) ?? "날짜 미확인" }
 }
 
 /// An applied activity's track: stages in order, the current one, and whether it is over.
@@ -56,13 +41,13 @@ struct ActivityProgress: Equatable {
     let failed: Bool
     var ended: Bool { currentIndex == nil }
     var current: ActivityStage? { currentIndex.map { stages[$0] } }
-    /// List order: the current stage's start; nil (date-less or ended) sorts last.
-    var nextStart: Date? { current?.start }
+    /// List order: the current stage's start (its end when only that is known); nil (date-less or ended) sorts last.
+    var nextStart: Date? { current?.anchor }
     /// `D-3 · 면접`; `D-DAY · 발표` while the current stage is ongoing; `날짜 미확인 · 발표` without a date.
     /// Ended tracks read `지남` (every stage over) or `탈락` (the user's mark, shown in the danger colour).
     func badge(now: Date) -> String {
         guard let current else { return failed ? "탈락" : "지남" }
-        guard let start = current.start else { return "날짜 미확인 · \(current.badgeName)" }
+        guard let start = current.anchor else { return "날짜 미확인 · \(current.badgeName)" }
         let days = ActivityStages.days(from: now, to: start)
         return "\(days > 0 ? "D-\(days)" : "D-DAY") · \(current.badgeName)"
     }
@@ -93,14 +78,15 @@ enum ActivityStages {
     /// the track ends when every stage is over (the activity period included) or a 탈락 is marked anywhere.
     static func build(_ activity: ActivityModel, marks: [String: StageMark], now: Date) -> ActivityProgress? {
         var stages: [ActivityStage] = []
-        if activity.hasApplication {
-            let deadline = activity.recruitmentEnd
-            stages.append(ActivityStage(id: applicationStageID, name: "지원", badgeName: "지원", icon: "paperplane", start: deadline, end: deadline,
-                                        allDay: false, dateLabel: "", timeZone: "Asia/Seoul", schedule: nil,
+        if let application = activity.applicationStage {
+            // The stage's date is the deadline alone (`~ … 마감`), timed or by Seoul day; its text falls back to the window's label.
+            let deadline = ActivityStageModel(id: applicationStageID, title: "지원", kind: .deadline, start: nil, end: application.end,
+                                              allDay: application.allDay, dateLabel: application.dateLabel, timeZone: application.timeZone)
+            stages.append(ActivityStage(id: applicationStageID, name: "지원", badgeName: "지원", icon: "paperplane", source: deadline,
                                         mark: marks[applicationStageID] ?? .wait, state: .upcoming))
         }
         let ordered = activity.stages.enumerated()
-            .sorted { ($0.element.start ?? .distantFuture, $0.offset) < ($1.element.start ?? .distantFuture, $1.offset) }.map(\.element)
+            .sorted { ($0.element.anchor ?? .distantFuture, $0.offset) < ($1.element.anchor ?? .distantFuture, $1.offset) }.map(\.element)
         for source in ordered {
             stages.append(stage(source, name: source.title, badgeName: badgeName(source), icon: icon(source.kind), marks: marks))
         }
@@ -121,13 +107,13 @@ enum ActivityStages {
         return ActivityProgress(stages: stages, currentIndex: failed ? nil : currentIndex, failed: failed)
     }
     private static func stage(_ source: ActivityStageModel, name: String, badgeName: String, icon: String, marks: [String: StageMark]) -> ActivityStage {
-        ActivityStage(id: source.id, name: name, badgeName: badgeName, icon: icon, start: source.start, end: source.end, allDay: source.allDay,
-                      dateLabel: source.dateLabel, timeZone: source.timeZone, schedule: source.schedule, mark: marks[source.id] ?? .wait, state: .upcoming)
+        ActivityStage(id: source.id, name: name, badgeName: badgeName, icon: icon, source: source, mark: marks[source.id] ?? .wait, state: .upcoming)
     }
-    /// Timed: over once its end fell before today. All-day: over once the exclusive end reached today. Date-less: never by time.
+    /// Timed: over once its end (its start, with no end) fell before today. All-day: over once the exclusive end reached today.
+    /// Date-less: never by time.
     private static func finished(_ stage: ActivityStage, today: Date) -> Bool {
-        guard let end = stage.end else { return false }
-        return stage.allDay ? end <= today : end < today
+        guard let end = stage.source.end ?? stage.source.start else { return false }
+        return stage.source.allDay ? end <= today : end < today
     }
     /// Whole Seoul days from today to `date`'s day; negative when it passed.
     static func days(from now: Date, to date: Date) -> Int {

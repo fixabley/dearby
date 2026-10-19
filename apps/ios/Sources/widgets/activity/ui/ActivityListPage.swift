@@ -226,7 +226,8 @@ struct ActivityListPage: View {
     }
     private func card(_ activity: ActivityModel) -> some View {
         ActivityCard(activityID: activity.id, title: activity.title, recruitment: activity.recruitment(at: state.loadedAt),
-                     recruitmentLabel: activity.recruitmentLabel, dateLabel: activity.dateLabel, place: activity.place?.name ?? activity.location) {
+                     recruitmentText: activity.recruitmentText(at: state.loadedAt), scheduleText: activity.scheduleText(at: state.loadedAt),
+                     place: activity.place?.name ?? activity.location) {
             path.append(activity.id)
         }
     }
