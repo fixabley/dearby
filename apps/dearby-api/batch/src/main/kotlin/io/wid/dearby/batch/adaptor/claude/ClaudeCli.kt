@@ -6,6 +6,7 @@ import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import java.util.HexFormat
 import java.util.concurrent.TimeUnit
@@ -44,7 +45,7 @@ open class ClaudeCli(
         try {
             val workflow = workflow(workDir)
             val version = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(workflow))).take(12)
-            return Run(execute(command(workflow, mcpUrl), prompt, workDir), version)
+            return Run(execute(command(workflow, mcpConfig(workDir, mcpUrl)), prompt, workDir), version)
         } finally {
             workDir.toFile().deleteRecursively()
         }
@@ -76,13 +77,21 @@ open class ClaudeCli(
             ?: throw IllegalStateException("claude CLI exit ${process.exitValue()}: ${stderrFile.readText().take(500)}")
     }
 
-    fun command(workflow: Path, mcpUrl: String): List<String> = listOf(
+    // 도구 서버 주소(비밀 경로 포함)는 명령 인자에 두지 않고(ps에 보인다) 이번 실행 폴더의 소유자만 읽는 파일로 넘긴다. 폴더째 실행 뒤 지운다
+    private fun mcpConfig(workDir: Path, mcpUrl: String): Path {
+        val file = Files.createFile(workDir.resolve("mcp.json"), PosixFilePermissions.asFileAttribute(PosixFilePermissions.fromString("rw-------")))
+        Files.writeString(file, json.writeValueAsString(mapOf("mcpServers" to mapOf(SERVER to mapOf("type" to "http", "url" to mcpUrl)))))
+        return file
+    }
+
+    fun command(workflow: Path, mcpConfig: Path): List<String> = listOf(
         properties.cliPath, "-p",
         "--model", properties.model,
         "--output-format", "json",
         "--system-prompt-file", workflow.toString(),
         "--max-turns", properties.maxTurns.toString(),
-        "--mcp-config", json.writeValueAsString(mapOf("mcpServers" to mapOf(SERVER to mapOf("type" to "http", "url" to mcpUrl)))),
+        "--max-budget-usd", properties.maxBudgetUsd.toPlainString(),
+        "--mcp-config", mcpConfig.toString(),
         "--strict-mcp-config",
         "--tools", BUILT_IN_TOOLS.joinToString(","),
         "--allowedTools", (BUILT_IN_TOOLS + AGENT_TOOLS).joinToString(","),

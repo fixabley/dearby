@@ -2,6 +2,8 @@
 
 작성일 2026-10-19. 저장소 `main`(PR #271 직전)과 운영 반영 상태를 기준으로, 계약(`shared/contracts/native-v1.md`·`admin-v1.md`), 컨텍스트 문서(`docs/context/*`), API·앱·웹 소스를 직접 읽고 정리했다. 코드에서 확인하지 못한 항목은 그렇게 표시했다. "설계 완료·구현 예정"은 계약에는 있으나 코드가 아직 없는 것이다.
 
+2026-10-20 갱신: 활동 수집을 Claude Code CLI 에이전트 루프(로컬 MCP 도구 서버, WORKFLOW.md 작업 절차, 운영자 피드백 검색)로 바꾸고 Anthropic API 엔진을 지웠다. 2-1과 관련 줄만 고쳤고 나머지는 2026-10-19 기준이다. 세부는 [활동 수집 배치](../context/activity-collection-batch.md).
+
 ---
 
 ## 1부. 사용자가 얻는 가치
@@ -34,7 +36,7 @@ Dearby는 **개발·창업 활동(부트캠프·컨퍼런스·해커톤·동아�
 | 겪는 문제 | Dearby가 주는 것 |
 | --- | --- |
 | 공지를 매일 찾아 손으로 옮기면 비용이 크고 틀린다 | **수집 배치**가 매일 자정 프로그램별 공식 페이지를 받아 Claude로 구조화하고, 원문 대조를 통과한 것만 초안으로 저장한다. 운영자는 초안을 보고 게시만 한다. |
-| 모델이 틀리게 읽은 값을 고치면 다음 수집이 덮어쓴다 | **운영자 지정 보호**: 어드민에서 고친 필드(`curated_fields`)와 직접 지정한 기간(`schedules.curated`)은 재수집이 건드리지 않는다. 고친 날짜 문구·사유는 다음 수집의 **해석 예시**로 모델에 전달돼 같은 실수를 줄인다. |
+| 모델이 틀리게 읽은 값을 고치면 다음 수집이 덮어쓴다 | **운영자 지정 보호**: 어드민에서 고친 필드(`curated_fields`)와 직접 지정한 기간(`schedules.curated`)은 재수집이 건드리지 않는다. 고친 날짜·필드·기간 바꾸기·삭제·조심 목록은 **운영자 피드백**(`collection_feedback`)으로 쌓여, 수집 에이전트가 요청(최근 10건)과 검색 도구로 찾아 같은 실수를 줄이고, 지운 초안과 같은 이름은 저장 전에 거절된다. |
 | 회차마다 주소가 바뀐다(toss.im/slash-23, slash-24) | 수집 주소에 `{year}`·`{yy}`·`{round}` 토큰을 쓰면 올해·내년, 다음·현재 기수 주소로 펼쳐 차례로 본다. 실제로 읽은 페이지가 기록된다. |
 | 같은 기수가 다른 이름으로 중복 수집된다 | **조심 목록**: 이름을 "다른 표기(정본으로 합침)" 또는 "제외"로 지정하면 수집기가 피한다. |
 | 활동이 많아지면 찾기 어렵다 | 활동 화면이 **조직 → 프로그램 → 종류 → 활동** 구조고, 프로그램에 기본 종류를 두어 활동에 일괄 적용한다. 활동 직접 추가·프로그램 편집·삭제가 있다. |
@@ -69,34 +71,35 @@ Dearby는 **개발·창업 활동(부트캠프·컨퍼런스·해커톤·동아�
 
 ### 2-1. 활동 수집 파이프라인 (`batch` 모듈)
 
-**실행**: `CollectionLauncher`가 매일 00:00 Asia/Seoul(`@Scheduled(cron = "0 0 0 * * *")`)에 Spring Batch 잡 `collectActivities`를 띄운다. `--collect-now` 옵션이면 기동 직후 한 번 더 실행한다. 엔진 준비(`CollectionReadiness`)가 안 되면(API 키·CLI 토큰 없음) 실행하지 않고 경고만 남겨 컨테이너 재시작 루프를 막는다. 모델은 `claude-haiku-4-5`(`CollectionProperties.model`), 엔진은 `COLLECTION_ENGINE=api`(Anthropic Java SDK, `ANTHROPIC_API_KEY`) 또는 `cli`(Claude Code CLI `claude -p`, `CLAUDE_CODE_OAUTH_TOKEN`, 시스템 프롬프트·설정·MCP·세션 저장을 끄고 빈 임시 폴더에서 실행, 환경변수는 허용 목록만 전달, 기본 4분 타임아웃).
+**실행**: `CollectionLauncher`가 매일 00:00 Asia/Seoul(`@Scheduled(cron = "0 0 0 * * *")`)에 Spring Batch 잡 `collectActivities`를 띄운다. `--collect-now` 옵션이면 기동 직후 한 번 더 실행한다. 엔진 준비(`CollectionReadiness`)가 안 되면(CLI·토큰 없음) 실행하지 않고 경고만 남겨 컨테이너 재시작 루프를 막는다. 모델은 `claude-haiku-4-5`(`CollectionProperties.model`). 엔진은 Claude Code CLI 에이전트 루프 하나다(2026-10-20; `claude -p`, `CLAUDE_CODE_OAUTH_TOKEN`, 이미지의 CLI 2.1.292 고정, 사용자 설정·세션 저장을 끄고 빈 임시 폴더에서 실행, 환경변수는 허용 목록만 전달, 프로그램당 15분·`--max-turns 12`·`--max-budget-usd 1.00`).
 
 **대상 선정** (`JooqCollectionTargetRepository.findDue`): 모든 프로그램이 대상이다. `program_collection_settings`(V8)가 있으면 `official_url`·`allowed_hosts[]`·`interval_days`(≥1, 기본 1)·`enabled`를 쓰고, 없으면 기본값(웹 전체 검색, 매일). "마지막 **성공** 수집일 + interval_days > 오늘"이면 건너뛴다. `collection_runs`는 `(program_id, run_date)` 유일 제약으로 같은 날 중복 실행을 막는다.
 
 **단계** (`CollectActivitiesService.collect`, 한 프로그램당):
 
-1. **힌트 로딩**: 조심 목록(`collection_watchlist`, V24), 이전 기수(`findPreviousEdition`: 같은 프로그램의 다른 활동 중 게시 우선·최근 생성 순 1건의 이름·대상 원문·대상자 조건·참여 방식), 날짜 문구 해석 예시(`findDateLabelExamples`: 전 프로그램의 `schedules.curated = true`이고 `date_label <> ''`이며 날짜·시각이 있는 일정을 같은 프로그램 우선·`updated_at` 최신 순으로 `limit*3` 읽어 문구 중복 제거 후 20개, `curated_note`(사유) 포함).
+1. **힌트 로딩**: 조심 목록(`collection_watchlist`, V24), 이전 기수(`findPreviousEdition`: 같은 프로그램의 다른 활동 중 게시 우선·최근 생성 순 1건의 이름·대상 원문·대상자 조건·참여 방식), 태그 사전, 운영자 피드백 최근 10건(`collection_feedback`, V43; 2026-10-20 전에는 지정 일정의 날짜 문구 예시 20개).
 2. **시작 주소 펼치기** (`CollectionUrlTemplate`, core 순수 함수): `{year}`(4자리)·`{yy}`(2자리)는 올해·내년, `{round}`는 이전 기수 번호 +1과 현재. 기수 번호는 이전 활동 이름의 `(\d+)\s*기`에서, 없으면 이름 맨 앞·뒤 숫자(`SLASH 24` → 24). 토큰이 여럿이면 조합(최대 4개, 다음 연도·다음 기수 먼저). `{round}`인데 기수를 모르면 빈 목록이고 거절 이유 `기수 번호를 알 수 없음`을 남긴다. 검증은 어드민 저장 시 모르는 `{…}` 400, https 검사는 샘플 값(2026, 1)으로 치환한 주소로 한다.
-3. **후보 찾기** (`ClaudeApiActivityDiscoverer`): Claude 서버 웹 검색 도구(`WebSearchTool20250305`, 최대 3회, `maxTokens 2048`), 허용 호스트가 있으면 `allowedDomains`로 제한. 검색 결과 블록의 URL만 읽고 `usableUrls`가 https·허용 호스트 안만 남긴다. 시작 주소가 탐색 결과 앞에 오고, 전체 최대 5페이지(`MAX_PAGES`).
-4. **원문 받기** (`JsoupPageFetcher`): https만, 허용 호스트가 있으면 정확히 일치, 리다이렉트는 수동 추적 최대 3회(같은 경계 안), 호스트의 모든 IP가 루프백·사설·링크로컬·any가 아니어야 함(SSRF 방지), 연결·요청 타임아웃 15초, `Content-Type`에 html만, 본문 **3,000,000바이트** 초과 시 중단, User-Agent `DearbyCollector/1.0`. Jsoup으로 `body().text()`와 `a[href]` 절대 URL 집합을 만든다. JS로만 그려지는 페이지는 본문이 비어 다음 단계에서 걸러진다.
-5. **추출** (`ClaudeApiActivityExtractor`): 본문 최대 150,000자(`MAX_PAGE_CHARS`), `maxTokens 8192`, **structured outputs**(`JsonOutputFormat` + `EXTRACT_SCHEMA`)로 JSON만 받는다. 웹 검색 citations와 structured outputs를 함께 쓸 수 없어 탐색과 추출을 분리했다. 시스템 지시문(`CollectionPrompts.EXTRACT_SYSTEM`)의 핵심 규칙:
+3. **에이전트 루프** (`ClaudeCliActivityAgent`, 2026-10-20): 프로그램 하나의 수집 동안 127.0.0.1의 임의 포트·비밀 경로로 MCP 도구 서버(`McpToolServer`, streamable HTTP의 JSON 응답만)를 열고, 그 주소를 소유자 전용 임시 파일(0600)로 `--mcp-config`에 넘긴다. 작업 절차는 `--system-prompt-file`의 `WORKFLOW.md`(jar 안 `collector/WORKFLOW.md`, 운영은 `COLLECTION_WORKFLOW_PATH` 마운트 파일이 있으면 그것). 내장 도구는 `WebSearch`만이고 도구는 `fetch_page`·`render_page`·`submit_candidate`·`search_feedback`·`finish`(`AgentToolbox`). 모델이 어떤 페이지를 받을지·무엇을 제출할지 정하고, 경계·대조·저장은 코드가 한다. 페이지 한도 15쪽(도구 서버가 거절), 모델에게 보이는 본문은 40,000자와 링크 200개.
+4. **원문 받기** (`fetch_page` → `JsoupPageFetcher`, `render_page`와 렌더링 설정 프로그램은 `PlaywrightPageFetcher`): https만, 허용 호스트가 있으면 정확히 일치, 리다이렉트는 수동 추적 최대 3회(같은 경계 안), 호스트의 모든 IP가 루프백·사설·링크로컬·any가 아니어야 함(SSRF 방지), 연결·요청 타임아웃 15초, `Content-Type`에 html만, 본문 **3,000,000바이트** 초과 시 중단, User-Agent `DearbyCollector/1.0`. Jsoup으로 `body().text()`와 `a[href]` 절대 URL 집합을 만든다. 받을 수 없으면 도구 오류로 모델에게 돌려주고 거절 이유에 남긴다.
+5. **추출 규칙**(`WORKFLOW.md`, 모델이 `submit_candidate` 입력 스키마 `CollectionPrompts.SUBMIT_SCHEMA`로 활동 하나씩 제출):
    - **활동 = 프로그램의 기수·회차 하나**("부스트캠프 10기", "Let'Swift 2026"). 선발 단계·테스트·챌린지·교육·OT·발표·면접·마감은 활동이 아니라 그 활동의 `schedules`. 트랙은 따로 모집할 때만 별도 활동. `roundKey`는 기수·연도(·트랙)만.
    - **두 기간 정의**: 모집 기간(`recruitmentStartAt/EndAt` 또는 `recruitmentStartDate/EndDate`)은 모집·접수·지원·신청·원서·마감 낱말이 붙은 날짜, 활동 기간(`dateLabel`·`startDate`·`endDate`)은 교육·과정·행사·운영·개최 날짜. 같은 날짜를 두 곳에 넣지 않고, 모집 기간만 있으면 `dateLabel`은 빈 문자열.
    - 시각은 본문에 시각이 있을 때만 ISO 8601 오프셋, 날짜만이면 `yyyy-MM-dd`(끝 포함). 연도가 없으면 본문의 다른 날짜로 알 수 있을 때만.
    - `schedules[].kind`: DEADLINE·ANNOUNCEMENT·INTERVIEW·EVENT. `participationType`: REGISTRATION·SELECTION. `category`: BOOTCAMP·CONFERENCE·WORKSHOP·STUDY·CLUB·LECTURE·HACKATHON·CONTEST·MEETUP·OTHER, 모르면 null.
    - `evidenceQuote`: 본문에서 그대로 복사한 10~200자 연속 구절. `name·description` 한국어, `nameEn·descriptionEn` 번역.
    - `eligibility` 트리와 어휘·예시(2-2 참고). 어휘 밖은 `기타`/`other`에 원문 note.
-   - 요청 메시지(`extractRequest`)에 날짜 문구 해석 예시(`[활동] "2026년 11월 1일~15일" → startDate 2026-11-01, endDate 2026-11-15 (이유: …)`), 이전 기수 참고(대상 원문·대상자 조건 JSON), 조심 목록(제외 이름, 다른 표기 → 정본)을 붙인다.
-6. **원문 대조·정규화** (`ActivityVerifier.verify`): `roundKey`·이름 필수, 근거 구절 길이 10~200, 공백·마크다운 기호(`*_\`#>`)를 지운 뒤 원문에 포함돼야 함, 모집 끝 < 시작이면 거절. 신청 주소는 https이고 **원문 `<a href>`에 실제로 있을 때만** 남긴다. 읽을 수 없는 시각·날짜는 비운다. 구절 존재는 "모든 필드가 참"의 증명이 아니므로 **항상 초안(DRAFT)** 이다.
+   - 판단이 애매하면 `search_feedback`(운영자 피드백의 pg_trgm 유사도 상위 8건, 같은 프로그램 → 같은 호스트 → 나머지)으로 운영자 해석을 찾아 따른다. 요청에는 최근 피드백·이전 기수 참고·조심 목록·태그 사전·한도가 붙는다.
+6. **원문 대조·정규화** (`submit_candidate`마다 바로, `ActivityVerifier.verify`; 판정을 도구 결과로 돌려주어 모델이 고쳐 다시 낼 수 있다): `roundKey`·이름 필수, 근거 구절 길이 10~200, 공백·마크다운 기호(`*_\`#>`)를 지운 뒤 원문에 포함돼야 함, 모집 끝 < 시작이면 거절. 신청 주소는 https이고 **원문 `<a href>`에 실제로 있을 때만** 남긴다. 읽을 수 없는 시각·날짜는 비운다. 구절 존재는 "모든 필드가 참"의 증명이 아니므로 **항상 초안(DRAFT)** 이다.
 7. **저장** (`JooqActivityDraftRepository.saveDraft`, 트랜잭션·`FOR UPDATE`):
    - 식별: `source_id = UUIDv3("dearby/activity/<programId>|<roundKey 정규화>")`. 페이지 주소를 넣지 않아 같은 모집이 여러 페이지·여러 날에 보여도 초안 하나(2026-10-18).
    - 운영자가 지운 출처(`dismissed_activity_sources`, V11)는 다시 만들지 않음(`SKIPPED_DISMISSED`), 게시된 활동은 덮어쓰지 않음(`SKIPPED_PUBLISHED`).
    - 조심 목록: EXCLUDE면 저장 안 함, ALIAS면 정본의 `source_id`로 정본 이름으로 갱신(정본 출처가 없으면 거절).
+   - 운영자 피드백: 같은 프로그램에서 이름이 지운 초안(`DRAFT_DISMISSED`)·제외 이름(`WATCH_EXCLUDE`)과 같으면 거절, 날짜 문구가 운영자가 날짜를 지정한 문구(`DATE_CURATED`)와 유사도 0.6 이상인데 해석이 다르면 저장하되 주의를 돌려준다.
    - **운영자 지정 보호**: `curated_fields`(V26, jsonb 배열)에 있는 필드(name·nameEn·description·descriptionEn·eligibility·officialUrl·applicationUrl·location·cost·category·audience·participationType)는 기존 값을 유지, 나머지는 수집값으로 갱신. 종류는 수집값 → 없으면 프로그램 기본 종류(`programs.category`, V33).
    - **이전 기수 자동완성**(V25 `inherited_fields`): `eligibility`·`audience`·`participationType`이 비면 이전 기수 값을 쓰고 필드 이름을 기록. 수집값이 생기면 표시가 빠진다. 기간·장소·비용·링크는 가져오지 않는다.
    - 일정: `curated = false`인 일정은 모두 지우고 다시 넣는다. ACTIVITY 슬롯(활동 기간, 종일 또는 문구만)·APPLICATION 슬롯(모집 기간, 시각 또는 종일)·슬롯 없는 세부 일정. `curated = true`인 슬롯은 보존. 시각 일정의 time_zone은 `Asia/Seoul`.
    - `valid_until = checkedAt + 24h`, `freshness = VERIFIED`, 대상자 조건은 `activity_eligibility_terms`로 펼쳐 쓴다.
-8. **기록** (`collection_runs`, V8+V30): 결과(SUCCEEDED/FAILED/SKIPPED: 받은 페이지가 있으면 성공, 하나도 못 받고 거절 이유가 있으면 실패), 찾은 수·저장 수·거절 이유 배열·오류·입력/출력 토큰·웹 검색 횟수·**실제로 읽은 페이지 `fetched_urls`**(받은 순, 실패 제외). 어드민 수집 설정 응답의 `lastFetchedUrls`는 마지막 성공 실행의 값, `previewUrls`·`previousRound`는 지금 펼칠 주소와 읽은 기수 번호다. Spring Batch 메타 테이블은 V9.
+8. **기록** (`collection_runs`, V8+V30): 결과(SUCCEEDED/FAILED/SKIPPED: 받은 페이지가 있으면 성공, 하나도 못 받고 거절 이유가 있으면 실패), 찾은 수·저장 수·거절 이유 배열·오류·입력(캐시 포함)/출력 토큰·웹 검색 횟수·**실제로 읽은 페이지 `fetched_urls`**(받은 순, 실패 제외)·`agent_log`(V42: 작업 절차 판 `workflowVersion`, 멈춘 이유, 턴·페이지, 사용량·비용 환산, 도구 호출, 쓴 피드백 id). 어드민 수집 설정 응답의 `lastFetchedUrls`는 마지막 성공 실행의 값, `previewUrls`·`previousRound`는 지금 펼칠 주소와 읽은 기수 번호다. Spring Batch 메타 테이블은 V9.
 
 **회수 배치** (`RecallLauncher`/`RecallService`): 매일 04:00 Asia/Seoul, `--recall-now`로 즉시. 한 트랜잭션에 UPDATE 두 번(Spring Batch 잡 아님). `receipts`: `recalled_at is null and received_at < now-30d`이고 맞교환(2-5)이 아닌 행에 `recalled_at`을 기록. `guest_cards`: `saved_at < now-30d`인 행. 행은 보존하고 목록에서만 제외한다. 운영 참고: `run --rm batch --collect-now/--recall-now`로 띄운 일회성 컨테이너는 작업 뒤 스케줄러 때문에 종료되지 않아 수동으로 멈춰야 한다(2026-10-19 관찰, 수정 미정).
 
@@ -228,7 +231,7 @@ Dearby는 **개발·창업 활동(부트캠프·컨퍼런스·해커톤·동아�
 ### 2-9. 인프라·운영·테스트 전략
 
 - **컨테이너**: `compose.prod.yaml` — `postgres`(pgvector/pgvector:pg17, 데이터 `./data/prod/postgres`, 127.0.0.1만), `api`·`admin`(각 Dockerfile 멀티스테이지: `eclipse-temurin:25-jdk` 빌드 → `25-jre`, uid 10001, JWT 키 볼륨 공유, admin은 읽기 전용), `batch`(JRE + Node 24 + `@anthropic-ai/claude-code` 전역 설치, cli 엔진용). 모든 포트는 127.0.0.1에 바인딩하고 nginx가 프록시한다.
-- **설정 키**: `DB_*`, `JWT_KEY_PATH`·`JWT_ISSUER`, `WEBAUTHN_RP_ID`·`WEBAUTHN_ALLOWED_ORIGINS`, `APPLE_CLIENT_IDS`·`APPLE_SERVICES_ID`·`APPLE_CALLBACK_URL`·`APPLE_TEAM_ID`·`APPLE_KEY_ID`·`APPLE_PRIVATE_KEY_PATH`, `GOOGLE_CLIENT_IDS`, `GUEST_PROXY_SECRET`, `COLLECTION_ENGINE`·`ANTHROPIC_API_KEY`·`CLAUDE_CODE_OAUTH_TOKEN`. 선택 기능은 값이 없으면 그 경로만 503이고 기동은 된다.
+- **설정 키**: `DB_*`, `JWT_KEY_PATH`·`JWT_ISSUER`, `WEBAUTHN_RP_ID`·`WEBAUTHN_ALLOWED_ORIGINS`, `APPLE_CLIENT_IDS`·`APPLE_SERVICES_ID`·`APPLE_CALLBACK_URL`·`APPLE_TEAM_ID`·`APPLE_KEY_ID`·`APPLE_PRIVATE_KEY_PATH`, `GOOGLE_CLIENT_IDS`, `GUEST_PROXY_SECRET`, `CLAUDE_CODE_OAUTH_TOKEN`·`COLLECTION_WORKFLOW_PATH`(2026-10-20; 수집 엔진 선택과 API 키는 없앴다). 선택 기능은 값이 없으면 그 경로만 503이고 기동은 된다.
 - **마이그레이션**: Flyway V1–V33(핵심: V2 도메인, V8 수집, V16 프로필·명함 v2, V17 게스트, V19 공유 삭제, V21 웹 버전 삭제, V22 Google, V23 대상자 조건, V24 지정 일정·조심 목록, V25 상속 필드, V26 운영자 지정 필드, V27·V28 본문 정리, V29 교환·회수, V30 받은 페이지, V31 활동 종류, V32 사유, V33 프로그램 종류). jOOQ 생성 코드는 `core/src/generated`에 커밋하고 CI가 `:core:jooqCodegen` 후 diff가 없는지 검사한다.
 - **nginx**: `infra/nginx`(compose·certbot 스크립트·정적 html). 실제 운영 `conf.d`는 bind mount로 저장소 밖(gitignore)이며 `api.dearby.wid.io.kr`을 api/admin 컨테이너로, `wid.io.kr/.well-known`(AASA·assetlinks)을 정적으로 낸다. 저장소 README의 3000/3001 라우팅 설명은 TS API 시절의 것으로 현재 포트와 다르다(코드로 확인 불가).
 - **배포 절차**(2026-10-18~19 실제 수행): 운영 서버 사본 `~/.dearby-deploy/api-kotlin-2a061187/apps/dearby-api`로 `rsync`(data·.env.prod·build·.gradle 제외) → `docker compose -f compose.prod.yaml --env-file .env.prod up -d --build api admin batch` → Flyway가 첫 기동에 적용 → 엔드포인트 probe. 웹은 Vercel GitHub 연동으로 main 푸시마다, 어드민은 Git 미연결 프로젝트라 `git archive origin/main apps/admin` 후 `vercel deploy --prod`(Root Directory `apps/admin`, `vercel.json` rewrite로 `/api/auth/*`·`/api/admin/*` → API).

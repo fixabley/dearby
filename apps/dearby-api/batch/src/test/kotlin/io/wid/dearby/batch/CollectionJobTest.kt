@@ -31,6 +31,7 @@ import tools.jackson.databind.json.JsonMapper
 import java.net.URI
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermissions
 import java.security.MessageDigest
 import java.util.HexFormat
 import java.net.http.HttpClient
@@ -85,7 +86,7 @@ class CollectionJobTest(
                 lastCommand = command
                 lastPrompt = prompt
                 lastWorkflow = Files.readString(Path.of(option(command, "--system-prompt-file")))
-                val mcpUrl = json.readTree(option(command, "--mcp-config")).path("mcpServers").path("dearby").path("url").asString()
+                val mcpUrl = json.readTree(Files.readString(Path.of(option(command, "--mcp-config")))).path("mcpServers").path("dearby").path("url").asString()
                 return json.valueToTree((script ?: ::defaultScript)(prompt, McpClient(mcpUrl, json)))
             }
         }
@@ -495,13 +496,19 @@ class CollectionJobTest(
         val missing = mounted.resolveSibling("없는-WORKFLOW.md")
         fun runWith(path: String?): Pair<List<String>, ClaudeCli.Run> {
             var captured = emptyList<String>()
+            var mcpConfig = "" to ""
             val cli = object : ClaudeCli(CollectionProperties(workflowPath = path), json) {
                 override fun execute(command: List<String>, prompt: String, workDir: Path): JsonNode {
                     captured = command
+                    // 도구 서버 주소는 인자가 아니라 소유자만 읽는 파일로 넘긴다
+                    val config = Path.of(Fakes.option(command, "--mcp-config"))
+                    mcpConfig = Files.readString(config) to PosixFilePermissions.toString(Files.getPosixFilePermissions(config))
                     return json.valueToTree(Fakes.cliResult())
                 }
             }
             val run = cli.run("요청", "http://127.0.0.1:1234/secret")
+            assertEquals("""{"mcpServers":{"dearby":{"type":"http","url":"http://127.0.0.1:1234/secret"}}}""" to "rw-------", mcpConfig)
+            assertFalse(captured.any { it.contains("secret") })
             return captured to run
         }
         try {
@@ -509,7 +516,7 @@ class CollectionJobTest(
             fun option(name: String) = Fakes.option(command, name)
             assertEquals(mounted.toString(), option("--system-prompt-file"))
             assertEquals(sha12(Files.readAllBytes(mounted)), run.workflowVersion)
-            assertEquals("""{"mcpServers":{"dearby":{"type":"http","url":"http://127.0.0.1:1234/secret"}}}""", option("--mcp-config"))
+            assertEquals("1.00", option("--max-budget-usd"))
             assertTrue("--strict-mcp-config" in command)
             assertEquals("WebSearch", option("--tools"))
             assertEquals("WebSearch,mcp__dearby__fetch_page,mcp__dearby__render_page,mcp__dearby__submit_candidate,mcp__dearby__search_feedback,mcp__dearby__finish", option("--allowedTools"))
