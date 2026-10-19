@@ -10,7 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
@@ -27,8 +27,10 @@ import com.dearby.nativeapp.shared.ui.*
  */
 @Composable fun ActivityDetailPage(
     activity: ActivityState, error: String?, back: () -> Unit, openLink: (String) -> Unit, editReport: () -> Unit, confirm: (Boolean) -> Unit, checkCalendar: () -> Unit, share: () -> Unit,
-    openMap: () -> Unit = {},
+    openMap: () -> Unit = {}, addToMine: () -> Unit = {}, viewInMine: () -> Unit = {}, removeFromMine: () -> Unit = {},
 ) {
+    var menu by remember { mutableStateOf(false) }
+    var removing by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
         DearbyTopBar("활동 상세", back) { if (activity.officialUrl != null) IconButton(share) { Icon(Icons.Rounded.Share, "활동 공유", tint = MaterialTheme.colorScheme.primary) } }
         if (activity.applied) Surface(color = MaterialTheme.colorScheme.primaryContainer) {
@@ -95,17 +97,30 @@ import com.dearby.nativeapp.shared.ui.*
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
         }
-        (activity.applyUrl ?: activity.officialUrl)?.let { url ->
-            // Closed → 공식 안내 보기; otherwise the application link, named by whether the operator set one.
-            val label = when { activity.applyUrl == null -> "공식 안내 보기"; activity.applicationUrl != null -> "신청 사이트 열기"; else -> "공식 사이트에서 신청" }
-            HorizontalDivider()
-            Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-                DearbyButton({ openLink(url) }, Modifier.weight(1f).semantics { contentDescription = "$label, 외부 브라우저로 열려요" }) {
-                    Text(label)
+        HorizontalDivider()
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            (activity.applyUrl ?: activity.officialUrl)?.let { url ->
+                // Closed → 공식 안내 보기; otherwise the application link, named by whether the operator set one.
+                val label = when { activity.applyUrl == null -> "공식 안내 보기"; activity.applicationUrl != null -> "신청 사이트 열기"; else -> "공식 사이트에서 신청" }
+                DearbyButton({ openLink(url) }, Modifier.fillMaxWidth().semantics { contentDescription = "$label, 외부 브라우저로 열려요" }) { Text(label) }
+            }
+            // 내 활동 직접 추가 (contract, 2026-10-20): whatever the recruitment state, the activity can be marked applied by hand — the same record as
+            // the "신청했어요" answer. Once in 내 활동 the button opens it there and the menu beside it offers 내 활동에서 빼기 after a confirmation.
+            if (!activity.applied) {
+                DearbyOutlineButton(addToMine, Modifier.fillMaxWidth()) { Icon(Icons.Rounded.Checklist, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text("내 활동에 추가") }
+                Text("직접 남기는 기록이며 주최 측 확인은 아니에요", Modifier.align(Alignment.CenterHorizontally), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+            } else Row(verticalAlignment = Alignment.CenterVertically) {
+                DearbyOutlineButton(viewInMine, Modifier.weight(1f)) { Icon(Icons.Rounded.Checklist, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text("내 활동에서 보기") }
+                Box {
+                    IconButton({ menu = true }) { Icon(Icons.Rounded.ExpandMore, "내 활동 메뉴") }
+                    DropdownMenu(menu, { menu = false }) { DropdownMenuItem({ Text("내 활동에서 빼기", color = MaterialTheme.colorScheme.error) }, { menu = false; removing = true }) }
                 }
             }
         }
     }
+    if (removing) AlertDialog(onDismissRequest = { removing = false }, title = { Text("내 활동에서 뺄까요?") }, text = { Text("신청·참여 확정·단계 표시가 이 기기에서 지워져요.") },
+        confirmButton = { TextButton({ removing = false; removeFromMine() }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("빼기") } },
+        dismissButton = { TextButton({ removing = false }) { Text("취소") } })
 }
 
 /** Contract "대상자 조건": each line is one condition (an `any` group already reads `… 또는 …`), shown as a soft chip. */

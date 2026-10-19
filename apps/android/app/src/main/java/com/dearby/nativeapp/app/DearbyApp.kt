@@ -33,6 +33,8 @@ private sealed interface Route {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     // The 명함 tab's segment, kept in memory for the app's lifetime (contract "명함 탭 통합").
     var cardsSegment by remember { mutableStateOf(CardsSegment.MINE) }
+    // 내 활동에서 보기 (contract "내 활동 직접 추가"): the activity the 내 활동 tab should open next, consumed by its route.
+    var mineOpen by remember { mutableStateOf<String?>(null) }
     var route by remember { mutableStateOf<Route?>(null) }
     var activityDetail by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<String?>(null) }
@@ -65,7 +67,8 @@ private sealed interface Route {
                     null -> when (tab) {
                         // 설정·알림 sit in each tab's pinned `DearbyTopBar` (contract "iOS 상단 바…" Android sentence).
                         Tab.Discovery, Tab.Mine -> key(tab) {
-                            ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }, settings = openSettings, notify = notify) { activityDetail = it }
+                            ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }, settings = openSettings, notify = notify,
+                                openInMine = { mineOpen = it; tab = Tab.Mine }, open = mineOpen.takeIf { tab == Tab.Mine }, consumeOpen = { mineOpen = null }) { activityDetail = it }
                         }
                         Tab.Cards -> CardsRoute(cardsSegment, { cardsSegment = it }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
                             edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify)
