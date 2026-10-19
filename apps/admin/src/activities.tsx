@@ -368,7 +368,8 @@ export function Activities() {
         />
       ) : (
         <CursorTable
-          cursor={cursor}
+          // With a program filter the loaded page is ordered by recruitment deadline, like the grouped view; search results keep server order.
+          cursor={programId !== undefined ? { ...cursor, items: [...cursor.items].sort(byRecruitmentDeadline) } : cursor}
           scroll={{ x: 1000 }}
           locale={{ emptyText: "조건에 맞는 활동이 없어요." }}
           expandable={{ expandedRowRender: (activity) => <ActivityDetail activity={activity} /> }}
@@ -398,6 +399,15 @@ function periodSuspicion(application: Schedule | null | undefined, activity: Sch
   }
   if (/모집|접수|지원|신청/.test(activity.dateLabel ?? "")) return "활동 기간 원문에 모집·접수 낱말이 있어요";
   return null;
+}
+/** 모집 마감 순(2026-10-19 사용자 요청): the application end (`endAt`, else `endDateExclusive`), activities without one last, ties by name. */
+function byRecruitmentDeadline(a: Activity, b: Activity): number {
+  const deadline = (activity: Activity) => activity.application?.endAt ?? activity.application?.endDateExclusive ?? null;
+  const [da, db] = [deadline(a), deadline(b)];
+  if (da && db && da !== db) return da < db ? -1 : 1;
+  if (da && !db) return -1;
+  if (!da && db) return 1;
+  return a.name.localeCompare(b.name, "ko");
 }
 function PeriodTag({ reason }: { reason: string | null }) {
   if (!reason) return null;
@@ -826,7 +836,7 @@ function ProgramActivities({
   const cursor = useCursorList<Activity>("activities", { programId: program.id, publicationStatus });
   // 종류별 묶음: contract order, 미분류 last; only groups that have activities.
   const groups = [...categoryOrder.map((code) => ({ code, label: categoryLabel(code) })), { code: null, label: UNCATEGORIZED }]
-    .map((group) => ({ ...group, items: cursor.items.filter((activity) => (activity.category ?? null) === group.code) }))
+    .map((group) => ({ ...group, items: cursor.items.filter((activity) => (activity.category ?? null) === group.code).sort(byRecruitmentDeadline) }))
     .filter((group) => group.items.length);
   return (
     <div className="program-activities">
