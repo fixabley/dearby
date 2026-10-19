@@ -1,10 +1,13 @@
 import SwiftUI
 
-/// 내 명함: the account's published cards. Pick one to view it, show its QR, make a new one, republish it with "이 명함 고치기", or delete it.
+/// 내 명함: the account's published cards. Pick one to view it, show its QR, make a new one, edit it in place with "이 명함 고치기", or delete it.
+/// Signed out, empty and failed states are one centred message (contract "비스크롤 화면 배치·CTA"). Shown as the 내 명함 section of the 명함 tab
+/// (`CardsPage`, contract "명함 탭 통합"), which owns the navigation bar.
 struct MyCardsPage: View {
     let state: MyCardsModel
     @State private var editor = false
-    /// 명함 고치기: a new publication prefilled from this card's template (cards never change after publishing).
+    /// 이 명함 고치기: the composer prefilled from this card saves over it (`PUT /v1/cards/:id`); `editor` (새 명함) never gets a prefill.
+    /// Reloading on dismiss keeps the same id selected (`MyCardsModel.load`).
     @State private var editingCard: PublishedCard?
     @State private var signingIn = false
     /// 이 명함 지우기: the card awaiting confirmation; the server removes it and its public link.
@@ -15,27 +18,26 @@ struct MyCardsPage: View {
     @Environment(\.openURL) private var openURL
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                PageTitle("내 명함")
-                VStack(alignment: .leading, spacing: 12) {
-                    switch state.phase {
-                    case .signedOut:
-                        notice("명함은 계정에 저장돼요", "로그인하면 만든 명함을 볼 수 있어요.")
-                        Button { signingIn = true } label: { Text("로그인").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold))
-                    case .noCard: newCard
-                    case .loading:
-                        ProgressView("명함을 불러오는 중이에요").frame(maxWidth: .infinity, minHeight: 240).tint(DearbyStyle.teal)
-                    case .failed:
-                        notice("명함을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.")
-                        Button { Task { await state.load() } } label: { Text("다시 시도").frame(maxWidth: .infinity) }.buttonStyle(.bordered).controlSize(.large).font(.dearby(.body).weight(.semibold))
-                    case .loaded: cards
-                    }
-                }.padding(.horizontal, 20).padding(.bottom, 20)
+        Group {
+            switch state.phase {
+            case .signedOut:
+                CenteredMessage(symbol: "person.text.rectangle", title: "명함은 계정에 저장돼요", message: "로그인하면 만든 명함을 볼 수 있어요.",
+                                primary: MessageAction("로그인") { signingIn = true })
+            case .noCard:
+                CenteredMessage(symbol: "person.text.rectangle", title: "첫 명함을 만들어 보세요",
+                                message: "프로필의 연락처와 이력 중 보여 줄 것만 골라 발행해요. 발행할 때 패스키로 로그인해요.",
+                                primary: MessageAction("명함 만들기") { editor = true })
+            case .loading:
+                ProgressView("명함을 불러오는 중이에요").frame(maxWidth: .infinity, maxHeight: .infinity).tint(DearbyStyle.teal)
+            case .failed:
+                CenteredMessage(symbol: "exclamationmark.triangle", danger: true, title: "명함을 불러오지 못했어요", message: "연결을 확인하고 다시 시도해 주세요.",
+                                primary: MessageAction("다시 시도") { Task { await state.load() } })
+            case .loaded:
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) { cards }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 20)
+                }.refreshable { await state.load() }
             }
-        }.background(Color(.systemGroupedBackground)).toolbar(.hidden, for: .navigationBar)
-            .task { await state.load() }
-            .refreshable { await state.load() }
+        }.task { await state.load() }
             .sheet(isPresented: $editor, onDismiss: { Task { await state.load() } }) {
                 NavigationStack { CardComposerPage(account: state.account) }
             }
@@ -76,37 +78,28 @@ struct MyCardsPage: View {
             CardView(card: card.cardModel) { if let url = $0.actionURL { openURL(url) } }
             Button { showingQR = card } label: {
                 Label("QR 보이기", systemImage: "qrcode").frame(maxWidth: .infinity)
-            }.buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold)).accessibilityHint("상대가 카메라로 읽어 이 명함을 받아요")
-            Button { editingCard = card } label: {
-                Label("이 명함 고치기", systemImage: "pencil").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal).frame(minHeight: 44)
-            }.accessibilityHint("이 명함의 이름과 공개 선택으로 새 명함을 발행해요")
+            }.buttonStyle(.borderedProminent).controlSize(.large).tint(DearbyStyle.tealFill).font(.dearby(.body).weight(.semibold))
+                .accessibilityHint("상대가 카메라로 읽어 이 명함을 받아요")
+            VStack(spacing: 2) {
+                Button { editingCard = card } label: {
+                    Label("이 명함 고치기", systemImage: "pencil").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+                        .frame(maxWidth: .infinity, minHeight: 44).contentShape(Rectangle())
+                }.accessibilityHint("이 명함의 이름과 공개 선택을 고쳐 저장해요")
+                Text("고친 내용은 이 명함에 바로 반영돼요. QR과 링크는 그대로예요.").font(.dearby(.footnote)).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center).frame(maxWidth: .infinity)
+            }
             Button(role: .destructive) { deletingCard = card } label: {
-                Label("이 명함 지우기", systemImage: "trash").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.danger).frame(minHeight: 44)
+                Label("이 명함 지우기", systemImage: "trash").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.danger)
+                    .frame(maxWidth: .infinity, minHeight: 44).contentShape(Rectangle())
             }.accessibilityHint("확인 뒤 명함과 공개 링크를 지워요")
         }
     }
-    private var newCard: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "person.crop.rectangle.badge.plus").font(.system(size: 64)).foregroundStyle(DearbyStyle.teal)
-            Text("첫 명함을\n만들어 보세요.").font(.title.bold()).multilineTextAlignment(.center)
-            Text("프로필의 연락처와 이력 중 보여 줄 것만 골라 발행해요. 발행할 때 패스키로 로그인해요.").font(.subheadline)
-                .foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
-            Button { editor = true } label: { Text("명함 만들기").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold))
-        }.padding(24).padding(.vertical, 32).frame(maxWidth: .infinity)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(DearbyStyle.line))
-    }
-    private func notice(_ title: String, _ detail: String) -> some View {
-        VStack(spacing: 8) {
-            Text(title).font(.dearby(.headline)).accessibilityAddTraits(.isHeader)
-            Text(detail).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
-        }.frame(maxWidth: .infinity, minHeight: 160)
-    }
+    /// Grid tiles are the one place the page separates several items from each other, so they keep a surface; the selected one is tinted.
     private func tile(selected: Bool, action: @escaping () -> Void, @ViewBuilder label: () -> some View) -> some View {
         Button(action: action) {
             label().padding(14).frame(maxWidth: .infinity, minHeight: 84, alignment: .leading)
-                .background(selected ? DearbyStyle.mint : Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(selected ? DearbyStyle.teal : DearbyStyle.line, lineWidth: selected ? 1.5 : 1))
+                .background(selected ? DearbyStyle.mint : Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(selected ? DearbyStyle.teal : .clear, lineWidth: 1.5))
                 .contentShape(Rectangle())
         }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])
     }

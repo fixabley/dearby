@@ -102,7 +102,7 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 | --- | --- | --- |
 | 발견·활동 상세 | 공개 카탈로그를 보여 주고, 신청 CTA는 활동의 공식 신청 URL을 외부 브라우저로 연다. 실패하면 오류와 다시 시도를 보여 주며 예시 활동을 섞지 않는다. | GET /v1/activities (2026-10-14부터, 아래 "활동 조회") |
 | 로그인 | 패스키(2026-10-10 결정, 아래 "패스키 로그인"). 명함 발행과 받은 명함 보기를 할 때만 요구하고, 발견·신청은 로그인 없이 쓴다. access·refresh 토큰은 OS 보안 저장소에 둔다. | /v1/auth/* |
-| 명함 제작 | 프로필 입력과 공개할 연락처·이력 선택을 한 흐름으로 마치고 바로 발행한다. 수정은 새 발행본을 만든다(기존 스냅샷 규칙 유지). | /v1/profile, POST /v1/cards |
+| 명함 제작 | 프로필 입력과 공개할 연락처·이력 선택을 한 흐름으로 마치고 바로 발행한다. 고치기는 2026-10-20부터 같은 명함을 `PUT /v1/cards/:id`로 수정한다(아래 "명함 고치기는 같은 명함을 수정"). | /v1/profile, POST·PUT /v1/cards |
 | 명함 교환 | 명함별 QR(공개 주소 + 활동) → 웹에서 보고 `dearby://cards/…`로 앱 저장 또는 브라우저 저장, 단방향은 30일 뒤 회수. 아래 "명함 교환"(2026-10-19). 옛 QR 공유·스캔·유니버설 링크는 2026-10-18 삭제(위 "명함 공유 — 변경 이력") | PUT /v1/wallet/cards/:id, POST …/reciprocate, GET /v1/wallet |
 
 - 앱은 `/s/*` 유니버설 링크를 받지 않고(2026-10-18 삭제), 웹도 `/.well-known/apple-app-site-association`·`assetlinks.json`을 만들지 않는다(패스키용 `wid.io.kr` 정적 파일은 별도이며 유지). 앱이 링크를 받는 통로는 커스텀 스킴 `dearby://`(애플 콜백, 명함 교환)만이다. #90·#91은 이 결정으로 닫았다.
@@ -341,7 +341,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 - **어휘는 통제한다**: 자유 입력이 아니라 운영자가 관리하는 태그 사전 `tags(id, name 한글, name_en 영문 nullable, sort_order)`(V34). 사전은 어드민 편집 폼에서 **검색해 고르거나 바로 새 이름을 적어 추가**할 수 있다(2026-10-19 사용자 "편집시 직접 검색 및 직접입력"): 태그 선택은 검색형 다중 선택이고, 사전에 없는 이름을 적으면 저장 때 `POST /v1/admin/tags {name}`으로 만들어 연결한다(영문 이름은 비워 두고 뒤에 채운다, 띄어쓰기만 다른 같은 이름은 기존 태그로 합친다). 수집기는 영문 이름이 비어 있어도 한글 이름으로 고른다. 초기 사전: 창업 startup, 창의성 creativity, 개발지식 engineering, 프로젝트 개발 projectBuilding, 협업 collaboration, 멘토링 mentoring, 네트워킹 networking, 취업 career, 포트폴리오 portfolio, 발표 presentation, 글로벌 global, 장학·지원금 funding, 리더십 leadership, 문제해결 problemSolving. 어드민 `GET/POST/PATCH/DELETE /v1/admin/tags`(이름 변경은 연결 유지, 삭제는 연결도 지움). 공개 `GET /v1/tags` → `{items: Tag[]}`, Tag = `{id, name, nameEn}`.
 - **연결**: `program_tags(program_id, tag_id)`, `activity_tags(activity_id, tag_id)`. 프로그램 태그는 운영자가 지정하고(`PATCH /v1/admin/programs/:id {tagIds, applyTagsToActivities?}`, 종류와 같은 일괄 규칙: 운영자가 태그를 지정하지 않은 활동에 합집합으로 더한다), 활동 태그는 수집기가 사전에서 고르고(지시문에 사전을 넘기고 사전 밖 이름은 버린다) 운영자가 바꾼다(`PATCH /v1/admin/activities/:id {tagIds}`, `POST`도 `tagIds?`, 운영자 지정은 `curated_fields`의 `tags`로 보호). 수집 결과 태그가 비면 프로그램 태그를 기본으로 쓴다(종류와 같다).
-- **노출**: `Activity.tags: Tag[]`, `AdminActivity.tags`, `ProgramSummary.tags: Tag[]`(프로그램 태그가 있으면 그것, 없으면 열린 활동 태그의 합집합, 최대 6개, 사전 순). 발견 프로그램 행에 태그 칩 최대 3개 + `+n`, 펼친 활동 행에 태그 칩, 활동 상세에 전체. 어드민 활동·프로그램 행과 편집 폼에 태그 선택(검색 + 직접 입력으로 새 태그 추가, 다중).
+- **노출**: `Activity.tags: Tag[]`, `AdminActivity.tags`, `ProgramSummary.tags: Tag[]`(프로그램 태그가 있으면 그것, 없으면 **그 프로그램의 게시 활동 전체(최근 3년 창)** 태그의 합집합 — 2026-10-20 사용자 "활동 탭에서 프로그램에 태그가 안 보여" 지적으로 "열린 활동만"에서 넓힘; 열린 활동이 없는 프로그램(우아콘처럼 마감된 행사)도 태그가 보여야 한다 — 최대 6개, 사전 순). 발견 프로그램 행에 태그 칩 최대 3개 + `+n`, 펼친 활동 행에 태그 칩, 활동 상세에 전체. 어드민 활동·프로그램 행과 편집 폼에 태그 선택(검색 + 직접 입력으로 새 태그 추가, 다중).
 - **검색**: `GET /v1/activities`·`GET /v1/discovery/programs`의 `q`가 활동 이름 외에 **태그 이름(한글·영문)** 에도 맞는다(`matchedActivityIds`에 포함). 필터 `tagIds?`(쉼표 목록, 모두 포함 AND). 발견 탭 검색창 아래 태그 칩 줄은 2026-10-19 밤 사용자 결정으로 없앴고(위 "프로그램 로고·태그 칩 줄 제거" 절) 태그는 `q` 검색으로만 쓴다. `tagIds`는 API에 남는다.
 - 표기: 코드 없이 사전 id를 쓰고 이름은 한글+영문 쌍(2026-10-18 어휘 규칙). JSON 키는 camelCase.
 
@@ -354,6 +354,8 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - API: `POST /v1/me/consents {privacyVersion, termsVersion}`(Bearer) → 204. 현재 버전과 다르면 400 `CONSENT_VERSION`. `GET /v1/profile` 응답에 `consent: {privacyVersion, termsVersion, consentedAt}|null`과 `consentRequired: boolean`(기록이 없거나 버전이 다르면 true)을 더한다. **`PUT /v1/profile`은 `consentRequired`이면 403 `CONSENT_REQUIRED`**(이력 인증자료 업로드 등 프로필 하위 쓰기도 같다). 명함 발행·받은 명함·활동 신청 표시는 프로필이 있어야 하므로 자연히 뒤에 온다.
 - 앱(iOS·Android): 첫 프로필 퍼널의 첫 단계 앞, 그리고 프로필 화면을 열었을 때 `consentRequired`이면 **동의 화면**을 전체 화면으로 보인다. 제목 "시작하기 전에 동의가 필요해요", 필수 체크 두 개(`개인정보 수집·이용에 동의합니다 (필수)`, `이용약관에 동의합니다 (필수)`), 각 항목의 `보기`는 `https://dearby.wid.io.kr/privacy`·`/terms`를 인앱 브라우저(iOS `SFSafariViewController`, Android Custom Tab)로 연다. 둘 다 체크해야 `동의하고 계속`이 켜지고, 누르면 `POST /v1/me/consents` 뒤 원래 흐름으로 간다. 동의 전에는 프로필 입력 단계로 갈 수 없다. 서버가 403 `CONSENT_REQUIRED`를 돌려주면 같은 화면을 보인다. 로그아웃 상태에서는 보이지 않는다(로그인 뒤 프로필에서).
 - 웹: 프로필 입력이 없으므로 바뀌지 않는다(비로그인 저장 쿠키 안내는 `/privacy`에 이미 있다).
+
+- 2026-10-20: iOS는 동의 화면을 프로필 탭 위의 **시트**로 띄우고 닫을 수 있다(닫으면 미동의, 저장하면 다시 뜸; "터치 영역·검색 경험·시트 닫기" 절). Android는 전체 화면이되 뒤로 가기로 나간다.
 
 ## 발견 카드 리뉴얼 — 2026-10-19 사용자 결정
 
@@ -425,7 +427,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **카드는 섹션을 나눌 때만(사용자 "카드 디자인은 섹션을 나눌 필요가 없다면 굳이 사용하지 않아도 괜찮아")**: 둥근 카드·테두리 상자는 한 화면 안에서 서로 다른 묶음을 구분해야 할 때(발견 프로그램 카드, 프로필의 연락처/이력 섹션, 받은 명함 목록 면)만 쓴다. 내용이 한 묶음뿐인 화면(상세의 본문, 이력·프로필 입력 폼, 명함 만들기, 빈 상태, 시트)은 카드 없이 배경 위에 바로 그린다. 폼은 플랫폼 기본 inset grouped/OutlinedTextField 그대로.
 - **배치**: 내용(아이콘/심볼·제목·설명)을 화면(또는 시트) 가운데에 세로·가로 중앙 정렬한다. 둥근 카드·테두리 상자로 감싸지 않고 배경 위에 바로 놓는다(동의 체크 행처럼 폼 요소는 플랫폼 기본 폼 그대로). 글자는 중앙 정렬, 설명은 보조색, 좌우 여백 24.
 - **클릭 요소는 CTA**: 그 화면의 행동 버튼은 화면(시트) 아래쪽에 전체 너비 주 버튼(iOS `.borderedProminent` + `.controlSize(.large)`, Android `Button` 기본 높이 이상 전체 너비)으로 두고, 보조 행동은 그 아래 텍스트 버튼(iOS `.borderless`, Android `TextButton`)으로 둔다. 인라인 링크·작은 아이콘 버튼으로 숨기지 않는다. 안전 영역 아래 여백 16. 주 버튼이 둘 이상이면 세로로 쌓는다(가로 분할 금지).
-- **글자 크기 통일(사용자 "이런 경우가 많을 경우 해당 요소들의 폰트 크기를 통일감 있게")**: 이 화면들은 한 가지 글자 계층만 쓴다 — 심볼/아이콘 48, 제목 iOS `.title2.bold()`·Android `headlineSmall`(굵게), 설명 iOS `.body`·Android `bodyLarge`(보조색, 최대 3줄), 주 버튼은 플랫폼 기본 버튼 라벨, 보조 텍스트 버튼도 기본 라벨. 화면마다 다른 크기(`.title`·`.headline`·`titleMedium`·`SemiBold` 등)를 섞지 않는다. 공통 컴포넌트 하나(iOS `shared/ui` `CenteredMessage(symbol:title:message:primary:secondary:)`, Android `shared/ui` `CenteredMessage(...)`)로 그려 크기가 어긋날 여지를 없앤다.
+- **글자 크기 통일(사용자 "이런 경우가 많을 경우 해당 요소들의 폰트 크기를 통일감 있게")**: 이 화면들은 한 가지 글자 계층만 쓴다 — 상태 아이콘은 "아이콘 통일"의 64 원 + 28 글리프, 제목 iOS `.title2.bold()`·Android `headlineSmall`(굵게), 설명 iOS `.body`·Android `bodyLarge`(보조색, 최대 3줄), 주 버튼은 플랫폼 기본 버튼 라벨, 보조 텍스트 버튼도 기본 라벨. 화면마다 다른 크기(`.title`·`.headline`·`titleMedium`·`SemiBold` 등)를 섞지 않는다. 공통 컴포넌트 하나(iOS `shared/ui` `CenteredMessage(symbol:title:message:primary:secondary:)`, Android `shared/ui` `CenteredMessage(...)`)로 그려 크기가 어긋날 여지를 없앤다.
 - 큰 글씨·작은 화면에서 내용이 넘치면 가운데 정렬을 유지한 채 스크롤이 생긴다(`ScrollView`/`verticalScroll` + 최소 높이 = 화면). 동작 줄이기 영향 없음. 웹은 변경 없음.
 
 ## 아이콘 통일 — 2026-10-19 밤 사용자 결정 (토스 참고)
@@ -434,7 +436,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 - **한 가족만**: iOS는 SF Symbols만(사용자 PNG 아이콘 금지, 브랜드 심볼·GitHub 마크만 예외), Android는 **`Icons.Rounded`** 한 가족만(`Outlined`·`Filled`·`Default` 금지, `AutoMirrored.Rounded`는 허용). 색은 iOS `.foregroundStyle(.secondary)`/`DearbyStyle.teal`, Android `onSurfaceVariant`/`primary` 두 가지만.
 - **세 가지 크기**: ① 인라인(글자 옆·버튼 안): 글자 크기 따름(iOS `.imageScale(.medium)`, Android 20dp), 선형(outline 계열 SF 이름, Rounded는 그대로). ② 행 앞 글리프(목록·정보 행): 24, 보조색, 같은 열에 맞춤. ③ 상태 아이콘(빈 상태·완료·오류·시트 머리): **청록 채움 원 64 안의 흰 글리프 28**(토스의 파란 체크 원처럼; 흰 글자 규칙과 같음), 오류는 `danger` 채움 원. `CenteredMessage`의 `symbol`이 이 형태를 그린다. iOS 큰 상태 심볼은 `.fill` 변형, 인라인은 선형.
-- **의미별 고정 이름**(둘 다 이 표만 쓴다): 일정·달력 `calendar`/`Event`, 시각 `clock`/`Schedule`, 장소 `mappin.and.ellipse`/`Place`, 외부 링크 `arrow.up.right`/`AutoMirrored.Rounded.OpenInNew`, 수정 `pencil`/`Edit`, 삭제 `trash`/`Delete`, 추가 `plus`/`Add`, 제거 `minus.circle`/`RemoveCircle`, 검색 `magnifyingglass`/`Search`, 지우기 `xmark.circle.fill`/`Cancel`, 닫기 `xmark`/`Close`, 뒤로 `chevron.left`/`AutoMirrored.Rounded.ArrowBack`, 펼침 `chevron.down`/`ExpandMore`, 성공·확인 `checkmark.circle`(상태는 `.fill`)/`CheckCircle`, 오류 `exclamationmark.triangle`/`Warning`, 정보 `info.circle`/`Info`, 알림 `bell`/`Notifications`, QR `qrcode`/`QrCode`, 명함 `person.text.rectangle`/`Badge`, 프로필 `person.crop.circle`/`AccountCircle`, 활동 둘러보기 `safari`/`Explore`, 내 활동 `checklist`/`Checklist`, 받은 명함 `tray.full`/`Inbox`, 공유 `square.and.arrow.up`/`Share`, 지도 `map`/`Map`, 전화 `phone`/`Call`, 메일 `envelope`/`Mail`, 첨부 `paperclip`/`AttachFile`, 사진 `photo`/`Image`, 눈 `eye`/`Visibility`, 잠금 `lock`/`Lock`, 기기 `iphone`/`Smartphone`, 위로 `arrow.up`/`ArrowUpward`. 표에 없는 뜻이 생기면 표에 먼저 더한다.
+- **의미별 고정 이름**(둘 다 이 표만 쓴다): 일정·달력 `calendar`/`Event`, 시각 `clock`/`Schedule`, 장소 `mappin.and.ellipse`/`Place`, 외부 링크 `arrow.up.right`/`AutoMirrored.Rounded.OpenInNew`, 수정 `pencil`/`Edit`, 삭제 `trash`/`Delete`, 추가 `plus`/`Add`, 제거 `minus.circle`/`RemoveCircle`, 검색 `magnifyingglass`/`Search`, 지우기 `xmark.circle.fill`/`Cancel`, 닫기 `xmark`/`Close`, 뒤로 `chevron.left`/`AutoMirrored.Rounded.ArrowBack`, 펼침 `chevron.down`/`ExpandMore`, 성공·확인 `checkmark.circle`(상태는 `.fill`)/`CheckCircle`, 오류 `exclamationmark.triangle`/`Warning`, 정보 `info.circle`/`Info`, 알림 `bell`/`Notifications`, QR `qrcode`/`QrCode`, 명함 `person.text.rectangle`/`Badge`, 프로필 `person.crop.circle`/`AccountCircle`, 활동 둘러보기 `safari`/`Explore`, 내 활동 `checklist`/`Checklist`, 받은 명함 `tray.full`/`Inbox`, 공유 `square.and.arrow.up`/`Share`, 지도 `map`/`Map`, 전화 `phone`/`Call`, 메일 `envelope`/`Mail`, 첨부 `paperclip`/`AttachFile`, 사진 `photo`/`Image`, 눈 `eye`/`Visibility`, 잠금 `lock`/`Lock`, 기기 `iphone`/`Smartphone`, 위로 `arrow.up`/`ArrowUpward`, 조직 `building.2`/`Business`, 변경 이력 `clock.arrow.circlepath`/`History`, 단계 종류(마감 `flag`/`Flag`, 발표 `megaphone`/`Campaign`, 면접 `person.wave.2`/`RecordVoiceOver`, 기타 `pencil.line`/`EditNote`), 연락처 종류(채팅 `bubble.left`/`ChatBubble`, 사진 `camera`/`CameraAlt`, 링크 `link`/`Link`), 선택 안 됨 `circle`/`RadioButtonUnchecked`, 설정 `gearshape`/`Settings`, 잠금 안내 `lock`/`Lock`. 보내기·신청 `paperplane`/`Send`, 진행 단계 종류는 위 단계 항목을 따른다. 표에 없는 뜻이 생기면 표에 먼저 더한다.
 - **탭 막대**: 다섯 탭은 위 표의 활동 둘러보기·내 활동·명함·받은 명함·프로필 아이콘을 쓰고, 선택 상태는 iOS 기본(`.fill` 자동), Android `NavigationBar` 기본.
 - 적용 시점: 비스크롤 화면 배치·흰 글자 규칙과 같은 묶음(현재 PR 병합 뒤).
 
@@ -460,6 +462,72 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
   "마지막 수단" 판정: 패스키 수 + 연결된 OAuth 수가 1이면 그 하나는 지울 수 없다. 이미 있는 `POST /v1/auth/passkeys/registration/options`·`registration`은 Bearer가 있으면 그 계정에 패스키를 더한다(없으면 기존 가입 흐름).
 - 저장: `users.created_at`(V40, 기존 행은 가장 이른 로그인 수단·프로필 생성 시각으로 채움). `user_credentials`·`user_identities`는 그대로.
 - 구현 메모(2026-10-20): `POST /v1/auth/passkeys/registration/options`는 Bearer가 있으면 그 계정에 패스키를 더한다(응답은 기존처럼 201 TokenPair). 만료·잘못된 Bearer는 401(조용히 새 가입으로 넘어가지 않음). 로그인 상태 options에는 기존 패스키를 `excludeCredentials`로 넣어 키체인이 덮어쓰지 않게 하고, 요청 `displayName`이 새 패스키의 `label`이 된다(기본 `Dearby`). 경로의 `provider`는 소문자(apple|google), 연결돼 있지 않으면 404. PATCH label은 trim 후 1~60자(아니면 400). 다른 사용자의 패스키 id는 404(존재 여부를 구분하지 않음).
+
+## 터치 영역·검색 경험·시트 닫기·안전 영역·토글 라벨 — 2026-10-20 사용자 결정
+
+사용자(2026-10-20 00시): "터치 가능한 건 각 플랫폼별 Touchable 컴포넌트로 표현돼야 해. 영역이 묶인 경우 모든 곳에 터치가 돼야 해. 일정 추가 퍼널처럼 텍스트만 터치가 되면 안 됨. 일정 추가 퍼널의 검색도 활동 둘러보기에서 검색하는 것과 같은 경험을 줘야 해. 약관 동의 바텀시트는 닫을 수 있어야 해. safe area도 배경색이 적용돼야 해. 토글 버튼의 라벨은 바로 근처에 있어야 해." iOS·Android.
+
+- **터치 컴포넌트**: 누를 수 있는 것은 전부 플랫폼 터치 컴포넌트다 — iOS `Button`·`NavigationLink`·`Link`·`Toggle`(`Text.onTapGesture` 금지), Android `Button`·`TextButton`·`IconButton`·`ListItem(modifier = Modifier.clickable)`·`Card(onClick)`·`Switch`(`Text(Modifier.clickable)`처럼 글자만 누르게 하지 않음). 행·카드·칩처럼 묶인 영역은 **영역 전체**가 터치 대상이다: iOS는 라벨에 `.frame(maxWidth: .infinity, alignment: .leading)` + `.contentShape(Rectangle())`, Android는 행 전체 `Modifier.clickable`(또는 `ListItem`을 감싼 `Surface(onClick)`). 터치 피드백(iOS 눌림 효과, Android 리플)은 기본값을 쓴다. 최소 44pt/48dp.
+- **퍼널 검색은 발견 검색과 같은 경험**: 이력 입력 퍼널·프로필 편집의 조직/프로그램/활동/직무 검색(`ActivityInfoPicker`, `JobTagPicker`)은 발견 탭 검색창과 같은 컴포넌트(iOS `DearbySearchField` 시스템 검색 모양, Android `SearchBarDefaults.InputField`)와 같은 동작: 입력 즉시 결과 갱신(디바운스 동일), 지우기 버튼, 결과 행 전체 터치, 결과 없음은 `CenteredMessage` 형태의 빈 상태, 키보드는 필드 밖 탭·스크롤로 내림, 검색어에 맞는 항목이 없으면 맨 아래에 `"<검색어>" 직접 입력` 행.
+- **동의 시트 닫기**: 약관·개인정보 동의 바텀시트(ConsentPage가 시트로 뜨는 경우)는 아래로 끌거나 닫기 버튼으로 닫을 수 있다(iOS `.interactiveDismissDisabled(false)`, 상단 `닫기`; Android `ModalBottomSheet`는 `onDismissRequest`로 닫힘). 닫으면 동의하지 않은 것이고 프로필 저장은 막힌 채로 남는다(다시 저장하면 다시 뜬다). 전체 화면 ConsentPage도 뒤로 가기로 나간다.
+- **안전 영역 배경**: 페이지 배경색이 상태 표시줄·홈 인디케이터·노치 영역까지 채운다. iOS는 배경 `Color`를 `.ignoresSafeArea()`로 깔고 내용만 안전 영역 안에 둔다(시트·`Form`·`List`는 시스템이 알아서 함). Android는 `enableEdgeToEdge()` 아래에서 루트 `Surface(color = colorScheme.background)`가 창 전체를 채우고 inset padding은 그 안쪽 내용에만 준다. 키보드 영역도 같은 배경.
+- **토글 라벨은 바로 옆**: `Switch`/`Toggle`의 라벨은 같은 행의 바로 왼쪽에 두고(iOS `Toggle("라벨", isOn:)` 기본 배치, Android `ListItem(headlineContent = 라벨, trailingContent = Switch)`), 라벨과 스위치 사이에 다른 요소를 두지 않는다. 발견 탭 `마감 숨기기`는 라벨과 스위치가 붙은 한 묶음이며 묶음 전체를 눌러도 토글된다. 라벨을 스위치 바로 옆에 두면 배치가 어색한 곳(짧은 라벨이 넓은 행 오른쪽 끝에 홀로 가는 경우, 동의 항목처럼 여러 줄 라벨)은 스위치 대신 **체크박스**(iOS는 `Toggle` + `.toggleStyle(.checkbox)`가 없으므로 `Label`+`checkmark.circle(.fill)` 버튼, Android `Checkbox` + `ListItem`)로 바꾼다(사용자 2026-10-20 "바로 근처에 있을 때 별로라면 체크박스로 변경"). 발견 `마감 숨기기`는 검색창 아래 한 줄에 라벨+스위치를 왼쪽 정렬로 붙여 둔다.
+- **폼 라벨·입력 크기(사용자 2026-10-20 "프로필의 라벨이 너무 작아, 토스 참고해서 키워줘")**: 토스 입력 화면([계좌 입력](https://mobbin.com/screens/bb17bf31-062b-4b19-94e4-08f8c8d2d615), [거래 추가](https://mobbin.com/screens/6963fb34-5544-4c53-96fa-19fa70dbc5ae))처럼 **라벨을 입력 위에 쌓고** 입력 글자를 크게 둔다. 프로필·이력·명함 폼의 행은 세로 스택: 라벨 iOS `.subheadline`(15) 중간 굵기 보조색 / Android `labelLarge`(14) `onSurfaceVariant` → 입력 iOS `.title3`(20) / Android `titleLarge`(22) 본문색, 행 최소 높이 64, placeholder는 입력 크기 그대로 보조색. 섹션 머리·도움말은 `.footnote`(13)/`bodyMedium`가 아니라 `.subheadline`/`bodyMedium`(14) 이상. `LabeledContent`의 가로 라벨(왼쪽 라벨·오른쪽 값)은 쓰지 않는다. Android `OutlinedTextField`는 `textStyle = titleLarge`, `label`은 기본(포커스 시 떠오름) 대신 위에 별도 `Text`로 둔다(같은 쌓기).
+- **연락처 행은 라벨 대신 왼쪽 아이콘(사용자 2026-10-20 "연락처의 경우 전화번호·이메일 같은 라벨 대신 좌측에 아이콘으로")**: 프로필 편집·퍼널의 연락처 입력 행과 명함·프로필의 연락처 표시 행은 위에 쌓는 글자 라벨을 두지 않고 행 왼쪽에 24 보조색 글리프(전화 `phone`/`Call`, 메일 `envelope`/`Mail`, 카카오톡 `bubble.left`/`ChatBubble`, Instagram `camera`/`CameraAlt`, GitHub `chevron.left.forwardslash.chevron.right`/`Code`, Behance `paintpalette`/`Palette`, 기타 `link`/`Link`)를 둔다. 입력 글자는 `.title3`/`titleLarge` 그대로, placeholder가 종류 이름("전화번호", "이메일", "@아이디" 등)을 대신 말한다. 접근성 라벨은 종류 이름을 유지한다. 행 전체 탭 → 포커스 규칙 동일.
+- **플로팅 라벨·필수 표시(사용자 2026-10-20 "필수 항목은 빨간 *로 표시. placeholder에 label을 넣어 주고 클릭 시 placeholder가 작아지면서 라벨 위치로 가는 효과")**: 위 "폼 라벨·입력 크기"의 고정 쌓기 대신 **플로팅 라벨**로 바꾼다. 비어 있고 포커스가 없을 때는 라벨 글자가 입력 자리에 placeholder처럼 크게(`.title3`/`titleLarge`, 보조색) 보이고, 포커스가 가거나 값이 있으면 짧은 애니메이션(iOS `.snappy(duration: 0.2)`, Android 기본 라벨 전환)으로 작아져 입력 위 라벨 위치(`.subheadline`/`bodySmall`, 보조색·포커스 시 청록)로 올라간다. **입력 칸은 검색창처럼 글자 한 줄만 담는 작은 칸이고, 라벨은 칸 바깥 좌상단으로 이동한다**(사용자 2026-10-20 "바깥 좌상단으로 하고 영역은 검색창처럼 글자만 들어가도 되는 크기"): 칸은 발견 검색창과 같은 모양(둥근 10, `tertiarySystemFill`/`surfaceContainerHighest` 채움, 높이 44/48, 테두리 없음, 여러 줄 입력은 3줄 높이)이며 포커스·값에 따라 모양이 바뀌지 않는다. 비어 있고 포커스 없으면 라벨이 칸 안에 placeholder로(`.body`/`bodyLarge` 보조색) 보이고, 포커스가 가거나 값이 있으면 라벨이 칸 **위 왼쪽**(바깥)으로 작아지며 올라간다(`.subheadline`/`bodySmall` 보조색, 포커스 시 청록). 행은 처음부터 라벨 줄(20) + 간격 4 + 칸 높이를 확보해 레이아웃이 튀지 않는다. 둘 다 플랫폼 기본 플로팅 라벨이 칸 안/테두리로 뜨므로 쓰지 않고, iOS `DearbyFormRow`·Android `DearbyField`가 `TextField`/`BasicTextField` 위에 라벨 `Text`를 애니메이션(`scaleEffect`+`offset` / `animateFloatAsState`로 위치·크기)으로 옮겨 구현한다(SwiftUI·Compose만). 필수 항목은 라벨 끝에 **빨간 `*`**(`Text("*").foregroundStyle(.red)` 이어 붙임 / Android 라벨 `AnnotatedString`에 `error` 색 `*`)를 붙이고, 접근성 라벨에는 ", 필수"를 넣는다. 2026-10-19의 "필수 표시는 도움말 문장" 규칙은 이것으로 대체한다. 연락처 행처럼 왼쪽 아이콘이 있는 행도 같은 플로팅 라벨을 쓴다(아이콘 + 플로팅 라벨 입력).
+- **입력 영역 터치(사용자 "텍스트에어리어랑 연락처 추가 등 영역이 터치가 잘 안 돼")**: 입력 행은 행 어디를 눌러도 그 필드에 포커스가 간다(iOS 행 `.contentShape(Rectangle())` + 탭 → `@FocusState`, Android `Modifier.clickable { focusRequester.requestFocus() }` 또는 필드가 행 전체를 채움). 여러 줄 입력은 최소 3줄 높이·행 너비 전체. `연락처 추가`·`이력 추가`·`인증자료 추가` 같은 추가 행은 행 전체가 `Button`/`ListItem(clickable)`이며 아이콘+라벨이 왼쪽, 높이 48 이상.
+- **키보드 내리기와 터치 충돌 점검(사용자 2026-10-20)**: 점검 결과 — 버튼·링크·스위치는 자식 제스처가 우선이라 루트 탭 제스처와 충돌하지 않는다. 충돌은 **버튼이 아닌 영역**에서 난다: iOS 루트 `.onTapGesture`가 행의 라벨 글자·여백 탭을 받아 첫 응답자를 내려 버리고(그래서 필드 옆을 누르면 포커스가 가는 대신 키보드가 닫힘), Android 루트 `detectTapGestures`도 `clickable`이 아닌 라벨 `Text` 탭에서 `clearFocus()`를 부른다. 조치: ① 위 "입력 영역 터치" 규칙대로 입력 행 전체가 그 필드에 포커스를 주면 루트 제스처가 받을 영역이 사라진다. ② iOS는 **SwiftUI만** 쓴다(사용자 2026-10-20 "SwiftUI만 사용"): 루트 탭으로 키보드를 내리는 제스처를 아예 두지 않고, `.scrollDismissesKeyboard(.interactively)` + 키보드 툴바 `완료` 버튼 + 입력 행 전체 포커스로 해결한다(애플 기본 앱과 같은 방식; 빈 곳 탭으로 내리기는 iOS 관례가 아니다). `DearbyDismissKeyboard`는 scroll dismiss와 툴바만 남긴다. ③ Android는 **Jetpack Compose만** 쓴다(사용자 2026-10-20; 현재도 `AndroidView`·XML 레이아웃·Fragment·appcompat 없음): 루트 제스처는 Compose `pointerInput`+`LocalFocusManager`로 유지하되 모든 행이 `clickable`이면 도달하지 않는다. 앞으로도 View 기반 컴포넌트를 섞지 않는다.
+- **하단 저장 막대는 키보드와 함께 올라가지 않는다(사용자 2026-10-20 "프로필에서 원래대로 저장 버튼은 키보드가 올라올 때 제자리에")**: iOS 프로필 편집기의 `저장`/`원래대로` 막대는 `.ignoresSafeArea(.keyboard, edges: .bottom)`으로 화면 아래 제자리에 두고 키보드가 덮는다(키보드 툴바 `완료`로 내린 뒤 저장). Android는 셸 `imePadding` 규칙 그대로(Material 관례).
+- **키보드의 내리기 버튼(사용자 "키보드 내리기 버튼을 키보드에 추가해줄 수 있나")**: iOS는 모든 입력 화면에 키보드 툴바 `.toolbar { ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("완료") { focus = nil } } }`를 둔다(시스템 관례). Android는 시스템 뒤로/내리기 키가 있으므로 툴바 없이 마지막 필드 `ImeAction.Done` → `clearFocus()`, 중간 필드는 `ImeAction.Next`, 여러 줄 입력은 `ImeAction.Default`(줄바꿈)로 둔다.
+- 중복·이미 반영된 요청은 다시 바꾸지 않는다.
+
+## 명함 탭 통합 — 2026-10-20 사용자 결정
+
+사용자: "내 명함과 받은 명함을 명함 메뉴로 통합해야 해." 탭은 **네 개**: 발견(`활동 둘러보기`) · 내 활동 · 명함 · 프로필. iOS·Android.
+
+- **명함 탭**: 제목 `명함`(PageTitle/ScreenHeader, 우상단 설정·알림). 제목 바로 아래 두 구역 전환기 — iOS `Picker`(`.pickerStyle(.segmented)`, `내 명함` / `받은 명함`), Android Material 3 `PrimaryTabRow`(탭 둘). 기본은 `내 명함`. 선택은 앱 실행 중 메모리에만 둔다. 전환기는 제목 줄과 함께 고정이고 아래 내용만 스크롤한다.
+- **내 명함 구역**: 기존 내 명함 페이지 내용 그대로(격자·고른 명함·QR 보이기·고치기·지우기·빈 상태). **받은 명함 구역**: 기존 받은 명함 페이지 내용 그대로(검색창·색인 목록·상세·빈 상태). 두 구역의 검색창·빈 상태는 "폼은 플랫폼 기본"·"비스크롤 화면 배치" 규칙을 따른다.
+- **탭 아이콘·이름**: 명함 탭은 `person.text.rectangle`/`Badge`, 이름 `명함`. 받은 명함 탭 아이콘(`tray.full`/`Inbox`)은 더 쓰지 않는다. 딥링크·앱 내 이동에서 받은 명함 상세로 가는 경로(명함 교환 저장 뒤 등)는 명함 탭의 받은 명함 구역을 연 뒤 상세를 민다.
+- 계약의 "다섯 탭" 표현은 이 절 이후 **네 탭**으로 읽는다(알림·설정 버튼 규칙, 탭 제목 통일, 색 체계 등). AGENTS.md의 탭 수 서술도 함께 고친다.
+
+## iOS 상단 바는 시스템 내비게이션 바(리퀴드 글래스) — 2026-10-20 사용자 결정
+
+사용자: "상단 탭바 iOS 기본으로 하면 리퀴드 글래스 플로팅으로 만들 수 있어? 지금 스티키로 처리되니까 너무 부자연스러워." Xcode 27 SDK로 빌드하므로 iOS 26 이상 기기에서는 시스템 내비게이션 바·툴바·검색이 자동으로 리퀴드 글래스(반투명 떠 있는 막대)로 그려진다. 직접 그린 고정 제목 줄(`PageTitle`)은 이 효과를 막으므로 iOS는 **시스템 내비게이션 바**로 돌아간다. Android도 같은 방향(사용자 2026-10-20 "이거 진행해줘"): 네 탭 루트의 `ScreenHeader`를 Material 3 `TopAppBar`(제목 `titleLarge`, `actions`에 설정·알림 `IconButton`, `TopAppBarDefaults.pinnedScrollBehavior()`로 고정, 스크롤하면 시스템이 바 색을 `surfaceContainer`로 올려 구분)로 바꾼다. 발견의 접히는 검색 영역은 그대로 두되 `TopAppBar` 바로 아래에 붙인다. 명함 탭은 `TopAppBar` 아래 `PrimaryTabRow`. 하위 화면(뒤로 가기)은 `TopAppBar(navigationIcon = 뒤로)`. `ScreenHeader`는 지운다.
+
+- **네 탭 루트**: `NavigationStack` 안에서 `.navigationTitle("활동 둘러보기" | "내 활동" | "명함" | "내 프로필")` + `.navigationBarTitleDisplayMode(.inline)`(노치 아래 여백을 작게 두자는 2026-10-19 결정 유지). 우상단 액세서리는 `.toolbar { ToolbarItemGroup(placement: .topBarTrailing) { 설정; 알림 } }`(아이콘 버튼, 시스템이 글래스 캡슐로 묶음). `PageTitle`·`.toolbar(.hidden, for: .navigationBar)`는 지운다.
+- **발견 검색·접힘**: 직접 만든 접히는 검색 영역 대신 `.searchable(text:placement: .navigationBarDrawer(displayMode: .automatic), prompt: "프로그램·활동·태그 검색")` — **검색창은 처음부터 보이고 아래로 스크롤하면 가려진다**(사용자 2026-10-20 "탐색 탭에서 검색 메뉴는 처음에 보이게 해 주고 스크롤 내렸을 때 가려줘"). 처음 진입·새로 고침 뒤 맨 위 상태에서 검색창이 접혀 있으면 안 되므로, 스크롤 위치 0에서는 드로어가 펼쳐진 상태로 시작하도록 보장한다(`.automatic`이 처음에 숨긴다면 맨 위에서는 `.always`, 사용자가 스크롤을 시작하면 `.automatic`으로 전환). — 아래로 스크롤하면 시스템이 검색 막대를 접고 위로 당기면 다시 보이는 iOS 기본 동작이 "enter always" 요구를 대신한다. `마감 숨기기` 토글은 목록의 **첫 행**(전체 행 터치, 라벨+스위치)으로 내려가 내용과 함께 스크롤한다. 풀투 리프레시·맨 위로 버튼·구분선 규칙은 그대로(구분선은 시스템 바가 알아서 그림).
+- **명함 탭 전환기**: 세그먼트 피커는 내비게이션 바 아래 첫 고정 요소가 아니라 `.toolbar { ToolbarItem(placement: .principal) { Picker(.segmented) } }`로 제목 자리에 둔다(iOS 기본 패턴). 제목은 접근성 이름으로만 남긴다.
+- **하위 화면**: 기존 inline 제목 유지. 시트는 `.presentationDetents` 기본.
+- 시스템 바 아래 내용은 `.scrollEdgeEffectStyle`(iOS 26)을 기본값으로 두어 글래스 가장자리 흐림을 쓴다. 다크 모드·안전 영역 배경 규칙은 시스템 바가 처리하므로 추가 작업 없음.
+
+## 웹에도 같은 규칙 — 2026-10-20 사용자 결정
+
+사용자: "웹버전도 수정해줘." 앞선 절에서 "웹은 변경 없음"으로 둔 시각 규칙을 웹(`apps/web`)에도 적용한다. 로그인·프로필·설정·탭이 없는 웹의 성격상 아래 범위만.
+
+- **비스크롤 화면 배치·CTA·글자 통일**: 빈 상태(검색 결과 없음·프로그램 없음), 오류, 비로그인 저장 완료/만료, 공개 명함 안내 같은 단일 메시지 화면은 공통 `CenteredMessage` 컴포넌트(64px 청록 원 + 28px 흰 아이콘, 제목 22/700, 설명 17 보조색 최대 3줄, 전체 너비 CTA + 텍스트 보조 버튼, 카드 없음)로 그린다.
+- **카드는 섹션 구분에만**: 상세 본문·안내 문구를 감싼 둥근 상자는 지우고 배경 위에 바로 둔다. 발견 프로그램 카드·명함 면은 유지.
+- **아이콘 통일**: 인라인 SVG `Icon` 하나의 세트로, 크기는 인라인(1em)·행 24·상태 28(원 안) 셋, 색은 보조색·청록 둘. 의미별 이름은 모바일 표와 같은 뜻으로 맞춘다(달력·시각·장소·외부 링크·검색·지우기·닫기·펼침·확인·오류·정보·QR·명함·공유·지도).
+- **터치·클릭 영역**: 누를 수 있는 것은 `<button>`/`<a>`이고 행·카드·칩은 영역 전체가 대상(패딩 포함, 최소 44px 높이). 글자만 클릭되는 곳은 없앤다. 포커스 링은 기본 `:focus-visible` 유지.
+- **폼 라벨·입력**: 비로그인 저장·검색 등 입력은 라벨을 위에 쌓고(14/500 보조색) 입력 글자 17 이상, 행 높이 48 이상, placeholder는 보조색. 토글은 라벨 바로 옆(`<label>`로 묶어 전체 클릭).
+- **청록 채움 흰 글자**: `--on-teal`은 라이트·다크 모두 흰색, 채움 면은 `--teal-fill: #007F80`(두 모드 같은 값), 다크 모드 액센트 글자·테두리만 `--teal` #3FB3B4.
+- **발견 검색·토글**: 검색창은 시스템 검색 입력 모양(`type="search"`, 돋보기·지우기), `마감 숨기기`는 검색 아래 한 줄 라벨+스위치(전체 클릭). 머리(사이트 로고 줄)는 고정하지 않고 보통 흐름.
+
+## 내 활동 직접 추가 — 2026-10-20 사용자 결정
+
+사용자: "모집 마감이더라도 사용자가 내 활동에 추가할 수 있는 플로우가 있었으면 해. 우아콘 2026 신청하고 확정됐는데 지금 들어가도 내 활동에 추가할 방법이 없어." iOS·Android. 웹은 내 활동이 없어 해당 없음.
+
+- **활동 상세의 보조 행동**: CTA(신청/공식 안내) 아래에 모집 상태와 무관하게 `내 활동에 추가` 보조 버튼(iOS `.bordered` + `.controlSize(.large)`, Android `OutlinedButton` 전체 너비, 아이콘 `checklist`/`Checklist`)을 둔다. 누르면 그 활동을 신청함(`applied`)으로 표시해 내 활동 탭에 넣는다(기존 "신청하셨나요? → 신청했어요"와 같은 기록, 주최 측 확인 아님이라는 안내 문구 한 줄). 이미 내 활동에 있으면 버튼은 `내 활동에서 보기`(내 활동 탭의 그 활동 상세로 이동)로 바뀌고, 길게 누르거나 메뉴에서 `내 활동에서 빼기`(확인 뒤 제거). 
+- **참여 확정 표시**: 추가한 뒤 내 활동 상세의 진행 트랙에서 기존 `통과`/`참여 확정` 표시 규칙 그대로 쓴다(새 상태 없음). 지난 활동(활동이 끝난 것)을 추가하면 `끝난 활동` 묶음에 들어간다.
+- 신청 확인 시트(외부 브라우저에서 돌아올 때)는 그대로 둔다. 둘 다 같은 기기 저장소를 쓴다.
+
+## 프로필 읽기/수정 모드·상단 바 메뉴 — 2026-10-20 사용자 결정
+
+사용자: "내 프로필에서 수정이 바로 가능하게 하지 말고, 상단 탭바에 수정 버튼을 눌렀을 때 노출되도록. 수정과 설정·알림 버튼을 제외하고 알림 버튼 오른쪽에 햄버거 메뉴 버튼을 눌렀을 때 드롭다운으로 라벨과 함께 표시." iOS·Android.
+
+- **프로필 탭은 읽기 모드가 기본**: 이름·직무·소개·연락처·활동 이력을 읽기 전용 행(명함 본문과 같은 표현: 연락처는 왼쪽 아이콘 + 값, 이력은 기간·제목·역할·확인 배지)으로 보인다. 입력 칸·저장 막대는 보이지 않는다. 프로필이 아직 없으면(버전 0) 기존 입력 퍼널이 그대로 뜬다.
+- **수정 모드**: 상단 바의 `수정`(`pencil`/`Edit`, 텍스트 버튼 또는 아이콘, 접근성 `수정`)을 누르면 같은 화면이 편집 폼(플로팅 라벨 입력·이력 추가·연락처 추가)으로 바뀌고 아래에 `저장`/`원래대로` 막대가 나타난다. 상단 `수정`은 `완료`로 바뀌며 변경이 없으면 읽기 모드로 돌아가고, 변경이 있으면 저장 여부를 묻는 확인(저장 / 버리기 / 취소). 저장 성공 시 읽기 모드로 돌아간다. 모드는 앱 실행 중 메모리.
+- **상단 바 구성(네 탭 공통)**: 오른쪽에 [탭 고유 주 행동(프로필의 `수정`만)] [설정] [알림] [**메뉴** `line.3.horizontal`/`Menu`] 순. 메뉴를 누르면 드롭다운(iOS `Menu` → 항목은 `Label(제목, systemImage:)`, Android `DropdownMenu` → `DropdownMenuItem(leadingIcon + text)`)에 나머지 보조 행동이 **아이콘 + 라벨**로 나온다: 프로필 — `변경 이력`, `명함 만들기`; 내 활동 — 항목 없음(예시 데이터셋이 없어 `예시` 배지는 지우고 메뉴도 숨긴다; 2026-10-20 구현 확인); 발견·명함 — 지금은 항목이 없으면 메뉴 버튼을 숨긴다. 설정·알림·수정은 메뉴에 넣지 않는다.
+- iOS는 `ToolbarItemGroup(.topBarTrailing)` 안에 순서대로, Android는 `TopAppBar.actions` 안에 순서대로. 메뉴 아이콘 접근성 이름 `더 보기`.
 
 ## 명함 고치기는 같은 명함을 수정 — 2026-10-20 사용자 결정
 

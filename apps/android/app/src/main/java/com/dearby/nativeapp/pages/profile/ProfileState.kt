@@ -15,9 +15,12 @@ import java.time.LocalDate
 import java.util.UUID
 
 enum class ProfilePhase { SIGNED_OUT, LOADING, LOADED, FAILED }
-/** 내 프로필 (contract "프로필과 버전 이력"): the loaded profile and the in-place edit form; [form] differing from [profile] shows 저장/원래대로. */
+/**
+ * 내 프로필 (contract "프로필과 버전 이력"·"프로필 읽기/수정 모드", 2026-10-20): the loaded profile and the edit form. [editing] false shows the read-only rows;
+ * the top-bar `수정` turns it on and a successful save (or 버리기) turns it off. Memory only.
+ */
 data class ProfileViewState(
-    val phase: ProfilePhase = ProfilePhase.LOADING, val profile: AccountProfile? = null, val form: ProfileFormState? = null,
+    val phase: ProfilePhase = ProfilePhase.LOADING, val profile: AccountProfile? = null, val form: ProfileFormState? = null, val editing: Boolean = false,
     val errors: ProfileErrors? = null, val saving: Boolean = false, val error: String? = null,
     /** 개인정보 동의 (contract "개인정보 동의"): the consent screen replaces the profile until the server records the agreement. */
     val consentRequired: Boolean = false, val consenting: Boolean = false, val consentError: String? = null,

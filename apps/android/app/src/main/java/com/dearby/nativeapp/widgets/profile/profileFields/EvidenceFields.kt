@@ -2,9 +2,9 @@ package com.dearby.nativeapp.widgets.profile.profileFields
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Description
-import androidx.compose.material.icons.outlined.Image
-import androidx.compose.material.icons.outlined.RemoveCircleOutline
+import androidx.compose.material.icons.rounded.AttachFile
+import androidx.compose.material.icons.rounded.Image
+import androidx.compose.material.icons.rounded.RemoveCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -21,18 +21,19 @@ data class EvidenceRow(val id: String, val fileName: String, val isPdf: Boolean,
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         items.forEach { item ->
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(if (item.isPdf) Icons.Outlined.Description else Icons.Outlined.Image, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+                Icon(if (item.isPdf) Icons.Rounded.AttachFile else Icons.Rounded.Image, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Column(Modifier.weight(1f)) {
                     Text(item.fileName, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
-                    Text("${item.sizeKb}KB", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    Text("${item.sizeKb}KB", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                 }
-                IconButton({ onDelete(item.id) }, enabled = !busy) { Icon(Icons.Outlined.RemoveCircleOutline, "${item.fileName} 삭제", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                IconButton({ onDelete(item.id) }, enabled = !busy) { Icon(Icons.Rounded.RemoveCircle, "${item.fileName} 삭제", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         }
-        if (items.size < 3) Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            DearbyOutlineButton(onPickImage, Modifier.weight(1f), enabled = !busy) { Text("사진") }
-            DearbyOutlineButton(onPickPdf, Modifier.weight(1f), enabled = !busy) { Text("PDF") }
-        } else Text("인증자료는 3개까지 올릴 수 있어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        // Full-row add actions (contract "입력 영역 터치").
+        if (items.size < 3) {
+            AddRow("사진 올리기", icon = Icons.Rounded.Image, enabled = !busy, onClick = onPickImage)
+            AddRow("PDF 올리기", icon = Icons.Rounded.AttachFile, enabled = !busy, onClick = onPickPdf)
+        } else Text("인증자료는 3개까지 올릴 수 있어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
         error?.let { DearbyFieldError(it) }
     }

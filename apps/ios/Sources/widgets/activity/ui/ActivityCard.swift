@@ -52,7 +52,7 @@ struct ActivityCard: View {
         Text(statusText).font(.dearby(.caption2).weight(.semibold))
             .foregroundStyle(recruitment == .open ? DearbyStyle.onTeal : recruitment == .upcoming ? DearbyStyle.teal : .secondary)
             .padding(.horizontal, 8).padding(.vertical, 3)
-            .background(recruitment == .open ? DearbyStyle.teal : recruitment == .upcoming ? DearbyStyle.teal.opacity(0.15) : Color(.tertiarySystemFill),
+            .background(recruitment == .open ? DearbyStyle.tealFill : recruitment == .upcoming ? DearbyStyle.mint : Color(.tertiarySystemFill),
                         in: Capsule())
     }
 }

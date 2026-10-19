@@ -1,17 +1,13 @@
 package com.dearby.nativeapp.widgets.profile.profileFields
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.rounded.Cancel
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 
@@ -19,14 +15,14 @@ import com.dearby.nativeapp.shared.ui.*
 data class JobTag(val id: String, val title: String, val pending: Boolean, val rejected: Boolean)
 
 /**
- * 직무 tag picker (contract "직무"): chips for the chosen jobs, then a search over the job tree; a name that is not in the
- * tree can be typed and waits for admin approval. Search requests and results belong to the screen; this widget only draws.
- * The search box is a default-size `OutlinedTextField` ([PickerSearchField]).
+ * 직무 tag picker (contract "직무"): chips for the chosen jobs, then the same search as discovery (`DearbySearchField`, full-row result `ListItem`s,
+ * empty state, `"<검색어>" 직접 입력` row — contract "퍼널 검색은 발견 검색과 같은 경험", 2026-10-20) over the job tree; a name that is not in the tree waits for
+ * admin approval. Search requests and results belong to the screen; this widget only draws. [searchFocus] lets the screen's label row focus the search field.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable fun JobTagPicker(
     tags: List<JobTag>, query: String, onQueryChange: (String) -> Unit, items: List<PickerItem>, loading: Boolean, failed: Boolean,
-    onPick: (PickerItem) -> Unit, onType: (String) -> Unit, onRemove: (String) -> Unit, modifier: Modifier = Modifier, full: Boolean = false,
+    onPick: (PickerItem) -> Unit, onType: (String) -> Unit, onRemove: (String) -> Unit, modifier: Modifier = Modifier, full: Boolean = false, searchFocus: FocusRequester? = null,
 ) {
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (tags.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -34,32 +30,15 @@ data class JobTag(val id: String, val title: String, val pending: Boolean, val r
                 InputChip(
                     selected = !tag.rejected, onClick = { onRemove(tag.id) },
                     label = { Text(tag.title) },
-                    leadingIcon = if (tag.pending) ({ Icon(Icons.Outlined.Schedule, "승인 대기", Modifier.size(18.dp)) }) else null,
-                    trailingIcon = { Icon(Icons.Outlined.Close, "삭제", Modifier.size(18.dp)) },
+                    leadingIcon = if (tag.pending) ({ Icon(Icons.Rounded.Schedule, "승인 대기", Modifier.size(18.dp)) }) else null,
+                    trailingIcon = { Icon(Icons.Rounded.Cancel, "삭제", Modifier.size(18.dp)) },
                     colors = InputChipDefaults.inputChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer, selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer, selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer, selectedTrailingIconColor = MaterialTheme.colorScheme.onPrimaryContainer),
                 )
             }
         }
-        if (tags.any { it.pending }) Text("직접 적은 직무는 관리자 승인 뒤 명함에 들어가요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-        if (full) { Text("직무는 ${tags.size}개까지 고를 수 있어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall); return@Column }
-        PickerSearchField(query, onQueryChange, "직무 검색", placeholder = "예: 백엔드, 디자인")
-        if (loading && items.isEmpty()) Box(Modifier.fillMaxWidth().height(56.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
-        else if (failed) Text("목록을 불러오지 못했어요. 직접 적어도 돼요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-        items.forEach { item ->
-            Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) { onPick(item) }.padding(vertical = 8.dp), verticalArrangement = Arrangement.Center) {
-                Text(item.name, style = MaterialTheme.typography.bodyLarge)
-                item.detail?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
-        }
-        val trimmed = query.trim()
-        if (trimmed.isNotEmpty() && items.none { it.name == trimmed }) {
-            Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button, onClickLabel = "목록에 없으면 적은 이름 그대로 저장해요") { onType(trimmed); onQueryChange("") }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Edit, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(8.dp))
-                Text("‘$trimmed’ 직접 입력", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
-            }
-        } else if (trimmed.isEmpty() && items.isEmpty() && !loading) {
-            Text("이름으로 검색해 여러 개 고르거나, 없으면 그대로 적어 주세요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-        }
+        if (tags.any { it.pending }) Text("직접 적은 직무는 관리자 승인 뒤 명함에 들어가요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+        if (full) { Text("직무는 ${tags.size}개까지 고를 수 있어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium); return@Column }
+        DearbySearchField(query, onQueryChange, "직무 검색 (예: 백엔드, 디자인)", focusRequester = searchFocus)
+        PickerResults(query, items, loading, failed, "이름으로 검색해 여러 개 고르거나, 없으면 그대로 적어 주세요.", onPick) { onType(it); onQueryChange("") }
     }
 }

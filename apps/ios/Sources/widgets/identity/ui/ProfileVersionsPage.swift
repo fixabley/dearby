@@ -56,13 +56,7 @@ struct ProfileVersionPage: View {
             VStack(alignment: .leading, spacing: 16) {
                 if let detail {
                     Text(ProfileVersionsPage.when(detail.createdAt)).font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
-                    IdentityHeading(name: detail.profile.name, job: detail.profile.job, introduction: detail.profile.introduction, isFullProfile: true)
-                    Divider()
-                    Text("연락처").font(.dearby(.headline))
-                    ForEach(detail.profile.contacts) { contact in DearbyInfoRow(title: contact.label, value: contact.value) }
-                    Divider()
-                    Text("활동 이력").font(.dearby(.headline))
-                    HistoryTimeline(histories: detail.profile.histories.map(\.historyModel), compact: true)
+                    ProfileReadView(profile: detail.profile)
                 } else if let error {
                     Text(error).foregroundStyle(DearbyStyle.danger)
                 } else {
@@ -76,7 +70,7 @@ struct ProfileVersionPage: View {
                     if let error { Text(error).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.danger) }
                     Button { restore() } label: {
                         Group { if restoring { ProgressView().tint(DearbyStyle.onTeal) } else { Text("이 버전으로 되돌리기") } }.frame(maxWidth: .infinity)
-                    }.buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold)).disabled(restoring)
+                    }.buttonStyle(.borderedProminent).controlSize(.large).tint(DearbyStyle.tealFill).font(.dearby(.body).weight(.semibold)).disabled(restoring)
                     Text("되돌리면 새 버전으로 저장되고 이력은 남아요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
                 }.padding(.horizontal, 20).padding(.vertical, 12).background(Color(.systemBackground))
             }

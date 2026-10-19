@@ -6,6 +6,33 @@ struct TokenPair: Codable, Equatable, Sendable {
     let accessToken: String
     let refreshToken: String
 }
+/// `GET /v1/me` (contract "설정"): when the account was made and how it can sign in.
+struct AccountSummary: Decodable, Equatable, Sendable {
+    struct SignInMethods: Decodable, Equatable, Sendable {
+        let passkeys: Int
+        let apple: Bool
+        let google: Bool
+        /// Passkeys plus linked accounts; at 1 the remaining one cannot be removed (contract "마지막 수단").
+        var count: Int { passkeys + (apple ? 1 : 0) + (google ? 1 : 0) }
+    }
+    let createdAt: String
+    let signInMethods: SignInMethods
+}
+/// A linked Apple or Google account (`GET /v1/me/identities`); `email` is the masked address as the server keeps it.
+struct LinkedIdentity: Decodable, Equatable, Identifiable, Sendable {
+    let provider: String
+    let email: String?
+    let linkedAt: String
+    var id: String { provider }
+}
+/// One of the account's passkeys (`GET /v1/me/passkeys`); `id` is the credential id. `backedUp`: synced across the person's devices.
+struct PasskeySummary: Decodable, Equatable, Identifiable, Sendable {
+    let id: String
+    let label: String
+    let createdAt: String
+    let lastUsedAt: String?
+    let backedUp: Bool
+}
 /// Profile contact. IDs are client-generated UUIDs; the server keeps them as given.
 struct AccountContact: Codable, Equatable, Identifiable, Sendable {
     let id: String

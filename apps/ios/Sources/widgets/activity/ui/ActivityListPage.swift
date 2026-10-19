@@ -2,125 +2,95 @@ import SwiftUI
 
 /// 발견: 프로그램 카드 목록(contract "발견 카드 리뉴얼" 2026-10-19; iOS는 inset-grouped 섹션 관용구, AGENTS.md "플랫폼별 네이티브 디자인"). `마감 숨기기`가 켜지면 모집 중·모집 예정 활동이 있는
 /// 프로그램만, 꺼지면 최근 3년 안에 활동이 있었던 프로그램까지 보인다. 카드를 펼치면 모집 중·모집 예정 활동이 항상, 지난 활동은 토글을 껐을 때만 보인다.
+/// 상단은 시스템 내비게이션 바(contract "iOS 상단 바는 시스템 내비게이션 바" 2026-10-20): inline 제목 `활동 둘러보기`, 우상단 설정·알림, 검색은 `.searchable`의 내비게이션 바 서랍(맨 위에서는 펼침, 스크롤하면 접힘)
+/// (아래로 스크롤하면 시스템이 접고 위로 당기면 다시 보인다). `마감 숨기기`는 목록의 첫 행이고, 풀투 리프레시·맨 위로 버튼은 그대로다.
 struct ActivityListPage: View {
     let state: ActivityViewModel
-    @Binding var path: [String]
-    @State private var showNotice = false
-    /// How much of the search area is pushed up under the title, 0...`headerHeight` (contract "발견 탭 스크롤 동작" 2026-10-19 밤).
-    @State private var hidden: CGFloat = 0
-    @State private var headerHeight: CGFloat = 0
-    @FocusState private var searchFocused: Bool
-    /// Content has scrolled under the pinned title: show the hairline.
-    @State private var underTitle = false
+    @Binding var path: NavigationPath
     /// More than one screen down: show `맨 위로`.
     @State private var farDown = false
     @State private var position = ScrollPosition()
+    /// The scroll view's visible height: empty and error states centre in it (contract "비스크롤 화면 배치").
+    @State private var viewport: CGFloat = 0
+    /// Scroll offset at (or above) the top. The search drawer is `.always` here so it is open on first appearance and after returning to the top
+    /// (contract "발견 검색·접힘" 2026-10-20: `.automatic` alone starts collapsed with an inline title); once the user scrolls it becomes `.automatic`
+    /// so the system folds it away on the way down and brings it back on the way up.
+    @State private var atTop = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         @Bindable var state = state
-        VStack(spacing: 0) {
-            // The title line stays put (contract "탭 제목 통일"); a hairline appears once content passes beneath it.
-            PageTitle("활동 둘러보기") {
-                Button { showNotice = true } label: { Image(systemName: "bell").font(.title2).frame(width: 44, height: 44) }
-                    .accessibilityLabel("알림")
-            }
-            .overlay(alignment: .bottom) { Divider().opacity(underTitle ? 1 : 0) }
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 10) {
-                    switch state.phase {
-                    case .loading:
-                        ProgressView("프로그램을 불러오는 중이에요").frame(maxWidth: .infinity).padding(.vertical, 40)
-                    case .failed:
-                        ContentUnavailableView {
-                            Label("프로그램을 불러오지 못했어요", systemImage: "wifi.exclamationmark")
-                        } description: {
-                            Text("연결을 확인한 뒤 다시 시도해 주세요.")
-                        } actions: {
-                            Button("다시 시도") { state.reload() }.accessibilityIdentifier("activity-retry")
-                        }
-                    case .loaded where state.programs.isEmpty:
-                        if let query = state.query, !query.isEmpty {
-                            ContentUnavailableView("‘\(query)’에 맞는 프로그램이 없어요", systemImage: "magnifyingglass",
-                                                   description: Text("다른 검색어로 찾아보세요."))
-                        } else if state.openOnly {
-                            ContentUnavailableView("지금 모집 중인 프로그램이 없어요", systemImage: "calendar",
-                                                   description: Text("새 모집이 열리면 여기에서 볼 수 있어요. ‘마감 숨기기’를 끄면 최근 활동한 프로그램도 보여요."))
-                        } else {
-                            ContentUnavailableView("최근 2년 안에 활동한 프로그램이 없어요", systemImage: "calendar",
-                                                   description: Text("활동이 수집되면 여기에서 볼 수 있어요."))
-                        }
-                    case .loaded:
-                        if state.refreshFailed {
-                            // Pull to refresh failed: the list stays, this line passes (contract "풀투 리프레시" failure, Android parity).
-                            Label("새로 고치지 못했어요", systemImage: "exclamationmark.triangle")
-                                .font(.dearby(.footnote)).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 6)
-                                .accessibilityIdentifier("activity-refresh-failed").transition(.opacity)
-                                .task {
-                                    AccessibilityNotification.Announcement("새로 고치지 못했어요").post()
-                                    try? await Task.sleep(for: .seconds(3))
-                                    if !Task.isCancelled { state.clearRefreshFailure() }
-                                }
-                        }
-                        ForEach(Array(state.programs.enumerated()), id: \.element.id) { index, program in
-                            section(program)
-                                // Near the end of the list: fetch the next page.
-                                .onAppear { if index >= state.programs.count - 3 { state.loadMore() } }
-                        }
-                        if state.loadingMore {
-                            ProgressView().frame(maxWidth: .infinity, minHeight: 44)
-                        } else if state.moreFailed {
-                            Button("프로그램 더 불러오기") { state.loadMore() }.frame(maxWidth: .infinity, minHeight: 44)
-                                .accessibilityIdentifier("activity-more-retry")
-                        }
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 10) {
+                if state.phase != .loading { openOnlyRow }
+                switch state.phase {
+                case .loading:
+                    ProgressView("프로그램을 불러오는 중이에요").frame(maxWidth: .infinity).padding(.vertical, 40)
+                case .failed:
+                    CenteredMessage(symbol: "exclamationmark.triangle", danger: true, title: "프로그램을 불러오지 못했어요",
+                                    message: "연결을 확인한 뒤 다시 시도해 주세요.", embedded: true,
+                                    primary: MessageAction("다시 시도", identifier: "activity-retry") { state.reload() })
+                        .frame(minHeight: viewport)
+                case .loaded where state.programs.isEmpty:
+                    if let query = state.query, !query.isEmpty {
+                        CenteredMessage(symbol: "magnifyingglass", title: "‘\(query)’에 맞는 프로그램이 없어요", message: "다른 검색어로 찾아보세요.", embedded: true)
+                            .frame(minHeight: viewport)
+                    } else if state.openOnly {
+                        CenteredMessage(symbol: "calendar", title: "지금 모집 중인 프로그램이 없어요",
+                                        message: "새 모집이 열리면 여기에서 볼 수 있어요. ‘마감 숨기기’를 끄면 최근 활동한 프로그램도 보여요.", embedded: true,
+                                        primary: MessageAction("마감 숨기기 끄기", identifier: "activity-show-closed") { state.openOnly = false })
+                            .frame(minHeight: viewport)
+                    } else {
+                        CenteredMessage(symbol: "calendar", title: "최근 활동한 프로그램이 없어요", message: "활동이 수집되면 여기에서 볼 수 있어요.", embedded: true)
+                            .frame(minHeight: viewport)
                     }
-                }.padding(.horizontal, 20).padding(.bottom, 20)
-                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: state.refreshFailed)
-            }
-            // A tap on the list outside a card or button puts the keyboard away (contract "키보드 내리기"); the search area is
-            // added below this modifier so taps on the field itself are not affected.
-            .onTapGesture { searchFocused = false }
-            .scrollPosition($position)
-            // The search area sits in the scroll view's top safe area at its full height; collapsing slides it up under the title
-            // and the list scrolls through the freed space. Keeping the inset fixed keeps the content offset (and the refresh
-            // indicator, which appears below the inset) independent of the collapse.
-            .safeAreaInset(edge: .top, spacing: 0) {
-                VStack(alignment: .leading, spacing: 10) {
-                    DearbySearchField(prompt: "프로그램, 조직, 활동 이름으로 검색", text: $state.searchText, identifier: "activity-search",
-                                      focus: $searchFocused)
-                        .submitLabel(.search)
-                    Toggle("마감 숨기기", isOn: $state.openOnly).font(.dearby(.subheadline)).tint(DearbyStyle.teal)
-                        .accessibilityIdentifier("activity-open-only")
+                case .loaded:
+                    if state.refreshFailed {
+                        // Pull to refresh failed: the list stays, this line passes (contract "풀투 리프레시" failure, Android parity).
+                        Label("새로 고치지 못했어요", systemImage: "exclamationmark.triangle")
+                            .font(.dearby(.footnote)).foregroundStyle(.secondary).frame(maxWidth: .infinity).padding(.vertical, 6)
+                            .accessibilityIdentifier("activity-refresh-failed").transition(.opacity)
+                            .task {
+                                AccessibilityNotification.Announcement("새로 고치지 못했어요").post()
+                                try? await Task.sleep(for: .seconds(3))
+                                if !Task.isCancelled { state.clearRefreshFailure() }
+                            }
+                    }
+                    ForEach(Array(state.programs.enumerated()), id: \.element.id) { index, program in
+                        section(program)
+                            // Near the end of the list: fetch the next page.
+                            .onAppear { if index >= state.programs.count - 3 { state.loadMore() } }
+                    }
+                    if state.loadingMore {
+                        ProgressView().frame(maxWidth: .infinity, minHeight: 44)
+                    } else if state.moreFailed {
+                        Button("프로그램 더 불러오기") { state.loadMore() }.frame(maxWidth: .infinity, minHeight: 44)
+                            .accessibilityIdentifier("activity-more-retry")
+                    }
                 }
-                .padding(EdgeInsets(top: 12, leading: 20, bottom: 10, trailing: 20))
-                .background(Color(.systemGroupedBackground).onTapGesture { searchFocused = false })
-                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
-                .offset(y: -shownHidden).opacity(headerHeight > 0 ? 1 - shownHidden / headerHeight : 1)
-                .clipped()
-                .accessibilityHidden(headerHeight > 0 && shownHidden >= headerHeight)
-            }
-            .overlay(alignment: .bottomTrailing) {
-                if farDown {
-                    // 시스템 원형 버튼(사용자 2026-10-19 밤 "iOS는 기본 플로팅 버튼 UI 활용"): 직접 그린 원·그림자 대신 bordered prominent + circle.
-                    Button(action: scrollToTop) { Image(systemName: "arrow.up").font(.body.weight(.semibold)) }
-                        .buttonStyle(.borderedProminent).buttonBorderShape(.circle).controlSize(.large)
+            }.padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 20)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: state.refreshFailed)
+        }
+        .scrollPosition($position)
+        .overlay(alignment: .bottomTrailing) {
+            if farDown {
+                // 시스템 원형 버튼(사용자 2026-10-19 밤 "iOS는 기본 플로팅 버튼 UI 활용"): 직접 그린 원·그림자 대신 bordered prominent + circle.
+                Button(action: scrollToTop) { Image(systemName: "arrow.up").font(.body.weight(.semibold)) }
+                    .buttonStyle(.borderedProminent).buttonBorderShape(.circle).controlSize(.large).tint(DearbyStyle.tealFill)
                     .accessibilityLabel("맨 위로").accessibilityIdentifier("activity-scroll-top")
                     .padding(.trailing, 20).padding(.bottom, 16)
                     .transition(.opacity)
-                }
-            }
-            .refreshable { await state.refresh() }
-            .scrollDismissesKeyboard(.interactively)
-            // Offset from the fully expanded top; the inset is fixed, so this moves only with the finger (or a programmatic scroll).
-            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { old, new in
-                scrolled(from: old, to: new)
-            }
-            .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > $0.containerSize.height } action: { _, far in
-                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { farDown = far }
-            }
-            .onScrollPhaseChange { _, phase, context in
-                if phase == .idle { settle(at: context.geometry.contentOffset.y + context.geometry.contentInsets.top) }
             }
         }
+        .refreshable { await state.refresh() }
+        .scrollDismissesKeyboard(.interactively)
+        .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > $0.containerSize.height } action: { _, far in
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { farDown = far }
+        }
+        .onScrollGeometryChange(for: CGFloat.self) { $0.containerSize.height - $0.contentInsets.top - $0.contentInsets.bottom } action: { _, height in
+            viewport = max(height - 80, 0)
+        }
+        .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top <= 0 } action: { _, top in atTop = top }
+        .searchable(text: $state.searchText, placement: .navigationBarDrawer(displayMode: atTop ? .always : .automatic), prompt: "프로그램·활동·태그 검색")
         // Typing waits ~300ms before searching; the first load does not wait.
         .task(id: state.searchText) {
             if state.query != nil {
@@ -129,44 +99,31 @@ struct ActivityListPage: View {
             }
             state.search(state.searchText)
         }
-        .alert("알림", isPresented: $showNotice) { Button("확인") {} } message: { Text("새로운 알림이 없어요.") }
         .navigationDestination(for: String.self) { id in ActivityDetailView(state: state, activityID: id) }
-        .background(Color(.systemGroupedBackground).onTapGesture { searchFocused = false })
-        .onChange(of: searchFocused) { _, focused in focusChanged(focused) }
-        .tint(DearbyStyle.teal).navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .navigationBar)
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .tint(DearbyStyle.teal)
+        .navigationTitle("활동 둘러보기").navigationBarTitleDisplayMode(.inline)
+        .toolbar { TabRootToolbar() }
     }
-    private var shownHidden: CGFloat { min(hidden, headerHeight) }
-    /// "Enter always": the search area follows the finger — down hides it, up shows it at once — but never leaves a gap between
-    /// its bottom edge and the content (`hidden ≤ offset`), and never moves while the field has the keyboard.
-    /// Reduced motion switches whole once the first screen is past; nearer the top it simply scrolls with the content.
-    private func scrolled(from old: CGFloat, to new: CGFloat) {
-        if underTitle != (new > 0) { withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.15)) { underTitle = new > 0 } }
-        guard headerHeight > 0 else { return }
-        if searchFocused { hidden = 0; return }
-        let delta = new - old
-        let limit = min(headerHeight, max(0, new))
-        if reduceMotion, new >= headerHeight, delta != 0 {
-            hidden = delta > 0 ? headerHeight : 0
-        } else {
-            hidden = min(max(hidden + delta, 0), limit)
+    /// `마감 숨기기` as the first list row: the whole row toggles (one control; the switch is the row's indicator), label beside the switch.
+    private var openOnlyRow: some View {
+        Button { state.openOnly.toggle() } label: {
+            HStack {
+                Text("마감 숨기기").font(.dearby(.body)).foregroundStyle(.primary)
+                Spacer(minLength: 12)
+                Toggle("마감 숨기기", isOn: .constant(state.openOnly)).labelsHidden().tint(DearbyStyle.teal).allowsHitTesting(false)
+            }
+            .padding(.horizontal, 16).frame(minHeight: 44)
+            .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .ignore).accessibilityLabel("마감 숨기기").accessibilityValue(state.openOnly ? "켬" : "끔")
+        .accessibilityAddTraits(.isToggle).accessibilityIdentifier("activity-open-only")
     }
-    /// Lifted mid-way: finish with a short spring to open or closed, once the content below can fill the space.
-    private func settle(at offset: CGFloat) {
-        guard !searchFocused, hidden > 0, hidden < headerHeight, offset >= headerHeight else { return }
-        let target: CGFloat = hidden >= headerHeight / 2 ? headerHeight : 0
-        if reduceMotion { hidden = target } else { withAnimation(.snappy(duration: 0.25)) { hidden = target } }
-    }
-    /// The field took the keyboard while partly hidden (tapped at its visible edge): open it fully.
-    private func focusChanged(_ focused: Bool) {
-        guard focused, hidden > 0 else { return }
-        if reduceMotion { hidden = 0 } else { withAnimation(.snappy(duration: 0.25)) { hidden = 0 } }
-    }
-    /// `맨 위로`: no animation (contract), and the search area opens with the content.
+    /// `맨 위로`: no animation (contract).
     private func scrollToTop() {
         position.scrollTo(edge: .top)
-        hidden = 0
     }
     /// One program card (contract "발견 카드 리뉴얼", iOS inset-grouped idiom): the header and, when expanded, the activity groups inside the same
     /// rounded section. Height follows the system spring; the content fades in from the top; reduced motion switches at once.

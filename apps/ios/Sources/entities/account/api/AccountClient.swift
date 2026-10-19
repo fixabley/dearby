@@ -7,7 +7,9 @@ enum AccountError: Error, Equatable {
     /// network failure or 5xx, which is `unavailable`.
     /// `consentRequired`: 403 `CONSENT_REQUIRED` — the account has not accepted the current privacy policy and terms
     /// (contract "개인정보 동의"); other 403s stay `unavailable`.
-    case unauthorized, invalidInput, rejected(String), notFound, conflict, rateLimited, disabled, unavailable, consentRequired
+    /// `lastSignInMethod`: 409 `LAST_SIGN_IN_METHOD` — the passkey or linked account is the only way left to sign in, so it
+    /// cannot be removed (contract "설정"); other 409s stay `conflict`.
+    case unauthorized, invalidInput, rejected(String), notFound, conflict, rateLimited, disabled, unavailable, consentRequired, lastSignInMethod
 }
 
 /// Owner API (contract native-v1): passkey sign-in, profile and card publishing.
@@ -26,11 +28,16 @@ struct AccountClient: Sendable {
     }
 
     /// Passkey sign-up: the server picks the passkey's `user.name` and `user.id`; the account is made on `register`.
-    func registrationOptions() async throws -> PasskeyChallenge<Passkey.CreationOptions> {
-        try await send("auth/passkeys/registration/options", method: "POST", body: [String: String](), as: PasskeyChallenge.self)
+    /// With a `session` (Bearer) the same calls add a passkey to that account instead (contract "설정 — 패스키 추가").
+    func registrationOptions(session: TokenPair? = nil) async throws -> PasskeyChallenge<Passkey.CreationOptions> {
+        try await send("auth/passkeys/registration/options", method: "POST", body: [String: String](), session: session, as: PasskeyChallenge.self)
     }
     func register(challengeId: String, credential: Passkey.Credential) async throws -> TokenPair {
         try await send("auth/passkeys/registration", method: "POST", body: PasskeyAnswer(challengeId: challengeId, credential: credential), as: TokenPair.self)
+    }
+    /// Finishes adding a passkey to the signed-in account; the answer body (if any) is not needed, the session stays as it is.
+    func addPasskey(challengeId: String, credential: Passkey.Credential, _ session: TokenPair) async throws {
+        _ = try await request("auth/passkeys/registration", method: "POST", body: PasskeyAnswer(challengeId: challengeId, credential: credential), session: session)
     }
     func authenticationOptions() async throws -> PasskeyChallenge<Passkey.RequestOptions> {
         try await send("auth/passkeys/authentication/options", method: "POST", as: PasskeyChallenge.self)
@@ -93,6 +100,30 @@ struct AccountClient: Sendable {
     func deleteAccount(_ session: TokenPair) async throws {
         _ = try await request("me", method: "DELETE", session: session)
     }
+    /// The account summary for 설정 (`GET /v1/me`, contract "설정"): when it was made and how many ways it can sign in.
+    func me(_ session: TokenPair) async throws -> AccountSummary {
+        try await send("me", session: session, as: AccountSummary.self)
+    }
+    /// Linked Apple/Google accounts (`GET /v1/me/identities`).
+    func identities(_ session: TokenPair) async throws -> [LinkedIdentity] {
+        try await send("me/identities", session: session, as: ItemList<LinkedIdentity>.self).items
+    }
+    /// 연결 해제 (`DELETE /v1/me/identities/{apple|google}`, 204); `lastSignInMethod` when nothing else could sign in.
+    func unlinkIdentity(_ provider: String, _ session: TokenPair) async throws {
+        _ = try await request("me/identities/\(provider)", method: "DELETE", session: session)
+    }
+    /// This account's passkeys (`GET /v1/me/passkeys`).
+    func passkeys(_ session: TokenPair) async throws -> [PasskeySummary] {
+        try await send("me/passkeys", session: session, as: ItemList<PasskeySummary>.self).items
+    }
+    /// 이름 바꾸기 (`PATCH /v1/me/passkeys/{id} {label}`, 1~60 characters) → the updated item.
+    func renamePasskey(_ id: String, label: String, _ session: TokenPair) async throws -> PasskeySummary {
+        try await send("me/passkeys/\(id)", method: "PATCH", body: ["label": label], session: session, as: PasskeySummary.self)
+    }
+    /// 삭제 (`DELETE /v1/me/passkeys/{id}`, 204); `lastSignInMethod` when it is the only way left to sign in, `notFound` for someone else's id.
+    func deletePasskey(_ id: String, _ session: TokenPair) async throws {
+        _ = try await request("me/passkeys/\(id)", method: "DELETE", session: session)
+    }
     /// Records consent to the current privacy policy and terms (`POST /v1/me/consents`, 204). A stale version is `rejected`.
     func recordConsent(privacyVersion: String, termsVersion: String, _ session: TokenPair) async throws {
         _ = try await request("me/consents", method: "POST", body: ConsentInput(privacyVersion: privacyVersion, termsVersion: termsVersion), session: session)
@@ -132,13 +163,16 @@ struct AccountClient: Sendable {
     func evidence(historyID: String, evidenceID: String, _ session: TokenPair) async throws -> Data {
         try await request("profile/histories/\(historyID)/evidence/\(evidenceID)", method: "GET", session: session).0
     }
-    /// Picker searches for the history steps. Organizations, programs and roles need a session; activities are public.
+    /// Picker searches for the history steps. Organizations, programs and roles need a session; activities are public and are asked with
+    /// `forHistory=true` so events shorter than a week stay out (contract "활동 이력에서 단기 행사 제외" 2026-10-20); discovery uses `ActivityClient`.
     func searchActivityInfo(_ kind: ActivityInfoKind, query: String, parentID: Int? = nil, _ session: TokenPair?) async throws -> ActivityInfoPage {
         var items = [URLQueryItem(name: "q", value: query), URLQueryItem(name: "size", value: "20")]
         switch kind {
         case .organizations, .jobs: if let parentID { items.append(URLQueryItem(name: "parentId", value: String(parentID))) }
         case .programs: if let parentID { items.append(URLQueryItem(name: "organizationId", value: String(parentID))) }
-        case .activities: if let parentID { items.append(URLQueryItem(name: "programId", value: String(parentID))) }
+        case .activities:
+            items.append(URLQueryItem(name: "forHistory", value: "true"))
+            if let parentID { items.append(URLQueryItem(name: "programId", value: String(parentID))) }
         case .roles: break
         }
         var components = URLComponents()
@@ -147,6 +181,11 @@ struct AccountClient: Sendable {
     }
     func publish(_ card: CardInput, _ session: TokenPair) async throws -> PublishedCard {
         try await send("cards", method: "POST", body: card, session: session, as: PublishedCard.self)
+    }
+    /// 이 명함 고치기 (`PUT /v1/cards/:id`, contract "명함 고치기는 같은 명함을 수정" 2026-10-20): the same body as `publish` rebuilds that
+    /// card's snapshot from the current profile; the id, QR and link stay. `notFound` when the card was deleted meanwhile.
+    func updateCard(_ cardID: String, _ card: CardInput, _ session: TokenPair) async throws -> PublishedCard {
+        try await send("cards/\(cardID)", method: "PUT", body: card, session: session, as: PublishedCard.self)
     }
     /// 이 명함 지우기 (`DELETE /v1/cards/:id`, contract "명함·지갑"): the public link then answers 404; 204 on success.
     func deleteCard(_ cardID: String, _ session: TokenPair) async throws {
@@ -169,7 +208,7 @@ struct AccountClient: Sendable {
         _ = try await request("wallet/cards/\(cardID)/reciprocate", method: "POST", body: ReciprocateInput(myCardId: myCardID), session: session)
     }
 
-    /// `POST /v1/cards`: `template` is the app's built-in markdown template the server fills in at publish time.
+    /// `POST /v1/cards`·`PUT /v1/cards/:id`: `template` is the app's built-in markdown template the server fills in at publish time.
     struct CardInput: Encodable, Equatable, Sendable {
         let name: String
         let description: String
@@ -202,6 +241,7 @@ struct AccountClient: Sendable {
     private struct ProblemBody: Decodable { let detail: String?; let code: String? }
     private struct ConsentInput: Encodable { let privacyVersion: String; let termsVersion: String }
     private struct CardList: Decodable { let items: [PublishedCard] }
+    private struct ItemList<Item: Decodable>: Decodable { let items: [Item] }
     /// `activityId` is left out of the JSON when nil (synthesized `encodeIfPresent`).
     private struct ReceiveInput: Encodable { let activityId: Int64? }
     private struct ReciprocateInput: Encodable { let myCardId: String }
@@ -238,7 +278,9 @@ struct AccountClient: Sendable {
             if (try? JSONDecoder().decode(ProblemBody.self, from: data))?.code == "CONSENT_REQUIRED" { throw AccountError.consentRequired }
             throw AccountError.unavailable
         case 404: throw AccountError.notFound
-        case 409: throw AccountError.conflict
+        case 409:
+            if (try? JSONDecoder().decode(ProblemBody.self, from: data))?.code == "LAST_SIGN_IN_METHOD" { throw AccountError.lastSignInMethod }
+            throw AccountError.conflict
         case 429: throw AccountError.rateLimited
         case 503: throw AccountError.disabled
         default: throw AccountError.unavailable

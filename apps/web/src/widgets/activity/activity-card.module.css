@@ -28,7 +28,7 @@
   white-space: nowrap;
 }
 .open {
-  background: var(--teal);
+  background: var(--teal-fill);
   color: var(--on-teal);
 }
 .soon {

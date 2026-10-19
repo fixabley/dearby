@@ -3,7 +3,6 @@ package com.dearby.nativeapp.shared.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -15,7 +14,7 @@ import androidx.compose.ui.tooling.preview.Preview
     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
     DearbyErrorState("활동을 불러오지 못했어요", "인터넷 연결을 확인하고 다시 시도해 주세요.", onRetry)
     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
-    DearbyEmptyState("모집 중인 활동이 없어요", "새 활동이 공개되면 여기에서 볼 수 있어요.") { DearbyOutlineButton({}) { Text("새로 고침") } }
+    DearbyEmptyState("모집 중인 활동이 없어요", "새 활동이 공개되면 여기에서 볼 수 있어요.", action = MessageAction("새로 고침", {}))
 }
 
 @Preview(name = "상태", widthDp = 390) @Composable private fun StatesPreview() = DearbyTheme { DearbyStatesSample() }

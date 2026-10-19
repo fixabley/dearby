@@ -1,3 +1,4 @@
+import { Icon } from "./icon";
 import styles from "./notice.module.css";
 
 /** 화면 안 안내 상자. `info`는 알림(status), `warning`은 행동이 필요한 안내(alert)로 읽힌다. */
@@ -12,10 +13,9 @@ export function Notice({
 }) {
   return (
     <div className={styles.notice} data-tone={tone} role={tone === "warning" ? "alert" : "status"}>
-      <svg className={styles.icon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-        <circle cx="12" cy="12" r="9" />
-        <path d={tone === "warning" ? "M12 7v6m0 4h.01" : "M12 11v6m0-10h.01"} />
-      </svg>
+      <span className={styles.icon}>
+        <Icon name={tone === "warning" ? "warning" : "info"} />
+      </span>
       <div className={styles.body}>
         {title && <strong className={styles.title}>{title}</strong>}
         <div>{children}</div>

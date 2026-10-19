@@ -44,6 +44,7 @@ class MainActivity : ComponentActivity() {
     private val wallet: WalletViewModel by viewModels { viewModelFactory { initializer { WalletViewModel(account) } } }
     private val profile: ProfileViewModel by viewModels { viewModelFactory { initializer { ProfileViewModel(account) } } }
     private val myCards: MyCardsViewModel by viewModels { viewModelFactory { initializer { MyCardsViewModel(account) } } }
+    private val settings: SettingsViewModel by viewModels { viewModelFactory { initializer { SettingsViewModel(account, "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})") } } }
     // First-launch intro, remembered in its own new preferences file; no earlier stored data is read.
     private val onboarding by lazy { getSharedPreferences("dearby.onboarding", MODE_PRIVATE) }
     private var intro by mutableStateOf(false)
@@ -69,7 +70,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             DearbyTheme {
                 if (intro) IntroRoute(account, ::introShown)
-                else DearbyApp(activityModel, account, publish, myCards, wallet, profile)
+                else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings)
                 PendingAccountRoute(account)
             }
         }

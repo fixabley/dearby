@@ -18,8 +18,14 @@ import com.dearby.nativeapp.pages.activity.ActivityProgressPage
 import com.dearby.nativeapp.pages.activity.ApplicationReportDialog
 import com.dearby.nativeapp.pages.activity.MyActivitiesPage
 
-/** [notify] opens the (prototype) notification notice from the 발견 header's bell (내 활동 has none, like iOS). */
-@Composable fun ActivityRoute(model: ActivityViewModel, mine: Boolean = false, explore: () -> Unit = {}, notify: () -> Unit = {}, active: (Boolean) -> Unit) {
+/**
+ * [settings] and [notify] are the fixed 설정·알림 header buttons of both tab roots (contract "설정"). [openInMine] asks the shell to show an activity's
+ * detail on the 내 활동 tab (contract "내 활동 직접 추가" → 내 활동에서 보기); [open] is that request arriving on the 내 활동 instance, consumed once.
+ */
+@Composable fun ActivityRoute(
+    model: ActivityViewModel, mine: Boolean = false, explore: () -> Unit = {}, settings: () -> Unit = {}, notify: () -> Unit = {},
+    openInMine: (String) -> Unit = {}, open: String? = null, consumeOpen: () -> Unit = {}, active: (Boolean) -> Unit,
+) {
     val state by model.state.collectAsStateWithLifecycle()
     var selected by remember { mutableStateOf<String?>(null) }
     // 내 활동: the activity whose stage timeline is open, and the stage whose calendar comparison is open.
@@ -29,6 +35,7 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
     var sharing by remember { mutableStateOf(false) }
     var calendar by remember { mutableStateOf(false) }
     var linkError by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(open) { open?.let { selected = it; linkError = null; consumeOpen() } }
     DisposableEffect(selected, progressId) { active(selected != null || progressId != null); onDispose { active(false) } }
     val context = LocalContext.current
     // Links are already https-only from the activityModel model; failure to open stays on screen.
@@ -55,11 +62,12 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
     BackHandler((selected != null || progressId != null) && !prompt && !calendar && stageCalendar == null) { if (selected != null) selected = null else progressId = null }
     when {
         activity != null -> ActivityDetailPage(activity, linkError, { selected = null }, openLink, { prompt = true },
-            { model.confirm(activity.id, it) }, { calendar = true }, { sharing = true }, openMap)
+            { model.confirm(activity.id, it) }, { calendar = true }, { sharing = true }, openMap,
+            addToMine = { model.apply(activity.id, true) }, viewInMine = { openInMine(activity.id) }, removeFromMine = { model.apply(activity.id, false) })
         progress != null && progressActivity != null -> ActivityProgressPage(progress, progressActivity, { progressId = null }, { selected = progress.id; linkError = null },
             { model.confirm(progress.id, it) }, { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it })
-        mine -> MyActivitiesPage(state, { selected = it; linkError = null }, { progressId = it }, model::confirm, explore)
-        else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify, model::clearRefreshFailure)
+        mine -> MyActivitiesPage(state, { selected = it; linkError = null }, { progressId = it }, model::confirm, explore, settings, notify)
+        else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify, model::clearRefreshFailure, settings)
     }
     if (sharing && activity?.officialUrl != null) AlertDialog(onDismissRequest = { sharing = false }, title = { Text("활동 링크") }, text = { Text(activity.officialUrl) }, confirmButton = { TextButton({ sharing = false }) { Text("닫기") } })
     val openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) }

@@ -31,8 +31,7 @@ struct CardView: View {
             }
         }
         .padding(20).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(DearbyStyle.line))
+        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
     }
     private var header: some View {
         VStack(spacing: 10) {
@@ -62,7 +61,8 @@ struct CardView: View {
     }
 }
 
-/// Telegram/Luma-style contact row: kind icon, label over value, and an external-link mark when the row can open something.
+/// Contact row (contract "연락처 행은 라벨 대신 왼쪽 아이콘" 2026-10-20): kind glyph on the left, the value, and an external-link mark when the row
+/// can open something. The kind (or the owner's label) is VoiceOver-only.
 private struct ContactRow: View {
     let contact: ContactModel
     let open: (ContactModel) -> Void
@@ -77,11 +77,8 @@ private struct ContactRow: View {
     }
     private func content(openable: Bool) -> some View {
         HStack(spacing: 12) {
-            ContactSymbol(contact: contact, size: 20).foregroundStyle(DearbyStyle.teal).frame(width: 28)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(contact.rowLabel).font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
-                Text(contact.value).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.ink)
-            }
+            ContactSymbol(kind: contact.kind)
+            Text(contact.value).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.ink)
             Spacer(minLength: 0)
             if openable { Image(systemName: "arrow.up.right").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(DearbyStyle.quiet) }
         }.padding(.vertical, 8).frame(minHeight: 44).contentShape(Rectangle())

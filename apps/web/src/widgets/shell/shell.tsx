@@ -25,14 +25,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
                   : undefined
               }
             >
-              <Icon name="compass" />
+              <Icon name="explore" size="inline" />
               탐색
             </Link>
             <Link
               href="/saved"
               aria-current={path === "/saved" ? "page" : undefined}
             >
-              <Icon name="bookmark" />
+              <Icon name="inbox" size="inline" />
               저장한 명함
             </Link>
           </nav>

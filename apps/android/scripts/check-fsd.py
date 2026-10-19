@@ -24,12 +24,13 @@ API = {
     'features.oauth': {'OAuthBrowser', 'OAuthVerifier'},
     'features.google': {'GoogleSignIn'},
     'pages.account': {'SignInSheet', 'LinkAccountSheet'},
+    'pages.settings': {'SettingsPage', 'SettingsState', 'SettingsPhase', 'SettingsIdentityState', 'SettingsPasskeyState'},
     'pages.onboarding': {'IntroPage'},
     'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletCardPage', 'ReceivedCard', 'filterWallet', 'WalletSection', 'walletSections'},
     'features.calendar': {'CalendarConflictSheet', 'CalendarAccessState', 'CalendarConflictFlow'},
     'pages.activity': {'ProgramActivities', 'ApplicationReportDialog', 'ActivityListState', 'ActivityProgressPage', 'ActivityDetailPage', 'ProgramState', 'ProgramPhase', 'MyActivitiesPage', 'ActivityState', 'ActivityListPhase', 'ActivityListPage'},
     'entities.activity': {'model.Place', 'model.currentStage', 'model.stageBadge', 'model.ActivityCategory', 'model.EligibilityCondition', 'model.ScheduleModel', 'model.Tag', 'model.EligibilityGroup', 'model.StageSchedule', 'model.ActivityModel', 'model.scheduleText', 'model.ProgramPage', 'model.Stage', 'model.stages', 'model.ProgramSummary', 'model.lines', 'api.fetchPrograms', 'model.safeHttpsUrl', 'model.instant', 'api.fetchActivities', 'model.ActivityPage', 'model.EligibilityItem'},
-    'entities.account': {'model.ConsentRecord', 'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.ProfileJob', 'model.AccountProfile', 'model.PublishedCard', 'model.Wallet', 'model.WalletReceipt', 'model.ExchangeContext', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault', 'model.WebSignIn', 'model.ContactRules', 'model.ActivityInfoRef', 'model.ActivityInfoItem', 'model.ActivityInfoPage', 'model.EvidenceMeta', 'model.ProfileVersionSummary', 'model.ProfileVersionList', 'model.ProfileVersionDetail'},
+    'entities.account': {'model.ConsentRecord', 'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.ProfileJob', 'model.AccountProfile', 'model.PublishedCard', 'model.Wallet', 'model.WalletReceipt', 'model.ExchangeContext', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault', 'model.WebSignIn', 'model.ContactRules', 'model.ActivityInfoRef', 'model.ActivityInfoItem', 'model.ActivityInfoPage', 'model.EvidenceMeta', 'model.ProfileVersionSummary', 'model.ProfileVersionList', 'model.ProfileVersionDetail', 'model.AccountSummary', 'model.LinkedIdentity', 'model.PasskeyItem'},
 }
 
 def owner(name):
@@ -66,12 +67,13 @@ def check_source(path, text):
     # Contract "모바일 실제 연결 경계": only the activity and account clients open connections; only the account vault keeps the session
     # and MainActivity keeps only the first-launch intro flag (2026-10-14). AccountViewModel keeps the web sign-in verifier and pending
     # link token across process death while Apple's page is open (2026-10-16 "애플 로그인"); Google's 202 link token too (2026-10-19 native).
-    allowed = {'entities/activity/api/ActivityClient.kt': {'HttpURLConnection'}, 'entities/account/api/AccountClient.kt': {'HttpURLConnection'},
+    # The account client's transport is OkHttp since 2026-10-20 (PATCH for 설정); the activity client still opens HttpURLConnection.
+    allowed = {'entities/activity/api/ActivityClient.kt': {'HttpURLConnection'}, 'entities/account/api/AccountClient.kt': {'HttpURLConnection', 'OkHttpClient'},
                'entities/account/api/SessionVault.kt': {'getSharedPreferences'}, 'app/MainActivity.kt': {'getSharedPreferences'},
                'app/AccountViewModel.kt': {'SavedStateHandle'},
                # Contract "기기 캘린더 겹침" (2026-10-19): only the device calendar source reads CalendarContract
                'features/calendar/DeviceCalendar.kt': {'CalendarContract'}}.get(path.as_posix(), set())
-    blocked = [term for term in ('Room', 'HttpClient', 'HttpURLConnection', 'WebView', 'TokenVault', 'CalendarContract', 'SQLiteDatabase', 'getSharedPreferences', 'rememberSaveable', 'SavedStateHandle') if term not in allowed]
+    blocked = [term for term in ('Room', 'HttpClient', 'OkHttpClient', 'HttpURLConnection', 'WebView', 'TokenVault', 'CalendarContract', 'SQLiteDatabase', 'getSharedPreferences', 'rememberSaveable', 'SavedStateHandle') if term not in allowed]
     if re.search(r'\b(?:' + '|'.join(blocked) + r')\b', code): errors.append('prototype must not access service or persisted state')
     return errors
 

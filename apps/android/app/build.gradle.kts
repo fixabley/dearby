@@ -61,7 +61,13 @@ val validateReleaseOrigins by tasks.registering {
     }
 }
 tasks.matching { it.name == "preReleaseBuild" }.configureEach { dependsOn(validateReleaseOrigins) }
-kotlin { compilerOptions { jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17 } }
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+        // `TopAppBarScrollBehavior` (shared/ui/DearbyTopBar, 2026-10-20) is an experimental Material 3 type that every caller would otherwise have to opt into.
+        freeCompilerArgs.add("-opt-in=androidx.compose.material3.ExperimentalMaterial3Api")
+    }
+}
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2026.02.01"))
     implementation("androidx.activity:activity-compose:1.12.4")
@@ -72,6 +78,8 @@ dependencies {
     // 활동 이미지(`imageUrl`) 표시 (Apache-2.0).
     implementation("io.coil-kt.coil3:coil-compose:3.4.0")
     implementation("io.coil-kt.coil3:coil-network-okhttp:3.4.0")
+    // 계정 API 전송(계약 "설정"의 PATCH 포함): Android HttpURLConnection은 PATCH를 거부하므로 OkHttp(Coil이 이미 끌어오는 4.12.0)를 직접 쓴다 (Apache-2.0).
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // 패스키 로그인(계약 "패스키 로그인"): Credential Manager, and Play services for Android 13 and lower.
     implementation("androidx.credentials:credentials:1.6.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.6.0")

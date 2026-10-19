@@ -5,7 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -59,17 +59,14 @@ import com.dearby.nativeapp.shared.ui.*
 
 @Composable private fun Empty(text: String) = Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
 
-/** 행 전체를 눌러 연다; 열 수 있는 값이면 오른쪽에 외부 링크 아이콘을 둔다. */
+/** 왼쪽 종류 아이콘(24·보조색, 접근성 이름은 종류)과 값만(contract "연락처 행은 라벨 대신 왼쪽 아이콘", 2026-10-20); 행 전체를 눌러 열고, 열 수 있는 값이면 오른쪽에 외부 링크 아이콘을 둔다. */
 @Composable private fun ContactRow(contact: ContactState, open: () -> Unit) {
     val openable = contact.target != null
     Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(enabled = openable, role = Role.Button, onClick = open).padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        ContactSymbol(contact.kind, Modifier.size(22.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(contact.label.ifBlank { contactKindName(contact.kind) }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
-            Text(contact.value, style = MaterialTheme.typography.bodyMedium)
-        }
-        if (openable) Icon(Icons.AutoMirrored.Outlined.OpenInNew, "열기", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(contactIcon(contact.kind), contact.label.ifBlank { contactKindName(contact.kind) }, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(contact.value, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+        if (openable) Icon(Icons.AutoMirrored.Rounded.OpenInNew, "열기", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

@@ -11,6 +11,7 @@ import { eligibilityLines } from "@/lib/eligibility";
 import { categoryLabel } from "@/lib/category";
 import { errorMessage, request, RequestError } from "@/lib/client";
 import { Failure, Loading } from "@/shared/ui/states";
+import { CenteredMessage } from "@/shared/ui/centered-message";
 import { Icon } from "@/shared/ui/icon";
 
 export function ActivityDetail({ id }: { id: number }) {
@@ -46,12 +47,13 @@ export function ActivityDetail({ id }: { id: number }) {
   if (activity === undefined) return <Loading />;
   if (!activity)
     return (
-      <div className="state">
-        <h1>활동을 찾을 수 없어요</h1>
-        <Link className="button secondary" href="/">
-          활동 탐색하기
-        </Link>
-      </div>
+      <CenteredMessage
+        icon="info"
+        level={1}
+        title="활동을 찾을 수 없어요"
+        message="삭제되었거나 더 이상 공개되지 않는 활동이에요."
+        primary={{ label: "활동 탐색하기", href: "/" }}
+      />
     );
   const status = recruitment(activity.application, now);
   const official = httpsUrl(activity.officialUrl);
@@ -60,7 +62,7 @@ export function ActivityDetail({ id }: { id: number }) {
   return (
     <article className="detail">
       <Link className="back-link" href="/">
-        <Icon name="arrow" size={20} />
+        <Icon name="chevron-left" size="inline" />
         활동 탐색
       </Link>
       <div className="detail-heading">
@@ -111,7 +113,7 @@ export function ActivityDetail({ id }: { id: number }) {
           <ul className="schedule-list">
             {activity.schedules.map((schedule) => (
               <li key={schedule.id}>
-                <Icon name="calendar" />
+                <Icon name="calendar" tone="secondary" />
                 <div>
                   <h3>{schedule.title}</h3>
                   <p>{scheduleLabel(schedule, "activity") || "일정 미확인"}</p>
@@ -134,7 +136,7 @@ export function ActivityDetail({ id }: { id: number }) {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <Icon name="pin" />
+            <Icon name="map-pin" />
             <span>
               <strong>{place.name}</strong>
               {place.address && <span className="muted">{place.address}</span>}
@@ -157,7 +159,7 @@ export function ActivityDetail({ id }: { id: number }) {
             target="_blank"
             rel="noopener noreferrer"
           >
-            공식 안내 보기 <Icon name="external" size={16} />
+            공식 안내 보기 <Icon name="external-link" size="inline" />
           </a>
         )}
       </section>
@@ -177,7 +179,7 @@ export function ActivityDetail({ id }: { id: number }) {
             {status.open
               ? "공식 사이트에서 신청하기"
               : "공식 사이트에서 모집 확인"}{" "}
-            <Icon name="external" size={18} />
+            <Icon name="external-link" size="inline" />
           </a>
         ) : (
           <p role="status">연결 가능한 공식 링크가 없어요.</p>

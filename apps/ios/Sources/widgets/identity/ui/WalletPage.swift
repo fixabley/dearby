@@ -3,7 +3,8 @@ import SwiftUI
 /// 받은 명함: the cards saved to the account as an indexed list (contract "받은 명함 목록 표시"):
 /// first-letter sections with pinned headers, a right-edge index rail, and the existing search field.
 /// Rows carry the program chip and recall badge, the detail offers `내 명함도 건네기`, and a card arriving by
-/// `dearby://cards/…` is saved and opened here (contract "명함 교환" 2026-10-19).
+/// `dearby://cards/…` is saved and opened here (contract "명함 교환" 2026-10-19). Shown as the 받은 명함 section of the 명함 tab (`CardsPage`,
+/// contract "명함 탭 통합"), which owns the navigation bar.
 struct WalletPage: View {
     let state: WalletModel
     @State private var query = ""
@@ -16,40 +17,41 @@ struct WalletPage: View {
     /// The rail stays hidden for short lists.
     private static let railThreshold = 6
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    PageTitle("받은 명함")
-                    VStack(alignment: .leading, spacing: 12) {
-                        switch state.phase {
-                        case .signedOut:
-                            notice("받은 명함은 계정에 저장돼요", "로그인하면 저장한 명함을 볼 수 있어요.")
-                            Button { signingIn = true } label: { Text("로그인").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold))
-                        case .loading:
-                            ProgressView("받은 명함을 불러오는 중이에요").frame(maxWidth: .infinity, minHeight: 240).tint(DearbyStyle.teal)
-                        case .failed:
-                            notice("받은 명함을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.")
-                            Button { Task { await state.load() } } label: { Text("다시 시도").frame(maxWidth: .infinity) }.buttonStyle(.bordered).controlSize(.large).font(.dearby(.body).weight(.semibold))
-                        case .loaded where state.wallet.items.isEmpty:
-                            notice("아직 받은 명함이 없어요", "상대의 명함 QR을 카메라로 읽어 저장하면 여기에 보여요.")
-                        case .loaded:
-                            DearbySearchField(prompt: "이름, 직무, 이력으로 검색", text: $query, identifier: "wallet-search")
-                            let sections = state.sections(query: query)
-                            if sections.isEmpty { notice("찾는 명함이 없어요", "이름이나 직무로 다시 검색해 주세요.") }
-                            list(sections)
+        VStack(spacing: 0) {
+            // The search field stays put; only the list scrolls (contract "비스크롤 화면 배치").
+            switch state.phase {
+            case .signedOut:
+                CenteredMessage(symbol: "person.text.rectangle", title: "받은 명함은 계정에 저장돼요", message: "로그인하면 저장한 명함을 볼 수 있어요.",
+                                primary: MessageAction("로그인") { signingIn = true })
+            case .loading:
+                ProgressView("받은 명함을 불러오는 중이에요").frame(maxWidth: .infinity, maxHeight: .infinity).tint(DearbyStyle.teal)
+            case .failed:
+                CenteredMessage(symbol: "exclamationmark.triangle", danger: true, title: "받은 명함을 불러오지 못했어요", message: "연결을 확인하고 다시 시도해 주세요.",
+                                primary: MessageAction("다시 시도") { Task { await state.load() } })
+            case .loaded where state.wallet.items.isEmpty:
+                CenteredMessage(symbol: "person.text.rectangle", title: "아직 받은 명함이 없어요", message: "상대의 명함 QR을 카메라로 읽어 저장하면 여기에 보여요.")
+            case .loaded:
+                DearbySearchField(prompt: "이름, 직무, 이력으로 검색", text: $query, identifier: "wallet-search")
+                    .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
+                let sections = state.sections(query: query)
+                if sections.isEmpty {
+                    CenteredMessage(symbol: "magnifyingglass", title: "찾는 명함이 없어요", message: "이름이나 직무로 다시 검색해 주세요.")
+                } else {
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            list(sections).padding(.horizontal, 20).padding(.bottom, 20)
+                                // Leave room for the rail so rows never sit under it.
+                                .padding(.trailing, showsRail ? 20 : 0)
                         }
-                    }.padding(.horizontal, 20).padding(.bottom, 20)
-                        // Leave room for the rail so rows never sit under it.
-                        .padding(.trailing, showsRail ? 20 : 0)
+                        .overlay(alignment: .trailing) {
+                            if showsRail { IndexRail(keys: sections.map(\.key)) { jump(to: $0, proxy) } }
+                        }
+                        .refreshable { await state.load() }
+                    }
                 }
             }
-            .overlay(alignment: .trailing) {
-                if showsRail { IndexRail(keys: state.sections(query: query).map(\.key)) { jump(to: $0, proxy) } }
-            }
         }
-        .background(Color(.systemGroupedBackground)).toolbar(.hidden, for: .navigationBar)
         .task { await state.load() }
-        .refreshable { await state.load() }
         // A QR-received card while signed out: sign in first, then the save continues.
         .onChange(of: state.pending, initial: true) { _, pending in if pending != nil { signingIn = true } }
         .sheet(item: Binding(get: { state.opened }, set: { state.opened = $0 })) { entry in NavigationStack { detail(entry) } }
@@ -91,8 +93,8 @@ struct WalletPage: View {
                     DearbyBadge(title: "맞교환했어요")
                 } else {
                     Button { Task { await offerMyCard(entry) } } label: {
-                        Label("내 명함도 건네기", systemImage: "arrow.left.arrow.right").font(.dearby(.subheadline).weight(.semibold))
-                            .foregroundStyle(DearbyStyle.teal).frame(minHeight: 44)
+                        Label("내 명함도 건네기", systemImage: "person.text.rectangle").font(.dearby(.subheadline).weight(.semibold))
+                            .foregroundStyle(DearbyStyle.teal).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
                     }.disabled(reciprocating).accessibilityHint("상대의 받은 명함에 내 명함을 넣어요. 맞교환한 명함은 회수되지 않아요")
                     if !entry.badge.isEmpty {
                         Text("맞교환하지 않으면 \(entry.badge). 맞교환한 명함은 서로 남아요.").font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
@@ -141,12 +143,6 @@ struct WalletPage: View {
     private func jump(to key: String, _ proxy: ScrollViewProxy) {
         if reduceMotion { proxy.scrollTo(key, anchor: .top) } else { withAnimation(.snappy) { proxy.scrollTo(key, anchor: .top) } }
     }
-    private func notice(_ title: String, _ detail: String) -> some View {
-        VStack(spacing: 8) {
-            Text(title).font(.dearby(.headline)).accessibilityAddTraits(.isHeader)
-            Text(detail).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
-        }.frame(maxWidth: .infinity, minHeight: 160)
-    }
 }
 
 /// Right-edge index: one letter per non-empty section. Tap or drag along it to jump; each letter is a "<key>으로 이동" button.
@@ -162,7 +158,7 @@ private struct IndexRail: View {
                     Button { jump(key) } label: {
                         Text(key).font(.dearby(fixedSize: 11, weight: .semibold)).foregroundStyle(dragging == key ? DearbyStyle.onTeal : DearbyStyle.teal)
                             .frame(width: 20, height: height)
-                            .background(dragging == key ? DearbyStyle.teal : .clear, in: Capsule())
+                            .background(dragging == key ? DearbyStyle.tealFill : .clear, in: Capsule())
                     }.buttonStyle(.plain).accessibilityLabel("\(key)으로 이동")
                 }
             }

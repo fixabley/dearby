@@ -81,6 +81,13 @@ data class ActivityInfoItem(val id: Long, val name: String, val nameEn: String?,
 }
 data class ActivityInfoPage(val items: List<ActivityInfoItem>, val nextCursor: Long?)
 
+/** `GET /v1/me` (contract "설정"): when the account was made and which sign-in methods it has. */
+data class AccountSummary(val id: String, val createdAt: String, val passkeys: Int, val apple: Boolean, val google: Boolean)
+/** One linked Apple or Google account (`GET /v1/me/identities`); [email] is the provider's (possibly relay) address. */
+data class LinkedIdentity(val provider: String, val email: String?, val displayName: String?, val linkedAt: String)
+/** One of the account's passkeys (`GET /v1/me/passkeys`); [id] is the credential id, [backedUp] whether the authenticator syncs it. */
+data class PasskeyItem(val id: String, val label: String, val createdAt: String, val lastUsedAt: String?, val backedUp: Boolean)
+
 /** `GET /v1/wallet`: the account's saved cards (receipts). */
 data class Wallet(val items: List<WalletReceipt>)
 /** Where a card was exchanged (contract "명함 교환"); names are null when the activity is unknown or was deleted. */
@@ -131,6 +138,13 @@ fun JSONObject.toReceipt(): WalletReceipt {
         optBoolean("reciprocal", false), text("expiresAt"))
 }
 fun JSONObject.toCardList() = getJSONArray("items").objects().map { it.toPublishedCard() }
+fun JSONObject.toAccountSummary(): AccountSummary {
+    val methods = optJSONObject("signInMethods")
+    return AccountSummary(get("id").toString(), getString("createdAt"), methods?.optInt("passkeys") ?: 0, methods?.optBoolean("apple") ?: false, methods?.optBoolean("google") ?: false)
+}
+fun JSONObject.toIdentities() = getJSONArray("items").objects().map { LinkedIdentity(it.getString("provider"), it.text("email"), it.text("displayName"), it.getString("linkedAt")) }
+fun JSONObject.toPasskeys() = getJSONArray("items").objects().map { it.toPasskey() }
+fun JSONObject.toPasskey() = PasskeyItem(getString("id"), optString("label"), getString("createdAt"), text("lastUsedAt"), optBoolean("backedUp", false))
 
 private fun JSONObject.toRef() = ActivityInfoRef(getLong("id"), getString("name"))
 private fun JSONObject.toContact() = AccountContact(getString("id"), getString("kind"), getString("label"), getString("value"))

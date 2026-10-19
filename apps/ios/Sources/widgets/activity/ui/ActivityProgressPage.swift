@@ -27,12 +27,11 @@ struct ActivityProgressPage: View {
                     }.padding(20)
                 }
             } else {
-                ContentUnavailableView("진행 단계가 없는 활동이에요", systemImage: "calendar")
+                CenteredMessage(symbol: "checklist", title: "진행 단계가 없는 활동이에요", message: "일정이 등록되면 단계가 여기에 보여요.")
             }
         }
         .navigationTitle("진행 단계").navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
-        .toolbarBackground(Color(.systemBackground), for: .navigationBar).toolbarBackground(.visible, for: .navigationBar)
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)
         .sheet(item: $calendarStage) { stage in
             if let schedule = stage.schedule { CalendarConflictView(schedules: [schedule]) }
@@ -57,7 +56,7 @@ struct ActivityProgressPage: View {
                 Image(systemName: stage.icon).font(.dearby(.caption).weight(.semibold))
                     .foregroundStyle(stage.state == .upcoming ? DearbyStyle.quiet : (stage.state == .past ? DearbyStyle.onTeal : DearbyStyle.teal))
                     .frame(width: 32, height: 32)
-                    .background(stage.state == .past ? DearbyStyle.teal : (stage.state == .current ? DearbyStyle.mint : DearbyStyle.muted), in: Circle())
+                    .background(stage.state == .past ? DearbyStyle.tealFill : (stage.state == .current ? DearbyStyle.mint : DearbyStyle.muted), in: Circle())
                     .overlay(Circle().stroke(stage.state == .current ? DearbyStyle.teal : .clear, lineWidth: 1.5))
                     .accessibilityHidden(true)
                 if !last { Rectangle().fill(DearbyStyle.line).frame(width: 2).frame(maxHeight: .infinity) }

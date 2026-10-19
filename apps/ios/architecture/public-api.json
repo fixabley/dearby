@@ -22,7 +22,10 @@
     "TokenStore",
     "TokenVault",
     "Wallet",
-    "ProfileConsent"
+    "ProfileConsent",
+    "AccountSummary",
+    "LinkedIdentity",
+    "PasskeySummary"
   ],
   "entities/activity": [
     "ActivityCategory",
@@ -76,10 +79,16 @@
     "DearbyStyle",
     "MarkdownDocument",
     "NameIndex",
-    "PageTitle",
     "SearchQuery",
     "ConsentVersions",
-    "SafariView"
+    "SafariView",
+    "CenteredMessage",
+    "StateGlyph",
+    "MessageAction",
+    "MessageActions",
+    "SettingsRoute",
+    "TabRootToolbar",
+    "DearbyMenuItem"
   ],
   "widgets/activity": [
     "ActivityCard",
@@ -127,6 +136,11 @@
     "TemplateDocument",
     "WalletModel",
     "WalletPage",
-    "ConsentPage"
+    "ConsentPage",
+    "SettingsModel",
+    "SettingsPage",
+    "CardsPage",
+    "CardsSegment",
+    "ProfileReadView"
   ]
 }

@@ -13,12 +13,15 @@ struct ContactModel: Identifiable, Equatable {
         default: URL(string: value).flatMap { $0.scheme == "https" ? $0 : nil }
         }
     }
-    var symbol: String {
+    /// Contract kind → SF Symbol table ("연락처 행은 라벨 대신 왼쪽 아이콘" 2026-10-20); unknown kinds are a plain link.
+    static func symbol(kind: String) -> String {
         switch kind {
         case "phone": "phone"
         case "email": "envelope"
-        case "kakao": "bubble"
+        case "kakao": "bubble.left"
         case "instagram": "camera"
+        case "github": "chevron.left.forwardslash.chevron.right"
+        case "behance": "paintpalette"
         default: "link"
         }
     }

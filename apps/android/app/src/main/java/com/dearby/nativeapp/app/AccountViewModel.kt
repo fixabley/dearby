@@ -36,18 +36,24 @@ data class PendingLink(val provider: AuthProvider, val email: String, val auto: 
  * [pending] is set while a first-seen provider account waits; the new-or-link choice is drawn only after its automatic
  * device-passkey attempt ([AccountViewModel.autoLinkPending]). [googleAvailable] is false when the build has no
  * `GOOGLE_SERVER_CLIENT_ID` or the server answered 503 to the Google nonce (contract "구글 로그인": the button hides).
+ * [linking]/[linkMessage] belong to 설정's 연결하기 (contract "설정"), separate from the sign-in sheet's [message]; [linked] counts
+ * successful links so the settings screen reloads its rows.
  */
-data class AccountState(val phase: AccountPhase, val message: String? = null, val pending: PendingLink? = null, val googleAvailable: Boolean = true)
+data class AccountState(val phase: AccountPhase, val message: String? = null, val pending: PendingLink? = null, val googleAvailable: Boolean = true,
+    val linking: Boolean = false, val linkMessage: String? = null, val linked: Int = 0)
 private const val UNSUPPORTED = "이 기기에서는 패스키를 쓸 수 없어요. Android 9 이상이 필요해요."
 // SavedStateHandle keys: the provider's page is another app, so these must outlive rotation and process death meanwhile.
 private const val WEB_PROVIDER = "web.provider"
 private const val WEB_VERIFIER = "web.verifier"
 private const val WEB_LINK_TOKEN = "web.linkToken"
 private const val WEB_EMAIL = "web.email"
+/** True while Apple's page was opened from 설정 연결하기 (signed in): the redirect then links instead of signing in. */
+private const val WEB_LINK_MODE = "web.linkMode"
 
 /**
  * Passkey, Apple and Google sign-in (contract "패스키 로그인", "애플 로그인", "구글 로그인"): asked for when publishing or viewing
- * received cards, and offered (never required) on the first-launch intro. [googleServerClientId] is the build's web OAuth client
+ * received cards, and offered (never required) on the first-launch intro. Signed in, the same Apple/Google entry points link the
+ * provider to this account instead (contract "설정" 연결하기, [link]). [googleServerClientId] is the build's web OAuth client
  * id (`BuildConfig.GOOGLE_SERVER_CLIENT_ID`); blank hides the Google button.
  */
 class AccountViewModel(val client: AccountClient, private val vault: SessionStore, private val saved: SavedStateHandle, private val googleServerClientId: String = "") : ViewModel() {
@@ -78,7 +84,25 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
      * ID token goes to `/v1/auth/google`; 200 signs in, 202 (first-seen Google account) opens the same new-or-link flow as Apple.
      * A 503 for the nonce hides the button. A closed chooser goes back quietly.
      */
-    suspend fun signInWithGoogle(google: GoogleSignIn) = enter(AuthProvider.GOOGLE) {
+    suspend fun signInWithGoogle(google: GoogleSignIn) {
+        // Signed in already (설정 연결하기): the same chooser, but the answer links this account instead of signing in.
+        if (session != null) return link(AuthProvider.GOOGLE) { googleResult(google) }
+        enter(AuthProvider.GOOGLE) {
+            when (val result = googleResult(google)) {
+                null -> null
+                is WebSignIn.SignedIn -> result.session
+                is WebSignIn.NeedsAccount -> {
+                    saved[WEB_PROVIDER] = AuthProvider.GOOGLE.name
+                    saved[WEB_LINK_TOKEN] = result.linkToken
+                    saved[WEB_EMAIL] = result.email
+                    mutable.update { it.copy(pending = PendingLink(AuthProvider.GOOGLE, result.email, auto = true)) }
+                    null
+                }
+            }
+        }
+    }
+    /** Nonce → Google chooser → `/v1/auth/google`; null when the chooser was closed. */
+    private suspend fun googleResult(google: GoogleSignIn): WebSignIn? {
         val nonce = try { client.googleNonce() } catch (e: AccountException) {
             if (e.error == AccountError.TURNED_OFF) mutable.update { it.copy(googleAvailable = false) }
             throw e
@@ -87,43 +111,51 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
             throw WebFailure("이 기기에 Google 계정이 없어요. 기기 설정에서 Google 계정을 추가해 주세요.")
         } catch (e: GetCredentialException) {
             throw WebFailure(retryMessage(AuthProvider.GOOGLE))
-        } ?: return@enter null
-        when (val result = client.googleSignIn(idToken, nonce)) {
-            is WebSignIn.SignedIn -> result.session
-            is WebSignIn.NeedsAccount -> {
-                saved[WEB_PROVIDER] = AuthProvider.GOOGLE.name
-                saved[WEB_LINK_TOKEN] = result.linkToken
-                saved[WEB_EMAIL] = result.email
-                mutable.update { it.copy(pending = PendingLink(AuthProvider.GOOGLE, result.email, auto = true)) }
-                null
-            }
-        }
+        } ?: return null
+        return client.googleSignIn(idToken, nonce)
     }
-
     /**
      * "Apple로 계속하기" (web flow): keeps a new verifier, sends its hash and opens the provider's page in a Custom Tab. Nothing
      * waits here: the result comes back as a `dearby://auth/<provider>` link through [returned], or never if the person leaves
      * the tab, so the phase is SIGNED_OUT again once the tab is open.
      */
-    suspend fun startWeb(provider: AuthProvider, browser: OAuthBrowser) = enter(provider) {
+    suspend fun startWeb(provider: AuthProvider, browser: OAuthBrowser) {
+        // Signed in already (설정 연결하기): the same page, remembered as a link so the redirect links instead of signing in.
+        if (session != null) return link(provider) { openWeb(provider, browser, linkMode = true); null }
+        enter(provider) { openWeb(provider, browser, linkMode = false); null }
+    }
+    private suspend fun openWeb(provider: AuthProvider, browser: OAuthBrowser, linkMode: Boolean) {
         val verifier = OAuthVerifier.create()
         val url = client.webStart(provider, OAuthVerifier.hash(verifier))
         if (!url.startsWith("https://")) throw AccountException(AccountError.UNAVAILABLE)
         saved[WEB_PROVIDER] = provider.name
         saved[WEB_VERIFIER] = verifier
+        saved[WEB_LINK_MODE] = linkMode
         try { browser.open(url) } catch (e: ActivityNotFoundException) {
             saved.remove<String>(WEB_VERIFIER)
+            saved.remove<Boolean>(WEB_LINK_MODE)
             throw WebFailure("브라우저를 열 수 없어요. 브라우저 앱을 확인해 주세요.")
         }
-        null
     }
 
     /** The provider's redirect. The verifier is single-use, so it is dropped whatever comes back; a code without one (or for another provider) is stale. */
     fun returned(redirect: AuthRedirect) {
         val verifier = saved.remove<String>(WEB_VERIFIER)
         val started = saved.get<String>(WEB_PROVIDER)
+        val linkMode = saved.remove<Boolean>(WEB_LINK_MODE) == true
         val provider = redirect.provider
         val retry = retryMessage(provider)
+        if (linkMode) {
+            // 설정 연결하기: the exchange's 202 link token links this account; a 200 is someone else's account and is dropped.
+            saved.remove<String>(WEB_PROVIDER)
+            when (redirect) {
+                is AuthRedirect.Cancelled -> mutable.update { it.copy(linkMessage = null) }
+                is AuthRedirect.Failed -> mutable.update { it.copy(linkMessage = retry) }
+                is AuthRedirect.Code -> if (verifier == null || started != provider.name || session == null) mutable.update { it.copy(linkMessage = retry) }
+                    else viewModelScope.launch { link(provider) { client.webExchange(provider, redirect.code, verifier) } }
+            }
+            return
+        }
         when (redirect) {
             is AuthRedirect.Cancelled -> mutable.update { it.copy(message = null) }
             is AuthRedirect.Failed -> mutable.update { it.copy(message = retry) }
@@ -208,9 +240,45 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
     private fun takeLinkToken(): String? {
         saved.remove<String>(WEB_EMAIL)
         saved.remove<String>(WEB_PROVIDER)
+        saved.remove<Boolean>(WEB_LINK_MODE)
         mutable.update { it.copy(pending = null) }
         return saved.remove<String>(WEB_LINK_TOKEN)
     }
+
+    /**
+     * 설정 연결하기 (contract "설정"): runs a provider prompt while signed in and links its answer to this account with
+     * `POST /v1/me/identities/{provider}`. The phase never changes: a 202 link token is spent on the link, a 200 means the provider
+     * account already belongs to another Dearby account (its tokens are dropped, best-effort logged out, never kept), and a
+     * closed prompt (null) ends quietly. [AccountState.linked] counts successes so 설정 reloads its rows; failures go to [AccountState.linkMessage].
+     */
+    private suspend fun link(provider: AuthProvider, prompt: suspend () -> WebSignIn?) {
+        mutable.update { it.copy(linking = true, linkMessage = null) }
+        var failure: String? = null
+        try {
+            when (val result = prompt()) {
+                null -> Unit
+                is WebSignIn.SignedIn -> {
+                    runCatching { client.logout(result.session.refreshToken) }
+                    failure = "이미 다른 Dearby 계정에 연결된 ${provider.label} 계정이에요."
+                }
+                is WebSignIn.NeedsAccount -> {
+                    try { authorized { client.linkIdentity(provider, result.linkToken, it) } } catch (e: AccountException) {
+                        throw when (e.error) {
+                            AccountError.BAD_REQUEST -> WebFailure(e.detail ?: "이미 다른 계정과 연결돼 있어서 연결하지 못했어요.")
+                            AccountError.UNAUTHORIZED -> WebFailure(retryMessage(provider))
+                            else -> e
+                        }
+                    }
+                    mutable.update { it.copy(linked = it.linked + 1) }
+                }
+            }
+        } catch (e: Exception) {
+            failure = failureMessage(e, provider)
+        } finally {
+            mutable.update { it.copy(linking = false, linkMessage = failure) }
+        }
+    }
+    fun clearLinkMessage() = mutable.update { it.copy(linkMessage = null) }
 
     private fun retryMessage(provider: AuthProvider) = "${provider.label} 로그인을 마치지 못했어요. 다시 시도해 주세요."
     private fun offMessage(provider: AuthProvider) = "지금은 ${provider.label} 로그인을 쓸 수 없어요."
@@ -227,31 +295,28 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
         var failure: String? = null
         try {
             prompt()?.let { keep(it); mutable.update { s -> s.copy(phase = AccountPhase.SIGNED_IN) } }
-        } catch (e: GetCredentialUnsupportedException) {
-            failure = UNSUPPORTED
-        } catch (e: CreateCredentialUnsupportedException) {
-            failure = UNSUPPORTED
-        } catch (e: NoCredentialException) {
-            failure = "이 기기에 Dearby 패스키가 없어요. 새 패스키로 시작해 주세요."
-        } catch (e: GetCredentialException) {
-            failure = "패스키로 로그인하지 못했어요. 잠시 후 다시 시도해 주세요."
-        } catch (e: CreateCredentialException) {
-            failure = "패스키를 만들지 못했어요. 잠시 후 다시 시도해 주세요."
-        } catch (e: AccountException) {
-            failure = when (e.error) {
-                AccountError.UNAUTHORIZED -> provider?.let(::retryMessage) ?: "패스키를 확인하지 못했어요. 다시 시도해 주세요."
-                AccountError.RATE_LIMITED -> "요청이 많아요. 잠시 후 다시 시도해 주세요."
-                AccountError.TURNED_OFF -> provider?.let(::offMessage) ?: "로그인하지 못했어요. 잠시 후 다시 시도해 주세요."
-                else -> "로그인하지 못했어요. 잠시 후 다시 시도해 주세요."
-            }
-        } catch (e: WebFailure) {
-            failure = e.message
-        } catch (e: JSONException) {
-            // A response or credential that is not the contract's JSON.
-            failure = "로그인하지 못했어요. 잠시 후 다시 시도해 주세요."
+        } catch (e: Exception) {
+            failure = failureMessage(e, provider)
         } finally {
             mutable.update { if (it.phase == AccountPhase.WORKING) it.copy(phase = AccountPhase.SIGNED_OUT, message = failure) else it }
         }
+    }
+    /** The sentence shown for a failed prompt (sign-in and 설정 연결하기 alike); anything unexpected (cancellation included) is rethrown. */
+    private fun failureMessage(e: Exception, provider: AuthProvider?): String = when (e) {
+        is GetCredentialUnsupportedException, is CreateCredentialUnsupportedException -> UNSUPPORTED
+        is NoCredentialException -> "이 기기에 Dearby 패스키가 없어요. 새 패스키로 시작해 주세요."
+        is GetCredentialException -> "패스키로 로그인하지 못했어요. 잠시 후 다시 시도해 주세요."
+        is CreateCredentialException -> "패스키를 만들지 못했어요. 잠시 후 다시 시도해 주세요."
+        is AccountException -> when (e.error) {
+            AccountError.UNAUTHORIZED -> provider?.let(::retryMessage) ?: "패스키를 확인하지 못했어요. 다시 시도해 주세요."
+            AccountError.RATE_LIMITED -> "요청이 많아요. 잠시 후 다시 시도해 주세요."
+            AccountError.TURNED_OFF -> provider?.let(::offMessage) ?: "로그인하지 못했어요. 잠시 후 다시 시도해 주세요."
+            else -> "로그인하지 못했어요. 잠시 후 다시 시도해 주세요."
+        }
+        is WebFailure -> e.message.orEmpty()
+        // A response or credential that is not the contract's JSON.
+        is JSONException -> "로그인하지 못했어요. 잠시 후 다시 시도해 주세요."
+        else -> throw e
     }
 
     /** Signing out always forgets this device's tokens, even if the server call fails. */
