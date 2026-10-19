@@ -28,7 +28,7 @@ struct ProfilePage: View {
                 editorScroll
             }
         }
-        .background(.white).toolbar(.hidden, for: .navigationBar)
+        .background(Color(.systemBackground)).toolbar(.hidden, for: .navigationBar)
         .task { await state.load() }
         // A reload (first load, save, restore, evidence) resets the form to the server state unless an edit is in flight.
         .onChange(of: state.profile, initial: true) { _, profile in
@@ -122,7 +122,7 @@ struct ProfilePage: View {
                 Button { save(form) } label: { if saving { ProgressView().tint(.white) } else { Text("저장") } }
                     .buttonStyle(DearbyButtonStyle()).disabled(saving).accessibilityIdentifier("profile-save")
             }
-        }.padding(.horizontal, 20).padding(.vertical, 12).background(.white).overlay(alignment: .top) { Rectangle().fill(DearbyStyle.line).frame(height: 1) }
+        }.padding(.horizontal, 20).padding(.vertical, 12).background(Color(.systemBackground)).overlay(alignment: .top) { Rectangle().fill(DearbyStyle.line).frame(height: 1) }
     }
     /// 원래대로: back to the loaded profile; after a 409 it also fetches the newer one.
     private func revert() {

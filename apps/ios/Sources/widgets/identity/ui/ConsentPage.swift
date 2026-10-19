@@ -26,7 +26,7 @@ struct ConsentPage: View {
                 .buttonStyle(DearbyButtonStyle()).disabled(!ready).padding(.horizontal, 24).padding(.vertical, 12)
                 .accessibilityIdentifier("consent-continue")
         }
-        .background(.white)
+        .background(Color(.systemBackground))
         .sheet(item: $opening) { url in SafariView(url: url).ignoresSafeArea() }
     }
     private func row(_ title: String, on: Binding<Bool>, page: String) -> some View {

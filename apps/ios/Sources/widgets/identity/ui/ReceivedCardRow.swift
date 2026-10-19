@@ -43,7 +43,7 @@ struct ReceivedCardListSample: View {
             ReceivedCardRow(name: "박준호", job: "백엔드 개발", badge: "12일 뒤 사라져요") {}
             Divider()
             ReceivedCardRow(name: "최유나", job: "커뮤니티 매니저", organization: "Let'Swift 준비위원회") {}
-        }.padding(.vertical, 20).background(.white)
+        }.padding(.vertical, 20).background(Color(.systemBackground))
     }
 }
 

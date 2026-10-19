@@ -41,8 +41,8 @@ struct IntroPage: View {
             }.frame(maxWidth: 420)
         }
         .padding(.horizontal, 24).padding(.bottom, 24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity).background(.white)
-        .tint(DearbyStyle.teal).preferredColorScheme(.light)
+        .frame(maxWidth: .infinity, maxHeight: .infinity).background(Color(.systemBackground))
+        .tint(DearbyStyle.teal)
         .sheet(isPresented: $signingIn) { NavigationStack { SignInSheet(account: account, signedIn: done) } }
         // Apple or Google sign-in from this page; while the sheet is open, the sheet finishes instead.
         .onChange(of: account.phase) { _, phase in if phase == .signedIn && !signingIn { done() } }

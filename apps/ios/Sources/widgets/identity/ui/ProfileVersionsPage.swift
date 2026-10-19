@@ -77,7 +77,7 @@ struct ProfileVersionPage: View {
                     Button { restore() } label: { if restoring { ProgressView().tint(.white) } else { Text("이 버전으로 되돌리기") } }
                         .buttonStyle(DearbyButtonStyle()).disabled(restoring)
                     Text("되돌리면 새 버전으로 저장되고 이력은 남아요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
-                }.padding(.horizontal, 20).padding(.vertical, 12).background(.white)
+                }.padding(.horizontal, 20).padding(.vertical, 12).background(Color(.systemBackground))
             }
         }
         .navigationTitle("버전 \(version)").navigationBarTitleDisplayMode(.inline)

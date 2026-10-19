@@ -141,7 +141,7 @@ struct ProfileFieldsSample: View {
                 extras.append(ProfileExtraContact(id: UUID().uuidString, kind: kind, value: ""))
             }
             HistoryPeriodFields(start: $start, end: $end, ongoing: $ongoing)
-        }.padding(20).background(.white)
+        }.padding(20).background(Color(.systemBackground))
     }
 }
 

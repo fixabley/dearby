@@ -64,7 +64,7 @@ struct CardComposer: View {
                 }.buttonStyle(DearbyButtonStyle()).disabled(publishing).accessibilityLabel(publishing ? "명함 발행 중" : "명함 발행")
             }
             Text("발행한 명함은 바뀌지 않아요. 고치면 새 명함으로 발행돼요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
-        }.padding(.horizontal, 20).padding(.vertical, 12).background(.white)
+        }.padding(.horizontal, 20).padding(.vertical, 12).background(Color(.systemBackground))
             .overlay(alignment: .top) { Rectangle().fill(DearbyStyle.line).frame(height: 1) }
     }
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {

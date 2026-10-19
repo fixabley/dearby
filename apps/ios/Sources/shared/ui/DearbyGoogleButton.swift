@@ -14,7 +14,7 @@ struct DearbyGoogleButton: View {
                 Text("Google로 계속하기").font(.dearby(.headline))
             }
             .foregroundStyle(DearbyStyle.ink).frame(maxWidth: .infinity, minHeight: 50)
-            .background(.white, in: RoundedRectangle(cornerRadius: 11))
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 11))
             .overlay(RoundedRectangle(cornerRadius: 11).stroke(DearbyStyle.line, lineWidth: 1))
             .opacity(isEnabled ? 1 : 0.45)
         }

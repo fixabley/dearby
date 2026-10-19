@@ -30,6 +30,6 @@ struct HomePage<Discovery: View, Mine: View, Cards: View, Wallet: View, Profile:
                 NavigationStack { profile }.toolbar(hidesTabs ? .hidden : .visible, for: .tabBar)
             }
         }
-        .tint(DearbyStyle.teal).foregroundStyle(DearbyStyle.ink).preferredColorScheme(.light)
+        .tint(DearbyStyle.teal).foregroundStyle(DearbyStyle.ink)
     }
 }

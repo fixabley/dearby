@@ -124,7 +124,7 @@ struct DearbyControlsGallery: View {
             DearbySearchField(prompt: "이름, 직무, 활동으로 검색", text: $collapsedQuery, expansion: 0.7)
             DearbyInlineField(label: "이름", text: $name, editing: editing, font: .dearby(.title2).bold())
             DearbyInlineField(label: "소개", text: $introduction, editing: editing, prompt: "한 줄 소개를 적어 주세요", multiline: true)
-        }.padding(20).background(.white)
+        }.padding(20).background(Color(.systemBackground))
     }
 }
 

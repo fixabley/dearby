@@ -39,7 +39,7 @@ struct CardComposerPage: View {
                 ProgressView("프로필을 불러오는 중이에요").frame(maxHeight: .infinity).tint(DearbyStyle.teal)
             }
         }
-        .background(.white)
+        .background(Color(.systemBackground))
         .navigationTitle(model.prefill == nil ? "명함 만들기" : "명함 고치기").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
         .task { await model.load() }

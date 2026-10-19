@@ -18,7 +18,7 @@ struct ActivityProgressRow: View {
                 }
                 StageTrack(progress: progress)
             }
-            .padding(14).background(.white, in: RoundedRectangle(cornerRadius: 12))
+            .padding(14).background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(DearbyStyle.line))
         }.buttonStyle(.plain).accessibilityIdentifier("activity-\(activity.id)")
     }

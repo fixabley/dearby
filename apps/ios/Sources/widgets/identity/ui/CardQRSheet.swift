@@ -43,7 +43,7 @@ struct CardQRSheet: View {
                 .font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
             Spacer(minLength: 0)
         }
-        .padding(20).frame(maxWidth: .infinity, maxHeight: .infinity).background(.white)
+        .padding(20).frame(maxWidth: .infinity, maxHeight: .infinity).background(Color(.systemBackground))
         .navigationTitle("QR 보이기").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
         .onAppear(perform: brighten).onDisappear(perform: restore)

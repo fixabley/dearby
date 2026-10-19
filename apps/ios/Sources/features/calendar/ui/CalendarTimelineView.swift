@@ -46,8 +46,8 @@ struct CalendarTimelineView: View {
                             path.addLine(to: CGPoint(x: geometry.size.width, y: y(date)))
                         }.stroke(orange, style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
                     }
-                    Text("겹치는 구간").font(.caption2.bold()).foregroundStyle(Color(red: 0.58, green: 0.27, blue: 0))
-                        .padding(.horizontal, 5).padding(.vertical, 3).background(.white.opacity(0.88), in: Capsule())
+                    Text("겹치는 구간").font(.caption2.bold()).foregroundStyle(orange)
+                        .padding(.horizontal, 5).padding(.vertical, 3).background(Color(.systemBackground).opacity(0.88), in: Capsule())
                         .position(x: axis + column, y: (y(item.start) + y(item.end)) / 2)
                 }
             }.frame(height: height)
@@ -72,5 +72,7 @@ struct CalendarTimelineView: View {
             }
         }.padding(8).frame(width: width, height: y(min(end, item.gridEnd)) - y(max(start, item.gridStart)), alignment: .topLeading)
             .background(color, in: RoundedRectangle(cornerRadius: 8))
+            // The pastel fills are fixed light colours, so their labels resolve as light-mode text in dark mode too.
+            .environment(\.colorScheme, .light)
     }
 }

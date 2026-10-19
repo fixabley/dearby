@@ -38,14 +38,14 @@ struct ActivityDetailView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal).padding(.vertical, 8)
-                        .background(Color(red: 0.9, green: 0.97, blue: 0.95), ignoresSafeAreaEdges: [])
+                        .background(DearbyStyle.mint, ignoresSafeAreaEdges: [])
                     }
                 }
             }
         }
         .navigationTitle("활동 상세").navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
-        .toolbarBackground(.white, for: .navigationBar).toolbarBackground(.visible, for: .navigationBar)
+        .toolbarBackground(Color(.systemBackground), for: .navigationBar).toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             if let url = activity?.officialURL {
                 ShareLink(item: url) { Image(systemName: "square.and.arrow.up") }.accessibilityLabel("활동 공식 안내 링크 공유")
@@ -54,7 +54,7 @@ struct ActivityDetailView: View {
         .sheet(isPresented: $showCalendar) {
             if let activity { CalendarConflictView(schedules: activity.schedules) }
         }
-        .background(.white).tint(DearbyStyle.teal)
+        .background(Color(.systemBackground)).tint(DearbyStyle.teal)
         .confirmationDialog("신청 상태", isPresented: $showReport, titleVisibility: .visible) {
             Button("신청했어요") { state.apply(activityID, true) }
             Button("신청하지 않았어요") { state.apply(activityID, false) }
@@ -116,7 +116,7 @@ struct ActivityDetailView: View {
                     return .systemAction(opened)
                 })
                 .padding(.horizontal, 20).padding(.vertical, 12)
-            }.background(.white)
+            }.background(Color(.systemBackground))
         }
     }
     /// 장소 (contract "활동 장소"): the curated place's name and address open Apple Maps; otherwise the collected text, if any.

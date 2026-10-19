@@ -105,7 +105,7 @@ struct MyCardsPage: View {
     private func tile(selected: Bool, action: @escaping () -> Void, @ViewBuilder label: () -> some View) -> some View {
         Button(action: action) {
             label().padding(14).frame(maxWidth: .infinity, minHeight: 84, alignment: .leading)
-                .background(selected ? DearbyStyle.mint : .white, in: RoundedRectangle(cornerRadius: 12))
+                .background(selected ? DearbyStyle.mint : Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(selected ? DearbyStyle.teal : DearbyStyle.line, lineWidth: selected ? 1.5 : 1))
                 .contentShape(Rectangle())
         }.buttonStyle(.plain).accessibilityAddTraits(selected ? .isSelected : [])

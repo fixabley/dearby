@@ -31,7 +31,7 @@ struct CardView: View {
             }
         }
         .padding(20).frame(maxWidth: .infinity, alignment: .leading)
-        .background(.white, in: RoundedRectangle(cornerRadius: 20))
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20))
         .overlay(RoundedRectangle(cornerRadius: 20).stroke(DearbyStyle.line))
     }
     private var header: some View {
