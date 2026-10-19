@@ -44,8 +44,9 @@ object CollectionPrompts {
         - schedules[].kind: 서류·신청 마감은 DEADLINE, 결과 발표는 ANNOUNCEMENT, 면접은 INTERVIEW, 테스트·챌린지·교육·행사·세션은 EVENT. 모르면 EVENT.
         - 본문에 적힌 내용만 쓴다. 추측하지 않는다. 모르는 값은 null로 둔다.
         - 시각은 본문에 시각까지 있을 때만 ISO 8601 오프셋 형식(예: 2026-10-08T19:00:00+09:00)으로 쓴다(recruitmentStartAt·recruitmentEndAt, schedules[].startAt·endAt).
+        - 두 기간을 구분한다. **모집 기간**(recruitmentStartAt·EndAt 또는 recruitmentStartDate·EndDate)은 지원서·신청을 받는 기간이다(본문의 모집·접수·지원·신청·원서·마감 낱말이 붙은 날짜). **활동 기간**(dateLabel·startDate·endDate)은 교육·과정·행사·운영이 실제로 진행되는 기간이다(교육 기간·과정 기간·행사 일시·운영 기간·개최일). 같은 날짜를 두 기간에 함께 넣지 않는다. 본문에 모집 기간만 있으면 모집 기간 필드만 채우고 dateLabel은 빈 문자열, startDate·endDate는 null로 둔다. 본문에 활동 기간만 있으면 모집 기간 필드는 모두 null이다. 어느 쪽인지 알 수 없는 날짜는 모집 기간에 넣지 않는다.
         - 기간 필드에는 날짜만 적는다. 날짜만 있으면 startDate·endDate(yyyy-MM-dd, 끝 날짜 포함)를 채운다: 활동 기간은 startDate·endDate, 모집 기간은 recruitmentStartDate·recruitmentEndDate, 개별 일정은 schedules[].startDate·endDate. 하루짜리면 둘을 같게 쓴다. 연도가 없으면 본문의 다른 날짜로 알 수 있을 때만 쓰고 모르면 null.
-        - dateLabel은 원문 문구 그대로다. "2026 신입생 모집"처럼 날짜가 아닌 문구는 dateLabel에만 두고 startDate·endDate는 null로 둔다.
+        - dateLabel은 활동 기간의 원문 문구 그대로다(모집 기간 문구를 넣지 않는다). "2026 신입생 모집"처럼 날짜가 아닌 문구는 dateLabel에만 두고 startDate·endDate는 null로 둔다.
         - 다른 프로그램의 활동은 뽑지 않는다. 프로그램 이름과 다른 프로그램(예: 같은 회사의 다른 과정)의 기수가 본문에 있어도 제외한다.
         - 요청에 "활동으로 만들지 않을 이름"이 있으면 그 이름의 활동은 뽑지 않고, "이미 있는 활동의 다른 표기"가 있으면 그 표기 대신 정본 이름을 name으로 쓴다.
         - 요청의 "참고(이전 기수)" 값은 힌트다. 본문에 같은 내용이 있으면 그대로 쓰고, 본문에 없으면 null로 둔다. 본문에 없는 내용을 참고에서 베끼지 않는다.
