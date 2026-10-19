@@ -10,7 +10,9 @@ import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Primary
 import org.springframework.context.annotation.Import
+import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
+import org.springframework.mock.web.MockMultipartFile
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt
@@ -18,6 +20,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MockHttpServletRequestDsl
 import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.multipart
 import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.put
@@ -627,5 +630,39 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         assertEquals("PUBLISHED", published["publicationStatus"].asString())
         mvc.patch("/v1/admin/activities/999999/publication-status") { asAdmin(); body("""{"publicationStatus":"PUBLISHED"}""") }
             .andExpect { status { isNotFound() } }
+    }
+
+    // 프로그램 로고(admin-v1.md "프로그램 로고"): PNG·JPEG·WebP 1MB 이하만, 있으면 바꾸고, 지우기는 없어도 204
+    @Test
+    fun `프로그램 로고는 올리면 logoUrl이 목록에 보이고, 종류·크기가 맞지 않으면 400, 지우면 없어진다`() {
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        val url = "/v1/admin/programs/$programId/logo"
+        fun upload(path: String, type: String, bytes: ByteArray) = mvc.multipart(HttpMethod.PUT, path) { file(MockMultipartFile("file", "logo", type, bytes)); asAdmin() }
+        fun listed(): JsonNode = read(mvc.get("/v1/admin/programs?q=Let") { asAdmin() })["items"].single()["logoUrl"]
+        try {
+            mvc.get(url) { asAdmin() }.andExpect { status { isNotFound() } }
+            assertEquals(true, listed().isNull)
+            val bad = read(upload(url, "text/plain", byteArrayOf(1)).andExpect { status { isBadRequest() } })
+            assertEquals("로고는 PNG·JPEG·WebP 1MB 이하여야 합니다", bad["detail"].asString())
+            upload(url, "image/png", ByteArray(1024 * 1024 + 1)).andExpect { status { isBadRequest() } }
+            upload("/v1/admin/programs/999999/logo", "image/png", byteArrayOf(1)).andExpect { status { isNotFound() } }
+            mvc.multipart(HttpMethod.PUT, url) { file(MockMultipartFile("file", "logo", "image/png", byteArrayOf(1))) }.andExpect { status { isUnauthorized() } }
+            val saved = read(upload(url, "image/png", byteArrayOf(1, 2, 3)).andExpect { status { isOk() } })
+            val logoUrl = saved["logoUrl"].asString()
+            assertEquals(true, Regex("/v1/programs/$programId/logo\\?v=\\d+").matches(logoUrl))
+            assertEquals(logoUrl, listed().asString())
+            val image = mvc.get(url) { asAdmin() }.andExpect { status { isOk() } }.andReturn().response
+            assertEquals("image/png", image.contentType)
+            assertEquals(listOf<Byte>(1, 2, 3), image.contentAsByteArray.toList())
+            // 있으면 바꾼다(종류도 함께)
+            upload(url, "image/webp", byteArrayOf(9)).andExpect { status { isOk() } }
+            assertEquals("image/webp", mvc.get(url) { asAdmin() }.andReturn().response.contentType)
+            mvc.delete(url) { asAdmin() }.andExpect { status { isNoContent() } }
+            mvc.delete(url) { asAdmin() }.andExpect { status { isNoContent() } }
+            mvc.get(url) { asAdmin() }.andExpect { status { isNotFound() } }
+            assertEquals(true, listed().isNull)
+        } finally {
+            jdbc.sql("delete from program_logos where program_id = ?").param(programId).update()
+        }
     }
 }

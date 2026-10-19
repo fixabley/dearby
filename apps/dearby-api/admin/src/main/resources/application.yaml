@@ -8,6 +8,10 @@ spring:
   threads:
     virtual:
       enabled: true
+  servlet:
+    multipart:
+      max-file-size: 2MB # 프로그램 로고(admin-v1.md "프로그램 로고"). 1MB 제한은 서비스가 본다
+      max-request-size: 3MB
 
 # 공통 인증(auth 모듈) 설정. api와 같은 값이어야 같은 토큰·패스키를 쓴다(서명 키 파일도 같은 것)
 dearby:

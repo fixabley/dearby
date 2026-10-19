@@ -10,9 +10,11 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.COLLECTION_WATCHLIST__COLLECT
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAMS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAMS_SOURCE_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_CONTACTS__PROGRAM_CONTACTS_PROGRAM_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_LOGOS__PROGRAM_LOGOS_PROGRAM_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_TAGS__PROGRAM_TAGS_PROGRAM_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist.CollectionWatchlistPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts.ProgramContactsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramLogos.ProgramLogosPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramTags.ProgramTagsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Tags.TagsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProgramsRecord
@@ -204,6 +206,22 @@ open class Programs(
 
     val programContacts: ProgramContactsPath
         get(): ProgramContactsPath = programContacts()
+
+    private lateinit var _programLogos: ProgramLogosPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.program_logos</code> table
+     */
+    fun programLogos(): ProgramLogosPath {
+        if (!this::_programLogos.isInitialized)
+            _programLogos = ProgramLogosPath(this, null, PROGRAM_LOGOS__PROGRAM_LOGOS_PROGRAM_ID_FKEY.inverseKey)
+
+        return _programLogos;
+    }
+
+    val programLogos: ProgramLogosPath
+        get(): ProgramLogosPath = programLogos()
 
     private lateinit var _programTags: ProgramTagsPath
 

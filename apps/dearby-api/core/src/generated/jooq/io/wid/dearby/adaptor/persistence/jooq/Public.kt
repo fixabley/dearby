@@ -31,6 +31,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions
 import io.wid.dearby.adaptor.persistence.jooq.tables.Profiles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCollectionSettings
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramLogos
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaffRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramTags
@@ -205,6 +206,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val PROGRAM_CONTACTS: ProgramContacts get() = ProgramContacts.PROGRAM_CONTACTS
 
     /**
+     * The table <code>public.program_logos</code>.
+     */
+    val PROGRAM_LOGOS: ProgramLogos get() = ProgramLogos.PROGRAM_LOGOS
+
+    /**
      * The table <code>public.program_staff</code>.
      */
     val PROGRAM_STAFF: ProgramStaff get() = ProgramStaff.PROGRAM_STAFF
@@ -314,6 +320,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         Profiles.PROFILES,
         ProgramCollectionSettings.PROGRAM_COLLECTION_SETTINGS,
         ProgramContacts.PROGRAM_CONTACTS,
+        ProgramLogos.PROGRAM_LOGOS,
         ProgramStaff.PROGRAM_STAFF,
         ProgramStaffRoles.PROGRAM_STAFF_ROLES,
         ProgramTags.PROGRAM_TAGS,

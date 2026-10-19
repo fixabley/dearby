@@ -24,6 +24,7 @@ data class ProgramSummary(
     val category: ActivityCategory? = null, // 프로그램 기본 종류(admin-v1.md "프로그램 기본 종류")
     val latestActivityAt: OffsetDateTime? = null, // 게시 활동의 가장 최근 활동 시작(native-v1.md "모집 중인 프로그램만 보기"). 없으면 null
     val tags: List<Tag> = emptyList(), // 프로그램 태그가 있으면 그것, 없으면 열린 활동 태그의 합집합(최대 6개, 사전 순)(native-v1.md "태그")
+    val logoUrl: String? = null, // 프로그램 로고 공개 경로(native-v1.md "프로그램 로고"), 없으면 null
 )
 
 // q는 프로그램 이름·영문 이름, 조직 이름, 열린 활동 이름에 부분 일치(대소문자 무시). cursor는 정렬된 목록의 위치(이전 nextCursor)

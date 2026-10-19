@@ -363,4 +363,25 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         mvc.get("/v1/activities?size=0").andExpect { status { isBadRequest() } }
         mvc.get("/v1/activities?size=101").andExpect { status { isBadRequest() } }
     }
+
+    // 프로그램 로고(native-v1.md "프로그램 로고"): 묶음의 logoUrl은 /v1/programs/{id}/logo?v={updated_at epoch 초}, 공개 GET은 인증 없이 영구 캐시 헤더로 낸다
+    @Test
+    fun `프로그램 로고가 있으면 묶음에 logoUrl이 오고, 공개 경로는 인증 없이 이미지를 준다`() {
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        fun summary(): JsonNode = json.readTree(mvc.get("/v1/discovery/programs?openOnly=false&q=swift").andExpect { status { isOk() } }.andReturn().response.contentAsString)["items"].single()
+        assertEquals(true, summary()["logoUrl"].isNull)
+        mvc.get("/v1/programs/$programId/logo").andExpect { status { isNotFound() } }
+        jdbc.sql("insert into program_logos (program_id, content_type, data, updated_at) values (?, 'image/png', ?, timestamptz '2026-10-19T12:00:00Z')")
+            .param(programId).param(byteArrayOf(1, 2, 3)).update()
+        try {
+            val v = java.time.Instant.parse("2026-10-19T12:00:00Z").epochSecond
+            assertEquals("/v1/programs/$programId/logo?v=$v", summary()["logoUrl"].asString())
+            val response = mvc.get("/v1/programs/$programId/logo?v=$v").andExpect { status { isOk() } }.andReturn().response
+            assertEquals("image/png", response.contentType)
+            assertEquals("public, max-age=31536000, immutable", response.getHeader(HttpHeaders.CACHE_CONTROL))
+            assertEquals(listOf<Byte>(1, 2, 3), response.contentAsByteArray.toList())
+        } finally {
+            jdbc.sql("delete from program_logos where program_id = ?").param(programId).update()
+        }
+    }
 }

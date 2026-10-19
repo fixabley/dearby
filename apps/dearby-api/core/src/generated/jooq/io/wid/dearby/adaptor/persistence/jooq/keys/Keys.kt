@@ -32,6 +32,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions
 import io.wid.dearby.adaptor.persistence.jooq.tables.Profiles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCollectionSettings
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramLogos
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaffRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramTags
@@ -75,6 +76,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProfileVersionsReco
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProfilesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProgramCollectionSettingsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProgramContactsRecord
+import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProgramLogosRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProgramStaffRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProgramStaffRolesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProgramTagsRecord
@@ -137,6 +139,7 @@ val PROFILE_VERSIONS_PKEY: UniqueKey<ProfileVersionsRecord> = Internal.createUni
 val PROFILES_PKEY: UniqueKey<ProfilesRecord> = Internal.createUniqueKey(Profiles.PROFILES, DSL.name("profiles_pkey"), arrayOf(Profiles.PROFILES.USER_ID), true)
 val PROGRAM_COLLECTION_SETTINGS_PKEY: UniqueKey<ProgramCollectionSettingsRecord> = Internal.createUniqueKey(ProgramCollectionSettings.PROGRAM_COLLECTION_SETTINGS, DSL.name("program_collection_settings_pkey"), arrayOf(ProgramCollectionSettings.PROGRAM_COLLECTION_SETTINGS.PROGRAM_ID), true)
 val PROGRAM_CONTACTS_PKEY: UniqueKey<ProgramContactsRecord> = Internal.createUniqueKey(ProgramContacts.PROGRAM_CONTACTS, DSL.name("program_contacts_pkey"), arrayOf(ProgramContacts.PROGRAM_CONTACTS.ID), true)
+val PROGRAM_LOGOS_PKEY: UniqueKey<ProgramLogosRecord> = Internal.createUniqueKey(ProgramLogos.PROGRAM_LOGOS, DSL.name("program_logos_pkey"), arrayOf(ProgramLogos.PROGRAM_LOGOS.PROGRAM_ID), true)
 val PROGRAM_STAFF_PKEY: UniqueKey<ProgramStaffRecord> = Internal.createUniqueKey(ProgramStaff.PROGRAM_STAFF, DSL.name("program_staff_pkey"), arrayOf(ProgramStaff.PROGRAM_STAFF.ID), true)
 val PROGRAM_STAFF_ROLES_PKEY: UniqueKey<ProgramStaffRolesRecord> = Internal.createUniqueKey(ProgramStaffRoles.PROGRAM_STAFF_ROLES, DSL.name("program_staff_roles_pkey"), arrayOf(ProgramStaffRoles.PROGRAM_STAFF_ROLES.PROGRAM_STAFF_ID, ProgramStaffRoles.PROGRAM_STAFF_ROLES.ROLE_ID), true)
 val PROGRAM_TAGS_PKEY: UniqueKey<ProgramTagsRecord> = Internal.createUniqueKey(ProgramTags.PROGRAM_TAGS, DSL.name("program_tags_pkey"), arrayOf(ProgramTags.PROGRAM_TAGS.PROGRAM_ID, ProgramTags.PROGRAM_TAGS.TAG_ID), true)
@@ -180,6 +183,7 @@ val PROFILE_HISTORIES__PROFILE_HISTORIES_USER_ID_FKEY: ForeignKey<ProfileHistori
 val PROFILE_JOBS__PROFILE_JOBS_USER_ID_FKEY: ForeignKey<ProfileJobsRecord, UsersRecord> = Internal.createForeignKey(ProfileJobs.PROFILE_JOBS, DSL.name("profile_jobs_user_id_fkey"), arrayOf(ProfileJobs.PROFILE_JOBS.USER_ID), io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY, arrayOf(Users.USERS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val PROFILE_VERSIONS__PROFILE_VERSIONS_USER_ID_FKEY: ForeignKey<ProfileVersionsRecord, UsersRecord> = Internal.createForeignKey(ProfileVersions.PROFILE_VERSIONS, DSL.name("profile_versions_user_id_fkey"), arrayOf(ProfileVersions.PROFILE_VERSIONS.USER_ID), io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY, arrayOf(Users.USERS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val PROGRAM_CONTACTS__PROGRAM_CONTACTS_PROGRAM_ID_FKEY: ForeignKey<ProgramContactsRecord, ProgramsRecord> = Internal.createForeignKey(ProgramContacts.PROGRAM_CONTACTS, DSL.name("program_contacts_program_id_fkey"), arrayOf(ProgramContacts.PROGRAM_CONTACTS.PROGRAM_ID), io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAMS_PKEY, arrayOf(Programs.PROGRAMS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
+val PROGRAM_LOGOS__PROGRAM_LOGOS_PROGRAM_ID_FKEY: ForeignKey<ProgramLogosRecord, ProgramsRecord> = Internal.createForeignKey(ProgramLogos.PROGRAM_LOGOS, DSL.name("program_logos_program_id_fkey"), arrayOf(ProgramLogos.PROGRAM_LOGOS.PROGRAM_ID), io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAMS_PKEY, arrayOf(Programs.PROGRAMS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val PROGRAM_STAFF_ROLES__PROGRAM_STAFF_ROLES_PROGRAM_STAFF_ID_FKEY: ForeignKey<ProgramStaffRolesRecord, ProgramStaffRecord> = Internal.createForeignKey(ProgramStaffRoles.PROGRAM_STAFF_ROLES, DSL.name("program_staff_roles_program_staff_id_fkey"), arrayOf(ProgramStaffRoles.PROGRAM_STAFF_ROLES.PROGRAM_STAFF_ID), io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_STAFF_PKEY, arrayOf(ProgramStaff.PROGRAM_STAFF.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val PROGRAM_TAGS__PROGRAM_TAGS_PROGRAM_ID_FKEY: ForeignKey<ProgramTagsRecord, ProgramsRecord> = Internal.createForeignKey(ProgramTags.PROGRAM_TAGS, DSL.name("program_tags_program_id_fkey"), arrayOf(ProgramTags.PROGRAM_TAGS.PROGRAM_ID), io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAMS_PKEY, arrayOf(Programs.PROGRAMS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val PROGRAM_TAGS__PROGRAM_TAGS_TAG_ID_FKEY: ForeignKey<ProgramTagsRecord, TagsRecord> = Internal.createForeignKey(ProgramTags.PROGRAM_TAGS, DSL.name("program_tags_tag_id_fkey"), arrayOf(ProgramTags.PROGRAM_TAGS.TAG_ID), io.wid.dearby.adaptor.persistence.jooq.keys.TAGS_PKEY, arrayOf(Tags.TAGS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)

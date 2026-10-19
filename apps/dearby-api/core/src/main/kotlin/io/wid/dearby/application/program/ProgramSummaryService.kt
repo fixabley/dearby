@@ -2,6 +2,7 @@ package io.wid.dearby.application.program
 
 import io.wid.dearby.application.organization.OrganizationRepository
 import io.wid.dearby.domain.InvalidInputException
+import io.wid.dearby.domain.ProgramLogo
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.OffsetDateTime
@@ -13,6 +14,7 @@ class ProgramSummaryService(
     private val summaries: ProgramSummaryRepository,
     private val programs: ProgramRepository,
     private val organizations: OrganizationRepository,
+    private val logos: ProgramLogoRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -30,7 +32,12 @@ class ProgramSummaryService(
         val page = found.take(condition.size)
         // 묶음 머리의 태그(native-v1.md "태그"): 프로그램 태그, 없으면 열린 활동 태그의 합집합
         val tags = summaries.tagsByProgram(page.map { it.id }, now)
-        return ProgramSummaryPage(page.map { it.copy(tags = tags[it.id].orEmpty()) }, if (found.size > condition.size) condition.cursor + condition.size else null)
+        // 로고(native-v1.md "프로그램 로고"): 대상자 필터 경로도 거치도록 여기서 한 번에 찾는다
+        val logoUpdatedAt = logos.updatedAtByProgram(page.map { it.id })
+        return ProgramSummaryPage(
+            page.map { it.copy(tags = tags[it.id].orEmpty(), logoUrl = logoUpdatedAt[it.id]?.let { at -> ProgramLogo.url(it.id, at) }) },
+            if (found.size > condition.size) condition.cursor + condition.size else null,
+        )
     }
 
     // 대상자 필터(native-v1.md "대상자 조건"): 열린 활동을 1차(SQL)·2차(JSON op) 판정으로 거른 뒤 그 활동들로 묶음을 만든다.

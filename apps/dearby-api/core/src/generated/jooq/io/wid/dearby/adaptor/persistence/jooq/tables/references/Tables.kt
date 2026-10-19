@@ -32,6 +32,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions
 import io.wid.dearby.adaptor.persistence.jooq.tables.Profiles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCollectionSettings
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramLogos
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaffRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramTags
@@ -185,6 +186,11 @@ val PROGRAM_COLLECTION_SETTINGS: ProgramCollectionSettings = ProgramCollectionSe
  * The table <code>public.program_contacts</code>.
  */
 val PROGRAM_CONTACTS: ProgramContacts = ProgramContacts.PROGRAM_CONTACTS
+
+/**
+ * The table <code>public.program_logos</code>.
+ */
+val PROGRAM_LOGOS: ProgramLogos = ProgramLogos.PROGRAM_LOGOS
 
 /**
  * The table <code>public.program_staff</code>.

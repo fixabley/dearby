@@ -14,6 +14,7 @@ import io.wid.dearby.domain.collection.CollectionUrlTemplate
 import java.time.LocalDate
 import java.time.ZoneId
 import io.wid.dearby.application.organization.OrganizationRepository
+import io.wid.dearby.application.program.ProgramLogoRepository
 import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.application.tag.TagRepository
 import io.wid.dearby.domain.*
@@ -33,6 +34,7 @@ class AdminActivityInfoService(
     private val curations: ActivityCurationRepository,
     private val drafts: ActivityDraftRepository,
     private val tags: TagRepository,
+    private val logos: ProgramLogoRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -360,6 +362,7 @@ class AdminActivityInfoService(
         val settingsById = settings.findAllByProgramId(ids)
         val lastSucceeded = settings.lastSucceededOn(ids)
         val lastFetched = settings.lastFetchedUrls(ids)
+        val logoUpdatedAt = logos.updatedAtByProgram(ids)
         val today = LocalDate.now(SEOUL)
         return page.map {
             val collection = settingsById[it.id] ?: CollectionSettings.DEFAULT
@@ -374,6 +377,7 @@ class AdminActivityInfoService(
                 previousRound = previousRound,
                 previewUrls = collection.officialUrl?.let { url -> CollectionUrlTemplate.expand(url, today, previousRound) }.orEmpty(),
                 lastFetchedUrls = lastFetched[it.id].orEmpty(),
+                logoUrl = logoUpdatedAt[it.id]?.let { at -> ProgramLogo.url(it.id, at) },
             )
         }
     }
