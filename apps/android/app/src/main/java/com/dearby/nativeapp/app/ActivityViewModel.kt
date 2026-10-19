@@ -201,6 +201,7 @@ private fun ActivityModel.toState(now: Instant) = ActivityState(
     },
     safeHttpsUrl(officialUrl), applyUrl(now), period(), recruitmentEnd, schedules.firstOrNull()?.startAt,
     eligibility = eligibility?.lines() ?: emptyList(),
+    category = category?.label, categoryOrder = category?.ordinal ?: Int.MAX_VALUE,
 )
 /**
  * The stage track with the user's [marks]: a 통과 mark makes the stage past, the earliest other stage not over by [today]

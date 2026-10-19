@@ -30,6 +30,8 @@ data class ActivityModel(
     val activitySchedule: StageSchedule?,
     /** 대상자 조건; null when the activity has none or the JSON could not be read. */
     val eligibility: EligibilityGroup? = null,
+    /** 활동 종류; null = 미분류 (contract "활동 종류(category)"). */
+    val category: ActivityCategory? = null,
 ) {
     /** Only schedules with both ends can be compared on a calendar. */
     val schedules get() = stageSchedules.mapNotNull { if (it.startAt == null || it.endAt == null) null else ScheduleModel(it.title, it.startAt, it.endAt, it.timeZone) }

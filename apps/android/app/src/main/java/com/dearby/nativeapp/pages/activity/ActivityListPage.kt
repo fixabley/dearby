@@ -16,6 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
@@ -62,10 +64,17 @@ import com.dearby.nativeapp.widgets.activity.programHeader.ProgramHeaderRow
                                 ProgramPhase.LOADED -> {
                                     val activities = loaded.ids.mapNotNull(state.known::get)
                                     if (activities.isEmpty()) item(key = "empty-" + program.id) { Text("지금 열린 활동이 없어요.", Modifier.padding(start = 12.dp), color = Quiet, style = MaterialTheme.typography.bodySmall) }
-                                    items(activities, key = { "activity-" + it.id }) { activity ->
-                                        ActivityCard(activity.title, activity.organization, activity.summary, activity.status,
-                                            activity.date.ifEmpty { "일정 미확인" } + " · " + (activity.location ?: "장소 미확인"), { open(activity.id) },
-                                            Modifier.padding(start = 12.dp), imageUrl = activity.imageUrl, applyUrl = activity.applyUrl, recruitmentEnd = activity.recruitmentEnd, onApply = openLink)
+                                    // 활동 종류별 묶음 (contract "활동 종류"): contract order, 미분류 last; no heading when only one kind.
+                                    val groups = activities.groupBy { it.category }.entries.sortedBy { (_, group) -> group.first().categoryOrder }
+                                    groups.forEach { (category, group) ->
+                                        if (groups.size > 1) item(key = "category-" + program.id + "-" + (category ?: "none")) {
+                                            Text(category ?: "미분류", Modifier.padding(start = 12.dp, top = 4.dp).semantics { heading() }, color = Quiet, style = MaterialTheme.typography.labelLarge)
+                                        }
+                                        items(group, key = { "activity-" + it.id }) { activity ->
+                                            ActivityCard(activity.title, activity.organization, activity.summary, activity.status,
+                                                activity.date.ifEmpty { "일정 미확인" } + " · " + (activity.location ?: "장소 미확인"), { open(activity.id) },
+                                                Modifier.padding(start = 12.dp), imageUrl = activity.imageUrl, applyUrl = activity.applyUrl, recruitmentEnd = activity.recruitmentEnd, onApply = openLink)
+                                        }
                                     }
                                 }
                             }
