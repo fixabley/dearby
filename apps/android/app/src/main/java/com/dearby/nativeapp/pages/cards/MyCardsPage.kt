@@ -40,7 +40,7 @@ data class MyCardsState(
 
 /**
  * 내 명함 tab (contract "명함 표현" 2026-10-18): a 2-column grid whose first tile is `+ 새 명함`; tapping a tile [select]s it and the card
- * shows under the grid with `QR 보이기` ([showQr], contract "명함 교환"), `이 명함 고치기` ([edit] republishes it with its template) and `이 명함 지우기` ([delete] after a confirmation
+ * shows under the grid with `QR 보이기` ([showQr], contract "명함 교환"), `이 명함 고치기` ([edit] opens the composer prefilled and saves onto the same card, contract "명함 고치기는 같은 명함을 수정" 2026-10-20) and `이 명함 지우기` ([delete] after a confirmation
  * dialog; the public link stops working). The grid is the page's only scroller.
  */
 @Composable fun MyCardsPage(
@@ -68,7 +68,7 @@ data class MyCardsState(
                     item(span = { GridItemSpan(maxLineSpan) }) { CardContent(card, Modifier.padding(top = 10.dp), onContact = contact) }
                     item(span = { GridItemSpan(maxLineSpan) }) { DearbyButton({ showQr(card.id) }, Modifier.fillMaxWidth()) { Text("QR 보이기") } }
                     item(span = { GridItemSpan(maxLineSpan) }) { DearbyOutlineButton({ edit(card.id) }, Modifier.fillMaxWidth()) { Text("이 명함 고치기") } }
-                    item(span = { GridItemSpan(maxLineSpan) }) { Text("명함을 고치면 같은 꾸밈으로 새 명함을 발행해요. 이전 명함은 그대로 남아요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
+                    item(span = { GridItemSpan(maxLineSpan) }) { Text("고친 내용은 이 명함에 바로 반영돼요. QR과 링크는 그대로예요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         TextButton({ confirmDelete = card.id }, Modifier.fillMaxWidth()) { Text("이 명함 지우기", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.SemiBold) }
                     }

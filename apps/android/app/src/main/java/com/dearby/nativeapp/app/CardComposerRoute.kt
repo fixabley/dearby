@@ -14,7 +14,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.card.cardContent.CardComposer
 
-/** Makes a real card from the saved profile: choose what to show, publish (the body is the built-in template). Signing in is asked for when the composer opens signed out. */
+/** Makes a real card from the saved profile: choose what to show, publish (the body is the built-in template) — or, opened from `이 명함 고치기`, saves onto that same card (contract "명함 고치기는 같은 명함을 수정"). Signing in is asked for when the composer opens signed out. */
 @Composable fun CardComposerRoute(model: CardPublishViewModel, account: AccountViewModel, close: () -> Unit) {
     val state by model.state.collectAsStateWithLifecycle()
     val auth by account.state.collectAsStateWithLifecycle()
@@ -26,7 +26,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardComposer
         val draft = state.draft
         when {
             // Result, sign-in and "no profile yet" states are CenteredMessages (contract "비스크롤 화면 배치·CTA"): no card, one text scale, CTA at the bottom.
-            phase is PublishPhase.Published -> CenteredMessage(Icons.Rounded.CheckCircle, "명함을 발행했어요", "${phase.card.profileName} · ${phase.card.name}", Modifier.fillMaxSize(),
+            phase is PublishPhase.Published -> CenteredMessage(Icons.Rounded.CheckCircle, if (state.prefill == null) "명함을 발행했어요" else "고친 내용을 저장했어요", "${phase.card.profileName} · ${phase.card.name}", Modifier.fillMaxSize(),
                 primary = MessageAction("확인", close))
             auth.phase != AccountPhase.SIGNED_IN -> CenteredMessage(Icons.Rounded.Badge, "로그인이 필요해요", "로그인하면 프로필 데이터로 명함을 만들 수 있어요.", Modifier.fillMaxSize(),
                 primary = MessageAction("로그인", { model.load() }))
@@ -37,7 +37,8 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardComposer
                 { id, on -> model.edit(draft.copy(publicContactIds = if (on) draft.publicContactIds + id else draft.publicContactIds - id)) },
                 draft.histories, { id, on -> model.edit(draft.copy(publicHistoryIds = if (on) draft.publicHistoryIds + id else draft.publicHistoryIds - id)) },
                 draft.changed, { model.edit(draft.revert()) }, model::publish, Modifier.weight(1f),
-                publishing = phase == PublishPhase.Publishing || phase == PublishPhase.Loading, errorMessage = (phase as? PublishPhase.Failed)?.message)
+                publishing = phase == PublishPhase.Publishing || phase == PublishPhase.Loading, errorMessage = (phase as? PublishPhase.Failed)?.message,
+                publishLabel = if (state.prefill == null) "명함 발행" else "고친 내용 저장")
             phase is PublishPhase.Failed -> DearbyErrorState("명함을 준비하지 못했어요", phase.message, { model.load() }, Modifier.fillMaxSize())
             else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
         }

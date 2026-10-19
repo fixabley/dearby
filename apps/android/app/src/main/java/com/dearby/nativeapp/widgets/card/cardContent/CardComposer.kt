@@ -29,6 +29,7 @@ data class ComposerHistory(val id: String, val title: String, val detail: String
     cardTitle: String, onCardTitleChange: (String) -> Unit, preview: String,
     contacts: List<ComposerContact>, onContactPublic: (String, Boolean) -> Unit, histories: List<ComposerHistory>, onHistoryPublic: (String, Boolean) -> Unit,
     changed: Boolean, onRevert: () -> Unit, onPublish: () -> Unit, modifier: Modifier = Modifier, publishing: Boolean = false, errorMessage: String? = null,
+    publishLabel: String = "명함 발행",
 ) {
     Column(modifier.fillMaxSize().dismissKeyboardOnTap()) {
         Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -56,8 +57,8 @@ data class ComposerHistory(val id: String, val title: String, val detail: String
             errorMessage?.let { Text(it, Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (changed) DearbyOutlineButton(onRevert, Modifier.weight(1f), enabled = !publishing) { Text("원래대로") }
-                DearbyButton(onPublish, Modifier.weight(1f).semantics { if (publishing) stateDescription = "발행 중" }, enabled = !publishing) {
-                    if (publishing) CircularProgressIndicator(Modifier.size(20.dp), color = LocalContentColor.current, strokeWidth = 2.dp) else Text("명함 발행")
+                DearbyButton(onPublish, Modifier.weight(1f).semantics { if (publishing) stateDescription = "진행 중" }, enabled = !publishing) {
+                    if (publishing) CircularProgressIndicator(Modifier.size(20.dp), color = LocalContentColor.current, strokeWidth = 2.dp) else Text(publishLabel)
                 }
             }
             Text("발행한 명함은 바뀌지 않아요. 고치면 새 명함으로 발행돼요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)

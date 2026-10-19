@@ -148,6 +148,10 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun publish(name: String, description: String, template: String, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =
         send("POST", "cards", JSONObject().put("name", name).put("description", description).put("template", template)
             .put("contactIds", JSONArray(contactIds)).put("historyIds", JSONArray(historyIds)), session).toPublishedCard()
+    /** 이 명함 고치기 (`PUT /v1/cards/:id`, contract "명함 고치기는 같은 명함을 수정", 2026-10-20): same body and validation as [publish]; the snapshot behind the same id is rebuilt from the current profile (200 Card, `id`·`createdAt` kept). Owner only; a withdrawn card is 404. */
+    suspend fun updateCard(id: String, name: String, description: String, template: String, contactIds: List<String>, historyIds: List<String>, session: AccountSession): PublishedCard =
+        send("PUT", "cards/$id", JSONObject().put("name", name).put("description", description).put("template", template)
+            .put("contactIds", JSONArray(contactIds)).put("historyIds", JSONArray(historyIds)), session).toPublishedCard()
     /** 이 명함 지우기 (`DELETE /v1/cards/:id`, contract "명함·지갑"): the public link then answers 404; 204 with no body. */
     suspend fun deleteCard(id: String, session: AccountSession) { request("DELETE", "cards/$id", null, session) }
     /** Your non-withdrawn cards in creation order, so the newest is last. */
