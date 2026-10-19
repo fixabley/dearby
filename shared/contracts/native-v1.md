@@ -388,7 +388,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **고정 제목 줄**: `활동 둘러보기` 제목과 알림 아이콘(PageTitle/ScreenHeader)은 스크롤과 무관하게 항상 위에 고정된다. 배경은 페이지 배경과 같고, 내용이 밑으로 지나가면 얇은 구분선(iOS `Color(.separator)`, Android `surfaceContainerHighest`)이 나타난다.
 - **접히는 검색 영역**: 검색창과 `마감 숨기기` 토글 묶음은 아래로 스크롤하면 위로 밀려 접히고(높이 0, 투명도 0), 위로 스크롤하기 시작하면(방향 전환) 즉시 다시 펼쳐진다 — 맨 위까지 올라가지 않아도 보인다(One UI·Material "enter always" 방식). 애니메이션은 스크롤 오프셋에 비례하되 짧은 스프링으로 마무리하고, 동작 줄이기에서는 즉시 전환. 검색창에 포커스가 있는 동안은 접지 않는다. iOS는 `ScrollView` + `onScrollGeometryChange`(iOS 18)로 방향·오프셋을 읽고, Android는 `NestedScrollConnection`으로 소비 오프셋을 누적한다(`TopAppBar`의 `enterAlwaysScrollBehavior`와 같은 규칙; 제목 줄은 고정이라 TopAppBar 자체는 쓰지 않는다).
 - **풀투 리프레시**: 맨 위에서 당기면 프로그램 목록을 처음부터 다시 조회한다(펼침 상태는 유지하되 펼친 프로그램의 활동도 다시 받는다). iOS `.refreshable`, Android Material 3 `PullToRefreshBox`. 당기는 동안 제목 줄은 움직이지 않고 표시기는 검색 영역 아래에 나온다. 실패하면 기존 오류 표시 규칙을 따른다.
-- **맨 위로 버튼**: 첫 화면 높이 이상 내려가면 오른쪽 아래(탭 막대 위 16, 오른쏙 20)에 둥근 플로팅 버튼(iOS: 44 원형, `Color(.secondarySystemGroupedBackground)` 바탕·청록 `arrow.up` SF Symbol·얇은 그림자; Android: Material 3 `SmallFloatingActionButton`, `Icons.Rounded.ArrowUpward`)이 페이드로 나타나고, 누르면 애니메이션 없이 즉시 맨 위로 간다(검색 영역도 펼쳐진다). 접근성 이름 `맨 위로`. 맨 위 근처에서는 숨긴다. iOS의 상태 표시줄 탭으로 맨 위 가기는 그대로 둔다.
+- **맨 위로 버튼**: 첫 화면 높이 이상 내려가면 오른쪽 아래(탭 막대 위 16, 오른쏙 20)에 둥근 플로팅 버튼(iOS: 시스템 원형 버튼 `.borderedProminent` + `.buttonBorderShape(.circle)` + `.controlSize(.large)`에 `arrow.up` — 사용자 2026-10-19 밤 "iOS는 기본 플로팅 버튼 UI 활용"으로 직접 그린 원·그림자는 쓰지 않는다; Android: Material 3 `SmallFloatingActionButton`, `Icons.Rounded.ArrowUpward`)이 페이드로 나타나고, 누르면 애니메이션 없이 즉시 맨 위로 간다(검색 영역도 펼쳐진다). 접근성 이름 `맨 위로`. 맨 위 근처에서는 숨긴다. iOS의 상태 표시줄 탭으로 맨 위 가기는 그대로 둔다.
 
 ## 폼은 플랫폼 기본 컴포넌트 — 2026-10-19 밤 사용자 결정
 

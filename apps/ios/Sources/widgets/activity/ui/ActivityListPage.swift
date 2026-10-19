@@ -100,12 +100,9 @@ struct ActivityListPage: View {
             }
             .overlay(alignment: .bottomTrailing) {
                 if farDown {
-                    Button(action: scrollToTop) {
-                        Image(systemName: "arrow.up").font(.body.weight(.semibold)).foregroundStyle(DearbyStyle.teal)
-                            .frame(width: 44, height: 44)
-                            .background(Color(.secondarySystemGroupedBackground), in: Circle())
-                            .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
-                    }
+                    // 시스템 원형 버튼(사용자 2026-10-19 밤 "iOS는 기본 플로팅 버튼 UI 활용"): 직접 그린 원·그림자 대신 bordered prominent + circle.
+                    Button(action: scrollToTop) { Image(systemName: "arrow.up").font(.body.weight(.semibold)) }
+                        .buttonStyle(.borderedProminent).buttonBorderShape(.circle).controlSize(.large)
                     .accessibilityLabel("맨 위로").accessibilityIdentifier("activity-scroll-top")
                     .padding(.trailing, 20).padding(.bottom, 16)
                     .transition(.opacity)
