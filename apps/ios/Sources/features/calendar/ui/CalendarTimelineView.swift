@@ -10,7 +10,7 @@ struct CalendarTimelineView: View {
             HStack {
                 Color.clear.frame(width: axis)
                 Text("이 활동").frame(maxWidth: .infinity)
-                Text("연결한 캘린더").frame(maxWidth: .infinity)
+                Text("기기 캘린더").frame(maxWidth: .infinity)
             }.font(.subheadline.bold())
             GeometryReader { geometry in
                 let width = geometry.size.width - axis
@@ -34,7 +34,7 @@ struct CalendarTimelineView: View {
                     block(title: item.activity.title, start: item.activity.start, end: item.activity.end,
                           color: Color(red: 0.69, green: 0.87, blue: 0.86), width: column - 16)
                         .offset(x: axis + 12, y: y(max(item.activity.start, item.gridStart)))
-                    block(title: "예시 바쁜 시간", start: item.busy.start, end: item.busy.end,
+                    block(title: item.busyTitle, start: item.busy.start, end: item.busy.end,
                           color: Color(red: 0.71, green: 0.83, blue: 0.94), width: column - 12)
                         .offset(x: axis + column + 6, y: y(max(item.busy.start, item.gridStart)))
                     Rectangle().fill(orange.opacity(0.14))
@@ -51,11 +51,11 @@ struct CalendarTimelineView: View {
                         .position(x: axis + column, y: (y(item.start) + y(item.end)) / 2)
                 }
             }.frame(height: height)
-            Text("Asia/Seoul · 30분 간격").font(.caption2).foregroundStyle(.secondary)
+            Text("\(item.activity.timeZone) · 30분 간격").font(.caption2).foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("이 활동 \(item.activity.title), \(item.time(item.activity.start))부터 \(item.time(item.activity.end)). 예시 바쁜 시간 \(item.time(item.busy.start))부터 \(item.time(item.busy.end)). 겹치는 시간 \(item.minutes)분. 시간대 \(item.activity.timeZone).")
+        .accessibilityLabel("이 활동 \(item.activity.title), \(item.time(item.activity.start))부터 \(item.time(item.activity.end)). 기기 일정 \(item.busyTitle) \(item.time(item.busy.start))부터 \(item.time(item.busy.end)). 겹치는 시간 \(item.minutes)분. 시간대 \(item.activity.timeZone).")
     }
     private func y(_ date: Date) -> CGFloat {
         CGFloat(date.timeIntervalSince(item.gridStart) / item.gridEnd.timeIntervalSince(item.gridStart)) * height

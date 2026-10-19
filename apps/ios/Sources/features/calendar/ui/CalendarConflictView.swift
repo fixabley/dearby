@@ -1,39 +1,62 @@
 import SwiftUI
 
+/// `겹치는 시간 확인`: asks for calendar access on tap, compares the activity's schedules with device events on device,
+/// and forgets them when dismissed (contract "기기 캘린더 겹침 — 2026-10-06").
 struct CalendarConflictView: View {
     @State private var state: CalendarConflictState
     @State private var detent = PresentationDetent.large
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     @Environment(\.dynamicTypeSize) private var typeSize
-    init(schedules: [ActivityScheduleModel]) {
-        _state = State(initialValue: CalendarConflictState(schedules: schedules))
+    init(schedules: [ActivityScheduleModel], source: any CalendarEventSource = DeviceCalendarEventSource()) {
+        _state = State(initialValue: CalendarConflictState(schedules: schedules, source: source))
     }
     var body: some View {
         Group {
-            if state.compared { result } else { selection }
+            switch state.phase {
+            case .intro, .requesting: intro
+            case .denied: denied
+            case .compared: result
+            }
         }
         .presentationDetents([.height(690), .large], selection: $detent)
         .presentationDragIndicator(.visible)
         .presentationCornerRadius(28)
-        .onChange(of: state.compared) { _, compared in
-            detent = compared && !typeSize.isAccessibilitySize ? .height(690) : .large
+        .onChange(of: state.phase) { _, phase in
+            detent = phase == .compared && !typeSize.isAccessibilitySize ? .height(690) : .large
         }
     }
-    private var selection: some View {
+    private var intro: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    Text("예시 바쁜 시간만 비교해요. 실제 캘린더를 읽거나 권한을 요청하지 않아요.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                    Text("기기 캘린더를 읽어 이 활동의 일정과 겹치는 시간을 찾아요.").font(.headline)
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("비교할 캘린더").font(.headline)
-                        Toggle("예시 캘린더", isOn: $state.selected).frame(minHeight: 44)
-                        Text("2026년 10월 24일 14:00~15:00 · Asia/Seoul")
-                            .font(.caption).foregroundStyle(.secondary)
-                        if !state.selected { Text("비교할 캘린더를 하나 이상 선택해 주세요.").font(.caption) }
-                        Button("선택한 캘린더로 확인") { state.compare() }
-                            .buttonStyle(DearbyButtonStyle()).disabled(!state.selected)
+                        Label("일정은 이 기기 안에서만 비교해요.", systemImage: "iphone")
+                        Label("일정 제목과 시각은 서버로 보내거나 앱에 저장하지 않고, 이 화면을 닫으면 버려요.", systemImage: "lock")
+                        Label("캘린더에 일정을 추가하거나 바꾸지 않아요.", systemImage: "eye")
+                    }.font(.subheadline).foregroundStyle(.secondary)
+                    Text("비교할 일정 \(state.schedules.count)개").font(.caption).foregroundStyle(.secondary)
+                    Button(state.phase == .requesting ? "캘린더를 읽고 있어요…" : "캘린더 읽기 허용하고 확인") {
+                        Task { await state.compare() }
+                    }.buttonStyle(DearbyButtonStyle()).disabled(state.phase == .requesting)
+                }.padding(20)
+            }
+            .navigationTitle("겹치는 시간 확인하기").navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
+        }
+    }
+    private var denied: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Label("캘린더 읽기가 허용되지 않았어요", systemImage: "calendar.badge.exclamationmark").font(.title3.bold())
+                    Text("설정 > Dearby > 캘린더에서 전체 접근을 켜면 겹치는 시간을 확인할 수 있어요. 허용하지 않아도 신청은 그대로 할 수 있어요.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        Button("설정 열기") { openURL(url) }.buttonStyle(DearbyButtonStyle())
                     }
+                    Button("닫기") { dismiss() }.buttonStyle(DearbyButtonStyle(outlined: true))
                 }.padding(20)
             }
             .navigationTitle("겹치는 시간 확인하기").navigationBarTitleDisplayMode(.inline)
@@ -51,19 +74,19 @@ struct CalendarConflictView: View {
                             .font(.subheadline)
                         Text("\(item.minutes)분이 겹쳐요").font(.largeTitle.bold())
                             .accessibilityIdentifier("overlap-duration")
-                        Text("\(item.time(item.start)) – \(item.time(item.end))에 다른 일정과 겹쳐요.")
+                        Text("\(item.time(item.start)) – \(item.time(item.end))에 ‘\(item.busyTitle)’과 겹쳐요.")
                             .font(.subheadline)
                         CalendarTimelineView(item: item).padding(.top, 4)
                     } else {
-                        Label("예시 캘린더와 겹치는 시간이 없어요", systemImage: "checkmark.circle")
+                        Label("기기 캘린더와 겹치는 시간이 없어요", systemImage: "checkmark.circle")
                             .font(.title3.bold()).padding(.vertical, 32)
-                        Text("고정 예시 기준이며 실제 개인 일정과는 무관해요.")
+                        Text("활동 일정 시간에 다른 일정이 없어요.")
                             .font(.subheadline).foregroundStyle(.secondary)
                     }
                 }.frame(maxWidth: .infinity, alignment: .leading).padding(20)
             }
             VStack(spacing: 12) {
-                Label("예시 일정 · 실제 캘린더를 읽거나 변경하지 않아요.", systemImage: "info.circle")
+                Label("기기 캘린더는 읽기만 하고, 읽은 일정은 이 화면을 닫으면 버려요.", systemImage: "info.circle")
                     .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
                 Button("확인했어요") {
                     if !state.advance() { dismiss() }
@@ -74,4 +97,19 @@ struct CalendarConflictView: View {
             }.padding(.horizontal, 20).padding(.bottom, 16)
         }.background(.white)
     }
+}
+
+#Preview("겹침 있음") {
+    CalendarConflictView(
+        schedules: [ActivityScheduleModel(id: "s1", title: "오리엔테이션", start: FixtureCalendarEventSource.exampleBusy.start.addingTimeInterval(1800),
+                                          end: FixtureCalendarEventSource.exampleBusy.end.addingTimeInterval(3600), dateLabel: "", timeZone: "Asia/Seoul")],
+        source: FixtureCalendarEventSource()
+    )
+}
+
+#Preview("권한 거부") {
+    CalendarConflictView(
+        schedules: [ActivityScheduleModel(id: "s1", title: "오리엔테이션", start: .now, end: .now.addingTimeInterval(3600), dateLabel: "", timeZone: "Asia/Seoul")],
+        source: FixtureCalendarEventSource(access: .denied)
+    )
 }
