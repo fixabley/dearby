@@ -172,11 +172,16 @@ export function Discovery({ q }: { q: string }) {
 /** Single open activity, or a search hit on an activity name, starts expanded. */
 /** 모집일 순 (contract "활동 종류"): earlier recruitment deadline first, no deadline last, ties by name. */
 function byDeadline(a: Activity, b: Activity): number {
-  return deadline(a.application) - deadline(b.application) || a.name.localeCompare(b.name, "ko");
+  return deadline(a) - deadline(b) || a.name.localeCompare(b.name, "ko");
 }
-function deadline(application: Activity["application"]): number {
-  const end = application?.endAt ?? application?.endDateExclusive;
-  const instant = end ? Date.parse(end) : NaN;
+/** Sort key (contract "활동 종류"): the application end; when no deadline is known, the activity start stands in for it; neither → last. */
+function deadline(activity: Activity): number {
+  const key =
+    activity.application?.endAt ??
+    activity.application?.endDateExclusive ??
+    activity.activitySchedule.startAt ??
+    activity.activitySchedule.startDate;
+  const instant = key ? Date.parse(key) : NaN;
   return Number.isNaN(instant) ? Infinity : instant;
 }
 function startsOpen(program: ProgramSummary) {

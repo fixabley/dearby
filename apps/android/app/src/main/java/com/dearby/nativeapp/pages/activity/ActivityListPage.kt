@@ -69,7 +69,7 @@ import com.dearby.nativeapp.widgets.activity.programHeader.ProgramHeaderRow
                                     // Within a group: recruitment deadline ascending, no deadline last, ties by name (2026-10-19 "정렬은 모집일 순서로").
                                     val groups = activities.groupBy { it.category }.entries.sortedBy { (_, group) -> group.first().categoryOrder }
                                     groups.forEach { (category, unsorted) ->
-                                        val group = unsorted.sortedWith(compareBy<ActivityState, Instant?>(nullsLast()) { it.recruitmentEnd }.thenBy { it.title })
+                                        val group = unsorted.sortedWith(compareBy<ActivityState, Instant?>(nullsLast()) { it.sortKey }.thenBy { it.title })
                                         if (groups.size > 1) item(key = "category-" + program.id + "-" + (category ?: "none")) {
                                             Text(category ?: "미분류", Modifier.padding(start = 12.dp, top = 4.dp).semantics { heading() }, color = Quiet, style = MaterialTheme.typography.labelLarge)
                                         }

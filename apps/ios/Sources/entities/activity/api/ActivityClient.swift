@@ -61,7 +61,9 @@ enum ActivityClient {
                 officialUrl: activity.officialUrl, imageUrl: activity.imageUrl,
                 eligibility: activity.eligibility?.value.flatMap { $0.eligibility(depth: 0) },
                 category: activity.category.flatMap(ActivityCategory.init(rawValue:)),
-                recruitmentDeadline: ActivityModel.instant(activity.application?.endAt) ?? seoulDate(activity.application?.endDateExclusive))
+                // Sort key: the application's end; when no usable deadline exists, the activity start stands in for it.
+                recruitmentDeadline: activity.application.flatMap { ActivityModel.instant($0.endAt) ?? seoulDate($0.endDateExclusive) }
+                    ?? activity.activitySchedule.flatMap { ActivityModel.instant($0.startAt) ?? seoulDate($0.startDate) })
         }
         return ActivityPage(items: items, nextCursor: payload.nextCursor)
     }
