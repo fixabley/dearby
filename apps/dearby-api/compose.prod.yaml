@@ -104,6 +104,7 @@ services:
       WEBAUTHN_RP_ID: ${WEBAUTHN_RP_ID:?}
       WEBAUTHN_ALLOWED_ORIGINS: ${WEBAUTHN_ALLOWED_ORIGINS:?}
       JWT_ISSUER: ${JWT_ISSUER:?}
+      KAKAO_REST_API_KEY: ${KAKAO_REST_API_KEY:-} # 어드민 장소 검색. 비어 있으면 Nominatim
     volumes:
       - ./data/prod/jwt:/app/data/jwt:ro
     ports:

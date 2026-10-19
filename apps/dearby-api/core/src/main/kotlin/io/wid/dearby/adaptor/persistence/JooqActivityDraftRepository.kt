@@ -119,9 +119,19 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         val curatedSlots = dsl.select(SCHEDULES.SLOT).from(SCHEDULES)
             .where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.CURATED.isTrue).fetch(SCHEDULES.SLOT).toSet()
         // 운영자가 만든·고친 세부 일정(curated)과 지운 일정(curated_deleted, admin-v1.md "세부 일정 편집기")은 남기고 수집 일정만 다시 쓴다
+        // 운영자가 지정한 활동 장소(native-v1.md "활동 장소", curated_fields place)는 활동 기간 행을 다시 써도 남긴다
+        val place = if (CuratedFields.PLACE in curated) dsl.select(SCHEDULES.ADDRESS_LINE1, SCHEDULES.ADDRESS_LINE2, SCHEDULES.LAT, SCHEDULES.LNG).from(SCHEDULES)
+            .where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.eq(SLOT_ACTIVITY)).fetchOne() else null
         dsl.deleteFrom(SCHEDULES).where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.CURATED.isFalse, SCHEDULES.CURATED_DELETED.isFalse).execute()
         if (SLOT_ACTIVITY !in curatedSlots) {
             insertSchedule(activityId, SLOT_ACTIVITY, name, ScheduleKind.EVENT, null, null, activity.startDate, activity.endDate, activity.dateLabel, now)
+            if (place?.value3() != null) {
+                dsl.update(SCHEDULES)
+                    .set(SCHEDULES.ADDRESS_LINE1, place.value1()).set(SCHEDULES.ADDRESS_LINE2, place.value2())
+                    .set(SCHEDULES.LAT, place.value3()).set(SCHEDULES.LNG, place.value4())
+                    .where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.eq(SLOT_ACTIVITY))
+                    .execute()
+            }
         }
         val hasRecruitment = activity.recruitmentStartAt != null || activity.recruitmentEndAt != null || activity.recruitmentStartDate != null || activity.recruitmentEndDate != null
         if (SLOT_APPLICATION !in curatedSlots && hasRecruitment) {

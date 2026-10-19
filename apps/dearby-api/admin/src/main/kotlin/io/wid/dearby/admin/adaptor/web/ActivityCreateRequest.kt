@@ -18,6 +18,7 @@ data class ActivityCreateRequest(
     val eligibility: JsonNode? = null,
     val audience: String? = null,
     val location: String? = null,
+    val place: JsonNode? = null, // 활동 장소 {name, address, lat, lng}(admin-v1.md "활동 장소와 지오코딩")
     val cost: String? = null,
     val tagIds: List<Long>? = null, // 태그 id 목록(native-v1.md "태그"). 생략하면 프로그램 태그를 기본으로
 )

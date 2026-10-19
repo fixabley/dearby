@@ -19,6 +19,7 @@ data class Activity(
     val timestamps: Timestamps,
     val category: ActivityCategory? = null, // 활동 종류(native-v1.md "활동 종류"). null은 미분류
     val tags: List<Tag> = emptyList(), // 태그(native-v1.md "태그"), 사전 순
+    val location: String? = null, // 장소 문구(activities.location). 좌표가 있는 장소는 activitySchedule.address(native-v1.md "활동 장소")
 ) {
     init {
         require(activitySchedule.time == null || activitySchedule.time is ScheduleTime.AllDay) { "활동 기간은 종일 일정이어야 합니다" }

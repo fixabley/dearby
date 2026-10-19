@@ -2,6 +2,7 @@ package io.wid.dearby.admin.application
 
 import io.wid.dearby.application.activity.ScheduleEdit
 import io.wid.dearby.domain.ActivityCategory
+import io.wid.dearby.domain.Address
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.ParticipationType
 import io.wid.dearby.domain.eligibility.EligibilityGroup
@@ -24,5 +25,6 @@ data class ActivityCreateInput(
     val eligibility: EligibilityGroup?,
     val audience: String?,
     val location: String?,
+    val place: Address?, // 좌표가 있는 활동 장소(admin-v1.md "활동 장소와 지오코딩"). null이면 없음
     val cost: String?,
 )

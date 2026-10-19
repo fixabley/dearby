@@ -4,6 +4,11 @@ import io.wid.dearby.TestDatabaseConfig
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
+import io.wid.dearby.admin.application.GeocodeResult
+import io.wid.dearby.admin.application.Geocoder
+import org.springframework.boot.test.context.TestConfiguration
+import org.springframework.context.annotation.Bean
+import org.springframework.context.annotation.Primary
 import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.jdbc.core.simple.JdbcClient
@@ -26,6 +31,19 @@ import kotlin.test.assertEquals
 @AutoConfigureMockMvc
 @Import(TestDatabaseConfig::class)
 class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient) {
+
+    // 장소 검색 제공자 대신 고정 결과를 준다(실제 네트워크 없음). admin-v1.md "활동 장소와 지오코딩"
+    @TestConfiguration
+    class FakeGeocode {
+        @Bean
+        @Primary
+        fun fakeGeocoder() = object : Geocoder {
+            override fun search(query: String) = listOf(
+                GeocodeResult("코엑스", "서울 강남구 영동대로 513", 37.5116828, 127.0594, "fake"),
+                GeocodeResult("코엑스몰", "서울 강남구 영동대로 513 코엑스몰", 37.5100, 127.0590, "fake"),
+            )
+        }
+    }
 
     private val json = JsonMapper.builder().build()
 
@@ -353,6 +371,64 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"application":{"endDate":"2026-06-09","note":"${"가".repeat(301)}"}}""") }.andExpect { status { isBadRequest() } }
         val cleared = read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"application":null}""") }.andExpect { status { isOk() } })
         assertEquals(listOf(true, false, true), listOf(cleared["application"]["startAt"].isNull, cleared["application"]["curated"].asBoolean(), cleared["application"]["curatedNote"].isNull))
+    }
+
+    @Test
+    fun `활동 장소는 활동 기간 행에 저장되어 place로 보이고, 잘못된 좌표는 400, null은 네 열을 모두 지운다`() {
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        val created = read(
+            mvc.post("/v1/admin/activities") {
+                asAdmin()
+                body("""{"programId":$programId,"name":"장소 있는 활동","description":"d","officialUrl":"https://example.org/x","activitySchedule":{"dateLabel":"2027 상반기"},
+                       "place":{"name":"코엑스 그랜드볼룸","address":"서울 강남구 영동대로 513","lat":37.5116828,"lng":127.0594}}""")
+            }.andExpect { status { isCreated() } }
+        )
+        val id = created["id"].asLong()
+        assertEquals("""{"name":"코엑스 그랜드볼룸","address":"서울 강남구 영동대로 513","lat":37.5116828,"lng":127.0594}""", created["place"].toString())
+        assertEquals(listOf("name", "description", "officialUrl", "place"), created["curatedFields"].toList().map { it.asString() })
+        // 활동 기간(slot ACTIVITY) 행의 네 열에 쓰인다
+        assertEquals(
+            "코엑스 그랜드볼룸|서울 강남구 영동대로 513|37.5116828|127.0594",
+            jdbc.sql("select address_line1 || '|' || address_line2 || '|' || lat || '|' || lng from schedules where activity_id = ? and slot = 'ACTIVITY'").param(id).query(String::class.java).single(),
+        )
+        // 수집된 활동(활동 기간이 운영자 지정이 아닌 것)에 장소를 넣어도 시간 지정(schedules.curated)은 켜지지 않고 curated_fields에 place만 남는다
+        val collected = jdbc.sql("select a.id from activities a join schedules s on s.activity_id = a.id and s.slot = 'ACTIVITY' where s.curated = false and a.id <> ? order by a.id limit 1")
+            .param(id).query(Long::class.java).single()
+        val previousFields = jdbc.sql("select curated_fields::text from activities where id = ?").param(collected).query(String::class.java).single()
+        val collectedPlaced = read(mvc.patch("/v1/admin/activities/$collected") { asAdmin(); patchBody("""{"place":{"name":"코엑스","address":"서울 강남구 영동대로 513","lat":37.5116828,"lng":127.0594}}""") }.andExpect { status { isOk() } })
+        assertEquals("코엑스", collectedPlaced["place"]["name"].asString())
+        assertEquals(true, collectedPlaced["curatedFields"].toList().any { it.asString() == "place" })
+        assertEquals("false", jdbc.sql("select curated::text from schedules where activity_id = ? and slot = 'ACTIVITY'").param(collected).query(String::class.java).single())
+        jdbc.sql("update schedules set address_line1 = null, address_line2 = null, lat = null, lng = null where activity_id = ? and slot = 'ACTIVITY'").param(collected).update()
+        jdbc.sql("update activities set curated_fields = ?::jsonb where id = ?").params(previousFields, collected).update()
+
+        // PATCH로 바꾸면 그 값으로, 주소는 비워도 된다(빈 문자열로 저장)
+        val moved = read(mvc.patch("/v1/admin/activities/$id") { asAdmin(); patchBody("""{"place":{"name":"온라인 ZOOM","lat":37.0,"lng":127.0}}""") }.andExpect { status { isOk() } })
+        assertEquals("""{"name":"온라인 ZOOM","address":"","lat":37.0,"lng":127.0}""", moved["place"].toString())
+        assertEquals(1, moved["curatedFields"].toList().count { it.asString() == "place" })
+        // 위도 범위 밖, 좌표 없음, 이름 없음, 이름 201자, 주소 301자는 400
+        mvc.patch("/v1/admin/activities/$id") { asAdmin(); patchBody("""{"place":{"name":"x","address":"","lat":91,"lng":127}}""") }.andExpect { status { isBadRequest() } }
+        mvc.patch("/v1/admin/activities/$id") { asAdmin(); patchBody("""{"place":{"name":"x","address":"","lat":37,"lng":"127"}}""") }.andExpect { status { isBadRequest() } }
+        mvc.patch("/v1/admin/activities/$id") { asAdmin(); patchBody("""{"place":{"name":" ","address":"","lat":37,"lng":127}}""") }.andExpect { status { isBadRequest() } }
+        mvc.patch("/v1/admin/activities/$id") { asAdmin(); patchBody("""{"place":{"name":"${"가".repeat(201)}","lat":37,"lng":127}}""") }.andExpect { status { isBadRequest() } }
+        mvc.patch("/v1/admin/activities/$id") { asAdmin(); patchBody("""{"place":{"name":"x","address":"${"가".repeat(301)}","lat":37,"lng":127}}""") }.andExpect { status { isBadRequest() } }
+        // 생략하면 그대로, null이면 네 열을 모두 지운다(CHECK: 모두 null이거나 모두 값)
+        assertEquals("온라인 ZOOM", read(mvc.patch("/v1/admin/activities/$id") { asAdmin(); patchBody("""{"nameEn":"Placed"}""") }.andExpect { status { isOk() } })["place"]["name"].asString())
+        val cleared = read(mvc.patch("/v1/admin/activities/$id") { asAdmin(); patchBody("""{"place":null}""") }.andExpect { status { isOk() } })
+        assertEquals(true, cleared["place"].isNull)
+        assertEquals(4, jdbc.sql("select (address_line1 is null)::int + (address_line2 is null)::int + (lat is null)::int + (lng is null)::int from schedules where activity_id = ? and slot = 'ACTIVITY'").param(id).query(Int::class.java).single())
+        jdbc.sql("delete from activities where id = ?").param(id).update()
+    }
+
+    @Test
+    fun `장소 검색은 제공자 결과를 items로 주고, 검색어가 2자 미만이거나 100자 초과면 400`() {
+        val found = read(mvc.get("/v1/admin/geocode?q=코엑스") { asAdmin() }.andExpect { status { isOk() } })["items"]
+        assertEquals(2, found.size())
+        assertEquals("""{"name":"코엑스","address":"서울 강남구 영동대로 513","lat":37.5116828,"lng":127.0594,"source":"fake"}""", found[0].toString())
+        mvc.get("/v1/admin/geocode?q=코") { asAdmin() }.andExpect { status { isBadRequest() } }
+        mvc.get("/v1/admin/geocode?q=${"가".repeat(101)}") { asAdmin() }.andExpect { status { isBadRequest() } }
+        mvc.get("/v1/admin/geocode") { asAdmin() }.andExpect { status { isBadRequest() } }
+        mvc.get("/v1/admin/geocode?q=코엑스").andExpect { status { isUnauthorized() } }
     }
 
     @Test

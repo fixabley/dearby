@@ -1,6 +1,7 @@
 package io.wid.dearby.application.activity
 
 import io.wid.dearby.domain.ActivityCategory
+import io.wid.dearby.domain.Address
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.Schedule
 import io.wid.dearby.domain.PublicationStatus
@@ -42,6 +43,10 @@ interface ActivityCurationRepository {
     // APPLICATION 일정이 없으면 만든다. 활동이 없으면 false
     // note는 운영자 사유(admin-v1.md "사유"); time이 null(지정 해제)이면 사유도 지운다
     fun updateSchedule(activityId: Id, slot: ScheduleSlot, time: ScheduleTime?, note: String? = null): Boolean
+
+    // 활동 장소(native-v1.md "활동 장소"): 활동 기간(slot ACTIVITY) 행의 address_line1(이름)·address_line2(주소)·lat·lng를 쓰거나(null이면) 모두 지운다.
+    // 행이 없으면 만든다. 운영자 지정 필드 place가 남아 수집기가 보존한다. 활동이 없으면 false
+    fun updatePlace(activityId: Id, place: Address?): Boolean
 
     // 세부 일정(슬롯 없음) 편집(admin-v1.md "세부 일정 편집기"). 만들거나 고친 일정은 curated, 지운 일정은 curated_deleted로 남긴다.
     // 활동이나 일정이 없으면 null/false. 지운 일정은 없는 것으로 본다

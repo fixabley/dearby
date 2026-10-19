@@ -15,6 +15,9 @@ dearby:
     rp-id: ${WEBAUTHN_RP_ID}
     rp-name: Dearby
     allowed-origins: ${WEBAUTHN_ALLOWED_ORIGINS} # 쉼표로 구분
+  # 어드민 장소 검색(admin-v1.md "활동 장소와 지오코딩"): 카카오 REST API 키. 비어 있으면 Nominatim(OpenStreetMap)을 쓴다
+  geocode:
+    kakao-key: ${KAKAO_REST_API_KEY:}
   jwt:
     key-path: ${JWT_KEY_PATH}
     issuer: ${JWT_ISSUER}

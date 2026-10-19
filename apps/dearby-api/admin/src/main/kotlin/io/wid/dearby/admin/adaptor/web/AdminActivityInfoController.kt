@@ -6,7 +6,9 @@ import io.wid.dearby.admin.application.CategoryChange
 import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.ParticipationType
 import io.wid.dearby.admin.application.EligibilityChange
+import io.wid.dearby.admin.application.PlaceChange
 import io.wid.dearby.admin.application.ScheduleChange
+import io.wid.dearby.domain.Address
 import io.wid.dearby.application.activity.ScheduleEdit
 import tools.jackson.databind.JsonNode
 import java.time.LocalDate
@@ -118,7 +120,7 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
                     activitySchedule = activitySchedule?.let(::scheduleEdit), activityDateLabel = activitySchedule?.text("dateLabel"),
                     application = request.application?.let { node -> if (node.isNull) null else scheduleEdit(node) },
                     eligibility = eligibility, audience = request.audience, location = request.location, cost = request.cost,
-                    tagIds = request.tagIds,
+                    tagIds = request.tagIds, place = request.place?.takeUnless { it.isNull }?.let(::parsePlace),
                 )
             )
         )
@@ -151,9 +153,30 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
                 id, request.name, request.nameEn, request.description, request.descriptionEn, eligibility,
                 activitySchedule = scheduleChange(request.activitySchedule), application = scheduleChange(request.application),
                 officialUrl = request.officialUrl, applicationUrl = request.applicationUrl,
-                category = categoryChange(request.category), tagIds = request.tagIds,
+                category = categoryChange(request.category), tagIds = request.tagIds, place = placeChange(request.place),
             )
         )
+    }
+
+    // 활동 장소(admin-v1.md "활동 장소와 지오코딩"): 생략은 유지, JSON null은 삭제, 객체는 검증 뒤 교체
+    private fun placeChange(node: JsonNode?): PlaceChange = when {
+        node == null -> PlaceChange.Keep
+        node.isNull -> PlaceChange.Clear
+        else -> PlaceChange.Set(parsePlace(node))
+    }
+
+    // {name, address, lat, lng}: 이름 1~200자, 주소 0~300자, 위도 -90~90, 경도 -180~180. 숫자가 아니거나 빠지면 400
+    private fun parsePlace(node: JsonNode): Address {
+        if (!node.isObject) throw InvalidInputException("장소는 객체여야 합니다")
+        val name = node.path("name").takeIf { it.isTextual }?.asString()?.trim()?.takeIf { it.isNotEmpty() }
+            ?: throw InvalidInputException("장소 이름이 필요합니다")
+        if (name.length > 200) throw InvalidInputException("장소 이름은 200자까지입니다")
+        val address = node.path("address").takeIf { it.isTextual }?.asString()?.trim().orEmpty()
+        if (address.length > 300) throw InvalidInputException("주소는 300자까지입니다")
+        val lat = node.path("lat").takeIf { it.isNumber }?.asDouble() ?: throw InvalidInputException("위도(lat)가 필요합니다")
+        val lng = node.path("lng").takeIf { it.isNumber }?.asDouble() ?: throw InvalidInputException("경도(lng)가 필요합니다")
+        if (lat !in -90.0..90.0 || lng !in -180.0..180.0) throw InvalidInputException("좌표 범위가 맞지 않습니다(위도 -90~90, 경도 -180~180)")
+        return Address(lat, lng, name, address)
     }
 
     // 활동 종류(native-v1.md "활동 종류"): 생략은 유지, JSON null은 해제, 코드는 지정(모르는 코드 400)
