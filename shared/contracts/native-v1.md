@@ -483,6 +483,16 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **탭 아이콘·이름**: 명함 탭은 `person.text.rectangle`/`Badge`, 이름 `명함`. 받은 명함 탭 아이콘(`tray.full`/`Inbox`)은 더 쓰지 않는다. 딥링크·앱 내 이동에서 받은 명함 상세로 가는 경로(명함 교환 저장 뒤 등)는 명함 탭의 받은 명함 구역을 연 뒤 상세를 민다.
 - 계약의 "다섯 탭" 표현은 이 절 이후 **네 탭**으로 읽는다(알림·설정 버튼 규칙, 탭 제목 통일, 색 체계 등). AGENTS.md의 탭 수 서술도 함께 고친다.
 
+## iOS 상단 바는 시스템 내비게이션 바(리퀴드 글래스) — 2026-10-20 사용자 결정
+
+사용자: "상단 탭바 iOS 기본으로 하면 리퀴드 글래스 플로팅으로 만들 수 있어? 지금 스티키로 처리되니까 너무 부자연스러워." Xcode 27 SDK로 빌드하므로 iOS 26 이상 기기에서는 시스템 내비게이션 바·툴바·검색이 자동으로 리퀴드 글래스(반투명 떠 있는 막대)로 그려진다. 직접 그린 고정 제목 줄(`PageTitle`)은 이 효과를 막으므로 iOS는 **시스템 내비게이션 바**로 돌아간다. Android는 그대로(현재 `ScreenHeader`; 원하면 Material 3 `TopAppBar` + `pinnedScrollBehavior`로 바꿀 수 있음 — 별도 결정).
+
+- **네 탭 루트**: `NavigationStack` 안에서 `.navigationTitle("활동 둘러보기" | "내 활동" | "명함" | "내 프로필")` + `.navigationBarTitleDisplayMode(.inline)`(노치 아래 여백을 작게 두자는 2026-10-19 결정 유지). 우상단 액세서리는 `.toolbar { ToolbarItemGroup(placement: .topBarTrailing) { 설정; 알림 } }`(아이콘 버튼, 시스템이 글래스 캡슐로 묶음). `PageTitle`·`.toolbar(.hidden, for: .navigationBar)`는 지운다.
+- **발견 검색·접힘**: 직접 만든 접히는 검색 영역 대신 `.searchable(text:placement: .navigationBarDrawer(displayMode: .automatic), prompt: "프로그램·활동·태그 검색")` — 아래로 스크롤하면 시스템이 검색 막대를 접고 위로 당기면 다시 보이는 iOS 기본 동작이 "enter always" 요구를 대신한다. `마감 숨기기` 토글은 목록의 **첫 행**(전체 행 터치, 라벨+스위치)으로 내려가 내용과 함께 스크롤한다. 풀투 리프레시·맨 위로 버튼·구분선 규칙은 그대로(구분선은 시스템 바가 알아서 그림).
+- **명함 탭 전환기**: 세그먼트 피커는 내비게이션 바 아래 첫 고정 요소가 아니라 `.toolbar { ToolbarItem(placement: .principal) { Picker(.segmented) } }`로 제목 자리에 둔다(iOS 기본 패턴). 제목은 접근성 이름으로만 남긴다.
+- **하위 화면**: 기존 inline 제목 유지. 시트는 `.presentationDetents` 기본.
+- 시스템 바 아래 내용은 `.scrollEdgeEffectStyle`(iOS 26)을 기본값으로 두어 글래스 가장자리 흐림을 쓴다. 다크 모드·안전 영역 배경 규칙은 시스템 바가 처리하므로 추가 작업 없음.
+
 ## 활동 장소 — 2026-10-19 사용자 결정
 
 사용자: "장소는 어드민에서 추가할 수 있으면 좋겠고 geocode, 주소 검색해서 좌표 가지고 올 수 있으면". 활동의 구조화된 장소를 둔다.
