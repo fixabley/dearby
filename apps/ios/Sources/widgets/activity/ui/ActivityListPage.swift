@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 발견: One UI 알림 카드 모양의 프로그램 카드 목록(contract "발견 카드 리뉴얼" 2026-10-19). `마감 숨기기`가 켜지면 모집 중·모집 예정 활동이 있는
+/// 발견: 프로그램 카드 목록(contract "발견 카드 리뉴얼" 2026-10-19; iOS는 inset-grouped 섹션 관용구, AGENTS.md "플랫폼별 네이티브 디자인"). `마감 숨기기`가 켜지면 모집 중·모집 예정 활동이 있는
 /// 프로그램만, 꺼지면 최근 3년 안에 활동이 있었던 프로그램까지 보인다. 카드를 펼치면 모집 중·모집 예정 활동이 항상, 지난 활동은 토글을 껐을 때만 보인다.
 struct ActivityListPage: View {
     let state: ActivityViewModel
@@ -71,12 +71,12 @@ struct ActivityListPage: View {
         }
         .alert("알림", isPresented: $showNotice) { Button("확인") {} } message: { Text("새로운 알림이 없어요.") }
         .navigationDestination(for: String.self) { id in ActivityDetailView(state: state, activityID: id) }
-        .scrollContentBackground(.hidden).background(.white)
+        .scrollContentBackground(.hidden).background(Color(.systemGroupedBackground))
         .tint(DearbyStyle.teal).navigationTitle("")
         .navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .navigationBar)
     }
-    /// One program card (contract "발견 카드 리뉴얼"): the header and, when expanded, the activity groups inside the same rounded card.
-    /// Height follows a spring; the content fades in from the top; reduced motion switches at once.
+    /// One program card (contract "발견 카드 리뉴얼", iOS inset-grouped idiom): the header and, when expanded, the activity groups inside the same
+    /// rounded section. Height follows the system spring; the content fades in from the top; reduced motion switches at once.
     @ViewBuilder private func section(_ program: ProgramSummary) -> some View {
         let open = state.isExpanded(program.id)
         VStack(alignment: .leading, spacing: 0) {
@@ -91,9 +91,9 @@ struct ActivityListPage: View {
                     .transition(reduceMotion ? .identity : .opacity.combined(with: .move(edge: .top)))
             }
         }
-        .background(.white, in: RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(DearbyStyle.line))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
+        // Inset-grouped look: a secondary grouped surface on the grouped page background, continuous corners, no stroke.
+        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
+        .clipShape(.rect(cornerRadius: 20, style: .continuous))
     }
     @ViewBuilder private func activities(_ program: ProgramSummary) -> some View {
         if let activities = state.openActivities[program.id] {
@@ -125,7 +125,7 @@ struct ActivityListPage: View {
         }
     }
     private func heading(_ text: String) -> some View {
-        Text(text).font(.dearby(.caption).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
+        Text(text).font(.dearby(.caption).weight(.semibold)).foregroundStyle(.secondary)
             .padding(.horizontal, 6).padding(.top, 6).accessibilityAddTraits(.isHeader)
     }
     private func card(_ activity: ActivityModel) -> some View {

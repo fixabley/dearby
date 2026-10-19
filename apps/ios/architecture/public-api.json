@@ -97,6 +97,7 @@
     "AppliedActivity",
     "StageMark",
     "ProgramHeader",
+    "DiscoveryRowStyle",
     "EligibilityText"
   ],
   "widgets/identity": [
