@@ -21,6 +21,8 @@ object CuratedFields {
     const val DESCRIPTION = "description"
     const val DESCRIPTION_EN = "descriptionEn"
     const val ELIGIBILITY = "eligibility"
+    const val OFFICIAL_URL = "officialUrl" // 2026-10-19 어드민에서 공식 안내·신청 링크도 고친다
+    const val APPLICATION_URL = "applicationUrl"
 
     fun read(value: JSONB?): Set<String> = FieldNames.read(value)
     fun jsonb(fields: Collection<String>): JSONB = FieldNames.jsonb(fields)

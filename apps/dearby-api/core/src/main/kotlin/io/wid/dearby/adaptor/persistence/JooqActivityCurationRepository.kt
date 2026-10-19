@@ -70,7 +70,10 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
     }
 
     @Transactional
-    override fun updateTexts(activityId: Id, name: String, nameEn: String?, description: String, descriptionEn: String?, touched: Set<String>): Boolean {
+    override fun updateTexts(
+        activityId: Id, name: String, nameEn: String?, description: String, descriptionEn: String?,
+        officialUrl: String, applicationUrl: String?, touched: Set<String>,
+    ): Boolean {
         // 보낸 필드는 운영자 지정 필드로 남겨 수집기가 덮어쓰지 않게 한다(admin-v1.md "운영자 지정 필드")
         val curated = dsl.select(ACTIVITIES.CURATED_FIELDS).from(ACTIVITIES).where(ACTIVITIES.ID.eq(activityId)).fetchOne()?.value1() ?: return false
         return dsl.update(ACTIVITIES)
@@ -78,6 +81,8 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
             .set(ACTIVITIES.NAME_EN, nameEn)
             .set(ACTIVITIES.DESCRIPTION, description)
             .set(ACTIVITIES.DESCRIPTION_EN, descriptionEn)
+            .set(ACTIVITIES.OFFICIAL_URL, officialUrl)
+            .set(ACTIVITIES.APPLICATION_URL, applicationUrl)
             .set(ACTIVITIES.CURATED_FIELDS, CuratedFields.jsonb(CuratedFields.read(curated) + touched))
             .set(ACTIVITIES.UPDATED_AT, LocalDateTime.now())
             .where(ACTIVITIES.ID.eq(activityId))

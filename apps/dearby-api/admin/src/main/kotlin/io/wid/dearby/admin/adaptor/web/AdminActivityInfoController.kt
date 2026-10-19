@@ -99,6 +99,7 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
             activityInfo.updateActivityTexts(
                 id, request.name, request.nameEn, request.description, request.descriptionEn, eligibility,
                 activitySchedule = scheduleChange(request.activitySchedule), application = scheduleChange(request.application),
+                officialUrl = request.officialUrl, applicationUrl = request.applicationUrl,
             )
         )
     }

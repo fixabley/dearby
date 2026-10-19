@@ -159,6 +159,8 @@ class AdminActivityInfoService(
         eligibility: EligibilityChange = EligibilityChange.Keep,
         activitySchedule: ScheduleChange = ScheduleChange.Keep,
         application: ScheduleChange = ScheduleChange.Keep,
+        officialUrl: String? = null,
+        applicationUrl: String? = null,
     ): AdminActivity {
         val current = activities.getById(activityId, publicationStatus = null).activity
         curations.updateTexts(
@@ -167,7 +169,14 @@ class AdminActivityInfoService(
             nameEn = optionalText(nameEn, current.nameEn),
             description = description?.trim() ?: current.description,
             descriptionEn = optionalText(descriptionEn, current.descriptionEn),
-            touched = setOfNotNull(name?.let { "name" }, nameEn?.let { "nameEn" }, description?.let { "description" }, descriptionEn?.let { "descriptionEn" }),
+            // 공식 안내·신청 링크(2026-10-19): 보낸 값만 바꾼다. 공식 안내는 https 필수, 신청 링크는 빈 문자열이면 지운다
+            officialUrl = officialUrl?.let { requireHttps(it.trim(), "공식 안내 URL") } ?: current.officialUrl,
+            applicationUrl = if (applicationUrl == null) curations.findAllByActivityId(listOf(activityId)).firstOrNull()?.applicationUrl
+                else applicationUrl.trim().ifEmpty { null }?.let { requireHttps(it, "신청 링크") },
+            touched = setOfNotNull(
+                name?.let { "name" }, nameEn?.let { "nameEn" }, description?.let { "description" }, descriptionEn?.let { "descriptionEn" },
+                officialUrl?.let { "officialUrl" }, applicationUrl?.let { "applicationUrl" },
+            ),
         )
         when (eligibility) {
             EligibilityChange.Keep -> Unit
@@ -266,6 +275,12 @@ class AdminActivityInfoService(
     }
 
     // null이면 지금 값 그대로, 빈 문자열이면 지운다(선택 입력인 영문 값)
+    private fun requireHttps(url: String, field: String): String {
+        val uri = runCatching { URI(url) }.getOrNull()
+        if (url.isEmpty() || uri?.scheme != "https" || uri.host.isNullOrBlank()) throw InvalidInputException("${field}은(는) https 주소여야 합니다")
+        return url
+    }
+
     private fun optionalText(value: String?, current: String?): String? =
         if (value == null) current else value.trim().ifEmpty { null }
 
