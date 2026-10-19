@@ -37,7 +37,7 @@ import SwiftUI
                 if showIntro {
                     IntroPage(account: account, done: finishIntro)
                 } else {
-                    HomePage(selectedTab: $tab, hidesTabs: tab == 3 && (profile.profile?.version == 0 || profile.consentPending),
+                    HomePage(selectedTab: $tab, hidesTabs: tab == 3 && profile.profile?.version == 0,
                         discovery: { ActivityListPage(state: activityModel, path: $0) }, mine: { MyActivitiesPage(state: activityModel, path: $0, explore: { tab = 0 }) },
                         cards: CardsPage(segment: $cardsSegment, cards: cards, wallet: wallet), profile: ProfilePage(state: profile),
                         settings: { SettingsPage(account: account, webOrigin: links.origins.web) })

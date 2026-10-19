@@ -4,6 +4,8 @@ import SwiftUI
 /// starts with the step funnel (`ProfileFunnelPage`); afterwards fields are edited in place in an inset-grouped `Form`
 /// (contract "폼은 플랫폼 기본 컴포넌트") and once anything differs from the loaded profile the 저장 / 원래대로 bar appears
 /// (contract "프로필과 버전 이력"). Card decoration lives in 명함 만들기. Sign-in is asked for only from the 로그인 button.
+/// The consent gate (contract "개인정보 동의", "동의 시트 닫기" 2026-10-20) is a sheet over the funnel/editor whenever the server says
+/// `consentRequired`: pulling it down or 닫기 means not consented — the sheet stays away until a save comes back 403 `CONSENT_REQUIRED`, which shows it again.
 struct ProfilePage: View {
     let state: ProfileModel
     @State private var form: ProfileForm?
@@ -15,6 +17,8 @@ struct ProfilePage: View {
     @State private var tried = false
     @State private var confirmingDeletion = false
     @State private var deletionNotice: String?
+    /// 닫기/pull-down on the consent sheet; cleared when a save is refused for missing consent so the sheet comes back.
+    @State private var consentDismissed = false
     /// Editor rows (`name`·`introduction`·`phone`·`email`·추가 연락처 id) and the 직무 search; the keyboard 완료 clears both.
     @FocusState private var field: String?
     @FocusState private var jobSearch: Bool
@@ -22,10 +26,7 @@ struct ProfilePage: View {
     private var settingUp: Bool { state.profile?.version == 0 }
     var body: some View {
         Group {
-            if state.profile != nil, state.consentPending {
-                // The consent gate comes before the first profile step and whenever the server says so (contract "개인정보 동의").
-                ConsentPage(state: state)
-            } else if settingUp, let binding = Binding($form) {
+            if settingUp, let binding = Binding($form) {
                 ProfileFunnelPage(form: binding, account: state.account, saving: saving, error: error) { save(binding.wrappedValue) }
             } else {
                 editorScreen
@@ -52,6 +53,11 @@ struct ProfilePage: View {
             guard let profile else { form = nil; return }
             if form == nil || form?.changed == false || saving { form = ProfileForm(profile: profile); error = nil; tried = false }
         }
+        .sheet(isPresented: Binding(get: { state.profile != nil && state.consentPending && !consentDismissed }, set: { if !$0 { consentDismissed = true } })) {
+            NavigationStack { ConsentPage(state: state) }
+        }
+        // A fresh requirement (sign-in to another account, a new policy version) shows the sheet again even if an earlier one was closed.
+        .onChange(of: state.consentPending) { _, pending in if pending { consentDismissed = false } }
         .sheet(item: $funnel) { target in
             NavigationStack {
                 HistoryFunnelPage(draft: target.draft, state: state, saved: target.saved, startAtSummary: target.saved) { done in form?.put(done) }
@@ -158,6 +164,8 @@ struct ProfilePage: View {
         Task {
             error = await state.save(form)
             saving = false
+            // 403 CONSENT_REQUIRED re-raises the consent sheet even after the user closed it (contract "다시 저장하면 다시 뜬다").
+            if state.consentPending { consentDismissed = false }
             if error == nil, let profile = state.profile { self.form = ProfileForm(profile: profile); tried = false }
         }
     }
