@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 발견: 프로그램 카드 목록(contract "발견 카드 리뉴얼" 2026-10-19; iOS는 inset-grouped 섹션 관용구, AGENTS.md "플랫폼별 네이티브 디자인"). `마감 숨기기`가 켜지면 모집 중·모집 예정 활동이 있는
 /// 프로그램만, 꺼지면 최근 3년 안에 활동이 있었던 프로그램까지 보인다. 카드를 펼치면 모집 중·모집 예정 활동이 항상, 지난 활동은 토글을 껐을 때만 보인다.
-/// 상단은 시스템 내비게이션 바(contract "iOS 상단 바는 시스템 내비게이션 바" 2026-10-20): inline 제목 `활동 둘러보기`, 우상단 설정·알림, 검색은 `.searchable`의 내비게이션 바 서랍
+/// 상단은 시스템 내비게이션 바(contract "iOS 상단 바는 시스템 내비게이션 바" 2026-10-20): inline 제목 `활동 둘러보기`, 우상단 설정·알림, 검색은 `.searchable`의 내비게이션 바 서랍(맨 위에서는 펼침, 스크롤하면 접힘)
 /// (아래로 스크롤하면 시스템이 접고 위로 당기면 다시 보인다). `마감 숨기기`는 목록의 첫 행이고, 풀투 리프레시·맨 위로 버튼은 그대로다.
 struct ActivityListPage: View {
     let state: ActivityViewModel
@@ -12,6 +12,10 @@ struct ActivityListPage: View {
     @State private var position = ScrollPosition()
     /// The scroll view's visible height: empty and error states centre in it (contract "비스크롤 화면 배치").
     @State private var viewport: CGFloat = 0
+    /// Scroll offset at (or above) the top. The search drawer is `.always` here so it is open on first appearance and after returning to the top
+    /// (contract "발견 검색·접힘" 2026-10-20: `.automatic` alone starts collapsed with an inline title); once the user scrolls it becomes `.automatic`
+    /// so the system folds it away on the way down and brings it back on the way up.
+    @State private var atTop = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         @Bindable var state = state
@@ -85,7 +89,8 @@ struct ActivityListPage: View {
         .onScrollGeometryChange(for: CGFloat.self) { $0.containerSize.height - $0.contentInsets.top - $0.contentInsets.bottom } action: { _, height in
             viewport = max(height - 80, 0)
         }
-        .searchable(text: $state.searchText, placement: .navigationBarDrawer(displayMode: .automatic), prompt: "프로그램·활동·태그 검색")
+        .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top <= 0 } action: { _, top in atTop = top }
+        .searchable(text: $state.searchText, placement: .navigationBarDrawer(displayMode: atTop ? .always : .automatic), prompt: "프로그램·활동·태그 검색")
         // Typing waits ~300ms before searching; the first load does not wait.
         .task(id: state.searchText) {
             if state.query != nil {
