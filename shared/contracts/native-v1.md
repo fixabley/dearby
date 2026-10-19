@@ -437,6 +437,28 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **탭 막대**: 다섯 탭은 위 표의 활동 둘러보기·내 활동·명함·받은 명함·프로필 아이콘을 쓰고, 선택 상태는 iOS 기본(`.fill` 자동), Android `NavigationBar` 기본.
 - 적용 시점: 비스크롤 화면 배치·흰 글자 규칙과 같은 묶음(현재 PR 병합 뒤).
 
+## 설정 — 2026-10-19 밤 사용자 결정
+
+사용자: "설정 버튼도 (알림) 옆에 같이 뒀으면 해. 거기서 계정 설정, 연결된 OAuth2, 패스키 관리할 수 있게." iOS·Android. 웹은 이번 범위 밖.
+
+- **진입**: 다섯 탭 제목 줄 우상단, 알림 버튼 왼쪽에 설정 버튼(`gearshape`/`Settings`, 44 터치 영역, 접근성 이름 `설정`). 누르면 `설정` 화면(푸시, inline 제목 `설정`, 뒤로 가기). 로그인하지 않았으면 설정 화면은 `로그인` CTA와 개인정보·약관·버전만 보인다.
+- **화면 구성(플랫폼 기본 그룹 목록: iOS `List(.insetGrouped)`, Android `ListItem` 섹션)**:
+  1. `계정`: 가입일(`createdAt`), 로그인 수단 수 요약. 행 `로그아웃`(확인 시트 → `POST /v1/auth/logout` + 토큰 삭제), `계정 삭제`(기존 "계정 삭제" 흐름으로 이동, destructive).
+  2. `연결된 로그인`: Apple·Google 두 행. 연결됨이면 이메일(가린 이메일 그대로)·연결일과 `연결 해제`, 아니면 `연결하기`(기존 네이티브 로그인 → `POST /v1/me/identities/{apple|google}` 링크 흐름 재사용). **마지막 로그인 수단은 해제할 수 없다**(패스키 0개이고 다른 OAuth 연결이 없으면 해제 버튼 비활성 + 설명).
+  3. `패스키`: 이 계정의 패스키 목록(이름 `label`, 만든 날, 마지막 사용, 기기 동기화 여부 `backupState`). 행을 밀거나 누르면 `이름 바꾸기`·`삭제`. 맨 아래 `패스키 추가`(기존 등록 흐름 `POST /v1/auth/passkeys/registration/options` → `registration`, 로그인 상태에서 호출). 마지막 로그인 수단이면 삭제 불가(위와 같은 규칙).
+  4. `정보`: 개인정보 처리방침·이용약관(인앱 브라우저), 앱 버전·빌드.
+- **API(`auth` 모듈, Bearer)**:
+  | 메서드·경로 | 응답 |
+  | --- | --- |
+  | GET /v1/me | 200 `{id, createdAt, signInMethods: {passkeys: n, apple: bool, google: bool}}` |
+  | GET /v1/me/identities | 200 `{items: [{provider: "apple"|"google", email, displayName, linkedAt}]}` |
+  | DELETE /v1/me/identities/{provider} | 204. 마지막 수단이면 409 `LAST_SIGN_IN_METHOD`. 애플은 refresh token 폐기(계정 삭제와 같은 경로), 구글은 행 삭제 |
+  | GET /v1/me/passkeys | 200 `{items: [{id(credentialId), label, createdAt, lastUsedAt, backedUp, transports[]}]}` |
+  | PATCH /v1/me/passkeys/{id} | `{label}`(1~60자) → 200 항목 |
+  | DELETE /v1/me/passkeys/{id} | 204. 마지막 수단이면 409 `LAST_SIGN_IN_METHOD`. 남이 가진 id면 404 |
+  "마지막 수단" 판정: 패스키 수 + 연결된 OAuth 수가 1이면 그 하나는 지울 수 없다. 이미 있는 `POST /v1/auth/passkeys/registration/options`·`registration`은 Bearer가 있으면 그 계정에 패스키를 더한다(없으면 기존 가입 흐름).
+- 저장: 변경 없음(`user_credentials`·`user_identities` 그대로).
+
 ## 활동 장소 — 2026-10-19 사용자 결정
 
 사용자: "장소는 어드민에서 추가할 수 있으면 좋겠고 geocode, 주소 검색해서 좌표 가지고 올 수 있으면". 활동의 구조화된 장소를 둔다.
