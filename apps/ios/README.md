@@ -51,7 +51,7 @@
 - RP ID `wid.io.kr`는 `Passkey.relyingParty`와 두 entitlements의 `webcredentials:wid.io.kr`에만 둔다. 바꾸면 등록된 패스키를 모두 쓸 수 없다.
 - 토큰(TokenPair)은 새 Keychain 서비스 `dearby.account.tokens`에 둔다. 이메일 로그인 때의 `dearby.account.session`과 2026-10-03 이전 앱이 남긴 값은 읽거나 지우지 않는다.
 - 401이면 refresh를 한 번(동시에 하나만) 하고 다시 호출한다. refresh가 거절(401)되면 토큰을 지우고 로그인 화면으로 돌아간다. refresh 중 네트워크 실패는 토큰을 남기고 그 호출만 실패시킨다. 로그아웃은 `/v1/auth/logout` 뒤 기기 토큰을 지운다(네트워크 실패여도).
-- 서버 쪽 필요 조건(앱 밖): `https://wid.io.kr/.well-known/apple-app-site-association`의 `webcredentials.apps`에 `4V9FVN3VQF.io.wid.dearby`(Release)와 `4V9FVN3VQF.com.dearby.dearby`(Debug), API `WEBAUTHN_ALLOWED_ORIGINS`에 `https://wid.io.kr`. 둘 다 없으면 OS가 패스키 요청을 거절하므로 로컬 API만으로는 실제 패스키를 확인할 수 없다.
+- 서버 쪽 필요 조건(앱 밖): `https://wid.io.kr/.well-known/apple-app-site-association`의 `webcredentials.apps`에 `4V9FVN3VQF.io.wid.dearby`(Release)와 `4V9FVN3VQF.io.wid.dearby`(Debug), API `WEBAUTHN_ALLOWED_ORIGINS`에 `https://wid.io.kr`. 둘 다 없으면 OS가 패스키 요청을 거절하므로 로컬 API만으로는 실제 패스키를 확인할 수 없다.
 
 ## 애플 로그인 (2026-10-16)
 
@@ -60,7 +60,7 @@
 - 코드: `entities/account/api/AppleSignIn.swift`(OS 요청, scope 이름·이메일, 서버 nonce를 해시하지 않고 그대로 넣음), `AccountClient`(`/v1/auth/apple/nonce`·`/auth/apple`·`/auth/apple/register`·`/me/identities/apple`), `AccountViewModel`, `SignInSheet`·`IntroPage`, 버튼 `shared/ui/DearbyAppleButton.swift`.
 - 버튼: Apple의 `ASAuthorizationAppleIDButton`("Apple로 계속하기", 밝은 화면 검정·어두운 화면 흰색). SwiftUI `SignInWithAppleButton`은 요청을 동기로 만들어 서버 nonce를 먼저 받을 수 없어서, 누르면 nonce를 받은 뒤 `AuthorizationController`로 요청한다(패스키와 같은 방식).
 - 흐름: 이미 연결된 애플 계정(200)은 바로 로그인한다. 처음 보는 계정(202)은 로그인 시트에서 "새 계정으로 시작"(`register`)과 "기존 패스키 계정에 연결"(패스키 로그인 → `/me/identities/apple`)을 고른다. **2026-10-17 사용자 결정으로 202 직후 먼저 자동으로 시도한다(`AccountViewModel.linkOrStart`)**: `Passkey.assert(localOnly: true)`(`.preferImmediatelyAvailableCredentials`)로 이 기기(iCloud 키체인)의 Dearby 패스키만 묻는다. 패스키가 있으면 Face ID 한 번으로 로그인·연결하고, 없으면 묻지 않고 바로 새 계정으로 시작한다. OS는 "패스키 없음"과 "시트 닫음"을 모두 `canceled`로 돌려주므로, 시트가 뜰 틈도 없이(400ms 안에) 돌아온 취소는 패스키 없음으로 보고, 그보다 늦은 취소(사용자가 닫음)에만 위 선택 화면을 보여 준다. 웹은 조용히 확인할 수단이 없어 그대로 묻는다. 연결이 실패하면 패스키 토큰은 저장하지 않고 로그아웃한다(연결 안 된 채 로그인되지 않게). 연결 단계의 401은 시간 초과로 보고 처음부터 다시 하게 한다. 400(패스키 계정에 이미 다른 애플 계정이 있거나 이 애플 계정이 방금 다른 계정에 연결됨)은 "이미 다른 계정과 연결돼 있어서 연결하지 못했어요."다. 서버는 두 경우 모두 linkToken을 써 버리므로 선택 화면을 닫는다. 사용자 취소는 문구가 없고, 503·연결 실패는 "지금은 애플 로그인을 쓸 수 없어요."다. 이름은 첫 인가 때만 와서 그때만 `displayName`으로 보낸다. credential의 `authorizationCode`(UTF-8 문자열, 없으면 생략)도 함께 보내 서버가 계정 삭제 때 애플 토큰을 폐기할 수 있게 한다. 자격 철회 확인(`getCredentialState`)은 아직 없다.
-- **켜짐(2026-10-16)**: 두 entitlements에 `com.apple.developer.applesignin` = `["Default"]`, 두 Info.plist의 `DearbyAppleSignInEnabled` = `true`. App Store profile은 Sign in with Apple 포함으로 다시 만들어 `IOS_APPSTORE_PROFILE_BASE64`에 넣었다(2026-10-16 13:45 UTC). 기기 Debug 빌드는 `com.dearby.dearby` 앱 ID에도 이 기능이 켜져 있어야 서명된다.
+- **켜짐(2026-10-16)**: 두 entitlements에 `com.apple.developer.applesignin` = `["Default"]`, 두 Info.plist의 `DearbyAppleSignInEnabled` = `true`. App Store profile은 Sign in with Apple 포함으로 다시 만들어 `IOS_APPSTORE_PROFILE_BASE64`에 넣었다(2026-10-16 13:45 UTC). 기기 Debug 빌드는 `io.wid.dearby` 앱 ID에도 이 기능이 켜져 있어야 서명된다.
 - 끄려면 두 값을 되돌린다. entitlement만 남기고 플래그를 끄면 버튼만 숨는다.
 - 실제 애플 로그인은 entitlement가 있는 서명 빌드와 운영 API(`APPLE_CLIENT_IDS` 설정)에서만 확인할 수 있다. entitlement 없이 요청하면 OS가 실패로 돌려준다.
 
@@ -106,7 +106,7 @@ bash apps/ios/scripts/setup_swiftlint.sh
 bash apps/ios/scripts/run_swiftlint.sh
 ```
 
-Debug ID `com.dearby.dearby`, Release ID `io.wid.dearby`, 버전 `0.1.0 (1)` 유지.
+Debug ID `io.wid.dearby`, Release ID `io.wid.dearby`, 버전 `0.1.0 (1)` 유지.
 실기기 설치·서명·배포는 조율 세션 소유입니다.
 검증 결과와 인계: `../../docs/context/ios-ui-prototype.md`.
 현재 화면 증거는 [selected UI](docs/evidence/ui-prototype-selected/README.md)에 있습니다.
