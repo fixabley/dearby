@@ -13,9 +13,7 @@ struct CardComposer: View {
     var body: some View {
         Form {
             Section {
-                DearbyFormRow(label: "명함 이름", focus: $field, value: "title") {
-                    TextField("내 명함", text: $draft.cardTitle).accessibilityLabel("명함 이름 (선택)")
-                }
+                DearbyFormRow(label: "명함 이름", text: $draft.cardTitle, focus: $field, value: "title")
             } footer: {
                 Text("비워 두면 ‘내 명함’으로 저장해요.").font(.dearby(.subheadline))
             }

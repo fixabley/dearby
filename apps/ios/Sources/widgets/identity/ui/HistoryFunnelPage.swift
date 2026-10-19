@@ -80,9 +80,7 @@ struct HistoryFunnelPage: View {
             }
         case .description:
             Section {
-                DearbyFormRow(label: "설명", focus: $field, value: "description") {
-                    TextField("맡은 일이나 성과", text: $draft.description, axis: .vertical).lineLimit(3...6).accessibilityLabel("설명")
-                }
+                DearbyFormRow(label: "설명", text: $draft.description, multiline: true, focus: $field, value: "description")
             } header: { question("한 줄로 설명해 주세요 (선택)") }
         case .summary:
             summary

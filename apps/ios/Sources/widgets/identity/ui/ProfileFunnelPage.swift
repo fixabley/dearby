@@ -50,25 +50,22 @@ struct ProfileFunnelPage: View {
         Section {
             switch step {
             case .name:
-                DearbyFormRow(label: step.label, focus: $focus, value: step) {
-                    TextField("실명 또는 활동명", text: $form.name).textContentType(.name).submitLabel(.next).onSubmit(next).accessibilityLabel("이름, 필수")
+                DearbyFormRow(label: step.label, required: true, text: $form.name, focus: $focus, value: step) {
+                    $0.textContentType(.name).submitLabel(.next).onSubmit(next)
                 }
             case .jobs:
                 JobTagPicker(form: $form, account: account, focus: $jobSearch)
             case .phone:
-                DearbyFormRow(label: step.label, symbol: ContactModel.symbol(kind: "phone"), focus: $focus, value: step) {
-                    TextField("전화번호", text: $form.phone).keyboardType(.phonePad).textContentType(.telephoneNumber).accessibilityLabel("전화번호, 필수")
+                DearbyFormRow(label: step.label, symbol: ContactModel.symbol(kind: "phone"), required: true, text: $form.phone, focus: $focus, value: step) {
+                    $0.keyboardType(.phonePad).textContentType(.telephoneNumber)
                 }
             case .email:
-                DearbyFormRow(label: step.label, symbol: ContactModel.symbol(kind: "email"), focus: $focus, value: step) {
-                    TextField("이메일", text: $form.email)
-                        .keyboardType(.emailAddress).textContentType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
-                        .submitLabel(.next).onSubmit(next).accessibilityLabel("이메일, 필수")
+                DearbyFormRow(label: step.label, symbol: ContactModel.symbol(kind: "email"), required: true, text: $form.email, focus: $focus, value: step) {
+                    $0.keyboardType(.emailAddress).textContentType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .submitLabel(.next).onSubmit(next)
                 }
             case .introduction:
-                DearbyFormRow(label: step.label, focus: $focus, value: step) {
-                    TextField("예: 커뮤니티 운영과 행사 기획을 해요", text: $form.introduction, axis: .vertical).lineLimit(3...6).accessibilityLabel("소개")
-                }
+                DearbyFormRow(label: step.label, text: $form.introduction, multiline: true, focus: $focus, value: step)
             }
         } header: {
             Text(question(step)).font(.dearby(.title3).bold()).foregroundStyle(.primary)

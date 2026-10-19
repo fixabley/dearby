@@ -8,7 +8,7 @@ struct ProfileExtraContact: Identifiable, Equatable {
 }
 
 /// 프로필 연락처 섹션(폼 `Section`). 전화번호·이메일은 필수 행이고, 그 밖의 종류는 `연락처 추가` 행에서 골라 붙이고 왼쪽으로 밀어 지운다.
-/// 행은 글자 라벨 대신 왼쪽에 종류 아이콘(`ContactModel.symbol(kind:)`)을 둔 `DearbyFormRow`이고 placeholder가 종류 이름을 말한다(계약 "연락처 행은 라벨 대신 왼쪽 아이콘" 2026-10-20);
+/// 행은 왼쪽에 종류 아이콘(`ContactModel.symbol(kind:)`)을 둔 플로팅 라벨 `DearbyFormRow`이고 종류 이름이 라벨(비면 placeholder 자리)이다(계약 "연락처 행은 라벨 대신 왼쪽 아이콘"·"플로팅 라벨" 2026-10-20);
 /// 행 어디를 눌러도 그 필드에 포커스가 간다(`focus`의 값은 `phone`·`email`·추가 연락처의 id).
 /// 값·형식 검사·오류 문구는 화면이 갖고 이 위젯은 행으로 보이며 오류는 footer에 둔다.
 struct ProfileContactFields: View {
@@ -21,24 +21,19 @@ struct ProfileContactFields: View {
     /// 시트에서 고른 종류. 화면이 새 항목을 `extras`에 넣는다.
     let add: (String) -> Void
     @State private var choosing = false
-    static let kinds: [(kind: String, label: String, prompt: String)] = [
-        ("kakao", "카카오톡", "카카오톡 ID 또는 오픈채팅 링크"), ("instagram", "Instagram", "@아이디"),
-        ("github", "GitHub", "github.com/아이디"), ("behance", "Behance", "behance.net/아이디")
-    ]
+    static let kinds: [(kind: String, label: String)] = [("kakao", "카카오톡"), ("instagram", "Instagram"), ("github", "GitHub"), ("behance", "Behance")]
     var body: some View {
         Section {
-            DearbyFormRow(label: "전화번호", symbol: ContactModel.symbol(kind: "phone"), focus: focus, value: "phone") {
-                TextField("전화번호", text: $phone).keyboardType(.phonePad).textContentType(.telephoneNumber).accessibilityLabel("전화번호, 필수")
+            DearbyFormRow(label: "전화번호", symbol: ContactModel.symbol(kind: "phone"), required: true, text: $phone, focus: focus, value: "phone") {
+                $0.keyboardType(.phonePad).textContentType(.telephoneNumber)
             }
-            DearbyFormRow(label: "이메일", symbol: ContactModel.symbol(kind: "email"), focus: focus, value: "email") {
-                TextField("이메일", text: $email).keyboardType(.emailAddress).textContentType(.emailAddress)
-                    .textInputAutocapitalization(.never).autocorrectionDisabled().accessibilityLabel("이메일, 필수")
+            DearbyFormRow(label: "이메일", symbol: ContactModel.symbol(kind: "email"), required: true, text: $email, focus: focus, value: "email") {
+                $0.keyboardType(.emailAddress).textContentType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
             }
             ForEach($extras) { $item in
-                let meta = Self.kinds.first { $0.kind == item.kind }
-                let label = meta?.label ?? item.kind
-                DearbyFormRow(label: label, symbol: ContactModel.symbol(kind: item.kind), focus: focus, value: item.id) {
-                    TextField(meta?.prompt ?? label, text: $item.value).textInputAutocapitalization(.never).autocorrectionDisabled().accessibilityLabel(label)
+                let label = Self.kinds.first { $0.kind == item.kind }?.label ?? item.kind
+                DearbyFormRow(label: label, symbol: ContactModel.symbol(kind: item.kind), text: $item.value, focus: focus, value: item.id) {
+                    $0.textInputAutocapitalization(.never).autocorrectionDisabled()
                 }
                 .swipeActions {
                     Button("삭제", role: .destructive) { extras.removeAll { $0.id == item.id } }.accessibilityLabel("\(label) 삭제")
@@ -64,7 +59,7 @@ struct ProfileContactFields: View {
             Text("연락처").font(.dearby(.subheadline))
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
-                Text("전화번호와 이메일은 꼭 적어 주세요. 추가한 연락처는 왼쪽으로 밀어 지워요.")
+                Text("추가한 연락처는 왼쪽으로 밀어 지워요.")
                 if let phoneError { DearbyFieldError(text: phoneError) }
                 if let emailError { DearbyFieldError(text: emailError) }
             }.font(.dearby(.subheadline))

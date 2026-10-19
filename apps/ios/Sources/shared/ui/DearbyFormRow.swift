@@ -1,35 +1,73 @@
 import SwiftUI
 
-/// 폼 입력 행(contract "폼 라벨·입력 크기"·"입력 영역 터치" 2026-10-20, 토스 입력 화면 참고): 라벨 `.subheadline` 중간 굵기 보조색을 입력 위에 쌓고
-/// 입력은 `.title3` 본문색(placeholder는 같은 크기 보조색, 시스템 기본), 행 최소 높이 64(내용 44 + 폼 행 기본 세로 inset). 행 어디를 눌러도 `focus`가 `value`가 되어
-/// 그 필드로 키보드가 열린다. `content`는 `TextField` 하나(여러 줄은 `axis: .vertical` + `lineLimit(3...)`)이며 `.focused`는 행이 붙인다.
-struct DearbyFormRow<Value: Hashable, Content: View>: View {
+/// 폼 입력 행(contract "플로팅 라벨·필수 표시"·"입력 영역 터치" 2026-10-20): 칸은 발견 검색창과 같은 둥근 10 `tertiarySystemFill` 상자(한 줄 44, 여러 줄은 3줄 고정, 테두리 없음)이고
+/// 포커스·값에 따라 모양이 바뀌지 않는다. 라벨 하나가 비어 있고 포커스 없을 때는 칸 안 placeholder 자리(`.body` 보조색)에, 포커스가 가거나 값이 있으면 칸 **위 왼쪽**(바깥)으로
+/// `scaleEffect`+`offset`(`.snappy(0.2)`)으로 작아져 올라간다(`.subheadline` 크기, 보조색·포커스 시 청록). 라벨 줄 20 + 간격 4는 처음부터 확보해 레이아웃이 튀지 않는다.
+/// `required`면 라벨 끝에 빨간 `*`, 접근성 라벨은 "<라벨>, 필수". `symbol`은 연락처 행의 왼쪽 24 보조색 글리프(라벨은 그대로 플로팅). 행 어디를 눌러도 `focus`가 `value`가 된다.
+/// `TextField`는 행이 만들고(`text`, `multiline`), 키보드·자동 완성·제출 같은 수식어는 `configure`로 받는다.
+struct DearbyFormRow<Value: Hashable, Field: View>: View {
     let label: String
-    /// SF Symbol shown 24 wide in secondary color on the left **instead of** the stacked text label (contract "연락처 행은 라벨 대신 왼쪽 아이콘"
-    /// 2026-10-20); the placeholder then names the kind and `label` stays the accessibility name.
     var symbol: String?
+    var required = false
+    @Binding var text: String
+    var multiline = false
     var focus: FocusState<Value?>.Binding
     let value: Value
-    @ViewBuilder let content: Content
+    let configure: (TextField<Text>) -> Field
+    init(label: String, symbol: String? = nil, required: Bool = false, text: Binding<String>, multiline: Bool = false,
+         focus: FocusState<Value?>.Binding, value: Value, configure: @escaping (TextField<Text>) -> Field) {
+        self.label = label
+        self.symbol = symbol
+        self.required = required
+        _text = text
+        self.multiline = multiline
+        self.focus = focus
+        self.value = value
+        self.configure = configure
+    }
+    private var focused: Bool { focus.wrappedValue == value }
+    private var floated: Bool { focused || !text.isEmpty }
+    /// Box left edge: after the 24 glyph + 12 gap when there is a symbol.
+    private var inset: CGFloat { symbol == nil ? 0 : 36 }
     var body: some View {
-        Group {
-            if let symbol {
-                HStack(spacing: 12) {
-                    Image(systemName: symbol).font(.dearby(.title3)).foregroundStyle(.secondary).frame(width: 24).accessibilityHidden(true)
-                    field
-                }
-            } else {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(label).font(.dearby(.subheadline).weight(.medium)).foregroundStyle(.secondary)
-                    field
-                }
+        VStack(alignment: .leading, spacing: 4) {
+            Color.clear.frame(height: 20)
+            HStack(spacing: 12) {
+                if let symbol { Image(systemName: symbol).font(.dearby(.title3)).foregroundStyle(.secondary).frame(width: 24).accessibilityHidden(true) }
+                box
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .overlay(alignment: .topLeading) { floatingLabel }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .contentShape(Rectangle())
         .onTapGesture { focus.wrappedValue = value }
     }
-    private var field: some View { content.font(.dearby(.title3)).foregroundStyle(.primary).focused(focus, equals: value) }
+    private var box: some View {
+        configure(TextField("", text: $text, axis: multiline ? .vertical : .horizontal))
+            .lineLimit(multiline ? 3 : 1, reservesSpace: multiline)
+            .font(.dearby(.body)).foregroundStyle(.primary)
+            .focused(focus, equals: value)
+            .accessibilityLabel(required ? "\(label), 필수" : label)
+            .padding(.horizontal, 12).padding(.vertical, 11).frame(minHeight: 44)
+            .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+    /// One label drawn at `.body`; floated it scales to `.subheadline` (15/17) at the row's top-left, otherwise it sits where the first text line starts
+    /// (label line 20 + gap 4 + box top padding 11). Hidden from VoiceOver (the field carries the name) and from taps (the field underneath gets them).
+    private var floatingLabel: some View {
+        (Text(label) + (required ? Text(" *").foregroundStyle(.red) : Text("")))
+            .font(.dearby(.body)).foregroundStyle(focused ? DearbyStyle.teal : .secondary).lineLimit(1)
+            .scaleEffect(floated ? 15 / 17 : 1, anchor: .topLeading)
+            .offset(x: floated ? inset : inset + 12, y: floated ? 0 : 35)
+            .animation(.snappy(duration: 0.2), value: floated)
+            .allowsHitTesting(false).accessibilityHidden(true)
+    }
+}
+
+extension DearbyFormRow where Field == TextField<Text> {
+    init(label: String, symbol: String? = nil, required: Bool = false, text: Binding<String>, multiline: Bool = false,
+         focus: FocusState<Value?>.Binding, value: Value) {
+        self.init(label: label, symbol: symbol, required: required, text: text, multiline: multiline, focus: focus, value: value) { $0 }
+    }
 }
 
 /// 라벨 위·값 아래로 쌓인 읽기 전용 행(고른 기간, 접힌 퍼널 단계처럼 `LabeledContent`의 가로 라벨·값을 대신한다). 값이 비면 `empty`를 보조색으로 보인다.
@@ -77,9 +115,9 @@ private struct DearbyFormRowGallery: View {
     var body: some View {
         Form {
             Section("기본 정보") {
-                DearbyFormRow(label: "이름", focus: $focus, value: "name") { TextField("실명 또는 활동명", text: $name) }
-                DearbyFormRow(label: "소개", focus: $focus, value: "note") { TextField("한두 문장", text: $note, axis: .vertical).lineLimit(3...6) }
-                DearbyFormRow(label: "전화번호", symbol: "phone", focus: $focus, value: "phone") { TextField("전화번호", text: $phone).keyboardType(.phonePad).accessibilityLabel("전화번호") }
+                DearbyFormRow(label: "이름", required: true, text: $name, focus: $focus, value: "name") { $0.textContentType(.name) }
+                DearbyFormRow(label: "소개", text: $note, multiline: true, focus: $focus, value: "note")
+                DearbyFormRow(label: "전화번호", symbol: "phone", required: true, text: $phone, focus: $focus, value: "phone") { $0.keyboardType(.phonePad) }
                 DearbyValueRow(label: "직무", value: "")
                 DearbyCheckRow(isOn: $agreed) { Text("개인정보 수집·이용에 동의합니다. 여러 줄이 되는 라벨도 행 전체가 눌려요.") }
             }

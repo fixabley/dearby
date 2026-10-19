@@ -87,14 +87,12 @@ struct ProfilePage: View {
     private func editor(_ form: Binding<ProfileForm>, saved: AccountProfile) -> some View {
         Form {
             Section {
-                DearbyFormRow(label: "이름", focus: $field, value: "name") {
-                    TextField("실명 또는 활동명", text: form.name).textContentType(.name).accessibilityLabel("이름, 필수")
-                }
+                DearbyFormRow(label: "이름", required: true, text: form.name, focus: $field, value: "name") { $0.textContentType(.name) }
             } header: {
                 Text("기본 정보").font(.dearby(.subheadline))
             } footer: {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("이름은 꼭 적어 주세요. 명함과 공개 프로필에 보여요.")
+                    Text("명함과 공개 프로필에 보여요.")
                     if tried, let message = form.wrappedValue.nameError { DearbyFieldError(text: message) }
                 }.font(.dearby(.subheadline))
             }
@@ -106,9 +104,7 @@ struct ProfilePage: View {
                 if let note = JobTagPicker.note(for: form.wrappedValue) { Text(note).font(.dearby(.subheadline)) }
             }
             Section {
-                DearbyFormRow(label: "소개", focus: $field, value: "introduction") {
-                    TextField("처음 만난 사람에게 건넬 한두 문장", text: form.introduction, axis: .vertical).lineLimit(3...6).accessibilityLabel("소개")
-                }
+                DearbyFormRow(label: "소개", text: form.introduction, multiline: true, focus: $field, value: "introduction")
             }
             ProfileContactFields(phone: form.phone, email: form.email, extras: form.extras, focus: $field,
                                  phoneError: tried ? form.wrappedValue.phoneError : nil, emailError: tried ? form.wrappedValue.emailError : nil) { form.wrappedValue.addContact($0) }
