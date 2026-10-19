@@ -6,6 +6,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -17,8 +18,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 
-/** [openLink] opens the official page: as the application link while recruiting, otherwise as the notice. */
-@Composable fun ActivityDetailPage(activity: ActivityState, error: String?, back: () -> Unit, openLink: (String) -> Unit, editReport: () -> Unit, confirm: (Boolean) -> Unit, checkCalendar: () -> Unit, share: () -> Unit) {
+/**
+ * [openLink] opens the official page: as the application link while recruiting, otherwise as the notice. [openMap] opens the
+ * curated place in a map app (contract "활동 장소"); the `장소` section shows only when the activity has one.
+ */
+@Composable fun ActivityDetailPage(
+    activity: ActivityState, error: String?, back: () -> Unit, openLink: (String) -> Unit, editReport: () -> Unit, confirm: (Boolean) -> Unit, checkCalendar: () -> Unit, share: () -> Unit,
+    openMap: () -> Unit = {},
+) {
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("활동 상세", back) { if (activity.officialUrl != null) IconButton(share) { Icon(Icons.Outlined.IosShare, "활동 공유", tint = Teal) } }
         if (activity.applied) Surface(color = Mint) {
@@ -47,6 +54,21 @@ import com.dearby.nativeapp.shared.ui.*
                 InfoRow("개최 일시", activity.date.ifEmpty { "미확인" }, Icons.Outlined.Schedule)
                 InfoRow("장소", activity.location ?: "미확인", Icons.Outlined.LocationOn)
                 InfoRow("프로그램", activity.program, Icons.Outlined.Badge)
+                activity.place?.let { place ->
+                    HorizontalDivider()
+                    Text("장소", style = MaterialTheme.typography.titleLarge, color = Teal)
+                    OutlinedCard(openMap, Modifier.fillMaxWidth().semantics { contentDescription = "장소 ${place.name}, ${place.address}, 지도 앱으로 열기" },
+                        shape = RoundedCornerShape(12.dp), colors = CardDefaults.outlinedCardColors(containerColor = Soft), border = BorderStroke(1.dp, Line)) {
+                        Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Outlined.Map, null, tint = Teal)
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(place.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
+                                Text(place.address, color = Quiet, style = MaterialTheme.typography.bodySmall)
+                            }
+                            Icon(Icons.AutoMirrored.Outlined.OpenInNew, null, Modifier.size(18.dp), tint = Quiet)
+                        }
+                    }
+                }
                 HorizontalDivider()
                 Text("소개", style = MaterialTheme.typography.titleLarge, color = Teal)
                 Text(activity.summary)

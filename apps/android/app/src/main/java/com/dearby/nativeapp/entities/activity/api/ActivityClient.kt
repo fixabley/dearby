@@ -6,6 +6,7 @@ import com.dearby.nativeapp.entities.activity.model.EligibilityCondition
 import com.dearby.nativeapp.entities.activity.model.EligibilityGroup
 import com.dearby.nativeapp.entities.activity.model.ActivityPage
 import com.dearby.nativeapp.entities.activity.model.ApplicationWindow
+import com.dearby.nativeapp.entities.activity.model.Place
 import com.dearby.nativeapp.entities.activity.model.ProgramPage
 import com.dearby.nativeapp.entities.activity.model.ProgramSummary
 import com.dearby.nativeapp.entities.activity.model.StageSchedule
@@ -81,6 +82,9 @@ fun parseActivities(json: String): ActivityPage {
             activity.optJSONObject("eligibility")?.let { runCatching { it.eligibilityGroup(0) }.getOrNull() },
             ActivityCategory.fromCode(activity.text("category")),
             activity.tags(),
+            activity.text("location"),
+            // A malformed place (contract "활동 장소": four fields together) never fails the activity.
+            activity.optJSONObject("place")?.let { runCatching { Place(it.getString("name"), it.getString("address"), it.getDouble("lat"), it.getDouble("lng")) }.getOrNull() },
         )
     }, body.text("nextCursor"))
 }

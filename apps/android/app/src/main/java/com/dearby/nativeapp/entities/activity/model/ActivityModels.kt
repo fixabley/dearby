@@ -24,6 +24,9 @@ data class StageSchedule(
  */
 data class ApplicationWindow(val startAt: String?, val endAt: String?, val startDate: String? = null, val endDateExclusive: String? = null)
 
+/** A structured venue (contract "활동 장소"): all four fields come together or the activity has no place. */
+data class Place(val name: String, val address: String, val lat: Double, val lng: Double)
+
 /** One activity from `GET /v1/activities` (contract "활동 조회"). [id] is the API's number as text. */
 data class ActivityModel(
     val id: String, val name: String, val description: String, val organization: String, val program: String,
@@ -39,7 +42,13 @@ data class ActivityModel(
     val category: ActivityCategory? = null,
     /** 얻을 수 있는 것 (contract "태그"), dictionary order; empty when the API sent none. */
     val tags: List<Tag> = emptyList(),
+    /** The collected venue phrase (`location`), already the place name when a [place] is set (contract "활동 장소"). */
+    val location: String? = null,
+    /** The curated venue with coordinates, or null (contract "활동 장소"). */
+    val place: Place? = null,
 ) {
+    /** The venue name to show: the curated place, else the collected phrase, else the schedule address. */
+    val venue: String? get() = place?.name ?: location ?: address
     /** Only schedules with both ends can be compared on a calendar. */
     val schedules get() = stageSchedules.mapNotNull { if (it.startAt == null || it.endAt == null) null else ScheduleModel(it.title, it.startAt, it.endAt, it.timeZone) }
     /**

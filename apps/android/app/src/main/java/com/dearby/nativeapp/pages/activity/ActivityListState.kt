@@ -1,5 +1,6 @@
 package com.dearby.nativeapp.pages.activity
 
+import com.dearby.nativeapp.entities.activity.model.Place
 import com.dearby.nativeapp.widgets.activity.progress.ProgressState
 import java.time.Instant
 import java.time.LocalDate
@@ -7,7 +8,11 @@ import java.time.LocalDate
 enum class ActivityListPhase { LOADING, FAILED, LOADED }
 enum class ProgramPhase { LOADING, FAILED, LOADED }
 
-/** One activity as shown; recruiting and links are judged once at load time. */
+/**
+ * One activity as shown; recruiting and links are judged once at load time. [status] is the `application` verdict
+ * (`모집 중`/`모집 예정`/`모집 마감`/`모집 여부 확인 필요`), [period] the recruitment window text (null when none) and [date] the activity
+ * period text. [location] is the venue name (curated place, else the collected phrase); [place] adds address and coordinates.
+ */
 data class ActivityState(
     val id: String, val title: String, val summary: String, val organization: String, val program: String, val status: String,
     val date: String, val location: String?, val imageUrl: String?, val sessions: List<Pair<String, String>>,
@@ -22,7 +27,12 @@ data class ActivityState(
     val sortKey: Instant? = null,
     /** 얻을 수 있는 것 tag names in dictionary order (contract "태그"). */
     val tags: List<String> = emptyList(),
-)
+    /** The curated venue for the detail `장소` section and the map link (contract "활동 장소"). */
+    val place: Place? = null,
+) {
+    /** Recruitment still ahead or running: the card emphasises the `모집` row (contract "발견 카드 리뉴얼" 강조 규칙). */
+    val recruiting get() = status == "모집 중" || status == "모집 예정"
+}
 /** One dictionary tag for the filter chips (contract "태그"). */
 data class TagState(val id: String, val name: String)
 /**

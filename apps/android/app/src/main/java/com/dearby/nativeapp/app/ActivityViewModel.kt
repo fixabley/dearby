@@ -229,10 +229,11 @@ private fun today(): LocalDate = LocalDate.now(ZoneId.of("Asia/Seoul"))
 private val sessionTime = DateTimeFormatter.ofPattern("HH:mm", Locale.KOREAN)
 private val sessionDay = DateTimeFormatter.ofPattern("M/d", Locale.KOREAN)
 private val periodTime = DateTimeFormatter.ofPattern("M월 d일 HH:mm", Locale.KOREAN).withZone(ZoneId.of("Asia/Seoul"))
+private val periodDay = DateTimeFormatter.ofPattern("M월 d일", Locale.KOREAN)
 private fun zoneOf(id: String) = runCatching { ZoneId.of(id) }.getOrDefault(ZoneId.of("Asia/Seoul"))
 
 private fun ActivityModel.toState(now: Instant) = ActivityState(
-    id, name, description, organization, program, statusLabel(now), dateLabel, address, safeHttpsUrl(imageUrl),
+    id, name, description, organization, program, statusLabel(now), dateLabel, venue, safeHttpsUrl(imageUrl),
     schedules.map { schedule ->
         val zone = zoneOf(schedule.timeZone)
         val range = listOf(schedule.startAt, schedule.endAt).joinToString(" – ") { sessionTime.withZone(zone).format(instant(it)) }
@@ -245,6 +246,7 @@ private fun ActivityModel.toState(now: Instant) = ActivityState(
     category = category?.label, categoryOrder = category?.ordinal ?: Int.MAX_VALUE,
     sortKey = sortKey,
     tags = tags.map { it.name },
+    place = place,
 )
 /**
  * The stage track with the user's [marks]: a 통과 mark makes the stage past, the earliest other stage not over by [today]
@@ -268,10 +270,17 @@ private fun ActivityModel.toProgress(marks: Map<Int, ProgressMark>, today: Local
     return ProgressState(id, name, "$program · $organization", shown, current, badge, ended, failedAt != null, current?.let { stages[it].day })
 }
 
-/** "10월 1일 14:07 – 10월 8일 00:00" in Korean time; an unknown end stays blank on its side. */
+/**
+ * "10월 1일 14:07 – 10월 8일 00:00" in Korean time; an all-day window (contract "열린 활동 판정 일원화") reads as Seoul days,
+ * "10월 1일 – 10월 7일" with the exclusive end moved back a day. An unknown end stays blank on its side.
+ */
 private fun ActivityModel.period(): String? {
-    val start = instant(application?.startAt)
+    val window = application ?: return null
+    val start = instant(window.startAt)
     val end = recruitmentEnd
-    if (start == null && end == null) return null
-    return listOf(start, end).joinToString(" – ") { it?.let(periodTime::format).orEmpty() }.trim()
+    if (start != null || end != null) return listOf(start, end).joinToString(" – ") { it?.let(periodTime::format).orEmpty() }.trim()
+    val startDay = window.startDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+    val endDay = window.endDateExclusive?.let { runCatching { LocalDate.parse(it).minusDays(1) }.getOrNull() }
+    if (startDay == null && endDay == null) return null
+    return listOf(startDay, endDay).joinToString(" – ") { it?.let(periodDay::format).orEmpty() }.trim()
 }

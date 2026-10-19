@@ -20,20 +20,21 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import java.time.Instant
 import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.activity.activityCard.ActivityCard
-import com.dearby.nativeapp.widgets.activity.programHeader.ProgramHeaderRow
+import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
 
 /**
- * Discovery (contract "발견 프로그램 묶음"): programs with open activities as an accordion; a header toggles its open
- * activity cards. The next program page loads near the end.
+ * Discovery (contract "발견 프로그램 묶음" · "발견 카드 리뉴얼"): one program card per program; its head toggles the activity cards that
+ * expand inside the same card. The next program page loads near the end.
  */
 @Composable fun ActivityListPage(
-    state: ActivityListState, open: (String) -> Unit, search: (String) -> Unit, retry: () -> Unit, loadMore: () -> Unit, openLink: (String) -> Unit,
+    state: ActivityListState, open: (String) -> Unit, search: (String) -> Unit, retry: () -> Unit, loadMore: () -> Unit,
     toggle: (String) -> Unit, retryProgram: (String) -> Unit, setOpenOnly: (Boolean) -> Unit = {}, toggleTag: (String) -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize()) {
@@ -66,53 +67,9 @@ import com.dearby.nativeapp.widgets.activity.programHeader.ProgramHeaderRow
                 programs.isEmpty() && state.openOnly -> item { DearbyEmptyState("지금 모집 중인 프로그램이 없어요", "새 모집이 열리면 여기에서 볼 수 있어요. ‘마감 숨기기’를 끄면 최근 2년 안에 활동한 프로그램도 보여요.") }
                 programs.isEmpty() -> item { DearbyEmptyState("최근 2년 안에 활동한 프로그램이 없어요", "새 모집이 열리면 여기에서 볼 수 있어요.") }
                 else -> {
-                    programs.forEach { program ->
-                        item(key = "program-" + program.id) {
-                            ProgramHeaderRow(program.title, program.organization, program.openCount, program.deadline, program.id in state.expanded, onToggle = { toggle(program.id) }, latestActivityAt = program.latestActivityAt, tags = program.tags, upcomingCount = program.upcomingCount, nearestStart = program.nearestStart)
-                        }
-                        if (program.id in state.expanded) {
-                            val loaded = state.programActivities[program.id]
-                            when (loaded?.phase) {
-                                null, ProgramPhase.LOADING -> item(key = "loading-" + program.id) {
-                                    Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp) }
-                                }
-                                ProgramPhase.FAILED -> item(key = "failed-" + program.id) {
-                                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { TextButton({ retryProgram(program.id) }, Modifier.heightIn(min = 48.dp)) { Text("활동을 불러오지 못했어요 · 다시 시도") } }
-                                }
-                                ProgramPhase.LOADED -> {
-                                    val activities = loaded.ids.mapNotNull(state.known::get)
-                                    // "지금 모집 중인 활동이 없어요" only when every shown group is empty (contract "마감 숨기기", 2026-10-19 밤 정정).
-                                    if (activities.isEmpty() && loaded.upcomingIds.none(state.known::containsKey) && loaded.pastIds.none(state.known::containsKey)) item(key = "empty-" + program.id) { Text("지금 모집 중인 활동이 없어요", Modifier.padding(start = 12.dp), color = Quiet, style = MaterialTheme.typography.bodySmall) }
-                                    // 모집 예정 (always) · 지난 활동 (switch off only): plain rows, no category headings; an empty group is omitted.
-                                    listOf("upcoming" to ("모집 예정" to loaded.upcomingIds), "past" to ("지난 활동" to loaded.pastIds)).forEach { (slug, group) ->
-                                        val (heading, ids) = group
-                                        val rows = ids.mapNotNull(state.known::get)
-                                        if (rows.isNotEmpty()) {
-                                            item(key = slug + "-" + program.id) { Text(heading, Modifier.padding(start = 12.dp, top = 4.dp).semantics { heading() }, color = Quiet, style = MaterialTheme.typography.labelLarge) }
-                                            items(rows, key = { slug + "-activity-" + it.id }) { activity ->
-                                                ActivityCard(activity.title, activity.organization, activity.summary, activity.status,
-                                                    activity.date.ifEmpty { "일정 미확인" } + " · " + (activity.location ?: "장소 미확인"), { open(activity.id) },
-                                                    Modifier.padding(start = 12.dp), imageUrl = activity.imageUrl, applyUrl = null, recruitmentEnd = null, onApply = openLink, tags = activity.tags)
-                                            }
-                                        }
-                                    }
-                                    // 활동 종류별 묶음 (contract "활동 종류"): contract order, 미분류 last; no heading when only one kind.
-                                    // Within a group: recruitment deadline ascending, no deadline last, ties by name (2026-10-19 "정렬은 모집일 순서로").
-                                    val groups = activities.groupBy { it.category }.entries.sortedBy { (_, group) -> group.first().categoryOrder }
-                                    groups.forEach { (category, unsorted) ->
-                                        val group = unsorted.sortedWith(compareBy<ActivityState, Instant?>(nullsLast()) { it.sortKey }.thenBy { it.title })
-                                        if (groups.size > 1) item(key = "category-" + program.id + "-" + (category ?: "none")) {
-                                            Text(category ?: "미분류", Modifier.padding(start = 12.dp, top = 4.dp).semantics { heading() }, color = Quiet, style = MaterialTheme.typography.labelLarge)
-                                        }
-                                        items(group, key = { "activity-" + it.id }) { activity ->
-                                            ActivityCard(activity.title, activity.organization, activity.summary, activity.status,
-                                                activity.date.ifEmpty { "일정 미확인" } + " · " + (activity.location ?: "장소 미확인"), { open(activity.id) },
-                                                Modifier.padding(start = 12.dp), imageUrl = activity.imageUrl, applyUrl = activity.applyUrl, recruitmentEnd = activity.recruitmentEnd, onApply = openLink, tags = activity.tags)
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                    items(programs, key = { "program-" + it.id }) { program ->
+                        ProgramCard(program.title, program.organization, program.openCount, program.upcomingCount, program.deadline, program.nearestStart, program.latestActivityAt,
+                            program.tags, program.id in state.expanded, { toggle(program.id) }) { ProgramBody(program.id, state, open, retryProgram) }
                     }
                     if (state.nextCursor != null) item(key = "more") {
                         // Shown as the list nears its end; each new page re-arms it.
@@ -127,6 +84,38 @@ import com.dearby.nativeapp.widgets.activity.programHeader.ProgramHeaderRow
         }
     }
 }
+
+/** The expanded program's activities (loading, failed, empty, then the 모집 중 category groups and the 모집 예정/지난 활동 groups). */
+@Composable private fun ProgramBody(programId: String, state: ActivityListState, open: (String) -> Unit, retryProgram: (String) -> Unit) {
+    val loaded = state.programActivities[programId]
+    when (loaded?.phase) {
+        null, ProgramPhase.LOADING -> Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp) }
+        ProgramPhase.FAILED -> Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { TextButton({ retryProgram(programId) }, Modifier.heightIn(min = 48.dp)) { Text("활동을 불러오지 못했어요 · 다시 시도") } }
+        ProgramPhase.LOADED -> {
+            val activities = loaded.ids.mapNotNull(state.known::get)
+            // "지금 모집 중인 활동이 없어요" only when every shown group is empty (contract "마감 숨기기", 2026-10-19 밤 정정).
+            if (activities.isEmpty() && loaded.upcomingIds.none(state.known::containsKey) && loaded.pastIds.none(state.known::containsKey)) Text("지금 모집 중인 활동이 없어요", Modifier.padding(horizontal = 6.dp), color = Quiet, style = MaterialTheme.typography.bodySmall)
+            // 활동 종류별 묶음 (contract "활동 종류"): contract order, 미분류 last; no heading when only one kind.
+            // Within a group: recruitment deadline ascending, no deadline last, ties by name (2026-10-19 "정렬은 모집일 순서로").
+            val groups = activities.groupBy { it.category }.entries.sortedBy { (_, group) -> group.first().categoryOrder }
+            groups.forEach { (category, unsorted) ->
+                if (groups.size > 1) GroupHeading(category ?: "미분류")
+                unsorted.sortedWith(compareBy<ActivityState, Instant?>(nullsLast()) { it.sortKey }.thenBy { it.title }).forEach { Card(it, open) }
+            }
+            // 모집 예정 (always) · 지난 활동 (switch off only): no category headings; an empty group is omitted.
+            listOf("모집 예정" to loaded.upcomingIds, "지난 활동" to loaded.pastIds).forEach { (heading, ids) ->
+                val rows = ids.mapNotNull(state.known::get)
+                if (rows.isNotEmpty()) { GroupHeading(heading); rows.forEach { Card(it, open) } }
+            }
+        }
+    }
+}
+
+@Composable private fun GroupHeading(text: String) =
+    Text(text, Modifier.padding(start = 6.dp, end = 6.dp, top = 6.dp).semantics { heading() }, color = Quiet, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
+
+@Composable private fun Card(activity: ActivityState, open: (String) -> Unit) =
+    ActivityCard(activity.title, activity.status, activity.recruiting, activity.period, activity.date, activity.location, { open(activity.id) })
 
 /** Activity row used by My Activities. */
 @Composable internal fun ActivityRow(activity: ActivityState, open: (String) -> Unit, footer: @Composable ColumnScope.() -> Unit = {}) {
