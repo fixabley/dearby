@@ -21,6 +21,7 @@ struct ActivityListPage: View {
                     .submitLabel(.search)
                 Toggle("모집 중만 보기", isOn: $state.openOnly).font(.dearby(.subheadline)).tint(DearbyStyle.teal)
                     .accessibilityIdentifier("activity-open-only")
+                TagChipRow(tags: state.tags, selected: state.selectedTagIDs) { state.toggleTag($0) }
                 switch state.phase {
                 case .loading:
                     ProgressView("프로그램을 불러오는 중이에요").frame(maxWidth: .infinity).padding(.vertical, 40)
@@ -60,6 +61,7 @@ struct ActivityListPage: View {
         }
         .scrollDismissesKeyboard(.immediately)
         // Typing waits ~300ms before searching; the first load does not wait.
+        .task { state.loadTags() }
         .task(id: state.searchText) {
             if state.query != nil {
                 try? await Task.sleep(for: .milliseconds(300))
@@ -77,7 +79,7 @@ struct ActivityListPage: View {
         let open = state.isExpanded(program.id)
         VStack(alignment: .leading, spacing: 10) {
             ProgramHeader(name: program.name, organization: program.organization, openCount: program.openActivityCount,
-                          nearestDeadline: program.nearestRecruitmentEnd, latestActivity: program.latestActivity, expanded: open) { state.toggle(program.id) }
+                          nearestDeadline: program.nearestRecruitmentEnd, latestActivity: program.latestActivity, tags: program.tags, expanded: open) { state.toggle(program.id) }
             if open {
                 if let activities = state.openActivities[program.id] {
                     if activities.isEmpty {
@@ -116,7 +118,7 @@ struct ActivityListPage: View {
         ActivityCard(activityID: activity.id, title: activity.title, organization: activity.organization,
             imageURL: activity.imageURL, summary: activity.summary, status: activity.statusLabel(at: state.loadedAt),
             date: activity.dateLabel.isEmpty ? "일정 미확인" : activity.dateLabel,
-            applyURL: activity.applicationURL(at: state.loadedAt), recruitmentEnd: activity.recruitmentEnd) {
+            applyURL: activity.applicationURL(at: state.loadedAt), recruitmentEnd: activity.recruitmentEnd, tags: activity.tags) {
             path.append(activity.id)
         }
         .padding(.leading, 12)

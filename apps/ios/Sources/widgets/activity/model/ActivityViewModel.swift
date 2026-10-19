@@ -20,6 +20,10 @@ import Observation
     private(set) var upcomingActivities: [Int64: [ActivityModel]] = [:]
     /// `모집 중만 보기` (contract "모집 중인 프로그램만 보기"): on by default, memory only. Off also lists programs active in the last two years.
     var openOnly = true { didSet { if openOnly != oldValue { start(query ?? "") } } }
+    /// The tag vocabulary for the filter chips (contract "태그"); empty until loaded or when the load failed.
+    private(set) var tags: [Tag] = []
+    /// Selected filter tags (AND); changing the selection reloads the programs. Memory only.
+    private(set) var selectedTagIDs: Set<Int64> = []
     private(set) var loadingPrograms: Set<Int64> = []
     private(set) var failedPrograms: Set<Int64> = []
     /// The search field. Kept here so it survives leaving the tab.
@@ -49,14 +53,34 @@ import Observation
     private var firstPage: Task<Void, Never>?
     private var nextPage: Task<Void, Never>?
     private var programLoads: [Int64: Task<Void, Never>] = [:]
-    private let fetchPrograms: @Sendable (_ query: String, _ cursor: Int64?, _ openOnly: Bool) async throws -> ProgramPage
+    private let fetchPrograms: @Sendable (_ query: String, _ cursor: Int64?, _ openOnly: Bool, _ tagIDs: [Int64]) async throws -> ProgramPage
     /// `open` true asks for open activities only; false for every activity of the program (past list).
     private let fetchActivities: @Sendable (_ programID: Int64, _ open: Bool) async throws -> ActivityPage
-    init(programs: @escaping @Sendable (_ query: String, _ cursor: Int64?, _ openOnly: Bool) async throws -> ProgramPage,
-         activities: @escaping @Sendable (_ programID: Int64, _ open: Bool) async throws -> ActivityPage) {
+    private let fetchTags: @Sendable () async throws -> [Tag]
+    private var tagLoad: Task<Void, Never>?
+    init(programs: @escaping @Sendable (_ query: String, _ cursor: Int64?, _ openOnly: Bool, _ tagIDs: [Int64]) async throws -> ProgramPage,
+         activities: @escaping @Sendable (_ programID: Int64, _ open: Bool) async throws -> ActivityPage,
+         tags: @escaping @Sendable () async throws -> [Tag] = { [] }) {
         fetchPrograms = programs
         fetchActivities = activities
+        fetchTags = tags
     }
+
+    /// Loads the tag vocabulary once; a failure leaves the chip row empty (the list still works).
+    func loadTags() {
+        guard tags.isEmpty, tagLoad == nil else { return }
+        tagLoad = Task {
+            defer { tagLoad = nil }
+            if let loaded = try? await fetchTags(), !Task.isCancelled { tags = loaded }
+        }
+    }
+    /// Selects or clears one filter tag and reloads the programs with the new `tagIds`.
+    func toggleTag(_ id: Int64) {
+        if selectedTagIDs.contains(id) { selectedTagIDs.remove(id) } else { selectedTagIDs.insert(id) }
+        start(query ?? "")
+    }
+    /// Selected tag ids in vocabulary order, as the query sends them.
+    private var tagIDs: [Int64] { tags.map(\.id).filter(selectedTagIDs.contains) + selectedTagIDs.subtracting(tags.map(\.id)).sorted() }
 
     func activity(_ id: String) -> ActivityModel? { seen[id] }
     /// Applied activities with their tracks, nearest next stage first; date-less and ended tracks last, then by id.
@@ -84,7 +108,7 @@ import Observation
         nextPage = Task {
             defer { if !Task.isCancelled { loadingMore = false; nextPage = nil } }
             do {
-                let page = try await fetchPrograms(query, cursor, openOnly)
+                let page = try await fetchPrograms(query, cursor, openOnly, tagIDs)
                 guard !Task.isCancelled else { return }
                 append(page)
             } catch {
@@ -120,7 +144,7 @@ import Observation
         moreFailed = false
         firstPage = Task {
             do {
-                let page = try await fetchPrograms(query, nil, openOnly)
+                let page = try await fetchPrograms(query, nil, openOnly, tagIDs)
                 guard !Task.isCancelled else { return }
                 loadedAt = Date()
                 append(page)
