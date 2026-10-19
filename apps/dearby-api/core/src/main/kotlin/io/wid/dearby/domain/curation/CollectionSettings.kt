@@ -6,6 +6,7 @@ data class CollectionSettings(
     val allowedHosts: List<String>, // 비어 있으면 웹 전체 검색
     val intervalDays: Int, // 성공한 수집 뒤 이 일수 동안은 다시 수집하지 않는다
     val enabled: Boolean,
+    val renderPages: Boolean = false, // 헤드리스 브라우저로 페이지를 실행한 뒤 본문을 읽는다(admin-v1.md "브라우저 렌더링", V35). SPA 사이트만 켠다
 ) {
     init {
         require(intervalDays >= 1) { "수집 주기는 1일 이상이어야 합니다" }

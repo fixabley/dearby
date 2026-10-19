@@ -3,10 +3,10 @@ package io.wid.dearby.batch.adaptor.http
 import io.wid.dearby.batch.application.FetchedPage
 import io.wid.dearby.batch.application.PageFetchException
 import io.wid.dearby.batch.application.PageFetcher
+import io.wid.dearby.batch.application.UrlGuard
 import org.jsoup.Jsoup
 import org.springframework.stereotype.Component
 import java.io.ByteArrayOutputStream
-import java.net.InetAddress
 import java.net.URI
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
@@ -52,16 +52,7 @@ class JsoupPageFetcher : PageFetcher {
         throw PageFetchException("리다이렉트가 ${MAX_REDIRECTS}번을 넘음")
     }
 
-    private fun check(uri: URI, allowedHosts: List<String>): URI {
-        if (uri.scheme != "https") throw PageFetchException("https가 아님: $uri")
-        val host = uri.host?.lowercase() ?: throw PageFetchException("호스트 없음: $uri")
-        if (allowedHosts.isNotEmpty() && host !in allowedHosts.map { it.lowercase() }) throw PageFetchException("허용 호스트 밖: $host")
-        val addresses = InetAddress.getAllByName(host)
-        if (addresses.any { it.isLoopbackAddress || it.isSiteLocalAddress || it.isLinkLocalAddress || it.isAnyLocalAddress }) {
-            throw PageFetchException("사설·내부 주소로 연결됨: $host")
-        }
-        return uri
-    }
+    private fun check(uri: URI, allowedHosts: List<String>): URI = UrlGuard.check(uri, allowedHosts)
 
     private fun read(response: HttpResponse<java.io.InputStream>): String {
         val type = response.headers().firstValue("Content-Type").orElse("")

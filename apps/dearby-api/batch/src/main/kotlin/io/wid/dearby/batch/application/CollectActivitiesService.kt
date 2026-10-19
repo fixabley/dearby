@@ -23,12 +23,20 @@ import java.util.*
 class CollectActivitiesService(
     private val discoverer: ActivityDiscoverer,
     private val fetcher: PageFetcher,
+    private val renderer: RenderingPageFetcher, // renderPages가 켜진 프로그램의 페이지는 브라우저 렌더링으로 받는다(admin-v1.md)
     private val extractor: ActivityExtractor,
     private val drafts: ActivityDraftRepository,
     private val watchlist: WatchlistRepository,
 ) {
 
-    fun collect(target: CollectionTarget): CollectionReport {
+    fun collect(target: CollectionTarget): CollectionReport = try {
+        collectPages(target)
+    } finally {
+        // 렌더링을 쓴 프로그램이 끝나면 브라우저를 내린다(다음 프로그램이 쓰면 다시 띄운다)
+        if (target.renderPages) renderer.close()
+    }
+
+    private fun collectPages(target: CollectionTarget): CollectionReport {
         // 조심 목록(admin-v1.md): 운영자가 지정한 제외 이름·다른 표기. 지시문 힌트로 넘기고, 저장 전 이름 대조로 보장한다
         val watched = watchlist.findAllByProgramId(target.programId)
         // 이전 기수(admin-v1.md "이전 기수 정보 자동완성"): 지시문 힌트. 비어 있는 필드는 저장할 때 서버가 채운다. 기수 번호는 시작 주소의 {round}에도 쓴다
@@ -48,7 +56,7 @@ class CollectActivitiesService(
         var saved = 0
         for (url in (startUrls + discovery.urls).distinct().take(MAX_PAGES)) {
             val page = try {
-                fetcher.fetch(url, target.allowedHosts)
+                if (target.renderPages) renderer.fetch(url, target.allowedHosts) else fetcher.fetch(url, target.allowedHosts)
             } catch (e: PageFetchException) {
                 rejected += "$url: ${e.message}"
                 continue

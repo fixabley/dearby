@@ -26,6 +26,7 @@ class JooqCollectionSettingsRepository(private val dsl: DSLContext) : Collection
                     allowedHosts = it.allowedHosts!!.filterNotNull(),
                     intervalDays = it.intervalDays!!,
                     enabled = it.enabled!!,
+                    renderPages = it.renderPages ?: false,
                 )
             }
     }
@@ -39,6 +40,7 @@ class JooqCollectionSettingsRepository(private val dsl: DSLContext) : Collection
             .set(table.ALLOWED_HOSTS, settings.allowedHosts.toTypedArray<String?>())
             .set(table.INTERVAL_DAYS, settings.intervalDays)
             .set(table.ENABLED, settings.enabled)
+            .set(table.RENDER_PAGES, settings.renderPages)
             .set(table.CREATED_AT, now)
             .set(table.UPDATED_AT, now)
             .onConflict(table.PROGRAM_ID)
@@ -47,6 +49,7 @@ class JooqCollectionSettingsRepository(private val dsl: DSLContext) : Collection
             .set(table.ALLOWED_HOSTS, settings.allowedHosts.toTypedArray<String?>())
             .set(table.INTERVAL_DAYS, settings.intervalDays)
             .set(table.ENABLED, settings.enabled)
+            .set(table.RENDER_PAGES, settings.renderPages)
             .set(table.UPDATED_AT, now)
             .execute()
     }

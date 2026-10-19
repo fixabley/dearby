@@ -10,6 +10,7 @@ data class CollectionSettingsResponse(
     val allowedHosts: List<String>,
     val intervalDays: Int,
     val enabled: Boolean,
+    val renderPages: Boolean, // 헤드리스 브라우저 렌더링으로 받는 프로그램(admin-v1.md "브라우저 렌더링")
     val officialOnly: Boolean,
     val lastSucceededOn: LocalDate?,
     val previousRound: Int?,
@@ -19,7 +20,7 @@ data class CollectionSettingsResponse(
     companion object {
         fun from(listing: ProgramListing) = with(listing.settings) {
             CollectionSettingsResponse(
-                listing.configured, officialUrl, allowedHosts, intervalDays, enabled, officialOnly, listing.lastSucceededOn,
+                listing.configured, officialUrl, allowedHosts, intervalDays, enabled, renderPages, officialOnly, listing.lastSucceededOn,
                 listing.previousRound, listing.previewUrls, listing.lastFetchedUrls,
             )
         }

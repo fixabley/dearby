@@ -11,6 +11,7 @@ import io.wid.dearby.batch.application.FetchedPage
 import io.wid.dearby.batch.application.ModelUsage
 import io.wid.dearby.batch.application.PageFetchException
 import io.wid.dearby.batch.application.PageFetcher
+import io.wid.dearby.batch.application.RenderingPageFetcher
 import io.wid.dearby.batch.job.CollectionJobConfig
 import io.wid.dearby.batch.recall.RecallService
 import io.wid.dearby.domain.collection.CollectionUrlTemplate
@@ -50,6 +51,10 @@ class CollectionJobTest(
             // 마지막 추출 요청이 받은 날짜 문구 해석 예시(admin-v1.md "날짜 문구 피드백")
             var receivedExamples: List<DateLabelExample> = emptyList()
             var extractedCategory: String? = "CONFERENCE" // 프로그램 기본 종류 테스트에서 null로 바꾼다
+            // 브라우저 렌더링(admin-v1.md): 렌더링 경로로 받은 주소와 HTML 경로로 받은 주소, 브라우저를 내린 횟수
+            val renderedUrls = mutableListOf<String>()
+            val httpUrls = mutableListOf<String>()
+            var rendererClosed = 0
         }
 
         @Bean
@@ -63,8 +68,20 @@ class CollectionJobTest(
         @Bean
         @Primary
         fun fakeFetcher() = PageFetcher { url, _ ->
+            httpUrls += url
             if (url.endsWith("missing")) throw PageFetchException("HTTP 404")
             FetchedPage(url, "Let'Swift 2026 컨퍼런스 참가 신청은 11월 1일부터 11월 10일까지입니다.", setOf("https://letswift.kr/2026/apply"))
+        }
+
+        @Bean
+        @Primary
+        fun fakeRenderer() = object : RenderingPageFetcher {
+            override fun fetch(url: String, allowedHosts: List<String>): FetchedPage {
+                renderedUrls += url
+                if (url.endsWith("missing")) throw PageFetchException("렌더링 실패: HTTP 404")
+                return FetchedPage(url, "(렌더링됨) Let'Swift 2026 컨퍼런스 참가 신청은 11월 1일부터 11월 10일까지입니다.", emptySet())
+            }
+            override fun close() { rendererClosed++ }
         }
 
         @Bean
@@ -102,13 +119,13 @@ class CollectionJobTest(
     }
 
     // Let'Swift 프로그램의 수집 설정: 공식 도메인 letswift.kr 안에서만, intervalDays마다
-    private fun officialSetting(intervalDays: Int = 1, url: String = "https://letswift.kr/2026/") = jdbc.sql(
+    private fun officialSetting(intervalDays: Int = 1, url: String = "https://letswift.kr/2026/", renderPages: Boolean = false) = jdbc.sql(
         """
-        insert into program_collection_settings (program_id, official_url, allowed_hosts, interval_days, created_at, updated_at)
-        select id, ?, array['letswift.kr'], ?, localtimestamp, localtimestamp
+        insert into program_collection_settings (program_id, official_url, allowed_hosts, interval_days, render_pages, created_at, updated_at)
+        select id, ?, array['letswift.kr'], ?, ?, localtimestamp, localtimestamp
         from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'
         """
-    ).param(url).param(intervalDays).update()
+    ).param(url).param(intervalDays).param(renderPages).update()
 
     private fun runCount() = jdbc.sql("select count(*) from collection_runs").query(Int::class.java).single()
 
@@ -119,6 +136,28 @@ class CollectionJobTest(
 
     private fun status(name: String) =
         jdbc.sql("select publication_status from activities where name = ?").param(name).query(String::class.java).list()
+
+    @Test
+    fun `렌더링 설정을 켠 프로그램은 브라우저 렌더링으로 받고 그 본문이 추출·대조에 들어간다`() {
+        Fakes.renderedUrls.clear(); Fakes.httpUrls.clear(); Fakes.rendererClosed = 0
+        officialSetting(renderPages = true)
+        assertEquals(BatchStatus.COMPLETED, run("2026-10-22").status)
+        // 시작 주소와 탐색 주소 모두 렌더링 경로로 받고, HTML 받기는 쓰지 않는다. 404였던 탐색 주소는 거절 이유로 남는다
+        assertEquals(listOf("https://letswift.kr/2026/", "https://letswift.kr/2026/missing"), Fakes.renderedUrls)
+        assertEquals(emptyList(), Fakes.httpUrls)
+        assertEquals("https://letswift.kr/2026/", jdbc.sql("select array_to_string(fetched_urls, ',') from collection_runs").query(String::class.java).single())
+        assertEquals(listOf("DRAFT"), status("Let'Swift 2026 컨퍼런스"))
+        assertEquals(1, jdbc.sql("select cardinality(array_positions(rejected_reasons, 'https://letswift.kr/2026/missing: 렌더링 실패: HTTP 404')) from collection_runs").query(Int::class.java).single())
+        // 프로그램 수집이 끝나면 브라우저를 내린다
+        assertEquals(1, Fakes.rendererClosed)
+        // 렌더링을 끈 프로그램은 HTML 경로다
+        jdbc.sql("update program_collection_settings set render_pages = false").update()
+        jdbc.sql("delete from collection_runs").update()
+        assertEquals(BatchStatus.COMPLETED, run("2026-10-23").status)
+        assertEquals(2, Fakes.renderedUrls.size)
+        assertEquals(2, Fakes.httpUrls.size)
+        assertEquals(1, Fakes.rendererClosed)
+    }
 
     @Test
     fun `원문으로 확인된 활동만 초안으로 저장하고, 같은 날은 다시 수집하지 않는다`() {
