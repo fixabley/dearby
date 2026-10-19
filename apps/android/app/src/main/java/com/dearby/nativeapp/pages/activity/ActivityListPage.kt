@@ -1,29 +1,52 @@
 package com.dearby.nativeapp.pages.activity
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import java.time.Instant
+import kotlin.math.roundToInt
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.activity.activityCard.ActivityCard
 import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
@@ -31,50 +54,123 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
 /**
  * Discovery (contract "발견 프로그램 묶음" · "발견 카드 리뉴얼"): one program card per program; its head toggles the activity cards that
  * expand inside the same card. The next program page loads near the end.
+ * Scrolling (contract "발견 탭 스크롤 동작"): the title line stays fixed, the search area collapses on the way down and re-enters at once on
+ * the way up, the list pulls to refresh below it, and a 맨 위로 button appears after about a screen.
  */
 @Composable fun ActivityListPage(
-    state: ActivityListState, open: (String) -> Unit, search: (String) -> Unit, retry: () -> Unit, loadMore: () -> Unit,
+    state: ActivityListState, open: (String) -> Unit, search: (String) -> Unit, retry: () -> Unit, refresh: () -> Unit, loadMore: () -> Unit,
     toggle: (String) -> Unit, retryProgram: (String) -> Unit, setOpenOnly: (Boolean) -> Unit = {}, notify: () -> Unit = {},
 ) {
-    Column(Modifier.fillMaxSize()) {
-        // Tab title line shared by the five tabs (contract "탭 제목 통일·머리 간소화"); the search field follows at once.
-        ScreenHeader("활동 둘러보기") { IconButton(notify) { Icon(Icons.Outlined.NotificationsNone, "알림") } }
-        // Outside the list so the field keeps focus and the keyboard while results change.
-        OutlinedTextField(state.query, search, Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp).testTag("activity-search"),
-            placeholder = { Text("프로그램·조직·활동 이름으로 검색") }, singleLine = true, shape = RoundedCornerShape(11.dp),
-            leadingIcon = { Icon(Icons.Outlined.Search, null) },
-            trailingIcon = { if (state.query.isNotEmpty()) IconButton({ search("") }) { Icon(Icons.Outlined.Close, "검색어 지우기") } })
-        // 마감 숨기기 (contract "모집 중인 프로그램만 보기"): off also lists programs active in the last two years.
-        Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
-            Text("마감 숨기기", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            Switch(state.openOnly, setOpenOnly, Modifier.padding(start = 8.dp).semantics { contentDescription = "마감 숨기기" })
-        }
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            val programs = state.programs
-            when {
-                state.phase == ActivityListPhase.LOADING -> item { DearbyLoadingState("활동을 불러오는 중이에요.") }
-                state.phase == ActivityListPhase.FAILED -> item { DearbyErrorState("활동을 불러오지 못했어요", "연결을 확인한 뒤 다시 시도해 주세요.", retry) }
-                programs.isEmpty() && state.query.isNotBlank() -> item { DearbyEmptyState("검색 결과가 없어요", "다른 검색어로 찾아 보세요.") }
-                programs.isEmpty() && state.openOnly -> item { DearbyEmptyState("지금 모집 중인 프로그램이 없어요", "새 모집이 열리면 여기에서 볼 수 있어요. ‘마감 숨기기’를 끄면 최근 2년 안에 활동한 프로그램도 보여요.") }
-                programs.isEmpty() -> item { DearbyEmptyState("최근 2년 안에 활동한 프로그램이 없어요", "새 모집이 열리면 여기에서 볼 수 있어요.") }
-                else -> {
-                    items(programs, key = { "program-" + it.id }) { program ->
-                        ProgramCard(program.title, program.organization, program.openCount, program.upcomingCount, program.deadline, program.nearestStart, program.latestActivityAt,
-                            program.tags, program.id in state.expanded, { toggle(program.id) }, logoUrl = program.logoUrl) { ProgramBody(program.id, state, open, retryProgram) }
-                    }
-                    if (state.nextCursor != null) item(key = "more") {
-                        // Shown as the list nears its end; each new page re-arms it.
-                        LaunchedEffect(programs.size) { loadMore() }
-                        Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-                            if (state.moreFailed) TextButton(loadMore, Modifier.heightIn(min = 48.dp)) { Text("다음 프로그램을 불러오지 못했어요 · 다시 시도") }
-                            else CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+    val listState = rememberLazyListState()
+    val reduceMotion = rememberReduceMotion()
+    val scope = rememberCoroutineScope()
+    val collapse = remember(reduceMotion) { SearchAreaCollapse(reduceMotion, scope) }
+    // The hairline shows once content passes under the fixed title: the search area has begun to fold or the list has moved.
+    val scrolled by remember(collapse) { derivedStateOf { collapse.offset < 0f || listState.canScrollBackward } }
+    val farDown by remember { derivedStateOf { listState.pastOneScreen() } }
+    Box(Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxSize()) {
+            // Tab title line shared by the five tabs (contract "탭 제목 통일·머리 간소화"), pinned above everything that scrolls.
+            Box(Modifier.fillMaxWidth()) {
+                ScreenHeader("활동 둘러보기") { IconButton(notify) { Icon(Icons.Outlined.NotificationsNone, "알림") } }
+                HorizontalDivider(Modifier.align(Alignment.BottomCenter).alpha(if (scrolled) 1f else 0f), color = MaterialTheme.colorScheme.surfaceContainerHighest)
+            }
+            // Search field and 마감 숨기기 switch: outside the list so the field keeps focus and the keyboard while results change.
+            Column(Modifier.fillMaxWidth().collapsing(collapse)) {
+                OutlinedTextField(state.query, search, Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp).testTag("activity-search")
+                    .onFocusChanged { collapse.locked = it.isFocused; if (it.isFocused) collapse.expand() },
+                    placeholder = { Text("프로그램·조직·활동 이름으로 검색") }, singleLine = true, shape = RoundedCornerShape(11.dp),
+                    leadingIcon = { Icon(Icons.Outlined.Search, null) },
+                    trailingIcon = { if (state.query.isNotEmpty()) IconButton({ search("") }) { Icon(Icons.Outlined.Close, "검색어 지우기") } })
+                // 마감 숨기기 (contract "모집 중인 프로그램만 보기"): off also lists programs active in the last two years.
+                Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
+                    Text("마감 숨기기", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    Switch(state.openOnly, setOpenOnly, Modifier.padding(start = 8.dp).semantics { contentDescription = "마감 숨기기" })
+                }
+            }
+            // The collapse connection sits outside the pull gesture: a pull at the top re-enters the search area first, then the indicator grows below it.
+            PullToRefreshBox(state.refreshing, refresh, Modifier.fillMaxSize().nestedScroll(collapse.connection)) {
+                LazyColumn(Modifier.fillMaxSize(), listState, contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    val programs = state.programs
+                    when {
+                        state.phase == ActivityListPhase.LOADING -> item { DearbyLoadingState("활동을 불러오는 중이에요.") }
+                        state.phase == ActivityListPhase.FAILED -> item { DearbyErrorState("활동을 불러오지 못했어요", "연결을 확인한 뒤 다시 시도해 주세요.", retry) }
+                        programs.isEmpty() && state.query.isNotBlank() -> item { DearbyEmptyState("검색 결과가 없어요", "다른 검색어로 찾아 보세요.") }
+                        programs.isEmpty() && state.openOnly -> item { DearbyEmptyState("지금 모집 중인 프로그램이 없어요", "새 모집이 열리면 여기에서 볼 수 있어요. ‘마감 숨기기’를 끄면 최근 2년 안에 활동한 프로그램도 보여요.") }
+                        programs.isEmpty() -> item { DearbyEmptyState("최근 2년 안에 활동한 프로그램이 없어요", "새 모집이 열리면 여기에서 볼 수 있어요.") }
+                        else -> {
+                            items(programs, key = { "program-" + it.id }) { program ->
+                                ProgramCard(program.title, program.organization, program.openCount, program.upcomingCount, program.deadline, program.nearestStart, program.latestActivityAt,
+                                    program.tags, program.id in state.expanded, { toggle(program.id) }, logoUrl = program.logoUrl) { ProgramBody(program.id, state, open, retryProgram) }
+                            }
+                            if (state.nextCursor != null) item(key = "more") {
+                                // Shown as the list nears its end; each new page re-arms it.
+                                LaunchedEffect(programs.size) { loadMore() }
+                                Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                                    if (state.moreFailed) TextButton(loadMore, Modifier.heightIn(min = 48.dp)) { Text("다음 프로그램을 불러오지 못했어요 · 다시 시도") }
+                                    else CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                                }
+                            }
                         }
                     }
                 }
             }
         }
+        // 맨 위로: fades in past about one screen; the jump is instant and the search area comes back with it.
+        AnimatedVisibility(farDown, Modifier.align(Alignment.BottomEnd).padding(end = 20.dp, bottom = 16.dp),
+            enter = fadeIn(if (reduceMotion) snap() else spring()), exit = fadeOut(if (reduceMotion) snap() else spring())) {
+            SmallFloatingActionButton({ scope.launch { listState.scrollToItem(0) }; collapse.expand() }) { Icon(Icons.Rounded.ArrowUpward, "맨 위로") }
+        }
     }
 }
+
+/** Roughly a screen down: the items before the first visible one, taken at the visible items' average height, exceed the viewport. */
+private fun LazyListState.pastOneScreen(): Boolean {
+    val info = layoutInfo
+    val visible = info.visibleItemsInfo
+    if (visible.isEmpty()) return false
+    val average = visible.sumOf { it.size } / visible.size
+    return firstVisibleItemIndex * average + firstVisibleItemScrollOffset > info.viewportSize.height
+}
+
+/**
+ * "Enter always" collapse of the search area, the rule of `TopAppBar`'s `enterAlwaysScrollBehavior` on a custom header: [offset] runs
+ * from 0 (shown) to -[height] (folded away) and consumes scroll in both directions before the list moves, so the area folds as soon as
+ * the user scrolls down and re-enters as soon as they scroll up. A released drag settles the way it was going with a short spring;
+ * under reduced motion the area switches at once. [locked] while the search field has focus.
+ */
+@Stable private class SearchAreaCollapse(private val reduceMotion: Boolean, private val scope: CoroutineScope) {
+    var offset by mutableFloatStateOf(0f); private set
+    var height by mutableIntStateOf(0)
+    var locked = false
+    private var settling: Job? = null
+    private var direction = 0f
+    fun expand() { settling?.cancel(); offset = 0f }
+    private fun settle(target: Float) { settling = scope.launch { animate(offset, target, animationSpec = spring(stiffness = 600f)) { value, _ -> offset = value } } }
+    val connection = object : NestedScrollConnection {
+        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+            if (locked || height == 0 || available.y == 0f) return Offset.Zero
+            settling?.cancel()
+            direction = available.y
+            if (reduceMotion) { offset = if (available.y < 0) -height.toFloat() else 0f; return Offset.Zero }
+            val previous = offset
+            offset = (previous + available.y).coerceIn(-height.toFloat(), 0f)
+            return Offset(0f, offset - previous)
+        }
+        override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+            if (!reduceMotion && offset != 0f && offset != -height.toFloat()) settle(if (direction > 0) 0f else -height.toFloat())
+            return Velocity.Zero
+        }
+    }
+}
+
+/** Lays the content out at its full height minus the folded part, pushed up under the title and fading with it. */
+private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBounds().layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    state.height = placeable.height
+    val shown = (placeable.height + state.offset).roundToInt().coerceAtLeast(0)
+    layout(placeable.width, shown) { placeable.place(0, shown - placeable.height) }
+}.graphicsLayer { alpha = if (state.height == 0) 1f else 1f + state.offset / state.height }
 
 /** The expanded program's activities (loading, failed, empty, then the 모집 중 category groups and the 모집 예정/지난 활동 groups). */
 @Composable private fun ProgramBody(programId: String, state: ActivityListState, open: (String) -> Unit, retryProgram: (String) -> Unit) {

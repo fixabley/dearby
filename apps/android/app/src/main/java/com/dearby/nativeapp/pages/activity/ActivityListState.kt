@@ -62,12 +62,13 @@ data class ProgramActivities(
  * [askingId]: the activity whose application link was opened, asked about once when the app comes back (contract #148).
  * [progress] is every loaded activity's stage track with the user's marks (contract "내 활동 진행 트랙"), memory only.
  * [openOnly] is the `마감 숨기기` switch (default on, memory only; contract "모집 중인 프로그램만 보기").
+ * [refreshing] while a pull to refresh re-reads the first program page (contract "발견 탭 스크롤 동작"); the list stays on screen meanwhile.
  */
 data class ActivityListState(
     val phase: ActivityListPhase = ActivityListPhase.LOADING, val query: String = "", val openOnly: Boolean = true, val programs: List<ProgramState> = emptyList(),
     val expanded: Set<String> = emptySet(), val programActivities: Map<String, ProgramActivities> = emptyMap(),
     val known: Map<String, ActivityState> = emptyMap(), val nextCursor: String? = null, val loadingMore: Boolean = false,
-    val moreFailed: Boolean = false, val askingId: String? = null, val progress: Map<String, ProgressState> = emptyMap(),
+    val moreFailed: Boolean = false, val askingId: String? = null, val progress: Map<String, ProgressState> = emptyMap(), val refreshing: Boolean = false,
 ) {
     val asking get() = askingId?.let(known::get)
     /** Applied activities, the nearest next stage first; activities without a dated next stage come last. */
