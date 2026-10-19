@@ -100,6 +100,46 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         mvc.delete("/v1/cards/$cardId") { asUser(user) }.andExpect { status { isNotFound() } }
     }
 
+    // native-v1.md "명함 고치기는 같은 명함을 수정"(2026-10-20)
+    @Test
+    fun `고치기는 같은 id로 현재 프로필 기준 스냅샷을 다시 만들고, 공개 조회·내 목록·받은 지갑에 바로 보이며, 남의·철회된 명함은 404다`() {
+        val (user, profile) = userWithProfile("주인")
+        val (other, _) = userWithProfile("남")
+        val (receiver, _) = userWithProfile("받는이")
+        val first = publish(user, profile)
+        val second = publish(user, profile, template = "둘째")
+        val cardId = first["id"].asString()
+        jdbc.sql("insert into receipts (id, recipient_id, card_id, context, received_at) values (?, ?, ?, '{\"activityId\":null,\"label\":null}', now())").params(UUID.randomUUID(), receiver, UUID.fromString(cardId)).update()
+        val before = read(mvc.get("/v1/cards/$cardId"))
+        assertEquals(before["createdAt"].asString(), before["updatedAt"].asString())
+
+        // 프로필을 고친 뒤 PUT하면 현재 프로필이 반영된다. template을 보내지 않으면 그 명함의 template 그대로
+        profiles.save(profile.copy(name = "바뀐 주인"))
+        val body = """{"name":"고친 명함","description":"새 설명","contactIds":${json.writeValueAsString(listOf(profile.contacts[0].id, profile.contacts[1].id))},"historyIds":[]}"""
+        val updated = read(put(user, "/v1/cards/$cardId", body).andExpect { status { isOk() } })
+        assertEquals(listOf(cardId, "고친 명함", "새 설명", "바뀐 주인", 2, 0), listOf(updated["id"].asString(), updated["name"].asString(), updated["description"].asString(), updated["profileName"].asString(), updated["contacts"].size(), updated["histories"].size()))
+        assertEquals(first["template"].asString(), updated["template"].asString())
+        assertEquals("# 바뀐 주인\n010-1111-2222 / 주인@example.com", updated["introduction"].asString())
+
+        // 같은 id·createdAt, updatedAt만 바뀐다. 공개 조회·내 목록(순서 유지)·받은 지갑이 고친 내용을 보인다
+        val public = read(mvc.get("/v1/cards/$cardId").andExpect { status { isOk() } })
+        assertEquals(listOf("고친 명함", before["createdAt"].asString()), listOf(public["name"].asString(), public["createdAt"].asString()))
+        assertTrue(OffsetDateTime.parse(public["updatedAt"].asString()).isAfter(OffsetDateTime.parse(public["createdAt"].asString())))
+        assertFalse(public.has("template"))
+        val mine = read(mvc.get("/v1/cards") { asUser(user) })["items"]
+        assertEquals(listOf(cardId to "고친 명함", second["id"].asString() to "내 명함"), mine.values().map { it["id"].asString() to it["name"].asString() })
+        assertEquals("고친 명함", read(mvc.get("/v1/wallet") { asUser(receiver) })["items"][0]["card"]["name"].asString())
+
+        // 검증은 POST와 같다(400). 남의 명함·없는 명함·철회된 명함은 404
+        put(user, "/v1/cards/$cardId", """{"name":" "}""").andExpect { status { isBadRequest() } }
+        put(user, "/v1/cards/$cardId", """{"name":"x","contactIds":["${UUID.randomUUID()}"]}""").andExpect { status { isBadRequest() } }
+        put(user, "/v1/cards/$cardId", """{"name":"x","historyIds":["${profile.histories[1].id}"]}""").andExpect { status { isBadRequest() } }
+        put(other, "/v1/cards/$cardId", body).andExpect { status { isNotFound() } }
+        put(user, "/v1/cards/${UUID.randomUUID()}", body).andExpect { status { isNotFound() } }
+        mvc.delete("/v1/cards/$cardId") { asUser(user) }.andExpect { status { isNoContent() } }
+        put(user, "/v1/cards/$cardId", body).andExpect { status { isNotFound() } }
+    }
+
     @Test
     fun `지갑 목록은 받은 명함만 보여 주고 철회된 명함은 빠진다`() {
         val (owner, profile) = userWithProfile("주인")

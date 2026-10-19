@@ -20,6 +20,11 @@ class CardController(private val cards: CardService) {
     fun publish(@AuthenticationPrincipal jwt: Jwt, @RequestBody request: CardPublishRequest) =
         CardResponse.from(cards.publish(userId(jwt), request.name, request.description, request.template, request.contactIds, request.historyIds), includeTemplate = true)
 
+    // 명함 고치기(native-v1.md "명함 고치기는 같은 명함을 수정"): 같은 id의 스냅샷을 현재 프로필로 다시 만든다. 남의·철회된 명함은 404
+    @PutMapping("/{id}")
+    fun update(@AuthenticationPrincipal jwt: Jwt, @PathVariable id: UUID, @RequestBody request: CardPublishRequest) =
+        CardResponse.from(cards.update(userId(jwt), id, request.name, request.description, request.template, request.contactIds, request.historyIds), includeTemplate = true)
+
     @GetMapping("/{id}")
     fun get(@PathVariable id: UUID) = CardResponse.from(cards.get(id), includeTemplate = false)
 
