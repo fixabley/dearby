@@ -9,6 +9,9 @@ interface CardRepository {
 
     fun create(card: BusinessCard)
 
+    // 같은 id의 스냅샷 열을 모두 덮어쓴다(seq·created_at 제외). 없거나 철회됐으면 false
+    fun update(card: BusinessCard): Boolean
+
     // 철회한 명함은 없는 것으로 본다
     fun find(id: UUID): BusinessCard?
 

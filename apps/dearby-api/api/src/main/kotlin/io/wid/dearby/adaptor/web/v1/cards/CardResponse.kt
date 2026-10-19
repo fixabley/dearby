@@ -21,11 +21,12 @@ data class CardResponse(
     val contacts: List<ContactResponse>,
     val histories: List<HistoryResponse>,
     val createdAt: OffsetDateTime,
+    val updatedAt: OffsetDateTime,
 ) {
     companion object {
         fun from(card: BusinessCard, includeTemplate: Boolean) = CardResponse(
             card.id, card.ownerId, card.name, card.description, card.template.takeIf { includeTemplate }, card.introduction,
-            card.profileName, card.job, card.contacts.map(ContactResponse::from), card.histories.map(HistoryResponse::from), card.createdAt,
+            card.profileName, card.job, card.contacts.map(ContactResponse::from), card.histories.map(HistoryResponse::from), card.createdAt, card.updatedAt,
         )
     }
 }

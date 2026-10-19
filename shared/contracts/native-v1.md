@@ -30,6 +30,7 @@ JSON camelCase, UUID 문자열 식별자, UTC ISO8601 시각. 기본 `/v1`. 인�
 | GET /cards | 없음 | 200 `{items: Card[]}` (자신의 명함) |
 | POST /cards | `{name,description,contactIds,historyIds}` | 201 Card |
 | GET /cards/:id | 없음·비로그인 가능 | 200 Card |
+| PUT /cards/:id | `{name,description,template?,contactIds,historyIds}`·소유자만 | 200 Card(같은 id, `updatedAt` 갱신; 2026-10-20 "명함 고치기는 같은 명함을 수정"). 남의 명함·철회된 명함 404, 검증 400은 POST와 같음. `template`을 비우거나 빼면 기존 템플릿 유지 |
 | DELETE /cards/:id | 없음·소유자만 | 204 |
 | GET /wallet | 없음 | 200 `{items: Receipt[]}` |
 | POST /wallet/import | `{items:[{cardId,context,savedAt}]}` | 200 `{items:[{cardId,status:"imported"|"alreadySaved"|"failed",receiptId:string|null}]}` |
@@ -255,7 +256,7 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 
 - 앱은 명함 제작에서 이름·공개 연락처·이력만 고르고, `template`에는 **앱 내장 기본 템플릿** `{{profile.introduction}}` 하나를 그대로 보낸다. 제작 화면은 채운 결과를 읽기 전용 미리보기로 보인다. 이름·직무·연락처는 카드 면(아래 "명함 표현")이 따로 그리므로 본문에 다시 넣지 않는다.
 - 토큰: `{{profile.name}}`, `{{profile.job}}`, `{{profile.introduction}}`, `{{contact:<연락처 id>}}`. 서버는 발행할 때 채운다. `{{contact:…}}`는 그 명함에 고른 연락처만 채우고, 고르지 않았거나 없는 연락처·모르는 토큰은 빈 문자열이 된다.
-- 발행한 명함은 바뀌지 않는다. 명함을 고치면 앱이 새 명함을 발행하고 이전 명함은 사용자가 지울 때까지 남는다(공개 링크 `/cards/:id` 유지).
+- 발행한 명함은 바뀌지 않는다. 명함을 고치면 앱이 같은 명함을 `PUT /v1/cards/:id`로 수정하고(2026-10-20; 전에는 새 명함을 발행했고) 이전 명함은 사용자가 지울 때까지 남는다(공개 링크 `/cards/:id` 유지).
 - 마크다운 부분집합(제목·굵게·기울임·목록·링크, 원시 HTML 금지, `https`·`mailto`·`tel` 링크만)과 10,000자·제어 문자 규칙. 웹 `/cards/:id`는 모든 폭에서 `introduction`만 보인다.
 - 변경 이력: 2026-10-18 실시간 꾸미기 편집기와 웹 버전(`webTemplate`·`webIntroduction`, V20)을 같은 날 추가·삭제(V21로 열 삭제, [`cb456363`](https://github.com/fixabley/dearby/blob/cb456363/shared/contracts/native-v1.md#템플릿-명함-꾸미기), 사용자 "실시간 편집 이런 퀄리티면 그냥 빼는 게 좋을 것 같아") · 2026-10-18 기본 템플릿을 `# 이름 / 직무 / 소개 / - 라벨: 연락처`에서 `{{profile.introduction}}`만으로 바꿈(사용자 "이미 제공되는 정보인데 명함에 텍스트로 표시되는 거 지워줘"). 옛 기본 템플릿으로 발행된 명함은 V27·V28이 같은 모양으로 정리했고(V28은 `# `·빈 줄이 없던 더 이른 기본 템플릿 포함), 토큰만으로 된 기본 템플릿 모양이 아닌 옛 명함은 그대로다.
 
@@ -460,6 +461,13 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - 저장: `users.created_at`(V40, 기존 행은 가장 이른 로그인 수단·프로필 생성 시각으로 채움). `user_credentials`·`user_identities`는 그대로.
 - 구현 메모(2026-10-20): `POST /v1/auth/passkeys/registration/options`는 Bearer가 있으면 그 계정에 패스키를 더한다(응답은 기존처럼 201 TokenPair). 만료·잘못된 Bearer는 401(조용히 새 가입으로 넘어가지 않음). 로그인 상태 options에는 기존 패스키를 `excludeCredentials`로 넣어 키체인이 덮어쓰지 않게 하고, 요청 `displayName`이 새 패스키의 `label`이 된다(기본 `Dearby`). 경로의 `provider`는 소문자(apple|google), 연결돼 있지 않으면 404. PATCH label은 trim 후 1~60자(아니면 400). 다른 사용자의 패스키 id는 404(존재 여부를 구분하지 않음).
 
+## 명함 고치기는 같은 명함을 수정 — 2026-10-20 사용자 결정
+
+사용자: "명함을 고쳤는데 명함이 발행돼 버렸어. 명함을 고치면 수정되도록 변경해야 하지 않아?" 2026-10-18 "이 명함 고치기 = 같은 꾸밈으로 다시 발행(새 id)" 규칙을 바꾼다. iOS·Android·API. 웹은 공개 `/cards/:id`가 현재 내용을 보이므로 변경 없음.
+
+- **API**: `PUT /v1/cards/:id`(Bearer, 소유자만, 철회된 명함 404) `{name, description, contactIds, historyIds}` — `POST /v1/cards`와 같은 검증으로 **같은 id의 명함 스냅샷을 현재 프로필 기준으로 다시 만든다**. 200 Card(`id`·`createdAt` 유지, `updatedAt` 갱신). 공개 `GET /v1/cards/:id`·받은 명함 목록·교환 링크(`dearby://cards/:id`, 웹 `/cards/:id`)는 같은 id를 가리키므로 고친 내용이 바로 보인다. 받은 쪽에 저장된 사본이 있다면 사본은 그대로 두고 목록은 현재 명함을 참조한다(기존 규칙 유지).
+- **앱**: 내 명함의 `이 명함 고치기`는 명함 만들기 화면을 그 명함의 이름·설명·선택으로 채워 열고, 발행 버튼 라벨은 `고친 내용 저장`, 완료 시 `PUT /v1/cards/:id`를 부른다(새 명함을 만들지 않음). `새 명함`만 `POST`. 고친 뒤 내 명함 목록은 같은 칸이 갱신되고 선택이 유지된다. 명함 QR·링크는 바뀌지 않는다.
+- 어드민: 변경 없음.
 ## 활동 이력에서 단기 행사 제외 — 2026-10-20 사용자 결정
 
 사용자: "활동 이력에 컨퍼런스·워크숍 등 일주일 이내인 활동은 제외해줘." 하루짜리 컨퍼런스·워크숍·밋업은 경력 이력이 아니다.

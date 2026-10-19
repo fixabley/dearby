@@ -27,8 +27,23 @@ class JooqCardRepository(private val dsl: DSLContext) : CardRepository {
             .set(BUSINESS_CARDS.HISTORIES, JSONB.valueOf(ProfileJson.histories(card.histories)))
             .set(BUSINESS_CARDS.REVOKED, false)
             .set(BUSINESS_CARDS.CREATED_AT, card.createdAt)
+            .set(BUSINESS_CARDS.UPDATED_AT, card.updatedAt)
             .execute()
     }
+
+    override fun update(card: BusinessCard): Boolean =
+        dsl.update(BUSINESS_CARDS)
+            .set(BUSINESS_CARDS.NAME, card.name)
+            .set(BUSINESS_CARDS.DESCRIPTION, card.description)
+            .set(BUSINESS_CARDS.TEMPLATE, card.template)
+            .set(BUSINESS_CARDS.INTRODUCTION, card.introduction)
+            .set(BUSINESS_CARDS.PROFILE_NAME, card.profileName)
+            .set(BUSINESS_CARDS.JOB, card.job)
+            .set(BUSINESS_CARDS.CONTACTS, JSONB.valueOf(ProfileJson.contacts(card.contacts)))
+            .set(BUSINESS_CARDS.HISTORIES, JSONB.valueOf(ProfileJson.histories(card.histories)))
+            .set(BUSINESS_CARDS.UPDATED_AT, card.updatedAt)
+            .where(BUSINESS_CARDS.ID.eq(card.id), BUSINESS_CARDS.REVOKED.isFalse)
+            .execute() > 0
 
     override fun find(id: UUID): BusinessCard? =
         dsl.selectFrom(BUSINESS_CARDS).where(BUSINESS_CARDS.ID.eq(id), BUSINESS_CARDS.REVOKED.isFalse).fetchOne()?.let(::toCard)
@@ -56,5 +71,6 @@ class JooqCardRepository(private val dsl: DSLContext) : CardRepository {
         contacts = ProfileJson.readContacts(it.contacts!!.data()),
         histories = ProfileJson.readHistories(it.histories!!.data()),
         createdAt = it.createdAt!!,
+        updatedAt = it.updatedAt!!,
     )
 }
