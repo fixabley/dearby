@@ -8,6 +8,8 @@ struct DearbySearchField: View {
     var identifier = "search"
     var expansion: Double = 1
     var onExpand: () -> Void = {}
+    /// Tells the page when the field gains or loses the keyboard (the discovery header stays open while typing).
+    var onFocusChange: (Bool) -> Void = { _ in }
     @FocusState private var focused: Bool
     @State private var focusOnAppear = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -32,6 +34,7 @@ struct DearbySearchField: View {
         }.padding(.leading, 14).padding(.trailing, text.isEmpty ? 14 : 0).frame(minHeight: 48)
             .background(DearbyStyle.muted, in: Capsule())
             .onAppear { if focusOnAppear { focused = true; focusOnAppear = false } }
+            .onChange(of: focused) { _, value in onFocusChange(value) }
     }
     private var bar: some View {
         let height = 28 + 20 * progress

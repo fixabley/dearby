@@ -77,6 +77,45 @@ import Observation
         start(query)
     }
     func reload() { start(query ?? "") }
+    /// Pull to refresh (contract "발견 탭 스크롤 동작" 2026-10-19 밤): the first page again for the current query and toggle. The list stays on
+    /// screen until the page arrives; programs that were expanded stay expanded and load their activities again. Failure shows the usual error.
+    func refresh() async {
+        let query = query ?? ""
+        let kept = expanded
+        firstPage?.cancel()
+        nextPage?.cancel()
+        nextPage = nil
+        programLoads.values.forEach { $0.cancel() }
+        programLoads = [:]
+        loadingMore = false
+        moreFailed = false
+        let task = Task {
+            do {
+                let page = try await fetchPrograms(query, nil, openOnly)
+                guard !Task.isCancelled else { return }
+                loadedAt = Date()
+                programs = []
+                expanded = []
+                cursor = nil
+                loadingPrograms = []
+                failedPrograms = []
+                phase = .loaded
+                append(page)
+                let shown = Set(programs.map(\.id))
+                expanded.formUnion(kept.intersection(shown))
+                // Activities of programs no longer listed are dropped; the kept ones stay until their reload lands.
+                openActivities = openActivities.filter { shown.contains($0.key) }
+                upcomingActivities = upcomingActivities.filter { shown.contains($0.key) }
+                pastActivities = pastActivities.filter { shown.contains($0.key) }
+                // Programs `append` just started loading are skipped by the in-flight guard.
+                for id in expanded { loadActivities(id, reload: true) }
+            } catch {
+                if !Task.isCancelled { phase = .failed }
+            }
+        }
+        firstPage = task
+        await task.value
+    }
     /// Next page of programs while one exists; a stale page (the query changed) is dropped.
     func loadMore() {
         guard phase == .loaded, let cursor, nextPage == nil, let query else { return }
@@ -142,8 +181,9 @@ import Observation
             loadActivities(program.id)
         }
     }
-    private func loadActivities(_ programID: Int64) {
-        guard openActivities[programID] == nil, programLoads[programID] == nil else { return }
+    /// `reload` fetches again even when the program's activities are already shown (pull to refresh keeps the old ones until then).
+    private func loadActivities(_ programID: Int64, reload: Bool = false) {
+        guard reload || openActivities[programID] == nil, programLoads[programID] == nil else { return }
         loadingPrograms.insert(programID)
         failedPrograms.remove(programID)
         programLoads[programID] = Task {

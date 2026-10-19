@@ -6,21 +6,27 @@ struct ActivityListPage: View {
     let state: ActivityViewModel
     @Binding var path: [String]
     @State private var showNotice = false
+    /// How much of the search area is pushed up under the title, 0...`headerHeight` (contract "발견 탭 스크롤 동작" 2026-10-19 밤).
+    @State private var hidden: CGFloat = 0
+    @State private var headerHeight: CGFloat = 0
+    @State private var searchFocused = false
+    /// Content has scrolled under the pinned title: show the hairline.
+    @State private var underTitle = false
+    /// More than one screen down: show `맨 위로`.
+    @State private var farDown = false
+    @State private var position = ScrollPosition()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         @Bindable var state = state
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                // The title line comes first (contract "탭 제목 통일"), then the search field and toggle right under it.
-                PageTitle("활동 둘러보기") {
-                    Button { showNotice = true } label: { Image(systemName: "bell").font(.title2).frame(width: 44, height: 44) }
-                        .accessibilityLabel("알림")
-                }
+        VStack(spacing: 0) {
+            // The title line stays put (contract "탭 제목 통일"); a hairline appears once content passes beneath it.
+            PageTitle("활동 둘러보기") {
+                Button { showNotice = true } label: { Image(systemName: "bell").font(.title2).frame(width: 44, height: 44) }
+                    .accessibilityLabel("알림")
+            }
+            .overlay(alignment: .bottom) { Divider().opacity(underTitle ? 1 : 0) }
+            ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
-                    DearbySearchField(prompt: "프로그램, 조직, 활동 이름으로 검색", text: $state.searchText, identifier: "activity-search")
-                        .submitLabel(.search)
-                    Toggle("마감 숨기기", isOn: $state.openOnly).font(.dearby(.subheadline)).tint(DearbyStyle.teal)
-                        .accessibilityIdentifier("activity-open-only")
                     switch state.phase {
                     case .loading:
                         ProgressView("프로그램을 불러오는 중이에요").frame(maxWidth: .infinity).padding(.vertical, 40)
@@ -58,8 +64,51 @@ struct ActivityListPage: View {
                     }
                 }.padding(.horizontal, 20).padding(.bottom, 20)
             }
+            .scrollPosition($position)
+            // The search area sits in the scroll view's top safe area at its full height; collapsing slides it up under the title
+            // and the list scrolls through the freed space. Keeping the inset fixed keeps the content offset (and the refresh
+            // indicator, which appears below the inset) independent of the collapse.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                VStack(alignment: .leading, spacing: 10) {
+                    DearbySearchField(prompt: "프로그램, 조직, 활동 이름으로 검색", text: $state.searchText, identifier: "activity-search",
+                                      onFocusChange: focusChanged)
+                        .submitLabel(.search)
+                    Toggle("마감 숨기기", isOn: $state.openOnly).font(.dearby(.subheadline)).tint(DearbyStyle.teal)
+                        .accessibilityIdentifier("activity-open-only")
+                }
+                .padding(EdgeInsets(top: 12, leading: 20, bottom: 10, trailing: 20))
+                .background(Color(.systemGroupedBackground))
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
+                .offset(y: -shownHidden).opacity(headerHeight > 0 ? 1 - shownHidden / headerHeight : 1)
+                .clipped()
+                .accessibilityHidden(headerHeight > 0 && shownHidden >= headerHeight)
+            }
+            .overlay(alignment: .bottomTrailing) {
+                if farDown {
+                    Button(action: scrollToTop) {
+                        Image(systemName: "arrow.up").font(.body.weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+                            .frame(width: 44, height: 44)
+                            .background(Color(.secondarySystemGroupedBackground), in: Circle())
+                            .shadow(color: .black.opacity(0.12), radius: 6, y: 2)
+                    }
+                    .accessibilityLabel("맨 위로").accessibilityIdentifier("activity-scroll-top")
+                    .padding(.trailing, 20).padding(.bottom, 16)
+                    .transition(.opacity)
+                }
+            }
+            .refreshable { await state.refresh() }
+            .scrollDismissesKeyboard(.immediately)
+            // Offset from the fully expanded top; the inset is fixed, so this moves only with the finger (or a programmatic scroll).
+            .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { old, new in
+                scrolled(from: old, to: new)
+            }
+            .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > $0.containerSize.height } action: { _, far in
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { farDown = far }
+            }
+            .onScrollPhaseChange { _, phase, context in
+                if phase == .idle { settle(at: context.geometry.contentOffset.y + context.geometry.contentInsets.top) }
+            }
         }
-        .scrollDismissesKeyboard(.immediately)
         // Typing waits ~300ms before searching; the first load does not wait.
         .task(id: state.searchText) {
             if state.query != nil {
@@ -70,9 +119,41 @@ struct ActivityListPage: View {
         }
         .alert("알림", isPresented: $showNotice) { Button("확인") {} } message: { Text("새로운 알림이 없어요.") }
         .navigationDestination(for: String.self) { id in ActivityDetailView(state: state, activityID: id) }
-        .scrollContentBackground(.hidden).background(Color(.systemGroupedBackground))
+        .background(Color(.systemGroupedBackground))
         .tint(DearbyStyle.teal).navigationTitle("")
         .navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .navigationBar)
+    }
+    private var shownHidden: CGFloat { min(hidden, headerHeight) }
+    /// "Enter always": the search area follows the finger — down hides it, up shows it at once — but never leaves a gap between
+    /// its bottom edge and the content (`hidden ≤ offset`), and never moves while the field has the keyboard.
+    /// Reduced motion switches whole once the first screen is past; nearer the top it simply scrolls with the content.
+    private func scrolled(from old: CGFloat, to new: CGFloat) {
+        if underTitle != (new > 0) { withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.15)) { underTitle = new > 0 } }
+        guard headerHeight > 0 else { return }
+        if searchFocused { hidden = 0; return }
+        let delta = new - old
+        let limit = min(headerHeight, max(0, new))
+        if reduceMotion, new >= headerHeight, delta != 0 {
+            hidden = delta > 0 ? headerHeight : 0
+        } else {
+            hidden = min(max(hidden + delta, 0), limit)
+        }
+    }
+    /// Lifted mid-way: finish with a short spring to open or closed, once the content below can fill the space.
+    private func settle(at offset: CGFloat) {
+        guard !searchFocused, hidden > 0, hidden < headerHeight, offset >= headerHeight else { return }
+        let target: CGFloat = hidden >= headerHeight / 2 ? headerHeight : 0
+        if reduceMotion { hidden = target } else { withAnimation(.snappy(duration: 0.25)) { hidden = target } }
+    }
+    private func focusChanged(_ focused: Bool) {
+        searchFocused = focused
+        guard focused, hidden > 0 else { return }
+        if reduceMotion { hidden = 0 } else { withAnimation(.snappy(duration: 0.25)) { hidden = 0 } }
+    }
+    /// `맨 위로`: no animation (contract), and the search area opens with the content.
+    private func scrollToTop() {
+        position.scrollTo(edge: .top)
+        hidden = 0
     }
     /// One program card (contract "발견 카드 리뉴얼", iOS inset-grouped idiom): the header and, when expanded, the activity groups inside the same
     /// rounded section. Height follows the system spring; the content fades in from the top; reduced motion switches at once.
