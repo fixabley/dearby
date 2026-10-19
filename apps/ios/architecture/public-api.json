@@ -32,7 +32,8 @@
     "ActivityClient",
     "ProgramSummary",
     "ProgramPage",
-    "Eligibility"
+    "Eligibility",
+    "Tag"
   ],
   "entities/identity": [
     "CardModel",

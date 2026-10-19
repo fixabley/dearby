@@ -10,6 +10,7 @@ import { CursorTable, SearchSelect, useCursorList } from "./list";
 import { type DraftGroup, type Eligibility, eligibilitySummary, fromDraft, newGroup, toDraft, validateDraft } from "./eligibility";
 import { EligibilityEditor } from "./eligibility-editor";
 import { type Category, categoryLabel, categoryOptions, categoryOrder, UNCATEGORIZED } from "./category";
+import { resolveTagIds, TagChips, type TagItem, TagSelect, type TagValue } from "./tag-select";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -51,6 +52,8 @@ export type ActivityText = {
   eligibility?: Eligibility | null;
   /** 활동 종류 code (contract "활동 종류"); null or absent = 미분류. */
   category?: string | null;
+  /** 얻을 수 있는 것 태그 (contract "태그"); absent on older responses. */
+  tags?: TagItem[];
   /** Absent on the tree path; then the URL fields are hidden (2026-10-19 공식 안내·신청 링크 편집). */
   officialUrl?: string;
   applicationUrl?: string | null;
@@ -65,7 +68,7 @@ export type ActivityText = {
 /** True when the collector filled [field] from an earlier edition and no operator has edited it since. */
 const inherited = (activity: { inheritedFields?: string[] }, field: "eligibility" | "audience" | "participationType") =>
   activity.inheritedFields?.includes(field) ?? false;
-type CuratedField = "name" | "nameEn" | "description" | "descriptionEn" | "eligibility" | "officialUrl" | "applicationUrl" | "category";
+type CuratedField = "name" | "nameEn" | "description" | "descriptionEn" | "eligibility" | "officialUrl" | "applicationUrl" | "category" | "tags";
 /** True when an operator set [field] here; the server keeps that mark even when the field is saved again or emptied. */
 const curated = (activity: { curatedFields?: string[] }, field: CuratedField) => activity.curatedFields?.includes(field) ?? false;
 const curatedFieldLabels: Record<CuratedField, string> = {
@@ -77,6 +80,7 @@ const curatedFieldLabels: Record<CuratedField, string> = {
   officialUrl: "공식 안내 URL",
   applicationUrl: "신청 링크",
   category: "종류",
+  tags: "태그",
 };
 type Activity = ActivityText & {
   organization: { id: number; name: string };
@@ -221,6 +225,18 @@ export function Activities() {
           {curated(activity, "category") && <CuratedTag />}
         </>
       ),
+    },
+    {
+      title: "태그",
+      render: (_, activity) =>
+        activity.tags?.length ? (
+          <>
+            <TagChips tags={activity.tags} />
+            {curated(activity, "tags") && <CuratedTag />}
+          </>
+        ) : (
+          <span className="muted">없음</span>
+        ),
     },
     {
       title: "게시",
@@ -540,7 +556,7 @@ function DuplicateDialog({ activity, onClose }: { activity: Activity; onClose: (
   );
 }
 
-type TextBody = { name: string; nameEn: string; description: string; descriptionEn: string; eligibility: Eligibility | null; officialUrl?: string; applicationUrl?: string; category?: string | null };
+type TextBody = { name: string; nameEn: string; description: string; descriptionEn: string; eligibility: Eligibility | null; officialUrl?: string; applicationUrl?: string; category?: string | null; tagIds?: number[] };
 type ScheduleBody = { activitySchedule?: ScheduleInput; application?: ScheduleInput };
 
 export function ActivityTextEditor({ activity, onClose }: { activity: ActivityText; onClose: () => void }) {
@@ -602,6 +618,7 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
           officialUrl: activity.officialUrl ?? "",
           applicationUrl: activity.applicationUrl ?? "",
           category: activity.category ?? null,
+          tags: (activity.tags ?? []).map((tag) => tag.id),
           activityRange: initialActivity.range,
           activityTimed: initialActivity.timed,
           activityNote: initialActivityNote,
@@ -619,6 +636,7 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
           officialUrl: string;
           applicationUrl: string;
           category: Category | null;
+          tags: TagValue[];
           activityRange: RangeDraft["range"];
           activityTimed: boolean;
           activityNote: string;
@@ -642,8 +660,12 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
             const nextApplication = scheduleInput({ range: values.applicationRange, timed: values.applicationTimed }, values.applicationNote);
             if (JSON.stringify(nextApplication) !== JSON.stringify(scheduleInput(initialApplication, initialApplicationNote))) schedules.application = nextApplication;
           }
-          saveOnce(() =>
-            save.mutateAsync({
+          saveOnce(async () => {
+            // Typed tag names become dictionary entries first; 태그 goes only when the set changed, so an untouched field does not become 운영자 지정.
+            const tagIds = await resolveTagIds(values.tags, client);
+            const initialTagIds = (activity.tags ?? []).map((tag) => tag.id);
+            const tagsChanged = tagIds.length !== initialTagIds.length || tagIds.some((id) => !initialTagIds.includes(id));
+            return save.mutateAsync({
               name: values.name.trim(),
               nameEn: values.nameEn.trim(),
               description: values.description.trim(),
@@ -653,9 +675,10 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
               ...(withUrls ? { officialUrl: values.officialUrl.trim(), applicationUrl: values.applicationUrl.trim() } : {}),
               // 종류 goes only when changed, so an untouched field does not become 운영자 지정.
               ...(values.category !== (activity.category ?? null) ? { category: values.category } : {}),
+              ...(tagsChanged ? { tagIds } : {}),
               ...schedules,
-            }),
-          );
+            });
+          });
         }}
       >
         {save.error && <Alert className="form-error" type="error" showIcon message={save.error.message} />}
@@ -705,6 +728,13 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
         </Form.Item>
         <Form.Item name="category" label={<>종류{curated(activity, "category") && <CuratedTag />}</>}>
           <Select virtual={false} options={categoryOptions} style={{ width: 200 }} />
+        </Form.Item>
+        <Form.Item
+          name="tags"
+          label={<>태그{curated(activity, "tags") && <CuratedTag />}</>}
+          extra="얻을 수 있는 것(창업·협업·멘토링 …). 검색해 고르거나 새 이름을 적으면 저장할 때 사전에 추가돼요."
+        >
+          <TagSelect />
         </Form.Item>
         {withUrls && (
           <>
@@ -799,6 +829,7 @@ type ProgramRow = {
   organization: { id: number; name: string };
   /** 프로그램 기본 종류(contract admin-v1.md "프로그램 기본 종류"); absent on older responses. */
   category?: Category | null;
+  tags?: TagItem[];
   collection: { enabled: boolean; intervalDays: number; allowedHosts: string[]; lastSucceededOn: string | null };
 };
 
@@ -836,6 +867,7 @@ function ProgramGroups({
           {program.name}
           {program.nameEn && <span className="muted name-en">{program.nameEn}</span>}
           {program.category && <Tag style={{ marginLeft: 6 }}>{categoryLabel(program.category)}</Tag>}
+          <TagChips tags={program.tags} />
         </>
       ),
     },
@@ -966,6 +998,7 @@ type CreateBody = {
   applicationUrl?: string;
   participationType: "REGISTRATION" | "SELECTION";
   category?: Category | null;
+  tagIds?: number[];
   activitySchedule?: ScheduleInput | { dateLabel: string };
   application?: ScheduleInput;
   eligibility?: Eligibility;
@@ -1019,6 +1052,7 @@ function ActivityCreateModal({ programId, programName, onClose }: { programId?: 
           applicationUrl?: string;
           participationType: "REGISTRATION" | "SELECTION";
           category: Category | null;
+          tags?: TagValue[];
           activityRange: RangeDraft["range"];
           activityTimed: boolean;
           activityNote: string;
@@ -1046,8 +1080,9 @@ function ActivityCreateModal({ programId, programName, onClose }: { programId?: 
             return;
           }
           const application = scheduleInput({ range: values.applicationRange, timed: values.applicationTimed }, values.applicationNote);
-          createOnce(() =>
+          createOnce(async () =>
             create.mutateAsync({
+              tagIds: await resolveTagIds(values.tags, client),
               programId: values.programId,
               name: values.name.trim(),
               nameEn: optional(values.nameEn),
@@ -1092,6 +1127,9 @@ function ActivityCreateModal({ programId, programName, onClose }: { programId?: 
         </Form.Item>
         <Form.Item name="category" label="종류">
           <Select virtual={false} options={categoryOptions} style={{ width: 200 }} />
+        </Form.Item>
+        <Form.Item name="tags" label="태그(선택)" extra="얻을 수 있는 것. 검색해 고르거나 새 이름을 적으면 사전에 추가돼요. 비우면 프로그램 태그를 따라요.">
+          <TagSelect />
         </Form.Item>
         <Form.Item name="participationType" label="참여 방식">
           <Radio.Group

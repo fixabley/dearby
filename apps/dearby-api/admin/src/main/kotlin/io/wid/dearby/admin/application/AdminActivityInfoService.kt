@@ -13,6 +13,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 import io.wid.dearby.application.organization.OrganizationRepository
 import io.wid.dearby.application.program.ProgramRepository
+import io.wid.dearby.application.tag.TagRepository
 import io.wid.dearby.domain.*
 import io.wid.dearby.domain.curation.CollectionSettings
 import org.springframework.dao.DuplicateKeyException
@@ -29,6 +30,7 @@ class AdminActivityInfoService(
     private val activities: ActivityService,
     private val curations: ActivityCurationRepository,
     private val drafts: ActivityDraftRepository,
+    private val tags: TagRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -118,6 +120,7 @@ class AdminActivityInfoService(
     fun updateProgram(
         id: Id, name: String?, nameEn: String?, organizationId: Id?,
         category: CategoryChange = CategoryChange.Keep, applyCategoryToActivities: Boolean = false,
+        tagIds: List<Id>? = null, applyTagsToActivities: Boolean = false,
     ): ProgramUpdate {
         val current = programs.findAllById(listOf(id)).singleOrNull()
             ?: throw NotFoundException("프로그램을 찾을 수 없습니다", "Program not found: $id")
@@ -136,7 +139,11 @@ class AdminActivityInfoService(
         }
         unique { programs.update(id, newOrganization, newName, newNameEn, newCategory) }
         val applied = if (applyCategoryToActivities && newCategory != null) curations.applyProgramCategory(id, newCategory) else null
-        return ProgramUpdate(listing(id), applied)
+        // 프로그램 태그(native-v1.md "태그"): 생략은 유지, 목록은 통째로 바꾼다. 일괄 적용은 운영자가 태그를 지정하지 않은 활동에 합집합으로
+        val newTagIds = tagIds?.let { requireTags(it) } ?: current.tags.map { it.id }
+        if (tagIds != null) tags.setProgramTags(id, newTagIds)
+        val appliedTags = if (applyTagsToActivities && newTagIds.isNotEmpty()) tags.addProgramTagsToActivities(id, newTagIds) else null
+        return ProgramUpdate(listing(id), applied, appliedTags)
     }
 
     @Transactional(readOnly = true)
@@ -178,6 +185,7 @@ class AdminActivityInfoService(
         officialUrl: String? = null,
         applicationUrl: String? = null,
         category: CategoryChange = CategoryChange.Keep,
+        tagIds: List<Id>? = null,
     ): AdminActivity {
         val current = activities.getById(activityId, publicationStatus = null).activity
         curations.updateTexts(
@@ -206,6 +214,8 @@ class AdminActivityInfoService(
             CategoryChange.Clear -> curations.updateCategory(activityId, null)
             is CategoryChange.Set -> curations.updateCategory(activityId, category.category)
         }
+        // 태그(native-v1.md "태그"): 생략은 유지, 목록은 통째로 바꾸고 운영자 지정 tags에 남긴다
+        tagIds?.let { tags.setActivityTags(activityId, requireTags(it), curate = true) }
         // 일정 직접 지정(admin-v1.md): 날짜만이면 종일, 시각까지면 시각 일정. null이면 구조화된 값을 지우고 문구만 남긴다
         applySchedule(activityId, ScheduleSlot.ACTIVITY, activitySchedule)
         applySchedule(activityId, ScheduleSlot.APPLICATION, application)
@@ -229,6 +239,7 @@ class AdminActivityInfoService(
             input.nameEn?.let { "nameEn" }, input.descriptionEn?.let { "descriptionEn" }, applicationUrl?.let { "applicationUrl" },
             input.participationType?.let { "participationType" }, input.category?.let { "category" },
             input.audience?.let { "audience" }, input.location?.let { "location" }, input.cost?.let { "cost" }, input.eligibility?.let { "eligibility" },
+            input.tagIds?.let { "tags" },
         )
         val id = curations.insert(
             ActivityCreation(
@@ -242,6 +253,9 @@ class AdminActivityInfoService(
         activityTime?.let { curations.updateSchedule(id, ScheduleSlot.ACTIVITY, it, input.activitySchedule?.note) }
         input.application?.toTime()?.let { curations.updateSchedule(id, ScheduleSlot.APPLICATION, it, input.application.note) }
         input.eligibility?.let { curations.updateEligibility(id, it) }
+        // 태그(native-v1.md "태그"): 보냈으면 그것(운영자 지정), 생략하면 프로그램 태그를 기본으로
+        val tagIds = input.tagIds?.let { requireTags(it) } ?: program.tags.map { it.id }
+        if (tagIds.isNotEmpty() || input.tagIds != null) tags.setActivityTags(id, tagIds, curate = input.tagIds != null)
         return withCuration(listOf(activities.getById(id, publicationStatus = null))).single()
     }
 
@@ -342,6 +356,15 @@ class AdminActivityInfoService(
     }
 
     // null이면 지금 값 그대로, 빈 문자열이면 지운다(선택 입력인 영문 값)
+    // 보낸 태그 id가 모두 사전에 있어야 한다(없으면 400). 중복은 하나로
+    private fun requireTags(ids: List<Id>): List<Id> {
+        val wanted = ids.distinct()
+        val found = tags.findAllById(wanted).map { it.id }.toSet()
+        val missing = wanted.filterNot { it in found }
+        if (missing.isNotEmpty()) throw InvalidInputException("없는 태그입니다: ${missing.joinToString(", ")}")
+        return wanted
+    }
+
     private fun requireHttps(url: String, field: String): String {
         val uri = runCatching { URI(url) }.getOrNull()
         if (url.isEmpty() || uri?.scheme != "https" || uri.host.isNullOrBlank()) throw InvalidInputException("${field}은(는) https 주소여야 합니다")

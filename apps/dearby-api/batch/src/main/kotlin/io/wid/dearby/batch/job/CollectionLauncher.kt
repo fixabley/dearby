@@ -7,6 +7,9 @@ import org.springframework.batch.core.job.parameters.JobParametersBuilder
 import org.springframework.batch.core.launch.JobOperator
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
+import org.springframework.boot.SpringApplication
+import org.springframework.context.ConfigurableApplicationContext
+import kotlin.system.exitProcess
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 import java.time.LocalDate
@@ -19,6 +22,7 @@ class CollectionLauncher(
     private val jobOperator: JobOperator,
     private val collectActivitiesJob: Job,
     private val readiness: CollectionReadiness,
+    private val context: ConfigurableApplicationContext,
 ) : ApplicationRunner {
 
     private val log = LoggerFactory.getLogger(javaClass)
@@ -26,8 +30,11 @@ class CollectionLauncher(
     @Scheduled(cron = "0 0 0 * * *", zone = ZONE)
     fun nightly() = launch("schedule")
 
+    // 일회성 실행(2026-10-19): 수동 수집이 끝나면 프로세스를 끝낸다. 스케줄과 함께 남아 정기 수집이 두 번 돌던 문제를 막는다
     override fun run(args: ApplicationArguments) {
-        if (args.containsOption("collect-now")) launch("manual-${System.currentTimeMillis()}")
+        if (!args.containsOption("collect-now")) return
+        launch("manual-${System.currentTimeMillis()}")
+        exitProcess(SpringApplication.exit(context))
     }
 
     fun launch(trigger: String) {

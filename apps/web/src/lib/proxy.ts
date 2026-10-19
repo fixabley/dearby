@@ -6,6 +6,7 @@ import {
   guestListSchema,
   activityPageSchema,
   programPageSchema,
+  tagListSchema,
   uuid,
 } from "./models";
 import {
@@ -36,8 +37,8 @@ function acceptLanguage(value: string | null): string | undefined {
   return value && /^[A-Za-z0-9*,;=. -]{1,200}$/.test(value) ? value : undefined;
 }
 /**
- * Only `q`, `cursor`, `size`, `programId`, `open` (activities) and `participationType`, `openOnly` (programs) are forwarded
- * to the searches, rebuilt from validated values.
+ * Only `q`, `cursor`, `size`, `programId`, `open` (activities), `participationType`, `openOnly` (programs) and `tagIds`
+ * (both; comma list of tag ids, contract "태그") are forwarded to the searches, rebuilt from validated values.
  */
 function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
   const query = new URLSearchParams();
@@ -52,6 +53,9 @@ function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
   // `openOnly=false` lists programs with activity in the last two years as well (contract "모집 중인 프로그램만 보기").
   const programsOpenOnly = url.searchParams.get("openOnly");
   if (programsOpenOnly !== null && (!programs || !["true", "false"].includes(programsOpenOnly))) return;
+  // `tagIds=1,2`: every listed tag must be present (AND); up to 10 ids.
+  const tagIds = url.searchParams.get("tagIds");
+  if (tagIds !== null && !/^[1-9]\d{0,17}(,[1-9]\d{0,17}){0,9}$/.test(tagIds)) return;
   if (q && q.length > 100) return;
   if (cursor !== null && !/^\d{1,18}$/.test(cursor)) return;
   if (size !== null && !(/^\d{1,3}$/.test(size) && +size >= 1 && +size <= 100))
@@ -64,6 +68,7 @@ function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
   )
     return;
   if (q) query.set("q", q);
+  if (tagIds !== null) query.set("tagIds", tagIds);
   if (cursor !== null) query.set("cursor", cursor);
   if (size !== null) query.set("size", size);
   if (programId !== null) query.set("programId", programId);
@@ -83,10 +88,12 @@ export async function proxy(
   const id = segments[guest ? 2 : 1];
   const activityRoute = segments.length === 2 && segments[0] === "activities";
   const programs = path === "discovery/programs";
+  const tagList = path === "tags";
   const search = path === "activities" || programs;
   const method = request.method;
   const allowed =
     (search && method === "GET") ||
+    (tagList && method === "GET") ||
     (activityRoute && method === "GET") ||
     (segments.length === 2 && segments[0] === "cards" && method === "GET") ||
     (path === "guest/cards" && method === "GET") ||
@@ -191,6 +198,8 @@ export async function proxy(
         ? activityPageSchema.parse(json)
         : programs
           ? programPageSchema.parse(json)
+          : tagList
+          ? tagListSchema.parse(json)
           : activityRoute
           ? activitySchema.parse(json)
           : guest

@@ -20,13 +20,21 @@ data class ActivityState(
     val category: String? = null, val categoryOrder: Int = Int.MAX_VALUE,
     /** Discovery order inside a category group: recruitment deadline, else activity start; null last. */
     val sortKey: Instant? = null,
+    /** 얻을 수 있는 것 tag names in dictionary order (contract "태그"). */
+    val tags: List<String> = emptyList(),
 )
+/** One dictionary tag for the filter chips (contract "태그"). */
+data class TagState(val id: String, val name: String)
 /**
  * One program header in discovery (contract "발견 프로그램 묶음"); [matched] when the search hit an open activity's name.
  * [openCount] is 0 for a program shown only because it had an activity in the last two years; [latestActivityAt] is its most
  * recent activity start (contract "모집 중인 프로그램만 보기").
  */
-data class ProgramState(val id: String, val title: String, val organization: String, val openCount: Int, val deadline: Instant?, val matched: Boolean, val latestActivityAt: Instant? = null)
+data class ProgramState(
+    val id: String, val title: String, val organization: String, val openCount: Int, val deadline: Instant?, val matched: Boolean, val latestActivityAt: Instant? = null,
+    /** Program (or open-activity union) tag names, at most 6 (contract "태그"). */
+    val tags: List<String> = emptyList(),
+)
 /**
  * The open activities of an expanded program, loaded on first expand; [ids] index into [ActivityListState.known]. When none is
  * open, [upcomingIds] are the program's activities whose recruitment (or activity) start is still ahead, nearest first, and
@@ -42,12 +50,14 @@ data class ProgramActivities(
  * [askingId]: the activity whose application link was opened, asked about once when the app comes back (contract #148).
  * [progress] is every loaded activity's stage track with the user's marks (contract "내 활동 진행 트랙"), memory only.
  * [openOnly] is the `모집 중만 보기` switch (default on, memory only; contract "모집 중인 프로그램만 보기").
+ * [tags] is the dictionary for the filter chips and [selectedTagIds] the chosen ones, sent as `tagIds` (contract "태그"); memory only.
  */
 data class ActivityListState(
     val phase: ActivityListPhase = ActivityListPhase.LOADING, val query: String = "", val openOnly: Boolean = true, val programs: List<ProgramState> = emptyList(),
     val expanded: Set<String> = emptySet(), val programActivities: Map<String, ProgramActivities> = emptyMap(),
     val known: Map<String, ActivityState> = emptyMap(), val nextCursor: String? = null, val loadingMore: Boolean = false,
     val moreFailed: Boolean = false, val askingId: String? = null, val progress: Map<String, ProgressState> = emptyMap(),
+    val tags: List<TagState> = emptyList(), val selectedTagIds: Set<String> = emptySet(),
 ) {
     val asking get() = askingId?.let(known::get)
     /** Applied activities, the nearest next stage first; activities without a dated next stage come last. */

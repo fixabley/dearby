@@ -12,6 +12,7 @@ import { Programs } from "./programs";
 import { Histories } from "./histories";
 import { Roles } from "./roles";
 import { Jobs } from "./jobs";
+import { Tags } from "./tags";
 import "./style.css";
 
 function Brand() {
@@ -118,6 +119,10 @@ function Shell() {
             <IdcardOutlined aria-hidden="true" />
             직무
           </NavLink>
+          <NavLink to="/tags">
+            <TagsOutlined aria-hidden="true" />
+            태그
+          </NavLink>
         </nav>
         <div className="sidebar-bottom">
           <Button icon={<LogoutOutlined aria-hidden="true" />} onClick={() => logout()}>
@@ -137,6 +142,7 @@ function Shell() {
           <Route path="/histories" element={<Histories />} />
           <Route path="/roles" element={<Roles />} />
           <Route path="/jobs" element={<Jobs />} />
+          <Route path="/tags" element={<Tags />} />
           <Route path="*" element={<Navigate to="/activities" replace />} />
         </Routes>
       </main>

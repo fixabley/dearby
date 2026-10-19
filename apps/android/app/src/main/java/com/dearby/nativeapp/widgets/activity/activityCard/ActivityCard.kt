@@ -40,6 +40,8 @@ private val deadlineFormat = DateTimeFormatter.ofPattern("M월 d일 (E)", Locale
     title: String, organization: String, summary: String, status: String, dateAndPlace: String, open: () -> Unit,
     modifier: Modifier = Modifier, imageUrl: String? = null,
     applyUrl: String? = null, recruitmentEnd: Instant? = null, onApply: (String) -> Unit = {},
+    /** 얻을 수 있는 것 tag names (contract "태그"), shown as chips under the meta lines. */
+    tags: List<String> = emptyList(),
 ) {
     Surface(modifier.fillMaxWidth(), color = Color.White, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Line)) {
         Column {
@@ -56,6 +58,10 @@ private val deadlineFormat = DateTimeFormatter.ofPattern("M월 d일 (E)", Locale
                     HorizontalDivider()
                     MetaLine(Icons.Outlined.CalendarToday, status)
                     MetaLine(Icons.Outlined.LocationOn, dateAndPlace)
+                    if (tags.isNotEmpty()) Row(Modifier.semantics { contentDescription = "태그 " + tags.joinToString(", ") }, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        tags.take(3).forEach { ExampleBadge(it) }
+                        if (tags.size > 3) ExampleBadge("+${tags.size - 3}")
+                    }
                 }
             }
             if (applyUrl != null) {

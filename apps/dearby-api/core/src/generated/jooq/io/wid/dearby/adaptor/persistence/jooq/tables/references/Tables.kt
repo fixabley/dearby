@@ -10,6 +10,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEligibilityTerms
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
+import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
@@ -33,11 +34,13 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCollectionSettings
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaffRoles
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.Roles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules
+import io.wid.dearby.adaptor.persistence.jooq.tables.Tags
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
@@ -71,6 +74,11 @@ val ACTIVITY_PARTICIPATIONS: ActivityParticipations = ActivityParticipations.ACT
  * The table <code>public.activity_roles</code>.
  */
 val ACTIVITY_ROLES: ActivityRoles = ActivityRoles.ACTIVITY_ROLES
+
+/**
+ * The table <code>public.activity_tags</code>.
+ */
+val ACTIVITY_TAGS: ActivityTags = ActivityTags.ACTIVITY_TAGS
 
 /**
  * The table <code>public.apple_sign_in_states</code>.
@@ -188,6 +196,11 @@ val PROGRAM_STAFF: ProgramStaff = ProgramStaff.PROGRAM_STAFF
 val PROGRAM_STAFF_ROLES: ProgramStaffRoles = ProgramStaffRoles.PROGRAM_STAFF_ROLES
 
 /**
+ * The table <code>public.program_tags</code>.
+ */
+val PROGRAM_TAGS: ProgramTags = ProgramTags.PROGRAM_TAGS
+
+/**
  * The table <code>public.programs</code>.
  */
 val PROGRAMS: Programs = Programs.PROGRAMS
@@ -211,6 +224,11 @@ val ROLES: Roles = Roles.ROLES
  * The table <code>public.schedules</code>.
  */
 val SCHEDULES: Schedules = Schedules.SCHEDULES
+
+/**
+ * The table <code>public.tags</code>.
+ */
+val TAGS: Tags = Tags.TAGS
 
 /**
  * The table <code>public.user_credentials</code>.

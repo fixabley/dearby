@@ -1,6 +1,8 @@
 package io.wid.dearby.adaptor.persistence
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITIES
+import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITY_TAGS
+import io.wid.dearby.adaptor.persistence.jooq.tables.references.TAGS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ORGANIZATIONS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.PROGRAMS
 import io.wid.dearby.application.program.OpenActivity
@@ -8,6 +10,8 @@ import io.wid.dearby.application.program.ProgramSummary
 import io.wid.dearby.application.program.ProgramSummaryRepository
 import io.wid.dearby.application.program.ProgramSummarySearch
 import io.wid.dearby.domain.ActivityCategory
+import io.wid.dearby.domain.Id
+import io.wid.dearby.domain.Tag
 import io.wid.dearby.domain.PublicationStatus
 import org.jooq.Condition
 import org.jooq.DSLContext
@@ -30,6 +34,7 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
         add(OpenActivityConditions.open(now))
         condition.participationType?.let { add(ACTIVITIES.PARTICIPATION_TYPE.eq(it.name)) }
         condition.categories?.let { add(ACTIVITIES.CATEGORY.`in`(it.map(ActivityCategory::name))) }
+        condition.tagIds?.let { addAll(TagRows.activityHasAllTags(it)) }
         addAll(EligibilityRows.conditions(condition.eligibility))
     }
 
@@ -50,9 +55,11 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
             add(ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name))
             condition.participationType?.let { add(ACTIVITIES.PARTICIPATION_TYPE.eq(it.name)) }
             condition.categories?.let { add(ACTIVITIES.CATEGORY.`in`(it.map(ActivityCategory::name))) }
+            condition.tagIds?.let { addAll(TagRows.activityHasAllTags(it)) }
             addAll(EligibilityRows.conditions(condition.eligibility))
         }
-        val activityMatches = q?.let { ACTIVITIES.NAME.containsIgnoreCase(it).or(ACTIVITIES.NAME_EN.containsIgnoreCase(it)) }
+        // 검색어는 활동 이름과 태그 이름(한글·영문)에 맞는다(native-v1.md "태그")
+        val activityMatches = q?.let { ACTIVITIES.NAME.containsIgnoreCase(it).or(ACTIVITIES.NAME_EN.containsIgnoreCase(it)).or(TagRows.activityTagMatches(it)) }
         val openCount = DSL.count(DSL.`when`(isOpen, ACTIVITIES.ID))
         val nearestEnd = DSL.min(DSL.`when`(isOpen, deadline))
         val latestStart = DSL.max(OpenActivityConditions.activityStart)
@@ -106,7 +113,28 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
     }
 
 
+    // 프로그램 태그가 있으면 그것, 없으면 열린 활동 태그의 합집합(최대 MAX_SUMMARY_TAGS개, 사전 순)
+    override fun tagsByProgram(programIds: Collection<Id>, now: OffsetDateTime): Map<Id, List<Tag>> {
+        if (programIds.isEmpty()) return emptyMap()
+        val own = TagRows.ofPrograms(dsl, programIds)
+        val missing = programIds.filter { own[it].isNullOrEmpty() }
+        if (missing.isEmpty()) return own
+        val fromActivities = dsl.selectDistinct(ACTIVITIES.PROGRAM_ID, TAGS.ID, TAGS.NAME, TAGS.NAME_EN, TAGS.SORT_ORDER)
+            .from(ACTIVITIES)
+            .join(ACTIVITY_TAGS).on(ACTIVITY_TAGS.ACTIVITY_ID.eq(ACTIVITIES.ID))
+            .join(TAGS).on(TAGS.ID.eq(ACTIVITY_TAGS.TAG_ID))
+            .leftJoin(app).on(appJoin)
+            .leftJoin(act).on(actJoin)
+            .where(ACTIVITIES.PROGRAM_ID.`in`(missing), OpenActivityConditions.open(now))
+            .orderBy(ACTIVITIES.PROGRAM_ID, TAGS.SORT_ORDER, TAGS.ID)
+            .fetch()
+            .groupBy({ it.value1()!! }) { Tag(it.value2()!!, it.value3()!!, it.value4()) }
+            .mapValues { (_, tags) -> tags.take(MAX_SUMMARY_TAGS) }
+        return own + fromActivities
+    }
+
     private companion object {
         const val RECENT_YEARS = 3L
+        const val MAX_SUMMARY_TAGS = 6
     }
 }

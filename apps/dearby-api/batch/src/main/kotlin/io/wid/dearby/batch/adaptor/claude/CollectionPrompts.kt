@@ -54,6 +54,7 @@ object CollectionPrompts {
         - evidenceQuote는 이 활동이 본문에 있다는 근거로, 본문에서 그대로 복사한 10~200자 연속 구절이다.
         - name·description은 한국어로 쓴다. nameEn·descriptionEn은 그 영어 번역이다(고유 명사·행사명은 공식 영문 표기가 본문에 있으면 그대로 쓴다). 번역할 수 없으면 null.
         - participationType: 신청하면 참가하면 REGISTRATION, 심사로 선발하면 SELECTION.
+        - tags: 참가자가 이 활동에서 얻는 것을 요청의 "태그 사전" 이름 그대로 최대 5개 고른다. 사전에 없는 말은 쓰지 않고, 알 수 없으면 빈 배열.
         - category: 활동의 성격으로 판단한다. 부트캠프 BOOTCAMP, 컨퍼런스 CONFERENCE, 워크샵 WORKSHOP, 스터디 STUDY, 동아리(연합동아리 등) CLUB, 강연 LECTURE, 해커톤 HACKATHON, 공모전 CONTEST, 밋업 MEETUP, 그 외 OTHER. 모르면 null.
         - audience는 대상자 원문 문장 그대로다. eligibility는 그 대상자를 조건 트리로 정리한 것이다(본문에 대상 조건이 없으면 null).
           - 트리: 그룹은 op("all"=모두 충족, "any"=하나 이상)와 items, 조건은 field(한글 어휘)·fieldEn(영문 어휘)과 범위 from·to(숫자, 포함, 한쪽 생략 가능) 또는 집합 values(한글)·valuesEn(영문, 같은 순서) 중 하나, 선택으로 note·noteEn(원문 구절). 최상위는 그룹이고 3단계까지만 중첩한다.
@@ -69,9 +70,11 @@ object CollectionPrompts {
     // 조심 목록(admin-v1.md)은 힌트로만 넘긴다. 저장 전 이름 대조가 보장이다
     fun extractRequest(
         programName: String, url: String, text: String, watchlist: List<WatchEntry> = emptyList(), previous: PreviousEdition? = null,
-        examples: List<DateLabelExample> = emptyList(),
+        examples: List<DateLabelExample> = emptyList(), tagNames: List<String> = emptyList(),
     ) = buildString {
         append("프로그램: $programName\n페이지: $url")
+        // 태그 사전(native-v1.md "태그"): 이 이름 중에서만 고른다. 사전 밖 이름은 저장할 때 버린다
+        tagNames.takeIf { it.isNotEmpty() }?.let { append("\n태그 사전(tags는 이 중에서만 고른다): ${it.joinToString(", ")}") }
         // 날짜 문구 피드백(admin-v1.md): 운영자가 바로잡은 문구 → 날짜 쌍을 해석 예시로 보인다. 지정된 일정 자체는 저장할 때 따로 지킨다
         examples.takeIf { it.isNotEmpty() }?.let { list ->
             append("\n날짜 문구 해석 예시(운영자가 바로잡은 것):")
@@ -140,6 +143,7 @@ object CollectionPrompts {
                         "location" to nullableString(),
                         "cost" to nullableString(),
                         "audience" to nullableString(),
+                        "tags" to mapOf("type" to "array", "items" to string()),
                         "eligibility" to eligibilityGroup(depth = 1),
                         "evidenceQuote" to string(),
                     )

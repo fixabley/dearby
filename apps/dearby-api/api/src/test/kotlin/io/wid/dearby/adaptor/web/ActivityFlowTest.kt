@@ -21,6 +21,11 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
 
     private val json = JsonMapper.builder().build()
 
+    // JsonNode 배열을 Kotlin 목록으로(assertEquals의 타입 추론용)
+    private fun tagNames(node: JsonNode): List<String> = node.toList().map { it["name"].asString() }
+    private fun tagNamesEn(node: JsonNode): List<String?> = node.toList().map { it["nameEn"]?.takeUnless { n -> n.isNull }?.asString() }
+    private fun idList(node: JsonNode): List<Long> = node.toList().map { it.asLong() }
+
     private fun search(query: String): JsonNode =
         json.readTree(mvc.get("/v1/activities?$query").andExpect { status { isOk() } }.andReturn().response.contentAsString)
 
@@ -54,7 +59,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals("Let’Swift", item["program"]["name"].asString())
         assertEquals("https://letswift.kr/2026/", item["officialUrl"].asString())
         // 관리자만 보는 정보는 내보내지 않는다
-        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category"), item.propertyNames().toSet())
+        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags"), item.propertyNames().toSet())
         // 시각은 일정의 시간대로 표기한다(같은 순간)
         assertEquals("2026-10-08T00:00:00+09:00", item["application"]["endAt"].asString())
         assertEquals("2026-10-08", item["activitySchedule"]["dateLabel"].asString())
@@ -197,6 +202,33 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(0, search("q=묶음 확인&category=STUDY")["items"].size())
         mvc.get("/v1/activities?category=NOPE").andExpect { status { isBadRequest() } }
         mvc.get("/v1/discovery/programs?size=0").andExpect { status { isBadRequest() } }
+
+        // 태그(native-v1.md "태그"): 응답에 사전 순으로 실리고, 검색어는 태그 이름(한글·영문)에도 맞고(matchedActivityIds 포함), tagIds는 모두 가진 활동만(AND).
+        // 묶음 머리의 tags는 프로그램 태그가 없으면 열린 활동 태그의 합집합
+        val startup = jdbc.sql("select id from tags where name = '창업'").query(Long::class.java).single()
+        val mentoring = jdbc.sql("select id from tags where name = '멘토링'").query(Long::class.java).single()
+        val career = jdbc.sql("select id from tags where name = '취업'").query(Long::class.java).single()
+        jdbc.sql("insert into activity_tags (activity_id, tag_id) values (?, ?), (?, ?)").params(openId, mentoring, openId, startup).update()
+        // 검색어는 비슷한 이름의 다른 활동도 찾으므로 이 활동 항목만 본다
+        fun openItem() = search("q=묶음 확인")["items"].toList().single { it["id"].asLong() == openId }
+        assertEquals(listOf("창업", "멘토링"), openItem()["tags"].let(::tagNames))
+        assertEquals(listOf<String?>("startup", "mentoring"), openItem()["tags"].let(::tagNamesEn))
+        assertEquals(true, (0 until search("q=멘토링")["items"].size()).any { search("q=멘토링")["items"][it]["id"].asLong() == openId })
+        assertEquals(listOf(openId), programs("q=mentoring")["items"].single()["matchedActivityIds"].let(::idList))
+        assertEquals(listOf("창업", "멘토링"), programs("")["items"].single()["tags"].let(::tagNames))
+        assertEquals(listOf(openId), search("tagIds=$startup,$mentoring")["items"].toList().map { it["id"].asLong() })
+        assertEquals(0, search("tagIds=$startup,$career")["items"].size())
+        assertEquals(1, programs("tagIds=$mentoring")["items"].single()["openActivityCount"].asInt())
+        assertEquals(0, programs("tagIds=$career")["items"].size())
+        mvc.get("/v1/activities?tagIds=abc").andExpect { status { isBadRequest() } }
+        // 프로그램 태그가 있으면 묶음 머리는 그것을 쓴다. 공개 사전은 로그인 없이 sort_order 순
+        val programId = programs("")["items"].single()["id"].asLong()
+        jdbc.sql("insert into program_tags (program_id, tag_id) values (?, ?)").params(programId, career).update()
+        assertEquals(listOf("취업"), programs("")["items"].single()["tags"].let(::tagNames))
+        val dictionary = json.readTree(mvc.get("/v1/tags").andExpect { status { isOk() } }.andReturn().response.contentAsString)["items"]
+        assertEquals(listOf("창업", "창의성"), listOf(dictionary[0]["name"].asString(), dictionary[1]["name"].asString()))
+        jdbc.sql("delete from program_tags where program_id = ?").param(programId).update()
+        jdbc.sql("delete from activity_tags where activity_id = ?").param(openId).update()
 
         // 대상자 조건(native-v1.md "대상자 조건"): 나이 19~34 이고(재학 또는 미취업)인 활동. 조건이 없는 활동은 어떤 필터에도 통과한다
         jdbc.sql(

@@ -19,6 +19,10 @@
 - 렌더링: `program_collection_settings.render_pages`(V35), Playwright Chromium, 같은 경계. 일회성 `--collect-now`·`--recall-now`는 작업 뒤 JVM 종료.
 - DAN 수집 주소는 운영 DB에서 `https://dan.naver.com/{yy}`로 바꿈(`/26`은 아직 404).
 
+## 2026-10-19 결정 — iOS 번들 ID `io.wid.dearby`
+
+사용자: "iOS 번들 아이디 io.wid.dearby로 변경해줘. 애플 식별자에도 그렇게 했어." Debug·Release 모두 `io.wid.dearby`(이전: Debug `com.dearby.dearby`, Release `io.wid.dearby`). AASA(`infra/nginx/html/.well-known/apple-app-site-association`)는 이미 두 appID를 모두 담고 있고, 서버 `APPLE_CLIENT_IDS`에도 두 번들이 모두 들어 있어 전환 중 로그인이 끊기지 않는다. Google iOS 클라이언트의 번들(`io.wid.dearby`)과도 일치. 기기의 옛 번들 앱은 별도 앱으로 남는다(데이터 공유 없음). 기기 설치·실행 명령의 번들 ID는 `io.wid.dearby`.
+
 ## 남은 일·사용자 결정 대기
 
 - **구현 예정(설계·계약 완료)**: 태그(native-v1 "태그", 어휘 사전·검색·필터·어드민 검색+직접 입력) — API·어드민·iOS·Android·웹.
