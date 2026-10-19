@@ -56,12 +56,12 @@ struct ProfileFunnelPage: View {
             case .jobs:
                 JobTagPicker(form: $form, account: account, focus: $jobSearch)
             case .phone:
-                DearbyFormRow(label: step.label, focus: $focus, value: step) {
-                    TextField("010-0000-0000", text: $form.phone).keyboardType(.phonePad).textContentType(.telephoneNumber).accessibilityLabel("전화번호, 필수")
+                DearbyFormRow(label: step.label, symbol: ContactModel.symbol(kind: "phone"), focus: $focus, value: step) {
+                    TextField("전화번호", text: $form.phone).keyboardType(.phonePad).textContentType(.telephoneNumber).accessibilityLabel("전화번호, 필수")
                 }
             case .email:
-                DearbyFormRow(label: step.label, focus: $focus, value: step) {
-                    TextField("name@example.com", text: $form.email)
+                DearbyFormRow(label: step.label, symbol: ContactModel.symbol(kind: "email"), focus: $focus, value: step) {
+                    TextField("이메일", text: $form.email)
                         .keyboardType(.emailAddress).textContentType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
                         .submitLabel(.next).onSubmit(next).accessibilityLabel("이메일, 필수")
                 }

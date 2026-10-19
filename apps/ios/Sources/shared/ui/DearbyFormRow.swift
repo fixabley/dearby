@@ -5,18 +5,31 @@ import SwiftUI
 /// 그 필드로 키보드가 열린다. `content`는 `TextField` 하나(여러 줄은 `axis: .vertical` + `lineLimit(3...)`)이며 `.focused`는 행이 붙인다.
 struct DearbyFormRow<Value: Hashable, Content: View>: View {
     let label: String
+    /// SF Symbol shown 24 wide in secondary color on the left **instead of** the stacked text label (contract "연락처 행은 라벨 대신 왼쪽 아이콘"
+    /// 2026-10-20); the placeholder then names the kind and `label` stays the accessibility name.
+    var symbol: String?
     var focus: FocusState<Value?>.Binding
     let value: Value
     @ViewBuilder let content: Content
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label).font(.dearby(.subheadline).weight(.medium)).foregroundStyle(.secondary)
-            content.font(.dearby(.title3)).foregroundStyle(.primary).focused(focus, equals: value)
+        Group {
+            if let symbol {
+                HStack(spacing: 12) {
+                    Image(systemName: symbol).font(.dearby(.title3)).foregroundStyle(.secondary).frame(width: 24).accessibilityHidden(true)
+                    field
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(label).font(.dearby(.subheadline).weight(.medium)).foregroundStyle(.secondary)
+                    field
+                }
+            }
         }
         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
         .contentShape(Rectangle())
         .onTapGesture { focus.wrappedValue = value }
     }
+    private var field: some View { content.font(.dearby(.title3)).foregroundStyle(.primary).focused(focus, equals: value) }
 }
 
 /// 라벨 위·값 아래로 쌓인 읽기 전용 행(고른 기간, 접힌 퍼널 단계처럼 `LabeledContent`의 가로 라벨·값을 대신한다). 값이 비면 `empty`를 보조색으로 보인다.
@@ -57,6 +70,7 @@ struct DearbyCheckRow<Label: View>: View {
 #if DEBUG
 private struct DearbyFormRowGallery: View {
     @State var name = ""
+    @State var phone = ""
     @State var note = "여러 줄 메모"
     @State var agreed = false
     @FocusState var focus: String?
@@ -65,6 +79,7 @@ private struct DearbyFormRowGallery: View {
             Section("기본 정보") {
                 DearbyFormRow(label: "이름", focus: $focus, value: "name") { TextField("실명 또는 활동명", text: $name) }
                 DearbyFormRow(label: "소개", focus: $focus, value: "note") { TextField("한두 문장", text: $note, axis: .vertical).lineLimit(3...6) }
+                DearbyFormRow(label: "전화번호", symbol: "phone", focus: $focus, value: "phone") { TextField("전화번호", text: $phone).keyboardType(.phonePad).accessibilityLabel("전화번호") }
                 DearbyValueRow(label: "직무", value: "")
                 DearbyCheckRow(isOn: $agreed) { Text("개인정보 수집·이용에 동의합니다. 여러 줄이 되는 라벨도 행 전체가 눌려요.") }
             }

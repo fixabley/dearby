@@ -163,13 +163,16 @@ struct AccountClient: Sendable {
     func evidence(historyID: String, evidenceID: String, _ session: TokenPair) async throws -> Data {
         try await request("profile/histories/\(historyID)/evidence/\(evidenceID)", method: "GET", session: session).0
     }
-    /// Picker searches for the history steps. Organizations, programs and roles need a session; activities are public.
+    /// Picker searches for the history steps. Organizations, programs and roles need a session; activities are public and are asked with
+    /// `forHistory=true` so events shorter than a week stay out (contract "활동 이력에서 단기 행사 제외" 2026-10-20); discovery uses `ActivityClient`.
     func searchActivityInfo(_ kind: ActivityInfoKind, query: String, parentID: Int? = nil, _ session: TokenPair?) async throws -> ActivityInfoPage {
         var items = [URLQueryItem(name: "q", value: query), URLQueryItem(name: "size", value: "20")]
         switch kind {
         case .organizations, .jobs: if let parentID { items.append(URLQueryItem(name: "parentId", value: String(parentID))) }
         case .programs: if let parentID { items.append(URLQueryItem(name: "organizationId", value: String(parentID))) }
-        case .activities: if let parentID { items.append(URLQueryItem(name: "programId", value: String(parentID))) }
+        case .activities:
+            items.append(URLQueryItem(name: "forHistory", value: "true"))
+            if let parentID { items.append(URLQueryItem(name: "programId", value: String(parentID))) }
         case .roles: break
         }
         var components = URLComponents()

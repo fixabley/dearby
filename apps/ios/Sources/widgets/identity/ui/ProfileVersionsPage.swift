@@ -59,7 +59,10 @@ struct ProfileVersionPage: View {
                     IdentityHeading(name: detail.profile.name, job: detail.profile.job, introduction: detail.profile.introduction, isFullProfile: true)
                     Divider()
                     Text("연락처").font(.dearby(.headline))
-                    ForEach(detail.profile.contacts) { contact in DearbyInfoRow(title: contact.label, value: contact.value) }
+                    ForEach(detail.profile.contacts) { contact in
+                        HStack(spacing: 12) { ContactSymbol(kind: contact.kind); Text(contact.value).font(.dearby(.subheadline)) }
+                            .padding(.vertical, 4).accessibilityElement(children: .ignore).accessibilityLabel(contact.label + ": " + contact.value)
+                    }
                     Divider()
                     Text("활동 이력").font(.dearby(.headline))
                     HistoryTimeline(histories: detail.profile.histories.map(\.historyModel), compact: true)

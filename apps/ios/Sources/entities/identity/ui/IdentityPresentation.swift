@@ -73,18 +73,11 @@ struct HistoryBadge: View {
     }
 }
 
+/// Row-leading contact glyph (contract "연락처 행은 라벨 대신 왼쪽 아이콘" 2026-10-20): the kind's SF Symbol, 24 wide, secondary color,
+/// hidden from VoiceOver because the row's accessibility label names the kind.
 struct ContactSymbol: View {
-    let contact: ContactModel
-    var size: CGFloat = 28
+    let kind: String
     var body: some View {
-        Group {
-            if contact.kind == "github" {
-                Image("GitHubMark").renderingMode(.template).resizable().scaledToFit().frame(width: size, height: size)
-            } else if contact.kind == "behance" {
-                Text("Bē").font(.system(size: size, weight: .bold)).fixedSize()
-            } else {
-                Image(systemName: contact.symbol).font(.system(size: size))
-            }
-        }.accessibilityHidden(true)
+        Image(systemName: ContactModel.symbol(kind: kind)).font(.dearby(.title3)).foregroundStyle(.secondary).frame(width: 24).accessibilityHidden(true)
     }
 }
