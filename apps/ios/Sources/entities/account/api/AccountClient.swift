@@ -5,7 +5,9 @@ enum AccountError: Error, Equatable {
     /// `conflict`: 409 — the profile changed elsewhere (`If-Match`).
     /// `disabled`: 503 — the server has this feature switched off (e.g. Google sign-in without its client ID), unlike a
     /// network failure or 5xx, which is `unavailable`.
-    case unauthorized, invalidInput, rejected(String), notFound, conflict, rateLimited, disabled, unavailable
+    /// `consentRequired`: 403 `CONSENT_REQUIRED` — the account has not accepted the current privacy policy and terms
+    /// (contract "개인정보 동의"); other 403s stay `unavailable`.
+    case unauthorized, invalidInput, rejected(String), notFound, conflict, rateLimited, disabled, unavailable, consentRequired
 }
 
 /// Owner API (contract native-v1): passkey sign-in, profile and card publishing.
@@ -90,6 +92,10 @@ struct AccountClient: Sendable {
     /// Deletes the account and everything it owns (contract "계정 삭제"); 204. The server also drops the refresh token.
     func deleteAccount(_ session: TokenPair) async throws {
         _ = try await request("me", method: "DELETE", session: session)
+    }
+    /// Records consent to the current privacy policy and terms (`POST /v1/me/consents`, 204). A stale version is `rejected`.
+    func recordConsent(privacyVersion: String, termsVersion: String, _ session: TokenPair) async throws {
+        _ = try await request("me/consents", method: "POST", body: ConsentInput(privacyVersion: privacyVersion, termsVersion: termsVersion), session: session)
     }
     func profile(_ session: TokenPair) async throws -> AccountProfile {
         try await send("profile", session: session, as: AccountProfile.self)
@@ -192,8 +198,9 @@ struct AccountClient: Sendable {
         let challengeId: String; let identityToken: String; let displayName: String?; let authorizationCode: String?
     }
     private struct PasskeyAnswer: Encodable { let challengeId: String; let credential: Passkey.Credential }
-    /// RFC 9457 ProblemDetail: `detail` is the user-facing sentence.
-    private struct ProblemBody: Decodable { let detail: String? }
+    /// RFC 9457 ProblemDetail: `detail` is the user-facing sentence; `code` names the case for the few the app branches on.
+    private struct ProblemBody: Decodable { let detail: String?; let code: String? }
+    private struct ConsentInput: Encodable { let privacyVersion: String; let termsVersion: String }
     private struct CardList: Decodable { let items: [PublishedCard] }
     /// `activityId` is left out of the JSON when nil (synthesized `encodeIfPresent`).
     private struct ReceiveInput: Encodable { let activityId: Int64? }
@@ -227,6 +234,9 @@ struct AccountClient: Sendable {
             if let detail = (try? JSONDecoder().decode(ProblemBody.self, from: data))?.detail, !detail.isEmpty { throw AccountError.rejected(detail) }
             throw AccountError.invalidInput
         case 401: throw AccountError.unauthorized
+        case 403:
+            if (try? JSONDecoder().decode(ProblemBody.self, from: data))?.code == "CONSENT_REQUIRED" { throw AccountError.consentRequired }
+            throw AccountError.unavailable
         case 404: throw AccountError.notFound
         case 409: throw AccountError.conflict
         case 429: throw AccountError.rateLimited

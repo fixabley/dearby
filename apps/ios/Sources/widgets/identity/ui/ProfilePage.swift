@@ -19,7 +19,10 @@ struct ProfilePage: View {
     private var settingUp: Bool { state.profile?.version == 0 }
     var body: some View {
         Group {
-            if settingUp, let binding = Binding($form) {
+            if state.profile != nil, state.consentPending {
+                // The consent gate comes before the first profile step and whenever the server says so (contract "개인정보 동의").
+                ConsentPage(state: state)
+            } else if settingUp, let binding = Binding($form) {
                 ProfileFunnelPage(form: binding, account: state.account, saving: saving, error: error) { save(binding.wrappedValue) }
             } else {
                 editorScroll

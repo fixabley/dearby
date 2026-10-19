@@ -142,6 +142,12 @@ struct ProfileJob: Codable, Equatable, Identifiable, Sendable {
 /// `PUT /v1/profile` replaces the whole profile (data only; card decoration lives on cards). `version` comes from
 /// `GET` and goes back as `If-Match`; it is never part of the body. `job` is the server's read-only join of approved job
 /// names (what cards show); `jobs` is what the profile edits.
+/// What the account agreed to (`GET /v1/profile.consent`, contract "개인정보 동의"); nil before the first consent.
+struct ProfileConsent: Codable, Equatable, Sendable {
+    let privacyVersion: String
+    let termsVersion: String
+    let consentedAt: String
+}
 struct AccountProfile: Codable, Equatable, Sendable {
     var name: String
     var job: String
@@ -150,10 +156,14 @@ struct AccountProfile: Codable, Equatable, Sendable {
     var contacts: [AccountContact]
     var histories: [AccountHistory]
     var version = 0
+    /// Read-only server state: the recorded consent and whether the current versions still need agreeing to
+    /// (missing on older servers → false). Never sent back.
+    var consent: ProfileConsent? = nil
+    var consentRequired = false
     init(name: String, job: String = "", jobs: [ProfileJob] = [], introduction: String, contacts: [AccountContact], histories: [AccountHistory], version: Int = 0) {
         self.name = name; self.job = job; self.jobs = jobs; self.introduction = introduction; self.contacts = contacts; self.histories = histories; self.version = version
     }
-    private enum CodingKeys: String, CodingKey { case name, job, jobs, introduction, contacts, histories, version }
+    private enum CodingKeys: String, CodingKey { case name, job, jobs, introduction, contacts, histories, version, consent, consentRequired }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
@@ -163,6 +173,8 @@ struct AccountProfile: Codable, Equatable, Sendable {
         contacts = try c.decodeIfPresent([AccountContact].self, forKey: .contacts) ?? []
         histories = try c.decodeIfPresent([AccountHistory].self, forKey: .histories) ?? []
         version = try c.decodeIfPresent(Int.self, forKey: .version) ?? 0
+        consent = try c.decodeIfPresent(ProfileConsent.self, forKey: .consent)
+        consentRequired = try c.decodeIfPresent(Bool.self, forKey: .consentRequired) ?? false
     }
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)

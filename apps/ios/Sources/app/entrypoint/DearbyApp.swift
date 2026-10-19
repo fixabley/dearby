@@ -27,7 +27,7 @@ import SwiftUI
             activityModel.appliedProgress(now: Date()).map(\.activity)
         })
         _wallet = State(initialValue: WalletModel(account: account))
-        _profile = State(initialValue: ProfileModel(account: account))
+        _profile = State(initialValue: ProfileModel(account: account, webOrigin: links.origins.web))
     }
     var body: some Scene {
         WindowGroup {
@@ -35,7 +35,7 @@ import SwiftUI
                 if showIntro {
                     IntroPage(account: account, done: finishIntro)
                 } else {
-                    HomePage(selectedTab: $tab, hidesTabs: tab == 4 && profile.profile?.version == 0,
+                    HomePage(selectedTab: $tab, hidesTabs: tab == 4 && (profile.profile?.version == 0 || profile.consentPending),
                         discovery: { ActivityListPage(state: activityModel, path: $0) }, mine: MyActivitiesPage(state: activityModel, explore: { tab = 0 }),
                         cards: MyCardsPage(state: cards), wallet: WalletPage(state: wallet), profile: ProfilePage(state: profile))
                 }

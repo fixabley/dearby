@@ -8,8 +8,13 @@ struct CalendarConflictView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @Environment(\.dynamicTypeSize) private var typeSize
-    init(schedules: [ActivityScheduleModel], source: any CalendarEventSource = DeviceCalendarEventSource()) {
+    /// The privacy policy the intro links to (web `/privacy`); the production site unless a build passes another origin.
+    private let privacyURL: URL
+    @State private var showingPrivacy = false
+    init(schedules: [ActivityScheduleModel], source: any CalendarEventSource = DeviceCalendarEventSource(),
+         privacyURL: URL = URL(string: AppOrigins.defaultWeb)!.appending(path: "privacy")) {
         _state = State(initialValue: CalendarConflictState(schedules: schedules, source: source))
+        self.privacyURL = privacyURL
     }
     var body: some View {
         Group {
@@ -37,6 +42,9 @@ struct CalendarConflictView: View {
                         Label("캘린더에 일정을 추가하거나 바꾸지 않아요.", systemImage: "eye")
                     }.font(.subheadline).foregroundStyle(.secondary)
                     Text("비교할 일정 \(state.schedules.count)개").font(.caption).foregroundStyle(.secondary)
+                    Button("개인정보 처리방침 보기") { showingPrivacy = true }
+                        .font(.dearby(.footnote).weight(.semibold)).foregroundStyle(DearbyStyle.quiet).buttonStyle(.plain)
+                        .accessibilityHint("캘린더 읽기 범위가 적힌 처리방침을 앱 안 브라우저로 열어요")
                     Button(state.phase == .requesting ? "캘린더를 읽고 있어요…" : "캘린더 읽기 허용하고 확인") {
                         Task { await state.compare() }
                     }.buttonStyle(DearbyButtonStyle()).disabled(state.phase == .requesting)
@@ -44,6 +52,7 @@ struct CalendarConflictView: View {
             }
             .navigationTitle("겹치는 시간 확인하기").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
+            .sheet(isPresented: $showingPrivacy) { SafariView(url: privacyURL).ignoresSafeArea() }
         }
     }
     private var denied: some View {

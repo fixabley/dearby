@@ -89,6 +89,7 @@
 계약 `native-v1.md` "프로필·명함 v2". 2026-10-17 사용자 결정으로 유비쿼터스 언어는 "활동"이다(코드에서 조직·프로그램·활동·역할을 아우르는 이름은 `ActivityInfo`).
 
 - 내 프로필(`ProfilePage`)은 데이터 입력만 한다. 칸을 바로 고치고, 불러온 프로필과 달라지면 아래에 "저장"·"원래대로" 막대가 나타난다(`ProfileForm.changed`). 저장은 `If-Match: <version>`을 보내고 409면 다시 불러오라고 안내한다. "변경 이력"(`ProfileVersionsPage`)에서 저장한 버전을 보고 되돌린다(새 버전으로 저장).
+- 개인정보 동의(`ConsentPage`, 2026-10-19 계약 "개인정보 동의"): `GET /v1/profile`의 `consentRequired`가 참이거나 저장이 403 `CONSENT_REQUIRED`를 돌려주면 프로필 탭 전체가 동의 화면이 된다(탭 바 숨김). 필수 체크 두 개의 `보기`는 웹 `/privacy`·`/terms`를 `SFSafariViewController`로 열고, 둘 다 켜야 `동의하고 계속`이 켜지며 `POST /v1/me/consents`(버전은 `ConsentVersions`, 2026-10-19) 뒤 프로필을 다시 불러온다. 로그아웃 상태에서는 보이지 않는다.
 - 처음 저장하기 전(`version` 0) 프로필 탭은 토스식 아코디언 퍼널(`ProfileFunnelPage`, 2026-10-17 결정)이다: 이름 → 직무(선택) → 전화번호 → 이메일 → 소개(선택) 섹션이 순서대로 쌓이고, 열린 섹션은 하나뿐이며 답한 섹션은 56pt 행으로 접혀 탭하면 다시 열린다. 질문 28pt 굵게, 입력 20pt, 좌우 24pt, 하단 버튼 56pt("다음" → 모두 답하면 "프로필 저장"). 퍼널 동안 탭바를 숨긴다(`HomePage.hidesTabs`). 저장되면 인라인 편집기로 바뀐다. 프로필 없이 명함 만들기를 열면 안내만 보여 준다.
 - 직무(계약 "직무", 2026-10-17): 직함 문자열 대신 `jobs` 태그. `JobTagPicker`가 `GET /v1/jobs`를 검색해 칩으로 여러 개(10개) 고르고, 없으면 직접 적는다(시계 아이콘 = 승인 대기, 승인 전에는 명함 `job`에 안 들어감). 퍼널의 직무 섹션과 편집기의 "직무" 항목이 같은 위젯을 쓴다. 명함·버전 화면의 `job`은 서버가 승인된 이름을 이어 준 문자열 그대로다.
 - 이력은 단계별 입력(`HistoryFunnelPage`): 조직/활동 → 조직 → 프로그램 → (활동) → 역할 → 기간 → 설명 → 확인. 각 단계는 `ActivityInfoPickerView`로 등록된 활동 정보를 검색하거나(`GET /v1/organizations|programs|activities|roles`) 그대로 적는다(직접 입력 = 관리자 승인 대기, `approval`). 인증자료(`EvidenceSection`)는 저장된 이력에서 사진·PDF를 3개까지 올리고, `verified`가 아니면 "미확인" 배지가 붙는다.
