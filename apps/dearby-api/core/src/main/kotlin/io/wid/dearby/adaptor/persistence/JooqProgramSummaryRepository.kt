@@ -69,7 +69,7 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
             PROGRAMS.NAME.containsIgnoreCase(it).or(PROGRAMS.NAME_EN.containsIgnoreCase(it))
                 .or(ORGANIZATIONS.NAME.containsIgnoreCase(it)).or(ORGANIZATIONS.NAME_EN.containsIgnoreCase(it))
         }
-        // 모집 중만 보기가 꺼지면 최근 2년 안에 활동이 있었던 프로그램(활동 시작·모집 마감·생성 시각 중 하나가 2년 안)까지(native-v1.md "모집 중인 프로그램만 보기")
+        // 모집 중만 보기가 꺼지면 최근 3년 안에 활동이 있었던 프로그램(활동 시작·모집 마감·생성 시각 중 하나가 3년 안)까지(2026-10-19 저녁 2년 → 3년)(native-v1.md "모집 중인 프로그램만 보기")
         val cutoff = now.minusYears(RECENT_YEARS)
         val recent = OpenActivityConditions.activityStart.ge(cutoff).or(deadline.ge(cutoff)).or(ACTIVITIES.CREATED_AT.ge(cutoff.toLocalDateTime()))
         val select = dsl.select(
@@ -134,7 +134,7 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
     }
 
     private companion object {
-        const val RECENT_YEARS = 2L
+        const val RECENT_YEARS = 3L
         const val MAX_SUMMARY_TAGS = 6
     }
 }

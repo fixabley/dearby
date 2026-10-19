@@ -46,7 +46,7 @@ export function Discovery({ q }: { q: string }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreError, setMoreError] = useState("");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  // 모집 중만 보기 (contract "모집 중인 프로그램만 보기"): on by default; off also lists programs active in the last two years.
+  // 모집 중만 보기 (contract "모집 중인 프로그램만 보기"): on by default; off also lists programs active in the last three years and shows 모집 예정·지난 활동 under every expanded program.
   const [openOnly, setOpenOnly] = useState(true);
   // Selected 얻을 수 있는 것 tags (contract "태그"); memory only.
   const [tagIds, setTagIds] = useState<number[]>([]);
@@ -153,7 +153,7 @@ export function Discovery({ q }: { q: string }) {
             </Link>
           </Empty>
         ) : (
-          <Empty title={openOnly ? "지금 모집 중인 프로그램이 없어요" : "최근 2년 안에 활동한 프로그램이 없어요"}>
+          <Empty title={openOnly ? "지금 모집 중인 프로그램이 없어요" : "최근 3년 안에 활동한 프로그램이 없어요"}>
             <p>
               새로운 모집이 열리면 이곳에서 확인할 수 있어요.
               <br />
@@ -171,6 +171,7 @@ export function Discovery({ q }: { q: string }) {
                 open={expanded.has(program.id)}
                 toggle={() => toggle(program.id)}
                 tagKey={tagKey}
+                openOnly={openOnly}
               />
             ))}
           </ul>
@@ -284,7 +285,8 @@ function activityStart(activity: Activity): number {
   const key = activity.activitySchedule.startAt ?? activity.activitySchedule.startDate;
   return key ? Date.parse(key) : NaN;
 }
-const TWO_YEARS = 2 * 365 * 24 * 60 * 60 * 1000;
+/** 지난 활동 window (contract "모집 중인 프로그램만 보기", 2026-10-19 저녁: 3년). */
+const THREE_YEARS = 1095 * 24 * 60 * 60 * 1000;
 
 /** Recruitment start (timed, else the date at UTC midnight), or the activity start when there is no recruitment window; NaN without one. */
 function upcomingKey(activity: Activity): number {
@@ -294,10 +296,21 @@ function upcomingKey(activity: Activity): number {
   return key ? Date.parse(key) : NaN;
 }
 /**
- * The other activities of a program without open ones (contract "모집 중인 프로그램만 보기"): `모집 예정` (recruitment or activity start
- * still ahead, nearest first) and `지난 활동` (activity start in the last two years, newest first); an empty group is omitted.
+ * The other activities of a program (contract "모집 중인 프로그램만 보기"): `모집 예정` (recruitment or activity start still ahead,
+ * nearest first) and `지난 활동` (activity start in the last three years, newest first); an empty group is omitted. Activities
+ * already listed as open (`excludeIds`) are left out so the toggle-off view does not repeat them.
  */
-function OtherActivities({ programId, now, tagKey }: { programId: number; now: number; tagKey: string }) {
+function OtherActivities({
+  programId,
+  now,
+  tagKey,
+  excludeIds,
+}: {
+  programId: number;
+  now: number;
+  tagKey: string;
+  excludeIds?: Set<number>;
+}) {
   const [page, setPage] = useState<ActivityPage>();
   const [error, setError] = useState("");
   useEffect(() => {
@@ -311,17 +324,18 @@ function OtherActivities({ programId, now, tagKey }: { programId: number; now: n
   }, [programId, tagKey]);
   if (error) return <p className="muted">{error}</p>;
   if (!page) return <Loading />;
-  const upcoming = page.items
+  const others = page.items.filter((activity) => !excludeIds?.has(activity.id));
+  const upcoming = others
     .filter((activity) => {
       const start = upcomingKey(activity);
       return !Number.isNaN(start) && start > now;
     })
     .sort((a, b) => upcomingKey(a) - upcomingKey(b));
-  const past = page.items
+  const past = others
     .filter((activity) => {
       if (upcoming.includes(activity)) return false;
       const start = activityStart(activity);
-      return !Number.isNaN(start) && start >= now - TWO_YEARS && start <= now;
+      return !Number.isNaN(start) && start >= now - THREE_YEARS && start <= now;
     })
     .sort((a, b) => activityStart(b) - activityStart(a));
   const groups = [
@@ -365,12 +379,15 @@ function ProgramRow({
   open,
   toggle,
   tagKey,
+  openOnly,
 }: {
   program: ProgramSummary;
   open: boolean;
   toggle: () => void;
   /** Selected tag ids as `1,2`; the expanded rows follow the same filter as the program list (alignment with the apps). */
   tagKey: string;
+  /** 모집 중만 보기 state: when off, 모집 예정·지난 활동 are shown under the open activities as well (contract "펼침"). */
+  openOnly: boolean;
 }) {
   const [activities, setActivities] = useState<ActivityPage>();
   const [error, setError] = useState("");
@@ -442,34 +459,44 @@ function ProgramRow({
             />
           ) : !openActivities ? (
             <Loading />
-          ) : !openActivities.length ? (
-            <>
-              <p className="muted">지금 모집 중인 활동이 없어요.</p>
-              <OtherActivities programId={program.id} now={now} tagKey={tagKey} />
-            </>
           ) : (
-            // Grouped by 활동 종류 (contract "활동 종류"); a single group needs no heading.
-            groupByCategory(openActivities, (activity) => activity.category).map((group, _, groups) => (
-              <section key={group.label} className="category-group">
-                {groups.length > 1 && <h3 className="category-heading">{group.label}</h3>}
-                <ul className="activity-list">
-                  {[...group.items].sort(byDeadline).map((activity) => (
-                    <li key={activity.id}>
-                      <ActivityCard
-                        id={activity.id}
-                        name={activity.name}
-                        description={activity.description}
-                        organizationName={activity.organization.name}
-                        statusLabel={recruitment(activity.application, now).label}
-                        dateLabel={scheduleLabel(activity.activitySchedule)}
-                        imageUrl={httpsUrl(activity.imageUrl)}
-                        tags={activity.tags ?? []}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            ))
+            <>
+              {!openActivities.length ? (
+                <p className="muted">지금 모집 중인 활동이 없어요.</p>
+              ) : (
+                // Grouped by 활동 종류 (contract "활동 종류"); a single group needs no heading.
+                groupByCategory(openActivities, (activity) => activity.category).map((group, _, groups) => (
+                  <section key={group.label} className="category-group">
+                    {groups.length > 1 && <h3 className="category-heading">{group.label}</h3>}
+                    <ul className="activity-list">
+                      {[...group.items].sort(byDeadline).map((activity) => (
+                        <li key={activity.id}>
+                          <ActivityCard
+                            id={activity.id}
+                            name={activity.name}
+                            description={activity.description}
+                            organizationName={activity.organization.name}
+                            statusLabel={recruitment(activity.application, now).label}
+                            dateLabel={scheduleLabel(activity.activitySchedule)}
+                            imageUrl={httpsUrl(activity.imageUrl)}
+                            tags={activity.tags ?? []}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                ))
+              )}
+              {/* Toggle on: other activities only when nothing is open. Toggle off: always, under the open ones (contract "펼침"). */}
+              {(!openOnly || !openActivities.length) && (
+                <OtherActivities
+                  programId={program.id}
+                  now={now}
+                  tagKey={tagKey}
+                  excludeIds={new Set(openActivities.map((activity) => activity.id))}
+                />
+              )}
+            </>
           )}
         </div>
       )}

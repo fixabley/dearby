@@ -163,7 +163,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertTrue(timedClosedId !in ids(search("open=true&q=시각 모집 끝")))
         assertEquals(setOf(openId, allDayOpenId), ids(search("open=true")).toSet())
         jdbc.sql("update activities set publication_status = 'DRAFT' where id in (?, ?, ?)").params(allDayOpenId, allDayEndedId, timedClosedId).update()
-        // 모집 중인 프로그램만 보기(native-v1.md): openOnly=false면 최근 2년 안에 활동이 있었던 프로그램까지, 열린 프로그램 먼저. 3년 전 활동만 있는 프로그램은 빠진다
+        // 모집 중인 프로그램만 보기(native-v1.md): openOnly=false면 최근 3년 안에 활동이 있었던 프로그램까지, 열린 프로그램 먼저. 3년 넘게 지난 활동만 있는 프로그램은 빠진다
         fun pastProgram(name: String, daysAgo: Int): Long {
             jdbc.sql("insert into programs (organization_id, name, created_at, updated_at) values (?, ?, localtimestamp, localtimestamp)").params(organizationId, name).update()
             val programId = jdbc.sql("select id from programs where name = ?").param(name).query(Long::class.java).single()
@@ -183,11 +183,11 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
             return programId
         }
         val lastYear = pastProgram("지난해 프로그램", 400)
-        val threeYearsAgo = pastProgram("삼년전 프로그램", 1100)
+        val threeYearsAgo = pastProgram("삼년넘은 프로그램", 1200)
         val all = programs("openOnly=false")["items"]
         val names = (0 until all.size()).map { all[it]["name"].asString() }
         assertEquals("Let’Swift", names.first())
-        assertTrue("지난해 프로그램" in names && "삼년전 프로그램" !in names, names.toString())
+        assertTrue("지난해 프로그램" in names && "삼년넘은 프로그램" !in names, names.toString())
         val past = (0 until all.size()).map { all[it] }.single { it["id"].asLong() == lastYear }
         assertEquals(0, past["openActivityCount"].asInt())
         assertEquals(false, past["latestActivityAt"].isNull)

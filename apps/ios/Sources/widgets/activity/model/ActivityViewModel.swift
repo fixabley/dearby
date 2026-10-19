@@ -17,6 +17,7 @@ import Observation
     /// Past activities (last two years, latest start first) for an expanded program without open ones.
     private(set) var pastActivities: [Int64: [ActivityModel]] = [:]
     /// Activities whose recruitment (or activity, without a window) has not started yet, nearest first; same programs as `pastActivities`.
+    /// Both are loaded for every expanded program while `openOnly` is off, and only for programs without open activities while it is on.
     private(set) var upcomingActivities: [Int64: [ActivityModel]] = [:]
     /// `모집 중만 보기` (contract "모집 중인 프로그램만 보기"): on by default, memory only. Off also lists programs active in the last two years.
     var openOnly = true { didSet { if openOnly != oldValue { start(query ?? "") } } }
@@ -178,16 +179,18 @@ import Observation
                 // The server already applied the open rule (`open=true`); the client keeps every returned activity.
                 for item in page.items { seen[item.id] = item }
                 openActivities[programID] = page.items
-                if page.items.isEmpty {
-                    // Nothing recruiting: `모집 예정` (recruitment or activity not started yet, nearest first) and
-                    // `지난 활동` (started within the last two years, latest first). Contract "모집 중인 프로그램만 보기".
+                // `모집 예정` (recruitment or activity not started yet, nearest first) and `지난 활동` (started within the
+                // last three years, latest first) follow the open list: always while `모집 중만 보기` is off, otherwise
+                // only when nothing is recruiting. Contract "모집 중인 프로그램만 보기" (2026-10-19 저녁).
+                if page.items.isEmpty || !openOnly {
                     let others = try await fetchActivities(programID, false, tagIDs)
                     guard !Task.isCancelled else { return }
-                    let upcoming = others.items.filter { ($0.upcomingStart ?? .distantPast) > loadedAt }
+                    let openIDs = Set(page.items.map(\.id))
+                    let upcoming = others.items.filter { !openIDs.contains($0.id) && ($0.upcomingStart ?? .distantPast) > loadedAt }
                         .sorted { ($0.upcomingStart ?? .distantFuture, $0.title) < ($1.upcomingStart ?? .distantFuture, $1.title) }
-                    let since = Calendar(identifier: .gregorian).date(byAdding: .year, value: -2, to: loadedAt) ?? loadedAt
-                    let upcomingIDs = Set(upcoming.map(\.id))
-                    let recent = others.items.filter { !upcomingIDs.contains($0.id) && ($0.activityStage?.start ?? .distantPast) >= since }
+                    let since = Calendar(identifier: .gregorian).date(byAdding: .year, value: -3, to: loadedAt) ?? loadedAt
+                    let excluded = openIDs.union(upcoming.map(\.id))
+                    let recent = others.items.filter { !excluded.contains($0.id) && ($0.activityStage?.start ?? .distantPast) >= since }
                         .sorted { ($0.activityStage?.start ?? .distantPast, $0.title) > ($1.activityStage?.start ?? .distantPast, $1.title) }
                     for item in upcoming + recent { seen[item.id] = item }
                     upcomingActivities[programID] = upcoming

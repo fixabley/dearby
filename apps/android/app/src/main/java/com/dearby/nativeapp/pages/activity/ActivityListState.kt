@@ -38,7 +38,8 @@ data class ProgramState(
 /**
  * The open activities of an expanded program, loaded on first expand; [ids] index into [ActivityListState.known]. When none is
  * open, [upcomingIds] are the program's activities whose recruitment (or activity) start is still ahead, nearest first, and
- * [pastIds] those of the last two years, most recent start first (contract "모집 중인 프로그램만 보기").
+ * [pastIds] those of the last three years, most recent start first (contract "모집 중인 프로그램만 보기"). Both groups appear always while
+ * 모집 중만 보기 is off, and only when nothing is open while it is on.
  */
 data class ProgramActivities(
     val phase: ProgramPhase = ProgramPhase.LOADING, val ids: List<String> = emptyList(), val upcomingIds: List<String> = emptyList(), val pastIds: List<String> = emptyList(),

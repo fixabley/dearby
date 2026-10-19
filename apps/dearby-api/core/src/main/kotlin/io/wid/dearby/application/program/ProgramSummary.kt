@@ -32,7 +32,7 @@ data class ProgramSummarySearch(
     val size: Int,
     val eligibility: EligibilityFilter? = null, // 대상자 검색(native-v1.md "대상자 조건"). 있으면 열린 활동을 2차 판정까지 거쳐 세고 묶는다
     val categories: Set<ActivityCategory>? = null, // 활동 종류 필터(native-v1.md "활동 종류"). 열린 활동 수·맞은 id에 함께 적용
-    val openOnly: Boolean = true, // false면 최근 2년 안에 활동이 있었던 프로그램도 돌려준다(열린 프로그램 먼저). 대상자 필터와 함께 쓰면 열린 것만
+    val openOnly: Boolean = true, // false면 최근 3년 안에 활동이 있었던 프로그램도 돌려준다(열린 프로그램 먼저). 대상자 필터와 함께 쓰면 열린 것만
     val tagIds: Set<Id>? = null, // 태그 필터(native-v1.md "태그"): 모두 가진 활동만(AND). 열린 활동 수·맞은 id에 함께 적용
 )
 
