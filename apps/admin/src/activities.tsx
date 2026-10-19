@@ -11,6 +11,7 @@ import { type DraftGroup, type Eligibility, eligibilitySummary, fromDraft, newGr
 import { EligibilityEditor } from "./eligibility-editor";
 import { type Category, categoryLabel, categoryOptions, categoryOrder, UNCATEGORIZED } from "./category";
 import { resolveTagIds, TagChips, type TagItem, TagSelect, type TagValue } from "./tag-select";
+import { PlaceField, type Place } from "./place-field";
 import { ScheduleEditorModal } from "./schedule-editor";
 
 dayjs.extend(utc);
@@ -55,6 +56,8 @@ export type ActivityText = {
   category?: string | null;
   /** 얻을 수 있는 것 태그 (contract "태그"); absent on older responses. */
   tags?: TagItem[];
+  /** 활동 장소 (contract "활동 장소"); null = 없음, absent on the tree path and older responses. */
+  place?: Place | null;
   /** Absent on the tree path; then the URL fields are hidden (2026-10-19 공식 안내·신청 링크 편집). */
   officialUrl?: string;
   applicationUrl?: string | null;
@@ -69,7 +72,7 @@ export type ActivityText = {
 /** True when the collector filled [field] from an earlier edition and no operator has edited it since. */
 const inherited = (activity: { inheritedFields?: string[] }, field: "eligibility" | "audience" | "participationType") =>
   activity.inheritedFields?.includes(field) ?? false;
-type CuratedField = "name" | "nameEn" | "description" | "descriptionEn" | "eligibility" | "officialUrl" | "applicationUrl" | "category" | "tags";
+type CuratedField = "name" | "nameEn" | "description" | "descriptionEn" | "eligibility" | "officialUrl" | "applicationUrl" | "category" | "tags" | "place";
 /** True when an operator set [field] here; the server keeps that mark even when the field is saved again or emptied. */
 const curated = (activity: { curatedFields?: string[] }, field: CuratedField) => activity.curatedFields?.includes(field) ?? false;
 const curatedFieldLabels: Record<CuratedField, string> = {
@@ -82,6 +85,7 @@ const curatedFieldLabels: Record<CuratedField, string> = {
   applicationUrl: "신청 링크",
   category: "종류",
   tags: "태그",
+  place: "장소",
 };
 type Activity = ActivityText & {
   organization: { id: number; name: string };
@@ -557,7 +561,7 @@ function DuplicateDialog({ activity, onClose }: { activity: Activity; onClose: (
   );
 }
 
-type TextBody = { name: string; nameEn: string; description: string; descriptionEn: string; eligibility: Eligibility | null; officialUrl?: string; applicationUrl?: string; category?: string | null; tagIds?: number[] };
+type TextBody = { name: string; nameEn: string; description: string; descriptionEn: string; eligibility: Eligibility | null; place?: Place | null; officialUrl?: string; applicationUrl?: string; category?: string | null; tagIds?: number[] };
 type ScheduleBody = { activitySchedule?: ScheduleInput; application?: ScheduleInput };
 
 export function ActivityTextEditor({ activity, onClose }: { activity: ActivityText; onClose: () => void }) {
@@ -570,6 +574,7 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
   // Only the list passes schedules; the tree does not, so the blocks (and the PATCH keys) are skipped there.
   const withSchedules = activity.activitySchedule !== undefined;
   const withUrls = activity.officialUrl !== undefined;
+  const withPlace = activity.place !== undefined;
   const initialActivity = rangeDraft(activity.activitySchedule);
   const initialApplication = rangeDraft(activity.application);
   const initialActivityNote = activity.activitySchedule?.curatedNote ?? "";
@@ -618,6 +623,7 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
           descriptionEn: activity.descriptionEn ?? "",
           officialUrl: activity.officialUrl ?? "",
           applicationUrl: activity.applicationUrl ?? "",
+          place: activity.place ?? null,
           category: activity.category ?? null,
           tags: (activity.tags ?? []).map((tag) => tag.id),
           activityRange: initialActivity.range,
@@ -636,6 +642,7 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
           descriptionEn: string;
           officialUrl: string;
           applicationUrl: string;
+          place?: Place | null;
           category: Category | null;
           tags: TagValue[];
           activityRange: RangeDraft["range"];
@@ -677,6 +684,8 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
               // 종류 goes only when changed, so an untouched field does not become 운영자 지정.
               ...(values.category !== (activity.category ?? null) ? { category: values.category } : {}),
               ...(tagsChanged ? { tagIds } : {}),
+              // 장소 goes only when changed and only on the list path (which carries it), so an untouched field does not become 운영자 지정.
+              ...(withPlace && JSON.stringify(values.place ?? null) !== JSON.stringify(activity.place ?? null) ? { place: values.place ?? null } : {}),
               ...schedules,
             });
           });
@@ -754,6 +763,11 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
               <Input inputMode="url" placeholder="https://" />
             </Form.Item>
           </>
+        )}
+        {withPlace && (
+          <Form.Item name="place" label={<>장소{curated(activity, "place") && <CuratedTag />}</>} extra="검색해 고르면 이름·주소·좌표가 저장돼요. 수집 문구는 그대로 남아요.">
+            <PlaceField />
+          </Form.Item>
         )}
         <div className="eligibility-field">
           <div className="eligibility-field-heading">
@@ -1006,6 +1020,7 @@ type CreateBody = {
   audience?: string;
   location?: string;
   cost?: string;
+  place?: Place | null;
 };
 const httpsRule = { pattern: /^\s*https:\/\/\S+\s*$/, message: "https 주소여야 해요." };
 
@@ -1064,6 +1079,7 @@ function ActivityCreateModal({ programId, programName, onClose }: { programId?: 
           audience?: string;
           location?: string;
           cost?: string;
+          place?: Place | null;
         }) => {
           const problems = validateDraft(eligibility);
           setEligibilityProblems(problems);
@@ -1099,6 +1115,7 @@ function ActivityCreateModal({ programId, programName, onClose }: { programId?: 
               audience: optional(values.audience),
               location: optional(values.location),
               cost: optional(values.cost),
+              place: values.place ?? undefined,
             }),
           );
         }}
@@ -1179,7 +1196,10 @@ function ActivityCreateModal({ programId, programName, onClose }: { programId?: 
         <Form.Item name="audience" label="대상 원문(선택)">
           <Input maxLength={1000} />
         </Form.Item>
-        <Form.Item name="location" label="장소(선택)">
+        <Form.Item name="place" label="장소(선택)" extra="검색해 고르면 이름·주소·좌표가 저장돼요.">
+          <PlaceField />
+        </Form.Item>
+        <Form.Item name="location" label="장소 문구(선택)" extra="지도에 없는 안내(예: 온라인, 추후 공지)만 적어요.">
           <Input />
         </Form.Item>
         <Form.Item name="cost" label="비용(선택)">
@@ -1316,7 +1336,19 @@ function ActivityDetail({ activity }: { activity: Activity }) {
             </>
           ),
         },
-        { label: "장소", children: activity.location ?? "미확인" },
+        {
+          label: "장소",
+          children: activity.place ? (
+            <>
+              {activity.place.name}
+              {curated(activity, "place") && <CuratedTag />}
+              <div className="muted">{activity.place.address}</div>
+              {activity.location && <div className="muted">수집 문구: {activity.location}</div>}
+            </>
+          ) : (
+            activity.location ?? "미확인"
+          ),
+        },
         { label: "비용", children: activity.cost ?? "미확인" },
         {
           label: "대상",

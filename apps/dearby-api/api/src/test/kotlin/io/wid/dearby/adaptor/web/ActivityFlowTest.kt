@@ -59,7 +59,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals("Let’Swift", item["program"]["name"].asString())
         assertEquals("https://letswift.kr/2026/", item["officialUrl"].asString())
         // 관리자만 보는 정보는 내보내지 않는다
-        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags"), item.propertyNames().toSet())
+        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags", "location", "place"), item.propertyNames().toSet())
         // 시각은 일정의 시간대로 표기한다(같은 순간)
         assertEquals("2026-10-08T00:00:00+09:00", item["application"]["endAt"].asString())
         assertEquals("2026-10-08", item["activitySchedule"]["dateLabel"].asString())
@@ -304,6 +304,30 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(listed, item)
         mvc.get("/v1/activities/999999").andExpect { status { isNotFound() } }
         mvc.get("/v1/activities/abc").andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `활동 장소는 좌표가 있으면 place와 그 이름을, 없으면 장소 문구만 location으로 준다`() {
+        // native-v1.md "활동 장소": 활동 기간(slot ACTIVITY) 행의 address_line1(이름)·address_line2(주소)·lat·lng. 문구만 있는 활동은 activities.location
+        val placed = createActivity("장소 좌표 활동")
+        jdbc.sql("update schedules set address_line1 = '코엑스 그랜드볼룸', address_line2 = '서울 강남구 영동대로 513', lat = 37.5116828, lng = 127.0594 where activity_id = ? and slot = 'ACTIVITY'")
+            .param(placed).update()
+        jdbc.sql("update activities set location = '온라인' where id = ?").param(placed).update()
+        val textOnly = createActivity("장소 문구 활동")
+        jdbc.sql("update activities set location = '서울 강남' where id = ?").param(textOnly).update()
+
+        val listed = search("q=장소 좌표 활동")["items"].toList().single { it["id"].asLong() == placed }
+        assertEquals("코엑스 그랜드볼룸", listed["location"].asString())
+        assertEquals("""{"name":"코엑스 그랜드볼룸","address":"서울 강남구 영동대로 513","lat":37.5116828,"lng":127.0594}""", listed["place"].toString())
+        val detail = json.readTree(mvc.get("/v1/activities/$placed").andExpect { status { isOk() } }.andReturn().response.contentAsString)
+        assertEquals(listed["place"], detail["place"])
+        assertEquals("코엑스 그랜드볼룸", detail["activitySchedule"]["address"]["addressLine1"].asString())
+
+        val text = json.readTree(mvc.get("/v1/activities/$textOnly").andExpect { status { isOk() } }.andReturn().response.contentAsString)
+        assertEquals("서울 강남", text["location"].asString())
+        assertTrue(text["place"].isNull)
+        val plain = json.readTree(mvc.get("/v1/activities/${createActivity("장소 없는 활동")}").andExpect { status { isOk() } }.andReturn().response.contentAsString)
+        assertTrue(plain["location"].isNull && plain["place"].isNull)
     }
 
     @Test

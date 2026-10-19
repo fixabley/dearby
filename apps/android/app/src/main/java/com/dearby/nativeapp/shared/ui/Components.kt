@@ -119,9 +119,9 @@ private val DearbyTypography = Typography(headlineMedium = TextStyle(fontSize = 
     }
 }
 
-/** 이니셜 아바타(민트 바탕·청록 글자): 명함 머리는 56dp, 목록 줄은 더 작게 쓴다. */
-@Composable fun InitialAvatar(name: String, size: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier) {
-    Box(modifier.size(size).background(Mint, androidx.compose.foundation.shape.CircleShape), contentAlignment = androidx.compose.ui.Alignment.Center) {
+/** 이니셜 아바타(민트 바탕·청록 글자): 명함 머리는 56dp, 목록 줄은 더 작게 쓴다. [shape]는 기본 원, 발견 프로그램 카드는 둥근 네모다. */
+@Composable fun InitialAvatar(name: String, size: androidx.compose.ui.unit.Dp, modifier: Modifier = Modifier, shape: androidx.compose.ui.graphics.Shape = androidx.compose.foundation.shape.CircleShape) {
+    Box(modifier.size(size).background(Mint, shape), contentAlignment = androidx.compose.ui.Alignment.Center) {
         Text(name.take(1), color = Teal, fontWeight = FontWeight.Bold, style = if (size >= 56.dp) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.titleMedium)
     }
 }

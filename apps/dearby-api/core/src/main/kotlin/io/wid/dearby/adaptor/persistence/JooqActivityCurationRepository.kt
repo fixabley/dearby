@@ -180,19 +180,7 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
         val now = LocalDateTime.now()
         val timed = time as? ScheduleTime.Timed
         val allDay = time as? ScheduleTime.AllDay
-        val existing = dsl.select(SCHEDULES.ID).from(SCHEDULES).where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.eq(slot.name)).fetchOne()?.value1()
-        val scheduleId = existing ?: dsl.insertInto(SCHEDULES)
-            .set(SCHEDULES.ACTIVITY_ID, activityId)
-            .set(SCHEDULES.SLOT, slot.name)
-            .set(SCHEDULES.TITLE, if (slot == ScheduleSlot.APPLICATION) "신청 기간" else "활동 기간")
-            .set(SCHEDULES.KIND, (if (slot == ScheduleSlot.APPLICATION) ScheduleKind.DEADLINE else ScheduleKind.EVENT).name)
-            .set(SCHEDULES.STATUS, ScheduleStatus.CONFIRMED.name)
-            .set(SCHEDULES.DATE_LABEL, "")
-            .set(SCHEDULES.SEQUENCE, 0)
-            .set(SCHEDULES.CREATED_AT, now)
-            .set(SCHEDULES.UPDATED_AT, now)
-            .returning(SCHEDULES.ID)
-            .fetchOne()!!.id!!
+        val scheduleId = slotScheduleId(activityId, slot, now)
         dsl.update(SCHEDULES)
             .set(SCHEDULES.TIME_TYPE, when { timed != null -> "TIMED"; allDay != null -> "ALL_DAY"; else -> null })
             .set(SCHEDULES.START_AT, timed?.start?.toOffsetDateTime())
@@ -209,6 +197,46 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
         dsl.update(ACTIVITIES).set(ACTIVITIES.UPDATED_AT, now).where(ACTIVITIES.ID.eq(activityId)).execute()
         return true
     }
+
+    // 활동 장소(native-v1.md "활동 장소"): 활동 기간 행의 네 열을 함께 쓴다(CHECK: 모두 null이거나 모두 값). curated(시간 지정) 플래그는 건드리지 않고
+    // activities.curated_fields에 place를 남겨 수집기가 다시 쓸 때 보존한다
+    @Transactional
+    override fun updatePlace(activityId: Id, place: Address?): Boolean {
+        val curated = dsl.select(ACTIVITIES.CURATED_FIELDS).from(ACTIVITIES).where(ACTIVITIES.ID.eq(activityId)).fetchOne()?.value1() ?: return false
+        val now = LocalDateTime.now()
+        val scheduleId = slotScheduleId(activityId, ScheduleSlot.ACTIVITY, now)
+        dsl.update(SCHEDULES)
+            .set(SCHEDULES.ADDRESS_LINE1, place?.addressLine1)
+            .set(SCHEDULES.ADDRESS_LINE2, place?.addressLine2)
+            .set(SCHEDULES.LAT, place?.lat)
+            .set(SCHEDULES.LNG, place?.lng)
+            .set(SCHEDULES.SEQUENCE, SCHEDULES.SEQUENCE.plus(1))
+            .set(SCHEDULES.UPDATED_AT, now)
+            .where(SCHEDULES.ID.eq(scheduleId))
+            .execute()
+        dsl.update(ACTIVITIES)
+            .set(ACTIVITIES.CURATED_FIELDS, CuratedFields.jsonb(CuratedFields.read(curated) + CuratedFields.PLACE))
+            .set(ACTIVITIES.UPDATED_AT, now)
+            .where(ACTIVITIES.ID.eq(activityId))
+            .execute()
+        return true
+    }
+
+    // 슬롯 일정(모집·활동 기간) 행 id. 없으면 날짜 없는 행을 만든다
+    private fun slotScheduleId(activityId: Id, slot: ScheduleSlot, now: LocalDateTime): Id =
+        dsl.select(SCHEDULES.ID).from(SCHEDULES).where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.eq(slot.name)).fetchOne()?.value1()
+            ?: dsl.insertInto(SCHEDULES)
+                .set(SCHEDULES.ACTIVITY_ID, activityId)
+                .set(SCHEDULES.SLOT, slot.name)
+                .set(SCHEDULES.TITLE, if (slot == ScheduleSlot.APPLICATION) "신청 기간" else "활동 기간")
+                .set(SCHEDULES.KIND, (if (slot == ScheduleSlot.APPLICATION) ScheduleKind.DEADLINE else ScheduleKind.EVENT).name)
+                .set(SCHEDULES.STATUS, ScheduleStatus.CONFIRMED.name)
+                .set(SCHEDULES.DATE_LABEL, "")
+                .set(SCHEDULES.SEQUENCE, 0)
+                .set(SCHEDULES.CREATED_AT, now)
+                .set(SCHEDULES.UPDATED_AT, now)
+                .returning(SCHEDULES.ID)
+                .fetchOne()!!.id!!
 
     @Transactional
     override fun insertDetailSchedule(activityId: Id, item: ScheduleItem): Schedule? {

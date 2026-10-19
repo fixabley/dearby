@@ -188,6 +188,7 @@ class AdminActivityInfoService(
         applicationUrl: String? = null,
         category: CategoryChange = CategoryChange.Keep,
         tagIds: List<Id>? = null,
+        place: PlaceChange = PlaceChange.Keep,
     ): AdminActivity {
         val current = activities.getById(activityId, publicationStatus = null).activity
         curations.updateTexts(
@@ -221,6 +222,12 @@ class AdminActivityInfoService(
         // 일정 직접 지정(admin-v1.md): 날짜만이면 종일, 시각까지면 시각 일정. null이면 구조화된 값을 지우고 문구만 남긴다
         applySchedule(activityId, ScheduleSlot.ACTIVITY, activitySchedule)
         applySchedule(activityId, ScheduleSlot.APPLICATION, application)
+        // 활동 장소(admin-v1.md "활동 장소와 지오코딩"): 생략은 유지, null은 네 열 모두 삭제, 객체는 교체. 운영자 지정 place로 보호
+        when (place) {
+            PlaceChange.Keep -> Unit
+            PlaceChange.Clear -> curations.updatePlace(activityId, null)
+            is PlaceChange.Set -> curations.updatePlace(activityId, place.place)
+        }
         return withCuration(listOf(activities.getById(activityId, publicationStatus = null))).single()
     }
 
@@ -241,7 +248,7 @@ class AdminActivityInfoService(
             input.nameEn?.let { "nameEn" }, input.descriptionEn?.let { "descriptionEn" }, applicationUrl?.let { "applicationUrl" },
             input.participationType?.let { "participationType" }, input.category?.let { "category" },
             input.audience?.let { "audience" }, input.location?.let { "location" }, input.cost?.let { "cost" }, input.eligibility?.let { "eligibility" },
-            input.tagIds?.let { "tags" },
+            input.tagIds?.let { "tags" }, input.place?.let { "place" },
         )
         val id = curations.insert(
             ActivityCreation(
@@ -253,6 +260,7 @@ class AdminActivityInfoService(
             )
         )
         activityTime?.let { curations.updateSchedule(id, ScheduleSlot.ACTIVITY, it, input.activitySchedule?.note) }
+        input.place?.let { curations.updatePlace(id, it) }
         input.application?.toTime()?.let { curations.updateSchedule(id, ScheduleSlot.APPLICATION, it, input.application.note) }
         input.eligibility?.let { curations.updateEligibility(id, it) }
         // 태그(native-v1.md "태그"): 보냈으면 그것(운영자 지정), 생략하면 프로그램 태그를 기본으로

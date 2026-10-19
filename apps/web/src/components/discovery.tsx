@@ -10,14 +10,13 @@ import {
   type Tag,
   deadlineLabel,
   startLabel,
-  httpsUrl,
   recruitment,
   scheduleLabel,
 } from "@/lib/models";
 import { errorMessage, request } from "@/lib/client";
 import { Empty, Failure, Loading } from "@/shared/ui/states";
 import { Icon } from "@/shared/ui/icon";
-import { ActivityCard } from "@/widgets/activity/activity-card";
+import { ActivityCard, type StatusTone } from "@/widgets/activity/activity-card";
 import { groupByCategory } from "@/lib/category";
 
 function programsPath(q: string, openOnly: boolean, tagIds: number[], cursor?: number) {
@@ -240,21 +239,44 @@ function TagFilter({ selected, onChange }: { selected: number[]; onChange: (next
     </ul>
   );
 }
-/** Up to three tag chips and a `+n` remainder (contract "태그") for a program header. */
+/** Up to three tag chips and a `+n` remainder (contract "태그") under the program name; nothing without tags. */
 function TagChips({ tags }: { tags: Tag[] }) {
   if (!tags.length) return null;
   const shown = tags.slice(0, 3);
   const rest = tags.length - shown.length;
   return (
-    <span className="tag-chips" aria-label="얻을 수 있는 것">
+    <span className="program-tags" aria-label="얻을 수 있는 것">
       {shown.map((tag) => (
-        <span key={tag.id} className="badge neutral">
+        <span key={tag.id} className="program-tag">
           {tag.name}
         </span>
       ))}
-      {rest > 0 && <span className="badge neutral">+{rest}</span>}
+      {rest > 0 && <span className="program-tag more">+{rest}</span>}
     </span>
   );
+}
+/**
+ * Props the renewed activity card needs (contract "발견 카드 리뉴얼"): the chip tone comes from the group the caller placed the
+ * activity in (open list → live recruitment state; 모집 예정 group → soon; 지난 활동 → closed), and the `모집` row is emphasised
+ * only while recruitment is not past and a period exists.
+ */
+function cardProps(activity: Activity, statusTone: StatusTone) {
+  const recruitmentLabel = scheduleLabel(activity.application);
+  return {
+    id: activity.id,
+    name: activity.name,
+    statusTone,
+    recruitmentLabel,
+    recruitmentActive: statusTone !== "closed" && recruitmentLabel !== "",
+    activityLabel: scheduleLabel(activity.activitySchedule),
+    // 장소 이름만 (contract "활동 장소"); the collected phrase stands in when no place is curated.
+    placeName: activity.place?.name ?? activity.location ?? null,
+  };
+}
+/** Chip tone for an activity the server lists as open: 모집 예정 before its start, 마감 once passed, otherwise 모집 중. */
+function openTone(activity: Activity, now: number): StatusTone {
+  const { label } = recruitment(activity.application, now);
+  return label === "모집 예정" ? "soon" : label === "모집 마감" ? "closed" : "open";
 }
 
 /** Single open activity, or a search hit on an activity name, starts expanded. */
@@ -345,10 +367,12 @@ function OtherActivities({
       return !Number.isNaN(start) && start >= now - THREE_YEARS && start <= now;
     })
     .sort((a, b) => activityStart(b) - activityStart(a));
-  const groups = [
-    { label: "모집 예정", items: upcoming },
-    { label: "지난 활동", items: showPast ? past : [] },
-  ].filter((group) => group.items.length);
+  const groups = (
+    [
+      { label: "모집 예정", tone: "soon", items: upcoming },
+      { label: "지난 활동", tone: "closed", items: showPast ? past : [] },
+    ] satisfies { label: string; tone: StatusTone; items: Activity[] }[]
+  ).filter((group) => group.items.length);
   if (!groups.length) return <>{onEmpty ?? null}</>;
   return (
     <>
@@ -358,16 +382,7 @@ function OtherActivities({
           <ul className="activity-list">
             {group.items.map((activity) => (
               <li key={activity.id}>
-                <ActivityCard
-                  id={activity.id}
-                  name={activity.name}
-                  description={activity.description}
-                  organizationName={activity.organization.name}
-                  statusLabel={recruitment(activity.application, now).label}
-                  dateLabel={scheduleLabel(activity.activitySchedule)}
-                  imageUrl={httpsUrl(activity.imageUrl)}
-                  tags={activity.tags ?? []}
-                />
+                <ActivityCard {...cardProps(activity, group.tone)} />
               </li>
             ))}
           </ul>
@@ -380,7 +395,12 @@ function startsOpen(program: ProgramSummary) {
   return program.openActivityCount === 1 || program.matchedActivityIds.length > 0;
 }
 
-/** One program header plus, when open, its open activities from `GET /activities?programId=&open=true` (the server decides what is open). */
+/**
+ * One program card (contract "발견 카드 리뉴얼 — 2026-10-19"): initial avatar, name · organization · tag chips, and on the right the
+ * open + upcoming count badge that becomes an up-chevron `접기` button once expanded. The whole header toggles. The body stays
+ * mounted so `grid-template-rows 0fr→1fr` can animate; its open activities come from `GET /activities?programId=&open=true`
+ * (the server decides what is open) on the first expansion.
+ */
 function ProgramRow({
   program,
   open,
@@ -418,103 +438,91 @@ function ProgramRow({
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [open]);
-  const deadline = deadlineLabel(program.nearestRecruitmentEndAt);
-  const start = startLabel(program.nearestRecruitmentStartAt ?? null);
+  const count = program.openActivityCount + (program.upcomingActivityCount ?? 0);
+  // Meta line precedence: a deadline while something is open, else the next start, else the latest activity month.
+  const meta =
+    (program.openActivityCount > 0 && deadlineLabel(program.nearestRecruitmentEndAt)) ||
+    ((program.upcomingActivityCount ?? 0) > 0 && startLabel(program.nearestRecruitmentStartAt ?? null)) ||
+    `최근 ${monthLabel(program.latestActivityAt ?? null)}`;
   // The server already applied its open rule (contract "열린 활동 판정 일원화"); the client does not filter again.
   const openActivities = activities?.items;
+  // Content is kept while collapsed so the close animation has something to shrink; nothing is fetched until the first open.
+  const body = error ? (
+    <Failure
+      message={error}
+      retry={() => {
+        setError("");
+        setAttempt((value) => value + 1);
+      }}
+    />
+  ) : !openActivities ? (
+    open ? <Loading /> : null
+  ) : (
+    <>
+      {openActivities.length > 0 &&
+        // Grouped by 활동 종류 (contract "활동 종류"); a single group needs no heading.
+        groupByCategory(openActivities, (activity) => activity.category).map((group, _, groups) => (
+          <section key={group.label} className="category-group">
+            {groups.length > 1 && <h3 className="category-heading">{group.label}</h3>}
+            <ul className="activity-list">
+              {[...group.items].sort(byDeadline).map((activity) => (
+                <li key={activity.id}>
+                  <ActivityCard {...cardProps(activity, openTone(activity, now))} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      {/* 모집 예정 always; 지난 활동 only while 마감 숨기기 is off (contract "펼침", 2026-10-19 밤). */}
+      <OtherActivities
+        programId={program.id}
+        now={now}
+        tagKey={tagKey}
+        excludeIds={new Set(openActivities.map((activity) => activity.id))}
+        showPast={!openOnly}
+        onEmpty={!openActivities.length ? <p className="muted">지금 모집 중인 활동이 없어요.</p> : null}
+      />
+    </>
+  );
   return (
-    <li className="program">
-      <button
-        type="button"
-        className="program-header"
-        aria-expanded={open}
-        aria-controls={panelId}
-        onClick={toggle}
-      >
-        <span className="program-copy">
-          <span className="eyebrow">{program.organization.name}</span>
-          <span className="program-name">{program.name}</span>
-          <span className="program-meta">
-            {program.openActivityCount > 0 ? (
-              <>
-                모집 중 {program.openActivityCount}개
-                {deadline && (
-                  <>
-                    <span className="dot">·</span>
-                    {deadline}
-                  </>
-                )}
-              </>
-            ) : (program.upcomingActivityCount ?? 0) > 0 ? (
-              <>
-                모집 예정 {program.upcomingActivityCount}개
-                {start && (
-                  <>
-                    <span className="dot">·</span>
-                    {start}
-                  </>
-                )}
-              </>
-            ) : (
-              <>최근 활동 {monthLabel(program.latestActivityAt ?? null)}</>
-            )}
+    <li className="program" data-open={open || undefined}>
+      <div className="program-header">
+        <button type="button" className="program-toggle" aria-expanded={open} aria-controls={panelId} onClick={toggle}>
+          <span className="program-avatar" aria-hidden="true">
+            {[...program.name.trim()][0] ?? "?"}
           </span>
-          <TagChips tags={program.tags ?? []} />
-        </span>
-        <span className="program-chevron" aria-hidden="true">
-          ›
-        </span>
-      </button>
-      {open && (
-        <div id={panelId} className="program-panel">
-          {error ? (
-            <Failure
-              message={error}
-              retry={() => {
-                setError("");
-                setAttempt((value) => value + 1);
-              }}
-            />
-          ) : !openActivities ? (
-            <Loading />
+          <span className="program-copy">
+            <span className="program-name">{program.name}</span>
+            <span className="program-org">{program.organization.name}</span>
+            <TagChips tags={program.tags ?? []} />
+          </span>
+        </button>
+        <div className="program-side">
+          {open ? (
+            <button type="button" className="program-collapse" aria-label="접기" aria-controls={panelId} onClick={toggle}>
+              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </button>
           ) : (
-            <>
-              {openActivities.length > 0 &&
-                // Grouped by 활동 종류 (contract "활동 종류"); a single group needs no heading.
-                groupByCategory(openActivities, (activity) => activity.category).map((group, _, groups) => (
-                  <section key={group.label} className="category-group">
-                    {groups.length > 1 && <h3 className="category-heading">{group.label}</h3>}
-                    <ul className="activity-list">
-                      {[...group.items].sort(byDeadline).map((activity) => (
-                        <li key={activity.id}>
-                          <ActivityCard
-                            id={activity.id}
-                            name={activity.name}
-                            description={activity.description}
-                            organizationName={activity.organization.name}
-                            statusLabel={recruitment(activity.application, now).label}
-                            dateLabel={scheduleLabel(activity.activitySchedule)}
-                            imageUrl={httpsUrl(activity.imageUrl)}
-                            tags={activity.tags ?? []}
-                          />
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                ))}
-              {/* 모집 예정 always; 지난 활동 only while 마감 숨기기 is off (contract "펼침", 2026-10-19 밤). */}
-              <OtherActivities
-                programId={program.id}
-                now={now}
-                tagKey={tagKey}
-                excludeIds={new Set(openActivities.map((activity) => activity.id))}
-                showPast={!openOnly}
-                onEmpty={!openActivities.length ? <p className="muted">지금 모집 중인 활동이 없어요.</p> : null}
-              />
-            </>
+            <span className="program-count" aria-hidden={count === 0}>
+              {count > 0 ? (
+                <>
+                  <span className="sr-only">활동 </span>
+                  <span>{count}</span>
+                  <span className="sr-only">개</span>
+                </>
+              ) : null}
+            </span>
           )}
+          <span className="program-meta">{meta}</span>
         </div>
-      )}
+      </div>
+      <div id={panelId} className="program-body" aria-hidden={!open} inert={!open}>
+        <div>
+          <div className="program-inner">{body}</div>
+        </div>
+      </div>
     </li>
   );
 }

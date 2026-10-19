@@ -118,6 +118,7 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             timestamps = Timestamps(row.createdAt!!, row.updatedAt!!),
             category = row.category?.let(ActivityCategory::valueOf),
             tags = tags,
+            location = row.location,
         )
     }
 

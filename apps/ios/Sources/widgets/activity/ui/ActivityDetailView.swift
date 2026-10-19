@@ -18,6 +18,7 @@ struct ActivityDetailView: View {
                             identity(activity)
                             if let eligibility = activity.eligibility { audience(eligibility) }
                             ActivityInformationView(activity: activity, checkCalendar: { showCalendar = true })
+                            place(activity)
                             source(activity)
                             Divider()
                             Text("신청 표시는 이 앱 안에서만 남기는 기록이에요. 실제 접수 여부와 무관해요.")
@@ -116,6 +117,32 @@ struct ActivityDetailView: View {
                 })
                 .padding(.horizontal, 20).padding(.vertical, 12)
             }.background(.white)
+        }
+    }
+    /// 장소 (contract "활동 장소"): the curated place's name and address open Apple Maps; otherwise the collected text, if any.
+    @ViewBuilder private func place(_ activity: ActivityModel) -> some View {
+        if activity.place != nil || activity.location != nil {
+            VStack(alignment: .leading, spacing: 12) {
+                Divider()
+                Text("장소").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
+                if let place = activity.place, let url = place.mapsURL {
+                    Link(destination: url) {
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: "mappin.and.ellipse").font(.title3).foregroundStyle(DearbyStyle.teal).frame(width: 28)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(place.name).font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.ink)
+                                Text(place.address).font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "arrow.up.right").font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
+                        }.frame(minHeight: 44).contentShape(Rectangle())
+                    }
+                    .accessibilityLabel("장소 \(place.name), \(place.address)").accessibilityHint("지도 앱으로 열려요")
+                    .accessibilityIdentifier("open-place")
+                } else if let location = activity.location {
+                    Text(location).font(.dearby(.subheadline))
+                }
+            }
         }
     }
     private func source(_ activity: ActivityModel) -> some View {

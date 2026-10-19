@@ -80,7 +80,10 @@ enum ActivityClient {
                 // Sort key: the application's end; when no usable deadline exists, the activity start stands in for it.
                 recruitmentDeadline: activity.application.flatMap { ActivityModel.instant($0.endAt) ?? ActivityModel.seoulDay($0.endDateExclusive) }
                     ?? activity.activitySchedule.flatMap { ActivityModel.instant($0.startAt) ?? ActivityModel.seoulDay($0.startDate) },
-                tags: (activity.tags ?? []).map(\.tag))
+                tags: (activity.tags ?? []).map(\.tag),
+                recruitmentLabel: activity.application?.dateLabel ?? "",
+                location: activity.location.flatMap { $0.isEmpty ? nil : $0 },
+                place: activity.place?.value.map { ActivityPlace(name: $0.name, address: $0.address, lat: $0.lat, lng: $0.lng) })
         }
         return ActivityPage(items: items, nextCursor: payload.nextCursor)
     }
@@ -132,7 +135,11 @@ enum ActivityClient {
         let category: String?
         /// 태그; absent on older responses.
         let tags: [TagDTO]?
+        /// 장소 (contract "활동 장소"); both absent on older responses. A malformed `place` reads as none.
+        let location: String?
+        let place: Lenient<PlaceDTO>?
     }
+    private struct PlaceDTO: Decodable { let name: String; let address: String; let lat: Double; let lng: Double }
     /// Decodes to nil instead of throwing when the value has an unexpected shape.
     private struct Lenient<Value: Decodable>: Decodable {
         let value: Value?

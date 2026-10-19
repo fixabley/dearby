@@ -28,6 +28,7 @@
     "ActivityCategory",
     "ActivityModel",
     "ActivityPage",
+    "ActivityPlace",
     "ActivityScheduleModel",
     "ActivityStageModel",
     "ActivityClient",
@@ -96,6 +97,7 @@
     "AppliedActivity",
     "StageMark",
     "ProgramHeader",
+    "DiscoveryRowStyle",
     "EligibilityText"
   ],
   "widgets/identity": [

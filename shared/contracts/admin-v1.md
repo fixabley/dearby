@@ -123,6 +123,10 @@ AdminActivity: 공개 Activity(`native-v1.md` "활동 조회")의 필드 `{id, n
 
 ## 일정 직접 지정·기간 확인·날짜 문구 피드백·조심 목록 — 2026-10-18 사용자 결정 (2026-10-19 보완)
 
+### 활동 장소와 지오코딩 — 2026-10-19 사용자 결정
+
+native-v1.md "활동 장소"를 따른다. `PATCH /v1/admin/activities/:id`·`POST /v1/admin/activities`에 `place?: {name, address, lat, lng} | null`(위도·경도 범위 검증, 이름 ≤200·주소 ≤300), `AdminActivity.place`, `curated_fields`에 `place`. `GET /v1/admin/geocode?q=`(ADMIN, `q` 2~100자, 공급자 Kakao → 없으면 Nominatim). 어드민 폼의 `장소` 검색·선택·지우기.
+
 ### 세부 일정 편집기 — 2026-10-19 사용자 결정
 
 사용자: "어드민에서 활동에 스케줄들도 편집할 수 있으면 좋겠어. 구글캘린더 느낌으로". 모집·활동 기간(슬롯 일정) 외의 **세부 일정**(`schedules[]`: 테스트·면접·발표·세션 등)을 어드민에서 만들고 고치고 지운다.

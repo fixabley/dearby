@@ -16,5 +16,6 @@ data class ActivityTextsRequest(
     val category: JsonNode? = null, // 활동 종류 코드. 생략은 유지, JSON null은 미분류, 모르는 코드는 400
     val activitySchedule: JsonNode? = null,
     val application: JsonNode? = null,
+    val place: JsonNode? = null, // 활동 장소 {name, address, lat, lng}(admin-v1.md "활동 장소와 지오코딩"). 생략은 유지, JSON null은 삭제
     val tagIds: List<Long>? = null, // 활동 태그 전체(native-v1.md "태그"). 생략은 유지, 빈 배열은 모두 해제. 운영자 지정 tags로 보호
 )

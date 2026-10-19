@@ -1,6 +1,7 @@
 package com.dearby.nativeapp.app
 
 import android.content.Intent
+import android.net.Uri
 import androidx.core.net.toUri
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.*
@@ -36,21 +37,28 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
     val openLink: (String) -> Unit = { url ->
         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
             .onSuccess {
-                // Only the official page opened while recruiting (detail or card CTA) leads to the prompt.
-                val applied = activity?.takeIf { it.applyUrl == url } ?: state.known.values.find { selected == null && it.applyUrl == url }
-                applied?.let { model.openedApplication(it.id) }
+                // Only the official page opened while recruiting (the detail CTA) leads to the prompt.
+                activity?.takeIf { it.applyUrl == url }?.let { model.openedApplication(it.id) }
             }
             .onFailure { linkError = "링크를 열지 못했어요." }
+    }
+    // Contract "활동 장소": the curated place opens in a map app pinned at its coordinates; no map app leaves the error on screen.
+    val openMap = {
+        activity?.place?.let { place ->
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, "geo:${place.lat},${place.lng}?q=${place.lat},${place.lng}(${Uri.encode(place.name)})".toUri())) }
+                .onFailure { linkError = "지도 앱을 열지 못했어요." }
+        }
+        Unit
     }
     // Detail over the timeline: back from the detail returns to the timeline it was opened from.
     BackHandler((selected != null || progressId != null) && !prompt && !calendar && stageCalendar == null) { if (selected != null) selected = null else progressId = null }
     when {
         activity != null -> ActivityDetailPage(activity, linkError, { selected = null }, openLink, { prompt = true },
-            { model.confirm(activity.id, it) }, { calendar = true }, { sharing = true })
+            { model.confirm(activity.id, it) }, { calendar = true }, { sharing = true }, openMap)
         progress != null && progressActivity != null -> ActivityProgressPage(progress, progressActivity, { progressId = null }, { selected = progress.id; linkError = null },
             { model.confirm(progress.id, it) }, { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it })
         mine -> MyActivitiesPage(state, { selected = it; linkError = null }, { progressId = it }, model::confirm, explore)
-        else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::loadMore, openLink, model::toggle, model::retryProgram, model::setOpenOnly, model::toggleTag)
+        else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, model::toggleTag)
     }
     if (sharing && activity?.officialUrl != null) AlertDialog(onDismissRequest = { sharing = false }, title = { Text("활동 링크") }, text = { Text(activity.officialUrl) }, confirmButton = { TextButton({ sharing = false }) { Text("닫기") } })
     val openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) }

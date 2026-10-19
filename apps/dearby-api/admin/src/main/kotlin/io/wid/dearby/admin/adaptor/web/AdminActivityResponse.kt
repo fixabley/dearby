@@ -23,7 +23,8 @@ data class AdminActivityResponse(
     val publicationStatus: PublicationStatus,
     val officialSource: Boolean,
     val applicationUrl: String?,
-    val location: String?,
+    val location: String?, // 장소 문구(좌표 없음)
+    val place: PlaceResponse?, // 좌표가 있는 활동 장소(admin-v1.md "활동 장소와 지오코딩"). 없으면 null
     val cost: String?,
     val audience: String?,
     val eligibility: JsonNode?, // 대상자 조건(native-v1.md "대상자 조건"). 없으면 null
@@ -54,6 +55,7 @@ data class AdminActivityResponse(
                 officialSource = curation.officialSource,
                 applicationUrl = curation.applicationUrl,
                 location = curation.location,
+                place = activity.activitySchedule.address?.let(PlaceResponse::from),
                 cost = curation.cost,
                 audience = curation.audience,
                 eligibility = activity.eligibility?.let(EligibilityJson::toNode),
