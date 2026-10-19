@@ -377,6 +377,8 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
   - Android: `lightColorScheme`/`darkColorScheme`을 청록 시드(#007F80)의 Material 3 톤으로 정의한다(primary 청록, primaryContainer 연청록, surface/background·surfaceContainer·outlineVariant·onSurfaceVariant는 시드에서 나온 중립 톤). 상수 `Mint`·`Soft`·`Line`·`Quiet`·`Ink`는 `colorScheme.primaryContainer`·`surfaceContainer`·`outlineVariant`·`onSurfaceVariant`·`onSurface`로 바꾸고 상수를 지운다. `Teal`은 `colorScheme.primary`로 읽는다. 다이내믹 컬러는 켜지 않는다(브랜드 유지).
   - **다크 모드(사용자 "다크모드도 호환되게 해줘")**: 앱이 라이트 모드를 강제하던 설정은 지우고 시스템 설정을 따른다. 하드코딩한 `.white`/`.black`·#FFFFFF 면은 시스템·테마 색으로 바꾼다. 청록은 다크에서 밝은 변형(라이트 #007F80 → 다크 #3FB3B4)을 쓴다: iOS는 Asset Catalog 색 또는 `UIColor { trait in … }`로 `DearbyStyle.teal`에 두 값을 넣고, Android는 `darkColorScheme`의 primary에 둔다. 상태 표시줄·탭 막대·시트는 시스템 모양을 따른다. 로고 심볼은 청록 단색이라 다크에서 밝은 청록으로 그린다. 웹도 `prefers-color-scheme: dark`에서 토큰(배경·카드·글자·선·청록 변형)을 재정의하되 디자인은 바꾸지 않는다.
 
+- **활동 상세 이미지 섹션 제거(2026-10-19 밤, 사용자 "UI는 만족스러워. 활동 상세 페이지에 이미지 섹션 없애줘도 좋을 것 같아")**: 활동 상세의 머리 이미지(iOS `ActivityArtwork`, Android `ActivityImage`, 웹 `.detail-image`)를 iOS·Android·웹에서 없앤다. 제목·조직·상태 칩이 바로 위에 온다. API `Activity.imageUrl`은 그대로 두고 클라이언트가 보여 주지 않을 뿐이다. 목록·다른 화면에서 쓰지 않게 된 이미지 컴포넌트는 지운다.
+
 ## 활동 장소 — 2026-10-19 사용자 결정
 
 사용자: "장소는 어드민에서 추가할 수 있으면 좋겠고 geocode, 주소 검색해서 좌표 가지고 올 수 있으면". 활동의 구조화된 장소를 둔다.
