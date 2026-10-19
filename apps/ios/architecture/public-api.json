@@ -28,6 +28,7 @@
     "ActivityCategory",
     "ActivityModel",
     "ActivityPage",
+    "ActivityPlace",
     "ActivityScheduleModel",
     "ActivityStageModel",
     "ActivityClient",

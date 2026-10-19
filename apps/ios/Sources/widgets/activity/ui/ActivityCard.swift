@@ -1,90 +1,82 @@
 import SwiftUI
 
-/// 발견 목록의 활동 카드. 본문을 누르면 `open`(상세 이동)을 부른다.
-/// `applyURL`을 주면 카드 아래에 마감일 한 줄과 공식 신청 바로가기를 붙인다. 보일지 여부는 화면이 카탈로그 값으로 정한다.
-/// 이미지(`imageURL`)가 없거나 못 불러오면 달력 아이콘과 조직 이름을 담은 타일을 보인다. 이미지·타일은 카드 글자와 같은 정보라 접근성에서 숨긴다.
+/// 펼친 프로그램 안의 활동 카드(contract "발견 카드 리뉴얼" 2026-10-19). 로고 없이 왼쪽 위 활동명, 오른쪽 위 모집 상태 칩(`모집 중` 청록 채움 /
+/// `모집 예정` 민트 / `마감` 회색), 아래 라벨 + 값 세 줄(`모집`·`활동`·`장소`; 장소는 있을 때만). 모집이 지나지 않았으면 `모집` 줄의 값이 청록 굵은 글씨에
+/// 옅은 민트 바탕으로 강조된다. 카드를 누르면 `open`(상세 이동). 접근성에서는 상태 칩과 세 줄을 한 라벨로 읽는다.
 struct ActivityCard: View {
     let activityID: String
     let title: String
-    let organization: String
-    var imageURL: URL?
-    let summary: String
-    let status: String
-    let date: String
-    var applyURL: URL?
-    var recruitmentEnd: Date?
-    /// Activity tags (contract "태그"); shown as quiet chips under the date.
-    var tags: [Tag] = []
+    let recruitment: ActivityModel.Recruitment
+    /// Recruitment window text; empty reads as `미정`.
+    var recruitmentLabel: String = ""
+    /// Activity period text; empty reads as `미정`.
+    var dateLabel: String = ""
+    /// Place name (contract "활동 장소"); nil omits the row.
+    var place: String?
     let open: () -> Void
     var body: some View {
-        VStack(spacing: 0) {
-            Button(action: open) {
-                HStack(alignment: .top, spacing: 12) {
-                    thumbnail.frame(width: 104, height: 112).clipped()
-                        .clipShape(RoundedRectangle(cornerRadius: 9)).accessibilityHidden(true)
-                    VStack(alignment: .leading, spacing: 7) {
-                        Text(title).font(.dearby(.headline)).foregroundStyle(DearbyStyle.ink)
-                        Text(summary).font(.dearby(.caption)).lineLimit(2)
-                        Divider()
-                        Label(status, systemImage: "person.badge.clock")
-                        Label(date, systemImage: "calendar")
-                        TagChips(tags: tags, limit: 3)
-                    }.font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet).frame(maxWidth: .infinity, alignment: .leading)
-                }.padding(10).contentShape(Rectangle())
-            }.buttonStyle(.plain).accessibilityIdentifier("activity-\(activityID)")
-            if let applyURL {
-                Divider()
-                HStack(spacing: 12) {
-                    Text(deadline).font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
-                    Spacer(minLength: 0)
-                    Link(destination: applyURL) {
-                        Label("공식 사이트에서 신청", systemImage: "arrow.up.right").font(.dearby(.subheadline).weight(.semibold))
-                            .padding(.horizontal, 14).frame(minHeight: 44).foregroundStyle(DearbyStyle.teal)
-                            .overlay(RoundedRectangle(cornerRadius: 11).stroke(DearbyStyle.teal))
-                    }.accessibilityLabel("\(title) 공식 사이트에서 신청").accessibilityHint("외부 브라우저로 열려요")
-                        .accessibilityIdentifier("apply-\(activityID)")
-                }.padding(.horizontal, 10).padding(.vertical, 8)
+        Button(action: open) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top, spacing: 10) {
+                    Text(title).font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.ink)
+                        .multilineTextAlignment(.leading).frame(maxWidth: .infinity, alignment: .leading)
+                    statusChip
+                }
+                VStack(alignment: .leading, spacing: 3) {
+                    row("모집", recruitmentLabel.isEmpty ? "미정" : recruitmentLabel, emphasized: emphasized)
+                    row("활동", dateLabel.isEmpty ? "미정" : dateLabel)
+                    if let place, !place.isEmpty { row("장소", place) }
+                }
             }
+            .padding(EdgeInsets(top: 12, leading: 12, bottom: 10, trailing: 12)).frame(maxWidth: .infinity)
+            .background(DearbyStyle.muted, in: RoundedRectangle(cornerRadius: 14)).contentShape(Rectangle())
+        }.buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel([title, statusText, "모집 " + (recruitmentLabel.isEmpty ? "미정" : recruitmentLabel),
+                                 "활동 " + (dateLabel.isEmpty ? "미정" : dateLabel), place.map { "장소 " + $0 }].compactMap { $0 }.joined(separator: ", "))
+            .accessibilityHint("누르면 활동 상세를 보여요")
+            .accessibilityIdentifier("activity-\(activityID)")
+    }
+    /// Recruiting or upcoming: the recruitment row stands out (contract 강조 규칙).
+    private var emphasized: Bool { recruitment == .open || recruitment == .upcoming }
+    private var statusText: String {
+        switch recruitment {
+        case .open: "모집 중"
+        case .upcoming: "모집 예정"
+        case .closed: "마감"
+        case .unknown: "확인 필요"
         }
-        .background(.white, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(DearbyStyle.line))
     }
-    private var thumbnail: some View {
-        AsyncImage(url: imageURL) { phase in
-            if let image = phase.image { image.resizable().scaledToFill() } else { tile }
+    private var statusChip: some View {
+        Text(statusText).font(.dearby(.caption2).weight(.semibold))
+            .foregroundStyle(recruitment == .open ? .white : recruitment == .upcoming ? DearbyStyle.teal : DearbyStyle.quiet)
+            .padding(.horizontal, 8).padding(.vertical, 3)
+            .background(recruitment == .open ? DearbyStyle.teal : recruitment == .upcoming ? DearbyStyle.mint : DearbyStyle.line, in: Capsule())
+    }
+    private func row(_ label: String, _ value: String, emphasized: Bool = false) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 8) {
+            Text(label).font(.dearby(.footnote).weight(.medium)).foregroundStyle(DearbyStyle.quiet).frame(width: 36, alignment: .leading)
+            Text(value).font(.dearby(.footnote).weight(emphasized ? .semibold : .regular))
+                .foregroundStyle(emphasized ? DearbyStyle.teal : DearbyStyle.ink).multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
-    }
-    private var tile: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "calendar")
-                .font(.dearby(.title2)).foregroundStyle(DearbyStyle.teal)
-            Text(organization).font(.dearby(.caption2).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
-                .multilineTextAlignment(.center).lineLimit(2).minimumScaleFactor(0.8).padding(.horizontal, 8)
-        }.frame(maxWidth: .infinity, maxHeight: .infinity).background(DearbyStyle.mint)
-    }
-    private var deadline: String {
-        guard let recruitmentEnd else { return "마감일 미확인" }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-        formatter.dateFormat = "M월 d일 (E)"
-        return formatter.string(from: recruitmentEnd) + " 마감"
+        .padding(.horizontal, emphasized ? 6 : 0).padding(.vertical, emphasized ? 3 : 0)
+        .background(emphasized ? DearbyStyle.mint : .clear, in: RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, emphasized ? -6 : 0)
     }
 }
 
 #if DEBUG
-/// 미리보기 예시. 주소는 실제가 아닌 example.invalid 값이다.
+/// 미리보기 예시.
 struct ActivityCardSample: View {
     var body: some View {
-        VStack(spacing: 12) {
-            ActivityCard(activityID: "1", title: "Dearby 개발자 컨퍼런스", organization: "Dearby",
-                         summary: "개발자와 기획자가 함께 만드는 하루", status: "모집 중", date: "2026-10-24",
-                         applyURL: URL(string: "https://example.invalid/apply"),
-                         recruitmentEnd: ISO8601DateFormatter().date(from: "2026-10-20T14:59:00Z"),
-                         tags: [Tag(id: 1, name: "네트워킹"), Tag(id: 2, name: "개발지식")]) {}
-            ActivityCard(activityID: "2", title: "주말 데이터 분석 스터디", organization: "한국데이터산업진흥원",
-                         summary: "선착순으로 모여요", status: "모집 마감", date: "11월 15일") {}
-        }.padding(20).background(.white)
+        VStack(spacing: 8) {
+            ActivityCard(activityID: "1", title: "부스트캠프 Web·Mobile 10기", recruitment: .open,
+                         recruitmentLabel: "10월 20일 (월) 10:00 ~ 11월 10일 (월) 18:00", dateLabel: "2026년 11월 24일 ~ 2027년 2월 6일", place: "온라인 · 서울 강남") {}
+            ActivityCard(activityID: "2", title: "SK AIGEN 1기", recruitment: .upcoming,
+                         recruitmentLabel: "11월 1일 (일) ~ 11월 15일 (일)", dateLabel: "2027년 3월 11일부터", place: "SK 서린빌딩") {}
+            ActivityCard(activityID: "3", title: "우아콘 2025", recruitment: .closed, dateLabel: "2025년 10월 30일 (목)") {}
+        }.padding(10).background(.white, in: RoundedRectangle(cornerRadius: 20)).padding(16).background(DearbyStyle.muted)
     }
 }
 

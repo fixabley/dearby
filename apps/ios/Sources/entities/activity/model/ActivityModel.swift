@@ -38,6 +38,12 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     var recruitmentDeadline: Date? = nil
     /// What a participant gains (contract "태그"); empty when none or on older responses.
     var tags: [Tag] = []
+    /// `application.dateLabel`: the recruitment window as text for the discovery card's `모집` row; empty when there is no window.
+    var recruitmentLabel: String = ""
+    /// Free-text place (collected, or the curated place's name; contract "활동 장소"); nil when unknown.
+    var location: String? = nil
+    /// The curated place with coordinates (contract "활동 장소"); nil when none.
+    var place: ActivityPlace? = nil
 
     /// Recruitment only from the application window against now (contract "열린 활동 판정 일원화", 2026-10-19). A timed window
     /// compares instants and a missing bound is open on that side; a date-only window compares Seoul days
@@ -101,6 +107,21 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
         let precise = ISO8601DateFormatter()
         precise.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return precise.date(from: raw) ?? ISO8601DateFormatter().date(from: raw)
+    }
+}
+/// A curated place (contract "활동 장소 — 2026-10-19"): name, road address and coordinates, all present together.
+struct ActivityPlace: Equatable, Sendable {
+    let name: String
+    let address: String
+    let lat: Double
+    let lng: Double
+    /// Apple Maps with the name as the query and the coordinates as the pin (contract: iOS `maps://?q=`).
+    var mapsURL: URL? {
+        var components = URLComponents()
+        components.scheme = "maps"
+        components.host = ""
+        components.queryItems = [URLQueryItem(name: "q", value: name), URLQueryItem(name: "ll", value: "\(lat),\(lng)")]
+        return components.url
     }
 }
 struct ActivityScheduleModel: Equatable, Identifiable, Sendable {
