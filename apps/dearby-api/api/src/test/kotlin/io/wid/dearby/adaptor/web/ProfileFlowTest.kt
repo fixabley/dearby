@@ -130,6 +130,38 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         put(user, """{"name":"a","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","kind":"organization","organizationId":999999,"roleName":"r","startDate":"2026-01-01"}]}""").andExpect { status { isBadRequest() } }
     }
 
+    // 활동 이력에서 단기 행사 제외(native-v1.md, 2026-10-20): 활동 기간이 7일 미만인 활동은 이력에 못 넣는다. 직접 입력 이름은 제한 없음
+    @Test
+    fun `7일 미만 행사를 활동 이력에 넣으면 400 HISTORY_ACTIVITY_TOO_SHORT이고, 7일 이상은 저장된다`() {
+        val user = user()
+        val (_, program) = letswift()
+        fun activity(name: String, days: Int, category: String): Long {
+            val id = jdbc.sql(
+                """
+                insert into activities (program_id, name, description, participation_type, recruitment_status, official_url,
+                                        freshness, source_note, publication_status, category, created_at, updated_at)
+                values (?, ?, '', 'SELECTION', 'UNKNOWN', 'https://example.com', 'STALE', '', 'PUBLISHED', ?, localtimestamp, localtimestamp) returning id
+                """
+            ).params(program, name, category).query(Long::class.java).single()
+            jdbc.sql(
+                """
+                insert into schedules (activity_id, slot, title, kind, status, time_type, start_date, end_date_exclusive, date_label, sequence, created_at, updated_at)
+                values (?, 'ACTIVITY', ?, 'EVENT', 'CONFIRMED', 'ALL_DAY', date '2025-03-01', date '2025-03-01' + ?, '', 0, localtimestamp, localtimestamp)
+                """
+            ).params(id, name, days).update()
+            return id
+        }
+        val conference = activity("이력 하루 컨퍼런스 ${UUID.randomUUID()}", 1, "CONFERENCE")
+        val bootcamp = activity("이력 열흘 부트캠프 ${UUID.randomUUID()}", 10, "BOOTCAMP")
+        fun body(activityId: Long) = """{"name":"이력","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","kind":"activity","activityId":$activityId,"roleName":"참가자","startDate":"2025-03-01","endDate":null,"description":""}]}"""
+        val denied = read(put(user, body(conference)).andExpect { status { isBadRequest() } })
+        assertEquals(listOf("HISTORY_ACTIVITY_TOO_SHORT", "일주일 미만 행사는 활동 이력에 넣을 수 없어요"), listOf(denied["code"].asString(), denied["detail"].asString()))
+        assertEquals(bootcamp, read(put(user, body(bootcamp)).andExpect { status { isOk() } })["histories"].single()["activity"]["id"].asLong())
+        // 직접 입력한 활동 이름은 제한하지 않는다
+        put(user, """{"name":"이력","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","kind":"activity","organizationName":"o","activityName":"하루 컨퍼런스","roleName":"r","startDate":"2025-03-01"}]}""").andExpect { status { isOk() } }
+        jdbc.sql("update activities set publication_status = 'DRAFT' where id in (?, ?)").params(conference, bootcamp).update()
+    }
+
     @Test
     fun `인증자료는 종류·크기·개수를 지키고, 올리면 확인 대기가 되며 다 지우면 미인증으로 돌아간다`() {
         val user = user()

@@ -3,6 +3,7 @@ package io.wid.dearby.adaptor.persistence
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITIES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.SCHEDULES
+import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.PublicationStatus
 import org.jooq.Condition
 import org.jooq.Field
@@ -17,6 +18,9 @@ object OpenActivityConditions {
     private const val SLOT_APPLICATION = "APPLICATION"
     private const val SLOT_ACTIVITY = "ACTIVITY"
     private val SEOUL: ZoneId = ZoneId.of("Asia/Seoul")
+    private const val HISTORY_MIN_DAYS = 7
+    // 기간을 모를 때 단기 행사로 보는 종류. historyEligible보다 앞에 둔다(object 초기화 순서)
+    private val SHORT_EVENT_CATEGORIES = setOf(ActivityCategory.CONFERENCE, ActivityCategory.WORKSHOP, ActivityCategory.MEETUP, ActivityCategory.LECTURE)
 
     val app: Schedules = SCHEDULES.`as`("app")
     val act: Schedules = SCHEDULES.`as`("act")
@@ -53,5 +57,18 @@ object OpenActivityConditions {
         val timed = app.TIME_TYPE.eq("TIMED").and(app.START_AT.gt(now))
         val allDay = app.TIME_TYPE.eq("ALL_DAY").and(app.START_DATE.gt(today))
         return ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name).and(timed.or(allDay))
+    }
+
+    // 활동 이력 후보(native-v1.md "활동 이력에서 단기 행사 제외", 2026-10-20): 게시 활동이고 활동 기간이 7일 이상이거나,
+    // 기간을 모르면(행 없음 또는 문구만) 종류가 컨퍼런스·워크샵·밋업·강연이 아닌 것. 끝이 없는 시각 일정은 하루로 본다.
+    // GET /v1/activities?forHistory=true와 이력 쓰기 검사(ProfileService)가 같은 규칙을 쓴다. null이 끼면 where에서 빠지므로 남길 조건을 양의 형태로 쓴다
+    val historyEligible: Condition = run {
+        val allDayLong = act.TIME_TYPE.eq("ALL_DAY")
+            .and(DSL.condition("{0} - {1} >= {2}", act.END_DATE_EXCLUSIVE, act.START_DATE, DSL.inline(HISTORY_MIN_DAYS)))
+        val timedLong = act.TIME_TYPE.eq("TIMED").and(act.START_AT.isNotNull).and(act.END_AT.isNotNull)
+            .and(DSL.condition("{0} - {1} >= make_interval(days => {2})", act.END_AT, act.START_AT, DSL.inline(HISTORY_MIN_DAYS)))
+        val unknownPeriod = act.TIME_TYPE.isNull
+            .and(ACTIVITIES.CATEGORY.isNull.or(ACTIVITIES.CATEGORY.notIn(SHORT_EVENT_CATEGORIES.map(ActivityCategory::name))))
+        ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name).and(allDayLong.or(timedLong).or(unknownPeriod))
     }
 }
