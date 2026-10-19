@@ -10,8 +10,13 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dearby.nativeapp.BuildConfig
+import com.dearby.nativeapp.features.oauth.OAuthBrowser
+import com.dearby.nativeapp.pages.profile.ConsentPage
 import com.dearby.nativeapp.pages.profile.HistoryFunnelPage
+import com.dearby.nativeapp.shared.config.ConsentVersions
 import com.dearby.nativeapp.pages.profile.ProfilePage
+import com.dearby.nativeapp.pages.profile.ProfilePhase
 import com.dearby.nativeapp.pages.profile.ProfileVersionPage
 import com.dearby.nativeapp.pages.profile.ProfileVersionsPage
 
@@ -39,6 +44,13 @@ import com.dearby.nativeapp.pages.profile.ProfileVersionsPage
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { read(it, "image/jpeg", "photo.jpg") }
     val pickPdf = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { read(it, "application/pdf", "evidence.pdf") }
     when {
+        // 개인정보 동의 (contract "개인정보 동의"): before the first profile step and whenever the server asks again; never when signed out.
+        signedIn && state.phase == ProfilePhase.LOADED && state.consentRequired -> ConsentPage(
+            state.consenting, state.consentError,
+            openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) },
+            openTerms = { OAuthBrowser(context).open(ConsentVersions.termsUrl(BuildConfig.WEB_ORIGIN)) },
+            agree = model::consent,
+        )
         funnel != null -> funnel?.let { current ->
             BackHandler(onBack = model::closeFunnel)
             HistoryFunnelPage(current, model::changeDraft, model::goTo, model::next, model::search,

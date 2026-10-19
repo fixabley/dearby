@@ -40,6 +40,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.Roles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules
 import io.wid.dearby.adaptor.persistence.jooq.tables.Tags
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserConsents
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
@@ -249,6 +250,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val TAGS: Tags get() = Tags.TAGS
 
     /**
+     * The table <code>public.user_consents</code>.
+     */
+    val USER_CONSENTS: UserConsents get() = UserConsents.USER_CONSENTS
+
+    /**
      * The table <code>public.user_credentials</code>.
      */
     val USER_CREDENTIALS: UserCredentials get() = UserCredentials.USER_CREDENTIALS
@@ -317,6 +323,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         Roles.ROLES,
         Schedules.SCHEDULES,
         Tags.TAGS,
+        UserConsents.USER_CONSENTS,
         UserCredentials.USER_CREDENTIALS,
         UserEntities.USER_ENTITIES,
         UserIdentities.USER_IDENTITIES,

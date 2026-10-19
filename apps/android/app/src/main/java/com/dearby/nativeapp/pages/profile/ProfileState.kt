@@ -19,6 +19,8 @@ enum class ProfilePhase { SIGNED_OUT, LOADING, LOADED, FAILED }
 data class ProfileViewState(
     val phase: ProfilePhase = ProfilePhase.LOADING, val profile: AccountProfile? = null, val form: ProfileFormState? = null,
     val errors: ProfileErrors? = null, val saving: Boolean = false, val error: String? = null,
+    /** 개인정보 동의 (contract "개인정보 동의"): the consent screen replaces the profile until the server records the agreement. */
+    val consentRequired: Boolean = false, val consenting: Boolean = false, val consentError: String? = null,
     /** 직무 tag picker search (setup funnel and editor). */
     val jobSearch: PickerSearchState = PickerSearchState(),
 ) {

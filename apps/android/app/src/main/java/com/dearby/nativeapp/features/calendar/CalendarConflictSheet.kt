@@ -36,7 +36,9 @@ import java.util.Locale
  * calendar is read and offers [request]; [CalendarAccessState.Denied] explains the refusal and offers [openSettings];
  * [CalendarAccessState.Compared] shows the overlaps found on the device. Titles and times stay on screen only.
  */
-@Composable fun CalendarConflictSheet(schedules: List<ScheduleModel>, access: CalendarAccessState, request: () -> Unit, openSettings: () -> Unit, close: () -> Unit) {
+@Composable fun CalendarConflictSheet(
+    schedules: List<ScheduleModel>, access: CalendarAccessState, request: () -> Unit, openSettings: () -> Unit, openPrivacy: () -> Unit, close: () -> Unit,
+) {
     when (access) {
         is CalendarAccessState.Compared -> CalendarResultSheet(access.overlaps, schedules.first(), close)
         else -> Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -51,6 +53,8 @@ import java.util.Locale
                         Text("기기 캘린더와 비교해요", style = MaterialTheme.typography.titleMedium)
                         Text("이 활동 시간과 겹치는 기기 일정을 찾기 위해 캘린더 읽기 권한을 요청해요. 일정 제목·시각은 기기 안에서만 비교하고 서버로 보내거나 저장하지 않으며, 화면을 닫으면 버려요. 캘린더에 일정을 추가하지는 않아요.", style = MaterialTheme.typography.bodyMedium)
                         DearbyButton(request) { Text("캘린더 읽기 허용하고 확인") }
+                        // 개인정보 동의(2026-10-19): the rationale links the web policy; the route opens it in a Custom Tab
+                        TextButton(openPrivacy, contentPadding = PaddingValues(0.dp)) { Text("개인정보 처리방침 보기", color = Quiet) }
                     }
                 }
             }

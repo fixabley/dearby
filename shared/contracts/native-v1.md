@@ -344,6 +344,16 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **검색**: `GET /v1/activities`·`GET /v1/discovery/programs`의 `q`가 활동 이름 외에 **태그 이름(한글·영문)** 에도 맞는다(`matchedActivityIds`에 포함). 필터 `tagIds?`(쉼표 목록, 모두 포함 AND). 발견 탭 검색창 아래에 태그 칩 줄(`GET /v1/tags`, 다중 선택)을 두고 선택하면 `tagIds`로 보낸다.
 - 표기: 코드 없이 사전 id를 쓰고 이름은 한글+영문 쌍(2026-10-18 어휘 규칙). JSON 키는 camelCase.
 
+## 개인정보 동의 — 2026-10-19 사용자 결정
+
+사용자: "프로필 입력하기 전에 개인정보동의 필수로 구할 수 있게". 프로필(이름·연락처·이력)을 처음 저장하기 전에 **개인정보 수집·이용 동의**와 **이용약관 동의**를 필수로 받고 서버에 기록한다.
+
+- 버전: 서버 설정 `dearby.consent.privacy-version`·`terms-version`(기본 `2026-10-19`, 웹 `/privacy`·`/terms` 시행일과 같다). 문서를 바꾸면 버전을 올리고, 버전이 다른 사용자는 다시 동의한다.
+- 저장: V37 `user_consents(user_id pk → users on delete cascade, privacy_version, terms_version, consented_at timestamptz)`. 계정 삭제와 함께 지워진다.
+- API: `POST /v1/me/consents {privacyVersion, termsVersion}`(Bearer) → 204. 현재 버전과 다르면 400 `CONSENT_VERSION`. `GET /v1/profile` 응답에 `consent: {privacyVersion, termsVersion, consentedAt}|null`과 `consentRequired: boolean`(기록이 없거나 버전이 다르면 true)을 더한다. **`PUT /v1/profile`은 `consentRequired`이면 403 `CONSENT_REQUIRED`**(이력 인증자료 업로드 등 프로필 하위 쓰기도 같다). 명함 발행·받은 명함·활동 신청 표시는 프로필이 있어야 하므로 자연히 뒤에 온다.
+- 앱(iOS·Android): 첫 프로필 퍼널의 첫 단계 앞, 그리고 프로필 화면을 열었을 때 `consentRequired`이면 **동의 화면**을 전체 화면으로 보인다. 제목 "시작하기 전에 동의가 필요해요", 필수 체크 두 개(`개인정보 수집·이용에 동의합니다 (필수)`, `이용약관에 동의합니다 (필수)`), 각 항목의 `보기`는 `https://dearby.wid.io.kr/privacy`·`/terms`를 인앱 브라우저(iOS `SFSafariViewController`, Android Custom Tab)로 연다. 둘 다 체크해야 `동의하고 계속`이 켜지고, 누르면 `POST /v1/me/consents` 뒤 원래 흐름으로 간다. 동의 전에는 프로필 입력 단계로 갈 수 없다. 서버가 403 `CONSENT_REQUIRED`를 돌려주면 같은 화면을 보인다. 로그아웃 상태에서는 보이지 않는다(로그인 뒤 프로필에서).
+- 웹: 프로필 입력이 없으므로 바뀌지 않는다(비로그인 저장 쿠키 안내는 `/privacy`에 이미 있다).
+
 ## 활동 종류(category) — 2026-10-19 사용자 결정
 
 사용자: "활동 종류도 추가해줬으면 좋겠어. 부트캠프, 컨퍼런스, 워크샵, 스터디, 강연 등으로 구분하고 프로그램 하위에서 그룹화되도록". 활동에 **종류** 하나를 둔다.

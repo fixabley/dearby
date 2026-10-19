@@ -14,6 +14,7 @@ import tools.jackson.databind.json.JsonMapper
 import java.util.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 // native-v1.md "프로필·명함 v2": 프로필 데이터, 버전 이력, 단계별 이력의 승인 상태, 인증자료, 선택 창 검색
@@ -23,7 +24,12 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
 
     private val json = JsonMapper.builder().build()
 
-    private fun user(): UUID = UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
+    // 동의(native-v1.md "개인정보 동의")까지 마친 사용자. 동의 전 상태는 아래 동의 테스트만 쓴다
+    private fun user(): UUID = userWithoutConsent().also { consent(it) }
+    private fun userWithoutConsent(): UUID = UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
+    private fun consent(user: UUID) = mvc.post("/v1/me/consents") {
+        asUser(user); contentType = MediaType.APPLICATION_JSON; content = """{"privacyVersion":"2026-10-19","termsVersion":"2026-10-19"}"""
+    }.andExpect { status { isNoContent() } }
 
     private fun MockHttpServletRequestDsl.asUser(id: UUID) {
         with(jwt().jwt { it.subject(id.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER")))
@@ -220,5 +226,25 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         val restored = read(mvc.post("/v1/profile/versions/7/restore") { asUser(user) }.andExpect { status { isOk() } })
         // 되돌린 직무는 지금 규칙대로 직접 입력이라 승인 대기가 된다
         assertEquals(listOf("옛날", "옛 직함", "pending"), listOf(restored["name"].asString(), restored["jobs"][0]["jobName"].asString(), restored["jobs"][0]["approval"].asString()))
+    }
+
+    @Test
+    fun `프로필 쓰기는 현재 버전의 개인정보·약관 동의가 있어야 하고, 동의는 GET에 실리며 계정과 함께 지워진다`() {
+        val user = userWithoutConsent()
+        val before = read(mvc.get("/v1/profile") { asUser(user) }.andExpect { status { isOk() } })
+        assertEquals(listOf(true, true), listOf(before["consentRequired"].asBoolean(), before["consent"].isNull))
+        val denied = read(put(user, """{"name":"조민준","jobs":[],"introduction":"","contacts":${contacts()},"histories":[]}""").andExpect { status { isForbidden() } })
+        assertEquals("CONSENT_REQUIRED", denied["code"].asString())
+        val wrong = read(mvc.post("/v1/me/consents") {
+            asUser(user); contentType = MediaType.APPLICATION_JSON; content = """{"privacyVersion":"2025-01-01","termsVersion":"2026-10-19"}"""
+        }.andExpect { status { isBadRequest() } })
+        assertEquals("CONSENT_VERSION", wrong["code"].asString())
+        consent(user)
+        val after = read(mvc.get("/v1/profile") { asUser(user) }.andExpect { status { isOk() } })
+        assertEquals(listOf(false, "2026-10-19", "2026-10-19"), listOf(after["consentRequired"].asBoolean(), after["consent"]["privacyVersion"].asString(), after["consent"]["termsVersion"].asString()))
+        assertFalse(after["consent"]["consentedAt"].isNull)
+        val saved = read(put(user, """{"name":"조민준","jobs":[],"introduction":"","contacts":${contacts()},"histories":[]}""").andExpect { status { isOk() } })
+        assertEquals(1, saved["version"].asInt())
+        assertEquals(1, jdbc.sql("select count(*) from user_consents where user_id = ?").param(user).query(Long::class.java).single())
     }
 }

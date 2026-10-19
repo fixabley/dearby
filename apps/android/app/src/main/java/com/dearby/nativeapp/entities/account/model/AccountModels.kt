@@ -57,7 +57,14 @@ data class ProfileJob(val id: String, val job: ActivityInfoRef?, val jobName: St
  * [job] is the server's read-only join of approved job names (what cards show); [jobs] is what the profile edits.
  */
 data class AccountProfile(val name: String, val job: String, val introduction: String, val contacts: List<AccountContact>,
-    val histories: List<AccountHistory>, val version: Int = 0, val jobs: List<ProfileJob> = emptyList())
+    val histories: List<AccountHistory>, val version: Int = 0, val jobs: List<ProfileJob> = emptyList(),
+    /** 개인정보 동의 기록 (contract "개인정보 동의"); null until the account agreed. Not sent on PUT. */
+    val consent: ConsentRecord? = null,
+    /** True when the server wants (re-)consent before any profile write; missing in older responses → false. */
+    val consentRequired: Boolean = false)
+
+/** `GET /v1/profile.consent`: the agreed document versions and when. */
+data class ConsentRecord(val privacyVersion: String, val termsVersion: String, val consentedAt: String)
 /**
  * A published card snapshot from `POST /v1/cards`; [introduction] is the filled-in template (markdown body), [template] comes on owner reads.
  */
@@ -100,7 +107,9 @@ fun AccountHistory.toJson(): JSONObject = JSONObject().put("id", id).put("kind",
 
 fun JSONObject.toProfile() = AccountProfile(optString("name"), optString("job"), optString("introduction"),
     optJSONArray("contacts")?.objects()?.map { it.toContact() }.orEmpty(), optJSONArray("histories")?.objects()?.map { it.toHistory() }.orEmpty(), optInt("version", 0),
-    optJSONArray("jobs")?.objects()?.map { it.toProfileJob() }.orEmpty())
+    optJSONArray("jobs")?.objects()?.map { it.toProfileJob() }.orEmpty(),
+    consent = optJSONObject("consent")?.let { ConsentRecord(it.getString("privacyVersion"), it.getString("termsVersion"), it.getString("consentedAt")) },
+    consentRequired = optBoolean("consentRequired", false))
 fun JSONObject.toProfileJob() = ProfileJob(getString("id"), optJSONObject("job")?.toRef(), text("jobName"), optString("approval", "approved"), text("approvalReason"))
 fun JSONObject.toPublishedCard() = PublishedCard(getString("id"), getString("name"), getString("description"), getString("profileName"),
     getString("job"), getJSONArray("contacts").objects().map { it.toContact() }, getJSONArray("histories").objects().map { it.toHistory() },

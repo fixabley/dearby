@@ -7,6 +7,10 @@ import io.wid.dearby.domain.ConflictException
 import io.wid.dearby.domain.ContactKind
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.InvalidInputException
+import io.wid.dearby.domain.PermissionDeniedException
+import io.wid.dearby.domain.profile.ConsentVersions
+import io.wid.dearby.domain.profile.ConsentStatus
+import io.wid.dearby.domain.profile.Consent
 import io.wid.dearby.domain.NotFoundException
 import io.wid.dearby.domain.PublicationStatus
 import io.wid.dearby.domain.UserId
@@ -29,6 +33,8 @@ class ProfileService(
     private val activities: ActivityRepository,
     private val roles: RoleRepository,
     private val jobs: JobRepository,
+    private val consents: ConsentRepository,
+    private val consentVersions: ConsentVersions,
 ) {
 
     @Transactional(readOnly = true)
@@ -37,6 +43,7 @@ class ProfileService(
     // 전체를 바꾼다. 바뀐 것이 없으면 버전을 올리지 않는다. ifMatch가 현재 버전과 다르면 409
     @Transactional
     fun update(userId: UserId, input: ProfileInput, ifMatch: Int?): Profile {
+        requireConsent(userId)
         val current = get(userId)
         if (ifMatch != null && ifMatch != current.version) throw ConflictException("프로필이 다른 곳에서 바뀌었습니다. 다시 불러와 주세요", "If-Match $ifMatch != ${current.version}")
         val next = build(userId, input, current)
@@ -62,6 +69,7 @@ class ProfileService(
     // 그 버전의 내용으로 새 버전을 만든다. 상태는 지금 기준으로 다시 정한다
     @Transactional
     fun restore(userId: UserId, version: Int): Profile {
+        requireConsent(userId)
         val snapshot = version(userId, version).profile
         val input = ProfileInput(
             name = snapshot.name,
@@ -80,6 +88,7 @@ class ProfileService(
 
     @Transactional
     fun addEvidence(userId: UserId, historyId: UUID, fileName: String, contentType: String, data: ByteArray): EvidenceMeta {
+        requireConsent(userId)
         val history = requireHistory(userId, historyId)
         if (contentType !in EVIDENCE_TYPES) throw InvalidInputException("이미지(JPEG·PNG·WebP)나 PDF만 올릴 수 있습니다")
         if (data.isEmpty() || data.size > MAX_EVIDENCE_BYTES) throw InvalidInputException("파일은 5MB까지입니다")
@@ -99,10 +108,32 @@ class ProfileService(
     // 확인된 이력은 자료를 지워도 그대로. 아니면 남은 자료가 없을 때 미인증으로 돌아간다
     @Transactional
     fun deleteEvidence(userId: UserId, historyId: UUID, evidenceId: UUID) {
+        requireConsent(userId)
         val history = requireHistory(userId, historyId)
         if (!evidence.delete(historyId, evidenceId)) throw NotFoundException("인증자료를 찾을 수 없습니다", "Evidence not found: $evidenceId")
         if (history.verification != VerificationStatus.VERIFIED && evidence.count(historyId) == 0) {
             reviews.updateVerification(historyId, VerificationStatus.UNVERIFIED)
+        }
+    }
+
+    // 개인정보 동의(native-v1.md "개인정보 동의"): 기록이 없거나 버전이 다르면 프로필 쓰기를 막는다
+    @Transactional(readOnly = true)
+    fun consent(userId: UserId): ConsentStatus {
+        val consent = consents.find(userId)
+        return ConsentStatus(consent, !consentVersions.satisfiedBy(consent))
+    }
+
+    @Transactional
+    fun giveConsent(userId: UserId, privacyVersion: String, termsVersion: String) {
+        if (privacyVersion != consentVersions.privacy || termsVersion != consentVersions.terms) {
+            throw InvalidInputException("동의 문서 버전이 현재 버전과 다릅니다", "Consent version mismatch: $privacyVersion/$termsVersion", code = CONSENT_VERSION)
+        }
+        consents.save(userId, Consent(privacyVersion, termsVersion, OffsetDateTime.now(ZoneOffset.UTC)))
+    }
+
+    private fun requireConsent(userId: UserId) {
+        if (!consentVersions.satisfiedBy(consents.find(userId))) {
+            throw PermissionDeniedException("개인정보 수집·이용과 이용약관에 먼저 동의해 주세요", "Consent required: $userId", code = CONSENT_REQUIRED)
         }
     }
 
@@ -231,6 +262,8 @@ class ProfileService(
     }
 
     companion object {
+        const val CONSENT_REQUIRED = "CONSENT_REQUIRED"
+        const val CONSENT_VERSION = "CONSENT_VERSION"
         const val MAX_PAGE_SIZE = 100
         const val MAX_EVIDENCE_PER_HISTORY = 3
         const val MAX_JOBS = 10

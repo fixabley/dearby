@@ -6,20 +6,42 @@ import Observation
 @MainActor @Observable final class ProfileModel {
     enum Phase: Equatable { case signedOut, loading, loaded(AccountProfile), failed }
     private(set) var phase = Phase.loading
+    /// The consent gate (contract "개인정보 동의"): on when the loaded profile says `consentRequired` or a write came back
+    /// 403 `CONSENT_REQUIRED`; off once `POST /v1/me/consents` succeeds. Signed out, it is never shown.
+    private(set) var consentPending = false
     let account: AccountViewModel
-    init(account: AccountViewModel) { self.account = account }
+    /// Where the policy pages live (`/privacy`, `/terms`).
+    let webOrigin: URL
+    init(account: AccountViewModel, webOrigin: URL = URL(string: AppOrigins.defaultWeb)!) {
+        self.account = account
+        self.webOrigin = webOrigin
+    }
     var profile: AccountProfile? { if case .loaded(let profile) = phase { profile } else { nil } }
 
     func load() async {
         guard account.session != nil else { phase = .signedOut; return }
         if case .loaded = phase {} else { phase = .loading }
         do {
-            phase = .loaded(try await account.authorized { [client = account.client] in try await client.profile($0) })
+            let loaded = try await account.authorized { [client = account.client] in try await client.profile($0) }
+            phase = .loaded(loaded)
+            consentPending = loaded.consentRequired
         } catch AccountError.unauthorized {
             phase = .signedOut
+            consentPending = false
         } catch {
             phase = .failed
         }
+    }
+    /// 동의하고 계속: records the current versions; returns an error message to show, or nil when recorded.
+    func consent() async -> String? {
+        do {
+            try await account.authorized { [client = account.client] in
+                try await client.recordConsent(privacyVersion: ConsentVersions.privacy, termsVersion: ConsentVersions.terms, $0)
+            }
+            consentPending = false
+            await load()
+            return nil
+        } catch { return message(error, fallback: "동의를 저장하지 못했어요. 잠시 후 다시 시도해 주세요.") }
     }
     /// Saves the form with `If-Match`; returns an error message to show, or nil when saved.
     func save(_ form: ProfileForm) async -> String? {
@@ -67,6 +89,9 @@ import Observation
             phase = .signedOut
             return "로그인이 만료됐어요. 다시 로그인해 주세요."
         case .rejected(let detail): return detail
+        case .consentRequired:
+            consentPending = true
+            return "시작하기 전에 개인정보 수집·이용과 이용약관에 동의해 주세요."
         case .conflict: return "프로필이 다른 곳에서 바뀌었어요. ‘원래대로’를 눌러 새로 불러온 뒤 다시 고쳐 주세요."
         case .notFound: return "찾을 수 없어요. 프로필을 다시 불러와 주세요."
         default: return fallback

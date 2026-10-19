@@ -50,6 +50,7 @@ class AccountDeletionFlowTest(
         val user = User(UUID.randomUUID(), listOf(UserRole.USER))
         val id = user.id
         jdbc.sql("insert into users (id) values (?)").param(id).update()
+        jdbc.sql("insert into user_consents (user_id, privacy_version, terms_version, consented_at) values (?, '2026-10-19', '2026-10-19', now())").param(id).update()
         jdbc.sql("insert into user_roles (user_id, role) values (?, 'USER')").param(id).update()
         jdbc.sql("insert into contacts (id, user_id, kind, label, value, position) values (?, ?, 'EMAIL', '메일', 'a@example.com', 0)").params(UUID.randomUUID(), id).update()
         jdbc.sql("insert into profiles (user_id, name, introduction, version, created_at, updated_at) values (?, '이름', '', 1, now(), now())").param(id).update()
@@ -95,11 +96,13 @@ class AccountDeletionFlowTest(
             assertEquals(0, count(table, column, user.id), table)
         }
         assertEquals(0, count("user_entities", "id", handle(user.id)))
+        assertEquals(0, count("user_consents", "user_id", user.id))
         // 내 명함을 받아 둔 다른 사람의 지갑 행도 함께 지워진다
         assertEquals(0, jdbc.sql("select count(*) from receipts r left join business_cards b on b.id = r.card_id where b.id is null").query(Int::class.java).single())
         assertEquals(1, count("user_entities", "id", handle(other.id)))
         assertEquals(1, count("users", "id", other.id))
         assertEquals(1, count("profiles", "user_id", other.id))
+        assertEquals(1, count("user_consents", "user_id", other.id))
         // 지운 계정의 refresh token은 더 쓸 수 없다
         mvc.post("/v1/auth/refresh") { contentType = MediaType.APPLICATION_JSON; content = """{"refreshToken":"${issued.refreshToken}"}""" }
             .andExpect { status { isUnauthorized() } }

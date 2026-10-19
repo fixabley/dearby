@@ -11,12 +11,14 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_JOBS__PROFILE_JOBS_US
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_VERSIONS__PROFILE_VERSIONS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECEIPTS__RECEIPTS_RECIPIENT_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.USER_CONSENTS__USER_CONSENTS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ROLES__USER_ROLES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts.ContactsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories.ProfileHistoriesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileJobs.ProfileJobsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions.ProfileVersionsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts.ReceiptsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserConsents.UserConsentsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles.UserRolesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.UsersRecord
 
@@ -202,6 +204,22 @@ open class Users(
 
     val receipts: ReceiptsPath
         get(): ReceiptsPath = receipts()
+
+    private lateinit var _userConsents: UserConsentsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.user_consents</code> table
+     */
+    fun userConsents(): UserConsentsPath {
+        if (!this::_userConsents.isInitialized)
+            _userConsents = UserConsentsPath(this, null, USER_CONSENTS__USER_CONSENTS_USER_ID_FKEY.inverseKey)
+
+        return _userConsents;
+    }
+
+    val userConsents: UserConsentsPath
+        get(): UserConsentsPath = userConsents()
 
     private lateinit var _userRoles: UserRolesPath
 

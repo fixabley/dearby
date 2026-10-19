@@ -21,7 +21,8 @@
     "TokenPair",
     "TokenStore",
     "TokenVault",
-    "Wallet"
+    "Wallet",
+    "ProfileConsent"
   ],
   "entities/activity": [
     "ActivityCategory",
@@ -76,7 +77,9 @@
     "DearbyStyle",
     "MarkdownDocument",
     "NameIndex",
-    "SearchQuery"
+    "SearchQuery",
+    "ConsentVersions",
+    "SafariView"
   ],
   "widgets/activity": [
     "ActivityCard",
@@ -122,6 +125,7 @@
     "ReceivedCardRow",
     "TemplateDocument",
     "WalletModel",
-    "WalletPage"
+    "WalletPage",
+    "ConsentPage"
   ]
 }

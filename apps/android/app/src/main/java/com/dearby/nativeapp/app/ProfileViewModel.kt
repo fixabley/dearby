@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.dearby.nativeapp.entities.account.api.AccountClient
 import com.dearby.nativeapp.entities.account.api.AccountError
 import com.dearby.nativeapp.entities.account.api.AccountException
+import com.dearby.nativeapp.shared.config.ConsentVersions
 import com.dearby.nativeapp.entities.account.model.AccountContact
 import com.dearby.nativeapp.entities.account.model.AccountHistory
 import com.dearby.nativeapp.entities.account.model.AccountProfile
@@ -56,9 +57,29 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
         try {
             val stored = account.authorized { account.client.profile(it) }
             // A reload resets the form unless an edit is pending.
-            mutable.update { it.copy(phase = ProfilePhase.LOADED, profile = stored, form = if (changed && !it.saving) it.form else ProfileFormState.from(stored), errors = null, error = null) }
+            mutable.update { it.copy(phase = ProfilePhase.LOADED, profile = stored, form = if (changed && !it.saving) it.form else ProfileFormState.from(stored), errors = null, error = null,
+                consentRequired = stored.consentRequired, consentError = null) }
         } catch (e: AccountException) {
             mutable.update { ProfileViewState(if (e.error == AccountError.UNAUTHORIZED) ProfilePhase.SIGNED_OUT else ProfilePhase.FAILED) }
+        }
+    }
+    /** 개인정보 동의 (contract "개인정보 동의"): records both versions, then reloads so the profile (or the setup funnel) can start. */
+    fun consent() {
+        if (mutable.value.consenting) return
+        mutable.update { it.copy(consenting = true, consentError = null) }
+        viewModelScope.launch {
+            try {
+                account.authorized { account.client.consent(ConsentVersions.PRIVACY, ConsentVersions.TERMS, it) }
+                mutable.update { it.copy(consenting = false, consentRequired = false) }
+                load()
+            } catch (e: AccountException) {
+                mutable.update { it.copy(consenting = false, consentError = when (e.error) {
+                    AccountError.UNAUTHORIZED -> { "로그인이 만료됐어요. 다시 로그인해 주세요." }
+                    AccountError.BAD_REQUEST -> "앱이 알고 있는 약관 버전이 오래됐어요. 앱을 업데이트한 뒤 다시 시도해 주세요."
+                    else -> "동의를 저장하지 못했어요. 잠시 후 다시 시도해 주세요."
+                }) }
+                if (e.error == AccountError.UNAUTHORIZED) mutable.update { it.copy(phase = ProfilePhase.SIGNED_OUT) }
+            }
         }
     }
     fun change(form: ProfileFormState) = mutable.update { current ->
@@ -83,6 +104,8 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
                 val saved = account.authorized { account.client.saveProfile(profile(form), form.version, it) }
                 mutable.update { it.copy(profile = saved, form = ProfileFormState.from(saved), saving = false) }
             } catch (e: AccountException) {
+                // 403 CONSENT_REQUIRED (contract "개인정보 동의"): the consent screen comes back instead of an error line.
+                if (e.error == AccountError.FORBIDDEN && e.code == "CONSENT_REQUIRED") { mutable.update { it.copy(saving = false, consentRequired = true) }; return@launch }
                 mutable.update { it.copy(saving = false, error = message(e, "저장하지 못했어요. 잠시 후 다시 시도해 주세요.")) }
             }
         }
