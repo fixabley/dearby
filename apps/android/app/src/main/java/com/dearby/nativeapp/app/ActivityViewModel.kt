@@ -77,7 +77,7 @@ class ActivityViewModel(
         start(debounce = true)
     }
     fun reload() = start(debounce = false)
-    /** The `모집 중만 보기` switch (contract "모집 중인 프로그램만 보기"): off also lists programs active in the last two years. */
+    /** The `모집 중만 보기` switch (contract "모집 중인 프로그램만 보기"): off also lists programs active in the last three years and always shows their other activities when expanded. */
     fun setOpenOnly(value: Boolean) {
         if (value == state.value.openOnly) return
         mutable.update { it.copy(openOnly = value) }
@@ -154,17 +154,19 @@ class ActivityViewModel(
             }
             val now = Instant.now()
             val open = items
-            // Nothing open: show the program's other activities (contract "모집 중인 프로그램만 보기", 2026-10-19 보완) in two groups —
-            // 모집 예정 (recruitment or activity start still ahead, nearest first) and 지난 활동 (started within two years, most recent first).
-            val others = if (open.isNotEmpty()) emptyList() else try {
+            // The program's other activities (contract "모집 중인 프로그램만 보기") in two groups — 모집 예정 (recruitment or activity start
+            // still ahead, nearest first) and 지난 활동 (started within three years, most recent first). Shown always while the switch is
+            // off (2026-10-19 저녁 결정), and only when nothing is open while it is on. Activities already shown as open are excluded.
+            val others = if (open.isNotEmpty() && state.value.openOnly) emptyList() else try {
                 fetch(null, null, programId, false, tagIds).items
             } catch (e: CancellationException) { throw e } catch (e: Exception) {
                 Log.w("Dearby", "Program activities (fallback) load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
                 emptyList()
             }
-            val upcoming = others.filter { (it.upcomingKey ?: Instant.MIN) > now }.sortedBy { it.upcomingKey }
-            val since = now.minus(730, java.time.temporal.ChronoUnit.DAYS)
-            val past = others.filter { it !in upcoming && (it.activityStart ?: Instant.MIN) >= since }.sortedByDescending { it.activityStart }
+            val openIds = open.map { it.id }.toSet()
+            val upcoming = others.filter { it.id !in openIds && (it.upcomingKey ?: Instant.MIN) > now }.sortedBy { it.upcomingKey }
+            val since = now.minus(PAST_DAYS, java.time.temporal.ChronoUnit.DAYS)
+            val past = others.filter { it.id !in openIds && it !in upcoming && (it.activityStart ?: Instant.MIN) >= since }.sortedByDescending { it.activityStart }
             val shown = open + upcoming + past
             models = models + shown.associateBy { it.id }
             val today = today()
@@ -220,6 +222,8 @@ class ActivityViewModel(
 }
 
 private const val MAX_PROGRAM_PAGES = 5
+/** 지난 활동 window: the last three years (2026-10-19 저녁, 2년 → 3년). */
+private const val PAST_DAYS = 1095L
 private fun today(): LocalDate = LocalDate.now(ZoneId.of("Asia/Seoul"))
 private val sessionTime = DateTimeFormatter.ofPattern("HH:mm", Locale.KOREAN)
 private val sessionDay = DateTimeFormatter.ofPattern("M/d", Locale.KOREAN)
