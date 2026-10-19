@@ -21,6 +21,7 @@ import com.dearby.nativeapp.shared.ui.*
 @Composable fun SignInSheet(busy: Boolean, message: String?, signIn: () -> Unit, apple: () -> Unit, google: (() -> Unit)?, signUp: () -> Unit, close: () -> Unit) {
     ModalBottomSheet(close, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            DearbyBrand(Modifier.fillMaxWidth().padding(top = 4.dp))
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("로그인", Modifier.semantics { heading() }, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineSmall)
                 Text("패스키는 기기 잠금(지문·얼굴·PIN)으로 로그인해요. 비밀번호는 필요 없어요.", color = Quiet, style = MaterialTheme.typography.bodyMedium)

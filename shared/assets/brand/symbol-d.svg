@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" fill="none" stroke="#007F80" stroke-width="46" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Dearby symbol D: 맞잡은 두 손. Two mirrored hooks enter from left and right and hook through each other at the centre (hook-and-eye clasp). The lens of negative space inside the knot is the grip; each palm ends in a short thumb. -->
+  <path d="M64 220 H216 A62 62 0 0 1 216 344 H160"/>
+  <path d="M160 344 L128 318"/>
+  <path d="M448 292 H296 A62 62 0 0 1 296 168 H352"/>
+  <path d="M352 168 L384 194"/>
+</svg>

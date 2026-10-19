@@ -1,0 +1,4 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" fill="#007F80">
+  <!-- Dearby symbol C: two name cards handed to each other; the overlap stays open, so the exchange itself is the shape. -->
+  <path fill-rule="evenodd" d="M72 168 a40 40 0 0 1 40 -40 H272 a40 40 0 0 1 40 40 V312 a40 40 0 0 1 -40 40 H112 a40 40 0 0 1 -40 -40 Z M200 200 a40 40 0 0 1 40 -40 H400 a40 40 0 0 1 40 40 V344 a40 40 0 0 1 -40 40 H240 a40 40 0 0 1 -40 -40 Z"/>
+</svg>

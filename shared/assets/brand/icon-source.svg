@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Dearby app icon source: teal field, white mark whose bounding box is ~56% of the icon, centred. Mark = symbol.svg (512 grid) scaled 1.8 and offset by 51.2. -->
+  <rect width="1024" height="1024" fill="#007F80"/>
+  <g transform="translate(51.2 51.2) scale(1.8)" fill="none" stroke="#FFFFFF" stroke-width="58" stroke-linecap="round">
+    <path d="M187 355 A100 100 0 1 1 296 278"/>
+    <path d="M325 157 A100 100 0 1 1 216 235"/>
+  </g>
+</svg>

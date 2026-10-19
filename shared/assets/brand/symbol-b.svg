@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" fill="none" stroke="#007F80" stroke-width="58" stroke-linecap="round">
+  <!-- Dearby symbol B: two rings link through each other like clasped hands. Each ring yields once (left passes over at the top, right at the bottom). The breaks are real gaps, so the mark stays a single-colour shape on any background. -->
+  <path d="M187 355 A100 100 0 1 1 296 278"/>
+  <path d="M325 157 A100 100 0 1 1 216 235"/>
+</svg>

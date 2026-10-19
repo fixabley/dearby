@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" fill="#007F80">
+  <!-- Dearby symbol D2: 맞잡은 손, 면으로. Each hand = wrist/palm pill + a finger block that wraps over the other palm. A 12-unit halo is cut from each palm where the other hand's fingers pass over it, so the clasp reads in one colour. -->
+  <defs>
+    <clipPath id="lp"><path fill-rule="evenodd" d="M0 0H512V512H0Z M192 164 h136 a58 58 0 0 1 0 122 h-136 a58 58 0 0 1 0 -122 Z"/></clipPath>
+    <clipPath id="rp"><path fill-rule="evenodd" d="M0 0H512V512H0Z M184 226 h136 a58 58 0 0 1 0 122 h-136 a58 58 0 0 1 0 -122 Z"/></clipPath>
+  </defs>
+  <rect x="40" y="212" width="216" height="150" rx="70" clip-path="url(#lp)"/>
+  <rect x="256" y="150" width="216" height="150" rx="70" clip-path="url(#rp)"/>
+  <rect x="196" y="238" width="112" height="98" rx="46"/>
+  <rect x="204" y="176" width="112" height="98" rx="46"/>
+</svg>
