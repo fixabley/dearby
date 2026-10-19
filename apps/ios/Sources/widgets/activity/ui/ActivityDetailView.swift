@@ -3,8 +3,8 @@ import SwiftUI
 struct ActivityDetailView: View {
     let state: ActivityViewModel
     let activityID: String
-    @State private var showReport = false
     @State private var showCalendar = false
+    @State private var confirmingRemoval = false
     private var activity: ActivityModel? { state.activity(activityID) }
     private var applied: Bool { state.appliedIDs.contains(activityID) }
     var body: some View {
@@ -19,11 +19,6 @@ struct ActivityDetailView: View {
                             ActivityInformationView(activity: activity, checkCalendar: { showCalendar = true })
                             place(activity)
                             source(activity)
-                            Divider()
-                            Text("신청 표시는 이 앱 안에서만 남기는 기록이에요. 실제 접수 여부와 무관해요.")
-                                .font(.footnote).foregroundStyle(DearbyStyle.quiet)
-                            Button("신청 상태 수정") { showReport = true }.frame(minHeight: 44)
-                            Text("신청 표시는 앱을 종료하면 사라져요.").font(.caption).foregroundStyle(DearbyStyle.quiet)
                         }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 24)
                     }
                 }
@@ -44,7 +39,6 @@ struct ActivityDetailView: View {
         }
         .navigationTitle("활동 상세").navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
-        .toolbarBackground(Color(.systemBackground), for: .navigationBar).toolbarBackground(.visible, for: .navigationBar)
         .toolbar {
             if let url = activity?.officialURL {
                 ShareLink(item: url) { Image(systemName: "square.and.arrow.up") }.accessibilityLabel("활동 공식 안내 링크 공유")
@@ -54,11 +48,10 @@ struct ActivityDetailView: View {
             if let activity { CalendarConflictView(schedules: activity.schedules) }
         }
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)
-        .confirmationDialog("신청 상태", isPresented: $showReport, titleVisibility: .visible) {
-            Button("신청했어요") { state.apply(activityID, true) }
-            Button("신청하지 않았어요") { state.apply(activityID, false) }
-            Button("나중에", role: .cancel) {}
-        } message: { Text("이 앱 안에서만 남기는 표시예요. 주최 측 접수 확인이 아니에요.") }
+        .confirmationDialog("내 활동에서 뺄까요?", isPresented: $confirmingRemoval, titleVisibility: .visible) {
+            Button("내 활동에서 빼기", role: .destructive) { state.apply(activityID, false) }
+            Button("취소", role: .cancel) {}
+        } message: { Text("참여 확정·단계 표시도 함께 지워져요.") }
     }
     private func identity(_ activity: ActivityModel) -> some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -96,24 +89,37 @@ struct ActivityDetailView: View {
     }
     /// The CTA opens the application link, else the official notice (contract "신청 확인 조건 완화" 2026-10-19 밤). Unless applying
     /// is over it reads as applying and arms the "신청하셨나요?" prompt for when the app comes back from the browser.
+    /// Under it, whatever the recruitment state, `내 활동에 추가` marks the activity applied by the same path as "신청했어요" (contract
+    /// "내 활동 직접 추가" 2026-10-20); once applied it becomes `내 활동에서 보기` with `내 활동에서 빼기` in its context menu.
     @ViewBuilder private func applicationActions(_ activity: ActivityModel) -> some View {
         let site = activity.applicationSiteURL
-        if let url = site ?? activity.officialURL {
-            let closed = activity.applicationClosed(at: state.loadedAt)
-            VStack(spacing: 0) {
-                Divider()
+        let closed = activity.applicationClosed(at: state.loadedAt)
+        VStack(spacing: 10) {
+            Divider().padding(.bottom, 2)
+            if let url = site ?? activity.officialURL {
                 Link(destination: url) {
                     Text(closed ? "공식 안내 보기" : site != nil ? "신청 사이트 열기" : "공식 사이트에서 신청").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent).controlSize(.large).tint(DearbyStyle.tealFill).font(.dearby(.body).weight(.semibold)).accessibilityIdentifier("open-application")
+                .buttonStyle(.borderedProminent).tint(DearbyStyle.tealFill).accessibilityIdentifier("open-application")
                 .accessibilityHint("외부 브라우저로 열려요")
                 .environment(\.openURL, OpenURLAction { opened in
                     if !closed { state.openedApplication(activity.id) }
                     return .systemAction(opened)
                 })
-                .padding(.horizontal, 20).padding(.vertical, 12)
-            }.background(Color(.systemBackground))
+            }
+            if applied {
+                Button { state.showInMine = activity.id } label: { Label("내 활동에서 보기", systemImage: "checklist").frame(maxWidth: .infinity) }
+                    .buttonStyle(.bordered).accessibilityIdentifier("show-in-mine")
+                    .contextMenu { Button("내 활동에서 빼기", role: .destructive) { confirmingRemoval = true } }
+                    .accessibilityHint("길게 누르면 내 활동에서 뺄 수 있어요")
+            } else {
+                Button { state.apply(activity.id, true) } label: { Label("내 활동에 추가", systemImage: "checklist").frame(maxWidth: .infinity) }
+                    .buttonStyle(.bordered).accessibilityIdentifier("add-to-mine")
+            }
+            Text("직접 남기는 기록이며 주최 측 확인은 아니에요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
         }
+        .controlSize(.large).font(.dearby(.body).weight(.semibold)).tint(DearbyStyle.teal)
+        .padding(.horizontal, 20).padding(.bottom, 12).background(Color(.systemBackground))
     }
     /// 장소 (contract "활동 장소"): the curated place's name and address open Apple Maps; otherwise the collected text, if any.
     @ViewBuilder private func place(_ activity: ActivityModel) -> some View {

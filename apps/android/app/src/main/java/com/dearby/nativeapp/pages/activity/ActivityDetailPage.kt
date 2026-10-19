@@ -30,7 +30,7 @@ import com.dearby.nativeapp.shared.ui.*
     openMap: () -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("활동 상세", back) { if (activity.officialUrl != null) IconButton(share) { Icon(Icons.Rounded.Share, "활동 공유", tint = MaterialTheme.colorScheme.primary) } }
+        DearbyTopBar("활동 상세", back) { if (activity.officialUrl != null) IconButton(share) { Icon(Icons.Rounded.Share, "활동 공유", tint = MaterialTheme.colorScheme.primary) } }
         if (activity.applied) Surface(color = MaterialTheme.colorScheme.primaryContainer) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {

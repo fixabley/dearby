@@ -45,7 +45,7 @@ data class MyCardsState(
  */
 @Composable fun MyCardsPage(
     state: MyCardsState, create: () -> Unit, select: (String) -> Unit, showQr: (String) -> Unit, edit: (String) -> Unit, delete: (String) -> Unit,
-    contact: (ContactState) -> Unit, retry: () -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {},
+    contact: (ContactState) -> Unit, retry: () -> Unit,
 ) {
     var confirmDelete by remember { mutableStateOf<String?>(null) }
     confirmDelete?.let { id ->
@@ -53,8 +53,8 @@ data class MyCardsState(
             confirmButton = { TextButton({ confirmDelete = null; delete(id) }) { Text("지우기", color = MaterialTheme.colorScheme.error) } },
             dismissButton = { TextButton({ confirmDelete = null }) { Text("취소") } })
     }
+    // No title of its own since 2026-10-20 (contract "명함 탭 통합"): the 명함 tab's top bar and segment row sit above this content.
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("내 명함") { TabActions(settings, notify) }
         when (state.phase) {
             MyCardsPhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
             MyCardsPhase.FAILED -> DearbyErrorState("명함을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.", retry, Modifier.fillMaxSize())

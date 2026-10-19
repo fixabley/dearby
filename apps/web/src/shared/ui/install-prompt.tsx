@@ -1,4 +1,5 @@
 import { BrandSymbol } from "./brand-symbol";
+import { Icon } from "./icon";
 import styles from "./install-prompt.module.css";
 
 /**
@@ -27,9 +28,9 @@ export function InstallPrompt({
         ) : (
           <p>
             Safari의{" "}
-            <svg className={styles.share} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" role="img" aria-label="공유">
-              <path d="M12 3v12m-4-8 4-4 4 4M6 11H5v10h14V11h-1" />
-            </svg>{" "}
+            <span className={styles.share} role="img" aria-label="공유">
+              <Icon name="share" size="inline" />
+            </span>{" "}
             공유 버튼(보이지 않으면 ⋯ 메뉴 안)을 누른 뒤 <b>홈 화면에 추가</b>를 고르세요.
             {separateStorage && <span className={styles.note}>홈 화면 앱은 Safari와 따로 저장돼요.</span>}
           </p>

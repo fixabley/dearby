@@ -22,7 +22,7 @@ data class ComposerHistory(val id: String, val title: String, val detail: String
 /**
  * 명함 제작(contract "템플릿", 2026-10-18 앱 안 꾸미기 삭제): 명함 이름을 적고 공개할 연락처·이력을 고른다. 본문은 앱 내장 기본 템플릿을 채운
  * 결과를 읽기 전용 미리보기로 보인다. 로그인·발행·오류는 화면이 맡고, 이 위젯은 값과 콜백만 받는다. 내용이 바뀌면 "원래대로"가 나타난다.
- * 명함 이름은 기본 크기 `OutlinedTextField`, 공개 스위치는 `ListItem` 줄 전체가 토글이다(contract "폼은 플랫폼 기본 컴포넌트", 2026-10-19 밤).
+ * 명함 이름은 라벨을 위에 쌓은 큰 입력 `DearbyField`(contract "폼 라벨·입력 크기", 2026-10-20), 공개 스위치는 `ListItem` 줄 전체가 토글이다(contract "폼은 플랫폼 기본 컴포넌트").
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable fun CardComposer(
@@ -33,8 +33,7 @@ data class ComposerHistory(val id: String, val title: String, val detail: String
     Column(modifier.fillMaxSize().dismissKeyboardOnTap()) {
         Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
             Section("명함") {
-                OutlinedTextField(cardTitle, onCardTitleChange, Modifier.fillMaxWidth(), label = { Text("명함 이름") },
-                    supportingText = { Text("선택이에요. 비워 두면 '내 명함'으로 저장해요.") }, singleLine = true)
+                DearbyField("명함 이름", cardTitle, onCardTitleChange, hint = "선택이에요. 비워 두면 '내 명함'으로 저장해요.")
             }
             // The preview sits on the page background, no card around it (contract "카드는 섹션을 나눌 때만").
             Section("미리보기") { MarkdownBody(preview) }
@@ -61,7 +60,7 @@ data class ComposerHistory(val id: String, val title: String, val detail: String
                     if (publishing) CircularProgressIndicator(Modifier.size(20.dp), color = LocalContentColor.current, strokeWidth = 2.dp) else Text("명함 발행")
                 }
             }
-            Text("발행한 명함은 바뀌지 않아요. 고치면 새 명함으로 발행돼요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
+            Text("발행한 명함은 바뀌지 않아요. 고치면 새 명함으로 발행돼요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

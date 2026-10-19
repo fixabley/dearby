@@ -1,22 +1,17 @@
+/* 화면 안 안내: 24px glyph + text on the background, no box (contract "카드는 섹션 구분에만"). */
 .notice {
   display: flex;
-  gap: 10px;
-  padding: 14px 16px;
-  border-radius: 12px;
-  background: var(--mint);
+  gap: 12px;
+  padding: 12px 0;
   color: var(--ink);
   font-size: 15px;
   line-height: 1.55;
   word-break: keep-all;
 }
-.notice[data-tone="warning"] {
-  border: 1px solid var(--line);
-  background: var(--soft);
-}
 .icon {
   flex-shrink: 0;
-  margin-top: 2px;
-  color: var(--teal-dark);
+  margin-top: 1px;
+  color: var(--teal);
 }
 .notice[data-tone="warning"] .icon {
   color: var(--danger);
@@ -43,7 +38,7 @@
   border: 1px solid var(--teal);
   border-radius: 10px;
   background: var(--card);
-  color: var(--teal-dark);
+  color: var(--teal);
   font: inherit;
   font-weight: 600;
 }

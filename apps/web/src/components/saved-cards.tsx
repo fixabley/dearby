@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { type GuestItem, expiryLabel } from "@/lib/models";
 import { InstallOffer } from "./install-offer";
 import { errorMessage, mutateGuest, request, RequestError } from "@/lib/client";
-import { Empty, Failure, Loading } from "@/shared/ui/states";
+import { Failure, Loading } from "@/shared/ui/states";
+import { CenteredMessage } from "@/shared/ui/centered-message";
 import { Icon } from "@/shared/ui/icon";
 export function SavedCards() {
   const [cards, setCards] = useState<GuestItem[]>();
@@ -91,9 +92,6 @@ export function SavedCards() {
               {expiry && <span className="badge">{expiry}</span>}
             </p>
           </div>
-          <span className="card-chevron" aria-hidden="true">
-            ›
-          </span>
         </Link>
         <button
           className="remove-button"
@@ -116,7 +114,7 @@ export function SavedCards() {
         </p>
       </div>
       <div className="cookie-info">
-        <Icon name="bookmark" />
+        <Icon name="info" tone="secondary" />
         <div>
           <strong>이 브라우저에서 저장한 명함이에요.</strong>
           <p>
@@ -135,17 +133,14 @@ export function SavedCards() {
         {notice}
       </p>
       {invalid ? (
-        <div className="state">
-          <h2>저장 세션을 사용할 수 없어요</h2>
-          <p>
-            삭제되었거나 유효하지 않은 세션이에요.
-            <br />
-            자동으로 새 목록을 만들지 않았어요.
-          </p>
-          <button className="button secondary" disabled={busy} onClick={reset}>
-            저장 세션 초기화
-          </button>
-        </div>
+        <CenteredMessage
+          icon="warning"
+          tone="danger"
+          title="저장 세션을 사용할 수 없어요"
+          message="삭제되었거나 유효하지 않은 세션이에요. 자동으로 새 목록을 만들지 않았어요."
+          primary={{ label: "저장 세션 초기화", onClick: reset, disabled: busy }}
+          role="alert"
+        />
       ) : error ? (
         <Failure
           message={error}
@@ -157,13 +152,12 @@ export function SavedCards() {
       ) : !cards ? (
         <Loading />
       ) : !cards.length ? (
-        <Empty kind="bookmark" title="아직 저장한 명함이 없어요">
-          <p>
-            받은 명함 링크를 열고
-            <br />
-            ‘명함 저장’을 눌러 보세요.
-          </p>
-        </Empty>
+        <CenteredMessage
+          icon="inbox"
+          title="아직 저장한 명함이 없어요"
+          message="받은 명함 링크를 열고 ‘브라우저에 저장’을 눌러 보세요."
+          primary={{ label: "활동 둘러보기", href: "/" }}
+        />
       ) : (
         <>
           <p className="list-count">명함 {cards.length}개</p>

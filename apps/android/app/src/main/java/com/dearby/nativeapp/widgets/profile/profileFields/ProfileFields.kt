@@ -5,12 +5,10 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Event
 import androidx.compose.material.icons.rounded.RemoveCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
@@ -18,7 +16,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
@@ -38,8 +36,8 @@ val ProfileContactKinds = listOf(
 
 /**
  * 프로필 연락처 입력. 전화번호·이메일은 필수 칸이고, 그 밖의 종류는 `연락처 추가`에서 골라 붙이고 지울 수 있다.
- * 값·형식 검사·오류 문구는 화면이 갖고 이 위젯은 보이고 바뀐 값을 알린다. 칸은 Material 3 `OutlinedTextField` 기본 크기이고 필수·오류 문장은
- * `supportingText`, 추가 연락처의 삭제는 칸의 `trailingIcon`, `연락처 추가`는 `DearbyOutlineButton`이다(contract "폼은 플랫폼 기본 컴포넌트", 2026-10-19 밤).
+ * 값·형식 검사·오류 문구는 화면이 갖고 이 위젯은 보이고 바뀐 값을 알린다. 칸은 라벨을 위에 쌓은 큰 입력 `DearbyField`이고 필수·오류 문장은
+ * `supportingText`, 추가 연락처의 삭제는 칸의 `trailingIcon`, `연락처 추가`는 행 전체가 눌리는 `AddRow`다(contract "폼 라벨·입력 크기"·"입력 영역 터치", 2026-10-20).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun ProfileContactFields(
@@ -49,21 +47,18 @@ val ProfileContactKinds = listOf(
     phoneError: String? = null, emailError: String? = null,
 ) {
     var choosing by remember { mutableStateOf(false) }
+    // Stacked-label large fields (contract "폼 라벨·입력 크기"); Next walks down the fields and the last one answers Done (contract "키보드의 내리기 버튼").
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(phone, onPhoneChange, Modifier.fillMaxWidth(), label = { Text("전화번호") }, placeholder = { Text("010-0000-0000") },
-            isError = phoneError != null, supportingText = { Text(phoneError ?: "필수예요.") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
-        OutlinedTextField(email, onEmailChange, Modifier.fillMaxWidth(), label = { Text("이메일") }, placeholder = { Text("name@example.com") },
-            isError = emailError != null, supportingText = { Text(emailError ?: "필수예요.") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false))
-        extras.forEach { item ->
+        DearbyField("전화번호", phone, onPhoneChange, placeholder = "010-0000-0000", error = phoneError, hint = "필수예요.", imeAction = ImeAction.Next, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+        DearbyField("이메일", email, onEmailChange, placeholder = "name@example.com", error = emailError, hint = "필수예요.", imeAction = if (extras.isEmpty()) ImeAction.Done else ImeAction.Next,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false))
+        extras.forEachIndexed { index, item ->
             val meta = ProfileContactKinds.firstOrNull { it.first == item.kind }
             val label = meta?.second ?: item.kind
-            OutlinedTextField(item.value, { onExtraChange(item.copy(value = it)) }, Modifier.fillMaxWidth(), label = { Text(label) },
-                placeholder = { Text(meta?.third ?: "") }, singleLine = true,
+            DearbyField(label, item.value, { onExtraChange(item.copy(value = it)) }, placeholder = meta?.third, imeAction = if (index == extras.lastIndex) ImeAction.Done else ImeAction.Next,
                 trailingIcon = { IconButton({ onRemoveExtra(item.id) }) { Icon(Icons.Rounded.RemoveCircle, "$label 삭제") } })
         }
-        DearbyOutlineButton({ choosing = true }, Modifier.fillMaxWidth()) {
-            Icon(Icons.Rounded.Add, null); Spacer(Modifier.width(8.dp)); Text("연락처 추가")
-        }
+        AddRow("연락처 추가") { choosing = true }
     }
     if (choosing) ModalBottomSheet({ choosing = false }, containerColor = MaterialTheme.colorScheme.surface) {
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
@@ -115,12 +110,11 @@ val ProfileContactKinds = listOf(
     }
 }
 
-/** A read-only text field that opens the date picker; a transparent overlay takes the tap so the field never focuses, and the whole box is one button for accessibility. */
+/** A read-only stacked-label field that opens the date picker; a transparent overlay takes the tap so the field never focuses, and the whole box is one button for accessibility. */
 @Composable private fun DateField(label: String, required: Boolean, value: LocalDate?, pick: () -> Unit) {
     val text = value?.format(DateTimeFormatter.ofPattern("yyyy. M. d.")) ?: ""
     Box(Modifier.fillMaxWidth().clearAndSetSemantics { role = Role.Button; contentDescription = "$label${if (required) ", 필수" else ""}, ${text.ifEmpty { "날짜 선택" }}"; onClick("$label 선택") { pick(); true } }) {
-        OutlinedTextField(text, {}, Modifier.fillMaxWidth(), readOnly = true, label = { Text(label) }, placeholder = { Text("날짜 선택") },
-            supportingText = if (required) ({ Text("필수예요.") }) else null, trailingIcon = { Icon(Icons.Rounded.Event, null) }, singleLine = true)
+        DearbyField(label, text, {}, placeholder = "날짜 선택", hint = if (required) "필수예요." else null, readOnly = true, trailingIcon = { Icon(Icons.Rounded.Event, null) })
         Box(Modifier.matchParentSize().clickable(onClick = pick))
     }
 }

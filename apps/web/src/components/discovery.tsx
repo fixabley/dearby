@@ -1,6 +1,7 @@
 "use client";
 import Form from "next/form";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   type Activity,
@@ -15,7 +16,8 @@ import {
   scheduleLabel,
 } from "@/lib/models";
 import { errorMessage, request } from "@/lib/client";
-import { Empty, Failure, Loading } from "@/shared/ui/states";
+import { Failure, Loading } from "@/shared/ui/states";
+import { CenteredMessage } from "@/shared/ui/centered-message";
 import { Icon } from "@/shared/ui/icon";
 import { ActivityCard, type StatusTone } from "@/widgets/activity/activity-card";
 import { groupByCategory } from "@/lib/category";
@@ -91,30 +93,22 @@ export function Discovery({ q }: { q: string }) {
           프로그램을 펼쳐 지금 모집 중인 활동을 찾아보세요.
         </p>
       </div>
-      <Form action="/" className="search" role="search">
-        <input
-          type="search"
-          name="q"
-          defaultValue={q}
-          maxLength={100}
-          placeholder="프로그램, 조직, 활동 이름으로 찾기"
-          aria-label="프로그램 검색"
-        />
-        <button className="button" type="submit">
-          검색
-        </button>
-      </Form>
+      <SearchField q={q} />
+      {/* 마감 숨기기 as a label + switch row; the whole label toggles (contract "발견 검색·토글"). */}
       <label className="open-only">
+        마감 숨기기
         <input
           type="checkbox"
+          role="switch"
+          className="switch"
           checked={openOnly}
+          aria-checked={openOnly}
           onChange={(event) => {
             // Clear the list so the loading state shows while the other mode loads.
             setPage(undefined);
             setOpenOnly(event.target.checked);
           }}
         />
-        마감 숨기기
       </label>
       {error ? (
         <Failure
@@ -128,20 +122,18 @@ export function Discovery({ q }: { q: string }) {
         <Loading />
       ) : !page.items.length ? (
         q ? (
-          <Empty title={`‘${q}’에 맞는 프로그램이 없어요`}>
-            <p>다른 검색어로 찾아보거나 전체 프로그램을 확인해 보세요.</p>
-            <Link className="text-link" href="/">
-              전체 프로그램 보기
-            </Link>
-          </Empty>
+          <CenteredMessage
+            icon="search"
+            title={`‘${q}’에 맞는 프로그램이 없어요`}
+            message="다른 검색어로 찾아보거나 전체 프로그램을 확인해 보세요."
+            primary={{ label: "전체 프로그램 보기", href: "/" }}
+          />
         ) : (
-          <Empty title={openOnly ? "지금 모집 중인 프로그램이 없어요" : "최근 3년 안에 활동한 프로그램이 없어요"}>
-            <p>
-              새로운 모집이 열리면 이곳에서 확인할 수 있어요.
-              <br />
-              잠시 후 다시 찾아와 주세요.
-            </p>
-          </Empty>
+          <CenteredMessage
+            icon="explore"
+            title={openOnly ? "지금 모집 중인 프로그램이 없어요" : "최근 3년 안에 활동한 프로그램이 없어요"}
+            message="새로운 모집이 열리면 이곳에서 확인할 수 있어요. 잠시 후 다시 찾아와 주세요."
+          />
         )
       ) : (
         <>
@@ -175,7 +167,7 @@ export function Discovery({ q }: { q: string }) {
         </>
       )}
       <aside className="inline-note">
-        <Icon name="card" />
+        <Icon name="card" tone="teal" />
         <p>
           받은 명함 링크에서 공개 이력서를 보고,
           <br className="mobile-break" /> 로그인 없이 명함을 저장할 수 있어요.
@@ -185,6 +177,48 @@ export function Discovery({ q }: { q: string }) {
         </Link>
       </aside>
     </>
+  );
+}
+
+/**
+ * Discovery search (contract "발견 검색·토글"): a stacked label over a system-looking `type="search"` field with a magnifier and a
+ * clear button; Enter submits the form so `/?q=` stays the source of truth. Clearing an applied query returns to `/`.
+ */
+function SearchField({ q }: { q: string }) {
+  const router = useRouter();
+  const [value, setValue] = useState(q);
+  return (
+    <Form action="/" className="search" role="search">
+      <label className="field-label" htmlFor="discovery-q">
+        프로그램·조직·활동 검색
+      </label>
+      <div className="search-field">
+        <Icon name="search" />
+        <input
+          id="discovery-q"
+          type="search"
+          name="q"
+          value={value}
+          maxLength={100}
+          placeholder="이름으로 찾기"
+          enterKeyHint="search"
+          onChange={(event) => setValue(event.target.value)}
+        />
+        {value && (
+          <button
+            type="button"
+            className="search-clear"
+            aria-label="지우기"
+            onClick={() => {
+              setValue("");
+              if (q) router.push("/");
+            }}
+          >
+            <Icon name="clear" />
+          </button>
+        )}
+      </div>
+    </Form>
   );
 }
 
@@ -457,9 +491,7 @@ function ProgramRow({
         <div className="program-side">
           {open ? (
             <button type="button" className="program-collapse" aria-label="접기" aria-controls={panelId} onClick={toggle}>
-              <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M6 9l6 6 6-6" />
-              </svg>
+              <Icon name="chevron-down" size="inline" />
             </button>
           ) : (
             <span className="program-count" aria-hidden={count === 0}>

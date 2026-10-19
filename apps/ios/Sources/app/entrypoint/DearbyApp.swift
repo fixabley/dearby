@@ -6,6 +6,8 @@ import SwiftUI
     @State private var profile: ProfileModel
     @State private var wallet: WalletModel
     @State private var tab = 0
+    /// Which section the 명함 tab shows (contract "명함 탭 통합"); memory only.
+    @State private var cardsSegment = CardsSegment.myCards
     /// First launch only; an account already on the device skips it.
     @State private var showIntro: Bool
     @Environment(\.scenePhase) private var scene
@@ -35,22 +37,25 @@ import SwiftUI
                 if showIntro {
                     IntroPage(account: account, done: finishIntro)
                 } else {
-                    HomePage(selectedTab: $tab, hidesTabs: tab == 4 && (profile.profile?.version == 0 || profile.consentPending),
-                        discovery: { ActivityListPage(state: activityModel, path: $0) }, mine: MyActivitiesPage(state: activityModel, explore: { tab = 0 }),
-                        cards: MyCardsPage(state: cards), wallet: WalletPage(state: wallet), profile: ProfilePage(state: profile),
+                    HomePage(selectedTab: $tab, hidesTabs: tab == 3 && (profile.profile?.version == 0 || profile.consentPending),
+                        discovery: { ActivityListPage(state: activityModel, path: $0) }, mine: { MyActivitiesPage(state: activityModel, path: $0, explore: { tab = 0 }) },
+                        cards: CardsPage(segment: $cardsSegment, cards: cards, wallet: wallet), profile: ProfilePage(state: profile),
                         settings: { SettingsPage(account: account, webOrigin: links.origins.web) })
                 }
             }
             // One accent for every screen and sheet, including those presented from this root (contract "색 체계").
             .tint(DearbyStyle.teal)
-            // "Dearby 앱에 저장" on the web card page: save the card to the account and open it in 받은 명함.
+            // "Dearby 앱에 저장" on the web card page: save the card to the account and open it in the 명함 tab's 받은 명함 section.
             .onOpenURL { url in
                 // The Google SDK's own redirect comes back here first (contract "구글 로그인").
                 if GoogleNativeSignIn.handle(url) { return }
                 guard let incoming = WalletModel.Incoming(url: url) else { return }
-                tab = 3
+                tab = 2
+                cardsSegment = .received
                 Task { await wallet.receive(incoming) }
             }
+            // `내 활동에서 보기` on an activity detail: the 내 활동 tab opens that activity (it pushes once it is on screen).
+            .onChange(of: activityModel.showInMine) { _, id in if id != nil { tab = 1 } }
             .onChange(of: scene) { _, phase in
                 if phase == .background { activityModel.appLeft() } else if phase == .active { activityModel.appReturned() }
             }

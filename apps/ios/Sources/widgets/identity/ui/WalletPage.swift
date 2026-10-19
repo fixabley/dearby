@@ -3,7 +3,8 @@ import SwiftUI
 /// 받은 명함: the cards saved to the account as an indexed list (contract "받은 명함 목록 표시"):
 /// first-letter sections with pinned headers, a right-edge index rail, and the existing search field.
 /// Rows carry the program chip and recall badge, the detail offers `내 명함도 건네기`, and a card arriving by
-/// `dearby://cards/…` is saved and opened here (contract "명함 교환" 2026-10-19).
+/// `dearby://cards/…` is saved and opened here (contract "명함 교환" 2026-10-19). Shown as the 받은 명함 section of the 명함 tab (`CardsPage`,
+/// contract "명함 탭 통합"), which owns the navigation bar.
 struct WalletPage: View {
     let state: WalletModel
     @State private var query = ""
@@ -17,11 +18,10 @@ struct WalletPage: View {
     private static let railThreshold = 6
     var body: some View {
         VStack(spacing: 0) {
-            // The title line and search field stay put; only the list scrolls (contract "탭 제목 통일", "비스크롤 화면 배치").
-            PageTitle("받은 명함")
+            // The search field stays put; only the list scrolls (contract "비스크롤 화면 배치").
             switch state.phase {
             case .signedOut:
-                CenteredMessage(symbol: "tray.full", title: "받은 명함은 계정에 저장돼요", message: "로그인하면 저장한 명함을 볼 수 있어요.",
+                CenteredMessage(symbol: "person.text.rectangle", title: "받은 명함은 계정에 저장돼요", message: "로그인하면 저장한 명함을 볼 수 있어요.",
                                 primary: MessageAction("로그인") { signingIn = true })
             case .loading:
                 ProgressView("받은 명함을 불러오는 중이에요").frame(maxWidth: .infinity, maxHeight: .infinity).tint(DearbyStyle.teal)
@@ -29,7 +29,7 @@ struct WalletPage: View {
                 CenteredMessage(symbol: "exclamationmark.triangle", danger: true, title: "받은 명함을 불러오지 못했어요", message: "연결을 확인하고 다시 시도해 주세요.",
                                 primary: MessageAction("다시 시도") { Task { await state.load() } })
             case .loaded where state.wallet.items.isEmpty:
-                CenteredMessage(symbol: "tray.full", title: "아직 받은 명함이 없어요", message: "상대의 명함 QR을 카메라로 읽어 저장하면 여기에 보여요.")
+                CenteredMessage(symbol: "person.text.rectangle", title: "아직 받은 명함이 없어요", message: "상대의 명함 QR을 카메라로 읽어 저장하면 여기에 보여요.")
             case .loaded:
                 DearbySearchField(prompt: "이름, 직무, 이력으로 검색", text: $query, identifier: "wallet-search")
                     .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 10)
@@ -51,7 +51,6 @@ struct WalletPage: View {
                 }
             }
         }
-        .background(Color(.systemGroupedBackground)).toolbar(.hidden, for: .navigationBar)
         .task { await state.load() }
         // A QR-received card while signed out: sign in first, then the save continues.
         .onChange(of: state.pending, initial: true) { _, pending in if pending != nil { signingIn = true } }

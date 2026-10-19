@@ -18,7 +18,7 @@ import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.DearbyFieldError
 import com.dearby.nativeapp.shared.ui.DearbyOutlineButton
 import com.dearby.nativeapp.shared.ui.ExampleBadge
-import com.dearby.nativeapp.shared.ui.ScreenHeader
+import com.dearby.nativeapp.shared.ui.DearbyTopBar
 import com.dearby.nativeapp.widgets.card.cardContent.CardContent
 import com.dearby.nativeapp.widgets.card.cardContent.ContactState
 
@@ -31,7 +31,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.ContactState
                                close: () -> Unit, contact: (ContactState) -> Unit, giveBack: (String) -> Unit) {
     var picking by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("받은 명함", close)
+        DearbyTopBar("받은 명함", close)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(received.origin, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             CardContent(received.card, onContact = contact)
@@ -41,7 +41,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.ContactState
                     Text(if (busy) "건네는 중…" else "내 명함도 건네기")
                 }
                 Text(
-                    if (myCards.isEmpty()) "먼저 내 명함 탭에서 명함을 만들면 건넬 수 있어요."
+                    if (myCards.isEmpty()) "먼저 명함 탭의 내 명함에서 명함을 만들면 건넬 수 있어요."
                     else "맞교환한 명함은 회수되지 않아요." + (received.badge?.let { " 지금은 맞교환하지 않으면 $it." } ?: ""),
                     color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
                 )

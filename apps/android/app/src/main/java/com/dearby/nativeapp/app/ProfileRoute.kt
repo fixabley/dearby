@@ -31,6 +31,8 @@ import com.dearby.nativeapp.pages.profile.ProfileVersionsPage
     var signingIn by remember { mutableStateOf(false) }
     var versionsOpen by remember { mutableStateOf(false) }
     var openVersion by remember { mutableStateOf<Int?>(null) }
+    // 동의 시트 닫기 (contract, 2026-10-20): closing the consent page is "not consented"; the next save attempt brings it back instead of a doomed PUT.
+    var consentDismissed by remember { mutableStateOf(false) }
     val context = LocalContext.current
     LaunchedEffect(signedIn) { if (signedIn) signingIn = false; model.load() }
     val resolver = context.contentResolver
@@ -45,12 +47,15 @@ import com.dearby.nativeapp.pages.profile.ProfileVersionsPage
     val pickPdf = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { read(it, "application/pdf", "evidence.pdf") }
     when {
         // 개인정보 동의 (contract "개인정보 동의"): before the first profile step and whenever the server asks again; never when signed out.
-        signedIn && state.phase == ProfilePhase.LOADED && state.consentRequired -> ConsentPage(
-            state.consenting, state.consentError,
-            openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) },
-            openTerms = { OAuthBrowser(context).open(ConsentVersions.termsUrl(BuildConfig.WEB_ORIGIN)) },
-            agree = model::consent,
-        )
+        signedIn && state.phase == ProfilePhase.LOADED && state.consentRequired && !consentDismissed -> {
+            BackHandler { consentDismissed = true }
+            ConsentPage(
+                state.consenting, state.consentError,
+                openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) },
+                openTerms = { OAuthBrowser(context).open(ConsentVersions.termsUrl(BuildConfig.WEB_ORIGIN)) },
+                agree = model::consent, close = { consentDismissed = true },
+            )
+        }
         funnel != null -> funnel?.let { current ->
             BackHandler(onBack = model::closeFunnel)
             HistoryFunnelPage(current, model::changeDraft, model::goTo, model::next, model::search,
@@ -67,7 +72,7 @@ import com.dearby.nativeapp.pages.profile.ProfileVersionsPage
             LaunchedEffect(Unit) { model.loadVersions(reset = true) }
             ProfileVersionsPage(versions, { openVersion = it }, { model.loadVersions(reset = false) }) { versionsOpen = false }
         }
-        else -> ProfilePage(state, model.rows, model::change, model::searchJobs, model::addContact, model::openHistory, model::removeHistory, model::save, model::revert,
+        else -> ProfilePage(state, model.rows, model::change, model::searchJobs, model::addContact, model::openHistory, model::removeHistory, { if (state.consentRequired) consentDismissed = false else model.save() }, model::revert,
             { versionsOpen = true }, compose, { signingIn = true }, { model.load() }, deletion.deleting, model::deleteAccount, model.changed, settings, notify)
     }
     if (signingIn && !signedIn) SignInRoute(account, close = { signingIn = false })
