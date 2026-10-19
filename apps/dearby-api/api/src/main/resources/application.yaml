@@ -30,6 +30,10 @@ dearby:
   # 구글 로그인(네이티브 SDK). ID 토큰 aud로 허용하는 client id(쉼표 구분: 웹, iOS). 비어 있으면 /v1/auth/google/*는 503(native-v1.md "구글 로그인")
   google:
     client-ids: ${GOOGLE_CLIENT_IDS:}
+  # 개인정보 동의 문서 버전(native-v1.md "개인정보 동의"): 웹 /privacy·/terms 시행일. 바꾸면 사용자가 다시 동의한다
+  consent:
+    privacy-version: ${CONSENT_PRIVACY_VERSION:2026-10-19}
+    terms-version: ${CONSENT_TERMS_VERSION:2026-10-19}
   # 웹 비로그인 저장. Next 서버의 GUEST_PROXY_SECRET과 같은 값(32자 이상). 비어 있으면 /v1/guest/*는 503
   guest:
     proxy-secret: ${GUEST_PROXY_SECRET:}

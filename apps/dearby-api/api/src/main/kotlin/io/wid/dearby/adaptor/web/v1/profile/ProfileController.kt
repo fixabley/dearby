@@ -17,7 +17,7 @@ import java.util.*
 class ProfileController(private val profiles: ProfileService) {
 
     @GetMapping
-    fun get(@AuthenticationPrincipal jwt: Jwt) = ProfileResponse.from(profiles.get(userId(jwt)))
+    fun get(@AuthenticationPrincipal jwt: Jwt) = response(userId(jwt), profiles.get(userId(jwt)))
 
     // If-Match: 마지막으로 받은 version. 다르면 409
     @PutMapping
@@ -27,7 +27,7 @@ class ProfileController(private val profiles: ProfileService) {
         @RequestHeader("If-Match", required = false) ifMatch: String?,
     ): ProfileResponse {
         val expected = ifMatch?.trim()?.trim('"')?.let { it.toIntOrNull() ?: throw InvalidInputException("If-Match는 버전 번호입니다") }
-        return ProfileResponse.from(profiles.update(userId(jwt), toInput(request), expected))
+        return response(userId(jwt), profiles.update(userId(jwt), toInput(request), expected))
     }
 
     @GetMapping("/versions")
@@ -44,7 +44,7 @@ class ProfileController(private val profiles: ProfileService) {
     fun version(@AuthenticationPrincipal jwt: Jwt, @PathVariable version: Int) = VersionResponse.from(profiles.version(userId(jwt), version))
 
     @PostMapping("/versions/{version}/restore")
-    fun restore(@AuthenticationPrincipal jwt: Jwt, @PathVariable version: Int) = ProfileResponse.from(profiles.restore(userId(jwt), version))
+    fun restore(@AuthenticationPrincipal jwt: Jwt, @PathVariable version: Int) = response(userId(jwt), profiles.restore(userId(jwt), version))
 
     private fun toInput(r: ProfileRequest) = ProfileInput(
         name = r.name,
@@ -58,6 +58,8 @@ class ProfileController(private val profiles: ProfileService) {
             )
         },
     )
+
+    private fun response(userId: UUID, profile: io.wid.dearby.domain.profile.Profile) = ProfileResponse.from(profile, profiles.consent(userId))
 
     private fun userId(jwt: Jwt): UUID = UUID.fromString(jwt.subject)
 }

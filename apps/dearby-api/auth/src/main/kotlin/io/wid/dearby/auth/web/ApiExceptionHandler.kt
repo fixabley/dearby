@@ -23,13 +23,13 @@ class ApiExceptionHandler {
     fun notFound(e: NotFoundException) = problem(HttpStatus.NOT_FOUND, e.detail, e)
 
     @ExceptionHandler(InvalidInputException::class)
-    fun invalidInput(e: InvalidInputException) = problem(HttpStatus.BAD_REQUEST, e.detail, e)
+    fun invalidInput(e: InvalidInputException) = problem(HttpStatus.BAD_REQUEST, e.detail, e).also { detail -> e.code?.let { detail.setProperty("code", it) } }
 
     @ExceptionHandler(AuthenticationFailedException::class)
     fun authenticationFailed(e: AuthenticationFailedException) = problem(HttpStatus.UNAUTHORIZED, e.detail, e)
 
     @ExceptionHandler(PermissionDeniedException::class)
-    fun permissionDenied(e: PermissionDeniedException) = problem(HttpStatus.FORBIDDEN, e.detail, e)
+    fun permissionDenied(e: PermissionDeniedException) = problem(HttpStatus.FORBIDDEN, e.detail, e).also { detail -> e.code?.let { detail.setProperty("code", it) } }
 
     @ExceptionHandler(ConflictException::class)
     fun conflict(e: ConflictException) = problem(HttpStatus.CONFLICT, e.detail, e).also { detail -> e.code?.let { detail.setProperty("code", it) } }

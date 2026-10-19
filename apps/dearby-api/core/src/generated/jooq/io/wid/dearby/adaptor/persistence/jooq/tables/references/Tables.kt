@@ -41,6 +41,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.Roles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules
 import io.wid.dearby.adaptor.persistence.jooq.tables.Tags
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserConsents
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
@@ -229,6 +230,11 @@ val SCHEDULES: Schedules = Schedules.SCHEDULES
  * The table <code>public.tags</code>.
  */
 val TAGS: Tags = Tags.TAGS
+
+/**
+ * The table <code>public.user_consents</code>.
+ */
+val USER_CONSENTS: UserConsents = UserConsents.USER_CONSENTS
 
 /**
  * The table <code>public.user_credentials</code>.
