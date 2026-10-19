@@ -11,6 +11,7 @@ data class Activity(
     val descriptionEn: String?, // 영문 설명(없으면 null)
     val contacts: List<ActivityContact>,
     val officialUrl: String, // 공식 안내 원문 링크
+    val applicationUrl: String? = null, // 신청 링크(activities.application_url, native-v1.md "신청 확인 조건 완화·공개 applicationUrl"). 없으면 null
     val imageUrl: String?, // 대표 이미지. 없으면 null
     val application: Schedule?, // 신청 기간(kind = DEADLINE). 시작·끝 중 아는 쪽만 있을 수 있다. null: 상시 모집 등 신청 기간 없음
     val activitySchedule: Schedule, // 활동 기간(kind = EVENT, 종일 일정). 활동 장소의 기준

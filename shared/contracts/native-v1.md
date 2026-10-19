@@ -328,8 +328,8 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - 언어(2026-10-15 사용자 결정): 요청 헤더 `Accept-Language`에서 지원 언어(`ko`, `en`) 중 가장 선호하는 것으로 `name`·`description`·`organization.name`·`program.name`을 하나씩 준다. 영문 값이 없는 항목은 한글로 채운다. 헤더가 없거나 읽을 수 없거나 지원 언어가 없으면 한국어. 응답에 `Content-Language`(`ko`·`en`)와 `Vary: Accept-Language`를 붙인다. 앱은 기기 언어 순서(iOS `Locale.preferredLanguages`, Android `LocaleList`, 최대 5개, 순서대로 q 값)를, 웹 프록시는 브라우저의 `Accept-Language`를 활동 조회에만 그대로 보낸다(언어 목록 형식이 아니면 버린다). 앱 화면 자체는 아직 한국어다.
 - `q`는 활동 이름·설명(한글·영문 모두)에서 찾는다. 대소문자 없는 부분 일치(`%`·`_`도 글자 그대로) 또는 단어 유사도(PostgreSQL `pg_trgm` `word_similarity` 0.4 이상)면 결과에 넣는다. 그래서 오타("워크샵"→"워크숍")·띄어쓰기 차이("개발환경")도 찾는다. 순서는 여전히 id 순이다(유사도 순 정렬은 하지 않음).
 - id는 숫자(bigint)다. 기존 카탈로그 UUID는 쓰지 않는다.
-- Activity: `{id, name, description, organization{id,name}, program{id,name}, officialUrl, imageUrl, application, activitySchedule, schedules[], eligibility}`. 2026-10-14 사용자 결정으로 원래 도메인 필드에 공식 안내 링크(`officialUrl`)와 이미지(`imageUrl`)만 더한다. 2026-10-18 `eligibility`(대상자 조건 JSON, 없으면 null)를 더한다(아래 "대상자 조건"). 모집 상태·참여 방식·확인 시각·장소·비용·대상·자격요건(JSON)·역할·신청 링크·안내 문구는 같은 `activities` 행(+`activity_roles`)에 있지만 운영자용 도메인 `ActivityCuration`이 다루고 공개 API는 내보내지 않는다. 같은 DB를 쓰는 운영자(admin) 모듈용이다.
-  - 모집 여부는 `application`(모집 기간: 시작·끝 중 아는 쪽)으로 판단한다. 신청은 `officialUrl`을 연다.
+- Activity: `{id, name, description, organization{id,name}, program{id,name}, officialUrl, applicationUrl, imageUrl, application, activitySchedule, schedules[], eligibility}`. 2026-10-14 사용자 결정으로 원래 도메인 필드에 공식 안내 링크(`officialUrl`)와 이미지(`imageUrl`)만 더한다. 2026-10-18 `eligibility`(대상자 조건 JSON, 없으면 null)를 더한다(아래 "대상자 조건"). 2026-10-19 `applicationUrl`(신청 링크 `activities.application_url`, 없으면 null)을 더한다(아래 "신청 확인 조건 완화·공개 applicationUrl"). 모집 상태·참여 방식·확인 시각·장소·비용·대상·자격요건(JSON)·역할·안내 문구는 같은 `activities` 행(+`activity_roles`)에 있지만 운영자용 도메인 `ActivityCuration`이 다루고 공개 API는 내보내지 않는다. 같은 DB를 쓰는 운영자(admin) 모듈용이다.
+  - 모집 여부는 `application`(모집 기간: 시작·끝 중 아는 쪽)으로 판단한다. 신청은 `applicationUrl ?? officialUrl`을 연다(2026-10-19 밤 "신청 확인 조건 완화").
   - 한 항목만으로 목록·상세를 그릴 수 있어 기관·프로그램을 따로 조회하지 않는다.
   - `application`(모집 기간, 없으면 null), `activitySchedule`(활동 기간·날짜 문구), `schedules[]`(개별 일정)는 Schedule이다.
 - Schedule: `{id, title, kind, status, startAt, endAt, timeZone, startDate, endDateExclusive, dateLabel, address, conferenceUrl}`. 시각 일정은 `startAt`·`endAt` 중 하나 이상과 `timeZone`이 있고, 시각은 그 시간대 오프셋으로 표기한다(예: `2026-10-08T00:00:00+09:00`). 종일 일정은 `startDate`·`endDateExclusive`. 날짜 미정은 모두 null이고 `dateLabel`만 있다.
@@ -387,6 +387,16 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **접히는 검색 영역**: 검색창과 `마감 숨기기` 토글 묶음은 아래로 스크롤하면 위로 밀려 접히고(높이 0, 투명도 0), 위로 스크롤하기 시작하면(방향 전환) 즉시 다시 펼쳐진다 — 맨 위까지 올라가지 않아도 보인다(One UI·Material "enter always" 방식). 애니메이션은 스크롤 오프셋에 비례하되 짧은 스프링으로 마무리하고, 동작 줄이기에서는 즉시 전환. 검색창에 포커스가 있는 동안은 접지 않는다. iOS는 `ScrollView` + `onScrollGeometryChange`(iOS 18)로 방향·오프셋을 읽고, Android는 `NestedScrollConnection`으로 소비 오프셋을 누적한다(`TopAppBar`의 `enterAlwaysScrollBehavior`와 같은 규칙; 제목 줄은 고정이라 TopAppBar 자체는 쓰지 않는다).
 - **풀투 리프레시**: 맨 위에서 당기면 프로그램 목록을 처음부터 다시 조회한다(펼침 상태는 유지하되 펼친 프로그램의 활동도 다시 받는다). iOS `.refreshable`, Android Material 3 `PullToRefreshBox`. 당기는 동안 제목 줄은 움직이지 않고 표시기는 검색 영역 아래에 나온다. 실패하면 기존 오류 표시 규칙을 따른다.
 - **맨 위로 버튼**: 첫 화면 높이 이상 내려가면 오른쪽 아래(탭 막대 위 16, 오른쏙 20)에 둥근 플로팅 버튼(iOS: 44 원형, `Color(.secondarySystemGroupedBackground)` 바탕·청록 `arrow.up` SF Symbol·얇은 그림자; Android: Material 3 `SmallFloatingActionButton`, `Icons.Rounded.ArrowUpward`)이 페이드로 나타나고, 누르면 애니메이션 없이 즉시 맨 위로 간다(검색 영역도 펼쳐진다). 접근성 이름 `맨 위로`. 맨 위 근처에서는 숨긴다. iOS의 상태 표시줄 탭으로 맨 위 가기는 그대로 둔다.
+
+## 신청 확인 조건 완화·공개 applicationUrl — 2026-10-19 밤 사용자 결정
+
+사용자: "활동 탐색에서 신청 사이트 들어간 후에 신청 여부를 확인하는 메시지를 표시해줘. 했다면 지난 기획처럼 내 활동에서 볼 수 있게 해줘." 기존 "신청 확인"(2026-10-06)은 **모집 중(open)일 때만** 버튼이 신청 링크가 되고 그때만 "신청하셨나요?"를 물었다. 운영 활동은 모집 기간이 없거나(우아콘·DAN) 예정이라 버튼이 `공식 안내 보기`로만 열려 질문이 한 번도 뜨지 않았다. 바꾼다:
+
+- **공개 API**: `Activity.applicationUrl: string | null`을 더한다(운영자가 어드민에서 지정한 신청 링크 `activities.application_url`; 없으면 null). 수집기가 넣은 값도 그대로 노출한다. `https`만 허용(iOS·Android의 기존 `safeURL` 규칙).
+- **버튼**: 상세 화면 CTA는 `applicationUrl ?? officialUrl`을 연다. 라벨은 모집 상태가 `closed`(모집 마감이 지났거나 활동이 끝남)면 `공식 안내 보기`, 그 외(`open`·`upcoming`·모집 정보 없음)는 `신청 사이트 열기`(applicationUrl이 있을 때) 또는 `공식 사이트에서 신청`(officialUrl만 있을 때).
+- **질문 조건**: 모집 상태가 `closed`가 아니면 CTA를 눌러 외부 브라우저로 나간 뒤 앱이 다시 활성화될 때 "신청하셨나요?" 시트를 띄운다(open·upcoming·정보 없음 모두). closed면 묻지 않는다. 선택지·`다시 묻지 않기`·내 활동 표시 규칙은 2026-10-06 그대로. 이미 신청함인 활동은 묻지 않는다.
+- **내 활동**: `신청했어요`를 고르면 2026-10-06 규칙대로 내 활동 탭의 진행 트랙에 들어간다(사용자 기록, 주최 측 확인 아님). 변경 없음.
+- 웹: 변경 없음(웹에는 신청 확인 흐름이 없다).
 
 ## 활동 장소 — 2026-10-19 사용자 결정
 
