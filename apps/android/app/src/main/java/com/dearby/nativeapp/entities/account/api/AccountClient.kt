@@ -29,8 +29,9 @@ import org.json.JSONObject
 /** [BAD_REQUEST]: 400 with the server's user-facing ProblemDetail `detail` in [AccountException.detail] (contact rules,
  *  unapproved history, …); [CONFLICT]: 409 — the profile changed elsewhere (`If-Match`); [TURNED_OFF]: 503, e.g. Apple or Google sign-in not configured on the server.
  *  Network failures and other statuses are [UNAVAILABLE]. */
-enum class AccountError { UNAUTHORIZED, INVALID_INPUT, NOT_FOUND, CONFLICT, RATE_LIMITED, BAD_REQUEST, TURNED_OFF, UNAVAILABLE }
-class AccountException(val error: AccountError, val detail: String? = null) : Exception(error.name)
+enum class AccountError { UNAUTHORIZED, FORBIDDEN, INVALID_INPUT, NOT_FOUND, CONFLICT, RATE_LIMITED, BAD_REQUEST, TURNED_OFF, UNAVAILABLE }
+/** [detail] is the ProblemDetail sentence; [code] its machine code (e.g. `CONSENT_REQUIRED` on 403, contract "개인정보 동의"). */
+class AccountException(val error: AccountError, val detail: String? = null, val code: String? = null) : Exception(error.name)
 
 /** [bytes] with [contentType] replaces the JSON [body] (multipart uploads); [headers] are extra request headers. */
 data class HttpRequest(val method: String, val url: String, val token: String?, val body: String?, val bytes: ByteArray? = null,
@@ -104,6 +105,10 @@ class AccountClient(private val api: String, private val transport: Transport = 
     /** "계정 삭제" (contract "계정 삭제"): removes the account and everything it holds; 204 with no body. Irreversible. */
     suspend fun deleteAccount(session: AccountSession) { request("DELETE", "me", null, session) }
     suspend fun profile(session: AccountSession) = send("GET", "profile", null, session).toProfile()
+    /** 개인정보 동의 (contract "개인정보 동의"): `POST /v1/me/consents` with the agreed document versions; 204, or 400 `CONSENT_VERSION` when stale. */
+    suspend fun consent(privacyVersion: String, termsVersion: String, session: AccountSession) {
+        request("POST", "me/consents", JSONObject().put("privacyVersion", privacyVersion).put("termsVersion", termsVersion), session)
+    }
     /** `If-Match` carries the version the edit started from; a 409 means the profile changed elsewhere. */
     suspend fun saveProfile(profile: AccountProfile, ifMatch: Int?, session: AccountSession) =
         send("PUT", "profile", profile.toJson(), session, headers = ifMatch?.let { mapOf("If-Match" to it.toString()) }.orEmpty()).toProfile()
@@ -161,6 +166,7 @@ class AccountClient(private val api: String, private val transport: Transport = 
             // RFC 9457 ProblemDetail: `detail` is the user-facing sentence.
             400 -> throw AccountException(AccountError.BAD_REQUEST, runCatching { JSONObject(response.body).optString("detail").ifBlank { null } }.getOrNull())
             401 -> throw AccountException(AccountError.UNAUTHORIZED)
+            403 -> throw AccountException(AccountError.FORBIDDEN, code = runCatching { JSONObject(response.body).optString("code").ifBlank { null } }.getOrNull())
             404 -> throw AccountException(AccountError.NOT_FOUND)
             409 -> throw AccountException(AccountError.CONFLICT)
             429 -> throw AccountException(AccountError.RATE_LIMITED)
