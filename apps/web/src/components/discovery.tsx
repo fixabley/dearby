@@ -227,14 +227,14 @@ function TagChips({ tags }: { tags: Tag[] }) {
  * only while recruitment is not past and a period exists.
  */
 function cardProps(activity: Activity, statusTone: StatusTone, now: number) {
-  const recruitmentLabel = scheduleLabel(activity.application, now);
+  const recruitmentLabel = scheduleLabel(activity.application, "recruitment", now);
   return {
     id: activity.id,
     name: activity.name,
     statusTone,
     recruitmentLabel,
     recruitmentActive: statusTone !== "closed" && recruitmentLabel !== "",
-    activityLabel: scheduleLabel(activity.activitySchedule, now),
+    activityLabel: scheduleLabel(activity.activitySchedule, "activity", now),
     // 장소 이름만 (contract "활동 장소"); the collected phrase stands in when no place is curated.
     placeName: activity.place?.name ?? activity.location ?? null,
   };

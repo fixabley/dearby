@@ -205,8 +205,8 @@ export function recruitment(
 function seoulDay(now: number): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(now));
 }
-/** Weekday-aware Korean date text (`M월 d일 (요일)`, `… HH:mm` with `time`, `yyyy년 …` with `year`) of an instant in a zone. */
-function koreanDate(time: number, timeZone: string, { time: withTime, year }: { time: boolean; year: boolean }): string {
+/** `ko-KR` parts of an instant in a zone, with `HH:mm` (24h) when `withTime`. */
+function koreanParts(time: number, timeZone: string, withTime: boolean) {
   const parts = new Intl.DateTimeFormat("ko-KR", {
     timeZone,
     year: "numeric",
@@ -216,21 +216,23 @@ function koreanDate(time: number, timeZone: string, { time: withTime, year }: { 
     ...(withTime ? { hour: "2-digit", minute: "2-digit", hourCycle: "h23" } : {}),
   }).formatToParts(new Date(time));
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? "";
-  const day = `${part("month")}월 ${part("day")}일 (${part("weekday")})`;
-  const text = withTime ? `${day} ${part("hour")}:${part("minute")}` : day;
-  return year ? `${part("year")}년 ${text}` : text;
-}
-function yearOf(time: number, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric" }).format(new Date(time));
+  return {
+    year: part("year"),
+    day: `${part("month")}월 ${part("day")}일 (${part("weekday")})`,
+    time: withTime ? `${part("hour")}:${part("minute")}` : "",
+  };
 }
 const DAY = 86_400_000;
+/** Which slot a schedule fills: the end-only suffix is `마감` for recruitment and `까지` for activity periods and detail schedules. */
+export type ScheduleKind = "recruitment" | "activity";
 /**
  * Readable schedule text (contract "일정 표시 우선순위 — 2026-10-19 밤"): curated structured dates win over the collected
- * `dateLabel`. Timed → `M월 d일 (요일) HH:mm` in the schedule's zone (range `A ~ B`, end only `~ B 마감`); all-day →
- * `M월 d일 (요일)` with the inclusive end (`endDateExclusive` minus a day); the year is prefixed when a bound is outside
- * the current year or the bounds span years. `dateLabel` shows only without any structured date; else empty.
+ * `dateLabel`. Timed → `M월 d일 (요일) HH:mm` in the schedule's zone (range `A ~ B`, same day `A ~ HH:mm`, end only
+ * `~ B 마감`/`~ B까지` by `kind`); all-day → `M월 d일 (요일)` with the inclusive end (`endDateExclusive` minus a day); the year
+ * is prefixed when a bound is outside the current year or the bounds span years. `dateLabel` shows only without any
+ * structured date; else empty.
  */
-export function scheduleLabel(schedule: Schedule | null, now = Date.now()): string {
+export function scheduleLabel(schedule: Schedule | null, kind: ScheduleKind, now = Date.now()): string {
   if (!schedule) return "";
   const startAt = parseTime(schedule.startAt);
   const endAt = parseTime(schedule.endAt);
@@ -241,12 +243,16 @@ export function scheduleLabel(schedule: Schedule | null, now = Date.now()): stri
     : [parseTime(schedule.startDate), endDateExclusive === undefined ? undefined : endDateExclusive - DAY];
   if (start === undefined && end === undefined) return schedule.dateLabel;
   const timeZone = timed ? (schedule.timeZone ?? "Asia/Seoul") : "UTC";
-  const years = [start, end].filter((t) => t !== undefined).map((t) => yearOf(t, timeZone));
-  const year = years.some((y) => y !== yearOf(now, "Asia/Seoul")) || new Set(years).size > 1;
-  const format = (time: number) => koreanDate(time, timeZone, { time: timed, year });
-  if (start === undefined) return `~ ${format(end as number)} 마감`;
-  if (end === undefined || end === start) return format(start);
-  return `${format(start)} ~ ${format(end)}`;
+  const from = start === undefined ? undefined : koreanParts(start, timeZone, timed);
+  const to = end === undefined ? undefined : koreanParts(end, timeZone, timed);
+  const thisYear = koreanParts(now, "Asia/Seoul", false).year;
+  const withYear = [from, to].some((p) => p && p.year !== thisYear) || (from && to && from.year !== to.year);
+  const text = (p: { year: string; day: string; time: string }) =>
+    `${withYear ? `${p.year}년 ` : ""}${p.day}${p.time && ` ${p.time}`}`;
+  if (!from) return `~ ${text(to!)}${kind === "recruitment" ? " 마감" : "까지"}`;
+  if (!to || end === start) return text(from);
+  if (timed && from.year === to.year && from.day === to.day) return `${text(from)} ~ ${to.time}`;
+  return `${text(from)} ~ ${text(to)}`;
 }
 function parseTime(value: string | null): number | undefined {
   const time = value ? Date.parse(value) : NaN;
