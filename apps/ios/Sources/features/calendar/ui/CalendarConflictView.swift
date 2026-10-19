@@ -45,9 +45,9 @@ struct CalendarConflictView: View {
                     Button("개인정보 처리방침 보기") { showingPrivacy = true }
                         .font(.dearby(.footnote).weight(.semibold)).foregroundStyle(DearbyStyle.quiet).buttonStyle(.plain)
                         .accessibilityHint("캘린더 읽기 범위가 적힌 처리방침을 앱 안 브라우저로 열어요")
-                    Button(state.phase == .requesting ? "캘린더를 읽고 있어요…" : "캘린더 읽기 허용하고 확인") {
-                        Task { await state.compare() }
-                    }.buttonStyle(DearbyButtonStyle()).disabled(state.phase == .requesting)
+                    Button { Task { await state.compare() } } label: {
+                        Text(state.phase == .requesting ? "캘린더를 읽고 있어요…" : "캘린더 읽기 허용하고 확인").frame(maxWidth: .infinity)
+                    }.buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold)).disabled(state.phase == .requesting)
                 }.padding(20)
             }
             .navigationTitle("겹치는 시간 확인하기").navigationBarTitleDisplayMode(.inline)
@@ -63,9 +63,9 @@ struct CalendarConflictView: View {
                     Text("설정 > Dearby > 캘린더에서 전체 접근을 켜면 겹치는 시간을 확인할 수 있어요. 허용하지 않아도 신청은 그대로 할 수 있어요.")
                         .font(.subheadline).foregroundStyle(.secondary)
                     if let url = URL(string: UIApplication.openSettingsURLString) {
-                        Button("설정 열기") { openURL(url) }.buttonStyle(DearbyButtonStyle())
+                        Button { openURL(url) } label: { Text("설정 열기").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold))
                     }
-                    Button("닫기") { dismiss() }.buttonStyle(DearbyButtonStyle(outlined: true))
+                    Button { dismiss() } label: { Text("닫기").frame(maxWidth: .infinity) }.buttonStyle(.bordered).controlSize(.large).font(.dearby(.body).weight(.semibold))
                 }.padding(20)
             }
             .navigationTitle("겹치는 시간 확인하기").navigationBarTitleDisplayMode(.inline)
@@ -97,9 +97,8 @@ struct CalendarConflictView: View {
             VStack(spacing: 12) {
                 Label("기기 캘린더는 읽기만 하고, 읽은 일정은 이 화면을 닫으면 버려요.", systemImage: "info.circle")
                     .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
-                Button("확인했어요") {
-                    if !state.advance() { dismiss() }
-                }.buttonStyle(DearbyButtonStyle())
+                Button { if !state.advance() { dismiss() } } label: { Text("확인했어요").frame(maxWidth: .infinity) }
+                    .buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold))
                 if state.index + 1 < state.overlaps.count {
                     Text("다음 겹치는 일정으로 이동해요.").font(.caption).foregroundStyle(DearbyStyle.teal)
                 }

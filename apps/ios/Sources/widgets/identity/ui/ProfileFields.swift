@@ -7,8 +7,8 @@ struct ProfileExtraContact: Identifiable, Equatable {
     var value: String
 }
 
-/// 프로필 연락처 입력. 전화번호·이메일은 필수 칸이고, 그 밖의 종류는 `연락처 추가`에서 골라 붙이고 지울 수 있다.
-/// 값·형식 검사·오류 문구는 화면이 갖고 이 위젯은 보이고 바뀐 값을 알린다.
+/// 프로필 연락처 섹션(폼 `Section`). 전화번호·이메일은 필수 행이고, 그 밖의 종류는 `연락처 추가` 행에서 골라 붙이고 왼쪽으로 밀어 지운다.
+/// 값·형식 검사·오류 문구는 화면이 갖고 이 위젯은 행으로 보이며 오류는 footer에 둔다.
 struct ProfileContactFields: View {
     @Binding var phone: String
     @Binding var email: String
@@ -23,96 +23,75 @@ struct ProfileContactFields: View {
         ("github", "GitHub", "github.com/아이디"), ("behance", "Behance", "behance.net/아이디")
     ]
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            required("전화번호", text: $phone, prompt: "010-0000-0000", error: phoneError)
-                .keyboardType(.phonePad).textContentType(.telephoneNumber)
-            required("이메일", text: $email, prompt: "name@example.com", error: emailError)
-                .keyboardType(.emailAddress).textContentType(.emailAddress)
-                .textInputAutocapitalization(.never).autocorrectionDisabled()
+        Section {
+            LabeledContent("전화번호") {
+                TextField("010-0000-0000", text: $phone).keyboardType(.phonePad).textContentType(.telephoneNumber)
+                    .foregroundStyle(.primary).accessibilityLabel("전화번호, 필수")
+            }
+            LabeledContent("이메일") {
+                TextField("name@example.com", text: $email).keyboardType(.emailAddress).textContentType(.emailAddress)
+                    .textInputAutocapitalization(.never).autocorrectionDisabled().foregroundStyle(.primary).accessibilityLabel("이메일, 필수")
+            }
             ForEach($extras) { $item in
                 let meta = Self.kinds.first { $0.kind == item.kind }
-                HStack(alignment: .bottom, spacing: 8) {
-                    labeled(meta?.label ?? item.kind, required: false) {
-                        DearbyInlineField(label: meta?.label ?? item.kind, text: $item.value, editing: true, prompt: meta?.prompt ?? "")
-                            .textInputAutocapitalization(.never).autocorrectionDisabled()
-                    }
-                    Button { extras.removeAll { $0.id == item.id } } label: {
-                        Image(systemName: "minus.circle").font(.dearby(.title3)).foregroundStyle(DearbyStyle.quiet).frame(width: 44, height: 44)
-                    }.accessibilityLabel("\(meta?.label ?? item.kind) 삭제")
+                let label = meta?.label ?? item.kind
+                LabeledContent(label) {
+                    TextField(meta?.prompt ?? "", text: $item.value)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled().foregroundStyle(.primary).accessibilityLabel(label)
+                }
+                .swipeActions {
+                    Button("삭제", role: .destructive) { extras.removeAll { $0.id == item.id } }.accessibilityLabel("\(label) 삭제")
                 }
             }
-            Button { choosing = true } label: {
-                Label("연락처 추가", systemImage: "plus").font(.dearby(.subheadline).weight(.semibold))
-                    .foregroundStyle(DearbyStyle.teal).frame(maxWidth: .infinity, minHeight: 44)
-                    .overlay(RoundedRectangle(cornerRadius: 11).stroke(DearbyStyle.line))
-            }.buttonStyle(.plain)
-        }
-        .sheet(isPresented: $choosing) {
-            NavigationStack {
-                List(Self.kinds, id: \.kind) { option in
-                    Button { choosing = false; add(option.kind) } label: {
-                        Text(option.label).font(.dearby(.body)).foregroundStyle(DearbyStyle.ink).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                    }
+            Button { choosing = true } label: { Label("연락처 추가", systemImage: "plus") }
+                .sheet(isPresented: $choosing) {
+                    NavigationStack {
+                        List(Self.kinds, id: \.kind) { option in
+                            Button { choosing = false; add(option.kind) } label: {
+                                Text(option.label).font(.dearby(.body)).foregroundStyle(DearbyStyle.ink).frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                        .navigationTitle("추가할 연락처").navigationBarTitleDisplayMode(.inline)
+                        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { choosing = false } } }
+                    }.presentationDetents([.medium])
                 }
-                .navigationTitle("추가할 연락처").navigationBarTitleDisplayMode(.inline)
-                .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { choosing = false } } }
-            }.presentationDetents([.medium])
-        }
-    }
-    private func required(_ label: String, text: Binding<String>, prompt: String, error: String?) -> some View {
-        labeled(label, required: true) {
-            DearbyInlineField(label: "\(label), 필수", text: text, editing: true, prompt: prompt)
-            if let error { DearbyFieldError(text: error) }
-        }
-    }
-    private func labeled(_ label: String, required: Bool, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 4) {
-                Text(label).font(.dearby(.caption).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
-                if required { Text("필수").font(.dearby(.caption2).weight(.bold)).foregroundStyle(DearbyStyle.danger) }
-            }.accessibilityHidden(true)
-            content()
+        } header: {
+            Text("연락처").font(.dearby(.footnote))
+        } footer: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("전화번호와 이메일은 꼭 적어 주세요. 추가한 연락처는 왼쪽으로 밀어 지워요.")
+                if let phoneError { DearbyFieldError(text: phoneError) }
+                if let emailError { DearbyFieldError(text: emailError) }
+            }.font(.dearby(.footnote))
         }
     }
 }
 
-/// 활동 이력의 기간 입력. 시작일(필수)·종료일 선택기와 `진행 중` 스위치를 두고, 고른 기간을 `2026.03 – 2026.06`으로 보인다.
-/// 날짜 검사(종료일이 시작일보다 앞서지 않음)와 오류 문구는 화면이 맡는다.
+/// 활동 이력의 기간 입력 행들(폼 섹션 안): 고른 기간 `2026.03 – 2026.06`, 시작일(필수)·종료일 `DatePicker`와 `진행 중` 스위치.
+/// 날짜 검사(종료일이 시작일보다 앞서지 않음)와 오류 문구는 화면이 footer에 둔다.
 struct HistoryPeriodFields: View {
     @Binding var start: Date?
     @Binding var end: Date?
     @Binding var ongoing: Bool
-    var error: String?
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("기간").font(.dearby(.caption).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
-                Spacer()
-                Text(Self.period(start: start, end: ongoing ? nil : end, ongoing: ongoing))
-                    .font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(start == nil ? DearbyStyle.quiet : DearbyStyle.ink)
-            }.accessibilityElement(children: .combine)
-            dateRow("시작일", required: true, date: $start, earliest: nil)
-            Toggle("진행 중", isOn: $ongoing).font(.dearby(.subheadline)).tint(DearbyStyle.teal).frame(minHeight: 44)
-            if !ongoing { dateRow("종료일", required: false, date: $end, earliest: start) }
-            if let error { DearbyFieldError(text: error) }
-        }
+        LabeledContent("기간", value: Self.period(start: start, end: ongoing ? nil : end, ongoing: ongoing))
+        dateRow("시작일", required: true, date: $start, earliest: nil)
+        Toggle("진행 중", isOn: $ongoing)
+        if !ongoing { dateRow("종료일", required: false, date: $end, earliest: start) }
     }
-    /// `earliest`가 있으면(종료일) 그보다 앞선 날을 고를 수 없다.
+    /// `earliest`가 있으면(종료일) 그보다 앞선 날을 고를 수 없다. 날짜가 없으면 `날짜 선택` 버튼이 오늘(또는 `earliest`)로 채운다.
     @ViewBuilder private func dateRow(_ label: String, required: Bool, date: Binding<Date?>, earliest: Date?) -> some View {
-        HStack {
-            Text(label).font(.dearby(.subheadline))
-            if required { Text("필수").font(.dearby(.caption2).weight(.bold)).foregroundStyle(DearbyStyle.danger) }
-            Spacer()
-            if let value = date.wrappedValue {
-                DatePicker(label, selection: Binding(get: { value }, set: { date.wrappedValue = $0 }),
-                           in: (earliest ?? .distantPast)..., displayedComponents: .date)
-                    .labelsHidden().environment(\.locale, Locale(identifier: "ko_KR")).tint(DearbyStyle.teal)
-                    .accessibilityLabel(required ? "\(label), 필수" : label)
-            } else {
-                Button("날짜 선택") { date.wrappedValue = max(.now, earliest ?? .distantPast) }.font(.dearby(.subheadline).weight(.semibold))
-                    .foregroundStyle(DearbyStyle.teal).frame(minHeight: 44).accessibilityLabel("\(label) 선택\(required ? ", 필수" : "")")
+        if let value = date.wrappedValue {
+            DatePicker(label, selection: Binding(get: { value }, set: { date.wrappedValue = $0 }),
+                       in: (earliest ?? .distantPast)..., displayedComponents: .date)
+                .environment(\.locale, Locale(identifier: "ko_KR"))
+                .accessibilityLabel(required ? "\(label), 필수" : label)
+        } else {
+            LabeledContent(label) {
+                Button("날짜 선택") { date.wrappedValue = max(.now, earliest ?? .distantPast) }.buttonStyle(.borderless).foregroundStyle(DearbyStyle.teal)
+                    .accessibilityLabel("\(label) 선택\(required ? ", 필수" : "")")
             }
-        }.frame(minHeight: 44)
+        }
     }
     /// 연·월 위주 표시: `2026.03 – 2026.06`, 진행 중이면 `2026.03 – 진행 중`.
     static func period(start: Date?, end: Date?, ongoing: Bool) -> String {
@@ -135,15 +114,15 @@ struct ProfileFieldsSample: View {
     @State var end: Date? = ISO8601DateFormatter().date(from: "2026-06-01T00:00:00Z")
     @State var ongoing = false
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
+        Form {
             ProfileContactFields(phone: $phone, email: $email, extras: $extras,
                                  phoneError: "전화번호는 숫자 8~15자리로 입력해 주세요.") { kind in
                 extras.append(ProfileExtraContact(id: UUID().uuidString, kind: kind, value: ""))
             }
-            HistoryPeriodFields(start: $start, end: $end, ongoing: $ongoing)
-        }.padding(20).background(Color(.systemBackground))
+            Section("기간") { HistoryPeriodFields(start: $start, end: $end, ongoing: $ongoing) }
+        }.font(.dearby(.body))
     }
 }
 
-#Preview("프로필 입력") { ScrollView { ProfileFieldsSample() } }
+#Preview("프로필 입력") { ProfileFieldsSample() }
 #endif

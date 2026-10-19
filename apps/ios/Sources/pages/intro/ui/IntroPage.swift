@@ -33,12 +33,12 @@ struct IntroPage: View {
                     DearbyGoogleButton { Task { await account.signInWithGoogle(using: authorizationController) } }
                         .disabled(account.phase == .signingIn).accessibilityIdentifier("intro-google")
                 }
-                Button("패스키로 시작하기") { signingIn = true }
-                    .buttonStyle(DearbyButtonStyle()).accessibilityIdentifier("intro-passkey")
-                Button("둘러보기", action: done)
-                    .buttonStyle(DearbyButtonStyle(outlined: true)).accessibilityIdentifier("intro-browse")
+                Button { signingIn = true } label: { Text("패스키로 시작하기").frame(maxWidth: .infinity) }
+                    .buttonStyle(.borderedProminent).accessibilityIdentifier("intro-passkey")
+                Button(action: done) { Text("둘러보기").frame(maxWidth: .infinity) }
+                    .buttonStyle(.bordered).accessibilityIdentifier("intro-browse")
                     .accessibilityHint("로그인 없이 앱을 둘러봐요.")
-            }.frame(maxWidth: 420)
+            }.frame(maxWidth: 420).controlSize(.large).font(.dearby(.body).weight(.semibold))
         }
         .padding(.horizontal, 24).padding(.bottom, 24)
         .frame(maxWidth: .infinity, maxHeight: .infinity).background(Color(.systemBackground))

@@ -1,23 +1,24 @@
 package com.dearby.nativeapp.widgets.profile.profileFields
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
@@ -37,7 +38,8 @@ val ProfileContactKinds = listOf(
 
 /**
  * 프로필 연락처 입력. 전화번호·이메일은 필수 칸이고, 그 밖의 종류는 `연락처 추가`에서 골라 붙이고 지울 수 있다.
- * 값·형식 검사·오류 문구는 화면이 갖고 이 위젯은 보이고 바뀐 값을 알린다.
+ * 값·형식 검사·오류 문구는 화면이 갖고 이 위젯은 보이고 바뀐 값을 알린다. 칸은 Material 3 `OutlinedTextField` 기본 크기이고 필수·오류 문장은
+ * `supportingText`, 추가 연락처의 삭제는 칸의 `trailingIcon`, `연락처 추가`는 `DearbyOutlineButton`이다(contract "폼은 플랫폼 기본 컴포넌트", 2026-10-19 밤).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun ProfileContactFields(
@@ -47,42 +49,35 @@ val ProfileContactKinds = listOf(
     phoneError: String? = null, emailError: String? = null,
 ) {
     var choosing by remember { mutableStateOf(false) }
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Labeled("전화번호", required = true) {
-            DearbyInlineField("전화번호, 필수", phone, onPhoneChange, editing = true, placeholder = "010-0000-0000", keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
-            phoneError?.let { DearbyFieldError(it) }
-        }
-        Labeled("이메일", required = true) {
-            DearbyInlineField("이메일, 필수", email, onEmailChange, editing = true, placeholder = "name@example.com", keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false))
-            emailError?.let { DearbyFieldError(it) }
-        }
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(phone, onPhoneChange, Modifier.fillMaxWidth(), label = { Text("전화번호") }, placeholder = { Text("010-0000-0000") },
+            isError = phoneError != null, supportingText = { Text(phoneError ?: "필수예요.") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
+        OutlinedTextField(email, onEmailChange, Modifier.fillMaxWidth(), label = { Text("이메일") }, placeholder = { Text("name@example.com") },
+            isError = emailError != null, supportingText = { Text(emailError ?: "필수예요.") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false))
         extras.forEach { item ->
             val meta = ProfileContactKinds.firstOrNull { it.first == item.kind }
             val label = meta?.second ?: item.kind
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Labeled(label, required = false, modifier = Modifier.weight(1f)) {
-                    DearbyInlineField(label, item.value, { onExtraChange(item.copy(value = it)) }, editing = true, placeholder = meta?.third ?: "")
-                }
-                IconButton({ onRemoveExtra(item.id) }) { Icon(Icons.Outlined.RemoveCircleOutline, "$label 삭제", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
-            }
+            OutlinedTextField(item.value, { onExtraChange(item.copy(value = it)) }, Modifier.fillMaxWidth(), label = { Text(label) },
+                placeholder = { Text(meta?.third ?: "") }, singleLine = true,
+                trailingIcon = { IconButton({ onRemoveExtra(item.id) }) { Icon(Icons.Outlined.RemoveCircleOutline, "$label 삭제") } })
         }
-        OutlinedButton({ choosing = true }, Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(11.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)) {
-            Icon(Icons.Outlined.Add, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(6.dp)); Text("연락처 추가", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+        DearbyOutlineButton({ choosing = true }, Modifier.fillMaxWidth()) {
+            Icon(Icons.Outlined.Add, null); Spacer(Modifier.width(8.dp)); Text("연락처 추가")
         }
     }
     if (choosing) ModalBottomSheet({ choosing = false }, containerColor = MaterialTheme.colorScheme.surface) {
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
-            Text("추가할 연락처", Modifier.padding(horizontal = 20.dp, vertical = 8.dp), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
-            ProfileContactKinds.forEach { (kind, label, _) ->
-                Text(label, Modifier.fillMaxWidth().heightIn(min = 52.dp).clickable(role = Role.Button) { choosing = false; onAdd(kind) }.padding(horizontal = 20.dp, vertical = 14.dp), style = MaterialTheme.typography.bodyLarge)
+            Text("추가할 연락처", Modifier.padding(horizontal = 16.dp, vertical = 8.dp), style = MaterialTheme.typography.titleMedium)
+            ProfileContactKinds.forEach { (kind, label, hint) ->
+                ListItem({ Text(label) }, Modifier.clickable(role = Role.Button) { choosing = false; onAdd(kind) }, supportingContent = { Text(hint) })
             }
         }
     }
 }
 
 /**
- * 활동 이력의 기간 입력. 시작일(필수)·종료일 선택기와 `진행 중` 스위치를 두고, 고른 기간을 `2026.03 – 2026.06`으로 보인다.
- * 날짜 검사(종료일이 시작일보다 앞서지 않음)와 오류 문구는 화면이 맡는다.
+ * 활동 이력의 기간 입력. 시작일(필수)·종료일은 읽기 전용 `OutlinedTextField`(달력 아이콘)를 눌러 `DatePickerDialog`로 고르고, `진행 중`은 `ListItem` 안의
+ * `Switch`다. 고른 기간은 `2026.03 – 2026.06`으로 보인다. 날짜 검사(종료일이 시작일보다 앞서지 않음)와 오류 문구는 화면이 맡는다.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun HistoryPeriodFields(
@@ -91,18 +86,13 @@ val ProfileContactKinds = listOf(
     modifier: Modifier = Modifier, error: String? = null,
 ) {
     var picking by remember { mutableStateOf<String?>(null) }
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
-            Text("기간", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
-            Text(historyPeriod(start, if (ongoing) null else end, ongoing), color = if (start == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-        }
-        DateRow("시작일", required = true, value = start) { picking = "start" }
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(historyPeriod(start, if (ongoing) null else end, ongoing), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+        DateField("시작일", required = true, value = start) { picking = "start" }
         // 글자를 눌러도 바뀌도록 줄 전체를 하나의 스위치로 만든다.
-        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(ongoing, role = Role.Switch, onValueChange = onOngoingChange), verticalAlignment = Alignment.CenterVertically) {
-            Text("진행 중", Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-            Switch(ongoing, null)
-        }
-        if (!ongoing) DateRow("종료일", required = false, value = end) { picking = "end" }
+        ListItem({ Text("진행 중") }, Modifier.toggleable(ongoing, role = Role.Switch, onValueChange = onOngoingChange), trailingContent = { Switch(ongoing, null) },
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+        if (!ongoing) DateField("종료일", required = false, value = end) { picking = "end" }
         error?.let { DearbyFieldError(it) }
     }
     picking?.let { which ->
@@ -125,23 +115,14 @@ val ProfileContactKinds = listOf(
     }
 }
 
-@Composable private fun DateRow(label: String, required: Boolean, value: LocalDate?, pick: () -> Unit) {
-    val text = value?.format(DateTimeFormatter.ofPattern("yyyy. M. d.")) ?: "날짜 선택"
-    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = "$label 선택", onClick = pick)
-        .clearAndSetSemantics { contentDescription = "$label${if (required) ", 필수" else ""}, $text" }, verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyMedium)
-        if (required) Text(" 필수", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
-        Spacer(Modifier.weight(1f))
-        Text(text, color = if (value == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, fontWeight = if (value == null) FontWeight.SemiBold else FontWeight.Normal, style = MaterialTheme.typography.bodyMedium)
+/** A read-only text field that opens the date picker; a transparent overlay takes the tap so the field never focuses, and the whole box is one button for accessibility. */
+@Composable private fun DateField(label: String, required: Boolean, value: LocalDate?, pick: () -> Unit) {
+    val text = value?.format(DateTimeFormatter.ofPattern("yyyy. M. d.")) ?: ""
+    Box(Modifier.fillMaxWidth().clearAndSetSemantics { role = Role.Button; contentDescription = "$label${if (required) ", 필수" else ""}, ${text.ifEmpty { "날짜 선택" }}"; onClick("$label 선택") { pick(); true } }) {
+        OutlinedTextField(text, {}, Modifier.fillMaxWidth(), readOnly = true, label = { Text(label) }, placeholder = { Text("날짜 선택") },
+            supportingText = if (required) ({ Text("필수예요.") }) else null, trailingIcon = { Icon(Icons.Outlined.CalendarToday, null) }, singleLine = true)
+        Box(Modifier.matchParentSize().clickable(onClick = pick))
     }
-}
-
-@Composable private fun Labeled(label: String, required: Boolean, modifier: Modifier = Modifier, field: @Composable ColumnScope.() -> Unit) = Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-    Row(Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically) {
-        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
-        if (required) Text(" 필수", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
-    }
-    field()
 }
 
 /** 연·월 위주 표시: `2026.03 – 2026.06`, 진행 중이면 `2026.03 – 진행 중`. */

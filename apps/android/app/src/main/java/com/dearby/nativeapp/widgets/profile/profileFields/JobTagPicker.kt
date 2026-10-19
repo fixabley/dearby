@@ -21,6 +21,7 @@ data class JobTag(val id: String, val title: String, val pending: Boolean, val r
 /**
  * 직무 tag picker (contract "직무"): chips for the chosen jobs, then a search over the job tree; a name that is not in the
  * tree can be typed and waits for admin approval. Search requests and results belong to the screen; this widget only draws.
+ * The search box is a default-size `OutlinedTextField` ([PickerSearchField]).
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable fun JobTagPicker(
@@ -32,17 +33,16 @@ data class JobTag(val id: String, val title: String, val pending: Boolean, val r
             tags.forEach { tag ->
                 InputChip(
                     selected = !tag.rejected, onClick = { onRemove(tag.id) },
-                    label = { Text(tag.title, style = MaterialTheme.typography.bodyLarge) },
+                    label = { Text(tag.title) },
                     leadingIcon = if (tag.pending) ({ Icon(Icons.Outlined.Schedule, "승인 대기", Modifier.size(18.dp)) }) else null,
                     trailingIcon = { Icon(Icons.Outlined.Close, "삭제", Modifier.size(18.dp)) },
                     colors = InputChipDefaults.inputChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer, selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer, selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer, selectedTrailingIconColor = MaterialTheme.colorScheme.onPrimaryContainer),
-                    modifier = Modifier.heightIn(min = 44.dp),
                 )
             }
         }
         if (tags.any { it.pending }) Text("직접 적은 직무는 관리자 승인 뒤 명함에 들어가요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         if (full) { Text("직무는 ${tags.size}개까지 고를 수 있어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall); return@Column }
-        DearbySearchField(query, onQueryChange, "직무 검색 (예: 백엔드, 디자인)")
+        PickerSearchField(query, onQueryChange, "직무 검색", placeholder = "예: 백엔드, 디자인")
         if (loading && items.isEmpty()) Box(Modifier.fillMaxWidth().height(56.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
         else if (failed) Text("목록을 불러오지 못했어요. 직접 적어도 돼요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         items.forEach { item ->

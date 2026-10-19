@@ -7,10 +7,10 @@ struct ActivityCard: View {
     let activityID: String
     let title: String
     let recruitment: ActivityModel.Recruitment
-    /// Recruitment window text; empty reads as `미정`.
-    var recruitmentLabel: String = ""
-    /// Activity period text; empty reads as `미정`.
-    var dateLabel: String = ""
+    /// Recruitment window text (`ActivityModel.recruitmentText`: structured dates before the collected label); nil reads as `미정`.
+    var recruitmentText: String?
+    /// Activity period text (`ActivityModel.scheduleText`); nil reads as `미정`.
+    var scheduleText: String?
     /// Place name (contract "활동 장소"); nil omits the row.
     var place: String?
     let open: () -> Void
@@ -23,9 +23,8 @@ struct ActivityCard: View {
                     statusChip
                 }
                 VStack(alignment: .leading, spacing: 3) {
-                    LabeledContent("모집") { Text(recruitmentLabel.isEmpty ? "미정" : recruitmentLabel) }
-                        .labeledContentStyle(DiscoveryRowStyle(emphasized: emphasized))
-                    LabeledContent("활동") { Text(dateLabel.isEmpty ? "미정" : dateLabel) }.labeledContentStyle(DiscoveryRowStyle())
+                    LabeledContent("모집") { Text(recruitmentText ?? "미정") }.labeledContentStyle(DiscoveryRowStyle(emphasized: emphasized))
+                    LabeledContent("활동") { Text(scheduleText ?? "미정") }.labeledContentStyle(DiscoveryRowStyle())
                     if let place, !place.isEmpty { LabeledContent("장소") { Text(place) }.labeledContentStyle(DiscoveryRowStyle()) }
                 }
             }
@@ -33,8 +32,8 @@ struct ActivityCard: View {
             .background(Color(.systemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous)).contentShape(Rectangle())
         }.buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel([title, statusText, "모집 " + (recruitmentLabel.isEmpty ? "미정" : recruitmentLabel),
-                                 "활동 " + (dateLabel.isEmpty ? "미정" : dateLabel), place.map { "장소 " + $0 }].compactMap { $0 }.joined(separator: ", "))
+            .accessibilityLabel([title, statusText, "모집 " + (recruitmentText ?? "미정"), "활동 " + (scheduleText ?? "미정"),
+                                 place.map { "장소 " + $0 }].compactMap { $0 }.joined(separator: ", "))
             .accessibilityHint("누르면 활동 상세를 보여요")
             .accessibilityIdentifier("activity-\(activityID)")
     }
@@ -81,10 +80,10 @@ struct ActivityCardSample: View {
     var body: some View {
         VStack(spacing: 8) {
             ActivityCard(activityID: "1", title: "부스트캠프 Web·Mobile 10기", recruitment: .open,
-                         recruitmentLabel: "10월 20일 (월) 10:00 ~ 11월 10일 (월) 18:00", dateLabel: "2026년 11월 24일 ~ 2027년 2월 6일", place: "온라인 · 서울 강남") {}
+                         recruitmentText: "10월 20일 (화) 10:00 ~ 11월 10일 (화) 18:00", scheduleText: "2026년 11월 24일 (화) ~ 2027년 2월 6일 (토)", place: "온라인 · 서울 강남") {}
             ActivityCard(activityID: "2", title: "SK AIGEN 1기", recruitment: .upcoming,
-                         recruitmentLabel: "11월 1일 (일) ~ 11월 15일 (일)", dateLabel: "2027년 3월 11일부터", place: "SK 서린빌딩") {}
-            ActivityCard(activityID: "3", title: "우아콘 2025", recruitment: .closed, dateLabel: "2025년 10월 30일 (목)") {}
+                         recruitmentText: "11월 1일 (일) ~ 11월 15일 (일)", scheduleText: "2027년 3월 11일부터", place: "SK 서린빌딩") {}
+            ActivityCard(activityID: "3", title: "우아콘 2025", recruitment: .closed, scheduleText: "2025년 10월 30일 (목)") {}
         }.padding(10).background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
             .padding(16).background(Color(.systemGroupedBackground))
     }

@@ -24,12 +24,12 @@ struct WalletPage: View {
                         switch state.phase {
                         case .signedOut:
                             notice("받은 명함은 계정에 저장돼요", "로그인하면 저장한 명함을 볼 수 있어요.")
-                            Button("로그인") { signingIn = true }.buttonStyle(DearbyButtonStyle())
+                            Button { signingIn = true } label: { Text("로그인").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold))
                         case .loading:
                             ProgressView("받은 명함을 불러오는 중이에요").frame(maxWidth: .infinity, minHeight: 240).tint(DearbyStyle.teal)
                         case .failed:
                             notice("받은 명함을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.")
-                            Button("다시 시도") { Task { await state.load() } }.buttonStyle(DearbyButtonStyle(outlined: true))
+                            Button { Task { await state.load() } } label: { Text("다시 시도").frame(maxWidth: .infinity) }.buttonStyle(.bordered).controlSize(.large).font(.dearby(.body).weight(.semibold))
                         case .loaded where state.wallet.items.isEmpty:
                             notice("아직 받은 명함이 없어요", "상대의 명함 QR을 카메라로 읽어 저장하면 여기에 보여요.")
                         case .loaded:

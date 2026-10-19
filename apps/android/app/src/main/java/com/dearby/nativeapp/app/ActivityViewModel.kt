@@ -10,6 +10,7 @@ import com.dearby.nativeapp.entities.activity.model.ProgramPage
 import com.dearby.nativeapp.entities.activity.model.currentStage
 import com.dearby.nativeapp.entities.activity.model.instant
 import com.dearby.nativeapp.entities.activity.model.safeHttpsUrl
+import com.dearby.nativeapp.entities.activity.model.scheduleText
 import com.dearby.nativeapp.entities.activity.model.stageBadge
 import com.dearby.nativeapp.entities.activity.model.stages
 import com.dearby.nativeapp.pages.activity.ActivityState
@@ -78,11 +79,37 @@ class ActivityViewModel(
         programJobs.clear()
         job = viewModelScope.launch {
             if (debounce) delay(300)
-            mutable.update { it.copy(phase = ActivityListPhase.LOADING, programs = emptyList(), expanded = emptySet(), programActivities = emptyMap(), nextCursor = null, loadingMore = false, moreFailed = false) }
+            mutable.update { it.copy(phase = ActivityListPhase.LOADING, programs = emptyList(), expanded = emptySet(), programActivities = emptyMap(), nextCursor = null, loadingMore = false, moreFailed = false, refreshing = false, refreshFailed = false) }
             val page = programPage(null) ?: return@launch mutable.update { it.copy(phase = ActivityListPhase.FAILED) }
             show(page, append = false)
         }
     }
+    /**
+     * Pull to refresh (contract "발견 탭 스크롤 동작"): the first program page again while the list stays on screen; which programs are
+     * expanded is kept and their activities are read again. A failure leaves the list as it was and flags [ActivityListState.refreshFailed]
+     * (the error screen only when nothing was listed).
+     */
+    fun refresh() {
+        if (state.value.phase != ActivityListPhase.LOADED) return reload()
+        if (state.value.refreshing) return
+        job?.cancel()
+        programJobs.values.forEach { it.cancel() }
+        programJobs.clear()
+        job = viewModelScope.launch {
+            mutable.update { it.copy(refreshing = true, loadingMore = false, moreFailed = false, refreshFailed = false) }
+            val page = programPage(null) ?: return@launch mutable.update {
+                if (it.programs.isEmpty()) it.copy(phase = ActivityListPhase.FAILED, refreshing = false) else it.copy(refreshing = false, refreshFailed = true)
+            }
+            // Programs that fell off the first page lose their expansion, or they would come back via loadMore expanded but never loaded.
+            val listed = page.items.map { it.id }.toSet()
+            mutable.update { it.copy(programActivities = emptyMap(), expanded = it.expanded.filter { id -> id in listed }.toSet()) }
+            show(page, append = false)
+            state.value.expanded.forEach(::loadProgram)
+            mutable.update { it.copy(refreshing = false) }
+        }
+    }
+    /** The refresh-failure notice was shown; otherwise the flag would show it again whenever the page comes back. */
+    fun clearRefreshFailure() = mutable.update { it.copy(refreshFailed = false) }
     /** The list is near its end: fetch the next program page, if there is one and nothing else is loading. */
     fun loadMore() {
         val current = state.value
@@ -211,12 +238,11 @@ private const val PAST_DAYS = 1095L
 private fun today(): LocalDate = LocalDate.now(ZoneId.of("Asia/Seoul"))
 private val sessionTime = DateTimeFormatter.ofPattern("HH:mm", Locale.KOREAN)
 private val sessionDay = DateTimeFormatter.ofPattern("M/d", Locale.KOREAN)
-private val periodTime = DateTimeFormatter.ofPattern("M월 d일 HH:mm", Locale.KOREAN).withZone(ZoneId.of("Asia/Seoul"))
-private val periodDay = DateTimeFormatter.ofPattern("M월 d일", Locale.KOREAN)
 private fun zoneOf(id: String) = runCatching { ZoneId.of(id) }.getOrDefault(ZoneId.of("Asia/Seoul"))
 
 private fun ActivityModel.toState(now: Instant) = ActivityState(
-    id, name, description, organization, program, statusLabel(now), dateLabel, venue, safeHttpsUrl(imageUrl),
+    // The activity period by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.
+    id, name, description, organization, program, statusLabel(now), activitySchedule?.scheduleText()?.ifBlank { null } ?: dateLabel, venue, safeHttpsUrl(imageUrl),
     schedules.map { schedule ->
         val zone = zoneOf(schedule.timeZone)
         val range = listOf(schedule.startAt, schedule.endAt).joinToString(" – ") { sessionTime.withZone(zone).format(instant(it)) }
@@ -230,6 +256,7 @@ private fun ActivityModel.toState(now: Instant) = ActivityState(
     sortKey = sortKey,
     tags = tags.map { it.name },
     place = place,
+    applicationUrl = safeHttpsUrl(applicationUrl),
 )
 /**
  * The stage track with the user's [marks]: a 통과 mark makes the stage past, the earliest other stage not over by [today]
@@ -253,17 +280,5 @@ private fun ActivityModel.toProgress(marks: Map<Int, ProgressMark>, today: Local
     return ProgressState(id, name, "$program · $organization", shown, current, badge, ended, failedAt != null, current?.let { stages[it].day })
 }
 
-/**
- * "10월 1일 14:07 – 10월 8일 00:00" in Korean time; an all-day window (contract "열린 활동 판정 일원화") reads as Seoul days,
- * "10월 1일 – 10월 7일" with the exclusive end moved back a day. An unknown end stays blank on its side.
- */
-private fun ActivityModel.period(): String? {
-    val window = application ?: return null
-    val start = instant(window.startAt)
-    val end = recruitmentEnd
-    if (start != null || end != null) return listOf(start, end).joinToString(" – ") { it?.let(periodTime::format).orEmpty() }.trim()
-    val startDay = window.startDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
-    val endDay = window.endDateExclusive?.let { runCatching { LocalDate.parse(it).minusDays(1) }.getOrNull() }
-    if (startDay == null && endDay == null) return null
-    return listOf(startDay, endDay).joinToString(" – ") { it?.let(periodDay::format).orEmpty() }.trim()
-}
+/** The recruitment window as text (contract "일정 표시 우선순위" format: `10월 1일 (수) 14:07 ~ 10월 8일 (수) 00:00`, end only `~ … 마감`), null without one. */
+private fun ActivityModel.period(): String? = application?.let { scheduleText(it.startAt, it.endAt, it.startDate, it.endDateExclusive, recruitment = true) }?.ifBlank { null }

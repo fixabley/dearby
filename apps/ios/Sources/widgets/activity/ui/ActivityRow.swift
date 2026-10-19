@@ -13,7 +13,7 @@ struct ActivityRow<Footer: View>: View {
                         Text(activity.title).font(.headline).foregroundStyle(Color.primary)
                         Text(activity.organization).font(.caption).foregroundStyle(DearbyStyle.quiet).lineLimit(2)
                         Divider()
-                        Label(activity.dateLabel.isEmpty ? "일정 미확인" : activity.dateLabel, systemImage: "calendar")
+                        Label(activity.scheduleText(at: Date()) ?? "일정 미확인", systemImage: "calendar")
                     }.font(.caption).foregroundStyle(DearbyStyle.quiet).frame(maxWidth: .infinity, alignment: .leading)
                 }
             }.buttonStyle(.plain).accessibilityIdentifier("activity-\(activity.id)")

@@ -83,8 +83,8 @@ export function ActivityDetail({ id }: { id: number }) {
           {[
             ["주최", activity.organization.name],
             ["프로그램", activity.program.name],
-            ["모집 기간", scheduleLabel(activity.application)],
-            ["활동 기간", scheduleLabel(activity.activitySchedule)],
+            ["모집 기간", scheduleLabel(activity.application, "recruitment")],
+            ["활동 기간", scheduleLabel(activity.activitySchedule, "activity")],
           ].map(([label, value]) => (
             <div key={label}>
               <dt>{label}</dt>
@@ -114,14 +114,14 @@ export function ActivityDetail({ id }: { id: number }) {
                 <Icon name="calendar" />
                 <div>
                   <h3>{schedule.title}</h3>
-                  <p>{scheduleLabel(schedule) || "일정 미확인"}</p>
+                  <p>{scheduleLabel(schedule, "activity") || "일정 미확인"}</p>
                   {schedule.address && <p>{schedule.address}</p>}
                 </div>
               </li>
             ))}
           </ul>
         ) : (
-          <p>{scheduleLabel(activity.activitySchedule) || "일정 미확인"}</p>
+          <p>{scheduleLabel(activity.activitySchedule, "activity") || "일정 미확인"}</p>
         )}
       </section>
       {/* 활동 장소 (contract "활동 장소 — 2026-10-19"): curated place with a map link; otherwise the collected phrase alone. */}

@@ -67,7 +67,7 @@ struct ActivityProgressPage: View {
                     Text(stage.name).font(.dearby(.headline)).frame(maxWidth: .infinity, alignment: .leading)
                     chip(stage)
                 }
-                Text(stage.dateText).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
+                Text(stage.dateText(now: Date())).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
                 Picker("\(stage.name) 표시", selection: Binding(get: { state.stageMark(activityID, stage.id) },
                                                               set: { state.markStage(activityID, stage.id, $0) })) {
                     ForEach(StageMark.allCases, id: \.self) { Text($0.label).tag($0) }
