@@ -26,6 +26,7 @@ class CollectActivitiesService(
     private val extractor: ActivityExtractor,
     private val drafts: ActivityDraftRepository,
     private val watchlist: WatchlistRepository,
+    private val tags: io.wid.dearby.application.tag.TagRepository,
 ) {
 
     fun collect(target: CollectionTarget): CollectionReport {
@@ -35,6 +36,8 @@ class CollectActivitiesService(
         val previous = drafts.findPreviousEdition(target.programId)
         // 날짜 문구 피드백(admin-v1.md): 운영자가 바로잡은 문구 → 날짜 쌍을 해석 예시로 넘긴다(프로그램당 한 번)
         val examples = drafts.findDateLabelExamples(target.programId)
+        // 태그 사전(native-v1.md "태그"): 모델이 이 이름 중에서만 고르게 한다
+        val tagNames = tags.findAll().map { it.name }
         val rejected = mutableListOf<String>()
         // 시작 주소 토큰(admin-v1.md "주소 토큰"): 올해·내년, 다음·현재 기수로 펼친다. 기수를 모르면 그 주소는 건너뛰고 이유만 남긴다
         val template = target.officialUrlTemplate
@@ -54,7 +57,7 @@ class CollectActivitiesService(
                 continue
             }
             fetched += url
-            val extraction = extractor.extract(page, target.programName, watched, previous, examples)
+            val extraction = extractor.extract(page, target.programName, watched, previous, examples, tagNames)
             usage += extraction.usage
             found += extraction.activities.size
             val checkedAt = OffsetDateTime.now(ZoneOffset.UTC)

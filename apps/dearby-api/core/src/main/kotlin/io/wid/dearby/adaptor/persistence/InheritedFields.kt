@@ -28,6 +28,7 @@ object CuratedFields {
     const val LOCATION = "location"
     const val COST = "cost"
     const val CATEGORY = "category" // 활동 종류(native-v1.md "활동 종류", 2026-10-19)
+    const val TAGS = "tags" // 태그(native-v1.md "태그", 2026-10-19). activity_tags 연결을 운영자가 정했음
 
     fun read(value: JSONB?): Set<String> = FieldNames.read(value)
     fun jsonb(fields: Collection<String>): JSONB = FieldNames.jsonb(fields)

@@ -15,6 +15,7 @@ import java.time.format.DateTimeParseException
 object ActivityVerifier {
 
     private val QUOTE_LENGTH = 10..200
+        const val MAX_TAGS = 5 // 활동 하나에 붙일 태그 수
 
     fun verify(candidate: ExtractedActivity, page: FetchedPage, officialSource: Boolean, checkedAt: OffsetDateTime): Verification {
         if (candidate.roundKey.isBlank() || candidate.name.isBlank()) return Verification.Rejected("회차 식별자나 이름이 없음")
@@ -40,6 +41,7 @@ object ActivityVerifier {
                 applicationUrl = candidate.applicationUrl?.trim()?.takeIf { it.startsWith("https://") && it in page.links },
                 participationType = ParticipationType.entries.firstOrNull { it.name == candidate.participationType }, // 본문에 없으면 null(저장할 때 이전 기수에서 가져온다)
                 category = ActivityCategory.entries.firstOrNull { it.name == candidate.category }, // 모르는 코드는 미분류
+                tags = candidate.tags.map { it.trim() }.filter { it.isNotEmpty() }.distinct().take(MAX_TAGS), // 사전 대조는 저장할 때
                 recruitmentStartAt = start,
                 recruitmentEndAt = end,
                 recruitmentStartDate = recruitmentStartDate,

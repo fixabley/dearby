@@ -30,7 +30,7 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
                     DSL.or(
                         listOf(ACTIVITIES.NAME, ACTIVITIES.DESCRIPTION, ACTIVITIES.NAME_EN, ACTIVITIES.DESCRIPTION_EN).flatMap {
                             listOf(it.containsIgnoreCase(q), DSL.condition("{0} <% {1}", DSL.`val`(q), it))
-                        }
+                        } + TagRows.activityTagMatches(q) // 태그 이름(한글·영문)에 맞아도 찾는다(native-v1.md "태그")
                     )
                 )
             }
@@ -41,6 +41,7 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             condition.after?.let { add(ACTIVITIES.ID.gt(it)) }
             addAll(EligibilityRows.conditions(condition.eligibility))
             condition.categories?.let { add(ACTIVITIES.CATEGORY.`in`(it.map(ActivityCategory::name))) }
+            condition.tagIds?.let { addAll(TagRows.activityHasAllTags(it)) }
             // 열린 활동만(발견 묶음과 같은 규칙). 안쪽 activities 참조는 하위 질의의 것으로 풀린다
             if (condition.openOnly) {
                 add(
@@ -86,13 +87,15 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             .groupBy({ it.activityId!! }) {
                 ActivityContact(it.id!!, it.activityId!!, ContactKind.valueOf(it.kind!!), it.label!!, it.value!!)
             }
-        return rows.map { toActivity(it, schedules[it.id].orEmpty(), contacts[it.id].orEmpty()) }
+        val tags = TagRows.ofActivities(dsl, ids)
+        return rows.map { toActivity(it, schedules[it.id].orEmpty(), contacts[it.id].orEmpty(), tags[it.id].orEmpty()) }
     }
 
     private fun toActivity(
         row: ActivitiesRecord,
         schedules: List<SchedulesRecord>,
         contacts: List<ActivityContact>,
+        tags: List<Tag>,
     ): Activity {
         val bySlot = schedules.groupBy { it.slot }
         val activitySchedule = bySlot[SLOT_ACTIVITY]?.single()?.let(::toSchedule)
@@ -113,6 +116,7 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             eligibility = EligibilityRows.read(row.eligibility),
             timestamps = Timestamps(row.createdAt!!, row.updatedAt!!),
             category = row.category?.let(ActivityCategory::valueOf),
+            tags = tags,
         )
     }
 

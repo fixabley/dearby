@@ -9,6 +9,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.Activities
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEligibilityTerms
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
+import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
@@ -52,6 +53,7 @@ val ACTIVITY_ELIGIBILITY_TERMS_ACTIVITY_IDX: Index = Internal.createIndex(DSL.na
 val ACTIVITY_ELIGIBILITY_TERMS_RANGE_IDX: Index = Internal.createIndex(DSL.name("activity_eligibility_terms_range_idx"), ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS, arrayOf(ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS.FIELD_EN, ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS.FROM_VALUE, ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS.TO_VALUE), false)
 val ACTIVITY_ELIGIBILITY_TERMS_VALUE_IDX: Index = Internal.createIndex(DSL.name("activity_eligibility_terms_value_idx"), ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS, arrayOf(ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS.FIELD_EN, ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS.VALUE_EN), false)
 val ACTIVITY_PARTICIPATIONS_ACTIVITY_ID_IDX: Index = Internal.createIndex(DSL.name("activity_participations_activity_id_idx"), ActivityParticipations.ACTIVITY_PARTICIPATIONS, arrayOf(ActivityParticipations.ACTIVITY_PARTICIPATIONS.ACTIVITY_ID), false)
+val ACTIVITY_TAGS_TAG_ID_IDX: Index = Internal.createIndex(DSL.name("activity_tags_tag_id_idx"), ActivityTags.ACTIVITY_TAGS, arrayOf(ActivityTags.ACTIVITY_TAGS.TAG_ID), false)
 val APPLE_SIGN_IN_STATES_EXPIRES_AT_IDX: Index = Internal.createIndex(DSL.name("apple_sign_in_states_expires_at_idx"), AppleSignInStates.APPLE_SIGN_IN_STATES, arrayOf(AppleSignInStates.APPLE_SIGN_IN_STATES.EXPIRES_AT), false)
 val BUSINESS_CARDS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("business_cards_user_id_idx"), BusinessCards.BUSINESS_CARDS, arrayOf(BusinessCards.BUSINESS_CARDS.USER_ID), false)
 val COLLECTION_RUNS_PROGRAM_ID_RUN_DATE_IDX: Index = Internal.createIndex(DSL.name("collection_runs_program_id_run_date_idx"), CollectionRuns.COLLECTION_RUNS, arrayOf(CollectionRuns.COLLECTION_RUNS.PROGRAM_ID, CollectionRuns.COLLECTION_RUNS.RUN_DATE.desc()), false)

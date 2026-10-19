@@ -1,6 +1,7 @@
 package io.wid.dearby.adaptor.web.v1.activities
 
 import io.wid.dearby.adaptor.web.ReferenceResponse
+import io.wid.dearby.adaptor.web.v1.tags.TagResponse
 import io.wid.dearby.application.activity.ActivityListing
 import io.wid.dearby.application.eligibility.EligibilityJson
 import tools.jackson.databind.JsonNode
@@ -19,6 +20,7 @@ data class ActivityResponse(
     val schedules: List<ScheduleResponse>,
     val eligibility: JsonNode?, // 대상자 조건(native-v1.md "대상자 조건"). 없으면 null
     val category: String?, // 활동 종류 코드(native-v1.md "활동 종류"). null은 미분류
+    val tags: List<TagResponse>, // 태그(native-v1.md "태그"), 사전 순
 ) {
     companion object {
         fun from(listing: ActivityListing, language: ResponseLanguage): ActivityResponse {
@@ -36,6 +38,7 @@ data class ActivityResponse(
                 schedules = activity.schedules.map(ScheduleResponse::from),
                 eligibility = activity.eligibility?.let(EligibilityJson::toNode),
                 category = activity.category?.name,
+                tags = activity.tags.map(TagResponse::from),
             )
         }
     }

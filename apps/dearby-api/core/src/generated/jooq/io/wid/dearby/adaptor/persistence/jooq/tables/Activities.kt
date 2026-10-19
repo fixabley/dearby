@@ -17,13 +17,16 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_SOURCE_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_CONTACTS__ACTIVITY_CONTACTS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_ELIGIBILITY_TERMS__ACTIVITY_ELIGIBILITY_TERMS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_ROLES__ACTIVITY_ROLES_ACTIVITY_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_TAGS__ACTIVITY_TAGS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.COLLECTION_WATCHLIST__COLLECTION_WATCHLIST_CANONICAL_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES__SCHEDULES_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts.ActivityContactsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEligibilityTerms.ActivityEligibilityTermsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles.ActivityRolesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags.ActivityTagsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist.CollectionWatchlistPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules.SchedulesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.Tags.TagsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivitiesRecord
 
 import java.time.LocalDateTime
@@ -322,6 +325,22 @@ open class Activities(
     val activityRoles: ActivityRolesPath
         get(): ActivityRolesPath = activityRoles()
 
+    private lateinit var _activityTags: ActivityTagsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.activity_tags</code> table
+     */
+    fun activityTags(): ActivityTagsPath {
+        if (!this::_activityTags.isInitialized)
+            _activityTags = ActivityTagsPath(this, null, ACTIVITY_TAGS__ACTIVITY_TAGS_ACTIVITY_ID_FKEY.inverseKey)
+
+        return _activityTags;
+    }
+
+    val activityTags: ActivityTagsPath
+        get(): ActivityTagsPath = activityTags()
+
     private lateinit var _collectionWatchlist: CollectionWatchlistPath
 
     /**
@@ -353,6 +372,13 @@ open class Activities(
 
     val schedules: SchedulesPath
         get(): SchedulesPath = schedules()
+
+    /**
+     * Get the implicit many-to-many join path to the <code>public.tags</code>
+     * table
+     */
+    val tags: TagsPath
+        get(): TagsPath = activityTags().tags()
     override fun getChecks(): List<Check<ActivitiesRecord>> = listOf(
         Internal.createCheck(this, DSL.name("activities_category_check"), "(((category IS NULL) OR ((category)::text = ANY ((ARRAY['BOOTCAMP'::character varying, 'CONFERENCE'::character varying, 'WORKSHOP'::character varying, 'STUDY'::character varying, 'CLUB'::character varying, 'LECTURE'::character varying, 'HACKATHON'::character varying, 'CONTEST'::character varying, 'MEETUP'::character varying, 'OTHER'::character varying])::text[]))))", true),
         Internal.createCheck(this, DSL.name("activities_eligibility_check"), "(((eligibility IS NULL) OR (jsonb_typeof(eligibility) = 'object'::text)))", true),

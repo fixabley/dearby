@@ -2,6 +2,7 @@ package io.wid.dearby.adaptor.web.v1.activities
 
 import io.wid.dearby.application.activity.ActivitySearch
 import io.wid.dearby.application.activity.ActivityService
+import io.wid.dearby.adaptor.web.v1.tags.TagIds
 import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.eligibility.EligibilityFilter
 import org.springframework.http.HttpHeaders
@@ -26,13 +27,14 @@ class ActivityController(private val activities: ActivityService) {
         @RequestParam(required = false) programId: Long?,
         @RequestParam(required = false) category: String?, // 활동 종류 코드 하나 또는 쉼표 목록(native-v1.md "활동 종류")
         @RequestParam(defaultValue = "false") open: Boolean, // true면 열린 활동만(native-v1.md "열린 활동 판정 일원화")
+        @RequestParam(required = false) tagIds: String?, // 태그 id 쉼표 목록, 모두 가진 활동만(native-v1.md "태그")
         @RequestParam(required = false) cursor: Long?,
         @RequestParam(defaultValue = ActivityService.DEFAULT_PAGE_SIZE.toString()) size: Int,
         @RequestParam params: Map<String, String>, // 대상자 필터(age·educationStatus 등 camelCase 어휘)는 여기서 골라낸다
         @RequestHeader(HttpHeaders.ACCEPT_LANGUAGE, required = false) acceptLanguage: String?,
     ): ResponseEntity<ActivityPageResponse> {
         val language = ResponseLanguage.from(acceptLanguage)
-        val page = activities.search(ActivitySearch(q, organizationId, programId, cursor, size, eligibility = EligibilityFilter.from(params), categories = ActivityCategory.parseList(category), openOnly = open))
+        val page = activities.search(ActivitySearch(q, organizationId, programId, cursor, size, eligibility = EligibilityFilter.from(params), categories = ActivityCategory.parseList(category), openOnly = open, tagIds = TagIds.parse(tagIds)))
         return localized(language, ActivityPageResponse(page.items.map { ActivityResponse.from(it, language) }, page.nextCursor))
     }
 

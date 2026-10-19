@@ -83,6 +83,7 @@ class JooqProgramRepository(private val dsl: DSLContext) : ProgramRepository {
             .groupBy({ it.programId!! }) {
                 ProgramContact(it.id!!, it.programId!!, ContactKind.valueOf(it.kind!!), it.label!!, it.value!!)
             }
+        val tags = TagRows.ofPrograms(dsl, ids)
         return rows.map {
             Program(
                 id = it.id!!,
@@ -93,6 +94,7 @@ class JooqProgramRepository(private val dsl: DSLContext) : ProgramRepository {
                 period = Period(it.periodFrom, it.periodTo),
                 timestamps = Timestamps(it.createdAt!!, it.updatedAt!!),
                 category = it.category?.let(ActivityCategory::valueOf),
+                tags = tags[it.id].orEmpty(),
             )
         }
     }
