@@ -55,6 +55,9 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         val nameEn = if (CuratedFields.NAME_EN in curated) existing?.get(ACTIVITIES.NAME_EN) else activity.nameEn
         val description = keepOrCollected(CuratedFields.DESCRIPTION, existing?.get(ACTIVITIES.DESCRIPTION), activity.description)
         val descriptionEn = if (CuratedFields.DESCRIPTION_EN in curated) existing?.get(ACTIVITIES.DESCRIPTION_EN) else activity.descriptionEn
+        // 어드민이 고친 공식 안내·신청 링크도 보호한다(admin-v1.md "운영자 지정 필드", 2026-10-19)
+        val officialUrl = if (CuratedFields.OFFICIAL_URL in curated) existing?.get(ACTIVITIES.OFFICIAL_URL) ?: activity.officialUrl else activity.officialUrl
+        val applicationUrl = if (CuratedFields.APPLICATION_URL in curated) existing?.get(ACTIVITIES.APPLICATION_URL) else activity.applicationUrl
         val eligibility = resolve(InheritedFields.ELIGIBILITY, EligibilityRows.read(existing?.get(ACTIVITIES.ELIGIBILITY)), activity.eligibility, previous?.eligibility)
         val audience = resolve(InheritedFields.AUDIENCE, existing?.get(ACTIVITIES.AUDIENCE)?.ifBlank { null }, activity.audience?.ifBlank { null }, previous?.audience?.ifBlank { null })
         val participationType = resolve(
@@ -84,9 +87,9 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             .set(ACTIVITIES.NAME_EN, nameEn)
             .set(ACTIVITIES.DESCRIPTION, description)
             .set(ACTIVITIES.DESCRIPTION_EN, descriptionEn)
-            .set(ACTIVITIES.OFFICIAL_URL, activity.officialUrl)
+            .set(ACTIVITIES.OFFICIAL_URL, officialUrl)
             .set(ACTIVITIES.OFFICIAL_SOURCE, activity.officialSource)
-            .set(ACTIVITIES.APPLICATION_URL, activity.applicationUrl)
+            .set(ACTIVITIES.APPLICATION_URL, applicationUrl)
             .set(ACTIVITIES.PARTICIPATION_TYPE, participationType.name)
             .set(ACTIVITIES.LOCATION, activity.location)
             .set(ACTIVITIES.COST, activity.cost)

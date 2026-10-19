@@ -231,6 +231,15 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         assertEquals(listOf("영문 활동", "Workshop", "설명", "Details"), listOf("name", "nameEn", "description", "descriptionEn").map { edited[it].asString() })
         // 보낸 필드만 운영자 지정 필드(admin-v1.md "운영자 지정 필드")에 남는다
         assertEquals("[\"nameEn\",\"descriptionEn\"]", edited["curatedFields"].toString())
+        // 공식 안내·신청 링크(2026-10-19): https만 받고, 신청 링크는 빈 문자열이면 지우며, 둘 다 운영자 지정 필드에 남는다
+        val linked = read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"officialUrl":" https://example.org/notice ","applicationUrl":"https://example.org/apply"}""") }
+            .andExpect { status { isOk() } })
+        assertEquals("https://example.org/notice", linked["officialUrl"].asText())
+        assertEquals("https://example.org/apply", linked["applicationUrl"].asText())
+        assertEquals("[\"nameEn\",\"descriptionEn\",\"officialUrl\",\"applicationUrl\"]", linked["curatedFields"].toString())
+        mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"officialUrl":"http://example.org/notice"}""") }.andExpect { status { isBadRequest() } }
+        mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"officialUrl":""}""") }.andExpect { status { isBadRequest() } }
+        assertEquals(true, read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"applicationUrl":""}""") }.andExpect { status { isOk() } })["applicationUrl"].isNull)
         mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"name":" "}""") }.andExpect { status { isBadRequest() } }
         mvc.patch("/v1/admin/activities/999999") { asAdmin(); patchBody("""{"nameEn":"x"}""") }.andExpect { status { isNotFound() } }
 
@@ -250,7 +259,7 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         val reset = read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"eligibility":{"op":"all","items":[{"fieldEn":"age","from":20}]}}""") }.andExpect { status { isOk() } })
         assertEquals("[\"audience\"]", reset["inheritedFields"].toString())
         // 대상자 조건을 비우거나 다시 저장해도 운영자 지정 표시는 한 번만 남는다
-        assertEquals("[\"nameEn\",\"descriptionEn\",\"eligibility\"]", reset["curatedFields"].toString())
+        assertEquals("[\"nameEn\",\"descriptionEn\",\"officialUrl\",\"applicationUrl\",\"eligibility\"]", reset["curatedFields"].toString())
 
         // 일정 직접 지정(admin-v1.md): 날짜만 주면 종일 일정(끝 날짜 포함 → exclusive는 하루 뒤), curated가 켜진다. 모집 기간은 없던 행을 만든다. 섞으면 400, null이면 지정 해제
         val dated = read(
