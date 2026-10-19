@@ -11,6 +11,14 @@
 - **로그인**: 패스키·Apple 운영 중. Google은 네이티브 SDK로 전환됐지만 `.env.prod`의 `GOOGLE_CLIENT_IDS`와 `~/.dearby-deploy/mobile.env`가 비어 503·버튼 숨김.
 - **배치**: 매일 00:00 수집, 04:00 명함 회수(Asia/Seoul). `run --rm batch --collect-now/--recall-now`로 띄운 일회성 컨테이너는 작업 뒤 종료되지 않고 스케줄러와 함께 남으므로 수동으로 멈춘다(2026-10-19 두 개 정리).
 
+## 2026-10-19 저녁 결정 — 기기 캘린더 실제 연동·태그·브라우저 렌더링
+
+사용자 결정(가치·기술 문서 작성 중 발견한 불일치 보고 뒤): "기기 캘린더 연동 구현해주세요. 태그 구현해주세요. 종류 일괄 적용은 그냥 적용. 일회성 batch 컨테이너는 스스로 종료, DAN 주소 수정." 이어 우와콘 수집 실패 원인(자바스크립트로 그리는 단일 페이지 앱, 서버 HTML 글자 121자) 보고 뒤 "브라우저 렌더링 경로 추가, 설정에 '렌더링 필요' 표시" 승인.
+- 캘린더: iOS EventKit(`requestFullAccessToEvents`)·Android `CalendarContract.Instances`로 실제 비교. 종일 일정 제외, 제목은 화면에만, 저장·전송 없음, 권한 안내 화면 뒤 요청. 고정 예시 비교는 iOS 미리보기에만 남음.
+- 태그: 계약 "태그(얻을 수 있는 것)"대로 API(V34 사전·연결·q 매칭·tagIds 필터·수집 추출)·어드민(검색+직접 입력 선택기, 태그 사전 페이지)·iOS·Android·웹(칩·필터 줄). 태그 필터는 펼친 활동 요청에도 함께 보낸다(세 플랫폼 통일).
+- 렌더링: `program_collection_settings.render_pages`(V35), Playwright Chromium, 같은 경계. 일회성 `--collect-now`·`--recall-now`는 작업 뒤 JVM 종료.
+- DAN 수집 주소는 운영 DB에서 `https://dan.naver.com/{yy}`로 바꿈(`/26`은 아직 404).
+
 ## 남은 일·사용자 결정 대기
 
 - **구현 예정(설계·계약 완료)**: 태그(native-v1 "태그", 어휘 사전·검색·필터·어드민 검색+직접 입력) — API·어드민·iOS·Android·웹.
