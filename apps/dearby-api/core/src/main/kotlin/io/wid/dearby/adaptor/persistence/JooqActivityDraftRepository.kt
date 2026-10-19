@@ -64,7 +64,9 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         val applicationUrl = if (CuratedFields.APPLICATION_URL in curated) existing?.get(ACTIVITIES.APPLICATION_URL) else activity.applicationUrl
         val location = if (CuratedFields.LOCATION in curated) existing?.get(ACTIVITIES.LOCATION) else activity.location
         val cost = if (CuratedFields.COST in curated) existing?.get(ACTIVITIES.COST) else activity.cost
-        val category = if (CuratedFields.CATEGORY in curated) existing?.get(ACTIVITIES.CATEGORY) else activity.category?.name
+        // 종류: 모델이 못 뽑으면 프로그램 기본 종류(admin-v1.md "프로그램 기본 종류")
+        val category = if (CuratedFields.CATEGORY in curated) existing?.get(ACTIVITIES.CATEGORY)
+            else activity.category?.name ?: dsl.select(PROGRAMS.CATEGORY).from(PROGRAMS).where(PROGRAMS.ID.eq(programId)).fetchOne()?.value1()
         val eligibility = resolve(InheritedFields.ELIGIBILITY, EligibilityRows.read(existing?.get(ACTIVITIES.ELIGIBILITY)), activity.eligibility, previous?.eligibility)
         val audience = resolve(InheritedFields.AUDIENCE, existing?.get(ACTIVITIES.AUDIENCE)?.ifBlank { null }, activity.audience?.ifBlank { null }, previous?.audience?.ifBlank { null })
         val participationType = resolve(

@@ -246,6 +246,26 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         assertEquals("[\"nameEn\",\"descriptionEn\",\"officialUrl\",\"applicationUrl\",\"category\"]", typed["curatedFields"].toString())
         mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"category":"NOPE"}""") }.andExpect { status { isBadRequest() } }
         assertEquals(true, read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"category":null}""") }.andExpect { status { isOk() } })["category"].isNull)
+        // 프로그램 기본 종류(admin-v1.md "프로그램 기본 종류"): 지정하면 응답에 보이고, 일괄 적용은 종류가 비었거나 운영자가 지정하지 않은 활동만 바꾼다
+        mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"category":"club"}""") }.andExpect { status { isOk() } }
+        val plain = jdbc.sql(
+            """
+            insert into activities (program_id, name, description, participation_type, recruitment_status, official_url,
+                                    freshness, source_note, created_at, updated_at)
+            values (?, '종류 없는 활동', '', 'REGISTRATION', 'UNKNOWN', 'https://example.org', 'STALE', '', localtimestamp, localtimestamp)
+            returning id
+            """
+        ).param(program["id"].asLong()).query(Long::class.java).single()
+        jdbc.sql("insert into schedules (activity_id, slot, title, kind, status, date_label, sequence, created_at, updated_at) values (?, 'ACTIVITY', 't', 'EVENT', 'CONFIRMED', '', 0, localtimestamp, localtimestamp)")
+            .param(plain).update()
+        val bulk = read(mvc.patch("/v1/admin/programs/${program["id"].asLong()}") { asAdmin(); patchBody("""{"category":"study","applyCategoryToActivities":true}""") }
+            .andExpect { status { isOk() } })
+        assertEquals(listOf("STUDY", 1), listOf(bulk["category"].asString(), bulk["appliedActivityCount"].asInt()))
+        assertEquals(listOf("CLUB", "STUDY"), jdbc.sql("select category from activities where id in (?, ?) order by id").params(activity, plain).query(String::class.java).list())
+        mvc.patch("/v1/admin/programs/${program["id"].asLong()}") { asAdmin(); patchBody("""{"category":"NOPE"}""") }.andExpect { status { isBadRequest() } }
+        val unset = read(mvc.patch("/v1/admin/programs/${program["id"].asLong()}") { asAdmin(); patchBody("""{"category":null}""") }.andExpect { status { isOk() } })
+        assertEquals(listOf(true, true), listOf(unset["category"].isNull, unset["appliedActivityCount"].isNull))
+        jdbc.sql("delete from activities where id = ?").param(plain).update()
         mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"name":" "}""") }.andExpect { status { isBadRequest() } }
         mvc.patch("/v1/admin/activities/999999") { asAdmin(); patchBody("""{"nameEn":"x"}""") }.andExpect { status { isNotFound() } }
 

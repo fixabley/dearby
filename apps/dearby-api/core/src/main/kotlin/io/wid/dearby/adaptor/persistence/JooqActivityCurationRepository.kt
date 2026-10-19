@@ -159,6 +159,16 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
             .execute() > 0
     }
 
+    override fun applyProgramCategory(programId: Id, category: ActivityCategory): Int =
+        dsl.update(ACTIVITIES)
+            .set(ACTIVITIES.CATEGORY, category.name)
+            .set(ACTIVITIES.UPDATED_AT, LocalDateTime.now())
+            .where(
+                ACTIVITIES.PROGRAM_ID.eq(programId),
+                ACTIVITIES.CATEGORY.isNull.or(DSL.condition("not jsonb_exists({0}, 'category')", ACTIVITIES.CURATED_FIELDS)),
+            )
+            .execute()
+
     override fun existsName(programId: Id, name: String): Boolean =
         dsl.fetchExists(ACTIVITIES, ACTIVITIES.PROGRAM_ID.eq(programId), withoutSpaces(ACTIVITIES.NAME).eq(withoutSpaces(DSL.`val`(name))))
 
