@@ -4,6 +4,7 @@ export const categoryLabels: Record<string, string> = {
   CONFERENCE: "컨퍼런스",
   WORKSHOP: "워크샵",
   STUDY: "스터디",
+  CLUB: "동아리",
   LECTURE: "강연",
   HACKATHON: "해커톤",
   CONTEST: "공모전",
