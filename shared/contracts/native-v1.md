@@ -375,7 +375,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **색 체계(2026-10-19 밤, 사용자 "프라이머리·포인트 색이 아이폰 테마 색과 조합이 좋지 않다" → 추천안 A 승인 "적용해줘")**: 중립색은 플랫폼 시스템에 맡기고 청록(#007F80, 로고 색)은 **하나의 액센트**로만 쓴다. 직접 정한 중립 토큰(배경 #F3F5F6·선 #E3E8EA·보조 글자 #657078·본문 #172027·민트 #F0FCFA·soft)은 없앤다.
   - iOS: 배경 `Color(.systemGroupedBackground)`, 카드·입력 면 `Color(.secondarySystemGroupedBackground)`, 글자 `.primary`/`.secondary`, 구분선 `Color(.separator)`, 비활성 칩·마감 배지 `Color(.tertiarySystemFill)`, 청록은 `.tint(DearbyStyle.teal)`과 채워진 강조에만. 민트 바탕은 `DearbyStyle.teal.opacity(0.12)`(글자 청록). 다크 모드는 시스템 색이 따라오므로 앱이 라이트 모드를 강제하던 설정이 있으면 유지 여부를 그대로 둔다(이번 범위 밖).
   - Android: `lightColorScheme`/`darkColorScheme`을 청록 시드(#007F80)의 Material 3 톤으로 정의한다(primary 청록, primaryContainer 연청록, surface/background·surfaceContainer·outlineVariant·onSurfaceVariant는 시드에서 나온 중립 톤). 상수 `Mint`·`Soft`·`Line`·`Quiet`·`Ink`는 `colorScheme.primaryContainer`·`surfaceContainer`·`outlineVariant`·`onSurfaceVariant`·`onSurface`로 바꾸고 상수를 지운다. `Teal`은 `colorScheme.primary`로 읽는다. 다이내믹 컬러는 켜지 않는다(브랜드 유지).
-  - 웹은 이번 범위 밖(기존 토큰 유지).
+  - **다크 모드(사용자 "다크모드도 호환되게 해줘")**: 앱이 라이트 모드를 강제하던 설정은 지우고 시스템 설정을 따른다. 하드코딩한 `.white`/`.black`·#FFFFFF 면은 시스템·테마 색으로 바꾼다. 청록은 다크에서 밝은 변형(라이트 #007F80 → 다크 #3FB3B4)을 쓴다: iOS는 Asset Catalog 색 또는 `UIColor { trait in … }`로 `DearbyStyle.teal`에 두 값을 넣고, Android는 `darkColorScheme`의 primary에 둔다. 상태 표시줄·탭 막대·시트는 시스템 모양을 따른다. 로고 심볼은 청록 단색이라 다크에서 밝은 청록으로 그린다. 웹도 `prefers-color-scheme: dark`에서 토큰(배경·카드·글자·선·청록 변형)을 재정의하되 디자인은 바꾸지 않는다.
 
 ## 활동 장소 — 2026-10-19 사용자 결정
 
