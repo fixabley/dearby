@@ -19,5 +19,4 @@ spring:
 
 dearby:
   collection:
-    engine: ${COLLECTION_ENGINE:api} # api(ANTHROPIC_API_KEY) 또는 cli(Claude Code CLI, 구독 로그인·CLAUDE_CODE_OAUTH_TOKEN)
     model: claude-haiku-4-5

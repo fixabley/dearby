@@ -9,6 +9,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import java.time.LocalDate
 import java.time.OffsetDateTime
 
+import org.jooq.JSONB
 import org.jooq.Record1
 import org.jooq.impl.UpdatableRecordImpl
 
@@ -79,6 +80,10 @@ open class CollectionRunsRecord() : UpdatableRecordImpl<CollectionRunsRecord>(Co
         set(value): Unit = set(14, value)
         get(): Array<String?>? = get(14) as Array<String?>?
 
+    open var agentLog: JSONB?
+        set(value): Unit = set(15, value)
+        get(): JSONB? = get(15) as JSONB?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -88,7 +93,7 @@ open class CollectionRunsRecord() : UpdatableRecordImpl<CollectionRunsRecord>(Co
     /**
      * Create a detached, initialised CollectionRunsRecord
      */
-    constructor(id: Long? = null, programId: Long? = null, runDate: LocalDate? = null, officialOnly: Boolean? = null, startedAt: OffsetDateTime? = null, finishedAt: OffsetDateTime? = null, outcome: String? = null, foundCount: Int? = null, savedCount: Int? = null, rejectedReasons: Array<String?>? = null, error: String? = null, inputTokens: Long? = null, outputTokens: Long? = null, webSearchRequests: Int? = null, fetchedUrls: Array<String?>? = null): this() {
+    constructor(id: Long? = null, programId: Long? = null, runDate: LocalDate? = null, officialOnly: Boolean? = null, startedAt: OffsetDateTime? = null, finishedAt: OffsetDateTime? = null, outcome: String? = null, foundCount: Int? = null, savedCount: Int? = null, rejectedReasons: Array<String?>? = null, error: String? = null, inputTokens: Long? = null, outputTokens: Long? = null, webSearchRequests: Int? = null, fetchedUrls: Array<String?>? = null, agentLog: JSONB? = null): this() {
         this.id = id
         this.programId = programId
         this.runDate = runDate
@@ -104,6 +109,7 @@ open class CollectionRunsRecord() : UpdatableRecordImpl<CollectionRunsRecord>(Co
         this.outputTokens = outputTokens
         this.webSearchRequests = webSearchRequests
         this.fetchedUrls = fetchedUrls
+        this.agentLog = agentLog
         resetTouchedOnNotNull()
     }
 }

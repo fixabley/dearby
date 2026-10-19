@@ -11,4 +11,5 @@ data class CollectionReport(
     val outputTokens: Long = 0,
     val webSearchRequests: Int = 0,
     val fetchedUrls: List<String> = emptyList(), // 실제로 받아 본 페이지(받기 순서, 실패 제외; admin-v1.md lastFetchedUrls)
+    val agentLog: String? = null, // 에이전트 루프 기록 JSON(collection_runs.agent_log). CLI 엔진은 null
 )

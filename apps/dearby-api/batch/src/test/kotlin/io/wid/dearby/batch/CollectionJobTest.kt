@@ -1,15 +1,12 @@
 package io.wid.dearby.batch
 
-import io.wid.dearby.batch.application.ActivityDiscoverer
-import io.wid.dearby.batch.application.ActivityExtractor
+import io.wid.dearby.batch.adaptor.claude.ClaudeCli
+import io.wid.dearby.batch.adaptor.claude.CollectionProperties
 import io.wid.dearby.batch.adaptor.claude.CollectionPrompts
-import io.wid.dearby.domain.collection.DateLabelExample
-import io.wid.dearby.batch.application.Discovery
+import io.wid.dearby.batch.application.UrlGuard
 import io.wid.dearby.batch.application.ExtractedActivity
 import io.wid.dearby.batch.application.ExtractedSchedule
-import io.wid.dearby.batch.application.Extraction
 import io.wid.dearby.batch.application.FetchedPage
-import io.wid.dearby.batch.application.ModelUsage
 import io.wid.dearby.batch.application.PageFetchException
 import io.wid.dearby.batch.application.PageFetcher
 import io.wid.dearby.batch.application.RenderingPageFetcher
@@ -29,13 +26,19 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Import
 import org.springframework.context.annotation.Primary
 import org.springframework.jdbc.core.simple.JdbcClient
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.json.JsonMapper
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-// 모델·네트워크 대신 가짜 구현으로 잡 전체(설정 읽기 → 대조 → 초안 저장 → 기록)를 확인한다. API 비용이 들지 않는다
+// 모델·네트워크 대신 가짜 구현으로 잡 전체(설정 읽기 → 도구 서버 → 대조 → 초안 저장 → 기록)를 확인한다. CLI 대신 대본이 실제 도구 서버를 JSON-RPC로 부른다
 // batch 앱은 io.wid.dearby.batch만 스캔하므로 공유 테스트 DB 설정(스키마 비우고 다시 마이그레이션)을 직접 가져온다
 @SpringBootTest(properties = ["spring.main.keep-alive=false"])
 @Import(TestDatabaseConfig::class)
@@ -44,34 +47,72 @@ class CollectionJobTest(
     @Autowired val collectActivitiesJob: Job,
     @Autowired val jdbc: JdbcClient,
     @Autowired val recall: RecallService,
+    @Autowired val json: JsonMapper,
 ) {
 
     @TestConfiguration
     class Fakes {
         companion object {
-            // 마지막 추출 요청이 받은 날짜 문구 해석 예시(admin-v1.md "날짜 문구 피드백")
-            var receivedExamples: List<DateLabelExample> = emptyList()
+            var lastPrompt = "" // 마지막 실행의 요청(날짜 문구 해석 예시·태그 사전이 들어간다)
             var extractedCategory: String? = "CONFERENCE" // 프로그램 기본 종류 테스트에서 null로 바꾼다
             // 브라우저 렌더링(admin-v1.md): 렌더링 경로로 받은 주소와 HTML 경로로 받은 주소, 브라우저를 내린 횟수
             val renderedUrls = mutableListOf<String>()
             val httpUrls = mutableListOf<String>()
             var rendererClosed = 0
             var extractedTags: List<String> = listOf("창업", "없는 태그") // 태그 테스트: 사전 밖 이름은 버려진다
-            var receivedTagNames: List<String> = emptyList() // 마지막 추출 요청이 받은 태그 사전
             var extractedSchedules: List<ExtractedSchedule> = emptyList() // 세부 일정 테스트에서 채운다(admin-v1.md "세부 일정 편집기")
+            var script: ((String, McpClient) -> Map<String, Any?>)? = null // 테스트가 바꿔 끼우는 CLI 대본. 없으면 defaultScript
+
+            // claude -p --output-format json 결과 모양
+            fun cliResult(subtype: String = "success", turns: Int = 3) = mapOf(
+                "type" to "result", "subtype" to subtype, "is_error" to (subtype != "success"), "num_turns" to turns, "total_cost_usd" to 0.0125,
+                "usage" to mapOf("input_tokens" to 100, "cache_read_input_tokens" to 1000, "cache_creation_input_tokens" to 0, "output_tokens" to 200, "server_tool_use" to mapOf("web_search_requests" to 1)),
+            )
         }
+
+        // CLI 프로세스 대신 대본을 돌린다. 도구 서버·도구 처리·서비스의 대조·저장·기록은 실제 코드
+        @Bean
+        @Primary
+        fun fakeCli(properties: CollectionProperties, json: JsonMapper) = object : ClaudeCli(properties, json) {
+            override fun run(systemPrompt: String, prompt: String, mcpUrl: String): JsonNode {
+                lastPrompt = prompt
+                return json.valueToTree((script ?: ::defaultScript)(prompt, McpClient(mcpUrl, json)))
+            }
+        }
+
+        // 예전 고정 순서를 흉내 낸다: 시작 주소와 찾은 주소(공식 도메인이 있으면 그 안의 없는 페이지, 없으면 웹 전체의 블로그 글)를 받고,
+        // 받은 페이지마다 후보 둘(원문에 있는 것·없는 것)을 낸 뒤 끝낸다
+        private fun defaultScript(prompt: String, mcp: McpClient): Map<String, Any?> {
+            val starts = prompt.lines().firstOrNull { it.startsWith("시작 주소: ") }?.removePrefix("시작 주소: ")?.split(", ").orEmpty()
+            val found = if (prompt.contains("허용 도메인: ")) "https://letswift.kr/2026/missing" else "https://blog.example/letswift-2026"
+            for (url in (starts + found).distinct()) {
+                if (mcp.call("fetch_page", mapOf("url" to url)).first) continue
+                candidates().forEach { mcp.call("submit_candidate", it + ("sourceUrl" to url)) }
+            }
+            mcp.call("finish", mapOf("reason" to "다 냄"))
+            return cliResult()
+        }
+
+        private fun candidates() = listOf(
+            mapOf(
+                "roundKey" to "2026-컨퍼런스", "name" to "Let'Swift 2026 컨퍼런스", "nameEn" to "Let'Swift 2026 Conference", "description" to "본행사", "descriptionEn" to "Main event", "participationType" to "REGISTRATION",
+                "applicationUrl" to "https://letswift.kr/2026/apply", "recruitmentStartAt" to "2026-11-01T10:00:00+09:00",
+                "recruitmentEndAt" to "2026-11-10T23:59:00+09:00", "dateLabel" to "2026-11-29", "startDate" to "2026-11-29", "endDate" to "2026-11-29", "schedules" to extractedSchedules,
+                "location" to null, "cost" to null, "audience" to null, "evidenceQuote" to "참가 신청은 11월 1일부터 11월 10일까지입니다", "category" to extractedCategory, "tags" to extractedTags,
+            ),
+            mapOf(
+                "roundKey" to "2026-가짜", "name" to "원문에 없는 활동", "nameEn" to null, "description" to "", "descriptionEn" to null, "participationType" to null,
+                "applicationUrl" to null, "recruitmentStartAt" to null, "recruitmentEndAt" to null, "dateLabel" to "",
+                "schedules" to emptyList<Any>(), "location" to null, "cost" to null, "audience" to null, "evidenceQuote" to "원문 어디에도 없는 문장입니다",
+            ),
+        )
+
 
         @Bean
         @Primary
-        fun fakeDiscoverer() = ActivityDiscoverer { target ->
-            // 공식 도메인이 있으면 그 안의 없는 페이지, 없으면 웹 전체에서 찾은 블로그 글
-            val url = if (target.officialOnly) "https://letswift.kr/2026/missing" else "https://blog.example/letswift-2026"
-            Discovery(listOf(url), ModelUsage(100, 10, 1))
-        }
-
-        @Bean
-        @Primary
-        fun fakeFetcher() = PageFetcher { url, _ ->
+        fun fakeFetcher() = PageFetcher { url, allowedHosts ->
+            // 실제 받기처럼 허용 호스트 밖은 받지 않는다
+            if (!UrlGuard.hostAllowed(URI(url).host, allowedHosts)) throw PageFetchException("허용 호스트 밖: ${URI(url).host}")
             httpUrls += url
             if (url.endsWith("missing")) throw PageFetchException("HTTP 404")
             FetchedPage(url, "Let'Swift 2026 컨퍼런스 참가 신청은 11월 1일부터 11월 10일까지입니다.", setOf("https://letswift.kr/2026/apply"))
@@ -88,27 +129,22 @@ class CollectionJobTest(
             override fun close() { rendererClosed++ }
         }
 
-        @Bean
-        @Primary
-        fun fakeExtractor() = ActivityExtractor { _, _, _, _, examples, tagNames ->
-            receivedExamples = examples
-            receivedTagNames = tagNames
-            Extraction(
-                listOf(
-                    ExtractedActivity(
-                        roundKey = "2026-컨퍼런스", name = "Let'Swift 2026 컨퍼런스", nameEn = "Let'Swift 2026 Conference", description = "본행사", descriptionEn = "Main event", participationType = "REGISTRATION",
-                        applicationUrl = "https://letswift.kr/2026/apply", recruitmentStartAt = "2026-11-01T10:00:00+09:00",
-                        recruitmentEndAt = "2026-11-10T23:59:00+09:00", dateLabel = "2026-11-29", startDate = "2026-11-29", endDate = "2026-11-29", schedules = extractedSchedules,
-                        location = null, cost = null, audience = null, evidenceQuote = "참가 신청은 11월 1일부터 11월 10일까지입니다", category = extractedCategory, tags = extractedTags,
-                    ),
-                    ExtractedActivity(
-                        roundKey = "2026-가짜", name = "원문에 없는 활동", nameEn = null, description = "", descriptionEn = null, participationType = null,
-                        applicationUrl = null, recruitmentStartAt = null, recruitmentEndAt = null, dateLabel = "",
-                        schedules = emptyList(), location = null, cost = null, audience = null, evidenceQuote = "원문 어디에도 없는 문장입니다",
-                    ),
-                ),
-                ModelUsage(1000, 200),
-            )
+    }
+
+    // 도구 서버를 부르는 쪽(CLI 대신). call은 (오류 여부, 결과 본문)
+    class McpClient(val url: String, private val json: JsonMapper) {
+        private val http = HttpClient.newHttpClient()
+        private var nextId = 0
+
+        fun post(body: Map<String, Any?>, target: String = url): HttpResponse<String> =
+            http.send(HttpRequest.newBuilder(URI(target)).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json.writeValueAsString(body))).build(), HttpResponse.BodyHandlers.ofString())
+
+        fun rpc(method: String, params: Map<String, Any?> = emptyMap()): JsonNode =
+            json.readTree(post(mapOf("jsonrpc" to "2.0", "id" to ++nextId, "method" to method, "params" to params)).body())
+
+        fun call(name: String, arguments: Map<String, Any?>): Pair<Boolean, String> {
+            val result = rpc("tools/call", mapOf("name" to name, "arguments" to arguments)).path("result")
+            return result.path("isError").asBoolean() to result.path("content").path(0).path("text").asString()
         }
     }
 
@@ -187,7 +223,7 @@ class CollectionJobTest(
         assertEquals(listOf("CONFERENCE"), jdbc.sql("select category from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
         // 태그(native-v1.md "태그"): 모델이 사전 이름으로 고른 것만 남고(없는 태그는 버림), 추출 요청에는 사전 전체가 넘어간다
         assertEquals(listOf("창업"), jdbc.sql("select t.name from activity_tags at join tags t on t.id = at.tag_id join activities a on a.id = at.activity_id where a.name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
-        assertTrue(Fakes.receivedTagNames.containsAll(listOf("창업", "멘토링")))
+        assertTrue(Fakes.lastPrompt.lines().single { it.startsWith("태그 사전") }.let { it.contains("창업") && it.contains("멘토링") })
         assertEquals(listOf(true), jdbc.sql("select official_source from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(Boolean::class.java).list())
         assertEquals(listOf("Let'Swift 2026 Conference|Main event"), jdbc.sql("select name_en || '|' || description_en from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
         val schedules = jdbc.sql("select slot from schedules s join activities a on a.id = s.activity_id where a.name = ? order by slot")
@@ -244,6 +280,9 @@ class CollectionJobTest(
     @Test
     fun `운영자가 지정한 기간의 원문 문구는 다음 수집의 해석 예시로 지시문에 들어간다`() {
         officialSetting()
+        // 예시가 없으면 절 자체가 없다
+        run("2026-10-18")
+        assertFalse(Fakes.lastPrompt.contains("날짜 문구 해석 예시"))
         // 어드민이 날짜를 직접 지정한 일정(curated, 원문 문구 있음)을 V5 Let'Swift 활동에 하나 둔다
         jdbc.sql(
             """
@@ -253,13 +292,9 @@ class CollectionJobTest(
             """
         ).update()
         run("2026-10-19")
-        val example = Fakes.receivedExamples.single { it.dateLabel == "2026년 11월 1일~15일" }
-        assertEquals("[일정] \"2026년 11월 1일~15일\" → startDate 2026-11-01, endDate 2026-11-15", CollectionPrompts.dateExampleLine(example))
-        val prompt = CollectionPrompts.extractRequest("Let'Swift", "https://letswift.kr/2026/", "본문", examples = Fakes.receivedExamples)
+        val prompt = Fakes.lastPrompt
         assertTrue(prompt.contains("날짜 문구 해석 예시(운영자가 바로잡은 것):\n- [일정] \"2026년 11월 1일~15일\" → startDate 2026-11-01, endDate 2026-11-15"))
         assertTrue(prompt.contains("비슷한 문구는 같은 방식으로 날짜 필드를 채운다"))
-        // 예시가 없으면 절 자체가 없다
-        assertFalse(CollectionPrompts.extractRequest("Let'Swift", "https://letswift.kr/2026/", "본문").contains("날짜 문구 해석 예시"))
     }
 
     @Test
@@ -363,6 +398,87 @@ class CollectionJobTest(
         assertEquals(listOf("PUBLISHED"), status("관리자가 고친 이름"))
         val reasons = jdbc.sql("select array_to_string(rejected_reasons, '|') from collection_runs where run_date = '2026-10-22'").query(String::class.java).single()
         assertEquals(true, reasons.contains("이미 게시된 활동"))
+    }
+
+    // 에이전트 루프: 대본이 CLI 대신 실제 도구 서버를 부른다. 원문 대조·저장·기록은 서비스의 실제 코드
+    private fun scripted(date: String, script: (McpClient) -> Map<String, Any?>) {
+        Fakes.script = { _, mcp -> script(mcp) }
+        try {
+            assertEquals(BatchStatus.COMPLETED, run(date).status)
+        } finally {
+            Fakes.script = null
+        }
+    }
+
+    private fun candidate(quote: String, sourceUrl: String = "https://letswift.kr/2026/") = mapOf(
+        "roundKey" to "2026-컨퍼런스", "name" to "Let'Swift 2026 컨퍼런스", "description" to "본행사", "participationType" to "REGISTRATION",
+        "dateLabel" to "", "schedules" to emptyList<Any>(), "evidenceQuote" to quote, "sourceUrl" to sourceUrl,
+    )
+
+    private fun agentLog(path: String) = jdbc.sql("select agent_log #>> '{$path}' from collection_runs").query(String::class.java).single()
+
+    @Test
+    fun `에이전트는 허용 밖 주소를 도구 오류로 받고, 거절된 후보를 고쳐 다시 내면 저장하고 finish로 끝낸다`() {
+        officialSetting()
+        val results = mutableListOf<Pair<Boolean, String>>()
+        scripted("2026-10-20") { mcp ->
+            // 도구 서버: 127.0.0.1의 비밀 경로로만 받고, 도구 넷을 알린다
+            assertTrue(mcp.url.startsWith("http://127.0.0.1:"))
+            assertEquals<Int>(404, mcp.post(mapOf("jsonrpc" to "2.0", "id" to 0, "method" to "tools/list"), mcp.url.substringBeforeLast('/') + "/wrong").statusCode())
+            assertEquals("dearby", mcp.rpc("initialize", mapOf("protocolVersion" to "2025-06-18")).path("result").path("serverInfo").path("name").asString())
+            assertEquals<Int>(202, mcp.post(mapOf("jsonrpc" to "2.0", "method" to "notifications/initialized")).statusCode())
+            assertEquals(listOf("fetch_page", "render_page", "submit_candidate", "finish"), (mcp.rpc("tools/list").path("result").path("tools") as Iterable<JsonNode>).map { it.path("name").asString() })
+            results += mcp.call("fetch_page", mapOf("url" to "https://evil.example/letswift"))
+            results += mcp.call("fetch_page", mapOf("url" to "https://letswift.kr/2026/"))
+            results += mcp.call("submit_candidate", candidate("원문 어디에도 없는 문장입니다"))
+            results += mcp.call("submit_candidate", candidate("참가 신청은 11월 1일부터 11월 10일까지입니다"))
+            results += mcp.call("finish", mapOf("reason" to "다 냄"))
+            Fakes.cliResult(turns = 5)
+        }
+        // 허용 호스트 밖은 받지 않고 오류로, 공식 페이지는 본문과 링크를 받는다
+        assertEquals(true to "받을 수 없음: 허용 호스트 밖: evil.example", results[0])
+        assertTrue(!results[1].first && results[1].second.contains("<page>") && results[1].second.contains("https://letswift.kr/2026/apply"))
+        // 원문에 없는 근거 구절은 거절 이유와 함께 돌려주고, 고쳐 낸 후보는 저장된다
+        assertEquals(listOf(true to "거절됨: 근거 구절이 원문에 없음", false to "저장됨: 초안으로 저장됨", false to "끝"), results.drop(2))
+        assertEquals(listOf("DRAFT"), status("Let'Swift 2026 컨퍼런스"))
+
+        val record = jdbc.sql("select outcome, found_count, saved_count, input_tokens, web_search_requests, array_to_string(fetched_urls, ','), array_to_string(rejected_reasons, '|') from collection_runs")
+            .query { rs, _ -> listOf(rs.getString(1), rs.getInt(2), rs.getInt(3), rs.getLong(4), rs.getInt(5), rs.getString(6), rs.getString(7)) }.single()
+        // 입력 토큰은 캐시 읽기를 포함한 합
+        assertEquals(listOf<Any>("SUCCEEDED", 2, 1, 1100L, 1, "https://letswift.kr/2026/"), record.take(6))
+        assertEquals("https://evil.example/letswift: 허용 호스트 밖: evil.example|Let'Swift 2026 컨퍼런스: 근거 구절이 원문에 없음", record[6])
+        assertEquals(listOf("finish: 다 냄", "false", "5", "2", "1000", "0.0125", "5"), listOf("stopReason", "capReached", "turns", "pages", "usage,cacheReadInputTokens", "costUsd").map(::agentLog) +
+            jdbc.sql("select jsonb_array_length(agent_log->'calls')::text from collection_runs").query(String::class.java).single())
+    }
+
+    @Test
+    fun `에이전트는 첫 제출에 바로 저장하고, 페이지 한도 밖은 도구 오류로, 턴 한도에 닿으면 멈춘 이유를 남긴다`() {
+        officialSetting()
+        val results = mutableListOf<Pair<Boolean, String>>()
+        scripted("2026-10-21") { mcp ->
+            results += mcp.call("fetch_page", mapOf("url" to "https://letswift.kr/2026/"))
+            results += mcp.call("submit_candidate", candidate("참가 신청은 11월 1일부터 11월 10일까지입니다"))
+            // 기본 한도 15쪽: 14번 더 받으면 16번째는 받지 않는다
+            repeat(14) { mcp.call("fetch_page", mapOf("url" to "https://letswift.kr/2026/")) }
+            results += mcp.call("render_page", mapOf("url" to "https://letswift.kr/2026/"))
+            Fakes.cliResult(subtype = "error_max_turns", turns = 12)
+        }
+        assertEquals(false to "저장됨: 초안으로 저장됨", results[1])
+        assertEquals(true to "페이지 한도(15)에 닿아 더 받을 수 없음. 받은 페이지로 제출하고 finish하라", results[2])
+        assertEquals(listOf("DRAFT"), status("Let'Swift 2026 컨퍼런스"))
+        assertEquals(listOf("턴 한도(12)", "true", "15"), listOf("stopReason", "capReached", "pages").map(::agentLog))
+        assertEquals("SUCCEEDED|1|수집 중단: 턴 한도(12)", jdbc.sql("select outcome || '|' || saved_count || '|' || array_to_string(rejected_reasons, '|') from collection_runs").query(String::class.java).single())
+    }
+
+    @Test
+    fun `CLI는 이번 실행의 도구 서버와 웹 검색만 쓰고 턴 한도를 넘긴다`() {
+        val command = ClaudeCli(CollectionProperties(), json).command("지시문", "http://127.0.0.1:1234/secret")
+        fun option(name: String) = command[command.indexOf(name) + 1]
+        assertEquals("""{"mcpServers":{"dearby":{"type":"http","url":"http://127.0.0.1:1234/secret"}}}""", option("--mcp-config"))
+        assertTrue("--strict-mcp-config" in command)
+        assertEquals("WebSearch", option("--tools"))
+        assertEquals("WebSearch,mcp__dearby__fetch_page,mcp__dearby__render_page,mcp__dearby__submit_candidate,mcp__dearby__finish", option("--allowedTools"))
+        assertEquals("12", option("--max-turns"))
     }
 
     // 명함 회수(native-v1.md "명함 교환"): batch가 매일 04:00에 부르는 RecallService. 규칙 자체는 api 모듈의 CardFlowTest·GuestFlowTest가 확인한다

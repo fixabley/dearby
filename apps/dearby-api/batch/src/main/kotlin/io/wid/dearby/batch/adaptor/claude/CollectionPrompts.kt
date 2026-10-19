@@ -1,42 +1,18 @@
 package io.wid.dearby.batch.adaptor.claude
 
-import io.wid.dearby.domain.collection.CollectionTarget
 import io.wid.dearby.application.eligibility.EligibilityJson
 import io.wid.dearby.domain.collection.DateLabelExample
 import io.wid.dearby.domain.collection.PreviousEdition
 import io.wid.dearby.domain.collection.WatchEntry
 import io.wid.dearby.domain.collection.WatchKind
-import java.net.URI
+import io.wid.dearby.batch.application.AgentInput
+import io.wid.dearby.batch.application.FetchedPage
 
-// API·CLI 두 방식이 같은 지시문과 출력 스키마를 쓴다
+// 수집 에이전트(Claude Code CLI + 도구 서버)의 지시문과 submit_candidate 입력 스키마
 object CollectionPrompts {
 
-    val DISCOVER_SYSTEM = """
-        한국에서 열리는 활동(행사·교육·공모·모집)의 공지를 찾는다.
-        주어진 프로그램의 현재 또는 다가오는 회차 모집 공지, 신청 안내, 일정 안내 페이지를 웹 검색으로 찾아라.
-        허용 도메인이 주어지면 그 안에서만 검색한다. 없으면 주최 기관의 공식 사이트를 가장 먼저 찾고,
-        블로그·뉴스·모음 사이트보다 공식 공지를 우선한다. 찾은 페이지를 짧게 나열하고 끝낸다.
-    """.trimIndent()
-
-    fun discoverRequest(target: CollectionTarget) = buildString {
-        append("프로그램: ${target.programName}")
-        target.organizationName?.let { append("\n주최 기관: $it") }
-        if (target.officialUrls.isNotEmpty()) append("\n공식 안내 페이지: ${target.officialUrls.joinToString(", ")}")
-        if (target.officialOnly) append("\n허용 도메인: ${target.allowedHosts.joinToString(", ")}")
-    }
-
-    // 찾은 주소 중 https이고, 허용 호스트가 있으면 그 안의 것만 쓴다
-    fun usableUrls(urls: List<String>, target: CollectionTarget): List<String> =
-        urls.filter { url ->
-            val uri = runCatching { URI(url) }.getOrNull() ?: return@filter false
-            uri.scheme == "https" && (!target.officialOnly || uri.host?.lowercase() in target.allowedHosts.map { it.lowercase() })
-        }.distinct()
-
-    // CLI는 검색 결과 블록을 직접 주지 않아 찾은 주소를 이 형식으로 받는다
-    val DISCOVER_SCHEMA: Map<String, Any> = obj(mapOf("urls" to mapOf("type" to "array", "items" to mapOf("type" to "string"))))
-
-    val EXTRACT_SYSTEM = """
-        페이지 본문에서 이 프로그램의 활동을 뽑는다.
+    // 제출하는 활동 하나하나에 적용하는 추출 규칙
+    private val EXTRACT_RULES = """
         - 활동은 **프로그램의 기수·회차 하나**다. 페이지가 알리는 기수마다 활동 하나를 만든다. 예: "부스트캠프 10기", "Let'Swift 2026".
         - 한 기수 안의 선발 단계·테스트·챌린지·멤버십·과정 단계·세션·교육·오리엔테이션·결과 발표·면접·마감은 활동이 아니라 그 기수 활동의 schedules다.
           예: 부스트캠프 페이지의 문제 해결력 테스트, 베이직, 챌린지, 멤버십은 "부스트캠프 10기" 활동 하나의 schedules다.
@@ -62,17 +38,14 @@ object CollectionPrompts {
           - 어휘에 없는 조건은 field "기타", fieldEn "other"로 두고 note에 원문을 적는다. 본문에 없는 조건을 만들지 않는다.
           - 예1 "19세 이상 34세 이하 미취업자 또는 재학생": {"op":"all","items":[{"field":"나이","fieldEn":"age","from":19,"to":34},{"op":"any","items":[{"field":"취업상태","fieldEn":"employment","values":["미취업"],"valuesEn":["unemployed"]},{"field":"재학상태","fieldEn":"educationStatus","values":["재학"],"valuesEn":["enrolled"]}]}]}
           - 예2 "개발 경력 2년 미만, 대한민국 국적, 풀타임 참여 가능": {"op":"all","items":[{"field":"경력연수","fieldEn":"experienceYears","to":2},{"field":"국적","fieldEn":"nationality","values":["대한민국"],"valuesEn":["KR"]},{"field":"기타","fieldEn":"other","note":"풀타임 참여 가능"}]}
-        - 활동이 없으면 activities를 빈 배열로 둔다.
     """.trimIndent()
 
-    const val MAX_PAGE_CHARS = 150_000
+    // 도구 결과로 보이는 본문 길이. Claude Code는 MCP 도구 결과를 기본 25,000토큰에서 자르고, 받은 페이지는 루프가 끝날 때까지 대화에 남는다.
+    // 원문 대조(ActivityVerifier)는 자르지 않은 본문으로 한다
+    const val MAX_PAGE_CHARS = 40_000
 
-    // 조심 목록(admin-v1.md)은 힌트로만 넘긴다. 저장 전 이름 대조가 보장이다
-    fun extractRequest(
-        programName: String, url: String, text: String, watchlist: List<WatchEntry> = emptyList(), previous: PreviousEdition? = null,
-        examples: List<DateLabelExample> = emptyList(), tagNames: List<String> = emptyList(),
-    ) = buildString {
-        append("프로그램: $programName\n페이지: $url")
+    // 프로그램별 힌트(줄마다 앞에 줄바꿈). 조심 목록(admin-v1.md)은 힌트로만 넘긴다. 저장 전 이름 대조가 보장이다
+    private fun hints(watchlist: List<WatchEntry>, previous: PreviousEdition?, examples: List<DateLabelExample>, tagNames: List<String>) = buildString {
         // 태그 사전(native-v1.md "태그"): 이 이름 중에서만 고른다. 사전 밖 이름은 저장할 때 버린다
         tagNames.takeIf { it.isNotEmpty() }?.let { append("\n태그 사전(tags는 이 중에서만 고른다): ${it.joinToString(", ")}") }
         // 날짜 문구 피드백(admin-v1.md): 운영자가 바로잡은 문구 → 날짜 쌍을 해석 예시로 보인다. 지정된 일정 자체는 저장할 때 따로 지킨다
@@ -93,8 +66,37 @@ object CollectionPrompts {
         watchlist.filter { it.kind == WatchKind.ALIAS && it.canonicalActivityName != null }.takeIf { it.isNotEmpty() }?.let { aliases ->
             append("\n이미 있는 활동의 다른 표기: ${aliases.joinToString(", ") { "${it.name} → ${it.canonicalActivityName}" }}")
         }
-        append("\n\n<page>\n${text.take(MAX_PAGE_CHARS)}\n</page>")
     }
+
+    // 에이전트 루프: 페이지를 직접 골라 받고, 활동을 하나씩 제출해 서버 판정을 받는다
+    val AGENT_SYSTEM = """
+        한국에서 열리는 활동(행사·교육·공모·모집)을 주어진 프로그램의 공식 공지에서 수집한다. 도구로 페이지를 받아 읽고, 찾은 활동을 하나씩 제출한다.
+        진행:
+        - 시작 주소가 있으면 fetch_page로 먼저 받는다. 없거나 부족하면 WebSearch로 현재 또는 다가오는 회차의 모집 공지·신청 안내·일정 안내 페이지를 찾는다. 허용 도메인이 주어지면 그 안의 주소만 받을 수 있다. 없으면 주최 기관의 공식 사이트를 블로그·뉴스·모음 사이트보다 우선한다.
+        - 받은 페이지의 링크 목록에서 모집 공지·상세 안내로 보이는 주소를 골라 더 받는다. 관계없는 페이지는 받지 않는다. 받을 수 있는 페이지 수는 정해져 있다.
+        - fetch_page 결과 본문이 비었거나 아주 짧으면(자바스크립트로 그리는 페이지) 같은 주소를 render_page로 받는다. 그 밖에는 fetch_page를 쓴다.
+        - 활동을 찾으면 submit_candidate로 하나씩 제출한다. sourceUrl은 그 활동의 근거 구절이 있는 페이지로, 이번에 fetch_page·render_page로 받은 주소 그대로 쓴다. 제출하면 서버가 원문과 대조해 저장 여부와 거절 이유를 돌려준다. 거절 이유를 고칠 수 있으면(예: 근거 구절을 본문에서 그대로 다시 복사) 고쳐서 다시 제출하고, 고칠 수 없으면 넘어간다.
+        - 더 받을 페이지나 제출할 활동이 없으면 finish로 끝낸다.
+        추출 규칙(제출하는 활동 하나하나에 적용):
+    """.trimIndent() + "\n" + EXTRACT_RULES
+
+    fun agentRequest(input: AgentInput) = buildString {
+        val target = input.target
+        append("프로그램: ${target.programName}")
+        target.organizationName?.let { append("\n주최 기관: $it") }
+        if (target.officialUrls.isNotEmpty()) append("\n시작 주소: ${target.officialUrls.joinToString(", ")}")
+        if (target.officialOnly) append("\n허용 도메인: ${target.allowedHosts.joinToString(", ")}")
+        append(hints(input.watchlist, input.previous, input.examples, input.tagNames))
+    }
+
+    // 에이전트가 받은 페이지를 모델에게 보이는 형태: 자른 본문 + 따라갈 링크
+    fun pageResult(url: String, page: FetchedPage) = buildString {
+        append("주소: $url")
+        append("\n\n<page>\n${page.text.take(MAX_PAGE_CHARS)}\n</page>")
+        if (page.links.isNotEmpty()) append("\n\n링크:\n${page.links.take(MAX_LINKS).joinToString("\n")}")
+    }
+
+    private const val MAX_LINKS = 200
 
     // `[활동] "2026년 11월 1일~15일" → startDate 2026-11-01, endDate 2026-11-15`; 시각이 있으면 startAt/endAt(ISO 8601 오프셋)
     fun dateExampleLine(example: DateLabelExample): String {
@@ -105,50 +107,45 @@ object CollectionPrompts {
         return "[$slot] \"${example.dateLabel}\" → $value$reason"
     }
 
-    val EXTRACT_SCHEMA: Map<String, Any> = obj(
+    // submit_candidate 도구 입력: 활동 하나 + 근거 페이지 주소
+    val SUBMIT_SCHEMA: Map<String, Any> = obj(
         mapOf(
-            "activities" to mapOf(
+            "roundKey" to string(),
+            "name" to string(),
+            "nameEn" to nullableString(),
+            "description" to string(),
+            "descriptionEn" to nullableString(),
+            "participationType" to mapOf("type" to listOf("string", "null"), "enum" to listOf("REGISTRATION", "SELECTION", null)),
+            "category" to mapOf("type" to listOf("string", "null"), "enum" to listOf("BOOTCAMP", "CONFERENCE", "WORKSHOP", "STUDY", "CLUB", "LECTURE", "HACKATHON", "CONTEST", "MEETUP", "OTHER", null)),
+            "applicationUrl" to nullableString(),
+            "recruitmentStartAt" to nullableString(),
+            "recruitmentEndAt" to nullableString(),
+            "recruitmentStartDate" to nullableString(),
+            "recruitmentEndDate" to nullableString(),
+            "dateLabel" to string(),
+            "startDate" to nullableString(),
+            "endDate" to nullableString(),
+            "schedules" to mapOf(
                 "type" to "array",
                 "items" to obj(
                     mapOf(
-                        "roundKey" to string(),
-                        "name" to string(),
-                        "nameEn" to nullableString(),
-                        "description" to string(),
-                        "descriptionEn" to nullableString(),
-                        "participationType" to mapOf("type" to listOf("string", "null"), "enum" to listOf("REGISTRATION", "SELECTION", null)),
-                        "category" to mapOf("type" to listOf("string", "null"), "enum" to listOf("BOOTCAMP", "CONFERENCE", "WORKSHOP", "STUDY", "CLUB", "LECTURE", "HACKATHON", "CONTEST", "MEETUP", "OTHER", null)),
-                        "applicationUrl" to nullableString(),
-                        "recruitmentStartAt" to nullableString(),
-                        "recruitmentEndAt" to nullableString(),
-                        "recruitmentStartDate" to nullableString(),
-                        "recruitmentEndDate" to nullableString(),
-                        "dateLabel" to string(),
+                        "title" to string(),
+                        "kind" to mapOf("type" to listOf("string", "null"), "enum" to listOf("DEADLINE", "ANNOUNCEMENT", "INTERVIEW", "EVENT", null)),
+                        "startAt" to nullableString(),
+                        "endAt" to nullableString(),
                         "startDate" to nullableString(),
                         "endDate" to nullableString(),
-                        "schedules" to mapOf(
-                            "type" to "array",
-                            "items" to obj(
-                                mapOf(
-                                    "title" to string(),
-                                    "kind" to mapOf("type" to listOf("string", "null"), "enum" to listOf("DEADLINE", "ANNOUNCEMENT", "INTERVIEW", "EVENT", null)),
-                                    "startAt" to nullableString(),
-                                    "endAt" to nullableString(),
-                                    "startDate" to nullableString(),
-                                    "endDate" to nullableString(),
-                                    "dateLabel" to string(),
-                                )
-                            ),
-                        ),
-                        "location" to nullableString(),
-                        "cost" to nullableString(),
-                        "audience" to nullableString(),
-                        "tags" to mapOf("type" to "array", "items" to string()),
-                        "eligibility" to eligibilityGroup(depth = 1),
-                        "evidenceQuote" to string(),
+                        "dateLabel" to string(),
                     )
                 ),
             ),
+            "location" to nullableString(),
+            "cost" to nullableString(),
+            "audience" to nullableString(),
+            "tags" to mapOf("type" to "array", "items" to string()),
+            "eligibility" to eligibilityGroup(depth = 1),
+            "evidenceQuote" to string(),
+            "sourceUrl" to string(),
         )
     )
 

@@ -5,6 +5,7 @@ import io.wid.dearby.application.collection.CollectionRunRepository
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.collection.CollectionReport
 import org.jooq.DSLContext
+import org.jooq.JSONB
 import org.springframework.stereotype.Repository
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -37,6 +38,7 @@ class JooqCollectionRunRepository(private val dsl: DSLContext) : CollectionRunRe
             .set(COLLECTION_RUNS.OUTPUT_TOKENS, report.outputTokens)
             .set(COLLECTION_RUNS.WEB_SEARCH_REQUESTS, report.webSearchRequests)
             .set(COLLECTION_RUNS.FETCHED_URLS, report.fetchedUrls.toTypedArray<String?>())
+            .set(COLLECTION_RUNS.AGENT_LOG, report.agentLog?.let(JSONB::valueOf))
             .where(COLLECTION_RUNS.ID.eq(runId))
             .execute()
     }

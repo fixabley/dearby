@@ -23,6 +23,7 @@ import org.jooq.ForeignKey
 import org.jooq.Identity
 import org.jooq.Index
 import org.jooq.InverseForeignKey
+import org.jooq.JSONB
 import org.jooq.Name
 import org.jooq.PlainSQL
 import org.jooq.QueryPart
@@ -152,6 +153,11 @@ open class CollectionRuns(
      * The column <code>public.collection_runs.fetched_urls</code>.
      */
     val FETCHED_URLS: TableField<CollectionRunsRecord, Array<String?>?> = createField(DSL.name("fetched_urls"), SQLDataType.VARCHAR.array().nullable(false).defaultValue(DSL.field(DSL.raw("'{}'::character varying[]"), SQLDataType.VARCHAR.array())), this, "")
+
+    /**
+     * The column <code>public.collection_runs.agent_log</code>.
+     */
+    val AGENT_LOG: TableField<CollectionRunsRecord, JSONB?> = createField(DSL.name("agent_log"), SQLDataType.JSONB, this, "")
 
     private constructor(alias: Name, aliased: Table<CollectionRunsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<CollectionRunsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
