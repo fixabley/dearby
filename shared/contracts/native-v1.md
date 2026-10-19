@@ -379,6 +379,15 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 - **활동 상세 이미지 섹션 제거(2026-10-19 밤, 사용자 "UI는 만족스러워. 활동 상세 페이지에 이미지 섹션 없애줘도 좋을 것 같아")**: 활동 상세의 머리 이미지(iOS `ActivityArtwork`, Android `ActivityImage`, 웹 `.detail-image`)를 iOS·Android·웹에서 없앤다. 제목·조직·상태 칩이 바로 위에 온다. API `Activity.imageUrl`은 그대로 두고 클라이언트가 보여 주지 않을 뿐이다. 목록·다른 화면에서 쓰지 않게 된 이미지 컴포넌트는 지운다.
 
+## 발견 탭 스크롤 동작 — 2026-10-19 밤 사용자 결정
+
+사용자: "활동 둘러보기 아래로 스크롤할 때 활동 둘러보기랑 알림 아이콘은 고정해 주고, 검색창·마감 숨기기는 위로 숨겨졌다가 아래로 스크롤할 때 보이도록 해줘. 최상단에서 풀투 리프레시 지원해줘. 플로팅 버튼으로 최상단으로 즉시 스크롤할 수 있게 해줘." iOS·Android. 웹은 변경 없음.
+
+- **고정 제목 줄**: `활동 둘러보기` 제목과 알림 아이콘(PageTitle/ScreenHeader)은 스크롤과 무관하게 항상 위에 고정된다. 배경은 페이지 배경과 같고, 내용이 밑으로 지나가면 얇은 구분선(iOS `Color(.separator)`, Android `surfaceContainerHighest`)이 나타난다.
+- **접히는 검색 영역**: 검색창과 `마감 숨기기` 토글 묶음은 아래로 스크롤하면 위로 밀려 접히고(높이 0, 투명도 0), 위로 스크롤하기 시작하면(방향 전환) 즉시 다시 펼쳐진다 — 맨 위까지 올라가지 않아도 보인다(One UI·Material "enter always" 방식). 애니메이션은 스크롤 오프셋에 비례하되 짧은 스프링으로 마무리하고, 동작 줄이기에서는 즉시 전환. 검색창에 포커스가 있는 동안은 접지 않는다. iOS는 `ScrollView` + `onScrollGeometryChange`(iOS 18)로 방향·오프셋을 읽고, Android는 `NestedScrollConnection`으로 소비 오프셋을 누적한다(`TopAppBar`의 `enterAlwaysScrollBehavior`와 같은 규칙; 제목 줄은 고정이라 TopAppBar 자체는 쓰지 않는다).
+- **풀투 리프레시**: 맨 위에서 당기면 프로그램 목록을 처음부터 다시 조회한다(펼침 상태는 유지하되 펼친 프로그램의 활동도 다시 받는다). iOS `.refreshable`, Android Material 3 `PullToRefreshBox`. 당기는 동안 제목 줄은 움직이지 않고 표시기는 검색 영역 아래에 나온다. 실패하면 기존 오류 표시 규칙을 따른다.
+- **맨 위로 버튼**: 첫 화면 높이 이상 내려가면 오른쪽 아래(탭 막대 위 16, 오른쏙 20)에 둥근 플로팅 버튼(iOS: 44 원형, `Color(.secondarySystemGroupedBackground)` 바탕·청록 `arrow.up` SF Symbol·얇은 그림자; Android: Material 3 `SmallFloatingActionButton`, `Icons.Rounded.ArrowUpward`)이 페이드로 나타나고, 누르면 애니메이션 없이 즉시 맨 위로 간다(검색 영역도 펼쳐진다). 접근성 이름 `맨 위로`. 맨 위 근처에서는 숨긴다. iOS의 상태 표시줄 탭으로 맨 위 가기는 그대로 둔다.
+
 ## 활동 장소 — 2026-10-19 사용자 결정
 
 사용자: "장소는 어드민에서 추가할 수 있으면 좋겠고 geocode, 주소 검색해서 좌표 가지고 올 수 있으면". 활동의 구조화된 장소를 둔다.
