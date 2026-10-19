@@ -28,10 +28,10 @@ struct HistoryFunnelPage: View {
             ProgressView(value: Double(index + 1), total: Double(steps.count)).padding(.horizontal, 20).padding(.top, 8)
                 .accessibilityLabel("\(index + 1) / \(steps.count) 단계")
             Form { content }
-                .font(.dearby(.body)).scrollDismissesKeyboard(.interactively)
+                .font(.dearby(.body))
                 .safeAreaInset(edge: .bottom) { bar }
         }
-        .background(Color(.systemGroupedBackground)).navigationTitle(step == .summary ? "이력 확인" : "이력 입력").navigationBarTitleDisplayMode(.inline)
+        .dearbyDismissKeyboard().background(Color(.systemGroupedBackground)).navigationTitle(step == .summary ? "이력 확인" : "이력 입력").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
         // Un-picking an activity drops the organization and program it brought along, so a typed activity asks for them fresh.
         .onChange(of: draft.activity) { _, next in

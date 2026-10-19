@@ -129,7 +129,7 @@ struct ProfilePage: View {
             }
             Section { deleteButton }
         }
-        .font(.dearby(.body)).scrollDismissesKeyboard(.interactively)
+        .font(.dearby(.body)).dearbyDismissKeyboard()
     }
     private func saveBar(_ form: ProfileForm) -> some View {
         VStack(spacing: 8) {

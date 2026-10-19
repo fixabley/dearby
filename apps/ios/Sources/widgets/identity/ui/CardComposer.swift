@@ -60,7 +60,7 @@ struct CardComposer: View {
                 Text("공개할 활동 이력").font(.dearby(.footnote))
             }
         }
-        .font(.dearby(.body)).scrollDismissesKeyboard(.interactively)
+        .font(.dearby(.body)).dearbyDismissKeyboard()
         .safeAreaInset(edge: .bottom) { publishBar }
     }
     private var publishBar: some View {

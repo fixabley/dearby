@@ -37,10 +37,10 @@ struct ProfileFunnelPage: View {
                 openSection(open)
                 doneRows(Array(reachedSteps.drop { $0 != open }.dropFirst()))
             }
-            .font(.dearby(.body)).scrollDismissesKeyboard(.interactively)
+            .font(.dearby(.body))
             .safeAreaInset(edge: .bottom) { bar }
         }
-        .background(Color(.systemGroupedBackground))
+        .dearbyDismissKeyboard().background(Color(.systemGroupedBackground))
         .onAppear(perform: focusOpen)
         .onChange(of: open) { _, _ in focusOpen() }
     }
