@@ -64,10 +64,10 @@ import com.dearby.nativeapp.shared.ui.*
                         TimelineEntry("", item.second, "", last = index == activity.sessions.lastIndex, modifier = Modifier.weight(1f), compact = false)
                     }
                 } }
-                // The overlap check stays an example and needs timed schedules.
+                // The overlap check reads the device calendar on tap (contract "기기 캘린더 겹침") and needs timed schedules.
                 if (activity.sessions.isNotEmpty()) {
                     DearbyOutlineButton(checkCalendar, Modifier.fillMaxWidth()) { Text("겹치는 시간 확인하기", fontWeight = FontWeight.SemiBold) }
-                    Text("예시 캘린더의 바쁜 시간과 비교해요.", Modifier.align(Alignment.CenterHorizontally), color = Quiet, style = MaterialTheme.typography.bodySmall)
+                    Text("누르면 캘린더 읽기 권한을 묻고 기기 안에서만 비교해요.", Modifier.align(Alignment.CenterHorizontally), color = Quiet, style = MaterialTheme.typography.bodySmall)
                 }
                 HorizontalDivider()
                 Text("신청 조건과 최신 일정은 공식 사이트에서 확인해 주세요.", color = Quiet, style = MaterialTheme.typography.bodySmall)

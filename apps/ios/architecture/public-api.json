@@ -46,7 +46,10 @@
     "IdentityHeading"
   ],
   "features/calendar": [
-    "CalendarConflictView"
+    "CalendarConflictView",
+    "CalendarEventSource",
+    "DeviceCalendarEventSource",
+    "FixtureCalendarEventSource"
   ],
   "pages/home": [
     "HomePage"

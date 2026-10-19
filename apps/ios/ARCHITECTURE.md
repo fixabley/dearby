@@ -9,7 +9,7 @@ Repository/API/인증/영구 저장/OS 개인정보 접근 계층 없이 fixture
 - `widgets/activity`: 활동 목록(서버 검색·페이지)·상세·이미지·일정표와 메모리 신청 상태.
 - `widgets/identity`: 프로필(데이터 입력·변경 이력·단계별 이력 입력·인증자료)·내 명함(`MyCardsPage`)·받은 명함·명함 제작(이름·공개 연락처·이력 선택, 내장 템플릿 `TemplateDocument` 미리보기; 앱 안 꾸미기는 2026-10-18 삭제) 화면과 모델.
 - `features/application`: 로컬 신청 안내/완료 표시, 외부 HTTPS Link.
-- `features/calendar`: 고정 바쁜 시간 비교, 선택 단계/결과 시트/시간 격자.
+- `features/calendar`: 기기 캘린더(EventKit) 읽기 전용 겹침 비교(누를 때만 권한 요청, 기기 안 계산, 화면을 닫으면 버림), 안내/거부/결과 시트, 시간 격자. 미리보기는 `FixtureCalendarEventSource`.
 - `entities/activity`: 활동 값 모델·페이지와 `GET /v1/activities` 클라이언트.
 - `entities/identity`: 순수 명함/연락처/이력 fixture 및 CardView/CardDeck/HistoryTimeline/ContactIcons.
 - `shared/lib`: 검색어 비교, 마크다운 부분집합 파서 `MarkdownDocument`.

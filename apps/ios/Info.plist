@@ -22,6 +22,10 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>활동 일정과 겹치는 시간을 찾기 위해 캘린더를 읽어요. 일정은 이 기기 안에서만 비교하고 저장하거나 보내지 않아요.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>활동 일정과 겹치는 시간을 찾기 위해 캘린더를 읽어요. 일정은 이 기기 안에서만 비교하고 저장하거나 보내지 않아요.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>UIAppFonts</key>

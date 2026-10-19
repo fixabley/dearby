@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Contract "모바일 실제 연결 경계": network only for the real-service scope (activities, sign-in, cards). -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Contract "기기 캘린더 겹침": requested only when 겹치는 시간 확인 is tapped; read-only, compared on device. -->
+    <uses-permission android:name="android.permission.READ_CALENDAR"/>
     <application android:label="Dearby" android:icon="@drawable/ic_launcher" android:dataExtractionRules="@xml/data_extraction_rules" android:allowBackup="false" android:fullBackupContent="false" android:supportsRtl="true" android:theme="@style/Theme.Dearby" android:usesCleartextTraffic="false">
         <!-- singleTask: the dearby://auth/apple redirect must reach this instance (onNewIntent), which holds the verifier, and close the Custom Tab above it. -->
         <activity android:name=".app.MainActivity" android:exported="true" android:launchMode="singleTask" android:theme="@style/Theme.Dearby.Starting">
