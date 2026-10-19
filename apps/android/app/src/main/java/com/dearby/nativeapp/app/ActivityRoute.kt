@@ -47,7 +47,7 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
         progress != null && progressActivity != null -> ActivityProgressPage(progress, progressActivity, { progressId = null }, { selected = progress.id; linkError = null },
             { model.confirm(progress.id, it) }, { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it })
         mine -> MyActivitiesPage(state, { selected = it; linkError = null }, { progressId = it }, model::confirm, explore)
-        else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::loadMore, openLink, model::toggle, model::retryProgram, model::setOpenOnly)
+        else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::loadMore, openLink, model::toggle, model::retryProgram, model::setOpenOnly, model::toggleTag)
     }
     if (sharing && activity?.officialUrl != null) AlertDialog(onDismissRequest = { sharing = false }, title = { Text("활동 링크") }, text = { Text(activity.officialUrl) }, confirmButton = { TextButton({ sharing = false }) { Text("닫기") } })
     if (calendar && activity != null) CalendarConflictSheet(model.schedules(activity.id)) { calendar = false }

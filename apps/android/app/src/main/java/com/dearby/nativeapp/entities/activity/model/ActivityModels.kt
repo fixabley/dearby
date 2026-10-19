@@ -37,6 +37,8 @@ data class ActivityModel(
     val eligibility: EligibilityGroup? = null,
     /** 활동 종류; null = 미분류 (contract "활동 종류(category)"). */
     val category: ActivityCategory? = null,
+    /** 얻을 수 있는 것 (contract "태그"), dictionary order; empty when the API sent none. */
+    val tags: List<Tag> = emptyList(),
 ) {
     /** Only schedules with both ends can be compared on a calendar. */
     val schedules get() = stageSchedules.mapNotNull { if (it.startAt == null || it.endAt == null) null else ScheduleModel(it.title, it.startAt, it.endAt, it.timeZone) }
@@ -104,6 +106,8 @@ data class ActivityPage(val items: List<ActivityModel>, val nextCursor: String?)
 data class ProgramSummary(
     val id: String, val name: String, val nameEn: String?, val organization: String, val openActivityCount: Int,
     val nearestRecruitmentEndAt: String?, val matchedActivityIds: List<String>, val latestActivityAt: String? = null,
+    /** Program tags, or the union of its open activities' tags (contract "태그", at most 6). */
+    val tags: List<Tag> = emptyList(),
 )
 
 /** One page of `GET /v1/discovery/programs`; [nextCursor] is the next integer offset as text, null on the last page. */

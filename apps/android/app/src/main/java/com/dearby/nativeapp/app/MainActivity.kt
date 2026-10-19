@@ -15,6 +15,7 @@ import com.dearby.nativeapp.entities.account.api.AccountClient
 import com.dearby.nativeapp.entities.account.api.SessionVault
 import com.dearby.nativeapp.entities.activity.api.fetchActivities
 import com.dearby.nativeapp.entities.activity.api.fetchPrograms
+import com.dearby.nativeapp.entities.activity.api.fetchTags
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.getValue
@@ -27,7 +28,15 @@ import com.dearby.nativeapp.shared.ui.DearbyTheme
 
 class MainActivity : ComponentActivity() {
     private val activityModel: ActivityViewModel by viewModels {
-        viewModelFactory { initializer { ActivityViewModel({ query, cursor, openOnly -> withContext(Dispatchers.IO) { fetchPrograms(ApiOrigin.current, query, null, cursor, openOnly) } }) { query, cursor, programId, open -> withContext(Dispatchers.IO) { fetchActivities(ApiOrigin.current, query, cursor, programId, open) } } } }
+        viewModelFactory {
+            initializer {
+                ActivityViewModel(
+                    { query, cursor, openOnly, tagIds -> withContext(Dispatchers.IO) { fetchPrograms(ApiOrigin.current, query, null, cursor, openOnly, tagIds) } },
+                    { query, cursor, programId, open, tagIds -> withContext(Dispatchers.IO) { fetchActivities(ApiOrigin.current, query, cursor, programId, open, tagIds) } },
+                    { withContext(Dispatchers.IO) { fetchTags(ApiOrigin.current) } },
+                )
+            }
+        }
     }
     private val account: AccountViewModel by viewModels {
         viewModelFactory { initializer { AccountViewModel(AccountClient(ApiOrigin.current), SessionVault(applicationContext, ApiOrigin.sessionName), createSavedStateHandle(), BuildConfig.GOOGLE_SERVER_CLIENT_ID) } }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -33,7 +34,7 @@ import com.dearby.nativeapp.widgets.activity.programHeader.ProgramHeaderRow
  */
 @Composable fun ActivityListPage(
     state: ActivityListState, open: (String) -> Unit, search: (String) -> Unit, retry: () -> Unit, loadMore: () -> Unit, openLink: (String) -> Unit,
-    toggle: (String) -> Unit, retryProgram: (String) -> Unit, setOpenOnly: (Boolean) -> Unit = {},
+    toggle: (String) -> Unit, retryProgram: (String) -> Unit, setOpenOnly: (Boolean) -> Unit = {}, toggleTag: (String) -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize()) {
         Text("활동 둘러보기", Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp), style = MaterialTheme.typography.headlineMedium)
@@ -42,6 +43,15 @@ import com.dearby.nativeapp.widgets.activity.programHeader.ProgramHeaderRow
             placeholder = { Text("프로그램·조직·활동 이름으로 검색") }, singleLine = true, shape = RoundedCornerShape(11.dp),
             leadingIcon = { Icon(Icons.Outlined.Search, null) },
             trailingIcon = { if (state.query.isNotEmpty()) IconButton({ search("") }) { Icon(Icons.Outlined.Close, "검색어 지우기") } })
+        // 태그 칩 줄 (contract "태그"): the dictionary from GET /v1/tags, multi-select, every chosen tag must be present.
+        if (state.tags.isNotEmpty()) LazyRow(Modifier.fillMaxWidth().padding(bottom = 8.dp), contentPadding = PaddingValues(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(state.tags, key = { "tag-" + it.id }) { tag ->
+                val selected = tag.id in state.selectedTagIds
+                FilterChip(selected, { toggleTag(tag.id) }, { Text(tag.name) }, Modifier.heightIn(min = 36.dp),
+                    leadingIcon = if (selected) ({ Icon(Icons.Outlined.Check, null, Modifier.size(16.dp)) }) else null,
+                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Mint, selectedLabelColor = Teal, selectedLeadingIconColor = Teal))
+            }
+        }
         // 모집 중만 보기 (contract "모집 중인 프로그램만 보기"): off also lists programs active in the last two years.
         Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
             Text("모집 중만 보기", color = Quiet, style = MaterialTheme.typography.bodySmall)
@@ -58,7 +68,7 @@ import com.dearby.nativeapp.widgets.activity.programHeader.ProgramHeaderRow
                 else -> {
                     programs.forEach { program ->
                         item(key = "program-" + program.id) {
-                            ProgramHeaderRow(program.title, program.organization, program.openCount, program.deadline, program.id in state.expanded, onToggle = { toggle(program.id) }, latestActivityAt = program.latestActivityAt)
+                            ProgramHeaderRow(program.title, program.organization, program.openCount, program.deadline, program.id in state.expanded, onToggle = { toggle(program.id) }, latestActivityAt = program.latestActivityAt, tags = program.tags)
                         }
                         if (program.id in state.expanded) {
                             val loaded = state.programActivities[program.id]
@@ -81,7 +91,7 @@ import com.dearby.nativeapp.widgets.activity.programHeader.ProgramHeaderRow
                                             items(rows, key = { slug + "-activity-" + it.id }) { activity ->
                                                 ActivityCard(activity.title, activity.organization, activity.summary, activity.status,
                                                     activity.date.ifEmpty { "일정 미확인" } + " · " + (activity.location ?: "장소 미확인"), { open(activity.id) },
-                                                    Modifier.padding(start = 12.dp), imageUrl = activity.imageUrl, applyUrl = null, recruitmentEnd = null, onApply = openLink)
+                                                    Modifier.padding(start = 12.dp), imageUrl = activity.imageUrl, applyUrl = null, recruitmentEnd = null, onApply = openLink, tags = activity.tags)
                                             }
                                         }
                                     }
@@ -96,7 +106,7 @@ import com.dearby.nativeapp.widgets.activity.programHeader.ProgramHeaderRow
                                         items(group, key = { "activity-" + it.id }) { activity ->
                                             ActivityCard(activity.title, activity.organization, activity.summary, activity.status,
                                                 activity.date.ifEmpty { "일정 미확인" } + " · " + (activity.location ?: "장소 미확인"), { open(activity.id) },
-                                                Modifier.padding(start = 12.dp), imageUrl = activity.imageUrl, applyUrl = activity.applyUrl, recruitmentEnd = activity.recruitmentEnd, onApply = openLink)
+                                                Modifier.padding(start = 12.dp), imageUrl = activity.imageUrl, applyUrl = activity.applyUrl, recruitmentEnd = activity.recruitmentEnd, onApply = openLink, tags = activity.tags)
                                         }
                                     }
                                 }

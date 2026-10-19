@@ -34,6 +34,8 @@ import com.dearby.nativeapp.shared.ui.*
             ActivityImage(activity.imageUrl, Modifier.fillMaxWidth().height(205.dp))
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { ExampleBadge(activity.status, true); activity.category?.let { ExampleBadge(it) } }
+                // 얻을 수 있는 것 (contract "태그"): every tag, wrapping.
+                if (activity.tags.isNotEmpty()) TagChips(activity.tags)
                 Text(activity.title, style = MaterialTheme.typography.headlineMedium)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Icon(Icons.Outlined.Business, null, Modifier.size(38.dp), tint = Teal)
@@ -86,6 +88,11 @@ import com.dearby.nativeapp.shared.ui.*
 }
 
 /** Contract "대상자 조건": each line is one condition (an `any` group already reads `… 또는 …`), shown as a soft chip. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable private fun TagChips(tags: List<String>) = FlowRow(Modifier.semantics { contentDescription = "태그 " + tags.joinToString(", ") }, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    tags.forEach { ExampleBadge(it) }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable private fun EligibilityChips(lines: List<String>) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

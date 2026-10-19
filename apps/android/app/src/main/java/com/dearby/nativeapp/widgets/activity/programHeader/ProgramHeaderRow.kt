@@ -17,6 +17,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
@@ -33,12 +34,13 @@ private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).w
 
 /**
  * 발견 목록의 프로그램 머리글(contract "발견 프로그램 묶음"): 이름·조직·열린 활동 수·가장 가까운 마감. 열린 활동이 없으면(모집 중만 보기 끔) 가장 최근 활동
- * 시작 달 [latestActivityAt]을 "최근 활동 yyyy.M"으로 보인다. 누르면 [onToggle]로 화면이 펼치거나 접는다.
+ * 시작 달 [latestActivityAt]을 "최근 활동 yyyy.M"으로 보인다. [tags]는 얻을 수 있는 것 태그 이름(contract "태그")으로 최대 3개를 칩으로, 나머지는 `+n`으로
+ * 보인다. 누르면 [onToggle]로 화면이 펼치거나 접는다.
  * 접근성에서는 `펼침`/`접힘` 상태를 가진 버튼으로 읽히고, 화살표 회전은 동작 줄이기에서 바로 바뀐다. 펼친 활동 목록은 화면이 아래에 둔다.
  */
 @Composable fun ProgramHeaderRow(
     title: String, organization: String, openCount: Int, deadline: Instant?, expanded: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier,
-    latestActivityAt: Instant? = null,
+    latestActivityAt: Instant? = null, tags: List<String> = emptyList(),
 ) {
     val reduceMotion = rememberReduceMotion()
     val rotation by animateFloatAsState(if (expanded) 180f else 0f, if (reduceMotion) snap() else spring(), label = "chevron")
@@ -50,6 +52,10 @@ private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).w
                 Text(organization, color = Quiet, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (openCount > 0) Text("모집 중 ${openCount}개" + (deadline?.let { " · " + deadlineFormat.format(it) + " 마감" } ?: ""), color = Teal, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
                 else if (latestActivityAt != null) Text("최근 활동 " + monthFormat.format(latestActivityAt), color = Quiet, style = MaterialTheme.typography.bodySmall)
+                if (tags.isNotEmpty()) Row(Modifier.padding(top = 3.dp).semantics { contentDescription = "태그 " + tags.joinToString(", ") }, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    tags.take(3).forEach { ExampleBadge(it) }
+                    if (tags.size > 3) ExampleBadge("+${tags.size - 3}")
+                }
             }
             Icon(Icons.Outlined.KeyboardArrowDown, null, Modifier.rotate(rotation), tint = Quiet)
         }
