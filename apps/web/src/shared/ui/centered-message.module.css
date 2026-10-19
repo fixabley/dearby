@@ -55,6 +55,10 @@
   color: var(--teal);
   font-weight: 600;
 }
+/* Under a page heading (level 2) the message needs less height, so the page does not scroll past blank space. */
+.screen[data-level="2"] {
+  min-height: 40vh;
+}
 /* Inside an expanded program card the message is one block among others: compact, no page-height centring. */
 :global(.program-inner) .screen {
   min-height: 0;

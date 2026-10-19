@@ -33,7 +33,7 @@ export function CenteredMessage({
 }) {
   const Heading = level === 1 ? "h1" : "h2";
   return (
-    <div className={styles.screen} role={role}>
+    <div className={styles.screen} data-level={level} role={role}>
       <span className={styles.symbol} data-tone={tone}>
         <Icon name={icon} size="state" />
       </span>
