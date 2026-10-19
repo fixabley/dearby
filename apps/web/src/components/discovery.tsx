@@ -174,11 +174,13 @@ export function Discovery({ q }: { q: string }) {
 function byDeadline(a: Activity, b: Activity): number {
   return deadline(a) - deadline(b) || a.name.localeCompare(b.name, "ko");
 }
-/** Sort key (contract "활동 종류"): the application end; without an application, the activity start stands in for it; neither → last. */
+/** Sort key (contract "활동 종류"): the application end; when no deadline is known, the activity start stands in for it; neither → last. */
 function deadline(activity: Activity): number {
-  const key = activity.application
-    ? activity.application.endAt ?? activity.application.endDateExclusive
-    : activity.activitySchedule.startAt ?? activity.activitySchedule.startDate;
+  const key =
+    activity.application?.endAt ??
+    activity.application?.endDateExclusive ??
+    activity.activitySchedule.startAt ??
+    activity.activitySchedule.startDate;
   const instant = key ? Date.parse(key) : NaN;
   return Number.isNaN(instant) ? Infinity : instant;
 }
