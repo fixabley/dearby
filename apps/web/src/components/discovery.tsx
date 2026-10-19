@@ -29,6 +29,11 @@ function programsPath(q: string, openOnly: boolean, tagIds: number[], cursor?: n
   return `/discovery/programs?${params}`;
 }
 
+/** `&tagIds=1,2` when tags are selected, else nothing. */
+function tagQuery(tagKey: string): string {
+  return tagKey ? `&tagIds=${tagKey}` : "";
+}
+
 /**
  * Discovery as a program accordion (contract "발견 프로그램 묶음 — 2026-10-18"): programs with open activities,
  * searched by `q` (from the `/?q=` URL) and paged with the API cursor. Expanding a header loads that program's
@@ -165,6 +170,7 @@ export function Discovery({ q }: { q: string }) {
                 program={program}
                 open={expanded.has(program.id)}
                 toggle={() => toggle(program.id)}
+                tagKey={tagKey}
               />
             ))}
           </ul>
@@ -291,18 +297,18 @@ function upcomingKey(activity: Activity): number {
  * The other activities of a program without open ones (contract "모집 중인 프로그램만 보기"): `모집 예정` (recruitment or activity start
  * still ahead, nearest first) and `지난 활동` (activity start in the last two years, newest first); an empty group is omitted.
  */
-function OtherActivities({ programId, now }: { programId: number; now: number }) {
+function OtherActivities({ programId, now, tagKey }: { programId: number; now: number; tagKey: string }) {
   const [page, setPage] = useState<ActivityPage>();
   const [error, setError] = useState("");
   useEffect(() => {
     const controller = new AbortController();
-    request<ActivityPage>(`/activities?programId=${programId}&size=20`, { signal: controller.signal })
+    request<ActivityPage>(`/activities?programId=${programId}&size=20${tagQuery(tagKey)}`, { signal: controller.signal })
       .then(setPage)
       .catch((error) => {
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
     return () => controller.abort();
-  }, [programId]);
+  }, [programId, tagKey]);
   if (error) return <p className="muted">{error}</p>;
   if (!page) return <Loading />;
   const upcoming = page.items
@@ -358,10 +364,13 @@ function ProgramRow({
   program,
   open,
   toggle,
+  tagKey,
 }: {
   program: ProgramSummary;
   open: boolean;
   toggle: () => void;
+  /** Selected tag ids as `1,2`; the expanded rows follow the same filter as the program list (alignment with the apps). */
+  tagKey: string;
 }) {
   const [activities, setActivities] = useState<ActivityPage>();
   const [error, setError] = useState("");
@@ -371,7 +380,7 @@ function ProgramRow({
   useEffect(() => {
     if (!open || activities) return;
     const controller = new AbortController();
-    request<ActivityPage>(`/activities?programId=${program.id}&open=true&size=100`, {
+    request<ActivityPage>(`/activities?programId=${program.id}&open=true&size=100${tagQuery(tagKey)}`, {
       signal: controller.signal,
     })
       .then(setActivities)
@@ -379,7 +388,7 @@ function ProgramRow({
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
     return () => controller.abort();
-  }, [open, activities, program.id, attempt]);
+  }, [open, activities, program.id, attempt, tagKey]);
   useEffect(() => {
     if (!open) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -436,7 +445,7 @@ function ProgramRow({
           ) : !openActivities.length ? (
             <>
               <p className="muted">지금 모집 중인 활동이 없어요.</p>
-              <OtherActivities programId={program.id} now={now} />
+              <OtherActivities programId={program.id} now={now} tagKey={tagKey} />
             </>
           ) : (
             // Grouped by 활동 종류 (contract "활동 종류"); a single group needs no heading.

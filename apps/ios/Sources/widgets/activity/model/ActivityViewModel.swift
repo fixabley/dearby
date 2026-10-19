@@ -54,12 +54,13 @@ import Observation
     private var nextPage: Task<Void, Never>?
     private var programLoads: [Int64: Task<Void, Never>] = [:]
     private let fetchPrograms: @Sendable (_ query: String, _ cursor: Int64?, _ openOnly: Bool, _ tagIDs: [Int64]) async throws -> ProgramPage
-    /// `open` true asks for open activities only; false for every activity of the program (past list).
-    private let fetchActivities: @Sendable (_ programID: Int64, _ open: Bool) async throws -> ActivityPage
+    /// `open` true asks for open activities only; false for every activity of the program (past list). `tagIDs` repeats the
+    /// discovery tag filter so the expanded rows match it (contract "태그").
+    private let fetchActivities: @Sendable (_ programID: Int64, _ open: Bool, _ tagIDs: [Int64]) async throws -> ActivityPage
     private let fetchTags: @Sendable () async throws -> [Tag]
     private var tagLoad: Task<Void, Never>?
     init(programs: @escaping @Sendable (_ query: String, _ cursor: Int64?, _ openOnly: Bool, _ tagIDs: [Int64]) async throws -> ProgramPage,
-         activities: @escaping @Sendable (_ programID: Int64, _ open: Bool) async throws -> ActivityPage,
+         activities: @escaping @Sendable (_ programID: Int64, _ open: Bool, _ tagIDs: [Int64]) async throws -> ActivityPage,
          tags: @escaping @Sendable () async throws -> [Tag] = { [] }) {
         fetchPrograms = programs
         fetchActivities = activities
@@ -172,7 +173,7 @@ import Observation
         programLoads[programID] = Task {
             defer { if !Task.isCancelled { loadingPrograms.remove(programID); programLoads[programID] = nil } }
             do {
-                let page = try await fetchActivities(programID, true)
+                let page = try await fetchActivities(programID, true, tagIDs)
                 guard !Task.isCancelled else { return }
                 // The server already applied the open rule (`open=true`); the client keeps every returned activity.
                 for item in page.items { seen[item.id] = item }
@@ -180,7 +181,7 @@ import Observation
                 if page.items.isEmpty {
                     // Nothing recruiting: `모집 예정` (recruitment or activity not started yet, nearest first) and
                     // `지난 활동` (started within the last two years, latest first). Contract "모집 중인 프로그램만 보기".
-                    let others = try await fetchActivities(programID, false)
+                    let others = try await fetchActivities(programID, false, tagIDs)
                     guard !Task.isCancelled else { return }
                     let upcoming = others.items.filter { ($0.upcomingStart ?? .distantPast) > loadedAt }
                         .sorted { ($0.upcomingStart ?? .distantFuture, $0.title) < ($1.upcomingStart ?? .distantFuture, $1.title) }

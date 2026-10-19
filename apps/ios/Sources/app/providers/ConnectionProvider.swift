@@ -58,8 +58,8 @@ struct ConnectionProvider: Sendable {
         }
     }
     /// One program's activities: the open ones (server-judged, up to 100) or, for the past list, the first 20 of every activity.
-    func programActivities(programID: Int64, open: Bool) async throws -> ActivityPage {
-        do { return try await ActivityClient.fetch(api: origins.api, query: "", cursor: nil, programID: programID, size: open ? 100 : 20, open: open) } catch {
+    func programActivities(programID: Int64, open: Bool, tagIDs: [Int64]) async throws -> ActivityPage {
+        do { return try await ActivityClient.fetch(api: origins.api, query: "", cursor: nil, programID: programID, size: open ? 100 : 20, open: open, tagIDs: tagIDs) } catch {
             log.warning("Activity load from \(origins.api.absoluteString, privacy: .public) failed: \(String(describing: error), privacy: .public)")
             throw error
         }
