@@ -23,6 +23,8 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
@@ -36,21 +38,25 @@ import androidx.compose.ui.unit.dp
  * Material 3 `OutlinedTextField`는 `titleLarge`(이 앱의 재정의 값 20sp; 굵기만 보통으로) 글자·같은 크기의 placeholder·최소 높이 64다. 행 어디를 눌러도(라벨·여백 포함) 필드에
  * 포커스가 가므로 루트의 빈 곳 탭 제스처가 받을 영역이 없다. [imeAction]: 마지막 칸 `Done`은 포커스를 지워 키보드를 내리고, 중간 칸 `Next`는 아래 칸으로, 여러 줄([minLines] ≥ 2)은
  * `Default`(줄바꿈). [keyboardActions]를 넘기면 그 동작이 우선한다. 도움말·오류는 `supportingText`([error]가 있으면 빨강).
+ * [leadingIcon]이 있으면(연락처 행, contract "연락처 행은 라벨 대신 왼쪽 아이콘") 쌓는 라벨 대신 필드의 `leadingIcon` 자리(Material 기본 24·`onSurfaceVariant`)에 두고
+ * [label]은 접근성 이름으로만 남는다(placeholder는 입력하면 사라지므로). [placeholder]가 종류 이름을 말한다.
  */
 @Composable fun DearbyField(
     label: String, value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier, placeholder: String? = null, error: String? = null, hint: String? = null,
     minLines: Int = 1, imeAction: ImeAction = if (minLines > 1) ImeAction.Default else ImeAction.Done, keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions? = null, focusRequester: FocusRequester? = null, readOnly: Boolean = false, trailingIcon: (@Composable () -> Unit)? = null,
+    leadingIcon: ImageVector? = null,
 ) {
     val requester = focusRequester ?: remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
     val style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal)
     val actions = keyboardActions ?: KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) }, onDone = { focusManager.clearFocus() })
     Column(modifier.fillMaxWidth().pointerInput(requester) { detectTapGestures { requester.requestFocus() } }, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
-        OutlinedTextField(value, onValueChange, Modifier.fillMaxWidth().heightIn(min = 64.dp).focusRequester(requester), textStyle = style, readOnly = readOnly,
+        if (leadingIcon == null) Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
+        OutlinedTextField(value, onValueChange, Modifier.fillMaxWidth().heightIn(min = 64.dp).focusRequester(requester).semantics { if (leadingIcon != null) contentDescription = label },
+            textStyle = style, readOnly = readOnly,
             placeholder = placeholder?.let { { Text(it, style = style) } }, isError = error != null, supportingText = (error ?: hint)?.let { { Text(it, style = MaterialTheme.typography.bodyMedium) } },
-            trailingIcon = trailingIcon, keyboardOptions = keyboardOptions.copy(imeAction = imeAction), keyboardActions = actions, singleLine = minLines == 1, minLines = minLines)
+            leadingIcon = leadingIcon?.let { { Icon(it, null) } }, trailingIcon = trailingIcon, keyboardOptions = keyboardOptions.copy(imeAction = imeAction), keyboardActions = actions, singleLine = minLines == 1, minLines = minLines)
     }
 }
 

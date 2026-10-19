@@ -134,9 +134,13 @@ class AccountClient(private val api: String, private val transport: Transport = 
         return try { JSONObject(text).toEvidence() } catch (e: Exception) { throw AccountException(AccountError.UNAVAILABLE) }
     }
     suspend fun deleteEvidence(historyId: String, evidenceId: String, session: AccountSession) { request("DELETE", "profile/histories/$historyId/evidence/$evidenceId", null, session) }
-    /** Picker searches for the history steps (organizations, programs, roles need a session; activities are public). */
+    /**
+     * Picker searches for the history steps (organizations, programs, roles need a session; activities are public). Activities go with `forHistory=true`
+     * (contract "활동 이력에서 단기 행사 제외", 2026-10-20) so events under a week are left out; discovery uses `fetchActivities` and is unaffected.
+     */
     suspend fun searchActivityInfo(kind: ActivityInfoKind, query: String, parentId: Long?, session: AccountSession?): ActivityInfoPage {
         val params = mutableListOf("q=" + java.net.URLEncoder.encode(query, "UTF-8"), "size=20")
+        if (kind == ActivityInfoKind.ACTIVITIES) params += "forHistory=true"
         parentId?.let { params += when (kind) { ActivityInfoKind.PROGRAMS -> "organizationId=$it"; ActivityInfoKind.ACTIVITIES -> "programId=$it"; ActivityInfoKind.ORGANIZATIONS, ActivityInfoKind.JOBS -> "parentId=$it"; ActivityInfoKind.ROLES -> "" } }
         return send("GET", kind.path + "?" + params.filter { it.isNotEmpty() }.joinToString("&"), null, session).toActivityInfoPage()
     }

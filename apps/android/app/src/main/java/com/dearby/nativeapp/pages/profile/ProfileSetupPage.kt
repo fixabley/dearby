@@ -10,6 +10,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -104,13 +105,13 @@ private fun valueOf(step: SetupStep, form: ProfileFormState) = when (step) {
             }
             SetupStep.PHONE -> {
                 Question("연락받을 전화번호를 알려 주세요")
-                SetupField("전화번호", form.phone, { change(form.copy(phone = it)) }, "010-0000-0000", shownError, "필수예요. 명함에 넣을지는 명함을 만들 때 골라요.", focus,
-                    KeyboardOptions(keyboardType = KeyboardType.Phone), nextAction)
+                SetupField("전화번호", form.phone, { change(form.copy(phone = it)) }, "전화번호", shownError, "필수예요. 명함에 넣을지는 명함을 만들 때 골라요.", focus,
+                    KeyboardOptions(keyboardType = KeyboardType.Phone), nextAction, leadingIcon = contactIcon("phone"))
             }
             SetupStep.EMAIL -> {
                 Question("이메일 주소는요?")
-                SetupField("이메일", form.email, { change(form.copy(email = it)) }, "name@example.com", shownError, "필수예요.", focus,
-                    KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Email), nextAction)
+                SetupField("이메일", form.email, { change(form.copy(email = it)) }, "이메일", shownError, "필수예요.", focus,
+                    KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Email), nextAction, leadingIcon = contactIcon("email"))
             }
             SetupStep.INTRODUCTION -> {
                 Question("처음 만난 사람에게 한두 문장으로 소개해 주세요 (선택)")
@@ -120,12 +121,12 @@ private fun valueOf(step: SetupStep, form: ProfileFormState) = when (step) {
     }
 }
 
-/** One stacked-label field (shared `DearbyField`, contract "폼 라벨·입력 크기"); single-line fields answer Next with the section's `next`. */
+/** One stacked-label field (shared `DearbyField`, contract "폼 라벨·입력 크기"); contact steps pass [leadingIcon] instead of a label (contract "연락처 행은 라벨 대신 왼쪽 아이콘"); single-line fields answer Next with the section's `next`. */
 @Composable private fun SetupField(
     label: String, value: String, onValueChange: (String) -> Unit, placeholder: String, error: String?, hint: String?, focus: FocusRequester,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default, keyboardActions: KeyboardActions? = null, minLines: Int = 1,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default, keyboardActions: KeyboardActions? = null, minLines: Int = 1, leadingIcon: ImageVector? = null,
 ) = DearbyField(label, value, onValueChange, placeholder = placeholder, error = error, hint = hint, minLines = minLines, focusRequester = focus,
-    keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, imeAction = if (minLines > 1) ImeAction.Default else ImeAction.Next)
+    keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, imeAction = if (minLines > 1) ImeAction.Default else ImeAction.Next, leadingIcon = leadingIcon)
 
 /** An answered section: label and value on a row; tapping reopens it. */
 @Composable private fun DoneRow(step: SetupStep, value: String, reopen: () -> Unit) {

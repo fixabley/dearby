@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -184,18 +185,15 @@ fun contactKindName(kind: String) = when (kind) {
     else -> kind
 }
 
-@Composable fun ContactSymbol(kind: String, modifier: Modifier = Modifier, tint: Color = MaterialTheme.colorScheme.primary) {
-    when (kind) {
-        "github" -> Icon(painterResource(R.drawable.github_mark), null, modifier, tint = tint)
-        "behance" -> Text("Bē", modifier, color = tint, fontWeight = FontWeight.Bold)
-        else -> Icon(when (kind) {
-            "phone" -> Icons.Rounded.Call
-            "email" -> Icons.Rounded.Mail
-            "kakao" -> Icons.Rounded.ChatBubbleOutline
-            "instagram" -> Icons.Rounded.CameraAlt
-            else -> Icons.Rounded.Link
-        }, null, modifier, tint = tint)
-    }
+/** 연락처 종류 → 왼쪽 글리프(contract "연락처 행은 라벨 대신 왼쪽 아이콘", 2026-10-20): 입력 행과 명함 표시 행이 같은 표를 쓴다. */
+fun contactIcon(kind: String): ImageVector = when (kind) {
+    "phone" -> Icons.Rounded.Call
+    "email" -> Icons.Rounded.Mail
+    "kakao" -> Icons.Rounded.ChatBubble
+    "instagram" -> Icons.Rounded.CameraAlt
+    "github" -> Icons.Rounded.Code
+    "behance" -> Icons.Rounded.Palette
+    else -> Icons.Rounded.Link
 }
 
 @Composable fun TimelineEntry(date: String, title: String, subtitle: String, last: Boolean, modifier: Modifier = Modifier, compact: Boolean = false) {
