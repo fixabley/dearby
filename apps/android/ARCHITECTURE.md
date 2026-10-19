@@ -2,7 +2,7 @@
 
 `app` owns Activity, navigation and two in-memory ViewModels. ActivityViewModel reads `GET /v1/activities` page by page with a debounced search and owns sample application reports; applied marks survive a new search. DemoViewModel owns the fictional profile, own cards and received-card exchange groups. `DemoFixtures.kt` is plain data, not a provider or repository.
 
-`pages/activity`, `pages/profile`, `pages/cards` and `pages/wallet` render State and callbacks. They neither import each other nor call OS services. The reusable `widgets/card/cardContent` slice holds card display State, the mint card and stacked-card rendering. `shared/ui` holds theme, logo, buttons, ScreenHeader, ExampleBadge, InfoRow, PersonHeader, ContactSymbol, TimelineEntry, FormColumn and Field. Generic components accept strings and callbacks rather than domain models.
+`pages/activity`, `pages/profile`, `pages/cards` and `pages/wallet` render State and callbacks. They neither import each other nor call OS services. The reusable `widgets/card/cardContent` slice holds card display State, the mint card and stacked-card rendering. `shared/ui` holds theme (`TealFill` for filled teal surfaces), logo, buttons, ScreenHeader + TabActions, CenteredMessage (the single non-scroll layout; `DearbyEmptyState`/`DearbyErrorState` wrap it), ExampleBadge, InfoRow, PersonHeader, ContactSymbol and TimelineEntry; icons are `Icons.Rounded` only. Generic components accept strings and callbacks rather than domain models.
 
 `features/application` handles an explicitly tapped safe external URL and local application demo. `features/calendar` compares fixed schedules and renders the timetable sheet. `entities/activity` parses `/v1/activities` and judges recruitment from the application window. No repositories, providers, network clients, persistence or empty replacement layers exist.
 
@@ -13,3 +13,5 @@ ViewModels survive Activity recreation but reset on process restart. Navigation,
 2026-10-17 프로필·명함 v2: `pages/profile`는 State(`ProfileViewState`, `HistoryDraft`, `FunnelState`, `VersionsState`)와 콜백만 그리고, 엔티티 타입은 `ProfileState.kt`의 변환 함수(`rowState`, `view`)로 감싼다. 파일 고르기와 검색 요청은 `app`(`ProfileRoute`, `ProfileViewModel`)이 맡는다. `shared/lib/MarkdownDocument`·`shared/ui/MarkdownBody`가 마크다운 부분집합을 그린다(토큰 칩 편집기 `TemplateEditor`는 2026-10-18 삭제).
 
 2026-10-18 명함 공유 삭제: `pages/qr`·`features/scan`·`QrShareCard`·`QrCode`·`ScannedLink`·`WalletGroups`를 지웠다. `pages/cards`(내 명함 목록·고치기 진입)와 `pages/wallet/WalletCardPage`(받은 명함 상세)가 대신 있다. `shared/config/AppLinks`는 애플 로그인 복귀 링크만 해석하고 App Links·카메라 권한·zxing·CameraX는 없다.
+
+2026-10-20 설정: `pages/settings`(`SettingsPage`·`SettingsState`)는 표시 문자열과 콜백만 받고, `app/SettingsViewModel`이 `entities/account`의 `AccountSummary`·`LinkedIdentity`·`PasskeyItem`을 읽어 날짜를 서울 `yyyy.M.d`로 바꾼다. Apple/Google 연결은 `AccountViewModel`의 연결 모드(`link`)이고 `SavedStateHandle`의 `web.linkMode`가 애플 복귀 링크를 연결로 구분한다. `AccountClient`의 전송은 OkHttp다(`PATCH`).

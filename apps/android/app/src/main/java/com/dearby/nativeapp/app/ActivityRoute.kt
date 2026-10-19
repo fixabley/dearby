@@ -18,8 +18,8 @@ import com.dearby.nativeapp.pages.activity.ActivityProgressPage
 import com.dearby.nativeapp.pages.activity.ApplicationReportDialog
 import com.dearby.nativeapp.pages.activity.MyActivitiesPage
 
-/** [notify] opens the (prototype) notification notice from the 발견 header's bell (내 활동 has none, like iOS). */
-@Composable fun ActivityRoute(model: ActivityViewModel, mine: Boolean = false, explore: () -> Unit = {}, notify: () -> Unit = {}, active: (Boolean) -> Unit) {
+/** [settings] and [notify] are the fixed 설정·알림 header buttons of both tab roots (contract "설정"). */
+@Composable fun ActivityRoute(model: ActivityViewModel, mine: Boolean = false, explore: () -> Unit = {}, settings: () -> Unit = {}, notify: () -> Unit = {}, active: (Boolean) -> Unit) {
     val state by model.state.collectAsStateWithLifecycle()
     var selected by remember { mutableStateOf<String?>(null) }
     // 내 활동: the activity whose stage timeline is open, and the stage whose calendar comparison is open.
@@ -58,8 +58,8 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
             { model.confirm(activity.id, it) }, { calendar = true }, { sharing = true }, openMap)
         progress != null && progressActivity != null -> ActivityProgressPage(progress, progressActivity, { progressId = null }, { selected = progress.id; linkError = null },
             { model.confirm(progress.id, it) }, { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it })
-        mine -> MyActivitiesPage(state, { selected = it; linkError = null }, { progressId = it }, model::confirm, explore)
-        else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify, model::clearRefreshFailure)
+        mine -> MyActivitiesPage(state, { selected = it; linkError = null }, { progressId = it }, model::confirm, explore, settings, notify)
+        else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify, model::clearRefreshFailure, settings)
     }
     if (sharing && activity?.officialUrl != null) AlertDialog(onDismissRequest = { sharing = false }, title = { Text("활동 링크") }, text = { Text(activity.officialUrl) }, confirmButton = { TextButton({ sharing = false }) { Text("닫기") } })
     val openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) }

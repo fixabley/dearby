@@ -6,10 +6,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Cancel
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -38,7 +38,7 @@ data class PickerItem(val id: Long, val name: String, val detail: String?)
         if (pickedName != null) {
             Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(12.dp)) {
                 Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.onPrimaryContainer); Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Rounded.CheckCircle, null, tint = MaterialTheme.colorScheme.onPrimaryContainer); Spacer(Modifier.width(8.dp))
                     Text(pickedName, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
                     TextButton(onClearPick) { Text("바꾸기") }
                 }
@@ -67,7 +67,7 @@ data class PickerItem(val id: Long, val name: String, val detail: String?)
         val trimmed = query.trim()
         if (trimmed.isNotEmpty() && items.none { it.name == trimmed }) {
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = "목록에 없으면 적은 이름 그대로 저장해요") { onType(trimmed); onQueryChange("") }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Edit, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(8.dp))
+                Icon(Icons.Rounded.Edit, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(8.dp))
                 Text("‘$trimmed’ 직접 입력", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             }
         } else if (trimmed.isEmpty() && items.isEmpty() && !loading) {
@@ -82,6 +82,6 @@ data class PickerItem(val id: Long, val name: String, val detail: String?)
  */
 @Composable internal fun PickerSearchField(query: String, onQueryChange: (String) -> Unit, label: String, modifier: Modifier = Modifier, placeholder: String? = null) = OutlinedTextField(
     query, onQueryChange, modifier.fillMaxWidth(), label = { Text(label) }, placeholder = placeholder?.let { { Text(it) } }, singleLine = true,
-    leadingIcon = { Icon(Icons.Outlined.Search, null) },
-    trailingIcon = if (query.isNotEmpty()) ({ IconButton({ onQueryChange("") }) { Icon(Icons.Outlined.Close, "검색어 지우기") } }) else null,
+    leadingIcon = { Icon(Icons.Rounded.Search, null) },
+    trailingIcon = if (query.isNotEmpty()) ({ IconButton({ onQueryChange("") }) { Icon(Icons.Rounded.Cancel, "검색어 지우기") } }) else null,
     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search))

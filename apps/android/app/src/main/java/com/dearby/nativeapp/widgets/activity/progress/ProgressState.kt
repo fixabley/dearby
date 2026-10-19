@@ -1,11 +1,11 @@
 package com.dearby.nativeapp.widgets.activity.progress
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Campaign
-import androidx.compose.material.icons.outlined.EditNote
-import androidx.compose.material.icons.outlined.Event
-import androidx.compose.material.icons.outlined.Flag
-import androidx.compose.material.icons.outlined.RecordVoiceOver
+import androidx.compose.material.icons.rounded.Campaign
+import androidx.compose.material.icons.rounded.EditNote
+import androidx.compose.material.icons.rounded.Event
+import androidx.compose.material.icons.rounded.Flag
+import androidx.compose.material.icons.rounded.RecordVoiceOver
 import androidx.compose.ui.graphics.vector.ImageVector
 import java.time.LocalDate
 
@@ -32,9 +32,9 @@ data class ProgressState(
 }
 
 fun stageIcon(kind: String): ImageVector = when (kind) {
-    "APPLICATION" -> Icons.Outlined.EditNote
-    "DEADLINE" -> Icons.Outlined.Flag
-    "ANNOUNCEMENT" -> Icons.Outlined.Campaign
-    "INTERVIEW" -> Icons.Outlined.RecordVoiceOver
-    else -> Icons.Outlined.Event
+    "APPLICATION" -> Icons.Rounded.EditNote
+    "DEADLINE" -> Icons.Rounded.Flag
+    "ANNOUNCEMENT" -> Icons.Rounded.Campaign
+    "INTERVIEW" -> Icons.Rounded.RecordVoiceOver
+    else -> Icons.Rounded.Event
 }

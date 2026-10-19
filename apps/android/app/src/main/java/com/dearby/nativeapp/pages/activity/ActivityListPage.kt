@@ -16,7 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -65,7 +65,7 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun ActivityListPage(
     state: ActivityListState, open: (String) -> Unit, search: (String) -> Unit, retry: () -> Unit, refresh: () -> Unit, loadMore: () -> Unit,
-    toggle: (String) -> Unit, retryProgram: (String) -> Unit, setOpenOnly: (Boolean) -> Unit = {}, notify: () -> Unit = {}, clearRefreshFailure: () -> Unit = {},
+    toggle: (String) -> Unit, retryProgram: (String) -> Unit, setOpenOnly: (Boolean) -> Unit = {}, notify: () -> Unit = {}, clearRefreshFailure: () -> Unit = {}, settings: () -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     val reduceMotion = rememberReduceMotion()
@@ -75,15 +75,18 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
     // Pull to refresh failed with a list showing: the list stays, a snackbar passes once (iOS parity); the flag is cleared even if the page leaves mid-show.
     LaunchedEffect(state.refreshFailed) { if (state.refreshFailed) try { snackbar.showSnackbar("새로 고치지 못했어요") } finally { clearRefreshFailure() } }
     val collapse = remember(reduceMotion, focusManager) { SearchAreaCollapse(reduceMotion, scope, focusManager::clearFocus) }
-    // The hairline shows once content passes under the fixed title: the search area has begun to fold or the list has moved.
-    val scrolled by remember(collapse) { derivedStateOf { collapse.offset < 0f || listState.canScrollBackward } }
-    val farDown by remember { derivedStateOf { listState.pastOneScreen() } }
+    // The program list is drawn only with programs; loading, failure and empty results are centred states in its place (contract "비스크롤 화면 배치·CTA").
+    val listShown = state.phase == ActivityListPhase.LOADED && state.programs.isNotEmpty()
+    // The hairline shows once content passes under the fixed title: the search area has begun to fold or the list has moved. The list state keeps
+    // its last values while a centred state replaces the list, so both reads are gated on the list being shown.
+    val scrolled by remember(collapse, listShown) { derivedStateOf { collapse.offset < 0f || (listShown && listState.canScrollBackward) } }
+    val farDown by remember(listShown) { derivedStateOf { listShown && listState.pastOneScreen() } }
     // Fields and buttons take their own taps first, so this only catches taps on empty space.
     Box(Modifier.fillMaxSize().imePadding().pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } }) {
         Column(Modifier.fillMaxSize()) {
             // Tab title line shared by the five tabs (contract "탭 제목 통일·머리 간소화"), pinned above everything that scrolls.
             Box(Modifier.fillMaxWidth()) {
-                ScreenHeader("활동 둘러보기") { IconButton(notify) { Icon(Icons.Outlined.NotificationsNone, "알림") } }
+                ScreenHeader("활동 둘러보기") { TabActions(settings, notify) }
                 HorizontalDivider(Modifier.align(Alignment.BottomCenter).alpha(if (scrolled) 1f else 0f), color = MaterialTheme.colorScheme.surfaceContainerHighest)
             }
             // Search field and 마감 숨기기 switch: outside the list so the field keeps focus and the keyboard while results change.
@@ -92,8 +95,8 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                 SearchBarDefaults.InputField(state.query, search, { focusManager.clearFocus() }, expanded = false, onExpandedChange = {},
                     Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp).testTag("activity-search")
                         .onFocusChanged { collapse.locked = it.isFocused; if (it.isFocused) collapse.expand() },
-                    placeholder = { Text("프로그램·조직·활동 이름으로 검색") }, leadingIcon = { Icon(Icons.Outlined.Search, null) },
-                    trailingIcon = { if (state.query.isNotEmpty()) IconButton({ search("") }) { Icon(Icons.Outlined.Close, "검색어 지우기") } })
+                    placeholder = { Text("프로그램·조직·활동 이름으로 검색") }, leadingIcon = { Icon(Icons.Rounded.Search, null) },
+                    trailingIcon = { if (state.query.isNotEmpty()) IconButton({ search("") }) { Icon(Icons.Rounded.Cancel, "검색어 지우기") } })
                 // 마감 숨기기 (contract "모집 중인 프로그램만 보기"): off also lists programs active in the last two years.
                 Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
                     Text("마감 숨기기", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
@@ -102,26 +105,25 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
             }
             // The collapse connection sits outside the pull gesture: a pull at the top re-enters the search area first, then the indicator grows below it.
             PullToRefreshBox(state.refreshing, refresh, Modifier.fillMaxSize().nestedScroll(collapse.connection)) {
-                LazyColumn(Modifier.fillMaxSize(), listState, contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    val programs = state.programs
-                    when {
-                        state.phase == ActivityListPhase.LOADING -> item { DearbyLoadingState("활동을 불러오는 중이에요.") }
-                        state.phase == ActivityListPhase.FAILED -> item { DearbyErrorState("활동을 불러오지 못했어요", "연결을 확인한 뒤 다시 시도해 주세요.", retry) }
-                        programs.isEmpty() && state.query.isNotBlank() -> item { DearbyEmptyState("검색 결과가 없어요", "다른 검색어로 찾아 보세요.") }
-                        programs.isEmpty() && state.openOnly -> item { DearbyEmptyState("지금 모집 중인 프로그램이 없어요", "새 모집이 열리면 여기에서 볼 수 있어요. ‘마감 숨기기’를 끄면 최근 2년 안에 활동한 프로그램도 보여요.") }
-                        programs.isEmpty() -> item { DearbyEmptyState("최근 2년 안에 활동한 프로그램이 없어요", "새 모집이 열리면 여기에서 볼 수 있어요.") }
-                        else -> {
-                            items(programs, key = { "program-" + it.id }) { program ->
-                                ProgramCard(program.title, program.organization, program.openCount, program.upcomingCount, program.deadline, program.nearestStart, program.latestActivityAt,
-                                    program.tags, program.id in state.expanded, { toggle(program.id) }, logoUrl = program.logoUrl) { ProgramBody(program.id, state, open, retryProgram) }
-                            }
-                            if (state.nextCursor != null) item(key = "more") {
-                                // Shown as the list nears its end; each new page re-arms it.
-                                LaunchedEffect(programs.size) { loadMore() }
-                                Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
-                                    if (state.moreFailed) TextButton(loadMore, Modifier.heightIn(min = 48.dp)) { Text("다음 프로그램을 불러오지 못했어요 · 다시 시도") }
-                                    else CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
-                                }
+                val programs = state.programs
+                // The centred states fill the list area (they scroll only when they overflow, and pull-to-refresh still works through that scroll).
+                when {
+                    state.phase == ActivityListPhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { DearbyLoadingState("활동을 불러오는 중이에요.") }
+                    state.phase == ActivityListPhase.FAILED -> DearbyErrorState("활동을 불러오지 못했어요", "연결을 확인한 뒤 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
+                    programs.isEmpty() && state.query.isNotBlank() -> DearbyEmptyState("검색 결과가 없어요", "다른 검색어로 찾아 보세요.", Modifier.fillMaxSize(), Icons.Rounded.Search)
+                    programs.isEmpty() && state.openOnly -> DearbyEmptyState("지금 모집 중인 프로그램이 없어요", "‘마감 숨기기’를 끄면 최근 2년 안에 활동한 프로그램도 보여요.", Modifier.fillMaxSize())
+                    programs.isEmpty() -> DearbyEmptyState("최근 2년 안에 활동한 프로그램이 없어요", "새 모집이 열리면 여기에서 볼 수 있어요.", Modifier.fillMaxSize())
+                    else -> LazyColumn(Modifier.fillMaxSize(), listState, contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        items(programs, key = { "program-" + it.id }) { program ->
+                            ProgramCard(program.title, program.organization, program.openCount, program.upcomingCount, program.deadline, program.nearestStart, program.latestActivityAt,
+                                program.tags, program.id in state.expanded, { toggle(program.id) }, logoUrl = program.logoUrl) { ProgramBody(program.id, state, open, retryProgram) }
+                        }
+                        if (state.nextCursor != null) item(key = "more") {
+                            // Shown as the list nears its end; each new page re-arms it.
+                            LaunchedEffect(programs.size) { loadMore() }
+                            Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                                if (state.moreFailed) TextButton(loadMore, Modifier.heightIn(min = 48.dp)) { Text("다음 프로그램을 불러오지 못했어요 · 다시 시도") }
+                                else CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
                             }
                         }
                     }
@@ -228,8 +230,8 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
                 Text(activity.title, Modifier.padding(top = 5.dp), style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(activity.organization, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
                 HorizontalDivider()
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) { Icon(Icons.Outlined.CalendarToday, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant); Text(activity.date.ifEmpty { "일정 미확인" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) { Icon(Icons.Outlined.LocationOn, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant); Text(activity.location ?: "장소 미확인", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2) }
+                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) { Icon(Icons.Rounded.Event, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant); Text(activity.date.ifEmpty { "일정 미확인" }, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) { Icon(Icons.Rounded.Place, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant); Text(activity.location ?: "장소 미확인", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2) }
                 footer()
             }
         }
@@ -239,4 +241,4 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
 /** The activity's image when it has one, otherwise a calendar tile. Decorative: the text says the same. */
 @Composable internal fun ActivityImage(url: String?, modifier: Modifier) =
     if (url != null) AsyncImage(url, null, modifier.background(MaterialTheme.colorScheme.primaryContainer), contentScale = ContentScale.Crop)
-    else Box(modifier.background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) { Icon(Icons.Outlined.Event, null, Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer) }
+    else Box(modifier.background(MaterialTheme.colorScheme.primaryContainer), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.Event, null, Modifier.size(40.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer) }

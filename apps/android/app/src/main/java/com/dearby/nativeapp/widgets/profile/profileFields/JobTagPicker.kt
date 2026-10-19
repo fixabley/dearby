@@ -3,9 +3,9 @@ package com.dearby.nativeapp.widgets.profile.profileFields
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.rounded.Cancel
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -34,8 +34,8 @@ data class JobTag(val id: String, val title: String, val pending: Boolean, val r
                 InputChip(
                     selected = !tag.rejected, onClick = { onRemove(tag.id) },
                     label = { Text(tag.title) },
-                    leadingIcon = if (tag.pending) ({ Icon(Icons.Outlined.Schedule, "승인 대기", Modifier.size(18.dp)) }) else null,
-                    trailingIcon = { Icon(Icons.Outlined.Close, "삭제", Modifier.size(18.dp)) },
+                    leadingIcon = if (tag.pending) ({ Icon(Icons.Rounded.Schedule, "승인 대기", Modifier.size(18.dp)) }) else null,
+                    trailingIcon = { Icon(Icons.Rounded.Cancel, "삭제", Modifier.size(18.dp)) },
                     colors = InputChipDefaults.inputChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer, selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer, selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer, selectedTrailingIconColor = MaterialTheme.colorScheme.onPrimaryContainer),
                 )
             }
@@ -55,7 +55,7 @@ data class JobTag(val id: String, val title: String, val pending: Boolean, val r
         val trimmed = query.trim()
         if (trimmed.isNotEmpty() && items.none { it.name == trimmed }) {
             Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button, onClickLabel = "목록에 없으면 적은 이름 그대로 저장해요") { onType(trimmed); onQueryChange("") }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Edit, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(8.dp))
+                Icon(Icons.Rounded.Edit, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(8.dp))
                 Text("‘$trimmed’ 직접 입력", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
             }
         } else if (trimmed.isEmpty() && items.isEmpty() && !loading) {

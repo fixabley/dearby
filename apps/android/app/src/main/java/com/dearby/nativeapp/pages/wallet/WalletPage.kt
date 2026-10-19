@@ -9,8 +9,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.rounded.Cancel
+import androidx.compose.material.icons.rounded.Inbox
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,24 +34,21 @@ import kotlinx.coroutines.launch
 private const val RAIL_MIN_SECTIONS = 7
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
-@Composable fun WalletPage(state: WalletState, query: String, changeQuery: (String) -> Unit, open: (ReceivedCard) -> Unit, signIn: () -> Unit, retry: () -> Unit) {
+@Composable fun WalletPage(state: WalletState, query: String, changeQuery: (String) -> Unit, open: (ReceivedCard) -> Unit, signIn: () -> Unit, retry: () -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {}) {
     Column(Modifier.fillMaxSize().dismissKeyboardOnTap()) {
-        ScreenHeader("받은 명함")
+        ScreenHeader("받은 명함") { TabActions(settings, notify) }
+        // Signed out, failed and empty states are CenteredMessages on the page background (contract "비스크롤 화면 배치·CTA").
         when (state.phase) {
-            WalletPhase.SIGNED_OUT -> Notice("받은 명함은 계정에 저장돼요", "로그인하면 저장한 명함을 볼 수 있어요.") {
-                DearbyButton(signIn, Modifier.fillMaxWidth()) { Text("로그인") }
-            }
+            WalletPhase.SIGNED_OUT -> DearbyEmptyState("받은 명함은 계정에 저장돼요", "로그인하면 저장한 명함을 볼 수 있어요.", Modifier.fillMaxSize(), Icons.Rounded.Inbox, MessageAction("로그인", signIn))
             WalletPhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
-            WalletPhase.FAILED -> Notice("받은 명함을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.") {
-                DearbyOutlineButton(retry, Modifier.fillMaxWidth()) { Text("다시 시도") }
-            }
-            WalletPhase.LOADED -> if (state.cards.isEmpty()) Notice("아직 받은 명함이 없어요", "상대의 명함 QR을 카메라로 읽고 ‘Dearby 앱에 저장’을 누르면 여기에 모여요.") {} else {
+            WalletPhase.FAILED -> DearbyErrorState("받은 명함을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
+            WalletPhase.LOADED -> if (state.cards.isEmpty()) DearbyEmptyState("아직 받은 명함이 없어요", "상대의 명함 QR을 카메라로 읽고 ‘Dearby 앱에 저장’을 누르면 여기에 모여요.", Modifier.fillMaxSize(), Icons.Rounded.Inbox) else {
                 val sections = walletSections(filterWallet(state.cards, query))
                 // Material 3 search-bar input (contract "폼은 플랫폼 기본 컴포넌트": 검색창은 `SearchBarDefaults.InputField`, 56dp, 둥근 바탕).
                 SearchBarDefaults.InputField(query, changeQuery, {}, expanded = false, onExpandedChange = {}, Modifier.fillMaxWidth().padding(horizontal = 20.dp).semantics { contentDescription = "이름, 직무로 검색" },
-                    placeholder = { Text("이름, 직무로 검색") }, leadingIcon = { Icon(Icons.Outlined.Search, null) },
-                    trailingIcon = { if (query.isNotEmpty()) IconButton({ changeQuery("") }) { Icon(Icons.Outlined.Close, "검색어 지우기") } })
-                if (sections.isEmpty()) Notice("찾는 명함이 없어요", "이름이나 직무로 다시 검색해 주세요.") {}
+                    placeholder = { Text("이름, 직무로 검색") }, leadingIcon = { Icon(Icons.Rounded.Search, null) },
+                    trailingIcon = { if (query.isNotEmpty()) IconButton({ changeQuery("") }) { Icon(Icons.Rounded.Cancel, "검색어 지우기") } })
+                if (sections.isEmpty()) DearbyEmptyState("찾는 명함이 없어요", "이름이나 직무로 다시 검색해 주세요.", Modifier.fillMaxSize(), Icons.Rounded.Search)
                 else IndexedList(sections, open)
             }
         }
@@ -103,13 +101,5 @@ private const val RAIL_MIN_SECTIONS = 7
             Text(key, Modifier.size(width = 24.dp, height = 18.dp).semantics { role = Role.Button; contentDescription = "${key}으로 이동" },
                 color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelSmall)
         }
-    }
-}
-
-@Composable private fun Notice(title: String, detail: String, action: @Composable () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-        Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
-        action()
     }
 }

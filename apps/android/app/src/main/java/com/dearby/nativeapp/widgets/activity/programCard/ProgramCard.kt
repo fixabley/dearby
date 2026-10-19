@@ -98,7 +98,7 @@ private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).w
                 if (expanded) IconButton(onToggle, Modifier.size(44.dp).semantics { contentDescription = "접기" }, colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)) {
                     Icon(Icons.Rounded.ExpandMore, null, Modifier.rotate(rotation.value))
                 } else Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                    Badge(Modifier.size(32.dp).semantics { contentDescription = "활동 ${count}개" }, if (count > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainer, if (count > 0) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant) {
+                    Badge(Modifier.size(32.dp).semantics { contentDescription = "활동 ${count}개" }, if (count > 0) TealFill else MaterialTheme.colorScheme.surfaceContainer, if (count > 0) Color.White else MaterialTheme.colorScheme.onSurfaceVariant) {
                         Text(count.toString(), Modifier.weight(1f), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
                     }
                 }

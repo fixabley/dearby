@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -17,7 +18,7 @@ import com.dearby.nativeapp.shared.ui.*
 
 /**
  * 펼친 프로그램 카드 안의 활동 카드(contract "발견 카드 리뉴얼", Material 3 `Card`): 로고 없이 왼쪽 위 활동명, 오른쪽 위 모집 상태 `SuggestionChip`, 아래 `모집`·`활동`·`장소` 세 줄.
- * [status]는 `application` 판정(`모집 중`·`모집 예정`·`모집 마감`·`모집 여부 확인 필요`)이며 칩은 청록 채움 / 민트 / 회색 `마감`(판정 불가는 회색 `확인 필요`)이다.
+ * [status]는 `application` 판정(`모집 중`·`모집 예정`·`모집 마감`·`모집 여부 확인 필요`)이며 칩은 청록 채움(`TealFill`·흰 글자) / 민트 / 회색 `마감`(판정 불가는 회색 `확인 필요`)이다.
  * [recruitment]이 null이면 `미정`, [place]가 null이면 `장소` 줄을 생략한다. 모집이 지나지 않았으면([recruiting]) `모집` 값은 청록 굵은 글씨에 민트 바탕이다.
  * 카드(또는 상태 칩)를 누르면 [open](상세 이동). 접근성에서는 카드 하나로 읽히고 상태가 상태 설명으로 붙는다.
  */
@@ -25,7 +26,7 @@ import com.dearby.nativeapp.shared.ui.*
     title: String, status: String, recruiting: Boolean, recruitment: String?, period: String, place: String?, open: () -> Unit, modifier: Modifier = Modifier,
 ) {
     val (label, container, content) = when (status) {
-        "모집 중" -> Triple(status, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary)
+        "모집 중" -> Triple(status, TealFill, Color.White)
         "모집 예정" -> Triple(status, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
         "모집 마감" -> Triple("마감", MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurfaceVariant)
         else -> Triple("확인 필요", MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurfaceVariant)

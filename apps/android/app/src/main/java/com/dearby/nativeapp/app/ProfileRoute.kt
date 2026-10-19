@@ -21,7 +21,7 @@ import com.dearby.nativeapp.pages.profile.ProfileVersionPage
 import com.dearby.nativeapp.pages.profile.ProfileVersionsPage
 
 /** 내 프로필 tab: in-place data editing, the history funnel (with file pickers for evidence) and the version screens. */
-@Composable fun ProfileRoute(model: ProfileViewModel, account: AccountViewModel, compose: () -> Unit) {
+@Composable fun ProfileRoute(model: ProfileViewModel, account: AccountViewModel, compose: () -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {}) {
     val state by model.state.collectAsStateWithLifecycle()
     val funnel by model.funnel.collectAsStateWithLifecycle()
     val versions by model.versions.collectAsStateWithLifecycle()
@@ -68,7 +68,7 @@ import com.dearby.nativeapp.pages.profile.ProfileVersionsPage
             ProfileVersionsPage(versions, { openVersion = it }, { model.loadVersions(reset = false) }) { versionsOpen = false }
         }
         else -> ProfilePage(state, model.rows, model::change, model::searchJobs, model::addContact, model::openHistory, model::removeHistory, model::save, model::revert,
-            { versionsOpen = true }, compose, { signingIn = true }, { model.load() }, deletion.deleting, model::deleteAccount, model.changed)
+            { versionsOpen = true }, compose, { signingIn = true }, { model.load() }, deletion.deleting, model::deleteAccount, model.changed, settings, notify)
     }
     if (signingIn && !signedIn) SignInRoute(account, close = { signingIn = false })
     deletion.notice?.let { notice ->

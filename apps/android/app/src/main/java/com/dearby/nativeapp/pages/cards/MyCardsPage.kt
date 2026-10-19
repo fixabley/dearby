@@ -8,8 +8,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Badge
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Badge
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
@@ -46,7 +45,7 @@ data class MyCardsState(
  */
 @Composable fun MyCardsPage(
     state: MyCardsState, create: () -> Unit, select: (String) -> Unit, showQr: (String) -> Unit, edit: (String) -> Unit, delete: (String) -> Unit,
-    contact: (ContactState) -> Unit, retry: () -> Unit,
+    contact: (ContactState) -> Unit, retry: () -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {},
 ) {
     var confirmDelete by remember { mutableStateOf<String?>(null) }
     confirmDelete?.let { id ->
@@ -55,23 +54,12 @@ data class MyCardsState(
             dismissButton = { TextButton({ confirmDelete = null }) { Text("취소") } })
     }
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("내 명함")
+        ScreenHeader("내 명함") { TabActions(settings, notify) }
         when (state.phase) {
             MyCardsPhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
-            MyCardsPhase.FAILED -> Notice("명함을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.") {
-                DearbyOutlineButton(retry, Modifier.fillMaxWidth()) { Text("다시 시도") }
-            }
-            MyCardsPhase.SIGNED_OUT, MyCardsPhase.NO_CARD -> Column(Modifier.padding(20.dp)) {
-                OutlinedCard(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)) {
-                    Column(Modifier.fillMaxWidth().heightIn(min = 320.dp).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        Icon(Icons.Outlined.Badge, null, Modifier.size(72.dp), tint = MaterialTheme.colorScheme.primary)
-                        Spacer(Modifier.height(24.dp))
-                        Text("내 명함을\n만드세요.", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
-                        Text("프로필 데이터로 명함을 꾸며 발행해요. 발행할 때 패스키로 로그인해요.", Modifier.padding(vertical = 18.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
-                        DearbyButton(create, Modifier.fillMaxWidth()) { Text("명함 만들기") }
-                    }
-                }
-            }
+            MyCardsPhase.FAILED -> DearbyErrorState("명함을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
+            // Empty / signed out: a CenteredMessage on the page background, no card (contract "비스크롤 화면 배치·CTA").
+            MyCardsPhase.SIGNED_OUT, MyCardsPhase.NO_CARD -> DearbyEmptyState("내 명함을 만드세요", "프로필 데이터로 명함을 꾸며 발행해요. 발행할 때 로그인해요.", Modifier.fillMaxSize(), Icons.Rounded.Badge, MessageAction("명함 만들기", create))
             MyCardsPhase.LOADED -> LazyVerticalGrid(GridCells.Fixed(2), Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 item { NewCardTile(create) }
@@ -94,7 +82,7 @@ data class MyCardsState(
 @Composable private fun NewCardTile(create: () -> Unit) {
     Surface(onClick = create, modifier = Modifier.fillMaxWidth().heightIn(min = 96.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)) {
         Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            Icon(Icons.Outlined.Add, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(4.dp))
+            Icon(Icons.Rounded.Add, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(4.dp))
             Text("새 명함", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleSmall)
         }
     }
@@ -109,13 +97,5 @@ data class MyCardsState(
             Text(card.person, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
             if (card.job.isNotBlank()) Text(card.job, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
         }
-    }
-}
-
-@Composable private fun Notice(title: String, detail: String, action: @Composable () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
-        Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
-        action()
     }
 }

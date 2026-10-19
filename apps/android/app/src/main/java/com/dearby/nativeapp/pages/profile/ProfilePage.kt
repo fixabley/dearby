@@ -8,8 +8,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.History
-import androidx.compose.material.icons.outlined.RemoveCircleOutline
+import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.RemoveCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,7 +19,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.profile.profileFields.JobTagPicker
@@ -35,29 +35,26 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
 @Composable fun ProfilePage(
     state: ProfileViewState, rows: List<HistoryRowState>, change: (ProfileFormState) -> Unit, searchJobs: (String) -> Unit, addContact: (String) -> Unit, openHistory: (String?) -> Unit,
     removeHistory: (String) -> Unit, save: () -> Unit, revert: () -> Unit, versions: () -> Unit, compose: () -> Unit, signIn: () -> Unit, retry: () -> Unit,
-    deleting: Boolean, deleteAccount: () -> Unit, changed: Boolean,
+    deleting: Boolean, deleteAccount: () -> Unit, changed: Boolean, settings: () -> Unit = {}, notify: () -> Unit = {},
 ) {
     var confirming by remember { mutableStateOf(false) }
     // Never saved yet: the step funnel replaces the editor until the first save.
     val settingUp = state.settingUp
     Column(Modifier.fillMaxSize().dismissKeyboardOnTap()) {
+        // The tab's own actions (변경 이력, 명함 만들기) sit left of the fixed 설정·알림 buttons (contract "설정").
         ScreenHeader("내 프로필") {
             if (state.phase == ProfilePhase.LOADED && !settingUp) {
-                IconButton(versions) { Icon(Icons.Outlined.History, "변경 이력", tint = MaterialTheme.colorScheme.primary) }
+                IconButton(versions) { Icon(Icons.Rounded.History, "변경 이력", tint = MaterialTheme.colorScheme.primary) }
                 TextButton(compose) { Text("명함 만들기") }
             }
+            TabActions(settings, notify)
         }
         when (state.phase) {
-            ProfilePhase.SIGNED_OUT -> Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
-                DearbyButton(compose, Modifier.fillMaxWidth()) { Text("명함 만들기") }
-                DearbyOutlineButton(signIn, Modifier.fillMaxWidth()) { Text("로그인") }
-            }
+            // Signed out and failed states are CenteredMessages (contract "비스크롤 화면 배치·CTA"); the 계정 삭제 text button stays under the failed state.
+            ProfilePhase.SIGNED_OUT -> CenteredMessage(Icons.Rounded.AccountCircle, "프로필은 계정에 저장돼요", "명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.", Modifier.fillMaxSize(),
+                primary = MessageAction("명함 만들기", compose), secondary = MessageAction("로그인", signIn))
             ProfilePhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
-            ProfilePhase.FAILED -> Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("프로필을 불러오지 못했어요", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-                DearbyOutlineButton(retry, Modifier.fillMaxWidth()) { Text("다시 시도") }
-            }
+            ProfilePhase.FAILED -> DearbyErrorState("프로필을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.", retry, Modifier.weight(1f).fillMaxWidth())
             ProfilePhase.LOADED -> state.form?.let { form ->
                 if (settingUp) { ProfileSetupPage(form, state.saving, state.error, state.jobSearch, searchJobs, change, save, Modifier.weight(1f)); return@let }
                 Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
@@ -124,7 +121,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
                     if (!row.saved) Tag("저장 전", false)
                 }
             }
-            IconButton(remove) { Icon(Icons.Outlined.RemoveCircleOutline, "이력 삭제", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+            IconButton(remove) { Icon(Icons.Rounded.RemoveCircle, "이력 삭제", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
 }

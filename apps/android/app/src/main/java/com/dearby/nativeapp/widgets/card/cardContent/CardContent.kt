@@ -5,7 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -69,7 +69,7 @@ import com.dearby.nativeapp.shared.ui.*
             Text(contact.label.ifBlank { contactKindName(contact.kind) }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
             Text(contact.value, style = MaterialTheme.typography.bodyMedium)
         }
-        if (openable) Icon(Icons.AutoMirrored.Outlined.OpenInNew, "열기", Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (openable) Icon(Icons.AutoMirrored.Rounded.OpenInNew, "열기", Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

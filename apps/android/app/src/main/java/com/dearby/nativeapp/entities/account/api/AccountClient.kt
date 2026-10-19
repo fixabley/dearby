@@ -17,12 +17,19 @@ import com.dearby.nativeapp.entities.account.model.toVersionDetail
 import com.dearby.nativeapp.entities.account.model.toVersionList
 import com.dearby.nativeapp.entities.account.model.toWebSignIn
 import com.dearby.nativeapp.shared.config.AuthProvider
+import com.dearby.nativeapp.entities.account.model.toAccountSummary
+import com.dearby.nativeapp.entities.account.model.toIdentities
+import com.dearby.nativeapp.entities.account.model.toPasskey
 import com.dearby.nativeapp.entities.account.model.toPasskeyChallenge
+import com.dearby.nativeapp.entities.account.model.toPasskeys
 import com.dearby.nativeapp.entities.account.model.toSession
-import java.net.HttpURLConnection
-import java.net.URL
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -30,7 +37,7 @@ import org.json.JSONObject
  *  unapproved history, …); [CONFLICT]: 409 — the profile changed elsewhere (`If-Match`); [TURNED_OFF]: 503, e.g. Apple or Google sign-in not configured on the server.
  *  Network failures and other statuses are [UNAVAILABLE]. */
 enum class AccountError { UNAUTHORIZED, FORBIDDEN, INVALID_INPUT, NOT_FOUND, CONFLICT, RATE_LIMITED, BAD_REQUEST, TURNED_OFF, UNAVAILABLE }
-/** [detail] is the ProblemDetail sentence; [code] its machine code (e.g. `CONSENT_REQUIRED` on 403, contract "개인정보 동의"). */
+/** [detail] is the ProblemDetail sentence; [code] its machine code (e.g. `CONSENT_REQUIRED` on 403, contract "개인정보 동의"; `LAST_SIGN_IN_METHOD` on 409, contract "설정"). */
 class AccountException(val error: AccountError, val detail: String? = null, val code: String? = null) : Exception(error.name)
 
 /** [bytes] with [contentType] replaces the JSON [body] (multipart uploads); [headers] are extra request headers. */
@@ -39,35 +46,27 @@ data class HttpRequest(val method: String, val url: String, val token: String?, 
 data class HttpResponse(val status: Int, val body: String, val bytes: ByteArray? = null)
 fun interface Transport { suspend fun send(request: HttpRequest): HttpResponse }
 
-/** Real transport. Tokens, credentials and bodies are never logged. */
-val httpTransport = Transport { request ->
-    withContext(Dispatchers.IO) {
-        val connection = URL(request.url).openConnection() as HttpURLConnection
-        try {
-            connection.requestMethod = request.method
-            connection.connectTimeout = 15_000
-            connection.readTimeout = 15_000
-            connection.useCaches = false
-            connection.instanceFollowRedirects = false
-            connection.setRequestProperty("Accept", "application/json")
-            request.token?.let { connection.setRequestProperty("Authorization", "Bearer $it") }
-            request.headers.forEach { (name, value) -> connection.setRequestProperty(name, value) }
-            request.body?.let { body ->
-                connection.doOutput = true
-                connection.setRequestProperty("Content-Type", "application/json")
-                connection.outputStream.use { it.write(body.toByteArray()) }
-            }
-            request.bytes?.let { bytes ->
-                connection.doOutput = true
-                connection.setRequestProperty("Content-Type", request.contentType)
-                connection.outputStream.use { it.write(bytes) }
-            }
-            val status = connection.responseCode
-            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
-            val bytes = stream?.use { it.readBytes() }
-            HttpResponse(status, bytes?.toString(Charsets.UTF_8).orEmpty(), bytes)
-        } finally {
-            connection.disconnect()
+/**
+ * Real transport: OkHttp (already on the classpath through Coil), because Android's `HttpURLConnection` refuses `PATCH`, which
+ * `PATCH /v1/me/passkeys/{id}` needs (contract "설정"). 15s timeouts, no redirects, no cache. Tokens, credentials and bodies are never logged.
+ */
+val httpTransport: Transport = object : Transport {
+    private val client = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).followRedirects(false).followSslRedirects(false).build()
+    override suspend fun send(request: HttpRequest): HttpResponse = withContext(Dispatchers.IO) {
+        val body = when {
+            request.bytes != null -> request.bytes.toRequestBody((request.contentType ?: "application/octet-stream").toMediaType())
+            request.body != null -> request.body.toRequestBody("application/json".toMediaType())
+            // OkHttp requires a body for POST/PUT/PATCH; an empty one keeps the contract's bodiless calls working.
+            request.method in setOf("POST", "PUT", "PATCH") -> ByteArray(0).toRequestBody(null)
+            else -> null
+        }
+        val built = Request.Builder().url(request.url).method(request.method, body).header("Accept", "application/json").apply {
+            request.token?.let { header("Authorization", "Bearer $it") }
+            request.headers.forEach { (name, value) -> header(name, value) }
+        }.build()
+        client.newCall(built).execute().use { response ->
+            val bytes = response.body?.bytes()
+            HttpResponse(response.code, bytes?.toString(Charsets.UTF_8).orEmpty(), bytes)
         }
     }
 }
@@ -98,6 +97,16 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun linkIdentity(provider: AuthProvider, linkToken: String, session: AccountSession) {
         request("POST", "me/identities/${provider.path}", JSONObject().put("linkToken", linkToken), session)
     }
+    // 설정 (contract "설정"): the account summary, linked providers and passkeys. A 409 with code `LAST_SIGN_IN_METHOD` refuses to remove the last way in.
+    suspend fun me(session: AccountSession) = send("GET", "me", null, session).toAccountSummary()
+    suspend fun identities(session: AccountSession) = send("GET", "me/identities", null, session).toIdentities()
+    suspend fun unlinkIdentity(provider: AuthProvider, session: AccountSession) { request("DELETE", "me/identities/${provider.path}", null, session) }
+    suspend fun passkeys(session: AccountSession) = send("GET", "me/passkeys", null, session).toPasskeys()
+    suspend fun renamePasskey(id: String, label: String, session: AccountSession) = send("PATCH", "me/passkeys/$id", JSONObject().put("label", label), session).toPasskey()
+    suspend fun deletePasskey(id: String, session: AccountSession) { request("DELETE", "me/passkeys/$id", null, session) }
+    /** 패스키 추가: the registration endpoints with a Bearer add a passkey to this account instead of making one (contract "설정"); the body is not read. */
+    suspend fun passkeyOptions(session: AccountSession) = send("POST", "auth/passkeys/registration/options", JSONObject(), session).toPasskeyChallenge()
+    suspend fun addPasskey(challengeId: String, credential: String, session: AccountSession) { request("POST", "auth/passkeys/registration", passkeyBody(challengeId, credential), session) }
     /** Rotates the pair: the refresh token sent here stops working. */
     suspend fun refresh(refreshToken: String) = send("POST", "auth/refresh", JSONObject().put("refreshToken", refreshToken)).toSession()
     /** 204 with no body, also when the token is already invalid. */
@@ -168,7 +177,7 @@ class AccountClient(private val api: String, private val transport: Transport = 
             401 -> throw AccountException(AccountError.UNAUTHORIZED)
             403 -> throw AccountException(AccountError.FORBIDDEN, code = runCatching { JSONObject(response.body).optString("code").ifBlank { null } }.getOrNull())
             404 -> throw AccountException(AccountError.NOT_FOUND)
-            409 -> throw AccountException(AccountError.CONFLICT)
+            409 -> throw AccountException(AccountError.CONFLICT, code = runCatching { JSONObject(response.body).optString("code").ifBlank { null } }.getOrNull())
             429 -> throw AccountException(AccountError.RATE_LIMITED)
             503 -> throw AccountException(AccountError.TURNED_OFF)
             else -> throw AccountException(AccountError.UNAVAILABLE)

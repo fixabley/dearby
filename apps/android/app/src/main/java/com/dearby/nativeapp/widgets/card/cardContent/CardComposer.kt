@@ -36,7 +36,8 @@ data class ComposerHistory(val id: String, val title: String, val detail: String
                 OutlinedTextField(cardTitle, onCardTitleChange, Modifier.fillMaxWidth(), label = { Text("명함 이름") },
                     supportingText = { Text("선택이에요. 비워 두면 '내 명함'으로 저장해요.") }, singleLine = true)
             }
-            Section("미리보기") { OutlinedCard(Modifier.fillMaxWidth()) { MarkdownBody(preview, Modifier.padding(12.dp)) } }
+            // The preview sits on the page background, no card around it (contract "카드는 섹션을 나눌 때만").
+            Section("미리보기") { MarkdownBody(preview) }
             Section("공개할 연락처") {
                 if (contacts.isEmpty()) Text("프로필에 연락처가 없어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                 contacts.forEach { contact ->

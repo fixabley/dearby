@@ -7,11 +7,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -47,7 +48,7 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
                 StageItem(stage, last = index == progress.stages.lastIndex, { mark(index, it) }) { checkCalendar(index) }
             }
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Info, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Rounded.Info, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text("표시는 내가 남긴 것이며 주최 측 결과가 아니에요", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
         }
@@ -60,10 +61,11 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
     val past = stage.status == ProgressStatus.PAST
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.size(36.dp).background(if (past) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface, CircleShape).border(1.5.dp, if (past || current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(stageIcon(stage.kind), null, Modifier.size(20.dp), tint = if (past) MaterialTheme.colorScheme.onPrimary else if (current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+            // Past: TealFill circle with a white glyph (contract "청록 채움 면 위 글자는 흰색"); current: primary outline; upcoming: hairline.
+            Box(Modifier.size(36.dp).background(if (past) TealFill else MaterialTheme.colorScheme.surface, CircleShape).border(1.5.dp, if (past) TealFill else if (current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(stageIcon(stage.kind), null, Modifier.size(20.dp), tint = if (past) Color.White else if (current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (!last) Box(Modifier.width(2.dp).weight(1f).padding(vertical = 4.dp).background(if (past) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest))
+            if (!last) Box(Modifier.width(2.dp).weight(1f).padding(vertical = 4.dp).background(if (past) TealFill else MaterialTheme.colorScheme.surfaceContainerHighest))
         }
         Column(Modifier.weight(1f).padding(bottom = if (last) 0.dp else 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

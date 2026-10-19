@@ -5,9 +5,9 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.CalendarToday
-import androidx.compose.material.icons.outlined.RemoveCircleOutline
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Event
+import androidx.compose.material.icons.rounded.RemoveCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -59,10 +59,10 @@ val ProfileContactKinds = listOf(
             val label = meta?.second ?: item.kind
             OutlinedTextField(item.value, { onExtraChange(item.copy(value = it)) }, Modifier.fillMaxWidth(), label = { Text(label) },
                 placeholder = { Text(meta?.third ?: "") }, singleLine = true,
-                trailingIcon = { IconButton({ onRemoveExtra(item.id) }) { Icon(Icons.Outlined.RemoveCircleOutline, "$label 삭제") } })
+                trailingIcon = { IconButton({ onRemoveExtra(item.id) }) { Icon(Icons.Rounded.RemoveCircle, "$label 삭제") } })
         }
         DearbyOutlineButton({ choosing = true }, Modifier.fillMaxWidth()) {
-            Icon(Icons.Outlined.Add, null); Spacer(Modifier.width(8.dp)); Text("연락처 추가")
+            Icon(Icons.Rounded.Add, null); Spacer(Modifier.width(8.dp)); Text("연락처 추가")
         }
     }
     if (choosing) ModalBottomSheet({ choosing = false }, containerColor = MaterialTheme.colorScheme.surface) {
@@ -120,7 +120,7 @@ val ProfileContactKinds = listOf(
     val text = value?.format(DateTimeFormatter.ofPattern("yyyy. M. d.")) ?: ""
     Box(Modifier.fillMaxWidth().clearAndSetSemantics { role = Role.Button; contentDescription = "$label${if (required) ", 필수" else ""}, ${text.ifEmpty { "날짜 선택" }}"; onClick("$label 선택") { pick(); true } }) {
         OutlinedTextField(text, {}, Modifier.fillMaxWidth(), readOnly = true, label = { Text(label) }, placeholder = { Text("날짜 선택") },
-            supportingText = if (required) ({ Text("필수예요.") }) else null, trailingIcon = { Icon(Icons.Outlined.CalendarToday, null) }, singleLine = true)
+            supportingText = if (required) ({ Text("필수예요.") }) else null, trailingIcon = { Icon(Icons.Rounded.Event, null) }, singleLine = true)
         Box(Modifier.matchParentSize().clickable(onClick = pick))
     }
 }

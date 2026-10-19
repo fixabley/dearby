@@ -20,11 +20,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.ExampleBadge
+import com.dearby.nativeapp.shared.ui.TealFill
 
 private const val MAX_SEGMENTS = 4
 
 /**
- * 내 활동 row (contract "내 활동 진행 트랙"): name, program · organization, the segment track (past filled Teal, current
+ * 내 활동 row (contract "내 활동 진행 트랙"): name, program · organization, the segment track (past filled `TealFill`, current
  * hatched primary outline, upcoming surfaceContainerHighest) with stage names under it, and the D-day badge. Over four stages the track shows
  * four and `+N`. Nothing on the track animates. The track is one accessibility node, [ProgressState.trackDescription].
  */
@@ -68,7 +69,7 @@ private const val MAX_SEGMENTS = 4
     // Read outside the draw lambda: colorScheme is a composable read.
     val primary = MaterialTheme.colorScheme.primary
     when (status) {
-        ProgressStatus.PAST -> Box(base.background(primary, shape))
+        ProgressStatus.PAST -> Box(base.background(TealFill, shape))
         ProgressStatus.UPCOMING -> Box(base.background(MaterialTheme.colorScheme.surfaceContainerHighest, shape))
         // Hatched: diagonal primary lines inside a primary outline.
         ProgressStatus.CURRENT -> Box(base.clip(shape).border(1.5.dp, primary, shape).drawBehind {
