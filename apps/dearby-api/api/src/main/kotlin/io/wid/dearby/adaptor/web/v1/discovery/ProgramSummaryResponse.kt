@@ -15,6 +15,8 @@ data class ProgramSummaryResponse(
     val openActivityCount: Int,
     val nearestRecruitmentEndAt: OffsetDateTime?,
     val matchedActivityIds: List<Long>,
+    val upcomingActivityCount: Int, // 모집 예정 활동 수(native-v1.md "마감 숨기기")
+    val nearestRecruitmentStartAt: OffsetDateTime?, // 모집 예정 활동의 가장 이른 모집 시작, 없으면 null
     val category: String?, // 프로그램 기본 종류 코드(native-v1.md "활동 종류"), 없으면 null
     val latestActivityAt: OffsetDateTime?, // 게시 활동의 가장 최근 활동 시작(native-v1.md "모집 중인 프로그램만 보기")
     val tags: List<TagResponse>, // 프로그램 태그, 없으면 열린 활동 태그의 합집합(최대 6개)(native-v1.md "태그")
@@ -28,6 +30,8 @@ data class ProgramSummaryResponse(
             openActivityCount = summary.openActivityCount,
             nearestRecruitmentEndAt = summary.nearestRecruitmentEndAt,
             matchedActivityIds = summary.matchedActivityIds,
+            upcomingActivityCount = summary.upcomingActivityCount,
+            nearestRecruitmentStartAt = summary.nearestRecruitmentStartAt,
             category = summary.category?.name,
             latestActivityAt = summary.latestActivityAt,
             tags = summary.tags.map(TagResponse::from),

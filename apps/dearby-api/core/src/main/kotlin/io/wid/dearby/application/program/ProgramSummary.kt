@@ -16,9 +16,11 @@ data class ProgramSummary(
     val organizationId: Id,
     val organizationName: String,
     val organizationNameEn: String?,
-    val openActivityCount: Int,
+    val openActivityCount: Int, // 모집 중 활동 수(모집 예정은 세지 않는다)
     val nearestRecruitmentEndAt: OffsetDateTime?, // 열린 활동 중 가장 이른 모집 마감. 모두 마감이 없으면 null
-    val matchedActivityIds: List<Id>, // q가 열린 활동 이름에 맞은 활동 id. q가 없으면 빈 목록
+    val matchedActivityIds: List<Id>, // q가 모집 중·모집 예정 활동 이름에 맞은 활동 id. q가 없으면 빈 목록
+    val upcomingActivityCount: Int = 0, // 모집 예정 활동 수(native-v1.md "마감 숨기기", 2026-10-19 밤)
+    val nearestRecruitmentStartAt: OffsetDateTime? = null, // 모집 예정 활동의 가장 이른 모집 시작(없으면 활동 시작). 모집 예정이 없으면 null
     val category: ActivityCategory? = null, // 프로그램 기본 종류(admin-v1.md "프로그램 기본 종류")
     val latestActivityAt: OffsetDateTime? = null, // 게시 활동의 가장 최근 활동 시작(native-v1.md "모집 중인 프로그램만 보기"). 없으면 null
     val tags: List<Tag> = emptyList(), // 프로그램 태그가 있으면 그것, 없으면 열린 활동 태그의 합집합(최대 6개, 사전 순)(native-v1.md "태그")
@@ -32,7 +34,7 @@ data class ProgramSummarySearch(
     val size: Int,
     val eligibility: EligibilityFilter? = null, // 대상자 검색(native-v1.md "대상자 조건"). 있으면 열린 활동을 2차 판정까지 거쳐 세고 묶는다
     val categories: Set<ActivityCategory>? = null, // 활동 종류 필터(native-v1.md "활동 종류"). 열린 활동 수·맞은 id에 함께 적용
-    val openOnly: Boolean = true, // false면 최근 3년 안에 활동이 있었던 프로그램도 돌려준다(열린 프로그램 먼저). 대상자 필터와 함께 쓰면 열린 것만
+    val openOnly: Boolean = true, // true면 모집 중·모집 예정 활동이 있는 프로그램(마감만 숨김), false면 최근 3년 안에 활동이 있었던 프로그램까지. 대상자 필터와 함께 쓰면 열린 것만
     val tagIds: Set<Id>? = null, // 태그 필터(native-v1.md "태그"): 모두 가진 활동만(AND). 열린 활동 수·맞은 id에 함께 적용
 )
 

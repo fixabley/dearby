@@ -50,6 +50,9 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
     override fun search(condition: ProgramSummarySearch, now: OffsetDateTime): List<ProgramSummary> {
         val q = condition.q?.trim()?.takeIf { it.isNotBlank() }
         val isOpen = OpenActivityConditions.open(now)
+        // 모집 예정(마감 숨기기, 2026-10-19 밤): 켜진 토글은 마감된 활동만 숨기므로 모집 예정 활동이 있는 프로그램도 돌려준다
+        val isUpcoming = OpenActivityConditions.upcoming(now)
+        val isOpenOrUpcoming = isOpen.or(isUpcoming)
         // 유형·종류·대상자 1차 판정은 활동 행 자체를 거른다(열린 활동 수·최근 활동 모두 이 활동들로 센다)
         val activityFilter = buildList {
             add(ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name))
@@ -62,9 +65,11 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
         val activityMatches = q?.let { ACTIVITIES.NAME.containsIgnoreCase(it).or(ACTIVITIES.NAME_EN.containsIgnoreCase(it)).or(TagRows.activityTagMatches(it)) }
         val openCount = DSL.count(DSL.`when`(isOpen, ACTIVITIES.ID))
         val nearestEnd = DSL.min(DSL.`when`(isOpen, deadline))
+        val upcomingCount = DSL.count(DSL.`when`(isUpcoming, ACTIVITIES.ID))
+        val nearestStart = DSL.min(DSL.`when`(isUpcoming, OpenActivityConditions.recruitmentStart))
         val latestStart = DSL.max(OpenActivityConditions.activityStart)
-        // 검색어가 활동 이름에 맞은 열린 활동 id. 활동 이름으로만 맞은 프로그램도 목록에 넣기 위해 HAVING에서도 쓴다
-        val matchedIds = activityMatches?.let { DSL.arrayAggDistinct(DSL.`when`(it.and(isOpen), ACTIVITIES.ID)) }
+        // 검색어가 활동 이름에 맞은 모집 중·모집 예정 활동 id. 활동 이름으로만 맞은 프로그램도 목록에 넣기 위해 HAVING에서도 쓴다
+        val matchedIds = activityMatches?.let { DSL.arrayAggDistinct(DSL.`when`(it.and(isOpenOrUpcoming), ACTIVITIES.ID)) }
         val programMatches = q?.let {
             PROGRAMS.NAME.containsIgnoreCase(it).or(PROGRAMS.NAME_EN.containsIgnoreCase(it))
                 .or(ORGANIZATIONS.NAME.containsIgnoreCase(it)).or(ORGANIZATIONS.NAME_EN.containsIgnoreCase(it))
@@ -76,6 +81,7 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
             PROGRAMS.ID, PROGRAMS.NAME, PROGRAMS.NAME_EN,
             ORGANIZATIONS.ID, ORGANIZATIONS.NAME, ORGANIZATIONS.NAME_EN,
             openCount, nearestEnd, matchedIds ?: DSL.inline(null, Array<Long>::class.java), PROGRAMS.CATEGORY, latestStart,
+            upcomingCount, nearestStart,
         )
             .from(PROGRAMS)
             .join(ORGANIZATIONS).on(ORGANIZATIONS.ID.eq(PROGRAMS.ORGANIZATION_ID))
@@ -83,16 +89,20 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
             .leftJoin(app).on(appJoin)
             .leftJoin(act).on(actJoin)
             .where(activityFilter)
-            .and(if (condition.openOnly) isOpen else recent)
+            .and(if (condition.openOnly) isOpenOrUpcoming else recent)
             .groupBy(PROGRAMS.ID, PROGRAMS.NAME, PROGRAMS.NAME_EN, PROGRAMS.CATEGORY, ORGANIZATIONS.ID, ORGANIZATIONS.NAME, ORGANIZATIONS.NAME_EN)
         val filtered = if (programMatches != null && activityMatches != null) {
             select.having(DSL.condition(DSL.boolOr(programMatches)).or(DSL.condition(DSL.boolOr(activityMatches))))
         } else {
             select
         }
-        // 열린 프로그램 먼저(가장 이른 마감 순), 그 뒤는 최근 활동 시작이 늦은 순
+        // 모집 중 프로그램 먼저(가장 이른 마감 순) → 모집 예정 프로그램(가장 이른 시작 순) → 나머지는 최근 활동 시작이 늦은 순
         return filtered
-            .orderBy(openCount.gt(0).desc(), nearestEnd.asc().nullsLast(), latestStart.desc().nullsLast(), PROGRAMS.NAME.asc(), PROGRAMS.ID.asc())
+            .orderBy(
+                openCount.gt(0).desc(), nearestEnd.asc().nullsLast(),
+                upcomingCount.gt(0).desc(), nearestStart.asc().nullsLast(),
+                latestStart.desc().nullsLast(), PROGRAMS.NAME.asc(), PROGRAMS.ID.asc(),
+            )
             .limit(condition.size)
             .offset(condition.cursor)
             .fetch { row ->
@@ -108,6 +118,8 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
                     matchedActivityIds = row.value9()?.filterNotNull()?.sorted().orEmpty(),
                     category = row.value10()?.let(ActivityCategory::valueOf),
                     latestActivityAt = row.value11(),
+                    upcomingActivityCount = row.value12(),
+                    nearestRecruitmentStartAt = row.value13(),
                 )
             }
     }
