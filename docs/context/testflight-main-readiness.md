@@ -88,7 +88,7 @@ root의 공통 배포 차단 추적은 [#62](https://github.com/fixabley/dearby/
 
 ## ASC 신규 앱 ID 일치 후속 — 20:51 KST
 
-root가 Chrome ASC 앱 정보에서 확인해 전달한 신규 Dearby 앱: Apple ID `6817330226`, 기본 언어 한국어, SKU `dearby01`, 번들 ID `io.wid.dearby`. 이번 변경은 사용자 신규 등록과 매칭하기 위한 **Release 앱 타깃 PRODUCT_BUNDLE_IDENTIFIER 한 값**과 generator 대응 조건이다. Debug 앱 `com.dearby.dearby` 및 모든 테스트 타깃 ID는 유지했다. ASC 자체·Store 초안·팀/서명은 조작하지 않았다.
+root가 Chrome ASC 앱 정보에서 확인해 전달한 신규 Dearby 앱: Apple ID `6817330226`, 기본 언어 한국어, SKU `dearby01`, 번들 ID `io.wid.dearby`. 이번 변경은 사용자 신규 등록과 매칭하기 위한 **Release 앱 타깃 PRODUCT_BUNDLE_IDENTIFIER 한 값**과 generator 대응 조건이다. Debug 앱 `io.wid.dearby` 및 모든 테스트 타깃 ID는 유지했다. ASC 자체·Store 초안·팀/서명은 조작하지 않았다.
 
 - main `0a045c4`가 포함된 원격 PR60 `2c57cdf760d1ca06c299b1a37f406ad168d9d980` 반영 후 빌드했다. 다른 미병합 발표/수집/어드민 브랜치는 반영하지 않았다.
 - **새 일반 iOS 기기 Release 무서명 archive exit 0**. 실제 app plist와 archive ApplicationProperties 모두 `CFBundleIdentifier=io.wid.dearby`. `CFBundleShortVersionString=0.1.0`, `CFBundleVersion=1`, `DearbyAPIURL=https://wid.io.kr` 유지.

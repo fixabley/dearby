@@ -14,7 +14,7 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.dearby.dearby</string>
+			<string>io.wid.dearby</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>dearby</string>
