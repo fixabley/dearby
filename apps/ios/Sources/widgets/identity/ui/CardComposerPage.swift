@@ -12,7 +12,7 @@ struct CardComposerPage: View {
     var body: some View {
         Group {
             if case .published(let card) = model.phase {
-                CenteredMessage(symbol: "checkmark.circle", title: "명함을 발행했어요", message: "\(card.profileName) · \(card.name)",
+                CenteredMessage(symbol: "checkmark.circle", title: model.prefill == nil ? "명함을 발행했어요" : "고친 내용을 저장했어요", message: "\(card.profileName) · \(card.name)",
                                 primary: MessageAction("확인") { dismiss() })
             } else if model.account.session == nil {
                 CenteredMessage(symbol: "person.text.rectangle", title: "로그인하면 명함을 만들 수 있어요", message: "프로필의 이름·연락처·이력으로 명함을 꾸며요.",
@@ -22,7 +22,7 @@ struct CardComposerPage: View {
                 CenteredMessage(symbol: "person.crop.circle", title: "먼저 프로필을 적어 주세요", message: "내 프로필 탭에서 이름과 연락처를 저장하면 명함을 만들 수 있어요.",
                                 primary: MessageAction("닫기") { dismiss() })
             } else if let binding = Binding($model.draft) {
-                CardComposer(draft: binding, publishing: model.phase == .publishing, errorMessage: failure ?? model.account.message) { publish() }
+                CardComposer(draft: binding, editing: model.prefill != nil, publishing: model.phase == .publishing, errorMessage: failure ?? model.account.message) { publish() }
             } else if let failure {
                 CenteredMessage(symbol: "exclamationmark.triangle", danger: true, title: "프로필을 불러오지 못했어요", message: failure,
                                 primary: MessageAction("다시 시도") { Task { await model.load() } })

@@ -67,7 +67,7 @@ struct ProfileContactFields: View {
     }
 }
 
-/// 활동 이력의 기간 입력 행들(폼 섹션 안): 고른 기간 `2026.03 – 2026.06`(라벨 위·값 아래), 시작일(필수)·종료일은 라벨 아래 시스템 `DatePicker`(compact)와
+/// 활동 이력의 기간 입력 행들(폼 섹션 안): 고른 기간 `2026.03 – 2026.06`(`DearbyValueRow`), 시작일(필수)·종료일은 `DearbyFieldBox` 상자 안의 시스템 `DatePicker`(compact)와
 /// `진행 중` 스위치(라벨 바로 옆, 행 전체 터치). 날짜 검사(종료일이 시작일보다 앞서지 않음)와 오류 문구는 화면이 footer에 둔다.
 struct HistoryPeriodFields: View {
     @Binding var start: Date?
@@ -81,8 +81,7 @@ struct HistoryPeriodFields: View {
     }
     /// `earliest`가 있으면(종료일) 그보다 앞선 날을 고를 수 없다. 날짜가 없으면 행 전체가 `날짜 선택` 버튼이고 오늘(또는 `earliest`)로 채운다.
     private func dateRow(_ label: String, required: Bool, date: Binding<Date?>, earliest: Date?) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label).font(.dearby(.subheadline).weight(.medium)).foregroundStyle(.secondary)
+        DearbyFieldBox(label: label) {
             if let value = date.wrappedValue {
                 DatePicker(label, selection: Binding(get: { value }, set: { date.wrappedValue = $0 }),
                            in: (earliest ?? .distantPast)..., displayedComponents: .date)
@@ -90,12 +89,12 @@ struct HistoryPeriodFields: View {
                     .accessibilityLabel(required ? "\(label), 필수" : label)
             } else {
                 Button { date.wrappedValue = max(.now, earliest ?? .distantPast) } label: {
-                    Text("날짜 선택").font(.dearby(.title3)).foregroundStyle(DearbyStyle.teal).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                    Text("날짜 선택").font(.dearby(.body)).foregroundStyle(DearbyStyle.teal)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
                 }
-                .accessibilityLabel("\(label) 선택\(required ? ", 필수" : "")")
+                .buttonStyle(.borderless).accessibilityLabel("\(label) 선택\(required ? ", 필수" : "")")
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
     }
     /// 연·월 위주 표시: `2026.03 – 2026.06`, 진행 중이면 `2026.03 – 진행 중`.
     static func period(start: Date?, end: Date?, ongoing: Bool) -> String {

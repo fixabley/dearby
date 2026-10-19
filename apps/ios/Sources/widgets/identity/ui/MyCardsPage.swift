@@ -1,12 +1,13 @@
 import SwiftUI
 
-/// 내 명함: the account's published cards. Pick one to view it, show its QR, make a new one, republish it with "이 명함 고치기", or delete it.
+/// 내 명함: the account's published cards. Pick one to view it, show its QR, make a new one, edit it in place with "이 명함 고치기", or delete it.
 /// Signed out, empty and failed states are one centred message (contract "비스크롤 화면 배치·CTA"). Shown as the 내 명함 section of the 명함 tab
 /// (`CardsPage`, contract "명함 탭 통합"), which owns the navigation bar.
 struct MyCardsPage: View {
     let state: MyCardsModel
     @State private var editor = false
-    /// 명함 고치기: a new publication prefilled from this card's template (cards never change after publishing).
+    /// 이 명함 고치기: the composer prefilled from this card saves over it (`PUT /v1/cards/:id`); `editor` (새 명함) never gets a prefill.
+    /// Reloading on dismiss keeps the same id selected (`MyCardsModel.load`).
     @State private var editingCard: PublishedCard?
     @State private var signingIn = false
     /// 이 명함 지우기: the card awaiting confirmation; the server removes it and its public link.
@@ -79,10 +80,14 @@ struct MyCardsPage: View {
                 Label("QR 보이기", systemImage: "qrcode").frame(maxWidth: .infinity)
             }.buttonStyle(.borderedProminent).controlSize(.large).tint(DearbyStyle.tealFill).font(.dearby(.body).weight(.semibold))
                 .accessibilityHint("상대가 카메라로 읽어 이 명함을 받아요")
-            Button { editingCard = card } label: {
-                Label("이 명함 고치기", systemImage: "pencil").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
-                    .frame(maxWidth: .infinity, minHeight: 44).contentShape(Rectangle())
-            }.accessibilityHint("이 명함의 이름과 공개 선택으로 새 명함을 발행해요")
+            VStack(spacing: 2) {
+                Button { editingCard = card } label: {
+                    Label("이 명함 고치기", systemImage: "pencil").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+                        .frame(maxWidth: .infinity, minHeight: 44).contentShape(Rectangle())
+                }.accessibilityHint("이 명함의 이름과 공개 선택을 고쳐 저장해요")
+                Text("고친 내용은 이 명함에 바로 반영돼요. QR과 링크는 그대로예요.").font(.dearby(.footnote)).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center).frame(maxWidth: .infinity)
+            }
             Button(role: .destructive) { deletingCard = card } label: {
                 Label("이 명함 지우기", systemImage: "trash").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.danger)
                     .frame(maxWidth: .infinity, minHeight: 44).contentShape(Rectangle())

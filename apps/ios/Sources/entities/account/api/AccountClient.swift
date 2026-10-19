@@ -182,6 +182,11 @@ struct AccountClient: Sendable {
     func publish(_ card: CardInput, _ session: TokenPair) async throws -> PublishedCard {
         try await send("cards", method: "POST", body: card, session: session, as: PublishedCard.self)
     }
+    /// 이 명함 고치기 (`PUT /v1/cards/:id`, contract "명함 고치기는 같은 명함을 수정" 2026-10-20): the same body as `publish` rebuilds that
+    /// card's snapshot from the current profile; the id, QR and link stay. `notFound` when the card was deleted meanwhile.
+    func updateCard(_ cardID: String, _ card: CardInput, _ session: TokenPair) async throws -> PublishedCard {
+        try await send("cards/\(cardID)", method: "PUT", body: card, session: session, as: PublishedCard.self)
+    }
     /// 이 명함 지우기 (`DELETE /v1/cards/:id`, contract "명함·지갑"): the public link then answers 404; 204 on success.
     func deleteCard(_ cardID: String, _ session: TokenPair) async throws {
         _ = try await request("cards/\(cardID)", method: "DELETE", session: session)
@@ -203,7 +208,7 @@ struct AccountClient: Sendable {
         _ = try await request("wallet/cards/\(cardID)/reciprocate", method: "POST", body: ReciprocateInput(myCardId: myCardID), session: session)
     }
 
-    /// `POST /v1/cards`: `template` is the app's built-in markdown template the server fills in at publish time.
+    /// `POST /v1/cards`·`PUT /v1/cards/:id`: `template` is the app's built-in markdown template the server fills in at publish time.
     struct CardInput: Encodable, Equatable, Sendable {
         let name: String
         let description: String

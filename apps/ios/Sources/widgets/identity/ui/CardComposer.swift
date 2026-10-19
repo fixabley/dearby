@@ -6,6 +6,8 @@ import SwiftUI
 /// because their labels run to several lines (contract "토글 라벨은 바로 옆" 2026-10-20).
 struct CardComposer: View {
     @Binding var draft: CardDraft
+    /// 이 명함 고치기: the button saves over the same card (`고친 내용 저장`) instead of publishing a new one.
+    var editing = false
     var publishing = false
     var errorMessage: String?
     let publish: () -> Void
@@ -62,6 +64,7 @@ struct CardComposer: View {
         .font(.dearby(.body)).dearbyDismissKeyboard { field = nil }
         .safeAreaInset(edge: .bottom) { publishBar }
     }
+    private var action: String { editing ? "고친 내용 저장" : "명함 발행" }
     private var publishBar: some View {
         VStack(spacing: 8) {
             if let errorMessage { DearbyFieldError(text: errorMessage).frame(maxWidth: .infinity, alignment: .leading) }
@@ -70,10 +73,10 @@ struct CardComposer: View {
                     Button { draft.revert() } label: { Text("원래대로").frame(maxWidth: .infinity) }.buttonStyle(.bordered).disabled(publishing)
                 }
                 Button(action: publish) {
-                    Group { if publishing { ProgressView().tint(DearbyStyle.onTeal) } else { Text("명함 발행") } }.frame(maxWidth: .infinity)
-                }.buttonStyle(.borderedProminent).tint(DearbyStyle.tealFill).disabled(publishing).accessibilityLabel(publishing ? "명함 발행 중" : "명함 발행")
+                    Group { if publishing { ProgressView().tint(DearbyStyle.onTeal) } else { Text(action) } }.frame(maxWidth: .infinity)
+                }.buttonStyle(.borderedProminent).tint(DearbyStyle.tealFill).disabled(publishing).accessibilityLabel(publishing ? "\(action) 중" : action)
             }.controlSize(.large).font(.dearby(.body).weight(.semibold))
-            Text("발행한 명함은 바뀌지 않아요. 고치면 새 명함으로 발행돼요.").font(.dearby(.footnote)).foregroundStyle(.secondary)
+            if editing { Text("고친 내용은 이 명함에 바로 반영돼요. QR과 링크는 그대로예요.").font(.dearby(.footnote)).foregroundStyle(.secondary) }
         }.padding(.horizontal, 20).padding(.vertical, 12).background(.bar)
     }
 }

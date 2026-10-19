@@ -70,18 +70,31 @@ extension DearbyFormRow where Field == TextField<Text> {
     }
 }
 
-/// 라벨 위·값 아래로 쌓인 읽기 전용 행(고른 기간, 접힌 퍼널 단계처럼 `LabeledContent`의 가로 라벨·값을 대신한다). 값이 비면 `empty`를 보조색으로 보인다.
+/// 읽기 전용 행(고른 기간, 접힌 퍼널 단계처럼 `LabeledContent`의 가로 라벨·값을 대신한다): `DearbyFormRow`가 떠 있을 때와 같은 모양 —
+/// 라벨 줄 20(`.subheadline` 보조색) + 간격 4 + 둥근 10 `tertiarySystemFill` 상자(최소 44) 안의 `.body` 값. 값이 비면 `empty`를 보조색으로 보인다.
 struct DearbyValueRow: View {
     let label: String
     let value: String
     var empty = "비워 둠"
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label).font(.dearby(.subheadline).weight(.medium)).foregroundStyle(.secondary)
-            Text(value.isEmpty ? empty : value).font(.dearby(.title3)).foregroundStyle(value.isEmpty ? .secondary : .primary)
-                .multilineTextAlignment(.leading)
+        DearbyFieldBox(label: label) {
+            Text(value.isEmpty ? empty : value).font(.dearby(.body)).foregroundStyle(value.isEmpty ? .secondary : .primary)
+                .multilineTextAlignment(.leading).padding(.vertical, 11)
         }
-        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+    }
+}
+
+/// `DearbyValueRow`·날짜 행이 함께 쓰는 틀: 칸 위 라벨 줄(20) + 간격 4 + 둥근 10 `tertiarySystemFill` 상자(가로 여백 12, 최소 44). 상자 안 내용은 왼쪽 정렬.
+struct DearbyFieldBox<Content: View>: View {
+    let label: String
+    @ViewBuilder let content: Content
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label).font(.dearby(.subheadline)).foregroundStyle(.secondary).lineLimit(1).frame(minHeight: 20)
+            content.padding(.horizontal, 12).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

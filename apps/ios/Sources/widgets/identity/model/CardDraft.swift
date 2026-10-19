@@ -14,7 +14,7 @@ struct CardDraft: Equatable {
     struct Initial: Equatable { let cardTitle: String; let contacts: Set<String>; let histories: Set<String> }
 
     /// A new card starts with every contact public and every approved history public;
-    /// republishing an existing card starts from that card's name and selections.
+    /// editing an existing card (이 명함 고치기) starts from that card's name and selections.
     init(profile: AccountProfile, prefill: PublishedCard? = nil) {
         self.profile = profile
         cardTitle = prefill?.name ?? ""
