@@ -21,10 +21,6 @@ data class Activity(
     val tags: List<Tag> = emptyList(), // 태그(native-v1.md "태그"), 사전 순
     val location: String? = null, // 장소 문구(activities.location). 좌표가 있는 장소는 activitySchedule.address(native-v1.md "활동 장소")
 ) {
-    init {
-        require(activitySchedule.time == null || activitySchedule.time is ScheduleTime.AllDay) { "활동 기간은 종일 일정이어야 합니다" }
-    }
-
     // 사용자가 캘린더에 추가할 일정을 고르는 후보
     val calendarCandidates: List<Schedule> get() = listOfNotNull(application, activitySchedule) + schedules
 }
