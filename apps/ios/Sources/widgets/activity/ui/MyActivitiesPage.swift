@@ -6,6 +6,7 @@ import SwiftUI
 /// (contract "iOS 상단 바는 시스템 내비게이션 바"): inline title, `예시` badge then 설정·알림 on the trailing side.
 struct MyActivitiesPage: View {
     let state: ActivityViewModel
+    @Binding var path: NavigationPath
     let explore: () -> Void
     @State private var showEnded = false
     var body: some View {
@@ -40,6 +41,12 @@ struct MyActivitiesPage: View {
         }
         .navigationDestination(for: String.self) { id in ActivityDetailView(state: state, activityID: id) }
         .navigationDestination(for: ActivityProgressRoute.self) { route in ActivityProgressPage(state: state, activityID: route.activityID) }
+        // `내 활동에서 보기` (contract "내 활동 직접 추가"): open that activity here — its track when it has stages, else the plain detail.
+        .onChange(of: state.showInMine, initial: true) { _, id in
+            guard let id, let activity = state.activity(id) else { return }
+            state.showInMine = nil
+            if state.progress(activity, now: Date()) != nil { path.append(ActivityProgressRoute(activityID: id)) } else { path.append(id) }
+        }
         .scrollContentBackground(.hidden).background(Color(.systemGroupedBackground).ignoresSafeArea())
         .tint(DearbyStyle.teal).navigationTitle("내 활동").navigationBarTitleDisplayMode(.inline)
         .toolbar {

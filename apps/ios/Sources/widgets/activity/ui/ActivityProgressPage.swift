@@ -32,7 +32,6 @@ struct ActivityProgressPage: View {
         }
         .navigationTitle("진행 단계").navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
-        .toolbarBackground(Color(.systemBackground), for: .navigationBar).toolbarBackground(.visible, for: .navigationBar)
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)
         .sheet(item: $calendarStage) { stage in
             if let schedule = stage.schedule { CalendarConflictView(schedules: [schedule]) }

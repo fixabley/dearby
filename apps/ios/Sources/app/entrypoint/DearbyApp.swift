@@ -38,7 +38,7 @@ import SwiftUI
                     IntroPage(account: account, done: finishIntro)
                 } else {
                     HomePage(selectedTab: $tab, hidesTabs: tab == 3 && (profile.profile?.version == 0 || profile.consentPending),
-                        discovery: { ActivityListPage(state: activityModel, path: $0) }, mine: MyActivitiesPage(state: activityModel, explore: { tab = 0 }),
+                        discovery: { ActivityListPage(state: activityModel, path: $0) }, mine: { MyActivitiesPage(state: activityModel, path: $0, explore: { tab = 0 }) },
                         cards: CardsPage(segment: $cardsSegment, cards: cards, wallet: wallet), profile: ProfilePage(state: profile),
                         settings: { SettingsPage(account: account, webOrigin: links.origins.web) })
                 }
@@ -54,6 +54,8 @@ import SwiftUI
                 cardsSegment = .received
                 Task { await wallet.receive(incoming) }
             }
+            // `내 활동에서 보기` on an activity detail: the 내 활동 tab opens that activity (it pushes once it is on screen).
+            .onChange(of: activityModel.showInMine) { _, id in if id != nil { tab = 1 } }
             .onChange(of: scene) { _, phase in
                 if phase == .background { activityModel.appLeft() } else if phase == .active { activityModel.appReturned() }
             }

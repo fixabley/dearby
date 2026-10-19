@@ -9,7 +9,8 @@ struct HomePage<Discovery: View, Mine: View, Cards: View, Profile: View, Setting
     var hidesTabs = false
     // Discovery opens details from card buttons, so it gets the navigation path.
     let discovery: (Binding<NavigationPath>) -> Discovery
-    let mine: Mine
+    // 내 활동 pushes its own routes too (`내 활동에서 보기` from a detail).
+    let mine: (Binding<NavigationPath>) -> Mine
     let cards: Cards
     let profile: Profile
     /// The 설정 screen pushed from any tab's navigation bar.
@@ -25,7 +26,7 @@ struct HomePage<Discovery: View, Mine: View, Cards: View, Profile: View, Setting
                     .toolbar(discoveryPath.isEmpty ? .visible : .hidden, for: .tabBar)
             }
             Tab("내 활동", systemImage: "checklist", value: 1) {
-                NavigationStack(path: $minePath) { withSettings(mine) }
+                NavigationStack(path: $minePath) { withSettings(mine($minePath)) }
                     .toolbar(minePath.isEmpty ? .visible : .hidden, for: .tabBar)
             }
             Tab("명함", systemImage: "person.text.rectangle", value: 2) {
