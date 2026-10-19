@@ -98,7 +98,8 @@ object CollectionPrompts {
         val slot = when (example.slot) { "APPLICATION" -> "모집"; "ACTIVITY" -> "활동"; else -> "일정" }
         val value = if (example.startAt != null) "startAt ${example.startAt}, endAt ${example.endAt ?: example.startAt}"
             else "startDate ${example.startDate}, endDate ${example.endDate ?: example.startDate}"
-        return "[$slot] \"${example.dateLabel}\" → $value"
+        val reason = example.note?.let { " (이유: $it)" } ?: ""
+        return "[$slot] \"${example.dateLabel}\" → $value$reason"
     }
 
     val EXTRACT_SCHEMA: Map<String, Any> = obj(

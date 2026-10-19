@@ -135,7 +135,7 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
 
     // 같은 프로그램 먼저, 그다음 최근에 고친 순. 같은 문구는 가장 최근 것만 남기므로 limit보다 넉넉히 읽는다
     override fun findDateLabelExamples(programId: Id, limit: Int): List<DateLabelExample> =
-        dsl.select(SCHEDULES.SLOT, SCHEDULES.DATE_LABEL, SCHEDULES.START_DATE, SCHEDULES.END_DATE_EXCLUSIVE, SCHEDULES.START_AT, SCHEDULES.END_AT, PROGRAMS.NAME)
+        dsl.select(SCHEDULES.SLOT, SCHEDULES.DATE_LABEL, SCHEDULES.START_DATE, SCHEDULES.END_DATE_EXCLUSIVE, SCHEDULES.START_AT, SCHEDULES.END_AT, SCHEDULES.CURATED_NOTE, PROGRAMS.NAME)
             .from(SCHEDULES)
             .join(ACTIVITIES).on(ACTIVITIES.ID.eq(SCHEDULES.ACTIVITY_ID))
             .join(PROGRAMS).on(PROGRAMS.ID.eq(ACTIVITIES.PROGRAM_ID))
@@ -151,6 +151,7 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
                     startAt = it[SCHEDULES.START_AT],
                     endAt = it[SCHEDULES.END_AT],
                     programName = it[PROGRAMS.NAME]!!,
+                    note = it[SCHEDULES.CURATED_NOTE]?.ifBlank { null },
                 )
             }
             .distinctBy { it.dateLabel }
