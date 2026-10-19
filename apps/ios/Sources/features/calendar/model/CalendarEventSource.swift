@@ -5,8 +5,6 @@ import Foundation
 struct CalendarBusyEvent: Equatable, Sendable {
     let title: String
     let interval: DateInterval
-    /// All-day events carry their calendar days; they count only when they cover the activity's day.
-    let allDay: Bool
 }
 
 enum CalendarAccess: Equatable, Sendable {
@@ -38,10 +36,11 @@ enum CalendarAccess: Equatable, Sendable {
     }
     func events(in window: DateInterval) -> [CalendarBusyEvent] {
         let predicate = store.predicateForEvents(withStart: window.start, end: window.end, calendars: nil)
+        // 종일 일정은 겹침에 넣지 않는다(계약, 2026-10-19 플랫폼 공통 결정): 시각이 있는 일정만 비교한다
         return store.events(matching: predicate).compactMap { event in
-            guard let start = event.startDate, let end = event.endDate, start < end else { return nil }
+            guard !event.isAllDay, let start = event.startDate, let end = event.endDate, start < end else { return nil }
             let title = event.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            return CalendarBusyEvent(title: title.isEmpty ? "제목 없는 일정" : title, interval: DateInterval(start: start, end: end), allDay: event.isAllDay)
+            return CalendarBusyEvent(title: title.isEmpty ? "제목 없는 일정" : title, interval: DateInterval(start: start, end: end))
         }
     }
 }
@@ -53,6 +52,6 @@ enum CalendarAccess: Equatable, Sendable {
     init(access: CalendarAccess = .granted) { self.access = access }
     func requestAccess() async -> CalendarAccess { access }
     func events(in window: DateInterval) -> [CalendarBusyEvent] {
-        window.intersects(Self.exampleBusy) ? [CalendarBusyEvent(title: "예시 바쁜 시간", interval: Self.exampleBusy, allDay: false)] : []
+        window.intersects(Self.exampleBusy) ? [CalendarBusyEvent(title: "예시 바쁜 시간", interval: Self.exampleBusy)] : []
     }
 }

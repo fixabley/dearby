@@ -59,26 +59,16 @@ struct CalendarOverlapState: Identifiable {
         let events = source.events(in: window)
         overlaps = schedules.flatMap { schedule in
             events.compactMap { event in
-                guard let busy = Self.busyInterval(of: event, for: schedule), CalendarOverlapState.matches(schedule, busy) else { return nil }
-                return CalendarOverlapState(id: "\(schedule.id)|\(event.interval.start.timeIntervalSince1970)|\(event.title)", activity: schedule, busyTitle: event.title, busy: busy)
+                guard CalendarOverlapState.matches(schedule, event.interval) else { return nil }
+                return CalendarOverlapState(id: "\(schedule.id)|\(event.interval.start.timeIntervalSince1970)|\(event.title)", activity: schedule, busyTitle: event.title, busy: event.interval)
             }
         }.sorted { $0.start < $1.start }
         index = 0
         phase = .compared
     }
-    /// Earliest start to latest end, widened a day each way so all-day events that cover the day are fetched.
+    /// Earliest start to latest end of the activity's schedules; events intersecting it are fetched.
     static func window(_ schedules: [ActivityScheduleModel]) -> DateInterval? {
         guard let start = schedules.map(\.start).min(), let end = schedules.map(\.end).max(), start < end else { return nil }
-        return DateInterval(start: start.addingTimeInterval(-86_400), end: end.addingTimeInterval(86_400))
-    }
-    /// Timed events block exactly their interval. An all-day event blocks the activity's whole day (in the schedule's zone) only when it covers that day.
-    static func busyInterval(of event: CalendarBusyEvent, for schedule: ActivityScheduleModel) -> DateInterval? {
-        guard event.allDay else { return event.interval }
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = TimeZone(identifier: schedule.timeZone) ?? .current
-        let dayStart = calendar.startOfDay(for: schedule.start)
-        guard let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart),
-              event.interval.start < dayEnd, event.interval.end > dayStart else { return nil }
-        return DateInterval(start: dayStart, end: dayEnd)
+        return DateInterval(start: start, end: end)
     }
 }
