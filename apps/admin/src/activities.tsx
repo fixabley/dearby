@@ -11,13 +11,14 @@ import { type DraftGroup, type Eligibility, eligibilitySummary, fromDraft, newGr
 import { EligibilityEditor } from "./eligibility-editor";
 import { type Category, categoryLabel, categoryOptions, categoryOrder, UNCATEGORIZED } from "./category";
 import { resolveTagIds, TagChips, type TagItem, TagSelect, type TagValue } from "./tag-select";
+import { ScheduleEditorModal } from "./schedule-editor";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
 /** Operator-entered times are Korea time regardless of the browser's zone (contract "일정 직접 지정"). */
-const SEOUL = "Asia/Seoul";
+export const SEOUL = "Asia/Seoul";
 
-type Schedule = {
+export type Schedule = {
   id: number;
   title: string;
   kind: string;
@@ -101,7 +102,7 @@ type Activity = ActivityText & {
 export const statusLabels: Record<PublicationStatus, string> = { DRAFT: "초안", PUBLISHED: "게시됨" };
 
 /** Exact times in the schedule's own time zone, all-day ranges as dates, otherwise the label. Never invents a time. */
-function scheduleText(schedule: Schedule | null): string {
+export function scheduleText(schedule: Schedule | null): string {
   if (!schedule) return "미정";
   const range = (start: string | null, end: string | null) =>
     start && end ? (start === end ? start : `${start} ~ ${end}`) : start ? `${start} 부터` : `~ ${end}`;
@@ -123,9 +124,9 @@ function scheduleText(schedule: Schedule | null): string {
 }
 
 /** Editor state for one schedule block: the picked range and whether it carries times. */
-type RangeDraft = { range: [Dayjs | null, Dayjs | null] | null; timed: boolean };
+export type RangeDraft = { range: [Dayjs | null, Dayjs | null] | null; timed: boolean };
 /** Structured dates of a collected schedule → editor state (dates come back as Korea-time days; `endDateExclusive` becomes the last day). */
-function rangeDraft(schedule: Schedule | null | undefined): RangeDraft {
+export function rangeDraft(schedule: Schedule | null | undefined): RangeDraft {
   if (!schedule) return { range: null, timed: false };
   // A deadline-only or start-only window comes back timed with one end missing (contract "마감일만 지정").
   if (schedule.startAt || schedule.endAt)
@@ -135,7 +136,7 @@ function rangeDraft(schedule: Schedule | null | undefined): RangeDraft {
   return { range: null, timed: false };
 }
 /** Editor state → PATCH value. Times keep the +09:00 offset so the server stores Korea time; a missing end is simply left out; the trimmed 사유 rides along. */
-function scheduleInput({ range, timed }: RangeDraft, note?: string): ScheduleInput {
+export function scheduleInput({ range, timed }: RangeDraft, note?: string): ScheduleInput {
   const [start, end] = (range ?? [null, null]).map((value) => value?.tz(SEOUL) ?? null);
   if (!start && !end) return null;
   const at = (value: Dayjs) => value.second(0).millisecond(0).format("YYYY-MM-DDTHH:mm:ssZ");
@@ -453,7 +454,7 @@ function PeriodTag({ reason }: { reason: string | null }) {
     </Tooltip>
   );
 }
-function CuratedTag() {
+export function CuratedTag() {
   return (
     <Tooltip title="어드민에서 고친 값이에요. 수집이 덮어쓰지 않아요.">
       <Tag color="purple" style={{ marginLeft: 6 }}>
@@ -1190,7 +1191,7 @@ function ActivityCreateModal({ programId, programName, onClose }: { programId?: 
 }
 
 /** One schedule block of the editor: the collected phrase to read from, a date range, and whether to pin times. */
-function ScheduleBlock({
+export function ScheduleBlock({
   title,
   schedule,
   rangeName,
@@ -1242,6 +1243,8 @@ function ScheduleBlock({
 }
 
 function ActivityDetail({ activity }: { activity: Activity }) {
+  // 세부 일정 편집기(contract admin-v1 "세부 일정 편집기"): opens over the row so the editor modal stays focused on texts.
+  const [editingSchedules, setEditingSchedules] = useState(false);
   const link = (url: string | null) =>
     url ? (
       <a href={url} target="_blank" rel="noreferrer">
@@ -1341,17 +1344,26 @@ function ActivityDetail({ activity }: { activity: Activity }) {
         {
           label: "개별 일정",
           span: "filled",
-          children: activity.schedules.length ? (
-            <ul className="schedule-list">
-              {activity.schedules.map((schedule) => (
-                <li key={schedule.id}>
-                  <strong>{schedule.title}</strong> {scheduleText(schedule)}
-                  {schedule.address && ` · ${schedule.address.addressLine1} ${schedule.address.addressLine2}`.trimEnd()}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            "없음"
+          children: (
+            <>
+              {activity.schedules.length ? (
+                <ul className="schedule-list">
+                  {activity.schedules.map((schedule) => (
+                    <li key={schedule.id}>
+                      <strong>{schedule.title}</strong> {scheduleText(schedule)}
+                      {schedule.curated && <CuratedTag />}
+                      {schedule.address && ` · ${schedule.address.addressLine1} ${schedule.address.addressLine2}`.trimEnd()}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                "없음"
+              )}
+              <Button size="small" style={{ marginTop: 6 }} onClick={() => setEditingSchedules(true)}>
+                일정 편집
+              </Button>
+              {editingSchedules && <ScheduleEditorModal activity={activity} onClose={() => setEditingSchedules(false)} />}
+            </>
           ),
         },
       ]}

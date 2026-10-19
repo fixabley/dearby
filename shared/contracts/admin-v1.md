@@ -69,6 +69,9 @@
 | PATCH /v1/admin/activities/:id | `{name?, nameEn?, description?, descriptionEn?, eligibility?, officialUrl?, applicationUrl?, category?, activitySchedule?, application?}` | 200 AdminActivity. 보낸 필드만 바꾼다(아래 "운영자 지정 필드"·"일정 직접 지정"). 없으면 404, 한글 이름을 비우면 400, 공식 안내 URL은 https 필수, 신청 링크는 빈 문자열이면 삭제 |
 | PATCH /v1/admin/activities/:id/publication-status | `{publicationStatus}` | 200 AdminActivity. 없으면 404 |
 | DELETE /v1/admin/activities/:id | — | 204. 없으면 404. 일정·역할·연락처도 함께 지워진다. 수집으로 생긴 활동이면 그 출처(`source_id`)를 남겨 다음 수집에서 다시 만들지 않는다 |
+| POST /v1/admin/activities/:id/schedules | ScheduleItemInput | 201 Schedule(2026-10-19 사용자 요청 "활동에 스케줄들도 편집, 구글캘린더 느낌"). 세부 일정(슬롯 없음) 추가, `curated = true` |
+| PATCH /v1/admin/activities/:id/schedules/:scheduleId | ScheduleItemInput(부분) | 200 Schedule. 슬롯 일정(모집·활동 기간)은 기존 PATCH 활동의 `application`·`activitySchedule`로만 고친다(여기서는 400) |
+| DELETE /v1/admin/activities/:id/schedules/:scheduleId | — | 204. 슬롯 일정은 400. 수집으로 생긴 일정을 지우면 다음 수집이 같은 제목·시각의 일정을 다시 만들 수 있으므로, 지운 일정은 `curated_deleted`로 남겨 수집이 다시 넣지 않는다(V36) |
 
 - **어드민 웹 활동 화면**(2026-10-19 사용자 요청 "탐색메뉴처럼 프로그램 하위에 활동들이 표시되는 형태"): 앱의 발견 탭과 같이 프로그램이 상위 행이고 프로그램 행은 **프로그램 바로 위 조직(최하위 조직)별 소제목** 아래에 묶이고(2026-10-19 사용자 요청 "최하위 조직별로 그루핑, 필터도"), 조직 필터는 그 조직들을 고를 수 있다. 펼치면 그 프로그램의 활동이 종류별 소제목(native-v1.md "활동 종류", 미분류는 맨 뒤) 아래에 정렬 키(native-v1.md "발견 프로그램 묶음": 모집 마감 → 활동 시작 → 없음, 이름순) 순으로 나온다(`GET /v1/admin/programs` 목록 + 펼칠 때 `GET /v1/admin/activities?programId=`를 지연 로딩, 50개씩 `더 보기`). 활동 이름 검색어가 있을 때만 기존 평면 목록을 결과로 보인다. 행 동작(편집·게시·삭제·중복 지정·기간 확인)은 그대로다. API 변경 없음.
 - **ActivityCreateInput**(2026-10-19 사용자 요청 "활동 추가 플로우가 어드민에 없어"): `{programId, name, nameEn?, description, descriptionEn?, officialUrl, applicationUrl?, category?(native-v1.md "활동 종류" 코드), participationType?("REGISTRATION"|"SELECTION", 기본 REGISTRATION), activitySchedule?: ScheduleInput|{dateLabel}, application?: ScheduleInput, eligibility?, audience?, location?, cost?}`. 운영자가 직접 만드는 활동이다. 저장 규칙: `publicationStatus = DRAFT`(기존 게시 전환으로 공개), `source_id` 없음(수집이 다시 만들거나 덮어쓰지 않는다), `official_source = true`, `source_note = "운영자 등록"`, `source_checked_at` = 지금, 보낸 텍스트 필드는 모두 `curated_fields`에, 보낸 기간은 `schedules.curated = true`로 저장한다. `officialUrl`·`applicationUrl`은 https, `activitySchedule`은 날짜 범위 또는 원문 문구(`dateLabel`) 중 하나라도 있어야 한다(둘 다 없으면 400). 어드민 웹은 활동 목록 위 `활동 추가` 버튼으로 모달을 열고(프로그램 검색 선택, 이름·영문 이름·설명·영문 설명, 공식 안내 URL·신청 링크, 참여 방식, 모집 기간·활동 기간 블록과 활동 기간 원문, 대상자 조건 편집기·대상 원문·장소·비용), 만든 뒤 목록을 다시 불러온다.
@@ -119,6 +122,15 @@ AdminActivity: 공개 Activity(`native-v1.md` "활동 조회")의 필드 `{id, n
 장소·비용·대상 원문의 PATCH 편집(운영자 생성에서만 받는다), 수집 기록(`collection_runs`) 화면(마지막 성공 날짜와 받은 페이지만 설정 응답으로 노출), 감사 로그, 운영자 지정 해제 API, 태그(native-v1.md "태그" — 설계 완료·구현 예정). 이전 어드민의 자격요건 편집기·수집 작업 큐·재확인 화면은 이 API로 옮기지 않는다.
 
 ## 일정 직접 지정·기간 확인·날짜 문구 피드백·조심 목록 — 2026-10-18 사용자 결정 (2026-10-19 보완)
+
+### 세부 일정 편집기 — 2026-10-19 사용자 결정
+
+사용자: "어드민에서 활동에 스케줄들도 편집할 수 있으면 좋겠어. 구글캘린더 느낌으로". 모집·활동 기간(슬롯 일정) 외의 **세부 일정**(`schedules[]`: 테스트·면접·발표·세션 등)을 어드민에서 만들고 고치고 지운다.
+
+- ScheduleItemInput: `{title, kind: DEADLINE|ANNOUNCEMENT|INTERVIEW|EVENT, status?: TENTATIVE|CONFIRMED|CANCELLED(기본 CONFIRMED), startAt?, endAt?, startDate?, endDate?(포함), timeZone?(기본 Asia/Seoul), dateLabel?, note?(사유 ≤300)}`. 날짜와 시각을 섞으면 400, 끝이 시작보다 앞서면 400, 둘 다 없고 `dateLabel`도 없으면 400. 운영자가 만든·고친 세부 일정은 `schedules.curated = true`(수집이 덮어쓰지 않음, 기존 규칙), 지운 일정은 `schedules.curated_deleted = true`로 남아 응답·공개 API에서 빠지고 수집이 같은 `title`(띄어쓰기 무시)·같은 시작의 일정을 다시 넣지 않는다.
+- 응답 Schedule에 `curatedNote`(기존)·`curated`(기존) 그대로. `AdminActivity.schedules`는 세부 일정만, 시각·날짜 순.
+- **어드민 화면**: 활동 편집기 안의 `일정` 탭(또는 상세의 `일정 편집` 버튼)에 두 가지 보기. ① **달력 보기**: 월 달력(Ant `Calendar`)에 모집 기간·활동 기간을 바탕 띠로, 세부 일정을 날짜 칸의 칩으로 그린다. 날짜 칸을 누르면 그 날짜가 채워진 `일정 추가` 폼이 열리고, 칩을 누르면 편집 폼이 열린다(끌어서 옮기기는 두지 않는다). ② **목록 보기**: 시각 순 표에 제목·종류·상태·기간·원문·사유, 행마다 편집·삭제. 폼은 기존 기간 블록(날짜/시각 전환, 시작 선택 비움 가능, 사유)을 재사용한다.
+- 공개 API·앱은 바뀌지 않는다(세부 일정은 이미 `schedules[]`로 내려가고 진행 트랙이 쓴다).
 
 ### 일정 직접 지정
 

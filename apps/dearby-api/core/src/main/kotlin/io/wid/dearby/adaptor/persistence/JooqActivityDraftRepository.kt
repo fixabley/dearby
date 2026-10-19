@@ -118,7 +118,8 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         // 일정은 매번 수집 결과로 바꾼다. 단 운영자가 직접 지정한(curated) 활동 기간·모집 기간은 남긴다(admin-v1.md "일정 직접 지정")
         val curatedSlots = dsl.select(SCHEDULES.SLOT).from(SCHEDULES)
             .where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.CURATED.isTrue).fetch(SCHEDULES.SLOT).toSet()
-        dsl.deleteFrom(SCHEDULES).where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.CURATED.isFalse).execute()
+        // 운영자가 만든·고친 세부 일정(curated)과 지운 일정(curated_deleted, admin-v1.md "세부 일정 편집기")은 남기고 수집 일정만 다시 쓴다
+        dsl.deleteFrom(SCHEDULES).where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.CURATED.isFalse, SCHEDULES.CURATED_DELETED.isFalse).execute()
         if (SLOT_ACTIVITY !in curatedSlots) {
             insertSchedule(activityId, SLOT_ACTIVITY, name, ScheduleKind.EVENT, null, null, activity.startDate, activity.endDate, activity.dateLabel, now)
         }
@@ -129,7 +130,11 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
                 activity.recruitmentStartAt, activity.recruitmentEndAt, activity.recruitmentStartDate, activity.recruitmentEndDate, "", now,
             )
         }
-        activity.schedules.forEach {
+        // 운영자 세부 일정이나 지운 일정과 제목(띄어쓰기 무시)·시작이 같은 수집 일정은 다시 넣지 않는다
+        val kept = dsl.select(SCHEDULES.TITLE, SCHEDULES.START_AT, SCHEDULES.START_DATE).from(SCHEDULES)
+            .where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.isNull, SCHEDULES.CURATED.isTrue.or(SCHEDULES.CURATED_DELETED.isTrue))
+            .fetch { scheduleKey(it.value1()!!, it.value2(), it.value3()) }.toSet()
+        activity.schedules.filter { scheduleKey(it.title, it.startAt, it.startDate) !in kept }.forEach {
             insertSchedule(activityId, null, it.title, it.kind, it.startAt, it.endAt, it.startDate, it.endDate, it.dateLabel, now)
         }
         EligibilityRows.writeTerms(dsl, activityId, eligibility)
@@ -193,6 +198,9 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             }
 
     // 시각이 있으면 시각 일정, 날짜만 있으면 종일 일정(끝 날짜는 포함이라 하루 뒤를 exclusive로), 둘 다 없으면 dateLabel만
+    private fun scheduleKey(title: String, startAt: OffsetDateTime?, startDate: LocalDate?) =
+        Triple(title.replace(Regex("\\s"), "").lowercase(), startAt?.toInstant(), startDate)
+
     private fun insertSchedule(
         activityId: Id,
         slot: String?,

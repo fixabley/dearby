@@ -480,6 +480,62 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
     }
 
     @Test
+    fun `세부 일정은 만들고 고치고 지울 수 있고, 슬롯 일정은 막으며, 지운 일정은 표시만 남는다`() {
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        val created = read(
+            mvc.post("/v1/admin/activities") {
+                asAdmin()
+                body("""{"programId":$programId,"name":"일정 편집 활동","description":"세부 일정 테스트","officialUrl":"https://example.org/schedules","activitySchedule":{"startDate":"2026-12-01","endDate":"2026-12-03"}}""")
+            }.andExpect { status { isCreated() } }
+        )
+        val activity = created["id"].asLong()
+        val slotSchedule = created["activitySchedule"]["id"].asLong()
+        // 만들기(admin-v1.md "세부 일정 편집기"): 슬롯 없는 일정이 curated로 생기고 사유가 남는다
+        val interview = read(
+            mvc.post("/v1/admin/activities/$activity/schedules") {
+                asAdmin(); body("""{"title":"1차 면접","kind":"INTERVIEW","startAt":"2026-11-15T10:00:00+09:00","endAt":"2026-11-15T12:00:00+09:00","note":"공지 PDF 3쪽"}""")
+            }.andExpect { status { isCreated() } }
+        )
+        assertEquals(listOf("1차 면접", "INTERVIEW", "CONFIRMED", "2026-11-15T10:00:00+09:00", true, "공지 PDF 3쪽"),
+            listOf(interview["title"].asString(), interview["kind"].asString(), interview["status"].asString(), interview["startAt"].asString(), interview["curated"].asBoolean(), interview["curatedNote"].asString()))
+        val scheduleId = interview["id"].asLong()
+        assertEquals(1, jdbc.sql("select count(*) from schedules where id = ? and slot is null and curated and not curated_deleted and sequence = 0").param(scheduleId).query(Int::class.java).single())
+        // 목록 응답의 schedules에 세부 일정만 보인다
+        fun listedSchedules(): List<Long> {
+            val items = read(mvc.get("/v1/admin/activities?publicationStatus=DRAFT&programId=$programId&q=일정 편집 활동") { asAdmin() })["items"]
+            val row = (0 until items.size()).map { items[it] }.single { it["id"].asLong() == activity }
+            return (0 until row["schedules"].size()).map { row["schedules"][it]["id"].asLong() }
+        }
+        assertEquals(listOf(scheduleId), listedSchedules())
+        // 부분 수정: 제목만 보내면 시각·사유는 그대로, sequence는 1 오른다
+        val renamed = read(mvc.patch("/v1/admin/activities/$activity/schedules/$scheduleId") { asAdmin(); patchBody("""{"title":"1차 면접(온라인)"}""") }.andExpect { status { isOk() } })
+        assertEquals(listOf("1차 면접(온라인)", "2026-11-15T10:00:00+09:00", "공지 PDF 3쪽"), listOf(renamed["title"].asString(), renamed["startAt"].asString(), renamed["curatedNote"].asString()))
+        assertEquals(1, jdbc.sql("select sequence from schedules where id = ?").param(scheduleId).query(Int::class.java).single())
+        // 날짜만 보내면 종일 일정으로 바뀌고 시각은 비워진다
+        val dated = read(mvc.patch("/v1/admin/activities/$activity/schedules/$scheduleId") { asAdmin(); patchBody("""{"startDate":"2026-11-16","endDate":"2026-11-16"}""") }.andExpect { status { isOk() } })
+        assertEquals(listOf(true, "2026-11-16", "2026-11-17"), listOf(dated["startAt"].isNull, dated["startDate"].asString(), dated["endDateExclusive"].asString()))
+        // 섞으면 400, 끝이 앞서면 400, 제목을 비우면 400, 시각도 날짜도 문구도 없으면 400
+        mvc.patch("/v1/admin/activities/$activity/schedules/$scheduleId") { asAdmin(); patchBody("""{"startDate":"2026-11-16","endAt":"2026-11-16T12:00:00+09:00"}""") }.andExpect { status { isBadRequest() } }
+        mvc.patch("/v1/admin/activities/$activity/schedules/$scheduleId") { asAdmin(); patchBody("""{"startAt":"2026-11-16T12:00:00+09:00","endAt":"2026-11-16T10:00:00+09:00"}""") }.andExpect { status { isBadRequest() } }
+        mvc.patch("/v1/admin/activities/$activity/schedules/$scheduleId") { asAdmin(); patchBody("""{"title":"  "}""") }.andExpect { status { isBadRequest() } }
+        mvc.post("/v1/admin/activities/$activity/schedules") { asAdmin(); body("""{"title":"문구도 없는 일정","kind":"EVENT"}""") }.andExpect { status { isBadRequest() } }
+        mvc.post("/v1/admin/activities/$activity/schedules") { asAdmin(); body("""{"title":"종류 없는 일정","dateLabel":"추후 공지"}""") }.andExpect { status { isBadRequest() } }
+        // 문구만으로는 만들 수 있다
+        val labelled = read(mvc.post("/v1/admin/activities/$activity/schedules") { asAdmin(); body("""{"title":"결과 발표","kind":"ANNOUNCEMENT","dateLabel":"12월 중"}""") }.andExpect { status { isCreated() } })
+        assertEquals(listOf(true, "12월 중"), listOf(labelled["startAt"].isNull, labelled["dateLabel"].asString()))
+        // 슬롯 일정(활동 기간)은 세부 일정 편집기로 고치거나 지울 수 없다. 없는 일정·다른 활동의 일정은 404
+        mvc.patch("/v1/admin/activities/$activity/schedules/$slotSchedule") { asAdmin(); patchBody("""{"title":"x"}""") }.andExpect { status { isBadRequest() } }
+        mvc.delete("/v1/admin/activities/$activity/schedules/$slotSchedule") { asAdmin() }.andExpect { status { isBadRequest() } }
+        mvc.delete("/v1/admin/activities/$activity/schedules/999999") { asAdmin() }.andExpect { status { isNotFound() } }
+        mvc.delete("/v1/admin/activities/999999/schedules/$scheduleId") { asAdmin() }.andExpect { status { isNotFound() } }
+        // 지우면 응답에서 빠지고 행은 curated_deleted로 남는다. 지운 일정은 다시 고칠 수 없다(404)
+        mvc.delete("/v1/admin/activities/$activity/schedules/$scheduleId") { asAdmin() }.andExpect { status { isNoContent() } }
+        assertEquals(listOf(labelled["id"].asLong()), listedSchedules())
+        assertEquals(1, jdbc.sql("select count(*) from schedules where id = ? and curated_deleted").param(scheduleId).query(Int::class.java).single())
+        mvc.patch("/v1/admin/activities/$activity/schedules/$scheduleId") { asAdmin(); patchBody("""{"title":"되살리기"}""") }.andExpect { status { isNotFound() } }
+    }
+
+    @Test
     fun `초안도 검색되고, 게시하면 상태가 바뀐다`() {
         jdbc.sql("update activities set publication_status = 'DRAFT', official_source = false where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").update()
 

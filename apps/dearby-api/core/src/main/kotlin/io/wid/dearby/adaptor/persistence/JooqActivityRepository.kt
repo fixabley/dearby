@@ -76,7 +76,8 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
         if (rows.isEmpty()) return emptyList()
         val ids = rows.map { it.id!! }
         val schedules = dsl.selectFrom(SCHEDULES)
-            .where(SCHEDULES.ACTIVITY_ID.`in`(ids))
+            // 운영자가 지운 세부 일정(curated_deleted)은 공개·어드민·진행 트랙·ICS 모두에서 빠진다(admin-v1.md "세부 일정 편집기")
+            .where(SCHEDULES.ACTIVITY_ID.`in`(ids), SCHEDULES.CURATED_DELETED.isFalse)
             .orderBy(SCHEDULES.START_AT.nullsLast(), SCHEDULES.ID)
             .fetch()
             .groupBy { it.activityId!! }
@@ -120,27 +121,7 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
         )
     }
 
-    private fun toSchedule(row: SchedulesRecord) = Schedule(
-        id = row.id!!,
-        title = row.title!!,
-        kind = ScheduleKind.valueOf(row.kind!!),
-        status = ScheduleStatus.valueOf(row.status!!),
-        time = when (row.timeType) {
-            TIME_TIMED -> {
-                val zone = ZoneId.of(row.timeZone!!)
-                ScheduleTime.Timed(row.startAt?.atZoneSameInstant(zone), row.endAt?.atZoneSameInstant(zone))
-            }
-            TIME_ALL_DAY -> ScheduleTime.AllDay(row.startDate!!, row.endDateExclusive!!)
-            else -> null
-        },
-        dateLabel = row.dateLabel!!,
-        address = row.lat?.let { Address(it, row.lng!!, row.addressLine1!!, row.addressLine2!!) },
-        conferenceUrl = row.conferenceUrl,
-        sequence = row.sequence!!,
-        timestamps = Timestamps(row.createdAt!!, row.updatedAt!!),
-        curated = row.curated ?: false,
-        curatedNote = row.curatedNote,
-    )
+    private fun toSchedule(row: SchedulesRecord) = row.toSchedule()
 
     private companion object {
         const val WORD_SIMILARITY_THRESHOLD = "0.4"

@@ -117,6 +117,10 @@ open class SchedulesRecord() : UpdatableRecordImpl<SchedulesRecord>(Schedules.SC
         set(value): Unit = set(23, value)
         get(): String? = get(23) as String?
 
+    open var curatedDeleted: Boolean?
+        set(value): Unit = set(24, value)
+        get(): Boolean? = get(24) as Boolean?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -126,7 +130,7 @@ open class SchedulesRecord() : UpdatableRecordImpl<SchedulesRecord>(Schedules.SC
     /**
      * Create a detached, initialised SchedulesRecord
      */
-    constructor(id: Long? = null, activityId: Long? = null, sourceId: UUID? = null, slot: String? = null, title: String? = null, kind: String? = null, status: String? = null, timeType: String? = null, startAt: OffsetDateTime? = null, endAt: OffsetDateTime? = null, timeZone: String? = null, startDate: LocalDate? = null, endDateExclusive: LocalDate? = null, dateLabel: String? = null, lat: Double? = null, lng: Double? = null, addressLine1: String? = null, addressLine2: String? = null, conferenceUrl: String? = null, sequence: Int? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null, curated: Boolean? = null, curatedNote: String? = null): this() {
+    constructor(id: Long? = null, activityId: Long? = null, sourceId: UUID? = null, slot: String? = null, title: String? = null, kind: String? = null, status: String? = null, timeType: String? = null, startAt: OffsetDateTime? = null, endAt: OffsetDateTime? = null, timeZone: String? = null, startDate: LocalDate? = null, endDateExclusive: LocalDate? = null, dateLabel: String? = null, lat: Double? = null, lng: Double? = null, addressLine1: String? = null, addressLine2: String? = null, conferenceUrl: String? = null, sequence: Int? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null, curated: Boolean? = null, curatedNote: String? = null, curatedDeleted: Boolean? = null): this() {
         this.id = id
         this.activityId = activityId
         this.sourceId = sourceId
@@ -151,6 +155,7 @@ open class SchedulesRecord() : UpdatableRecordImpl<SchedulesRecord>(Schedules.SC
         this.updatedAt = updatedAt
         this.curated = curated
         this.curatedNote = curatedNote
+        this.curatedDeleted = curatedDeleted
         resetTouchedOnNotNull()
     }
 }

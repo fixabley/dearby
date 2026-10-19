@@ -6,6 +6,7 @@ import io.wid.dearby.batch.adaptor.claude.CollectionPrompts
 import io.wid.dearby.domain.collection.DateLabelExample
 import io.wid.dearby.batch.application.Discovery
 import io.wid.dearby.batch.application.ExtractedActivity
+import io.wid.dearby.batch.application.ExtractedSchedule
 import io.wid.dearby.batch.application.Extraction
 import io.wid.dearby.batch.application.FetchedPage
 import io.wid.dearby.batch.application.ModelUsage
@@ -57,6 +58,7 @@ class CollectionJobTest(
             var rendererClosed = 0
             var extractedTags: List<String> = listOf("창업", "없는 태그") // 태그 테스트: 사전 밖 이름은 버려진다
             var receivedTagNames: List<String> = emptyList() // 마지막 추출 요청이 받은 태그 사전
+            var extractedSchedules: List<ExtractedSchedule> = emptyList() // 세부 일정 테스트에서 채운다(admin-v1.md "세부 일정 편집기")
         }
 
         @Bean
@@ -96,7 +98,7 @@ class CollectionJobTest(
                     ExtractedActivity(
                         roundKey = "2026-컨퍼런스", name = "Let'Swift 2026 컨퍼런스", nameEn = "Let'Swift 2026 Conference", description = "본행사", descriptionEn = "Main event", participationType = "REGISTRATION",
                         applicationUrl = "https://letswift.kr/2026/apply", recruitmentStartAt = "2026-11-01T10:00:00+09:00",
-                        recruitmentEndAt = "2026-11-10T23:59:00+09:00", dateLabel = "2026-11-29", startDate = "2026-11-29", endDate = "2026-11-29", schedules = emptyList(),
+                        recruitmentEndAt = "2026-11-10T23:59:00+09:00", dateLabel = "2026-11-29", startDate = "2026-11-29", endDate = "2026-11-29", schedules = extractedSchedules,
                         location = null, cost = null, audience = null, evidenceQuote = "참가 신청은 11월 1일부터 11월 10일까지입니다", category = extractedCategory, tags = extractedTags,
                     ),
                     ExtractedActivity(
@@ -321,6 +323,34 @@ class CollectionJobTest(
         val excluded = jdbc.sql("select array_to_string(rejected_reasons, '|') from collection_runs where run_date = '2026-10-23'").query(String::class.java).single()
         assertEquals(true, excluded.contains("조심 목록: 제외"))
     }
+
+    @Test
+    fun `운영자가 지운 세부 일정은 다시 수집해도 되살아나지 않고, 운영자가 고친 일정과 같은 수집 일정은 다시 넣지 않는다`() {
+        officialSetting()
+        Fakes.extractedSchedules = listOf(
+            ExtractedSchedule(title = "1차 면접", kind = "INTERVIEW", startAt = "2026-11-15T10:00:00+09:00", endAt = "2026-11-15T12:00:00+09:00", dateLabel = "11월 15일 면접"),
+            ExtractedSchedule(title = "결과 발표", kind = "ANNOUNCEMENT", startAt = null, endAt = null, dateLabel = "11월 20일 발표", startDate = "2026-11-20", endDate = "2026-11-20"),
+        )
+        try {
+            assertEquals(BatchStatus.COMPLETED, run("2026-10-20").status)
+            val activityId = jdbc.sql("select id from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(Long::class.java).single()
+            assertEquals(listOf("1차 면접", "결과 발표"), detailTitles(activityId))
+            // 어드민이 1차 면접을 지우고(curated_deleted) 결과 발표에 사유를 달아 고쳤다(curated)
+            jdbc.sql("update schedules set curated_deleted = true where activity_id = ? and title = '1차 면접'").param(activityId).update()
+            jdbc.sql("update schedules set curated = true, curated_note = '공식 일정표 확인' where activity_id = ? and title = '결과 발표'").param(activityId).update()
+            assertEquals(BatchStatus.COMPLETED, run("2026-10-21").status)
+            // 보이는 세부 일정은 운영자가 고친 결과 발표 하나뿐이고(수집된 같은 일정은 다시 넣지 않음), 지운 1차 면접은 표시된 행으로만 남는다
+            assertEquals(listOf("결과 발표"), detailTitles(activityId))
+            assertEquals(listOf("공식 일정표 확인"), jdbc.sql("select curated_note from schedules where activity_id = ? and title = '결과 발표'").param(activityId).query(String::class.java).list())
+            assertEquals(1, jdbc.sql("select count(*) from schedules where activity_id = ? and title = '1차 면접' and curated_deleted").param(activityId).query(Int::class.java).single())
+        } finally {
+            Fakes.extractedSchedules = emptyList()
+        }
+    }
+
+    // 응답·공개 API에 보이는 세부 일정 제목(지운 일정 제외). 정렬은 DB 콜레이션에 따르지 않게 코틀린에서
+    private fun detailTitles(activityId: Long) =
+        jdbc.sql("select title from schedules where activity_id = ? and slot is null and not curated_deleted").param(activityId).query(String::class.java).list().sortedBy { it.toString() }
 
     @Test
     fun `게시된 활동은 다시 수집해도 덮어쓰지 않는다`() {
