@@ -14,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -56,7 +55,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
                 }
                 HistoryDraft.Step.DESCRIPTION -> {
                     Text("한 줄로 설명해 주세요 (선택)", Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
-                    OutlinedTextField(draft.description, { change(draft.copy(description = it)) }, Modifier.fillMaxWidth().semantics { contentDescription = "설명" }, label = { Text("설명") },
+                    OutlinedTextField(draft.description, { change(draft.copy(description = it)) }, Modifier.fillMaxWidth(), label = { Text("설명") },
                         placeholder = { Text("맡은 일이나 성과") }, minLines = 3)
                 }
                 HistoryDraft.Step.SUMMARY -> Summary(state, pickImage, pickPdf, deleteEvidence) { go(HistoryDraft.Step.KIND) }

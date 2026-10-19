@@ -33,7 +33,7 @@ data class ComposerHistory(val id: String, val title: String, val detail: String
     Column(modifier.fillMaxSize().dismissKeyboardOnTap().imePadding()) {
         Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
             Section("명함") {
-                OutlinedTextField(cardTitle, onCardTitleChange, Modifier.fillMaxWidth().semantics { contentDescription = "명함 이름" }, label = { Text("명함 이름") },
+                OutlinedTextField(cardTitle, onCardTitleChange, Modifier.fillMaxWidth(), label = { Text("명함 이름") },
                     supportingText = { Text("선택이에요. 비워 두면 '내 명함'으로 저장해요.") }, singleLine = true)
             }
             Section("미리보기") { OutlinedCard(Modifier.fillMaxWidth()) { MarkdownBody(preview, Modifier.padding(12.dp)) } }

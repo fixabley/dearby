@@ -50,14 +50,14 @@ val ProfileContactKinds = listOf(
 ) {
     var choosing by remember { mutableStateOf(false) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(phone, onPhoneChange, Modifier.fillMaxWidth().semantics { contentDescription = "전화번호, 필수" }, label = { Text("전화번호") }, placeholder = { Text("010-0000-0000") },
+        OutlinedTextField(phone, onPhoneChange, Modifier.fillMaxWidth(), label = { Text("전화번호") }, placeholder = { Text("010-0000-0000") },
             isError = phoneError != null, supportingText = { Text(phoneError ?: "필수예요.") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone))
-        OutlinedTextField(email, onEmailChange, Modifier.fillMaxWidth().semantics { contentDescription = "이메일, 필수" }, label = { Text("이메일") }, placeholder = { Text("name@example.com") },
+        OutlinedTextField(email, onEmailChange, Modifier.fillMaxWidth(), label = { Text("이메일") }, placeholder = { Text("name@example.com") },
             isError = emailError != null, supportingText = { Text(emailError ?: "필수예요.") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false))
         extras.forEach { item ->
             val meta = ProfileContactKinds.firstOrNull { it.first == item.kind }
             val label = meta?.second ?: item.kind
-            OutlinedTextField(item.value, { onExtraChange(item.copy(value = it)) }, Modifier.fillMaxWidth().semantics { contentDescription = label }, label = { Text(label) },
+            OutlinedTextField(item.value, { onExtraChange(item.copy(value = it)) }, Modifier.fillMaxWidth(), label = { Text(label) },
                 placeholder = { Text(meta?.third ?: "") }, singleLine = true,
                 trailingIcon = { IconButton({ onRemoveExtra(item.id) }) { Icon(Icons.Outlined.RemoveCircleOutline, "$label 삭제") } })
         }

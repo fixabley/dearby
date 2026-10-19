@@ -32,7 +32,7 @@ import androidx.compose.ui.unit.dp
     StateLayout(modifier.semantics { liveRegion = LiveRegionMode.Assertive }) {
         StateIcon(Icons.Outlined.ErrorOutline)
         StateText(title, message)
-        DearbyOutlineButton(onRetry, Modifier.padding(top = 8.dp)) { Text(retryLabel, style = MaterialTheme.typography.titleMedium) }
+        DearbyOutlineButton(onRetry, Modifier.padding(top = 8.dp)) { Text(retryLabel) }
     }
 
 /** 빈 결과. [action]으로 다음 행동 버튼을 하나 둘 수 있다. */

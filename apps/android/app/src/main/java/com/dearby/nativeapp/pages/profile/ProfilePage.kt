@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -63,14 +62,14 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
                 if (settingUp) { ProfileSetupPage(form, state.saving, state.error, state.jobSearch, searchJobs, change, save, Modifier.weight(1f)); return@let }
                 Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     Text("기본 정보", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-                    OutlinedTextField(form.name, { change(form.copy(name = it)) }, Modifier.fillMaxWidth().semantics { contentDescription = "이름, 필수" }, label = { Text("이름") },
+                    OutlinedTextField(form.name, { change(form.copy(name = it)) }, Modifier.fillMaxWidth(), label = { Text("이름") },
                         placeholder = { Text("실명 또는 활동명") }, isError = state.errors?.name != null, supportingText = { Text(state.errors?.name ?: "필수예요.") }, singleLine = true)
                     Labeled("직무") {
                         JobTagPicker(form.jobTags, state.jobSearch.query, searchJobs, state.jobSearch.items.map { PickerItem(it.id, it.name, it.parent?.name ?: it.nameEn) },
                             state.jobSearch.loading, state.jobSearch.failed, { change(form.withJob(it.id, it.name)) }, { change(form.withJob(null, null, it)) },
                             { change(form.withoutJob(it)) }, full = form.jobs.size >= ProfileFormState.MAX_JOBS)
                     }
-                    OutlinedTextField(form.introduction, { change(form.copy(introduction = it)) }, Modifier.fillMaxWidth().semantics { contentDescription = "소개" }, label = { Text("소개") },
+                    OutlinedTextField(form.introduction, { change(form.copy(introduction = it)) }, Modifier.fillMaxWidth(), label = { Text("소개") },
                         placeholder = { Text("처음 만난 사람에게 건넬 한두 문장") }, minLines = 3)
                     Text("연락처", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
                     ProfileContactFields(form.phone, form.email, form.extras, { change(form.copy(phone = it)) }, { change(form.copy(email = it)) },

@@ -108,7 +108,7 @@ import java.util.Locale
                 }
                 Spacer(Modifier.height(18.dp))
             }
-            DearbyButton(close, Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { Text("확인했어요", fontWeight = FontWeight.SemiBold) }
+            DearbyButton(close, Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { Text("확인했어요") }
             Text("확인 후 활동 상세로 돌아가요.", Modifier.align(Alignment.CenterHorizontally).padding(vertical = 12.dp), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodySmall)
         }
     }

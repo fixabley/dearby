@@ -15,7 +15,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -79,10 +78,10 @@ data class PickerItem(val id: Long, val name: String, val detail: String?)
 
 /**
  * 선택 창의 검색 칸(contract "폼은 플랫폼 기본 컴포넌트", 2026-10-19 밤): Material 3 `OutlinedTextField` 기본 크기에 항상 보이는 [label], 돋보기, 검색어 지우기.
- * 접근성 이름은 라벨이다.
+ * 접근성 이름은 라벨뿐이다(따로 `contentDescription`을 두지 않는다).
  */
 @Composable internal fun PickerSearchField(query: String, onQueryChange: (String) -> Unit, label: String, modifier: Modifier = Modifier, placeholder: String? = null) = OutlinedTextField(
-    query, onQueryChange, modifier.fillMaxWidth().semantics { contentDescription = label }, label = { Text(label) }, placeholder = placeholder?.let { { Text(it) } }, singleLine = true,
+    query, onQueryChange, modifier.fillMaxWidth(), label = { Text(label) }, placeholder = placeholder?.let { { Text(it) } }, singleLine = true,
     leadingIcon = { Icon(Icons.Outlined.Search, null) },
     trailingIcon = if (query.isNotEmpty()) ({ IconButton({ onQueryChange("") }) { Icon(Icons.Outlined.Close, "검색어 지우기") } }) else null,
     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search))
