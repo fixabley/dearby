@@ -69,3 +69,11 @@ docker compose -f compose.prod.yaml --env-file .env.prod run --rm batch --recall
 - 과거 기록: 웹 전체 검색의 실제 결과(2026-10-15, cli, 설정 없는 Let'Swift)는 공식 사이트 대신 X 계정(`x.com/letswiftkr`)에서 같은 이름의 초안 2건을 저장했다(`official_source = false`; 2분 45초, 입력 78,210·출력 17,258 토큰; CLI 내장 WebSearch는 검색 횟수가 0으로 기록). `cli` 엔진은 2026-10-15 로컬 개발 DB에서 Let'Swift(`https://letswift.kr/2026/`, 허용 `letswift.kr`)로 실제 수집했다(59초, 찾은 1·저장 1, 일정 7개 시각 정상, 입력 14,776·출력 6,183 토큰, 웹 검색 0회; 신청 주소는 원문 링크와 맞지 않아 비워졌다). 후속 후보: SNS·모음 사이트 제외 목록, 웹 전체 검색에서 찾은 공식 도메인 후보를 관리자에게 제안.
 - 2026-10-18 정리 완료: 이 Mac의 launchd 작업(`com.dearby.catalog-subscription-worker`)과 `~/.dearby-deploy`의 TS 워커 배포 사본은 사용자가 `launchctl bootout`과 plist 삭제로 내렸다.
 
+## 브라우저 렌더링 수집 — 2026-10-19
+
+우와콘(`woowacon.com`)처럼 자바스크립트로 내용을 그리는 사이트는 서버 HTML에 글자가 거의 없어(121자) 수집이 "찾음 0"으로 끝났다. 사용자 결정으로 수집 설정에 `renderPages`(`program_collection_settings.render_pages`, V35)를 두고, 켜진 프로그램만 헤드리스 Chromium(Playwright for Java 1.63)으로 페이지를 실행한 뒤 `document.body.innerText`를 본문으로 쓴다(`batch/adaptor/browser/PlaywrightPageFetcher`).
+
+- **언제 켜나**: 어드민 수집 설정의 `브라우저 렌더링 필요`. 서버 HTML을 받았을 때 본문이 거의 없고(수집 보고 "찾음 0", 토큰은 소비됨) 브라우저에서는 내용이 보이는 사이트에서만. 일반 사이트는 끈 채로 둔다(HTML 받기가 더 빠르고 싸다).
+- **경계**: HTML 받기와 같다 — https만, 허용 호스트가 있으면 페이지와 하위 요청 모두 허용 호스트 밖은 차단(사설·내부 IP도 차단, `UrlGuard` 공용), 탐색 15초, 네트워크 유휴 대기 최대 5초(넘으면 그때까지 그려진 본문), 본문 3,000,000자. 이미지·글꼴·미디어 요청은 막는다. 실패는 거절 이유에 `렌더링 실패: …`로 남는다. 브라우저는 처음 쓸 때 띄우고 프로그램 하나의 수집이 끝나면 내린다.
+- **이미지**: `batch/Dockerfile`이 `eclipse-temurin:25-jre-noble` 위에서 부트 jar 안의 Playwright CLI(`-Dloader.main=com.microsoft.playwright.CLI`)로 `install --with-deps chromium`을 실행해 `/ms-playwright`에 Chromium을 넣는다. api·admin 이미지는 그대로. 로컬(linux/arm64) 빌드 크기 **997 MB**(렌더링 전 batch 이미지 363 MB). 이미지 안에서 `app` 사용자로 Chromium 실행을 확인했다(샌드박스 옵션 없이 동작). 운영 compose는 평소처럼 `up -d --build batch`면 되고 플랫폼 플래그는 필요 없다(호스트 아키텍처의 Chromium을 받는다).
+- **테스트**: 실제 브라우저는 띄우지 않는다. `CollectionJobTest`가 가짜 `RenderingPageFetcher`로 렌더링 경로 선택·거절 이유·브라우저 내림을 확인한다.

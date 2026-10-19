@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Checkbox, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Spin, Switch, Table, Tag } from "antd";
+import { Alert, App, Button, Checkbox, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Spin, Switch, Table, Tag, Tooltip } from "antd";
 import type { InputRef } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { api, useSingleFlight } from "./api";
@@ -23,13 +23,15 @@ type WatchEntry = {
 };
 const watchKindLabels: Record<WatchKind, string> = { alias: "별칭", exclude: "제외" };
 
-type CollectionInput = { officialUrl?: string; allowedHosts: string[]; intervalDays: number; enabled: boolean };
+type CollectionInput = { officialUrl?: string; allowedHosts: string[]; intervalDays: number; enabled: boolean; renderPages: boolean };
 type CollectionSettings = {
   configured: boolean;
   officialUrl: string | null;
   allowedHosts: string[];
   intervalDays: number;
   enabled: boolean;
+  /** 헤드리스 브라우저로 페이지를 실행해 본문을 읽는다(contract "브라우저 렌더링"); absent on older responses. */
+  renderPages?: boolean;
   officialOnly: boolean;
   lastSucceededOn: string | null;
   /** 기수 번호 read from the program's latest activity, null when none (contract "주소 토큰"); absent on older responses. */
@@ -74,7 +76,7 @@ function expandUrl(url: string, previousRound: number | null): string[] {
 }
 /** Tokens in [url] that the collector does not know. */
 const unknownTokens = (url: string) => (url.match(/\{[^{}]*\}/g) ?? []).filter((token) => !(urlTokens as readonly string[]).includes(token));
-const defaults: CollectionInput = { allowedHosts: [], intervalDays: 1, enabled: true };
+const defaults: CollectionInput = { allowedHosts: [], intervalDays: 1, enabled: true, renderPages: false };
 /** Form values → API body: trims, lowercases hosts and drops an empty URL. */
 const collectionBody = (values: CollectionInput): CollectionInput => ({
   ...values,
@@ -156,6 +158,11 @@ export function Programs() {
               return (
                 <>
                   {collection.enabled ? <Tag color="green">{collection.intervalDays}일마다</Tag> : <Tag>꺼짐</Tag>}
+                  {collection.renderPages && (
+                    <Tooltip title="헤드리스 브라우저로 페이지를 실행한 뒤 본문을 읽어요(자바스크립트로 그리는 사이트).">
+                      <Tag color="geekblue">렌더링</Tag>
+                    </Tooltip>
+                  )}
                   <div className="muted" style={{ fontSize: 12, marginTop: 4, wordBreak: "break-all" }}>
                     {fetched.length ? (
                       <>
@@ -611,6 +618,14 @@ function CollectionFields({ name, previousRound }: { name: string; previousRound
     <>
       <Form.Item name={[name, "enabled"]} label="매일 밤 활동 수집" valuePropName="checked">
         <Switch />
+      </Form.Item>
+      <Form.Item
+        name={[name, "renderPages"]}
+        valuePropName="checked"
+        extra="자바스크립트로 내용을 그리는 사이트에서만 켜요. 페이지당 시간이 늘어요. 서버 HTML에 글자가 거의 없는 사이트(예: woowacon.com)가 대상이에요."
+        style={{ marginBottom: 12 }}
+      >
+        <Checkbox>브라우저 렌더링 필요</Checkbox>
       </Form.Item>
       <Space size={4} wrap style={{ marginBottom: 4 }} aria-label="주소 토큰">
         {urlTokens.map((token) => (

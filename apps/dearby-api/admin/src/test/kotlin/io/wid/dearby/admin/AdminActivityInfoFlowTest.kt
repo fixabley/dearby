@@ -404,6 +404,12 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         val saved = read(mvc.put(url) { asAdmin(); body("""{"officialUrl":"https://letswift.kr/2026/","allowedHosts":["letswift.kr"],"intervalDays":3,"enabled":true}""") }
             .andExpect { status { isOk() } })
         assertEquals(3, saved["intervalDays"].asInt())
+        // 브라우저 렌더링(admin-v1.md, 2026-10-19): 기본 false, 켜서 저장하면 응답과 다시 읽기에 남는다
+        assertEquals(false, saved["renderPages"].asBoolean())
+        val rendered = read(mvc.put(url) { asAdmin(); body("""{"officialUrl":"https://letswift.kr/2026/","allowedHosts":["letswift.kr"],"intervalDays":3,"enabled":true,"renderPages":true}""") }
+            .andExpect { status { isOk() } })
+        assertEquals(true, rendered["renderPages"].asBoolean())
+        assertEquals(true, read(mvc.get(url) { asAdmin() }.andExpect { status { isOk() } })["renderPages"].asBoolean())
         mvc.get("/v1/admin/programs/999999/collection-settings") { asAdmin() }.andExpect { status { isNotFound() } }
         // 주소 토큰(admin-v1.md, 2026-10-19): 모르는 토큰은 400, {yy}는 올해·내년으로 펼쳐 previewUrls에, 기수를 못 읽으면 previousRound는 null
         mvc.put(url) { asAdmin(); body("""{"officialUrl":"https://toss.im/slash-{season}","allowedHosts":["toss.im"],"intervalDays":1,"enabled":true}""") }

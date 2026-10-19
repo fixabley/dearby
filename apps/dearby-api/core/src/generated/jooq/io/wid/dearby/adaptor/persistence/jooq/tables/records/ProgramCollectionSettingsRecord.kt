@@ -46,6 +46,10 @@ open class ProgramCollectionSettingsRecord() : UpdatableRecordImpl<ProgramCollec
         set(value): Unit = set(6, value)
         get(): LocalDateTime? = get(6) as LocalDateTime?
 
+    open var renderPages: Boolean?
+        set(value): Unit = set(7, value)
+        get(): Boolean? = get(7) as Boolean?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -55,7 +59,7 @@ open class ProgramCollectionSettingsRecord() : UpdatableRecordImpl<ProgramCollec
     /**
      * Create a detached, initialised ProgramCollectionSettingsRecord
      */
-    constructor(programId: Long? = null, officialUrl: String? = null, allowedHosts: Array<String?>? = null, intervalDays: Int? = null, enabled: Boolean? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null): this() {
+    constructor(programId: Long? = null, officialUrl: String? = null, allowedHosts: Array<String?>? = null, intervalDays: Int? = null, enabled: Boolean? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null, renderPages: Boolean? = null): this() {
         this.programId = programId
         this.officialUrl = officialUrl
         this.allowedHosts = allowedHosts
@@ -63,6 +67,7 @@ open class ProgramCollectionSettingsRecord() : UpdatableRecordImpl<ProgramCollec
         this.enabled = enabled
         this.createdAt = createdAt
         this.updatedAt = updatedAt
+        this.renderPages = renderPages
         resetTouchedOnNotNull()
     }
 }

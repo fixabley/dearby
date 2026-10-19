@@ -109,6 +109,11 @@ open class ProgramCollectionSettings(
      */
     val UPDATED_AT: TableField<ProgramCollectionSettingsRecord, LocalDateTime?> = createField(DSL.name("updated_at"), SQLDataType.LOCALDATETIME(6).nullable(false), this, "")
 
+    /**
+     * The column <code>public.program_collection_settings.render_pages</code>.
+     */
+    val RENDER_PAGES: TableField<ProgramCollectionSettingsRecord, Boolean?> = createField(DSL.name("render_pages"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "")
+
     private constructor(alias: Name, aliased: Table<ProgramCollectionSettingsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ProgramCollectionSettingsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ProgramCollectionSettingsRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)

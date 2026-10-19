@@ -11,6 +11,7 @@ data class CollectionTarget(
     val officialUrls: List<String> = emptyList(), // 템플릿을 오늘 날짜·이전 기수로 펼친 실제 시작 주소(수집 서비스가 채운다)
     val allowedHosts: List<String>, // 비어 있으면 웹 전체 검색, 있으면 이 호스트 안에서만
     val intervalDays: Int,
+    val renderPages: Boolean = false, // true면 HTML 받기 대신 헤드리스 브라우저 렌더링으로 본문을 읽는다(admin-v1.md "브라우저 렌더링")
 ) {
     // 공식 도메인 안에서만 수집하는지
     val officialOnly: Boolean get() = allowedHosts.isNotEmpty()
