@@ -18,9 +18,10 @@ import { Icon } from "@/shared/ui/icon";
 import { ActivityCard } from "@/widgets/activity/activity-card";
 import { groupByCategory } from "@/lib/category";
 
-function programsPath(q: string, cursor?: number) {
+function programsPath(q: string, openOnly: boolean, cursor?: number) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
+  if (!openOnly) params.set("openOnly", "false");
   if (cursor !== undefined) params.set("cursor", String(cursor));
   return `/discovery/programs?${params}`;
 }
@@ -37,23 +38,26 @@ export function Discovery({ q }: { q: string }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreError, setMoreError] = useState("");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  // 모집 중만 보기 (contract "모집 중인 프로그램만 보기"): on by default; off also lists programs active in the last two years.
+  const [openOnly, setOpenOnly] = useState(true);
   useEffect(() => {
     const controller = new AbortController();
-    request<ProgramPage>(programsPath(q), { signal: controller.signal })
+    request<ProgramPage>(programsPath(q, openOnly), { signal: controller.signal })
       .then((result) => {
         setPage(result);
-        setExpanded(new Set(result.items.filter(startsOpen).map((p) => p.id)));
+        // Auto-expand applies only while the toggle is on.
+        setExpanded(new Set(openOnly ? result.items.filter(startsOpen).map((p) => p.id) : []));
       })
       .catch((error) => {
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
     return () => controller.abort();
-  }, [q, attempt]);
+  }, [q, openOnly, attempt]);
   function loadMore() {
     if (page?.nextCursor == null || loadingMore) return;
     setLoadingMore(true);
     setMoreError("");
-    request<ProgramPage>(programsPath(q, page.nextCursor))
+    request<ProgramPage>(programsPath(q, openOnly, page.nextCursor))
       .then((next) => {
         setPage((current) => ({
           items: [...(current?.items ?? []), ...next.items],
@@ -61,7 +65,7 @@ export function Discovery({ q }: { q: string }) {
         }));
         setExpanded((ids) => {
           const all = new Set(ids);
-          next.items.filter(startsOpen).forEach((p) => all.add(p.id));
+          if (openOnly) next.items.filter(startsOpen).forEach((p) => all.add(p.id));
           return all;
         });
       })
@@ -98,6 +102,18 @@ export function Discovery({ q }: { q: string }) {
           검색
         </button>
       </Form>
+      <label className="open-only">
+        <input
+          type="checkbox"
+          checked={openOnly}
+          onChange={(event) => {
+            // Clear the list so the loading state shows while the other mode loads.
+            setPage(undefined);
+            setOpenOnly(event.target.checked);
+          }}
+        />
+        모집 중만 보기
+      </label>
       {error ? (
         <Failure
           message={error}
@@ -117,7 +133,7 @@ export function Discovery({ q }: { q: string }) {
             </Link>
           </Empty>
         ) : (
-          <Empty title="지금 모집 중인 프로그램이 없어요">
+          <Empty title={openOnly ? "지금 모집 중인 프로그램이 없어요" : "최근 2년 안에 활동한 프로그램이 없어요"}>
             <p>
               새로운 모집이 열리면 이곳에서 확인할 수 있어요.
               <br />
@@ -184,11 +200,70 @@ function deadline(activity: Activity): number {
   const instant = key ? Date.parse(key) : NaN;
   return Number.isNaN(instant) ? Infinity : instant;
 }
+/** `yyyy.M` of the latest activity start in Seoul time; `없음` when unknown. */
+function monthLabel(value: string | null): string {
+  const time = value ? Date.parse(value) : NaN;
+  if (Number.isNaN(time)) return "없음";
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "numeric" }).formatToParts(new Date(time));
+  const year = parts.find((p) => p.type === "year")?.value;
+  const month = parts.find((p) => p.type === "month")?.value;
+  return `${year}.${month}`;
+}
+/** Activity start as an instant (timed start, else the date at UTC midnight for a day-level comparison); NaN without one. */
+function activityStart(activity: Activity): number {
+  const key = activity.activitySchedule.startAt ?? activity.activitySchedule.startDate;
+  return key ? Date.parse(key) : NaN;
+}
+const TWO_YEARS = 2 * 365 * 24 * 60 * 60 * 1000;
+
+/** 지난 활동 of a program without open ones: last two years by activity start, newest first, plain rows (contract "모집 중인 프로그램만 보기"). */
+function PastActivities({ programId, now }: { programId: number; now: number }) {
+  const [page, setPage] = useState<ActivityPage>();
+  const [error, setError] = useState("");
+  useEffect(() => {
+    const controller = new AbortController();
+    request<ActivityPage>(`/activities?programId=${programId}&size=20`, { signal: controller.signal })
+      .then(setPage)
+      .catch((error) => {
+        if (!controller.signal.aborted) setError(errorMessage(error));
+      });
+    return () => controller.abort();
+  }, [programId]);
+  if (error) return <p className="muted">{error}</p>;
+  if (!page) return <Loading />;
+  const recent = page.items
+    .filter((activity) => {
+      const start = activityStart(activity);
+      return !Number.isNaN(start) && start >= now - TWO_YEARS;
+    })
+    .sort((a, b) => activityStart(b) - activityStart(a));
+  if (!recent.length) return null;
+  return (
+    <section className="category-group">
+      <h3 className="category-heading">지난 활동</h3>
+      <ul className="activity-list">
+        {recent.map((activity) => (
+          <li key={activity.id}>
+            <ActivityCard
+              id={activity.id}
+              name={activity.name}
+              description={activity.description}
+              organizationName={activity.organization.name}
+              statusLabel={recruitment(activity.application, now).label}
+              dateLabel={scheduleLabel(activity.activitySchedule)}
+              imageUrl={httpsUrl(activity.imageUrl)}
+            />
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
 function startsOpen(program: ProgramSummary) {
   return program.openActivityCount === 1 || program.matchedActivityIds.length > 0;
 }
 
-/** One program header plus, when open, its open activities fetched from `GET /activities?programId=`. */
+/** One program header plus, when open, its open activities from `GET /activities?programId=&open=true` (the server decides what is open). */
 function ProgramRow({
   program,
   open,
@@ -206,7 +281,7 @@ function ProgramRow({
   useEffect(() => {
     if (!open || activities) return;
     const controller = new AbortController();
-    request<ActivityPage>(`/activities?programId=${program.id}&size=100`, {
+    request<ActivityPage>(`/activities?programId=${program.id}&open=true&size=100`, {
       signal: controller.signal,
     })
       .then(setActivities)
@@ -221,9 +296,8 @@ function ProgramRow({
     return () => clearInterval(timer);
   }, [open]);
   const deadline = deadlineLabel(program.nearestRecruitmentEndAt);
-  const openActivities = activities?.items.filter(
-    (activity) => recruitment(activity.application, now).open,
-  );
+  // The server already applied its open rule (contract "열린 활동 판정 일원화"); the client does not filter again.
+  const openActivities = activities?.items;
   return (
     <li className="program">
       <button
@@ -237,12 +311,18 @@ function ProgramRow({
           <span className="eyebrow">{program.organization.name}</span>
           <span className="program-name">{program.name}</span>
           <span className="program-meta">
-            열린 활동 {program.openActivityCount}개
-            {deadline && (
+            {program.openActivityCount > 0 ? (
               <>
-                <span className="dot">·</span>
-                {deadline}
+                모집 중 {program.openActivityCount}개
+                {deadline && (
+                  <>
+                    <span className="dot">·</span>
+                    {deadline}
+                  </>
+                )}
               </>
+            ) : (
+              <>최근 활동 {monthLabel(program.latestActivityAt ?? null)}</>
             )}
           </span>
         </span>
@@ -263,7 +343,10 @@ function ProgramRow({
           ) : !openActivities ? (
             <Loading />
           ) : !openActivities.length ? (
-            <p className="muted">지금 모집 중인 활동이 없어요.</p>
+            <>
+              <p className="muted">지금 모집 중인 활동이 없어요.</p>
+              <PastActivities programId={program.id} now={now} />
+            </>
           ) : (
             // Grouped by 활동 종류 (contract "활동 종류"); a single group needs no heading.
             groupByCategory(openActivities, (activity) => activity.category).map((group, _, groups) => (

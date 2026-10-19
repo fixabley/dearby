@@ -36,7 +36,7 @@ function acceptLanguage(value: string | null): string | undefined {
   return value && /^[A-Za-z0-9*,;=. -]{1,200}$/.test(value) ? value : undefined;
 }
 /**
- * Only `q`, `cursor`, `size`, `programId` (activities) and `participationType` (programs) are forwarded
+ * Only `q`, `cursor`, `size`, `programId`, `open` (activities) and `participationType`, `openOnly` (programs) are forwarded
  * to the searches, rebuilt from validated values.
  */
 function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
@@ -46,6 +46,12 @@ function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
   const size = url.searchParams.get("size");
   const programId = url.searchParams.get("programId");
   const participationType = url.searchParams.get("participationType");
+  // `open=true` asks the server for its open-activity rule (contract "열린 활동 판정 일원화"); no other value is accepted.
+  const openOnly = url.searchParams.get("open");
+  if (openOnly !== null && (programs || openOnly !== "true")) return;
+  // `openOnly=false` lists programs with activity in the last two years as well (contract "모집 중인 프로그램만 보기").
+  const programsOpenOnly = url.searchParams.get("openOnly");
+  if (programsOpenOnly !== null && (!programs || !["true", "false"].includes(programsOpenOnly))) return;
   if (q && q.length > 100) return;
   if (cursor !== null && !/^\d{1,18}$/.test(cursor)) return;
   if (size !== null && !(/^\d{1,3}$/.test(size) && +size >= 1 && +size <= 100))
@@ -61,6 +67,8 @@ function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
   if (cursor !== null) query.set("cursor", cursor);
   if (size !== null) query.set("size", size);
   if (programId !== null) query.set("programId", programId);
+  if (openOnly !== null) query.set("open", openOnly);
+  if (programsOpenOnly !== null) query.set("openOnly", programsOpenOnly);
   if (participationType !== null)
     query.set("participationType", participationType);
   return query;
