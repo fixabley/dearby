@@ -1,7 +1,7 @@
 import AuthenticationServices
 import SwiftUI
 
-/// Apple's own "Sign in with Apple" button (HIG: black on light, white on dark), as tall as `DearbyButtonStyle`.
+/// Apple's own "Sign in with Apple" button (HIG: black on light, white on dark), as tall as a `.controlSize(.large)` system button (50).
 /// `SignInWithAppleButton` builds its request synchronously, but the request needs a server nonce first,
 /// so this button only reports the tap and the caller runs the request.
 struct DearbyAppleButton: View {

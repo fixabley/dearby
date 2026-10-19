@@ -1,9 +1,9 @@
 import SwiftUI
 
 /// 내 프로필: data only (name, job, introduction, contacts, histories). A profile that was never saved (`version` 0)
-/// starts with the step funnel (`ProfileFunnelPage`); afterwards fields are edited in place and once anything differs
-/// from the loaded profile the 저장 / 원래대로 bar appears (contract "프로필과 버전 이력"). Card decoration lives in
-/// 명함 만들기. Sign-in is asked for only from the 로그인 button.
+/// starts with the step funnel (`ProfileFunnelPage`); afterwards fields are edited in place in an inset-grouped `Form`
+/// (contract "폼은 플랫폼 기본 컴포넌트") and once anything differs from the loaded profile the 저장 / 원래대로 bar appears
+/// (contract "프로필과 버전 이력"). Card decoration lives in 명함 만들기. Sign-in is asked for only from the 로그인 button.
 struct ProfilePage: View {
     let state: ProfileModel
     @State private var form: ProfileForm?
@@ -25,10 +25,10 @@ struct ProfilePage: View {
             } else if settingUp, let binding = Binding($form) {
                 ProfileFunnelPage(form: binding, account: state.account, saving: saving, error: error) { save(binding.wrappedValue) }
             } else {
-                editorScroll
+                editorScreen
             }
         }
-        .background(Color(.systemBackground)).toolbar(.hidden, for: .navigationBar)
+        .background(Color(.systemGroupedBackground)).toolbar(.hidden, for: .navigationBar)
         .task { await state.load() }
         // A reload (first load, save, restore, evidence) resets the form to the server state unless an edit is in flight.
         .onChange(of: state.profile, initial: true) { _, profile in
@@ -50,79 +50,97 @@ struct ProfilePage: View {
             Button("확인", role: .cancel) {}
         }
     }
-    private var editorScroll: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                // 변경 이력 · 명함 만들기 sit on the title line once the profile is loaded (contract "탭 제목 통일").
-                PageTitle("내 프로필") {
-                    if case .loaded = state.phase {
-                        NavigationLink { ProfileVersionsPage(state: state) } label: {
-                            Label("변경 이력", systemImage: "clock.arrow.circlepath").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
-                        }
-                        Button("명함 만들기") { composing = true }.font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+    private var editorScreen: some View {
+        VStack(spacing: 0) {
+            // 변경 이력 · 명함 만들기 sit on the title line once the profile is loaded (contract "탭 제목 통일").
+            PageTitle("내 프로필") {
+                if case .loaded = state.phase {
+                    NavigationLink { ProfileVersionsPage(state: state) } label: {
+                        Label("변경 이력", systemImage: "clock.arrow.circlepath").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
                     }
+                    Button("명함 만들기") { composing = true }.font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
                 }
-                VStack(alignment: .leading, spacing: 18) {
-                    switch state.phase {
-                    case .signedOut:
-                        VStack(spacing: 12) {
-                            Text("명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.")
-                                .font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
-                            Button("명함 만들기") { composing = true }.buttonStyle(DearbyButtonStyle())
-                            Button("로그인") { signingIn = true }.buttonStyle(DearbyButtonStyle(outlined: true))
-                        }.frame(maxWidth: .infinity).padding(.top, 40)
-                    case .loading:
-                        ProgressView("프로필을 불러오는 중이에요").frame(maxWidth: .infinity, minHeight: 240).tint(DearbyStyle.teal)
-                    case .failed:
-                        Text("프로필을 불러오지 못했어요").font(.dearby(.headline))
-                        Button("다시 시도") { Task { await state.load() } }.buttonStyle(DearbyButtonStyle(outlined: true))
-                        deleteButton
-                    case .loaded(let profile):
-                        if let binding = Binding($form) { editor(binding, saved: profile) }
-                    }
-                }.padding(.horizontal, 20).padding(.bottom, 20)
+            }
+            switch state.phase {
+            case .signedOut:
+                VStack(spacing: 12) {
+                    Text("명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.")
+                        .font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
+                    Button("명함 만들기") { composing = true }.buttonStyle(.borderedProminent)
+                    Button("로그인") { signingIn = true }.buttonStyle(.bordered)
+                    Spacer()
+                }.controlSize(.large).font(.dearby(.body).weight(.semibold)).padding(.horizontal, 20).padding(.top, 40)
+            case .loading:
+                ProgressView("프로필을 불러오는 중이에요").frame(maxWidth: .infinity, minHeight: 240).tint(DearbyStyle.teal)
+                Spacer()
+            case .failed:
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("프로필을 불러오지 못했어요").font(.dearby(.headline))
+                    Button("다시 시도") { Task { await state.load() } }.buttonStyle(.bordered).controlSize(.large).font(.dearby(.body).weight(.semibold))
+                    deleteButton
+                    Spacer()
+                }.padding(.horizontal, 20).padding(.top, 20)
+            case .loaded(let profile):
+                if let binding = Binding($form) { editor(binding, saved: profile) }
             }
         }
-        .background(Color(.systemGroupedBackground))
         .safeAreaInset(edge: .bottom) { if let form, form.changed { saveBar(form) } }
     }
-    @ViewBuilder private func editor(_ form: Binding<ProfileForm>, saved: AccountProfile) -> some View {
-        section("기본 정보") {
-            field("이름", text: form.name, prompt: "실명 또는 활동명", required: true)
-            if tried, let message = form.wrappedValue.nameError { DearbyFieldError(text: message) }
-            VStack(alignment: .leading, spacing: 4) {
-                Text("직무").font(.dearby(.caption).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
-                JobTagPicker(form: form, account: state.account)
+    private func editor(_ form: Binding<ProfileForm>, saved: AccountProfile) -> some View {
+        Form {
+            Section {
+                LabeledContent("이름") {
+                    TextField("실명 또는 활동명", text: form.name).textContentType(.name).foregroundStyle(.primary).accessibilityLabel("이름, 필수")
+                }
+            } header: {
+                Text("기본 정보").font(.dearby(.footnote))
+            } footer: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("이름은 꼭 적어 주세요. 명함과 공개 프로필에 보여요.")
+                    if tried, let message = form.wrappedValue.nameError { DearbyFieldError(text: message) }
+                }.font(.dearby(.footnote))
             }
-            field("소개", text: form.introduction, prompt: "처음 만난 사람에게 건넬 한두 문장", multiline: true)
-        }
-        section("연락처") {
+            Section {
+                JobTagPicker(form: form, account: state.account)
+            } header: {
+                Text("직무").font(.dearby(.footnote))
+            } footer: {
+                if let note = JobTagPicker.note(for: form.wrappedValue) { Text(note).font(.dearby(.footnote)) }
+            }
+            Section {
+                TextField("처음 만난 사람에게 건넬 한두 문장", text: form.introduction, axis: .vertical).lineLimit(3...6).accessibilityLabel("소개")
+            } header: {
+                Text("소개").font(.dearby(.footnote))
+            }
             ProfileContactFields(phone: form.phone, email: form.email, extras: form.extras,
                                  phoneError: tried ? form.wrappedValue.phoneError : nil, emailError: tried ? form.wrappedValue.emailError : nil) { form.wrappedValue.addContact($0) }
-        }
-        section("활동 이력") {
-            if form.wrappedValue.histories.isEmpty { Text("아직 이력이 없어요. 조직이나 활동부터 골라 단계별로 적어요.").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet) }
-            ForEach(form.wrappedValue.histories) { history in
-                HistoryRowView(history: history, saved: saved.histories.contains { $0.id == history.id }) {
-                    funnel = HistoryFunnelTarget(draft: HistoryDraft(history: history), saved: saved.histories.contains { $0.id == history.id })
-                } remove: { form.wrappedValue.removeHistory(history.id) }
+            Section {
+                if form.wrappedValue.histories.isEmpty { Text("아직 이력이 없어요. 조직이나 활동부터 골라 단계별로 적어요.").foregroundStyle(.secondary) }
+                ForEach(form.wrappedValue.histories) { history in
+                    HistoryRowView(history: history, saved: saved.histories.contains { $0.id == history.id }) {
+                        funnel = HistoryFunnelTarget(draft: HistoryDraft(history: history), saved: saved.histories.contains { $0.id == history.id })
+                    } remove: { form.wrappedValue.removeHistory(history.id) }
+                }
+                Button { funnel = HistoryFunnelTarget(draft: HistoryDraft(), saved: false) } label: { Label("이력 추가", systemImage: "plus") }
+            } header: {
+                Text("활동 이력").font(.dearby(.footnote))
+            } footer: {
+                if !form.wrappedValue.histories.isEmpty { Text("이력을 누르면 고치거나 인증자료를 올리고, 왼쪽으로 밀어 지워요.").font(.dearby(.footnote)) }
             }
-            Button { funnel = HistoryFunnelTarget(draft: HistoryDraft(), saved: false) } label: {
-                Label("이력 추가", systemImage: "plus").frame(maxWidth: .infinity, minHeight: 44)
-            }.buttonStyle(DearbyButtonStyle(outlined: true))
+            Section { deleteButton }
         }
-        Divider()
-        deleteButton
+        .font(.dearby(.body)).dearbyDismissKeyboard()
     }
     private func saveBar(_ form: ProfileForm) -> some View {
         VStack(spacing: 8) {
-            if let error { Text(error).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.danger).frame(maxWidth: .infinity, alignment: .leading) }
+            if let error { DearbyFieldError(text: error).frame(maxWidth: .infinity, alignment: .leading) }
             HStack(spacing: 10) {
-                Button("원래대로") { revert() }.buttonStyle(DearbyButtonStyle(outlined: true)).disabled(saving)
-                Button { save(form) } label: { if saving { ProgressView().tint(DearbyStyle.onTeal) } else { Text("저장") } }
-                    .buttonStyle(DearbyButtonStyle()).disabled(saving).accessibilityIdentifier("profile-save")
-            }
-        }.padding(.horizontal, 20).padding(.vertical, 12).background(Color(.systemBackground)).overlay(alignment: .top) { Rectangle().fill(DearbyStyle.line).frame(height: 1) }
+                Button { revert() } label: { Text("원래대로").frame(maxWidth: .infinity) }.buttonStyle(.bordered).disabled(saving)
+                Button { save(form) } label: {
+                    Group { if saving { ProgressView().tint(DearbyStyle.onTeal) } else { Text("저장") } }.frame(maxWidth: .infinity)
+                }.buttonStyle(.borderedProminent).disabled(saving).accessibilityIdentifier("profile-save")
+            }.controlSize(.large).font(.dearby(.body).weight(.semibold))
+        }.padding(.horizontal, 20).padding(.vertical, 12).background(.bar)
     }
     /// 원래대로: back to the loaded profile; after a 409 it also fetches the newer one.
     private func revert() {
@@ -143,8 +161,7 @@ struct ProfilePage: View {
     }
     /// App Store 5.1.1(v): shown whenever signed in.
     private var deleteButton: some View {
-        Button("계정 삭제", role: .destructive) { confirmingDeletion = true }
-            .font(.dearby(.subheadline)).frame(maxWidth: .infinity, minHeight: 44)
+        Button(role: .destructive) { confirmingDeletion = true } label: { Text("계정 삭제").frame(maxWidth: .infinity, minHeight: 44) }
             .disabled(state.account.deleting).accessibilityIdentifier("profile-delete-account")
     }
     private func deleteAccount() {
@@ -158,21 +175,6 @@ struct ProfilePage: View {
             await state.load()
         }
     }
-    /// One editor section on a secondary grouped surface, so the `muted` field fills stay visible on the grouped page background.
-    private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title).font(.dearby(.headline)).accessibilityAddTraits(.isHeader)
-            content()
-        }
-        .padding(16).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
-    }
-    private func field(_ label: String, text: Binding<String>, prompt: String, required: Bool = false, multiline: Bool = false) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label + (required ? " · 필수" : "")).font(.dearby(.caption).weight(.semibold)).foregroundStyle(DearbyStyle.quiet).accessibilityHidden(true)
-            DearbyInlineField(label: required ? "\(label), 필수" : label, text: text, editing: true, prompt: prompt, multiline: multiline)
-        }
-    }
 }
 
 /// Which history the funnel sheet edits; `saved` enables evidence uploads.
@@ -182,32 +184,30 @@ struct HistoryFunnelTarget: Identifiable {
     var id: String { draft.id }
 }
 
-/// One history in the profile list: 조직 · 프로그램 · 활동, role, period, and the approval / verification state.
+/// One history row in the profile form: 조직 · 프로그램 · 활동, role, period, and the approval / verification state.
+/// Tapping opens the funnel; swiping left deletes.
 struct HistoryRowView: View {
     let history: AccountHistory
     let saved: Bool
     let open: () -> Void
     let remove: () -> Void
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Button(action: open) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(history.chain.joined(separator: " · ")).font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.ink).multilineTextAlignment(.leading)
-                    Text([history.roleTitle, ContactRules.period(start: history.startDate, end: history.endDate)].filter { !$0.isEmpty }.joined(separator: " · "))
-                        .font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
-                    HStack(spacing: 6) {
-                        tag(history.isVerified ? "확인됨" : "미확인", strong: history.isVerified)
-                        if history.hasCustomEntry || history.approval != "approved" {
-                            tag(history.approval == "approved" ? "승인됨" : history.approval == "rejected" ? "거절됨" : "승인 대기", strong: false)
-                        }
-                        if !saved { tag("저장 전", strong: false) }
+        Button(action: open) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(history.chain.joined(separator: " · ")).fontWeight(.semibold).foregroundStyle(DearbyStyle.ink).multilineTextAlignment(.leading)
+                Text([history.roleTitle, ContactRules.period(start: history.startDate, end: history.endDate)].filter { !$0.isEmpty }.joined(separator: " · "))
+                    .font(.dearby(.footnote)).foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    tag(history.isVerified ? "확인됨" : "미확인", strong: history.isVerified)
+                    if history.hasCustomEntry || history.approval != "approved" {
+                        tag(history.approval == "approved" ? "승인됨" : history.approval == "rejected" ? "거절됨" : "승인 대기", strong: false)
                     }
-                }.frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
-            }.buttonStyle(.plain).accessibilityHint("눌러서 고치거나 인증자료를 올려요")
-            Button(action: remove) {
-                Image(systemName: "minus.circle").foregroundStyle(DearbyStyle.quiet).frame(width: 44, height: 44)
-            }.accessibilityLabel("이력 삭제")
-        }.padding(14).overlay(RoundedRectangle(cornerRadius: 12).stroke(DearbyStyle.line))
+                    if !saved { tag("저장 전", strong: false) }
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 2)
+        }
+        .accessibilityHint("눌러서 고치거나 인증자료를 올려요")
+        .swipeActions { Button("삭제", role: .destructive, action: remove).accessibilityLabel("이력 삭제") }
     }
     private func tag(_ text: String, strong: Bool) -> some View {
         Text(text).font(.dearby(.caption2).weight(.semibold)).foregroundStyle(strong ? DearbyStyle.teal : DearbyStyle.quiet)

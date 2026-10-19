@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -29,9 +30,10 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
 
 /**
  * First profile entry, Toss-style accordion (2026-10-17 user decision): sections stack in order, only one is open, and
- * answered sections collapse to a tall row that reopens on tap. Bigger type and 56dp touch targets than the editor; the
- * tab bar is hidden meanwhile (DearbyApp). Shown until the profile is saved once.
+ * answered sections collapse to a tall row that reopens on tap. Fields are Material 3 `OutlinedTextField`s at their default size
+ * (contract "폼은 플랫폼 기본 컴포넌트", 2026-10-19 밤); the tab bar is hidden meanwhile (DearbyApp). Shown until the profile is saved once.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable fun ProfileSetupPage(
     form: ProfileFormState, saving: Boolean, error: String?, jobSearch: PickerSearchState, searchJobs: (String) -> Unit,
     change: (ProfileFormState) -> Unit, save: () -> Unit, modifier: Modifier = Modifier,
@@ -58,7 +60,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
     LaunchedEffect(open) { if (open != SetupStep.JOBS) runCatching { focus.requestFocus() } }
     Column(modifier.fillMaxWidth()) {
         Text("프로필 만들기", Modifier.padding(horizontal = 24.dp, vertical = 12.dp).semantics { heading() }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             sections.filter { it in reached }.forEach { step ->
                 if (step == open) OpenSection(step, form, tried, errorOf(step), jobSearch, searchJobs, change, focus, ::next)
                 else DoneRow(step, valueOf(step, form)) { reopen(step) }
@@ -68,9 +70,9 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
         Box(Modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 24.dp, vertical = 12.dp)) {
-            DearbyButton(::next, Modifier.fillMaxWidth().height(56.dp), enabled = !saving) {
-                if (saving) CircularProgressIndicator(Modifier.size(22.dp), color = LocalContentColor.current, strokeWidth = 2.dp)
-                else Text(if (allReached) "프로필 저장" else "다음", style = MaterialTheme.typography.titleMedium)
+            DearbyButton(::next, Modifier.fillMaxWidth(), enabled = !saving) {
+                if (saving) CircularProgressIndicator(Modifier.size(20.dp), color = LocalContentColor.current, strokeWidth = 2.dp)
+                else Text(if (allReached) "프로필 저장" else "다음")
             }
         }
     }
@@ -80,20 +82,19 @@ private fun valueOf(step: SetupStep, form: ProfileFormState) = when (step) {
     SetupStep.NAME -> form.name; SetupStep.JOBS -> form.jobsText; SetupStep.PHONE -> form.phone; SetupStep.EMAIL -> form.email; SetupStep.INTRODUCTION -> form.introduction
 }
 
-/** The question for the open section with its one control; the field style is larger than the editor's. */
+/** The question for the open section with its one control: a default-size `OutlinedTextField` (label, supporting text, error) or the job picker. */
 @Composable private fun OpenSection(
     step: SetupStep, form: ProfileFormState, tried: Boolean, error: String?, jobSearch: PickerSearchState, searchJobs: (String) -> Unit,
     change: (ProfileFormState) -> Unit, focus: FocusRequester, next: () -> Unit,
 ) {
-    val fieldStyle = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal)
     val nextAction = KeyboardActions(onNext = { next() })
+    val shownError = if (tried) error else null
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         when (step) {
             SetupStep.NAME -> {
                 Question("이름이 어떻게 되세요?")
-                DearbyInlineField("이름, 필수", form.name, { change(form.copy(name = it)) }, editing = true, placeholder = "실명 또는 활동명", style = fieldStyle,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next), keyboardActions = nextAction, focusRequester = focus)
-                Hint("명함과 공개 프로필에 이 이름으로 보여요.")
+                SetupField("이름", form.name, { change(form.copy(name = it)) }, "실명 또는 활동명", shownError, "필수예요. 명함과 공개 프로필에 이 이름으로 보여요.", focus,
+                    KeyboardOptions(imeAction = ImeAction.Next), nextAction)
             }
             SetupStep.JOBS -> {
                 Question("어떤 일을 하세요? (선택)")
@@ -104,26 +105,31 @@ private fun valueOf(step: SetupStep, form: ProfileFormState) = when (step) {
             }
             SetupStep.PHONE -> {
                 Question("연락받을 전화번호를 알려 주세요")
-                DearbyInlineField("전화번호, 필수", form.phone, { change(form.copy(phone = it)) }, editing = true, placeholder = "010-0000-0000", style = fieldStyle,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next), keyboardActions = nextAction, focusRequester = focus)
-                Hint("명함에 넣을지는 명함을 만들 때 골라요.")
+                SetupField("전화번호", form.phone, { change(form.copy(phone = it)) }, "010-0000-0000", shownError, "필수예요. 명함에 넣을지는 명함을 만들 때 골라요.", focus,
+                    KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next), nextAction)
             }
             SetupStep.EMAIL -> {
                 Question("이메일 주소는요?")
-                DearbyInlineField("이메일, 필수", form.email, { change(form.copy(email = it)) }, editing = true, placeholder = "name@example.com", style = fieldStyle,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
-                    keyboardActions = nextAction, focusRequester = focus)
+                SetupField("이메일", form.email, { change(form.copy(email = it)) }, "name@example.com", shownError, "필수예요.", focus,
+                    KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Email, imeAction = ImeAction.Next), nextAction)
             }
             SetupStep.INTRODUCTION -> {
                 Question("처음 만난 사람에게 한두 문장으로 소개해 주세요 (선택)")
-                DearbyInlineField("소개", form.introduction, { change(form.copy(introduction = it)) }, editing = true, placeholder = "예: 커뮤니티 운영과 행사 기획을 해요", singleLine = false, style = fieldStyle, focusRequester = focus)
+                SetupField("소개", form.introduction, { change(form.copy(introduction = it)) }, "예: 커뮤니티 운영과 행사 기획을 해요", shownError, null, focus, minLines = 3)
             }
         }
-        if (tried) error?.let { DearbyFieldError(it) }
     }
 }
 
-/** An answered section: label and value on a 56dp row; tapping reopens it. */
+@Composable private fun SetupField(
+    label: String, value: String, onValueChange: (String) -> Unit, placeholder: String, error: String?, hint: String?, focus: FocusRequester,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default, keyboardActions: KeyboardActions = KeyboardActions.Default, minLines: Int = 1,
+) = OutlinedTextField(value, onValueChange, Modifier.fillMaxWidth().focusRequester(focus),
+    label = { Text(label) }, placeholder = { Text(placeholder) }, isError = error != null,
+    supportingText = (error ?: hint)?.let { { Text(it) } }, keyboardOptions = keyboardOptions, keyboardActions = keyboardActions,
+    singleLine = minLines == 1, minLines = minLines)
+
+/** An answered section: label and value on a row; tapping reopens it. */
 @Composable private fun DoneRow(step: SetupStep, value: String, reopen: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().heightIn(min = 56.dp).background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(14.dp)).clickable(role = Role.Button, onClickLabel = "${step.label} 고치기", onClick = reopen).padding(horizontal = 16.dp, vertical = 12.dp),

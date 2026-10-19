@@ -3,8 +3,6 @@ package com.dearby.nativeapp.shared.ui
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.background
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.foundation.layout.*
@@ -82,18 +80,21 @@ private val DarkScheme = darkColorScheme(
     Spacer(Modifier.height(12.dp))
     Text("Dearby", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
 }
-@Composable fun DearbyButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) = Button(onClick, modifier.heightIn(min = 50.dp), enabled = enabled, shape = RoundedCornerShape(11.dp), content = content)
-@Composable fun DearbyOutlineButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) = OutlinedButton(onClick, modifier.heightIn(min = 50.dp), enabled = enabled, shape = RoundedCornerShape(11.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary), border = androidx.compose.foundation.BorderStroke(1.dp, if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest), content = content)
+/**
+ * 주 버튼(contract "폼은 플랫폼 기본 컴포넌트", 2026-10-19 밤): Material 3 `Button`/`OutlinedButton` 기본 모양·글꼴에 최소 높이 48dp(터치 영역 규칙)만 둔다.
+ * 사용자 정의 모서리·높이·글자 크기는 없다.
+ */
+@Composable fun DearbyButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) = Button(onClick, modifier.heightIn(min = 48.dp), enabled = enabled, content = content)
+@Composable fun DearbyOutlineButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) = OutlinedButton(onClick, modifier.heightIn(min = 48.dp), enabled = enabled, content = content)
 /** Sign in with Apple: Apple's black button (white on a dark theme, per the HIG), same size as the other sign-in buttons. No Apple logo asset is in the repo, so the label is text only. */
-@Composable fun AppleSignInButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) = Button(onClick, modifier.heightIn(min = 50.dp),
-    enabled = enabled, shape = RoundedCornerShape(11.dp), colors = if (isSystemInDarkTheme()) ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black) else ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)) { Text("Apple로 계속하기") }
+@Composable fun AppleSignInButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) = Button(onClick, modifier.heightIn(min = 48.dp),
+    enabled = enabled, colors = if (isSystemInDarkTheme()) ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black) else ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)) { Text("Apple로 계속하기") }
 /**
  * Sign in with Google (contract "구글 로그인"): theme surface with an outline border, same size as the other sign-in buttons. The official "G" logo asset is
  * not in the repo yet (to be placed under shared/assets/prototype), so a bold "G" stands in for it.
  */
-@Composable fun DearbyGoogleButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) = OutlinedButton(onClick, modifier.heightIn(min = 50.dp),
-    enabled = enabled, shape = RoundedCornerShape(11.dp), colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface),
-    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)) {
+@Composable fun DearbyGoogleButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) = OutlinedButton(onClick, modifier.heightIn(min = 48.dp),
+    enabled = enabled, colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface)) {
     Text("G", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
     Spacer(Modifier.width(8.dp))
     Text("Google로 계속하기")
@@ -131,12 +132,6 @@ private val DarkScheme = darkColorScheme(
         Text(value, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
     }
 }
-
-@Composable fun FormColumn(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) = Column(
-    modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
-
-@Composable fun Field(label: String, value: String, change: (String) -> Unit, modifier: Modifier = Modifier, singleLine: Boolean = true) = OutlinedTextField(
-    value, change, modifier.fillMaxWidth(), label = { Text(label) }, singleLine = singleLine, shape = RoundedCornerShape(10.dp))
 
 @Composable fun PersonHeader(name: String, job: String, introduction: String, filled: Boolean = false) {
     Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {

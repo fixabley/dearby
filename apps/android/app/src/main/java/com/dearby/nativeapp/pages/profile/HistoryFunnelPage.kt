@@ -26,6 +26,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.HistoryPeriodFields
 import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
 
 /** Toss-style history entry: one question per screen with progress, then a summary with evidence (contract "이력"). */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable fun HistoryFunnelPage(
     state: FunnelState, change: (HistoryDraft) -> Unit, go: (HistoryDraft.Step) -> Unit, next: () -> Unit, searchQuery: (String) -> Unit,
     pickImage: () -> Unit, pickPdf: () -> Unit, deleteEvidence: (String) -> Unit, close: () -> Unit,
@@ -33,10 +34,10 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
     val draft = state.draft
     val steps = draft.steps
     val index = steps.indexOf(state.step).coerceAtLeast(0)
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().dismissKeyboardOnTap()) {
         ScreenHeader(if (state.step == HistoryDraft.Step.SUMMARY) "이력 확인" else "이력 입력", close)
         LinearProgressIndicator({ (index + 1f) / steps.size }, Modifier.fillMaxWidth().padding(horizontal = 20.dp).semantics { heading() }, color = MaterialTheme.colorScheme.primary)
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             when (state.step) {
                 HistoryDraft.Step.KIND -> {
                     Text("어떤 이력인가요?", Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
@@ -54,7 +55,8 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
                 }
                 HistoryDraft.Step.DESCRIPTION -> {
                     Text("한 줄로 설명해 주세요 (선택)", Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
-                    DearbyInlineField("설명", draft.description, { change(draft.copy(description = it)) }, editing = true, placeholder = "맡은 일이나 성과", singleLine = false)
+                    OutlinedTextField(draft.description, { change(draft.copy(description = it)) }, Modifier.fillMaxWidth(), label = { Text("설명") },
+                        placeholder = { Text("맡은 일이나 성과") }, minLines = 3)
                 }
                 HistoryDraft.Step.SUMMARY -> Summary(state, pickImage, pickPdf, deleteEvidence) { go(HistoryDraft.Step.KIND) }
             }

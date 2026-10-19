@@ -28,8 +28,8 @@ import com.dearby.nativeapp.shared.ui.*
             Text("신청했다면 내 활동에 표시해 둘게요. 이 표시는 직접 남기는 기록이며 주최 측 접수 확인은 아니에요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         }
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            DearbyButton(onApplied, Modifier.fillMaxWidth()) { Text("신청했어요", style = MaterialTheme.typography.titleMedium) }
-            DearbyOutlineButton(onNotYet, Modifier.fillMaxWidth()) { Text("아직이에요", style = MaterialTheme.typography.titleMedium) }
+            DearbyButton(onApplied, Modifier.fillMaxWidth()) { Text("신청했어요") }
+            DearbyOutlineButton(onNotYet, Modifier.fillMaxWidth()) { Text("아직이에요") }
             TextButton(onNeverAsk, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("다시 묻지 않기", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold) }
         }
     }

@@ -109,7 +109,7 @@ struct ActivityDetailView: View {
                 Link(destination: url) {
                     Text(closed ? "공식 안내 보기" : site != nil ? "신청 사이트 열기" : "공식 사이트에서 신청").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(DearbyButtonStyle()).accessibilityIdentifier("open-application")
+                .buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold)).accessibilityIdentifier("open-application")
                 .accessibilityHint("외부 브라우저로 열려요")
                 .environment(\.openURL, OpenURLAction { opened in
                     if !closed { state.openedApplication(activity.id) }

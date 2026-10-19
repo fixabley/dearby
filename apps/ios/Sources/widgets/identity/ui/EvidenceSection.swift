@@ -2,11 +2,13 @@ import PhotosUI
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Evidence files for one saved history: photos from the library or a PDF, up to three, 5MB each (contract "인증자료").
+/// Evidence files for one saved history as a form `Section`: photos from the library or a PDF, up to three, 5MB each
+/// (contract "인증자료"). Files are rows (swipe left to delete), the add actions are rows, `hint` and errors are the footer.
 struct EvidenceSection: View {
     let historyID: String
     let items: [EvidenceMeta]
     let state: ProfileModel
+    let hint: String
     let onChange: ([EvidenceMeta]) -> Void
     @State private var photo: PhotosPickerItem?
     @State private var importing = false
@@ -14,33 +16,30 @@ struct EvidenceSection: View {
     @State private var error: String?
     private static let limit = 3
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        Section {
             ForEach(items) { item in
-                HStack(spacing: 10) {
-                    Image(systemName: item.contentType == "application/pdf" ? "doc.richtext" : "photo").foregroundStyle(DearbyStyle.teal).frame(width: 24)
+                Label {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(item.fileName).font(.dearby(.subheadline)).lineLimit(1)
-                        Text("\(item.size / 1024)KB").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
+                        Text(item.fileName).lineLimit(1)
+                        Text("\(item.size / 1024)KB").font(.dearby(.footnote)).foregroundStyle(.secondary)
                     }
-                    Spacer()
-                    Button { remove(item) } label: {
-                        Image(systemName: "minus.circle").foregroundStyle(DearbyStyle.quiet).frame(width: 44, height: 44)
-                    }.accessibilityLabel("\(item.fileName) 삭제").disabled(busy)
+                } icon: {
+                    Image(systemName: item.contentType == "application/pdf" ? "doc.richtext" : "photo").foregroundStyle(DearbyStyle.teal)
                 }
+                .swipeActions { Button("삭제", role: .destructive) { remove(item) }.accessibilityLabel("\(item.fileName) 삭제").disabled(busy) }
             }
             if items.count < Self.limit {
-                HStack(spacing: 10) {
-                    PhotosPicker(selection: $photo, matching: .images) {
-                        Label("사진", systemImage: "photo.on.rectangle").frame(maxWidth: .infinity, minHeight: 44)
-                    }.buttonStyle(DearbyButtonStyle(outlined: true)).disabled(busy)
-                    Button { importing = true } label: { Label("PDF", systemImage: "doc").frame(maxWidth: .infinity, minHeight: 44) }
-                        .buttonStyle(DearbyButtonStyle(outlined: true)).disabled(busy)
-                }
-            } else {
-                Text("인증자료는 \(Self.limit)개까지 올릴 수 있어요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
+                PhotosPicker(selection: $photo, matching: .images) { Label("사진 올리기", systemImage: "photo.on.rectangle") }.disabled(busy)
+                Button { importing = true } label: { Label("PDF 올리기", systemImage: "doc") }.disabled(busy)
             }
-            if busy { ProgressView().tint(DearbyStyle.teal) }
-            if let error { DearbyFieldError(text: error) }
+            if busy { ProgressView().frame(maxWidth: .infinity) }
+        } header: {
+            Text("인증자료").font(.dearby(.footnote))
+        } footer: {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(items.count < Self.limit ? hint : "인증자료는 \(Self.limit)개까지 올릴 수 있어요. " + hint)
+                if let error { DearbyFieldError(text: error) }
+            }.font(.dearby(.footnote))
         }
         .onChange(of: photo) { _, item in
             guard let item else { return }

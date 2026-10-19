@@ -26,7 +26,7 @@ private sealed interface CardRoute {
     data object Composer : CardRoute
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, myCards: MyCardsViewModel, wallet: WalletViewModel, profile: ProfileViewModel) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     var route by remember { mutableStateOf<CardRoute?>(null) }
@@ -42,9 +42,12 @@ private sealed interface CardRoute {
     LaunchedEffect(walletState.opened) { walletState.opened?.let { tab = Tab.Wallet; activityDetail = false; route = CardRoute.Detail(it); wallet.consumeOpened() } }
     LaunchedEffect(auth.phase, walletState.needSignIn) { if (auth.phase == AccountPhase.SIGNED_IN && walletState.needSignIn) wallet.retryPending() }
     // Every tab root sits on the theme `background` (the surfaceContainerLow tone, iOS systemGroupedBackground parity); cards, sheets and tiles are
-    // `surface` on top. The status-bar inset is applied once here, so page headers add only their own 8dp.
+    // `surface` on top. The status-bar inset is applied once here, so page headers add only their own 8dp. The IME inset is also applied once
+    // here (contract "키보드 내리기"): pages add `imeNestedScroll()` on their scroll containers but no `imePadding()` of their own, and the tab bar is
+    // hidden while the keyboard is up so no tab-bar band sits between the content and the keyboard.
+    val imeVisible = WindowInsets.isImeVisible
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onSurface) {
-        Column(Modifier.statusBarsPadding().navigationBarsPadding()) {
+        Column(Modifier.statusBarsPadding().navigationBarsPadding().imePadding()) {
             Box(Modifier.weight(1f)) {
                 when (val screen = route) {
                     is CardRoute.Detail -> walletState.cards.firstOrNull { it.id == screen.id }?.let { WalletCardRoute(it, wallet, myCards) { route = null } }
@@ -66,7 +69,7 @@ private sealed interface CardRoute {
             // The first-profile funnel (never saved) takes the whole screen, like Toss: no tab bar until the profile exists.
             val settingUp = tab == Tab.Profile && profileState.settingUp
             // Stock Material 3 navigation bar with the theme's defaults (2026-10-18 user decision: no custom styling). The Column already pads the system bar.
-            if (route == null && !activityDetail && !settingUp) {
+            if (route == null && !activityDetail && !settingUp && !imeVisible) {
                 NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
                     Tab.entries.forEach { item -> NavigationBarItem(selected = tab == item, onClick = { tab = item }, icon = { Icon(item.icon, null) }, label = { Text(item.label) }) }
                 }
