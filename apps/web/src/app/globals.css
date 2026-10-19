@@ -1,7 +1,7 @@
 @import "../shared/ui/pretendard.css";
 :root {
-  --teal: #007f7b;
-  --teal-dark: #006763;
+  --teal: #007f80;
+  --teal-dark: #006768;
   --mint: #e9f6f3;
   --ink: #172426;
   --muted: #586669;
@@ -168,12 +168,20 @@ a {
   justify-content: space-between;
   gap: 20px;
 }
-/* Brand symbol (shared/ui/brand-symbol.tsx) draws in the theme's teal — the lighter variant in dark (contract "다크 모드"). */
+/* Brand lockup = symbol + "Dearby" in Pretendard 700 (shared/assets/brand/wordmark.svg is exactly this), both in the theme's
+   teal — the lighter variant in dark (contract "다크 모드"). Letter-spacing follows the wordmark's -4/210em. */
 .brand {
   display: flex;
   align-items: center;
+  gap: 8px;
   min-height: 48px;
   color: var(--teal);
+}
+.brand-name {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.4px;
 }
 .site-header nav {
   display: flex;

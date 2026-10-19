@@ -14,6 +14,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="header-inner">
           <Link className="brand" href="/" aria-label="dearby 탐색">
             <BrandSymbol size={40} />
+            <span className="brand-name">Dearby</span>
           </Link>
           <nav aria-label="주 메뉴">
             <Link
