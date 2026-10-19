@@ -15,6 +15,7 @@ data class ProgramSummaryResponse(
     val nearestRecruitmentEndAt: OffsetDateTime?,
     val matchedActivityIds: List<Long>,
     val category: String?, // 프로그램 기본 종류 코드(native-v1.md "활동 종류"), 없으면 null
+    val latestActivityAt: OffsetDateTime?, // 게시 활동의 가장 최근 활동 시작(native-v1.md "모집 중인 프로그램만 보기")
 ) {
     companion object {
         fun from(summary: ProgramSummary, language: ResponseLanguage) = ProgramSummaryResponse(
@@ -26,6 +27,7 @@ data class ProgramSummaryResponse(
             nearestRecruitmentEndAt = summary.nearestRecruitmentEndAt,
             matchedActivityIds = summary.matchedActivityIds,
             category = summary.category?.name,
+            latestActivityAt = summary.latestActivityAt,
         )
     }
 }

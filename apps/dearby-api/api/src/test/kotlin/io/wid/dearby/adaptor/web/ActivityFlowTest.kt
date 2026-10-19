@@ -11,6 +11,7 @@ import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
 // V5가 넣은 Let'Swift 활동과 테스트가 만든 활동으로 공개 조회·검색·페이지를 확인한다
@@ -129,6 +130,65 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         val nearestSeoulDate = nearest.atZoneSameInstant(java.time.ZoneId.of("Asia/Seoul")).toLocalDate()
         assertEquals(java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).plusDays(3), nearestSeoulDate)
         jdbc.sql("update activities set publication_status = 'DRAFT' where id = ?").param(upcomingId).update()
+        // 열린 활동 판정 일원화(native-v1.md): 날짜 일정(ALL_DAY) 모집 기간도 서울 오늘을 포함하면 열린 활동이고, GET /v1/activities?open=true가 같은 규칙을 쓴다
+        fun applicationAllDay(activityId: Long, startOffset: Int, endOffset: Int) = jdbc.sql(
+            """
+            insert into schedules (activity_id, slot, title, kind, status, time_type, start_date, end_date_exclusive, date_label, sequence, created_at, updated_at)
+            values (?, 'APPLICATION', '신청 기간', 'DEADLINE', 'CONFIRMED', 'ALL_DAY', (now() at time zone 'Asia/Seoul')::date + ?, (now() at time zone 'Asia/Seoul')::date + ?, '', 0, localtimestamp, localtimestamp)
+            """
+        ).params(activityId, startOffset, endOffset).update()
+        val allDayOpenId = createActivity("종일 모집 중")
+        applicationAllDay(allDayOpenId, -1, 2)
+        val allDayEndedId = createActivity("종일 모집 끝")
+        applicationAllDay(allDayEndedId, -10, 0)
+        val timedClosedId = createActivity("시각 모집 끝")
+        jdbc.sql(
+            """
+            insert into schedules (activity_id, slot, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, 'APPLICATION', '신청 기간', 'DEADLINE', 'CONFIRMED', 'TIMED', now() - interval '10 days', now() - interval '1 hour', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp)
+            """
+        ).param(timedClosedId).update()
+        fun ids(page: JsonNode) = (0 until page["items"].size()).map { page["items"][it]["id"].asLong() }
+        assertEquals(2, programs("")["items"].single()["openActivityCount"].asInt())
+        // 검색은 단어 유사도까지 보므로 포함 여부로 확인한다
+        val openSimilar = ids(search("open=true&q=종일 모집"))
+        assertTrue(allDayOpenId in openSimilar && allDayEndedId !in openSimilar, openSimilar.toString())
+        assertTrue(allDayEndedId in ids(search("q=종일 모집 끝")))
+        assertTrue(timedClosedId in ids(search("q=시각 모집 끝")))
+        assertTrue(timedClosedId !in ids(search("open=true&q=시각 모집 끝")))
+        assertEquals(setOf(openId, allDayOpenId), ids(search("open=true")).toSet())
+        jdbc.sql("update activities set publication_status = 'DRAFT' where id in (?, ?, ?)").params(allDayOpenId, allDayEndedId, timedClosedId).update()
+        // 모집 중인 프로그램만 보기(native-v1.md): openOnly=false면 최근 2년 안에 활동이 있었던 프로그램까지, 열린 프로그램 먼저. 3년 전 활동만 있는 프로그램은 빠진다
+        fun pastProgram(name: String, daysAgo: Int): Long {
+            jdbc.sql("insert into programs (organization_id, name, created_at, updated_at) values (?, ?, localtimestamp, localtimestamp)").params(organizationId, name).update()
+            val programId = jdbc.sql("select id from programs where name = ?").param(name).query(Long::class.java).single()
+            jdbc.sql(
+                """
+                insert into activities (program_id, name, description, participation_type, recruitment_status, official_url, freshness, source_note, publication_status, created_at, updated_at)
+                values (?, ?, '', 'SELECTION', 'UNKNOWN', 'https://example.com', 'STALE', '', 'PUBLISHED', localtimestamp - make_interval(days => ?), localtimestamp)
+                """
+            ).params(programId, "$name 활동", daysAgo).update()
+            val activityId = jdbc.sql("select id from activities where name = ?").param("$name 활동").query(Long::class.java).single()
+            jdbc.sql(
+                """
+                insert into schedules (activity_id, slot, title, kind, status, time_type, start_date, end_date_exclusive, date_label, sequence, created_at, updated_at)
+                values (?, 'ACTIVITY', '활동 기간', 'EVENT', 'CONFIRMED', 'ALL_DAY', (now() at time zone 'Asia/Seoul')::date - ?, (now() at time zone 'Asia/Seoul')::date - ? + 3, '', 0, localtimestamp, localtimestamp)
+                """
+            ).params(activityId, daysAgo, daysAgo).update()
+            return programId
+        }
+        val lastYear = pastProgram("지난해 프로그램", 400)
+        val threeYearsAgo = pastProgram("삼년전 프로그램", 1100)
+        val all = programs("openOnly=false")["items"]
+        val names = (0 until all.size()).map { all[it]["name"].asString() }
+        assertEquals("Let’Swift", names.first())
+        assertTrue("지난해 프로그램" in names && "삼년전 프로그램" !in names, names.toString())
+        val past = (0 until all.size()).map { all[it] }.single { it["id"].asLong() == lastYear }
+        assertEquals(0, past["openActivityCount"].asInt())
+        assertEquals(false, past["latestActivityAt"].isNull)
+        assertEquals(1, programs("")["items"].size())
+        jdbc.sql("delete from activities where program_id in (?, ?)").params(lastYear, threeYearsAgo).update()
+        jdbc.sql("delete from programs where id in (?, ?)").params(lastYear, threeYearsAgo).update()
         // 활동 종류(native-v1.md "활동 종류"): 코드 하나 또는 쉼표 목록, 대소문자 무시. 열린 활동 수와 공개 응답의 category에 함께 적용된다
         jdbc.sql("update activities set category = 'BOOTCAMP' where id = ?").param(openId).update()
         assertEquals(1, programs("category=bootcamp,conference")["items"].single()["openActivityCount"].asInt())
