@@ -228,9 +228,8 @@ export type ScheduleKind = "recruitment" | "activity";
 /**
  * Readable schedule text (contract "일정 표시 우선순위 — 2026-10-19 밤"): curated structured dates win over the collected
  * `dateLabel`. Timed → `M월 d일 (요일) HH:mm` in the schedule's zone (range `A ~ B`, same day `A ~ HH:mm`, end only
- * `~ B 마감`/`~ B까지` by `kind`); all-day → `M월 d일 (요일)` with the inclusive end (`endDateExclusive` minus a day); the year
- * is prefixed when a bound is outside the current year or the bounds span years. `dateLabel` shows only without any
- * structured date; else empty.
+ * `~ B 마감`/`~ B까지` by `kind`); all-day → `M월 d일 (요일)` with the inclusive end (`endDateExclusive` minus a day); a bound
+ * outside the current Seoul year carries its year. `dateLabel` shows only without any structured date; else empty.
  */
 export function scheduleLabel(schedule: Schedule | null, kind: ScheduleKind, now = Date.now()): string {
   if (!schedule) return "";
@@ -246,9 +245,8 @@ export function scheduleLabel(schedule: Schedule | null, kind: ScheduleKind, now
   const from = start === undefined ? undefined : koreanParts(start, timeZone, timed);
   const to = end === undefined ? undefined : koreanParts(end, timeZone, timed);
   const thisYear = koreanParts(now, "Asia/Seoul", false).year;
-  const withYear = [from, to].some((p) => p && p.year !== thisYear) || (from && to && from.year !== to.year);
   const text = (p: { year: string; day: string; time: string }) =>
-    `${withYear ? `${p.year}년 ` : ""}${p.day}${p.time && ` ${p.time}`}`;
+    `${p.year === thisYear ? "" : `${p.year}년 `}${p.day}${p.time && ` ${p.time}`}`;
   if (!from) return `~ ${text(to!)}${kind === "recruitment" ? " 마감" : "까지"}`;
   if (!to || end === start) return text(from);
   if (timed && from.year === to.year && from.day === to.day) return `${text(from)} ~ ${to.time}`;
