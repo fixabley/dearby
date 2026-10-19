@@ -57,6 +57,7 @@ export function upstreamFetch(
     token,
     body,
     query,
+    accept = "application/json",
     acceptLanguage,
   }: {
     method?: string;
@@ -64,6 +65,8 @@ export function upstreamFetch(
     token?: string;
     body?: unknown;
     query?: URLSearchParams;
+    /** Response kind asked of the API; JSON everywhere except the program logo image. */
+    accept?: string;
     /** Already validated; the API answers activity text in ko or en from it. */
     acceptLanguage?: string;
   },
@@ -71,7 +74,7 @@ export function upstreamFetch(
   const origin = apiOrigin();
   const key = guestProxyKey();
   if (!origin || (guest && !key)) throw new Error("UPSTREAM_UNCONFIGURED");
-  const headers: Record<string, string> = { Accept: "application/json" };
+  const headers: Record<string, string> = { Accept: accept };
   if (guest) headers["X-Guest-Proxy-Key"] = key!;
   if (guest && token) headers["X-Guest-Token"] = token;
   if (body !== undefined) headers["Content-Type"] = "application/json";
