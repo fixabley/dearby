@@ -28,13 +28,14 @@ class ActivityController(private val activities: ActivityService) {
         @RequestParam(required = false) category: String?, // 활동 종류 코드 하나 또는 쉼표 목록(native-v1.md "활동 종류")
         @RequestParam(defaultValue = "false") open: Boolean, // true면 열린 활동만(native-v1.md "열린 활동 판정 일원화")
         @RequestParam(required = false) tagIds: String?, // 태그 id 쉼표 목록, 모두 가진 활동만(native-v1.md "태그")
+        @RequestParam(defaultValue = "false") forHistory: Boolean, // true면 활동 이력 후보만(native-v1.md "활동 이력에서 단기 행사 제외")
         @RequestParam(required = false) cursor: Long?,
         @RequestParam(defaultValue = ActivityService.DEFAULT_PAGE_SIZE.toString()) size: Int,
         @RequestParam params: Map<String, String>, // 대상자 필터(age·educationStatus 등 camelCase 어휘)는 여기서 골라낸다
         @RequestHeader(HttpHeaders.ACCEPT_LANGUAGE, required = false) acceptLanguage: String?,
     ): ResponseEntity<ActivityPageResponse> {
         val language = ResponseLanguage.from(acceptLanguage)
-        val page = activities.search(ActivitySearch(q, organizationId, programId, cursor, size, eligibility = EligibilityFilter.from(params), categories = ActivityCategory.parseList(category), openOnly = open, tagIds = TagIds.parse(tagIds)))
+        val page = activities.search(ActivitySearch(q, organizationId, programId, cursor, size, eligibility = EligibilityFilter.from(params), categories = ActivityCategory.parseList(category), openOnly = open, tagIds = TagIds.parse(tagIds), forHistory = forHistory))
         return localized(language, ActivityPageResponse(page.items.map { ActivityResponse.from(it, language) }, page.nextCursor))
     }
 
