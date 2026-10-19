@@ -205,23 +205,52 @@ export function recruitment(
 function seoulDay(now: number): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(now));
 }
-const dateTime = (value: string, timeZone: string | null) =>
-  new Date(value).toLocaleString("ko-KR", {
-    timeZone: timeZone ?? "Asia/Seoul",
-    month: "long",
+/** Weekday-aware Korean date text (`M월 d일 (요일)`, `… HH:mm` with `time`, `yyyy년 …` with `year`) of an instant in a zone. */
+function koreanDate(time: number, timeZone: string, { time: withTime, year }: { time: boolean; year: boolean }): string {
+  const parts = new Intl.DateTimeFormat("ko-KR", {
+    timeZone,
+    year: "numeric",
+    month: "numeric",
     day: "numeric",
     weekday: "short",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-/** Readable schedule text: the API label first, otherwise its times or all-day start. */
-export function scheduleLabel(schedule: Schedule | null): string {
+    ...(withTime ? { hour: "2-digit", minute: "2-digit", hourCycle: "h23" } : {}),
+  }).formatToParts(new Date(time));
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? "";
+  const day = `${part("month")}월 ${part("day")}일 (${part("weekday")})`;
+  const text = withTime ? `${day} ${part("hour")}:${part("minute")}` : day;
+  return year ? `${part("year")}년 ${text}` : text;
+}
+function yearOf(time: number, timeZone: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric" }).format(new Date(time));
+}
+const DAY = 86_400_000;
+/**
+ * Readable schedule text (contract "일정 표시 우선순위 — 2026-10-19 밤"): curated structured dates win over the collected
+ * `dateLabel`. Timed → `M월 d일 (요일) HH:mm` in the schedule's zone (range `A ~ B`, end only `~ B 마감`); all-day →
+ * `M월 d일 (요일)` with the inclusive end (`endDateExclusive` minus a day); the year is prefixed when a bound is outside
+ * the current year or the bounds span years. `dateLabel` shows only without any structured date; else empty.
+ */
+export function scheduleLabel(schedule: Schedule | null, now = Date.now()): string {
   if (!schedule) return "";
-  if (schedule.dateLabel) return schedule.dateLabel;
-  const { startAt, endAt, timeZone } = schedule;
-  if (startAt || endAt)
-    return `${startAt ? dateTime(startAt, timeZone) : ""} ~ ${endAt ? dateTime(endAt, timeZone) : ""}`.trim();
-  return schedule.startDate ?? "";
+  const startAt = parseTime(schedule.startAt);
+  const endAt = parseTime(schedule.endAt);
+  const timed = startAt !== undefined || endAt !== undefined;
+  const endDateExclusive = parseTime(schedule.endDateExclusive);
+  const [start, end] = timed
+    ? [startAt, endAt]
+    : [parseTime(schedule.startDate), endDateExclusive === undefined ? undefined : endDateExclusive - DAY];
+  if (start === undefined && end === undefined) return schedule.dateLabel;
+  const timeZone = timed ? (schedule.timeZone ?? "Asia/Seoul") : "UTC";
+  const years = [start, end].filter((t) => t !== undefined).map((t) => yearOf(t, timeZone));
+  const year = years.some((y) => y !== yearOf(now, "Asia/Seoul")) || new Set(years).size > 1;
+  const format = (time: number) => koreanDate(time, timeZone, { time: timed, year });
+  if (start === undefined) return `~ ${format(end as number)} 마감`;
+  if (end === undefined || end === start) return format(start);
+  return `${format(start)} ~ ${format(end)}`;
+}
+function parseTime(value: string | null): number | undefined {
+  const time = value ? Date.parse(value) : NaN;
+  return Number.isNaN(time) ? undefined : time;
 }
 /**
  * Same-origin `<img src>` for a program logo (contract "프로그램 로고"): the API's `/v1/programs/{id}/logo?v=…` becomes the
