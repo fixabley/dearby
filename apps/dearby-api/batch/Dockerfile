@@ -11,6 +11,8 @@ FROM eclipse-temurin:25-jre-noble
 WORKDIR /app
 # 브라우저 렌더링 수집(admin-v1.md "브라우저 렌더링"): Playwright가 쓰는 Chromium을 이미지에 넣는다. 모든 사용자가 읽을 수 있는 경로에 둔다
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+# 실행 시 Playwright가 브라우저를 다시 내려받으려 하지 않게 한다(2026-10-19: 첫 렌더링에서 install 프로세스를 기다리며 멈추던 문제)
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 # 수집 엔진 cli(COLLECTION_ENGINE=cli)용 Claude Code CLI. Node.js는 공식 node 이미지에서 가져온다
 COPY --from=node:24-bookworm-slim /usr/local/bin/node /usr/local/bin/node
 COPY --from=node:24-bookworm-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
