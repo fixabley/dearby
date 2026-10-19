@@ -50,6 +50,8 @@ PR #289(발견 카드 리뉴얼·장소·지오코딩) 배포 직후 사용자 �
 - **탭 제목·머리 여백**: "위쪽 탭바 여백이 너무 많아 활동 둘러보기가 탭바 위치로", "좌상단 메뉴 이름 통일성 없음, 내 명함 기준". 다섯 탭 모두 내 명함의 제목 줄(굵은 제목, 좌우 20, 안전 영역 아래 8)을 공통 컴포넌트로 그린다(iOS `PageTitle` 신설, Android `ScreenHeader`).
 - **배경·색 체계**: "배경색도 통일성이 없어, 테마에 맞춰" + "프라이머리·포인트 색이 아이폰 테마 색과 조합이 안 좋다, 어떻게?" → 추천안 A(중립색은 시스템에 맡기고 청록은 액센트 하나) 승인 "적용해줘". iOS 시스템 grouped 색·`.primary/.secondary/.separator`, 민트는 `teal.opacity(0.12)`; Android 청록 시드 M3 color scheme, 상수 Mint·Soft·Line·Quiet·Ink 제거. 선택지 B(청록 색 자체 변경)·C(다이내믹 컬러)는 로고 변경·브랜드 상실로 비추천.
 - **다크 모드**: "다크모드도 호환되게." 라이트 강제 제거, 시스템 따름, 청록 다크 변형 #3FB3B4, 웹도 `prefers-color-scheme` 토큰.
+- **활동 상세 이미지 제거**: "UI는 만족스러워. 활동 상세 페이지에 이미지 섹션 없애줘도 좋을 것 같아." 세 플랫폼 상세 머리 이미지 제거, `imageUrl`은 API·모델에 유지(iOS·Android 내 활동 행은 계속 쓴다).
+- 구현 결정(조율): Android 민트는 primaryContainer를 연하게 덮어씀(#D9F2F1/#1D4140), 구분선은 `surfaceContainerHighest`, 배경은 `surfaceContainerLow`+흰 카드(iOS grouped와 같은 구조), 벨은 발견 탭에만. iOS는 토큰 이름을 유지한 채 시스템 색 별칭으로 바꾸고 `onTeal`(다크에서 어두운 글자) 추가. 웹 머리는 심볼 SVG(`currentColor`) + Pretendard Bold "Dearby"(승인 워드마크 구성), theme-color 흰/#181f21, `--teal` #007F80로 정정, `logo-teal.png` 삭제. 디자인 계약 문서(`docs/design/native-visual-contract.md`)의 옛 워드마크·흰 배경 규칙을 현행화.
 - 진행: 워크트리 `logo`(브랜치 `feat/program-logo-compact-header`)에서 API·어드민·iOS·Android·웹 에이전트 동시 작업 → PR → 배포(API V38, 어드민 Vercel, 기기 설치).
 
 ## 남은 일·사용자 결정 대기
