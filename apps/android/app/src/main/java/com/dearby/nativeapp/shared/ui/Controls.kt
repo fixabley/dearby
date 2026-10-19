@@ -3,21 +3,13 @@ package com.dearby.nativeapp.shared.ui
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.KeyboardActions
 import android.provider.Settings
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.snap
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.*
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Velocity
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -77,38 +69,6 @@ import androidx.compose.ui.unit.dp
             if (query.isNotEmpty()) IconButton({ onQueryChange("") }) { Icon(Icons.Outlined.Cancel, "검색어 지우기", tint = MaterialTheme.colorScheme.onSurfaceVariant) } else Spacer(Modifier.width(14.dp))
         }
     }
-}
-
-/** 목록 맨 위에서 아래로 당기면 검색 칸을 펼치고, 목록을 위로 밀면 줄인다. 손을 떼면 0.5를 기준으로 0 또는 1로 맞춘다. */
-@Stable class DearbySearchReveal internal constructor(private val distancePx: Float, private val reduceMotion: Boolean, private val scope: CoroutineScope) {
-    private val value = Animatable(0f)
-    val expansion: Float get() = value.value
-    fun expand() = settle(1f)
-    private fun settle(target: Float) { scope.launch { if (reduceMotion) value.snapTo(target) else value.animateTo(target) } }
-    private fun move(delta: Float) { scope.launch { value.snapTo((value.value + delta / distancePx).coerceIn(0f, 1f)) } }
-    val connection = object : NestedScrollConnection {
-        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-            if (available.y < 0 && value.value > 0f) move(available.y)
-            return Offset.Zero
-        }
-        override fun onPostScroll(consumed: Offset, available: Offset, source: NestedScrollSource): Offset {
-            if (available.y <= 0 || source != NestedScrollSource.UserInput) return Offset.Zero
-            move(available.y)
-            return Offset(0f, available.y)
-        }
-        override suspend fun onPreFling(available: Velocity): Velocity {
-            val current = value.value
-            if (current > 0f && current < 1f) settle(if (current >= .5f) 1f else 0f)
-            return Velocity.Zero
-        }
-    }
-}
-
-@Composable fun rememberDearbySearchReveal(): DearbySearchReveal {
-    val distance = with(LocalDensity.current) { 56.dp.toPx() }
-    val reduceMotion = rememberReduceMotion()
-    val scope = rememberCoroutineScope()
-    return remember(distance, reduceMotion) { DearbySearchReveal(distance, reduceMotion, scope) }
 }
 
 /** [focusRequester] lets a funnel with one field per screen open the keyboard as the step appears. */

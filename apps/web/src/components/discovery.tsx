@@ -226,15 +226,15 @@ function TagChips({ tags }: { tags: Tag[] }) {
  * activity in (open list → live recruitment state; 모집 예정 group → soon; 지난 활동 → closed), and the `모집` row is emphasised
  * only while recruitment is not past and a period exists.
  */
-function cardProps(activity: Activity, statusTone: StatusTone) {
-  const recruitmentLabel = scheduleLabel(activity.application);
+function cardProps(activity: Activity, statusTone: StatusTone, now: number) {
+  const recruitmentLabel = scheduleLabel(activity.application, "recruitment", now);
   return {
     id: activity.id,
     name: activity.name,
     statusTone,
     recruitmentLabel,
     recruitmentActive: statusTone !== "closed" && recruitmentLabel !== "",
-    activityLabel: scheduleLabel(activity.activitySchedule),
+    activityLabel: scheduleLabel(activity.activitySchedule, "activity", now),
     // 장소 이름만 (contract "활동 장소"); the collected phrase stands in when no place is curated.
     placeName: activity.place?.name ?? activity.location ?? null,
   };
@@ -346,7 +346,7 @@ function OtherActivities({
           <ul className="activity-list">
             {group.items.map((activity) => (
               <li key={activity.id}>
-                <ActivityCard {...cardProps(activity, group.tone)} />
+                <ActivityCard {...cardProps(activity, group.tone, now)} />
               </li>
             ))}
           </ul>
@@ -427,7 +427,7 @@ function ProgramRow({
             <ul className="activity-list">
               {[...group.items].sort(byDeadline).map((activity) => (
                 <li key={activity.id}>
-                  <ActivityCard {...cardProps(activity, openTone(activity, now))} />
+                  <ActivityCard {...cardProps(activity, openTone(activity, now), now)} />
                 </li>
               ))}
             </ul>

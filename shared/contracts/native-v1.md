@@ -375,6 +375,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **색 체계(2026-10-19 밤, 사용자 "프라이머리·포인트 색이 아이폰 테마 색과 조합이 좋지 않다" → 추천안 A 승인 "적용해줘")**: 중립색은 플랫폼 시스템에 맡기고 청록(#007F80, 로고 색)은 **하나의 액센트**로만 쓴다. 직접 정한 중립 토큰(배경 #F3F5F6·선 #E3E8EA·보조 글자 #657078·본문 #172027·민트 #F0FCFA·soft)은 없앤다.
   - iOS: 배경 `Color(.systemGroupedBackground)`, 카드·입력 면 `Color(.secondarySystemGroupedBackground)`, 글자 `.primary`/`.secondary`, 구분선 `Color(.separator)`, 비활성 칩·마감 배지 `Color(.tertiarySystemFill)`, 청록은 `.tint(DearbyStyle.teal)`과 채워진 강조에만. 민트 바탕은 `DearbyStyle.teal.opacity(0.12)`(글자 청록). 다크 모드는 시스템 색이 따라오므로 앱이 라이트 모드를 강제하던 설정이 있으면 유지 여부를 그대로 둔다(이번 범위 밖).
   - Android: `lightColorScheme`/`darkColorScheme`을 청록 시드(#007F80)의 Material 3 톤으로 정의한다(primary 청록, primaryContainer 연청록, surface/background·surfaceContainer·outlineVariant·onSurfaceVariant는 시드에서 나온 중립 톤). 상수 `Mint`·`Soft`·`Line`·`Quiet`·`Ink`는 `colorScheme.primaryContainer`·`surfaceContainer`·`outlineVariant`·`onSurfaceVariant`·`onSurface`로 바꾸고 상수를 지운다. `Teal`은 `colorScheme.primary`로 읽는다. 다이내믹 컬러는 켜지 않는다(브랜드 유지).
+  - **청록 채움 면 위 글자는 흰색(사용자 2026-10-19 밤 "진한 청록색이 배경인 경우 폰트색을 흰색이 되도록")**: 버튼·배지·칩·아바타처럼 청록으로 채운 면 위의 글자·아이콘은 라이트·다크 모두 **흰색**이다. 다크 모드에서도 채움 면은 진한 청록 `#007F80`(토큰 `tealFill`, 두 모드 같은 값; 흰 글자 대비 4.8:1)을 쓰고, 어두운 배경 위의 글자·아이콘·테두리 액센트만 밝은 청록 `#3FB3B4`(`teal`)를 쓴다. 이전의 다크 `onTeal #0C4848`(어두운 글자)·Android 다크 `onPrimary #0C4848`은 폐기한다. iOS: `DearbyStyle.tealFill`(고정 #007F80) + `onTeal = .white`, 채움 버튼은 `.tint(tealFill)`. Android: `colorScheme.primary`는 텍스트·아이콘 액센트(라이트 #007F80, 다크 #3FB3B4)로 두고, 채움 컴포넌트(`DearbyButton`, `Badge`, 채운 칩, `InitialAvatar` filled)는 `TealFill`(#007F80)·`Color.White`를 명시한다(다크 `onPrimary`는 더 쓰지 않음).
   - **다크 모드(사용자 "다크모드도 호환되게 해줘")**: 앱이 라이트 모드를 강제하던 설정은 지우고 시스템 설정을 따른다. 하드코딩한 `.white`/`.black`·#FFFFFF 면은 시스템·테마 색으로 바꾼다. 청록은 다크에서 밝은 변형(라이트 #007F80 → 다크 #3FB3B4)을 쓴다: iOS는 Asset Catalog 색 또는 `UIColor { trait in … }`로 `DearbyStyle.teal`에 두 값을 넣고, Android는 `darkColorScheme`의 primary에 둔다. 상태 표시줄·탭 막대·시트는 시스템 모양을 따른다. 로고 심볼은 청록 단색이라 다크에서 밝은 청록으로 그린다. 웹도 `prefers-color-scheme: dark`에서 토큰(배경·카드·글자·선·청록 변형)을 재정의하되 디자인은 바꾸지 않는다.
 
 - **활동 상세 이미지 섹션 제거(2026-10-19 밤, 사용자 "UI는 만족스러워. 활동 상세 페이지에 이미지 섹션 없애줘도 좋을 것 같아")**: 활동 상세의 머리 이미지(iOS `ActivityArtwork`, Android `ActivityImage`, 웹 `.detail-image`)를 iOS·Android·웹에서 없앤다. 제목·조직·상태 칩이 바로 위에 온다. API `Activity.imageUrl`은 그대로 두고 클라이언트가 보여 주지 않을 뿐이다. 목록·다른 화면에서 쓰지 않게 된 이미지 컴포넌트는 지운다.
@@ -383,10 +384,20 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 사용자: "활동 둘러보기 아래로 스크롤할 때 활동 둘러보기랑 알림 아이콘은 고정해 주고, 검색창·마감 숨기기는 위로 숨겨졌다가 아래로 스크롤할 때 보이도록 해줘. 최상단에서 풀투 리프레시 지원해줘. 플로팅 버튼으로 최상단으로 즉시 스크롤할 수 있게 해줘." iOS·Android. 웹은 변경 없음.
 
+- **알림 아이콘은 다섯 탭 모두 우상단 고정(사용자 2026-10-19 밤 "알림 표시는 탭바로 접근할 수 있는 모든 곳에서 우상단에 고정")**: 발견·내 활동·내 명함·받은 명함·프로필의 제목 줄(PageTitle/ScreenHeader) 오른쪽 끝에 같은 알림 버튼(`bell`/`Notifications`, 44 터치 영역, 접근성 이름 `알림`)을 둔다. 다른 보조 행동(내 활동 `예시` 배지, 프로필 `변경 이력`·`명함 만들기`)은 알림 버튼 왼쪽에 둔다. 제목 줄은 스크롤과 무관하게 고정이므로 알림도 항상 보인다. 알림 화면은 아직 자리만(기존 안내 문구).
 - **고정 제목 줄**: `활동 둘러보기` 제목과 알림 아이콘(PageTitle/ScreenHeader)은 스크롤과 무관하게 항상 위에 고정된다. 배경은 페이지 배경과 같고, 내용이 밑으로 지나가면 얇은 구분선(iOS `Color(.separator)`, Android `surfaceContainerHighest`)이 나타난다.
 - **접히는 검색 영역**: 검색창과 `마감 숨기기` 토글 묶음은 아래로 스크롤하면 위로 밀려 접히고(높이 0, 투명도 0), 위로 스크롤하기 시작하면(방향 전환) 즉시 다시 펼쳐진다 — 맨 위까지 올라가지 않아도 보인다(One UI·Material "enter always" 방식). 애니메이션은 스크롤 오프셋에 비례하되 짧은 스프링으로 마무리하고, 동작 줄이기에서는 즉시 전환. 검색창에 포커스가 있는 동안은 접지 않는다. iOS는 `ScrollView` + `onScrollGeometryChange`(iOS 18)로 방향·오프셋을 읽고, Android는 `NestedScrollConnection`으로 소비 오프셋을 누적한다(`TopAppBar`의 `enterAlwaysScrollBehavior`와 같은 규칙; 제목 줄은 고정이라 TopAppBar 자체는 쓰지 않는다).
 - **풀투 리프레시**: 맨 위에서 당기면 프로그램 목록을 처음부터 다시 조회한다(펼침 상태는 유지하되 펼친 프로그램의 활동도 다시 받는다). iOS `.refreshable`, Android Material 3 `PullToRefreshBox`. 당기는 동안 제목 줄은 움직이지 않고 표시기는 검색 영역 아래에 나온다. 실패하면 기존 오류 표시 규칙을 따른다.
-- **맨 위로 버튼**: 첫 화면 높이 이상 내려가면 오른쪽 아래(탭 막대 위 16, 오른쏙 20)에 둥근 플로팅 버튼(iOS: 44 원형, `Color(.secondarySystemGroupedBackground)` 바탕·청록 `arrow.up` SF Symbol·얇은 그림자; Android: Material 3 `SmallFloatingActionButton`, `Icons.Rounded.ArrowUpward`)이 페이드로 나타나고, 누르면 애니메이션 없이 즉시 맨 위로 간다(검색 영역도 펼쳐진다). 접근성 이름 `맨 위로`. 맨 위 근처에서는 숨긴다. iOS의 상태 표시줄 탭으로 맨 위 가기는 그대로 둔다.
+- **맨 위로 버튼**: 첫 화면 높이 이상 내려가면 오른쪽 아래(탭 막대 위 16, 오른쏙 20)에 둥근 플로팅 버튼(iOS: 시스템 원형 버튼 `.borderedProminent` + `.buttonBorderShape(.circle)` + `.controlSize(.large)`에 `arrow.up` — 사용자 2026-10-19 밤 "iOS는 기본 플로팅 버튼 UI 활용"으로 직접 그린 원·그림자는 쓰지 않는다; Android: Material 3 `SmallFloatingActionButton`, `Icons.Rounded.ArrowUpward`)이 페이드로 나타나고, 누르면 애니메이션 없이 즉시 맨 위로 간다(검색 영역도 펼쳐진다). 접근성 이름 `맨 위로`. 맨 위 근처에서는 숨긴다. iOS의 상태 표시줄 탭으로 맨 위 가기는 그대로 둔다.
+
+## 폼은 플랫폼 기본 컴포넌트 — 2026-10-19 밤 사용자 결정
+
+사용자: "폼 같은 경우 각 플랫폼 기본 폼을 사용해줘. 뭔가 높이나 폰트가 앱에서 누르기는 힘들어 보여." 직접 만든 입력 컨트롤(iOS `DearbyInlineField`의 밑줄형 작은 필드, Android `Controls.kt`의 사용자 정의 필드 등)을 없애고 플랫폼 기본 폼을 쓴다. 범위: 프로필 입력 퍼널·프로필 편집, 이력 입력 퍼널, 명함 만들기/고치기, 연락처 추가, 직무 선택, 로그인 시트, 동의 화면, 발견 검색창. 웹은 변경 없음.
+
+- **iOS**: 입력 화면은 `Form`(또는 `List`) + `.insetGrouped` 섹션으로 구성하고 행에는 `TextField`·`SecureField`·`Toggle`·`Picker`·`DatePicker`·`LabeledContent`를 그대로 둔다. 글꼴은 시스템 텍스트 스타일(`.body`, Pretendard 매핑은 크기 17 유지), 행 최소 높이 44, 섹션 제목은 `Section("…")`, 도움말은 `footer`. 여러 줄 입력은 `TextField(axis: .vertical)` + `lineLimit(3...)`. 검색창은 `.searchable` 대신 발견 페이지의 고정 제목 구조를 지키므로 `TextField`를 `.textFieldStyle(.roundedBorder)` 대신 **둥근 `Color(.tertiarySystemFill)` 바탕 높이 44의 시스템 검색 모양**(`magnifyingglass` + 지우기 버튼)으로 둔다. 주 버튼은 `.borderedProminent` + `.controlSize(.large)`(높이 50). 키보드 종류·`submitLabel`·`textContentType`을 지정한다. 오류 문구는 행 아래 `.footnote` 빨강.
+- **Android**: Material 3 `OutlinedTextField`(기본 높이 56dp, `bodyLarge`, `label`·`supportingText`·`isError`), 여러 줄은 `minLines`, 선택은 `ExposedDropdownMenuBox`, 날짜는 `DatePickerDialog`, 스위치는 `Switch` + `ListItem`, 주 버튼은 `Button` 기본 높이 48 이상(`ButtonDefaults`), `KeyboardOptions`/`KeyboardActions` 지정. 사용자 정의 높이·폰트 크기를 두지 않는다. 검색창은 `OutlinedTextField`가 아니라 Material 3 `SearchBar`의 입력 필드 모양(`SearchBarDefaults.InputField`, 높이 56, 둥근 바탕)을 쓴다.
+- 공통: 터치 영역은 iOS 44pt·Android 48dp 이상, 라벨은 항상 보이는 라벨(placeholder만으로 설명하지 않음), 필수 표시는 라벨 끝 `*`가 아니라 도움말 문장. 기존 입력값·검증·저장 흐름은 바꾸지 않는다.
+- **키보드 내리기(사용자 "키보드가 올라왔을 때 폼을 제외한 다른 곳 클릭 시 내려가게")**: 입력 필드 밖을 누르면 키보드가 내려간다. 스크롤로도 내려간다. iOS: 화면 루트에 `.scrollDismissesKeyboard(.interactively)`와, 빈 곳 탭 때 `@FocusState`를 `nil`로 만드는 탭 제스처(버튼·링크·필드의 탭은 그대로 전달, `simultaneousGesture` 아님 — 배경 전용). 앱 전체 입력 화면에 공통 modifier(`shared/ui`)로 적용한다. Android: 입력 화면 루트 `Modifier.pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } }`(필드·버튼은 자기 탭을 먼저 받으므로 영향 없음) + LazyColumn/Column 스크롤에 `imeNestedScroll`·`imePadding`. 발견 검색창도 같다.
 
 ## 신청 확인 조건 완화·공개 applicationUrl — 2026-10-19 밤 사용자 결정
 
@@ -397,6 +408,56 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **질문 조건**: 모집 상태가 `closed`가 아니면 CTA를 눌러 외부 브라우저로 나간 뒤 앱이 다시 활성화될 때 "신청하셨나요?" 시트를 띄운다(open·upcoming·정보 없음 모두). closed면 묻지 않는다. 선택지·`다시 묻지 않기`·내 활동 표시 규칙은 2026-10-06 그대로. 이미 신청함인 활동은 묻지 않는다.
 - **내 활동**: `신청했어요`를 고르면 2026-10-06 규칙대로 내 활동 탭의 진행 트랙에 들어간다(사용자 기록, 주최 측 확인 아님). 변경 없음.
 - 웹: 변경 없음(웹에는 신청 확인 흐름이 없다).
+
+## 일정 표시 우선순위 — 2026-10-19 밤 사용자 지적
+
+사용자: "운영자 지정 날짜가 있음에도 클라이언트에서 수집 원문이 노출되고 있어." 원인: 세 클라이언트가 활동 기간·모집 기간을 그릴 때 `dateLabel`(수집 원문 문구)이 있으면 그것을 먼저 쓰고, 운영자가 지정한 구조화 날짜(`startDate`/`endDateExclusive`, `startAt`/`endAt`)를 뒤로 미뤘다. 서버는 운영자 지정 뒤에도 원문 `dateLabel`을 그대로 돌려준다(어드민 `기간 확인` 판정과 수집 피드백에 필요).
+
+- **규칙(iOS·Android·웹 공통)**: Schedule을 글자로 보일 때 **구조화 날짜가 있으면 그것을 형식화**해 보인다(종일: `M월 d일 (요일)`·범위는 `~`, 연도는 **오늘(서울) 연도와 다른 날짜에만** 붙인다(`12월 30일 (수) ~ 2027년 1월 2일 (토)`); 시각: `M월 d일 (요일) HH:mm`, 같은 날 범위는 `M월 d일 (요일) 14:00 ~ 18:00`으로 날짜를 한 번만; 끝만 있으면 모집 기간은 `~ M월 d일 (요일) HH:mm 마감`, 활동 기간·세부 일정은 `~ M월 d일 (요일) HH:mm까지`). `dateLabel`은 **구조화 날짜가 전혀 없을 때만** 보이고, 그것도 없으면 `미정`/`일정 미확인`. 발견 활동 카드의 `모집`·`활동` 줄, 활동 상세의 `개최 일시`·모집 기간, 내 활동 행·진행 트랙 단계, 받은 명함·이력 선택의 활동 표시, 웹 활동 카드·상세 모두 같은 규칙.
+- 서버·어드민은 바꾸지 않는다. 어드민은 원문과 지정값을 둘 다 보이는 기존 규칙 유지.
+
+## 비스크롤 화면 배치·CTA — 2026-10-19 밤 사용자 결정
+
+사용자: "리스트처럼 스크롤 요소가 있는 게 아닌 경우 되도록 요소를 중앙에 배치해줘. 카드 없이. 클릭 요소는 최대한 CTA처럼 배치해줘." iOS·Android.
+
+- **대상**: 목록·긴 폼처럼 스크롤이 본질인 화면이 아닌 화면 — 빈 상태(내 활동 없음, 내 명함 없음, 받은 명함 없음, 검색 결과 없음), 로그인 시트, 동의 화면, 시작(인트로) 화면, QR 보이기, 캘린더 겹침 결과, 신청 확인 시트, 오류 화면, 계정 연결 시트.
+- **카드는 섹션을 나눌 때만(사용자 "카드 디자인은 섹션을 나눌 필요가 없다면 굳이 사용하지 않아도 괜찮아")**: 둥근 카드·테두리 상자는 한 화면 안에서 서로 다른 묶음을 구분해야 할 때(발견 프로그램 카드, 프로필의 연락처/이력 섹션, 받은 명함 목록 면)만 쓴다. 내용이 한 묶음뿐인 화면(상세의 본문, 이력·프로필 입력 폼, 명함 만들기, 빈 상태, 시트)은 카드 없이 배경 위에 바로 그린다. 폼은 플랫폼 기본 inset grouped/OutlinedTextField 그대로.
+- **배치**: 내용(아이콘/심볼·제목·설명)을 화면(또는 시트) 가운데에 세로·가로 중앙 정렬한다. 둥근 카드·테두리 상자로 감싸지 않고 배경 위에 바로 놓는다(동의 체크 행처럼 폼 요소는 플랫폼 기본 폼 그대로). 글자는 중앙 정렬, 설명은 보조색, 좌우 여백 24.
+- **클릭 요소는 CTA**: 그 화면의 행동 버튼은 화면(시트) 아래쪽에 전체 너비 주 버튼(iOS `.borderedProminent` + `.controlSize(.large)`, Android `Button` 기본 높이 이상 전체 너비)으로 두고, 보조 행동은 그 아래 텍스트 버튼(iOS `.borderless`, Android `TextButton`)으로 둔다. 인라인 링크·작은 아이콘 버튼으로 숨기지 않는다. 안전 영역 아래 여백 16. 주 버튼이 둘 이상이면 세로로 쌓는다(가로 분할 금지).
+- **글자 크기 통일(사용자 "이런 경우가 많을 경우 해당 요소들의 폰트 크기를 통일감 있게")**: 이 화면들은 한 가지 글자 계층만 쓴다 — 심볼/아이콘 48, 제목 iOS `.title2.bold()`·Android `headlineSmall`(굵게), 설명 iOS `.body`·Android `bodyLarge`(보조색, 최대 3줄), 주 버튼은 플랫폼 기본 버튼 라벨, 보조 텍스트 버튼도 기본 라벨. 화면마다 다른 크기(`.title`·`.headline`·`titleMedium`·`SemiBold` 등)를 섞지 않는다. 공통 컴포넌트 하나(iOS `shared/ui` `CenteredMessage(symbol:title:message:primary:secondary:)`, Android `shared/ui` `CenteredMessage(...)`)로 그려 크기가 어긋날 여지를 없앤다.
+- 큰 글씨·작은 화면에서 내용이 넘치면 가운데 정렬을 유지한 채 스크롤이 생긴다(`ScrollView`/`verticalScroll` + 최소 높이 = 화면). 동작 줄이기 영향 없음. 웹은 변경 없음.
+
+## 아이콘 통일 — 2026-10-19 밤 사용자 결정 (토스 참고)
+
+사용자: "아이콘 사용도 통일감 있게 해줘. 필요시 mobbin에서 토스 디자인 참고해줘." 토스 참고 화면(Mobbin): 상태 화면은 가운데 큰 단색 원형 아이콘 하나 + 제목 + 설명 + 하단 CTA([채움 완료](https://mobbin.com/screens/5faf70d5-f007-4bfa-86ff-55802a53c121), [알림 동의 시트](https://mobbin.com/screens/280b81aa-61ec-45f3-9761-61d79670fac8)), 목록 행은 왼쪽 작은 둥근 글리프 + 문장([혜택 목록](https://mobbin.com/screens/fd918402-6e06-4328-9aef-2ea45dd70805)). 현황: iOS는 SF Symbols 30여 종을 굵기·렌더링 지정 없이 섞어 쓰고, Android는 `Icons.Outlined` 61곳·`Rounded` 2곳이 섞여 있다.
+
+- **한 가족만**: iOS는 SF Symbols만(사용자 PNG 아이콘 금지, 브랜드 심볼·GitHub 마크만 예외), Android는 **`Icons.Rounded`** 한 가족만(`Outlined`·`Filled`·`Default` 금지, `AutoMirrored.Rounded`는 허용). 색은 iOS `.foregroundStyle(.secondary)`/`DearbyStyle.teal`, Android `onSurfaceVariant`/`primary` 두 가지만.
+- **세 가지 크기**: ① 인라인(글자 옆·버튼 안): 글자 크기 따름(iOS `.imageScale(.medium)`, Android 20dp), 선형(outline 계열 SF 이름, Rounded는 그대로). ② 행 앞 글리프(목록·정보 행): 24, 보조색, 같은 열에 맞춤. ③ 상태 아이콘(빈 상태·완료·오류·시트 머리): **청록 채움 원 64 안의 흰 글리프 28**(토스의 파란 체크 원처럼; 흰 글자 규칙과 같음), 오류는 `danger` 채움 원. `CenteredMessage`의 `symbol`이 이 형태를 그린다. iOS 큰 상태 심볼은 `.fill` 변형, 인라인은 선형.
+- **의미별 고정 이름**(둘 다 이 표만 쓴다): 일정·달력 `calendar`/`Event`, 시각 `clock`/`Schedule`, 장소 `mappin.and.ellipse`/`Place`, 외부 링크 `arrow.up.right`/`AutoMirrored.Rounded.OpenInNew`, 수정 `pencil`/`Edit`, 삭제 `trash`/`Delete`, 추가 `plus`/`Add`, 제거 `minus.circle`/`RemoveCircle`, 검색 `magnifyingglass`/`Search`, 지우기 `xmark.circle.fill`/`Cancel`, 닫기 `xmark`/`Close`, 뒤로 `chevron.left`/`AutoMirrored.Rounded.ArrowBack`, 펼침 `chevron.down`/`ExpandMore`, 성공·확인 `checkmark.circle`(상태는 `.fill`)/`CheckCircle`, 오류 `exclamationmark.triangle`/`Warning`, 정보 `info.circle`/`Info`, 알림 `bell`/`Notifications`, QR `qrcode`/`QrCode`, 명함 `person.text.rectangle`/`Badge`, 프로필 `person.crop.circle`/`AccountCircle`, 활동 둘러보기 `safari`/`Explore`, 내 활동 `checklist`/`Checklist`, 받은 명함 `tray.full`/`Inbox`, 공유 `square.and.arrow.up`/`Share`, 지도 `map`/`Map`, 전화 `phone`/`Call`, 메일 `envelope`/`Mail`, 첨부 `paperclip`/`AttachFile`, 사진 `photo`/`Image`, 눈 `eye`/`Visibility`, 잠금 `lock`/`Lock`, 기기 `iphone`/`Smartphone`, 위로 `arrow.up`/`ArrowUpward`. 표에 없는 뜻이 생기면 표에 먼저 더한다.
+- **탭 막대**: 다섯 탭은 위 표의 활동 둘러보기·내 활동·명함·받은 명함·프로필 아이콘을 쓰고, 선택 상태는 iOS 기본(`.fill` 자동), Android `NavigationBar` 기본.
+- 적용 시점: 비스크롤 화면 배치·흰 글자 규칙과 같은 묶음(현재 PR 병합 뒤).
+
+## 설정 — 2026-10-19 밤 사용자 결정
+
+사용자: "설정 버튼도 (알림) 옆에 같이 뒀으면 해. 거기서 계정 설정, 연결된 OAuth2, 패스키 관리할 수 있게." iOS·Android. 웹은 이번 범위 밖.
+
+- **진입**: 다섯 탭 제목 줄 우상단, 알림 버튼 왼쪽에 설정 버튼(`gearshape`/`Settings`, 44 터치 영역, 접근성 이름 `설정`). 누르면 `설정` 화면(푸시, inline 제목 `설정`, 뒤로 가기). 로그인하지 않았으면 설정 화면은 `로그인` CTA와 개인정보·약관·버전만 보인다.
+- **화면 구성(플랫폼 기본 그룹 목록: iOS `List(.insetGrouped)`, Android `ListItem` 섹션)**:
+  1. `계정`: 가입일(`createdAt`), 로그인 수단 수 요약. 행 `로그아웃`(확인 시트 → `POST /v1/auth/logout` + 토큰 삭제), `계정 삭제`(기존 "계정 삭제" 흐름으로 이동, destructive).
+  2. `연결된 로그인`: Apple·Google 두 행. 연결됨이면 이메일(가린 이메일 그대로)·연결일과 `연결 해제`, 아니면 `연결하기`(기존 네이티브 로그인 → `POST /v1/me/identities/{apple|google}` 링크 흐름 재사용). **마지막 로그인 수단은 해제할 수 없다**(패스키 0개이고 다른 OAuth 연결이 없으면 해제 버튼 비활성 + 설명).
+  3. `패스키`: 이 계정의 패스키 목록(이름 `label`, 만든 날, 마지막 사용, 기기 동기화 여부 `backupState`). 행을 밀거나 누르면 `이름 바꾸기`·`삭제`. 맨 아래 `패스키 추가`(기존 등록 흐름 `POST /v1/auth/passkeys/registration/options` → `registration`, 로그인 상태에서 호출). 마지막 로그인 수단이면 삭제 불가(위와 같은 규칙).
+  4. `정보`: 개인정보 처리방침·이용약관(인앱 브라우저), 앱 버전·빌드.
+- **API(`auth` 모듈, Bearer)**:
+  | 메서드·경로 | 응답 |
+  | --- | --- |
+  | GET /v1/me | 200 `{id, createdAt, signInMethods: {passkeys: n, apple: bool, google: bool}}` |
+  | GET /v1/me/identities | 200 `{items: [{provider: "apple"|"google", email, displayName, linkedAt}]}` |
+  | DELETE /v1/me/identities/{provider} | 204. 마지막 수단이면 409 `LAST_SIGN_IN_METHOD`. 애플은 refresh token 폐기(계정 삭제와 같은 경로), 구글은 행 삭제 |
+  | GET /v1/me/passkeys | 200 `{items: [{id(credentialId), label, createdAt, lastUsedAt, backedUp, transports[]}]}` |
+  | PATCH /v1/me/passkeys/{id} | `{label}`(1~60자) → 200 항목 |
+  | DELETE /v1/me/passkeys/{id} | 204. 마지막 수단이면 409 `LAST_SIGN_IN_METHOD`. 남이 가진 id면 404 |
+  "마지막 수단" 판정: 패스키 수 + 연결된 OAuth 수가 1이면 그 하나는 지울 수 없다. 이미 있는 `POST /v1/auth/passkeys/registration/options`·`registration`은 Bearer가 있으면 그 계정에 패스키를 더한다(없으면 기존 가입 흐름).
+- 저장: 변경 없음(`user_credentials`·`user_identities` 그대로).
 
 ## 활동 장소 — 2026-10-19 사용자 결정
 

@@ -205,23 +205,56 @@ export function recruitment(
 function seoulDay(now: number): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(now));
 }
-const dateTime = (value: string, timeZone: string | null) =>
-  new Date(value).toLocaleString("ko-KR", {
-    timeZone: timeZone ?? "Asia/Seoul",
-    month: "long",
+/** `ko-KR` parts of an instant in a zone, with `HH:mm` (24h) when `withTime`. */
+function koreanParts(time: number, timeZone: string, withTime: boolean) {
+  const parts = new Intl.DateTimeFormat("ko-KR", {
+    timeZone,
+    year: "numeric",
+    month: "numeric",
     day: "numeric",
     weekday: "short",
-    hour: "numeric",
-    minute: "2-digit",
-  });
-/** Readable schedule text: the API label first, otherwise its times or all-day start. */
-export function scheduleLabel(schedule: Schedule | null): string {
+    ...(withTime ? { hour: "2-digit", minute: "2-digit", hourCycle: "h23" } : {}),
+  }).formatToParts(new Date(time));
+  const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((p) => p.type === type)?.value ?? "";
+  return {
+    year: part("year"),
+    day: `${part("month")}월 ${part("day")}일 (${part("weekday")})`,
+    time: withTime ? `${part("hour")}:${part("minute")}` : "",
+  };
+}
+const DAY = 86_400_000;
+/** Which slot a schedule fills: the end-only suffix is `마감` for recruitment and `까지` for activity periods and detail schedules. */
+export type ScheduleKind = "recruitment" | "activity";
+/**
+ * Readable schedule text (contract "일정 표시 우선순위 — 2026-10-19 밤"): curated structured dates win over the collected
+ * `dateLabel`. Timed → `M월 d일 (요일) HH:mm` in the schedule's zone (range `A ~ B`, same day `A ~ HH:mm`, end only
+ * `~ B 마감`/`~ B까지` by `kind`); all-day → `M월 d일 (요일)` with the inclusive end (`endDateExclusive` minus a day); a bound
+ * outside the current Seoul year carries its year. `dateLabel` shows only without any structured date; else empty.
+ */
+export function scheduleLabel(schedule: Schedule | null, kind: ScheduleKind, now = Date.now()): string {
   if (!schedule) return "";
-  if (schedule.dateLabel) return schedule.dateLabel;
-  const { startAt, endAt, timeZone } = schedule;
-  if (startAt || endAt)
-    return `${startAt ? dateTime(startAt, timeZone) : ""} ~ ${endAt ? dateTime(endAt, timeZone) : ""}`.trim();
-  return schedule.startDate ?? "";
+  const startAt = parseTime(schedule.startAt);
+  const endAt = parseTime(schedule.endAt);
+  const timed = startAt !== undefined || endAt !== undefined;
+  const endDateExclusive = parseTime(schedule.endDateExclusive);
+  const [start, end] = timed
+    ? [startAt, endAt]
+    : [parseTime(schedule.startDate), endDateExclusive === undefined ? undefined : endDateExclusive - DAY];
+  if (start === undefined && end === undefined) return schedule.dateLabel;
+  const timeZone = timed ? (schedule.timeZone ?? "Asia/Seoul") : "UTC";
+  const from = start === undefined ? undefined : koreanParts(start, timeZone, timed);
+  const to = end === undefined ? undefined : koreanParts(end, timeZone, timed);
+  const thisYear = koreanParts(now, "Asia/Seoul", false).year;
+  const text = (p: { year: string; day: string; time: string }) =>
+    `${p.year === thisYear ? "" : `${p.year}년 `}${p.day}${p.time && ` ${p.time}`}`;
+  if (!from) return `~ ${text(to!)}${kind === "recruitment" ? " 마감" : "까지"}`;
+  if (!to || end === start) return text(from);
+  if (timed && from.year === to.year && from.day === to.day) return `${text(from)} ~ ${to.time}`;
+  return `${text(from)} ~ ${text(to)}`;
+}
+function parseTime(value: string | null): number | undefined {
+  const time = value ? Date.parse(value) : NaN;
+  return Number.isNaN(time) ? undefined : time;
 }
 /**
  * Same-origin `<img src>` for a program logo (contract "프로그램 로고"): the API's `/v1/programs/{id}/logo?v=…` becomes the
