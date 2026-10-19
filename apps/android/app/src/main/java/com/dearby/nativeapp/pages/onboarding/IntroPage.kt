@@ -15,11 +15,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 
-/** First-launch intro: sign in with a passkey, Apple or Google ([google] null hides it), or look around without an account. [message] is a failed provider start. */
+/** First-launch intro (symbol + app name on top): sign in with a passkey, Apple or Google ([google] null hides it), or look around without an account. [message] is a failed provider start. */
 @Composable fun IntroPage(start: () -> Unit, apple: () -> Unit, google: (() -> Unit)?, browse: () -> Unit, busy: Boolean = false, message: String? = null) = Surface(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 32.dp)) {
         Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-            DearbyLogo(Modifier.width(184.dp).height(68.dp))
+            DearbyBrand(symbolSize = 96.dp)
             Spacer(Modifier.height(24.dp))
             Text("활동에서 만난 사람과\n명함을 주고받아요", Modifier.semantics { heading() }, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(8.dp))

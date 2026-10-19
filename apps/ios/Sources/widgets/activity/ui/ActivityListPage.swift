@@ -11,7 +11,6 @@ struct ActivityListPage: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 16) {
                 HStack {
-                    DearbyLogo(width: 96)
                     Spacer()
                     Button { showNotice = true } label: { Image(systemName: "bell").font(.title2).frame(width: 44, height: 44) }
                         .accessibilityLabel("알림")

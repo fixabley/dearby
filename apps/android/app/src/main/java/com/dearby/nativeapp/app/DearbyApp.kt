@@ -53,7 +53,7 @@ private sealed interface CardRoute {
                     null -> when (tab) {
                         Tab.Discovery, Tab.Mine -> Column {
                             if (!activityDetail) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                DearbyLogo(); Spacer(Modifier.weight(1f)); IconButton({ notice = "새 알림이 없어요.\n이 앱은 고정 예시로 둘러보는 프로토타입입니다." }) { Icon(Icons.Outlined.NotificationsNone, "알림") }
+                                Spacer(Modifier.weight(1f)); IconButton({ notice = "새 알림이 없어요.\n이 앱은 고정 예시로 둘러보는 프로토타입입니다." }) { Icon(Icons.Outlined.NotificationsNone, "알림") }
                             }
                             key(tab) { ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }) { activityDetail = it } }
                         }

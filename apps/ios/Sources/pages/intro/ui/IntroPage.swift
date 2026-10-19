@@ -13,7 +13,7 @@ struct IntroPage: View {
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
-            DearbyLogo(width: 160)
+            DearbyBrand(symbolSize: 96)
             Text("활동에서 만난 사람과\n명함을 주고받아요")
                 .font(.dearby(.title2)).bold().foregroundStyle(DearbyStyle.ink).multilineTextAlignment(.center)
                 .accessibilityAddTraits(.isHeader).padding(.top, 20)

@@ -17,7 +17,6 @@ struct MyCardsPage: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                DearbyLogo(width: 80)
                 Text("내 명함").font(.title.bold()).frame(maxWidth: .infinity, alignment: .leading)
                 switch state.phase {
                 case .signedOut:

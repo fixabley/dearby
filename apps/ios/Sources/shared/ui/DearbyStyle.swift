@@ -35,10 +35,16 @@ extension Font {
     }
 }
 
-struct DearbyLogo: View {
-    var width: CGFloat = 92
+/// 브랜드 표시: 심볼(맞물린 두 고리, 2026-10-19 사용자 선택) 아래 앱 이름. 소개 화면과 로그인 시트에만 쓰고, 일반 화면에는 로고를 두지 않는다(2026-10-19 사용자 결정).
+struct DearbyBrand: View {
+    var symbolSize: CGFloat = 72
     var body: some View {
-        Image("DearbyLogo").resizable().scaledToFit().frame(width: width).accessibilityLabel("Dearby")
+        VStack(spacing: 12) {
+            Image("DearbySymbol").resizable().scaledToFit().frame(width: symbolSize, height: symbolSize)
+            Text("Dearby").font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.teal)
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore).accessibilityLabel("Dearby")
     }
 }
 

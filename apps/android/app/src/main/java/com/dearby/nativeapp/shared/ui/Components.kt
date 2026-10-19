@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -19,6 +20,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.dearby.nativeapp.R
@@ -48,7 +50,12 @@ private val DearbyTypography = Typography(headlineMedium = TextStyle(fontSize = 
     colorScheme = lightColorScheme(primary = Teal, secondary = Teal, background = Color.White, surface = Color.White, onSurface = Color(0xFF172027), onSurfaceVariant = Quiet, surfaceVariant = Soft, outlineVariant = Line, surfaceContainer = Color.White, secondaryContainer = Mint, onSecondaryContainer = Teal, primaryContainer = Mint, onPrimaryContainer = Teal, surfaceContainerHighest = Line, outline = Quiet),
     typography = DearbyTypography,
     shapes = Shapes(small = RoundedCornerShape(10.dp), medium = RoundedCornerShape(12.dp), large = RoundedCornerShape(12.dp)), content = content)
-@Composable fun DearbyLogo(modifier: Modifier = Modifier) = Image(painterResource(R.drawable.dearby_logo), "dearby", modifier.width(92.dp).height(34.dp))
+/** 심볼(맞물린 두 고리) 아래 앱 이름. 인트로·로그인 화면에만 쓴다(2026-10-19 사용자 결정: 일반 화면에는 로고를 두지 않는다). */
+@Composable fun DearbyBrand(modifier: Modifier = Modifier, symbolSize: Dp = 72.dp) = Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+    Image(painterResource(R.drawable.dearby_symbol), "Dearby", Modifier.size(symbolSize))
+    Spacer(Modifier.height(12.dp))
+    Text("Dearby", color = Teal, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+}
 @Composable fun DearbyButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) = Button(onClick, modifier.heightIn(min = 50.dp), enabled = enabled, shape = RoundedCornerShape(11.dp), content = content)
 @Composable fun DearbyOutlineButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) = OutlinedButton(onClick, modifier.heightIn(min = 50.dp), enabled = enabled, shape = RoundedCornerShape(11.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = Teal), border = androidx.compose.foundation.BorderStroke(1.dp, if (enabled) Teal else Line), content = content)
 /** Sign in with Apple: black, same size as the other sign-in buttons. No Apple logo asset is in the repo, so the label is text only. */

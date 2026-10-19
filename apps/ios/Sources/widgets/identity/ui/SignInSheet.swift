@@ -17,6 +17,7 @@ struct SignInSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                DearbyBrand().padding(.vertical, 8)
                 if let link = account.pendingLink { pendingChoice(link) } else { choices }
             }.padding(20)
         }

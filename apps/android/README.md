@@ -42,7 +42,7 @@ HTTP/Repository/Room/Keystore/기기 캘린더/WebView·인증 실행 코드와 
 ## 시작 화면 (2026-10-14)
 
 - 스플래시: 실행할 때마다 AndroidX SplashScreen(`Theme.Dearby.Starting`)이 흰 배경에 로고(`drawable/splash_logo.xml`, `dearby_logo` 워드마크를 원형 마스크 안에 맞춤)를 보여 주고 바로 `Theme.Dearby`로 넘어간다. 인위적인 지연은 없다.
-- 첫 실행 소개: 새 저장소 `dearby.onboarding`의 `dearby.onboarding.shown`이 없으면 `pages/onboarding/IntroPage`(로고, "패스키로 시작하기", "Apple로 계속하기", "Google로 계속하기", "둘러보기")를 띄운다. "패스키로 시작하기"는 기존 로그인 시트(`SignInSheet`·`AccountViewModel`)를 연다. 로그인에 성공하거나 "둘러보기"를 누르면 값을 남기고 탭 화면으로 간다. 시트를 닫거나 실패하면 소개 화면에 남는다. 이미 토큰이 있으면 소개 없이 값만 남긴다. 로그인 없이도 앱을 쓸 수 있다.
+- 첫 실행 소개: 새 저장소 `dearby.onboarding`의 `dearby.onboarding.shown`이 없으면 `pages/onboarding/IntroPage`(심볼 + 앱 이름 `shared/ui/DearbyBrand`, "패스키로 시작하기", "Apple로 계속하기", "Google로 계속하기", "둘러보기")를 띄운다. "패스키로 시작하기"는 기존 로그인 시트(`SignInSheet`·`AccountViewModel`)를 연다. 로그인에 성공하거나 "둘러보기"를 누르면 값을 남기고 탭 화면으로 간다. 시트를 닫거나 실패하면 소개 화면에 남는다. 이미 토큰이 있으면 소개 없이 값만 남긴다. 로그인 없이도 앱을 쓸 수 있다.
 
 ## 패스키 로그인 (2026-10-10)
 
@@ -58,7 +58,7 @@ HTTP/Repository/Room/Keystore/기기 캘린더/WebView·인증 실행 코드와 
 
 계약 [native-v1 "애플 로그인"](../../shared/contracts/native-v1.md)의 웹 방식을 따른다. 패스키와 함께 고를 수 있다.
 
-- 버튼: 로그인 시트(`SignInSheet`, 화면마다 `app/SignInRoute`로 연다)와 첫 실행 소개에 검은 "Apple로 계속하기"(`shared/ui/AppleSignInButton`). 저장소에 애플 로고 자산이 없어 글자만 둔다.
+- 버튼: 로그인 시트(`SignInSheet`, 화면마다 `app/SignInRoute`로 연다. 맨 위에 심볼 + 앱 이름 `DearbyBrand`, 2026-10-19 사용자 결정: 일반 화면 상단 바의 로고는 뺐다)와 첫 실행 소개에 검은 "Apple로 계속하기"(`shared/ui/AppleSignInButton`). 저장소에 애플 로고 자산이 없어 글자만 둔다.
 - 시작: `features/oauth/OAuthVerifier`가 32바이트 무작위 verifier(base64url, 43자)와 SHA-256 해시를 만든다 → `/v1/auth/apple/web/start` → 받은 https `authorizeUrl`을 Custom Tab(`androidx.browser`)으로 연다. 탭을 연 뒤에는 기다리지 않으므로 사용자가 탭을 닫아도 시트가 멈추지 않는다. 503이면 "지금은 애플 로그인을 쓸 수 없어요."
 - verifier 보존: `AccountViewModel`의 `SavedStateHandle`에 둔다(로그에 남기지 않는다). 회전·프로세스 종료 뒤 복원에도 남고, 결과 링크를 받으면 무엇이 오든 지운다(한 번만 쓴다).
 - 돌아오기: `MainActivity`(`launchMode="singleTask"`)의 `dearby://auth/apple` intent filter. 같은 인스턴스가 `onNewIntent`로 받고 위의 Custom Tab이 닫힌다. `shared/config/AppLinks.authRedirect`는 `?code=<UUID>` 하나 또는 `?error=cancelled|failed`만 받고 나머지는 버린다. 재생성된 Activity가 같은 시작 intent를 다시 받으면 처리하지 않는다.
