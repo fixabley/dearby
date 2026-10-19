@@ -460,6 +460,15 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - 저장: `users.created_at`(V40, 기존 행은 가장 이른 로그인 수단·프로필 생성 시각으로 채움). `user_credentials`·`user_identities`는 그대로.
 - 구현 메모(2026-10-20): `POST /v1/auth/passkeys/registration/options`는 Bearer가 있으면 그 계정에 패스키를 더한다(응답은 기존처럼 201 TokenPair). 만료·잘못된 Bearer는 401(조용히 새 가입으로 넘어가지 않음). 로그인 상태 options에는 기존 패스키를 `excludeCredentials`로 넣어 키체인이 덮어쓰지 않게 하고, 요청 `displayName`이 새 패스키의 `label`이 된다(기본 `Dearby`). 경로의 `provider`는 소문자(apple|google), 연결돼 있지 않으면 404. PATCH label은 trim 후 1~60자(아니면 400). 다른 사용자의 패스키 id는 404(존재 여부를 구분하지 않음).
 
+## 활동 이력에서 단기 행사 제외 — 2026-10-20 사용자 결정
+
+사용자: "활동 이력에 컨퍼런스·워크숍 등 일주일 이내인 활동은 제외해줘." 하루짜리 컨퍼런스·워크숍·밋업은 경력 이력이 아니다.
+
+- **규칙**: 활동 기간(ACTIVITY 슬롯)이 알려져 있고 **7일 미만**(끝 − 시작 < 7일, 종일이면 `endDateExclusive − startDate < 7`, 시각 일정이면 `endAt − startAt < 7일`, 끝이 없으면 하루로 봄)이면 이력 후보에서 뺀다. 기간을 모르면(날짜 없음) 종류가 `CONFERENCE`·`WORKSHOP`·`MEETUP`·`LECTURE`일 때만 뺀다. 그 밖(부트캠프·스터디·동아리·해커톤·공모전·기타, 기간 미상)은 남긴다.
+- **API**: `GET /v1/activities?forHistory=true`(기존 `q`·`cursor`·`size`와 함께)가 위 규칙으로 걸러 준다. 이력 쓰기(`PUT /v1/profile` histories의 `activityId`, 이력 퍼널 저장)는 제외 대상 활동이면 400 `HISTORY_ACTIVITY_TOO_SHORT`("일주일 미만 행사는 활동 이력에 넣을 수 없어요"). 직접 입력한 활동 이름(`activityName`)은 제한하지 않는다.
+- **앱**: 이력 퍼널·프로필 편집의 활동 선택 창은 `forHistory=true`로 검색한다. 검색 결과가 없을 때의 `직접 입력` 행은 그대로.
+- 웹·어드민 변경 없음.
+
 ## 활동 장소 — 2026-10-19 사용자 결정
 
 사용자: "장소는 어드민에서 추가할 수 있으면 좋겠고 geocode, 주소 검색해서 좌표 가지고 올 수 있으면". 활동의 구조화된 장소를 둔다.
