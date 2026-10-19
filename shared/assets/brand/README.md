@@ -8,7 +8,7 @@
 - `wordmark.svg` → `wordmark-2172x724.png`: 심볼 + "Dearby"(Pretendard Bold), 청록, 투명 배경. 앱·웹 로고 자리는 기존 2172×724 캔버스를 그대로 써 레이아웃이 바뀌지 않는다.
 - iOS: `AppIcon.appiconset/AppIcon.png`(1024, 불투명), `DearbyLogo.imageset/logo-teal.png`(2172×724, 투명), `LaunchLogo.imageset/launch-logo@3x.png`(480×160, 투명).
 - Android: 적응형 아이콘 `mipmap-anydpi-v26/ic_launcher(.round).xml` = `@color/ic_launcher_background`(#007F80) + `@drawable/ic_launcher_foreground`(108dp 캔버스, 66dp 안전 영역에 흰 심볼 벡터). 옛 `drawable/ic_launcher.xml`(흰 D)은 지웠고 매니페스트는 `@mipmap/ic_launcher`·`roundIcon`을 가리킨다. 최소 SDK 26이라 레거시 래스터 세트는 두지 않는다. 앱 안 로고 `drawable-nodpi/dearby_logo.png`도 새 워드마크.
-- 웹: `public/logo-teal.png`(2172×724), `src/app/apple-icon.png`(180), `src/app/icon.png`(512), `public/icons/icon-192.png`·`icon-512.png`(매니페스트).
+- 웹: 심볼은 `src/shared/ui/brand-symbol.tsx`(symbol.svg 인라인, `currentColor`로 테마 청록을 따름) + Pretendard Bold "Dearby" 텍스트. `src/app/apple-icon.png`(180), `src/app/icon.png`(512), `public/icons/icon-192.png`·`icon-512.png`(매니페스트). 옛 `public/logo-teal.png`은 2026-10-19 지웠다.
 - 다시 뽑을 때: `qlmanage`는 SVG의 @font-face를 읽지 못하므로 워드마크는 헤드리스 Chrome(`--default-background-color=00000000`)으로 그린다(브라우저로 SVG를 열어 캡처).
 
 
