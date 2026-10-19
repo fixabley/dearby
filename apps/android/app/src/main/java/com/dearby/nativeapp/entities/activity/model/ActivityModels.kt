@@ -18,8 +18,11 @@ data class StageSchedule(
     val startDate: String?, val endDateExclusive: String?, val dateLabel: String,
 )
 
-/** Recruitment period from `application`; either end may be unknown. */
-data class ApplicationWindow(val startAt: String?, val endAt: String?)
+/**
+ * Recruitment period from `application`: timed ([startAt]/[endAt]) or all-day ([startDate]/[endDateExclusive], Seoul days);
+ * either end may be unknown.
+ */
+data class ApplicationWindow(val startAt: String?, val endAt: String?, val startDate: String? = null, val endDateExclusive: String? = null)
 
 /** One activity from `GET /v1/activities` (contract "활동 조회"). [id] is the API's number as text. */
 data class ActivityModel(
@@ -38,17 +41,28 @@ data class ActivityModel(
     /** Only schedules with both ends can be compared on a calendar. */
     val schedules get() = stageSchedules.mapNotNull { if (it.startAt == null || it.endAt == null) null else ScheduleModel(it.title, it.startAt, it.endAt, it.timeZone) }
     /**
-     * 2026-10-14 rule: only `application` against [now]. No application or no times, or a time that cannot be
-     * read, is unknown; a missing bound is open on that side.
+     * Only `application` against [now] (2026-10-14 rule; 2026-10-19 "열린 활동 판정 일원화" adds date-only windows). A timed
+     * window compares instants, an all-day window compares Seoul dates (`startDate ≤ today < endDateExclusive`); a missing
+     * bound is open on that side. No application, or a value that cannot be read, is unknown.
      */
     fun statusLabel(now: Instant): String {
         val window = application ?: return UNKNOWN
-        if (window.startAt == null && window.endAt == null) return UNKNOWN
-        val start = window.startAt?.let { instant(it) ?: return UNKNOWN }
-        val end = window.endAt?.let { instant(it) ?: return UNKNOWN }
+        if (window.startAt != null || window.endAt != null) {
+            val start = window.startAt?.let { instant(it) ?: return UNKNOWN }
+            val end = window.endAt?.let { instant(it) ?: return UNKNOWN }
+            return when {
+                start != null && now < start -> "모집 예정"
+                end != null && now >= end -> "모집 마감"
+                else -> OPEN
+            }
+        }
+        if (window.startDate == null && window.endDateExclusive == null) return UNKNOWN
+        val today = now.atZone(SEOUL).toLocalDate()
+        val start = window.startDate?.let { date(it) ?: return UNKNOWN }
+        val endExclusive = window.endDateExclusive?.let { date(it) ?: return UNKNOWN }
         return when {
-            start != null && now < start -> "모집 예정"
-            end != null && now >= end -> "모집 마감"
+            start != null && today < start -> "모집 예정"
+            endExclusive != null && today >= endExclusive -> "모집 마감"
             else -> OPEN
         }
     }
@@ -60,8 +74,15 @@ data class ActivityModel(
      * Ordering key for discovery groups (contract "활동 종류", 2026-10-19): the recruitment deadline, or the activity start
      * (ACTIVITY slot `startAt`, else `startDate` at Seoul midnight) when the activity has no deadline; null sorts last.
      */
-    val sortKey: Instant? get() = recruitmentEnd ?: instant(activitySchedule?.startAt)
-        ?: activitySchedule?.startDate?.let { runCatching { LocalDate.parse(it).atStartOfDay(ZoneId.of("Asia/Seoul")).toInstant() }.getOrNull() }
+    val sortKey: Instant? get() = recruitmentEnd ?: activityStart
+    /** The ACTIVITY slot's start: `startAt`, else `startDate` at Seoul midnight; null when the period is undated. */
+    val activityStart: Instant? get() = instant(activitySchedule?.startAt)
+        ?: activitySchedule?.startDate?.let { runCatching { LocalDate.parse(it).atStartOfDay(SEOUL).toInstant() }.getOrNull() }
+
+    private companion object {
+        val SEOUL: ZoneId = ZoneId.of("Asia/Seoul")
+        fun date(value: String): LocalDate? = runCatching { LocalDate.parse(value) }.getOrNull()
+    }
 }
 
 /** One page of `GET /v1/activities`; a null [nextCursor] is the last page. */
@@ -70,11 +91,12 @@ data class ActivityPage(val items: List<ActivityModel>, val nextCursor: String?)
 /**
  * One program with open activities from `GET /v1/discovery/programs` (contract "발견 프로그램 묶음"). [id] is the API's number as
  * text; [nearestRecruitmentEndAt] is the earliest open deadline (ISO 8601) or null; [matchedActivityIds] are the open
- * activities whose name matched the search.
+ * activities whose name matched the search; [latestActivityAt] is the most recent activity start of its published
+ * activities (contract "모집 중인 프로그램만 보기"), and [openActivityCount] may be 0 when the open-only switch is off.
  */
 data class ProgramSummary(
     val id: String, val name: String, val nameEn: String?, val organization: String, val openActivityCount: Int,
-    val nearestRecruitmentEndAt: String?, val matchedActivityIds: List<String>,
+    val nearestRecruitmentEndAt: String?, val matchedActivityIds: List<String>, val latestActivityAt: String? = null,
 )
 
 /** One page of `GET /v1/discovery/programs`; [nextCursor] is the next integer offset as text, null on the last page. */

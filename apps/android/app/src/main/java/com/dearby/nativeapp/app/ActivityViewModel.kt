@@ -38,11 +38,11 @@ import kotlinx.coroutines.launch
 /**
  * Discovery (contract "발견 프로그램 묶음"): GET /v1/programs page by page, and GET /v1/activities?programId= when a
  * program is expanded; a failure is an error state, never example activities. [fetchPrograms] takes the search text
- * (null for all) and the cursor; [fetch] takes the search text, the cursor and the program id.
+ * (null for all), the cursor and the open-only flag; [fetch] takes the search text, the cursor, the program id and the open flag.
  */
 class ActivityViewModel(
-    private val fetchPrograms: suspend (String?, String?) -> ProgramPage,
-    private val fetch: suspend (String?, String?, String?) -> ActivityPage,
+    private val fetchPrograms: suspend (String?, String?, Boolean) -> ProgramPage, // query, cursor, openOnly
+    private val fetch: suspend (String?, String?, String?, Boolean) -> ActivityPage, // query, cursor, programId, open
 ) : ViewModel() {
     private val mutable = MutableStateFlow(ActivityListState())
     val state = mutable.asStateFlow()
@@ -65,6 +65,12 @@ class ActivityViewModel(
         start(debounce = true)
     }
     fun reload() = start(debounce = false)
+    /** The `모집 중만 보기` switch (contract "모집 중인 프로그램만 보기"): off also lists programs active in the last two years. */
+    fun setOpenOnly(value: Boolean) {
+        if (value == state.value.openOnly) return
+        mutable.update { it.copy(openOnly = value) }
+        start(debounce = false)
+    }
     private fun start(debounce: Boolean) {
         job?.cancel()
         programJobs.values.forEach { it.cancel() }
@@ -88,16 +94,16 @@ class ActivityViewModel(
         }
     }
     private suspend fun programPage(cursor: String?): ProgramPage? = try {
-        fetchPrograms(state.value.query.trim().ifEmpty { null }, cursor)
+        fetchPrograms(state.value.query.trim().ifEmpty { null }, cursor, state.value.openOnly)
     } catch (e: CancellationException) { throw e } catch (e: Exception) {
         // Only the origin and the failure kind; the search text is not logged.
         Log.w("Dearby", "Programs load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
         null
     }
-    /** Programs with one open activity, or whose activity name matched the search, start expanded (contract rule). */
+    /** Programs with one open activity, or whose activity name matched the search, start expanded (contract rule; only while the switch is on). */
     private fun show(page: ProgramPage, append: Boolean) {
-        val programs = page.items.map { ProgramState(it.id, it.name, it.organization, it.openActivityCount, instant(it.nearestRecruitmentEndAt), it.matchedActivityIds.isNotEmpty()) }
-        val opening = programs.filter { it.openCount == 1 || it.matched }.map { it.id }
+        val programs = page.items.map { ProgramState(it.id, it.name, it.organization, it.openActivityCount, instant(it.nearestRecruitmentEndAt), it.matchedActivityIds.isNotEmpty(), instant(it.latestActivityAt)) }
+        val opening = if (state.value.openOnly) programs.filter { it.openCount == 1 || it.matched }.map { it.id } else emptyList()
         mutable.update { state ->
             state.copy(phase = ActivityListPhase.LOADED, programs = (if (append) state.programs else emptyList()) + programs,
                 expanded = state.expanded + opening, nextCursor = page.nextCursor, loadingMore = false)
@@ -118,9 +124,9 @@ class ActivityViewModel(
             val items = mutableListOf<ActivityModel>()
             var cursor: String? = null
             try {
-                // Every page of the program (the open set is small); the client keeps only open activities, as the list did before.
+                // Every page of the program's open activities (contract "열린 활동 판정 일원화": the server decides openness).
                 repeat(MAX_PROGRAM_PAGES) {
-                    val page = fetch(null, cursor, programId)
+                    val page = fetch(null, cursor, programId, true)
                     items += page.items
                     cursor = page.nextCursor ?: return@repeat
                 }
@@ -129,15 +135,24 @@ class ActivityViewModel(
                 return@launch mutable.update { it.copy(programActivities = it.programActivities + (programId to ProgramActivities(ProgramPhase.FAILED))) }
             }
             val now = Instant.now()
-            val open = items.filter { it.isOpen(now) }
-            models = models + open.associateBy { it.id }
+            val open = items
+            // Nothing open: show the program's past activities of the last two years, most recent start first (contract "모집 중인 프로그램만 보기").
+            val past = if (open.isNotEmpty()) emptyList() else try {
+                val since = now.minus(730, java.time.temporal.ChronoUnit.DAYS)
+                fetch(null, null, programId, false).items.filter { (it.activityStart ?: Instant.MIN) >= since }.sortedByDescending { it.activityStart }
+            } catch (e: CancellationException) { throw e } catch (e: Exception) {
+                Log.w("Dearby", "Past activities load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
+                emptyList()
+            }
+            val shown = open + past
+            models = models + shown.associateBy { it.id }
             val today = today()
             mutable.update { state ->
-                val loaded = open.associate { activity ->
-                    activity.id to activity.toState(now).let { shown -> state.known[shown.id]?.let { shown.copy(applied = it.applied, confirmed = it.confirmed) } ?: shown }
+                val loaded = shown.associate { activity ->
+                    activity.id to activity.toState(now).let { known -> state.known[known.id]?.let { known.copy(applied = it.applied, confirmed = it.confirmed) } ?: known }
                 }
-                state.copy(known = state.known + loaded, progress = state.progress + open.associate { it.id to it.toProgress(marks[it.id].orEmpty(), today) },
-                    programActivities = state.programActivities + (programId to ProgramActivities(ProgramPhase.LOADED, open.map { it.id })))
+                state.copy(known = state.known + loaded, progress = state.progress + shown.associate { it.id to it.toProgress(marks[it.id].orEmpty(), today) },
+                    programActivities = state.programActivities + (programId to ProgramActivities(ProgramPhase.LOADED, open.map { it.id }, past.map { it.id })))
             }
         }
     }

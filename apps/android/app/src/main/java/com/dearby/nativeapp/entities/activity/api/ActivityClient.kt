@@ -19,19 +19,21 @@ import org.json.JSONObject
 
 /**
  * `GET /v1/activities` (contract "활동 조회"): [query] searches name and description, [cursor] is the previous
- * page's `nextCursor`, [programId] narrows to one program (contract "발견 프로그램 묶음"). Transport or parsing
- * failure throws, never an empty page. Call off the main thread.
+ * page's `nextCursor`, [programId] narrows to one program (contract "발견 프로그램 묶음"), [open] asks the server for
+ * open activities only (contract "열린 활동 판정 일원화", 2026-10-19: the client never judges openness itself). Transport
+ * or parsing failure throws, never an empty page. Call off the main thread.
  */
-fun fetchActivities(api: String, query: String?, cursor: String?, programId: String? = null): ActivityPage =
-    parseActivities(get(api, "activities", listOfNotNull(query?.let { "q" to it }, cursor?.let { "cursor" to it }, programId?.let { "programId" to it })))
+fun fetchActivities(api: String, query: String?, cursor: String?, programId: String? = null, open: Boolean = false): ActivityPage =
+    parseActivities(get(api, "activities", listOfNotNull(query?.let { "q" to it }, cursor?.let { "cursor" to it }, programId?.let { "programId" to it }, if (open) "open" to "true" else null)))
 
 /**
  * `GET /v1/discovery/programs` (contract "발견 프로그램 묶음"): programs that have at least one open activity, with the
  * count, nearest deadline (UTC ISO 8601 or null) and the activities whose name matched [query]. [participationType] is
- * REGISTRATION or SELECTION; [cursor] is the previous page's integer offset `nextCursor`, carried as text.
+ * REGISTRATION or SELECTION; [cursor] is the previous page's integer offset `nextCursor`, carried as text. [openOnly] false
+ * (contract "모집 중인 프로그램만 보기") also returns programs that had an activity in the last two years, open ones first.
  */
-fun fetchPrograms(api: String, query: String?, participationType: String?, cursor: String?): ProgramPage =
-    parsePrograms(get(api, "discovery/programs", listOfNotNull(query?.let { "q" to it }, participationType?.let { "participationType" to it }, cursor?.let { "cursor" to it })))
+fun fetchPrograms(api: String, query: String?, participationType: String?, cursor: String?, openOnly: Boolean = true): ProgramPage =
+    parsePrograms(get(api, "discovery/programs", listOfNotNull(query?.let { "q" to it }, participationType?.let { "participationType" to it }, cursor?.let { "cursor" to it }, if (openOnly) null else "openOnly" to "false")))
 
 private fun get(api: String, path: String, params: List<Pair<String, String>>): String {
     val query = params.joinToString("&") { (name, value) -> name + "=" + URLEncoder.encode(value, "UTF-8") }
@@ -65,7 +67,7 @@ fun parseActivities(json: String): ActivityPage {
             activity.getLong("id").toString(), activity.getString("name"), activity.getString("description"),
             activity.getJSONObject("organization").getString("name"), activity.getJSONObject("program").getString("name"),
             activity.getString("officialUrl"), activity.text("imageUrl"),
-            activity.optJSONObject("application")?.let { ApplicationWindow(it.text("startAt"), it.text("endAt")) },
+            activity.optJSONObject("application")?.let { ApplicationWindow(it.text("startAt"), it.text("endAt"), it.text("startDate"), it.text("endDateExclusive")) },
             period?.text("dateLabel") ?: schedules.firstNotNullOfOrNull { it.dateLabel.ifBlank { null } }.orEmpty(),
             period?.text("address") ?: raw.firstNotNullOfOrNull { it.text("address") },
             schedules, period?.stageSchedule(),
@@ -104,6 +106,7 @@ fun parsePrograms(json: String): ProgramPage {
             program.getLong("id").toString(), program.getString("name"), program.text("nameEn"),
             program.getJSONObject("organization").getString("name"), program.getInt("openActivityCount"),
             program.text("nearestRecruitmentEndAt"), if (matched == null) emptyList() else List(matched.length()) { matched.getLong(it).toString() },
+            program.text("latestActivityAt"),
         )
     }, if (body.isNull("nextCursor")) null else body.getLong("nextCursor").toString())
 }

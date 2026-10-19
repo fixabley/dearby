@@ -27,7 +27,7 @@ import com.dearby.nativeapp.shared.ui.DearbyTheme
 
 class MainActivity : ComponentActivity() {
     private val activityModel: ActivityViewModel by viewModels {
-        viewModelFactory { initializer { ActivityViewModel({ query, cursor -> withContext(Dispatchers.IO) { fetchPrograms(ApiOrigin.current, query, null, cursor) } }) { query, cursor, programId -> withContext(Dispatchers.IO) { fetchActivities(ApiOrigin.current, query, cursor, programId) } } } }
+        viewModelFactory { initializer { ActivityViewModel({ query, cursor, openOnly -> withContext(Dispatchers.IO) { fetchPrograms(ApiOrigin.current, query, null, cursor, openOnly) } }) { query, cursor, programId, open -> withContext(Dispatchers.IO) { fetchActivities(ApiOrigin.current, query, cursor, programId, open) } } } }
     }
     private val account: AccountViewModel by viewModels {
         viewModelFactory { initializer { AccountViewModel(AccountClient(ApiOrigin.current), SessionVault(applicationContext, ApiOrigin.sessionName), createSavedStateHandle(), BuildConfig.GOOGLE_SERVER_CLIENT_ID) } }
