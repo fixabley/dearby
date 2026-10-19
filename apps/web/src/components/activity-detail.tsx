@@ -57,6 +57,7 @@ export function ActivityDetail({ id }: { id: number }) {
   const official = httpsUrl(activity.officialUrl);
   const image = httpsUrl(activity.imageUrl);
   const eligibility = eligibilityLines(activity.eligibility);
+  const place = activity.place ?? null;
   return (
     <article className="detail">
       <Link className="back-link" href="/">
@@ -129,6 +130,29 @@ export function ActivityDetail({ id }: { id: number }) {
           <p>{scheduleLabel(activity.activitySchedule) || "일정 미확인"}</p>
         )}
       </section>
+      {/* 활동 장소 (contract "활동 장소 — 2026-10-19"): curated place with a map link; otherwise the collected phrase alone. */}
+      {place ? (
+        <section className="detail-section">
+          <h2>장소</h2>
+          <a
+            className="place-link"
+            href={`https://maps.google.com/?q=${place.lat},${place.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Icon name="pin" />
+            <span>
+              <strong>{place.name}</strong>
+              {place.address && <span className="muted">{place.address}</span>}
+            </span>
+          </a>
+        </section>
+      ) : activity.location ? (
+        <section className="detail-section">
+          <h2>장소</h2>
+          <p>{activity.location}</p>
+        </section>
+      ) : null}
       <section className="detail-section source">
         <h2>공식 출처</h2>
         <p>신청 조건과 최신 일정은 공식 사이트에서 확인해 주세요.</p>

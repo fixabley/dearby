@@ -1,71 +1,56 @@
 import Link from "next/link";
-import { Icon } from "@/shared/ui/icon";
 import styles from "./activity-card.module.css";
 
+/** Recruitment state the chip shows (contract "발견 카드 리뉴얼"): 모집 중 teal / 모집 예정 mint / 마감 grey. */
+export type StatusTone = "open" | "soon" | "closed";
+const statusText: Record<StatusTone, string> = { open: "모집 중", soon: "모집 예정", closed: "마감" };
+
 /**
- * 활동 목록의 카드 한 장. 화면이 조직 이름·모집 상태 문구를 계산해 넘기고, 누르면 활동 상세로 간다.
- * `imageUrl`(https)이 있으면 왼쪽 타일에 이미지를, 없으면 달력 아이콘과 조직 이름을 보인다.
- * 타일은 카드 글자와 같은 정보라 접근성에서 숨긴다.
+ * 펼친 프로그램 안의 활동 카드 한 장 (contract "발견 카드 리뉴얼 — 2026-10-19"): 로고 없이 활동명과 우상단 모집 상태 칩,
+ * 아래에 `모집`·`활동`·`장소` 라벨+값 줄. 모집이 지나지 않았으면(`recruitmentActive`) `모집` 줄을 청록 굵은 글씨와
+ * 옅은 민트 바탕으로 강조한다. 카드 전체가 활동 상세 링크라 칩 글자도 링크 이름에 들어간다.
  */
 export function ActivityCard({
   id,
   name,
-  description,
-  organizationName,
-  statusLabel,
-  dateLabel,
-  imageUrl,
-  tags = [],
+  statusTone,
+  recruitmentLabel,
+  recruitmentActive,
+  activityLabel,
+  placeName,
 }: {
   id: number;
   name: string;
-  description: string;
-  organizationName: string;
-  statusLabel: string;
-  dateLabel: string;
-  imageUrl?: string;
-  /** 얻을 수 있는 것 태그 (contract "태그"); rendered as neutral chips. */
-  tags?: { id: number; name: string }[];
+  statusTone: StatusTone;
+  /** 모집 기간 문구; 없으면 `미정`. */
+  recruitmentLabel: string;
+  /** 모집 중·모집 예정이고 기간이 있을 때 참 → 강조. */
+  recruitmentActive: boolean;
+  /** 활동 기간 문구. */
+  activityLabel: string;
+  /** 장소 이름; 없으면 줄을 생략한다. */
+  placeName?: string | null;
 }) {
   return (
-    <Link className="activity-card" href={`/activities/${id}`}>
-      <span className="activity-art" aria-hidden="true">
-        {imageUrl ? (
-          // Activity images come from arbitrary official hosts, so next/image optimization is not configured for them.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img className={styles.image} src={imageUrl} alt="" />
-        ) : (
-          <span className={styles.tile}>
-            <Icon name="calendar" size={34} />
-            <span className={styles.organization}>{organizationName}</span>
-          </span>
-        )}
-      </span>
-      <div className="activity-copy">
-        <p className="eyebrow">
-          {organizationName} <span className="dot">·</span> {statusLabel}
-        </p>
-        <h2>{name}</h2>
-        <p className="summary">{description}</p>
-        <div className="activity-meta">
-          <span>
-            <Icon name="calendar" size={17} />
-            {dateLabel || "일정 미확인"}
-          </span>
+    <Link className={styles.card} href={`/activities/${id}`}>
+      <h2 className={styles.name}>{name}</h2>
+      <span className={`${styles.status} ${styles[statusTone]}`}>{statusText[statusTone]}</span>
+      <dl className={styles.rows}>
+        <div className={recruitmentActive ? styles.active : undefined}>
+          <dt>모집</dt>
+          <dd>{recruitmentLabel || "미정"}</dd>
         </div>
-        {tags.length > 0 && (
-          <ul className="tag-chips" aria-label="얻을 수 있는 것">
-            {tags.map((tag) => (
-              <li key={tag.id} className="badge neutral">
-                {tag.name}
-              </li>
-            ))}
-          </ul>
+        <div>
+          <dt>활동</dt>
+          <dd>{activityLabel || "일정 미확인"}</dd>
+        </div>
+        {placeName && (
+          <div>
+            <dt>장소</dt>
+            <dd>{placeName}</dd>
+          </div>
         )}
-      </div>
-      <span className="card-chevron" aria-hidden="true">
-        ›
-      </span>
+      </dl>
     </Link>
   );
 }

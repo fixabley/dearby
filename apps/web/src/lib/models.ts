@@ -106,6 +106,8 @@ export const tagSchema = z.object({ id: z.number().int().positive(), name: text,
 export const tagListSchema = z.object({ items: z.array(tagSchema) });
 export type Tag = z.infer<typeof tagSchema>;
 const tags = z.array(tagSchema).optional().catch([]);
+const placeSchema = z.object({ name: text, address: text, lat: z.number(), lng: z.number() });
+export type Place = z.infer<typeof placeSchema>;
 export const activitySchema = z.object({
   id: z.number().int().positive(),
   name: text,
@@ -122,6 +124,9 @@ export const activitySchema = z.object({
   tags,
   // A malformed eligibility must not break the activity.
   eligibility: eligibilitySchema.nullable().optional().catch(null),
+  // 활동 장소 (contract "활동 장소 — 2026-10-19"): the collected phrase and the curated place; older responses omit both.
+  location: text.nullable().optional().catch(null),
+  place: placeSchema.nullable().optional().catch(null),
 });
 export const activityPageSchema = z.object({
   items: z.array(activitySchema),
@@ -152,29 +157,21 @@ export const programPageSchema = z.object({
 });
 export type ProgramSummary = z.infer<typeof programSummarySchema>;
 export type ProgramPage = z.infer<typeof programPageSchema>;
-/** `10월 24일 (금) 마감` in Seoul time, or undefined when the end is missing or unreadable. */
+/** `10월 24일 마감` in Seoul time (contract "발견 카드 리뉴얼" meta line), or undefined when the end is missing or unreadable. */
 export function deadlineLabel(endAt: string | null): string | undefined {
-  if (!endAt) return;
-  const time = Date.parse(endAt);
-  if (Number.isNaN(time)) return;
-  return `${new Date(time).toLocaleDateString("ko-KR", {
-    timeZone: "Asia/Seoul",
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  })} 마감`;
+  const day = monthDay(endAt);
+  return day && `${day} 마감`;
 }
-/** `10월 24일 (금) 시작` in Seoul time, or undefined when the start is missing or unreadable. */
+/** `10월 24일 시작` in Seoul time, or undefined when the start is missing or unreadable. */
 export function startLabel(startAt: string | null): string | undefined {
-  if (!startAt) return;
-  const time = Date.parse(startAt);
+  const day = monthDay(startAt);
+  return day && `${day} 시작`;
+}
+function monthDay(value: string | null): string | undefined {
+  if (!value) return;
+  const time = Date.parse(value);
   if (Number.isNaN(time)) return;
-  return `${new Date(time).toLocaleDateString("ko-KR", {
-    timeZone: "Asia/Seoul",
-    month: "long",
-    day: "numeric",
-    weekday: "short",
-  })} 시작`;
+  return new Date(time).toLocaleDateString("ko-KR", { timeZone: "Asia/Seoul", month: "long", day: "numeric" });
 }
 /** Numeric activity ID from a URL segment, or undefined. */
 export function activityId(value: string): number | undefined {
