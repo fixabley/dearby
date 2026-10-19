@@ -13,6 +13,8 @@ struct ActivityCard: View {
     let date: String
     var applyURL: URL?
     var recruitmentEnd: Date?
+    /// Activity tags (contract "태그"); shown as quiet chips under the date.
+    var tags: [Tag] = []
     let open: () -> Void
     var body: some View {
         VStack(spacing: 0) {
@@ -26,6 +28,7 @@ struct ActivityCard: View {
                         Divider()
                         Label(status, systemImage: "person.badge.clock")
                         Label(date, systemImage: "calendar")
+                        TagChips(tags: tags, limit: 3)
                     }.font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet).frame(maxWidth: .infinity, alignment: .leading)
                 }.padding(10).contentShape(Rectangle())
             }.buttonStyle(.plain).accessibilityIdentifier("activity-\(activityID)")
@@ -77,7 +80,8 @@ struct ActivityCardSample: View {
             ActivityCard(activityID: "1", title: "Dearby 개발자 컨퍼런스", organization: "Dearby",
                          summary: "개발자와 기획자가 함께 만드는 하루", status: "모집 중", date: "2026-10-24",
                          applyURL: URL(string: "https://example.invalid/apply"),
-                         recruitmentEnd: ISO8601DateFormatter().date(from: "2026-10-20T14:59:00Z")) {}
+                         recruitmentEnd: ISO8601DateFormatter().date(from: "2026-10-20T14:59:00Z"),
+                         tags: [Tag(id: 1, name: "네트워킹"), Tag(id: 2, name: "개발지식")]) {}
             ActivityCard(activityID: "2", title: "주말 데이터 분석 스터디", organization: "한국데이터산업진흥원",
                          summary: "선착순으로 모여요", status: "모집 마감", date: "11월 15일") {}
         }.padding(20).background(.white)

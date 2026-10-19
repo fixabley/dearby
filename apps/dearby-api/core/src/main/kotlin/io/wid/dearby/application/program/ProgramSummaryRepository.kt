@@ -11,4 +11,7 @@ interface ProgramSummaryRepository {
 
     // 대상자 필터가 있을 때: 열린 활동(위 규칙 + 유형 + 대상자 1차 판정)을 모두 돌려준다. 묶음은 서비스가 2차 판정 뒤 만든다
     fun openActivities(condition: ProgramSummarySearch, now: OffsetDateTime): List<OpenActivity>
+
+    // 묶음 머리의 태그(native-v1.md "태그"): 프로그램 태그가 있으면 그것, 없으면 열린 활동 태그의 합집합(최대 6개, 사전 순)
+    fun tagsByProgram(programIds: Collection<io.wid.dearby.domain.Id>, now: OffsetDateTime): Map<io.wid.dearby.domain.Id, List<io.wid.dearby.domain.Tag>>
 }

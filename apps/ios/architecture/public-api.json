@@ -32,7 +32,8 @@
     "ActivityClient",
     "ProgramSummary",
     "ProgramPage",
-    "Eligibility"
+    "Eligibility",
+    "Tag"
   ],
   "entities/identity": [
     "CardModel",
@@ -45,7 +46,10 @@
     "IdentityHeading"
   ],
   "features/calendar": [
-    "CalendarConflictView"
+    "CalendarConflictView",
+    "CalendarEventSource",
+    "DeviceCalendarEventSource",
+    "FixtureCalendarEventSource"
   ],
   "pages/home": [
     "HomePage"

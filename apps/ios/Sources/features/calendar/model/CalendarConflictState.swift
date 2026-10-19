@@ -4,6 +4,8 @@ import Observation
 struct CalendarOverlapState: Identifiable {
     let id: String
     let activity: ActivityScheduleModel
+    /// The device event's title, shown only while the sheet is open.
+    let busyTitle: String
     let busy: DateInterval
     var start: Date { max(activity.start, busy.start) }
     var end: Date { min(activity.end, busy.end) }
@@ -30,28 +32,43 @@ struct CalendarOverlapState: Identifiable {
     }
 }
 
+/// Reads the device calendar once the user asks, compares on device, keeps nothing after the sheet closes
+/// (contract "기기 캘린더 겹침 — 2026-10-06").
 @MainActor @Observable final class CalendarConflictState {
-    // 2026-10-24 14:00–15:00 Asia/Seoul, fixed independently of the device calendar.
-    static let exampleBusy = DateInterval(start: Date(timeIntervalSince1970: 1_792_818_000), duration: 3_600)
+    enum Phase: Equatable { case intro, requesting, denied, compared }
     let schedules: [ActivityScheduleModel]
-    var selected = true {
-        didSet { compared = false; overlaps = []; index = 0 }
-    }
-    private(set) var compared = false
+    private let source: any CalendarEventSource
+    private(set) var phase = Phase.intro
     private(set) var overlaps: [CalendarOverlapState] = []
     var index = 0
-    init(schedules: [ActivityScheduleModel]) { self.schedules = schedules }
+    init(schedules: [ActivityScheduleModel], source: any CalendarEventSource) {
+        self.schedules = schedules
+        self.source = source
+    }
     // False means the final result (including zero overlaps) should dismiss.
     func advance() -> Bool {
         guard index + 1 < overlaps.count else { return false }
         index += 1
         return true
     }
-    func compare() {
-        guard selected else { return }
-        overlaps = schedules.filter { CalendarOverlapState.matches($0, Self.exampleBusy) }
-            .map { CalendarOverlapState(id: $0.id, activity: $0, busy: Self.exampleBusy) }
+    /// Asks for calendar access (first tap only shows the system prompt), then reads the window around the activity's schedules.
+    func compare() async {
+        guard phase != .requesting, let window = Self.window(schedules) else { return }
+        phase = .requesting
+        guard await source.requestAccess() == .granted else { phase = .denied; return }
+        let events = source.events(in: window)
+        overlaps = schedules.flatMap { schedule in
+            events.compactMap { event in
+                guard CalendarOverlapState.matches(schedule, event.interval) else { return nil }
+                return CalendarOverlapState(id: "\(schedule.id)|\(event.interval.start.timeIntervalSince1970)|\(event.title)", activity: schedule, busyTitle: event.title, busy: event.interval)
+            }
+        }.sorted { $0.start < $1.start }
         index = 0
-        compared = true
+        phase = .compared
+    }
+    /// Earliest start to latest end of the activity's schedules; events intersecting it are fetched.
+    static func window(_ schedules: [ActivityScheduleModel]) -> DateInterval? {
+        guard let start = schedules.map(\.start).min(), let end = schedules.map(\.end).max(), start < end else { return nil }
+        return DateInterval(start: start, end: end)
     }
 }

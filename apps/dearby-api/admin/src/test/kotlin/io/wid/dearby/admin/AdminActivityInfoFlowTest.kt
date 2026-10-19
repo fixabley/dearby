@@ -29,6 +29,11 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
 
     private val json = JsonMapper.builder().build()
 
+    // JsonNode 배열을 Kotlin 목록으로(assertEquals의 타입 추론용)
+    private fun tagNames(node: JsonNode): List<String> = node.toList().map { it["name"].asString() }
+    private fun tagNamesEn(node: JsonNode): List<String?> = node.toList().map { it["nameEn"]?.takeUnless { n -> n.isNull }?.asString() }
+    private fun idList(node: JsonNode): List<Long> = node.toList().map { it.asLong() }
+
     private fun MockHttpServletRequestDsl.asAdmin() {
         with(jwt().authorities(SimpleGrantedAuthority("ROLE_ADMIN"), SimpleGrantedAuthority("ROLE_USER")))
     }
@@ -265,6 +270,50 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         mvc.patch("/v1/admin/programs/${program["id"].asLong()}") { asAdmin(); patchBody("""{"category":"NOPE"}""") }.andExpect { status { isBadRequest() } }
         val unset = read(mvc.patch("/v1/admin/programs/${program["id"].asLong()}") { asAdmin(); patchBody("""{"category":null}""") }.andExpect { status { isOk() } })
         assertEquals(listOf(true, true), listOf(unset["category"].isNull, unset["appliedActivityCount"].isNull))
+        // 태그(native-v1.md "태그"): 사전 CRUD(띄어쓰기만 다른 이름은 기존 태그로 합침), 프로그램 태그 일괄 적용은 운영자가 태그를 지정한 활동을 건너뛴다
+        val startup = read(mvc.post("/v1/admin/tags") { asAdmin(); body("""{"name":" 창 업 "}""") }.andExpect { status { isCreated() } })
+        assertEquals("startup", startup["nameEn"].asString())
+        val created = read(mvc.post("/v1/admin/tags") { asAdmin(); body("""{"name":"테스트 태그"}""") }.andExpect { status { isCreated() } })
+        assertEquals(true, created["nameEn"].isNull)
+        assertEquals("Test Tag", read(mvc.patch("/v1/admin/tags/${created["id"].asLong()}") { asAdmin(); patchBody("""{"nameEn":"Test Tag"}""") }.andExpect { status { isOk() } })["nameEn"].asString())
+        mvc.post("/v1/admin/tags") { asAdmin(); body("""{"name":" "}""") }.andExpect { status { isBadRequest() } }
+        val keptId = jdbc.sql(
+            """
+            insert into activities (program_id, name, description, participation_type, recruitment_status, official_url,
+                                    freshness, source_note, curated_fields, created_at, updated_at)
+            values (?, '태그 지정된 활동', '', 'REGISTRATION', 'UNKNOWN', 'https://example.org', 'STALE', '', '["tags"]'::jsonb, localtimestamp, localtimestamp)
+            returning id
+            """
+        ).param(program["id"].asLong()).query(Long::class.java).single()
+        jdbc.sql("insert into schedules (activity_id, slot, title, kind, status, date_label, sequence, created_at, updated_at) values (?, 'ACTIVITY', 't', 'EVENT', 'CONFIRMED', '', 0, localtimestamp, localtimestamp)")
+            .param(keptId).update()
+        val taggedProgram = read(
+            mvc.patch("/v1/admin/programs/${program["id"].asLong()}") { asAdmin(); patchBody("""{"tagIds":[${startup["id"].asLong()},${created["id"].asLong()}],"applyTagsToActivities":true}""") }
+                .andExpect { status { isOk() } }
+        )
+        assertEquals(listOf("창업", "테스트 태그"), taggedProgram["tags"].let(::tagNames))
+        // plain·activity(운영자 미지정)에는 더해지고 kept(운영자 지정)는 그대로
+        assertEquals(2, taggedProgram["appliedTagActivityCount"].asInt())
+        assertEquals(listOf(2, 0), listOf(plain, keptId).map { jdbc.sql("select count(*) from activity_tags where activity_id = ?").param(it).query(Int::class.java).single() })
+        // 활동 태그 PATCH는 통째로 바꾸고 운영자 지정 tags에 남긴다. 없는 id는 400
+        val taggedActivity = read(mvc.patch("/v1/admin/activities/$plain") { asAdmin(); patchBody("""{"tagIds":[${created["id"].asLong()}]}""") }.andExpect { status { isOk() } })
+        assertEquals(listOf("테스트 태그"), taggedActivity["tags"].let(::tagNames))
+        assertEquals(true, taggedActivity["curatedFields"].toList().any { it.asString() == "tags" })
+        mvc.patch("/v1/admin/activities/$plain") { asAdmin(); patchBody("""{"tagIds":[999999]}""") }.andExpect { status { isBadRequest() } }
+        // 운영자 생성 활동은 tagIds를 생략하면 프로그램 태그를 기본으로 받는다
+        val createdActivity = read(
+            mvc.post("/v1/admin/activities") { asAdmin(); body("""{"programId":${program["id"].asLong()},"name":"태그 기본값 활동","description":"d","officialUrl":"https://example.org/x","activitySchedule":{"dateLabel":"2027"}}""") }
+                .andExpect { status { isCreated() } }
+        )
+        assertEquals(listOf("창업", "테스트 태그"), createdActivity["tags"].let(::tagNames))
+        assertEquals(false, createdActivity["curatedFields"].toList().any { it.asString() == "tags" })
+        jdbc.sql("delete from activities where id in (?, ?)").params(keptId, createdActivity["id"].asLong()).update()
+        // 삭제는 연결도 지운다
+        mvc.delete("/v1/admin/tags/${created["id"].asLong()}") { asAdmin() }.andExpect { status { isNoContent() } }
+        assertEquals(0, jdbc.sql("select count(*) from activity_tags where tag_id = ?").param(created["id"].asLong()).query(Int::class.java).single())
+        mvc.delete("/v1/admin/tags/999999") { asAdmin() }.andExpect { status { isNotFound() } }
+        jdbc.sql("delete from program_tags where program_id = ?").param(program["id"].asLong()).update()
+        jdbc.sql("delete from activity_tags where activity_id = ?").param(activity).update()
         jdbc.sql("delete from activities where id = ?").param(plain).update()
         mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"name":" "}""") }.andExpect { status { isBadRequest() } }
         mvc.patch("/v1/admin/activities/999999") { asAdmin(); patchBody("""{"nameEn":"x"}""") }.andExpect { status { isNotFound() } }

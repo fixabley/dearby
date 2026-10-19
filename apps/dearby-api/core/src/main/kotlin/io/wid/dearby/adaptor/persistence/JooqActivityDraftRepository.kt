@@ -1,6 +1,9 @@
 package io.wid.dearby.adaptor.persistence
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITIES
+import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITY_TAGS
+import io.wid.dearby.adaptor.persistence.jooq.tables.references.PROGRAM_TAGS
+import io.wid.dearby.adaptor.persistence.jooq.tables.references.TAGS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.DISMISSED_ACTIVITY_SOURCES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.PROGRAMS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.SCHEDULES
@@ -130,6 +133,15 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             insertSchedule(activityId, null, it.title, it.kind, it.startAt, it.endAt, it.startDate, it.endDate, it.dateLabel, now)
         }
         EligibilityRows.writeTerms(dsl, activityId, eligibility)
+        // 태그(native-v1.md "태그"): 운영자가 정한 연결은 두고, 아니면 모델이 사전에서 고른 이름(모르는 이름은 버림), 비면 프로그램 태그
+        if (CuratedFields.TAGS !in curated) {
+            val wanted = activity.tags.map { it.replace(Regex("\\s"), "").lowercase() }.filter { it.isNotEmpty() }.toSet()
+            val fromModel = if (wanted.isEmpty()) emptyList() else dsl.select(TAGS.ID).from(TAGS)
+                .where(DSL.lower(withoutSpaces(TAGS.NAME)).`in`(wanted).or(DSL.lower(withoutSpaces(TAGS.NAME_EN)).`in`(wanted))).fetch(TAGS.ID).filterNotNull()
+            val tagIds = fromModel.ifEmpty { dsl.select(PROGRAM_TAGS.TAG_ID).from(PROGRAM_TAGS).where(PROGRAM_TAGS.PROGRAM_ID.eq(programId)).fetch(PROGRAM_TAGS.TAG_ID).filterNotNull() }
+            dsl.deleteFrom(ACTIVITY_TAGS).where(ACTIVITY_TAGS.ACTIVITY_ID.eq(activityId)).execute()
+            tagIds.toSet().forEach { dsl.insertInto(ACTIVITY_TAGS).set(ACTIVITY_TAGS.ACTIVITY_ID, activityId).set(ACTIVITY_TAGS.TAG_ID, it).execute() }
+        }
         return DraftSaveResult.SAVED
     }
 

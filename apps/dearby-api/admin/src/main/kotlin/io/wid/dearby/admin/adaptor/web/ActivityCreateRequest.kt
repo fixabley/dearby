@@ -19,4 +19,5 @@ data class ActivityCreateRequest(
     val audience: String? = null,
     val location: String? = null,
     val cost: String? = null,
+    val tagIds: List<Long>? = null, // 태그 id 목록(native-v1.md "태그"). 생략하면 프로그램 태그를 기본으로
 )

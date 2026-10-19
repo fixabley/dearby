@@ -66,8 +66,12 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
 
     @PatchMapping("/programs/{id}")
     fun updateProgram(@PathVariable id: Long, @RequestBody request: ProgramUpdateRequest): ProgramResponse {
-        val result = activityInfo.updateProgram(id, request.name, request.nameEn, request.organizationId, categoryChange(request.category), request.applyCategoryToActivities)
-        return ProgramResponse.from(result.listing, result.appliedActivityCount)
+        // 태그(native-v1.md "태그"): 생략은 유지, 목록은 통째로 바꾼다. applyTagsToActivities면 운영자 미지정 활동에 합집합
+        val result = activityInfo.updateProgram(
+            id, request.name, request.nameEn, request.organizationId, categoryChange(request.category), request.applyCategoryToActivities,
+            tagIds = request.tagIds, applyTagsToActivities = request.applyTagsToActivities,
+        )
+        return ProgramResponse.from(result.listing, result.appliedActivityCount, result.appliedTagActivityCount)
     }
 
     @DeleteMapping("/programs/{id}")
@@ -114,6 +118,7 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
                     activitySchedule = activitySchedule?.let(::scheduleEdit), activityDateLabel = activitySchedule?.text("dateLabel"),
                     application = request.application?.let { node -> if (node.isNull) null else scheduleEdit(node) },
                     eligibility = eligibility, audience = request.audience, location = request.location, cost = request.cost,
+                    tagIds = request.tagIds,
                 )
             )
         )
@@ -132,7 +137,7 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
                 id, request.name, request.nameEn, request.description, request.descriptionEn, eligibility,
                 activitySchedule = scheduleChange(request.activitySchedule), application = scheduleChange(request.application),
                 officialUrl = request.officialUrl, applicationUrl = request.applicationUrl,
-                category = categoryChange(request.category),
+                category = categoryChange(request.category), tagIds = request.tagIds,
             )
         )
     }

@@ -25,4 +25,5 @@ data class ExtractedActivity(
     val eligibility: JsonNode? = null, // 대상자 조건 JSON(native-v1.md "대상자 조건"). 어휘 정리는 검증 단계에서
     val evidenceQuote: String,
     val category: String? = null, // 활동 종류 코드(native-v1.md "활동 종류"). 모르면 null
+    val tags: List<String> = emptyList(), // 사전에서 고른 태그 이름(native-v1.md "태그"). 사전 밖 이름은 저장할 때 버린다
 )

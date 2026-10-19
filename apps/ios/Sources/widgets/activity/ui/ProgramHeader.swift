@@ -9,6 +9,8 @@ struct ProgramHeader: View {
     var nearestDeadline: Date?
     /// The program's most recent activity start; shown as `최근 활동 yyyy.M` when nothing is recruiting (contract "모집 중인 프로그램만 보기").
     var latestActivity: Date?
+    /// Program tags (contract "태그"): at most three chips and `+n`.
+    var tags: [Tag] = []
     let expanded: Bool
     let toggle: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -27,6 +29,7 @@ struct ProgramHeader: View {
                             Text(latest).font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
                         }
                     }
+                    TagChips(tags: tags, limit: 3)
                 }
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.down").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
@@ -37,7 +40,8 @@ struct ProgramHeader: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(expanded ? DearbyStyle.teal : DearbyStyle.line))
         }.buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel([name, organization, openCount > 0 ? "모집 중 \(openCount)개" : nil, openCount > 0 ? deadline : latest].compactMap { $0 }.joined(separator: ", "))
+            .accessibilityLabel([name, organization, openCount > 0 ? "모집 중 \(openCount)개" : nil, openCount > 0 ? deadline : latest,
+                                 tags.isEmpty ? nil : "태그 " + tags.map(\.name).joined(separator: ", ")].compactMap { $0 }.joined(separator: ", "))
             .accessibilityValue(expanded ? "펼침" : "접힘").accessibilityHint(expanded ? "누르면 접어요" : "누르면 활동을 보여요")
             .accessibilityIdentifier("program-\(name)")
     }
@@ -63,7 +67,8 @@ struct ProgramHeader: View {
 #Preview("프로그램 머리글") {
     VStack(spacing: 12) {
         ProgramHeader(name: "부스트캠프", organization: "네이버 커넥트재단", openCount: 2,
-                      nearestDeadline: ISO8601DateFormatter().date(from: "2026-10-30T14:59:00Z"), expanded: true) {}
+                      nearestDeadline: ISO8601DateFormatter().date(from: "2026-10-30T14:59:00Z"),
+                      tags: [Tag(id: 1, name: "개발지식"), Tag(id: 2, name: "프로젝트 개발"), Tag(id: 3, name: "협업"), Tag(id: 4, name: "멘토링")], expanded: true) {}
         ProgramHeader(name: "Let'Swift", organization: "Let'Swift", openCount: 0,
                       latestActivity: ISO8601DateFormatter().date(from: "2025-10-08T01:00:00Z"), expanded: false) {}
     }.padding(20).background(.white)

@@ -36,6 +36,7 @@
 - **시작 주소 토큰**: `officialUrl`의 `{year}`·`{yy}`·`{round}`를 `CollectionUrlTemplate`(core)이 올해·내년, 다음 기수·현재 기수로 펼친다(`previousRound`는 같은 프로그램의 가장 최근 활동 이름의 "N기", 없으면 맨 앞·뒤 숫자). `CollectActivitiesService`가 이전 기수를 읽은 뒤 펼친 주소를 탐색 결과 앞에 둔다. 기수를 모르면 그 주소는 건너뛰고 거절 이유 `기수 번호를 알 수 없음`을 남긴다(탐색 페이지도 모두 실패하면 결과 FAILED). 어드민 `previousRound`·`previewUrls`는 같은 규칙으로 서버가 계산한다.
 - **받은 페이지 기록**: 실제로 받아 읽은 페이지를 `collection_runs.fetched_urls`(V30)에 받은 순서로 남긴다(실패 제외). 어드민 `lastFetchedUrls`는 마지막 성공 수집의 값이다.
 - 변경 이력: 2026-10-18 활동 단위·날짜 전용 필드·조심 목록·이전 기수 자동완성([`a148af5d` 이전 문서](https://github.com/fixabley/dearby/blob/a148af5d/docs/context/activity-collection-batch.md)) · 2026-10-19 모집·활동 기간 혼동 수정(사용자 보고; 2026-10-18 수집분에서 "우아한 테크코스 2026"은 활동 기간에 모집 기간 2025.09.29~10.10, "Apple Developer Academy Cohort"는 모집 기간에 과정 기간 5/1~12/8, "Apple Developer Academy 2027"은 모집 마감 = 과정 종료일; 원인은 두 기간을 정의하지 않은 지시문과 필수였던 `dateLabel`; 어드민 `기간 확인` 태그·`모집 ↔ 활동 바꾸기` 추가) · 2026-10-19 주소 토큰·받은 페이지·종류·프로그램 기본 종류·날짜 문구 예시+사유.
+- **태그(2026-10-19, native-v1.md "태그")**: 추출 요청에 태그 사전의 한글 이름 전체를 넘기고, 모델은 `tags`(최대 5개)를 그 이름 중에서만 고른다. 저장할 때 사전에 없는 이름은 버리고(띄어쓰기·대소문자 무시, 영문 이름도 맞춤), 하나도 남지 않으면 프로그램 태그(`program_tags`)를 기본으로 쓴다. 운영자가 태그를 지정한 활동(`curated_fields`에 `tags`)은 수집이 연결을 건드리지 않는다. 저장은 `activity_tags`(V34).
 
 ## 실행
 
@@ -50,7 +51,7 @@ docker compose -f compose.prod.yaml --env-file .env.prod run --rm batch --collec
 
 같은 프로그램·같은 한국 날짜는 한 번만 수집한다(`collection_runs` 유일 제약). 그날 다시 돌리려면 그날의 `collection_runs` 행을 지운다.
 
-`run --rm batch --collect-now`·`--recall-now`로 띄운 일회성 컨테이너는 작업을 마친 뒤에도 스케줄러와 함께 살아 있어 종료되지 않는다(2026-10-19 확인: 7시간 남은 수집 컨테이너가 정기 수집과 겹칠 수 있었다). 작업 로그(`Collected program …`, `Card recall … finished`)를 확인한 뒤 `docker stop`으로 멈춘다. 작업 뒤 스스로 종료하도록 고칠지는 사용자 결정 대기.
+`run --rm batch --collect-now`·`--recall-now`로 띄운 일회성 컨테이너는 수동 작업을 마치면 프로세스를 끝낸다(2026-10-19 사용자 결정, `CollectionLauncher`·`RecallLauncher`가 `SpringApplication.exit`). 그 전에는 스케줄러와 함께 살아 있어 정기 수집과 겹칠 수 있었다(2026-10-19 확인: 7시간 남은 수집 컨테이너). 정기 실행 컨테이너(`up -d batch`)는 그대로 계속 돈다.
 
 ## 명함 회수 — 2026-10-19 사용자 결정
 

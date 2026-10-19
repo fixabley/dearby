@@ -29,14 +29,14 @@ class ClaudeApiActivityExtractor(
 
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override fun extract(page: FetchedPage, programName: String, watchlist: List<WatchEntry>, previous: PreviousEdition?, examples: List<DateLabelExample>): Extraction {
+    override fun extract(page: FetchedPage, programName: String, watchlist: List<WatchEntry>, previous: PreviousEdition?, examples: List<DateLabelExample>, tagNames: List<String>): Extraction {
         if (page.text.length > CollectionPrompts.MAX_PAGE_CHARS) log.warn("Page text truncated to {} chars: {}", CollectionPrompts.MAX_PAGE_CHARS, page.url)
         val params = MessageCreateParams.builder()
             .model(properties.model)
             .maxTokens(8192L)
             .system(CollectionPrompts.EXTRACT_SYSTEM)
             .outputConfig(OutputConfig.builder().format(JsonOutputFormat.builder().schema(SCHEMA).build()).build())
-            .addUserMessage(CollectionPrompts.extractRequest(programName, page.url, page.text, watchlist, previous, examples))
+            .addUserMessage(CollectionPrompts.extractRequest(programName, page.url, page.text, watchlist, previous, examples, tagNames))
             .build()
         val response = anthropic.client.messages().create(params)
         val text = response.content().flatMap { block -> block.text().map { listOf(it.text()) }.orElse(emptyList()) }.joinToString("")

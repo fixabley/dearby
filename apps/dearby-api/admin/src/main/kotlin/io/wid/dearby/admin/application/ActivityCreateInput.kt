@@ -17,6 +17,7 @@ data class ActivityCreateInput(
     val applicationUrl: String?,
     val participationType: ParticipationType?,
     val category: ActivityCategory?,
+    val tagIds: List<Id>? = null, // 태그 id 목록(native-v1.md "태그"). null이면 프로그램 태그를 기본으로 쓴다
     val activitySchedule: ScheduleEdit?,
     val activityDateLabel: String?,
     val application: ScheduleEdit?,

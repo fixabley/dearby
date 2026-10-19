@@ -55,6 +55,8 @@ class CollectionJobTest(
             val renderedUrls = mutableListOf<String>()
             val httpUrls = mutableListOf<String>()
             var rendererClosed = 0
+            var extractedTags: List<String> = listOf("창업", "없는 태그") // 태그 테스트: 사전 밖 이름은 버려진다
+            var receivedTagNames: List<String> = emptyList() // 마지막 추출 요청이 받은 태그 사전
         }
 
         @Bean
@@ -86,15 +88,16 @@ class CollectionJobTest(
 
         @Bean
         @Primary
-        fun fakeExtractor() = ActivityExtractor { _, _, _, _, examples ->
+        fun fakeExtractor() = ActivityExtractor { _, _, _, _, examples, tagNames ->
             receivedExamples = examples
+            receivedTagNames = tagNames
             Extraction(
                 listOf(
                     ExtractedActivity(
                         roundKey = "2026-컨퍼런스", name = "Let'Swift 2026 컨퍼런스", nameEn = "Let'Swift 2026 Conference", description = "본행사", descriptionEn = "Main event", participationType = "REGISTRATION",
                         applicationUrl = "https://letswift.kr/2026/apply", recruitmentStartAt = "2026-11-01T10:00:00+09:00",
                         recruitmentEndAt = "2026-11-10T23:59:00+09:00", dateLabel = "2026-11-29", startDate = "2026-11-29", endDate = "2026-11-29", schedules = emptyList(),
-                        location = null, cost = null, audience = null, evidenceQuote = "참가 신청은 11월 1일부터 11월 10일까지입니다", category = extractedCategory,
+                        location = null, cost = null, audience = null, evidenceQuote = "참가 신청은 11월 1일부터 11월 10일까지입니다", category = extractedCategory, tags = extractedTags,
                     ),
                     ExtractedActivity(
                         roundKey = "2026-가짜", name = "원문에 없는 활동", nameEn = null, description = "", descriptionEn = null, participationType = null,
@@ -180,6 +183,9 @@ class CollectionJobTest(
         // 실제로 받은 페이지만 fetched_urls에 남는다(404였던 탐색 주소는 빠진다). 활동 종류는 모델이 뽑은 값 그대로 초안에
         assertEquals("https://letswift.kr/2026/", jdbc.sql("select array_to_string(fetched_urls, ',') from collection_runs").query(String::class.java).single())
         assertEquals(listOf("CONFERENCE"), jdbc.sql("select category from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
+        // 태그(native-v1.md "태그"): 모델이 사전 이름으로 고른 것만 남고(없는 태그는 버림), 추출 요청에는 사전 전체가 넘어간다
+        assertEquals(listOf("창업"), jdbc.sql("select t.name from activity_tags at join tags t on t.id = at.tag_id join activities a on a.id = at.activity_id where a.name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
+        assertTrue(Fakes.receivedTagNames.containsAll(listOf("창업", "멘토링")))
         assertEquals(listOf(true), jdbc.sql("select official_source from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(Boolean::class.java).list())
         assertEquals(listOf("Let'Swift 2026 Conference|Main event"), jdbc.sql("select name_en || '|' || description_en from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
         val schedules = jdbc.sql("select slot from schedules s join activities a on a.id = s.activity_id where a.name = ? order by slot")
@@ -193,11 +199,14 @@ class CollectionJobTest(
         assertEquals(1, runCount())
 
         // 운영자 지정 필드(admin-v1.md): curated_fields에 있는 필드만 지키고, 전에 수집·가져온 값은 다시 수집하면 새 값으로 갱신한다
-        jdbc.sql("update activities set category = 'STUDY', curated_fields = '[\"eligibility\",\"nameEn\",\"category\"]'::jsonb, name_en = 'Curated EN', eligibility = '{\"op\":\"all\",\"items\":[{\"field\":\"나이\",\"fieldEn\":\"age\",\"from\":30}]}'::jsonb, description = '옛 설명', audience = '옛 대상', inherited_fields = '[]'::jsonb where name = ?")
+        jdbc.sql("insert into activity_tags (activity_id, tag_id) select a.id, t.id from activities a, tags t where a.name = ? and t.name = '멘토링' on conflict do nothing").param("Let'Swift 2026 컨퍼런스").update()
+        jdbc.sql("update activities set category = 'STUDY', curated_fields = '[\"eligibility\",\"nameEn\",\"category\",\"tags\"]'::jsonb, name_en = 'Curated EN', eligibility = '{\"op\":\"all\",\"items\":[{\"field\":\"나이\",\"fieldEn\":\"age\",\"from\":30}]}'::jsonb, description = '옛 설명', audience = '옛 대상', inherited_fields = '[]'::jsonb where name = ?")
             .param("Let'Swift 2026 컨퍼런스").update()
         assertEquals(BatchStatus.COMPLETED, run("2026-10-21").status)
         assertEquals(2, runCount())
         assertEquals(listOf("STUDY"), jdbc.sql("select category from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
+        // 운영자가 지정한 태그(curated tags)는 다시 수집해도 그대로
+        assertEquals(listOf("창업", "멘토링"), jdbc.sql("select t.name from activity_tags at join tags t on t.id = at.tag_id join activities a on a.id = at.activity_id where a.name = ? order by t.sort_order").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
         assertEquals(
             listOf("Curated EN|본행사|Swift 개발자|30|[\"audience\"]"),
             jdbc.sql("select name_en || '|' || description || '|' || audience || '|' || (eligibility->'items'->0->>'from') || '|' || inherited_fields::text from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list(),
@@ -255,12 +264,18 @@ class CollectionJobTest(
     fun `모델이 종류를 못 뽑으면 프로그램 기본 종류를 초안에 쓴다`() {
         officialSetting()
         jdbc.sql("update programs set category = 'MEETUP' where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").update()
+        // 태그도 같다: 모델이 하나도 못 고르면 프로그램 태그를 기본으로
+        jdbc.sql("insert into program_tags (program_id, tag_id) select p.id, t.id from programs p, tags t where p.source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db' and t.name = '협업'").update()
         Fakes.extractedCategory = null
+        Fakes.extractedTags = emptyList()
         try {
             assertEquals(BatchStatus.COMPLETED, run("2026-10-22").status)
             assertEquals(listOf("MEETUP"), jdbc.sql("select category from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
+            assertEquals(listOf("협업"), jdbc.sql("select t.name from activity_tags at join tags t on t.id = at.tag_id join activities a on a.id = at.activity_id where a.name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
         } finally {
             Fakes.extractedCategory = "CONFERENCE"
+            Fakes.extractedTags = listOf("창업", "없는 태그")
+            jdbc.sql("delete from program_tags").update()
             jdbc.sql("update programs set category = null where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").update()
         }
     }

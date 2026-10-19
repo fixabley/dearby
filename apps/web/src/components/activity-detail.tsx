@@ -74,6 +74,11 @@ export function ActivityDetail({ id }: { id: number }) {
           {status.label}
         </span>
         {activity.category && <span className="badge neutral">{categoryLabel(activity.category)}</span>}
+        {(activity.tags ?? []).map((tag) => (
+          <span key={tag.id} className="badge neutral">
+            {tag.name}
+          </span>
+        ))}
         <h1>{activity.name}</h1>
         <p className="lead">{activity.description}</p>
       </div>
