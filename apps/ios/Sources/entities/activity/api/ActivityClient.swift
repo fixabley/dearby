@@ -4,12 +4,10 @@ import Foundation
 enum ActivityClient {
     /// Activities, optionally those of one program (`programId`); `size` up to 100 so an expanded program loads in one page.
     /// `open` asks the server for currently open activities only (contract "열린 활동 판정 일원화"): the client never re-judges them.
-    /// `tagIDs` keeps only activities carrying every tag (contract "태그": `tagIds`, AND).
-    static func fetch(api: URL, query: String, cursor: Int64?, programID: Int64? = nil, size: Int? = nil, open: Bool = false,
-                      tagIDs: [Int64] = []) async throws -> ActivityPage {
+    /// Tags are a search condition only: `q` matching a tag name is the server's rule, and `tagIds` is never sent (2026-10-19 밤).
+    static func fetch(api: URL, query: String, cursor: Int64?, programID: Int64? = nil, size: Int? = nil, open: Bool = false) async throws -> ActivityPage {
         var items: [URLQueryItem] = []
         if !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
-        if !tagIDs.isEmpty { items.append(URLQueryItem(name: "tagIds", value: tagIDs.map(String.init).joined(separator: ","))) }
         if let programID { items.append(URLQueryItem(name: "programId", value: String(programID))) }
         if open { items.append(URLQueryItem(name: "open", value: "true")) }
         if let cursor { items.append(URLQueryItem(name: "cursor", value: String(cursor))) }
@@ -18,11 +16,10 @@ enum ActivityClient {
     }
     /// Programs for the discovery accordion (contract "발견 프로그램 묶음"), matching `query` by program, organization or activity name.
     /// `openOnly` false (contract "모집 중인 프로그램만 보기") also returns programs that had an activity in the last two years.
-    /// `tagIDs` keeps only programs whose open activities carry every tag (contract "태그").
-    static func fetchPrograms(api: URL, query: String, cursor: Int64?, openOnly: Bool = true, tagIDs: [Int64] = []) async throws -> ProgramPage {
+    /// `logoUrl` is an API-origin path (`/v1/programs/{id}/logo?v=…`, contract "프로그램 로고"), resolved here against `api`.
+    static func fetchPrograms(api: URL, query: String, cursor: Int64?, openOnly: Bool = true) async throws -> ProgramPage {
         var items: [URLQueryItem] = []
         if !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
-        if !tagIDs.isEmpty { items.append(URLQueryItem(name: "tagIds", value: tagIDs.map(String.init).joined(separator: ","))) }
         if !openOnly { items.append(URLQueryItem(name: "openOnly", value: "false")) }
         if let cursor { items.append(URLQueryItem(name: "cursor", value: String(cursor))) }
         let payload = try JSONDecoder().decode(ProgramPayload.self, from: try await get(api, path: "v1/discovery/programs", items))
@@ -31,12 +28,9 @@ enum ActivityClient {
                            openActivityCount: program.openActivityCount, nearestRecruitmentEndAt: program.nearestRecruitmentEndAt,
                            matchedActivityIDs: program.matchedActivityIds.map(String.init), latestActivityAt: program.latestActivityAt,
                            upcomingActivityCount: program.upcomingActivityCount ?? 0, nearestRecruitmentStartAt: program.nearestRecruitmentStartAt,
-                           tags: (program.tags ?? []).map(\.tag))
+                           tags: (program.tags ?? []).map(\.tag),
+                           logoURL: program.logoUrl.flatMap { URL(string: $0, relativeTo: api)?.absoluteURL })
         }, nextCursor: payload.nextCursor)
-    }
-    /// The tag vocabulary (`GET /v1/tags`, contract "태그"), in the server's order.
-    static func fetchTags(api: URL) async throws -> [Tag] {
-        try JSONDecoder().decode(TagPayload.self, from: try await get(api, path: "v1/tags", [])).items.map(\.tag)
     }
     private static func get(_ api: URL, path: String, _ items: [URLQueryItem]) async throws -> Data {
         var components = URLComponents(url: api.appending(path: path), resolvingAgainstBaseURL: false)
@@ -114,8 +108,9 @@ enum ActivityClient {
         let upcomingActivityCount: Int?; let nearestRecruitmentStartAt: String?
         /// Absent on older responses.
         let tags: [TagDTO]?
+        /// Program logo path, or nil without a logo (contract "프로그램 로고" 2026-10-19 밤); absent on older responses.
+        let logoUrl: String?
     }
-    private struct TagPayload: Decodable { let items: [TagDTO] }
     private struct TagDTO: Decodable {
         let id: Int64; let name: String; let nameEn: String?
         var tag: Tag { Tag(id: id, name: name, nameEn: nameEn) }

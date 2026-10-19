@@ -29,7 +29,7 @@
 }
 .open {
   background: var(--teal);
-  color: #fff;
+  color: var(--on-teal);
 }
 .soon {
   background: var(--mint);

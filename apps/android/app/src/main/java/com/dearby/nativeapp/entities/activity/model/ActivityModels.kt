@@ -120,6 +120,8 @@ data class ProgramSummary(
     val upcomingActivityCount: Int = 0, val nearestRecruitmentStartAt: String? = null,
     /** Program tags, or the union of its open activities' tags (contract "태그", at most 6). */
     val tags: List<Tag> = emptyList(),
+    /** The program logo as an absolute URL (contract "프로그램 로고": `/v1/programs/{id}/logo?v=` on the API origin), or null when it has none. */
+    val logoUrl: String? = null,
 )
 
 /** One page of `GET /v1/discovery/programs`; [nextCursor] is the next integer offset as text, null on the last page. */

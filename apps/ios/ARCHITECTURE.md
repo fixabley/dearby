@@ -13,8 +13,8 @@ Repository/API/인증/영구 저장/OS 개인정보 접근 계층 없이 fixture
 - `entities/activity`: 활동 값 모델·페이지와 `GET /v1/activities` 클라이언트.
 - `entities/identity`: 순수 명함/연락처/이력 fixture 및 CardView/CardDeck/HistoryTimeline/ContactIcons.
 - `shared/lib`: 검색어 비교, 마크다운 부분집합 파서 `MarkdownDocument`.
-- `shared/ui`: DearbyStyle 색상, DearbyLogo, 마크다운 본문 `DearbyMarkdownText`, 버튼(채움/테두리, Apple 로그인 버튼 DearbyAppleButton), 배지, 아바타,
-  정보행, 세그먼트, 시트 헤더. 도메인을 import하지 않으며 실제 재사용 요소만 둡니다.
+- `shared/ui`: DearbyStyle 색상(시스템 중립색 별칭 + 라이트/다크 두 값의 청록), DearbyLogo, 마크다운 본문 `DearbyMarkdownText`, 버튼(채움/테두리, Apple 로그인 버튼 DearbyAppleButton), 배지, 아바타,
+  정보행, 세그먼트, 시트 헤더, 탭 첫 화면 제목 줄 `PageTitle`. 도메인을 import하지 않으며 실제 재사용 요소만 둡니다.
 
 프로필과 명함은 앱 수명 동안만 존재합니다. 저장/공개 선택/프리셋/보낸 표시도 메모리뿐입니다.
 명함 스냅샷은 생성/편집 시 선택한 연락처와 이력을 복사하며, 기존 명함은 프로필 변경을 자동 반영하지 않습니다.

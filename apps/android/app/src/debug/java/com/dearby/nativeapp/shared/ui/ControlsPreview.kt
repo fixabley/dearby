@@ -2,9 +2,9 @@ package com.dearby.nativeapp.shared.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.sp
     var query by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("김지민") }
     var introduction by remember { mutableStateOf("") }
-    Column(Modifier.background(Color.White).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         DearbySearchField(query, { query = it }, "이름, 직무, 활동으로 검색")
         DearbySearchField("", {}, "이름, 직무, 활동으로 검색", expansion = 0f)
         DearbySearchField("", {}, "이름, 직무, 활동으로 검색", expansion = .7f)

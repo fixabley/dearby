@@ -104,7 +104,7 @@ struct CalendarConflictView: View {
                     Text("다음 겹치는 일정으로 이동해요.").font(.caption).foregroundStyle(DearbyStyle.teal)
                 }
             }.padding(.horizontal, 20).padding(.bottom, 16)
-        }.background(.white)
+        }.background(Color(.systemBackground))
     }
 }
 

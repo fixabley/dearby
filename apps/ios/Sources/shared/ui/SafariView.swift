@@ -6,7 +6,7 @@ struct SafariView: UIViewControllerRepresentable {
     let url: URL
     func makeUIViewController(context: Context) -> SFSafariViewController {
         let controller = SFSafariViewController(url: url)
-        controller.preferredControlTintColor = UIColor(DearbyStyle.teal)
+        controller.preferredControlTintColor = DearbyStyle.tealUIColor
         return controller
     }
     func updateUIViewController(_ controller: SFSafariViewController, context: Context) {}

@@ -26,7 +26,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.DearbyButton
 import com.dearby.nativeapp.shared.ui.DearbyFieldError
-import com.dearby.nativeapp.shared.ui.Quiet
 import com.dearby.nativeapp.shared.ui.ScreenHeader
 
 /**
@@ -39,7 +38,7 @@ import com.dearby.nativeapp.shared.ui.ScreenHeader
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("시작하기 전에 동의가 필요해요")
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("프로필(이름·연락처·활동 이력)을 저장하려면 아래 두 가지에 동의해 주세요.", color = Quiet, style = MaterialTheme.typography.bodyMedium)
+            Text("프로필(이름·연락처·활동 이력)을 저장하려면 아래 두 가지에 동의해 주세요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             ConsentRow("개인정보 수집·이용에 동의합니다 (필수)", privacy, { privacy = it }, openPrivacy)
             ConsentRow("이용약관에 동의합니다 (필수)", terms, { terms = it }, openTerms)
             error?.let { DearbyFieldError(it) }

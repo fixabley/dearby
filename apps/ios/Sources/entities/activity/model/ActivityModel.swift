@@ -175,6 +175,8 @@ struct ProgramSummary: Equatable, Identifiable, Sendable {
     var nearestRecruitmentStartAt: String? = nil
     /// Program tags, or the union of its open activities' tags (contract "태그": at most 6, vocabulary order).
     var tags: [Tag] = []
+    /// The program logo (contract "프로그램 로고" 2026-10-19 밤), already resolved against the API origin; nil without a logo.
+    var logoURL: URL? = nil
     var nearestRecruitmentEnd: Date? { ActivityModel.instant(nearestRecruitmentEndAt) }
     var latestActivity: Date? { ActivityModel.instant(latestActivityAt) }
     var nearestRecruitmentStart: Date? { ActivityModel.instant(nearestRecruitmentStartAt) }

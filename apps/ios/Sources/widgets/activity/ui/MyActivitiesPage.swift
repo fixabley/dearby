@@ -12,37 +12,39 @@ struct MyActivitiesPage: View {
         let active = applied.filter { !($0.progress?.ended ?? false) }
         let ended = applied.filter { $0.progress?.ended ?? false }
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                HStack { Text("내 활동").font(.dearby(.title2).bold()); DearbyBadge(title: "예시") }
-                if applied.isEmpty {
-                    ContentUnavailableView {
-                        Label("신청한 활동이 없어요", systemImage: "calendar")
-                    } description: {
-                        Text("발견에서 관심 있는 활동을 신청해 보세요.")
-                    } actions: {
-                        Button("활동 둘러보기", action: explore).accessibilityIdentifier("explore")
+            VStack(alignment: .leading, spacing: 12) {
+                PageTitle("내 활동") { DearbyBadge(title: "예시") }
+                VStack(alignment: .leading, spacing: 16) {
+                    if applied.isEmpty {
+                        ContentUnavailableView {
+                            Label("신청한 활동이 없어요", systemImage: "calendar")
+                        } description: {
+                            Text("발견에서 관심 있는 활동을 신청해 보세요.")
+                        } actions: {
+                            Button("활동 둘러보기", action: explore).accessibilityIdentifier("explore")
+                        }
+                    } else {
+                        Text("단계 표시와 참여 확정 표시는 내가 남기는 예시 표시예요. 주최 측 결과가 아니에요.")
+                            .font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
+                        Text("진행 중").font(.dearby(.headline)).accessibilityAddTraits(.isHeader)
+                        if active.isEmpty {
+                            Text("진행 중인 활동이 없어요.").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
+                        }
+                        ForEach(active) { row($0, now: now) }
+                        if !ended.isEmpty {
+                            DisclosureGroup(isExpanded: $showEnded) {
+                                VStack(spacing: 16) { ForEach(ended) { row($0, now: now) } }.padding(.top, 12)
+                            } label: {
+                                Text("끝난 활동 \(ended.count)").font(.dearby(.headline)).foregroundStyle(DearbyStyle.ink)
+                            }.tint(DearbyStyle.quiet)
+                        }
                     }
-                } else {
-                    Text("단계 표시와 참여 확정 표시는 내가 남기는 예시 표시예요. 주최 측 결과가 아니에요.")
-                        .font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
-                    Text("진행 중").font(.dearby(.headline)).accessibilityAddTraits(.isHeader)
-                    if active.isEmpty {
-                        Text("진행 중인 활동이 없어요.").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
-                    }
-                    ForEach(active) { row($0, now: now) }
-                    if !ended.isEmpty {
-                        DisclosureGroup(isExpanded: $showEnded) {
-                            VStack(spacing: 16) { ForEach(ended) { row($0, now: now) } }.padding(.top, 12)
-                        } label: {
-                            Text("끝난 활동 \(ended.count)").font(.dearby(.headline)).foregroundStyle(DearbyStyle.ink)
-                        }.tint(DearbyStyle.quiet)
-                    }
-                }
-            }.padding(20)
+                }.padding(.horizontal, 20).padding(.bottom, 20)
+            }
         }
         .navigationDestination(for: String.self) { id in ActivityDetailView(state: state, activityID: id) }
         .navigationDestination(for: ActivityProgressRoute.self) { route in ActivityProgressPage(state: state, activityID: route.activityID) }
-        .scrollContentBackground(.hidden).background(.white)
+        .scrollContentBackground(.hidden).background(Color(.systemGroupedBackground))
         .tint(DearbyStyle.teal).navigationTitle("")
         .navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .navigationBar)
     }

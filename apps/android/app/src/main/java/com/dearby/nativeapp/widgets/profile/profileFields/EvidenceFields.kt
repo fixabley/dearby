@@ -21,19 +21,19 @@ data class EvidenceRow(val id: String, val fileName: String, val isPdf: Boolean,
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         items.forEach { item ->
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Icon(if (item.isPdf) Icons.Outlined.Description else Icons.Outlined.Image, null, Modifier.size(24.dp), tint = Teal)
+                Icon(if (item.isPdf) Icons.Outlined.Description else Icons.Outlined.Image, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
                 Column(Modifier.weight(1f)) {
                     Text(item.fileName, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
-                    Text("${item.sizeKb}KB", color = Quiet, style = MaterialTheme.typography.bodySmall)
+                    Text("${item.sizeKb}KB", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
-                IconButton({ onDelete(item.id) }, enabled = !busy) { Icon(Icons.Outlined.RemoveCircleOutline, "${item.fileName} 삭제", tint = Quiet) }
+                IconButton({ onDelete(item.id) }, enabled = !busy) { Icon(Icons.Outlined.RemoveCircleOutline, "${item.fileName} 삭제", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         }
         if (items.size < 3) Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             DearbyOutlineButton(onPickImage, Modifier.weight(1f), enabled = !busy) { Text("사진") }
             DearbyOutlineButton(onPickPdf, Modifier.weight(1f), enabled = !busy) { Text("PDF") }
-        } else Text("인증자료는 3개까지 올릴 수 있어요.", color = Quiet, style = MaterialTheme.typography.bodySmall)
-        if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Teal, strokeWidth = 2.dp)
+        } else Text("인증자료는 3개까지 올릴 수 있어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = MaterialTheme.colorScheme.primary, strokeWidth = 2.dp)
         error?.let { DearbyFieldError(it) }
     }
 }

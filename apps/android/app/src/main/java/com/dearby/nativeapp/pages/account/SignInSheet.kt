@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -24,16 +23,16 @@ import com.dearby.nativeapp.shared.ui.*
             DearbyBrand(Modifier.fillMaxWidth().padding(top = 4.dp))
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text("로그인", Modifier.semantics { heading() }, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineSmall)
-                Text("패스키는 기기 잠금(지문·얼굴·PIN)으로 로그인해요. 비밀번호는 필요 없어요.", color = Quiet, style = MaterialTheme.typography.bodyMedium)
+                Text("패스키는 기기 잠금(지문·얼굴·PIN)으로 로그인해요. 비밀번호는 필요 없어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             }
             message?.let { DearbyFieldError(it) }
             DearbyButton(signIn, Modifier.fillMaxWidth().testTag("sign-in-passkey"), enabled = !busy) {
-                if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text("패스키로 로그인")
+                if (busy) CircularProgressIndicator(Modifier.size(20.dp), color = LocalContentColor.current, strokeWidth = 2.dp) else Text("패스키로 로그인")
             }
             AppleSignInButton(apple, Modifier.fillMaxWidth().testTag("sign-in-apple"), enabled = !busy)
             google?.let { DearbyGoogleButton(it, Modifier.fillMaxWidth().testTag("sign-in-google"), enabled = !busy) }
             DearbyOutlineButton(signUp, Modifier.fillMaxWidth().testTag("sign-up-passkey"), enabled = !busy) { Text("새 패스키로 시작") }
-            Text("처음이라면 새 패스키를 만들면 계정도 함께 만들어져요.", color = Quiet, style = MaterialTheme.typography.bodySmall)
+            Text("처음이라면 새 패스키를 만들면 계정도 함께 만들어져요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
         }
     }
 }

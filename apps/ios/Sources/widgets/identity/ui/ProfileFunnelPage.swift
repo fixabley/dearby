@@ -83,9 +83,9 @@ struct ProfileFunnelPage: View {
     }
     private var bar: some View {
         Button(action: next) {
-            if saving { ProgressView().tint(.white) } else { Text(allReached ? "프로필 저장" : "다음") }
+            if saving { ProgressView().tint(DearbyStyle.onTeal) } else { Text(allReached ? "프로필 저장" : "다음") }
         }.buttonStyle(DearbyButtonStyle(height: 56)).disabled(saving).accessibilityIdentifier("profile-setup-next")
-            .padding(.horizontal, 24).padding(.vertical, 12).background(.white).overlay(alignment: .top) { Rectangle().fill(DearbyStyle.line).frame(height: 1) }
+            .padding(.horizontal, 24).padding(.vertical, 12).background(Color(.systemBackground)).overlay(alignment: .top) { Rectangle().fill(DearbyStyle.line).frame(height: 1) }
     }
     private func next() {
         tried = true

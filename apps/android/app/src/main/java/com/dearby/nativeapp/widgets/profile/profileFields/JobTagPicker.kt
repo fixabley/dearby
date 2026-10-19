@@ -35,31 +35,31 @@ data class JobTag(val id: String, val title: String, val pending: Boolean, val r
                     label = { Text(tag.title, style = MaterialTheme.typography.bodyLarge) },
                     leadingIcon = if (tag.pending) ({ Icon(Icons.Outlined.Schedule, "승인 대기", Modifier.size(18.dp)) }) else null,
                     trailingIcon = { Icon(Icons.Outlined.Close, "삭제", Modifier.size(18.dp)) },
-                    colors = InputChipDefaults.inputChipColors(selectedContainerColor = Mint, selectedLabelColor = Teal, selectedLeadingIconColor = Teal, selectedTrailingIconColor = Teal),
+                    colors = InputChipDefaults.inputChipColors(selectedContainerColor = MaterialTheme.colorScheme.primaryContainer, selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer, selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer, selectedTrailingIconColor = MaterialTheme.colorScheme.onPrimaryContainer),
                     modifier = Modifier.heightIn(min = 44.dp),
                 )
             }
         }
-        if (tags.any { it.pending }) Text("직접 적은 직무는 관리자 승인 뒤 명함에 들어가요.", color = Quiet, style = MaterialTheme.typography.bodySmall)
-        if (full) { Text("직무는 ${tags.size}개까지 고를 수 있어요.", color = Quiet, style = MaterialTheme.typography.bodySmall); return@Column }
+        if (tags.any { it.pending }) Text("직접 적은 직무는 관리자 승인 뒤 명함에 들어가요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        if (full) { Text("직무는 ${tags.size}개까지 고를 수 있어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall); return@Column }
         DearbySearchField(query, onQueryChange, "직무 검색 (예: 백엔드, 디자인)")
-        if (loading && items.isEmpty()) Box(Modifier.fillMaxWidth().height(56.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Teal) }
-        else if (failed) Text("목록을 불러오지 못했어요. 직접 적어도 돼요.", color = Quiet, style = MaterialTheme.typography.bodyMedium)
+        if (loading && items.isEmpty()) Box(Modifier.fillMaxWidth().height(56.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
+        else if (failed) Text("목록을 불러오지 못했어요. 직접 적어도 돼요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         items.forEach { item ->
             Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button) { onPick(item) }.padding(vertical = 8.dp), verticalArrangement = Arrangement.Center) {
                 Text(item.name, style = MaterialTheme.typography.bodyLarge)
-                item.detail?.let { Text(it, color = Quiet, style = MaterialTheme.typography.bodySmall) }
+                item.detail?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
             }
-            HorizontalDivider(color = Line)
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
         }
         val trimmed = query.trim()
         if (trimmed.isNotEmpty() && items.none { it.name == trimmed }) {
             Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button, onClickLabel = "목록에 없으면 적은 이름 그대로 저장해요") { onType(trimmed); onQueryChange("") }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Edit, null, tint = Teal); Spacer(Modifier.width(8.dp))
-                Text("‘$trimmed’ 직접 입력", color = Teal, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
+                Icon(Icons.Outlined.Edit, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(8.dp))
+                Text("‘$trimmed’ 직접 입력", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
             }
         } else if (trimmed.isEmpty() && items.isEmpty() && !loading) {
-            Text("이름으로 검색해 여러 개 고르거나, 없으면 그대로 적어 주세요.", color = Quiet, style = MaterialTheme.typography.bodyMedium)
+            Text("이름으로 검색해 여러 개 고르거나, 없으면 그대로 적어 주세요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

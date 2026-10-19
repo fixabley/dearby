@@ -55,7 +55,6 @@ export function ActivityDetail({ id }: { id: number }) {
     );
   const status = recruitment(activity.application, now);
   const official = httpsUrl(activity.officialUrl);
-  const image = httpsUrl(activity.imageUrl);
   const eligibility = eligibilityLines(activity.eligibility);
   const place = activity.place ?? null;
   return (
@@ -65,11 +64,6 @@ export function ActivityDetail({ id }: { id: number }) {
         활동 탐색
       </Link>
       <div className="detail-heading">
-        {image && (
-          // Activity images come from arbitrary official hosts, so next/image optimization is not configured for them.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img className="detail-image" src={image} alt="" />
-        )}
         <p className="eyebrow">{activity.organization.name}</p>
         <span className={`badge ${status.open ? "" : "neutral"}`}>
           {status.label}

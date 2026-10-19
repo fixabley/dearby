@@ -8,7 +8,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -33,41 +32,41 @@ data class ComposerHistory(val id: String, val title: String, val detail: String
             Section("명함") { Labeled("명함 이름 (선택)") { DearbyInlineField("명함 이름", cardTitle, onCardTitleChange, editing = true, placeholder = "비워 두면 '내 명함'으로 저장해요") } }
             Section("미리보기") { OutlinedCard(Modifier.fillMaxWidth()) { MarkdownBody(preview, Modifier.padding(12.dp)) } }
             Section("공개할 연락처") {
-                if (contacts.isEmpty()) Text("프로필에 연락처가 없어요.", color = Quiet, style = MaterialTheme.typography.bodyMedium)
+                if (contacts.isEmpty()) Text("프로필에 연락처가 없어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                 contacts.forEach { contact ->
                     Row(Modifier.heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("${contact.label} · ${contact.value}", style = MaterialTheme.typography.bodyMedium)
-                            if (contact.locked) Text("본문에 넣어서 공개돼요", color = Quiet, style = MaterialTheme.typography.bodySmall)
+                            if (contact.locked) Text("본문에 넣어서 공개돼요", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         }
                         Switch(contact.isPublic, { onContactPublic(contact.id, it) }, Modifier.semantics { contentDescription = "${contact.label} 공개" }, enabled = !contact.locked)
                     }
                 }
             }
             Section("공개할 활동 이력") {
-                if (histories.isEmpty()) Text("프로필에 이력이 없어요.", color = Quiet, style = MaterialTheme.typography.bodyMedium)
+                if (histories.isEmpty()) Text("프로필에 이력이 없어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                 histories.forEach { history ->
                     Row(Modifier.heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(history.title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-                            if (history.detail.isNotBlank()) Text(history.detail, color = Quiet, style = MaterialTheme.typography.bodySmall)
-                            history.reason?.let { Text(it, color = Danger, style = MaterialTheme.typography.bodySmall) }
+                            if (history.detail.isNotBlank()) Text(history.detail, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            history.reason?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                         }
                         Switch(history.isPublic, { onHistoryPublic(history.id, it) }, Modifier.semantics { contentDescription = "${history.title} 공개" }, enabled = history.reason == null)
                     }
                 }
             }
         }
-        HorizontalDivider(color = Line)
-        Column(Modifier.background(Color.White).padding(horizontal = 20.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            errorMessage?.let { Text(it, Modifier.fillMaxWidth(), color = Danger, style = MaterialTheme.typography.bodyMedium) }
+        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
+        Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 20.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            errorMessage?.let { Text(it, Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 if (changed) DearbyOutlineButton(onRevert, Modifier.weight(1f), enabled = !publishing) { Text("원래대로") }
                 DearbyButton(onPublish, Modifier.weight(1f).semantics { if (publishing) stateDescription = "발행 중" }, enabled = !publishing) {
-                    if (publishing) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text("명함 발행", style = MaterialTheme.typography.titleMedium)
+                    if (publishing) CircularProgressIndicator(Modifier.size(20.dp), color = LocalContentColor.current, strokeWidth = 2.dp) else Text("명함 발행", style = MaterialTheme.typography.titleMedium)
                 }
             }
-            Text("발행한 명함은 바뀌지 않아요. 고치면 새 명함으로 발행돼요.", color = Quiet, style = MaterialTheme.typography.labelSmall)
+            Text("발행한 명함은 바뀌지 않아요. 고치면 새 명함으로 발행돼요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -78,6 +77,6 @@ data class ComposerHistory(val id: String, val title: String, val detail: String
 }
 
 @Composable private fun Labeled(label: String, field: @Composable () -> Unit) = Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-    Text(label, Modifier.clearAndSetSemantics {}, color = Quiet, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
+    Text(label, Modifier.clearAndSetSemantics {}, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
     field()
 }

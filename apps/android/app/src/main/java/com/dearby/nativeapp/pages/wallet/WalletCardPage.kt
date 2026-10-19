@@ -18,7 +18,6 @@ import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.DearbyFieldError
 import com.dearby.nativeapp.shared.ui.DearbyOutlineButton
 import com.dearby.nativeapp.shared.ui.ExampleBadge
-import com.dearby.nativeapp.shared.ui.Quiet
 import com.dearby.nativeapp.shared.ui.ScreenHeader
 import com.dearby.nativeapp.widgets.card.cardContent.CardContent
 import com.dearby.nativeapp.widgets.card.cardContent.ContactState
@@ -34,7 +33,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.ContactState
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("받은 명함", close)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(received.origin, color = Quiet, style = MaterialTheme.typography.bodySmall)
+            Text(received.origin, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             CardContent(received.card, onContact = contact)
             if (received.reciprocal) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { ExampleBadge("맞교환했어요", accent = true) }
             else {
@@ -44,7 +43,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.ContactState
                 Text(
                     if (myCards.isEmpty()) "먼저 내 명함 탭에서 명함을 만들면 건넬 수 있어요."
                     else "맞교환한 명함은 회수되지 않아요." + (received.badge?.let { " 지금은 맞교환하지 않으면 $it." } ?: ""),
-                    color = Quiet, style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
                 )
             }
             message?.let { DearbyFieldError(it) }

@@ -9,6 +9,7 @@ import {
   type ProgramSummary,
   type Tag,
   deadlineLabel,
+  programLogoSrc,
   startLabel,
   recruitment,
   scheduleLabel,
@@ -19,25 +20,18 @@ import { Icon } from "@/shared/ui/icon";
 import { ActivityCard, type StatusTone } from "@/widgets/activity/activity-card";
 import { groupByCategory } from "@/lib/category";
 
-function programsPath(q: string, openOnly: boolean, tagIds: number[], cursor?: number) {
+function programsPath(q: string, openOnly: boolean, cursor?: number) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (!openOnly) params.set("openOnly", "false");
-  // 태그 필터 (contract "태그"): every selected tag must match (AND).
-  if (tagIds.length) params.set("tagIds", tagIds.join(","));
   if (cursor !== undefined) params.set("cursor", String(cursor));
   return `/discovery/programs?${params}`;
 }
 
-/** `&tagIds=1,2` when tags are selected, else nothing. */
-function tagQuery(tagKey: string): string {
-  return tagKey ? `&tagIds=${tagKey}` : "";
-}
-
 /**
  * Discovery as a program accordion (contract "발견 프로그램 묶음 — 2026-10-18"): programs with open activities,
- * searched by `q` (from the `/?q=` URL) and paged with the API cursor. Expanding a header loads that program's
- * open activities as the usual activity cards.
+ * searched by `q` (from the `/?q=` URL; tag names match too, there is no tag chip row — contract "태그 칩 줄 제거") and paged
+ * with the API cursor. Expanding a header loads that program's open activities as the usual activity cards.
  */
 export function Discovery({ q }: { q: string }) {
   const [page, setPage] = useState<ProgramPage>();
@@ -48,12 +42,9 @@ export function Discovery({ q }: { q: string }) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   // 마감 숨기기 (contract "마감 숨기기"): on by default hides only closed activities (open + upcoming programs stay); off also lists programs active in the last three years and shows 지난 활동 under every expanded program.
   const [openOnly, setOpenOnly] = useState(true);
-  // Selected 얻을 수 있는 것 tags (contract "태그"); memory only.
-  const [tagIds, setTagIds] = useState<number[]>([]);
-  const tagKey = tagIds.join(",");
   useEffect(() => {
     const controller = new AbortController();
-    request<ProgramPage>(programsPath(q, openOnly, tagIds), { signal: controller.signal })
+    request<ProgramPage>(programsPath(q, openOnly), { signal: controller.signal })
       .then((result) => {
         setPage(result);
         // Auto-expand applies only while the toggle is on.
@@ -63,14 +54,12 @@ export function Discovery({ q }: { q: string }) {
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
     return () => controller.abort();
-    // tagKey stands in for the tagIds array so a re-render with the same selection does not refetch.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [q, openOnly, tagKey, attempt]);
+  }, [q, openOnly, attempt]);
   function loadMore() {
     if (page?.nextCursor == null || loadingMore) return;
     setLoadingMore(true);
     setMoreError("");
-    request<ProgramPage>(programsPath(q, openOnly, tagIds, page.nextCursor))
+    request<ProgramPage>(programsPath(q, openOnly, page.nextCursor))
       .then((next) => {
         setPage((current) => ({
           items: [...(current?.items ?? []), ...next.items],
@@ -127,13 +116,6 @@ export function Discovery({ q }: { q: string }) {
         />
         마감 숨기기
       </label>
-      <TagFilter
-        selected={tagIds}
-        onChange={(next) => {
-          setPage(undefined);
-          setTagIds(next);
-        }}
-      />
       {error ? (
         <Failure
           message={error}
@@ -170,7 +152,6 @@ export function Discovery({ q }: { q: string }) {
                 program={program}
                 open={expanded.has(program.id)}
                 toggle={() => toggle(program.id)}
-                tagKey={tagKey}
                 openOnly={openOnly}
               />
             ))}
@@ -208,35 +189,20 @@ export function Discovery({ q }: { q: string }) {
 }
 
 /**
- * Tag chip row under the search (contract "태그"): the dictionary from `GET /tags`, multi-select; a selection reloads
- * the program list with `tagIds`. Hidden while the dictionary is unavailable or empty.
+ * 44px logo slot (contract "프로그램 로고"): the program logo through the same-origin proxy, else — null, older response,
+ * or a failed load — the initial-letter avatar. Keyed by `src` upstream so a new `v` retries after a failure.
  */
-function TagFilter({ selected, onChange }: { selected: number[]; onChange: (next: number[]) => void }) {
-  const [tags, setTags] = useState<Tag[]>([]);
-  useEffect(() => {
-    const controller = new AbortController();
-    request<{ items: Tag[] }>("/tags", { signal: controller.signal })
-      .then((result) => setTags(result.items))
-      .catch(() => setTags([]));
-    return () => controller.abort();
-  }, []);
-  if (!tags.length) return null;
-  function toggle(id: number) {
-    onChange(selected.includes(id) ? selected.filter((value) => value !== id) : [...selected, id]);
-  }
+function ProgramAvatar({ name, src }: { name: string; src: string | undefined }) {
+  const [failed, setFailed] = useState(false);
   return (
-    <ul className="tag-filter" aria-label="얻을 수 있는 것으로 거르기">
-      {tags.map((tag) => {
-        const on = selected.includes(tag.id);
-        return (
-          <li key={tag.id}>
-            <button type="button" className={`tag-chip${on ? " selected" : ""}`} aria-pressed={on} onClick={() => toggle(tag.id)}>
-              {tag.name}
-            </button>
-          </li>
-        );
-      })}
-    </ul>
+    <span className="program-avatar" aria-hidden="true">
+      {src && !failed ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
+      ) : (
+        ([...name.trim()][0] ?? "?")
+      )}
+    </span>
   );
 }
 /** Up to three tag chips and a `+n` remainder (contract "태그") under the program name; nothing without tags. */
@@ -326,14 +292,12 @@ function upcomingKey(activity: Activity): number {
 function OtherActivities({
   programId,
   now,
-  tagKey,
   excludeIds,
   showPast,
   onEmpty,
 }: {
   programId: number;
   now: number;
-  tagKey: string;
   excludeIds?: Set<number>;
   /** 지난 활동 only while 마감 숨기기 is off; 모집 예정 always (contract "펼침", 2026-10-19 밤). */
   showPast: boolean;
@@ -344,13 +308,13 @@ function OtherActivities({
   const [error, setError] = useState("");
   useEffect(() => {
     const controller = new AbortController();
-    request<ActivityPage>(`/activities?programId=${programId}&size=20${tagQuery(tagKey)}`, { signal: controller.signal })
+    request<ActivityPage>(`/activities?programId=${programId}&size=20`, { signal: controller.signal })
       .then(setPage)
       .catch((error) => {
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
     return () => controller.abort();
-  }, [programId, tagKey]);
+  }, [programId]);
   if (error) return <p className="muted">{error}</p>;
   if (!page) return <Loading />;
   const others = page.items.filter((activity) => !excludeIds?.has(activity.id));
@@ -396,7 +360,7 @@ function startsOpen(program: ProgramSummary) {
 }
 
 /**
- * One program card (contract "발견 카드 리뉴얼 — 2026-10-19"): initial avatar, name · organization · tag chips, and on the right the
+ * One program card (contract "발견 카드 리뉴얼 — 2026-10-19"): logo or initial avatar, name · organization · tag chips, and on the right the
  * open + upcoming count badge that becomes an up-chevron `접기` button once expanded. The whole header toggles. The body stays
  * mounted so `grid-template-rows 0fr→1fr` can animate; its open activities come from `GET /activities?programId=&open=true`
  * (the server decides what is open) on the first expansion.
@@ -405,14 +369,11 @@ function ProgramRow({
   program,
   open,
   toggle,
-  tagKey,
   openOnly,
 }: {
   program: ProgramSummary;
   open: boolean;
   toggle: () => void;
-  /** Selected tag ids as `1,2`; the expanded rows follow the same filter as the program list (alignment with the apps). */
-  tagKey: string;
   /** 마감 숨기기 state: when off, 모집 예정·지난 활동 are shown under the open activities as well (contract "펼침"). */
   openOnly: boolean;
 }) {
@@ -424,20 +385,19 @@ function ProgramRow({
   useEffect(() => {
     if (!open || activities) return;
     const controller = new AbortController();
-    request<ActivityPage>(`/activities?programId=${program.id}&open=true&size=100${tagQuery(tagKey)}`, {
-      signal: controller.signal,
-    })
+    request<ActivityPage>(`/activities?programId=${program.id}&open=true&size=100`, { signal: controller.signal })
       .then(setActivities)
       .catch((error) => {
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
     return () => controller.abort();
-  }, [open, activities, program.id, attempt, tagKey]);
+  }, [open, activities, program.id, attempt]);
   useEffect(() => {
     if (!open) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, [open]);
+  const logoSrc = programLogoSrc(program.logoUrl);
   const count = program.openActivityCount + (program.upcomingActivityCount ?? 0);
   // Meta line precedence: a deadline while something is open, else the next start, else the latest activity month.
   const meta =
@@ -477,7 +437,6 @@ function ProgramRow({
       <OtherActivities
         programId={program.id}
         now={now}
-        tagKey={tagKey}
         excludeIds={new Set(openActivities.map((activity) => activity.id))}
         showPast={!openOnly}
         onEmpty={!openActivities.length ? <p className="muted">지금 모집 중인 활동이 없어요.</p> : null}
@@ -488,9 +447,7 @@ function ProgramRow({
     <li className="program" data-open={open || undefined}>
       <div className="program-header">
         <button type="button" className="program-toggle" aria-expanded={open} aria-controls={panelId} onClick={toggle}>
-          <span className="program-avatar" aria-hidden="true">
-            {[...program.name.trim()][0] ?? "?"}
-          </span>
+          <ProgramAvatar key={logoSrc ?? ""} name={program.name} src={logoSrc} />
           <span className="program-copy">
             <span className="program-name">{program.name}</span>
             <span className="program-org">{program.organization.name}</span>

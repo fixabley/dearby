@@ -18,7 +18,7 @@ struct ActivityProgressRow: View {
                 }
                 StageTrack(progress: progress)
             }
-            .padding(14).background(.white, in: RoundedRectangle(cornerRadius: 12))
+            .padding(14).background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(DearbyStyle.line))
         }.buttonStyle(.plain).accessibilityIdentifier("activity-\(activity.id)")
     }
@@ -57,7 +57,7 @@ struct StageTrack: View {
             switch stage.state {
             case .past: shape.fill(DearbyStyle.teal)
             case .current: shape.fill(DearbyStyle.mint).overlay(shape.stroke(DearbyStyle.teal, lineWidth: 1.5))
-            case .upcoming: shape.fill(DearbyStyle.line)
+            case .upcoming: shape.fill(Color(.opaqueSeparator))
             }
         }
     }

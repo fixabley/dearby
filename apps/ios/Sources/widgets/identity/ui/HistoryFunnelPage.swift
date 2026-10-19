@@ -32,7 +32,7 @@ struct HistoryFunnelPage: View {
             }
             bar
         }
-        .background(.white).navigationTitle(step == .summary ? "이력 확인" : "이력 입력").navigationBarTitleDisplayMode(.inline)
+        .background(Color(.systemBackground)).navigationTitle(step == .summary ? "이력 확인" : "이력 입력").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
         // Un-picking an activity drops the organization and program it brought along, so a typed activity asks for them fresh.
         .onChange(of: draft.activity) { _, next in
@@ -113,7 +113,7 @@ struct HistoryFunnelPage: View {
                     step = steps[index + 1]
                 }
             }.buttonStyle(DearbyButtonStyle())
-        }.padding(.horizontal, 20).padding(.vertical, 12).background(.white).overlay(alignment: .top) { Rectangle().fill(DearbyStyle.line).frame(height: 1) }
+        }.padding(.horizontal, 20).padding(.vertical, 12).background(Color(.systemBackground)).overlay(alignment: .top) { Rectangle().fill(DearbyStyle.line).frame(height: 1) }
     }
     private func choice(_ title: String, _ detail: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {

@@ -79,7 +79,7 @@ struct ContactSymbol: View {
     var body: some View {
         Group {
             if contact.kind == "github" {
-                Image("GitHubMark").resizable().scaledToFit().frame(width: size, height: size)
+                Image("GitHubMark").renderingMode(.template).resizable().scaledToFit().frame(width: size, height: size)
             } else if contact.kind == "behance" {
                 Text("Bē").font(.system(size: size, weight: .bold)).fixedSize()
             } else {

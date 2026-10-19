@@ -60,6 +60,17 @@
 - `officialOnly` = `allowedHosts`가 비어 있지 않음. **false면 매일 밤 "프로그램 이름 + 주최 기관"으로 웹 전체를 검색한다**(공식 도메인 수집보다 토큰이 약 5배, 공식 출처가 아닌 페이지가 섞인다). 어드민 웹은 비어 있을 때 이 점을 보여 준다.
   - `lastSucceededOn`: 마지막으로 수집에 성공한 한국 날짜(없으면 null). 이 날짜 + `intervalDays`가 지나야 다시 수집한다.
 
+## 프로그램 로고 — 2026-10-19 밤 사용자 결정
+
+사용자: "로고도 어드민에서 추가할 수 있게 해줘." 발견 카드 로고 자리(native-v1.md "프로그램 로고")에 쓴다.
+
+- 저장: `program_logos(program_id bigint primary key references programs on delete cascade, content_type varchar(100), data bytea, updated_at timestamptz)`(V38). 인증자료처럼 DB에 둔다(프로그램 수가 적고 백업이 함께 된다).
+- `PUT /v1/admin/programs/:id/logo` — multipart `file`. 허용 `image/png`·`image/jpeg`·`image/webp`, 1MB 이하. 그 외 400 `로고는 PNG·JPEG·WebP 1MB 이하여야 합니다`. 있으면 바꾼다. 200 `{logoUrl}`(native-v1 규칙의 `/v1/programs/{id}/logo?v=…`).
+- `DELETE /v1/admin/programs/:id/logo` — 204. 없어도 204.
+- `GET /v1/admin/programs/:id/logo` — ADMIN 인증으로 같은 이미지(어드민 미리보기용; 공개 `GET /v1/programs/:id/logo`는 api 앱이 낸다). 없으면 404.
+- `AdminProgram.logoUrl: string | null`(목록·상세 모두).
+- 어드민 화면: 프로그램 편집 폼에 `로고` 항목 — 현재 로고 미리보기(44, 둥근 14; 어드민 GET을 `api`로 blob으로 받아 object URL), `업로드`(Ant `Upload`, 허용 종류·크기를 선택 전에 검사), `지우기`. 업로드·지우기는 저장 버튼과 무관하게 바로 반영된다. admin 앱 `spring.servlet.multipart.max-file-size`는 2MB.
+
 ## 활동
 
 | 메서드·경로 | 요청 | 응답 |

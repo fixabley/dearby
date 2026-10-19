@@ -103,7 +103,6 @@ const eligibilitySchema: z.ZodType<Eligibility> = z.lazy(() =>
 );
 // 얻을 수 있는 것 태그 (contract "태그"): dictionary entries; older responses omit the list.
 export const tagSchema = z.object({ id: z.number().int().positive(), name: text, nameEn: text.nullable().optional() });
-export const tagListSchema = z.object({ items: z.array(tagSchema) });
 export type Tag = z.infer<typeof tagSchema>;
 const tags = z.array(tagSchema).optional().catch([]);
 const placeSchema = z.object({ name: text, address: text, lat: z.number(), lng: z.number() });
@@ -150,6 +149,8 @@ export const programSummarySchema = z.object({
   nearestRecruitmentStartAt: text.nullable().optional().catch(null),
   /** Program tags, else the union of its open activities' tags (contract "태그"). */
   tags,
+  /** `/v1/programs/{id}/logo?v=…` on the API origin, null without a logo; absent on older responses (contract "프로그램 로고", 2026-10-19 밤). */
+  logoUrl: text.nullable().optional().catch(null),
 });
 export const programPageSchema = z.object({
   items: z.array(programSummarySchema),
@@ -221,6 +222,14 @@ export function scheduleLabel(schedule: Schedule | null): string {
   if (startAt || endAt)
     return `${startAt ? dateTime(startAt, timeZone) : ""} ~ ${endAt ? dateTime(endAt, timeZone) : ""}`.trim();
   return schedule.startDate ?? "";
+}
+/**
+ * Same-origin `<img src>` for a program logo (contract "프로그램 로고"): the API's `/v1/programs/{id}/logo?v=…` becomes the
+ * proxy path `/api/programs/{id}/logo?v=…`; anything else (null, older shape, foreign origin) yields undefined → initial avatar.
+ */
+export function programLogoSrc(logoUrl: string | null | undefined): string | undefined {
+  const match = logoUrl?.match(/^\/v1\/(programs\/[1-9]\d{0,17}\/logo\?v=\d{1,18})$/);
+  return match ? `/api/${match[1]}` : undefined;
 }
 /** HTTPS-only link for activity official pages and images. */
 export function httpsUrl(value: string | null): string | undefined {

@@ -28,17 +28,17 @@ import com.dearby.nativeapp.shared.ui.*
                                 program: String? = null, badge: String? = null, badgeAccent: Boolean = false) {
     Row(modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(role = Role.Button, onClick = open).padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.size(44.dp).background(Teal.copy(alpha = .12f), CircleShape), contentAlignment = Alignment.Center) {
-            Text(name.take(1), color = Teal, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+        Box(Modifier.size(44.dp).background(MaterialTheme.colorScheme.primary.copy(alpha = .12f), CircleShape), contentAlignment = Alignment.Center) {
+            Text(name.take(1), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleMedium)
             if (job.isNotBlank() || !organization.isNullOrBlank() || !program.isNullOrBlank()) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (job.isNotBlank()) Text(job, Modifier.weight(1f, fill = false), color = Quiet, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
-                if (!organization.isNullOrBlank()) Text(organization, Modifier.background(Mint, RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp),
-                    color = Teal, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
-                if (!program.isNullOrBlank()) Text(program, Modifier.background(Soft, RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp),
-                    color = Quiet, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
+                if (job.isNotBlank()) Text(job, Modifier.weight(1f, fill = false), color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+                if (!organization.isNullOrBlank()) Text(organization, Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
+                if (!program.isNullOrBlank()) Text(program, Modifier.background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 2.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall)
             }
         }
         if (badge != null) ExampleBadge(badge, accent = badgeAccent)

@@ -1,0 +1,4 @@
+<resources>
+    <!-- Launch splash background = the theme's light `background` tone (values-night: the dark one). -->
+    <color name="splash_background">#F6FAF9</color>
+</resources>

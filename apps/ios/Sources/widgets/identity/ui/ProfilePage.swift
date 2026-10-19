@@ -28,7 +28,7 @@ struct ProfilePage: View {
                 editorScroll
             }
         }
-        .background(.white).toolbar(.hidden, for: .navigationBar)
+        .background(Color(.systemBackground)).toolbar(.hidden, for: .navigationBar)
         .task { await state.load() }
         // A reload (first load, save, restore, evidence) resets the form to the server state unless an edit is in flight.
         .onChange(of: state.profile, initial: true) { _, profile in
@@ -52,38 +52,41 @@ struct ProfilePage: View {
     }
     private var editorScroll: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                switch state.phase {
-                case .signedOut:
-                    VStack(spacing: 12) {
-                        Text("내 프로필").font(.dearby(.title2).bold()).accessibilityAddTraits(.isHeader)
-                        Text("명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.")
-                            .font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
-                        Button("명함 만들기") { composing = true }.buttonStyle(DearbyButtonStyle())
-                        Button("로그인") { signingIn = true }.buttonStyle(DearbyButtonStyle(outlined: true))
-                    }.frame(maxWidth: .infinity).padding(.top, 40)
-                case .loading:
-                    ProgressView("프로필을 불러오는 중이에요").frame(maxWidth: .infinity, minHeight: 240).tint(DearbyStyle.teal)
-                case .failed:
-                    Text("프로필을 불러오지 못했어요").font(.dearby(.headline))
-                    Button("다시 시도") { Task { await state.load() } }.buttonStyle(DearbyButtonStyle(outlined: true))
-                    deleteButton
-                case .loaded(let profile):
-                    if let binding = Binding($form) { editor(binding, saved: profile) }
+            VStack(alignment: .leading, spacing: 12) {
+                // 변경 이력 · 명함 만들기 sit on the title line once the profile is loaded (contract "탭 제목 통일").
+                PageTitle("내 프로필") {
+                    if case .loaded = state.phase {
+                        NavigationLink { ProfileVersionsPage(state: state) } label: {
+                            Label("변경 이력", systemImage: "clock.arrow.circlepath").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+                        }
+                        Button("명함 만들기") { composing = true }.font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+                    }
                 }
-            }.padding(20)
+                VStack(alignment: .leading, spacing: 18) {
+                    switch state.phase {
+                    case .signedOut:
+                        VStack(spacing: 12) {
+                            Text("명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.")
+                                .font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
+                            Button("명함 만들기") { composing = true }.buttonStyle(DearbyButtonStyle())
+                            Button("로그인") { signingIn = true }.buttonStyle(DearbyButtonStyle(outlined: true))
+                        }.frame(maxWidth: .infinity).padding(.top, 40)
+                    case .loading:
+                        ProgressView("프로필을 불러오는 중이에요").frame(maxWidth: .infinity, minHeight: 240).tint(DearbyStyle.teal)
+                    case .failed:
+                        Text("프로필을 불러오지 못했어요").font(.dearby(.headline))
+                        Button("다시 시도") { Task { await state.load() } }.buttonStyle(DearbyButtonStyle(outlined: true))
+                        deleteButton
+                    case .loaded(let profile):
+                        if let binding = Binding($form) { editor(binding, saved: profile) }
+                    }
+                }.padding(.horizontal, 20).padding(.bottom, 20)
+            }
         }
+        .background(Color(.systemGroupedBackground))
         .safeAreaInset(edge: .bottom) { if let form, form.changed { saveBar(form) } }
     }
     @ViewBuilder private func editor(_ form: Binding<ProfileForm>, saved: AccountProfile) -> some View {
-        HStack {
-            Text("내 프로필").font(.dearby(.title2).bold()).accessibilityAddTraits(.isHeader)
-            Spacer()
-            NavigationLink { ProfileVersionsPage(state: state) } label: {
-                Label("변경 이력", systemImage: "clock.arrow.circlepath").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
-            }
-            Button("명함 만들기") { composing = true }.font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
-        }
         section("기본 정보") {
             field("이름", text: form.name, prompt: "실명 또는 활동명", required: true)
             if tried, let message = form.wrappedValue.nameError { DearbyFieldError(text: message) }
@@ -116,10 +119,10 @@ struct ProfilePage: View {
             if let error { Text(error).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.danger).frame(maxWidth: .infinity, alignment: .leading) }
             HStack(spacing: 10) {
                 Button("원래대로") { revert() }.buttonStyle(DearbyButtonStyle(outlined: true)).disabled(saving)
-                Button { save(form) } label: { if saving { ProgressView().tint(.white) } else { Text("저장") } }
+                Button { save(form) } label: { if saving { ProgressView().tint(DearbyStyle.onTeal) } else { Text("저장") } }
                     .buttonStyle(DearbyButtonStyle()).disabled(saving).accessibilityIdentifier("profile-save")
             }
-        }.padding(.horizontal, 20).padding(.vertical, 12).background(.white).overlay(alignment: .top) { Rectangle().fill(DearbyStyle.line).frame(height: 1) }
+        }.padding(.horizontal, 20).padding(.vertical, 12).background(Color(.systemBackground)).overlay(alignment: .top) { Rectangle().fill(DearbyStyle.line).frame(height: 1) }
     }
     /// 원래대로: back to the loaded profile; after a 409 it also fetches the newer one.
     private func revert() {
@@ -155,11 +158,14 @@ struct ProfilePage: View {
             await state.load()
         }
     }
+    /// One editor section on a secondary grouped surface, so the `muted` field fills stay visible on the grouped page background.
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title).font(.dearby(.headline)).accessibilityAddTraits(.isHeader)
             content()
         }
+        .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
     }
     private func field(_ label: String, text: Binding<String>, prompt: String, required: Bool = false, multiline: Bool = false) -> some View {
         VStack(alignment: .leading, spacing: 4) {

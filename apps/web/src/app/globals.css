@@ -1,20 +1,46 @@
 @import "../shared/ui/pretendard.css";
 :root {
-  --teal: #007f7b;
-  --teal-dark: #006763;
+  --teal: #007f80;
+  --teal-dark: #006768;
   --mint: #e9f6f3;
   --ink: #172426;
   --muted: #586669;
   --line: #e3e9e8;
   --soft: #f5f7f7;
   --danger: #a12a2a;
+  --danger-soft: #fff2f1;
+  --success: #1f8a4c;
+  /* Surfaces and the text on filled teal; every former `white`/`#fff` reads one of these so dark mode has no white islands. */
+  --bg: #fff;
+  --card: #fff;
+  --on-teal: #fff;
+}
+/* 다크 모드 (contract "색 체계" › "다크 모드", 2026-10-19 밤): tokens only, no component restyle. Teal is the lighter variant
+   (#007F80 → #3FB3B4) so it stays readable on dark surfaces; text on a filled teal turns dark for contrast. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --teal: #3fb3b4;
+    --teal-dark: #6fcfd0;
+    --mint: #15302f;
+    --ink: #e6ebeb;
+    --muted: #9aa7a9;
+    --line: #2b3436;
+    --soft: #1c2426;
+    --danger: #ff8a80;
+    --danger-soft: #3a1f1e;
+    --success: #6fcf8f;
+    --bg: #0f1415;
+    --card: #181f21;
+    --on-teal: #07201f;
+  }
 }
 * {
   box-sizing: border-box;
 }
 body {
   margin: 0;
-  background: #fff;
+  background: var(--bg);
   color: var(--ink);
   font:
     16px/1.6 "Pretendard Variable",
@@ -103,7 +129,7 @@ a {
   border: 1px solid var(--teal);
   border-radius: 10px;
   background: var(--teal);
-  color: white;
+  color: var(--on-teal);
   font-weight: 700;
   text-align: center;
 }
@@ -111,7 +137,7 @@ a {
   background: var(--teal-dark);
 }
 .button.secondary {
-  background: white;
+  background: var(--card);
   color: var(--teal-dark);
 }
 .button.secondary:hover {
@@ -121,7 +147,7 @@ a {
   position: fixed;
   top: -100px;
   left: 16px;
-  background: white;
+  background: var(--card);
   padding: 12px;
   z-index: 99;
 }
@@ -130,7 +156,7 @@ a {
 }
 .site-header {
   border-bottom: 1px solid var(--line);
-  background: white;
+  background: var(--card);
 }
 .header-inner {
   max-width: 1000px;
@@ -142,13 +168,20 @@ a {
   justify-content: space-between;
   gap: 20px;
 }
+/* Brand lockup = symbol + "Dearby" in Pretendard 700 (shared/assets/brand/wordmark.svg is exactly this), both in the theme's
+   teal — the lighter variant in dark (contract "다크 모드"). Letter-spacing follows the wordmark's -4/210em. */
 .brand {
   display: flex;
   align-items: center;
+  gap: 8px;
   min-height: 48px;
+  color: var(--teal);
 }
-.brand img {
-  width: 124px;
+.brand-name {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.4px;
 }
 .site-header nav {
   display: flex;
@@ -300,7 +333,7 @@ a {
 .program {
   border: 1px solid var(--line);
   border-radius: 20px;
-  background: #fff;
+  background: var(--card);
   overflow: hidden;
 }
 .program-header {
@@ -347,10 +380,18 @@ a {
   width: 44px;
   height: 44px;
   border-radius: 14px;
+  overflow: hidden;
   background: var(--mint);
   color: var(--teal);
   font-size: 18px;
   font-weight: 700;
+}
+/* 프로그램 로고 (contract "프로그램 로고"): fills the 44px slot, aspect fill */
+.program-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .program-copy {
   display: grid;
@@ -404,7 +445,7 @@ a {
   margin: -6px -6px 0;
 }
 .program-count {
-  color: #fff;
+  color: var(--on-teal);
   font-size: 14px;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -525,14 +566,6 @@ a {
 }
 .detail-heading {
   padding-bottom: 32px;
-}
-.detail-image {
-  display: block;
-  width: 100%;
-  max-height: 360px;
-  object-fit: cover;
-  border-radius: 12px;
-  margin-bottom: 24px;
 }
 .detail-heading .badge {
   margin: 14px 0;
@@ -662,7 +695,7 @@ a {
   flex-shrink: 0;
   width: 96px;
   height: 96px;
-  background: #daf0eb;
+  background: var(--mint);
   color: var(--teal-dark);
   font-weight: 600;
   font-size: 38px;
@@ -675,7 +708,7 @@ a {
 }
 /* 공개 명함 카드 면(contract "명함 표현 — 2026-10-18"): 흰 바탕·모서리 20·구분선 테두리·여백 20, 최대 480 가운데 */
 .card-sheet {
-  background: white;
+  background: var(--card);
   border: 1px solid var(--line);
   border-radius: 20px;
   padding: 20px;
@@ -875,7 +908,7 @@ a {
 }
 .saved-card {
   background: var(--mint);
-  border: 1px solid #d6eae5;
+  border: 1px solid var(--line);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -912,7 +945,7 @@ a {
 .reset-button {
   border: 0;
   border-bottom: 1px solid var(--line);
-  background: white;
+  background: var(--card);
   color: var(--muted);
   font-size: 13px;
   padding: 10px 0;
@@ -926,7 +959,7 @@ a {
   min-height: 0;
 }
 .error-message {
-  background: #fff2f1;
+  background: var(--danger-soft);
   color: var(--danger);
   padding: 14px 18px;
   border-radius: 10px;
@@ -957,9 +990,6 @@ a {
   .header-inner {
     min-height: 76px;
     padding: 12px 20px;
-  }
-  .brand img {
-    width: 108px;
   }
   .site-header nav {
     gap: 18px;
@@ -1107,8 +1137,8 @@ a {
   color: var(--muted);
 }
 .badge-verified {
-  background: color-mix(in srgb, #1f8a4c 16%, transparent);
-  color: #1f8a4c;
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
 }
 
 /* 마감 숨기기 toggle under the search box (contract "모집 중인 프로그램만 보기") */
@@ -1124,31 +1154,6 @@ a {
   width: 16px;
   height: 16px;
   accent-color: var(--teal);
-}
-
-/* 얻을 수 있는 것 태그 (contract "태그"): filter chips under the search (program card chips are .program-tag above) */
-.tag-filter {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 0 0 16px;
-  padding: 0;
-  list-style: none;
-}
-.tag-chip {
-  border: 1px solid var(--line);
-  background: #fff;
-  color: var(--muted);
-  border-radius: 999px;
-  padding: 5px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.tag-chip.selected {
-  border-color: var(--teal);
-  background: var(--mint);
-  color: var(--teal-dark);
 }
 
 /* 약관·개인정보 처리방침 (2026-10-19): 상세 페이지와 같은 폭의 읽기 전용 글 */

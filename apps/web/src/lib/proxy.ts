@@ -6,7 +6,6 @@ import {
   guestListSchema,
   activityPageSchema,
   programPageSchema,
-  tagListSchema,
   uuid,
 } from "./models";
 import {
@@ -37,8 +36,9 @@ function acceptLanguage(value: string | null): string | undefined {
   return value && /^[A-Za-z0-9*,;=. -]{1,200}$/.test(value) ? value : undefined;
 }
 /**
- * Only `q`, `cursor`, `size`, `programId`, `open` (activities), `participationType`, `openOnly` (programs) and `tagIds`
- * (both; comma list of tag ids, contract "태그") are forwarded to the searches, rebuilt from validated values.
+ * Only `q`, `cursor`, `size`, `programId`, `open` (activities), `participationType` and `openOnly` (programs) are forwarded
+ * to the searches, rebuilt from validated values. Tags are searched through `q` only; the web never sends `tagIds`
+ * (contract "태그 칩 줄 제거", 2026-10-19 밤).
  */
 function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
   const query = new URLSearchParams();
@@ -53,9 +53,6 @@ function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
   // `openOnly=false` lists programs with activity in the last two years as well (contract "모집 중인 프로그램만 보기").
   const programsOpenOnly = url.searchParams.get("openOnly");
   if (programsOpenOnly !== null && (!programs || !["true", "false"].includes(programsOpenOnly))) return;
-  // `tagIds=1,2`: every listed tag must be present (AND); up to 10 ids.
-  const tagIds = url.searchParams.get("tagIds");
-  if (tagIds !== null && !/^[1-9]\d{0,17}(,[1-9]\d{0,17}){0,9}$/.test(tagIds)) return;
   if (q && q.length > 100) return;
   if (cursor !== null && !/^\d{1,18}$/.test(cursor)) return;
   if (size !== null && !(/^\d{1,3}$/.test(size) && +size >= 1 && +size <= 100))
@@ -68,7 +65,6 @@ function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
   )
     return;
   if (q) query.set("q", q);
-  if (tagIds !== null) query.set("tagIds", tagIds);
   if (cursor !== null) query.set("cursor", cursor);
   if (size !== null) query.set("size", size);
   if (programId !== null) query.set("programId", programId);
@@ -78,6 +74,17 @@ function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
     query.set("participationType", participationType);
   return query;
 }
+/** `GET programs/:id/logo?v=<epoch seconds>` (contract "프로그램 로고"): only `v` is forwarded; anything else is rejected. */
+function logoQuery(url: URL): URLSearchParams | undefined {
+  const keys = [...url.searchParams.keys()];
+  const v = url.searchParams.get("v");
+  if (keys.some((key) => key !== "v") || (v !== null && !/^\d{1,18}$/.test(v))) return;
+  const query = new URLSearchParams();
+  if (v !== null) query.set("v", v);
+  return query;
+}
+// Stored logo kinds (admin-v1.md "프로그램 로고"); any other upstream type is not served under this origin.
+const LOGO_TYPE = /^image\/(png|jpeg|webp)$/;
 
 export async function proxy(
   request: Request,
@@ -87,14 +94,15 @@ export async function proxy(
   const guest = segments[0] === "guest";
   const id = segments[guest ? 2 : 1];
   const activityRoute = segments.length === 2 && segments[0] === "activities";
+  // Public program logo image (contract "프로그램 로고"): binary passthrough, cached like the API says.
+  const logoRoute = segments.length === 3 && segments[0] === "programs" && segments[2] === "logo";
   const programs = path === "discovery/programs";
-  const tagList = path === "tags";
   const search = path === "activities" || programs;
   const method = request.method;
   const allowed =
     (search && method === "GET") ||
-    (tagList && method === "GET") ||
     (activityRoute && method === "GET") ||
+    (logoRoute && method === "GET") ||
     (segments.length === 2 && segments[0] === "cards" && method === "GET") ||
     (path === "guest/cards" && method === "GET") ||
     (segments.length === 3 &&
@@ -103,10 +111,14 @@ export async function proxy(
       ["PUT", "DELETE"].includes(method)) ||
     (path === "guest/session" && method === "DELETE");
   if (!allowed) return failure(404, "NOT_FOUND");
-  if (id && !(activityRoute ? activityId(id) : uuid.safeParse(id).success))
+  if (id && !(activityRoute || logoRoute ? activityId(id) : uuid.safeParse(id).success))
     return failure(422, "INVALID_INPUT");
-  const query = search ? searchQuery(new URL(request.url), programs) : undefined;
-  if (search && !query) return failure(422, "INVALID_INPUT");
+  const query = search
+    ? searchQuery(new URL(request.url), programs)
+    : logoRoute
+      ? logoQuery(new URL(request.url))
+      : undefined;
+  if ((search || logoRoute) && !query) return failure(422, "INVALID_INPUT");
   const mutation = method !== "GET";
   if (
     mutation &&
@@ -154,6 +166,7 @@ export async function proxy(
       token,
       body,
       query,
+      accept: logoRoute ? "image/*" : undefined,
       acceptLanguage:
         search || activityRoute
           ? acceptLanguage(request.headers.get("accept-language"))
@@ -174,6 +187,21 @@ export async function proxy(
         status,
         status === 401 ? "GUEST_SESSION_INVALID" : "REQUEST_FAILED",
       );
+    }
+    if (logoRoute) {
+      // Pass the image and the API's cache headers through (`public, max-age=31536000, immutable`; `v` busts it),
+      // not this proxy's `private, no-store` set. The body is at most 1MB (admin upload cap).
+      const contentType = result.headers.get("content-type") ?? "";
+      if (!LOGO_TYPE.test(contentType)) throw new Error("Unexpected logo type");
+      const logoHeaders: Record<string, string> = {
+        "Content-Type": contentType,
+        "X-Content-Type-Options": "nosniff",
+      };
+      for (const name of ["Cache-Control", "ETag"]) {
+        const value = result.headers.get(name);
+        if (value) logoHeaders[name] = value;
+      }
+      return new Response(await result.arrayBuffer(), { headers: logoHeaders });
     }
     const outputHeaders: Record<string, string> = { ...headers };
     if (search || activityRoute)
@@ -198,8 +226,6 @@ export async function proxy(
         ? activityPageSchema.parse(json)
         : programs
           ? programPageSchema.parse(json)
-          : tagList
-          ? tagListSchema.parse(json)
           : activityRoute
           ? activitySchema.parse(json)
           : guest

@@ -37,7 +37,7 @@ private const val RAIL_MIN_SECTIONS = 7
             WalletPhase.SIGNED_OUT -> Notice("받은 명함은 계정에 저장돼요", "로그인하면 저장한 명함을 볼 수 있어요.") {
                 DearbyButton(signIn, Modifier.fillMaxWidth()) { Text("로그인") }
             }
-            WalletPhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Teal) }
+            WalletPhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
             WalletPhase.FAILED -> Notice("받은 명함을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.") {
                 DearbyOutlineButton(retry, Modifier.fillMaxWidth()) { Text("다시 시도") }
             }
@@ -70,8 +70,8 @@ private const val RAIL_MIN_SECTIONS = 7
         LazyColumn(Modifier.fillMaxSize(), listState, contentPadding = PaddingValues(start = 20.dp, end = if (sections.size >= RAIL_MIN_SECTIONS) 36.dp else 20.dp, bottom = 12.dp)) {
             sections.forEach { section ->
                 stickyHeader(key = "header-${section.key}") {
-                    Text(section.key, Modifier.fillMaxWidth().background(Soft).padding(horizontal = 8.dp, vertical = 4.dp).semantics { heading() },
-                        color = Quiet, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
+                    Text(section.key, Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer).padding(horizontal = 8.dp, vertical = 4.dp).semantics { heading() },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
                 }
                 items(section.cards, key = { it.id }) { received ->
                     ReceivedCardRow(received.card.person, received.card.job, { open(received) }, organization = received.card.organization,
@@ -95,7 +95,7 @@ private const val RAIL_MIN_SECTIONS = 7
     ) {
         keys.forEach { key ->
             Text(key, Modifier.size(width = 24.dp, height = 18.dp).semantics { role = Role.Button; contentDescription = "${key}으로 이동" },
-                color = Teal, textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelSmall)
+                color = MaterialTheme.colorScheme.primary, textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -103,7 +103,7 @@ private const val RAIL_MIN_SECTIONS = 7
 @Composable private fun Notice(title: String, detail: String, action: @Composable () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-        Text(detail, color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+        Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
         action()
     }
 }

@@ -12,7 +12,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -39,7 +38,7 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
         ScreenHeader("진행 단계", back)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp)) {
             Text(progress.title, Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
-            Text(progress.subtitle, Modifier.padding(top = 4.dp), color = Quiet, style = MaterialTheme.typography.bodyMedium)
+            Text(progress.subtitle, Modifier.padding(top = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             Row(Modifier.padding(top = 10.dp)) { ExampleBadge(progress.badge, accent = !progress.ended, danger = progress.failed) }
             ConfirmToggle(activity, confirm)
             DearbyOutlineButton(openDetail, Modifier.fillMaxWidth().padding(top = 16.dp)) { Text("활동 상세 보기") }
@@ -48,8 +47,8 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
                 StageItem(stage, last = index == progress.stages.lastIndex, { mark(index, it) }) { checkCalendar(index) }
             }
             Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Info, null, Modifier.size(18.dp), tint = Quiet)
-                Text("표시는 내가 남긴 것이며 주최 측 결과가 아니에요", color = Quiet, style = MaterialTheme.typography.bodySmall)
+                Icon(Icons.Outlined.Info, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("표시는 내가 남긴 것이며 주최 측 결과가 아니에요", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
         }
     }
@@ -61,21 +60,21 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
     val past = stage.status == ProgressStatus.PAST
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.size(36.dp).background(if (past) Teal else Color.White, CircleShape).border(1.5.dp, if (past || current) Teal else Line, CircleShape), contentAlignment = Alignment.Center) {
-                Icon(stageIcon(stage.kind), null, Modifier.size(20.dp), tint = if (past) Color.White else if (current) Teal else Quiet)
+            Box(Modifier.size(36.dp).background(if (past) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface, CircleShape).border(1.5.dp, if (past || current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(stageIcon(stage.kind), null, Modifier.size(20.dp), tint = if (past) MaterialTheme.colorScheme.onPrimary else if (current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (!last) Box(Modifier.width(2.dp).weight(1f).padding(vertical = 4.dp).background(if (past) Teal else Line))
+            if (!last) Box(Modifier.width(2.dp).weight(1f).padding(vertical = 4.dp).background(if (past) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest))
         }
         Column(Modifier.weight(1f).padding(bottom = if (last) 0.dp else 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(stage.name, Modifier.weight(1f), fontWeight = if (current) FontWeight.Bold else FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
                 ExampleBadge(chipText(stage), accent = current, danger = stage.mark == ProgressMark.FAIL)
             }
-            Text(stage.dateText, color = Quiet, style = MaterialTheme.typography.bodyMedium)
+            Text(stage.dateText, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 ProgressMark.entries.forEachIndexed { index, option ->
                     SegmentedButton(stage.mark == option, { mark(option) }, SegmentedButtonDefaults.itemShape(index, ProgressMark.entries.size),
-                        colors = SegmentedButtonDefaults.colors(activeContainerColor = Mint, activeContentColor = Teal, activeBorderColor = Teal, inactiveBorderColor = Line)) {
+                        colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.onPrimaryContainer, activeBorderColor = MaterialTheme.colorScheme.primary, inactiveBorderColor = MaterialTheme.colorScheme.surfaceContainerHighest)) {
                         Text(option.label)
                     }
                 }

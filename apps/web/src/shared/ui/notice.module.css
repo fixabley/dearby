@@ -42,7 +42,7 @@
   padding: 0 16px;
   border: 1px solid var(--teal);
   border-radius: 10px;
-  background: #fff;
+  background: var(--card);
   color: var(--teal-dark);
   font: inherit;
   font-weight: 600;

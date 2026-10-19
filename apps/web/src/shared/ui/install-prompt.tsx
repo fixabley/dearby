@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { BrandSymbol } from "./brand-symbol";
 import styles from "./install-prompt.module.css";
 
 /**
@@ -19,7 +19,7 @@ export function InstallPrompt({
 }) {
   return (
     <section className={styles.prompt} aria-label="홈 화면에 추가">
-      <Image className={styles.logo} src="/logo-teal.png" alt="" width={44} height={44} />
+      <BrandSymbol className={styles.logo} size={44} />
       <div className={styles.body}>
         <strong>홈 화면에서 바로 열기</strong>
         {platform === "android" ? (

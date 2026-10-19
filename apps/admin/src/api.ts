@@ -53,15 +53,17 @@ export function useSession() {
   );
 }
 
+/** A FormData body (file upload) goes through as is so the browser sets the multipart boundary; anything else is JSON. */
 async function send(path: string, method: string, body: unknown, token?: string) {
+  const form = body instanceof FormData;
   try {
     return await fetch(path, {
       method,
       headers: {
-        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+        ...(body === undefined || form ? {} : { "Content-Type": "application/json" }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: form ? body : body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(0, "서버에 연결하지 못했어요. 네트워크를 확인하고 다시 시도해 주세요.");
@@ -126,7 +128,7 @@ export async function api<T>(path: string, method = "GET", body?: unknown): Prom
   return response.status === 204 ? (undefined as T) : response.json();
 }
 
-/** A file behind the admin API (evidence): same bearer and refresh handling as `api`, but the body stays a Blob. */
+/** A file behind the admin API (evidence, program logo): same bearer and refresh handling as `api`, but the body stays a Blob. */
 export async function apiBlob(path: string): Promise<Blob> {
   const tokens = session.tokens;
   if (!tokens) throw new ApiError(401, "로그인이 필요해요.");

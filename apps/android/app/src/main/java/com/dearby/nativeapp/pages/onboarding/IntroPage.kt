@@ -23,7 +23,7 @@ import com.dearby.nativeapp.shared.ui.*
             Spacer(Modifier.height(24.dp))
             Text("활동에서 만난 사람과\n명함을 주고받아요", Modifier.semantics { heading() }, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = MaterialTheme.typography.headlineSmall)
             Spacer(Modifier.height(8.dp))
-            Text("로그인하지 않아도 둘러볼 수 있어요.", color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+            Text("로그인하지 않아도 둘러볼 수 있어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
         }
         message?.let { DearbyFieldError(it, Modifier.padding(bottom = 12.dp)) }
         DearbyButton(start, Modifier.fillMaxWidth().testTag("intro-passkey"), enabled = !busy) { Text("패스키로 시작하기") }
