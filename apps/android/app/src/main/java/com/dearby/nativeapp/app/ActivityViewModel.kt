@@ -78,14 +78,15 @@ class ActivityViewModel(
         programJobs.clear()
         job = viewModelScope.launch {
             if (debounce) delay(300)
-            mutable.update { it.copy(phase = ActivityListPhase.LOADING, programs = emptyList(), expanded = emptySet(), programActivities = emptyMap(), nextCursor = null, loadingMore = false, moreFailed = false, refreshing = false) }
+            mutable.update { it.copy(phase = ActivityListPhase.LOADING, programs = emptyList(), expanded = emptySet(), programActivities = emptyMap(), nextCursor = null, loadingMore = false, moreFailed = false, refreshing = false, refreshFailed = false) }
             val page = programPage(null) ?: return@launch mutable.update { it.copy(phase = ActivityListPhase.FAILED) }
             show(page, append = false)
         }
     }
     /**
      * Pull to refresh (contract "발견 탭 스크롤 동작"): the first program page again while the list stays on screen; which programs are
-     * expanded is kept and their activities are read again. A failure shows the usual error state (retry reloads from scratch).
+     * expanded is kept and their activities are read again. A failure leaves the list as it was and flags [ActivityListState.refreshFailed]
+     * (the error screen only when nothing was listed).
      */
     fun refresh() {
         if (state.value.phase != ActivityListPhase.LOADED) return reload()
@@ -94,8 +95,10 @@ class ActivityViewModel(
         programJobs.values.forEach { it.cancel() }
         programJobs.clear()
         job = viewModelScope.launch {
-            mutable.update { it.copy(refreshing = true, loadingMore = false, moreFailed = false) }
-            val page = programPage(null) ?: return@launch mutable.update { it.copy(phase = ActivityListPhase.FAILED, refreshing = false) }
+            mutable.update { it.copy(refreshing = true, loadingMore = false, moreFailed = false, refreshFailed = false) }
+            val page = programPage(null) ?: return@launch mutable.update {
+                if (it.programs.isEmpty()) it.copy(phase = ActivityListPhase.FAILED, refreshing = false) else it.copy(refreshing = false, refreshFailed = true)
+            }
             // Programs that fell off the first page lose their expansion, or they would come back via loadMore expanded but never loaded.
             val listed = page.items.map { it.id }.toSet()
             mutable.update { it.copy(programActivities = emptyMap(), expanded = it.expanded.filter { id -> id in listed }.toSet()) }
@@ -104,6 +107,8 @@ class ActivityViewModel(
             mutable.update { it.copy(refreshing = false) }
         }
     }
+    /** The refresh-failure notice was shown; otherwise the flag would show it again whenever the page comes back. */
+    fun clearRefreshFailure() = mutable.update { it.copy(refreshFailed = false) }
     /** The list is near its end: fetch the next program page, if there is one and nothing else is loading. */
     fun loadMore() {
         val current = state.value
@@ -251,6 +256,7 @@ private fun ActivityModel.toState(now: Instant) = ActivityState(
     sortKey = sortKey,
     tags = tags.map { it.name },
     place = place,
+    applicationUrl = safeHttpsUrl(applicationUrl),
 )
 /**
  * The stage track with the user's [marks]: a 통과 mark makes the stage past, the earliest other stage not over by [today]

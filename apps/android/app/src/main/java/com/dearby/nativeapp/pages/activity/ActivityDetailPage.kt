@@ -19,7 +19,8 @@ import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 
 /**
- * [openLink] opens the official page: as the application link while recruiting, otherwise as the notice. [openMap] opens the
+ * [openLink] opens the CTA link: the application link (`applicationUrl`, else the official page) until recruitment is closed, then the
+ * official page as the notice (contract "신청 확인 조건 완화"). [openMap] opens the
  * curated place in a map app (contract "활동 장소"); the `장소` section shows only when the activity has one.
  */
 @Composable fun ActivityDetailPage(
@@ -99,10 +100,12 @@ import com.dearby.nativeapp.shared.ui.*
             }
         }
         (activity.applyUrl ?: activity.officialUrl)?.let { url ->
+            // Closed → 공식 안내 보기; otherwise the application link, named by whether the operator set one.
+            val label = when { activity.applyUrl == null -> "공식 안내 보기"; activity.applicationUrl != null -> "신청 사이트 열기"; else -> "공식 사이트에서 신청" }
             HorizontalDivider()
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)) {
-                DearbyButton({ openLink(url) }, Modifier.weight(1f).semantics { contentDescription = (if (activity.applyUrl != null) "공식 사이트에서 신청" else "공식 안내 보기") + ", 외부 브라우저로 열려요" }) {
-                    Text(if (activity.applyUrl != null) "공식 사이트에서 신청" else "공식 안내 보기")
+                DearbyButton({ openLink(url) }, Modifier.weight(1f).semantics { contentDescription = "$label, 외부 브라우저로 열려요" }) {
+                    Text(label)
                 }
             }
         }

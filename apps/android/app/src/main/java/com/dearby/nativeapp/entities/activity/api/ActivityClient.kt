@@ -83,6 +83,7 @@ fun parseActivities(json: String): ActivityPage {
             activity.text("location"),
             // A malformed place (contract "활동 장소": four fields together) never fails the activity.
             activity.optJSONObject("place")?.let { runCatching { Place(it.getString("name"), it.getString("address"), it.getDouble("lat"), it.getDouble("lng")) }.getOrNull() },
+            activity.text("applicationUrl"),
         )
     }, body.text("nextCursor"))
 }

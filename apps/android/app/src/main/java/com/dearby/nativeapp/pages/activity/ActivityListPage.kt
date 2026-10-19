@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -31,8 +32,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -56,19 +59,27 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
  * expand inside the same card. The next program page loads near the end.
  * Scrolling (contract "발견 탭 스크롤 동작"): the title line stays fixed, the search area collapses on the way down and re-enters at once on
  * the way up, the list pulls to refresh below it, and a 맨 위로 button appears after about a screen.
+ * Keyboard (contract "폼은 플랫폼 기본 컴포넌트" · "키보드 내리기"): the search field is the Material 3 search-bar input; a tap outside any
+ * field or a scroll of the list clears focus, which hides the keyboard.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable fun ActivityListPage(
     state: ActivityListState, open: (String) -> Unit, search: (String) -> Unit, retry: () -> Unit, refresh: () -> Unit, loadMore: () -> Unit,
-    toggle: (String) -> Unit, retryProgram: (String) -> Unit, setOpenOnly: (Boolean) -> Unit = {}, notify: () -> Unit = {},
+    toggle: (String) -> Unit, retryProgram: (String) -> Unit, setOpenOnly: (Boolean) -> Unit = {}, notify: () -> Unit = {}, clearRefreshFailure: () -> Unit = {},
 ) {
     val listState = rememberLazyListState()
     val reduceMotion = rememberReduceMotion()
     val scope = rememberCoroutineScope()
-    val collapse = remember(reduceMotion) { SearchAreaCollapse(reduceMotion, scope) }
+    val focusManager = LocalFocusManager.current
+    val snackbar = remember { SnackbarHostState() }
+    // Pull to refresh failed with a list showing: the list stays, a snackbar passes once (iOS parity); the flag is cleared even if the page leaves mid-show.
+    LaunchedEffect(state.refreshFailed) { if (state.refreshFailed) try { snackbar.showSnackbar("새로 고치지 못했어요") } finally { clearRefreshFailure() } }
+    val collapse = remember(reduceMotion, focusManager) { SearchAreaCollapse(reduceMotion, scope, focusManager::clearFocus) }
     // The hairline shows once content passes under the fixed title: the search area has begun to fold or the list has moved.
     val scrolled by remember(collapse) { derivedStateOf { collapse.offset < 0f || listState.canScrollBackward } }
     val farDown by remember { derivedStateOf { listState.pastOneScreen() } }
-    Box(Modifier.fillMaxSize()) {
+    // Fields and buttons take their own taps first, so this only catches taps on empty space.
+    Box(Modifier.fillMaxSize().imePadding().pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } }) {
         Column(Modifier.fillMaxSize()) {
             // Tab title line shared by the five tabs (contract "탭 제목 통일·머리 간소화"), pinned above everything that scrolls.
             Box(Modifier.fillMaxWidth()) {
@@ -77,10 +88,11 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
             }
             // Search field and 마감 숨기기 switch: outside the list so the field keeps focus and the keyboard while results change.
             Column(Modifier.fillMaxWidth().collapsing(collapse)) {
-                OutlinedTextField(state.query, search, Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp).testTag("activity-search")
-                    .onFocusChanged { collapse.locked = it.isFocused; if (it.isFocused) collapse.expand() },
-                    placeholder = { Text("프로그램·조직·활동 이름으로 검색") }, singleLine = true, shape = RoundedCornerShape(11.dp),
-                    leadingIcon = { Icon(Icons.Outlined.Search, null) },
+                // The search-bar input field on its own (height 56, rounded, ImeAction.Search); results already follow the text, so Search just hides the keyboard.
+                SearchBarDefaults.InputField(state.query, search, { focusManager.clearFocus() }, expanded = false, onExpandedChange = {},
+                    Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp).testTag("activity-search")
+                        .onFocusChanged { collapse.locked = it.isFocused; if (it.isFocused) collapse.expand() },
+                    placeholder = { Text("프로그램·조직·활동 이름으로 검색") }, leadingIcon = { Icon(Icons.Outlined.Search, null) },
                     trailingIcon = { if (state.query.isNotEmpty()) IconButton({ search("") }) { Icon(Icons.Outlined.Close, "검색어 지우기") } })
                 // 마감 숨기기 (contract "모집 중인 프로그램만 보기"): off also lists programs active in the last two years.
                 Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
@@ -121,6 +133,7 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
             enter = fadeIn(if (reduceMotion) snap() else spring()), exit = fadeOut(if (reduceMotion) snap() else spring())) {
             SmallFloatingActionButton({ scope.launch { listState.scrollToItem(0) }; collapse.expand() }) { Icon(Icons.Rounded.ArrowUpward, "맨 위로") }
         }
+        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
 }
 
@@ -137,9 +150,10 @@ private fun LazyListState.pastOneScreen(): Boolean {
  * "Enter always" collapse of the search area, the rule of `TopAppBar`'s `enterAlwaysScrollBehavior` on a custom header: [offset] runs
  * from 0 (shown) to -[height] (folded away) and consumes scroll in both directions before the list moves, so the area folds as soon as
  * the user scrolls down and re-enters as soon as they scroll up. A released drag settles the way it was going with a short spring;
- * under reduced motion the area switches at once. [locked] while the search field has focus.
+ * under reduced motion the area switches at once. [locked] while the search field has focus; a user scroll then [unfocus]es it
+ * (the keyboard goes down) instead of folding.
  */
-@Stable private class SearchAreaCollapse(private val reduceMotion: Boolean, private val scope: CoroutineScope) {
+@Stable private class SearchAreaCollapse(private val reduceMotion: Boolean, private val scope: CoroutineScope, private val unfocus: () -> Unit) {
     var offset by mutableFloatStateOf(0f); private set
     var height by mutableIntStateOf(0)
     var locked = false
@@ -149,7 +163,8 @@ private fun LazyListState.pastOneScreen(): Boolean {
     private fun settle(target: Float) { settling = scope.launch { animate(offset, target, animationSpec = spring(stiffness = 600f)) { value, _ -> offset = value } } }
     val connection = object : NestedScrollConnection {
         override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-            if (locked || height == 0 || available.y == 0f) return Offset.Zero
+            if (locked) { if (source == NestedScrollSource.UserInput) unfocus(); return Offset.Zero }
+            if (height == 0 || available.y == 0f) return Offset.Zero
             settling?.cancel()
             direction = available.y
             if (reduceMotion) { offset = if (available.y < 0) -height.toFloat() else 0f; return Offset.Zero }

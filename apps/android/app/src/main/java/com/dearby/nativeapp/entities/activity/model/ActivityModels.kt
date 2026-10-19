@@ -46,6 +46,8 @@ data class ActivityModel(
     val location: String? = null,
     /** The curated venue with coordinates, or null (contract "활동 장소"). */
     val place: Place? = null,
+    /** The operator's application link (contract "신청 확인 조건 완화·공개 applicationUrl"), or null; https only when used. */
+    val applicationUrl: String? = null,
 ) {
     /** The venue name to show: the curated place, else the collected phrase, else the schedule address. */
     val venue: String? get() = place?.name ?: location ?: address
@@ -77,9 +79,17 @@ data class ActivityModel(
             else -> OPEN
         }
     }
-    fun isOpen(now: Instant) = statusLabel(now) == OPEN
-    /** The official page, offered as the application link only while recruiting. */
-    fun applyUrl(now: Instant) = if (isOpen(now)) safeHttpsUrl(officialUrl) else null
+    /**
+     * Applying is over (2026-10-19 밤 "신청 확인 조건 완화", same rule as iOS): the recruitment deadline passed, or, with no window to
+     * judge by, the activity itself ended (its end, else its start, is behind [now]). Open, upcoming and unknown-but-not-ended still ask.
+     */
+    fun isClosed(now: Instant) = when (statusLabel(now)) {
+        CLOSED -> true
+        UNKNOWN -> (activityEnd ?: activityStart)?.let { it < now } == true
+        else -> false
+    }
+    /** The application link for the detail CTA — [applicationUrl], else the official page — unless recruitment is closed. */
+    fun applyUrl(now: Instant) = if (isClosed(now)) null else safeHttpsUrl(applicationUrl) ?: safeHttpsUrl(officialUrl)
     val recruitmentEnd get() = instant(application?.endAt)
     /**
      * Ordering key for discovery groups (contract "활동 종류", 2026-10-19): the recruitment deadline, or the activity start
@@ -96,6 +106,9 @@ data class ActivityModel(
     /** The ACTIVITY slot's start: `startAt`, else `startDate` at Seoul midnight; null when the period is undated. */
     val activityStart: Instant? get() = instant(activitySchedule?.startAt)
         ?: activitySchedule?.startDate?.let { runCatching { LocalDate.parse(it).atStartOfDay(SEOUL).toInstant() }.getOrNull() }
+    /** The ACTIVITY slot's end: `endAt`, else `endDateExclusive` at Seoul midnight; null when the period is undated. */
+    val activityEnd: Instant? get() = instant(activitySchedule?.endAt)
+        ?: activitySchedule?.endDateExclusive?.let { runCatching { LocalDate.parse(it).atStartOfDay(SEOUL).toInstant() }.getOrNull() }
 
     private companion object {
         val SEOUL: ZoneId = ZoneId.of("Asia/Seoul")
@@ -128,6 +141,7 @@ data class ProgramSummary(
 data class ProgramPage(val items: List<ProgramSummary>, val nextCursor: String?)
 
 private const val OPEN = "모집 중"
+private const val CLOSED = "모집 마감"
 private const val UNKNOWN = "모집 여부 확인 필요"
 
 fun instant(raw: String?): Instant? = raw?.let { runCatching { OffsetDateTime.parse(it).toInstant() }.getOrNull() }
