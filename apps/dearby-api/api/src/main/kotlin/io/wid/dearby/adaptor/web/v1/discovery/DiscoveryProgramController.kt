@@ -27,7 +27,7 @@ class DiscoveryProgramController(private val summaries: ProgramSummaryService) {
         @RequestParam(required = false) q: String?,
         @RequestParam(required = false) participationType: String?,
         @RequestParam(required = false) category: String?, // 활동 종류 코드 하나 또는 쉼표 목록(native-v1.md "활동 종류")
-        @RequestParam(defaultValue = "true") openOnly: Boolean, // false면 최근 2년 안에 활동이 있었던 프로그램까지(native-v1.md "모집 중인 프로그램만 보기")
+        @RequestParam(defaultValue = "true") openOnly: Boolean, // false면 최근 3년 안에 활동이 있었던 프로그램까지(native-v1.md "모집 중인 프로그램만 보기")
         @RequestParam(defaultValue = "0") cursor: Int,
         @RequestParam(defaultValue = ProgramSummaryService.DEFAULT_PAGE_SIZE.toString()) size: Int,
         @RequestParam params: Map<String, String>, // 대상자 필터(age·educationStatus 등 camelCase 어휘)
