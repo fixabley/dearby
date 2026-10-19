@@ -24,7 +24,7 @@ struct ReceivedCardRow: View {
                 }
                 Spacer(minLength: 0)
                 if !badge.isEmpty { DearbyBadge(title: badge, quiet: badge != "맞교환") }
-            }.padding(.vertical, 10).frame(minHeight: 44).contentShape(Rectangle())
+            }.padding(.vertical, 10).padding(.horizontal, 12).frame(minHeight: 44).contentShape(Rectangle())
         }.buttonStyle(.plain).accessibilityElement(children: .combine)
     }
     private func chip(_ text: String) -> some View {
@@ -43,7 +43,7 @@ struct ReceivedCardListSample: View {
             ReceivedCardRow(name: "박준호", job: "백엔드 개발", badge: "12일 뒤 사라져요") {}
             Divider()
             ReceivedCardRow(name: "최유나", job: "커뮤니티 매니저", organization: "Let'Swift 준비위원회") {}
-        }.padding(20).background(.white)
+        }.padding(.vertical, 20).background(.white)
     }
 }
 

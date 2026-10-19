@@ -10,58 +10,57 @@ struct ActivityListPage: View {
     var body: some View {
         @Bindable var state = state
         ScrollView {
-            LazyVStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Spacer()
+            VStack(alignment: .leading, spacing: 12) {
+                // The title line comes first (contract "탭 제목 통일"), then the search field and toggle right under it.
+                PageTitle("활동 둘러보기") {
                     Button { showNotice = true } label: { Image(systemName: "bell").font(.title2).frame(width: 44, height: 44) }
                         .accessibilityLabel("알림")
-                }.padding(.bottom, 8)
-                Text("활동 둘러보기").font(.title2.bold())
-                DearbySearchField(prompt: "프로그램, 조직, 활동 이름으로 검색", text: $state.searchText, identifier: "activity-search")
-                    .submitLabel(.search)
-                Toggle("마감 숨기기", isOn: $state.openOnly).font(.dearby(.subheadline)).tint(DearbyStyle.teal)
-                    .accessibilityIdentifier("activity-open-only")
-                TagChipRow(tags: state.tags, selected: state.selectedTagIDs) { state.toggleTag($0) }
-                switch state.phase {
-                case .loading:
-                    ProgressView("프로그램을 불러오는 중이에요").frame(maxWidth: .infinity).padding(.vertical, 40)
-                case .failed:
-                    ContentUnavailableView {
-                        Label("프로그램을 불러오지 못했어요", systemImage: "wifi.exclamationmark")
-                    } description: {
-                        Text("연결을 확인한 뒤 다시 시도해 주세요.")
-                    } actions: {
-                        Button("다시 시도") { state.reload() }.accessibilityIdentifier("activity-retry")
-                    }
-                case .loaded where state.programs.isEmpty:
-                    if let query = state.query, !query.isEmpty {
-                        ContentUnavailableView("‘\(query)’에 맞는 프로그램이 없어요", systemImage: "magnifyingglass",
-                                               description: Text("다른 검색어로 찾아보세요."))
-                    } else if state.openOnly {
-                        ContentUnavailableView("지금 모집 중인 프로그램이 없어요", systemImage: "calendar",
-                                               description: Text("새 모집이 열리면 여기에서 볼 수 있어요. ‘마감 숨기기’를 끄면 최근 활동한 프로그램도 보여요."))
-                    } else {
-                        ContentUnavailableView("최근 2년 안에 활동한 프로그램이 없어요", systemImage: "calendar",
-                                               description: Text("활동이 수집되면 여기에서 볼 수 있어요."))
-                    }
-                case .loaded:
-                    ForEach(Array(state.programs.enumerated()), id: \.element.id) { index, program in
-                        section(program)
-                            // Near the end of the list: fetch the next page.
-                            .onAppear { if index >= state.programs.count - 3 { state.loadMore() } }
-                    }
-                    if state.loadingMore {
-                        ProgressView().frame(maxWidth: .infinity, minHeight: 44)
-                    } else if state.moreFailed {
-                        Button("프로그램 더 불러오기") { state.loadMore() }.frame(maxWidth: .infinity, minHeight: 44)
-                            .accessibilityIdentifier("activity-more-retry")
-                    }
                 }
-            }.padding(20)
+                LazyVStack(alignment: .leading, spacing: 10) {
+                    DearbySearchField(prompt: "프로그램, 조직, 활동 이름으로 검색", text: $state.searchText, identifier: "activity-search")
+                        .submitLabel(.search)
+                    Toggle("마감 숨기기", isOn: $state.openOnly).font(.dearby(.subheadline)).tint(DearbyStyle.teal)
+                        .accessibilityIdentifier("activity-open-only")
+                    switch state.phase {
+                    case .loading:
+                        ProgressView("프로그램을 불러오는 중이에요").frame(maxWidth: .infinity).padding(.vertical, 40)
+                    case .failed:
+                        ContentUnavailableView {
+                            Label("프로그램을 불러오지 못했어요", systemImage: "wifi.exclamationmark")
+                        } description: {
+                            Text("연결을 확인한 뒤 다시 시도해 주세요.")
+                        } actions: {
+                            Button("다시 시도") { state.reload() }.accessibilityIdentifier("activity-retry")
+                        }
+                    case .loaded where state.programs.isEmpty:
+                        if let query = state.query, !query.isEmpty {
+                            ContentUnavailableView("‘\(query)’에 맞는 프로그램이 없어요", systemImage: "magnifyingglass",
+                                                   description: Text("다른 검색어로 찾아보세요."))
+                        } else if state.openOnly {
+                            ContentUnavailableView("지금 모집 중인 프로그램이 없어요", systemImage: "calendar",
+                                                   description: Text("새 모집이 열리면 여기에서 볼 수 있어요. ‘마감 숨기기’를 끄면 최근 활동한 프로그램도 보여요."))
+                        } else {
+                            ContentUnavailableView("최근 2년 안에 활동한 프로그램이 없어요", systemImage: "calendar",
+                                                   description: Text("활동이 수집되면 여기에서 볼 수 있어요."))
+                        }
+                    case .loaded:
+                        ForEach(Array(state.programs.enumerated()), id: \.element.id) { index, program in
+                            section(program)
+                                // Near the end of the list: fetch the next page.
+                                .onAppear { if index >= state.programs.count - 3 { state.loadMore() } }
+                        }
+                        if state.loadingMore {
+                            ProgressView().frame(maxWidth: .infinity, minHeight: 44)
+                        } else if state.moreFailed {
+                            Button("프로그램 더 불러오기") { state.loadMore() }.frame(maxWidth: .infinity, minHeight: 44)
+                                .accessibilityIdentifier("activity-more-retry")
+                        }
+                    }
+                }.padding(.horizontal, 20).padding(.bottom, 20)
+            }
         }
         .scrollDismissesKeyboard(.immediately)
         // Typing waits ~300ms before searching; the first load does not wait.
-        .task { state.loadTags() }
         .task(id: state.searchText) {
             if state.query != nil {
                 try? await Task.sleep(for: .milliseconds(300))
@@ -80,7 +79,7 @@ struct ActivityListPage: View {
     @ViewBuilder private func section(_ program: ProgramSummary) -> some View {
         let open = state.isExpanded(program.id)
         VStack(alignment: .leading, spacing: 0) {
-            ProgramHeader(name: program.name, organization: program.organization, openCount: program.openActivityCount,
+            ProgramHeader(name: program.name, organization: program.organization, logoURL: program.logoURL, openCount: program.openActivityCount,
                           nearestDeadline: program.nearestRecruitmentEnd, upcomingCount: program.upcomingActivityCount,
                           nearestStart: program.nearestRecruitmentStart, latestActivity: program.latestActivity, tags: program.tags, expanded: open) {
                 withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.85)) { state.toggle(program.id) }
