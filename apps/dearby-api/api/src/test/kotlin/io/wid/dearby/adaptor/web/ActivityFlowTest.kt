@@ -388,16 +388,22 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         val unknownStudy = createActivity("이력 후보 기간 미상 스터디").also { category(it, "STUDY") }
         val unknownConference = createActivity("이력 후보 기간 미상 컨퍼런스").also { category(it, "CONFERENCE") }
         val unknownNoCategory = createActivity("이력 후보 기간 미상 미분류")
+        // 시각 일정에 시작이 없으면 기간 미상으로 보고 종류 규칙만 적용한다(2026-10-20 조율 결정)
+        fun endOnly(activityId: Long) = jdbc.sql(
+            "update schedules set time_type = 'TIMED', time_zone = 'Asia/Seoul', end_at = timestamptz '2025-03-01 10:00+09' where activity_id = ? and slot = 'ACTIVITY'"
+        ).param(activityId).update()
+        val endOnlyStudy = createActivity("이력 후보 끝만 스터디").also { endOnly(it); category(it, "STUDY") }
+        val endOnlyConference = createActivity("이력 후보 끝만 컨퍼런스").also { endOnly(it); category(it, "CONFERENCE") }
         val draftLong = createActivity("이력 후보 초안", status = "DRAFT").also { period(it, 10) }
         fun ids(query: String): List<Long> = search(query)["items"].toList().map { it["id"].asLong() }
         val all = ids("q=이력 후보&size=50")
-        assertTrue(listOf(oneDayConference, sixDayBootcamp, timedShort, unknownConference).all { it in all }, all.toString())
+        assertTrue(listOf(oneDayConference, sixDayBootcamp, timedShort, unknownConference, endOnlyConference).all { it in all }, all.toString())
         assertTrue(draftLong !in all)
-        assertEquals(setOf(sevenDayStudy, tenDayBootcamp, timedLong, unknownStudy, unknownNoCategory), ids("q=이력 후보&forHistory=true&size=50").toSet())
+        assertEquals(setOf(sevenDayStudy, tenDayBootcamp, timedLong, unknownStudy, unknownNoCategory, endOnlyStudy), ids("q=이력 후보&forHistory=true&size=50").toSet())
         // cursor·size는 그대로 이어진다
         val firstPage = search("q=이력 후보&forHistory=true&size=2")
         assertEquals(2, firstPage["items"].size())
-        assertEquals(3, ids("q=이력 후보&forHistory=true&size=50&cursor=${firstPage["nextCursor"].asLong()}").size)
+        assertEquals(4, ids("q=이력 후보&forHistory=true&size=50&cursor=${firstPage["nextCursor"].asLong()}").size)
         jdbc.sql("update activities set publication_status = 'DRAFT' where name like '이력 후보%'").update()
     }
 

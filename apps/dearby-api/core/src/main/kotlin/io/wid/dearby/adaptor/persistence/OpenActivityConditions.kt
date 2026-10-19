@@ -60,14 +60,14 @@ object OpenActivityConditions {
     }
 
     // 활동 이력 후보(native-v1.md "활동 이력에서 단기 행사 제외", 2026-10-20): 게시 활동이고 활동 기간이 7일 이상이거나,
-    // 기간을 모르면(행 없음 또는 문구만) 종류가 컨퍼런스·워크샵·밋업·강연이 아닌 것. 끝이 없는 시각 일정은 하루로 본다.
+    // 기간을 모르면(행 없음, 문구만, 또는 시각 일정에 시작이 없음) 종류가 컨퍼런스·워크샵·밋업·강연이 아닌 것. 끝이 없는 시각 일정은 하루로 본다.
     // GET /v1/activities?forHistory=true와 이력 쓰기 검사(ProfileService)가 같은 규칙을 쓴다. null이 끼면 where에서 빠지므로 남길 조건을 양의 형태로 쓴다
     val historyEligible: Condition = run {
         val allDayLong = act.TIME_TYPE.eq("ALL_DAY")
             .and(DSL.condition("{0} - {1} >= {2}", act.END_DATE_EXCLUSIVE, act.START_DATE, DSL.inline(HISTORY_MIN_DAYS)))
         val timedLong = act.TIME_TYPE.eq("TIMED").and(act.START_AT.isNotNull).and(act.END_AT.isNotNull)
             .and(DSL.condition("{0} - {1} >= make_interval(days => {2})", act.END_AT, act.START_AT, DSL.inline(HISTORY_MIN_DAYS)))
-        val unknownPeriod = act.TIME_TYPE.isNull
+        val unknownPeriod = act.TIME_TYPE.isNull.or(act.TIME_TYPE.eq("TIMED").and(act.START_AT.isNull))
             .and(ACTIVITIES.CATEGORY.isNull.or(ACTIVITIES.CATEGORY.notIn(SHORT_EVENT_CATEGORIES.map(ActivityCategory::name))))
         ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name).and(allDayLong.or(timedLong).or(unknownPeriod))
     }

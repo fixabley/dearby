@@ -153,10 +153,16 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         }
         val conference = activity("이력 하루 컨퍼런스 ${UUID.randomUUID()}", 1, "CONFERENCE")
         val bootcamp = activity("이력 열흘 부트캠프 ${UUID.randomUUID()}", 10, "BOOTCAMP")
-        fun body(activityId: Long) = """{"name":"이력","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","kind":"activity","activityId":$activityId,"roleName":"참가자","startDate":"2025-03-01","endDate":null,"description":""}]}"""
+        val historyId = UUID.randomUUID()
+        fun body(activityId: Long, id: UUID = historyId, name: String = "이력") = """{"name":"$name","contacts":${contacts()},"histories":[{"id":"$id","kind":"activity","activityId":$activityId,"roleName":"참가자","startDate":"2025-03-01","endDate":null,"description":""}]}"""
         val denied = read(put(user, body(conference)).andExpect { status { isBadRequest() } })
         assertEquals(listOf("HISTORY_ACTIVITY_TOO_SHORT", "일주일 미만 행사는 활동 이력에 넣을 수 없어요"), listOf(denied["code"].asString(), denied["detail"].asString()))
         assertEquals(bootcamp, read(put(user, body(bootcamp)).andExpect { status { isOk() } })["histories"].single()["activity"]["id"].asLong())
+        // 이미 같은 활동으로 저장된 이력은 그 활동이 나중에 짧아져도 다시 검사하지 않는다(프로필 저장·되돌리기가 막히지 않음). 새 이력으로 넣는 것은 400
+        jdbc.sql("update schedules set end_date_exclusive = start_date + 1 where activity_id = ? and slot = 'ACTIVITY'").param(bootcamp).update()
+        assertEquals(2, read(put(user, body(bootcamp, name = "이름 고침")).andExpect { status { isOk() } })["version"].asInt())
+        mvc.post("/v1/profile/versions/1/restore") { asUser(user) }.andExpect { status { isOk() } }
+        put(user, body(bootcamp, id = UUID.randomUUID())).andExpect { status { isBadRequest() } }
         // 직접 입력한 활동 이름은 제한하지 않는다
         put(user, """{"name":"이력","contacts":${contacts()},"histories":[{"id":"${UUID.randomUUID()}","kind":"activity","organizationName":"o","activityName":"하루 컨퍼런스","roleName":"r","startDate":"2025-03-01"}]}""").andExpect { status { isOk() } }
         jdbc.sql("update activities set publication_status = 'DRAFT' where id in (?, ?)").params(conference, bootcamp).update()
