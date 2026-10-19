@@ -79,7 +79,7 @@ struct ActivityDetailView: View {
             }
             Divider()
             DearbyInfoRow(title: "모집 상태", value: activity.statusLabel(at: state.loadedAt), symbol: "calendar")
-            DearbyInfoRow(title: "개최 일시", value: activity.dateLabel.isEmpty ? "미확인" : activity.dateLabel, symbol: "clock")
+            DearbyInfoRow(title: "개최 일시", value: activity.scheduleText(at: state.loadedAt) ?? "미확인", symbol: "clock")
             Divider()
             Text("소개").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
             Text(activity.summary).lineSpacing(5)
@@ -98,20 +98,21 @@ struct ActivityDetailView: View {
             }
         }
     }
-    /// Recruiting with a safe link: apply on the official site. Otherwise only the official notice.
+    /// The CTA opens the application link, else the official notice (contract "신청 확인 조건 완화" 2026-10-19 밤). Unless applying
+    /// is over it reads as applying and arms the "신청하셨나요?" prompt for when the app comes back from the browser.
     @ViewBuilder private func applicationActions(_ activity: ActivityModel) -> some View {
-        let apply = activity.applicationURL(at: state.loadedAt)
-        if let url = apply ?? activity.officialURL {
+        let site = activity.applicationSiteURL
+        if let url = site ?? activity.officialURL {
+            let closed = activity.applicationClosed(at: state.loadedAt)
             VStack(spacing: 0) {
                 Divider()
                 Link(destination: url) {
-                    Text(apply == nil ? "공식 안내 보기" : "공식 사이트에서 신청").frame(maxWidth: .infinity)
+                    Text(closed ? "공식 안내 보기" : site != nil ? "신청 사이트 열기" : "공식 사이트에서 신청").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold)).accessibilityIdentifier("open-application")
                 .accessibilityHint("외부 브라우저로 열려요")
-                // Only the application link (not the official notice) leads to the "신청하셨나요?" prompt.
                 .environment(\.openURL, OpenURLAction { opened in
-                    if apply != nil { state.openedApplication(activity.id) }
+                    if !closed { state.openedApplication(activity.id) }
                     return .systemAction(opened)
                 })
                 .padding(.horizontal, 20).padding(.vertical, 12)

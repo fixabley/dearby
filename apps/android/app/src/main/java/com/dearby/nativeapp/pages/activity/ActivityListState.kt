@@ -12,6 +12,8 @@ enum class ProgramPhase { LOADING, FAILED, LOADED }
  * One activity as shown; recruiting and links are judged once at load time. [status] is the `application` verdict
  * (`모집 중`/`모집 예정`/`모집 마감`/`모집 여부 확인 필요`), [period] the recruitment window text (null when none) and [date] the activity
  * period text. [location] is the venue name (curated place, else the collected phrase); [place] adds address and coordinates.
+ * [applyUrl] is the detail CTA link ([applicationUrl], else the official page) while recruitment is not closed, null once it is
+ * (contract "신청 확인 조건 완화"): opening it arms the "신청하셨나요?" question.
  */
 data class ActivityState(
     val id: String, val title: String, val summary: String, val organization: String, val program: String, val status: String,
@@ -29,6 +31,8 @@ data class ActivityState(
     val tags: List<String> = emptyList(),
     /** The curated venue for the detail `장소` section and the map link (contract "활동 장소"). */
     val place: Place? = null,
+    /** The operator's https application link, or null (contract "신청 확인 조건 완화·공개 applicationUrl"). */
+    val applicationUrl: String? = null,
 ) {
     /** Recruitment still ahead or running: the card emphasises the `모집` row (contract "발견 카드 리뉴얼" 강조 규칙). */
     val recruiting get() = status == "모집 중" || status == "모집 예정"
@@ -62,12 +66,15 @@ data class ProgramActivities(
  * [askingId]: the activity whose application link was opened, asked about once when the app comes back (contract #148).
  * [progress] is every loaded activity's stage track with the user's marks (contract "내 활동 진행 트랙"), memory only.
  * [openOnly] is the `마감 숨기기` switch (default on, memory only; contract "모집 중인 프로그램만 보기").
+ * [refreshing] while a pull to refresh re-reads the first program page (contract "발견 탭 스크롤 동작"); the list stays on screen meanwhile,
+ * and when that read fails with a list showing, [refreshFailed] keeps the list and the page shows a passing notice (iOS parity).
  */
 data class ActivityListState(
     val phase: ActivityListPhase = ActivityListPhase.LOADING, val query: String = "", val openOnly: Boolean = true, val programs: List<ProgramState> = emptyList(),
     val expanded: Set<String> = emptySet(), val programActivities: Map<String, ProgramActivities> = emptyMap(),
     val known: Map<String, ActivityState> = emptyMap(), val nextCursor: String? = null, val loadingMore: Boolean = false,
-    val moreFailed: Boolean = false, val askingId: String? = null, val progress: Map<String, ProgressState> = emptyMap(),
+    val moreFailed: Boolean = false, val askingId: String? = null, val progress: Map<String, ProgressState> = emptyMap(), val refreshing: Boolean = false,
+    val refreshFailed: Boolean = false,
 ) {
     val asking get() = askingId?.let(known::get)
     /** Applied activities, the nearest next stage first; activities without a dated next stage come last. */

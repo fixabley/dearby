@@ -29,6 +29,8 @@ import Observation
     private(set) var query: String?
     private(set) var loadingMore = false
     private(set) var moreFailed = false
+    /// Pull to refresh failed while a list was on screen: the list stays and the page shows a passing notice.
+    private(set) var refreshFailed = false
     // Discovery is judged at load time so the list does not change while it is on screen.
     private(set) var loadedAt = Date()
     // Example application marks, memory only and keyed by real activity IDs.
@@ -77,6 +79,49 @@ import Observation
         start(query)
     }
     func reload() { start(query ?? "") }
+    /// Pull to refresh (contract "발견 탭 스크롤 동작" 2026-10-19 밤): the first page again for the current query and toggle. The list stays on
+    /// screen until the page arrives; programs that were expanded stay expanded and load their activities again. Failure shows the usual error.
+    func refresh() async {
+        let query = query ?? ""
+        let kept = expanded
+        firstPage?.cancel()
+        nextPage?.cancel()
+        nextPage = nil
+        programLoads.values.forEach { $0.cancel() }
+        programLoads = [:]
+        loadingMore = false
+        moreFailed = false
+        refreshFailed = false
+        let task = Task {
+            do {
+                let page = try await fetchPrograms(query, nil, openOnly)
+                guard !Task.isCancelled else { return }
+                loadedAt = Date()
+                programs = []
+                expanded = []
+                cursor = nil
+                loadingPrograms = []
+                failedPrograms = []
+                phase = .loaded
+                append(page)
+                let shown = Set(programs.map(\.id))
+                expanded.formUnion(kept.intersection(shown))
+                // Activities of programs no longer listed are dropped; the kept ones stay until their reload lands.
+                openActivities = openActivities.filter { shown.contains($0.key) }
+                upcomingActivities = upcomingActivities.filter { shown.contains($0.key) }
+                pastActivities = pastActivities.filter { shown.contains($0.key) }
+                // Programs `append` just started loading are skipped by the in-flight guard.
+                for id in expanded { loadActivities(id, reload: true) }
+            } catch {
+                guard !Task.isCancelled else { return }
+                // A list already on screen stays; only a refresh with nothing shown falls back to the error screen.
+                if phase == .loaded && !programs.isEmpty { refreshFailed = true } else { phase = .failed }
+            }
+        }
+        firstPage = task
+        await task.value
+    }
+    func clearRefreshFailure() { refreshFailed = false }
     /// Next page of programs while one exists; a stale page (the query changed) is dropped.
     func loadMore() {
         guard phase == .loaded, let cursor, nextPage == nil, let query else { return }
@@ -142,8 +187,9 @@ import Observation
             loadActivities(program.id)
         }
     }
-    private func loadActivities(_ programID: Int64) {
-        guard openActivities[programID] == nil, programLoads[programID] == nil else { return }
+    /// `reload` fetches again even when the program's activities are already shown (pull to refresh keeps the old ones until then).
+    private func loadActivities(_ programID: Int64, reload: Bool = false) {
+        guard reload || openActivities[programID] == nil, programLoads[programID] == nil else { return }
         loadingPrograms.insert(programID)
         failedPrograms.remove(programID)
         programLoads[programID] = Task {
@@ -165,8 +211,8 @@ import Observation
                         .sorted { ($0.upcomingStart ?? .distantFuture, $0.title) < ($1.upcomingStart ?? .distantFuture, $1.title) }
                     let since = Calendar(identifier: .gregorian).date(byAdding: .year, value: -3, to: loadedAt) ?? loadedAt
                     let excluded = openIDs.union(upcoming.map(\.id))
-                    let recent = others.items.filter { !excluded.contains($0.id) && ($0.activityStage?.start ?? .distantPast) >= since }
-                        .sorted { ($0.activityStage?.start ?? .distantPast, $0.title) > ($1.activityStage?.start ?? .distantPast, $1.title) }
+                    let recent = others.items.filter { !excluded.contains($0.id) && ($0.activityStage?.anchor ?? .distantPast) >= since }
+                        .sorted { ($0.activityStage?.anchor ?? .distantPast, $0.title) > ($1.activityStage?.anchor ?? .distantPast, $1.title) }
                     for item in upcoming + recent { seen[item.id] = item }
                     upcomingActivities[programID] = upcoming
                     pastActivities[programID] = recent

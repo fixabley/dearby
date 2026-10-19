@@ -97,13 +97,7 @@ struct ProgramHeader: View {
         if openCount == 0, upcomingCount == 0, let latestActivity { return "최근 " + Self.format(latestActivity, "yyyy.M") }
         return nil
     }
-    private static func format(_ date: Date, _ pattern: String) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-        formatter.dateFormat = pattern
-        return formatter.string(from: date)
-    }
+    private static func format(_ date: Date, _ pattern: String) -> String { ActivityText.format(date, pattern, zone: ActivityText.seoul) }
 }
 
 #if DEBUG

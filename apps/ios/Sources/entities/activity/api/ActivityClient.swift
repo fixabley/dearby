@@ -58,7 +58,6 @@ enum ActivityClient {
                 organization: activity.organization.name, program: activity.program?.name,
                 recruitmentStartAt: activity.application?.startAt, recruitmentEndAt: activity.application?.endAt,
                 recruitmentStartDate: activity.application?.startDate, recruitmentEndDateExclusive: activity.application?.endDateExclusive,
-                dateLabel: activity.activitySchedule?.dateLabel ?? "",
                 schedules: activity.schedules.compactMap { schedule in
                     guard let start = ActivityModel.instant(schedule.startAt), let end = ActivityModel.instant(schedule.endAt) else { return nil }
                     // The calendar overlap screen needs a known zone.
@@ -66,33 +65,33 @@ enum ActivityClient {
                     return ActivityScheduleModel(id: String(schedule.id), title: schedule.title, start: start, end: end,
                                                  dateLabel: schedule.dateLabel, timeZone: zone)
                 },
-                hasApplication: activity.application != nil,
+                applicationStage: activity.application.map(stage),
                 stages: activity.schedules.map(stage), activityStage: activity.activitySchedule.map(stage),
-                officialUrl: activity.officialUrl, imageUrl: activity.imageUrl,
+                officialUrl: activity.officialUrl, imageUrl: activity.imageUrl, applicationUrl: activity.applicationUrl,
                 eligibility: activity.eligibility?.value.flatMap { $0.eligibility(depth: 0) },
                 category: activity.category.flatMap(ActivityCategory.init(rawValue:)),
                 // Sort key: the application's end; when no usable deadline exists, the activity start stands in for it.
                 recruitmentDeadline: activity.application.flatMap { ActivityModel.instant($0.endAt) ?? ActivityModel.seoulDay($0.endDateExclusive) }
                     ?? activity.activitySchedule.flatMap { ActivityModel.instant($0.startAt) ?? ActivityModel.seoulDay($0.startDate) },
                 tags: (activity.tags ?? []).map(\.tag),
-                recruitmentLabel: activity.application?.dateLabel ?? "",
                 location: activity.location.flatMap { $0.isEmpty ? nil : $0 },
                 place: activity.place?.value.map { ActivityPlace(name: $0.name, address: $0.address, lat: $0.lat, lng: $0.lng) })
         }
         return ActivityPage(items: items, nextCursor: payload.nextCursor)
     }
-    /// Stages keep every schedule: timed (either bound may be missing), all-day, or date-less. An unknown kind reads as an event.
+    /// Stages keep every schedule: timed (either bound may be missing), all-day (either day may be missing), or date-less.
+    /// An unknown kind reads as an event.
     private static func stage(_ schedule: Schedule) -> ActivityStageModel {
         let zone = schedule.timeZone.flatMap { TimeZone(identifier: $0) == nil ? nil : $0 } ?? "Asia/Seoul"
         let kind = schedule.kind.flatMap(ActivityStageModel.Kind.init(rawValue:)) ?? .event
         let startAt = ActivityModel.instant(schedule.startAt), endAt = ActivityModel.instant(schedule.endAt)
         if startAt != nil || endAt != nil {
-            return ActivityStageModel(id: String(schedule.id), title: schedule.title, kind: kind, start: startAt ?? endAt, end: endAt ?? startAt,
+            return ActivityStageModel(id: String(schedule.id), title: schedule.title, kind: kind, start: startAt, end: endAt,
                                       allDay: false, dateLabel: schedule.dateLabel, timeZone: zone)
         }
         let startDate = ActivityModel.seoulDay(schedule.startDate), endDate = ActivityModel.seoulDay(schedule.endDateExclusive)
-        return ActivityStageModel(id: String(schedule.id), title: schedule.title, kind: kind, start: startDate, end: endDate ?? startDate,
-                                  allDay: startDate != nil, dateLabel: schedule.dateLabel, timeZone: "Asia/Seoul")
+        return ActivityStageModel(id: String(schedule.id), title: schedule.title, kind: kind, start: startDate, end: endDate,
+                                  allDay: startDate != nil || endDate != nil, dateLabel: schedule.dateLabel, timeZone: "Asia/Seoul")
     }
     private struct Payload: Decodable {
         let items: [Activity]
@@ -123,6 +122,8 @@ enum ActivityClient {
     private struct Activity: Decodable {
         let id: Int64; let name: String; let description: String; let organization: Named; let program: Named?
         let officialUrl: String; let imageUrl: String?
+        /// Curated application link; absent on older responses.
+        let applicationUrl: String?
         let application: Schedule?; let activitySchedule: Schedule?; let schedules: [Schedule]
         /// Unreadable eligibility JSON must not fail the whole activity.
         let eligibility: Lenient<EligibilityNode>?

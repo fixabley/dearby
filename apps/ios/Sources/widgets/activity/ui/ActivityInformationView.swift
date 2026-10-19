@@ -15,7 +15,8 @@ struct ActivityInformationView: View {
         VStack(alignment: .leading, spacing: 16) {
             Divider()
             Text("행사 일정").font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.teal)
-            Text(activity.dateLabel.isEmpty ? "일정 미확인" : activity.dateLabel).font(.dearby(.subheadline))
+            // Structured dates before the collected text (contract "일정 표시 우선순위").
+            Text(activity.scheduleText(at: Date()) ?? "일정 미확인").font(.dearby(.subheadline))
             VStack(spacing: 0) {
                 ForEach(sessions.indices, id: \.self) { index in
                     let session = sessions[index]
@@ -37,16 +38,5 @@ struct ActivityInformationView: View {
                     .frame(maxWidth: .infinity)
             }
         }
-    }
-}
-enum ActivityText {
-    static func time(_ date: Date, zone: String = "Asia/Seoul") -> String { format(date, "HH:mm", zone) }
-    static func day(_ date: Date, zone: String) -> String { format(date, "M/d", zone) }
-    private static func format(_ date: Date, _ pattern: String, _ zone: String) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.timeZone = TimeZone(identifier: zone) ?? TimeZone(identifier: "Asia/Seoul")
-        formatter.dateFormat = pattern
-        return formatter.string(from: date)
     }
 }

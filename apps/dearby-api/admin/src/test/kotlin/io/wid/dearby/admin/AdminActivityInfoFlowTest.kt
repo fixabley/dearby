@@ -366,6 +366,9 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         assertEquals(listOf("Asia/Seoul", true), listOf(dated["application"]["timeZone"].asString(), dated["application"]["curated"].asBoolean()))
         mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"activitySchedule":{"startDate":"2026-05-26","endAt":"2026-06-09T11:00:00+09:00"}}""") }.andExpect { status { isBadRequest() } }
         mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"activitySchedule":{"startDate":"2026-05-26","endDate":"2026-05-01"}}""") }.andExpect { status { isBadRequest() } }
+        // 활동 기간도 시각 일정이 된다(V39, 2026-10-19 밤: 전에는 DB 체크로 500이 났다)
+        val timedActivity = read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"activitySchedule":{"startAt":"2026-10-28T10:00:00+09:00","endAt":"2026-10-28T18:00:00+09:00"}}""") }.andExpect { status { isOk() } })
+        assertEquals(listOf("2026-10-28T10:00:00+09:00", "2026-10-28T18:00:00+09:00", true), listOf(timedActivity["activitySchedule"]["startAt"].asString(), timedActivity["activitySchedule"]["endAt"].asString(), timedActivity["activitySchedule"]["startDate"].isNull))
         // 마감일만 지정(admin-v1.md "마감일만 지정"·"사유"): endDate만 오면 그날 23:59(Asia/Seoul)까지의 시점 일정, 사유는 curatedNote로 남는다
         val deadline = read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"application":{"endDate":"2026-06-09","note":"접수 마감"}}""") }.andExpect { status { isOk() } })
         assertEquals(listOf(true, "2026-06-09T23:59:00+09:00", "접수 마감", true), listOf(deadline["application"]["startAt"].isNull, deadline["application"]["endAt"].asString(), deadline["application"]["curatedNote"].asString(), deadline["application"]["curated"].asBoolean()))

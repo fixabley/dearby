@@ -38,7 +38,7 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
     val openLink: (String) -> Unit = { url ->
         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
             .onSuccess {
-                // Only the official page opened while recruiting (the detail CTA) leads to the prompt.
+                // Only the detail CTA while recruitment is not closed (open, upcoming or unknown) leads to the "신청하셨나요?" prompt.
                 activity?.takeIf { it.applyUrl == url }?.let { model.openedApplication(it.id) }
             }
             .onFailure { linkError = "링크를 열지 못했어요." }
@@ -59,7 +59,7 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
         progress != null && progressActivity != null -> ActivityProgressPage(progress, progressActivity, { progressId = null }, { selected = progress.id; linkError = null },
             { model.confirm(progress.id, it) }, { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it })
         mine -> MyActivitiesPage(state, { selected = it; linkError = null }, { progressId = it }, model::confirm, explore)
-        else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify)
+        else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify, model::clearRefreshFailure)
     }
     if (sharing && activity?.officialUrl != null) AlertDialog(onDismissRequest = { sharing = false }, title = { Text("활동 링크") }, text = { Text(activity.officialUrl) }, confirmButton = { TextButton({ sharing = false }) { Text("닫기") } })
     val openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) }
