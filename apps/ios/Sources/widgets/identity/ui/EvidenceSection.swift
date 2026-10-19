@@ -29,17 +29,22 @@ struct EvidenceSection: View {
                 .swipeActions { Button("삭제", role: .destructive) { remove(item) }.accessibilityLabel("\(item.fileName) 삭제").disabled(busy) }
             }
             if items.count < Self.limit {
-                PhotosPicker(selection: $photo, matching: .images) { Label("사진 올리기", systemImage: "photo") }.disabled(busy)
-                Button { importing = true } label: { Label("PDF 올리기", systemImage: "paperclip") }.disabled(busy)
+                // Add rows: the whole row is the control (contract "입력 영역 터치" 2026-10-20).
+                PhotosPicker(selection: $photo, matching: .images) {
+                    Label("사진 올리기", systemImage: "photo").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
+                }.disabled(busy)
+                Button { importing = true } label: {
+                    Label("PDF 올리기", systemImage: "paperclip").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
+                }.disabled(busy)
             }
             if busy { ProgressView().frame(maxWidth: .infinity) }
         } header: {
-            Text("인증자료").font(.dearby(.footnote))
+            Text("인증자료").font(.dearby(.subheadline))
         } footer: {
             VStack(alignment: .leading, spacing: 4) {
                 Text(items.count < Self.limit ? hint : "인증자료는 \(Self.limit)개까지 올릴 수 있어요. " + hint)
                 if let error { DearbyFieldError(text: error) }
-            }.font(.dearby(.footnote))
+            }.font(.dearby(.subheadline))
         }
         .onChange(of: photo) { _, item in
             guard let item else { return }

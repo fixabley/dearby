@@ -3,7 +3,8 @@ import SwiftUI
 /// First profile entry as an accordion (2026-10-17 user decision): steps stack in order, only one is open, and answered
 /// steps collapse to a row that reopens on tap. Rows are platform form rows (contract "폼은 플랫폼 기본 컴포넌트" 2026-10-19 밤):
 /// an inset-grouped `Form`, the question as the open section's header, help and errors in its footer, the keyboard open as
-/// a step appears. The tab bar is hidden meanwhile (`HomePage.hidesTabs`). Shown until the profile is saved once.
+/// a step appears. Rows stack the label over a `.title3` input (`DearbyFormRow`, contract "폼 라벨·입력 크기" 2026-10-20) and the whole row
+/// focuses the field; the keyboard 완료 clears both focus states. The tab bar is hidden meanwhile (`HomePage.hidesTabs`). Shown until the profile is saved once.
 struct ProfileFunnelPage: View {
     @Binding var form: ProfileForm
     let account: AccountViewModel
@@ -14,6 +15,7 @@ struct ProfileFunnelPage: View {
     @State private var reached: Set<Step> = [.name]
     @State private var tried = false
     @FocusState private var focus: Step?
+    @FocusState private var jobSearch: Bool
     enum Step: CaseIterable {
         case name, jobs, phone, email, introduction
         var label: String {
@@ -40,7 +42,7 @@ struct ProfileFunnelPage: View {
             .font(.dearby(.body))
             .safeAreaInset(edge: .bottom) { bar }
         }
-        .dearbyDismissKeyboard().background(Color(.systemGroupedBackground))
+        .dearbyDismissKeyboard { focus = nil; jobSearch = false }.background(Color(.systemGroupedBackground))
         .onAppear(perform: focusOpen)
         .onChange(of: open) { _, _ in focusOpen() }
     }
@@ -48,20 +50,25 @@ struct ProfileFunnelPage: View {
         Section {
             switch step {
             case .name:
-                TextField("실명 또는 활동명", text: $form.name).textContentType(.name).submitLabel(.next).onSubmit(next)
-                    .focused($focus, equals: .name).accessibilityLabel("이름, 필수")
+                DearbyFormRow(label: step.label, focus: $focus, value: step) {
+                    TextField("실명 또는 활동명", text: $form.name).textContentType(.name).submitLabel(.next).onSubmit(next).accessibilityLabel("이름, 필수")
+                }
             case .jobs:
-                JobTagPicker(form: $form, account: account)
+                JobTagPicker(form: $form, account: account, focus: $jobSearch)
             case .phone:
-                TextField("010-0000-0000", text: $form.phone).keyboardType(.phonePad).textContentType(.telephoneNumber)
-                    .focused($focus, equals: .phone).accessibilityLabel("전화번호, 필수")
+                DearbyFormRow(label: step.label, focus: $focus, value: step) {
+                    TextField("010-0000-0000", text: $form.phone).keyboardType(.phonePad).textContentType(.telephoneNumber).accessibilityLabel("전화번호, 필수")
+                }
             case .email:
-                TextField("name@example.com", text: $form.email)
-                    .keyboardType(.emailAddress).textContentType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
-                    .submitLabel(.next).onSubmit(next).focused($focus, equals: .email).accessibilityLabel("이메일, 필수")
+                DearbyFormRow(label: step.label, focus: $focus, value: step) {
+                    TextField("name@example.com", text: $form.email)
+                        .keyboardType(.emailAddress).textContentType(.emailAddress).textInputAutocapitalization(.never).autocorrectionDisabled()
+                        .submitLabel(.next).onSubmit(next).accessibilityLabel("이메일, 필수")
+                }
             case .introduction:
-                TextField("예: 커뮤니티 운영과 행사 기획을 해요", text: $form.introduction, axis: .vertical).lineLimit(3...6)
-                    .focused($focus, equals: .introduction).accessibilityLabel("소개")
+                DearbyFormRow(label: step.label, focus: $focus, value: step) {
+                    TextField("예: 커뮤니티 운영과 행사 기획을 해요", text: $form.introduction, axis: .vertical).lineLimit(3...6).accessibilityLabel("소개")
+                }
             }
         } header: {
             Text(question(step)).font(.dearby(.title3).bold()).foregroundStyle(.primary)
@@ -69,20 +76,17 @@ struct ProfileFunnelPage: View {
             VStack(alignment: .leading, spacing: 4) {
                 if let hint = hint(step) { Text(hint) }
                 if tried, let message = error(at: step) { DearbyFieldError(text: message) }
-            }.font(.dearby(.footnote))
+            }.font(.dearby(.subheadline))
         }
     }
-    /// Answered steps: label and value on a row; tapping reopens the step.
+    /// Answered steps: label over value, the same shape as an input row; the whole row reopens the step.
     @ViewBuilder private func doneRows(_ steps: [Step]) -> some View {
         if !steps.isEmpty {
             Section {
                 ForEach(steps, id: \.self) { step in
-                    let value = value(of: step)
                     Button { tried = false; open = step } label: {
-                        LabeledContent(step.label) {
-                            Text(value.isEmpty ? "비워 둠" : value).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.trailing)
-                        }
-                    }.foregroundStyle(DearbyStyle.ink).accessibilityHint("눌러서 고쳐요")
+                        DearbyValueRow(label: step.label, value: value(of: step)).lineLimit(2).contentShape(Rectangle())
+                    }.accessibilityHint("눌러서 고쳐요")
                 }
             }
         }
