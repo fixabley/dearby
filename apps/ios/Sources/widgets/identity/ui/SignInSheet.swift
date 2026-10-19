@@ -19,8 +19,9 @@ struct SignInSheet: View {
             VStack(alignment: .leading, spacing: 16) {
                 DearbyBrand().padding(.vertical, 8)
                 if let link = account.pendingLink { pendingChoice(link) } else { choices }
-            }.padding(20)
+            }.padding(20).controlSize(.large)
         }
+        .background(Color(.systemGroupedBackground))
         .navigationTitle("로그인").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
         .onChange(of: account.phase) { _, phase in
@@ -44,14 +45,10 @@ struct SignInSheet: View {
         if account.googleSignInEnabled {
             DearbyGoogleButton { run(.google) }.disabled(busy).accessibilityIdentifier("sign-in-google")
         }
-        Button { run(.passkey) } label: {
-            if busy && running == .passkey { ProgressView().tint(DearbyStyle.onTeal) } else { Text("패스키로 로그인") }
-        }.buttonStyle(DearbyButtonStyle()).disabled(busy).accessibilityIdentifier("sign-in-passkey")
+        button("패스키로 로그인", .passkey, prominent: true).accessibilityIdentifier("sign-in-passkey")
         VStack(alignment: .leading, spacing: 8) {
             Text("처음이거나 이 기기에 패스키가 없나요?").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
-            Button { run(.newPasskey) } label: {
-                if busy && running == .newPasskey { ProgressView().tint(DearbyStyle.teal) } else { Text("새 패스키로 시작") }
-            }.buttonStyle(DearbyButtonStyle(outlined: true)).disabled(busy).accessibilityIdentifier("sign-in-new-passkey")
+            button("새 패스키로 시작", .newPasskey, prominent: false).accessibilityIdentifier("sign-in-new-passkey")
         }.padding(.top, 8)
     }
 
@@ -66,12 +63,8 @@ struct SignInSheet: View {
             }
         }
         message
-        Button { run(.pendingNewAccount) } label: {
-            if busy && running == .pendingNewAccount { ProgressView().tint(DearbyStyle.onTeal) } else { Text("새 계정으로 시작") }
-        }.buttonStyle(DearbyButtonStyle()).disabled(busy).accessibilityIdentifier("sign-in-link-new")
-        Button { run(.pendingLink) } label: {
-            if busy && running == .pendingLink { ProgressView().tint(DearbyStyle.teal) } else { Text("기존 패스키 계정에 연결") }
-        }.buttonStyle(DearbyButtonStyle(outlined: true)).disabled(busy).accessibilityIdentifier("sign-in-link-passkey")
+        button("새 계정으로 시작", .pendingNewAccount, prominent: true).accessibilityIdentifier("sign-in-link-new")
+        button("기존 패스키 계정에 연결", .pendingLink, prominent: false).accessibilityIdentifier("sign-in-link-passkey")
         Button("다른 방법으로 로그인") { account.clearPendingLink() }
             .font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).frame(maxWidth: .infinity)
             .disabled(busy).accessibilityIdentifier("sign-in-link-back")
@@ -80,6 +73,18 @@ struct SignInSheet: View {
     @ViewBuilder private var message: some View {
         if let message = account.message {
             DearbyFieldError(text: message).accessibilityIdentifier("sign-in-message")
+        }
+    }
+
+    /// A full-width system button (`.borderedProminent` for the main choice, `.bordered` otherwise) showing a spinner while its action runs.
+    @ViewBuilder private func button(_ title: String, _ action: Action, prominent: Bool) -> some View {
+        let label = Group {
+            if busy && running == action { ProgressView().tint(prominent ? DearbyStyle.onTeal : DearbyStyle.teal) } else { Text(title) }
+        }.frame(maxWidth: .infinity).font(.dearby(.body).weight(.semibold))
+        if prominent {
+            Button { run(action) } label: { label }.buttonStyle(.borderedProminent).disabled(busy)
+        } else {
+            Button { run(action) } label: { label }.buttonStyle(.bordered).disabled(busy)
         }
     }
 
