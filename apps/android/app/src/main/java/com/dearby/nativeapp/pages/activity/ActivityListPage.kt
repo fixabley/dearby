@@ -68,7 +68,7 @@ import com.dearby.nativeapp.widgets.activity.programHeader.ProgramHeaderRow
                 else -> {
                     programs.forEach { program ->
                         item(key = "program-" + program.id) {
-                            ProgramHeaderRow(program.title, program.organization, program.openCount, program.deadline, program.id in state.expanded, onToggle = { toggle(program.id) }, latestActivityAt = program.latestActivityAt, tags = program.tags)
+                            ProgramHeaderRow(program.title, program.organization, program.openCount, program.deadline, program.id in state.expanded, onToggle = { toggle(program.id) }, latestActivityAt = program.latestActivityAt, tags = program.tags, upcomingCount = program.upcomingCount, nearestStart = program.nearestStart)
                         }
                         if (program.id in state.expanded) {
                             val loaded = state.programActivities[program.id]
@@ -81,8 +81,9 @@ import com.dearby.nativeapp.widgets.activity.programHeader.ProgramHeaderRow
                                 }
                                 ProgramPhase.LOADED -> {
                                     val activities = loaded.ids.mapNotNull(state.known::get)
-                                    if (activities.isEmpty()) item(key = "empty-" + program.id) { Text("지금 모집 중인 활동이 없어요", Modifier.padding(start = 12.dp), color = Quiet, style = MaterialTheme.typography.bodySmall) }
-                                    // 모집 예정 · 지난 활동 (contract "모집 중인 프로그램만 보기"): plain rows, no category headings; an empty group is omitted.
+                                    // "지금 모집 중인 활동이 없어요" only when every shown group is empty (contract "마감 숨기기", 2026-10-19 밤 정정).
+                                    if (activities.isEmpty() && loaded.upcomingIds.none(state.known::containsKey) && loaded.pastIds.none(state.known::containsKey)) item(key = "empty-" + program.id) { Text("지금 모집 중인 활동이 없어요", Modifier.padding(start = 12.dp), color = Quiet, style = MaterialTheme.typography.bodySmall) }
+                                    // 모집 예정 (always) · 지난 활동 (switch off only): plain rows, no category headings; an empty group is omitted.
                                     listOf("upcoming" to ("모집 예정" to loaded.upcomingIds), "past" to ("지난 활동" to loaded.pastIds)).forEach { (slug, group) ->
                                         val (heading, ids) = group
                                         val rows = ids.mapNotNull(state.known::get)

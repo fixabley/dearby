@@ -30,6 +30,7 @@ enum ActivityClient {
             ProgramSummary(id: program.id, name: program.name, nameEn: program.nameEn, organization: program.organization.name,
                            openActivityCount: program.openActivityCount, nearestRecruitmentEndAt: program.nearestRecruitmentEndAt,
                            matchedActivityIDs: program.matchedActivityIds.map(String.init), latestActivityAt: program.latestActivityAt,
+                           upcomingActivityCount: program.upcomingActivityCount ?? 0, nearestRecruitmentStartAt: program.nearestRecruitmentStartAt,
                            tags: (program.tags ?? []).map(\.tag))
         }, nextCursor: payload.nextCursor)
     }
@@ -107,6 +108,7 @@ enum ActivityClient {
     private struct Program: Decodable {
         let id: Int64; let name: String; let nameEn: String?; let organization: Named
         let openActivityCount: Int; let nearestRecruitmentEndAt: String?; let matchedActivityIds: [Int64]; let latestActivityAt: String?
+        let upcomingActivityCount: Int?; let nearestRecruitmentStartAt: String?
         /// Absent on older responses.
         let tags: [TagDTO]?
     }

@@ -194,6 +194,42 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(1, programs("")["items"].size())
         jdbc.sql("delete from activities where program_id in (?, ?)").params(lastYear, threeYearsAgo).update()
         jdbc.sql("delete from programs where id in (?, ?)").params(lastYear, threeYearsAgo).update()
+        // 마감 숨기기(native-v1.md, 2026-10-19 밤): 켜진 토글(openOnly=true)은 마감된 활동만 숨긴다. 모집이 내일 시작하는 프로그램은 모집 예정으로 나오고
+        // (openActivityCount 0, upcomingActivityCount 1), 모집 중 프로그램 뒤에 선다. 어제 마감한 활동뿐인 프로그램은 빠진다
+        fun programWithApplication(name: String, startInterval: String, endInterval: String): Long {
+            jdbc.sql("insert into programs (organization_id, name, created_at, updated_at) values (?, ?, localtimestamp, localtimestamp)").params(organizationId, name).update()
+            val programId = jdbc.sql("select id from programs where name = ?").param(name).query(Long::class.java).single()
+            jdbc.sql(
+                """
+                insert into activities (program_id, name, description, participation_type, recruitment_status, official_url, freshness, source_note, publication_status, created_at, updated_at)
+                values (?, ?, '', 'SELECTION', 'UNKNOWN', 'https://example.com', 'VERIFIED', '', 'PUBLISHED', localtimestamp, localtimestamp)
+                """
+            ).params(programId, "$name 활동").update()
+            val activityId = jdbc.sql("select id from activities where name = ?").param("$name 활동").query(Long::class.java).single()
+            jdbc.sql(
+                """
+                insert into schedules (activity_id, slot, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+                values (?, 'APPLICATION', '신청 기간', 'DEADLINE', 'CONFIRMED', 'TIMED', now() + ?::interval, now() + ?::interval, 'Asia/Seoul', '', 0, localtimestamp, localtimestamp)
+                """
+            ).params(activityId, startInterval, endInterval).update()
+            return programId
+        }
+        val upcomingProgram = programWithApplication("모집 예정 프로그램", "1 day", "8 days")
+        val closedProgram = programWithApplication("어제 마감 프로그램", "-10 days", "-1 day")
+        val openOnlyItems = programs("")["items"]
+        val openOnlyNames = (0 until openOnlyItems.size()).map { openOnlyItems[it]["name"].asString() }
+        assertEquals(listOf("Let’Swift", "모집 예정 프로그램"), openOnlyNames)
+        val upcomingSummary = openOnlyItems[1]
+        assertEquals(0, upcomingSummary["openActivityCount"].asInt())
+        assertEquals(1, upcomingSummary["upcomingActivityCount"].asInt())
+        assertEquals(true, upcomingSummary["nearestRecruitmentEndAt"].isNull)
+        assertTrue(java.time.OffsetDateTime.parse(upcomingSummary["nearestRecruitmentStartAt"].asString()).isAfter(java.time.OffsetDateTime.now()))
+        assertEquals(0, openOnlyItems[0]["upcomingActivityCount"].asInt())
+        // 검색어가 모집 예정 활동 이름에 맞아도 프로그램이 나오고 그 활동 id가 함께 온다
+        assertEquals(1, programs("q=모집 예정 프로그램 활동")["items"].single()["matchedActivityIds"].size())
+        assertTrue("어제 마감 프로그램" in (programs("openOnly=false")["items"].let { all2 -> (0 until all2.size()).map { all2[it]["name"].asString() } }))
+        jdbc.sql("delete from activities where program_id in (?, ?)").params(upcomingProgram, closedProgram).update()
+        jdbc.sql("delete from programs where id in (?, ?)").params(upcomingProgram, closedProgram).update()
         // 활동 종류(native-v1.md "활동 종류"): 코드 하나 또는 쉼표 목록, 대소문자 무시. 열린 활동 수와 공개 응답의 category에 함께 적용된다
         jdbc.sql("update activities set category = 'BOOTCAMP' where id = ?").param(openId).update()
         assertEquals(1, programs("category=bootcamp,conference")["items"].single()["openActivityCount"].asInt())

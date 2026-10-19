@@ -27,18 +27,19 @@ data class ActivityState(
 data class TagState(val id: String, val name: String)
 /**
  * One program header in discovery (contract "발견 프로그램 묶음"); [matched] when the search hit an open activity's name.
- * [openCount] is 0 for a program shown only because it had an activity in the last two years; [latestActivityAt] is its most
- * recent activity start (contract "모집 중인 프로그램만 보기").
+ * [openCount] is 0 for a program with only upcoming or past activities; [upcomingCount] and [nearestStart] describe its 모집 예정
+ * activities; [latestActivityAt] is its most recent activity start (contract "마감 숨기기").
  */
 data class ProgramState(
     val id: String, val title: String, val organization: String, val openCount: Int, val deadline: Instant?, val matched: Boolean, val latestActivityAt: Instant? = null,
+    val upcomingCount: Int = 0, val nearestStart: Instant? = null,
     /** Program (or open-activity union) tag names, at most 6 (contract "태그"). */
     val tags: List<String> = emptyList(),
 )
 /**
  * The open activities of an expanded program, loaded on first expand; [ids] index into [ActivityListState.known]. When none is
  * open, [upcomingIds] are the program's activities whose recruitment (or activity) start is still ahead, nearest first, and
- * [pastIds] those of the last three years, most recent start first (contract "모집 중인 프로그램만 보기"). Both groups appear always while
+ * [pastIds] those of the last three years, most recent start first (contract "마감 숨기기"). 모집 예정 appears always, 지난 활동 only while
  * 마감 숨기기 is off, and only when nothing is open while it is on.
  */
 data class ProgramActivities(

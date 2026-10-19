@@ -17,7 +17,7 @@ import Observation
     /// Past activities (last two years, latest start first) for an expanded program without open ones.
     private(set) var pastActivities: [Int64: [ActivityModel]] = [:]
     /// Activities whose recruitment (or activity, without a window) has not started yet, nearest first; same programs as `pastActivities`.
-    /// Both are loaded for every expanded program while `openOnly` is off, and only for programs without open activities while it is on.
+    /// Both are loaded for every expanded program; the page shows `모집 예정` always and `지난 활동` only while `openOnly` is off (2026-10-19 밤).
     private(set) var upcomingActivities: [Int64: [ActivityModel]] = [:]
     /// `마감 숨기기` (contract "모집 중인 프로그램만 보기"): on by default, memory only. Off also lists programs active in the last two years.
     var openOnly = true { didSet { if openOnly != oldValue { start(query ?? "") } } }
@@ -180,9 +180,9 @@ import Observation
                 for item in page.items { seen[item.id] = item }
                 openActivities[programID] = page.items
                 // `모집 예정` (recruitment or activity not started yet, nearest first) and `지난 활동` (started within the
-                // last three years, latest first) follow the open list: always while `마감 숨기기` is off, otherwise
-                // only when nothing is recruiting. Contract "모집 중인 프로그램만 보기" (2026-10-19 저녁).
-                if page.items.isEmpty || !openOnly {
+                // last three years, latest first) are loaded for every expanded program; the page decides what to show
+                // (upcoming always, past only while `마감 숨기기` is off). Contract "펼침" (2026-10-19 밤).
+                do {
                     let others = try await fetchActivities(programID, false, tagIDs)
                     guard !Task.isCancelled else { return }
                     let openIDs = Set(page.items.map(\.id))
