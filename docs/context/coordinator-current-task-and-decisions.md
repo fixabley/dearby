@@ -14,6 +14,10 @@
 - **테스트:** API 기존 테스트에서 공유 단계를 뺐다(CardFlowTest 2개는 철회·지갑 목록 검증으로 축소, GuestFlowTest·AccountDeletionFlowTest 공유 단계 삭제). 새 테스트 파일은 만들지 않았다.
 - Orca 세션·워크트리·브랜치(같은 날 사용자 요청): `main`·`admin-agent`·`ux-research`·`api-agent` 워크트리의 터미널 4개를 닫고, `.claude/worktrees/` 아래 완료 워크트리 16개를 제거했다(모두 미커밋·미푸시 변경 없음). 브랜치는 병합된 로컬 129개·원격 14개, 원격 사본이 있는 로컬 10개, 로컬 전용 미병합 7개, PR 없는 미병합 원격 6개, 열린 PR #158·#169·#170의 브랜치 3개를 지웠다(PR은 브랜치 삭제로 닫힘). 남은 브랜치는 `main`과 `chore/drop-share-tables`(PR #235)뿐이다(`chore/remove-card-sharing`은 병합 후 삭제). 지운 미병합 브랜치의 마지막 커밋: feat/capstone-presentation `e9e36ca6`, feat/discovery-admin `ce856b07`, feat/ios-design-simplification `086fd94d`, fixabley/catalog-subscription-collector `d7e5da7b`, fixabley/dearby-android-design-simplification `da438461`, fixabley/ui-agent `ed7b272b`, ui/calendar-overlap `8beacff3`, ui/identity-avatar-order `8d648e95`, feat/mobile-device-calendar `a88c3c02`, feat/android-activities `c8cf82a1`, feat/ios-activities `10cd5dba`, fixabley/dearby-android `6ccf46fa`, fixabley/dearby-api `88f88950`, fixabley/dearby-ios `6f090faa`, fixabley/dearby-ios-architecture-tests `ee9c4e09`, ui/pretendard-flow-screens `31b52dea`(로컬 reflog·GitHub GC 전까지만 복구 가능). 루트 워크스페이스의 `supabase/`(로컬 CLI 상태 포함)와 `~/.supabase`도 지웠다.
 
+## 2026-10-19 결정 — 날짜 문구 피드백
+
+사용자: "날짜 문자열 같은 경우 내가 직접 지정했을 때 피드백으로 받아들여서 정규화된 날짜값으로 수집할 수 있게". 운영자 지정 일정(`schedules.curated`, 원문 `date_label` + 정규화 날짜)을 새 저장소 없이 수집 지시문의 "해석 예시"(최근 20개, 같은 프로그램 우선, 문구 중복 제거)로 넘긴다. 지정한 일정 자체는 기존대로 보호. 계약 admin-v1 "날짜 문구 피드백". 에이전트 1개(API+batch, 어드민 안내 한 줄).
+
 ## 2026-10-19 결정 — 수집 주소 토큰·프로그램 편집
 
 사용자: "프로그램 수집 url에 toss.im/slash-23, slash-24 와 같이 관리되는 경우를 표현할 수 있을까?" → 제안(주소 토큰 `{year}`·`{yy}`·`{round}`, 올해·내년/다음 기수·현재 기수로 펼침) 승인, "UI상에서는 태그처럼 사용할 수 있게… 아니면 안내문구 적어줘" → 토큰 태그 버튼(커서 삽입) + 안내 문구 + 펼친 주소 미리보기(`previewUrls`·`previousRound` 서버 계산). 같은 턴에 "하는 김에 프로그램 조직 편집기능도 추가해줘" → 프로그램 목록에 편집 모달(이름·영문 이름·운영 조직, 기존 `PATCH /v1/admin/programs/:id`). 계약 admin-v1 수집 설정 항목 갱신. 에이전트 팀 2개(API·어드민).

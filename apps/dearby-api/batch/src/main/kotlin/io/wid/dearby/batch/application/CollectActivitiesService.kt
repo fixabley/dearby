@@ -33,6 +33,8 @@ class CollectActivitiesService(
         val watched = watchlist.findAllByProgramId(target.programId)
         // 이전 기수(admin-v1.md "이전 기수 정보 자동완성"): 지시문 힌트. 비어 있는 필드는 저장할 때 서버가 채운다. 기수 번호는 시작 주소의 {round}에도 쓴다
         val previous = drafts.findPreviousEdition(target.programId)
+        // 날짜 문구 피드백(admin-v1.md): 운영자가 바로잡은 문구 → 날짜 쌍을 해석 예시로 넘긴다(프로그램당 한 번)
+        val examples = drafts.findDateLabelExamples(target.programId)
         val rejected = mutableListOf<String>()
         // 시작 주소 토큰(admin-v1.md "주소 토큰"): 올해·내년, 다음·현재 기수로 펼친다. 기수를 모르면 그 주소는 건너뛰고 이유만 남긴다
         val template = target.officialUrlTemplate
@@ -52,7 +54,7 @@ class CollectActivitiesService(
                 continue
             }
             fetched += url
-            val extraction = extractor.extract(page, target.programName, watched, previous)
+            val extraction = extractor.extract(page, target.programName, watched, previous, examples)
             usage += extraction.usage
             found += extraction.activities.size
             val checkedAt = OffsetDateTime.now(ZoneOffset.UTC)

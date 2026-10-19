@@ -1104,7 +1104,7 @@ function ScheduleBlock({
           <Switch />
         </Form.Item>
       </Space>
-      <p className="field-note">날짜만 고르면 종일 일정, 시각을 켜면 한국 시간으로 저장해요. 비워 두면 원문 문구만 남아요.</p>
+      <p className="field-note">날짜만 고르면 종일 일정, 시각을 켜면 한국 시간으로 저장해요. 비워 두면 원문 문구만 남아요. 지정한 기간은 다음 수집의 해석 예시로도 쓰여요.</p>
     </div>
   );
 }

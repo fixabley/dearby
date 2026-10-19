@@ -2,6 +2,8 @@ package io.wid.dearby.batch
 
 import io.wid.dearby.batch.application.ActivityDiscoverer
 import io.wid.dearby.batch.application.ActivityExtractor
+import io.wid.dearby.batch.adaptor.claude.CollectionPrompts
+import io.wid.dearby.domain.collection.DateLabelExample
 import io.wid.dearby.batch.application.Discovery
 import io.wid.dearby.batch.application.ExtractedActivity
 import io.wid.dearby.batch.application.Extraction
@@ -28,6 +30,8 @@ import org.springframework.jdbc.core.simple.JdbcClient
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 // 모델·네트워크 대신 가짜 구현으로 잡 전체(설정 읽기 → 대조 → 초안 저장 → 기록)를 확인한다. API 비용이 들지 않는다
 // batch 앱은 io.wid.dearby.batch만 스캔하므로 공유 테스트 DB 설정(스키마 비우고 다시 마이그레이션)을 직접 가져온다
@@ -42,6 +46,11 @@ class CollectionJobTest(
 
     @TestConfiguration
     class Fakes {
+        companion object {
+            // 마지막 추출 요청이 받은 날짜 문구 해석 예시(admin-v1.md "날짜 문구 피드백")
+            var receivedExamples: List<DateLabelExample> = emptyList()
+        }
+
         @Bean
         @Primary
         fun fakeDiscoverer() = ActivityDiscoverer { target ->
@@ -59,7 +68,8 @@ class CollectionJobTest(
 
         @Bean
         @Primary
-        fun fakeExtractor() = ActivityExtractor { _, _, _, _ ->
+        fun fakeExtractor() = ActivityExtractor { _, _, _, _, examples ->
+            receivedExamples = examples
             Extraction(
                 listOf(
                     ExtractedActivity(
@@ -85,6 +95,7 @@ class CollectionJobTest(
         jdbc.sql("delete from collection_runs").update()
         jdbc.sql("delete from dismissed_activity_sources").update()
         jdbc.sql("delete from collection_watchlist").update()
+        jdbc.sql("delete from schedules where curated and slot is null").update()
         // V5로 넣은 Let'Swift 활동만 남기고 수집으로 생긴 활동을 지운다(일정은 함께 지워진다)
         jdbc.sql("delete from activities where source_id is distinct from '01b773dc-5e13-4d14-a182-9642b47d596e'").update()
     }
@@ -177,6 +188,27 @@ class CollectionJobTest(
         val reasons = jdbc.sql("select outcome || '|' || array_to_string(rejected_reasons, ';') from collection_runs").query(String::class.java).single()
         assertEquals(true, reasons.startsWith("FAILED|") && reasons.contains("https://letswift.kr/{round}/: 기수 번호를 알 수 없음"), reasons)
         assertEquals("", jdbc.sql("select array_to_string(fetched_urls, ',') from collection_runs").query(String::class.java).single())
+    }
+
+    @Test
+    fun `운영자가 지정한 기간의 원문 문구는 다음 수집의 해석 예시로 지시문에 들어간다`() {
+        officialSetting()
+        // 어드민이 날짜를 직접 지정한 일정(curated, 원문 문구 있음)을 V5 Let'Swift 활동에 하나 둔다
+        jdbc.sql(
+            """
+            insert into schedules (activity_id, slot, title, kind, status, time_type, start_date, end_date_exclusive, date_label, sequence, created_at, updated_at, curated)
+            select id, null, '해커톤', 'EVENT', 'CONFIRMED', 'ALL_DAY', date '2026-11-01', date '2026-11-16', '2026년 11월 1일~15일', 99, localtimestamp, localtimestamp, true
+            from activities where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'
+            """
+        ).update()
+        run("2026-10-19")
+        val example = Fakes.receivedExamples.single { it.dateLabel == "2026년 11월 1일~15일" }
+        assertEquals("[일정] \"2026년 11월 1일~15일\" → startDate 2026-11-01, endDate 2026-11-15", CollectionPrompts.dateExampleLine(example))
+        val prompt = CollectionPrompts.extractRequest("Let'Swift", "https://letswift.kr/2026/", "본문", examples = Fakes.receivedExamples)
+        assertTrue(prompt.contains("날짜 문구 해석 예시(운영자가 바로잡은 것):\n- [일정] \"2026년 11월 1일~15일\" → startDate 2026-11-01, endDate 2026-11-15"))
+        assertTrue(prompt.contains("비슷한 문구는 같은 방식으로 날짜 필드를 채운다"))
+        // 예시가 없으면 절 자체가 없다
+        assertFalse(CollectionPrompts.extractRequest("Let'Swift", "https://letswift.kr/2026/", "본문").contains("날짜 문구 해석 예시"))
     }
 
     @Test
