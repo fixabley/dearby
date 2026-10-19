@@ -64,3 +64,7 @@ docker compose -f compose.prod.yaml --env-file .env.prod run --rm batch --recall
 - 웹 전체 검색의 실제 결과(2026-10-15, cli, 설정 없는 Let'Swift): 공식 사이트 대신 X 계정(`x.com/letswiftkr`)에서 같은 이름의 초안 2건을 저장했다(`official_source = false`). 2분 45초, 입력 78,210·출력 17,258 토큰. CLI 내장 WebSearch는 사용량에 검색 횟수가 잡히지 않아 0으로 기록된다. 후속 후보: SNS·모음 사이트 제외 목록, 웹 전체 검색에서 찾은 공식 도메인 후보를 관리자에게 제안.
 - `cli` 엔진은 2026-10-15 로컬 개발 DB에서 Let'Swift(`https://letswift.kr/2026/`, 허용 `letswift.kr`)로 실제 수집했다: 59초, 찾은 1·저장 1(DRAFT), 일정 7개 시각 정상(19:00 KST), 입력 14,776·출력 6,183 토큰, 웹 검색 0회(모델이 공식 페이지만으로 충분하다고 판단). 신청 주소는 원문 링크와 맞지 않아 비워졌다.
 - 이 Mac의 launchd 작업(`com.dearby.catalog-subscription-worker`)과 `~/.dearby-deploy`의 TS 워커 배포 사본은 저장소 밖이라 2026-10-18 소스 삭제로 멈추지 않는다. 사용자가 `launchctl bootout gui/$(id -u)/com.dearby.catalog-subscription-worker`와 plist 삭제로 내린다(저장소의 `scripts/launchd.mjs uninstall`은 더 없다).
+
+## 모집 기간·활동 기간 혼동 — 2026-10-19
+
+사용자 보고: 어드민에서 모집 기간과 활동 기간이 서로 바뀐 활동이 있다. 2026-10-18 수집분 확인 결과 "우아한 테크코스 2026"(활동 기간에 모집 기간 2025.09.29~10.10), "Apple Developer Academy Cohort"(모집 기간에 과정 기간 5/1~12/8), "Apple Developer Academy 2027"(모집 마감 = 과정 종료일) 등이 있었다. 원인: 추출 지시문이 두 기간을 정의하지 않았고 `dateLabel`이 필수라서, 페이지에 모집 기간만 있을 때 모델이 그 날짜를 활동 기간 자리에 넣었다. 조치: 지시문에 두 기간의 정의(모집·접수·지원·신청·마감 ↔ 교육·과정·행사·운영·개최)와 "같은 날짜를 두 기간에 넣지 않음, 모집 기간만 있으면 dateLabel은 빈 문자열" 규칙을 넣었다. 어드민은 의심 조건(모집 시작이 활동 종료 뒤, 두 기간 동일, 활동 원문에 모집·접수·지원·신청 낱말)에 `기간 확인` 태그를 붙이고, 편집 폼에 `모집 ↔ 활동 바꾸기` 버튼을 두어 운영자가 바로 고칠 수 있다(고친 값은 운영자 지정으로 보호).
