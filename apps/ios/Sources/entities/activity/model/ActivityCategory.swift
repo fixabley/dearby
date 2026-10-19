@@ -20,13 +20,24 @@ enum ActivityCategory: String, CaseIterable, Sendable {
         }
     }
     static let unclassifiedLabel = "미분류"
-    /// Activities grouped in contract order, 미분류 last; one entry per category present.
+    /// Activities grouped in contract order, 미분류 last; one entry per category present. Inside a group the nearest
+    /// recruitment deadline comes first, activities without one last, ties by title.
     static func group(_ activities: [ActivityModel]) -> [(label: String, activities: [ActivityModel])] {
         let known = allCases.compactMap { category in
             let members = activities.filter { $0.category == category }
-            return members.isEmpty ? nil : (label: category.label, activities: members)
+            return members.isEmpty ? nil : (label: category.label, activities: byDeadline(members))
         }
         let unclassified = activities.filter { $0.category == nil }
-        return unclassified.isEmpty ? known : known + [(label: unclassifiedLabel, activities: unclassified)]
+        return unclassified.isEmpty ? known : known + [(label: unclassifiedLabel, activities: byDeadline(unclassified))]
+    }
+    private static func byDeadline(_ activities: [ActivityModel]) -> [ActivityModel] {
+        activities.sorted { lhs, rhs in
+            switch (lhs.recruitmentDeadline, rhs.recruitmentDeadline) {
+            case let (left?, right?) where left != right: left < right
+            case (nil, .some): false
+            case (.some, nil): true
+            default: lhs.title < rhs.title
+            }
+        }
     }
 }
