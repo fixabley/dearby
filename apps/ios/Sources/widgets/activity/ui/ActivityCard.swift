@@ -51,7 +51,7 @@ struct ActivityCard: View {
     /// Capsule tints as iOS uses them: filled for the active state, tinted for the pending one, system fill for the rest.
     private var statusChip: some View {
         Text(statusText).font(.dearby(.caption2).weight(.semibold))
-            .foregroundStyle(recruitment == .open ? .white : recruitment == .upcoming ? DearbyStyle.teal : .secondary)
+            .foregroundStyle(recruitment == .open ? DearbyStyle.onTeal : recruitment == .upcoming ? DearbyStyle.teal : .secondary)
             .padding(.horizontal, 8).padding(.vertical, 3)
             .background(recruitment == .open ? DearbyStyle.teal : recruitment == .upcoming ? DearbyStyle.teal.opacity(0.15) : Color(.tertiarySystemFill),
                         in: Capsule())

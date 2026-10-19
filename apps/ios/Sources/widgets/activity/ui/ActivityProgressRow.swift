@@ -57,7 +57,7 @@ struct StageTrack: View {
             switch stage.state {
             case .past: shape.fill(DearbyStyle.teal)
             case .current: shape.fill(DearbyStyle.mint).overlay(shape.stroke(DearbyStyle.teal, lineWidth: 1.5))
-            case .upcoming: shape.fill(DearbyStyle.line)
+            case .upcoming: shape.fill(Color(.opaqueSeparator))
             }
         }
     }

@@ -60,7 +60,7 @@ struct CardComposer: View {
             HStack(spacing: 10) {
                 if draft.changed { Button("원래대로") { draft.revert() }.buttonStyle(DearbyButtonStyle(outlined: true)).disabled(publishing) }
                 Button(action: publish) {
-                    if publishing { ProgressView().tint(.white) } else { Text("명함 발행") }
+                    if publishing { ProgressView().tint(DearbyStyle.onTeal) } else { Text("명함 발행") }
                 }.buttonStyle(DearbyButtonStyle()).disabled(publishing).accessibilityLabel(publishing ? "명함 발행 중" : "명함 발행")
             }
             Text("발행한 명함은 바뀌지 않아요. 고치면 새 명함으로 발행돼요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)

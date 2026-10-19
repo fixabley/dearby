@@ -45,7 +45,7 @@ struct SignInSheet: View {
             DearbyGoogleButton { run(.google) }.disabled(busy).accessibilityIdentifier("sign-in-google")
         }
         Button { run(.passkey) } label: {
-            if busy && running == .passkey { ProgressView().tint(.white) } else { Text("패스키로 로그인") }
+            if busy && running == .passkey { ProgressView().tint(DearbyStyle.onTeal) } else { Text("패스키로 로그인") }
         }.buttonStyle(DearbyButtonStyle()).disabled(busy).accessibilityIdentifier("sign-in-passkey")
         VStack(alignment: .leading, spacing: 8) {
             Text("처음이거나 이 기기에 패스키가 없나요?").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
@@ -67,7 +67,7 @@ struct SignInSheet: View {
         }
         message
         Button { run(.pendingNewAccount) } label: {
-            if busy && running == .pendingNewAccount { ProgressView().tint(.white) } else { Text("새 계정으로 시작") }
+            if busy && running == .pendingNewAccount { ProgressView().tint(DearbyStyle.onTeal) } else { Text("새 계정으로 시작") }
         }.buttonStyle(DearbyButtonStyle()).disabled(busy).accessibilityIdentifier("sign-in-link-new")
         Button { run(.pendingLink) } label: {
             if busy && running == .pendingLink { ProgressView().tint(DearbyStyle.teal) } else { Text("기존 패스키 계정에 연결") }

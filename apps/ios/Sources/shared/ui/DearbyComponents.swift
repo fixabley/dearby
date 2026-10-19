@@ -18,7 +18,7 @@ struct DearbyAvatar: View {
     var size: CGFloat = 76
     var body: some View {
         Text(String(name.prefix(1))).font(.dearby(fixedSize: size * 0.42, weight: .bold))
-            .foregroundStyle(filled ? .white : DearbyStyle.teal).frame(width: size, height: size)
+            .foregroundStyle(filled ? DearbyStyle.onTeal : DearbyStyle.teal).frame(width: size, height: size)
             .background(filled ? DearbyStyle.teal : DearbyStyle.teal.opacity(0.12), in: Circle())
             .accessibilityHidden(true)
     }

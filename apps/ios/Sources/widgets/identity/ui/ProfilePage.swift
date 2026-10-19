@@ -119,7 +119,7 @@ struct ProfilePage: View {
             if let error { Text(error).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.danger).frame(maxWidth: .infinity, alignment: .leading) }
             HStack(spacing: 10) {
                 Button("원래대로") { revert() }.buttonStyle(DearbyButtonStyle(outlined: true)).disabled(saving)
-                Button { save(form) } label: { if saving { ProgressView().tint(.white) } else { Text("저장") } }
+                Button { save(form) } label: { if saving { ProgressView().tint(DearbyStyle.onTeal) } else { Text("저장") } }
                     .buttonStyle(DearbyButtonStyle()).disabled(saving).accessibilityIdentifier("profile-save")
             }
         }.padding(.horizontal, 20).padding(.vertical, 12).background(Color(.systemBackground)).overlay(alignment: .top) { Rectangle().fill(DearbyStyle.line).frame(height: 1) }

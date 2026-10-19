@@ -10,6 +10,10 @@ enum DearbyStyle {
             : UIColor(red: 0, green: 127.0 / 255, blue: 128.0 / 255, alpha: 1)
     }
     static let teal = Color(uiColor: tealUIColor)
+    /// 청록 채움 위의 글자·아이콘·스피너: 라이트 흰색, 다크 #0C4848(Android `onPrimary`와 같은 값) — 다크의 밝은 청록 위에서 읽히도록.
+    static let onTeal = Color(uiColor: UIColor { trait in
+        trait.userInterfaceStyle == .dark ? UIColor(red: 12.0 / 255, green: 72.0 / 255, blue: 72.0 / 255, alpha: 1) : .white
+    })
     /// 보조 글자 → `.secondary`.
     static let quiet = Color.secondary
     /// 연청록 바탕(글자는 청록) → 청록 12%, 다크에서도 따라온다.
@@ -74,7 +78,7 @@ struct DearbyButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.font(.dearby(.headline)).frame(maxWidth: .infinity, minHeight: height)
-            .foregroundStyle(outlined ? DearbyStyle.teal : .white)
+            .foregroundStyle(outlined ? DearbyStyle.teal : DearbyStyle.onTeal)
             .background(outlined ? Color(.secondarySystemGroupedBackground) : DearbyStyle.teal, in: RoundedRectangle(cornerRadius: 11))
             .overlay(RoundedRectangle(cornerRadius: 11).stroke(DearbyStyle.teal, lineWidth: outlined ? 1 : 0))
             .opacity(!isEnabled ? 0.45 : (configuration.isPressed ? 0.7 : 1))

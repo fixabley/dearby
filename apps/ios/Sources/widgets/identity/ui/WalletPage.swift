@@ -160,7 +160,7 @@ private struct IndexRail: View {
             VStack(spacing: 0) {
                 ForEach(keys, id: \.self) { key in
                     Button { jump(key) } label: {
-                        Text(key).font(.dearby(fixedSize: 11, weight: .semibold)).foregroundStyle(dragging == key ? .white : DearbyStyle.teal)
+                        Text(key).font(.dearby(fixedSize: 11, weight: .semibold)).foregroundStyle(dragging == key ? DearbyStyle.onTeal : DearbyStyle.teal)
                             .frame(width: 20, height: height)
                             .background(dragging == key ? DearbyStyle.teal : .clear, in: Capsule())
                     }.buttonStyle(.plain).accessibilityLabel("\(key)으로 이동")

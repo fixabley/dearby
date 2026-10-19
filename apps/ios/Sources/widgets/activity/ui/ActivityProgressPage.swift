@@ -55,7 +55,7 @@ struct ActivityProgressPage: View {
         HStack(alignment: .top, spacing: 14) {
             VStack(spacing: 0) {
                 Image(systemName: stage.icon).font(.dearby(.caption).weight(.semibold))
-                    .foregroundStyle(stage.state == .upcoming ? DearbyStyle.quiet : (stage.state == .past ? .white : DearbyStyle.teal))
+                    .foregroundStyle(stage.state == .upcoming ? DearbyStyle.quiet : (stage.state == .past ? DearbyStyle.onTeal : DearbyStyle.teal))
                     .frame(width: 32, height: 32)
                     .background(stage.state == .past ? DearbyStyle.teal : (stage.state == .current ? DearbyStyle.mint : DearbyStyle.muted), in: Circle())
                     .overlay(Circle().stroke(stage.state == .current ? DearbyStyle.teal : .clear, lineWidth: 1.5))

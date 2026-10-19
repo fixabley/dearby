@@ -22,7 +22,7 @@ struct ConsentPage: View {
                     if let error { DearbyFieldError(text: error) }
                 }.padding(24)
             }
-            Button { agree() } label: { if saving { ProgressView().tint(.white) } else { Text("동의하고 계속") } }
+            Button { agree() } label: { if saving { ProgressView().tint(DearbyStyle.onTeal) } else { Text("동의하고 계속") } }
                 .buttonStyle(DearbyButtonStyle()).disabled(!ready).padding(.horizontal, 24).padding(.vertical, 12)
                 .accessibilityIdentifier("consent-continue")
         }
