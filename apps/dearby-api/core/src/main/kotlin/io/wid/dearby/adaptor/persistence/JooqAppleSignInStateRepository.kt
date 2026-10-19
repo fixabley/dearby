@@ -15,8 +15,7 @@ import java.util.*
 @Repository
 class JooqAppleSignInStateRepository(private val dsl: DSLContext) : AppleSignInStateRepository {
 
-    override fun issue(step: AppleSignInStep, state: AppleSignInState): UUID {
-        val id = UUID.randomUUID()
+    override fun issue(step: AppleSignInStep, state: AppleSignInState, id: UUID): UUID {
         val now = now()
         // 쓰지 않고 만료된 상태를 함께 정리한다
         dsl.deleteFrom(APPLE_SIGN_IN_STATES).where(APPLE_SIGN_IN_STATES.EXPIRES_AT.le(now)).execute()

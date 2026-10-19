@@ -37,6 +37,7 @@ import kotlin.test.assertTrue
         "dearby.apple.client-ids=io.wid.dearby,io.wid.dearby.signin",
         "dearby.apple.services-id=io.wid.dearby.signin",
         "dearby.apple.callback-url=https://api.example.test/v1/auth/apple/callback",
+        "dearby.google.client-ids=web-client.apps.googleusercontent.com, ios-client.apps.googleusercontent.com",
     ]
 )
 @AutoConfigureMockMvc
@@ -51,6 +52,15 @@ class AppleSignInFlowTest(
         @Primary
         fun testAppleTokenDecoder(): AppleTokenDecoder =
             AppleTokenDecoder.of(NimbusJwtDecoder.withPublicKey(KEY.toRSAPublicKey()).signatureAlgorithm(SignatureAlgorithm.RS256).build(), listOf("io.wid.dearby", "io.wid.dearby.signin"))
+
+        // 구글 공개키 대신 같은 테스트 키로 서명한 ID 토큰을 받는다. 허용 aud 규칙은 운영과 같다(native-v1.md "구글 로그인 — 네이티브")
+        @Bean
+        @Primary
+        fun testGoogleTokenDecoder(): GoogleTokenDecoder =
+            GoogleTokenDecoder.of(
+                NimbusJwtDecoder.withPublicKey(KEY.toRSAPublicKey()).signatureAlgorithm(SignatureAlgorithm.RS256).build(),
+                listOf("web-client.apps.googleusercontent.com", "ios-client.apps.googleusercontent.com"),
+            )
 
         // 애플 토큰 엔드포인트 대신 code를 그대로 담은 토큰을 준다
         @Bean
@@ -75,6 +85,30 @@ class AppleSignInFlowTest(
             .apply { nonce?.let { claim("nonce", it) } }.build()
         val header = JwsHeader.with(SignatureAlgorithm.RS256).keyId(KEY.keyID).build()
         return ENCODER.encode(JwtEncoderParameters.from(header, claims)).tokenValue
+    }
+
+    // 구글 ID 토큰: 애플과 달리 nonce는 해시 없이 그대로, email_verified가 있어야 email을 남긴다
+    private fun googleToken(
+        subject: String,
+        nonce: String?,
+        audience: String = "web-client.apps.googleusercontent.com",
+        issuer: String = "https://accounts.google.com",
+        expiresAt: Instant = Instant.now().plusSeconds(600),
+        emailVerified: Boolean = true,
+    ): String {
+        val claims = JwtClaimsSet.builder().issuer(issuer).audience(listOf(audience)).subject(subject)
+            .issuedAt(expiresAt.minusSeconds(1200)).expiresAt(expiresAt)
+            .claim("email", "$subject@gmail.com").claim("email_verified", emailVerified).claim("name", " 조민준 ")
+            .apply { nonce?.let { claim("nonce", it) } }.build()
+        val header = JwsHeader.with(SignatureAlgorithm.RS256).keyId(KEY.keyID).build()
+        return ENCODER.encode(JwtEncoderParameters.from(header, claims)).tokenValue
+    }
+
+    private fun googleNonce(): String = read(post("/v1/auth/google/nonce", "").andExpect { status { isOk() } })["nonce"].asString()
+
+    private fun googleSignIn(subject: String, token: (String) -> String = { googleToken(subject, it) }): ResultActionsDsl {
+        val nonce = googleNonce()
+        return post("/v1/auth/google", """{"idToken":"${token(nonce)}","nonce":"$nonce"}""")
     }
 
     private fun post(path: String, body: String, bearer: String? = null) = mvc.post(path) {
@@ -214,6 +248,64 @@ class AppleSignInFlowTest(
         }.andReturn().response.getHeader("Location")
         assertEquals("dearby://auth/apple?error=cancelled", cancelled)
         post("/v1/auth/apple/web/start", """{"verifierHash":"short"}""").andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `구글 네이티브 — 처음 보는 계정은 linkToken을 받고, 새 계정이나 패스키 계정 연결 뒤에는 바로 로그인한다`() {
+        val subject = "google-${UUID.randomUUID()}"
+        val first = read(googleSignIn(subject).andExpect { status { isAccepted() } })
+        assertEquals("$subject@gmail.com", first["email"].asString())
+        assertEquals("조민준", first["displayName"].asString())
+        val linkToken = first["linkToken"].asString()
+        val created = read(post("/v1/auth/google/register", """{"linkToken":"$linkToken"}""").andExpect { status { isCreated() } })
+        post("/v1/auth/google/register", """{"linkToken":"$linkToken"}""").andExpect { status { isUnauthorized() } }
+        // iOS SDK가 보내는 iOS 클라이언트 aud도 같은 계정으로 로그인한다
+        val again = read(googleSignIn(subject) { googleToken(subject, it, audience = "ios-client.apps.googleusercontent.com") }.andExpect { status { isOk() } })
+        assertEquals(created["user"]["id"].asString(), again["user"]["id"].asString())
+        assertEquals(1, jdbc.sql("select count(*) from user_identities where provider = 'GOOGLE' and subject = ? and refresh_token is null").param(subject).query(Int::class.java).single())
+
+        // 패스키 계정에 연결: 로그인 필요, 한 계정에 구글 계정은 하나
+        val user = User(UUID.randomUUID(), listOf(UserRole.USER))
+        jdbc.sql("insert into users (id) values (?)").param(user.id).update()
+        jdbc.sql("insert into user_roles (user_id, role) values (?, 'USER')").param(user.id).update()
+        val access = tokens.issue(user).accessToken
+        val other = "google-${UUID.randomUUID()}"
+        val link = read(googleSignIn(other).andExpect { status { isAccepted() } })["linkToken"].asString()
+        post("/v1/me/identities/google", """{"linkToken":"$link"}""").andExpect { status { isUnauthorized() } }
+        post("/v1/me/identities/google", """{"linkToken":"$link"}""", access).andExpect { status { isNoContent() } }
+        assertEquals(user.id.toString(), read(googleSignIn(other).andExpect { status { isOk() } })["user"]["id"].asString())
+        val third = read(googleSignIn("google-${UUID.randomUUID()}").andExpect { status { isAccepted() } })["linkToken"].asString()
+        post("/v1/me/identities/google", """{"linkToken":"$third"}""", access).andExpect { status { isBadRequest() } }
+        // 이미 다른 계정(created)에 연결된 구글 계정은 이 계정에 연결할 수 없다. 로그인은 바로 되므로 linkToken이 나오지 않는다
+        googleSignIn(subject).andExpect { status { isOk() } }
+    }
+
+    @Test
+    fun `구글 네이티브 — 서명·발급자·대상·만료·nonce가 맞지 않으면 401이고 nonce는 한 번만 쓰며 인증되지 않은 이메일은 남기지 않는다`() {
+        val subject = "google-${UUID.randomUUID()}"
+        googleSignIn(subject) { googleToken(subject, it, audience = "other-client.apps.googleusercontent.com") }.andExpect { status { isUnauthorized() } }
+        googleSignIn(subject) { googleToken(subject, it, issuer = "https://example.com") }.andExpect { status { isUnauthorized() } }
+        googleSignIn(subject) { googleToken(subject, it, expiresAt = Instant.now().minusSeconds(3600)) }.andExpect { status { isUnauthorized() } }
+        googleSignIn(subject) { googleToken(subject, "other-nonce") }.andExpect { status { isUnauthorized() } }
+        googleSignIn(subject) { googleToken(subject, null) }.andExpect { status { isUnauthorized() } }
+        googleSignIn(subject) { "not-a-jwt" }.andExpect { status { isUnauthorized() } }
+        // 서버가 주지 않은 nonce, 애플 nonce는 받지 않는다
+        post("/v1/auth/google", """{"idToken":"${googleToken(subject, "made-up")}","nonce":"made-up"}""").andExpect { status { isUnauthorized() } }
+        val (_, appleNonce) = nonce()
+        post("/v1/auth/google", """{"idToken":"${googleToken(subject, appleNonce)}","nonce":"$appleNonce"}""").andExpect { status { isUnauthorized() } }
+        // 두 번째 표기의 iss도 받는다
+        googleSignIn(subject) { googleToken(subject, it, issuer = "accounts.google.com") }.andExpect { status { isAccepted() } }
+
+        val nonce = googleNonce()
+        val body = """{"idToken":"${googleToken(subject, nonce)}","nonce":"$nonce"}"""
+        post("/v1/auth/google", body).andExpect { status { isAccepted() } }
+        post("/v1/auth/google", body).andExpect { status { isUnauthorized() } }
+
+        val unverified = "google-${UUID.randomUUID()}"
+        val link = read(googleSignIn(unverified) { googleToken(unverified, it, emailVerified = false) }.andExpect { status { isAccepted() } })
+        assertTrue(link["email"].isNull, link.toString())
+        post("/v1/auth/google/register", """{"linkToken":"${link["linkToken"].asString()}"}""").andExpect { status { isCreated() } }
+        assertTrue(jdbc.sql("select email is null from user_identities where subject = ?").param(unverified).query(Boolean::class.java).single())
     }
 
     private companion object {
