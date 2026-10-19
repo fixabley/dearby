@@ -1,5 +1,6 @@
 package io.wid.dearby.application.program
 
+import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.Program
 
@@ -17,7 +18,7 @@ interface ProgramRepository {
     // 같은 조직 아래에 띄어쓰기를 뺀 이름이 같은 프로그램이 있는지. english면 영문 이름끼리 비교. exceptId는 자기 자신
     fun existsName(organizationId: Id, name: String, exceptId: Id?, english: Boolean = false): Boolean
 
-    fun update(id: Id, organizationId: Id, name: String, nameEn: String?)
+    fun update(id: Id, organizationId: Id, name: String, nameEn: String?, category: ActivityCategory?)
 
     fun activityCount(id: Id): Int
 

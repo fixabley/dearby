@@ -18,6 +18,7 @@ data class ProgramSummary(
     val openActivityCount: Int,
     val nearestRecruitmentEndAt: OffsetDateTime?, // 열린 활동 중 가장 이른 모집 마감. 모두 마감이 없으면 null
     val matchedActivityIds: List<Id>, // q가 열린 활동 이름에 맞은 활동 id. q가 없으면 빈 목록
+    val category: ActivityCategory? = null, // 프로그램 기본 종류(admin-v1.md "프로그램 기본 종류")
 )
 
 // q는 프로그램 이름·영문 이름, 조직 이름, 열린 활동 이름에 부분 일치(대소문자 무시). cursor는 정렬된 목록의 위치(이전 nextCursor)

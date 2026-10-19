@@ -413,8 +413,14 @@ function periodSuspicion(application: Schedule | null | undefined, activity: Sch
   return null;
 }
 /** 모집 마감 순(2026-10-19 사용자 요청): the application end (`endAt`, else `endDateExclusive`), activities without one last, ties by name. */
+/** 정렬 키(contract admin-v1.md "정렬 기준 보완" 2026-10-19): 모집 마감 → 없으면 활동 시작 → 둘 다 없으면 맨 뒤, 같으면 이름순. ISO strings compare as text. */
 function byRecruitmentDeadline(a: Activity, b: Activity): number {
-  const deadline = (activity: Activity) => activity.application?.endAt ?? activity.application?.endDateExclusive ?? null;
+  const deadline = (activity: Activity) =>
+    activity.application?.endAt ??
+    activity.application?.endDateExclusive ??
+    activity.activitySchedule?.startAt ??
+    activity.activitySchedule?.startDate ??
+    null;
   const [da, db] = [deadline(a), deadline(b)];
   if (da && db && da !== db) return da < db ? -1 : 1;
   if (da && !db) return -1;
@@ -791,6 +797,8 @@ type ProgramRow = {
   name: string;
   nameEn: string | null;
   organization: { id: number; name: string };
+  /** 프로그램 기본 종류(contract admin-v1.md "프로그램 기본 종류"); absent on older responses. */
+  category?: Category | null;
   collection: { enabled: boolean; intervalDays: number; allowedHosts: string[]; lastSucceededOn: string | null };
 };
 
@@ -827,6 +835,7 @@ function ProgramGroups({
         <>
           {program.name}
           {program.nameEn && <span className="muted name-en">{program.nameEn}</span>}
+          {program.category && <Tag style={{ marginLeft: 6 }}>{categoryLabel(program.category)}</Tag>}
         </>
       ),
     },

@@ -20,6 +20,7 @@ import java.util.UUID
 import kotlin.collections.Collection
 import kotlin.collections.List
 
+import org.jooq.Check
 import org.jooq.Condition
 import org.jooq.Field
 import org.jooq.ForeignKey
@@ -127,6 +128,11 @@ open class Programs(
      */
     val NAME_EN: TableField<ProgramsRecord, String?> = createField(DSL.name("name_en"), SQLDataType.VARCHAR(200), this, "")
 
+    /**
+     * The column <code>public.programs.category</code>.
+     */
+    val CATEGORY: TableField<ProgramsRecord, String?> = createField(DSL.name("category"), SQLDataType.VARCHAR(20), this, "")
+
     private constructor(alias: Name, aliased: Table<ProgramsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ProgramsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ProgramsRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -195,6 +201,9 @@ open class Programs(
 
     val programContacts: ProgramContactsPath
         get(): ProgramContactsPath = programContacts()
+    override fun getChecks(): List<Check<ProgramsRecord>> = listOf(
+        Internal.createCheck(this, DSL.name("programs_category_check"), "(((category IS NULL) OR ((category)::text = ANY ((ARRAY['BOOTCAMP'::character varying, 'CONFERENCE'::character varying, 'WORKSHOP'::character varying, 'STUDY'::character varying, 'CLUB'::character varying, 'LECTURE'::character varying, 'HACKATHON'::character varying, 'CONTEST'::character varying, 'MEETUP'::character varying, 'OTHER'::character varying])::text[]))))", true)
+    )
     override fun `as`(alias: String): Programs = Programs(DSL.name(alias), this)
     override fun `as`(alias: Name): Programs = Programs(alias, this)
     override fun `as`(alias: Table<*>): Programs = Programs(alias.qualifiedName, this)

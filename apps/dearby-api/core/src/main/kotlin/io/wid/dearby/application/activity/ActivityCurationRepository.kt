@@ -25,6 +25,9 @@ interface ActivityCurationRepository {
     // 관리자가 고친 대상자 조건(null이면 지운다). 검색용 펼친 조건도 함께 다시 쓴다. 바뀐 행이 없으면(활동 없음) false
     fun updateEligibility(activityId: Id, eligibility: EligibilityGroup?): Boolean
 
+    // 프로그램 기본 종류 일괄 적용(admin-v1.md "프로그램 기본 종류"): 종류가 비었거나 운영자가 지정하지 않은 활동만 바꾼다. 바뀐 행 수
+    fun applyProgramCategory(programId: Id, category: ActivityCategory): Int
+
     // 활동 종류(native-v1.md "활동 종류"): null이면 미분류. 운영자 지정 필드 category에 남긴다. 활동이 없으면 false
     fun updateCategory(activityId: Id, category: ActivityCategory?): Boolean
 

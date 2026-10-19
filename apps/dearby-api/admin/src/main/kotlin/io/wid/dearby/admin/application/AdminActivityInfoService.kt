@@ -115,7 +115,10 @@ class AdminActivityInfoService(
 
     // 보낸 값만 바꾼다(nameEn은 빈 문자열이면 지운다)
     @Transactional
-    fun updateProgram(id: Id, name: String?, nameEn: String?, organizationId: Id?): ProgramListing {
+    fun updateProgram(
+        id: Id, name: String?, nameEn: String?, organizationId: Id?,
+        category: CategoryChange = CategoryChange.Keep, applyCategoryToActivities: Boolean = false,
+    ): ProgramUpdate {
         val current = programs.findAllById(listOf(id)).singleOrNull()
             ?: throw NotFoundException("프로그램을 찾을 수 없습니다", "Program not found: $id")
         organizationId?.let(::requireOrganization)
@@ -125,8 +128,15 @@ class AdminActivityInfoService(
         if (newName != current.name || newNameEn != current.nameEn || newOrganization != current.organizationId) {
             requireUniqueProgramName(newOrganization, newName, newNameEn, id)
         }
-        unique { programs.update(id, newOrganization, newName, newNameEn) }
-        return listing(id)
+        // 프로그램 기본 종류(admin-v1.md): 생략은 유지, null은 해제. 일괄 적용은 종류가 있을 때만, 운영자가 지정한 활동은 건너뛴다
+        val newCategory = when (category) {
+            CategoryChange.Keep -> current.category
+            CategoryChange.Clear -> null
+            is CategoryChange.Set -> category.category
+        }
+        unique { programs.update(id, newOrganization, newName, newNameEn, newCategory) }
+        val applied = if (applyCategoryToActivities && newCategory != null) curations.applyProgramCategory(id, newCategory) else null
+        return ProgramUpdate(listing(id), applied)
     }
 
     @Transactional(readOnly = true)
@@ -205,7 +215,8 @@ class AdminActivityInfoService(
     // 운영자 직접 등록(admin-v1.md "POST /v1/admin/activities", 2026-10-19): 초안, 출처 없음(수집이 건드리지 않음), 공식 출처, 보낸 필드는 모두 운영자 지정
     @Transactional
     fun createActivity(input: ActivityCreateInput): AdminActivity {
-        if (programs.findAllById(listOf(input.programId)).isEmpty()) throw InvalidInputException("프로그램을 찾을 수 없습니다", "Program not found: ${input.programId}")
+        val program = programs.findAllById(listOf(input.programId)).singleOrNull()
+            ?: throw InvalidInputException("프로그램을 찾을 수 없습니다", "Program not found: ${input.programId}")
         val name = requireName(input.name)
         if (curations.existsName(input.programId, name)) throw InvalidInputException("같은 프로그램에 같은 이름의 활동이 있습니다")
         val officialUrl = requireHttps(input.officialUrl.trim(), "공식 안내 URL")
@@ -223,7 +234,7 @@ class AdminActivityInfoService(
             ActivityCreation(
                 programId = input.programId, name = name, nameEn = optionalText(input.nameEn, null), description = input.description.trim(),
                 descriptionEn = optionalText(input.descriptionEn, null), officialUrl = officialUrl, applicationUrl = applicationUrl,
-                participationType = input.participationType ?: ParticipationType.REGISTRATION, category = input.category,
+                participationType = input.participationType ?: ParticipationType.REGISTRATION, category = input.category ?: program.category,
                 audience = optionalText(input.audience, null), location = optionalText(input.location, null), cost = optionalText(input.cost, null),
                 dateLabel = dateLabel, curatedFields = curated,
             )

@@ -41,7 +41,7 @@
 | --- | --- | --- |
 | GET /v1/admin/programs | `q?`, `organizationId?`, `cursor?`, `size?` | 200 `{items: Program[], nextCursor}` |
 | POST /v1/admin/programs | `{organizationId, name, nameEn?, collection?: CollectionSettingsInput}` | 201 Program. 이름이 비었거나 조직이 없으면 400 |
-| PATCH /v1/admin/programs/:id | `{name?, nameEn?, organizationId?}` | 200 Program. 없으면 404, 조직이 없으면 400 |
+| PATCH /v1/admin/programs/:id | `{name?, nameEn?, organizationId?}` | 200 Program. 없으면 404, 조직이 없으면 400 2026-10-19: `category?`(활동 종류 코드 또는 null)와 `applyCategoryToActivities?: boolean`을 더 받는다(아래 "프로그램 기본 종류") |
 | DELETE /v1/admin/programs/:id | — | 204. 활동이 있으면 400. 수집 설정·수집 기록도 함께 지운다 |
 | GET /v1/admin/programs/:id/collection-settings | — | 200 CollectionSettings. 프로그램이 없으면 404 |
 | PUT /v1/admin/programs/:id/collection-settings | CollectionSettingsInput | 200 CollectionSettings |
@@ -68,6 +68,8 @@
 | PATCH /v1/admin/activities/:id/publication-status | `{publicationStatus}` | 200 AdminActivity. 없으면 404 |
 | DELETE /v1/admin/activities/:id | — | 204. 없으면 404. 일정·역할·연락처도 함께 지워진다. 수집으로 생긴 활동이면 그 출처(`source_id`)를 남겨 다음 수집에서 다시 만들지 않는다 |
 
+- **프로그램 기본 종류(2026-10-19 사용자 제안 "종류는 프로그램에서 일괄지정할 수도 있게")**: `programs.category varchar(20) null`(V33, 활동과 같은 코드 집합). `Program`·`ProgramListing`·`ProgramSummary`(공개 발견)에 `category: string|null`. `PATCH /v1/admin/programs/:id {category}`로 지정·해제하고, `applyCategoryToActivities: true`를 함께 보내면 그 프로그램의 활동 중 **종류가 비어 있거나 운영자가 지정하지 않은**(`curated_fields`에 `category`가 없는) 활동의 `category`를 같은 값으로 바꾼다(응답에 `appliedActivityCount`). 수집기는 추출 결과의 `category`가 null이면 프로그램 기본 종류를 쓰고, 운영자 생성(`POST /v1/admin/activities`)도 `category` 생략 시 프로그램 값을 기본으로 한다. 어드민 프로그램 편집 모달에 `기본 종류` 선택과 `기존 활동에도 적용(운영자 지정 제외)` 체크(기본 켬)를 두고, 프로그램 목록·활동 화면의 프로그램 행에 종류 칩을 보인다.
+- **정렬 기준 보완(2026-10-19 사용자 요청 "모집 기간이 미정인 활동들도 활동 시작일을 모집 종료일로 취급")**: 활동의 정렬 키 = 모집 마감(APPLICATION 끝 시각·날짜) → 없으면 **활동 시작**(ACTIVITY 슬롯의 시작 시각·날짜) → 둘 다 없으면 맨 뒤, 같으면 이름순. 어드민 묶음 보기·앱·웹의 종류 묶음 안 정렬과 발견 프로그램 순서(`nearestRecruitmentEndAt`)에 모두 적용한다.
 - 어드민 웹 활동 화면(2026-10-19 사용자 요청 "탐색메뉴처럼 프로그램 하위에 활동들이 표시되는 형태"): 앱의 발견 탭과 같이 프로그램이 상위 행이고 프로그램 행은 **프로그램 바로 위 조직(최하위 조직)별 소제목** 아래에 묶이고(2026-10-19 사용자 요청 "최하위 조직별로 그루핑, 필터도"), 조직 필터는 그 조직들을 고를 수 있다. 펼치면 그 프로그램의 활동이 종류별 소제목(native-v1.md "활동 종류", 미분류는 맨 뒤) 아래에 나온다(`GET /v1/admin/programs` 목록 + 펼칠 때 `GET /v1/admin/activities?programId=`를 지연 로딩, 50개씩 `더 보기`). 활동 이름 검색어가 있을 때만 기존 평면 목록을 결과로 보인다. 행 동작(편집·게시·삭제·중복 지정·기간 확인)은 그대로다. API 변경 없음.
 - ActivityCreateInput(2026-10-19): `{programId, name, nameEn?, description, descriptionEn?, officialUrl, applicationUrl?, category?(native-v1.md "활동 종류" 코드), participationType?("REGISTRATION"|"SELECTION", 기본 REGISTRATION), activitySchedule?: ScheduleInput|{dateLabel}, application?: ScheduleInput, eligibility?, audience?, location?, cost?}`. 운영자가 직접 만드는 활동이다. 저장 규칙: `publicationStatus = DRAFT`(기존 게시 전환으로 공개), `source_id` 없음(수집이 다시 만들거나 덮어쓰지 않는다), `official_source = true`, `source_note = "운영자 등록"`, `source_checked_at` = 지금, 보낸 텍스트 필드는 모두 `curated_fields`에, 보낸 기간은 `schedules.curated = true`로 저장한다. `officialUrl`·`applicationUrl`은 https, `activitySchedule`은 날짜 범위 또는 원문 문구(`dateLabel`) 중 하나라도 있어야 한다(둘 다 없으면 400). 어드민 웹은 활동 목록 위 `활동 추가` 버튼으로 모달을 열고(프로그램 검색 선택, 이름·영문 이름·설명·영문 설명, 공식 안내 URL·신청 링크, 참여 방식, 모집 기간·활동 기간 블록과 활동 기간 원문, 대상자 조건 편집기·대상 원문·장소·비용), 만든 뒤 목록을 다시 불러온다.
 AdminActivity: 공개 Activity(`native-v1.md` "활동 조회")의 필드 `{id, name, nameEn, description, descriptionEn, organization, program, officialUrl, imageUrl, application, activitySchedule, schedules}`에 운영자용 필드를 더한다.

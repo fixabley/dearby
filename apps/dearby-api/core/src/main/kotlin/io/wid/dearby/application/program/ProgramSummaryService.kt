@@ -56,6 +56,7 @@ class ProgramSummaryService(
                 openActivityCount = activities.size,
                 nearestRecruitmentEndAt = activities.mapNotNull { it.recruitmentEndAt }.minOrNull(),
                 matchedActivityIds = matchedIds,
+                category = program.category,
             )
         }.sortedWith(compareBy<ProgramSummary, OffsetDateTime?>(nullsLast()) { it.nearestRecruitmentEndAt }.thenBy { it.name }.thenBy { it.id })
     }

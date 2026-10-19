@@ -45,11 +45,12 @@ class JooqProgramRepository(private val dsl: DSLContext) : ProgramRepository {
             .fetchOne()!!.id!!
     }
 
-    override fun update(id: Id, organizationId: Id, name: String, nameEn: String?) {
+    override fun update(id: Id, organizationId: Id, name: String, nameEn: String?, category: ActivityCategory?) {
         dsl.update(PROGRAMS)
             .set(PROGRAMS.ORGANIZATION_ID, organizationId)
             .set(PROGRAMS.NAME, name)
             .set(PROGRAMS.NAME_EN, nameEn)
+            .set(PROGRAMS.CATEGORY, category?.name)
             .set(PROGRAMS.UPDATED_AT, LocalDateTime.now())
             .where(PROGRAMS.ID.eq(id))
             .execute()
@@ -91,6 +92,7 @@ class JooqProgramRepository(private val dsl: DSLContext) : ProgramRepository {
                 contacts = contacts[it.id].orEmpty(),
                 period = Period(it.periodFrom, it.periodTo),
                 timestamps = Timestamps(it.createdAt!!, it.updatedAt!!),
+                category = it.category?.let(ActivityCategory::valueOf),
             )
         }
     }

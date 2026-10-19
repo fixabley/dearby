@@ -65,8 +65,10 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
         ProgramResponse.from(activityInfo.createProgram(request.organizationId, request.name, request.nameEn, request.collection?.toSettings()))
 
     @PatchMapping("/programs/{id}")
-    fun updateProgram(@PathVariable id: Long, @RequestBody request: ProgramUpdateRequest) =
-        ProgramResponse.from(activityInfo.updateProgram(id, request.name, request.nameEn, request.organizationId))
+    fun updateProgram(@PathVariable id: Long, @RequestBody request: ProgramUpdateRequest): ProgramResponse {
+        val result = activityInfo.updateProgram(id, request.name, request.nameEn, request.organizationId, categoryChange(request.category), request.applyCategoryToActivities)
+        return ProgramResponse.from(result.listing, result.appliedActivityCount)
+    }
 
     @DeleteMapping("/programs/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -130,13 +132,16 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
                 id, request.name, request.nameEn, request.description, request.descriptionEn, eligibility,
                 activitySchedule = scheduleChange(request.activitySchedule), application = scheduleChange(request.application),
                 officialUrl = request.officialUrl, applicationUrl = request.applicationUrl,
-                category = when {
-                    request.category == null -> CategoryChange.Keep
-                    request.category.isNull -> CategoryChange.Clear
-                    else -> CategoryChange.Set(ActivityCategory.parse(request.category.asString()))
-                },
+                category = categoryChange(request.category),
             )
         )
+    }
+
+    // 활동 종류(native-v1.md "활동 종류"): 생략은 유지, JSON null은 해제, 코드는 지정(모르는 코드 400)
+    private fun categoryChange(node: JsonNode?): CategoryChange = when {
+        node == null -> CategoryChange.Keep
+        node.isNull -> CategoryChange.Clear
+        else -> CategoryChange.Set(ActivityCategory.parse(node.asString()))
     }
 
     // 일정 직접 지정(admin-v1.md): {startDate?, endDate?, startAt?, endAt?} 또는 null. 날짜는 yyyy-MM-dd, 시각은 ISO 8601 오프셋

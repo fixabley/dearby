@@ -49,6 +49,7 @@ class CollectionJobTest(
         companion object {
             // 마지막 추출 요청이 받은 날짜 문구 해석 예시(admin-v1.md "날짜 문구 피드백")
             var receivedExamples: List<DateLabelExample> = emptyList()
+            var extractedCategory: String? = "CONFERENCE" // 프로그램 기본 종류 테스트에서 null로 바꾼다
         }
 
         @Bean
@@ -76,7 +77,7 @@ class CollectionJobTest(
                         roundKey = "2026-컨퍼런스", name = "Let'Swift 2026 컨퍼런스", nameEn = "Let'Swift 2026 Conference", description = "본행사", descriptionEn = "Main event", participationType = "REGISTRATION",
                         applicationUrl = "https://letswift.kr/2026/apply", recruitmentStartAt = "2026-11-01T10:00:00+09:00",
                         recruitmentEndAt = "2026-11-10T23:59:00+09:00", dateLabel = "2026-11-29", startDate = "2026-11-29", endDate = "2026-11-29", schedules = emptyList(),
-                        location = null, cost = null, audience = null, evidenceQuote = "참가 신청은 11월 1일부터 11월 10일까지입니다", category = "CONFERENCE",
+                        location = null, cost = null, audience = null, evidenceQuote = "참가 신청은 11월 1일부터 11월 10일까지입니다", category = extractedCategory,
                     ),
                     ExtractedActivity(
                         roundKey = "2026-가짜", name = "원문에 없는 활동", nameEn = null, description = "", descriptionEn = null, participationType = null,
@@ -209,6 +210,20 @@ class CollectionJobTest(
         assertTrue(prompt.contains("비슷한 문구는 같은 방식으로 날짜 필드를 채운다"))
         // 예시가 없으면 절 자체가 없다
         assertFalse(CollectionPrompts.extractRequest("Let'Swift", "https://letswift.kr/2026/", "본문").contains("날짜 문구 해석 예시"))
+    }
+
+    @Test
+    fun `모델이 종류를 못 뽑으면 프로그램 기본 종류를 초안에 쓴다`() {
+        officialSetting()
+        jdbc.sql("update programs set category = 'MEETUP' where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").update()
+        Fakes.extractedCategory = null
+        try {
+            assertEquals(BatchStatus.COMPLETED, run("2026-10-22").status)
+            assertEquals(listOf("MEETUP"), jdbc.sql("select category from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
+        } finally {
+            Fakes.extractedCategory = "CONFERENCE"
+            jdbc.sql("update programs set category = null where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").update()
+        }
     }
 
     @Test
