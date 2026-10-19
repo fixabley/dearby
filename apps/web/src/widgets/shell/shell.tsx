@@ -49,7 +49,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <footer className="site-footer">
-        dearby · 새로운 활동에서, 새로운 연결로.
+        <span>dearby · 새로운 활동에서, 새로운 연결로.</span>
+        <nav aria-label="약관" className="footer-links">
+          <Link href="/privacy">개인정보 처리방침</Link>
+          <Link href="/terms">이용약관</Link>
+        </nav>
       </footer>
     </>
   );

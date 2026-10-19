@@ -1086,3 +1086,54 @@ a {
   font-size: 12px;
   padding: 2px 8px;
 }
+
+/* 약관·개인정보 처리방침 (2026-10-19): 상세 페이지와 같은 폭의 읽기 전용 글 */
+.legal {
+  max-width: 720px;
+  margin: auto;
+  line-height: 1.65;
+}
+.legal h1 {
+  font-size: 24px;
+  margin: 4px 0 12px;
+}
+.legal h2 {
+  font-size: 17px;
+  margin: 28px 0 8px;
+}
+.legal p,
+.legal li {
+  font-size: 15px;
+}
+.legal ul {
+  padding-left: 20px;
+}
+.legal li + li {
+  margin-top: 6px;
+}
+.legal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin: 8px 0 4px;
+}
+.legal-table th,
+.legal-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--line);
+}
+.legal-table th {
+  color: var(--muted);
+  font-weight: 600;
+}
+.footer-links {
+  display: inline-flex;
+  gap: 16px;
+  margin-left: 16px;
+}
+.footer-links a {
+  color: var(--muted);
+  text-decoration: underline;
+}
