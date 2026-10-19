@@ -90,6 +90,8 @@ struct ProfilePage: View {
             }
         }
         .safeAreaInset(edge: .bottom) { if let form, form.changed { saveBar(form) } }
+        // 저장 막대는 키보드가 올라와도 제자리(화면 아래)에 둔다(사용자 2026-10-20 "원래대로 저장 버튼은 키보드가 올라올 때 제자리에").
+        .ignoresSafeArea(.keyboard, edges: .bottom)
     }
     /// Rows are stacked label-over-input (`DearbyFormRow`, contract "폼 라벨·입력 크기" 2026-10-20); headers and footers are `.subheadline`.
     private func editor(_ form: Binding<ProfileForm>, saved: AccountProfile) -> some View {
