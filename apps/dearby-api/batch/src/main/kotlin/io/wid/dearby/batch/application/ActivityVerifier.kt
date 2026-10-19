@@ -1,6 +1,7 @@
 package io.wid.dearby.batch.application
 
 import io.wid.dearby.application.eligibility.EligibilityJson
+import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.ParticipationType
 import io.wid.dearby.domain.ScheduleKind
 import io.wid.dearby.domain.collection.CollectedActivity
@@ -38,6 +39,7 @@ object ActivityVerifier {
                 // 신청 주소는 원문 페이지에 실제 링크로 있을 때만 쓴다
                 applicationUrl = candidate.applicationUrl?.trim()?.takeIf { it.startsWith("https://") && it in page.links },
                 participationType = ParticipationType.entries.firstOrNull { it.name == candidate.participationType }, // 본문에 없으면 null(저장할 때 이전 기수에서 가져온다)
+                category = ActivityCategory.entries.firstOrNull { it.name == candidate.category }, // 모르는 코드는 미분류
                 recruitmentStartAt = start,
                 recruitmentEndAt = end,
                 recruitmentStartDate = recruitmentStartDate,

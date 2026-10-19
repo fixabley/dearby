@@ -53,7 +53,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals("Let’Swift", item["program"]["name"].asString())
         assertEquals("https://letswift.kr/2026/", item["officialUrl"].asString())
         // 관리자만 보는 정보는 내보내지 않는다
-        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility"), item.propertyNames().toSet())
+        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category"), item.propertyNames().toSet())
         // 시각은 일정의 시간대로 표기한다(같은 순간)
         assertEquals("2026-10-08T00:00:00+09:00", item["application"]["endAt"].asString())
         assertEquals("2026-10-08", item["activitySchedule"]["dateLabel"].asString())
@@ -115,6 +115,13 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(0, programs("participationType=REGISTRATION")["items"].size())
         assertEquals(1, programs("participationType=selection")["items"].single()["openActivityCount"].asInt())
         mvc.get("/v1/discovery/programs?participationType=ANY").andExpect { status { isBadRequest() } }
+        // 활동 종류(native-v1.md "활동 종류"): 코드 하나 또는 쉼표 목록, 대소문자 무시. 열린 활동 수와 공개 응답의 category에 함께 적용된다
+        jdbc.sql("update activities set category = 'BOOTCAMP' where id = ?").param(openId).update()
+        assertEquals(1, programs("category=bootcamp,conference")["items"].single()["openActivityCount"].asInt())
+        assertEquals(0, programs("category=CONFERENCE")["items"].size())
+        assertEquals("BOOTCAMP", search("q=묶음 확인&category=BOOTCAMP")["items"].single()["category"].asString())
+        assertEquals(0, search("q=묶음 확인&category=STUDY")["items"].size())
+        mvc.get("/v1/activities?category=NOPE").andExpect { status { isBadRequest() } }
         mvc.get("/v1/discovery/programs?size=0").andExpect { status { isBadRequest() } }
 
         // 대상자 조건(native-v1.md "대상자 조건"): 나이 19~34 이고(재학 또는 미취업)인 활동. 조건이 없는 활동은 어떤 필터에도 통과한다

@@ -5,7 +5,12 @@ import io.wid.dearby.application.activity.ActivityListing
 import io.wid.dearby.application.activity.ActivitySearch
 import io.wid.dearby.application.activity.ActivityService
 import io.wid.dearby.application.activity.ScheduleSlot
+import io.wid.dearby.application.activity.ActivityCreation
+import io.wid.dearby.application.collection.ActivityDraftRepository
 import io.wid.dearby.application.collection.CollectionSettingsRepository
+import io.wid.dearby.domain.collection.CollectionUrlTemplate
+import java.time.LocalDate
+import java.time.ZoneId
 import io.wid.dearby.application.organization.OrganizationRepository
 import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.domain.*
@@ -23,6 +28,7 @@ class AdminActivityInfoService(
     private val settings: CollectionSettingsRepository,
     private val activities: ActivityService,
     private val curations: ActivityCurationRepository,
+    private val drafts: ActivityDraftRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -161,6 +167,7 @@ class AdminActivityInfoService(
         application: ScheduleChange = ScheduleChange.Keep,
         officialUrl: String? = null,
         applicationUrl: String? = null,
+        category: CategoryChange = CategoryChange.Keep,
     ): AdminActivity {
         val current = activities.getById(activityId, publicationStatus = null).activity
         curations.updateTexts(
@@ -183,10 +190,48 @@ class AdminActivityInfoService(
             EligibilityChange.Clear -> curations.updateEligibility(activityId, null)
             is EligibilityChange.Set -> curations.updateEligibility(activityId, eligibility.group)
         }
+        // 활동 종류(native-v1.md "활동 종류"): 생략은 유지, null은 미분류, 코드는 바꾼다. 운영자 지정 필드 category에 남는다
+        when (category) {
+            CategoryChange.Keep -> Unit
+            CategoryChange.Clear -> curations.updateCategory(activityId, null)
+            is CategoryChange.Set -> curations.updateCategory(activityId, category.category)
+        }
         // 일정 직접 지정(admin-v1.md): 날짜만이면 종일, 시각까지면 시각 일정. null이면 구조화된 값을 지우고 문구만 남긴다
         applySchedule(activityId, ScheduleSlot.ACTIVITY, activitySchedule)
         applySchedule(activityId, ScheduleSlot.APPLICATION, application)
         return withCuration(listOf(activities.getById(activityId, publicationStatus = null))).single()
+    }
+
+    // 운영자 직접 등록(admin-v1.md "POST /v1/admin/activities", 2026-10-19): 초안, 출처 없음(수집이 건드리지 않음), 공식 출처, 보낸 필드는 모두 운영자 지정
+    @Transactional
+    fun createActivity(input: ActivityCreateInput): AdminActivity {
+        if (programs.findAllById(listOf(input.programId)).isEmpty()) throw InvalidInputException("프로그램을 찾을 수 없습니다", "Program not found: ${input.programId}")
+        val name = requireName(input.name)
+        if (curations.existsName(input.programId, name)) throw InvalidInputException("같은 프로그램에 같은 이름의 활동이 있습니다")
+        val officialUrl = requireHttps(input.officialUrl.trim(), "공식 안내 URL")
+        val applicationUrl = input.applicationUrl?.trim()?.ifEmpty { null }?.let { requireHttps(it, "신청 링크") }
+        val activityTime = input.activitySchedule?.toTime()
+        val dateLabel = input.activityDateLabel?.trim().orEmpty()
+        if (activityTime == null && dateLabel.isEmpty()) throw InvalidInputException("활동 기간은 날짜 범위나 원문 문구 중 하나는 있어야 합니다")
+        val curated = listOfNotNull(
+            "name", "description", "officialUrl",
+            input.nameEn?.let { "nameEn" }, input.descriptionEn?.let { "descriptionEn" }, applicationUrl?.let { "applicationUrl" },
+            input.participationType?.let { "participationType" }, input.category?.let { "category" },
+            input.audience?.let { "audience" }, input.location?.let { "location" }, input.cost?.let { "cost" }, input.eligibility?.let { "eligibility" },
+        )
+        val id = curations.insert(
+            ActivityCreation(
+                programId = input.programId, name = name, nameEn = optionalText(input.nameEn, null), description = input.description.trim(),
+                descriptionEn = optionalText(input.descriptionEn, null), officialUrl = officialUrl, applicationUrl = applicationUrl,
+                participationType = input.participationType ?: ParticipationType.REGISTRATION, category = input.category,
+                audience = optionalText(input.audience, null), location = optionalText(input.location, null), cost = optionalText(input.cost, null),
+                dateLabel = dateLabel, curatedFields = curated,
+            )
+        )
+        activityTime?.let { curations.updateSchedule(id, ScheduleSlot.ACTIVITY, it) }
+        input.application?.toTime()?.let { curations.updateSchedule(id, ScheduleSlot.APPLICATION, it) }
+        input.eligibility?.let { curations.updateEligibility(id, it) }
+        return withCuration(listOf(activities.getById(id, publicationStatus = null))).single()
     }
 
     private fun applySchedule(activityId: Id, slot: ScheduleSlot, change: ScheduleChange) {
@@ -252,13 +297,21 @@ class AdminActivityInfoService(
         val organizationById = organizations.findAllById(page.map { it.organizationId }.toSet()).associateBy { it.id }
         val settingsById = settings.findAllByProgramId(ids)
         val lastSucceeded = settings.lastSucceededOn(ids)
+        val lastFetched = settings.lastFetchedUrls(ids)
+        val today = LocalDate.now(SEOUL)
         return page.map {
+            val collection = settingsById[it.id] ?: CollectionSettings.DEFAULT
+            // 주소 토큰(admin-v1.md): 가장 최근 활동 이름의 기수 번호와, 지금 수집하면 볼 주소들을 함께 돌려준다
+            val previousRound = CollectionUrlTemplate.previousRound(drafts.findPreviousEdition(it.id)?.name)
             ProgramListing(
                 program = it,
                 organization = organizationById[it.organizationId],
-                settings = settingsById[it.id] ?: CollectionSettings.DEFAULT,
+                settings = collection,
                 configured = it.id in settingsById,
                 lastSucceededOn = lastSucceeded[it.id],
+                previousRound = previousRound,
+                previewUrls = collection.officialUrl?.let { url -> CollectionUrlTemplate.expand(url, today, previousRound) }.orEmpty(),
+                lastFetchedUrls = lastFetched[it.id].orEmpty(),
             )
         }
     }
@@ -266,7 +319,10 @@ class AdminActivityInfoService(
     // officialUrl은 https, 허용 호스트는 스킴·경로·포트 없는 호스트 이름(소문자로 저장)
     private fun validate(collection: CollectionSettings): CollectionSettings {
         val url = collection.officialUrl?.trim()?.ifEmpty { null }
-        if (url != null && runCatching { URI(url) }.getOrNull()?.let { it.scheme == "https" && !it.host.isNullOrEmpty() } != true) {
+        // 주소 토큰(admin-v1.md): 모르는 {…}는 400, https 검사는 토큰을 샘플 값으로 바꾼 주소로 한다
+        url?.let { CollectionUrlTemplate.unknownTokens(it).firstOrNull() }?.let { throw InvalidInputException("알 수 없는 주소 토큰입니다: {$it}") }
+        val sample = url?.let(CollectionUrlTemplate::sample)
+        if (sample != null && runCatching { URI(sample) }.getOrNull()?.let { it.scheme == "https" && !it.host.isNullOrEmpty() } != true) {
             throw InvalidInputException("공식 안내 페이지는 https 주소여야 합니다")
         }
         val hosts = collection.allowedHosts.map { it.trim().lowercase() }.filter { it.isNotEmpty() }.distinct()
@@ -292,6 +348,7 @@ class AdminActivityInfoService(
     }
 
     private companion object {
+        val SEOUL: ZoneId = ZoneId.of("Asia/Seoul")
         val HOST = Regex("^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$")
     }
 }

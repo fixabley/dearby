@@ -399,3 +399,7 @@ a:focus-visible {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+/* 활동 관리 — 프로그램 아래 종류별 묶음 (2026-10-19) */
+.category-group + .category-group { margin-top: 16px; }
+.category-heading { margin: 0 0 6px; font-size: 14px; font-weight: 600; }

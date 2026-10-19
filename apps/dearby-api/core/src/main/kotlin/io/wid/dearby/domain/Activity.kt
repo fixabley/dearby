@@ -17,6 +17,7 @@ data class Activity(
     val schedules: List<Schedule>, // 면접·발표 등 개별 일정
     val eligibility: EligibilityGroup?, // 대상자 조건(native-v1.md "대상자 조건"). 없으면 null(원문 audience만)
     val timestamps: Timestamps,
+    val category: ActivityCategory? = null, // 활동 종류(native-v1.md "활동 종류"). null은 미분류
 ) {
     init {
         require(activitySchedule.time == null || activitySchedule.time is ScheduleTime.AllDay) { "활동 기간은 종일 일정이어야 합니다" }

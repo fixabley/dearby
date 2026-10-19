@@ -38,6 +38,7 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             }
             condition.after?.let { add(ACTIVITIES.ID.gt(it)) }
             addAll(EligibilityRows.conditions(condition.eligibility))
+            condition.categories?.let { add(ACTIVITIES.CATEGORY.`in`(it.map(ActivityCategory::name))) }
         }
         // 기본값 0.6은 오타("워크샵" 0.5)·띄어쓰기 차이("개발환경" 0.4)를 놓친다. 이 트랜잭션에만 적용
         dsl.execute("select set_config('pg_trgm.word_similarity_threshold', ?, true)", WORD_SIMILARITY_THRESHOLD)
@@ -98,6 +99,7 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             schedules = bySlot[null].orEmpty().map(::toSchedule),
             eligibility = EligibilityRows.read(row.eligibility),
             timestamps = Timestamps(row.createdAt!!, row.updatedAt!!),
+            category = row.category?.let(ActivityCategory::valueOf),
         )
     }
 

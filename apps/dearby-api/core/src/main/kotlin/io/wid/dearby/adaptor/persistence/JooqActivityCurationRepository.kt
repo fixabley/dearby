@@ -4,6 +4,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITIES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.ACTIVITY_ROLES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.DISMISSED_ACTIVITY_SOURCES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.SCHEDULES
+import io.wid.dearby.application.activity.ActivityCreation
 import io.wid.dearby.application.activity.ActivityCurationRepository
 import io.wid.dearby.application.activity.ScheduleSlot
 import io.wid.dearby.domain.*
@@ -12,6 +13,7 @@ import io.wid.dearby.domain.curation.Freshness
 import io.wid.dearby.domain.curation.RecruitmentStatus
 import io.wid.dearby.domain.eligibility.EligibilityGroup
 import org.jooq.DSLContext
+import org.jooq.impl.DSL
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 import tools.jackson.databind.json.JsonMapper
@@ -103,6 +105,62 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
         if (updated) EligibilityRows.writeTerms(dsl, activityId, eligibility)
         return updated
     }
+
+    @Transactional
+    override fun insert(creation: ActivityCreation): Id {
+        val now = LocalDateTime.now()
+        val id = dsl.insertInto(ACTIVITIES)
+            .set(ACTIVITIES.PROGRAM_ID, creation.programId)
+            .set(ACTIVITIES.NAME, creation.name)
+            .set(ACTIVITIES.NAME_EN, creation.nameEn)
+            .set(ACTIVITIES.DESCRIPTION, creation.description)
+            .set(ACTIVITIES.DESCRIPTION_EN, creation.descriptionEn)
+            .set(ACTIVITIES.OFFICIAL_URL, creation.officialUrl)
+            .set(ACTIVITIES.OFFICIAL_SOURCE, true)
+            .set(ACTIVITIES.APPLICATION_URL, creation.applicationUrl)
+            .set(ACTIVITIES.PARTICIPATION_TYPE, creation.participationType.name)
+            .set(ACTIVITIES.CATEGORY, creation.category?.name)
+            .set(ACTIVITIES.RECRUITMENT_STATUS, RecruitmentStatus.UNKNOWN.name)
+            .set(ACTIVITIES.AUDIENCE, creation.audience)
+            .set(ACTIVITIES.LOCATION, creation.location)
+            .set(ACTIVITIES.COST, creation.cost)
+            .set(ACTIVITIES.SOURCE_CHECKED_AT, OffsetDateTime.now(ZoneOffset.UTC))
+            .set(ACTIVITIES.FRESHNESS, Freshness.VERIFIED.name)
+            .set(ACTIVITIES.SOURCE_NOTE, "운영자 등록")
+            .set(ACTIVITIES.PUBLICATION_STATUS, PublicationStatus.DRAFT.name)
+            .set(ACTIVITIES.CURATED_FIELDS, CuratedFields.jsonb(creation.curatedFields))
+            .set(ACTIVITIES.CREATED_AT, now)
+            .set(ACTIVITIES.UPDATED_AT, now)
+            .returning(ACTIVITIES.ID)
+            .fetchOne()!!.id!!
+        // 활동 기간 자리는 항상 있어야 한다(공개·어드민 응답의 activitySchedule). 날짜 범위는 updateSchedule이 이어서 넣는다
+        dsl.insertInto(SCHEDULES)
+            .set(SCHEDULES.ACTIVITY_ID, id)
+            .set(SCHEDULES.SLOT, ScheduleSlot.ACTIVITY.name)
+            .set(SCHEDULES.TITLE, "활동 기간")
+            .set(SCHEDULES.KIND, ScheduleKind.EVENT.name)
+            .set(SCHEDULES.STATUS, ScheduleStatus.CONFIRMED.name)
+            .set(SCHEDULES.DATE_LABEL, creation.dateLabel)
+            .set(SCHEDULES.CURATED, true)
+            .set(SCHEDULES.SEQUENCE, 0)
+            .set(SCHEDULES.CREATED_AT, now)
+            .set(SCHEDULES.UPDATED_AT, now)
+            .execute()
+        return id
+    }
+
+    override fun updateCategory(activityId: Id, category: ActivityCategory?): Boolean {
+        val curated = dsl.select(ACTIVITIES.CURATED_FIELDS).from(ACTIVITIES).where(ACTIVITIES.ID.eq(activityId)).fetchOne()?.value1() ?: return false
+        return dsl.update(ACTIVITIES)
+            .set(ACTIVITIES.CATEGORY, category?.name)
+            .set(ACTIVITIES.CURATED_FIELDS, CuratedFields.jsonb(CuratedFields.read(curated) + CuratedFields.CATEGORY))
+            .set(ACTIVITIES.UPDATED_AT, LocalDateTime.now())
+            .where(ACTIVITIES.ID.eq(activityId))
+            .execute() > 0
+    }
+
+    override fun existsName(programId: Id, name: String): Boolean =
+        dsl.fetchExists(ACTIVITIES, ACTIVITIES.PROGRAM_ID.eq(programId), withoutSpaces(ACTIVITIES.NAME).eq(withoutSpaces(DSL.`val`(name))))
 
     @Transactional
     override fun updateSchedule(activityId: Id, slot: ScheduleSlot, time: ScheduleTime?): Boolean {

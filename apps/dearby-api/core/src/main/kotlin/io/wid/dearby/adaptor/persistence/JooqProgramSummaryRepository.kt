@@ -8,6 +8,7 @@ import io.wid.dearby.application.program.OpenActivity
 import io.wid.dearby.application.program.ProgramSummary
 import io.wid.dearby.application.program.ProgramSummaryRepository
 import io.wid.dearby.application.program.ProgramSummarySearch
+import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.PublicationStatus
 import org.jooq.Condition
 import org.jooq.DSLContext
@@ -26,6 +27,7 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
         add(SCHEDULES.START_AT.isNull.or(SCHEDULES.START_AT.le(now)))
         add(SCHEDULES.END_AT.isNull.or(SCHEDULES.END_AT.gt(now)))
         condition.participationType?.let { add(ACTIVITIES.PARTICIPATION_TYPE.eq(it.name)) }
+        condition.categories?.let { add(ACTIVITIES.CATEGORY.`in`(it.map(ActivityCategory::name))) }
         addAll(EligibilityRows.conditions(condition.eligibility))
     }
 

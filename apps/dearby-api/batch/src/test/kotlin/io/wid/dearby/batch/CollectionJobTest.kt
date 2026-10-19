@@ -11,6 +11,8 @@ import io.wid.dearby.batch.application.PageFetchException
 import io.wid.dearby.batch.application.PageFetcher
 import io.wid.dearby.batch.job.CollectionJobConfig
 import io.wid.dearby.batch.recall.RecallService
+import io.wid.dearby.domain.collection.CollectionUrlTemplate
+import java.time.LocalDate
 import org.springframework.batch.core.BatchStatus
 import org.springframework.batch.core.job.Job
 import org.springframework.batch.core.job.parameters.JobParametersBuilder
@@ -64,7 +66,7 @@ class CollectionJobTest(
                         roundKey = "2026-컨퍼런스", name = "Let'Swift 2026 컨퍼런스", nameEn = "Let'Swift 2026 Conference", description = "본행사", descriptionEn = "Main event", participationType = "REGISTRATION",
                         applicationUrl = "https://letswift.kr/2026/apply", recruitmentStartAt = "2026-11-01T10:00:00+09:00",
                         recruitmentEndAt = "2026-11-10T23:59:00+09:00", dateLabel = "2026-11-29", startDate = "2026-11-29", endDate = "2026-11-29", schedules = emptyList(),
-                        location = null, cost = null, audience = null, evidenceQuote = "참가 신청은 11월 1일부터 11월 10일까지입니다",
+                        location = null, cost = null, audience = null, evidenceQuote = "참가 신청은 11월 1일부터 11월 10일까지입니다", category = "CONFERENCE",
                     ),
                     ExtractedActivity(
                         roundKey = "2026-가짜", name = "원문에 없는 활동", nameEn = null, description = "", descriptionEn = null, participationType = null,
@@ -88,13 +90,13 @@ class CollectionJobTest(
     }
 
     // Let'Swift 프로그램의 수집 설정: 공식 도메인 letswift.kr 안에서만, intervalDays마다
-    private fun officialSetting(intervalDays: Int = 1) = jdbc.sql(
+    private fun officialSetting(intervalDays: Int = 1, url: String = "https://letswift.kr/2026/") = jdbc.sql(
         """
         insert into program_collection_settings (program_id, official_url, allowed_hosts, interval_days, created_at, updated_at)
-        select id, 'https://letswift.kr/2026/', array['letswift.kr'], ?, localtimestamp, localtimestamp
+        select id, ?, array['letswift.kr'], ?, localtimestamp, localtimestamp
         from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'
         """
-    ).param(intervalDays).update()
+    ).param(url).param(intervalDays).update()
 
     private fun runCount() = jdbc.sql("select count(*) from collection_runs").query(Int::class.java).single()
 
@@ -124,6 +126,9 @@ class CollectionJobTest(
             .query { rs, _ -> listOf(rs.getString(1), rs.getInt(2), rs.getInt(3), rs.getInt(4), rs.getLong(5), rs.getInt(6), rs.getBoolean(7)) }.single()
         // 페이지 2개 중 1개는 404, 받은 페이지에서 2건을 찾아 1건 저장·1건 제외
         assertEquals(listOf<Any>("SUCCEEDED", 2, 1, 2, 1100L, 1, true), record)
+        // 실제로 받은 페이지만 fetched_urls에 남는다(404였던 탐색 주소는 빠진다). 활동 종류는 모델이 뽑은 값 그대로 초안에
+        assertEquals("https://letswift.kr/2026/", jdbc.sql("select array_to_string(fetched_urls, ',') from collection_runs").query(String::class.java).single())
+        assertEquals(listOf("CONFERENCE"), jdbc.sql("select category from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
         assertEquals(listOf(true), jdbc.sql("select official_source from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(Boolean::class.java).list())
         assertEquals(listOf("Let'Swift 2026 Conference|Main event"), jdbc.sql("select name_en || '|' || description_en from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
         val schedules = jdbc.sql("select slot from schedules s join activities a on a.id = s.activity_id where a.name = ? order by slot")
@@ -137,14 +142,41 @@ class CollectionJobTest(
         assertEquals(1, runCount())
 
         // 운영자 지정 필드(admin-v1.md): curated_fields에 있는 필드만 지키고, 전에 수집·가져온 값은 다시 수집하면 새 값으로 갱신한다
-        jdbc.sql("update activities set curated_fields = '[\"eligibility\",\"nameEn\"]'::jsonb, name_en = 'Curated EN', eligibility = '{\"op\":\"all\",\"items\":[{\"field\":\"나이\",\"fieldEn\":\"age\",\"from\":30}]}'::jsonb, description = '옛 설명', audience = '옛 대상', inherited_fields = '[]'::jsonb where name = ?")
+        jdbc.sql("update activities set category = 'STUDY', curated_fields = '[\"eligibility\",\"nameEn\",\"category\"]'::jsonb, name_en = 'Curated EN', eligibility = '{\"op\":\"all\",\"items\":[{\"field\":\"나이\",\"fieldEn\":\"age\",\"from\":30}]}'::jsonb, description = '옛 설명', audience = '옛 대상', inherited_fields = '[]'::jsonb where name = ?")
             .param("Let'Swift 2026 컨퍼런스").update()
         assertEquals(BatchStatus.COMPLETED, run("2026-10-21").status)
         assertEquals(2, runCount())
+        assertEquals(listOf("STUDY"), jdbc.sql("select category from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
         assertEquals(
             listOf("Curated EN|본행사|Swift 개발자|30|[\"audience\"]"),
             jdbc.sql("select name_en || '|' || description || '|' || audience || '|' || (eligibility->'items'->0->>'from') || '|' || inherited_fields::text from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list(),
         )
+    }
+
+    @Test
+    fun `시작 주소 토큰은 올해·내년, 다음·현재 기수로 펼치고 기수를 모르면 건너뛴다`() {
+        val today = LocalDate.of(2026, 10, 19)
+        assertEquals(listOf("https://toss.im/slash-27", "https://toss.im/slash-26"), CollectionUrlTemplate.expand("https://toss.im/slash-{yy}", today, null))
+        assertEquals(listOf("https://x.kr/2027", "https://x.kr/2026"), CollectionUrlTemplate.expand("https://x.kr/{year}", today, 10))
+        assertEquals(listOf("https://x.kr/11", "https://x.kr/10"), CollectionUrlTemplate.expand("https://x.kr/{round}", today, 10))
+        assertEquals(
+            listOf("https://x.kr/2027/11", "https://x.kr/2027/10", "https://x.kr/2026/11", "https://x.kr/2026/10"),
+            CollectionUrlTemplate.expand("https://x.kr/{year}/{round}", today, 10),
+        )
+        assertEquals(emptyList(), CollectionUrlTemplate.expand("https://x.kr/{round}", today, null))
+        assertEquals(listOf("https://x.kr/fixed"), CollectionUrlTemplate.expand("https://x.kr/fixed", today, null))
+        assertEquals(listOf("season"), CollectionUrlTemplate.unknownTokens("https://x.kr/{season}/{yy}"))
+        assertEquals(10, CollectionUrlTemplate.previousRound("부스트캠프 Web·Mobile 10기"))
+        assertEquals(24, CollectionUrlTemplate.previousRound("SLASH 24"))
+        assertEquals(null, CollectionUrlTemplate.previousRound("Let'Swift 2026 컨퍼런스"))
+        assertEquals(null, CollectionUrlTemplate.previousRound(null))
+
+        // 수집: {round}가 있는데 이전 활동 이름에 기수가 없으면 시작 주소를 건너뛰고 거절 이유에 남긴다(탐색 주소는 404라 받은 페이지가 없어 FAILED)
+        officialSetting(url = "https://letswift.kr/{round}/")
+        assertEquals(BatchStatus.COMPLETED, run("2026-10-20").status)
+        val reasons = jdbc.sql("select outcome || '|' || array_to_string(rejected_reasons, ';') from collection_runs").query(String::class.java).single()
+        assertEquals(true, reasons.startsWith("FAILED|") && reasons.contains("https://letswift.kr/{round}/: 기수 번호를 알 수 없음"), reasons)
+        assertEquals("", jdbc.sql("select array_to_string(fetched_urls, ',') from collection_runs").query(String::class.java).single())
     }
 
     @Test

@@ -12,4 +12,7 @@ data class ProgramListing(
     val settings: CollectionSettings,
     val configured: Boolean,
     val lastSucceededOn: LocalDate?,
+    val previousRound: Int?, // 가장 최근 활동 이름에서 읽은 기수 번호(admin-v1.md "주소 토큰"), 없으면 null
+    val previewUrls: List<String>, // 지금 수집하면 볼 시작 주소(토큰 펼친 결과)
+    val lastFetchedUrls: List<String>, // 마지막 성공 수집에서 실제로 받은 페이지(admin-v1.md lastFetchedUrls)
 )

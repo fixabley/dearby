@@ -75,6 +75,10 @@ open class CollectionRunsRecord() : UpdatableRecordImpl<CollectionRunsRecord>(Co
         set(value): Unit = set(13, value)
         get(): Int? = get(13) as Int?
 
+    open var fetchedUrls: Array<String?>?
+        set(value): Unit = set(14, value)
+        get(): Array<String?>? = get(14) as Array<String?>?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -84,7 +88,7 @@ open class CollectionRunsRecord() : UpdatableRecordImpl<CollectionRunsRecord>(Co
     /**
      * Create a detached, initialised CollectionRunsRecord
      */
-    constructor(id: Long? = null, programId: Long? = null, runDate: LocalDate? = null, officialOnly: Boolean? = null, startedAt: OffsetDateTime? = null, finishedAt: OffsetDateTime? = null, outcome: String? = null, foundCount: Int? = null, savedCount: Int? = null, rejectedReasons: Array<String?>? = null, error: String? = null, inputTokens: Long? = null, outputTokens: Long? = null, webSearchRequests: Int? = null): this() {
+    constructor(id: Long? = null, programId: Long? = null, runDate: LocalDate? = null, officialOnly: Boolean? = null, startedAt: OffsetDateTime? = null, finishedAt: OffsetDateTime? = null, outcome: String? = null, foundCount: Int? = null, savedCount: Int? = null, rejectedReasons: Array<String?>? = null, error: String? = null, inputTokens: Long? = null, outputTokens: Long? = null, webSearchRequests: Int? = null, fetchedUrls: Array<String?>? = null): this() {
         this.id = id
         this.programId = programId
         this.runDate = runDate
@@ -99,6 +103,7 @@ open class CollectionRunsRecord() : UpdatableRecordImpl<CollectionRunsRecord>(Co
         this.inputTokens = inputTokens
         this.outputTokens = outputTokens
         this.webSearchRequests = webSearchRequests
+        this.fetchedUrls = fetchedUrls
         resetTouchedOnNotNull()
     }
 }

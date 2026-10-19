@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, App, Button, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Spin, Switch, Table, Tag } from "antd";
+import type { InputRef } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { api, useSingleFlight } from "./api";
 import { CursorTable, SearchSelect, useCursorList } from "./list";
@@ -29,10 +30,37 @@ type CollectionSettings = {
   enabled: boolean;
   officialOnly: boolean;
   lastSucceededOn: string | null;
+  /** 기수 번호 read from the program's latest activity, null when none (contract "주소 토큰"); absent on older responses. */
+  previousRound?: number | null;
+  /** The saved URL expanded by the server as the collector would see it today; absent on older responses. */
+  previewUrls?: string[];
+  /** Pages the last successful collection actually read; absent on older responses. */
+  lastFetchedUrls?: string[];
 };
 type Program = { id: number; name: string; nameEn: string | null; organization: { id: number; name: string }; collection: CollectionSettings };
 
 const hostPattern = /^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]([a-z0-9-]*[a-z0-9])?$/;
+/** URL tokens (contract "주소 토큰" 2026-10-19): the collector fills them in when a program's page moves every edition. */
+const urlTokens = ["{year}", "{yy}", "{round}"] as const;
+const tokenHelp =
+  "회차마다 주소가 바뀌면 토큰을 넣어요. {year} 네 자리 연도, {yy} 두 자리 연도, {round} 기수 번호(이전 활동 이름의 ‘N기’에서 읽음). 올해·내년, 다음 기수·현재 기수로 펼쳐 차례로 봅니다.";
+const seoulYear = () => Number(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", year: "numeric" }).format(new Date()));
+/** Same rule as the server: {year}/{yy} → this year and next, {round} → previousRound+1 and previousRound; combined, distinct, at most 4. */
+function expandUrl(url: string, previousRound: number | null): string[] {
+  const year = seoulYear();
+  const two = (value: number) => String(value % 100).padStart(2, "0");
+  let candidates = [url];
+  const expand = (token: string, values: string[]) => {
+    candidates = candidates.flatMap((candidate) => (candidate.includes(token) ? values.map((value) => candidate.split(token).join(value)) : [candidate]));
+  };
+  expand("{year}", [String(year), String(year + 1)]);
+  expand("{yy}", [two(year), two(year + 1)]);
+  if (previousRound === null) candidates = candidates.filter((candidate) => !candidate.includes("{round}"));
+  else expand("{round}", [String(previousRound + 1), String(previousRound)]);
+  return [...new Set(candidates)].slice(0, 4);
+}
+/** Tokens in [url] that the collector does not know. */
+const unknownTokens = (url: string) => (url.match(/\{[^{}]*\}/g) ?? []).filter((token) => !(urlTokens as readonly string[]).includes(token));
 const defaults: CollectionInput = { allowedHosts: [], intervalDays: 1, enabled: true };
 /** Form values → API body: trims, lowercases hosts and drops an empty URL. */
 const collectionBody = (values: CollectionInput): CollectionInput => ({
@@ -45,7 +73,8 @@ export function Programs() {
   const [search, setSearch] = useState(""),
     [organizationId, setOrganizationId] = useState<number>(),
     [creating, setCreating] = useState(false),
-    [editing, setEditing] = useState<Program>();
+    [editing, setEditing] = useState<Program>(),
+    [renaming, setRenaming] = useState<Program>();
   const cursor = useCursorList<Program>("programs", { q: search, organizationId });
   return (
     <>
@@ -96,8 +125,26 @@ export function Programs() {
           { title: "운영 조직", render: (_, program) => program.organization.name },
           {
             title: "수집",
-            render: (_, { collection }) =>
-              collection.enabled ? <Tag color="green">{collection.intervalDays}일마다</Tag> : <Tag>꺼짐</Tag>,
+            render: (_, { collection }) => {
+              const fetched = collection.lastFetchedUrls ?? [];
+              return (
+                <>
+                  {collection.enabled ? <Tag color="green">{collection.intervalDays}일마다</Tag> : <Tag>꺼짐</Tag>}
+                  <div className="muted" style={{ fontSize: 12, marginTop: 4, wordBreak: "break-all" }}>
+                    {fetched.length ? (
+                      <>
+                        <a href={fetched[0]} target="_blank" rel="noreferrer">
+                          {fetched[0]}
+                        </a>
+                        {fetched.length > 1 && ` 외 ${fetched.length - 1}개`}
+                      </>
+                    ) : (
+                      "아직 수집한 페이지가 없어요"
+                    )}
+                  </div>
+                </>
+              );
+            },
           },
           {
             title: "공식 출처 호스트",
@@ -109,11 +156,21 @@ export function Programs() {
               ),
           },
           { title: "마지막 수집 성공", render: (_, { collection }) => collection.lastSucceededOn ?? "없음" },
-          { title: "", render: (_, program) => <Button onClick={() => setEditing(program)}>수집 설정</Button> },
+          {
+            title: "",
+            className: "actions",
+            render: (_, program) => (
+              <Space>
+                <Button onClick={() => setRenaming(program)}>편집</Button>
+                <Button onClick={() => setEditing(program)}>수집 설정</Button>
+              </Space>
+            ),
+          },
         ]}
       />
       {creating && <CreateProgram onClose={() => setCreating(false)} />}
       {editing && <CollectionEditor program={editing} onClose={() => setEditing(undefined)} />}
+      {renaming && <EditProgram program={renaming} onClose={() => setRenaming(undefined)} />}
     </>
   );
 }
@@ -177,10 +234,59 @@ function CreateProgram({ onClose }: { onClose: () => void }) {
           <Switch />
         </Form.Item>
         {withCollection ? (
-          <CollectionFields name="collection" />
+          <CollectionFields name="collection" previousRound={null} />
         ) : (
           <p className="field-note">수집 설정은 만든 뒤 목록의 ‘수집 설정’에서 입력할 수 있어요.</p>
         )}
+      </Form>
+    </Modal>
+  );
+}
+
+/** 프로그램 편집: name, nameEn and the owning organization via `PATCH programs/:id` (2026-10-19 사용자 요청). */
+function EditProgram({ program, onClose }: { program: Program; onClose: () => void }) {
+  const [form] = Form.useForm();
+  const { message } = App.useApp();
+  const client = useQueryClient();
+  const save = useMutation({
+    mutationFn: (body: { name: string; nameEn: string; organizationId: number }) => api<Program>(`programs/${program.id}`, "PATCH", body),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["programs"] });
+      message.success("프로그램을 고쳤어요.");
+      onClose();
+    },
+  });
+  const saveOnce = useSingleFlight();
+  return (
+    <Modal
+      open
+      title={`프로그램 편집 · ${program.name}`}
+      onCancel={onClose}
+      onOk={() => form.submit()}
+      confirmLoading={save.isPending}
+      okText="저장"
+      cancelText="취소"
+      width={520}
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={{ organizationId: program.organization.id, name: program.name, nameEn: program.nameEn ?? "" }}
+        // An empty English name clears it, like the organization editor.
+        onFinish={({ organizationId, name, nameEn }: { organizationId: number; name: string; nameEn: string }) =>
+          saveOnce(() => save.mutateAsync({ organizationId, name: name.trim(), nameEn: nameEn.trim() }))
+        }
+      >
+        {save.error && <Alert className="form-error" type="error" showIcon message={save.error.message} />}
+        <Form.Item name="organizationId" label="운영 조직" rules={[{ required: true, message: "조직을 골라 주세요." }]}>
+          <SearchSelect path="organizations" placeholder="조직 이름으로 검색" label={program.organization.name} />
+        </Form.Item>
+        <Form.Item name="name" label="프로그램 이름" rules={[{ required: true, whitespace: true, message: "이름을 입력해 주세요." }]}>
+          <Input />
+        </Form.Item>
+        <Form.Item name="nameEn" label="영문 이름(선택)">
+          <Input />
+        </Form.Item>
       </Form>
     </Modal>
   );
@@ -231,7 +337,25 @@ function CollectionEditor({ program, onClose }: { program: Program; onClose: () 
             {settings.lastSucceededOn && ` · 이 날짜에서 ${settings.intervalDays}일이 지나면 다시 수집해요.`}
             {!settings.configured && " · 아직 저장된 설정이 없어 기본값을 보여 줘요."}
           </p>
-          <CollectionFields name="collection" />
+          {settings.previewUrls?.length ? (
+            <p className="field-note">
+              저장된 설정으로 지금 수집하면 이 주소들을 봅니다: {settings.previewUrls.map((url) => <code key={url}>{url} </code>)}
+            </p>
+          ) : null}
+          <p className="field-note" style={{ wordBreak: "break-all" }}>
+            현시점 수집 페이지:{" "}
+            {settings.lastFetchedUrls?.length
+              ? settings.lastFetchedUrls.map((url, index) => (
+                  <span key={url}>
+                    {index > 0 && ", "}
+                    <a href={url} target="_blank" rel="noreferrer">
+                      {url}
+                    </a>
+                  </span>
+                ))
+              : "아직 수집한 페이지가 없어요"}
+          </p>
+          <CollectionFields name="collection" previousRound={settings.previousRound ?? null} />
         </Form>
       )}
     </Modal>
@@ -358,33 +482,73 @@ function Watchlist({ program }: { program: Program }) {
   );
 }
 
-function CollectionFields({ name }: { name: string }) {
+function CollectionFields({ name, previousRound }: { name: string; previousRound: number | null }) {
+  const form = Form.useFormInstance();
   const hosts: string[] | undefined = Form.useWatch([name, "allowedHosts"]);
+  const url: string | undefined = Form.useWatch([name, "officialUrl"]);
+  const urlInput = useRef<InputRef>(null);
+  const trimmed = url?.trim() ?? "";
+  const preview = trimmed && !unknownTokens(trimmed).length ? expandUrl(trimmed, previousRound) : [];
+  /** Puts [token] at the caret of the URL input (or at the end) and keeps focus there. */
+  const insertToken = (token: string) => {
+    const element = urlInput.current?.input;
+    const current = url ?? "";
+    const start = element?.selectionStart ?? current.length;
+    const end = element?.selectionEnd ?? current.length;
+    form.setFieldValue([name, "officialUrl"], current.slice(0, start) + token + current.slice(end));
+    setTimeout(() => {
+      element?.focus();
+      element?.setSelectionRange(start + token.length, start + token.length);
+    });
+  };
   return (
     <>
       <Form.Item name={[name, "enabled"]} label="매일 밤 활동 수집" valuePropName="checked">
         <Switch />
       </Form.Item>
+      <Space size={4} wrap style={{ marginBottom: 4 }} aria-label="주소 토큰">
+        {urlTokens.map((token) => (
+          <Tag key={token} color="blue" style={{ cursor: "pointer", marginInlineEnd: 0 }} onClick={() => insertToken(token)} role="button" tabIndex={0}
+            onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); insertToken(token); } }}>
+            {token}
+          </Tag>
+        ))}
+      </Space>
       <Form.Item
         name={[name, "officialUrl"]}
         label="공식 안내 URL"
+        extra={tokenHelp}
         rules={[
           {
             validator: async (_, value?: string) => {
               if (!value?.trim()) return;
-              let url: URL;
+              const unknown = unknownTokens(value.trim());
+              if (unknown.length) throw new Error(`알 수 없는 토큰이에요: ${unknown.join(", ")}. {year}, {yy}, {round}만 쓸 수 있어요.`);
+              // Validate the address with sample values in place of the tokens, as the server does.
+              const sample = value.trim().split("{year}").join("2026").split("{yy}").join("26").split("{round}").join("1");
+              let parsed: URL;
               try {
-                url = new URL(value.trim());
+                parsed = new URL(sample);
               } catch {
                 throw new Error("올바른 주소를 입력해 주세요.");
               }
-              if (url.protocol !== "https:") throw new Error("https 주소만 쓸 수 있어요.");
+              if (parsed.protocol !== "https:") throw new Error("https 주소만 쓸 수 있어요.");
             },
           },
         ]}
       >
-        <Input placeholder="https://letswift.kr" inputMode="url" />
+        <Input ref={urlInput} placeholder="https://toss.im/slash-{yy}" inputMode="url" />
       </Form.Item>
+      {trimmed && (
+        <p className="field-note" aria-live="polite">
+          {preview.length ? (
+            <>
+              지금 수집하면 이 주소들을 봅니다: {preview.map((candidate) => <code key={candidate}>{candidate} </code>)}
+            </>
+          ) : null}
+          {trimmed.includes("{round}") && previousRound === null && " 기수 번호를 알 수 없어 {round} 주소는 건너뜁니다."}
+        </p>
+      )}
       <Form.Item
         name={[name, "allowedHosts"]}
         label="공식 출처 호스트"

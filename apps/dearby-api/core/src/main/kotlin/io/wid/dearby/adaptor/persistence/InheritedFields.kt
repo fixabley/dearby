@@ -23,6 +23,11 @@ object CuratedFields {
     const val ELIGIBILITY = "eligibility"
     const val OFFICIAL_URL = "officialUrl" // 2026-10-19 어드민에서 공식 안내·신청 링크도 고친다
     const val APPLICATION_URL = "applicationUrl"
+    const val AUDIENCE = InheritedFields.AUDIENCE // 운영자 직접 등록(2026-10-19)이 남기는 이름들
+    const val PARTICIPATION_TYPE = InheritedFields.PARTICIPATION_TYPE
+    const val LOCATION = "location"
+    const val COST = "cost"
+    const val CATEGORY = "category" // 활동 종류(native-v1.md "활동 종류", 2026-10-19)
 
     fun read(value: JSONB?): Set<String> = FieldNames.read(value)
     fun jsonb(fields: Collection<String>): JSONB = FieldNames.jsonb(fields)

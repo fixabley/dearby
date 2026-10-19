@@ -1,6 +1,10 @@
 package io.wid.dearby.admin.adaptor.web
 
+import io.wid.dearby.admin.application.ActivityCreateInput
 import io.wid.dearby.admin.application.AdminActivityInfoService
+import io.wid.dearby.admin.application.CategoryChange
+import io.wid.dearby.domain.ActivityCategory
+import io.wid.dearby.domain.ParticipationType
 import io.wid.dearby.admin.application.EligibilityChange
 import io.wid.dearby.admin.application.ScheduleChange
 import io.wid.dearby.application.activity.ScheduleEdit
@@ -87,6 +91,32 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
         PageResponse(page.items.map(AdminActivityResponse::from), page.nextCursor)
     }
 
+    // 운영자 직접 등록(admin-v1.md "POST /v1/admin/activities", 2026-10-19)
+    @PostMapping("/activities")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun createActivity(@RequestBody request: ActivityCreateRequest): AdminActivityResponse {
+        val eligibility = request.eligibility?.takeUnless { it.isNull }
+            ?.let { EligibilityJson.parse(it, lenient = false) ?: throw InvalidInputException("대상자 조건이 비어 있습니다") }
+        val participationType = request.participationType?.let { value ->
+            ParticipationType.entries.firstOrNull { it.name.equals(value.trim(), ignoreCase = true) }
+                ?: throw InvalidInputException("participationType은 REGISTRATION 또는 SELECTION입니다")
+        }
+        val activitySchedule = request.activitySchedule?.also { if (!it.isObject) throw InvalidInputException("활동 기간은 객체여야 합니다") }
+        return AdminActivityResponse.from(
+            activityInfo.createActivity(
+                ActivityCreateInput(
+                    programId = request.programId ?: throw InvalidInputException("programId가 필요합니다"),
+                    name = request.name.orEmpty(), nameEn = request.nameEn, description = request.description.orEmpty(), descriptionEn = request.descriptionEn,
+                    officialUrl = request.officialUrl.orEmpty(), applicationUrl = request.applicationUrl,
+                    participationType = participationType, category = request.category?.trim()?.ifEmpty { null }?.let(ActivityCategory::parse),
+                    activitySchedule = activitySchedule?.let(::scheduleEdit), activityDateLabel = activitySchedule?.text("dateLabel"),
+                    application = request.application?.let { node -> if (node.isNull) null else scheduleEdit(node) },
+                    eligibility = eligibility, audience = request.audience, location = request.location, cost = request.cost,
+                )
+            )
+        )
+    }
+
     @PatchMapping("/activities/{id}")
     fun updateActivityTexts(@PathVariable id: Long, @RequestBody request: ActivityTextsRequest): AdminActivityResponse {
         // 대상자 조건: 생략은 유지, JSON null은 삭제, 객체는 어휘 검증(틀리면 400) 뒤 교체
@@ -100,6 +130,11 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
                 id, request.name, request.nameEn, request.description, request.descriptionEn, eligibility,
                 activitySchedule = scheduleChange(request.activitySchedule), application = scheduleChange(request.application),
                 officialUrl = request.officialUrl, applicationUrl = request.applicationUrl,
+                category = when {
+                    request.category == null -> CategoryChange.Keep
+                    request.category.isNull -> CategoryChange.Clear
+                    else -> CategoryChange.Set(ActivityCategory.parse(request.category.asString()))
+                },
             )
         )
     }
@@ -109,13 +144,16 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
         node == null -> ScheduleChange.Keep
         node.isNull -> ScheduleChange.Clear
         !node.isObject -> throw InvalidInputException("일정은 객체 또는 null이어야 합니다")
-        else -> ScheduleChange.Set(
-            ScheduleEdit(
-                startDate = node.text("startDate")?.let(::date),
-                endDate = node.text("endDate")?.let(::date),
-                startAt = node.text("startAt")?.let(::dateTime),
-                endAt = node.text("endAt")?.let(::dateTime),
-            )
+        else -> ScheduleChange.Set(scheduleEdit(node))
+    }
+
+    private fun scheduleEdit(node: JsonNode): ScheduleEdit {
+        if (!node.isObject) throw InvalidInputException("일정은 객체여야 합니다")
+        return ScheduleEdit(
+            startDate = node.text("startDate")?.let(::date),
+            endDate = node.text("endDate")?.let(::date),
+            startAt = node.text("startAt")?.let(::dateTime),
+            endAt = node.text("endAt")?.let(::dateTime),
         )
     }
 

@@ -36,6 +36,7 @@ class JooqCollectionRunRepository(private val dsl: DSLContext) : CollectionRunRe
             .set(COLLECTION_RUNS.INPUT_TOKENS, report.inputTokens)
             .set(COLLECTION_RUNS.OUTPUT_TOKENS, report.outputTokens)
             .set(COLLECTION_RUNS.WEB_SEARCH_REQUESTS, report.webSearchRequests)
+            .set(COLLECTION_RUNS.FETCHED_URLS, report.fetchedUrls.toTypedArray<String?>())
             .where(COLLECTION_RUNS.ID.eq(runId))
             .execute()
     }

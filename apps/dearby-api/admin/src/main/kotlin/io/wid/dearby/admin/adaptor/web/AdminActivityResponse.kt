@@ -27,6 +27,7 @@ data class AdminActivityResponse(
     val cost: String?,
     val audience: String?,
     val eligibility: JsonNode?, // 대상자 조건(native-v1.md "대상자 조건"). 없으면 null
+    val category: String?, // 활동 종류 코드(native-v1.md "활동 종류"). null은 미분류
     val inheritedFields: List<String>, // 이전 기수에서 가져온 필드 이름(admin-v1.md "이전 기수 정보 자동완성")
     val curatedFields: List<String>, // 어드민이 고친 필드 이름(admin-v1.md "운영자 지정 필드")
     val sourceCheckedAt: OffsetDateTime?,
@@ -55,6 +56,7 @@ data class AdminActivityResponse(
                 cost = curation.cost,
                 audience = curation.audience,
                 eligibility = activity.eligibility?.let(EligibilityJson::toNode),
+                category = activity.category?.name,
                 inheritedFields = curation.inheritedFields,
                 curatedFields = curation.curatedFields,
                 sourceCheckedAt = curation.sourceCheckedAt,

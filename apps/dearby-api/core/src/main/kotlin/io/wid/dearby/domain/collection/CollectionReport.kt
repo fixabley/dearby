@@ -10,4 +10,5 @@ data class CollectionReport(
     val inputTokens: Long = 0,
     val outputTokens: Long = 0,
     val webSearchRequests: Int = 0,
+    val fetchedUrls: List<String> = emptyList(), // 실제로 받아 본 페이지(받기 순서, 실패 제외; admin-v1.md lastFetchedUrls)
 )

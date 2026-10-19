@@ -13,6 +13,7 @@ data class ActivityTextsRequest(
     val eligibility: JsonNode? = null,
     val officialUrl: String? = null, // 공식 안내 URL(https). 생략은 유지, 비울 수 없다
     val applicationUrl: String? = null, // 신청 링크(https). 생략은 유지, 빈 문자열은 삭제
+    val category: JsonNode? = null, // 활동 종류 코드. 생략은 유지, JSON null은 미분류, 모르는 코드는 400
     val activitySchedule: JsonNode? = null,
     val application: JsonNode? = null,
 )

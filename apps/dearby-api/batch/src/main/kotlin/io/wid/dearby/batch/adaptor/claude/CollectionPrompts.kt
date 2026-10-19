@@ -20,7 +20,7 @@ object CollectionPrompts {
     fun discoverRequest(target: CollectionTarget) = buildString {
         append("프로그램: ${target.programName}")
         target.organizationName?.let { append("\n주최 기관: $it") }
-        target.officialUrl?.let { append("\n공식 안내 페이지: $it") }
+        if (target.officialUrls.isNotEmpty()) append("\n공식 안내 페이지: ${target.officialUrls.joinToString(", ")}")
         if (target.officialOnly) append("\n허용 도메인: ${target.allowedHosts.joinToString(", ")}")
     }
 
@@ -53,6 +53,7 @@ object CollectionPrompts {
         - evidenceQuote는 이 활동이 본문에 있다는 근거로, 본문에서 그대로 복사한 10~200자 연속 구절이다.
         - name·description은 한국어로 쓴다. nameEn·descriptionEn은 그 영어 번역이다(고유 명사·행사명은 공식 영문 표기가 본문에 있으면 그대로 쓴다). 번역할 수 없으면 null.
         - participationType: 신청하면 참가하면 REGISTRATION, 심사로 선발하면 SELECTION.
+        - category: 활동의 성격으로 판단한다. 부트캠프 BOOTCAMP, 컨퍼런스 CONFERENCE, 워크샵 WORKSHOP, 스터디 STUDY, 동아리(연합동아리 등) CLUB, 강연 LECTURE, 해커톤 HACKATHON, 공모전 CONTEST, 밋업 MEETUP, 그 외 OTHER. 모르면 null.
         - audience는 대상자 원문 문장 그대로다. eligibility는 그 대상자를 조건 트리로 정리한 것이다(본문에 대상 조건이 없으면 null).
           - 트리: 그룹은 op("all"=모두 충족, "any"=하나 이상)와 items, 조건은 field(한글 어휘)·fieldEn(영문 어휘)과 범위 from·to(숫자, 포함, 한쪽 생략 가능) 또는 집합 values(한글)·valuesEn(영문, 같은 순서) 중 하나, 선택으로 note·noteEn(원문 구절). 최상위는 그룹이고 3단계까지만 중첩한다.
           - 어휘(한글 → 영문): 나이 → age(만 나이, 숫자 범위), 출생연도 → birthYear(숫자), 학년 → schoolYear(숫자), 학력 → educationLevel(값 고졸 highSchool·대학 university·대학원 graduateSchool), 재학상태 → educationStatus(재학 enrolled·졸업 graduated·휴학 onLeave·졸업예정 graduating), 전공 → major, 지역 → region, 취업상태 → employment(학생 student·미취업 unemployed·재직 employed·창업 founder), 경력연수 → experienceYears(숫자), 국적 → nationality(ISO 3166-1 alpha-2, 예 KR), 팀규모 → teamSize(숫자), 기타 → other(note만).
@@ -94,6 +95,7 @@ object CollectionPrompts {
                         "description" to string(),
                         "descriptionEn" to nullableString(),
                         "participationType" to mapOf("type" to listOf("string", "null"), "enum" to listOf("REGISTRATION", "SELECTION", null)),
+                        "category" to mapOf("type" to listOf("string", "null"), "enum" to listOf("BOOTCAMP", "CONFERENCE", "WORKSHOP", "STUDY", "CLUB", "LECTURE", "HACKATHON", "CONTEST", "MEETUP", "OTHER", null)),
                         "applicationUrl" to nullableString(),
                         "recruitmentStartAt" to nullableString(),
                         "recruitmentEndAt" to nullableString(),

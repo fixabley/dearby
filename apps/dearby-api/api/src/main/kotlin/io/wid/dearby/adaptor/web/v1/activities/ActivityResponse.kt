@@ -18,6 +18,7 @@ data class ActivityResponse(
     val activitySchedule: ScheduleResponse, // 활동 기간·날짜 문구
     val schedules: List<ScheduleResponse>,
     val eligibility: JsonNode?, // 대상자 조건(native-v1.md "대상자 조건"). 없으면 null
+    val category: String?, // 활동 종류 코드(native-v1.md "활동 종류"). null은 미분류
 ) {
     companion object {
         fun from(listing: ActivityListing, language: ResponseLanguage): ActivityResponse {
@@ -34,6 +35,7 @@ data class ActivityResponse(
                 activitySchedule = ScheduleResponse.from(activity.activitySchedule),
                 schedules = activity.schedules.map(ScheduleResponse::from),
                 eligibility = activity.eligibility?.let(EligibilityJson::toNode),
+                category = activity.category?.name,
             )
         }
     }
