@@ -138,8 +138,11 @@ export const programSummarySchema = z.object({
   openActivityCount: z.number().int().nonnegative(),
   nearestRecruitmentEndAt: text.nullable(),
   matchedActivityIds: z.array(z.number().int()),
-  /** Latest activity start among the program's published activities; absent on older responses (contract "모집 중인 프로그램만 보기"). */
+  /** Latest activity start among the program's published activities; absent on older responses (contract "마감 숨기기"). */
   latestActivityAt: text.nullable().optional().catch(null),
+  /** 모집 예정 activities and the earliest of their recruitment (else activity) starts; absent on older responses (contract "마감 숨기기", 2026-10-19 밤). */
+  upcomingActivityCount: z.number().int().nonnegative().optional().catch(0),
+  nearestRecruitmentStartAt: text.nullable().optional().catch(null),
   /** Program tags, else the union of its open activities' tags (contract "태그"). */
   tags,
 });
@@ -160,6 +163,18 @@ export function deadlineLabel(endAt: string | null): string | undefined {
     day: "numeric",
     weekday: "short",
   })} 마감`;
+}
+/** `10월 24일 (금) 시작` in Seoul time, or undefined when the start is missing or unreadable. */
+export function startLabel(startAt: string | null): string | undefined {
+  if (!startAt) return;
+  const time = Date.parse(startAt);
+  if (Number.isNaN(time)) return;
+  return `${new Date(time).toLocaleDateString("ko-KR", {
+    timeZone: "Asia/Seoul",
+    month: "long",
+    day: "numeric",
+    weekday: "short",
+  })} 시작`;
 }
 /** Numeric activity ID from a URL segment, or undefined. */
 export function activityId(value: string): number | undefined {

@@ -1,7 +1,7 @@
 "use client";
 import Form from "next/form";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   type Activity,
   type ActivityPage,
@@ -9,6 +9,7 @@ import {
   type ProgramSummary,
   type Tag,
   deadlineLabel,
+  startLabel,
   httpsUrl,
   recruitment,
   scheduleLabel,
@@ -46,7 +47,7 @@ export function Discovery({ q }: { q: string }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreError, setMoreError] = useState("");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  // 마감 숨기기 (contract "모집 중인 프로그램만 보기"): on by default; off also lists programs active in the last three years and shows 모집 예정·지난 활동 under every expanded program.
+  // 마감 숨기기 (contract "마감 숨기기"): on by default hides only closed activities (open + upcoming programs stay); off also lists programs active in the last three years and shows 지난 활동 under every expanded program.
   const [openOnly, setOpenOnly] = useState(true);
   // Selected 얻을 수 있는 것 tags (contract "태그"); memory only.
   const [tagIds, setTagIds] = useState<number[]>([]);
@@ -305,11 +306,17 @@ function OtherActivities({
   now,
   tagKey,
   excludeIds,
+  showPast,
+  onEmpty,
 }: {
   programId: number;
   now: number;
   tagKey: string;
   excludeIds?: Set<number>;
+  /** 지난 활동 only while 마감 숨기기 is off; 모집 예정 always (contract "펼침", 2026-10-19 밤). */
+  showPast: boolean;
+  /** Rendered when no group has items (the caller shows nothing else). */
+  onEmpty?: ReactNode;
 }) {
   const [page, setPage] = useState<ActivityPage>();
   const [error, setError] = useState("");
@@ -340,9 +347,9 @@ function OtherActivities({
     .sort((a, b) => activityStart(b) - activityStart(a));
   const groups = [
     { label: "모집 예정", items: upcoming },
-    { label: "지난 활동", items: past },
+    { label: "지난 활동", items: showPast ? past : [] },
   ].filter((group) => group.items.length);
-  if (!groups.length) return null;
+  if (!groups.length) return <>{onEmpty ?? null}</>;
   return (
     <>
       {groups.map((group) => (
@@ -412,6 +419,7 @@ function ProgramRow({
     return () => clearInterval(timer);
   }, [open]);
   const deadline = deadlineLabel(program.nearestRecruitmentEndAt);
+  const start = startLabel(program.nearestRecruitmentStartAt ?? null);
   // The server already applied its open rule (contract "열린 활동 판정 일원화"); the client does not filter again.
   const openActivities = activities?.items;
   return (
@@ -434,6 +442,16 @@ function ProgramRow({
                   <>
                     <span className="dot">·</span>
                     {deadline}
+                  </>
+                )}
+              </>
+            ) : (program.upcomingActivityCount ?? 0) > 0 ? (
+              <>
+                모집 예정 {program.upcomingActivityCount}개
+                {start && (
+                  <>
+                    <span className="dot">·</span>
+                    {start}
                   </>
                 )}
               </>
@@ -461,9 +479,7 @@ function ProgramRow({
             <Loading />
           ) : (
             <>
-              {!openActivities.length ? (
-                <p className="muted">지금 모집 중인 활동이 없어요.</p>
-              ) : (
+              {openActivities.length > 0 &&
                 // Grouped by 활동 종류 (contract "활동 종류"); a single group needs no heading.
                 groupByCategory(openActivities, (activity) => activity.category).map((group, _, groups) => (
                   <section key={group.label} className="category-group">
@@ -485,17 +501,16 @@ function ProgramRow({
                       ))}
                     </ul>
                   </section>
-                ))
-              )}
-              {/* Toggle on: other activities only when nothing is open. Toggle off: always, under the open ones (contract "펼침"). */}
-              {(!openOnly || !openActivities.length) && (
-                <OtherActivities
-                  programId={program.id}
-                  now={now}
-                  tagKey={tagKey}
-                  excludeIds={new Set(openActivities.map((activity) => activity.id))}
-                />
-              )}
+                ))}
+              {/* 모집 예정 always; 지난 활동 only while 마감 숨기기 is off (contract "펼침", 2026-10-19 밤). */}
+              <OtherActivities
+                programId={program.id}
+                now={now}
+                tagKey={tagKey}
+                excludeIds={new Set(openActivities.map((activity) => activity.id))}
+                showPast={!openOnly}
+                onEmpty={!openActivities.length ? <p className="muted">지금 모집 중인 활동이 없어요.</p> : null}
+              />
             </>
           )}
         </div>
