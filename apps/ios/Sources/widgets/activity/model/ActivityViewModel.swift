@@ -19,7 +19,7 @@ import Observation
     /// Activities whose recruitment (or activity, without a window) has not started yet, nearest first; same programs as `pastActivities`.
     /// Both are loaded for every expanded program while `openOnly` is off, and only for programs without open activities while it is on.
     private(set) var upcomingActivities: [Int64: [ActivityModel]] = [:]
-    /// `모집 중만 보기` (contract "모집 중인 프로그램만 보기"): on by default, memory only. Off also lists programs active in the last two years.
+    /// `마감 숨기기` (contract "모집 중인 프로그램만 보기"): on by default, memory only. Off also lists programs active in the last two years.
     var openOnly = true { didSet { if openOnly != oldValue { start(query ?? "") } } }
     /// The tag vocabulary for the filter chips (contract "태그"); empty until loaded or when the load failed.
     private(set) var tags: [Tag] = []
@@ -180,7 +180,7 @@ import Observation
                 for item in page.items { seen[item.id] = item }
                 openActivities[programID] = page.items
                 // `모집 예정` (recruitment or activity not started yet, nearest first) and `지난 활동` (started within the
-                // last three years, latest first) follow the open list: always while `모집 중만 보기` is off, otherwise
+                // last three years, latest first) follow the open list: always while `마감 숨기기` is off, otherwise
                 // only when nothing is recruiting. Contract "모집 중인 프로그램만 보기" (2026-10-19 저녁).
                 if page.items.isEmpty || !openOnly {
                     let others = try await fetchActivities(programID, false, tagIDs)

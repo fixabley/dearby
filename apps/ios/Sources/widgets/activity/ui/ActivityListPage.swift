@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 발견: 프로그램 아코디언 목록(contract "발견 프로그램 묶음"). `모집 중만 보기`가 켜지면 모집 중 활동이 있는 프로그램만, 꺼지면 최근 2년 안에
+/// 발견: 프로그램 아코디언 목록(contract "발견 프로그램 묶음"). `마감 숨기기`가 켜지면 모집 중 활동이 있는 프로그램만, 꺼지면 최근 2년 안에
 /// 활동이 있었던 프로그램까지 보인다. 머리글을 펼치면 모집 중 활동 카드가, 없으면 지난 활동 목록이 보인다.
 struct ActivityListPage: View {
     let state: ActivityViewModel
@@ -19,7 +19,7 @@ struct ActivityListPage: View {
                 Text("활동 둘러보기").font(.title2.bold())
                 DearbySearchField(prompt: "프로그램, 조직, 활동 이름으로 검색", text: $state.searchText, identifier: "activity-search")
                     .submitLabel(.search)
-                Toggle("모집 중만 보기", isOn: $state.openOnly).font(.dearby(.subheadline)).tint(DearbyStyle.teal)
+                Toggle("마감 숨기기", isOn: $state.openOnly).font(.dearby(.subheadline)).tint(DearbyStyle.teal)
                     .accessibilityIdentifier("activity-open-only")
                 TagChipRow(tags: state.tags, selected: state.selectedTagIDs) { state.toggleTag($0) }
                 switch state.phase {
@@ -39,7 +39,7 @@ struct ActivityListPage: View {
                                                description: Text("다른 검색어로 찾아보세요."))
                     } else if state.openOnly {
                         ContentUnavailableView("지금 모집 중인 프로그램이 없어요", systemImage: "calendar",
-                                               description: Text("새 모집이 열리면 여기에서 볼 수 있어요. ‘모집 중만 보기’를 끄면 최근 활동한 프로그램도 보여요."))
+                                               description: Text("새 모집이 열리면 여기에서 볼 수 있어요. ‘마감 숨기기’를 끄면 최근 활동한 프로그램도 보여요."))
                     } else {
                         ContentUnavailableView("최근 2년 안에 활동한 프로그램이 없어요", systemImage: "calendar",
                                                description: Text("활동이 수집되면 여기에서 볼 수 있어요."))
@@ -95,7 +95,7 @@ struct ActivityListPage: View {
                             ForEach(group.activities) { activity in card(activity) }
                         }
                     }
-                    // `모집 예정` then `지난 활동`: always while 모집 중만 보기 is off, otherwise only without open activities.
+                    // `모집 예정` then `지난 활동`: always while 마감 숨기기 is off, otherwise only without open activities.
                     // Plain rows, no category headings, empty groups omitted.
                     if activities.isEmpty || !state.openOnly {
                         if let upcoming = state.upcomingActivities[program.id], !upcoming.isEmpty {

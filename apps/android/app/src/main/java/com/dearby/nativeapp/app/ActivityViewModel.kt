@@ -77,7 +77,7 @@ class ActivityViewModel(
         start(debounce = true)
     }
     fun reload() = start(debounce = false)
-    /** The `모집 중만 보기` switch (contract "모집 중인 프로그램만 보기"): off also lists programs active in the last three years and always shows their other activities when expanded. */
+    /** The `마감 숨기기` switch (contract "모집 중인 프로그램만 보기"): off also lists programs active in the last three years and always shows their other activities when expanded. */
     fun setOpenOnly(value: Boolean) {
         if (value == state.value.openOnly) return
         mutable.update { it.copy(openOnly = value) }
