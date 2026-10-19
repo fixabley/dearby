@@ -1,15 +1,20 @@
 import SwiftUI
 
 /// 내 프로필: data only (name, job, introduction, contacts, histories). A profile that was never saved (`version` 0)
-/// starts with the step funnel (`ProfileFunnelPage`); afterwards fields are edited in place in an inset-grouped `Form`
-/// (contract "폼은 플랫폼 기본 컴포넌트") and once anything differs from the loaded profile the 저장 / 원래대로 bar appears
-/// (contract "프로필과 버전 이력"). Card decoration lives in 명함 만들기. Sign-in is asked for only from the 로그인 button.
+/// starts with the step funnel (`ProfileFunnelPage`). Afterwards the tab is **read mode** (`ProfileReadView`, contract "프로필 읽기/수정 모드" 2026-10-20);
+/// the toolbar `수정` (pencil) swaps in the inset-grouped `Form` editor with the 저장 / 원래대로 bar once anything differs from the loaded profile
+/// (contract "프로필과 버전 이력"). `수정` becomes `완료`: no change → back to reading, changes → 저장 / 버리기 / 취소. A successful save returns to read mode.
+/// 변경 이력·명함 만들기 live in the toolbar `더 보기` menu. Card decoration lives in 명함 만들기. Sign-in is asked for only from the 로그인 button.
 /// The consent gate (contract "개인정보 동의", "동의 시트 닫기" 2026-10-20) is a sheet over the funnel/editor whenever the server says
 /// `consentRequired`: pulling it down or 닫기 means not consented — the sheet stays away until a save comes back 403 `CONSENT_REQUIRED`, which shows it again.
 struct ProfilePage: View {
     let state: ProfileModel
     @State private var form: ProfileForm?
     @State private var funnel: HistoryFunnelTarget?
+    /// Read mode is the default; `editing` lives only for the app run.
+    @State private var editing = false
+    @State private var confirmingDone = false
+    @State private var showVersions = false
     @State private var composing = false
     @State private var signingIn = false
     @State private var saving = false
@@ -33,18 +38,24 @@ struct ProfilePage: View {
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
         // System navigation bar on every branch (contract "iOS 상단 바는 시스템 내비게이션 바"); the funnel sets its own title inside.
         .navigationTitle("내 프로필").navigationBarTitleDisplayMode(.inline)
-        // One block so the order is fixed: 변경 이력 · 명함 만들기 (editor only) left of 설정 · 알림.
+        // [수정/완료] [설정] [알림] [더 보기: 변경 이력 · 명함 만들기] (contract "상단 바 구성"); the profile-only parts appear once a saved profile is loaded.
         .toolbar {
-            if case .loaded = state.phase, !state.consentPending, !settingUp {
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    NavigationLink { ProfileVersionsPage(state: state) } label: { Image(systemName: "clock") }
-                        .accessibilityLabel("변경 이력").accessibilityIdentifier("profile-versions")
-                    Button { composing = true } label: { Image(systemName: "person.text.rectangle") }
-                        .accessibilityLabel("명함 만들기").accessibilityIdentifier("profile-compose")
+            TabRootToolbar(menu: toolbarReady ? menuItems : []) {
+                if toolbarReady {
+                    Button(action: done) {
+                        if editing { Text("완료") } else { Image(systemName: "pencil") }
+                    }.accessibilityLabel(editing ? "완료" : "수정").accessibilityIdentifier("profile-edit")
                 }
             }
-            TabRootToolbar()
         }
+        .confirmationDialog("바뀐 내용을 저장할까요?", isPresented: $confirmingDone, titleVisibility: .visible) {
+            Button("저장") { if let form { save(form) } }
+            Button("버리기", role: .destructive) { revert(); editing = false }
+            Button("취소", role: .cancel) {}
+        }
+        .navigationDestination(isPresented: $showVersions) { ProfileVersionsPage(state: state) }
+        // Leaving `.loaded` (sign-out from 설정, a reload failure) also leaves edit mode.
+        .onChange(of: toolbarReady) { _, ready in if !ready { editing = false } }
         .task { await state.load() }
         // A reload (first load, save, restore, evidence) resets the form to the server state unless an edit is in flight.
         .onChange(of: state.profile, initial: true) { _, profile in
@@ -64,6 +75,19 @@ struct ProfilePage: View {
         .sheet(isPresented: $composing, onDismiss: { Task { await state.load() } }) { NavigationStack { CardComposerPage(account: state.account) } }
         .sheet(isPresented: $signingIn) { NavigationStack { SignInSheet(account: state.account) { Task { await state.load() } } } }
     }
+    private var toolbarReady: Bool {
+        if case .loaded = state.phase { return !state.consentPending && !settingUp }
+        return false
+    }
+    private var menuItems: [DearbyMenuItem] {
+        [DearbyMenuItem("변경 이력", systemImage: "clock") { showVersions = true },
+         DearbyMenuItem("명함 만들기", systemImage: "person.text.rectangle") { composing = true }]
+    }
+    /// 완료: nothing changed → read mode; otherwise ask 저장 / 버리기 / 취소.
+    private func done() {
+        guard editing else { editing = true; return }
+        if form?.changed == true { confirmingDone = true } else { editing = false }
+    }
     private var editorScreen: some View {
         Group {
             switch state.phase {
@@ -76,14 +100,18 @@ struct ProfilePage: View {
                 CenteredMessage(symbol: "exclamationmark.triangle", danger: true, title: "프로필을 불러오지 못했어요", message: "연결을 확인하고 다시 시도해 주세요.",
                                 primary: MessageAction("다시 시도") { Task { await state.load() } })
             case .loaded(let profile):
-                if let binding = Binding($form) { editor(binding, saved: profile) }
+                if !editing {
+                    ScrollView { ProfileReadView(profile: profile).padding(20) }
+                } else if let binding = Binding($form) {
+                    editor(binding, saved: profile)
+                }
             }
         }
-        .safeAreaInset(edge: .bottom) { if let form, form.changed { saveBar(form) } }
+        .safeAreaInset(edge: .bottom) { if editing, let form, form.changed { saveBar(form) } }
         // 저장 막대는 키보드가 올라와도 제자리(화면 아래)에 둔다(사용자 2026-10-20 "원래대로 저장 버튼은 키보드가 올라올 때 제자리에").
         .ignoresSafeArea(.keyboard, edges: .bottom)
     }
-    /// Rows are stacked label-over-input (`DearbyFormRow`, contract "폼 라벨·입력 크기" 2026-10-20); headers and footers are `.subheadline`.
+    /// Rows are floating-label boxes (`DearbyFormRow`, contract "플로팅 라벨" 2026-10-20); headers and footers are `.subheadline`.
     private func editor(_ form: Binding<ProfileForm>, saved: AccountProfile) -> some View {
         Form {
             Section {
@@ -153,7 +181,7 @@ struct ProfilePage: View {
             saving = false
             // 403 CONSENT_REQUIRED re-raises the consent sheet even after the user closed it (contract "다시 저장하면 다시 뜬다").
             if state.consentPending { consentDismissed = false }
-            if error == nil, let profile = state.profile { self.form = ProfileForm(profile: profile); tried = false }
+            if error == nil, let profile = state.profile { self.form = ProfileForm(profile: profile); tried = false; editing = false }
         }
     }
 }

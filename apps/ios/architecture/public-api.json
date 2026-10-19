@@ -87,7 +87,8 @@
     "MessageAction",
     "MessageActions",
     "SettingsRoute",
-    "TabRootToolbar"
+    "TabRootToolbar",
+    "DearbyMenuItem"
   ],
   "widgets/activity": [
     "ActivityCard",
@@ -139,6 +140,7 @@
     "SettingsModel",
     "SettingsPage",
     "CardsPage",
-    "CardsSegment"
+    "CardsSegment",
+    "ProfileReadView"
   ]
 }
