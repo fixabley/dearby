@@ -1,9 +1,11 @@
 import SwiftUI
 
-/// The consent gate before profile entry (contract "개인정보 동의", 2026-10-19): two required switches whose …보기 rows open
-/// the web policy pages in-app, and 동의하고 계속 only once both are on. An inset-grouped `Form` (contract "폼은 플랫폼 기본 컴포넌트"),
-/// full screen, no tab bar, like the first-profile funnel. The head above the switches is the centred state symbol·title·explanation
-/// (contract "비스크롤 화면 배치·CTA"; the switches stay platform form rows) and the CTA is the full-width bottom button.
+/// The consent gate before profile entry (contract "개인정보 동의", 2026-10-19): two required checkbox rows (`DearbyCheckRow`, multi-line labels —
+/// contract "토글 라벨은 바로 옆" 2026-10-20) whose …보기 rows open the web policy pages in-app, and 동의하고 계속 only once both are on.
+/// An inset-grouped `Form` (contract "폼은 플랫폼 기본 컴포넌트"); the head above the rows is the centred state symbol·title·explanation
+/// (contract "비스크롤 화면 배치·CTA") and the CTA is the full-width bottom button.
+/// Presented as a sheet it can be pulled down or closed with 닫기 (contract "동의 시트 닫기" 2026-10-20): closing means not consented, so
+/// saving stays blocked and the server's 403 brings the page back. In the tab root (full screen) there is nothing to dismiss, so no 닫기 shows.
 struct ConsentPage: View {
     let state: ProfileModel
     @State private var privacy = false
@@ -11,13 +13,15 @@ struct ConsentPage: View {
     @State private var opening: URL?
     @State private var saving = false
     @State private var error: String?
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.isPresented) private var isPresented
     private var ready: Bool { privacy && terms && !saving }
     var body: some View {
         Form {
             Section {
-                Toggle("개인정보 수집·이용에 동의합니다", isOn: $privacy).accessibilityLabel("개인정보 수집·이용에 동의합니다, 필수")
+                DearbyCheckRow(isOn: $privacy) { Text("개인정보 수집·이용에 동의합니다") }.accessibilityLabel("개인정보 수집·이용에 동의합니다, 필수")
                 link("개인정보 처리방침 보기", page: "privacy")
-                Toggle("이용약관에 동의합니다", isOn: $terms).accessibilityLabel("이용약관에 동의합니다, 필수")
+                DearbyCheckRow(isOn: $terms) { Text("이용약관에 동의합니다") }.accessibilityLabel("이용약관에 동의합니다, 필수")
                 link("이용약관 보기", page: "terms")
             } header: {
                 VStack(spacing: 12) {
@@ -31,7 +35,7 @@ struct ConsentPage: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("두 항목 모두 필수예요.")
                     if let error { DearbyFieldError(text: error) }
-                }.font(.dearby(.footnote))
+                }.font(.dearby(.subheadline))
             }
         }
         .font(.dearby(.body))
@@ -44,11 +48,17 @@ struct ConsentPage: View {
             .padding(.horizontal, 24).padding(.vertical, 12).background(.bar)
         }
         .background(Color(.systemGroupedBackground))
+        .interactiveDismissDisabled(false)
+        .toolbar {
+            if isPresented {
+                ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() }.accessibilityIdentifier("consent-close") }
+            }
+        }
         .sheet(item: $opening) { url in SafariView(url: url).ignoresSafeArea() }
     }
     private func link(_ title: String, page: String) -> some View {
         Button { opening = state.webOrigin.appending(path: page) } label: {
-            Label(title, systemImage: "arrow.up.right").font(.dearby(.subheadline)).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+            Label(title, systemImage: "arrow.up.right").font(.dearby(.subheadline)).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
         }
     }
     private func agree() {

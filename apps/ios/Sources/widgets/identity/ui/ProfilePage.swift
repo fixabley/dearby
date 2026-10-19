@@ -4,6 +4,8 @@ import SwiftUI
 /// starts with the step funnel (`ProfileFunnelPage`); afterwards fields are edited in place in an inset-grouped `Form`
 /// (contract "폼은 플랫폼 기본 컴포넌트") and once anything differs from the loaded profile the 저장 / 원래대로 bar appears
 /// (contract "프로필과 버전 이력"). Card decoration lives in 명함 만들기. Sign-in is asked for only from the 로그인 button.
+/// The consent gate (contract "개인정보 동의", "동의 시트 닫기" 2026-10-20) is a sheet over the funnel/editor whenever the server says
+/// `consentRequired`: pulling it down or 닫기 means not consented — the sheet stays away until a save comes back 403 `CONSENT_REQUIRED`, which shows it again.
 struct ProfilePage: View {
     let state: ProfileModel
     @State private var form: ProfileForm?
@@ -15,14 +17,16 @@ struct ProfilePage: View {
     @State private var tried = false
     @State private var confirmingDeletion = false
     @State private var deletionNotice: String?
+    /// 닫기/pull-down on the consent sheet; cleared when a save is refused for missing consent so the sheet comes back.
+    @State private var consentDismissed = false
+    /// Editor rows (`name`·`introduction`·`phone`·`email`·추가 연락처 id) and the 직무 search; the keyboard 완료 clears both.
+    @FocusState private var field: String?
+    @FocusState private var jobSearch: Bool
     /// Never saved yet: the step funnel replaces the editor until the first save.
     private var settingUp: Bool { state.profile?.version == 0 }
     var body: some View {
         Group {
-            if state.profile != nil, state.consentPending {
-                // The consent gate comes before the first profile step and whenever the server says so (contract "개인정보 동의").
-                ConsentPage(state: state)
-            } else if settingUp, let binding = Binding($form) {
+            if settingUp, let binding = Binding($form) {
                 ProfileFunnelPage(form: binding, account: state.account, saving: saving, error: error) { save(binding.wrappedValue) }
             } else {
                 editorScreen
@@ -49,6 +53,11 @@ struct ProfilePage: View {
             guard let profile else { form = nil; return }
             if form == nil || form?.changed == false || saving { form = ProfileForm(profile: profile); error = nil; tried = false }
         }
+        .sheet(isPresented: Binding(get: { state.profile != nil && state.consentPending && !consentDismissed }, set: { if !$0 { consentDismissed = true } })) {
+            NavigationStack { ConsentPage(state: state) }
+        }
+        // A fresh requirement (sign-in to another account, a new policy version) shows the sheet again even if an earlier one was closed.
+        .onChange(of: state.consentPending) { _, pending in if pending { consentDismissed = false } }
         .sheet(item: $funnel) { target in
             NavigationStack {
                 HistoryFunnelPage(draft: target.draft, state: state, saved: target.saved, startAtSummary: target.saved) { done in form?.put(done) }
@@ -82,33 +91,34 @@ struct ProfilePage: View {
         }
         .safeAreaInset(edge: .bottom) { if let form, form.changed { saveBar(form) } }
     }
+    /// Rows are stacked label-over-input (`DearbyFormRow`, contract "폼 라벨·입력 크기" 2026-10-20); headers and footers are `.subheadline`.
     private func editor(_ form: Binding<ProfileForm>, saved: AccountProfile) -> some View {
         Form {
             Section {
-                LabeledContent("이름") {
-                    TextField("실명 또는 활동명", text: form.name).textContentType(.name).foregroundStyle(.primary).accessibilityLabel("이름, 필수")
+                DearbyFormRow(label: "이름", focus: $field, value: "name") {
+                    TextField("실명 또는 활동명", text: form.name).textContentType(.name).accessibilityLabel("이름, 필수")
                 }
             } header: {
-                Text("기본 정보").font(.dearby(.footnote))
+                Text("기본 정보").font(.dearby(.subheadline))
             } footer: {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("이름은 꼭 적어 주세요. 명함과 공개 프로필에 보여요.")
                     if tried, let message = form.wrappedValue.nameError { DearbyFieldError(text: message) }
-                }.font(.dearby(.footnote))
+                }.font(.dearby(.subheadline))
             }
             Section {
-                JobTagPicker(form: form, account: state.account)
+                JobTagPicker(form: form, account: state.account, focus: $jobSearch)
             } header: {
-                Text("직무").font(.dearby(.footnote))
+                Text("직무").font(.dearby(.subheadline))
             } footer: {
-                if let note = JobTagPicker.note(for: form.wrappedValue) { Text(note).font(.dearby(.footnote)) }
+                if let note = JobTagPicker.note(for: form.wrappedValue) { Text(note).font(.dearby(.subheadline)) }
             }
             Section {
-                TextField("처음 만난 사람에게 건넬 한두 문장", text: form.introduction, axis: .vertical).lineLimit(3...6).accessibilityLabel("소개")
-            } header: {
-                Text("소개").font(.dearby(.footnote))
+                DearbyFormRow(label: "소개", focus: $field, value: "introduction") {
+                    TextField("처음 만난 사람에게 건넬 한두 문장", text: form.introduction, axis: .vertical).lineLimit(3...6).accessibilityLabel("소개")
+                }
             }
-            ProfileContactFields(phone: form.phone, email: form.email, extras: form.extras,
+            ProfileContactFields(phone: form.phone, email: form.email, extras: form.extras, focus: $field,
                                  phoneError: tried ? form.wrappedValue.phoneError : nil, emailError: tried ? form.wrappedValue.emailError : nil) { form.wrappedValue.addContact($0) }
             Section {
                 if form.wrappedValue.histories.isEmpty { Text("아직 이력이 없어요. 조직이나 활동부터 골라 단계별로 적어요.").foregroundStyle(.secondary) }
@@ -117,15 +127,17 @@ struct ProfilePage: View {
                         funnel = HistoryFunnelTarget(draft: HistoryDraft(history: history), saved: saved.histories.contains { $0.id == history.id })
                     } remove: { form.wrappedValue.removeHistory(history.id) }
                 }
-                Button { funnel = HistoryFunnelTarget(draft: HistoryDraft(), saved: false) } label: { Label("이력 추가", systemImage: "plus") }
+                Button { funnel = HistoryFunnelTarget(draft: HistoryDraft(), saved: false) } label: {
+                    Label("이력 추가", systemImage: "plus").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
+                }
             } header: {
-                Text("활동 이력").font(.dearby(.footnote))
+                Text("활동 이력").font(.dearby(.subheadline))
             } footer: {
-                if !form.wrappedValue.histories.isEmpty { Text("이력을 누르면 고치거나 인증자료를 올리고, 왼쪽으로 밀어 지워요.").font(.dearby(.footnote)) }
+                if !form.wrappedValue.histories.isEmpty { Text("이력을 누르면 고치거나 인증자료를 올리고, 왼쪽으로 밀어 지워요.").font(.dearby(.subheadline)) }
             }
             Section { deleteButton }
         }
-        .font(.dearby(.body)).dearbyDismissKeyboard()
+        .font(.dearby(.body)).dearbyDismissKeyboard { field = nil; jobSearch = false }
     }
     private func saveBar(_ form: ProfileForm) -> some View {
         VStack(spacing: 8) {
@@ -152,6 +164,8 @@ struct ProfilePage: View {
         Task {
             error = await state.save(form)
             saving = false
+            // 403 CONSENT_REQUIRED re-raises the consent sheet even after the user closed it (contract "다시 저장하면 다시 뜬다").
+            if state.consentPending { consentDismissed = false }
             if error == nil, let profile = state.profile { self.form = ProfileForm(profile: profile); tried = false }
         }
     }
@@ -198,7 +212,7 @@ struct HistoryRowView: View {
                     }
                     if !saved { tag("저장 전", strong: false) }
                 }
-            }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 2)
+            }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).padding(.vertical, 2).contentShape(Rectangle())
         }
         .accessibilityHint("눌러서 고치거나 인증자료를 올려요")
         .swipeActions { Button("삭제", role: .destructive, action: remove).accessibilityLabel("이력 삭제") }
