@@ -9,7 +9,12 @@ import io.wid.dearby.domain.Schedule
 import io.wid.dearby.application.activity.ScheduleSlot
 import io.wid.dearby.application.activity.ActivityCreation
 import io.wid.dearby.application.collection.ActivityDraftRepository
+import io.wid.dearby.application.collection.CollectionFeedbackRepository
 import io.wid.dearby.application.collection.CollectionSettingsRepository
+import io.wid.dearby.application.eligibility.EligibilityJson
+import io.wid.dearby.domain.collection.CollectedActivityRef
+import io.wid.dearby.domain.collection.FeedbackKind
+import io.wid.dearby.domain.collection.NewFeedback
 import io.wid.dearby.domain.collection.CollectionUrlTemplate
 import java.time.LocalDate
 import java.time.ZoneId
@@ -35,6 +40,7 @@ class AdminActivityInfoService(
     private val drafts: ActivityDraftRepository,
     private val tags: TagRepository,
     private val logos: ProgramLogoRepository,
+    private val feedback: CollectionFeedbackRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -116,7 +122,10 @@ class AdminActivityInfoService(
     // 수집으로 생긴 활동은 다음 수집에서 다시 만들어지지 않는다
     @Transactional
     fun deleteActivity(id: Id) {
+        // 수집 피드백(V43): 지우기 전에 이름을 읽어 둔다(지우면 사라진다). 운영자가 직접 만든 활동은 남기지 않는다
+        val collected = feedback.collectedActivity(id)
         if (!curations.delete(id)) throw NotFoundException("활동을 찾을 수 없습니다", "Activity not found: $id")
+        collected?.let { feedback.record(NewFeedback(FeedbackKind.DRAFT_DISMISSED, it.programId, it.host, it.name, emptyMap(), activityId = id)) }
     }
 
     // 보낸 값만 바꾼다(nameEn은 빈 문자열이면 지운다)
@@ -193,6 +202,7 @@ class AdminActivityInfoService(
         place: PlaceChange = PlaceChange.Keep,
     ): AdminActivity {
         val current = activities.getById(activityId, publicationStatus = null).activity
+        val collected = feedback.collectedActivity(activityId)
         curations.updateTexts(
             activityId,
             name = name?.let(::requireName) ?: current.name,
@@ -230,6 +240,7 @@ class AdminActivityInfoService(
             PlaceChange.Clear -> curations.updatePlace(activityId, null)
             is PlaceChange.Set -> curations.updatePlace(activityId, place.place)
         }
+        collected?.let { recordCorrections(it, current, name, eligibility, category, tagIds, place, activitySchedule, application) }
         return withCuration(listOf(activities.getById(activityId, publicationStatus = null))).single()
     }
 
@@ -282,8 +293,16 @@ class AdminActivityInfoService(
     @Transactional
     fun updateDetailSchedule(activityId: Id, scheduleId: Id, patch: ScheduleItemPatch): Schedule {
         val stored = requireDetailSchedule(activityId, scheduleId)
-        return curations.updateDetailSchedule(activityId, scheduleId, patch.toItem(existing = stored.schedule))
+        val updated = curations.updateDetailSchedule(activityId, scheduleId, patch.toItem(existing = stored.schedule))
             ?: throw NotFoundException("일정을 찾을 수 없습니다", "Schedule not found: $scheduleId")
+        // 수집한 일정의 날짜를 운영자가 바꾸면 그 원문 문구의 해석으로 남긴다
+        val before = stored.schedule
+        if (before.dateLabel.isNotBlank() && updated.time != null && updated.time != before.time) {
+            feedback.collectedActivity(activityId)?.let {
+                feedback.record(NewFeedback(FeedbackKind.DATE_CURATED, it.programId, it.host, before.dateLabel, mapOf("scheduleId" to scheduleId, "title" to updated.title) + times(updated.time), updated.curatedNote, activityId))
+            }
+        }
+        return updated
     }
 
     @Transactional
@@ -296,6 +315,77 @@ class AdminActivityInfoService(
         val stored = curations.findSchedule(activityId, scheduleId) ?: throw NotFoundException("일정을 찾을 수 없습니다", "Schedule not found: $scheduleId for activity $activityId")
         if (stored.slot != null) throw InvalidInputException("모집 기간과 활동 기간은 활동 편집의 application·activitySchedule로 고칩니다")
         return stored
+    }
+
+    // 수집 피드백(V43): 수집한 활동의 값을 운영자가 바꾼 것만 남긴다. sourceText는 수집기가 썼던 값(검색 대상), 없으면 활동 이름
+    private fun recordCorrections(
+        collected: CollectedActivityRef, current: Activity, name: String?, eligibility: EligibilityChange, category: CategoryChange,
+        tagIds: List<Id>?, place: PlaceChange, activitySchedule: ScheduleChange, application: ScheduleChange,
+    ) {
+        fun field(field: String, from: Any?, to: Any?) {
+            if (from == to) return
+            val source = from?.toString()?.takeIf { it.isNotBlank() } ?: current.name
+            feedback.record(NewFeedback(FeedbackKind.FIELD_CURATED, collected.programId, collected.host, source, mapOf("field" to field, "from" to from, "to" to to), activityId = current.id))
+        }
+        name?.let { field("name", current.name, it.trim()) }
+        when (category) {
+            CategoryChange.Keep -> Unit
+            CategoryChange.Clear -> field("category", current.category?.name, null)
+            is CategoryChange.Set -> field("category", current.category?.name, category.category.name)
+        }
+        tagIds?.let { ids -> field("tags", current.tags.map { it.name }, tags.findAllById(ids.distinct()).map { it.name }) }
+        when (eligibility) {
+            EligibilityChange.Keep -> Unit
+            EligibilityChange.Clear -> field("eligibility", current.eligibility?.let(EligibilityJson::write), null)
+            is EligibilityChange.Set -> field("eligibility", current.eligibility?.let(EligibilityJson::write), EligibilityJson.write(eligibility.group))
+        }
+        val currentPlace = current.activitySchedule.address?.addressLine1 ?: current.location
+        when (place) {
+            PlaceChange.Keep -> Unit
+            PlaceChange.Clear -> field("place", currentPlace, null)
+            is PlaceChange.Set -> field("place", currentPlace, place.place.addressLine1)
+        }
+        recordPeriods(collected, current, activitySchedule, application)
+    }
+
+    // 모집·활동 기간을 서로 바꿔 넣은 저장(어드민 "모집 ↔ 활동 바꾸기")은 PERIOD_SWAP 하나로, 그 밖에는 바꾼 기간마다 원문 문구의 해석(DATE_CURATED)으로
+    private fun recordPeriods(collected: CollectedActivityRef, current: Activity, activitySchedule: ScheduleChange, application: ScheduleChange) {
+        fun newTime(change: ScheduleChange) = (change as? ScheduleChange.Set)?.edit?.toTime()
+        // 바꿔 넣었는지는 날짜로만 본다(활동 기간은 종일, 모집 기간은 시각일 수 있다)
+        fun days(time: ScheduleTime?) = when (time) {
+            is ScheduleTime.AllDay -> time.start to time.endExclusive.minusDays(1)
+            is ScheduleTime.Timed -> time.start?.toLocalDate() to time.end?.toLocalDate()
+            null -> null
+        }
+        val oldApplication = current.application
+        val oldActivity = current.activitySchedule
+        val note = (activitySchedule as? ScheduleChange.Set)?.edit?.note ?: (application as? ScheduleChange.Set)?.edit?.note
+        val swapped = activitySchedule is ScheduleChange.Set && application is ScheduleChange.Set && oldApplication != null &&
+            days(oldApplication.time) != days(oldActivity.time) &&
+            days(newTime(activitySchedule)) == days(oldApplication.time) && days(newTime(application)) == days(oldActivity.time)
+        if (swapped) {
+            feedback.record(
+                NewFeedback(
+                    FeedbackKind.PERIOD_SWAP, collected.programId, collected.host, "모집: ${oldApplication!!.dateLabel} / 활동: ${oldActivity.dateLabel}",
+                    mapOf("application" to times(newTime(application)), "activity" to times(newTime(activitySchedule))), note, current.id,
+                )
+            )
+            return
+        }
+        listOf(ScheduleSlot.ACTIVITY to (activitySchedule to oldActivity), ScheduleSlot.APPLICATION to (application to oldApplication)).forEach { (slot, pair) ->
+            val (change, old) = pair
+            if (change !is ScheduleChange.Set || old == null || old.dateLabel.isBlank()) return@forEach
+            val time = change.edit.toTime() ?: return@forEach
+            if (time == old.time) return@forEach
+            feedback.record(NewFeedback(FeedbackKind.DATE_CURATED, collected.programId, collected.host, old.dateLabel, mapOf("slot" to slot.name) + times(time), change.edit.note, current.id))
+        }
+    }
+
+    // 피드백의 날짜 값: 종일은 startDate·endDate(끝 포함), 시각은 startAt·endAt(ISO 8601 오프셋)
+    private fun times(time: ScheduleTime?): Map<String, Any?> = when (time) {
+        is ScheduleTime.AllDay -> mapOf("startDate" to time.start.toString(), "endDate" to time.endExclusive.minusDays(1).toString())
+        is ScheduleTime.Timed -> mapOf("startAt" to time.start?.toOffsetDateTime()?.toString(), "endAt" to time.end?.toOffsetDateTime()?.toString()).filterValues { it != null }
+        null -> emptyMap()
     }
 
     private fun applySchedule(activityId: Id, slot: ScheduleSlot, change: ScheduleChange) {

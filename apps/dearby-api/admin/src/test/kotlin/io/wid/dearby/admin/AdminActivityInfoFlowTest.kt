@@ -453,6 +453,7 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         val canonical = activity("우아한 테크코스 8기")
         val duplicate = activity("우아한테크코스 8기")
 
+        jdbc.sql("delete from collection_feedback").update()
         val created = read(mvc.post("/v1/admin/programs/$program/watchlist") { asAdmin(); body("""{"name":"다른 과정 수료식","kind":"exclude","reason":"다른 프로그램"}""") }.andExpect { status { isCreated() } })
         assertEquals(listOf("exclude", "다른과정수료식"), listOf(created["kind"].asString(), created["normalizedName"].asString()))
         mvc.post("/v1/admin/programs/$program/watchlist") { asAdmin(); body("""{"name":"다른 과정  수료식","kind":"exclude"}""") }.andExpect { status { isConflict() } }
@@ -469,8 +470,67 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         assertEquals(2, items.size())
         val alias = items.first { it["kind"].asString() == "alias" }
         assertEquals(listOf("우아한테크코스 8기", canonical, "우아한 테크코스 8기"), listOf(alias["name"].asString(), alias["canonicalActivityId"].asLong(), alias["canonicalActivityName"].asString()))
+        // 수집 피드백(V43): 조심 목록 항목마다 한 행(사유·정본 이름 포함). 항목을 지우면 그 행도 지운다
+        fun feedbackRows() = jdbc.sql("select kind || '|' || source_text || '|' || coalesce(reason, '') || '|' || coalesce(corrected_value ->> 'canonicalActivityName', '') from collection_feedback order by id").query(String::class.java).list()
+        assertEquals(listOf("WATCH_EXCLUDE|다른 과정 수료식|다른 프로그램|", "WATCH_ALIAS|우아한테크코스 8기|띄어쓰기만 다름|우아한 테크코스 8기"), feedbackRows())
         mvc.delete("/v1/admin/watchlist/${alias["id"].asLong()}") { asAdmin() }.andExpect { status { isNoContent() } }
         mvc.delete("/v1/admin/watchlist/${alias["id"].asLong()}") { asAdmin() }.andExpect { status { isNotFound() } }
+        assertEquals(listOf("WATCH_EXCLUDE|다른 과정 수료식|다른 프로그램|"), feedbackRows())
+    }
+
+    @Test
+    fun `운영자가 수집한 활동을 고치거나 지우면 수집 피드백으로 남고, 직접 만든 활동은 남지 않는다`() {
+        val program = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        fun activity(name: String, collected: Boolean) = jdbc.sql(
+            """
+            insert into activities (program_id, name, description, participation_type, recruitment_status, official_url, freshness, source_note, source_id, created_at, updated_at)
+            values (?, ?, '설명', 'REGISTRATION', 'UNKNOWN', 'https://letswift.kr/2026/', 'STALE', '', ${if (collected) "gen_random_uuid()" else "null"}, localtimestamp, localtimestamp)
+            returning id
+            """
+        ).params(program, name).query(Long::class.java).single().also { id ->
+            jdbc.sql(
+                """
+                insert into schedules (activity_id, slot, title, kind, status, time_type, start_date, end_date_exclusive, date_label, sequence, created_at, updated_at)
+                values (?, 'ACTIVITY', '활동', 'EVENT', 'CONFIRMED', 'ALL_DAY', date '2026-11-29', date '2026-11-30', '11월 29일(토)', 0, localtimestamp, localtimestamp),
+                       (?, 'APPLICATION', '모집', 'DEADLINE', 'CONFIRMED', 'ALL_DAY', date '2026-11-01', date '2026-11-11', '11월 1일 ~ 11월 10일', 0, localtimestamp, localtimestamp)
+                """
+            ).params(id, id).update()
+        }
+        jdbc.sql("delete from collection_feedback").update()
+        fun rows() = jdbc.sql("select kind || '|' || source_text || '|' || corrected_value::text || '|' || coalesce(reason, '') from collection_feedback order by id").query(String::class.java).list()
+        val collected = activity("Let'Swift 2026 수집", collected = true)
+        val manual = activity("Let'Swift 2026 직접", collected = false)
+
+        mvc.patch("/v1/admin/activities/$manual") { asAdmin(); patchBody("""{"name":"Let'Swift 2026 직접 등록","category":"MEETUP"}""") }.andExpect { status { isOk() } }
+        assertEquals(emptyList(), rows())
+
+        // 필드: 수집 값 → 운영자 값
+        mvc.patch("/v1/admin/activities/$collected") { asAdmin(); patchBody("""{"name":"Let'Swift 2026","category":"CONFERENCE"}""") }.andExpect { status { isOk() } }
+        assertEquals(
+            listOf(
+                "FIELD_CURATED|Let'Swift 2026 수집|{\"to\": \"Let'Swift 2026\", \"from\": \"Let'Swift 2026 수집\", \"field\": \"name\"}|",
+                "FIELD_CURATED|Let'Swift 2026 수집|{\"to\": \"CONFERENCE\", \"from\": null, \"field\": \"category\"}|",
+            ),
+            rows(),
+        )
+        // 모집 ↔ 활동 바꾸기는 PERIOD_SWAP 한 행
+        jdbc.sql("delete from collection_feedback").update()
+        mvc.patch("/v1/admin/activities/$collected") { asAdmin(); patchBody("""{"activitySchedule":{"startDate":"2026-11-01","endDate":"2026-11-10","note":"기간이 바뀌어 들어옴"},"application":{"startDate":"2026-11-29","endDate":"2026-11-29"}}""") }.andExpect { status { isOk() } }
+        assertEquals(
+            listOf("PERIOD_SWAP|모집: 11월 1일 ~ 11월 10일 / 활동: 11월 29일(토)|{\"activity\": {\"endDate\": \"2026-11-10\", \"startDate\": \"2026-11-01\"}, \"application\": {\"endDate\": \"2026-11-29\", \"startDate\": \"2026-11-29\"}}|기간이 바뀌어 들어옴"),
+            rows(),
+        )
+        // 기간 하나만 고치면 그 원문 문구의 해석(DATE_CURATED)
+        jdbc.sql("delete from collection_feedback").update()
+        mvc.patch("/v1/admin/activities/$collected") { asAdmin(); patchBody("""{"activitySchedule":{"startDate":"2026-11-28","endDate":"2026-11-29","note":"이틀 행사"}}""") }.andExpect { status { isOk() } }
+        assertEquals(listOf("DATE_CURATED|11월 29일(토)|{\"slot\": \"ACTIVITY\", \"endDate\": \"2026-11-29\", \"startDate\": \"2026-11-28\"}|이틀 행사"), rows())
+        // 지우면 이름이 DRAFT_DISMISSED로 남는다(직접 만든 활동은 남지 않는다)
+        jdbc.sql("delete from collection_feedback").update()
+        mvc.delete("/v1/admin/activities/$collected") { asAdmin() }.andExpect { status { is2xxSuccessful() } }
+        mvc.delete("/v1/admin/activities/$manual") { asAdmin() }.andExpect { status { is2xxSuccessful() } }
+        assertEquals(listOf("DRAFT_DISMISSED|Let'Swift 2026|{}|"), rows())
+        assertEquals(listOf("letswift.kr"), jdbc.sql("select host from collection_feedback").query(String::class.java).list())
+        jdbc.sql("delete from collection_feedback").update()
     }
 
     @Test

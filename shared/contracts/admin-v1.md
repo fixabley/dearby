@@ -79,7 +79,7 @@
 | POST /v1/admin/activities | ActivityCreateInput | 201 AdminActivity(2026-10-19 사용자 요청 "활동 추가 플로우가 어드민에 없어"). 프로그램이 없으면 400, 같은 프로그램에 띄어쓰기만 다른 같은 이름이 있으면 400 |
 | PATCH /v1/admin/activities/:id | `{name?, nameEn?, description?, descriptionEn?, eligibility?, officialUrl?, applicationUrl?, category?, activitySchedule?, application?}` | 200 AdminActivity. 보낸 필드만 바꾼다(아래 "운영자 지정 필드"·"일정 직접 지정"). 없으면 404, 한글 이름을 비우면 400, 공식 안내 URL은 https 필수, 신청 링크는 빈 문자열이면 삭제 |
 | PATCH /v1/admin/activities/:id/publication-status | `{publicationStatus}` | 200 AdminActivity. 없으면 404 |
-| DELETE /v1/admin/activities/:id | — | 204. 없으면 404. 일정·역할·연락처도 함께 지워진다. 수집으로 생긴 활동이면 그 출처(`source_id`)를 남겨 다음 수집에서 다시 만들지 않는다 |
+| DELETE /v1/admin/activities/:id | — | 204. 없으면 404. 일정·역할·연락처도 함께 지워진다. 수집으로 생긴 활동이면 그 출처(`source_id`)를 남겨 다음 수집에서 다시 만들지 않고, 이름을 수집 피드백 `DRAFT_DISMISSED`로 남긴다(아래 "수집 피드백") |
 | POST /v1/admin/activities/:id/schedules | ScheduleItemInput | 201 Schedule(2026-10-19 사용자 요청 "활동에 스케줄들도 편집, 구글캘린더 느낌"). 세부 일정(슬롯 없음) 추가, `curated = true` |
 | PATCH /v1/admin/activities/:id/schedules/:scheduleId | ScheduleItemInput(부분) | 200 Schedule. 슬롯 일정(모집·활동 기간)은 기존 PATCH 활동의 `application`·`activitySchedule`로만 고친다(여기서는 400) |
 | DELETE /v1/admin/activities/:id/schedules/:scheduleId | — | 204. 슬롯 일정은 400. 수집으로 생긴 일정을 지우면 다음 수집이 같은 제목·시각의 일정을 다시 만들 수 있으므로, 지운 일정은 `curated_deleted`로 남겨 수집이 다시 넣지 않는다(V36) |
@@ -166,7 +166,9 @@ native-v1.md "활동 장소"를 따른다. `PATCH /v1/admin/activities/:id`·`PO
 - 편집 폼의 `모집 ↔ 활동 바꾸기`: 두 기간 블록의 값을 서로 바꾼다(활동 기간은 종일만 허용하므로 시각 지정은 끈다). 저장하면 기존 `PATCH /v1/admin/activities/:id`의 `application`·`activitySchedule`로 보내고 운영자 지정(`curated`)으로 보호된다.
 
 
-### 날짜 문구 피드백 — 2026-10-19 사용자 결정
+### 날짜 문구 피드백 — 2026-10-19 사용자 결정 (2026-10-20 "수집 피드백"으로 대체)
+
+> 2026-10-20부터 지정 일정을 지시문 예시 20개로 넘기지 않는다. 같은 정보가 수집 피드백 `DATE_CURATED`로 남고, 수집 에이전트는 요청의 최근 10건과 `search_feedback`으로 쓴다. 아래는 2026-10-19 규칙의 기록이다.
 
 사용자: "날짜 문자열 같은 경우 내가 직접 지정했을 때 피드백으로 받아들여서 정규화된 날짜값으로 수집할 수 있게". 운영자가 어드민에서 기간을 직접 지정하면(`schedules.curated = true`, 원문 `date_label`이 비어 있지 않고 날짜·시각이 채워진 행) 그 쌍을 **수집 지시문의 해석 예시**로 쓴다. 새 테이블은 없다.
 
@@ -208,3 +210,22 @@ native-v1.md "활동 장소"를 따른다. `PATCH /v1/admin/activities/:id`·`PO
 - 출처 활동: 같은 프로그램에서 가장 최근에 만들어진 **다른** 활동(게시 활동 우선, 없으면 초안). 새 초안을 처음 저장할 때만 적용하고, 이미 있는 초안을 갱신할 때는 비어 있는 필드에만 적용한다. 운영자가 지정한 값(`curated` 또는 직접 편집)은 덮어쓰지 않는다.
 - 표시: `activities.inherited_fields jsonb`(가져온 필드 이름 배열, 예 `["eligibility","audience"]`)에 남기고 `AdminActivity.inheritedFields: string[]`로 내보낸다. 어드민은 해당 필드 옆에 "이전 기수에서 가져옴" 표시를 보이고, 운영자가 그 필드를 편집·비우면 목록에서 빠진다. 공개 API에는 표시하지 않는다(값은 그대로 공개).
 - 수집 지시문: 추출 요청에 이전 기수의 대상자 조건·대상 원문을 "참고(이전 기수)"로 넘겨, 본문에 같은 내용이 있으면 그대로 쓰고 본문에 없으면 null로 두게 한다. 본문에 없는 내용을 만들어 내지 않는다. 이후 서버가 비어 있는 필드를 위 규칙으로 채운다.
+
+## 수집 피드백 — 2026-10-20 사용자 결정
+
+사용자: 수집 에이전트의 판단에 운영자의 어드민 피드백을 RAG처럼 쓴다. 운영자가 바로잡은 것을 `collection_feedback`(V43)에 한 행씩 남기고, 수집 에이전트가 찾아 쓴다. 어드민 API·응답은 바뀌지 않는다(목록 화면은 아직 없다).
+
+- 표: `collection_feedback(id, kind, program_id null, host null, source_text, corrected_value jsonb, reason null, activity_id null, created_at)`. `source_text`는 수집기가 본 원문(날짜 문구·활동 이름·수집 값)이고 pg_trgm GIN 색인으로 찾는다. `activity_id`는 참조 키가 아니다(지운 활동의 피드백도 남는다).
+- 종류와 남기는 곳(수집으로 생긴 활동, 즉 `source_id`가 있는 활동만; 운영자가 직접 만든 활동은 남기지 않는다):
+
+| kind | 남기는 경로 | source_text → corrected_value · reason |
+| --- | --- | --- |
+| `DATE_CURATED` | `PATCH /v1/admin/activities/:id`의 `activitySchedule`·`application`, `PATCH …/schedules/:scheduleId`의 날짜·시각 변경 | 고치기 전 원문 `dateLabel` → `{slot\|scheduleId·title, startDate, endDate}` 또는 `{…, startAt, endAt}` · `note` |
+| `PERIOD_SWAP` | 같은 PATCH에서 새 활동 기간 = 이전 모집 기간이고 새 모집 기간 = 이전 활동 기간(어드민 "모집 ↔ 활동 바꾸기") | `"모집: <문구> / 활동: <문구>"` → `{application, activity}` · `note`. 이때 `DATE_CURATED`는 남기지 않는다 |
+| `FIELD_CURATED` | PATCH의 `name`·`category`·`tagIds`·`place`·`eligibility`가 이전 값과 다를 때 | 이전 값(없으면 활동 이름) → `{field, from, to}` |
+| `DRAFT_DISMISSED` | `DELETE /v1/admin/activities/:id` | 활동 이름 → `{}` |
+| `WATCH_ALIAS`·`WATCH_EXCLUDE` | 조심 목록 추가(직접 추가·중복 지정). 항목을 지우면 이 행도 지운다 | 이름 → `{watchEntryId, canonicalActivityName?}` · `reason` |
+
+- 채우기(V44, 여러 번 실행해도 같은 행을 두 번 넣지 않음): 지정 일정(`curated`, 지우지 않은 것, 문구와 날짜가 있는 것), 운영자 지정 필드(`curated_fields`의 name·category·eligibility·tags; 고치기 전 수집 값은 남아 있지 않아 `to`만), 조심 목록. 지운 초안은 이름이 남아 있지 않아 채울 수 없다.
+- 수집기의 쓰임: (1) 요청에 그 프로그램의 최근 10건. (2) MCP 도구 `search_feedback {text, kind?}`: 유사도(0.3 이상) 상위 8건, 같은 프로그램 → 같은 호스트 → 나머지 순, 각 행에 kind·원문·운영자 값·사유·(다른 프로그램이면) 프로그램 이름. (3) 제출 판정: 같은 프로그램에서 이름(공백·대소문자 무시)이 `DRAFT_DISMISSED`·`WATCH_EXCLUDE`와 같으면 거절(`운영자 피드백 #id(kind): …`, 수집 보고 거절 이유에도), 날짜 문구가 `DATE_CURATED`와 유사도 0.6 이상인데 해석이 다르면 저장하되 주의를 돌려준다.
+- 수집 보고: `collection_runs.agent_log jsonb`(V42)에 `workflowVersion`(작업 절차 파일 SHA-256 앞 12자리), `stopReason`·`capReached`·`turns`·`pages`·`usage`(캐시 나눔)·`costUsd`·`calls[{tool, url, result}]`와 피드백 id `feedbackInjected`(요청에 넣음)·`feedbackRetrieved`(검색으로 찾음)·`feedbackApplied`(거절·주의에 씀). 어드민 API로는 아직 내보내지 않는다.

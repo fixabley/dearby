@@ -2,7 +2,10 @@ package io.wid.dearby.admin.application
 
 import io.wid.dearby.application.activity.ActivityCurationRepository
 import io.wid.dearby.application.activity.ActivityService
+import io.wid.dearby.application.collection.CollectionFeedbackRepository
 import io.wid.dearby.application.collection.WatchlistRepository
+import io.wid.dearby.domain.collection.FeedbackKind
+import io.wid.dearby.domain.collection.NewFeedback
 import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.domain.ConflictException
 import io.wid.dearby.domain.Id
@@ -21,6 +24,7 @@ class WatchlistAdminService(
     private val programs: ProgramRepository,
     private val activities: ActivityService,
     private val curations: ActivityCurationRepository,
+    private val feedback: CollectionFeedbackRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -38,6 +42,8 @@ class WatchlistAdminService(
     @Transactional
     fun delete(entryId: Id) {
         if (!watchlist.delete(entryId)) throw NotFoundException("조심 목록 항목을 찾을 수 없습니다", "Watch entry not found: $entryId")
+        // 지운 항목이 수집 피드백으로 계속 거절하지 않게 함께 지운다
+        feedback.deleteByWatchEntry(entryId)
     }
 
     // 중복으로 지정: 그 활동의 이름을 조심 목록에 올리고 활동을 지운다(수집 출처는 dismissed로 남아 같은 회차는 다시 생기지 않는다)
@@ -63,11 +69,19 @@ class WatchlistAdminService(
                 id
             }
         }
-        return try {
+        val entry = try {
             watchlist.create(programId, trimmed, kind, canonical, note)
         } catch (e: DuplicateKeyException) {
             throw ConflictException("이 프로그램의 조심 목록에 같은 이름이 있습니다", e.message ?: "duplicate watch entry")
         }
+        // 수집 피드백(V43): 항목 id를 남겨 항목을 지우면 함께 지운다
+        feedback.record(
+            NewFeedback(
+                if (kind == WatchKind.ALIAS) FeedbackKind.WATCH_ALIAS else FeedbackKind.WATCH_EXCLUDE, programId, null, trimmed,
+                mapOf("watchEntryId" to entry.id, "canonicalActivityName" to entry.canonicalActivityName).filterValues { it != null }, note,
+            )
+        )
+        return entry
     }
 
     private fun requireProgram(programId: Id) {

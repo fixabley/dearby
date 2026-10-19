@@ -1,18 +1,18 @@
 package io.wid.dearby.batch.adaptor.claude
 
 import org.springframework.boot.context.properties.ConfigurationProperties
+import java.math.BigDecimal
 import java.time.Duration
 
-// engine: api(Anthropic API, ANTHROPIC_API_KEY) 또는 cli(Claude Code CLI, 구독 로그인·CLAUDE_CODE_OAUTH_TOKEN)
+// 수집 에이전트(Claude Code CLI, 구독 로그인·CLAUDE_CODE_OAUTH_TOKEN). cliTimeout은 프로그램 하나의 루프 전체,
+// maxTurns는 CLI --max-turns, maxPages는 도구 서버가 받아 주는 페이지 수(프로그램당)
 @ConfigurationProperties("dearby.collection")
 data class CollectionProperties(
-    val engine: String = ENGINE_API,
     val model: String = "claude-haiku-4-5",
     val cliPath: String = "claude",
-    val cliTimeout: Duration = Duration.ofMinutes(4),
-) {
-    companion object {
-        const val ENGINE_API = "api"
-        const val ENGINE_CLI = "cli"
-    }
-}
+    val cliTimeout: Duration = Duration.ofMinutes(15),
+    val maxTurns: Int = 12,
+    val maxPages: Int = 15,
+    val maxBudgetUsd: BigDecimal = BigDecimal("1.00"), // CLI --max-budget-usd. 프로그램 하나의 비용 환산 상한(구독이라 청구액이 아닌 부드러운 한도)
+    val workflowPath: String? = null, // 운영에서 바꿔 쓰는 작업 절차 파일(COLLECTION_WORKFLOW_PATH). 없으면 jar 안의 collector/WORKFLOW.md
+)

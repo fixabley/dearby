@@ -6,7 +6,6 @@ dependencies {
     implementation(project(":core"))
     implementation("org.springframework.boot:spring-boot-starter-batch-jdbc")
     implementation("org.springframework.boot:spring-boot-starter-jackson") // 추출 결과 JSON 읽기(JsonMapper)
-    implementation("com.anthropic:anthropic-java:2.72.0")
     implementation("org.jsoup:jsoup:1.23.2")
     implementation("com.microsoft.playwright:playwright:1.63.0") // 브라우저 렌더링 수집(admin-v1.md "브라우저 렌더링"). 이미지의 Chromium은 batch/Dockerfile이 설치한다
     runtimeOnly("org.postgresql:postgresql")

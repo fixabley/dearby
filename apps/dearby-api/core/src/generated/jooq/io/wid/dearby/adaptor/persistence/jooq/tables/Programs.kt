@@ -6,12 +6,14 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.indexes.PROGRAMS_ORGANIZATION_ID_IDX
+import io.wid.dearby.adaptor.persistence.jooq.keys.COLLECTION_FEEDBACK__COLLECTION_FEEDBACK_PROGRAM_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.COLLECTION_WATCHLIST__COLLECTION_WATCHLIST_PROGRAM_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAMS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAMS_SOURCE_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_CONTACTS__PROGRAM_CONTACTS_PROGRAM_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_LOGOS__PROGRAM_LOGOS_PROGRAM_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_TAGS__PROGRAM_TAGS_PROGRAM_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback.CollectionFeedbackPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist.CollectionWatchlistPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts.ProgramContactsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramLogos.ProgramLogosPath
@@ -174,6 +176,22 @@ open class Programs(
     override fun getIdentity(): Identity<ProgramsRecord, Long?> = super.getIdentity() as Identity<ProgramsRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<ProgramsRecord> = PROGRAMS_PKEY
     override fun getUniqueKeys(): List<UniqueKey<ProgramsRecord>> = listOf(PROGRAMS_SOURCE_ID_KEY)
+
+    private lateinit var _collectionFeedback: CollectionFeedbackPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.collection_feedback</code> table
+     */
+    fun collectionFeedback(): CollectionFeedbackPath {
+        if (!this::_collectionFeedback.isInitialized)
+            _collectionFeedback = CollectionFeedbackPath(this, null, COLLECTION_FEEDBACK__COLLECTION_FEEDBACK_PROGRAM_ID_FKEY.inverseKey)
+
+        return _collectionFeedback;
+    }
+
+    val collectionFeedback: CollectionFeedbackPath
+        get(): CollectionFeedbackPath = collectionFeedback()
 
     private lateinit var _collectionWatchlist: CollectionWatchlistPath
 
