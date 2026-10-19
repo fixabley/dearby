@@ -85,9 +85,11 @@ GET과 성공 mutation 모두 `Cache-Control: no-store`다(API는 오류 응답�
 
 HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로만 좁혀 공개한다. 기존 `/v1/profile`, 회원 `/v1/wallet`, 명함 생성/철회, SMTP/auth는 열지 않는다. guest proxy secret 생성·배포와 nginx 운영 변경은 root가 수행하며 앱서버 구현 PR만으로 운영 반영됐다고 표시하지 않는다.
 
-## 명함 공유 기록과 게스트 공유 정보 저장 — 2026-10-06 승인, 2026-10-18 삭제
+## 명함 공유 — 변경 이력 (2026-10-06 승인 → 2026-10-18 삭제 → 2026-10-19 "명함 교환"으로 대체)
 
-2026-10-18 사용자 결정으로 명함 공유 기능을 서버·웹·앱에서 모두 지웠다. CardShare·GuestShare 모델, `POST /v1/cards/:id/shares`, `GET /v1/shares/:id`, `PUT /v1/guest/shares/:id`, `GET /v1/guest/cards`의 `shares`, 웹 `/s/:shareId`와 `/saved`의 `전체 | 활동별` 보기는 더 없다. `GET /v1/guest/cards`는 `{items: Card[]}`만 돌려준다. 운영 DB의 `card_shares`·`guest_card_shares` 테이블은 남아 있으며 삭제 마이그레이션은 별도 승인 PR로 한다. 당시 계약 전문은 [삭제 전 문서](https://github.com/fixabley/dearby/blob/6636e9a6/shared/contracts/native-v1.md#명함-공유-기록과-게스트-공유-정보-저장--2026-10-06-승인)에 있다.
+현재 명함을 건네는 방법은 아래 "명함 교환"(2026-10-19) 한 곳에만 적는다. 옛 공유 기능(CardShare·GuestShare, `POST /v1/cards/:id/shares`, `GET /v1/shares/:id`, `PUT /v1/guest/shares/:id`·`PUT /v1/wallet/shares/:id`, `GET /v1/wallet`·`GET /v1/guest/cards`의 `shares`, 웹 `/s/:shareId`와 `/saved`의 `전체 | 활동별` 보기, 앱 QR 표시·OS 공유·앱 안 스캐너·유니버설 링크/App Links)은 2026-10-18 사용자 결정으로 서버·웹·앱에서 지웠고 복원하지 않는다. 운영 DB의 `card_shares`·`wallet_shares`·`guest_card_shares`는 같은 날 V19로 지웠다.
+
+- 변경 이력: 2026-10-06 승인 계약 [`6636e9a6`](https://github.com/fixabley/dearby/blob/6636e9a6/shared/contracts/native-v1.md#명함-공유-기록과-게스트-공유-정보-저장--2026-10-06-승인) · 2026-10-18 삭제 기록 [`a60a0ca7`](https://github.com/fixabley/dearby/blob/a60a0ca7/shared/contracts/native-v1.md) · 2026-10-19 재설계 [`f6f440e6`](https://github.com/fixabley/dearby/blob/f6f440e6/shared/contracts/native-v1.md#명함-교환--2026-10-19-사용자-결정).
 
 ## 모바일 실제 연결 경계 — 2026-10-06 사용자 결정 반영
 
@@ -100,13 +102,13 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 | 발견·활동 상세 | 공개 카탈로그를 보여 주고, 신청 CTA는 활동의 공식 신청 URL을 외부 브라우저로 연다. 실패하면 오류와 다시 시도를 보여 주며 예시 활동을 섞지 않는다. | GET /v1/activities (2026-10-14부터, 아래 "활동 조회") |
 | 로그인 | 패스키(2026-10-10 결정, 아래 "패스키 로그인"). 명함 발행과 받은 명함 보기를 할 때만 요구하고, 발견·신청은 로그인 없이 쓴다. access·refresh 토큰은 OS 보안 저장소에 둔다. | /v1/auth/* |
 | 명함 제작 | 프로필 입력과 공개할 연락처·이력 선택을 한 흐름으로 마치고 바로 발행한다. 수정은 새 발행본을 만든다(기존 스냅샷 규칙 유지). | /v1/profile, POST /v1/cards |
-| ~~QR 공유 · 받기~~ | 2026-10-18 삭제. QR 표시·OS 공유·앱 안 스캐너·유니버설 링크/App Links·공유 명함 화면은 없다. QR 탭 자리에는 `내 명함` 탭(내 명함 목록·만들기·고치기)이 있다. 당시 계약은 [삭제 전 문서](https://github.com/fixabley/dearby/blob/6636e9a6/shared/contracts/native-v1.md#실제로-바꾸는-것) 참고. | — |
+| 명함 교환 | 명함별 QR(공개 주소 + 활동) → 웹에서 보고 `dearby://cards/…`로 앱 저장 또는 브라우저 저장, 단방향은 30일 뒤 회수. 아래 "명함 교환"(2026-10-19). 옛 QR 공유·스캔·유니버설 링크는 2026-10-18 삭제(위 "명함 공유 — 변경 이력") | PUT /v1/wallet/cards/:id, POST …/reciprocate, GET /v1/wallet |
 
-- 2026-10-18부터 앱은 `/s/*` 링크를 받지 않고, 웹도 `/.well-known/apple-app-site-association`·`assetlinks.json`을 만들지 않는다(패스키용 `wid.io.kr` 정적 파일은 별도이며 유지). #90·#91은 이 결정으로 닫는다.
+- 앱은 `/s/*` 유니버설 링크를 받지 않고(2026-10-18 삭제), 웹도 `/.well-known/apple-app-site-association`·`assetlinks.json`을 만들지 않는다(패스키용 `wid.io.kr` 정적 파일은 별도이며 유지). 앱이 링크를 받는 통로는 커스텀 스킴 `dearby://`(애플 콜백, 명함 교환)만이다. #90·#91은 이 결정으로 닫았다.
 
 ### 비로그인 사용자의 저장 유지
 
-2026-10-06 사용자 결정: 비로그인 사용자는 앱을 설치하지 않았고 로그인하지 않은 사람이다. 공개 명함 링크 `/cards/:id`가 기본 브라우저에서 열린다(2026-10-18까지는 QR의 `/s/<shareId>`였다). 서버가 만료 없는 게스트 세션 ID를 발급하고, 저장 데이터는 DB에 두며 API가 세션 ID로 조회한다. 브라우저에는 세션 ID 쿠키만 둔다.
+2026-10-06 사용자 결정: 비로그인 사용자는 앱을 설치하지 않았고 로그인하지 않은 사람이다. 공개 명함 링크 `/cards/:id`(명함 교환 QR의 주소, 2026-10-18까지는 `/s/<shareId>`)가 기본 브라우저에서 열린다. 서버가 만료 없는 게스트 세션 ID를 발급하고, 저장 데이터는 DB에 두며 API가 세션 ID로 조회한다. 브라우저에는 세션 ID 쿠키만 둔다.
 
 - 웹: 위 "웹 비로그인 명함 저장" 계약의 서버 게스트 세션(`__Host-dearby_guest` 쿠키)을 그대로 쓴다. 서버 세션은 만료되지 않는다. 브라우저는 쿠키 수명을 최대 400일로 제한하므로, 방문할 때마다 Max-Age를 갱신한다(기존 규칙). 1년 넘게 방문하지 않거나 사용자가 쿠키를 지우면 접근이 끊긴다.
 - 홈 화면 추가: Android Chrome은 바로가기·설치 모두 Chrome과 같은 쿠키를 쓴다. iOS는 '웹 앱으로 열기'가 기본으로 켜져 있고 사이트가 바꿀 수 없어서, 그대로 추가하면 Safari와 쿠키가 분리된다(2026-10-06 iOS 26.5 시뮬레이터 확인). 사용자 결정으로 아래 "홈 화면 세션 잇기"를 둔다. manifest `display`는 Android 설치 버튼을 위해 `standalone`을 유지한다. iOS는 공유 메뉴에서 직접 추가해야 하므로 1번 클릭 설치는 불가하고 안내로 제공한다.
@@ -116,7 +118,7 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
   - API `POST /v1/guest/handoffs/redeem`: body `{code}`, 게스트 프록시, 토큰 없이 호출. 200 `{guestToken}`(코드로 복호화한, Safari와 같은 토큰). 없음·만료·사용됨·세션 폐기는 모두 404 `NOT_FOUND`(구분하지 않음). 성공하면 즉시 사용 처리한다. 요청 제한은 게스트 카운터와 같고, 실패도 센다.
   - 웹 `/saved?handoff=<code>`: 게스트 쿠키가 없을 때만 교환한다. 성공하면 쿠키를 설정하고, 성공·실패 모두 303으로 쿼리 없는 `/saved`로 보낸다. 이미 쿠키가 있으면 교환하지 않고 바로 보낸다. 페이지는 `Referrer-Policy: no-referrer`를 쓰고, 서버 로그에서 `handoff` 쿼리를 가린다.
   - 위험: 코드는 유효 시간 동안 게스트 세션 전체(저장한 명함)를 넘겨받는 열쇠다. 다른 기기에서의 사용을 막을 수 없다. 1회용·10분·digest 저장·요청 제한·manifest 캐시 금지로 줄인다. 마이그레이션은 운영 DB 변경이므로 별도 PR로 사용자 승인 뒤 병합한다.
-- 앱의 게스트 세션·게스트 API는 만들지 않는다(2026-10-18 공유 삭제로 앱이 링크를 받는 경로도 없다).
+- 앱의 게스트 세션·게스트 API는 만들지 않는다. 앱은 `dearby://cards/<id>` 스킴으로 받은 명함을 계정 지갑에 저장한다("명함 교환").
 - 2026-10-03 이전 기기에 남은 앱 저장 데이터는 읽거나 지우거나 이관하지 않는다.
 
 ### 연결 설정 — 도메인 기반, 환경값으로 지정
@@ -125,18 +127,20 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 
 | 환경값 | 쓰는 곳 | 의미 |
 | --- | --- | --- |
-| `DEARBY_API_ORIGIN` | 웹 서버, iOS·Android 빌드 | API origin(scheme+도메인, `/v1` 제외). 예: `https://wid.io.kr` |
+| `DEARBY_API_ORIGIN` | 웹 서버, iOS·Android 빌드 | API origin(scheme+도메인, `/v1` 제외). 예: `https://api.dearby.wid.io.kr` |
+| `DEARBY_WEB_ORIGIN` | iOS·Android 빌드 | 웹 origin. 명함 교환 QR 주소(`<웹 origin>/cards/<id>`)에 쓴다. 기본 `https://dearby.wid.io.kr`(2026-10-18 삭제 뒤 2026-10-19 다시 도입) |
+| `GOOGLE_IOS_CLIENT_ID`·`GOOGLE_IOS_URL_SCHEME`(iOS), `GOOGLE_SERVER_CLIENT_ID`(Android) | 앱 빌드 | 구글 네이티브 로그인(아래 "구글 로그인"). 비어 있으면 버튼 숨김 |
 
-2026-10-18 공유 삭제로 `DEARBY_WEB_ORIGIN`(앱)과 `DEARBY_APPLE_TEAM_ID`·`DEARBY_IOS_BUNDLE_IDS`·`DEARBY_ANDROID_PACKAGE`·`DEARBY_ANDROID_CERT_SHA256`(웹 `/.well-known` 연결 파일)은 쓰지 않는다.
+`DEARBY_APPLE_TEAM_ID`·`DEARBY_IOS_BUNDLE_IDS`·`DEARBY_ANDROID_PACKAGE`·`DEARBY_ANDROID_CERT_SHA256`(웹 `/.well-known` 연결 파일)은 2026-10-18 공유 삭제 뒤 쓰지 않는다.
 
 - 운영·배포 빌드는 `https`와 도메인 host만 허용한다. IP 주소 host, `http`, 포트 지정, 경로가 있는 값은 빌드 또는 시작 시 실패시킨다. 개발 구성만 `http://localhost`·`127.0.0.1`·Android 에뮬레이터 `10.0.2.2`를 허용한다.
 - iOS: 빌드 환경값을 Info.plist 키(`DearbyAPIOrigin`)로 넣는다. 값이 없으면 Release 빌드는 실패하고, Debug는 로컬 개발 기본값을 쓴다.
 - Android: Gradle이 같은 환경값(또는 같은 이름의 Gradle 속성)을 읽어 `BuildConfig`로 넣는다. 값이 없으면 release 빌드는 실패한다.
 - 웹은 요청이 들어온 자기 origin을 기준으로 동작하므로 웹 도메인 환경값이 따로 필요 없다. API 서버의 `HOST`·`PORT`는 내부 바인딩이며, 외부에서는 ingress 도메인으로만 접근한다.
 
-### 앱에서 받은 공유 저장 (회원 wallet) — 2026-10-06, 2026-10-18 삭제
+### 앱에서 받은 명함 저장 (회원 wallet)
 
-`PUT /v1/wallet/shares/:id`와 `GET /v1/wallet`의 `shares`(WalletShare)는 2026-10-18 삭제했다. `GET /v1/wallet`은 `{items: Receipt[]}`만 돌려주고, 새 Receipt를 만드는 경로는 현재 없다(받은 명함 탭은 기존 항목만 보인다). 운영 DB의 `wallet_shares` 테이블은 별도 승인 PR로 지운다. 당시 계약은 [삭제 전 문서](https://github.com/fixabley/dearby/blob/6636e9a6/shared/contracts/native-v1.md#앱에서-받은-공유-저장-회원-wallet--2026-10-06)에 있다.
+2026-10-19부터 `PUT /v1/wallet/cards/:cardId`와 `POST /v1/wallet/cards/:cardId/reciprocate`가 Receipt를 만든다(아래 "명함 교환"). 2026-10-06의 `PUT /v1/wallet/shares/:id`·`GET /v1/wallet`의 `shares`는 2026-10-18 삭제했다(위 "명함 공유 — 변경 이력").
 
 ### 신청 확인과 기기 캘린더 겹침 — 2026-10-06 사용자 결정
 
@@ -238,32 +242,22 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 | POST /v1/cards | Bearer | `{name, description, template, contactIds[], historyIds[]}` | 201 Card. 내 프로필의 id가 아니거나 `approval`이 `approved`가 아닌 이력이면 400. `template`은 앱 내장 기본 템플릿(아래 "템플릿") |
 | GET /v1/cards/:id | 없음 | — | 200 Card. 없거나 철회면 404 |
 | DELETE /v1/cards/:id | Bearer(소유자) | — | 204 철회. 남의 것 403 |
-| GET /v1/wallet | Bearer | — | 200 `{items: Receipt[]}` (2026-10-18부터 `shares` 없음; 2026-10-19부터 `context`·`reciprocal`·`expiresAt`, 아래 "명함 교환") |
+| GET /v1/wallet | Bearer | — | 200 `{items: Receipt[]}`. Receipt 형태와 저장·맞교환 경로는 아래 "명함 교환" |
 
-- Card: `{id, ownerId, name, description, template, introduction, profileName, job, contacts: Contact[], histories: History[], createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `template`은 발행할 때 보낸 마크다운 템플릿, `introduction`은 그것을 **채운 결과**(공개 본문)다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`)에는 `template`을 싣지 않는다. (`webTemplate`·`webIntroduction`은 2026-10-18 같은 날 추가 뒤 삭제했다. 아래 "템플릿".)
+- Card: `{id, ownerId, name, description, template, introduction, profileName, job, contacts: Contact[], histories: History[], createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `template`은 발행할 때 보낸 마크다운 템플릿, `introduction`은 그것을 **채운 결과**(공개 본문)다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`)에는 `template`을 싣지 않는다.
 - Receipt: 아래 "명함 교환"(2026-10-19)의 형태. 새 Receipt는 `PUT /v1/wallet/cards/:cardId`와 `reciprocate`가 만든다.
-- 웹 비로그인 저장(`/v1/guest/*`, 홈 화면 세션 잇기)은 2026-10-17 Kotlin API에 다시 구현했다(위 "웹 비로그인 명함 저장"·"홈 화면 세션 잇기" 계약 그대로. 게스트 공유 정보 저장은 2026-10-18 삭제). 오류 본문은 다른 경로와 같은 ProblemDetail이며 웹 프록시는 상태 코드만 옮긴다(401 `GUEST_SESSION_INVALID`, 그 외 `REQUEST_FAILED`). API의 `GUEST_PROXY_SECRET`이 비어 있으면 `/v1/guest/*`만 503이다.
+- 웹 비로그인 저장(`/v1/guest/*`, 홈 화면 세션 잇기)은 2026-10-17 Kotlin API에 다시 구현했다(위 "웹 비로그인 명함 저장"·"홈 화면 세션 잇기" 계약 그대로; `GET /v1/guest/cards`의 항목 형태와 `activityId`는 아래 "명함 교환"). 오류 본문은 다른 경로와 같은 ProblemDetail이며 웹 프록시는 상태 코드만 옮긴다(401 `GUEST_SESSION_INVALID`, 그 외 `REQUEST_FAILED`). API의 `GUEST_PROXY_SECRET`이 비어 있으면 `/v1/guest/*`만 503이다.
 - 아직 없는 것: `POST /v1/wallet/import`, `POST /v1/exchanges`. 앱이 쓰지 않아 만들지 않는다.
 
-### 템플릿 — 2026-10-18 앱 안 꾸미기 삭제
+### 템플릿
 
-2026-10-18 사용자 결정: 명함 제작 화면의 실시간(렌더링 화면) 템플릿 편집기와 같은 날 추가한 "웹 버전"(`webTemplate`·`webIntroduction`, V20 열)을 모두 지웠다. 서버의 템플릿 채우기 구조는 남긴다.
+명함 본문(`introduction`)은 발행할 때 서버가 `template`을 채운 결과다. 사용자가 템플릿을 고치는 UI는 없다.
 
-- 앱은 명함 제작에서 이름·공개 연락처·이력만 고르고, `template`에는 **앱 내장 기본 템플릿**을 그대로 보낸다. 사용자가 템플릿을 고치는 UI는 없다. 제작 화면은 기본 템플릿을 채운 결과를 읽기 전용 미리보기로 보인다.
-- 기본 템플릿은 `{{profile.introduction}}` 하나다(2026-10-18 사용자 결정 "이미 제공되는 정보인데 명함에 텍스트로 표시되는 거 지워줘"). 이름·직무·연락처는 카드 면(아래 "명함 표현")이 따로 그리므로 본문에 다시 넣지 않는다. 그 전 기본 템플릿(`# 이름 / 직무 / 소개 / - 라벨: 연락처`)으로 발행된 명함은 V27·V28이 같은 모양으로 정리했다(V28은 `# `·빈 줄이 없던 더 이른 기본 템플릿도 포함. 토큰만으로 된 기본 템플릿 모양이 아닌 옛 명함은 그대로).
+- 앱은 명함 제작에서 이름·공개 연락처·이력만 고르고, `template`에는 **앱 내장 기본 템플릿** `{{profile.introduction}}` 하나를 그대로 보낸다. 제작 화면은 채운 결과를 읽기 전용 미리보기로 보인다. 이름·직무·연락처는 카드 면(아래 "명함 표현")이 따로 그리므로 본문에 다시 넣지 않는다.
 - 토큰: `{{profile.name}}`, `{{profile.job}}`, `{{profile.introduction}}`, `{{contact:<연락처 id>}}`. 서버는 발행할 때 채운다. `{{contact:…}}`는 그 명함에 고른 연락처만 채우고, 고르지 않았거나 없는 연락처·모르는 토큰은 빈 문자열이 된다.
 - 발행한 명함은 바뀌지 않는다. 명함을 고치면 앱이 새 명함을 발행하고 이전 명함은 사용자가 지울 때까지 남는다(공개 링크 `/cards/:id` 유지).
-- 마크다운 부분집합(제목·굵게·기울임·목록·링크, 원시 HTML 금지, `https`·`mailto`·`tel` 링크만)과 10,000자·제어 문자 규칙은 그대로다. 기존에 발행된 명함의 `template`·`introduction`은 그대로 보인다.
-- 웹 버전 삭제: V21로 `business_cards.web_template`·`web_introduction` 열을 지운다. 웹 `/cards/:id`는 모든 폭에서 `introduction`만 보인다.
-- 삭제 전 계약(꾸미기 편집기·웹 버전)은 [`cb456363`](https://github.com/fixabley/dearby/blob/cb456363/shared/contracts/native-v1.md#템플릿-명함-꾸미기)에 있다.
-
-### 관리자 (admin-v1.md에도 기록)
-
-- `GET /v1/admin/histories?approval=pending|rejected|approved&verification=pending|…&cursor&size`: 검토할 이력. 항목은 History에 `profileName`(작성자 프로필 이름)을 더한 것. 계정 id는 싣지 않는다.
-- `POST /v1/admin/histories/:id/approval` `{decision: "approve"|"reject", organizationId?, programId?, activityId?, roleId?, reason?}`: 승인 때 id를 주면 직접 입력 값을 그 활동 정보 항목으로 바꾼다(없는 조직·프로그램·역할은 기존 admin API로 먼저 만든다). 거절은 `reason`을 남긴다.
-- `POST /v1/admin/histories/:id/verification` `{decision: "verify"|"reject"}`.
-- `GET /v1/admin/histories/:id/evidence/:eid`: 파일.
-- 역할 목록: `GET /v1/admin/roles?q`, `POST /v1/admin/roles {name, nameEn?}`, `PATCH /v1/admin/roles/:id`, `DELETE /v1/admin/roles/:id`(이력이 쓰면 400). 이름은 띄어쓰기를 뺀 값으로 유일.
+- 마크다운 부분집합(제목·굵게·기울임·목록·링크, 원시 HTML 금지, `https`·`mailto`·`tel` 링크만)과 10,000자·제어 문자 규칙. 웹 `/cards/:id`는 모든 폭에서 `introduction`만 보인다.
+- 변경 이력: 2026-10-18 실시간 꾸미기 편집기와 웹 버전(`webTemplate`·`webIntroduction`, V20)을 같은 날 추가·삭제(V21로 열 삭제, [`cb456363`](https://github.com/fixabley/dearby/blob/cb456363/shared/contracts/native-v1.md#템플릿-명함-꾸미기), 사용자 "실시간 편집 이런 퀄리티면 그냥 빼는 게 좋을 것 같아") · 2026-10-18 기본 템플릿을 `# 이름 / 직무 / 소개 / - 라벨: 연락처`에서 `{{profile.introduction}}`만으로 바꿈(사용자 "이미 제공되는 정보인데 명함에 텍스트로 표시되는 거 지워줘"). 옛 기본 템플릿으로 발행된 명함은 V27·V28이 같은 모양으로 정리했고(V28은 `# `·빈 줄이 없던 더 이른 기본 템플릿 포함), 토큰만으로 된 기본 템플릿 모양이 아닌 옛 명함은 그대로다.
 
 ## 애플 로그인 — 2026-10-16 사용자 결정
 
@@ -354,73 +348,58 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 사용자: "활동 종류도 추가해줬으면 좋겠어. 부트캠프, 컨퍼런스, 워크샵, 스터디, 강연 등으로 구분하고 프로그램 하위에서 그룹화되도록". 활동에 **종류** 하나를 둔다.
 
-- 값(API 코드 → 한글 이름): `BOOTCAMP` 부트캠프, `CONFERENCE` 컨퍼런스, `WORKSHOP` 워크샵, `STUDY` 스터디, `CLUB` 동아리(연합동아리 등, 2026-10-19 같은 날 추가), `LECTURE` 강연, `HACKATHON` 해커톤, `CONTEST` 공모전, `MEETUP` 밋업, `OTHER` 기타. 없으면 `null`(미분류). 저장은 `activities.category varchar(20) null`(V31, check 제약). 코드는 `participationType`처럼 대문자 영문이고 한글 이름은 클라이언트가 붙인다.
+- 값(API 코드 → 한글 이름): `BOOTCAMP` 부트캠프, `CONFERENCE` 컨퍼런스, `WORKSHOP` 워크샵, `STUDY` 스터디, `CLUB` 동아리(연합동아리 등), `LECTURE` 강연, `HACKATHON` 해커톤, `CONTEST` 공모전, `MEETUP` 밋업, `OTHER` 기타. 없으면 `null`(미분류). 저장은 `activities.category varchar(20) null`(V31, check 제약). 코드는 `participationType`처럼 대문자 영문이고 한글 이름은 클라이언트가 붙인다.
 - 공개 `Activity`(활동 조회·발견의 펼친 활동)와 `AdminActivity`에 `category: string|null`을 더한다. `GET /v1/activities`·`GET /v1/discovery/programs`에 `category?` 필터(코드 하나 또는 쉼표 목록)를 더한다.
 - 수집: 추출 지시문이 `category`를 함께 뽑는다(본문의 성격으로 판단, 모르면 null). 어드민이 바꾼 값은 `curated_fields`의 `category`로 보호된다.
-- 화면: 프로그램 하위에서 종류별로 묶는다. **어드민**은 펼친 프로그램 안에서 종류 소제목(부트캠프 (n) …, 미분류는 맨 뒤) 아래에 활동 행을 둔다. **앱·웹 발견**은 펼친 프로그램 안의 활동을 같은 순서의 종류 소제목으로 묶고(종류가 하나뿐이면 소제목 생략), 활동 행에는 종류를 다시 쓰지 않는다. 활동 상세에는 종류 칩 하나. 종류 순서는 위 값 순서. 각 종류 안의 활동 순서는 **모집 마감이 이른 순**이다(2026-10-19 사용자 "정렬은 모집일 순서로"). 정렬 키는 APPLICATION 슬롯의 끝 시각·날짜이고, 모집 마감을 알 수 없으면(모집 기간이 없거나 끝이 비어 있으면) **활동 시작**(ACTIVITY 슬롯의 시작 시각·날짜)을 모집 마감처럼 쓴다(같은 날 사용자 요청 "모집 기간이 미정인 활동들도 활동 시작일을 모집 종료일로 취급"). 둘 다 없으면 맨 뒤, 같으면 이름순. 어드민 펼친 프로그램 안과 `GET /v1/discovery/programs`의 `nearestRecruitmentEndAt`(프로그램 순서)도 같은 키를 쓴다.
+- 화면: 프로그램 하위에서 종류별로 묶는다. **어드민**은 펼친 프로그램 안에서 종류 소제목(부트캠프 (n) …, 미분류는 맨 뒤) 아래에 활동 행을 둔다. **앱·웹 발견**은 펼친 프로그램 안의 활동을 같은 순서의 종류 소제목으로 묶고(종류가 하나뿐이면 소제목 생략), 활동 행에는 종류를 다시 쓰지 않는다. 활동 상세에는 종류 칩 하나. 종류 순서는 위 값 순서, 각 종류 안의 활동 순서는 "발견 프로그램 묶음"의 정렬 키(모집 마감 → 활동 시작 → 없음, 이름순)다.
+- 프로그램 기본 종류: `programs.category`(V33)를 운영자가 지정하면 수집·운영자 생성에서 종류가 비었을 때 기본값으로 쓰고, 운영자가 지정하지 않은 활동에 일괄 적용할 수 있다(admin-v1.md "프로그램 기본 종류"). `ProgramSummary.category`로 발견 머리글에 보인다.
+- 변경 이력: 2026-10-19 최초 9종 [`11ae3025`](https://github.com/fixabley/dearby/blob/11ae3025/shared/contracts/native-v1.md#활동-종류category--2026-10-19-사용자-결정) → 같은 날 `CLUB` 동아리 추가(사용자 "연합동아리 같은 동아리 활동도 있어"), 정렬 규칙 두 번 보완(위 정렬 키).
 
-## 발견 프로그램 묶음 — 2026-10-18 사용자 결정
+## 발견 프로그램 묶음 — 2026-10-18 사용자 결정 (2026-10-19 보완)
 
-사용자 제안: 발견 탭을 활동 카드 목록 대신 **프로그램 단위**로 보여 주고, 누르면 아코디언처럼 펼쳐져 지금 열린 활동이 보이게 한다. 세부 규칙은 메인 제안을 사용자가 그대로 승인했다. iOS·Android·웹 발견 화면에 함께 적용하며 활동 상세와 `내 활동`은 바뀌지 않는다.
+발견 탭은 활동 카드 목록 대신 **프로그램 단위**로 보여 주고, 누르면 아코디언처럼 펼쳐져 지금 모집 중인 활동이 보인다. iOS·Android·웹 공통. 활동 상세와 `내 활동`은 바뀌지 않는다.
 
 ### 규칙
 
-- **열린 활동**: 기존 발견 노출 규칙과 같다(게시된 활동, 모집 중, 마감 전. 모집 상태는 모집 기간으로 추론). 열린 활동이 하나도 없는 프로그램은 목록에 나오지 않는다.
-- **머리글**: 프로그램 이름, 조직 이름, 열린 활동 수, 가장 가까운 모집 마감(`M월 d일 (요일) 마감`, 없으면 생략). 정렬은 가장 가까운 마감이 이른 순, 마감 없는 프로그램은 뒤, 같으면 이름순.
-- **펼침**: 머리글을 누르면 그 프로그램의 열린 활동을 기존 활동 카드로 보인다. 기본은 접힘이며, 열린 활동이 1개인 프로그램과 검색어가 활동 이름에 맞은 프로그램은 펼친 채로 시작한다. 펼침 상태는 앱 실행 중 메모리에만 둔다. 동작 줄이기에서는 애니메이션 없이 바뀐다. 머리글은 접근성에서 `펼침`/`접힘` 상태를 가진 버튼으로 읽힌다.
-- **검색**: 검색어는 프로그램 이름·영문 이름, 조직 이름, 열린 활동 이름에 부분 일치(대소문자 무시). 활동 이름으로만 맞은 프로그램도 목록에 나온다.
-- **유형(참가등록·선발)**: 2026-10-18 현재 세 플랫폼의 발견 화면에는 유형 칩이 없다(활동 모델에 `participationType`도 없다). API의 `participationType` 필터는 칩을 다시 넣을 때 쓰도록 둔다. 칩이 생기면 펼친 활동과 열린 활동 수에 함께 적용하고 맞는 활동이 없는 프로그램은 숨긴다.
+- **열린 활동 판정은 서버 한 곳에서만 한다**(2026-10-19). 게시 활동이고 (a) 모집 기간이 시각 일정이면 `start_at ≤ now`(없으면 열림) 이고 `end_at > now`(없으면 열림), (b) 모집 기간이 날짜 일정이면 서울 날짜로 `start_date ≤ today < end_date_exclusive`, (c) 모집 기간이 없으면 활동 시작(시각 또는 서울 0시)이 `now`보다 뒤. 같은 규칙이 `GET /v1/activities?open=true`에도 적용된다. 앱·웹은 열린 활동을 스스로 걸러내지 않고, 활동 상세의 `모집 중/마감/예정` 라벨도 날짜 일정을 같은 규칙으로 계산한다(시각이 없다고 `확인 필요`로 두지 않음).
+- **정렬 키**(활동 공통): 모집 마감(APPLICATION 슬롯의 끝 시각·날짜) → 모집 마감을 알 수 없으면(모집 기간이 없거나 끝이 비어 있으면) 활동 시작(ACTIVITY 슬롯의 시작 시각·날짜) → 둘 다 없으면 맨 뒤, 같으면 이름순. SQL은 `coalesce(app.end_at, app.end_date_exclusive 서울 0시, 활동 시작)`. 프로그램 순서(`nearestRecruitmentEndAt`), 펼친 활동, 어드민 묶음 보기가 모두 이 키를 쓴다.
+- **모집 중만 보기** 토글(기본 켬, 메모리). 켜면 열린 활동이 있는 프로그램만(`openOnly=true`), 끄면 **최근 2년 안에 활동이 있었던 프로그램**(게시 활동의 활동 시작·모집 마감·생성 시각 중 하나가 `now − 2년` 이후)을 모두. 순서는 열린 프로그램 먼저(정렬 키), 그 뒤는 가장 최근 활동 시작이 늦은 순.
+- **머리글**: 프로그램 이름, 조직 이름, 종류 칩(프로그램 기본 종류가 있을 때), `모집 중 n개 · M월 d일 (요일) 마감`(열린 활동이 있을 때) 또는 `최근 활동 yyyy.M`(`latestActivityAt`). 접근성에서 `펼침`/`접힘` 상태를 가진 버튼으로 읽힌다.
+- **펼침**: 머리글을 누르면 `GET /v1/activities?programId=<id>&open=true`로 그 프로그램의 모집 중 활동을 불러와 기존 활동 카드로 보인다. 종류별 소제목으로 묶고(아래 "활동 종류", 종류가 하나뿐이면 소제목 생략) 각 묶음 안은 정렬 키 순. 모집 중이 없으면 "지금 모집 중인 활동이 없어요" 아래에 `지난 활동`(같은 `GET /v1/activities?programId=`, 최근 2년, 활동 시작 최근 순, 20개, 종류 소제목 없음). 기본은 접힘이며, 토글이 켜진 상태에서 열린 활동이 1개인 프로그램과 검색어가 활동 이름에 맞은 프로그램은 펼친 채로 시작한다. 펼침 상태는 앱 실행 중 메모리에만 두고, 동작 줄이기에서는 애니메이션 없이 바뀐다.
+- **검색**: 검색어는 프로그램 이름·영문 이름, 조직 이름, 열린 활동 이름에 부분 일치(대소문자 무시). 활동 이름으로만 맞은 프로그램도 목록에 나온다. 태그 이름 검색과 태그 필터는 "태그" 절(설계 완료, 구현 예정).
+- **유형(참가등록·선발)**: 세 플랫폼의 발견 화면에는 유형 칩이 없다. API의 `participationType` 필터는 칩을 다시 넣을 때 쓰도록 둔다. 칩이 생기면 펼친 활동과 열린 활동 수에 함께 적용하고 맞는 활동이 없는 프로그램은 숨긴다.
 
 ### API
 
 | 메서드·경로 | 인증 | query | 응답 |
 | --- | --- | --- | --- |
-| GET /v1/discovery/programs | 없음 | `q?`(≤100자), `participationType?`(REGISTRATION\|SELECTION), `cursor?`(정수 오프셋, 기본 0), `size?`(1–100, 기본 20) | 200 `{items: ProgramSummary[], nextCursor: number\|null}` |
+| GET /v1/discovery/programs | 없음 | `q?`(≤100자), `participationType?`(REGISTRATION\|SELECTION), `category?`(종류 코드, 쉼표 목록), 대상자 필터(아래 "대상자 조건"), `openOnly?`(기본 `true`), `cursor?`(정수 오프셋, 기본 0), `size?`(1–100, 기본 20) | 200 `{items: ProgramSummary[], nextCursor: number\|null}` |
+| GET /v1/activities | 없음 | 기존 query에 `open?`(기본 false: 전부, `true`: 위 열린 활동만), `category?` | 200 `{items: Activity[], nextCursor}` |
 
 - 경로가 `/v1/programs`가 아닌 이유: `/v1/programs`는 이력 선택 창의 활동 정보 검색(로그인)이 이미 쓴다. `nextCursor`는 정렬 결과의 정수 오프셋이다(활동 조회의 id 커서와 다르다).
-- **모집 중인 프로그램만 보기(2026-10-19 사용자 결정 "당근의 판매중인 상품만 보기처럼")**: 발견 탭 상단에 토글 `모집 중만 보기`(기본 켬). `GET /v1/discovery/programs`에 `openOnly?`(기본 `true`). 켜면 지금과 같이 열린 활동이 있는 프로그램만, 끄면 **최근 2년 안에 활동이 있었던 프로그램**(게시 활동의 활동 시작·모집 마감·생성 시각 중 하나가 `now - 2년` 이후)을 모두 돌려준다. 순서: 열린 프로그램이 먼저(기존 정렬 키), 그 뒤는 가장 최근 활동 시작이 늦은 순. `ProgramSummary`에 `latestActivityAt: ISO-8601|null`(그 프로그램 게시 활동의 가장 최근 활동 시작)을 더하고 `openActivityCount`는 0일 수 있다. 펼치면 `GET /v1/activities?programId=&open=true`로 모집 중 활동을 보이고, 모집 중이 없으면 "지금 모집 중인 활동이 없어요" 아래에 `지난 활동`(같은 `GET /v1/activities?programId=`, 최근 2년, 활동 시작 최근 순, 20개)을 보인다. 열린 활동이 하나뿐일 때 자동으로 펼치는 규칙은 토글이 켜진 상태에서만 적용한다. 어드민은 바뀌지 않는다.
-- **열린 활동 판정 일원화(2026-10-19 사용자 보고 "프로그램을 누르면 활동이 노출되지 않아")**: 원인은 서버가 시각 일정(TIMED)인 모집 기간만 보고 날짜 일정(ALL_DAY) 모집 기간을 "없음"으로 다뤘고, 앱은 시각이 없는 모집 기간을 `확인 필요`로 보고 걸러낸 것. 결정: 판정은 서버 한 곳에서만 한다. 규칙: 게시 활동이고 (a) 모집 기간이 시각 일정이면 `start_at ≤ now`(없으면 열림) 이고 `end_at > now`(없으면 열림), (b) 모집 기간이 날짜 일정이면 서울 날짜로 `start_date ≤ today < end_date_exclusive`, (c) 모집 기간이 없으면 활동 시작(시각 또는 서울 0시)이 `now`보다 뒤. `GET /v1/activities`에 `open=true` 필터를 더해 같은 규칙을 적용한다(기본은 전체). 정렬 키·`nearestRecruitmentEndAt`는 `coalesce(app.end_at, app.end_date_exclusive 서울 0시, 활동 시작)`. 앱·웹은 프로그램을 펼칠 때 `GET /v1/activities?programId=&open=true`를 부르고 **스스로 걸러내지 않는다**. 활동 상세의 `모집 중/마감/예정` 라벨은 날짜 일정도 같은 규칙으로 계산한다(시각이 없다고 `확인 필요`로 두지 않음).
-- ProgramSummary: `{id, name, nameEn: string|null, organization: {id, name}, openActivityCount, nearestRecruitmentEndAt: ISO-8601(UTC)|null, matchedActivityIds: number[]}`. 열린 활동 판정은 서버가 처음으로 가진다: 게시된 활동의 APPLICATION 시각 일정이 `start_at ≤ now`(없으면 열림)이고 `end_at > now`(없으면 열림). 웹·iOS가 쓰던 클라이언트 규칙과 같다. `openActivityCount`는 위 규칙(과 `participationType`)에 맞는 열린 활동 수이고 1 이상인 프로그램만 돌려준다. `nearestRecruitmentEndAt`은 그 활동들 중 가장 이른 모집 마감(없으면 null). `matchedActivityIds`는 `q`가 활동 이름에 맞은 열린 활동 id(없으면 빈 배열).
-- 펼칠 때는 기존 `GET /v1/activities?programId=<id>`를 쓰고, 클라이언트는 열린 활동만 남긴다.
+- ProgramSummary: `{id, name, nameEn: string|null, organization: {id, name}, category: string|null, openActivityCount, nearestRecruitmentEndAt: ISO-8601(UTC)|null, latestActivityAt: ISO-8601|null, matchedActivityIds: number[]}`. `openActivityCount`는 열린 활동 수(`participationType`·`category`·대상자 2차 판정까지 통과한 것)이고 `openOnly=false`에서는 0일 수 있다. `nearestRecruitmentEndAt`은 열린 활동의 정렬 키 최솟값(없으면 null), `latestActivityAt`은 조회 범위 안 게시 활동의 가장 최근 활동 시작. `matchedActivityIds`는 `q`가 활동 이름에 맞은 열린 활동 id(없으면 빈 배열).
 - `Cache-Control: no-store`·오류 형식은 활동 조회와 같다.
+- 변경 이력: 2026-10-18 최초(서버는 시각 모집 기간만 보고 열림 판정, 펼친 활동은 클라이언트가 걸러냄, 열린 활동 1개 이상인 프로그램만) [`b14acca1`](https://github.com/fixabley/dearby/blob/b14acca1/shared/contracts/native-v1.md#발견-프로그램-묶음--2026-10-18-사용자-결정) · 2026-10-19 정렬 키에 활동 시작 대체(사용자 "모집 기간이 미정인 활동들도 활동 시작일을 모집 종료일로 취급") [`6e2834e0`](https://github.com/fixabley/dearby/blob/6e2834e0/shared/contracts/native-v1.md) · 2026-10-19 날짜 모집 기간을 서버가 "없음"으로, 앱이 `확인 필요`로 다뤄 펼친 활동이 비던 버그(운영 활동 126)를 계기로 판정 일원화·`open=true`·`openOnly`·`지난 활동` [`352f20b7`](https://github.com/fixabley/dearby/blob/352f20b7/shared/contracts/native-v1.md#발견-프로그램-묶음--2026-10-18-사용자-결정).
 
-## 구글 로그인 — 2026-10-19 네이티브 SDK로 전환
+## 구글 로그인 — 네이티브 SDK (2026-10-18 결정, 2026-10-19 네이티브로 전환)
 
-사용자 결정(2026-10-19): 구글 개발자 계정 인증이 끝나 OAuth 2.0 SDK를 쓸 수 있으므로, 아래 2026-10-18 **웹 방식**(서버 콜백·client secret·code 교환)을 **네이티브 방식**으로 바꾼다. 웹 방식 엔드포인트(`web/start`·`callback`·`web/exchange`)와 `GOOGLE_CLIENT_SECRET`·`GOOGLE_CALLBACK_URL`은 지운다(운영에 설정된 적이 없다). 계정 규칙(같은 `sub` = 같은 Dearby 계정, 이메일로 합치지 않음, 처음 보는 계정 202 → 패스키 조용히 묻기 → `register`/`/me/identities/google`)과 `user_identities.provider = GOOGLE`은 그대로다.
+애플 로그인·패스키와 함께 쓰는 세 번째 로그인 수단. 앱이 SDK로 받은 구글 ID 토큰을 서버가 검증한다. 같은 구글 계정(`sub`)은 같은 Dearby 계정이 되며 계정은 이메일로 합치지 않는다. 서버에 허용 client id(`GOOGLE_CLIENT_IDS`)가 없으면 `/auth/google/*`는 503이고 앱은 버튼을 숨긴다.
 
 | 메서드·경로 | 인증 | 요청 | 응답 |
 | --- | --- | --- | --- |
-| POST /v1/auth/google/nonce | 없음 | — | 200 `{nonce}`(애플 `/auth/apple/nonce`와 같은 1회용·만료 규칙). 서버에 허용 client id가 없으면 503 |
+| POST /v1/auth/google/nonce | 없음 | — | 200 `{nonce}`(애플 `/auth/apple/nonce`와 같은 1회용·10분 만료 규칙). 허용 client id가 없으면 503 |
 | POST /v1/auth/google | 없음 | `{idToken, nonce}` | 200 TokenPair(이미 연결된 구글 계정) 또는 202 `{linkToken, email, displayName}`(처음 보는 계정). 검증 실패 401 |
-| POST /v1/auth/google/register | 없음 | `{linkToken}` | 201 TokenPair(그대로) |
-| POST /v1/me/identities/google | Bearer | `{linkToken}` | 204(그대로) |
-
-- **ID 토큰 검증**: JWKS 서명, `iss` 두 표기, 만료, `nonce` 일치는 그대로. `aud`는 **허용 목록** `GOOGLE_CLIENT_IDS`(쉼표 구분) 중 하나여야 한다. Android(Credential Manager, `serverClientId` = 웹 클라이언트 id)는 `aud`가 웹 클라이언트 id이고, iOS SDK는 `aud`가 iOS 클라이언트 id이므로 둘을 모두 넣는다. 설정 키는 `GOOGLE_CLIENT_IDS` 하나로 바꾸고 `GOOGLE_CLIENT_ID`는 더 읽지 않는다. 값은 서버 `.env.prod`에만 둔다.
-- **iOS**: `GoogleSignIn-iOS`(Swift Package, `https://github.com/google/GoogleSignIn-iOS`, 10.x — `nonce` 매개변수는 9.0부터)를 `generate_project.rb`가 원격 패키지로 추가한다. 빌드 설정 `GOOGLE_IOS_CLIENT_ID`(비어 있으면 버튼 숨김)와 그 역순 표기 `GOOGLE_IOS_URL_SCHEME`(`com.googleusercontent.apps.<id>`)을 `Info.plist`의 `GIDClientID`·`CFBundleURLSchemes`로 넣는다(기존 `dearby` 스킴은 유지). 이 작업에서 iOS에 `CFBundleURLTypes`가 아예 없어 `dearby://cards/…`가 앱을 열 수 없던 것을 발견해 함께 등록했다(애플·구글 웹 콜백은 `ASWebAuthenticationSession`이 자체 처리해 드러나지 않았다). 흐름: `/auth/google/nonce` → `GIDSignIn.sharedInstance.signIn(withPresenting:hint:additionalScopes:nonce:)` → `idToken`을 `/auth/google`로. 서버가 503이면 버튼 숨김(기존 규칙). 애플 로그인의 `ASAuthorizationController` 처리와 같은 자리에서 결과(200/202)를 다룬다.
-- **Android**: `androidx.credentials`(이미 있음) + `com.google.android.libraries.identity.googleid:googleid`로 `GetGoogleIdOption(serverClientId = BuildConfig.GOOGLE_SERVER_CLIENT_ID, nonce, filterByAuthorizedAccounts=false)` → `GoogleIdTokenCredential.idToken` → `/auth/google`. 빌드 설정 `GOOGLE_SERVER_CLIENT_ID`(Gradle 속성 또는 환경 변수, 비어 있으면 버튼 숨김). Custom Tab 흐름(`features/oauth`의 구글 부분, `dearby://auth/google` 인텐트 필터)은 지운다(애플이 아직 쓰는 부분은 남긴다).
-- **운영 준비(사용자)**: Google Cloud 콘솔에서 OAuth 클라이언트 세 개. ① 웹 애플리케이션(리디렉션 URI 없음) → 서버 `GOOGLE_CLIENT_IDS`와 Android `GOOGLE_SERVER_CLIENT_ID`에 쓴다. ② iOS(번들 `com.dearby.dearby`) → `GOOGLE_IOS_CLIENT_ID`와 서버 허용 목록. ③ Android(패키지 `io.wid.dearby`, 디버그 keystore SHA-1; 출시 서명 SHA-1은 출시 서명을 정한 뒤 추가). 값은 채팅에 적지 않고 서버 `.env.prod`와 로컬 `~/.dearby-deploy/mobile.env`(`GOOGLE_IOS_CLIENT_ID`, `GOOGLE_IOS_URL_SCHEME`, `GOOGLE_SERVER_CLIENT_ID`)에 둔다. 기기 설치 빌드는 그 파일을 읽어 넘기고, CI는 값 없이 빌드한다(버튼 숨김).
-- 버튼 모양·로고 자산 규칙은 2026-10-18 항목 그대로(자산이 들어올 때까지 글자 버튼).
-
-## 구글 로그인 — 2026-10-18 사용자 결정 (웹 방식, 2026-10-19 네이티브로 대체됨 — 위 항목)
-
-애플 로그인·패스키와 함께 쓰는 세 번째 로그인 수단이다. iOS·Android 모두 **웹 방식**(애플의 Android 방식과 같은 서버 코드 흐름)으로 하고 SDK는 넣지 않는다. 같은 구글 계정(`sub`)은 같은 Dearby 계정이 되며, 계정은 이메일로 합치지 않는다. 운영에 `GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`·`GOOGLE_CALLBACK_URL`이 없으면 아래 `/auth/google/*`는 503이다.
-
-| 메서드·경로 | 인증 | 요청 | 응답 |
-| --- | --- | --- | --- |
-| POST /v1/auth/google/web/start | 없음 | `{verifierHash}` | 200 `{authorizeUrl}` |
-| GET /v1/auth/google/callback | 없음 | 구글 리디렉션(`code`, `state`, 또는 `error`) | 303 `dearby://auth/google?code=<1회용>` 또는 `?error=cancelled\|failed` |
-| POST /v1/auth/google/web/exchange | 없음 | `{code, verifier}` | 200 TokenPair(이미 연결된 구글 계정) 또는 202 `{linkToken, email, displayName}`(처음 보는 계정). 401이면 처음부터 다시 |
 | POST /v1/auth/google/register | 없음 | `{linkToken}` | 201 TokenPair. 새 Dearby 계정(USER)을 만들고 구글 계정을 연결한다 |
 | POST /v1/me/identities/google | Bearer | `{linkToken}` | 204. 로그인한 계정에 구글 계정을 연결한다. 이미 다른 구글 계정이 연결돼 있으면 400 |
 
-- 흐름(앱 공통): 무작위 verifier(43자 이상)의 SHA-256(base64url, 패딩 없음)을 `web/start`로 보내고, 받은 `authorizeUrl`을 iOS는 `ASWebAuthenticationSession`(callback scheme `dearby`), Android는 Custom Tab으로 연다. 구글은 `GOOGLE_CALLBACK_URL`(`https://api.dearby.wid.io.kr/v1/auth/google/callback`)로 돌려보내고, 서버는 `code`를 구글 토큰 엔드포인트에서 교환해 ID 토큰을 검증한 뒤 `dearby://auth/google?code=…`로 앱에 돌려보낸다. 앱은 그 code와 verifier로 `web/exchange`를 부른다. 결과 code·linkToken은 10분, 한 번만 쓴다.
-- 인가 요청: `https://accounts.google.com/o/oauth2/v2/auth`, `response_type=code`, `scope=openid email profile`, `state`(서버가 만든 상태 id), `nonce`, `prompt=select_account`. `access_type=offline`은 쓰지 않고 refresh token은 저장하지 않는다(계정 삭제 때 폐기할 토큰이 없다. 애플과 다른 점).
-- ID 토큰 검증: JWKS `https://www.googleapis.com/oauth2/v3/certs` 서명, `iss`가 `https://accounts.google.com` 또는 `accounts.google.com`, `aud = GOOGLE_CLIENT_ID`, 만료, `nonce`가 발급값과 같아야 한다. `email_verified`가 false면 email은 저장하지 않는다. `name`을 `display_name`에 남긴다.
-- 처음 보는 구글 계정(202)의 처리는 애플과 같다: 앱이 이 기기의 Dearby 패스키를 조용히 묻고(있으면 로그인 후 `/me/identities/google`로 연결), 없으면 `register`로 새 계정, 사용자가 프롬프트를 닫았을 때만 선택 화면.
-- DB: `user_identities.provider`에 `GOOGLE`을 허용한다(V22). 로그인 중간 상태는 애플의 상태 저장소와 같은 구조(provider 열 추가 또는 별도 테이블)로 둔다.
-- 앱 화면: 로그인 시트와 시작 화면에 애플 버튼 옆(iOS는 아래)에 `Google로 계속하기` 버튼을 둔다. 구글 브랜드 가이드의 흰 바탕·회색 테두리·"G" 로고 버튼을 따르되, 로고 자산은 공식 파일을 받아 `shared/assets/prototype`에 둔 뒤 적용한다(자산이 없는 동안은 글자 버튼). 빌드에 `GOOGLE_SIGN_IN_ENABLED` 같은 별도 플래그는 두지 않고, 서버가 503이면 버튼을 숨긴다(애플 버튼이 `appleSignInEnabled`를 판단하는 방식과 같게).
-- Android는 `dearby://auth/google` 인텐트 필터를, iOS는 `ASWebAuthenticationSession` 콜백으로 받는다. 애플 콜백 처리(`appleRedirect`)와 같은 자리에서 구글 콜백도 해석한다.
-- 운영 준비(사용자): Google Cloud 콘솔에서 OAuth 클라이언트(종류 "웹 애플리케이션") 생성, 승인된 리디렉션 URI에 `https://api.dearby.wid.io.kr/v1/auth/google/callback` 추가, OAuth 동의 화면(앱 이름 Dearby, scope openid·email·profile). 클라이언트 ID·시크릿은 서버 `.env.prod`에만 둔다.
+- **ID 토큰 검증**: JWKS `https://www.googleapis.com/oauth2/v3/certs` 서명, `iss`가 `https://accounts.google.com` 또는 `accounts.google.com`, 만료, `nonce`가 발급값과 같고 1회만, `aud`는 **허용 목록** `GOOGLE_CLIENT_IDS`(쉼표 구분) 중 하나. Android(Credential Manager, `serverClientId` = 웹 클라이언트 id)는 `aud`가 웹 클라이언트 id이고 iOS SDK는 iOS 클라이언트 id이므로 둘을 모두 넣는다. `email_verified`가 false면 email은 저장하지 않고 `name`을 `display_name`에 남긴다. refresh token은 받지 않으므로 계정 삭제 때 폐기할 구글 토큰이 없다(애플과 다른 점).
+- **처음 보는 구글 계정(202)**: 애플과 같다. 앱이 이 기기의 Dearby 패스키를 조용히 묻고(있으면 로그인 후 `/me/identities/google`로 연결), 없으면 `register`로 새 계정, 사용자가 프롬프트를 닫았을 때만 선택 화면. `linkToken`은 10분, 한 번만.
+- **DB**: `user_identities.provider`에 `GOOGLE`(V22). nonce 상태는 애플의 상태 저장소(`apple_sign_in_states`, 10분 TTL)를 같이 쓴다.
+- **iOS**: `GoogleSignIn-iOS`(Swift Package, `https://github.com/google/GoogleSignIn-iOS`, 10.x — `nonce` 매개변수는 9.0부터)를 `generate_project.rb`가 원격 패키지로 추가한다. 빌드 설정 `GOOGLE_IOS_CLIENT_ID`(비어 있으면 버튼 숨김)와 역순 표기 `GOOGLE_IOS_URL_SCHEME`(`com.googleusercontent.apps.<id>`)을 `Info.plist`의 `GIDClientID`·`CFBundleURLSchemes`로 넣는다(`dearby` 스킴 유지. 이때 `CFBundleURLTypes`가 아예 없어 `dearby://cards/…`가 앱을 열 수 없던 것을 함께 등록했다). 흐름: `/auth/google/nonce` → `GIDSignIn.sharedInstance.signIn(withPresenting:hint:additionalScopes:nonce:)` → `idToken`을 `/auth/google`로. 결과(200/202)는 애플 `ASAuthorizationController` 처리와 같은 자리에서 다룬다.
+- **Android**: `androidx.credentials` + `com.google.android.libraries.identity.googleid:googleid`로 `GetGoogleIdOption(serverClientId = BuildConfig.GOOGLE_SERVER_CLIENT_ID, nonce, filterByAuthorizedAccounts=false)` → `GoogleIdTokenCredential.idToken` → `/auth/google`. 빌드 설정 `GOOGLE_SERVER_CLIENT_ID`(Gradle 속성 또는 환경 변수, 비어 있으면 버튼 숨김). `dearby://auth/google` 인텐트 필터는 없다(애플의 `dearby://auth/apple`만 남는다).
+- **앱 화면**: 로그인 시트와 시작 화면에 애플 버튼 옆(iOS는 아래)에 `Google로 계속하기`. 구글 브랜드 가이드의 흰 바탕·회색 테두리·"G" 로고 버튼을 따르되 로고 자산은 공식 파일을 받아 `shared/assets/prototype`에 둔 뒤 적용한다(자산이 없는 동안은 글자 버튼). `GOOGLE_SIGN_IN_ENABLED` 같은 별도 플래그는 두지 않고 빌드 값이 비거나 서버가 503이면 숨긴다(애플 버튼의 `appleSignInEnabled` 방식과 같게).
+- **운영 준비(사용자)**: Google Cloud 콘솔 OAuth 클라이언트 세 개 — ① 웹 애플리케이션(리디렉션 URI 없음) → 서버 `GOOGLE_CLIENT_IDS`와 Android `GOOGLE_SERVER_CLIENT_ID`, ② iOS(번들 `com.dearby.dearby`) → `GOOGLE_IOS_CLIENT_ID`와 서버 허용 목록, ③ Android(패키지 `io.wid.dearby`, 디버그 keystore SHA-1; 출시 서명 SHA-1은 출시 서명을 정한 뒤). 값은 채팅에 적지 않고 서버 `.env.prod`와 로컬 `~/.dearby-deploy/mobile.env`(`GOOGLE_IOS_CLIENT_ID`, `GOOGLE_IOS_URL_SCHEME`, `GOOGLE_SERVER_CLIENT_ID`)에만 둔다. 기기 설치 빌드는 그 파일을 읽어 넘기고 CI는 값 없이 빌드한다(버튼 숨김).
+- 변경 이력: 2026-10-18 웹 방식(서버 코드 흐름 `web/start`·`callback`·`web/exchange`, `GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`·`GOOGLE_CALLBACK_URL`, iOS `ASWebAuthenticationSession`·Android Custom Tab, 운영에 설정된 적 없음) [`fe52a2f9`](https://github.com/fixabley/dearby/blob/fe52a2f9/shared/contracts/native-v1.md#구글-로그인--2026-10-18-사용자-결정) → 2026-10-19 구글 개발자 계정 인증 완료로 네이티브 SDK로 교체(웹 방식 엔드포인트·시크릿 삭제) [`416d38ac`](https://github.com/fixabley/dearby/blob/416d38ac/shared/contracts/native-v1.md#구글-로그인--2026-10-19-네이티브-sdk로-전환).
 
 ## 대상자 조건(eligibility) — 2026-10-18 사용자 결정
 
@@ -510,8 +489,8 @@ Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvall
 - **소개**: `introduction`(기본 템플릿을 채운 결과 = 자기소개 글) 마크다운을 지금 렌더러로. 비어 있으면 절 생략. 이름·직무·연락처는 여기 다시 나오지 않는다(2026-10-18, 위 "템플릿").
 - **연락처**: 절 제목 `연락처`. 행마다 왼쪽 종류 아이콘(전화·메일·카카오톡·Instagram·GitHub·Behance), 라벨(보조색 작은 글자: `label`이 있으면 그것, 없으면 종류 이름), 값(본문색), 열 수 있으면 오른쪽 외부 링크 아이콘. 행 전체가 눌려 기존 동작(전화·메일·링크 열기)을 한다. 연락처가 없으면 `공개된 연락처가 없어요`.
 - **활동 이력**: 절 제목 `활동 이력`. 행마다 기간(보조색 작은 글자, `2026.03 – 진행 중`), 제목(굵게, 조직 · 프로그램 · 활동), 역할과 인증 배지(`확인됨`/`미확인`, 기존 배지). 설명이 있으면 아래 한 줄. 이력이 없으면 `공개된 활동 이력이 없어요`.
-- **내 명함 탭**: 가로 스크롤 타일 대신 2열 격자. 첫 칸 `+ 새 명함`, 각 칸은 명함 이름(굵게)·프로필 이름·직무 한 줄. 선택한 칸은 민트 바탕·청록 테두리. 격자 아래에 선택한 명함의 카드(위 규칙)와 `이 명함 고치기` 버튼, 그 아래 위험 색 `이 명함 지우기`(확인 대화상자 "공개 링크도 더 열리지 않아요. 되돌릴 수 없어요." → `DELETE /v1/cards/:id`, 2026-10-18 사용자 요청 "내 명함 삭제가 없어"). 지운 뒤 다음 명함(가장 새 것)을 고르고, 마지막 명함이면 첫 명함 안내로 돌아간다. 명함이 없을 때의 안내 카드는 유지.
-- **받은 명함 상세**: 같은 카드. 행동 버튼은 없음(공유는 나중에).
+- **내 명함 탭**: 가로 스크롤 타일 대신 2열 격자. 첫 칸 `+ 새 명함`, 각 칸은 명함 이름(굵게)·프로필 이름·직무 한 줄. 선택한 칸은 민트 바탕·청록 테두리. 격자 아래에 선택한 명함의 카드(위 규칙)와 `이 명함 고치기` 버튼, 그 아래 위험 색 `이 명함 지우기`(확인 대화상자 "공개 링크도 더 열리지 않아요. 되돌릴 수 없어요." → `DELETE /v1/cards/:id`, 2026-10-18 사용자 요청 "내 명함 삭제가 없어"), 그리고 `QR 보이기`("명함 교환"). 지운 뒤 다음 명함(가장 새 것)을 고르고, 마지막 명함이면 첫 명함 안내로 돌아간다. 명함이 없을 때의 안내 카드는 유지.
+- **받은 명함 상세**: 같은 카드. 카드 위 받은 맥락 줄과 카드 아래 `내 명함도 건네기`는 "명함 교환"(2026-10-19)을 따른다.
 - **웹 `/cards/:id`**: 같은 카드 구성, 저장 버튼은 카드 아래. `/saved` 목록은 바꾸지 않는다.
 - 색·여백·글꼴은 기존 토큰(청록 `#007F80`, 민트 `#F0FCFA`, 구분선 `#E3E8EA`, 보조 `#657078`, Pretendard)만 쓴다. 동작 줄이기 영향 없음(애니메이션 없음).
 

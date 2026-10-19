@@ -23,17 +23,19 @@
 4. **원문 대조**: 근거 구절(10~200자)이 원문에 있어야 한다(공백·마크다운 기호 차이 무시). 신청 주소는 원문 페이지의 `<a href>`에 있을 때만 남긴다. 읽을 수 없는 시각은 비우고 날짜 문구만 남긴다. **구절이 있다는 것은 모든 필드가 참이라는 증명이 아니다** — 그래서 초안으로만 저장한다.
 5. **저장**: 같은 활동은 프로그램 + 회차 식별자(`roundKey`)로 만든 `source_id`로 찾는다(2026-10-18부터 페이지 주소는 넣지 않는다. 같은 모집이 여러 페이지·여러 날에 보여도 초안 하나다). 시각 일정은 Asia/Seoul로 저장한다.
 
-## 이전 기수 자동완성 — 2026-10-18 사용자 지시
+## 추출·저장 규칙 — 2026-10-18·19 사용자 지시 (현재 상태)
 
-초안을 저장할 때 `eligibility`·`audience`·`participationType`이 비어 있으면 같은 프로그램의 가장 최근 다른 활동(게시 우선)에서 가져오고 `inherited_fields`에 적는다. 추출 요청에도 이전 기수 값을 "참고"로 넘긴다(본문에 없으면 null). 2026-10-18 보완: 운영자가 어드민에서 고친 필드는 `curated_fields`에 남기고, 수집기는 그 필드만 보호한다. 나머지(수집값·가져온 값)는 새 수집값으로 갱신된다.
+계약은 admin-v1.md("프로그램"·"일정 직접 지정…"·"운영자 지정 필드"·"이전 기수 정보 자동완성")와 native-v1.md("활동 종류"·"대상자 조건")에 있다. 여기에는 수집기 쪽 동작만 적는다.
 
-## 날짜 전용 기간·조심 목록 — 2026-10-18 사용자 지시
-
-날짜만 적힌 기간은 `startDate`·`endDate`로 뽑아 종일 일정(`startDate`, `endDateExclusive`)으로 저장하고 `dateLabel`은 원문 보존용이다. 날짜가 아닌 문구("2026 신입생 모집")는 기간 필드에 넣지 않고, 다른 프로그램의 활동은 뽑지 않는다. 그래도 애매한 기간은 어드민에서 운영자가 직접 지정하며(`schedules.curated`), 수집기는 지정된 일정을 덮어쓰지 않는다. 프로그램별 조심 목록(별칭·제외, admin-v1 "조심 목록")을 추출 지시문에 힌트로 넘기고 저장 전 이름 대조로 보장한다.
-
-## 활동 단위 — 2026-10-18 사용자 지시
-
-부스트캠프처럼 한 모집 페이지에서 문제 해결력 테스트·베이직 챌린지·멤버십·프리코스가 각각 활동 초안으로 쪼개져 들어왔다. 활동은 **프로그램의 기수(회차) 하나**다(사용자 정의: 활동은 프로그램을 기수별로 쪼개는 단위. 예: "부스트캠프 10기", "Let'Swift 2026". 트랙은 따로 지원하는 기수일 때만 별도 활동). 그 기수 안의 선발 단계·테스트·챌린지·교육 기간·결과 발표·면접·마감은 그 활동의 `schedules`에 `kind`(DEADLINE·ANNOUNCEMENT·INTERVIEW·EVENT)로 들어간다. 추출 지시문·출력 스키마와 `source_id` 규칙을 그렇게 바꿨다. 이전 규칙으로 들어온 쪼개진 초안은 `source_id`가 달라 자동으로 합쳐지지 않으므로 어드민 활동 화면에서 지운다(지운 초안은 다시 만들지 않는다).
+- **활동 단위**: 활동은 **프로그램의 기수(회차) 하나**다(예 "부스트캠프 10기", "Let'Swift 2026"; 트랙은 따로 지원하는 기수일 때만 별도 활동). 그 기수 안의 선발 단계·테스트·챌린지·교육 기간·결과 발표·면접·마감은 `schedules`에 `kind`(DEADLINE·ANNOUNCEMENT·INTERVIEW·EVENT)로 들어간다. `source_id` = 프로그램 + `roundKey`(페이지 주소 제외). 이전 규칙으로 쪼개져 들어온 초안은 자동으로 합쳐지지 않아 어드민에서 지웠다(지운 초안은 다시 만들지 않음).
+- **두 기간의 정의**: 모집 기간(`recruitmentStartAt/EndAt` 또는 `recruitmentStartDate/EndDate`)은 모집·접수·지원·신청·원서·마감 낱말이 붙은 날짜, 활동 기간(`dateLabel`·`startDate`·`endDate`)은 교육·과정·행사·운영·개최가 실제로 진행되는 기간. 같은 날짜를 두 기간에 넣지 않고, 모집 기간만 있으면 `dateLabel`은 빈 문자열. 날짜만 적힌 기간은 종일 일정(`startDate`, `endDateExclusive`)으로 저장하고 `dateLabel`은 원문 보존용. 날짜가 아닌 문구("2026 신입생 모집")는 기간 필드에 넣지 않고, 다른 프로그램의 활동은 뽑지 않는다.
+- **종류**: `category`(BOOTCAMP·CONFERENCE·WORKSHOP·STUDY·CLUB·LECTURE·HACKATHON·CONTEST·MEETUP·OTHER, 모르면 null)를 뽑는다. null이면 프로그램 기본 종류(`programs.category`)를 쓴다.
+- **대상자 조건**: `eligibility` 트리(어휘·예시를 지시문에 넣음)와 `audience` 원문. 어휘 밖 필드는 서버가 `기타`로 바꾼다.
+- **운영자 피드백을 지시문에 넘기는 것**: (1) 조심 목록 — "활동으로 만들지 않을 이름"(exclude)과 "다른 표기 → 정본 이름"(alias); 저장 전 이름 대조가 보장이고 지시문은 힌트. (2) 이전 기수 — 대상자 조건·대상 원문을 "참고(이전 기수)"로(본문에 없으면 null). (3) 날짜 문구 해석 예시 — 운영자가 지정한 일정(`curated`, 원문 `date_label` + 날짜, 사유 `curated_note`)을 최근 20개(같은 프로그램 우선, 문구 중복 제거) `[모집] "…" → startDate …, endDate … (이유: …)` 형식으로. (4) 시작 주소 — 토큰을 펼친 주소 목록을 탐색 힌트로.
+- **저장 때 보호·보완**: 운영자 지정 필드(`curated_fields`: name·nameEn·description·descriptionEn·eligibility·officialUrl·applicationUrl·location·cost·category)와 `schedules.curated` 일정은 덮어쓰지 않는다. `eligibility`·`audience`·`participationType`이 비면 같은 프로그램의 가장 최근 다른 활동(게시 우선)에서 가져와 `inherited_fields`에 적는다(새 초안은 처음 저장 때, 기존 초안은 빈 필드만). 운영자 직접 등록 활동(`source_id` 없음)은 수집이 건드리지 않는다.
+- **시작 주소 토큰**: `officialUrl`의 `{year}`·`{yy}`·`{round}`를 `CollectionUrlTemplate`(core)이 올해·내년, 다음 기수·현재 기수로 펼친다(`previousRound`는 같은 프로그램의 가장 최근 활동 이름의 "N기", 없으면 맨 앞·뒤 숫자). `CollectActivitiesService`가 이전 기수를 읽은 뒤 펼친 주소를 탐색 결과 앞에 둔다. 기수를 모르면 그 주소는 건너뛰고 거절 이유 `기수 번호를 알 수 없음`을 남긴다(탐색 페이지도 모두 실패하면 결과 FAILED). 어드민 `previousRound`·`previewUrls`는 같은 규칙으로 서버가 계산한다.
+- **받은 페이지 기록**: 실제로 받아 읽은 페이지를 `collection_runs.fetched_urls`(V30)에 받은 순서로 남긴다(실패 제외). 어드민 `lastFetchedUrls`는 마지막 성공 수집의 값이다.
+- 변경 이력: 2026-10-18 활동 단위·날짜 전용 필드·조심 목록·이전 기수 자동완성([`a148af5d` 이전 문서](https://github.com/fixabley/dearby/blob/a148af5d/docs/context/activity-collection-batch.md)) · 2026-10-19 모집·활동 기간 혼동 수정(사용자 보고; 2026-10-18 수집분에서 "우아한 테크코스 2026"은 활동 기간에 모집 기간 2025.09.29~10.10, "Apple Developer Academy Cohort"는 모집 기간에 과정 기간 5/1~12/8, "Apple Developer Academy 2027"은 모집 마감 = 과정 종료일; 원인은 두 기간을 정의하지 않은 지시문과 필수였던 `dateLabel`; 어드민 `기간 확인` 태그·`모집 ↔ 활동 바꾸기` 추가) · 2026-10-19 주소 토큰·받은 페이지·종류·프로그램 기본 종류·날짜 문구 예시+사유.
 
 ## 실행
 
@@ -48,6 +50,8 @@ docker compose -f compose.prod.yaml --env-file .env.prod run --rm batch --collec
 
 같은 프로그램·같은 한국 날짜는 한 번만 수집한다(`collection_runs` 유일 제약). 그날 다시 돌리려면 그날의 `collection_runs` 행을 지운다.
 
+`run --rm batch --collect-now`·`--recall-now`로 띄운 일회성 컨테이너는 작업을 마친 뒤에도 스케줄러와 함께 살아 있어 종료되지 않는다(2026-10-19 확인: 7시간 남은 수집 컨테이너가 정기 수집과 겹칠 수 있었다). 작업 로그(`Collected program …`, `Card recall … finished`)를 확인한 뒤 `docker stop`으로 멈춘다. 작업 뒤 스스로 종료하도록 고칠지는 사용자 결정 대기.
+
 ## 명함 회수 — 2026-10-19 사용자 결정
 
 같은 batch 컨테이너가 매일 04:00(Asia/Seoul)에 `RecallService`를 돌려 단방향으로 받은 명함(`receipts`)과 비로그인 저장(`guest_cards`) 중 받은 날·저장일 + 30일이 지난 것을 `recalled_at`으로 회수한다(계약 native-v1.md "명함 교환"). 맞교환(명함 주인이 받는 사람의 미철회 명함을 갖고 있음)은 남긴다. Spring Batch 잡이 아니라 트랜잭션 하나의 UPDATE 두 번이다. `--recall-now`로 띄우면 기동하자마자 한 번 실행하고 건수를 로그에 남긴다:
@@ -58,19 +62,9 @@ docker compose -f compose.prod.yaml --env-file .env.prod run --rm batch --recall
 
 ## 아직 없는 것
 
-- 프로그램별 수집 설정 입력과 초안 검토·게시 화면(admin 모듈). 그전까지는 DB에 직접 넣고 바꾼다.
-- 게시 활동의 매일 재확인(삭제한 TS 워커의 `--reverify`에 해당), 실패 알림, 비용 상한.
+- 게시 활동의 매일 재확인(삭제한 TS 워커의 `--reverify`에 해당), 실패 알림, 비용 상한, 수집 기록(`collection_runs`) 화면(어드민에는 마지막 성공 날짜·받은 페이지만).
+- 태그 추출(native-v1.md "태그", 설계 완료·구현 예정): 사전을 지시문에 넘기고 사전 밖 이름은 버린다.
 - `api` 엔진의 실제 호출 검증: API 키가 생기면 한 번 돌려 확인해야 한다(Haiku 4.5의 서버 웹 검색·structured outputs는 문서 기준).
-- 웹 전체 검색의 실제 결과(2026-10-15, cli, 설정 없는 Let'Swift): 공식 사이트 대신 X 계정(`x.com/letswiftkr`)에서 같은 이름의 초안 2건을 저장했다(`official_source = false`). 2분 45초, 입력 78,210·출력 17,258 토큰. CLI 내장 WebSearch는 사용량에 검색 횟수가 잡히지 않아 0으로 기록된다. 후속 후보: SNS·모음 사이트 제외 목록, 웹 전체 검색에서 찾은 공식 도메인 후보를 관리자에게 제안.
-- `cli` 엔진은 2026-10-15 로컬 개발 DB에서 Let'Swift(`https://letswift.kr/2026/`, 허용 `letswift.kr`)로 실제 수집했다: 59초, 찾은 1·저장 1(DRAFT), 일정 7개 시각 정상(19:00 KST), 입력 14,776·출력 6,183 토큰, 웹 검색 0회(모델이 공식 페이지만으로 충분하다고 판단). 신청 주소는 원문 링크와 맞지 않아 비워졌다.
-- 이 Mac의 launchd 작업(`com.dearby.catalog-subscription-worker`)과 `~/.dearby-deploy`의 TS 워커 배포 사본은 저장소 밖이라 2026-10-18 소스 삭제로 멈추지 않는다. 사용자가 `launchctl bootout gui/$(id -u)/com.dearby.catalog-subscription-worker`와 plist 삭제로 내린다(저장소의 `scripts/launchd.mjs uninstall`은 더 없다).
+- 과거 기록: 웹 전체 검색의 실제 결과(2026-10-15, cli, 설정 없는 Let'Swift)는 공식 사이트 대신 X 계정(`x.com/letswiftkr`)에서 같은 이름의 초안 2건을 저장했다(`official_source = false`; 2분 45초, 입력 78,210·출력 17,258 토큰; CLI 내장 WebSearch는 검색 횟수가 0으로 기록). `cli` 엔진은 2026-10-15 로컬 개발 DB에서 Let'Swift(`https://letswift.kr/2026/`, 허용 `letswift.kr`)로 실제 수집했다(59초, 찾은 1·저장 1, 일정 7개 시각 정상, 입력 14,776·출력 6,183 토큰, 웹 검색 0회; 신청 주소는 원문 링크와 맞지 않아 비워졌다). 후속 후보: SNS·모음 사이트 제외 목록, 웹 전체 검색에서 찾은 공식 도메인 후보를 관리자에게 제안.
+- 2026-10-18 정리 완료: 이 Mac의 launchd 작업(`com.dearby.catalog-subscription-worker`)과 `~/.dearby-deploy`의 TS 워커 배포 사본은 사용자가 `launchctl bootout`과 plist 삭제로 내렸다.
 
-## 모집 기간·활동 기간 혼동 — 2026-10-19
-
-사용자 보고: 어드민에서 모집 기간과 활동 기간이 서로 바뀐 활동이 있다. 2026-10-18 수집분 확인 결과 "우아한 테크코스 2026"(활동 기간에 모집 기간 2025.09.29~10.10), "Apple Developer Academy Cohort"(모집 기간에 과정 기간 5/1~12/8), "Apple Developer Academy 2027"(모집 마감 = 과정 종료일) 등이 있었다. 원인: 추출 지시문이 두 기간을 정의하지 않았고 `dateLabel`이 필수라서, 페이지에 모집 기간만 있을 때 모델이 그 날짜를 활동 기간 자리에 넣었다. 조치: 지시문에 두 기간의 정의(모집·접수·지원·신청·마감 ↔ 교육·과정·행사·운영·개최)와 "같은 날짜를 두 기간에 넣지 않음, 모집 기간만 있으면 dateLabel은 빈 문자열" 규칙을 넣었다. 어드민은 의심 조건(모집 시작이 활동 종료 뒤, 두 기간 동일, 활동 원문에 모집·접수·지원·신청 낱말)에 `기간 확인` 태그를 붙이고, 편집 폼에 `모집 ↔ 활동 바꾸기` 버튼을 두어 운영자가 바로 고칠 수 있다(고친 값은 운영자 지정으로 보호).
-
-## 시작 주소 토큰·받은 페이지 기록·활동 종류 — 2026-10-19
-
-- **주소 토큰**(admin-v1.md "주소 토큰"): 수집 설정 `officialUrl`에 `{year}`·`{yy}`·`{round}`를 쓸 수 있다. `CollectionUrlTemplate`(core)이 올해·내년, 다음 기수·현재 기수로 펼치고(`previousRound`는 같은 프로그램의 가장 최근 활동 이름의 "N기", 없으면 맨 앞·뒤 숫자), `CollectActivitiesService`가 이전 기수를 읽은 뒤 시작 주소를 펼쳐 탐색 결과 앞에 둔다. 기수를 모르면 그 주소는 건너뛰고 거절 이유 `기수 번호를 알 수 없음`을 남긴다. 어드민 응답의 `previousRound`·`previewUrls`는 같은 규칙으로 서버가 계산한다.
-- **받은 페이지 기록**(V30 `collection_runs.fetched_urls`): 실제로 받아 읽은 페이지를 받은 순서로 남긴다(실패 제외). 어드민 `lastFetchedUrls`는 마지막 성공 수집의 값이다.
-- **활동 종류**(V31 `activities.category`, native-v1.md "활동 종류"): 추출 지시문이 `category`(BOOTCAMP·CONFERENCE·WORKSHOP·STUDY·CLUB·LECTURE·HACKATHON·CONTEST·MEETUP·OTHER, 모르면 null)를 뽑고 초안에 저장한다. 어드민이 바꾼 값은 `curated_fields`의 `category`로 보호된다. 운영자 직접 등록(`POST /v1/admin/activities`)은 출처 없는 초안이라 수집이 건드리지 않는다.
