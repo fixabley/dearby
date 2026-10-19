@@ -11,9 +11,8 @@ struct ActivityDetailView: View {
         Group {
             if let activity {
                 ScrollView {
+                    // No header image (contract "활동 상세 이미지 섹션 제거" 2026-10-19 밤): title, organization and status come first.
                     VStack(alignment: .leading, spacing: 24) {
-                        ActivityArtwork(imageURL: activity.imageURL)
-                            .frame(height: 210).clipped()
                         VStack(alignment: .leading, spacing: 24) {
                             identity(activity)
                             if let eligibility = activity.eligibility { audience(eligibility) }
@@ -25,7 +24,7 @@ struct ActivityDetailView: View {
                                 .font(.footnote).foregroundStyle(DearbyStyle.quiet)
                             Button("신청 상태 수정") { showReport = true }.frame(minHeight: 44)
                             Text("신청 표시는 앱을 종료하면 사라져요.").font(.caption).foregroundStyle(DearbyStyle.quiet)
-                        }.padding(.horizontal, 20).padding(.bottom, 24)
+                        }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 24)
                     }
                 }
                 .safeAreaInset(edge: .bottom, spacing: 0) { applicationActions(activity) }
