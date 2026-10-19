@@ -132,6 +132,8 @@ export const programSummarySchema = z.object({
   openActivityCount: z.number().int().nonnegative(),
   nearestRecruitmentEndAt: text.nullable(),
   matchedActivityIds: z.array(z.number().int()),
+  /** Latest activity start among the program's published activities; absent on older responses (contract "모집 중인 프로그램만 보기"). */
+  latestActivityAt: text.nullable().optional().catch(null),
 });
 export const programPageSchema = z.object({
   items: z.array(programSummarySchema),
@@ -161,13 +163,26 @@ export function recruitment(
   application: Schedule | null,
   now = Date.now(),
 ): { open: boolean; label: string } {
-  const start = application?.startAt ? Date.parse(application.startAt) : NaN;
-  const end = application?.endAt ? Date.parse(application.endAt) : NaN;
-  if (Number.isNaN(start) && Number.isNaN(end))
-    return { open: false, label: "모집 여부 확인 필요" };
+  if (!application) return { open: false, label: "모집 여부 확인 필요" };
+  // Date-only windows compare Seoul days: before the start → 예정, before the exclusive end → 중, otherwise 마감
+  // (contract "열린 활동 판정 일원화"). Timed windows compare instants; a missing end or start is open on that side.
+  if (!application.startAt && !application.endAt) {
+    if (!application.startDate && !application.endDateExclusive)
+      return { open: false, label: "모집 여부 확인 필요" };
+    const today = seoulDay(now);
+    if (application.startDate && today < application.startDate) return { open: false, label: "모집 예정" };
+    if (application.endDateExclusive && today >= application.endDateExclusive) return { open: false, label: "모집 마감" };
+    return { open: true, label: "모집 중" };
+  }
+  const start = application.startAt ? Date.parse(application.startAt) : NaN;
+  const end = application.endAt ? Date.parse(application.endAt) : NaN;
   if (now < start) return { open: false, label: "모집 예정" };
   if (now >= end) return { open: false, label: "모집 마감" };
   return { open: true, label: "모집 중" };
+}
+/** `yyyy-MM-dd` of an instant in Asia/Seoul, comparable with the API's date-only fields. */
+function seoulDay(now: number): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(now));
 }
 const dateTime = (value: string, timeZone: string | null) =>
   new Date(value).toLocaleString("ko-KR", {

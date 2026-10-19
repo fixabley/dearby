@@ -1,12 +1,14 @@
 import SwiftUI
 
-/// 발견 아코디언의 프로그램 머리글(contract "발견 프로그램 묶음"): 이름·조직·열린 활동 수·가장 가까운 마감. 누르면 `toggle`.
+/// 발견 아코디언의 프로그램 머리글(contract "발견 프로그램 묶음"): 이름·조직·모집 중 활동 수(있을 때)·가장 가까운 마감, 모집 중이 없으면 최근 활동 시기. 누르면 `toggle`.
 /// 접근성에서는 `펼침`/`접힘` 상태를 가진 버튼으로 읽히고, 동작 줄이기에서는 화살표가 회전하지 않는다.
 struct ProgramHeader: View {
     let name: String
     let organization: String
     let openCount: Int
     var nearestDeadline: Date?
+    /// The program's most recent activity start; shown as `최근 활동 yyyy.M` when nothing is recruiting (contract "모집 중인 프로그램만 보기").
+    var latestActivity: Date?
     let expanded: Bool
     let toggle: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -17,9 +19,13 @@ struct ProgramHeader: View {
                     Text(name).font(.dearby(.headline)).foregroundStyle(DearbyStyle.ink).multilineTextAlignment(.leading)
                     Text(organization).font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
                     HStack(spacing: 8) {
-                        Text("열린 활동 \(openCount)개").font(.dearby(.caption).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
-                            .padding(.horizontal, 8).padding(.vertical, 2).background(DearbyStyle.mint, in: Capsule())
-                        if let deadline { Text(deadline).font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet) }
+                        if openCount > 0 {
+                            Text("모집 중 \(openCount)개").font(.dearby(.caption).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+                                .padding(.horizontal, 8).padding(.vertical, 2).background(DearbyStyle.mint, in: Capsule())
+                            if let deadline { Text(deadline).font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet) }
+                        } else if let latest {
+                            Text(latest).font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
+                        }
                     }
                 }
                 Spacer(minLength: 0)
@@ -31,8 +37,8 @@ struct ProgramHeader: View {
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(expanded ? DearbyStyle.teal : DearbyStyle.line))
         }.buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel([name, organization, "열린 활동 \(openCount)개", deadline].compactMap { $0 }.joined(separator: ", "))
-            .accessibilityValue(expanded ? "펼침" : "접힘").accessibilityHint(expanded ? "누르면 접어요" : "누르면 열린 활동을 보여요")
+            .accessibilityLabel([name, organization, openCount > 0 ? "모집 중 \(openCount)개" : nil, openCount > 0 ? deadline : latest].compactMap { $0 }.joined(separator: ", "))
+            .accessibilityValue(expanded ? "펼침" : "접힘").accessibilityHint(expanded ? "누르면 접어요" : "누르면 활동을 보여요")
             .accessibilityIdentifier("program-\(name)")
     }
     private var deadline: String? {
@@ -43,6 +49,14 @@ struct ProgramHeader: View {
         formatter.dateFormat = "M월 d일 (E)"
         return formatter.string(from: nearestDeadline) + " 마감"
     }
+    private var latest: String? {
+        guard let latestActivity else { return nil }
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+        formatter.dateFormat = "yyyy.M"
+        return "최근 활동 " + formatter.string(from: latestActivity)
+    }
 }
 
 #if DEBUG
@@ -50,7 +64,8 @@ struct ProgramHeader: View {
     VStack(spacing: 12) {
         ProgramHeader(name: "부스트캠프", organization: "네이버 커넥트재단", openCount: 2,
                       nearestDeadline: ISO8601DateFormatter().date(from: "2026-10-30T14:59:00Z"), expanded: true) {}
-        ProgramHeader(name: "Let'Swift", organization: "Let'Swift", openCount: 1, expanded: false) {}
+        ProgramHeader(name: "Let'Swift", organization: "Let'Swift", openCount: 0,
+                      latestActivity: ISO8601DateFormatter().date(from: "2025-10-08T01:00:00Z"), expanded: false) {}
     }.padding(20).background(.white)
 }
 #endif

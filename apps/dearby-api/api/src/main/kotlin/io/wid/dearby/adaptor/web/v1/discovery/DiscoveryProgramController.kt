@@ -27,6 +27,7 @@ class DiscoveryProgramController(private val summaries: ProgramSummaryService) {
         @RequestParam(required = false) q: String?,
         @RequestParam(required = false) participationType: String?,
         @RequestParam(required = false) category: String?, // 활동 종류 코드 하나 또는 쉼표 목록(native-v1.md "활동 종류")
+        @RequestParam(defaultValue = "true") openOnly: Boolean, // false면 최근 2년 안에 활동이 있었던 프로그램까지(native-v1.md "모집 중인 프로그램만 보기")
         @RequestParam(defaultValue = "0") cursor: Int,
         @RequestParam(defaultValue = ProgramSummaryService.DEFAULT_PAGE_SIZE.toString()) size: Int,
         @RequestParam params: Map<String, String>, // 대상자 필터(age·educationStatus 등 camelCase 어휘)
@@ -37,7 +38,7 @@ class DiscoveryProgramController(private val summaries: ProgramSummaryService) {
             ParticipationType.entries.firstOrNull { it.name.equals(value, ignoreCase = true) }
                 ?: throw InvalidInputException("participationType은 REGISTRATION 또는 SELECTION입니다")
         }
-        val page = summaries.search(ProgramSummarySearch(q, type, cursor, size, EligibilityFilter.from(params), ActivityCategory.parseList(category)))
+        val page = summaries.search(ProgramSummarySearch(q, type, cursor, size, EligibilityFilter.from(params), ActivityCategory.parseList(category), openOnly = openOnly))
         return ResponseEntity.ok().varyBy(HttpHeaders.ACCEPT_LANGUAGE).header(HttpHeaders.CONTENT_LANGUAGE, language.tag)
             .body(ProgramSummaryPageResponse(page.items.map { ProgramSummaryResponse.from(it, language) }, page.nextCursor))
     }

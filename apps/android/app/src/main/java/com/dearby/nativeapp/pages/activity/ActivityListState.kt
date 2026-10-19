@@ -21,19 +21,27 @@ data class ActivityState(
     /** Discovery order inside a category group: recruitment deadline, else activity start; null last. */
     val sortKey: Instant? = null,
 )
-/** One program header in discovery (contract "발견 프로그램 묶음"); [matched] when the search hit an open activity's name. */
-data class ProgramState(val id: String, val title: String, val organization: String, val openCount: Int, val deadline: Instant?, val matched: Boolean)
-/** The open activities of an expanded program, loaded on first expand; [ids] index into [ActivityListState.known]. */
-data class ProgramActivities(val phase: ProgramPhase = ProgramPhase.LOADING, val ids: List<String> = emptyList())
+/**
+ * One program header in discovery (contract "발견 프로그램 묶음"); [matched] when the search hit an open activity's name.
+ * [openCount] is 0 for a program shown only because it had an activity in the last two years; [latestActivityAt] is its most
+ * recent activity start (contract "모집 중인 프로그램만 보기").
+ */
+data class ProgramState(val id: String, val title: String, val organization: String, val openCount: Int, val deadline: Instant?, val matched: Boolean, val latestActivityAt: Instant? = null)
+/**
+ * The open activities of an expanded program, loaded on first expand; [ids] index into [ActivityListState.known]. When none is
+ * open, [pastIds] are the program's activities of the last two years, most recent start first (contract "모집 중인 프로그램만 보기").
+ */
+data class ProgramActivities(val phase: ProgramPhase = ProgramPhase.LOADING, val ids: List<String> = emptyList(), val pastIds: List<String> = emptyList())
 /**
  * Discovery results for [query]: [programs] in server order, which are [expanded] (memory only), and their loaded
  * [programActivities]. [known] keeps every loaded activity with its marks so 내 활동 survives a new search.
  * [nextCursor] is null on the last program page; a failed next page sets [moreFailed] only.
  * [askingId]: the activity whose application link was opened, asked about once when the app comes back (contract #148).
  * [progress] is every loaded activity's stage track with the user's marks (contract "내 활동 진행 트랙"), memory only.
+ * [openOnly] is the `모집 중만 보기` switch (default on, memory only; contract "모집 중인 프로그램만 보기").
  */
 data class ActivityListState(
-    val phase: ActivityListPhase = ActivityListPhase.LOADING, val query: String = "", val programs: List<ProgramState> = emptyList(),
+    val phase: ActivityListPhase = ActivityListPhase.LOADING, val query: String = "", val openOnly: Boolean = true, val programs: List<ProgramState> = emptyList(),
     val expanded: Set<String> = emptySet(), val programActivities: Map<String, ProgramActivities> = emptyMap(),
     val known: Map<String, ActivityState> = emptyMap(), val nextCursor: String? = null, val loadingMore: Boolean = false,
     val moreFailed: Boolean = false, val askingId: String? = null, val progress: Map<String, ProgressState> = emptyMap(),

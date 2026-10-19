@@ -42,17 +42,17 @@ struct ConnectionProvider: Sendable {
         #endif
         return AccountViewModel(client: .live(api: origins.api), vault: vault, appleSignInEnabled: appleSignInEnabled, googleSignInEnabled: googleSignInEnabled)
     }
-    /// Programs with open activities for the discovery accordion (contract "발견 프로그램 묶음").
-    func programs(query: String, cursor: Int64?) async throws -> ProgramPage {
-        do { return try await ActivityClient.fetchPrograms(api: origins.api, query: query, cursor: cursor) } catch {
+    /// Programs for the discovery accordion (contract "발견 프로그램 묶음"); `openOnly` false also lists recently active ones.
+    func programs(query: String, cursor: Int64?, openOnly: Bool) async throws -> ProgramPage {
+        do { return try await ActivityClient.fetchPrograms(api: origins.api, query: query, cursor: cursor, openOnly: openOnly) } catch {
             // Only the origin and the failure kind; the search text is not logged.
             log.warning("Program load from \(origins.api.absoluteString, privacy: .public) failed: \(String(describing: error), privacy: .public)")
             throw error
         }
     }
-    /// One program's activities (first page of up to 100), filtered to the open ones by the caller.
-    func programActivities(programID: Int64) async throws -> ActivityPage {
-        do { return try await ActivityClient.fetch(api: origins.api, query: "", cursor: nil, programID: programID, size: 100) } catch {
+    /// One program's activities: the open ones (server-judged, up to 100) or, for the past list, the first 20 of every activity.
+    func programActivities(programID: Int64, open: Bool) async throws -> ActivityPage {
+        do { return try await ActivityClient.fetch(api: origins.api, query: "", cursor: nil, programID: programID, size: open ? 100 : 20, open: open) } catch {
             log.warning("Activity load from \(origins.api.absoluteString, privacy: .public) failed: \(String(describing: error), privacy: .public)")
             throw error
         }

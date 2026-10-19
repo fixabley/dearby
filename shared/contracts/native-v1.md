@@ -340,6 +340,16 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
   - `application`(모집 기간, 없으면 null), `activitySchedule`(활동 기간·날짜 문구), `schedules[]`(개별 일정)는 Schedule이다.
 - Schedule: `{id, title, kind, status, startAt, endAt, timeZone, startDate, endDateExclusive, dateLabel, address, conferenceUrl}`. 시각 일정은 `startAt`·`endAt` 중 하나 이상과 `timeZone`이 있고, 시각은 그 시간대 오프셋으로 표기한다(예: `2026-10-08T00:00:00+09:00`). 종일 일정은 `startDate`·`endDateExclusive`. 날짜 미정은 모두 null이고 `dateLabel`만 있다.
 
+## 태그(얻을 수 있는 것) — 2026-10-19 사용자 결정
+
+사용자: "프로그램이랑 활동에 태그가 달렸으면 좋겠어. 창업, 창의성, 개발지식, 프로젝트 개발, 협업, 멘토링처럼 사용자가 얻을 수 있는 요소들을 표현하게 해서 검색 결과에 같이 노출". 종류(category)가 "무엇인가"라면 태그는 "무엇을 얻는가"다.
+
+- **어휘는 통제한다**: 자유 입력이 아니라 운영자가 관리하는 태그 사전 `tags(id, name 한글, name_en 영문 nullable, sort_order)`(V34). 사전은 어드민 편집 폼에서 **검색해 고르거나 바로 새 이름을 적어 추가**할 수 있다(2026-10-19 사용자 "편집시 직접 검색 및 직접입력"): 태그 선택은 검색형 다중 선택이고, 사전에 없는 이름을 적으면 저장 때 `POST /v1/admin/tags {name}`으로 만들어 연결한다(영문 이름은 비워 두고 뒤에 채운다, 띄어쓰기만 다른 같은 이름은 기존 태그로 합친다). 수집기는 영문 이름이 비어 있어도 한글 이름으로 고른다. 초기 사전: 창업 startup, 창의성 creativity, 개발지식 engineering, 프로젝트 개발 projectBuilding, 협업 collaboration, 멘토링 mentoring, 네트워킹 networking, 취업 career, 포트폴리오 portfolio, 발표 presentation, 글로벌 global, 장학·지원금 funding, 리더십 leadership, 문제해결 problemSolving. 어드민 `GET/POST/PATCH/DELETE /v1/admin/tags`(이름 변경은 연결 유지, 삭제는 연결도 지움). 공개 `GET /v1/tags` → `{items: Tag[]}`, Tag = `{id, name, nameEn}`.
+- **연결**: `program_tags(program_id, tag_id)`, `activity_tags(activity_id, tag_id)`. 프로그램 태그는 운영자가 지정하고(`PATCH /v1/admin/programs/:id {tagIds, applyTagsToActivities?}`, 종류와 같은 일괄 규칙: 운영자가 태그를 지정하지 않은 활동에 합집합으로 더한다), 활동 태그는 수집기가 사전에서 고르고(지시문에 사전을 넘기고 사전 밖 이름은 버린다) 운영자가 바꾼다(`PATCH /v1/admin/activities/:id {tagIds}`, `POST`도 `tagIds?`, 운영자 지정은 `curated_fields`의 `tags`로 보호). 수집 결과 태그가 비면 프로그램 태그를 기본으로 쓴다(종류와 같다).
+- **노출**: `Activity.tags: Tag[]`, `AdminActivity.tags`, `ProgramSummary.tags: Tag[]`(프로그램 태그가 있으면 그것, 없으면 열린 활동 태그의 합집합, 최대 6개, 사전 순). 발견 프로그램 행에 태그 칩 최대 3개 + `+n`, 펼친 활동 행에 태그 칩, 활동 상세에 전체. 어드민 활동·프로그램 행과 편집 폼에 태그 선택(검색 + 직접 입력으로 새 태그 추가, 다중).
+- **검색**: `GET /v1/activities`·`GET /v1/discovery/programs`의 `q`가 활동 이름 외에 **태그 이름(한글·영문)** 에도 맞는다(`matchedActivityIds`에 포함). 필터 `tagIds?`(쉼표 목록, 모두 포함 AND). 발견 탭 검색창 아래에 태그 칩 줄(`GET /v1/tags`, 다중 선택)을 두고 선택하면 `tagIds`로 보낸다.
+- 표기: 코드 없이 사전 id를 쓰고 이름은 한글+영문 쌍(2026-10-18 어휘 규칙). JSON 키는 camelCase.
+
 ## 활동 종류(category) — 2026-10-19 사용자 결정
 
 사용자: "활동 종류도 추가해줬으면 좋겠어. 부트캠프, 컨퍼런스, 워크샵, 스터디, 강연 등으로 구분하고 프로그램 하위에서 그룹화되도록". 활동에 **종류** 하나를 둔다.
@@ -368,6 +378,8 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 | GET /v1/discovery/programs | 없음 | `q?`(≤100자), `participationType?`(REGISTRATION\|SELECTION), `cursor?`(정수 오프셋, 기본 0), `size?`(1–100, 기본 20) | 200 `{items: ProgramSummary[], nextCursor: number\|null}` |
 
 - 경로가 `/v1/programs`가 아닌 이유: `/v1/programs`는 이력 선택 창의 활동 정보 검색(로그인)이 이미 쓴다. `nextCursor`는 정렬 결과의 정수 오프셋이다(활동 조회의 id 커서와 다르다).
+- **모집 중인 프로그램만 보기(2026-10-19 사용자 결정 "당근의 판매중인 상품만 보기처럼")**: 발견 탭 상단에 토글 `모집 중만 보기`(기본 켬). `GET /v1/discovery/programs`에 `openOnly?`(기본 `true`). 켜면 지금과 같이 열린 활동이 있는 프로그램만, 끄면 **최근 2년 안에 활동이 있었던 프로그램**(게시 활동의 활동 시작·모집 마감·생성 시각 중 하나가 `now - 2년` 이후)을 모두 돌려준다. 순서: 열린 프로그램이 먼저(기존 정렬 키), 그 뒤는 가장 최근 활동 시작이 늦은 순. `ProgramSummary`에 `latestActivityAt: ISO-8601|null`(그 프로그램 게시 활동의 가장 최근 활동 시작)을 더하고 `openActivityCount`는 0일 수 있다. 펼치면 `GET /v1/activities?programId=&open=true`로 모집 중 활동을 보이고, 모집 중이 없으면 "지금 모집 중인 활동이 없어요" 아래에 `지난 활동`(같은 `GET /v1/activities?programId=`, 최근 2년, 활동 시작 최근 순, 20개)을 보인다. 열린 활동이 하나뿐일 때 자동으로 펼치는 규칙은 토글이 켜진 상태에서만 적용한다. 어드민은 바뀌지 않는다.
+- **열린 활동 판정 일원화(2026-10-19 사용자 보고 "프로그램을 누르면 활동이 노출되지 않아")**: 원인은 서버가 시각 일정(TIMED)인 모집 기간만 보고 날짜 일정(ALL_DAY) 모집 기간을 "없음"으로 다뤘고, 앱은 시각이 없는 모집 기간을 `확인 필요`로 보고 걸러낸 것. 결정: 판정은 서버 한 곳에서만 한다. 규칙: 게시 활동이고 (a) 모집 기간이 시각 일정이면 `start_at ≤ now`(없으면 열림) 이고 `end_at > now`(없으면 열림), (b) 모집 기간이 날짜 일정이면 서울 날짜로 `start_date ≤ today < end_date_exclusive`, (c) 모집 기간이 없으면 활동 시작(시각 또는 서울 0시)이 `now`보다 뒤. `GET /v1/activities`에 `open=true` 필터를 더해 같은 규칙을 적용한다(기본은 전체). 정렬 키·`nearestRecruitmentEndAt`는 `coalesce(app.end_at, app.end_date_exclusive 서울 0시, 활동 시작)`. 앱·웹은 프로그램을 펼칠 때 `GET /v1/activities?programId=&open=true`를 부르고 **스스로 걸러내지 않는다**. 활동 상세의 `모집 중/마감/예정` 라벨은 날짜 일정도 같은 규칙으로 계산한다(시각이 없다고 `확인 필요`로 두지 않음).
 - ProgramSummary: `{id, name, nameEn: string|null, organization: {id, name}, openActivityCount, nearestRecruitmentEndAt: ISO-8601(UTC)|null, matchedActivityIds: number[]}`. 열린 활동 판정은 서버가 처음으로 가진다: 게시된 활동의 APPLICATION 시각 일정이 `start_at ≤ now`(없으면 열림)이고 `end_at > now`(없으면 열림). 웹·iOS가 쓰던 클라이언트 규칙과 같다. `openActivityCount`는 위 규칙(과 `participationType`)에 맞는 열린 활동 수이고 1 이상인 프로그램만 돌려준다. `nearestRecruitmentEndAt`은 그 활동들 중 가장 이른 모집 마감(없으면 null). `matchedActivityIds`는 `q`가 활동 이름에 맞은 열린 활동 id(없으면 빈 배열).
 - 펼칠 때는 기존 `GET /v1/activities?programId=<id>`를 쓰고, 클라이언트는 열린 활동만 남긴다.
 - `Cache-Control: no-store`·오류 형식은 활동 조회와 같다.
