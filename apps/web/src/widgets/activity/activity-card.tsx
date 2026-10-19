@@ -15,6 +15,7 @@ export function ActivityCard({
   statusLabel,
   dateLabel,
   imageUrl,
+  tags = [],
 }: {
   id: number;
   name: string;
@@ -23,6 +24,8 @@ export function ActivityCard({
   statusLabel: string;
   dateLabel: string;
   imageUrl?: string;
+  /** 얻을 수 있는 것 태그 (contract "태그"); rendered as neutral chips. */
+  tags?: { id: number; name: string }[];
 }) {
   return (
     <Link className="activity-card" href={`/activities/${id}`}>
@@ -50,6 +53,15 @@ export function ActivityCard({
             {dateLabel || "일정 미확인"}
           </span>
         </div>
+        {tags.length > 0 && (
+          <ul className="tag-chips" aria-label="얻을 수 있는 것">
+            {tags.map((tag) => (
+              <li key={tag.id} className="badge neutral">
+                {tag.name}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
       <span className="card-chevron" aria-hidden="true">
         ›

@@ -101,6 +101,11 @@ const eligibilitySchema: z.ZodType<Eligibility> = z.lazy(() =>
     items: z.array(z.union([eligibilitySchema, eligibilityConditionSchema])),
   }),
 );
+// 얻을 수 있는 것 태그 (contract "태그"): dictionary entries; older responses omit the list.
+export const tagSchema = z.object({ id: z.number().int().positive(), name: text, nameEn: text.nullable().optional() });
+export const tagListSchema = z.object({ items: z.array(tagSchema) });
+export type Tag = z.infer<typeof tagSchema>;
+const tags = z.array(tagSchema).optional().catch([]);
 export const activitySchema = z.object({
   id: z.number().int().positive(),
   name: text,
@@ -114,6 +119,7 @@ export const activitySchema = z.object({
   schedules: z.array(scheduleSchema),
   // 활동 종류 code (contract "활동 종류"); older responses omit it.
   category: text.nullable().optional().catch(null),
+  tags,
   // A malformed eligibility must not break the activity.
   eligibility: eligibilitySchema.nullable().optional().catch(null),
 });
@@ -134,6 +140,8 @@ export const programSummarySchema = z.object({
   matchedActivityIds: z.array(z.number().int()),
   /** Latest activity start among the program's published activities; absent on older responses (contract "모집 중인 프로그램만 보기"). */
   latestActivityAt: text.nullable().optional().catch(null),
+  /** Program tags, else the union of its open activities' tags (contract "태그"). */
+  tags,
 });
 export const programPageSchema = z.object({
   items: z.array(programSummarySchema),

@@ -7,6 +7,7 @@ import {
   type ActivityPage,
   type ProgramPage,
   type ProgramSummary,
+  type Tag,
   deadlineLabel,
   httpsUrl,
   recruitment,
@@ -18,10 +19,12 @@ import { Icon } from "@/shared/ui/icon";
 import { ActivityCard } from "@/widgets/activity/activity-card";
 import { groupByCategory } from "@/lib/category";
 
-function programsPath(q: string, openOnly: boolean, cursor?: number) {
+function programsPath(q: string, openOnly: boolean, tagIds: number[], cursor?: number) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (!openOnly) params.set("openOnly", "false");
+  // 태그 필터 (contract "태그"): every selected tag must match (AND).
+  if (tagIds.length) params.set("tagIds", tagIds.join(","));
   if (cursor !== undefined) params.set("cursor", String(cursor));
   return `/discovery/programs?${params}`;
 }
@@ -40,9 +43,12 @@ export function Discovery({ q }: { q: string }) {
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   // 모집 중만 보기 (contract "모집 중인 프로그램만 보기"): on by default; off also lists programs active in the last two years.
   const [openOnly, setOpenOnly] = useState(true);
+  // Selected 얻을 수 있는 것 tags (contract "태그"); memory only.
+  const [tagIds, setTagIds] = useState<number[]>([]);
+  const tagKey = tagIds.join(",");
   useEffect(() => {
     const controller = new AbortController();
-    request<ProgramPage>(programsPath(q, openOnly), { signal: controller.signal })
+    request<ProgramPage>(programsPath(q, openOnly, tagIds), { signal: controller.signal })
       .then((result) => {
         setPage(result);
         // Auto-expand applies only while the toggle is on.
@@ -52,12 +58,14 @@ export function Discovery({ q }: { q: string }) {
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
     return () => controller.abort();
-  }, [q, openOnly, attempt]);
+    // tagKey stands in for the tagIds array so a re-render with the same selection does not refetch.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, openOnly, tagKey, attempt]);
   function loadMore() {
     if (page?.nextCursor == null || loadingMore) return;
     setLoadingMore(true);
     setMoreError("");
-    request<ProgramPage>(programsPath(q, openOnly, page.nextCursor))
+    request<ProgramPage>(programsPath(q, openOnly, tagIds, page.nextCursor))
       .then((next) => {
         setPage((current) => ({
           items: [...(current?.items ?? []), ...next.items],
@@ -114,6 +122,13 @@ export function Discovery({ q }: { q: string }) {
         />
         모집 중만 보기
       </label>
+      <TagFilter
+        selected={tagIds}
+        onChange={(next) => {
+          setPage(undefined);
+          setTagIds(next);
+        }}
+      />
       {error ? (
         <Failure
           message={error}
@@ -182,6 +197,55 @@ export function Discovery({ q }: { q: string }) {
         </Link>
       </aside>
     </>
+  );
+}
+
+/**
+ * Tag chip row under the search (contract "태그"): the dictionary from `GET /tags`, multi-select; a selection reloads
+ * the program list with `tagIds`. Hidden while the dictionary is unavailable or empty.
+ */
+function TagFilter({ selected, onChange }: { selected: number[]; onChange: (next: number[]) => void }) {
+  const [tags, setTags] = useState<Tag[]>([]);
+  useEffect(() => {
+    const controller = new AbortController();
+    request<{ items: Tag[] }>("/tags", { signal: controller.signal })
+      .then((result) => setTags(result.items))
+      .catch(() => setTags([]));
+    return () => controller.abort();
+  }, []);
+  if (!tags.length) return null;
+  function toggle(id: number) {
+    onChange(selected.includes(id) ? selected.filter((value) => value !== id) : [...selected, id]);
+  }
+  return (
+    <ul className="tag-filter" aria-label="얻을 수 있는 것으로 거르기">
+      {tags.map((tag) => {
+        const on = selected.includes(tag.id);
+        return (
+          <li key={tag.id}>
+            <button type="button" className={`tag-chip${on ? " selected" : ""}`} aria-pressed={on} onClick={() => toggle(tag.id)}>
+              {tag.name}
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+/** Up to three tag chips and a `+n` remainder (contract "태그") for a program header. */
+function TagChips({ tags }: { tags: Tag[] }) {
+  if (!tags.length) return null;
+  const shown = tags.slice(0, 3);
+  const rest = tags.length - shown.length;
+  return (
+    <span className="tag-chips" aria-label="얻을 수 있는 것">
+      {shown.map((tag) => (
+        <span key={tag.id} className="badge neutral">
+          {tag.name}
+        </span>
+      ))}
+      {rest > 0 && <span className="badge neutral">+{rest}</span>}
+    </span>
   );
 }
 
@@ -275,6 +339,7 @@ function OtherActivities({ programId, now }: { programId: number; now: number })
                   statusLabel={recruitment(activity.application, now).label}
                   dateLabel={scheduleLabel(activity.activitySchedule)}
                   imageUrl={httpsUrl(activity.imageUrl)}
+                  tags={activity.tags ?? []}
                 />
               </li>
             ))}
@@ -350,6 +415,7 @@ function ProgramRow({
               <>최근 활동 {monthLabel(program.latestActivityAt ?? null)}</>
             )}
           </span>
+          <TagChips tags={program.tags ?? []} />
         </span>
         <span className="program-chevron" aria-hidden="true">
           ›
@@ -388,6 +454,7 @@ function ProgramRow({
                         statusLabel={recruitment(activity.application, now).label}
                         dateLabel={scheduleLabel(activity.activitySchedule)}
                         imageUrl={httpsUrl(activity.imageUrl)}
+                        tags={activity.tags ?? []}
                       />
                     </li>
                   ))}
