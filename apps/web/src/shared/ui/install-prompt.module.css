@@ -4,7 +4,7 @@
   padding: 16px;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: #fff;
+  background: var(--card);
   font-size: 15px;
   line-height: 1.55;
   word-break: keep-all;
@@ -51,10 +51,10 @@
 .primary {
   border: 1px solid var(--teal);
   background: var(--teal);
-  color: #fff;
+  color: var(--on-teal);
 }
 .secondary {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--card);
   color: var(--muted);
 }
