@@ -168,13 +168,12 @@ a {
   justify-content: space-between;
   gap: 20px;
 }
+/* Brand symbol (shared/ui/brand-symbol.tsx) draws in the theme's teal — the lighter variant in dark (contract "다크 모드"). */
 .brand {
   display: flex;
   align-items: center;
   min-height: 48px;
-}
-.brand img {
-  width: 124px;
+  color: var(--teal);
 }
 .site-header nav {
   display: flex;
@@ -559,14 +558,6 @@ a {
 }
 .detail-heading {
   padding-bottom: 32px;
-}
-.detail-image {
-  display: block;
-  width: 100%;
-  max-height: 360px;
-  object-fit: cover;
-  border-radius: 12px;
-  margin-bottom: 24px;
 }
 .detail-heading .badge {
   margin: 14px 0;
@@ -991,9 +982,6 @@ a {
   .header-inner {
     min-height: 76px;
     padding: 12px 20px;
-  }
-  .brand img {
-    width: 108px;
   }
   .site-header nav {
     gap: 18px;

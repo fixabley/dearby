@@ -73,7 +73,7 @@ Web Locks serialize mutations across tabs in the same browser origin. Unsupporte
 
 ## Visual reference
 
-Reuse `docs/design/native-visual-contract.md` and approved discovery/card/detail images: white/teal, original logo, mint cards, simple dividers, history timeline, 52px CTA. `public/logo-teal.png` is an unchanged copy of the approved logo. Activities show `imageUrl` (https only) when present; otherwise an honest calendar placeholder; no stock/mock production activities. Two web navigation destinations reflect this task's scope, not the native app's full tab contract.
+Reuse `docs/design/native-visual-contract.md` and approved discovery/card/detail images: white/teal, original logo, mint cards, simple dividers, history timeline, 52px CTA. The brand mark is the inline `shared/ui/brand-symbol.tsx` (copy of `shared/assets/brand/symbol.svg`, stroke `currentColor` → `var(--teal)`, so it is the lighter teal in dark mode; 2026-10-19 밤 it replaced the `logo-teal.png` wordmark in the header and install prompt). The activity detail shows no header image (contract "활동 상세 이미지 섹션 제거", 2026-10-19 밤; `imageUrl` stays in the model, unused); no stock/mock production activities. Two web navigation destinations reflect this task's scope, not the native app's full tab contract.
 
 ## 프로필·명함 v2 (2026-10-16)
 

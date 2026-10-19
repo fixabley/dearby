@@ -1,7 +1,7 @@
 "use client";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BrandSymbol } from "@/shared/ui/brand-symbol";
 import { Icon } from "@/shared/ui/icon";
 export function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
@@ -13,15 +13,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <header className="site-header">
         <div className="header-inner">
           <Link className="brand" href="/" aria-label="dearby 탐색">
-            <Image
-              src="/logo-teal.png"
-              alt="dearby"
-              width={2172}
-              height={724}
-              style={{ height: "auto" }}
-              sizes="(max-width: 640px) 108px, 124px"
-              loading="eager"
-            />
+            <BrandSymbol size={40} />
           </Link>
           <nav aria-label="주 메뉴">
             <Link
