@@ -457,7 +457,8 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
   | PATCH /v1/me/passkeys/{id} | `{label}`(1~60자) → 200 항목 |
   | DELETE /v1/me/passkeys/{id} | 204. 마지막 수단이면 409 `LAST_SIGN_IN_METHOD`. 남이 가진 id면 404 |
   "마지막 수단" 판정: 패스키 수 + 연결된 OAuth 수가 1이면 그 하나는 지울 수 없다. 이미 있는 `POST /v1/auth/passkeys/registration/options`·`registration`은 Bearer가 있으면 그 계정에 패스키를 더한다(없으면 기존 가입 흐름).
-- 저장: 변경 없음(`user_credentials`·`user_identities` 그대로).
+- 저장: `users.created_at`(V40, 기존 행은 가장 이른 로그인 수단·프로필 생성 시각으로 채움). `user_credentials`·`user_identities`는 그대로.
+- 구현 메모(2026-10-20): `POST /v1/auth/passkeys/registration/options`는 Bearer가 있으면 그 계정에 패스키를 더한다(응답은 기존처럼 201 TokenPair). 만료·잘못된 Bearer는 401(조용히 새 가입으로 넘어가지 않음). 로그인 상태 options에는 기존 패스키를 `excludeCredentials`로 넣어 키체인이 덮어쓰지 않게 하고, 요청 `displayName`이 새 패스키의 `label`이 된다(기본 `Dearby`). 경로의 `provider`는 소문자(apple|google), 연결돼 있지 않으면 404. PATCH label은 trim 후 1~60자(아니면 400). 다른 사용자의 패스키 id는 404(존재 여부를 구분하지 않음).
 
 ## 활동 장소 — 2026-10-19 사용자 결정
 

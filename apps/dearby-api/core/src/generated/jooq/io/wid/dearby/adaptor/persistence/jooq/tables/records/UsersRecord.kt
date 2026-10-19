@@ -6,6 +6,7 @@ package io.wid.dearby.adaptor.persistence.jooq.tables.records
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.Users
 
+import java.time.OffsetDateTime
 import java.util.UUID
 
 import org.jooq.Record1
@@ -22,6 +23,10 @@ open class UsersRecord() : UpdatableRecordImpl<UsersRecord>(Users.USERS) {
         set(value): Unit = set(0, value)
         get(): UUID? = get(0) as UUID?
 
+    open var createdAt: OffsetDateTime?
+        set(value): Unit = set(1, value)
+        get(): OffsetDateTime? = get(1) as OffsetDateTime?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -31,8 +36,9 @@ open class UsersRecord() : UpdatableRecordImpl<UsersRecord>(Users.USERS) {
     /**
      * Create a detached, initialised UsersRecord
      */
-    constructor(id: UUID? = null): this() {
+    constructor(id: UUID? = null, createdAt: OffsetDateTime? = null): this() {
         this.id = id
+        this.createdAt = createdAt
         resetTouchedOnNotNull()
     }
 }
