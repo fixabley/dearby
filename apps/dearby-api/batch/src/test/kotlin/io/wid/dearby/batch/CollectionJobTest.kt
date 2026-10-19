@@ -29,6 +29,10 @@ import org.springframework.jdbc.core.simple.JdbcClient
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 import java.net.URI
+import java.nio.file.Files
+import java.nio.file.Path
+import java.security.MessageDigest
+import java.util.HexFormat
 import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
@@ -53,7 +57,10 @@ class CollectionJobTest(
     @TestConfiguration
     class Fakes {
         companion object {
-            var lastPrompt = "" // 마지막 실행의 요청(날짜 문구 해석 예시·태그 사전이 들어간다)
+            var lastPrompt = "" // 마지막 실행의 요청(운영자 피드백·태그 사전이 들어간다)
+            var lastCommand: List<String> = emptyList()
+            var lastWorkflow = "" // 마지막 실행에 --system-prompt-file로 넘긴 파일 내용
+            fun option(command: List<String>, name: String) = command[command.indexOf(name) + 1]
             var extractedCategory: String? = "CONFERENCE" // 프로그램 기본 종류 테스트에서 null로 바꾼다
             // 브라우저 렌더링(admin-v1.md): 렌더링 경로로 받은 주소와 HTML 경로로 받은 주소, 브라우저를 내린 횟수
             val renderedUrls = mutableListOf<String>()
@@ -74,8 +81,11 @@ class CollectionJobTest(
         @Bean
         @Primary
         fun fakeCli(properties: CollectionProperties, json: JsonMapper) = object : ClaudeCli(properties, json) {
-            override fun run(systemPrompt: String, prompt: String, mcpUrl: String): JsonNode {
+            override fun execute(command: List<String>, prompt: String, workDir: Path): JsonNode {
+                lastCommand = command
                 lastPrompt = prompt
+                lastWorkflow = Files.readString(Path.of(option(command, "--system-prompt-file")))
+                val mcpUrl = json.readTree(option(command, "--mcp-config")).path("mcpServers").path("dearby").path("url").asString()
                 return json.valueToTree((script ?: ::defaultScript)(prompt, McpClient(mcpUrl, json)))
             }
         }
@@ -154,6 +164,7 @@ class CollectionJobTest(
         jdbc.sql("delete from collection_runs").update()
         jdbc.sql("delete from dismissed_activity_sources").update()
         jdbc.sql("delete from collection_watchlist").update()
+        jdbc.sql("delete from collection_feedback").update()
         jdbc.sql("delete from schedules where curated and slot is null").update()
         // V5로 넣은 Let'Swift 활동만 남기고 수집으로 생긴 활동을 지운다(일정은 함께 지워진다)
         jdbc.sql("delete from activities where source_id is distinct from '01b773dc-5e13-4d14-a182-9642b47d596e'").update()
@@ -278,24 +289,31 @@ class CollectionJobTest(
     }
 
     @Test
-    fun `운영자가 지정한 기간의 원문 문구는 다음 수집의 해석 예시로 지시문에 들어간다`() {
+    fun `운영자 피드백 최근 기록은 요청에, 작업 절차는 WORKFLOW_md 파일로 넘기고 그 판을 기록한다`() {
         officialSetting()
-        // 예시가 없으면 절 자체가 없다
+        // 기록이 없으면 절 자체가 없다
         run("2026-10-18")
-        assertFalse(Fakes.lastPrompt.contains("날짜 문구 해석 예시"))
-        // 어드민이 날짜를 직접 지정한 일정(curated, 원문 문구 있음)을 V5 Let'Swift 활동에 하나 둔다
-        jdbc.sql(
-            """
-            insert into schedules (activity_id, slot, title, kind, status, time_type, start_date, end_date_exclusive, date_label, sequence, created_at, updated_at, curated)
-            select id, null, '해커톤', 'EVENT', 'CONFIRMED', 'ALL_DAY', date '2026-11-01', date '2026-11-16', '2026년 11월 1일~15일', 99, localtimestamp, localtimestamp, true
-            from activities where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'
-            """
-        ).update()
+        assertFalse(Fakes.lastPrompt.contains("운영자 피드백"))
+        val id = feedback("DATE_CURATED", "2026년 11월 1일~15일", """{"startDate":"2026-11-01","endDate":"2026-11-15"}""", reason = "해커톤 기간")
         run("2026-10-19")
-        val prompt = Fakes.lastPrompt
-        assertTrue(prompt.contains("날짜 문구 해석 예시(운영자가 바로잡은 것):\n- [일정] \"2026년 11월 1일~15일\" → startDate 2026-11-01, endDate 2026-11-15"))
-        assertTrue(prompt.contains("비슷한 문구는 같은 방식으로 날짜 필드를 채운다"))
+        assertTrue(Fakes.lastPrompt.contains("운영자 피드백(이 프로그램의 최근 기록):\n- #$id [DATE_CURATED] \"2026년 11월 1일~15일\" → {\"endDate\": \"2026-11-15\", \"startDate\": \"2026-11-01\"} (이유: 해커톤 기간)"))
+        assertTrue(Fakes.lastPrompt.contains("한도: 페이지 15쪽, 차례 12번"))
+        // 작업 절차: 이번 실행 폴더에 꺼낸 jar 안의 WORKFLOW.md. 그 SHA-256 앞 12자리를 agent_log에 남긴다
+        val bundled = javaClass.getResourceAsStream("/collector/WORKFLOW.md")!!.readAllBytes()
+        assertEquals(String(bundled), Fakes.lastWorkflow)
+        assertTrue(Fakes.option(Fakes.lastCommand, "--system-prompt-file").endsWith("/WORKFLOW.md"))
+        assertEquals(sha12(bundled), jdbc.sql("select agent_log ->> 'workflowVersion' from collection_runs where run_date = '2026-10-19'").query(String::class.java).single())
+        assertEquals("[$id]", jdbc.sql("select agent_log -> 'feedbackInjected' from collection_runs where run_date = '2026-10-19'").query(String::class.java).single())
     }
+
+    private fun sha12(bytes: ByteArray) = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)).take(12)
+
+    // Let'Swift 프로그램(또는 programId)의 피드백 한 행
+    private fun feedback(kind: String, source: String, corrected: String = "{}", reason: String? = null, host: String? = null, programId: Long? = letswift()): Long = jdbc.sql(
+        "insert into collection_feedback (kind, program_id, host, source_text, corrected_value, reason, created_at) values (?, ?, ?, ?, ?::jsonb, ?, now()) returning id"
+    ).param(kind).param(programId).param(host).param(source).param(corrected).param(reason).query(Long::class.java).single()
+
+    private fun letswift() = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
 
     @Test
     fun `모델이 종류를 못 뽑으면 프로그램 기본 종류를 초안에 쓴다`() {
@@ -422,12 +440,12 @@ class CollectionJobTest(
         officialSetting()
         val results = mutableListOf<Pair<Boolean, String>>()
         scripted("2026-10-20") { mcp ->
-            // 도구 서버: 127.0.0.1의 비밀 경로로만 받고, 도구 넷을 알린다
+            // 도구 서버: 127.0.0.1의 비밀 경로로만 받고, 도구 다섯을 알린다
             assertTrue(mcp.url.startsWith("http://127.0.0.1:"))
             assertEquals<Int>(404, mcp.post(mapOf("jsonrpc" to "2.0", "id" to 0, "method" to "tools/list"), mcp.url.substringBeforeLast('/') + "/wrong").statusCode())
             assertEquals("dearby", mcp.rpc("initialize", mapOf("protocolVersion" to "2025-06-18")).path("result").path("serverInfo").path("name").asString())
             assertEquals<Int>(202, mcp.post(mapOf("jsonrpc" to "2.0", "method" to "notifications/initialized")).statusCode())
-            assertEquals(listOf("fetch_page", "render_page", "submit_candidate", "finish"), (mcp.rpc("tools/list").path("result").path("tools") as Iterable<JsonNode>).map { it.path("name").asString() })
+            assertEquals(listOf("fetch_page", "render_page", "submit_candidate", "search_feedback", "finish"), (mcp.rpc("tools/list").path("result").path("tools") as Iterable<JsonNode>).map { it.path("name").asString() })
             results += mcp.call("fetch_page", mapOf("url" to "https://evil.example/letswift"))
             results += mcp.call("fetch_page", mapOf("url" to "https://letswift.kr/2026/"))
             results += mcp.call("submit_candidate", candidate("원문 어디에도 없는 문장입니다"))
@@ -471,15 +489,127 @@ class CollectionJobTest(
     }
 
     @Test
-    fun `CLI는 이번 실행의 도구 서버와 웹 검색만 쓰고 턴 한도를 넘긴다`() {
-        val command = ClaudeCli(CollectionProperties(), json).command("지시문", "http://127.0.0.1:1234/secret")
-        fun option(name: String) = command[command.indexOf(name) + 1]
-        assertEquals("""{"mcpServers":{"dearby":{"type":"http","url":"http://127.0.0.1:1234/secret"}}}""", option("--mcp-config"))
-        assertTrue("--strict-mcp-config" in command)
-        assertEquals("WebSearch", option("--tools"))
-        assertEquals("WebSearch,mcp__dearby__fetch_page,mcp__dearby__render_page,mcp__dearby__submit_candidate,mcp__dearby__finish", option("--allowedTools"))
-        assertEquals("12", option("--max-turns"))
+    fun `CLI는 작업 절차 파일·이번 실행의 도구 서버·웹 검색만 쓰고, 운영 파일이 있으면 그 파일을 쓴다`() {
+        // 운영에서 내려 둔 파일(COLLECTION_WORKFLOW_PATH)이 있으면 그것, 없거나 폴더면 jar 안의 기본 파일
+        val mounted = Files.createTempFile("workflow-", ".md").also { Files.writeString(it, "# 운영 절차") }
+        val missing = mounted.resolveSibling("없는-WORKFLOW.md")
+        fun runWith(path: String?): Pair<List<String>, ClaudeCli.Run> {
+            var captured = emptyList<String>()
+            val cli = object : ClaudeCli(CollectionProperties(workflowPath = path), json) {
+                override fun execute(command: List<String>, prompt: String, workDir: Path): JsonNode {
+                    captured = command
+                    return json.valueToTree(Fakes.cliResult())
+                }
+            }
+            val run = cli.run("요청", "http://127.0.0.1:1234/secret")
+            return captured to run
+        }
+        try {
+            val (command, run) = runWith(mounted.toString())
+            fun option(name: String) = Fakes.option(command, name)
+            assertEquals(mounted.toString(), option("--system-prompt-file"))
+            assertEquals(sha12(Files.readAllBytes(mounted)), run.workflowVersion)
+            assertEquals("""{"mcpServers":{"dearby":{"type":"http","url":"http://127.0.0.1:1234/secret"}}}""", option("--mcp-config"))
+            assertTrue("--strict-mcp-config" in command)
+            assertEquals("WebSearch", option("--tools"))
+            assertEquals("WebSearch,mcp__dearby__fetch_page,mcp__dearby__render_page,mcp__dearby__submit_candidate,mcp__dearby__search_feedback,mcp__dearby__finish", option("--allowedTools"))
+            assertEquals("12", option("--max-turns"))
+            val bundled = sha12(javaClass.getResourceAsStream("/collector/WORKFLOW.md")!!.readAllBytes())
+            for (fallback in listOf(missing.toString(), mounted.parent.toString(), null)) {
+                val (other, otherRun) = runWith(fallback)
+                val file = Fakes.option(other, "--system-prompt-file")
+                assertTrue(file.endsWith("/WORKFLOW.md") && file.contains("dearby-claude-"), file)
+                assertEquals(bundled, otherRun.workflowVersion)
+            }
+        } finally {
+            Files.deleteIfExists(mounted)
+        }
     }
+
+    @Test
+    fun `search_feedback은 같은 프로그램, 같은 호스트, 다른 프로그램 순으로 찾고 찾은 기록을 남긴다`() {
+        officialSetting()
+        // 프로그램이 지워진 기록(program_id null)은 호스트로만 순위가 정해진다
+        val global = feedback("DATE_CURATED", "2026년 11월 29일 토요일 오후", programId = null, host = "other.example")
+        val sameHost = feedback("DATE_CURATED", "2026년 11월 29일 토요일 오전", programId = null, host = "letswift.kr")
+        val sameProgram = feedback("DATE_CURATED", "2026년 11월 29일 (토)")
+        feedback("DATE_CURATED", "전혀 관계없는 문구입니다", programId = null)
+        val excluded = feedback("WATCH_EXCLUDE", "2026년 11월 29일 토요일")
+        var found = ""
+        var onlyDates = ""
+        scripted("2026-10-20") { mcp ->
+            found = mcp.call("search_feedback", mapOf("text" to "2026년 11월 29일 토요일")).second
+            onlyDates = mcp.call("search_feedback", mapOf("text" to "2026년 11월 29일 토요일", "kind" to "DATE_CURATED")).second
+            mcp.call("finish", mapOf("reason" to "끝"))
+            Fakes.cliResult()
+        }
+        fun ids(text: String) = Regex("#(\\d+)").findAll(text).map { it.groupValues[1].toLong() }.toList()
+        assertEquals(listOf(excluded, sameProgram, sameHost, global), ids(found))
+        assertEquals(listOf(sameProgram, sameHost, global), ids(onlyDates))
+        assertEquals(json.writeValueAsString(listOf(excluded, sameProgram, sameHost, global)).replace(",", ", "), jdbc.sql("select agent_log -> 'feedbackRetrieved' from collection_runs").query(String::class.java).single())
+    }
+
+    @Test
+    fun `운영자가 지운 초안과 같은 이름은 피드백으로 거절하고, 운영자가 날짜를 지정한 문구와 해석이 다르면 주의를 붙여 저장한다`() {
+        officialSetting()
+        val dismissed = feedback("DRAFT_DISMISSED", "Let'Swift  2026 워크숍", reason = "중복")
+        val curated = feedback("DATE_CURATED", "11월 29일(토)", """{"slot":"ACTIVITY","startDate":"2026-11-28","endDate":"2026-11-29"}""", reason = "전야제 포함")
+        val results = mutableListOf<Pair<Boolean, String>>()
+        scripted("2026-10-20") { mcp ->
+            mcp.call("fetch_page", mapOf("url" to "https://letswift.kr/2026/"))
+            results += mcp.call("submit_candidate", candidate("참가 신청은 11월 1일부터 11월 10일까지입니다") + mapOf("name" to "let'swift 2026 워크숍", "roundKey" to "2026-워크숍"))
+            results += mcp.call("submit_candidate", candidate("참가 신청은 11월 1일부터 11월 10일까지입니다") + mapOf("dateLabel" to "11월 29일(토)", "startDate" to "2026-11-29", "endDate" to "2026-11-29"))
+            mcp.call("finish", mapOf("reason" to "끝"))
+            Fakes.cliResult()
+        }
+        assertEquals(true to "거절됨: 운영자 피드백 #$dismissed(DRAFT_DISMISSED): \"Let'Swift  2026 워크숍\"(이유: 중복)(다시 제출하지 않는다)", results[0])
+        assertEquals(false, results[1].first)
+        assertEquals(
+            "저장됨: 초안으로 저장됨\n주의(운영자 피드백 #$curated): \"11월 29일(토)\"를 운영자는 startDate 2026-11-28, endDate 2026-11-29로 지정했다(이유: 전야제 포함). 제출한 \"11월 29일(토)\" 해석은 startDate 2026-11-29, endDate 2026-11-29",
+            results[1].second,
+        )
+        assertEquals(listOf("DRAFT"), status("Let'Swift 2026 컨퍼런스"))
+        assertEquals(emptyList(), status("let'swift 2026 워크숍"))
+        assertTrue(jdbc.sql("select array_to_string(rejected_reasons, '|') from collection_runs").query(String::class.java).single().contains("운영자 피드백 #$dismissed"))
+        assertEquals("[$dismissed, $curated]", jdbc.sql("select agent_log -> 'feedbackApplied' from collection_runs").query(String::class.java).single())
+    }
+
+    @Test
+    fun `피드백 채우기는 운영자가 지정한 일정·필드와 조심 목록을 옮기고, 다시 실행해도 같은 행을 두 번 넣지 않는다`() {
+        val program = letswift()
+        jdbc.sql(
+            """
+            insert into schedules (activity_id, slot, title, kind, status, time_type, start_date, end_date_exclusive, date_label, sequence, created_at, updated_at, curated, curated_note)
+            select id, null, '해커톤', 'EVENT', 'CONFIRMED', 'ALL_DAY', date '2026-11-01', date '2026-11-16', '2026년 11월 1일~15일', 99, localtimestamp, localtimestamp, true, '해커톤 기간'
+            from activities where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'
+            """
+        ).update()
+        val (fields, category) = jdbc.sql("select curated_fields::text, category from activities where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").query { rs, _ -> rs.getString(1) to rs.getString(2) }.single()
+        jdbc.sql("update activities set curated_fields = '[\"category\",\"description\"]'::jsonb, category = 'CONFERENCE' where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").update()
+        jdbc.sql("insert into collection_watchlist (program_id, name, normalized_name, kind, reason, created_at) values (?, '다른 과정', '다른과정', 'EXCLUDE', '다른 프로그램', now())").param(program).update()
+        val backfill = String(javaClass.getResourceAsStream("/db/migration/V44__collection_feedback_backfill.sql")!!.readAllBytes())
+        try {
+            repeat(2) { jdbc.sql(backfill).update() }
+            assertEquals(
+                listOf(
+                    "DATE_CURATED|letswift.kr|2026년 11월 1일~15일|2026-11-01|2026-11-15|해커톤 기간",
+                    "FIELD_CURATED|letswift.kr|${activityName()}|category|CONFERENCE|",
+                    "WATCH_EXCLUDE||다른 과정|||다른 프로그램",
+                ),
+                jdbc.sql(
+                    """
+                    select kind || '|' || coalesce(host, '') || '|' || source_text || '|' ||
+                           coalesce(corrected_value ->> 'startDate', corrected_value ->> 'field', '') || '|' || coalesce(corrected_value ->> 'endDate', corrected_value ->> 'to', '') || '|' || coalesce(reason, '')
+                    from collection_feedback where program_id = ? order by kind
+                    """
+                ).param(program).query(String::class.java).list(),
+            )
+        } finally {
+            jdbc.sql("update activities set curated_fields = ?::jsonb, category = ? where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").param(fields).param(category).update()
+        }
+    }
+
+    private fun activityName() = jdbc.sql("select name from activities where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").query(String::class.java).single()
 
     // 명함 회수(native-v1.md "명함 교환"): batch가 매일 04:00에 부르는 RecallService. 규칙 자체는 api 모듈의 CardFlowTest·GuestFlowTest가 확인한다
     @Test

@@ -20,3 +20,4 @@ spring:
 dearby:
   collection:
     model: claude-haiku-4-5
+    workflow-path: ${COLLECTION_WORKFLOW_PATH:} # 작업 절차 파일. 비었거나 파일이 없으면 jar 안의 collector/WORKFLOW.md

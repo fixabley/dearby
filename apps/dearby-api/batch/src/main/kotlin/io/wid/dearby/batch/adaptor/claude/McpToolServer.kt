@@ -1,8 +1,7 @@
-package io.wid.dearby.batch.adaptor.mcp
+package io.wid.dearby.batch.adaptor.claude
 
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
-import io.wid.dearby.batch.adaptor.claude.AgentToolbox
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 import java.net.InetAddress

@@ -10,7 +10,6 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.references.SCHEDULES
 import io.wid.dearby.application.collection.ActivityDraftRepository
 import io.wid.dearby.domain.*
 import io.wid.dearby.domain.collection.CollectedActivity
-import io.wid.dearby.domain.collection.DateLabelExample
 import io.wid.dearby.domain.collection.DraftSaveResult
 import io.wid.dearby.domain.collection.PreviousEdition
 import io.wid.dearby.domain.curation.Freshness
@@ -162,29 +161,6 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
 
     override fun findPreviousEdition(programId: Id): PreviousEdition? = findPreviousEdition(programId, excluding = null)
 
-    // 같은 프로그램 먼저, 그다음 최근에 고친 순. 같은 문구는 가장 최근 것만 남기므로 limit보다 넉넉히 읽는다
-    override fun findDateLabelExamples(programId: Id, limit: Int): List<DateLabelExample> =
-        dsl.select(SCHEDULES.SLOT, SCHEDULES.DATE_LABEL, SCHEDULES.START_DATE, SCHEDULES.END_DATE_EXCLUSIVE, SCHEDULES.START_AT, SCHEDULES.END_AT, SCHEDULES.CURATED_NOTE, PROGRAMS.NAME)
-            .from(SCHEDULES)
-            .join(ACTIVITIES).on(ACTIVITIES.ID.eq(SCHEDULES.ACTIVITY_ID))
-            .join(PROGRAMS).on(PROGRAMS.ID.eq(ACTIVITIES.PROGRAM_ID))
-            .where(SCHEDULES.CURATED.isTrue, SCHEDULES.DATE_LABEL.ne(""), SCHEDULES.START_DATE.isNotNull.or(SCHEDULES.START_AT.isNotNull))
-            .orderBy(DSL.`when`(ACTIVITIES.PROGRAM_ID.eq(programId), 0).otherwise(1), SCHEDULES.UPDATED_AT.desc(), SCHEDULES.ID.desc())
-            .limit(limit * 3)
-            .fetch {
-                DateLabelExample(
-                    slot = it[SCHEDULES.SLOT],
-                    dateLabel = it[SCHEDULES.DATE_LABEL]!!,
-                    startDate = it[SCHEDULES.START_DATE],
-                    endDate = it[SCHEDULES.END_DATE_EXCLUSIVE]?.minusDays(1),
-                    startAt = it[SCHEDULES.START_AT],
-                    endAt = it[SCHEDULES.END_AT],
-                    programName = it[PROGRAMS.NAME]!!,
-                    note = it[SCHEDULES.CURATED_NOTE]?.ifBlank { null },
-                )
-            }
-            .distinctBy { it.dateLabel }
-            .take(limit)
 
     // 같은 프로그램의 다른 활동 중 게시된 것을 먼저, 그다음 가장 최근에 만들어진 것
     private fun findPreviousEdition(programId: Id, excluding: Id?): PreviousEdition? =

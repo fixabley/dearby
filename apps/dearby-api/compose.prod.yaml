@@ -81,6 +81,10 @@ services:
       DB_USERNAME: ${DB_USERNAME:?}
       DB_PASSWORD: ${DB_PASSWORD:?}
       CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+      # 수집 에이전트 작업 절차(2026-10-20). 서버의 ./data/collector/WORKFLOW.md를 고치면 이미지를 다시 만들지 않고 다음 수집부터 쓴다. 파일이 없으면 jar 안의 기본 파일
+      COLLECTION_WORKFLOW_PATH: /app/data/collector/WORKFLOW.md
+    volumes:
+      - ./data/collector/WORKFLOW.md:/app/data/collector/WORKFLOW.md:ro
 
   # 관리자 API(shared/contracts/admin-v1.md). nginx가 api.dearby.wid.io.kr/v1/admin/ 을 이 포트로 보낸다.
   # 공통 인증(auth 모듈)을 쓰므로 api와 같은 서명 키(읽기 전용)·패스키 설정을 쓴다

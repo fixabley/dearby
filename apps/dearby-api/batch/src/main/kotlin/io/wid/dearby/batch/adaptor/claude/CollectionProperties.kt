@@ -12,4 +12,5 @@ data class CollectionProperties(
     val cliTimeout: Duration = Duration.ofMinutes(15),
     val maxTurns: Int = 12,
     val maxPages: Int = 15,
+    val workflowPath: String? = null, // 운영에서 바꿔 쓰는 작업 절차 파일(COLLECTION_WORKFLOW_PATH). 없으면 jar 안의 collector/WORKFLOW.md
 )

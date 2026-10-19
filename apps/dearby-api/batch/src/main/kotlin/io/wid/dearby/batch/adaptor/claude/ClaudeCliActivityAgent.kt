@@ -1,6 +1,5 @@
 package io.wid.dearby.batch.adaptor.claude
 
-import io.wid.dearby.batch.adaptor.mcp.McpToolServer
 import io.wid.dearby.batch.application.ActivityAgent
 import io.wid.dearby.batch.application.AgentInput
 import io.wid.dearby.batch.application.AgentLog
@@ -21,8 +20,9 @@ class ClaudeCliActivityAgent(
 ) : ActivityAgent {
 
     override fun run(input: AgentInput, tools: AgentTools): AgentRun {
-        val toolbox = AgentToolbox(tools, properties.maxPages, json)
-        val result = McpToolServer(toolbox, json).use { server -> cli.run(CollectionPrompts.AGENT_SYSTEM, CollectionPrompts.agentRequest(input), server.url) }
+        val toolbox = AgentToolbox(tools, input.target.programId, properties.maxPages, json)
+        val run = McpToolServer(toolbox, json).use { server -> cli.run(CollectionPrompts.agentRequest(input, properties.maxPages, properties.maxTurns), server.url) }
+        val result = run.result
         val subtype = result.path("subtype").asString("")
         val maxTurns = subtype == "error_max_turns"
         if (result.path("is_error").asBoolean(false) && !maxTurns) {
@@ -35,7 +35,7 @@ class ClaudeCliActivityAgent(
             else -> "모델이 finish 없이 끝냄"
         }
         val cost = result.path("total_cost_usd").takeIf { it.isNumber }?.asDouble()
-        return AgentRun(usage, AgentLog(stopReason, maxTurns, result.path("num_turns").asInt(0), toolbox.pages, usage, cost, toolbox.calls))
+        return AgentRun(usage, AgentLog(run.workflowVersion, stopReason, maxTurns, result.path("num_turns").asInt(0), toolbox.pages, usage, cost, toolbox.calls))
     }
 
     private fun usageOf(usage: JsonNode) = ModelUsage(
