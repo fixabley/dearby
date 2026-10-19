@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -28,7 +29,8 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
 /**
  * 내 프로필: data only. A profile never saved (`version` 0) starts with [ProfileSetupPage]; afterwards it is edited in place
  * and once [ProfileViewState.form] differs from the loaded profile the 저장/원래대로 bar appears (contract "프로필과 버전 이력").
- * Histories come from the step funnel; card decoration lives in 명함 만들기.
+ * Histories come from the step funnel; card decoration lives in 명함 만들기. Inputs are Material 3 `OutlinedTextField`s at their default
+ * size with the required/error sentence as supporting text (contract "폼은 플랫폼 기본 컴포넌트", 2026-10-19 밤).
  */
 @Composable fun ProfilePage(
     state: ProfileViewState, rows: List<HistoryRowState>, change: (ProfileFormState) -> Unit, searchJobs: (String) -> Unit, addContact: (String) -> Unit, openHistory: (String?) -> Unit,
@@ -60,14 +62,15 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
                 if (settingUp) { ProfileSetupPage(form, state.saving, state.error, state.jobSearch, searchJobs, change, save, Modifier.weight(1f)); return@let }
                 Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     Text("기본 정보", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-                    Labeled("이름 · 필수") { DearbyInlineField("이름, 필수", form.name, { change(form.copy(name = it)) }, editing = true, placeholder = "실명 또는 활동명") }
-                    state.errors?.name?.let { DearbyFieldError(it) }
+                    OutlinedTextField(form.name, { change(form.copy(name = it)) }, Modifier.fillMaxWidth().semantics { contentDescription = "이름, 필수" }, label = { Text("이름") },
+                        placeholder = { Text("실명 또는 활동명") }, isError = state.errors?.name != null, supportingText = { Text(state.errors?.name ?: "필수예요.") }, singleLine = true)
                     Labeled("직무") {
                         JobTagPicker(form.jobTags, state.jobSearch.query, searchJobs, state.jobSearch.items.map { PickerItem(it.id, it.name, it.parent?.name ?: it.nameEn) },
                             state.jobSearch.loading, state.jobSearch.failed, { change(form.withJob(it.id, it.name)) }, { change(form.withJob(null, null, it)) },
                             { change(form.withoutJob(it)) }, full = form.jobs.size >= ProfileFormState.MAX_JOBS)
                     }
-                    Labeled("소개") { DearbyInlineField("소개", form.introduction, { change(form.copy(introduction = it)) }, editing = true, placeholder = "처음 만난 사람에게 건넬 한두 문장", singleLine = false) }
+                    OutlinedTextField(form.introduction, { change(form.copy(introduction = it)) }, Modifier.fillMaxWidth().semantics { contentDescription = "소개" }, label = { Text("소개") },
+                        placeholder = { Text("처음 만난 사람에게 건넬 한두 문장") }, minLines = 3)
                     Text("연락처", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
                     ProfileContactFields(form.phone, form.email, form.extras, { change(form.copy(phone = it)) }, { change(form.copy(email = it)) },
                         { row -> change(form.copy(extras = form.extras.map { if (it.id == row.id) row else it })) },

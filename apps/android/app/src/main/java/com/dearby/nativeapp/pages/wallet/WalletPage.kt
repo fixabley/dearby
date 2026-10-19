@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -29,7 +32,7 @@ import kotlinx.coroutines.launch
 /** Index rails shorter than this are noise (contract "받은 명함 목록 표시": 묶음이 6개 이하이면 숨긴다). */
 private const val RAIL_MIN_SECTIONS = 7
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable fun WalletPage(state: WalletState, query: String, changeQuery: (String) -> Unit, open: (ReceivedCard) -> Unit, signIn: () -> Unit, retry: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("받은 명함")
@@ -43,7 +46,10 @@ private const val RAIL_MIN_SECTIONS = 7
             }
             WalletPhase.LOADED -> if (state.cards.isEmpty()) Notice("아직 받은 명함이 없어요", "상대의 명함 QR을 카메라로 읽고 ‘Dearby 앱에 저장’을 누르면 여기에 모여요.") {} else {
                 val sections = walletSections(filterWallet(state.cards, query))
-                DearbySearchField(query, changeQuery, "이름, 직무로 검색", Modifier.padding(horizontal = 20.dp))
+                // Material 3 search-bar input (contract "폼은 플랫폼 기본 컴포넌트": 검색창은 `SearchBarDefaults.InputField`, 56dp, 둥근 바탕).
+                SearchBarDefaults.InputField(query, changeQuery, {}, expanded = false, onExpandedChange = {}, Modifier.fillMaxWidth().padding(horizontal = 20.dp).semantics { contentDescription = "이름, 직무로 검색" },
+                    placeholder = { Text("이름, 직무로 검색") }, leadingIcon = { Icon(Icons.Outlined.Search, null) },
+                    trailingIcon = { if (query.isNotEmpty()) IconButton({ changeQuery("") }) { Icon(Icons.Outlined.Close, "검색어 지우기") } })
                 if (sections.isEmpty()) Notice("찾는 명함이 없어요", "이름이나 직무로 다시 검색해 주세요.") {}
                 else IndexedList(sections, open)
             }

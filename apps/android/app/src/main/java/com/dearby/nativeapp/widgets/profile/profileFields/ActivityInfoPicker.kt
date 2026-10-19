@@ -5,16 +5,21 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 
@@ -23,7 +28,7 @@ data class PickerItem(val id: Long, val name: String, val detail: String?)
 
 /**
  * 한 단계의 선택 창: 등록된 활동 정보(조직·프로그램·활동·역할)를 검색해 고르거나 그대로 적는다. 직접 입력은 관리자 승인 전까지 명함에 못 넣는다.
- * 검색 요청·결과는 화면이 갖고, 이 위젯은 값과 콜백만 받는다.
+ * 검색 요청·결과는 화면이 갖고, 이 위젯은 값과 콜백만 받는다. 검색 칸은 기본 크기 `OutlinedTextField`([PickerSearchField])다.
  */
 @Composable fun ActivityInfoPicker(
     title: String, prompt: String, query: String, onQueryChange: (String) -> Unit, items: List<PickerItem>, loading: Boolean, failed: Boolean,
@@ -41,7 +46,7 @@ data class PickerItem(val id: Long, val name: String, val detail: String?)
             }
             return@Column
         }
-        DearbySearchField(query, onQueryChange, prompt)
+        PickerSearchField(query, onQueryChange, prompt)
         if (typedName.isNotEmpty()) OutlinedCard(border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest), shape = RoundedCornerShape(12.dp)) {
             Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
@@ -71,3 +76,13 @@ data class PickerItem(val id: Long, val name: String, val detail: String?)
         }
     }
 }
+
+/**
+ * 선택 창의 검색 칸(contract "폼은 플랫폼 기본 컴포넌트", 2026-10-19 밤): Material 3 `OutlinedTextField` 기본 크기에 항상 보이는 [label], 돋보기, 검색어 지우기.
+ * 접근성 이름은 라벨이다.
+ */
+@Composable internal fun PickerSearchField(query: String, onQueryChange: (String) -> Unit, label: String, modifier: Modifier = Modifier, placeholder: String? = null) = OutlinedTextField(
+    query, onQueryChange, modifier.fillMaxWidth().semantics { contentDescription = label }, label = { Text(label) }, placeholder = placeholder?.let { { Text(it) } }, singleLine = true,
+    leadingIcon = { Icon(Icons.Outlined.Search, null) },
+    trailingIcon = if (query.isNotEmpty()) ({ IconButton({ onQueryChange("") }) { Icon(Icons.Outlined.Close, "검색어 지우기") } }) else null,
+    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search))

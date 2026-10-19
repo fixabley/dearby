@@ -2,7 +2,6 @@ package com.dearby.nativeapp.pages.profile
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,7 +9,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -19,8 +21,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -30,7 +33,8 @@ import com.dearby.nativeapp.shared.ui.ScreenHeader
 
 /**
  * 개인정보 동의 (contract "개인정보 동의", 2026-10-19): shown full screen before the first profile step and whenever the server says
- * consent is required. Both boxes are required; `보기` opens the web document (the route layer launches the browser).
+ * consent is required. Both boxes are required; `보기` opens the web document (the route layer launches the browser). Rows are
+ * Material 3 `ListItem`s with a `Checkbox` (contract "폼은 플랫폼 기본 컴포넌트", 2026-10-19 밤).
  */
 @Composable fun ConsentPage(consenting: Boolean, error: String?, openPrivacy: () -> Unit, openTerms: () -> Unit, agree: () -> Unit) {
     var privacy by remember { mutableStateOf(false) }
@@ -50,10 +54,7 @@ import com.dearby.nativeapp.shared.ui.ScreenHeader
     }
 }
 
-@Composable private fun ConsentRow(label: String, checked: Boolean, onChecked: (Boolean) -> Unit, open: () -> Unit) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Checkbox(checked, onChecked)
-        Text(label, Modifier.weight(1f).semantics { heading() }, style = MaterialTheme.typography.bodyLarge)
-        TextButton(open) { Text("보기") }
-    }
-}
+/** A `ListItem` whose whole row toggles the checkbox; `보기` opens the document. */
+@Composable private fun ConsentRow(label: String, checked: Boolean, onChecked: (Boolean) -> Unit, open: () -> Unit) = ListItem(
+    { Text(label, Modifier.semantics { heading() }) }, Modifier.toggleable(checked, role = Role.Checkbox, onValueChange = onChecked),
+    leadingContent = { Checkbox(checked, null) }, trailingContent = { TextButton(open) { Text("보기") } }, colors = ListItemDefaults.colors(containerColor = Color.Transparent))
