@@ -216,8 +216,18 @@ function activityStart(activity: Activity): number {
 }
 const TWO_YEARS = 2 * 365 * 24 * 60 * 60 * 1000;
 
-/** 지난 활동 of a program without open ones: last two years by activity start, newest first, plain rows (contract "모집 중인 프로그램만 보기"). */
-function PastActivities({ programId, now }: { programId: number; now: number }) {
+/** Recruitment start (timed, else the date at UTC midnight), or the activity start when there is no recruitment window; NaN without one. */
+function upcomingKey(activity: Activity): number {
+  const key = activity.application
+    ? (activity.application.startAt ?? activity.application.startDate)
+    : (activity.activitySchedule.startAt ?? activity.activitySchedule.startDate);
+  return key ? Date.parse(key) : NaN;
+}
+/**
+ * The other activities of a program without open ones (contract "모집 중인 프로그램만 보기"): `모집 예정` (recruitment or activity start
+ * still ahead, nearest first) and `지난 활동` (activity start in the last two years, newest first); an empty group is omitted.
+ */
+function OtherActivities({ programId, now }: { programId: number; now: number }) {
   const [page, setPage] = useState<ActivityPage>();
   const [error, setError] = useState("");
   useEffect(() => {
@@ -231,32 +241,47 @@ function PastActivities({ programId, now }: { programId: number; now: number }) 
   }, [programId]);
   if (error) return <p className="muted">{error}</p>;
   if (!page) return <Loading />;
-  const recent = page.items
+  const upcoming = page.items
     .filter((activity) => {
+      const start = upcomingKey(activity);
+      return !Number.isNaN(start) && start > now;
+    })
+    .sort((a, b) => upcomingKey(a) - upcomingKey(b));
+  const past = page.items
+    .filter((activity) => {
+      if (upcoming.includes(activity)) return false;
       const start = activityStart(activity);
-      return !Number.isNaN(start) && start >= now - TWO_YEARS;
+      return !Number.isNaN(start) && start >= now - TWO_YEARS && start <= now;
     })
     .sort((a, b) => activityStart(b) - activityStart(a));
-  if (!recent.length) return null;
+  const groups = [
+    { label: "모집 예정", items: upcoming },
+    { label: "지난 활동", items: past },
+  ].filter((group) => group.items.length);
+  if (!groups.length) return null;
   return (
-    <section className="category-group">
-      <h3 className="category-heading">지난 활동</h3>
-      <ul className="activity-list">
-        {recent.map((activity) => (
-          <li key={activity.id}>
-            <ActivityCard
-              id={activity.id}
-              name={activity.name}
-              description={activity.description}
-              organizationName={activity.organization.name}
-              statusLabel={recruitment(activity.application, now).label}
-              dateLabel={scheduleLabel(activity.activitySchedule)}
-              imageUrl={httpsUrl(activity.imageUrl)}
-            />
-          </li>
-        ))}
-      </ul>
-    </section>
+    <>
+      {groups.map((group) => (
+        <section key={group.label} className="category-group">
+          <h3 className="category-heading">{group.label}</h3>
+          <ul className="activity-list">
+            {group.items.map((activity) => (
+              <li key={activity.id}>
+                <ActivityCard
+                  id={activity.id}
+                  name={activity.name}
+                  description={activity.description}
+                  organizationName={activity.organization.name}
+                  statusLabel={recruitment(activity.application, now).label}
+                  dateLabel={scheduleLabel(activity.activitySchedule)}
+                  imageUrl={httpsUrl(activity.imageUrl)}
+                />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
+    </>
   );
 }
 function startsOpen(program: ProgramSummary) {
@@ -345,7 +370,7 @@ function ProgramRow({
           ) : !openActivities.length ? (
             <>
               <p className="muted">지금 모집 중인 활동이 없어요.</p>
-              <PastActivities programId={program.id} now={now} />
+              <OtherActivities programId={program.id} now={now} />
             </>
           ) : (
             // Grouped by 활동 종류 (contract "활동 종류"); a single group needs no heading.
