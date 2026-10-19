@@ -468,3 +468,12 @@ a:focus-visible {
 }
 .schedule-band-swatch.application { background: rgba(0, 127, 128, 0.25); }
 .schedule-band-swatch.activity { background: rgba(114, 46, 209, 0.25); }
+
+/* 장소 검색 (contract "활동 장소", 2026-10-19) */
+.place-field { display: flex; flex-direction: column; gap: 8px; }
+.place-option { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.place-option-name { font-weight: 600; white-space: nowrap; }
+.place-option-address { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.place-option-source { margin-inline-start: auto; font-size: 11px; }
+.place-picked { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid #e3e8ea; border-radius: 10px; }
+.place-coords { font-variant-numeric: tabular-nums; font-size: 12px; }
