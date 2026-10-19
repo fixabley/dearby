@@ -16,6 +16,8 @@ import Observation
     private(set) var openActivities: [Int64: [ActivityModel]] = [:]
     /// Past activities (last two years, latest start first) for an expanded program without open ones.
     private(set) var pastActivities: [Int64: [ActivityModel]] = [:]
+    /// Activities whose recruitment (or activity, without a window) has not started yet, nearest first; same programs as `pastActivities`.
+    private(set) var upcomingActivities: [Int64: [ActivityModel]] = [:]
     /// `모집 중만 보기` (contract "모집 중인 프로그램만 보기"): on by default, memory only. Off also lists programs active in the last two years.
     var openOnly = true { didSet { if openOnly != oldValue { start(query ?? "") } } }
     private(set) var loadingPrograms: Set<Int64> = []
@@ -110,6 +112,7 @@ import Observation
         expanded = []
         openActivities = [:]
         pastActivities = [:]
+        upcomingActivities = [:]
         loadingPrograms = []
         failedPrograms = []
         cursor = nil
@@ -151,13 +154,18 @@ import Observation
                 for item in page.items { seen[item.id] = item }
                 openActivities[programID] = page.items
                 if page.items.isEmpty {
-                    // Nothing recruiting: show what the program did in the last two years, latest start first.
-                    let past = try await fetchActivities(programID, false)
+                    // Nothing recruiting: `모집 예정` (recruitment or activity not started yet, nearest first) and
+                    // `지난 활동` (started within the last two years, latest first). Contract "모집 중인 프로그램만 보기".
+                    let others = try await fetchActivities(programID, false)
                     guard !Task.isCancelled else { return }
+                    let upcoming = others.items.filter { ($0.upcomingStart ?? .distantPast) > loadedAt }
+                        .sorted { ($0.upcomingStart ?? .distantFuture, $0.title) < ($1.upcomingStart ?? .distantFuture, $1.title) }
                     let since = Calendar(identifier: .gregorian).date(byAdding: .year, value: -2, to: loadedAt) ?? loadedAt
-                    let recent = past.items.filter { ($0.activityStage?.start ?? .distantPast) >= since }
+                    let upcomingIDs = Set(upcoming.map(\.id))
+                    let recent = others.items.filter { !upcomingIDs.contains($0.id) && ($0.activityStage?.start ?? .distantPast) >= since }
                         .sorted { ($0.activityStage?.start ?? .distantPast, $0.title) > ($1.activityStage?.start ?? .distantPast, $1.title) }
-                    for item in recent { seen[item.id] = item }
+                    for item in upcoming + recent { seen[item.id] = item }
+                    upcomingActivities[programID] = upcoming
                     pastActivities[programID] = recent
                 }
             } catch {

@@ -72,14 +72,17 @@ import com.dearby.nativeapp.widgets.activity.programHeader.ProgramHeaderRow
                                 ProgramPhase.LOADED -> {
                                     val activities = loaded.ids.mapNotNull(state.known::get)
                                     if (activities.isEmpty()) item(key = "empty-" + program.id) { Text("지금 모집 중인 활동이 없어요", Modifier.padding(start = 12.dp), color = Quiet, style = MaterialTheme.typography.bodySmall) }
-                                    // 지난 활동 (contract "모집 중인 프로그램만 보기"): plain rows, most recent start first, no category headings.
-                                    val past = loaded.pastIds.mapNotNull(state.known::get)
-                                    if (past.isNotEmpty()) {
-                                        item(key = "past-" + program.id) { Text("지난 활동", Modifier.padding(start = 12.dp, top = 4.dp).semantics { heading() }, color = Quiet, style = MaterialTheme.typography.labelLarge) }
-                                        items(past, key = { "past-activity-" + it.id }) { activity ->
-                                            ActivityCard(activity.title, activity.organization, activity.summary, activity.status,
-                                                activity.date.ifEmpty { "일정 미확인" } + " · " + (activity.location ?: "장소 미확인"), { open(activity.id) },
-                                                Modifier.padding(start = 12.dp), imageUrl = activity.imageUrl, applyUrl = null, recruitmentEnd = null, onApply = openLink)
+                                    // 모집 예정 · 지난 활동 (contract "모집 중인 프로그램만 보기"): plain rows, no category headings; an empty group is omitted.
+                                    listOf("upcoming" to ("모집 예정" to loaded.upcomingIds), "past" to ("지난 활동" to loaded.pastIds)).forEach { (slug, group) ->
+                                        val (heading, ids) = group
+                                        val rows = ids.mapNotNull(state.known::get)
+                                        if (rows.isNotEmpty()) {
+                                            item(key = slug + "-" + program.id) { Text(heading, Modifier.padding(start = 12.dp, top = 4.dp).semantics { heading() }, color = Quiet, style = MaterialTheme.typography.labelLarge) }
+                                            items(rows, key = { slug + "-activity-" + it.id }) { activity ->
+                                                ActivityCard(activity.title, activity.organization, activity.summary, activity.status,
+                                                    activity.date.ifEmpty { "일정 미확인" } + " · " + (activity.location ?: "장소 미확인"), { open(activity.id) },
+                                                    Modifier.padding(start = 12.dp), imageUrl = activity.imageUrl, applyUrl = null, recruitmentEnd = null, onApply = openLink)
+                                            }
                                         }
                                     }
                                     // 활동 종류별 묶음 (contract "활동 종류"): contract order, 미분류 last; no heading when only one kind.

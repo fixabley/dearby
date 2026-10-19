@@ -75,6 +75,13 @@ data class ActivityModel(
      * (ACTIVITY slot `startAt`, else `startDate` at Seoul midnight) when the activity has no deadline; null sorts last.
      */
     val sortKey: Instant? get() = recruitmentEnd ?: activityStart
+    /**
+     * When the activity becomes relevant next (contract "모집 중인 프로그램만 보기", 2026-10-19 보완): the recruitment start
+     * (`startAt`, else `startDate` at Seoul midnight), or the activity start when there is no recruitment window; null when unknown.
+     */
+    val upcomingKey: Instant? get() = application?.let { window ->
+        instant(window.startAt) ?: window.startDate?.let { runCatching { LocalDate.parse(it).atStartOfDay(SEOUL).toInstant() }.getOrNull() }
+    } ?: activityStart
     /** The ACTIVITY slot's start: `startAt`, else `startDate` at Seoul midnight; null when the period is undated. */
     val activityStart: Instant? get() = instant(activitySchedule?.startAt)
         ?: activitySchedule?.startDate?.let { runCatching { LocalDate.parse(it).atStartOfDay(SEOUL).toInstant() }.getOrNull() }
