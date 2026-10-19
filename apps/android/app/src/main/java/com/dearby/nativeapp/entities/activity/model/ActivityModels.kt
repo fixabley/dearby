@@ -2,6 +2,8 @@ package com.dearby.nativeapp.entities.activity.model
 
 import java.net.URI
 import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import java.time.OffsetDateTime
 
 /** A timed schedule with both ends, as the calendar comparison needs it; the full list is [ActivityModel.stageSchedules]. */
@@ -54,6 +56,12 @@ data class ActivityModel(
     /** The official page, offered as the application link only while recruiting. */
     fun applyUrl(now: Instant) = if (isOpen(now)) safeHttpsUrl(officialUrl) else null
     val recruitmentEnd get() = instant(application?.endAt)
+    /**
+     * Ordering key for discovery groups (contract "활동 종류", 2026-10-19): the recruitment deadline, or the activity start
+     * (ACTIVITY slot `startAt`, else `startDate` at Seoul midnight) when the activity has no deadline; null sorts last.
+     */
+    val sortKey: Instant? get() = recruitmentEnd ?: instant(activitySchedule?.startAt)
+        ?: activitySchedule?.startDate?.let { runCatching { LocalDate.parse(it).atStartOfDay(ZoneId.of("Asia/Seoul")).toInstant() }.getOrNull() }
 }
 
 /** One page of `GET /v1/activities`; a null [nextCursor] is the last page. */

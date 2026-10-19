@@ -18,6 +18,8 @@ data class ActivityState(
     val eligibility: List<String> = emptyList(),
     /** 활동 종류 label (부트캠프 …) in display order via [categoryOrder]; null = 미분류, grouped last. */
     val category: String? = null, val categoryOrder: Int = Int.MAX_VALUE,
+    /** Discovery order inside a category group: recruitment deadline, else activity start; null last. */
+    val sortKey: Instant? = null,
 )
 /** One program header in discovery (contract "발견 프로그램 묶음"); [matched] when the search hit an open activity's name. */
 data class ProgramState(val id: String, val title: String, val organization: String, val openCount: Int, val deadline: Instant?, val matched: Boolean)
