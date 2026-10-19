@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Collapse, DatePicker, Descriptions, Form, Input, Modal, Popconfirm, Radio, Select, Space, Switch, Tag, Tooltip } from "antd";
-import { ExportOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
+import { Alert, App, Button, Collapse, DatePicker, Descriptions, Form, Input, Modal, Popconfirm, Radio, Select, Space, Spin, Switch, Table, type TableColumnsType, Tag, Tooltip } from "antd";
+import { ExportOutlined, PlusOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -9,6 +9,7 @@ import { api, useSingleFlight } from "./api";
 import { CursorTable, SearchSelect, useCursorList } from "./list";
 import { type DraftGroup, type Eligibility, eligibilitySummary, fromDraft, newGroup, toDraft, validateDraft } from "./eligibility";
 import { EligibilityEditor } from "./eligibility-editor";
+import { type Category, categoryLabel, categoryOptions, categoryOrder, UNCATEGORIZED } from "./category";
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -46,6 +47,8 @@ export type ActivityText = {
   descriptionEn: string | null;
   /** Absent on older API responses; the editor treats that as none. */
   eligibility?: Eligibility | null;
+  /** 활동 종류 code (contract "활동 종류"); null or absent = 미분류. */
+  category?: string | null;
   /** Absent on the tree path; then the URL fields are hidden (2026-10-19 공식 안내·신청 링크 편집). */
   officialUrl?: string;
   applicationUrl?: string | null;
@@ -60,7 +63,7 @@ export type ActivityText = {
 /** True when the collector filled [field] from an earlier edition and no operator has edited it since. */
 const inherited = (activity: { inheritedFields?: string[] }, field: "eligibility" | "audience" | "participationType") =>
   activity.inheritedFields?.includes(field) ?? false;
-type CuratedField = "name" | "nameEn" | "description" | "descriptionEn" | "eligibility" | "officialUrl" | "applicationUrl";
+type CuratedField = "name" | "nameEn" | "description" | "descriptionEn" | "eligibility" | "officialUrl" | "applicationUrl" | "category";
 /** True when an operator set [field] here; the server keeps that mark even when the field is saved again or emptied. */
 const curated = (activity: { curatedFields?: string[] }, field: CuratedField) => activity.curatedFields?.includes(field) ?? false;
 const curatedFieldLabels: Record<CuratedField, string> = {
@@ -71,6 +74,7 @@ const curatedFieldLabels: Record<CuratedField, string> = {
   eligibility: "대상자 조건",
   officialUrl: "공식 안내 URL",
   applicationUrl: "신청 링크",
+  category: "종류",
 };
 type Activity = ActivityText & {
   organization: { id: number; name: string };
@@ -138,8 +142,11 @@ export function Activities() {
     [programId, setProgramId] = useState<number>(),
     [publicationStatus, setPublicationStatus] = useState<PublicationStatus>(),
     [editing, setEditing] = useState<Activity>(),
-    [marking, setMarking] = useState<Activity>();
-  const cursor = useCursorList<Activity>("activities", { q: search, organizationId, programId, publicationStatus });
+    [marking, setMarking] = useState<Activity>(),
+    [creating, setCreating] = useState<{ programId?: number; programName?: string }>();
+  // 발견 탭처럼 프로그램 아래 활동을 묶어 보인다(2026-10-19). 검색어나 프로그램 필터가 있으면 평평한 결과 표를 쓴다.
+  const grouped = !search && programId === undefined;
+  const cursor = useCursorList<Activity>("activities", { q: search, organizationId, programId, publicationStatus }, { enabled: !grouped });
   const { modal, message } = App.useApp();
   const client = useQueryClient();
   const publication = useMutation({
@@ -173,6 +180,123 @@ export function Activities() {
       });
     else publishOnce(() => publication.mutateAsync({ id: activity.id, status }));
   }
+  const columns: TableColumnsType<Activity> = [
+    {
+      title: "활동",
+      width: "32%",
+      render: (_, activity) => (
+        <div className="activity-title">
+          <strong>
+            {activity.name}
+            {activity.nameEn && <span className="name-en">{activity.nameEn}</span>}
+          </strong>
+          <span>
+            {activity.organization.name} · {activity.program.name}
+          </span>
+        </div>
+      ),
+    },
+    {
+      title: "출처",
+      render: (_, { officialSource }) =>
+        officialSource ? <Tag color="green">공식 출처</Tag> : <Tag color="orange">웹 검색 출처</Tag>,
+    },
+    {
+      title: "종류",
+      render: (_, activity) => (
+        <>
+          {categoryLabel(activity.category)}
+          {curated(activity, "category") && <CuratedTag />}
+        </>
+      ),
+    },
+    {
+      title: "게시",
+      render: (_, activity) => (
+        <>
+          <Tag color={activity.publicationStatus === "PUBLISHED" ? "blue" : undefined}>{statusLabels[activity.publicationStatus]}</Tag>
+          {(activity.inheritedFields?.length ?? 0) > 0 && (
+            <Tooltip title="이전 기수에서 자동완성한 값이 있어요. 상세에서 어떤 항목인지 보여요.">
+              <span className="muted" aria-label="이전 기수에서 자동완성한 값 있음">
+                자동완성
+              </span>
+            </Tooltip>
+          )}
+          {(activity.curatedFields?.length ?? 0) > 0 && (
+            <Tooltip title="어드민에서 고친 값이 있어요. 수집이 덮어쓰지 않아요. 상세에서 어떤 항목인지 보여요.">
+              <span className="muted" aria-label="운영자가 지정한 값 있음" style={{ marginLeft: 6 }}>
+                운영자 지정
+              </span>
+            </Tooltip>
+          )}
+        </>
+      ),
+    },
+    {
+      title: "모집 기간",
+      render: (_, activity) => (
+        <>
+          {scheduleText(activity.application)}
+          {activity.application?.curated && <CuratedTag />}
+          <PeriodTag reason={periodSuspicion(activity.application, activity.activitySchedule)} />
+        </>
+      ),
+    },
+    {
+      title: "활동 일정",
+      render: (_, activity) => (
+        <>
+          {scheduleText(activity.activitySchedule)}
+          {activity.activitySchedule.curated && <CuratedTag />}
+        </>
+      ),
+    },
+    {
+      title: "",
+      className: "actions",
+      render: (_, activity) => (
+        <>
+          <Space>
+            <a href={activity.officialUrl} target="_blank" rel="noreferrer">
+              공식 안내 <ExportOutlined aria-hidden="true" />
+            </a>
+            <Button
+              type={activity.publicationStatus === "PUBLISHED" ? "default" : "primary"}
+              loading={publication.isPending && publication.variables?.id === activity.id}
+              disabled={publication.isPending && publication.variables?.id !== activity.id}
+              onClick={() => toggle(activity)}
+            >
+              {activity.publicationStatus === "PUBLISHED" ? "게시 취소" : "게시"}
+            </Button>
+            <Button onClick={() => setEditing(activity)}>편집</Button>
+            <Button onClick={() => setMarking(activity)}>중복으로 지정</Button>
+            <Popconfirm
+              title={`‘${activity.name}’ 활동을 삭제할까요?`}
+              description="삭제하면 되돌릴 수 없고, 수집으로 생긴 활동은 다시 수집되지 않아요."
+              okText="삭제"
+              cancelText="취소"
+              okButtonProps={{ danger: true }}
+              disabled={remove.isPending}
+              onConfirm={() => removeOnce(() => remove.mutateAsync(activity.id))}
+            >
+              <Button
+                danger
+                loading={remove.isPending && remove.variables === activity.id}
+                disabled={remove.isPending && remove.variables !== activity.id}
+              >
+                삭제
+              </Button>
+            </Popconfirm>
+          </Space>
+          {remove.error && remove.variables === activity.id && (
+            <div className="tree-error" role="alert">
+              {remove.error.message}
+            </div>
+          )}
+        </>
+      ),
+    },
+  ];
   return (
     <>
       <header className="page-heading">
@@ -229,122 +353,28 @@ export function Activities() {
             onChange={setPublicationStatus}
             style={{ width: 150 }}
           />
+          <Button type="primary" icon={<PlusOutlined aria-hidden="true" />} onClick={() => setCreating({})}>
+            활동 추가
+          </Button>
         </Space>
       </div>
-      <CursorTable
-        cursor={cursor}
-        scroll={{ x: 1000 }}
-        locale={{ emptyText: "조건에 맞는 활동이 없어요." }}
-        expandable={{ expandedRowRender: (activity) => <ActivityDetail activity={activity} /> }}
-        columns={[
-          {
-            title: "활동",
-            width: "32%",
-            render: (_, activity) => (
-              <div className="activity-title">
-                <strong>
-                  {activity.name}
-                  {activity.nameEn && <span className="name-en">{activity.nameEn}</span>}
-                </strong>
-                <span>
-                  {activity.organization.name} · {activity.program.name}
-                </span>
-              </div>
-            ),
-          },
-          {
-            title: "출처",
-            render: (_, { officialSource }) =>
-              officialSource ? <Tag color="green">공식 출처</Tag> : <Tag color="orange">웹 검색 출처</Tag>,
-          },
-          {
-            title: "게시",
-            render: (_, activity) => (
-              <>
-                <Tag color={activity.publicationStatus === "PUBLISHED" ? "blue" : undefined}>{statusLabels[activity.publicationStatus]}</Tag>
-                {(activity.inheritedFields?.length ?? 0) > 0 && (
-                  <Tooltip title="이전 기수에서 자동완성한 값이 있어요. 상세에서 어떤 항목인지 보여요.">
-                    <span className="muted" aria-label="이전 기수에서 자동완성한 값 있음">
-                      자동완성
-                    </span>
-                  </Tooltip>
-                )}
-                {(activity.curatedFields?.length ?? 0) > 0 && (
-                  <Tooltip title="어드민에서 고친 값이 있어요. 수집이 덮어쓰지 않아요. 상세에서 어떤 항목인지 보여요.">
-                    <span className="muted" aria-label="운영자가 지정한 값 있음" style={{ marginLeft: 6 }}>
-                      운영자 지정
-                    </span>
-                  </Tooltip>
-                )}
-              </>
-            ),
-          },
-          {
-            title: "모집 기간",
-            render: (_, activity) => (
-              <>
-                {scheduleText(activity.application)}
-                {activity.application?.curated && <CuratedTag />}
-                <PeriodTag reason={periodSuspicion(activity.application, activity.activitySchedule)} />
-              </>
-            ),
-          },
-          {
-            title: "활동 일정",
-            render: (_, activity) => (
-              <>
-                {scheduleText(activity.activitySchedule)}
-                {activity.activitySchedule.curated && <CuratedTag />}
-              </>
-            ),
-          },
-          {
-            title: "",
-            className: "actions",
-            render: (_, activity) => (
-              <>
-                <Space>
-                  <a href={activity.officialUrl} target="_blank" rel="noreferrer">
-                    공식 안내 <ExportOutlined aria-hidden="true" />
-                  </a>
-                  <Button
-                    type={activity.publicationStatus === "PUBLISHED" ? "default" : "primary"}
-                    loading={publication.isPending && publication.variables?.id === activity.id}
-                    disabled={publication.isPending && publication.variables?.id !== activity.id}
-                    onClick={() => toggle(activity)}
-                  >
-                    {activity.publicationStatus === "PUBLISHED" ? "게시 취소" : "게시"}
-                  </Button>
-                  <Button onClick={() => setEditing(activity)}>편집</Button>
-                  <Button onClick={() => setMarking(activity)}>중복으로 지정</Button>
-                  <Popconfirm
-                    title={`‘${activity.name}’ 활동을 삭제할까요?`}
-                    description="삭제하면 되돌릴 수 없고, 수집으로 생긴 활동은 다시 수집되지 않아요."
-                    okText="삭제"
-                    cancelText="취소"
-                    okButtonProps={{ danger: true }}
-                    disabled={remove.isPending}
-                    onConfirm={() => removeOnce(() => remove.mutateAsync(activity.id))}
-                  >
-                    <Button
-                      danger
-                      loading={remove.isPending && remove.variables === activity.id}
-                      disabled={remove.isPending && remove.variables !== activity.id}
-                    >
-                      삭제
-                    </Button>
-                  </Popconfirm>
-                </Space>
-                {remove.error && remove.variables === activity.id && (
-                  <div className="tree-error" role="alert">
-                    {remove.error.message}
-                  </div>
-                )}
-              </>
-            ),
-          },
-        ]}
-      />
+      {creating && <ActivityCreateModal programId={creating.programId} programName={creating.programName} onClose={() => setCreating(undefined)} />}
+      {grouped ? (
+        <ProgramGroups
+          organizationId={organizationId}
+          publicationStatus={publicationStatus}
+          columns={columns}
+          onCreate={(program) => setCreating({ programId: program.id, programName: program.name })}
+        />
+      ) : (
+        <CursorTable
+          cursor={cursor}
+          scroll={{ x: 1000 }}
+          locale={{ emptyText: "조건에 맞는 활동이 없어요." }}
+          expandable={{ expandedRowRender: (activity) => <ActivityDetail activity={activity} /> }}
+          columns={columns}
+        />
+      )}
       {editing && <ActivityTextEditor activity={editing} onClose={() => setEditing(undefined)} />}
       {marking && <DuplicateDialog activity={marking} onClose={() => setMarking(undefined)} />}
     </>
@@ -482,7 +512,7 @@ function DuplicateDialog({ activity, onClose }: { activity: Activity; onClose: (
   );
 }
 
-type TextBody = { name: string; nameEn: string; description: string; descriptionEn: string; eligibility: Eligibility | null; officialUrl?: string; applicationUrl?: string };
+type TextBody = { name: string; nameEn: string; description: string; descriptionEn: string; eligibility: Eligibility | null; officialUrl?: string; applicationUrl?: string; category?: string | null };
 type ScheduleBody = { activitySchedule?: ScheduleInput; application?: ScheduleInput };
 
 export function ActivityTextEditor({ activity, onClose }: { activity: ActivityText; onClose: () => void }) {
@@ -539,6 +569,7 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
           descriptionEn: activity.descriptionEn ?? "",
           officialUrl: activity.officialUrl ?? "",
           applicationUrl: activity.applicationUrl ?? "",
+          category: activity.category ?? null,
           activityRange: initialActivity.range,
           activityTimed: initialActivity.timed,
           applicationRange: initialApplication.range,
@@ -553,6 +584,7 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
           descriptionEn: string;
           officialUrl: string;
           applicationUrl: string;
+          category: Category | null;
           activityRange: RangeDraft["range"];
           activityTimed: boolean;
           applicationRange: RangeDraft["range"];
@@ -577,6 +609,8 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
               eligibility: eligibilityJson,
               // URL fields exist only on the list path; the tree omits them so the server keeps the current values.
               ...(withUrls ? { officialUrl: values.officialUrl.trim(), applicationUrl: values.applicationUrl.trim() } : {}),
+              // 종류 goes only when changed, so an untouched field does not become 운영자 지정.
+              ...(values.category !== (activity.category ?? null) ? { category: values.category } : {}),
               ...schedules,
             }),
           );
@@ -623,6 +657,9 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
         </Form.Item>
         <Form.Item name="descriptionEn" label={<>영문 설명(선택){curated(activity, "descriptionEn") && <CuratedTag />}</>}>
           <Input.TextArea autoSize={{ minRows: 3, maxRows: 10 }} />
+        </Form.Item>
+        <Form.Item name="category" label={<>종류{curated(activity, "category") && <CuratedTag />}</>}>
+          <Select virtual={false} options={categoryOptions} style={{ width: 200 }} />
         </Form.Item>
         {withUrls && (
           <>
@@ -704,6 +741,318 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
             ]}
           />
         </div>
+      </Form>
+    </Modal>
+  );
+}
+
+/** A program row of the grouped view; the shape `GET programs` returns, trimmed to what the table shows. */
+type ProgramRow = {
+  id: number;
+  name: string;
+  nameEn: string | null;
+  organization: { id: number; name: string };
+  collection: { enabled: boolean; intervalDays: number; allowedHosts: string[]; lastSucceededOn: string | null };
+};
+
+/** 발견 탭 모양: programs on top, each expanding to its activities (loaded on expand). One matching program opens by itself. */
+function ProgramGroups({
+  organizationId,
+  publicationStatus,
+  columns,
+  onCreate,
+}: {
+  organizationId?: number;
+  publicationStatus?: PublicationStatus;
+  columns: TableColumnsType<Activity>;
+  onCreate: (program: ProgramRow) => void;
+}) {
+  const programs = useCursorList<ProgramRow>("programs", { organizationId });
+  const [expanded, setExpanded] = useState<number[]>([]);
+  const single = programs.items.length === 1 && !programs.list.hasNextPage ? programs.items[0].id : undefined;
+  useEffect(() => {
+    if (single !== undefined) setExpanded([single]);
+  }, [single]);
+  return (
+    <CursorTable
+      cursor={programs}
+      scroll={{ x: 900 }}
+      locale={{ emptyText: "조건에 맞는 프로그램이 없어요." }}
+      expandable={{
+        expandedRowKeys: expanded,
+        onExpandedRowsChange: (keys) => setExpanded(keys.map(Number)),
+        expandedRowRender: (program) => (
+          <ProgramActivities program={program} publicationStatus={publicationStatus} columns={columns} onCreate={() => onCreate(program)} />
+        ),
+      }}
+      columns={[
+        {
+          title: "프로그램",
+          render: (_, program) => (
+            <>
+              {program.name}
+              {program.nameEn && <span className="muted name-en">{program.nameEn}</span>}
+            </>
+          ),
+        },
+        { title: "조직", render: (_, program) => program.organization.name },
+        {
+          title: "수집",
+          render: (_, { collection }) => (
+            <span className="muted">
+              {collection.enabled ? `${collection.intervalDays}일마다` : "꺼짐"}
+              {collection.allowedHosts.length ? ` · ${collection.allowedHosts.join(", ")}` : " · 웹 전체 검색"}
+              {collection.lastSucceededOn && ` · 마지막 성공 ${collection.lastSucceededOn}`}
+            </span>
+          ),
+        },
+      ]}
+    />
+  );
+}
+
+/** The activities of one program, with the same columns and row actions as the flat table. */
+function ProgramActivities({
+  program,
+  publicationStatus,
+  columns,
+  onCreate,
+}: {
+  program: ProgramRow;
+  publicationStatus?: PublicationStatus;
+  columns: TableColumnsType<Activity>;
+  onCreate: () => void;
+}) {
+  const cursor = useCursorList<Activity>("activities", { programId: program.id, publicationStatus });
+  // 종류별 묶음: contract order, 미분류 last; only groups that have activities.
+  const groups = [...categoryOrder.map((code) => ({ code, label: categoryLabel(code) })), { code: null, label: UNCATEGORIZED }]
+    .map((group) => ({ ...group, items: cursor.items.filter((activity) => (activity.category ?? null) === group.code) }))
+    .filter((group) => group.items.length);
+  return (
+    <div className="program-activities">
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
+        <Button size="small" icon={<PlusOutlined aria-hidden="true" />} onClick={onCreate}>
+          이 프로그램에 활동 추가
+        </Button>
+      </div>
+      {cursor.list.isError ? (
+        <Alert type="error" showIcon message="활동을 불러오지 못했어요." description={cursor.list.error.message} />
+      ) : cursor.list.isLoading ? (
+        <Spin />
+      ) : !groups.length ? (
+        <p className="muted">이 프로그램에는 활동이 없어요.</p>
+      ) : (
+        groups.map((group) => (
+          <section key={group.label} className="category-group" aria-label={`${group.label} ${group.items.length}개`}>
+            <h3 className="category-heading">
+              {group.label} ({group.items.length})
+            </h3>
+            <Table<Activity>
+              rowKey="id"
+              size="small"
+              pagination={false}
+              dataSource={group.items}
+              scroll={{ x: 1000 }}
+              expandable={{ expandedRowRender: (activity) => <ActivityDetail activity={activity} /> }}
+              columns={columns}
+            />
+          </section>
+        ))
+      )}
+      {cursor.list.hasNextPage && (
+        <div className="load-more">
+          <Button onClick={() => cursor.list.fetchNextPage()} loading={cursor.list.isFetchingNextPage}>
+            더 보기
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+type CreateBody = {
+  programId: number;
+  name: string;
+  nameEn?: string;
+  description: string;
+  descriptionEn?: string;
+  officialUrl: string;
+  applicationUrl?: string;
+  participationType: "REGISTRATION" | "SELECTION";
+  category?: Category | null;
+  activitySchedule?: ScheduleInput | { dateLabel: string };
+  application?: ScheduleInput;
+  eligibility?: Eligibility;
+  audience?: string;
+  location?: string;
+  cost?: string;
+};
+const httpsRule = { pattern: /^\s*https:\/\/\S+\s*$/, message: "https 주소여야 해요." };
+
+/** 활동 추가 (contract `POST /v1/admin/activities`, 2026-10-19): an operator-made DRAFT with every sent field marked curated. */
+function ActivityCreateModal({ programId, programName, onClose }: { programId?: number; programName?: string; onClose: () => void }) {
+  const [form] = Form.useForm();
+  const [eligibility, setEligibility] = useState<DraftGroup>(newGroup);
+  const [eligibilityProblems, setEligibilityProblems] = useState<string[]>([]);
+  const activityTimed: boolean = Form.useWatch("activityTimed", form) ?? false;
+  const applicationTimed: boolean = Form.useWatch("applicationTimed", form) ?? false;
+  const { message } = App.useApp();
+  const client = useQueryClient();
+  const create = useMutation({
+    mutationFn: (body: CreateBody) => api<Activity>("activities", "POST", body),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: ["activities"] });
+      message.success("활동을 추가했어요. 초안이라 게시 전까지 앱에는 보이지 않아요.");
+      onClose();
+    },
+  });
+  const createOnce = useSingleFlight();
+  const optional = (value?: string) => value?.trim() || undefined;
+  return (
+    <Modal
+      open
+      title="활동 추가"
+      onCancel={onClose}
+      onOk={() => form.submit()}
+      confirmLoading={create.isPending}
+      okText="추가"
+      cancelText="취소"
+      width={720}
+    >
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={{ programId, participationType: "REGISTRATION", category: null, activityTimed: false, applicationTimed: false }}
+        onFinish={(values: {
+          programId: number;
+          name: string;
+          nameEn?: string;
+          description: string;
+          descriptionEn?: string;
+          officialUrl: string;
+          applicationUrl?: string;
+          participationType: "REGISTRATION" | "SELECTION";
+          category: Category | null;
+          activityRange: RangeDraft["range"];
+          activityTimed: boolean;
+          activityDateLabel?: string;
+          applicationRange: RangeDraft["range"];
+          applicationTimed: boolean;
+          audience?: string;
+          location?: string;
+          cost?: string;
+        }) => {
+          const problems = validateDraft(eligibility);
+          setEligibilityProblems(problems);
+          if (problems.length) return;
+          // 활동 기간: dates when picked (plus the typed phrase), otherwise the phrase alone; the server needs one of them.
+          const dates = scheduleInput({ range: values.activityRange, timed: values.activityTimed });
+          const dateLabel = optional(values.activityDateLabel);
+          if (!dates && !dateLabel) {
+            form.setFields([{ name: "activityDateLabel", errors: ["활동 기간의 날짜나 원문 문구 중 하나는 입력해 주세요."] }]);
+            return;
+          }
+          const application = scheduleInput({ range: values.applicationRange, timed: values.applicationTimed });
+          createOnce(() =>
+            create.mutateAsync({
+              programId: values.programId,
+              name: values.name.trim(),
+              nameEn: optional(values.nameEn),
+              description: values.description.trim(),
+              descriptionEn: optional(values.descriptionEn),
+              officialUrl: values.officialUrl.trim(),
+              applicationUrl: optional(values.applicationUrl),
+              participationType: values.participationType,
+              category: values.category,
+              activitySchedule: dates ? { ...dates, ...(dateLabel ? { dateLabel } : {}) } : { dateLabel: dateLabel! },
+              application: application ?? undefined,
+              eligibility: fromDraft(eligibility) ?? undefined,
+              audience: optional(values.audience),
+              location: optional(values.location),
+              cost: optional(values.cost),
+            }),
+          );
+        }}
+      >
+        {create.error && <Alert className="form-error" type="error" showIcon message={create.error.message} />}
+        <p className="field-note">운영자가 직접 만드는 활동이에요. 초안으로 저장되고, 수집이 덮어쓰거나 다시 만들지 않아요. 게시는 목록에서 바꿔요.</p>
+        <Form.Item name="programId" label="프로그램" rules={[{ required: true, message: "프로그램을 골라 주세요." }]}>
+          <SearchSelect path="programs" placeholder="프로그램 이름으로 검색" label={programName} />
+        </Form.Item>
+        <Form.Item name="name" label="한글 이름" rules={[{ required: true, whitespace: true, message: "이름을 입력해 주세요." }]}>
+          <Input placeholder="예: 부스트캠프 11기" />
+        </Form.Item>
+        <Form.Item name="nameEn" label="영문 이름(선택)">
+          <Input />
+        </Form.Item>
+        <Form.Item name="description" label="한글 설명" rules={[{ required: true, whitespace: true, message: "설명을 입력해 주세요." }]}>
+          <Input.TextArea autoSize={{ minRows: 3, maxRows: 10 }} />
+        </Form.Item>
+        <Form.Item name="descriptionEn" label="영문 설명(선택)">
+          <Input.TextArea autoSize={{ minRows: 3, maxRows: 10 }} />
+        </Form.Item>
+        <Form.Item name="officialUrl" label="공식 안내 URL" rules={[{ required: true, whitespace: true, message: "공식 안내 URL을 입력해 주세요." }, httpsRule]}>
+          <Input inputMode="url" placeholder="https://" />
+        </Form.Item>
+        <Form.Item name="applicationUrl" label="신청 링크(선택)" rules={[{ pattern: /^\s*(https:\/\/\S+)?\s*$/, message: "https 주소여야 해요." }]}>
+          <Input inputMode="url" placeholder="https://" />
+        </Form.Item>
+        <Form.Item name="category" label="종류">
+          <Select virtual={false} options={categoryOptions} style={{ width: 200 }} />
+        </Form.Item>
+        <Form.Item name="participationType" label="참여 방식">
+          <Radio.Group
+            options={[
+              { value: "REGISTRATION", label: "신청 — 신청하면 참가" },
+              { value: "SELECTION", label: "선발 — 심사로 뽑음" },
+            ]}
+          />
+        </Form.Item>
+        <ScheduleBlock title="모집 기간" schedule={null} rangeName="applicationRange" timedName="applicationTimed" timed={applicationTimed} />
+        <ScheduleBlock title="활동 기간" schedule={null} rangeName="activityRange" timedName="activityTimed" timed={activityTimed} />
+        <Form.Item name="activityDateLabel" label="활동 기간 원문(선택)" extra="날짜를 고르지 않으면 이 문구만 남아요. 예: 2026년 상반기">
+          <Input maxLength={200} />
+        </Form.Item>
+        <div className="eligibility-field">
+          <div className="eligibility-field-heading">
+            <strong>대상자 조건(선택)</strong>
+            <Button size="small" aria-label="대상자 조건 비우기" disabled={eligibility.items.length === 0} onClick={() => { setEligibility(newGroup()); setEligibilityProblems([]); }}>
+              비우기
+            </Button>
+          </div>
+          <EligibilityEditor
+            value={eligibility}
+            onChange={(next) => {
+              setEligibility(next);
+              if (eligibilityProblems.length) setEligibilityProblems(validateDraft(next));
+            }}
+          />
+          {eligibilityProblems.length > 0 && (
+            <Alert
+              className="form-error"
+              type="error"
+              showIcon
+              message="대상자 조건을 확인해 주세요."
+              description={
+                <ul style={{ margin: 0, paddingLeft: 18 }}>
+                  {eligibilityProblems.map((problem) => (
+                    <li key={problem}>{problem}</li>
+                  ))}
+                </ul>
+              }
+            />
+          )}
+          <p className="field-note">읽기: {eligibilitySummary(fromDraft(eligibility)) || <span className="muted">조건 없음</span>}</p>
+        </div>
+        <Form.Item name="audience" label="대상 원문(선택)">
+          <Input maxLength={1000} />
+        </Form.Item>
+        <Form.Item name="location" label="장소(선택)">
+          <Input />
+        </Form.Item>
+        <Form.Item name="cost" label="비용(선택)">
+          <Input />
+        </Form.Item>
       </Form>
     </Modal>
   );

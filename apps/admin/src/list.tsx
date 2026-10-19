@@ -10,9 +10,10 @@ const query = (params: Params) =>
   ).toString();
 
 /** `{items, nextCursor}` lists: id order, "더 보기" appends the next page. */
-export function useCursorList<T>(path: string, params: Params) {
+export function useCursorList<T>(path: string, params: Params, options: { enabled?: boolean } = {}) {
   const list = useInfiniteQuery({
     queryKey: [path, params],
+    enabled: options.enabled ?? true,
     queryFn: ({ pageParam }) => api<Page<T>>(`${path}?${query({ ...params, cursor: pageParam ?? undefined, size: 20 })}`),
     initialPageParam: null as Page<T>["nextCursor"],
     getNextPageParam: (last) => last.nextCursor ?? undefined,
