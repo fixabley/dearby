@@ -57,6 +57,14 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
         }
         return .unknown
     }
+    /// When this activity's recruitment opens: the window's start (instant, or start date at Seoul midnight); with no
+    /// window at all, the activity start. nil when neither is known. Used for the `모집 예정` group (contract "모집 중인 프로그램만 보기").
+    var upcomingStart: Date? {
+        if recruitmentStartAt != nil || recruitmentEndAt != nil || recruitmentStartDate != nil || recruitmentEndDateExclusive != nil {
+            return Self.instant(recruitmentStartAt) ?? Self.seoulDay(recruitmentStartDate)
+        }
+        return activityStage?.start
+    }
     /// `yyyy-MM-dd` as Seoul midnight; nil when absent or unreadable.
     static func seoulDay(_ raw: String?) -> Date? {
         guard let raw else { return nil }

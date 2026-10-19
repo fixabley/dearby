@@ -29,9 +29,12 @@ data class ActivityState(
 data class ProgramState(val id: String, val title: String, val organization: String, val openCount: Int, val deadline: Instant?, val matched: Boolean, val latestActivityAt: Instant? = null)
 /**
  * The open activities of an expanded program, loaded on first expand; [ids] index into [ActivityListState.known]. When none is
- * open, [pastIds] are the program's activities of the last two years, most recent start first (contract "모집 중인 프로그램만 보기").
+ * open, [upcomingIds] are the program's activities whose recruitment (or activity) start is still ahead, nearest first, and
+ * [pastIds] those of the last two years, most recent start first (contract "모집 중인 프로그램만 보기").
  */
-data class ProgramActivities(val phase: ProgramPhase = ProgramPhase.LOADING, val ids: List<String> = emptyList(), val pastIds: List<String> = emptyList())
+data class ProgramActivities(
+    val phase: ProgramPhase = ProgramPhase.LOADING, val ids: List<String> = emptyList(), val upcomingIds: List<String> = emptyList(), val pastIds: List<String> = emptyList(),
+)
 /**
  * Discovery results for [query]: [programs] in server order, which are [expanded] (memory only), and their loaded
  * [programActivities]. [known] keeps every loaded activity with its marks so 내 활동 survives a new search.

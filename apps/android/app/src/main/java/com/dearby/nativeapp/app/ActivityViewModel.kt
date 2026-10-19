@@ -136,15 +136,18 @@ class ActivityViewModel(
             }
             val now = Instant.now()
             val open = items
-            // Nothing open: show the program's past activities of the last two years, most recent start first (contract "모집 중인 프로그램만 보기").
-            val past = if (open.isNotEmpty()) emptyList() else try {
-                val since = now.minus(730, java.time.temporal.ChronoUnit.DAYS)
-                fetch(null, null, programId, false).items.filter { (it.activityStart ?: Instant.MIN) >= since }.sortedByDescending { it.activityStart }
+            // Nothing open: show the program's other activities (contract "모집 중인 프로그램만 보기", 2026-10-19 보완) in two groups —
+            // 모집 예정 (recruitment or activity start still ahead, nearest first) and 지난 활동 (started within two years, most recent first).
+            val others = if (open.isNotEmpty()) emptyList() else try {
+                fetch(null, null, programId, false).items
             } catch (e: CancellationException) { throw e } catch (e: Exception) {
-                Log.w("Dearby", "Past activities load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
+                Log.w("Dearby", "Program activities (fallback) load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
                 emptyList()
             }
-            val shown = open + past
+            val upcoming = others.filter { (it.upcomingKey ?: Instant.MIN) > now }.sortedBy { it.upcomingKey }
+            val since = now.minus(730, java.time.temporal.ChronoUnit.DAYS)
+            val past = others.filter { it !in upcoming && (it.activityStart ?: Instant.MIN) >= since }.sortedByDescending { it.activityStart }
+            val shown = open + upcoming + past
             models = models + shown.associateBy { it.id }
             val today = today()
             mutable.update { state ->
@@ -152,7 +155,7 @@ class ActivityViewModel(
                     activity.id to activity.toState(now).let { known -> state.known[known.id]?.let { known.copy(applied = it.applied, confirmed = it.confirmed) } ?: known }
                 }
                 state.copy(known = state.known + loaded, progress = state.progress + shown.associate { it.id to it.toProgress(marks[it.id].orEmpty(), today) },
-                    programActivities = state.programActivities + (programId to ProgramActivities(ProgramPhase.LOADED, open.map { it.id }, past.map { it.id })))
+                    programActivities = state.programActivities + (programId to ProgramActivities(ProgramPhase.LOADED, open.map { it.id }, upcoming.map { it.id }, past.map { it.id })))
             }
         }
     }

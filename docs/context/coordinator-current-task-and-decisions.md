@@ -4,9 +4,9 @@
 
 ## 현재 상태 — 2026-10-19 확인
 
-- **운영 API**(`api.dearby.wid.io.kr`, `~/.dearby-deploy/api-kotlin-2a061187` compose: api·admin·batch·postgres): main `65834aaf`(PR #271)까지 배포, Flyway **V33**까지 적용. 배포 절차: rsync(소스, `data`·`.env.prod`·`build`·`.gradle` 제외) → `docker compose -f compose.prod.yaml --env-file .env.prod up -d --build api admin batch`. 마이그레이션은 컨테이너 기동 때 Flyway가 적용한다.
+- **운영 API**(`api.dearby.wid.io.kr`, `~/.dearby-deploy/api-kotlin-2a061187` compose: api·admin·batch·postgres): main `65834aaf`(PR #271)까지 배포(이후 #272·#273은 앱·문서만), Flyway **V33**까지 적용. 배포 절차: rsync(소스, `data`·`.env.prod`·`build`·`.gradle` 제외) → `docker compose -f compose.prod.yaml --env-file .env.prod up -d --build api admin batch`. 마이그레이션은 컨테이너 기동 때 Flyway가 적용한다.
 - **웹** `dearby.wid.io.kr`: Vercel GitHub 연동으로 main 푸시마다 자동 배포. **어드민** `admin.dearby.wid.io.kr`: Vercel 프로젝트 `dearby-admin`은 연동이 없어 `git archive origin/main apps/admin` 사본에서 `npx vercel link --project dearby-admin && npx vercel deploy --prod`로 배포(2026-10-19 PR #270까지 반영).
-- **기기**: iPhone(UDID `00008120-0011258C2107C01E`, USB)에는 main `7c4bffc0`(PR #269) 빌드 설치. Android(`R3CY10GNW9F`, 패키지 `io.wid.dearby`)는 2026-10-19 오후 USB가 빠져 PR #262(구글 네이티브) 이후 빌드를 설치하지 못했다. 시뮬레이터·에뮬레이터는 쓰지 않는다.
+- **기기**: iPhone(UDID `00008120-0011258C2107C01E`, USB)과 Android(`R3CY10GNW9F`, 패키지 `io.wid.dearby`) 모두 2026-10-19 저녁 main(PR #272 포함) 빌드 설치. 시뮬레이터·에뮬레이터는 쓰지 않는다.
 - **운영 데이터**: 활동 전부 초안(DRAFT)이라 공개 활동 목록은 비어 있고, 발견 `openOnly=false`로 3개 프로그램이 보인다. 2026-10-19 재수집 결과 프로그램 16·17·19에서 초안 6개 추가(새 지시문·종류·날짜 예시 적용). 명함 3개는 모두 철회됨(사용자 삭제 확인).
 - **로그인**: 패스키·Apple 운영 중. Google은 네이티브 SDK로 전환됐지만 `.env.prod`의 `GOOGLE_CLIENT_IDS`와 `~/.dearby-deploy/mobile.env`가 비어 503·버튼 숨김.
 - **배치**: 매일 00:00 수집, 04:00 명함 회수(Asia/Seoul). `run --rm batch --collect-now/--recall-now`로 띄운 일회성 컨테이너는 작업 뒤 종료되지 않고 스케줄러와 함께 남으므로 수동으로 멈춘다(2026-10-19 두 개 정리).
@@ -15,7 +15,7 @@
 
 - **구현 예정(설계·계약 완료)**: 태그(native-v1 "태그", 어휘 사전·검색·필터·어드민 검색+직접 입력) — API·어드민·iOS·Android·웹.
 - **사용자 결정 대기**: 프로그램 상세 화면(이전 활동 한 줄 목록 vs 종류 묶음; "지난 활동"이 펼침 안에 들어가 핵심은 해소), 내 명함 용도별 프리셋, 일괄 적용 때 운영자가 비운 종류를 지킬지, 일회성 batch 컨테이너가 작업 뒤 스스로 종료하도록 고칠지, SSAFY 수집 설정, Vercel 미사용 환경값 4개 삭제, Android 출시 서명(SHA-1·SHA-256), Google 로고 자산.
-- **사용자 작업**: Google Cloud OAuth 클라이언트 3개 생성 뒤 `.env.prod`(`GOOGLE_CLIENT_IDS`)·`~/.dearby-deploy/mobile.env` 입력 → API 재기동·기기 재설치. Android 폰 USB 재연결 뒤 설치. 인증서(`wid.io.kr`, `api.dearby.wid.io.kr`) 2027-01-04 만료, 수동 dns-01.
+- **사용자 작업**: Google Cloud OAuth 클라이언트 3개 생성 뒤 `.env.prod`(`GOOGLE_CLIENT_IDS`)·`~/.dearby-deploy/mobile.env` 입력 → API 재기동·기기 재설치.  인증서(`wid.io.kr`, `api.dearby.wid.io.kr`) 2027-01-04 만료, 수동 dns-01.
 - **운영 메모**: 운영자 지정 해제 API 없음. 비로그인 저장자는 맞교환할 수 없어 30일 뒤 회수된다(의도).
 
 ## 결정 로그 — 2026-10-18·19

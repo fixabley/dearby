@@ -82,7 +82,12 @@ struct ActivityListPage: View {
                 if let activities = state.openActivities[program.id] {
                     if activities.isEmpty {
                         Text("지금 모집 중인 활동이 없어요").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).padding(.horizontal, 4)
-                        // Past activities of the last two years, latest start first; plain rows, no category headings.
+                        // `모집 예정` then `지난 활동`; plain rows, no category headings, empty groups omitted.
+                        if let upcoming = state.upcomingActivities[program.id], !upcoming.isEmpty {
+                            Text("모집 예정").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
+                                .padding(.horizontal, 4).padding(.top, 4).accessibilityAddTraits(.isHeader)
+                            ForEach(upcoming) { activity in card(activity) }
+                        }
                         if let past = state.pastActivities[program.id], !past.isEmpty {
                             Text("지난 활동").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
                                 .padding(.horizontal, 4).padding(.top, 4).accessibilityAddTraits(.isHeader)
