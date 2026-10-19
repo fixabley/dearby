@@ -26,7 +26,7 @@ API = {
     'pages.account': {'SignInSheet', 'LinkAccountSheet'},
     'pages.onboarding': {'IntroPage'},
     'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletCardPage', 'ReceivedCard', 'filterWallet', 'WalletSection', 'walletSections'},
-    'features.calendar': {'CalendarConflictSheet'},
+    'features.calendar': {'CalendarConflictSheet', 'CalendarConflictFlow', 'CalendarAccessState'},
     'pages.activity': {'ActivityListPage', 'ActivityListPhase', 'MyActivitiesPage', 'ActivityDetailPage', 'ActivityProgressPage', 'ApplicationReportDialog', 'ActivityState', 'ActivityListState', 'ProgramState', 'ProgramPhase', 'ProgramActivities'},
     'entities.activity': {'model.ActivityModel', 'model.ActivityCategory', 'model.ActivityPage', 'model.ScheduleModel', 'model.StageSchedule', 'model.Stage', 'model.stages', 'model.currentStage', 'model.stageBadge', 'model.ProgramSummary', 'model.ProgramPage', 'model.EligibilityItem', 'model.EligibilityGroup', 'model.EligibilityCondition', 'model.lines', 'model.instant', 'model.safeHttpsUrl', 'api.fetchActivities', 'api.fetchPrograms'},
     'entities.account': {'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.ProfileJob', 'model.AccountProfile', 'model.PublishedCard', 'model.Wallet', 'model.WalletReceipt', 'model.ExchangeContext', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault', 'model.WebSignIn', 'model.ContactRules', 'model.ActivityInfoRef', 'model.ActivityInfoItem', 'model.ActivityInfoPage', 'model.EvidenceMeta', 'model.ProfileVersionSummary', 'model.ProfileVersionList', 'model.ProfileVersionDetail'},
@@ -68,7 +68,9 @@ def check_source(path, text):
     # link token across process death while Apple's page is open (2026-10-16 "애플 로그인"); Google's 202 link token too (2026-10-19 native).
     allowed = {'entities/activity/api/ActivityClient.kt': {'HttpURLConnection'}, 'entities/account/api/AccountClient.kt': {'HttpURLConnection'},
                'entities/account/api/SessionVault.kt': {'getSharedPreferences'}, 'app/MainActivity.kt': {'getSharedPreferences'},
-               'app/AccountViewModel.kt': {'SavedStateHandle'}}.get(path.as_posix(), set())
+               'app/AccountViewModel.kt': {'SavedStateHandle'},
+               # Contract "기기 캘린더 겹침" (2026-10-19): only the device calendar source reads CalendarContract
+               'features/calendar/DeviceCalendar.kt': {'CalendarContract'}}.get(path.as_posix(), set())
     blocked = [term for term in ('Room', 'HttpClient', 'HttpURLConnection', 'WebView', 'TokenVault', 'CalendarContract', 'SQLiteDatabase', 'getSharedPreferences', 'rememberSaveable', 'SavedStateHandle') if term not in allowed]
     if re.search(r'\b(?:' + '|'.join(blocked) + r')\b', code): errors.append('prototype must not access service or persisted state')
     return errors
@@ -98,6 +100,7 @@ def self_test():
         ('shared/Test.kt', 'val x = Room.databaseBuilder()', False),
         ('app/Test.kt', 'val x = getSharedPreferences()', False),
         ('features/calendar/Test.kt', 'val x = CalendarContract.Instances', False),
+        ('features/calendar/DeviceCalendar.kt', 'val x = CalendarContract.Instances', True),
         ('features/application/Test.kt', 'val x = WebView(context)', False),
         ('app/Test.kt', 'val x = rememberSaveable { true }', False),
     ]

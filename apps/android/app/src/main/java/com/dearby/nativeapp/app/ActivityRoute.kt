@@ -7,7 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.material3.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dearby.nativeapp.features.calendar.CalendarConflictSheet
+import com.dearby.nativeapp.features.calendar.CalendarConflictFlow
 import com.dearby.nativeapp.pages.activity.ActivityListPage
 import com.dearby.nativeapp.pages.activity.ActivityDetailPage
 import com.dearby.nativeapp.pages.activity.ActivityProgressPage
@@ -50,7 +50,7 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
         else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::loadMore, openLink, model::toggle, model::retryProgram, model::setOpenOnly)
     }
     if (sharing && activity?.officialUrl != null) AlertDialog(onDismissRequest = { sharing = false }, title = { Text("활동 링크") }, text = { Text(activity.officialUrl) }, confirmButton = { TextButton({ sharing = false }) { Text("닫기") } })
-    if (calendar && activity != null) CalendarConflictSheet(model.schedules(activity.id)) { calendar = false }
-    stageCalendar?.let { stage -> progress?.let { model.stageWindow(it.id, stage) } }?.let { window -> CalendarConflictSheet(listOf(window)) { stageCalendar = null } }
+    if (calendar && activity != null) CalendarConflictFlow(model.schedules(activity.id)) { calendar = false }
+    stageCalendar?.let { stage -> progress?.let { model.stageWindow(it.id, stage) } }?.let { window -> CalendarConflictFlow(listOf(window)) { stageCalendar = null } }
     if (prompt && activity != null) ApplicationReportDialog({ model.apply(activity.id, it); prompt = false }, { prompt = false })
 }
