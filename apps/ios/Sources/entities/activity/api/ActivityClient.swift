@@ -59,7 +59,8 @@ enum ActivityClient {
                 hasApplication: activity.application != nil,
                 stages: activity.schedules.map(stage), activityStage: activity.activitySchedule.map(stage),
                 officialUrl: activity.officialUrl, imageUrl: activity.imageUrl,
-                eligibility: activity.eligibility?.value.flatMap { $0.eligibility(depth: 0) })
+                eligibility: activity.eligibility?.value.flatMap { $0.eligibility(depth: 0) },
+                category: activity.category.flatMap(ActivityCategory.init(rawValue:)))
         }
         return ActivityPage(items: items, nextCursor: payload.nextCursor)
     }
@@ -108,6 +109,8 @@ enum ActivityClient {
         let application: Schedule?; let activitySchedule: Schedule?; let schedules: [Schedule]
         /// Unreadable eligibility JSON must not fail the whole activity.
         let eligibility: Lenient<EligibilityNode>?
+        /// 활동 종류 code; absent on older responses.
+        let category: String?
     }
     /// Decodes to nil instead of throwing when the value has an unexpected shape.
     private struct Lenient<Value: Decodable>: Decodable {

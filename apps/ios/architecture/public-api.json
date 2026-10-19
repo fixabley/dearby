@@ -24,6 +24,7 @@
     "Wallet"
   ],
   "entities/activity": [
+    "ActivityCategory",
     "ActivityModel",
     "ActivityPage",
     "ActivityScheduleModel",
