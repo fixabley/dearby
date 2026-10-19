@@ -15,8 +15,6 @@ struct ProfilePage: View {
     @State private var saving = false
     @State private var error: String?
     @State private var tried = false
-    @State private var confirmingDeletion = false
-    @State private var deletionNotice: String?
     /// 닫기/pull-down on the consent sheet; cleared when a save is refused for missing consent so the sheet comes back.
     @State private var consentDismissed = false
     /// Editor rows (`name`·`introduction`·`phone`·`email`·추가 연락처 id) and the 직무 search; the keyboard 완료 clears both.
@@ -65,13 +63,6 @@ struct ProfilePage: View {
         }
         .sheet(isPresented: $composing, onDismiss: { Task { await state.load() } }) { NavigationStack { CardComposerPage(account: state.account) } }
         .sheet(isPresented: $signingIn) { NavigationStack { SignInSheet(account: state.account) { Task { await state.load() } } } }
-        .alert("계정을 삭제할까요?", isPresented: $confirmingDeletion) {
-            Button("삭제", role: .destructive) { deleteAccount() }
-            Button("취소", role: .cancel) {}
-        } message: { Text("명함과 받은 명함 등 모든 정보가 지워지고 되돌릴 수 없어요.") }
-        .alert(deletionNotice ?? "", isPresented: Binding(get: { deletionNotice != nil }, set: { if !$0 { deletionNotice = nil } })) {
-            Button("확인", role: .cancel) {}
-        }
     }
     private var editorScreen: some View {
         Group {
@@ -83,8 +74,7 @@ struct ProfilePage: View {
                 ProgressView("프로필을 불러오는 중이에요").frame(maxWidth: .infinity, maxHeight: .infinity).tint(DearbyStyle.teal)
             case .failed:
                 CenteredMessage(symbol: "exclamationmark.triangle", danger: true, title: "프로필을 불러오지 못했어요", message: "연결을 확인하고 다시 시도해 주세요.",
-                                primary: MessageAction("다시 시도") { Task { await state.load() } },
-                                secondary: MessageAction("계정 삭제", role: .destructive, identifier: "profile-delete-account") { confirmingDeletion = true })
+                                primary: MessageAction("다시 시도") { Task { await state.load() } })
             case .loaded(let profile):
                 if let binding = Binding($form) { editor(binding, saved: profile) }
             }
@@ -137,7 +127,6 @@ struct ProfilePage: View {
             } footer: {
                 if !form.wrappedValue.histories.isEmpty { Text("이력을 누르면 고치거나 인증자료를 올리고, 왼쪽으로 밀어 지워요.").font(.dearby(.subheadline)) }
             }
-            Section { deleteButton }
         }
         .font(.dearby(.body)).dearbyDismissKeyboard { field = nil; jobSearch = false }
     }
@@ -169,20 +158,6 @@ struct ProfilePage: View {
             // 403 CONSENT_REQUIRED re-raises the consent sheet even after the user closed it (contract "다시 저장하면 다시 뜬다").
             if state.consentPending { consentDismissed = false }
             if error == nil, let profile = state.profile { self.form = ProfileForm(profile: profile); tried = false }
-        }
-    }
-    /// App Store 5.1.1(v): shown whenever signed in.
-    private var deleteButton: some View {
-        Button(role: .destructive) { confirmingDeletion = true } label: { Text("계정 삭제").frame(maxWidth: .infinity, minHeight: 44) }
-            .disabled(state.account.deleting).accessibilityIdentifier("profile-delete-account")
-    }
-    private func deleteAccount() {
-        Task {
-            let result = await state.account.deleteAccount()
-            deletionNotice = result.notice
-            guard result != .failed else { return }
-            form = nil
-            await state.load()
         }
     }
 }
