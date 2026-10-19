@@ -372,6 +372,11 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **태그 칩 줄 제거**: 발견 검색창 아래 태그 칩 줄(`GET /v1/tags` 다중 선택 → `tagIds`)을 iOS·Android·웹에서 없앤다. 태그는 **검색 조건**으로만 쓴다: 검색어 `q`가 태그 이름(한글·영문)에 맞으면 그 프로그램·활동이 나온다(이미 서버 규칙, 변경 없음). `tagIds` 파라미터와 `GET /v1/tags`는 API에 남기고 앱·웹은 보내지 않는다. 프로그램 카드와 활동 상세의 태그 칩은 그대로 둔다(사용자: 카드 얘기가 아니다).
 - **탭 제목 통일·머리 간소화**: 다섯 탭(발견·내 활동·내 명함·받은 명함·프로필)의 첫 화면은 모두 **내 명함 페이지의 제목 줄**과 같다: 왼쪽 정렬 굵은 제목(iOS `.title.bold()`, Android는 내 명함과 같은 스타일), 좌우 여백 20, 안전 영역(노치·상태 표시줄) 바로 아래 위 여백 8, 제목 줄 뒤 바로 내용(발견은 검색창·토글). 큰 제목 영역·브랜드 머리·중복 머리글은 없앤다. 각 플랫폼 `shared/ui`의 공통 제목 컴포넌트 하나로 다섯 탭을 그린다(iOS 새 `PageTitle`, Android 기존 `ScreenHeader` 정리). 발견 탭 제목은 `활동 둘러보기`. 뒤로 가기가 있는 하위 화면(활동 상세·QR·이력 입력 등)은 기존 inline 내비게이션 제목을 유지한다. 웹은 변경 없음.
 
+- **색 체계(2026-10-19 밤, 사용자 "프라이머리·포인트 색이 아이폰 테마 색과 조합이 좋지 않다" → 추천안 A 승인 "적용해줘")**: 중립색은 플랫폼 시스템에 맡기고 청록(#007F80, 로고 색)은 **하나의 액센트**로만 쓴다. 직접 정한 중립 토큰(배경 #F3F5F6·선 #E3E8EA·보조 글자 #657078·본문 #172027·민트 #F0FCFA·soft)은 없앤다.
+  - iOS: 배경 `Color(.systemGroupedBackground)`, 카드·입력 면 `Color(.secondarySystemGroupedBackground)`, 글자 `.primary`/`.secondary`, 구분선 `Color(.separator)`, 비활성 칩·마감 배지 `Color(.tertiarySystemFill)`, 청록은 `.tint(DearbyStyle.teal)`과 채워진 강조에만. 민트 바탕은 `DearbyStyle.teal.opacity(0.12)`(글자 청록). 다크 모드는 시스템 색이 따라오므로 앱이 라이트 모드를 강제하던 설정이 있으면 유지 여부를 그대로 둔다(이번 범위 밖).
+  - Android: `lightColorScheme`/`darkColorScheme`을 청록 시드(#007F80)의 Material 3 톤으로 정의한다(primary 청록, primaryContainer 연청록, surface/background·surfaceContainer·outlineVariant·onSurfaceVariant는 시드에서 나온 중립 톤). 상수 `Mint`·`Soft`·`Line`·`Quiet`·`Ink`는 `colorScheme.primaryContainer`·`surfaceContainer`·`outlineVariant`·`onSurfaceVariant`·`onSurface`로 바꾸고 상수를 지운다. `Teal`은 `colorScheme.primary`로 읽는다. 다이내믹 컬러는 켜지 않는다(브랜드 유지).
+  - 웹은 이번 범위 밖(기존 토큰 유지).
+
 ## 활동 장소 — 2026-10-19 사용자 결정
 
 사용자: "장소는 어드민에서 추가할 수 있으면 좋겠고 geocode, 주소 검색해서 좌표 가지고 올 수 있으면". 활동의 구조화된 장소를 둔다.
