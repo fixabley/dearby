@@ -397,6 +397,16 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - 공통: 터치 영역은 iOS 44pt·Android 48dp 이상, 라벨은 항상 보이는 라벨(placeholder만으로 설명하지 않음), 필수 표시는 라벨 끝 `*`가 아니라 도움말 문장. 기존 입력값·검증·저장 흐름은 바꾸지 않는다.
 - **키보드 내리기(사용자 "키보드가 올라왔을 때 폼을 제외한 다른 곳 클릭 시 내려가게")**: 입력 필드 밖을 누르면 키보드가 내려간다. 스크롤로도 내려간다. iOS: 화면 루트에 `.scrollDismissesKeyboard(.interactively)`와, 빈 곳 탭 때 `@FocusState`를 `nil`로 만드는 탭 제스처(버튼·링크·필드의 탭은 그대로 전달, `simultaneousGesture` 아님 — 배경 전용). 앱 전체 입력 화면에 공통 modifier(`shared/ui`)로 적용한다. Android: 입력 화면 루트 `Modifier.pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } }`(필드·버튼은 자기 탭을 먼저 받으므로 영향 없음) + LazyColumn/Column 스크롤에 `imeNestedScroll`·`imePadding`. 발견 검색창도 같다.
 
+## 신청 확인 조건 완화·공개 applicationUrl — 2026-10-19 밤 사용자 결정
+
+사용자: "활동 탐색에서 신청 사이트 들어간 후에 신청 여부를 확인하는 메시지를 표시해줘. 했다면 지난 기획처럼 내 활동에서 볼 수 있게 해줘." 기존 "신청 확인"(2026-10-06)은 **모집 중(open)일 때만** 버튼이 신청 링크가 되고 그때만 "신청하셨나요?"를 물었다. 운영 활동은 모집 기간이 없거나(우아콘·DAN) 예정이라 버튼이 `공식 안내 보기`로만 열려 질문이 한 번도 뜨지 않았다. 바꾼다:
+
+- **공개 API**: `Activity.applicationUrl: string | null`을 더한다(운영자가 어드민에서 지정한 신청 링크 `activities.application_url`; 없으면 null). 수집기가 넣은 값도 그대로 노출한다. `https`만 허용(iOS·Android의 기존 `safeURL` 규칙).
+- **버튼**: 상세 화면 CTA는 `applicationUrl ?? officialUrl`을 연다. 라벨은 모집 상태가 `closed`(모집 마감이 지났거나 활동이 끝남)면 `공식 안내 보기`, 그 외(`open`·`upcoming`·모집 정보 없음)는 `신청 사이트 열기`(applicationUrl이 있을 때) 또는 `공식 사이트에서 신청`(officialUrl만 있을 때).
+- **질문 조건**: 모집 상태가 `closed`가 아니면 CTA를 눌러 외부 브라우저로 나간 뒤 앱이 다시 활성화될 때 "신청하셨나요?" 시트를 띄운다(open·upcoming·정보 없음 모두). closed면 묻지 않는다. 선택지·`다시 묻지 않기`·내 활동 표시 규칙은 2026-10-06 그대로. 이미 신청함인 활동은 묻지 않는다.
+- **내 활동**: `신청했어요`를 고르면 2026-10-06 규칙대로 내 활동 탭의 진행 트랙에 들어간다(사용자 기록, 주최 측 확인 아님). 변경 없음.
+- 웹: 변경 없음(웹에는 신청 확인 흐름이 없다).
+
 ## 활동 장소 — 2026-10-19 사용자 결정
 
 사용자: "장소는 어드민에서 추가할 수 있으면 좋겠고 geocode, 주소 검색해서 좌표 가지고 올 수 있으면". 활동의 구조화된 장소를 둔다.
