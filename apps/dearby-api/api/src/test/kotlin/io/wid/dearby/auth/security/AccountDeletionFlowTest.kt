@@ -14,13 +14,18 @@ import org.springframework.http.MediaType
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.security.web.webauthn.api.Bytes
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.ResultActionsDsl
 import org.springframework.test.web.servlet.delete
+import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import tools.jackson.databind.JsonNode
+import tools.jackson.databind.json.JsonMapper
 import java.nio.ByteBuffer
 import java.util.*
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -80,6 +85,56 @@ class AccountDeletionFlowTest(
 
     private fun count(table: String, column: String, value: Any) =
         jdbc.sql("select count(*) from $table where $column = ?").param(value).query(Int::class.java).single()
+
+    private val json = JsonMapper.builder().build()
+
+    private fun read(result: ResultActionsDsl): JsonNode = json.readTree(result.andReturn().response.contentAsString)
+
+    private fun get(path: String, access: String) = mvc.get(path) { header("Authorization", "Bearer $access") }
+
+    private fun unlink(provider: String, access: String) = mvc.delete("/v1/me/identities/$provider") { header("Authorization", "Bearer $access") }
+
+    // 설정 화면(native-v1.md "설정"): 가입일·로그인 수단 요약, 연결된 로그인 목록, 연결 해제. 마지막 수단은 해제할 수 없다
+    @Test
+    fun `연결된 로그인을 보고 해제하되 마지막 수단은 남기며, 애플 해제는 토큰을 폐기한다`() {
+        val user = userWithData("rt-unlink")
+        val access = tokens.issue(user).accessToken
+
+        // 애플만 연결된 계정(패스키 없음): 해제하면 로그인할 길이 없으므로 409
+        val me = read(get("/v1/me", access).andExpect { status { isOk() } })
+        assertEquals(user.id.toString(), me["id"].asString())
+        assertTrue(me["createdAt"].isString, me.toString())
+        assertEquals(0, me["signInMethods"]["passkeys"].asInt())
+        assertEquals(true, me["signInMethods"]["apple"].asBoolean())
+        assertEquals(false, me["signInMethods"]["google"].asBoolean())
+        val last = read(unlink("apple", access).andExpect { status { isConflict() } })
+        assertEquals("LAST_SIGN_IN_METHOD", last["code"].asString())
+        assertEquals(emptyList<String>(), REVOKED)
+        // 연결되지 않은 provider와 모르는 provider는 404
+        unlink("google", access).andExpect { status { isNotFound() } }
+        unlink("kakao", access).andExpect { status { isNotFound() } }
+
+        jdbc.sql("insert into user_identities (provider, subject, user_id, email, display_name, created_at) values ('GOOGLE', ?, ?, 'g@gmail.com', '조민준', now())")
+            .params("google-${user.id}", user.id).update()
+        val items = read(get("/v1/me/identities", access).andExpect { status { isOk() } })["items"]
+        assertEquals(listOf("apple", "google"), items.values().map { it["provider"].asString() })
+        assertEquals("g@gmail.com", items[1]["email"].asString())
+        assertEquals("조민준", items[1]["displayName"].asString())
+        assertTrue(items[0]["linkedAt"].isString, items.toString())
+        assertEquals(true, read(get("/v1/me", access))["signInMethods"]["google"].asBoolean())
+
+        // 구글이 있으니 애플을 해제할 수 있고, 저장한 애플 토큰은 폐기한다(계정 삭제와 같은 경로)
+        unlink("apple", access).andExpect { status { isNoContent() } }
+        assertEquals(listOf("io.wid.dearby:rt-unlink"), REVOKED)
+        assertEquals(listOf("google"), read(get("/v1/me/identities", access))["items"].values().map { it["provider"].asString() })
+        unlink("apple", access).andExpect { status { isNotFound() } }
+        // 이제 구글이 마지막 수단
+        unlink("google", access).andExpect { status { isConflict() } }
+        assertEquals(1, count("user_identities", "user_id", user.id))
+
+        mvc.get("/v1/me") {}.andExpect { status { isUnauthorized() } }
+        mvc.get("/v1/me/identities") {}.andExpect { status { isUnauthorized() } }
+    }
 
     @Test
     fun `계정을 지우면 사용자의 모든 행이 지워지고 애플 토큰을 폐기한다`() {

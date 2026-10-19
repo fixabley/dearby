@@ -2,10 +2,14 @@ package io.wid.dearby.application.user
 
 import io.wid.dearby.domain.UserId
 import io.wid.dearby.domain.user.User
+import java.time.OffsetDateTime
 
 // 저장소 포트. 구현은 adapter.persistence
 interface UserRepository {
     fun findById(id: UserId): User?
+
+    // 가입 시각(users.created_at). 없는 사용자면 null
+    fun findCreatedAt(id: UserId): OffsetDateTime?
 
     fun create(user: User)
 

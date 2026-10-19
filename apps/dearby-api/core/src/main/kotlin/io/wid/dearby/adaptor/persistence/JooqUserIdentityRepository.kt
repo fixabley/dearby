@@ -22,7 +22,7 @@ class JooqUserIdentityRepository(private val dsl: DSLContext) : UserIdentityRepo
 
     override fun findAllByUser(userId: UserId): List<StoredIdentity> =
         dsl.selectFrom(USER_IDENTITIES).where(USER_IDENTITIES.USER_ID.eq(userId)).fetch()
-            .map { StoredIdentity(it.provider!!, it.subject!!, it.clientId, it.refreshToken) }
+            .map { StoredIdentity(it.provider!!, it.subject!!, it.clientId, it.refreshToken, it.email, it.displayName, it.createdAt!!) }
 
     override fun create(provider: String, subject: String, userId: UserId, email: String?, displayName: String?, clientId: String?, refreshToken: String?) {
         dsl.insertInto(USER_IDENTITIES)
@@ -44,4 +44,7 @@ class JooqUserIdentityRepository(private val dsl: DSLContext) : UserIdentityRepo
             .where(USER_IDENTITIES.PROVIDER.eq(provider), USER_IDENTITIES.SUBJECT.eq(subject))
             .execute()
     }
+
+    override fun delete(provider: String, userId: UserId): Boolean =
+        dsl.deleteFrom(USER_IDENTITIES).where(USER_IDENTITIES.PROVIDER.eq(provider), USER_IDENTITIES.USER_ID.eq(userId)).execute() == 1
 }
