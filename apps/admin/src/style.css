@@ -405,3 +405,66 @@ a:focus-visible {
 .category-heading { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
 .tag-chips { display: inline-flex; flex-wrap: wrap; gap: 2px 0; margin-left: 6px; vertical-align: middle; }
 .tag-chips .ant-tag { margin-inline-end: 4px; }
+
+/* 세부 일정 편집기(달력 보기): 모집·활동 기간 띠와 일정 칩 */
+.schedule-cell {
+  min-height: 84px;
+  margin: 2px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.schedule-cell:hover,
+.schedule-cell:focus-visible {
+  outline: 1px solid var(--teal, #007f80);
+}
+.schedule-cell.application {
+  background: rgba(0, 127, 128, 0.08);
+}
+.schedule-cell.activity {
+  background: rgba(114, 46, 209, 0.08);
+}
+.schedule-cell.application.activity {
+  background: linear-gradient(180deg, rgba(0, 127, 128, 0.08) 0 50%, rgba(114, 46, 209, 0.08) 50% 100%);
+}
+.schedule-cell.today .schedule-cell-day {
+  color: var(--teal, #007f80);
+  font-weight: 700;
+}
+.schedule-cell-day {
+  font-size: 12px;
+  color: #657078;
+}
+.schedule-chip {
+  border: 0;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: left;
+  color: #fff;
+  cursor: pointer;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.schedule-chip.kind-deadline { background: #cf1322; }
+.schedule-chip.kind-announcement { background: #722ed1; }
+.schedule-chip.kind-interview { background: #d48806; }
+.schedule-chip.kind-event { background: #007f80; }
+.schedule-more { font-size: 11px; }
+.schedule-band-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  vertical-align: -2px;
+  margin: 0 2px 0 6px;
+}
+.schedule-band-swatch.application { background: rgba(0, 127, 128, 0.25); }
+.schedule-band-swatch.activity { background: rgba(114, 46, 209, 0.25); }
