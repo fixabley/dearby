@@ -36,9 +36,9 @@ val ProfileContactKinds = listOf(
 
 /**
  * 프로필 연락처 입력. 전화번호·이메일은 필수 칸이고, 그 밖의 종류는 `연락처 추가`에서 골라 붙이고 지울 수 있다.
- * 값·형식 검사·오류 문구는 화면이 갖고 이 위젯은 보이고 바뀐 값을 알린다. 칸은 큰 입력 `DearbyField`에 글자 라벨 대신 종류 아이콘(`contactIcon`)을 왼쪽에 두고 placeholder가
- * 종류를 말한다(contract "연락처 행은 라벨 대신 왼쪽 아이콘", 2026-10-20). 필수·오류 문장은 `supportingText`, 추가 연락처의 삭제는 칸의 `trailingIcon`, `연락처 추가`는 행 전체가
- * 눌리는 `AddRow`다(contract "폼 라벨·입력 크기"·"입력 영역 터치", 2026-10-20).
+ * 값·형식 검사·오류 문구는 화면이 갖고 이 위젯은 보이고 바뀐 값을 알린다. 칸은 종류 아이콘(`contactIcon`)을 왼쪽에 둔 플로팅 라벨 `DearbyField`(라벨 = 종류 이름, 전화·이메일은
+ * 빨간 `*` 필수, 포커스 시 형식 보기 placeholder; contract "연락처 행은 라벨 대신 왼쪽 아이콘"·"플로팅 라벨·필수 표시", 2026-10-20). 오류 문장은 칸 아래, 추가 연락처의 삭제는
+ * 칸의 `trailingIcon`, `연락처 추가`는 행 전체가 눌리는 `AddRow`다(contract "입력 영역 터치").
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun ProfileContactFields(
@@ -50,14 +50,14 @@ val ProfileContactKinds = listOf(
     var choosing by remember { mutableStateOf(false) }
     // Icon-led large fields; Next walks down the fields and the last one answers Done (contract "키보드의 내리기 버튼").
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        DearbyField("전화번호", phone, onPhoneChange, placeholder = "전화번호", error = phoneError, hint = "필수예요.", imeAction = ImeAction.Next, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+        DearbyField("전화번호", phone, onPhoneChange, placeholder = "010-0000-0000", error = phoneError, required = true, imeAction = ImeAction.Next, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
             leadingIcon = contactIcon("phone"))
-        DearbyField("이메일", email, onEmailChange, placeholder = "이메일", error = emailError, hint = "필수예요.", imeAction = if (extras.isEmpty()) ImeAction.Done else ImeAction.Next,
+        DearbyField("이메일", email, onEmailChange, placeholder = "name@example.com", error = emailError, required = true, imeAction = if (extras.isEmpty()) ImeAction.Done else ImeAction.Next,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, autoCorrectEnabled = false), leadingIcon = contactIcon("email"))
         extras.forEachIndexed { index, item ->
             val meta = ProfileContactKinds.firstOrNull { it.first == item.kind }
             val label = meta?.second ?: item.kind
-            DearbyField(label, item.value, { onExtraChange(item.copy(value = it)) }, placeholder = meta?.third ?: label, imeAction = if (index == extras.lastIndex) ImeAction.Done else ImeAction.Next,
+            DearbyField(label, item.value, { onExtraChange(item.copy(value = it)) }, placeholder = meta?.third, imeAction = if (index == extras.lastIndex) ImeAction.Done else ImeAction.Next,
                 leadingIcon = contactIcon(item.kind), trailingIcon = { IconButton({ onRemoveExtra(item.id) }) { Icon(Icons.Rounded.RemoveCircle, "$label 삭제") } })
         }
         AddRow("연락처 추가") { choosing = true }
@@ -112,11 +112,11 @@ val ProfileContactKinds = listOf(
     }
 }
 
-/** A read-only stacked-label field that opens the date picker; a transparent overlay takes the tap so the field never focuses, and the whole box is one button for accessibility. */
+/** A read-only floating-label field that opens the date picker; a transparent overlay takes the tap so the field never focuses, and the whole box is one button for accessibility. */
 @Composable private fun DateField(label: String, required: Boolean, value: LocalDate?, pick: () -> Unit) {
     val text = value?.format(DateTimeFormatter.ofPattern("yyyy. M. d.")) ?: ""
     Box(Modifier.fillMaxWidth().clearAndSetSemantics { role = Role.Button; contentDescription = "$label${if (required) ", 필수" else ""}, ${text.ifEmpty { "날짜 선택" }}"; onClick("$label 선택") { pick(); true } }) {
-        DearbyField(label, text, {}, placeholder = "날짜 선택", hint = if (required) "필수예요." else null, readOnly = true, trailingIcon = { Icon(Icons.Rounded.Event, null) })
+        DearbyField(label, text, {}, required = required, readOnly = true, trailingIcon = { Icon(Icons.Rounded.Event, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) })
         Box(Modifier.matchParentSize().clickable(onClick = pick))
     }
 }

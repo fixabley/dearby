@@ -17,7 +17,7 @@ import com.dearby.nativeapp.pages.profile.ProfilePhase
 import com.dearby.nativeapp.pages.profile.ProfileVersionPage
 import com.dearby.nativeapp.pages.profile.ProfileVersionsPage
 
-/** 내 프로필 tab: in-place data editing, the history funnel (with file pickers for evidence) and the version screens. */
+/** 내 프로필 tab: read mode by default with the top-bar 수정 editor (contract "프로필 읽기/수정 모드"), the history funnel (with file pickers for evidence) and the version screens. */
 @Composable fun ProfileRoute(model: ProfileViewModel, account: AccountViewModel, compose: () -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {}) {
     val state by model.state.collectAsStateWithLifecycle()
     val funnel by model.funnel.collectAsStateWithLifecycle()
@@ -69,7 +69,7 @@ import com.dearby.nativeapp.pages.profile.ProfileVersionsPage
             ProfileVersionsPage(versions, { openVersion = it }, { model.loadVersions(reset = false) }) { versionsOpen = false }
         }
         else -> ProfilePage(state, model.rows, model::change, model::searchJobs, model::addContact, model::openHistory, model::removeHistory, { if (state.consentRequired) consentDismissed = false else model.save() }, model::revert,
-            { versionsOpen = true }, compose, { signingIn = true }, { model.load() }, model.changed, settings, notify)
+            { versionsOpen = true }, compose, { signingIn = true }, { model.load() }, model.changed, model::edit, settings, notify)
     }
     if (signingIn && !signedIn) SignInRoute(account, close = { signingIn = false })
 }

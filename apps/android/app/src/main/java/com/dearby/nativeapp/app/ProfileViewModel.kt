@@ -82,6 +82,8 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
             }
         }
     }
+    /** 수정/완료 in the top bar (contract "프로필 읽기/수정 모드"); 완료 with changes asks first in the page, 버리기 reverts then calls this with false. */
+    fun edit(on: Boolean) = mutable.update { it.copy(editing = on) }
     fun change(form: ProfileFormState) = mutable.update { current ->
         val problems = current.errors?.let { errors(form) }
         current.copy(form = form, errors = problems, error = if (problems == ProfileErrors()) null else current.error)
@@ -102,7 +104,8 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
         viewModelScope.launch {
             try {
                 val saved = account.authorized { account.client.saveProfile(profile(form), form.version, it) }
-                mutable.update { it.copy(profile = saved, form = ProfileFormState.from(saved), saving = false) }
+                // Save success returns to read mode (contract "프로필 읽기/수정 모드").
+                mutable.update { it.copy(profile = saved, form = ProfileFormState.from(saved), saving = false, editing = false) }
             } catch (e: AccountException) {
                 // 403 CONSENT_REQUIRED (contract "개인정보 동의"): the consent screen comes back instead of an error line.
                 if (e.error == AccountError.FORBIDDEN && e.code == "CONSENT_REQUIRED") { mutable.update { it.copy(saving = false, consentRequired = true) }; return@launch }

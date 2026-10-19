@@ -9,7 +9,7 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -134,13 +134,25 @@ private val DarkScheme = darkColorScheme(
         trailingIcon = { if (query.isNotEmpty()) IconButton({ onQueryChange("") }) { Icon(Icons.Rounded.Cancel, "검색어 지우기") } })
 }
 
+/** 상단 바 드롭다운 메뉴의 한 항목(contract "상단 바 메뉴", 2026-10-20): 아이콘 + 라벨. */
+data class MenuAction(val label: String, val icon: ImageVector, val onClick: () -> Unit)
+
 /**
- * 탭 첫 화면 상단 바의 공통 오른쪽 끝(contract "알림 아이콘은 … 우상단 고정"·"설정"): [설정] [알림] 순서로 48dp `IconButton` 둘(44 터치 영역 이상).
- * 탭별 보조 행동은 호출 측이 이 앞에 둔다. 알림 화면은 아직 자리만이라 [notify]는 안내 문구를 연다.
+ * 탭 첫 화면 상단 바의 공통 오른쪽 끝(contract "상단 바 구성(네 탭 공통)", 2026-10-20): [설정] [알림] [메뉴] 순서의 48dp `IconButton`(44 터치 영역 이상). 탭 고유 주 행동(프로필의
+ * `수정`)은 호출 측이 이 앞에 둔다. [menu]가 비어 있지 않으면 `Menu` 아이콘(접근성 `더 보기`)이 `DropdownMenu`를 열고 항목은 `DropdownMenuItem(leadingIcon + text)`다; 비면 메뉴 버튼이 없다.
+ * 알림 화면은 아직 자리만이라 [notify]는 안내 문구를 연다.
  */
-@Composable fun TabActions(settings: () -> Unit, notify: () -> Unit) {
+@Composable fun TabActions(settings: () -> Unit, notify: () -> Unit, menu: List<MenuAction> = emptyList()) {
     IconButton(settings) { Icon(Icons.Rounded.Settings, "설정") }
     IconButton(notify) { Icon(Icons.Rounded.Notifications, "알림") }
+    if (menu.isEmpty()) return
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton({ open = true }) { Icon(Icons.Rounded.Menu, "더 보기") }
+        DropdownMenu(open, { open = false }) {
+            menu.forEach { item -> DropdownMenuItem({ Text(item.label) }, { open = false; item.onClick() }, leadingIcon = { Icon(item.icon, null) }) }
+        }
+    }
 }
 
 /** [danger] reads in the danger colour on the quiet background (a 탈락 mark). */

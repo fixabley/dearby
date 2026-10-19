@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
+import androidx.compose.material.icons.rounded.Badge
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.RemoveCircle
 import androidx.compose.material3.*
@@ -30,30 +32,32 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
 import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
 
 /**
- * 내 프로필: data only. A profile never saved (`version` 0) starts with [ProfileSetupPage]; afterwards it is edited in place
- * and once [ProfileViewState.form] differs from the loaded profile the 저장/원래대로 bar appears (contract "프로필과 버전 이력").
- * Histories come from the step funnel; card decoration lives in 명함 만들기. Inputs are Material 3 `OutlinedTextField`s at their default
- * size with the required/error sentence as supporting text (contract "폼은 플랫폼 기본 컴포넌트", 2026-10-19 밤).
+ * 내 프로필 (contract "프로필 읽기/수정 모드·상단 바 메뉴", 2026-10-20): a profile never saved (`version` 0) starts with [ProfileSetupPage]. Afterwards the tab is
+ * **read-only by default** — name, 직무 chips, 소개, contacts (left icon + value) and history rows like the card body — and the top-bar `수정` switches the same screen to
+ * the editor (floating-label fields, 이력 추가, 연락처 추가) with the 저장/원래대로 bar below. `수정` becomes `완료`: no changes → back to reading, changes → 저장/버리기/취소
+ * dialog. A successful save returns to reading ([ProfileViewState.editing]). 변경 이력·명함 만들기 live in the top-bar `더 보기` menu.
  */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable fun ProfilePage(
     state: ProfileViewState, rows: List<HistoryRowState>, change: (ProfileFormState) -> Unit, searchJobs: (String) -> Unit, addContact: (String) -> Unit, openHistory: (String?) -> Unit,
     removeHistory: (String) -> Unit, save: () -> Unit, revert: () -> Unit, versions: () -> Unit, compose: () -> Unit, signIn: () -> Unit, retry: () -> Unit,
-    changed: Boolean, settings: () -> Unit = {}, notify: () -> Unit = {},
+    changed: Boolean, edit: (Boolean) -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {},
 ) {
     // 직무 label row → focuses the picker's search field (contract "입력 영역 터치"); 계정 삭제 lives in 설정 since 2026-10-20.
     val jobSearchFocus = remember { FocusRequester() }
     // Never saved yet: the step funnel replaces the editor until the first save.
     val settingUp = state.settingUp
+    val loaded = state.phase == ProfilePhase.LOADED && !settingUp
+    var asking by remember { mutableStateOf(false) }
     val topBar = TopAppBarDefaults.pinnedScrollBehavior()
     Column(Modifier.fillMaxSize().nestedScroll(topBar.nestedScrollConnection).dismissKeyboardOnTap()) {
-        // Pinned Material 3 top bar; the tab's own actions (변경 이력, 명함 만들기) sit left of the fixed 설정·알림 buttons (contract "설정").
+        // [수정/완료] [설정] [알림] [더 보기: 변경 이력, 명함 만들기] (contract "상단 바 구성(네 탭 공통)").
         DearbyTopBar("내 프로필", scrollBehavior = topBar) {
-            if (state.phase == ProfilePhase.LOADED && !settingUp) {
-                IconButton(versions) { Icon(Icons.Rounded.History, "변경 이력", tint = MaterialTheme.colorScheme.primary) }
-                TextButton(compose) { Text("명함 만들기") }
+            if (loaded) {
+                if (state.editing) TextButton({ if (changed) asking = true else edit(false) }, enabled = !state.saving) { Text("완료") }
+                else IconButton({ edit(true) }) { Icon(Icons.Rounded.Edit, "수정") }
             }
-            TabActions(settings, notify)
+            TabActions(settings, notify, if (loaded) listOf(MenuAction("변경 이력", Icons.Rounded.History, versions), MenuAction("명함 만들기", Icons.Rounded.Badge, compose)) else emptyList())
         }
         when (state.phase) {
             // Signed out and failed states are CenteredMessages (contract "비스크롤 화면 배치·CTA").
@@ -63,10 +67,11 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
             ProfilePhase.FAILED -> DearbyErrorState("프로필을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.", retry, Modifier.weight(1f).fillMaxWidth())
             ProfilePhase.LOADED -> state.form?.let { form ->
                 if (settingUp) { ProfileSetupPage(form, state.saving, state.error, state.jobSearch, searchJobs, change, save, Modifier.weight(1f)); return@let }
+                if (!state.editing) { ReadOnlyProfile(form, rows, Modifier.weight(1f)); return@let }
                 Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     Text("기본 정보", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-                    // Stacked label + large input rows (contract "폼 라벨·입력 크기"·"입력 영역 터치"): the whole row focuses its field; Next moves down, Done closes the keyboard.
-                    DearbyField("이름", form.name, { change(form.copy(name = it)) }, placeholder = "실명 또는 활동명", error = state.errors?.name, hint = "필수예요.", imeAction = ImeAction.Next)
+                    // Floating-label rows (contract "플로팅 라벨·필수 표시"·"입력 영역 터치"): the whole row focuses its field; Next moves down, Done closes the keyboard.
+                    DearbyField("이름", form.name, { change(form.copy(name = it)) }, placeholder = "실명 또는 활동명", error = state.errors?.name, required = true, imeAction = ImeAction.Next)
                     Labeled("직무", Modifier.pointerInput(jobSearchFocus) { detectTapGestures { runCatching { jobSearchFocus.requestFocus() } } }) {
                         JobTagPicker(form.jobTags, state.jobSearch.query, searchJobs, state.jobSearch.items.map { PickerItem(it.id, it.name, it.parent?.name ?: it.nameEn) },
                             state.jobSearch.loading, state.jobSearch.failed, { change(form.withJob(it.id, it.name)) }, { change(form.withJob(null, null, it)) },
@@ -83,27 +88,58 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
                     rows.forEach { row -> HistoryRow(row, { openHistory(row.id) }) { removeHistory(row.id) } }
                     AddRow("이력 추가") { openHistory(null) }
                 }
-                if (changed) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
-                    Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            DearbyOutlineButton(revert, Modifier.weight(1f), enabled = !state.saving) { Text("원래대로") }
-                            DearbyButton(save, Modifier.weight(1f), enabled = !state.saving) {
-                                if (state.saving) CircularProgressIndicator(Modifier.size(20.dp), color = LocalContentColor.current, strokeWidth = 2.dp) else Text("저장")
-                            }
+                // The bar belongs to edit mode (contract "수정 모드"); its buttons wake up once something changed.
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
+                Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        DearbyOutlineButton(revert, Modifier.weight(1f), enabled = changed && !state.saving) { Text("원래대로") }
+                        DearbyButton(save, Modifier.weight(1f), enabled = changed && !state.saving) {
+                            if (state.saving) CircularProgressIndicator(Modifier.size(20.dp), color = LocalContentColor.current, strokeWidth = 2.dp) else Text("저장")
                         }
                     }
                 }
             }
         }
     }
+    // 완료 with unsaved changes: 저장 / 버리기 / 취소 (contract "수정 모드").
+    if (asking) AlertDialog({ asking = false }, confirmButton = { TextButton({ asking = false; save() }) { Text("저장") } },
+        dismissButton = {
+            TextButton({ asking = false; revert(); edit(false) }) { Text("버리기") }
+            TextButton({ asking = false }) { Text("취소") }
+        }, title = { Text("바꾼 내용을 저장할까요?") }, text = { Text("저장하지 않으면 바꾼 내용이 사라져요.") })
 }
 
-/** One history: 조직 · 프로그램 · 활동, role, period and the approval / verification tags. Tap to edit or attach evidence. */
-@Composable private fun HistoryRow(row: HistoryRowState, open: () -> Unit, remove: () -> Unit) {
+/** Read mode (contract "프로필 탭은 읽기 모드가 기본"): the same sections as the editor as read-only rows in the card body's idiom; no inputs, no bar. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable private fun ReadOnlyProfile(form: ProfileFormState, rows: List<HistoryRowState>, modifier: Modifier = Modifier) {
+    Column(modifier.verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(form.name.ifBlank { "이름 없음" }, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
+            if (form.jobs.isNotEmpty()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { form.jobs.forEach { ExampleBadge(it.title) } }
+            // The introduction is typed text, not a filled template: plain text, no markdown.
+            if (form.introduction.isNotBlank()) Text(form.introduction, style = MaterialTheme.typography.bodyLarge)
+        }
+        Text("연락처", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+        val contacts = listOf("phone" to form.phone, "email" to form.email) + form.extras.map { it.kind to it.value }
+        contacts.filter { it.second.isNotBlank() }.forEach { (kind, value) ->
+            Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Icon(contactIcon(kind), contactKindName(kind), Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(value, Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+            }
+        }
+        Text("활동 이력", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+        if (rows.isEmpty()) Text("활동 이력이 없어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+        rows.forEach { HistoryRow(it, null, null) }
+    }
+}
+
+/** One history: 조직 · 프로그램 · 활동, role, period and the approval / verification tags. With [open] the card opens the funnel; with [remove] it carries the remove button; read mode passes neither. */
+@Composable private fun HistoryRow(row: HistoryRowState, open: (() -> Unit)?, remove: (() -> Unit)?) {
     // The whole card opens the history (contract "터치 컴포넌트": `Card(onClick)`); the trailing remove button keeps its own tap.
-    OutlinedCard(open, Modifier.fillMaxWidth().semantics { onClick("고치거나 인증자료 올리기") { open(); true } }, border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest), shape = RoundedCornerShape(12.dp)) {
+    val border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)
+    val shape = RoundedCornerShape(12.dp)
+    val content: @Composable ColumnScope.() -> Unit = {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(row.title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
@@ -114,9 +150,11 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
                     if (!row.saved) Tag("저장 전", false)
                 }
             }
-            IconButton(remove) { Icon(Icons.Rounded.RemoveCircle, "이력 삭제", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+            if (remove != null) IconButton(remove) { Icon(Icons.Rounded.RemoveCircle, "이력 삭제", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
+    if (open != null) OutlinedCard(open, Modifier.fillMaxWidth().semantics { onClick("고치거나 인증자료 올리기") { open(); true } }, border = border, shape = shape, content = content)
+    else OutlinedCard(Modifier.fillMaxWidth(), border = border, shape = shape, content = content)
 }
 
 @Composable private fun Tag(text: String, strong: Boolean) = Surface(color = if (strong) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(999.dp)) {

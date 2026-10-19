@@ -93,8 +93,8 @@ private fun valueOf(step: SetupStep, form: ProfileFormState) = when (step) {
         when (step) {
             SetupStep.NAME -> {
                 Question("이름이 어떻게 되세요?")
-                SetupField("이름", form.name, { change(form.copy(name = it)) }, "실명 또는 활동명", shownError, "필수예요. 명함과 공개 프로필에 이 이름으로 보여요.", focus,
-                    keyboardActions = nextAction)
+                SetupField("이름", form.name, { change(form.copy(name = it)) }, "실명 또는 활동명", shownError, "명함과 공개 프로필에 이 이름으로 보여요.", focus,
+                    keyboardActions = nextAction, required = true)
             }
             SetupStep.JOBS -> {
                 Question("어떤 일을 하세요? (선택)")
@@ -105,13 +105,13 @@ private fun valueOf(step: SetupStep, form: ProfileFormState) = when (step) {
             }
             SetupStep.PHONE -> {
                 Question("연락받을 전화번호를 알려 주세요")
-                SetupField("전화번호", form.phone, { change(form.copy(phone = it)) }, "전화번호", shownError, "필수예요. 명함에 넣을지는 명함을 만들 때 골라요.", focus,
-                    KeyboardOptions(keyboardType = KeyboardType.Phone), nextAction, leadingIcon = contactIcon("phone"))
+                SetupField("전화번호", form.phone, { change(form.copy(phone = it)) }, "010-0000-0000", shownError, "명함에 넣을지는 명함을 만들 때 골라요.", focus,
+                    KeyboardOptions(keyboardType = KeyboardType.Phone), nextAction, leadingIcon = contactIcon("phone"), required = true)
             }
             SetupStep.EMAIL -> {
                 Question("이메일 주소는요?")
-                SetupField("이메일", form.email, { change(form.copy(email = it)) }, "이메일", shownError, "필수예요.", focus,
-                    KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Email), nextAction, leadingIcon = contactIcon("email"))
+                SetupField("이메일", form.email, { change(form.copy(email = it)) }, "name@example.com", shownError, null, focus,
+                    KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Email), nextAction, leadingIcon = contactIcon("email"), required = true)
             }
             SetupStep.INTRODUCTION -> {
                 Question("처음 만난 사람에게 한두 문장으로 소개해 주세요 (선택)")
@@ -121,12 +121,12 @@ private fun valueOf(step: SetupStep, form: ProfileFormState) = when (step) {
     }
 }
 
-/** One stacked-label field (shared `DearbyField`, contract "폼 라벨·입력 크기"); contact steps pass [leadingIcon] instead of a label (contract "연락처 행은 라벨 대신 왼쪽 아이콘"); single-line fields answer Next with the section's `next`. */
+/** One floating-label field (shared `DearbyField`, contract "플로팅 라벨·필수 표시"); contact steps add [leadingIcon] (contract "연락처 행은 라벨 대신 왼쪽 아이콘"); single-line fields answer Next with the section's `next`. */
 @Composable private fun SetupField(
     label: String, value: String, onValueChange: (String) -> Unit, placeholder: String, error: String?, hint: String?, focus: FocusRequester,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default, keyboardActions: KeyboardActions? = null, minLines: Int = 1, leadingIcon: ImageVector? = null,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default, keyboardActions: KeyboardActions? = null, minLines: Int = 1, leadingIcon: ImageVector? = null, required: Boolean = false,
 ) = DearbyField(label, value, onValueChange, placeholder = placeholder, error = error, hint = hint, minLines = minLines, focusRequester = focus,
-    keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, imeAction = if (minLines > 1) ImeAction.Default else ImeAction.Next, leadingIcon = leadingIcon)
+    keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, imeAction = if (minLines > 1) ImeAction.Default else ImeAction.Next, leadingIcon = leadingIcon, required = required)
 
 /** An answered section: label and value on a row; tapping reopens it. */
 @Composable private fun DoneRow(step: SetupStep, value: String, reopen: () -> Unit) {
