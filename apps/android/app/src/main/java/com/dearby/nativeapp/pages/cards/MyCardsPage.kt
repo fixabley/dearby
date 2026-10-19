@@ -18,7 +18,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -52,23 +51,23 @@ data class MyCardsState(
     var confirmDelete by remember { mutableStateOf<String?>(null) }
     confirmDelete?.let { id ->
         AlertDialog(onDismissRequest = { confirmDelete = null }, title = { Text("이 명함을 지울까요?") }, text = { Text("공개 링크도 더 열리지 않아요. 되돌릴 수 없어요.") },
-            confirmButton = { TextButton({ confirmDelete = null; delete(id) }) { Text("지우기", color = Danger) } },
+            confirmButton = { TextButton({ confirmDelete = null; delete(id) }) { Text("지우기", color = MaterialTheme.colorScheme.error) } },
             dismissButton = { TextButton({ confirmDelete = null }) { Text("취소") } })
     }
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("내 명함")
         when (state.phase) {
-            MyCardsPhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Teal) }
+            MyCardsPhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
             MyCardsPhase.FAILED -> Notice("명함을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.") {
                 DearbyOutlineButton(retry, Modifier.fillMaxWidth()) { Text("다시 시도") }
             }
             MyCardsPhase.SIGNED_OUT, MyCardsPhase.NO_CARD -> Column(Modifier.padding(20.dp)) {
-                OutlinedCard(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, Line)) {
+                OutlinedCard(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                     Column(Modifier.fillMaxWidth().heightIn(min = 320.dp).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        Icon(Icons.Outlined.Badge, null, Modifier.size(72.dp), tint = Teal)
+                        Icon(Icons.Outlined.Badge, null, Modifier.size(72.dp), tint = MaterialTheme.colorScheme.primary)
                         Spacer(Modifier.height(24.dp))
                         Text("내 명함을\n만드세요.", style = MaterialTheme.typography.headlineMedium, textAlign = TextAlign.Center)
-                        Text("프로필 데이터로 명함을 꾸며 발행해요. 발행할 때 패스키로 로그인해요.", Modifier.padding(vertical = 18.dp), color = Quiet, textAlign = TextAlign.Center)
+                        Text("프로필 데이터로 명함을 꾸며 발행해요. 발행할 때 패스키로 로그인해요.", Modifier.padding(vertical = 18.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                         DearbyButton(create, Modifier.fillMaxWidth()) { Text("명함 만들기") }
                     }
                 }
@@ -81,11 +80,11 @@ data class MyCardsState(
                     item(span = { GridItemSpan(maxLineSpan) }) { CardContent(card, Modifier.padding(top = 10.dp), onContact = contact) }
                     item(span = { GridItemSpan(maxLineSpan) }) { DearbyButton({ showQr(card.id) }, Modifier.fillMaxWidth()) { Text("QR 보이기") } }
                     item(span = { GridItemSpan(maxLineSpan) }) { DearbyOutlineButton({ edit(card.id) }, Modifier.fillMaxWidth()) { Text("이 명함 고치기") } }
-                    item(span = { GridItemSpan(maxLineSpan) }) { Text("명함을 고치면 같은 꾸밈으로 새 명함을 발행해요. 이전 명함은 그대로 남아요.", color = Quiet, style = MaterialTheme.typography.bodySmall) }
+                    item(span = { GridItemSpan(maxLineSpan) }) { Text("명함을 고치면 같은 꾸밈으로 새 명함을 발행해요. 이전 명함은 그대로 남아요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
                     item(span = { GridItemSpan(maxLineSpan) }) {
-                        TextButton({ confirmDelete = card.id }, Modifier.fillMaxWidth()) { Text("이 명함 지우기", color = Danger, fontWeight = FontWeight.SemiBold) }
+                        TextButton({ confirmDelete = card.id }, Modifier.fillMaxWidth()) { Text("이 명함 지우기", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.SemiBold) }
                     }
-                    state.message?.let { item(span = { GridItemSpan(maxLineSpan) }) { Text(it, color = Danger, style = MaterialTheme.typography.bodySmall) } }
+                    state.message?.let { item(span = { GridItemSpan(maxLineSpan) }) { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) } }
                 }
             }
         }
@@ -93,10 +92,10 @@ data class MyCardsState(
 }
 
 @Composable private fun NewCardTile(create: () -> Unit) {
-    Surface(onClick = create, modifier = Modifier.fillMaxWidth().heightIn(min = 96.dp), shape = RoundedCornerShape(12.dp), color = Color.White, border = BorderStroke(1.dp, Line)) {
+    Surface(onClick = create, modifier = Modifier.fillMaxWidth().heightIn(min = 96.dp), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
         Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
-            Icon(Icons.Outlined.Add, null, Modifier.size(18.dp), tint = Teal); Spacer(Modifier.width(4.dp))
-            Text("새 명함", color = Teal, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleSmall)
+            Icon(Icons.Outlined.Add, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(4.dp))
+            Text("새 명함", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleSmall)
         }
     }
 }
@@ -104,11 +103,11 @@ data class MyCardsState(
 /** 선택 칸은 민트 바탕·청록 테두리, 나머지는 흰 바탕·구분선 테두리. */
 @Composable private fun CardTile(card: MyCardChoice, selected: Boolean, select: () -> Unit) {
     Surface(onClick = select, modifier = Modifier.fillMaxWidth().heightIn(min = 96.dp).semantics { this.selected = selected }, shape = RoundedCornerShape(12.dp),
-        color = if (selected) Mint else Color.White, border = BorderStroke(1.dp, if (selected) Teal else Line)) {
+        color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(card.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
             Text(card.person, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
-            if (card.job.isNotBlank()) Text(card.job, color = Quiet, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
+            if (card.job.isNotBlank()) Text(card.job, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -116,7 +115,7 @@ data class MyCardsState(
 @Composable private fun Notice(title: String, detail: String, action: @Composable () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(title, style = MaterialTheme.typography.titleMedium)
-        Text(detail, color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+        Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
         action()
     }
 }

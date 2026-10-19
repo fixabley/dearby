@@ -14,7 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -42,17 +41,17 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
     Column(Modifier.fillMaxSize()) {
         ScreenHeader("내 프로필") {
             if (state.phase == ProfilePhase.LOADED && !settingUp) {
-                IconButton(versions) { Icon(Icons.Outlined.History, "변경 이력", tint = Teal) }
+                IconButton(versions) { Icon(Icons.Outlined.History, "변경 이력", tint = MaterialTheme.colorScheme.primary) }
                 TextButton(compose) { Text("명함 만들기") }
             }
         }
         when (state.phase) {
             ProfilePhase.SIGNED_OUT -> Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.", color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                Text("명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
                 DearbyButton(compose, Modifier.fillMaxWidth()) { Text("명함 만들기") }
                 DearbyOutlineButton(signIn, Modifier.fillMaxWidth()) { Text("로그인") }
             }
-            ProfilePhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Teal) }
+            ProfilePhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
             ProfilePhase.FAILED -> Column(Modifier.fillMaxWidth().padding(24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("프로필을 불러오지 못했어요", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
                 DearbyOutlineButton(retry, Modifier.fillMaxWidth()) { Text("다시 시도") }
@@ -75,7 +74,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
                         { id -> change(form.copy(extras = form.extras.filter { it.id != id })) }, addContact,
                         phoneError = state.errors?.phone, emailError = state.errors?.email)
                     Text("활동 이력", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-                    if (form.histories.isEmpty()) Text("아직 이력이 없어요. 조직이나 활동부터 골라 단계별로 적어요.", color = Quiet, style = MaterialTheme.typography.bodyMedium)
+                    if (form.histories.isEmpty()) Text("아직 이력이 없어요. 조직이나 활동부터 골라 단계별로 적어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                     rows.forEach { row -> HistoryRow(row, { openHistory(row.id) }) { removeHistory(row.id) } }
                     DearbyOutlineButton({ openHistory(null) }, Modifier.fillMaxWidth()) { Text("이력 추가") }
                     HorizontalDivider()
@@ -85,13 +84,13 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
                     }
                 }
                 if (changed) {
-                    HorizontalDivider(color = Line)
-                    Column(Modifier.background(Color.White).padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             DearbyOutlineButton(revert, Modifier.weight(1f), enabled = !state.saving) { Text("원래대로") }
                             DearbyButton(save, Modifier.weight(1f), enabled = !state.saving) {
-                                if (state.saving) CircularProgressIndicator(Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp) else Text("저장")
+                                if (state.saving) CircularProgressIndicator(Modifier.size(20.dp), color = LocalContentColor.current, strokeWidth = 2.dp) else Text("저장")
                             }
                         }
                     }
@@ -111,27 +110,27 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
 
 /** One history: 조직 · 프로그램 · 활동, role, period and the approval / verification tags. Tap to edit or attach evidence. */
 @Composable private fun HistoryRow(row: HistoryRowState, open: () -> Unit, remove: () -> Unit) {
-    OutlinedCard(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, Line), shape = RoundedCornerShape(12.dp)) {
+    OutlinedCard(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shape = RoundedCornerShape(12.dp)) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f).clickable(role = Role.Button, onClickLabel = "고치거나 인증자료 올리기", onClick = open), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(row.title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-                Text(row.detail, color = Quiet, style = MaterialTheme.typography.bodySmall)
+                Text(row.detail, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Tag(if (row.verified) "확인됨" else "미확인", row.verified)
                     row.approvalTag?.let { Tag(it, false) }
                     if (!row.saved) Tag("저장 전", false)
                 }
             }
-            IconButton(remove) { Icon(Icons.Outlined.RemoveCircleOutline, "이력 삭제", tint = Quiet) }
+            IconButton(remove) { Icon(Icons.Outlined.RemoveCircleOutline, "이력 삭제", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
     }
 }
 
-@Composable private fun Tag(text: String, strong: Boolean) = Surface(color = if (strong) Mint else Soft, shape = RoundedCornerShape(999.dp)) {
-    Text(text, Modifier.padding(horizontal = 7.dp, vertical = 2.dp), color = if (strong) Teal else Quiet, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelSmall)
+@Composable private fun Tag(text: String, strong: Boolean) = Surface(color = if (strong) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(999.dp)) {
+    Text(text, Modifier.padding(horizontal = 7.dp, vertical = 2.dp), color = if (strong) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelSmall)
 }
 
 @Composable private fun Labeled(label: String, modifier: Modifier = Modifier, field: @Composable () -> Unit) = Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-    Text(label, color = Quiet, style = MaterialTheme.typography.labelMedium)
+    Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
     field()
 }

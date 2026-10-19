@@ -60,9 +60,9 @@ import androidx.compose.ui.unit.dp
     if (progress < 1f) {
         Box(modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(role = Role.Button) { focusOnShow = true; onExpand() }
             .clearAndSetSemantics { contentDescription = "검색"; role = Role.Button }, contentAlignment = Alignment.Center) {
-            Row(Modifier.fillMaxWidth().height(height).background(Soft, shape).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Icon(Icons.Outlined.Search, null, Modifier.size(if (progress < .5f) 16.dp else 22.dp), tint = Quiet)
-                Text(placeholder, Modifier.alpha((progress * 2 - 1).coerceAtLeast(0f)), color = Quiet, maxLines = 1, style = MaterialTheme.typography.bodyMedium)
+            Row(Modifier.fillMaxWidth().height(height).background(MaterialTheme.colorScheme.surfaceContainer, shape).padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Outlined.Search, null, Modifier.size(if (progress < .5f) 16.dp else 22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(placeholder, Modifier.alpha((progress * 2 - 1).coerceAtLeast(0f)), color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, style = MaterialTheme.typography.bodyMedium)
             }
         }
         return
@@ -70,11 +70,11 @@ import androidx.compose.ui.unit.dp
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { if (focusOnShow) { focus.requestFocus(); focusOnShow = false } }
     BasicTextField(query, onQueryChange, modifier.fillMaxWidth().focusRequester(focus).onFocusChanged { focused = it.isFocused }.semantics { contentDescription = placeholder },
-        singleLine = true, textStyle = MaterialTheme.typography.bodyMedium, cursorBrush = SolidColor(Teal)) { inner ->
-        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).background(Soft, shape).padding(start = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Icon(Icons.Outlined.Search, null, Modifier.size(22.dp), tint = Quiet)
-            Box(Modifier.weight(1f)) { if (query.isEmpty()) Text(placeholder, color = Quiet, maxLines = 1, style = MaterialTheme.typography.bodyMedium); inner() }
-            if (query.isNotEmpty()) IconButton({ onQueryChange("") }) { Icon(Icons.Outlined.Cancel, "검색어 지우기", tint = Quiet) } else Spacer(Modifier.width(14.dp))
+        singleLine = true, textStyle = MaterialTheme.typography.bodyMedium, cursorBrush = SolidColor(MaterialTheme.colorScheme.primary)) { inner ->
+        Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).background(MaterialTheme.colorScheme.surfaceContainer, shape).padding(start = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(Icons.Outlined.Search, null, Modifier.size(22.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Box(Modifier.weight(1f)) { if (query.isEmpty()) Text(placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, style = MaterialTheme.typography.bodyMedium); inner() }
+            if (query.isNotEmpty()) IconButton({ onQueryChange("") }) { Icon(Icons.Outlined.Cancel, "검색어 지우기", tint = MaterialTheme.colorScheme.onSurfaceVariant) } else Spacer(Modifier.width(14.dp))
         }
     }
 }
@@ -114,14 +114,15 @@ import androidx.compose.ui.unit.dp
 /** [focusRequester] lets a funnel with one field per screen open the keyboard as the step appears. */
 @Composable fun DearbyInlineField(label: String, value: String, onValueChange: (String) -> Unit, editing: Boolean, modifier: Modifier = Modifier, placeholder: String = "", singleLine: Boolean = true, style: TextStyle = MaterialTheme.typography.bodyLarge, keyboardOptions: KeyboardOptions = KeyboardOptions.Default, keyboardActions: KeyboardActions = KeyboardActions.Default, focusRequester: FocusRequester? = null) {
     val hint = placeholder.ifEmpty { label }
-    val box = modifier.fillMaxWidth().background(if (editing) Soft else Color.Transparent, RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 6.dp)
+    val box = modifier.fillMaxWidth().background(if (editing) MaterialTheme.colorScheme.surfaceContainer else Color.Transparent, RoundedCornerShape(8.dp)).padding(horizontal = 8.dp, vertical = 6.dp)
     if (!editing) {
-        Text(value.ifEmpty { placeholder }, box.semantics { contentDescription = "$label, ${value.ifEmpty { "비어 있음" }}" }, color = if (value.isEmpty()) Quiet else style.color, style = style)
+        Text(value.ifEmpty { placeholder }, box.semantics { contentDescription = "$label, ${value.ifEmpty { "비어 있음" }}" }, color = if (value.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else style.color, style = style)
         return
     }
+    val underline = MaterialTheme.colorScheme.primary
     BasicTextField(value, onValueChange, box.semantics { contentDescription = label }.drawBehind {
-        drawLine(Teal, Offset(8.dp.toPx(), size.height), Offset(size.width - 8.dp.toPx(), size.height), 1.dp.toPx())
-    }.then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier), textStyle = style, keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, singleLine = singleLine, maxLines = if (singleLine) 1 else 6, cursorBrush = SolidColor(Teal)) { inner ->
-        Box { if (value.isEmpty()) Text(hint, color = Quiet, style = style); inner() }
+        drawLine(underline, Offset(8.dp.toPx(), size.height), Offset(size.width - 8.dp.toPx(), size.height), 1.dp.toPx())
+    }.then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier), textStyle = style, keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, singleLine = singleLine, maxLines = if (singleLine) 1 else 6, cursorBrush = SolidColor(MaterialTheme.colorScheme.primary)) { inner ->
+        Box { if (value.isEmpty()) Text(hint, color = MaterialTheme.colorScheme.onSurfaceVariant, style = style); inner() }
     }
 }

@@ -27,14 +27,14 @@ import com.dearby.nativeapp.shared.ui.*
     openMap: () -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("활동 상세", back) { if (activity.officialUrl != null) IconButton(share) { Icon(Icons.Outlined.IosShare, "활동 공유", tint = Teal) } }
-        if (activity.applied) Surface(color = Mint) {
+        ScreenHeader("활동 상세", back) { if (activity.officialUrl != null) IconButton(share) { Icon(Icons.Outlined.IosShare, "활동 공유", tint = MaterialTheme.colorScheme.primary) } }
+        if (activity.applied) Surface(color = MaterialTheme.colorScheme.primaryContainer) {
             Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.CheckCircle, null, tint = Teal); Text("신청했다고 표시했어요 · 실제 접수 확인이 아니에요", color = Teal, style = MaterialTheme.typography.bodyMedium)
+                    Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.onPrimaryContainer); Text("신청했다고 표시했어요 · 실제 접수 확인이 아니에요", color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.bodyMedium)
                 }
                 ConfirmToggle(activity, confirm)
-                Text(CONFIRM_NOTE, color = Quiet, style = MaterialTheme.typography.bodySmall)
+                Text(CONFIRM_NOTE, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
         }
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
@@ -45,7 +45,7 @@ import com.dearby.nativeapp.shared.ui.*
                 if (activity.tags.isNotEmpty()) TagChips(activity.tags)
                 Text(activity.title, style = MaterialTheme.typography.headlineMedium)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Icon(Icons.Outlined.Business, null, Modifier.size(38.dp), tint = Teal)
+                    Icon(Icons.Outlined.Business, null, Modifier.size(38.dp), tint = MaterialTheme.colorScheme.primary)
                     Text(activity.organization, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                 }
                 HorizontalDivider()
@@ -56,44 +56,44 @@ import com.dearby.nativeapp.shared.ui.*
                 InfoRow("프로그램", activity.program, Icons.Outlined.Badge)
                 activity.place?.let { place ->
                     HorizontalDivider()
-                    Text("장소", style = MaterialTheme.typography.titleLarge, color = Teal)
+                    Text("장소", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
                     OutlinedCard(openMap, Modifier.fillMaxWidth().semantics { contentDescription = "장소 ${place.name}, ${place.address}, 지도 앱으로 열기" },
-                        shape = RoundedCornerShape(12.dp), colors = CardDefaults.outlinedCardColors(containerColor = Soft), border = BorderStroke(1.dp, Line)) {
+                        shape = RoundedCornerShape(12.dp), colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                         Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.Map, null, tint = Teal)
+                            Icon(Icons.Outlined.Map, null, tint = MaterialTheme.colorScheme.primary)
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(place.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
-                                Text(place.address, color = Quiet, style = MaterialTheme.typography.bodySmall)
+                                Text(place.address, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                             }
-                            Icon(Icons.AutoMirrored.Outlined.OpenInNew, null, Modifier.size(18.dp), tint = Quiet)
+                            Icon(Icons.AutoMirrored.Outlined.OpenInNew, null, Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
                 HorizontalDivider()
-                Text("소개", style = MaterialTheme.typography.titleLarge, color = Teal)
+                Text("소개", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
                 Text(activity.summary)
                 if (activity.eligibility.isNotEmpty()) {
                     HorizontalDivider()
-                    Text("대상", style = MaterialTheme.typography.titleLarge, color = Teal)
+                    Text("대상", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
                     EligibilityChips(activity.eligibility)
                 }
                 HorizontalDivider()
-                Text("행사 일정", style = MaterialTheme.typography.titleLarge, color = Teal)
+                Text("행사 일정", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
                 Text(activity.date.ifEmpty { "일정 미확인" }, style = MaterialTheme.typography.bodyMedium)
                 Column { activity.sessions.forEachIndexed { index, item ->
                     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        Text(item.first, Modifier.width(106.dp), color = Quiet, style = MaterialTheme.typography.bodySmall)
+                        Text(item.first, Modifier.width(106.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                         TimelineEntry("", item.second, "", last = index == activity.sessions.lastIndex, modifier = Modifier.weight(1f), compact = false)
                     }
                 } }
                 // The overlap check reads the device calendar on tap (contract "기기 캘린더 겹침") and needs timed schedules.
                 if (activity.sessions.isNotEmpty()) {
                     DearbyOutlineButton(checkCalendar, Modifier.fillMaxWidth()) { Text("겹치는 시간 확인하기", fontWeight = FontWeight.SemiBold) }
-                    Text("누르면 캘린더 읽기 권한을 묻고 기기 안에서만 비교해요.", Modifier.align(Alignment.CenterHorizontally), color = Quiet, style = MaterialTheme.typography.bodySmall)
+                    Text("누르면 캘린더 읽기 권한을 묻고 기기 안에서만 비교해요.", Modifier.align(Alignment.CenterHorizontally), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
                 HorizontalDivider()
-                Text("신청 조건과 최신 일정은 공식 사이트에서 확인해 주세요.", color = Quiet, style = MaterialTheme.typography.bodySmall)
-                Text("신청 표시는 이 앱 안에서만 남기는 기록이에요. 실제 접수 여부와 무관해요.", color = Quiet, style = MaterialTheme.typography.bodySmall)
+                Text("신청 조건과 최신 일정은 공식 사이트에서 확인해 주세요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text("신청 표시는 이 앱 안에서만 남기는 기록이에요. 실제 접수 여부와 무관해요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 TextButton(editReport) { Text("신청 상태 수정") }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
@@ -119,7 +119,7 @@ import com.dearby.nativeapp.shared.ui.*
 @Composable private fun EligibilityChips(lines: List<String>) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         lines.forEach { line ->
-            Surface(color = Soft, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, Line)) {
+            Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
                 Text(line, Modifier.padding(horizontal = 12.dp, vertical = 8.dp), style = MaterialTheme.typography.bodyMedium)
             }
         }

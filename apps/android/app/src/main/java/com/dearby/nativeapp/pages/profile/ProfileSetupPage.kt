@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -58,19 +57,19 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
     fun reopen(step: SetupStep) { tried = false; open = step }
     LaunchedEffect(open) { if (open != SetupStep.JOBS) runCatching { focus.requestFocus() } }
     Column(modifier.fillMaxWidth()) {
-        Text("프로필 만들기", Modifier.padding(horizontal = 24.dp, vertical = 12.dp).semantics { heading() }, color = Quiet, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
+        Text("프로필 만들기", Modifier.padding(horizontal = 24.dp, vertical = 12.dp).semantics { heading() }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             sections.filter { it in reached }.forEach { step ->
                 if (step == open) OpenSection(step, form, tried, errorOf(step), jobSearch, searchJobs, change, focus, ::next)
                 else DoneRow(step, valueOf(step, form)) { reopen(step) }
             }
-            if (allReached) Text("활동 이력은 저장한 뒤 단계별로 추가할 수 있어요.", color = Quiet, style = MaterialTheme.typography.bodyMedium)
+            if (allReached) Text("활동 이력은 저장한 뒤 단계별로 추가할 수 있어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
         }
-        HorizontalDivider(color = Line)
-        Box(Modifier.background(Color.White).padding(horizontal = 24.dp, vertical = 12.dp)) {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Box(Modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 24.dp, vertical = 12.dp)) {
             DearbyButton(::next, Modifier.fillMaxWidth().height(56.dp), enabled = !saving) {
-                if (saving) CircularProgressIndicator(Modifier.size(22.dp), color = Color.White, strokeWidth = 2.dp)
+                if (saving) CircularProgressIndicator(Modifier.size(22.dp), color = LocalContentColor.current, strokeWidth = 2.dp)
                 else Text(if (allReached) "프로필 저장" else "다음", style = MaterialTheme.typography.titleMedium)
             }
         }
@@ -127,17 +126,17 @@ private fun valueOf(step: SetupStep, form: ProfileFormState) = when (step) {
 /** An answered section: label and value on a 56dp row; tapping reopens it. */
 @Composable private fun DoneRow(step: SetupStep, value: String, reopen: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 56.dp).background(Soft, RoundedCornerShape(14.dp)).clickable(role = Role.Button, onClickLabel = "${step.label} 고치기", onClick = reopen).padding(horizontal = 16.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth().heightIn(min = 56.dp).background(MaterialTheme.colorScheme.surfaceContainer, RoundedCornerShape(14.dp)).clickable(role = Role.Button, onClickLabel = "${step.label} 고치기", onClick = reopen).padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(step.label, color = Quiet, style = MaterialTheme.typography.labelLarge)
-            Text(value.ifEmpty { "비워 둠" }, color = if (value.isEmpty()) Quiet else MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium)
+            Text(step.label, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge)
+            Text(value.ifEmpty { "비워 둠" }, color = if (value.isEmpty()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium)
         }
-        Icon(Icons.Outlined.Edit, null, tint = Quiet)
+        Icon(Icons.Outlined.Edit, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable private fun Question(text: String) = Text(text, Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineMedium)
 
-@Composable private fun Hint(text: String) = Text(text, color = Quiet, style = MaterialTheme.typography.bodyMedium)
+@Composable private fun Hint(text: String) = Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)

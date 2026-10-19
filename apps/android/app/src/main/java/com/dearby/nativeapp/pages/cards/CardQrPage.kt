@@ -24,7 +24,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.QrImage
-import com.dearby.nativeapp.shared.ui.Quiet
 import com.dearby.nativeapp.shared.ui.ScreenHeader
 
 /** One applied activity the card can be handed out at (contract "명함 교환"). */
@@ -44,7 +43,7 @@ data class QrActivity(val id: String, val title: String)
             QrImage(url, Modifier.fillMaxWidth().aspectRatio(1f).semantics { contentDescription = "내 명함 QR 코드, 카메라로 읽으면 명함을 받아요" })
             AssistChip({ picking = true }, label = { Text(selected?.title ?: "활동 없이") }, leadingIcon = { Icon(Icons.Outlined.Event, null, Modifier.size(18.dp)) })
             Text("상대가 카메라로 QR을 읽으면 이 명함을 받아요. 받은 명함에는 고른 활동이 함께 표시되고, 맞교환하지 않으면 30일 뒤 회수돼요.",
-                color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
+                color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall)
         }
     }
     if (picking) AlertDialog(onDismissRequest = { picking = false }, title = { Text("어느 활동에서 건네나요?") },
@@ -52,7 +51,7 @@ data class QrActivity(val id: String, val title: String)
             Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 TextButton({ picking = false; select(null) }, Modifier.fillMaxWidth()) { Text("활동 없이", Modifier.fillMaxWidth(), textAlign = TextAlign.Start) }
                 activities.forEach { TextButton({ picking = false; select(it.id) }, Modifier.fillMaxWidth()) { Text(it.title, Modifier.fillMaxWidth(), textAlign = TextAlign.Start) } }
-                if (activities.isEmpty()) Text("신청 표시한 활동이 없어요. 내 활동에서 신청한 활동이 여기에 나와요.", color = Quiet, style = MaterialTheme.typography.bodySmall)
+                if (activities.isEmpty()) Text("신청 표시한 활동이 없어요. 내 활동에서 신청한 활동이 여기에 나와요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
         },
         confirmButton = { TextButton({ picking = false }) { Text("닫기") } })

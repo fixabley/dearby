@@ -5,6 +5,7 @@ import android.util.Log
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.core.content.edit
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -15,7 +16,6 @@ import com.dearby.nativeapp.entities.account.api.AccountClient
 import com.dearby.nativeapp.entities.account.api.SessionVault
 import com.dearby.nativeapp.entities.activity.api.fetchActivities
 import com.dearby.nativeapp.entities.activity.api.fetchPrograms
-import com.dearby.nativeapp.entities.activity.api.fetchTags
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.getValue
@@ -31,9 +31,8 @@ class MainActivity : ComponentActivity() {
         viewModelFactory {
             initializer {
                 ActivityViewModel(
-                    { query, cursor, openOnly, tagIds -> withContext(Dispatchers.IO) { fetchPrograms(ApiOrigin.current, query, null, cursor, openOnly, tagIds) } },
-                    { query, cursor, programId, open, tagIds -> withContext(Dispatchers.IO) { fetchActivities(ApiOrigin.current, query, cursor, programId, open, tagIds) } },
-                    { withContext(Dispatchers.IO) { fetchTags(ApiOrigin.current) } },
+                    { query, cursor, openOnly -> withContext(Dispatchers.IO) { fetchPrograms(ApiOrigin.current, query, null, cursor, openOnly) } },
+                    { query, cursor, programId, open -> withContext(Dispatchers.IO) { fetchActivities(ApiOrigin.current, query, cursor, programId, open) } },
                 )
             }
         }
@@ -55,6 +54,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
+        // System bars follow the theme (contract "다크 모드"): transparent bars whose icons flip with light/dark; DearbyApp pads the insets once.
+        enableEdgeToEdge()
         // Someone already signed in (tokens in the vault) never needs the intro.
         if (!onboarding.getBoolean("dearby.onboarding.shown", false)) {
             if (account.state.value.phase == AccountPhase.SIGNED_IN) introShown() else intro = true

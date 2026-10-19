@@ -23,8 +23,8 @@ import androidx.compose.ui.unit.dp
 
 /** 불러오는 중. 화면 읽기 도구에는 [message]를 조용히 알린다. */
 @Composable fun DearbyLoadingState(message: String, modifier: Modifier = Modifier) = StateLayout(modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
-    CircularProgressIndicator(Modifier.size(28.dp), color = Teal, trackColor = Line, strokeWidth = 3.dp)
-    Text(message, color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+    CircularProgressIndicator(Modifier.size(28.dp), color = MaterialTheme.colorScheme.primary, trackColor = MaterialTheme.colorScheme.outlineVariant, strokeWidth = 3.dp)
+    Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
 }
 
 /** 오류와 다시 시도. 화면 읽기 도구에 바로 알린다. */
@@ -47,11 +47,11 @@ import androidx.compose.ui.unit.dp
     modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 56.dp), horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically), content = content)
 
-@Composable private fun StateIcon(icon: ImageVector) = Box(Modifier.size(68.dp).background(Mint, CircleShape), contentAlignment = Alignment.Center) {
-    Icon(icon, null, Modifier.size(32.dp), tint = Teal)
+@Composable private fun StateIcon(icon: ImageVector) = Box(Modifier.size(68.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape), contentAlignment = Alignment.Center) {
+    Icon(icon, null, Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
 }
 
 @Composable private fun StateText(title: String, message: String) = Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
     Text(title, Modifier.semantics { heading() }, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = MaterialTheme.typography.titleLarge)
-    if (message.isNotBlank()) Text(message, color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+    if (message.isNotBlank()) Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
 }

@@ -33,8 +33,6 @@ data class ActivityState(
     /** Recruitment still ahead or running: the card emphasises the `모집` row (contract "발견 카드 리뉴얼" 강조 규칙). */
     val recruiting get() = status == "모집 중" || status == "모집 예정"
 }
-/** One dictionary tag for the filter chips (contract "태그"). */
-data class TagState(val id: String, val name: String)
 /**
  * One program header in discovery (contract "발견 프로그램 묶음"); [matched] when the search hit an open activity's name.
  * [openCount] is 0 for a program with only upcoming or past activities; [upcomingCount] and [nearestStart] describe its 모집 예정
@@ -45,6 +43,8 @@ data class ProgramState(
     val upcomingCount: Int = 0, val nearestStart: Instant? = null,
     /** Program (or open-activity union) tag names, at most 6 (contract "태그"). */
     val tags: List<String> = emptyList(),
+    /** The program logo URL for the card's 44dp logo slot, or null for the initial avatar (contract "프로그램 로고"). */
+    val logoUrl: String? = null,
 )
 /**
  * The open activities of an expanded program, loaded on first expand; [ids] index into [ActivityListState.known]. When none is
@@ -62,14 +62,12 @@ data class ProgramActivities(
  * [askingId]: the activity whose application link was opened, asked about once when the app comes back (contract #148).
  * [progress] is every loaded activity's stage track with the user's marks (contract "내 활동 진행 트랙"), memory only.
  * [openOnly] is the `마감 숨기기` switch (default on, memory only; contract "모집 중인 프로그램만 보기").
- * [tags] is the dictionary for the filter chips and [selectedTagIds] the chosen ones, sent as `tagIds` (contract "태그"); memory only.
  */
 data class ActivityListState(
     val phase: ActivityListPhase = ActivityListPhase.LOADING, val query: String = "", val openOnly: Boolean = true, val programs: List<ProgramState> = emptyList(),
     val expanded: Set<String> = emptySet(), val programActivities: Map<String, ProgramActivities> = emptyMap(),
     val known: Map<String, ActivityState> = emptyMap(), val nextCursor: String? = null, val loadingMore: Boolean = false,
     val moreFailed: Boolean = false, val askingId: String? = null, val progress: Map<String, ProgressState> = emptyMap(),
-    val tags: List<TagState> = emptyList(), val selectedTagIds: Set<String> = emptySet(),
 ) {
     val asking get() = askingId?.let(known::get)
     /** Applied activities, the nearest next stage first; activities without a dated next stage come last. */

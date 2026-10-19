@@ -28,18 +28,18 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardComposer
         val draft = state.draft
         when {
             phase is PublishPhase.Published -> Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
-                Icon(Icons.Outlined.CheckCircle, null, Modifier.size(56.dp), tint = Teal)
+                Icon(Icons.Outlined.CheckCircle, null, Modifier.size(56.dp), tint = MaterialTheme.colorScheme.primary)
                 Text("명함을 발행했어요", Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
-                Text("${phase.card.profileName} · ${phase.card.name}", color = Quiet, style = MaterialTheme.typography.bodyMedium)
+                Text("${phase.card.profileName} · ${phase.card.name}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                 DearbyButton(close, Modifier.fillMaxWidth()) { Text("확인") }
             }
             auth.phase != AccountPhase.SIGNED_IN -> Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
-                Text("로그인하면 프로필 데이터로 명함을 만들 수 있어요.", color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                Text("로그인하면 프로필 데이터로 명함을 만들 수 있어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
                 DearbyButton({ model.load() }, Modifier.fillMaxWidth()) { Text("로그인") }
             }
             draft != null && draft.profile.version == 0 -> Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
                 // Signed in from here without ever saving a profile: nothing to fill the template with yet.
-                Text("먼저 내 프로필에서 이름과 연락처를 적어 주세요.", color = Quiet, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                Text("먼저 내 프로필에서 이름과 연락처를 적어 주세요.", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
                 DearbyOutlineButton(close, Modifier.fillMaxWidth()) { Text("닫기") }
             }
             draft != null -> CardComposer(draft.cardTitle, { model.edit(draft.copy(cardTitle = it)) }, draft.preview, draft.contacts,
@@ -48,10 +48,10 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardComposer
                 draft.changed, { model.edit(draft.revert()) }, model::publish, Modifier.weight(1f),
                 publishing = phase == PublishPhase.Publishing || phase == PublishPhase.Loading, errorMessage = (phase as? PublishPhase.Failed)?.message)
             phase is PublishPhase.Failed -> Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)) {
-                Text(phase.message, color = Quiet, textAlign = TextAlign.Center)
+                Text(phase.message, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center)
                 DearbyOutlineButton({ model.load() }, Modifier.fillMaxWidth()) { Text("다시 시도") }
             }
-            else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Teal) }
+            else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
         }
     }
     if (state.signingIn && auth.phase != AccountPhase.SIGNED_IN) SignInRoute(account, close = model::cancelSignIn)

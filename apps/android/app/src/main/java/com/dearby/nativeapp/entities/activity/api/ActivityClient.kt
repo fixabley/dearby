@@ -14,6 +14,7 @@ import com.dearby.nativeapp.entities.activity.model.Tag
 import com.dearby.nativeapp.entities.activity.model.instant
 import android.os.LocaleList
 import java.net.HttpURLConnection
+import java.net.URI
 import java.net.URL
 import java.net.URLEncoder
 import org.json.JSONArray
@@ -22,25 +23,22 @@ import org.json.JSONObject
 /**
  * `GET /v1/activities` (contract "활동 조회"): [query] searches name and description, [cursor] is the previous
  * page's `nextCursor`, [programId] narrows to one program (contract "발견 프로그램 묶음"), [open] asks the server for
- * open activities only (contract "열린 활동 판정 일원화", 2026-10-19: the client never judges openness itself), [tagIds]
- * keeps activities carrying every listed tag (contract "태그"). Transport or parsing failure throws, never an empty page.
- * Call off the main thread.
+ * open activities only (contract "열린 활동 판정 일원화", 2026-10-19: the client never judges openness itself). Transport or
+ * parsing failure throws, never an empty page. Call off the main thread.
  */
-fun fetchActivities(api: String, query: String?, cursor: String?, programId: String? = null, open: Boolean = false, tagIds: List<String> = emptyList()): ActivityPage =
-    parseActivities(get(api, "activities", listOfNotNull(query?.let { "q" to it }, cursor?.let { "cursor" to it }, programId?.let { "programId" to it }, if (open) "open" to "true" else null, tagIds.takeIf { it.isNotEmpty() }?.let { "tagIds" to it.joinToString(",") })))
+fun fetchActivities(api: String, query: String?, cursor: String?, programId: String? = null, open: Boolean = false): ActivityPage =
+    parseActivities(get(api, "activities", listOfNotNull(query?.let { "q" to it }, cursor?.let { "cursor" to it }, programId?.let { "programId" to it }, if (open) "open" to "true" else null)))
 
 /**
  * `GET /v1/discovery/programs` (contract "발견 프로그램 묶음"): programs that have at least one open activity, with the
  * count, nearest deadline (UTC ISO 8601 or null) and the activities whose name matched [query]. [participationType] is
  * REGISTRATION or SELECTION; [cursor] is the previous page's integer offset `nextCursor`, carried as text. [openOnly] false
- * (contract "모집 중인 프로그램만 보기") also returns programs that had an activity in the last two years, open ones first.
- * [tagIds] keeps programs whose open activities carry every listed tag (contract "태그"); [query] also matches tag names.
+ * (contract "모집 중인 프로그램만 보기") also returns programs that had an activity in the last three years, open ones first.
+ * [query] also matches tag names (contract "태그 칩 줄 제거", 2026-10-19 밤: tags are a search condition only; the app sends no tag filter).
+ * The program logo path is resolved against [api] (contract "프로그램 로고").
  */
-fun fetchPrograms(api: String, query: String?, participationType: String?, cursor: String?, openOnly: Boolean = true, tagIds: List<String> = emptyList()): ProgramPage =
-    parsePrograms(get(api, "discovery/programs", listOfNotNull(query?.let { "q" to it }, participationType?.let { "participationType" to it }, cursor?.let { "cursor" to it }, if (openOnly) null else "openOnly" to "false", tagIds.takeIf { it.isNotEmpty() }?.let { "tagIds" to it.joinToString(",") })))
-
-/** `GET /v1/tags` (contract "태그"): the whole dictionary in its order. Transport or parsing failure throws. Call off the main thread. */
-fun fetchTags(api: String): List<Tag> = JSONObject(get(api, "tags", emptyList())).getJSONArray("items").objects().map { it.tag() }
+fun fetchPrograms(api: String, query: String?, participationType: String?, cursor: String?, openOnly: Boolean = true): ProgramPage =
+    parsePrograms(get(api, "discovery/programs", listOfNotNull(query?.let { "q" to it }, participationType?.let { "participationType" to it }, cursor?.let { "cursor" to it }, if (openOnly) null else "openOnly" to "false")), api)
 
 private fun get(api: String, path: String, params: List<Pair<String, String>>): String {
     val query = params.joinToString("&") { (name, value) -> name + "=" + URLEncoder.encode(value, "UTF-8") }
@@ -109,7 +107,8 @@ private fun JSONObject.eligibilityGroup(depth: Int): EligibilityGroup? {
     return EligibilityGroup(if (optString("op") == "any") "any" else "all", items)
 }
 
-fun parsePrograms(json: String): ProgramPage {
+/** [api] is the origin the `logoUrl` path (`/v1/programs/{id}/logo?v=`) is resolved against; an unreadable path leaves no logo. */
+fun parsePrograms(json: String, api: String): ProgramPage {
     val body = JSONObject(json)
     return ProgramPage(body.getJSONArray("items").objects().map { program ->
         val matched = program.optJSONArray("matchedActivityIds")
@@ -120,6 +119,7 @@ fun parsePrograms(json: String): ProgramPage {
             program.text("latestActivityAt"),
             upcomingActivityCount = program.optInt("upcomingActivityCount", 0), nearestRecruitmentStartAt = program.text("nearestRecruitmentStartAt"),
             program.tags(),
+            logoUrl = program.text("logoUrl")?.let { path -> runCatching { URI(api).resolve(path).toString() }.getOrNull() },
         )
     }, if (body.isNull("nextCursor")) null else body.getLong("nextCursor").toString())
 }

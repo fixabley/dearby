@@ -13,7 +13,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -36,7 +35,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
     val index = steps.indexOf(state.step).coerceAtLeast(0)
     Column(Modifier.fillMaxSize()) {
         ScreenHeader(if (state.step == HistoryDraft.Step.SUMMARY) "이력 확인" else "이력 입력", close)
-        LinearProgressIndicator({ (index + 1f) / steps.size }, Modifier.fillMaxWidth().padding(horizontal = 20.dp).semantics { heading() }, color = Teal)
+        LinearProgressIndicator({ (index + 1f) / steps.size }, Modifier.fillMaxWidth().padding(horizontal = 20.dp).semantics { heading() }, color = MaterialTheme.colorScheme.primary)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             when (state.step) {
                 HistoryDraft.Step.KIND -> {
@@ -61,8 +60,8 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
             }
             if (state.tried) draft.error(state.step)?.let { DearbyFieldError(it) }
         }
-        HorizontalDivider(color = Line)
-        Row(Modifier.background(Color.White).padding(horizontal = 20.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Row(Modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 20.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (index > 0 && state.step != HistoryDraft.Step.SUMMARY) DearbyOutlineButton({ go(steps[index - 1]) }, Modifier.weight(1f)) { Text("이전") }
             DearbyButton(next, Modifier.weight(1f)) { Text(if (state.step == HistoryDraft.Step.SUMMARY) "완료" else "다음") }
         }
@@ -83,27 +82,27 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
 @Composable private fun Summary(state: FunnelState, pickImage: () -> Unit, pickPdf: () -> Unit, deleteEvidence: (String) -> Unit, edit: () -> Unit) {
     val draft = state.draft
     Text(draft.chainText, Modifier.semantics { heading() }, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-    Text("${draft.roleText} · ${draft.summaryLine}", color = Quiet, style = MaterialTheme.typography.bodyMedium)
+    Text("${draft.roleText} · ${draft.summaryLine}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
     if (draft.description.isNotBlank()) Text(draft.description, style = MaterialTheme.typography.bodyMedium)
     if (draft.hasCustomEntry) Text(
         if (draft.approval == "rejected") "거절됨" + (draft.approvalReason?.let { " · $it" } ?: "") else "직접 입력한 항목은 관리자 승인 뒤 명함에 넣을 수 있어요",
-        color = if (draft.approval == "rejected") Danger else Quiet, style = MaterialTheme.typography.bodySmall)
+        color = if (draft.approval == "rejected") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
     TextButton(edit, contentPadding = PaddingValues(0.dp)) { Text("내용 고치기") }
     HorizontalDivider()
     Text("인증자료", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-    Text(if (draft.verification == "verified") "관리자가 확인했어요." else "건너뛰어도 돼요. 확인되기 전까지 ‘미확인’으로 보여요.", color = Quiet, style = MaterialTheme.typography.bodySmall)
+    Text(if (draft.verification == "verified") "관리자가 확인했어요." else "건너뛰어도 돼요. 확인되기 전까지 ‘미확인’으로 보여요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
     if (state.saved) EvidenceFields(draft.evidence.map { EvidenceRow(it.id, it.fileName, it.contentType == "application/pdf", it.size / 1024) }, state.evidenceBusy, state.evidenceError, pickImage, pickPdf, deleteEvidence)
-    else Text("프로필을 저장한 뒤 이 이력을 열면 인증자료를 올릴 수 있어요.", color = Quiet, style = MaterialTheme.typography.bodyMedium)
+    else Text("프로필을 저장한 뒤 이 이력을 열면 인증자료를 올릴 수 있어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
 }
 
 @Composable private fun Choice(title: String, detail: String, selected: Boolean, onClick: () -> Unit) {
-    Surface(Modifier.fillMaxWidth().clickable(role = Role.RadioButton, onClick = onClick), color = if (selected) Mint else Soft, shape = RoundedCornerShape(12.dp)) {
+    Surface(Modifier.fillMaxWidth().clickable(role = Role.RadioButton, onClick = onClick), color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(12.dp)) {
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(Modifier.weight(1f)) {
                 Text(title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
-                Text(detail, color = Quiet, style = MaterialTheme.typography.bodySmall)
+                Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
-            Icon(if (selected) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked, null, tint = if (selected) Teal else Line)
+            Icon(if (selected) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked, null, tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.outlineVariant)
         }
     }
 }

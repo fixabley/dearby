@@ -1,0 +1,4 @@
+<resources>
+    <!-- Dark system theme (contract "다크 모드"): the window and status-bar icons follow the system; Compose picks DarkScheme. -->
+    <style name="Theme.Dearby" parent="android:style/Theme.Material.NoActionBar"><item name="android:fontFamily">sans</item><item name="android:windowLightStatusBar">false</item></style>
+</resources>

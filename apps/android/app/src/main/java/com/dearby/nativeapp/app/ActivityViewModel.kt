@@ -7,7 +7,6 @@ import com.dearby.nativeapp.entities.activity.model.ActivityModel
 import com.dearby.nativeapp.entities.activity.model.lines
 import com.dearby.nativeapp.entities.activity.model.ActivityPage
 import com.dearby.nativeapp.entities.activity.model.ProgramPage
-import com.dearby.nativeapp.entities.activity.model.Tag
 import com.dearby.nativeapp.entities.activity.model.currentStage
 import com.dearby.nativeapp.entities.activity.model.instant
 import com.dearby.nativeapp.entities.activity.model.safeHttpsUrl
@@ -19,7 +18,6 @@ import com.dearby.nativeapp.pages.activity.ActivityListState
 import com.dearby.nativeapp.pages.activity.ProgramActivities
 import com.dearby.nativeapp.pages.activity.ProgramPhase
 import com.dearby.nativeapp.pages.activity.ProgramState
-import com.dearby.nativeapp.pages.activity.TagState
 import com.dearby.nativeapp.widgets.activity.progress.ProgressMark
 import com.dearby.nativeapp.widgets.activity.progress.ProgressStage
 import com.dearby.nativeapp.widgets.activity.progress.ProgressState
@@ -40,13 +38,12 @@ import kotlinx.coroutines.launch
 /**
  * Discovery (contract "발견 프로그램 묶음"): GET /v1/programs page by page, and GET /v1/activities?programId= when a
  * program is expanded; a failure is an error state, never example activities. [fetchPrograms] takes the search text
- * (null for all), the cursor, the open-only flag and the selected tag ids; [fetch] takes the search text, the cursor, the program id,
- * the open flag and the selected tag ids; [fetchTags] loads the tag dictionary once (contract "태그"; a failure just hides the chips).
+ * (null for all), the cursor and the open-only flag; [fetch] takes the search text, the cursor, the program id and the open flag.
+ * Tags are a search condition only (contract "태그 칩 줄 제거", 2026-10-19 밤): no dictionary load, no tag filter.
  */
 class ActivityViewModel(
-    private val fetchPrograms: suspend (String?, String?, Boolean, List<String>) -> ProgramPage, // query, cursor, openOnly, tagIds
-    private val fetch: suspend (String?, String?, String?, Boolean, List<String>) -> ActivityPage, // query, cursor, programId, open, tagIds
-    private val fetchTags: suspend () -> List<Tag> = { emptyList() },
+    private val fetchPrograms: suspend (String?, String?, Boolean) -> ProgramPage, // query, cursor, openOnly
+    private val fetch: suspend (String?, String?, String?, Boolean) -> ActivityPage, // query, cursor, programId, open
 ) : ViewModel() {
     private val mutable = MutableStateFlow(ActivityListState())
     val state = mutable.asStateFlow()
@@ -60,15 +57,7 @@ class ActivityViewModel(
     private var leftApp = false
     private val neverAsk = mutableSetOf<String>()
 
-    init {
-        reload()
-        viewModelScope.launch {
-            val tags = try { fetchTags() } catch (e: CancellationException) { throw e } catch (e: Exception) {
-                Log.w("Dearby", "Tags load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}"); emptyList()
-            }
-            mutable.update { it.copy(tags = tags.map { tag -> TagState(tag.id, tag.name) }) }
-        }
-    }
+    init { reload() }
 
     /** Typing: show the text now, ask the server once it has rested for 300 ms. */
     fun search(text: String) {
@@ -83,12 +72,6 @@ class ActivityViewModel(
         mutable.update { it.copy(openOnly = value) }
         start(debounce = false)
     }
-    /** A tag filter chip was tapped (contract "태그"): every chosen tag must be present; the list reloads at once. */
-    fun toggleTag(id: String) {
-        mutable.update { it.copy(selectedTagIds = if (id in it.selectedTagIds) it.selectedTagIds - id else it.selectedTagIds + id) }
-        start(debounce = false)
-    }
-    private val tagIds get() = state.value.selectedTagIds.toList().sorted()
     private fun start(debounce: Boolean) {
         job?.cancel()
         programJobs.values.forEach { it.cancel() }
@@ -112,7 +95,7 @@ class ActivityViewModel(
         }
     }
     private suspend fun programPage(cursor: String?): ProgramPage? = try {
-        fetchPrograms(state.value.query.trim().ifEmpty { null }, cursor, state.value.openOnly, tagIds)
+        fetchPrograms(state.value.query.trim().ifEmpty { null }, cursor, state.value.openOnly)
     } catch (e: CancellationException) { throw e } catch (e: Exception) {
         // Only the origin and the failure kind; the search text is not logged.
         Log.w("Dearby", "Programs load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
@@ -120,7 +103,7 @@ class ActivityViewModel(
     }
     /** Programs with one open activity, or whose activity name matched the search, start expanded (contract rule; only while the switch is on). */
     private fun show(page: ProgramPage, append: Boolean) {
-        val programs = page.items.map { ProgramState(it.id, it.name, it.organization, it.openActivityCount, instant(it.nearestRecruitmentEndAt), it.matchedActivityIds.isNotEmpty(), instant(it.latestActivityAt), tags = it.tags.map { tag -> tag.name }, upcomingCount = it.upcomingActivityCount, nearestStart = instant(it.nearestRecruitmentStartAt)) }
+        val programs = page.items.map { ProgramState(it.id, it.name, it.organization, it.openActivityCount, instant(it.nearestRecruitmentEndAt), it.matchedActivityIds.isNotEmpty(), instant(it.latestActivityAt), tags = it.tags.map { tag -> tag.name }, upcomingCount = it.upcomingActivityCount, nearestStart = instant(it.nearestRecruitmentStartAt), logoUrl = it.logoUrl) }
         val opening = if (state.value.openOnly) programs.filter { it.openCount == 1 || it.matched }.map { it.id } else emptyList()
         mutable.update { state ->
             state.copy(phase = ActivityListPhase.LOADED, programs = (if (append) state.programs else emptyList()) + programs,
@@ -144,7 +127,7 @@ class ActivityViewModel(
             try {
                 // Every page of the program's open activities (contract "열린 활동 판정 일원화": the server decides openness).
                 repeat(MAX_PROGRAM_PAGES) {
-                    val page = fetch(null, cursor, programId, true, tagIds)
+                    val page = fetch(null, cursor, programId, true)
                     items += page.items
                     cursor = page.nextCursor ?: return@repeat
                 }
@@ -158,7 +141,7 @@ class ActivityViewModel(
             // start still ahead, nearest first) is shown always; 지난 활동 (started within three years, most recent first) only while the
             // switch is off. Activities already shown as open are excluded.
             val others = try {
-                fetch(null, null, programId, false, tagIds).items
+                fetch(null, null, programId, false).items
             } catch (e: CancellationException) { throw e } catch (e: Exception) {
                 Log.w("Dearby", "Program activities (fallback) load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
                 emptyList()

@@ -16,18 +16,18 @@ import com.dearby.nativeapp.shared.lib.MarkdownDocument
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         MarkdownDocument.blocks(source).forEach { block ->
             when (block) {
-                is MarkdownDocument.Block.Heading -> Text(MarkdownDocument.inline(block.text, Teal), fontWeight = FontWeight.Bold,
+                is MarkdownDocument.Block.Heading -> Text(MarkdownDocument.inline(block.text, MaterialTheme.colorScheme.primary), fontWeight = FontWeight.Bold,
                     style = when (block.level) { 1 -> MaterialTheme.typography.headlineSmall; 2 -> MaterialTheme.typography.titleLarge; else -> MaterialTheme.typography.titleMedium })
                 is MarkdownDocument.Block.ListBlock -> Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     block.items.forEachIndexed { index, item ->
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Text(if (block.ordered) "${index + 1}." else "•", color = Quiet, style = MaterialTheme.typography.bodyMedium)
-                            Text(MarkdownDocument.inline(item, Teal), style = MaterialTheme.typography.bodyMedium)
+                            Text(if (block.ordered) "${index + 1}." else "•", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                            Text(MarkdownDocument.inline(item, MaterialTheme.colorScheme.primary), style = MaterialTheme.typography.bodyMedium)
                         }
                     }
                 }
                 is MarkdownDocument.Block.Paragraph -> Text(buildAnnotatedString {
-                    block.lines.forEachIndexed { index, line -> if (index > 0) append("\n"); append(MarkdownDocument.inline(line, Teal)) }
+                    block.lines.forEachIndexed { index, line -> if (index > 0) append("\n"); append(MarkdownDocument.inline(line, MaterialTheme.colorScheme.primary)) }
                 }, style = MaterialTheme.typography.bodyMedium)
             }
         }

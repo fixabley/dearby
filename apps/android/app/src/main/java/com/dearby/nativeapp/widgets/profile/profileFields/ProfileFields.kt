@@ -63,11 +63,11 @@ val ProfileContactKinds = listOf(
                 Labeled(label, required = false, modifier = Modifier.weight(1f)) {
                     DearbyInlineField(label, item.value, { onExtraChange(item.copy(value = it)) }, editing = true, placeholder = meta?.third ?: "")
                 }
-                IconButton({ onRemoveExtra(item.id) }) { Icon(Icons.Outlined.RemoveCircleOutline, "$label 삭제", tint = Quiet) }
+                IconButton({ onRemoveExtra(item.id) }) { Icon(Icons.Outlined.RemoveCircleOutline, "$label 삭제", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         }
-        OutlinedButton({ choosing = true }, Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(11.dp), border = BorderStroke(1.dp, Line)) {
-            Icon(Icons.Outlined.Add, null, tint = Teal); Spacer(Modifier.width(6.dp)); Text("연락처 추가", color = Teal, fontWeight = FontWeight.SemiBold)
+        OutlinedButton({ choosing = true }, Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(11.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+            Icon(Icons.Outlined.Add, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(6.dp)); Text("연락처 추가", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
         }
     }
     if (choosing) ModalBottomSheet({ choosing = false }) {
@@ -93,8 +93,8 @@ val ProfileContactKinds = listOf(
     var picking by remember { mutableStateOf<String?>(null) }
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth().semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
-            Text("기간", Modifier.weight(1f), color = Quiet, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
-            Text(historyPeriod(start, if (ongoing) null else end, ongoing), color = if (start == null) Quiet else MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
+            Text("기간", Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
+            Text(historyPeriod(start, if (ongoing) null else end, ongoing), color = if (start == null) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
         }
         DateRow("시작일", required = true, value = start) { picking = "start" }
         // 글자를 눌러도 바뀌도록 줄 전체를 하나의 스위치로 만든다.
@@ -130,16 +130,16 @@ val ProfileContactKinds = listOf(
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = "$label 선택", onClick = pick)
         .clearAndSetSemantics { contentDescription = "$label${if (required) ", 필수" else ""}, $text" }, verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyMedium)
-        if (required) Text(" 필수", color = Danger, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
+        if (required) Text(" 필수", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
         Spacer(Modifier.weight(1f))
-        Text(text, color = if (value == null) Teal else MaterialTheme.colorScheme.onSurface, fontWeight = if (value == null) FontWeight.SemiBold else FontWeight.Normal, style = MaterialTheme.typography.bodyMedium)
+        Text(text, color = if (value == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface, fontWeight = if (value == null) FontWeight.SemiBold else FontWeight.Normal, style = MaterialTheme.typography.bodyMedium)
     }
 }
 
 @Composable private fun Labeled(label: String, required: Boolean, modifier: Modifier = Modifier, field: @Composable ColumnScope.() -> Unit) = Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
     Row(Modifier.clearAndSetSemantics {}, verticalAlignment = Alignment.CenterVertically) {
-        Text(label, color = Quiet, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
-        if (required) Text(" 필수", color = Danger, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
+        if (required) Text(" 필수", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
     }
     field()
 }

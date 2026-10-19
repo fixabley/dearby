@@ -32,9 +32,9 @@ data class PickerItem(val id: Long, val name: String, val detail: String?)
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(title, Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
         if (pickedName != null) {
-            Surface(color = Mint, shape = RoundedCornerShape(12.dp)) {
+            Surface(color = MaterialTheme.colorScheme.primaryContainer, shape = RoundedCornerShape(12.dp)) {
                 Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.CheckCircle, null, tint = Teal); Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Outlined.CheckCircle, null, tint = MaterialTheme.colorScheme.onPrimaryContainer); Spacer(Modifier.width(8.dp))
                     Text(pickedName, Modifier.weight(1f), fontWeight = FontWeight.SemiBold)
                     TextButton(onClearPick) { Text("바꾸기") }
                 }
@@ -42,32 +42,32 @@ data class PickerItem(val id: Long, val name: String, val detail: String?)
             return@Column
         }
         DearbySearchField(query, onQueryChange, prompt)
-        if (typedName.isNotEmpty()) OutlinedCard(border = BorderStroke(1.dp, Line), shape = RoundedCornerShape(12.dp)) {
+        if (typedName.isNotEmpty()) OutlinedCard(border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shape = RoundedCornerShape(12.dp)) {
             Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(typedName, fontWeight = FontWeight.SemiBold)
-                    Text("직접 입력 · 관리자 승인 뒤 명함에 넣을 수 있어요", color = Quiet, style = MaterialTheme.typography.bodySmall)
+                    Text("직접 입력 · 관리자 승인 뒤 명함에 넣을 수 있어요", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
                 TextButton({ onType("") }) { Text("지우기") }
             }
         }
-        if (loading && items.isEmpty()) Box(Modifier.fillMaxWidth().height(72.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = Teal) }
-        else if (failed) Text("목록을 불러오지 못했어요. 직접 적어도 돼요.", color = Quiet, style = MaterialTheme.typography.bodyMedium)
+        if (loading && items.isEmpty()) Box(Modifier.fillMaxWidth().height(72.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
+        else if (failed) Text("목록을 불러오지 못했어요. 직접 적어도 돼요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         items.forEach { item ->
             Column(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button) { onPick(item) }.padding(vertical = 8.dp)) {
                 Text(item.name, style = MaterialTheme.typography.bodyLarge)
-                item.detail?.let { Text(it, color = Quiet, style = MaterialTheme.typography.bodySmall) }
+                item.detail?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
             }
-            HorizontalDivider(color = Line)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
         val trimmed = query.trim()
         if (trimmed.isNotEmpty() && items.none { it.name == trimmed }) {
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = "목록에 없으면 적은 이름 그대로 저장해요") { onType(trimmed); onQueryChange("") }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Edit, null, tint = Teal); Spacer(Modifier.width(8.dp))
-                Text("‘$trimmed’ 직접 입력", color = Teal, fontWeight = FontWeight.SemiBold)
+                Icon(Icons.Outlined.Edit, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(8.dp))
+                Text("‘$trimmed’ 직접 입력", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
             }
         } else if (trimmed.isEmpty() && items.isEmpty() && !loading) {
-            Text("이름으로 검색하거나 없으면 그대로 적어 주세요.", color = Quiet, style = MaterialTheme.typography.bodyMedium)
+            Text("이름으로 검색하거나 없으면 그대로 적어 주세요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

@@ -6,7 +6,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -42,7 +41,9 @@ private sealed interface CardRoute {
     // 명함 교환 (contract): a dearby://cards/… link saved a card → open it; signed out → sign in, then the link is saved.
     LaunchedEffect(walletState.opened) { walletState.opened?.let { tab = Tab.Wallet; activityDetail = false; route = CardRoute.Detail(it); wallet.consumeOpened() } }
     LaunchedEffect(auth.phase, walletState.needSignIn) { if (auth.phase == AccountPhase.SIGNED_IN && walletState.needSignIn) wallet.retryPending() }
-    Surface(Modifier.fillMaxSize()) {
+    // Every tab root sits on the theme background (contract "탭 제목 통일·머리 간소화"); cards are surfaces on top. The status-bar inset is
+    // applied once here, so page headers add only their own 8dp.
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onSurface) {
         Column(Modifier.statusBarsPadding().navigationBarsPadding()) {
             Box(Modifier.weight(1f)) {
                 when (val screen = route) {
@@ -51,11 +52,10 @@ private sealed interface CardRoute {
                     is CardRoute.Qr -> CardQrRoute(screen.card, activityModel) { route = null }
                     CardRoute.Composer -> CardComposerRoute(publish, account) { route = null }
                     null -> when (tab) {
-                        Tab.Discovery, Tab.Mine -> Column {
-                            if (!activityDetail) Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Spacer(Modifier.weight(1f)); IconButton({ notice = "새 알림이 없어요.\n이 앱은 고정 예시로 둘러보는 프로토타입입니다." }) { Icon(Icons.Outlined.NotificationsNone, "알림") }
-                            }
-                            key(tab) { ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }) { activityDetail = it } }
+                        // The bell sits in the tab's ScreenHeader (contract "탭 제목 통일·머리 간소화": no extra head row above the title).
+                        Tab.Discovery, Tab.Mine -> key(tab) {
+                            ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery },
+                                notify = { notice = "새 알림이 없어요.\n이 앱은 고정 예시로 둘러보는 프로토타입입니다." }) { activityDetail = it }
                         }
                         Tab.Cards -> MyCardsRoute(myCards, compose, showQr = { route = CardRoute.Qr(it) }) { card -> publish.start(card); route = CardRoute.Composer }
                         Tab.Wallet -> WalletRoute(wallet, account) { route = CardRoute.Detail(it.id) }

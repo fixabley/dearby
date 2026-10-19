@@ -7,7 +7,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
@@ -26,12 +25,12 @@ import com.dearby.nativeapp.shared.ui.*
     title: String, status: String, recruiting: Boolean, recruitment: String?, period: String, place: String?, open: () -> Unit, modifier: Modifier = Modifier,
 ) {
     val (label, container, content) = when (status) {
-        "모집 중" -> Triple(status, Teal, Color.White)
-        "모집 예정" -> Triple(status, Mint, Teal)
-        "모집 마감" -> Triple("마감", Line, Quiet)
-        else -> Triple("확인 필요", Line, Quiet)
+        "모집 중" -> Triple(status, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary)
+        "모집 예정" -> Triple(status, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
+        "모집 마감" -> Triple("마감", MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.onSurfaceVariant)
+        else -> Triple("확인 필요", MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.onSurfaceVariant)
     }
-    Card(open, modifier.fillMaxWidth().semantics { stateDescription = label }, shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = Soft)) {
+    Card(open, modifier.fillMaxWidth().semantics { stateDescription = label }, shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
         Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
                 Text(title, Modifier.weight(1f).padding(top = 4.dp), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -51,11 +50,11 @@ import com.dearby.nativeapp.shared.ui.*
 /** 라벨 36dp + 값. [emphasised]는 모집이 지나지 않은 `모집` 줄: 청록 굵은 값, 줄 전체에 민트 바탕(모서리 8). */
 @Composable private fun ValueRow(label: String, value: String, emphasised: Boolean = false) {
     Row(
-        Modifier.fillMaxWidth().then(if (emphasised) Modifier.background(Mint, RoundedCornerShape(8.dp)).padding(horizontal = 6.dp, vertical = 3.dp) else Modifier),
+        Modifier.fillMaxWidth().then(if (emphasised) Modifier.background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(8.dp)).padding(horizontal = 6.dp, vertical = 3.dp) else Modifier),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(label, Modifier.width(36.dp), color = Quiet, style = MaterialTheme.typography.bodySmall)
-        Text(value, Modifier.weight(1f), color = if (emphasised) Teal else MaterialTheme.colorScheme.onSurface,
+        Text(label, Modifier.width(36.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        Text(value, Modifier.weight(1f), color = if (emphasised) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
             fontWeight = if (emphasised) FontWeight.Bold else null, style = MaterialTheme.typography.bodySmall)
     }
 }
