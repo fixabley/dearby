@@ -54,6 +54,12 @@ PR #289(발견 카드 리뉴얼·장소·지오코딩) 배포 직후 사용자 �
 - 구현 결정(조율): Android 민트는 primaryContainer를 연하게 덮어씀(#D9F2F1/#1D4140), 구분선은 `surfaceContainerHighest`, 배경은 `surfaceContainerLow`+흰 카드(iOS grouped와 같은 구조), 벨은 발견 탭에만. iOS는 토큰 이름을 유지한 채 시스템 색 별칭으로 바꾸고 `onTeal`(다크에서 어두운 글자) 추가. 웹 머리는 심볼 SVG(`currentColor`) + Pretendard Bold "Dearby"(승인 워드마크 구성), theme-color 흰/#181f21, `--teal` #007F80로 정정, `logo-teal.png` 삭제. 디자인 계약 문서(`docs/design/native-visual-contract.md`)의 옛 워드마크·흰 배경 규칙을 현행화.
 - 진행: 워크트리 `logo`(브랜치 `feat/program-logo-compact-header`)에서 API·어드민·iOS·Android·웹 에이전트 동시 작업 → PR → 배포(API V38, 어드민 Vercel, 기기 설치).
 
+## 2026-10-19 밤 운영 장애 두 건 (PR #291)
+
+- **활동 편집 저장 500** — 사용자 "어드민에서 프로그램 편집이 안돼". 로그: `PATCH /v1/admin/activities/:id` → `schedules_check1` 위반. V2 체크가 활동 기간(ACTIVITY 슬롯)의 시각 일정을 금지했는데 어드민 "시각 지정" 스위치가 그것을 보냈다. 수정: V39로 체크 제거, 도메인 `Activity` init guard 제거, 어드민 테스트에 시각 활동 기간 케이스. 공개 조회는 `activityStart = coalesce(start_at, start_date 자정)`이라 변경 없음.
+- **동의 저장 400 "동의 문서 버전이 현재 버전과 다릅니다"** — 로그 14건 `Consent version mismatch: 2026-10-19/2026-10-19`. 원인: `compose.prod.yaml`이 `CONSENT_*_VERSION: ${…:-}`로 **빈 문자열**을 넣어 application.yaml 기본값(2026-10-19)을 덮어 서버 버전이 ""가 됐다. 수정: compose 기본값을 `2026-10-19`로. 운영은 compose만 바꿔 api·admin 컨테이너를 재생성해 즉시 해소(13:59 KST 확인 `CONSENT=2026-10-19/2026-10-19`). 교훈: `${VAR:-}`는 "없으면 비움"이라 Spring의 `${ENV:기본}`과 겹치면 기본값이 죽는다 — 기본값은 한 곳(compose)에만 둔다.
+- **발견 탭 스크롤 동작**(고정 제목·접히는 검색 영역·풀투 리프레시·맨 위로 버튼) 계약을 같은 PR에 담았고 구현은 워크트리 `scroll`(iOS·Android 에이전트)에서 별도 PR.
+
 ## 남은 일·사용자 결정 대기
 
 - **구현 예정(설계·계약 완료)**: 태그(native-v1 "태그", 어휘 사전·검색·필터·어드민 검색+직접 입력) — API·어드민·iOS·Android·웹.
