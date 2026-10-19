@@ -110,6 +110,7 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             descriptionEn = row.descriptionEn,
             contacts = contacts,
             officialUrl = row.officialUrl!!,
+            applicationUrl = row.applicationUrl,
             imageUrl = row.imageUrl,
             application = bySlot[SLOT_APPLICATION]?.single()?.let(::toSchedule),
             activitySchedule = activitySchedule,

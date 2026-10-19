@@ -58,8 +58,9 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals("Let’Swift 준비위원회", item["organization"]["name"].asString())
         assertEquals("Let’Swift", item["program"]["name"].asString())
         assertEquals("https://letswift.kr/2026/", item["officialUrl"].asString())
+        assertEquals("https://ticketa.co/e/vdb8aajs/l/website", item["applicationUrl"].asString()) // V5 application_url
         // 관리자만 보는 정보는 내보내지 않는다
-        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags", "location", "place"), item.propertyNames().toSet())
+        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "applicationUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags", "location", "place"), item.propertyNames().toSet())
         // 시각은 일정의 시간대로 표기한다(같은 순간)
         assertEquals("2026-10-08T00:00:00+09:00", item["application"]["endAt"].asString())
         assertEquals("2026-10-08", item["activitySchedule"]["dateLabel"].asString())
@@ -304,6 +305,19 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(listed, item)
         mvc.get("/v1/activities/999999").andExpect { status { isNotFound() } }
         mvc.get("/v1/activities/abc").andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `신청 링크는 activities의 application_url을 그대로 주고, 없으면 null`() {
+        // native-v1.md "신청 확인 조건 완화·공개 applicationUrl": 어드민·수집기가 넣은 값을 목록·단건 모두 그대로 내보낸다
+        val linked = createActivity("신청 링크 활동")
+        jdbc.sql("update activities set application_url = 'https://example.org/apply' where id = ?").param(linked).update()
+        val plain = createActivity("신청 링크 없는 활동")
+
+        assertEquals("https://example.org/apply", search("q=신청 링크 활동")["items"].toList().single { it["id"].asLong() == linked }["applicationUrl"].asString())
+        val detail = json.readTree(mvc.get("/v1/activities/$linked").andExpect { status { isOk() } }.andReturn().response.contentAsString)
+        assertEquals("https://example.org/apply", detail["applicationUrl"].asString())
+        assertTrue(json.readTree(mvc.get("/v1/activities/$plain").andExpect { status { isOk() } }.andReturn().response.contentAsString)["applicationUrl"].isNull)
     }
 
     @Test

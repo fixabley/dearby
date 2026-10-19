@@ -14,6 +14,7 @@ data class ActivityResponse(
     val organization: ReferenceResponse,
     val program: ReferenceResponse,
     val officialUrl: String,
+    val applicationUrl: String?, // 신청 링크(native-v1.md "신청 확인 조건 완화·공개 applicationUrl"). 없으면 null. CTA는 applicationUrl ?? officialUrl
     val imageUrl: String?,
     val application: ScheduleResponse?, // 모집 기간
     val activitySchedule: ScheduleResponse, // 활동 기간·날짜 문구
@@ -35,6 +36,7 @@ data class ActivityResponse(
                 organization = ReferenceResponse(listing.organization.id, language.pick(listing.organization.name, listing.organization.nameEn)),
                 program = ReferenceResponse(listing.program.id, language.pick(listing.program.name, listing.program.nameEn)),
                 officialUrl = activity.officialUrl,
+                applicationUrl = activity.applicationUrl,
                 imageUrl = activity.imageUrl,
                 application = activity.application?.let(ScheduleResponse::from),
                 activitySchedule = ScheduleResponse.from(activity.activitySchedule),
