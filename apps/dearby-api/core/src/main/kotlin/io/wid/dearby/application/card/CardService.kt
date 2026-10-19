@@ -13,12 +13,30 @@ import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.*
 
-// 명함 발행·조회·철회(native-v1.md "명함·공유·지갑"). 발행은 프로필의 공개 선택분을 복사한 스냅샷이다
+// 명함 발행·고치기·조회·철회(native-v1.md "명함·지갑"). 발행은 프로필의 공개 선택분을 복사한 스냅샷이다
 @Service
 class CardService(private val cards: CardRepository, private val profiles: ProfileRepository) {
 
     @Transactional
     fun publish(ownerId: UserId, name: String, description: String, template: String, contactIds: List<UUID>, historyIds: List<UUID>): BusinessCard {
+        val now = OffsetDateTime.now(ZoneOffset.UTC)
+        val card = snapshot(UUID.randomUUID(), ownerId, name, description, template, contactIds, historyIds, createdAt = now, updatedAt = now)
+        cards.create(card)
+        return card
+    }
+
+    // 명함 고치기(native-v1.md "명함 고치기는 같은 명함을 수정"): 같은 id·createdAt으로 현재 프로필 기준 스냅샷을 다시 만든다.
+    // 없거나 철회됐거나 남의 명함이면 모두 404(지우기의 403과 다르다). template이 비어 있으면 그 명함의 template을 그대로 둔다
+    @Transactional
+    fun update(ownerId: UserId, id: UUID, name: String, description: String, template: String, contactIds: List<UUID>, historyIds: List<UUID>): BusinessCard {
+        val existing = cards.find(id)?.takeIf { it.ownerId == ownerId } ?: throw NotFoundException("명함을 찾을 수 없습니다", "Card not found or not owned: $id by $ownerId")
+        val card = snapshot(id, ownerId, name, description, template.ifBlank { existing.template }, contactIds, historyIds, createdAt = existing.createdAt, updatedAt = OffsetDateTime.now(ZoneOffset.UTC))
+        if (!cards.update(card)) throw NotFoundException("명함을 찾을 수 없습니다", "Card revoked while updating: $id")
+        return card
+    }
+
+    // POST·PUT 공통 검증과 스냅샷 만들기. 프로필의 공개 선택분을 복사한다
+    private fun snapshot(id: UUID, ownerId: UserId, name: String, description: String, template: String, contactIds: List<UUID>, historyIds: List<UUID>, createdAt: OffsetDateTime, updatedAt: OffsetDateTime): BusinessCard {
         val profile = profiles.find(ownerId) ?: throw InvalidInputException("프로필을 먼저 만들어 주세요")
         val cardName = text(name, "명함 이름", MAX_NAME)
         val cardDescription = multiline(description, "설명")
@@ -32,8 +50,8 @@ class CardService(private val cards: CardRepository, private val profiles: Profi
             if (history.approval != ApprovalStatus.APPROVED) throw InvalidInputException("관리자 승인 전인 이력은 명함에 넣을 수 없습니다", "History not approved: $id")
             history.copy(evidence = emptyList())
         }
-        val card = BusinessCard(
-            id = UUID.randomUUID(),
+        return BusinessCard(
+            id = id,
             ownerId = ownerId,
             name = cardName,
             description = cardDescription,
@@ -43,10 +61,9 @@ class CardService(private val cards: CardRepository, private val profiles: Profi
             job = profile.jobTitle,
             contacts = contacts,
             histories = histories,
-            createdAt = OffsetDateTime.now(ZoneOffset.UTC),
+            createdAt = createdAt,
+            updatedAt = updatedAt,
         )
-        cards.create(card)
-        return card
     }
 
     @Transactional(readOnly = true)

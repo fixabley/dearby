@@ -5,8 +5,8 @@ import java.util.*
 data class CardPublishRequest(
     val name: String,
     val description: String = "",
+    // PUT /v1/cards/{id}에서 비어 있으면 그 명함의 template을 그대로 둔다
     val template: String = "",
-    // 선택 웹 버전(native-v1.md "웹 버전"). 없거나 비어 있으면 웹 버전 없는 명함
     val contactIds: List<UUID> = emptyList(),
     val historyIds: List<UUID> = emptyList(),
 )

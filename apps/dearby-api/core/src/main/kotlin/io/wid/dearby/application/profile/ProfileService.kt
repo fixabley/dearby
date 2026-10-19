@@ -196,6 +196,11 @@ class ProfileService(
         val pickedActivity = input.activityId?.let { id ->
             activities.findById(id, PublicationStatus.PUBLISHED) ?: throw InvalidInputException("활동을 찾을 수 없습니다", "Activity not found: $id")
         }
+        // 7일 미만 행사는 이력이 아니다(native-v1.md "활동 이력에서 단기 행사 제외"). 직접 입력한 활동 이름은 제한하지 않고,
+        // 이미 같은 활동으로 저장된 이력은 다시 검사하지 않는다(기존 이력·버전 되돌리기가 막히지 않도록, 2026-10-20 조율 결정)
+        if (pickedActivity != null && existing?.activity?.id != pickedActivity.id && !activities.isHistoryEligible(pickedActivity.id)) {
+            throw InvalidInputException("일주일 미만 행사는 활동 이력에 넣을 수 없어요", "Activity too short for history: ${pickedActivity.id}", code = HISTORY_ACTIVITY_TOO_SHORT)
+        }
         val activity = pickedActivity?.let { ActivityInfoRef(it.id, it.name) }
         // 활동 정보에서 고른 활동은 소속 프로그램·조직을 서버가 채운다(2026-10-18 퍼널 분리). 요청의 조직·프로그램 id와 달라도 활동의 소속을 쓴다
         val pickedProgram = pickedActivity?.let { programs.findAllById(listOf(it.programId)).singleOrNull() }
@@ -264,6 +269,7 @@ class ProfileService(
     companion object {
         const val CONSENT_REQUIRED = "CONSENT_REQUIRED"
         const val CONSENT_VERSION = "CONSENT_VERSION"
+        const val HISTORY_ACTIVITY_TOO_SHORT = "HISTORY_ACTIVITY_TOO_SHORT"
         const val MAX_PAGE_SIZE = 100
         const val MAX_EVIDENCE_PER_HISTORY = 3
         const val MAX_JOBS = 10

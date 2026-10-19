@@ -142,6 +142,11 @@ open class BusinessCards(
      */
     val CREATED_AT: TableField<BusinessCardsRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "")
 
+    /**
+     * The column <code>public.business_cards.updated_at</code>.
+     */
+    val UPDATED_AT: TableField<BusinessCardsRecord, OffsetDateTime?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "")
+
     private constructor(alias: Name, aliased: Table<BusinessCardsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<BusinessCardsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<BusinessCardsRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
