@@ -280,6 +280,7 @@ export function Activities() {
               <>
                 {scheduleText(activity.application)}
                 {activity.application?.curated && <CuratedTag />}
+                <PeriodTag reason={periodSuspicion(activity.application, activity.activitySchedule)} />
               </>
             ),
           },
@@ -346,6 +347,33 @@ export function Activities() {
 }
 
 /** Marks a value an operator set here (a schedule or a text/eligibility field); the collector leaves it alone. */
+/**
+ * 수집이 모집 기간과 활동 기간을 바꿔 넣었을 가능성(2026-10-19 사용자 보고): 모집 시작이 활동 종료 뒤, 두 기간이 같음,
+ * 활동 기간 원문에 모집·접수·지원·신청 낱말. 이유 문구를 돌려주고 의심이 없으면 null.
+ */
+function periodSuspicion(application: Schedule | null | undefined, activity: Schedule | null | undefined): string | null {
+  if (!activity) return null;
+  const start = (schedule: Schedule) => schedule.startDate ?? schedule.startAt?.slice(0, 10) ?? null;
+  const end = (schedule: Schedule) => schedule.endDateExclusive ?? schedule.endAt?.slice(0, 10) ?? null;
+  if (application) {
+    const applicationStart = start(application);
+    const applicationEnd = end(application);
+    if (applicationStart && end(activity) && applicationStart > end(activity)!) return "모집 시작이 활동 종료보다 늦어요";
+    if (applicationStart && applicationEnd && applicationStart === start(activity) && applicationEnd === end(activity)) return "모집 기간과 활동 기간이 같아요";
+  }
+  if (/모집|접수|지원|신청/.test(activity.dateLabel ?? "")) return "활동 기간 원문에 모집·접수 낱말이 있어요";
+  return null;
+}
+function PeriodTag({ reason }: { reason: string | null }) {
+  if (!reason) return null;
+  return (
+    <Tooltip title={`${reason}. 두 기간이 바뀌었을 수 있어요. 편집에서 ‘모집 ↔ 활동 바꾸기’로 고칠 수 있어요.`}>
+      <Tag color="orange" style={{ marginLeft: 6 }}>
+        기간 확인
+      </Tag>
+    </Tooltip>
+  );
+}
 function CuratedTag() {
   return (
     <Tooltip title="어드민에서 고친 값이에요. 수집이 덮어쓰지 않아요.">
@@ -463,6 +491,16 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
   const withSchedules = activity.activitySchedule !== undefined;
   const initialActivity = rangeDraft(activity.activitySchedule);
   const initialApplication = rangeDraft(activity.application);
+  /** 수집이 두 기간을 바꿔 넣었을 때 폼 값만 서로 바꾼다. 활동 기간은 종일만 허용하므로 시각 지정은 끈다. 저장해야 반영된다. */
+  const swapPeriods = () => {
+    const values = form.getFieldsValue(["activityRange", "activityTimed", "applicationRange", "applicationTimed"]);
+    form.setFieldsValue({
+      activityRange: values.applicationRange,
+      activityTimed: false,
+      applicationRange: values.activityRange,
+      applicationTimed: values.activityTimed,
+    });
+  };
   const { message } = App.useApp();
   const client = useQueryClient();
   const save = useMutation({
@@ -536,6 +574,12 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
         <p className="field-note">초안은 다음 수집 때 덮어써질 수 있어요. 고친 내용을 지키려면 게시해 주세요. 직접 지정한 기간은 수집이 덮어쓰지 않아요.</p>
         {withSchedules && (
           <>
+            <Space align="center" wrap style={{ marginBottom: 8 }}>
+              <Button size="small" onClick={swapPeriods}>
+                모집 ↔ 활동 바꾸기
+              </Button>
+              <PeriodTag reason={periodSuspicion(activity.application, activity.activitySchedule)} />
+            </Space>
             <ScheduleBlock
               title="모집 기간"
               schedule={activity.application}
@@ -733,6 +777,7 @@ function ActivityDetail({ activity }: { activity: Activity }) {
             <>
               {scheduleText(activity.application)}
               {activity.application?.curated && <CuratedTag />}
+              <PeriodTag reason={periodSuspicion(activity.application, activity.activitySchedule)} />
               {activity.application?.dateLabel && <div className="muted">원문: {activity.application.dateLabel}</div>}
             </>
           ),
