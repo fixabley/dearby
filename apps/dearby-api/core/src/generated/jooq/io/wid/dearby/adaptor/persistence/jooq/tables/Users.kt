@@ -22,6 +22,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.UserConsents.UserConsentsPa
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles.UserRolesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.UsersRecord
 
+import java.time.OffsetDateTime
 import java.util.UUID
 
 import kotlin.collections.Collection
@@ -90,6 +91,11 @@ open class Users(
      * The column <code>public.users.id</code>.
      */
     val ID: TableField<UsersRecord, UUID?> = createField(DSL.name("id"), SQLDataType.UUID.nullable(false), this, "")
+
+    /**
+     * The column <code>public.users.created_at</code>.
+     */
+    val CREATED_AT: TableField<UsersRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
 
     private constructor(alias: Name, aliased: Table<UsersRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<UsersRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)

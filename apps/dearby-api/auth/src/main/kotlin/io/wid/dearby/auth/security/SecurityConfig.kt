@@ -40,9 +40,11 @@ class SecurityConfig {
                 accessRules.apply(this)
             }
             oauth2ResourceServer {
-                // 인증 경로에는 만료된 access token이 붙어 와도 무시한다. 그렇지 않으면 refresh 요청이 401로 막힌다
+                // 인증 경로에는 만료된 access token이 붙어 와도 무시한다. 그렇지 않으면 refresh 요청이 401로 막힌다.
+                // 패스키 가입 options만 예외: Bearer가 있으면 그 계정에 패스키를 더한다(native-v1.md "설정"). 그래서 거기서는 무효한 토큰이 401이 된다
                 bearerTokenResolver = BearerTokenResolver { request ->
-                    if (request.requestURI.startsWith("$AUTH_PATH/")) null else bearerTokens.resolve(request)
+                    val uri = request.requestURI
+                    if (uri.startsWith("$AUTH_PATH/") && uri != PASSKEY_REGISTRATION_OPTIONS) null else bearerTokens.resolve(request)
                 }
                 jwt {
                     jwtAuthenticationConverter = JwtAuthenticationConverter().apply {
@@ -78,5 +80,6 @@ class SecurityConfig {
 
     companion object {
         const val AUTH_PATH = "/v1/auth"
+        const val PASSKEY_REGISTRATION_OPTIONS = "$AUTH_PATH/passkeys/registration/options"
     }
 }

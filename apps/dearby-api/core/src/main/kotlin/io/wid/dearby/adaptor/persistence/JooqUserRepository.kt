@@ -1,6 +1,7 @@
 package io.wid.dearby.adaptor.persistence
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.*
+import io.wid.dearby.application.auth.userHandle
 import io.wid.dearby.application.user.UserRepository
 import io.wid.dearby.domain.UserId
 import io.wid.dearby.domain.user.User
@@ -8,8 +9,8 @@ import io.wid.dearby.domain.user.UserRole
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
-import java.nio.ByteBuffer
-import java.util.*
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 @Repository
 class JooqUserRepository(private val dsl: DSLContext) : UserRepository {
@@ -22,6 +23,9 @@ class JooqUserRepository(private val dsl: DSLContext) : UserRepository {
             .fetchInto(UserRole::class.java)
         return User(id, roles)
     }
+
+    override fun findCreatedAt(id: UserId): OffsetDateTime? =
+        dsl.select(USERS.CREATED_AT).from(USERS).where(USERS.ID.eq(id)).fetchOne()?.value1()
 
     // users를 지우면 user_roles·contacts·이력(+인증자료)·프로필 버전·받은 명함이 FK cascade로 함께 지워진다.
     // 나머지는 논리키라 직접 지운다. 패스키는 user handle(UUID 16바이트) 또는 2026-10-15 이전 가입분의 name(UUID 문자열)으로 찾는다
@@ -36,14 +40,12 @@ class JooqUserRepository(private val dsl: DSLContext) : UserRepository {
         dsl.deleteFrom(PROFILES).where(PROFILES.USER_ID.eq(id)).execute()
         dsl.deleteFrom(REFRESH_TOKENS).where(REFRESH_TOKENS.USER_ID.eq(id)).execute()
         dsl.deleteFrom(USER_IDENTITIES).where(USER_IDENTITIES.USER_ID.eq(id)).execute()
-        val handle = Base64.getUrlEncoder().withoutPadding()
-            .encodeToString(ByteBuffer.allocate(16).putLong(id.mostSignificantBits).putLong(id.leastSignificantBits).array())
-        dsl.deleteFrom(USER_ENTITIES).where(USER_ENTITIES.ID.eq(handle).or(USER_ENTITIES.NAME.eq(id.toString()))).execute()
+        dsl.deleteFrom(USER_ENTITIES).where(USER_ENTITIES.ID.eq(userHandle(id)).or(USER_ENTITIES.NAME.eq(id.toString()))).execute()
         dsl.deleteFrom(USERS).where(USERS.ID.eq(id)).execute()
     }
 
     override fun create(user: User) {
-        dsl.insertInto(USERS).set(USERS.ID, user.id).execute()
+        dsl.insertInto(USERS).set(USERS.ID, user.id).set(USERS.CREATED_AT, OffsetDateTime.now(ZoneOffset.UTC)).execute()
         user.roles.forEach {
             dsl.insertInto(USER_ROLES).set(USER_ROLES.USER_ID, user.id).set(USER_ROLES.ROLE, it.name).execute()
         }

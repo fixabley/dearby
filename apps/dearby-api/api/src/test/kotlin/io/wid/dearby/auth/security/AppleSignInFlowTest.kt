@@ -21,6 +21,7 @@ import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm
 import org.springframework.security.oauth2.jwt.*
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.ResultActionsDsl
+import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.web.util.UriComponentsBuilder
 import tools.jackson.databind.JsonNode
@@ -274,6 +275,13 @@ class AppleSignInFlowTest(
         post("/v1/me/identities/google", """{"linkToken":"$link"}""").andExpect { status { isUnauthorized() } }
         post("/v1/me/identities/google", """{"linkToken":"$link"}""", access).andExpect { status { isNoContent() } }
         assertEquals(user.id.toString(), read(googleSignIn(other).andExpect { status { isOk() } })["user"]["id"].asString())
+        // 설정 화면 "연결된 로그인"(native-v1.md "설정"): 연결한 구글 계정이 이메일·이름·연결일과 함께 보인다
+        val linked = read(mvc.get("/v1/me/identities") { header("Authorization", "Bearer $access") }.andExpect { status { isOk() } })["items"]
+        assertEquals(1, linked.size())
+        assertEquals("google", linked[0]["provider"].asString())
+        assertEquals("$other@gmail.com", linked[0]["email"].asString())
+        assertEquals("조민준", linked[0]["displayName"].asString())
+        assertTrue(linked[0]["linkedAt"].isString, linked.toString())
         val third = read(googleSignIn("google-${UUID.randomUUID()}").andExpect { status { isAccepted() } })["linkToken"].asString()
         post("/v1/me/identities/google", """{"linkToken":"$third"}""", access).andExpect { status { isBadRequest() } }
         // 이미 다른 계정(created)에 연결된 구글 계정은 이 계정에 연결할 수 없다. 로그인은 바로 되므로 linkToken이 나오지 않는다
