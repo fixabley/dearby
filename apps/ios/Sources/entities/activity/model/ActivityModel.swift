@@ -148,10 +148,15 @@ struct ProgramSummary: Equatable, Identifiable, Sendable {
     let matchedActivityIDs: [String]
     /// Raw ISO 8601 of the program's most recent published activity start (contract "모집 중인 프로그램만 보기"); nil when unknown.
     var latestActivityAt: String? = nil
+    /// Activities whose recruitment (or activity, without a window) has not started yet (contract "마감 숨기기" 2026-10-19 밤); 0 when unknown.
+    var upcomingActivityCount: Int = 0
+    /// Raw ISO 8601 of the earliest recruitment start among the upcoming ones (activity start without a window); nil when none.
+    var nearestRecruitmentStartAt: String? = nil
     /// Program tags, or the union of its open activities' tags (contract "태그": at most 6, vocabulary order).
     var tags: [Tag] = []
     var nearestRecruitmentEnd: Date? { ActivityModel.instant(nearestRecruitmentEndAt) }
     var latestActivity: Date? { ActivityModel.instant(latestActivityAt) }
+    var nearestRecruitmentStart: Date? { ActivityModel.instant(nearestRecruitmentStartAt) }
 }
 /// One page of `GET /v1/discovery/programs`. A nil `nextCursor` is the last page.
 struct ProgramPage: Sendable {

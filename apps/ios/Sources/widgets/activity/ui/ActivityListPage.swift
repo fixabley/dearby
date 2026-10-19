@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// 발견: 프로그램 아코디언 목록(contract "발견 프로그램 묶음"). `마감 숨기기`가 켜지면 모집 중 활동이 있는 프로그램만, 꺼지면 최근 2년 안에
-/// 활동이 있었던 프로그램까지 보인다. 머리글을 펼치면 모집 중 활동 카드가, 없으면 지난 활동 목록이 보인다.
+/// 활동이 있었던 프로그램까지 보인다. 머리글을 펼치면 모집 중·모집 예정 활동이 항상, 지난 활동은 토글을 껐을 때만 보인다(2026-10-19 밤).
 struct ActivityListPage: View {
     let state: ActivityViewModel
     @Binding var path: [String]
@@ -78,12 +78,15 @@ struct ActivityListPage: View {
         let open = state.isExpanded(program.id)
         VStack(alignment: .leading, spacing: 10) {
             ProgramHeader(name: program.name, organization: program.organization, openCount: program.openActivityCount,
-                          nearestDeadline: program.nearestRecruitmentEnd, latestActivity: program.latestActivity, tags: program.tags, expanded: open) { state.toggle(program.id) }
+                          nearestDeadline: program.nearestRecruitmentEnd, upcomingCount: program.upcomingActivityCount,
+                          nearestStart: program.nearestRecruitmentStart, latestActivity: program.latestActivity, tags: program.tags, expanded: open) { state.toggle(program.id) }
             if open {
                 if let activities = state.openActivities[program.id] {
-                    if activities.isEmpty {
+                    let upcoming = state.upcomingActivities[program.id] ?? []
+                    let past = state.openOnly ? [] : (state.pastActivities[program.id] ?? [])
+                    if activities.isEmpty && upcoming.isEmpty && past.isEmpty {
                         Text("지금 모집 중인 활동이 없어요").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).padding(.horizontal, 4)
-                    } else {
+                    } else if !activities.isEmpty {
                         // Grouped by 활동 종류 in contract order, 미분류 last; a single group needs no heading.
                         let groups = ActivityCategory.group(activities)
                         ForEach(groups, id: \.label) { group in
@@ -94,19 +97,16 @@ struct ActivityListPage: View {
                             ForEach(group.activities) { activity in card(activity) }
                         }
                     }
-                    // `모집 예정` then `지난 활동`: always while 마감 숨기기 is off, otherwise only without open activities.
-                    // Plain rows, no category headings, empty groups omitted.
-                    if activities.isEmpty || !state.openOnly {
-                        if let upcoming = state.upcomingActivities[program.id], !upcoming.isEmpty {
-                            Text("모집 예정").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
-                                .padding(.horizontal, 4).padding(.top, 4).accessibilityAddTraits(.isHeader)
-                            ForEach(upcoming) { activity in card(activity) }
-                        }
-                        if let past = state.pastActivities[program.id], !past.isEmpty {
-                            Text("지난 활동").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
-                                .padding(.horizontal, 4).padding(.top, 4).accessibilityAddTraits(.isHeader)
-                            ForEach(past) { activity in card(activity) }
-                        }
+                    // `모집 예정` always, `지난 활동` only while 마감 숨기기 is off (contract 2026-10-19 밤). Plain rows, empty groups omitted.
+                    if !upcoming.isEmpty {
+                        Text("모집 예정").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
+                            .padding(.horizontal, 4).padding(.top, 4).accessibilityAddTraits(.isHeader)
+                        ForEach(upcoming) { activity in card(activity) }
+                    }
+                    if !past.isEmpty {
+                        Text("지난 활동").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
+                            .padding(.horizontal, 4).padding(.top, 4).accessibilityAddTraits(.isHeader)
+                        ForEach(past) { activity in card(activity) }
                     }
                 } else if state.failedPrograms.contains(program.id) {
                     Button("활동 다시 불러오기") { state.retryActivities(program.id) }.frame(maxWidth: .infinity, minHeight: 44)
