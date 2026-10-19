@@ -3,9 +3,7 @@ package com.dearby.nativeapp.entities.activity.model
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
-import java.util.Locale
 
 /**
  * One step of an applied activity (contract "내 활동 진행 트랙"). [label] is the badge word (마감·발표·면접, or the title for
@@ -18,8 +16,6 @@ data class Stage(val name: String, val kind: String, val label: String, val date
 }
 
 private val seoul: ZoneId = ZoneId.of("Asia/Seoul")
-private val dayText = DateTimeFormatter.ofPattern("M월 d일 (E)", Locale.KOREAN)
-private val timeText = DateTimeFormatter.ofPattern("HH:mm", Locale.KOREAN)
 private const val UNDATED = "날짜 미확인"
 
 /**
@@ -29,9 +25,9 @@ private const val UNDATED = "날짜 미확인"
  */
 fun ActivityModel.stages(): List<Stage> {
     val applying = application?.let { window ->
-        val end = instant(window.endAt)
-        val day = end?.atZone(seoul)?.toLocalDate()
-        Stage("지원", "APPLICATION", "마감", end?.let { dayText.withZone(seoul).format(it) + " " + timeText.withZone(seoul).format(it) + " 마감" } ?: UNDATED, day, day, null)
+        // The deadline only (timed, else the all-day window's last day); the start is left out on purpose.
+        val day = instant(window.endAt)?.atZone(seoul)?.toLocalDate() ?: localDate(window.endDateExclusive)?.minusDays(1)
+        Stage("지원", "APPLICATION", "마감", if (day == null) UNDATED else scheduleText(null, window.endAt, null, window.endDateExclusive), day, day, null)
     }
     val period = activitySchedule?.let { it.copy(title = it.title.ifBlank { "활동" }).toStage() }
     return listOfNotNull(applying) + stageSchedules.sortedWith(compareBy(nullsLast()) { it.startInstant() }).map { it.toStage() } + listOfNotNull(period)
@@ -59,25 +55,14 @@ private fun StageSchedule.toStage(): Stage {
     val startDay = localDate(startDate)
     val endDay = localDate(endDateExclusive)?.minusDays(1) ?: startDay
     val label = when (kind) { "DEADLINE" -> "마감"; "ANNOUNCEMENT" -> "발표"; "INTERVIEW" -> "면접"; else -> title }
+    // Text by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.
+    val text = scheduleText().ifBlank { UNDATED }
     return when {
-        start != null || end != null -> Stage(title, kind, label, timedText(start, end, zone),
+        start != null || end != null -> Stage(title, kind, label, text,
             (start ?: end)!!.atZone(seoul).toLocalDate(), (end ?: start)!!.atZone(seoul).toLocalDate(),
             if (startAt != null && endAt != null) ScheduleModel(title, startAt, endAt, zone.id) else null)
-        startDay != null -> Stage(title, kind, label,
-            if (endDay == null || endDay <= startDay) dayText.format(startDay) else dayText.format(startDay) + " – " + dayText.format(endDay), startDay, endDay, null)
-        else -> Stage(title, kind, label, dateLabel.ifBlank { UNDATED }, null, null, null)
-    }
-}
-
-/** "10월 20일 (화) 14:00 – 15:00"; a second day is spelled out, a single known end reads "…까지". */
-private fun timedText(start: Instant?, end: Instant?, zone: ZoneId): String {
-    val day = dayText.withZone(zone)
-    val time = timeText.withZone(zone)
-    return when {
-        start == null -> day.format(end) + " " + time.format(end) + "까지"
-        end == null -> day.format(start) + " " + time.format(start)
-        day.format(start) == day.format(end) -> day.format(start) + " " + time.format(start) + " – " + time.format(end)
-        else -> day.format(start) + " " + time.format(start) + " – " + day.format(end) + " " + time.format(end)
+        startDay != null -> Stage(title, kind, label, text, startDay, endDay, null)
+        else -> Stage(title, kind, label, text, null, null, null)
     }
 }
 
