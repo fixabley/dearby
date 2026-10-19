@@ -21,6 +21,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import java.time.Instant
 import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.activity.activityCard.ActivityCard
 import com.dearby.nativeapp.widgets.activity.programHeader.ProgramHeaderRow
@@ -65,8 +66,10 @@ import com.dearby.nativeapp.widgets.activity.programHeader.ProgramHeaderRow
                                     val activities = loaded.ids.mapNotNull(state.known::get)
                                     if (activities.isEmpty()) item(key = "empty-" + program.id) { Text("지금 열린 활동이 없어요.", Modifier.padding(start = 12.dp), color = Quiet, style = MaterialTheme.typography.bodySmall) }
                                     // 활동 종류별 묶음 (contract "활동 종류"): contract order, 미분류 last; no heading when only one kind.
+                                    // Within a group: recruitment deadline ascending, no deadline last, ties by name (2026-10-19 "정렬은 모집일 순서로").
                                     val groups = activities.groupBy { it.category }.entries.sortedBy { (_, group) -> group.first().categoryOrder }
-                                    groups.forEach { (category, group) ->
+                                    groups.forEach { (category, unsorted) ->
+                                        val group = unsorted.sortedWith(compareBy<ActivityState, Instant?>(nullsLast()) { it.recruitmentEnd }.thenBy { it.title })
                                         if (groups.size > 1) item(key = "category-" + program.id + "-" + (category ?: "none")) {
                                             Text(category ?: "미분류", Modifier.padding(start = 12.dp, top = 4.dp).semantics { heading() }, color = Quiet, style = MaterialTheme.typography.labelLarge)
                                         }
