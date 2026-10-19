@@ -15,6 +15,6 @@ class GoogleConfig {
     fun googleTokenDecoder(properties: GoogleProperties): GoogleTokenDecoder =
         GoogleTokenDecoder.of(
             NimbusJwtDecoder.withJwkSetUri(properties.jwkSetUri).jwsAlgorithm(SignatureAlgorithm.RS256).build(),
-            properties.clientId,
+            properties.allowedClientIds,
         )
 }

@@ -22,6 +22,7 @@ API = {
     'pages.cards': {'MyCardsPage', 'MyCardsState', 'MyCardsPhase', 'MyCardChoice', 'CardQrPage', 'QrActivity'},
     'features.passkey': {'Passkeys'},
     'features.oauth': {'OAuthBrowser', 'OAuthVerifier'},
+    'features.google': {'GoogleSignIn'},
     'pages.account': {'SignInSheet', 'LinkAccountSheet'},
     'pages.onboarding': {'IntroPage'},
     'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletCardPage', 'ReceivedCard', 'filterWallet', 'WalletSection', 'walletSections'},
@@ -64,7 +65,7 @@ def check_source(path, text):
     if rendering and re.search(r'\b(LocalContext|SharedPreferences|getSharedPreferences|AssetManager|Intent|startActivity|\w+ViewModel|\w+Repository)\b', code): errors.append('UI directly accesses provider/OS side effect')
     # Contract "모바일 실제 연결 경계": only the activity and account clients open connections; only the account vault keeps the session
     # and MainActivity keeps only the first-launch intro flag (2026-10-14). AccountViewModel keeps the web sign-in verifier and pending
-    # link token across process death while Apple's or Google's page is open (2026-10-16 "애플 로그인", 2026-10-18 "구글 로그인").
+    # link token across process death while Apple's page is open (2026-10-16 "애플 로그인"); Google's 202 link token too (2026-10-19 native).
     allowed = {'entities/activity/api/ActivityClient.kt': {'HttpURLConnection'}, 'entities/account/api/AccountClient.kt': {'HttpURLConnection'},
                'entities/account/api/SessionVault.kt': {'getSharedPreferences'}, 'app/MainActivity.kt': {'getSharedPreferences'},
                'app/AccountViewModel.kt': {'SavedStateHandle'}}.get(path.as_posix(), set())

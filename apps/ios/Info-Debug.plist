@@ -8,6 +8,20 @@
 	<string>$(DEARBY_WEB_ORIGIN)</string>
 	<key>DearbyAppleSignInEnabled</key>
 	<true/>
+	<key>GIDClientID</key>
+	<string>$(GOOGLE_IOS_CLIENT_ID)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.dearby.dearby</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>dearby</string>
+				<string>$(GOOGLE_IOS_URL_SCHEME)</string>
+			</array>
+		</dict>
+	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>UIAppFonts</key>

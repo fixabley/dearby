@@ -21,17 +21,18 @@ import SwiftUI
     private(set) var pendingLink: PendingLink?
     /// Build flag (Info.plist `DearbyAppleSignInEnabled`): shows the Apple button. Off until the app has the entitlement.
     let appleSignInEnabled: Bool
-    /// Shows the Google button. There is no build flag (contract "구글 로그인"): the button is shown until the server answers
-    /// `web/start` with 503 (no Google client configured), then hidden for the rest of this run.
-    private(set) var googleSignInEnabled = true
+    /// Shows the Google button: true when the build carries an iOS client ID (Info.plist `GIDClientID`) until the server
+    /// answers `auth/google/nonce` with 503 (no Google client IDs configured), then hidden for the rest of this run.
+    private(set) var googleSignInEnabled: Bool
     let client: AccountClient
     private let vault: any TokenStore
     /// One refresh at a time: refresh tokens rotate, so a second refresh with the same token would fail.
     private var refreshing: Task<TokenPair, Error>?
 
-    init(client: AccountClient, vault: any TokenStore, appleSignInEnabled: Bool = false) {
+    init(client: AccountClient, vault: any TokenStore, appleSignInEnabled: Bool = false, googleSignInEnabled: Bool = false) {
         self.client = client
         self.appleSignInEnabled = appleSignInEnabled
+        self.googleSignInEnabled = googleSignInEnabled
         self.vault = vault
         let stored = try? vault.load()
         session = stored
@@ -67,20 +68,19 @@ import SwiftUI
             }
         }
     }
-    /// "Google로 계속하기" (contract "구글 로그인", web flow): the server's authorize URL opens in the system browser sheet and
-    /// comes back as a one-time code; the exchange signs in (200) or leaves a first-time account to link or start (202).
-    /// A 503 from `web/start` means the server has no Google client: the button disappears for this run.
+    /// "Google로 계속하기" (contract "구글 로그인", native SDK): the server's nonce goes into the Google account sheet, the ID
+    /// token comes back and signs in (200) or leaves a first-time account to link or start (202).
+    /// A 503 from `auth/google/nonce` means the server has no Google client IDs: the button disappears for this run.
     func signInWithGoogle(using controller: AuthorizationController) async {
         pendingLink = nil
         await start(failure: "구글로 로그인하지 못했어요. 다시 시도해 주세요.", unavailable: "지금은 구글 로그인을 쓸 수 없어요.") { [client] in
-            let verifier = GoogleSignIn.makeVerifier()
-            let authorizeURL: URL
-            do { authorizeURL = try await client.googleStart(verifierHash: verifier.hash) } catch AccountError.disabled {
+            let nonce: String
+            do { nonce = try await client.googleNonce().nonce } catch AccountError.disabled {
                 googleSignInEnabled = false
                 throw AccountError.disabled
             }
-            let code = try await GoogleSignIn.authorize(authorizeURL)
-            switch try await client.signInWithGoogle(code: code, verifier: verifier.value) {
+            let idToken = try await GoogleNativeSignIn.authorize(nonce: nonce)
+            switch try await client.signInWithGoogle(idToken: idToken, nonce: nonce) {
             case .signedIn(let tokens): return tokens
             case .newGoogleAccount(let link):
                 return try await linkOrStart(PendingLink(provider: .google, linkToken: link.linkToken, email: link.email), controller)

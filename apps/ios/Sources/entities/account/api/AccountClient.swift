@@ -58,16 +58,15 @@ struct AccountClient: Sendable {
     func linkApple(_ link: AppleLink, _ session: TokenPair) async throws {
         _ = try await request("me/identities/apple", method: "POST", body: ["linkToken": link.linkToken], session: session)
     }
-    /// Google web flow, step 1 (contract "구글 로그인"): the authorize URL for this verifier hash. `disabled` when the server
-    /// has no Google client configured.
-    func googleStart(verifierHash: String) async throws -> URL {
-        let start = try await send("auth/google/web/start", method: "POST", body: ["verifierHash": verifierHash], as: GoogleStart.self)
-        guard let url = URL(string: start.authorizeUrl), url.scheme == "https" else { throw AccountError.unavailable }
-        return url
+    /// Google sign-in, step 1 (contract "구글 로그인", native SDK): a single-use nonce. `disabled` when the server has no
+    /// Google client IDs configured (503).
+    func googleNonce() async throws -> GoogleNonce {
+        try await send("auth/google/nonce", method: "POST", as: GoogleNonce.self)
     }
-    /// Google web flow, step 2. 200: this Google account already has a Dearby account. 202: first time (`GoogleLink`).
-    func signInWithGoogle(code: String, verifier: String) async throws -> GoogleSignInResult {
-        let (data, status) = try await request("auth/google/web/exchange", method: "POST", body: ["code": code, "verifier": verifier])
+    /// Google sign-in, step 2: the SDK's ID token with that nonce. 200: this Google account already has a Dearby account.
+    /// 202: first time (`GoogleLink`). 401 means the token was rejected; the flow starts over.
+    func signInWithGoogle(idToken: String, nonce: String) async throws -> GoogleSignInResult {
+        let (data, status) = try await request("auth/google", method: "POST", body: ["idToken": idToken, "nonce": nonce])
         do {
             if status == 202 { return .newGoogleAccount(try JSONDecoder().decode(GoogleLink.self, from: data)) }
             return .signedIn(try JSONDecoder().decode(TokenPair.self, from: data))
@@ -183,11 +182,11 @@ struct AccountClient: Sendable {
     /// `email` may be an Apple private relay address.
     struct AppleLink: Decodable, Equatable, Sendable { let linkToken: String; let email: String? }
     enum AppleSignInResult: Equatable, Sendable { case signedIn(TokenPair), newAppleAccount(AppleLink) }
-    /// From a 202 of the Google exchange: `linkToken` lasts ten minutes and is spent by `registerWithGoogle` or `linkGoogle`.
+    /// From a 202 of `auth/google`: `linkToken` lasts ten minutes and is spent by `registerWithGoogle` or `linkGoogle`.
     /// `email` is only present when Google verified it; `displayName` is Google's `name`.
     struct GoogleLink: Decodable, Equatable, Sendable { let linkToken: String; let email: String?; let displayName: String? }
     enum GoogleSignInResult: Equatable, Sendable { case signedIn(TokenPair), newGoogleAccount(GoogleLink) }
-    private struct GoogleStart: Decodable { let authorizeUrl: String }
+    struct GoogleNonce: Decodable, Sendable { let nonce: String }
     /// Nil optionals are left out of the JSON (synthesized `encodeIfPresent`).
     private struct AppleAnswer: Encodable {
         let challengeId: String; let identityToken: String; let displayName: String?; let authorizationCode: String?

@@ -15,6 +15,7 @@ import com.dearby.nativeapp.entities.account.api.AccountException
 import com.dearby.nativeapp.entities.account.api.SessionStore
 import com.dearby.nativeapp.entities.account.model.AccountSession
 import com.dearby.nativeapp.entities.account.model.WebSignIn
+import com.dearby.nativeapp.features.google.GoogleSignIn
 import com.dearby.nativeapp.features.oauth.OAuthBrowser
 import com.dearby.nativeapp.features.oauth.OAuthVerifier
 import com.dearby.nativeapp.features.passkey.Passkeys
@@ -33,8 +34,8 @@ enum class AccountPhase { SIGNED_OUT, WORKING, SIGNED_IN }
 data class PendingLink(val provider: AuthProvider, val email: String, val auto: Boolean)
 /**
  * [pending] is set while a first-seen provider account waits; the new-or-link choice is drawn only after its automatic
- * device-passkey attempt ([AccountViewModel.autoLinkPending]). [googleAvailable] turns false when the server answers 503 to
- * Google's start (contract "구글 로그인": no build flag, the button hides).
+ * device-passkey attempt ([AccountViewModel.autoLinkPending]). [googleAvailable] is false when the build has no
+ * `GOOGLE_SERVER_CLIENT_ID` or the server answered 503 to the Google nonce (contract "구글 로그인": the button hides).
  */
 data class AccountState(val phase: AccountPhase, val message: String? = null, val pending: PendingLink? = null, val googleAvailable: Boolean = true)
 private const val UNSUPPORTED = "이 기기에서는 패스키를 쓸 수 없어요. Android 9 이상이 필요해요."
@@ -46,12 +47,13 @@ private const val WEB_EMAIL = "web.email"
 
 /**
  * Passkey, Apple and Google sign-in (contract "패스키 로그인", "애플 로그인", "구글 로그인"): asked for when publishing or viewing
- * received cards, and offered (never required) on the first-launch intro.
+ * received cards, and offered (never required) on the first-launch intro. [googleServerClientId] is the build's web OAuth client
+ * id (`BuildConfig.GOOGLE_SERVER_CLIENT_ID`); blank hides the Google button.
  */
-class AccountViewModel(val client: AccountClient, private val vault: SessionStore, private val saved: SavedStateHandle) : ViewModel() {
+class AccountViewModel(val client: AccountClient, private val vault: SessionStore, private val saved: SavedStateHandle, private val googleServerClientId: String = "") : ViewModel() {
     private var session: AccountSession? = runCatching { vault.load() }.getOrNull()
     private val refreshing = Mutex()
-    private val mutable = MutableStateFlow(AccountState(if (session == null) AccountPhase.SIGNED_OUT else AccountPhase.SIGNED_IN, pending = savedPending()))
+    private val mutable = MutableStateFlow(AccountState(if (session == null) AccountPhase.SIGNED_OUT else AccountPhase.SIGNED_IN, pending = savedPending(), googleAvailable = googleServerClientId.isNotBlank()))
     val state = mutable.asStateFlow()
 
     private fun savedPending(): PendingLink? {
@@ -72,16 +74,40 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
     }
 
     /**
-     * "Apple로 계속하기" / "Google로 계속하기" (web flow): keeps a new verifier, sends its hash and opens the provider's page in a
-     * Custom Tab. Nothing waits here: the result comes back as a `dearby://auth/<provider>` link through [returned], or never if
-     * the person leaves the tab, so the phase is SIGNED_OUT again once the tab is open. A 503 for Google hides its button.
+     * "Google로 계속하기" (contract "구글 로그인", native): a server nonce, then Credential Manager's Google account chooser, then the
+     * ID token goes to `/v1/auth/google`; 200 signs in, 202 (first-seen Google account) opens the same new-or-link flow as Apple.
+     * A 503 for the nonce hides the button. A closed chooser goes back quietly.
+     */
+    suspend fun signInWithGoogle(google: GoogleSignIn) = enter(AuthProvider.GOOGLE) {
+        val nonce = try { client.googleNonce() } catch (e: AccountException) {
+            if (e.error == AccountError.TURNED_OFF) mutable.update { it.copy(googleAvailable = false) }
+            throw e
+        }
+        val idToken = try { google.idToken(googleServerClientId, nonce) } catch (e: NoCredentialException) {
+            throw WebFailure("이 기기에 Google 계정이 없어요. 기기 설정에서 Google 계정을 추가해 주세요.")
+        } catch (e: GetCredentialException) {
+            throw WebFailure(retryMessage(AuthProvider.GOOGLE))
+        } ?: return@enter null
+        when (val result = client.googleSignIn(idToken, nonce)) {
+            is WebSignIn.SignedIn -> result.session
+            is WebSignIn.NeedsAccount -> {
+                saved[WEB_PROVIDER] = AuthProvider.GOOGLE.name
+                saved[WEB_LINK_TOKEN] = result.linkToken
+                saved[WEB_EMAIL] = result.email
+                mutable.update { it.copy(pending = PendingLink(AuthProvider.GOOGLE, result.email, auto = true)) }
+                null
+            }
+        }
+    }
+
+    /**
+     * "Apple로 계속하기" (web flow): keeps a new verifier, sends its hash and opens the provider's page in a Custom Tab. Nothing
+     * waits here: the result comes back as a `dearby://auth/<provider>` link through [returned], or never if the person leaves
+     * the tab, so the phase is SIGNED_OUT again once the tab is open.
      */
     suspend fun startWeb(provider: AuthProvider, browser: OAuthBrowser) = enter(provider) {
         val verifier = OAuthVerifier.create()
-        val url = try { client.webStart(provider, OAuthVerifier.hash(verifier)) } catch (e: AccountException) {
-            if (e.error == AccountError.TURNED_OFF && provider == AuthProvider.GOOGLE) mutable.update { it.copy(googleAvailable = false) }
-            throw e
-        }
+        val url = client.webStart(provider, OAuthVerifier.hash(verifier))
         if (!url.startsWith("https://")) throw AccountException(AccountError.UNAVAILABLE)
         saved[WEB_PROVIDER] = provider.name
         saved[WEB_VERIFIER] = verifier

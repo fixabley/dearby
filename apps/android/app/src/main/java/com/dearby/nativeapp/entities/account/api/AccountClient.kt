@@ -79,7 +79,12 @@ class AccountClient(private val api: String, private val transport: Transport = 
     // The contract has no request body; an explicit {} keeps HttpURLConnection from sending a bodiless POST.
     suspend fun authenticationOptions() = send("POST", "auth/passkeys/authentication/options", JSONObject()).toPasskeyChallenge()
     suspend fun authenticate(challengeId: String, credential: String) = send("POST", "auth/passkeys/authentication", passkeyBody(challengeId, credential)).toSession()
-    /** Web sign-in (contract "애플 로그인"·"구글 로그인"): the provider's page to open for a SHA-256 of the kept verifier. 503 → [AccountError.TURNED_OFF]. */
+    /** Google sign-in (contract "구글 로그인", native): a single-use nonce for the ID token. 503 → [AccountError.TURNED_OFF] (no client ids on the server). */
+    suspend fun googleNonce() = send("POST", "auth/google/nonce", JSONObject()).getString("nonce")
+    /** Google sign-in: the SDK's ID token with the nonce it was issued for; 200 TokenPair or 202 [WebSignIn.NeedsAccount]. */
+    suspend fun googleSignIn(idToken: String, nonce: String) =
+        send("POST", "auth/google", JSONObject().put("idToken", idToken).put("nonce", nonce)).toWebSignIn()
+    /** Web sign-in (contract "애플 로그인"): the provider's page to open for a SHA-256 of the kept verifier. 503 → [AccountError.TURNED_OFF]. */
     suspend fun webStart(provider: AuthProvider, verifierHash: String) =
         send("POST", "auth/${provider.path}/web/start", JSONObject().put("verifierHash", verifierHash)).getString("authorizeUrl")
     /** The one-time code from `dearby://auth/<provider>?code=` and its verifier → signed in, or a first-seen provider account. */
