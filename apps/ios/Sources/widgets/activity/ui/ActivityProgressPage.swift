@@ -10,6 +10,8 @@ struct ActivityProgressPage: View {
     let state: ActivityViewModel
     let activityID: String
     @State private var calendarStage: ActivityStage?
+    @State private var removing: String?
+    @Environment(\.dismiss) private var dismiss
     private var activity: ActivityModel? { state.activity(activityID) }
     var body: some View {
         Group {
@@ -24,6 +26,9 @@ struct ActivityProgressPage: View {
                         }
                         Divider()
                         Text("표시는 내가 남긴 것이며 주최 측 결과가 아니에요.").font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
+                        Button("내 활동에서 빼기", role: .destructive) { removing = activityID }
+                            .buttonStyle(.borderless).font(.dearby(.body).weight(.semibold)).frame(minHeight: 44)
+                            .accessibilityIdentifier("mine-remove")
                     }.padding(20)
                 }
             } else {
@@ -36,6 +41,8 @@ struct ActivityProgressPage: View {
         .sheet(item: $calendarStage) { stage in
             if let schedule = stage.schedule { CalendarConflictView(schedules: [schedule]) }
         }
+        // After removal the timeline closes and the list shows again (contract "빼기는 눈에 보이게").
+        .removeFromMineDialog($removing, state: state) { dismiss() }
     }
     private func header(_ activity: ActivityModel) -> some View {
         VStack(alignment: .leading, spacing: 8) {
