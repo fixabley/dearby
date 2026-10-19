@@ -27,6 +27,11 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     let imageUrl: String?
     /// Who may apply (contract "대상자 조건"); nil when the activity has none or the JSON was unreadable.
     var eligibility: Eligibility? = nil
+    /// 활동 종류 (contract "활동 종류"); nil for an unknown code or none (미분류).
+    var category: ActivityCategory? = nil
+    /// Ordering key inside a category group (contract "활동 종류"): the application's end instant, or the exclusive end date
+    /// at Seoul midnight when the window is date-only; nil when there is no deadline.
+    var recruitmentDeadline: Date? = nil
 
     /// Recruitment only from the application window against now. A missing bound is open on that side;
     /// no window at all, or an unreadable bound, needs checking.

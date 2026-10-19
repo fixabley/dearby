@@ -340,6 +340,15 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
   - `application`(모집 기간, 없으면 null), `activitySchedule`(활동 기간·날짜 문구), `schedules[]`(개별 일정)는 Schedule이다.
 - Schedule: `{id, title, kind, status, startAt, endAt, timeZone, startDate, endDateExclusive, dateLabel, address, conferenceUrl}`. 시각 일정은 `startAt`·`endAt` 중 하나 이상과 `timeZone`이 있고, 시각은 그 시간대 오프셋으로 표기한다(예: `2026-10-08T00:00:00+09:00`). 종일 일정은 `startDate`·`endDateExclusive`. 날짜 미정은 모두 null이고 `dateLabel`만 있다.
 
+## 활동 종류(category) — 2026-10-19 사용자 결정
+
+사용자: "활동 종류도 추가해줬으면 좋겠어. 부트캠프, 컨퍼런스, 워크샵, 스터디, 강연 등으로 구분하고 프로그램 하위에서 그룹화되도록". 활동에 **종류** 하나를 둔다.
+
+- 값(API 코드 → 한글 이름): `BOOTCAMP` 부트캠프, `CONFERENCE` 컨퍼런스, `WORKSHOP` 워크샵, `STUDY` 스터디, `CLUB` 동아리(연합동아리 등, 2026-10-19 같은 날 추가), `LECTURE` 강연, `HACKATHON` 해커톤, `CONTEST` 공모전, `MEETUP` 밋업, `OTHER` 기타. 없으면 `null`(미분류). 저장은 `activities.category varchar(20) null`(V31, check 제약). 코드는 `participationType`처럼 대문자 영문이고 한글 이름은 클라이언트가 붙인다.
+- 공개 `Activity`(활동 조회·발견의 펼친 활동)와 `AdminActivity`에 `category: string|null`을 더한다. `GET /v1/activities`·`GET /v1/discovery/programs`에 `category?` 필터(코드 하나 또는 쉼표 목록)를 더한다.
+- 수집: 추출 지시문이 `category`를 함께 뽑는다(본문의 성격으로 판단, 모르면 null). 어드민이 바꾼 값은 `curated_fields`의 `category`로 보호된다.
+- 화면: 프로그램 하위에서 종류별로 묶는다. **어드민**은 펼친 프로그램 안에서 종류 소제목(부트캠프 (n) …, 미분류는 맨 뒤) 아래에 활동 행을 둔다. **앱·웹 발견**은 펼친 프로그램 안의 활동을 같은 순서의 종류 소제목으로 묶고(종류가 하나뿐이면 소제목 생략), 활동 행에는 종류를 다시 쓰지 않는다. 활동 상세에는 종류 칩 하나. 종류 순서는 위 값 순서. 각 종류 안의 활동 순서는 **모집 마감이 이른 순**(APPLICATION 슬롯의 끝 시각·날짜, 없으면 맨 뒤, 같으면 이름순)이다(2026-10-19 사용자 "정렬은 모집일 순서로"). 어드민 펼친 프로그램 안도 같다.
+
 ## 발견 프로그램 묶음 — 2026-10-18 사용자 결정
 
 사용자 제안: 발견 탭을 활동 카드 목록 대신 **프로그램 단위**로 보여 주고, 누르면 아코디언처럼 펼쳐져 지금 열린 활동이 보이게 한다. 세부 규칙은 메인 제안을 사용자가 그대로 승인했다. iOS·Android·웹 발견 화면에 함께 적용하며 활동 상세와 `내 활동`은 바뀌지 않는다.

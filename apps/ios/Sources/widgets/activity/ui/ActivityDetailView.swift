@@ -62,7 +62,10 @@ struct ActivityDetailView: View {
     }
     private func identity(_ activity: ActivityModel) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            DearbyBadge(title: activity.statusLabel(at: state.loadedAt))
+            HStack(spacing: 8) {
+                DearbyBadge(title: activity.statusLabel(at: state.loadedAt))
+                if let category = activity.category { DearbyBadge(title: category.label, quiet: true) }
+            }
             Text(activity.title).font(.title.bold())
             HStack {
                 Image(systemName: "building.2").font(.title2).foregroundStyle(DearbyStyle.teal)

@@ -77,7 +77,15 @@ struct ActivityListPage: View {
                     if activities.isEmpty {
                         Text("지금 열린 활동이 없어요.").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).padding(.horizontal, 4)
                     } else {
-                        ForEach(activities) { activity in card(activity) }
+                        // Grouped by 활동 종류 in contract order, 미분류 last; a single group needs no heading.
+                        let groups = ActivityCategory.group(activities)
+                        ForEach(groups, id: \.label) { group in
+                            if groups.count > 1 {
+                                Text("\(group.label) (\(group.activities.count))").font(.dearby(.subheadline).weight(.semibold))
+                                    .foregroundStyle(DearbyStyle.quiet).padding(.horizontal, 4).padding(.top, 4).accessibilityAddTraits(.isHeader)
+                            }
+                            ForEach(group.activities) { activity in card(activity) }
+                        }
                     }
                 } else if state.failedPrograms.contains(program.id) {
                     Button("활동 다시 불러오기") { state.retryActivities(program.id) }.frame(maxWidth: .infinity, minHeight: 44)

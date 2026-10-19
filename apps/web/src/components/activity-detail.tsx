@@ -8,6 +8,7 @@ import {
   scheduleLabel,
 } from "@/lib/models";
 import { eligibilityLines } from "@/lib/eligibility";
+import { categoryLabel } from "@/lib/category";
 import { errorMessage, request, RequestError } from "@/lib/client";
 import { Failure, Loading } from "@/shared/ui/states";
 import { Icon } from "@/shared/ui/icon";
@@ -72,6 +73,7 @@ export function ActivityDetail({ id }: { id: number }) {
         <span className={`badge ${status.open ? "" : "neutral"}`}>
           {status.label}
         </span>
+        {activity.category && <span className="badge neutral">{categoryLabel(activity.category)}</span>}
         <h1>{activity.name}</h1>
         <p className="lead">{activity.description}</p>
       </div>
