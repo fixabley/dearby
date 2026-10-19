@@ -84,14 +84,14 @@ export function PublicCard({ id, activity }: { id: string; activity?: number }) 
   return (
     <article className="public-card detail">
       <Link className="back-link" href="/saved">
-        <Icon name="arrow" size={20} />
+        <Icon name="chevron-left" size="inline" />
         저장한 명함
       </Link>
       {place && <p className="exchange-place">{place}에서 받은 명함</p>}
       <PublicCardBody card={card} />
       <div className="save-area">
         <a className="button" href={appLink}>
-          <Icon name="card" size={20} />
+          <Icon name="card" size="inline" />
           Dearby 앱에 저장
         </a>
         <p className="muted">앱이 없으면 브라우저에 저장할 수 있어요.</p>
@@ -103,7 +103,7 @@ export function PublicCard({ id, activity }: { id: string; activity?: number }) 
         {saved ? (
           <>
             <p className="success" role="status">
-              <Icon name="check" size={20} />
+              <Icon name="check-circle" size="inline" />
               명함을 저장했어요.
             </p>
             <Link className="button" href="/saved">
@@ -112,7 +112,7 @@ export function PublicCard({ id, activity }: { id: string; activity?: number }) 
           </>
         ) : (
           <button className="button secondary" disabled={busy} onClick={save}>
-            <Icon name="bookmark" size={20} />
+            <Icon name="inbox" size="inline" />
             {busy ? "저장 확인 중…" : "브라우저에 저장"}
           </button>
         )}

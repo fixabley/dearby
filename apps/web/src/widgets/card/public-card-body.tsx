@@ -53,7 +53,7 @@ export function PublicCardBody({ card }: { card: Card }) {
               const content = (
                 <>
                   <span className="contact-icon">
-                    <Icon name={contact.kind} size={20} />
+                    <Icon name={contact.kind === "email" ? "mail" : contact.kind} />
                   </span>
                   <span className="contact-text">
                     <span className="contact-label">
@@ -63,7 +63,7 @@ export function PublicCardBody({ card }: { card: Card }) {
                   </span>
                   {href && (
                     <span className="contact-external">
-                      <Icon name="external" size={16} />
+                      <Icon name="external-link" size="inline" />
                     </span>
                   )}
                 </>

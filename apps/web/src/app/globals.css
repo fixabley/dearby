@@ -13,15 +13,18 @@
   /* Surfaces and the text on filled teal; every former `white`/`#fff` reads one of these so dark mode has no white islands. */
   --bg: #fff;
   --card: #fff;
+  /* 청록 채움 흰 글자 (contract "웹에도 같은 규칙", 2026-10-20): filled surfaces (buttons, badges, chips, switch, state circle) use
+     `--teal-fill` — the same #007F80 in both schemes — with white text; `--teal` is the text/border accent only. */
+  --teal-fill: #007f80;
   --on-teal: #fff;
 }
-/* 다크 모드 (contract "색 체계" › "다크 모드", 2026-10-19 밤): tokens only, no component restyle. Teal is the lighter variant
-   (#007F80 → #3FB3B4) so it stays readable on dark surfaces; text on a filled teal turns dark for contrast. */
+/* 다크 모드 (contract "색 체계" › "다크 모드", 2026-10-19 밤): tokens only, no component restyle. The accent teal is the lighter
+   variant (#007F80 → #3FB3B4) so it stays readable on dark surfaces; filled teal and its white text do not change. */
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
     --teal: #3fb3b4;
-    --teal-dark: #6fcfd0;
+    --teal-dark: #3fb3b4;
     --mint: #15302f;
     --ink: #e6ebeb;
     --muted: #9aa7a9;
@@ -32,7 +35,6 @@
     --success: #6fcf8f;
     --bg: #0f1415;
     --card: #181f21;
-    --on-teal: #07201f;
   }
 }
 * {
@@ -126,15 +128,15 @@ a {
   gap: 10px;
   min-height: 52px;
   padding: 12px 24px;
-  border: 1px solid var(--teal);
+  border: 1px solid var(--teal-fill);
   border-radius: 10px;
-  background: var(--teal);
+  background: var(--teal-fill);
   color: var(--on-teal);
   font-weight: 700;
   text-align: center;
 }
 .button:hover {
-  background: var(--teal-dark);
+  background: color-mix(in srgb, var(--teal-fill) 86%, #000);
 }
 .button.secondary {
   background: var(--card);
@@ -219,23 +221,72 @@ a {
 .page-heading h1 {
   margin: 8px 0 10px;
 }
+/* 발견 검색 (contract "웹에도 같은 규칙" › "발견 검색·토글"): stacked 14/500 secondary label over a system-looking `type="search"`
+   field — magnifier at the left, 44px clear button at the right (the WebKit cancel glyph is hidden so there is one clear) — 17px
+   text, 48px row, secondary placeholder. Enter submits; `/?q=` stays the source of truth. */
 .search {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
+  display: grid;
+  gap: 6px;
+  margin-bottom: 8px;
 }
-.search input {
+.field-label {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+.search-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.search-field > svg {
+  position: absolute;
+  left: 14px;
+  color: var(--muted);
+  pointer-events: none;
+}
+.search-field input {
   flex: 1;
   min-width: 0;
-  min-height: 52px;
-  padding: 0 16px;
+  min-height: 48px;
+  padding: 0 48px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 12px;
+  background: var(--soft);
+  color: var(--ink);
   font: inherit;
+  font-size: 17px;
+  appearance: none;
+  -webkit-appearance: none;
 }
-.search input:focus-visible {
+.search-field input::-webkit-search-cancel-button,
+.search-field input::-webkit-search-decoration {
+  display: none;
+  -webkit-appearance: none;
+}
+.search-field input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+.search-field input:focus-visible {
   outline: 3px solid var(--teal);
   outline-offset: 2px;
+}
+.search-clear {
+  position: absolute;
+  right: 2px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+}
+.search-clear:focus-visible {
+  outline-offset: -2px;
 }
 .load-more {
   display: grid;
@@ -255,30 +306,12 @@ a {
   padding: 72px 20px;
   min-height: 300px;
 }
-.state h1 {
-  font-size: 26px;
-}
-.state p {
+/* Icon tones (contract "아이콘 통일"): secondary text or the teal accent; without a tone the glyph inherits. */
+.icon-secondary {
   color: var(--muted);
 }
-.state .button {
-  margin-top: 8px;
-}
-.state.empty {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  min-height: 348px;
-}
-.state-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--mint);
+.icon-teal {
   color: var(--teal);
-  width: 68px;
-  height: 68px;
-  border-radius: 50%;
-  margin-bottom: 6px;
 }
 .loader {
   width: 24px;
@@ -301,9 +334,6 @@ a {
   padding: 24px 0;
   color: var(--muted);
   font-size: 14px;
-}
-.inline-note > svg {
-  color: var(--teal);
 }
 .inline-note a {
   margin-left: auto;
@@ -457,7 +487,7 @@ a {
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: var(--teal);
+  background: var(--teal-fill);
 }
 .program-count > * {
   grid-area: 1 / 1;
@@ -467,6 +497,8 @@ a {
   border: 0;
   background: none;
   color: var(--teal);
+  /* The chevron is an inline (1em) glyph; this is the only size it takes. */
+  font-size: 18px;
   pointer-events: auto;
   cursor: pointer;
 }
@@ -475,8 +507,6 @@ a {
 }
 .program-collapse svg {
   grid-area: 1 / 1;
-  width: 18px;
-  height: 18px;
   transform: rotate(180deg);
   transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.15);
 }
@@ -533,6 +563,7 @@ a {
 }
 .program-inner .state {
   padding: 24px 0;
+  min-height: 0;
 }
 .sr-only {
   position: absolute;
@@ -545,11 +576,6 @@ a {
 .dot {
   padding: 0 5px;
   color: var(--muted);
-}
-.card-chevron {
-  font-size: 26px;
-  color: var(--muted);
-  margin-left: auto;
 }
 .detail {
   max-width: 720px;
@@ -627,17 +653,14 @@ a {
   display: grid;
   gap: 16px;
 }
+/* 일정 행: 24px secondary glyph in one column, no box (contract "카드는 섹션 구분에만"). */
 .schedule-list li {
   display: flex;
   gap: 16px;
   align-items: flex-start;
-  background: var(--soft);
-  padding: 20px;
-  border-radius: 10px;
 }
 .schedule-list svg {
-  color: var(--teal);
-  margin-top: 3px;
+  margin-top: 2px;
 }
 .schedule-list p {
   color: var(--muted);
@@ -656,7 +679,7 @@ a {
 }
 .place-link svg {
   flex: none;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 .place-link > span {
   display: grid;
@@ -884,22 +907,20 @@ a {
   margin-top: 16px;
   line-height: 1.7;
 }
+/* 쿠키 안내: 24px glyph + text on the background, no box (contract "카드는 섹션 구분에만"). */
 .cookie-info {
   display: flex;
   align-items: flex-start;
   gap: 14px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 20px;
+  padding: 4px 0 20px;
   font-size: 14px;
 }
 .cookie-info > svg {
-  color: var(--teal);
-  margin-top: 2px;
+  margin-top: 1px;
 }
 .cookie-info p {
   color: var(--muted);
-  margin-top: 6px;
+  margin-top: 4px;
 }
 .saved-list {
   display: grid;
@@ -911,6 +932,9 @@ a {
   border: 1px solid var(--line);
   border-radius: 12px;
   overflow: hidden;
+}
+.saved-card:hover {
+  border-color: var(--teal);
 }
 .saved-card > a {
   display: flex;
@@ -959,14 +983,15 @@ a {
   min-height: 0;
 }
 .error-message {
-  background: var(--danger-soft);
   color: var(--danger);
-  padding: 14px 18px;
-  border-radius: 10px;
   margin-top: 16px;
   font-size: 14px;
 }
 .error-message a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 600;
   text-decoration: underline;
 }
 .success {
@@ -998,10 +1023,6 @@ a {
     font-size: 13px;
     gap: 6px;
   }
-  .site-header nav svg {
-    width: 19px;
-    height: 19px;
-  }
   .main {
     padding: 28px 20px 40px;
     min-height: calc(100svh - 165px);
@@ -1019,15 +1040,6 @@ a {
   .state {
     padding: 48px 12px;
   }
-  .state.empty {
-    min-height: 330px;
-  }
-  .state h2 {
-    font-size: 19px;
-  }
-  .state p {
-    font-size: 14px;
-  }
   .inline-note {
     flex-wrap: wrap;
     gap: 12px;
@@ -1035,8 +1047,7 @@ a {
     font-size: 13px;
   }
   .inline-note a {
-    margin-left: 36px;
-    min-height: 32px;
+    margin-left: 40px;
   }
   .mobile-break {
     display: block;
@@ -1089,7 +1100,9 @@ a {
   }
   .program-body,
   .program-inner,
-  .program-collapse svg {
+  .program-collapse svg,
+  .switch,
+  .switch::before {
     transition: none;
   }
 }
@@ -1141,19 +1154,51 @@ a {
   color: var(--success);
 }
 
-/* 마감 숨기기 toggle under the search box (contract "모집 중인 프로그램만 보기") */
+/* 마감 숨기기 (contract "웹에도 같은 규칙" › "발견 검색·토글"): one left-aligned row under the search field — label then switch,
+   the whole `<label>` toggles, 44px tall. The switch is the native checkbox drawn as a track + knob; filled teal when on. */
 .open-only {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  margin: 8px 0 16px;
-  font-size: 14px;
-  color: var(--muted);
+  gap: 12px;
+  min-height: 44px;
+  margin: 0 0 16px;
+  font-size: 15px;
+  cursor: pointer;
 }
-.open-only input {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--teal);
+.switch {
+  position: relative;
+  flex: none;
+  width: 51px;
+  height: 31px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--line);
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.switch::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.25);
+  transition: transform 0.2s;
+}
+.switch:checked {
+  background: var(--teal-fill);
+}
+.switch:checked::before {
+  transform: translateX(20px);
+}
+.switch:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
 }
 
 /* 약관·개인정보 처리방침 (2026-10-19): 상세 페이지와 같은 폭의 읽기 전용 글 */
@@ -1203,6 +1248,9 @@ a {
   margin-left: 16px;
 }
 .footer-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: var(--muted);
   text-decoration: underline;
 }
