@@ -37,7 +37,8 @@ import SwiftUI
                 } else {
                     HomePage(selectedTab: $tab, hidesTabs: tab == 4 && (profile.profile?.version == 0 || profile.consentPending),
                         discovery: { ActivityListPage(state: activityModel, path: $0) }, mine: MyActivitiesPage(state: activityModel, explore: { tab = 0 }),
-                        cards: MyCardsPage(state: cards), wallet: WalletPage(state: wallet), profile: ProfilePage(state: profile))
+                        cards: MyCardsPage(state: cards), wallet: WalletPage(state: wallet), profile: ProfilePage(state: profile),
+                        settings: { SettingsPage(account: account, webOrigin: links.origins.web) })
                 }
             }
             // One accent for every screen and sheet, including those presented from this root (contract "색 체계").

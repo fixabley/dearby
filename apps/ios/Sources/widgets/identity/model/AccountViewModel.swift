@@ -159,7 +159,17 @@ import SwiftUI
         if let session { try? await client.logout(session) }
         forget()
     }
-    enum DeletionResult: Equatable { case deleted, signedOut, failed }
+    enum DeletionResult: Equatable {
+        case deleted, signedOut, failed
+        /// What the screens tell the person afterwards (프로필·설정 share it).
+        var notice: String {
+            switch self {
+            case .deleted: "계정을 삭제했어요. 기기에 남은 패스키는 설정 > 암호에서 지울 수 있어요."
+            case .signedOut: "로그인이 만료됐어요. 다시 로그인해 주세요."
+            case .failed: "계정을 삭제하지 못했어요. 잠시 후 다시 시도해 주세요."
+            }
+        }
+    }
     /// True while `deleteAccount` waits for the server; the delete button stays disabled.
     private(set) var deleting = false
     /// "계정 삭제" (contract "계정 삭제"): one request at a time. 204 forgets the tokens without `/auth/logout`, since

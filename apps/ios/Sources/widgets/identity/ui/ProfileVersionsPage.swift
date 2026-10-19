@@ -76,7 +76,7 @@ struct ProfileVersionPage: View {
                     if let error { Text(error).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.danger) }
                     Button { restore() } label: {
                         Group { if restoring { ProgressView().tint(DearbyStyle.onTeal) } else { Text("이 버전으로 되돌리기") } }.frame(maxWidth: .infinity)
-                    }.buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold)).disabled(restoring)
+                    }.buttonStyle(.borderedProminent).controlSize(.large).tint(DearbyStyle.tealFill).font(.dearby(.body).weight(.semibold)).disabled(restoring)
                     Text("되돌리면 새 버전으로 저장되고 이력은 남아요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
                 }.padding(.horizontal, 20).padding(.vertical, 12).background(Color(.systemBackground))
             }

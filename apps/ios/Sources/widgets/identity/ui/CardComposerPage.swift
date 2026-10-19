@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Makes a real card from the saved profile: decorate, choose what to show, publish. Signing in is asked for when
 /// the composer opens signed out; profile data itself is edited in 내 프로필.
+/// Every state that is not the form (published, signed out, no profile yet, failed) is one centred message (contract "비스크롤 화면 배치·CTA").
 struct CardComposerPage: View {
     @State private var model: CardPublishModel
     @State private var signingIn = false
@@ -11,35 +12,24 @@ struct CardComposerPage: View {
     var body: some View {
         Group {
             if case .published(let card) = model.phase {
-                VStack(spacing: 16) {
-                    Image(systemName: "checkmark.circle").font(.system(size: 56)).foregroundStyle(DearbyStyle.teal).accessibilityHidden(true)
-                    Text("명함을 발행했어요").font(.dearby(.title2).bold()).accessibilityAddTraits(.isHeader)
-                    Text("\(card.profileName) · \(card.name)").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
-                    Button("확인") { dismiss() }.buttonStyle(.borderedProminent)
-                }.padding(24).frame(maxHeight: .infinity)
+                CenteredMessage(symbol: "checkmark.circle", title: "명함을 발행했어요", message: "\(card.profileName) · \(card.name)",
+                                primary: MessageAction("확인") { dismiss() })
             } else if model.account.session == nil {
-                VStack(spacing: 16) {
-                    Text("로그인하면 프로필 데이터로 명함을 꾸밀 수 있어요.").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
-                    Button("로그인") { signingIn = true }.buttonStyle(.borderedProminent)
-                }.padding(24).frame(maxHeight: .infinity)
+                CenteredMessage(symbol: "person.text.rectangle", title: "로그인하면 명함을 만들 수 있어요", message: "프로필의 이름·연락처·이력으로 명함을 꾸며요.",
+                                primary: MessageAction("로그인") { signingIn = true })
             } else if let draft = model.draft, draft.profile.version == 0 {
                 // Signed in from here without ever saving a profile: the composer has no data to fill the template with.
-                VStack(spacing: 16) {
-                    Text("먼저 내 프로필 탭에서 이름과 연락처를 적어 주세요.").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
-                    Button("닫기") { dismiss() }.buttonStyle(.bordered)
-                }.padding(24).frame(maxHeight: .infinity)
+                CenteredMessage(symbol: "person.crop.circle", title: "먼저 프로필을 적어 주세요", message: "내 프로필 탭에서 이름과 연락처를 저장하면 명함을 만들 수 있어요.",
+                                primary: MessageAction("닫기") { dismiss() })
             } else if let binding = Binding($model.draft) {
                 CardComposer(draft: binding, publishing: model.phase == .publishing, errorMessage: failure ?? model.account.message) { publish() }
             } else if let failure {
-                VStack(spacing: 16) {
-                    Text(failure).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
-                    Button("다시 시도") { Task { await model.load() } }.buttonStyle(.bordered)
-                }.padding(24).frame(maxHeight: .infinity)
+                CenteredMessage(symbol: "exclamationmark.triangle", danger: true, title: "프로필을 불러오지 못했어요", message: failure,
+                                primary: MessageAction("다시 시도") { Task { await model.load() } })
             } else {
                 ProgressView("프로필을 불러오는 중이에요").frame(maxHeight: .infinity).tint(DearbyStyle.teal)
             }
         }
-        .controlSize(.large).font(.dearby(.body).weight(.semibold))
         .background(Color(.systemGroupedBackground))
         .navigationTitle(model.prefill == nil ? "명함 만들기" : "명함 고치기").navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }

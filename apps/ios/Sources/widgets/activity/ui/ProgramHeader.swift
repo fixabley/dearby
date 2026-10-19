@@ -77,7 +77,7 @@ struct ProgramHeader: View {
                 Text("\(openCount + upcomingCount)").font(.dearby(.subheadline).weight(.semibold)).monospacedDigit()
                     .frame(minWidth: 18, minHeight: 18)
             }
-            .buttonStyle(.borderedProminent).buttonBorderShape(.capsule).tint(DearbyStyle.teal)
+            .buttonStyle(.borderedProminent).buttonBorderShape(.capsule).tint(DearbyStyle.tealFill)
             .accessibilityLabel(countLabel ?? "활동 없음").accessibilityHint("누르면 활동을 보여요")
             .accessibilityIdentifier("program-toggle-\(name)")
             .transition(reduceMotion ? .identity : .scale(scale: 0.6).combined(with: .opacity))

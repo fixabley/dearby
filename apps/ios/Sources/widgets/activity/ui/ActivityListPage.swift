@@ -4,8 +4,7 @@ import SwiftUI
 /// 프로그램만, 꺼지면 최근 3년 안에 활동이 있었던 프로그램까지 보인다. 카드를 펼치면 모집 중·모집 예정 활동이 항상, 지난 활동은 토글을 껐을 때만 보인다.
 struct ActivityListPage: View {
     let state: ActivityViewModel
-    @Binding var path: [String]
-    @State private var showNotice = false
+    @Binding var path: NavigationPath
     /// How much of the search area is pushed up under the title, 0...`headerHeight` (contract "발견 탭 스크롤 동작" 2026-10-19 밤).
     @State private var hidden: CGFloat = 0
     @State private var headerHeight: CGFloat = 0
@@ -15,15 +14,14 @@ struct ActivityListPage: View {
     /// More than one screen down: show `맨 위로`.
     @State private var farDown = false
     @State private var position = ScrollPosition()
+    /// The scroll view's visible height below the search area: empty and error states centre in it (contract "비스크롤 화면 배치").
+    @State private var viewport: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         @Bindable var state = state
         VStack(spacing: 0) {
             // The title line stays put (contract "탭 제목 통일"); a hairline appears once content passes beneath it.
-            PageTitle("활동 둘러보기") {
-                Button { showNotice = true } label: { Image(systemName: "bell").font(.title2).frame(width: 44, height: 44) }
-                    .accessibilityLabel("알림")
-            }
+            PageTitle("활동 둘러보기")
             .overlay(alignment: .bottom) { Divider().opacity(underTitle ? 1 : 0) }
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
@@ -31,23 +29,22 @@ struct ActivityListPage: View {
                     case .loading:
                         ProgressView("프로그램을 불러오는 중이에요").frame(maxWidth: .infinity).padding(.vertical, 40)
                     case .failed:
-                        ContentUnavailableView {
-                            Label("프로그램을 불러오지 못했어요", systemImage: "wifi.exclamationmark")
-                        } description: {
-                            Text("연결을 확인한 뒤 다시 시도해 주세요.")
-                        } actions: {
-                            Button("다시 시도") { state.reload() }.accessibilityIdentifier("activity-retry")
-                        }
+                        CenteredMessage(symbol: "exclamationmark.triangle", danger: true, title: "프로그램을 불러오지 못했어요",
+                                        message: "연결을 확인한 뒤 다시 시도해 주세요.", embedded: true,
+                                        primary: MessageAction("다시 시도", identifier: "activity-retry") { state.reload() })
+                            .frame(minHeight: viewport)
                     case .loaded where state.programs.isEmpty:
                         if let query = state.query, !query.isEmpty {
-                            ContentUnavailableView("‘\(query)’에 맞는 프로그램이 없어요", systemImage: "magnifyingglass",
-                                                   description: Text("다른 검색어로 찾아보세요."))
+                            CenteredMessage(symbol: "magnifyingglass", title: "‘\(query)’에 맞는 프로그램이 없어요", message: "다른 검색어로 찾아보세요.", embedded: true)
+                                .frame(minHeight: viewport)
                         } else if state.openOnly {
-                            ContentUnavailableView("지금 모집 중인 프로그램이 없어요", systemImage: "calendar",
-                                                   description: Text("새 모집이 열리면 여기에서 볼 수 있어요. ‘마감 숨기기’를 끄면 최근 활동한 프로그램도 보여요."))
+                            CenteredMessage(symbol: "calendar", title: "지금 모집 중인 프로그램이 없어요",
+                                            message: "새 모집이 열리면 여기에서 볼 수 있어요. ‘마감 숨기기’를 끄면 최근 활동한 프로그램도 보여요.", embedded: true,
+                                            primary: MessageAction("마감 숨기기 끄기", identifier: "activity-show-closed") { state.openOnly = false })
+                                .frame(minHeight: viewport)
                         } else {
-                            ContentUnavailableView("최근 2년 안에 활동한 프로그램이 없어요", systemImage: "calendar",
-                                                   description: Text("활동이 수집되면 여기에서 볼 수 있어요."))
+                            CenteredMessage(symbol: "calendar", title: "최근 활동한 프로그램이 없어요", message: "활동이 수집되면 여기에서 볼 수 있어요.", embedded: true)
+                                .frame(minHeight: viewport)
                         }
                     case .loaded:
                         if state.refreshFailed {
@@ -102,7 +99,7 @@ struct ActivityListPage: View {
                 if farDown {
                     // 시스템 원형 버튼(사용자 2026-10-19 밤 "iOS는 기본 플로팅 버튼 UI 활용"): 직접 그린 원·그림자 대신 bordered prominent + circle.
                     Button(action: scrollToTop) { Image(systemName: "arrow.up").font(.body.weight(.semibold)) }
-                        .buttonStyle(.borderedProminent).buttonBorderShape(.circle).controlSize(.large)
+                        .buttonStyle(.borderedProminent).buttonBorderShape(.circle).controlSize(.large).tint(DearbyStyle.tealFill)
                     .accessibilityLabel("맨 위로").accessibilityIdentifier("activity-scroll-top")
                     .padding(.trailing, 20).padding(.bottom, 16)
                     .transition(.opacity)
@@ -117,6 +114,9 @@ struct ActivityListPage: View {
             .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > $0.containerSize.height } action: { _, far in
                 withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { farDown = far }
             }
+            .onScrollGeometryChange(for: CGFloat.self) { $0.containerSize.height - $0.contentInsets.top - $0.contentInsets.bottom } action: { _, height in
+                viewport = max(height - 20, 0)
+            }
             .onScrollPhaseChange { _, phase, context in
                 if phase == .idle { settle(at: context.geometry.contentOffset.y + context.geometry.contentInsets.top) }
             }
@@ -129,7 +129,6 @@ struct ActivityListPage: View {
             }
             state.search(state.searchText)
         }
-        .alert("알림", isPresented: $showNotice) { Button("확인") {} } message: { Text("새로운 알림이 없어요.") }
         .navigationDestination(for: String.self) { id in ActivityDetailView(state: state, activityID: id) }
         .background(Color(.systemGroupedBackground).onTapGesture { searchFocused = false })
         .onChange(of: searchFocused) { _, focused in focusChanged(focused) }

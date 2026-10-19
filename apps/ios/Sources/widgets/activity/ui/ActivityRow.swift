@@ -19,8 +19,7 @@ struct ActivityRow<Footer: View>: View {
             }.buttonStyle(.plain).accessibilityIdentifier("activity-\(activity.id)")
             footer
         }
-        .padding(10).background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(DearbyStyle.line))
+        .padding(10).background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
     }
 }
 

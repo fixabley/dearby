@@ -5,43 +5,34 @@ import SwiftUI
 /// "패스키로 시작하기" reuses the sign-in sheet; closing it after a cancel or failure stays here.
 /// The Apple button (when the build enables it) and the Google button (until the server says it is off) sign in here;
 /// a first-time Apple or Google account opens the sheet's new-or-link choice.
+/// Layout is the centred message (contract "비스크롤 화면 배치·CTA") with the brand mark as its glyph; the buttons stack at the bottom.
 struct IntroPage: View {
     let account: AccountViewModel
     let done: () -> Void
     @Environment(\.authorizationController) private var authorizationController
     @State private var signingIn = false
     var body: some View {
-        VStack(spacing: 0) {
-            Spacer()
+        CenteredMessage(title: "활동에서 만난 사람과\n명함을 주고받아요", message: "로그인하지 않아도 둘러볼 수 있어요.") {
             DearbyBrand(symbolSize: 96)
-            Text("활동에서 만난 사람과\n명함을 주고받아요")
-                .font(.dearby(.title2)).bold().foregroundStyle(DearbyStyle.ink).multilineTextAlignment(.center)
-                .accessibilityAddTraits(.isHeader).padding(.top, 20)
-            Text("로그인하지 않아도 둘러볼 수 있어요.")
-                .font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
-                .padding(.top, 8)
-            Spacer()
-            VStack(spacing: 12) {
-                if let message = account.message, !signingIn {
-                    DearbyFieldError(text: message).accessibilityIdentifier("intro-message")
-                }
-                if account.appleSignInEnabled {
-                    DearbyAppleButton { Task { await account.signInWithApple(using: authorizationController) } }
-                        .disabled(account.phase == .signingIn).accessibilityIdentifier("intro-apple")
-                }
-                if account.googleSignInEnabled {
-                    DearbyGoogleButton { Task { await account.signInWithGoogle(using: authorizationController) } }
-                        .disabled(account.phase == .signingIn).accessibilityIdentifier("intro-google")
-                }
-                Button { signingIn = true } label: { Text("패스키로 시작하기").frame(maxWidth: .infinity) }
-                    .buttonStyle(.borderedProminent).accessibilityIdentifier("intro-passkey")
-                Button(action: done) { Text("둘러보기").frame(maxWidth: .infinity) }
-                    .buttonStyle(.bordered).accessibilityIdentifier("intro-browse")
-                    .accessibilityHint("로그인 없이 앱을 둘러봐요.")
-            }.frame(maxWidth: 420).controlSize(.large).font(.dearby(.body).weight(.semibold))
+        } actions: {
+            if let message = account.message, !signingIn {
+                DearbyFieldError(text: message).accessibilityIdentifier("intro-message")
+            }
+            if account.appleSignInEnabled {
+                DearbyAppleButton { Task { await account.signInWithApple(using: authorizationController) } }
+                    .disabled(account.phase == .signingIn).accessibilityIdentifier("intro-apple")
+            }
+            if account.googleSignInEnabled {
+                DearbyGoogleButton { Task { await account.signInWithGoogle(using: authorizationController) } }
+                    .disabled(account.phase == .signingIn).accessibilityIdentifier("intro-google")
+            }
+            Button { signingIn = true } label: { Text("패스키로 시작하기").frame(maxWidth: .infinity) }
+                .buttonStyle(.borderedProminent).accessibilityIdentifier("intro-passkey")
+            Button(action: done) { Text("둘러보기").frame(maxWidth: .infinity, minHeight: 44) }
+                .buttonStyle(.borderless).tint(DearbyStyle.teal).accessibilityIdentifier("intro-browse")
+                .accessibilityHint("로그인 없이 앱을 둘러봐요.")
         }
-        .padding(.horizontal, 24).padding(.bottom, 24)
-        .frame(maxWidth: .infinity, maxHeight: .infinity).background(Color(.systemBackground))
+        .background(Color(.systemBackground))
         .tint(DearbyStyle.teal)
         .sheet(isPresented: $signingIn) { NavigationStack { SignInSheet(account: account, signedIn: done) } }
         // Apple or Google sign-in from this page; while the sheet is open, the sheet finishes instead.

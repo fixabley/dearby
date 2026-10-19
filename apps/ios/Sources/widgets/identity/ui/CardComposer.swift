@@ -72,7 +72,7 @@ struct CardComposer: View {
                 }
                 Button(action: publish) {
                     Group { if publishing { ProgressView().tint(DearbyStyle.onTeal) } else { Text("명함 발행") } }.frame(maxWidth: .infinity)
-                }.buttonStyle(.borderedProminent).disabled(publishing).accessibilityLabel(publishing ? "명함 발행 중" : "명함 발행")
+                }.buttonStyle(.borderedProminent).tint(DearbyStyle.tealFill).disabled(publishing).accessibilityLabel(publishing ? "명함 발행 중" : "명함 발행")
             }.controlSize(.large).font(.dearby(.body).weight(.semibold))
             Text("발행한 명함은 바뀌지 않아요. 고치면 새 명함으로 발행돼요.").font(.dearby(.footnote)).foregroundStyle(.secondary)
         }.padding(.horizontal, 20).padding(.vertical, 12).background(.bar)

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 공식 사이트에서 돌아왔을 때 묻는 "신청하셨나요?" 시트의 내용. 화면이 시트로 띄우고 세 선택을 받는다.
+/// 공식 사이트에서 돌아왔을 때 묻는 "신청하셨나요?" 시트의 내용(contract "비스크롤 화면 배치·CTA": 가운데 상태 심볼·제목·설명, 아래 전체 너비 주 버튼과 텍스트 보조 버튼).
 /// 신청 표시는 사용자가 직접 남기는 기록이며 주최 측 접수 확인이 아니라는 점을 함께 보인다.
 struct ApplyConfirmationSheet: View {
     let activityTitle: String
@@ -8,22 +8,13 @@ struct ApplyConfirmationSheet: View {
     let notYet: () -> Void
     let neverAsk: () -> Void
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Image(systemName: "checkmark.circle").font(.dearby(.title2)).foregroundStyle(DearbyStyle.teal)
-                .frame(width: 48, height: 48).background(DearbyStyle.mint, in: Circle()).accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 6) {
-                Text("신청하셨나요?").font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.ink).accessibilityAddTraits(.isHeader)
-                Text(activityTitle).font(.dearby(.headline)).foregroundStyle(DearbyStyle.ink)
-                Text("신청했다면 내 활동에 표시해 둘게요. 이 표시는 직접 남기는 기록이며 주최 측 접수 확인은 아니에요.")
-                    .font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).fixedSize(horizontal: false, vertical: true)
-            }
-            VStack(spacing: 10) {
-                Button(action: applied) { Text("신청했어요").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold))
-                Button(action: notYet) { Text("아직이에요").frame(maxWidth: .infinity) }.buttonStyle(.bordered).controlSize(.large).font(.dearby(.body).weight(.semibold))
-                Button("다시 묻지 않기", action: neverAsk).font(.dearby(.subheadline).weight(.semibold))
-                    .foregroundStyle(DearbyStyle.quiet).frame(maxWidth: .infinity, minHeight: 44)
-            }
-        }.padding(20)
+        CenteredMessage(symbol: "checkmark.circle", title: "신청하셨나요?",
+                        message: "\(activityTitle)\n신청했다면 내 활동에 표시해 둘게요. 직접 남기는 기록이며 주최 측 접수 확인은 아니에요.") {
+            Button(action: applied) { Text("신청했어요").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
+            Button(action: notYet) { Text("아직이에요").frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.borderless).tint(DearbyStyle.teal)
+            Button(action: neverAsk) { Text("다시 묻지 않기").frame(maxWidth: .infinity, minHeight: 44) }.buttonStyle(.borderless).tint(DearbyStyle.teal)
+        }
+        .padding(.top, 20).background(Color(.systemBackground))
     }
 }
 

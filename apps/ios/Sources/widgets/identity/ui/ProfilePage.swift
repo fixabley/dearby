@@ -56,30 +56,21 @@ struct ProfilePage: View {
             PageTitle("내 프로필") {
                 if case .loaded = state.phase {
                     NavigationLink { ProfileVersionsPage(state: state) } label: {
-                        Label("변경 이력", systemImage: "clock.arrow.circlepath").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+                        Label("변경 이력", systemImage: "clock").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
                     }
                     Button("명함 만들기") { composing = true }.font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
                 }
             }
             switch state.phase {
             case .signedOut:
-                VStack(spacing: 12) {
-                    Text("명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.")
-                        .font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
-                    Button("명함 만들기") { composing = true }.buttonStyle(.borderedProminent)
-                    Button("로그인") { signingIn = true }.buttonStyle(.bordered)
-                    Spacer()
-                }.controlSize(.large).font(.dearby(.body).weight(.semibold)).padding(.horizontal, 20).padding(.top, 40)
+                CenteredMessage(symbol: "person.crop.circle", title: "프로필은 계정에 저장돼요", message: "명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.",
+                                primary: MessageAction("명함 만들기") { composing = true }, secondary: MessageAction("로그인") { signingIn = true })
             case .loading:
-                ProgressView("프로필을 불러오는 중이에요").frame(maxWidth: .infinity, minHeight: 240).tint(DearbyStyle.teal)
-                Spacer()
+                ProgressView("프로필을 불러오는 중이에요").frame(maxWidth: .infinity, maxHeight: .infinity).tint(DearbyStyle.teal)
             case .failed:
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("프로필을 불러오지 못했어요").font(.dearby(.headline))
-                    Button("다시 시도") { Task { await state.load() } }.buttonStyle(.bordered).controlSize(.large).font(.dearby(.body).weight(.semibold))
-                    deleteButton
-                    Spacer()
-                }.padding(.horizontal, 20).padding(.top, 20)
+                CenteredMessage(symbol: "exclamationmark.triangle", danger: true, title: "프로필을 불러오지 못했어요", message: "연결을 확인하고 다시 시도해 주세요.",
+                                primary: MessageAction("다시 시도") { Task { await state.load() } },
+                                secondary: MessageAction("계정 삭제", role: .destructive, identifier: "profile-delete-account") { confirmingDeletion = true })
             case .loaded(let profile):
                 if let binding = Binding($form) { editor(binding, saved: profile) }
             }
@@ -138,7 +129,7 @@ struct ProfilePage: View {
                 Button { revert() } label: { Text("원래대로").frame(maxWidth: .infinity) }.buttonStyle(.bordered).disabled(saving)
                 Button { save(form) } label: {
                     Group { if saving { ProgressView().tint(DearbyStyle.onTeal) } else { Text("저장") } }.frame(maxWidth: .infinity)
-                }.buttonStyle(.borderedProminent).disabled(saving).accessibilityIdentifier("profile-save")
+                }.buttonStyle(.borderedProminent).tint(DearbyStyle.tealFill).disabled(saving).accessibilityIdentifier("profile-save")
             }.controlSize(.large).font(.dearby(.body).weight(.semibold))
         }.padding(.horizontal, 20).padding(.vertical, 12).background(.bar)
     }
@@ -166,11 +157,9 @@ struct ProfilePage: View {
     }
     private func deleteAccount() {
         Task {
-            switch await state.account.deleteAccount() {
-            case .deleted: deletionNotice = "계정을 삭제했어요. 기기에 남은 패스키는 설정 > 암호에서 지울 수 있어요."
-            case .signedOut: deletionNotice = "로그인이 만료됐어요. 다시 로그인해 주세요."
-            case .failed: deletionNotice = "계정을 삭제하지 못했어요. 잠시 후 다시 시도해 주세요."; return
-            }
+            let result = await state.account.deleteAccount()
+            deletionNotice = result.notice
+            guard result != .failed else { return }
             form = nil
             await state.load()
         }

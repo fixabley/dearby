@@ -19,7 +19,7 @@ struct DearbyAvatar: View {
     var body: some View {
         Text(String(name.prefix(1))).font(.dearby(fixedSize: size * 0.42, weight: .bold))
             .foregroundStyle(filled ? DearbyStyle.onTeal : DearbyStyle.teal).frame(width: size, height: size)
-            .background(filled ? DearbyStyle.teal : DearbyStyle.teal.opacity(0.12), in: Circle())
+            .background(filled ? DearbyStyle.tealFill : DearbyStyle.mint, in: Circle())
             .accessibilityHidden(true)
     }
 }
@@ -33,7 +33,8 @@ struct DearbyInfoRow: View {
             : AnyLayout(HStackLayout(alignment: .top, spacing: 14))
         layout {
             HStack(spacing: 10) {
-                if let symbol { Image(systemName: symbol).frame(width: 22) }
+                // 행 앞 글리프(contract "아이콘 통일"): 24, 보조색, 같은 열.
+                if let symbol { Image(systemName: symbol).font(.dearby(.title3)).frame(width: 24) }
                 Text(title)
             }.foregroundStyle(DearbyStyle.quiet).frame(minWidth: 92, alignment: .leading)
             Text(value).frame(maxWidth: .infinity, alignment: .leading)

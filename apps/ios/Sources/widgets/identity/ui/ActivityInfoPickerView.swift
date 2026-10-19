@@ -26,7 +26,7 @@ struct ActivityInfoPickerView: View {
         Section {
             if let picked {
                 HStack {
-                    Label(picked.name, systemImage: "checkmark.circle.fill").fontWeight(.semibold).foregroundStyle(DearbyStyle.teal)
+                    Label(picked.name, systemImage: "checkmark.circle").fontWeight(.semibold).foregroundStyle(DearbyStyle.teal)
                     Spacer()
                     Button("바꾸기") { self.picked = nil }.buttonStyle(.borderless)
                 }

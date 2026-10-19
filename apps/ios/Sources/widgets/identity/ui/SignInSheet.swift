@@ -5,6 +5,7 @@ import SwiftUI
 /// it is off) and an existing passkey are peers; a new passkey starts a new account. A first-time Apple or Google account
 /// links to this device's passkey account or starts a separate one by itself (`AccountViewModel.linkOrStart`); the
 /// new-or-link choice below appears only when the person closed that passkey sheet.
+/// Layout is the centred message (contract "비스크롤 화면 배치·CTA"): brand mark, title, explanation in the middle; the buttons stacked at the bottom.
 struct SignInSheet: View {
     let account: AccountViewModel
     let signedIn: () -> Void
@@ -15,11 +16,8 @@ struct SignInSheet: View {
     private var busy: Bool { account.phase == .signingIn }
     private var social: Bool { account.appleSignInEnabled || account.googleSignInEnabled }
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                DearbyBrand().padding(.vertical, 8)
-                if let link = account.pendingLink { pendingChoice(link) } else { choices }
-            }.padding(20).controlSize(.large)
+        Group {
+            if let link = account.pendingLink { pendingChoice(link) } else { choices }
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("로그인").navigationBarTitleDisplayMode(.inline)
@@ -30,44 +28,38 @@ struct SignInSheet: View {
         .onDisappear { account.clearPendingLink() }
     }
 
-    @ViewBuilder private var choices: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(social ? "로그인" : "패스키로 로그인")
-                .font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.ink).accessibilityAddTraits(.isHeader)
-            Text(social ? "애플·구글 계정이나 패스키로 바로 로그인해요. 비밀번호와 인증번호는 필요 없어요."
-                 : "Face ID나 Touch ID로 바로 로그인해요. 비밀번호와 인증번호는 필요 없어요.")
-                .font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
-        }
-        message
-        if account.appleSignInEnabled {
-            DearbyAppleButton { run(.apple) }.disabled(busy).accessibilityIdentifier("sign-in-apple")
-        }
-        if account.googleSignInEnabled {
-            DearbyGoogleButton { run(.google) }.disabled(busy).accessibilityIdentifier("sign-in-google")
-        }
-        button("패스키로 로그인", .passkey, prominent: true).accessibilityIdentifier("sign-in-passkey")
-        VStack(alignment: .leading, spacing: 8) {
-            Text("처음이거나 이 기기에 패스키가 없나요?").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
+    private var choices: some View {
+        CenteredMessage(title: social ? "로그인" : "패스키로 로그인",
+                        message: social ? "애플·구글 계정이나 패스키로 바로 로그인해요. 비밀번호와 인증번호는 필요 없어요."
+                            : "Face ID나 Touch ID로 바로 로그인해요. 비밀번호와 인증번호는 필요 없어요.") {
+            DearbyBrand()
+        } actions: {
+            message
+            if account.appleSignInEnabled {
+                DearbyAppleButton { run(.apple) }.disabled(busy).accessibilityIdentifier("sign-in-apple")
+            }
+            if account.googleSignInEnabled {
+                DearbyGoogleButton { run(.google) }.disabled(busy).accessibilityIdentifier("sign-in-google")
+            }
+            button("패스키로 로그인", .passkey, prominent: true).accessibilityIdentifier("sign-in-passkey")
+            Text("처음이거나 이 기기에 패스키가 없나요?").font(.dearby(.footnote)).foregroundStyle(.secondary).padding(.top, 4)
             button("새 패스키로 시작", .newPasskey, prominent: false).accessibilityIdentifier("sign-in-new-passkey")
-        }.padding(.top, 8)
+        }
     }
 
     /// After a 202 whose device-passkey sheet was closed: the server cannot tell whether this person already has a passkey account, so they pick.
-    @ViewBuilder private func pendingChoice(_ link: AccountViewModel.PendingLink) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("처음 보는 \(link.providerName) 계정이에요").font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.ink).accessibilityAddTraits(.isHeader)
-            Text("패스키 확인을 건너뛰었어요. 이미 패스키로 만든 Dearby 계정이 있으면 연결하고, 없으면 새 계정으로 시작해요.")
-                .font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
+    private func pendingChoice(_ link: AccountViewModel.PendingLink) -> some View {
+        CenteredMessage(symbol: "person.crop.circle", title: "처음 보는 \(link.providerName) 계정이에요",
+                        message: "패스키 확인을 건너뛰었어요. 이미 패스키로 만든 Dearby 계정이 있으면 연결하고, 없으면 새 계정으로 시작해요.") {
             if let email = link.email, !email.isEmpty {
-                Text(email).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.ink).accessibilityIdentifier("sign-in-link-email")
+                Text(email).font(.dearby(.footnote)).foregroundStyle(.secondary).accessibilityIdentifier("sign-in-link-email")
             }
+            message
+            button("새 계정으로 시작", .pendingNewAccount, prominent: true).accessibilityIdentifier("sign-in-link-new")
+            button("기존 패스키 계정에 연결", .pendingLink, prominent: true).accessibilityIdentifier("sign-in-link-passkey")
+            Button { account.clearPendingLink() } label: { Text("다른 방법으로 로그인").frame(maxWidth: .infinity, minHeight: 44) }
+                .buttonStyle(.borderless).tint(DearbyStyle.teal).disabled(busy).accessibilityIdentifier("sign-in-link-back")
         }
-        message
-        button("새 계정으로 시작", .pendingNewAccount, prominent: true).accessibilityIdentifier("sign-in-link-new")
-        button("기존 패스키 계정에 연결", .pendingLink, prominent: false).accessibilityIdentifier("sign-in-link-passkey")
-        Button("다른 방법으로 로그인") { account.clearPendingLink() }
-            .font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).frame(maxWidth: .infinity)
-            .disabled(busy).accessibilityIdentifier("sign-in-link-back")
     }
 
     @ViewBuilder private var message: some View {
@@ -76,15 +68,15 @@ struct SignInSheet: View {
         }
     }
 
-    /// A full-width system button (`.borderedProminent` for the main choice, `.bordered` otherwise) showing a spinner while its action runs.
+    /// A full-width system button (`.borderedProminent` for a main choice, `.borderless` text otherwise) showing a spinner while its action runs.
     @ViewBuilder private func button(_ title: String, _ action: Action, prominent: Bool) -> some View {
         let label = Group {
             if busy && running == action { ProgressView().tint(prominent ? DearbyStyle.onTeal : DearbyStyle.teal) } else { Text(title) }
-        }.frame(maxWidth: .infinity).font(.dearby(.body).weight(.semibold))
+        }.frame(maxWidth: .infinity, minHeight: prominent ? 0 : 44)
         if prominent {
             Button { run(action) } label: { label }.buttonStyle(.borderedProminent).disabled(busy)
         } else {
-            Button { run(action) } label: { label }.buttonStyle(.bordered).disabled(busy)
+            Button { run(action) } label: { label }.buttonStyle(.borderless).tint(DearbyStyle.teal).disabled(busy)
         }
     }
 

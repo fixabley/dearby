@@ -24,13 +24,13 @@ struct EvidenceSection: View {
                         Text("\(item.size / 1024)KB").font(.dearby(.footnote)).foregroundStyle(.secondary)
                     }
                 } icon: {
-                    Image(systemName: item.contentType == "application/pdf" ? "doc.richtext" : "photo").foregroundStyle(DearbyStyle.teal)
+                    Image(systemName: item.contentType == "application/pdf" ? "paperclip" : "photo").imageScale(.large).frame(width: 24).foregroundStyle(.secondary)
                 }
                 .swipeActions { Button("삭제", role: .destructive) { remove(item) }.accessibilityLabel("\(item.fileName) 삭제").disabled(busy) }
             }
             if items.count < Self.limit {
-                PhotosPicker(selection: $photo, matching: .images) { Label("사진 올리기", systemImage: "photo.on.rectangle") }.disabled(busy)
-                Button { importing = true } label: { Label("PDF 올리기", systemImage: "doc") }.disabled(busy)
+                PhotosPicker(selection: $photo, matching: .images) { Label("사진 올리기", systemImage: "photo") }.disabled(busy)
+                Button { importing = true } label: { Label("PDF 올리기", systemImage: "paperclip") }.disabled(busy)
             }
             if busy { ProgressView().frame(maxWidth: .infinity) }
         } header: {

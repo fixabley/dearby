@@ -1,35 +1,48 @@
 import SwiftUI
 
 /// Five tabs on the system tab bar (2026-10-18 user decision: no custom bar). Detail pushes and the first-profile funnel hide it.
-struct HomePage<Discovery: View, Mine: View, Cards: View, Wallet: View, Profile: View>: View {
+/// Tab symbols follow the contract's fixed name table (contract "아이콘 통일"); selection fills them (system default).
+/// Every tab's title line links to 설정 (`SettingsRoute`), so each stack gets the same destination here (`settings`).
+struct HomePage<Discovery: View, Mine: View, Cards: View, Wallet: View, Profile: View, Settings: View>: View {
     @Binding var selectedTab: Int
     /// The first-profile funnel takes the whole screen (no tab bar), like Toss.
     var hidesTabs = false
     // Discovery opens details from card buttons, so it gets the navigation path.
-    let discovery: (Binding<[String]>) -> Discovery
+    let discovery: (Binding<NavigationPath>) -> Discovery
     let mine: Mine
     let cards: Cards
     let wallet: Wallet
     let profile: Profile
-    @State private var discoveryPath: [String] = []
-    // 내 활동 pushes two route types (progress track, activity detail).
+    /// The 설정 screen pushed from any tab's title line.
+    @ViewBuilder let settings: () -> Settings
+    // Discovery pushes activity ids (String) and the settings route.
+    @State private var discoveryPath = NavigationPath()
+    // 내 활동 pushes three route types (progress track, activity detail, settings).
     @State private var minePath = NavigationPath()
     var body: some View {
         TabView(selection: $selectedTab) {
             Tab("발견", systemImage: "safari", value: 0) {
-                NavigationStack(path: $discoveryPath) { discovery($discoveryPath) }
+                NavigationStack(path: $discoveryPath) { withSettings(discovery($discoveryPath)) }
                     .toolbar(discoveryPath.isEmpty ? .visible : .hidden, for: .tabBar)
             }
-            Tab("내 활동", systemImage: "calendar.badge.checkmark", value: 1) {
-                NavigationStack(path: $minePath) { mine }
+            Tab("내 활동", systemImage: "checklist", value: 1) {
+                NavigationStack(path: $minePath) { withSettings(mine) }
                     .toolbar(minePath.isEmpty ? .visible : .hidden, for: .tabBar)
             }
-            Tab("내 명함", systemImage: "person.crop.rectangle", value: 2) { NavigationStack { cards } }
-            Tab("받은 명함", systemImage: "person.text.rectangle", value: 3) { NavigationStack { wallet } }
+            Tab("내 명함", systemImage: "person.text.rectangle", value: 2) {
+                NavigationStack { withSettings(cards) }
+            }
+            Tab("받은 명함", systemImage: "tray.full", value: 3) {
+                NavigationStack { withSettings(wallet) }
+            }
             Tab("내 프로필", systemImage: "person.crop.circle", value: 4) {
-                NavigationStack { profile }.toolbar(hidesTabs ? .hidden : .visible, for: .tabBar)
+                NavigationStack { withSettings(profile) }
+                    .toolbar(hidesTabs ? .hidden : .visible, for: .tabBar)
             }
         }
         .tint(DearbyStyle.teal).foregroundStyle(DearbyStyle.ink)
+    }
+    private func withSettings(_ root: some View) -> some View {
+        root.navigationDestination(for: SettingsRoute.self) { _ in settings() }
     }
 }

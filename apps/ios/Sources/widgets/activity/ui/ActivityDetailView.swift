@@ -31,7 +31,7 @@ struct ActivityDetailView: View {
                 .safeAreaInset(edge: .top, spacing: 0) {
                     if applied {
                         VStack(alignment: .leading, spacing: 4) {
-                            Label("신청했다고 표시했어요 · 실제 접수 확인이 아니에요", systemImage: "checkmark.circle.fill").font(.subheadline)
+                            Label("신청했다고 표시했어요 · 실제 접수 확인이 아니에요", systemImage: "checkmark.circle").font(.subheadline)
                             ConfirmToggle(state: state, activityID: activityID)
                             Text(ConfirmToggle.note).font(.caption).foregroundStyle(DearbyStyle.quiet)
                         }
@@ -72,11 +72,7 @@ struct ActivityDetailView: View {
                     .accessibilityElement(children: .ignore).accessibilityLabel("태그 " + activity.tags.map(\.name).joined(separator: ", "))
             }
             Text(activity.title).font(.title.bold())
-            HStack {
-                Image(systemName: "building.2").font(.title2).foregroundStyle(DearbyStyle.teal)
-                    .frame(width: 44, height: 44).background(DearbyStyle.mint, in: Circle())
-                Text(activity.organization).font(.headline)
-            }
+            Text(activity.organization).font(.headline).foregroundStyle(.secondary)
             Divider()
             DearbyInfoRow(title: "모집 상태", value: activity.statusLabel(at: state.loadedAt), symbol: "calendar")
             DearbyInfoRow(title: "개최 일시", value: activity.scheduleText(at: state.loadedAt) ?? "미확인", symbol: "clock")
@@ -109,7 +105,7 @@ struct ActivityDetailView: View {
                 Link(destination: url) {
                     Text(closed ? "공식 안내 보기" : site != nil ? "신청 사이트 열기" : "공식 사이트에서 신청").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold)).accessibilityIdentifier("open-application")
+                .buttonStyle(.borderedProminent).controlSize(.large).tint(DearbyStyle.tealFill).font(.dearby(.body).weight(.semibold)).accessibilityIdentifier("open-application")
                 .accessibilityHint("외부 브라우저로 열려요")
                 .environment(\.openURL, OpenURLAction { opened in
                     if !closed { state.openedApplication(activity.id) }
@@ -128,7 +124,7 @@ struct ActivityDetailView: View {
                 if let place = activity.place, let url = place.mapsURL {
                     Link(destination: url) {
                         HStack(alignment: .top, spacing: 12) {
-                            Image(systemName: "mappin.and.ellipse").font(.title3).foregroundStyle(DearbyStyle.teal).frame(width: 28)
+                            Image(systemName: "mappin.and.ellipse").imageScale(.large).foregroundStyle(DearbyStyle.teal).frame(width: 24)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(place.name).font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.ink)
                                 Text(place.address).font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)

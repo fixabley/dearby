@@ -93,7 +93,7 @@ struct ProfileFunnelPage: View {
             Button(action: next) {
                 Group { if saving { ProgressView().tint(DearbyStyle.onTeal) } else { Text(allReached ? "프로필 저장" : "다음") } }
                     .frame(maxWidth: .infinity)
-            }.buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold))
+            }.buttonStyle(.borderedProminent).controlSize(.large).tint(DearbyStyle.tealFill).font(.dearby(.body).weight(.semibold))
                 .disabled(saving).accessibilityIdentifier("profile-setup-next")
         }.padding(.horizontal, 20).padding(.vertical, 12).background(.bar)
     }

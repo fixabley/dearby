@@ -4,6 +4,6 @@ import SwiftUI
 struct DearbyFieldError: View {
     let text: String
     var body: some View {
-        Label(text, systemImage: "exclamationmark.circle").font(.dearby(.footnote)).foregroundStyle(DearbyStyle.danger)
+        Label(text, systemImage: "exclamationmark.triangle").font(.dearby(.footnote)).foregroundStyle(DearbyStyle.danger)
     }
 }

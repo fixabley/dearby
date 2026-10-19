@@ -64,7 +64,7 @@ struct HistoryBadge: View {
     let verified: Bool
     var body: some View {
         if verified {
-            Label("확인됨", systemImage: "checkmark.seal").font(.dearby(.caption2).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+            Label("확인됨", systemImage: "checkmark.circle").font(.dearby(.caption2).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
         } else {
             Text("미확인").font(.dearby(.caption2).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
                 .padding(.horizontal, 7).padding(.vertical, 2).background(DearbyStyle.muted, in: Capsule())

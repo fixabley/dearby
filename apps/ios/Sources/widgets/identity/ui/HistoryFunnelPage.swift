@@ -95,7 +95,7 @@ struct HistoryFunnelPage: View {
         } footer: {
             if draft.history.hasCustomEntry {
                 Label(draft.approval == "rejected" ? "거절됨" + (draft.approvalReason.map { " · " + $0 } ?? "") : "직접 입력한 항목은 관리자 승인 뒤 명함에 넣을 수 있어요",
-                      systemImage: draft.approval == "rejected" ? "xmark.octagon" : "clock")
+                      systemImage: draft.approval == "rejected" ? "exclamationmark.triangle" : "clock")
                     .font(.dearby(.footnote)).foregroundStyle(draft.approval == "rejected" ? DearbyStyle.danger : .secondary)
             }
         }
@@ -123,7 +123,7 @@ struct HistoryFunnelPage: View {
                 } else {
                     step = steps[index + 1]
                 }
-            } label: { Text(step == .summary ? "완료" : "다음").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent)
+            } label: { Text(step == .summary ? "완료" : "다음").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).tint(DearbyStyle.tealFill)
         }.controlSize(.large).font(.dearby(.body).weight(.semibold)).padding(.horizontal, 20).padding(.vertical, 12).background(.bar)
     }
     private func question(_ text: String) -> some View {
@@ -138,8 +138,8 @@ struct HistoryFunnelPage: View {
                     Text(detail).font(.dearby(.footnote)).foregroundStyle(.secondary).multilineTextAlignment(.leading)
                 }
                 Spacer()
-                if selected { Image(systemName: "checkmark").fontWeight(.semibold).foregroundStyle(DearbyStyle.teal) }
-            }.padding(.vertical, 2)
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle").imageScale(.large).foregroundStyle(selected ? DearbyStyle.teal : .secondary)
+            }.padding(.vertical, 2).frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
         }.accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

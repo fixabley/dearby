@@ -22,7 +22,10 @@
     "TokenStore",
     "TokenVault",
     "Wallet",
-    "ProfileConsent"
+    "ProfileConsent",
+    "AccountSummary",
+    "LinkedIdentity",
+    "PasskeySummary"
   ],
   "entities/activity": [
     "ActivityCategory",
@@ -79,7 +82,12 @@
     "PageTitle",
     "SearchQuery",
     "ConsentVersions",
-    "SafariView"
+    "SafariView",
+    "CenteredMessage",
+    "StateGlyph",
+    "MessageAction",
+    "MessageActions",
+    "SettingsRoute"
   ],
   "widgets/activity": [
     "ActivityCard",
@@ -127,6 +135,8 @@
     "TemplateDocument",
     "WalletModel",
     "WalletPage",
-    "ConsentPage"
+    "ConsentPage",
+    "SettingsModel",
+    "SettingsPage"
   ]
 }
