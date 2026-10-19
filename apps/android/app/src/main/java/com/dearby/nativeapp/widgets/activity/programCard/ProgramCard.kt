@@ -78,7 +78,7 @@ private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).w
         openCount == 0 && upcomingCount == 0 && latestActivityAt != null -> "최근 " + monthFormat.format(latestActivityAt)
         else -> null
     }
-    OutlinedCard(modifier.fillMaxWidth().animateContentSize(sizeSpec), shape = RoundedCornerShape(20.dp), colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+    OutlinedCard(modifier.fillMaxWidth().animateContentSize(sizeSpec), shape = RoundedCornerShape(20.dp), colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface), border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)) {
         // Only the head toggles, so the activity cards below keep their own accessibility nodes.
         Row(
             Modifier.fillMaxWidth().heightIn(min = 64.dp).clickable(role = Role.Button, onClick = onToggle).semantics { stateDescription = if (expanded) "펼침" else "접힘" }

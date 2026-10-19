@@ -84,7 +84,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
                     }
                 }
                 if (changed) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
                     Column(Modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 20.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -110,7 +110,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
 
 /** One history: 조직 · 프로그램 · 활동, role, period and the approval / verification tags. Tap to edit or attach evidence. */
 @Composable private fun HistoryRow(row: HistoryRowState, open: () -> Unit, remove: () -> Unit) {
-    OutlinedCard(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shape = RoundedCornerShape(12.dp)) {
+    OutlinedCard(Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest), shape = RoundedCornerShape(12.dp)) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f).clickable(role = Role.Button, onClickLabel = "고치거나 인증자료 올리기", onClick = open), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(row.title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)

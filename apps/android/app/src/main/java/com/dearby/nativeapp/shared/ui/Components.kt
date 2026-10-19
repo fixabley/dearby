@@ -44,27 +44,28 @@ private val DearbyTypography = Typography(headlineMedium = TextStyle(fontSize = 
 
 /**
  * 색 체계(contract "색 체계"·"다크 모드", 2026-10-19 밤): 청록 시드 #007F80의 Material 3 톤(materialyoucolor 3.0.4 TonalSpot, 2025 spec)으로 라이트·다크
- * 스킴을 두고 다이내믹 컬러는 켜지 않는다. primary만 브랜드 값으로 덮는다(라이트 #007F80, 다크 #3FB3B4). 중립색은 모두 시드에서 나온 톤이라 손으로 정한
- * 민트·soft·선·보조 글자 상수는 없다; 화면은 `MaterialTheme.colorScheme`의 `primary`·`primaryContainer`/`onPrimaryContainer`·`surface`·`surfaceContainer`·
- * `outlineVariant`·`onSurfaceVariant`·`onSurface`·`error`만 읽는다. 시스템 설정을 따르며(`isSystemInDarkTheme`) 라이트를 강제하지 않는다.
+ * 스킴을 두고 다이내믹 컬러는 켜지 않는다. 덮어쓴 값(iOS와의 균형, 2026-10-19 밤 후속): primary는 브랜드(라이트 #007F80, 다크 #3FB3B4); primaryContainer는 옅은
+ * 청록(라이트 #D9F2F1/#004F50, 다크 #1D4140/#BDEDED); 묶음 배경식 분리로 `background`는 surfaceContainerLow 톤(라이트 #EEF5F4, 다크 #0E1515), 카드·시트·타일의
+ * `surface`는 라이트 흰색·다크 #131B1B(배경보다 밝다). 그 밖의 중립색은 시드 톤이라 손으로 정한 상수는 없다; 화면은 `primary`·`primaryContainer`/`onPrimaryContainer`·
+ * `surface`·`surfaceContainer`·`surfaceContainerHighest`(카드 선·구분선)·`onSurfaceVariant`·`onSurface`·`error`만 읽는다. 시스템 설정을 따르며 라이트를 강제하지 않는다.
  */
 private val LightScheme = lightColorScheme(
-    primary = Color(0xFF007F80), onPrimary = Color.White, primaryContainer = Color(0xFFA8EFEF), onPrimaryContainer = Color(0xFF005C5C), inversePrimary = Color(0xFFB6FEFE),
+    primary = Color(0xFF007F80), onPrimary = Color.White, primaryContainer = Color(0xFFD9F2F1), onPrimaryContainer = Color(0xFF004F50), inversePrimary = Color(0xFFB6FEFE),
     secondary = Color(0xFF4A6464), onSecondary = Color(0xFFE2FEFE), secondaryContainer = Color(0xFFCCE8E7), onSecondaryContainer = Color(0xFF3D5656),
     tertiary = Color(0xFF3A647D), onTertiary = Color(0xFFF5F9FF), tertiaryContainer = Color(0xFFAAD4F2), onTertiaryContainer = Color(0xFF1E4A62),
     error = Color(0xFFA83836), onError = Color(0xFFFFF7F6), errorContainer = Color(0xFFFA746F), onErrorContainer = Color(0xFF6E0A12),
-    background = Color(0xFFF6FAF9), onBackground = Color(0xFF2A3434), surface = Color(0xFFF6FAF9), onSurface = Color(0xFF2A3434),
+    background = Color(0xFFEEF5F4), onBackground = Color(0xFF2A3434), surface = Color.White, onSurface = Color(0xFF2A3434),
     surfaceVariant = Color(0xFFD9E5E4), onSurfaceVariant = Color(0xFF566161), outline = Color(0xFF727D7C), outlineVariant = Color(0xFFA9B4B4),
     inverseSurface = Color(0xFF0A0F0F), inverseOnSurface = Color(0xFF999E9D), scrim = Color.Black,
     surfaceDim = Color(0xFFD1DCDC), surfaceBright = Color(0xFFF6FAF9), surfaceContainerLowest = Color.White, surfaceContainerLow = Color(0xFFEEF5F4),
     surfaceContainer = Color(0xFFE7EFEF), surfaceContainerHigh = Color(0xFFE1EAE9), surfaceContainerHighest = Color(0xFFD9E5E4),
 )
 private val DarkScheme = darkColorScheme(
-    primary = Color(0xFF3FB3B4), onPrimary = Color(0xFF0C4848), primaryContainer = Color(0xFF255A5B), onPrimaryContainer = Color(0xFFB8EDED), inversePrimary = Color(0xFF336767),
+    primary = Color(0xFF3FB3B4), onPrimary = Color(0xFF0C4848), primaryContainer = Color(0xFF1D4140), onPrimaryContainer = Color(0xFFBDEDED), inversePrimary = Color(0xFF336767),
     secondary = Color(0xFFB0CCCB), onSecondary = Color(0xFF2B4445), secondaryContainer = Color(0xFF274040), onSecondaryContainer = Color(0xFFA9C5C4),
     tertiary = Color(0xFFBAE2FF), onTertiary = Color(0xFF28536B), tertiaryContainer = Color(0xFFAAD4F2), onTertiaryContainer = Color(0xFF1E4A62),
     error = Color(0xFFFA746F), onError = Color(0xFF490006), errorContainer = Color(0xFF871F21), onErrorContainer = Color(0xFFFF9993),
-    background = Color(0xFF0A0F0F), onBackground = Color(0xFFDCE8E7), surface = Color(0xFF0A0F0F), onSurface = Color(0xFFDCE8E7),
+    background = Color(0xFF0E1515), onBackground = Color(0xFFDCE8E7), surface = Color(0xFF131B1B), onSurface = Color(0xFFDCE8E7),
     surfaceVariant = Color(0xFF1D2828), onSurfaceVariant = Color(0xFFA2ADAD), outline = Color(0xFF6D7877), outlineVariant = Color(0xFF3F4A4A),
     inverseSurface = Color(0xFFF6FAF9), inverseOnSurface = Color(0xFF515656), scrim = Color.Black,
     surfaceDim = Color(0xFF0A0F0F), surfaceBright = Color(0xFF242E2E), surfaceContainerLowest = Color.Black, surfaceContainerLow = Color(0xFF0E1515),
@@ -82,7 +83,7 @@ private val DarkScheme = darkColorScheme(
     Text("Dearby", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
 }
 @Composable fun DearbyButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) = Button(onClick, modifier.heightIn(min = 50.dp), enabled = enabled, shape = RoundedCornerShape(11.dp), content = content)
-@Composable fun DearbyOutlineButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) = OutlinedButton(onClick, modifier.heightIn(min = 50.dp), enabled = enabled, shape = RoundedCornerShape(11.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary), border = androidx.compose.foundation.BorderStroke(1.dp, if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant), content = content)
+@Composable fun DearbyOutlineButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, content: @Composable RowScope.() -> Unit) = OutlinedButton(onClick, modifier.heightIn(min = 50.dp), enabled = enabled, shape = RoundedCornerShape(11.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary), border = androidx.compose.foundation.BorderStroke(1.dp, if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest), content = content)
 /** Sign in with Apple: Apple's black button (white on a dark theme, per the HIG), same size as the other sign-in buttons. No Apple logo asset is in the repo, so the label is text only. */
 @Composable fun AppleSignInButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) = Button(onClick, modifier.heightIn(min = 50.dp),
     enabled = enabled, shape = RoundedCornerShape(11.dp), colors = if (isSystemInDarkTheme()) ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black) else ButtonDefaults.buttonColors(containerColor = Color.Black, contentColor = Color.White)) { Text("Apple로 계속하기") }
@@ -92,7 +93,7 @@ private val DarkScheme = darkColorScheme(
  */
 @Composable fun DearbyGoogleButton(onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) = OutlinedButton(onClick, modifier.heightIn(min = 50.dp),
     enabled = enabled, shape = RoundedCornerShape(11.dp), colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surface, contentColor = MaterialTheme.colorScheme.onSurface),
-    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+    border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)) {
     Text("G", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
     Spacer(Modifier.width(8.dp))
     Text("Google로 계속하기")
@@ -180,7 +181,7 @@ fun contactKindName(kind: String) = when (kind) {
 @Composable fun TimelineEntry(date: String, title: String, subtitle: String, last: Boolean, modifier: Modifier = Modifier, compact: Boolean = false) {
     Row(modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         Box(Modifier.width(10.dp).fillMaxHeight(), contentAlignment = androidx.compose.ui.Alignment.TopCenter) {
-            if (!last) Box(Modifier.padding(top = 8.dp).width(1.dp).fillMaxHeight().background(MaterialTheme.colorScheme.outlineVariant))
+            if (!last) Box(Modifier.padding(top = 8.dp).width(1.dp).fillMaxHeight().background(MaterialTheme.colorScheme.surfaceContainerHighest))
             Box(Modifier.padding(top = 5.dp).size(8.dp).background(MaterialTheme.colorScheme.primary, androidx.compose.foundation.shape.CircleShape))
         }
         if (compact) Row(Modifier.weight(1f).padding(bottom = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {

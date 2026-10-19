@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 
 /** 불러오는 중. 화면 읽기 도구에는 [message]를 조용히 알린다. */
 @Composable fun DearbyLoadingState(message: String, modifier: Modifier = Modifier) = StateLayout(modifier.semantics { liveRegion = LiveRegionMode.Polite }) {
-    CircularProgressIndicator(Modifier.size(28.dp), color = MaterialTheme.colorScheme.primary, trackColor = MaterialTheme.colorScheme.outlineVariant, strokeWidth = 3.dp)
+    CircularProgressIndicator(Modifier.size(28.dp), color = MaterialTheme.colorScheme.primary, trackColor = MaterialTheme.colorScheme.surfaceContainerHighest, strokeWidth = 3.dp)
     Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
 }
 

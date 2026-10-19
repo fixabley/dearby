@@ -58,7 +58,7 @@ import com.dearby.nativeapp.shared.ui.*
                     HorizontalDivider()
                     Text("장소", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
                     OutlinedCard(openMap, Modifier.fillMaxWidth().semantics { contentDescription = "장소 ${place.name}, ${place.address}, 지도 앱으로 열기" },
-                        shape = RoundedCornerShape(12.dp), colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+                        shape = RoundedCornerShape(12.dp), colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer), border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)) {
                         Row(Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Outlined.Map, null, tint = MaterialTheme.colorScheme.primary)
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -119,7 +119,7 @@ import com.dearby.nativeapp.shared.ui.*
 @Composable private fun EligibilityChips(lines: List<String>) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         lines.forEach { line ->
-            Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+            Surface(color = MaterialTheme.colorScheme.surfaceContainer, shape = RoundedCornerShape(12.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)) {
                 Text(line, Modifier.padding(horizontal = 12.dp, vertical = 8.dp), style = MaterialTheme.typography.bodyMedium)
             }
         }

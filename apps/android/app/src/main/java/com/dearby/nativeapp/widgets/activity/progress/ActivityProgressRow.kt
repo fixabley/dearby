@@ -25,11 +25,11 @@ private const val MAX_SEGMENTS = 4
 
 /**
  * 내 활동 row (contract "내 활동 진행 트랙"): name, program · organization, the segment track (past filled Teal, current
- * hatched primary outline, upcoming outlineVariant) with stage names under it, and the D-day badge. Over four stages the track shows
+ * hatched primary outline, upcoming surfaceContainerHighest) with stage names under it, and the D-day badge. Over four stages the track shows
  * four and `+N`. Nothing on the track animates. The track is one accessibility node, [ProgressState.trackDescription].
  */
 @Composable fun ActivityProgressRow(progress: ProgressState, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+    Surface(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -69,7 +69,7 @@ private const val MAX_SEGMENTS = 4
     val primary = MaterialTheme.colorScheme.primary
     when (status) {
         ProgressStatus.PAST -> Box(base.background(primary, shape))
-        ProgressStatus.UPCOMING -> Box(base.background(MaterialTheme.colorScheme.outlineVariant, shape))
+        ProgressStatus.UPCOMING -> Box(base.background(MaterialTheme.colorScheme.surfaceContainerHighest, shape))
         // Hatched: diagonal primary lines inside a primary outline.
         ProgressStatus.CURRENT -> Box(base.clip(shape).border(1.5.dp, primary, shape).drawBehind {
             val step = 6.dp.toPx()

@@ -50,7 +50,7 @@ data class JobTag(val id: String, val title: String, val pending: Boolean, val r
                 Text(item.name, style = MaterialTheme.typography.bodyLarge)
                 item.detail?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
         }
         val trimmed = query.trim()
         if (trimmed.isNotEmpty() && items.none { it.name == trimmed }) {

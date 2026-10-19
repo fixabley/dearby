@@ -60,7 +60,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
             }
             if (state.tried) draft.error(state.step)?.let { DearbyFieldError(it) }
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
         Row(Modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 20.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             if (index > 0 && state.step != HistoryDraft.Step.SUMMARY) DearbyOutlineButton({ go(steps[index - 1]) }, Modifier.weight(1f)) { Text("이전") }
             DearbyButton(next, Modifier.weight(1f)) { Text(if (state.step == HistoryDraft.Step.SUMMARY) "완료" else "다음") }
@@ -102,7 +102,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
                 Text(title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
                 Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
-            Icon(if (selected) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked, null, tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.outlineVariant)
+            Icon(if (selected) Icons.Outlined.CheckCircle else Icons.Outlined.RadioButtonUnchecked, null, tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest)
         }
     }
 }

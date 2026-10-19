@@ -30,7 +30,7 @@ import java.time.format.DateTimeFormatter
                     Text("버전 $version", style = MaterialTheme.typography.titleMedium)
                     Text(formatWhen(createdAt), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 }
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
             }
             if (state.nextCursor != null) item { TextButton(more, Modifier.fillMaxWidth()) { Text("더 보기") } }
             if (state.loading) item { Box(Modifier.fillMaxWidth().padding(20.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) } }
@@ -60,7 +60,7 @@ import java.time.format.DateTimeFormatter
             }
         }
         if (detail != null) {
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
             Column(Modifier.padding(horizontal = 20.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 state.error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
                 DearbyButton(restore, Modifier.fillMaxWidth(), enabled = !state.restoring) {

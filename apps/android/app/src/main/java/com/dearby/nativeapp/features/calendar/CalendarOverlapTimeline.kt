@@ -56,7 +56,7 @@ private val ContinuingBlock = GenericShape { size, _ ->
             }
             BoxWithConstraints(Modifier.weight(1f).height(gridHeight + tail)) {
                 val column = maxWidth / 2
-                val gridLine = MaterialTheme.colorScheme.outlineVariant
+                val gridLine = MaterialTheme.colorScheme.surfaceContainerHighest
                 Canvas(Modifier.fillMaxSize()) {
                     (0..rows).forEach { index ->
                         val y = (rowHeight * index).toPx()

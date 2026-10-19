@@ -66,11 +66,11 @@ val ProfileContactKinds = listOf(
                 IconButton({ onRemoveExtra(item.id) }) { Icon(Icons.Outlined.RemoveCircleOutline, "$label 삭제", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
             }
         }
-        OutlinedButton({ choosing = true }, Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(11.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+        OutlinedButton({ choosing = true }, Modifier.fillMaxWidth().heightIn(min = 48.dp), shape = RoundedCornerShape(11.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)) {
             Icon(Icons.Outlined.Add, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(6.dp)); Text("연락처 추가", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
         }
     }
-    if (choosing) ModalBottomSheet({ choosing = false }) {
+    if (choosing) ModalBottomSheet({ choosing = false }, containerColor = MaterialTheme.colorScheme.surface) {
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Text("추가할 연락처", Modifier.padding(horizontal = 20.dp, vertical = 8.dp), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
             ProfileContactKinds.forEach { (kind, label, _) ->

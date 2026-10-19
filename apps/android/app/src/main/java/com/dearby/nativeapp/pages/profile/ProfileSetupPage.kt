@@ -66,7 +66,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
             if (allReached) Text("활동 이력은 저장한 뒤 단계별로 추가할 수 있어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
         Box(Modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 24.dp, vertical = 12.dp)) {
             DearbyButton(::next, Modifier.fillMaxWidth().height(56.dp), enabled = !saving) {
                 if (saving) CircularProgressIndicator(Modifier.size(22.dp), color = LocalContentColor.current, strokeWidth = 2.dp)

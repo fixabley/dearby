@@ -60,10 +60,10 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
     val past = stage.status == ProgressStatus.PAST
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.size(36.dp).background(if (past) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface, CircleShape).border(1.5.dp, if (past || current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, CircleShape), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(36.dp).background(if (past) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface, CircleShape).border(1.5.dp, if (past || current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape), contentAlignment = Alignment.Center) {
                 Icon(stageIcon(stage.kind), null, Modifier.size(20.dp), tint = if (past) MaterialTheme.colorScheme.onPrimary else if (current) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            if (!last) Box(Modifier.width(2.dp).weight(1f).padding(vertical = 4.dp).background(if (past) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant))
+            if (!last) Box(Modifier.width(2.dp).weight(1f).padding(vertical = 4.dp).background(if (past) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest))
         }
         Column(Modifier.weight(1f).padding(bottom = if (last) 0.dp else 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -74,7 +74,7 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
             SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                 ProgressMark.entries.forEachIndexed { index, option ->
                     SegmentedButton(stage.mark == option, { mark(option) }, SegmentedButtonDefaults.itemShape(index, ProgressMark.entries.size),
-                        colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.onPrimaryContainer, activeBorderColor = MaterialTheme.colorScheme.primary, inactiveBorderColor = MaterialTheme.colorScheme.outlineVariant)) {
+                        colors = SegmentedButtonDefaults.colors(activeContainerColor = MaterialTheme.colorScheme.primaryContainer, activeContentColor = MaterialTheme.colorScheme.onPrimaryContainer, activeBorderColor = MaterialTheme.colorScheme.primary, inactiveBorderColor = MaterialTheme.colorScheme.surfaceContainerHighest)) {
                         Text(option.label)
                     }
                 }

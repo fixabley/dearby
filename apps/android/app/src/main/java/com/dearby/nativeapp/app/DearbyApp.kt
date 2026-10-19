@@ -41,8 +41,8 @@ private sealed interface CardRoute {
     // 명함 교환 (contract): a dearby://cards/… link saved a card → open it; signed out → sign in, then the link is saved.
     LaunchedEffect(walletState.opened) { walletState.opened?.let { tab = Tab.Wallet; activityDetail = false; route = CardRoute.Detail(it); wallet.consumeOpened() } }
     LaunchedEffect(auth.phase, walletState.needSignIn) { if (auth.phase == AccountPhase.SIGNED_IN && walletState.needSignIn) wallet.retryPending() }
-    // Every tab root sits on the theme background (contract "탭 제목 통일·머리 간소화"); cards are surfaces on top. The status-bar inset is
-    // applied once here, so page headers add only their own 8dp.
+    // Every tab root sits on the theme `background` (the surfaceContainerLow tone, iOS systemGroupedBackground parity); cards, sheets and tiles are
+    // `surface` on top. The status-bar inset is applied once here, so page headers add only their own 8dp.
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onSurface) {
         Column(Modifier.statusBarsPadding().navigationBarsPadding()) {
             Box(Modifier.weight(1f)) {

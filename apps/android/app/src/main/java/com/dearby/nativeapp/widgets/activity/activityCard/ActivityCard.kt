@@ -27,8 +27,8 @@ import com.dearby.nativeapp.shared.ui.*
     val (label, container, content) = when (status) {
         "모집 중" -> Triple(status, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary)
         "모집 예정" -> Triple(status, MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
-        "모집 마감" -> Triple("마감", MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.onSurfaceVariant)
-        else -> Triple("확인 필요", MaterialTheme.colorScheme.outlineVariant, MaterialTheme.colorScheme.onSurfaceVariant)
+        "모집 마감" -> Triple("마감", MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurfaceVariant)
+        else -> Triple("확인 필요", MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurfaceVariant)
     }
     Card(open, modifier.fillMaxWidth().semantics { stateDescription = label }, shape = RoundedCornerShape(14.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
         Column(Modifier.padding(start = 12.dp, end = 12.dp, top = 10.dp, bottom = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

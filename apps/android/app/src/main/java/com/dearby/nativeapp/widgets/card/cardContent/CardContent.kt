@@ -21,7 +21,7 @@ import com.dearby.nativeapp.shared.ui.*
  * 소개 마크다운 → 연락처 → 활동 이력. 카드는 자기 높이만큼 펼쳐지고 스크롤은 담는 화면이 맡는다. 행동 버튼은 호출자가 카드 바깥에 둔다.
  */
 @Composable fun CardContent(state: CardState, modifier: Modifier = Modifier, onContact: (ContactState) -> Unit) {
-    Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)) {
+    Surface(modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surface, shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Header(state)
             if (state.introduction.isNotBlank()) MarkdownBody(state.introduction)

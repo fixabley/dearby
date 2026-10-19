@@ -10,7 +10,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.NotificationsNone
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,16 +29,13 @@ import com.dearby.nativeapp.widgets.activity.progress.ProgressState
  * stage over) collapsed below. An activity without stages keeps the plain row with the 참여 확정 switch. A track row opens
  * [openProgress]; a plain row opens the detail with [open]. The applied marks survive discovery searches (README rule).
  */
-@Composable fun MyActivitiesPage(state: ActivityListState, open: (String) -> Unit, openProgress: (String) -> Unit, confirm: (String, Boolean) -> Unit, explore: () -> Unit, notify: () -> Unit = {}) {
+@Composable fun MyActivitiesPage(state: ActivityListState, open: (String) -> Unit, openProgress: (String) -> Unit, confirm: (String, Boolean) -> Unit, explore: () -> Unit) {
     val active = state.activeActivities
     val ended = state.endedActivities
     var showEnded by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
         // Tab title line shared by the five tabs (contract "탭 제목 통일·머리 간소화"); the 예시 badge keeps its place beside the title.
-        ScreenHeader("내 활동") {
-            ExampleBadge()
-            IconButton(notify) { Icon(Icons.Outlined.NotificationsNone, "알림") }
-        }
+        ScreenHeader("내 활동") { ExampleBadge() }
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             if (active.isEmpty() && ended.isEmpty()) item {
                 Column(Modifier.fillMaxWidth().padding(vertical = 28.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {

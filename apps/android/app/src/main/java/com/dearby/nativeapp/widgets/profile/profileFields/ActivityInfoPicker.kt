@@ -42,7 +42,7 @@ data class PickerItem(val id: Long, val name: String, val detail: String?)
             return@Column
         }
         DearbySearchField(query, onQueryChange, prompt)
-        if (typedName.isNotEmpty()) OutlinedCard(border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), shape = RoundedCornerShape(12.dp)) {
+        if (typedName.isNotEmpty()) OutlinedCard(border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest), shape = RoundedCornerShape(12.dp)) {
             Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text(typedName, fontWeight = FontWeight.SemiBold)
@@ -58,7 +58,7 @@ data class PickerItem(val id: Long, val name: String, val detail: String?)
                 Text(item.name, style = MaterialTheme.typography.bodyLarge)
                 item.detail?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
             }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
         }
         val trimmed = query.trim()
         if (trimmed.isNotEmpty() && items.none { it.name == trimmed }) {
