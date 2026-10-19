@@ -14,7 +14,7 @@ private val timeText = DateTimeFormatter.ofPattern("HH:mm", Locale.KOREAN)
 /**
  * A schedule as text (contract "일정 표시 우선순위", 2026-10-19 밤): the structured dates when there are any — timed
  * `10월 20일 (화) 14:00 ~ 15:00` (a second day spelled out), all-day `10월 20일 (화) ~ 10월 22일 (목)` with the exclusive end moved back a
- * day, the year on every date once any bound is outside [today]'s year or the bounds span years (web parity); only the end known reads `~ … 마감` for a [recruitment] window and `~ …까지` for an
+ * day, the year only on a date outside [today]'s year (`12월 30일 (수) ~ 2027년 1월 2일 (토)`); only the end known reads `~ … 마감` for a [recruitment] window and `~ …까지` for an
  * activity period or a detail schedule — and the collected [dateLabel] only when there are none. Blank when neither exists; the
  * caller supplies `미정`/`일정 미확인`.
  */
@@ -25,9 +25,7 @@ fun scheduleText(startAt: String?, endAt: String?, startDate: String?, endDateEx
     val end = instant(endAt)
     val startDay = startDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
     val endDay = endDateExclusive?.let { runCatching { LocalDate.parse(it).minusDays(1) }.getOrNull() }
-    val years = listOfNotNull(start?.atZone(zone)?.year, end?.atZone(zone)?.year, startDay?.year, endDay?.year).toSet()
-    val withYear = years.any { it != today.year }
-    fun day(date: LocalDate) = (if (withYear) dayWithYear else dayText).format(date)
+    fun day(date: LocalDate) = (if (date.year == today.year) dayText else dayWithYear).format(date)
     fun moment(at: Instant) = at.atZone(zone).let { day(it.toLocalDate()) + " " + timeText.format(it) }
     if (start != null || end != null) return when {
         start == null -> "~ " + moment(end!!) + endOnly
