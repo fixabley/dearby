@@ -363,7 +363,24 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - 펼칠 때는 기존 `GET /v1/activities?programId=<id>`를 쓰고, 클라이언트는 열린 활동만 남긴다.
 - `Cache-Control: no-store`·오류 형식은 활동 조회와 같다.
 
-## 구글 로그인 — 2026-10-18 사용자 결정
+## 구글 로그인 — 2026-10-19 네이티브 SDK로 전환
+
+사용자 결정(2026-10-19): 구글 개발자 계정 인증이 끝나 OAuth 2.0 SDK를 쓸 수 있으므로, 아래 2026-10-18 **웹 방식**(서버 콜백·client secret·code 교환)을 **네이티브 방식**으로 바꾼다. 웹 방식 엔드포인트(`web/start`·`callback`·`web/exchange`)와 `GOOGLE_CLIENT_SECRET`·`GOOGLE_CALLBACK_URL`은 지운다(운영에 설정된 적이 없다). 계정 규칙(같은 `sub` = 같은 Dearby 계정, 이메일로 합치지 않음, 처음 보는 계정 202 → 패스키 조용히 묻기 → `register`/`/me/identities/google`)과 `user_identities.provider = GOOGLE`은 그대로다.
+
+| 메서드·경로 | 인증 | 요청 | 응답 |
+| --- | --- | --- | --- |
+| POST /v1/auth/google/nonce | 없음 | — | 200 `{nonce}`(애플 `/auth/apple/nonce`와 같은 1회용·만료 규칙). 서버에 허용 client id가 없으면 503 |
+| POST /v1/auth/google | 없음 | `{idToken, nonce}` | 200 TokenPair(이미 연결된 구글 계정) 또는 202 `{linkToken, email, displayName}`(처음 보는 계정). 검증 실패 401 |
+| POST /v1/auth/google/register | 없음 | `{linkToken}` | 201 TokenPair(그대로) |
+| POST /v1/me/identities/google | Bearer | `{linkToken}` | 204(그대로) |
+
+- **ID 토큰 검증**: JWKS 서명, `iss` 두 표기, 만료, `nonce` 일치는 그대로. `aud`는 **허용 목록** `GOOGLE_CLIENT_IDS`(쉼표 구분) 중 하나여야 한다. Android(Credential Manager, `serverClientId` = 웹 클라이언트 id)는 `aud`가 웹 클라이언트 id이고, iOS SDK는 `aud`가 iOS 클라이언트 id이므로 둘을 모두 넣는다. 설정 키는 `GOOGLE_CLIENT_IDS` 하나로 바꾸고 `GOOGLE_CLIENT_ID`는 더 읽지 않는다. 값은 서버 `.env.prod`에만 둔다.
+- **iOS**: `GoogleSignIn-iOS`(Swift Package, `https://github.com/google/GoogleSignIn-iOS`, 10.x — `nonce` 매개변수는 9.0부터)를 `generate_project.rb`가 원격 패키지로 추가한다. 빌드 설정 `GOOGLE_IOS_CLIENT_ID`(비어 있으면 버튼 숨김)와 그 역순 표기 `GOOGLE_IOS_URL_SCHEME`(`com.googleusercontent.apps.<id>`)을 `Info.plist`의 `GIDClientID`·`CFBundleURLSchemes`로 넣는다(기존 `dearby` 스킴은 유지). 이 작업에서 iOS에 `CFBundleURLTypes`가 아예 없어 `dearby://cards/…`가 앱을 열 수 없던 것을 발견해 함께 등록했다(애플·구글 웹 콜백은 `ASWebAuthenticationSession`이 자체 처리해 드러나지 않았다). 흐름: `/auth/google/nonce` → `GIDSignIn.sharedInstance.signIn(withPresenting:hint:additionalScopes:nonce:)` → `idToken`을 `/auth/google`로. 서버가 503이면 버튼 숨김(기존 규칙). 애플 로그인의 `ASAuthorizationController` 처리와 같은 자리에서 결과(200/202)를 다룬다.
+- **Android**: `androidx.credentials`(이미 있음) + `com.google.android.libraries.identity.googleid:googleid`로 `GetGoogleIdOption(serverClientId = BuildConfig.GOOGLE_SERVER_CLIENT_ID, nonce, filterByAuthorizedAccounts=false)` → `GoogleIdTokenCredential.idToken` → `/auth/google`. 빌드 설정 `GOOGLE_SERVER_CLIENT_ID`(Gradle 속성 또는 환경 변수, 비어 있으면 버튼 숨김). Custom Tab 흐름(`features/oauth`의 구글 부분, `dearby://auth/google` 인텐트 필터)은 지운다(애플이 아직 쓰는 부분은 남긴다).
+- **운영 준비(사용자)**: Google Cloud 콘솔에서 OAuth 클라이언트 세 개. ① 웹 애플리케이션(리디렉션 URI 없음) → 서버 `GOOGLE_CLIENT_IDS`와 Android `GOOGLE_SERVER_CLIENT_ID`에 쓴다. ② iOS(번들 `com.dearby.dearby`) → `GOOGLE_IOS_CLIENT_ID`와 서버 허용 목록. ③ Android(패키지 `io.wid.dearby`, 디버그 keystore SHA-1; 출시 서명 SHA-1은 출시 서명을 정한 뒤 추가). 값은 채팅에 적지 않고 서버 `.env.prod`와 로컬 `~/.dearby-deploy/mobile.env`(`GOOGLE_IOS_CLIENT_ID`, `GOOGLE_IOS_URL_SCHEME`, `GOOGLE_SERVER_CLIENT_ID`)에 둔다. 기기 설치 빌드는 그 파일을 읽어 넘기고, CI는 값 없이 빌드한다(버튼 숨김).
+- 버튼 모양·로고 자산 규칙은 2026-10-18 항목 그대로(자산이 들어올 때까지 글자 버튼).
+
+## 구글 로그인 — 2026-10-18 사용자 결정 (웹 방식, 2026-10-19 네이티브로 대체됨 — 위 항목)
 
 애플 로그인·패스키와 함께 쓰는 세 번째 로그인 수단이다. iOS·Android 모두 **웹 방식**(애플의 Android 방식과 같은 서버 코드 흐름)으로 하고 SDK는 넣지 않는다. 같은 구글 계정(`sub`)은 같은 Dearby 계정이 되며, 계정은 이메일로 합치지 않는다. 운영에 `GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`·`GOOGLE_CALLBACK_URL`이 없으면 아래 `/auth/google/*`는 503이다.
 
