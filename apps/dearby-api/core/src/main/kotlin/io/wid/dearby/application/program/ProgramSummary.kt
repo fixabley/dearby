@@ -1,5 +1,6 @@
 package io.wid.dearby.application.program
 
+import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.ParticipationType
 import io.wid.dearby.domain.eligibility.EligibilityFilter
@@ -26,6 +27,7 @@ data class ProgramSummarySearch(
     val cursor: Int,
     val size: Int,
     val eligibility: EligibilityFilter? = null, // 대상자 검색(native-v1.md "대상자 조건"). 있으면 열린 활동을 2차 판정까지 거쳐 세고 묶는다
+    val categories: Set<ActivityCategory>? = null, // 활동 종류 필터(native-v1.md "활동 종류"). 열린 활동 수·맞은 id에 함께 적용
 )
 
 // 대상자 필터가 있을 때 묶음을 만들 재료: 열린 활동 한 건(1차 판정을 지난 것)

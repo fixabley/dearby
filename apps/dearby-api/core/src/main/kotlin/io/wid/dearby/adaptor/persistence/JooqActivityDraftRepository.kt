@@ -31,6 +31,8 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         val existing = dsl.select(
             ACTIVITIES.ID, ACTIVITIES.PUBLICATION_STATUS, ACTIVITIES.NAME, ACTIVITIES.NAME_EN, ACTIVITIES.DESCRIPTION, ACTIVITIES.DESCRIPTION_EN,
             ACTIVITIES.AUDIENCE, ACTIVITIES.ELIGIBILITY, ACTIVITIES.PARTICIPATION_TYPE, ACTIVITIES.INHERITED_FIELDS, ACTIVITIES.CURATED_FIELDS,
+            // 운영자 지정으로 보호할 수 있는 나머지 열(없는 열을 읽으면 jOOQ가 예외를 던진다)
+            ACTIVITIES.OFFICIAL_URL, ACTIVITIES.APPLICATION_URL, ACTIVITIES.LOCATION, ACTIVITIES.COST, ACTIVITIES.CATEGORY,
         )
             .from(ACTIVITIES)
             .where(ACTIVITIES.SOURCE_ID.eq(sourceId))
@@ -58,6 +60,9 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         // 어드민이 고친 공식 안내·신청 링크도 보호한다(admin-v1.md "운영자 지정 필드", 2026-10-19)
         val officialUrl = if (CuratedFields.OFFICIAL_URL in curated) existing?.get(ACTIVITIES.OFFICIAL_URL) ?: activity.officialUrl else activity.officialUrl
         val applicationUrl = if (CuratedFields.APPLICATION_URL in curated) existing?.get(ACTIVITIES.APPLICATION_URL) else activity.applicationUrl
+        val location = if (CuratedFields.LOCATION in curated) existing?.get(ACTIVITIES.LOCATION) else activity.location
+        val cost = if (CuratedFields.COST in curated) existing?.get(ACTIVITIES.COST) else activity.cost
+        val category = if (CuratedFields.CATEGORY in curated) existing?.get(ACTIVITIES.CATEGORY) else activity.category?.name
         val eligibility = resolve(InheritedFields.ELIGIBILITY, EligibilityRows.read(existing?.get(ACTIVITIES.ELIGIBILITY)), activity.eligibility, previous?.eligibility)
         val audience = resolve(InheritedFields.AUDIENCE, existing?.get(ACTIVITIES.AUDIENCE)?.ifBlank { null }, activity.audience?.ifBlank { null }, previous?.audience?.ifBlank { null })
         val participationType = resolve(
@@ -91,8 +96,9 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             .set(ACTIVITIES.OFFICIAL_SOURCE, activity.officialSource)
             .set(ACTIVITIES.APPLICATION_URL, applicationUrl)
             .set(ACTIVITIES.PARTICIPATION_TYPE, participationType.name)
-            .set(ACTIVITIES.LOCATION, activity.location)
-            .set(ACTIVITIES.COST, activity.cost)
+            .set(ACTIVITIES.LOCATION, location)
+            .set(ACTIVITIES.COST, cost)
+            .set(ACTIVITIES.CATEGORY, category)
             .set(ACTIVITIES.AUDIENCE, audience)
             .set(ACTIVITIES.ELIGIBILITY, EligibilityRows.jsonb(eligibility))
             .set(ACTIVITIES.INHERITED_FIELDS, InheritedFields.jsonb(inherited))

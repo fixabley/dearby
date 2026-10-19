@@ -37,7 +37,7 @@ class JooqCollectionTargetRepository(private val dsl: DSLContext) : CollectionTa
                     programId = it.value1()!!,
                     programName = it.value2()!!,
                     organizationName = it.value3(),
-                    officialUrl = it.value4(),
+                    officialUrlTemplate = it.value4(),
                     allowedHosts = it.value5()?.filterNotNull().orEmpty(),
                     intervalDays = it.value6()!!,
                 )

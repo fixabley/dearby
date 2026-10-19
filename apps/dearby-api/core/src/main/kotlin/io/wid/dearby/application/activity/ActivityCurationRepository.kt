@@ -1,5 +1,6 @@
 package io.wid.dearby.application.activity
 
+import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.PublicationStatus
 import io.wid.dearby.domain.ScheduleTime
@@ -23,6 +24,15 @@ interface ActivityCurationRepository {
 
     // 관리자가 고친 대상자 조건(null이면 지운다). 검색용 펼친 조건도 함께 다시 쓴다. 바뀐 행이 없으면(활동 없음) false
     fun updateEligibility(activityId: Id, eligibility: EligibilityGroup?): Boolean
+
+    // 활동 종류(native-v1.md "활동 종류"): null이면 미분류. 운영자 지정 필드 category에 남긴다. 활동이 없으면 false
+    fun updateCategory(activityId: Id, category: ActivityCategory?): Boolean
+
+    // 운영자 직접 등록(admin-v1.md "POST /v1/admin/activities"): 초안 행과 활동 기간 일정(문구, curated)을 만들고 id를 돌려준다
+    fun insert(creation: ActivityCreation): Id
+
+    // 같은 프로그램에 공백만 다른 같은 이름이 있는지(프로그램 이름 규칙과 같다)
+    fun existsName(programId: Id, name: String): Boolean
 
     // 운영자가 직접 지정한 활동 기간·모집 기간(admin-v1.md "일정 직접 지정"). time이 null이면 구조화된 값을 지우고 dateLabel만 남기며 curated를 푼다.
     // APPLICATION 일정이 없으면 만든다. 활동이 없으면 false

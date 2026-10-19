@@ -1,5 +1,6 @@
 package io.wid.dearby.application.activity
 
+import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.PublicationStatus
 import io.wid.dearby.domain.eligibility.EligibilityFilter
@@ -14,4 +15,5 @@ data class ActivitySearch(
     val size: Int,
     val publicationStatus: PublicationStatus? = PublicationStatus.PUBLISHED,
     val eligibility: EligibilityFilter? = null, // 대상자 검색. 1차는 저장소(SQL), 2차는 서비스(JSON)
+    val categories: Set<ActivityCategory>? = null, // 활동 종류 필터(native-v1.md "활동 종류"). null이면 전부
 )

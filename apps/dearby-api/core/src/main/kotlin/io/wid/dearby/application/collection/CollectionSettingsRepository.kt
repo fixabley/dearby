@@ -14,4 +14,7 @@ interface CollectionSettingsRepository {
 
     // 프로그램별 마지막 성공 수집 한국 날짜. 성공한 적이 없으면 빠진다
     fun lastSucceededOn(programIds: Collection<Id>): Map<Id, LocalDate>
+
+    // 프로그램별 마지막 성공 수집에서 실제로 받은 페이지 주소(admin-v1.md lastFetchedUrls). 없으면 항목 없음
+    fun lastFetchedUrls(programIds: Collection<Id>): Map<Id, List<String>>
 }

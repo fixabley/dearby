@@ -148,6 +148,11 @@ open class CollectionRuns(
      */
     val WEB_SEARCH_REQUESTS: TableField<CollectionRunsRecord, Int?> = createField(DSL.name("web_search_requests"), SQLDataType.INTEGER.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.INTEGER)), this, "")
 
+    /**
+     * The column <code>public.collection_runs.fetched_urls</code>.
+     */
+    val FETCHED_URLS: TableField<CollectionRunsRecord, Array<String?>?> = createField(DSL.name("fetched_urls"), SQLDataType.VARCHAR.array().nullable(false).defaultValue(DSL.field(DSL.raw("'{}'::character varying[]"), SQLDataType.VARCHAR.array())), this, "")
+
     private constructor(alias: Name, aliased: Table<CollectionRunsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<CollectionRunsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<CollectionRunsRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)

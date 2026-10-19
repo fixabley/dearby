@@ -232,6 +232,11 @@ open class Activities(
      */
     val CURATED_FIELDS: TableField<ActivitiesRecord, JSONB?> = createField(DSL.name("curated_fields"), SQLDataType.JSONB.nullable(false).defaultValue(DSL.field(DSL.raw("'[]'::jsonb"), SQLDataType.JSONB)), this, "")
 
+    /**
+     * The column <code>public.activities.category</code>.
+     */
+    val CATEGORY: TableField<ActivitiesRecord, String?> = createField(DSL.name("category"), SQLDataType.VARCHAR(20), this, "")
+
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -349,6 +354,7 @@ open class Activities(
     val schedules: SchedulesPath
         get(): SchedulesPath = schedules()
     override fun getChecks(): List<Check<ActivitiesRecord>> = listOf(
+        Internal.createCheck(this, DSL.name("activities_category_check"), "(((category IS NULL) OR ((category)::text = ANY ((ARRAY['BOOTCAMP'::character varying, 'CONFERENCE'::character varying, 'WORKSHOP'::character varying, 'STUDY'::character varying, 'CLUB'::character varying, 'LECTURE'::character varying, 'HACKATHON'::character varying, 'CONTEST'::character varying, 'MEETUP'::character varying, 'OTHER'::character varying])::text[]))))", true),
         Internal.createCheck(this, DSL.name("activities_eligibility_check"), "(((eligibility IS NULL) OR (jsonb_typeof(eligibility) = 'object'::text)))", true),
         Internal.createCheck(this, DSL.name("activities_freshness_check"), "(((freshness)::text = ANY ((ARRAY['VERIFIED'::character varying, 'STALE'::character varying, 'UNAVAILABLE'::character varying])::text[])))", true),
         Internal.createCheck(this, DSL.name("activities_participation_type_check"), "(((participation_type)::text = ANY ((ARRAY['REGISTRATION'::character varying, 'SELECTION'::character varying])::text[])))", true),

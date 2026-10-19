@@ -12,11 +12,15 @@ data class CollectionSettingsResponse(
     val enabled: Boolean,
     val officialOnly: Boolean,
     val lastSucceededOn: LocalDate?,
+    val previousRound: Int?,
+    val previewUrls: List<String>,
+    val lastFetchedUrls: List<String>,
 ) {
     companion object {
         fun from(listing: ProgramListing) = with(listing.settings) {
             CollectionSettingsResponse(
                 listing.configured, officialUrl, allowedHosts, intervalDays, enabled, officialOnly, listing.lastSucceededOn,
+                listing.previousRound, listing.previewUrls, listing.lastFetchedUrls,
             )
         }
     }

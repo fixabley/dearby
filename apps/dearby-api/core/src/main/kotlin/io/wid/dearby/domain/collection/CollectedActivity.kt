@@ -1,5 +1,6 @@
 package io.wid.dearby.domain.collection
 
+import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.ParticipationType
 import io.wid.dearby.domain.eligibility.EligibilityGroup
 
@@ -31,4 +32,5 @@ data class CollectedActivity(
     val eligibility: EligibilityGroup?, // 대상자 조건(native-v1.md "대상자 조건"). 모델이 뽑은 것을 어휘로 정리한 결과
     val evidenceQuote: String, // 원문에 그대로 있는 구절(확인함)
     val checkedAt: OffsetDateTime,
+    val category: ActivityCategory? = null, // 활동 종류(native-v1.md "활동 종류"). 본문으로 판단할 수 없으면 null
 )

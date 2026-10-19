@@ -240,6 +240,12 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"officialUrl":"http://example.org/notice"}""") }.andExpect { status { isBadRequest() } }
         mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"officialUrl":""}""") }.andExpect { status { isBadRequest() } }
         assertEquals(true, read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"applicationUrl":""}""") }.andExpect { status { isOk() } })["applicationUrl"].isNull)
+        // 활동 종류(native-v1.md "활동 종류", 2026-10-19): 코드로 바꾸면 운영자 지정 필드에 남고, 모르는 코드는 400, null은 미분류
+        val typed = read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"category":"bootcamp"}""") }.andExpect { status { isOk() } })
+        assertEquals("BOOTCAMP", typed["category"].asString())
+        assertEquals("[\"nameEn\",\"descriptionEn\",\"officialUrl\",\"applicationUrl\",\"category\"]", typed["curatedFields"].toString())
+        mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"category":"NOPE"}""") }.andExpect { status { isBadRequest() } }
+        assertEquals(true, read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"category":null}""") }.andExpect { status { isOk() } })["category"].isNull)
         mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"name":" "}""") }.andExpect { status { isBadRequest() } }
         mvc.patch("/v1/admin/activities/999999") { asAdmin(); patchBody("""{"nameEn":"x"}""") }.andExpect { status { isNotFound() } }
 
@@ -259,7 +265,7 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         val reset = read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"eligibility":{"op":"all","items":[{"fieldEn":"age","from":20}]}}""") }.andExpect { status { isOk() } })
         assertEquals("[\"audience\"]", reset["inheritedFields"].toString())
         // 대상자 조건을 비우거나 다시 저장해도 운영자 지정 표시는 한 번만 남는다
-        assertEquals("[\"nameEn\",\"descriptionEn\",\"officialUrl\",\"applicationUrl\",\"eligibility\"]", reset["curatedFields"].toString())
+        assertEquals("[\"nameEn\",\"descriptionEn\",\"officialUrl\",\"applicationUrl\",\"category\",\"eligibility\"]", reset["curatedFields"].toString())
 
         // 일정 직접 지정(admin-v1.md): 날짜만 주면 종일 일정(끝 날짜 포함 → exclusive는 하루 뒤), curated가 켜진다. 모집 기간은 없던 행을 만든다. 섞으면 400, null이면 지정 해제
         val dated = read(
@@ -324,6 +330,72 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
             .andExpect { status { isOk() } })
         assertEquals(3, saved["intervalDays"].asInt())
         mvc.get("/v1/admin/programs/999999/collection-settings") { asAdmin() }.andExpect { status { isNotFound() } }
+        // 주소 토큰(admin-v1.md, 2026-10-19): 모르는 토큰은 400, {yy}는 올해·내년으로 펼쳐 previewUrls에, 기수를 못 읽으면 previousRound는 null
+        mvc.put(url) { asAdmin(); body("""{"officialUrl":"https://toss.im/slash-{season}","allowedHosts":["toss.im"],"intervalDays":1,"enabled":true}""") }
+            .andExpect { status { isBadRequest() } }
+        val tokened = read(mvc.put(url) { asAdmin(); body("""{"officialUrl":"https://toss.im/slash-{yy}","allowedHosts":["toss.im"],"intervalDays":1,"enabled":true}""") }
+            .andExpect { status { isOk() } })
+        val yy = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).year % 100
+        assertEquals("[\"https://toss.im/slash-${yy + 1}\",\"https://toss.im/slash-$yy\"]", tokened["previewUrls"].toString())
+        assertEquals(true, tokened["previousRound"].isNull)
+        assertEquals("[]", tokened["lastFetchedUrls"].toString())
+        // {round}: 가장 최근 활동 이름의 "N기"를 읽어 다음 기수·현재 기수로 펼친다. 마지막 성공 수집이 받은 페이지는 lastFetchedUrls로 보인다
+        val activityName = jdbc.sql("select name from activities where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").query(String::class.java).single()
+        jdbc.sql("update activities set name = 'Let''Swift 12기' where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").update()
+        jdbc.sql("insert into collection_runs (program_id, run_date, official_only, started_at, outcome, fetched_urls) values (?, date '2026-10-18', true, now(), 'SUCCEEDED', array['https://letswift.kr/2026/'])")
+            .param(programId).update()
+        try {
+            val rounded = read(mvc.put(url) { asAdmin(); body("""{"officialUrl":"https://letswift.kr/{round}/","allowedHosts":["letswift.kr"],"intervalDays":1,"enabled":true}""") }
+                .andExpect { status { isOk() } })
+            assertEquals(12, rounded["previousRound"].asInt())
+            assertEquals("[\"https://letswift.kr/13/\",\"https://letswift.kr/12/\"]", rounded["previewUrls"].toString())
+            assertEquals("[\"https://letswift.kr/2026/\"]", rounded["lastFetchedUrls"].toString())
+        } finally {
+            jdbc.sql("update activities set name = ? where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").param(activityName).update()
+            jdbc.sql("delete from collection_runs where program_id = ?").param(programId).update()
+        }
+    }
+
+    @Test
+    fun `운영자가 활동을 직접 만들면 초안으로 목록에 보이고, 같은 이름·http 주소·기간 없음은 막는다`() {
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        val created = read(
+            mvc.post("/v1/admin/activities") {
+                asAdmin()
+                body(
+                    """{"programId":$programId,"name":"운영자 활동 1기","description":"직접 등록","officialUrl":"https://example.org/notice","applicationUrl":"https://example.org/apply",
+                       "participationType":"SELECTION","category":"CLUB","activitySchedule":{"startDate":"2026-12-01","endDate":"2026-12-03"},
+                       "application":{"startAt":"2026-11-01T10:00:00+09:00","endAt":"2026-11-10T23:59:00+09:00"},
+                       "eligibility":{"op":"all","items":[{"fieldEn":"age","from":19,"to":34}]},"audience":"19~34세","location":"서울","cost":"무료"}"""
+                )
+            }.andExpect { status { isCreated() } }
+        )
+        assertEquals("DRAFT", created["publicationStatus"].asString())
+        assertEquals(true, created["officialSource"].asBoolean())
+        assertEquals("CLUB", created["category"].asString())
+        assertEquals("[\"name\",\"description\",\"officialUrl\",\"applicationUrl\",\"participationType\",\"category\",\"audience\",\"location\",\"cost\",\"eligibility\"]", created["curatedFields"].toString())
+        assertEquals(true, created["activitySchedule"]["curated"].asBoolean())
+        assertEquals("2026-12-01", created["activitySchedule"]["startDate"].asString())
+        assertEquals(true, created["application"]["curated"].asBoolean())
+        assertEquals("19", created["eligibility"]["items"][0]["from"].asString())
+        // 유사도 검색이라 비슷한 이름이 함께 올 수 있다. 만든 활동이 초안 목록에 있는지만 본다
+        val listed = read(mvc.get("/v1/admin/activities?publicationStatus=DRAFT&programId=$programId&q=운영자 활동 1기") { asAdmin() })["items"]
+        assertEquals(true, (0 until listed.size()).any { listed[it]["id"].asLong() == created["id"].asLong() })
+        assertEquals("운영자 등록|", jdbc.sql("select source_note || '|' || coalesce(source_id::text, '') from activities where id = ?").param(created["id"].asLong()).query(String::class.java).single())
+        // 같은 프로그램에 띄어쓰기만 다른 이름, http 주소, 기간 없음, 없는 프로그램은 400
+        mvc.post("/v1/admin/activities") { asAdmin(); body("""{"programId":$programId,"name":"운영자활동 1기","description":"","officialUrl":"https://example.org/x","activitySchedule":{"dateLabel":"2027"}}""") }
+            .andExpect { status { isBadRequest() } }
+        mvc.post("/v1/admin/activities") { asAdmin(); body("""{"programId":$programId,"name":"다른 활동","description":"","officialUrl":"http://example.org/x","activitySchedule":{"dateLabel":"2027"}}""") }
+            .andExpect { status { isBadRequest() } }
+        mvc.post("/v1/admin/activities") { asAdmin(); body("""{"programId":$programId,"name":"기간 없는 활동","description":"","officialUrl":"https://example.org/x"}""") }
+            .andExpect { status { isBadRequest() } }
+        mvc.post("/v1/admin/activities") { asAdmin(); body("""{"programId":999999,"name":"없는 프로그램","description":"","officialUrl":"https://example.org/x","activitySchedule":{"dateLabel":"2027"}}""") }
+            .andExpect { status { isBadRequest() } }
+        // 원문 문구만으로도 만들 수 있다
+        val labelled = read(mvc.post("/v1/admin/activities") { asAdmin(); body("""{"programId":$programId,"name":"문구만 활동","description":"","officialUrl":"https://example.org/y","activitySchedule":{"dateLabel":"2027년 봄"}}""") }
+            .andExpect { status { isCreated() } })
+        assertEquals("2027년 봄", labelled["activitySchedule"]["dateLabel"].asString())
+        assertEquals("REGISTRATION", jdbc.sql("select participation_type from activities where id = ?").param(labelled["id"].asLong()).query(String::class.java).single())
     }
 
     @Test

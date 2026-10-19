@@ -60,4 +60,15 @@ class JooqCollectionSettingsRepository(private val dsl: DSLContext) : Collection
             .fetch()
             .associate { it.value1()!! to it.value2()!! }
     }
+
+    override fun lastFetchedUrls(programIds: Collection<Id>): Map<Id, List<String>> {
+        if (programIds.isEmpty()) return emptyMap()
+        return dsl.select(COLLECTION_RUNS.PROGRAM_ID, COLLECTION_RUNS.FETCHED_URLS)
+            .from(COLLECTION_RUNS)
+            .where(COLLECTION_RUNS.PROGRAM_ID.`in`(programIds), COLLECTION_RUNS.OUTCOME.eq(CollectionOutcome.SUCCEEDED.name))
+            .orderBy(COLLECTION_RUNS.RUN_DATE.desc(), COLLECTION_RUNS.ID.desc())
+            .fetch()
+            .groupBy({ it.value1()!! }, { it.value2()?.filterNotNull().orEmpty() })
+            .mapValues { (_, runs) -> runs.first() }
+    }
 }

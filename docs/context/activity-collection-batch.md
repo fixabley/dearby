@@ -68,3 +68,9 @@ docker compose -f compose.prod.yaml --env-file .env.prod run --rm batch --recall
 ## 모집 기간·활동 기간 혼동 — 2026-10-19
 
 사용자 보고: 어드민에서 모집 기간과 활동 기간이 서로 바뀐 활동이 있다. 2026-10-18 수집분 확인 결과 "우아한 테크코스 2026"(활동 기간에 모집 기간 2025.09.29~10.10), "Apple Developer Academy Cohort"(모집 기간에 과정 기간 5/1~12/8), "Apple Developer Academy 2027"(모집 마감 = 과정 종료일) 등이 있었다. 원인: 추출 지시문이 두 기간을 정의하지 않았고 `dateLabel`이 필수라서, 페이지에 모집 기간만 있을 때 모델이 그 날짜를 활동 기간 자리에 넣었다. 조치: 지시문에 두 기간의 정의(모집·접수·지원·신청·마감 ↔ 교육·과정·행사·운영·개최)와 "같은 날짜를 두 기간에 넣지 않음, 모집 기간만 있으면 dateLabel은 빈 문자열" 규칙을 넣었다. 어드민은 의심 조건(모집 시작이 활동 종료 뒤, 두 기간 동일, 활동 원문에 모집·접수·지원·신청 낱말)에 `기간 확인` 태그를 붙이고, 편집 폼에 `모집 ↔ 활동 바꾸기` 버튼을 두어 운영자가 바로 고칠 수 있다(고친 값은 운영자 지정으로 보호).
+
+## 시작 주소 토큰·받은 페이지 기록·활동 종류 — 2026-10-19
+
+- **주소 토큰**(admin-v1.md "주소 토큰"): 수집 설정 `officialUrl`에 `{year}`·`{yy}`·`{round}`를 쓸 수 있다. `CollectionUrlTemplate`(core)이 올해·내년, 다음 기수·현재 기수로 펼치고(`previousRound`는 같은 프로그램의 가장 최근 활동 이름의 "N기", 없으면 맨 앞·뒤 숫자), `CollectActivitiesService`가 이전 기수를 읽은 뒤 시작 주소를 펼쳐 탐색 결과 앞에 둔다. 기수를 모르면 그 주소는 건너뛰고 거절 이유 `기수 번호를 알 수 없음`을 남긴다. 어드민 응답의 `previousRound`·`previewUrls`는 같은 규칙으로 서버가 계산한다.
+- **받은 페이지 기록**(V30 `collection_runs.fetched_urls`): 실제로 받아 읽은 페이지를 받은 순서로 남긴다(실패 제외). 어드민 `lastFetchedUrls`는 마지막 성공 수집의 값이다.
+- **활동 종류**(V31 `activities.category`, native-v1.md "활동 종류"): 추출 지시문이 `category`(BOOTCAMP·CONFERENCE·WORKSHOP·STUDY·CLUB·LECTURE·HACKATHON·CONTEST·MEETUP·OTHER, 모르면 null)를 뽑고 초안에 저장한다. 어드민이 바꾼 값은 `curated_fields`의 `category`로 보호된다. 운영자 직접 등록(`POST /v1/admin/activities`)은 출처 없는 초안이라 수집이 건드리지 않는다.
