@@ -26,9 +26,9 @@ API = {
     'pages.account': {'SignInSheet', 'LinkAccountSheet'},
     'pages.onboarding': {'IntroPage'},
     'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletCardPage', 'ReceivedCard', 'filterWallet', 'WalletSection', 'walletSections'},
-    'features.calendar': {'CalendarConflictSheet', 'CalendarConflictFlow', 'CalendarAccessState'},
-    'pages.activity': {'ActivityListPage', 'ActivityListPhase', 'MyActivitiesPage', 'ActivityDetailPage', 'ActivityProgressPage', 'ApplicationReportDialog', 'ActivityState', 'ActivityListState', 'ProgramState', 'ProgramPhase', 'ProgramActivities'},
-    'entities.activity': {'model.ActivityModel', 'model.ActivityCategory', 'model.ActivityPage', 'model.ScheduleModel', 'model.StageSchedule', 'model.Stage', 'model.stages', 'model.currentStage', 'model.stageBadge', 'model.ProgramSummary', 'model.ProgramPage', 'model.EligibilityItem', 'model.EligibilityGroup', 'model.EligibilityCondition', 'model.lines', 'model.instant', 'model.safeHttpsUrl', 'api.fetchActivities', 'api.fetchPrograms'},
+    'features.calendar': {'CalendarConflictSheet', 'CalendarAccessState', 'CalendarConflictFlow'},
+    'pages.activity': {'ProgramActivities', 'TagState', 'ApplicationReportDialog', 'ActivityListState', 'ActivityProgressPage', 'ActivityDetailPage', 'ProgramState', 'ProgramPhase', 'MyActivitiesPage', 'ActivityState', 'ActivityListPhase', 'ActivityListPage'},
+    'entities.activity': {'model.currentStage', 'model.stageBadge', 'model.ActivityCategory', 'model.EligibilityCondition', 'model.ScheduleModel', 'model.Tag', 'api.fetchTags', 'model.EligibilityGroup', 'model.StageSchedule', 'model.ActivityModel', 'model.ProgramPage', 'model.Stage', 'model.stages', 'model.ProgramSummary', 'model.lines', 'api.fetchPrograms', 'model.safeHttpsUrl', 'model.instant', 'api.fetchActivities', 'model.ActivityPage', 'model.EligibilityItem'},
     'entities.account': {'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.ProfileJob', 'model.AccountProfile', 'model.PublishedCard', 'model.Wallet', 'model.WalletReceipt', 'model.ExchangeContext', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault', 'model.WebSignIn', 'model.ContactRules', 'model.ActivityInfoRef', 'model.ActivityInfoItem', 'model.ActivityInfoPage', 'model.EvidenceMeta', 'model.ProfileVersionSummary', 'model.ProfileVersionList', 'model.ProfileVersionDetail'},
 }
 

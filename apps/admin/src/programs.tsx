@@ -6,6 +6,7 @@ import { PlusOutlined } from "@ant-design/icons";
 import { api, useSingleFlight } from "./api";
 import { CursorTable, SearchSelect, useCursorList } from "./list";
 import { type Category, categoryLabel, categoryOptions } from "./category";
+import { resolveTagIds, TagChips, type TagItem, TagSelect, type TagValue } from "./tag-select";
 
 /** 조심 목록 entry (contract "조심 목록"): a name the collector treats as an alias of a canonical activity or never collects. */
 type WatchKind = "alias" | "exclude";
@@ -45,6 +46,8 @@ type Program = {
   organization: { id: number; name: string };
   /** 프로그램 기본 종류(contract admin-v1.md "프로그램 기본 종류"); absent on older responses. */
   category?: Category | null;
+  /** 얻을 수 있는 것 태그 (contract native-v1.md "태그"); absent on older responses. */
+  tags?: TagItem[];
   collection: CollectionSettings;
   appliedActivityCount?: number | null;
 };
@@ -145,6 +148,7 @@ export function Programs() {
           },
           { title: "운영 조직", render: (_, program) => program.organization.name },
           { title: "종류", render: (_, program) => (program.category ? <Tag>{categoryLabel(program.category)}</Tag> : <span className="muted">미분류</span>) },
+          { title: "태그", render: (_, program) => (program.tags?.length ? <TagChips tags={program.tags} /> : <span className="muted">없음</span>) },
           {
             title: "수집",
             render: (_, { collection }) => {
@@ -283,8 +287,15 @@ function EditProgram({ program, onClose }: { program: Program; onClose: () => vo
   const { message } = App.useApp();
   const client = useQueryClient();
   const save = useMutation({
-    mutationFn: (body: { name: string; nameEn: string; organizationId: number; category: Category | null; applyCategoryToActivities: boolean }) =>
-      api<Program>(`programs/${program.id}`, "PATCH", body),
+    mutationFn: (body: {
+      name: string;
+      nameEn: string;
+      organizationId: number;
+      category: Category | null;
+      applyCategoryToActivities: boolean;
+      tagIds: number[];
+      applyTagsToActivities: boolean;
+    }) => api<Program>(`programs/${program.id}`, "PATCH", body),
     onSuccess: (saved) => {
       client.invalidateQueries({ queryKey: ["programs"] });
       client.invalidateQueries({ queryKey: ["activities"] });
@@ -294,6 +305,7 @@ function EditProgram({ program, onClose }: { program: Program; onClose: () => vo
     },
   });
   const chosenCategory: Category | null = Form.useWatch("category", form) ?? null;
+  const chosenTags: TagValue[] = Form.useWatch("tags", form) ?? [];
   const saveOnce = useSingleFlight();
   return (
     <Modal
@@ -315,6 +327,8 @@ function EditProgram({ program, onClose }: { program: Program; onClose: () => vo
           nameEn: program.nameEn ?? "",
           category: program.category ?? null,
           applyCategoryToActivities: true,
+          tags: (program.tags ?? []).map((tag) => tag.id),
+          applyTagsToActivities: true,
         }}
         // An empty English name clears it, like the organization editor. 기본 종류는 null이면 해제; 일괄 적용은 종류가 있을 때만 뜻이 있다.
         onFinish={({
@@ -323,22 +337,30 @@ function EditProgram({ program, onClose }: { program: Program; onClose: () => vo
           nameEn,
           category,
           applyCategoryToActivities,
+          tags,
+          applyTagsToActivities,
         }: {
           organizationId: number;
           name: string;
           nameEn: string;
           category: Category | null;
           applyCategoryToActivities: boolean;
+          tags: TagValue[];
+          applyTagsToActivities: boolean;
         }) =>
-          saveOnce(() =>
-            save.mutateAsync({
+          saveOnce(async () => {
+            // Typed tag names become dictionary entries first; 일괄 적용 only means something with at least one tag.
+            const tagIds = await resolveTagIds(tags, client);
+            return save.mutateAsync({
               organizationId,
               name: name.trim(),
               nameEn: nameEn.trim(),
               category: category ?? null,
               applyCategoryToActivities: category != null && applyCategoryToActivities,
-            }),
-          )
+              tagIds,
+              applyTagsToActivities: tagIds.length > 0 && applyTagsToActivities,
+            });
+          })
         }
       >
         {save.error && <Alert className="form-error" type="error" showIcon message={save.error.message} />}
@@ -360,6 +382,16 @@ function EditProgram({ program, onClose }: { program: Program; onClose: () => vo
         </Form.Item>
         <Form.Item name="applyCategoryToActivities" valuePropName="checked" style={{ marginTop: -8 }}>
           <Checkbox disabled={!chosenCategory}>기존 활동에도 적용(운영자 지정 제외)</Checkbox>
+        </Form.Item>
+        <Form.Item
+          name="tags"
+          label="태그"
+          extra="프로그램에서 얻을 수 있는 것(창업·협업·멘토링 …). 검색해 고르거나 새 이름을 적으면 저장할 때 사전에 추가돼요. 수집이 태그를 못 읽은 활동은 이 태그를 따라요."
+        >
+          <TagSelect />
+        </Form.Item>
+        <Form.Item name="applyTagsToActivities" valuePropName="checked" style={{ marginTop: -8 }}>
+          <Checkbox disabled={chosenTags.length === 0}>기존 활동에도 적용(운영자 지정 제외, 합집합)</Checkbox>
         </Form.Item>
       </Form>
     </Modal>

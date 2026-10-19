@@ -10,4 +10,6 @@ data class ProgramUpdateRequest(
     val organizationId: Long? = null,
     val category: JsonNode? = null,
     val applyCategoryToActivities: Boolean = false,
+    val tagIds: List<Long>? = null, // 프로그램 태그 전체(native-v1.md "태그"). 생략은 유지, 빈 배열은 모두 해제
+    val applyTagsToActivities: Boolean = false, // true면 운영자가 태그를 지정하지 않은 활동에 합집합으로 더한다
 )

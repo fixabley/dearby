@@ -4,9 +4,12 @@ import Foundation
 enum ActivityClient {
     /// Activities, optionally those of one program (`programId`); `size` up to 100 so an expanded program loads in one page.
     /// `open` asks the server for currently open activities only (contract "열린 활동 판정 일원화"): the client never re-judges them.
-    static func fetch(api: URL, query: String, cursor: Int64?, programID: Int64? = nil, size: Int? = nil, open: Bool = false) async throws -> ActivityPage {
+    /// `tagIDs` keeps only activities carrying every tag (contract "태그": `tagIds`, AND).
+    static func fetch(api: URL, query: String, cursor: Int64?, programID: Int64? = nil, size: Int? = nil, open: Bool = false,
+                      tagIDs: [Int64] = []) async throws -> ActivityPage {
         var items: [URLQueryItem] = []
         if !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
+        if !tagIDs.isEmpty { items.append(URLQueryItem(name: "tagIds", value: tagIDs.map(String.init).joined(separator: ","))) }
         if let programID { items.append(URLQueryItem(name: "programId", value: String(programID))) }
         if open { items.append(URLQueryItem(name: "open", value: "true")) }
         if let cursor { items.append(URLQueryItem(name: "cursor", value: String(cursor))) }
@@ -15,17 +18,24 @@ enum ActivityClient {
     }
     /// Programs for the discovery accordion (contract "발견 프로그램 묶음"), matching `query` by program, organization or activity name.
     /// `openOnly` false (contract "모집 중인 프로그램만 보기") also returns programs that had an activity in the last two years.
-    static func fetchPrograms(api: URL, query: String, cursor: Int64?, openOnly: Bool = true) async throws -> ProgramPage {
+    /// `tagIDs` keeps only programs whose open activities carry every tag (contract "태그").
+    static func fetchPrograms(api: URL, query: String, cursor: Int64?, openOnly: Bool = true, tagIDs: [Int64] = []) async throws -> ProgramPage {
         var items: [URLQueryItem] = []
         if !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
+        if !tagIDs.isEmpty { items.append(URLQueryItem(name: "tagIds", value: tagIDs.map(String.init).joined(separator: ","))) }
         if !openOnly { items.append(URLQueryItem(name: "openOnly", value: "false")) }
         if let cursor { items.append(URLQueryItem(name: "cursor", value: String(cursor))) }
         let payload = try JSONDecoder().decode(ProgramPayload.self, from: try await get(api, path: "v1/discovery/programs", items))
         return ProgramPage(items: payload.items.map { program in
             ProgramSummary(id: program.id, name: program.name, nameEn: program.nameEn, organization: program.organization.name,
                            openActivityCount: program.openActivityCount, nearestRecruitmentEndAt: program.nearestRecruitmentEndAt,
-                           matchedActivityIDs: program.matchedActivityIds.map(String.init), latestActivityAt: program.latestActivityAt)
+                           matchedActivityIDs: program.matchedActivityIds.map(String.init), latestActivityAt: program.latestActivityAt,
+                           tags: (program.tags ?? []).map(\.tag))
         }, nextCursor: payload.nextCursor)
+    }
+    /// The tag vocabulary (`GET /v1/tags`, contract "태그"), in the server's order.
+    static func fetchTags(api: URL) async throws -> [Tag] {
+        try JSONDecoder().decode(TagPayload.self, from: try await get(api, path: "v1/tags", [])).items.map(\.tag)
     }
     private static func get(_ api: URL, path: String, _ items: [URLQueryItem]) async throws -> Data {
         var components = URLComponents(url: api.appending(path: path), resolvingAgainstBaseURL: false)
@@ -68,7 +78,8 @@ enum ActivityClient {
                 category: activity.category.flatMap(ActivityCategory.init(rawValue:)),
                 // Sort key: the application's end; when no usable deadline exists, the activity start stands in for it.
                 recruitmentDeadline: activity.application.flatMap { ActivityModel.instant($0.endAt) ?? ActivityModel.seoulDay($0.endDateExclusive) }
-                    ?? activity.activitySchedule.flatMap { ActivityModel.instant($0.startAt) ?? ActivityModel.seoulDay($0.startDate) })
+                    ?? activity.activitySchedule.flatMap { ActivityModel.instant($0.startAt) ?? ActivityModel.seoulDay($0.startDate) },
+                tags: (activity.tags ?? []).map(\.tag))
         }
         return ActivityPage(items: items, nextCursor: payload.nextCursor)
     }
@@ -96,6 +107,13 @@ enum ActivityClient {
     private struct Program: Decodable {
         let id: Int64; let name: String; let nameEn: String?; let organization: Named
         let openActivityCount: Int; let nearestRecruitmentEndAt: String?; let matchedActivityIds: [Int64]; let latestActivityAt: String?
+        /// Absent on older responses.
+        let tags: [TagDTO]?
+    }
+    private struct TagPayload: Decodable { let items: [TagDTO] }
+    private struct TagDTO: Decodable {
+        let id: Int64; let name: String; let nameEn: String?
+        var tag: Tag { Tag(id: id, name: name, nameEn: nameEn) }
     }
     private struct Named: Decodable { let name: String }
     private struct Schedule: Decodable {
@@ -110,6 +128,8 @@ enum ActivityClient {
         let eligibility: Lenient<EligibilityNode>?
         /// 활동 종류 code; absent on older responses.
         let category: String?
+        /// 태그; absent on older responses.
+        let tags: [TagDTO]?
     }
     /// Decodes to nil instead of throwing when the value has an unexpected shape.
     private struct Lenient<Value: Decodable>: Decodable {

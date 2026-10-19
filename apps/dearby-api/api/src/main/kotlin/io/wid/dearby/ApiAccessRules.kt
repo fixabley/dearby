@@ -14,6 +14,8 @@ class ApiAccessRules : AccessRules {
         authorize(HttpMethod.GET, "/v1/activities/*", permitAll)
         // 발견 프로그램 묶음(native-v1.md "발견 프로그램 묶음")
         authorize(HttpMethod.GET, "/v1/discovery/programs", permitAll)
+        // 태그 사전(native-v1.md "태그")
+        authorize(HttpMethod.GET, "/v1/tags", permitAll)
         // 공개 명함(native-v1.md "프로필·명함 v2")
         authorize(HttpMethod.GET, "/v1/cards/*", permitAll)
         // 웹 비로그인 저장: 로그인 대신 프록시 키·세션 토큰 헤더를 본다(adaptor/web/v1/guest)

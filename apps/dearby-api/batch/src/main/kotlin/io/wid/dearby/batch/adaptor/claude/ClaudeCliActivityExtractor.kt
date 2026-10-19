@@ -16,10 +16,10 @@ import tools.jackson.module.kotlin.treeToValue
 @ConditionalOnProperty("dearby.collection.engine", havingValue = CollectionProperties.ENGINE_CLI)
 class ClaudeCliActivityExtractor(private val cli: ClaudeCli, private val json: JsonMapper) : ActivityExtractor {
 
-    override fun extract(page: FetchedPage, programName: String, watchlist: List<WatchEntry>, previous: PreviousEdition?, examples: List<DateLabelExample>): Extraction {
+    override fun extract(page: FetchedPage, programName: String, watchlist: List<WatchEntry>, previous: PreviousEdition?, examples: List<DateLabelExample>, tagNames: List<String>): Extraction {
         val result = cli.run(
             CollectionPrompts.EXTRACT_SYSTEM,
-            CollectionPrompts.extractRequest(programName, page.url, page.text, watchlist, previous, examples),
+            CollectionPrompts.extractRequest(programName, page.url, page.text, watchlist, previous, examples, tagNames),
             CollectionPrompts.EXTRACT_SCHEMA,
             emptyList(),
         )

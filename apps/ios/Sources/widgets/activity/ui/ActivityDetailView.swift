@@ -66,6 +66,11 @@ struct ActivityDetailView: View {
                 DearbyBadge(title: activity.statusLabel(at: state.loadedAt))
                 if let category = activity.category { DearbyBadge(title: category.label, quiet: true) }
             }
+            if !activity.tags.isEmpty {
+                // 얻을 수 있는 것 (contract "태그"): every tag, wrapping.
+                ChipFlow(spacing: 6) { ForEach(activity.tags) { tag in DearbyBadge(title: tag.name, quiet: true) } }
+                    .accessibilityElement(children: .ignore).accessibilityLabel("태그 " + activity.tags.map(\.name).joined(separator: ", "))
+            }
             Text(activity.title).font(.title.bold())
             HStack {
                 Image(systemName: "building.2").font(.title2).foregroundStyle(DearbyStyle.teal)

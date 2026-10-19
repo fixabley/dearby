@@ -36,6 +36,8 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     /// at Seoul midnight when the window is date-only. When no usable deadline exists (no window, or a window without an
     /// end) the activity start (instant, or start date at Seoul midnight) stands in; nil when neither exists.
     var recruitmentDeadline: Date? = nil
+    /// What a participant gains (contract "태그"); empty when none or on older responses.
+    var tags: [Tag] = []
 
     /// Recruitment only from the application window against now (contract "열린 활동 판정 일원화", 2026-10-19). A timed window
     /// compares instants and a missing bound is open on that side; a date-only window compares Seoul days
@@ -146,6 +148,8 @@ struct ProgramSummary: Equatable, Identifiable, Sendable {
     let matchedActivityIDs: [String]
     /// Raw ISO 8601 of the program's most recent published activity start (contract "모집 중인 프로그램만 보기"); nil when unknown.
     var latestActivityAt: String? = nil
+    /// Program tags, or the union of its open activities' tags (contract "태그": at most 6, vocabulary order).
+    var tags: [Tag] = []
     var nearestRecruitmentEnd: Date? { ActivityModel.instant(nearestRecruitmentEndAt) }
     var latestActivity: Date? { ActivityModel.instant(latestActivityAt) }
 }

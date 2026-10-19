@@ -28,7 +28,9 @@ class ProgramSummaryService(
             filteredSummaries(condition, now).drop(condition.cursor).take(condition.size + 1)
         }
         val page = found.take(condition.size)
-        return ProgramSummaryPage(page, if (found.size > condition.size) condition.cursor + condition.size else null)
+        // 묶음 머리의 태그(native-v1.md "태그"): 프로그램 태그, 없으면 열린 활동 태그의 합집합
+        val tags = summaries.tagsByProgram(page.map { it.id }, now)
+        return ProgramSummaryPage(page.map { it.copy(tags = tags[it.id].orEmpty()) }, if (found.size > condition.size) condition.cursor + condition.size else null)
     }
 
     // 대상자 필터(native-v1.md "대상자 조건"): 열린 활동을 1차(SQL)·2차(JSON op) 판정으로 거른 뒤 그 활동들로 묶음을 만든다.

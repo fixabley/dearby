@@ -9,6 +9,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEligibilityTerms
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
+import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
@@ -32,11 +33,13 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCollectionSettings
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaffRoles
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.Roles
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules
+import io.wid.dearby.adaptor.persistence.jooq.tables.Tags
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
@@ -89,6 +92,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.activity_roles</code>.
      */
     val ACTIVITY_ROLES: ActivityRoles get() = ActivityRoles.ACTIVITY_ROLES
+
+    /**
+     * The table <code>public.activity_tags</code>.
+     */
+    val ACTIVITY_TAGS: ActivityTags get() = ActivityTags.ACTIVITY_TAGS
 
     /**
      * The table <code>public.apple_sign_in_states</code>.
@@ -206,6 +214,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val PROGRAM_STAFF_ROLES: ProgramStaffRoles get() = ProgramStaffRoles.PROGRAM_STAFF_ROLES
 
     /**
+     * The table <code>public.program_tags</code>.
+     */
+    val PROGRAM_TAGS: ProgramTags get() = ProgramTags.PROGRAM_TAGS
+
+    /**
      * The table <code>public.programs</code>.
      */
     val PROGRAMS: Programs get() = Programs.PROGRAMS
@@ -229,6 +242,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.schedules</code>.
      */
     val SCHEDULES: Schedules get() = Schedules.SCHEDULES
+
+    /**
+     * The table <code>public.tags</code>.
+     */
+    val TAGS: Tags get() = Tags.TAGS
 
     /**
      * The table <code>public.user_credentials</code>.
@@ -268,6 +286,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS,
         ActivityParticipations.ACTIVITY_PARTICIPATIONS,
         ActivityRoles.ACTIVITY_ROLES,
+        ActivityTags.ACTIVITY_TAGS,
         AppleSignInStates.APPLE_SIGN_IN_STATES,
         BusinessCards.BUSINESS_CARDS,
         CollectionRuns.COLLECTION_RUNS,
@@ -291,11 +310,13 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         ProgramContacts.PROGRAM_CONTACTS,
         ProgramStaff.PROGRAM_STAFF,
         ProgramStaffRoles.PROGRAM_STAFF_ROLES,
+        ProgramTags.PROGRAM_TAGS,
         Programs.PROGRAMS,
         Receipts.RECEIPTS,
         RefreshTokens.REFRESH_TOKENS,
         Roles.ROLES,
         Schedules.SCHEDULES,
+        Tags.TAGS,
         UserCredentials.USER_CREDENTIALS,
         UserEntities.USER_ENTITIES,
         UserIdentities.USER_IDENTITIES,

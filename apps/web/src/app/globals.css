@@ -1049,3 +1049,40 @@ a {
   height: 16px;
   accent-color: var(--teal);
 }
+
+/* 얻을 수 있는 것 태그 (contract "태그"): filter chips under the search, chips on program headers and activity cards */
+.tag-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+.tag-chip {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.tag-chip.selected {
+  border-color: var(--teal);
+  background: var(--mint);
+  color: var(--teal-dark);
+}
+.tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.tag-chips .badge {
+  font-size: 12px;
+  padding: 2px 8px;
+}

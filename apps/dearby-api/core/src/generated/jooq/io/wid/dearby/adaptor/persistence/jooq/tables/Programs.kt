@@ -10,8 +10,11 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.COLLECTION_WATCHLIST__COLLECT
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAMS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAMS_SOURCE_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_CONTACTS__PROGRAM_CONTACTS_PROGRAM_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_TAGS__PROGRAM_TAGS_PROGRAM_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist.CollectionWatchlistPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts.ProgramContactsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramTags.ProgramTagsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.Tags.TagsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ProgramsRecord
 
 import java.time.LocalDateTime
@@ -201,6 +204,29 @@ open class Programs(
 
     val programContacts: ProgramContactsPath
         get(): ProgramContactsPath = programContacts()
+
+    private lateinit var _programTags: ProgramTagsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.program_tags</code> table
+     */
+    fun programTags(): ProgramTagsPath {
+        if (!this::_programTags.isInitialized)
+            _programTags = ProgramTagsPath(this, null, PROGRAM_TAGS__PROGRAM_TAGS_PROGRAM_ID_FKEY.inverseKey)
+
+        return _programTags;
+    }
+
+    val programTags: ProgramTagsPath
+        get(): ProgramTagsPath = programTags()
+
+    /**
+     * Get the implicit many-to-many join path to the <code>public.tags</code>
+     * table
+     */
+    val tags: TagsPath
+        get(): TagsPath = programTags().tags()
     override fun getChecks(): List<Check<ProgramsRecord>> = listOf(
         Internal.createCheck(this, DSL.name("programs_category_check"), "(((category IS NULL) OR ((category)::text = ANY ((ARRAY['BOOTCAMP'::character varying, 'CONFERENCE'::character varying, 'WORKSHOP'::character varying, 'STUDY'::character varying, 'CLUB'::character varying, 'LECTURE'::character varying, 'HACKATHON'::character varying, 'CONTEST'::character varying, 'MEETUP'::character varying, 'OTHER'::character varying])::text[]))))", true)
     )
