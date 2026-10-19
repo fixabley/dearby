@@ -27,9 +27,9 @@ private const val MAX_SEGMENTS = 4
 /**
  * 내 활동 row (contract "내 활동 진행 트랙"): name, program · organization, the segment track (past filled `TealFill`, current
  * hatched primary outline, upcoming surfaceContainerHighest) with stage names under it, and the D-day badge. Over four stages the track shows
- * four and `+N`. Nothing on the track animates. The track is one accessibility node, [ProgressState.trackDescription].
+ * four and `+N`; [trailing] sits after the badge (내 활동's `더 보기` menu). Nothing on the track animates. The track is one accessibility node, [ProgressState.trackDescription].
  */
-@Composable fun ActivityProgressRow(progress: ProgressState, onClick: () -> Unit, modifier: Modifier = Modifier) {
+@Composable fun ActivityProgressRow(progress: ProgressState, onClick: () -> Unit, modifier: Modifier = Modifier, trailing: @Composable () -> Unit = {}) {
     Surface(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -38,6 +38,7 @@ private const val MAX_SEGMENTS = 4
                     Text(progress.subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 ExampleBadge(progress.badge, accent = !progress.ended, danger = progress.failed)
+                trailing()
             }
             StageTrack(progress)
         }

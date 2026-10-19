@@ -215,7 +215,7 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
     ActivityCard(activity.title, activity.status, activity.recruiting, activity.period, activity.date, activity.location, { open(activity.id) })
 
 /** Activity row used by My Activities. */
-@Composable internal fun ActivityRow(activity: ActivityState, open: (String) -> Unit, footer: @Composable ColumnScope.() -> Unit = {}) {
+@Composable internal fun ActivityRow(activity: ActivityState, open: (String) -> Unit, trailing: @Composable () -> Unit = {}, footer: @Composable ColumnScope.() -> Unit = {}) {
     OutlinedCard(onClick = { open(activity.id) }, modifier = Modifier.fillMaxWidth(), border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)) {
         Row(Modifier.padding(7.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ActivityImage(activity.imageUrl, Modifier.width(112.dp).height(112.dp).clip(RoundedCornerShape(9.dp)))
@@ -227,6 +227,7 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
                 Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) { Icon(Icons.Rounded.Place, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant); Text(activity.location ?: "장소 미확인", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2) }
                 footer()
             }
+            trailing()
         }
     }
 }

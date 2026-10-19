@@ -65,8 +65,8 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
             { model.confirm(activity.id, it) }, { calendar = true }, { sharing = true }, openMap,
             addToMine = { model.apply(activity.id, true) }, viewInMine = { openInMine(activity.id) }, removeFromMine = { model.apply(activity.id, false) })
         progress != null && progressActivity != null -> ActivityProgressPage(progress, progressActivity, { progressId = null }, { selected = progress.id; linkError = null },
-            { model.confirm(progress.id, it) }, { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it })
-        mine -> MyActivitiesPage(state, { selected = it; linkError = null }, { progressId = it }, model::confirm, explore, settings, notify)
+            { model.confirm(progress.id, it) }, { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it }, { model.apply(progress.id, false); progressId = null })
+        mine -> MyActivitiesPage(state, { selected = it; linkError = null }, { progressId = it }, model::confirm, explore, settings, notify) { model.apply(it, false) }
         else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify, model::clearRefreshFailure, settings)
     }
     if (sharing && activity?.officialUrl != null) AlertDialog(onDismissRequest = { sharing = false }, title = { Text("활동 링크") }, text = { Text(activity.officialUrl) }, confirmButton = { TextButton({ sharing = false }) { Text("닫기") } })
