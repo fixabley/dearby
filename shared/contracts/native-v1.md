@@ -467,7 +467,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **퍼널 검색은 발견 검색과 같은 경험**: 이력 입력 퍼널·프로필 편집의 조직/프로그램/활동/직무 검색(`ActivityInfoPicker`, `JobTagPicker`)은 발견 탭 검색창과 같은 컴포넌트(iOS `DearbySearchField` 시스템 검색 모양, Android `SearchBarDefaults.InputField`)와 같은 동작: 입력 즉시 결과 갱신(디바운스 동일), 지우기 버튼, 결과 행 전체 터치, 결과 없음은 `CenteredMessage` 형태의 빈 상태, 키보드는 필드 밖 탭·스크롤로 내림, 검색어에 맞는 항목이 없으면 맨 아래에 `"<검색어>" 직접 입력` 행.
 - **동의 시트 닫기**: 약관·개인정보 동의 바텀시트(ConsentPage가 시트로 뜨는 경우)는 아래로 끌거나 닫기 버튼으로 닫을 수 있다(iOS `.interactiveDismissDisabled(false)`, 상단 `닫기`; Android `ModalBottomSheet`는 `onDismissRequest`로 닫힘). 닫으면 동의하지 않은 것이고 프로필 저장은 막힌 채로 남는다(다시 저장하면 다시 뜬다). 전체 화면 ConsentPage도 뒤로 가기로 나간다.
 - **안전 영역 배경**: 페이지 배경색이 상태 표시줄·홈 인디케이터·노치 영역까지 채운다. iOS는 배경 `Color`를 `.ignoresSafeArea()`로 깔고 내용만 안전 영역 안에 둔다(시트·`Form`·`List`는 시스템이 알아서 함). Android는 `enableEdgeToEdge()` 아래에서 루트 `Surface(color = colorScheme.background)`가 창 전체를 채우고 inset padding은 그 안쪽 내용에만 준다. 키보드 영역도 같은 배경.
-- **토글 라벨은 바로 옆**: `Switch`/`Toggle`의 라벨은 같은 행의 바로 왼쪽에 두고(iOS `Toggle("라벨", isOn:)` 기본 배치, Android `ListItem(headlineContent = 라벨, trailingContent = Switch)`), 라벨과 스위치 사이에 다른 요소를 두지 않는다. 발견 탭 `마감 숨기기`는 라벨과 스위치가 붙은 한 묶음이며 묶음 전체를 눌러도 토글된다.
+- **토글 라벨은 바로 옆**: `Switch`/`Toggle`의 라벨은 같은 행의 바로 왼쪽에 두고(iOS `Toggle("라벨", isOn:)` 기본 배치, Android `ListItem(headlineContent = 라벨, trailingContent = Switch)`), 라벨과 스위치 사이에 다른 요소를 두지 않는다. 발견 탭 `마감 숨기기`는 라벨과 스위치가 붙은 한 묶음이며 묶음 전체를 눌러도 토글된다. 라벨을 스위치 바로 옆에 두면 배치가 어색한 곳(짧은 라벨이 넓은 행 오른쪽 끝에 홀로 가는 경우, 동의 항목처럼 여러 줄 라벨)은 스위치 대신 **체크박스**(iOS는 `Toggle` + `.toggleStyle(.checkbox)`가 없으므로 `Label`+`checkmark.circle(.fill)` 버튼, Android `Checkbox` + `ListItem`)로 바꾼다(사용자 2026-10-20 "바로 근처에 있을 때 별로라면 체크박스로 변경"). 발견 `마감 숨기기`는 검색창 아래 한 줄에 라벨+스위치를 왼쪽 정렬로 붙여 둔다.
 - 중복·이미 반영된 요청은 다시 바꾸지 않는다.
 
 ## 활동 장소 — 2026-10-19 사용자 결정
