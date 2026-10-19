@@ -34,6 +34,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
  * answered sections collapse to a tall row that reopens on tap. Fields are Material 3 `OutlinedTextField`s at their default size
  * (contract "폼은 플랫폼 기본 컴포넌트", 2026-10-19 밤); the tab bar is hidden meanwhile (DearbyApp). Shown until the profile is saved once.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable fun ProfileSetupPage(
     form: ProfileFormState, saving: Boolean, error: String?, jobSearch: PickerSearchState, searchJobs: (String) -> Unit,
     change: (ProfileFormState) -> Unit, save: () -> Unit, modifier: Modifier = Modifier,
@@ -60,7 +61,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
     LaunchedEffect(open) { if (open != SetupStep.JOBS) runCatching { focus.requestFocus() } }
     Column(modifier.fillMaxWidth()) {
         Text("프로필 만들기", Modifier.padding(horizontal = 24.dp, vertical = 12.dp).semantics { heading() }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp).padding(bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             sections.filter { it in reached }.forEach { step ->
                 if (step == open) OpenSection(step, form, tried, errorOf(step), jobSearch, searchJobs, change, focus, ::next)
                 else DoneRow(step, valueOf(step, form)) { reopen(step) }

@@ -24,13 +24,14 @@ data class ComposerHistory(val id: String, val title: String, val detail: String
  * 결과를 읽기 전용 미리보기로 보인다. 로그인·발행·오류는 화면이 맡고, 이 위젯은 값과 콜백만 받는다. 내용이 바뀌면 "원래대로"가 나타난다.
  * 명함 이름은 기본 크기 `OutlinedTextField`, 공개 스위치는 `ListItem` 줄 전체가 토글이다(contract "폼은 플랫폼 기본 컴포넌트", 2026-10-19 밤).
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable fun CardComposer(
     cardTitle: String, onCardTitleChange: (String) -> Unit, preview: String,
     contacts: List<ComposerContact>, onContactPublic: (String, Boolean) -> Unit, histories: List<ComposerHistory>, onHistoryPublic: (String, Boolean) -> Unit,
     changed: Boolean, onRevert: () -> Unit, onPublish: () -> Unit, modifier: Modifier = Modifier, publishing: Boolean = false, errorMessage: String? = null,
 ) {
-    Column(modifier.fillMaxSize()) {
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+    Column(modifier.fillMaxSize().dismissKeyboardOnTap().imePadding()) {
+        Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
             Section("명함") {
                 OutlinedTextField(cardTitle, onCardTitleChange, Modifier.fillMaxWidth().semantics { contentDescription = "명함 이름" }, label = { Text("명함 이름") },
                     supportingText = { Text("선택이에요. 비워 두면 '내 명함'으로 저장해요.") }, singleLine = true)

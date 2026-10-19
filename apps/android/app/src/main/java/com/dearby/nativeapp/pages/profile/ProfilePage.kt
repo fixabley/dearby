@@ -32,6 +32,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
  * Histories come from the step funnel; card decoration lives in 명함 만들기. Inputs are Material 3 `OutlinedTextField`s at their default
  * size with the required/error sentence as supporting text (contract "폼은 플랫폼 기본 컴포넌트", 2026-10-19 밤).
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable fun ProfilePage(
     state: ProfileViewState, rows: List<HistoryRowState>, change: (ProfileFormState) -> Unit, searchJobs: (String) -> Unit, addContact: (String) -> Unit, openHistory: (String?) -> Unit,
     removeHistory: (String) -> Unit, save: () -> Unit, revert: () -> Unit, versions: () -> Unit, compose: () -> Unit, signIn: () -> Unit, retry: () -> Unit,
@@ -40,7 +41,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
     var confirming by remember { mutableStateOf(false) }
     // Never saved yet: the step funnel replaces the editor until the first save.
     val settingUp = state.settingUp
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().dismissKeyboardOnTap().imePadding()) {
         ScreenHeader("내 프로필") {
             if (state.phase == ProfilePhase.LOADED && !settingUp) {
                 IconButton(versions) { Icon(Icons.Outlined.History, "변경 이력", tint = MaterialTheme.colorScheme.primary) }
@@ -60,7 +61,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
             }
             ProfilePhase.LOADED -> state.form?.let { form ->
                 if (settingUp) { ProfileSetupPage(form, state.saving, state.error, state.jobSearch, searchJobs, change, save, Modifier.weight(1f)); return@let }
-                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
+                Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     Text("기본 정보", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
                     OutlinedTextField(form.name, { change(form.copy(name = it)) }, Modifier.fillMaxWidth().semantics { contentDescription = "이름, 필수" }, label = { Text("이름") },
                         placeholder = { Text("실명 또는 활동명") }, isError = state.errors?.name != null, supportingText = { Text(state.errors?.name ?: "필수예요.") }, singleLine = true)

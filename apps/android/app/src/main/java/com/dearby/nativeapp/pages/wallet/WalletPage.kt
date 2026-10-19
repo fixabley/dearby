@@ -34,7 +34,7 @@ private const val RAIL_MIN_SECTIONS = 7
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable fun WalletPage(state: WalletState, query: String, changeQuery: (String) -> Unit, open: (ReceivedCard) -> Unit, signIn: () -> Unit, retry: () -> Unit) {
-    Column(Modifier.fillMaxSize()) {
+    Column(Modifier.fillMaxSize().dismissKeyboardOnTap().imePadding()) {
         ScreenHeader("받은 명함")
         when (state.phase) {
             WalletPhase.SIGNED_OUT -> Notice("받은 명함은 계정에 저장돼요", "로그인하면 저장한 명함을 볼 수 있어요.") {
@@ -58,7 +58,7 @@ private const val RAIL_MIN_SECTIONS = 7
 }
 
 /** Sections with sticky letter headers; a right-edge rail jumps to a section when the list is long enough to need it. */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable private fun IndexedList(sections: List<WalletSection>, open: (ReceivedCard) -> Unit) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
@@ -73,7 +73,7 @@ private const val RAIL_MIN_SECTIONS = 7
         if (reduceMotion) listState.scrollToItem(target) else listState.animateScrollToItem(target)
     }
     Box(Modifier.fillMaxSize()) {
-        LazyColumn(Modifier.fillMaxSize(), listState, contentPadding = PaddingValues(start = 20.dp, end = if (sections.size >= RAIL_MIN_SECTIONS) 36.dp else 20.dp, bottom = 12.dp)) {
+        LazyColumn(Modifier.fillMaxSize().imeNestedScroll(), listState, contentPadding = PaddingValues(start = 20.dp, end = if (sections.size >= RAIL_MIN_SECTIONS) 36.dp else 20.dp, bottom = 12.dp)) {
             sections.forEach { section ->
                 stickyHeader(key = "header-${section.key}") {
                     Text(section.key, Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceContainer).padding(horizontal = 8.dp, vertical = 4.dp).semantics { heading() },
