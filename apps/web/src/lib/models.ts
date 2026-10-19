@@ -112,6 +112,8 @@ export const activitySchema = z.object({
   application: scheduleSchema.nullable(),
   activitySchedule: scheduleSchema,
   schedules: z.array(scheduleSchema),
+  // 활동 종류 code (contract "활동 종류"); older responses omit it.
+  category: text.nullable().optional().catch(null),
   // A malformed eligibility must not break the activity.
   eligibility: eligibilitySchema.nullable().optional().catch(null),
 });

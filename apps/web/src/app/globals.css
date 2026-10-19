@@ -353,6 +353,15 @@ a {
 .program-panel .activity-list {
   margin-top: 12px;
 }
+.category-heading {
+  margin: 16px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.detail-heading .badge + .badge {
+  margin-left: 6px;
+}
 .program-panel .state {
   padding: 24px 0;
 }

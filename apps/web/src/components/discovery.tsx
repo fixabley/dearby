@@ -15,6 +15,7 @@ import { errorMessage, request } from "@/lib/client";
 import { Empty, Failure, Loading } from "@/shared/ui/states";
 import { Icon } from "@/shared/ui/icon";
 import { ActivityCard } from "@/widgets/activity/activity-card";
+import { groupByCategory } from "@/lib/category";
 
 function programsPath(q: string, cursor?: number) {
   const params = new URLSearchParams();
@@ -249,21 +250,27 @@ function ProgramRow({
           ) : !openActivities.length ? (
             <p className="muted">지금 모집 중인 활동이 없어요.</p>
           ) : (
-            <ul className="activity-list">
-              {openActivities.map((activity) => (
-                <li key={activity.id}>
-                  <ActivityCard
-                    id={activity.id}
-                    name={activity.name}
-                    description={activity.description}
-                    organizationName={activity.organization.name}
-                    statusLabel={recruitment(activity.application, now).label}
-                    dateLabel={scheduleLabel(activity.activitySchedule)}
-                    imageUrl={httpsUrl(activity.imageUrl)}
-                  />
-                </li>
-              ))}
-            </ul>
+            // Grouped by 활동 종류 (contract "활동 종류"); a single group needs no heading.
+            groupByCategory(openActivities, (activity) => activity.category).map((group, _, groups) => (
+              <section key={group.label} className="category-group">
+                {groups.length > 1 && <h3 className="category-heading">{group.label}</h3>}
+                <ul className="activity-list">
+                  {group.items.map((activity) => (
+                    <li key={activity.id}>
+                      <ActivityCard
+                        id={activity.id}
+                        name={activity.name}
+                        description={activity.description}
+                        organizationName={activity.organization.name}
+                        statusLabel={recruitment(activity.application, now).label}
+                        dateLabel={scheduleLabel(activity.activitySchedule)}
+                        imageUrl={httpsUrl(activity.imageUrl)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))
           )}
         </div>
       )}
