@@ -52,10 +52,10 @@ import com.dearby.nativeapp.widgets.activity.programHeader.ProgramHeaderRow
                     colors = FilterChipDefaults.filterChipColors(selectedContainerColor = Mint, selectedLabelColor = Teal, selectedLeadingIconColor = Teal))
             }
         }
-        // 모집 중만 보기 (contract "모집 중인 프로그램만 보기"): off also lists programs active in the last two years.
+        // 마감 숨기기 (contract "모집 중인 프로그램만 보기"): off also lists programs active in the last two years.
         Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
-            Text("모집 중만 보기", color = Quiet, style = MaterialTheme.typography.bodySmall)
-            Switch(state.openOnly, setOpenOnly, Modifier.padding(start = 8.dp).semantics { contentDescription = "모집 중만 보기" })
+            Text("마감 숨기기", color = Quiet, style = MaterialTheme.typography.bodySmall)
+            Switch(state.openOnly, setOpenOnly, Modifier.padding(start = 8.dp).semantics { contentDescription = "마감 숨기기" })
         }
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             val programs = state.programs
@@ -63,7 +63,7 @@ import com.dearby.nativeapp.widgets.activity.programHeader.ProgramHeaderRow
                 state.phase == ActivityListPhase.LOADING -> item { DearbyLoadingState("활동을 불러오는 중이에요.") }
                 state.phase == ActivityListPhase.FAILED -> item { DearbyErrorState("활동을 불러오지 못했어요", "연결을 확인한 뒤 다시 시도해 주세요.", retry) }
                 programs.isEmpty() && state.query.isNotBlank() -> item { DearbyEmptyState("검색 결과가 없어요", "다른 검색어로 찾아 보세요.") }
-                programs.isEmpty() && state.openOnly -> item { DearbyEmptyState("지금 모집 중인 프로그램이 없어요", "새 모집이 열리면 여기에서 볼 수 있어요. ‘모집 중만 보기’를 끄면 최근 2년 안에 활동한 프로그램도 보여요.") }
+                programs.isEmpty() && state.openOnly -> item { DearbyEmptyState("지금 모집 중인 프로그램이 없어요", "새 모집이 열리면 여기에서 볼 수 있어요. ‘마감 숨기기’를 끄면 최근 2년 안에 활동한 프로그램도 보여요.") }
                 programs.isEmpty() -> item { DearbyEmptyState("최근 2년 안에 활동한 프로그램이 없어요", "새 모집이 열리면 여기에서 볼 수 있어요.") }
                 else -> {
                     programs.forEach { program ->

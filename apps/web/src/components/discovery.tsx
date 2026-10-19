@@ -46,7 +46,7 @@ export function Discovery({ q }: { q: string }) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreError, setMoreError] = useState("");
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
-  // 모집 중만 보기 (contract "모집 중인 프로그램만 보기"): on by default; off also lists programs active in the last three years and shows 모집 예정·지난 활동 under every expanded program.
+  // 마감 숨기기 (contract "모집 중인 프로그램만 보기"): on by default; off also lists programs active in the last three years and shows 모집 예정·지난 활동 under every expanded program.
   const [openOnly, setOpenOnly] = useState(true);
   // Selected 얻을 수 있는 것 tags (contract "태그"); memory only.
   const [tagIds, setTagIds] = useState<number[]>([]);
@@ -125,7 +125,7 @@ export function Discovery({ q }: { q: string }) {
             setOpenOnly(event.target.checked);
           }}
         />
-        모집 중만 보기
+        마감 숨기기
       </label>
       <TagFilter
         selected={tagIds}
@@ -386,7 +386,7 @@ function ProgramRow({
   toggle: () => void;
   /** Selected tag ids as `1,2`; the expanded rows follow the same filter as the program list (alignment with the apps). */
   tagKey: string;
-  /** 모집 중만 보기 state: when off, 모집 예정·지난 활동 are shown under the open activities as well (contract "펼침"). */
+  /** 마감 숨기기 state: when off, 모집 예정·지난 활동 are shown under the open activities as well (contract "펼침"). */
   openOnly: boolean;
 }) {
   const [activities, setActivities] = useState<ActivityPage>();

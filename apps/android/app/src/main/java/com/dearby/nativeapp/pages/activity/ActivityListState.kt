@@ -39,7 +39,7 @@ data class ProgramState(
  * The open activities of an expanded program, loaded on first expand; [ids] index into [ActivityListState.known]. When none is
  * open, [upcomingIds] are the program's activities whose recruitment (or activity) start is still ahead, nearest first, and
  * [pastIds] those of the last three years, most recent start first (contract "모집 중인 프로그램만 보기"). Both groups appear always while
- * 모집 중만 보기 is off, and only when nothing is open while it is on.
+ * 마감 숨기기 is off, and only when nothing is open while it is on.
  */
 data class ProgramActivities(
     val phase: ProgramPhase = ProgramPhase.LOADING, val ids: List<String> = emptyList(), val upcomingIds: List<String> = emptyList(), val pastIds: List<String> = emptyList(),
@@ -50,7 +50,7 @@ data class ProgramActivities(
  * [nextCursor] is null on the last program page; a failed next page sets [moreFailed] only.
  * [askingId]: the activity whose application link was opened, asked about once when the app comes back (contract #148).
  * [progress] is every loaded activity's stage track with the user's marks (contract "내 활동 진행 트랙"), memory only.
- * [openOnly] is the `모집 중만 보기` switch (default on, memory only; contract "모집 중인 프로그램만 보기").
+ * [openOnly] is the `마감 숨기기` switch (default on, memory only; contract "모집 중인 프로그램만 보기").
  * [tags] is the dictionary for the filter chips and [selectedTagIds] the chosen ones, sent as `tagIds` (contract "태그"); memory only.
  */
 data class ActivityListState(

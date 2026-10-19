@@ -33,7 +33,7 @@ private val deadlineFormat = DateTimeFormatter.ofPattern("M월 d일 (E)", Locale
 private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).withZone(ZoneId.of("Asia/Seoul"))
 
 /**
- * 발견 목록의 프로그램 머리글(contract "발견 프로그램 묶음"): 이름·조직·열린 활동 수·가장 가까운 마감. 열린 활동이 없으면(모집 중만 보기 끔) 가장 최근 활동
+ * 발견 목록의 프로그램 머리글(contract "발견 프로그램 묶음"): 이름·조직·열린 활동 수·가장 가까운 마감. 열린 활동이 없으면(마감 숨기기 끔) 가장 최근 활동
  * 시작 달 [latestActivityAt]을 "최근 활동 yyyy.M"으로 보인다. [tags]는 얻을 수 있는 것 태그 이름(contract "태그")으로 최대 3개를 칩으로, 나머지는 `+n`으로
  * 보인다. 누르면 [onToggle]로 화면이 펼치거나 접는다.
  * 접근성에서는 `펼침`/`접힘` 상태를 가진 버튼으로 읽히고, 화살표 회전은 동작 줄이기에서 바로 바뀐다. 펼친 활동 목록은 화면이 아래에 둔다.
