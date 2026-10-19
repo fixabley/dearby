@@ -1,10 +1,11 @@
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Spin, Switch, Table, Tag } from "antd";
+import { Alert, App, Button, Checkbox, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Spin, Switch, Table, Tag } from "antd";
 import type { InputRef } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import { api, useSingleFlight } from "./api";
 import { CursorTable, SearchSelect, useCursorList } from "./list";
+import { type Category, categoryLabel, categoryOptions } from "./category";
 
 /** 조심 목록 entry (contract "조심 목록"): a name the collector treats as an alias of a canonical activity or never collects. */
 type WatchKind = "alias" | "exclude";
@@ -37,7 +38,16 @@ type CollectionSettings = {
   /** Pages the last successful collection actually read; absent on older responses. */
   lastFetchedUrls?: string[];
 };
-type Program = { id: number; name: string; nameEn: string | null; organization: { id: number; name: string }; collection: CollectionSettings };
+type Program = {
+  id: number;
+  name: string;
+  nameEn: string | null;
+  organization: { id: number; name: string };
+  /** 프로그램 기본 종류(contract admin-v1.md "프로그램 기본 종류"); absent on older responses. */
+  category?: Category | null;
+  collection: CollectionSettings;
+  appliedActivityCount?: number | null;
+};
 
 const hostPattern = /^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]([a-z0-9-]*[a-z0-9])?$/;
 /** URL tokens (contract "주소 토큰" 2026-10-19): the collector fills them in when a program's page moves every edition. */
@@ -75,6 +85,17 @@ export function Programs() {
     [creating, setCreating] = useState(false),
     [editing, setEditing] = useState<Program>(),
     [renaming, setRenaming] = useState<Program>();
+  const { message } = App.useApp();
+  const queryClient = useQueryClient();
+  // 프로그램 삭제(2026-10-19 사용자 요청 "어드민에 프로그램 삭제 플로우가 없어"): 활동이 있으면 서버가 400으로 막는다
+  const remove = useMutation({
+    mutationFn: (id: number) => api<void>(`programs/${id}`, "DELETE"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["programs"] });
+      message.success("프로그램을 지웠어요.");
+    },
+    onError: (error: Error) => message.error(error.message),
+  });
   const cursor = useCursorList<Program>("programs", { q: search, organizationId });
   return (
     <>
@@ -123,6 +144,7 @@ export function Programs() {
             ),
           },
           { title: "운영 조직", render: (_, program) => program.organization.name },
+          { title: "종류", render: (_, program) => (program.category ? <Tag>{categoryLabel(program.category)}</Tag> : <span className="muted">미분류</span>) },
           {
             title: "수집",
             render: (_, { collection }) => {
@@ -163,6 +185,18 @@ export function Programs() {
               <Space>
                 <Button onClick={() => setRenaming(program)}>편집</Button>
                 <Button onClick={() => setEditing(program)}>수집 설정</Button>
+                <Popconfirm
+                  title="이 프로그램을 지울까요?"
+                  description="수집 설정과 수집 기록도 함께 지워져요. 활동이 있으면 지울 수 없어요."
+                  okText="지우기"
+                  okButtonProps={{ danger: true }}
+                  cancelText="취소"
+                  onConfirm={() => remove.mutate(program.id)}
+                >
+                  <Button danger loading={remove.isPending && remove.variables === program.id}>
+                    삭제
+                  </Button>
+                </Popconfirm>
               </Space>
             ),
           },
@@ -249,13 +283,17 @@ function EditProgram({ program, onClose }: { program: Program; onClose: () => vo
   const { message } = App.useApp();
   const client = useQueryClient();
   const save = useMutation({
-    mutationFn: (body: { name: string; nameEn: string; organizationId: number }) => api<Program>(`programs/${program.id}`, "PATCH", body),
-    onSuccess: () => {
+    mutationFn: (body: { name: string; nameEn: string; organizationId: number; category: Category | null; applyCategoryToActivities: boolean }) =>
+      api<Program>(`programs/${program.id}`, "PATCH", body),
+    onSuccess: (saved) => {
       client.invalidateQueries({ queryKey: ["programs"] });
-      message.success("프로그램을 고쳤어요.");
+      client.invalidateQueries({ queryKey: ["activities"] });
+      const applied = saved.appliedActivityCount;
+      message.success(applied == null ? "프로그램을 고쳤어요." : `프로그램을 고쳤어요. 활동 ${applied}개의 종류를 바꿨어요.`);
       onClose();
     },
   });
+  const chosenCategory: Category | null = Form.useWatch("category", form) ?? null;
   const saveOnce = useSingleFlight();
   return (
     <Modal
@@ -271,10 +309,36 @@ function EditProgram({ program, onClose }: { program: Program; onClose: () => vo
       <Form
         form={form}
         layout="vertical"
-        initialValues={{ organizationId: program.organization.id, name: program.name, nameEn: program.nameEn ?? "" }}
-        // An empty English name clears it, like the organization editor.
-        onFinish={({ organizationId, name, nameEn }: { organizationId: number; name: string; nameEn: string }) =>
-          saveOnce(() => save.mutateAsync({ organizationId, name: name.trim(), nameEn: nameEn.trim() }))
+        initialValues={{
+          organizationId: program.organization.id,
+          name: program.name,
+          nameEn: program.nameEn ?? "",
+          category: program.category ?? null,
+          applyCategoryToActivities: true,
+        }}
+        // An empty English name clears it, like the organization editor. 기본 종류는 null이면 해제; 일괄 적용은 종류가 있을 때만 뜻이 있다.
+        onFinish={({
+          organizationId,
+          name,
+          nameEn,
+          category,
+          applyCategoryToActivities,
+        }: {
+          organizationId: number;
+          name: string;
+          nameEn: string;
+          category: Category | null;
+          applyCategoryToActivities: boolean;
+        }) =>
+          saveOnce(() =>
+            save.mutateAsync({
+              organizationId,
+              name: name.trim(),
+              nameEn: nameEn.trim(),
+              category: category ?? null,
+              applyCategoryToActivities: category != null && applyCategoryToActivities,
+            }),
+          )
         }
       >
         {save.error && <Alert className="form-error" type="error" showIcon message={save.error.message} />}
@@ -286,6 +350,16 @@ function EditProgram({ program, onClose }: { program: Program; onClose: () => vo
         </Form.Item>
         <Form.Item name="nameEn" label="영문 이름(선택)">
           <Input />
+        </Form.Item>
+        <Form.Item
+          name="category"
+          label="기본 종류"
+          extra="수집이 종류를 못 읽은 활동과 새로 만드는 활동에 이 종류를 써요. 운영자가 직접 지정한 활동은 바꾸지 않아요."
+        >
+          <Select allowClear placeholder="미분류" options={categoryOptions.filter((option) => option.value !== null).map(({ value, label }) => ({ value: value as Category, label }))} />
+        </Form.Item>
+        <Form.Item name="applyCategoryToActivities" valuePropName="checked" style={{ marginTop: -8 }}>
+          <Checkbox disabled={!chosenCategory}>기존 활동에도 적용(운영자 지정 제외)</Checkbox>
         </Form.Item>
       </Form>
     </Modal>
