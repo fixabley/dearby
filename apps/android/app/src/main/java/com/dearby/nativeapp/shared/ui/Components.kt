@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -124,9 +125,10 @@ private val DarkScheme = darkColorScheme(
  * 지우기 `Cancel`, `ImeAction.Search`는 키보드만 내린다 — 결과는 입력과 함께 이미 바뀐다). 발견·받은 명함·이력 퍼널·직무 선택이 같은 것을 쓴다.
  */
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun DearbySearchField(query: String, onQueryChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier) {
+@Composable fun DearbySearchField(query: String, onQueryChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier, focusRequester: androidx.compose.ui.focus.FocusRequester? = null) {
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-    SearchBarDefaults.InputField(query, onQueryChange, { focusManager.clearFocus() }, expanded = false, onExpandedChange = {}, modifier.fillMaxWidth().semantics { contentDescription = placeholder },
+    SearchBarDefaults.InputField(query, onQueryChange, { focusManager.clearFocus() }, expanded = false, onExpandedChange = {},
+        modifier.fillMaxWidth().then(if (focusRequester == null) Modifier else Modifier.focusRequester(focusRequester)).semantics { contentDescription = placeholder },
         placeholder = { Text(placeholder) }, leadingIcon = { Icon(Icons.Rounded.Search, null) },
         trailingIcon = { if (query.isNotEmpty()) IconButton({ onQueryChange("") }) { Icon(Icons.Rounded.Cancel, "검색어 지우기") } })
 }

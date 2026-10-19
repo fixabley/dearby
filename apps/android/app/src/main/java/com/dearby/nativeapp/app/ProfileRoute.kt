@@ -4,9 +4,6 @@ import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -26,7 +23,6 @@ import com.dearby.nativeapp.pages.profile.ProfileVersionsPage
     val funnel by model.funnel.collectAsStateWithLifecycle()
     val versions by model.versions.collectAsStateWithLifecycle()
     val auth by account.state.collectAsStateWithLifecycle()
-    val deletion by model.deletion.collectAsStateWithLifecycle()
     val signedIn = auth.phase == AccountPhase.SIGNED_IN
     var signingIn by remember { mutableStateOf(false) }
     var versionsOpen by remember { mutableStateOf(false) }
@@ -73,10 +69,7 @@ import com.dearby.nativeapp.pages.profile.ProfileVersionsPage
             ProfileVersionsPage(versions, { openVersion = it }, { model.loadVersions(reset = false) }) { versionsOpen = false }
         }
         else -> ProfilePage(state, model.rows, model::change, model::searchJobs, model::addContact, model::openHistory, model::removeHistory, { if (state.consentRequired) consentDismissed = false else model.save() }, model::revert,
-            { versionsOpen = true }, compose, { signingIn = true }, { model.load() }, deletion.deleting, model::deleteAccount, model.changed, settings, notify)
+            { versionsOpen = true }, compose, { signingIn = true }, { model.load() }, model.changed, settings, notify)
     }
     if (signingIn && !signedIn) SignInRoute(account, close = { signingIn = false })
-    deletion.notice?.let { notice ->
-        AlertDialog(onDismissRequest = model::dismissDeletionNotice, text = { Text(notice) }, confirmButton = { TextButton(model::dismissDeletionNotice) { Text("확인") } })
-    }
 }

@@ -2,6 +2,7 @@ package com.dearby.nativeapp.pages.profile
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +15,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.onClick
@@ -36,9 +39,10 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
 @Composable fun ProfilePage(
     state: ProfileViewState, rows: List<HistoryRowState>, change: (ProfileFormState) -> Unit, searchJobs: (String) -> Unit, addContact: (String) -> Unit, openHistory: (String?) -> Unit,
     removeHistory: (String) -> Unit, save: () -> Unit, revert: () -> Unit, versions: () -> Unit, compose: () -> Unit, signIn: () -> Unit, retry: () -> Unit,
-    deleting: Boolean, deleteAccount: () -> Unit, changed: Boolean, settings: () -> Unit = {}, notify: () -> Unit = {},
+    changed: Boolean, settings: () -> Unit = {}, notify: () -> Unit = {},
 ) {
-    var confirming by remember { mutableStateOf(false) }
+    // 직무 label row → focuses the picker's search field (contract "입력 영역 터치"); 계정 삭제 lives in 설정 since 2026-10-20.
+    val jobSearchFocus = remember { FocusRequester() }
     // Never saved yet: the step funnel replaces the editor until the first save.
     val settingUp = state.settingUp
     val topBar = TopAppBarDefaults.pinnedScrollBehavior()
@@ -52,7 +56,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
             TabActions(settings, notify)
         }
         when (state.phase) {
-            // Signed out and failed states are CenteredMessages (contract "비스크롤 화면 배치·CTA"); the 계정 삭제 text button stays under the failed state.
+            // Signed out and failed states are CenteredMessages (contract "비스크롤 화면 배치·CTA").
             ProfilePhase.SIGNED_OUT -> CenteredMessage(Icons.Rounded.AccountCircle, "프로필은 계정에 저장돼요", "명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.", Modifier.fillMaxSize(),
                 primary = MessageAction("명함 만들기", compose), secondary = MessageAction("로그인", signIn))
             ProfilePhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
@@ -63,10 +67,10 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
                     Text("기본 정보", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
                     // Stacked label + large input rows (contract "폼 라벨·입력 크기"·"입력 영역 터치"): the whole row focuses its field; Next moves down, Done closes the keyboard.
                     DearbyField("이름", form.name, { change(form.copy(name = it)) }, placeholder = "실명 또는 활동명", error = state.errors?.name, hint = "필수예요.", imeAction = ImeAction.Next)
-                    Labeled("직무") {
+                    Labeled("직무", Modifier.pointerInput(jobSearchFocus) { detectTapGestures { runCatching { jobSearchFocus.requestFocus() } } }) {
                         JobTagPicker(form.jobTags, state.jobSearch.query, searchJobs, state.jobSearch.items.map { PickerItem(it.id, it.name, it.parent?.name ?: it.nameEn) },
                             state.jobSearch.loading, state.jobSearch.failed, { change(form.withJob(it.id, it.name)) }, { change(form.withJob(null, null, it)) },
-                            { change(form.withoutJob(it)) }, full = form.jobs.size >= ProfileFormState.MAX_JOBS)
+                            { change(form.withoutJob(it)) }, full = form.jobs.size >= ProfileFormState.MAX_JOBS, searchFocus = jobSearchFocus)
                     }
                     DearbyField("소개", form.introduction, { change(form.copy(introduction = it)) }, placeholder = "처음 만난 사람에게 건넬 한두 문장", minLines = 3)
                     Text("연락처", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
@@ -78,11 +82,6 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
                     if (form.histories.isEmpty()) Text("아직 이력이 없어요. 조직이나 활동부터 골라 단계별로 적어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                     rows.forEach { row -> HistoryRow(row, { openHistory(row.id) }) { removeHistory(row.id) } }
                     AddRow("이력 추가") { openHistory(null) }
-                    HorizontalDivider()
-                    TextButton({ confirming = true }, Modifier.align(Alignment.CenterHorizontally), enabled = !deleting,
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
-                        if (deleting) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp) else Text("계정 삭제")
-                    }
                 }
                 if (changed) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
@@ -98,15 +97,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
                 }
             }
         }
-        if (state.phase == ProfilePhase.FAILED) {
-            TextButton({ confirming = true }, Modifier.align(Alignment.CenterHorizontally).padding(bottom = 8.dp), enabled = !deleting,
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("계정 삭제") }
-        }
     }
-    if (confirming) AlertDialog(onDismissRequest = { confirming = false }, title = { Text("계정을 삭제할까요?") },
-        text = { Text("명함과 받은 명함 등 모든 정보가 지워지고 되돌릴 수 없어요.") },
-        confirmButton = { TextButton({ confirming = false; deleteAccount() }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("삭제") } },
-        dismissButton = { TextButton({ confirming = false }) { Text("취소") } })
 }
 
 /** One history: 조직 · 프로그램 · 활동, role, period and the approval / verification tags. Tap to edit or attach evidence. */
