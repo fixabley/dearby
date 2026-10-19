@@ -9,7 +9,7 @@ struct ActivityListPage: View {
     /// How much of the search area is pushed up under the title, 0...`headerHeight` (contract "발견 탭 스크롤 동작" 2026-10-19 밤).
     @State private var hidden: CGFloat = 0
     @State private var headerHeight: CGFloat = 0
-    @State private var searchFocused = false
+    @FocusState private var searchFocused: Bool
     /// Content has scrolled under the pinned title: show the hairline.
     @State private var underTitle = false
     /// More than one screen down: show `맨 위로`.
@@ -64,6 +64,9 @@ struct ActivityListPage: View {
                     }
                 }.padding(.horizontal, 20).padding(.bottom, 20)
             }
+            // A tap on the list outside a card or button puts the keyboard away (contract "키보드 내리기"); the search area is
+            // added below this modifier so taps on the field itself are not affected.
+            .onTapGesture { searchFocused = false }
             .scrollPosition($position)
             // The search area sits in the scroll view's top safe area at its full height; collapsing slides it up under the title
             // and the list scrolls through the freed space. Keeping the inset fixed keeps the content offset (and the refresh
@@ -71,13 +74,13 @@ struct ActivityListPage: View {
             .safeAreaInset(edge: .top, spacing: 0) {
                 VStack(alignment: .leading, spacing: 10) {
                     DearbySearchField(prompt: "프로그램, 조직, 활동 이름으로 검색", text: $state.searchText, identifier: "activity-search",
-                                      onFocusChange: focusChanged)
+                                      focus: $searchFocused)
                         .submitLabel(.search)
                     Toggle("마감 숨기기", isOn: $state.openOnly).font(.dearby(.subheadline)).tint(DearbyStyle.teal)
                         .accessibilityIdentifier("activity-open-only")
                 }
                 .padding(EdgeInsets(top: 12, leading: 20, bottom: 10, trailing: 20))
-                .background(Color(.systemGroupedBackground))
+                .background(Color(.systemGroupedBackground).onTapGesture { searchFocused = false })
                 .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { headerHeight = $0 }
                 .offset(y: -shownHidden).opacity(headerHeight > 0 ? 1 - shownHidden / headerHeight : 1)
                 .clipped()
@@ -97,7 +100,7 @@ struct ActivityListPage: View {
                 }
             }
             .refreshable { await state.refresh() }
-            .scrollDismissesKeyboard(.immediately)
+            .scrollDismissesKeyboard(.interactively)
             // Offset from the fully expanded top; the inset is fixed, so this moves only with the finger (or a programmatic scroll).
             .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { old, new in
                 scrolled(from: old, to: new)
@@ -119,7 +122,8 @@ struct ActivityListPage: View {
         }
         .alert("알림", isPresented: $showNotice) { Button("확인") {} } message: { Text("새로운 알림이 없어요.") }
         .navigationDestination(for: String.self) { id in ActivityDetailView(state: state, activityID: id) }
-        .background(Color(.systemGroupedBackground))
+        .background(Color(.systemGroupedBackground).onTapGesture { searchFocused = false })
+        .onChange(of: searchFocused) { _, focused in focusChanged(focused) }
         .tint(DearbyStyle.teal).navigationTitle("")
         .navigationBarTitleDisplayMode(.inline).toolbar(.hidden, for: .navigationBar)
     }
@@ -145,8 +149,8 @@ struct ActivityListPage: View {
         let target: CGFloat = hidden >= headerHeight / 2 ? headerHeight : 0
         if reduceMotion { hidden = target } else { withAnimation(.snappy(duration: 0.25)) { hidden = target } }
     }
+    /// The field took the keyboard while partly hidden (tapped at its visible edge): open it fully.
     private func focusChanged(_ focused: Bool) {
-        searchFocused = focused
         guard focused, hidden > 0 else { return }
         if reduceMotion { hidden = 0 } else { withAnimation(.snappy(duration: 0.25)) { hidden = 0 } }
     }
