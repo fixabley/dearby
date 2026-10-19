@@ -122,16 +122,23 @@ private val DarkScheme = darkColorScheme(
         actions = actions, colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background), scrollBehavior = scrollBehavior)
 
 /**
- * 검색창 하나(contract "폼은 플랫폼 기본 컴포넌트"·"퍼널 검색은 발견 검색과 같은 경험", 2026-10-20): Material 3 `SearchBarDefaults.InputField`(높이 56, 둥근 바탕, 돋보기,
- * 지우기 `Cancel`, `ImeAction.Search`는 키보드만 내린다 — 결과는 입력과 함께 이미 바뀐다). 발견·받은 명함·이력 퍼널·직무 선택이 같은 것을 쓴다.
+ * 검색창 하나(contract "퍼널 검색은 발견 검색과 같은 경험"; lead 2026-10-20 "검색창과 입력 칸은 같은 모양"): `DearbyField`와 같은 `FieldBox`(둥근 10, `surfaceContainerHighest`, 높이 48, 테두리 없음)
+ * 안의 Compose `BasicTextField` — 왼쪽 돋보기, 값이 있으면 오른쪽 지우기 `Cancel`, `ImeAction.Search`는 키보드만 내린다(결과는 입력과 함께 이미 바뀐다). 접근성 이름은 [placeholder].
+ * Material `SearchBarDefaults.InputField`는 최소 높이 56과 알약 모양이 고정이라 쓰지 않는다. 발견·받은 명함·이력 퍼널·직무 선택이 같은 것을 쓴다.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable fun DearbySearchField(query: String, onQueryChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier, focusRequester: androidx.compose.ui.focus.FocusRequester? = null) {
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-    SearchBarDefaults.InputField(query, onQueryChange, { focusManager.clearFocus() }, expanded = false, onExpandedChange = {},
-        modifier.fillMaxWidth().then(if (focusRequester == null) Modifier else Modifier.focusRequester(focusRequester)).semantics { contentDescription = placeholder },
-        placeholder = { Text(placeholder) }, leadingIcon = { Icon(Icons.Rounded.Search, null) },
-        trailingIcon = { if (query.isNotEmpty()) IconButton({ onQueryChange("") }) { Icon(Icons.Rounded.Cancel, "검색어 지우기") } })
+    val colors = MaterialTheme.colorScheme
+    val style = MaterialTheme.typography.bodyLarge
+    FieldBox(modifier, leadingIcon = Icons.Rounded.Search, trailing = if (query.isEmpty()) null else { { IconButton({ onQueryChange("") }) { Icon(Icons.Rounded.Cancel, "검색어 지우기", tint = colors.onSurfaceVariant) } } }) {
+        androidx.compose.foundation.text.BasicTextField(query, onQueryChange,
+            Modifier.weight(1f).padding(vertical = FIELD_PADDING_VERTICAL).then(if (focusRequester == null) Modifier else Modifier.focusRequester(focusRequester)).semantics { contentDescription = placeholder },
+            textStyle = style.copy(color = colors.onSurface), singleLine = true, cursorBrush = androidx.compose.ui.graphics.SolidColor(colors.primary),
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Search),
+            keyboardActions = androidx.compose.foundation.text.KeyboardActions(onSearch = { focusManager.clearFocus() })) { inner ->
+            Box { if (query.isEmpty()) Text(placeholder, color = colors.onSurfaceVariant, style = style); inner() }
+        }
+    }
 }
 
 /** 상단 바 드롭다운 메뉴의 한 항목(contract "상단 바 메뉴", 2026-10-20): 아이콘 + 라벨. */

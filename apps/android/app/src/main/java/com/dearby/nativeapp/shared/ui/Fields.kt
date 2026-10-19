@@ -76,9 +76,7 @@ import androidx.compose.ui.unit.dp
         Box(Modifier.fillMaxWidth()) {
             Column {
                 Spacer(Modifier.height(LABEL_LINE + LABEL_GAP))
-                Row(Modifier.fillMaxWidth().heightIn(min = FIELD_HEIGHT).background(colors.surfaceContainerHighest, RoundedCornerShape(10.dp))
-                    .padding(start = FIELD_PADDING, end = if (trailingIcon == null) FIELD_PADDING else 4.dp), verticalAlignment = if (multiline) Alignment.Top else Alignment.CenterVertically) {
-                    if (leadingIcon != null) Icon(leadingIcon, null, Modifier.padding(top = if (multiline) FIELD_PADDING_VERTICAL else 0.dp, end = ICON_GAP).size(ICON_SIZE), tint = colors.onSurfaceVariant)
+                FieldBox(multiline = multiline, leadingIcon = leadingIcon, trailing = trailingIcon) {
                     BasicTextField(value, onValueChange,
                         Modifier.weight(1f).padding(vertical = FIELD_PADDING_VERTICAL).focusRequester(requester).onFocusChanged { focused = it.isFocused }
                             .semantics { contentDescription = if (required) "$label, 필수" else label },
@@ -86,7 +84,6 @@ import androidx.compose.ui.unit.dp
                         singleLine = !multiline, minLines = minLines, cursorBrush = SolidColor(colors.primary)) { inner ->
                         Box { if (value.isEmpty() && focused && placeholder != null) Text(placeholder, color = colors.onSurfaceVariant, style = restStyle); inner() }
                     }
-                    trailingIcon?.invoke()
                 }
             }
             Text(labelText, Modifier.clearAndSetSemantics {}.graphicsLayer {
@@ -98,11 +95,25 @@ import androidx.compose.ui.unit.dp
     }
 }
 
+/**
+ * 입력 칸·검색창이 함께 쓰는 상자(lead 2026-10-20 "검색창과 입력 칸은 같은 모양"): 둥근 10, `surfaceContainerHighest` 채움, 높이 48 이상, 테두리 없음, 안쪽 여백 16(오른쪽에 버튼이 있으면 4).
+ * [leadingIcon]은 왼쪽 24 보조색, [field]는 세로 여백 12를 스스로 두고(한 줄 24 → 48), [trailing]은 오른쪽 끝.
+ */
+@Composable internal fun FieldBox(modifier: Modifier = Modifier, multiline: Boolean = false, leadingIcon: ImageVector? = null, trailing: (@Composable () -> Unit)? = null, field: @Composable RowScope.() -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    Row(modifier.fillMaxWidth().heightIn(min = FIELD_HEIGHT).background(colors.surfaceContainerHighest, RoundedCornerShape(10.dp))
+        .padding(start = FIELD_PADDING, end = if (trailing == null) FIELD_PADDING else 4.dp), verticalAlignment = if (multiline) Alignment.Top else Alignment.CenterVertically) {
+        if (leadingIcon != null) Icon(leadingIcon, null, Modifier.padding(top = if (multiline) FIELD_PADDING_VERTICAL else 0.dp, end = ICON_GAP).size(ICON_SIZE), tint = colors.onSurfaceVariant)
+        field()
+        trailing?.invoke()
+    }
+}
+
+internal val FIELD_PADDING_VERTICAL = 12.dp
 private val LABEL_LINE = 20.dp
 private val LABEL_GAP = 4.dp
 private val FIELD_HEIGHT = 48.dp
 private val FIELD_PADDING = 16.dp
-private val FIELD_PADDING_VERTICAL = 12.dp
 private val ICON_SIZE = 24.dp
 private val ICON_GAP = 12.dp
 

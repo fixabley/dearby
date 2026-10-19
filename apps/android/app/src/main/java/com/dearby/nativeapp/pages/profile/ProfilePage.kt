@@ -1,5 +1,6 @@
 package com.dearby.nativeapp.pages.profile
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -35,7 +36,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
  * 내 프로필 (contract "프로필 읽기/수정 모드·상단 바 메뉴", 2026-10-20): a profile never saved (`version` 0) starts with [ProfileSetupPage]. Afterwards the tab is
  * **read-only by default** — name, 직무 chips, 소개, contacts (left icon + value) and history rows like the card body — and the top-bar `수정` switches the same screen to
  * the editor (floating-label fields, 이력 추가, 연락처 추가) with the 저장/원래대로 bar below. `수정` becomes `완료`: no changes → back to reading, changes → 저장/버리기/취소
- * dialog. A successful save returns to reading ([ProfileViewState.editing]). 변경 이력·명함 만들기 live in the top-bar `더 보기` menu.
+ * dialog; system back in edit mode does the same. A successful save returns to reading ([ProfileViewState.editing]). 변경 이력·명함 만들기 live in the top-bar `더 보기` menu.
  */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable fun ProfilePage(
@@ -49,12 +50,15 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
     val settingUp = state.settingUp
     val loaded = state.phase == ProfilePhase.LOADED && !settingUp
     var asking by remember { mutableStateOf(false) }
+    // 완료 and system back do the same thing in edit mode (lead 2026-10-20): ask when something changed, otherwise leave edit mode.
+    val finish = { if (changed) asking = true else edit(false) }
+    BackHandler(enabled = loaded && state.editing && !asking, onBack = finish)
     val topBar = TopAppBarDefaults.pinnedScrollBehavior()
     Column(Modifier.fillMaxSize().nestedScroll(topBar.nestedScrollConnection).dismissKeyboardOnTap()) {
         // [수정/완료] [설정] [알림] [더 보기: 변경 이력, 명함 만들기] (contract "상단 바 구성(네 탭 공통)").
         DearbyTopBar("내 프로필", scrollBehavior = topBar) {
             if (loaded) {
-                if (state.editing) TextButton({ if (changed) asking = true else edit(false) }, enabled = !state.saving) { Text("완료") }
+                if (state.editing) TextButton(finish, enabled = !state.saving) { Text("완료") }
                 else IconButton({ edit(true) }) { Icon(Icons.Rounded.Edit, "수정") }
             }
             TabActions(settings, notify, if (loaded) listOf(MenuAction("변경 이력", Icons.Rounded.History, versions), MenuAction("명함 만들기", Icons.Rounded.Badge, compose)) else emptyList())
