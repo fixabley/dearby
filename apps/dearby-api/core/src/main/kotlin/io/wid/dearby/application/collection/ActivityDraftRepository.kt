@@ -2,6 +2,7 @@ package io.wid.dearby.application.collection
 
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.collection.CollectedActivity
+import io.wid.dearby.domain.collection.DateLabelExample
 import io.wid.dearby.domain.collection.DraftSaveResult
 import io.wid.dearby.domain.collection.PreviousEdition
 import java.util.*
@@ -16,4 +17,6 @@ interface ActivityDraftRepository {
 
     // 같은 프로그램의 가장 최근 활동(게시 우선, 없으면 최신). 수집 지시문의 "참고(이전 기수)"로 넘긴다. 없으면 null
     fun findPreviousEdition(programId: Id): PreviousEdition?
+    // 운영자가 직접 지정한(curated) 일정 중 원문 문구와 날짜가 모두 있는 것을 최신순으로 최대 limit개, 같은 문구는 하나만, 같은 프로그램 먼저(admin-v1.md "날짜 문구 피드백")
+    fun findDateLabelExamples(programId: Id, limit: Int = 20): List<DateLabelExample>
 }

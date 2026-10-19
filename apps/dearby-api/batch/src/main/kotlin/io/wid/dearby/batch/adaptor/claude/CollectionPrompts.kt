@@ -2,6 +2,7 @@ package io.wid.dearby.batch.adaptor.claude
 
 import io.wid.dearby.domain.collection.CollectionTarget
 import io.wid.dearby.application.eligibility.EligibilityJson
+import io.wid.dearby.domain.collection.DateLabelExample
 import io.wid.dearby.domain.collection.PreviousEdition
 import io.wid.dearby.domain.collection.WatchEntry
 import io.wid.dearby.domain.collection.WatchKind
@@ -66,8 +67,17 @@ object CollectionPrompts {
     const val MAX_PAGE_CHARS = 150_000
 
     // 조심 목록(admin-v1.md)은 힌트로만 넘긴다. 저장 전 이름 대조가 보장이다
-    fun extractRequest(programName: String, url: String, text: String, watchlist: List<WatchEntry> = emptyList(), previous: PreviousEdition? = null) = buildString {
+    fun extractRequest(
+        programName: String, url: String, text: String, watchlist: List<WatchEntry> = emptyList(), previous: PreviousEdition? = null,
+        examples: List<DateLabelExample> = emptyList(),
+    ) = buildString {
         append("프로그램: $programName\n페이지: $url")
+        // 날짜 문구 피드백(admin-v1.md): 운영자가 바로잡은 문구 → 날짜 쌍을 해석 예시로 보인다. 지정된 일정 자체는 저장할 때 따로 지킨다
+        examples.takeIf { it.isNotEmpty() }?.let { list ->
+            append("\n날짜 문구 해석 예시(운영자가 바로잡은 것):")
+            list.forEach { append("\n- ").append(dateExampleLine(it)) }
+            append("\n비슷한 문구는 같은 방식으로 날짜 필드를 채운다. 연도·월이 생략된 문구는 본문의 다른 날짜로 알 수 있을 때만 채우고 모르면 null.")
+        }
         // 이전 기수(admin-v1.md "이전 기수 정보 자동완성"): 본문에 같은 내용이 있을 때 같은 어휘로 쓰게 하는 힌트. 서버가 비어 있는 필드를 따로 채운다
         previous?.takeIf { it.eligibility != null || it.audience != null }?.let { edition ->
             append("\n참고(이전 기수 \"${edition.name}\"):")
@@ -81,6 +91,14 @@ object CollectionPrompts {
             append("\n이미 있는 활동의 다른 표기: ${aliases.joinToString(", ") { "${it.name} → ${it.canonicalActivityName}" }}")
         }
         append("\n\n<page>\n${text.take(MAX_PAGE_CHARS)}\n</page>")
+    }
+
+    // `[활동] "2026년 11월 1일~15일" → startDate 2026-11-01, endDate 2026-11-15`; 시각이 있으면 startAt/endAt(ISO 8601 오프셋)
+    fun dateExampleLine(example: DateLabelExample): String {
+        val slot = when (example.slot) { "APPLICATION" -> "모집"; "ACTIVITY" -> "활동"; else -> "일정" }
+        val value = if (example.startAt != null) "startAt ${example.startAt}, endAt ${example.endAt ?: example.startAt}"
+            else "startDate ${example.startDate}, endDate ${example.endDate ?: example.startDate}"
+        return "[$slot] \"${example.dateLabel}\" → $value"
     }
 
     val EXTRACT_SCHEMA: Map<String, Any> = obj(
