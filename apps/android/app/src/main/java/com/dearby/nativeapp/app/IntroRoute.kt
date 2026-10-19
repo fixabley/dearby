@@ -3,6 +3,7 @@ package com.dearby.nativeapp.app
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dearby.nativeapp.features.google.GoogleSignIn
 import com.dearby.nativeapp.features.oauth.OAuthBrowser
 import com.dearby.nativeapp.pages.onboarding.IntroPage
 import com.dearby.nativeapp.shared.config.AuthProvider
@@ -17,7 +18,7 @@ import kotlinx.coroutines.launch
     val signedIn = auth.phase == AccountPhase.SIGNED_IN
     LaunchedEffect(signedIn) { if (signedIn) done() }
     IntroPage(start = { signingIn = true }, apple = { scope.launch { account.startWeb(AuthProvider.APPLE, OAuthBrowser(context)) } },
-        google = if (auth.googleAvailable) ({ scope.launch { account.startWeb(AuthProvider.GOOGLE, OAuthBrowser(context)) } }) else null,
+        google = if (auth.googleAvailable) ({ scope.launch { account.signInWithGoogle(GoogleSignIn(context)) } }) else null,
         browse = done, busy = auth.phase == AccountPhase.WORKING, message = auth.message.takeIf { !signingIn })
     if (signingIn && !signedIn) SignInRoute(account, close = { signingIn = false })
 }

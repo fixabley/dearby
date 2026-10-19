@@ -3,6 +3,7 @@ package com.dearby.nativeapp.app
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dearby.nativeapp.features.google.GoogleSignIn
 import com.dearby.nativeapp.features.oauth.OAuthBrowser
 import com.dearby.nativeapp.features.passkey.Passkeys
 import com.dearby.nativeapp.pages.account.LinkAccountSheet
@@ -17,7 +18,7 @@ import kotlinx.coroutines.launch
     val context = LocalContext.current
     if (auth.pending == null) SignInSheet(auth.phase == AccountPhase.WORKING, auth.message,
         signIn = { scope.launch { account.signIn(Passkeys(context)) } }, apple = { scope.launch { account.startWeb(AuthProvider.APPLE, OAuthBrowser(context)) } },
-        google = if (auth.googleAvailable) ({ scope.launch { account.startWeb(AuthProvider.GOOGLE, OAuthBrowser(context)) } }) else null,
+        google = if (auth.googleAvailable) ({ scope.launch { account.signInWithGoogle(GoogleSignIn(context)) } }) else null,
         signUp = { scope.launch { account.signUp(Passkeys(context)) } }, close = close,
     )
 }

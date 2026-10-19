@@ -30,7 +30,7 @@ class MainActivity : ComponentActivity() {
         viewModelFactory { initializer { ActivityViewModel({ query, cursor -> withContext(Dispatchers.IO) { fetchPrograms(ApiOrigin.current, query, null, cursor) } }) { query, cursor, programId -> withContext(Dispatchers.IO) { fetchActivities(ApiOrigin.current, query, cursor, programId) } } } }
     }
     private val account: AccountViewModel by viewModels {
-        viewModelFactory { initializer { AccountViewModel(AccountClient(ApiOrigin.current), SessionVault(applicationContext, ApiOrigin.sessionName), createSavedStateHandle()) } }
+        viewModelFactory { initializer { AccountViewModel(AccountClient(ApiOrigin.current), SessionVault(applicationContext, ApiOrigin.sessionName), createSavedStateHandle(), BuildConfig.GOOGLE_SERVER_CLIENT_ID) } }
     }
     private val publish: CardPublishViewModel by viewModels { viewModelFactory { initializer { CardPublishViewModel(account) } } }
     private val wallet: WalletViewModel by viewModels { viewModelFactory { initializer { WalletViewModel(account) } } }
@@ -69,7 +69,7 @@ class MainActivity : ComponentActivity() {
         receive(intent)
     }
     /**
-     * Apple's or Google's `dearby://auth/<provider>` redirect (singleTask brings this instance back over the Custom Tab), or a
+     * Apple's `dearby://auth/apple` redirect (singleTask brings this instance back over the Custom Tab), or a
      * received card `dearby://cards/<id>?activity=<n>` from the web card page (contract "명함 교환").
      */
     private fun receive(intent: Intent?, recreated: Boolean = false) {

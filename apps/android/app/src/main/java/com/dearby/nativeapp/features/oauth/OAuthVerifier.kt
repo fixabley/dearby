@@ -5,7 +5,7 @@ import java.security.SecureRandom
 import java.util.Base64
 
 /**
- * Web-flow proof shared by Apple and Google sign-in (contract "애플 로그인"·"구글 로그인", Android): only the hash goes to
+ * Web-flow proof for Apple sign-in (contract "애플 로그인", Android; Google is native since 2026-10-19): only the hash goes to
  * `web/start`, and only this app, holding the verifier, can exchange the code the provider's redirect carries. Plain JVM.
  */
 object OAuthVerifier {

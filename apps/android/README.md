@@ -35,7 +35,7 @@ HTTP/Repository/Room/Keystore/기기 캘린더/WebView·인증 실행 코드와 
 - 환경값 `DEARBY_API_ORIGIN`(없으면 같은 이름의 Gradle 속성 `-P`)이 `BuildConfig.API_ORIGIN`으로 들어간다. `DEARBY_WEB_ORIGIN`·`WEB_ORIGIN`·`dearbyWebHost`는 공유 링크 전용이었고 2026-10-18 명함 공유 삭제와 함께 없앴다.
 - release: 빌드가 실제로 돌 때(`preReleaseBuild`)만 값이 `https://<도메인>`(IP·포트·경로·대문자 없음)인지 검사하고, 아니면 실패한다. debug 빌드·단위 테스트·Studio sync에는 영향이 없다.
 - debug: 값이 없으면 에뮬레이터 호스트의 `http://10.0.2.2:3000`을 쓴다.
-- App Links(`/s/*`)와 `shared/config/AppLinks.kt`의 공유 링크 해석은 없다. `AppLinks.kt`에는 애플·구글 로그인 복귀(`dearby://auth/<apple|google>`, `authRedirect`) 해석만 남는다.
+- App Links(`/s/*`)와 `shared/config/AppLinks.kt`의 공유 링크 해석은 없다. `AppLinks.kt`에는 애플 로그인 복귀(`dearby://auth/apple`, `authRedirect`)와 받은 명함 링크(`dearby://cards/…`) 해석만 남는다.
 
 ## 시작 화면 (2026-10-14)
 
@@ -64,13 +64,14 @@ HTTP/Repository/Room/Keystore/기기 캘린더/WebView·인증 실행 코드와 
 - 교환: `/v1/auth/apple/web/exchange` 200은 패스키와 같은 TokenPair로 `SessionVault`에 저장한다. 202는 `MainActivity`가 모든 화면 위에 `LinkAccountSheet`("새 계정으로 시작" → `/v1/auth/apple/register`, "기존 패스키 계정에 연결" → 패스키 로그인 뒤 그 토큰으로 `/v1/me/identities/apple`)를 띄운다. linkToken도 `SavedStateHandle`에 두고 선택·닫기에서 지운다. 연결이 실패하면 iOS와 같이 패스키 토큰을 저장하지 않고 `/v1/auth/logout`을 시도한 뒤 로그인하지 않은 상태로 안내한다: 401 "애플 로그인 시간이 지났어요. 애플로 다시 시작해 주세요."·400 "이미 다른 계정과 연결돼 있어서 연결하지 못했어요."(둘 다 선택 화면을 닫는다, 400은 `AccountError.BAD_REQUEST`), 503·네트워크 "지금은 애플 로그인을 쓸 수 없어요."(선택 화면 유지). 401·`error=failed`는 다시 시도 안내, `error=cancelled`는 안내 없음.
 - 실제 로그인은 서버의 Services ID·Return URL(`APPLE_CLIENT_IDS`)이 있어야 확인할 수 있다.
 
-## 구글 로그인 (2026-10-18)
+## 구글 로그인 (2026-10-19 네이티브)
 
-계약 [native-v1 "구글 로그인"](../../shared/contracts/native-v1.md)을 따른다. 애플의 Android 웹 방식과 같은 코드를 쓴다(`features/oauth/OAuthVerifier`·`OAuthBrowser`, `AccountViewModel.startWeb(AuthProvider.GOOGLE, …)`, `/v1/auth/google/web/start` → Custom Tab → `dearby://auth/google` → `/v1/auth/google/web/exchange`). SDK는 없다.
+계약 [native-v1 "구글 로그인 — 2026-10-19 네이티브 SDK로 전환"](../../shared/contracts/native-v1.md)을 따른다. 2026-10-18의 Custom Tab 웹 방식(`/web/start` → `dearby://auth/google` → `/web/exchange`)은 지웠다.
 
-- 버튼: 로그인 시트와 첫 실행 소개의 애플 버튼 아래 흰 "Google로 계속하기"(`shared/ui/DearbyGoogleButton`, 회색 테두리). 공식 "G" 로고 자산이 아직 없어 굵은 G 글자로 대신한다. 빌드 플래그는 없고, 서버가 `web/start`에 503을 돌려주면(`GOOGLE_CLIENT_ID` 미설정) `AccountState.googleAvailable`이 false가 되어 버튼을 숨긴다.
-- 202(처음 보는 구글 계정)·연결·새 계정은 애플과 같은 `PendingAccountRoute`·`LinkAccountSheet`(제목 "처음 보는 Google 계정이에요")를 쓴다. `SavedStateHandle` 키 `web.provider`로 어느 제공자인지 기억한다. 다른 제공자의 code가 돌아오면 버린다.
-- 실제 로그인은 서버의 `GOOGLE_CLIENT_ID`·`GOOGLE_CLIENT_SECRET`·`GOOGLE_CALLBACK_URL`이 있어야 확인할 수 있다.
+- 흐름: `AccountViewModel.signInWithGoogle` → `POST /v1/auth/google/nonce` → `features/google/GoogleSignIn`(Credential Manager + `com.google.android.libraries.identity.googleid`, `GetGoogleIdOption(serverClientId, nonce, filterByAuthorizedAccounts=false)`) → `GoogleIdTokenCredential.idToken` → `POST /v1/auth/google {idToken, nonce}`. 200은 패스키와 같은 TokenPair, 202(처음 보는 Google 계정)는 애플과 같은 `PendingAccountRoute`·`LinkAccountSheet`(`/v1/auth/google/register`, `/v1/me/identities/google`)다. 계정 선택 창을 닫으면 안내 없이 돌아가고, 기기에 Google 계정이 없으면(`NoCredentialException`) 계정 추가를 안내한다.
+- 빌드 설정 `GOOGLE_SERVER_CLIENT_ID`(환경 변수 또는 같은 이름의 Gradle 속성 → `BuildConfig.GOOGLE_SERVER_CLIENT_ID`): Google Cloud의 **웹 애플리케이션** OAuth 클라이언트 id다(ID 토큰의 `aud`; 서버 `GOOGLE_CLIENT_IDS`에도 같은 값). Android OAuth 클라이언트(패키지 `io.wid.dearby` + 서명 SHA-1)는 콘솔에만 등록하고 앱에는 값이 없다. 값은 저장소·채팅에 두지 않고 로컬 `~/.dearby-deploy/mobile.env`에서 기기 설치 빌드에 넘긴다. 비어 있으면(CI 포함) `AccountState.googleAvailable`이 false라 버튼이 없다. 서버가 nonce에 503을 돌려주면 그때도 숨긴다.
+- 버튼: 로그인 시트와 첫 실행 소개의 애플 버튼 아래 흰 "Google로 계속하기"(`shared/ui/DearbyGoogleButton`, 회색 테두리). 공식 "G" 로고 자산이 아직 없어 굵은 G 글자로 대신한다.
+- 실제 로그인은 콘솔의 Android 클라이언트에 빌드 서명의 SHA-1이 등록돼 있고 서버 `GOOGLE_CLIENT_IDS`가 있어야 확인할 수 있다.
 
 ### 도메인 연결 (`wid.io.kr`)
 

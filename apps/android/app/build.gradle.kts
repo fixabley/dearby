@@ -8,6 +8,8 @@ fun connection(name: String) = providers.environmentVariable(name).orElse(provid
 val apiOrigin = connection("DEARBY_API_ORIGIN")
 // Where the public card pages live; the 내 명함 QR encodes `<web origin>/cards/<id>` (contract "명함 교환").
 val webOrigin = connection("DEARBY_WEB_ORIGIN") ?: "https://dearby.wid.io.kr"
+// Google sign-in (contract "구글 로그인 — 2026-10-19 네이티브"): the web OAuth client id the ID token is issued for. Empty hides the button.
+val googleServerClientId = connection("GOOGLE_SERVER_CLIENT_ID") ?: ""
 // Debug falls back to the API dev server on the emulator host.
 val debugApiOrigin = apiOrigin ?: "http://10.0.2.2:3000"
 
@@ -25,10 +27,12 @@ android {
         debug {
             buildConfigField("String", "API_ORIGIN", "\"$debugApiOrigin\"")
             buildConfigField("String", "WEB_ORIGIN", "\"$webOrigin\"")
+            buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"$googleServerClientId\"")
         }
         release {
             buildConfigField("String", "API_ORIGIN", "\"${apiOrigin.orEmpty()}\"")
             buildConfigField("String", "WEB_ORIGIN", "\"$webOrigin\"")
+            buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"$googleServerClientId\"")
         }
     }
     buildFeatures { compose = true; buildConfig = true }
@@ -58,6 +62,8 @@ dependencies {
     // 패스키 로그인(계약 "패스키 로그인"): Credential Manager, and Play services for Android 13 and lower.
     implementation("androidx.credentials:credentials:1.6.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
+    // 구글 로그인(계약 "구글 로그인 — 2026-10-19 네이티브"): Sign in with Google through Credential Manager (Apache-2.0).
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     // 애플 로그인(계약 "애플 로그인", 웹 방식): Apple's page opens in a Custom Tab (Apache-2.0).
     implementation("androidx.browser:browser:1.10.0")
     // QR encoding only for 내 명함 QR 보이기 (contract "명함 교환"); no camera, no scanning.
