@@ -4,7 +4,7 @@
 
 ## 현재 상태 — 2026-10-19 확인
 
-- **운영 API**(`api.dearby.wid.io.kr`, `~/.dearby-deploy/api-kotlin-2a061187` compose: api·admin·batch·postgres): main `65834aaf`(PR #271)까지 배포(이후 #272·#273은 앱·문서만), Flyway **V33**까지 적용. 배포 절차: rsync(소스, `data`·`.env.prod`·`build`·`.gradle` 제외) → `docker compose -f compose.prod.yaml --env-file .env.prod up -d --build api admin batch`. 마이그레이션은 컨테이너 기동 때 Flyway가 적용한다.
+- **운영 API**(`api.dearby.wid.io.kr`, `~/.dearby-deploy/api-kotlin-2a061187` compose: api·admin·batch·postgres): main `65834aaf`(PR #271)까지 배포(이후 #272·#273은 앱·문서만), Flyway **V37**까지 적용(2026-10-19 밤). 배포 절차: rsync(소스, `data`·`.env.prod`·`build`·`.gradle` 제외) → `docker compose -f compose.prod.yaml --env-file .env.prod up -d --build api admin batch`. 마이그레이션은 컨테이너 기동 때 Flyway가 적용한다.
 - **웹** `dearby.wid.io.kr`: Vercel GitHub 연동으로 main 푸시마다 자동 배포. **어드민** `admin.dearby.wid.io.kr`: Vercel 프로젝트 `dearby-admin`은 연동이 없어 `git archive origin/main apps/admin` 사본에서 `npx vercel link --project dearby-admin && npx vercel deploy --prod`로 배포(2026-10-19 PR #270까지 반영).
 - **기기**: iPhone(UDID `00008120-0011258C2107C01E`, USB)과 Android(`R3CY10GNW9F`, 패키지 `io.wid.dearby`) 모두 2026-10-19 저녁 main(PR #272 포함) 빌드 설치. 시뮬레이터·에뮬레이터는 쓰지 않는다.
 - **운영 데이터**: 활동 전부 초안(DRAFT)이라 공개 활동 목록은 비어 있고, 발견 `openOnly=false`로 3개 프로그램이 보인다. 2026-10-19 재수집 결과 프로그램 16·17·19에서 초안 6개 추가(새 지시문·종류·날짜 예시 적용). 명함 3개는 모두 철회됨(사용자 삭제 확인).
@@ -22,6 +22,16 @@
 ## 2026-10-19 결정 — iOS 번들 ID `io.wid.dearby`
 
 사용자: "iOS 번들 아이디 io.wid.dearby로 변경해줘. 애플 식별자에도 그렇게 했어." Debug·Release 모두 `io.wid.dearby`(이전: Debug `com.dearby.dearby`, Release `io.wid.dearby`). AASA(`infra/nginx/html/.well-known/apple-app-site-association`)는 이미 두 appID를 모두 담고 있고, 서버 `APPLE_CLIENT_IDS`에도 두 번들이 모두 들어 있어 전환 중 로그인이 끊기지 않는다. Google iOS 클라이언트의 번들(`io.wid.dearby`)과도 일치. 기기의 옛 번들 앱은 별도 앱으로 남는다(데이터 공유 없음). 기기 설치·실행 명령의 번들 ID는 `io.wid.dearby`.
+
+## 2026-10-19 밤 결정 — 로고·동의·스토어 준비·렌더링 수정
+
+- **로고**: 악수를 추상화한 다섯 시안 중 사용자가 **B(맞물린 두 고리)** 선택(PR #283). `shared/assets/brand/`(symbol·wordmark·icon-source·README), iOS AppIcon·DearbySymbol·LaunchLogo, Android 적응형 아이콘·`dearby_symbol`·스플래시, 웹 파비콘·apple-icon·로고 교체. 사용자 요청으로 시작 화면·로그인 시트에는 심볼 + "Dearby" 이름(`DearbyBrand`), 일반 화면 머리의 로고는 제거.
+- **개인정보 동의**(PR #284): 프로필 첫 저장 전 필수 동의 화면(두 체크 + /privacy·/terms 인앱 브라우저), V37 `user_consents`, 쓰기 403 `CONSENT_REQUIRED`, 버전 2026-10-19. 캘린더 안내 화면에는 방침 링크만(체크 강제 없음 — 기기 안 비교라 수집 동의 대상 아님).
+- **스토어 준비**: TestFlight는 CI가 매일 자동 업로드 중. Android 업로드 키 `~/.dearby-deploy/android-upload.jks`(+`android-signing.env`, 백업 필요), 서명 설정(PR #281), 서명된 AAB `~/.dearby-deploy/store/dearby-0.1.0-1.aab`(콘솔 수동 업로드). 웹 `/privacy`·`/terms`(PR #282)와 `docs/store/listing-2026-10-19.md`. 남은 사용자 입력: 운영자 이름·연락 이메일·서버 소재지, ASC API 키·Play 서비스 계정 JSON(API 제출용), iOS 스크린샷, 콘솔 설문.
+- **iOS 번들 ID** `io.wid.dearby`(Debug 포함, PR #277). Google 값은 `~/.dearby-deploy`의 plist·JSON에서 `.env.prod`(`GOOGLE_CLIENT_IDS`)·`mobile.env`로 입력, API `/auth/google/nonce` 200.
+- **브라우저 렌더링**(PR #276·#285): `render_pages`(V35) + Playwright Chromium. 실행 시 브라우저 재설치 시도로 멈추던 문제는 `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`로 해결. 우와콘(설정에서 렌더링 켬) 수집 성공: "우아콘 2026"(컨퍼런스, 10/28, 태그 개발지식·네트워킹·발표) 초안. batch 이미지 3.1GB(Chromium 1.06GB + 빌드 단계 Node 층 — 줄일 여지).
+- **일회성 `--collect-now`**: 비동기 실행이 끝날 때까지 기다린 뒤 종료(PR #280 회귀 수정). 수집 기록은 프로그램당 하루 한 건이라 같은 날 다시 돌리려면 그날 행을 지워야 한다.
+- **기타**: 세부 일정 편집기(PR #280, V36), 토글 이름 `마감 숨기기`(PR #286), 3년 창·지난 활동 항상 표시(PR #279), 기기 캘린더 실제 연동(PR #275), 태그(PR #278, V34), 프로그램 기본 종류(PR #270, V33).
 
 ## 남은 일·사용자 결정 대기
 
