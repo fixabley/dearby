@@ -154,6 +154,7 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
             endDate = node.text("endDate")?.let(::date),
             startAt = node.text("startAt")?.let(::dateTime),
             endAt = node.text("endAt")?.let(::dateTime),
+            note = node.text("note")?.also { if (it.length > 300) throw InvalidInputException("사유는 300자까지입니다") },
         )
     }
 

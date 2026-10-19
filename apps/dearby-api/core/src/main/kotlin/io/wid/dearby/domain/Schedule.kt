@@ -12,6 +12,7 @@ data class Schedule(
     val conferenceUrl: String?, // CONFERENCE(RFC 7986): 온라인 진행 링크
     val sequence: Int, // SEQUENCE: 내용이 바뀔 때마다 1씩 증가. 구독 캘린더가 변경을 인식하는 기준
     val timestamps: Timestamps, // CREATED, LAST-MODIFIED. DTSTAMP는 내보낸 시각
+    val curatedNote: String? = null, // 운영자가 지정하며 남긴 사유(admin-v1.md "사유"). 어드민만 본다
     val curated: Boolean = false, // 운영자가 직접 지정한 일정(admin-v1.md "일정 직접 지정"). 수집기가 덮어쓰지 않는다
 ) {
     // TRANSP: 마감·발표 같은 시점 일정과 종일 일정은 TRANSPARENT(겹침 계산 제외)

@@ -276,8 +276,14 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         assertEquals(listOf("Asia/Seoul", true), listOf(dated["application"]["timeZone"].asString(), dated["application"]["curated"].asBoolean()))
         mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"activitySchedule":{"startDate":"2026-05-26","endAt":"2026-06-09T11:00:00+09:00"}}""") }.andExpect { status { isBadRequest() } }
         mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"activitySchedule":{"startDate":"2026-05-26","endDate":"2026-05-01"}}""") }.andExpect { status { isBadRequest() } }
+        // 마감일만 지정(admin-v1.md "마감일만 지정"·"사유"): endDate만 오면 그날 23:59(Asia/Seoul)까지의 시점 일정, 사유는 curatedNote로 남는다
+        val deadline = read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"application":{"endDate":"2026-06-09","note":"접수 마감"}}""") }.andExpect { status { isOk() } })
+        assertEquals(listOf(true, "2026-06-09T23:59:00+09:00", "접수 마감", true), listOf(deadline["application"]["startAt"].isNull, deadline["application"]["endAt"].asString(), deadline["application"]["curatedNote"].asString(), deadline["application"]["curated"].asBoolean()))
+        val startOnly = read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"application":{"startDate":"2026-05-26"}}""") }.andExpect { status { isOk() } })
+        assertEquals(listOf("2026-05-26T00:00:00+09:00", true, true), listOf(startOnly["application"]["startAt"].asString(), startOnly["application"]["endAt"].isNull, startOnly["application"]["curatedNote"].isNull))
+        mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"application":{"endDate":"2026-06-09","note":"${"가".repeat(301)}"}}""") }.andExpect { status { isBadRequest() } }
         val cleared = read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"application":null}""") }.andExpect { status { isOk() } })
-        assertEquals(listOf(true, false), listOf(cleared["application"]["startAt"].isNull, cleared["application"]["curated"].asBoolean()))
+        assertEquals(listOf(true, false, true), listOf(cleared["application"]["startAt"].isNull, cleared["application"]["curated"].asBoolean(), cleared["application"]["curatedNote"].isNull))
     }
 
     @Test
