@@ -37,8 +37,8 @@ import com.dearby.nativeapp.shared.ui.*
                 Text(CONFIRM_NOTE, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
         }
+        // No image header (contract "활동 상세 이미지 섹션 제거", 2026-10-19 밤): status, tags and title start at the top.
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
-            ActivityImage(activity.imageUrl, Modifier.fillMaxWidth().height(205.dp))
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { ExampleBadge(activity.status, true); activity.category?.let { ExampleBadge(it) } }
                 // 얻을 수 있는 것 (contract "태그"): every tag, wrapping.
