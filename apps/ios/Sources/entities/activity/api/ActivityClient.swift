@@ -68,7 +68,7 @@ enum ActivityClient {
                 },
                 hasApplication: activity.application != nil,
                 stages: activity.schedules.map(stage), activityStage: activity.activitySchedule.map(stage),
-                officialUrl: activity.officialUrl, imageUrl: activity.imageUrl,
+                officialUrl: activity.officialUrl, imageUrl: activity.imageUrl, applicationUrl: activity.applicationUrl,
                 eligibility: activity.eligibility?.value.flatMap { $0.eligibility(depth: 0) },
                 category: activity.category.flatMap(ActivityCategory.init(rawValue:)),
                 // Sort key: the application's end; when no usable deadline exists, the activity start stands in for it.
@@ -123,6 +123,8 @@ enum ActivityClient {
     private struct Activity: Decodable {
         let id: Int64; let name: String; let description: String; let organization: Named; let program: Named?
         let officialUrl: String; let imageUrl: String?
+        /// Curated application link; absent on older responses.
+        let applicationUrl: String?
         let application: Schedule?; let activitySchedule: Schedule?; let schedules: [Schedule]
         /// Unreadable eligibility JSON must not fail the whole activity.
         let eligibility: Lenient<EligibilityNode>?

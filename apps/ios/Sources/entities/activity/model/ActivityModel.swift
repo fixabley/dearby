@@ -28,6 +28,8 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     let activityStage: ActivityStageModel?
     let officialUrl: String
     let imageUrl: String?
+    /// The curated application link (contract "신청 확인 조건 완화·공개 applicationUrl" 2026-10-19 밤); nil when none or on older responses.
+    var applicationUrl: String? = nil
     /// Who may apply (contract "대상자 조건"); nil when the activity has none or the JSON was unreadable.
     var eligibility: Eligibility? = nil
     /// 활동 종류 (contract "활동 종류"); nil for an unknown code or none (미분류).
@@ -91,9 +93,19 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
         case .unknown: "모집 여부 확인 필요"
         }
     }
-    /// The official link (https only); applying goes through it only while recruiting.
+    /// The official link (https only).
     var officialURL: URL? { Self.safeURL(officialUrl) }
-    func applicationURL(at now: Date) -> URL? { recruitment(at: now) == .open ? officialURL : nil }
+    /// The curated application link (https only); the detail CTA opens it before the official notice.
+    var applicationSiteURL: URL? { Self.safeURL(applicationUrl) }
+    /// Applying is over (contract "신청 확인 조건 완화"): the recruitment deadline passed, or, with no window to judge by, the activity
+    /// itself ended. Open, upcoming and unknown-but-not-ended all still lead to the "신청하셨나요?" prompt.
+    func applicationClosed(at now: Date) -> Bool {
+        switch recruitment(at: now) {
+        case .closed: true
+        case .open, .upcoming: false
+        case .unknown: activityStage.flatMap { $0.end ?? $0.start }.map { $0 < now } ?? false
+        }
+    }
     var imageURL: URL? { Self.safeURL(imageUrl) }
     var recruitmentEnd: Date? { Self.instant(recruitmentEndAt) }
 
