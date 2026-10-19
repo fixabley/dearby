@@ -2,7 +2,8 @@ import Foundation
 import Observation
 
 /// Discovery as a program accordion (contract "발견 프로그램 묶음 — 2026-10-18"): `GET /v1/discovery/programs` with server search (`q`)
-/// and cursor paging; an expanded program loads its activities with `GET /v1/activities?programId=` and keeps the open ones.
+/// and cursor paging; an expanded program loads its open activities with `GET /v1/activities?programId=&open=true` (the server judges
+/// openness, contract "열린 활동 판정 일원화") and, when none is open, its past activities of the last two years ("모집 중인 프로그램만 보기").
 /// Also the session's applied / confirmed marks and the apply-confirmation prompt, shared with 내 활동 and the detail screen.
 @MainActor @Observable final class ActivityViewModel {
     enum Phase: Equatable { case loading, failed, loaded }
@@ -13,6 +14,10 @@ import Observation
     private(set) var expanded: Set<Int64> = []
     /// Open activities per program, once loaded.
     private(set) var openActivities: [Int64: [ActivityModel]] = [:]
+    /// Past activities (last two years, latest start first) for an expanded program without open ones.
+    private(set) var pastActivities: [Int64: [ActivityModel]] = [:]
+    /// `모집 중만 보기` (contract "모집 중인 프로그램만 보기"): on by default, memory only. Off also lists programs active in the last two years.
+    var openOnly = true { didSet { if openOnly != oldValue { start(query ?? "") } } }
     private(set) var loadingPrograms: Set<Int64> = []
     private(set) var failedPrograms: Set<Int64> = []
     /// The search field. Kept here so it survives leaving the tab.
@@ -42,10 +47,11 @@ import Observation
     private var firstPage: Task<Void, Never>?
     private var nextPage: Task<Void, Never>?
     private var programLoads: [Int64: Task<Void, Never>] = [:]
-    private let fetchPrograms: @Sendable (_ query: String, _ cursor: Int64?) async throws -> ProgramPage
-    private let fetchActivities: @Sendable (_ programID: Int64) async throws -> ActivityPage
-    init(programs: @escaping @Sendable (_ query: String, _ cursor: Int64?) async throws -> ProgramPage,
-         activities: @escaping @Sendable (_ programID: Int64) async throws -> ActivityPage) {
+    private let fetchPrograms: @Sendable (_ query: String, _ cursor: Int64?, _ openOnly: Bool) async throws -> ProgramPage
+    /// `open` true asks for open activities only; false for every activity of the program (past list).
+    private let fetchActivities: @Sendable (_ programID: Int64, _ open: Bool) async throws -> ActivityPage
+    init(programs: @escaping @Sendable (_ query: String, _ cursor: Int64?, _ openOnly: Bool) async throws -> ProgramPage,
+         activities: @escaping @Sendable (_ programID: Int64, _ open: Bool) async throws -> ActivityPage) {
         fetchPrograms = programs
         fetchActivities = activities
     }
@@ -76,7 +82,7 @@ import Observation
         nextPage = Task {
             defer { if !Task.isCancelled { loadingMore = false; nextPage = nil } }
             do {
-                let page = try await fetchPrograms(query, cursor)
+                let page = try await fetchPrograms(query, cursor, openOnly)
                 guard !Task.isCancelled else { return }
                 append(page)
             } catch {
@@ -103,6 +109,7 @@ import Observation
         programs = []
         expanded = []
         openActivities = [:]
+        pastActivities = [:]
         loadingPrograms = []
         failedPrograms = []
         cursor = nil
@@ -110,7 +117,7 @@ import Observation
         moreFailed = false
         firstPage = Task {
             do {
-                let page = try await fetchPrograms(query, nil)
+                let page = try await fetchPrograms(query, nil, openOnly)
                 guard !Task.isCancelled else { return }
                 loadedAt = Date()
                 append(page)
@@ -125,7 +132,8 @@ import Observation
         let fresh = page.items.filter { !known.contains($0.id) }
         programs += fresh
         cursor = page.nextCursor
-        for program in fresh where program.openActivityCount == 1 || !program.matchedActivityIDs.isEmpty {
+        // Auto-expanding a single open activity applies only while the list is limited to recruiting programs.
+        for program in fresh where (openOnly && program.openActivityCount == 1) || !program.matchedActivityIDs.isEmpty {
             expanded.insert(program.id)
             loadActivities(program.id)
         }
@@ -137,11 +145,21 @@ import Observation
         programLoads[programID] = Task {
             defer { if !Task.isCancelled { loadingPrograms.remove(programID); programLoads[programID] = nil } }
             do {
-                let page = try await fetchActivities(programID)
+                let page = try await fetchActivities(programID, true)
                 guard !Task.isCancelled else { return }
-                let open = page.items.filter { $0.recruitment(at: loadedAt) == .open }
+                // The server already applied the open rule (`open=true`); the client keeps every returned activity.
                 for item in page.items { seen[item.id] = item }
-                openActivities[programID] = open
+                openActivities[programID] = page.items
+                if page.items.isEmpty {
+                    // Nothing recruiting: show what the program did in the last two years, latest start first.
+                    let past = try await fetchActivities(programID, false)
+                    guard !Task.isCancelled else { return }
+                    let since = Calendar(identifier: .gregorian).date(byAdding: .year, value: -2, to: loadedAt) ?? loadedAt
+                    let recent = past.items.filter { ($0.activityStage?.start ?? .distantPast) >= since }
+                        .sorted { ($0.activityStage?.start ?? .distantPast, $0.title) > ($1.activityStage?.start ?? .distantPast, $1.title) }
+                    for item in recent { seen[item.id] = item }
+                    pastActivities[programID] = recent
+                }
             } catch {
                 if !Task.isCancelled { failedPrograms.insert(programID) }
             }

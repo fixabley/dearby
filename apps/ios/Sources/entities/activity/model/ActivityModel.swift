@@ -13,6 +13,9 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     // The recruitment window from `application`. Raw ISO 8601: a present but unreadable time must not count as absent.
     let recruitmentStartAt: String?
     let recruitmentEndAt: String?
+    /// The same window when it is date-only (`yyyy-MM-dd`, end exclusive): judged by Seoul days.
+    let recruitmentStartDate: String?
+    let recruitmentEndDateExclusive: String?
     /// `activitySchedule.dateLabel`; empty when unknown.
     let dateLabel: String
     /// Timed schedules only; date-only schedules stay in `dateLabel`.
@@ -34,15 +37,35 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     /// end) the activity start (instant, or start date at Seoul midnight) stands in; nil when neither exists.
     var recruitmentDeadline: Date? = nil
 
-    /// Recruitment only from the application window against now. A missing bound is open on that side;
-    /// no window at all, or an unreadable bound, needs checking.
+    /// Recruitment only from the application window against now (contract "열린 활동 판정 일원화", 2026-10-19). A timed window
+    /// compares instants and a missing bound is open on that side; a date-only window compares Seoul days
+    /// (`startDate ≤ today < endDateExclusive`). No window at all, or an unreadable bound, needs checking.
     func recruitment(at now: Date) -> Recruitment {
-        let start = Self.instant(recruitmentStartAt), end = Self.instant(recruitmentEndAt)
-        guard start != nil || end != nil, (start == nil) == (recruitmentStartAt == nil),
-              (end == nil) == (recruitmentEndAt == nil) else { return .unknown }
-        if let start, now < start { return .upcoming }
-        if let end, now >= end { return .closed }
-        return .open
+        if recruitmentStartAt != nil || recruitmentEndAt != nil {
+            let start = Self.instant(recruitmentStartAt), end = Self.instant(recruitmentEndAt)
+            guard (start == nil) == (recruitmentStartAt == nil), (end == nil) == (recruitmentEndAt == nil) else { return .unknown }
+            if let start, now < start { return .upcoming }
+            if let end, now >= end { return .closed }
+            return .open
+        }
+        if recruitmentStartDate != nil || recruitmentEndDateExclusive != nil {
+            let start = Self.seoulDay(recruitmentStartDate), end = Self.seoulDay(recruitmentEndDateExclusive)
+            guard (start == nil) == (recruitmentStartDate == nil), (end == nil) == (recruitmentEndDateExclusive == nil) else { return .unknown }
+            if let start, now < start { return .upcoming }
+            if let end, now >= end { return .closed }
+            return .open
+        }
+        return .unknown
+    }
+    /// `yyyy-MM-dd` as Seoul midnight; nil when absent or unreadable.
+    static func seoulDay(_ raw: String?) -> Date? {
+        guard let raw else { return nil }
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: raw)
     }
     func statusLabel(at now: Date) -> String {
         switch recruitment(at: now) {
@@ -107,13 +130,16 @@ struct ProgramSummary: Equatable, Identifiable, Sendable {
     let name: String
     let nameEn: String?
     let organization: String
-    /// Open activities that match the query and type filter; the API returns only programs with at least one.
+    /// Open activities that match the query and type filter; 0 when the list also shows programs without open activities.
     let openActivityCount: Int
     /// Raw ISO 8601 of the nearest recruitment deadline among them; nil when none has a deadline.
     let nearestRecruitmentEndAt: String?
     /// Open activities whose name matched `q`; such programs start expanded.
     let matchedActivityIDs: [String]
+    /// Raw ISO 8601 of the program's most recent published activity start (contract "모집 중인 프로그램만 보기"); nil when unknown.
+    var latestActivityAt: String? = nil
     var nearestRecruitmentEnd: Date? { ActivityModel.instant(nearestRecruitmentEndAt) }
+    var latestActivity: Date? { ActivityModel.instant(latestActivityAt) }
 }
 /// One page of `GET /v1/discovery/programs`. A nil `nextCursor` is the last page.
 struct ProgramPage: Sendable {

@@ -3,24 +3,28 @@ import Foundation
 /// `GET /v1/activities` and `GET /v1/discovery/programs`. Transport or decoding failure is an error, never an empty page.
 enum ActivityClient {
     /// Activities, optionally those of one program (`programId`); `size` up to 100 so an expanded program loads in one page.
-    static func fetch(api: URL, query: String, cursor: Int64?, programID: Int64? = nil, size: Int? = nil) async throws -> ActivityPage {
+    /// `open` asks the server for currently open activities only (contract "열린 활동 판정 일원화"): the client never re-judges them.
+    static func fetch(api: URL, query: String, cursor: Int64?, programID: Int64? = nil, size: Int? = nil, open: Bool = false) async throws -> ActivityPage {
         var items: [URLQueryItem] = []
         if !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
         if let programID { items.append(URLQueryItem(name: "programId", value: String(programID))) }
+        if open { items.append(URLQueryItem(name: "open", value: "true")) }
         if let cursor { items.append(URLQueryItem(name: "cursor", value: String(cursor))) }
         if let size { items.append(URLQueryItem(name: "size", value: String(size))) }
         return try decode(try await get(api, path: "v1/activities", items))
     }
-    /// Programs with open activities (contract "발견 프로그램 묶음"), matching `query` by program, organization or activity name.
-    static func fetchPrograms(api: URL, query: String, cursor: Int64?) async throws -> ProgramPage {
+    /// Programs for the discovery accordion (contract "발견 프로그램 묶음"), matching `query` by program, organization or activity name.
+    /// `openOnly` false (contract "모집 중인 프로그램만 보기") also returns programs that had an activity in the last two years.
+    static func fetchPrograms(api: URL, query: String, cursor: Int64?, openOnly: Bool = true) async throws -> ProgramPage {
         var items: [URLQueryItem] = []
         if !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
+        if !openOnly { items.append(URLQueryItem(name: "openOnly", value: "false")) }
         if let cursor { items.append(URLQueryItem(name: "cursor", value: String(cursor))) }
         let payload = try JSONDecoder().decode(ProgramPayload.self, from: try await get(api, path: "v1/discovery/programs", items))
         return ProgramPage(items: payload.items.map { program in
             ProgramSummary(id: program.id, name: program.name, nameEn: program.nameEn, organization: program.organization.name,
                            openActivityCount: program.openActivityCount, nearestRecruitmentEndAt: program.nearestRecruitmentEndAt,
-                           matchedActivityIDs: program.matchedActivityIds.map(String.init))
+                           matchedActivityIDs: program.matchedActivityIds.map(String.init), latestActivityAt: program.latestActivityAt)
         }, nextCursor: payload.nextCursor)
     }
     private static func get(_ api: URL, path: String, _ items: [URLQueryItem]) async throws -> Data {
@@ -48,6 +52,7 @@ enum ActivityClient {
             ActivityModel(id: String(activity.id), title: activity.name, summary: activity.description,
                 organization: activity.organization.name, program: activity.program?.name,
                 recruitmentStartAt: activity.application?.startAt, recruitmentEndAt: activity.application?.endAt,
+                recruitmentStartDate: activity.application?.startDate, recruitmentEndDateExclusive: activity.application?.endDateExclusive,
                 dateLabel: activity.activitySchedule?.dateLabel ?? "",
                 schedules: activity.schedules.compactMap { schedule in
                     guard let start = ActivityModel.instant(schedule.startAt), let end = ActivityModel.instant(schedule.endAt) else { return nil }
@@ -62,20 +67,10 @@ enum ActivityClient {
                 eligibility: activity.eligibility?.value.flatMap { $0.eligibility(depth: 0) },
                 category: activity.category.flatMap(ActivityCategory.init(rawValue:)),
                 // Sort key: the application's end; when no usable deadline exists, the activity start stands in for it.
-                recruitmentDeadline: activity.application.flatMap { ActivityModel.instant($0.endAt) ?? seoulDate($0.endDateExclusive) }
-                    ?? activity.activitySchedule.flatMap { ActivityModel.instant($0.startAt) ?? seoulDate($0.startDate) })
+                recruitmentDeadline: activity.application.flatMap { ActivityModel.instant($0.endAt) ?? ActivityModel.seoulDay($0.endDateExclusive) }
+                    ?? activity.activitySchedule.flatMap { ActivityModel.instant($0.startAt) ?? ActivityModel.seoulDay($0.startDate) })
         }
         return ActivityPage(items: items, nextCursor: payload.nextCursor)
-    }
-    /// A `yyyy-MM-dd` date as Seoul midnight; nil when absent or unreadable.
-    private static func seoulDate(_ raw: String?) -> Date? {
-        guard let raw else { return nil }
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.date(from: raw)
     }
     /// Stages keep every schedule: timed (either bound may be missing), all-day, or date-less. An unknown kind reads as an event.
     private static func stage(_ schedule: Schedule) -> ActivityStageModel {
@@ -86,18 +81,9 @@ enum ActivityClient {
             return ActivityStageModel(id: String(schedule.id), title: schedule.title, kind: kind, start: startAt ?? endAt, end: endAt ?? startAt,
                                       allDay: false, dateLabel: schedule.dateLabel, timeZone: zone)
         }
-        let startDate = seoulDay(schedule.startDate), endDate = seoulDay(schedule.endDateExclusive)
+        let startDate = ActivityModel.seoulDay(schedule.startDate), endDate = ActivityModel.seoulDay(schedule.endDateExclusive)
         return ActivityStageModel(id: String(schedule.id), title: schedule.title, kind: kind, start: startDate, end: endDate ?? startDate,
                                   allDay: startDate != nil, dateLabel: schedule.dateLabel, timeZone: "Asia/Seoul")
-    }
-    /// `yyyy-MM-dd` as Seoul midnight; nil when absent or unreadable.
-    private static func seoulDay(_ raw: String?) -> Date? {
-        guard let raw else { return nil }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.date(from: raw)
     }
     private struct Payload: Decodable {
         let items: [Activity]
@@ -109,7 +95,7 @@ enum ActivityClient {
     }
     private struct Program: Decodable {
         let id: Int64; let name: String; let nameEn: String?; let organization: Named
-        let openActivityCount: Int; let nearestRecruitmentEndAt: String?; let matchedActivityIds: [Int64]
+        let openActivityCount: Int; let nearestRecruitmentEndAt: String?; let matchedActivityIds: [Int64]; let latestActivityAt: String?
     }
     private struct Named: Decodable { let name: String }
     private struct Schedule: Decodable {

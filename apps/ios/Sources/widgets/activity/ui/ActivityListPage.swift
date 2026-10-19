@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// 발견: 열린 활동이 있는 프로그램의 아코디언 목록(contract "발견 프로그램 묶음"). 머리글을 펼치면 그 프로그램의 열린 활동 카드가 보인다.
+/// 발견: 프로그램 아코디언 목록(contract "발견 프로그램 묶음"). `모집 중만 보기`가 켜지면 모집 중 활동이 있는 프로그램만, 꺼지면 최근 2년 안에
+/// 활동이 있었던 프로그램까지 보인다. 머리글을 펼치면 모집 중 활동 카드가, 없으면 지난 활동 목록이 보인다.
 struct ActivityListPage: View {
     let state: ActivityViewModel
     @Binding var path: [String]
@@ -18,6 +19,8 @@ struct ActivityListPage: View {
                 Text("활동 둘러보기").font(.title2.bold())
                 DearbySearchField(prompt: "프로그램, 조직, 활동 이름으로 검색", text: $state.searchText, identifier: "activity-search")
                     .submitLabel(.search)
+                Toggle("모집 중만 보기", isOn: $state.openOnly).font(.dearby(.subheadline)).tint(DearbyStyle.teal)
+                    .accessibilityIdentifier("activity-open-only")
                 switch state.phase {
                 case .loading:
                     ProgressView("프로그램을 불러오는 중이에요").frame(maxWidth: .infinity).padding(.vertical, 40)
@@ -33,9 +36,12 @@ struct ActivityListPage: View {
                     if let query = state.query, !query.isEmpty {
                         ContentUnavailableView("‘\(query)’에 맞는 프로그램이 없어요", systemImage: "magnifyingglass",
                                                description: Text("다른 검색어로 찾아보세요."))
-                    } else {
+                    } else if state.openOnly {
                         ContentUnavailableView("지금 모집 중인 프로그램이 없어요", systemImage: "calendar",
-                                               description: Text("새 모집이 열리면 여기에서 볼 수 있어요."))
+                                               description: Text("새 모집이 열리면 여기에서 볼 수 있어요. ‘모집 중만 보기’를 끄면 최근 활동한 프로그램도 보여요."))
+                    } else {
+                        ContentUnavailableView("최근 2년 안에 활동한 프로그램이 없어요", systemImage: "calendar",
+                                               description: Text("활동이 수집되면 여기에서 볼 수 있어요."))
                     }
                 case .loaded:
                     ForEach(Array(state.programs.enumerated()), id: \.element.id) { index, program in
@@ -71,11 +77,17 @@ struct ActivityListPage: View {
         let open = state.isExpanded(program.id)
         VStack(alignment: .leading, spacing: 10) {
             ProgramHeader(name: program.name, organization: program.organization, openCount: program.openActivityCount,
-                          nearestDeadline: program.nearestRecruitmentEnd, expanded: open) { state.toggle(program.id) }
+                          nearestDeadline: program.nearestRecruitmentEnd, latestActivity: program.latestActivity, expanded: open) { state.toggle(program.id) }
             if open {
                 if let activities = state.openActivities[program.id] {
                     if activities.isEmpty {
-                        Text("지금 열린 활동이 없어요.").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).padding(.horizontal, 4)
+                        Text("지금 모집 중인 활동이 없어요").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).padding(.horizontal, 4)
+                        // Past activities of the last two years, latest start first; plain rows, no category headings.
+                        if let past = state.pastActivities[program.id], !past.isEmpty {
+                            Text("지난 활동").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.quiet)
+                                .padding(.horizontal, 4).padding(.top, 4).accessibilityAddTraits(.isHeader)
+                            ForEach(past) { activity in card(activity) }
+                        }
                     } else {
                         // Grouped by 활동 종류 in contract order, 미분류 last; a single group needs no heading.
                         let groups = ActivityCategory.group(activities)
