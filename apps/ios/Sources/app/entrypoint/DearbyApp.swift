@@ -40,6 +40,8 @@ import SwiftUI
                         cards: MyCardsPage(state: cards), wallet: WalletPage(state: wallet), profile: ProfilePage(state: profile))
                 }
             }
+            // One accent for every screen and sheet, including those presented from this root (contract "색 체계").
+            .tint(DearbyStyle.teal)
             // "Dearby 앱에 저장" on the web card page: save the card to the account and open it in 받은 명함.
             .onOpenURL { url in
                 // The Google SDK's own redirect comes back here first (contract "구글 로그인").

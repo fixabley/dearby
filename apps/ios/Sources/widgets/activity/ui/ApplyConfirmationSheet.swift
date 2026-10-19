@@ -18,8 +18,8 @@ struct ApplyConfirmationSheet: View {
                     .font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).fixedSize(horizontal: false, vertical: true)
             }
             VStack(spacing: 10) {
-                Button("신청했어요", action: applied).buttonStyle(DearbyButtonStyle())
-                Button("아직이에요", action: notYet).buttonStyle(DearbyButtonStyle(outlined: true))
+                Button(action: applied) { Text("신청했어요").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold))
+                Button(action: notYet) { Text("아직이에요").frame(maxWidth: .infinity) }.buttonStyle(.bordered).controlSize(.large).font(.dearby(.body).weight(.semibold))
                 Button("다시 묻지 않기", action: neverAsk).font(.dearby(.subheadline).weight(.semibold))
                     .foregroundStyle(DearbyStyle.quiet).frame(maxWidth: .infinity, minHeight: 44)
             }

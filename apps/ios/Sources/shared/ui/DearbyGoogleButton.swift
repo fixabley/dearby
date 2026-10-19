@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// "Google로 계속하기" in Google's light button shape (white, thin grey border), as tall as `DearbyButtonStyle`.
+/// "Google로 계속하기" in Google's light button shape (white, thin grey border), as tall as a `.controlSize(.large)` system button (50).
 /// The leading "G" is a text placeholder until the official logo file lands in `shared/assets/prototype`
 /// (contract "구글 로그인": the asset is applied once downloaded; no drawn imitation of the logo).
 struct DearbyGoogleButton: View {

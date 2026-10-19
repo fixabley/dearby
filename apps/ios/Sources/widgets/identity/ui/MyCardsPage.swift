@@ -22,13 +22,13 @@ struct MyCardsPage: View {
                     switch state.phase {
                     case .signedOut:
                         notice("명함은 계정에 저장돼요", "로그인하면 만든 명함을 볼 수 있어요.")
-                        Button("로그인") { signingIn = true }.buttonStyle(DearbyButtonStyle())
+                        Button { signingIn = true } label: { Text("로그인").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold))
                     case .noCard: newCard
                     case .loading:
                         ProgressView("명함을 불러오는 중이에요").frame(maxWidth: .infinity, minHeight: 240).tint(DearbyStyle.teal)
                     case .failed:
                         notice("명함을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.")
-                        Button("다시 시도") { Task { await state.load() } }.buttonStyle(DearbyButtonStyle(outlined: true))
+                        Button { Task { await state.load() } } label: { Text("다시 시도").frame(maxWidth: .infinity) }.buttonStyle(.bordered).controlSize(.large).font(.dearby(.body).weight(.semibold))
                     case .loaded: cards
                     }
                 }.padding(.horizontal, 20).padding(.bottom, 20)
@@ -75,8 +75,8 @@ struct MyCardsPage: View {
         if let card = state.card {
             CardView(card: card.cardModel) { if let url = $0.actionURL { openURL(url) } }
             Button { showingQR = card } label: {
-                Label("QR 보이기", systemImage: "qrcode").font(.dearby(.subheadline).weight(.semibold)).frame(maxWidth: .infinity, minHeight: 44)
-            }.buttonStyle(DearbyButtonStyle()).accessibilityHint("상대가 카메라로 읽어 이 명함을 받아요")
+                Label("QR 보이기", systemImage: "qrcode").frame(maxWidth: .infinity)
+            }.buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold)).accessibilityHint("상대가 카메라로 읽어 이 명함을 받아요")
             Button { editingCard = card } label: {
                 Label("이 명함 고치기", systemImage: "pencil").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal).frame(minHeight: 44)
             }.accessibilityHint("이 명함의 이름과 공개 선택으로 새 명함을 발행해요")
@@ -91,7 +91,7 @@ struct MyCardsPage: View {
             Text("첫 명함을\n만들어 보세요.").font(.title.bold()).multilineTextAlignment(.center)
             Text("프로필의 연락처와 이력 중 보여 줄 것만 골라 발행해요. 발행할 때 패스키로 로그인해요.").font(.subheadline)
                 .foregroundStyle(DearbyStyle.quiet).multilineTextAlignment(.center)
-            Button("명함 만들기") { editor = true }.buttonStyle(DearbyButtonStyle())
+            Button { editor = true } label: { Text("명함 만들기").frame(maxWidth: .infinity) }.buttonStyle(.borderedProminent).controlSize(.large).font(.dearby(.body).weight(.semibold))
         }.padding(24).padding(.vertical, 32).frame(maxWidth: .infinity)
             .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(DearbyStyle.line))

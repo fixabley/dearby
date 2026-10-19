@@ -32,7 +32,7 @@ struct ActivityInformationView: View {
             }
             // The overlap check stays an example and needs timed schedules.
             if !sessions.isEmpty {
-                Button("겹치는 시간 확인하기", action: checkCalendar).buttonStyle(DearbyButtonStyle(outlined: true))
+                Button(action: checkCalendar) { Text("겹치는 시간 확인하기").frame(maxWidth: .infinity) }.buttonStyle(.bordered).controlSize(.large).font(.dearby(.body).weight(.semibold))
                 Text("예시 캘린더 일정과 비교해요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
                     .frame(maxWidth: .infinity)
             }

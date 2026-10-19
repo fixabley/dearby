@@ -70,17 +70,3 @@ struct DearbyBrand: View {
         .accessibilityElement(children: .ignore).accessibilityLabel("Dearby")
     }
 }
-
-struct DearbyButtonStyle: ButtonStyle {
-    var outlined = false
-    /// 퍼널처럼 엄지로 누르는 화면은 56
-    var height: CGFloat = 50
-    @Environment(\.isEnabled) private var isEnabled
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.dearby(.headline)).frame(maxWidth: .infinity, minHeight: height)
-            .foregroundStyle(outlined ? DearbyStyle.teal : DearbyStyle.onTeal)
-            .background(outlined ? Color(.secondarySystemGroupedBackground) : DearbyStyle.teal, in: RoundedRectangle(cornerRadius: 11))
-            .overlay(RoundedRectangle(cornerRadius: 11).stroke(DearbyStyle.teal, lineWidth: outlined ? 1 : 0))
-            .opacity(!isEnabled ? 0.45 : (configuration.isPressed ? 0.7 : 1))
-    }
-}
