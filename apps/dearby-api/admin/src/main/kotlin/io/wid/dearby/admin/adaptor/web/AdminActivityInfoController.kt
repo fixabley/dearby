@@ -124,6 +124,20 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
         )
     }
 
+    // 세부 일정 편집기(admin-v1.md "세부 일정 편집기", 2026-10-19): 슬롯 없는 일정만 만들고 고치고 지운다
+    @PostMapping("/activities/{id}/schedules")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun createSchedule(@PathVariable id: Long, @RequestBody request: ScheduleItemRequest) =
+        ScheduleResponse.from(activityInfo.createDetailSchedule(id, request.toPatch()))
+
+    @PatchMapping("/activities/{id}/schedules/{scheduleId}")
+    fun updateSchedule(@PathVariable id: Long, @PathVariable scheduleId: Long, @RequestBody request: ScheduleItemRequest) =
+        ScheduleResponse.from(activityInfo.updateDetailSchedule(id, scheduleId, request.toPatch()))
+
+    @DeleteMapping("/activities/{id}/schedules/{scheduleId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun deleteSchedule(@PathVariable id: Long, @PathVariable scheduleId: Long) = activityInfo.deleteDetailSchedule(id, scheduleId)
+
     @PatchMapping("/activities/{id}")
     fun updateActivityTexts(@PathVariable id: Long, @RequestBody request: ActivityTextsRequest): AdminActivityResponse {
         // 대상자 조건: 생략은 유지, JSON null은 삭제, 객체는 어휘 검증(틀리면 400) 뒤 교체

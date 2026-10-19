@@ -2,6 +2,7 @@ package io.wid.dearby.application.activity
 
 import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.Id
+import io.wid.dearby.domain.Schedule
 import io.wid.dearby.domain.PublicationStatus
 import io.wid.dearby.domain.ScheduleTime
 import io.wid.dearby.domain.curation.ActivityCuration
@@ -41,6 +42,13 @@ interface ActivityCurationRepository {
     // APPLICATION 일정이 없으면 만든다. 활동이 없으면 false
     // note는 운영자 사유(admin-v1.md "사유"); time이 null(지정 해제)이면 사유도 지운다
     fun updateSchedule(activityId: Id, slot: ScheduleSlot, time: ScheduleTime?, note: String? = null): Boolean
+
+    // 세부 일정(슬롯 없음) 편집(admin-v1.md "세부 일정 편집기"). 만들거나 고친 일정은 curated, 지운 일정은 curated_deleted로 남긴다.
+    // 활동이나 일정이 없으면 null/false. 지운 일정은 없는 것으로 본다
+    fun insertDetailSchedule(activityId: Id, item: ScheduleItem): Schedule?
+    fun findSchedule(activityId: Id, scheduleId: Id): StoredSchedule?
+    fun updateDetailSchedule(activityId: Id, scheduleId: Id, item: ScheduleItem): Schedule?
+    fun deleteDetailSchedule(activityId: Id, scheduleId: Id): Boolean
 
     // 활동을 지운다(일정·역할·연락처는 FK로 함께). 수집으로 생긴 활동이면 그 출처를 다시 수집하지 않게 남긴다
     fun delete(activityId: Id): Boolean

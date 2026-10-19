@@ -4,6 +4,8 @@ import io.wid.dearby.application.activity.ActivityCurationRepository
 import io.wid.dearby.application.activity.ActivityListing
 import io.wid.dearby.application.activity.ActivitySearch
 import io.wid.dearby.application.activity.ActivityService
+import io.wid.dearby.application.activity.StoredSchedule
+import io.wid.dearby.domain.Schedule
 import io.wid.dearby.application.activity.ScheduleSlot
 import io.wid.dearby.application.activity.ActivityCreation
 import io.wid.dearby.application.collection.ActivityDraftRepository
@@ -257,6 +259,33 @@ class AdminActivityInfoService(
         val tagIds = input.tagIds?.let { requireTags(it) } ?: program.tags.map { it.id }
         if (tagIds.isNotEmpty() || input.tagIds != null) tags.setActivityTags(id, tagIds, curate = input.tagIds != null)
         return withCuration(listOf(activities.getById(id, publicationStatus = null))).single()
+    }
+
+    // 세부 일정 편집기(admin-v1.md): 슬롯 일정(모집·활동 기간)은 여기서 고치지 않는다(400)
+    @Transactional
+    fun createDetailSchedule(activityId: Id, patch: ScheduleItemPatch): Schedule {
+        activities.getById(activityId, publicationStatus = null)
+        return curations.insertDetailSchedule(activityId, patch.toItem(existing = null))
+            ?: throw NotFoundException("활동을 찾을 수 없습니다", "Activity not found: $activityId")
+    }
+
+    @Transactional
+    fun updateDetailSchedule(activityId: Id, scheduleId: Id, patch: ScheduleItemPatch): Schedule {
+        val stored = requireDetailSchedule(activityId, scheduleId)
+        return curations.updateDetailSchedule(activityId, scheduleId, patch.toItem(existing = stored.schedule))
+            ?: throw NotFoundException("일정을 찾을 수 없습니다", "Schedule not found: $scheduleId")
+    }
+
+    @Transactional
+    fun deleteDetailSchedule(activityId: Id, scheduleId: Id) {
+        requireDetailSchedule(activityId, scheduleId)
+        if (!curations.deleteDetailSchedule(activityId, scheduleId)) throw NotFoundException("일정을 찾을 수 없습니다", "Schedule not found: $scheduleId")
+    }
+
+    private fun requireDetailSchedule(activityId: Id, scheduleId: Id): StoredSchedule {
+        val stored = curations.findSchedule(activityId, scheduleId) ?: throw NotFoundException("일정을 찾을 수 없습니다", "Schedule not found: $scheduleId for activity $activityId")
+        if (stored.slot != null) throw InvalidInputException("모집 기간과 활동 기간은 활동 편집의 application·activitySchedule로 고칩니다")
+        return stored
     }
 
     private fun applySchedule(activityId: Id, slot: ScheduleSlot, change: ScheduleChange) {

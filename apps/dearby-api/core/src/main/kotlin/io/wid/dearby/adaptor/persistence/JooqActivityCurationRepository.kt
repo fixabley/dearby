@@ -6,7 +6,9 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.references.DISMISSED_ACTIVI
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.SCHEDULES
 import io.wid.dearby.application.activity.ActivityCreation
 import io.wid.dearby.application.activity.ActivityCurationRepository
+import io.wid.dearby.application.activity.ScheduleItem
 import io.wid.dearby.application.activity.ScheduleSlot
+import io.wid.dearby.application.activity.StoredSchedule
 import io.wid.dearby.domain.*
 import io.wid.dearby.domain.curation.ActivityCuration
 import io.wid.dearby.domain.curation.Freshness
@@ -207,6 +209,86 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
         dsl.update(ACTIVITIES).set(ACTIVITIES.UPDATED_AT, now).where(ACTIVITIES.ID.eq(activityId)).execute()
         return true
     }
+
+    @Transactional
+    override fun insertDetailSchedule(activityId: Id, item: ScheduleItem): Schedule? {
+        if (!dsl.fetchExists(ACTIVITIES, ACTIVITIES.ID.eq(activityId))) return null
+        val now = LocalDateTime.now()
+        val id = dsl.insertInto(SCHEDULES)
+            .set(SCHEDULES.ACTIVITY_ID, activityId)
+            .set(SCHEDULES.SLOT, null as String?)
+            .set(SCHEDULES.TITLE, item.title)
+            .set(SCHEDULES.KIND, item.kind.name)
+            .set(SCHEDULES.STATUS, item.status.name)
+            .set(SCHEDULES.DATE_LABEL, item.dateLabel)
+            .set(SCHEDULES.CURATED, true)
+            .set(SCHEDULES.CURATED_NOTE, item.note)
+            .set(SCHEDULES.SEQUENCE, 0)
+            .set(SCHEDULES.CREATED_AT, now)
+            .set(SCHEDULES.UPDATED_AT, now)
+            .returning(SCHEDULES.ID)
+            .fetchOne()!!.id!!
+        writeTime(id, item.time, now)
+        dsl.update(ACTIVITIES).set(ACTIVITIES.UPDATED_AT, now).where(ACTIVITIES.ID.eq(activityId)).execute()
+        return fetchSchedule(activityId, id)
+    }
+
+    override fun findSchedule(activityId: Id, scheduleId: Id): StoredSchedule? =
+        dsl.selectFrom(SCHEDULES)
+            .where(SCHEDULES.ID.eq(scheduleId), SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.CURATED_DELETED.isFalse)
+            .fetchOne()?.let { StoredSchedule(it.toSchedule(), it.slot) }
+
+    @Transactional
+    override fun updateDetailSchedule(activityId: Id, scheduleId: Id, item: ScheduleItem): Schedule? {
+        val now = LocalDateTime.now()
+        val updated = dsl.update(SCHEDULES)
+            .set(SCHEDULES.TITLE, item.title)
+            .set(SCHEDULES.KIND, item.kind.name)
+            .set(SCHEDULES.STATUS, item.status.name)
+            .set(SCHEDULES.DATE_LABEL, item.dateLabel)
+            .set(SCHEDULES.CURATED, true)
+            .set(SCHEDULES.CURATED_NOTE, item.note)
+            .set(SCHEDULES.SEQUENCE, SCHEDULES.SEQUENCE.plus(1))
+            .set(SCHEDULES.UPDATED_AT, now)
+            .where(SCHEDULES.ID.eq(scheduleId), SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.isNull, SCHEDULES.CURATED_DELETED.isFalse)
+            .execute()
+        if (updated == 0) return null
+        writeTime(scheduleId, item.time, now)
+        dsl.update(ACTIVITIES).set(ACTIVITIES.UPDATED_AT, now).where(ACTIVITIES.ID.eq(activityId)).execute()
+        return fetchSchedule(activityId, scheduleId)
+    }
+
+    @Transactional
+    override fun deleteDetailSchedule(activityId: Id, scheduleId: Id): Boolean {
+        val now = LocalDateTime.now()
+        val marked = dsl.update(SCHEDULES)
+            .set(SCHEDULES.CURATED_DELETED, true)
+            .set(SCHEDULES.SEQUENCE, SCHEDULES.SEQUENCE.plus(1))
+            .set(SCHEDULES.UPDATED_AT, now)
+            .where(SCHEDULES.ID.eq(scheduleId), SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.isNull, SCHEDULES.CURATED_DELETED.isFalse)
+            .execute() > 0
+        if (marked) dsl.update(ACTIVITIES).set(ACTIVITIES.UPDATED_AT, now).where(ACTIVITIES.ID.eq(activityId)).execute()
+        return marked
+    }
+
+    // 시각 일정은 start_at·end_at·time_zone, 종일 일정은 start_date·end_date_exclusive, 없으면 모두 null(dateLabel만)
+    private fun writeTime(scheduleId: Id, time: ScheduleTime?, now: LocalDateTime) {
+        val timed = time as? ScheduleTime.Timed
+        val allDay = time as? ScheduleTime.AllDay
+        dsl.update(SCHEDULES)
+            .set(SCHEDULES.TIME_TYPE, when { timed != null -> "TIMED"; allDay != null -> "ALL_DAY"; else -> null })
+            .set(SCHEDULES.START_AT, timed?.start?.toOffsetDateTime())
+            .set(SCHEDULES.END_AT, timed?.end?.toOffsetDateTime())
+            .set(SCHEDULES.TIME_ZONE, timed?.let { (it.start ?: it.end)!!.zone.id })
+            .set(SCHEDULES.START_DATE, allDay?.start)
+            .set(SCHEDULES.END_DATE_EXCLUSIVE, allDay?.endExclusive)
+            .set(SCHEDULES.UPDATED_AT, now)
+            .where(SCHEDULES.ID.eq(scheduleId))
+            .execute()
+    }
+
+    private fun fetchSchedule(activityId: Id, scheduleId: Id): Schedule? =
+        dsl.selectFrom(SCHEDULES).where(SCHEDULES.ID.eq(scheduleId), SCHEDULES.ACTIVITY_ID.eq(activityId)).fetchOne()?.toSchedule()
 
     override fun updatePublicationStatus(activityId: Id, status: PublicationStatus): Boolean =
         dsl.update(ACTIVITIES)

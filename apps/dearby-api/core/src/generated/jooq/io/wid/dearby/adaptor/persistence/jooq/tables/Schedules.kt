@@ -202,6 +202,11 @@ open class Schedules(
      */
     val CURATED_NOTE: TableField<SchedulesRecord, String?> = createField(DSL.name("curated_note"), SQLDataType.VARCHAR(300), this, "")
 
+    /**
+     * The column <code>public.schedules.curated_deleted</code>.
+     */
+    val CURATED_DELETED: TableField<SchedulesRecord, Boolean?> = createField(DSL.name("curated_deleted"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "")
+
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
