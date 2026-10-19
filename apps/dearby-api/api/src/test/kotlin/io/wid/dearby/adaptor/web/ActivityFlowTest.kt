@@ -253,6 +253,22 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(true, (0 until search("q=멘토링")["items"].size()).any { search("q=멘토링")["items"][it]["id"].asLong() == openId })
         assertEquals(listOf(openId), programs("q=mentoring")["items"].single()["matchedActivityIds"].let(::idList))
         assertEquals(listOf("창업", "멘토링"), programs("")["items"].single()["tags"].let(::tagNames))
+        // 합집합은 마감된 게시 활동의 태그도 모은다(2026-10-20: 열린 활동만 모으면 마감된 프로그램 카드의 태그가 빈다). 최근 3년 창, 사전 순
+        val creativity = jdbc.sql("select id from tags where name = '창의성'").query(Long::class.java).single()
+        val closedTaggedId = createActivity("마감된 태그 활동")
+        jdbc.sql(
+            """
+            insert into schedules (activity_id, slot, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, 'APPLICATION', '신청 기간', 'DEADLINE', 'CONFIRMED', 'TIMED', now() - interval '10 days', now() - interval '1 hour', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp)
+            """
+        ).param(closedTaggedId).update()
+        jdbc.sql("insert into activity_tags (activity_id, tag_id) values (?, ?)").params(closedTaggedId, creativity).update()
+        assertEquals(listOf("창업", "창의성", "멘토링"), programs("")["items"].single()["tags"].let(::tagNames))
+        assertEquals(1, programs("")["items"].single()["openActivityCount"].asInt())
+        jdbc.sql("update schedules set end_at = now() - interval '4 years', start_at = now() - interval '4 years 1 day' where activity_id = ? and slot = 'APPLICATION'").param(closedTaggedId).update()
+        jdbc.sql("update activities set created_at = localtimestamp - interval '4 years' where id = ?").param(closedTaggedId).update()
+        assertEquals(listOf("창업", "멘토링"), programs("")["items"].single()["tags"].let(::tagNames))
+        jdbc.sql("update activities set publication_status = 'DRAFT' where id = ?").param(closedTaggedId).update()
         assertEquals(listOf(openId), search("tagIds=$startup,$mentoring")["items"].toList().map { it["id"].asLong() })
         assertEquals(0, search("tagIds=$startup,$career")["items"].size())
         assertEquals(1, programs("tagIds=$mentoring")["items"].single()["openActivityCount"].asInt())
@@ -350,6 +366,45 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
 
         assertEquals(0, search("q=초안 활동 확인")["items"].size())
         mvc.get("/v1/activities/$id").andExpect { status { isNotFound() } }
+    }
+
+    // 활동 이력에서 단기 행사 제외(native-v1.md, 2026-10-20): forHistory=true는 활동 기간이 7일 미만인 행사와,
+    // 기간을 모를 때 컨퍼런스·워크샵·밋업·강연을 뺀다. 기간은 지난 날짜로 두어 open=true 판정에 끼어들지 않게 한다
+    @Test
+    fun `forHistory=true는 7일 미만 행사와 기간 미상의 컨퍼런스·워크샵·밋업·강연을 뺀다`() {
+        fun period(activityId: Long, days: Int) = jdbc.sql(
+            "update schedules set time_type = 'ALL_DAY', start_date = date '2025-03-01', end_date_exclusive = date '2025-03-01' + ? where activity_id = ? and slot = 'ACTIVITY'"
+        ).params(days, activityId).update()
+        fun timedPeriod(activityId: Long, interval: String) = jdbc.sql(
+            "update schedules set time_type = 'TIMED', time_zone = 'Asia/Seoul', start_at = timestamptz '2025-03-01 10:00+09', end_at = timestamptz '2025-03-01 10:00+09' + ?::interval where activity_id = ? and slot = 'ACTIVITY'"
+        ).params(interval, activityId).update()
+        fun category(activityId: Long, category: String) = jdbc.sql("update activities set category = ? where id = ?").params(category, activityId).update()
+        val oneDayConference = createActivity("이력 후보 하루 컨퍼런스").also { period(it, 1); category(it, "CONFERENCE") }
+        val sixDayBootcamp = createActivity("이력 후보 엿새 부트캠프").also { period(it, 6); category(it, "BOOTCAMP") }
+        val sevenDayStudy = createActivity("이력 후보 이레 스터디").also { period(it, 7); category(it, "STUDY") }
+        val tenDayBootcamp = createActivity("이력 후보 열흘 부트캠프").also { period(it, 10); category(it, "BOOTCAMP") }
+        val timedShort = createActivity("이력 후보 시각 짧음").also { timedPeriod(it, "6 days 23 hours"); category(it, "BOOTCAMP") }
+        val timedLong = createActivity("이력 후보 시각 긺").also { timedPeriod(it, "7 days"); category(it, "CONFERENCE") }
+        val unknownStudy = createActivity("이력 후보 기간 미상 스터디").also { category(it, "STUDY") }
+        val unknownConference = createActivity("이력 후보 기간 미상 컨퍼런스").also { category(it, "CONFERENCE") }
+        val unknownNoCategory = createActivity("이력 후보 기간 미상 미분류")
+        // 시각 일정에 시작이 없으면 기간 미상으로 보고 종류 규칙만 적용한다(2026-10-20 조율 결정)
+        fun endOnly(activityId: Long) = jdbc.sql(
+            "update schedules set time_type = 'TIMED', time_zone = 'Asia/Seoul', end_at = timestamptz '2025-03-01 10:00+09' where activity_id = ? and slot = 'ACTIVITY'"
+        ).param(activityId).update()
+        val endOnlyStudy = createActivity("이력 후보 끝만 스터디").also { endOnly(it); category(it, "STUDY") }
+        val endOnlyConference = createActivity("이력 후보 끝만 컨퍼런스").also { endOnly(it); category(it, "CONFERENCE") }
+        val draftLong = createActivity("이력 후보 초안", status = "DRAFT").also { period(it, 10) }
+        fun ids(query: String): List<Long> = search(query)["items"].toList().map { it["id"].asLong() }
+        val all = ids("q=이력 후보&size=50")
+        assertTrue(listOf(oneDayConference, sixDayBootcamp, timedShort, unknownConference, endOnlyConference).all { it in all }, all.toString())
+        assertTrue(draftLong !in all)
+        assertEquals(setOf(sevenDayStudy, tenDayBootcamp, timedLong, unknownStudy, unknownNoCategory, endOnlyStudy), ids("q=이력 후보&forHistory=true&size=50").toSet())
+        // cursor·size는 그대로 이어진다
+        val firstPage = search("q=이력 후보&forHistory=true&size=2")
+        assertEquals(2, firstPage["items"].size())
+        assertEquals(4, ids("q=이력 후보&forHistory=true&size=50&cursor=${firstPage["nextCursor"].asLong()}").size)
+        jdbc.sql("update activities set publication_status = 'DRAFT' where name like '이력 후보%'").update()
     }
 
     @Test

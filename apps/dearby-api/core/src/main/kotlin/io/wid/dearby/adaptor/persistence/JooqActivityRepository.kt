@@ -42,17 +42,10 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             addAll(EligibilityRows.conditions(condition.eligibility))
             condition.categories?.let { add(ACTIVITIES.CATEGORY.`in`(it.map(ActivityCategory::name))) }
             condition.tagIds?.let { addAll(TagRows.activityHasAllTags(it)) }
-            // 열린 활동만(발견 묶음과 같은 규칙). 안쪽 activities 참조는 하위 질의의 것으로 풀린다
-            if (condition.openOnly) {
-                add(
-                    ACTIVITIES.ID.`in`(
-                        DSL.select(ACTIVITIES.ID).from(ACTIVITIES)
-                            .leftJoin(OpenActivityConditions.app).on(OpenActivityConditions.appJoin)
-                            .leftJoin(OpenActivityConditions.act).on(OpenActivityConditions.actJoin)
-                            .where(OpenActivityConditions.open(OffsetDateTime.now(ZoneOffset.UTC)))
-                    )
-                )
-            }
+            // 열린 활동만(발견 묶음과 같은 규칙)
+            if (condition.openOnly) add(ACTIVITIES.ID.`in`(idsWithSchedules(OpenActivityConditions.open(OffsetDateTime.now(ZoneOffset.UTC)))))
+            // 활동 이력 후보만(7일 미만 행사 제외, 이력 쓰기 검사와 같은 규칙)
+            if (condition.forHistory) add(ACTIVITIES.ID.`in`(idsWithSchedules(OpenActivityConditions.historyEligible)))
         }
         // 기본값 0.6은 오타("워크샵" 0.5)·띄어쓰기 차이("개발환경" 0.4)를 놓친다. 이 트랜잭션에만 적용
         dsl.execute("select set_config('pg_trgm.word_similarity_threshold', ?, true)", WORD_SIMILARITY_THRESHOLD)
@@ -63,6 +56,16 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             .fetch()
         return withDetails(rows)
     }
+
+    override fun isHistoryEligible(id: Id): Boolean =
+        dsl.fetchExists(idsWithSchedules(ACTIVITIES.ID.eq(id).and(OpenActivityConditions.historyEligible)))
+
+    // 모집 기간(app)·활동 기간(act) 일정을 붙여 조건에 맞는 활동 id. 안쪽 activities 참조는 하위 질의의 것으로 풀린다
+    private fun idsWithSchedules(condition: Condition) =
+        DSL.select(ACTIVITIES.ID).from(ACTIVITIES)
+            .leftJoin(OpenActivityConditions.app).on(OpenActivityConditions.appJoin)
+            .leftJoin(OpenActivityConditions.act).on(OpenActivityConditions.actJoin)
+            .where(condition)
 
     override fun findById(id: Id, publicationStatus: PublicationStatus?): Activity? =
         withDetails(

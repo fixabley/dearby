@@ -75,8 +75,7 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
                 .or(ORGANIZATIONS.NAME.containsIgnoreCase(it)).or(ORGANIZATIONS.NAME_EN.containsIgnoreCase(it))
         }
         // 모집 중만 보기가 꺼지면 최근 3년 안에 활동이 있었던 프로그램(활동 시작·모집 마감·생성 시각 중 하나가 3년 안)까지(2026-10-19 저녁 2년 → 3년)(native-v1.md "모집 중인 프로그램만 보기")
-        val cutoff = now.minusYears(RECENT_YEARS)
-        val recent = OpenActivityConditions.activityStart.ge(cutoff).or(deadline.ge(cutoff)).or(ACTIVITIES.CREATED_AT.ge(cutoff.toLocalDateTime()))
+        val recent = recent(now)
         val select = dsl.select(
             PROGRAMS.ID, PROGRAMS.NAME, PROGRAMS.NAME_EN,
             ORGANIZATIONS.ID, ORGANIZATIONS.NAME, ORGANIZATIONS.NAME_EN,
@@ -125,7 +124,14 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
     }
 
 
-    // 프로그램 태그가 있으면 그것, 없으면 열린 활동 태그의 합집합(최대 MAX_SUMMARY_TAGS개, 사전 순)
+    // 최근 3년 안의 활동(활동 시작·모집 마감·생성 시각 중 하나가 cutoff 이후). 묶음 목록(openOnly=false)과 태그 합집합이 같은 창을 쓴다
+    private fun recent(now: OffsetDateTime): Condition {
+        val cutoff = now.minusYears(RECENT_YEARS)
+        return OpenActivityConditions.activityStart.ge(cutoff).or(deadline.ge(cutoff)).or(ACTIVITIES.CREATED_AT.ge(cutoff.toLocalDateTime()))
+    }
+
+    // 프로그램 태그가 있으면 그것, 없으면 최근 3년 안의 게시 활동 태그의 합집합(최대 MAX_SUMMARY_TAGS개, 사전 순).
+    // 열린 활동만 모으면 마감된 프로그램(우아콘 2026처럼)의 카드가 비므로 모집 상태와 무관하게 모은다(2026-10-20)
     override fun tagsByProgram(programIds: Collection<Id>, now: OffsetDateTime): Map<Id, List<Tag>> {
         if (programIds.isEmpty()) return emptyMap()
         val own = TagRows.ofPrograms(dsl, programIds)
@@ -137,7 +143,7 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
             .join(TAGS).on(TAGS.ID.eq(ACTIVITY_TAGS.TAG_ID))
             .leftJoin(app).on(appJoin)
             .leftJoin(act).on(actJoin)
-            .where(ACTIVITIES.PROGRAM_ID.`in`(missing), OpenActivityConditions.open(now))
+            .where(ACTIVITIES.PROGRAM_ID.`in`(missing), ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name), recent(now))
             .orderBy(ACTIVITIES.PROGRAM_ID, TAGS.SORT_ORDER, TAGS.ID)
             .fetch()
             .groupBy({ it.value1()!! }) { Tag(it.value2()!!, it.value3()!!, it.value4()) }

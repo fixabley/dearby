@@ -18,4 +18,5 @@ data class ActivitySearch(
     val categories: Set<ActivityCategory>? = null, // 활동 종류 필터(native-v1.md "활동 종류"). null이면 전부
     val openOnly: Boolean = false, // true면 열린 활동만(native-v1.md "열린 활동 판정 일원화", 발견 묶음과 같은 규칙)
     val tagIds: Set<Id>? = null, // 태그 필터(native-v1.md "태그"): 모두 가진 활동만(AND). null이면 전부
+    val forHistory: Boolean = false, // true면 활동 이력 후보만(native-v1.md "활동 이력에서 단기 행사 제외": 7일 미만 행사 제외)
 )
