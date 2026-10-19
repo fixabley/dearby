@@ -101,11 +101,14 @@ data class ActivityPage(val items: List<ActivityModel>, val nextCursor: String?)
  * One program with open activities from `GET /v1/discovery/programs` (contract "발견 프로그램 묶음"). [id] is the API's number as
  * text; [nearestRecruitmentEndAt] is the earliest open deadline (ISO 8601) or null; [matchedActivityIds] are the open
  * activities whose name matched the search; [latestActivityAt] is the most recent activity start of its published
- * activities (contract "모집 중인 프로그램만 보기"), and [openActivityCount] may be 0 when the open-only switch is off.
+ * activities (contract "마감 숨기기"), and [openActivityCount] may be 0 when the program only has upcoming or past activities.
+ * [upcomingActivityCount] counts 모집 예정 activities and [nearestRecruitmentStartAt] is their earliest recruitment (or activity)
+ * start (2026-10-19 밤 "마감 숨기기" 정정: the switch hides only closed activities).
  */
 data class ProgramSummary(
     val id: String, val name: String, val nameEn: String?, val organization: String, val openActivityCount: Int,
     val nearestRecruitmentEndAt: String?, val matchedActivityIds: List<String>, val latestActivityAt: String? = null,
+    val upcomingActivityCount: Int = 0, val nearestRecruitmentStartAt: String? = null,
     /** Program tags, or the union of its open activities' tags (contract "태그", at most 6). */
     val tags: List<Tag> = emptyList(),
 )

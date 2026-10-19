@@ -114,6 +114,7 @@ fun parsePrograms(json: String): ProgramPage {
             program.getJSONObject("organization").getString("name"), program.getInt("openActivityCount"),
             program.text("nearestRecruitmentEndAt"), if (matched == null) emptyList() else List(matched.length()) { matched.getLong(it).toString() },
             program.text("latestActivityAt"),
+            upcomingActivityCount = program.optInt("upcomingActivityCount", 0), nearestRecruitmentStartAt = program.text("nearestRecruitmentStartAt"),
             program.tags(),
         )
     }, if (body.isNull("nextCursor")) null else body.getLong("nextCursor").toString())

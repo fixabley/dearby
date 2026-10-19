@@ -120,7 +120,7 @@ class ActivityViewModel(
     }
     /** Programs with one open activity, or whose activity name matched the search, start expanded (contract rule; only while the switch is on). */
     private fun show(page: ProgramPage, append: Boolean) {
-        val programs = page.items.map { ProgramState(it.id, it.name, it.organization, it.openActivityCount, instant(it.nearestRecruitmentEndAt), it.matchedActivityIds.isNotEmpty(), instant(it.latestActivityAt), it.tags.map { tag -> tag.name }) }
+        val programs = page.items.map { ProgramState(it.id, it.name, it.organization, it.openActivityCount, instant(it.nearestRecruitmentEndAt), it.matchedActivityIds.isNotEmpty(), instant(it.latestActivityAt), tags = it.tags.map { tag -> tag.name }, upcomingCount = it.upcomingActivityCount, nearestStart = instant(it.nearestRecruitmentStartAt)) }
         val opening = if (state.value.openOnly) programs.filter { it.openCount == 1 || it.matched }.map { it.id } else emptyList()
         mutable.update { state ->
             state.copy(phase = ActivityListPhase.LOADED, programs = (if (append) state.programs else emptyList()) + programs,
@@ -154,10 +154,10 @@ class ActivityViewModel(
             }
             val now = Instant.now()
             val open = items
-            // The program's other activities (contract "모집 중인 프로그램만 보기") in two groups — 모집 예정 (recruitment or activity start
-            // still ahead, nearest first) and 지난 활동 (started within three years, most recent first). Shown always while the switch is
-            // off (2026-10-19 저녁 결정), and only when nothing is open while it is on. Activities already shown as open are excluded.
-            val others = if (open.isNotEmpty() && state.value.openOnly) emptyList() else try {
+            // The program's other activities (contract "마감 숨기기", 2026-10-19 밤 정정) in two groups — 모집 예정 (recruitment or activity
+            // start still ahead, nearest first) is shown always; 지난 활동 (started within three years, most recent first) only while the
+            // switch is off. Activities already shown as open are excluded.
+            val others = try {
                 fetch(null, null, programId, false, tagIds).items
             } catch (e: CancellationException) { throw e } catch (e: Exception) {
                 Log.w("Dearby", "Program activities (fallback) load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
@@ -166,7 +166,8 @@ class ActivityViewModel(
             val openIds = open.map { it.id }.toSet()
             val upcoming = others.filter { it.id !in openIds && (it.upcomingKey ?: Instant.MIN) > now }.sortedBy { it.upcomingKey }
             val since = now.minus(PAST_DAYS, java.time.temporal.ChronoUnit.DAYS)
-            val past = others.filter { it.id !in openIds && it !in upcoming && (it.activityStart ?: Instant.MIN) >= since }.sortedByDescending { it.activityStart }
+            val past = if (state.value.openOnly) emptyList()
+                else others.filter { it.id !in openIds && it !in upcoming && (it.activityStart ?: Instant.MIN) >= since }.sortedByDescending { it.activityStart }
             val shown = open + upcoming + past
             models = models + shown.associateBy { it.id }
             val today = today()
