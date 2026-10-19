@@ -9,14 +9,14 @@ import com.dearby.nativeapp.pages.wallet.WalletCardPage
 import com.dearby.nativeapp.pages.wallet.WalletPage
 
 /** 받은 명함 tab: loads on entry, reloads after signing in from here. */
-@Composable fun WalletRoute(model: WalletViewModel, account: AccountViewModel, settings: () -> Unit, notify: () -> Unit, open: (ReceivedCard) -> Unit) {
+@Composable fun WalletRoute(model: WalletViewModel, account: AccountViewModel, open: (ReceivedCard) -> Unit) {
     val state by model.state.collectAsStateWithLifecycle()
     val auth by account.state.collectAsStateWithLifecycle()
     var query by remember { mutableStateOf("") }
     var signingIn by remember { mutableStateOf(false) }
     val signedIn = auth.phase == AccountPhase.SIGNED_IN
     LaunchedEffect(signedIn) { if (signedIn) signingIn = false; model.load() }
-    WalletPage(state, query, { query = it }, open, signIn = { signingIn = true }, retry = { model.load() }, settings = settings, notify = notify)
+    WalletPage(state, query, { query = it }, open, signIn = { signingIn = true }, retry = { model.load() })
     if (signingIn && auth.phase != AccountPhase.SIGNED_IN) SignInRoute(account, close = { signingIn = false })
 }
 

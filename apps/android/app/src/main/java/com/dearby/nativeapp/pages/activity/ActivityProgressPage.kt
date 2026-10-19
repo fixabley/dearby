@@ -36,7 +36,7 @@ import com.dearby.nativeapp.widgets.activity.progress.stageIcon
     mark: (Int, ProgressMark) -> Unit, checkCalendar: (Int) -> Unit,
 ) {
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("진행 단계", back)
+        DearbyTopBar("진행 단계", back)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp)) {
             Text(progress.title, Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
             Text(progress.subtitle, Modifier.padding(top = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)

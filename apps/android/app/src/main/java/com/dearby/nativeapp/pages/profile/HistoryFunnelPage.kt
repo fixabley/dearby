@@ -35,7 +35,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
     val steps = draft.steps
     val index = steps.indexOf(state.step).coerceAtLeast(0)
     Column(Modifier.fillMaxSize().dismissKeyboardOnTap()) {
-        ScreenHeader(if (state.step == HistoryDraft.Step.SUMMARY) "이력 확인" else "이력 입력", close)
+        DearbyTopBar(if (state.step == HistoryDraft.Step.SUMMARY) "이력 확인" else "이력 입력", close)
         LinearProgressIndicator({ (index + 1f) / steps.size }, Modifier.fillMaxWidth().padding(horizontal = 20.dp).semantics { heading() }, color = MaterialTheme.colorScheme.primary)
         Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             when (state.step) {
@@ -55,8 +55,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
                 }
                 HistoryDraft.Step.DESCRIPTION -> {
                     Text("한 줄로 설명해 주세요 (선택)", Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
-                    OutlinedTextField(draft.description, { change(draft.copy(description = it)) }, Modifier.fillMaxWidth(), label = { Text("설명") },
-                        placeholder = { Text("맡은 일이나 성과") }, minLines = 3)
+                    DearbyField("설명", draft.description, { change(draft.copy(description = it)) }, placeholder = "맡은 일이나 성과", minLines = 3)
                 }
                 HistoryDraft.Step.SUMMARY -> Summary(state, pickImage, pickPdf, deleteEvidence) { go(HistoryDraft.Step.KIND) }
             }
@@ -88,11 +87,11 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
     if (draft.description.isNotBlank()) Text(draft.description, style = MaterialTheme.typography.bodyMedium)
     if (draft.hasCustomEntry) Text(
         if (draft.approval == "rejected") "거절됨" + (draft.approvalReason?.let { " · $it" } ?: "") else "직접 입력한 항목은 관리자 승인 뒤 명함에 넣을 수 있어요",
-        color = if (draft.approval == "rejected") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+        color = if (draft.approval == "rejected") MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
     TextButton(edit, contentPadding = PaddingValues(0.dp)) { Text("내용 고치기") }
     HorizontalDivider()
     Text("인증자료", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-    Text(if (draft.verification == "verified") "관리자가 확인했어요." else "건너뛰어도 돼요. 확인되기 전까지 ‘미확인’으로 보여요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+    Text(if (draft.verification == "verified") "관리자가 확인했어요." else "건너뛰어도 돼요. 확인되기 전까지 ‘미확인’으로 보여요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
     if (state.saved) EvidenceFields(draft.evidence.map { EvidenceRow(it.id, it.fileName, it.contentType == "application/pdf", it.size / 1024) }, state.evidenceBusy, state.evidenceError, pickImage, pickPdf, deleteEvidence)
     else Text("프로필을 저장한 뒤 이 이력을 열면 인증자료를 올릴 수 있어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
 }
@@ -102,7 +101,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
         Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(Modifier.weight(1f)) {
                 Text(title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
-                Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text(detail, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             }
             Icon(if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked, null, tint = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest)
         }

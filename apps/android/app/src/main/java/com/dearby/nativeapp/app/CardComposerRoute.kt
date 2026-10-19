@@ -21,7 +21,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardComposer
     LaunchedEffect(auth.phase) { if (auth.phase == AccountPhase.SIGNED_IN && state.draft == null) model.load() }
     BackHandler(onBack = close)
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader(if (state.prefill == null) "명함 만들기" else "명함 고치기", close)
+        DearbyTopBar(if (state.prefill == null) "명함 만들기" else "명함 고치기", close)
         val phase = state.phase
         val draft = state.draft
         when {

@@ -40,7 +40,10 @@ data class MessageAction(val label: String, val onClick: () -> Unit, val enabled
     symbol: (@Composable () -> Unit)? = null, content: @Composable ColumnScope.() -> Unit = {}, actions: @Composable ColumnScope.() -> Unit = {},
 ) = BoxWithConstraints(modifier) {
     val fills = constraints.hasBoundedHeight && constraints.minHeight == constraints.maxHeight
-    Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).heightIn(min = if (fills) maxHeight else 0.dp).padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 16.dp),
+    // Inside another scroll container (a picker's empty state in a form) the height is unbounded: no own scroll then, or `verticalScroll` throws.
+    val scroll = rememberScrollState()
+    val scrolling = if (constraints.hasBoundedHeight) Modifier.verticalScroll(scroll) else Modifier
+    Column(Modifier.fillMaxWidth().then(scrolling).heightIn(min = if (fills) maxHeight else 0.dp).padding(start = 24.dp, end = 24.dp, top = 24.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally) {
         Spacer(Modifier.weight(1f))
         when {

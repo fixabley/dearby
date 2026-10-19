@@ -15,7 +15,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -94,7 +93,7 @@ private fun valueOf(step: SetupStep, form: ProfileFormState) = when (step) {
             SetupStep.NAME -> {
                 Question("이름이 어떻게 되세요?")
                 SetupField("이름", form.name, { change(form.copy(name = it)) }, "실명 또는 활동명", shownError, "필수예요. 명함과 공개 프로필에 이 이름으로 보여요.", focus,
-                    KeyboardOptions(imeAction = ImeAction.Next), nextAction)
+                    keyboardActions = nextAction)
             }
             SetupStep.JOBS -> {
                 Question("어떤 일을 하세요? (선택)")
@@ -106,12 +105,12 @@ private fun valueOf(step: SetupStep, form: ProfileFormState) = when (step) {
             SetupStep.PHONE -> {
                 Question("연락받을 전화번호를 알려 주세요")
                 SetupField("전화번호", form.phone, { change(form.copy(phone = it)) }, "010-0000-0000", shownError, "필수예요. 명함에 넣을지는 명함을 만들 때 골라요.", focus,
-                    KeyboardOptions(keyboardType = KeyboardType.Phone, imeAction = ImeAction.Next), nextAction)
+                    KeyboardOptions(keyboardType = KeyboardType.Phone), nextAction)
             }
             SetupStep.EMAIL -> {
                 Question("이메일 주소는요?")
                 SetupField("이메일", form.email, { change(form.copy(email = it)) }, "name@example.com", shownError, "필수예요.", focus,
-                    KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Email, imeAction = ImeAction.Next), nextAction)
+                    KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Email), nextAction)
             }
             SetupStep.INTRODUCTION -> {
                 Question("처음 만난 사람에게 한두 문장으로 소개해 주세요 (선택)")
@@ -121,13 +120,12 @@ private fun valueOf(step: SetupStep, form: ProfileFormState) = when (step) {
     }
 }
 
+/** One stacked-label field (shared `DearbyField`, contract "폼 라벨·입력 크기"); single-line fields answer Next with the section's `next`. */
 @Composable private fun SetupField(
     label: String, value: String, onValueChange: (String) -> Unit, placeholder: String, error: String?, hint: String?, focus: FocusRequester,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default, keyboardActions: KeyboardActions = KeyboardActions.Default, minLines: Int = 1,
-) = OutlinedTextField(value, onValueChange, Modifier.fillMaxWidth().focusRequester(focus),
-    label = { Text(label) }, placeholder = { Text(placeholder) }, isError = error != null,
-    supportingText = (error ?: hint)?.let { { Text(it) } }, keyboardOptions = keyboardOptions, keyboardActions = keyboardActions,
-    singleLine = minLines == 1, minLines = minLines)
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default, keyboardActions: KeyboardActions? = null, minLines: Int = 1,
+) = DearbyField(label, value, onValueChange, placeholder = placeholder, error = error, hint = hint, minLines = minLines, focusRequester = focus,
+    keyboardOptions = keyboardOptions, keyboardActions = keyboardActions, imeAction = if (minLines > 1) ImeAction.Default else ImeAction.Next)
 
 /** An answered section: label and value on a row; tapping reopens it. */
 @Composable private fun DoneRow(step: SetupStep, value: String, reopen: () -> Unit) {

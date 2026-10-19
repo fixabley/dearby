@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.Font
@@ -108,25 +110,29 @@ private val DarkScheme = darkColorScheme(
 }
 
 /**
- * 화면 제목 줄. [back]이 없으면 다섯 탭의 첫 화면 제목(contract "탭 제목 통일·머리 간소화", 2026-10-19 밤): 왼쪽 정렬 굵은 `titleLarge`, 좌우 20, 상태 표시줄 바로
- * 아래 위 여백 8(상태 표시줄 인셋은 `DearbyApp`이 한 번만 적용한다), 오른쪽 [actions]. [back]이 있으면 하위 화면의 가운데 정렬 inline 제목 그대로다.
+ * 화면 상단 바(contract "iOS 상단 바는 시스템 내비게이션 바" Android 문장, 2026-10-20): Material 3 `TopAppBar` 그대로 — 제목 `titleLarge` 한 줄, [back]이 있으면
+ * `navigationIcon` 뒤로, 오른쪽 [actions](탭 루트는 [TabActions]). 바탕은 페이지 `background`와 같고, [scrollBehavior](탭 루트의 `pinnedScrollBehavior`)에 내용 스크롤이
+ * 이어지면 시스템이 `surfaceContainer`로 올려 구분한다. 상태 표시줄 인셋은 바가 직접 받는다(`DearbyApp`은 상태 표시줄 여백을 두지 않는다).
  */
-@Composable fun ScreenHeader(title: String, back: (() -> Unit)? = null, actions: @Composable RowScope.() -> Unit = {}) {
-    if (back == null) Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 8.dp).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(title, Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleLarge)
-        actions()
-    } else Box(Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(back) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "뒤로", tint = MaterialTheme.colorScheme.primary) }
-            Spacer(Modifier.weight(1f))
-            actions()
-        }
-        Text(title, Modifier.align(Alignment.Center), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
-    }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun DearbyTopBar(title: String, back: (() -> Unit)? = null, scrollBehavior: TopAppBarScrollBehavior? = null, actions: @Composable RowScope.() -> Unit = {}) =
+    TopAppBar({ Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) }, navigationIcon = { back?.let { IconButton(it) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, "뒤로") } } },
+        actions = actions, colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background), scrollBehavior = scrollBehavior)
+
+/**
+ * 검색창 하나(contract "폼은 플랫폼 기본 컴포넌트"·"퍼널 검색은 발견 검색과 같은 경험", 2026-10-20): Material 3 `SearchBarDefaults.InputField`(높이 56, 둥근 바탕, 돋보기,
+ * 지우기 `Cancel`, `ImeAction.Search`는 키보드만 내린다 — 결과는 입력과 함께 이미 바뀐다). 발견·받은 명함·이력 퍼널·직무 선택이 같은 것을 쓴다.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable fun DearbySearchField(query: String, onQueryChange: (String) -> Unit, placeholder: String, modifier: Modifier = Modifier) {
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    SearchBarDefaults.InputField(query, onQueryChange, { focusManager.clearFocus() }, expanded = false, onExpandedChange = {}, modifier.fillMaxWidth().semantics { contentDescription = placeholder },
+        placeholder = { Text(placeholder) }, leadingIcon = { Icon(Icons.Rounded.Search, null) },
+        trailingIcon = { if (query.isNotEmpty()) IconButton({ onQueryChange("") }) { Icon(Icons.Rounded.Cancel, "검색어 지우기") } })
 }
 
 /**
- * 탭 첫 화면 제목 줄의 공통 오른쪽 끝(contract "알림 아이콘은 다섯 탭 모두 우상단 고정"·"설정"): [설정] [알림] 순서로 48dp `IconButton` 둘(44 터치 영역 이상).
+ * 탭 첫 화면 상단 바의 공통 오른쪽 끝(contract "알림 아이콘은 … 우상단 고정"·"설정"): [설정] [알림] 순서로 48dp `IconButton` 둘(44 터치 영역 이상).
  * 탭별 보조 행동은 호출 측이 이 앞에 둔다. 알림 화면은 아직 자리만이라 [notify]는 안내 문구를 연다.
  */
 @Composable fun TabActions(settings: () -> Unit, notify: () -> Unit) {

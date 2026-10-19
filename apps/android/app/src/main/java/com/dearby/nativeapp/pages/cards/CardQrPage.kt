@@ -21,7 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.CenteredMessage
 import com.dearby.nativeapp.shared.ui.QrImage
-import com.dearby.nativeapp.shared.ui.ScreenHeader
+import com.dearby.nativeapp.shared.ui.DearbyTopBar
 
 /** One applied activity the card can be handed out at (contract "명함 교환"). */
 data class QrActivity(val id: String, val title: String)
@@ -35,7 +35,7 @@ data class QrActivity(val id: String, val title: String)
     var picking by remember { mutableStateOf(false) }
     val selected = activities.firstOrNull { it.id == selectedId }
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("QR 보이기", close)
+        DearbyTopBar("QR 보이기", close)
         CenteredMessage(null, cardTitle, "상대가 카메라로 QR을 읽으면 이 명함을 받아요.", Modifier.weight(1f).fillMaxWidth(),
             symbol = { QrImage(url, Modifier.fillMaxWidth().aspectRatio(1f).semantics { contentDescription = "내 명함 QR 코드, 카메라로 읽으면 명함을 받아요" }) },
             content = {

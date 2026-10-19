@@ -21,7 +21,7 @@ import java.time.format.DateTimeFormatter
 /** 변경 이력: every saved profile version, newest first. */
 @Composable fun ProfileVersionsPage(state: VersionsState, open: (Int) -> Unit, more: () -> Unit, close: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("변경 이력", close)
+        DearbyTopBar("변경 이력", close)
         state.error?.let { Text(it, Modifier.padding(20.dp), color = MaterialTheme.colorScheme.error) }
         if (!state.loading && state.items.isEmpty() && state.error == null) Text("아직 저장한 버전이 없어요.", Modifier.padding(20.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
         LazyColumn(Modifier.weight(1f)) {
@@ -41,7 +41,7 @@ import java.time.format.DateTimeFormatter
 /** One version's content with "이 버전으로 되돌리기" (a new version is saved; the history stays). */
 @Composable fun ProfileVersionPage(state: VersionsState, version: Int, restore: () -> Unit, close: () -> Unit) {
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("버전 $version", close)
+        DearbyTopBar("버전 $version", close)
         val detail = state.detail
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             when {

@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -23,7 +24,6 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.onFocusChanged
@@ -37,7 +37,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -77,30 +77,23 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
     val collapse = remember(reduceMotion, focusManager) { SearchAreaCollapse(reduceMotion, scope, focusManager::clearFocus) }
     // The program list is drawn only with programs; loading, failure and empty results are centred states in its place (contract "비스크롤 화면 배치·CTA").
     val listShown = state.phase == ActivityListPhase.LOADED && state.programs.isNotEmpty()
-    // The hairline shows once content passes under the fixed title: the search area has begun to fold or the list has moved. The list state keeps
-    // its last values while a centred state replaces the list, so both reads are gated on the list being shown.
-    val scrolled by remember(collapse, listShown) { derivedStateOf { collapse.offset < 0f || (listShown && listState.canScrollBackward) } }
+    // The list state keeps its last values while a centred state replaces the list, so the read is gated on the list being shown.
     val farDown by remember(listShown) { derivedStateOf { listShown && listState.pastOneScreen() } }
+    // Pinned top bar (contract "iOS 상단 바…" Android): the bar tints once anything scrolls under it — the collapse connection's consumption counts too.
+    val topBar = TopAppBarDefaults.pinnedScrollBehavior()
     // Fields and buttons take their own taps first, so this only catches taps on empty space.
-    Box(Modifier.fillMaxSize().imePadding().pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } }) {
+    Box(Modifier.fillMaxSize().imePadding().nestedScroll(topBar.nestedScrollConnection).pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } }) {
         Column(Modifier.fillMaxSize()) {
-            // Tab title line shared by the five tabs (contract "탭 제목 통일·머리 간소화"), pinned above everything that scrolls.
-            Box(Modifier.fillMaxWidth()) {
-                ScreenHeader("활동 둘러보기") { TabActions(settings, notify) }
-                HorizontalDivider(Modifier.align(Alignment.BottomCenter).alpha(if (scrolled) 1f else 0f), color = MaterialTheme.colorScheme.surfaceContainerHighest)
-            }
+            DearbyTopBar("활동 둘러보기", scrollBehavior = topBar) { TabActions(settings, notify) }
             // Search field and 마감 숨기기 switch: outside the list so the field keeps focus and the keyboard while results change.
             Column(Modifier.fillMaxWidth().collapsing(collapse)) {
-                // The search-bar input field on its own (height 56, rounded, ImeAction.Search); results already follow the text, so Search just hides the keyboard.
-                SearchBarDefaults.InputField(state.query, search, { focusManager.clearFocus() }, expanded = false, onExpandedChange = {},
-                    Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp).testTag("activity-search")
-                        .onFocusChanged { collapse.locked = it.isFocused; if (it.isFocused) collapse.expand() },
-                    placeholder = { Text("프로그램·조직·활동 이름으로 검색") }, leadingIcon = { Icon(Icons.Rounded.Search, null) },
-                    trailingIcon = { if (state.query.isNotEmpty()) IconButton({ search("") }) { Icon(Icons.Rounded.Cancel, "검색어 지우기") } })
-                // 마감 숨기기 (contract "모집 중인 프로그램만 보기"): off also lists programs active in the last two years.
-                Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.End) {
-                    Text("마감 숨기기", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                    Switch(state.openOnly, setOpenOnly, Modifier.padding(start = 8.dp).semantics { contentDescription = "마감 숨기기" })
+                DearbySearchField(state.query, search, "프로그램·조직·활동 이름으로 검색",
+                    Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp).testTag("activity-search").onFocusChanged { collapse.locked = it.isFocused; if (it.isFocused) collapse.expand() })
+                // 마감 숨기기 (contract "모집 중인 프로그램만 보기"·"토글 라벨은 바로 옆"): label + switch as one left-aligned toggleable unit; off also lists programs active in the last two years.
+                Row(Modifier.padding(start = 12.dp, end = 20.dp, bottom = 4.dp).heightIn(min = 48.dp).toggleable(state.openOnly, role = Role.Switch, onValueChange = setOpenOnly).padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("마감 숨기기", style = MaterialTheme.typography.bodyLarge)
+                    Switch(state.openOnly, null)
                 }
             }
             // The collapse connection sits outside the pull gesture: a pull at the top re-enters the search area first, then the indicator grows below it.

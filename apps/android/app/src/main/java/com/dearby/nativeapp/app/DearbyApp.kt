@@ -13,9 +13,9 @@ import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.activity.applyPrompt.ApplyConfirmationSheet
 import com.dearby.nativeapp.entities.account.model.PublishedCard
 
+/** Four tabs (contract "명함 탭 통합", 2026-10-20): 내 명함 and 받은 명함 are the two segments of 명함. */
 private enum class Tab(val label: String, val icon: ImageVector) {
-    Discovery("발견", Icons.Rounded.Explore), Mine("내 활동", Icons.Rounded.Checklist),
-    Cards("내 명함", Icons.Rounded.Badge), Wallet("받은 명함", Icons.Rounded.Inbox), Profile("내 프로필", Icons.Rounded.AccountCircle),
+    Discovery("발견", Icons.Rounded.Explore), Mine("내 활동", Icons.Rounded.Checklist), Cards("명함", Icons.Rounded.Badge), Profile("내 프로필", Icons.Rounded.AccountCircle),
 }
 /** A full-screen route pushed over the tabs (the tab bar hides). */
 private sealed interface Route {
@@ -31,6 +31,8 @@ private sealed interface Route {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, myCards: MyCardsViewModel, wallet: WalletViewModel, profile: ProfileViewModel, settings: SettingsViewModel) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
+    // The 명함 tab's segment, kept in memory for the app's lifetime (contract "명함 탭 통합").
+    var cardsSegment by remember { mutableStateOf(CardsSegment.MINE) }
     var route by remember { mutableStateOf<Route?>(null) }
     var activityDetail by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<String?>(null) }
@@ -43,15 +45,16 @@ private sealed interface Route {
     val walletState by wallet.state.collectAsStateWithLifecycle()
     val auth by account.state.collectAsStateWithLifecycle()
     // 명함 교환 (contract): a dearby://cards/… link saved a card → open it; signed out → sign in, then the link is saved.
-    LaunchedEffect(walletState.opened) { walletState.opened?.let { tab = Tab.Wallet; activityDetail = false; route = Route.Detail(it); wallet.consumeOpened() } }
+    // A saved exchanged card opens on the 명함 tab's 받은 명함 segment with its detail pushed.
+    LaunchedEffect(walletState.opened) { walletState.opened?.let { tab = Tab.Cards; cardsSegment = CardsSegment.RECEIVED; activityDetail = false; route = Route.Detail(it); wallet.consumeOpened() } }
     LaunchedEffect(auth.phase, walletState.needSignIn) { if (auth.phase == AccountPhase.SIGNED_IN && walletState.needSignIn) wallet.retryPending() }
-    // Every tab root sits on the theme `background` (the surfaceContainerLow tone, iOS systemGroupedBackground parity); cards, sheets and tiles are
-    // `surface` on top. The status-bar inset is applied once here, so page headers add only their own 8dp. The IME inset is also applied once
-    // here (contract "키보드 내리기"): pages add `imeNestedScroll()` on their scroll containers but no `imePadding()` of their own, and the tab bar is
-    // hidden while the keyboard is up so no tab-bar band sits between the content and the keyboard.
+    // Every screen sits on the theme `background`, which this Surface spreads under the status bar, navigation bar and keyboard too (contract "안전 영역
+    // 배경"); cards, sheets and tiles are `surface` on top. Every screen inside starts with a `DearbyTopBar`, which takes the status-bar inset itself, so
+    // only the bottom insets are padded here. The IME inset is applied once here (contract "키보드 내리기"): pages add `imeNestedScroll()` on their
+    // scroll containers but no `imePadding()` of their own, and the tab bar is hidden while the keyboard is up.
     val imeVisible = WindowInsets.isImeVisible
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onSurface) {
-        Column(Modifier.statusBarsPadding().navigationBarsPadding().imePadding()) {
+        Column(Modifier.navigationBarsPadding().imePadding()) {
             Box(Modifier.weight(1f)) {
                 when (val screen = route) {
                     is Route.Detail -> walletState.cards.firstOrNull { it.id == screen.id }?.let { WalletCardRoute(it, wallet, myCards) { route = null } }
@@ -60,12 +63,12 @@ private sealed interface Route {
                     Route.Composer -> CardComposerRoute(publish, account) { route = null }
                     Route.Settings -> SettingsRoute(settings, account, profile) { route = null }
                     null -> when (tab) {
-                        // 설정·알림 sit in the tab's ScreenHeader (contract "탭 제목 통일·머리 간소화": no extra head row above the title).
+                        // 설정·알림 sit in each tab's pinned `DearbyTopBar` (contract "iOS 상단 바…" Android sentence).
                         Tab.Discovery, Tab.Mine -> key(tab) {
                             ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }, settings = openSettings, notify = notify) { activityDetail = it }
                         }
-                        Tab.Cards -> MyCardsRoute(myCards, compose, showQr = { route = Route.Qr(it) }, settings = openSettings, notify = notify) { card -> publish.start(card); route = Route.Composer }
-                        Tab.Wallet -> WalletRoute(wallet, account, openSettings, notify) { route = Route.Detail(it.id) }
+                        Tab.Cards -> CardsRoute(cardsSegment, { cardsSegment = it }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
+                            edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify)
                         Tab.Profile -> ProfileRoute(profile, account, compose, openSettings, notify)
                     }
                 }

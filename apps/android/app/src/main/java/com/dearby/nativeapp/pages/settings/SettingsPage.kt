@@ -30,7 +30,7 @@ import com.dearby.nativeapp.shared.ui.*
     var confirm by remember { mutableStateOf<Confirm?>(null) }
     var renaming by remember { mutableStateOf<SettingsPasskeyState?>(null) }
     Column(Modifier.fillMaxSize()) {
-        ScreenHeader("설정", back)
+        DearbyTopBar("설정", back)
         when (state.phase) {
             SettingsPhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
             SettingsPhase.FAILED -> DearbyErrorState("설정을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
