@@ -46,6 +46,9 @@ export type ActivityText = {
   descriptionEn: string | null;
   /** Absent on older API responses; the editor treats that as none. */
   eligibility?: Eligibility | null;
+  /** Absent on the tree path; then the URL fields are hidden (2026-10-19 공식 안내·신청 링크 편집). */
+  officialUrl?: string;
+  applicationUrl?: string | null;
   /** The tree opens the editor without schedules; then the 모집 기간·활동 기간 blocks are hidden. */
   application?: Schedule | null;
   activitySchedule?: Schedule;
@@ -57,7 +60,7 @@ export type ActivityText = {
 /** True when the collector filled [field] from an earlier edition and no operator has edited it since. */
 const inherited = (activity: { inheritedFields?: string[] }, field: "eligibility" | "audience" | "participationType") =>
   activity.inheritedFields?.includes(field) ?? false;
-type CuratedField = "name" | "nameEn" | "description" | "descriptionEn" | "eligibility";
+type CuratedField = "name" | "nameEn" | "description" | "descriptionEn" | "eligibility" | "officialUrl" | "applicationUrl";
 /** True when an operator set [field] here; the server keeps that mark even when the field is saved again or emptied. */
 const curated = (activity: { curatedFields?: string[] }, field: CuratedField) => activity.curatedFields?.includes(field) ?? false;
 const curatedFieldLabels: Record<CuratedField, string> = {
@@ -66,6 +69,8 @@ const curatedFieldLabels: Record<CuratedField, string> = {
   description: "한글 설명",
   descriptionEn: "영문 설명",
   eligibility: "대상자 조건",
+  officialUrl: "공식 안내 URL",
+  applicationUrl: "신청 링크",
 };
 type Activity = ActivityText & {
   organization: { id: number; name: string };
@@ -477,7 +482,7 @@ function DuplicateDialog({ activity, onClose }: { activity: Activity; onClose: (
   );
 }
 
-type TextBody = { name: string; nameEn: string; description: string; descriptionEn: string; eligibility: Eligibility | null };
+type TextBody = { name: string; nameEn: string; description: string; descriptionEn: string; eligibility: Eligibility | null; officialUrl?: string; applicationUrl?: string };
 type ScheduleBody = { activitySchedule?: ScheduleInput; application?: ScheduleInput };
 
 export function ActivityTextEditor({ activity, onClose }: { activity: ActivityText; onClose: () => void }) {
@@ -489,6 +494,7 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
   const applicationTimed: boolean = Form.useWatch("applicationTimed", form) ?? false;
   // Only the list passes schedules; the tree does not, so the blocks (and the PATCH keys) are skipped there.
   const withSchedules = activity.activitySchedule !== undefined;
+  const withUrls = activity.officialUrl !== undefined;
   const initialActivity = rangeDraft(activity.activitySchedule);
   const initialApplication = rangeDraft(activity.application);
   /** 수집이 두 기간을 바꿔 넣었을 때 폼 값만 서로 바꾼다. 활동 기간은 종일만 허용하므로 시각 지정은 끈다. 저장해야 반영된다. */
@@ -531,6 +537,8 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
           nameEn: activity.nameEn ?? "",
           description: activity.description,
           descriptionEn: activity.descriptionEn ?? "",
+          officialUrl: activity.officialUrl ?? "",
+          applicationUrl: activity.applicationUrl ?? "",
           activityRange: initialActivity.range,
           activityTimed: initialActivity.timed,
           applicationRange: initialApplication.range,
@@ -543,6 +551,8 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
           nameEn: string;
           description: string;
           descriptionEn: string;
+          officialUrl: string;
+          applicationUrl: string;
           activityRange: RangeDraft["range"];
           activityTimed: boolean;
           applicationRange: RangeDraft["range"];
@@ -565,6 +575,8 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
               description: values.description.trim(),
               descriptionEn: values.descriptionEn.trim(),
               eligibility: eligibilityJson,
+              // URL fields exist only on the list path; the tree omits them so the server keeps the current values.
+              ...(withUrls ? { officialUrl: values.officialUrl.trim(), applicationUrl: values.applicationUrl.trim() } : {}),
               ...schedules,
             }),
           );
@@ -612,6 +624,24 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
         <Form.Item name="descriptionEn" label={<>영문 설명(선택){curated(activity, "descriptionEn") && <CuratedTag />}</>}>
           <Input.TextArea autoSize={{ minRows: 3, maxRows: 10 }} />
         </Form.Item>
+        {withUrls && (
+          <>
+            <Form.Item
+              name="officialUrl"
+              label={<>공식 안내 URL{curated(activity, "officialUrl") && <CuratedTag />}</>}
+              rules={[{ required: true, whitespace: true, message: "공식 안내 URL을 입력해 주세요." }, { pattern: /^\s*https:\/\/\S+\s*$/, message: "https 주소여야 해요." }]}
+            >
+              <Input inputMode="url" placeholder="https://" />
+            </Form.Item>
+            <Form.Item
+              name="applicationUrl"
+              label={<>신청 링크(선택){curated(activity, "applicationUrl") && <CuratedTag />}</>}
+              rules={[{ pattern: /^\s*(https:\/\/\S+)?\s*$/, message: "https 주소여야 해요. 비우면 지워져요." }]}
+            >
+              <Input inputMode="url" placeholder="https://" />
+            </Form.Item>
+          </>
+        )}
         <div className="eligibility-field">
           <div className="eligibility-field-heading">
             <strong>대상자 조건(선택)</strong>
