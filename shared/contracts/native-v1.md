@@ -425,6 +425,16 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **글자 크기 통일(사용자 "이런 경우가 많을 경우 해당 요소들의 폰트 크기를 통일감 있게")**: 이 화면들은 한 가지 글자 계층만 쓴다 — 심볼/아이콘 48, 제목 iOS `.title2.bold()`·Android `headlineSmall`(굵게), 설명 iOS `.body`·Android `bodyLarge`(보조색, 최대 3줄), 주 버튼은 플랫폼 기본 버튼 라벨, 보조 텍스트 버튼도 기본 라벨. 화면마다 다른 크기(`.title`·`.headline`·`titleMedium`·`SemiBold` 등)를 섞지 않는다. 공통 컴포넌트 하나(iOS `shared/ui` `CenteredMessage(symbol:title:message:primary:secondary:)`, Android `shared/ui` `CenteredMessage(...)`)로 그려 크기가 어긋날 여지를 없앤다.
 - 큰 글씨·작은 화면에서 내용이 넘치면 가운데 정렬을 유지한 채 스크롤이 생긴다(`ScrollView`/`verticalScroll` + 최소 높이 = 화면). 동작 줄이기 영향 없음. 웹은 변경 없음.
 
+## 아이콘 통일 — 2026-10-19 밤 사용자 결정 (토스 참고)
+
+사용자: "아이콘 사용도 통일감 있게 해줘. 필요시 mobbin에서 토스 디자인 참고해줘." 토스 참고 화면(Mobbin): 상태 화면은 가운데 큰 단색 원형 아이콘 하나 + 제목 + 설명 + 하단 CTA([채움 완료](https://mobbin.com/screens/5faf70d5-f007-4bfa-86ff-55802a53c121), [알림 동의 시트](https://mobbin.com/screens/280b81aa-61ec-45f3-9761-61d79670fac8)), 목록 행은 왼쪽 작은 둥근 글리프 + 문장([혜택 목록](https://mobbin.com/screens/fd918402-6e06-4328-9aef-2ea45dd70805)). 현황: iOS는 SF Symbols 30여 종을 굵기·렌더링 지정 없이 섞어 쓰고, Android는 `Icons.Outlined` 61곳·`Rounded` 2곳이 섞여 있다.
+
+- **한 가족만**: iOS는 SF Symbols만(사용자 PNG 아이콘 금지, 브랜드 심볼·GitHub 마크만 예외), Android는 **`Icons.Rounded`** 한 가족만(`Outlined`·`Filled`·`Default` 금지, `AutoMirrored.Rounded`는 허용). 색은 iOS `.foregroundStyle(.secondary)`/`DearbyStyle.teal`, Android `onSurfaceVariant`/`primary` 두 가지만.
+- **세 가지 크기**: ① 인라인(글자 옆·버튼 안): 글자 크기 따름(iOS `.imageScale(.medium)`, Android 20dp), 선형(outline 계열 SF 이름, Rounded는 그대로). ② 행 앞 글리프(목록·정보 행): 24, 보조색, 같은 열에 맞춤. ③ 상태 아이콘(빈 상태·완료·오류·시트 머리): **청록 채움 원 64 안의 흰 글리프 28**(토스의 파란 체크 원처럼; 흰 글자 규칙과 같음), 오류는 `danger` 채움 원. `CenteredMessage`의 `symbol`이 이 형태를 그린다. iOS 큰 상태 심볼은 `.fill` 변형, 인라인은 선형.
+- **의미별 고정 이름**(둘 다 이 표만 쓴다): 일정·달력 `calendar`/`Event`, 시각 `clock`/`Schedule`, 장소 `mappin.and.ellipse`/`Place`, 외부 링크 `arrow.up.right`/`AutoMirrored.Rounded.OpenInNew`, 수정 `pencil`/`Edit`, 삭제 `trash`/`Delete`, 추가 `plus`/`Add`, 제거 `minus.circle`/`RemoveCircle`, 검색 `magnifyingglass`/`Search`, 지우기 `xmark.circle.fill`/`Cancel`, 닫기 `xmark`/`Close`, 뒤로 `chevron.left`/`AutoMirrored.Rounded.ArrowBack`, 펼침 `chevron.down`/`ExpandMore`, 성공·확인 `checkmark.circle`(상태는 `.fill`)/`CheckCircle`, 오류 `exclamationmark.triangle`/`Warning`, 정보 `info.circle`/`Info`, 알림 `bell`/`Notifications`, QR `qrcode`/`QrCode`, 명함 `person.text.rectangle`/`Badge`, 프로필 `person.crop.circle`/`AccountCircle`, 활동 둘러보기 `safari`/`Explore`, 내 활동 `checklist`/`Checklist`, 받은 명함 `tray.full`/`Inbox`, 공유 `square.and.arrow.up`/`Share`, 지도 `map`/`Map`, 전화 `phone`/`Call`, 메일 `envelope`/`Mail`, 첨부 `paperclip`/`AttachFile`, 사진 `photo`/`Image`, 눈 `eye`/`Visibility`, 잠금 `lock`/`Lock`, 기기 `iphone`/`Smartphone`, 위로 `arrow.up`/`ArrowUpward`. 표에 없는 뜻이 생기면 표에 먼저 더한다.
+- **탭 막대**: 다섯 탭은 위 표의 활동 둘러보기·내 활동·명함·받은 명함·프로필 아이콘을 쓰고, 선택 상태는 iOS 기본(`.fill` 자동), Android `NavigationBar` 기본.
+- 적용 시점: 비스크롤 화면 배치·흰 글자 규칙과 같은 묶음(현재 PR 병합 뒤).
+
 ## 활동 장소 — 2026-10-19 사용자 결정
 
 사용자: "장소는 어드민에서 추가할 수 있으면 좋겠고 geocode, 주소 검색해서 좌표 가지고 올 수 있으면". 활동의 구조화된 장소를 둔다.
