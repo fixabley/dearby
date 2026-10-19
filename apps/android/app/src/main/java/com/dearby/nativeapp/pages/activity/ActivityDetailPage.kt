@@ -33,7 +33,7 @@ import com.dearby.nativeapp.shared.ui.*
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             ActivityImage(activity.imageUrl, Modifier.fillMaxWidth().height(205.dp))
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { ExampleBadge(activity.status, true) }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { ExampleBadge(activity.status, true); activity.category?.let { ExampleBadge(it) } }
                 Text(activity.title, style = MaterialTheme.typography.headlineMedium)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Icon(Icons.Outlined.Business, null, Modifier.size(38.dp), tint = Teal)

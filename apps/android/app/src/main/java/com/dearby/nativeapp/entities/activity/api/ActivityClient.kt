@@ -1,5 +1,6 @@
 package com.dearby.nativeapp.entities.activity.api
 
+import com.dearby.nativeapp.entities.activity.model.ActivityCategory
 import com.dearby.nativeapp.entities.activity.model.ActivityModel
 import com.dearby.nativeapp.entities.activity.model.EligibilityCondition
 import com.dearby.nativeapp.entities.activity.model.EligibilityGroup
@@ -70,6 +71,7 @@ fun parseActivities(json: String): ActivityPage {
             schedules, period?.stageSchedule(),
             // An unreadable eligibility never fails the activity.
             activity.optJSONObject("eligibility")?.let { runCatching { it.eligibilityGroup(0) }.getOrNull() },
+            ActivityCategory.fromCode(activity.text("category")),
         )
     }, body.text("nextCursor"))
 }

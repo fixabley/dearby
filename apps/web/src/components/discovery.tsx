@@ -3,6 +3,7 @@ import Form from "next/form";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
+  type Activity,
   type ActivityPage,
   type ProgramPage,
   type ProgramSummary,
@@ -15,6 +16,7 @@ import { errorMessage, request } from "@/lib/client";
 import { Empty, Failure, Loading } from "@/shared/ui/states";
 import { Icon } from "@/shared/ui/icon";
 import { ActivityCard } from "@/widgets/activity/activity-card";
+import { groupByCategory } from "@/lib/category";
 
 function programsPath(q: string, cursor?: number) {
   const params = new URLSearchParams();
@@ -168,6 +170,15 @@ export function Discovery({ q }: { q: string }) {
 }
 
 /** Single open activity, or a search hit on an activity name, starts expanded. */
+/** 모집일 순 (contract "활동 종류"): earlier recruitment deadline first, no deadline last, ties by name. */
+function byDeadline(a: Activity, b: Activity): number {
+  return deadline(a.application) - deadline(b.application) || a.name.localeCompare(b.name, "ko");
+}
+function deadline(application: Activity["application"]): number {
+  const end = application?.endAt ?? application?.endDateExclusive;
+  const instant = end ? Date.parse(end) : NaN;
+  return Number.isNaN(instant) ? Infinity : instant;
+}
 function startsOpen(program: ProgramSummary) {
   return program.openActivityCount === 1 || program.matchedActivityIds.length > 0;
 }
@@ -249,21 +260,27 @@ function ProgramRow({
           ) : !openActivities.length ? (
             <p className="muted">지금 모집 중인 활동이 없어요.</p>
           ) : (
-            <ul className="activity-list">
-              {openActivities.map((activity) => (
-                <li key={activity.id}>
-                  <ActivityCard
-                    id={activity.id}
-                    name={activity.name}
-                    description={activity.description}
-                    organizationName={activity.organization.name}
-                    statusLabel={recruitment(activity.application, now).label}
-                    dateLabel={scheduleLabel(activity.activitySchedule)}
-                    imageUrl={httpsUrl(activity.imageUrl)}
-                  />
-                </li>
-              ))}
-            </ul>
+            // Grouped by 활동 종류 (contract "활동 종류"); a single group needs no heading.
+            groupByCategory(openActivities, (activity) => activity.category).map((group, _, groups) => (
+              <section key={group.label} className="category-group">
+                {groups.length > 1 && <h3 className="category-heading">{group.label}</h3>}
+                <ul className="activity-list">
+                  {[...group.items].sort(byDeadline).map((activity) => (
+                    <li key={activity.id}>
+                      <ActivityCard
+                        id={activity.id}
+                        name={activity.name}
+                        description={activity.description}
+                        organizationName={activity.organization.name}
+                        statusLabel={recruitment(activity.application, now).label}
+                        dateLabel={scheduleLabel(activity.activitySchedule)}
+                        imageUrl={httpsUrl(activity.imageUrl)}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))
           )}
         </div>
       )}

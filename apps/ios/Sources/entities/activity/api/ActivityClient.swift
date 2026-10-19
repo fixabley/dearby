@@ -59,9 +59,21 @@ enum ActivityClient {
                 hasApplication: activity.application != nil,
                 stages: activity.schedules.map(stage), activityStage: activity.activitySchedule.map(stage),
                 officialUrl: activity.officialUrl, imageUrl: activity.imageUrl,
-                eligibility: activity.eligibility?.value.flatMap { $0.eligibility(depth: 0) })
+                eligibility: activity.eligibility?.value.flatMap { $0.eligibility(depth: 0) },
+                category: activity.category.flatMap(ActivityCategory.init(rawValue:)),
+                recruitmentDeadline: ActivityModel.instant(activity.application?.endAt) ?? seoulDate(activity.application?.endDateExclusive))
         }
         return ActivityPage(items: items, nextCursor: payload.nextCursor)
+    }
+    /// A `yyyy-MM-dd` date as Seoul midnight; nil when absent or unreadable.
+    private static func seoulDate(_ raw: String?) -> Date? {
+        guard let raw else { return nil }
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.date(from: raw)
     }
     /// Stages keep every schedule: timed (either bound may be missing), all-day, or date-less. An unknown kind reads as an event.
     private static func stage(_ schedule: Schedule) -> ActivityStageModel {
@@ -108,6 +120,8 @@ enum ActivityClient {
         let application: Schedule?; let activitySchedule: Schedule?; let schedules: [Schedule]
         /// Unreadable eligibility JSON must not fail the whole activity.
         let eligibility: Lenient<EligibilityNode>?
+        /// 활동 종류 code; absent on older responses.
+        let category: String?
     }
     /// Decodes to nil instead of throwing when the value has an unexpected shape.
     private struct Lenient<Value: Decodable>: Decodable {
