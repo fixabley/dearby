@@ -280,5 +280,5 @@ private fun ActivityModel.toProgress(marks: Map<Int, ProgressMark>, today: Local
     return ProgressState(id, name, "$program · $organization", shown, current, badge, ended, failedAt != null, current?.let { stages[it].day })
 }
 
-/** The recruitment window as text (contract "일정 표시 우선순위" format: `10월 1일 (수) 14:07 ~ 10월 8일 (수) 00:00`), null without one. */
-private fun ActivityModel.period(): String? = application?.let { scheduleText(it.startAt, it.endAt, it.startDate, it.endDateExclusive) }?.ifBlank { null }
+/** The recruitment window as text (contract "일정 표시 우선순위" format: `10월 1일 (수) 14:07 ~ 10월 8일 (수) 00:00`, end only `~ … 마감`), null without one. */
+private fun ActivityModel.period(): String? = application?.let { scheduleText(it.startAt, it.endAt, it.startDate, it.endDateExclusive, recruitment = true) }?.ifBlank { null }

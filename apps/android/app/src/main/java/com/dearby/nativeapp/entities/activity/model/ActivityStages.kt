@@ -27,7 +27,7 @@ fun ActivityModel.stages(): List<Stage> {
     val applying = application?.let { window ->
         // The deadline only (timed, else the all-day window's last day); the start is left out on purpose.
         val day = instant(window.endAt)?.atZone(seoul)?.toLocalDate() ?: localDate(window.endDateExclusive)?.minusDays(1)
-        Stage("지원", "APPLICATION", "마감", if (day == null) UNDATED else scheduleText(null, window.endAt, null, window.endDateExclusive), day, day, null)
+        Stage("지원", "APPLICATION", "마감", if (day == null) UNDATED else scheduleText(null, window.endAt, null, window.endDateExclusive, recruitment = true), day, day, null)
     }
     val period = activitySchedule?.let { it.copy(title = it.title.ifBlank { "활동" }).toStage() }
     return listOfNotNull(applying) + stageSchedules.sortedWith(compareBy(nullsLast()) { it.startInstant() }).map { it.toStage() } + listOfNotNull(period)
