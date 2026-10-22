@@ -12,6 +12,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
+import io.wid.dearby.adaptor.persistence.jooq.tables.CardQrCodes
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist
@@ -113,6 +114,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.business_cards</code>.
      */
     val BUSINESS_CARDS: BusinessCards get() = BusinessCards.BUSINESS_CARDS
+
+    /**
+     * The table <code>public.card_qr_codes</code>.
+     */
+    val CARD_QR_CODES: CardQrCodes get() = CardQrCodes.CARD_QR_CODES
 
     /**
      * The table <code>public.collection_feedback</code>.
@@ -325,6 +331,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         ActivityTags.ACTIVITY_TAGS,
         AppleSignInStates.APPLE_SIGN_IN_STATES,
         BusinessCards.BUSINESS_CARDS,
+        CardQrCodes.CARD_QR_CODES,
         CollectionFeedback.COLLECTION_FEEDBACK,
         CollectionRuns.COLLECTION_RUNS,
         CollectionWatchlist.COLLECTION_WATCHLIST,

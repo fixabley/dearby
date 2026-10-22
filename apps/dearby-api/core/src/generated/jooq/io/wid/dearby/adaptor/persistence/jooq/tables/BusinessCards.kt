@@ -7,6 +7,8 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.indexes.BUSINESS_CARDS_USER_ID_IDX
 import io.wid.dearby.adaptor.persistence.jooq.keys.BUSINESS_CARDS_PKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.CARD_QR_CODES__CARD_QR_CODES_CARD_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.tables.CardQrCodes.CardQrCodesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.BusinessCardsRecord
 
 import java.time.OffsetDateTime
@@ -23,6 +25,7 @@ import org.jooq.Index
 import org.jooq.InverseForeignKey
 import org.jooq.JSONB
 import org.jooq.Name
+import org.jooq.Path
 import org.jooq.PlainSQL
 import org.jooq.QueryPart
 import org.jooq.Record
@@ -165,10 +168,39 @@ open class BusinessCards(
      * Create a <code>public.business_cards</code> table reference
      */
     constructor(): this(DSL.name("business_cards"), null)
+
+    constructor(path: Table<out Record>, childPath: ForeignKey<out Record, BusinessCardsRecord>?, parentPath: InverseForeignKey<out Record, BusinessCardsRecord>?): this(Internal.createPathAlias(path, childPath, parentPath), path, childPath, parentPath, BUSINESS_CARDS, null, null)
+
+    /**
+     * A subtype implementing {@link Path} for simplified path-based joins.
+     */
+    open class BusinessCardsPath : BusinessCards, Path<BusinessCardsRecord> {
+        constructor(path: Table<out Record>, childPath: ForeignKey<out Record, BusinessCardsRecord>?, parentPath: InverseForeignKey<out Record, BusinessCardsRecord>?): super(path, childPath, parentPath)
+        private constructor(alias: Name, aliased: Table<BusinessCardsRecord>): super(alias, aliased)
+        override fun `as`(alias: String): BusinessCardsPath = BusinessCardsPath(DSL.name(alias), this)
+        override fun `as`(alias: Name): BusinessCardsPath = BusinessCardsPath(alias, this)
+        override fun `as`(alias: Table<*>): BusinessCardsPath = BusinessCardsPath(alias.qualifiedName, this)
+    }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
     override fun getIndexes(): List<Index> = listOf(BUSINESS_CARDS_USER_ID_IDX)
     override fun getIdentity(): Identity<BusinessCardsRecord, Long?> = super.getIdentity() as Identity<BusinessCardsRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<BusinessCardsRecord> = BUSINESS_CARDS_PKEY
+
+    private lateinit var _cardQrCodes: CardQrCodesPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.card_qr_codes</code> table
+     */
+    fun cardQrCodes(): CardQrCodesPath {
+        if (!this::_cardQrCodes.isInitialized)
+            _cardQrCodes = CardQrCodesPath(this, null, CARD_QR_CODES__CARD_QR_CODES_CARD_ID_FKEY.inverseKey)
+
+        return _cardQrCodes;
+    }
+
+    val cardQrCodes: CardQrCodesPath
+        get(): CardQrCodesPath = cardQrCodes()
     override fun `as`(alias: String): BusinessCards = BusinessCards(DSL.name(alias), this)
     override fun `as`(alias: Name): BusinessCards = BusinessCards(alias, this)
     override fun `as`(alias: Table<*>): BusinessCards = BusinessCards(alias.qualifiedName, this)

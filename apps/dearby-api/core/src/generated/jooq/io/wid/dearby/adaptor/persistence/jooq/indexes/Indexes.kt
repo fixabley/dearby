@@ -12,6 +12,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
+import io.wid.dearby.adaptor.persistence.jooq.tables.CardQrCodes
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
@@ -59,6 +60,7 @@ val ACTIVITY_PARTICIPATIONS_ACTIVITY_ID_IDX: Index = Internal.createIndex(DSL.na
 val ACTIVITY_TAGS_TAG_ID_IDX: Index = Internal.createIndex(DSL.name("activity_tags_tag_id_idx"), ActivityTags.ACTIVITY_TAGS, arrayOf(ActivityTags.ACTIVITY_TAGS.TAG_ID), false)
 val APPLE_SIGN_IN_STATES_EXPIRES_AT_IDX: Index = Internal.createIndex(DSL.name("apple_sign_in_states_expires_at_idx"), AppleSignInStates.APPLE_SIGN_IN_STATES, arrayOf(AppleSignInStates.APPLE_SIGN_IN_STATES.EXPIRES_AT), false)
 val BUSINESS_CARDS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("business_cards_user_id_idx"), BusinessCards.BUSINESS_CARDS, arrayOf(BusinessCards.BUSINESS_CARDS.USER_ID), false)
+val CARD_QR_CODES_CARD_ID_IDX: Index = Internal.createIndex(DSL.name("card_qr_codes_card_id_idx"), CardQrCodes.CARD_QR_CODES, arrayOf(CardQrCodes.CARD_QR_CODES.CARD_ID), false)
 val COLLECTION_FEEDBACK_PROGRAM_KIND_IDX: Index = Internal.createIndex(DSL.name("collection_feedback_program_kind_idx"), CollectionFeedback.COLLECTION_FEEDBACK, arrayOf(CollectionFeedback.COLLECTION_FEEDBACK.PROGRAM_ID, CollectionFeedback.COLLECTION_FEEDBACK.KIND), false)
 val COLLECTION_FEEDBACK_SOURCE_TEXT_TRGM_IDX: Index = Internal.createIndex(DSL.name("collection_feedback_source_text_trgm_idx"), CollectionFeedback.COLLECTION_FEEDBACK, arrayOf(CollectionFeedback.COLLECTION_FEEDBACK.SOURCE_TEXT), false)
 val COLLECTION_RUNS_PROGRAM_ID_RUN_DATE_IDX: Index = Internal.createIndex(DSL.name("collection_runs_program_id_run_date_idx"), CollectionRuns.COLLECTION_RUNS, arrayOf(CollectionRuns.COLLECTION_RUNS.PROGRAM_ID, CollectionRuns.COLLECTION_RUNS.RUN_DATE.desc()), false)
