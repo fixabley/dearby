@@ -26,4 +26,8 @@ data class ExtractedActivity(
     val evidenceQuote: String,
     val category: String? = null, // 활동 종류 코드(native-v1.md "활동 종류"). 모르면 null
     val tags: List<String> = emptyList(), // 사전에서 고른 태그 이름(native-v1.md "태그"). 사전 밖 이름은 저장할 때 버린다
+    val activityRecurrence: ExtractedRecurrence? = null, // 활동 기간의 규칙적인 시간표(예: 평일 09:00~17:00). startDate부터
 )
+
+// 반복 규칙(RRULE 본문)과 매 회차 시각(HH:mm, 서울)
+data class ExtractedRecurrence(val rule: String, val startTime: String, val endTime: String)

@@ -382,13 +382,15 @@ class CollectionJobTest(
     fun `운영자가 지운 세부 일정은 다시 수집해도 되살아나지 않고, 운영자가 고친 일정과 같은 수집 일정은 다시 넣지 않는다`() {
         officialSetting()
         Fakes.extractedSchedules = listOf(
-            ExtractedSchedule(title = "1차 면접", kind = "INTERVIEW", startAt = "2026-11-15T10:00:00+09:00", endAt = "2026-11-15T12:00:00+09:00", dateLabel = "11월 15일 면접"),
+            ExtractedSchedule(title = "1차 면접", kind = "INTERVIEW", startAt = "2026-11-15T10:00:00+09:00", endAt = "2026-11-15T12:00:00+09:00", dateLabel = "11월 15일 면접", recurrence = "FREQ=DAILY;COUNT=2"),
             ExtractedSchedule(title = "결과 발표", kind = "ANNOUNCEMENT", startAt = null, endAt = null, dateLabel = "11월 20일 발표", startDate = "2026-11-20", endDate = "2026-11-20"),
         )
         try {
             assertEquals(BatchStatus.COMPLETED, run("2026-10-20").status)
             val activityId = jdbc.sql("select id from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(Long::class.java).single()
             assertEquals(listOf("1차 면접", "결과 발표"), detailTitles(activityId))
+            // 시각 세부 일정의 반복 규칙은 그대로 저장한다(native-v1.md "반복 일정과 겹침 결과 묶음")
+            assertEquals(listOf("FREQ=DAILY;COUNT=2"), jdbc.sql("select recurrence from schedules where activity_id = ? and title = '1차 면접'").param(activityId).query(String::class.java).list())
             // 모집·활동 기간 행은 다시 수집해도 제자리에서 고쳐 id가 그대로다(일정 상태·사용자 선택·겹침 확인 시간이 id에 묶임, native-v1.md "내 활동 서버 저장")
             fun slotIds() = jdbc.sql("select id from schedules where activity_id = ? and slot is not null order by slot").param(activityId).query(Long::class.java).list()
             val slotsBefore = slotIds()
