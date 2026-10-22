@@ -19,7 +19,7 @@ API = {
     'widgets.activity.progress': {'ActivityProgressRow', 'ProgressState', 'ProgressStage', 'ProgressStatus', 'StatusOption', 'CalendarDraft', 'stageIcon'},
     'widgets.card.cardContent': {'CardState', 'CardHistoryState', 'ContactState', 'CardContent', 'ReceivedCardRow', 'CardComposer', 'ComposerContact', 'ComposerHistory'},
     'pages.profile': {'ConsentPage', 'ProfilePage', 'ProfilePhase', 'ProfileViewState', 'ProfileFormState', 'ProfileErrors', 'HistoryDraft', 'FunnelState', 'PickerSearchState', 'VersionsState', 'HistoryFunnelPage', 'ProfileVersionsPage', 'ProfileVersionPage', 'HistoryRowState', 'VersionDetailView', 'rowState', 'view', 'periodText', 'errors', 'SetupStep', 'ProfileSetupPage'},
-    'pages.cards': {'MyCardsPage', 'MyCardsState', 'MyCardsPhase', 'MyCardChoice', 'CardQrPage', 'QrActivity'},
+    'pages.cards': {'MyCardsPage', 'MyCardsState', 'MyCardsPhase', 'MyCardChoice', 'CardQrPage', 'CardQrState', 'QrActivity'},
     'features.passkey': {'Passkeys'},
     'features.oauth': {'OAuthBrowser', 'OAuthVerifier'},
     'features.google': {'GoogleSignIn'},
@@ -30,7 +30,7 @@ API = {
     'features.calendar': {'CalendarConflictSheet', 'CalendarAccessState', 'CalendarConflictFlow', 'openCalendarInsert'},
     'pages.activity': {'ProgramActivities', 'ApplicationReportDialog', 'ActivityListState', 'ActivityProgressPage', 'ActivityDetailPage', 'ProgramState', 'ProgramPhase', 'MyActivitiesPage', 'ActivityState', 'ScheduleItemState', 'ActivityListPhase', 'ActivityListPage'},
     'entities.activity': {'model.Place', 'model.currentStage', 'model.stageBadge', 'model.ActivityCategory', 'model.EligibilityCondition', 'model.ScheduleModel', 'model.Tag', 'model.EligibilityGroup', 'model.StageSchedule', 'model.ActivityModel', 'model.scheduleText', 'model.ProgramPage', 'model.Stage', 'model.stages', 'model.ProgramSummary', 'model.lines', 'api.fetchPrograms', 'model.safeHttpsUrl', 'model.instant', 'api.fetchActivities', 'api.fetchActivity', 'model.ScheduleStatus', 'model.ActivityPage', 'model.EligibilityItem'},
-    'entities.account': {'model.ConsentRecord', 'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.ProfileJob', 'model.AccountProfile', 'model.PublishedCard', 'model.Wallet', 'model.WalletReceipt', 'model.ExchangeContext', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault', 'model.WebSignIn', 'model.ContactRules', 'model.ActivityInfoRef', 'model.ActivityInfoItem', 'model.ActivityInfoPage', 'model.EvidenceMeta', 'model.ProfileVersionSummary', 'model.ProfileVersionList', 'model.ProfileVersionDetail', 'model.AccountSummary', 'model.LinkedIdentity', 'model.PasskeyItem', 'model.MyActivityRecord', 'model.MyScheduleStatus'},
+    'entities.account': {'model.ConsentRecord', 'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.ProfileJob', 'model.AccountProfile', 'model.PublishedCard', 'model.Wallet', 'model.WalletReceipt', 'model.QrCode', 'model.ExchangeContext', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault', 'model.WebSignIn', 'model.ContactRules', 'model.ActivityInfoRef', 'model.ActivityInfoItem', 'model.ActivityInfoPage', 'model.EvidenceMeta', 'model.ProfileVersionSummary', 'model.ProfileVersionList', 'model.ProfileVersionDetail', 'model.AccountSummary', 'model.LinkedIdentity', 'model.PasskeyItem', 'model.MyActivityRecord', 'model.MyScheduleStatus'},
 }
 
 def owner(name):

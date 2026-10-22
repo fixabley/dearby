@@ -93,6 +93,9 @@ data class Wallet(val items: List<WalletReceipt>)
 /** Where a card was exchanged (contract "명함 교환"); names are null when the activity is unknown or was deleted. */
 data class ExchangeContext(val activityId: Long?, val activityName: String?, val programName: String?)
 /** One received card. [reciprocal]: the owner holds one of mine too, so it is never recalled; otherwise [expiresAt] is the recall time. */
+/** A QR code for one card (contract "명함 QR 코드"): many people may use it until it is revoked or [expiresAt] passes. */
+data class QrCode(val id: String, val code: String, val expiresAt: String)
+
 data class WalletReceipt(val id: String, val card: PublishedCard, val receivedAt: String, val context: ExchangeContext, val reciprocal: Boolean, val expiresAt: String?)
 
 fun JSONObject.toSession() = AccountSession(getString("accessToken"), getString("refreshToken"))
@@ -131,6 +134,8 @@ fun JSONObject.toActivityInfoPage() = ActivityInfoPage(getJSONArray("items").obj
 }, if (isNull("nextCursor")) null else getLong("nextCursor"))
 
 fun JSONObject.toWallet() = Wallet(getJSONArray("items").objects().map { it.toReceipt() })
+fun JSONObject.toQrCode() = QrCode(getString("id"), getString("code"), getString("expiresAt"))
+
 fun JSONObject.toReceipt(): WalletReceipt {
     val context = optJSONObject("context")
     return WalletReceipt(getString("id"), getJSONObject("card").toPublishedCard(), getString("receivedAt"),

@@ -47,7 +47,7 @@ class WalletViewModel(private val account: AccountViewModel) : ViewModel() {
         }
     }
 
-    /** The app was opened with `dearby://cards/<id>?activity=<n>`: save it to the account wallet, or ask to sign in first. */
+    /** The app was opened with `dearby://cards/<id>?activity=<n>&code=<code>`: save it to the account wallet, or ask to sign in first. */
     fun receive(link: CardLink) { pending = link; viewModelScope.launch { savePending() } }
     /** The user signed in from the prompt: save the waiting link now. */
     fun retryPending() = viewModelScope.launch { savePending() }
@@ -59,7 +59,7 @@ class WalletViewModel(private val account: AccountViewModel) : ViewModel() {
         if (account.state.value.phase != AccountPhase.SIGNED_IN) { mutable.update { it.copy(needSignIn = true) }; return }
         mutable.update { it.copy(needSignIn = false) }
         val notice = try {
-            val receipt = account.authorized { account.client.saveReceipt(link.cardId, link.activityId, it) }
+            val receipt = account.authorized { account.client.saveReceipt(link.cardId, link.activityId, link.code, it) }
             pending = null
             reload()
             mutable.update { it.copy(opened = receipt.id) }
@@ -69,6 +69,7 @@ class WalletViewModel(private val account: AccountViewModel) : ViewModel() {
                 AccountError.UNAUTHORIZED -> { mutable.update { it.copy(needSignIn = true) }; return }
                 AccountError.CONFLICT -> "내 명함이에요."
                 AccountError.NOT_FOUND -> "지워진 명함이라 저장할 수 없어요."
+                AccountError.FORBIDDEN -> "명함 주인에게 QR을 다시 보여 달라고 하세요."
                 else -> "명함을 저장하지 못했어요. 연결을 확인하고 다시 시도해 주세요."
             }
         }

@@ -29,21 +29,24 @@ fun authRedirect(link: String): AuthRedirect? = runCatching {
     }
 }.getOrNull()
 
-/** A received card link (contract "명함 교환"): `dearby://cards/<cardId>?activity=<n>`; [activityId] is the activity's numeric id or null. */
-data class CardLink(val cardId: String, val activityId: Long?)
+/**
+ * A received card link (contract "명함 교환", "명함 QR 코드"): `dearby://cards/<cardId>?activity=<n>&code=<QR code>`; [activityId] is the activity's
+ * numeric id or null, [code] the owner's QR code (43 base64url characters) that the first save needs, or null.
+ */
+data class CardLink(val cardId: String, val activityId: Long?, val code: String? = null)
 
-/** Exactly `dearby://cards/<UUID>` with an optional numeric `activity`; anything else is not a card link. */
+/** Exactly `dearby://cards/<UUID>` with an optional numeric `activity` and `code`; anything else is not a card link. */
 fun cardLink(link: String): CardLink? = runCatching {
     val uri = URI(link)
     if (uri.scheme != "dearby" || uri.rawAuthority != "cards" || uri.rawFragment != null) return null
     val id = uri.rawPath.removePrefix("/").takeIf { it.isNotEmpty() && '/' !in it } ?: return null
     val cardId = UUID.fromString(id).toString().takeIf { it.equals(id, ignoreCase = true) } ?: return null
-    val activity = uri.rawQuery?.split('&')?.firstNotNullOfOrNull { pair ->
-        pair.split('=', limit = 2).takeIf { it.size == 2 && it[0] == "activity" }?.get(1)?.toLongOrNull()
-    }
-    CardLink(cardId, activity)
+    val query = uri.rawQuery?.split('&').orEmpty().mapNotNull { pair -> pair.split('=', limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] } }.toMap()
+    CardLink(cardId, query["activity"]?.toLongOrNull(), query["code"]?.takeIf { QR_CODE.matches(it) })
 }.getOrNull()
 
-/** What the 내 명함 QR encodes: the public card page, with the activity the card is handed out at when there is one. */
-fun cardQrUrl(webOrigin: String, cardId: String, activityId: String?): String =
-    "${webOrigin.trimEnd('/')}/cards/$cardId" + (activityId?.let { "?activity=$it" } ?: "")
+private val QR_CODE = Regex("^[A-Za-z0-9_-]{43}$")
+
+/** What the 내 명함 QR encodes: the card page with the activity the card is handed out at (when there is one) and the QR [code]. */
+fun cardQrUrl(webOrigin: String, cardId: String, activityId: String?, code: String): String =
+    "${webOrigin.trimEnd('/')}/cards/$cardId?" + (activityId?.let { "activity=$it&" } ?: "") + "code=$code"
