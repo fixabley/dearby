@@ -10,6 +10,7 @@ import com.dearby.nativeapp.entities.account.model.LinkedIdentity
 import com.dearby.nativeapp.entities.account.model.PasskeyItem
 import com.dearby.nativeapp.features.passkey.Passkeys
 import com.dearby.nativeapp.pages.settings.SettingsIdentityState
+import com.dearby.nativeapp.pages.settings.SettingsBlockState
 import com.dearby.nativeapp.pages.settings.SettingsPasskeyState
 import com.dearby.nativeapp.pages.settings.SettingsPhase
 import com.dearby.nativeapp.pages.settings.SettingsState
@@ -45,7 +46,11 @@ class SettingsViewModel(private val account: AccountViewModel, private val versi
                 val summary = account.authorized { client.me(it) }
                 val identities = account.authorized { client.identities(it) }
                 val passkeys = account.authorized { client.passkeys(it) }
-                mutable.update { it.copy(phase = SettingsPhase.LOADED, createdAt = day(summary.createdAt), identities = rows(identities), passkeys = passkeys.map(::row)) }
+                val blocks = account.authorized { client.blocks(it) }
+                mutable.update {
+                    it.copy(phase = SettingsPhase.LOADED, createdAt = day(summary.createdAt), identities = rows(identities), passkeys = passkeys.map(::row),
+                        blocks = blocks.map { block -> SettingsBlockState(block.id, block.name, day(block.blockedAt)) })
+                }
             } catch (e: AccountException) {
                 mutable.update { it.copy(phase = if (e.error == AccountError.UNAUTHORIZED) SettingsPhase.SIGNED_OUT else SettingsPhase.FAILED) }
             } catch (e: JSONException) {
@@ -83,6 +88,11 @@ class SettingsViewModel(private val account: AccountViewModel, private val versi
         val credential = passkeys.create(challenge.options) ?: return@perform
         account.authorized { client.addPasskey(challenge.id, credential, it) }
         load()
+    }
+    /** 차단 해제 (contract "명함 신고·차단"): the cards removed by the block do not come back. */
+    fun unblock(id: String) = perform("차단을 해제하지 못했어요. 잠시 후 다시 시도해 주세요.") {
+        account.authorized { client.unblock(id, it) }
+        mutable.update { s -> s.copy(blocks = s.blocks.filterNot { it.id == id }) }
     }
     fun dismissNotice() = mutable.update { it.copy(notice = null) }
 

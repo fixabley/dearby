@@ -71,7 +71,7 @@ private sealed interface Route {
                 when (val screen = route) {
                     is Route.Detail -> walletState.cards.firstOrNull { it.id == screen.id }?.let { WalletCardRoute(it, wallet, myCards) { route = null } }
                         ?: LaunchedEffect(screen) { route = null }
-                    is Route.Qr -> CardQrRoute(screen.card, activityModel) { route = null }
+                    is Route.Qr -> CardQrRoute(screen.card, activityModel, myCards) { route = null }
                     Route.Composer -> CardComposerRoute(publish, account) { route = null }
                     Route.Settings -> SettingsRoute(settings, account, profile) { route = null }
                     null -> when (tab) {

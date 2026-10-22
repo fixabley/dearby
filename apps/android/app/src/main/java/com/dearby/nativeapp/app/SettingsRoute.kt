@@ -40,7 +40,7 @@ import kotlinx.coroutines.launch
                 }
             }
         },
-        unlink = model::unlink, addPasskey = { model.addPasskey(Passkeys(context)) }, renamePasskey = model::renamePasskey, deletePasskey = model::deletePasskey,
+        unlink = model::unlink, addPasskey = { model.addPasskey(Passkeys(context)) }, renamePasskey = model::renamePasskey, deletePasskey = model::deletePasskey, unblock = model::unblock,
         openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) }, openTerms = { OAuthBrowser(context).open(ConsentVersions.termsUrl(BuildConfig.WEB_ORIGIN)) },
         dismissNotice = model::dismissNotice, googleAvailable = auth.googleAvailable)
     // Link failures and the deletion result are one-time notices of their own owners.

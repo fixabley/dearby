@@ -5,14 +5,19 @@ import androidx.lifecycle.viewModelScope
 import com.dearby.nativeapp.entities.account.api.AccountError
 import com.dearby.nativeapp.entities.account.api.AccountException
 import com.dearby.nativeapp.entities.account.model.PublishedCard
+import com.dearby.nativeapp.entities.account.model.QrCode
+import com.dearby.nativeapp.pages.cards.CardQrState
 import com.dearby.nativeapp.pages.cards.MyCardChoice
 import com.dearby.nativeapp.pages.cards.MyCardsPhase
 import com.dearby.nativeapp.pages.cards.MyCardsState
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Duration
+import java.time.OffsetDateTime
 
 /** 내 명함 tab: the signed-in account's published cards (`GET /v1/cards`), newest first, with one selected for the preview. */
 class MyCardsViewModel(private val account: AccountViewModel) : ViewModel() {
@@ -56,4 +61,60 @@ class MyCardsViewModel(private val account: AccountViewModel) : ViewModel() {
     }
     /** The published card behind a tile, for "이 명함 고치기". */
     fun card(id: String) = cards.find { it.id == id }
+
+    // QR 보이기 (contract "명함 QR 코드"): codes live only in memory; the server ends each one 30 minutes after issue at the latest.
+    private val qrMutable = MutableStateFlow(CardQrState())
+    val qr = qrMutable.asStateFlow()
+    /** Issued while the 내 명함 section shows [Pair.first], so the QR screen opens without waiting on a weak connection. */
+    private var prefetched: Pair<String, QrCode>? = null
+    private var shown: Pair<String, QrCode>? = null
+    private var qrJob: Job? = null
+
+    /** The 내 명함 section is visible with [cardId] selected: keep a fresh code for it. An unused one is left to lapse, not revoked. */
+    fun prefetch(cardId: String) {
+        if (prefetched?.takeIf { it.first == cardId }?.second?.fresh() == true) return
+        viewModelScope.launch { runCatching { account.authorized { account.client.issueQrCode(cardId, it) } }.onSuccess { prefetched = cardId to it } }
+    }
+    /** The QR screen opened for [cardId]: reuse the prefetched code when it is that card's and has over 5 minutes left. */
+    fun openQr(cardId: String) {
+        val ready = prefetched?.takeIf { it.first == cardId && it.second.fresh() }?.second
+        prefetched = null
+        if (ready != null) showQr(cardId, ready) else issueQr(cardId)
+    }
+    /** 다시 시도 after a failed issue, or the refresh button (the old code is revoked once the new one is shown). */
+    fun refreshQr(cardId: String) = issueQr(cardId)
+    /** The QR screen closed: the server keeps the code 2 more minutes for late scans. Failure never blocks closing. */
+    fun closeQr() {
+        qrJob?.cancel()
+        shown?.let(::revoke)
+        shown = null
+        qrMutable.value = CardQrState()
+    }
+    private fun issueQr(cardId: String) {
+        qrJob?.cancel()
+        // A refresh keeps the current QR on screen until the new one arrives, so a scan in progress is not interrupted.
+        qrMutable.update { it.copy(failed = false) }
+        qrJob = viewModelScope.launch {
+            val code = try { account.authorized { account.client.issueQrCode(cardId, it) } } catch (e: AccountException) {
+                if (shown == null) qrMutable.value = CardQrState(failed = true)
+                return@launch
+            }
+            shown?.let(::revoke)
+            showQr(cardId, code)
+        }
+    }
+    private fun showQr(cardId: String, code: QrCode) {
+        shown = cardId to code
+        qrMutable.value = CardQrState(code.code)
+        qrJob?.cancel()
+        // Refresh by itself when 5 minutes remain while the screen stays open.
+        qrJob = viewModelScope.launch { delay(code.remaining().minus(REFRESH_MARGIN).toMillis().coerceAtLeast(0)); issueQr(cardId) }
+    }
+    private fun revoke(code: Pair<String, QrCode>) {
+        viewModelScope.launch { runCatching { account.authorized { account.client.revokeQrCode(code.first, code.second.id, it) } } }
+    }
 }
+
+private val REFRESH_MARGIN: Duration = Duration.ofMinutes(5)
+private fun QrCode.remaining(): Duration = runCatching { Duration.between(OffsetDateTime.now(), OffsetDateTime.parse(expiresAt)) }.getOrDefault(Duration.ZERO)
+private fun QrCode.fresh() = remaining() > REFRESH_MARGIN
