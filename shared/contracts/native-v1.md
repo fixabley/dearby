@@ -103,9 +103,9 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 | 발견·활동 상세 | 공개 카탈로그를 보여 주고, 신청 CTA는 활동의 공식 신청 URL을 외부 브라우저로 연다. 실패하면 오류와 다시 시도를 보여 주며 예시 활동을 섞지 않는다. | GET /v1/activities (2026-10-14부터, 아래 "활동 조회") |
 | 로그인 | 패스키(2026-10-10 결정, 아래 "패스키 로그인"). 명함 발행과 받은 명함 보기를 할 때만 요구하고, 발견·신청은 로그인 없이 쓴다. access·refresh 토큰은 OS 보안 저장소에 둔다. | /v1/auth/* |
 | 명함 제작 | 프로필 입력과 공개할 연락처·이력 선택을 한 흐름으로 마치고 바로 발행한다. 고치기는 2026-10-20부터 같은 명함을 `PUT /v1/cards/:id`로 수정한다(아래 "명함 고치기는 같은 명함을 수정"). | /v1/profile, POST·PUT /v1/cards |
-| 명함 교환 | 명함별 QR(공개 주소 + 활동) → 웹에서 보고 `dearby://cards/…`로 앱 저장 또는 브라우저 저장, 단방향은 30일 뒤 회수. 아래 "명함 교환"(2026-10-19). 옛 QR 공유·스캔·유니버설 링크는 2026-10-18 삭제(위 "명함 공유 — 변경 이력") | PUT /v1/wallet/cards/:id, POST …/reciprocate, GET /v1/wallet |
+| 명함 교환 | 명함별 QR(공개 주소 + 활동) → 웹에서 보고 `dearby://cards/…`로 앱 저장 또는 브라우저 저장, 단방향은 30일 뒤 회수. 아래 "명함 교환"(2026-10-19). 옛 QR 공유·스캔은 2026-10-18 삭제(위 "명함 공유 — 변경 이력"). 유니버설 링크·App Links는 2026-10-22 "유니버설 링크·App Links·활동 공유·오픈그래프"로 `/cards/*`·`/activities/*`에 다시 둔다 | PUT /v1/wallet/cards/:id, POST …/reciprocate, GET /v1/wallet |
 
-- 앱은 `/s/*` 유니버설 링크를 받지 않고(2026-10-18 삭제), 웹도 `/.well-known/apple-app-site-association`·`assetlinks.json`을 만들지 않는다(패스키용 `wid.io.kr` 정적 파일은 별도이며 유지). 앱이 링크를 받는 통로는 커스텀 스킴 `dearby://`(애플 콜백, 명함 교환)만이다. #90·#91은 이 결정으로 닫았다.
+- 앱은 `/s/*` 유니버설 링크를 받지 않는다(2026-10-18 삭제). 2026-10-22부터 웹 도메인의 `/cards/*`·`/activities/*`를 유니버설 링크·App Links로 받는다(아래 "유니버설 링크·App Links·활동 공유·오픈그래프"). 커스텀 스킴 `dearby://`(애플 콜백, 명함 교환)도 그대로다.
 
 ### 비로그인 사용자의 저장 유지
 
@@ -780,7 +780,7 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 ### 흐름
 
 - **주인(앱)**: 내 명함 탭에서 고른 명함 아래 `QR 보이기`. 전체 화면 QR과 함께 활동 칩이 보인다. 칩은 오늘 진행 중인 내 활동(내 활동 진행 트랙의 `진행 중` 중 현재 단계가 가장 가까운 것)이 자동으로 골라지고, 눌러서 신청한 다른 활동이나 `활동 없이`로 바꿀 수 있다. QR 내용은 `https://<웹 origin>/cards/<cardId>?activity=<activityId>`(활동 없이면 `activity` 생략). 화면을 보는 동안 밝기를 올리고, 닫으면 되돌린다. 배부 기록·수신자 목록·활동별 관리 화면은 만들지 않는다.
-- **받는 사람(웹)**: OS 카메라로 QR을 읽으면 웹 `/cards/:id?activity=…`가 열린다. 카드 위에 `<프로그램 이름> <활동 이름>에서 받은 명함`(활동이 없으면 생략) 한 줄. 카드 아래 버튼 둘: `Dearby 앱에 저장`(`dearby://cards/<cardId>?activity=<activityId>` 커스텀 스킴, 앱이 없으면 아무 일도 없으므로 그 아래 "앱이 없으면 브라우저에 저장할 수 있어요" 안내)과 기존 `브라우저에 저장`(비로그인 저장, `activityId`를 함께 보낸다). 유니버설 링크·App Links·앱 안 카메라 스캔은 쓰지 않는다(#90 미정, 오늘 범위 밖).
+- **받는 사람(웹)**: OS 카메라로 QR을 읽으면 웹 `/cards/:id?activity=…`가 열린다. 카드 위에 `<프로그램 이름> <활동 이름>에서 받은 명함`(활동이 없으면 생략) 한 줄. 카드 아래 버튼 둘: `Dearby 앱에 저장`(`dearby://cards/<cardId>?activity=<activityId>` 커스텀 스킴, 앱이 없으면 아무 일도 없으므로 그 아래 "앱이 없으면 브라우저에 저장할 수 있어요" 안내)과 기존 `브라우저에 저장`(비로그인 저장, `activityId`를 함께 보낸다). 앱 안 카메라 스캔은 쓰지 않는다. 앱이 설치되어 있으면 2026-10-22부터 QR 주소가 유니버설 링크·App Links로 앱에서 바로 열린다(아래 "유니버설 링크·App Links·활동 공유·오픈그래프").
 - **받는 사람(앱)**: 스킴 `dearby://cards/<cardId>?activity=<activityId>`를 받으면 로그인 상태에서 `PUT /v1/wallet/cards/:cardId {activityId}`로 계정 지갑에 저장하고 받은 명함 상세를 연다. 상세 아래 `내 명함도 건네기` 버튼: 내 명함이 하나면 바로, 여럿이면 고른 뒤 `POST /v1/wallet/cards/:cardId/reciprocate {myCardId}`. 성공하면 "맞교환했어요" 배지. 로그아웃 상태면 로그인 시트를 먼저 띄우고 이어서 저장한다. 자기 명함을 받으면 "내 명함이에요" 안내만.
 - **회수**: 받은 날(`receivedAt`/`savedAt`)부터 30일이 지나도 맞교환이 아니면 서버가 회수한다. 받은 명함 목록에서 사라지고(`recalled_at` 기록, 행은 보존), 그 사람의 지갑에서만 빠진다. 공개 `/cards/:id`는 그대로 열린다(배부 단위를 두지 않은 결정의 결과이며, 주소를 적어 둔 사람까지 막지는 않는다). 명함 철회(`DELETE /v1/cards/:id`)는 지금처럼 모두에게서 사라진다.
 - **맞교환(reciprocal)**: 받은 명함 R(받는 사람 U, 명함 C, 주인 O)은 "O가 U의 명함(어느 것이든) 하나를 회수·철회되지 않은 상태로 갖고 있으면" 맞교환이다. 계정 쌍 기준이라 활동이 달라도 성립한다. 맞교환이던 것이 상대 명함의 철회·회수로 깨지면 다시 단방향이 되고, 받은 날 기준 30일이 이미 지났으면 다음 회수 때 빠진다. 비로그인 저장자는 명함이 없어 맞교환할 수 없으므로 항상 30일 뒤 회수된다(의도된 결과: 앱 설치를 유도한다).
@@ -869,6 +869,29 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 ### 연락처 공개
 
 - 운영자: 팀 WID, 연락 이메일 fixabley@naver.com, 전화 010-7503-5692(2026-10-22 사용자 제공). 처리방침·약관의 운영자·연락처 빈칸을 채우고, 웹 `/support`(지원 페이지: 운영자·이메일·전화·신고 방법·계정 삭제 방법)를 만든다. App Store 지원 URL과 Play 계정 삭제 URL은 `/support`(삭제 안내 절에 바로 가는 `#delete-account`).
+
+## 유니버설 링크·App Links·활동 공유·오픈그래프 — 2026-10-22 사용자 결정
+
+사용자: "유니버설 링크 적용해줘. Dearby 설치된 곳에선 명함 링크 조회시 앱에서 들어가 지도록. 활동 상세보기에서 공유는 Dearby 링크를 보내도록 하고 싶어. 오픈그래프도 만들어줘". 2026-10-18의 "유니버설 링크·App Links는 만들지 않는다"를 이 절이 대체한다. 옛 `/s/*` 공유 기록은 그대로 복원하지 않는다.
+
+- **앱으로 여는 경로**: 웹 origin `https://dearby.wid.io.kr`의 `/cards/*`와 `/activities/*`만. `/`·`/saved`·`/privacy`·`/terms`·`/support`·`/api/*`는 웹에 남는다.
+- **연결 파일(웹, Vercel, 정적 값·환경값 없음)**:
+  - `/.well-known/apple-app-site-association`: `{"applinks":{"details":[{"appIDs":["4V9FVN3VQF.io.wid.dearby"],"components":[{"/":"/cards/*"},{"/":"/activities/*"}]}]}}`. `Content-Type: application/json`, 리다이렉트 없이 200.
+  - `/.well-known/assetlinks.json`: `delegate_permission/common.handle_all_urls`, 패키지 `io.wid.dearby`, `sha256_cert_fingerprints` = 업로드 키 `32:B6:2B:E3:CD:56:FC:B5:0C:67:CC:09:67:3B:D3:20:D2:33:10:3F:8F:EC:5C:0C:D8:3A:C6:A2:61:0D:C6:85`, 개발 기기 확인용 디버그 키 `91:E3:35:92:3F:21:75:61:A3:D1:7A:D0:F7:E8:5E:EA:BC:86:41:01:EA:48:96:70:DF:CA:DF:1B:9B:20:69:46`. **Play 앱 서명 키는 미정**: 첫 AAB를 Play에 올린 뒤 Play Console(앱 무결성)의 SHA-256을 추가한다. 그 전까지 Play 설치본은 링크를 브라우저로 연다.
+  - 패스키용 `wid.io.kr` 파일(nginx)은 그대로 둔다.
+- **iOS**: `Dearby.entitlements`·`Dearby-Debug.entitlements`의 associated-domains에 `applinks:dearby.wid.io.kr`를 더한다. Debug는 `applinks:dearby.wid.io.kr?mode=developer`(개발자 모드 기기에서 Apple CDN 캐시 없이 확인). 링크는 기존 `.onOpenURL`로 받는다.
+- **Android**: `MainActivity`에 `android:autoVerify="true"` https intent-filter(host `dearby.wid.io.kr`, pathPrefix `/cards/`·`/activities/`).
+- **앱이 링크를 받으면**:
+  - `/cards/<cardId>?activity=<n>&code=<code>`: 기존 `dearby://cards/<cardId>?activity=<n>&code=<code>`와 똑같이 처리한다(받은 명함 저장·명함 탭 받은 명함 구역, 코드 검증과 만료 안내 "명함 주인에게 QR을 다시 보여 달라고 하세요" 그대로). 두 입구는 같은 파서 하나를 쓴다.
+  - `/activities/<id>`: 발견 탭으로 가서 그 활동 상세를 push한다. 없는 활동은 상세의 기존 없는 활동 표시를 따른다.
+  - 그 밖의 모양은 무시한다(앱만 열린다).
+- **웹 명함 페이지의 `Dearby 앱에 저장`(dearby://)은 유지**: iOS는 같은 도메인 안 이동과, 사용자가 브라우저로 열기를 고른 뒤에는 유니버설 링크를 열지 않는다. 그때의 통로다.
+- **활동 공유**: 활동 상세 상단 공유 버튼은 공식 안내 링크 대신 `<웹 origin>/activities/<id>`를 보낸다(앱의 웹 origin 설정, 캘린더 링크와 같은 주소). 활동이 불러와지면 늘 보인다. iOS `ShareLink(item: url, subject: 활동 이름)`, Android `ACTION_SEND` text/plain chooser(본문 = URL, `EXTRA_TITLE`·`EXTRA_SUBJECT` = 활동 이름). 접근성 라벨 `활동 공유`. 공식 안내 링크는 상세 본문의 출처 행에 그대로 있다.
+- **오픈그래프(웹)**:
+  - 공통: `metadataBase` = 웹 origin, `og:site_name` `Dearby`, `og:locale` `ko_KR`, `twitter:card` `summary_large_image`, 기본 이미지 1200×630(앱 아이콘과 `Dearby` 글자, 밝은 배경).
+  - `/activities/:id`: 서버에서 `GET /v1/activities/:id`로 메타를 만든다. `og:title` = 활동 이름, `og:description` = `<프로그램 이름> · <모집 문구>`(모집 중 `M월 d일 마감`, 모집 예정 `M월 d일 모집 시작`, 그 밖은 `모집 마감`; 장소가 있으면 ` · <장소>`), `og:image` = 활동별 1200×630 생성 이미지(`next/og`, Pretendard: 프로그램 로고가 있으면 로고, 활동 이름, 프로그램·주최, 모집 기간). 조회 실패·404면 기본 메타. 1시간 캐시.
+  - `/cards/:id`: **개인정보를 미리보기에 싣지 않는다**. 고정 `og:title` `Dearby 명함`, `og:description` `Dearby에서 명함을 확인하고 저장하세요.`, 기본 이미지. 이름·사진·소속·연락처는 넣지 않는다(메신저 미리보기 서버가 캐시해 QR 코드 없이도 퍼진다). `robots noindex` 유지.
+- **하지 않는 것**: 앱 안 카메라 스캔, 배부 단위 관리, 미설치 사용자를 스토어로 보내는 중간 페이지(앱이 없으면 웹 페이지가 그대로 열린다).
 
 ## 명함 표현 — 2026-10-18 사용자 결정
 
