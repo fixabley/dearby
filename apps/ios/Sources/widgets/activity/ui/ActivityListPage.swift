@@ -28,7 +28,7 @@ struct ActivityListPage: View {
                 if state.phase != .loading { openOnlyRow }
                 switch state.phase {
                 case .loading:
-                    ProgressView("프로그램을 불러오는 중이에요").frame(maxWidth: .infinity).padding(.vertical, 40)
+                    programsSkeleton
                 case .failed:
                     CenteredMessage(symbol: "exclamationmark.triangle", danger: true, title: "프로그램을 불러오지 못했어요",
                                     message: "연결을 확인한 뒤 다시 시도해 주세요.", embedded: true,
@@ -197,8 +197,23 @@ struct ActivityListPage: View {
         } else if state.failedPrograms.contains(program.id) {
             Button("활동 다시 불러오기") { state.retryActivities(program.id) }.frame(maxWidth: .infinity, minHeight: 44)
         } else {
-            ProgressView().frame(maxWidth: .infinity, minHeight: 44)
+            // Until both the open and the upcoming/past lists arrive (contract "내용 로딩은 스켈레톤" 2026-10-22).
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(0..<2, id: \.self) { _ in
+                    ActivityCard(activityID: "", title: "불러오는 활동 이름", recruitment: .open, recruitmentText: "10월 20일 (화) ~ 11월 10일 (화)",
+                                 scheduleText: "2026년 11월 24일 (화) ~ 2027년 2월 6일 (토)", place: "온라인") {}
+                }
+            }.dearbySkeleton()
         }
+    }
+    /// The first load (contract "내용 로딩은 스켈레톤" 2026-10-22): collapsed program cards with sample values.
+    private var programsSkeleton: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(0..<4, id: \.self) { _ in
+                ProgramHeader(name: "불러오는 프로그램", organization: "주최 기관 이름", openCount: 1, nearestDeadline: nil, expanded: false) {}
+                    .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
+            }
+        }.dearbySkeleton()
     }
     private func heading(_ text: String) -> some View {
         Text(text).font(.dearby(.caption).weight(.semibold)).foregroundStyle(.secondary)

@@ -20,7 +20,7 @@ struct MyActivitiesPage: View {
         Group {
             if applied.isEmpty && state.deletedIDs.isEmpty {
                 if state.mineLoading {
-                    ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+                    skeleton
                 } else {
                     CenteredMessage(symbol: "checklist", title: "신청한 활동이 없어요", message: "발견에서 관심 있는 활동을 신청해 보세요.",
                                     primary: MessageAction("활동 둘러보기", identifier: "explore", action: explore))
@@ -64,6 +64,25 @@ struct MyActivitiesPage: View {
         .toolbar { TabRootToolbar() }
         .removeFromMineDialog($removing, state: state)
     }
+    /// Loading the account's list (contract "내용 로딩은 스켈레톤" 2026-10-22): progress rows filled with a sample activity.
+    private var skeleton: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                if let progress = ActivityStages.build(Self.sample, marks: [:], now: .now) {
+                    ForEach(0..<3, id: \.self) { _ in ActivityProgressRow(activity: Self.sample, progress: progress, now: .now) {} }
+                }
+            }.padding(20).dearbySkeleton()
+        }.scrollDisabled(true)
+    }
+    private static let sample: ActivityModel = {
+        func stage(_ id: String, _ title: String, _ kind: ActivityStageModel.Kind) -> ActivityStageModel {
+            ActivityStageModel(id: id, title: title, kind: kind, start: nil, end: nil, allDay: true, dateLabel: "", timeZone: "Asia/Seoul")
+        }
+        return ActivityModel(id: "", title: "불러오는 활동 이름", summary: "", organization: "주최 기관", program: "프로그램 이름",
+                             recruitmentStartAt: nil, recruitmentEndAt: nil, recruitmentStartDate: nil, recruitmentEndDateExclusive: nil,
+                             applicationStage: stage("a", "지원", .deadline), stages: [stage("b", "면접", .interview)],
+                             activityStage: stage("c", "활동", .event), officialUrl: "", imageUrl: nil)
+    }()
     /// One full-width row without the list's own background, separator or chevron.
     private func plain(_ content: some View) -> some View {
         content.frame(maxWidth: .infinity, alignment: .leading)

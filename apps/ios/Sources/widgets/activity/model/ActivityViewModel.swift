@@ -240,10 +240,12 @@ import Observation
                 guard !Task.isCancelled else { return }
                 // The server already applied the open rule (`open=true`); the client keeps every returned activity.
                 for item in page.items { seen[item.id] = item }
-                openActivities[programID] = page.items
                 // `모집 예정` (recruitment or activity not started yet, nearest first) and `지난 활동` (started within the
                 // last three years, latest first) are loaded for every expanded program; the page decides what to show
                 // (upcoming always, past only while `마감 숨기기` is off). Contract "펼침" (2026-10-19 밤).
+                // All three lists are set together once both answers are in, so the card keeps its skeleton and never shows
+                // `지금 모집 중인 활동이 없어요` in between (contract "내용 로딩은 스켈레톤" 2026-10-22). If only the second request
+                // fails, the open list still shows.
                 do {
                     let others = try await fetchActivities(programID, false)
                     guard !Task.isCancelled else { return }
@@ -255,8 +257,13 @@ import Observation
                     let recent = others.items.filter { !excluded.contains($0.id) && ($0.activityStage?.anchor ?? .distantPast) >= since }
                         .sorted { ($0.activityStage?.anchor ?? .distantPast, $0.title) > ($1.activityStage?.anchor ?? .distantPast, $1.title) }
                     for item in upcoming + recent { seen[item.id] = item }
+                    openActivities[programID] = page.items
                     upcomingActivities[programID] = upcoming
                     pastActivities[programID] = recent
+                } catch {
+                    guard !Task.isCancelled else { return }
+                    openActivities[programID] = page.items
+                    failedPrograms.insert(programID)
                 }
             } catch {
                 if !Task.isCancelled { failedPrograms.insert(programID) }
