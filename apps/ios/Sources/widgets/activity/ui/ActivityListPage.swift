@@ -12,10 +12,11 @@ struct ActivityListPage: View {
     @State private var position = ScrollPosition()
     /// The scroll view's visible height: empty and error states centre in it (contract "비스크롤 화면 배치").
     @State private var viewport: CGFloat = 0
-    /// Scroll offset at (or above) the top. The search drawer is `.always` here so it is open on first appearance and after returning to the top
-    /// (contract "발견 검색·접힘" 2026-10-20: `.automatic` alone starts collapsed with an inline title); once the user scrolls it becomes `.automatic`
-    /// so the system folds it away on the way down and brings it back on the way up.
-    @State private var atTop = true
+    /// The user has scrolled the list. The search drawer is `.always` until then so it is open on first appearance (contract "발견 검색·접힘"
+    /// 2026-10-20: `.automatic` alone starts collapsed with an inline title); after that it is `.automatic` for good, so the system folds it away on
+    /// the way down and brings it back on the way up. One way only: deriving the mode from the scroll offset looped (the drawer changes the inset
+    /// the offset is measured against), which hung the app on expand/collapse and in the background.
+    @State private var scrolled = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     #if DEBUG
     @State private var screenshotShown = false
@@ -92,8 +93,8 @@ struct ActivityListPage: View {
         .onScrollGeometryChange(for: CGFloat.self) { $0.containerSize.height - $0.contentInsets.top - $0.contentInsets.bottom } action: { _, height in
             viewport = max(height - 80, 0)
         }
-        .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top <= 0 } action: { _, top in atTop = top }
-        .searchable(text: $state.searchText, placement: .navigationBarDrawer(displayMode: atTop ? .always : .automatic), prompt: "프로그램·활동·태그 검색")
+        .onScrollPhaseChange { _, phase in if phase == .interacting, !scrolled { scrolled = true } }
+        .searchable(text: $state.searchText, placement: .navigationBarDrawer(displayMode: scrolled ? .automatic : .always), prompt: "프로그램·활동·태그 검색")
         // Typing waits ~300ms before searching; the first load does not wait.
         .task(id: state.searchText) {
             if state.query != nil {
