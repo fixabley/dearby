@@ -9,6 +9,7 @@
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>webcredentials:wid.io.kr</string>
+		<string>applinks:dearby.wid.io.kr</string>
 	</array>
 </dict>
 </plist>
