@@ -20,7 +20,7 @@ import org.springframework.web.multipart.MultipartFile
 class AdminProgramLogoController(private val logos: AdminProgramLogoService) {
 
     @PutMapping(consumes = [MediaType.MULTIPART_FORM_DATA_VALUE])
-    fun put(@PathVariable id: Long, @RequestPart("file") file: MultipartFile) = ProgramLogoResponse(logos.put(id, file.contentType, file.bytes))
+    fun put(@PathVariable id: Long, @RequestPart("file") file: MultipartFile) = LogoUrlResponse(logos.put(id, file.contentType, file.bytes))
 
     // 어드민 미리보기용. 공개 이미지는 api 앱이 낸다
     @GetMapping
@@ -34,5 +34,5 @@ class AdminProgramLogoController(private val logos: AdminProgramLogoService) {
     fun delete(@PathVariable id: Long) = logos.delete(id)
 }
 
-// PUT 응답: 공개 경로 `/v1/programs/{id}/logo?v=…`
-data class ProgramLogoResponse(val logoUrl: String)
+// PUT 응답(프로그램·조직 로고 공통): 공개 경로 `/v1/programs/{id}/logo?v=…` 또는 `/v1/organizations/{id}/logo?v=…`
+data class LogoUrlResponse(val logoUrl: String)

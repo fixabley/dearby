@@ -19,7 +19,9 @@ import io.wid.dearby.domain.collection.NewFeedback
 import io.wid.dearby.domain.collection.CollectionUrlTemplate
 import java.time.LocalDate
 import java.time.ZoneId
+import io.wid.dearby.application.organization.OrganizationLogoRepository
 import io.wid.dearby.application.organization.OrganizationRepository
+import io.wid.dearby.application.program.EffectiveLogos
 import io.wid.dearby.application.program.ProgramLogoRepository
 import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.application.tag.TagRepository
@@ -42,6 +44,8 @@ class AdminActivityInfoService(
     private val drafts: ActivityDraftRepository,
     private val tags: TagRepository,
     private val logos: ProgramLogoRepository,
+    private val organizationLogos: OrganizationLogoRepository,
+    private val effectiveLogos: EffectiveLogos,
     private val feedback: CollectionFeedbackRepository,
 ) {
 
@@ -493,7 +497,13 @@ class AdminActivityInfoService(
         val children = organizations.childCounts(ids)
         val programCounts = organizations.programCounts(ids)
         val ancestors = organizations.ancestors(ids)
-        return page.map { OrganizationListing(it, children[it.id] ?: 0, programCounts[it.id] ?: 0, ancestors[it.id].orEmpty()) }
+        val logoUpdatedAt = organizationLogos.updatedAtByOrganization(ids)
+        return page.map {
+            OrganizationListing(
+                it, children[it.id] ?: 0, programCounts[it.id] ?: 0, ancestors[it.id].orEmpty(),
+                logoUpdatedAt[it.id]?.let { at -> OrganizationLogo.url(it.id, at) },
+            )
+        }
     }
 
     private fun listing(programId: Id): ProgramListing =
@@ -507,6 +517,7 @@ class AdminActivityInfoService(
         val lastSucceeded = settings.lastSucceededOn(ids)
         val lastFetched = settings.lastFetchedUrls(ids)
         val logoUpdatedAt = logos.updatedAtByProgram(ids)
+        val effective = effectiveLogos.of(page.associate { it.id to it.organizationId })
         val today = LocalDate.now(SEOUL)
         return page.map {
             val collection = settingsById[it.id] ?: CollectionSettings.DEFAULT
@@ -522,6 +533,7 @@ class AdminActivityInfoService(
                 previewUrls = collection.officialUrl?.let { url -> CollectionUrlTemplate.expand(url, today, previousRound) }.orEmpty(),
                 lastFetchedUrls = lastFetched[it.id].orEmpty(),
                 logoUrl = logoUpdatedAt[it.id]?.let { at -> ProgramLogo.url(it.id, at) },
+                effectiveLogo = effective[it.id],
             )
         }
     }

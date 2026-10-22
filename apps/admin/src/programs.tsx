@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Checkbox, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Spin, Switch, Table, Tag, Tooltip, Upload } from "antd";
+import { Alert, App, Button, Checkbox, Form, Input, InputNumber, Modal, Popconfirm, Select, Space, Spin, Switch, Table, Tag, Tooltip } from "antd";
 import type { InputRef } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
-import { api, apiBlob, useSingleFlight } from "./api";
+import { api, useSingleFlight } from "./api";
+import { LogoField, LogoImage } from "./logo";
 import { CursorTable, SearchSelect, useCursorList } from "./list";
 import { type Category, categoryLabel, categoryOptions } from "./category";
 import { resolveTagIds, TagChips, type TagItem, TagSelect, type TagValue } from "./tag-select";
@@ -52,47 +53,16 @@ type Program = {
   tags?: TagItem[];
   collection: CollectionSettings;
   appliedActivityCount?: number | null;
-  /** 프로그램 로고 (contract admin-v1.md "프로그램 로고"): public path with `?v=`, null when none; absent on older responses. */
+  /** 프로그램 로고 (contract admin-v1.md "프로그램 로고"): the program's own logo, public path with `?v=`, null when none. */
   logoUrl?: string | null;
+  /** 보일 로고 (contract admin-v1.md "조직 로고"): own, or inherited from the nearest organization; null when none. */
+  effectiveLogo?: { url: string; source: "PROGRAM" | "ORGANIZATION"; organizationId: number | null; organizationName: string | null } | null;
 };
 
-const logoTypes = ["image/png", "image/jpeg", "image/webp"];
-const logoMaxBytes = 1024 * 1024;
-const logoRule = "로고는 PNG·JPEG·WebP 1MB 이하여야 합니다";
-
-/**
- * 프로그램 로고 미리보기: the admin GET is bearer-gated, so the image comes down as a blob through `apiBlob` and is shown
- * from an object URL. Keyed by `logoUrl` (carries `?v=`), so it refetches exactly when the logo changes and not on every
- * `["programs"]` invalidation. Loading, failure and null show the first-letter avatar like the discovery card.
- */
-function ProgramLogo({ program, logoUrl, size = 44 }: { program: Pick<Program, "id" | "name">; logoUrl: string | null; size?: number }) {
-  const blob = useQuery({
-    queryKey: ["programLogo", program.id, logoUrl],
-    queryFn: () => apiBlob(`programs/${program.id}/logo`),
-    enabled: !!logoUrl,
-    staleTime: Infinity,
-    retry: false,
-  });
-  const [src, setSrc] = useState<string>();
-  useEffect(() => {
-    if (!blob.data) {
-      setSrc(undefined);
-      return;
-    }
-    const url = URL.createObjectURL(blob.data);
-    setSrc(url);
-    return () => URL.revokeObjectURL(url);
-  }, [blob.data]);
-  const style = { width: size, height: size, borderRadius: Math.round(size * 14 / 44), flex: "none" } as const;
-  if (src && logoUrl) return <img src={src} alt={`${program.name} 로고`} style={{ ...style, objectFit: "cover" }} />;
-  return (
-    <div
-      aria-hidden
-      style={{ ...style, display: "grid", placeItems: "center", background: "#d8f3ee", color: "#0f766e", fontWeight: 600, fontSize: size * 0.4 }}
-    >
-      {program.name.trim().charAt(0)}
-    </div>
-  );
+/** Where a program's logo comes from: its own, or inherited from the nearest organization with one. */
+function effectiveLogoPath(program: Program) {
+  const logo = program.effectiveLogo;
+  return logo?.source === "ORGANIZATION" ? `organizations/${logo.organizationId}/logo` : `programs/${program.id}/logo`;
 }
 
 const hostPattern = /^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]([a-z0-9-]*[a-z0-9])?$/;
@@ -102,6 +72,7 @@ const tokenHelp =
   "회차마다 주소가 바뀌면 토큰을 넣어요. {year} 네 자리 연도, {yy} 두 자리 연도, {round} 기수 번호(이전 활동 이름의 ‘N기’에서 읽음). 올해·내년, 다음 기수·현재 기수로 펼쳐 차례로 봅니다.";
 const seoulYear = () => Number(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Seoul", year: "numeric" }).format(new Date()));
 /** Same rule as the server: {year}/{yy} → this year and next, {round} → previousRound+1 and previousRound; combined, distinct, at most 4. */
+
 function expandUrl(url: string, previousRound: number | null): string[] {
   const year = seoulYear();
   const two = (value: number) => String(value % 100).padStart(2, "0");
@@ -184,7 +155,12 @@ export function Programs() {
             title: "프로그램",
             render: (_, program) => (
               <Space align="center">
-                <ProgramLogo program={program} logoUrl={program.logoUrl ?? null} size={32} />
+                <LogoImage
+                  path={effectiveLogoPath(program)}
+                  logoUrl={program.effectiveLogo?.url ?? null}
+                  name={program.name}
+                  size={32}
+                />
                 <span>
                   {program.name}
                   {program.nameEn && <span className="muted name-en">{program.nameEn}</span>}
@@ -358,30 +334,6 @@ function EditProgram({ program, onClose }: { program: Program; onClose: () => vo
   const chosenCategory: Category | null = Form.useWatch("category", form) ?? null;
   const chosenTags: TagValue[] = Form.useWatch("tags", form) ?? [];
   const saveOnce = useSingleFlight();
-  // `program` is the row snapshot taken when the modal opened; the logo changes right away, independent of 저장, so it lives here.
-  const [logoUrl, setLogoUrl] = useState(program.logoUrl ?? null);
-  const uploadLogo = useMutation({
-    mutationFn: (file: File) => {
-      const body = new FormData();
-      body.append("file", file);
-      return api<{ logoUrl: string }>(`programs/${program.id}/logo`, "PUT", body);
-    },
-    onSuccess: ({ logoUrl }) => {
-      setLogoUrl(logoUrl);
-      client.invalidateQueries({ queryKey: ["programs"] });
-      message.success("로고를 올렸어요.");
-    },
-    onError: (error) => message.error(error.message),
-  });
-  const removeLogo = useMutation({
-    mutationFn: () => api<void>(`programs/${program.id}/logo`, "DELETE"),
-    onSuccess: () => {
-      setLogoUrl(null);
-      client.invalidateQueries({ queryKey: ["programs"] });
-      message.success("로고를 지웠어요.");
-    },
-    onError: (error) => message.error(error.message),
-  });
   return (
     <Modal
       open
@@ -468,28 +420,21 @@ function EditProgram({ program, onClose }: { program: Program; onClose: () => vo
         <Form.Item name="applyTagsToActivities" valuePropName="checked" style={{ marginTop: -8 }}>
           <Checkbox disabled={chosenTags.length === 0}>기존 활동에도 적용(운영자 지정 제외, 합집합)</Checkbox>
         </Form.Item>
-        <Form.Item label="로고" extra="PNG·JPEG·WebP 1MB 이하. 발견 카드의 로고 자리에 보여요. 업로드·지우기는 저장 버튼과 상관없이 바로 반영돼요.">
-          <Space align="center">
-            <ProgramLogo program={program} logoUrl={logoUrl} />
-            <Upload
-              accept={logoTypes.join(",")}
-              showUploadList={false}
-              disabled={uploadLogo.isPending}
-              beforeUpload={(file) => {
-                if (logoTypes.includes(file.type) && file.size <= logoMaxBytes) return true;
-                message.error(logoRule);
-                return Upload.LIST_IGNORE;
-              }}
-              customRequest={({ file }) => uploadLogo.mutate(file as File)}
-            >
-              <Button loading={uploadLogo.isPending}>업로드</Button>
-            </Upload>
-            <Popconfirm title="로고를 지울까요?" okText="지우기" okButtonProps={{ danger: true }} cancelText="취소" onConfirm={() => removeLogo.mutate()}>
-              <Button danger disabled={!logoUrl} loading={removeLogo.isPending}>
-                지우기
-              </Button>
-            </Popconfirm>
-          </Space>
+        <Form.Item label="로고" extra="PNG·JPEG·WebP 1MB 이하. 발견 카드의 로고 자리에 보여요. 없으면 조직·상위 조직 로고를 써요. 업로드·지우기는 저장 버튼과 상관없이 바로 반영돼요.">
+          <LogoField
+            path={`programs/${program.id}/logo`}
+            name={program.name}
+            initialLogoUrl={program.logoUrl ?? null}
+            stale={[["programs"]]}
+            fallback={
+              program.effectiveLogo?.source === "ORGANIZATION" && (
+                <Space align="center">
+                  <LogoImage path={`organizations/${program.effectiveLogo.organizationId}/logo`} logoUrl={program.effectiveLogo.url} name={program.name} dimmed />
+                  <span className="muted">{program.effectiveLogo.organizationName} 로고를 쓰는 중</span>
+                </Space>
+              )
+            }
+          />
         </Form.Item>
       </Form>
     </Modal>

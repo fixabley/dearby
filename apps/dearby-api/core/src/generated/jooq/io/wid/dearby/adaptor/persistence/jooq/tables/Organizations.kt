@@ -9,7 +9,9 @@ import io.wid.dearby.adaptor.persistence.jooq.indexes.ORGANIZATIONS_PARENT_ORGAN
 import io.wid.dearby.adaptor.persistence.jooq.keys.ORGANIZATIONS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ORGANIZATIONS_SOURCE_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ORGANIZATION_CONTACTS__ORGANIZATION_CONTACTS_ORGANIZATION_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.ORGANIZATION_LOGOS__ORGANIZATION_LOGOS_ORGANIZATION_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts.OrganizationContactsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationLogos.OrganizationLogosPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.OrganizationsRecord
 
 import java.time.LocalDateTime
@@ -188,6 +190,22 @@ open class Organizations(
 
     val organizationContacts: OrganizationContactsPath
         get(): OrganizationContactsPath = organizationContacts()
+
+    private lateinit var _organizationLogos: OrganizationLogosPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.organization_logos</code> table
+     */
+    fun organizationLogos(): OrganizationLogosPath {
+        if (!this::_organizationLogos.isInitialized)
+            _organizationLogos = OrganizationLogosPath(this, null, ORGANIZATION_LOGOS__ORGANIZATION_LOGOS_ORGANIZATION_ID_FKEY.inverseKey)
+
+        return _organizationLogos;
+    }
+
+    val organizationLogos: OrganizationLogosPath
+        get(): OrganizationLogosPath = organizationLogos()
     override fun getChecks(): List<Check<OrganizationsRecord>> = listOf(
         Internal.createCheck(this, DSL.name("organizations_check"), "((((lat IS NULL) AND (lng IS NULL) AND (address_line1 IS NULL) AND (address_line2 IS NULL)) OR ((lat IS NOT NULL) AND (lng IS NOT NULL) AND (address_line1 IS NOT NULL) AND (address_line2 IS NOT NULL))))", true)
     )

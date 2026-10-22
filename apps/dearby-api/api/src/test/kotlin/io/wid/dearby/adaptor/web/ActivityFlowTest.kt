@@ -462,6 +462,44 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         }
     }
 
+    // 로고 계승(native-v1.md "조직 로고와 로고 계승"): 프로그램 로고 → 조직 → 상위 조직 순으로 처음 있는 것, 조직 로고 공개 GET은 인증 없이 영구 캐시
+    @Test
+    fun `프로그램 로고가 없으면 조직, 그다음 상위 조직 로고를 계승하고 프로그램 로고가 있으면 그것을 쓴다`() {
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        val organizationId = jdbc.sql("select organization_id from programs where id = ?").param(programId).query(Long::class.java).single()
+        val originalParent = jdbc.sql("select parent_organization_id from organizations where id = ?").param(organizationId).query { rs, _ -> rs.getObject(1) as Long? }.list().single()
+        val parentId = jdbc.sql("insert into organizations (name, created_at, updated_at) values ('로고 상위 조직', localtimestamp, localtimestamp) returning id").query(Long::class.java).single()
+        jdbc.sql("update organizations set parent_organization_id = ? where id = ?").params(parentId, organizationId).update()
+        fun logoUrl(): JsonNode = json.readTree(mvc.get("/v1/discovery/programs?openOnly=false&q=swift").andExpect { status { isOk() } }.andReturn().response.contentAsString)["items"].single()["logoUrl"]
+        fun orgLogo(id: Long, at: String) = jdbc.sql("insert into organization_logos (organization_id, content_type, data, updated_at) values (?, 'image/webp', ?, timestamptz '$at')")
+            .param(id).param(byteArrayOf(7)).update()
+        val v = java.time.Instant.parse("2026-10-22T00:00:00Z").epochSecond
+        try {
+            assertEquals(true, logoUrl().isNull)
+            mvc.get("/v1/organizations/$parentId/logo").andExpect { status { isNotFound() } }
+            orgLogo(parentId, "2026-10-22T00:00:00Z")
+            assertEquals("/v1/organizations/$parentId/logo?v=$v", logoUrl().asString())
+            val response = mvc.get("/v1/organizations/$parentId/logo?v=$v").andExpect { status { isOk() } }.andReturn().response
+            assertEquals("image/webp", response.contentType)
+            assertEquals("public, max-age=31536000, immutable", response.getHeader(HttpHeaders.CACHE_CONTROL))
+            // 더 가까운 조직 로고가 이긴다
+            orgLogo(organizationId, "2026-10-22T00:00:00Z")
+            assertEquals("/v1/organizations/$organizationId/logo?v=$v", logoUrl().asString())
+            // 프로그램 로고가 가장 먼저
+            jdbc.sql("insert into program_logos (program_id, content_type, data, updated_at) values (?, 'image/png', ?, timestamptz '2026-10-22T00:00:00Z')")
+                .param(programId).param(byteArrayOf(1)).update()
+            assertEquals("/v1/programs/$programId/logo?v=$v", logoUrl().asString())
+            // 지우면 다시 계승으로 돌아간다
+            jdbc.sql("delete from program_logos where program_id = ?").param(programId).update()
+            jdbc.sql("delete from organization_logos where organization_id = ?").param(organizationId).update()
+            assertEquals("/v1/organizations/$parentId/logo?v=$v", logoUrl().asString())
+        } finally {
+            jdbc.sql("delete from program_logos where program_id = ?").param(programId).update()
+            jdbc.sql("update organizations set parent_organization_id = :parent where id = :id").param("parent", originalParent, java.sql.Types.BIGINT).param("id", organizationId).update()
+            jdbc.sql("delete from organizations where id = ?").param(parentId).update()
+        }
+    }
+
     // native-v1.md "내 활동 서버 저장·일정 상태": 내 활동 넣기·고치기·지우기, 일정 상태 고르기, 기기 기록 올리기, 공개 일정의 statuses·overlapCheck
     @Test
     fun `로그인 사용자의 내 활동을 서버에 두고 일정마다 상태를 고르며 기기 기록은 서버 값을 지켜 올린다`() {

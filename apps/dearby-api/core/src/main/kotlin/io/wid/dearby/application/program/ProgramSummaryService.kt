@@ -2,7 +2,6 @@ package io.wid.dearby.application.program
 
 import io.wid.dearby.application.organization.OrganizationRepository
 import io.wid.dearby.domain.InvalidInputException
-import io.wid.dearby.domain.ProgramLogo
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.OffsetDateTime
@@ -14,7 +13,7 @@ class ProgramSummaryService(
     private val summaries: ProgramSummaryRepository,
     private val programs: ProgramRepository,
     private val organizations: OrganizationRepository,
-    private val logos: ProgramLogoRepository,
+    private val logos: EffectiveLogos,
 ) {
 
     @Transactional(readOnly = true)
@@ -32,10 +31,10 @@ class ProgramSummaryService(
         val page = found.take(condition.size)
         // 묶음 머리의 태그(native-v1.md "태그"): 프로그램 태그, 없으면 열린 활동 태그의 합집합
         val tags = summaries.tagsByProgram(page.map { it.id }, now)
-        // 로고(native-v1.md "프로그램 로고"): 대상자 필터 경로도 거치도록 여기서 한 번에 찾는다
-        val logoUpdatedAt = logos.updatedAtByProgram(page.map { it.id })
+        // 로고(native-v1.md "조직 로고와 로고 계승"): 프로그램 로고, 없으면 가장 가까운 조직 로고. 대상자 필터 경로도 거치도록 여기서 한 번에 찾는다
+        val logo = logos.of(page.associate { it.id to it.organizationId })
         return ProgramSummaryPage(
-            page.map { it.copy(tags = tags[it.id].orEmpty(), logoUrl = logoUpdatedAt[it.id]?.let { at -> ProgramLogo.url(it.id, at) }) },
+            page.map { it.copy(tags = tags[it.id].orEmpty(), logoUrl = logo[it.id]?.url) },
             if (found.size > condition.size) condition.cursor + condition.size else null,
         )
     }
