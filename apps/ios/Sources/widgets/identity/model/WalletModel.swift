@@ -67,7 +67,7 @@ import Observation
     let account: AccountViewModel
     /// `<프로그램 이름> <활동 이름>` for an activity id (`GET /v1/activities/:id`); nil when it does not load.
     private let activityName: @Sendable (Int64) async -> String?
-    init(account: AccountViewModel, activityName: @escaping @Sendable (Int64) async -> String? = { _ in nil }) {
+    init(account: AccountViewModel, activityName: @escaping @Sendable (Int64) async -> String?) {
         self.account = account
         self.activityName = activityName
     }
