@@ -9,7 +9,7 @@ struct HomePage<Discovery: View, Mine: View, Cards: View, Profile: View, Setting
     var hidesTabs = false
     // Discovery opens details from card buttons, so it gets the navigation path.
     let discovery: (Binding<NavigationPath>) -> Discovery
-    // 내 활동 pushes its own routes too (`내 활동에서 보기` from a detail).
+    // 내 활동 pushes its own routes too (`내 활동으로` from a detail).
     let mine: (Binding<NavigationPath>) -> Mine
     let cards: Cards
     let profile: Profile

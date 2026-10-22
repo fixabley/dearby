@@ -61,7 +61,7 @@ import SwiftUI
             #if DEBUG
             .task { await showScreenshotScene() }
             #endif
-            // `내 활동에서 보기` on an activity detail: the 내 활동 tab opens that activity (it pushes once it is on screen).
+            // `내 활동으로` on an activity detail: the 내 활동 tab opens that activity (it pushes once it is on screen).
             .onChange(of: activityModel.showInMine) { _, id in if id != nil { tab = 1 } }
             // 내 활동 follows the account (contract "내 활동 서버 저장"): signing in imports this run's marks once and then uses the server.
             .onChange(of: account.phase, initial: true) { _, phase in
