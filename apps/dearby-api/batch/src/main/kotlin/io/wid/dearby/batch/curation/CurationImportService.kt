@@ -2,18 +2,22 @@ package io.wid.dearby.batch.curation
 
 import io.wid.dearby.application.activity.ActivityCurationRepository
 import io.wid.dearby.application.activity.ActivityRepository
+import io.wid.dearby.application.catalog.CatalogWrites
 import io.wid.dearby.application.eligibility.EligibilityJson
 import io.wid.dearby.application.organization.OrganizationLogoRepository
 import io.wid.dearby.application.organization.OrganizationRepository
 import io.wid.dearby.application.program.ProgramLogoRepository
 import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.application.tag.TagRepository
+import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.Address
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.LogoFile
 import io.wid.dearby.domain.OrganizationLogo
 import io.wid.dearby.domain.ProgramLogo
+import io.wid.dearby.domain.PublicationStatus
 import io.wid.dearby.domain.Tag
+import io.wid.dearby.domain.curation.CollectionSettings
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import tools.jackson.databind.JsonNode
@@ -23,7 +27,8 @@ import java.nio.file.Path
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 
-// 운영 데이터 가져오기(admin-v1.md "운영 데이터 가져오기 — 2026-10-22"): 조사한 대상자 조건·태그·장소·로고를 운영자 API와 같은 검증으로 채운다.
+// 운영 데이터 가져오기(admin-v1.md "운영 데이터 가져오기 — 2026-10-22"): 조사한 조직·프로그램(수집 설정 포함)을 만들고,
+// 대상자 조건·태그·장소·로고를 채우고, 초안을 게시하거나 지운다. 운영자 API와 같은 검증(core CatalogWrites 등)을 거친다.
 // 빈 것만 채우고(항목의 overwrite면 바꾼다), 운영자 지정 필드(curated_fields)는 건드리지 않으며, 채운 값을 운영자 지정으로 남기지 않는다.
 // apply=false(기본)면 계획만 돌려주고 아무것도 쓰지 않는다. 항목마다 트랜잭션 하나
 @Service
@@ -36,6 +41,7 @@ class CurationImportService(
     private val programLogos: ProgramLogoRepository,
     private val organizationLogos: OrganizationLogoRepository,
     private val transactions: TransactionTemplate,
+    private val catalog: CatalogWrites,
     private val json: JsonMapper,
 ) {
 
@@ -46,10 +52,15 @@ class CurationImportService(
         val root = json.readTree(Files.readString(file))
         val base = file.toAbsolutePath().parent
         val lines = mutableListOf<Line>()
+        // key → id. dry run에서 새로 만들 것은 PENDING(아직 id 없음)이라 뒤 항목은 계획만 보인다
+        val orgKeys = mutableMapOf<String, Id>()
+        val programKeys = mutableMapOf<String, Id>()
+        root.path("organizations").forEach { item -> lines += item(apply) { organization(item, orgKeys, apply) } }
+        root.path("newPrograms").forEach { item -> lines += item(apply) { newProgram(item, orgKeys, programKeys, apply) } }
         root.path("activities").forEach { item -> lines += item(apply) { activity(item, apply) } }
         root.path("programs").forEach { item -> lines += item(apply) { program(item, apply) } }
-        root.path("organizationLogos").forEach { item -> lines += item(apply) { organizationLogo(item, base, apply) } }
-        root.path("programLogos").forEach { item -> lines += item(apply) { programLogo(item, base, apply) } }
+        root.path("organizationLogos").forEach { item -> lines += item(apply) { organizationLogo(item, base, orgKeys, apply) } }
+        root.path("programLogos").forEach { item -> lines += item(apply) { programLogo(item, base, programKeys, apply) } }
         return lines
     }
 
@@ -64,7 +75,15 @@ class CurationImportService(
         val id = item.path("id").asLong()
         val target = "activity $id"
         val activity = activities.findById(id, publicationStatus = null) ?: return listOf(Line(target, "-", SKIP, "활동 없음"))
-        val curated = curations.findAllByActivityId(listOf(id)).singleOrNull()?.curatedFields.orEmpty().toSet()
+        val curation = curations.findAllByActivityId(listOf(id)).singleOrNull()
+        val published = curation?.publicationStatus == PublicationStatus.PUBLISHED
+        // 지우기는 초안만(어드민 DELETE와 같다: 수집 출처를 남겨 다시 만들지 않고 DRAFT_DISMISSED 피드백). 지우면 다른 필드는 보지 않는다
+        if (item.path("dismiss").asBoolean(false)) {
+            if (published) return listOf(Line(target, DISMISS, SKIP, "게시된 활동은 가져오기로 지우지 않습니다"))
+            if (apply) catalog.deleteActivity(id)
+            return listOf(Line(target, DISMISS, SET, activity.name))
+        }
+        val curated = curation?.curatedFields.orEmpty().toSet()
         val overwrite = item.path("overwrite").asBoolean(false)
         val lines = mutableListOf<Line>()
 
@@ -96,7 +115,80 @@ class CurationImportService(
                 else -> Line(target, PLACE, SET, "${place.addressLine1} | ${place.addressLine2} | ${place.lat},${place.lng}").also { if (apply) curations.updatePlace(id, place, curate = false) }
             }
         }
+
+        // 게시는 필드를 채운 뒤(어드민 게시와 같다: 상태만 바꾼다)
+        if (item.path("publish").asBoolean(false)) {
+            lines += if (published) {
+                Line(target, PUBLISH, SKIP, "이미 게시됨")
+            } else {
+                Line(target, PUBLISH, SET, activity.name).also { if (apply) curations.updatePublicationStatus(id, PublicationStatus.PUBLISHED) }
+            }
+        }
         return lines
+    }
+
+    // 같은 상위 조직 아래 같은 이름(띄어쓰기·대소문자 무시)이 있으면 그 조직을 쓴다. 없으면 어드민 만들기와 같은 검증으로 만든다
+    private fun organization(item: JsonNode, orgKeys: MutableMap<String, Id>, apply: Boolean): List<Line> {
+        val name = item.path("name").asString("").trim()
+        val key = item.path("key").asString("").ifEmpty { name }
+        val parent = reference(item, "parentId", "parentKey", orgKeys)
+        val target = "organization $key"
+        if (parent == PENDING) {
+            orgKeys[key] = PENDING
+            return listOf(Line(target, CREATED, SET, "$name (상위 조직도 새로 만듦)"))
+        }
+        val existing = organizations.search(name, parent, rootsOnly = parent == null, after = null, size = SEARCH_SIZE)
+            .firstOrNull { key(it.name) == key(name) && it.parentOrganizationId == parent }
+        if (existing != null) {
+            orgKeys[key] = existing.id
+            return listOf(Line(target, REUSED, SKIP, "이미 있음: id ${existing.id}"))
+        }
+        val nameEn = item.path("nameEn").asString("").ifBlank { null }
+        orgKeys[key] = if (apply) catalog.createOrganization(name, nameEn, parent) else PENDING
+        return listOf(Line(target, CREATED, SET, "$name${orgKeys[key].takeIf { it != PENDING }?.let { " → id $it" } ?: ""}"))
+    }
+
+    // 같은 조직에 같은 이름의 프로그램이 있으면 건너뛴다. 만들 때 수집 설정도 어드민 PUT collection-settings와 같은 검증으로 넣는다
+    private fun newProgram(item: JsonNode, orgKeys: Map<String, Id>, programKeys: MutableMap<String, Id>, apply: Boolean): List<Line> {
+        val name = item.path("name").asString("").trim()
+        val key = item.path("key").asString("").ifEmpty { name }
+        val target = "program $key"
+        val organizationId = reference(item, "organizationId", "organizationKey", orgKeys)
+            ?: return listOf(Line(target, CREATED, SKIP, "조직이 없습니다"))
+        val category = item.path("category").asString("").ifBlank { null }?.let(ActivityCategory::parse)
+        val collection = item.get("collection")?.takeUnless { it.isNull }?.let(::collection)?.let(catalog::validate)
+        val plan = listOfNotNull(name, category?.name, collection?.officialUrl).joinToString(" | ")
+        if (organizationId != PENDING) {
+            val existing = programs.search(name, organizationId, after = null, size = SEARCH_SIZE).firstOrNull { key(it.name) == key(name) }
+            if (existing != null) {
+                programKeys[key] = existing.id
+                return listOf(Line(target, CREATED, SKIP, "같은 조직에 같은 이름의 프로그램이 있음: id ${existing.id}"))
+            }
+        }
+        if (!apply) {
+            programKeys[key] = PENDING
+            return listOf(Line(target, CREATED, SET, plan))
+        }
+        val nameEn = item.path("nameEn").asString("").ifBlank { null }
+        val id = catalog.createProgram(organizationId, name, nameEn, collection)
+        if (category != null) programs.update(id, organizationId, name.trim(), nameEn?.trim(), category)
+        programKeys[key] = id
+        return listOf(Line(target, CREATED, SET, "$plan → id $id"))
+    }
+
+    private fun collection(node: JsonNode) = CollectionSettings(
+        officialUrl = node.path("officialUrl").asString("").ifBlank { null },
+        allowedHosts = buildList { node.path("allowedHosts").forEach { add(it.asString("")) } },
+        intervalDays = node.path("intervalDays").asInt(CollectionSettings.DEFAULT.intervalDays),
+        enabled = node.path("enabled").asBoolean(true),
+        renderPages = node.path("renderPages").asBoolean(false),
+    )
+
+    // 숫자 id 또는 같은 파일 앞쪽 항목의 key. 둘 다 없으면 null(최상위), 모르는 key는 오류
+    private fun reference(item: JsonNode, idField: String, keyField: String, keys: Map<String, Id>): Id? {
+        item.get(idField)?.takeIf { it.isNumber }?.let { return it.asLong() }
+        val key = item.path(keyField).asString("").ifEmpty { return null }
+        return keys[key] ?: throw IllegalArgumentException("앞에서 정의하지 않은 $keyField: $key")
     }
 
     private fun program(item: JsonNode, apply: Boolean): List<Line> {
@@ -112,9 +204,10 @@ class CurationImportService(
         }
     }
 
-    private fun organizationLogo(item: JsonNode, base: Path, apply: Boolean): List<Line> {
-        val id = item.path("organizationId").asLong()
+    private fun organizationLogo(item: JsonNode, base: Path, orgKeys: Map<String, Id>, apply: Boolean): List<Line> {
+        val id = reference(item, "organizationId", "organizationKey", orgKeys) ?: return listOf(Line("organization -", LOGO, SKIP, "조직 없음"))
         val target = "organization $id"
+        if (id == PENDING) return listOf(Line("organization ${item.path("organizationKey").asString("")}", LOGO, SET, "새 조직에 올림"))
         if (organizations.findAllById(listOf(id)).isEmpty()) return listOf(Line(target, LOGO, SKIP, "조직 없음"))
         if (organizationLogos.find(id) != null && !item.path("overwrite").asBoolean(false)) return listOf(Line(target, LOGO, SKIP, "이미 있음"))
         val (type, data) = logoFile(base, item.path("file").asString())
@@ -122,9 +215,10 @@ class CurationImportService(
         return listOf(Line(target, LOGO, SET, "$type ${data.size} bytes"))
     }
 
-    private fun programLogo(item: JsonNode, base: Path, apply: Boolean): List<Line> {
-        val id = item.path("programId").asLong()
+    private fun programLogo(item: JsonNode, base: Path, programKeys: Map<String, Id>, apply: Boolean): List<Line> {
+        val id = reference(item, "programId", "programKey", programKeys) ?: return listOf(Line("program -", LOGO, SKIP, "프로그램 없음"))
         val target = "program $id"
+        if (id == PENDING) return listOf(Line("program ${item.path("programKey").asString("")}", LOGO, SET, "새 프로그램에 올림"))
         if (programs.findAllById(listOf(id)).isEmpty()) return listOf(Line(target, LOGO, SKIP, "프로그램 없음"))
         if (programLogos.find(id) != null && !item.path("overwrite").asBoolean(false)) return listOf(Line(target, LOGO, SKIP, "이미 있음"))
         val (type, data) = logoFile(base, item.path("file").asString())
@@ -175,6 +269,13 @@ class CurationImportService(
         const val TAGS = "tags"
         const val PLACE = "place"
         const val LOGO = "logo"
+        const val PUBLISH = "publish"
+        const val DISMISS = "dismiss"
+        const val CREATED = "created"
+        const val REUSED = "reused"
+        const val SEARCH_SIZE = 50
+        // dry run에서 아직 만들지 않은 조직·프로그램
+        const val PENDING: Id = -1L
         const val NEW_TAG: Id = 0L
     }
 }

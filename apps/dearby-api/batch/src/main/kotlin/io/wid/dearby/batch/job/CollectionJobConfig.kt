@@ -36,7 +36,10 @@ class CollectionJobConfig(
     private fun collectStep(jobRepository: JobRepository): Step =
         StepBuilder("collectActivities", jobRepository).tasklet({ _, chunkContext ->
             val runDate = LocalDate.parse(chunkContext.stepContext.jobParameters[RUN_DATE] as String)
-            for (target in targets.findDue(runDate)) {
+            // --collect-now=<id,…>: 그 프로그램만(주기·하루 한 번 규칙은 그대로). 비어 있으면 전부
+            val only = (chunkContext.stepContext.jobParameters[PROGRAM_IDS] as String?).orEmpty()
+                .split(',').mapNotNull { it.trim().toLongOrNull() }.toSet()
+            for (target in targets.findDue(runDate).filter { only.isEmpty() || it.programId in only }) {
                 val runId = runs.start(target.programId, runDate, target.officialOnly) ?: continue
                 val report = try {
                     collector.collect(target)
@@ -59,5 +62,6 @@ class CollectionJobConfig(
     companion object {
         const val JOB_NAME = "collectActivities"
         const val RUN_DATE = "runDate"
+        const val PROGRAM_IDS = "programIds"
     }
 }

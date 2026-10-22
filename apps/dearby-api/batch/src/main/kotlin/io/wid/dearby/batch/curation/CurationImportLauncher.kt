@@ -24,6 +24,10 @@ class CurationImportLauncher(private val service: CurationImportService, private
             "Curation import {} finished: {} set, {} skipped",
             if (apply) "apply" else "dry run", lines.count { it.action == "SET" }, lines.count { it.action == "SKIP" },
         )
+        // 새로 만든 프로그램 id(바로 수집하려면 --collect-now=<id,…>)
+        lines.filter { it.field == "created" && it.target.startsWith("program ") }
+            .mapNotNull { Regex("→ id (\\d+)").find(it.detail)?.groupValues?.get(1) }
+            .takeIf { it.isNotEmpty() }?.let { log.info("New program ids: {}", it.joinToString(",")) }
         exitProcess(SpringApplication.exit(context))
     }
 }

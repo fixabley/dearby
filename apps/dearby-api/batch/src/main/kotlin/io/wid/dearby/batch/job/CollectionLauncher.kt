@@ -33,12 +33,14 @@ class CollectionLauncher(
     // 일회성 실행(2026-10-19): 수동 수집이 끝나면 프로세스를 끝낸다. 스케줄과 함께 남아 정기 수집이 두 번 돌던 문제를 막는다
     override fun run(args: ApplicationArguments) {
         if (!args.containsOption("collect-now")) return
-        launch("manual-${System.currentTimeMillis()}", waitForCompletion = true)
+        // --collect-now=12,15 이면 그 프로그램만(admin-v1.md "운영 데이터 가져오기": 새로 만든 프로그램을 바로 수집)
+        val programIds = args.getOptionValues("collect-now").orEmpty().joinToString(",")
+        launch("manual-${System.currentTimeMillis()}", waitForCompletion = true, programIds = programIds)
         exitProcess(SpringApplication.exit(context))
     }
 
     // waitForCompletion: 실행기가 비동기라 start()가 바로 돌아온다. 일회성 실행은 끝날 때까지 기다린 뒤 종료해야 수집이 실제로 돈다(2026-10-19 회귀 수정)
-    fun launch(trigger: String, waitForCompletion: Boolean = false) {
+    fun launch(trigger: String, waitForCompletion: Boolean = false, programIds: String = "") {
         readiness.problem()?.let {
             log.warn("Collection engine not ready ({}); skipping activity collection ({})", it, trigger)
             return
@@ -46,6 +48,7 @@ class CollectionLauncher(
         val parameters = JobParametersBuilder()
             .addString(CollectionJobConfig.RUN_DATE, LocalDate.now(ZoneId.of(ZONE)).toString())
             .addString("trigger", trigger)
+            .addString(CollectionJobConfig.PROGRAM_IDS, programIds)
             .toJobParameters()
         val execution = jobOperator.start(collectActivitiesJob, parameters)
         if (waitForCompletion) while (execution.isRunning) Thread.sleep(2_000)
