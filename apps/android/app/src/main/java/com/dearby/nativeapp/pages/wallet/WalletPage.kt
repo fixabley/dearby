@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -39,7 +40,11 @@ private const val RAIL_MIN_SECTIONS = 7
         // Signed out, failed and empty states are CenteredMessages on the page background (contract "비스크롤 화면 배치·CTA").
         when (state.phase) {
             WalletPhase.SIGNED_OUT -> DearbyEmptyState("받은 명함은 계정에 저장돼요", "로그인하면 저장한 명함을 볼 수 있어요.", Modifier.fillMaxSize(), Icons.Rounded.Inbox, MessageAction("로그인", signIn))
-            WalletPhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
+            // The search field, then ReceivedCardRow-shaped rows (contract "내용 로딩은 스켈레톤").
+            WalletPhase.LOADING -> DearbySkeleton(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 4.dp), spacing = 4.dp) {
+                SkeletonBlock(Modifier.fillMaxWidth().height(56.dp), RoundedCornerShape(28.dp))
+                SkeletonRows(5, leading = 44.dp)
+            }
             WalletPhase.FAILED -> DearbyErrorState("받은 명함을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
             WalletPhase.LOADED -> if (state.cards.isEmpty()) DearbyEmptyState("아직 받은 명함이 없어요", "상대의 명함 QR을 카메라로 읽고 ‘Dearby 앱에 저장’을 누르면 여기에 모여요.", Modifier.fillMaxSize(), Icons.Rounded.Inbox) else {
                 val sections = walletSections(filterWallet(state.cards, query))

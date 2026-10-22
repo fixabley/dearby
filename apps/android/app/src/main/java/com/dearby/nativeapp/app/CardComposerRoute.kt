@@ -2,13 +2,13 @@ package com.dearby.nativeapp.app
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Badge
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dearby.nativeapp.shared.ui.*
@@ -40,7 +40,8 @@ import com.dearby.nativeapp.widgets.card.cardContent.CardComposer
                 publishing = phase == PublishPhase.Publishing || phase == PublishPhase.Loading, errorMessage = (phase as? PublishPhase.Failed)?.message,
                 publishLabel = if (state.prefill == null) "명함 발행" else "고친 내용 저장")
             phase is PublishPhase.Failed -> DearbyErrorState("명함을 준비하지 못했어요", phase.message, { model.load() }, Modifier.fillMaxSize())
-            else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
+            // Preparing the draft from the profile: the card preview's outline (contract "내용 로딩은 스켈레톤").
+            else -> DearbySkeleton(Modifier.fillMaxSize().padding(20.dp)) { SkeletonLine(.4f, 20.dp); SkeletonCardBody() }
         }
     }
     if (state.signingIn && auth.phase != AccountPhase.SIGNED_IN) SignInRoute(account, close = model::cancelSignIn)

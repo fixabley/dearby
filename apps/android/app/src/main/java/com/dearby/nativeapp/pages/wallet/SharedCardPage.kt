@@ -22,7 +22,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.DearbyButton
 import com.dearby.nativeapp.shared.ui.DearbyEmptyState
-import com.dearby.nativeapp.shared.ui.DearbyLoadingState
+import com.dearby.nativeapp.shared.ui.DearbySkeleton
+import com.dearby.nativeapp.shared.ui.SkeletonCardBody
 import com.dearby.nativeapp.shared.ui.DearbyTopBar
 import com.dearby.nativeapp.widgets.card.cardContent.CardContent
 import com.dearby.nativeapp.widgets.card.cardContent.ContactState
@@ -51,7 +52,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.ContactState
                 else DearbyButton(save, Modifier.fillMaxWidth()) { Text("받은 명함에 저장") }
             }
             shared.error != null -> DearbyEmptyState("명함을 볼 수 없어요", shared.error, Modifier.weight(1f), icon = Icons.Rounded.Badge)
-            else -> DearbyLoadingState("명함을 불러오는 중이에요", Modifier.weight(1f))
+            else -> DearbySkeleton(Modifier.weight(1f).padding(20.dp)) { SkeletonCardBody() }
         }
     }
     if (reporting) ReportDialog({ reporting = false }) { reason, detail -> reporting = false; report(reason, detail) }
