@@ -3,7 +3,7 @@ package io.wid.dearby.admin.application
 import io.wid.dearby.application.program.ProgramLogoRepository
 import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.domain.Id
-import io.wid.dearby.domain.InvalidInputException
+import io.wid.dearby.domain.LogoFile
 import io.wid.dearby.domain.NotFoundException
 import io.wid.dearby.domain.ProgramLogo
 import org.springframework.stereotype.Service
@@ -19,8 +19,7 @@ class AdminProgramLogoService(private val programs: ProgramRepository, private v
     @Transactional
     fun put(programId: Id, contentType: String?, data: ByteArray): String {
         if (programs.findAllById(listOf(programId)).isEmpty()) throw NotFoundException("프로그램을 찾을 수 없습니다", "Program not found: $programId")
-        val type = contentType?.substringBefore(';')?.trim()?.lowercase()
-        if (type == null || type !in LOGO_TYPES || data.isEmpty() || data.size > MAX_LOGO_BYTES) throw InvalidInputException("로고는 PNG·JPEG·WebP 1MB 이하여야 합니다")
+        val type = LogoFile.contentType(contentType, data)
         val updatedAt = OffsetDateTime.now(ZoneOffset.UTC)
         logos.save(ProgramLogo(programId, type, data, updatedAt))
         return ProgramLogo.url(programId, updatedAt)
@@ -33,9 +32,4 @@ class AdminProgramLogoService(private val programs: ProgramRepository, private v
     // 없어도 그대로 끝난다(204)
     @Transactional
     fun delete(programId: Id) = logos.delete(programId)
-
-    private companion object {
-        val LOGO_TYPES = setOf("image/png", "image/jpeg", "image/webp")
-        const val MAX_LOGO_BYTES = 1024 * 1024
-    }
 }

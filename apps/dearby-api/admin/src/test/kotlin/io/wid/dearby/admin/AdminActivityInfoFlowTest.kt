@@ -853,4 +853,42 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
             jdbc.sql("delete from program_logos where program_id = ?").param(programId).update()
         }
     }
+
+    // 조직 로고(admin-v1.md "조직 로고"): 같은 파일 규칙, 조직 응답에 logoUrl, 프로그램 응답의 effectiveLogo는 자체 로고가 없으면 조직 로고를 계승한다
+    @Test
+    fun `조직 로고를 올리면 조직에 logoUrl이 보이고 자체 로고가 없는 프로그램은 그 로고를 계승한다`() {
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        val organizationId = jdbc.sql("select organization_id from programs where id = ?").param(programId).query(Long::class.java).single()
+        val url = "/v1/admin/organizations/$organizationId/logo"
+        fun upload(path: String, type: String, bytes: ByteArray) = mvc.multipart(HttpMethod.PUT, path) { file(MockMultipartFile("file", "logo", type, bytes)); asAdmin() }
+        fun program(): JsonNode = read(mvc.get("/v1/admin/programs?q=Let") { asAdmin() })["items"].single()
+        val organizationName = jdbc.sql("select name from organizations where id = ?").param(organizationId).query(String::class.java).single()
+        fun organization(): JsonNode = read(mvc.get("/v1/admin/organizations") { param("q", organizationName); asAdmin() })["items"].single { it["id"].asLong() == organizationId }
+        try {
+            mvc.get(url) { asAdmin() }.andExpect { status { isNotFound() } }
+            assertEquals(true, organization()["logoUrl"].isNull)
+            assertEquals(true, program()["effectiveLogo"].isNull)
+            upload(url, "text/plain", byteArrayOf(1)).andExpect { status { isBadRequest() } }
+            upload("/v1/admin/organizations/999999/logo", "image/png", byteArrayOf(1)).andExpect { status { isNotFound() } }
+            val logoUrl = read(upload(url, "image/png", byteArrayOf(4, 5)).andExpect { status { isOk() } })["logoUrl"].asString()
+            assertEquals(true, Regex("/v1/organizations/$organizationId/logo\\?v=\\d+").matches(logoUrl))
+            assertEquals(logoUrl, organization()["logoUrl"].asString())
+            assertEquals(listOf<Byte>(4, 5), mvc.get(url) { asAdmin() }.andExpect { status { isOk() } }.andReturn().response.contentAsByteArray.toList())
+            program().let {
+                assertEquals(true, it["logoUrl"].isNull)
+                assertEquals(logoUrl, it["effectiveLogo"]["url"].asString())
+                assertEquals("ORGANIZATION", it["effectiveLogo"]["source"].asString())
+                assertEquals(organizationId, it["effectiveLogo"]["organizationId"].asLong())
+            }
+            // 자체 로고가 있으면 그것
+            upload("/v1/admin/programs/$programId/logo", "image/png", byteArrayOf(1)).andExpect { status { isOk() } }
+            assertEquals("PROGRAM", program()["effectiveLogo"]["source"].asString())
+            mvc.delete(url) { asAdmin() }.andExpect { status { isNoContent() } }
+            mvc.delete(url) { asAdmin() }.andExpect { status { isNoContent() } }
+            assertEquals(true, organization()["logoUrl"].isNull)
+        } finally {
+            jdbc.sql("delete from program_logos where program_id = ?").param(programId).update()
+            jdbc.sql("delete from organization_logos where organization_id = ?").param(organizationId).update()
+        }
+    }
 }

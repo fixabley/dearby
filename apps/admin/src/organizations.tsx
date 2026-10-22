@@ -5,6 +5,7 @@ import { ExportOutlined, PlusOutlined } from "@ant-design/icons";
 import { api, useSingleFlight } from "./api";
 import { ActivityTextEditor, type ActivityText, type PublicationStatus, statusLabels } from "./activities";
 import { SearchSelect, allPages } from "./list";
+import { LogoField } from "./logo";
 
 type Organization = {
   id: number;
@@ -15,6 +16,8 @@ type Organization = {
   programCount: number;
   /** Root first, up to the direct parent. */
   ancestors: { id: number; name: string }[];
+  /** 조직 로고 (contract admin-v1.md "조직 로고"): public path with `?v=`, null when none; programs without a logo inherit it. */
+  logoUrl?: string | null;
 };
 type Program = { id: number; name: string; nameEn: string | null; organization: { id: number; name: string } };
 type Activity = ActivityText & { officialUrl: string; publicationStatus: PublicationStatus; officialSource: boolean };
@@ -235,7 +238,7 @@ export function Organizations() {
           loading={roots.isLoading}
           dataSource={tree}
           pagination={false}
-          scroll={{ x: 1080 }}
+          scroll={{ x: 1290 }}
           rowClassName={(row) => (row.kind === "organization" && matches?.has(row.record.id) ? "tree-match" : "")}
           expandable={{ expandedRowKeys: expanded, onExpandedRowsChange: (keys) => setExpanded([...keys]) }}
           locale={{ emptyText: "등록된 조직이 없어요." }}
@@ -312,6 +315,20 @@ export function Organizations() {
                 if (row.kind === "organization") return <span className="muted">{parentOf(row.record) ?? "최상위"}</span>;
                 return null;
               },
+            },
+            {
+              title: "로고",
+              width: 210,
+              render: (_, row) =>
+                row.kind === "organization" && !editing(row) ? (
+                  <LogoField
+                    path={`organizations/${row.record.id}/logo`}
+                    name={row.record.name}
+                    initialLogoUrl={row.record.logoUrl ?? null}
+                    stale={[["organizations"], ["programs"]]}
+                    size={28}
+                  />
+                ) : null,
             },
             {
               title: "내용",

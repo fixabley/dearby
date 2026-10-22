@@ -26,6 +26,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.GuestSessions
 import io.wid.dearby.adaptor.persistence.jooq.tables.HistoryEvidence
 import io.wid.dearby.adaptor.persistence.jooq.tables.Jobs
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationLogos
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMembers
 import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations
@@ -186,6 +187,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.organization_contacts</code>.
      */
     val ORGANIZATION_CONTACTS: OrganizationContacts get() = OrganizationContacts.ORGANIZATION_CONTACTS
+
+    /**
+     * The table <code>public.organization_logos</code>.
+     */
+    val ORGANIZATION_LOGOS: OrganizationLogos get() = OrganizationLogos.ORGANIZATION_LOGOS
 
     /**
      * The table <code>public.organization_member_roles</code>.
@@ -357,6 +363,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         HistoryEvidence.HISTORY_EVIDENCE,
         Jobs.JOBS,
         OrganizationContacts.ORGANIZATION_CONTACTS,
+        OrganizationLogos.ORGANIZATION_LOGOS,
         OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES,
         OrganizationMembers.ORGANIZATION_MEMBERS,
         Organizations.ORGANIZATIONS,
