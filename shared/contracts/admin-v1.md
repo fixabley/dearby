@@ -243,7 +243,3 @@ native-v1.md "내 활동 서버 저장·일정 상태·겹침 확인 시간"의 
 - 채우기(V44, 여러 번 실행해도 같은 행을 두 번 넣지 않음): 지정 일정(`curated`, 지우지 않은 것, 문구와 날짜가 있는 것), 운영자 지정 필드(`curated_fields`의 name·category·eligibility·tags; 고치기 전 수집 값은 남아 있지 않아 `to`만), 조심 목록. 지운 초안은 이름이 남아 있지 않아 채울 수 없다.
 - 수집기의 쓰임: (1) 요청에 그 프로그램의 최근 10건. (2) MCP 도구 `search_feedback {text, kind?}`: 유사도(0.3 이상) 상위 8건, 같은 프로그램 → 같은 호스트 → 나머지 순, 각 행에 kind·원문·운영자 값·사유·(다른 프로그램이면) 프로그램 이름. (3) 제출 판정: 같은 프로그램에서 이름(공백·대소문자 무시)이 `DRAFT_DISMISSED`·`WATCH_EXCLUDE`와 같으면 거절(`운영자 피드백 #id(kind): …`, 수집 보고 거절 이유에도), 날짜 문구가 `DATE_CURATED`와 유사도 0.6 이상인데 해석이 다르면 저장하되 주의를 돌려준다.
 - 수집 보고: `collection_runs.agent_log jsonb`(V42)에 `workflowVersion`(작업 절차 파일 SHA-256 앞 12자리), `stopReason`·`capReached`·`turns`·`pages`·`usage`(캐시 나눔)·`costUsd`·`calls[{tool, url, result}]`와 피드백 id `feedbackInjected`(요청에 넣음)·`feedbackRetrieved`(검색으로 찾음)·`feedbackApplied`(거절·주의에 씀). 어드민 API로는 아직 내보내지 않는다.
-
-## 명함 신고 — 2026-10-22
-
-native-v1.md "명함 신고·차단"의 어드민 쪽. `GET /v1/admin/card-reports?status=OPEN|RESOLVED|DISMISSED`(생략 시 전체, 최신순, 열린 것 먼저) → `{items:[{id, cardId, cardSnapshot, reason, detail, createdAt, status, note, reportCount, cardWithdrawn}]}`. `PATCH /v1/admin/card-reports/:id {status, note?}` 200. `POST /v1/admin/cards/:id/withdraw {reportId?, note}` 204(이미 철회면 204). 모두 ADMIN 역할.

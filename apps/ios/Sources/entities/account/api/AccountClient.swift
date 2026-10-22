@@ -7,9 +7,11 @@ enum AccountError: Error, Equatable {
     /// network failure or 5xx, which is `unavailable`.
     /// `consentRequired`: 403 `CONSENT_REQUIRED` — the account has not accepted the current privacy policy and terms
     /// (contract "개인정보 동의"); other 403s stay `unavailable`.
+    /// `cardCodeRequired`: 403 `card-code-required`/`card-code-expired` — a card not yet saved needs a live QR code
+    /// (contract "명함 QR 코드").
     /// `lastSignInMethod`: 409 `LAST_SIGN_IN_METHOD` — the passkey or linked account is the only way left to sign in, so it
     /// cannot be removed (contract "설정"); other 409s stay `conflict`.
-    case unauthorized, invalidInput, rejected(String), notFound, conflict, rateLimited, disabled, unavailable, consentRequired, lastSignInMethod
+    case unauthorized, invalidInput, rejected(String), notFound, conflict, rateLimited, disabled, unavailable, consentRequired, cardCodeRequired, lastSignInMethod
 }
 
 /// Owner API (contract native-v1): passkey sign-in, profile and card publishing.
@@ -200,8 +202,27 @@ struct AccountClient: Sendable {
     }
     /// `PUT /v1/wallet/cards/:cardId {activityId}` (contract "명함 교환"): saves a card arriving by QR to the account; 201 or 200 with
     /// the Receipt, 404 for an unknown or withdrawn card, 409 `OWN_CARD` (surfaces as `conflict`) for my own card.
-    func receiveCard(_ cardID: String, activityID: Int64?, _ session: TokenPair) async throws -> Wallet.Receipt {
-        try await send("wallet/cards/\(cardID)", method: "PUT", body: ReceiveInput(activityId: activityID), session: session, as: Wallet.Receipt.self)
+    func receiveCard(_ cardID: String, activityID: Int64?, code: String?, _ session: TokenPair) async throws -> Wallet.Receipt {
+        try await send("wallet/cards/\(cardID)", method: "PUT", body: ReceiveInput(activityId: activityID, code: code), session: session, as: Wallet.Receipt.self)
+    }
+    /// `POST /v1/cards/:id/qr-codes` (contract "명함 QR 코드"): a fresh code for the QR screen, usable by many until expired.
+    func issueQRCode(_ cardID: String, _ session: TokenPair) async throws -> QRCode {
+        try await send("cards/\(cardID)/qr-codes", method: "POST", session: session, as: QRCode.self)
+    }
+    /// `DELETE /v1/cards/:id/qr-codes/:codeId`: 204, also when it already expired.
+    func expireQRCode(_ cardID: String, codeID: String, _ session: TokenPair) async throws {
+        _ = try await request("cards/\(cardID)/qr-codes/\(codeID)", method: "DELETE", session: session)
+    }
+    struct QRCode: Decodable, Equatable, Sendable {
+        let id: String
+        let code: String
+        let expiresAt: String
+        /// When the server drops the code by itself (24 hours); nil if the timestamp does not parse.
+        var expiry: Date? {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            return formatter.date(from: expiresAt) ?? ISO8601DateFormatter().date(from: expiresAt)
+        }
     }
     /// `POST /v1/wallet/cards/:cardId/reciprocate {myCardId}`: hands one of my cards back to that card's owner (same activity); 201.
     func reciprocate(_ cardID: String, myCardID: String, _ session: TokenPair) async throws {
@@ -276,12 +297,12 @@ struct AccountClient: Sendable {
     }
     private struct PasskeyAnswer: Encodable { let challengeId: String; let credential: Passkey.Credential }
     /// RFC 9457 ProblemDetail: `detail` is the user-facing sentence; `code` names the case for the few the app branches on.
-    private struct ProblemBody: Decodable { let detail: String?; let code: String? }
+    private struct ProblemBody: Decodable { let type: String?; let detail: String?; let code: String? }
     private struct ConsentInput: Encodable { let privacyVersion: String; let termsVersion: String }
     private struct CardList: Decodable { let items: [PublishedCard] }
     private struct ItemList<Item: Decodable>: Decodable { let items: [Item] }
     /// `activityId` is left out of the JSON when nil (synthesized `encodeIfPresent`).
-    private struct ReceiveInput: Encodable { let activityId: Int64? }
+    private struct ReceiveInput: Encodable { let activityId: Int64?; let code: String? }
     private struct ReciprocateInput: Encodable { let myCardId: String }
 
     private func send<Response: Decodable>(_ path: String, method: String = "GET", body: (any Encodable)? = nil,
@@ -313,7 +334,9 @@ struct AccountClient: Sendable {
             throw AccountError.invalidInput
         case 401: throw AccountError.unauthorized
         case 403:
-            if (try? JSONDecoder().decode(ProblemBody.self, from: data))?.code == "CONSENT_REQUIRED" { throw AccountError.consentRequired }
+            let problem = try? JSONDecoder().decode(ProblemBody.self, from: data)
+            if problem?.code == "CONSENT_REQUIRED" { throw AccountError.consentRequired }
+            if let type = problem?.type, type.hasSuffix("card-code-required") || type.hasSuffix("card-code-expired") { throw AccountError.cardCodeRequired }
             throw AccountError.unavailable
         case 404: throw AccountError.notFound
         case 409:

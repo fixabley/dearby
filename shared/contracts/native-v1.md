@@ -786,33 +786,6 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 - iOS·Android QR 화면: 열 때 발급, 닫을 때(시트 dismiss·뒤로) 만료 호출(실패해도 닫힘은 막지 않음), 오른쪽 위 새로고침 버튼(네이티브 아이콘 `arrow.clockwise`/`Refresh`, 접근성 "QR 새로 만들기"), 자동 새로고침. 발급 중에는 QR 자리에 시스템 진행 표시.
 - 스킴으로 받은 `code`를 `PUT /v1/wallet/cards/:cardId`에 그대로 보낸다. 403이면 "명함 주인에게 QR을 다시 보여 달라고 하세요" 알림.
 
-## 명함 신고·차단 — 2026-10-22 사용자 결정
-
-사용자: "받은 명함 상세와 웹 명함 페이지에 '신고하기'를 둬요. 신고는 서버에 기록돼 어드민에서 볼 수 있어요." "받은 명함을 지우면서 그 사람의 명함을 다시 받지 않게 해요." App Store 1.2(신고·차단·연락처 공개) 대응.
-
-### 신고
-
-- `POST /v1/cards/:id/reports` 인증: Bearer 또는 게스트 토큰(웹 프록시) 또는 없음(웹에서 코드로 본 사람, 본문에 `code`). 명함을 볼 권한이 있는 사람만(위 "명함 QR 코드" 조회 권한과 같음, 아니면 403). 본문 `{reason: SPAM|IMPERSONATION|INAPPROPRIATE|OTHER, detail?: string(≤500), code?: string}`. 201. 같은 신고자(계정·게스트)가 같은 명함을 24시간 안에 다시 신고하면 200으로 기존 신고를 돌려준다(중복 방지). 자기 명함은 400.
-- 사유 표시: 스팸·광고 / 다른 사람 사칭 / 부적절한 내용 / 기타(기타는 설명 필수).
-- 저장: `card_reports(id uuid, card_id, reporter_user_id null, reporter_guest_id null, reason, detail, created_at, status OPEN|RESOLVED|DISMISSED, resolved_at, resolved_by, note)`(V48). 신고 시점의 명함 스냅샷(이름·직무·소개·연락처)을 `card_snapshot jsonb`로 함께 둔다(주인이 고치거나 지워도 근거가 남게).
-- 화면: 받은 명함 상세(iOS 툴바 `ellipsis.circle` Menu, Android TopAppBar 더 보기 메뉴)와 웹 `/cards/:id`·`/saved` 상세의 카드 아래 작은 글자 버튼 `신고하기`. 사유 고르기(iOS confirmationDialog 또는 시트의 Picker, Android 라디오 목록 다이얼로그, 웹 shadcn Dialog) → 선택 설명 → 보내기. 성공하면 "신고를 받았어요. 24시간 안에 확인할게요." 신고만으로 명함이 사라지지는 않는다(차단은 따로).
-
-### 차단
-
-- 받은 명함 상세의 메뉴 `삭제하고 차단하기`(파괴적 역할, 확인 대화상자 "<이름>님의 명함을 지우고, 앞으로 이 사람의 명함을 받지 않아요."). 차단 단위는 명함 주인(계정)이다.
-- `POST /v1/wallet/blocks {cardId}`(Bearer) → 201 `{id, name, blockedAt}`: 내 지갑에서 그 주인의 모든 명함 Receipt를 지우고(행 삭제가 아니라 `recalled_at`), 차단을 기록한다. 이후 그 주인의 명함을 `PUT /v1/wallet/cards/:cardId`하면 409 `BLOCKED`("차단한 사람의 명함이에요"), 그 주인이 `reciprocate`로 내 지갑에 넣으려 하면 조용히 201(상대에게 차단 사실을 알리지 않는다)이지만 넣지 않는다. 상대 지갑의 내 명함은 그대로 둔다.
-- 게스트(웹 `/saved` 상세): `POST /v1/guest/blocks {cardId}`(게스트 토큰)로 같은 동작(`guest_cards` 회수 + 게스트 차단 기록, 이후 `PUT /v1/guest/cards/:id` 409).
-- `GET /v1/wallet/blocks` → `{items:[{id, name, blockedAt}]}`, `DELETE /v1/wallet/blocks/:id` 204(차단 해제, 지운 명함은 돌아오지 않는다). `name`은 차단할 때 그 명함의 이름 스냅샷. 앱 설정 화면에 `차단한 사람` 행 → 목록과 밀어서/편집으로 해제. 게스트는 목록·해제 없음(쿠키를 지우면 초기화).
-- 저장: `card_blocks(id uuid, blocker_user_id null, blocker_guest_id null, blocked_user_id, name, created_at)`(V48, 둘 중 하나만).
-
-### 어드민
-
-- `GET /v1/admin/card-reports?status=OPEN` → 목록(명함 스냅샷 이름, 사유, 설명, 신고 시각, 같은 명함 신고 수, 상태). `PATCH /v1/admin/card-reports/:id {status, note?}`. `POST /v1/admin/cards/:id/withdraw {reportId?, note}` → 운영자가 명함을 내린다(주인의 `DELETE /v1/cards/:id`와 같은 효과, 모두에게서 사라짐, 연결된 신고는 RESOLVED). 어드민 웹 `신고` 메뉴: 표(열린 신고가 위), 행을 열면 스냅샷·사유와 `처리 완료`·`무시`·`명함 내리기`.
-
-### 연락처 공개
-
-- 운영자: 팀 WID, 연락 이메일 fixabley@naver.com, 전화 010-7503-5692(2026-10-22 사용자 제공). 처리방침·약관의 운영자·연락처 빈칸을 채우고, 웹 `/support`(지원 페이지: 운영자·이메일·전화·신고 방법·계정 삭제 방법)를 만든다. App Store 지원 URL과 Play 계정 삭제 URL은 `/support`(삭제 안내 절에 바로 가는 `#delete-account`).
-
 ## 명함 표현 — 2026-10-18 사용자 결정
 
 Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvalley 직무 칩, Airbnb 자격 목록)를 바탕으로 명함 본문의 표현을 세 플랫폼에서 같게 맞춘다. 데이터·계약은 바뀌지 않는다(`Card` 그대로).

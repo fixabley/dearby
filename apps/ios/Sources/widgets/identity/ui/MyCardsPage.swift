@@ -48,7 +48,7 @@ struct MyCardsPage: View {
                 NavigationStack { SignInSheet(account: state.account) { Task { await state.load() } } }
             }
             .sheet(item: $showingQR) { card in
-                NavigationStack { CardQRSheet(cardName: card.name, cardID: card.id, webOrigin: state.webOrigin, activities: state.appliedActivities()) }
+                NavigationStack { CardQRSheet(cardName: card.name, cardID: card.id, cards: state, activities: state.appliedActivities()) }
             }
             .confirmationDialog("이 명함을 지울까요?", isPresented: Binding(get: { deletingCard != nil }, set: { if !$0 { deletingCard = nil } }),
                                 titleVisibility: .visible, presenting: deletingCard) { card in

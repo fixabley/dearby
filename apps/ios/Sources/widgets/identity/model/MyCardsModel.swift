@@ -8,7 +8,7 @@ import Observation
     private(set) var cards: [PublishedCard] = []
     private(set) var selectedCardID: String?
     let account: AccountViewModel
-    /// Where the card QR points (contract "명함 교환"): `<webOrigin>/cards/<id>?activity=<n>`.
+    /// Where the card QR points (contract "명함 QR 코드"): `<webOrigin>/cards/<id>?activity=<n>&code=<code>`.
     let webOrigin: URL
     /// Applied activities for the QR sheet's activity chip, the one to preselect first (nearest ongoing stage).
     let appliedActivities: @MainActor () -> [ActivityModel]
@@ -39,6 +39,14 @@ import Observation
         phase = .loaded
     }
     func select(_ cardID: String) { selectedCardID = cardID }
+    /// QR screen code (contract "명함 QR 코드"): nil when the server or network refused, so the sheet shows its retry state.
+    func issueQRCode(_ cardID: String) async -> AccountClient.QRCode? {
+        try? await account.authorized { [client = account.client] in try await client.issueQRCode(cardID, $0) }
+    }
+    /// Expires a shown code without holding up the caller (closing the sheet never waits); the server's 24-hour expiry covers a failure.
+    func expireQRCode(_ cardID: String, codeID: String) {
+        Task { _ = try? await account.authorized { [client = account.client] in try await client.expireQRCode(cardID, codeID: codeID, $0) } }
+    }
     /// 이 명함 지우기: `DELETE /v1/cards/:id`, after which the public link stops working. False when the server or network refused;
     /// the card then stays in the list.
     func delete(_ cardID: String) async -> Bool {

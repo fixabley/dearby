@@ -127,6 +127,7 @@ struct WalletPage: View {
     private var outcomeTitle: String {
         switch state.outcome {
         case .ownCard: "내 명함이에요"
+        case .codeExpired: "QR이 만료됐어요"
         case .saveFailed: "명함을 저장하지 못했어요"
         case .reciprocateFailed: "명함을 건네지 못했어요"
         case nil: ""
@@ -135,6 +136,7 @@ struct WalletPage: View {
     private var outcomeMessage: String {
         switch state.outcome {
         case .ownCard: "내가 발행한 명함은 받은 명함에 넣을 수 없어요."
+        case .codeExpired: "명함 주인에게 QR을 다시 보여 달라고 해 주세요."
         case .saveFailed: "명함이 없거나 연결이 끊겼어요. QR을 다시 읽어 주세요."
         case .reciprocateFailed: "발행한 명함이 없으면 내 명함 탭에서 먼저 만들어 주세요. 연결도 확인해 주세요."
         case nil: ""
