@@ -790,8 +790,13 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 
 ### 코드
 
-- 주인 앱이 QR 화면을 열 때 `POST /v1/cards/:id/qr-codes`(Bearer, 주인) → 201 `{id, code, expiresAt}`. `code`는 32바이트 무작위 base64url(43자). 서버는 SHA-256 해시만 저장한다(`card_qr_codes(id uuid, card_id, code_hash, created_at, expires_at, revoked_at)`, V47).
-- 여러 명이 쓸 수 있다(일회용 아님). 만료는 셋 중 먼저 오는 것: ① QR 화면을 닫을 때 `DELETE /v1/cards/:id/qr-codes/:codeId`(204, 이미 만료여도 204) ② QR 새로고침(새 코드 발급 + 이전 코드 DELETE) ③ 안전 만료 `expiresAt`(발급 24시간, 앱 강제 종료로 닫힘 신호가 오지 않는 경우 대비). QR 화면이 열린 채 `expiresAt` 10분 전이 되면 앱이 스스로 새로고침한다.
+- 주인 앱이 QR 화면을 열 때 `POST /v1/cards/:id/qr-codes`(Bearer, 주인) → 201 `{id, code, expiresAt}`. `code`는 32바이트 무작위 base64url(43자). 서버는 원문을 저장하지 않고 SHA-256 해시만 저장한다(조회·저장 때 받은 코드를 해시해 비교)(`card_qr_codes(id uuid, card_id, code_hash, created_at, expires_at, revoked_at)`, V47).
+- 여러 명이 쓸 수 있다(일회용 아님). 만료(2026-10-22 사용자 확정):
+  - 최대 수명: 발급 30분 뒤(`expiresAt`). 열려 있어도 이 시각이 지나면 만료된다. 앱 강제 종료로 닫힘 신호가 오지 않아도 여기서 끝난다.
+  - 닫기: QR 화면을 닫을 때 `DELETE /v1/cards/:id/qr-codes/:codeId`(204, 이미 만료여도 204)를 부르면 서버가 `expiresAt`을 **지금 + 2분**으로 당긴다(이미 더 이르면 그대로). 닫은 직후에 늦게 스캔한 사람도 받을 수 있게 하기 위해서다.
+  - 새로고침: 새 코드를 발급하고 이전 코드에 같은 DELETE(2분 뒤 만료)를 부른다.
+  - 자동 새로고침: QR 화면이 열린 채 `expiresAt` 5분 전이 되면 앱이 스스로 새로고침한다.
+- 미리 받기: 명함 탭(내 명함 구역)이 보일 때, 그리고 고른 명함이 바뀔 때 그 명함의 코드를 미리 발급해 메모리에 둔다(행사장처럼 연결이 약한 곳 대비). QR 화면을 열 때 미리 받은 코드가 그 명함 것이고 남은 시간이 5분을 넘으면 그대로 쓰고, 아니면 새로 발급한다. 미리 받았다가 쓰지 않은 코드는 이전 것을 DELETE로 정리하지 않고 30분 최대 수명으로 끝나게 둔다(닫힘과 무관하므로). 저장하지 않으며 앱을 다시 켜면 새로 받는다.
 - 명함 철회(`DELETE /v1/cards/:id`)는 그 명함의 코드를 모두 만료한다. 활동 칩을 바꿔도 코드는 그대로다(주소의 `activity`만 바뀐다).
 - 발급 실패(네트워크·5xx)면 QR 대신 "연결을 확인하고 다시 시도해 주세요"와 다시 시도 버튼. QR은 코드 없이 그리지 않는다.
 - QR 내용: `https://<웹 origin>/cards/<cardId>?activity=<activityId>&code=<code>`(활동 없이면 `activity` 생략). 앱 스킴도 같은 쿼리: `dearby://cards/<cardId>?activity=…&code=…`.
@@ -806,13 +811,13 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 ### 웹
 
 - `/cards/:id`는 서버에서 코드·게스트 쿠키와 함께 조회한다. 로드 직후 `history.replaceState`로 주소에서 `code`를 지운다(복사·공유로 코드가 따라가지 않게). 코드는 페이지 메모리에만 두고 `브라우저에 저장`·`Dearby 앱에 저장`(스킴 주소에 `code`) 때 쓴다. `Referrer-Policy: no-referrer`.
-- 403이면 카드 대신 가운데 정렬 안내: 제목 "명함을 볼 수 없어요", 본문 "명함 주인에게 QR을 다시 보여 달라고 해 주세요." 저장해 둔 명함은 `/saved`에서 그대로 열린다.
+- 403이면 카드 대신 가운데 정렬 안내: 제목 "명함을 볼 수 없어요", 본문 "명함 주인에게 QR을 다시 보여 달라고 하세요." 저장해 둔 명함은 `/saved`에서 그대로 열린다.
 - 서버·프록시 로그에 `code` 쿼리를 남기지 않는다.
 
 ### 앱
 
 - iOS·Android QR 화면: 열 때 발급, 닫을 때(시트 dismiss·뒤로) 만료 호출(실패해도 닫힘은 막지 않음), 오른쪽 위 새로고침 버튼(네이티브 아이콘 `arrow.clockwise`/`Refresh`, 접근성 "QR 새로 만들기"), 자동 새로고침. 발급 중에는 QR 자리에 시스템 진행 표시.
-- 스킴으로 받은 `code`를 `PUT /v1/wallet/cards/:cardId`에 그대로 보낸다. 403이면 "명함 주인에게 QR을 다시 보여 달라고 해 주세요" 알림.
+- 스킴으로 받은 `code`를 `PUT /v1/wallet/cards/:cardId`에 그대로 보낸다. 403이면 "명함 주인에게 QR을 다시 보여 달라고 하세요" 알림.
 
 ## 명함 표현 — 2026-10-18 사용자 결정
 
