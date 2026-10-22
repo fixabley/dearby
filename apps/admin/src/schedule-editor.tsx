@@ -4,6 +4,7 @@ import { Alert, App, Button, Calendar, Form, Input, Modal, Popconfirm, Segmented
 import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import { api, useSingleFlight } from "./api";
+import { type RecurrenceDraft, recurrenceDraft, recurrenceInput } from "./recurrence";
 import {
   CuratedTag,
   type OverlapCheck,
@@ -44,6 +45,8 @@ type ScheduleItemInput = {
   note?: string;
   /** null clears it on PATCH. */
   overlapCheck?: OverlapCheck | null;
+  /** 반복 RRULE body; null clears it on PATCH. */
+  recurrence?: string | null;
 };
 
 /** 일정 상태 (native-v1 "내 활동 서버 저장·일정 상태", 2026-10-22): the choices a user picks for one schedule's 진행 단계. */
@@ -274,8 +277,9 @@ function ScheduleForm({
           timed: initial.timed,
           note: schedule?.curatedNote ?? "",
           overlap: overlapDraft(schedule?.overlapCheck),
+          recurrence: recurrenceDraft(schedule?.recurrence),
         }}
-        onFinish={(values: { title: string; kind: ScheduleKind; status: ScheduleStatus; dateLabel: string; range: RangeDraft["range"]; timed: boolean; note: string; overlap: OverlapDraft }) => {
+        onFinish={(values: { title: string; kind: ScheduleKind; status: ScheduleStatus; dateLabel: string; range: RangeDraft["range"]; timed: boolean; note: string; overlap: OverlapDraft; recurrence: RecurrenceDraft }) => {
           const period = scheduleInput({ range: values.range, timed: values.timed }, values.note);
           const dateLabel = values.dateLabel.trim();
           if (!period && !dateLabel) {
@@ -293,6 +297,7 @@ function ScheduleForm({
               ...(note && { note }),
               // Always sent, so clearing the pickers clears it (null on POST is simply none).
               overlapCheck: overlapInput(values.overlap),
+              recurrence: recurrenceInput(values.recurrence, { range: values.range, timed: values.timed }),
             }),
           );
         }}
@@ -309,7 +314,7 @@ function ScheduleForm({
             <Select style={{ width: 120 }} options={(Object.keys(statusLabels) as ScheduleStatus[]).map((status) => ({ value: status, label: statusLabels[status] }))} />
           </Form.Item>
         </Space>
-        <ScheduleBlock title="기간" schedule={schedule} rangeName="range" timedName="timed" noteName="note" overlapName="overlap" timed={timed} startOptional />
+        <ScheduleBlock title="기간" schedule={schedule} rangeName="range" timedName="timed" noteName="note" overlapName="overlap" recurrenceName="recurrence" timed={timed} startOptional />
         <Form.Item name="dateLabel" label="원문 문구(선택)">
           <Input maxLength={200} placeholder="예: 11월 둘째 주 중" />
         </Form.Item>
