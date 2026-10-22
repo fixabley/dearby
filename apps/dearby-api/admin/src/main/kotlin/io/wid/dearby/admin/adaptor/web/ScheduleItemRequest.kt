@@ -3,6 +3,7 @@ package io.wid.dearby.admin.adaptor.web
 import io.wid.dearby.admin.application.ScheduleItemPatch
 import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.OverlapCheck
+import io.wid.dearby.domain.Recurrence
 import tools.jackson.databind.JsonNode
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -26,6 +27,7 @@ data class ScheduleItemRequest(
     val dateLabel: String? = null,
     val note: String? = null,
     val overlapCheck: JsonNode? = null, // 겹침 확인 시간 {startTime, endTime}(HH:mm, 서울). 생략은 유지, JSON null은 지운다
+    val recurrence: JsonNode? = null, // 반복 규칙(RRULE 본문). 생략은 유지, JSON null은 지운다
 ) {
     fun toPatch() = ScheduleItemPatch(
         title = title?.trim(),
@@ -41,6 +43,8 @@ data class ScheduleItemRequest(
         note = note?.trim(),
         hasOverlapCheck = overlapCheck != null,
         overlapCheck = overlapCheck?.takeUnless { it.isNull }?.let(::parseOverlapCheck),
+        hasRecurrence = recurrence != null,
+        recurrence = recurrence?.takeUnless { it.isNull }?.let(::parseRecurrence),
     )
 
     private fun date(value: String): LocalDate = try { LocalDate.parse(value) } catch (_: DateTimeParseException) { throw InvalidInputException("날짜 형식이 올바르지 않습니다: $value") }
@@ -57,3 +61,7 @@ internal fun parseOverlapCheck(node: JsonNode): OverlapCheck {
     } ?: throw InvalidInputException("겹침 확인 시간의 ${field}는 HH:mm 형식이어야 합니다")
     return OverlapCheck(time("startTime"), time("endTime"))
 }
+
+// 반복 규칙(RRULE 본문 문자열). 세부 일정 입력과 활동의 모집·활동 기간 객체가 함께 쓴다
+internal fun parseRecurrence(node: JsonNode): Recurrence =
+    Recurrence.parse(node.takeIf { it.isTextual }?.asString() ?: throw InvalidInputException("반복 규칙은 문자열 또는 null이어야 합니다"))

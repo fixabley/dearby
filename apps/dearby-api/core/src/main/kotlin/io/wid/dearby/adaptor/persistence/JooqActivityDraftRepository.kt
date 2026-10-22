@@ -122,6 +122,15 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         dsl.deleteFrom(SCHEDULES).where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.isNull, SCHEDULES.CURATED.isFalse, SCHEDULES.CURATED_DELETED.isFalse).execute()
         if (SLOT_ACTIVITY !in curatedSlots) {
             writeSchedule(activityId, SLOT_ACTIVITY, name, ScheduleKind.EVENT, null, null, activity.startDate, activity.endDate, activity.dateLabel, now)
+            // 활동 기간의 반복(native-v1.md "반복 일정과 겹침 결과 묶음")은 그 행에 반복·겹침 확인 시간이 없을 때만 채운다(운영자가 둔 값을 덮지 않는다)
+            activity.activityRecurrence?.let {
+                dsl.update(SCHEDULES)
+                    .set(SCHEDULES.RECURRENCE, it.rule.rule)
+                    .set(SCHEDULES.OVERLAP_START_TIME, it.time.startTime)
+                    .set(SCHEDULES.OVERLAP_END_TIME, it.time.endTime)
+                    .where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.eq(SLOT_ACTIVITY), SCHEDULES.RECURRENCE.isNull, SCHEDULES.OVERLAP_START_TIME.isNull)
+                    .execute()
+            }
         }
         val hasRecruitment = activity.recruitmentStartAt != null || activity.recruitmentEndAt != null || activity.recruitmentStartDate != null || activity.recruitmentEndDate != null
         if (SLOT_APPLICATION !in curatedSlots) {
@@ -135,7 +144,7 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             .where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.isNull, SCHEDULES.CURATED.isTrue.or(SCHEDULES.CURATED_DELETED.isTrue))
             .fetch { scheduleKey(it.value1()!!, it.value2(), it.value3()) }.toSet()
         activity.schedules.filter { scheduleKey(it.title, it.startAt, it.startDate) !in kept }.forEach {
-            writeSchedule(activityId, null, it.title, it.kind, it.startAt, it.endAt, it.startDate, it.endDate, it.dateLabel, now)
+            writeSchedule(activityId, null, it.title, it.kind, it.startAt, it.endAt, it.startDate, it.endDate, it.dateLabel, now, it.recurrence)
         }
         EligibilityRows.writeTerms(dsl, activityId, eligibility)
         // 태그(native-v1.md "태그"): 운영자가 정한 연결은 두고, 아니면 모델이 사전에서 고른 이름(모르는 이름은 버림), 비면 프로그램 태그
@@ -190,6 +199,7 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         endDate: LocalDate?,
         dateLabel: String,
         now: LocalDateTime,
+        recurrence: Recurrence? = null, // 세부 일정만. 슬롯 행의 반복은 운영자 값이 남게 따로 채운다
     ) {
         val timed = startAt != null || endAt != null
         val allDay = !timed && (startDate != null || endDate != null)
@@ -217,6 +227,7 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         }
         dsl.insertInto(SCHEDULES)
             .set(values)
+            .set(SCHEDULES.RECURRENCE, recurrence?.rule)
             .set(SCHEDULES.ACTIVITY_ID, activityId)
             .set(SCHEDULES.SLOT, slot)
             .set(SCHEDULES.SEQUENCE, 0)

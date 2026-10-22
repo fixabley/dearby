@@ -1,6 +1,7 @@
 package io.wid.dearby.application.activity
 
 import io.wid.dearby.domain.OverlapCheck
+import io.wid.dearby.domain.Recurrence
 import io.wid.dearby.domain.Schedule
 import io.wid.dearby.domain.ScheduleKind
 import io.wid.dearby.domain.ScheduleStatus
@@ -15,6 +16,7 @@ data class ScheduleItem(
     val dateLabel: String,
     val note: String?, // 사유(≤300자)
     val overlapCheck: OverlapCheck? = null, // 겹침 확인 시간(native-v1.md "겹침 확인 시간")
+    val recurrence: Recurrence? = null, // 반복 규칙(native-v1.md "반복 일정과 겹침 결과 묶음")
 )
 
 // 저장된 일정과 그 슬롯. slot이 있으면 모집·활동 기간이라 세부 일정 편집기로는 고치지 않는다

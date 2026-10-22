@@ -1,5 +1,6 @@
 package io.wid.dearby.domain.collection
 
+import io.wid.dearby.domain.Recurrence
 import io.wid.dearby.domain.ScheduleKind
 
 import java.time.LocalDate
@@ -14,4 +15,5 @@ data class CollectedSchedule(
     val dateLabel: String,
     val startDate: LocalDate? = null,
     val endDate: LocalDate? = null,
+    val recurrence: Recurrence? = null, // 반복 규칙. 시각 일정에만 남는다(native-v1.md "반복 일정과 겹침 결과 묶음")
 )

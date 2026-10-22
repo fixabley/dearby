@@ -220,6 +220,11 @@ open class Schedules(
      */
     val OVERLAP_END_TIME: TableField<SchedulesRecord, LocalTime?> = createField(DSL.name("overlap_end_time"), SQLDataType.LOCALTIME(6), this, "")
 
+    /**
+     * The column <code>public.schedules.recurrence</code>.
+     */
+    val RECURRENCE: TableField<SchedulesRecord, String?> = createField(DSL.name("recurrence"), SQLDataType.VARCHAR(200), this, "")
+
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)

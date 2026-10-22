@@ -253,6 +253,7 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
             .set(SCHEDULES.CURATED_NOTE, item.note)
             .set(SCHEDULES.OVERLAP_START_TIME, item.overlapCheck?.startTime)
             .set(SCHEDULES.OVERLAP_END_TIME, item.overlapCheck?.endTime)
+            .set(SCHEDULES.RECURRENCE, item.recurrence?.rule)
             .set(SCHEDULES.SEQUENCE, 0)
             .set(SCHEDULES.CREATED_AT, now)
             .set(SCHEDULES.UPDATED_AT, now)
@@ -280,6 +281,7 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
             .set(SCHEDULES.CURATED_NOTE, item.note)
             .set(SCHEDULES.OVERLAP_START_TIME, item.overlapCheck?.startTime)
             .set(SCHEDULES.OVERLAP_END_TIME, item.overlapCheck?.endTime)
+            .set(SCHEDULES.RECURRENCE, item.recurrence?.rule)
             .set(SCHEDULES.SEQUENCE, SCHEDULES.SEQUENCE.plus(1))
             .set(SCHEDULES.UPDATED_AT, now)
             .where(SCHEDULES.ID.eq(scheduleId), SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.isNull, SCHEDULES.CURATED_DELETED.isFalse)
@@ -304,11 +306,12 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
     }
 
     @Transactional
-    override fun updateOverlapCheck(activityId: Id, scheduleId: Id, overlapCheck: OverlapCheck?): Schedule? {
+    override fun updateTiming(activityId: Id, scheduleId: Id, overlapCheck: OverlapCheck?, recurrence: Recurrence?): Schedule? {
         val now = LocalDateTime.now()
         val updated = dsl.update(SCHEDULES)
             .set(SCHEDULES.OVERLAP_START_TIME, overlapCheck?.startTime)
             .set(SCHEDULES.OVERLAP_END_TIME, overlapCheck?.endTime)
+            .set(SCHEDULES.RECURRENCE, recurrence?.rule)
             .set(SCHEDULES.SEQUENCE, SCHEDULES.SEQUENCE.plus(1))
             .set(SCHEDULES.UPDATED_AT, now)
             .where(SCHEDULES.ID.eq(scheduleId), SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.CURATED_DELETED.isFalse)

@@ -694,6 +694,41 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         )
         assertEquals(listOf("10:00" to "16:00", "20:00" to "23:00"), listOf(overlap(posted["activitySchedule"]), overlap(posted["application"])))
 
+        // 반복 일정(admin-v1.md "반복 일정 — 2026-10-22"): recurrence만 보내면 그것만 바꾸고 정규화해 저장한다. 생략은 유지, null은 지운다
+        fun rule(node: JsonNode) = node["recurrence"].takeUnless { it.isNull }?.asString()
+        fun patchSchedule(target: Long, value: String) = mvc.patch("/v1/admin/activities/$activity/schedules/$target") { asAdmin(); patchBody(value) }
+        val repeating = read(patchSchedule(scheduleId, """{"recurrence":"rrule:freq=weekly;byday=fr,mo,mo;interval=1;until=20270131"}""").andExpect { status { isOk() } })
+        assertEquals(listOf("FREQ=WEEKLY;BYDAY=MO,FR;UNTIL=20270131", "1차 면접(온라인)"), listOf(rule(repeating), repeating["title"].asString()))
+        assertEquals("FREQ=WEEKLY;BYDAY=MO,FR;UNTIL=20270131", rule(read(patchSchedule(scheduleId, """{"note":"공지 PDF 5쪽"}""").andExpect { status { isOk() } })))
+        assertEquals("FREQ=DAILY;INTERVAL=2;COUNT=10", rule(read(patchSchedule(scheduleId, """{"recurrence":"FREQ=DAILY;COUNT=10;INTERVAL=2"}""").andExpect { status { isOk() } })))
+        // 허용 부분집합 밖, UNTIL·COUNT 둘 다·둘 다 없음, 범위 밖, 문자열 아님, UNTIL이 첫 날(2026-11-16) 앞이면 400
+        listOf(
+            "FREQ=MONTHLY;COUNT=3", "FREQ=WEEKLY;UNTIL=20270131;COUNT=3", "FREQ=WEEKLY;BYDAY=MO", "FREQ=DAILY;COUNT=401", "FREQ=WEEKLY;BYDAY=XX;COUNT=3",
+            "FREQ=WEEKLY;INTERVAL=5;COUNT=3", "FREQ=WEEKLY;WKST=MO;COUNT=3", "FREQ=WEEKLY;COUNT=3;COUNT=4", "FREQ=WEEKLY;UNTIL=2027-01-31", "FREQ=WEEKLY;UNTIL=20261101",
+        ).forEach { patchSchedule(scheduleId, """{"recurrence":"$it"}""").andExpect { status { isBadRequest() } } }
+        patchSchedule(scheduleId, """{"recurrence":3}""").andExpect { status { isBadRequest() } }
+        // 날짜만 있는 일정은 겹침 확인 시간이 회차 시간이라 반복이 남은 채로 지울 수 없다. 날짜 없는(문구만) 일정에는 둘 수 없다
+        patchSchedule(scheduleId, """{"overlapCheck":null}""").andExpect { status { isBadRequest() } }
+        patchSchedule(labelled["id"].asLong(), """{"recurrence":"FREQ=DAILY;COUNT=2"}""").andExpect { status { isBadRequest() } }
+        assertEquals(null, rule(read(patchSchedule(scheduleId, """{"recurrence":null}""").andExpect { status { isOk() } })))
+        // 시각 일정은 시작이 첫 회차다(UNTIL은 UTC 시각 형식도 받는다)
+        val weekdays = read(mvc.post("/v1/admin/activities/$activity/schedules") {
+            asAdmin(); body("""{"title":"정규 세션","kind":"EVENT","startAt":"2027-03-02T09:00:00+09:00","endAt":"2027-03-02T17:00:00+09:00","recurrence":"FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;UNTIL=20270831T145959Z"}""")
+        }.andExpect { status { isCreated() } })
+        assertEquals("FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;UNTIL=20270831T145959Z", rule(weekdays))
+        assertEquals("FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;UNTIL=20270831T145959Z", jdbc.sql("select recurrence from schedules where id = ?").param(weekdays["id"].asLong()).query(String::class.java).single())
+        mvc.delete("/v1/admin/activities/$activity/schedules/${weekdays["id"].asLong()}") { asAdmin() }.andExpect { status { isNoContent() } }
+        // 모집·활동 기간 객체 안 recurrence: 날짜만 있는 활동 기간은 겹침 확인 시간과 함께여야 하고, 둘만 보내면 날짜는 그대로다
+        mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"activitySchedule":{"recurrence":"FREQ=WEEKLY;BYDAY=TU;COUNT=3"}}""") }.andExpect { status { isBadRequest() } }
+        val repeatingPeriod = read(mvc.patch("/v1/admin/activities/$activity") {
+            asAdmin(); patchBody("""{"activitySchedule":{"overlapCheck":{"startTime":"09:00","endTime":"17:00"},"recurrence":"FREQ=WEEKLY;BYDAY=TU;COUNT=3"}}""")
+        }.andExpect { status { isOk() } })
+        assertEquals(listOf("FREQ=WEEKLY;BYDAY=TU;COUNT=3", "2026-12-01"), listOf(rule(repeatingPeriod["activitySchedule"]), repeatingPeriod["activitySchedule"]["startDate"].asString()))
+        // 반복이 남은 채로 기간 날짜를 지우면 400이고 아무것도 바뀌지 않는다
+        mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"activitySchedule":null}""") }.andExpect { status { isBadRequest() } }
+        assertEquals("2026-12-01", jdbc.sql("select start_date::text from schedules where id = ?").param(slotSchedule).query(String::class.java).single())
+        assertEquals(null, rule(read(patchSchedule(slotSchedule, """{"recurrence":null}""").andExpect { status { isOk() } })))
+
         // 일정 상태(native-v1.md "내 활동 서버 저장·일정 상태"): 지정 전에는 기본 세 개(id null), PUT은 순서대로 통째로 바꾼다
         fun statuses(node: JsonNode) = node["items"].toList().map { it["name"].asString() to it["kind"].asString() }
         fun putStatuses(target: Long, value: String) = mvc.put("/v1/admin/activities/$activity/schedules/$target/statuses") { asAdmin(); body(value) }
