@@ -1,8 +1,8 @@
 package io.wid.dearby.admin.adaptor.web
 
-import io.wid.dearby.admin.application.GeocodeFailedException
-import io.wid.dearby.admin.application.GeocodeResult
-import io.wid.dearby.admin.application.Geocoder
+import io.wid.dearby.application.geocode.GeocodeFailedException
+import io.wid.dearby.application.geocode.GeocodeResult
+import io.wid.dearby.application.geocode.Geocoder
 import io.wid.dearby.domain.InvalidInputException
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail

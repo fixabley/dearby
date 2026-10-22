@@ -132,6 +132,17 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
                     .execute()
             }
         }
+        // 수집 장소(native-v1.md "수집기 장소"): 운영자가 지정·지운 장소(curated place)는 두고, 활동 기간 행에 장소가 없을 때만 채운다.
+        // 장소를 못 찾은 재수집은 있던 장소를 지우지 않는다(위 활동 기간 행 갱신은 장소 열을 건드리지 않는다)
+        activity.place?.takeIf { CuratedFields.PLACE !in curated }?.let {
+            dsl.update(SCHEDULES)
+                .set(SCHEDULES.ADDRESS_LINE1, it.addressLine1)
+                .set(SCHEDULES.ADDRESS_LINE2, it.addressLine2)
+                .set(SCHEDULES.LAT, it.lat)
+                .set(SCHEDULES.LNG, it.lng)
+                .where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.eq(SLOT_ACTIVITY), SCHEDULES.ADDRESS_LINE1.isNull)
+                .execute()
+        }
         val hasRecruitment = activity.recruitmentStartAt != null || activity.recruitmentEndAt != null || activity.recruitmentStartDate != null || activity.recruitmentEndDate != null
         if (SLOT_APPLICATION !in curatedSlots) {
             if (hasRecruitment) writeSchedule(

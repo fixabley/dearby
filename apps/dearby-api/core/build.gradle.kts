@@ -13,6 +13,7 @@ dependencies {
     api("org.flywaydb:flyway-database-postgresql")
     api("org.jetbrains.kotlin:kotlin-reflect")
     api("tools.jackson.module:jackson-module-kotlin")
+    implementation("org.springframework:spring-web") // 장소 검색 제공자(RestClient, native-v1.md "수집기 장소"). 어드민·batch가 함께 쓴다
     runtimeOnly("org.postgresql:postgresql")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

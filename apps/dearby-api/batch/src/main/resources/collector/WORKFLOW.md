@@ -50,6 +50,11 @@
   - 활동 기간이 "평일 09:00~17:00, 2027년 3월 2일~8월 31일"처럼 매번 같은 시각이면 `activityRecurrence` {rule:"FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;UNTIL=20270831", startTime:"09:00", endTime:"17:00"}이고 startDate·endDate도 채운다(startDate가 첫 날). 시각이 없으면 activityRecurrence는 null.
   - 세부 일정이 "매주 화요일 19:00~21:00, 8회"처럼 반복되면 첫 회차의 startAt·endAt을 쓰고 `recurrence`에 "FREQ=WEEKLY;BYDAY=TU;COUNT=8"을 쓴다. 날짜만 있는 세부 일정에는 recurrence를 쓰지 않는다.
   - 반복을 쓸 때는 evidenceQuote에 그 시간표 문장이 들어가게 고른다(활동 근거 구절과 한 구절이 되면 가장 좋다).
+- 장소: `location`은 지금처럼 본문의 장소 문구 그대로다(지역·여러 곳·온라인도). `place`는 활동이 열리는 **한 곳**을 가리킬 때만 쓴다(native-v1.md "수집기 장소").
+  - 한 곳: 건물·홀·캠퍼스·사무실처럼 지도에서 한 점인 곳. `name`은 본문 표기 그대로의 장소 이름(예: "코엑스 그랜드볼룸", "POSTECH C5"), `address`는 본문에 주소가 있을 때만 그 주소(없으면 null), `online` false, `evidenceQuote`는 장소 이름이 들어 있는 본문 구절을 그대로 복사한다(짧아도 된다).
+  - 지역만("서울 송파구", "수도권")이거나 여러 곳("서울, 부산", "서울·대전·광주")이면 `place`는 null이다.
+  - 온라인이면 `place`는 {name:null, address:null, online:true, evidenceQuote:null}이고 `location`은 "온라인"이다.
+  - 확실하지 않거나 장소가 본문에 없으면 null. 추측하거나 다른 페이지의 장소를 쓰지 않는다. 서버가 지도 검색으로 확실할 때만 저장하고 아니면 장소를 버린다(활동은 저장된다).
 - dateLabel은 활동 기간의 원문 문구 그대로다(모집 기간 문구를 넣지 않는다). "2026 신입생 모집"처럼 날짜가 아닌 문구는 dateLabel에만 두고 startDate·endDate는 null로 둔다.
 - 다른 프로그램의 활동은 뽑지 않는다. 프로그램 이름과 다른 프로그램(예: 같은 회사의 다른 과정)의 기수가 본문에 있어도 제외한다.
 - 요청의 "활동으로 만들지 않을 이름"이 있으면 그 이름의 활동은 뽑지 않고, "이미 있는 활동의 다른 표기"가 있으면 그 표기 대신 정본 이름을 name으로 쓴다.

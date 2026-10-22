@@ -21,3 +21,6 @@ dearby:
   collection:
     model: claude-haiku-4-5
     workflow-path: ${COLLECTION_WORKFLOW_PATH:} # 작업 절차 파일. 비었거나 파일이 없으면 jar 안의 collector/WORKFLOW.md
+  # 수집기 장소 지오코딩(native-v1.md "수집기 장소"): 카카오 REST API 키. 비어 있으면 Nominatim(OpenStreetMap)
+  geocode:
+    kakao-key: ${KAKAO_REST_API_KEY:}

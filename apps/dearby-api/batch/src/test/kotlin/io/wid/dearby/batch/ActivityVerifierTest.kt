@@ -1,7 +1,13 @@
 package io.wid.dearby.batch
 
 import io.wid.dearby.batch.application.ActivityVerifier
+import io.wid.dearby.application.geocode.GeocodeFailedException
+import io.wid.dearby.application.geocode.GeocodeResult
+import io.wid.dearby.application.geocode.Geocoder
 import io.wid.dearby.batch.application.ExtractedActivity
+import io.wid.dearby.batch.application.ExtractedPlace
+import io.wid.dearby.batch.application.PlaceQuery
+import io.wid.dearby.batch.application.PlaceResolver
 import io.wid.dearby.batch.application.ExtractedRecurrence
 import io.wid.dearby.batch.application.ExtractedSchedule
 import io.wid.dearby.batch.application.FetchedPage
@@ -76,5 +82,39 @@ class ActivityVerifierTest {
         listOf(candidate().copy(startDate = "2027-03-02", activityRecurrence = ExtractedRecurrence("FREQ=DAILY;COUNT=5", "17:00", "09:00")),
             candidate().copy(activityRecurrence = ExtractedRecurrence("FREQ=DAILY;COUNT=5", "09:00", "17:00")))
             .forEach { assertNull(assertIs<Verification.Accepted>(ActivityVerifier.verify(it, page, true, now)).activity.activityRecurrence) }
+    }
+
+    @Test
+    fun `장소는 온라인이 아니고 근거 구절이 원문에 있고 그 안에 이름이 있을 때만 검색어가 되고, 주소는 원문에 있을 때만 붙는다`() {
+        val venue = page.copy(text = page.text + " 장소: 코엑스 그랜드볼룸 (서울 강남구 영동대로 513)")
+        fun place(name: String?, address: String? = null, online: Boolean = false, quote: String? = "장소: 코엑스 그랜드볼룸") =
+            ActivityVerifier.place(candidate().copy(place = ExtractedPlace(name, address, online, quote)), venue)
+        assertEquals(PlaceQuery("코엑스 그랜드볼룸", "서울 강남구 영동대로 513"), place("코엑스 그랜드볼룸", "서울 강남구 영동대로 513"))
+        assertEquals(PlaceQuery("코엑스 그랜드볼룸", null), place("코엑스 그랜드볼룸", "서울 송파구 올림픽로 300"))
+        assertNull(place(null, online = true, quote = null))
+        assertNull(place("코엑스 그랜드볼룸", quote = "장소: 잠실 롯데타워")) // 원문에 없는 구절
+        assertNull(place("벡스코", quote = "장소: 코엑스 그랜드볼룸")) // 구절에 이름이 없음
+        assertNull(ActivityVerifier.place(candidate(), venue))
+    }
+
+    @Test
+    fun `장소 지오코딩은 주소 결과가 하나이거나, 키워드 첫 결과 이름이 제출 이름을 포함하고 시군구가 같을 때만 저장한다`() {
+        val coex = GeocodeResult("코엑스 그랜드볼룸", "서울 강남구 영동대로 513", 37.51, 127.06, "fake")
+        fun resolver(address: List<GeocodeResult> = emptyList(), keyword: List<GeocodeResult> = emptyList(), fail: Boolean = false) = PlaceResolver(object : Geocoder {
+            override fun search(query: String) = address + keyword
+            override fun searchAddress(query: String) = if (fail) throw GeocodeFailedException("down") else address
+            override fun searchKeyword(query: String) = if (fail) throw GeocodeFailedException("down") else keyword
+        })
+        // 주소 결과가 정확히 하나: 이름은 제출한 것, 주소·좌표는 제공자 값
+        val byAddress = resolver(address = listOf(coex.copy(name = "코엑스"))).resolve(PlaceQuery("코엑스 그랜드볼룸", "서울특별시 강남구 영동대로 513"))!!
+        assertEquals(listOf("코엑스 그랜드볼룸", "서울 강남구 영동대로 513"), listOf(byAddress.addressLine1, byAddress.addressLine2))
+        // 주소 결과가 여럿이면 키워드로: 이름 포함 + 시군구 같음이면 저장, 시군구가 다르거나 이름이 다르면 버린다
+        val two = listOf(coex, coex.copy(address = "서울 강남구 영동대로 511"))
+        assertEquals(37.51, resolver(address = two, keyword = listOf(coex)).resolve(PlaceQuery("코엑스그랜드볼룸", "서울 강남구 영동대로 513"))?.lat)
+        assertNull(resolver(keyword = listOf(coex)).resolve(PlaceQuery("코엑스 그랜드볼룸", "서울 송파구 올림픽로 300")))
+        assertNull(resolver(keyword = listOf(coex.copy(name = "코엑스몰"))).resolve(PlaceQuery("코엑스 그랜드볼룸", null)))
+        assertEquals("코엑스 그랜드볼룸", resolver(keyword = listOf(coex)).resolve(PlaceQuery("코엑스 그랜드볼룸", null))?.addressLine1)
+        assertNull(resolver(fail = true).resolve(PlaceQuery("코엑스 그랜드볼룸", "서울 강남구 영동대로 513")))
+        assertEquals(listOf("강남구", "포항시", null), listOf("서울특별시 강남구 영동대로", "경상북도 포항시 남구 지곡로 80", "온라인").map { PlaceResolver.district(it) })
     }
 }

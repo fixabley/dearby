@@ -99,6 +99,12 @@ object CollectionPrompts {
                 "additionalProperties" to false,
             ),
             "location" to nullableString(),
+            "place" to mapOf(
+                "type" to listOf("object", "null"),
+                "properties" to mapOf("name" to nullableString(), "address" to nullableString(), "online" to mapOf("type" to "boolean"), "evidenceQuote" to nullableString()),
+                "required" to listOf("name", "address", "online", "evidenceQuote"),
+                "additionalProperties" to false,
+            ),
             "cost" to nullableString(),
             "audience" to nullableString(),
             "tags" to mapOf("type" to "array", "items" to string()),

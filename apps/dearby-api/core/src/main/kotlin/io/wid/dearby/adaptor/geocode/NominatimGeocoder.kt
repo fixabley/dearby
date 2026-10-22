@@ -1,8 +1,8 @@
-package io.wid.dearby.admin.adaptor.geocode
+package io.wid.dearby.adaptor.geocode
 
-import io.wid.dearby.admin.application.GeocodeFailedException
-import io.wid.dearby.admin.application.GeocodeResult
-import io.wid.dearby.admin.application.Geocoder
+import io.wid.dearby.application.geocode.GeocodeFailedException
+import io.wid.dearby.application.geocode.GeocodeResult
+import io.wid.dearby.application.geocode.Geocoder
 import org.springframework.http.HttpHeaders
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientException
@@ -43,7 +43,7 @@ class NominatimGeocoder(builder: RestClient.Builder) : Geocoder {
 
     private companion object {
         const val BASE_URL = "https://nominatim.openstreetmap.org"
-        const val USER_AGENT = "Dearby-admin/1.0 (contact: admin@dearby.wid.io.kr)"
+        const val USER_AGENT = "Dearby/1.0 (contact: fixabley@naver.com)"
         const val SOURCE = "nominatim"
         const val LIMIT = 10
         const val MIN_INTERVAL_MS = 1_000L
