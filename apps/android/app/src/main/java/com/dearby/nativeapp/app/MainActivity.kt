@@ -60,6 +60,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // System bars follow the theme (contract "다크 모드"): transparent bars whose icons flip with light/dark; DearbyApp pads the insets once.
         enableEdgeToEdge()
+        val screenshot = if (BuildConfig.DEBUG) intent?.getStringExtra(SCREENSHOT_EXTRA) else null
+        if (screenshot != null) introShown()
         // Someone already signed in (tokens in the vault) never needs the intro.
         if (!onboarding.getBoolean("dearby.onboarding.shown", false)) {
             if (account.state.value.phase == AccountPhase.SIGNED_IN) introShown() else intro = true
@@ -73,7 +75,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             DearbyTheme {
                 if (intro) IntroRoute(account, ::introShown)
-                else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings)
+                else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings, screenshot)
                 PendingAccountRoute(account)
             }
         }

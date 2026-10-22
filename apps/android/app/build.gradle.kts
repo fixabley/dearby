@@ -24,7 +24,8 @@ android {
         applicationId = "io.wid.dearby" // 2026-10-18 사용자 결정: iOS 출시 번들 ID와 같게. 코드 패키지(namespace)는 그대로
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
+        // Play release CI (android-play-release.yml) passes a run-based code above the manual first upload (1).
+        versionCode = connection("ANDROID_VERSION_CODE")?.toInt() ?: 1
         versionName = "0.1.0"
     }
     uploadSigning?.let { keys ->

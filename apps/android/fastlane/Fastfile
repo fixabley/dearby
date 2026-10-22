@@ -1,0 +1,14 @@
+# Play release (.github/workflows/android-play-release.yml): uploads the signed AAB with metadata/android/ko-KR to a track.
+# A release on the production track is sent to Google's review. Credentials come from the environment.
+default_platform(:android)
+
+platform :android do
+  desc "Upload the release AAB and the ko-KR listing to a Play track"
+  lane :release do
+    upload_to_play_store(
+      json_key: ENV.fetch("PLAY_JSON_KEY_PATH"), aab: ENV.fetch("AAB_PATH"),
+      track: ENV.fetch("PLAY_TRACK"), release_status: ENV.fetch("PLAY_RELEASE_STATUS"),
+      metadata_path: File.join(__dir__, "metadata", "android"), skip_upload_apk: true
+    )
+  end
+end

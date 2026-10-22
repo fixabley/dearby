@@ -37,7 +37,7 @@ struct HomePage<Discovery: View, Mine: View, Cards: View, Profile: View, Setting
                     .toolbar(hidesTabs ? .hidden : .visible, for: .tabBar)
             }
         }
-        .tint(DearbyStyle.teal).foregroundStyle(DearbyStyle.ink)
+        .tint(DearbyStyle.teal)
     }
     private func withSettings(_ root: some View) -> some View {
         root.navigationDestination(for: SettingsRoute.self) { _ in settings() }

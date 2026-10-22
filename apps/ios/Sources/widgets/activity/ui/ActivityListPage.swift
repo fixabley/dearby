@@ -17,6 +17,9 @@ struct ActivityListPage: View {
     /// so the system folds it away on the way down and brings it back on the way up.
     @State private var atTop = true
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    #if DEBUG
+    @State private var screenshotShown = false
+    #endif
     var body: some View {
         @Bindable var state = state
         ScrollView {
@@ -100,6 +103,9 @@ struct ActivityListPage: View {
             state.search(state.searchText)
         }
         .navigationDestination(for: String.self) { id in ActivityDetailView(state: state, activityID: id) }
+        #if DEBUG
+        .task { await showScreenshotScene() }
+        #endif
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .tint(DearbyStyle.teal)
         .navigationTitle("활동 둘러보기").navigationBarTitleDisplayMode(.inline)
@@ -121,6 +127,19 @@ struct ActivityListPage: View {
         .accessibilityElement(children: .ignore).accessibilityLabel("마감 숨기기").accessibilityValue(state.openOnly ? "켬" : "끔")
         .accessibilityAddTraits(.isToggle).accessibilityIdentifier("activity-open-only")
     }
+    #if DEBUG
+    /// Store screenshots (`ScreenshotScene`): the scenes on the discovery stack, once.
+    private func showScreenshotScene() async {
+        guard !screenshotShown else { return }
+        screenshotShown = true
+        switch ScreenshotScene.current {
+        case .discoverExpanded: _ = await state.screenshotActivity()
+        case .detail: if let id = await state.screenshotActivity() { path.append(id) }
+        case .settings: path.append(SettingsRoute())
+        default: break
+        }
+    }
+    #endif
     /// `맨 위로`: no animation (contract).
     private func scrollToTop() {
         position.scrollTo(edge: .top)

@@ -1,0 +1,74 @@
+name: iOS App Store submit
+# Attaches a processed TestFlight build to the App Store version, uploads the listing in apps/ios/fastlane
+# (metadata/ko, screenshots/ko) and, when `submit` is true, submits it for review (manual release after approval).
+# The binary comes from ios-testflight.yml; this workflow never builds. Manual runs only (user decision 2026-10-22).
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: App Store version (empty = MARKETING_VERSION in apps/ios/scripts/generate_project.rb)
+        type: string
+        default: ""
+      build_number:
+        description: TestFlight build number (empty = latest build of that version)
+        type: string
+        default: ""
+      whats_new:
+        description: 이번 버전의 새로운 기능 (empty = leave as is; must stay empty for the first version)
+        type: string
+        default: ""
+      submit:
+        description: Submit for review after uploading the listing
+        type: boolean
+        default: true
+permissions:
+  contents: read
+jobs:
+  submit:
+    # deliver without a binary upload needs no Xcode, so the cheap runner waits out build processing.
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    concurrency:
+      group: ios-appstore-submit
+      cancel-in-progress: false
+    env:
+      TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      BUILD_NUMBER: ${{ inputs.build_number }}
+      SUBMIT_FOR_REVIEW: ${{ inputs.submit }}
+    defaults:
+      run:
+        working-directory: apps/ios
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+          working-directory: apps/ios
+      - name: Prepare key, version and release notes
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          VERSION: ${{ inputs.version }}
+          WHATS_NEW: ${{ inputs.whats_new }}
+        run: |
+          for v in ASC_KEY_ID ASC_ISSUER_ID ASC_KEY_P8; do test -n "${!v}" || { echo "missing $v"; exit 1; }; done
+          key="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          printf '%s' "$ASC_KEY_P8" > "$key" && chmod 600 "$key"
+          echo "ASC_KEY_PATH=$key" >> "$GITHUB_ENV"
+          if [ -z "$VERSION" ]; then
+            VERSION=$(sed -n "s/.*'MARKETING_VERSION' => '\([^']*\)'.*/\1/p" scripts/generate_project.rb)
+          fi
+          test -n "$VERSION" || { echo "no version"; exit 1; }
+          echo "APP_VERSION=$VERSION" >> "$GITHUB_ENV"
+          # App Store Connect refuses 'What's New' on an app's first version, so the file exists only when given.
+          if [ -n "$WHATS_NEW" ]; then printf '%s\n' "$WHATS_NEW" > fastlane/metadata/ko/release_notes.txt; fi
+          echo "Version $VERSION, build ${BUILD_NUMBER:-latest}, submit=$SUBMIT_FOR_REVIEW" >> "$GITHUB_STEP_SUMMARY"
+      - name: Deliver
+        run: bundle exec fastlane ios submit
+      - name: Clean up key
+        if: always()
+        run: rm -f "$RUNNER_TEMP"/AuthKey_*.p8

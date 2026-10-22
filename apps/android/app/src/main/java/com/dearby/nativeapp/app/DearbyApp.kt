@@ -29,7 +29,7 @@ private sealed interface Route {
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, myCards: MyCardsViewModel, wallet: WalletViewModel, profile: ProfileViewModel, settings: SettingsViewModel) {
+@Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, myCards: MyCardsViewModel, wallet: WalletViewModel, profile: ProfileViewModel, settings: SettingsViewModel, screenshot: String? = null) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     // The 명함 tab's segment, kept in memory for the app's lifetime (contract "명함 탭 통합").
     var cardsSegment by remember { mutableStateOf(CardsSegment.MINE) }
@@ -38,6 +38,16 @@ private sealed interface Route {
     var route by remember { mutableStateOf<Route?>(null) }
     var activityDetail by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<String?>(null) }
+    // Store screenshots (Debug only, `ScreenshotScene.kt`): the detail opens through 내 활동에서 보기; 내 활동 gets the first activity added.
+    LaunchedEffect(screenshot) {
+        when (screenshot) {
+            "discover-expanded" -> activityModel.screenshotActivity()
+            "detail" -> activityModel.screenshotActivity()?.let { mineOpen = it; tab = Tab.Mine }
+            "mine" -> { activityModel.screenshotActivity()?.let { activityModel.apply(it, true) }; tab = Tab.Mine }
+            "cards" -> tab = Tab.Cards
+            "settings" -> route = Route.Settings
+        }
+    }
     BackHandler(route is Route.Detail || route is Route.Qr) { route = null }
     val compose = { publish.start(); route = Route.Composer }
     // The fixed header buttons of every tab (contract "알림 아이콘은 다섯 탭 모두 우상단 고정"·"설정"); the notification screen is still a placeholder notice.
