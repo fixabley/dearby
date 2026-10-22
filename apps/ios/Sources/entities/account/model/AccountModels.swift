@@ -299,3 +299,13 @@ enum CardReportReason: String, CaseIterable, Identifiable, Sendable {
         }
     }
 }
+extension AccountProfile {
+    /// Sample values for a loading profile (`dearbySkeleton`, contract "내용 로딩은 스켈레톤" 2026-10-22); never shown unredacted or sent.
+    static let placeholder = AccountProfile(
+        name: "이름", job: "직무", introduction: "자기소개 한두 줄이 여기에 보여요.",
+        contacts: [AccountContact(id: "p", kind: "phone", label: "", value: "010-0000-0000"),
+                   AccountContact(id: "e", kind: "email", label: "", value: "name@example.com")],
+        histories: [AccountHistory(id: "h1", kind: "organization", organizationName: "조직 이름", programName: "프로그램 이름", startDate: "2026-01-01"),
+                    AccountHistory(id: "h2", kind: "organization", organizationName: "조직 이름", programName: "프로그램 이름", startDate: "2025-03-01",
+                                   endDate: "2025-12-31")])
+}

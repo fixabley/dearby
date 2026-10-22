@@ -53,7 +53,7 @@ struct JobTagPicker: View {
             Text("이름으로 검색해 여러 개 고르거나, 없으면 그대로 적어 주세요.").font(.dearby(.subheadline)).foregroundStyle(.secondary)
                 .listRowBackground(Color.clear)
         } else if search.loading && search.items.isEmpty {
-            ProgressView().frame(maxWidth: .infinity).listRowBackground(Color.clear)
+            DearbyRowsSkeleton()
         } else if search.failed {
             Text("목록을 불러오지 못했어요. 직접 적어도 돼요.").font(.dearby(.subheadline)).foregroundStyle(.secondary).listRowBackground(Color.clear)
         } else if search.items.isEmpty {

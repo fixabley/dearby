@@ -26,7 +26,17 @@ struct SettingsPage: View {
         List {
             switch model.phase {
             case .signedOut: signIn
-            case .loading: Section { ProgressView().frame(maxWidth: .infinity, minHeight: 88) }
+            case .loading:
+                // Contract "내용 로딩은 스켈레톤" 2026-10-22: the 계정 section's rows inside one row, so they read as one element.
+                Section {
+                    VStack(spacing: 0) {
+                        LabeledContent("가입일", value: "2026년 1월 1일").frame(minHeight: 44)
+                        Divider()
+                        LabeledContent("로그인 수단", value: "패스키").frame(minHeight: 44)
+                        Divider()
+                        Text("로그아웃").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    }.dearbySkeleton()
+                } header: { Text("계정").font(.dearby(.footnote)) }
             case .failed:
                 Section {
                     Label("설정을 불러오지 못했어요", systemImage: "exclamationmark.triangle").foregroundStyle(.secondary)

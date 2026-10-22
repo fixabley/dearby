@@ -10,6 +10,8 @@ struct ProfileVersionsPage: View {
     var body: some View {
         List {
             if let error { Text(error).foregroundStyle(DearbyStyle.danger) }
+            // First page only (contract "내용 로딩은 스켈레톤" 2026-10-22); 더 보기 keeps the rows already shown.
+            if loading && items.isEmpty && error == nil { DearbyRowsSkeleton(count: 4) }
             ForEach(items) { item in
                 NavigationLink {
                     ProfileVersionPage(state: state, version: item.version)
@@ -60,7 +62,8 @@ struct ProfileVersionPage: View {
                 } else if let error {
                     Text(error).foregroundStyle(DearbyStyle.danger)
                 } else {
-                    ProgressView().frame(maxWidth: .infinity, minHeight: 160).tint(DearbyStyle.teal)
+                    // Contract "내용 로딩은 스켈레톤" 2026-10-22.
+                    ProfileReadView(profile: .placeholder).dearbySkeleton()
                 }
             }.padding(20)
         }
