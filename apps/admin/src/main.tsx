@@ -4,7 +4,7 @@ import { BrowserRouter, Navigate, NavLink, Route, Routes } from "react-router";
 import { QueryClient, QueryClientProvider, useMutation } from "@tanstack/react-query";
 import { App as AntApp, Alert, Button, ConfigProvider } from "antd";
 import koKR from "antd/locale/ko_KR";
-import { ApartmentOutlined, AuditOutlined, CalendarOutlined, KeyOutlined, LogoutOutlined, ReadOutlined, IdcardOutlined, TagsOutlined } from "@ant-design/icons";
+import { ApartmentOutlined, AuditOutlined, CalendarOutlined, KeyOutlined, LogoutOutlined, ReadOutlined, IdcardOutlined, TagsOutlined, WarningOutlined } from "@ant-design/icons";
 import { logout, passkey, recheckRoles, useSession, useSingleFlight } from "./api";
 import { Activities } from "./activities";
 import { Organizations } from "./organizations";
@@ -13,6 +13,7 @@ import { Histories } from "./histories";
 import { Roles } from "./roles";
 import { Jobs } from "./jobs";
 import { Tags } from "./tags";
+import { Reports } from "./reports";
 import "./style.css";
 
 function Brand() {
@@ -123,6 +124,10 @@ function Shell() {
             <TagsOutlined aria-hidden="true" />
             태그
           </NavLink>
+          <NavLink to="/reports">
+            <WarningOutlined aria-hidden="true" />
+            신고
+          </NavLink>
         </nav>
         <div className="sidebar-bottom">
           <Button icon={<LogoutOutlined aria-hidden="true" />} onClick={() => logout()}>
@@ -143,6 +148,7 @@ function Shell() {
           <Route path="/roles" element={<Roles />} />
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/tags" element={<Tags />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="*" element={<Navigate to="/activities" replace />} />
         </Routes>
       </main>
