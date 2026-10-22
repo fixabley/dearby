@@ -18,7 +18,7 @@ import SwiftUI
     init() {
         let links = ConnectionProvider()
         self.links = links
-        let activityModel = ActivityViewModel(programs: links.programs, activities: links.programActivities)
+        let activityModel = ActivityViewModel(programs: links.programs, activities: links.programActivities, activity: links.activity(id:))
         _activityModel = State(initialValue: activityModel)
         let account = links.account()
         self.account = account
@@ -56,6 +56,18 @@ import SwiftUI
             }
             // `내 활동에서 보기` on an activity detail: the 내 활동 tab opens that activity (it pushes once it is on screen).
             .onChange(of: activityModel.showInMine) { _, id in if id != nil { tab = 1 } }
+            // 내 활동 follows the account (contract "내 활동 서버 저장"): signing in imports this run's marks once and then uses the server.
+            .onChange(of: account.phase, initial: true) { _, phase in
+                switch phase {
+                case .signedIn: Task { await activityModel.signedIn(links.mineServer(account)) }
+                case .signedOut: activityModel.signedOut()
+                case .signingIn: break
+                }
+            }
+            .alert(activityModel.notice ?? "", isPresented: Binding(get: { activityModel.notice != nil },
+                                                                     set: { if !$0 { activityModel.clearNotice() } })) {
+                Button("확인", role: .cancel) {}
+            }
             .onChange(of: scene) { _, phase in
                 if phase == .background { activityModel.appLeft() } else if phase == .active { activityModel.appReturned() }
             }

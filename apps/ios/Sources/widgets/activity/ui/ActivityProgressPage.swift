@@ -5,11 +5,13 @@ struct ActivityProgressRoute: Hashable {
     let activityID: String
 }
 
-/// Vertical timeline of one applied activity's stages with the user's 통과/대기/탈락 marks (contract "내 활동 진행 트랙 — 2026-10-18").
+/// Vertical timeline of one applied activity's stages with the user's marks (contract "내 활동 진행 트랙 — 2026-10-18"); each stage offers
+/// its schedule's statuses (default 대기·통과·탈락, or the admin's, contract "진행 단계 상태" 2026-10-22). A FAILED kind ends the track.
 struct ActivityProgressPage: View {
     let state: ActivityViewModel
     let activityID: String
     @State private var calendarStage: ActivityStage?
+    @State private var calendarDraft: CalendarEventDraft?
     @State private var removing: String?
     @Environment(\.dismiss) private var dismiss
     private var activity: ActivityModel? { state.activity(activityID) }
@@ -39,8 +41,9 @@ struct ActivityProgressPage: View {
         .toolbar(.visible, for: .navigationBar)
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)
         .sheet(item: $calendarStage) { stage in
-            if let schedule = stage.schedule { CalendarConflictView(schedules: [schedule]) }
+            CalendarConflictView(schedules: stage.overlapSchedules)
         }
+        .sheet(item: $calendarDraft) { AddToCalendarSheet(draft: $0).ignoresSafeArea() }
         // After removal the timeline closes and the list shows again (contract "빼기는 눈에 보이게").
         .removeFromMineDialog($removing, state: state) { dismiss() }
     }
@@ -52,9 +55,6 @@ struct ActivityProgressPage: View {
             NavigationLink(value: activity.id) {
                 Label("활동 상세 보기", systemImage: "info.circle").font(.dearby(.subheadline).weight(.semibold))
             }.frame(minHeight: 44)
-            // The participation mark stays reachable here: the track row replaced the plain row that carried it.
-            ConfirmToggle(state: state, activityID: activityID).font(.dearby(.subheadline))
-            Text(ConfirmToggle.note).font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
         }
     }
     private func row(_ stage: ActivityStage, last: Bool) -> some View {
@@ -74,30 +74,43 @@ struct ActivityProgressPage: View {
                     chip(stage)
                 }
                 Text(stage.dateText(now: Date())).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
-                Picker("\(stage.name) 표시", selection: Binding(get: { state.stageMark(activityID, stage.id) },
-                                                              set: { state.markStage(activityID, stage.id, $0) })) {
-                    ForEach(StageMark.allCases, id: \.self) { Text($0.label).tag($0) }
-                }.pickerStyle(.segmented)
-                if stage.schedule != nil {
-                    Button("겹치는 시간 확인") { calendarStage = stage }
-                        .font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal).frame(minHeight: 44)
+                statusPicker(stage)
+                let draft = activity.flatMap(stage.calendarDraft)
+                if !stage.overlapSchedules.isEmpty || draft != nil {
+                    HStack(spacing: 20) {
+                        if !stage.overlapSchedules.isEmpty { Button("겹치는 시간 확인") { calendarStage = stage } }
+                        if let draft {
+                            Button("캘린더에 추가", systemImage: "calendar.badge.plus") { calendarDraft = draft }
+                                .accessibilityLabel("\(stage.name) 캘린더에 추가")
+                        }
+                    }
+                    .buttonStyle(.borderless).font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal).frame(minHeight: 44)
                 }
             }.padding(.bottom, last ? 0 : 20)
         }.fixedSize(horizontal: false, vertical: true)
     }
-    /// 탈락·통과 show the user's mark; otherwise the time judgment.
+    /// The schedule's statuses: segmented up to three, a menu beyond (admin lists can be longer).
+    @ViewBuilder private func statusPicker(_ stage: ActivityStage) -> some View {
+        let options = stage.source.statuses
+        let picker = Picker("\(stage.name) 표시", selection: Binding(get: { stage.status },
+                                                                   set: { state.markStage(activityID, stage.source.id, StageMark($0)) })) {
+            ForEach(options, id: \.self) { Text($0.name).tag($0) }
+        }
+        if options.count <= 3 { picker.pickerStyle(.segmented) } else { picker.pickerStyle(.menu).frame(minHeight: 44) }
+    }
+    /// A marked status other than waiting shows its name (탈락 in the danger colour); otherwise the time judgment.
     private func chip(_ stage: ActivityStage) -> some View {
         let text: String
         let strong: Bool
-        switch (stage.mark, stage.state) {
-        case (.fail, _): (text, strong) = ("탈락", false)
-        case (.pass, _): (text, strong) = ("통과", true)
+        switch (stage.mark.kind, stage.state) {
+        case (.failed, _), (.other, _): (text, strong) = (stage.status.name, false)
+        case (.passed, _): (text, strong) = (stage.status.name, true)
         case (_, .past): (text, strong) = ("지남", false)
         case (_, .current): (text, strong) = ("진행 중", true)
         case (_, .upcoming): (text, strong) = ("예정", false)
         }
         return Text(text).font(.dearby(.caption).weight(.semibold))
-            .foregroundStyle(stage.mark == .fail ? DearbyStyle.danger : (strong ? DearbyStyle.teal : DearbyStyle.quiet))
+            .foregroundStyle(stage.mark.kind == .failed ? DearbyStyle.danger : (strong ? DearbyStyle.teal : DearbyStyle.quiet))
             .padding(.horizontal, 10).padding(.vertical, 6)
             .background(strong ? DearbyStyle.mint : DearbyStyle.muted, in: Capsule())
     }

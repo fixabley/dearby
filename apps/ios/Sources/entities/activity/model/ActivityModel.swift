@@ -16,8 +16,6 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     /// The same window when it is date-only (`yyyy-MM-dd`, end exclusive): judged by Seoul days.
     let recruitmentStartDate: String?
     let recruitmentEndDateExclusive: String?
-    /// Timed schedules only; date-only schedules stay in their stage's `dateLabel`.
-    let schedules: [ActivityScheduleModel]
     /// The `application` schedule with its bounds and collected text, even a date-less one (contract "내 활동 진행 트랙": a `지원` stage);
     /// nil when the API sent no window.
     let applicationStage: ActivityStageModel?
@@ -72,6 +70,9 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
         }
         return activityStage?.anchor
     }
+    /// Everything the overlap check can compare (contract "겹침 확인 시간" 2026-10-22): `schedules[]` and the activity period, each timed
+    /// or date-only with an admin time window. The recruitment window is not an event and is left out. Empty: the detail says it cannot check.
+    var overlapSchedules: [ActivityScheduleModel] { (stages + [activityStage].compactMap { $0 }).flatMap(\.overlapSchedules) }
     /// The activity period as text (contract "일정 표시 우선순위 — 2026-10-19 밤"): the curated structured dates first, else the collected
     /// `dateLabel`; nil when neither exists so each screen keeps its own `미정`/`일정 미확인`.
     func scheduleText(at now: Date) -> String? { activityStage?.text(now: now) }
@@ -150,6 +151,7 @@ struct ActivityScheduleModel: Equatable, Identifiable, Sendable {
 /// missing; date-less stages have neither and only `dateLabel`.
 struct ActivityStageModel: Equatable, Identifiable, Sendable {
     enum Kind: String, Sendable { case deadline = "DEADLINE", announcement = "ANNOUNCEMENT", interview = "INTERVIEW", event = "EVENT" }
+    /// The schedule's numeric id as a string (the server's `scheduleId`).
     let id: String
     let title: String
     let kind: Kind
@@ -158,12 +160,38 @@ struct ActivityStageModel: Equatable, Identifiable, Sendable {
     let allDay: Bool
     let dateLabel: String
     let timeZone: String
+    /// What the user may pick for this stage (contract "내 활동 서버 저장·일정 상태" 2026-10-22); the default three when the API sent none.
+    var statuses: [ScheduleStatus] = ScheduleStatus.defaults
+    /// The admin's Seoul time window for comparing a date-only schedule with the device calendar; nil when none.
+    var overlapCheck: OverlapCheck? = nil
     /// The day a stage counts from: its start, or its end when only that is known (ordering, D-day, `지난 활동`).
     var anchor: Date? { start ?? end }
-    /// The overlap check (`CalendarConflictView`) needs a non-empty interval in a known zone.
-    var schedule: ActivityScheduleModel? {
-        guard let start, let end, start < end else { return nil }
-        return ActivityScheduleModel(id: id, title: title, start: start, end: end, dateLabel: dateLabel, timeZone: timeZone)
+    /// What the overlap check (`CalendarConflictView`) compares (contract "겹침 확인 시간" 2026-10-22): a timed stage's own non-empty
+    /// interval; a date-only stage with `overlapCheck`, that Seoul window on each of its days (one interval per day, so the nights
+    /// between are not compared; at most 62 days); otherwise nothing.
+    var overlapSchedules: [ActivityScheduleModel] {
+        if !allDay {
+            guard let start, let end, start < end else { return [] }
+            return [ActivityScheduleModel(id: id, title: title, start: start, end: end, dateLabel: dateLabel, timeZone: timeZone)]
+        }
+        guard let overlapCheck, let first = start ?? end.flatMap({ Self.seoul.date(byAdding: .day, value: -1, to: $0) }) else { return [] }
+        let stop = end ?? Self.seoul.date(byAdding: .day, value: 1, to: first) ?? first
+        var days: [ActivityScheduleModel] = []
+        var day = first
+        while day < stop, days.count < 62 {
+            if let window = overlapCheck.interval(on: day) {
+                days.append(ActivityScheduleModel(id: "\(id)|\(days.count)", title: title, start: window.start, end: window.end,
+                                                  dateLabel: dateLabel, timeZone: "Asia/Seoul"))
+            }
+            guard let next = Self.seoul.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+        return days
+    }
+    private static var seoul: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = ActivityText.seoul
+        return calendar
     }
     /// The stage as text (contract "일정 표시 우선순위 — 2026-10-19 밤"): the structured bounds when there are any, else the collected
     /// `dateLabel`, else nil. Timed: `M월 d일 (요일) HH:mm` in the stage's zone; a range is `A ~ B` (`A ~ HH:mm` on one day). All-day:
@@ -187,6 +215,31 @@ struct ActivityStageModel: Equatable, Identifiable, Sendable {
         guard let last, last > start else { return day(start) }
         if !allDay, calendar.isDate(start, inSameDayAs: last) { return day(start) + " ~ " + ActivityText.format(last, "HH:mm", zone: zone) }
         return day(start) + " ~ " + day(last)
+    }
+}
+/// One status a stage can be marked with (contract "내 활동 서버 저장·일정 상태" 2026-10-22): the admin's rows carry an `id`; the
+/// default three (대기·통과·탈락) the server fills in for a schedule without rows have none.
+struct ScheduleStatus: Equatable, Hashable, Sendable {
+    enum Kind: String, Sendable { case waiting = "WAITING", passed = "PASSED", failed = "FAILED", other = "OTHER" }
+    let id: Int64?
+    let name: String
+    let kind: Kind
+    static let defaults = [ScheduleStatus(id: nil, name: "대기", kind: .waiting), ScheduleStatus(id: nil, name: "통과", kind: .passed),
+                           ScheduleStatus(id: nil, name: "탈락", kind: .failed)]
+}
+/// 겹침 확인 시간 (contract "겹침 확인 시간" 2026-10-22): `HH:mm` Seoul times for a date-only schedule.
+struct OverlapCheck: Equatable, Sendable {
+    let startTime: String
+    let endTime: String
+    /// The window on `day` (Seoul midnight); nil when a time is unreadable or the window is empty.
+    func interval(on day: Date) -> DateInterval? {
+        func at(_ time: String) -> Date? {
+            let parts = time.split(separator: ":").compactMap { Int($0) }
+            guard parts.count >= 2, (0...24).contains(parts[0]), (0..<60).contains(parts[1]) else { return nil }
+            return day.addingTimeInterval(TimeInterval(parts[0] * 3600 + parts[1] * 60))
+        }
+        guard let start = at(startTime), let end = at(endTime), start < end else { return nil }
+        return DateInterval(start: start, end: end)
     }
 }
 /// Korean date text in a schedule's zone.

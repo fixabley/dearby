@@ -1,11 +1,13 @@
 import SwiftUI
 
+/// A stage-less 내 활동 row: `open` shows the detail (a plain button so the `List` adds no chevron or whole-row tap of its own).
 struct ActivityRow<Footer: View>: View {
     let activity: ActivityModel
+    let open: () -> Void
     @ViewBuilder var footer: Footer
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            NavigationLink(value: activity.id) {
+            Button(action: open) {
                 HStack(alignment: .top, spacing: 12) {
                     ActivityArtwork(imageURL: activity.imageURL).frame(width: 104, height: 112).clipped()
                         .clipShape(RoundedRectangle(cornerRadius: 9))
@@ -20,21 +22,5 @@ struct ActivityRow<Footer: View>: View {
             footer
         }
         .padding(10).background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
-    }
-}
-
-extension ActivityRow where Footer == EmptyView {
-    init(activity: ActivityModel) { self.init(activity: activity) { EmptyView() } }
-}
-
-/// Shown wherever the participation mark can be changed.
-struct ConfirmToggle: View {
-    static let note = "참여 확정 표시는 내가 남기는 예시 표시예요. 주최 측 확정이 아니에요."
-    let state: ActivityViewModel
-    let activityID: String
-    var body: some View {
-        Toggle("참여 확정 표시", isOn: Binding(get: { state.confirmedIDs.contains(activityID) },
-                                         set: { state.confirm(activityID, $0) }))
-            .tint(DearbyStyle.teal).frame(minHeight: 44).accessibilityIdentifier("confirm-\(activityID)")
     }
 }

@@ -208,6 +208,44 @@ struct AccountClient: Sendable {
         _ = try await request("wallet/cards/\(cardID)/reciprocate", method: "POST", body: ReciprocateInput(myCardId: myCardID), session: session)
     }
 
+    /// 내 활동 (contract "내 활동 서버 저장" 2026-10-22): the signed-in account's activities with their stage statuses.
+    func myActivities(_ session: TokenPair) async throws -> [MyActivity] {
+        try await send("me/activities", session: session, as: ItemList<MyActivity>.self).items
+    }
+    /// Adds the activity (an existing one stays as it is); 404 for an unpublished activity.
+    func putMyActivity(_ activityID: Int64, _ session: TokenPair) async throws -> MyActivity {
+        try await send("me/activities/\(activityID)", method: "PUT", body: [String: String](), session: session, as: MyActivity.self)
+    }
+    /// Removes the activity with its stage statuses (204, also when it was not there).
+    func deleteMyActivity(_ activityID: Int64, _ session: TokenPair) async throws {
+        _ = try await request("me/activities/\(activityID)", method: "DELETE", session: session)
+    }
+    /// One stage's status: an admin status by `statusId`, or a default one (no id) by `kind`. 400 when either does not belong.
+    func putMyActivityStatus(_ activityID: Int64, scheduleID: Int64, statusID: Int64?, kind: String, _ session: TokenPair) async throws -> MyActivity {
+        let body = statusID.map { StatusInput(statusId: $0, kind: nil) } ?? StatusInput(statusId: nil, kind: kind)
+        return try await send("me/activities/\(activityID)/schedules/\(scheduleID)", method: "PUT", body: body, session: session, as: MyActivity.self)
+    }
+    /// Uploads the records kept before signing in, once; the server keeps its own value for activities it already has.
+    func importMyActivities(_ items: [MyActivityImport], _ session: TokenPair) async throws -> [MyActivity] {
+        try await send("me/activities/import", method: "POST", body: ItemsInput(items: items), session: session, as: ItemList<MyActivity>.self).items
+    }
+
+    /// One 내 활동 record. `statusId` is nil for a default status; `kind` is WAITING·PASSED·FAILED·OTHER.
+    struct MyActivity: Decodable, Equatable, Sendable {
+        struct Status: Codable, Equatable, Sendable { let scheduleId: Int64; var statusId: Int64? = nil; let kind: String }
+        let activityId: Int64
+        let createdAt: String?
+        let statuses: [Status]
+    }
+    struct MyActivityImport: Encodable, Equatable, Sendable {
+        struct Status: Encodable, Equatable, Sendable { let scheduleId: Int64; let kind: String }
+        let activityId: Int64
+        let statuses: [Status]
+    }
+    /// Nil fields are left out of the JSON (synthesized `encodeIfPresent`).
+    private struct StatusInput: Encodable { let statusId: Int64?; let kind: String? }
+    private struct ItemsInput: Encodable { let items: [MyActivityImport] }
+
     /// `POST /v1/cards`·`PUT /v1/cards/:id`: `template` is the app's built-in markdown template the server fills in at publish time.
     struct CardInput: Encodable, Equatable, Sendable {
         let name: String

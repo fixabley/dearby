@@ -1,12 +1,14 @@
 import SwiftUI
 
-/// One applied activity with its segment track and next-stage badge (contract "내 활동 진행 트랙 — 2026-10-18"). Opens the timeline.
+/// One applied activity with its segment track and next-stage badge (contract "내 활동 진행 트랙 — 2026-10-18"). `open` shows the
+/// timeline; a plain button, not a `NavigationLink`, so the 내 활동 `List` adds no chevron of its own.
 struct ActivityProgressRow: View {
     let activity: ActivityModel
     let progress: ActivityProgress
     let now: Date
+    let open: () -> Void
     var body: some View {
-        NavigationLink(value: ActivityProgressRoute(activityID: activity.id)) {
+        Button(action: open) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top, spacing: 12) {
                     VStack(alignment: .leading, spacing: 3) {
@@ -50,7 +52,7 @@ struct StageTrack: View {
     }
     @ViewBuilder private func segment(_ stage: ActivityStage) -> some View {
         let shape = RoundedRectangle(cornerRadius: 3)
-        if stage.mark == .fail {
+        if stage.mark.kind == .failed {
             shape.fill(DearbyStyle.danger)
         } else {
             switch stage.state {

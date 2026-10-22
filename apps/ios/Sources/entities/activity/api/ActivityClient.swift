@@ -1,5 +1,7 @@
 import Foundation
 
+private enum ActivityFetchError: Error { case notFound }
+
 /// `GET /v1/activities` and `GET /v1/discovery/programs`. Transport or decoding failure is an error, never an empty page.
 enum ActivityClient {
     /// Activities, optionally those of one program (`programId`); `size` up to 100 so an expanded program loads in one page.
@@ -13,6 +15,13 @@ enum ActivityClient {
         if let cursor { items.append(URLQueryItem(name: "cursor", value: String(cursor))) }
         if let size { items.append(URLQueryItem(name: "size", value: String(size))) }
         return try decode(try await get(api, path: "v1/activities", items))
+    }
+    /// One activity (`GET /v1/activities/:id`); nil on 404 (deleted, unpublished or without its program), so 내 활동 can show it as
+    /// "삭제된 활동". Any other failure throws.
+    static func fetch(api: URL, id: String) async throws -> ActivityModel? {
+        do {
+            return model(try JSONDecoder().decode(Activity.self, from: try await get(api, path: "v1/activities/\(id)", [])))
+        } catch ActivityFetchError.notFound { return nil }
     }
     /// Programs for the discovery accordion (contract "발견 프로그램 묶음"), matching `query` by program, organization or activity name.
     /// `openOnly` false (contract "모집 중인 프로그램만 보기") also returns programs that had an activity in the last two years.
@@ -40,7 +49,9 @@ enum ActivityClient {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue(acceptLanguage(Locale.preferredLanguages), forHTTPHeaderField: "Accept-Language")
         let (data, response) = try await URLSession.shared.data(for: request)
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
+        let status = (response as? HTTPURLResponse)?.statusCode
+        if status == 404 { throw ActivityFetchError.notFound }
+        guard status == 200 else { throw URLError(.badServerResponse) }
         return data
     }
     /// The device language order, so the API answers activity text in English when English comes before Korean.
@@ -53,31 +64,24 @@ enum ActivityClient {
     }
     static func decode(_ data: Data) throws -> ActivityPage {
         let payload = try JSONDecoder().decode(Payload.self, from: data)
-        let items = payload.items.map { activity in
-            ActivityModel(id: String(activity.id), title: activity.name, summary: activity.description,
-                organization: activity.organization.name, program: activity.program?.name,
-                recruitmentStartAt: activity.application?.startAt, recruitmentEndAt: activity.application?.endAt,
-                recruitmentStartDate: activity.application?.startDate, recruitmentEndDateExclusive: activity.application?.endDateExclusive,
-                schedules: activity.schedules.compactMap { schedule in
-                    guard let start = ActivityModel.instant(schedule.startAt), let end = ActivityModel.instant(schedule.endAt) else { return nil }
-                    // The calendar overlap screen needs a known zone.
-                    let zone = schedule.timeZone.flatMap { TimeZone(identifier: $0) == nil ? nil : $0 } ?? "Asia/Seoul"
-                    return ActivityScheduleModel(id: String(schedule.id), title: schedule.title, start: start, end: end,
-                                                 dateLabel: schedule.dateLabel, timeZone: zone)
-                },
-                applicationStage: activity.application.map(stage),
-                stages: activity.schedules.map(stage), activityStage: activity.activitySchedule.map(stage),
-                officialUrl: activity.officialUrl, imageUrl: activity.imageUrl, applicationUrl: activity.applicationUrl,
-                eligibility: activity.eligibility?.value.flatMap { $0.eligibility(depth: 0) },
-                category: activity.category.flatMap(ActivityCategory.init(rawValue:)),
-                // Sort key: the application's end; when no usable deadline exists, the activity start stands in for it.
-                recruitmentDeadline: activity.application.flatMap { ActivityModel.instant($0.endAt) ?? ActivityModel.seoulDay($0.endDateExclusive) }
-                    ?? activity.activitySchedule.flatMap { ActivityModel.instant($0.startAt) ?? ActivityModel.seoulDay($0.startDate) },
-                tags: (activity.tags ?? []).map(\.tag),
-                location: activity.location.flatMap { $0.isEmpty ? nil : $0 },
-                place: activity.place?.value.map { ActivityPlace(name: $0.name, address: $0.address, lat: $0.lat, lng: $0.lng) })
-        }
-        return ActivityPage(items: items, nextCursor: payload.nextCursor)
+        return ActivityPage(items: payload.items.map(model), nextCursor: payload.nextCursor)
+    }
+    private static func model(_ activity: Activity) -> ActivityModel {
+        ActivityModel(id: String(activity.id), title: activity.name, summary: activity.description,
+            organization: activity.organization.name, program: activity.program?.name,
+            recruitmentStartAt: activity.application?.startAt, recruitmentEndAt: activity.application?.endAt,
+            recruitmentStartDate: activity.application?.startDate, recruitmentEndDateExclusive: activity.application?.endDateExclusive,
+            applicationStage: activity.application.map(stage),
+            stages: activity.schedules.map(stage), activityStage: activity.activitySchedule.map(stage),
+            officialUrl: activity.officialUrl, imageUrl: activity.imageUrl, applicationUrl: activity.applicationUrl,
+            eligibility: activity.eligibility?.value.flatMap { $0.eligibility(depth: 0) },
+            category: activity.category.flatMap(ActivityCategory.init(rawValue:)),
+            // Sort key: the application's end; when no usable deadline exists, the activity start stands in for it.
+            recruitmentDeadline: activity.application.flatMap { ActivityModel.instant($0.endAt) ?? ActivityModel.seoulDay($0.endDateExclusive) }
+                ?? activity.activitySchedule.flatMap { ActivityModel.instant($0.startAt) ?? ActivityModel.seoulDay($0.startDate) },
+            tags: (activity.tags ?? []).map(\.tag),
+            location: activity.location.flatMap { $0.isEmpty ? nil : $0 },
+            place: activity.place?.value.map { ActivityPlace(name: $0.name, address: $0.address, lat: $0.lat, lng: $0.lng) })
     }
     /// Stages keep every schedule: timed (either bound may be missing), all-day (either day may be missing), or date-less.
     /// An unknown kind reads as an event.
@@ -87,11 +91,22 @@ enum ActivityClient {
         let startAt = ActivityModel.instant(schedule.startAt), endAt = ActivityModel.instant(schedule.endAt)
         if startAt != nil || endAt != nil {
             return ActivityStageModel(id: String(schedule.id), title: schedule.title, kind: kind, start: startAt, end: endAt,
-                                      allDay: false, dateLabel: schedule.dateLabel, timeZone: zone)
+                                      allDay: false, dateLabel: schedule.dateLabel, timeZone: zone, statuses: statuses(schedule))
         }
         let startDate = ActivityModel.seoulDay(schedule.startDate), endDate = ActivityModel.seoulDay(schedule.endDateExclusive)
         return ActivityStageModel(id: String(schedule.id), title: schedule.title, kind: kind, start: startDate, end: endDate,
-                                  allDay: startDate != nil || endDate != nil, dateLabel: schedule.dateLabel, timeZone: "Asia/Seoul")
+                                  allDay: startDate != nil || endDate != nil, dateLabel: schedule.dateLabel, timeZone: "Asia/Seoul",
+                                  statuses: statuses(schedule), overlapCheck: overlapCheck(schedule))
+    }
+    /// The schedule's statuses (contract "일정 상태" 2026-10-22); an unknown kind reads as OTHER, and none (older responses) the default three.
+    private static func statuses(_ schedule: Schedule) -> [ScheduleStatus] {
+        let items = (schedule.statuses?.value ?? []).map {
+            ScheduleStatus(id: $0.id, name: $0.name, kind: ScheduleStatus.Kind(rawValue: $0.kind) ?? .other)
+        }
+        return items.isEmpty ? ScheduleStatus.defaults : items
+    }
+    private static func overlapCheck(_ schedule: Schedule) -> OverlapCheck? {
+        schedule.overlapCheck?.value.map { OverlapCheck(startTime: $0.startTime, endTime: $0.endTime) }
     }
     private struct Payload: Decodable {
         let items: [Activity]
@@ -118,7 +133,12 @@ enum ActivityClient {
     private struct Schedule: Decodable {
         let id: Int64; let title: String; let kind: String?; let startAt: String?; let endAt: String?; let timeZone: String?
         let startDate: String?; let endDateExclusive: String?; let dateLabel: String
+        /// 일정 상태·겹침 확인 시간 (2026-10-22); absent on older responses, and a malformed value reads as none.
+        let statuses: Lenient<[StatusDTO]>?
+        let overlapCheck: Lenient<OverlapDTO>?
     }
+    private struct StatusDTO: Decodable { let id: Int64?; let name: String; let kind: String }
+    private struct OverlapDTO: Decodable { let startTime: String; let endTime: String }
     private struct Activity: Decodable {
         let id: Int64; let name: String; let description: String; let organization: Named; let program: Named?
         let officialUrl: String; let imageUrl: String?
