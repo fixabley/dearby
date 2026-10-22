@@ -16,6 +16,7 @@ data class Schedule(
     val curated: Boolean = false, // 운영자가 직접 지정한 일정(admin-v1.md "일정 직접 지정"). 수집기가 덮어쓰지 않는다
     val overlapCheck: OverlapCheck? = null, // 겹침 확인 시간(native-v1.md "겹침 확인 시간"). 없으면 null
     val statuses: List<ProgressStatus> = ProgressStatus.DEFAULTS, // 고를 수 있는 진행 상태. 어드민 지정이 없으면 기본 세 개
+    val recurrence: Recurrence? = null, // RRULE: 반복 일정(native-v1.md "반복 일정과 겹침 결과 묶음"). 없으면 null
 ) {
     // TRANSP: 마감·발표 같은 시점 일정과 종일 일정은 TRANSPARENT(겹침 계산 제외)
     val occupiesTime: Boolean get() = kind.occupiesTime && time !is ScheduleTime.AllDay

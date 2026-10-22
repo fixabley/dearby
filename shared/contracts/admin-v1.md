@@ -247,3 +247,15 @@ native-v1.md "내 활동 서버 저장·일정 상태·겹침 확인 시간"의 
 ## 명함 신고 — 2026-10-22
 
 native-v1.md "명함 신고·차단"의 어드민 쪽. `GET /v1/admin/card-reports?status=OPEN|RESOLVED|DISMISSED`(생략 시 전체, 최신순, 열린 것 먼저) → `{items:[{id, cardId, cardSnapshot, reason, detail, createdAt, status, note, reportCount, cardWithdrawn}]}`. `PATCH /v1/admin/card-reports/:id {status, note?}` 200. `POST /v1/admin/cards/:id/withdraw {reportId?, note}` 204(이미 철회면 204). 모두 ADMIN 역할.
+## 반복 일정 — 2026-10-22
+
+native-v1.md "반복 일정과 겹침 결과 묶음"의 어드민 쪽. Schedule 응답(어드민·공개)에 `recurrence: string|null`(RRULE 본문, `RRULE:` 접두사 없음).
+
+| 요청 | 본문 | 결과 |
+|---|---|---|
+| POST·PATCH /v1/admin/activities/:id/schedules(/:scheduleId) | ScheduleItemInput에 `recurrence?: string\|null` | 생략은 유지, null은 지움 |
+| PATCH·POST /v1/admin/activities | `activitySchedule`·`application` 객체에 `recurrence?: string\|null` | 같은 규칙. 일정 PATCH에 `overlapCheck`·`recurrence`만 보낸 요청은 날짜를 유지한다 |
+
+- 검증(400): FREQ는 DAILY·WEEKLY, BYDAY는 MO..SU, INTERVAL 1~4, UNTIL(yyyyMMdd 또는 yyyyMMddTHHmmssZ) 또는 COUNT(1~400) 중 정확히 하나, 그 밖의 키 금지, UNTIL은 시작 이후. 날짜만 있는 일정에 반복을 주려면 `overlapCheck`가 있어야 한다(회차 시간). 서버는 키 순서를 `FREQ;INTERVAL;BYDAY;UNTIL|COUNT`로 정규화해 저장한다.
+- 반복을 고치면 기존 규칙대로 `curated`. 수집기 제출의 `recurrence`도 같은 검증을 거치고 실패하면 그 필드만 버린다.
+- DB: `schedules.recurrence varchar(200)`(V46).

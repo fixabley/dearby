@@ -479,8 +479,8 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         val draft = createActivity("내 활동 확인 초안", status = "DRAFT")
         val interview = jdbc.sql(
             """
-            insert into schedules (activity_id, title, kind, status, date_label, sequence, created_at, updated_at, overlap_start_time, overlap_end_time)
-            values (?, '면접', 'INTERVIEW', 'CONFIRMED', '11월 중', 0, localtimestamp, localtimestamp, '14:00', '18:30') returning id
+            insert into schedules (activity_id, title, kind, status, date_label, sequence, created_at, updated_at, overlap_start_time, overlap_end_time, recurrence)
+            values (?, '면접', 'INTERVIEW', 'CONFIRMED', '11월 중', 0, localtimestamp, localtimestamp, '14:00', '18:30', 'FREQ=WEEKLY;BYDAY=MO,WE;COUNT=4') returning id
             """
         ).param(first).query(Long::class.java).single()
         val passedRow = jdbc.sql("insert into schedule_statuses (schedule_id, name, kind, sort_order, created_at) values (?, '최종 합격', 'PASSED', 1, now()) returning id")
@@ -497,6 +497,9 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(listOf("면접 대기", "최종 합격"), detail["statuses"].toList().map { it["name"].asString() })
         assertEquals(passedRow, detail["statuses"][1]["id"].asLong())
         assertEquals("14:00" to "18:30", detail["overlapCheck"]["startTime"].asString() to detail["overlapCheck"]["endTime"].asString())
+        // 반복 규칙(native-v1.md "반복 일정과 겹침 결과 묶음"): RRULE 본문, 없으면 null
+        assertEquals("FREQ=WEEKLY;BYDAY=MO,WE;COUNT=4", detail["recurrence"].asString())
+        assertTrue(activity["activitySchedule"]["recurrence"].isNull)
 
         // 넣기: 본문 없이도 빈 객체로도 넣고, 다시 넣어도 그대로다(참여 확정 표시는 없다). 게시되지 않은 활동은 404
         val added = body(putMine("$first", null).andExpect { status { isOk() } })

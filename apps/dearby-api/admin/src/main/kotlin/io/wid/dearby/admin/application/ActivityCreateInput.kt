@@ -27,6 +27,6 @@ data class ActivityCreateInput(
     val location: String?,
     val place: Address?, // 좌표가 있는 활동 장소(admin-v1.md "활동 장소와 지오코딩"). null이면 없음
     val cost: String?,
-    val activityOverlap: OverlapChange? = null, // 활동·모집 기간 객체의 overlapCheck. null이면 보내지 않음
-    val applicationOverlap: OverlapChange? = null,
+    val activityTiming: TimingChange? = null, // 활동·모집 기간 객체의 overlapCheck·recurrence. null이면 둘 다 보내지 않음
+    val applicationTiming: TimingChange? = null,
 )

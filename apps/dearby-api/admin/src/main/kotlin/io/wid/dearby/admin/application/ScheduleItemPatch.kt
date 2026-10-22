@@ -4,6 +4,7 @@ import io.wid.dearby.application.activity.ScheduleEdit
 import io.wid.dearby.application.activity.ScheduleItem
 import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.OverlapCheck
+import io.wid.dearby.domain.Recurrence
 import io.wid.dearby.domain.Schedule
 import io.wid.dearby.domain.ScheduleKind
 import io.wid.dearby.domain.ScheduleStatus
@@ -27,9 +28,19 @@ data class ScheduleItemPatch(
     val note: String?,
     val hasOverlapCheck: Boolean = false, // overlapCheck가 왔으면(null 포함) 바꾼다(native-v1.md "겹침 확인 시간")
     val overlapCheck: OverlapCheck? = null,
+    val hasRecurrence: Boolean = false, // recurrence가 왔으면(null 포함) 바꾼다(native-v1.md "반복 일정과 겹침 결과 묶음")
+    val recurrence: Recurrence? = null,
 ) {
-    // 겹침 확인 시간만 바꾸는 요청. 모집·활동 기간 행은 이것만 이 편집기로 고칠 수 있다
-    val overlapOnly: Boolean get() = hasOverlapCheck && !hasTime && listOf(title, kind, status, timeZone, dateLabel, note).all { it == null }
+    // 겹침 확인 시간·반복 규칙만 바꾸는 요청. 모집·활동 기간 행은 이것만 이 편집기로 고칠 수 있다
+    val timingOnly: Boolean get() = (hasOverlapCheck || hasRecurrence) && !hasTime && listOf(title, kind, status, timeZone, dateLabel, note).all { it == null }
+
+    // 보낸 값은 바꾸고 아니면 기존 값. 반복이 남으면 날짜·겹침 확인 시간과 맞는지 본다
+    fun timing(existing: Schedule?, time: ScheduleTime?): Pair<OverlapCheck?, Recurrence?> {
+        val overlap = if (hasOverlapCheck) overlapCheck else existing?.overlapCheck
+        val rule = if (hasRecurrence) recurrence else existing?.recurrence
+        rule?.requireFits(time, overlap)
+        return overlap to rule
+    }
 
     // 날짜·시각 규칙은 일정 직접 지정(ScheduleEdit)과 같다: 섞으면 400, 끝이 앞서면 400. 시각도 날짜도 없으면 dateLabel이 있어야 한다
     fun toItem(existing: Schedule?): ScheduleItem {
@@ -43,6 +54,7 @@ data class ScheduleItemPatch(
         if (time == null && dateLabel.isEmpty()) throw InvalidInputException("날짜나 원문 문구 중 하나는 입력해 주세요")
         val note = (if (this.note != null) this.note.ifEmpty { null } else existing?.curatedNote)
         if (note != null && note.length > 300) throw InvalidInputException("사유는 300자까지입니다")
-        return ScheduleItem(title, kind, status, time, dateLabel, note, if (hasOverlapCheck) overlapCheck else existing?.overlapCheck)
+        val (overlap, rule) = timing(existing, time)
+        return ScheduleItem(title, kind, status, time, dateLabel, note, overlap, rule)
     }
 }

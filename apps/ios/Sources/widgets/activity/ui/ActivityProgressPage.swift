@@ -41,7 +41,7 @@ struct ActivityProgressPage: View {
         .toolbar(.visible, for: .navigationBar)
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)
         .sheet(item: $calendarStage) { stage in
-            CalendarConflictView(schedules: stage.overlapSchedules)
+            CalendarConflictView(schedules: stage.overlapSchedules, activityLink: state.calendarLink(activityID))
         }
         .sheet(item: $calendarDraft) { AddToCalendarSheet(draft: $0).ignoresSafeArea() }
         // After removal the timeline closes and the list shows again (contract "빼기는 눈에 보이게").
@@ -75,7 +75,7 @@ struct ActivityProgressPage: View {
                 }
                 Text(stage.dateText(now: Date())).font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet)
                 statusPicker(stage)
-                let draft = activity.flatMap(stage.calendarDraft)
+                let draft = activity.flatMap { stage.calendarDraft($0, link: state.calendarLink($0.id)) }
                 if !stage.overlapSchedules.isEmpty || draft != nil {
                     HStack(spacing: 20) {
                         if !stage.overlapSchedules.isEmpty { Button("겹치는 시간 확인") { calendarStage = stage } }
