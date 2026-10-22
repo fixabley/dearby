@@ -17,8 +17,10 @@ import {
   upstreamFetch,
 } from "./guest-upstream";
 
-// PUT /guest/cards/:id may carry the activity the card was exchanged at (contract "명함 교환").
-const guestSaveBody = z.object({ activityId: z.number().int().positive().optional() }).strict();
+// PUT /guest/cards/:id may carry the activity the card was exchanged at (contract "명함 교환") and the QR code (contract "명함 QR 코드").
+const guestSaveBody = z
+  .object({ activityId: z.number().int().positive().optional(), code: z.string().regex(TOKEN).optional() })
+  .strict();
 const saveSchema = z.object({
   cardId: uuid,
   status: z.enum(["saved", "alreadySaved"]),
@@ -98,13 +100,14 @@ export async function proxy(
   // Public program logo image (contract "프로그램 로고"): binary passthrough, cached like the API says.
   const logoRoute = segments.length === 3 && segments[0] === "programs" && segments[2] === "logo";
   const programs = path === "discovery/programs";
+  const cardRoute = segments.length === 2 && segments[0] === "cards";
   const search = path === "activities" || programs;
   const method = request.method;
   const allowed =
     (search && method === "GET") ||
     (activityRoute && method === "GET") ||
     (logoRoute && method === "GET") ||
-    (segments.length === 2 && segments[0] === "cards" && method === "GET") ||
+    (cardRoute && method === "GET") ||
     (path === "guest/cards" && method === "GET") ||
     (segments.length === 3 &&
       segments[0] === "guest" &&
@@ -114,11 +117,16 @@ export async function proxy(
   if (!allowed) return failure(404, "NOT_FOUND");
   if (id && !(activityRoute || logoRoute ? activityId(id) : uuid.safeParse(id).success))
     return failure(422, "INVALID_INPUT");
+  // A card view takes the QR code from the `X-Card-Code` header (never the query) and sends it upstream as `?code=`.
+  const cardCode = cardRoute ? request.headers.get("x-card-code") : null;
+  if (cardCode !== null && !TOKEN.test(cardCode)) return failure(422, "INVALID_INPUT");
   const query = search
     ? searchQuery(new URL(request.url), programs)
     : logoRoute
       ? logoQuery(new URL(request.url))
-      : undefined;
+      : cardCode
+        ? new URLSearchParams({ code: cardCode })
+        : undefined;
   if ((search || logoRoute) && !query) return failure(422, "INVALID_INPUT");
   const mutation = method !== "GET";
   if (
@@ -128,8 +136,8 @@ export async function proxy(
       request.headers.get("content-type") !== "application/json")
   )
     return failure(403, "FORBIDDEN");
-  // Only a guest save forwards a body, and only `{activityId}`; no bearer token, forwarding header, or proxy key goes upstream.
-  let body: { activityId?: number } | undefined;
+  // Only a guest save forwards a body, and only `{activityId, code}`; no bearer token, forwarding header, or proxy key goes upstream.
+  let body: { activityId?: number; code?: string } | undefined;
   if (mutation) {
     try {
       const parsed: unknown = await request.json();
@@ -138,13 +146,18 @@ export async function proxy(
         ? guestSaveBody.safeParse(parsed)
         : z.object({}).strict().safeParse(parsed);
       if (!accepted.success) return failure(422, "INVALID_INPUT");
-      if (guestSave && "activityId" in accepted.data && accepted.data.activityId !== undefined)
-        body = { activityId: accepted.data.activityId };
+      if (guestSave) {
+        const { activityId, code } = accepted.data as z.infer<typeof guestSaveBody>;
+        if (activityId !== undefined || code !== undefined)
+          body = { ...(activityId !== undefined && { activityId }), ...(code !== undefined && { code }) };
+      }
     } catch {
       return failure(422, "INVALID_INPUT");
     }
   }
   const token = readGuestCookie(request.headers.get("cookie"));
+  // A card view also counts this browser's unrecalled saves (contract "명함 QR 코드"), so it carries a well-formed guest token.
+  const cardAsGuest = cardRoute && token !== undefined && TOKEN.test(token) && guestProxyKey() !== undefined;
   if (guest && token !== undefined && !TOKEN.test(token)) {
     if (path === "guest/session" && method === "DELETE")
       return new Response(null, {
@@ -163,8 +176,8 @@ export async function proxy(
   try {
     const result = await upstreamFetch(path, {
       method,
-      guest,
-      token,
+      guest: guest || cardAsGuest,
+      token: guest || cardAsGuest ? token : undefined,
       body,
       query,
       accept: logoRoute ? "image/*" : undefined,
