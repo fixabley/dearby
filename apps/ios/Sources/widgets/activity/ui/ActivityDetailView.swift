@@ -35,7 +35,7 @@ struct ActivityDetailView: View {
             }
         }
         .sheet(isPresented: $showCalendar) {
-            if let activity { CalendarConflictView(schedules: activity.overlapSchedules) }
+            if let activity { CalendarConflictView(schedules: activity.overlapSchedules, activityLink: activity.calendarLink) }
         }
         .sheet(item: $calendarDraft) { AddToCalendarSheet(draft: $0).ignoresSafeArea() }
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)

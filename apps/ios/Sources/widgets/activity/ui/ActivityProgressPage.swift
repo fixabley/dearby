@@ -41,7 +41,7 @@ struct ActivityProgressPage: View {
         .toolbar(.visible, for: .navigationBar)
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)
         .sheet(item: $calendarStage) { stage in
-            CalendarConflictView(schedules: stage.overlapSchedules)
+            CalendarConflictView(schedules: stage.overlapSchedules, activityLink: ActivityModel.calendarLink(activityID))
         }
         .sheet(item: $calendarDraft) { AddToCalendarSheet(draft: $0).ignoresSafeArea() }
         // After removal the timeline closes and the list shows again (contract "빼기는 눈에 보이게").

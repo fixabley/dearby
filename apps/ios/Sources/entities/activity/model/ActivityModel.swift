@@ -98,6 +98,10 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     }
     /// The official link (https only).
     var officialURL: URL? { Self.safeURL(officialUrl) }
+    /// The activity's web page, written into events added from the app and used to leave them out of the overlap check
+    /// (contract "반복 일정과 겹침 결과 묶음" 2026-10-22).
+    var calendarLink: URL { Self.calendarLink(id) }
+    static func calendarLink(_ id: String) -> URL { URL(string: AppOrigins.defaultWeb)!.appending(path: "activities/\(id)") }
     /// The curated application link (https only); the detail CTA opens it before the official notice.
     var applicationSiteURL: URL? { Self.safeURL(applicationUrl) }
     /// Applying is over (contract "신청 확인 조건 완화"): the recruitment deadline passed, or, with no window to judge by, the activity
@@ -164,29 +168,38 @@ struct ActivityStageModel: Equatable, Identifiable, Sendable {
     var statuses: [ScheduleStatus] = ScheduleStatus.defaults
     /// The admin's Seoul time window for comparing a date-only schedule with the device calendar; nil when none.
     var overlapCheck: OverlapCheck? = nil
+    /// The admin's repeat rule (contract "반복 일정" 2026-10-22); nil when the schedule does not repeat or the rule is unreadable.
+    var recurrence: ScheduleRecurrence? = nil
     /// The day a stage counts from: its start, or its end when only that is known (ordering, D-day, `지난 활동`).
     var anchor: Date? { start ?? end }
-    /// What the overlap check (`CalendarConflictView`) compares (contract "겹침 확인 시간" 2026-10-22): a timed stage's own non-empty
-    /// interval; a date-only stage with `overlapCheck`, that Seoul window on each of its days (one interval per day, so the nights
-    /// between are not compared; at most 62 days); otherwise nothing.
+    /// What the overlap check (`CalendarConflictView`) compares (contract "겹침 확인 시간", "반복 일정" 2026-10-22). With a repeat rule,
+    /// one window per occurrence (at most 400): a timed stage's own interval moved by whole Seoul days, a date-only stage's
+    /// `overlapCheck` window on each occurrence day from `startDate`. Without one: a timed stage's own non-empty interval; a date-only
+    /// stage with `overlapCheck`, that Seoul window on each of its days (at most 62). Otherwise nothing.
     var overlapSchedules: [ActivityScheduleModel] {
+        func window(_ index: Int, _ start: Date, _ end: Date, zone: String) -> ActivityScheduleModel {
+            ActivityScheduleModel(id: index == 0 && recurrence == nil && !allDay ? id : "\(id)|\(index)", title: title, start: start,
+                                  end: end, dateLabel: dateLabel, timeZone: zone)
+        }
+        let seoul = Self.seoul
         if !allDay {
             guard let start, let end, start < end else { return [] }
-            return [ActivityScheduleModel(id: id, title: title, start: start, end: end, dateLabel: dateLabel, timeZone: timeZone)]
-        }
-        guard let overlapCheck, let first = start ?? end.flatMap({ Self.seoul.date(byAdding: .day, value: -1, to: $0) }) else { return [] }
-        let stop = end ?? Self.seoul.date(byAdding: .day, value: 1, to: first) ?? first
-        var days: [ActivityScheduleModel] = []
-        var day = first
-        while day < stop, days.count < 62 {
-            if let window = overlapCheck.interval(on: day) {
-                days.append(ActivityScheduleModel(id: "\(id)|\(days.count)", title: title, start: window.start, end: window.end,
-                                                  dateLabel: dateLabel, timeZone: "Asia/Seoul"))
+            guard let recurrence else { return [window(0, start, end, zone: timeZone)] }
+            return recurrence.dayOffsets(from: start).enumerated().compactMap { index, offset in
+                guard let from = seoul.date(byAdding: .day, value: offset, to: start),
+                      let to = seoul.date(byAdding: .day, value: offset, to: end) else { return nil }
+                return window(index, from, to, zone: timeZone)
             }
-            guard let next = Self.seoul.date(byAdding: .day, value: 1, to: day) else { break }
-            day = next
         }
-        return days
+        guard let overlapCheck, let first = start ?? end.flatMap({ seoul.date(byAdding: .day, value: -1, to: $0) }) else { return [] }
+        let days: [Date]
+        if let recurrence {
+            days = recurrence.dayOffsets(from: first).compactMap { seoul.date(byAdding: .day, value: $0, to: first) }
+        } else {
+            let stop = end ?? seoul.date(byAdding: .day, value: 1, to: first) ?? first
+            days = (0..<62).compactMap { seoul.date(byAdding: .day, value: $0, to: first) }.filter { $0 < stop }
+        }
+        return days.compactMap { overlapCheck.interval(on: $0) }.enumerated().map { window($0, $1.start, $1.end, zone: "Asia/Seoul") }
     }
     private static var seoul: Calendar {
         var calendar = Calendar(identifier: .gregorian)

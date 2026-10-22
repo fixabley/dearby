@@ -11,5 +11,11 @@ struct CalendarEventDraft: Identifiable, Equatable {
     let allDay: Bool
     let timeZone: TimeZone?
     let location: String?
-    let url: URL?
+    /// The activity's page (`ActivityModel.calendarLink`), set as the event URL and in the notes so the overlap check skips it.
+    let url: URL
+    /// Written into the notes after the activity link.
+    let officialURL: URL?
+    /// The schedule's repeat rule: the event repeats from its first occurrence (contract "반복 일정" 2026-10-22).
+    var recurrence: ScheduleRecurrence? = nil
+    var notes: String { ([url] + [officialURL].compactMap { $0 }).map(\.absoluteString).joined(separator: "\n") }
 }
