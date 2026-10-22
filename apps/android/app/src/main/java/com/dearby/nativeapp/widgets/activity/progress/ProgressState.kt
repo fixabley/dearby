@@ -22,9 +22,10 @@ data class StatusOption(val id: String?, val name: String, val kind: String) {
 
 /**
  * A prefilled system calendar event (contract "내 캘린더에 추가"): [title] "활동명 · 일정 제목", epoch millis, [allDay] for a date-only
- * schedule (Seoul midnights). The route adds the place and the official link and hands it to the calendar app.
+ * schedule (Seoul midnights); [recurrence] the RRULE of a repeating one, whose [begin]/[end] are then its first occurrence. The route
+ * adds the place and the links and hands it to the calendar app.
  */
-data class CalendarDraft(val title: String, val begin: Long, val end: Long, val allDay: Boolean)
+data class CalendarDraft(val title: String, val begin: Long, val end: Long, val allDay: Boolean, val recurrence: String? = null)
 
 /**
  * One step as shown. [kind] picks the icon (APPLICATION, DEADLINE, ANNOUNCEMENT, INTERVIEW, EVENT); [options] are its statuses and
