@@ -38,6 +38,8 @@ struct MyCardsPage: View {
                 }.refreshable { await state.load() }
             }
         }.task { await state.load() }
+            // 미리 받기 (contract "명함 QR 코드"): while 내 명함 is on screen and whenever the selected card changes.
+            .task(id: state.selectedCardID) { await state.prefetchQRCode() }
             .sheet(isPresented: $editor, onDismiss: { Task { await state.load() } }) {
                 NavigationStack { CardComposerPage(account: state.account) }
             }
