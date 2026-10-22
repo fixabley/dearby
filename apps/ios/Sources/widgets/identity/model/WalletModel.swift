@@ -38,7 +38,7 @@ import Observation
             code = parts.queryItems?.first { $0.name == "code" }?.value
         }
     }
-    enum Outcome: Equatable { case ownCard, codeExpired, saveFailed, reciprocateFailed }
+    enum Outcome: Equatable { case ownCard, codeExpired, blocked, saveFailed, reciprocateFailed }
     private(set) var phase = Phase.loading
     private(set) var wallet = Wallet(items: [])
     /// An incoming card waiting for sign-in; the page shows the sign-in sheet and then `resumePending()`.
@@ -80,6 +80,8 @@ import Observation
             outcome = .ownCard
         } catch AccountError.cardCodeRequired {
             outcome = .codeExpired
+        } catch AccountError.blocked {
+            outcome = .blocked
         } catch AccountError.unauthorized {
             pending = incoming
         } catch {
@@ -106,6 +108,22 @@ import Observation
         } catch {
             outcome = .reciprocateFailed
         }
+    }
+    /// 신고하기 (contract "명함 신고·차단"); false when the server or network refused.
+    func report(_ entry: Entry, reason: CardReportReason, detail: String?) async -> Bool {
+        do {
+            try await account.authorized { [client = account.client] in try await client.reportCard(entry.card.id, reason: reason, detail: detail, $0) }
+            return true
+        } catch { return false }
+    }
+    /// 삭제하고 차단하기: the server drops every card of that owner from my wallet; the detail closes. False when refused.
+    func block(_ entry: Entry) async -> Bool {
+        do {
+            _ = try await account.authorized { [client = account.client] in try await client.block(cardID: entry.card.id, $0) }
+        } catch { return false }
+        opened = nil
+        await load()
+        return true
     }
     /// Rows whose name, job, title, body or history titles contain every search term,
     /// grouped by the name's first letter (ㄱ…ㅎ, A…Z, #) and sorted by name inside each group.

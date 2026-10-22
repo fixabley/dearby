@@ -9,9 +9,10 @@ enum AccountError: Error, Equatable {
     /// (contract "개인정보 동의"); other 403s stay `unavailable`.
     /// `cardCodeRequired`: 403 `card-code-required`/`card-code-expired` — a card not yet saved needs a live QR code
     /// (contract "명함 QR 코드").
+    /// `blocked`: 409 `BLOCKED` — the card's owner is someone I blocked (contract "명함 신고·차단"); other 409s stay `conflict`.
     /// `lastSignInMethod`: 409 `LAST_SIGN_IN_METHOD` — the passkey or linked account is the only way left to sign in, so it
     /// cannot be removed (contract "설정"); other 409s stay `conflict`.
-    case unauthorized, invalidInput, rejected(String), notFound, conflict, rateLimited, disabled, unavailable, consentRequired, cardCodeRequired, lastSignInMethod
+    case unauthorized, invalidInput, rejected(String), notFound, conflict, rateLimited, disabled, unavailable, consentRequired, cardCodeRequired, blocked, lastSignInMethod
 }
 
 /// Owner API (contract native-v1): passkey sign-in, profile and card publishing.
@@ -224,6 +225,21 @@ struct AccountClient: Sendable {
             return formatter.date(from: expiresAt) ?? ISO8601DateFormatter().date(from: expiresAt)
         }
     }
+    /// `POST /v1/cards/:id/reports` (contract "명함 신고·차단"): 201, or 200 for a repeat within 24 hours.
+    func reportCard(_ cardID: String, reason: CardReportReason, detail: String?, _ session: TokenPair) async throws {
+        _ = try await request("cards/\(cardID)/reports", method: "POST", body: ReportInput(reason: reason.rawValue, detail: detail), session: session)
+    }
+    /// `POST /v1/wallet/blocks {cardId}`: removes that owner's cards from my wallet and refuses them from now on.
+    func block(cardID: String, _ session: TokenPair) async throws -> BlockedPerson {
+        try await send("wallet/blocks", method: "POST", body: BlockInput(cardId: cardID), session: session, as: BlockedPerson.self)
+    }
+    func blocks(_ session: TokenPair) async throws -> [BlockedPerson] {
+        try await send("wallet/blocks", session: session, as: ItemList<BlockedPerson>.self).items
+    }
+    /// `DELETE /v1/wallet/blocks/:id`: the removed cards do not come back.
+    func unblock(_ id: String, _ session: TokenPair) async throws {
+        _ = try await request("wallet/blocks/\(id)", method: "DELETE", session: session)
+    }
     /// `POST /v1/wallet/cards/:cardId/reciprocate {myCardId}`: hands one of my cards back to that card's owner (same activity); 201.
     func reciprocate(_ cardID: String, myCardID: String, _ session: TokenPair) async throws {
         _ = try await request("wallet/cards/\(cardID)/reciprocate", method: "POST", body: ReciprocateInput(myCardId: myCardID), session: session)
@@ -304,6 +320,8 @@ struct AccountClient: Sendable {
     /// `activityId` is left out of the JSON when nil (synthesized `encodeIfPresent`).
     private struct ReceiveInput: Encodable { let activityId: Int64?; let code: String? }
     private struct ReciprocateInput: Encodable { let myCardId: String }
+    private struct ReportInput: Encodable { let reason: String; let detail: String? }
+    private struct BlockInput: Encodable { let cardId: String }
 
     private func send<Response: Decodable>(_ path: String, method: String = "GET", body: (any Encodable)? = nil,
                                            session: TokenPair? = nil, headers: [String: String] = [:], as type: Response.Type) async throws -> Response {
@@ -340,8 +358,11 @@ struct AccountClient: Sendable {
             throw AccountError.unavailable
         case 404: throw AccountError.notFound
         case 409:
-            if (try? JSONDecoder().decode(ProblemBody.self, from: data))?.code == "LAST_SIGN_IN_METHOD" { throw AccountError.lastSignInMethod }
-            throw AccountError.conflict
+            switch (try? JSONDecoder().decode(ProblemBody.self, from: data))?.code {
+            case "LAST_SIGN_IN_METHOD": throw AccountError.lastSignInMethod
+            case "BLOCKED": throw AccountError.blocked
+            default: throw AccountError.conflict
+            }
         case 429: throw AccountError.rateLimited
         case 503: throw AccountError.disabled
         default: throw AccountError.unavailable
