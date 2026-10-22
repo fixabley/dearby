@@ -206,11 +206,7 @@ import Observation
     /// `2026.10.19` in Seoul; the raw text when the timestamp is unreadable.
     nonisolated static func day(_ raw: String) -> String {
         guard let date = ActivityModel.instant(raw) else { return raw }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.timeZone = seoul.timeZone
-        formatter.dateFormat = "yyyy.M.d"
-        return formatter.string(from: date)
+        return ActivityText.format(date, "yyyy.M.d", zone: seoul.timeZone)
     }
     private nonisolated static let seoul: Calendar = {
         var calendar = Calendar(identifier: .gregorian)

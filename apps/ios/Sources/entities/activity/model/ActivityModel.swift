@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 /// One activity from `GET /v1/activities` (contract "활동 조회 — 2026-10-14"). Missing values stay nil and read as unconfirmed.
 struct ActivityModel: Equatable, Identifiable, Sendable {
@@ -80,14 +81,18 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     func recruitmentText(at now: Date) -> String? { applicationStage?.text(now: now, recruitment: true) }
     /// `yyyy-MM-dd` as Seoul midnight; nil when absent or unreadable.
     static func seoulDay(_ raw: String?) -> Date? {
-        guard let raw else { return nil }
+        raw.flatMap(seoulDayFormatter.date(from:))
+    }
+    // Formatters are built once: cards re-read their dates on every render, and building one per call kept the main thread busy
+    // long enough for the watchdog to kill the app on expand/collapse and in the background (crash logs 2026-10-22, 0x8BADF00D).
+    private static let seoulDayFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
         formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.date(from: raw)
-    }
+        return formatter
+    }()
     func statusLabel(at now: Date) -> String {
         switch recruitment(at: now) {
         case .upcoming: "모집 예정"
@@ -121,10 +126,15 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     }
     static func instant(_ raw: String?) -> Date? {
         guard let raw else { return nil }
-        let precise = ISO8601DateFormatter()
-        precise.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return precise.date(from: raw) ?? ISO8601DateFormatter().date(from: raw)
+        return preciseInstant.date(from: raw) ?? plainInstant.date(from: raw)
     }
+    // ISO8601DateFormatter is thread-safe (Apple docs) but not marked Sendable.
+    private nonisolated(unsafe) static let preciseInstant: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+    private nonisolated(unsafe) static let plainInstant = ISO8601DateFormatter()
 }
 /// A curated place (contract "활동 장소 — 2026-10-19"): name, road address and coordinates, all present together.
 struct ActivityPlace: Equatable, Sendable {
@@ -263,13 +273,21 @@ enum ActivityText {
         format(date, pattern, zone: TimeZone(identifier: zone) ?? seoul)
     }
     static func format(_ date: Date, _ pattern: String, zone: TimeZone) -> String {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.timeZone = zone
-        formatter.dateFormat = pattern
+        let key = "\(pattern)|\(zone.identifier)"
+        let formatter = formatters.withLock { cache in
+            if let cached = cache[key] { return cached }
+            let formatter = DateFormatter()
+            formatter.calendar = Calendar(identifier: .gregorian)
+            formatter.locale = Locale(identifier: "ko_KR")
+            formatter.timeZone = zone
+            formatter.dateFormat = pattern
+            cache[key] = formatter
+            return formatter
+        }
         return formatter.string(from: date)
     }
+    /// One formatter per pattern and zone (see `ActivityModel.seoulDayFormatter`).
+    private static let formatters = Mutex<[String: DateFormatter]>([:])
 }
 /// One page of `GET /v1/activities`. A nil `nextCursor` is the last page.
 struct ActivityPage: Sendable {
