@@ -94,13 +94,13 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
     }
 
     @Transactional
-    override fun updateEligibility(activityId: Id, eligibility: EligibilityGroup?): Boolean {
+    override fun updateEligibility(activityId: Id, eligibility: EligibilityGroup?, curate: Boolean): Boolean {
         // 운영자가 정한 값이므로 "이전 기수에서 가져옴" 표시를 빼고 운영자 지정 필드에 남긴다(admin-v1.md "이전 기수 정보 자동완성")
         val row = dsl.select(ACTIVITIES.INHERITED_FIELDS, ACTIVITIES.CURATED_FIELDS).from(ACTIVITIES).where(ACTIVITIES.ID.eq(activityId)).fetchOne() ?: return false
         val updated = dsl.update(ACTIVITIES)
             .set(ACTIVITIES.ELIGIBILITY, EligibilityRows.jsonb(eligibility))
             .set(ACTIVITIES.INHERITED_FIELDS, InheritedFields.jsonb(InheritedFields.read(row.value1()) - InheritedFields.ELIGIBILITY))
-            .set(ACTIVITIES.CURATED_FIELDS, CuratedFields.jsonb(CuratedFields.read(row.value2()) + CuratedFields.ELIGIBILITY))
+            .set(ACTIVITIES.CURATED_FIELDS, CuratedFields.jsonb(CuratedFields.read(row.value2()) + listOfNotNull(CuratedFields.ELIGIBILITY.takeIf { curate })))
             .set(ACTIVITIES.UPDATED_AT, LocalDateTime.now())
             .where(ACTIVITIES.ID.eq(activityId))
             .execute() > 0
@@ -201,7 +201,7 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
     // 활동 장소(native-v1.md "활동 장소"): 활동 기간 행의 네 열을 함께 쓴다(CHECK: 모두 null이거나 모두 값). curated(시간 지정) 플래그는 건드리지 않고
     // activities.curated_fields에 place를 남겨 수집기가 다시 쓸 때 보존한다
     @Transactional
-    override fun updatePlace(activityId: Id, place: Address?): Boolean {
+    override fun updatePlace(activityId: Id, place: Address?, curate: Boolean): Boolean {
         val curated = dsl.select(ACTIVITIES.CURATED_FIELDS).from(ACTIVITIES).where(ACTIVITIES.ID.eq(activityId)).fetchOne()?.value1() ?: return false
         val now = LocalDateTime.now()
         val scheduleId = slotScheduleId(activityId, ScheduleSlot.ACTIVITY, now)
@@ -215,7 +215,7 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
             .where(SCHEDULES.ID.eq(scheduleId))
             .execute()
         dsl.update(ACTIVITIES)
-            .set(ACTIVITIES.CURATED_FIELDS, CuratedFields.jsonb(CuratedFields.read(curated) + CuratedFields.PLACE))
+            .set(ACTIVITIES.CURATED_FIELDS, CuratedFields.jsonb(CuratedFields.read(curated) + listOfNotNull(CuratedFields.PLACE.takeIf { curate })))
             .set(ACTIVITIES.UPDATED_AT, now)
             .where(ACTIVITIES.ID.eq(activityId))
             .execute()
