@@ -12,7 +12,9 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
+import io.wid.dearby.adaptor.persistence.jooq.tables.CardBlocks
 import io.wid.dearby.adaptor.persistence.jooq.tables.CardQrCodes
+import io.wid.dearby.adaptor.persistence.jooq.tables.CardReports
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist
@@ -116,9 +118,19 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val BUSINESS_CARDS: BusinessCards get() = BusinessCards.BUSINESS_CARDS
 
     /**
+     * The table <code>public.card_blocks</code>.
+     */
+    val CARD_BLOCKS: CardBlocks get() = CardBlocks.CARD_BLOCKS
+
+    /**
      * The table <code>public.card_qr_codes</code>.
      */
     val CARD_QR_CODES: CardQrCodes get() = CardQrCodes.CARD_QR_CODES
+
+    /**
+     * The table <code>public.card_reports</code>.
+     */
+    val CARD_REPORTS: CardReports get() = CardReports.CARD_REPORTS
 
     /**
      * The table <code>public.collection_feedback</code>.
@@ -331,7 +343,9 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         ActivityTags.ACTIVITY_TAGS,
         AppleSignInStates.APPLE_SIGN_IN_STATES,
         BusinessCards.BUSINESS_CARDS,
+        CardBlocks.CARD_BLOCKS,
         CardQrCodes.CARD_QR_CODES,
+        CardReports.CARD_REPORTS,
         CollectionFeedback.COLLECTION_FEEDBACK,
         CollectionRuns.COLLECTION_RUNS,
         CollectionWatchlist.COLLECTION_WATCHLIST,

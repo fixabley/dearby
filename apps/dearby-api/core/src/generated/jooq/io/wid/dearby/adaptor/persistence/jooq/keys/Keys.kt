@@ -13,7 +13,9 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
+import io.wid.dearby.adaptor.persistence.jooq.tables.CardBlocks
 import io.wid.dearby.adaptor.persistence.jooq.tables.CardQrCodes
+import io.wid.dearby.adaptor.persistence.jooq.tables.CardReports
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist
@@ -62,7 +64,9 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivityRolesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivityTagsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.AppleSignInStatesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.BusinessCardsRecord
+import io.wid.dearby.adaptor.persistence.jooq.tables.records.CardBlocksRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.CardQrCodesRecord
+import io.wid.dearby.adaptor.persistence.jooq.tables.records.CardReportsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.CollectionFeedbackRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.CollectionRunsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.CollectionWatchlistRecord
@@ -126,8 +130,10 @@ val ACTIVITY_ROLES_PKEY: UniqueKey<ActivityRolesRecord> = Internal.createUniqueK
 val ACTIVITY_TAGS_PKEY: UniqueKey<ActivityTagsRecord> = Internal.createUniqueKey(ActivityTags.ACTIVITY_TAGS, DSL.name("activity_tags_pkey"), arrayOf(ActivityTags.ACTIVITY_TAGS.ACTIVITY_ID, ActivityTags.ACTIVITY_TAGS.TAG_ID), true)
 val APPLE_SIGN_IN_STATES_PKEY: UniqueKey<AppleSignInStatesRecord> = Internal.createUniqueKey(AppleSignInStates.APPLE_SIGN_IN_STATES, DSL.name("apple_sign_in_states_pkey"), arrayOf(AppleSignInStates.APPLE_SIGN_IN_STATES.ID), true)
 val BUSINESS_CARDS_PKEY: UniqueKey<BusinessCardsRecord> = Internal.createUniqueKey(BusinessCards.BUSINESS_CARDS, DSL.name("business_cards_pkey"), arrayOf(BusinessCards.BUSINESS_CARDS.ID), true)
+val CARD_BLOCKS_PKEY: UniqueKey<CardBlocksRecord> = Internal.createUniqueKey(CardBlocks.CARD_BLOCKS, DSL.name("card_blocks_pkey"), arrayOf(CardBlocks.CARD_BLOCKS.ID), true)
 val CARD_QR_CODES_CODE_HASH_KEY: UniqueKey<CardQrCodesRecord> = Internal.createUniqueKey(CardQrCodes.CARD_QR_CODES, DSL.name("card_qr_codes_code_hash_key"), arrayOf(CardQrCodes.CARD_QR_CODES.CODE_HASH), true)
 val CARD_QR_CODES_PKEY: UniqueKey<CardQrCodesRecord> = Internal.createUniqueKey(CardQrCodes.CARD_QR_CODES, DSL.name("card_qr_codes_pkey"), arrayOf(CardQrCodes.CARD_QR_CODES.ID), true)
+val CARD_REPORTS_PKEY: UniqueKey<CardReportsRecord> = Internal.createUniqueKey(CardReports.CARD_REPORTS, DSL.name("card_reports_pkey"), arrayOf(CardReports.CARD_REPORTS.ID), true)
 val COLLECTION_FEEDBACK_PKEY: UniqueKey<CollectionFeedbackRecord> = Internal.createUniqueKey(CollectionFeedback.COLLECTION_FEEDBACK, DSL.name("collection_feedback_pkey"), arrayOf(CollectionFeedback.COLLECTION_FEEDBACK.ID), true)
 val COLLECTION_RUNS_PKEY: UniqueKey<CollectionRunsRecord> = Internal.createUniqueKey(CollectionRuns.COLLECTION_RUNS, DSL.name("collection_runs_pkey"), arrayOf(CollectionRuns.COLLECTION_RUNS.ID), true)
 val COLLECTION_RUNS_PROGRAM_ID_RUN_DATE_KEY: UniqueKey<CollectionRunsRecord> = Internal.createUniqueKey(CollectionRuns.COLLECTION_RUNS, DSL.name("collection_runs_program_id_run_date_key"), arrayOf(CollectionRuns.COLLECTION_RUNS.PROGRAM_ID, CollectionRuns.COLLECTION_RUNS.RUN_DATE), true)

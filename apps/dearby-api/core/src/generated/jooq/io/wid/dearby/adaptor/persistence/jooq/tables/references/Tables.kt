@@ -13,7 +13,9 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.AppleSignInStates
 import io.wid.dearby.adaptor.persistence.jooq.tables.BusinessCards
+import io.wid.dearby.adaptor.persistence.jooq.tables.CardBlocks
 import io.wid.dearby.adaptor.persistence.jooq.tables.CardQrCodes
+import io.wid.dearby.adaptor.persistence.jooq.tables.CardReports
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist
@@ -98,9 +100,19 @@ val APPLE_SIGN_IN_STATES: AppleSignInStates = AppleSignInStates.APPLE_SIGN_IN_ST
 val BUSINESS_CARDS: BusinessCards = BusinessCards.BUSINESS_CARDS
 
 /**
+ * The table <code>public.card_blocks</code>.
+ */
+val CARD_BLOCKS: CardBlocks = CardBlocks.CARD_BLOCKS
+
+/**
  * The table <code>public.card_qr_codes</code>.
  */
 val CARD_QR_CODES: CardQrCodes = CardQrCodes.CARD_QR_CODES
+
+/**
+ * The table <code>public.card_reports</code>.
+ */
+val CARD_REPORTS: CardReports = CardReports.CARD_REPORTS
 
 /**
  * The table <code>public.collection_feedback</code>.
