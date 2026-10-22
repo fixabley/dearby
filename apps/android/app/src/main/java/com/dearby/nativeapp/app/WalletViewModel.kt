@@ -67,7 +67,7 @@ class WalletViewModel(private val account: AccountViewModel) : ViewModel() {
         } catch (e: AccountException) {
             when (e.error) {
                 AccountError.UNAUTHORIZED -> { mutable.update { it.copy(needSignIn = true) }; return }
-                AccountError.CONFLICT -> "내 명함이에요."
+                AccountError.CONFLICT -> if (e.code == "BLOCKED") "차단한 사람의 명함이에요." else "내 명함이에요."
                 AccountError.NOT_FOUND -> "지워진 명함이라 저장할 수 없어요."
                 AccountError.FORBIDDEN -> "명함 주인에게 QR을 다시 보여 달라고 하세요."
                 else -> "명함을 저장하지 못했어요. 연결을 확인하고 다시 시도해 주세요."
@@ -75,6 +75,27 @@ class WalletViewModel(private val account: AccountViewModel) : ViewModel() {
         }
         pending = null
         mutable.update { it.copy(notice = notice) }
+    }
+
+    /** 신고하기 (contract "명함 신고·차단"): the card stays; the result is a notice. */
+    fun report(cardId: String, reason: String, detail: String?) = viewModelScope.launch {
+        mutable.update { it.copy(busy = true, message = null) }
+        val notice = try {
+            account.authorized { account.client.reportCard(cardId, reason, detail, it) }
+            "신고를 받았어요. 24시간 안에 확인할게요."
+        } catch (e: AccountException) { "신고를 보내지 못했어요. 연결을 확인하고 다시 시도해 주세요." }
+        mutable.update { it.copy(busy = false, notice = notice) }
+    }
+    /** 삭제하고 차단하기: every card of that owner leaves the list, which also closes the open detail. */
+    fun block(cardId: String) = viewModelScope.launch {
+        mutable.update { it.copy(busy = true, message = null) }
+        try {
+            account.authorized { account.client.block(cardId, it) }
+            reload()
+            mutable.update { it.copy(busy = false) }
+        } catch (e: AccountException) {
+            mutable.update { it.copy(busy = false, message = "차단하지 못했어요. 연결을 확인하고 다시 시도해 주세요.") }
+        }
     }
 
     /** 내 명함도 건네기: the owner of the received [cardId] gets [myCardId] in the same activity; the receipt becomes 맞교환. */

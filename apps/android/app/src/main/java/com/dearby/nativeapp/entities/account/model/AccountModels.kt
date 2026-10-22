@@ -134,6 +134,12 @@ fun JSONObject.toActivityInfoPage() = ActivityInfoPage(getJSONArray("items").obj
 }, if (isNull("nextCursor")) null else getLong("nextCursor"))
 
 fun JSONObject.toWallet() = Wallet(getJSONArray("items").objects().map { it.toReceipt() })
+/** One person blocked from 받은 명함 (contract "명함 신고·차단"): [name] is the card name when blocked. */
+data class BlockedPerson(val id: String, val name: String, val blockedAt: String)
+
+fun JSONObject.toBlockedPerson() = BlockedPerson(getString("id"), getString("name"), getString("blockedAt"))
+fun JSONObject.toBlockedPeople(): List<BlockedPerson> = getJSONArray("items").let { items -> (0 until items.length()).map { items.getJSONObject(it).toBlockedPerson() } }
+
 fun JSONObject.toQrCode() = QrCode(getString("id"), getString("code"), getString("expiresAt"))
 
 fun JSONObject.toReceipt(): WalletReceipt {

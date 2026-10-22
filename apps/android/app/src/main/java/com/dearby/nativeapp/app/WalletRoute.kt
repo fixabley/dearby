@@ -26,7 +26,8 @@ import com.dearby.nativeapp.pages.wallet.WalletPage
     val mine by myCards.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     LaunchedEffect(Unit) { if (mine.phase != MyCardsPhase.LOADED) myCards.load() }
-    WalletCardPage(received, mine.cards.map { it.id to it.title }, state.busy, state.message, close, { openContact(context, it) }) { myCardId ->
+    WalletCardPage(received, mine.cards.map { it.id to it.title }, state.busy, state.message, close, { openContact(context, it) },
+        report = { reason, detail -> wallet.report(received.card.id, reason, detail) }, block = { wallet.block(received.card.id) }) { myCardId ->
         wallet.reciprocate(received.card.id, myCardId)
     }
 }

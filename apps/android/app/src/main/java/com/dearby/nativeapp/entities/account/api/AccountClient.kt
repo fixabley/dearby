@@ -10,6 +10,8 @@ import com.dearby.nativeapp.entities.account.model.toImportJson
 import com.dearby.nativeapp.entities.account.model.toMyActivities
 import com.dearby.nativeapp.entities.account.model.toMyActivity
 import com.dearby.nativeapp.entities.account.model.toCardList
+import com.dearby.nativeapp.entities.account.model.toBlockedPeople
+import com.dearby.nativeapp.entities.account.model.toBlockedPerson
 import com.dearby.nativeapp.entities.account.model.toQrCode
 import com.dearby.nativeapp.entities.account.model.toReceipt
 import com.dearby.nativeapp.entities.account.model.toWallet
@@ -169,6 +171,15 @@ class AccountClient(private val api: String, private val transport: Transport = 
      */
     suspend fun saveReceipt(cardId: String, activityId: Long?, code: String?, session: AccountSession) =
         send("PUT", "wallet/cards/$cardId", JSONObject().apply { activityId?.let { put("activityId", it) }; code?.let { put("code", it) } }, session).toReceipt()
+    /** 신고하기 (`POST /v1/cards/:id/reports`, contract "명함 신고·차단"): [reason] is SPAM·IMPERSONATION·INAPPROPRIATE·OTHER. */
+    suspend fun reportCard(cardId: String, reason: String, detail: String?, session: AccountSession) {
+        request("POST", "cards/$cardId/reports", JSONObject().put("reason", reason).apply { detail?.let { put("detail", it) } }, session)
+    }
+    /** 삭제하고 차단하기 (`POST /v1/wallet/blocks`): the card's owner leaves 받은 명함 and cannot be received again. */
+    suspend fun block(cardId: String, session: AccountSession) = send("POST", "wallet/blocks", JSONObject().put("cardId", cardId), session).toBlockedPerson()
+    suspend fun blocks(session: AccountSession) = send("GET", "wallet/blocks", null, session).toBlockedPeople()
+    /** 차단 해제: removed cards do not come back. */
+    suspend fun unblock(id: String, session: AccountSession) { request("DELETE", "wallet/blocks/$id", null, session) }
     /** QR 보이기 (`POST /v1/cards/:id/qr-codes`, contract "명함 QR 코드"): a new code for the owner's card. */
     suspend fun issueQrCode(cardId: String, session: AccountSession) = send("POST", "cards/$cardId/qr-codes", JSONObject(), session).toQrCode()
     /** The QR screen closed or was refreshed: the code stops working (204 even when it already had). */
