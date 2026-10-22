@@ -43,8 +43,8 @@ class CardQrCodes(private val codes: CardQrCodeRepository, private val cards: Ca
     // 코드 없으면 403 CARD_CODE_REQUIRED, 만료·모르는·다른 명함 코드면 403 CARD_CODE_EXPIRED
     @Transactional(readOnly = true)
     fun require(cardId: UUID, code: String?) {
-        if (code.isNullOrEmpty()) throw PermissionDeniedException(DETAIL, "card code missing: $cardId", CODE_REQUIRED)
-        if (!codes.isValid(cardId, hash(code), now())) throw PermissionDeniedException(DETAIL, "card code expired or unknown: $cardId", CODE_EXPIRED)
+        if (code.isNullOrEmpty()) throw PermissionDeniedException(DETAIL, "card code missing: $cardId", CODE_REQUIRED, "card-code-required")
+        if (!codes.isValid(cardId, hash(code), now())) throw PermissionDeniedException(DETAIL, "card code expired or unknown: $cardId", CODE_EXPIRED, "card-code-expired")
     }
 
     private fun owned(ownerId: UserId, cardId: UUID) {

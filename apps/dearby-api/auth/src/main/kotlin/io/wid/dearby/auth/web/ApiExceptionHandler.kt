@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
+import java.net.URI
 
 // 응답에는 detail만 싣고 내부 메시지는 로그에만 남긴다
 @RestControllerAdvice
@@ -29,7 +30,10 @@ class ApiExceptionHandler {
     fun authenticationFailed(e: AuthenticationFailedException) = problem(HttpStatus.UNAUTHORIZED, e.detail, e)
 
     @ExceptionHandler(PermissionDeniedException::class)
-    fun permissionDenied(e: PermissionDeniedException) = problem(HttpStatus.FORBIDDEN, e.detail, e).also { detail -> e.code?.let { detail.setProperty("code", it) } }
+    fun permissionDenied(e: PermissionDeniedException) = problem(HttpStatus.FORBIDDEN, e.detail, e).also { detail ->
+        e.code?.let { detail.setProperty("code", it) }
+        e.type?.let { detail.type = URI.create("$PROBLEM_TYPES$it") }
+    }
 
     @ExceptionHandler(ConflictException::class)
     fun conflict(e: ConflictException) = problem(HttpStatus.CONFLICT, e.detail, e).also { detail -> e.code?.let { detail.setProperty("code", it) } }
@@ -44,5 +48,9 @@ class ApiExceptionHandler {
     private fun problem(status: HttpStatus, detail: String, e: RuntimeException): ProblemDetail {
         log.info("{} {}", status.value(), e.message)
         return ProblemDetail.forStatusAndDetail(status, detail)
+    }
+
+    private companion object {
+        const val PROBLEM_TYPES = "https://dearby.wid.io.kr/problems/"
     }
 }
