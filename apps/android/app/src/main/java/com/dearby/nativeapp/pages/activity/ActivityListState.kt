@@ -79,7 +79,9 @@ data class ProgramActivities(
  * [refreshing] while a pull to refresh re-reads the first program page (contract "발견 탭 스크롤 동작"); the list stays on screen meanwhile,
  * and when that read fails with a list showing, [refreshFailed] keeps the list and the page shows a passing notice (iOS parity).
  * [mineNotice] is a failed 내 활동 read or write while signed in (contract "내 활동 서버 저장"), shown once; [consentNeeded] when the
- * write was refused for a stale consent (403 CONSENT_REQUIRED), which offers the consent screen instead.
+ * write was refused for a stale consent (403 CONSENT_REQUIRED), which offers the consent screen instead. [linked] is an activity an App Link
+ * asked for, loaded and ready for 발견 to open its detail; [linkNotice] says the link's activity is gone or could not be read (contract
+ * "유니버설 링크·App Links·활동 공유·오픈그래프"). Both are consumed once.
  */
 data class ActivityListState(
     val phase: ActivityListPhase = ActivityListPhase.LOADING, val query: String = "", val openOnly: Boolean = true, val programs: List<ProgramState> = emptyList(),
@@ -87,6 +89,7 @@ data class ActivityListState(
     val known: Map<String, ActivityState> = emptyMap(), val nextCursor: String? = null, val loadingMore: Boolean = false,
     val moreFailed: Boolean = false, val askingId: String? = null, val progress: Map<String, ProgressState> = emptyMap(), val refreshing: Boolean = false,
     val refreshFailed: Boolean = false, val mineNotice: String? = null, val consentNeeded: Boolean = false,
+    val linked: String? = null, val linkNotice: String? = null,
 ) {
     val asking get() = askingId?.let(known::get)
     /** Applied activities, the nearest next stage first; activities without a dated next stage come last. */

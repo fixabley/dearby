@@ -90,7 +90,7 @@ import com.dearby.nativeapp.widgets.card.cardContent.ContactState
 private val reportReasons = listOf("SPAM" to "스팸·광고", "IMPERSONATION" to "다른 사람 사칭", "INAPPROPRIATE" to "부적절한 내용", "OTHER" to "기타")
 
 /** 신고 사유 radio list; 기타 needs a description (up to 500 characters), the others may add one. */
-@Composable private fun ReportDialog(dismiss: () -> Unit, send: (String, String?) -> Unit) {
+@Composable internal fun ReportDialog(dismiss: () -> Unit, send: (String, String?) -> Unit) {
     var reason by remember { mutableStateOf<String?>(null) }
     var detail by remember { mutableStateOf("") }
     val ready = reason != null && (reason != "OTHER" || detail.isNotBlank())

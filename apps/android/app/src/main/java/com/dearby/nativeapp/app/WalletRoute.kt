@@ -5,6 +5,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dearby.nativeapp.pages.cards.MyCardsPhase
 import com.dearby.nativeapp.pages.wallet.ReceivedCard
+import com.dearby.nativeapp.pages.wallet.SharedCard
+import com.dearby.nativeapp.pages.wallet.SharedCardPage
 import com.dearby.nativeapp.pages.wallet.WalletCardPage
 import com.dearby.nativeapp.pages.wallet.WalletPage
 
@@ -30,4 +32,10 @@ import com.dearby.nativeapp.pages.wallet.WalletPage
         report = { reason, detail -> wallet.report(received.card.id, reason, detail) }, block = { wallet.block(received.card.id) }) { myCardId ->
         wallet.reciprocate(received.card.id, myCardId)
     }
+}
+
+/** 공유받은 명함 보기 (contract "유니버설 링크·App Links·활동 공유·오픈그래프"); saving lands on 받은 명함 › that card's detail through [WalletState.opened]. */
+@Composable fun SharedCardRoute(shared: SharedCard, wallet: WalletViewModel, close: () -> Unit) {
+    val context = LocalContext.current
+    SharedCardPage(shared, close, { openContact(context, it) }, report = { reason, detail -> shared.card?.let { wallet.report(it.id, reason, detail) } }, save = wallet::saveShared)
 }

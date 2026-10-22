@@ -163,6 +163,12 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun deleteCard(id: String, session: AccountSession) { request("DELETE", "cards/$id", null, session) }
     /** Your non-withdrawn cards in creation order, so the newest is last. */
     suspend fun cards(session: AccountSession) = send("GET", "cards", null, session).toCardList()
+    /**
+     * The public card (`GET /v1/cards/:id?code=`, the same read as the web `/cards/:id`; contract "유니버설 링크·App Links·활동 공유·오픈그래프"):
+     * 403 (FORBIDDEN) is a missing or expired QR [code], 404 a withdrawn card. The [session], when signed in, lets the owner and holders read it without a code.
+     */
+    suspend fun publicCard(cardId: String, code: String?, session: AccountSession?) =
+        send("GET", "cards/$cardId" + (code?.let { "?code=$it" } ?: ""), null, session).toPublishedCard()
     /** The account's received cards (`GET /v1/wallet`). */
     suspend fun wallet(session: AccountSession) = send("GET", "wallet", null, session).toWallet()
     /**

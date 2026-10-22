@@ -12,7 +12,7 @@ ViewModels survive Activity recreation but reset on process restart. Navigation,
 
 2026-10-17 프로필·명함 v2: `pages/profile`는 State(`ProfileViewState`, `HistoryDraft`, `FunnelState`, `VersionsState`)와 콜백만 그리고, 엔티티 타입은 `ProfileState.kt`의 변환 함수(`rowState`, `view`)로 감싼다. 파일 고르기와 검색 요청은 `app`(`ProfileRoute`, `ProfileViewModel`)이 맡는다. `shared/lib/MarkdownDocument`·`shared/ui/MarkdownBody`가 마크다운 부분집합을 그린다(토큰 칩 편집기 `TemplateEditor`는 2026-10-18 삭제).
 
-2026-10-18 명함 공유 삭제: `pages/qr`·`features/scan`·`QrShareCard`·`QrCode`·`ScannedLink`·`WalletGroups`를 지웠다. `pages/cards`(내 명함 목록·고치기 진입)와 `pages/wallet/WalletCardPage`(받은 명함 상세)가 대신 있다. `shared/config/AppLinks`는 애플 로그인 복귀 링크만 해석하고 App Links·카메라 권한·zxing·CameraX는 없다.
+2026-10-18 명함 공유 삭제: `pages/qr`·`features/scan`·`QrShareCard`·`QrCode`·`ScannedLink`·`WalletGroups`를 지웠다. `pages/cards`(내 명함 목록·고치기 진입)와 `pages/wallet/WalletCardPage`(받은 명함 상세)가 대신 있다. 카메라 권한·CameraX는 없다. 2026-10-22 계약 "유니버설 링크·App Links·활동 공유·오픈그래프": `shared/config/AppLinks`가 애플 로그인 복귀, 받은 명함 링크(`dearby://cards/…`와 App Link `https://<웹 origin>/cards/…`를 한 파서 `cardLink`로), App Link `/activities/<id>`(`activityAppLink`)를 해석한다. 명함 App Link는 `pages/wallet/SharedCardPage`(공유받은 명함 보기) 또는 받은 명함 상세로 연다.
 
 2026-10-20 설정: `pages/settings`(`SettingsPage`·`SettingsState`)는 표시 문자열과 콜백만 받고, `app/SettingsViewModel`이 `entities/account`의 `AccountSummary`·`LinkedIdentity`·`PasskeyItem`을 읽어 날짜를 서울 `yyyy.M.d`로 바꾼다. Apple/Google 연결은 `AccountViewModel`의 연결 모드(`link`)이고 `SavedStateHandle`의 `web.linkMode`가 애플 복귀 링크를 연결로 구분한다. `AccountClient`의 전송은 OkHttp다(`PATCH`).
 

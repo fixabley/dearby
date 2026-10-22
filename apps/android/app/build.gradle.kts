@@ -1,3 +1,5 @@
+import java.net.URI
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -6,7 +8,8 @@ plugins {
 fun connection(name: String) = providers.environmentVariable(name).orElse(providers.gradleProperty(name))
     .orNull?.takeIf { it.isNotBlank() }
 val apiOrigin = connection("DEARBY_API_ORIGIN")
-// Where the public card pages live; the 내 명함 QR encodes `<web origin>/cards/<id>` (contract "명함 교환").
+// Where the public card pages live; the 내 명함 QR encodes `<web origin>/cards/<id>` (contract "명함 교환"). Its host is also the App Links host
+// (contract "유니버설 링크·App Links·활동 공유·오픈그래프"), so the manifest filter and the link parser read the same origin.
 val webOrigin = connection("DEARBY_WEB_ORIGIN") ?: "https://dearby.wid.io.kr"
 // Google sign-in (contract "구글 로그인 — 2026-10-19 네이티브"): the web OAuth client id the ID token is issued for. Empty hides the button.
 val googleServerClientId = connection("GOOGLE_SERVER_CLIENT_ID") ?: ""
@@ -27,6 +30,7 @@ android {
         // Play release CI (android-play-release.yml) passes a run-based code above the manual first upload (1).
         versionCode = connection("ANDROID_VERSION_CODE")?.toInt() ?: 1
         versionName = "0.1.0"
+        manifestPlaceholders["webHost"] = URI(webOrigin).host
     }
     uploadSigning?.let { keys ->
         signingConfigs.create("upload") {

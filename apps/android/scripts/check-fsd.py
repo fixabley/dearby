@@ -26,7 +26,7 @@ API = {
     'pages.account': {'SignInSheet', 'LinkAccountSheet'},
     'pages.settings': {'SettingsPage', 'SettingsState', 'SettingsPhase', 'SettingsIdentityState', 'SettingsPasskeyState', 'SettingsBlockState'},
     'pages.onboarding': {'IntroPage'},
-    'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletCardPage', 'ReceivedCard', 'filterWallet', 'WalletSection', 'walletSections'},
+    'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletCardPage', 'SharedCardPage', 'SharedCard', 'ReceivedCard', 'filterWallet', 'WalletSection', 'walletSections'},
     'features.calendar': {'CalendarConflictSheet', 'CalendarAccessState', 'CalendarConflictFlow', 'openCalendarInsert'},
     'pages.activity': {'ProgramActivities', 'ApplicationReportDialog', 'ActivityListState', 'ActivityProgressPage', 'ActivityDetailPage', 'ProgramState', 'ProgramPhase', 'MyActivitiesPage', 'ActivityState', 'ScheduleItemState', 'ActivityListPhase', 'ActivityListPage'},
     'entities.activity': {'api.fetchActivities', 'api.fetchActivity', 'api.fetchPrograms', 'model.ActivityCategory', 'model.ActivityModel', 'model.ActivityPage', 'model.EligibilityCondition', 'model.EligibilityGroup', 'model.EligibilityItem', 'model.Place', 'model.ProgramPage', 'model.ProgramSummary', 'model.Recurrence', 'model.ScheduleModel', 'model.ScheduleStatus', 'model.Stage', 'model.StageSchedule', 'model.Tag', 'model.currentStage', 'model.instant', 'model.lines', 'model.safeHttpsUrl', 'model.scheduleText', 'model.stageBadge', 'model.stages'},

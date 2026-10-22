@@ -21,6 +21,8 @@ private enum class Tab(val label: String, val icon: ImageVector) {
 private sealed interface Route {
     /** A received card, by receipt id, so 내 명함도 건네기 shows the updated state. */
     data class Detail(val id: String) : Route
+    /** 공유받은 명함 보기 for a card App Link (contract "유니버설 링크·App Links·활동 공유·오픈그래프"); the card lives in [WalletState.shared]. */
+    data object Shared : Route
     /** 내 명함 QR 보이기 for one of the account's cards. */
     data class Qr(val card: PublishedCard) : Route
     data object Composer : Route
@@ -35,6 +37,8 @@ private sealed interface Route {
     var cardsSegment by remember { mutableStateOf(CardsSegment.MINE) }
     // 내 활동에서 보기 (contract "내 활동 직접 추가"): the activity the 내 활동 tab should open next, consumed by its route.
     var mineOpen by remember { mutableStateOf<String?>(null) }
+    // An App Link `/activities/<id>` (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): the activity the 발견 tab should open next.
+    var discoveryOpen by remember { mutableStateOf<String?>(null) }
     var route by remember { mutableStateOf<Route?>(null) }
     var activityDetail by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<String?>(null) }
@@ -49,6 +53,7 @@ private sealed interface Route {
         }
     }
     BackHandler(route is Route.Detail || route is Route.Qr) { route = null }
+    BackHandler(route == Route.Shared) { wallet.closeShared() }
     val compose = { publish.start(); route = Route.Composer }
     // The fixed header buttons of every tab (contract "알림 아이콘은 다섯 탭 모두 우상단 고정"·"설정"); the notification screen is still a placeholder notice.
     val openSettings = { route = Route.Settings }
@@ -58,7 +63,17 @@ private sealed interface Route {
     val auth by account.state.collectAsStateWithLifecycle()
     // 명함 교환 (contract): a dearby://cards/… link saved a card → open it; signed out → sign in, then the link is saved.
     // A saved exchanged card opens on the 명함 tab's 받은 명함 segment with its detail pushed.
+    // A card App Link not in the wallet opens 공유받은 명함 보기 over whatever was showing; once it closes (or saved), the route goes too.
+    // Declared before the `opened` effect so a save's 받은 명함 detail, set in the same frame, wins.
+    LaunchedEffect(walletState.shared) { if (walletState.shared != null) route = Route.Shared else if (route == Route.Shared) route = null }
     LaunchedEffect(walletState.opened) { walletState.opened?.let { tab = Tab.Cards; cardsSegment = CardsSegment.RECEIVED; activityDetail = false; route = Route.Detail(it); wallet.consumeOpened() } }
+    // A linked activity, once loaded, opens on 발견 with its detail pushed over whatever was showing; a gone or unreadable one only says so.
+    val activityListState by activityModel.state.collectAsStateWithLifecycle()
+    LaunchedEffect(activityListState.linked, activityListState.linkNotice) {
+        activityListState.linked?.let { wallet.closeShared(); route = null; tab = Tab.Discovery; discoveryOpen = it }
+        activityListState.linkNotice?.let { notice = it }
+        if (activityListState.linked != null || activityListState.linkNotice != null) activityModel.consumeLinked()
+    }
     LaunchedEffect(auth.phase, walletState.needSignIn) { if (auth.phase == AccountPhase.SIGNED_IN && walletState.needSignIn) wallet.retryPending() }
     // Every screen sits on the theme `background`, which this Surface spreads under the status bar, navigation bar and keyboard too (contract "안전 영역
     // 배경"); cards, sheets and tiles are `surface` on top. Every screen inside starts with a `DearbyTopBar`, which takes the status-bar inset itself, so
@@ -71,6 +86,7 @@ private sealed interface Route {
                 when (val screen = route) {
                     is Route.Detail -> walletState.cards.firstOrNull { it.id == screen.id }?.let { WalletCardRoute(it, wallet, myCards) { route = null } }
                         ?: LaunchedEffect(screen) { route = null }
+                    Route.Shared -> walletState.shared?.let { SharedCardRoute(it, wallet, wallet::closeShared) }
                     is Route.Qr -> CardQrRoute(screen.card, activityModel, myCards) { route = null }
                     Route.Composer -> CardComposerRoute(publish, account) { route = null }
                     Route.Settings -> SettingsRoute(settings, account, profile) { route = null }
@@ -78,7 +94,7 @@ private sealed interface Route {
                         // 설정·알림 sit in each tab's pinned `DearbyTopBar` (contract "iOS 상단 바…" Android sentence).
                         Tab.Discovery, Tab.Mine -> key(tab) {
                             ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }, settings = openSettings, notify = notify,
-                                openInMine = { mineOpen = it; tab = Tab.Mine }, open = mineOpen.takeIf { tab == Tab.Mine }, consumeOpen = { mineOpen = null }, openConsent = { activityDetail = false; tab = Tab.Profile }) { activityDetail = it }
+                                openInMine = { mineOpen = it; tab = Tab.Mine }, open = if (tab == Tab.Mine) mineOpen else discoveryOpen, consumeOpen = { if (tab == Tab.Mine) mineOpen = null else discoveryOpen = null }, openConsent = { activityDetail = false; tab = Tab.Profile }) { activityDetail = it }
                         }
                         Tab.Cards -> CardsRoute(cardsSegment, { cardsSegment = it }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
                             edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify)
@@ -109,7 +125,6 @@ private sealed interface Route {
         lifecycle.lifecycle.addObserver(observer)
         onDispose { lifecycle.lifecycle.removeObserver(observer) }
     }
-    val activityListState by activityModel.state.collectAsStateWithLifecycle()
     activityListState.asking?.let { asking ->
         ModalBottomSheet({ activityModel.answer(ActivityViewModel.ApplyAnswer.NOT_YET) }, containerColor = MaterialTheme.colorScheme.surface) {
             ApplyConfirmationSheet(asking.title, onApplied = { activityModel.answer(ActivityViewModel.ApplyAnswer.APPLIED) },
