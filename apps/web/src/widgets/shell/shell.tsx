@@ -34,6 +34,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Link className="inline-flex min-h-11 items-center underline" href="/terms">
             이용약관
           </Link>
+          <Link className="inline-flex min-h-11 items-center underline" href="/support">
+            지원
+          </Link>
         </nav>
       </footer>
     </NavTitleProvider>

@@ -21,6 +21,16 @@ import {
 const guestSaveBody = z
   .object({ activityId: z.number().int().positive().optional(), code: z.string().regex(TOKEN).optional() })
   .strict();
+// POST cards/:id/reports and guest/blocks (contract "명함 신고·차단").
+const reportBody = z
+  .object({
+    reason: z.enum(["SPAM", "IMPERSONATION", "INAPPROPRIATE", "OTHER"]),
+    detail: z.string().trim().min(1).max(500).optional(),
+    code: z.string().regex(TOKEN).optional(),
+  })
+  .strict()
+  .refine((value) => value.reason !== "OTHER" || value.detail !== undefined);
+const blockBody = z.object({ cardId: uuid }).strict();
 const saveSchema = z.object({
   cardId: uuid,
   status: z.enum(["saved", "alreadySaved"]),
@@ -101,6 +111,8 @@ export async function proxy(
   const logoRoute = segments.length === 3 && segments[0] === "programs" && segments[2] === "logo";
   const programs = path === "discovery/programs";
   const cardRoute = segments.length === 2 && segments[0] === "cards";
+  const reportRoute = segments.length === 3 && segments[0] === "cards" && segments[2] === "reports";
+  const blockRoute = path === "guest/blocks";
   const search = path === "activities" || programs;
   const method = request.method;
   const allowed =
@@ -108,6 +120,7 @@ export async function proxy(
     (activityRoute && method === "GET") ||
     (logoRoute && method === "GET") ||
     (cardRoute && method === "GET") ||
+    ((reportRoute || blockRoute) && method === "POST") ||
     (path === "guest/cards" && method === "GET") ||
     (segments.length === 3 &&
       segments[0] === "guest" &&
@@ -137,15 +150,20 @@ export async function proxy(
   )
     return failure(403, "FORBIDDEN");
   // Only a guest save forwards a body, and only `{activityId, code}`; no bearer token, forwarding header, or proxy key goes upstream.
-  let body: { activityId?: number; code?: string } | undefined;
+  let body: Record<string, unknown> | undefined;
   if (mutation) {
     try {
       const parsed: unknown = await request.json();
       const guestSave = guest && segments[1] === "cards" && method === "PUT";
       const accepted = guestSave
         ? guestSaveBody.safeParse(parsed)
-        : z.object({}).strict().safeParse(parsed);
+        : reportRoute
+          ? reportBody.safeParse(parsed)
+          : blockRoute
+            ? blockBody.safeParse(parsed)
+            : z.object({}).strict().safeParse(parsed);
       if (!accepted.success) return failure(422, "INVALID_INPUT");
+      if (reportRoute || blockRoute) body = accepted.data;
       if (guestSave) {
         const { activityId, code } = accepted.data as z.infer<typeof guestSaveBody>;
         if (activityId !== undefined || code !== undefined)
@@ -157,7 +175,7 @@ export async function proxy(
   }
   const token = readGuestCookie(request.headers.get("cookie"));
   // A card view also counts this browser's unrecalled saves (contract "명함 QR 코드"), so it carries a well-formed guest token.
-  const cardAsGuest = cardRoute && token !== undefined && TOKEN.test(token) && guestProxyKey() !== undefined;
+  const cardAsGuest = (cardRoute || reportRoute) && token !== undefined && TOKEN.test(token) && guestProxyKey() !== undefined;
   if (guest && token !== undefined && !TOKEN.test(token)) {
     if (path === "guest/session" && method === "DELETE")
       return new Response(null, {
@@ -170,6 +188,8 @@ export async function proxy(
     return Response.json({ items: [] }, { headers });
   if (path === "guest/session" && !token)
     return new Response(null, { status: 204, headers });
+  // Blocking needs this browser's saves; without a cookie there is nothing to block from.
+  if (blockRoute && !token) return failure(401, "GUEST_SESSION_INVALID");
   if (!process.env.DEARBY_API_ORIGIN || (guest && !guestProxyKey()))
     return failure(503, "GUEST_UNAVAILABLE");
   if (!apiOrigin()) return failure(503, "SERVICE_UNAVAILABLE");
@@ -193,9 +213,14 @@ export async function proxy(
       });
     }
     if (!result.ok) {
-      const status = [401, 403, 404, 409, 422, 429, 503].includes(result.status)
+      const status = [400, 401, 403, 404, 409, 422, 429, 503].includes(result.status)
         ? result.status
         : 502;
+      // Only the `BLOCKED` code crosses (contract "명함 신고·차단"); every other body stays upstream.
+      if (status === 409) {
+        const problem: unknown = await result.json().catch(() => undefined);
+        if ((problem as { code?: unknown } | undefined)?.code === "BLOCKED") return failure(409, "BLOCKED");
+      }
       // Never forward arbitrary error bodies, tokens, or upstream headers.
       return failure(
         status,
@@ -223,6 +248,8 @@ export async function proxy(
     if (guest && token) outputHeaders["Set-Cookie"] = guestCookie(token);
     if (method === "DELETE")
       return new Response(null, { status: 204, headers: outputHeaders });
+    if (reportRoute || blockRoute)
+      return Response.json({}, { status: result.status, headers: outputHeaders });
     const json: unknown = await result.json();
     if (guest && method === "PUT") {
       const saved = saveSchema.parse(json);

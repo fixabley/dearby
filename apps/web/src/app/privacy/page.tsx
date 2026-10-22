@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: "개인정보 처리방침",
   description: "Dearby가 어떤 정보를 어디까지 다루는지 설명합니다.",
 };
-// 제품이 실제로 하는 일에 맞춘 방침(계약 native-v1.md, 2026-10-22 기준). 대괄호는 운영자가 채운다.
+// 제품이 실제로 하는 일에 맞춘 방침(계약 native-v1.md, 2026-10-22 기준). 운영자·연락처는 "연락처 공개"(2026-10-22), 남은 대괄호는 운영자가 채운다.
 export default function PrivacyPage() {
   return (
     <article className="legal pt-0 pb-6">
@@ -17,7 +17,7 @@ export default function PrivacyPage() {
       </p>
       <h2>1. 운영자</h2>
       <p>
-        서비스 운영자: <strong>[운영자 이름]</strong> · 연락 이메일: <strong>[연락 이메일]</strong>. 개인정보에 관한 문의와 요청은 이 이메일로
+        서비스 운영자: <strong>팀 WID</strong> · 연락 이메일: <strong>fixabley@naver.com</strong> · 전화: <strong>010-7503-5692</strong>. 개인정보에 관한 문의와 요청은 이 이메일로
         받습니다.
       </p>
       <h2>2. 받는 정보와 쓰는 이유</h2>
@@ -98,7 +98,7 @@ export default function PrivacyPage() {
       <h2>7. 이용자의 권리</h2>
       <p>
         사용자는 앱에서 프로필과 명함을 직접 고치거나 지울 수 있고, 계정 삭제로 모든 정보를 지울 수 있습니다. 열람·정정·삭제·처리 정지 요청은{" "}
-        <strong>[연락 이메일]</strong>로 보내 주시면 지체 없이 처리합니다.
+        <strong>fixabley@naver.com</strong>로 보내 주시면 지체 없이 처리합니다.
       </p>
       <h2>8. 안전 조치</h2>
       <p>

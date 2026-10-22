@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { type Activity, type Card, type GuestItem } from "@/lib/models";
 import {
@@ -15,6 +16,7 @@ import { BottomBar } from "@/shared/ui/bottom-bar";
 import { Button } from "@/shared/ui/button";
 import { CardCodeRequired, MissingCard } from "@/widgets/card/missing-card";
 import { PublicCardBody } from "@/widgets/card/public-card-body";
+import { BlockCard, ReportCard } from "@/widgets/card/report-dialog";
 /**
  * `activity`: the numeric activity id from the owner's QR; shown as `<프로그램> <활동>에서 받은 명함` and saved with the card.
  * `code`: the QR code (contract "명함 QR 코드"); kept in memory only and sent with the view and both saves.
@@ -29,6 +31,9 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState("");
+  // Saved in this browser already (opened from /saved, or just saved): 삭제하고 차단하기 is offered then.
+  const [stored, setStored] = useState(false);
+  const router = useRouter();
   // Drop `code` from the address so a copied or shared link does not carry it.
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -43,7 +48,12 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
       signal: controller.signal,
       headers: code ? { "X-Card-Code": code } : undefined,
     })
-      .then(setCard)
+      .then((found) => {
+        setCard(found);
+        request<{ items: GuestItem[] }>("/guest/cards", { signal: controller.signal })
+          .then((list) => setStored(list.items.some((item) => item.card.id.toLowerCase() === id)))
+          .catch(() => {});
+      })
       .catch((error) => {
         if (controller.signal.aborted) return;
         if (error instanceof RequestError && error.status === 404)
@@ -81,6 +91,7 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
       if (!result.items.some((item) => item.card.id.toLowerCase() === id))
         throw new Error("COOKIE_UNAVAILABLE");
       setSaved(true);
+      setStored(true);
     } catch (error) {
       const failure = saveFailure(error);
       if (error instanceof RequestError && error.status === 403) {
@@ -112,6 +123,11 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
       <article className="mx-auto max-w-[480px] pt-3 pb-64">
         {place && <p className="mb-3 text-center text-footnote text-secondary-label">{place}에서 받은 명함</p>}
         <PublicCardBody card={card} />
+        {/* 신고·차단 (contract "명함 신고·차단"): small text buttons under the card. */}
+        <div className="mt-2 flex justify-center gap-2">
+          <ReportCard id={id} code={code} />
+          {stored && <BlockCard id={id} name={card.name} blocked={() => router.push("/saved")} />}
+        </div>
         <p className="mt-3 px-4 text-footnote text-secondary-label">
           이 브라우저의 쿠키로 저장 목록을 구분해요. 브라우저에 저장한 명함은 30일 뒤 사라져요. 쿠키를 삭제하거나 다른 브라우저를
           사용하면 기존 목록에 접근할 수 없어요.
