@@ -87,7 +87,11 @@ import Observation
         if let activityID = incoming.activityID { receivedLine = await activityName(activityID).map { "\($0)에서 받은 명함" } } else { receivedLine = nil }
         let phase: Shared.Phase
         do {
-            let card = try await account.client.publicCard(incoming.cardID, code: incoming.code, session).cardModel
+            // Signed in, through `authorized` so an expired token is renewed rather than read as a failure.
+            let fetch = { @Sendable [client = account.client] (session: TokenPair?) in
+                try await client.publicCard(incoming.cardID, code: incoming.code, session)
+            }
+            let card = try await (session == nil ? fetch(nil) : account.authorized { try await fetch($0) }).cardModel
             // Signed in, the owner reads it without a code; signed out, an own card shows up only when saving (409).
             let own = session == nil ? false : await myCards()?.contains { $0.id == incoming.cardID } == true
             phase = own ? .ownCard(card) : .loaded(card)
