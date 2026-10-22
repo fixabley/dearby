@@ -12,6 +12,7 @@ import io.wid.dearby.application.activity.ActivityCreation
 import io.wid.dearby.application.collection.ActivityDraftRepository
 import io.wid.dearby.application.collection.CollectionFeedbackRepository
 import io.wid.dearby.application.collection.CollectionSettingsRepository
+import io.wid.dearby.application.catalog.CatalogWrites
 import io.wid.dearby.application.eligibility.EligibilityJson
 import io.wid.dearby.domain.collection.CollectedActivityRef
 import io.wid.dearby.domain.collection.FeedbackKind
@@ -27,7 +28,6 @@ import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.application.tag.TagRepository
 import io.wid.dearby.domain.*
 import io.wid.dearby.domain.curation.CollectionSettings
-import org.springframework.dao.DuplicateKeyException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.net.URI
@@ -47,6 +47,7 @@ class AdminActivityInfoService(
     private val organizationLogos: OrganizationLogoRepository,
     private val effectiveLogos: EffectiveLogos,
     private val feedback: CollectionFeedbackRepository,
+    private val catalog: CatalogWrites,
 ) {
 
     @Transactional(readOnly = true)
@@ -58,14 +59,8 @@ class AdminActivityInfoService(
     }
 
     @Transactional
-    fun createOrganization(name: String, nameEn: String?, parentOrganizationId: Id?): OrganizationListing {
-        val trimmed = requireName(name)
-        val english = optionalText(nameEn, null)
-        parentOrganizationId?.let(::requireOrganization)
-        requireUniqueOrganizationName(parentOrganizationId, trimmed, english, null)
-        val id = unique { organizations.create(trimmed, english, parentOrganizationId) }
-        return organizationListing(id)
-    }
+    fun createOrganization(name: String, nameEn: String?, parentOrganizationId: Id?): OrganizationListing =
+        organizationListing(catalog.createOrganization(name, nameEn, parentOrganizationId))
 
     // 보낸 값만 바꾼다(nameEn은 빈 문자열이면 지운다). 자기 자신이나 자기 하위 조직을 상위로 지정하면 순환이라 거부한다
     @Transactional
@@ -97,15 +92,8 @@ class AdminActivityInfoService(
     }
 
     @Transactional
-    fun createProgram(organizationId: Id, name: String, nameEn: String?, collection: CollectionSettings?): ProgramListing {
-        val trimmed = requireName(name)
-        val english = optionalText(nameEn, null)
-        requireOrganization(organizationId)
-        requireUniqueProgramName(organizationId, trimmed, english, null)
-        val id = unique { programs.create(organizationId, trimmed, english) }
-        collection?.let { settings.save(id, validate(it)) }
-        return listing(id)
-    }
+    fun createProgram(organizationId: Id, name: String, nameEn: String?, collection: CollectionSettings?): ProgramListing =
+        listing(catalog.createProgram(organizationId, name, nameEn, collection))
 
     // 하위 조직이나 프로그램이 있으면 지우지 않는다(논리키라 남은 것이 주인 없는 데이터가 된다)
     @Transactional
@@ -127,12 +115,7 @@ class AdminActivityInfoService(
 
     // 수집으로 생긴 활동은 다음 수집에서 다시 만들어지지 않는다
     @Transactional
-    fun deleteActivity(id: Id) {
-        // 수집 피드백(V43): 지우기 전에 이름을 읽어 둔다(지우면 사라진다). 운영자가 직접 만든 활동은 남기지 않는다
-        val collected = feedback.collectedActivity(id)
-        if (!curations.delete(id)) throw NotFoundException("활동을 찾을 수 없습니다", "Activity not found: $id")
-        collected?.let { feedback.record(NewFeedback(FeedbackKind.DRAFT_DISMISSED, it.programId, it.host, it.name, emptyMap(), activityId = id)) }
-    }
+    fun deleteActivity(id: Id) = catalog.deleteActivity(id)
 
     // 보낸 값만 바꾼다(nameEn은 빈 문자열이면 지운다)
     @Transactional
@@ -171,7 +154,7 @@ class AdminActivityInfoService(
     @Transactional
     fun putCollectionSettings(programId: Id, collection: CollectionSettings): ProgramListing {
         listing(programId)
-        settings.save(programId, validate(collection))
+        catalog.saveCollectionSettings(programId, collection)
         return listing(programId)
     }
 
@@ -459,35 +442,11 @@ class AdminActivityInfoService(
         return items.mapNotNull { listing -> byId[listing.activity.id]?.let { AdminActivity(listing, it) } }
     }
 
-    // 같은 계위에서 띄어쓰기를 뺀 이름이 같으면 중복(2026-10-15 사용자 결정)
-    // 영문 이름도 같은 규칙으로 영문 이름끼리 비교한다(V13)
-    private fun requireUniqueOrganizationName(parentOrganizationId: Id?, name: String, nameEn: String?, exceptId: Id?) {
-        fun duplicate(kind: String) = InvalidInputException(
-            if (parentOrganizationId == null) "같은 ${kind}의 최상위 조직이 있습니다" else "같은 상위 조직 아래에 같은 ${kind}의 조직이 있습니다"
-        )
-        if (organizations.existsSiblingName(parentOrganizationId, name, exceptId)) throw duplicate("이름")
-        if (nameEn != null && organizations.existsSiblingName(parentOrganizationId, nameEn, exceptId, english = true)) throw duplicate("영문 이름")
-    }
-
-    private fun requireUniqueProgramName(organizationId: Id, name: String, nameEn: String?, exceptId: Id?) {
-        if (programs.existsName(organizationId, name, exceptId)) throw InvalidInputException("같은 조직에 같은 이름의 프로그램이 있습니다")
-        if (nameEn != null && programs.existsName(organizationId, nameEn, exceptId, english = true)) {
-            throw InvalidInputException("같은 조직에 같은 영문 이름의 프로그램이 있습니다")
-        }
-    }
-
-    // 확인과 저장 사이에 같은 이름이 동시에 들어오면 DB 유일 인덱스(V12)가 막는다. 같은 안내로 바꾼다
-    private fun <T> unique(write: () -> T): T = try {
-        write()
-    } catch (e: DuplicateKeyException) {
-        throw InvalidInputException("같은 계위에 같은 이름이 있습니다", e.message ?: "duplicate name")
-    }
-
-    private fun requireOrganization(id: Id) {
-        if (organizations.findAllById(listOf(id)).isEmpty()) {
-            throw InvalidInputException("조직을 찾을 수 없습니다", "Organization not found: $id")
-        }
-    }
+    // 카탈로그 쓰기 규칙은 core CatalogWrites에 있다(batch 가져오기와 같이 쓴다)
+    private fun requireUniqueOrganizationName(parent: Id?, name: String, nameEn: String?, exceptId: Id?) = catalog.requireUniqueOrganizationName(parent, name, nameEn, exceptId)
+    private fun requireUniqueProgramName(organizationId: Id, name: String, nameEn: String?, exceptId: Id?) = catalog.requireUniqueProgramName(organizationId, name, nameEn, exceptId)
+    private fun <T> unique(write: () -> T): T = catalog.unique(write)
+    private fun requireOrganization(id: Id) = catalog.requireOrganization(id)
 
     private fun organizationListing(id: Id): OrganizationListing =
         organizationListings(organizations.findAllById(listOf(id))).single()
@@ -539,19 +498,6 @@ class AdminActivityInfoService(
     }
 
     // officialUrl은 https, 허용 호스트는 스킴·경로·포트 없는 호스트 이름(소문자로 저장)
-    private fun validate(collection: CollectionSettings): CollectionSettings {
-        val url = collection.officialUrl?.trim()?.ifEmpty { null }
-        // 주소 토큰(admin-v1.md): 모르는 {…}는 400, https 검사는 토큰을 샘플 값으로 바꾼 주소로 한다
-        url?.let { CollectionUrlTemplate.unknownTokens(it).firstOrNull() }?.let { throw InvalidInputException("알 수 없는 주소 토큰입니다: {$it}") }
-        val sample = url?.let(CollectionUrlTemplate::sample)
-        if (sample != null && runCatching { URI(sample) }.getOrNull()?.let { it.scheme == "https" && !it.host.isNullOrEmpty() } != true) {
-            throw InvalidInputException("공식 안내 페이지는 https 주소여야 합니다")
-        }
-        val hosts = collection.allowedHosts.map { it.trim().lowercase() }.filter { it.isNotEmpty() }.distinct()
-        hosts.firstOrNull { !HOST.matches(it) }?.let { throw InvalidInputException("허용 호스트는 도메인 이름만 씁니다: $it") }
-        return collection.copy(officialUrl = url, allowedHosts = hosts)
-    }
-
     // null이면 지금 값 그대로, 빈 문자열이면 지운다(선택 입력인 영문 값)
     // 보낸 태그 id가 모두 사전에 있어야 한다(없으면 400). 중복은 하나로
     private fun requireTags(ids: List<Id>): List<Id> {
@@ -568,11 +514,9 @@ class AdminActivityInfoService(
         return url
     }
 
-    private fun optionalText(value: String?, current: String?): String? =
-        if (value == null) current else value.trim().ifEmpty { null }
+    private fun optionalText(value: String?, current: String?): String? = catalog.optionalText(value, current)
 
-    private fun requireName(name: String): String =
-        name.trim().ifEmpty { throw InvalidInputException("이름을 입력해 주세요") }
+    private fun requireName(name: String): String = catalog.requireName(name)
 
     private fun checkSize(size: Int) {
         if (size !in 1..ActivityService.MAX_PAGE_SIZE) throw InvalidInputException("size는 1에서 ${ActivityService.MAX_PAGE_SIZE} 사이여야 합니다")
@@ -581,6 +525,5 @@ class AdminActivityInfoService(
     private companion object {
         val SEOUL: ZoneId = ZoneId.of("Asia/Seoul")
         const val MAX_STATUSES = 8
-        val HOST = Regex("^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$")
     }
 }
