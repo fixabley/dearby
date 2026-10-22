@@ -198,6 +198,13 @@ struct AccountClient: Sendable {
     func cards(_ session: TokenPair) async throws -> [PublishedCard] {
         try await send("cards", session: session, as: CardList.self).items
     }
+    /// Public `GET /v1/cards/:id?code=` (contract "명함 QR 코드"; the request the web `/cards/:id` makes): 403 without a live code
+    /// (`cardCodeRequired`) unless the caller owns or already holds it, 404 when deleted.
+    func publicCard(_ cardID: String, code: String?, _ session: TokenPair?) async throws -> PublishedCard {
+        var components = URLComponents()
+        components.queryItems = code.map { [URLQueryItem(name: "code", value: $0)] }
+        return try await send("cards/\(cardID)\(components.percentEncodedQuery.map { "?" + $0 } ?? "")", session: session, as: PublishedCard.self)
+    }
     func wallet(_ session: TokenPair) async throws -> Wallet {
         try await send("wallet", session: session, as: Wallet.self)
     }

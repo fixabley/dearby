@@ -104,6 +104,12 @@ struct ActivityListPage: View {
             state.search(state.searchText)
         }
         .navigationDestination(for: String.self) { id in ActivityDetailView(state: state, activityID: id) }
+        // An `/activities/<id>` link (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): push its detail once this tab is on screen.
+        .onChange(of: state.showInDiscovery, initial: true) { _, id in
+            guard let id else { return }
+            state.showInDiscovery = nil
+            path.append(id)
+        }
         #if DEBUG
         .task { await showScreenshotScene() }
         #endif

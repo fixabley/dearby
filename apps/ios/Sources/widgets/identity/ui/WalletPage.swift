@@ -3,17 +3,21 @@ import SwiftUI
 /// 받은 명함: the cards saved to the account as an indexed list (contract "받은 명함 목록 표시"):
 /// first-letter sections with pinned headers, a right-edge index rail, and the existing search field.
 /// Rows carry the program chip and recall badge, the detail offers `내 명함도 건네기`, and a card arriving by
-/// `dearby://cards/…` is saved and opened here (contract "명함 교환" 2026-10-19). Shown as the 받은 명함 section of the 명함 tab (`CardsPage`,
+/// `dearby://cards/…` is saved and opened here (contract "명함 교환" 2026-10-19); a web-origin `/cards/*` link opens 공유받은 명함 보기 in the
+/// same detail sheet first (contract "유니버설 링크·App Links·활동 공유·오픈그래프"). Shown as the 받은 명함 section of the 명함 tab (`CardsPage`,
 /// contract "명함 탭 통합"), which owns the navigation bar.
 struct WalletPage: View {
     let state: WalletModel
     @State private var query = ""
     @State private var signingIn = false
+    /// Sign-in from 공유받은 명함 보기 (a sheet over the list's would not show), and the card to save once it succeeds.
+    @State private var sharedSigningIn = false
+    @State private var saveAfterSignIn: WalletModel.Incoming?
     /// `내 명함도 건네기` with several cards: pick one.
     @State private var choosingCard: [PublishedCard]?
     @State private var reciprocating = false
     /// 신고하기 sheet and 삭제하고 차단하기 confirmation for the open card, and the detail's own notice (an alert under the sheet would not show).
-    @State private var reporting: WalletModel.Entry?
+    @State private var reporting: CardModel?
     @State private var blocking: WalletModel.Entry?
     @State private var detailNotice: String?
     @Environment(\.openURL) private var openURL
@@ -58,11 +62,33 @@ struct WalletPage: View {
         .task { await state.load() }
         // A QR-received card while signed out: sign in first, then the save continues.
         .onChange(of: state.pending, initial: true) { _, pending in if pending != nil { signingIn = true } }
-        .sheet(item: Binding(get: { state.opened }, set: { state.opened = $0 })) { entry in NavigationStack { detail(entry) } }
+        // One detail sheet: a saved card, or 공유받은 명함 보기 under the same card id, which turns into that card's detail once saved.
+        .sheet(item: Binding(get: { state.opened.map(DetailSheet.entry) ?? state.shared.map(DetailSheet.shared) },
+                             set: { if $0 == nil { state.opened = nil; state.closeShared() } })) { sheet in
+            NavigationStack {
+                switch sheet {
+                case .entry(let entry): detail(entry)
+                case .shared(let shared): sharedCard(shared)
+                }
+            }
+            .sheet(item: $reporting) { card in
+                NavigationStack {
+                    CardReportSheet(name: card.profileName) { reason, detail in
+                        let sent = await state.report(card.id, reason: reason, detail: detail)
+                        detailNotice = sent ? "신고를 받았어요. 24시간 안에 확인할게요." : "신고를 보내지 못했어요. 연결을 확인하고 다시 시도해 주세요."
+                        return sent
+                    }
+                }
+            }
+            .alert(detailNotice ?? "", isPresented: Binding(get: { detailNotice != nil }, set: { if !$0 { detailNotice = nil } })) {
+                Button("확인", role: .cancel) {}
+            }
+        }
         .sheet(isPresented: $signingIn, onDismiss: { state.dropPending() }) {
             NavigationStack { SignInSheet(account: state.account) { Task { await state.resumePending(); await state.load() } } }
         }
-        .alert(outcomeTitle, isPresented: Binding(get: { state.outcome != nil }, set: { if !$0 { state.clearOutcome() } })) {
+        // While 공유받은 명함 보기 is up, it shows the save outcome itself.
+        .alert(outcomeTitle, isPresented: Binding(get: { state.outcome != nil && state.shared == nil }, set: { if !$0 { state.clearOutcome() } })) {
             Button("확인") {}
         } message: { Text(outcomeMessage) }
     }
@@ -111,18 +137,9 @@ struct WalletPage: View {
             ToolbarItem(placement: .cancellationAction) { Button("닫기") { state.opened = nil } }
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Button { reporting = entry } label: { Label("신고하기", systemImage: "exclamationmark.bubble") }
+                    Button { reporting = entry.card } label: { Label("신고하기", systemImage: "exclamationmark.bubble") }
                     Button(role: .destructive) { blocking = entry } label: { Label("삭제하고 차단하기", systemImage: "hand.raised") }
                 } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("더 보기")
-            }
-        }
-        .sheet(item: $reporting) { entry in
-            NavigationStack {
-                CardReportSheet(name: entry.card.profileName) { reason, detail in
-                    let sent = await state.report(entry, reason: reason, detail: detail)
-                    detailNotice = sent ? "신고를 받았어요. 24시간 안에 확인할게요." : "신고를 보내지 못했어요. 연결을 확인하고 다시 시도해 주세요."
-                    return sent
-                }
             }
         }
         .confirmationDialog("삭제하고 차단할까요?", isPresented: Binding(get: { blocking != nil }, set: { if !$0 { blocking = nil } }),
@@ -132,9 +149,6 @@ struct WalletPage: View {
             }
             Button("취소", role: .cancel) {}
         } message: { entry in Text("\(entry.card.profileName)님의 명함을 지우고, 앞으로 이 사람의 명함을 받지 않아요.") }
-        .alert(detailNotice ?? "", isPresented: Binding(get: { detailNotice != nil }, set: { if !$0 { detailNotice = nil } })) {
-            Button("확인", role: .cancel) {}
-        }
         .confirmationDialog("어떤 명함을 건널까요?", isPresented: Binding(get: { choosingCard != nil }, set: { if !$0 { choosingCard = nil } }),
                             titleVisibility: .visible, presenting: choosingCard) { cards in
             ForEach(cards) { card in Button(card.name) { Task { await reciprocate(entry, card) } } }
@@ -155,8 +169,72 @@ struct WalletPage: View {
         await state.reciprocate(entry, myCardID: card.id)
         reciprocating = false
     }
-    private var outcomeTitle: String {
-        switch state.outcome {
+    /// 공유받은 명함 보기: the public card with where it was handed over, `받은 명함에 저장` (or the own-card notice) and 신고하기.
+    /// Signed out, saving signs in here first and then continues; a failed load shows the same wording as the save notices.
+    @ViewBuilder private func sharedCard(_ shared: WalletModel.Shared) -> some View {
+        Group {
+            switch shared.phase {
+            case .loading:
+                ProgressView("명함을 불러오는 중이에요").frame(maxWidth: .infinity, maxHeight: .infinity).tint(DearbyStyle.teal)
+            case .failed(let outcome):
+                CenteredMessage(symbol: "exclamationmark.triangle", danger: true,
+                                title: outcome == .codeExpired ? Self.title(outcome) : "명함을 불러오지 못했어요", message: Self.message(outcome))
+            case .loaded(let card), .ownCard(let card):
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        if let line = shared.receivedLine { Text(line).font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet) }
+                        CardView(card: card) { if let url = $0.actionURL { openURL(url) } }
+                        if case .ownCard = shared.phase {
+                            Label(Self.message(.ownCard), systemImage: "info.circle").font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
+                        }
+                    }.padding(20)
+                }
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    if case .loaded = shared.phase {
+                        Button {
+                            if state.account.session == nil {
+                                saveAfterSignIn = shared.incoming
+                                sharedSigningIn = true
+                            } else {
+                                Task { await state.receive(shared.incoming) }
+                            }
+                        } label: { Text("받은 명함에 저장").frame(maxWidth: .infinity) }
+                            .buttonStyle(.borderedProminent).controlSize(.large).tint(DearbyStyle.tealFill)
+                            .font(.dearby(.body).weight(.semibold)).padding(.horizontal, 20).padding(.vertical, 12)
+                            .accessibilityIdentifier("shared-card-save")
+                    }
+                }
+            }
+        }
+        .navigationTitle(shared.card?.profileName ?? "공유받은 명함").navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("닫기") { state.closeShared() } }
+            if let card = shared.card {
+                ToolbarItem(placement: .primaryAction) {
+                    Menu {
+                        Button { if state.account.session == nil { sharedSigningIn = true } else { reporting = card } } label: {
+                            Label("신고하기", systemImage: "exclamationmark.bubble")
+                        }
+                    } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("더 보기")
+                }
+            }
+        }
+        .sheet(isPresented: $sharedSigningIn, onDismiss: { saveAfterSignIn = nil }) {
+            NavigationStack {
+                SignInSheet(account: state.account) {
+                    if let incoming = saveAfterSignIn { Task { await state.receive(incoming) } }
+                    saveAfterSignIn = nil
+                }
+            }
+        }
+        .alert(outcomeTitle, isPresented: Binding(get: { state.outcome != nil }, set: { if !$0 { state.clearOutcome() } })) {
+            Button("확인") {}
+        } message: { Text(outcomeMessage) }
+    }
+    private var outcomeTitle: String { Self.title(state.outcome) }
+    private var outcomeMessage: String { Self.message(state.outcome) }
+    private static func title(_ outcome: WalletModel.Outcome?) -> String {
+        switch outcome {
         case .ownCard: "내 명함이에요"
         case .codeExpired: "QR이 만료됐어요"
         case .blocked: "차단한 사람의 명함이에요"
@@ -165,8 +243,8 @@ struct WalletPage: View {
         case nil: ""
         }
     }
-    private var outcomeMessage: String {
-        switch state.outcome {
+    private static func message(_ outcome: WalletModel.Outcome?) -> String {
+        switch outcome {
         case .ownCard: "내가 발행한 명함은 받은 명함에 넣을 수 없어요."
         case .codeExpired: "명함 주인에게 QR을 다시 보여 달라고 하세요"
         case .blocked: "설정의 차단한 사람에서 해제하면 다시 받을 수 있어요."
@@ -177,6 +255,18 @@ struct WalletPage: View {
     }
     private func jump(to key: String, _ proxy: ScrollViewProxy) {
         if reduceMotion { proxy.scrollTo(key, anchor: .top) } else { withAnimation(.snappy) { proxy.scrollTo(key, anchor: .top) } }
+    }
+}
+
+/// What the detail sheet shows; both share the card id, so saving a shared card swaps the content without closing the sheet.
+private enum DetailSheet: Identifiable {
+    case entry(WalletModel.Entry)
+    case shared(WalletModel.Shared)
+    var id: String {
+        switch self {
+        case .entry(let entry): entry.id
+        case .shared(let shared): shared.id
+        }
     }
 }
 

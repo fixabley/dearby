@@ -32,7 +32,11 @@ import SwiftUI
         _cards = State(initialValue: MyCardsModel(account: account, webOrigin: links.origins.web) {
             activityModel.appliedProgress(now: Date()).map(\.activity)
         })
-        _wallet = State(initialValue: WalletModel(account: account))
+        // 공유받은 명함 보기's `<프로그램> <활동>에서 받은 명함` line names the activity in the link.
+        _wallet = State(initialValue: WalletModel(account: account) { id in
+            guard let activity = try? await links.activity(id: String(id)) else { return nil }
+            return [activity.program, activity.title].compactMap { $0 }.joined(separator: " ")
+        })
         _profile = State(initialValue: ProfileModel(account: account, webOrigin: links.origins.web))
     }
     var body: some Scene {
@@ -49,20 +53,31 @@ import SwiftUI
             }
             // One accent for every screen and sheet, including those presented from this root (contract "색 체계").
             .tint(DearbyStyle.teal)
-            // "Dearby 앱에 저장" on the web card page: save the card to the account and open it in the 명함 tab's 받은 명함 section.
+            // Contract "유니버설 링크·App Links·활동 공유·오픈그래프": card links open the 명함 tab's 받은 명함 section — `dearby://` (from
+            // "Dearby 앱에 저장") saves right away, the web origin's `/cards/*` opens the saved detail or 공유받은 명함 보기; `/activities/*`
+            // opens that activity in 발견.
             .onOpenURL { url in
                 // The Google SDK's own redirect comes back here first (contract "구글 로그인").
                 if GoogleNativeSignIn.handle(url) { return }
-                guard let incoming = WalletModel.Incoming(url: url) else { return }
-                tab = 2
-                cardsSegment = .received
-                Task { await wallet.receive(incoming) }
+                switch IncomingLink(url: url, web: links.origins.web) {
+                case .saveCard(let incoming):
+                    tab = 2
+                    cardsSegment = .received
+                    Task { await wallet.receive(incoming) }
+                case .viewCard(let incoming):
+                    tab = 2
+                    cardsSegment = .received
+                    Task { await wallet.view(incoming) }
+                case .activity(let id): Task { await activityModel.openLinked(id) }
+                case nil: break
+                }
             }
             #if DEBUG
             .task { await showScreenshotScene() }
             #endif
             // `내 활동으로` on an activity detail: the 내 활동 tab opens that activity (it pushes once it is on screen).
             .onChange(of: activityModel.showInMine) { _, id in if id != nil { tab = 1 } }
+            .onChange(of: activityModel.showInDiscovery) { _, id in if id != nil { tab = 0 } }
             // 내 활동 follows the account (contract "내 활동 서버 저장"): signing in imports this run's marks once and then uses the server.
             .onChange(of: account.phase, initial: true) { _, phase in
                 switch phase {

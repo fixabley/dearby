@@ -23,19 +23,18 @@ import Observation
             return place.isEmpty ? "\(day)에 받음" : "\(place)에서 받음 · \(day)"
         }
     }
-    /// A card arriving through `dearby://cards/<cardId>?activity=<activityId>&code=<code>` (the web page's "Dearby 앱에 저장");
+    /// A card arriving through `/cards/<cardId>?activity=<activityId>&code=<code>`, as `dearby://` (the web page's "Dearby 앱에 저장") or
+    /// as a universal link on the web origin (contract "유니버설 링크·App Links·활동 공유·오픈그래프"; both parsed by `IncomingLink`);
     /// the QR code lets a card not yet saved through (contract "명함 QR 코드").
     struct Incoming: Equatable {
         let cardID: String
         let activityID: Int64?
         let code: String?
-        init?(url: URL) {
-            guard let parts = URLComponents(url: url, resolvingAgainstBaseURL: false), parts.scheme == "dearby", parts.host == "cards" else { return nil }
-            let id = parts.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            guard UUID(uuidString: id) != nil else { return nil }
-            cardID = id
-            activityID = parts.queryItems?.first { $0.name == "activity" }?.value.flatMap { Int64($0) }
-            code = parts.queryItems?.first { $0.name == "code" }?.value
+        init?(cardID: String, query: [URLQueryItem]) {
+            guard UUID(uuidString: cardID) != nil else { return nil }
+            self.cardID = cardID
+            activityID = query.first { $0.name == "activity" }?.value.flatMap { Int64($0) }
+            code = query.first { $0.name == "code" }?.value
         }
     }
     enum Outcome: Equatable { case ownCard, codeExpired, blocked, saveFailed, reciprocateFailed }
@@ -45,10 +44,62 @@ import Observation
     private(set) var pending: Incoming?
     /// The entry whose detail is open (a tapped row, or a card just saved by QR).
     var opened: Entry?
+    /// 공유받은 명함 보기 (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): a web-origin `/cards/*` link to a card not in this
+    /// wallet, shown from the public card until the user saves it. It shares the detail sheet with `opened` (same card id), so saving
+    /// turns it into that card's received detail in place.
+    struct Shared: Identifiable, Equatable {
+        enum Phase: Equatable { case loading, loaded(CardModel), ownCard(CardModel), failed(Outcome) }
+        let incoming: Incoming
+        var phase = Phase.loading
+        /// `<프로그램> <활동>에서 받은 명함` when the link names an activity that loads.
+        var receivedLine: String?
+        var id: String { incoming.cardID }
+        var card: CardModel? {
+            switch phase {
+            case .loaded(let card), .ownCard(let card): card
+            case .loading, .failed: nil
+            }
+        }
+    }
+    private(set) var shared: Shared?
     /// A one-shot notice for the page; cleared with `clearOutcome()`.
     private(set) var outcome: Outcome?
     let account: AccountViewModel
-    init(account: AccountViewModel) { self.account = account }
+    /// `<프로그램 이름> <활동 이름>` for an activity id (`GET /v1/activities/:id`); nil when it does not load.
+    private let activityName: @Sendable (Int64) async -> String?
+    init(account: AccountViewModel, activityName: @escaping @Sendable (Int64) async -> String? = { _ in nil }) {
+        self.account = account
+        self.activityName = activityName
+    }
+
+    /// A web-origin `/cards/*` link: a card already in the wallet opens its received detail (no save); any other opens 공유받은 명함 보기.
+    func view(_ incoming: Incoming) async {
+        await load()
+        if let receipt = wallet.items.first(where: { $0.card.id == incoming.cardID }) {
+            shared = nil
+            opened = entry(receipt)
+            return
+        }
+        opened = nil
+        shared = Shared(incoming: incoming)
+        let session = account.session
+        let receivedLine: String?
+        if let activityID = incoming.activityID { receivedLine = await activityName(activityID).map { "\($0)에서 받은 명함" } } else { receivedLine = nil }
+        let phase: Shared.Phase
+        do {
+            let card = try await account.client.publicCard(incoming.cardID, code: incoming.code, session).cardModel
+            // Signed in, the owner reads it without a code; signed out, an own card shows up only when saving (409).
+            let own = session == nil ? false : await myCards()?.contains { $0.id == incoming.cardID } == true
+            phase = own ? .ownCard(card) : .loaded(card)
+        } catch AccountError.cardCodeRequired {
+            phase = .failed(.codeExpired)
+        } catch {
+            phase = .failed(.saveFailed)
+        }
+        guard shared?.id == incoming.cardID else { return }  // closed or replaced meanwhile
+        shared = Shared(incoming: incoming, phase: phase, receivedLine: receivedLine)
+    }
+    func closeShared() { shared = nil }
 
     func load() async {
         guard account.session != nil else {
@@ -75,6 +126,7 @@ import Observation
                 try await client.receiveCard(incoming.cardID, activityID: incoming.activityID, code: incoming.code, $0)
             }
             await load()
+            shared = nil
             opened = entry(receipt)
         } catch AccountError.conflict {
             outcome = .ownCard
@@ -110,9 +162,9 @@ import Observation
         }
     }
     /// 신고하기 (contract "명함 신고·차단"); false when the server or network refused.
-    func report(_ entry: Entry, reason: CardReportReason, detail: String?) async -> Bool {
+    func report(_ cardID: String, reason: CardReportReason, detail: String?) async -> Bool {
         do {
-            try await account.authorized { [client = account.client] in try await client.reportCard(entry.card.id, reason: reason, detail: detail, $0) }
+            try await account.authorized { [client = account.client] in try await client.reportCard(cardID, reason: reason, detail: detail, $0) }
             return true
         } catch { return false }
     }
