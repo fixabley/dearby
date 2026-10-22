@@ -35,7 +35,7 @@ value class Recurrence(val rule: String) {
 
         // 입력 검증·정규화. 틀리면 400. 대소문자와 앞의 "RRULE:"은 받아 준다
         fun parse(text: String): Recurrence {
-            val parts = text.trim().removePrefix("RRULE:").removePrefix("rrule:").uppercase().split(';').filter { it.isNotBlank() }.map {
+            val parts = text.trim().uppercase().removePrefix("RRULE:").split(';').filter { it.isNotBlank() }.map {
                 val (key, value) = it.split('=').takeIf { pair -> pair.size == 2 && pair[1].isNotEmpty() } ?: invalid("'$it'")
                 key to value
             }
