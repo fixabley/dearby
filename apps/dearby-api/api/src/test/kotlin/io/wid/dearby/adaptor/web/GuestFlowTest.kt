@@ -50,6 +50,16 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
         return user to card["id"].asString()
     }
 
+    // 주인이 QR 화면을 열어 받은 코드(native-v1.md "명함 QR 코드"). 처음 저장은 이 코드가 있어야 한다
+    private fun qrCode(owner: UUID, cardId: String): String = read(mvc.post("/v1/cards/$cardId/qr-codes") {
+        with(jwt().jwt { it.subject(owner.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER")))
+    }.andExpect { status { isCreated() } })["code"].asString()
+
+    private fun MockHttpServletRequestDsl.code(value: String, activity: Long? = null) {
+        contentType = MediaType.APPLICATION_JSON
+        content = """{"code":"$value"${activity?.let { ""","activityId":$it""" } ?: ""}}"""
+    }
+
 
     @Test
     fun `프록시 키가 없거나 다르면 403이고 설정이 없으면 503이며 토큰이 없거나 모르는 토큰이면 401이다`() {
@@ -66,14 +76,18 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
 
     @Test
     fun `첫 저장은 세션을 만들어 201과 토큰을 주고, 이후 저장·삭제는 그 토큰으로 한다`() {
-        val (_, cardId) = ownerWithCard()
+        val (owner, cardId) = ownerWithCard()
         // 없는 명함은 404이고 세션을 만들지 않는다
         val sessionsBefore = sessionCount()
         mvc.put("/v1/guest/cards/${UUID.randomUUID()}") { guest() }.andExpect { status { isNotFound() } }
         assertEquals(sessionsBefore, sessionCount())
 
         val activity = jdbc.sql("select id from activities where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").query(Long::class.java).single()
-        val first = read(mvc.put("/v1/guest/cards/$cardId") { guest(); contentType = MediaType.APPLICATION_JSON; content = """{"activityId":$activity}""" }.andExpect { status { isCreated() } })
+        // 코드가 없거나 틀리면 403이고 세션을 만들지 않는다
+        mvc.put("/v1/guest/cards/$cardId") { guest() }.andExpect { status { isForbidden() }; jsonPath("$.code") { value("CARD_CODE_REQUIRED") } }
+        mvc.put("/v1/guest/cards/$cardId") { guest(); code(GuestService.randomToken()) }.andExpect { status { isForbidden() }; jsonPath("$.code") { value("CARD_CODE_EXPIRED") } }
+        assertEquals(sessionsBefore, sessionCount())
+        val first = read(mvc.put("/v1/guest/cards/$cardId") { guest(); code(qrCode(owner, cardId), activity) }.andExpect { status { isCreated() } })
         val token = first["guestToken"].asString()
         assertEquals(listOf(cardId, "saved"), listOf(first["cardId"].asString(), first["status"].asString()))
         assertTrue(GuestService.TOKEN.matches(token))
@@ -82,6 +96,11 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
         val again = read(mvc.put("/v1/guest/cards/$cardId") { guest(token) }.andExpect { status { isOk() } })
         assertEquals("alreadySaved", again["status"].asString())
         assertFalse(again.has("guestToken"))
+
+        // 저장한 세션은 웹 프록시 헤더만으로 코드 없이 명함을 본다. 다른·없어진 세션이나 헤더 없는 요청은 403
+        mvc.get("/v1/cards/$cardId") { guest(token) }.andExpect { status { isOk() } }
+        mvc.get("/v1/cards/$cardId") { guest(GuestService.randomToken()) }.andExpect { status { isForbidden() }; jsonPath("$.code") { value("CARD_CODE_REQUIRED") } }
+        mvc.get("/v1/cards/$cardId").andExpect { status { isForbidden() } }
 
         // 2026-10-19부터 항목은 GuestItem: 교환한 활동·프로그램 이름과 저장일, 회수 예정(저장일 + 30일)
         val wallet = read(mvc.get("/v1/guest/cards") { guest(token) }.andExpect { status { isOk() } })
@@ -98,7 +117,10 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
         assertEquals(1, guestRepository.recallExpired(now.minusDays(30), now))
         assertEquals(0, read(mvc.get("/v1/guest/cards") { guest(token) })["items"].size())
         assertEquals(1, jdbc.sql("select count(*) from guest_cards where session_digest = ? and recalled_at is not null").param(GuestService.digest(token)).query(Int::class.java).single())
-        assertEquals("saved", read(mvc.put("/v1/guest/cards/$cardId") { guest(token) }.andExpect { status { isOk() } })["status"].asString())
+        // 회수된 뒤에는 볼 수 없고, 다시 저장하려면 새 코드가 필요하다
+        mvc.get("/v1/cards/$cardId") { guest(token) }.andExpect { status { isForbidden() } }
+        mvc.put("/v1/guest/cards/$cardId") { guest(token) }.andExpect { status { isForbidden() } }
+        assertEquals("saved", read(mvc.put("/v1/guest/cards/$cardId") { guest(token); code(qrCode(owner, cardId)) }.andExpect { status { isOk() } })["status"].asString())
         assertEquals(1, read(mvc.get("/v1/guest/cards") { guest(token) })["items"].size())
 
         mvc.delete("/v1/guest/cards/$cardId") { guest(token) }.andExpect { status { isNoContent() } }
@@ -114,20 +136,20 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
     @Test
     fun `철회된 명함은 목록에서 빠지고 다음 저장 때 참조가 정리된다`() {
         val (owner, cardId) = ownerWithCard()
-        val token = read(mvc.put("/v1/guest/cards/$cardId") { guest() })["guestToken"].asString()
+        val token = read(mvc.put("/v1/guest/cards/$cardId") { guest(); code(qrCode(owner, cardId)) })["guestToken"].asString()
         mvc.delete("/v1/cards/$cardId") { with(jwt().jwt { it.subject(owner.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER"))) }.andExpect { status { isNoContent() } }
         assertEquals(0, read(mvc.get("/v1/guest/cards") { guest(token) })["items"].size())
         mvc.put("/v1/guest/cards/$cardId") { guest(token) }.andExpect { status { isNotFound() } }
 
-        val (_, another) = ownerWithCard()
-        mvc.put("/v1/guest/cards/$another") { guest(token) }.andExpect { status { isOk() } }
+        val (anotherOwner, another) = ownerWithCard()
+        mvc.put("/v1/guest/cards/$another") { guest(token); code(qrCode(anotherOwner, another)) }.andExpect { status { isOk() } }
         assertEquals(1, jdbc.sql("select count(*) from guest_cards where session_digest = ?").param(GuestService.digest(token)).query(Int::class.java).single())
     }
 
     @Test
     fun `세션 잇기 코드는 10분 1회용이고 세션당 하나이며 실패는 모두 404다`() {
-        val (_, cardId) = ownerWithCard()
-        val token = read(mvc.put("/v1/guest/cards/$cardId") { guest() })["guestToken"].asString()
+        val (owner, cardId) = ownerWithCard()
+        val token = read(mvc.put("/v1/guest/cards/$cardId") { guest(); code(qrCode(owner, cardId)) })["guestToken"].asString()
         mvc.post("/v1/guest/handoffs") { guest() }.andExpect { status { isUnauthorized() } }
 
         val issued = read(mvc.post("/v1/guest/handoffs") { guest(token) }.andExpect { status { isCreated() } })
@@ -159,8 +181,8 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
 
     @Test
     fun `세션당 1분에 120회를 넘으면 429다`() {
-        val (_, cardId) = ownerWithCard()
-        val token = read(mvc.put("/v1/guest/cards/$cardId") { guest() })["guestToken"].asString()
+        val (owner, cardId) = ownerWithCard()
+        val token = read(mvc.put("/v1/guest/cards/$cardId") { guest(); code(qrCode(owner, cardId)) })["guestToken"].asString()
         // 1분 창이 도중에 바뀔 수 있어 429가 나올 때까지 센다
         val statuses = (1..250).asSequence().map { mvc.get("/v1/guest/cards") { guest(token) }.andReturn().response.status }.takeWhile { it != 429 }.toList()
         assertTrue(statuses.size in 119..249, "429 before ${statuses.size + 1} requests")

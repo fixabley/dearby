@@ -16,10 +16,10 @@ class WalletController(private val wallet: WalletService) {
     @GetMapping
     fun list(@AuthenticationPrincipal jwt: Jwt) = WalletResponse(wallet.list(userId(jwt)).map(ReceiptResponse::from))
 
-    // 첫 저장 201, 이미 있으면 200(받은 날 유지). 없는·철회된 명함 404, 자기 명함 409 OWN_CARD
+    // 첫 저장 201, 이미 있으면 200(받은 날 유지). 없는·철회된 명함 404, 자기 명함 409 OWN_CARD, 처음 저장인데 코드가 없거나 만료면 403
     @PutMapping("/cards/{cardId}")
     fun save(@AuthenticationPrincipal jwt: Jwt, @PathVariable cardId: UUID, @RequestBody(required = false) request: WalletSaveRequest?): ResponseEntity<ReceiptResponse> {
-        val saved = wallet.save(userId(jwt), cardId, request?.activityId)
+        val saved = wallet.save(userId(jwt), cardId, request?.activityId, request?.code)
         return ResponseEntity.status(if (saved.created) HttpStatus.CREATED else HttpStatus.OK).body(ReceiptResponse.from(saved.receipt))
     }
 

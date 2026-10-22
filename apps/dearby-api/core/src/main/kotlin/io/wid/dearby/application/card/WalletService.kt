@@ -15,16 +15,17 @@ import java.util.*
 // 받은 명함(지갑, native-v1.md "명함 교환"). 같은 사용자+명함은 Receipt 하나. 저장은 QR의 공개 주소에서 앱이 부르고,
 // 맞교환은 받은 사람이 자기 명함을 주인 지갑에 넣는 것이다. 회수는 batch(RecallService)가 한다
 @Service
-class WalletService(private val wallet: WalletRepository, private val cards: CardRepository) {
+class WalletService(private val wallet: WalletRepository, private val cards: CardRepository, private val codes: CardQrCodes) {
 
     data class Saved(val receipt: Receipt, val created: Boolean)
 
     @Transactional(readOnly = true)
     fun list(userId: UserId): List<Receipt> = wallet.receipts(userId)
 
-    // 없는·철회된 명함 404, 자기 명함 409 OWN_CARD. 이미 있으면 받은 날은 두고 활동만 비어 있을 때 채운다. 모르는 활동 id는 null로 본다
+    // 없는·철회된 명함 404, 자기 명함 409 OWN_CARD. 이미 있으면 받은 날은 두고 활동만 비어 있을 때 채운다. 모르는 활동 id는 null로 본다.
+    // 처음 저장(회수 뒤 다시 저장 포함)은 유효한 QR 코드가 필요하다(native-v1.md "명함 QR 코드", 아니면 403)
     @Transactional
-    fun save(userId: UserId, cardId: UUID, activityId: Id?): Saved {
+    fun save(userId: UserId, cardId: UUID, activityId: Id?, code: String? = null): Saved {
         val card = cards.find(cardId) ?: throw NotFoundException("명함을 찾을 수 없습니다", "Card not found for wallet: $cardId")
         if (card.ownerId == userId) throw ConflictException("내 명함이에요", "own card saved to wallet: $cardId", code = OWN_CARD)
         val activity = activityId?.takeIf(wallet::activityExists)
@@ -33,6 +34,7 @@ class WalletService(private val wallet: WalletRepository, private val cards: Car
             if (existing.context.activityId == null && activity != null) wallet.setActivity(existing.id, activity)
             return Saved(wallet.findReceipt(userId, cardId)!!, created = false)
         }
+        codes.require(cardId, code)
         wallet.createReceipt(UUID.randomUUID(), userId, cardId, activity, OffsetDateTime.now(ZoneOffset.UTC))
         return Saved(wallet.findReceipt(userId, cardId)!!, created = true)
     }

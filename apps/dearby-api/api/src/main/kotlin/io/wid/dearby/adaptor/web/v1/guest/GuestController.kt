@@ -28,7 +28,7 @@ class GuestController(private val guests: GuestService, private val properties: 
         @RequestBody(required = false) request: GuestSaveRequest?,
     ): ResponseEntity<GuestSaveResponse> {
         guests.admit(properties.proxySecret, key)
-        return saved(guests.saveCard(token, id, request?.activityId))
+        return saved(guests.saveCard(token, id, request?.activityId, request?.code))
     }
 
 

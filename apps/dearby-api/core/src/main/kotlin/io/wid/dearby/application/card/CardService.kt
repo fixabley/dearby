@@ -15,7 +15,7 @@ import java.util.*
 
 // 명함 발행·고치기·조회·철회(native-v1.md "명함·지갑"). 발행은 프로필의 공개 선택분을 복사한 스냅샷이다
 @Service
-class CardService(private val cards: CardRepository, private val profiles: ProfileRepository) {
+class CardService(private val cards: CardRepository, private val profiles: ProfileRepository, private val wallet: WalletRepository, private val codes: CardQrCodes) {
 
     @Transactional
     fun publish(ownerId: UserId, name: String, description: String, template: String, contactIds: List<UUID>, historyIds: List<UUID>): BusinessCard {
@@ -72,11 +72,21 @@ class CardService(private val cards: CardRepository, private val profiles: Profi
     @Transactional(readOnly = true)
     fun get(id: UUID): BusinessCard = cards.find(id) ?: throw NotFoundException("명함을 찾을 수 없습니다", "Card not found: $id")
 
+    // GET /v1/cards/:id(native-v1.md "명함 QR 코드"): 주인, 회수 전 Receipt를 가진 계정, 회수 전 게스트 저장(guestHolds), 유효한 QR 코드 중 하나면 본다
+    @Transactional(readOnly = true)
+    fun view(id: UUID, viewer: UserId?, guestHolds: Boolean, code: String?): BusinessCard {
+        val card = get(id)
+        val holder = viewer != null && (card.ownerId == viewer || wallet.findReceipt(viewer, id) != null)
+        if (!holder && !guestHolds) codes.require(id, code)
+        return card
+    }
+
     @Transactional
     fun revoke(ownerId: UserId, id: UUID) {
         val card = get(id)
         if (card.ownerId != ownerId) throw PermissionDeniedException("내 명함만 지울 수 있습니다", "Card $id not owned by $ownerId")
         cards.revoke(id)
+        codes.revokeAll(id)
     }
 
     private fun text(value: String, field: String, max: Int): String {

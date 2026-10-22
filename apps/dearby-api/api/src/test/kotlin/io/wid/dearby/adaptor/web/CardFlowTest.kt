@@ -23,7 +23,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-// native-v1.md "명함·지갑"·"템플릿"·"명함 교환": 발행 스냅샷, 공개 조회, 철회, 지갑 저장·맞교환·회수
+// native-v1.md "명함·지갑"·"템플릿"·"명함 교환"·"명함 QR 코드": 발행 스냅샷, 조회 권한과 QR 코드, 철회, 지갑 저장·맞교환·회수
 @SpringBootTest
 @AutoConfigureMockMvc
 class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient, @Autowired val profiles: ProfileRepository, @Autowired val wallet: WalletRepository) {
@@ -35,6 +35,9 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
     }
 
     private fun read(result: ResultActionsDsl): JsonNode = json.readTree(result.andReturn().response.contentAsString)
+
+    // 주인이 QR 화면을 열 때 받는 코드
+    private fun qr(owner: UUID, cardId: String): JsonNode = read(mvc.post("/v1/cards/$cardId/qr-codes") { asUser(owner) }.andExpect { status { isCreated() } })
 
     private fun post(user: UUID, path: String, body: String) = mvc.post(path) { asUser(user); contentType = MediaType.APPLICATION_JSON; content = body }
 
@@ -79,14 +82,18 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         assertEquals(listOf(card["id"].asString(), second["id"].asString()), read(mvc.get("/v1/cards") { asUser(user) }.andExpect { status { isOk() } })["items"].values().map { it["id"].asString() })
         mvc.get("/v1/cards").andExpect { status { isUnauthorized() } }
 
-        val public = read(mvc.get("/v1/cards/${card["id"].asString()}").andExpect { status { isOk() } })
+        // 처음 보는 사람은 유효한 QR 코드가 있어야 본다(native-v1.md "명함 QR 코드"). 주인은 코드 없이 본다
+        val code = qr(user, card["id"].asString())["code"].asString()
+        mvc.get("/v1/cards/${card["id"].asString()}").andExpect { status { isForbidden() }; jsonPath("$.code") { value("CARD_CODE_REQUIRED") } }
+        mvc.get("/v1/cards/${card["id"].asString()}") { asUser(user) }.andExpect { status { isOk() } }
+        val public = read(mvc.get("/v1/cards/${card["id"].asString()}?code=$code").andExpect { status { isOk() } })
         assertFalse(public.has("template"))
         assertEquals("# 발행자\n010-1111-2222 / ", public["introduction"].asString())
         mvc.get("/v1/cards/${UUID.randomUUID()}").andExpect { status { isNotFound() } }
 
         // 프로필을 고쳐도 발행본은 그대로
         profiles.save(profile.copy(name = "바뀐 이름"))
-        assertEquals("발행자", read(mvc.get("/v1/cards/${card["id"].asString()}"))["profileName"].asString())
+        assertEquals("발행자", read(mvc.get("/v1/cards/${card["id"].asString()}?code=$code"))["profileName"].asString())
     }
 
     @Test
@@ -94,9 +101,12 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         val (user, profile) = userWithProfile("주인")
         val (other, _) = userWithProfile("남")
         val cardId = publish(user, profile)["id"].asString()
+        val code = qr(user, cardId)["code"].asString()
         mvc.delete("/v1/cards/$cardId") { asUser(other) }.andExpect { status { isForbidden() } }
         mvc.delete("/v1/cards/$cardId") { asUser(user) }.andExpect { status { isNoContent() } }
-        mvc.get("/v1/cards/$cardId").andExpect { status { isNotFound() } }
+        // 철회된 명함은 코드가 있어도 404이고, 그 명함의 코드는 모두 끝난다
+        mvc.get("/v1/cards/$cardId?code=$code").andExpect { status { isNotFound() } }
+        assertEquals(0, jdbc.sql("select count(*) from card_qr_codes where card_id = ? and revoked_at is null").param(UUID.fromString(cardId)).query(Int::class.java).single())
         mvc.delete("/v1/cards/$cardId") { asUser(user) }.andExpect { status { isNotFound() } }
     }
 
@@ -110,7 +120,8 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         val second = publish(user, profile, template = "둘째")
         val cardId = first["id"].asString()
         jdbc.sql("insert into receipts (id, recipient_id, card_id, context, received_at) values (?, ?, ?, '{\"activityId\":null,\"label\":null}', now())").params(UUID.randomUUID(), receiver, UUID.fromString(cardId)).update()
-        val before = read(mvc.get("/v1/cards/$cardId"))
+        // 받은 계정(회수 전 Receipt)은 코드 없이 본다
+        val before = read(mvc.get("/v1/cards/$cardId") { asUser(receiver) }.andExpect { status { isOk() } })
         assertEquals(before["createdAt"].asString(), before["updatedAt"].asString())
 
         // 프로필을 고친 뒤 PUT하면 현재 프로필이 반영된다. template을 보내지 않으면 그 명함의 template 그대로
@@ -122,7 +133,7 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         assertEquals("# 바뀐 주인\n010-1111-2222 / 주인@example.com", updated["introduction"].asString())
 
         // 같은 id·createdAt, updatedAt만 바뀐다. 공개 조회·내 목록(순서 유지)·받은 지갑이 고친 내용을 보인다
-        val public = read(mvc.get("/v1/cards/$cardId").andExpect { status { isOk() } })
+        val public = read(mvc.get("/v1/cards/$cardId") { asUser(receiver) }.andExpect { status { isOk() } })
         assertEquals(listOf("고친 명함", before["createdAt"].asString()), listOf(public["name"].asString(), public["createdAt"].asString()))
         assertTrue(OffsetDateTime.parse(public["updatedAt"].asString()).isAfter(OffsetDateTime.parse(public["createdAt"].asString())))
         assertFalse(public.has("template"))
@@ -176,8 +187,12 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         put(receiver, "/v1/wallet/cards/${UUID.randomUUID()}", """{"activityId":$activity}""").andExpect { status { isNotFound() } }
         put(owner, "/v1/wallet/cards/$ownerCard").andExpect { status { isConflict() }; jsonPath("$.code") { value("OWN_CARD") } }
 
+        // 처음 저장은 QR 코드가 필요하다(없으면 CARD_CODE_REQUIRED, 다른 명함의 코드는 CARD_CODE_EXPIRED)
+        put(receiver, "/v1/wallet/cards/$ownerCard").andExpect { status { isForbidden() }; jsonPath("$.code") { value("CARD_CODE_REQUIRED") } }
+        put(receiver, "/v1/wallet/cards/$ownerCard", """{"code":"${qr(receiver, receiverCard)["code"].asString()}"}""").andExpect { status { isForbidden() }; jsonPath("$.code") { value("CARD_CODE_EXPIRED") } }
         // 모르는 활동 id는 400이 아니라 null로 저장한다
-        val first = read(put(receiver, "/v1/wallet/cards/$ownerCard", """{"activityId":987654321}""").andExpect { status { isCreated() } })
+        val code = qr(owner, ownerCard)["code"].asString()
+        val first = read(put(receiver, "/v1/wallet/cards/$ownerCard", """{"activityId":987654321,"code":"$code"}""").andExpect { status { isCreated() } })
         assertEquals(listOf(ownerCard, false, true), listOf(first["card"]["id"].asString(), first["reciprocal"].asBoolean(), first["context"]["activityId"].isNull))
         assertEquals(OffsetDateTime.parse(first["receivedAt"].asString()).plusDays(30), OffsetDateTime.parse(first["expiresAt"].asString()))
         // 이미 있으면 200, 받은 날은 그대로, 비어 있던 활동은 채운다
@@ -206,9 +221,55 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         assertEquals(1, wallet.recallOneWay(now.minusDays(30), now))
         assertEquals(0, read(mvc.get("/v1/wallet") { asUser(receiver) })["items"].size())
         assertNull(wallet.findReceipt(receiver, UUID.fromString(ownerCard)))
-        // 회수된 행은 남아 있고, 다시 저장하면 되살아난다(201)
+        // 회수된 행은 남아 있고, 회수 뒤에는 볼 수 없으며 다시 저장하려면 새 코드가 필요하다. 저장하면 되살아난다(201)
         assertEquals(1, jdbc.sql("select count(*) from receipts where recipient_id = ? and recalled_at is not null").param(receiver).query(Int::class.java).single())
-        put(receiver, "/v1/wallet/cards/$ownerCard").andExpect { status { isCreated() } }
+        mvc.get("/v1/cards/$ownerCard") { asUser(receiver) }.andExpect { status { isForbidden() } }
+        put(receiver, "/v1/wallet/cards/$ownerCard").andExpect { status { isForbidden() } }
+        put(receiver, "/v1/wallet/cards/$ownerCard", """{"code":"${qr(owner, ownerCard)["code"].asString()}"}""").andExpect { status { isCreated() } }
         assertEquals(1, read(mvc.get("/v1/wallet") { asUser(receiver) })["items"].size())
+    }
+
+    // native-v1.md "명함 QR 코드"(2026-10-22): 여러 명이 쓰는 코드, 최대 30분, 닫기·새로고침은 2분 뒤 만료, 원문 없이 해시만
+    @Test
+    fun `QR 코드는 주인만 받고 여러 명이 쓰며 닫으면 2분 뒤, 아니면 30분 뒤 만료된다`() {
+        val (owner, profile) = userWithProfile("주인")
+        val (other, otherProfile) = userWithProfile("남")
+        val cardId = publish(owner, profile)["id"].asString()
+        val otherCard = publish(other, otherProfile)["id"].asString()
+        mvc.post("/v1/cards/$cardId/qr-codes").andExpect { status { isUnauthorized() } }
+        mvc.post("/v1/cards/$cardId/qr-codes") { asUser(other) }.andExpect { status { isNotFound() } }
+
+        val issued = qr(owner, cardId)
+        val code = issued["code"].asString()
+        val codeId = issued["id"].asString()
+        assertTrue(Regex("^[A-Za-z0-9_-]{43}$").matches(code))
+        val expiresAt = OffsetDateTime.parse(issued["expiresAt"].asString())
+        assertTrue(expiresAt.isAfter(OffsetDateTime.now().plusMinutes(29)) && expiresAt.isBefore(OffsetDateTime.now().plusMinutes(31)))
+        // DB에는 원문이 없다
+        assertEquals(0, jdbc.sql("select count(*) from card_qr_codes where code_hash = ?").param(code).query(Int::class.java).single())
+
+        // 여러 명이 같은 코드로 본다. 다른 명함에는 쓸 수 없다
+        repeat(3) { mvc.get("/v1/cards/$cardId?code=$code").andExpect { status { isOk() } } }
+        mvc.get("/v1/cards/$otherCard?code=$code").andExpect { status { isForbidden() }; jsonPath("$.code") { value("CARD_CODE_EXPIRED") } }
+
+        // 새로고침 = 새 코드 + 이전 코드 닫기. 닫은 코드는 2분 동안은 쓸 수 있다
+        val refreshed = qr(owner, cardId)["code"].asString()
+        mvc.delete("/v1/cards/$cardId/qr-codes/$codeId") { asUser(other) }.andExpect { status { isNotFound() } }
+        mvc.delete("/v1/cards/$cardId/qr-codes/$codeId") { asUser(owner) }.andExpect { status { isNoContent() } }
+        val closedUntil = jdbc.sql("select expires_at from card_qr_codes where id = ?").param(UUID.fromString(codeId)).query(OffsetDateTime::class.java).single()
+        assertTrue(closedUntil.isBefore(OffsetDateTime.now().plusMinutes(2).plusSeconds(5)) && closedUntil.isAfter(OffsetDateTime.now().plusMinutes(1)))
+        mvc.get("/v1/cards/$cardId?code=$code").andExpect { status { isOk() } }
+        mvc.get("/v1/cards/$cardId?code=$refreshed").andExpect { status { isOk() } }
+        // 두 번 닫아도 2분 뒤를 늘리지 않고 204. 모르는 코드 id도 204
+        mvc.delete("/v1/cards/$cardId/qr-codes/$codeId") { asUser(owner) }.andExpect { status { isNoContent() } }
+        assertTrue(!jdbc.sql("select expires_at from card_qr_codes where id = ?").param(UUID.fromString(codeId)).query(OffsetDateTime::class.java).single().isAfter(closedUntil))
+        mvc.delete("/v1/cards/$cardId/qr-codes/${UUID.randomUUID()}") { asUser(owner) }.andExpect { status { isNoContent() } }
+
+        // 2분(또는 30분)이 지나면 만료
+        jdbc.sql("update card_qr_codes set expires_at = now() - interval '1 second' where id = ?").param(UUID.fromString(codeId)).update()
+        mvc.get("/v1/cards/$cardId?code=$code").andExpect { status { isForbidden() }; jsonPath("$.code") { value("CARD_CODE_EXPIRED") } }
+        mvc.get("/v1/cards/$cardId?code=$refreshed").andExpect { status { isOk() } }
+        // 이미 만료된 코드를 닫아도 204
+        mvc.delete("/v1/cards/$cardId/qr-codes/$codeId") { asUser(owner) }.andExpect { status { isNoContent() } }
     }
 }
