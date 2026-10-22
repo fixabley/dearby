@@ -882,8 +882,11 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 - **iOS**: `Dearby.entitlements`·`Dearby-Debug.entitlements`의 associated-domains에 `applinks:dearby.wid.io.kr`를 더한다. Debug는 `applinks:dearby.wid.io.kr?mode=developer`(개발자 모드 기기에서 Apple CDN 캐시 없이 확인). 링크는 기존 `.onOpenURL`로 받는다.
 - **Android**: `MainActivity`에 `android:autoVerify="true"` https intent-filter(host `dearby.wid.io.kr`, pathPrefix `/cards/`·`/activities/`).
 - **앱이 링크를 받으면**:
-  - `/cards/<cardId>?activity=<n>&code=<code>`: 기존 `dearby://cards/<cardId>?activity=<n>&code=<code>`와 똑같이 처리한다(받은 명함 저장·명함 탭 받은 명함 구역, 코드 검증과 만료 안내 "명함 주인에게 QR을 다시 보여 달라고 하세요" 그대로). 두 입구는 같은 파서 하나를 쓴다.
+  - 지원 화면(사용자 2026-10-22 "활동 상세보기, 공유받은 명함 보기, 명함 - 받은 명함 탭 - 받은 명함 상세 지원했으면 좋겠어"): **활동 상세**, **공유받은 명함 보기**, **명함 탭 › 받은 명함 › 받은 명함 상세**.
   - `/activities/<id>`: 발견 탭으로 가서 그 활동 상세를 push한다. 없는 활동은 상세의 기존 없는 활동 표시를 따른다.
+  - `/cards/<cardId>?activity=<n>&code=<code>` — 이미 받은 명함에 있는 명함이면(로그인, `GET /v1/wallet`에 그 카드): 명함 탭 › 받은 명함 구역으로 가서 그 명함의 **받은 명함 상세**를 연다(저장 요청 없음).
+  - 그 밖(아직 받지 않았거나 로그아웃): **공유받은 명함 보기**를 연다. 공개 명함 조회(`GET /v1/cards/:id`, 웹 `/cards/:id`가 쓰는 것과 같은 요청에 `code`)로 받은 명함 상세와 같은 명함 표현을 보여 주고, 위에 `<프로그램 이름> <활동 이름>에서 받은 명함` 한 줄(활동이 있을 때), 아래 주 버튼 `받은 명함에 저장`. 누르면 기존 `dearby://cards/…` 저장 흐름(로그아웃이면 로그인 뒤 이어서, 코드 검증·만료 안내 "명함 주인에게 QR을 다시 보여 달라고 하세요", 내 명함·차단 안내 그대로)을 타고, 저장되면 명함 탭 › 받은 명함 › 그 명함 상세로 간다. 내 명함이면 저장 버튼 대신 기존 내 명함 안내. 조회 실패(코드 만료·회수·없음)는 화면 안 오류 표시와 같은 안내 문구. 신고는 받은 명함 상세·웹과 같은 `신고하기`를 둔다.
+  - `dearby://cards/…`(웹의 `Dearby 앱에 저장`)는 사용자가 저장을 고른 것이므로 지금처럼 바로 저장하고 받은 명함 상세를 연다. 두 입구는 링크 해석 하나를 함께 쓰고 진입 방식만 다르다.
   - 그 밖의 모양은 무시한다(앱만 열린다).
 - **웹 명함 페이지의 `Dearby 앱에 저장`(dearby://)은 유지**: iOS는 같은 도메인 안 이동과, 사용자가 브라우저로 열기를 고른 뒤에는 유니버설 링크를 열지 않는다. 그때의 통로다.
 - **활동 공유**: 활동 상세 상단 공유 버튼은 공식 안내 링크 대신 `<웹 origin>/activities/<id>`를 보낸다(앱의 웹 origin 설정, 캘린더 링크와 같은 주소). 활동이 불러와지면 늘 보인다. iOS `ShareLink(item: url, subject: 활동 이름)`, Android `ACTION_SEND` text/plain chooser(본문 = URL, `EXTRA_TITLE`·`EXTRA_SUBJECT` = 활동 이름). 접근성 라벨 `활동 공유`. 공식 안내 링크는 상세 본문의 출처 행에 그대로 있다.
