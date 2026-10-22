@@ -62,7 +62,7 @@ class MyCardsViewModel(private val account: AccountViewModel) : ViewModel() {
     /** The published card behind a tile, for "이 명함 고치기". */
     fun card(id: String) = cards.find { it.id == id }
 
-    // QR 보이기 (contract "명함 QR 코드"): codes live only in memory; the server ends each one 30 minutes after issue at the latest.
+    // QR 보이기 (contract "명함 QR 코드"): codes live only in memory; the server ends each one 5 minutes after issue at the latest.
     private val qrMutable = MutableStateFlow(CardQrState())
     val qr = qrMutable.asStateFlow()
     /** Issued while the 내 명함 section shows [Pair.first], so the QR screen opens without waiting on a weak connection. */
@@ -75,7 +75,7 @@ class MyCardsViewModel(private val account: AccountViewModel) : ViewModel() {
         if (prefetched?.takeIf { it.first == cardId }?.second?.fresh() == true) return
         viewModelScope.launch { runCatching { account.authorized { account.client.issueQrCode(cardId, it) } }.onSuccess { prefetched = cardId to it } }
     }
-    /** The QR screen opened for [cardId]: reuse the prefetched code when it is that card's and has over 5 minutes left. */
+    /** The QR screen opened for [cardId]: reuse the prefetched code when it is that card's and has over 1 minute left. */
     fun openQr(cardId: String) {
         val ready = prefetched?.takeIf { it.first == cardId && it.second.fresh() }?.second
         prefetched = null
@@ -107,7 +107,7 @@ class MyCardsViewModel(private val account: AccountViewModel) : ViewModel() {
         shown = cardId to code
         qrMutable.value = CardQrState(code.code)
         qrJob?.cancel()
-        // Refresh by itself when 5 minutes remain while the screen stays open.
+        // Refresh by itself when 1 minute remains while the screen stays open.
         qrJob = viewModelScope.launch { delay(code.remaining().minus(REFRESH_MARGIN).toMillis().coerceAtLeast(0)); issueQr(cardId) }
     }
     private fun revoke(code: Pair<String, QrCode>) {
@@ -115,6 +115,6 @@ class MyCardsViewModel(private val account: AccountViewModel) : ViewModel() {
     }
 }
 
-private val REFRESH_MARGIN: Duration = Duration.ofMinutes(5)
+private val REFRESH_MARGIN: Duration = Duration.ofMinutes(1)
 private fun QrCode.remaining(): Duration = runCatching { Duration.between(OffsetDateTime.now(), OffsetDateTime.parse(expiresAt)) }.getOrDefault(Duration.ZERO)
 private fun QrCode.fresh() = remaining() > REFRESH_MARGIN

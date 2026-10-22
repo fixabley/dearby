@@ -40,13 +40,13 @@ import Observation
     }
     func select(_ cardID: String) { selectedCardID = cardID }
     /// A code fetched ahead for the selected card while 내 명함 is on screen (contract "명함 QR 코드" 미리 받기), memory only.
-    /// An unused one is not expired; it lapses after its 30 minutes.
+    /// An unused one is not expired; it lapses after its 5 minutes.
     private var prefetched: (cardID: String, code: AccountClient.QRCode)?
     func prefetchQRCode() async {
         guard let cardID = selectedCardID, usablePrefetch(cardID) == nil, let code = await issueQRCode(cardID) else { return }
         prefetched = (cardID, code)
     }
-    /// The code the QR screen opens with: the prefetched one when it is this card's and has over 5 minutes left, else a new one.
+    /// The code the QR screen opens with: the prefetched one when it is this card's and has over 1 minute left, else a new one.
     func openingQRCode(_ cardID: String) async -> AccountClient.QRCode? {
         if let code = usablePrefetch(cardID) { prefetched = nil; return code }
         return await issueQRCode(cardID)
@@ -56,7 +56,7 @@ import Observation
         try? await account.authorized { [client = account.client] in try await client.issueQRCode(cardID, $0) }
     }
     private func usablePrefetch(_ cardID: String) -> AccountClient.QRCode? {
-        guard let prefetched, prefetched.cardID == cardID, let expiry = prefetched.code.expiry, expiry.timeIntervalSinceNow > 300 else { return nil }
+        guard let prefetched, prefetched.cardID == cardID, let expiry = prefetched.code.expiry, expiry.timeIntervalSinceNow > 60 else { return nil }
         return prefetched.code
     }
     /// Expires a shown code without holding up the caller (closing the sheet never waits); the server's 24-hour expiry covers a failure.
