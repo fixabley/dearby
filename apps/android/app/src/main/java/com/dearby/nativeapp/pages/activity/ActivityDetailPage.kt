@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.OpenInNew
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -28,10 +29,14 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
  */
 @Composable fun ActivityDetailPage(
     activity: ActivityState, error: String?, back: () -> Unit, openLink: (String) -> Unit, editReport: () -> Unit, checkCalendar: () -> Unit, share: () -> Unit,
-    openMap: () -> Unit = {}, addToMine: () -> Unit = {}, viewInMine: () -> Unit = {}, removeFromMine: () -> Unit = {}, addToCalendar: (CalendarDraft) -> Unit = {},
+    openMap: () -> Unit = {}, addToMine: () -> Unit = {}, viewInMine: () -> Unit = {}, addToCalendar: (CalendarDraft) -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize()) {
-        DearbyTopBar("활동 상세", back) { if (activity.officialUrl != null) IconButton(share) { Icon(Icons.Rounded.Share, "활동 공유", tint = MaterialTheme.colorScheme.primary) } }
+        // 추가 sits beside share until the activity is in 내 활동 (contract "활동 상세 내 활동 행동 정리", 2026-10-22).
+        DearbyTopBar("활동 상세", back) {
+            if (!activity.applied) TextButton(addToMine, Modifier.semantics { contentDescription = "내 활동에 추가" }) { Text("추가") }
+            if (activity.officialUrl != null) IconButton(share) { Icon(Icons.Rounded.Share, "활동 공유", tint = MaterialTheme.colorScheme.primary) }
+        }
         // No image header (contract "활동 상세 이미지 섹션 제거", 2026-10-19 밤): status, tags and title start at the top.
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -89,24 +94,23 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
         }
         HorizontalDivider()
         Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Once in 내 활동 the CTA block grows upward with "이미 추가된 항목입니다" and a trailing 내 활동으로 link to that activity
+            // (contract "활동 상세 내 활동 행동 정리"); removing happens only by swiping in the 내 활동 list.
+            if (activity.applied) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.CheckCircle, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(6.dp))
+                    Text("이미 추가된 항목입니다", Modifier.weight(1f), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
+                    TextButton(viewInMine) {
+                        Text("내 활동으로")
+                        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, Modifier.size(18.dp))
+                    }
+                }
+            }
             (activity.applyUrl ?: activity.officialUrl)?.let { url ->
                 // Closed → 공식 안내 보기; otherwise the application link, named by whether the operator set one.
                 val label = when { activity.applyUrl == null -> "공식 안내 보기"; activity.applicationUrl != null -> "신청 사이트 열기"; else -> "공식 사이트에서 신청" }
                 DearbyButton({ openLink(url) }, Modifier.fillMaxWidth().semantics { contentDescription = "$label, 외부 브라우저로 열려요" }) { Text(label) }
-            }
-            // 내 활동 직접 추가 (contract, 2026-10-20): whatever the recruitment state, the activity can be marked applied by hand — the same record as
-            // the "신청했어요" answer. Once in 내 활동 the CTA block grows upward with a primary check line "이미 추가된 항목입니다" (contract "활동 상세의
-            // 추가 상태", 2026-10-22, replacing the top banner), then 내 활동에서 보기 and the always-visible 내 활동에서 빼기 ("빼기는 눈에 보이게").
-            if (!activity.applied) {
-                DearbyOutlineButton(addToMine, Modifier.fillMaxWidth()) { Icon(Icons.Rounded.Checklist, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text("내 활동에 추가") }
-                Text("직접 남기는 기록이며 주최 측 확인은 아니에요", Modifier.align(Alignment.CenterHorizontally), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-            } else {
-                Row(Modifier.align(Alignment.CenterHorizontally).padding(vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.CheckCircle, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-                    Text("이미 추가된 항목입니다", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
-                }
-                DearbyOutlineButton(viewInMine, Modifier.fillMaxWidth()) { Icon(Icons.Rounded.Checklist, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text("내 활동에서 보기") }
-                RemoveFromMineButton(removeFromMine, Modifier.align(Alignment.CenterHorizontally))
             }
         }
     }
