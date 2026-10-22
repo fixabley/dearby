@@ -47,7 +47,11 @@ import com.dearby.nativeapp.widgets.activity.progress.ProgressState
         // example dataset for a `예시 데이터 보기/숨기기` item to toggle (내 활동 is the user's own applied marks).
         DearbyTopBar("내 활동", scrollBehavior = topBar) { TabActions(settings, notify) }
         // Empty: a CenteredMessage on the page background (contract "비스크롤 화면 배치·CTA"), the discovery CTA at the bottom.
-        if (active.isEmpty() && ended.isEmpty()) DearbyEmptyState("신청한 활동이 없어요", "발견에서 관심 있는 활동을 신청해 보세요.", Modifier.fillMaxSize(), Icons.Rounded.Checklist, MessageAction("활동 둘러보기", explore))
+        if (active.isEmpty() && ended.isEmpty() && state.mineLoading) DearbySkeleton(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 4.dp)) {
+            SkeletonLine(.7f, 12.dp)
+            repeat(4) { SkeletonBlock(Modifier.fillMaxWidth().height(96.dp), RoundedCornerShape(12.dp)) }
+        }
+        else if (active.isEmpty() && ended.isEmpty()) DearbyEmptyState("신청한 활동이 없어요", "발견에서 관심 있는 활동을 신청해 보세요.", Modifier.fillMaxSize(), Icons.Rounded.Checklist, MessageAction("활동 둘러보기", explore))
         else LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { Text(PROGRESS_NOTE, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
             if (active.isNotEmpty()) item { Text("진행 중", Modifier.padding(top = 6.dp).semantics { heading() }, style = MaterialTheme.typography.titleMedium) }
