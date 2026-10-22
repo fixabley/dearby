@@ -51,7 +51,7 @@ data class PickerItem(val id: Long, val name: String, val detail: String?)
 @Composable internal fun PickerResults(query: String, items: List<PickerItem>, loading: Boolean, failed: Boolean, idleHint: String, onPick: (PickerItem) -> Unit, onType: (String) -> Unit) {
     val trimmed = query.trim()
     when {
-        loading && items.isEmpty() -> Box(Modifier.fillMaxWidth().height(72.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
+        loading && items.isEmpty() -> DearbySkeleton(Modifier.padding(horizontal = 16.dp), spacing = 0.dp) { SkeletonRows(3) }
         failed -> Text("목록을 불러오지 못했어요. 직접 적어도 돼요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         trimmed.isNotEmpty() && items.isEmpty() -> DearbyEmptyState("검색 결과가 없어요", "아래에서 적은 이름 그대로 저장할 수 있어요.", icon = Icons.Rounded.Search)
         trimmed.isEmpty() && items.isEmpty() -> Text(idleHint, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)

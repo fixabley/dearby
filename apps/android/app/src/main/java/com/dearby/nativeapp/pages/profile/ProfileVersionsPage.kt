@@ -33,7 +33,9 @@ import java.time.format.DateTimeFormatter
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
             }
             if (state.nextCursor != null) item { TextButton(more, Modifier.fillMaxWidth()) { Text("더 보기") } }
-            if (state.loading) item { Box(Modifier.fillMaxWidth().padding(20.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) } }
+            // First page: version rows' outline (contract "내용 로딩은 스켈레톤"); a further page keeps the list-end indicator.
+            if (state.loading && state.items.isEmpty()) item { DearbySkeleton(Modifier.padding(horizontal = 20.dp), spacing = 0.dp) { SkeletonRows(5) } }
+            else if (state.loading) item { Box(Modifier.fillMaxWidth().padding(20.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) } }
         }
     }
 }
@@ -56,7 +58,7 @@ import java.time.format.DateTimeFormatter
                     detail.histories.forEachIndexed { index, h -> TimelineEntry(h.detail, h.title, if (h.verified) "확인됨" else "미확인", index == detail.histories.lastIndex) }
                 }
                 state.detailError != null -> Text(state.detailError, color = MaterialTheme.colorScheme.error)
-                else -> Box(Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
+                else -> DearbySkeleton(spacing = 12.dp) { SkeletonLine(.3f, 12.dp); SkeletonCardBody(); SkeletonRows(2) }
             }
         }
         if (detail != null) {

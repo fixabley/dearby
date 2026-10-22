@@ -1,3 +1,10 @@
+## 2026-10-22 내용 로딩 스켈레톤
+
+- `python3 scripts/check-fsd.py --self-test`: 통과(26 cases, 96 files)
+- `./gradlew :app:lintDebug :app:assembleDebug`: 통과
+- ponytail-review: Lean already. Ship.
+- 실행하지 않은 것: 기기 화면 흐름(`adb devices`에 연결된 기기 없음, 에뮬레이터는 띄우지 않음), TalkBack 읽기·동작 줄이기에서 맥박 멈춤의 실제 확인, 자동 테스트(새로 만들지 않음), 큰 글씨 테스트(2026-10-06 지시)
+
 ## 2026-10-17 프로필·명함 v2
 
 - `python3 scripts/check-fsd.py --self-test`: 통과(71 files)
