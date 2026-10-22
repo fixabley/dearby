@@ -17,6 +17,7 @@ import com.dearby.nativeapp.entities.account.api.SessionVault
 import com.dearby.nativeapp.entities.activity.api.fetchActivities
 import com.dearby.nativeapp.entities.activity.api.fetchActivity
 import com.dearby.nativeapp.entities.activity.api.fetchPrograms
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.runtime.getValue
@@ -45,7 +46,17 @@ class MainActivity : ComponentActivity() {
         viewModelFactory { initializer { AccountViewModel(AccountClient(ApiOrigin.current), SessionVault(applicationContext, ApiOrigin.sessionName), createSavedStateHandle(), BuildConfig.GOOGLE_SERVER_CLIENT_ID) } }
     }
     private val publish: CardPublishViewModel by viewModels { viewModelFactory { initializer { CardPublishViewModel(account) } } }
-    private val wallet: WalletViewModel by viewModels { viewModelFactory { initializer { WalletViewModel(account) } } }
+    private val wallet: WalletViewModel by viewModels {
+        viewModelFactory {
+            initializer {
+                // 공유받은 명함 보기's `<프로그램> <활동>` line, like the web card page: a gone or unreadable activity leaves it out.
+                WalletViewModel(account) { id ->
+                    try { withContext(Dispatchers.IO) { fetchActivity(ApiOrigin.current, id.toString()) }?.let { "${it.program} ${it.name}" } }
+                    catch (e: CancellationException) { throw e } catch (e: Exception) { null }
+                }
+            }
+        }
+    }
     private val profile: ProfileViewModel by viewModels { viewModelFactory { initializer { ProfileViewModel(account) } } }
     private val myCards: MyCardsViewModel by viewModels { viewModelFactory { initializer { MyCardsViewModel(account) } } }
     private val settings: SettingsViewModel by viewModels { viewModelFactory { initializer { SettingsViewModel(account, "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})") } } }
@@ -87,14 +98,15 @@ class MainActivity : ComponentActivity() {
     }
     /**
      * Apple's `dearby://auth/apple` redirect (singleTask brings this instance back over the Custom Tab), a received card
-     * `dearby://cards/<id>?activity=<n>` from the web card page (contract "명함 교환") or the same card page as an App Link, or an
-     * App Link `/activities/<id>` that opens the detail on 발견 (contract "유니버설 링크·App Links·활동 공유·오픈그래프"). Other links only open the app.
+     * `dearby://cards/<id>?activity=<n>` from the web card page's save button (contract "명함 교환"; saved at once), or an App Link (contract
+     * "유니버설 링크·App Links·활동 공유·오픈그래프"): the same card page, which opens the 받은 명함 detail or 공유받은 명함 보기 without saving, or
+     * `/activities/<id>`, which opens the detail on 발견. Other links only open the app.
      */
     private fun receive(intent: Intent?, recreated: Boolean = false) {
         val link = intent?.dataString ?: return
         if (recreated) return
         authRedirect(link)?.let { account.returned(it); return }
-        cardLink(link, BuildConfig.WEB_ORIGIN)?.let { wallet.receive(it); return }
+        cardLink(link, BuildConfig.WEB_ORIGIN)?.let { if (it.web) wallet.view(it) else wallet.receive(it); return }
         activityAppLink(link, BuildConfig.WEB_ORIGIN)?.let(activityModel::openLinked)
     }
 }

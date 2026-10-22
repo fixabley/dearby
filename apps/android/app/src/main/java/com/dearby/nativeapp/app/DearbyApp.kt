@@ -21,6 +21,8 @@ private enum class Tab(val label: String, val icon: ImageVector) {
 private sealed interface Route {
     /** A received card, by receipt id, so 내 명함도 건네기 shows the updated state. */
     data class Detail(val id: String) : Route
+    /** 공유받은 명함 보기 for a card App Link (contract "유니버설 링크·App Links·활동 공유·오픈그래프"); the card lives in [WalletState.shared]. */
+    data object Shared : Route
     /** 내 명함 QR 보이기 for one of the account's cards. */
     data class Qr(val card: PublishedCard) : Route
     data object Composer : Route
@@ -51,6 +53,7 @@ private sealed interface Route {
         }
     }
     BackHandler(route is Route.Detail || route is Route.Qr) { route = null }
+    BackHandler(route == Route.Shared) { wallet.closeShared(); route = null }
     val compose = { publish.start(); route = Route.Composer }
     // The fixed header buttons of every tab (contract "알림 아이콘은 다섯 탭 모두 우상단 고정"·"설정"); the notification screen is still a placeholder notice.
     val openSettings = { route = Route.Settings }
@@ -60,6 +63,8 @@ private sealed interface Route {
     val auth by account.state.collectAsStateWithLifecycle()
     // 명함 교환 (contract): a dearby://cards/… link saved a card → open it; signed out → sign in, then the link is saved.
     // A saved exchanged card opens on the 명함 tab's 받은 명함 segment with its detail pushed.
+    // A card App Link not in the wallet opens 공유받은 명함 보기 over whatever was showing.
+    LaunchedEffect(walletState.shared != null) { if (walletState.shared != null) route = Route.Shared }
     LaunchedEffect(walletState.opened) { walletState.opened?.let { tab = Tab.Cards; cardsSegment = CardsSegment.RECEIVED; activityDetail = false; route = Route.Detail(it); wallet.consumeOpened() } }
     // A linked activity, once loaded, opens on 발견 with its detail pushed over whatever was showing; a gone or unreadable one only says so.
     val activityListState by activityModel.state.collectAsStateWithLifecycle()
@@ -80,6 +85,7 @@ private sealed interface Route {
                 when (val screen = route) {
                     is Route.Detail -> walletState.cards.firstOrNull { it.id == screen.id }?.let { WalletCardRoute(it, wallet, myCards) { route = null } }
                         ?: LaunchedEffect(screen) { route = null }
+                    Route.Shared -> walletState.shared?.let { SharedCardRoute(it, wallet) { wallet.closeShared(); route = null } } ?: LaunchedEffect(screen) { route = null }
                     is Route.Qr -> CardQrRoute(screen.card, activityModel, myCards) { route = null }
                     Route.Composer -> CardComposerRoute(publish, account) { route = null }
                     Route.Settings -> SettingsRoute(settings, account, profile) { route = null }

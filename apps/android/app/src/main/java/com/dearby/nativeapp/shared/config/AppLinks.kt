@@ -32,22 +32,24 @@ fun authRedirect(link: String): AuthRedirect? = runCatching {
 /**
  * A received card link (contract "명함 교환", "명함 QR 코드"): `dearby://cards/<cardId>?activity=<n>&code=<QR code>`, or the same card page as an
  * App Link `https://<web origin>/cards/<cardId>?…` (contract "유니버설 링크·App Links·활동 공유·오픈그래프"); [activityId] is the activity's
- * numeric id or null, [code] the owner's QR code (43 base64url characters) that the first save needs, or null.
+ * numeric id or null, [code] the owner's QR code (43 base64url characters) that the first save needs, or null. [web] is the App Link entrance,
+ * which opens 공유받은 명함 보기 (or the 받은 명함 detail) instead of saving at once.
  */
-data class CardLink(val cardId: String, val activityId: Long?, val code: String? = null)
+data class CardLink(val cardId: String, val activityId: Long?, val code: String? = null, val web: Boolean = false)
 
 /** Exactly `dearby://cards/<UUID>` or `https://<[webOrigin] host>/cards/<UUID>` with an optional numeric `activity` and `code`; anything else is not a card link. */
 fun cardLink(link: String, webOrigin: String): CardLink? = runCatching {
     val uri = URI(link)
     if (uri.rawFragment != null) return null
+    val web = webLink(uri, webOrigin)
     val id = when {
         uri.scheme == "dearby" && uri.rawAuthority == "cards" -> uri.rawPath.removePrefix("/")
-        webLink(uri, webOrigin) -> uri.rawPath.takeIf { it.startsWith("/cards/") }?.removePrefix("/cards/") ?: return null
+        web -> uri.rawPath.takeIf { it.startsWith("/cards/") }?.removePrefix("/cards/") ?: return null
         else -> return null
     }.takeIf { it.isNotEmpty() && '/' !in it } ?: return null
     val cardId = UUID.fromString(id).toString().takeIf { it.equals(id, ignoreCase = true) } ?: return null
     val query = uri.rawQuery?.split('&').orEmpty().mapNotNull { pair -> pair.split('=', limit = 2).takeIf { it.size == 2 }?.let { it[0] to it[1] } }.toMap()
-    CardLink(cardId, query["activity"]?.toLongOrNull(), query["code"]?.takeIf { QR_CODE.matches(it) })
+    CardLink(cardId, query["activity"]?.toLongOrNull(), query["code"]?.takeIf { QR_CODE.matches(it) }, web)
 }.getOrNull()
 
 /**
