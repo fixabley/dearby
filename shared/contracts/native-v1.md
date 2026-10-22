@@ -751,6 +751,36 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 - **내 명함 QR 화면**: 위 흐름대로. 색·글꼴은 기존 토큰. QR은 iOS CoreImage `CIQRCodeGenerator`, Android `com.google.zxing:core`(인코딩만, CameraX·카메라 권한 없음)로 그린다. 웹 origin은 `DEARBY_WEB_ORIGIN` 빌드 설정(기본 `https://dearby.wid.io.kr`)이다.
 - 접근성: QR 이미지는 "내 명함 QR 코드, 카메라로 읽으면 명함을 받아요"로 읽히고, 활동 칩은 버튼이다. 배지는 행 접근성 라벨에 포함한다.
 
+## 명함 QR 코드 — 2026-10-22 사용자 결정
+
+사용자: "OAuth2 로그인처럼 QR 생성 시 코드를 발급해 쿼리스트링에 넣고 QR을 렌더링하고, 닫을 때 그 코드를 만료시키는 거야. 웹에서 들어갈 때 세션과 명함이 매칭돼 있지 않으면 쿼리스트링의 코드가 맞을 때만 볼 수 있게… 저장하면 매칭 정보를 넣어 다시 들어왔을 때 통과" → "여러 명이 QR을 쓸 수 있어야 하니 일회용은 안 되고, 닫거나 QR 새로고침할 때 API로 만료." 목적은 명함을 공개 게시물이 아니라 직접 만난 사람끼리의 교환으로 한정하는 것(App Store 1.2 대응의 일부, 신고·차단은 별도 결정). 위 "명함 교환"의 "공개 `/cards/:id`는 그대로 열린다"와 아래 "발행 스냅샷·공개 조회" 중 조회 권한 부분을 이 절이 대체한다.
+
+### 코드
+
+- 주인 앱이 QR 화면을 열 때 `POST /v1/cards/:id/qr-codes`(Bearer, 주인) → 201 `{id, code, expiresAt}`. `code`는 32바이트 무작위 base64url(43자). 서버는 SHA-256 해시만 저장한다(`card_qr_codes(id uuid, card_id, code_hash, created_at, expires_at, revoked_at)`, V47).
+- 여러 명이 쓸 수 있다(일회용 아님). 만료는 셋 중 먼저 오는 것: ① QR 화면을 닫을 때 `DELETE /v1/cards/:id/qr-codes/:codeId`(204, 이미 만료여도 204) ② QR 새로고침(새 코드 발급 + 이전 코드 DELETE) ③ 안전 만료 `expiresAt`(발급 24시간, 앱 강제 종료로 닫힘 신호가 오지 않는 경우 대비). QR 화면이 열린 채 `expiresAt` 10분 전이 되면 앱이 스스로 새로고침한다.
+- 명함 철회(`DELETE /v1/cards/:id`)는 그 명함의 코드를 모두 만료한다. 활동 칩을 바꿔도 코드는 그대로다(주소의 `activity`만 바뀐다).
+- 발급 실패(네트워크·5xx)면 QR 대신 "연결을 확인하고 다시 시도해 주세요"와 다시 시도 버튼. QR은 코드 없이 그리지 않는다.
+- QR 내용: `https://<웹 origin>/cards/<cardId>?activity=<activityId>&code=<code>`(활동 없이면 `activity` 생략). 앱 스킴도 같은 쿼리: `dearby://cards/<cardId>?activity=…&code=…`.
+
+### 조회·저장 권한
+
+- `GET /v1/cards/:id`는 다음 중 하나면 200: 주인(Bearer), 회수되지 않은 Receipt를 가진 계정(Bearer), 회수되지 않은 게스트 저장을 가진 게스트 토큰, 유효한 `?code=`. 아니면 403 ProblemDetail `type` 끝 `card-code-required`(코드 없음) 또는 `card-code-expired`(만료·모르는 코드), 철회된 명함은 기존대로 404. 코드는 그 명함의 것이어야 한다.
+- `PUT /v1/wallet/cards/:cardId`·`PUT /v1/guest/cards/:id` 본문에 `code?: string`. 이미 저장(회수 전)돼 있으면 코드 없이 200. 처음 저장이면 유효한 코드가 필요하고 없거나 만료면 403(같은 type). 회수된 뒤 다시 저장하려면 새 코드가 필요하다.
+- 맞교환 `POST /v1/wallet/cards/:cardId/reciprocate`는 코드가 필요 없다(호출자가 이미 받은 명함이 근거, 상대 지갑에 넣는 것은 호출자 자신의 명함).
+- 회수·철회 뒤에는 위 조건이 깨지므로 웹 주소로도 볼 수 없다.
+
+### 웹
+
+- `/cards/:id`는 서버에서 코드·게스트 쿠키와 함께 조회한다. 로드 직후 `history.replaceState`로 주소에서 `code`를 지운다(복사·공유로 코드가 따라가지 않게). 코드는 페이지 메모리에만 두고 `브라우저에 저장`·`Dearby 앱에 저장`(스킴 주소에 `code`) 때 쓴다. `Referrer-Policy: no-referrer`.
+- 403이면 카드 대신 가운데 정렬 안내: 제목 "명함을 볼 수 없어요", 본문 "명함 주인에게 QR을 다시 보여 달라고 해 주세요." 저장해 둔 명함은 `/saved`에서 그대로 열린다.
+- 서버·프록시 로그에 `code` 쿼리를 남기지 않는다.
+
+### 앱
+
+- iOS·Android QR 화면: 열 때 발급, 닫을 때(시트 dismiss·뒤로) 만료 호출(실패해도 닫힘은 막지 않음), 오른쪽 위 새로고침 버튼(네이티브 아이콘 `arrow.clockwise`/`Refresh`, 접근성 "QR 새로 만들기"), 자동 새로고침. 발급 중에는 QR 자리에 시스템 진행 표시.
+- 스킴으로 받은 `code`를 `PUT /v1/wallet/cards/:cardId`에 그대로 보낸다. 403이면 "명함 주인에게 QR을 다시 보여 달라고 해 주세요" 알림.
+
 ## 명함 표현 — 2026-10-18 사용자 결정
 
 Mobbin 참고(Instagram 프로필 카드, Telegram·Luma 연락처 행, Mindvalley 직무 칩, Airbnb 자격 목록)를 바탕으로 명함 본문의 표현을 세 플랫폼에서 같게 맞춘다. 데이터·계약은 바뀌지 않는다(`Card` 그대로).
