@@ -37,6 +37,5 @@ import com.dearby.nativeapp.pages.wallet.WalletPage
 /** 공유받은 명함 보기 (contract "유니버설 링크·App Links·활동 공유·오픈그래프"); saving lands on 받은 명함 › that card's detail through [WalletState.opened]. */
 @Composable fun SharedCardRoute(shared: SharedCard, wallet: WalletViewModel, close: () -> Unit) {
     val context = LocalContext.current
-    val card = shared.card
-    SharedCardPage(shared, close, { openContact(context, it) }, report = { reason, detail -> card?.let { wallet.report(it.id, reason, detail) } }, save = wallet::saveShared)
+    SharedCardPage(shared, close, { openContact(context, it) }, report = { reason, detail -> shared.card?.let { wallet.report(it.id, reason, detail) } }, save = wallet::saveShared)
 }
