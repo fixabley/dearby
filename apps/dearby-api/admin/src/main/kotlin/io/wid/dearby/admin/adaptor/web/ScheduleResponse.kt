@@ -22,6 +22,7 @@ data class ScheduleResponse(
     val curatedNote: String?, // 지정하며 남긴 사유(admin-v1.md "사유")
     val statuses: List<ProgressStatusResponse>, // 고를 수 있는 진행 상태(어드민 지정 또는 기본 세 개, id null)
     val overlapCheck: OverlapCheckResponse?, // 겹침 확인 시간(서울 HH:mm). 없으면 null
+    val recurrence: String?, // 반복 규칙(RRULE 본문, 접두사 없음). 없으면 null
 ) {
     companion object {
         fun from(schedule: Schedule): ScheduleResponse {
@@ -44,6 +45,7 @@ data class ScheduleResponse(
                 curatedNote = schedule.curatedNote,
                 statuses = schedule.statuses.map { ProgressStatusResponse(it.id, it.name, it.kind) },
                 overlapCheck = schedule.overlapCheck?.let(OverlapCheckResponse::from),
+                recurrence = schedule.recurrence?.rule,
             )
         }
     }

@@ -46,6 +46,10 @@
 - 시각은 본문에 시각까지 있을 때만 ISO 8601 오프셋 형식(예: 2026-10-08T19:00:00+09:00)으로 쓴다(recruitmentStartAt·recruitmentEndAt, schedules[].startAt·endAt).
 - 두 기간을 구분한다. **모집 기간**(recruitmentStartAt·EndAt 또는 recruitmentStartDate·EndDate)은 지원서·신청을 받는 기간이다(본문의 모집·접수·지원·신청·원서·마감 낱말이 붙은 날짜). **활동 기간**(dateLabel·startDate·endDate)은 교육·과정·행사·운영이 실제로 진행되는 기간이다(교육 기간·과정 기간·행사 일시·운영 기간·개최일). 같은 날짜를 두 기간에 함께 넣지 않는다. 본문에 모집 기간만 있으면 모집 기간 필드만 채우고 dateLabel은 빈 문자열, startDate·endDate는 null로 둔다. 본문에 활동 기간만 있으면 모집 기간 필드는 모두 null이다. 어느 쪽인지 알 수 없는 날짜는 모집 기간에 넣지 않는다.
 - 기간 필드에는 날짜만 적는다. 날짜만 있으면 startDate·endDate(yyyy-MM-dd, 끝 날짜 포함)를 채운다: 활동 기간은 startDate·endDate, 모집 기간은 recruitmentStartDate·recruitmentEndDate, 개별 일정은 schedules[].startDate·endDate. 하루짜리면 둘을 같게 쓴다. 연도가 없으면 본문의 다른 날짜로 알 수 있을 때만 쓰고 모르면 null.
+- 반복: 본문에 규칙적인 시간표가 **명시**되어 있을 때만 RRULE 본문(접두사 `RRULE:` 없이)으로 쓴다. 허용: `FREQ=DAILY|WEEKLY`, `BYDAY`(MO,TU,WE,TH,FR,SA,SU), `INTERVAL`(1~4), 끝은 `UNTIL=yyyyMMdd`(마지막 날 포함) 또는 `COUNT`(1~400) 중 하나만. 확실하지 않으면 null이다(추측하지 않는다).
+  - 활동 기간이 "평일 09:00~17:00, 2027년 3월 2일~8월 31일"처럼 매번 같은 시각이면 `activityRecurrence` {rule:"FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;UNTIL=20270831", startTime:"09:00", endTime:"17:00"}이고 startDate·endDate도 채운다(startDate가 첫 날). 시각이 없으면 activityRecurrence는 null.
+  - 세부 일정이 "매주 화요일 19:00~21:00, 8회"처럼 반복되면 첫 회차의 startAt·endAt을 쓰고 `recurrence`에 "FREQ=WEEKLY;BYDAY=TU;COUNT=8"을 쓴다. 날짜만 있는 세부 일정에는 recurrence를 쓰지 않는다.
+  - 반복을 쓸 때는 evidenceQuote에 그 시간표 문장이 들어가게 고른다(활동 근거 구절과 한 구절이 되면 가장 좋다).
 - dateLabel은 활동 기간의 원문 문구 그대로다(모집 기간 문구를 넣지 않는다). "2026 신입생 모집"처럼 날짜가 아닌 문구는 dateLabel에만 두고 startDate·endDate는 null로 둔다.
 - 다른 프로그램의 활동은 뽑지 않는다. 프로그램 이름과 다른 프로그램(예: 같은 회사의 다른 과정)의 기수가 본문에 있어도 제외한다.
 - 요청의 "활동으로 만들지 않을 이름"이 있으면 그 이름의 활동은 뽑지 않고, "이미 있는 활동의 다른 표기"가 있으면 그 표기 대신 정본 이름을 name으로 쓴다.

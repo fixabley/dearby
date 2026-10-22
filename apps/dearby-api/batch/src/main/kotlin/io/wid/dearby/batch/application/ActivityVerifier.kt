@@ -2,11 +2,16 @@ package io.wid.dearby.batch.application
 
 import io.wid.dearby.application.eligibility.EligibilityJson
 import io.wid.dearby.domain.ActivityCategory
+import io.wid.dearby.domain.OverlapCheck
 import io.wid.dearby.domain.ParticipationType
+import io.wid.dearby.domain.Recurrence
+import io.wid.dearby.domain.ScheduleTime
+import io.wid.dearby.domain.collection.CollectedRecurrence
 import io.wid.dearby.domain.ScheduleKind
 import io.wid.dearby.domain.collection.CollectedActivity
 import io.wid.dearby.domain.collection.CollectedSchedule
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.OffsetDateTime
 import java.time.format.DateTimeParseException
 
@@ -54,7 +59,9 @@ object ActivityVerifier {
                     val scheduleEnd = parse(schedule.endAt)
                     if (scheduleStart != null && scheduleEnd != null && scheduleEnd.isBefore(scheduleStart)) return@mapNotNull null
                     val (dayStart, dayEnd) = if (scheduleStart == null && scheduleEnd == null) dates(schedule.startDate, schedule.endDate) else null to null
-                    CollectedSchedule(schedule.title.trim(), kind(schedule.kind), scheduleStart, scheduleEnd, schedule.dateLabel.trim(), dayStart, dayEnd)
+                    // 반복은 시각 일정에만 둔다(수집기는 겹침 확인 시간을 만들지 않는다). 틀린 규칙은 그 필드만 버린다
+                    val rule = scheduleStart?.let { recurrence(schedule.recurrence, ScheduleTime.Timed(it.toZonedDateTime(), scheduleEnd?.toZonedDateTime()), null) }
+                    CollectedSchedule(schedule.title.trim(), kind(schedule.kind), scheduleStart, scheduleEnd, schedule.dateLabel.trim(), dayStart, dayEnd, rule)
                 },
                 location = candidate.location?.trim()?.ifEmpty { null },
                 cost = candidate.cost?.trim()?.ifEmpty { null },
@@ -63,9 +70,18 @@ object ActivityVerifier {
                 eligibility = EligibilityJson.parse(candidate.eligibility, lenient = true),
                 evidenceQuote = quote,
                 checkedAt = checkedAt,
+                activityRecurrence = candidate.activityRecurrence?.let { extracted ->
+                    val time = runCatching { OverlapCheck(LocalTime.parse(extracted.startTime.trim()), LocalTime.parse(extracted.endTime.trim())) }.getOrNull()
+                    val rule = startDate?.let { recurrence(extracted.rule, ScheduleTime.AllDay(it, (endDate ?: it).plusDays(1)), time) }
+                    if (rule != null && time != null) CollectedRecurrence(rule, time) else null
+                },
             )
         )
     }
+
+    // 규칙이 허용 부분집합이고 일정과 맞을 때만(native-v1.md "반복 일정과 겹침 결과 묶음"). 아니면 null
+    private fun recurrence(text: String?, time: ScheduleTime, overlapCheck: OverlapCheck?): Recurrence? =
+        Recurrence.parseOrNull(text)?.takeIf { runCatching { it.requireFits(time, overlapCheck) }.isSuccess }
 
     // 모델이 준 일정 종류. 모르거나 어긋나면 행사(EVENT)로 본다
     private fun kind(value: String?): ScheduleKind = ScheduleKind.entries.firstOrNull { it.name.equals(value?.trim(), ignoreCase = true) } ?: ScheduleKind.EVENT

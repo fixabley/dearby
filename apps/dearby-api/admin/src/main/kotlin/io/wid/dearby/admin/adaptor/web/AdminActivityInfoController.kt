@@ -7,7 +7,7 @@ import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.ParticipationType
 import io.wid.dearby.admin.application.EligibilityChange
 import io.wid.dearby.admin.application.PlaceChange
-import io.wid.dearby.admin.application.OverlapChange
+import io.wid.dearby.admin.application.TimingChange
 import io.wid.dearby.admin.application.ScheduleChange
 import io.wid.dearby.domain.Address
 import io.wid.dearby.application.activity.ScheduleEdit
@@ -122,7 +122,7 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
                     application = request.application?.let { node -> if (node.isNull) null else scheduleEdit(node) },
                     eligibility = eligibility, audience = request.audience, location = request.location, cost = request.cost,
                     tagIds = request.tagIds, place = request.place?.takeUnless { it.isNull }?.let(::parsePlace),
-                    activityOverlap = overlapChange(activitySchedule), applicationOverlap = overlapChange(request.application),
+                    activityTiming = timingChange(activitySchedule), applicationTiming = timingChange(request.application),
                 )
             )
         )
@@ -167,7 +167,7 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
                 activitySchedule = scheduleChange(request.activitySchedule), application = scheduleChange(request.application),
                 officialUrl = request.officialUrl, applicationUrl = request.applicationUrl,
                 category = categoryChange(request.category), tagIds = request.tagIds, place = placeChange(request.place),
-                activityOverlap = overlapChange(request.activitySchedule), applicationOverlap = overlapChange(request.application),
+                activityTiming = timingChange(request.activitySchedule), applicationTiming = timingChange(request.application),
             )
         )
     }
@@ -201,18 +201,25 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
     }
 
     // 일정 직접 지정(admin-v1.md): {startDate?, endDate?, startAt?, endAt?} 또는 null. 날짜는 yyyy-MM-dd, 시각은 ISO 8601 오프셋
-    // 객체에 overlapCheck만 있으면 날짜는 그대로 둔다(겹침 확인 시간만 바꿈)
+    // 객체에 overlapCheck·recurrence만 있으면 날짜는 그대로 둔다(겹침 확인 시간·반복만 바꿈)
     private fun scheduleChange(node: JsonNode?): ScheduleChange = when {
         node == null -> ScheduleChange.Keep
         node.isNull -> ScheduleChange.Clear
         !node.isObject -> throw InvalidInputException("일정은 객체 또는 null이어야 합니다")
-        node.propertyNames().toSet() == setOf("overlapCheck") -> ScheduleChange.Keep
+        node.propertyNames().toSet().let { it.isNotEmpty() && it.all { key -> key in TIMING_KEYS } } -> ScheduleChange.Keep
         else -> ScheduleChange.Set(scheduleEdit(node))
     }
 
-    // 모집·활동 기간 객체 안의 overlapCheck(native-v1.md "겹침 확인 시간"): 없으면 null(그대로), JSON null은 지움, 객체는 HH:mm 검증 뒤 바꿈
-    private fun overlapChange(node: JsonNode?): OverlapChange? =
-        node?.takeIf { it.isObject && it.has("overlapCheck") }?.get("overlapCheck")?.let { OverlapChange(if (it.isNull) null else parseOverlapCheck(it)) }
+    // 모집·활동 기간 객체 안의 overlapCheck(HH:mm 검증)·recurrence(RRULE 검증): 둘 다 없으면 null(그대로), 키마다 JSON null은 지움
+    private fun timingChange(node: JsonNode?): TimingChange? {
+        if (node == null || !node.isObject || TIMING_KEYS.none(node::has)) return null
+        val overlap = node.get("overlapCheck")
+        val rule = node.get("recurrence")
+        return TimingChange(
+            hasOverlapCheck = overlap != null, overlapCheck = overlap?.takeUnless { it.isNull }?.let(::parseOverlapCheck),
+            hasRecurrence = rule != null, recurrence = rule?.takeUnless { it.isNull }?.let(::parseRecurrence),
+        )
+    }
 
     private fun scheduleEdit(node: JsonNode): ScheduleEdit {
         if (!node.isObject) throw InvalidInputException("일정은 객체여야 합니다")
@@ -239,5 +246,6 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
 
     private companion object {
         const val DEFAULT_SIZE = ActivityService.DEFAULT_PAGE_SIZE.toString()
+        val TIMING_KEYS = setOf("overlapCheck", "recurrence")
     }
 }

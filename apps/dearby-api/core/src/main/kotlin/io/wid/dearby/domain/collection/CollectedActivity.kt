@@ -1,7 +1,9 @@
 package io.wid.dearby.domain.collection
 
 import io.wid.dearby.domain.ActivityCategory
+import io.wid.dearby.domain.OverlapCheck
 import io.wid.dearby.domain.ParticipationType
+import io.wid.dearby.domain.Recurrence
 import io.wid.dearby.domain.eligibility.EligibilityGroup
 
 import java.time.LocalDate
@@ -34,4 +36,7 @@ data class CollectedActivity(
     val checkedAt: OffsetDateTime,
     val category: ActivityCategory? = null, // 활동 종류(native-v1.md "활동 종류"). 본문으로 판단할 수 없으면 null
     val tags: List<String> = emptyList(), // 모델이 사전에서 고른 태그 이름(native-v1.md "태그"). 저장할 때 사전과 맞춰 모르는 이름은 버린다
+    val activityRecurrence: CollectedRecurrence? = null, // 활동 기간의 반복(날짜만 있는 활동 기간 + 회차 시각). 활동 기간 행에 반복·겹침 확인 시간이 없을 때만 채운다
 )
+
+data class CollectedRecurrence(val rule: Recurrence, val time: OverlapCheck)
