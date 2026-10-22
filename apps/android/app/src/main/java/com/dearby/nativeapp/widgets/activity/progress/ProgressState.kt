@@ -11,15 +11,32 @@ import java.time.LocalDate
 
 enum class ProgressStatus { PAST, CURRENT, UPCOMING }
 
-/** The user's own mark on one step (default [WAIT]); never the organizer's result. */
-enum class ProgressMark(val label: String) { PASS("통과"), WAIT("대기"), FAIL("탈락") }
+/**
+ * One status a step offers (contract "내 활동 서버 저장·일정 상태", 2026-10-22): the schedule's admin [name] or a default 대기·통과·탈락.
+ * [kind] is WAITING, PASSED, FAILED or OTHER; [id] is null for a default status. The user's own mark, never the organizer's result.
+ */
+data class StatusOption(val id: String?, val name: String, val kind: String) {
+    val failed get() = kind == "FAILED"
+    val passed get() = kind == "PASSED"
+}
 
-/** One step as shown. [kind] picks the icon (APPLICATION, DEADLINE, ANNOUNCEMENT, INTERVIEW, EVENT); [hasWindow] when the calendar comparison can open on it. */
-data class ProgressStage(val name: String, val kind: String, val dateText: String, val status: ProgressStatus, val mark: ProgressMark, val hasWindow: Boolean)
+/**
+ * A prefilled system calendar event (contract "내 캘린더에 추가"): [title] "활동명 · 일정 제목", epoch millis, [allDay] for a date-only
+ * schedule (Seoul midnights). The route adds the place and the official link and hands it to the calendar app.
+ */
+data class CalendarDraft(val title: String, val begin: Long, val end: Long, val allDay: Boolean)
+
+/**
+ * One step as shown. [kind] picks the icon (APPLICATION, DEADLINE, ANNOUNCEMENT, INTERVIEW, EVENT); [options] are its statuses and
+ * [selected] the user's choice (the first waiting status until one is chosen); [hasWindow] when the calendar comparison can open on it;
+ * [draft] for `캘린더에 추가`, null for an undated step.
+ */
+data class ProgressStage(val name: String, val kind: String, val dateText: String, val status: ProgressStatus, val options: List<StatusOption>, val selected: StatusOption?, val hasWindow: Boolean,
+    val draft: CalendarDraft? = null)
 
 /**
  * The progress track of one applied activity (contract "내 활동 진행 트랙"). [stages] is empty for an activity without
- * schedules, which keeps the plain 신청함/참여 확정 row. [ended] (a 탈락 mark, [failed], or every step over) moves it to
+ * schedules, which keeps the plain 신청함 row. [ended] (a FAILED status, [failed], or every step over) moves it to
  * 끝난 활동; [nextDay] sorts 진행 중 with undated activities last.
  */
 data class ProgressState(

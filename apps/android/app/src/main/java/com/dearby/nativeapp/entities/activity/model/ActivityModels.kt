@@ -3,26 +3,62 @@ package com.dearby.nativeapp.entities.activity.model
 import java.net.URI
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.OffsetDateTime
 
-/** A timed schedule with both ends, as the calendar comparison needs it; the full list is [ActivityModel.stageSchedules]. */
+/** A timed window with both ends (ISO 8601 with offset), as the calendar comparison needs it; built by [StageSchedule.windows]. */
 data class ScheduleModel(val title: String, val startAt: String, val endAt: String, val timeZone: String = "Asia/Seoul")
+
+/**
+ * One choice a schedule offers on the progress page (contract "내 활동 서버 저장·일정 상태", 2026-10-22): the admin's [name] or the
+ * default 대기·통과·탈락. [id] is null for a default status (the server then takes [kind]). [kind] is WAITING, PASSED, FAILED or OTHER.
+ */
+data class ScheduleStatus(val id: String?, val name: String, val kind: String) {
+    companion object {
+        const val WAITING = "WAITING"; const val PASSED = "PASSED"; const val FAILED = "FAILED"
+        /** The server fills these in when the admin set none; kept for an API that sent no `statuses`. */
+        val DEFAULTS = listOf(ScheduleStatus(null, "대기", WAITING), ScheduleStatus(null, "통과", PASSED), ScheduleStatus(null, "탈락", FAILED))
+    }
+}
 
 /**
  * One schedule as `GET /v1/activities` sends it (contract "활동 조회"): timed ([startAt] and/or [endAt]), all-day
  * ([startDate]/[endDateExclusive]) or undated ([dateLabel] only). [kind] is DEADLINE, ANNOUNCEMENT, INTERVIEW or EVENT.
+ * [id] is the schedule id the progress status is saved under; [statuses] its choices; [overlapStart]/[overlapEnd] the admin's
+ * Seoul `HH:mm` overlap-check window for a date-only schedule (contract "겹침 확인 시간", 2026-10-22).
  */
 data class StageSchedule(
     val title: String, val kind: String, val startAt: String?, val endAt: String?, val timeZone: String,
     val startDate: String?, val endDateExclusive: String?, val dateLabel: String,
-)
+    val id: String? = null, val statuses: List<ScheduleStatus> = emptyList(), val overlapStart: String? = null, val overlapEnd: String? = null,
+) {
+    /**
+     * The windows the calendar comparison uses (contract "겹침 확인 시간"): a timed schedule with both ends is its own window; a
+     * date-only schedule with an overlap-check time is that Seoul time on every day of `[startDate, endDateExclusive)`; anything
+     * else is not compared. Windows are written as UTC instants.
+     */
+    fun windows(): List<ScheduleModel> {
+        val start = instant(startAt); val end = instant(endAt)
+        if (start != null && end != null) return listOf(ScheduleModel(title, start.toString(), end.toString(), timeZone))
+        if (start != null || end != null) return emptyList()
+        val from = runCatching { LocalTime.parse(overlapStart) }.getOrNull() ?: return emptyList()
+        val to = runCatching { LocalTime.parse(overlapEnd) }.getOrNull()?.takeIf { it > from } ?: return emptyList()
+        val first = startDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return emptyList()
+        val last = endDateExclusive?.let { runCatching { LocalDate.parse(it) }.getOrNull() }?.minusDays(1)?.takeIf { it >= first } ?: first
+        return generateSequence(first) { day -> day.plusDays(1).takeIf { it <= last } }.map { day ->
+            ScheduleModel(title, day.atTime(from).atZone(SEOUL_ZONE).toInstant().toString(), day.atTime(to).atZone(SEOUL_ZONE).toInstant().toString(), SEOUL_ZONE.id)
+        }.toList()
+    }
+}
+private val SEOUL_ZONE: ZoneId = ZoneId.of("Asia/Seoul")
 
 /**
  * Recruitment period from `application`: timed ([startAt]/[endAt]) or all-day ([startDate]/[endDateExclusive], Seoul days);
- * either end may be unknown.
+ * either end may be unknown. [id] and [statuses] are the APPLICATION schedule's, for the 지원 stage's status.
  */
-data class ApplicationWindow(val startAt: String?, val endAt: String?, val startDate: String? = null, val endDateExclusive: String? = null)
+data class ApplicationWindow(val startAt: String?, val endAt: String?, val startDate: String? = null, val endDateExclusive: String? = null,
+    val id: String? = null, val statuses: List<ScheduleStatus> = emptyList())
 
 /** A structured venue (contract "활동 장소"): all four fields come together or the activity has no place. */
 data class Place(val name: String, val address: String, val lat: Double, val lng: Double)
@@ -51,8 +87,11 @@ data class ActivityModel(
 ) {
     /** The venue name to show: the curated place, else the collected phrase, else the schedule address. */
     val venue: String? get() = place?.name ?: location ?: address
-    /** Only schedules with both ends can be compared on a calendar. */
-    val schedules get() = stageSchedules.mapNotNull { if (it.startAt == null || it.endAt == null) null else ScheduleModel(it.title, it.startAt, it.endAt, it.timeZone) }
+    /**
+     * The calendar-comparison windows of the activity period and its schedules (not the recruitment period), earliest first
+     * (contract "겹침 확인 시간"); empty hides the detail's `겹치는 시간 확인하기`.
+     */
+    val schedules get() = (listOfNotNull(activitySchedule) + stageSchedules).flatMap { it.windows() }.sortedBy { instant(it.startAt) }
     /**
      * Only `application` against [now] (2026-10-14 rule; 2026-10-19 "열린 활동 판정 일원화" adds date-only windows). A timed
      * window compares instants, an all-day window compares Seoul dates (`startDate ≤ today < endDateExclusive`); a missing

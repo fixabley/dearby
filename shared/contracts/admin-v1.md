@@ -147,6 +147,20 @@ native-v1.md "활동 장소"를 따른다. `PATCH /v1/admin/activities/:id`·`PO
 - **어드민 화면**: 활동 편집기 안의 `일정` 탭(또는 상세의 `일정 편집` 버튼)에 두 가지 보기. ① **달력 보기**: 월 달력(Ant `Calendar`)에 모집 기간·활동 기간을 바탕 띠로, 세부 일정을 날짜 칸의 칩으로 그린다. 날짜 칸을 누르면 그 날짜가 채워진 `일정 추가` 폼이 열리고, 칩을 누르면 편집 폼이 열린다(끌어서 옮기기는 두지 않는다). ② **목록 보기**: 시각 순 표에 제목·종류·상태·기간·원문·사유, 행마다 편집·삭제. 폼은 기존 기간 블록(날짜/시각 전환, 시작 선택 비움 가능, 사유)을 재사용한다.
 - 공개 API·앱은 바뀌지 않는다(세부 일정은 이미 `schedules[]`로 내려가고 진행 트랙이 쓴다).
 
+### 일정 상태·겹침 확인 시간 — 2026-10-22 사용자 결정
+
+native-v1.md "내 활동 서버 저장·일정 상태·겹침 확인 시간"의 어드민 쪽. 응답 Schedule(어드민·공개 공통)에 `statuses: [{id: number|null, name, kind: WAITING|PASSED|FAILED|OTHER}]`(어드민 지정 행을 순서대로, 없으면 기본 `대기`·`통과`·`탈락`, id null)과 `overlapCheck: {startTime, endTime}|null`(서울 `HH:mm`)이 더해진다.
+
+| 메서드·경로 | 요청 | 응답 |
+| --- | --- | --- |
+| GET /v1/admin/activities/:id/schedules/:scheduleId/statuses | — | 200 `{items: [{id, name, kind}]}`(지정 전이면 기본 세 개, id null) |
+| PUT /v1/admin/activities/:id/schedules/:scheduleId/statuses | `{items: [{id?, name, kind}]}` | 200 같은 형태. 목록을 순서대로 통째로 바꾼다 |
+| POST·PATCH /v1/admin/activities/:id/schedules(/:scheduleId) | ScheduleItemInput에 `overlapCheck?: {startTime, endTime}\|null` | 201·200 Schedule. 생략은 유지(만들 때는 없음), null은 없음·지움 |
+
+- 상태 PUT: 모집·활동 기간을 포함한 모든 일정. 본문은 `{items: [...]}` 객체(배열만 보내지 않음). 0~8개이고 **빈 목록은 기본 세 개로 되돌린다**(그 일정의 행을 모두 지우고 선택은 아래 규칙대로 옮김). 이름은 앞뒤 공백을 떼고 1~20자이며 그 일정 안에서 겹치지 않음, `id`는 그 일정의 상태여야 함, `kind`는 넷 중 하나(어기면 400, 없는 일정 404). `id`가 있는 항목은 그 행을 고치고(사용자 선택 유지), 없으면 새로 만들고, 빠진 행은 지운다. 지운 상태를 고른 사용자 선택은 그 상태의 기본 종류(`default_kind`)로 옮기고, `OTHER`는 기본 종류가 없어 선택을 지운다. 기본 세 개를 id 없이 보내면 같은 이름의 지정 행이 된다(되돌리기는 빈 목록). 수집한 세부 일정에 상태를 두면 `curated = true`가 되어 다시 수집해도 지워지지 않는다.
+- 겹침 확인 시간: 세부 일정 POST(만들기)·PATCH 모두 `overlapCheck`를 받고 `null`은 없음(PATCH에서는 지움)이다. 세부 일정은 다른 필드와 함께 고칠 수 있다(고치면 기존 규칙대로 `curated`). 모집·활동 기간 행은 두 길로 고친다: ① 활동 `PATCH`·`POST /v1/admin/activities`의 `activitySchedule`·`application` 객체 안 `overlapCheck`(어드민 웹이 쓰는 형태. 날짜와 함께 보내면 둘 다 바꾸고, 객체에 `overlapCheck`만 있으면 날짜는 그대로, `null`은 지움. 모집 기간이 없는데 값을 보내면 400) ② 일정 PATCH에 `overlapCheck`**만** 보낸 요청(다른 필드가 섞이면 기존처럼 400). 형식이 `HH:mm`이 아니거나 끝이 시작보다 늦지 않으면 400. DB: `schedules.overlap_start_time`·`overlap_end_time`(time, 둘 다 있거나 둘 다 없음, V45).
+- 수집: 모집·활동 기간 행은 다시 수집할 때 지우고 새로 넣지 않고 제자리에서 고친다(id가 유지되어 상태·사용자 선택·겹침 확인 시간·장소가 남는다). 모집 기간이 사라지면 그 행은 지운다(그 일정의 상태도 함께).
+
 ### 일정 직접 지정
 
 수집기는 날짜만 적힌 기간을 구조화하지 못하면 `dateLabel` 문구만 남긴다. 운영자가 원문 문구를 보면서 날짜를 직접 지정한다.

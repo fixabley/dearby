@@ -3,6 +3,7 @@ package io.wid.dearby.application.activity
 import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.Address
 import io.wid.dearby.domain.Id
+import io.wid.dearby.domain.OverlapCheck
 import io.wid.dearby.domain.Schedule
 import io.wid.dearby.domain.PublicationStatus
 import io.wid.dearby.domain.ScheduleTime
@@ -54,6 +55,9 @@ interface ActivityCurationRepository {
     fun findSchedule(activityId: Id, scheduleId: Id): StoredSchedule?
     fun updateDetailSchedule(activityId: Id, scheduleId: Id, item: ScheduleItem): Schedule?
     fun deleteDetailSchedule(activityId: Id, scheduleId: Id): Boolean
+
+    // 겹침 확인 시간(native-v1.md "겹침 확인 시간")만 바꾼다. 모집·활동 기간 행에도 쓴다. 세부 일정은 운영자 지정(curated)이 된다. 일정이 없으면 null
+    fun updateOverlapCheck(activityId: Id, scheduleId: Id, overlapCheck: OverlapCheck?): Schedule?
 
     // 활동을 지운다(일정·역할·연락처는 FK로 함께). 수집으로 생긴 활동이면 그 출처를 다시 수집하지 않게 남긴다
     fun delete(activityId: Id): Boolean

@@ -10,6 +10,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dearby.nativeapp.BuildConfig
 import com.dearby.nativeapp.features.calendar.CalendarConflictFlow
+import com.dearby.nativeapp.features.calendar.openCalendarInsert
+import com.dearby.nativeapp.pages.activity.ActivityState
+import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import kotlinx.coroutines.launch
 import com.dearby.nativeapp.features.oauth.OAuthBrowser
 import com.dearby.nativeapp.shared.config.ConsentVersions
 import com.dearby.nativeapp.pages.activity.ActivityListPage
@@ -24,7 +32,7 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
  */
 @Composable fun ActivityRoute(
     model: ActivityViewModel, mine: Boolean = false, explore: () -> Unit = {}, settings: () -> Unit = {}, notify: () -> Unit = {},
-    openInMine: (String) -> Unit = {}, open: String? = null, consumeOpen: () -> Unit = {}, active: (Boolean) -> Unit,
+    openInMine: (String) -> Unit = {}, open: String? = null, consumeOpen: () -> Unit = {}, openConsent: () -> Unit = {}, active: (Boolean) -> Unit,
 ) {
     val state by model.state.collectAsStateWithLifecycle()
     var selected by remember { mutableStateOf<String?>(null) }
@@ -36,6 +44,8 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
     var calendar by remember { mutableStateOf(false) }
     var linkError by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(open) { open?.let { selected = it; linkError = null; consumeOpen() } }
+    // Signed in, opening 내 활동 re-reads the account's records (and retries a failed import or read).
+    LaunchedEffect(mine) { if (mine) model.syncMine(announce = true) }
     DisposableEffect(selected, progressId) { active(selected != null || progressId != null); onDispose { active(false) } }
     val context = LocalContext.current
     // Links are already https-only from the activityModel model; failure to open stays on screen.
@@ -58,20 +68,35 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
         }
         Unit
     }
+    // 캘린더에 추가 (contract "내 캘린더에 추가"): the calendar app's prefilled add screen with the place and the official link; no app → a snackbar.
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    fun addToCalendar(draft: CalendarDraft, of: ActivityState?) {
+        val location = of?.place?.let { "${it.name}, ${it.address}" } ?: of?.location
+        if (!openCalendarInsert(context, draft.title, draft.begin, draft.end, draft.allDay, location, of?.officialUrl)) scope.launch { snackbar.showSnackbar("캘린더 앱을 찾지 못했어요") }
+    }
     // Detail over the timeline: back from the detail returns to the timeline it was opened from.
     BackHandler((selected != null || progressId != null) && !prompt && !calendar && stageCalendar == null) { if (selected != null) selected = null else progressId = null }
-    when {
+    Box(Modifier.fillMaxSize()) { when {
         activity != null -> ActivityDetailPage(activity, linkError, { selected = null }, openLink, { prompt = true },
-            { model.confirm(activity.id, it) }, { calendar = true }, { sharing = true }, openMap,
-            addToMine = { model.apply(activity.id, true) }, viewInMine = { openInMine(activity.id) }, removeFromMine = { model.apply(activity.id, false) })
-        progress != null && progressActivity != null -> ActivityProgressPage(progress, progressActivity, { progressId = null }, { selected = progress.id; linkError = null },
-            { model.confirm(progress.id, it) }, { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it }, { model.apply(progress.id, false); progressId = null })
-        mine -> MyActivitiesPage(state, { selected = it; linkError = null }, { progressId = it }, model::confirm, explore, settings, notify) { model.apply(it, false) }
+            { calendar = true }, { sharing = true }, openMap,
+            addToMine = { model.apply(activity.id, true) }, viewInMine = { openInMine(activity.id) }, removeFromMine = { model.apply(activity.id, false) }, addToCalendar = { addToCalendar(it, activity) })
+        progress != null && progressActivity != null -> ActivityProgressPage(progress, { progressId = null }, { selected = progress.id; linkError = null },
+            { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it }, { model.apply(progress.id, false); progressId = null }, { addToCalendar(it, progressActivity) })
+        mine -> MyActivitiesPage(state, { selected = it; linkError = null }, { progressId = it }, explore, settings, notify) { model.apply(it, false) }
         else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify, model::clearRefreshFailure, settings)
+    }
+        SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
     if (sharing && activity?.officialUrl != null) AlertDialog(onDismissRequest = { sharing = false }, title = { Text("활동 링크") }, text = { Text(activity.officialUrl) }, confirmButton = { TextButton({ sharing = false }) { Text("닫기") } })
     val openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) }
     if (calendar && activity != null) CalendarConflictFlow(model.schedules(activity.id), openPrivacy) { calendar = false }
-    stageCalendar?.let { stage -> progress?.let { model.stageWindow(it.id, stage) } }?.let { window -> CalendarConflictFlow(listOf(window), openPrivacy) { stageCalendar = null } }
+    stageCalendar?.let { stage -> progress?.let { model.stageWindows(it.id, stage) } }?.takeIf { it.isNotEmpty() }?.let { windows -> CalendarConflictFlow(windows, openPrivacy) { stageCalendar = null } }
+    // A failed 내 활동 read or write while signed in (contract "내 활동 서버 저장"), on whichever tab made it (only one tab's route exists at a time).
+    // 403 CONSENT_REQUIRED on a 내 활동 write (consent version moved to 2026-10-22): go to 내 프로필, whose consent screen comes up on load.
+    if (state.consentNeeded) AlertDialog(onDismissRequest = model::clearMineNotice, title = { Text("다시 동의가 필요해요") },
+        text = { Text("개인정보 처리방침이 바뀌어 내 활동을 저장하려면 다시 동의해야 해요.") },
+        confirmButton = { TextButton({ model.clearMineNotice(); openConsent() }) { Text("동의하러 가기") } }, dismissButton = { TextButton(model::clearMineNotice) { Text("나중에") } })
+    else state.mineNotice?.let { value -> AlertDialog(onDismissRequest = model::clearMineNotice, title = { Text("내 활동") }, text = { Text(value) }, confirmButton = { TextButton(model::clearMineNotice) { Text("확인") } }) }
     if (prompt && activity != null) ApplicationReportDialog({ model.apply(activity.id, it); prompt = false }, { prompt = false })
 }

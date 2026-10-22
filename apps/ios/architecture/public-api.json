@@ -38,7 +38,9 @@
     "ProgramSummary",
     "ProgramPage",
     "Eligibility",
-    "Tag"
+    "Tag",
+    "ScheduleStatus",
+    "OverlapCheck"
   ],
   "entities/identity": [
     "CardModel",
@@ -54,7 +56,9 @@
     "CalendarConflictView",
     "CalendarEventSource",
     "DeviceCalendarEventSource",
-    "FixtureCalendarEventSource"
+    "FixtureCalendarEventSource",
+    "AddToCalendarSheet",
+    "CalendarEventDraft"
   ],
   "pages/home": [
     "HomePage"
@@ -106,7 +110,8 @@
     "StageMark",
     "ProgramHeader",
     "DiscoveryRowStyle",
-    "EligibilityText"
+    "EligibilityText",
+    "MineServer"
   ],
   "widgets/identity": [
     "AccountViewModel",

@@ -14,6 +14,8 @@ data class Schedule(
     val timestamps: Timestamps, // CREATED, LAST-MODIFIED. DTSTAMP는 내보낸 시각
     val curatedNote: String? = null, // 운영자가 지정하며 남긴 사유(admin-v1.md "사유"). 어드민만 본다
     val curated: Boolean = false, // 운영자가 직접 지정한 일정(admin-v1.md "일정 직접 지정"). 수집기가 덮어쓰지 않는다
+    val overlapCheck: OverlapCheck? = null, // 겹침 확인 시간(native-v1.md "겹침 확인 시간"). 없으면 null
+    val statuses: List<ProgressStatus> = ProgressStatus.DEFAULTS, // 고를 수 있는 진행 상태. 어드민 지정이 없으면 기본 세 개
 ) {
     // TRANSP: 마감·발표 같은 시점 일정과 종일 일정은 TRANSPARENT(겹침 계산 제외)
     val occupiesTime: Boolean get() = kind.occupiesTime && time !is ScheduleTime.AllDay

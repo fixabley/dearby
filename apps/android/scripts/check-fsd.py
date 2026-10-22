@@ -16,7 +16,7 @@ API = {
     'widgets.profile.profileFields': {'ProfileContactFields', 'ProfileExtraContact', 'ProfileContactKinds', 'HistoryPeriodFields', 'historyPeriod', 'ActivityInfoPicker', 'PickerItem', 'EvidenceFields', 'EvidenceRow', 'JobTagPicker', 'JobTag'},
     'widgets.activity.activityCard': {'ActivityCard'},
     'widgets.activity.programCard': {'ProgramCard'},
-    'widgets.activity.progress': {'ActivityProgressRow', 'ProgressState', 'ProgressStage', 'ProgressStatus', 'ProgressMark', 'stageIcon'},
+    'widgets.activity.progress': {'ActivityProgressRow', 'ProgressState', 'ProgressStage', 'ProgressStatus', 'StatusOption', 'CalendarDraft', 'stageIcon'},
     'widgets.card.cardContent': {'CardState', 'CardHistoryState', 'ContactState', 'CardContent', 'ReceivedCardRow', 'CardComposer', 'ComposerContact', 'ComposerHistory'},
     'pages.profile': {'ConsentPage', 'ProfilePage', 'ProfilePhase', 'ProfileViewState', 'ProfileFormState', 'ProfileErrors', 'HistoryDraft', 'FunnelState', 'PickerSearchState', 'VersionsState', 'HistoryFunnelPage', 'ProfileVersionsPage', 'ProfileVersionPage', 'HistoryRowState', 'VersionDetailView', 'rowState', 'view', 'periodText', 'errors', 'SetupStep', 'ProfileSetupPage'},
     'pages.cards': {'MyCardsPage', 'MyCardsState', 'MyCardsPhase', 'MyCardChoice', 'CardQrPage', 'QrActivity'},
@@ -27,10 +27,10 @@ API = {
     'pages.settings': {'SettingsPage', 'SettingsState', 'SettingsPhase', 'SettingsIdentityState', 'SettingsPasskeyState'},
     'pages.onboarding': {'IntroPage'},
     'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletCardPage', 'ReceivedCard', 'filterWallet', 'WalletSection', 'walletSections'},
-    'features.calendar': {'CalendarConflictSheet', 'CalendarAccessState', 'CalendarConflictFlow'},
-    'pages.activity': {'ProgramActivities', 'ApplicationReportDialog', 'ActivityListState', 'ActivityProgressPage', 'ActivityDetailPage', 'ProgramState', 'ProgramPhase', 'MyActivitiesPage', 'ActivityState', 'ActivityListPhase', 'ActivityListPage'},
-    'entities.activity': {'model.Place', 'model.currentStage', 'model.stageBadge', 'model.ActivityCategory', 'model.EligibilityCondition', 'model.ScheduleModel', 'model.Tag', 'model.EligibilityGroup', 'model.StageSchedule', 'model.ActivityModel', 'model.scheduleText', 'model.ProgramPage', 'model.Stage', 'model.stages', 'model.ProgramSummary', 'model.lines', 'api.fetchPrograms', 'model.safeHttpsUrl', 'model.instant', 'api.fetchActivities', 'model.ActivityPage', 'model.EligibilityItem'},
-    'entities.account': {'model.ConsentRecord', 'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.ProfileJob', 'model.AccountProfile', 'model.PublishedCard', 'model.Wallet', 'model.WalletReceipt', 'model.ExchangeContext', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault', 'model.WebSignIn', 'model.ContactRules', 'model.ActivityInfoRef', 'model.ActivityInfoItem', 'model.ActivityInfoPage', 'model.EvidenceMeta', 'model.ProfileVersionSummary', 'model.ProfileVersionList', 'model.ProfileVersionDetail', 'model.AccountSummary', 'model.LinkedIdentity', 'model.PasskeyItem'},
+    'features.calendar': {'CalendarConflictSheet', 'CalendarAccessState', 'CalendarConflictFlow', 'openCalendarInsert'},
+    'pages.activity': {'ProgramActivities', 'ApplicationReportDialog', 'ActivityListState', 'ActivityProgressPage', 'ActivityDetailPage', 'ProgramState', 'ProgramPhase', 'MyActivitiesPage', 'ActivityState', 'ScheduleItemState', 'ActivityListPhase', 'ActivityListPage'},
+    'entities.activity': {'model.Place', 'model.currentStage', 'model.stageBadge', 'model.ActivityCategory', 'model.EligibilityCondition', 'model.ScheduleModel', 'model.Tag', 'model.EligibilityGroup', 'model.StageSchedule', 'model.ActivityModel', 'model.scheduleText', 'model.ProgramPage', 'model.Stage', 'model.stages', 'model.ProgramSummary', 'model.lines', 'api.fetchPrograms', 'model.safeHttpsUrl', 'model.instant', 'api.fetchActivities', 'api.fetchActivity', 'model.ScheduleStatus', 'model.ActivityPage', 'model.EligibilityItem'},
+    'entities.account': {'model.ConsentRecord', 'model.AccountSession', 'model.AccountContact', 'model.AccountHistory', 'model.ProfileJob', 'model.AccountProfile', 'model.PublishedCard', 'model.Wallet', 'model.WalletReceipt', 'model.ExchangeContext', 'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault', 'model.WebSignIn', 'model.ContactRules', 'model.ActivityInfoRef', 'model.ActivityInfoItem', 'model.ActivityInfoPage', 'model.EvidenceMeta', 'model.ProfileVersionSummary', 'model.ProfileVersionList', 'model.ProfileVersionDetail', 'model.AccountSummary', 'model.LinkedIdentity', 'model.PasskeyItem', 'model.MyActivityRecord', 'model.MyScheduleStatus'},
 }
 
 def owner(name):
@@ -72,7 +72,9 @@ def check_source(path, text):
                'entities/account/api/SessionVault.kt': {'getSharedPreferences'}, 'app/MainActivity.kt': {'getSharedPreferences'},
                'app/AccountViewModel.kt': {'SavedStateHandle'},
                # Contract "기기 캘린더 겹침" (2026-10-19): only the device calendar source reads CalendarContract
-               'features/calendar/DeviceCalendar.kt': {'CalendarContract'}}.get(path.as_posix(), set())
+               'features/calendar/DeviceCalendar.kt': {'CalendarContract'},
+               # Contract "내 캘린더에 추가" (2026-10-22): the insert intent only opens the calendar app's add screen; nothing is read or written here.
+               'features/calendar/CalendarInsert.kt': {'CalendarContract'}}.get(path.as_posix(), set())
     blocked = [term for term in ('Room', 'HttpClient', 'OkHttpClient', 'HttpURLConnection', 'WebView', 'TokenVault', 'CalendarContract', 'SQLiteDatabase', 'getSharedPreferences', 'rememberSaveable', 'SavedStateHandle') if term not in allowed]
     if re.search(r'\b(?:' + '|'.join(blocked) + r')\b', code): errors.append('prototype must not access service or persisted state')
     return errors

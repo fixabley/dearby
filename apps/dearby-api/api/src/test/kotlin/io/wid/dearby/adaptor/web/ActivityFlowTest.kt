@@ -6,7 +6,15 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.HttpHeaders
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.http.MediaType
+import org.springframework.security.core.authority.SimpleGrantedAuthority
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt
+import org.springframework.test.web.servlet.MockHttpServletRequestDsl
+import org.springframework.test.web.servlet.delete
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.put
+import java.util.UUID
 import tools.jackson.databind.JsonNode
 import tools.jackson.databind.json.JsonMapper
 import kotlin.test.Test
@@ -452,5 +460,87 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         } finally {
             jdbc.sql("delete from program_logos where program_id = ?").param(programId).update()
         }
+    }
+
+    // native-v1.md "내 활동 서버 저장·일정 상태": 내 활동 넣기·고치기·지우기, 일정 상태 고르기, 기기 기록 올리기, 공개 일정의 statuses·overlapCheck
+    @Test
+    fun `로그인 사용자의 내 활동을 서버에 두고 일정마다 상태를 고르며 기기 기록은 서버 값을 지켜 올린다`() {
+        mvc.get("/v1/me/activities").andExpect { status { isUnauthorized() } }
+        val user = UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
+        fun MockHttpServletRequestDsl.asUser() = with(jwt().jwt { it.subject(user.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER")))
+        fun body(node: org.springframework.test.web.servlet.ResultActionsDsl): JsonNode = json.readTree(node.andReturn().response.contentAsString)
+        fun putMine(path: String, content: String?) = mvc.put("/v1/me/activities/$path") { asUser(); contentType = MediaType.APPLICATION_JSON; content?.let { this.content = it } }
+        fun mine(): List<JsonNode> = body(mvc.get("/v1/me/activities") { asUser() }.andExpect { status { isOk() } })["items"].toList()
+        fun slot(activityId: Long) = jdbc.sql("select id from schedules where activity_id = ? and slot = 'ACTIVITY'").param(activityId).query(Long::class.java).single()
+
+        val first = createActivity("내 활동 확인 A")
+        val second = createActivity("내 활동 확인 B")
+        val other = createActivity("내 활동 확인 다른 활동")
+        val draft = createActivity("내 활동 확인 초안", status = "DRAFT")
+        val interview = jdbc.sql(
+            """
+            insert into schedules (activity_id, title, kind, status, date_label, sequence, created_at, updated_at, overlap_start_time, overlap_end_time)
+            values (?, '면접', 'INTERVIEW', 'CONFIRMED', '11월 중', 0, localtimestamp, localtimestamp, '14:00', '18:30') returning id
+            """
+        ).param(first).query(Long::class.java).single()
+        val passedRow = jdbc.sql("insert into schedule_statuses (schedule_id, name, kind, sort_order, created_at) values (?, '최종 합격', 'PASSED', 1, now()) returning id")
+            .param(interview).query(Long::class.java).single()
+        jdbc.sql("insert into schedule_statuses (schedule_id, name, kind, sort_order, created_at) values (?, '면접 대기', 'WAITING', 0, now())").param(interview).update()
+
+        // 공개 일정: 어드민 상태가 없으면 기본 세 개(id null), 있으면 sort_order 순. 겹침 확인 시간은 HH:mm
+        val activity = json.readTree(mvc.get("/v1/activities/$first").andExpect { status { isOk() } }.andReturn().response.contentAsString)
+        val defaults = activity["activitySchedule"]["statuses"].toList()
+        assertEquals(listOf("대기" to "WAITING", "통과" to "PASSED", "탈락" to "FAILED"), defaults.map { it["name"].asString() to it["kind"].asString() })
+        assertTrue(defaults.all { it["id"].isNull })
+        assertTrue(activity["activitySchedule"]["overlapCheck"].isNull)
+        val detail = activity["schedules"].single()
+        assertEquals(listOf("면접 대기", "최종 합격"), detail["statuses"].toList().map { it["name"].asString() })
+        assertEquals(passedRow, detail["statuses"][1]["id"].asLong())
+        assertEquals("14:00" to "18:30", detail["overlapCheck"]["startTime"].asString() to detail["overlapCheck"]["endTime"].asString())
+
+        // 넣기: 본문 없이도 빈 객체로도 넣고, 다시 넣어도 그대로다(참여 확정 표시는 없다). 게시되지 않은 활동은 404
+        val added = body(putMine("$first", null).andExpect { status { isOk() } })
+        assertEquals(setOf("activityId", "createdAt", "deleted", "statuses"), added.propertyNames().toSet())
+        assertEquals(listOf(first.toString(), "false"), listOf(added["activityId"].asString(), added["deleted"].asString()))
+        assertEquals(added["createdAt"].asString(), body(putMine("$first", "{}").andExpect { status { isOk() } })["createdAt"].asString())
+        putMine("$draft", "{}").andExpect { status { isNotFound() } }
+
+        // 일정 상태: 기본 상태 일정은 kind(OTHER 제외), 어드민 상태 일정은 그 일정의 statusId만. 다른 활동의 일정은 400
+        putMine("$first/schedules/${slot(first)}", """{"kind":"PASSED"}""").andExpect { status { isOk() } }
+        putMine("$first/schedules/${slot(first)}", """{"kind":"OTHER"}""").andExpect { status { isBadRequest() } }
+        putMine("$first/schedules/${slot(first)}", """{"statusId":$passedRow}""").andExpect { status { isBadRequest() } }
+        putMine("$first/schedules/$interview", """{"kind":"PASSED"}""").andExpect { status { isBadRequest() } }
+        putMine("$first/schedules/$interview", """{"kind":"PASSED","statusId":$passedRow}""").andExpect { status { isBadRequest() } }
+        putMine("$first/schedules/${slot(other)}", """{"kind":"PASSED"}""").andExpect { status { isBadRequest() } }
+        val picked = body(putMine("$first/schedules/$interview", """{"statusId":$passedRow}""").andExpect { status { isOk() } })["statuses"].toList()
+        assertEquals(
+            listOf(Triple(slot(first), null, "PASSED"), Triple(interview, passedRow, "PASSED")),
+            picked.map { Triple(it["scheduleId"].asLong(), it["statusId"].takeUnless { n -> n.isNull }?.asLong(), it["kind"].asString()) },
+        )
+
+        // 기기 기록 올리기: 이미 있는 활동은 서버 값 유지, 새 활동은 상태를 넣고, 없는 활동·다른 활동의 일정은 건너뛴다
+        val imported = body(
+            mvc.post("/v1/me/activities/import") {
+                asUser(); contentType = MediaType.APPLICATION_JSON
+                content = """{"items":[
+                    {"activityId":$first,"statuses":[{"scheduleId":${slot(first)},"kind":"FAILED"}]},
+                    {"activityId":$second,"statuses":[{"scheduleId":${slot(second)},"kind":"FAILED"},{"scheduleId":${slot(other)},"kind":"PASSED"}]},
+                    {"activityId":-1,"statuses":[]}]}"""
+            }.andExpect { status { isOk() } }
+        )["items"].toList()
+        assertEquals(listOf(first, second), imported.map { it["activityId"].asLong() })
+        assertEquals("PASSED", imported[0]["statuses"][0]["kind"].asString())
+        assertEquals(listOf(slot(second) to "FAILED"), imported[1]["statuses"].toList().map { it["scheduleId"].asLong() to it["kind"].asString() })
+
+        // 게시가 내려간 활동도 목록에 남아 deleted로 보인다
+        jdbc.sql("update activities set publication_status = 'DRAFT' where id = ?").param(second).update()
+        assertEquals(listOf(false, true), mine().map { it["deleted"].asBoolean() })
+        putMine("$second", "{}").andExpect { status { isNotFound() } }
+
+        // 지우기: 일정 상태도 함께, 없어도 204
+        mvc.delete("/v1/me/activities/$first") { asUser() }.andExpect { status { isNoContent() } }
+        mvc.delete("/v1/me/activities/$first") { asUser() }.andExpect { status { isNoContent() } }
+        assertEquals(listOf(second), mine().map { it["activityId"].asLong() })
+        assertEquals(0, jdbc.sql("select count(*) from user_activity_schedule_statuses where schedule_id = ?").param(interview).query(Long::class.java).single())
     }
 }

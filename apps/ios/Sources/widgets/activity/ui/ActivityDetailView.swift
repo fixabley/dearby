@@ -5,6 +5,7 @@ struct ActivityDetailView: View {
     let activityID: String
     @State private var showCalendar = false
     @State private var removing: String?
+    @State private var calendarDraft: CalendarEventDraft?
     private var activity: ActivityModel? { state.activity(activityID) }
     private var applied: Bool { state.appliedIDs.contains(activityID) }
     var body: some View {
@@ -16,25 +17,14 @@ struct ActivityDetailView: View {
                         VStack(alignment: .leading, spacing: 24) {
                             identity(activity)
                             if let eligibility = activity.eligibility { audience(eligibility) }
-                            ActivityInformationView(activity: activity, checkCalendar: { showCalendar = true })
+                            ActivityInformationView(rows: scheduleRows(activity), canCheckCalendar: !activity.overlapSchedules.isEmpty,
+                                                    checkCalendar: { showCalendar = true }, addToCalendar: { calendarDraft = $0 })
                             place(activity)
                             source(activity)
                         }.padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 24)
                     }
                 }
                 .safeAreaInset(edge: .bottom, spacing: 0) { applicationActions(activity) }
-                .safeAreaInset(edge: .top, spacing: 0) {
-                    if applied {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Label("신청했다고 표시했어요 · 실제 접수 확인이 아니에요", systemImage: "checkmark.circle").font(.subheadline)
-                            ConfirmToggle(state: state, activityID: activityID)
-                            Text(ConfirmToggle.note).font(.caption).foregroundStyle(DearbyStyle.quiet)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal).padding(.vertical, 8)
-                        .background(DearbyStyle.mint, ignoresSafeAreaEdges: [])
-                    }
-                }
             }
         }
         .navigationTitle("활동 상세").navigationBarTitleDisplayMode(.inline)
@@ -45,8 +35,9 @@ struct ActivityDetailView: View {
             }
         }
         .sheet(isPresented: $showCalendar) {
-            if let activity { CalendarConflictView(schedules: activity.schedules) }
+            if let activity { CalendarConflictView(schedules: activity.overlapSchedules) }
         }
+        .sheet(item: $calendarDraft) { AddToCalendarSheet(draft: $0).ignoresSafeArea() }
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)
         .removeFromMineDialog($removing, state: state)
     }
@@ -87,12 +78,19 @@ struct ActivityDetailView: View {
     /// The CTA opens the application link, else the official notice (contract "신청 확인 조건 완화" 2026-10-19 밤). Unless applying
     /// is over it reads as applying and arms the "신청하셨나요?" prompt for when the app comes back from the browser.
     /// Under it, whatever the recruitment state, `내 활동에 추가` marks the activity applied by the same path as "신청했어요" (contract
-    /// "내 활동 직접 추가" 2026-10-20); once applied it becomes `내 활동에서 보기` with an always-visible red `내 활동에서 빼기` text button under it.
+    /// "내 활동 직접 추가" 2026-10-20); once applied (contract "활동 상세의 추가 상태" 2026-10-22, replacing the long top banner) the block grows
+    /// upward with a teal `checkmark.circle.fill` "이미 추가된 항목입니다" line, then `내 활동에서 보기` and the red `내 활동에서 빼기`.
+    /// The participation mark is changed in 내 활동 (its row or the progress page).
     @ViewBuilder private func applicationActions(_ activity: ActivityModel) -> some View {
         let site = activity.applicationSiteURL
         let closed = activity.applicationClosed(at: state.loadedAt)
         VStack(spacing: 10) {
             Divider().padding(.bottom, 2)
+            if applied {
+                Label("이미 추가된 항목입니다", systemImage: "checkmark.circle.fill")
+                    .font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
+                    .frame(maxWidth: .infinity, alignment: .leading).accessibilityIdentifier("mine-added")
+            }
             if let url = site ?? activity.officialURL {
                 Link(destination: url) {
                     Text(closed ? "공식 안내 보기" : site != nil ? "신청 사이트 열기" : "공식 사이트에서 신청").frame(maxWidth: .infinity)
@@ -117,6 +115,14 @@ struct ActivityDetailView: View {
         }
         .controlSize(.large).font(.dearby(.body).weight(.semibold)).tint(DearbyStyle.teal)
         .padding(.horizontal, 20).padding(.bottom, 12).background(Color(.systemBackground))
+    }
+    /// The `행사 일정` rows in track order: the recruitment deadline (`모집 마감`), `schedules[]`, the activity period; each dated one can
+    /// be added to the calendar.
+    private func scheduleRows(_ activity: ActivityModel) -> [ActivityInformationView.Row] {
+        (ActivityStages.build(activity, marks: [:], now: state.loadedAt)?.stages ?? []).map { stage in
+            ActivityInformationView.Row(id: stage.id, title: stage.id == ActivityStages.applicationStageID ? "모집 마감" : stage.name,
+                                        date: stage.dateText(now: state.loadedAt), draft: stage.calendarDraft(activity))
+        }
     }
     /// 장소 (contract "활동 장소"): the curated place's name and address open Apple Maps; otherwise the collected text, if any.
     @ViewBuilder private func place(_ activity: ActivityModel) -> some View {

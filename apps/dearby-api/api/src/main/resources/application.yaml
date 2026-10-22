@@ -32,8 +32,8 @@ dearby:
     client-ids: ${GOOGLE_CLIENT_IDS:}
   # 개인정보 동의 문서 버전(native-v1.md "개인정보 동의"): 웹 /privacy·/terms 시행일. 바꾸면 사용자가 다시 동의한다
   consent:
-    privacy-version: ${CONSENT_PRIVACY_VERSION:2026-10-19}
-    terms-version: ${CONSENT_TERMS_VERSION:2026-10-19}
+    privacy-version: ${CONSENT_PRIVACY_VERSION:2026-10-22}
+    terms-version: ${CONSENT_TERMS_VERSION:2026-10-22}
   # 웹 비로그인 저장. Next 서버의 GUEST_PROXY_SECRET과 같은 값(32자 이상). 비어 있으면 /v1/guest/*는 503
   guest:
     proxy-secret: ${GUEST_PROXY_SECRET:}

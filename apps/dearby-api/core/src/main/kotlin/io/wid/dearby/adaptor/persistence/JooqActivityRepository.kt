@@ -92,7 +92,8 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
                 ActivityContact(it.id!!, it.activityId!!, ContactKind.valueOf(it.kind!!), it.label!!, it.value!!)
             }
         val tags = TagRows.ofActivities(dsl, ids)
-        return rows.map { toActivity(it, schedules[it.id].orEmpty(), contacts[it.id].orEmpty(), tags[it.id].orEmpty()) }
+        val statuses = progressStatusesOf(dsl, schedules.values.flatten().map { it.id!! })
+        return rows.map { toActivity(it, schedules[it.id].orEmpty(), contacts[it.id].orEmpty(), tags[it.id].orEmpty(), statuses) }
     }
 
     private fun toActivity(
@@ -100,7 +101,9 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
         schedules: List<SchedulesRecord>,
         contacts: List<ActivityContact>,
         tags: List<Tag>,
+        statuses: Map<Id, List<ProgressStatus>>,
     ): Activity {
+        fun toSchedule(row: SchedulesRecord) = row.toSchedule(statuses[row.id].orEmpty())
         val bySlot = schedules.groupBy { it.slot }
         val activitySchedule = bySlot[SLOT_ACTIVITY]?.single()?.let(::toSchedule)
             ?: error("Activity ${row.id} has no ACTIVITY schedule")
@@ -125,8 +128,6 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             location = row.location,
         )
     }
-
-    private fun toSchedule(row: SchedulesRecord) = row.toSchedule()
 
     private companion object {
         const val WORD_SIMILARITY_THRESHOLD = "0.4"

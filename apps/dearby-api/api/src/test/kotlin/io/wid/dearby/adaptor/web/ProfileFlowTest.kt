@@ -28,7 +28,7 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
     private fun user(): UUID = userWithoutConsent().also { consent(it) }
     private fun userWithoutConsent(): UUID = UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
     private fun consent(user: UUID) = mvc.post("/v1/me/consents") {
-        asUser(user); contentType = MediaType.APPLICATION_JSON; content = """{"privacyVersion":"2026-10-19","termsVersion":"2026-10-19"}"""
+        asUser(user); contentType = MediaType.APPLICATION_JSON; content = """{"privacyVersion":"2026-10-22","termsVersion":"2026-10-22"}"""
     }.andExpect { status { isNoContent() } }
 
     private fun MockHttpServletRequestDsl.asUser(id: UUID) {
@@ -274,15 +274,19 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         val denied = read(put(user, """{"name":"조민준","jobs":[],"introduction":"","contacts":${contacts()},"histories":[]}""").andExpect { status { isForbidden() } })
         assertEquals("CONSENT_REQUIRED", denied["code"].asString())
         val wrong = read(mvc.post("/v1/me/consents") {
-            asUser(user); contentType = MediaType.APPLICATION_JSON; content = """{"privacyVersion":"2025-01-01","termsVersion":"2026-10-19"}"""
+            asUser(user); contentType = MediaType.APPLICATION_JSON; content = """{"privacyVersion":"2025-01-01","termsVersion":"2026-10-22"}"""
         }.andExpect { status { isBadRequest() } })
         assertEquals("CONSENT_VERSION", wrong["code"].asString())
         consent(user)
         val after = read(mvc.get("/v1/profile") { asUser(user) }.andExpect { status { isOk() } })
-        assertEquals(listOf(false, "2026-10-19", "2026-10-19"), listOf(after["consentRequired"].asBoolean(), after["consent"]["privacyVersion"].asString(), after["consent"]["termsVersion"].asString()))
+        assertEquals(listOf(false, "2026-10-22", "2026-10-22"), listOf(after["consentRequired"].asBoolean(), after["consent"]["privacyVersion"].asString(), after["consent"]["termsVersion"].asString()))
         assertFalse(after["consent"]["consentedAt"].isNull)
         val saved = read(put(user, """{"name":"조민준","jobs":[],"introduction":"","contacts":${contacts()},"histories":[]}""").andExpect { status { isOk() } })
         assertEquals(1, saved["version"].asInt())
         assertEquals(1, jdbc.sql("select count(*) from user_consents where user_id = ?").param(user).query(Long::class.java).single())
+        // 문서 버전이 오르면(2026-10-19 → 2026-10-22, 내 활동 서버 저장) 이전 동의만 있는 사용자는 다시 동의해야 한다
+        val earlier = userWithoutConsent()
+        jdbc.sql("insert into user_consents (user_id, privacy_version, terms_version, consented_at) values (?, '2026-10-19', '2026-10-19', now())").param(earlier).update()
+        assertEquals(true, read(mvc.get("/v1/profile") { asUser(earlier) })["consentRequired"].asBoolean())
     }
 }

@@ -1,41 +1,53 @@
 import SwiftUI
 
+/// `행사 일정`: one row per schedule of the track (모집 마감, `schedules[]`, the activity period) with its date text and, for a dated
+/// one, `캘린더에 추가` (contract "내 캘린더에 추가" 2026-10-22), then the overlap check. Input and callbacks only (pure-ui.json).
 struct ActivityInformationView: View {
-    let activity: ActivityModel
-    let checkCalendar: () -> Void
-    private var sessions: [(time: String, title: String)] {
-        // Several days: prefix the date so sessions are not read as one day (web rule).
-        let days = Set(activity.schedules.map { ActivityText.day($0.start, zone: $0.timeZone) })
-        return activity.schedules.map { schedule in
-            let range = ActivityText.time(schedule.start, zone: schedule.timeZone) + " – " + ActivityText.time(schedule.end, zone: schedule.timeZone)
-            return ((days.count > 1 ? ActivityText.day(schedule.start, zone: schedule.timeZone) + " " : "") + range, schedule.title)
-        }
+    struct Row: Identifiable {
+        let id: String
+        let title: String
+        let date: String
+        /// nil for a date-less schedule: no `캘린더에 추가`.
+        let draft: CalendarEventDraft?
     }
+    let rows: [Row]
+    /// At least one schedule can be compared with the device calendar (timed, or date-only with an admin time window).
+    let canCheckCalendar: Bool
+    let checkCalendar: () -> Void
+    let addToCalendar: (CalendarEventDraft) -> Void
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Divider()
             Text("행사 일정").font(.dearby(.title2).bold()).foregroundStyle(DearbyStyle.teal)
-            // Structured dates before the collected text (contract "일정 표시 우선순위").
-            Text(activity.scheduleText(at: Date()) ?? "일정 미확인").font(.dearby(.subheadline))
+            if rows.isEmpty { Text("일정 미확인").font(.dearby(.subheadline)) }
             VStack(spacing: 0) {
-                ForEach(sessions.indices, id: \.self) { index in
-                    let session = sessions[index]
+                ForEach(rows.indices, id: \.self) { index in
+                    let row = rows[index]
                     HStack(alignment: .top, spacing: 14) {
-                        Text(session.time)
-                            .font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet).frame(width: 92, alignment: .leading)
                         VStack(spacing: 0) {
                             Circle().fill(DearbyStyle.teal).frame(width: 7, height: 7)
-                            Rectangle().fill(index < sessions.count - 1 ? DearbyStyle.line : .clear).frame(width: 1)
-                        }.padding(.top, 5)
-                        Text(session.title).font(.dearby(.subheadline)).padding(.bottom, 18).frame(maxWidth: .infinity, alignment: .leading)
+                            Rectangle().fill(index < rows.count - 1 ? DearbyStyle.line : .clear).frame(width: 1)
+                        }.padding(.top, 6)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(row.title).font(.dearby(.subheadline).weight(.semibold))
+                            Text(row.date).font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
+                        }.padding(.bottom, 18).frame(maxWidth: .infinity, alignment: .leading)
+                        if let draft = row.draft {
+                            Button("캘린더에 추가", systemImage: "calendar.badge.plus") { addToCalendar(draft) }
+                                .labelStyle(.iconOnly).buttonStyle(.borderless).font(.dearby(.title3)).frame(minWidth: 44, minHeight: 44)
+                                .accessibilityLabel("\(row.title) 캘린더에 추가")
+                        }
                     }.fixedSize(horizontal: false, vertical: true)
                 }
             }
-            // The overlap check stays an example and needs timed schedules.
-            if !sessions.isEmpty {
+            // Contract "겹침 확인 시간" 2026-10-22: the button whenever one schedule can be compared, else one line saying why not.
+            if canCheckCalendar {
                 Button(action: checkCalendar) { Text("겹치는 시간 확인하기").frame(maxWidth: .infinity) }.buttonStyle(.bordered).controlSize(.large).font(.dearby(.body).weight(.semibold))
-                Text("예시 캘린더 일정과 비교해요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
+                    .accessibilityIdentifier("check-calendar")
+                Text("기기 캘린더와 이 기기 안에서만 비교해요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
                     .frame(maxWidth: .infinity)
+            } else {
+                Text("이 활동은 시간이 정해진 일정이 없어 겹침을 확인할 수 없어요").font(.dearby(.footnote)).foregroundStyle(DearbyStyle.quiet)
             }
         }
     }
