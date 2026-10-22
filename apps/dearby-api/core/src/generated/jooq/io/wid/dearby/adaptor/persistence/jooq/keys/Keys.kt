@@ -27,6 +27,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.GuestSessions
 import io.wid.dearby.adaptor.persistence.jooq.tables.HistoryEvidence
 import io.wid.dearby.adaptor.persistence.jooq.tables.Jobs
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationLogos
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMembers
 import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations
@@ -78,6 +79,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.records.GuestSessionsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.HistoryEvidenceRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.JobsRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.OrganizationContactsRecord
+import io.wid.dearby.adaptor.persistence.jooq.tables.records.OrganizationLogosRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.OrganizationMemberRolesRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.OrganizationMembersRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.OrganizationsRecord
@@ -148,6 +150,7 @@ val GUEST_SESSIONS_PKEY: UniqueKey<GuestSessionsRecord> = Internal.createUniqueK
 val HISTORY_EVIDENCE_PKEY: UniqueKey<HistoryEvidenceRecord> = Internal.createUniqueKey(HistoryEvidence.HISTORY_EVIDENCE, DSL.name("history_evidence_pkey"), arrayOf(HistoryEvidence.HISTORY_EVIDENCE.ID), true)
 val JOBS_PKEY: UniqueKey<JobsRecord> = Internal.createUniqueKey(Jobs.JOBS, DSL.name("jobs_pkey"), arrayOf(Jobs.JOBS.ID), true)
 val ORGANIZATION_CONTACTS_PKEY: UniqueKey<OrganizationContactsRecord> = Internal.createUniqueKey(OrganizationContacts.ORGANIZATION_CONTACTS, DSL.name("organization_contacts_pkey"), arrayOf(OrganizationContacts.ORGANIZATION_CONTACTS.ID), true)
+val ORGANIZATION_LOGOS_PKEY: UniqueKey<OrganizationLogosRecord> = Internal.createUniqueKey(OrganizationLogos.ORGANIZATION_LOGOS, DSL.name("organization_logos_pkey"), arrayOf(OrganizationLogos.ORGANIZATION_LOGOS.ORGANIZATION_ID), true)
 val ORGANIZATION_MEMBER_ROLES_PKEY: UniqueKey<OrganizationMemberRolesRecord> = Internal.createUniqueKey(OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES, DSL.name("organization_member_roles_pkey"), arrayOf(OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES.ORGANIZATION_MEMBER_ID, OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES.ROLE_ID), true)
 val ORGANIZATION_MEMBERS_PKEY: UniqueKey<OrganizationMembersRecord> = Internal.createUniqueKey(OrganizationMembers.ORGANIZATION_MEMBERS, DSL.name("organization_members_pkey"), arrayOf(OrganizationMembers.ORGANIZATION_MEMBERS.ID), true)
 val ORGANIZATIONS_PKEY: UniqueKey<OrganizationsRecord> = Internal.createUniqueKey(Organizations.ORGANIZATIONS, DSL.name("organizations_pkey"), arrayOf(Organizations.ORGANIZATIONS.ID), true)
@@ -203,6 +206,7 @@ val GUEST_HANDOFFS__GUEST_HANDOFFS_SESSION_DIGEST_FKEY: ForeignKey<GuestHandoffs
 val HISTORY_EVIDENCE__HISTORY_EVIDENCE_HISTORY_ID_FKEY: ForeignKey<HistoryEvidenceRecord, ProfileHistoriesRecord> = Internal.createForeignKey(HistoryEvidence.HISTORY_EVIDENCE, DSL.name("history_evidence_history_id_fkey"), arrayOf(HistoryEvidence.HISTORY_EVIDENCE.HISTORY_ID), io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_HISTORIES_PKEY, arrayOf(ProfileHistories.PROFILE_HISTORIES.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val JOBS__JOBS_PARENT_ID_FKEY: ForeignKey<JobsRecord, JobsRecord> = Internal.createForeignKey(Jobs.JOBS, DSL.name("jobs_parent_id_fkey"), arrayOf(Jobs.JOBS.PARENT_ID), io.wid.dearby.adaptor.persistence.jooq.keys.JOBS_PKEY, arrayOf(Jobs.JOBS.ID), true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION)
 val ORGANIZATION_CONTACTS__ORGANIZATION_CONTACTS_ORGANIZATION_ID_FKEY: ForeignKey<OrganizationContactsRecord, OrganizationsRecord> = Internal.createForeignKey(OrganizationContacts.ORGANIZATION_CONTACTS, DSL.name("organization_contacts_organization_id_fkey"), arrayOf(OrganizationContacts.ORGANIZATION_CONTACTS.ORGANIZATION_ID), io.wid.dearby.adaptor.persistence.jooq.keys.ORGANIZATIONS_PKEY, arrayOf(Organizations.ORGANIZATIONS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
+val ORGANIZATION_LOGOS__ORGANIZATION_LOGOS_ORGANIZATION_ID_FKEY: ForeignKey<OrganizationLogosRecord, OrganizationsRecord> = Internal.createForeignKey(OrganizationLogos.ORGANIZATION_LOGOS, DSL.name("organization_logos_organization_id_fkey"), arrayOf(OrganizationLogos.ORGANIZATION_LOGOS.ORGANIZATION_ID), io.wid.dearby.adaptor.persistence.jooq.keys.ORGANIZATIONS_PKEY, arrayOf(Organizations.ORGANIZATIONS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val ORGANIZATION_MEMBER_ROLES__ORGANIZATION_MEMBER_ROLES_ORGANIZATION_MEMBER_ID_FKEY: ForeignKey<OrganizationMemberRolesRecord, OrganizationMembersRecord> = Internal.createForeignKey(OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES, DSL.name("organization_member_roles_organization_member_id_fkey"), arrayOf(OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES.ORGANIZATION_MEMBER_ID), io.wid.dearby.adaptor.persistence.jooq.keys.ORGANIZATION_MEMBERS_PKEY, arrayOf(OrganizationMembers.ORGANIZATION_MEMBERS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val PROFILE_HISTORIES__PROFILE_HISTORIES_USER_ID_FKEY: ForeignKey<ProfileHistoriesRecord, UsersRecord> = Internal.createForeignKey(ProfileHistories.PROFILE_HISTORIES, DSL.name("profile_histories_user_id_fkey"), arrayOf(ProfileHistories.PROFILE_HISTORIES.USER_ID), io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY, arrayOf(Users.USERS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)
 val PROFILE_JOBS__PROFILE_JOBS_USER_ID_FKEY: ForeignKey<ProfileJobsRecord, UsersRecord> = Internal.createForeignKey(ProfileJobs.PROFILE_JOBS, DSL.name("profile_jobs_user_id_fkey"), arrayOf(ProfileJobs.PROFILE_JOBS.USER_ID), io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY, arrayOf(Users.USERS.ID), true, ForeignKeyRule.CASCADE, ForeignKeyRule.NO_ACTION)

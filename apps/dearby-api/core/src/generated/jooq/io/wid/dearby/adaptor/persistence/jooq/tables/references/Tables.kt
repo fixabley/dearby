@@ -27,6 +27,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.GuestSessions
 import io.wid.dearby.adaptor.persistence.jooq.tables.HistoryEvidence
 import io.wid.dearby.adaptor.persistence.jooq.tables.Jobs
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationLogos
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMembers
 import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations
@@ -168,6 +169,11 @@ val JOBS: Jobs = Jobs.JOBS
  * The table <code>public.organization_contacts</code>.
  */
 val ORGANIZATION_CONTACTS: OrganizationContacts = OrganizationContacts.ORGANIZATION_CONTACTS
+
+/**
+ * The table <code>public.organization_logos</code>.
+ */
+val ORGANIZATION_LOGOS: OrganizationLogos = OrganizationLogos.ORGANIZATION_LOGOS
 
 /**
  * The table <code>public.organization_member_roles</code>.
