@@ -9,6 +9,7 @@ import com.dearby.nativeapp.entities.activity.model.ApplicationWindow
 import com.dearby.nativeapp.entities.activity.model.Place
 import com.dearby.nativeapp.entities.activity.model.ProgramPage
 import com.dearby.nativeapp.entities.activity.model.ProgramSummary
+import com.dearby.nativeapp.entities.activity.model.ScheduleStatus
 import com.dearby.nativeapp.entities.activity.model.StageSchedule
 import com.dearby.nativeapp.entities.activity.model.Tag
 import com.dearby.nativeapp.entities.activity.model.instant
@@ -50,6 +51,7 @@ private fun get(api: String, path: String, params: List<Pair<String, String>>): 
         connection.instanceFollowRedirects = false
         connection.setRequestProperty("Accept", "application/json")
         connection.setRequestProperty("Accept-Language", acceptLanguage(LocaleList.getDefault().toLanguageTags().split(',')))
+        if (connection.responseCode == 404) throw NotFound()
         check(connection.responseCode == 200) { "$path ${connection.responseCode}" }
         return connection.inputStream.bufferedReader().use { it.readText() }
     } finally {
@@ -57,42 +59,61 @@ private fun get(api: String, path: String, params: List<Pair<String, String>>): 
     }
 }
 
+private class NotFound : Exception()
+
 /** The device language order, so the API answers activity text in English when English comes before Korean. */
 fun acceptLanguage(tags: List<String>): String =
     tags.filter { it.isNotBlank() }.take(5).mapIndexed { index, tag -> if (index == 0) tag else "$tag;q=0.${10 - index}" }
         .joinToString(", ").ifEmpty { "ko" }
 
+/**
+ * `GET /v1/activities/:id` (contract "활동 조회"): one published activity, or null when it is gone (404) — a 내 활동 record whose
+ * activity was deleted shows as "삭제된 활동" (contract "내 활동 서버 저장"). Other failures throw. Call off the main thread.
+ */
+fun fetchActivity(api: String, id: String): ActivityModel? = try {
+    parseActivity(JSONObject(get(api, "activities/$id", emptyList())))
+} catch (e: NotFound) { null }
+
 fun parseActivities(json: String): ActivityPage {
     val body = JSONObject(json)
-    return ActivityPage(body.getJSONArray("items").objects().map { activity ->
-        val period = activity.optJSONObject("activitySchedule")
-        val raw = activity.getJSONArray("schedules").objects()
-        val schedules = raw.map { it.stageSchedule() }
-        ActivityModel(
-            activity.getLong("id").toString(), activity.getString("name"), activity.getString("description"),
-            activity.getJSONObject("organization").getString("name"), activity.getJSONObject("program").getString("name"),
-            activity.getString("officialUrl"), activity.text("imageUrl"),
-            activity.optJSONObject("application")?.let { ApplicationWindow(it.text("startAt"), it.text("endAt"), it.text("startDate"), it.text("endDateExclusive")) },
-            period?.text("dateLabel") ?: schedules.firstNotNullOfOrNull { it.dateLabel.ifBlank { null } }.orEmpty(),
-            period?.text("address") ?: raw.firstNotNullOfOrNull { it.text("address") },
-            schedules, period?.stageSchedule(),
-            // An unreadable eligibility never fails the activity.
-            activity.optJSONObject("eligibility")?.let { runCatching { it.eligibilityGroup(0) }.getOrNull() },
-            ActivityCategory.fromCode(activity.text("category")),
-            activity.tags(),
-            activity.text("location"),
-            // A malformed place (contract "활동 장소": four fields together) never fails the activity.
-            activity.optJSONObject("place")?.let { runCatching { Place(it.getString("name"), it.getString("address"), it.getDouble("lat"), it.getDouble("lng")) }.getOrNull() },
-            activity.text("applicationUrl"),
-        )
-    }, body.text("nextCursor"))
+    return ActivityPage(body.getJSONArray("items").objects().map(::parseActivity), body.text("nextCursor"))
+}
+
+private fun parseActivity(activity: JSONObject): ActivityModel {
+    val period = activity.optJSONObject("activitySchedule")
+    val raw = activity.getJSONArray("schedules").objects()
+    val schedules = raw.map { it.stageSchedule() }
+    return ActivityModel(
+        activity.getLong("id").toString(), activity.getString("name"), activity.getString("description"),
+        activity.getJSONObject("organization").getString("name"), activity.getJSONObject("program").getString("name"),
+        activity.getString("officialUrl"), activity.text("imageUrl"),
+        activity.optJSONObject("application")?.let { ApplicationWindow(it.text("startAt"), it.text("endAt"), it.text("startDate"), it.text("endDateExclusive"), it.idText(), it.statuses()) },
+        period?.text("dateLabel") ?: schedules.firstNotNullOfOrNull { it.dateLabel.ifBlank { null } }.orEmpty(),
+        period?.text("address") ?: raw.firstNotNullOfOrNull { it.text("address") },
+        schedules, period?.stageSchedule(),
+        // An unreadable eligibility never fails the activity.
+        activity.optJSONObject("eligibility")?.let { runCatching { it.eligibilityGroup(0) }.getOrNull() },
+        ActivityCategory.fromCode(activity.text("category")),
+        activity.tags(),
+        activity.text("location"),
+        // A malformed place (contract "활동 장소": four fields together) never fails the activity.
+        activity.optJSONObject("place")?.let { runCatching { Place(it.getString("name"), it.getString("address"), it.getDouble("lat"), it.getDouble("lng")) }.getOrNull() },
+        activity.text("applicationUrl"),
+    )
 }
 
 /** Only readable times count; a schedule may have none (all-day or undated). */
 private fun JSONObject.stageSchedule() = StageSchedule(
     optString("title"), text("kind") ?: "EVENT", text("startAt")?.takeIf { instant(it) != null }, text("endAt")?.takeIf { instant(it) != null },
     text("timeZone") ?: "Asia/Seoul", text("startDate"), text("endDateExclusive"), text("dateLabel").orEmpty(),
+    idText(), statuses(), optJSONObject("overlapCheck")?.text("startTime"), optJSONObject("overlapCheck")?.text("endTime"),
 )
+
+/** Contract "내 활동 서버 저장·일정 상태": `statuses [{id?, name, kind}]`; an unreadable entry is skipped, none → the defaults downstream. */
+private fun JSONObject.statuses(): List<ScheduleStatus> = optJSONArray("statuses")?.objects()?.mapNotNull { status ->
+    runCatching { ScheduleStatus(status.idText(), status.getString("name"), status.text("kind") ?: "OTHER") }.getOrNull()
+} ?: emptyList()
+private fun JSONObject.idText(): String? = if (isNull("id")) null else get("id").toString()
 
 /** Contract "대상자 조건": camelCase keys (`field`, `fieldEn`, `from`, `to`, `values`, `valuesEn`, `note`, `noteEn`), groups nest at most 3 deep; anything deeper or malformed is dropped. */
 private fun JSONObject.eligibilityGroup(depth: Int): EligibilityGroup? {

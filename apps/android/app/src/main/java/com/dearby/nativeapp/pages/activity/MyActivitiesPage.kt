@@ -3,13 +3,16 @@ package com.dearby.nativeapp.pages.activity
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material3.*
@@ -30,11 +33,11 @@ import com.dearby.nativeapp.widgets.activity.progress.ProgressState
 
 /**
  * Applied activities as progress tracks (contract "내 활동 진행 트랙"): `진행 중` first, `끝난 활동` (a 탈락 mark or every
- * stage over) collapsed below. An activity without stages keeps the plain row with the 참여 확정 switch. A track row opens
+ * stage over) collapsed below. An activity without stages keeps the plain `신청함` row. A track row opens
  * [openProgress]; a plain row opens the detail with [open]. The applied marks survive discovery searches (README rule).
  */
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun MyActivitiesPage(state: ActivityListState, open: (String) -> Unit, openProgress: (String) -> Unit, confirm: (String, Boolean) -> Unit, explore: () -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {}, remove: (String) -> Unit = {}) {
+@Composable fun MyActivitiesPage(state: ActivityListState, open: (String) -> Unit, openProgress: (String) -> Unit, explore: () -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {}, remove: (String) -> Unit = {}) {
     val active = state.activeActivities
     val ended = state.endedActivities
     var showEnded by remember { mutableStateOf(false) }
@@ -48,27 +51,48 @@ import com.dearby.nativeapp.widgets.activity.progress.ProgressState
         else LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item { Text(PROGRESS_NOTE, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall) }
             if (active.isNotEmpty()) item { Text("진행 중", Modifier.padding(top = 6.dp).semantics { heading() }, style = MaterialTheme.typography.titleMedium) }
-            items(active, key = { it.id }) { MyActivityRow(it, state.progress[it.id], open, openProgress, confirm, remove) }
+            items(active, key = { it.id }) { MyActivityRow(it, state.progress[it.id], open, openProgress, remove) }
             if (ended.isNotEmpty()) {
                 item { EndedHeader(ended.size, showEnded) { showEnded = !showEnded } }
-                if (showEnded) items(ended, key = { it.id }) { MyActivityRow(it, state.progress[it.id], open, openProgress, confirm, remove) }
+                if (showEnded) items(ended, key = { it.id }) { MyActivityRow(it, state.progress[it.id], open, openProgress, remove) }
             }
         }
     }
 }
 
-internal const val CONFIRM_NOTE = "참여 확정 표시는 내가 남기는 예시 표시예요. 주최 측 확정이 아니에요."
-internal const val PROGRESS_NOTE = "단계와 참여 확정 표시는 내가 남기는 것이며 주최 측 결과가 아니에요."
+internal const val PROGRESS_NOTE = "단계 상태는 내가 남기는 것이며 주최 측 결과가 아니에요."
 
-/** A track row or the plain row, each with a trailing `더 보기` menu holding 내 활동에서 빼기 (contract "빼기는 눈에 보이게"). */
-@Composable private fun MyActivityRow(activity: ActivityState, progress: ProgressState?, open: (String) -> Unit, openProgress: (String) -> Unit, confirm: (String, Boolean) -> Unit, remove: (String) -> Unit) {
-    val more: @Composable () -> Unit = { RemoveMenu { remove(activity.id) } }
-    if (progress != null && progress.stages.isNotEmpty()) ActivityProgressRow(progress, { openProgress(activity.id) }, trailing = more)
-    else ActivityRow(activity, open, trailing = more) {
-        ExampleBadge(if (activity.confirmed) "참여 확정" else "신청함", accent = activity.confirmed)
-        ConfirmToggle(activity) { confirm(activity.id, it) }
+/**
+ * A track row, the plain row, or a "삭제된 활동" row (its activity is gone; contract "내 활동 서버 저장"), each with a trailing `더 보기` menu
+ * holding 내 활동에서 빼기 (contract "빼기는 눈에 보이게"). Swiping the row from end to start (Material 3 `SwipeToDismissBox`, contract
+ * "내 활동 목록에서 밀어서 지우기") asks the same confirmation; the row springs back whether it is confirmed or cancelled.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable private fun MyActivityRow(activity: ActivityState, progress: ProgressState?, open: (String) -> Unit, openProgress: (String) -> Unit, remove: (String) -> Unit) {
+    var removing by remember { mutableStateOf(false) }
+    // Returning false keeps the row in place: the dialog decides, and the list drops the row once it is removed.
+    val swipe = rememberSwipeToDismissBoxState(confirmValueChange = { if (it == SwipeToDismissBoxValue.EndToStart) removing = true; false })
+    SwipeToDismissBox(swipe, enableDismissFromStartToEnd = false, backgroundContent = {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.errorContainer, RoundedCornerShape(12.dp)).padding(horizontal = 24.dp), contentAlignment = Alignment.CenterEnd) {
+            Icon(Icons.Rounded.Delete, "내 활동에서 빼기", tint = MaterialTheme.colorScheme.onErrorContainer)
+        }
+    }) {
+        val more: @Composable () -> Unit = { RemoveMenu { remove(activity.id) } }
+        when {
+            activity.deleted -> DeletedRow(more)
+            progress != null && progress.stages.isNotEmpty() -> ActivityProgressRow(progress, { openProgress(activity.id) }, trailing = more)
+            else -> ActivityRow(activity, open, trailing = more) { ExampleBadge("신청함") }
+        }
     }
+    if (removing) RemoveFromMineDialog({ removing = false; remove(activity.id) }) { removing = false }
 }
+
+/** The activity was removed from Dearby; the record stays until the user takes it out. */
+@Composable private fun DeletedRow(trailing: @Composable () -> Unit) =
+    Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)) {
+        ListItem({ Text("삭제된 활동") }, supportingContent = { Text("더 이상 볼 수 없는 활동이에요") }, trailingContent = trailing,
+            colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+    }
 
 @Composable private fun RemoveMenu(remove: () -> Unit) {
     var menu by remember { mutableStateOf(false) }
@@ -82,7 +106,7 @@ internal const val PROGRESS_NOTE = "단계와 참여 확정 표시는 내가 남
 
 /** The confirmation every 내 활동에서 빼기 goes through (detail, list row, progress page). */
 @Composable internal fun RemoveFromMineDialog(remove: () -> Unit, dismiss: () -> Unit) =
-    AlertDialog(onDismissRequest = dismiss, title = { Text("내 활동에서 뺄까요?") }, text = { Text("단계 표시와 참여 확정도 함께 지워져요.") },
+    AlertDialog(onDismissRequest = dismiss, title = { Text("내 활동에서 뺄까요?") }, text = { Text("단계 상태도 함께 지워져요.") },
         confirmButton = { TextButton(remove, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("빼기") } },
         dismissButton = { TextButton(dismiss) { Text("취소") } })
 
@@ -105,7 +129,3 @@ internal const val PROGRESS_NOTE = "단계와 참여 확정 표시는 내가 남
     }
 }
 
-/** Label + switch as one `ListItem` row (contract "토글 라벨은 바로 옆"); the whole row toggles. */
-@Composable internal fun ConfirmToggle(activity: ActivityState, change: (Boolean) -> Unit) =
-    ListItem({ Text("참여 확정 표시") }, Modifier.toggleable(activity.confirmed, role = Role.Switch, onValueChange = change), trailingContent = { Switch(activity.confirmed, null) },
-        colors = ListItemDefaults.colors(containerColor = Color.Transparent))

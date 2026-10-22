@@ -4,7 +4,11 @@ import com.dearby.nativeapp.entities.account.model.AccountProfile
 import com.dearby.nativeapp.entities.account.model.ActivityInfoPage
 import com.dearby.nativeapp.entities.account.model.EvidenceMeta
 import com.dearby.nativeapp.entities.account.model.AccountSession
+import com.dearby.nativeapp.entities.account.model.MyActivityRecord
 import com.dearby.nativeapp.entities.account.model.PublishedCard
+import com.dearby.nativeapp.entities.account.model.toImportJson
+import com.dearby.nativeapp.entities.account.model.toMyActivities
+import com.dearby.nativeapp.entities.account.model.toMyActivity
 import com.dearby.nativeapp.entities.account.model.toCardList
 import com.dearby.nativeapp.entities.account.model.toReceipt
 import com.dearby.nativeapp.entities.account.model.toWallet
@@ -165,6 +169,18 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun reciprocate(cardId: String, myCardId: String, session: AccountSession) {
         request("POST", "wallet/cards/$cardId/reciprocate", JSONObject().put("myCardId", myCardId), session)
     }
+
+    // 내 활동 (contract "내 활동 서버 저장·일정 상태", 2026-10-22): the signed-in account's applied activities and stage statuses (참여 확정 was dropped the same day; the state follows from the statuses).
+    suspend fun myActivities(session: AccountSession) = send("GET", "me/activities", null, session).toMyActivities()
+    /** Adds it (idempotent, empty body); 404 when the activity is not published. */
+    suspend fun saveMyActivity(activityId: String, session: AccountSession) = send("PUT", "me/activities/$activityId", JSONObject(), session).toMyActivity()
+    /** 204, also when it was not there; the stage statuses go with it. */
+    suspend fun deleteMyActivity(activityId: String, session: AccountSession) { request("DELETE", "me/activities/$activityId", null, session) }
+    /** One stage's status: an admin status by [statusId], or a default status by [kind] when [statusId] is null; 400 when it is not that schedule's. */
+    suspend fun saveScheduleStatus(activityId: String, scheduleId: String, statusId: String?, kind: String, session: AccountSession) =
+        send("PUT", "me/activities/$activityId/schedules/$scheduleId", if (statusId != null) JSONObject().put("statusId", statusId.toLong()) else JSONObject().put("kind", kind), session).toMyActivity()
+    /** The device-only records, once, right after signing in; records the server already has keep the server's values. */
+    suspend fun importMyActivities(records: List<MyActivityRecord>, session: AccountSession) = send("POST", "me/activities/import", records.toImportJson(), session).toMyActivities()
 
     private fun passkeyBody(challengeId: String, credential: String) = JSONObject().put("challengeId", challengeId).put("credential", JSONObject(credential))
 

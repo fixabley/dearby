@@ -19,6 +19,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
+import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
 
 /**
  * [openLink] opens the CTA link: the application link (`applicationUrl`, else the official page) until recruitment is closed, then the
@@ -26,20 +27,11 @@ import com.dearby.nativeapp.shared.ui.*
  * curated place in a map app (contract "활동 장소"); the `장소` section shows only when the activity has one.
  */
 @Composable fun ActivityDetailPage(
-    activity: ActivityState, error: String?, back: () -> Unit, openLink: (String) -> Unit, editReport: () -> Unit, confirm: (Boolean) -> Unit, checkCalendar: () -> Unit, share: () -> Unit,
-    openMap: () -> Unit = {}, addToMine: () -> Unit = {}, viewInMine: () -> Unit = {}, removeFromMine: () -> Unit = {},
+    activity: ActivityState, error: String?, back: () -> Unit, openLink: (String) -> Unit, editReport: () -> Unit, checkCalendar: () -> Unit, share: () -> Unit,
+    openMap: () -> Unit = {}, addToMine: () -> Unit = {}, viewInMine: () -> Unit = {}, removeFromMine: () -> Unit = {}, addToCalendar: (CalendarDraft) -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize()) {
         DearbyTopBar("활동 상세", back) { if (activity.officialUrl != null) IconButton(share) { Icon(Icons.Rounded.Share, "활동 공유", tint = MaterialTheme.colorScheme.primary) } }
-        if (activity.applied) Surface(color = MaterialTheme.colorScheme.primaryContainer) {
-            Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 10.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.CheckCircle, null, tint = MaterialTheme.colorScheme.onPrimaryContainer); Text("신청했다고 표시했어요 · 실제 접수 확인이 아니에요", color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.bodyMedium)
-                }
-                ConfirmToggle(activity, confirm)
-                Text(CONFIRM_NOTE, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-            }
-        }
         // No image header (contract "활동 상세 이미지 섹션 제거", 2026-10-19 밤): status, tags and title start at the top.
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -77,20 +69,20 @@ import com.dearby.nativeapp.shared.ui.*
                 HorizontalDivider()
                 Text("행사 일정", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
                 Text(activity.date.ifEmpty { "일정 미확인" }, style = MaterialTheme.typography.bodyMedium)
-                Column { activity.sessions.forEachIndexed { index, item ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        Text(item.first, Modifier.width(106.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                        TimelineEntry("", item.second, "", last = index == activity.sessions.lastIndex, modifier = Modifier.weight(1f), compact = false)
-                    }
+                // 모집 마감, each schedule and the activity period as plain rows, each dated one with `캘린더에 추가` (contract "내 캘린더에 추가").
+                Column { activity.schedules.forEach { item ->
+                    ListItem({ Text(item.name) }, supportingContent = { Text(item.dateText) }, colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                        trailingContent = item.draft?.let { draft -> { IconButton({ addToCalendar(draft) }) { Icon(Icons.Rounded.EventAvailable, "${item.name} 캘린더에 추가", tint = MaterialTheme.colorScheme.primary) } } })
                 } }
-                // The overlap check reads the device calendar on tap (contract "기기 캘린더 겹침") and needs timed schedules.
-                if (activity.sessions.isNotEmpty()) {
+                // The overlap check reads the device calendar on tap (contract "기기 캘린더 겹침"); it needs one comparable schedule — timed,
+                // or date-only with the admin's overlap-check time (contract "겹침 확인 시간", 2026-10-22). Otherwise one line says why not.
+                if (activity.overlapCheckable) {
                     DearbyOutlineButton(checkCalendar, Modifier.fillMaxWidth()) { Text("겹치는 시간 확인하기") }
                     Text("누르면 캘린더 읽기 권한을 묻고 기기 안에서만 비교해요.", Modifier.align(Alignment.CenterHorizontally), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                }
+                } else Text("이 활동은 시간이 정해진 일정이 없어 겹침을 확인할 수 없어요", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 HorizontalDivider()
                 Text("신청 조건과 최신 일정은 공식 사이트에서 확인해 주세요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                Text("신청 표시는 이 앱 안에서만 남기는 기록이에요. 실제 접수 여부와 무관해요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                Text("신청 표시는 내가 직접 남기는 기록이에요. 실제 접수 여부와 무관해요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
                 TextButton(editReport) { Text("신청 상태 수정") }
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             }
@@ -103,12 +95,16 @@ import com.dearby.nativeapp.shared.ui.*
                 DearbyButton({ openLink(url) }, Modifier.fillMaxWidth().semantics { contentDescription = "$label, 외부 브라우저로 열려요" }) { Text(label) }
             }
             // 내 활동 직접 추가 (contract, 2026-10-20): whatever the recruitment state, the activity can be marked applied by hand — the same record as
-            // the "신청했어요" answer. Once in 내 활동 the button opens it there and an always-visible
-            // 내 활동에서 빼기 text button under it removes it after a confirmation ("빼기는 눈에 보이게").
+            // the "신청했어요" answer. Once in 내 활동 the CTA block grows upward with a primary check line "이미 추가된 항목입니다" (contract "활동 상세의
+            // 추가 상태", 2026-10-22, replacing the top banner), then 내 활동에서 보기 and the always-visible 내 활동에서 빼기 ("빼기는 눈에 보이게").
             if (!activity.applied) {
                 DearbyOutlineButton(addToMine, Modifier.fillMaxWidth()) { Icon(Icons.Rounded.Checklist, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text("내 활동에 추가") }
                 Text("직접 남기는 기록이며 주최 측 확인은 아니에요", Modifier.align(Alignment.CenterHorizontally), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             } else {
+                Row(Modifier.align(Alignment.CenterHorizontally).padding(vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.CheckCircle, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                    Text("이미 추가된 항목입니다", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.bodyMedium)
+                }
                 DearbyOutlineButton(viewInMine, Modifier.fillMaxWidth()) { Icon(Icons.Rounded.Checklist, null, Modifier.size(20.dp)); Spacer(Modifier.width(8.dp)); Text("내 활동에서 보기") }
                 RemoveFromMineButton(removeFromMine, Modifier.align(Alignment.CenterHorizontally))
             }
@@ -135,7 +131,7 @@ import com.dearby.nativeapp.shared.ui.*
 
 @Composable fun ApplicationReportDialog(report: (Boolean) -> Unit, later: () -> Unit) {
     AlertDialog(containerColor = MaterialTheme.colorScheme.surface, onDismissRequest = later, title = { Text("신청 상태") }, text = {
-        Text("이 앱 안에서만 남기는 표시예요. 주최 측 접수 확인이 아니며 앱을 종료하면 사라져요.")
+        Text("내가 직접 남기는 표시예요. 주최 측 접수 확인이 아니에요.")
     }, confirmButton = { TextButton({ report(true) }) { Text("신청함") } }, dismissButton = {
         Row { TextButton({ report(false) }) { Text("신청 안 함") }; TextButton(later) { Text("나중에") } }
     })
