@@ -11,11 +11,12 @@ import java.time.temporal.ChronoUnit
  * are null for an undated step. [windows] are the calendar-comparison windows ([StageSchedule.windows]; empty for 지원).
  * [scheduleId] and [statuses] are the schedule's, for the user's status choice (contract "내 활동 서버 저장·일정 상태").
  * [eventStart]/[eventEnd]/[allDay] prefill the system "add event" screen (contract "내 캘린더에 추가"): a timed step uses its times
- * (one end missing → a point), a date-only step is all-day from Seoul midnight; null for an undated step.
+ * (one end missing → a point), a date-only step is all-day from Seoul midnight; null for an undated step. A repeating step
+ * (contract "반복 일정과 겹침 결과 묶음") prefills its first occurrence, never all-day, with [recurrence] as the event's RRULE.
  */
 data class Stage(val name: String, val kind: String, val label: String, val dateText: String, val day: LocalDate?, val lastDay: LocalDate?,
     val windows: List<ScheduleModel> = emptyList(), val scheduleId: String? = null, val statuses: List<ScheduleStatus> = ScheduleStatus.DEFAULTS,
-    val eventStart: Instant? = null, val eventEnd: Instant? = null, val allDay: Boolean = false) {
+    val eventStart: Instant? = null, val eventEnd: Instant? = null, val allDay: Boolean = false, val recurrence: String? = null) {
     /** Over by [today]: the step's last day has passed. An undated step never ends by itself. */
     fun finished(today: LocalDate) = lastDay != null && lastDay < today
 }
@@ -65,10 +66,14 @@ private fun StageSchedule.toStage(): Stage {
     // Text by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.
     val text = scheduleText().ifBlank { UNDATED }
     val statuses = statuses.ifEmpty { ScheduleStatus.DEFAULTS }
+    val windows = windows()
+    val repeating = windows.firstOrNull()?.takeIf { Recurrence.parse(recurrence) != null }
     return when {
+        // Counts down to the first occurrence and stays on until the last one.
+        repeating != null -> Stage(title, kind, label, text, instant(repeating.startAt)?.atZone(seoul)?.toLocalDate(), instant(windows.last().endAt)?.atZone(seoul)?.toLocalDate(), windows, id, statuses, instant(repeating.startAt), instant(repeating.endAt), recurrence = recurrence)
         start != null || end != null -> Stage(title, kind, label, text,
-            (start ?: end)!!.atZone(seoul).toLocalDate(), (end ?: start)!!.atZone(seoul).toLocalDate(), windows(), id, statuses, start ?: end, end ?: start)
-        startDay != null -> Stage(title, kind, label, text, startDay, endDay, windows(), id, statuses,
+            (start ?: end)!!.atZone(seoul).toLocalDate(), (end ?: start)!!.atZone(seoul).toLocalDate(), windows, id, statuses, start ?: end, end ?: start)
+        startDay != null -> Stage(title, kind, label, text, startDay, endDay, windows, id, statuses,
             startDay.atStartOfDay(seoul).toInstant(), endDay!!.plusDays(1).atStartOfDay(seoul).toInstant(), allDay = true)
         else -> Stage(title, kind, label, text, null, null, emptyList(), id, statuses)
     }

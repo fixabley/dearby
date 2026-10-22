@@ -17,10 +17,11 @@ import com.dearby.nativeapp.entities.activity.model.ScheduleModel
  * schedules' span and held in composition state only; refused → the sheet explains and offers the app settings.
  */
 /** [openPrivacy] opens the web privacy policy; the route supplies it so this slice stays free of the browser helper (FSD: no cross-slice import). */
-@Composable fun CalendarConflictFlow(schedules: List<ScheduleModel>, openPrivacy: () -> Unit, close: () -> Unit) {
+/** [ownLink] is the activity's web link; device events carrying it in their notes (added from Dearby) are not compared. */
+@Composable fun CalendarConflictFlow(schedules: List<ScheduleModel>, ownLink: String?, openPrivacy: () -> Unit, close: () -> Unit) {
     val context = LocalContext.current
     fun granted() = context.checkSelfPermission(Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED
-    fun compare(): CalendarAccessState = CalendarAccessState.Compared(compareCalendar(schedules, DeviceCalendarSource(context.contentResolver)))
+    fun compare(): CalendarAccessState = CalendarAccessState.Compared(compareCalendar(schedules, DeviceCalendarSource(context.contentResolver, ownLink)))
     var access by remember(schedules) { mutableStateOf(if (granted()) compare() else CalendarAccessState.Asking) }
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         access = if (ok) compare() else CalendarAccessState.Denied

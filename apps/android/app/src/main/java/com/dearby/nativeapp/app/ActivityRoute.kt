@@ -73,7 +73,9 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
     val scope = rememberCoroutineScope()
     fun addToCalendar(draft: CalendarDraft, of: ActivityState?) {
         val location = of?.place?.let { "${it.name}, ${it.address}" } ?: of?.location
-        if (!openCalendarInsert(context, draft.title, draft.begin, draft.end, draft.allDay, location, of?.officialUrl)) scope.launch { snackbar.showSnackbar("캘린더 앱을 찾지 못했어요") }
+        // The Dearby link first (contract "반복 일정과 겹침 결과 묶음"): the overlap check leaves out the events that carry it.
+        val notes = listOfNotNull(of?.let { activityLink(it.id) }, of?.officialUrl).joinToString("\n").ifBlank { null }
+        if (!openCalendarInsert(context, draft.title, draft.begin, draft.end, draft.allDay, location, notes, draft.recurrence)) scope.launch { snackbar.showSnackbar("캘린더 앱을 찾지 못했어요") }
     }
     // Detail over the timeline: back from the detail returns to the timeline it was opened from.
     BackHandler((selected != null || progressId != null) && !prompt && !calendar && stageCalendar == null) { if (selected != null) selected = null else progressId = null }
@@ -90,8 +92,8 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
     }
     if (sharing && activity?.officialUrl != null) AlertDialog(onDismissRequest = { sharing = false }, title = { Text("활동 링크") }, text = { Text(activity.officialUrl) }, confirmButton = { TextButton({ sharing = false }) { Text("닫기") } })
     val openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) }
-    if (calendar && activity != null) CalendarConflictFlow(model.schedules(activity.id), openPrivacy) { calendar = false }
-    stageCalendar?.let { stage -> progress?.let { model.stageWindows(it.id, stage) } }?.takeIf { it.isNotEmpty() }?.let { windows -> CalendarConflictFlow(windows, openPrivacy) { stageCalendar = null } }
+    if (calendar && activity != null) CalendarConflictFlow(model.schedules(activity.id), activityLink(activity.id), openPrivacy) { calendar = false }
+    progress?.let { of -> stageCalendar?.let { model.stageWindows(of.id, it) }?.takeIf { it.isNotEmpty() }?.let { windows -> CalendarConflictFlow(windows, activityLink(of.id), openPrivacy) { stageCalendar = null } } }
     // A failed 내 활동 read or write while signed in (contract "내 활동 서버 저장"), on whichever tab made it (only one tab's route exists at a time).
     // 403 CONSENT_REQUIRED on a 내 활동 write (consent version moved to 2026-10-22): go to 내 프로필, whose consent screen comes up on load.
     if (state.consentNeeded) AlertDialog(onDismissRequest = model::clearMineNotice, title = { Text("다시 동의가 필요해요") },
@@ -100,3 +102,6 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
     else state.mineNotice?.let { value -> AlertDialog(onDismissRequest = model::clearMineNotice, title = { Text("내 활동") }, text = { Text(value) }, confirmButton = { TextButton(model::clearMineNotice) { Text("확인") } }) }
     if (prompt && activity != null) ApplicationReportDialog({ model.apply(activity.id, it); prompt = false }, { prompt = false })
 }
+
+/** The activity's web page, written into calendar notes so the overlap check can recognise Dearby's own events (contract "반복 일정과 겹침 결과 묶음"). */
+private fun activityLink(id: String) = "${BuildConfig.WEB_ORIGIN.trimEnd('/')}/activities/$id"
