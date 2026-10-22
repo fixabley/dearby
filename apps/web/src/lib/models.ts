@@ -114,6 +114,8 @@ export const activitySchema = z.object({
   organization: named,
   program: named,
   officialUrl: text,
+  // 신청 링크(contract "신청 확인 조건 완화·공개 applicationUrl"); older responses omit it.
+  applicationUrl: text.nullable().optional().catch(null),
   imageUrl: text.nullable(),
   application: scheduleSchema.nullable(),
   activitySchedule: scheduleSchema,
