@@ -614,7 +614,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - `schedules.recurrence varchar(200) null`: RFC 5545 RRULE 본문(접두사 `RRULE:` 없이). 허용 부분집합: `FREQ=DAILY|WEEKLY`, `BYDAY`(MO..SU 목록), `INTERVAL`(1~4), `UNTIL`(yyyyMMdd 또는 yyyyMMddTHHmmssZ) 또는 `COUNT`(1~400) 중 하나 필수. 그 밖은 400.
 - 반복 일정의 한 회차 시간: 시각 일정이면 `startAt`~`endAt`이 첫 회차(서울 시간대 기준 반복), 날짜만 있는 일정이면 `overlapCheck`(HH:mm 범위)가 매 회차 시간이고 `startDate`가 첫 날, `UNTIL`/`COUNT`가 끝. 반복이 있으면 겹침 확인이 날마다 창을 만들던 동작(종일 + overlapCheck)을 대신한다.
 - 공개 `Schedule.recurrence: string | null`. 어드민 일정 PATCH/POST에 `recurrence`(null 지움), 활동 PATCH/POST의 `application`/`activitySchedule` 안에도 같은 키. 어드민 응답에도 포함.
-- ICS 구독 피드(`.ics`)가 있으면 그 일정에 `RRULE:` 줄을 내보낸다.
+- ICS 구독 피드는 없다. 기기 캘린더로 들어가는 길은 앱의 "캘린더에 추가" 하나다.
 - 수집기 `WORKFLOW.md`·제출 스키마에 `recurrence`를 더한다: "평일 09:00~17:00, 6개월"처럼 규칙적인 시간표가 본문에 있으면 RRULE로 쓰고, 근거 구절에 그 문장을 인용한다. 확실하지 않으면 쓰지 않는다.
 
 ### 어드민
