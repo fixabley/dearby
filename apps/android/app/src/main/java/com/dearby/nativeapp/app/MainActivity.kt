@@ -23,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.dearby.nativeapp.BuildConfig
+import com.dearby.nativeapp.shared.config.activityAppLink
 import com.dearby.nativeapp.shared.config.authRedirect
 import com.dearby.nativeapp.shared.config.cardLink
 import com.dearby.nativeapp.shared.ui.DearbyTheme
@@ -85,13 +86,15 @@ class MainActivity : ComponentActivity() {
         receive(intent)
     }
     /**
-     * Apple's `dearby://auth/apple` redirect (singleTask brings this instance back over the Custom Tab), or a
-     * received card `dearby://cards/<id>?activity=<n>` from the web card page (contract "명함 교환").
+     * Apple's `dearby://auth/apple` redirect (singleTask brings this instance back over the Custom Tab), a received card
+     * `dearby://cards/<id>?activity=<n>` from the web card page (contract "명함 교환") or the same card page as an App Link, or an
+     * App Link `/activities/<id>` that opens the detail on 발견 (contract "유니버설 링크·App Links·활동 공유·오픈그래프"). Other links only open the app.
      */
     private fun receive(intent: Intent?, recreated: Boolean = false) {
         val link = intent?.dataString ?: return
         if (recreated) return
         authRedirect(link)?.let { account.returned(it); return }
-        cardLink(link)?.let { wallet.receive(it) }
+        cardLink(link, BuildConfig.WEB_ORIGIN)?.let { wallet.receive(it); return }
+        activityAppLink(link, BuildConfig.WEB_ORIGIN)?.let(activityModel::openLinked)
     }
 }

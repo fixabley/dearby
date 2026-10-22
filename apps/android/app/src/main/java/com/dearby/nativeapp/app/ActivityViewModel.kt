@@ -251,6 +251,23 @@ class ActivityViewModel(
         marks = marks - id
         models[id]?.let { model -> mutable.update { it.copy(progress = it.progress + (id to model.toProgress(emptyMap(), today()))) } }
     }
+    /**
+     * An App Link `/activities/<id>` (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): an activity discovery has not loaded is read
+     * first (`GET /v1/activities/:id`), then [ActivityListState.linked] asks 발견 to open its detail; gone or unreadable → [ActivityListState.linkNotice].
+     */
+    fun openLinked(id: String) {
+        if (id in models && state.value.known[id]?.deleted == false) return mutable.update { it.copy(linked = id) }
+        viewModelScope.launch {
+            val model = try { fetchOne(id) } catch (e: CancellationException) { throw e } catch (e: Exception) {
+                Log.w("Dearby", "Linked activity load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
+                return@launch mutable.update { it.copy(linkNotice = "활동을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.") }
+            } ?: return@launch mutable.update { it.copy(linkNotice = "더 이상 볼 수 없는 활동이에요.") }
+            models = models + (id to model)
+            val shown = model.toState(Instant.now()).copy(applied = state.value.known[id]?.applied == true)
+            mutable.update { it.copy(known = it.known + (id to shown), progress = it.progress + (id to model.toProgress(marks[id].orEmpty(), today())), linked = id) }
+        }
+    }
+    fun consumeLinked() = mutable.update { it.copy(linked = null, linkNotice = null) }
     /** An application link for [id] was handed to the browser. Applied or "never ask" activities are not asked. */
     fun openedApplication(id: String) {
         if (state.value.known[id]?.applied == true || id in neverAsk) return
