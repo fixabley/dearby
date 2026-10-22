@@ -546,6 +546,46 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **앱**: 이력 퍼널·프로필 편집의 활동 선택 창은 `forHistory=true`로 검색한다. 검색 결과가 없을 때의 `직접 입력` 행은 그대로.
 - 웹·어드민 변경 없음.
 
+## 내 활동 서버 저장·일정 상태·겹침 확인 시간 — 2026-10-22 사용자 결정
+
+사용자: "활동 상세에서 참여 후 상단 문구가 너무 길어. 체크 아이콘과 '이미 추가된 항목입니다'로 CTA 위쪽을 확장해 표현. 내 활동 목록에서 dismiss로 지울 수 있게. 겹치는 기간 보기를 안드로이드에도, 활동 상세에서도. 일부 일정에는 안 되는데 어드민에서 조정할 수 있게. 진행 단계의 통과·대기·탈락 같은 항목도 활동별로 어드민에서 추가·제거. 활동 - 사용자 활동, 활동 - 일정 - 일정 상태, 사용자 활동(활동 논리 FK) - 사용자 활동 일정 상태(사용자 활동 논리 FK, 일정 상태 논리 FK)."
+
+### 데이터(사용자가 준 모델)
+
+- `schedule_statuses(id, schedule_id, name, kind, sort_order, created_at)` — 일정마다 고를 수 있는 상태. `kind`: `WAITING`(대기)·`PASSED`(통과)·`FAILED`(탈락)·`OTHER`. 일정에 행이 없으면 기본 세 개(대기·통과·탈락)를 쓴다(서버가 응답에 채워 준다, 저장은 하지 않음). 어드민이 일정별로 더하고 이름을 바꾸고 지운다.
+- `user_activities(id uuid, user_id, activity_id(논리 FK), confirmed bool, created_at, updated_at)` — 사용자가 내 활동에 넣은 활동. `(user_id, activity_id)` 유일.
+- `user_activity_schedule_statuses(user_activity_id(논리 FK), schedule_id, schedule_status_id(논리 FK), updated_at)` — PK `(user_activity_id, schedule_id)`. 기본 상태를 고르면 `schedule_status_id`는 null이고 `default_kind`에 기본 종류를 둔다(기본 행은 저장된 id가 없으므로).
+- 논리 FK: DB 제약 없이 코드가 확인한다. 활동이 지워지면 사용자 활동은 남되 목록에서 "삭제된 활동"으로 보인다.
+
+### API(로그인, Bearer)
+
+| 메서드·경로 | 요청 | 응답 |
+| --- | --- | --- |
+| GET /v1/me/activities | — | 200 `{items: [{activityId, confirmed, createdAt, statuses: [{scheduleId, statusId?, kind}]}]}` |
+| PUT /v1/me/activities/{activityId} | `{confirmed?}` | 200 항목(없으면 만들고 있으면 고침). 게시되지 않은 활동 404 |
+| DELETE /v1/me/activities/{activityId} | — | 204(일정 상태도 함께 지움). 없어도 204 |
+| PUT /v1/me/activities/{activityId}/schedules/{scheduleId} | `{statusId}` 또는 `{kind}`(기본 상태) | 200 항목. 그 활동의 일정이 아니거나 그 일정의 상태가 아니면 400 |
+| POST /v1/me/activities/import | `{items: [{activityId, confirmed, statuses: [{scheduleId, kind}]}]}` | 200 목록. 기기에만 있던 기록을 로그인 뒤 한 번 올린다(이미 있으면 서버 값 유지) |
+
+- 공개 `Schedule`에 `statuses: [{id?, name, kind}]`(어드민 지정 또는 기본 세 개)와 `overlapCheck: {startTime, endTime} | null`을 더한다.
+
+### 겹침 확인 시간
+
+- 겹침 확인은 시각이 있는 일정에서만 됐다(종일 일정 제외 규칙). 운영 활동 대부분이 날짜만 있어 버튼이 안 보였다. 어드민이 일정마다 **겹침 확인 시간**(`overlap_start_time`, `overlap_end_time`, 서울 시각 HH:mm)을 둘 수 있다: 날짜만 있는 일정도 그 시간대로 기기 캘린더와 비교한다. 시각 일정은 자기 시각을 쓴다. 둘 다 없으면 그 일정은 비교하지 않는다.
+- 활동 상세: 비교할 수 있는 일정이 하나라도 있으면 `겹치는 시간 확인하기` 버튼을 iOS·Android 모두 보인다. 없으면 버튼 대신 한 줄 "이 활동은 시간이 정해진 일정이 없어 겹침을 확인할 수 없어요".
+- 어드민 세부 일정 편집기: 일정마다 "겹침 확인 시간" 두 칸과, 목록에 "겹침 확인 불가" 표시.
+
+### 앱 화면
+
+- **활동 상세의 추가 상태**: 위쪽의 긴 신청함 배너를 없앤다. 이미 내 활동에 있으면 CTA 묶음 위쪽을 넓혀 `checkmark.circle.fill`/`CheckCircle`(청록) + "이미 추가된 항목입니다" 한 줄을 두고, 그 아래 `내 활동에서 보기`·`내 활동에서 빼기`. 추가 전에는 `내 활동에 추가`.
+- **내 활동 목록에서 밀어서 지우기**: iOS `List` + `.swipeActions(edge: .trailing)` `빼기`(또는 `onDelete`), Android Material 3 `SwipeToDismissBox`(끝에서 시작 방향), 확인 대화 후 삭제. 기존 더 보기 메뉴 빼기는 유지.
+- **진행 단계 상태**: 단계마다 일정의 `statuses`를 선택지로 보인다(기본 대기·통과·탈락, 어드민이 바꾸면 그 이름). `FAILED` 종류를 고르면 기존 탈락 규칙(끝난 활동으로).
+- **저장**: 로그인했으면 서버(`/v1/me/activities`), 로그인 안 했으면 지금처럼 기기 안. 로그인하는 순간 기기 기록을 import로 올리고 기기 사본은 지운다.
+
+### 개인정보
+
+- 지금까지 "신청함·참여 확정·단계 표시는 기기에만"이라고 고지했다. 로그인 사용자는 서버에 저장되므로 `/privacy` 3절과 2절을 고치고 문서 시행일·동의 버전을 `2026-10-22`로 올린다(로그인 사용자는 다음 저장 때 다시 동의). 기기 캘린더 일정은 여전히 서버로 보내지 않는다.
+
 ## 활동 장소 — 2026-10-19 사용자 결정
 
 사용자: "장소는 어드민에서 추가할 수 있으면 좋겠고 geocode, 주소 검색해서 좌표 가지고 올 수 있으면". 활동의 구조화된 장소를 둔다.
