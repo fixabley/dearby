@@ -9,15 +9,17 @@ import {
 import { eligibilityLines } from "@/lib/eligibility";
 import { categoryLabel } from "@/lib/category";
 import { errorMessage, request, RequestError } from "@/lib/client";
-import { Failure, Loading } from "@/shared/ui/states";
+import { Failure } from "@/shared/ui/states";
 import { CenteredMessage } from "@/shared/ui/centered-message";
 import { Icon } from "@/shared/ui/icon";
 import { Badge } from "@/shared/ui/badge";
 import { BottomBar } from "@/shared/ui/bottom-bar";
 import { Button } from "@/shared/ui/button";
+import { Card } from "@/shared/ui/card";
 import { InsetGroup } from "@/shared/ui/inset-group";
 import { LargeTitle } from "@/shared/ui/nav-title";
 import { Separator } from "@/shared/ui/separator";
+import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 
 /**
  * Activity detail (contract "웹 리디자인" › 활동 상세, iOS `ActivityDetailView`): an information block (status/category/tag capsules,
@@ -53,7 +55,7 @@ export function ActivityDetail({ id }: { id: number }) {
         }}
       />
     );
-  if (activity === undefined) return <Loading />;
+  if (activity === undefined) return <DetailLoading />;
   if (!activity)
     return (
       <CenteredMessage
@@ -217,5 +219,29 @@ export function ActivityDetail({ id }: { id: number }) {
           <p className="text-caption text-secondary-label">신청은 공식 사이트에서 진행돼요.</p>
       </BottomBar>
     </>
+  );
+}
+
+/** First load: the information block (capsules, title, organization) and the four-row `활동 안내` group as placeholders. */
+function DetailLoading() {
+  return (
+    <SkeletonGroup className="pt-2">
+      <div className="flex flex-col gap-3">
+        <div className="flex gap-1.5">
+          <Skeleton className="h-6 w-16 rounded-full" />
+          <Skeleton className="h-6 w-14 rounded-full" />
+        </div>
+        <Skeleton className="h-8 w-3/4" />
+        <Skeleton className="h-5 w-1/3" />
+      </div>
+      <Card className="mt-7 divide-y divide-separator">
+        {[0, 1, 2, 3].map((key) => (
+          <div key={key} className="flex min-h-11 items-center gap-4 px-4 py-3">
+            <Skeleton className="h-4 w-16 shrink-0" />
+            <Skeleton className="h-4 flex-1" />
+          </div>
+        ))}
+      </Card>
+    </SkeletonGroup>
   );
 }
