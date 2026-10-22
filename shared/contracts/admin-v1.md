@@ -260,3 +260,12 @@ native-v1.md "반복 일정과 겹침 결과 묶음"의 어드민 쪽. Schedule 
 ## 명함 신고 — 2026-10-22
 
 native-v1.md "명함 신고·차단"의 어드민 쪽. `GET /v1/admin/card-reports?status=OPEN|RESOLVED|DISMISSED`(생략 시 전체, 최신순, 열린 것 먼저) → `{items:[{id, cardId, cardSnapshot, reason, detail, createdAt, status, note, reportCount, cardWithdrawn}]}`. `PATCH /v1/admin/card-reports/:id {status, note?}` 200. `POST /v1/admin/cards/:id/withdraw {reportId?, note}` 204(이미 철회면 204). 모두 ADMIN 역할.
+
+## 조직 로고 — 2026-10-22
+
+native-v1.md "조직 로고와 로고 계승"의 어드민 쪽. 프로그램 로고와 같은 규칙.
+
+- 저장: `organization_logos(organization_id bigint primary key references organizations on delete cascade, content_type, data bytea, updated_at)`(V49).
+- `PUT /v1/admin/organizations/:id/logo`(multipart `file`, PNG·JPEG·WebP 1MB 이하, 아니면 400 같은 문구) 200 `{logoUrl}`, `DELETE …/logo` 204(없어도), `GET …/logo`(ADMIN 미리보기, 없으면 404).
+- `AdminOrganization.logoUrl: string|null`. `AdminProgram`에 `logoUrl`(프로그램 자체 로고, 지금 그대로)과 `effectiveLogo: {url, source: PROGRAM|ORGANIZATION, organizationId: number|null, organizationName: string|null}|null`(계승 결과).
+- 어드민 웹: 조직 편집에 로고 올리기·지우기·미리보기(프로그램 로고 편집기와 같은 모양). 프로그램 편집의 로고 자리는 자체 로고가 없을 때 계승한 로고를 흐리게 보여 주고 "<조직 이름> 로고를 쓰는 중"이라고 적는다. 프로그램 목록 로고 열도 계승 로고를 보여 준다.
