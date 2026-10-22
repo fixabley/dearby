@@ -12,6 +12,7 @@ import io.wid.dearby.batch.application.PageFetcher
 import io.wid.dearby.batch.application.RenderingPageFetcher
 import io.wid.dearby.batch.job.CollectionJobConfig
 import io.wid.dearby.batch.recall.RecallService
+import io.wid.dearby.batch.curation.CurationImportService
 import io.wid.dearby.domain.collection.CollectionUrlTemplate
 import java.time.LocalDate
 import org.springframework.batch.core.BatchStatus
@@ -53,6 +54,7 @@ class CollectionJobTest(
     @Autowired val jdbc: JdbcClient,
     @Autowired val recall: RecallService,
     @Autowired val json: JsonMapper,
+    @Autowired val curationImport: CurationImportService,
 ) {
 
     @TestConfiguration
@@ -621,6 +623,70 @@ class CollectionJobTest(
             )
         } finally {
             jdbc.sql("update activities set curated_fields = ?::jsonb, category = ? where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").param(fields).param(category).update()
+        }
+    }
+
+    // 운영 데이터 가져오기(admin-v1.md "운영 데이터 가져오기 — 2026-10-22"): dry run은 쓰지 않고, apply는 빈 것만 운영자 지정 없이 채운다
+    @Test
+    fun `운영 데이터 가져오기는 dry run에서 쓰지 않고 apply에서 빈 조건·태그·장소·로고만 채운다`() {
+        val source = "'01b773dc-5e13-4d14-a182-9642b47d596e'"
+        val activityId = jdbc.sql("select id from activities where source_id = $source").query(Long::class.java).single()
+        val (programId, organizationId) = jdbc.sql("select p.id, p.organization_id from activities a join programs p on p.id = a.program_id where a.source_id = $source").query { rs, _ -> rs.getLong(1) to rs.getLong(2) }.single()
+        val saved = jdbc.sql("select coalesce(eligibility::text, ''), curated_fields::text from activities where id = ?").param(activityId).query { rs, _ -> rs.getString(1) to rs.getString(2) }.single()
+        val dir = Files.createTempDirectory("curation")
+        Files.write(dir.resolve("org.png"), byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 1, 2, 3))
+        val file = dir.resolve("curation.json")
+        Files.writeString(file, json.writeValueAsString(mapOf(
+            "activities" to listOf(mapOf(
+                "id" to activityId,
+                "eligibility" to mapOf("op" to "all", "items" to listOf(mapOf("field" to "나이", "fieldEn" to "age", "from" to 19))),
+                "tagNames" to listOf("멘토링", "없는태그", "반도체"), "tagNameEn" to mapOf("반도체" to "Semiconductor"),
+                "place" to mapOf("name" to "코엑스", "address" to "서울 강남구 영동대로 513", "lat" to 37.5115, "lng" to 127.0595),
+            )),
+            "programs" to listOf(mapOf("id" to programId, "tagNames" to listOf("네트워킹"))),
+            "organizationLogos" to listOf(mapOf("organizationId" to organizationId, "file" to "org.png")),
+        )))
+        fun eligibility() = jdbc.sql("select coalesce(eligibility->'items'->0->>'from', '') from activities where id = ?").param(activityId).query(String::class.java).single()
+        fun activityTags() = jdbc.sql("select t.name from activity_tags x join tags t on t.id = x.tag_id where x.activity_id = ? order by t.name").param(activityId).query(String::class.java).list()
+        fun place() = jdbc.sql("select coalesce(address_line1, '') from schedules where activity_id = ? and slot = 'ACTIVITY'").param(activityId).query(String::class.java).list()
+        fun logoCount() = jdbc.sql("select count(*) from organization_logos where organization_id = ?").param(organizationId).query(Int::class.java).single()
+        try {
+            jdbc.sql("update activities set eligibility = null, curated_fields = '[]'::jsonb where id = ?").param(activityId).update()
+            jdbc.sql("delete from activity_tags where activity_id = ?").param(activityId).update()
+            jdbc.sql("delete from program_tags where program_id = ?").param(programId).update()
+            jdbc.sql("update schedules set address_line1 = null, address_line2 = null, lat = null, lng = null where activity_id = ? and slot = 'ACTIVITY'").param(activityId).update()
+
+            // dry run: 계획만 나오고 아무것도 바뀌지 않는다(새 태그도 만들지 않는다)
+            val plan = curationImport.import(file, apply = false)
+            assertEquals(listOf("eligibility", "tags", "place", "tags", "logo"), plan.filter { it.action == "SET" }.map { it.field })
+            assertEquals(listOf("사전에 없음, 영문 이름 없음: 없는태그"), plan.filter { it.action == "SKIP" }.map { it.detail })
+            assertEquals("", eligibility()); assertEquals(emptyList(), activityTags()); assertEquals(0, logoCount())
+            assertEquals(0, jdbc.sql("select count(*) from tags where name = '반도체'").query(Int::class.java).single())
+
+            // apply: 빈 것을 채우고, 검색용 조건도 펼치며, 운영자 지정 필드에는 남기지 않는다
+            curationImport.import(file, apply = true)
+            assertEquals("19", eligibility())
+            assertEquals(1, jdbc.sql("select count(*) from activity_eligibility_terms where activity_id = ?").param(activityId).query(Int::class.java).single())
+            assertEquals(listOf("멘토링", "반도체"), activityTags())
+            assertEquals(listOf("코엑스"), place())
+            assertEquals(listOf("네트워킹"), jdbc.sql("select t.name from program_tags x join tags t on t.id = x.tag_id where x.program_id = ?").param(programId).query(String::class.java).list())
+            assertEquals(1, logoCount())
+            assertEquals("[]", jdbc.sql("select curated_fields::text from activities where id = ?").param(activityId).query(String::class.java).single())
+
+            // 이미 채워진 것은 다시 실행해도 건너뛰고, 운영자 지정 필드는 overwrite여도 건드리지 않는다
+            assertEquals(emptyList(), curationImport.import(file, apply = true).filter { it.action == "SET" })
+            jdbc.sql("update activities set curated_fields = '[\"tags\"]'::jsonb where id = ?").param(activityId).update()
+            Files.writeString(file, json.writeValueAsString(mapOf("activities" to listOf(mapOf("id" to activityId, "overwrite" to true, "tagNames" to listOf("창업"))))))
+            assertEquals(listOf("운영자 지정"), curationImport.import(file, apply = true).map { it.detail })
+            assertEquals(listOf("멘토링", "반도체"), activityTags())
+        } finally {
+            jdbc.sql("update activities set eligibility = nullif(?, '')::jsonb, curated_fields = ?::jsonb where id = ?").param(saved.first).param(saved.second).param(activityId).update()
+            jdbc.sql("delete from activity_eligibility_terms where activity_id = ?").param(activityId).update()
+            jdbc.sql("delete from activity_tags where activity_id = ?").param(activityId).update()
+            jdbc.sql("delete from program_tags where program_id = ?").param(programId).update()
+            jdbc.sql("delete from tags where name = '반도체'").update()
+            jdbc.sql("delete from organization_logos where organization_id = ?").param(organizationId).update()
+            jdbc.sql("update schedules set address_line1 = null, address_line2 = null, lat = null, lng = null where activity_id = ? and slot = 'ACTIVITY'").param(activityId).update()
         }
     }
 

@@ -269,3 +269,11 @@ native-v1.md "조직 로고와 로고 계승"의 어드민 쪽. 프로그램 로
 - `PUT /v1/admin/organizations/:id/logo`(multipart `file`, PNG·JPEG·WebP 1MB 이하, 아니면 400 같은 문구) 200 `{logoUrl}`, `DELETE …/logo` 204(없어도), `GET …/logo`(ADMIN 미리보기, 없으면 404).
 - `AdminOrganization.logoUrl: string|null`. `AdminProgram`에 `logoUrl`(프로그램 자체 로고, 지금 그대로)과 `effectiveLogo: {url, source: PROGRAM|ORGANIZATION, organizationId: number|null, organizationName: string|null}|null`(계승 결과).
 - 어드민 웹: 조직 편집에 로고 올리기·지우기·미리보기(프로그램 로고 편집기와 같은 모양). 프로그램 편집의 로고 자리는 자체 로고가 없을 때 계승한 로고를 흐리게 보여 주고 "<조직 이름> 로고를 쓰는 중"이라고 적는다. 프로그램 목록 로고 열도 계승 로고를 보여 준다.
+
+## 운영 데이터 가져오기 — 2026-10-22
+
+운영 서비스 토큰이 없어, 조사로 모은 대상자 조건·태그·장소·로고를 batch 일회성 명령으로 넣는다. 어드민 편집과 같은 검증(대상자 조건 strict 파서와 검색용 펼침, 로고 PNG·JPEG·WebP 1MB 이하)을 거친다.
+
+- 실행: `docker compose -f compose.prod.yaml --env-file .env.prod run --rm -v <호스트 폴더>:/import:ro batch --import-curation=/import/curation.json [--apply]`. 기본은 dry run(항목별 계획만 로그로 남기고 쓰지 않음), `--apply`면 항목마다 트랜잭션 하나로 쓴다. 끝나면 프로세스가 끝난다. 실패한 항목은 그 항목만 건너뛰고 이유를 남긴다.
+- 파일: `{activities: [{id, overwrite?, eligibility?, tagNames?, tagNameEn?, place?: {name, address, lat, lng}}], programs: [{id, overwrite?, tagNames?, tagNameEn?}], organizationLogos: [{organizationId, file, overwrite?}], programLogos: [{programId, file, overwrite?}]}`. `file`은 JSON 파일 기준 상대 경로, 형식은 확장자(png·jpg·jpeg·webp)로 정한다. `eligibility`는 native-v1.md "대상자 조건" JSON.
+- 규칙: 빈 것만 채운다(항목의 `overwrite: true`면 바꾼다). 활동의 `curated_fields`에 있는 필드(`eligibility`·`tags`·`place`)는 overwrite여도 건드리지 않는다. 채운 값은 운영자 지정으로 남기지 않는다(수집이 같은 필드를 다시 갱신할 수 있다). `tagNames`는 사전의 한글·영문 이름(띄어쓰기·대소문자 무시)으로 찾고, 없는 이름은 `tagNameEn: {"<한글>": "<영문>"}`에 영문이 있을 때만 새 태그로 만든다(없으면 건너뜀). 장소는 넷 다 있어야 하고 활동 기간 행의 `address_line1`(이름)·`address_line2`(주소)·`lat`·`lng`에 쓴다.
