@@ -202,8 +202,8 @@ class AdminActivityInfoService(
         category: CategoryChange = CategoryChange.Keep,
         tagIds: List<Id>? = null,
         place: PlaceChange = PlaceChange.Keep,
-        activityOverlap: OverlapChange? = null, // 활동·모집 기간 객체의 겹침 확인 시간(native-v1.md "겹침 확인 시간"). null이면 그대로
-        applicationOverlap: OverlapChange? = null,
+        activityTiming: TimingChange? = null, // 활동·모집 기간 객체의 겹침 확인 시간·반복 규칙. null이면 그대로
+        applicationTiming: TimingChange? = null,
     ): AdminActivity {
         val current = activities.getById(activityId, publicationStatus = null).activity
         val collected = feedback.collectedActivity(activityId)
@@ -238,7 +238,8 @@ class AdminActivityInfoService(
         // 일정 직접 지정(admin-v1.md): 날짜만이면 종일, 시각까지면 시각 일정. null이면 구조화된 값을 지우고 문구만 남긴다
         applySchedule(activityId, ScheduleSlot.ACTIVITY, activitySchedule)
         applySchedule(activityId, ScheduleSlot.APPLICATION, application)
-        applyOverlap(activityId, activityOverlap, applicationOverlap)
+        // 날짜를 바꿨거나 지웠으면 남은 반복 규칙이 새 날짜와 맞는지도 본다
+        applyTiming(activityId, activityTiming, applicationTiming, datesChanged = activitySchedule != ScheduleChange.Keep || application != ScheduleChange.Keep)
         // 활동 장소(admin-v1.md "활동 장소와 지오코딩"): 생략은 유지, null은 네 열 모두 삭제, 객체는 교체. 운영자 지정 place로 보호
         when (place) {
             PlaceChange.Keep -> Unit
@@ -280,7 +281,7 @@ class AdminActivityInfoService(
         activityTime?.let { curations.updateSchedule(id, ScheduleSlot.ACTIVITY, it, input.activitySchedule?.note) }
         input.place?.let { curations.updatePlace(id, it) }
         input.application?.toTime()?.let { curations.updateSchedule(id, ScheduleSlot.APPLICATION, it, input.application.note) }
-        applyOverlap(id, input.activityOverlap, input.applicationOverlap)
+        applyTiming(id, input.activityTiming, input.applicationTiming, datesChanged = false)
         input.eligibility?.let { curations.updateEligibility(id, it) }
         // 태그(native-v1.md "태그"): 보냈으면 그것(운영자 지정), 생략하면 프로그램 태그를 기본으로
         val tagIds = input.tagIds?.let { requireTags(it) } ?: program.tags.map { it.id }
@@ -298,10 +299,11 @@ class AdminActivityInfoService(
 
     @Transactional
     fun updateDetailSchedule(activityId: Id, scheduleId: Id, patch: ScheduleItemPatch): Schedule {
-        // 모집·활동 기간 행은 겹침 확인 시간만 여기서 고친다(native-v1.md "겹침 확인 시간")
-        if (patch.overlapOnly) {
-            requireSchedule(activityId, scheduleId)
-            return curations.updateOverlapCheck(activityId, scheduleId, patch.overlapCheck)
+        // 모집·활동 기간 행은 겹침 확인 시간·반복 규칙만 여기서 고친다(native-v1.md "겹침 확인 시간"·"반복 일정과 겹침 결과 묶음")
+        if (patch.timingOnly) {
+            val schedule = requireSchedule(activityId, scheduleId).schedule
+            val (overlap, rule) = patch.timing(schedule, schedule.time)
+            return curations.updateTiming(activityId, scheduleId, overlap, rule)
                 ?: throw NotFoundException("일정을 찾을 수 없습니다", "Schedule not found: $scheduleId")
         }
         val stored = requireDetailSchedule(activityId, scheduleId)
@@ -432,15 +434,20 @@ class AdminActivityInfoService(
         }
     }
 
-    // 슬롯 일정 행이 있어야 둘 수 있다(모집 기간이 없는데 보내면 400)
-    private fun applyOverlap(activityId: Id, activityOverlap: OverlapChange?, applicationOverlap: OverlapChange?) {
-        if (activityOverlap == null && applicationOverlap == null) return
+    // 슬롯 일정 행이 있어야 둘 수 있다(모집 기간이 없는데 값을 보내면 400). 반복이 남으면 그 행의 날짜·겹침 확인 시간과 맞아야 한다(틀리면 400, 트랜잭션째 되돌린다)
+    private fun applyTiming(activityId: Id, activityTiming: TimingChange?, applicationTiming: TimingChange?, datesChanged: Boolean) {
+        if (activityTiming == null && applicationTiming == null && !datesChanged) return
         val activity = activities.getById(activityId, publicationStatus = null).activity
-        activityOverlap?.let { curations.updateOverlapCheck(activityId, activity.activitySchedule.id, it.overlapCheck) }
-        applicationOverlap?.let { change ->
-            val application = activity.application ?: if (change.overlapCheck == null) return else throw InvalidInputException("모집 기간이 없어 겹침 확인 시간을 둘 수 없습니다")
-            curations.updateOverlapCheck(activityId, application.id, change.overlapCheck)
+        fun apply(schedule: Schedule, change: TimingChange?) {
+            val overlap = (change ?: TimingChange()).overlapOf(schedule)
+            val rule = (change ?: TimingChange()).recurrenceOf(schedule)
+            rule?.requireFits(schedule.time, overlap)
+            if (change != null) curations.updateTiming(activityId, schedule.id, overlap, rule)
         }
+        apply(activity.activitySchedule, activityTiming)
+        val application = activity.application
+        if (application != null) apply(application, applicationTiming)
+        else if (applicationTiming?.overlapCheck != null || applicationTiming?.recurrence != null) throw InvalidInputException("모집 기간이 없어 겹침 확인 시간·반복을 둘 수 없습니다")
     }
 
     private fun withCuration(items: List<ActivityListing>): List<AdminActivity> {
