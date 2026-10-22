@@ -23,6 +23,9 @@ import SwiftUI
         let account = links.account()
         self.account = account
         if account.phase == .signedIn { UserDefaults.standard.set(true, forKey: Self.introShownKey) }
+        #if DEBUG
+        if ScreenshotScene.current != nil { UserDefaults.standard.set(true, forKey: Self.introShownKey) }
+        #endif
         _showIntro = State(initialValue: !UserDefaults.standard.bool(forKey: Self.introShownKey))
         // The QR sheet preselects the applied activity whose next stage is nearest; ended ones come last (contract "명함 교환").
         _cards = State(initialValue: MyCardsModel(account: account, webOrigin: links.origins.web) {
@@ -54,6 +57,9 @@ import SwiftUI
                 cardsSegment = .received
                 Task { await wallet.receive(incoming) }
             }
+            #if DEBUG
+            .task { await showScreenshotScene() }
+            #endif
             // `내 활동에서 보기` on an activity detail: the 내 활동 tab opens that activity (it pushes once it is on screen).
             .onChange(of: activityModel.showInMine) { _, id in if id != nil { tab = 1 } }
             .onChange(of: scene) { _, phase in
@@ -66,6 +72,18 @@ import SwiftUI
             }
         }
     }
+    #if DEBUG
+    /// Store screenshots: tab-level scenes; the discovery stack pushes its own (`ActivityListPage`). 내 활동 gets the first activity added.
+    private func showScreenshotScene() async {
+        switch ScreenshotScene.current {
+        case .cards: tab = 2
+        case .mine:
+            if let id = await activityModel.screenshotActivity() { activityModel.apply(id, true) }
+            tab = 1
+        default: break
+        }
+    }
+    #endif
     private func finishIntro() {
         UserDefaults.standard.set(true, forKey: Self.introShownKey)
         showIntro = false

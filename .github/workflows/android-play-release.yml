@@ -1,0 +1,102 @@
+name: Android Play release
+# Builds the upload-key-signed release AAB and sends it with the ko-KR listing (apps/android/fastlane/metadata/android)
+# to a Play track. Play access: Workload Identity Federation (vars GCP_WIF_PROVIDER, PLAY_SERVICE_ACCOUNT). A release on `production` is Google's review submission; `internal` reaches internal testers only.
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: Play track
+        type: choice
+        options: [internal, production]
+        default: internal
+      release_notes:
+        description: 이번 버전의 새로운 기능 (empty = changelogs/default.txt)
+        type: string
+        default: ""
+      status:
+        description: Release status (an app never published on Play accepts only draft)
+        type: choice
+        options: [completed, draft]
+        default: completed
+# Manual runs only (user decision 2026-10-22). id-token: Play access through Workload Identity Federation; the org forbids service-account keys.
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: android-play-release
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      # Origins come from repository variables; signing and Play credentials from repository secrets. Nothing lives in the repo.
+      DEARBY_API_ORIGIN: ${{ vars.DEARBY_API_ORIGIN }}
+      GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+      PLAY_TRACK: ${{ inputs.track }}
+      PLAY_RELEASE_STATUS: ${{ inputs.status }}
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v6
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+          working-directory: apps/android
+      - name: Check configuration
+        env:
+          UPLOAD_JKS: ${{ secrets.ANDROID_UPLOAD_JKS_BASE64 }}
+          GCP_WIF_PROVIDER: ${{ vars.GCP_WIF_PROVIDER }}
+          PLAY_SERVICE_ACCOUNT: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+        run: |
+          for v in DEARBY_API_ORIGIN UPLOAD_JKS ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD GCP_WIF_PROVIDER PLAY_SERVICE_ACCOUNT; do
+            test -n "${!v}" || { echo "::error::Missing $v (repository secret or variable; see docs/store/release-cd.md)."; exit 1; }
+          done
+      # Writes an external_account credentials file (short-lived, no key) that fastlane supply accepts as json_key.
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.PLAY_SERVICE_ACCOUNT }}
+          create_credentials_file: true
+      - name: Install signing material
+        env:
+          UPLOAD_JKS: ${{ secrets.ANDROID_UPLOAD_JKS_BASE64 }}
+          PLAY_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+        run: |
+          # The Google button is hidden without it; warn instead of failing so a build without Google sign-in stays possible.
+          test -n "$GOOGLE_SERVER_CLIENT_ID" || echo "::warning::GOOGLE_SERVER_CLIENT_ID is empty; the release hides Google sign-in."
+          printf '%s' "$UPLOAD_JKS" | base64 --decode > "$RUNNER_TEMP/upload.jks"
+          # Version code: monotonic above the manual first upload (1); a re-run of the same run reuses it and Play refuses the duplicate.
+          {
+            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks"
+            echo "PLAY_JSON_KEY_PATH=$PLAY_CREDENTIALS"
+            echo "ANDROID_VERSION_CODE=$((GITHUB_RUN_NUMBER + 1))"
+          } >> "$GITHUB_ENV"
+          if [ -n "$RELEASE_NOTES" ]; then printf '%s\n' "$RELEASE_NOTES" > fastlane/metadata/android/ko-KR/changelogs/default.txt; fi
+      - name: Build release AAB
+        run: |
+          ./gradlew bundleRelease
+          aab=app/build/outputs/bundle/release/app-release.aab
+          # Unsigned means the four signing values did not all reach Gradle; Play would refuse it anyway.
+          jarsigner -verify "$aab" | grep -q "jar verified" || { echo "AAB is not signed"; exit 1; }
+          echo "AAB_PATH=$PWD/$aab" >> "$GITHUB_ENV"
+          echo "versionCode $ANDROID_VERSION_CODE → $PLAY_TRACK ($PLAY_RELEASE_STATUS)" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload to Play
+        run: bundle exec fastlane android release
+      - name: Clean up signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks"
