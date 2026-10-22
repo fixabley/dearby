@@ -2,8 +2,20 @@ import { PublicCard } from "@/components/public-card";
 import { MissingCard } from "@/widgets/card/missing-card";
 import { activityId, uuid } from "@/lib/models";
 import { TOKEN } from "@/lib/guest-upstream";
-export const metadata = {
+import type { Metadata } from "next";
+import { siteOpenGraph } from "@/lib/preview";
+// No personal data in the preview (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): link previews are cached and spread
+// without the QR code. Setting `openGraph` here drops the root image file, so the default image is named again.
+const preview = {
+  title: "Dearby 명함",
+  description: "Dearby에서 명함을 확인하고 저장하세요.",
+  images: "/opengraph-image",
+};
+export const metadata: Metadata = {
   title: "공개 명함 · 이력서",
+  description: preview.description,
+  openGraph: { ...siteOpenGraph, ...preview },
+  twitter: { card: "summary_large_image", ...preview },
   robots: { index: false, follow: false },
 };
 export default async function Page({
