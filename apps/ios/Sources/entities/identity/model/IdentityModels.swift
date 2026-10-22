@@ -65,3 +65,11 @@ struct CardModel: Identifiable, Equatable {
     /// `job` split on ` · ` for the header chips.
     var jobs: [String] { job.components(separatedBy: " · ").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
 }
+extension CardModel {
+    /// Sample values for a loading card (`dearbySkeleton`, contract "내용 로딩은 스켈레톤" 2026-10-22); never shown unredacted.
+    static let placeholder = CardModel(
+        id: "", name: "내 명함", profileName: "이름", job: "직무 · 직무", introduction: "자기소개 한두 줄이 여기에 보여요.\n\n연락처와 이력이 이어서 보여요.",
+        description: "", contacts: [ContactModel(id: "p", kind: "email", displayLabel: "", value: "name@example.com")],
+        histories: [HistoryModel(id: "h", title: "조직 · 프로그램 · 활동", role: "역할", startDate: "2026.01", endDate: "진행 중")],
+        organization: "조직 이름")
+}

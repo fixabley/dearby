@@ -27,7 +27,8 @@ struct CardComposerPage: View {
                 CenteredMessage(symbol: "exclamationmark.triangle", danger: true, title: "프로필을 불러오지 못했어요", message: failure,
                                 primary: MessageAction("다시 시도") { Task { await model.load() } })
             } else {
-                ProgressView("프로필을 불러오는 중이에요").frame(maxHeight: .infinity).tint(DearbyStyle.teal)
+                // Contract "내용 로딩은 스켈레톤" 2026-10-22: the form filled from a sample profile.
+                CardComposer(draft: .constant(CardDraft(profile: .placeholder)), editing: model.prefill != nil) {}.dearbySkeleton()
             }
         }
         .background(Color(.systemGroupedBackground))

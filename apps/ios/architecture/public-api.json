@@ -92,7 +92,8 @@
     "MessageActions",
     "SettingsRoute",
     "TabRootToolbar",
-    "DearbyMenuItem"
+    "DearbyMenuItem",
+    "DearbyRowsSkeleton"
   ],
   "widgets/activity": [
     "ActivityCard",

@@ -95,7 +95,8 @@ struct ProfilePage: View {
                 CenteredMessage(symbol: "person.crop.circle", title: "프로필은 계정에 저장돼요", message: "명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.",
                                 primary: MessageAction("명함 만들기") { composing = true }, secondary: MessageAction("로그인") { signingIn = true })
             case .loading:
-                ProgressView("프로필을 불러오는 중이에요").frame(maxWidth: .infinity, maxHeight: .infinity).tint(DearbyStyle.teal)
+                // Contract "내용 로딩은 스켈레톤" 2026-10-22: the read view with sample values.
+                ScrollView { ProfileReadView(profile: .placeholder).padding(20).dearbySkeleton() }.scrollDisabled(true)
             case .failed:
                 CenteredMessage(symbol: "exclamationmark.triangle", danger: true, title: "프로필을 불러오지 못했어요", message: "연결을 확인하고 다시 시도해 주세요.",
                                 primary: MessageAction("다시 시도") { Task { await state.load() } })

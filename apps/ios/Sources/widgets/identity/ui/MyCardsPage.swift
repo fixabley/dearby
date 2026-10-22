@@ -28,7 +28,7 @@ struct MyCardsPage: View {
                                 message: "프로필의 연락처와 이력 중 보여 줄 것만 골라 발행해요. 발행할 때 패스키로 로그인해요.",
                                 primary: MessageAction("명함 만들기") { editor = true })
             case .loading:
-                ProgressView("명함을 불러오는 중이에요").frame(maxWidth: .infinity, maxHeight: .infinity).tint(DearbyStyle.teal)
+                skeleton
             case .failed:
                 CenteredMessage(symbol: "exclamationmark.triangle", danger: true, title: "명함을 불러오지 못했어요", message: "연결을 확인하고 다시 시도해 주세요.",
                                 primary: MessageAction("다시 시도") { Task { await state.load() } })
@@ -95,6 +95,24 @@ struct MyCardsPage: View {
                     .frame(maxWidth: .infinity, minHeight: 44).contentShape(Rectangle())
             }.accessibilityHint("확인 뒤 명함과 공개 링크를 지워요")
         }
+    }
+    /// Contract "내용 로딩은 스켈레톤" 2026-10-22: two tiles and the chosen card with sample values.
+    private var skeleton: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    ForEach(0..<2, id: \.self) { _ in
+                        tile(selected: false) {} label: {
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text("명함 이름").font(.dearby(.subheadline).weight(.bold))
+                                Text("이름").font(.dearby(.caption))
+                            }.frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+                CardView(card: .placeholder) { _ in }
+            }.padding(.horizontal, 20).padding(.top, 12).dearbySkeleton()
+        }.scrollDisabled(true)
     }
     /// Grid tiles are the one place the page separates several items from each other, so they keep a surface; the selected one is tinted.
     private func tile(selected: Bool, action: @escaping () -> Void, @ViewBuilder label: () -> some View) -> some View {

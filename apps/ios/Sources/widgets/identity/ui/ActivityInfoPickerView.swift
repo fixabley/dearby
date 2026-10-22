@@ -63,7 +63,7 @@ struct ActivityInfoPickerView: View {
     @ViewBuilder private var results: some View {
         let query = search.query.trimmingCharacters(in: .whitespacesAndNewlines)
         if search.loading && search.items.isEmpty {
-            ProgressView().frame(maxWidth: .infinity).listRowBackground(Color.clear)
+            DearbyRowsSkeleton()
         } else if search.failed {
             Text("목록을 불러오지 못했어요. 직접 적어도 돼요.").font(.dearby(.subheadline)).foregroundStyle(.secondary).listRowBackground(Color.clear)
         } else if search.items.isEmpty && !query.isEmpty {

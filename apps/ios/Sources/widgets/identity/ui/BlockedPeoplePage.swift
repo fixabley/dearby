@@ -31,7 +31,7 @@ struct BlockedPeoplePage: View {
                     Button("다시 시도") { Task { await load() } }
                 }
             } else {
-                Section { ProgressView().frame(maxWidth: .infinity, minHeight: 88) }
+                Section { DearbyRowsSkeleton() }
             }
         }
         .listStyle(.insetGrouped).font(.dearby(.body))

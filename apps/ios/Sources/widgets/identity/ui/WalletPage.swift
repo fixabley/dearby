@@ -32,7 +32,15 @@ struct WalletPage: View {
                 CenteredMessage(symbol: "person.text.rectangle", title: "받은 명함은 계정에 저장돼요", message: "로그인하면 저장한 명함을 볼 수 있어요.",
                                 primary: MessageAction("로그인") { signingIn = true })
             case .loading:
-                ProgressView("받은 명함을 불러오는 중이에요").frame(maxWidth: .infinity, maxHeight: .infinity).tint(DearbyStyle.teal)
+                // Contract "내용 로딩은 스켈레톤" 2026-10-22: the list's rows with sample values (the search field waits for the list).
+                VStack(spacing: 0) {
+                    ForEach(0..<5, id: \.self) { index in
+                        if index > 0 { Divider().padding(.horizontal, 12) }
+                        ReceivedCardRow(name: "이름", job: "직무 · 직무", organization: "조직 이름", program: "프로그램") {}
+                    }
+                }
+                .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
+                .dearbySkeleton().padding(.horizontal, 20).padding(.top, 12).frame(maxHeight: .infinity, alignment: .top)
             case .failed:
                 CenteredMessage(symbol: "exclamationmark.triangle", danger: true, title: "받은 명함을 불러오지 못했어요", message: "연결을 확인하고 다시 시도해 주세요.",
                                 primary: MessageAction("다시 시도") { Task { await state.load() } })
@@ -175,7 +183,7 @@ struct WalletPage: View {
         Group {
             switch shared.phase {
             case .loading:
-                ProgressView("명함을 불러오는 중이에요").frame(maxWidth: .infinity, maxHeight: .infinity).tint(DearbyStyle.teal)
+                ScrollView { CardView(card: .placeholder) { _ in }.dearbySkeleton().padding(20) }.scrollDisabled(true)
             case .failed(let outcome):
                 CenteredMessage(symbol: "exclamationmark.triangle", danger: true,
                                 title: outcome == .codeExpired ? Self.title(outcome) : "명함을 불러오지 못했어요", message: Self.message(outcome))
