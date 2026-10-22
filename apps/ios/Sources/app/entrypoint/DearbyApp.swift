@@ -18,7 +18,8 @@ import SwiftUI
     init() {
         let links = ConnectionProvider()
         self.links = links
-        let activityModel = ActivityViewModel(programs: links.programs, activities: links.programActivities, activity: links.activity(id:))
+        let activityModel = ActivityViewModel(programs: links.programs, activities: links.programActivities, activity: links.activity(id:),
+                                              webOrigin: links.origins.web)
         _activityModel = State(initialValue: activityModel)
         let account = links.account()
         self.account = account

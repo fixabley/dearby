@@ -11,7 +11,7 @@ struct CalendarEventDraft: Identifiable, Equatable {
     let allDay: Bool
     let timeZone: TimeZone?
     let location: String?
-    /// The activity's page (`ActivityModel.calendarLink`), set as the event URL and in the notes so the overlap check skips it.
+    /// The activity's page on the build's web origin (`ActivityViewModel.calendarLink`), set as the event URL and in the notes so the overlap check skips it.
     let url: URL
     /// Written into the notes after the activity link.
     let officialURL: URL?

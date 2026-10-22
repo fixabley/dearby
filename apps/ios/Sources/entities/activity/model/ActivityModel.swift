@@ -98,10 +98,9 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     }
     /// The official link (https only).
     var officialURL: URL? { Self.safeURL(officialUrl) }
-    /// The activity's web page, written into events added from the app and used to leave them out of the overlap check
-    /// (contract "반복 일정과 겹침 결과 묶음" 2026-10-22).
-    var calendarLink: URL { Self.calendarLink(id) }
-    static func calendarLink(_ id: String) -> URL { URL(string: AppOrigins.defaultWeb)!.appending(path: "activities/\(id)") }
+    /// The activity's page on the build's web origin, written into events added from the app and used to leave them out of the
+    /// overlap check (contract "반복 일정과 겹침 결과 묶음" 2026-10-22).
+    static func calendarLink(_ id: String, web: URL) -> URL { web.appending(path: "activities/\(id)") }
     /// The curated application link (https only); the detail CTA opens it before the official notice.
     var applicationSiteURL: URL? { Self.safeURL(applicationUrl) }
     /// Applying is over (contract "신청 확인 조건 완화"): the recruitment deadline passed, or, with no window to judge by, the activity

@@ -161,9 +161,9 @@ enum ActivityStages {
 extension ActivityStage {
     /// `캘린더에 추가` (contract "내 캘린더에 추가", "반복 일정" 2026-10-22): "활동명 · 일정 제목" (the `지원` stage reads `모집 마감`), a timed
     /// stage at its times (a lone bound as a point in time), a date-only stage as all-day through its last Seoul day, the place, and the
-    /// activity link plus the official link. A repeating stage is its first occurrence plus the rule: a date-only one at its
+    /// activity link (`link`) plus the official link. A repeating stage is its first occurrence plus the rule: a date-only one at its
     /// `overlapCheck` time on the first day (all-day on that day without one). nil for a date-less stage.
-    func calendarDraft(_ activity: ActivityModel) -> CalendarEventDraft? {
+    func calendarDraft(_ activity: ActivityModel, link: URL) -> CalendarEventDraft? {
         guard let anchor = source.start ?? source.end else { return nil }
         var seoul = Calendar(identifier: .gregorian)
         seoul.timeZone = ActivityText.seoul
@@ -171,7 +171,7 @@ extension ActivityStage {
             CalendarEventDraft(title: "\(activity.title) · \(id == ActivityStages.applicationStageID ? "모집 마감" : name)", start: start,
                                end: end, allDay: allDay, timeZone: allDay ? ActivityText.seoul : TimeZone(identifier: source.timeZone),
                                location: activity.place.map { "\($0.name), \($0.address)" } ?? activity.location,
-                               url: activity.calendarLink, officialURL: activity.officialURL, recurrence: source.recurrence)
+                               url: link, officialURL: activity.officialURL, recurrence: source.recurrence)
         }
         if !source.allDay { return draft(anchor, max(source.end ?? anchor, anchor), allDay: false) }
         let first = source.start ?? seoul.date(byAdding: .day, value: -1, to: anchor) ?? anchor

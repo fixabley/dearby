@@ -134,13 +134,13 @@ struct CalendarConflictView: View {
     CalendarConflictView(
         schedules: [ActivityScheduleModel(id: "s1", title: "오리엔테이션", start: FixtureCalendarEventSource.exampleBusy.start.addingTimeInterval(1800),
                                           end: FixtureCalendarEventSource.exampleBusy.end.addingTimeInterval(3600), dateLabel: "", timeZone: "Asia/Seoul")],
-        activityLink: ActivityModel.calendarLink("1"), source: FixtureCalendarEventSource()
+        activityLink: URL(string: "https://example.com/activities/1")!, source: FixtureCalendarEventSource()
     )
 }
 
 #Preview("권한 거부") {
     CalendarConflictView(
         schedules: [ActivityScheduleModel(id: "s1", title: "오리엔테이션", start: .now, end: .now.addingTimeInterval(3600), dateLabel: "", timeZone: "Asia/Seoul")],
-        activityLink: ActivityModel.calendarLink("1"), source: FixtureCalendarEventSource(access: .denied)
+        activityLink: URL(string: "https://example.com/activities/1")!, source: FixtureCalendarEventSource(access: .denied)
     )
 }
