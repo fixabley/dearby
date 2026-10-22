@@ -130,6 +130,10 @@ open class SchedulesRecord() : UpdatableRecordImpl<SchedulesRecord>(Schedules.SC
         set(value): Unit = set(26, value)
         get(): LocalTime? = get(26) as LocalTime?
 
+    open var recurrence: String?
+        set(value): Unit = set(27, value)
+        get(): String? = get(27) as String?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -139,7 +143,7 @@ open class SchedulesRecord() : UpdatableRecordImpl<SchedulesRecord>(Schedules.SC
     /**
      * Create a detached, initialised SchedulesRecord
      */
-    constructor(id: Long? = null, activityId: Long? = null, sourceId: UUID? = null, slot: String? = null, title: String? = null, kind: String? = null, status: String? = null, timeType: String? = null, startAt: OffsetDateTime? = null, endAt: OffsetDateTime? = null, timeZone: String? = null, startDate: LocalDate? = null, endDateExclusive: LocalDate? = null, dateLabel: String? = null, lat: Double? = null, lng: Double? = null, addressLine1: String? = null, addressLine2: String? = null, conferenceUrl: String? = null, sequence: Int? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null, curated: Boolean? = null, curatedNote: String? = null, curatedDeleted: Boolean? = null, overlapStartTime: LocalTime? = null, overlapEndTime: LocalTime? = null): this() {
+    constructor(id: Long? = null, activityId: Long? = null, sourceId: UUID? = null, slot: String? = null, title: String? = null, kind: String? = null, status: String? = null, timeType: String? = null, startAt: OffsetDateTime? = null, endAt: OffsetDateTime? = null, timeZone: String? = null, startDate: LocalDate? = null, endDateExclusive: LocalDate? = null, dateLabel: String? = null, lat: Double? = null, lng: Double? = null, addressLine1: String? = null, addressLine2: String? = null, conferenceUrl: String? = null, sequence: Int? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null, curated: Boolean? = null, curatedNote: String? = null, curatedDeleted: Boolean? = null, overlapStartTime: LocalTime? = null, overlapEndTime: LocalTime? = null, recurrence: String? = null): this() {
         this.id = id
         this.activityId = activityId
         this.sourceId = sourceId
@@ -167,6 +171,7 @@ open class SchedulesRecord() : UpdatableRecordImpl<SchedulesRecord>(Schedules.SC
         this.curatedDeleted = curatedDeleted
         this.overlapStartTime = overlapStartTime
         this.overlapEndTime = overlapEndTime
+        this.recurrence = recurrence
         resetTouchedOnNotNull()
     }
 }
