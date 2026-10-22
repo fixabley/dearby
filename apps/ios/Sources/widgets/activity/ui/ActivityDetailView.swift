@@ -35,7 +35,7 @@ struct ActivityDetailView: View {
             }
         }
         .sheet(isPresented: $showCalendar) {
-            if let activity { CalendarConflictView(schedules: activity.overlapSchedules) }
+            if let activity { CalendarConflictView(schedules: activity.overlapSchedules, activityLink: state.calendarLink(activity.id)) }
         }
         .sheet(item: $calendarDraft) { AddToCalendarSheet(draft: $0).ignoresSafeArea() }
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)
@@ -121,7 +121,7 @@ struct ActivityDetailView: View {
     private func scheduleRows(_ activity: ActivityModel) -> [ActivityInformationView.Row] {
         (ActivityStages.build(activity, marks: [:], now: state.loadedAt)?.stages ?? []).map { stage in
             ActivityInformationView.Row(id: stage.id, title: stage.id == ActivityStages.applicationStageID ? "모집 마감" : stage.name,
-                                        date: stage.dateText(now: state.loadedAt), draft: stage.calendarDraft(activity))
+                                        date: stage.dateText(now: state.loadedAt), draft: stage.calendarDraft(activity, link: state.calendarLink(activity.id)))
         }
     }
     /// 장소 (contract "활동 장소"): the curated place's name and address open Apple Maps; otherwise the collected text, if any.

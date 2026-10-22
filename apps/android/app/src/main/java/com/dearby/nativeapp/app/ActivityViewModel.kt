@@ -369,7 +369,7 @@ private fun today(): LocalDate = LocalDate.now(ZoneId.of("Asia/Seoul"))
 /** The system "add event" prefill for one stage (contract "내 캘린더에 추가"): "활동명 · 일정 제목"; null for an undated stage. */
 private fun ActivityModel.draft(stage: Stage): CalendarDraft? {
     val start = stage.eventStart ?: return null
-    return CalendarDraft("$name · ${if (stage.kind == "APPLICATION") "모집 마감" else stage.name}", start.toEpochMilli(), (stage.eventEnd ?: start).toEpochMilli(), stage.allDay)
+    return CalendarDraft("$name · ${if (stage.kind == "APPLICATION") "모집 마감" else stage.name}", start.toEpochMilli(), (stage.eventEnd ?: start).toEpochMilli(), stage.allDay, stage.recurrence)
 }
 
 private fun ActivityModel.toState(now: Instant) = ActivityState(

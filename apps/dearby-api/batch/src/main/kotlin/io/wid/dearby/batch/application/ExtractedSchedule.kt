@@ -10,4 +10,5 @@ data class ExtractedSchedule(
     val dateLabel: String,
     val startDate: String? = null,
     val endDate: String? = null,
+    val recurrence: String? = null, // 반복 규칙(RRULE 본문). 시각 일정의 첫 회차(startAt)부터. 검증 단계에서 틀리면 버린다
 )

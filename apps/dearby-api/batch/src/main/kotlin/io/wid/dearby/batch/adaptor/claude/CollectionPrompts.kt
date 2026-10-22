@@ -88,8 +88,15 @@ object CollectionPrompts {
                         "startDate" to nullableString(),
                         "endDate" to nullableString(),
                         "dateLabel" to string(),
+                        "recurrence" to nullableString(),
                     )
                 ),
+            ),
+            "activityRecurrence" to mapOf(
+                "type" to listOf("object", "null"),
+                "properties" to mapOf("rule" to string(), "startTime" to string(), "endTime" to string()),
+                "required" to listOf("rule", "startTime", "endTime"),
+                "additionalProperties" to false,
             ),
             "location" to nullableString(),
             "cost" to nullableString(),

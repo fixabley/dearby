@@ -30,6 +30,7 @@ internal fun SchedulesRecord.toSchedule(statuses: List<ProgressStatus> = emptyLi
     curated = curated ?: false,
     overlapCheck = overlapStartTime?.let { OverlapCheck(it, overlapEndTime!!) },
     statuses = statuses.ifEmpty { ProgressStatus.DEFAULTS },
+    recurrence = recurrence?.let(::Recurrence),
 )
 
 // 일정들의 어드민 상태를 한 번에 읽는다(일정 id → sort_order 순 목록)

@@ -1,6 +1,7 @@
 package com.dearby.nativeapp.entities.activity.model
 
 import java.net.URI
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -26,29 +27,43 @@ data class ScheduleStatus(val id: String?, val name: String, val kind: String) {
  * One schedule as `GET /v1/activities` sends it (contract "활동 조회"): timed ([startAt] and/or [endAt]), all-day
  * ([startDate]/[endDateExclusive]) or undated ([dateLabel] only). [kind] is DEADLINE, ANNOUNCEMENT, INTERVIEW or EVENT.
  * [id] is the schedule id the progress status is saved under; [statuses] its choices; [overlapStart]/[overlapEnd] the admin's
- * Seoul `HH:mm` overlap-check window for a date-only schedule (contract "겹침 확인 시간", 2026-10-22).
+ * Seoul `HH:mm` overlap-check window for a date-only schedule (contract "겹침 확인 시간", 2026-10-22); [recurrence] the RRULE body
+ * (contract "반복 일정과 겹침 결과 묶음"), null for a one-off schedule.
  */
 data class StageSchedule(
     val title: String, val kind: String, val startAt: String?, val endAt: String?, val timeZone: String,
     val startDate: String?, val endDateExclusive: String?, val dateLabel: String,
     val id: String? = null, val statuses: List<ScheduleStatus> = emptyList(), val overlapStart: String? = null, val overlapEnd: String? = null,
+    val recurrence: String? = null,
 ) {
     /**
      * The windows the calendar comparison uses (contract "겹침 확인 시간"): a timed schedule with both ends is its own window; a
      * date-only schedule with an overlap-check time is that Seoul time on every day of `[startDate, endDateExclusive)`; anything
-     * else is not compared. Windows are written as UTC instants.
+     * else is not compared. With a readable [recurrence] (contract "반복 일정과 겹침 결과 묶음") the rule's days replace those:
+     * the timed window, or the overlap-check time from `startDate`, repeats on each, at most 400. Windows are written as UTC instants.
      */
     fun windows(): List<ScheduleModel> {
         val start = instant(startAt); val end = instant(endAt)
-        if (start != null && end != null) return listOf(ScheduleModel(title, start.toString(), end.toString(), timeZone))
+        val rule = Recurrence.parse(recurrence)
+        if (start != null && end != null) {
+            if (rule == null) return listOf(ScheduleModel(title, start.toString(), end.toString(), timeZone))
+            val zone = runCatching { ZoneId.of(timeZone) }.getOrDefault(SEOUL_ZONE)
+            val first = start.atZone(zone).toLocalDateTime()
+            val length = Duration.between(start, end)
+            return rule.days(first, zone).map { day ->
+                val begin = day.atTime(first.toLocalTime()).atZone(zone).toInstant()
+                ScheduleModel(title, begin.toString(), begin.plus(length).toString(), zone.id)
+            }
+        }
         if (start != null || end != null) return emptyList()
         val from = runCatching { LocalTime.parse(overlapStart) }.getOrNull() ?: return emptyList()
         val to = runCatching { LocalTime.parse(overlapEnd) }.getOrNull()?.takeIf { it > from } ?: return emptyList()
         val first = startDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return emptyList()
         val last = endDateExclusive?.let { runCatching { LocalDate.parse(it) }.getOrNull() }?.minusDays(1)?.takeIf { it >= first } ?: first
-        return generateSequence(first) { day -> day.plusDays(1).takeIf { it <= last } }.map { day ->
+        val days = rule?.days(first.atTime(from), SEOUL_ZONE) ?: generateSequence(first) { day -> day.plusDays(1).takeIf { it <= last } }.toList()
+        return days.map { day ->
             ScheduleModel(title, day.atTime(from).atZone(SEOUL_ZONE).toInstant().toString(), day.atTime(to).atZone(SEOUL_ZONE).toInstant().toString(), SEOUL_ZONE.id)
-        }.toList()
+        }
     }
 }
 private val SEOUL_ZONE: ZoneId = ZoneId.of("Asia/Seoul")
