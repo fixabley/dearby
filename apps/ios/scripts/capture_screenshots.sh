@@ -31,7 +31,7 @@ mkdir -p "$OUT"
 for device in "iPhone 17 Pro Max:iPhone69" "iPad Pro 13-inch:iPad13"; do
   name="${device%%:*}" prefix="${device##*:}"
   id=$(udid "$name")
-  [ -n "$id" ] || { echo "No available simulator named '$name…'; create one in Xcode > Devices and Simulators." >&2; exit 1; }
+  [ -n "$id" ] || { echo "No available simulator named '${name}…'; create one in Xcode > Devices and Simulators." >&2; exit 1; }
   xcrun simctl boot "$id" 2>/dev/null || true
   xcrun simctl bootstatus "$id" -b >/dev/null
   xcrun simctl ui "$id" appearance light
