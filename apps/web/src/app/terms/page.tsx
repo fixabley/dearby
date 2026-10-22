@@ -9,7 +9,7 @@ export default function TermsPage() {
   return (
     <article className="legal pt-0 pb-6">
       <LargeTitle>이용약관</LargeTitle>
-      <p className="px-1 text-footnote text-secondary-label">시행일 2026년 10월 19일</p>
+      <p className="px-1 text-footnote text-secondary-label">시행일 2026년 10월 22일</p>
       <p className="mt-4 px-1 text-body leading-relaxed">
         이 약관은 <strong>[운영자 이름]</strong>(이하 &ldquo;운영자&rdquo;)이 제공하는 Dearby(이하 &ldquo;서비스&rdquo;)를 이용하는 조건을 정합니다.
       </p>
