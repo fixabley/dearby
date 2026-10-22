@@ -112,7 +112,8 @@ export const activitySchema = z.object({
   name: text,
   description: text,
   organization: named,
-  program: named,
+  // 활동 상세의 프로그램도 가장 가까운 로고를 싣는다(contract "조직 로고와 로고 계승"); older responses omit it.
+  program: named.extend({ logoUrl: text.nullable().optional().catch(null) }),
   officialUrl: text,
   // 신청 링크(contract "신청 확인 조건 완화·공개 applicationUrl"); older responses omit it.
   applicationUrl: text.nullable().optional().catch(null),
@@ -202,6 +203,19 @@ export function recruitment(
   if (now < start) return { open: false, label: "모집 예정" };
   if (now >= end) return { open: false, label: "모집 마감" };
   return { open: true, label: "모집 중" };
+}
+/**
+ * Open Graph recruitment phrase (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): 모집 중 `M월 d일 마감`, 모집 예정
+ * `M월 d일 모집 시작`, otherwise `모집 마감`. A date-only end is exclusive, so the last day is one day earlier.
+ */
+export function recruitmentPhrase(application: Schedule | null, now = Date.now()): string {
+  const { open, label } = recruitment(application, now);
+  if (!application || (!open && label !== "모집 예정")) return "모집 마감";
+  const lastDay = parseTime(application.endDateExclusive);
+  const day = open
+    ? monthDay(application.endAt ?? (lastDay === undefined ? null : new Date(lastDay - DAY).toISOString()))
+    : monthDay(application.startAt ?? application.startDate);
+  return day ? `${day} ${open ? "마감" : "모집 시작"}` : label;
 }
 /** `yyyy-MM-dd` of an instant in Asia/Seoul, comparable with the API's date-only fields. */
 function seoulDay(now: number): string {
