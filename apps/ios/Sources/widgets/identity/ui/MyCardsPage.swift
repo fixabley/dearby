@@ -38,6 +38,8 @@ struct MyCardsPage: View {
                 }.refreshable { await state.load() }
             }
         }.task { await state.load() }
+            // 미리 받기 (contract "명함 QR 코드"): while 내 명함 is on screen and whenever the selected card changes.
+            .task(id: state.selectedCardID) { await state.prefetchQRCode() }
             .sheet(isPresented: $editor, onDismiss: { Task { await state.load() } }) {
                 NavigationStack { CardComposerPage(account: state.account) }
             }
@@ -48,7 +50,7 @@ struct MyCardsPage: View {
                 NavigationStack { SignInSheet(account: state.account) { Task { await state.load() } } }
             }
             .sheet(item: $showingQR) { card in
-                NavigationStack { CardQRSheet(cardName: card.name, cardID: card.id, webOrigin: state.webOrigin, activities: state.appliedActivities()) }
+                NavigationStack { CardQRSheet(cardName: card.name, cardID: card.id, cards: state, activities: state.appliedActivities()) }
             }
             .confirmationDialog("이 명함을 지울까요?", isPresented: Binding(get: { deletingCard != nil }, set: { if !$0 { deletingCard = nil } }),
                                 titleVisibility: .visible, presenting: deletingCard) { card in
