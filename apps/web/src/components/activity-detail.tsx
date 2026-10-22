@@ -1,5 +1,4 @@
 "use client";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   type Activity,
@@ -13,7 +12,17 @@ import { errorMessage, request, RequestError } from "@/lib/client";
 import { Failure, Loading } from "@/shared/ui/states";
 import { CenteredMessage } from "@/shared/ui/centered-message";
 import { Icon } from "@/shared/ui/icon";
+import { Badge } from "@/shared/ui/badge";
+import { BottomBar } from "@/shared/ui/bottom-bar";
+import { Button } from "@/shared/ui/button";
+import { InsetGroup } from "@/shared/ui/inset-group";
+import { LargeTitle } from "@/shared/ui/nav-title";
+import { Separator } from "@/shared/ui/separator";
 
+/**
+ * Activity detail (contract "웹 리디자인" › 활동 상세, iOS `ActivityDetailView`): an information block (status/category/tag capsules,
+ * the name as a title that collapses into the bar, organization, description), inset-grouped sections, and a sticky bottom CTA.
+ */
 export function ActivityDetail({ id }: { id: number }) {
   const [activity, setActivity] = useState<Activity | null>();
   const [error, setError] = useState("");
@@ -52,7 +61,7 @@ export function ActivityDetail({ id }: { id: number }) {
         level={1}
         title="활동을 찾을 수 없어요"
         message="삭제되었거나 더 이상 공개되지 않는 활동이에요."
-        primary={{ label: "활동 탐색하기", href: "/" }}
+        primary={{ label: "활동 둘러보기", href: "/" }}
       />
     );
   const status = recruitment(activity.application, now);
@@ -63,130 +72,150 @@ export function ActivityDetail({ id }: { id: number }) {
   const cta = apply ?? official;
   const eligibility = eligibilityLines(activity.eligibility);
   const place = activity.place ?? null;
+  const facts = [
+    ["주최", activity.organization.name],
+    ["프로그램", activity.program.name],
+    ["모집 기간", scheduleLabel(activity.application, "recruitment")],
+    ["활동 기간", scheduleLabel(activity.activitySchedule, "activity")],
+  ];
   return (
-    <article className="detail">
-      <Link className="back-link" href="/">
-        <Icon name="chevron-left" size="inline" />
-        활동 탐색
-      </Link>
-      <div className="detail-heading">
-        <p className="eyebrow">{activity.organization.name}</p>
-        <span className={`badge ${status.open ? "" : "neutral"}`}>
-          {status.label}
-        </span>
-        {activity.category && <span className="badge neutral">{categoryLabel(activity.category)}</span>}
-        {(activity.tags ?? []).map((tag) => (
-          <span key={tag.id} className="badge neutral">
-            {tag.name}
-          </span>
-        ))}
-        <h1>{activity.name}</h1>
-        <p className="lead">{activity.description}</p>
-      </div>
-      <section className="detail-section">
-        <h2>활동 안내</h2>
-        <dl className="facts">
-          {[
-            ["주최", activity.organization.name],
-            ["프로그램", activity.program.name],
-            ["모집 기간", scheduleLabel(activity.application, "recruitment")],
-            ["활동 기간", scheduleLabel(activity.activitySchedule, "activity")],
-          ].map(([label, value]) => (
-            <div key={label}>
-              <dt>{label}</dt>
-              <dd>{value || "미확인"}</dd>
-            </div>
-          ))}
-        </dl>
-      </section>
-      {eligibility.length > 0 && (
-        <section className="detail-section">
-          <h2>대상</h2>
-          <ul className="eligibility-list">
-            {eligibility.map((line) => (
-              <li key={line} className="badge neutral">
-                {line}
-              </li>
+    <>
+      <article className="pt-2 pb-48">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-1.5">
+            <Badge variant={status.open ? "filled" : status.label === "모집 예정" ? "tinted" : "neutral"}>{status.label}</Badge>
+            {activity.category && <Badge>{categoryLabel(activity.category)}</Badge>}
+            {(activity.tags ?? []).map((tag) => (
+              <Badge key={tag.id} className="font-medium">
+                {tag.name}
+              </Badge>
             ))}
-          </ul>
-        </section>
-      )}
-      <section className="detail-section">
-        <h2>일정</h2>
-        {activity.schedules.length ? (
-          <ul className="schedule-list">
-            {activity.schedules.map((schedule) => (
-              <li key={schedule.id}>
-                <Icon name="calendar" tone="secondary" />
-                <div>
-                  <h3>{schedule.title}</h3>
-                  <p>{scheduleLabel(schedule, "activity") || "일정 미확인"}</p>
-                  {schedule.address && <p>{schedule.address}</p>}
+          </div>
+          <LargeTitle size="title1">{activity.name}</LargeTitle>
+          <p className="text-headline font-semibold text-secondary-label">{activity.organization.name}</p>
+          {activity.description && (
+            <>
+              <Separator className="my-1" />
+              <p className="leading-relaxed break-keep whitespace-pre-line">{activity.description}</p>
+            </>
+          )}
+        </div>
+        <InsetGroup title="활동 안내">
+          {facts.map(([label, value]) => (
+            <li key={label} className="flex items-baseline gap-4 px-4 py-3">
+              <span className="w-20 shrink-0 text-subheadline text-secondary-label">{label}</span>
+              <span className="flex-1 text-subheadline break-keep">{value || "미확인"}</span>
+            </li>
+          ))}
+        </InsetGroup>
+        {eligibility.length > 0 && (
+          <InsetGroup title="대상" plain>
+            <ul className="flex flex-wrap gap-1.5">
+              {eligibility.map((line) => (
+                <li key={line}>
+                  <Badge variant="tinted" className="px-2.5 py-1 text-footnote">
+                    {line}
+                  </Badge>
+                </li>
+              ))}
+            </ul>
+          </InsetGroup>
+        )}
+        <InsetGroup title="일정">
+          {activity.schedules.length ? (
+            activity.schedules.map((schedule) => (
+              <li key={schedule.id} className="flex items-start gap-3 px-4 py-3">
+                <Icon name="calendar" tone="teal" />
+                <div className="flex flex-col gap-0.5">
+                  <h3 className="text-subheadline font-semibold">{schedule.title}</h3>
+                  <p className="text-footnote text-secondary-label">{scheduleLabel(schedule, "activity") || "일정 미확인"}</p>
+                  {schedule.address && <p className="text-footnote text-secondary-label">{schedule.address}</p>}
                 </div>
               </li>
-            ))}
-          </ul>
-        ) : (
-          <p>{scheduleLabel(activity.activitySchedule, "activity") || "일정 미확인"}</p>
-        )}
-      </section>
-      {/* 활동 장소 (contract "활동 장소 — 2026-10-19"): curated place with a map link; otherwise the collected phrase alone. */}
-      {place ? (
-        <section className="detail-section">
-          <h2>장소</h2>
-          <a
-            className="place-link"
-            href={`https://maps.google.com/?q=${place.lat},${place.lng}`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Icon name="map-pin" />
-            <span>
-              <strong>{place.name}</strong>
-              {place.address && <span className="muted">{place.address}</span>}
-            </span>
-          </a>
-        </section>
-      ) : activity.location ? (
-        <section className="detail-section">
-          <h2>장소</h2>
-          <p>{activity.location}</p>
-        </section>
-      ) : null}
-      <section className="detail-section source">
-        <h2>공식 출처</h2>
-        <p>신청 조건과 최신 일정은 공식 사이트에서 확인해 주세요.</p>
-        {official && (
-          <a
-            className="text-link"
-            href={official}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            공식 안내 보기 <Icon name="external-link" size="inline" />
-          </a>
-        )}
-      </section>
-      <div className="detail-action">
-        <p className="muted">
-          신청은 공식 사이트에서 진행돼요.
-          <br />
-          웹에서는 개인 캘린더의 겹치는 시간을 확인할 수 없어요.
-        </p>
-        {cta ? (
-          <a
-            className={`button ${closed ? "secondary" : ""}`}
-            href={cta}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {closed ? "공식 안내 보기" : apply ? "신청 사이트 열기" : "공식 사이트에서 신청"}{" "}
-            <Icon name="external-link" size="inline" />
-          </a>
-        ) : (
-          <p role="status">연결 가능한 공식 링크가 없어요.</p>
-        )}
-      </div>
-    </article>
+            ))
+          ) : (
+            <li className="flex items-center gap-3 px-4 py-3 text-subheadline">
+              <Icon name="calendar" tone="teal" />
+              {scheduleLabel(activity.activitySchedule, "activity") || "일정 미확인"}
+            </li>
+          )}
+        </InsetGroup>
+        {/* 활동 장소 (contract "활동 장소 — 2026-10-19"): curated place with a map link; otherwise the collected phrase alone. */}
+        {place ? (
+          <InsetGroup title="장소">
+            <li>
+              <a
+                className="flex min-h-11 items-center gap-3 px-4 py-3 active:bg-fill"
+                href={`https://maps.google.com/?q=${place.lat},${place.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Icon name="map-pin" tone="teal" />
+                <span className="flex flex-1 flex-col gap-0.5">
+                  <strong className="text-subheadline font-semibold">{place.name}</strong>
+                  {place.address && <span className="text-footnote text-secondary-label">{place.address}</span>}
+                </span>
+                <Icon name="external-link" size="inline" tone="secondary" />
+              </a>
+            </li>
+          </InsetGroup>
+        ) : activity.location ? (
+          <InsetGroup title="장소">
+            <li className="flex items-center gap-3 px-4 py-3 text-subheadline">
+              <Icon name="map-pin" tone="teal" />
+              {activity.location}
+            </li>
+          </InsetGroup>
+        ) : null}
+        <InsetGroup
+          title="공식 출처"
+          footer={
+            <>
+              신청 조건과 최신 일정은 공식 사이트에서 확인해 주세요.
+              <br />
+              웹에서는 개인 캘린더의 겹치는 시간을 확인할 수 없어요.
+            </>
+          }
+        >
+          {official ? (
+            <li>
+              <a
+                className="flex min-h-11 items-center justify-between gap-3 px-4 py-3 text-body text-teal active:bg-fill"
+                href={official}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                공식 안내 보기 <Icon name="external-link" size="inline" />
+              </a>
+            </li>
+          ) : (
+            <li className="flex items-center px-4 py-3 text-subheadline text-secondary-label">연결 가능한 공식 링크가 없어요.</li>
+          )}
+        </InsetGroup>
+      </article>
+      {/* Sticky bottom CTA (contract "웹 리디자인" › 활동 상세): full-width teal fill, a text secondary, safe-area padding. */}
+      <BottomBar>
+          {cta ? (
+            <Button asChild size="lg" variant="filled">
+              <a href={cta} target="_blank" rel="noopener noreferrer">
+                {closed ? "공식 안내 보기" : apply ? "신청 사이트 열기" : "공식 사이트에서 신청"}{" "}
+                <Icon name="external-link" size="inline" />
+              </a>
+            </Button>
+          ) : (
+            <p role="status" className="py-3 text-subheadline text-secondary-label">
+              연결 가능한 공식 링크가 없어요.
+            </p>
+          )}
+          {apply && official && apply !== official && (
+            <Button asChild size="sm" variant="plain">
+              <a href={official} target="_blank" rel="noopener noreferrer">
+                공식 안내 보기
+              </a>
+            </Button>
+          )}
+          <p className="text-caption text-secondary-label">신청은 공식 사이트에서 진행돼요.</p>
+      </BottomBar>
+    </>
   );
 }

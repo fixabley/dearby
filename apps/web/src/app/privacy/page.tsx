@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LargeTitle } from "@/shared/ui/nav-title";
 export const metadata: Metadata = {
   title: "개인정보 처리방침",
   description: "Dearby가 어떤 정보를 어디까지 다루는지 설명합니다.",
@@ -7,10 +8,10 @@ export const metadata: Metadata = {
 // 제품이 실제로 하는 일에 맞춘 방침(계약 native-v1.md, 2026-10-19 기준). 대괄호는 운영자가 채운다.
 export default function PrivacyPage() {
   return (
-    <article className="legal">
-      <p className="eyebrow">시행일 2026년 10월 19일</p>
-      <h1>개인정보 처리방침</h1>
-      <p className="lead">
+    <article className="legal pt-0 pb-6">
+      <LargeTitle>개인정보 처리방침</LargeTitle>
+      <p className="px-1 text-footnote text-secondary-label">시행일 2026년 10월 19일</p>
+      <p className="mt-4 px-1 text-body leading-relaxed">
         Dearby(이하 &ldquo;서비스&rdquo;)는 활동을 찾고, 활동에서 만난 사람과 명함을 교환하는 데 필요한 최소한의 정보만 다룹니다. 이 문서는
         어떤 정보를 왜 받고, 어디에 두고, 어떻게 지우는지 설명합니다.
       </p>
@@ -20,7 +21,7 @@ export default function PrivacyPage() {
         받습니다.
       </p>
       <h2>2. 받는 정보와 쓰는 이유</h2>
-      <table className="legal-table">
+      <table>
         <thead>
           <tr>
             <th>구분</th>
@@ -101,7 +102,7 @@ export default function PrivacyPage() {
       </p>
       <h2>9. 변경</h2>
       <p>이 방침이 바뀌면 이 페이지에 시행일과 함께 올립니다. 중요한 변경은 앱 안에서도 알립니다.</p>
-      <p className="muted">
+      <p className="mt-8 px-1 text-footnote text-secondary-label">
         관련 문서: <Link href="/terms">이용약관</Link>
       </p>
     </article>
