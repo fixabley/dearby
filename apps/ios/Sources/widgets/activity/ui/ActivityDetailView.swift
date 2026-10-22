@@ -24,13 +24,19 @@ struct ActivityDetailView: View {
                     }
                 }
                 .safeAreaInset(edge: .bottom, spacing: 0) { applicationActions(activity) }
+            } else {
+                // Only a linked id the server answered 404 for lands here (`ActivityViewModel.openLinked`); wording as the web detail.
+                CenteredMessage(symbol: "info.circle", title: "활동을 찾을 수 없어요", message: "삭제되었거나 더 이상 공개되지 않는 활동이에요.")
             }
         }
         .navigationTitle("활동 상세").navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
-            if let url = activity?.officialURL {
-                ShareLink(item: url) { Image(systemName: "square.and.arrow.up") }.accessibilityLabel("활동 공식 안내 링크 공유")
+            // The activity's Dearby page, not the official notice (contract "유니버설 링크·App Links·활동 공유·오픈그래프"); the official
+            // link stays in the source row.
+            if let activity {
+                ShareLink(item: state.calendarLink(activity.id), subject: Text(activity.title)) { Image(systemName: "square.and.arrow.up") }
+                    .accessibilityLabel("활동 공유")
             }
             // 추가 beside share (contract "활동 상세 내 활동 행동 정리" 2026-10-22): marks it applied; hidden once added.
             if activity != nil && !applied {
