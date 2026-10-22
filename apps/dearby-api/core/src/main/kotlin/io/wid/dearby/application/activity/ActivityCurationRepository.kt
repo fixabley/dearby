@@ -27,7 +27,8 @@ interface ActivityCurationRepository {
     ): Boolean
 
     // 관리자가 고친 대상자 조건(null이면 지운다). 검색용 펼친 조건도 함께 다시 쓴다. 바뀐 행이 없으면(활동 없음) false
-    fun updateEligibility(activityId: Id, eligibility: EligibilityGroup?): Boolean
+    // curate=false는 운영 데이터 가져오기(admin-v1.md "운영 데이터 가져오기"): 운영자 지정 필드에 남기지 않는다
+    fun updateEligibility(activityId: Id, eligibility: EligibilityGroup?, curate: Boolean = true): Boolean
 
     // 프로그램 기본 종류 일괄 적용(admin-v1.md "프로그램 기본 종류"): 종류가 비었거나 운영자가 지정하지 않은 활동만 바꾼다. 바뀐 행 수
     fun applyProgramCategory(programId: Id, category: ActivityCategory): Int
@@ -48,7 +49,8 @@ interface ActivityCurationRepository {
 
     // 활동 장소(native-v1.md "활동 장소"): 활동 기간(slot ACTIVITY) 행의 address_line1(이름)·address_line2(주소)·lat·lng를 쓰거나(null이면) 모두 지운다.
     // 행이 없으면 만든다. 운영자 지정 필드 place가 남아 수집기가 보존한다. 활동이 없으면 false
-    fun updatePlace(activityId: Id, place: Address?): Boolean
+    // curate=false(운영 데이터 가져오기)면 place를 운영자 지정 필드에 남기지 않는다
+    fun updatePlace(activityId: Id, place: Address?, curate: Boolean = true): Boolean
 
     // 세부 일정(슬롯 없음) 편집(admin-v1.md "세부 일정 편집기"). 만들거나 고친 일정은 curated, 지운 일정은 curated_deleted로 남긴다.
     // 활동이나 일정이 없으면 null/false. 지운 일정은 없는 것으로 본다
