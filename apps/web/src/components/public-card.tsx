@@ -11,6 +11,8 @@ import {
 } from "@/lib/client";
 import { Failure, Loading } from "@/shared/ui/states";
 import { Icon } from "@/shared/ui/icon";
+import { BottomBar } from "@/shared/ui/bottom-bar";
+import { Button } from "@/shared/ui/button";
 import { MissingCard } from "@/widgets/card/missing-card";
 import { PublicCardBody } from "@/widgets/card/public-card-body";
 /** `activity`: the numeric activity id from the owner's QR; shown as `<프로그램> <활동>에서 받은 명함` and saved with the card. */
@@ -82,48 +84,51 @@ export function PublicCard({ id, activity }: { id: string; activity?: number }) 
     );
   if (!card) return <Loading />;
   return (
-    <article className="public-card detail">
-      <Link className="back-link" href="/saved">
-        <Icon name="chevron-left" size="inline" />
-        저장한 명함
-      </Link>
-      {place && <p className="exchange-place">{place}에서 받은 명함</p>}
-      <PublicCardBody card={card} />
-      <div className="save-area">
-        <a className="button" href={appLink}>
-          <Icon name="card" size="inline" />
-          Dearby 앱에 저장
-        </a>
-        <p className="muted">앱이 없으면 브라우저에 저장할 수 있어요.</p>
+    <>
+      <article className="mx-auto max-w-[480px] pt-3 pb-64">
+        {place && <p className="mb-3 text-center text-footnote text-secondary-label">{place}에서 받은 명함</p>}
+        <PublicCardBody card={card} />
+        <p className="mt-3 px-4 text-footnote text-secondary-label">
+          이 브라우저의 쿠키로 저장 목록을 구분해요. 브라우저에 저장한 명함은 30일 뒤 사라져요. 쿠키를 삭제하거나 다른 브라우저를
+          사용하면 기존 목록에 접근할 수 없어요.
+        </p>
+      </article>
+      {/* 저장 CTA는 하단 고정 (contract "웹 리디자인" › 공개 명함). */}
+      <BottomBar>
         {saveError && (
-          <p className="error-message" role="alert">
-            {saveError} <Link href="/saved">저장한 명함 보기</Link>
+          <p role="alert" className="text-center text-footnote text-danger">
+            {saveError}{" "}
+            <Link href="/saved" className="underline">
+              저장한 명함 보기
+            </Link>
           </p>
         )}
+        <Button asChild size="lg">
+          <a href={appLink}>
+            <Icon name="card" size="inline" />
+            Dearby 앱에 저장
+          </a>
+        </Button>
         {saved ? (
           <>
-            <p className="success" role="status">
+            <p role="status" className="flex items-center gap-1 text-footnote font-semibold text-teal">
               <Icon name="check-circle" size="inline" />
               명함을 저장했어요.
             </p>
-            <Link className="button" href="/saved">
-              저장한 명함 보기
-            </Link>
+            <Button asChild size="lg" variant="tinted">
+              <Link href="/saved">저장한 명함 보기</Link>
+            </Button>
           </>
         ) : (
-          <button className="button secondary" disabled={busy} onClick={save}>
-            <Icon name="inbox" size="inline" />
-            {busy ? "저장 확인 중…" : "브라우저에 저장"}
-          </button>
+          <>
+            <Button size="lg" variant="tinted" disabled={busy} onClick={save}>
+              <Icon name="inbox" size="inline" />
+              {busy ? "저장 확인 중…" : "브라우저에 저장"}
+            </Button>
+            <p className="text-caption text-secondary-label">앱이 없으면 브라우저에 저장할 수 있어요.</p>
+          </>
         )}
-        <p className="cookie-note">
-          이 브라우저의 쿠키로 저장 목록을 구분해요. 브라우저에 저장한 명함은
-          30일 뒤 사라져요.
-          <br />
-          쿠키를 삭제하거나 다른 브라우저를 사용하면 기존 목록에 접근할 수
-          없어요.
-        </p>
-      </div>
-    </article>
+      </BottomBar>
+    </>
   );
 }

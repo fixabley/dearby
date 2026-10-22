@@ -16,9 +16,17 @@ import {
   scheduleLabel,
 } from "@/lib/models";
 import { errorMessage, request } from "@/lib/client";
+import { cn } from "@/shared/lib/utils";
 import { Failure, Loading } from "@/shared/ui/states";
 import { CenteredMessage } from "@/shared/ui/centered-message";
 import { Icon } from "@/shared/ui/icon";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { Card } from "@/shared/ui/card";
+import { Input } from "@/shared/ui/input";
+import { LargeTitle } from "@/shared/ui/nav-title";
+import { Skeleton } from "@/shared/ui/skeleton";
+import { Switch } from "@/shared/ui/switch";
 import { ActivityCard, type StatusTone } from "@/widgets/activity/activity-card";
 import { groupByCategory } from "@/lib/category";
 
@@ -86,27 +94,21 @@ export function Discovery({ q }: { q: string }) {
   }
   return (
     <>
-      <div className="page-heading">
-        <p className="eyebrow">새로운 경험, 새로운 연결</p>
-        <h1>활동 탐색</h1>
-        <p className="muted">
-          프로그램을 펼쳐 지금 모집 중인 활동을 찾아보세요.
-        </p>
-      </div>
+      <LargeTitle>활동 둘러보기</LargeTitle>
       <SearchField q={q} />
-      {/* 마감 숨기기 as a label + switch row; the whole label toggles (contract "발견 검색·토글"). */}
-      <label className="open-only">
-        마감 숨기기
-        <input
-          type="checkbox"
-          role="switch"
-          className="switch"
+      {/* 마감 숨기기 as an inset-grouped switch row; the whole row (the label) toggles (contract "발견 검색·토글"). */}
+      <label
+        htmlFor="open-only"
+        className="mt-3 mb-2.5 flex min-h-11 cursor-pointer items-center justify-between gap-3 rounded-[14px] bg-card px-4 py-1.5"
+      >
+        <span className="text-body">마감 숨기기</span>
+        <Switch
+          id="open-only"
           checked={openOnly}
-          aria-checked={openOnly}
-          onChange={(event) => {
+          onCheckedChange={(checked) => {
             // Clear the list so the loading state shows while the other mode loads.
             setPage(undefined);
-            setOpenOnly(event.target.checked);
+            setOpenOnly(checked);
           }}
         />
       </label>
@@ -119,7 +121,7 @@ export function Discovery({ q }: { q: string }) {
           }}
         />
       ) : !page ? (
-        <Loading />
+        <ProgramsLoading />
       ) : !page.items.length ? (
         q ? (
           <CenteredMessage
@@ -137,7 +139,7 @@ export function Discovery({ q }: { q: string }) {
         )
       ) : (
         <>
-          <ul className="program-list">
+          <ul className="flex flex-col gap-2.5">
             {page.items.map((program) => (
               <ProgramRow
                 key={program.id}
@@ -149,31 +151,28 @@ export function Discovery({ q }: { q: string }) {
             ))}
           </ul>
           {page.nextCursor != null && (
-            <div className="load-more">
-              {moreError && <p role="alert">{moreError}</p>}
-              <button
-                className="button secondary"
-                onClick={loadMore}
-                disabled={loadingMore}
-              >
-                {loadingMore
-                  ? "불러오는 중이에요"
-                  : moreError
-                    ? "다시 시도"
-                    : "더 보기"}
-              </button>
+            <div className="mt-4 flex flex-col items-center gap-2">
+              {moreError && (
+                <p role="alert" className="text-footnote text-danger">
+                  {moreError}
+                </p>
+              )}
+              <Button variant="tinted" size="lg" onClick={loadMore} disabled={loadingMore}>
+                {loadingMore ? "불러오는 중이에요" : moreError ? "다시 시도" : "더 보기"}
+              </Button>
             </div>
           )}
         </>
       )}
-      <aside className="inline-note">
-        <Icon name="card" tone="teal" />
-        <p>
-          받은 명함 링크에서 공개 이력서를 보고,
-          <br className="mobile-break" /> 로그인 없이 명함을 저장할 수 있어요.
-        </p>
-        <Link href="/saved">
-          저장한 명함 <span aria-hidden="true">→</span>
+      <aside className="mt-6">
+        <Link href="/saved" className="flex min-h-11 items-center gap-3 rounded-[14px] bg-card px-4 py-3 active:opacity-70">
+          <Icon name="card" tone="teal" />
+          <span className="flex-1 text-subheadline break-keep">
+            받은 명함 링크에서 공개 이력서를 보고, 로그인 없이 명함을 저장할 수 있어요.
+          </span>
+          <span className="text-subheadline whitespace-nowrap text-teal">
+            저장한 명함 <span aria-hidden="true">›</span>
+          </span>
         </Link>
       </aside>
     </>
@@ -188,33 +187,36 @@ function SearchField({ q }: { q: string }) {
   const router = useRouter();
   const [value, setValue] = useState(q);
   return (
-    <Form action="/" className="search" role="search">
-      <label className="field-label" htmlFor="discovery-q">
+    <Form action="/" role="search" className="mt-1">
+      <label className="sr-only" htmlFor="discovery-q">
         프로그램·조직·활동 검색
       </label>
-      <div className="search-field">
-        <Icon name="search" />
-        <input
+      <div className="relative flex items-center">
+        <span className="pointer-events-none absolute left-2 flex text-secondary-label">
+          <Icon name="search" size="inline" />
+        </span>
+        <Input
           id="discovery-q"
           type="search"
           name="q"
           value={value}
           maxLength={100}
-          placeholder="이름으로 찾기"
+          placeholder="프로그램·활동·태그 검색"
           enterKeyHint="search"
+          className="pr-10 pl-8"
           onChange={(event) => setValue(event.target.value)}
         />
         {value && (
           <button
             type="button"
-            className="search-clear"
             aria-label="지우기"
+            className="absolute right-0 grid size-11 place-items-center text-secondary-label"
             onClick={() => {
               setValue("");
               if (q) router.push("/");
             }}
           >
-            <Icon name="clear" />
+            <Icon name="clear" size="inline" />
           </button>
         )}
       </div>
@@ -229,10 +231,13 @@ function SearchField({ q }: { q: string }) {
 function ProgramAvatar({ name, src }: { name: string; src: string | undefined }) {
   const [failed, setFailed] = useState(false);
   return (
-    <span className="program-avatar" aria-hidden="true">
+    <span
+      aria-hidden="true"
+      className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-[14px] bg-mint text-[18px] font-bold text-teal"
+    >
       {src && !failed ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="" loading="lazy" decoding="async" onError={() => setFailed(true)} />
+        <img src={src} alt="" loading="lazy" decoding="async" className="size-full object-cover" onError={() => setFailed(true)} />
       ) : (
         ([...name.trim()][0] ?? "?")
       )}
@@ -245,13 +250,17 @@ function TagChips({ tags }: { tags: Tag[] }) {
   const shown = tags.slice(0, 3);
   const rest = tags.length - shown.length;
   return (
-    <span className="program-tags" aria-label="얻을 수 있는 것">
+    <span className="mt-1.5 flex flex-wrap gap-1.5" aria-label="얻을 수 있는 것">
       {shown.map((tag) => (
-        <span key={tag.id} className="program-tag">
+        <Badge key={tag.id} variant="neutral" className="font-medium">
           {tag.name}
-        </span>
+        </Badge>
       ))}
-      {rest > 0 && <span className="program-tag more">+{rest}</span>}
+      {rest > 0 && (
+        <Badge variant="neutral" className="font-medium">
+          +{rest}
+        </Badge>
+      )}
     </span>
   );
 }
@@ -349,7 +358,7 @@ function OtherActivities({
       });
     return () => controller.abort();
   }, [programId]);
-  if (error) return <p className="muted">{error}</p>;
+  if (error) return <p className="px-1.5 text-subheadline text-secondary-label">{error}</p>;
   if (!page) return <Loading />;
   const others = page.items.filter((activity) => !excludeIds?.has(activity.id));
   const upcoming = others
@@ -375,9 +384,9 @@ function OtherActivities({
   return (
     <>
       {groups.map((group) => (
-        <section key={group.label} className="category-group">
-          <h3 className="category-heading">{group.label}</h3>
-          <ul className="activity-list">
+        <section key={group.label} className="flex flex-col gap-2">
+          <CategoryHeading>{group.label}</CategoryHeading>
+          <ul className="flex flex-col gap-2">
             {group.items.map((activity) => (
               <li key={activity.id}>
                 <ActivityCard {...cardProps(activity, group.tone, now)} />
@@ -443,6 +452,7 @@ function ProgramRow({
   // Content is kept while collapsed so the close animation has something to shrink; nothing is fetched until the first open.
   const body = error ? (
     <Failure
+      compact
       message={error}
       retry={() => {
         setError("");
@@ -456,9 +466,13 @@ function ProgramRow({
       {openActivities.length > 0 &&
         // Grouped by 활동 종류 (contract "활동 종류"); a single group needs no heading.
         groupByCategory(openActivities, (activity) => activity.category).map((group, _, groups) => (
-          <section key={group.label} className="category-group">
-            {groups.length > 1 && <h3 className="category-heading">{group.label}</h3>}
-            <ul className="activity-list">
+          <section key={group.label} className="flex flex-col gap-2">
+            {groups.length > 1 && (
+              <CategoryHeading>
+                {group.label} ({group.items.length})
+              </CategoryHeading>
+            )}
+            <ul className="flex flex-col gap-2">
               {[...group.items].sort(byDeadline).map((activity) => (
                 <li key={activity.id}>
                   <ActivityCard {...cardProps(activity, openTone(activity, now), now)} />
@@ -473,45 +487,96 @@ function ProgramRow({
         now={now}
         excludeIds={new Set(openActivities.map((activity) => activity.id))}
         showPast={!openOnly}
-        onEmpty={!openActivities.length ? <p className="muted">지금 모집 중인 활동이 없어요.</p> : null}
+        onEmpty={
+          !openActivities.length ? (
+            <p className="px-1.5 text-subheadline text-secondary-label">지금 모집 중인 활동이 없어요.</p>
+          ) : null
+        }
       />
     </>
   );
   return (
-    <li className="program" data-open={open || undefined}>
-      <div className="program-header">
-        <button type="button" className="program-toggle" aria-expanded={open} aria-controls={panelId} onClick={toggle}>
-          <ProgramAvatar key={logoSrc ?? ""} name={program.name} src={logoSrc} />
-          <span className="program-copy">
-            <span className="program-name">{program.name}</span>
-            <span className="program-org">{program.organization.name}</span>
-            <TagChips tags={program.tags ?? []} />
-          </span>
-        </button>
-        <div className="program-side">
-          {open ? (
-            <button type="button" className="program-collapse" aria-label="접기" aria-controls={panelId} onClick={toggle}>
-              <Icon name="chevron-down" size="inline" />
-            </button>
-          ) : (
-            <span className="program-count" aria-hidden={count === 0}>
-              {count > 0 ? (
-                <>
-                  <span className="sr-only">활동 </span>
-                  <span>{count}</span>
-                  <span className="sr-only">개</span>
-                </>
-              ) : null}
+    <li>
+      <Card>
+        <div className="flex items-start gap-3 pt-3.5 pr-4 pb-3 pl-4">
+          <button
+            type="button"
+            className="flex min-w-0 flex-1 items-start gap-3 text-left"
+            aria-expanded={open}
+            aria-controls={panelId}
+            onClick={toggle}
+          >
+            <ProgramAvatar key={logoSrc ?? ""} name={program.name} src={logoSrc} />
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className="text-headline font-semibold break-keep">{program.name}</span>
+              <span className="text-subheadline text-secondary-label">{program.organization.name}</span>
+              <TagChips tags={program.tags ?? []} />
             </span>
+          </button>
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            {open ? (
+              <button
+                type="button"
+                aria-label="접기"
+                aria-controls={panelId}
+                onClick={toggle}
+                className="grid size-[34px] place-items-center rounded-full bg-mint text-teal"
+              >
+                <span className="flex rotate-180">
+                  <Icon name="chevron-down" size="inline" />
+                </span>
+              </button>
+            ) : count > 0 ? (
+              <span className="grid h-[34px] min-w-[34px] place-items-center rounded-full bg-teal-fill px-3 text-subheadline font-semibold text-on-teal tabular-nums">
+                <span className="sr-only">활동 </span>
+                {count}
+                <span className="sr-only">개</span>
+              </span>
+            ) : (
+              <span className="h-[34px]" />
+            )}
+            <span className="text-caption2 whitespace-nowrap text-secondary-label">{meta}</span>
+          </div>
+        </div>
+        {/* Kept mounted so `grid-template-rows 0fr→1fr` animates the height; `inert` while collapsed. */}
+        <div
+          id={panelId}
+          aria-hidden={!open}
+          inert={!open}
+          className={cn(
+            "grid transition-[grid-template-rows,opacity] duration-300 ease-out",
+            open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
           )}
-          <span className="program-meta">{meta}</span>
+        >
+          <div className="overflow-hidden">
+            <div className="flex flex-col gap-2 px-2.5 pb-3">{body}</div>
+          </div>
         </div>
-      </div>
-      <div id={panelId} className="program-body" aria-hidden={!open} inert={!open}>
-        <div>
-          <div className="program-inner">{body}</div>
-        </div>
-      </div>
+      </Card>
     </li>
+  );
+}
+
+/** Group heading inside an expanded program (iOS caption semibold, secondary). */
+function CategoryHeading({ children }: { children: ReactNode }) {
+  return <h2 className="px-1.5 pt-1.5 text-caption font-semibold text-secondary-label">{children}</h2>;
+}
+
+/** First load: three program-card placeholders, announced as loading. */
+function ProgramsLoading() {
+  return (
+    <div role="status" className="flex flex-col gap-2.5">
+      <span className="sr-only">불러오는 중이에요.</span>
+      {[0, 1, 2].map((key) => (
+        <Card key={key} className="flex items-start gap-3 p-4">
+          <Skeleton className="size-11 rounded-[14px]" />
+          <div className="flex flex-1 flex-col gap-2 pt-1">
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-3.5 w-1/3" />
+          </div>
+          <Skeleton className="h-[34px] w-[34px] rounded-full" />
+        </Card>
+      ))}
+    </div>
   );
 }

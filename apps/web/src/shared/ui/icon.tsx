@@ -132,7 +132,7 @@ export function Icon({
 }) {
   return (
     <svg
-      className={tone && `icon-${tone}`}
+      className={tone && (tone === "teal" ? "text-teal" : "text-secondary-label")}
       width={sizes[size]}
       height={sizes[size]}
       viewBox="0 0 24 24"

@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LargeTitle } from "@/shared/ui/nav-title";
 export const metadata: Metadata = {
   title: "이용약관",
   description: "Dearby 서비스 이용에 관한 약관입니다.",
 };
 export default function TermsPage() {
   return (
-    <article className="legal">
-      <p className="eyebrow">시행일 2026년 10월 19일</p>
-      <h1>이용약관</h1>
-      <p className="lead">
+    <article className="legal pt-0 pb-6">
+      <LargeTitle>이용약관</LargeTitle>
+      <p className="px-1 text-footnote text-secondary-label">시행일 2026년 10월 19일</p>
+      <p className="mt-4 px-1 text-body leading-relaxed">
         이 약관은 <strong>[운영자 이름]</strong>(이하 &ldquo;운영자&rdquo;)이 제공하는 Dearby(이하 &ldquo;서비스&rdquo;)를 이용하는 조건을 정합니다.
       </p>
       <h2>1. 서비스</h2>
@@ -56,7 +57,7 @@ export default function TermsPage() {
       <p>약관이 바뀌면 시행일 7일 전(사용자에게 불리한 변경은 30일 전)에 이 페이지와 앱에 알립니다. 변경 뒤 서비스를 계속 쓰면 변경에 동의한 것으로 봅니다.</p>
       <h2>9. 준거법과 관할</h2>
       <p>이 약관은 대한민국 법을 따르며, 분쟁은 민사소송법에 따른 관할 법원에서 다룹니다.</p>
-      <p className="muted">
+      <p className="mt-8 px-1 text-footnote text-secondary-label">
         관련 문서: <Link href="/privacy">개인정보 처리방침</Link> · 문의: <strong>[연락 이메일]</strong>
       </p>
     </article>

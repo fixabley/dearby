@@ -92,7 +92,8 @@ export async function proxy(
 ): Promise<Response> {
   const path = segments.join("/");
   const guest = segments[0] === "guest";
-  const id = segments[guest ? 2 : 1];
+  // `discovery/programs` has no id segment; treating "programs" as one failed the uuid check and 422-ed every discovery list.
+  const id = path === "discovery/programs" ? "" : segments[guest ? 2 : 1];
   const activityRoute = segments.length === 2 && segments[0] === "activities";
   // Public program logo image (contract "프로그램 로고"): binary passthrough, cached like the API says.
   const logoRoute = segments.length === 3 && segments[0] === "programs" && segments[2] === "logo";
