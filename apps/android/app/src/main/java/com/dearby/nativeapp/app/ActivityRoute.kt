@@ -40,7 +40,6 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
     var progressId by remember { mutableStateOf<String?>(null) }
     var stageCalendar by remember { mutableStateOf<Int?>(null) }
     var prompt by remember { mutableStateOf(false) }
-    var sharing by remember { mutableStateOf(false) }
     var calendar by remember { mutableStateOf(false) }
     var linkError by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(open) { open?.let { selected = it; linkError = null; consumeOpen() } }
@@ -59,6 +58,16 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
                 activity?.takeIf { it.applyUrl == url }?.let { model.openedApplication(it.id) }
             }
             .onFailure { linkError = "링크를 열지 못했어요." }
+    }
+    // 활동 공유 (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): the Dearby activity page, which opens the app where it is installed,
+    // through the system share sheet; the official page stays in the detail's 출처 row.
+    val share = {
+        activity?.let {
+            val send = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, activityLink(it.id))
+                .putExtra(Intent.EXTRA_SUBJECT, it.title).putExtra(Intent.EXTRA_TITLE, it.title)
+            context.startActivity(Intent.createChooser(send, null))
+        }
+        Unit
     }
     // Contract "활동 장소": the curated place opens in a map app pinned at its coordinates; no map app leaves the error on screen.
     val openMap = {
@@ -81,7 +90,7 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
     BackHandler((selected != null || progressId != null) && !prompt && !calendar && stageCalendar == null) { if (selected != null) selected = null else progressId = null }
     Box(Modifier.fillMaxSize()) { when {
         activity != null -> ActivityDetailPage(activity, linkError, { selected = null }, openLink, { prompt = true },
-            { calendar = true }, { sharing = true }, openMap,
+            { calendar = true }, share, openMap,
             addToMine = { model.apply(activity.id, true) }, viewInMine = { openInMine(activity.id) }, addToCalendar = { addToCalendar(it, activity) })
         progress != null && progressActivity != null -> ActivityProgressPage(progress, { progressId = null }, { selected = progress.id; linkError = null },
             { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it }, { model.apply(progress.id, false); progressId = null }, { addToCalendar(it, progressActivity) })
@@ -90,7 +99,6 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
     }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
-    if (sharing && activity?.officialUrl != null) AlertDialog(onDismissRequest = { sharing = false }, title = { Text("활동 링크") }, text = { Text(activity.officialUrl) }, confirmButton = { TextButton({ sharing = false }) { Text("닫기") } })
     val openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) }
     if (calendar && activity != null) CalendarConflictFlow(model.schedules(activity.id), activityLink(activity.id), openPrivacy) { calendar = false }
     progress?.let { of -> stageCalendar?.let { model.stageWindows(of.id, it) }?.takeIf { it.isNotEmpty() }?.let { windows -> CalendarConflictFlow(windows, activityLink(of.id), openPrivacy) { stageCalendar = null } } }
@@ -103,5 +111,8 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
     if (prompt && activity != null) ApplicationReportDialog({ model.apply(activity.id, it); prompt = false }, { prompt = false })
 }
 
-/** The activity's web page, written into calendar notes so the overlap check can recognise Dearby's own events (contract "반복 일정과 겹침 결과 묶음"). */
+/**
+ * The activity's web page, written into calendar notes so the overlap check can recognise Dearby's own events (contract "반복 일정과 겹침 결과 묶음"),
+ * and what 활동 공유 sends (contract "유니버설 링크·App Links·활동 공유·오픈그래프").
+ */
 private fun activityLink(id: String) = "${BuildConfig.WEB_ORIGIN.trimEnd('/')}/activities/$id"

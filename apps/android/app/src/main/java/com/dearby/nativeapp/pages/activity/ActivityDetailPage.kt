@@ -32,10 +32,11 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
     openMap: () -> Unit = {}, addToMine: () -> Unit = {}, viewInMine: () -> Unit = {}, addToCalendar: (CalendarDraft) -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize()) {
-        // 추가 sits beside share until the activity is in 내 활동 (contract "활동 상세 내 활동 행동 정리", 2026-10-22).
+        // 추가 sits beside share until the activity is in 내 활동 (contract "활동 상세 내 활동 행동 정리", 2026-10-22); share is always there
+        // and sends the Dearby link (contract "유니버설 링크·App Links·활동 공유·오픈그래프").
         DearbyTopBar("활동 상세", back) {
             if (!activity.applied) TextButton(addToMine, Modifier.semantics { contentDescription = "내 활동에 추가" }) { Text("추가") }
-            if (activity.officialUrl != null) IconButton(share) { Icon(Icons.Rounded.Share, "활동 공유", tint = MaterialTheme.colorScheme.primary) }
+            IconButton(share) { Icon(Icons.Rounded.Share, "활동 공유", tint = MaterialTheme.colorScheme.primary) }
         }
         // No image header (contract "활동 상세 이미지 섹션 제거", 2026-10-19 밤): status, tags and title start at the top.
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
