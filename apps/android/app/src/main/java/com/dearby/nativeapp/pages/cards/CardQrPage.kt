@@ -1,6 +1,10 @@
 package com.dearby.nativeapp.pages.cards
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Event
 import androidx.compose.material3.AlertDialog
@@ -14,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -23,21 +28,37 @@ import com.dearby.nativeapp.shared.ui.CenteredMessage
 import com.dearby.nativeapp.shared.ui.QrImage
 import com.dearby.nativeapp.shared.ui.DearbyTopBar
 
+/** The QR code on screen (contract "명함 QR 코드"): [code] null while the first one is issued, [failed] when that issue failed. */
+data class CardQrState(val code: String? = null, val failed: Boolean = false)
+
 /** One applied activity the card can be handed out at (contract "명함 교환"). */
 data class QrActivity(val id: String, val title: String)
 
 /**
- * 내 명함 QR 보이기: the card's public [url] as a QR (the symbol of a [CenteredMessage], contract "비스크롤 화면 배치·CTA"), the card name as the
+ * 내 명함 QR 보이기: the card's [url] (null until a QR code is issued; [failed] shows the retry) as a QR (the symbol of a [CenteredMessage], contract "비스크롤 화면 배치·CTA"), the card name as the
  * title, the explanation, and the activity chip ([selectedId] among [activities], or `활동 없이`) that the owner can change. Brightness is raised
  * by the route, not here.
  */
-@Composable fun CardQrPage(cardTitle: String, url: String, activities: List<QrActivity>, selectedId: String?, select: (String?) -> Unit, close: () -> Unit) {
+@Composable fun CardQrPage(cardTitle: String, url: String?, failed: Boolean, refresh: () -> Unit, activities: List<QrActivity>, selectedId: String?, select: (String?) -> Unit, close: () -> Unit) {
     var picking by remember { mutableStateOf(false) }
     val selected = activities.firstOrNull { it.id == selectedId }
     Column(Modifier.fillMaxSize()) {
-        DearbyTopBar("QR 보이기", close)
+        DearbyTopBar("QR 보이기", close) {
+            IconButton(refresh, enabled = url != null) { Icon(Icons.Rounded.Refresh, "QR 새로 만들기") }
+        }
         CenteredMessage(null, cardTitle, "상대가 카메라로 QR을 읽으면 이 명함을 받아요.", Modifier.weight(1f).fillMaxWidth(),
-            symbol = { QrImage(url, Modifier.fillMaxWidth().aspectRatio(1f).semantics { contentDescription = "내 명함 QR 코드, 카메라로 읽으면 명함을 받아요" }) },
+            symbol = {
+                Box(Modifier.fillMaxWidth().aspectRatio(1f), contentAlignment = Alignment.Center) {
+                    when {
+                        url != null -> QrImage(url, Modifier.fillMaxSize().semantics { contentDescription = "내 명함 QR 코드, 카메라로 읽으면 명함을 받아요" })
+                        failed -> Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("연결을 확인하고 다시 시도해 주세요", textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)
+                            Button(refresh) { Text("다시 시도") }
+                        }
+                        else -> CircularProgressIndicator()
+                    }
+                }
+            },
             content = {
                 AssistChip({ picking = true }, label = { Text(selected?.title ?: "활동 없이") }, leadingIcon = { Icon(Icons.Rounded.Event, null, Modifier.size(18.dp)) })
                 Text("받은 명함에는 고른 활동이 함께 표시되고, 맞교환하지 않으면 30일 뒤 회수돼요.", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)

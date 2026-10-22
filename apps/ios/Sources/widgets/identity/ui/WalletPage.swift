@@ -12,6 +12,10 @@ struct WalletPage: View {
     /// `내 명함도 건네기` with several cards: pick one.
     @State private var choosingCard: [PublishedCard]?
     @State private var reciprocating = false
+    /// 신고하기 sheet and 삭제하고 차단하기 confirmation for the open card, and the detail's own notice (an alert under the sheet would not show).
+    @State private var reporting: WalletModel.Entry?
+    @State private var blocking: WalletModel.Entry?
+    @State private var detailNotice: String?
     @Environment(\.openURL) private var openURL
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The rail stays hidden for short lists.
@@ -103,7 +107,34 @@ struct WalletPage: View {
             }.padding(20)
         }
         .navigationTitle(entry.card.profileName).navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { state.opened = nil } } }
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) { Button("닫기") { state.opened = nil } }
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Button { reporting = entry } label: { Label("신고하기", systemImage: "exclamationmark.bubble") }
+                    Button(role: .destructive) { blocking = entry } label: { Label("삭제하고 차단하기", systemImage: "hand.raised") }
+                } label: { Image(systemName: "ellipsis.circle") }.accessibilityLabel("더 보기")
+            }
+        }
+        .sheet(item: $reporting) { entry in
+            NavigationStack {
+                CardReportSheet(name: entry.card.profileName) { reason, detail in
+                    let sent = await state.report(entry, reason: reason, detail: detail)
+                    detailNotice = sent ? "신고를 받았어요. 24시간 안에 확인할게요." : "신고를 보내지 못했어요. 연결을 확인하고 다시 시도해 주세요."
+                    return sent
+                }
+            }
+        }
+        .confirmationDialog("삭제하고 차단할까요?", isPresented: Binding(get: { blocking != nil }, set: { if !$0 { blocking = nil } }),
+                            titleVisibility: .visible, presenting: blocking) { entry in
+            Button("삭제하고 차단하기", role: .destructive) {
+                Task { if !(await state.block(entry)) { detailNotice = "차단하지 못했어요. 연결을 확인하고 다시 시도해 주세요." } }
+            }
+            Button("취소", role: .cancel) {}
+        } message: { entry in Text("\(entry.card.profileName)님의 명함을 지우고, 앞으로 이 사람의 명함을 받지 않아요.") }
+        .alert(detailNotice ?? "", isPresented: Binding(get: { detailNotice != nil }, set: { if !$0 { detailNotice = nil } })) {
+            Button("확인", role: .cancel) {}
+        }
         .confirmationDialog("어떤 명함을 건널까요?", isPresented: Binding(get: { choosingCard != nil }, set: { if !$0 { choosingCard = nil } }),
                             titleVisibility: .visible, presenting: choosingCard) { cards in
             ForEach(cards) { card in Button(card.name) { Task { await reciprocate(entry, card) } } }
@@ -127,6 +158,8 @@ struct WalletPage: View {
     private var outcomeTitle: String {
         switch state.outcome {
         case .ownCard: "내 명함이에요"
+        case .codeExpired: "QR이 만료됐어요"
+        case .blocked: "차단한 사람의 명함이에요"
         case .saveFailed: "명함을 저장하지 못했어요"
         case .reciprocateFailed: "명함을 건네지 못했어요"
         case nil: ""
@@ -135,6 +168,8 @@ struct WalletPage: View {
     private var outcomeMessage: String {
         switch state.outcome {
         case .ownCard: "내가 발행한 명함은 받은 명함에 넣을 수 없어요."
+        case .codeExpired: "명함 주인에게 QR을 다시 보여 달라고 하세요"
+        case .blocked: "설정의 차단한 사람에서 해제하면 다시 받을 수 있어요."
         case .saveFailed: "명함이 없거나 연결이 끊겼어요. QR을 다시 읽어 주세요."
         case .reciprocateFailed: "발행한 명함이 없으면 내 명함 탭에서 먼저 만들어 주세요. 연결도 확인해 주세요."
         case nil: ""

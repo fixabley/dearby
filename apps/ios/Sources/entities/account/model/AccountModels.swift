@@ -279,3 +279,23 @@ struct PublishedCard: Decodable, Equatable, Identifiable, Sendable {
     let histories: [AccountHistory]
     let createdAt: String
 }
+
+/// A blocked card owner (contract "명함 신고·차단"); `name` is the card's name when blocked.
+struct BlockedPerson: Decodable, Equatable, Identifiable, Sendable {
+    let id: String
+    let name: String
+    let blockedAt: String
+}
+/// Why a card is reported; `OTHER` needs a description.
+enum CardReportReason: String, CaseIterable, Identifiable, Sendable {
+    case spam = "SPAM", impersonation = "IMPERSONATION", inappropriate = "INAPPROPRIATE", other = "OTHER"
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .spam: "스팸·광고"
+        case .impersonation: "다른 사람 사칭"
+        case .inappropriate: "부적절한 내용"
+        case .other: "기타"
+        }
+    }
+}

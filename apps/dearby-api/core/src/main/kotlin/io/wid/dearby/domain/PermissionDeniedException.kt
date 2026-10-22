@@ -2,5 +2,6 @@ package io.wid.dearby.domain
 
 // 응답 403(adaptor/web/ApiExceptionHandler). 경우가 늘어도 하위 클래스를 만들지 않고 메시지만 달리 던진다
 // detail은 API 사용자에게 보이는 문장, logMessage는 로그에만 남는 내부 정보(id 등). 생략하면 detail과 같다
-// code는 클라이언트가 구분해야 하는 경우만(native-v1.md의 `CONSENT_REQUIRED`처럼) ProblemDetail의 code 속성으로 실린다
-class PermissionDeniedException(val detail: String, logMessage: String = detail, val code: String? = null) : RuntimeException(logMessage)
+// code는 클라이언트가 구분해야 하는 경우만(native-v1.md의 `CONSENT_REQUIRED`처럼) ProblemDetail의 code 속성으로 실린다.
+// type은 계약이 ProblemDetail type을 정한 경우만(native-v1.md "명함 QR 코드"의 `card-code-required`처럼) type URI의 끝으로 실린다
+class PermissionDeniedException(val detail: String, logMessage: String = detail, val code: String? = null, val type: String? = null) : RuntimeException(logMessage)

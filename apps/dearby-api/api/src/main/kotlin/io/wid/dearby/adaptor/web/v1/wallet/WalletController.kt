@@ -16,10 +16,10 @@ class WalletController(private val wallet: WalletService) {
     @GetMapping
     fun list(@AuthenticationPrincipal jwt: Jwt) = WalletResponse(wallet.list(userId(jwt)).map(ReceiptResponse::from))
 
-    // 첫 저장 201, 이미 있으면 200(받은 날 유지). 없는·철회된 명함 404, 자기 명함 409 OWN_CARD
+    // 첫 저장 201, 이미 있으면 200(받은 날 유지). 없는·철회된 명함 404, 자기 명함 409 OWN_CARD, 처음 저장인데 코드가 없거나 만료면 403
     @PutMapping("/cards/{cardId}")
     fun save(@AuthenticationPrincipal jwt: Jwt, @PathVariable cardId: UUID, @RequestBody(required = false) request: WalletSaveRequest?): ResponseEntity<ReceiptResponse> {
-        val saved = wallet.save(userId(jwt), cardId, request?.activityId)
+        val saved = wallet.save(userId(jwt), cardId, request?.activityId, request?.code)
         return ResponseEntity.status(if (saved.created) HttpStatus.CREATED else HttpStatus.OK).body(ReceiptResponse.from(saved.receipt))
     }
 
@@ -30,6 +30,18 @@ class WalletController(private val wallet: WalletService) {
         wallet.reciprocate(userId(jwt), cardId, request.myCardId)
         return ReciprocateResponse(true)
     }
+
+    // 차단(native-v1.md "명함 신고·차단"): 그 명함 주인의 명함을 내 지갑에서 모두 빼고 기록한다. 이미 차단했으면 그 기록(201)
+    @PostMapping("/blocks")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun block(@AuthenticationPrincipal jwt: Jwt, @RequestBody request: BlockRequest) = BlockResponse.from(wallet.block(userId(jwt), request.cardId))
+
+    @GetMapping("/blocks")
+    fun blocks(@AuthenticationPrincipal jwt: Jwt) = BlockListResponse(wallet.blocks(userId(jwt)).map(BlockResponse::from))
+
+    @DeleteMapping("/blocks/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun unblock(@AuthenticationPrincipal jwt: Jwt, @PathVariable id: UUID) = wallet.unblock(userId(jwt), id)
 
     private fun userId(jwt: Jwt): UUID = UUID.fromString(jwt.subject)
 }

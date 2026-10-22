@@ -1,5 +1,6 @@
 package com.dearby.nativeapp.pages.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,12 +25,15 @@ import com.dearby.nativeapp.shared.ui.*
  */
 @Composable fun SettingsPage(
     state: SettingsState, back: () -> Unit, signIn: () -> Unit, signOut: () -> Unit, deleteAccount: () -> Unit, retry: () -> Unit,
-    link: (String) -> Unit, unlink: (String) -> Unit, addPasskey: () -> Unit, renamePasskey: (String, String) -> Unit, deletePasskey: (String) -> Unit,
+    link: (String) -> Unit, unlink: (String) -> Unit, addPasskey: () -> Unit, renamePasskey: (String, String) -> Unit, deletePasskey: (String) -> Unit, unblock: (String) -> Unit,
     openPrivacy: () -> Unit, openTerms: () -> Unit, dismissNotice: () -> Unit, googleAvailable: Boolean = true,
 ) {
     var confirm by remember { mutableStateOf<Confirm?>(null) }
     var renaming by remember { mutableStateOf<SettingsPasskeyState?>(null) }
-    Column(Modifier.fillMaxSize()) {
+    var showingBlocks by remember { mutableStateOf(false) }
+    if (showingBlocks && state.phase == SettingsPhase.LOADED) {
+        BlockedPeople(state.blocks, !state.busy, back = { showingBlocks = false }, unblock = { confirm = Confirm.Unblock(it) })
+    } else Column(Modifier.fillMaxSize()) {
         DearbyTopBar("설정", back)
         when (state.phase) {
             SettingsPhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
@@ -69,6 +73,9 @@ import com.dearby.nativeapp.shared.ui.*
                     }
                     ActionRow("패스키 추가", enabled = !state.busy, supporting = "이 기기의 지문·얼굴·PIN으로 쓸 패스키를 더해요.", onClick = addPasskey)
                     HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                    SectionTitle("받은 명함")
+                    ActionRow("차단한 사람", supporting = if (state.blocks.isEmpty()) "차단한 사람이 없어요." else "${state.blocks.size}명") { showingBlocks = true }
+                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 }
                 SectionTitle("정보")
                 ActionRow("개인정보 처리방침", onClick = openPrivacy)
@@ -82,6 +89,7 @@ import com.dearby.nativeapp.shared.ui.*
         Confirm.SignOut -> ConfirmDialog("로그아웃할까요?", "이 기기에서 로그아웃해요. 패스키나 연결된 로그인으로 다시 로그인할 수 있어요.", "로그아웃", { confirm = null; signOut() }) { confirm = null }
         Confirm.DeleteAccount -> ConfirmDialog("계정을 삭제할까요?", "명함과 받은 명함 등 모든 정보가 지워지고 되돌릴 수 없어요.", "삭제", { confirm = null; deleteAccount() }, destructive = true) { confirm = null }
         is Confirm.Unlink -> ConfirmDialog("${current.identity.label} 연결을 해제할까요?", "이 ${current.identity.label} 계정으로는 더 로그인할 수 없어요.", "연결 해제", { confirm = null; unlink(current.identity.key) }, destructive = true) { confirm = null }
+        is Confirm.Unblock -> ConfirmDialog("${current.block.name}님의 차단을 해제할까요?", "다시 이 사람의 명함을 받을 수 있어요. 지운 명함은 돌아오지 않아요.", "차단 해제", { confirm = null; unblock(current.block.id) }) { confirm = null }
         is Confirm.DeletePasskey -> ConfirmDialog("‘${current.passkey.label.ifBlank { "패스키" }}’를 삭제할까요?", "이 패스키로는 더 로그인할 수 없어요. 기기에 남은 패스키는 비밀번호 관리자에서 지울 수 있어요.", "삭제", { confirm = null; deletePasskey(current.passkey.id) }, destructive = true) { confirm = null }
     }
     renaming?.let { passkey -> RenameDialog(passkey.label, { renaming = null; renamePasskey(passkey.id, it) }) { renaming = null } }
@@ -93,6 +101,23 @@ private sealed interface Confirm {
     data object DeleteAccount : Confirm
     data class Unlink(val identity: SettingsIdentityState) : Confirm
     data class DeletePasskey(val passkey: SettingsPasskeyState) : Confirm
+    data class Unblock(val block: SettingsBlockState) : Confirm
+}
+
+/** 차단한 사람: each row with its 차단 해제 button; back returns to 설정. */
+@Composable private fun BlockedPeople(blocks: List<SettingsBlockState>, enabled: Boolean, back: () -> Unit, unblock: (SettingsBlockState) -> Unit) {
+    BackHandler(onBack = back)
+    Column(Modifier.fillMaxSize()) {
+        DearbyTopBar("차단한 사람", back)
+        if (blocks.isEmpty()) Text("차단한 사람이 없어요.", Modifier.padding(horizontal = 16.dp, vertical = 16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
+        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+            blocks.forEach { block ->
+                ListItem({ Text(block.name) }, supportingContent = { Text("${block.blocked} 차단") },
+                    trailingContent = { TextButton({ unblock(block) }, enabled = enabled) { Text("차단 해제") } },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+            }
+        }
+    }
 }
 
 @Composable private fun SectionTitle(text: String) =

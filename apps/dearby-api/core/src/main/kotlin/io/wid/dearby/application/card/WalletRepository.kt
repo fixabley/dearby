@@ -20,6 +20,9 @@ interface WalletRepository {
 
     fun activityExists(activityId: Id): Boolean
 
+    // 차단(native-v1.md "명함 신고·차단"): 내 지갑에서 그 주인의 명함을 모두 회수한다(행은 남긴다)
+    fun recallFromOwner(recipientId: UserId, ownerId: UserId, now: OffsetDateTime)
+
     // 단방향으로 받은 명함 중 receivedBefore보다 먼저 받은 것을 회수한다. 회수한 행 수
     fun recallOneWay(receivedBefore: OffsetDateTime, now: OffsetDateTime): Int
 }

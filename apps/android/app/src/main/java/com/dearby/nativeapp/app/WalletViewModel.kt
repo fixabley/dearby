@@ -47,7 +47,7 @@ class WalletViewModel(private val account: AccountViewModel) : ViewModel() {
         }
     }
 
-    /** The app was opened with `dearby://cards/<id>?activity=<n>`: save it to the account wallet, or ask to sign in first. */
+    /** The app was opened with `dearby://cards/<id>?activity=<n>&code=<code>`: save it to the account wallet, or ask to sign in first. */
     fun receive(link: CardLink) { pending = link; viewModelScope.launch { savePending() } }
     /** The user signed in from the prompt: save the waiting link now. */
     fun retryPending() = viewModelScope.launch { savePending() }
@@ -59,7 +59,7 @@ class WalletViewModel(private val account: AccountViewModel) : ViewModel() {
         if (account.state.value.phase != AccountPhase.SIGNED_IN) { mutable.update { it.copy(needSignIn = true) }; return }
         mutable.update { it.copy(needSignIn = false) }
         val notice = try {
-            val receipt = account.authorized { account.client.saveReceipt(link.cardId, link.activityId, it) }
+            val receipt = account.authorized { account.client.saveReceipt(link.cardId, link.activityId, link.code, it) }
             pending = null
             reload()
             mutable.update { it.copy(opened = receipt.id) }
@@ -67,13 +67,35 @@ class WalletViewModel(private val account: AccountViewModel) : ViewModel() {
         } catch (e: AccountException) {
             when (e.error) {
                 AccountError.UNAUTHORIZED -> { mutable.update { it.copy(needSignIn = true) }; return }
-                AccountError.CONFLICT -> "내 명함이에요."
+                AccountError.CONFLICT -> if (e.code == "BLOCKED") "차단한 사람의 명함이에요." else "내 명함이에요."
                 AccountError.NOT_FOUND -> "지워진 명함이라 저장할 수 없어요."
+                AccountError.FORBIDDEN -> "명함 주인에게 QR을 다시 보여 달라고 하세요."
                 else -> "명함을 저장하지 못했어요. 연결을 확인하고 다시 시도해 주세요."
             }
         }
         pending = null
         mutable.update { it.copy(notice = notice) }
+    }
+
+    /** 신고하기 (contract "명함 신고·차단"): the card stays; the result is a notice. */
+    fun report(cardId: String, reason: String, detail: String?) = viewModelScope.launch {
+        mutable.update { it.copy(busy = true, message = null) }
+        val notice = try {
+            account.authorized { account.client.reportCard(cardId, reason, detail, it) }
+            "신고를 받았어요. 24시간 안에 확인할게요."
+        } catch (e: AccountException) { "신고를 보내지 못했어요. 연결을 확인하고 다시 시도해 주세요." }
+        mutable.update { it.copy(busy = false, notice = notice) }
+    }
+    /** 삭제하고 차단하기: every card of that owner leaves the list, which also closes the open detail. */
+    fun block(cardId: String) = viewModelScope.launch {
+        mutable.update { it.copy(busy = true, message = null) }
+        try {
+            account.authorized { account.client.block(cardId, it) }
+            reload()
+            mutable.update { it.copy(busy = false) }
+        } catch (e: AccountException) {
+            mutable.update { it.copy(busy = false, message = "차단하지 못했어요. 연결을 확인하고 다시 시도해 주세요.") }
+        }
     }
 
     /** 내 명함도 건네기: the owner of the received [cardId] gets [myCardId] in the same activity; the receipt becomes 맞교환. */

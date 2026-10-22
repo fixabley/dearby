@@ -36,6 +36,9 @@ struct SettingsPage: View {
                 accountSection
                 identitiesSection
                 passkeysSection
+                Section {
+                    NavigationLink { BlockedPeoplePage(account: account) } label: { Label("차단한 사람", systemImage: "hand.raised") }
+                } footer: { Text("차단한 사람의 명함은 받은 명함에 들어오지 않아요.").font(.dearby(.footnote)) }
             }
             about
         }
