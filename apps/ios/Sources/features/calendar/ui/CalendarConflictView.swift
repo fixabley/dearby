@@ -2,8 +2,9 @@ import SwiftUI
 
 /// `겹치는 시간 확인`: asks for calendar access on tap, compares the activity's schedules with device events on device,
 /// and forgets them when dismissed (contract "기기 캘린더 겹침 — 2026-10-06").
-/// The explanation, the denied state and the no-overlap result are centred messages (contract "비스크롤 화면 배치·CTA");
-/// an overlap keeps its timeline.
+/// The explanation, the denied state and the no-overlap result are centred messages (contract "비스크롤 화면 배치·CTA").
+/// Overlaps are a list grouped per device event (contract "겹침 결과 묶음" 2026-10-22): a summary, repeating events, then single events
+/// (five, then `더 보기`); a group with several dates expands to them, and each date opens its timeline.
 struct CalendarConflictView: View {
     @State private var state: CalendarConflictState
     @State private var detent = PresentationDetent.large
@@ -13,9 +14,11 @@ struct CalendarConflictView: View {
     /// The privacy policy the intro links to (web `/privacy`); the production site unless a build passes another origin.
     private let privacyURL: URL
     @State private var showingPrivacy = false
-    init(schedules: [ActivityScheduleModel], source: any CalendarEventSource = DeviceCalendarEventSource(),
+    @State private var showsAllSingle = false
+    /// `activityLink`: the activity's page; device events whose notes or URL carry it (added from the app) are not compared.
+    init(schedules: [ActivityScheduleModel], activityLink: URL, source: any CalendarEventSource = DeviceCalendarEventSource(),
          privacyURL: URL = URL(string: AppOrigins.defaultWeb)!.appending(path: "privacy")) {
-        _state = State(initialValue: CalendarConflictState(schedules: schedules, source: source))
+        _state = State(initialValue: CalendarConflictState(schedules: schedules, excluding: activityLink.absoluteString, source: source))
         self.privacyURL = privacyURL
     }
     var body: some View {
@@ -66,31 +69,64 @@ struct CalendarConflictView: View {
                         message: "활동 일정 시간에 다른 일정이 없어요. 기기 캘린더는 읽기만 하고, 읽은 일정은 이 화면을 닫으면 버려요.",
                         primary: MessageAction("확인했어요") { dismiss() })
     }
-    /// One overlap at a time with its timeline; `확인했어요` moves to the next or closes.
     private var result: some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    if state.overlaps.indices.contains(state.index) {
-                        let item = state.overlaps[state.index]
-                        Text("\(state.index + 1) / \(state.overlaps.count)").font(.dearby(.footnote)).foregroundStyle(.secondary)
-                        Label(item.start.formatted(item.dateFormat), systemImage: "calendar").font(.dearby(.subheadline)).foregroundStyle(.secondary)
-                        Text("\(item.minutes)분이 겹쳐요").font(.dearby(.title2).bold())
-                            .accessibilityIdentifier("overlap-duration")
-                        Text("\(item.time(item.start)) – \(item.time(item.end))에 ‘\(item.busyTitle)’과 겹쳐요.")
-                            .font(.dearby(.body)).foregroundStyle(.secondary)
-                        CalendarTimelineView(item: item).padding(.top, 4)
-                    }
-                }.frame(maxWidth: .infinity, alignment: .leading).padding(20)
+        List {
+            Section {
+                Text(state.summary).font(.dearby(.headline)).accessibilityIdentifier("overlap-summary")
+            } footer: {
+                Text("기기 캘린더는 읽기만 하고, 읽은 일정은 이 화면을 닫으면 버려요.")
             }
-            VStack(spacing: 8) {
-                Label("기기 캘린더는 읽기만 하고, 읽은 일정은 이 화면을 닫으면 버려요.", systemImage: "info.circle")
-                    .font(.dearby(.footnote)).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
-                Button { if !state.advance() { dismiss() } } label: {
-                    Text(state.index + 1 < state.overlaps.count ? "확인했어요 · 다음 일정" : "확인했어요").frame(maxWidth: .infinity)
-                }.buttonStyle(.borderedProminent).controlSize(.large).tint(DearbyStyle.tealFill).font(.dearby(.body).weight(.semibold))
-            }.padding(.horizontal, 24).padding(.bottom, 16)
+            if !state.repeating.isEmpty {
+                Section("반복 일정") { ForEach(state.repeating) { row($0) } }
+            }
+            if !state.single.isEmpty {
+                Section("단일 일정") {
+                    ForEach(showsAllSingle ? state.single : Array(state.single.prefix(5))) { row($0) }
+                    if !showsAllSingle, state.single.count > 5 {
+                        Button("더 보기 (\(state.single.count - 5)개)") { showsAllSingle = true }.foregroundStyle(DearbyStyle.teal)
+                    }
+                }
+            }
         }
+        .listStyle(.insetGrouped)
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            Button { dismiss() } label: { Text("확인했어요").frame(maxWidth: .infinity) }
+                .buttonStyle(.borderedProminent).controlSize(.large).tint(DearbyStyle.tealFill).font(.dearby(.body).weight(.semibold))
+                .padding(.horizontal, 24).padding(.vertical, 12).background(.bar)
+        }
+    }
+    /// `제목 · 매주 화 10:00~11:00` over `n번 겹침(첫 날짜~마지막 날짜)`; one date opens its timeline, several expand first.
+    @ViewBuilder private func row(_ group: CalendarOverlapGroup) -> some View {
+        let label = VStack(alignment: .leading, spacing: 4) {
+            Text([group.title, group.repeats].compactMap { $0 }.joined(separator: " · ")).font(.dearby(.body))
+            Text(group.overlaps.count == 1 ? group.overlaps.first.map(when) ?? "" : group.countText)
+                .font(.dearby(.subheadline)).foregroundStyle(.secondary)
+        }.padding(.vertical, 2)
+        if group.overlaps.count == 1, let item = group.overlaps.first {
+            NavigationLink { detail(item) } label: { label }
+        } else {
+            DisclosureGroup {
+                ForEach(group.overlaps) { item in NavigationLink { detail(item) } label: { Text(when(item)).font(.dearby(.subheadline)) } }
+            } label: { label }
+        }
+    }
+    /// `10월 24일 금요일 14:00–15:00 · 30분`.
+    private func when(_ item: CalendarOverlapState) -> String {
+        "\(item.start.formatted(item.dateFormat)) \(item.time(item.start))–\(item.time(item.end)) · \(item.minutes)분"
+    }
+    /// One overlap with its timeline.
+    private func detail(_ item: CalendarOverlapState) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Label(item.start.formatted(item.dateFormat), systemImage: "calendar").font(.dearby(.subheadline)).foregroundStyle(.secondary)
+                Text("\(item.minutes)분이 겹쳐요").font(.dearby(.title2).bold()).accessibilityIdentifier("overlap-duration")
+                Text("\(item.time(item.start)) – \(item.time(item.end))에 ‘\(item.busyTitle)’과 겹쳐요.")
+                    .font(.dearby(.body)).foregroundStyle(.secondary)
+                CalendarTimelineView(item: item).padding(.top, 4)
+            }.frame(maxWidth: .infinity, alignment: .leading).padding(20)
+        }
+        .background(Color(.systemBackground))
+        .navigationTitle(item.activity.title).navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -98,13 +134,13 @@ struct CalendarConflictView: View {
     CalendarConflictView(
         schedules: [ActivityScheduleModel(id: "s1", title: "오리엔테이션", start: FixtureCalendarEventSource.exampleBusy.start.addingTimeInterval(1800),
                                           end: FixtureCalendarEventSource.exampleBusy.end.addingTimeInterval(3600), dateLabel: "", timeZone: "Asia/Seoul")],
-        source: FixtureCalendarEventSource()
+        activityLink: URL(string: "https://example.com/activities/1")!, source: FixtureCalendarEventSource()
     )
 }
 
 #Preview("권한 거부") {
     CalendarConflictView(
         schedules: [ActivityScheduleModel(id: "s1", title: "오리엔테이션", start: .now, end: .now.addingTimeInterval(3600), dateLabel: "", timeZone: "Asia/Seoul")],
-        source: FixtureCalendarEventSource(access: .denied)
+        activityLink: URL(string: "https://example.com/activities/1")!, source: FixtureCalendarEventSource(access: .denied)
     )
 }

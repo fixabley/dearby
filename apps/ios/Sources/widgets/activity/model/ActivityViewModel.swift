@@ -72,13 +72,18 @@ import Observation
     private let fetchActivity: @Sendable (_ id: String) async throws -> ActivityModel?
     init(programs: @escaping @Sendable (_ query: String, _ cursor: Int64?, _ openOnly: Bool) async throws -> ProgramPage,
          activities: @escaping @Sendable (_ programID: Int64, _ open: Bool) async throws -> ActivityPage,
-         activity: @escaping @Sendable (_ id: String) async throws -> ActivityModel?) {
+         activity: @escaping @Sendable (_ id: String) async throws -> ActivityModel?,
+         webOrigin: URL = URL(string: AppOrigins.defaultWeb)!) {
+        self.webOrigin = webOrigin
         fetchPrograms = programs
         fetchActivities = activities
         fetchActivity = activity
     }
 
     func activity(_ id: String) -> ActivityModel? { seen[id] }
+    /// The build's web origin (`DearbyWebOrigin`), for activity links written into calendar events.
+    let webOrigin: URL
+    func calendarLink(_ id: String) -> URL { ActivityModel.calendarLink(id, web: webOrigin) }
     /// Applied activities with their tracks, nearest next stage first; date-less and ended tracks last, then by id.
     func appliedProgress(now: Date) -> [AppliedActivity] {
         appliedIDs.compactMap { seen[$0] }.map { AppliedActivity(activity: $0, progress: progress($0, now: now)) }

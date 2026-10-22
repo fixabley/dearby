@@ -91,12 +91,14 @@ enum ActivityClient {
         let startAt = ActivityModel.instant(schedule.startAt), endAt = ActivityModel.instant(schedule.endAt)
         if startAt != nil || endAt != nil {
             return ActivityStageModel(id: String(schedule.id), title: schedule.title, kind: kind, start: startAt, end: endAt,
-                                      allDay: false, dateLabel: schedule.dateLabel, timeZone: zone, statuses: statuses(schedule))
+                                      allDay: false, dateLabel: schedule.dateLabel, timeZone: zone, statuses: statuses(schedule),
+                                      recurrence: ScheduleRecurrence(schedule.recurrence?.value))
         }
         let startDate = ActivityModel.seoulDay(schedule.startDate), endDate = ActivityModel.seoulDay(schedule.endDateExclusive)
         return ActivityStageModel(id: String(schedule.id), title: schedule.title, kind: kind, start: startDate, end: endDate,
                                   allDay: startDate != nil || endDate != nil, dateLabel: schedule.dateLabel, timeZone: "Asia/Seoul",
-                                  statuses: statuses(schedule), overlapCheck: overlapCheck(schedule))
+                                  statuses: statuses(schedule), overlapCheck: overlapCheck(schedule),
+                                  recurrence: ScheduleRecurrence(schedule.recurrence?.value))
     }
     /// The schedule's statuses (contract "일정 상태" 2026-10-22); an unknown kind reads as OTHER, and none (older responses) the default three.
     private static func statuses(_ schedule: Schedule) -> [ScheduleStatus] {
@@ -136,6 +138,8 @@ enum ActivityClient {
         /// 일정 상태·겹침 확인 시간 (2026-10-22); absent on older responses, and a malformed value reads as none.
         let statuses: Lenient<[StatusDTO]>?
         let overlapCheck: Lenient<OverlapDTO>?
+        /// RRULE body (contract "반복 일정" 2026-10-22); absent on older responses.
+        let recurrence: Lenient<String>?
     }
     private struct StatusDTO: Decodable { let id: Int64?; let name: String; let kind: String }
     private struct OverlapDTO: Decodable { let startTime: String; let endTime: String }
