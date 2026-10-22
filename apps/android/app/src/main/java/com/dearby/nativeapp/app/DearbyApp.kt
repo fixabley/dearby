@@ -53,7 +53,7 @@ private sealed interface Route {
         }
     }
     BackHandler(route is Route.Detail || route is Route.Qr) { route = null }
-    BackHandler(route == Route.Shared) { wallet.closeShared(); route = null }
+    BackHandler(route == Route.Shared) { wallet.closeShared() }
     val compose = { publish.start(); route = Route.Composer }
     // The fixed header buttons of every tab (contract "알림 아이콘은 다섯 탭 모두 우상단 고정"·"설정"); the notification screen is still a placeholder notice.
     val openSettings = { route = Route.Settings }
@@ -63,13 +63,14 @@ private sealed interface Route {
     val auth by account.state.collectAsStateWithLifecycle()
     // 명함 교환 (contract): a dearby://cards/… link saved a card → open it; signed out → sign in, then the link is saved.
     // A saved exchanged card opens on the 명함 tab's 받은 명함 segment with its detail pushed.
-    // A card App Link not in the wallet opens 공유받은 명함 보기 over whatever was showing.
-    LaunchedEffect(walletState.shared != null) { if (walletState.shared != null) route = Route.Shared }
+    // A card App Link not in the wallet opens 공유받은 명함 보기 over whatever was showing; once it closes (or saved), the route goes too.
+    // Declared before the `opened` effect so a save's 받은 명함 detail, set in the same frame, wins.
+    LaunchedEffect(walletState.shared) { if (walletState.shared != null) route = Route.Shared else if (route == Route.Shared) route = null }
     LaunchedEffect(walletState.opened) { walletState.opened?.let { tab = Tab.Cards; cardsSegment = CardsSegment.RECEIVED; activityDetail = false; route = Route.Detail(it); wallet.consumeOpened() } }
     // A linked activity, once loaded, opens on 발견 with its detail pushed over whatever was showing; a gone or unreadable one only says so.
     val activityListState by activityModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(activityListState.linked, activityListState.linkNotice) {
-        activityListState.linked?.let { route = null; tab = Tab.Discovery; discoveryOpen = it }
+        activityListState.linked?.let { wallet.closeShared(); route = null; tab = Tab.Discovery; discoveryOpen = it }
         activityListState.linkNotice?.let { notice = it }
         if (activityListState.linked != null || activityListState.linkNotice != null) activityModel.consumeLinked()
     }
@@ -85,7 +86,7 @@ private sealed interface Route {
                 when (val screen = route) {
                     is Route.Detail -> walletState.cards.firstOrNull { it.id == screen.id }?.let { WalletCardRoute(it, wallet, myCards) { route = null } }
                         ?: LaunchedEffect(screen) { route = null }
-                    Route.Shared -> walletState.shared?.let { SharedCardRoute(it, wallet) { wallet.closeShared(); route = null } } ?: LaunchedEffect(screen) { route = null }
+                    Route.Shared -> walletState.shared?.let { SharedCardRoute(it, wallet, wallet::closeShared) }
                     is Route.Qr -> CardQrRoute(screen.card, activityModel, myCards) { route = null }
                     Route.Composer -> CardComposerRoute(publish, account) { route = null }
                     Route.Settings -> SettingsRoute(settings, account, profile) { route = null }
