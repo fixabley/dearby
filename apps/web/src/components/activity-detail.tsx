@@ -57,6 +57,10 @@ export function ActivityDetail({ id }: { id: number }) {
     );
   const status = recruitment(activity.application, now);
   const official = httpsUrl(activity.officialUrl);
+  // CTA: 마감이 아니면 신청 링크(없으면 공식 안내)로, 마감이면 공식 안내로(contract "신청 확인 조건 완화·공개 applicationUrl").
+  const closed = status.label === "모집 마감";
+  const apply = closed ? undefined : httpsUrl(activity.applicationUrl ?? null);
+  const cta = apply ?? official;
   const eligibility = eligibilityLines(activity.eligibility);
   const place = activity.place ?? null;
   return (
@@ -169,16 +173,14 @@ export function ActivityDetail({ id }: { id: number }) {
           <br />
           웹에서는 개인 캘린더의 겹치는 시간을 확인할 수 없어요.
         </p>
-        {official ? (
+        {cta ? (
           <a
-            className={`button ${status.open ? "" : "secondary"}`}
-            href={official}
+            className={`button ${closed ? "secondary" : ""}`}
+            href={cta}
             target="_blank"
             rel="noopener noreferrer"
           >
-            {status.open
-              ? "공식 사이트에서 신청하기"
-              : "공식 사이트에서 모집 확인"}{" "}
+            {closed ? "공식 안내 보기" : apply ? "신청 사이트 열기" : "공식 사이트에서 신청"}{" "}
             <Icon name="external-link" size="inline" />
           </a>
         ) : (
