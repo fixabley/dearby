@@ -58,6 +58,9 @@ import Observation
     private var neverAsk: Set<String> = []
     /// `내 활동으로` on a detail (contract "활동 상세 내 활동 행동 정리"): the activity the 내 활동 tab should open next; the tab clears it once pushed.
     var showInMine: String?
+    /// An `/activities/<id>` universal link (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): the activity the 발견 tab should push
+    /// next; the tab clears it once pushed.
+    var showInDiscovery: String?
     /// Every activity seen this session, so details and applied marks outlive a new search.
     private var seen: [String: ActivityModel] = [:]
     private var cursor: Int64?
@@ -68,7 +71,7 @@ import Observation
     private let fetchPrograms: @Sendable (_ query: String, _ cursor: Int64?, _ openOnly: Bool) async throws -> ProgramPage
     /// `open` true asks for open activities only; false for every activity of the program (past list).
     private let fetchActivities: @Sendable (_ programID: Int64, _ open: Bool) async throws -> ActivityPage
-    /// `GET /v1/activities/:id` for 내 활동 records not seen in discovery; nil when the activity is gone (404).
+    /// `GET /v1/activities/:id` for 내 활동 records and linked activities not seen in discovery; nil when the activity is gone (404).
     private let fetchActivity: @Sendable (_ id: String) async throws -> ActivityModel?
     init(programs: @escaping @Sendable (_ query: String, _ cursor: Int64?, _ openOnly: Bool) async throws -> ProgramPage,
          activities: @escaping @Sendable (_ programID: Int64, _ open: Bool) async throws -> ActivityPage,
@@ -81,6 +84,19 @@ import Observation
     }
 
     func activity(_ id: String) -> ActivityModel? { seen[id] }
+    /// Opens a linked activity in 발견, loading it first when discovery has not shown it. A 404 still opens the detail, which says the
+    /// activity is gone; any other failure says so and stays put.
+    func openLinked(_ id: String) async {
+        if seen[id] == nil {
+            do {
+                if let activity = try await fetchActivity(id) { seen[id] = activity }
+            } catch {
+                notice = "활동을 불러오지 못했어요. 연결을 확인한 뒤 다시 시도해 주세요."
+                return
+            }
+        }
+        showInDiscovery = id
+    }
     /// The build's web origin (`DearbyWebOrigin`), for activity links written into calendar events.
     let webOrigin: URL
     func calendarLink(_ id: String) -> URL { ActivityModel.calendarLink(id, web: webOrigin) }
