@@ -1,8 +1,8 @@
-package io.wid.dearby.admin.adaptor.geocode
+package io.wid.dearby.adaptor.geocode
 
-import io.wid.dearby.admin.application.GeocodeFailedException
-import io.wid.dearby.admin.application.GeocodeResult
-import io.wid.dearby.admin.application.Geocoder
+import io.wid.dearby.application.geocode.GeocodeFailedException
+import io.wid.dearby.application.geocode.GeocodeResult
+import io.wid.dearby.application.geocode.Geocoder
 import org.springframework.http.HttpHeaders
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestClientException
@@ -12,22 +12,23 @@ import tools.jackson.databind.JsonNode
 class KakaoGeocoder(key: String, builder: RestClient.Builder) : Geocoder {
     private val http = builder.baseUrl(BASE_URL).defaultHeader(HttpHeaders.AUTHORIZATION, "KakaoAK $key").build()
 
-    override fun search(query: String): List<GeocodeResult> {
-        val keyword = documents("/v2/local/search/keyword.json", query).map {
-            GeocodeResult(
-                name = it.text("place_name").ifEmpty { it.text("address_name") },
-                address = it.text("road_address_name").ifEmpty { it.text("address_name") },
-                lat = it.coordinate("y"), lng = it.coordinate("x"), source = SOURCE,
-            )
-        }
-        val address = documents("/v2/local/search/address.json", query).map {
-            GeocodeResult(
-                name = it.path("road_address").text("building_name").ifEmpty { it.text("address_name") },
-                address = it.path("road_address").text("address_name").ifEmpty { it.text("address_name") },
-                lat = it.coordinate("y"), lng = it.coordinate("x"), source = SOURCE,
-            )
-        }
-        return (keyword + address).distinctBy { it.address.ifEmpty { "${it.lat},${it.lng}" } }.take(LIMIT)
+    override fun search(query: String): List<GeocodeResult> =
+        (searchKeyword(query) + searchAddress(query)).distinctBy { it.address.ifEmpty { "${it.lat},${it.lng}" } }.take(LIMIT)
+
+    override fun searchKeyword(query: String): List<GeocodeResult> = documents("/v2/local/search/keyword.json", query).map {
+        GeocodeResult(
+            name = it.text("place_name").ifEmpty { it.text("address_name") },
+            address = it.text("road_address_name").ifEmpty { it.text("address_name") },
+            lat = it.coordinate("y"), lng = it.coordinate("x"), source = SOURCE,
+        )
+    }
+
+    override fun searchAddress(query: String): List<GeocodeResult> = documents("/v2/local/search/address.json", query).map {
+        GeocodeResult(
+            name = it.path("road_address").text("building_name").ifEmpty { it.text("address_name") },
+            address = it.path("road_address").text("address_name").ifEmpty { it.text("address_name") },
+            lat = it.coordinate("y"), lng = it.coordinate("x"), source = SOURCE,
+        )
     }
 
     private fun documents(path: String, query: String): List<JsonNode> = try {
