@@ -7,6 +7,14 @@ import { errorMessage, mutateGuest, request, RequestError } from "@/lib/client";
 import { Failure, Loading } from "@/shared/ui/states";
 import { CenteredMessage } from "@/shared/ui/centered-message";
 import { Icon } from "@/shared/ui/icon";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { Card } from "@/shared/ui/card";
+import { Dialog, DialogActions, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/shared/ui/dialog";
+import { InsetGroup } from "@/shared/ui/inset-group";
+import { LargeTitle } from "@/shared/ui/nav-title";
+
+/** Saved cards (contract "웹 리디자인" › `/saved`): large title, cookie note, the cards as an inset-grouped list, reset behind an alert. */
 export function SavedCards() {
   const [cards, setCards] = useState<GuestItem[]>();
   const [error, setError] = useState("");
@@ -15,6 +23,7 @@ export function SavedCards() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
   const [notice, setNotice] = useState("");
+  const [confirming, setConfirming] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
     request<{ items: GuestItem[] }>("/guest/cards", {
@@ -47,12 +56,7 @@ export function SavedCards() {
     }
   }
   async function reset() {
-    if (
-      !window.confirm(
-        "이 브라우저의 저장 세션을 삭제할까요? 기존 목록에 다시 접근할 수 없어요.",
-      )
-    )
-      return;
+    setConfirming(false);
     setBusy(true);
     setActionError("");
     try {
@@ -71,65 +75,65 @@ export function SavedCards() {
   function row({ card, context, expiresAt }: GuestItem) {
     const expiry = expiryLabel(expiresAt);
     return (
-      <li key={card.id} className="saved-card">
+      <li key={card.id} className="flex items-center">
         <Link
           href={`/cards/${card.id}`}
+          className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 active:opacity-70"
           aria-label={[card.profileName || "이름 미등록", card.job, context.programName, expiry]
             .filter(Boolean)
             .join(", ")}
         >
-          <span className="avatar small" aria-hidden="true">
+          <span
+            aria-hidden="true"
+            className="grid size-10 shrink-0 place-items-center rounded-full bg-mint text-headline font-bold text-teal"
+          >
             {Array.from(card.profileName)[0] || <Icon name="card" />}
           </span>
-          <div>
-            <h2>{card.profileName || "이름 미등록"}</h2>
-            <p>{card.job}</p>
-            <p className="muted">{card.name}</p>
-            <p className="saved-meta">
-              {context.programName && (
-                <span className="badge neutral">{context.programName}</span>
-              )}
-              {expiry && <span className="badge">{expiry}</span>}
-            </p>
-          </div>
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className="text-headline font-semibold">{card.profileName || "이름 미등록"}</span>
+            {card.job && <span className="text-subheadline">{card.job}</span>}
+            <span className="truncate text-footnote text-secondary-label">{card.name}</span>
+            {(context.programName || expiry) && (
+              <span className="mt-1 flex flex-wrap gap-1.5">
+                {context.programName && <Badge>{context.programName}</Badge>}
+                {expiry && <Badge variant="tinted">{expiry}</Badge>}
+              </span>
+            )}
+          </span>
         </Link>
-        <button
-          className="remove-button"
+        <Button
+          variant="destructive"
+          size="sm"
           aria-label={`${card.profileName || "명함"} 저장 삭제`}
           disabled={busy}
           onClick={() => remove(card.id)}
         >
           저장 삭제
-        </button>
+        </Button>
       </li>
     );
   }
   return (
     <>
-      <div className="page-heading">
-        <p className="eyebrow">기억하고 싶은 연결</p>
-        <h1>저장한 명함</h1>
-        <p className="muted">
-          받은 공개 명함과 이력서를 모아 보세요.
-        </p>
-      </div>
-      <div className="cookie-info">
-        <Icon name="info" tone="secondary" />
-        <div>
-          <strong>이 브라우저에서 저장한 명함이에요.</strong>
-          <p>
-            저장한 명함은 30일 뒤 사라져요. 쿠키 삭제·브라우저 보관 제한·시크릿
-            모드 종료로 쿠키가 사라지면 기존 목록에 다시 접근할 수 없어요. 다른
-            기기·브라우저와는 연동되지 않아요.
+      <LargeTitle>저장한 명함</LargeTitle>
+      <Card className="mt-2 flex gap-3 px-4 py-3">
+        <span className="flex shrink-0">
+          <Icon name="info" tone="teal" />
+        </span>
+        <div className="flex flex-col gap-1">
+          <strong className="text-subheadline font-semibold">이 브라우저에서 저장한 명함이에요.</strong>
+          <p className="text-footnote text-secondary-label">
+            저장한 명함은 30일 뒤 사라져요. 쿠키 삭제·브라우저 보관 제한·시크릿 모드 종료로 쿠키가 사라지면 기존 목록에 다시 접근할 수
+            없어요. 다른 기기·브라우저와는 연동되지 않아요.
           </p>
         </div>
-      </div>
+      </Card>
       {actionError && (
-        <p className="error-message" role="alert">
+        <p role="alert" className="mt-3 px-4 text-footnote text-danger">
           {actionError}
         </p>
       )}
-      <p className="status-line" role="status">
+      <p role="status" className="px-4 text-footnote text-teal [&:not(:empty)]:pt-2">
         {notice}
       </p>
       {invalid ? (
@@ -138,7 +142,7 @@ export function SavedCards() {
           tone="danger"
           title="저장 세션을 사용할 수 없어요"
           message="삭제되었거나 유효하지 않은 세션이에요. 자동으로 새 목록을 만들지 않았어요."
-          primary={{ label: "저장 세션 초기화", onClick: reset, disabled: busy }}
+          primary={{ label: "저장 세션 초기화", onClick: () => setConfirming(true), disabled: busy }}
           role="alert"
         />
       ) : error ? (
@@ -160,20 +164,34 @@ export function SavedCards() {
         />
       ) : (
         <>
-          <p className="list-count">명함 {cards.length}개</p>
-          <ul className="saved-list">{cards.map((item) => row(item))}</ul>
-          <p className="cookie-note">
-            공개가 취소된 명함은 목록에서 표시되지 않아요. 브라우저에 저장한
-            명함은 저장한 날부터 30일 뒤 사라져요.
-          </p>
+          <InsetGroup
+            title={`명함 ${cards.length}개`}
+            className="mt-5"
+            footer="공개가 취소된 명함은 목록에서 표시되지 않아요. 브라우저에 저장한 명함은 저장한 날부터 30일 뒤 사라져요."
+          >
+            {cards.map((item) => row(item))}
+          </InsetGroup>
           <InstallOffer />
         </>
       )}
       {!invalid && cards && (
-        <button className="reset-button" disabled={busy} onClick={reset}>
+        <Button variant="destructive" className="mx-auto mt-6 flex" disabled={busy} onClick={() => setConfirming(true)}>
           이 브라우저의 저장 세션 삭제
-        </button>
+        </Button>
       )}
+      {/* The former `window.confirm`, as an iOS alert. */}
+      <Dialog open={confirming} onOpenChange={setConfirming}>
+        <DialogContent>
+          <DialogTitle>저장 세션을 삭제할까요?</DialogTitle>
+          <DialogDescription>이 브라우저의 저장 세션을 삭제하면 기존 목록에 다시 접근할 수 없어요.</DialogDescription>
+          <DialogActions>
+            <DialogClose className="text-body text-teal">취소</DialogClose>
+            <button type="button" className="text-body font-semibold text-danger" onClick={reset}>
+              삭제
+            </button>
+          </DialogActions>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

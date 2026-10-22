@@ -592,6 +592,18 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 ### 개인정보
 
 - 지금까지 "신청함·참여 확정·단계 표시는 기기에만"이라고 고지했다. 로그인 사용자는 서버에 저장되므로 `/privacy` 3절과 2절을 고치고 문서 시행일·동의 버전을 `2026-10-22`로 올린다(로그인 사용자는 다음 저장 때 다시 동의). 기기 캘린더 일정은 여전히 서버로 보내지 않는다.
+## 웹 리디자인 — iOS 앱과 같은 표현 — 2026-10-22 사용자 결정
+
+사용자: "웹 리디자인해 줘. iOS랑 비슷했으면 좋겠어. shadcn을 활용해도 좋아." 웹(`apps/web`)의 기능·경로·데이터·프록시는 그대로 두고 표현만 iOS 앱에 맞춘다.
+
+- **기반**: Tailwind CSS v4 + shadcn/ui(필요한 컴포넌트만 `src/shared/ui/`에 복사: Button, Input, Switch, Tabs(세그먼트), Card, Sheet, Dialog, Badge, Separator, Skeleton). 기존 `globals.css`의 화면별 클래스는 걷어내고 토큰만 남긴다.
+- **토큰(iOS 대응)**: 배경 `systemGroupedBackground`(#F2F2F7 / 다크 #000), 카드 면 `secondarySystemGroupedBackground`(#FFF / #1C1C1E), 채움 `tertiarySystemFill`(rgba(118,118,128,.12) / .24), 구분선 `separator`, 글자 `label`/`secondaryLabel`, 액센트 청록(글자·아이콘 #007F80 / 다크 #3FB3B4), 채움 면 `tealFill` #007F80 + 흰 글자(두 모드). 글꼴: `-apple-system, BlinkMacSystemFont, "Pretendard", system-ui, sans-serif`, iOS 크기 체계(largeTitle 34/700, title2 22/700, headline 17/600, body 17, subheadline 15, footnote 13). 모서리 카드 20, 컨트롤 10. 다크 모드 `prefers-color-scheme`.
+- **셸**: iOS 내비게이션 바처럼 상단 고정 반투명 막대(`backdrop-filter: blur`, 바탕 흐림, 스크롤하면 아래 hairline). 페이지 첫 화면은 큰 제목(largeTitle)이 막대 아래에 있다가 스크롤하면 막대 가운데 작은 제목으로 바뀐다. 오른쪽에 저장한 명함 링크. 내용 폭은 모바일 기준(최대 720px 가운데, 좌우 16).
+- **발견**: 검색 입력은 iOS 검색 필드(높이 36, 둥근 10, 채움, 돋보기·지우기), `마감 숨기기`는 iOS 스위치 행. 프로그램 카드는 iOS 앱 카드와 같은 구조(로고 44 둥근 14, 이름·조직·태그 칩, 오른쪽 개수 배지 ↔ 펼침 화살표, 부드러운 펼침), 활동 행은 inset grouped 카드 안의 행.
+- **활동 상세**: 상단 정보 묶음, inset grouped 섹션(모집 기간·활동 기간·장소·대상·일정), 하단 고정 CTA(전체 너비 `tealFill` 버튼 + 보조 텍스트 버튼, 안전 영역 여백).
+- **공개 명함 `/cards/:id`·저장한 명함 `/saved`**: 앱 명함 면과 같은 표현, 저장 CTA는 하단 고정. 목록은 inset grouped.
+- **상태 화면**: 기존 `CenteredMessage` 규칙(64 원·제목·설명·CTA) 유지.
+- 접근성: 터치 영역 44, 포커스 링, `prefers-reduced-motion`. 성능: 클라이언트 JS는 필요한 곳(펼침·스위치·시트)만.
 
 ## 활동 장소 — 2026-10-19 사용자 결정
 

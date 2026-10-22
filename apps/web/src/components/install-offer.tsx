@@ -14,7 +14,7 @@ function storedDismissal() {
 }
 
 /**
- * Optional home-screen offer shown after cards are saved: Chrome's install button when it offers one,
+ * Optional home-screen offer (a bottom sheet) shown after cards are saved: Chrome's install button when it offers one,
  * otherwise the Share → Add to Home Screen steps on iOS Safari. Hidden once installed or dismissed.
  * Server rendering shows nothing, so the offer never flashes before the browser checks.
  */
@@ -27,11 +27,14 @@ export function InstallOffer() {
   );
   const stored = useSyncExternalStore(noChanges, storedDismissal, () => true);
   const [dismissedNow, setDismissedNow] = useState(false);
-  if (installed || stored || dismissedNow || (!prompt && !ios)) return null;
+  // Closed by tapping outside or Escape: hidden until the next visit, not remembered.
+  const [closed, setClosed] = useState(false);
+  if (installed || stored || dismissedNow || closed || (!prompt && !ios)) return null;
   return (
     <InstallPrompt
       platform={prompt ? "android" : "ios"}
       onInstall={prompt}
+      onClose={() => setClosed(true)}
       onDismiss={() => {
         setDismissedNow(true);
         try {

@@ -1,1257 +1,165 @@
+@import "tailwindcss";
+@import "tw-animate-css";
 @import "../shared/ui/pretendard.css";
+
+/*
+ * iOS tokens (contract "웹 리디자인 — iOS 앱과 같은 표현", 2026-10-22; "색 체계"): neutral colours are the iOS system colours,
+ * teal (#007F80, the logo colour) is the one accent. `--teal` is the text/icon/border accent (#3FB3B4 in dark); `--teal-fill` is
+ * filled surfaces (buttons, badges, switch, state circle) — the same #007F80 in both schemes with white `--on-teal` text.
+ */
 :root {
+  color-scheme: light;
+  --background: #f2f2f7; /* systemGroupedBackground */
+  --card: #ffffff; /* secondarySystemGroupedBackground */
+  --fill: rgb(118 118 128 / 0.12); /* tertiarySystemFill */
+  --separator: rgb(60 60 67 / 0.29);
+  --label: #000000;
+  --secondary-label: rgb(60 60 67 / 0.6);
   --teal: #007f80;
-  --teal-dark: #006768;
-  --mint: #e9f6f3;
-  --ink: #172426;
-  --muted: #586669;
-  --line: #e3e9e8;
-  --soft: #f5f7f7;
-  --danger: #a12a2a;
-  --danger-soft: #fff2f1;
-  --success: #1f8a4c;
-  /* Surfaces and the text on filled teal; every former `white`/`#fff` reads one of these so dark mode has no white islands. */
-  --bg: #fff;
-  --card: #fff;
-  /* 청록 채움 흰 글자 (contract "웹에도 같은 규칙", 2026-10-20): filled surfaces (buttons, badges, chips, switch, state circle) use
-     `--teal-fill` — the same #007F80 in both schemes — with white text; `--teal` is the text/border accent only. */
   --teal-fill: #007f80;
-  --on-teal: #fff;
+  --on-teal: #ffffff;
+  --mint: color-mix(in srgb, var(--teal) 12%, transparent);
+  --danger: #a12a2a;
+  --bar: rgb(242 242 247 / 0.8);
 }
-/* 다크 모드 (contract "색 체계" › "다크 모드", 2026-10-19 밤): tokens only, no component restyle. The accent teal is the lighter
-   variant (#007F80 → #3FB3B4) so it stays readable on dark surfaces; filled teal and its white text do not change. */
 @media (prefers-color-scheme: dark) {
   :root {
     color-scheme: dark;
+    --background: #000000;
+    --card: #1c1c1e;
+    --fill: rgb(118 118 128 / 0.24);
+    --separator: rgb(84 84 88 / 0.6);
+    --label: #ffffff;
+    --secondary-label: rgb(235 235 245 / 0.6);
     --teal: #3fb3b4;
-    --teal-dark: #3fb3b4;
-    --mint: #15302f;
-    --ink: #e6ebeb;
-    --muted: #9aa7a9;
-    --line: #2b3436;
-    --soft: #1c2426;
-    --danger: #ff8a80;
-    --danger-soft: #3a1f1e;
-    --success: #6fcf8f;
-    --bg: #0f1415;
-    --card: #181f21;
+    --danger: #f0625c;
+    --bar: rgb(18 18 18 / 0.8);
   }
 }
-* {
-  box-sizing: border-box;
+
+@theme inline {
+  --color-background: var(--background);
+  --color-card: var(--card);
+  --color-fill: var(--fill);
+  --color-separator: var(--separator);
+  --color-label: var(--label);
+  --color-secondary-label: var(--secondary-label);
+  --color-teal: var(--teal);
+  --color-teal-fill: var(--teal-fill);
+  --color-on-teal: var(--on-teal);
+  --color-mint: var(--mint);
+  --color-danger: var(--danger);
+  --color-bar: var(--bar);
+  --font-sans: -apple-system, BlinkMacSystemFont, "Pretendard Variable", "Pretendard", system-ui, sans-serif;
+  /* iOS text styles (size / line height) */
+  --text-large-title: 34px;
+  --text-large-title--line-height: 41px;
+  --text-title1: 28px;
+  --text-title1--line-height: 34px;
+  --text-title2: 22px;
+  --text-title2--line-height: 28px;
+  --text-headline: 17px;
+  --text-headline--line-height: 22px;
+  --text-body: 17px;
+  --text-body--line-height: 24px;
+  --text-subheadline: 15px;
+  --text-subheadline--line-height: 20px;
+  --text-footnote: 13px;
+  --text-footnote--line-height: 18px;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+  --text-caption2: 11px;
+  --text-caption2--line-height: 13px;
+  --radius-card: 20px;
+  --radius-control: 10px;
 }
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--ink);
-  font:
-    16px/1.6 "Pretendard Variable",
-    "Apple SD Gothic Neo",
-    "Noto Sans KR",
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
-a {
-  color: inherit;
-  text-decoration: none;
-}
-button {
-  font: inherit;
-  cursor: pointer;
-}
-button,
-a {
-  -webkit-tap-highlight-color: transparent;
-}
-button:disabled {
-  opacity: 0.6;
-  cursor: wait;
-}
-a:focus-visible,
-button:focus-visible {
-  outline: 3px solid var(--teal);
-  outline-offset: 5px;
-}
-h1,
-h2,
-h3,
-p {
-  margin: 0;
-}
-h1 {
-  font-size: 32px;
-  line-height: 1.35;
-  letter-spacing: -1px;
-}
-h2 {
-  font-size: 21px;
-  line-height: 1.5;
-  letter-spacing: -0.4px;
-}
-h3 {
-  font-size: 18px;
-  line-height: 1.5;
-}
-ul,
-ol {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-svg {
-  flex-shrink: 0;
-}
-img {
-  max-width: 100%;
-  height: auto;
-}
-p,
-dd,
-h1,
-h2,
-h3,
-a {
-  overflow-wrap: anywhere;
-}
-.muted {
-  color: var(--muted);
-}
-.eyebrow {
-  color: var(--teal-dark);
-  font-size: 14px;
-  font-weight: 600;
-}
-.button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-height: 52px;
-  padding: 12px 24px;
-  border: 1px solid var(--teal-fill);
-  border-radius: 10px;
-  background: var(--teal-fill);
-  color: var(--on-teal);
-  font-weight: 700;
-  text-align: center;
-}
-.button:hover {
-  background: color-mix(in srgb, var(--teal-fill) 86%, #000);
-}
-.button.secondary {
-  background: var(--card);
-  color: var(--teal-dark);
-}
-.button.secondary:hover {
-  background: var(--mint);
-}
-.skip-link {
-  position: fixed;
-  top: -100px;
-  left: 16px;
-  background: var(--card);
-  padding: 12px;
-  z-index: 99;
-}
-.skip-link:focus {
-  top: 10px;
-}
-.site-header {
-  border-bottom: 1px solid var(--line);
-  background: var(--card);
-}
-.header-inner {
-  max-width: 1000px;
-  margin: auto;
-  min-height: 88px;
-  padding: 12px 32px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-}
-/* Brand lockup = symbol + "Dearby" in Pretendard 700 (shared/assets/brand/wordmark.svg is exactly this), both in the theme's
-   teal — the lighter variant in dark (contract "다크 모드"). Letter-spacing follows the wordmark's -4/210em. */
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 48px;
-  color: var(--teal);
-}
-.brand-name {
-  font-size: 22px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: -0.4px;
-}
-.site-header nav {
-  display: flex;
-  gap: 28px;
-}
-.site-header nav a {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 48px;
-  color: var(--muted);
-  font-size: 15px;
-}
-.site-header nav a[aria-current] {
-  color: var(--teal-dark);
-  font-weight: 700;
-}
-.main {
-  max-width: 1000px;
-  padding: 48px 32px 64px;
-  margin: auto;
-  min-height: calc(100svh - 177px);
-}
-.site-footer {
-  max-width: 936px;
-  margin: auto;
-  border-top: 1px solid var(--line);
-  padding: 24px 0 28px;
-  color: var(--muted);
-  font-size: 13px;
-}
-.page-heading {
-  margin-bottom: 28px;
-}
-.page-heading h1 {
-  margin: 8px 0 10px;
-}
-/* 발견 검색 (contract "웹에도 같은 규칙" › "발견 검색·토글"): stacked 14/500 secondary label over a system-looking `type="search"`
-   field — magnifier at the left, 44px clear button at the right (the WebKit cancel glyph is hidden so there is one clear) — 17px
-   text, 48px row, secondary placeholder. Enter submits; `/?q=` stays the source of truth. */
-.search {
-  display: grid;
-  gap: 6px;
-  margin-bottom: 8px;
-}
-.field-label {
-  color: var(--muted);
-  font-size: 14px;
-  font-weight: 500;
-}
-.search-field {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-.search-field > svg {
-  position: absolute;
-  left: 14px;
-  color: var(--muted);
-  pointer-events: none;
-}
-.search-field input {
-  flex: 1;
-  min-width: 0;
-  min-height: 48px;
-  padding: 0 48px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--soft);
-  color: var(--ink);
-  font: inherit;
-  font-size: 17px;
-  appearance: none;
-  -webkit-appearance: none;
-}
-.search-field input::-webkit-search-cancel-button,
-.search-field input::-webkit-search-decoration {
-  display: none;
-  -webkit-appearance: none;
-}
-.search-field input::placeholder {
-  color: var(--muted);
-  opacity: 1;
-}
-.search-field input:focus-visible {
-  outline: 3px solid var(--teal);
-  outline-offset: 2px;
-}
-.search-clear {
-  position: absolute;
-  right: 2px;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: none;
-  color: var(--muted);
-}
-.search-clear:focus-visible {
-  outline-offset: -2px;
-}
-.load-more {
-  display: grid;
-  justify-items: center;
-  gap: 12px;
-  margin-top: 24px;
-  color: var(--muted);
-  font-size: 14px;
-}
-.state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 72px 20px;
-  min-height: 300px;
-}
-/* Icon tones (contract "아이콘 통일"): secondary text or the teal accent; without a tone the glyph inherits. */
-.icon-secondary {
-  color: var(--muted);
-}
-.icon-teal {
-  color: var(--teal);
-}
-.loader {
-  width: 24px;
-  height: 24px;
-  border: 2px solid var(--line);
-  border-top-color: var(--teal);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    @apply bg-background font-sans text-body text-label antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--teal);
+    outline-offset: 2px;
   }
 }
-.inline-note {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-top: 28px;
-  padding: 24px 0;
-  color: var(--muted);
-  font-size: 14px;
-}
-.inline-note a {
-  margin-left: auto;
-  white-space: nowrap;
-  color: var(--teal-dark);
-  font-weight: 600;
-  min-height: 44px;
-  display: flex;
-  align-items: center;
-}
-.mobile-break {
-  display: none;
-}
-.activity-list {
-  display: grid;
-  gap: 16px;
-}
-/* 발견 카드 리뉴얼(2026-10-19): One UI 알림 카드 느낌의 프로그램 카드. 머리(아바타 · 이름/조직/태그 · 개수/화살표+메타)와
-   항상 마운트된 본문(grid-template-rows 0fr→1fr + opacity 전환). 색은 기존 토큰만. */
-.program-list {
-  display: grid;
-  gap: 10px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.program {
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  background: var(--card);
-  overflow: hidden;
-}
-.program-header {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 12px;
-  padding: 14px 14px 12px;
-}
-.program-toggle {
-  display: grid;
-  grid-template-columns: 44px 1fr;
-  gap: 12px;
-  align-items: start;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-/* The whole header is pressable: the toggle's hit area covers the right column; the chevron button sits above it. */
-.program-toggle::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-}
-.program-toggle:focus-visible {
-  outline: none;
-}
-.program-toggle:focus-visible::after {
-  outline: 2px solid var(--teal);
-  outline-offset: -2px;
-  border-radius: 20px;
-}
-.program:hover {
-  border-color: var(--teal);
-}
-.program-avatar {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  overflow: hidden;
-  background: var(--mint);
-  color: var(--teal);
-  font-size: 18px;
-  font-weight: 700;
-}
-/* 프로그램 로고 (contract "프로그램 로고"): fills the 44px slot, aspect fill */
-.program-avatar img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.program-copy {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-}
-.program-name {
-  font-size: 16px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  overflow-wrap: anywhere;
-}
-.program-org {
-  color: var(--muted);
-  font-size: 13px;
-}
-.program-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 7px;
-}
-.program-tag {
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: var(--mint);
-  color: var(--teal-dark);
-  font-size: 12px;
-  font-weight: 500;
-}
-.program-tag.more {
-  background: var(--soft);
-  color: var(--muted);
-}
-.program-side {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  min-width: 44px;
-  pointer-events: none;
-}
-.program-count,
-.program-collapse {
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  margin: -6px -6px 0;
-}
-.program-count {
-  color: var(--on-teal);
-  font-size: 14px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.program-count:not(:empty)::before,
-.program-collapse::before {
-  content: "";
-  grid-area: 1 / 1;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--teal-fill);
-}
-.program-count > * {
-  grid-area: 1 / 1;
-}
-.program-collapse {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--teal);
-  /* The chevron is an inline (1em) glyph; this is the only size it takes. */
-  font-size: 18px;
-  pointer-events: auto;
-  cursor: pointer;
-}
-.program-collapse::before {
-  background: var(--mint);
-}
-.program-collapse svg {
-  grid-area: 1 / 1;
-  transform: rotate(180deg);
-  transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1.15);
-}
-.program-collapse:focus-visible {
-  outline: none;
-}
-.program-collapse:focus-visible::before {
-  outline: 2px solid var(--teal);
-  outline-offset: 2px;
-}
-.program-meta {
-  color: var(--muted);
-  font-size: 11px;
-  white-space: nowrap;
-}
-.program-body {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 0.32s cubic-bezier(0.2, 0.9, 0.3, 1.05);
-}
-.program-body > div {
-  overflow: hidden;
-  min-height: 0;
-}
-.program[data-open] .program-body {
-  grid-template-rows: 1fr;
-}
-.program-inner {
-  display: grid;
-  gap: 8px;
-  padding: 0 10px 12px;
-  opacity: 0;
-  transform: translateY(-6px);
-  transition:
-    opacity 0.22s ease 0.08s,
-    transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1.1) 0.04s;
-}
-.program[data-open] .program-inner {
-  opacity: 1;
-  transform: none;
-}
-.program-inner .activity-list {
-  gap: 8px;
-}
-.category-heading {
-  margin: 6px 6px 0;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  color: var(--muted);
-}
-.detail-heading .badge + .badge {
-  margin-left: 6px;
-}
-.program-inner .state {
-  padding: 24px 0;
-  min-height: 0;
-}
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-.dot {
-  padding: 0 5px;
-  color: var(--muted);
-}
-.detail {
-  max-width: 720px;
-  margin: auto;
-}
-.back-link {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  min-height: 44px;
-  font-size: 14px;
-  color: var(--muted);
-  margin-bottom: 24px;
-}
-.detail-heading {
-  padding-bottom: 32px;
-}
-.detail-heading .badge {
-  margin: 14px 0;
-}
-.badge {
-  display: inline-block;
-  background: var(--mint);
-  color: var(--teal-dark);
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: 6px;
-  padding: 3px 9px;
-}
-.badge.neutral {
-  background: var(--soft);
-  color: var(--muted);
-}
-.lead {
-  font-size: 18px;
-  color: var(--muted);
-  margin-top: 16px;
-  white-space: pre-line;
-}
-.detail-section {
-  padding: 32px 0;
-  border-top: 1px solid var(--line);
-}
-.detail-section > h2 {
-  margin-bottom: 20px;
-}
-.facts {
-  margin: 0;
-  display: grid;
-  gap: 16px;
-}
-.facts > div {
-  display: grid;
-  grid-template-columns: 96px 1fr;
-  gap: 16px;
-}
-.facts dt {
-  color: var(--muted);
-}
-.facts dd {
-  margin: 0;
-}
-.eligibility-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.eligibility-list .badge {
-  white-space: pre-line;
-}
-.schedule-list {
-  display: grid;
-  gap: 16px;
-}
-/* 일정 행: 24px secondary glyph in one column, no box (contract "카드는 섹션 구분에만"). */
-.schedule-list li {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-}
-.schedule-list svg {
-  margin-top: 2px;
-}
-.schedule-list p {
-  color: var(--muted);
-  margin-top: 5px;
-}
-.source p {
-  margin: 10px 0;
-}
-/* 활동 장소(2026-10-19): 이름·주소를 지도 링크로 */
-.place-link {
-  display: inline-flex;
-  align-items: flex-start;
-  gap: 10px;
-  min-height: 44px;
-  color: var(--teal-dark);
-}
-.place-link svg {
-  flex: none;
-  margin-top: 1px;
-}
-.place-link > span {
-  display: grid;
-  gap: 2px;
-}
-.place-link strong {
-  text-decoration: underline;
-}
-.text-link {
-  color: var(--teal-dark);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-.detail-action {
-  border-top: 1px solid var(--line);
-  padding: 24px 0 0;
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-.detail-action p {
-  font-size: 13px;
-  flex: 1;
-}
-.detail-action .button {
-  max-width: 55%;
-}
-.avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 96px;
-  height: 96px;
-  background: var(--mint);
-  color: var(--teal-dark);
-  font-weight: 600;
-  font-size: 38px;
-  border-radius: 50%;
-}
-.avatar.small {
-  width: 60px;
-  height: 60px;
-  font-size: 25px;
-}
-/* 공개 명함 카드 면(contract "명함 표현 — 2026-10-18"): 흰 바탕·모서리 20·구분선 테두리·여백 20, 최대 480 가운데 */
-.card-sheet {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 20px;
-  max-width: 480px;
-  margin: 0 auto;
-}
-.card-head {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: 10px;
-}
-.card-sheet .avatar {
-  width: 56px;
-  height: 56px;
-  font-size: 22px;
-  background: var(--mint);
-  color: var(--teal);
-}
-.card-head h1 {
-  font-size: 24px;
-  line-height: 1.3;
-}
-.job-chips {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px;
-}
-.job-chips li {
-  background: var(--soft);
-  color: var(--teal-dark);
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: 999px;
-  padding: 4px 10px;
-}
-.card-org {
-  font-size: 14px;
-  color: var(--muted);
-}
-.card-intro {
-  margin-top: 20px;
-}
-.card-section {
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid var(--line);
-}
-.card-section h2 {
-  font-size: 15px;
-  margin-bottom: 8px;
-}
-.card-section > .muted {
-  font-size: 15px;
-  padding: 8px 0;
-}
-.contact-rows {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.contact-rows li + li {
-  border-top: 1px solid var(--line);
-}
-.contact-rows li > a,
-.contact-rows li > div {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 56px;
-  padding: 8px 0;
-}
-.contact-icon,
-.contact-external {
-  display: flex;
-  flex-shrink: 0;
-}
-.contact-icon {
-  color: var(--teal);
-}
-.contact-external {
-  color: var(--muted);
-}
-.contact-text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.contact-label {
-  font-size: 12px;
-  color: var(--muted);
-}
-.contact-value {
-  font-size: 15px;
-  overflow-wrap: anywhere;
-}
-.history-rows {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.history-rows li {
-  padding: 12px 0;
-}
-.history-rows li + li {
-  border-top: 1px solid var(--line);
-}
-.history-rows li:last-child {
-  padding-bottom: 0;
-}
-.history-period {
-  font-size: 13px;
-  color: var(--muted);
-}
-.history-rows h3 {
-  font-size: 16px;
-  margin: 4px 0 2px;
-}
-.history-role {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 4px;
-  font-size: 15px;
-}
-.history-description {
-  color: var(--muted);
-  margin-top: 8px;
-  white-space: pre-line;
-}
-/* 교환 장소 한 줄은 카드 위, 카드와 같은 너비(contract "명함 교환") */
-.exchange-place {
-  max-width: 480px;
-  margin: 0 auto 12px;
-  color: var(--teal-dark);
-  font-size: 14px;
-  font-weight: 600;
-  text-align: center;
-}
-/* 저장 버튼·쿠키 안내는 카드 아래, 카드와 같은 너비 */
-.save-area {
-  text-align: center;
-  max-width: 480px;
-  margin: 24px auto 0;
-}
-.save-area > .button {
-  width: 100%;
-  margin-top: 16px;
-}
-.save-area > .button + .muted {
-  margin-top: 8px;
-  font-size: 14px;
-}
-.saved-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
-}
-.saved-meta .badge {
-  margin-left: 0;
-}
-.cookie-note {
-  font-size: 13px;
-  color: var(--muted);
-  margin-top: 16px;
-  line-height: 1.7;
-}
-/* 쿠키 안내: 24px glyph + text on the background, no box (contract "카드는 섹션 구분에만"). */
-.cookie-info {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  padding: 4px 0 20px;
-  font-size: 14px;
-}
-.cookie-info > svg {
-  margin-top: 1px;
-}
-.cookie-info p {
-  color: var(--muted);
-  margin-top: 4px;
-}
-.saved-list {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-.saved-card {
-  background: var(--mint);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  overflow: hidden;
-}
-.saved-card:hover {
-  border-color: var(--teal);
-}
-.saved-card > a {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 24px;
-}
-.saved-card h2 {
-  font-size: 21px;
-}
-.saved-card p {
-  font-size: 14px;
-}
-.remove-button {
-  display: block;
-  margin: 0 20px 12px auto;
-  background: transparent;
-  border: 0;
-  color: var(--muted);
-  font-size: 13px;
-  min-height: 44px;
-  padding: 10px;
-}
-.remove-button:hover {
-  color: var(--danger);
-}
-.list-count {
-  font-size: 14px;
-  color: var(--muted);
-  margin-bottom: 16px;
-}
-.reset-button {
-  border: 0;
-  border-bottom: 1px solid var(--line);
-  background: var(--card);
-  color: var(--muted);
-  font-size: 13px;
-  padding: 10px 0;
-  min-height: 44px;
-  margin-top: 24px;
-}
-.status-line {
-  font-size: 14px;
-  color: var(--teal-dark);
-  margin: 16px 0;
-  min-height: 0;
-}
-.error-message {
-  color: var(--danger);
-  margin-top: 16px;
-  font-size: 14px;
-}
-.error-message a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  font-weight: 600;
-  text-decoration: underline;
-}
-.success {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  color: var(--teal-dark);
-  margin-top: 16px;
-}
-@media (max-width: 640px) {
-  .program-header {
-    padding: 12px 12px 10px;
-  }
-  .program-inner {
-    padding: 0 8px 10px;
-  }
-  h1 {
-    font-size: 28px;
-  }
-  .header-inner {
-    min-height: 76px;
-    padding: 12px 20px;
-  }
-  .site-header nav {
-    gap: 18px;
-  }
-  .site-header nav a {
-    font-size: 13px;
-    gap: 6px;
-  }
-  .main {
-    padding: 28px 20px 40px;
-    min-height: calc(100svh - 165px);
-  }
-  .site-footer {
-    margin: 0 20px;
-    font-size: 12px;
-  }
-  .page-heading {
-    margin-bottom: 24px;
-  }
-  .page-heading > .muted {
-    font-size: 14px;
-  }
-  .state {
-    padding: 48px 12px;
-  }
-  .inline-note {
-    flex-wrap: wrap;
-    gap: 12px;
-    padding-top: 0;
-    font-size: 13px;
-  }
-  .inline-note a {
-    margin-left: 40px;
-  }
-  .mobile-break {
-    display: block;
-  }
-  .detail-heading {
-    padding-bottom: 24px;
-  }
-  .detail-section {
-    padding: 26px 0;
-  }
-  .detail-action {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
-  }
-  .detail-action .button {
-    max-width: none;
-  }
-  .lead {
-    font-size: 16px;
-  }
-  .card-sheet {
-    max-width: none;
-    padding: 16px;
-  }
-  .saved-list {
-    grid-template-columns: 1fr;
-  }
-  .saved-card > a {
-    padding: 20px;
-  }
-  .cookie-info {
-    padding: 16px;
-    font-size: 13px;
-  }
-  .back-link {
-    margin-bottom: 16px;
-  }
-  .facts > div {
-    grid-template-columns: 72px 1fr;
-    gap: 12px;
-  }
-  .facts {
-    font-size: 15px;
-  }
-}
+
+/* Reduced motion: expand, sheet and title transitions switch at once. */
 @media (prefers-reduced-motion: reduce) {
-  .loader {
-    animation: none;
-  }
-  .program-body,
-  .program-inner,
-  .program-collapse svg,
-  .switch,
-  .switch::before {
-    transition: none;
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
-/* 명함 본문(마크다운)과 이력 배지 — 프로필·명함 v2 */
-.card-body {
-  white-space: normal;
-}
-.card-body h1,
-.card-body h2,
-.card-body h3 {
-  color: var(--ink, inherit);
-  margin: 12px 0 4px;
-}
-.card-body h1 {
-  font-size: 22px;
-}
-.card-body h2 {
-  font-size: 19px;
-}
-.card-body h3 {
-  font-size: 17px;
-}
-.card-body p {
-  margin: 8px 0;
-}
-.card-body ul,
-.card-body ol {
-  margin: 8px 0;
-  padding-left: 22px;
-}
-.card-body a {
-  text-decoration: underline;
-}
-.badge {
-  display: inline-block;
-  margin-left: 8px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  vertical-align: middle;
-}
-.badge-unverified {
-  background: color-mix(in srgb, var(--muted) 18%, transparent);
-  color: var(--muted);
-}
-.badge-verified {
-  background: color-mix(in srgb, var(--success) 16%, transparent);
-  color: var(--success);
+/* Owner-written card introduction (`lib/markdown.tsx` output). */
+.markdown {
+  @apply text-subheadline leading-relaxed;
+  & :where(h1, h2, h3) {
+    @apply mt-3 mb-1 font-bold;
+  }
+  & h1 {
+    @apply text-title2;
+  }
+  & h2 {
+    @apply text-headline;
+  }
+  & :where(p, ul, ol) {
+    @apply my-2;
+  }
+  & ul {
+    @apply list-disc pl-5;
+  }
+  & ol {
+    @apply list-decimal pl-5;
+  }
+  & a {
+    @apply text-teal underline;
+  }
 }
 
-/* 마감 숨기기 (contract "웹에도 같은 규칙" › "발견 검색·토글"): one left-aligned row under the search field — label then switch,
-   the whole `<label>` toggles, 44px tall. The switch is the native checkbox drawn as a track + knob; filled teal when on. */
-.open-only {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 44px;
-  margin: 0 0 16px;
-  font-size: 15px;
-  cursor: pointer;
-}
-.switch {
-  position: relative;
-  flex: none;
-  width: 51px;
-  height: 31px;
-  margin: 0;
-  border-radius: 999px;
-  background: var(--line);
-  appearance: none;
-  -webkit-appearance: none;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-.switch::before {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 27px;
-  height: 27px;
-  border-radius: 50%;
-  /* White in both schemes (iOS keeps a white knob in dark) so it reads against the grey and teal tracks. */
-  background: #fff;
-  box-shadow: 0 2px 4px rgb(0 0 0 / 0.25);
-  transition: transform 0.2s;
-}
-.switch:checked {
-  background: var(--teal-fill);
-}
-.switch:checked::before {
-  transform: translateX(20px);
-}
-.switch:focus-visible {
-  outline: 3px solid var(--teal);
-  outline-offset: 3px;
-}
-
-/* 약관·개인정보 처리방침 (2026-10-19): 상세 페이지와 같은 폭의 읽기 전용 글 */
+/* Privacy/terms text page: grouped section headers over inset-grouped text blocks. Classed paragraphs keep their own style. */
 .legal {
-  max-width: 720px;
-  margin: auto;
-  line-height: 1.65;
-}
-.legal h1 {
-  font-size: 24px;
-  margin: 4px 0 12px;
-}
-.legal h2 {
-  font-size: 17px;
-  margin: 28px 0 8px;
-}
-.legal p,
-.legal li {
-  font-size: 15px;
-}
-.legal ul {
-  padding-left: 20px;
-}
-.legal li + li {
-  margin-top: 6px;
-}
-.legal-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-  margin: 8px 0 4px;
-}
-.legal-table th,
-.legal-table td {
-  text-align: left;
-  vertical-align: top;
-  padding: 8px 6px;
-  border-bottom: 1px solid var(--line);
-}
-.legal-table th {
-  color: var(--muted);
-  font-weight: 600;
-}
-.footer-links {
-  display: inline-flex;
-  gap: 16px;
-  margin-left: 16px;
-}
-.footer-links a {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  color: var(--muted);
-  text-decoration: underline;
+  @apply text-subheadline leading-relaxed;
+  & h2 {
+    @apply mt-8 mb-2 px-4 text-footnote font-semibold text-secondary-label;
+  }
+  & :where(p:not([class]), ul) {
+    @apply rounded-card bg-card px-5 py-4;
+  }
+  & ul {
+    @apply list-disc pl-9;
+  }
+  & li + li {
+    @apply mt-2;
+  }
+  & a {
+    @apply text-teal underline;
+  }
+  & code {
+    @apply rounded bg-fill px-1 text-footnote;
+  }
+  & table {
+    @apply block w-full overflow-x-auto rounded-card bg-card text-footnote;
+  }
+  & :where(th, td) {
+    @apply border-b border-separator px-4 py-3 text-left align-top;
+  }
+  & tr:last-child td {
+    @apply border-b-0;
+  }
+  & th {
+    @apply font-semibold whitespace-nowrap text-secondary-label;
+  }
 }
