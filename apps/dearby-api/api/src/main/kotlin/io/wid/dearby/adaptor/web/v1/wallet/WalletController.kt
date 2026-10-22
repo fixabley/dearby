@@ -31,5 +31,17 @@ class WalletController(private val wallet: WalletService) {
         return ReciprocateResponse(true)
     }
 
+    // 차단(native-v1.md "명함 신고·차단"): 그 명함 주인의 명함을 내 지갑에서 모두 빼고 기록한다. 이미 차단했으면 그 기록(201)
+    @PostMapping("/blocks")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun block(@AuthenticationPrincipal jwt: Jwt, @RequestBody request: BlockRequest) = BlockResponse.from(wallet.block(userId(jwt), request.cardId))
+
+    @GetMapping("/blocks")
+    fun blocks(@AuthenticationPrincipal jwt: Jwt) = BlockListResponse(wallet.blocks(userId(jwt)).map(BlockResponse::from))
+
+    @DeleteMapping("/blocks/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    fun unblock(@AuthenticationPrincipal jwt: Jwt, @PathVariable id: UUID) = wallet.unblock(userId(jwt), id)
+
     private fun userId(jwt: Jwt): UUID = UUID.fromString(jwt.subject)
 }

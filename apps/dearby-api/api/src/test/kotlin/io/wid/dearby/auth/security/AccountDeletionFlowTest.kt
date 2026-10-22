@@ -71,6 +71,11 @@ class AccountDeletionFlowTest(
         jdbc.sql("insert into users (id) values (?)").param(stranger).update()
         val receipt = UUID.randomUUID()
         jdbc.sql("insert into receipts (id, recipient_id, card_id, context, received_at) values (?, ?, ?, '{}', now())").params(receipt, stranger, card).update()
+        // 명함 신고·차단(V48, 논리키): 내 명함에 대한 신고, 내가 한 신고, 내가 한·받은 차단
+        jdbc.sql("insert into card_reports (id, card_id, reason, detail, card_snapshot, created_at) values (?, ?, 'SPAM', ?, '{}', now())").params(UUID.randomUUID(), card, "about:$id").update()
+        jdbc.sql("insert into card_reports (id, card_id, reporter_user_id, reason, detail, card_snapshot, created_at) values (?, ?, ?, 'SPAM', ?, '{}', now())").params(UUID.randomUUID(), UUID.randomUUID(), id, "by:$id").update()
+        jdbc.sql("insert into card_blocks (id, blocker_user_id, blocked_user_id, name, created_at) values (?, ?, ?, '남', now())").params(UUID.randomUUID(), id, stranger).update()
+        jdbc.sql("insert into card_blocks (id, blocker_user_id, blocked_user_id, name, created_at) values (?, ?, ?, '이름', now())").params(UUID.randomUUID(), stranger, id).update()
         // 내 활동과 일정 상태(native-v1.md "내 활동 서버 저장"). 일정 상태는 논리키라 직접 지운다
         jdbc.sql("insert into user_activities (id, user_id, activity_id, created_at, updated_at) values (?, ?, -1, now(), now())").params(id, id).update()
         jdbc.sql("insert into user_activity_schedule_statuses (user_activity_id, schedule_id, default_kind, updated_at) values (?, -1, 'PASSED', now())").param(id).update()
@@ -158,6 +163,12 @@ class AccountDeletionFlowTest(
         assertEquals(0, count("user_activities", "user_id", user.id))
         assertEquals(0, count("user_activity_schedule_statuses", "user_activity_id", user.id))
         assertEquals(1, count("user_activity_schedule_statuses", "user_activity_id", other.id))
+        // 내 명함에 대한 신고와 내가 하거나 받은 차단은 지우고, 내가 한 신고는 신고자만 비워 남긴다
+        assertEquals(0, count("card_reports", "reporter_user_id", user.id))
+        assertEquals(0, count("card_blocks", "blocker_user_id", user.id) + count("card_blocks", "blocked_user_id", user.id))
+        assertEquals(1, count("card_blocks", "blocker_user_id", other.id))
+        fun reports(detail: String) = jdbc.sql("select count(*) from card_reports where detail = ? and reporter_user_id is null").param(detail).query(Int::class.java).single()
+        assertEquals(listOf(0, 1, 1), listOf(reports("about:${user.id}"), reports("by:${user.id}"), reports("about:${other.id}")))
         // 내 명함을 받아 둔 다른 사람의 지갑 행도 함께 지워진다
         assertEquals(0, jdbc.sql("select count(*) from receipts r left join business_cards b on b.id = r.card_id where b.id is null").query(Int::class.java).single())
         assertEquals(1, count("user_entities", "id", handle(other.id)))

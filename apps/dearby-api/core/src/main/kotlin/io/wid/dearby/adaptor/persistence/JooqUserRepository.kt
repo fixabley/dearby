@@ -31,6 +31,10 @@ class JooqUserRepository(private val dsl: DSLContext) : UserRepository {
     // 나머지는 논리키라 직접 지운다. 패스키는 user handle(UUID 16바이트) 또는 2026-10-15 이전 가입분의 name(UUID 문자열)으로 찾는다
     @Transactional
     override fun delete(id: UserId) {
+        // 명함 신고·차단(논리키, V48): 내 명함에 대한 신고와 내가 하거나 받은 차단은 지우고, 내가 한 신고는 신고자만 비운다
+        dsl.deleteFrom(CARD_REPORTS).where(CARD_REPORTS.CARD_ID.`in`(dsl.select(BUSINESS_CARDS.ID).from(BUSINESS_CARDS).where(BUSINESS_CARDS.USER_ID.eq(id)))).execute()
+        dsl.update(CARD_REPORTS).setNull(CARD_REPORTS.REPORTER_USER_ID).where(CARD_REPORTS.REPORTER_USER_ID.eq(id)).execute()
+        dsl.deleteFrom(CARD_BLOCKS).where(CARD_BLOCKS.BLOCKER_USER_ID.eq(id).or(CARD_BLOCKS.BLOCKED_USER_ID.eq(id))).execute()
         // 내 명함을 받은 다른 사람의 지갑 행부터(논리키), 그다음 명함
         dsl.deleteFrom(RECEIPTS).where(RECEIPTS.CARD_ID.`in`(dsl.select(BUSINESS_CARDS.ID).from(BUSINESS_CARDS).where(BUSINESS_CARDS.USER_ID.eq(id)))).execute()
         dsl.deleteFrom(BUSINESS_CARDS).where(BUSINESS_CARDS.USER_ID.eq(id)).execute()

@@ -84,7 +84,7 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
 
         // 처음 보는 사람은 유효한 QR 코드가 있어야 본다(native-v1.md "명함 QR 코드"). 주인은 코드 없이 본다
         val code = qr(user, card["id"].asString())["code"].asString()
-        mvc.get("/v1/cards/${card["id"].asString()}").andExpect { status { isForbidden() }; jsonPath("$.code") { value("CARD_CODE_REQUIRED") } }
+        mvc.get("/v1/cards/${card["id"].asString()}").andExpect { status { isForbidden() }; jsonPath("$.code") { value("CARD_CODE_REQUIRED") }; jsonPath("$.type") { value("https://dearby.wid.io.kr/problems/card-code-required") } }
         mvc.get("/v1/cards/${card["id"].asString()}") { asUser(user) }.andExpect { status { isOk() } }
         val public = read(mvc.get("/v1/cards/${card["id"].asString()}?code=$code").andExpect { status { isOk() } })
         assertFalse(public.has("template"))
@@ -250,7 +250,7 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
 
         // 여러 명이 같은 코드로 본다. 다른 명함에는 쓸 수 없다
         repeat(3) { mvc.get("/v1/cards/$cardId?code=$code").andExpect { status { isOk() } } }
-        mvc.get("/v1/cards/$otherCard?code=$code").andExpect { status { isForbidden() }; jsonPath("$.code") { value("CARD_CODE_EXPIRED") } }
+        mvc.get("/v1/cards/$otherCard?code=$code").andExpect { status { isForbidden() }; jsonPath("$.code") { value("CARD_CODE_EXPIRED") }; jsonPath("$.type") { value("https://dearby.wid.io.kr/problems/card-code-expired") } }
 
         // 새로고침 = 새 코드 + 이전 코드 닫기. 닫은 코드는 2분 동안은 쓸 수 있다
         val refreshed = qr(owner, cardId)["code"].asString()
@@ -271,5 +271,51 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         mvc.get("/v1/cards/$cardId?code=$refreshed").andExpect { status { isOk() } }
         // 이미 만료된 코드를 닫아도 204
         mvc.delete("/v1/cards/$cardId/qr-codes/$codeId") { asUser(owner) }.andExpect { status { isNoContent() } }
+    }
+
+    // native-v1.md "명함 신고·차단"(2026-10-22): 볼 권한이 있는 사람의 신고, 24시간 중복 방지, 주인 단위 차단과 해제
+    @Test
+    fun `신고는 볼 권한이 있어야 하고 24시간 안 재신고는 200이며, 차단하면 그 주인의 명함을 받지 않고 맞교환도 조용히 막힌다`() {
+        val (owner, ownerProfile) = userWithProfile("주인")
+        val (receiver, receiverProfile) = userWithProfile("받는이")
+        val (stranger, _) = userWithProfile("남")
+        val ownerCard = publish(owner, ownerProfile)["id"].asString()
+        val receiverCard = publish(receiver, receiverProfile)["id"].asString()
+        put(receiver, "/v1/wallet/cards/$ownerCard", """{"code":"${qr(owner, ownerCard)["code"].asString()}"}""").andExpect { status { isCreated() } }
+        put(owner, "/v1/wallet/cards/$receiverCard", """{"code":"${qr(receiver, receiverCard)["code"].asString()}"}""").andExpect { status { isCreated() } }
+
+        // 신고: 받은 계정은 코드 없이. 같은 사람의 재신고는 200으로 같은 신고. 볼 권한이 없으면 403, 내 명함 400, 사유 검증 400
+        val first = read(post(receiver, "/v1/cards/$ownerCard/reports", """{"reason":"SPAM"}""").andExpect { status { isCreated() } })
+        assertEquals(first["id"].asString(), read(post(receiver, "/v1/cards/$ownerCard/reports", """{"reason":"INAPPROPRIATE"}""").andExpect { status { isOk() } })["id"].asString())
+        post(stranger, "/v1/cards/$ownerCard/reports", """{"reason":"SPAM"}""").andExpect { status { isForbidden() } }
+        post(owner, "/v1/cards/$ownerCard/reports", """{"reason":"SPAM"}""").andExpect { status { isBadRequest() } }
+        post(stranger, "/v1/cards/$ownerCard/reports", """{"reason":"OTHER","code":"${qr(owner, ownerCard)["code"].asString()}"}""").andExpect { status { isBadRequest() } }
+        post(stranger, "/v1/cards/$ownerCard/reports", """{"reason":"NOPE","code":"${qr(owner, ownerCard)["code"].asString()}"}""").andExpect { status { isBadRequest() } }
+        // 코드로만 본 사람(로그인 없음)은 신고자 없이 남는다
+        val anonymousCode = qr(owner, ownerCard)["code"].asString()
+        mvc.post("/v1/cards/$ownerCard/reports") { contentType = MediaType.APPLICATION_JSON; content = """{"reason":"OTHER","detail":"사칭 같아요","code":"$anonymousCode"}""" }.andExpect { status { isCreated() } }
+        // 신고 시점 스냅샷이 남는다
+        val snapshot = jdbc.sql("select card_snapshot::text from card_reports where id = ?").param(UUID.fromString(first["id"].asString())).query(String::class.java).single()
+        assertTrue(snapshot.contains("\"profileName\": \"주인\"") || snapshot.contains("\"profileName\":\"주인\""), snapshot)
+
+        // 차단: 지갑에서 빠지고, 다시 저장하면 409 BLOCKED. 내 명함 차단은 400. 이미 차단했으면 같은 기록
+        post(receiver, "/v1/wallet/blocks", """{"cardId":"$receiverCard"}""").andExpect { status { isBadRequest() } }
+        val block = read(post(receiver, "/v1/wallet/blocks", """{"cardId":"$ownerCard"}""").andExpect { status { isCreated() } })
+        assertEquals("주인", block["name"].asString())
+        assertEquals(block["id"].asString(), read(post(receiver, "/v1/wallet/blocks", """{"cardId":"$ownerCard"}""").andExpect { status { isCreated() } })["id"].asString())
+        assertEquals(0, read(mvc.get("/v1/wallet") { asUser(receiver) })["items"].size())
+        put(receiver, "/v1/wallet/cards/$ownerCard", """{"code":"${qr(owner, ownerCard)["code"].asString()}"}""").andExpect { status { isConflict() }; jsonPath("$.code") { value("BLOCKED") } }
+        // 차단당한 주인의 맞교환은 201이지만 넣지 않는다(알리지 않는다). 상대 지갑의 내 명함은 그대로
+        mvc.post("/v1/wallet/cards/$receiverCard/reciprocate") { asUser(owner); contentType = MediaType.APPLICATION_JSON; content = """{"myCardId":"$ownerCard"}""" }.andExpect { status { isCreated() } }
+        assertEquals(0, read(mvc.get("/v1/wallet") { asUser(receiver) })["items"].size())
+        assertEquals(1, read(mvc.get("/v1/wallet") { asUser(owner) })["items"].size())
+
+        // 목록·해제. 남의 차단은 404. 해제해도 지운 명함은 돌아오지 않고, 새 코드로 다시 받을 수 있다
+        assertEquals(listOf(block["id"].asString()), read(mvc.get("/v1/wallet/blocks") { asUser(receiver) }.andExpect { status { isOk() } })["items"].values().map { it["id"].asString() })
+        mvc.delete("/v1/wallet/blocks/${block["id"].asString()}") { asUser(stranger) }.andExpect { status { isNotFound() } }
+        mvc.delete("/v1/wallet/blocks/${block["id"].asString()}") { asUser(receiver) }.andExpect { status { isNoContent() } }
+        assertEquals(0, read(mvc.get("/v1/wallet/blocks") { asUser(receiver) })["items"].size())
+        assertEquals(0, read(mvc.get("/v1/wallet") { asUser(receiver) })["items"].size())
+        put(receiver, "/v1/wallet/cards/$ownerCard", """{"code":"${qr(owner, ownerCard)["code"].asString()}"}""").andExpect { status { isCreated() } }
     }
 }

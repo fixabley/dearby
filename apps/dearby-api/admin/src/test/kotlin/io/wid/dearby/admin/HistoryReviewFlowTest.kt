@@ -116,4 +116,47 @@ class HistoryReviewFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: Jd
         mvc.delete("/v1/admin/roles/$id") { asAdmin() }.andExpect { status { isNoContent() } }
         mvc.delete("/v1/admin/roles/$id") { asAdmin() }.andExpect { status { isNotFound() } }
     }
+
+    // admin-v1.md "명함 신고 — 2026-10-22": 목록(열린 것 먼저, 같은 명함 신고 수), 상태 바꾸기, 명함 내리기(메모 필수, 열린 신고는 RESOLVED)
+    @Test
+    fun `명함 신고는 ADMIN만 보고 처리하며 명함 내리기는 철회와 같고 열린 신고를 닫는다`() {
+        val owner = UUID.randomUUID()
+        jdbc.sql("insert into users (id) values (?)").param(owner).update()
+        val card = UUID.randomUUID()
+        jdbc.sql(
+            """
+            insert into business_cards (id, user_id, name, description, template, introduction, profile_name, job, contacts, histories, created_at, updated_at)
+            values (?, ?, '명함', '', '', '소개', '신고된 사람', '개발자', '[]', '[]', now(), now())
+            """
+        ).params(card, owner).update()
+        fun report(reason: String, minutesAgo: Int): UUID = UUID.randomUUID().also {
+            jdbc.sql("insert into card_reports (id, card_id, reason, card_snapshot, created_at) values (?, ?, ?, ?::jsonb, now() - make_interval(mins => ?))")
+                .params(it, card, reason, """{"name":"명함","profileName":"신고된 사람","job":"개발자","introduction":"소개","contacts":[{"kind":"EMAIL","label":"메일","value":"a@example.com"}]}""", minutesAgo).update()
+        }
+        val older = report("SPAM", 10)
+        val newer = report("IMPERSONATION", 1)
+
+        mvc.get("/v1/admin/card-reports") { with(jwt().authorities(SimpleGrantedAuthority("ROLE_USER"))) }.andExpect { status { isForbidden() } }
+        val open = read(mvc.get("/v1/admin/card-reports?status=OPEN") { asAdmin() }.andExpect { status { isOk() } })["items"].values().filter { it["cardId"].asString() == card.toString() }
+        assertEquals(listOf(newer.toString(), older.toString()), open.map { it["id"].asString() })
+        assertEquals(listOf(2, 2), open.map { it["reportCount"].asInt() })
+        assertEquals(listOf("신고된 사람", "EMAIL"), listOf(open[0]["cardSnapshot"]["profileName"].asString(), open[0]["cardSnapshot"]["contacts"][0]["kind"].asString()))
+        assertEquals(false, open[0]["cardWithdrawn"].asBoolean())
+
+        // 무시하면 열린 목록에서 빠지고 같은 명함 신고 수는 그대로
+        val dismissed = read(mvc.patch("/v1/admin/card-reports/$older") { asAdmin(); body("""{"status":"DISMISSED","note":"광고 아님"}""") }.andExpect { status { isOk() } })
+        assertEquals(listOf("DISMISSED", "광고 아님", 2), listOf(dismissed["status"].asString(), dismissed["note"].asString(), dismissed["reportCount"].asInt()))
+        mvc.patch("/v1/admin/card-reports/$older") { asAdmin(); body("""{"status":"NOPE"}""") }.andExpect { status { isBadRequest() } }
+        mvc.patch("/v1/admin/card-reports/${UUID.randomUUID()}") { asAdmin(); body("""{"status":"RESOLVED"}""") }.andExpect { status { isNotFound() } }
+
+        // 명함 내리기: 메모 필수, 다른 명함의 신고 id는 404. 내리면 철회되고 열린 신고만 RESOLVED. 다시 내려도 204
+        mvc.post("/v1/admin/cards/$card/withdraw") { asAdmin(); body("""{"reportId":"$newer"}""") }.andExpect { status { isBadRequest() } }
+        mvc.post("/v1/admin/cards/${UUID.randomUUID()}/withdraw") { asAdmin(); body("""{"reportId":"$newer","note":"사칭"}""") }.andExpect { status { isNotFound() } }
+        mvc.post("/v1/admin/cards/$card/withdraw") { asAdmin(); body("""{"reportId":"$newer","note":"사칭"}""") }.andExpect { status { isNoContent() } }
+        assertEquals(true, jdbc.sql("select revoked from business_cards where id = ?").param(card).query(Boolean::class.java).single())
+        val all = read(mvc.get("/v1/admin/card-reports") { asAdmin() })["items"].values().filter { it["cardId"].asString() == card.toString() }.associateBy { it["id"].asString() }
+        assertEquals(listOf("RESOLVED", "사칭", "true"), listOf(all[newer.toString()]!!["status"].asString(), all[newer.toString()]!!["note"].asString(), all[newer.toString()]!!["cardWithdrawn"].asString()))
+        assertEquals("DISMISSED", all[older.toString()]!!["status"].asString())
+        mvc.post("/v1/admin/cards/$card/withdraw") { asAdmin(); body("""{"note":"다시"}""") }.andExpect { status { isNoContent() } }
+    }
 }

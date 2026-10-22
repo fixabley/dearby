@@ -3,9 +3,11 @@ package io.wid.dearby.adaptor.web.v1.cards
 import io.wid.dearby.adaptor.web.v1.guest.GuestController
 import io.wid.dearby.adaptor.web.v1.guest.GuestProperties
 import io.wid.dearby.application.card.CardQrCodes
+import io.wid.dearby.application.card.CardReportService
 import io.wid.dearby.application.card.CardService
 import io.wid.dearby.application.guest.GuestService
 import org.springframework.http.HttpStatus
+import org.springframework.http.ResponseEntity
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.web.bind.annotation.*
@@ -14,7 +16,9 @@ import java.util.*
 // native-v1.md "명함·지갑"·"명함 QR 코드". GET /v1/cards/{id}는 보안 계층에서는 열려 있고(ApiAccessRules) 볼 근거는 CardService.view가 확인한다. 나머지는 주인만
 @RestController
 @RequestMapping("/v1/cards")
-class CardController(private val cards: CardService, private val codes: CardQrCodes, private val guests: GuestService, private val guestProperties: GuestProperties) {
+class CardController(
+    private val cards: CardService, private val codes: CardQrCodes, private val reports: CardReportService, private val guests: GuestService, private val guestProperties: GuestProperties,
+) {
 
     @GetMapping
     fun list(@AuthenticationPrincipal jwt: Jwt) = CardListResponse(cards.list(userId(jwt)).map { CardResponse.from(it, includeTemplate = true) })
@@ -34,7 +38,21 @@ class CardController(private val cards: CardService, private val codes: CardQrCo
     fun get(
         @AuthenticationPrincipal jwt: Jwt?, @PathVariable id: UUID, @RequestParam(required = false) code: String?,
         @RequestHeader(GuestController.PROXY_KEY, required = false) key: String?, @RequestHeader(GuestController.TOKEN, required = false) token: String?,
-    ) = CardResponse.from(cards.view(id, jwt?.let(::userId), guests.holds(guestProperties.proxySecret, key, token, id), code), includeTemplate = false)
+    ): CardResponse {
+        val digest = guests.sessionDigest(guestProperties.proxySecret, key, token)
+        return CardResponse.from(cards.view(id, jwt?.let(::userId), guests.holds(digest, id), code), includeTemplate = false)
+    }
+
+    // 신고(native-v1.md "명함 신고·차단"): 볼 권한이 있는 계정·게스트·코드. 첫 신고 201, 같은 신고자의 24시간 안 재신고 200(기존 신고), 내 명함 400
+    @PostMapping("/{id}/reports")
+    fun report(
+        @AuthenticationPrincipal jwt: Jwt?, @PathVariable id: UUID, @RequestBody request: CardReportRequest,
+        @RequestHeader(GuestController.PROXY_KEY, required = false) key: String?, @RequestHeader(GuestController.TOKEN, required = false) token: String?,
+    ): ResponseEntity<CardReportResponse> {
+        val digest = guests.sessionDigest(guestProperties.proxySecret, key, token)
+        val filed = reports.report(id, jwt?.let(::userId), digest, guests.holds(digest, id), request.code, request.reason, request.detail)
+        return ResponseEntity.status(if (filed.created) HttpStatus.CREATED else HttpStatus.OK).body(CardReportResponse(filed.report.id, filed.report.reason.name, filed.report.createdAt))
+    }
 
     // QR 화면을 열 때(native-v1.md "명함 QR 코드"). 내 명함이 아니거나 철회됐으면 404
     @PostMapping("/{id}/qr-codes")

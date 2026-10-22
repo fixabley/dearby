@@ -2,6 +2,9 @@ package io.wid.dearby.application.guest
 
 import io.wid.dearby.application.card.CardQrCodes
 import io.wid.dearby.application.card.CardRepository
+import io.wid.dearby.application.card.CardSafetyRepository
+import io.wid.dearby.application.card.WalletService
+import io.wid.dearby.domain.card.CardBlock
 import io.wid.dearby.domain.*
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -21,7 +24,7 @@ import javax.crypto.spec.SecretKeySpec
 // 웹 비로그인 저장(native-v1.md "웹 비로그인 명함 저장"·"홈 화면 세션 잇기").
 // 세션은 토큰 digest만 저장하고 자동 만료가 없다. 요청 제한은 프로세스 메모리의 1분 창이다
 @Service
-class GuestService(private val guests: GuestRepository, private val cards: CardRepository, private val codes: CardQrCodes) {
+class GuestService(private val guests: GuestRepository, private val cards: CardRepository, private val codes: CardQrCodes, private val safety: CardSafetyRepository) {
 
     // 1분 창 카운터(재시작 때 초기화). forwarded IP는 믿지 않는다
     private var windowStart = 0L
@@ -46,8 +49,9 @@ class GuestService(private val guests: GuestRepository, private val cards: CardR
     // 이 세션에 회수 전 저장이 없으면 유효한 QR 코드가 필요하다(native-v1.md "명함 QR 코드"). 코드 확인이 세션 만들기보다 먼저다
     @Transactional
     fun saveCard(token: String?, cardId: UUID, activityId: Id? = null, code: String? = null): GuestSaveResult {
-        cards.find(cardId) ?: throw NotFoundException("명함을 찾을 수 없습니다", "Card not found for guest: $cardId")
+        val card = cards.find(cardId) ?: throw NotFoundException("명함을 찾을 수 없습니다", "Card not found for guest: $cardId")
         val existing = token?.let(::session)
+        if (existing != null && safety.isBlocked(null, existing, card.ownerId)) throw ConflictException(WalletService.BLOCKED_DETAIL, "guest saved blocked owner's card: $cardId", code = WalletService.BLOCKED)
         if (existing == null || !guests.hasCard(existing, cardId)) codes.require(cardId, code)
         val (digest, newToken) = if (existing != null) existing to null else sessionOrNew(null)
         // 활동은 처음 저장할 때만 기록하고, 모르는 id는 null로 둔다(native-v1.md "명함 교환")
@@ -56,14 +60,26 @@ class GuestService(private val guests: GuestRepository, private val cards: CardR
     }
 
 
-    // GET /v1/cards/:id의 게스트 근거: 프록시를 거친 유효한 세션이 그 명함을 회수 전 상태로 저장해 두었는지
+    // 명함 조회·신고의 게스트 근거: 프록시를 거친 유효한 세션의 digest. 토큰이 없거나 없어진 세션이면 null(코드로는 볼 수 있게 401을 내지 않는다)
     @Transactional(readOnly = true)
-    fun holds(proxySecret: String?, suppliedKey: String?, token: String?, cardId: UUID): Boolean {
-        if (token == null) return false
+    fun sessionDigest(proxySecret: String?, suppliedKey: String?, token: String?): String? {
+        if (token == null) return null
         admit(proxySecret, suppliedKey)
-        // 없어진 세션 쿠키가 남아 있어도 코드로는 볼 수 있게 401 대신 false
-        val digest = try { session(token) } catch (_: AuthenticationFailedException) { return false }
-        return guests.hasCard(digest, cardId)
+        return try { session(token) } catch (_: AuthenticationFailedException) { null }
+    }
+
+    // 그 세션이 명함을 회수 전 상태로 저장해 두었는지
+    @Transactional(readOnly = true)
+    fun holds(digest: String?, cardId: UUID) = digest != null && guests.hasCard(digest, cardId)
+
+    // 게스트 차단: 이 세션에서 그 주인의 저장을 모두 회수하고 기록한다(목록·해제 없음). 없는·철회된 명함 404
+    @Transactional
+    fun block(token: String?, cardId: UUID): CardBlock {
+        val digest = session(token)
+        val card = cards.find(cardId) ?: throw NotFoundException("명함을 찾을 수 없습니다", "guest block for missing card: $cardId")
+        val now = now()
+        guests.recallFromOwner(digest, card.ownerId, now)
+        return safety.block(null, digest, card.ownerId, card.profileName, now)
     }
 
     // 이미 지웠거나 철회된 참조도 그대로 성공(멱등)

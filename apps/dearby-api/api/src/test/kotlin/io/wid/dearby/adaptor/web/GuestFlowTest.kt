@@ -188,4 +188,21 @@ class GuestFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient
         assertTrue(statuses.size in 119..249, "429 before ${statuses.size + 1} requests")
         assertTrue(statuses.all { it == 200 })
     }
+
+    // native-v1.md "명함 신고·차단": 게스트도 저장한 명함을 신고하고 차단한다(웹 프록시 헤더)
+    @Test
+    fun `게스트는 저장한 명함을 코드 없이 신고하고, 차단하면 저장이 빠지며 다시 저장하면 409다`() {
+        val (owner, cardId) = ownerWithCard()
+        val token = read(mvc.put("/v1/guest/cards/$cardId") { guest(); code(qrCode(owner, cardId)) })["guestToken"].asString()
+        fun report() = mvc.post("/v1/cards/$cardId/reports") { guest(token); contentType = MediaType.APPLICATION_JSON; content = """{"reason":"SPAM"}""" }
+        val first = read(report().andExpect { status { isCreated() } })
+        assertEquals(first["id"].asString(), read(report().andExpect { status { isOk() } })["id"].asString())
+        assertEquals(1, jdbc.sql("select count(*) from card_reports where reporter_guest_digest = ?").param(GuestService.digest(token)).query(Int::class.java).single())
+
+        mvc.post("/v1/guest/blocks") { guest(); contentType = MediaType.APPLICATION_JSON; content = """{"cardId":"$cardId"}""" }.andExpect { status { isUnauthorized() } }
+        val block = read(mvc.post("/v1/guest/blocks") { guest(token); contentType = MediaType.APPLICATION_JSON; content = """{"cardId":"$cardId"}""" }.andExpect { status { isCreated() } })
+        assertEquals("주인", block["name"].asString())
+        assertEquals(0, read(mvc.get("/v1/guest/cards") { guest(token) })["items"].size())
+        mvc.put("/v1/guest/cards/$cardId") { guest(token); code(qrCode(owner, cardId)) }.andExpect { status { isConflict() }; jsonPath("$.code") { value("BLOCKED") } }
+    }
 }

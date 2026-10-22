@@ -27,6 +27,9 @@ interface GuestRepository {
 
     fun activityExists(activityId: Id): Boolean
 
+    // 게스트 차단: 그 세션에서 그 주인의 명함 저장을 모두 회수한다
+    fun recallFromOwner(digest: String, ownerId: UUID, now: OffsetDateTime)
+
     // 저장일이 savedBefore보다 이른 저장을 회수한다(비로그인은 맞교환이 없다). 회수한 행 수
     fun recallExpired(savedBefore: OffsetDateTime, now: OffsetDateTime): Int
 

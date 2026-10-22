@@ -1,5 +1,7 @@
 package io.wid.dearby.adaptor.web.v1.guest
 
+import io.wid.dearby.adaptor.web.v1.wallet.BlockRequest
+import io.wid.dearby.adaptor.web.v1.wallet.BlockResponse
 import io.wid.dearby.application.guest.GuestSaveResult
 import io.wid.dearby.application.guest.GuestService
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -44,6 +46,14 @@ class GuestController(private val guests: GuestService, private val properties: 
     fun deleteSession(@RequestHeader(PROXY_KEY, required = false) key: String?, @RequestHeader(TOKEN, required = false) token: String?) {
         guests.admit(properties.proxySecret, key)
         guests.deleteSession(token)
+    }
+
+    // 게스트 차단(native-v1.md "명함 신고·차단"). 목록·해제는 없다
+    @PostMapping("/blocks")
+    @ResponseStatus(HttpStatus.CREATED)
+    fun block(@RequestHeader(PROXY_KEY, required = false) key: String?, @RequestHeader(TOKEN, required = false) token: String?, @RequestBody request: BlockRequest): BlockResponse {
+        guests.admit(properties.proxySecret, key)
+        return BlockResponse.from(guests.block(token, request.cardId))
     }
 
     @PostMapping("/handoffs")
