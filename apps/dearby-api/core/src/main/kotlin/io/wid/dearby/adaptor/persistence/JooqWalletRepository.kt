@@ -56,6 +56,12 @@ class JooqWalletRepository(private val dsl: DSLContext, private val cards: CardR
     override fun activityExists(activityId: Id) = dsl.fetchExists(ACTIVITIES, ACTIVITIES.ID.eq(activityId))
 
     // 맞교환이 아닌 것만: 명함 주인(mine.user_id)이 받는 사람의 미철회 명함(theirs)을 회수되지 않은 상태로 갖고 있지 않을 때
+    override fun recallFromOwner(recipientId: UserId, ownerId: UserId, now: OffsetDateTime) {
+        dsl.update(RECEIPTS).set(RECEIPTS.RECALLED_AT, now)
+            .where(RECEIPTS.RECIPIENT_ID.eq(recipientId), RECEIPTS.RECALLED_AT.isNull, RECEIPTS.CARD_ID.`in`(dsl.select(BUSINESS_CARDS.ID).from(BUSINESS_CARDS).where(BUSINESS_CARDS.USER_ID.eq(ownerId))))
+            .execute()
+    }
+
     override fun recallOneWay(receivedBefore: OffsetDateTime, now: OffsetDateTime): Int {
         val r = RECEIPTS.`as`("r")
         val mine = BUSINESS_CARDS.`as`("mine")

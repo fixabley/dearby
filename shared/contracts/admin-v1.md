@@ -244,9 +244,6 @@ native-v1.md "내 활동 서버 저장·일정 상태·겹침 확인 시간"의 
 - 수집기의 쓰임: (1) 요청에 그 프로그램의 최근 10건. (2) MCP 도구 `search_feedback {text, kind?}`: 유사도(0.3 이상) 상위 8건, 같은 프로그램 → 같은 호스트 → 나머지 순, 각 행에 kind·원문·운영자 값·사유·(다른 프로그램이면) 프로그램 이름. (3) 제출 판정: 같은 프로그램에서 이름(공백·대소문자 무시)이 `DRAFT_DISMISSED`·`WATCH_EXCLUDE`와 같으면 거절(`운영자 피드백 #id(kind): …`, 수집 보고 거절 이유에도), 날짜 문구가 `DATE_CURATED`와 유사도 0.6 이상인데 해석이 다르면 저장하되 주의를 돌려준다.
 - 수집 보고: `collection_runs.agent_log jsonb`(V42)에 `workflowVersion`(작업 절차 파일 SHA-256 앞 12자리), `stopReason`·`capReached`·`turns`·`pages`·`usage`(캐시 나눔)·`costUsd`·`calls[{tool, url, result}]`와 피드백 id `feedbackInjected`(요청에 넣음)·`feedbackRetrieved`(검색으로 찾음)·`feedbackApplied`(거절·주의에 씀). 어드민 API로는 아직 내보내지 않는다.
 
-## 명함 신고 — 2026-10-22
-
-native-v1.md "명함 신고·차단"의 어드민 쪽. `GET /v1/admin/card-reports?status=OPEN|RESOLVED|DISMISSED`(생략 시 전체, 최신순, 열린 것 먼저) → `{items:[{id, cardId, cardSnapshot, reason, detail, createdAt, status, note, reportCount, cardWithdrawn}]}`. `PATCH /v1/admin/card-reports/:id {status, note?}` 200. `POST /v1/admin/cards/:id/withdraw {reportId?, note}` 204(이미 철회면 204). 모두 ADMIN 역할.
 ## 반복 일정 — 2026-10-22
 
 native-v1.md "반복 일정과 겹침 결과 묶음"의 어드민 쪽. Schedule 응답(어드민·공개)에 `recurrence: string|null`(RRULE 본문, `RRULE:` 접두사 없음).
@@ -259,3 +256,7 @@ native-v1.md "반복 일정과 겹침 결과 묶음"의 어드민 쪽. Schedule 
 - 검증(400): FREQ는 DAILY·WEEKLY, BYDAY는 MO..SU, INTERVAL 1~4, UNTIL(yyyyMMdd 또는 yyyyMMddTHHmmssZ) 또는 COUNT(1~400) 중 정확히 하나, 그 밖의 키 금지, UNTIL은 시작 이후. 날짜만 있는 일정에 반복을 주려면 `overlapCheck`가 있어야 한다(회차 시간). 서버는 키 순서를 `FREQ;INTERVAL;BYDAY;UNTIL|COUNT`로 정규화해 저장한다.
 - 반복을 고치면 기존 규칙대로 `curated`. 수집기 제출의 `recurrence`도 같은 검증을 거치고 실패하면 그 필드만 버린다.
 - DB: `schedules.recurrence varchar(200)`(V46).
+
+## 명함 신고 — 2026-10-22
+
+native-v1.md "명함 신고·차단"의 어드민 쪽. `GET /v1/admin/card-reports?status=OPEN|RESOLVED|DISMISSED`(생략 시 전체, 최신순, 열린 것 먼저) → `{items:[{id, cardId, cardSnapshot, reason, detail, createdAt, status, note, reportCount, cardWithdrawn}]}`. `PATCH /v1/admin/card-reports/:id {status, note?}` 200. `POST /v1/admin/cards/:id/withdraw {reportId?, note}` 204(이미 철회면 204). 모두 ADMIN 역할.
