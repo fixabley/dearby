@@ -11,7 +11,7 @@ export default function TermsPage() {
       <LargeTitle>이용약관</LargeTitle>
       <p className="px-1 text-footnote text-secondary-label">시행일 2026년 10월 22일</p>
       <p className="mt-4 px-1 text-body leading-relaxed">
-        이 약관은 <strong>[운영자 이름]</strong>(이하 &ldquo;운영자&rdquo;)이 제공하는 Dearby(이하 &ldquo;서비스&rdquo;)를 이용하는 조건을 정합니다.
+        이 약관은 <strong>팀 WID</strong>(이하 &ldquo;운영자&rdquo;)이 제공하는 Dearby(이하 &ldquo;서비스&rdquo;)를 이용하는 조건을 정합니다.
       </p>
       <h2>1. 서비스</h2>
       <p>
@@ -58,7 +58,7 @@ export default function TermsPage() {
       <h2>9. 준거법과 관할</h2>
       <p>이 약관은 대한민국 법을 따르며, 분쟁은 민사소송법에 따른 관할 법원에서 다룹니다.</p>
       <p className="mt-8 px-1 text-footnote text-secondary-label">
-        관련 문서: <Link href="/privacy">개인정보 처리방침</Link> · 문의: <strong>[연락 이메일]</strong>
+        관련 문서: <Link href="/privacy">개인정보 처리방침</Link> · 문의: <strong>fixabley@naver.com</strong> · 010-7503-5692
       </p>
     </article>
   );
