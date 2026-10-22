@@ -20,6 +20,7 @@ import java.time.format.DateTimeParseException
 object ActivityVerifier {
 
     private val QUOTE_LENGTH = 10..200
+    private val PLACE_QUOTE_LENGTH = 2..200 // 장소 근거 구절("장소: 코엑스")은 짧을 수 있다
         const val MAX_TAGS = 5 // 활동 하나에 붙일 태그 수
 
     fun verify(candidate: ExtractedActivity, page: FetchedPage, officialSource: Boolean, checkedAt: OffsetDateTime): Verification {
@@ -78,6 +79,21 @@ object ActivityVerifier {
             )
         )
     }
+
+    // 장소(native-v1.md "수집기 장소"): 온라인이 아니고, 근거 구절이 원문에 있고 그 안에 장소 이름이 있을 때만 검색어로 쓴다.
+    // 주소는 원문에 있을 때만 함께 쓴다. 아니면 null이고 활동은 그대로 저장된다(장소만 버린다)
+    fun place(candidate: ExtractedActivity, page: FetchedPage): PlaceQuery? {
+        val place = candidate.place?.takeUnless { it.online } ?: return null
+        val name = place.name?.trim()?.ifEmpty { null } ?: return null
+        val quote = place.evidenceQuote?.trim()?.takeIf { it.length in PLACE_QUOTE_LENGTH } ?: return null
+        val text = normalize(page.text)
+        if (normalize(quote) !in text || compact(name) !in compact(quote)) return null
+        val address = place.address?.trim()?.ifEmpty { null }?.takeIf { compact(it) in compact(page.text) }
+        return PlaceQuery(name, address)
+    }
+
+
+    private fun compact(text: String) = normalize(text).replace(" ", "").lowercase()
 
     // 규칙이 허용 부분집합이고 일정과 맞을 때만(native-v1.md "반복 일정과 겹침 결과 묶음"). 아니면 null
     private fun recurrence(text: String?, time: ScheduleTime, overlapCheck: OverlapCheck?): Recurrence? =

@@ -1,5 +1,7 @@
 package io.wid.dearby.batch
 
+import io.wid.dearby.application.geocode.GeocodeResult
+import io.wid.dearby.application.geocode.Geocoder
 import io.wid.dearby.batch.adaptor.claude.ClaudeCli
 import io.wid.dearby.batch.adaptor.claude.CollectionProperties
 import io.wid.dearby.batch.adaptor.claude.CollectionPrompts
@@ -70,6 +72,8 @@ class CollectionJobTest(
             var extractedTags: List<String> = listOf("창업", "없는 태그") // 태그 테스트: 사전 밖 이름은 버려진다
             var extractedSchedules: List<ExtractedSchedule> = emptyList() // 세부 일정 테스트에서 채운다(admin-v1.md "세부 일정 편집기")
             var script: ((String, McpClient) -> Map<String, Any?>)? = null // 테스트가 바꿔 끼우는 CLI 대본. 없으면 defaultScript
+            var pageExtra = "" // 장소 테스트에서 받은 페이지 본문 뒤에 붙인다
+            var addressResults: List<GeocodeResult> = emptyList() // 가짜 지오코더(네트워크 없음)의 주소 검색 결과
 
             // claude -p --output-format json 결과 모양
             fun cliResult(subtype: String = "success", turns: Int = 3) = mapOf(
@@ -126,7 +130,15 @@ class CollectionJobTest(
             if (!UrlGuard.hostAllowed(URI(url).host, allowedHosts)) throw PageFetchException("허용 호스트 밖: ${URI(url).host}")
             httpUrls += url
             if (url.endsWith("missing")) throw PageFetchException("HTTP 404")
-            FetchedPage(url, "Let'Swift 2026 컨퍼런스 참가 신청은 11월 1일부터 11월 10일까지입니다.", setOf("https://letswift.kr/2026/apply"))
+            FetchedPage(url, "Let'Swift 2026 컨퍼런스 참가 신청은 11월 1일부터 11월 10일까지입니다.$pageExtra", setOf("https://letswift.kr/2026/apply"))
+        }
+
+        @Bean
+        @Primary
+        fun fakeGeocoder() = object : Geocoder {
+            override fun search(query: String) = addressResults
+            override fun searchAddress(query: String) = addressResults
+            override fun searchKeyword(query: String) = emptyList<GeocodeResult>()
         }
 
         @Bean
@@ -441,6 +453,43 @@ class CollectionJobTest(
         "roundKey" to "2026-컨퍼런스", "name" to "Let'Swift 2026 컨퍼런스", "description" to "본행사", "participationType" to "REGISTRATION",
         "dateLabel" to "", "schedules" to emptyList<Any>(), "evidenceQuote" to quote, "sourceUrl" to sourceUrl,
     )
+
+    private fun place() = jdbc.sql("select coalesce(address_line1, '-') || '|' || coalesce(address_line2, '-') from schedules s join activities a on a.id = s.activity_id where a.name = ? and slot = 'ACTIVITY'")
+        .param("Let'Swift 2026 컨퍼런스").query(String::class.java).single()
+
+    @Test
+    fun `수집 장소는 지오코딩이 확실할 때만 활동 기간 행에 채우고, 재수집은 지우지 않으며 운영자가 지운 장소는 다시 채우지 않는다`() {
+        officialSetting()
+        Fakes.pageExtra = " 장소: 코엑스 그랜드볼룸 (서울 강남구 영동대로 513)"
+        val coex = mapOf("name" to "코엑스 그랜드볼룸", "address" to "서울 강남구 영동대로 513", "online" to false, "evidenceQuote" to "장소: 코엑스 그랜드볼룸")
+        fun submitWith(place: Map<String, Any?>?) = { mcp: McpClient ->
+            mcp.call("fetch_page", mapOf("url" to "https://letswift.kr/2026/"))
+            mcp.call("submit_candidate", candidate("참가 신청은 11월 1일부터 11월 10일까지입니다") + ("place" to place))
+            mcp.call("finish", mapOf("reason" to "끝"))
+            Fakes.cliResult()
+        }
+        try {
+            // 주소 결과가 둘이면(키워드도 없음) 확실하지 않아 장소를 두지 않는다
+            Fakes.addressResults = listOf(GeocodeResult("코엑스", "서울 강남구 영동대로 513", 37.51, 127.06, "fake"), GeocodeResult("코엑스몰", "서울 강남구 영동대로 511", 37.5, 127.05, "fake"))
+            scripted("2026-10-20", submitWith(coex))
+            assertEquals("-|-", place())
+            // 주소 결과가 하나면 이름은 제출한 것, 주소는 제공자 값
+            Fakes.addressResults = Fakes.addressResults.take(1)
+            scripted("2026-10-21", submitWith(coex))
+            assertEquals("코엑스 그랜드볼룸|서울 강남구 영동대로 513", place())
+            // 온라인·장소 없음으로 다시 수집해도 있던 장소는 남는다
+            scripted("2026-10-22", submitWith(mapOf("name" to null, "address" to null, "online" to true, "evidenceQuote" to null)))
+            assertEquals("코엑스 그랜드볼룸|서울 강남구 영동대로 513", place())
+            // 운영자가 장소를 지우면(curated place) 수집이 다시 채우지 않는다
+            jdbc.sql("update schedules set address_line1 = null, address_line2 = null, lat = null, lng = null where slot = 'ACTIVITY' and activity_id = (select id from activities where name = ?)").param("Let'Swift 2026 컨퍼런스").update()
+            jdbc.sql("update activities set curated_fields = '[\"place\"]'::jsonb where name = ?").param("Let'Swift 2026 컨퍼런스").update()
+            scripted("2026-10-23", submitWith(coex))
+            assertEquals("-|-", place())
+        } finally {
+            Fakes.pageExtra = ""
+            Fakes.addressResults = emptyList()
+        }
+    }
 
     private fun agentLog(path: String) = jdbc.sql("select agent_log #>> '{$path}' from collection_runs").query(String::class.java).single()
 

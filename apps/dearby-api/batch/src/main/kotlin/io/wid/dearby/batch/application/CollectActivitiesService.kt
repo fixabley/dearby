@@ -34,6 +34,7 @@ class CollectActivitiesService(
     private val watchlist: WatchlistRepository,
     private val tags: io.wid.dearby.application.tag.TagRepository,
     private val feedback: CollectionFeedbackRepository,
+    private val places: PlaceResolver, // 장소 지오코딩(native-v1.md "수집기 장소"). 확실할 때만 좌표
     private val json: JsonMapper,
 ) {
 
@@ -125,7 +126,9 @@ class CollectActivitiesService(
                 return reject(candidate, "운영자 피드백 #${row.id}(${row.kind}): \"${row.sourceText}\"${row.reason?.let { "(이유: $it)" } ?: ""}", retry = false)
             }
             val warnings = dateWarnings(candidate)
-            return when (drafts.saveDraft(target.programId, sourceId, draft)) {
+            // 저장 직전에만 지오코딩한다(조심 목록·피드백으로 거절될 후보는 검색하지 않는다)
+            val placed = ActivityVerifier.place(candidate, page)?.let(places::resolve)?.let { draft.copy(place = it) } ?: draft
+            return when (drafts.saveDraft(target.programId, sourceId, placed)) {
                 DraftSaveResult.SAVED -> { saved += sourceId; SubmitVerdict(true, "초안으로 저장됨", warnings) }
                 DraftSaveResult.SKIPPED_PUBLISHED -> reject(candidate, "이미 게시된 활동이라 덮어쓰지 않음", retry = false)
                 DraftSaveResult.SKIPPED_DISMISSED -> reject(candidate, "관리자가 삭제한 활동이라 다시 만들지 않음", retry = false)
