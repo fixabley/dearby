@@ -36,7 +36,11 @@ import com.dearby.nativeapp.shared.ui.*
     } else Column(Modifier.fillMaxSize()) {
         DearbyTopBar("설정", back)
         when (state.phase) {
-            SettingsPhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
+            // The 계정 section (title and rows) and 연결된 로그인, where they will land (contract "내용 로딩은 스켈레톤").
+            SettingsPhase.LOADING -> DearbySkeleton(Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 12.dp), spacing = 4.dp) {
+                SkeletonLine(.2f, 18.dp); SkeletonRows(3)
+                SkeletonLine(.3f, 18.dp); SkeletonRows(2)
+            }
             SettingsPhase.FAILED -> DearbyErrorState("설정을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
             SettingsPhase.SIGNED_OUT, SettingsPhase.LOADED -> Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
                 if (state.phase == SettingsPhase.SIGNED_OUT) {

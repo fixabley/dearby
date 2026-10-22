@@ -56,7 +56,11 @@ data class MyCardsState(
     // No title of its own since 2026-10-20 (contract "명함 탭 통합"): the 명함 tab's top bar and segment row sit above this content.
     Column(Modifier.fillMaxSize()) {
         when (state.phase) {
-            MyCardsPhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator(color = MaterialTheme.colorScheme.primary) }
+            // The 2-column tiles, then the selected card (contract "내용 로딩은 스켈레톤").
+            MyCardsPhase.LOADING -> DearbySkeleton(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 12.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { repeat(2) { SkeletonBlock(Modifier.weight(1f).height(96.dp), RoundedCornerShape(12.dp)) } }
+                SkeletonCardBody(Modifier.padding(top = 10.dp))
+            }
             MyCardsPhase.FAILED -> DearbyErrorState("명함을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
             // Empty / signed out: a CenteredMessage on the page background, no card (contract "비스크롤 화면 배치·CTA").
             MyCardsPhase.SIGNED_OUT, MyCardsPhase.NO_CARD -> DearbyEmptyState("내 명함을 만드세요", "프로필 데이터로 명함을 꾸며 발행해요. 발행할 때 로그인해요.", Modifier.fillMaxSize(), Icons.Rounded.Badge, MessageAction("명함 만들기", create))

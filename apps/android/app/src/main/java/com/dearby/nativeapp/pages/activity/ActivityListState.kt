@@ -81,7 +81,8 @@ data class ProgramActivities(
  * [mineNotice] is a failed 내 활동 read or write while signed in (contract "내 활동 서버 저장"), shown once; [consentNeeded] when the
  * write was refused for a stale consent (403 CONSENT_REQUIRED), which offers the consent screen instead. [linked] is an activity an App Link
  * asked for, loaded and ready for 발견 to open its detail; [linkNotice] says the link's activity is gone or could not be read (contract
- * "유니버설 링크·App Links·활동 공유·오픈그래프"). Both are consumed once.
+ * "유니버설 링크·App Links·활동 공유·오픈그래프"). Both are consumed once. [mineLoading] while the first read of the account's records after
+ * sign-in is under way, so 내 활동 shows its skeleton rather than "신청한 활동이 없어요" (contract "내용 로딩은 스켈레톤"); later re-reads keep the list.
  */
 data class ActivityListState(
     val phase: ActivityListPhase = ActivityListPhase.LOADING, val query: String = "", val openOnly: Boolean = true, val programs: List<ProgramState> = emptyList(),
@@ -89,7 +90,7 @@ data class ActivityListState(
     val known: Map<String, ActivityState> = emptyMap(), val nextCursor: String? = null, val loadingMore: Boolean = false,
     val moreFailed: Boolean = false, val askingId: String? = null, val progress: Map<String, ProgressState> = emptyMap(), val refreshing: Boolean = false,
     val refreshFailed: Boolean = false, val mineNotice: String? = null, val consentNeeded: Boolean = false,
-    val linked: String? = null, val linkNotice: String? = null,
+    val linked: String? = null, val linkNotice: String? = null, val mineLoading: Boolean = false,
 ) {
     val asking get() = askingId?.let(known::get)
     /** Applied activities, the nearest next stage first; activities without a dated next stage come last. */

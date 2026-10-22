@@ -7,10 +7,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 
 /** 미리보기와 계측 캡처가 함께 쓰는 세 상태 예시. */
 @Composable fun DearbyStatesSample(onRetry: () -> Unit = {}) = Column(Modifier.background(MaterialTheme.colorScheme.surface)) {
-    DearbyLoadingState("활동을 불러오는 중이에요.")
+    DearbySkeleton(Modifier.padding(20.dp)) { SkeletonRows(2, leading = 44.dp) }
     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
     DearbyErrorState("활동을 불러오지 못했어요", "인터넷 연결을 확인하고 다시 시도해 주세요.", onRetry)
     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)

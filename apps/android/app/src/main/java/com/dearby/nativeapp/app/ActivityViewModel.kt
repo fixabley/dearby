@@ -91,7 +91,7 @@ class ActivityViewModel(
             viewModelScope.launch {
                 // WORKING is the sign-in prompt itself; only the settled phases switch the storage.
                 account.state.map { it.phase }.filter { it != AccountPhase.WORKING }.distinctUntilChanged().collect { phase ->
-                    if (phase == AccountPhase.SIGNED_IN && !serverMode) { serverMode = true; importing = deviceRecords(); syncMine() }
+                    if (phase == AccountPhase.SIGNED_IN && !serverMode) { serverMode = true; importing = deviceRecords(); mutable.update { it.copy(mineLoading = true) }; syncMine() }
                     else if (phase == AccountPhase.SIGNED_OUT && serverMode) signedOut()
                 }
             }
@@ -336,7 +336,7 @@ class ActivityViewModel(
                 if ((e as? AccountException)?.error == AccountError.UNAUTHORIZED) return@launch
                 Log.w("Dearby", "My activities sync with ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
                 if (announce) mutable.update { it.copy(mineNotice = "내 활동을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.") }
-            }
+            } finally { mutable.update { it.copy(mineLoading = false) } }
         }
     }
     /** The server's records replace the memory ones: applied and stage statuses; unknown ids become "삭제된 활동". */
@@ -360,7 +360,7 @@ class ActivityViewModel(
         marks = emptyMap()
         val today = today()
         mutable.update { state ->
-            state.copy(known = state.known.filterValues { !it.deleted }.mapValues { it.value.copy(applied = false) },
+            state.copy(known = state.known.filterValues { !it.deleted }.mapValues { it.value.copy(applied = false) }, mineLoading = false,
                 progress = models.mapValues { (_, model) -> model.toProgress(emptyMap(), today) })
         }
     }
