@@ -17,7 +17,7 @@ import {
 } from "@/lib/models";
 import { errorMessage, request } from "@/lib/client";
 import { cn } from "@/shared/lib/utils";
-import { Failure, Loading } from "@/shared/ui/states";
+import { Failure } from "@/shared/ui/states";
 import { CenteredMessage } from "@/shared/ui/centered-message";
 import { Icon } from "@/shared/ui/icon";
 import { Badge } from "@/shared/ui/badge";
@@ -25,9 +25,9 @@ import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { LargeTitle } from "@/shared/ui/nav-title";
-import { Skeleton } from "@/shared/ui/skeleton";
+import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 import { Switch } from "@/shared/ui/switch";
-import { ActivityCard, type StatusTone } from "@/widgets/activity/activity-card";
+import { ActivityCard, ActivityCardSkeleton, type StatusTone } from "@/widgets/activity/activity-card";
 import { groupByCategory } from "@/lib/category";
 
 function programsPath(q: string, openOnly: boolean, cursor?: number) {
@@ -453,7 +453,13 @@ function ProgramRow({
       }}
     />
   ) : !activities || !openActivities ? (
-    open ? <Loading /> : null
+    // Both lists arrive together, so the empty-state line never shows before the second one (contract "빈 상태는 모두 받은 뒤에만").
+    open ? (
+      <SkeletonGroup className="flex flex-col gap-2">
+        <ActivityCardSkeleton />
+        <ActivityCardSkeleton />
+      </SkeletonGroup>
+    ) : null
   ) : (
     <>
       {openActivities.length > 0 &&
@@ -558,8 +564,7 @@ function CategoryHeading({ children }: { children: ReactNode }) {
 /** First load: three program-card placeholders, announced as loading. */
 function ProgramsLoading() {
   return (
-    <div role="status" className="flex flex-col gap-2.5">
-      <span className="sr-only">불러오는 중이에요.</span>
+    <SkeletonGroup className="flex flex-col gap-2.5">
       {[0, 1, 2].map((key) => (
         <Card key={key} className="flex items-start gap-3 p-4">
           <Skeleton className="size-11 rounded-[14px]" />
@@ -570,6 +575,6 @@ function ProgramsLoading() {
           <Skeleton className="h-[34px] w-[34px] rounded-full" />
         </Card>
       ))}
-    </div>
+    </SkeletonGroup>
   );
 }
