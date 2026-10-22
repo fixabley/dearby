@@ -333,13 +333,14 @@ function upcomingKey(activity: Activity): number {
  * already listed as open (`excludeIds`) are left out so the toggle-off view does not repeat them.
  */
 function OtherActivities({
-  programId,
+  page,
   now,
   excludeIds,
   showPast,
   onEmpty,
 }: {
-  programId: number;
+  /** Every activity of the program, fetched by the row together with its open ones. */
+  page: ActivityPage;
   now: number;
   excludeIds?: Set<number>;
   /** 지난 활동 only while 마감 숨기기 is off; 모집 예정 always (contract "펼침", 2026-10-19 밤). */
@@ -347,19 +348,6 @@ function OtherActivities({
   /** Rendered when no group has items (the caller shows nothing else). */
   onEmpty?: ReactNode;
 }) {
-  const [page, setPage] = useState<ActivityPage>();
-  const [error, setError] = useState("");
-  useEffect(() => {
-    const controller = new AbortController();
-    request<ActivityPage>(`/activities?programId=${programId}&size=20`, { signal: controller.signal })
-      .then(setPage)
-      .catch((error) => {
-        if (!controller.signal.aborted) setError(errorMessage(error));
-      });
-    return () => controller.abort();
-  }, [programId]);
-  if (error) return <p className="px-1.5 text-subheadline text-secondary-label">{error}</p>;
-  if (!page) return <Loading />;
   const others = page.items.filter((activity) => !excludeIds?.has(activity.id));
   const upcoming = others
     .filter((activity) => {
@@ -420,7 +408,8 @@ function ProgramRow({
   /** 마감 숨기기 state: when off, 모집 예정·지난 활동 are shown under the open activities as well (contract "펼침"). */
   openOnly: boolean;
 }) {
-  const [activities, setActivities] = useState<ActivityPage>();
+  // The open activities and every activity (for 모집 예정·지난 활동) load together, so one loading state covers both.
+  const [activities, setActivities] = useState<{ open: ActivityPage; all: ActivityPage }>();
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [now, setNow] = useState(Date.now);
@@ -428,8 +417,12 @@ function ProgramRow({
   useEffect(() => {
     if (!open || activities) return;
     const controller = new AbortController();
-    request<ActivityPage>(`/activities?programId=${program.id}&open=true&size=100`, { signal: controller.signal })
-      .then(setActivities)
+    const { signal } = controller;
+    Promise.all([
+      request<ActivityPage>(`/activities?programId=${program.id}&open=true&size=100`, { signal }),
+      request<ActivityPage>(`/activities?programId=${program.id}&size=20`, { signal }),
+    ])
+      .then(([open, all]) => setActivities({ open, all }))
       .catch((error) => {
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
@@ -448,7 +441,7 @@ function ProgramRow({
     ((program.upcomingActivityCount ?? 0) > 0 && startLabel(program.nearestRecruitmentStartAt ?? null)) ||
     `최근 ${monthLabel(program.latestActivityAt ?? null)}`;
   // The server already applied its open rule (contract "열린 활동 판정 일원화"); the client does not filter again.
-  const openActivities = activities?.items;
+  const openActivities = activities?.open.items;
   // Content is kept while collapsed so the close animation has something to shrink; nothing is fetched until the first open.
   const body = error ? (
     <Failure
@@ -459,7 +452,7 @@ function ProgramRow({
         setAttempt((value) => value + 1);
       }}
     />
-  ) : !openActivities ? (
+  ) : !activities || !openActivities ? (
     open ? <Loading /> : null
   ) : (
     <>
@@ -483,7 +476,7 @@ function ProgramRow({
         ))}
       {/* 모집 예정 always; 지난 활동 only while 마감 숨기기 is off (contract "펼침", 2026-10-19 밤). */}
       <OtherActivities
-        programId={program.id}
+        page={activities.all}
         now={now}
         excludeIds={new Set(openActivities.map((activity) => activity.id))}
         showPast={!openOnly}
