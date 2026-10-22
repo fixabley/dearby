@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Collapse, DatePicker, Descriptions, Form, Input, Modal, Popconfirm, Radio, Select, Space, Spin, Switch, Table, type TableColumnsType, Tag, Tooltip } from "antd";
+import { Alert, App, Button, Collapse, DatePicker, Descriptions, Form, Input, Modal, Popconfirm, Radio, Select, Space, Spin, Switch, Table, type TableColumnsType, Tag, TimePicker, Tooltip } from "antd";
 import { ExportOutlined, PlusOutlined, SafetyCertificateOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -36,9 +36,39 @@ export type Schedule = {
   curated?: boolean;
   /** 사유 the operator left when pinning the period (contract "사유"). */
   curatedNote?: string | null;
+  /** 겹침 확인 시간 (native-v1 "겹침 확인 시간", 2026-10-22): Seoul HH:mm window a date-only schedule is compared with; absent on older responses. */
+  overlapCheck?: OverlapCheck | null;
 };
+export type OverlapCheck = { startTime: string; endTime: string };
 /** `PATCH activities/:id` schedule value: all-day dates or Korea-time instants (either end may be missing for 모집 기간), an optional 사유, or null to drop the structured dates. */
-type ScheduleInput = { startDate?: string; endDate?: string; startAt?: string; endAt?: string; note?: string } | null;
+type ScheduleInput = { startDate?: string; endDate?: string; startAt?: string; endAt?: string; note?: string; overlapCheck?: OverlapCheck | null } | null;
+
+/** Editor state for 겹침 확인 시간: both ends or nothing (the picker clears as a pair). */
+export type OverlapDraft = [Dayjs, Dayjs] | null;
+const clock = (value: string) => {
+  const [hour, minute] = value.split(":").map(Number);
+  return dayjs().startOf("day").hour(hour).minute(minute);
+};
+export const overlapDraft = (value: OverlapCheck | null | undefined): OverlapDraft => (value ? [clock(value.startTime), clock(value.endTime)] : null);
+export const overlapInput = (draft: OverlapDraft | undefined): OverlapCheck | null =>
+  draft?.[0] && draft[1] ? { startTime: draft[0].format("HH:mm"), endTime: draft[1].format("HH:mm") } : null;
+/** Neither its own time nor a 겹침 확인 시간: the apps cannot compare this schedule with the device calendar. */
+export const overlapUnavailable = (schedule: Schedule) => !schedule.startAt && !schedule.endAt && !schedule.overlapCheck;
+export function OverlapUnavailableTag() {
+  return (
+    <Tooltip title="시각도 겹침 확인 시간도 없어 앱에서 기기 캘린더와 비교하지 않아요.">
+      <Tag style={{ marginInlineStart: 6 }}>겹침 확인 불가</Tag>
+    </Tooltip>
+  );
+}
+/** 겹침 확인 시간 field: a Seoul time window as a pair of HH:mm pickers. */
+export function OverlapField({ name }: { name: string }) {
+  return (
+    <Form.Item name={name} label="겹침 확인 시간(선택)" extra="날짜만 있는 일정도 이 시간대로 기기 캘린더와 겹침을 확인해요" style={{ marginBottom: 8 }}>
+      <TimePicker.RangePicker format="HH:mm" minuteStep={10} allowClear placeholder={["시작", "종료"]} />
+    </Form.Item>
+  );
+}
 type DuplicateKind = "alias" | "exclude";
 export type PublicationStatus = "DRAFT" | "PUBLISHED";
 /** 대상자 조건 types live in eligibility.ts (contract "대상자 조건(eligibility)"); re-exported for callers that imported them from here. */
@@ -139,8 +169,11 @@ export function rangeDraft(schedule: Schedule | null | undefined): RangeDraft {
     return { range: [dayjs.tz(schedule.startDate, SEOUL), dayjs.tz(schedule.endDateExclusive, SEOUL).subtract(1, "day")], timed: false };
   return { range: null, timed: false };
 }
-/** Editor state → PATCH value. Times keep the +09:00 offset so the server stores Korea time; a missing end is simply left out; the trimmed 사유 rides along. */
-export function scheduleInput({ range, timed }: RangeDraft, note?: string): ScheduleInput {
+/**
+ * Editor state → PATCH value. Times keep the +09:00 offset so the server stores Korea time; a missing end is simply left out; the trimmed 사유 rides along.
+ * 겹침 확인 시간 rides along only when [overlap] is passed (null clears it); without dates there is nothing to send it on.
+ */
+export function scheduleInput({ range, timed }: RangeDraft, note?: string, overlap?: OverlapCheck | null): ScheduleInput {
   const [start, end] = (range ?? [null, null]).map((value) => value?.tz(SEOUL) ?? null);
   if (!start && !end) return null;
   const at = (value: Dayjs) => value.second(0).millisecond(0).format("YYYY-MM-DDTHH:mm:ssZ");
@@ -149,6 +182,7 @@ export function scheduleInput({ range, timed }: RangeDraft, note?: string): Sche
   return {
     ...(timed ? { ...(start && { startAt: at(start) }), ...(end && { endAt: at(end) }) } : { ...(start && { startDate: day(start) }), ...(end && { endDate: day(end) }) }),
     ...(trimmed && { note: trimmed }),
+    ...(overlap !== undefined && { overlapCheck: overlap }),
   };
 }
 /** 활동 기간 must have both ends (the server stores it as an all-day range); returns the field error or null. */
@@ -579,16 +613,20 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
   const initialApplication = rangeDraft(activity.application);
   const initialActivityNote = activity.activitySchedule?.curatedNote ?? "";
   const initialApplicationNote = activity.application?.curatedNote ?? "";
+  const initialActivityOverlap = activity.activitySchedule?.overlapCheck ?? null;
+  const initialApplicationOverlap = activity.application?.overlapCheck ?? null;
   /** 수집이 두 기간을 바꿔 넣었을 때 폼 값만 서로 바꾼다(사유 포함). 활동 기간은 종일만 허용하므로 시각 지정은 끈다. 저장해야 반영된다. */
   const swapPeriods = () => {
-    const values = form.getFieldsValue(["activityRange", "activityTimed", "activityNote", "applicationRange", "applicationTimed", "applicationNote"]);
+    const values = form.getFieldsValue(["activityRange", "activityTimed", "activityNote", "activityOverlap", "applicationRange", "applicationTimed", "applicationNote", "applicationOverlap"]);
     form.setFieldsValue({
       activityRange: values.applicationRange,
       activityTimed: false,
       activityNote: values.applicationNote,
+      activityOverlap: values.applicationOverlap,
       applicationRange: values.activityRange,
       applicationTimed: values.activityTimed,
       applicationNote: values.activityNote,
+      applicationOverlap: values.activityOverlap,
     });
   };
   const { message } = App.useApp();
@@ -632,6 +670,8 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
           applicationRange: initialApplication.range,
           applicationTimed: initialApplication.timed,
           applicationNote: initialApplicationNote,
+          activityOverlap: overlapDraft(initialActivityOverlap),
+          applicationOverlap: overlapDraft(initialApplicationOverlap),
         }}
         // Every text field is sent: an empty English field clears it, an empty 대상자 조건 sends null.
         // Schedule keys go only when the operator changed them: a cleared picker sends null, untouched blocks are omitted.
@@ -648,9 +688,11 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
           activityRange: RangeDraft["range"];
           activityTimed: boolean;
           activityNote: string;
+          activityOverlap: OverlapDraft;
           applicationRange: RangeDraft["range"];
           applicationTimed: boolean;
           applicationNote: string;
+          applicationOverlap: OverlapDraft;
         }) => {
           const problems = validateDraft(eligibility);
           setEligibilityProblems(problems);
@@ -663,10 +705,11 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
               return;
             }
             // A block goes out when its range or its 사유 changed; the 사유 rides inside the schedule object.
-            const nextActivity = scheduleInput({ range: values.activityRange, timed: values.activityTimed }, values.activityNote);
-            if (JSON.stringify(nextActivity) !== JSON.stringify(scheduleInput(initialActivity, initialActivityNote))) schedules.activitySchedule = nextActivity;
-            const nextApplication = scheduleInput({ range: values.applicationRange, timed: values.applicationTimed }, values.applicationNote);
-            if (JSON.stringify(nextApplication) !== JSON.stringify(scheduleInput(initialApplication, initialApplicationNote))) schedules.application = nextApplication;
+            // 겹침 확인 시간 is part of the block, so the baseline carries the initial one too (an untouched block stays out).
+            const nextActivity = scheduleInput({ range: values.activityRange, timed: values.activityTimed }, values.activityNote, overlapInput(values.activityOverlap));
+            if (JSON.stringify(nextActivity) !== JSON.stringify(scheduleInput(initialActivity, initialActivityNote, initialActivityOverlap))) schedules.activitySchedule = nextActivity;
+            const nextApplication = scheduleInput({ range: values.applicationRange, timed: values.applicationTimed }, values.applicationNote, overlapInput(values.applicationOverlap));
+            if (JSON.stringify(nextApplication) !== JSON.stringify(scheduleInput(initialApplication, initialApplicationNote, initialApplicationOverlap))) schedules.application = nextApplication;
           }
           saveOnce(async () => {
             // Typed tag names become dictionary entries first; 태그 goes only when the set changed, so an untouched field does not become 운영자 지정.
@@ -707,6 +750,7 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
               rangeName="applicationRange"
               timedName="applicationTimed"
               noteName="applicationNote"
+              overlapName="applicationOverlap"
               timed={applicationTimed}
               startOptional
             />
@@ -716,6 +760,7 @@ export function ActivityTextEditor({ activity, onClose }: { activity: ActivityTe
               rangeName="activityRange"
               timedName="activityTimed"
               noteName="activityNote"
+              overlapName="activityOverlap"
               timed={activityTimed}
             />
           </>
@@ -1073,9 +1118,11 @@ function ActivityCreateModal({ programId, programName, onClose }: { programId?: 
           activityTimed: boolean;
           activityNote: string;
           activityDateLabel?: string;
+          activityOverlap?: OverlapDraft;
           applicationRange: RangeDraft["range"];
           applicationTimed: boolean;
           applicationNote: string;
+          applicationOverlap?: OverlapDraft;
           audience?: string;
           location?: string;
           cost?: string;
@@ -1090,13 +1137,13 @@ function ActivityCreateModal({ programId, programName, onClose }: { programId?: 
             form.setFields([{ name: "activityRange", errors: [rangeError] }]);
             return;
           }
-          const dates = scheduleInput({ range: values.activityRange, timed: values.activityTimed }, values.activityNote);
+          const dates = scheduleInput({ range: values.activityRange, timed: values.activityTimed }, values.activityNote, overlapInput(values.activityOverlap));
           const dateLabel = optional(values.activityDateLabel);
           if (!dates && !dateLabel) {
             form.setFields([{ name: "activityDateLabel", errors: ["활동 기간의 날짜나 원문 문구 중 하나는 입력해 주세요."] }]);
             return;
           }
-          const application = scheduleInput({ range: values.applicationRange, timed: values.applicationTimed }, values.applicationNote);
+          const application = scheduleInput({ range: values.applicationRange, timed: values.applicationTimed }, values.applicationNote, overlapInput(values.applicationOverlap));
           createOnce(async () =>
             create.mutateAsync({
               tagIds: await resolveTagIds(values.tags, client),
@@ -1157,8 +1204,8 @@ function ActivityCreateModal({ programId, programName, onClose }: { programId?: 
             ]}
           />
         </Form.Item>
-        <ScheduleBlock title="모집 기간" schedule={null} rangeName="applicationRange" timedName="applicationTimed" noteName="applicationNote" timed={applicationTimed} startOptional />
-        <ScheduleBlock title="활동 기간" schedule={null} rangeName="activityRange" timedName="activityTimed" noteName="activityNote" timed={activityTimed} />
+        <ScheduleBlock title="모집 기간" schedule={null} rangeName="applicationRange" timedName="applicationTimed" noteName="applicationNote" overlapName="applicationOverlap" timed={applicationTimed} startOptional />
+        <ScheduleBlock title="활동 기간" schedule={null} rangeName="activityRange" timedName="activityTimed" noteName="activityNote" overlapName="activityOverlap" timed={activityTimed} />
         <Form.Item name="activityDateLabel" label="활동 기간 원문(선택)" extra="날짜를 고르지 않으면 이 문구만 남아요. 예: 2026년 상반기">
           <Input maxLength={200} />
         </Form.Item>
@@ -1217,6 +1264,7 @@ export function ScheduleBlock({
   rangeName,
   timedName,
   noteName,
+  overlapName,
   timed,
   startOptional = false,
 }: {
@@ -1225,6 +1273,7 @@ export function ScheduleBlock({
   rangeName: string;
   timedName: string;
   noteName: string;
+  overlapName: string;
   timed: boolean;
   /** 모집 기간 may be a deadline alone (contract "마감일만 지정"); 활동 기간 needs both ends. */
   startOptional?: boolean;
@@ -1255,6 +1304,7 @@ export function ScheduleBlock({
       <Form.Item name={noteName} label="사유(선택)" style={{ marginBottom: 8 }}>
         <Input maxLength={300} placeholder="예: 원문의 6/9는 접수 마감이라 모집 종료로 지정" />
       </Form.Item>
+      <OverlapField name={overlapName} />
       <p className="field-note">
         날짜만 고르면 종일 일정, 시각을 켜면 한국 시간으로 저장해요.{startOptional && " 마감일만 고르면 그날까지로 저장해요."} 비워 두면 원문 문구만 남아요. 지정한 기간은 다음 수집의 해석 예시로도 쓰여요.
       </p>
@@ -1384,6 +1434,7 @@ function ActivityDetail({ activity }: { activity: Activity }) {
                     <li key={schedule.id}>
                       <strong>{schedule.title}</strong> {scheduleText(schedule)}
                       {schedule.curated && <CuratedTag />}
+                      {overlapUnavailable(schedule) && <OverlapUnavailableTag />}
                       {schedule.address && ` · ${schedule.address.addressLine1} ${schedule.address.addressLine2}`.trimEnd()}
                     </li>
                   ))}
