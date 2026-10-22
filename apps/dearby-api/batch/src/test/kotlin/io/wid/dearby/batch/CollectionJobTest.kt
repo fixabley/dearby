@@ -739,6 +739,71 @@ class CollectionJobTest(
         }
     }
 
+    @Test
+    fun `운영 데이터 가져오기는 조직·프로그램·수집 설정을 만들고 초안을 게시하거나 지운다`() {
+        val source = "'01b773dc-5e13-4d14-a182-9642b47d596e'"
+        val (activityId, organizationId) = jdbc.sql("select a.id, p.organization_id from activities a join programs p on p.id = a.program_id where a.source_id = $source").query { rs, _ -> rs.getLong(1) to rs.getLong(2) }.single()
+        val (organizationName, organizationParent) = jdbc.sql("select name, parent_organization_id from organizations where id = ?").param(organizationId).query { rs, _ -> rs.getString(1) to rs.getObject(2) }.single()
+        val status = jdbc.sql("select publication_status from activities where id = ?").param(activityId).query(String::class.java).single()
+        // 지울 초안: 기존 수집 활동을 출처만 바꿔 복사한다
+        val columns = jdbc.sql("select string_agg(column_name, ', ') from information_schema.columns where table_name = 'activities' and column_name not in ('id', 'source_id')").query(String::class.java).single()
+        val draftSource = "a5a5a5a5-0000-4000-8000-000000000001"
+        val draftId = jdbc.sql("insert into activities (source_id, $columns) select '$draftSource'::uuid, $columns from activities where id = ? returning id").param(activityId).query(Long::class.java).single()
+        jdbc.sql("update activities set publication_status = 'DRAFT', name = '가져오기 지울 초안' where id = ?").param(draftId).update()
+        val scheduleColumns = jdbc.sql("select string_agg(column_name, ', ') from information_schema.columns where table_name = 'schedules' and column_name not in ('id', 'activity_id', 'source_id')").query(String::class.java).single()
+        jdbc.sql("insert into schedules (activity_id, $scheduleColumns) select ?, $scheduleColumns from schedules where activity_id = ?").param(draftId).param(activityId).update()
+        val file = Files.createTempDirectory("catalog").resolve("curation.json")
+        Files.writeString(file, json.writeValueAsString(mapOf(
+            "organizations" to listOf(
+                mapOf("key" to "same", "name" to " $organizationName ", "parentId" to organizationParent), // 같은 상위 아래 같은 이름이 있으면 그것을 쓴다
+                mapOf("key" to "club", "name" to "가져오기 연합동아리"),
+                mapOf("key" to "child", "name" to "가져오기 동아리", "nameEn" to "Import Club", "parentKey" to "club"),
+            ),
+            "newPrograms" to listOf(
+                mapOf("key" to "p", "name" to "가져오기 동아리 모집", "organizationKey" to "child", "category" to "CLUB",
+                    "collection" to mapOf("officialUrl" to "https://club.example.org/recruit", "allowedHosts" to listOf("Club.Example.org"), "enabled" to true)),
+                mapOf("key" to "dup", "name" to "가져오기 동아리 모집", "organizationKey" to "child"),
+            ),
+            "activities" to listOf(mapOf("id" to draftId, "dismiss" to true), mapOf("id" to activityId, "publish" to true)),
+        )))
+        fun count(sql: String) = jdbc.sql(sql).query(Int::class.java).single()
+        try {
+            jdbc.sql("update activities set publication_status = 'DRAFT' where id = ?").param(activityId).update()
+            // dry run: 계획만(새 조직 아래 프로그램도 계획으로 보인다), 아무것도 쓰지 않는다
+            val plan = curationImport.import(file, apply = false)
+            assertEquals(listOf("created", "created", "created", "created", "dismiss", "publish"), plan.filter { it.action == "SET" }.map { it.field })
+            assertEquals(listOf("reused"), plan.filter { it.action == "SKIP" }.map { it.field })
+            assertEquals(0, count("select count(*) from organizations where name like '가져오기%'"))
+            assertEquals(1, count("select count(*) from activities where id = $draftId"))
+            assertEquals("DRAFT", jdbc.sql("select publication_status from activities where id = ?").param(activityId).query(String::class.java).single())
+
+            // apply: 조직 둘(계위), 프로그램 하나(종류·수집 설정), 같은 이름 두 번째는 건너뛰고, 초안은 지우고(출처·피드백), 게시한다
+            val lines = curationImport.import(file, apply = true)
+            assertEquals(listOf("같은 조직에 같은 이름의 프로그램이 있음"), lines.filter { it.target == "program dup" }.map { it.detail.substringBefore(":") })
+            val programId = jdbc.sql("select p.id from programs p join organizations o on o.id = p.organization_id join organizations parent on parent.id = o.parent_organization_id where p.name = '가져오기 동아리 모집' and o.name_en = 'Import Club' and parent.name = '가져오기 연합동아리'").query(Long::class.java).single()
+            assertEquals("CLUB", jdbc.sql("select category from programs where id = ?").param(programId).query(String::class.java).single())
+            assertEquals("https://club.example.org/recruit|club.example.org", jdbc.sql("select official_url || '|' || allowed_hosts[1] from program_collection_settings where program_id = ?").param(programId).query(String::class.java).single())
+            assertEquals(0, count("select count(*) from activities where id = $draftId"))
+            assertEquals(1, count("select count(*) from dismissed_activity_sources where source_id = '$draftSource'"))
+            assertEquals(1, count("select count(*) from collection_feedback where kind = 'DRAFT_DISMISSED' and source_text = '가져오기 지울 초안'"))
+            assertEquals("PUBLISHED", jdbc.sql("select publication_status from activities where id = ?").param(activityId).query(String::class.java).single())
+
+            // 게시된 활동은 지우지 않는다
+            Files.writeString(file, json.writeValueAsString(mapOf("activities" to listOf(mapOf("id" to activityId, "dismiss" to true)))))
+            assertEquals(listOf("게시된 활동은 가져오기로 지우지 않습니다"), curationImport.import(file, apply = true).map { it.detail })
+            assertEquals(1, count("select count(*) from activities where id = $activityId"))
+        } finally {
+            jdbc.sql("update activities set publication_status = ? where id = ?").param(status).param(activityId).update()
+            jdbc.sql("delete from activities where id = ?").param(draftId).update()
+            jdbc.sql("delete from dismissed_activity_sources where source_id = '$draftSource'").update()
+            jdbc.sql("delete from collection_feedback where source_text = '가져오기 지울 초안'").update()
+            jdbc.sql("delete from program_collection_settings where program_id in (select id from programs where name = '가져오기 동아리 모집')").update()
+            jdbc.sql("delete from programs where name = '가져오기 동아리 모집'").update()
+            jdbc.sql("delete from organizations where name = '가져오기 동아리'").update()
+            jdbc.sql("delete from organizations where name = '가져오기 연합동아리'").update()
+        }
+    }
+
     private fun activityName() = jdbc.sql("select name from activities where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").query(String::class.java).single()
 
     // 명함 회수(native-v1.md "명함 교환"): batch가 매일 04:00에 부르는 RecallService. 규칙 자체는 api 모듈의 CardFlowTest·GuestFlowTest가 확인한다

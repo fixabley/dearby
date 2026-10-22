@@ -277,3 +277,10 @@ native-v1.md "조직 로고와 로고 계승"의 어드민 쪽. 프로그램 로
 - 실행: `docker compose -f compose.prod.yaml --env-file .env.prod run --rm -v <호스트 폴더>:/import:ro batch --import-curation=/import/curation.json [--apply]`. 기본은 dry run(항목별 계획만 로그로 남기고 쓰지 않음), `--apply`면 항목마다 트랜잭션 하나로 쓴다. 끝나면 프로세스가 끝난다. 실패한 항목은 그 항목만 건너뛰고 이유를 남긴다.
 - 파일: `{activities: [{id, overwrite?, eligibility?, tagNames?, tagNameEn?, place?: {name, address, lat, lng}}], programs: [{id, overwrite?, tagNames?, tagNameEn?}], organizationLogos: [{organizationId, file, overwrite?}], programLogos: [{programId, file, overwrite?}]}`. `file`은 JSON 파일 기준 상대 경로, 형식은 확장자(png·jpg·jpeg·webp)로 정한다. `eligibility`는 native-v1.md "대상자 조건" JSON.
 - 규칙: 빈 것만 채운다(항목의 `overwrite: true`면 바꾼다). 활동의 `curated_fields`에 있는 필드(`eligibility`·`tags`·`place`)는 overwrite여도 건드리지 않는다. 채운 값은 운영자 지정으로 남기지 않는다(수집이 같은 필드를 다시 갱신할 수 있다). `tagNames`는 사전의 한글·영문 이름(띄어쓰기·대소문자 무시)으로 찾고, 없는 이름은 `tagNameEn: {"<한글>": "<영문>"}`에 영문이 있을 때만 새 태그로 만든다(없으면 건너뜀). 장소는 넷 다 있어야 하고 활동 기간 행의 `address_line1`(이름)·`address_line2`(주소)·`lat`·`lng`에 쓴다.
+- 카탈로그 추가(2026-10-22 보완, 프로그램 등록·초안 정리도 같은 명령으로): 파일에 `organizations: [{key, name, nameEn?, parentId?|parentKey?}]`, `newPrograms: [{key, name, nameEn?, organizationId?|organizationKey, category?, collection?: {officialUrl, allowedHosts, renderPages?, intervalDays?, enabled?}}]`, `activities[].publish`·`activities[].dismiss`, 로고의 `organizationKey`·`programKey`.
+  - 순서: 조직 → 새 프로그램 → 활동(필드 → 게시) → 프로그램 태그 → 로고. `key`는 같은 파일 뒤쪽 항목이 앞 항목을 가리킬 때 쓴다(모르는 key는 그 항목 오류).
+  - 조직: 같은 상위 조직 아래 같은 이름(띄어쓰기·대소문자 무시)이 있으면 그것을 쓰고(`reused`), 없으면 어드민 조직 만들기와 같은 검증(core `CatalogWrites`)으로 만든다.
+  - 새 프로그램: 같은 조직에 같은 이름이 있으면 건너뛴다. 어드민 프로그램 만들기·수집 설정 PUT과 같은 검증(https 공식 주소·주소 토큰·허용 호스트), `category`는 프로그램 기본 종류.
+  - `publish: true`: 어드민 게시와 같다(상태만 PUBLISHED, 이미 게시면 건너뜀). `dismiss: true`: 어드민 활동 삭제와 같다(수집 출처를 `dismissed_activity_sources`에 남기고 `DRAFT_DISMISSED` 피드백) — 게시된 활동은 지우지 않고 건너뛴다. 지우는 항목의 다른 필드는 보지 않는다.
+  - dry run에서는 새 조직·프로그램이 없으므로 그 아래 항목은 계획만 보인다. `--apply`가 끝나면 로그 `New program ids: …`.
+- 특정 프로그램만 수집: `--collect-now=<programId,…>`(비우면 전부). 주기·하루 한 번 규칙은 그대로다.
