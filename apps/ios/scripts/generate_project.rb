@@ -33,6 +33,14 @@ project.targets.each do |target|
       'CODE_SIGN_STYLE' => 'Automatic', 'TARGETED_DEVICE_FAMILY' => '1,2',
       'IPHONEOS_DEPLOYMENT_TARGET' => '18.0', 'SWIFT_STRICT_CONCURRENCY' => 'complete'
     })
+    # Store signing (ios-testflight.yml): the distribution profile applies to the app target only.
+    # Passing it on the xcodebuild command line also hits Swift package resource bundles, which reject profiles.
+    if target == app && config.name == 'Release' && ENV['DEARBY_RELEASE_PROFILE']
+      config.build_settings.merge!({
+        'CODE_SIGN_STYLE' => 'Manual', 'CODE_SIGN_IDENTITY' => 'Apple Distribution',
+        'PROVISIONING_PROFILE_SPECIFIER' => ENV['DEARBY_RELEASE_PROFILE'], 'DEVELOPMENT_TEAM' => ENV.fetch('DEARBY_TEAM_ID')
+      })
+    end
     if target == app
       config.build_settings.merge!({
         'INFOPLIST_FILE' => 'Info.plist',

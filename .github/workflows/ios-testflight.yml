@@ -88,14 +88,13 @@ jobs:
         run: |
           # The Xcode project is generated, not tracked.
           gem install --user-install --no-document xcodeproj
-          ruby scripts/generate_project.rb
+          DEARBY_RELEASE_PROFILE="$PROFILE_NAME" DEARBY_TEAM_ID="$TEAM_ID" ruby scripts/generate_project.rb
           # Monotonic build number above the manual uploads (1, 2); re-runs get a new suffix.
           build="$((GITHUB_RUN_NUMBER + 2)).$GITHUB_RUN_ATTEMPT"
           echo "BUILD_NUMBER=$build" >> "$GITHUB_ENV"
           xcodebuild -project Dearby.xcodeproj -scheme Dearby -configuration Release \
             -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Dearby.xcarchive" \
-            DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" CURRENT_PROJECT_VERSION="$build" archive
+            DEVELOPMENT_TEAM="$TEAM_ID" CURRENT_PROJECT_VERSION="$build" archive
       - name: Upload to TestFlight
         run: |
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
