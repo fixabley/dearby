@@ -191,10 +191,11 @@ class ActivityViewModel(
             var cursor: String? = null
             try {
                 // Every page of the program's open activities (contract "열린 활동 판정 일원화": the server decides openness).
-                repeat(MAX_PROGRAM_PAGES) {
+                for (attempt in 1..MAX_PROGRAM_PAGES) {
                     val page = fetch(null, cursor, programId, true)
                     items += page.items
-                    cursor = page.nextCursor ?: return@repeat
+                    // `break`, not `return@repeat`: the latter only skips to the next pass, which fetched page 1 again (each activity shown 5 times).
+                    cursor = page.nextCursor ?: break
                 }
             } catch (e: CancellationException) { throw e } catch (e: Exception) {
                 Log.w("Dearby", "Program activities load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
