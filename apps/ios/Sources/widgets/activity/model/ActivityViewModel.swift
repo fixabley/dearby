@@ -56,7 +56,7 @@ import Observation
     private var opened: String?
     private var leftApp = false
     private var neverAsk: Set<String> = []
-    /// `내 활동에서 보기` (contract "내 활동 직접 추가"): the activity the 내 활동 tab should open next; the tab clears it once pushed.
+    /// `내 활동으로` on a detail (contract "활동 상세 내 활동 행동 정리"): the activity the 내 활동 tab should open next; the tab clears it once pushed.
     var showInMine: String?
     /// Every activity seen this session, so details and applied marks outlive a new search.
     private var seen: [String: ActivityModel] = [:]

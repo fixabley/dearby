@@ -82,7 +82,7 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
     Box(Modifier.fillMaxSize()) { when {
         activity != null -> ActivityDetailPage(activity, linkError, { selected = null }, openLink, { prompt = true },
             { calendar = true }, { sharing = true }, openMap,
-            addToMine = { model.apply(activity.id, true) }, viewInMine = { openInMine(activity.id) }, removeFromMine = { model.apply(activity.id, false) }, addToCalendar = { addToCalendar(it, activity) })
+            addToMine = { model.apply(activity.id, true) }, viewInMine = { openInMine(activity.id) }, addToCalendar = { addToCalendar(it, activity) })
         progress != null && progressActivity != null -> ActivityProgressPage(progress, { progressId = null }, { selected = progress.id; linkError = null },
             { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it }, { model.apply(progress.id, false); progressId = null }, { addToCalendar(it, progressActivity) })
         mine -> MyActivitiesPage(state, { selected = it; linkError = null }, { progressId = it }, explore, settings, notify) { model.apply(it, false) }

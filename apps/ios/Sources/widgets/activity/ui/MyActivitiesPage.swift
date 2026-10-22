@@ -53,7 +53,7 @@ struct MyActivitiesPage: View {
         }
         .navigationDestination(for: String.self) { id in ActivityDetailView(state: state, activityID: id) }
         .navigationDestination(for: ActivityProgressRoute.self) { route in ActivityProgressPage(state: state, activityID: route.activityID) }
-        // `내 활동에서 보기` (contract "내 활동 직접 추가"): open that activity here — its track when it has stages, else the plain detail.
+        // `내 활동으로` on a detail (contract "활동 상세 내 활동 행동 정리"): open that activity here — its track when it has stages, else the plain detail.
         .onChange(of: state.showInMine, initial: true) { _, id in
             guard let id, let activity = state.activity(id) else { return }
             state.showInMine = nil

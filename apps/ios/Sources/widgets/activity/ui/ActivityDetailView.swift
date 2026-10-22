@@ -4,7 +4,6 @@ struct ActivityDetailView: View {
     let state: ActivityViewModel
     let activityID: String
     @State private var showCalendar = false
-    @State private var removing: String?
     @State private var calendarDraft: CalendarEventDraft?
     private var activity: ActivityModel? { state.activity(activityID) }
     private var applied: Bool { state.appliedIDs.contains(activityID) }
@@ -33,13 +32,17 @@ struct ActivityDetailView: View {
             if let url = activity?.officialURL {
                 ShareLink(item: url) { Image(systemName: "square.and.arrow.up") }.accessibilityLabel("활동 공식 안내 링크 공유")
             }
+            // 추가 beside share (contract "활동 상세 내 활동 행동 정리" 2026-10-22): marks it applied; hidden once added.
+            if activity != nil && !applied {
+                Button("추가") { state.apply(activityID, true) }
+                    .accessibilityLabel("내 활동에 추가").accessibilityIdentifier("add-to-mine")
+            }
         }
         .sheet(isPresented: $showCalendar) {
             if let activity { CalendarConflictView(schedules: activity.overlapSchedules, activityLink: state.calendarLink(activity.id)) }
         }
         .sheet(item: $calendarDraft) { AddToCalendarSheet(draft: $0).ignoresSafeArea() }
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)
-        .removeFromMineDialog($removing, state: state)
     }
     private func identity(_ activity: ActivityModel) -> some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -77,19 +80,23 @@ struct ActivityDetailView: View {
     }
     /// The CTA opens the application link, else the official notice (contract "신청 확인 조건 완화" 2026-10-19 밤). Unless applying
     /// is over it reads as applying and arms the "신청하셨나요?" prompt for when the app comes back from the browser.
-    /// Under it, whatever the recruitment state, `내 활동에 추가` marks the activity applied by the same path as "신청했어요" (contract
-    /// "내 활동 직접 추가" 2026-10-20); once applied (contract "활동 상세의 추가 상태" 2026-10-22, replacing the long top banner) the block grows
-    /// upward with a teal `checkmark.circle.fill` "이미 추가된 항목입니다" line, then `내 활동에서 보기` and the red `내 활동에서 빼기`.
-    /// The participation mark is changed in 내 활동 (its row or the progress page).
+    /// Adding is the toolbar's `추가` (contract "활동 상세 내 활동 행동 정리" 2026-10-22). Once applied the block grows upward with a teal
+    /// `checkmark.circle.fill` "이미 추가된 항목입니다" line whose trailing `내 활동으로 >` opens it in 내 활동; removing is only in 내 활동.
     @ViewBuilder private func applicationActions(_ activity: ActivityModel) -> some View {
         let site = activity.applicationSiteURL
         let closed = activity.applicationClosed(at: state.loadedAt)
         VStack(spacing: 10) {
             Divider().padding(.bottom, 2)
             if applied {
-                Label("이미 추가된 항목입니다", systemImage: "checkmark.circle.fill")
-                    .font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
-                    .frame(maxWidth: .infinity, alignment: .leading).accessibilityIdentifier("mine-added")
+                HStack {
+                    Label("이미 추가된 항목입니다", systemImage: "checkmark.circle.fill").accessibilityIdentifier("mine-added")
+                    Spacer()
+                    Button { state.showInMine = activity.id } label: {
+                        HStack(spacing: 2) { Text("내 활동으로"); Image(systemName: "chevron.right") }
+                    }
+                    .buttonStyle(.borderless).accessibilityLabel("내 활동으로 가기").accessibilityIdentifier("show-in-mine")
+                }
+                .font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(DearbyStyle.teal)
             }
             if let url = site ?? activity.officialURL {
                 Link(destination: url) {
@@ -101,15 +108,6 @@ struct ActivityDetailView: View {
                     if !closed { state.openedApplication(activity.id) }
                     return .systemAction(opened)
                 })
-            }
-            if applied {
-                Button { state.showInMine = activity.id } label: { Label("내 활동에서 보기", systemImage: "checklist").frame(maxWidth: .infinity) }
-                    .buttonStyle(.bordered).accessibilityIdentifier("show-in-mine")
-                Button("내 활동에서 빼기", role: .destructive) { removing = activity.id }
-                    .buttonStyle(.borderless).accessibilityIdentifier("mine-remove")
-            } else {
-                Button { state.apply(activity.id, true) } label: { Label("내 활동에 추가", systemImage: "checklist").frame(maxWidth: .infinity) }
-                    .buttonStyle(.bordered).accessibilityIdentifier("add-to-mine")
             }
             Text("직접 남기는 기록이며 주최 측 확인은 아니에요.").font(.dearby(.caption)).foregroundStyle(DearbyStyle.quiet)
         }
