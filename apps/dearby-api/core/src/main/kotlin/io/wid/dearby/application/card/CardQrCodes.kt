@@ -57,7 +57,7 @@ class CardQrCodes(private val codes: CardQrCodeRepository, private val cards: Ca
         const val CODE_REQUIRED = "CARD_CODE_REQUIRED"
         const val CODE_EXPIRED = "CARD_CODE_EXPIRED"
         const val DETAIL = "명함 주인에게 QR을 다시 보여 달라고 해 주세요"
-        val LIFETIME: Duration = Duration.ofMinutes(30)
+        val LIFETIME: Duration = Duration.ofMinutes(5)
         val CLOSE_GRACE: Duration = Duration.ofMinutes(2)
         private val random = SecureRandom()
 

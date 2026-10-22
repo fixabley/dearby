@@ -244,7 +244,7 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         val codeId = issued["id"].asString()
         assertTrue(Regex("^[A-Za-z0-9_-]{43}$").matches(code))
         val expiresAt = OffsetDateTime.parse(issued["expiresAt"].asString())
-        assertTrue(expiresAt.isAfter(OffsetDateTime.now().plusMinutes(29)) && expiresAt.isBefore(OffsetDateTime.now().plusMinutes(31)))
+        assertTrue(expiresAt.isAfter(OffsetDateTime.now().plusMinutes(4)) && expiresAt.isBefore(OffsetDateTime.now().plusMinutes(6)))
         // DB에는 원문이 없다
         assertEquals(0, jdbc.sql("select count(*) from card_qr_codes where code_hash = ?").param(code).query(Int::class.java).single())
 

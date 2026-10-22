@@ -3,7 +3,7 @@ import SwiftUI
 
 /// 내 명함 QR (contract "명함 교환" 2026-10-19, "명함 QR 코드" 2026-10-22): the card's web address with the activity it is handed
 /// out at and a code many people can use until it expires, drawn with CoreImage. The code is the prefetched one or issued on open,
-/// replaced by the refresh button or by itself 5 minutes before its 30-minute expiry, and expired on close. No code, no QR. The activity menu starts on the nearest ongoing applied activity and can switch to another
+/// replaced by the refresh button or by itself 1 minute before its 5-minute expiry, and expired on close. No code, no QR. The activity menu starts on the nearest ongoing applied activity and can switch to another
 /// applied one or `활동 없이`. The screen goes to full brightness while the sheet is up and comes back on dismiss.
 /// Centred message layout (contract "비스크롤 화면 배치·CTA"): the QR is the glyph, the card name the title. The white padding
 /// around the code is the scanner's quiet zone, not a card, so it stays while the border goes.
@@ -64,7 +64,7 @@ struct CardQRSheet: View {
         .onAppear(perform: brighten)
         .onDisappear {
             restore()
-            // Closing never waits for the server; it keeps the code 2 more minutes, and the 30-minute expiry covers a failure.
+            // Closing never waits for the server; it keeps the code 2 more minutes, and the 5-minute expiry covers a failure.
             if let code { cards.expireQRCode(cardID, codeID: code.id) }
         }
     }
@@ -78,8 +78,8 @@ struct CardQRSheet: View {
                     Text("QR을 만들지 못했어요.").font(.dearby(.body)).foregroundStyle(.secondary)
                 }
     }
-    /// Opening uses the prefetched code when it still has over 5 minutes; a refresh issues a new one and then expires the old.
-    /// A failure drops the QR for the retry state. The task sleeps until 5 minutes before expiry, then bumps `generation` itself.
+    /// Opening uses the prefetched code when it still has over 1 minute; a refresh issues a new one and then expires the old.
+    /// A failure drops the QR for the retry state. The task sleeps until 1 minute before expiry, then bumps `generation` itself.
     private func rotate() async {
         let old = code
         issueFailed = false
@@ -92,7 +92,7 @@ struct CardQRSheet: View {
         if let old { cards.expireQRCode(cardID, codeID: old.id) }
         code = fresh
         guard let fresh else { issueFailed = true; return }
-        let wait = (fresh.expiry?.timeIntervalSinceNow ?? 1800) - 300
+        let wait = (fresh.expiry?.timeIntervalSinceNow ?? 300) - 60
         try? await Task.sleep(for: .seconds(max(wait, 30)))
         if !Task.isCancelled { generation += 1 }
     }
