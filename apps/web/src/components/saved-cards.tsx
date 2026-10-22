@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { type GuestItem, expiryLabel } from "@/lib/models";
 import { InstallOffer } from "./install-offer";
 import { errorMessage, mutateGuest, request, RequestError } from "@/lib/client";
-import { Failure, Loading } from "@/shared/ui/states";
+import { Failure } from "@/shared/ui/states";
 import { CenteredMessage } from "@/shared/ui/centered-message";
 import { Icon } from "@/shared/ui/icon";
 import { Badge } from "@/shared/ui/badge";
@@ -13,6 +13,7 @@ import { Card } from "@/shared/ui/card";
 import { Dialog, DialogActions, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/shared/ui/dialog";
 import { InsetGroup } from "@/shared/ui/inset-group";
 import { LargeTitle } from "@/shared/ui/nav-title";
+import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 
 /** Saved cards (contract "웹 리디자인" › `/saved`): large title, cookie note, the cards as an inset-grouped list, reset behind an alert. */
 export function SavedCards() {
@@ -154,7 +155,20 @@ export function SavedCards() {
           }}
         />
       ) : !cards ? (
-        <Loading />
+        // The saved list's shape: three avatar rows on one inset-grouped card.
+        <SkeletonGroup className="mt-5">
+          <Card className="divide-y divide-separator">
+            {[0, 1, 2].map((key) => (
+              <div key={key} className="flex items-center gap-3 px-4 py-3">
+                <Skeleton className="size-10 shrink-0 rounded-full" />
+                <div className="flex flex-1 flex-col gap-1.5">
+                  <Skeleton className="h-4 w-1/3" />
+                  <Skeleton className="h-3.5 w-1/2" />
+                </div>
+              </div>
+            ))}
+          </Card>
+        </SkeletonGroup>
       ) : !cards.length ? (
         <CenteredMessage
           icon="inbox"

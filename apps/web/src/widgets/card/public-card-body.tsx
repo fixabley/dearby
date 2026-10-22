@@ -3,6 +3,7 @@ import { Markdown } from "@/lib/markdown";
 import { Badge } from "@/shared/ui/badge";
 import { Card as Surface } from "@/shared/ui/card";
 import { Icon } from "@/shared/ui/icon";
+import { Skeleton } from "@/shared/ui/skeleton";
 
 type ContactKind = Card["contacts"][number]["kind"];
 
@@ -115,6 +116,28 @@ export function PublicCardBody({ card }: { card: Card }) {
           </ol>
         )}
       </section>
+    </Surface>
+  );
+}
+
+/** Loading placeholder in the card face's shape: centred avatar, name and job capsule, then a few 연락처 rows. */
+export function PublicCardBodySkeleton() {
+  return (
+    <Surface className="flex flex-col gap-6 p-5">
+      <div className="flex flex-col items-center gap-2.5">
+        <Skeleton className="size-14 rounded-full" />
+        <Skeleton className="h-6 w-28" />
+        <Skeleton className="h-6 w-20 rounded-full" />
+      </div>
+      <div className="flex flex-col gap-1">
+        <Skeleton className="h-4 w-12" />
+        {[0, 1, 2].map((key) => (
+          <div key={key} className="flex min-h-11 items-center gap-3 py-2">
+            <Skeleton className="size-6 rounded-full" />
+            <Skeleton className="h-4 flex-1" />
+          </div>
+        ))}
+      </div>
     </Surface>
   );
 }

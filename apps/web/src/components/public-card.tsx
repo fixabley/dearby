@@ -10,12 +10,13 @@ import {
   RequestError,
   saveFailure,
 } from "@/lib/client";
-import { Failure, Loading } from "@/shared/ui/states";
+import { Failure } from "@/shared/ui/states";
+import { SkeletonGroup } from "@/shared/ui/skeleton";
 import { Icon } from "@/shared/ui/icon";
 import { BottomBar } from "@/shared/ui/bottom-bar";
 import { Button } from "@/shared/ui/button";
 import { CardCodeRequired, MissingCard } from "@/widgets/card/missing-card";
-import { PublicCardBody } from "@/widgets/card/public-card-body";
+import { PublicCardBody, PublicCardBodySkeleton } from "@/widgets/card/public-card-body";
 import { BlockCard, ReportCard } from "@/widgets/card/report-dialog";
 /**
  * `activity`: the numeric activity id from the owner's QR; shown as `<프로그램> <활동>에서 받은 명함` and saved with the card.
@@ -117,7 +118,12 @@ export function PublicCard({ id, activity, code }: { id: string; activity?: numb
         }}
       />
     );
-  if (!card) return <Loading />;
+  if (!card)
+    return (
+      <SkeletonGroup className="mx-auto max-w-[480px] pt-3">
+        <PublicCardBodySkeleton />
+      </SkeletonGroup>
+    );
   return (
     <>
       <article className="mx-auto max-w-[480px] pt-3 pb-64">

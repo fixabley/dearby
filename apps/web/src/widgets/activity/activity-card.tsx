@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
+import { Skeleton } from "@/shared/ui/skeleton";
 
 /** Recruitment state the chip shows (contract "발견 카드 리뉴얼"): 모집 중 teal fill / 모집 예정 teal tint / 마감 system fill. */
 export type StatusTone = "open" | "soon" | "closed";
@@ -61,5 +62,19 @@ export function ActivityCard({
         ))}
       </dl>
     </Link>
+  );
+}
+
+/** Loading placeholder in the ActivityCard's shape: name line and status capsule, then the `모집`·`활동` rows. */
+export function ActivityCardSkeleton() {
+  return (
+    <div className="flex flex-col gap-2 rounded-[14px] bg-background px-3 pt-3 pb-2.5">
+      <span className="flex items-start gap-2.5">
+        <Skeleton className="h-4 flex-1" />
+        <Skeleton className="h-5 w-12 rounded-full" />
+      </span>
+      <Skeleton className="h-3.5 w-3/4" />
+      <Skeleton className="h-3.5 w-1/2" />
+    </div>
   );
 }
