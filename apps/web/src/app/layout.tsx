@@ -1,11 +1,16 @@
 import type { Metadata, Viewport } from "next";
 import { Shell } from "@/widgets/shell/shell";
+import { siteOpenGraph, WEB_ORIGIN } from "@/lib/preview";
 import "./globals.css";
 export const metadata: Metadata = {
   title: { default: "dearby · 탐색", template: "%s · dearby" },
   description: "새로운 활동을 발견하고, 받은 공개 명함을 저장하세요.",
   manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "Dearby", statusBarStyle: "default" },
+  // 오픈그래프 공통 (contract "유니버설 링크·App Links·활동 공유·오픈그래프"); the image is `opengraph-image.tsx`.
+  metadataBase: WEB_ORIGIN,
+  openGraph: siteOpenGraph,
+  twitter: { card: "summary_large_image" },
 };
 // Browser chrome tint = the grouped page background under the translucent bar (`--background`); the manifest keeps its static
 // colours. `viewport-fit=cover` lets the bar and the bottom CTAs pad for the safe area.

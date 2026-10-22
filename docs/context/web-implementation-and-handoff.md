@@ -16,7 +16,7 @@
 
 ## 구현 계약
 
-- API origin은 서버 env `DEARBY_API_ORIGIN`; guest secret은 `GUEST_PROXY_SECRET`. 브라우저는 same-origin `/api`만 요청. 2026-10-18 공유 삭제로 `/s/:shareId`·`/saved` 활동별 보기·`/.well-known` 앱 연결 라우트는 없다. 같은 날 추가했던 `/cards/:id`의 웹 버전 본문(`webIntroduction`)은 당일 삭제했고 모든 폭에서 `introduction`만 보인다.
+- API origin은 서버 env `DEARBY_API_ORIGIN`; guest secret은 `GUEST_PROXY_SECRET`. 브라우저는 same-origin `/api`만 요청. 2026-10-18 공유 삭제로 `/s/:shareId`·`/saved` 활동별 보기는 없다. 2026-10-22부터 `/.well-known/apple-app-site-association`·`/.well-known/assetlinks.json`(정적 값, `/cards/*`·`/activities/*`)과 오픈그래프(기본 이미지, `/activities/:id` 서버 메타·활동별 이미지 1시간 캐시, `/cards/:id` 고정 문구)를 둔다(native-v1.md "유니버설 링크·App Links·활동 공유·오픈그래프"). 미리보기 글꼴은 next/og가 woff2를 못 읽어 `apps/web/assets/fonts/Pretendard-SemiBold.otf`를 쓴다. 같은 날 추가했던 `/cards/:id`의 웹 버전 본문(`webIntroduction`)은 당일 삭제했고 모든 폭에서 `introduction`만 보인다.
 - 프록시는 공개 catalog·Card 단건·guest CRUD만 허용한다. UUID 검증 후 API에서 DB 존재·미철회 인가, 공개 DTO 필드만 반환. private profile과 타인 wallet 요청 경로 없음.
 - 최초 PUT 저장+세션 생성은 API 원자 연산. token은 서버에서만 쿠키로 옮기고 JSON에서 제거. 기존 token은 갱신만 하며 불명/폐기 token 401을 새 세션으로 자동 교체하지 않는다.
 - `__Host-dearby_guest` HttpOnly/Secure/SameSite=Lax/Path=/, Domain 없음, 400일. 성공한 guest 요청에 같은 token으로 갱신. 서버 세션 자동 만료 없음. 쿠키 유실·브라우저별 독립성 안내.

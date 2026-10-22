@@ -59,6 +59,7 @@ export function upstreamFetch(
     query,
     accept = "application/json",
     acceptLanguage,
+    revalidate,
   }: {
     method?: string;
     guest?: boolean;
@@ -69,6 +70,8 @@ export function upstreamFetch(
     accept?: string;
     /** Already validated; the API answers activity text in ko or en from it. */
     acceptLanguage?: string;
+    /** Seconds to keep the response in the data cache (public, cookie-free reads such as Open Graph); otherwise never cached. */
+    revalidate?: number;
   },
 ) {
   const origin = apiOrigin();
@@ -85,7 +88,7 @@ export function upstreamFetch(
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
-    cache: "no-store",
+    ...(revalidate === undefined ? { cache: "no-store" as const } : { next: { revalidate } }),
     redirect: "error",
     signal: AbortSignal.timeout(10_000),
   });
