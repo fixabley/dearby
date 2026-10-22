@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Configuration
 class ConsentConfig {
     @Bean
     fun consentVersions(
-        @Value("\${dearby.consent.privacy-version:2026-10-19}") privacy: String,
-        @Value("\${dearby.consent.terms-version:2026-10-19}") terms: String,
+        @Value("\${dearby.consent.privacy-version:2026-10-22}") privacy: String,
+        @Value("\${dearby.consent.terms-version:2026-10-22}") terms: String,
     ) = ConsentVersions(privacy, terms)
 }

@@ -11,6 +11,7 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_JOBS__PROFILE_JOBS_US
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_VERSIONS__PROFILE_VERSIONS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECEIPTS__RECEIPTS_RECIPIENT_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ACTIVITIES__USER_ACTIVITIES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_CONSENTS__USER_CONSENTS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ROLES__USER_ROLES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts.ContactsPath
@@ -18,6 +19,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories.ProfileHis
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileJobs.ProfileJobsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions.ProfileVersionsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts.ReceiptsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivities.UserActivitiesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserConsents.UserConsentsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles.UserRolesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.UsersRecord
@@ -210,6 +212,22 @@ open class Users(
 
     val receipts: ReceiptsPath
         get(): ReceiptsPath = receipts()
+
+    private lateinit var _userActivities: UserActivitiesPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.user_activities</code> table
+     */
+    fun userActivities(): UserActivitiesPath {
+        if (!this::_userActivities.isInitialized)
+            _userActivities = UserActivitiesPath(this, null, USER_ACTIVITIES__USER_ACTIVITIES_USER_ID_FKEY.inverseKey)
+
+        return _userActivities;
+    }
+
+    val userActivities: UserActivitiesPath
+        get(): UserActivitiesPath = userActivities()
 
     private lateinit var _userConsents: UserConsentsPath
 

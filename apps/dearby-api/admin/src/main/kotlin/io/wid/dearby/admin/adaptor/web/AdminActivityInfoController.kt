@@ -7,6 +7,7 @@ import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.ParticipationType
 import io.wid.dearby.admin.application.EligibilityChange
 import io.wid.dearby.admin.application.PlaceChange
+import io.wid.dearby.admin.application.OverlapChange
 import io.wid.dearby.admin.application.ScheduleChange
 import io.wid.dearby.domain.Address
 import io.wid.dearby.application.activity.ScheduleEdit
@@ -121,6 +122,7 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
                     application = request.application?.let { node -> if (node.isNull) null else scheduleEdit(node) },
                     eligibility = eligibility, audience = request.audience, location = request.location, cost = request.cost,
                     tagIds = request.tagIds, place = request.place?.takeUnless { it.isNull }?.let(::parsePlace),
+                    activityOverlap = overlapChange(activitySchedule), applicationOverlap = overlapChange(request.application),
                 )
             )
         )
@@ -135,6 +137,17 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
     @PatchMapping("/activities/{id}/schedules/{scheduleId}")
     fun updateSchedule(@PathVariable id: Long, @PathVariable scheduleId: Long, @RequestBody request: ScheduleItemRequest) =
         ScheduleResponse.from(activityInfo.updateDetailSchedule(id, scheduleId, request.toPatch()))
+
+    // 일정 상태(native-v1.md "내 활동 서버 저장·일정 상태"): 모집·활동 기간을 포함한 모든 일정. PUT은 순서대로 통째로 바꾼다
+    @GetMapping("/activities/{id}/schedules/{scheduleId}/statuses")
+    fun scheduleStatuses(@PathVariable id: Long, @PathVariable scheduleId: Long) =
+        ScheduleStatusesResponse(activityInfo.scheduleStatuses(id, scheduleId).map { ProgressStatusResponse(it.id, it.name, it.kind) })
+
+    @PutMapping("/activities/{id}/schedules/{scheduleId}/statuses")
+    fun replaceScheduleStatuses(@PathVariable id: Long, @PathVariable scheduleId: Long, @RequestBody request: ScheduleStatusesRequest) =
+        ScheduleStatusesResponse(
+            activityInfo.replaceScheduleStatuses(id, scheduleId, request.items.map { it.toStatus() }).map { ProgressStatusResponse(it.id, it.name, it.kind) }
+        )
 
     @DeleteMapping("/activities/{id}/schedules/{scheduleId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -154,6 +167,7 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
                 activitySchedule = scheduleChange(request.activitySchedule), application = scheduleChange(request.application),
                 officialUrl = request.officialUrl, applicationUrl = request.applicationUrl,
                 category = categoryChange(request.category), tagIds = request.tagIds, place = placeChange(request.place),
+                activityOverlap = overlapChange(request.activitySchedule), applicationOverlap = overlapChange(request.application),
             )
         )
     }
@@ -187,12 +201,18 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
     }
 
     // 일정 직접 지정(admin-v1.md): {startDate?, endDate?, startAt?, endAt?} 또는 null. 날짜는 yyyy-MM-dd, 시각은 ISO 8601 오프셋
+    // 객체에 overlapCheck만 있으면 날짜는 그대로 둔다(겹침 확인 시간만 바꿈)
     private fun scheduleChange(node: JsonNode?): ScheduleChange = when {
         node == null -> ScheduleChange.Keep
         node.isNull -> ScheduleChange.Clear
         !node.isObject -> throw InvalidInputException("일정은 객체 또는 null이어야 합니다")
+        node.propertyNames().toSet() == setOf("overlapCheck") -> ScheduleChange.Keep
         else -> ScheduleChange.Set(scheduleEdit(node))
     }
+
+    // 모집·활동 기간 객체 안의 overlapCheck(native-v1.md "겹침 확인 시간"): 없으면 null(그대로), JSON null은 지움, 객체는 HH:mm 검증 뒤 바꿈
+    private fun overlapChange(node: JsonNode?): OverlapChange? =
+        node?.takeIf { it.isObject && it.has("overlapCheck") }?.get("overlapCheck")?.let { OverlapChange(if (it.isNull) null else parseOverlapCheck(it)) }
 
     private fun scheduleEdit(node: JsonNode): ScheduleEdit {
         if (!node.isObject) throw InvalidInputException("일정은 객체여야 합니다")

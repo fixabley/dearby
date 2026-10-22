@@ -117,34 +117,25 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         // 일정은 매번 수집 결과로 바꾼다. 단 운영자가 직접 지정한(curated) 활동 기간·모집 기간은 남긴다(admin-v1.md "일정 직접 지정")
         val curatedSlots = dsl.select(SCHEDULES.SLOT).from(SCHEDULES)
             .where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.CURATED.isTrue).fetch(SCHEDULES.SLOT).toSet()
-        // 운영자가 만든·고친 세부 일정(curated)과 지운 일정(curated_deleted, admin-v1.md "세부 일정 편집기")은 남기고 수집 일정만 다시 쓴다
-        // 운영자가 지정한 활동 장소(native-v1.md "활동 장소", curated_fields place)는 활동 기간 행을 다시 써도 남긴다
-        val place = if (CuratedFields.PLACE in curated) dsl.select(SCHEDULES.ADDRESS_LINE1, SCHEDULES.ADDRESS_LINE2, SCHEDULES.LAT, SCHEDULES.LNG).from(SCHEDULES)
-            .where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.eq(SLOT_ACTIVITY)).fetchOne() else null
-        dsl.deleteFrom(SCHEDULES).where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.CURATED.isFalse, SCHEDULES.CURATED_DELETED.isFalse).execute()
+        // 운영자가 만든·고친 세부 일정(curated)과 지운 일정(curated_deleted, admin-v1.md "세부 일정 편집기")은 남기고 수집 일정만 다시 쓴다.
+        // 모집·활동 기간 행은 지우지 않고 제자리에서 고친다: id에 묶인 일정 상태·사용자 선택·겹침 확인 시간·장소가 남는다(native-v1.md "내 활동 서버 저장")
+        dsl.deleteFrom(SCHEDULES).where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.isNull, SCHEDULES.CURATED.isFalse, SCHEDULES.CURATED_DELETED.isFalse).execute()
         if (SLOT_ACTIVITY !in curatedSlots) {
-            insertSchedule(activityId, SLOT_ACTIVITY, name, ScheduleKind.EVENT, null, null, activity.startDate, activity.endDate, activity.dateLabel, now)
-            if (place?.value3() != null) {
-                dsl.update(SCHEDULES)
-                    .set(SCHEDULES.ADDRESS_LINE1, place.value1()).set(SCHEDULES.ADDRESS_LINE2, place.value2())
-                    .set(SCHEDULES.LAT, place.value3()).set(SCHEDULES.LNG, place.value4())
-                    .where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.eq(SLOT_ACTIVITY))
-                    .execute()
-            }
+            writeSchedule(activityId, SLOT_ACTIVITY, name, ScheduleKind.EVENT, null, null, activity.startDate, activity.endDate, activity.dateLabel, now)
         }
         val hasRecruitment = activity.recruitmentStartAt != null || activity.recruitmentEndAt != null || activity.recruitmentStartDate != null || activity.recruitmentEndDate != null
-        if (SLOT_APPLICATION !in curatedSlots && hasRecruitment) {
-            insertSchedule(
+        if (SLOT_APPLICATION !in curatedSlots) {
+            if (hasRecruitment) writeSchedule(
                 activityId, SLOT_APPLICATION, "신청 기간", ScheduleKind.DEADLINE,
                 activity.recruitmentStartAt, activity.recruitmentEndAt, activity.recruitmentStartDate, activity.recruitmentEndDate, "", now,
-            )
+            ) else dsl.deleteFrom(SCHEDULES).where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.eq(SLOT_APPLICATION)).execute()
         }
         // 운영자 세부 일정이나 지운 일정과 제목(띄어쓰기 무시)·시작이 같은 수집 일정은 다시 넣지 않는다
         val kept = dsl.select(SCHEDULES.TITLE, SCHEDULES.START_AT, SCHEDULES.START_DATE).from(SCHEDULES)
             .where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.isNull, SCHEDULES.CURATED.isTrue.or(SCHEDULES.CURATED_DELETED.isTrue))
             .fetch { scheduleKey(it.value1()!!, it.value2(), it.value3()) }.toSet()
         activity.schedules.filter { scheduleKey(it.title, it.startAt, it.startDate) !in kept }.forEach {
-            insertSchedule(activityId, null, it.title, it.kind, it.startAt, it.endAt, it.startDate, it.endDate, it.dateLabel, now)
+            writeSchedule(activityId, null, it.title, it.kind, it.startAt, it.endAt, it.startDate, it.endDate, it.dateLabel, now)
         }
         EligibilityRows.writeTerms(dsl, activityId, eligibility)
         // 태그(native-v1.md "태그"): 운영자가 정한 연결은 두고, 아니면 모델이 사전에서 고른 이름(모르는 이름은 버림), 비면 프로그램 태그
@@ -187,7 +178,8 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
     private fun scheduleKey(title: String, startAt: OffsetDateTime?, startDate: LocalDate?) =
         Triple(title.replace(Regex("\\s"), "").lowercase(), startAt?.toInstant(), startDate)
 
-    private fun insertSchedule(
+    // 슬롯 일정은 있으면 그 행을 고치고(id 유지), 없거나 세부 일정이면 새로 넣는다
+    private fun writeSchedule(
         activityId: Id,
         slot: String?,
         title: String,
@@ -203,22 +195,32 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         val allDay = !timed && (startDate != null || endDate != null)
         val start = startDate ?: endDate
         val end = endDate ?: startDate
+        val existing = slot?.let {
+            dsl.select(SCHEDULES.ID).from(SCHEDULES).where(SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.eq(it)).fetchOne(SCHEDULES.ID)
+        }
+        val values = mapOf(
+            SCHEDULES.TITLE to title,
+            SCHEDULES.KIND to kind.name,
+            SCHEDULES.STATUS to ScheduleStatus.CONFIRMED.name,
+            SCHEDULES.TIME_TYPE to when { timed -> TIME_TIMED; allDay -> TIME_ALL_DAY; else -> null },
+            SCHEDULES.START_AT to startAt,
+            SCHEDULES.END_AT to endAt,
+            SCHEDULES.TIME_ZONE to if (timed) TIME_ZONE else null,
+            SCHEDULES.START_DATE to if (allDay) start else null,
+            SCHEDULES.END_DATE_EXCLUSIVE to if (allDay) end!!.plusDays(1) else null,
+            SCHEDULES.DATE_LABEL to dateLabel,
+            SCHEDULES.UPDATED_AT to now,
+        )
+        if (existing != null) {
+            dsl.update(SCHEDULES).set(values).set(SCHEDULES.SEQUENCE, SCHEDULES.SEQUENCE.plus(1)).where(SCHEDULES.ID.eq(existing)).execute()
+            return
+        }
         dsl.insertInto(SCHEDULES)
+            .set(values)
             .set(SCHEDULES.ACTIVITY_ID, activityId)
             .set(SCHEDULES.SLOT, slot)
-            .set(SCHEDULES.TITLE, title)
-            .set(SCHEDULES.KIND, kind.name)
-            .set(SCHEDULES.STATUS, ScheduleStatus.CONFIRMED.name)
-            .set(SCHEDULES.TIME_TYPE, when { timed -> TIME_TIMED; allDay -> TIME_ALL_DAY; else -> null })
-            .set(SCHEDULES.START_AT, startAt)
-            .set(SCHEDULES.END_AT, endAt)
-            .set(SCHEDULES.TIME_ZONE, if (timed) TIME_ZONE else null)
-            .set(SCHEDULES.START_DATE, if (allDay) start else null)
-            .set(SCHEDULES.END_DATE_EXCLUSIVE, if (allDay) end!!.plusDays(1) else null)
-            .set(SCHEDULES.DATE_LABEL, dateLabel)
             .set(SCHEDULES.SEQUENCE, 0)
             .set(SCHEDULES.CREATED_AT, now)
-            .set(SCHEDULES.UPDATED_AT, now)
             .execute()
     }
 

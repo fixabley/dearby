@@ -251,6 +251,8 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
             .set(SCHEDULES.DATE_LABEL, item.dateLabel)
             .set(SCHEDULES.CURATED, true)
             .set(SCHEDULES.CURATED_NOTE, item.note)
+            .set(SCHEDULES.OVERLAP_START_TIME, item.overlapCheck?.startTime)
+            .set(SCHEDULES.OVERLAP_END_TIME, item.overlapCheck?.endTime)
             .set(SCHEDULES.SEQUENCE, 0)
             .set(SCHEDULES.CREATED_AT, now)
             .set(SCHEDULES.UPDATED_AT, now)
@@ -264,7 +266,7 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
     override fun findSchedule(activityId: Id, scheduleId: Id): StoredSchedule? =
         dsl.selectFrom(SCHEDULES)
             .where(SCHEDULES.ID.eq(scheduleId), SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.CURATED_DELETED.isFalse)
-            .fetchOne()?.let { StoredSchedule(it.toSchedule(), it.slot) }
+            .fetchOne()?.let { StoredSchedule(it.toSchedule(progressStatusesOf(dsl, listOf(scheduleId))[scheduleId].orEmpty()), it.slot) }
 
     @Transactional
     override fun updateDetailSchedule(activityId: Id, scheduleId: Id, item: ScheduleItem): Schedule? {
@@ -276,6 +278,8 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
             .set(SCHEDULES.DATE_LABEL, item.dateLabel)
             .set(SCHEDULES.CURATED, true)
             .set(SCHEDULES.CURATED_NOTE, item.note)
+            .set(SCHEDULES.OVERLAP_START_TIME, item.overlapCheck?.startTime)
+            .set(SCHEDULES.OVERLAP_END_TIME, item.overlapCheck?.endTime)
             .set(SCHEDULES.SEQUENCE, SCHEDULES.SEQUENCE.plus(1))
             .set(SCHEDULES.UPDATED_AT, now)
             .where(SCHEDULES.ID.eq(scheduleId), SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.SLOT.isNull, SCHEDULES.CURATED_DELETED.isFalse)
@@ -299,6 +303,23 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
         return marked
     }
 
+    @Transactional
+    override fun updateOverlapCheck(activityId: Id, scheduleId: Id, overlapCheck: OverlapCheck?): Schedule? {
+        val now = LocalDateTime.now()
+        val updated = dsl.update(SCHEDULES)
+            .set(SCHEDULES.OVERLAP_START_TIME, overlapCheck?.startTime)
+            .set(SCHEDULES.OVERLAP_END_TIME, overlapCheck?.endTime)
+            .set(SCHEDULES.SEQUENCE, SCHEDULES.SEQUENCE.plus(1))
+            .set(SCHEDULES.UPDATED_AT, now)
+            .where(SCHEDULES.ID.eq(scheduleId), SCHEDULES.ACTIVITY_ID.eq(activityId), SCHEDULES.CURATED_DELETED.isFalse)
+            .execute()
+        if (updated == 0) return null
+        // 수집한 세부 일정은 다시 수집할 때 지워지므로 운영자 지정으로 남긴다(모집·활동 기간 행은 제자리에서 고쳐져 id가 유지된다)
+        dsl.update(SCHEDULES).set(SCHEDULES.CURATED, true).where(SCHEDULES.ID.eq(scheduleId), SCHEDULES.SLOT.isNull).execute()
+        dsl.update(ACTIVITIES).set(ACTIVITIES.UPDATED_AT, now).where(ACTIVITIES.ID.eq(activityId)).execute()
+        return fetchSchedule(activityId, scheduleId)
+    }
+
     // 시각 일정은 start_at·end_at·time_zone, 종일 일정은 start_date·end_date_exclusive, 없으면 모두 null(dateLabel만)
     private fun writeTime(scheduleId: Id, time: ScheduleTime?, now: LocalDateTime) {
         val timed = time as? ScheduleTime.Timed
@@ -316,7 +337,8 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
     }
 
     private fun fetchSchedule(activityId: Id, scheduleId: Id): Schedule? =
-        dsl.selectFrom(SCHEDULES).where(SCHEDULES.ID.eq(scheduleId), SCHEDULES.ACTIVITY_ID.eq(activityId)).fetchOne()?.toSchedule()
+        dsl.selectFrom(SCHEDULES).where(SCHEDULES.ID.eq(scheduleId), SCHEDULES.ACTIVITY_ID.eq(activityId)).fetchOne()
+            ?.toSchedule(progressStatusesOf(dsl, listOf(scheduleId))[scheduleId].orEmpty())
 
     override fun updatePublicationStatus(activityId: Id, status: PublicationStatus): Boolean =
         dsl.update(ACTIVITIES)

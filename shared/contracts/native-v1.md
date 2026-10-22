@@ -553,7 +553,8 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 ### 데이터(사용자가 준 모델)
 
 - `schedule_statuses(id, schedule_id, name, kind, sort_order, created_at)` — 일정마다 고를 수 있는 상태. `kind`: `WAITING`(대기)·`PASSED`(통과)·`FAILED`(탈락)·`OTHER`. 일정에 행이 없으면 기본 세 개(대기·통과·탈락)를 쓴다(서버가 응답에 채워 준다, 저장은 하지 않음). 어드민이 일정별로 더하고 이름을 바꾸고 지운다.
-- `user_activities(id uuid, user_id, activity_id(논리 FK), confirmed bool, created_at, updated_at)` — 사용자가 내 활동에 넣은 활동. `(user_id, activity_id)` 유일.
+- `user_activities(id uuid, user_id, activity_id(논리 FK), created_at, updated_at)` — 사용자가 내 활동에 넣은 활동. `(user_id, activity_id)` 유일.
+- 참여 확정 표시는 없앤다(2026-10-22 사용자): 일정별 상태로 추론한다.
 - `user_activity_schedule_statuses(user_activity_id(논리 FK), schedule_id, schedule_status_id(논리 FK), updated_at)` — PK `(user_activity_id, schedule_id)`. 기본 상태를 고르면 `schedule_status_id`는 null이고 `default_kind`에 기본 종류를 둔다(기본 행은 저장된 id가 없으므로).
 - 논리 FK: DB 제약 없이 코드가 확인한다. 활동이 지워지면 사용자 활동은 남되 목록에서 "삭제된 활동"으로 보인다.
 
@@ -561,13 +562,13 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 
 | 메서드·경로 | 요청 | 응답 |
 | --- | --- | --- |
-| GET /v1/me/activities | — | 200 `{items: [{activityId, confirmed, createdAt, statuses: [{scheduleId, statusId?, kind}]}]}` |
-| PUT /v1/me/activities/{activityId} | `{confirmed?}` | 200 항목(없으면 만들고 있으면 고침). 게시되지 않은 활동 404 |
+| GET /v1/me/activities | — | 200 `{items: [{activityId, createdAt, deleted, statuses: [{scheduleId, statusId?, kind}]}]}`. `deleted`: 활동이 지워졌거나 게시가 내려감("삭제된 활동") |
+| PUT /v1/me/activities/{activityId} | 없음 또는 `{}` | 200 항목(없으면 만들고 있으면 그대로). 게시되지 않은 활동 404 |
 | DELETE /v1/me/activities/{activityId} | — | 204(일정 상태도 함께 지움). 없어도 204 |
 | PUT /v1/me/activities/{activityId}/schedules/{scheduleId} | `{statusId}` 또는 `{kind}`(기본 상태) | 200 항목. 그 활동의 일정이 아니거나 그 일정의 상태가 아니면 400 |
-| POST /v1/me/activities/import | `{items: [{activityId, confirmed, statuses: [{scheduleId, kind}]}]}` | 200 목록. 기기에만 있던 기록을 로그인 뒤 한 번 올린다(이미 있으면 서버 값 유지) |
+| POST /v1/me/activities/import | `{items: [{activityId, statuses: [{scheduleId, kind}]}]}` | 200 목록. 기기에만 있던 기록을 로그인 뒤 한 번 올린다(이미 있으면 서버 값 유지) |
 
-- 공개 `Schedule`에 `statuses: [{id?, name, kind}]`(어드민 지정 또는 기본 세 개)와 `overlapCheck: {startTime, endTime} | null`을 더한다.
+- 공개 `Schedule`에 `statuses: [{id?, name, kind}]`(어드민 지정 또는 기본 세 개)와 `overlapCheck: {startTime, endTime} | null`(서울 `HH:mm`)을 더한다. 세부 일정(`schedules[]`)뿐 아니라 모집 기간(`application`)·활동 기간(`activitySchedule`)도 같은 필드를 가지며, 그 id도 "그 활동의 일정"으로 `PUT …/schedules/{scheduleId}`에 쓸 수 있다.
 
 ### 겹침 확인 시간
 

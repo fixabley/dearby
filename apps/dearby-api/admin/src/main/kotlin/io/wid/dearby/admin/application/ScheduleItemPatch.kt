@@ -3,6 +3,7 @@ package io.wid.dearby.admin.application
 import io.wid.dearby.application.activity.ScheduleEdit
 import io.wid.dearby.application.activity.ScheduleItem
 import io.wid.dearby.domain.InvalidInputException
+import io.wid.dearby.domain.OverlapCheck
 import io.wid.dearby.domain.Schedule
 import io.wid.dearby.domain.ScheduleKind
 import io.wid.dearby.domain.ScheduleStatus
@@ -24,7 +25,12 @@ data class ScheduleItemPatch(
     val timeZone: ZoneId?,
     val dateLabel: String?,
     val note: String?,
+    val hasOverlapCheck: Boolean = false, // overlapCheck가 왔으면(null 포함) 바꾼다(native-v1.md "겹침 확인 시간")
+    val overlapCheck: OverlapCheck? = null,
 ) {
+    // 겹침 확인 시간만 바꾸는 요청. 모집·활동 기간 행은 이것만 이 편집기로 고칠 수 있다
+    val overlapOnly: Boolean get() = hasOverlapCheck && !hasTime && listOf(title, kind, status, timeZone, dateLabel, note).all { it == null }
+
     // 날짜·시각 규칙은 일정 직접 지정(ScheduleEdit)과 같다: 섞으면 400, 끝이 앞서면 400. 시각도 날짜도 없으면 dateLabel이 있어야 한다
     fun toItem(existing: Schedule?): ScheduleItem {
         val title = (title ?: existing?.title)?.ifEmpty { null } ?: throw InvalidInputException("제목을 입력해 주세요")
@@ -37,6 +43,6 @@ data class ScheduleItemPatch(
         if (time == null && dateLabel.isEmpty()) throw InvalidInputException("날짜나 원문 문구 중 하나는 입력해 주세요")
         val note = (if (this.note != null) this.note.ifEmpty { null } else existing?.curatedNote)
         if (note != null && note.length > 300) throw InvalidInputException("사유는 300자까지입니다")
-        return ScheduleItem(title, kind, status, time, dateLabel, note)
+        return ScheduleItem(title, kind, status, time, dateLabel, note, if (hasOverlapCheck) overlapCheck else existing?.overlapCheck)
     }
 }
