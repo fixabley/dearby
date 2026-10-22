@@ -8,9 +8,14 @@ import java.time.temporal.ChronoUnit
 /**
  * One step of an applied activity (contract "내 활동 진행 트랙"). [label] is the badge word (마감·발표·면접, or the title for
  * EVENT). [day] is the Seoul date the badge counts down to and [lastDay] the last Seoul date the step is still on; both
- * are null for an undated step. [window] is the timed range for the calendar comparison, only when both ends are known.
+ * are null for an undated step. [windows] are the calendar-comparison windows ([StageSchedule.windows]; empty for 지원).
+ * [scheduleId] and [statuses] are the schedule's, for the user's status choice (contract "내 활동 서버 저장·일정 상태").
+ * [eventStart]/[eventEnd]/[allDay] prefill the system "add event" screen (contract "내 캘린더에 추가"): a timed step uses its times
+ * (one end missing → a point), a date-only step is all-day from Seoul midnight; null for an undated step.
  */
-data class Stage(val name: String, val kind: String, val label: String, val dateText: String, val day: LocalDate?, val lastDay: LocalDate?, val window: ScheduleModel?) {
+data class Stage(val name: String, val kind: String, val label: String, val dateText: String, val day: LocalDate?, val lastDay: LocalDate?,
+    val windows: List<ScheduleModel> = emptyList(), val scheduleId: String? = null, val statuses: List<ScheduleStatus> = ScheduleStatus.DEFAULTS,
+    val eventStart: Instant? = null, val eventEnd: Instant? = null, val allDay: Boolean = false) {
     /** Over by [today]: the step's last day has passed. An undated step never ends by itself. */
     fun finished(today: LocalDate) = lastDay != null && lastDay < today
 }
@@ -26,8 +31,11 @@ private const val UNDATED = "날짜 미확인"
 fun ActivityModel.stages(): List<Stage> {
     val applying = application?.let { window ->
         // The deadline only (timed, else the all-day window's last day); the start is left out on purpose.
-        val day = instant(window.endAt)?.atZone(seoul)?.toLocalDate() ?: localDate(window.endDateExclusive)?.minusDays(1)
-        Stage("지원", "APPLICATION", "마감", if (day == null) UNDATED else scheduleText(null, window.endAt, null, window.endDateExclusive, recruitment = true), day, day, null)
+        val deadline = instant(window.endAt)
+        val day = deadline?.atZone(seoul)?.toLocalDate() ?: localDate(window.endDateExclusive)?.minusDays(1)
+        Stage("지원", "APPLICATION", "마감", if (day == null) UNDATED else scheduleText(null, window.endAt, null, window.endDateExclusive, recruitment = true), day, day,
+            scheduleId = window.id, statuses = window.statuses.ifEmpty { ScheduleStatus.DEFAULTS },
+            eventStart = deadline ?: day?.atStartOfDay(seoul)?.toInstant(), eventEnd = deadline ?: day?.plusDays(1)?.atStartOfDay(seoul)?.toInstant(), allDay = deadline == null)
     }
     val period = activitySchedule?.let { it.copy(title = it.title.ifBlank { "활동" }).toStage() }
     return listOfNotNull(applying) + stageSchedules.sortedWith(compareBy(nullsLast()) { it.startInstant() }).map { it.toStage() } + listOfNotNull(period)
@@ -49,7 +57,6 @@ private fun StageSchedule.startInstant(): Instant? =
     instant(startAt) ?: instant(endAt) ?: localDate(startDate)?.atStartOfDay(seoul)?.toInstant()
 
 private fun StageSchedule.toStage(): Stage {
-    val zone = runCatching { ZoneId.of(timeZone) }.getOrDefault(seoul)
     val start = instant(startAt)
     val end = instant(endAt)
     val startDay = localDate(startDate)
@@ -57,12 +64,13 @@ private fun StageSchedule.toStage(): Stage {
     val label = when (kind) { "DEADLINE" -> "마감"; "ANNOUNCEMENT" -> "발표"; "INTERVIEW" -> "면접"; else -> title }
     // Text by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.
     val text = scheduleText().ifBlank { UNDATED }
+    val statuses = statuses.ifEmpty { ScheduleStatus.DEFAULTS }
     return when {
         start != null || end != null -> Stage(title, kind, label, text,
-            (start ?: end)!!.atZone(seoul).toLocalDate(), (end ?: start)!!.atZone(seoul).toLocalDate(),
-            if (startAt != null && endAt != null) ScheduleModel(title, startAt, endAt, zone.id) else null)
-        startDay != null -> Stage(title, kind, label, text, startDay, endDay, null)
-        else -> Stage(title, kind, label, text, null, null, null)
+            (start ?: end)!!.atZone(seoul).toLocalDate(), (end ?: start)!!.atZone(seoul).toLocalDate(), windows(), id, statuses, start ?: end, end ?: start)
+        startDay != null -> Stage(title, kind, label, text, startDay, endDay, windows(), id, statuses,
+            startDay.atStartOfDay(seoul).toInstant(), endDay!!.plusDays(1).atStartOfDay(seoul).toInstant(), allDay = true)
+        else -> Stage(title, kind, label, text, null, null, emptyList(), id, statuses)
     }
 }
 

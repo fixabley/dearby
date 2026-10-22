@@ -6,11 +6,11 @@ Repository/API/인증/영구 저장/OS 개인정보 접근 계층 없이 fixture
 - `app/entrypoint`: ActivityViewModel과 IdentityViewModel의 앱 실행 수명, 탭 조립.
 - `pages/home`: 네 탭(발견·내 활동·명함·프로필)/NavigationStack과 탐색 상세에서 탭 숨김, 설정 목적지를 조합하는 HomePage.
 - `pages/intro`: 첫 실행 소개 IntroPage. 패스키 로그인은 `widgets/identity`의 SignInSheet를 띄운다. 애플 로그인(플래그 켠 빌드)은 여기서 바로 시작하고, 처음 보는 애플 계정(202)이면 SignInSheet를 열어 새 계정/패스키 계정 연결을 고르게 한다.
-- `widgets/activity`: 활동 목록(서버 검색·페이지)·상세·이미지·일정표와 메모리 신청 상태.
+- `widgets/activity`: 활동 목록(서버 검색·페이지)·상세·이미지·일정표와 내 활동 상태(비로그인은 메모리, 로그인은 앱 계층이 넘긴 `MineServer`로 `/v1/me/activities`; 같은 계층의 `widgets/identity`를 참조하지 않는다).
 - `widgets/identity`: 프로필(데이터 입력·변경 이력·단계별 이력 입력·인증자료)·명함 탭(`CardsPage`: 세그먼트로 `MyCardsPage`·`WalletPage` 전환)·설정(`SettingsPage`·`SettingsModel`: 계정·연결된 로그인·패스키·정보)·명함 제작(이름·공개 연락처·이력 선택, 내장 템플릿 `TemplateDocument` 미리보기; 앱 안 꾸미기는 2026-10-18 삭제) 화면과 모델.
 - `features/application`: 로컬 신청 안내/완료 표시, 외부 HTTPS Link.
-- `features/calendar`: 기기 캘린더(EventKit) 읽기 전용 겹침 비교(누를 때만 권한 요청, 기기 안 계산, 화면을 닫으면 버림), 안내/거부/결과 시트, 시간 격자. 미리보기는 `FixtureCalendarEventSource`.
-- `entities/activity`: 활동 값 모델·페이지와 `GET /v1/activities` 클라이언트.
+- `features/calendar`: 기기 캘린더(EventKit) 읽기 전용 겹침 비교(누를 때만 권한 요청, 기기 안 계산, 화면을 닫으면 버림), 안내/거부/결과 시트, 시간 격자. 미리보기는 `FixtureCalendarEventSource`. `캘린더에 추가`는 미리 채운 시스템 일정 추가 화면(`AddToCalendarSheet`, EventKitUI 브리지; 권한 요청·읽기 없음, 저장은 사용자가 그 화면에서).
+- `entities/activity`: 활동 값 모델(일정 상태 `ScheduleStatus`·겹침 확인 시간 `OverlapCheck` 포함)·페이지와 `GET /v1/activities`(`/:id` 단건 포함) 클라이언트.
 - `entities/identity`: 순수 명함/연락처/이력 fixture 및 CardView/CardDeck/HistoryTimeline/ContactIcons.
 - `shared/lib`: 검색어 비교, 마크다운 부분집합 파서 `MarkdownDocument`.
 - `shared/ui`: DearbyStyle 색상(시스템 중립색 별칭 + 라이트/다크 두 값의 청록 액센트 `teal`, 두 모드 같은 채움 `tealFill`과 흰 `onTeal`), DearbyLogo, 마크다운 본문 `DearbyMarkdownText`, 버튼(채움/테두리, Apple 로그인 버튼 DearbyAppleButton), 배지, 아바타,

@@ -155,3 +155,19 @@ private fun JSONObject.toHistory() = AccountHistory(getString("id"), getString("
     optString("verification", "unverified"), optJSONArray("evidence")?.objects()?.map { it.toEvidence() }.orEmpty())
 private fun JSONObject.text(key: String): String? = if (isNull(key)) null else getString(key)
 private fun JSONArray.objects() = List(length()) { getJSONObject(it) }
+
+/**
+ * One 내 활동 record on the server (contract "내 활동 서버 저장·일정 상태", 2026-10-22): `GET /v1/me/activities` items. Ids are the
+ * API's numbers as text. [statuses] are the user's per-schedule choices: [MyScheduleStatus.statusId] is null for a default status.
+ * [deleted] when the server says the activity was removed or unpublished ("삭제된 활동").
+ */
+data class MyActivityRecord(val activityId: String, val statuses: List<MyScheduleStatus>, val deleted: Boolean = false)
+data class MyScheduleStatus(val scheduleId: String, val statusId: String?, val kind: String)
+fun JSONObject.toMyActivities() = getJSONArray("items").objects().map { it.toMyActivity() }
+fun JSONObject.toMyActivity() = MyActivityRecord(get("activityId").toString(),
+    optJSONArray("statuses")?.objects()?.map { MyScheduleStatus(it.get("scheduleId").toString(), if (it.isNull("statusId")) null else it.get("statusId").toString(), it.getString("kind")) }.orEmpty(), optBoolean("deleted"))
+/** `POST /v1/me/activities/import` body: device records with default-kind statuses only (the contract takes `{scheduleId, kind}`). */
+fun List<MyActivityRecord>.toImportJson(): JSONObject = JSONObject().put("items", JSONArray(map { record ->
+    JSONObject().put("activityId", record.activityId.toLong())
+        .put("statuses", JSONArray(record.statuses.map { JSONObject().put("scheduleId", it.scheduleId.toLong()).put("kind", it.kind) }))
+}))

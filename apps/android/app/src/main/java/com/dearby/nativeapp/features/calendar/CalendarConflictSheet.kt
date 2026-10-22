@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.dearby.nativeapp.entities.activity.model.ScheduleModel
+import com.dearby.nativeapp.entities.activity.model.instant
 import com.dearby.nativeapp.shared.ui.CenteredMessage
 import com.dearby.nativeapp.shared.ui.MessageAction
 import java.time.Instant
@@ -66,14 +67,17 @@ import java.util.Locale
             if (overlap == null) "이 활동과 기기 캘린더에 겹치는 시간이 없어요."
             else "${clock.format(Instant.ofEpochMilli(overlap.start))} – ${clock.format(Instant.ofEpochMilli(overlap.end))}에 ‘${overlap.busy.title ?: "제목 없는 일정"}’과 겹쳐요.",
             content = {
-                Text(date.format(Instant.parse(schedule.startAt)), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
+                // The overlapping day (a date-only schedule repeats its overlap-check window daily), else the first window's.
+                Text(overlap?.let { date.format(Instant.ofEpochMilli(it.start)) } ?: instant(schedule.startAt)?.let(date::format).orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
+                // A long date range can overlap dozens of times: five more lines, then the count.
                 if (overlaps.size > 1) Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    overlaps.drop(1).forEach { Text("${clock.format(Instant.ofEpochMilli(it.start))} – ${clock.format(Instant.ofEpochMilli(it.end))} ${it.busy.title ?: "제목 없는 일정"}", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge) }
+                    overlaps.drop(1).take(5).forEach { Text("${date.format(Instant.ofEpochMilli(it.start))} ${clock.format(Instant.ofEpochMilli(it.start))} – ${clock.format(Instant.ofEpochMilli(it.end))} ${it.busy.title ?: "제목 없는 일정"}", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge) }
+                    if (overlaps.size > 6) Text("외 ${overlaps.size - 6}개", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
                 }
                 if (overlap != null) CalendarOverlapTimeline(overlap)
                 else Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(schedule.title, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)
-                    Text("${clock.format(Instant.parse(schedule.startAt))} – ${clock.format(Instant.parse(schedule.endAt))}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
+                    Text("${instant(schedule.startAt)?.let(clock::format).orEmpty()} – ${instant(schedule.endAt)?.let(clock::format).orEmpty()}", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.Info, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)

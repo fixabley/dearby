@@ -19,17 +19,30 @@ import com.dearby.nativeapp.pages.activity.ActivityListState
 import com.dearby.nativeapp.pages.activity.ProgramActivities
 import com.dearby.nativeapp.pages.activity.ProgramPhase
 import com.dearby.nativeapp.pages.activity.ProgramState
-import com.dearby.nativeapp.widgets.activity.progress.ProgressMark
 import com.dearby.nativeapp.widgets.activity.progress.ProgressStage
 import com.dearby.nativeapp.widgets.activity.progress.ProgressState
 import com.dearby.nativeapp.widgets.activity.progress.ProgressStatus
+import com.dearby.nativeapp.widgets.activity.progress.StatusOption
+import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
+import com.dearby.nativeapp.pages.activity.ScheduleItemState
+import com.dearby.nativeapp.entities.activity.model.Stage
+import com.dearby.nativeapp.entities.account.api.AccountError
+import com.dearby.nativeapp.entities.account.api.AccountException
+import com.dearby.nativeapp.entities.account.model.AccountSession
+import com.dearby.nativeapp.entities.account.model.MyActivityRecord
+import com.dearby.nativeapp.entities.account.model.MyScheduleStatus
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -41,16 +54,30 @@ import kotlinx.coroutines.launch
  * program is expanded; a failure is an error state, never example activities. [fetchPrograms] takes the search text
  * (null for all), the cursor and the open-only flag; [fetch] takes the search text, the cursor, the program id and the open flag.
  * Tags are a search condition only (contract "태그 칩 줄 제거", 2026-10-19 밤): no dictionary load, no tag filter.
+ *
+ * 내 활동 storage (contract "내 활동 서버 저장·일정 상태", 2026-10-22): signed out, the applied marks and stage statuses stay
+ * in this view model's memory (the app's existing "device" storage — nothing is written to disk). Once [account] is signed in they
+ * live on the server (`/v1/me/activities`): the memory records are imported once and cleared, every change is written through,
+ * and a failed write shows [ActivityListState.mineNotice] and re-reads the server. [fetchOne] reads an activity discovery has not
+ * loaded (`GET /v1/activities/:id`, null when it is gone → "삭제된 활동"). Signing out drops the account's records from memory.
  */
 class ActivityViewModel(
     private val fetchPrograms: suspend (String?, String?, Boolean) -> ProgramPage, // query, cursor, openOnly
     private val fetch: suspend (String?, String?, String?, Boolean) -> ActivityPage, // query, cursor, programId, open
+    private val fetchOne: suspend (String) -> ActivityModel? = { null },
+    private val account: AccountViewModel? = null,
 ) : ViewModel() {
     private val mutable = MutableStateFlow(ActivityListState())
     val state = mutable.asStateFlow()
     private var models: Map<String, ActivityModel> = emptyMap()
-    // The user's own stage marks (contract "내 활동 진행 트랙"), memory only like the applied marks.
-    private var marks: Map<String, Map<Int, ProgressMark>> = emptyMap()
+    // The user's own stage statuses by activity id, then schedule id (contract "내 활동 서버 저장·일정 상태").
+    private var marks: Map<String, Map<String, Choice>> = emptyMap()
+    // True while the 내 활동 records live on the server (signed in); [importing] holds memory records not uploaded yet.
+    private var serverMode = false
+    private var importing: List<MyActivityRecord> = emptyList()
+    private var syncJob: Job? = null
+    // Writes go one at a time so an add followed by a quick remove reaches the server in that order.
+    private val writes = Mutex()
     // One program request at a time: a new search cancels the previous search, page and program loads, so late answers are dropped.
     private var job: Job? = null
     private val programJobs = mutableMapOf<String, Job>()
@@ -58,7 +85,18 @@ class ActivityViewModel(
     private var leftApp = false
     private val neverAsk = mutableSetOf<String>()
 
-    init { reload() }
+    init {
+        reload()
+        account?.let { account ->
+            viewModelScope.launch {
+                // WORKING is the sign-in prompt itself; only the settled phases switch the storage.
+                account.state.map { it.phase }.filter { it != AccountPhase.WORKING }.distinctUntilChanged().collect { phase ->
+                    if (phase == AccountPhase.SIGNED_IN && !serverMode) { serverMode = true; importing = deviceRecords(); syncMine() }
+                    else if (phase == AccountPhase.SIGNED_OUT && serverMode) signedOut()
+                }
+            }
+        }
+    }
 
     /** Typing: show the text now, ask the server once it has rested for 300 ms. */
     fun search(text: String) {
@@ -183,7 +221,7 @@ class ActivityViewModel(
             val today = today()
             mutable.update { state ->
                 val loaded = shown.associate { activity ->
-                    activity.id to activity.toState(now).let { known -> state.known[known.id]?.let { known.copy(applied = it.applied, confirmed = it.confirmed) } ?: known }
+                    activity.id to activity.toState(now).let { known -> state.known[known.id]?.takeUnless { it.deleted }?.let { known.copy(applied = it.applied) } ?: known }
                 }
                 state.copy(known = state.known + loaded, progress = state.progress + shown.associate { it.id to it.toProgress(marks[it.id].orEmpty(), today) },
                     programActivities = state.programActivities + (programId to ProgramActivities(ProgramPhase.LOADED, open.map { it.id }, upcoming.map { it.id }, past.map { it.id })))
@@ -191,18 +229,23 @@ class ActivityViewModel(
         }
     }
     fun schedules(id: String) = models[id]?.schedules.orEmpty()
-    /** The timed range of one stage for the calendar comparison; null for an undated, all-day or unknown stage. */
-    fun stageWindow(id: String, stage: Int) = models[id]?.stages()?.getOrNull(stage)?.window
-    /** The user marks a stage 통과/대기/탈락; the track is rebuilt from today's date. */
-    fun mark(id: String, stage: Int, value: ProgressMark) {
+    /** The calendar-comparison windows of one stage (contract "겹침 확인 시간"); empty for an uncomparable or unknown stage. */
+    fun stageWindows(id: String, stage: Int) = models[id]?.stages()?.getOrNull(stage)?.windows.orEmpty()
+    /** The user picks one of a stage's statuses; the track is rebuilt from today's date. Signed in, it is saved on the server too. */
+    fun mark(id: String, stage: Int, option: StatusOption) {
         val model = models[id] ?: return
-        val own = marks[id].orEmpty() + (stage to value)
+        val scheduleId = model.stages().getOrNull(stage)?.scheduleId ?: return
+        val own = marks[id].orEmpty() + (scheduleId to Choice(option.id, option.kind))
         marks = marks + (id to own)
         mutable.update { it.copy(progress = it.progress + (id to model.toProgress(own, today()))) }
+        write { account, session -> account.client.saveScheduleStatus(id, scheduleId, option.id, option.kind, session) }
     }
-    /** Marks [id] applied. Removing it (contract "빼기는 눈에 보이게") also clears 참여 확정 and the stage marks. */
+    /** Marks [id] applied. Removing it (contract "빼기는 눈에 보이게") also clears the stage statuses. */
     fun apply(id: String, value: Boolean) {
-        update(id) { it.copy(applied = value, confirmed = value && it.confirmed) }
+        if ((state.value.known[id] ?: return).applied == value) return
+        update(id) { it.copy(applied = value) }
+        if (value) write { account, session -> account.client.saveMyActivity(id, session) }
+        else write { account, session -> account.client.deleteMyActivity(id, session) }
         if (value || id !in marks) return
         marks = marks - id
         models[id]?.let { model -> mutable.update { it.copy(progress = it.progress + (id to model.toProgress(emptyMap(), today()))) } }
@@ -232,30 +275,107 @@ class ActivityViewModel(
             ApplyAnswer.NEVER_ASK -> neverAsk += id
         }
     }
-    fun confirm(id: String, value: Boolean) = update(id) { it.copy(confirmed = it.applied && value) }
     private fun update(id: String, change: (ActivityState) -> ActivityState) {
         mutable.update { state -> state.known[id]?.let { state.copy(known = state.known + (id to change(it))) } ?: state }
     }
+    fun clearMineNotice() = mutable.update { it.copy(mineNotice = null, consentNeeded = false) }
+
+    /** Signed in: one write to `/v1/me/activities…`. A failure tells the user and re-reads the server, which undoes the local change. */
+    private fun write(call: suspend (AccountViewModel, AccountSession) -> Unit) {
+        val account = account?.takeIf { serverMode } ?: return
+        viewModelScope.launch {
+            try { writes.withLock { account.authorized { call(account, it) } } }
+            catch (e: CancellationException) { throw e }
+            catch (e: Exception) {
+                // 401 after a refused refresh signs out, which clears the records anyway.
+                if ((e as? AccountException)?.error == AccountError.UNAUTHORIZED) return@launch
+                val consent = e is AccountException && e.error == AccountError.FORBIDDEN && e.code == "CONSENT_REQUIRED"
+                mutable.update { it.copy(mineNotice = writeFailure(e), consentNeeded = consent) }
+                syncMine()
+            }
+        }
+    }
+    /**
+     * Reads the account's records (importing the memory records first, once, right after sign-in) and shows them; activities
+     * discovery has not loaded are read one by one, a gone one becomes a "삭제된 활동" row. Also called when 내 활동 opens; only that
+     * call ([announce]) tells the user about a failed read, so an offline start stays quiet on 발견.
+     */
+    fun syncMine(announce: Boolean = false) {
+        val account = account?.takeIf { serverMode } ?: return
+        if (syncJob?.isActive == true) return
+        syncJob = viewModelScope.launch {
+            try {
+                val upload = importing
+                val records = writes.withLock {
+                    if (upload.isEmpty()) account.authorized { account.client.myActivities(it) }
+                    else account.authorized { account.client.importMyActivities(upload, it) }.also { importing = emptyList() }
+                }
+                val missing = records.filter { !it.deleted && it.activityId !in models }.map { it.activityId }
+                val loaded = missing.map { id -> async { id to fetchOne(id) } }.awaitAll()
+                if (!serverMode) return@launch
+                showServer(records, loaded.mapNotNull { (id, model) -> model?.let { id to it } }.toMap())
+            } catch (e: CancellationException) { throw e } catch (e: Exception) {
+                if ((e as? AccountException)?.error == AccountError.UNAUTHORIZED) return@launch
+                Log.w("Dearby", "My activities sync with ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
+                if (announce) mutable.update { it.copy(mineNotice = "내 활동을 불러오지 못했어요. 잠시 뒤 다시 시도해 주세요.") }
+            }
+        }
+    }
+    /** The server's records replace the memory ones: applied and stage statuses; unknown ids become "삭제된 활동". */
+    private fun showServer(records: List<MyActivityRecord>, loaded: Map<String, ActivityModel>) {
+        models = models + loaded
+        val byId = records.associateBy { it.activityId }
+        marks = records.associate { record -> record.activityId to record.statuses.associate { it.scheduleId to Choice(it.statusId, it.kind) } }
+        val now = Instant.now()
+        val today = today()
+        mutable.update { state ->
+            val known = state.known.filterValues { !it.deleted } + loaded.mapValues { (_, model) -> model.toState(now) }
+            val kept = known.filterKeys { byId[it]?.deleted != true }.mapValues { (id, activity) -> activity.copy(applied = id in byId) }
+            val gone = byId.keys.filter { it !in kept }.associateWith { deletedActivity(it) }
+            state.copy(known = kept + gone, progress = models.mapValues { (id, model) -> model.toProgress(marks[id].orEmpty(), today) })
+        }
+    }
+    private fun signedOut() {
+        serverMode = false
+        syncJob?.cancel()
+        importing = emptyList()
+        marks = emptyMap()
+        val today = today()
+        mutable.update { state ->
+            state.copy(known = state.known.filterValues { !it.deleted }.mapValues { it.value.copy(applied = false) },
+                progress = models.mapValues { (_, model) -> model.toProgress(emptyMap(), today) })
+        }
+    }
+    /** The memory records to import: applied activities with their default-kind statuses (the import takes `{scheduleId, kind}`). */
+    private fun deviceRecords(): List<MyActivityRecord> = state.value.known.values.filter { it.applied && !it.deleted }.map { activity ->
+        MyActivityRecord(activity.id, marks[activity.id].orEmpty().map { (scheduleId, choice) -> MyScheduleStatus(scheduleId, null, choice.kind) })
+    }
 }
+
+/** A stage's status choice: an admin status by [statusId], or a default one (null id) by [kind]. */
+private data class Choice(val statusId: String?, val kind: String)
+private fun writeFailure(e: Exception) = when {
+    e is AccountException && e.error == AccountError.NOT_FOUND -> "더 이상 볼 수 없는 활동이라 내 활동에 저장하지 못했어요."
+    else -> "내 활동을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요."
+}
+/** A 내 활동 record whose activity is gone (contract "내 활동 서버 저장": logical FK): only 빼기 is offered. */
+private fun deletedActivity(id: String) = ActivityState(id, "삭제된 활동", "", "", "", "", "", null, null, emptyList(), null, null, null, null, null,
+    applied = true, deleted = true)
 
 private const val MAX_PROGRAM_PAGES = 5
 /** 지난 활동 window: the last three years (2026-10-19 저녁, 2년 → 3년). */
 private const val PAST_DAYS = 1095L
 private fun today(): LocalDate = LocalDate.now(ZoneId.of("Asia/Seoul"))
-private val sessionTime = DateTimeFormatter.ofPattern("HH:mm", Locale.KOREAN)
-private val sessionDay = DateTimeFormatter.ofPattern("M/d", Locale.KOREAN)
-private fun zoneOf(id: String) = runCatching { ZoneId.of(id) }.getOrDefault(ZoneId.of("Asia/Seoul"))
+/** The system "add event" prefill for one stage (contract "내 캘린더에 추가"): "활동명 · 일정 제목"; null for an undated stage. */
+private fun ActivityModel.draft(stage: Stage): CalendarDraft? {
+    val start = stage.eventStart ?: return null
+    return CalendarDraft("$name · ${if (stage.kind == "APPLICATION") "모집 마감" else stage.name}", start.toEpochMilli(), (stage.eventEnd ?: start).toEpochMilli(), stage.allDay)
+}
 
 private fun ActivityModel.toState(now: Instant) = ActivityState(
     // The activity period by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.
     id, name, description, organization, program, statusLabel(now), activitySchedule?.scheduleText()?.ifBlank { null } ?: dateLabel, venue, safeHttpsUrl(imageUrl),
-    schedules.map { schedule ->
-        val zone = zoneOf(schedule.timeZone)
-        val range = listOf(schedule.startAt, schedule.endAt).joinToString(" – ") { sessionTime.withZone(zone).format(instant(it)) }
-        // Several days: prefix the date so sessions are not read as one day (web rule).
-        val days = schedules.map { sessionDay.withZone(zoneOf(it.timeZone)).format(instant(it.startAt)) }.toSet()
-        (if (days.size > 1) sessionDay.withZone(zone).format(instant(schedule.startAt)) + " " + range else range) to schedule.title
-    },
+    stages().map { ScheduleItemState(if (it.kind == "APPLICATION") "모집 마감" else it.name, it.dateText, draft(it)) },
     safeHttpsUrl(officialUrl), applyUrl(now), period(), recruitmentEnd, schedules.firstOrNull()?.startAt,
     eligibility = eligibility?.lines() ?: emptyList(),
     category = category?.label, categoryOrder = category?.ordinal ?: Int.MAX_VALUE,
@@ -263,15 +383,22 @@ private fun ActivityModel.toState(now: Instant) = ActivityState(
     tags = tags.map { it.name },
     place = place,
     applicationUrl = safeHttpsUrl(applicationUrl),
+    overlapCheckable = schedules.isNotEmpty(),
 )
 /**
- * The stage track with the user's [marks]: a 통과 mark makes the stage past, the earliest other stage not over by [today]
- * is current, a 탈락 mark or no current stage ends the activity. No stages at all leaves an empty track.
+ * The stage track with the user's [marks] (by schedule id): a PASSED status makes the stage past, the earliest other stage not
+ * over by [today] is current, a FAILED status or no current stage ends the activity. No stages at all leaves an empty track.
+ * A stage without a choice shows its first waiting status.
  */
-private fun ActivityModel.toProgress(marks: Map<Int, ProgressMark>, today: LocalDate): ProgressState {
+private fun ActivityModel.toProgress(marks: Map<String, Choice>, today: LocalDate): ProgressState {
     val stages = stages()
-    val passed = marks.filterValues { it == ProgressMark.PASS }.keys
-    val failedAt = marks.filterValues { it == ProgressMark.FAIL }.keys.minOrNull()
+    val options = stages.map { stage -> stage.statuses.map { StatusOption(it.id, it.name, it.kind) } }
+    // The user's explicit choice per stage: the admin status by id, else the default status of that kind; null when none was made.
+    val picks = stages.mapIndexed { index, stage ->
+        marks[stage.scheduleId]?.let { pick -> options[index].firstOrNull { pick.statusId != null && it.id == pick.statusId } ?: options[index].firstOrNull { it.kind == pick.kind } }
+    }
+    val passed = picks.indices.filter { picks[it]?.passed == true }.toSet()
+    val failedAt = picks.indices.firstOrNull { picks[it]?.failed == true }
     val current = if (failedAt == null) currentStage(stages, passed, today) else null
     val ended = stages.isNotEmpty() && (failedAt != null || current == null)
     val shown = stages.mapIndexed { index, stage ->
@@ -280,9 +407,12 @@ private fun ActivityModel.toProgress(marks: Map<Int, ProgressMark>, today: Local
             index in passed || stage.finished(today) || index <= (failedAt ?: (current ?: 0) - 1) -> ProgressStatus.PAST
             else -> ProgressStatus.UPCOMING
         }
-        ProgressStage(stage.name, stage.kind, stage.dateText, status, marks[index] ?: ProgressMark.WAIT, stage.window != null)
+        ProgressStage(stage.name, stage.kind, stage.dateText, status, options[index], picks[index] ?: options[index].firstOrNull { it.kind == "WAITING" }, stage.windows.isNotEmpty(), draft(stage))
     }
-    val badge = when { stages.isEmpty() -> ""; failedAt != null -> "탈락"; current == null -> "지남"; else -> stageBadge(stages[current], today) }
+    // 참여 중 (2026-10-22, 참여 확정 replaced): every selection stage before the activity period is marked PASSED.
+    val selection = if (activitySchedule != null) picks.dropLast(1) else picks
+    val participating = selection.isNotEmpty() && selection.all { it?.passed == true }
+    val badge = when { stages.isEmpty() -> ""; failedAt != null -> shown[failedAt].selected?.name ?: "탈락"; current == null -> "지남"; participating -> "참여 중"; else -> stageBadge(stages[current], today) }
     return ProgressState(id, name, "$program · $organization", shown, current, badge, ended, failedAt != null, current?.let { stages[it].day })
 }
 

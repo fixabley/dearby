@@ -458,6 +458,8 @@ a:focus-visible {
 .schedule-chip.kind-interview { background: #d48806; }
 .schedule-chip.kind-event { background: #007f80; }
 .schedule-more { font-size: 11px; }
+/* 겹침 확인 불가: neither a time nor a 겹침 확인 시간 (the tooltip says so). */
+.schedule-chip.no-overlap { outline: 1px dashed #fff; outline-offset: -2px; }
 .schedule-band-swatch {
   display: inline-block;
   width: 12px;

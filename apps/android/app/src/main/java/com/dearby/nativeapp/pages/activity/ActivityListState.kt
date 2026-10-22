@@ -1,6 +1,7 @@
 package com.dearby.nativeapp.pages.activity
 
 import com.dearby.nativeapp.entities.activity.model.Place
+import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
 import com.dearby.nativeapp.widgets.activity.progress.ProgressState
 import java.time.Instant
 import java.time.LocalDate
@@ -17,10 +18,10 @@ enum class ProgramPhase { LOADING, FAILED, LOADED }
  */
 data class ActivityState(
     val id: String, val title: String, val summary: String, val organization: String, val program: String, val status: String,
-    val date: String, val location: String?, val imageUrl: String?, val sessions: List<Pair<String, String>>,
+    val date: String, val location: String?, val imageUrl: String?, val schedules: List<ScheduleItemState>,
     val officialUrl: String?, val applyUrl: String?, val period: String?, val recruitmentEnd: Instant?, val startAt: String?,
-    // Example application, plus the user's own (not the organizer's) participation mark.
-    val applied: Boolean = false, val confirmed: Boolean = false,
+    // The user's own 내 활동 mark (not the organizer's).
+    val applied: Boolean = false,
     /** 대상 lines in Korean (contract "대상자 조건"); empty when the activity has no eligibility. */
     val eligibility: List<String> = emptyList(),
     /** 활동 종류 label (부트캠프 …) in display order via [categoryOrder]; null = 미분류, grouped last. */
@@ -33,10 +34,19 @@ data class ActivityState(
     val place: Place? = null,
     /** The operator's https application link, or null (contract "신청 확인 조건 완화·공개 applicationUrl"). */
     val applicationUrl: String? = null,
+    /** At least one schedule can be compared with the device calendar (timed, or date-only with an overlap-check time; contract "겹침 확인 시간"). */
+    val overlapCheckable: Boolean = false,
+    /** A 내 활동 record whose activity is gone (contract "내 활동 서버 저장"): shown as "삭제된 활동" with only 빼기. */
+    val deleted: Boolean = false,
 ) {
     /** Recruitment still ahead or running: the card emphasises the `모집` row (contract "발견 카드 리뉴얼" 강조 규칙). */
     val recruiting get() = status == "모집 중" || status == "모집 예정"
 }
+/**
+ * One row of the detail's `행사 일정`: 모집 마감, each schedule, then the activity period (the progress stages, contract "내 캘린더에 추가");
+ * [draft] is null for an undated one, which gets no `캘린더에 추가` button.
+ */
+data class ScheduleItemState(val name: String, val dateText: String, val draft: CalendarDraft?)
 /**
  * One program header in discovery (contract "발견 프로그램 묶음"); [matched] when the search hit an open activity's name.
  * [openCount] is 0 for a program with only upcoming or past activities; [upcomingCount] and [nearestStart] describe its 모집 예정
@@ -68,13 +78,15 @@ data class ProgramActivities(
  * [openOnly] is the `마감 숨기기` switch (default on, memory only; contract "모집 중인 프로그램만 보기").
  * [refreshing] while a pull to refresh re-reads the first program page (contract "발견 탭 스크롤 동작"); the list stays on screen meanwhile,
  * and when that read fails with a list showing, [refreshFailed] keeps the list and the page shows a passing notice (iOS parity).
+ * [mineNotice] is a failed 내 활동 read or write while signed in (contract "내 활동 서버 저장"), shown once; [consentNeeded] when the
+ * write was refused for a stale consent (403 CONSENT_REQUIRED), which offers the consent screen instead.
  */
 data class ActivityListState(
     val phase: ActivityListPhase = ActivityListPhase.LOADING, val query: String = "", val openOnly: Boolean = true, val programs: List<ProgramState> = emptyList(),
     val expanded: Set<String> = emptySet(), val programActivities: Map<String, ProgramActivities> = emptyMap(),
     val known: Map<String, ActivityState> = emptyMap(), val nextCursor: String? = null, val loadingMore: Boolean = false,
     val moreFailed: Boolean = false, val askingId: String? = null, val progress: Map<String, ProgressState> = emptyMap(), val refreshing: Boolean = false,
-    val refreshFailed: Boolean = false,
+    val refreshFailed: Boolean = false, val mineNotice: String? = null, val consentNeeded: Boolean = false,
 ) {
     val asking get() = askingId?.let(known::get)
     /** Applied activities, the nearest next stage first; activities without a dated next stage come last. */

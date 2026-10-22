@@ -1,6 +1,7 @@
 package io.wid.dearby.admin.application
 
 import io.wid.dearby.application.activity.ActivityCurationRepository
+import io.wid.dearby.application.activity.ProgressStatusRepository
 import io.wid.dearby.application.activity.ActivityListing
 import io.wid.dearby.application.activity.ActivitySearch
 import io.wid.dearby.application.activity.ActivityService
@@ -37,6 +38,7 @@ class AdminActivityInfoService(
     private val settings: CollectionSettingsRepository,
     private val activities: ActivityService,
     private val curations: ActivityCurationRepository,
+    private val progressStatuses: ProgressStatusRepository,
     private val drafts: ActivityDraftRepository,
     private val tags: TagRepository,
     private val logos: ProgramLogoRepository,
@@ -200,6 +202,8 @@ class AdminActivityInfoService(
         category: CategoryChange = CategoryChange.Keep,
         tagIds: List<Id>? = null,
         place: PlaceChange = PlaceChange.Keep,
+        activityOverlap: OverlapChange? = null, // 활동·모집 기간 객체의 겹침 확인 시간(native-v1.md "겹침 확인 시간"). null이면 그대로
+        applicationOverlap: OverlapChange? = null,
     ): AdminActivity {
         val current = activities.getById(activityId, publicationStatus = null).activity
         val collected = feedback.collectedActivity(activityId)
@@ -234,6 +238,7 @@ class AdminActivityInfoService(
         // 일정 직접 지정(admin-v1.md): 날짜만이면 종일, 시각까지면 시각 일정. null이면 구조화된 값을 지우고 문구만 남긴다
         applySchedule(activityId, ScheduleSlot.ACTIVITY, activitySchedule)
         applySchedule(activityId, ScheduleSlot.APPLICATION, application)
+        applyOverlap(activityId, activityOverlap, applicationOverlap)
         // 활동 장소(admin-v1.md "활동 장소와 지오코딩"): 생략은 유지, null은 네 열 모두 삭제, 객체는 교체. 운영자 지정 place로 보호
         when (place) {
             PlaceChange.Keep -> Unit
@@ -275,6 +280,7 @@ class AdminActivityInfoService(
         activityTime?.let { curations.updateSchedule(id, ScheduleSlot.ACTIVITY, it, input.activitySchedule?.note) }
         input.place?.let { curations.updatePlace(id, it) }
         input.application?.toTime()?.let { curations.updateSchedule(id, ScheduleSlot.APPLICATION, it, input.application.note) }
+        applyOverlap(id, input.activityOverlap, input.applicationOverlap)
         input.eligibility?.let { curations.updateEligibility(id, it) }
         // 태그(native-v1.md "태그"): 보냈으면 그것(운영자 지정), 생략하면 프로그램 태그를 기본으로
         val tagIds = input.tagIds?.let { requireTags(it) } ?: program.tags.map { it.id }
@@ -292,6 +298,12 @@ class AdminActivityInfoService(
 
     @Transactional
     fun updateDetailSchedule(activityId: Id, scheduleId: Id, patch: ScheduleItemPatch): Schedule {
+        // 모집·활동 기간 행은 겹침 확인 시간만 여기서 고친다(native-v1.md "겹침 확인 시간")
+        if (patch.overlapOnly) {
+            requireSchedule(activityId, scheduleId)
+            return curations.updateOverlapCheck(activityId, scheduleId, patch.overlapCheck)
+                ?: throw NotFoundException("일정을 찾을 수 없습니다", "Schedule not found: $scheduleId")
+        }
         val stored = requireDetailSchedule(activityId, scheduleId)
         val updated = curations.updateDetailSchedule(activityId, scheduleId, patch.toItem(existing = stored.schedule))
             ?: throw NotFoundException("일정을 찾을 수 없습니다", "Schedule not found: $scheduleId")
@@ -311,8 +323,32 @@ class AdminActivityInfoService(
         if (!curations.deleteDetailSchedule(activityId, scheduleId)) throw NotFoundException("일정을 찾을 수 없습니다", "Schedule not found: $scheduleId")
     }
 
+    // 일정 상태(native-v1.md "내 활동 서버 저장·일정 상태"): 모집·활동 기간을 포함한 모든 일정. 어드민 지정이 없으면 기본 세 개(id null)
+    @Transactional(readOnly = true)
+    fun scheduleStatuses(activityId: Id, scheduleId: Id): List<ProgressStatus> = requireSchedule(activityId, scheduleId).schedule.statuses
+
+    // 목록을 통째로 바꾼다: 0~8개(빈 목록은 기본 세 개로 되돌림), 이름 1~20자이고 일정 안에서 겹치지 않음, id는 이 일정의 상태여야 한다.
+    // 지운 상태를 고른 사용자 선택은 그 상태의 기본 종류로 옮긴다
+    @Transactional
+    fun replaceScheduleStatuses(activityId: Id, scheduleId: Id, items: List<ProgressStatus>): List<ProgressStatus> {
+        val current = requireSchedule(activityId, scheduleId).schedule.statuses.mapNotNull { it.id }.toSet()
+        if (items.size > MAX_STATUSES) throw InvalidInputException("상태는 ${MAX_STATUSES}개까지입니다")
+        val cleaned = items.map { it.copy(name = it.name.trim()) }
+        cleaned.forEach {
+            if (it.name.length !in 1..20) throw InvalidInputException("상태 이름은 1~20자입니다")
+            if (it.id != null && it.id !in current) throw InvalidInputException("이 일정의 상태가 아닙니다: ${it.id}")
+        }
+        if (cleaned.map { it.name }.toSet().size != cleaned.size) throw InvalidInputException("같은 이름의 상태가 있습니다")
+        if (cleaned.mapNotNull { it.id }.toSet().size != cleaned.count { it.id != null }) throw InvalidInputException("같은 상태 id가 두 번 있습니다")
+        progressStatuses.replace(scheduleId, cleaned)
+        return requireSchedule(activityId, scheduleId).schedule.statuses
+    }
+
+    private fun requireSchedule(activityId: Id, scheduleId: Id): StoredSchedule =
+        curations.findSchedule(activityId, scheduleId) ?: throw NotFoundException("일정을 찾을 수 없습니다", "Schedule not found: $scheduleId for activity $activityId")
+
     private fun requireDetailSchedule(activityId: Id, scheduleId: Id): StoredSchedule {
-        val stored = curations.findSchedule(activityId, scheduleId) ?: throw NotFoundException("일정을 찾을 수 없습니다", "Schedule not found: $scheduleId for activity $activityId")
+        val stored = requireSchedule(activityId, scheduleId)
         if (stored.slot != null) throw InvalidInputException("모집 기간과 활동 기간은 활동 편집의 application·activitySchedule로 고칩니다")
         return stored
     }
@@ -393,6 +429,17 @@ class AdminActivityInfoService(
             ScheduleChange.Keep -> Unit
             ScheduleChange.Clear -> curations.updateSchedule(activityId, slot, null)
             is ScheduleChange.Set -> curations.updateSchedule(activityId, slot, change.edit.toTime(), change.edit.note)
+        }
+    }
+
+    // 슬롯 일정 행이 있어야 둘 수 있다(모집 기간이 없는데 보내면 400)
+    private fun applyOverlap(activityId: Id, activityOverlap: OverlapChange?, applicationOverlap: OverlapChange?) {
+        if (activityOverlap == null && applicationOverlap == null) return
+        val activity = activities.getById(activityId, publicationStatus = null).activity
+        activityOverlap?.let { curations.updateOverlapCheck(activityId, activity.activitySchedule.id, it.overlapCheck) }
+        applicationOverlap?.let { change ->
+            val application = activity.application ?: if (change.overlapCheck == null) return else throw InvalidInputException("모집 기간이 없어 겹침 확인 시간을 둘 수 없습니다")
+            curations.updateOverlapCheck(activityId, application.id, change.overlapCheck)
         }
     }
 
@@ -514,6 +561,7 @@ class AdminActivityInfoService(
 
     private companion object {
         val SEOUL: ZoneId = ZoneId.of("Asia/Seoul")
+        const val MAX_STATUSES = 8
         val HOST = Regex("^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z]{2,63}$")
     }
 }

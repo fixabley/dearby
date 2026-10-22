@@ -35,6 +35,10 @@ class JooqUserRepository(private val dsl: DSLContext) : UserRepository {
         dsl.deleteFrom(RECEIPTS).where(RECEIPTS.CARD_ID.`in`(dsl.select(BUSINESS_CARDS.ID).from(BUSINESS_CARDS).where(BUSINESS_CARDS.USER_ID.eq(id)))).execute()
         dsl.deleteFrom(BUSINESS_CARDS).where(BUSINESS_CARDS.USER_ID.eq(id)).execute()
         dsl.deleteFrom(ACTIVITY_PARTICIPATIONS).where(ACTIVITY_PARTICIPATIONS.USER_ID.eq(id)).execute()
+        // 내 활동의 일정 상태(논리키). 내 활동 행은 users FK cascade로 지워진다
+        dsl.deleteFrom(USER_ACTIVITY_SCHEDULE_STATUSES)
+            .where(USER_ACTIVITY_SCHEDULE_STATUSES.USER_ACTIVITY_ID.`in`(dsl.select(USER_ACTIVITIES.ID).from(USER_ACTIVITIES).where(USER_ACTIVITIES.USER_ID.eq(id))))
+            .execute()
         dsl.deleteFrom(ORGANIZATION_MEMBERS).where(ORGANIZATION_MEMBERS.USER_ID.eq(id)).execute()
         dsl.deleteFrom(PROGRAM_STAFF).where(PROGRAM_STAFF.USER_ID.eq(id)).execute()
         dsl.deleteFrom(PROFILES).where(PROFILES.USER_ID.eq(id)).execute()

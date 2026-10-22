@@ -50,6 +50,25 @@ struct ConnectionProvider: Sendable {
             throw error
         }
     }
+    /// One activity for a 내 활동 record; nil when it is gone (404).
+    func activity(id: String) async throws -> ActivityModel? {
+        do { return try await ActivityClient.fetch(api: origins.api, id: id) } catch {
+            log.warning("Activity load from \(origins.api.absoluteString, privacy: .public) failed: \(String(describing: error), privacy: .public)")
+            throw error
+        }
+    }
+    /// 내 활동 on the server for the signed-in `account` (contract "내 활동 서버 저장"); each call refreshes the tokens once on a 401.
+    @MainActor func mineServer(_ account: AccountViewModel) -> MineServer {
+        let client = account.client
+        return MineServer(
+            list: { try await account.authorized { try await client.myActivities($0) } },
+            put: { id in try await account.authorized { try await client.putMyActivity(id, $0) } },
+            delete: { id in try await account.authorized { try await client.deleteMyActivity(id, $0) } },
+            putStatus: { id, schedule, status, kind in
+                try await account.authorized { try await client.putMyActivityStatus(id, scheduleID: schedule, statusID: status, kind: kind, $0) }
+            },
+            importItems: { items in try await account.authorized { try await client.importMyActivities(items, $0) } })
+    }
     /// One program's activities: the open ones (server-judged, up to 100) or, for the past list, the first 20 of every activity.
     func programActivities(programID: Int64, open: Bool) async throws -> ActivityPage {
         do { return try await ActivityClient.fetch(api: origins.api, query: "", cursor: nil, programID: programID, size: open ? 100 : 20, open: open) } catch {

@@ -78,7 +78,7 @@ private sealed interface Route {
                         // 설정·알림 sit in each tab's pinned `DearbyTopBar` (contract "iOS 상단 바…" Android sentence).
                         Tab.Discovery, Tab.Mine -> key(tab) {
                             ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }, settings = openSettings, notify = notify,
-                                openInMine = { mineOpen = it; tab = Tab.Mine }, open = mineOpen.takeIf { tab == Tab.Mine }, consumeOpen = { mineOpen = null }) { activityDetail = it }
+                                openInMine = { mineOpen = it; tab = Tab.Mine }, open = mineOpen.takeIf { tab == Tab.Mine }, consumeOpen = { mineOpen = null }, openConsent = { activityDetail = false; tab = Tab.Profile }) { activityDetail = it }
                         }
                         Tab.Cards -> CardsRoute(cardsSegment, { cardsSegment = it }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
                             edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify)

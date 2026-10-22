@@ -41,8 +41,11 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.Roles
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleStatuses
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules
 import io.wid.dearby.adaptor.persistence.jooq.tables.Tags
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivities
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivityScheduleStatuses
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserConsents
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
@@ -234,6 +237,11 @@ val REFRESH_TOKENS: RefreshTokens = RefreshTokens.REFRESH_TOKENS
 val ROLES: Roles = Roles.ROLES
 
 /**
+ * The table <code>public.schedule_statuses</code>.
+ */
+val SCHEDULE_STATUSES: ScheduleStatuses = ScheduleStatuses.SCHEDULE_STATUSES
+
+/**
  * The table <code>public.schedules</code>.
  */
 val SCHEDULES: Schedules = Schedules.SCHEDULES
@@ -242,6 +250,16 @@ val SCHEDULES: Schedules = Schedules.SCHEDULES
  * The table <code>public.tags</code>.
  */
 val TAGS: Tags = Tags.TAGS
+
+/**
+ * The table <code>public.user_activities</code>.
+ */
+val USER_ACTIVITIES: UserActivities = UserActivities.USER_ACTIVITIES
+
+/**
+ * The table <code>public.user_activity_schedule_statuses</code>.
+ */
+val USER_ACTIVITY_SCHEDULE_STATUSES: UserActivityScheduleStatuses = UserActivityScheduleStatuses.USER_ACTIVITY_SCHEDULE_STATUSES
 
 /**
  * The table <code>public.user_consents</code>.

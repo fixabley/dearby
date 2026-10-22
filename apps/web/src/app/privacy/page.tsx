@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LargeTitle } from "@/shared/ui/nav-title";
 export const metadata: Metadata = {
   title: "개인정보 처리방침",
   description: "Dearby가 어떤 정보를 어디까지 다루는지 설명합니다.",
 };
-// 제품이 실제로 하는 일에 맞춘 방침(계약 native-v1.md, 2026-10-19 기준). 대괄호는 운영자가 채운다.
+// 제품이 실제로 하는 일에 맞춘 방침(계약 native-v1.md, 2026-10-22 기준). 대괄호는 운영자가 채운다.
 export default function PrivacyPage() {
   return (
-    <article className="legal">
-      <p className="eyebrow">시행일 2026년 10월 19일</p>
-      <h1>개인정보 처리방침</h1>
-      <p className="lead">
+    <article className="legal pt-0 pb-6">
+      <LargeTitle>개인정보 처리방침</LargeTitle>
+      <p className="px-1 text-footnote text-secondary-label">시행일 2026년 10월 22일</p>
+      <p className="mt-4 px-1 text-body leading-relaxed">
         Dearby(이하 &ldquo;서비스&rdquo;)는 활동을 찾고, 활동에서 만난 사람과 명함을 교환하는 데 필요한 최소한의 정보만 다룹니다. 이 문서는
         어떤 정보를 왜 받고, 어디에 두고, 어떻게 지우는지 설명합니다.
       </p>
@@ -20,7 +21,7 @@ export default function PrivacyPage() {
         받습니다.
       </p>
       <h2>2. 받는 정보와 쓰는 이유</h2>
-      <table className="legal-table">
+      <table>
         <thead>
           <tr>
             <th>구분</th>
@@ -50,6 +51,11 @@ export default function PrivacyPage() {
             <td>받은 명함 목록을 보여 주기 위해. 서로 명함을 주고받지 않은(단방향) 명함은 받은 날부터 30일 뒤 목록에서 거둡니다.</td>
           </tr>
           <tr>
+            <td>내 활동</td>
+            <td>내 활동에 넣은 활동, 넣은 시각, 일정별로 고른 진행 상태(예: 대기·통과·탈락)</td>
+            <td>로그인한 사용자가 여러 기기에서 같은 진행 상황을 보기 위해. 계정에 연결해 저장하고, 계정을 지우면 함께 지웁니다. 로그인하지 않았을 때는 기기에만 두고, 로그인하는 순간 계정으로 옮깁니다.</td>
+          </tr>
+          <tr>
             <td>비로그인 웹 저장</td>
             <td>세션 쿠키(<code>__Host-dearby_guest</code>), 저장한 명함 목록</td>
             <td>앱 없이 웹에서 명함을 저장해 두기 위해. 쿠키에는 임의의 토큰만 들어 있고, 서버에는 그 토큰의 해시만 둡니다.</td>
@@ -63,10 +69,10 @@ export default function PrivacyPage() {
       </table>
       <h2>3. 기기 안에만 두는 정보</h2>
       <ul>
-        <li>활동에 &ldquo;신청했어요&rdquo;, &ldquo;참여 확정&rdquo;, 단계별 &ldquo;통과·대기·탈락&rdquo; 표시는 사용자의 기기에만 저장되며 서버로 보내지 않습니다.</li>
+        <li>로그인하지 않은 상태에서 남긴 내 활동과 단계별 진행 상태는 기기에만 두고 서버로 보내지 않습니다. 로그인하면 위 &ldquo;내 활동&rdquo;처럼 계정에 저장합니다.</li>
         <li>
           &ldquo;겹치는 시간 확인&rdquo;은 사용자가 버튼을 눌렀을 때만 기기 캘린더 읽기 권한을 요청하고, 활동 일정과 기기 일정의 겹침을 기기 안에서만 계산합니다.
-          기기 일정의 제목과 시각은 서버로 보내지 않고 앱에 저장하지도 않으며, 화면을 떠나면 버립니다. 캘린더에 일정을 쓰지 않습니다.
+          기기 일정의 제목과 시각은 서버로 보내지 않고 앱에 저장하지도 않으며, 화면을 떠나면 버립니다. 사용자가 &ldquo;캘린더에 추가&rdquo;를 누르면 기기의 일정 추가 화면을 미리 채워 열 뿐, 앱이 기기 캘린더에 직접 쓰지 않습니다. 저장 여부는 사용자가 그 화면에서 정합니다.
         </li>
       </ul>
       <h2>4. 공개 범위</h2>
@@ -101,7 +107,7 @@ export default function PrivacyPage() {
       </p>
       <h2>9. 변경</h2>
       <p>이 방침이 바뀌면 이 페이지에 시행일과 함께 올립니다. 중요한 변경은 앱 안에서도 알립니다.</p>
-      <p className="muted">
+      <p className="mt-8 px-1 text-footnote text-secondary-label">
         관련 문서: <Link href="/terms">이용약관</Link>
       </p>
     </article>

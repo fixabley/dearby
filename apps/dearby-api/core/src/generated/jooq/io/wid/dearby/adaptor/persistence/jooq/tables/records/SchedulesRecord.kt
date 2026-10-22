@@ -8,6 +8,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules
 
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -121,6 +122,14 @@ open class SchedulesRecord() : UpdatableRecordImpl<SchedulesRecord>(Schedules.SC
         set(value): Unit = set(24, value)
         get(): Boolean? = get(24) as Boolean?
 
+    open var overlapStartTime: LocalTime?
+        set(value): Unit = set(25, value)
+        get(): LocalTime? = get(25) as LocalTime?
+
+    open var overlapEndTime: LocalTime?
+        set(value): Unit = set(26, value)
+        get(): LocalTime? = get(26) as LocalTime?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -130,7 +139,7 @@ open class SchedulesRecord() : UpdatableRecordImpl<SchedulesRecord>(Schedules.SC
     /**
      * Create a detached, initialised SchedulesRecord
      */
-    constructor(id: Long? = null, activityId: Long? = null, sourceId: UUID? = null, slot: String? = null, title: String? = null, kind: String? = null, status: String? = null, timeType: String? = null, startAt: OffsetDateTime? = null, endAt: OffsetDateTime? = null, timeZone: String? = null, startDate: LocalDate? = null, endDateExclusive: LocalDate? = null, dateLabel: String? = null, lat: Double? = null, lng: Double? = null, addressLine1: String? = null, addressLine2: String? = null, conferenceUrl: String? = null, sequence: Int? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null, curated: Boolean? = null, curatedNote: String? = null, curatedDeleted: Boolean? = null): this() {
+    constructor(id: Long? = null, activityId: Long? = null, sourceId: UUID? = null, slot: String? = null, title: String? = null, kind: String? = null, status: String? = null, timeType: String? = null, startAt: OffsetDateTime? = null, endAt: OffsetDateTime? = null, timeZone: String? = null, startDate: LocalDate? = null, endDateExclusive: LocalDate? = null, dateLabel: String? = null, lat: Double? = null, lng: Double? = null, addressLine1: String? = null, addressLine2: String? = null, conferenceUrl: String? = null, sequence: Int? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null, curated: Boolean? = null, curatedNote: String? = null, curatedDeleted: Boolean? = null, overlapStartTime: LocalTime? = null, overlapEndTime: LocalTime? = null): this() {
         this.id = id
         this.activityId = activityId
         this.sourceId = sourceId
@@ -156,6 +165,8 @@ open class SchedulesRecord() : UpdatableRecordImpl<SchedulesRecord>(Schedules.SC
         this.curated = curated
         this.curatedNote = curatedNote
         this.curatedDeleted = curatedDeleted
+        this.overlapStartTime = overlapStartTime
+        this.overlapEndTime = overlapEndTime
         resetTouchedOnNotNull()
     }
 }

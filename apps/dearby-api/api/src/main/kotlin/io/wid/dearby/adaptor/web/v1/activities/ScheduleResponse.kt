@@ -18,6 +18,8 @@ data class ScheduleResponse(
     val dateLabel: String,
     val address: Address?,
     val conferenceUrl: String?,
+    val statuses: List<ProgressStatusResponse>, // 고를 수 있는 진행 상태(어드민 지정 또는 기본 세 개, id null)
+    val overlapCheck: OverlapCheckResponse?, // 겹침 확인 시간(서울 HH:mm). 없으면 null
 ) {
     companion object {
         fun from(schedule: Schedule): ScheduleResponse {
@@ -36,7 +38,18 @@ data class ScheduleResponse(
                 dateLabel = schedule.dateLabel,
                 address = schedule.address,
                 conferenceUrl = schedule.conferenceUrl,
+                statuses = schedule.statuses.map { ProgressStatusResponse(it.id, it.name, it.kind) },
+                overlapCheck = schedule.overlapCheck?.let(OverlapCheckResponse::from),
             )
         }
+    }
+}
+
+data class ProgressStatusResponse(val id: Long?, val name: String, val kind: ProgressKind)
+
+data class OverlapCheckResponse(val startTime: String, val endTime: String) {
+    companion object {
+        private val HH_MM = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+        fun from(check: OverlapCheck) = OverlapCheckResponse(check.startTime.format(HH_MM), check.endTime.format(HH_MM))
     }
 }

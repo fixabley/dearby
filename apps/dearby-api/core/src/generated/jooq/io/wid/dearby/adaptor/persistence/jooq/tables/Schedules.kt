@@ -9,11 +9,14 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES_ACTIVITY_ID_SLOT_KE
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES_SOURCE_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES__SCHEDULES_ACTIVITY_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_STATUSES__SCHEDULE_STATUSES_SCHEDULE_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.Activities.ActivitiesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleStatuses.ScheduleStatusesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.SchedulesRecord
 
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.OffsetDateTime
 import java.util.UUID
 
@@ -207,6 +210,16 @@ open class Schedules(
      */
     val CURATED_DELETED: TableField<SchedulesRecord, Boolean?> = createField(DSL.name("curated_deleted"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "")
 
+    /**
+     * The column <code>public.schedules.overlap_start_time</code>.
+     */
+    val OVERLAP_START_TIME: TableField<SchedulesRecord, LocalTime?> = createField(DSL.name("overlap_start_time"), SQLDataType.LOCALTIME(6), this, "")
+
+    /**
+     * The column <code>public.schedules.overlap_end_time</code>.
+     */
+    val OVERLAP_END_TIME: TableField<SchedulesRecord, LocalTime?> = createField(DSL.name("overlap_end_time"), SQLDataType.LOCALTIME(6), this, "")
+
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<SchedulesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -249,10 +262,27 @@ open class Schedules(
      */
     fun activities(): ActivitiesPath = activities
     val activities: ActivitiesPath by lazy { ActivitiesPath(this, SCHEDULES__SCHEDULES_ACTIVITY_ID_FKEY, null) }
+
+    private lateinit var _scheduleStatuses: ScheduleStatusesPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.schedule_statuses</code> table
+     */
+    fun scheduleStatuses(): ScheduleStatusesPath {
+        if (!this::_scheduleStatuses.isInitialized)
+            _scheduleStatuses = ScheduleStatusesPath(this, null, SCHEDULE_STATUSES__SCHEDULE_STATUSES_SCHEDULE_ID_FKEY.inverseKey)
+
+        return _scheduleStatuses;
+    }
+
+    val scheduleStatuses: ScheduleStatusesPath
+        get(): ScheduleStatusesPath = scheduleStatuses()
     override fun getChecks(): List<Check<SchedulesRecord>> = listOf(
         Internal.createCheck(this, DSL.name("schedules_check"), "((((time_type IS NULL) AND (start_at IS NULL) AND (end_at IS NULL) AND (time_zone IS NULL) AND (start_date IS NULL) AND (end_date_exclusive IS NULL)) OR (((time_type)::text = 'TIMED'::text) AND ((start_at IS NOT NULL) OR (end_at IS NOT NULL)) AND (time_zone IS NOT NULL) AND ((start_at IS NULL) OR (end_at IS NULL) OR (end_at >= start_at)) AND (start_date IS NULL) AND (end_date_exclusive IS NULL)) OR (((time_type)::text = 'ALL_DAY'::text) AND (start_date IS NOT NULL) AND (end_date_exclusive > start_date) AND (start_at IS NULL) AND (end_at IS NULL) AND (time_zone IS NULL))))", true),
         Internal.createCheck(this, DSL.name("schedules_check2"), "((((lat IS NULL) AND (lng IS NULL) AND (address_line1 IS NULL) AND (address_line2 IS NULL)) OR ((lat IS NOT NULL) AND (lng IS NOT NULL) AND (address_line1 IS NOT NULL) AND (address_line2 IS NOT NULL))))", true),
         Internal.createCheck(this, DSL.name("schedules_kind_check"), "(((kind)::text = ANY ((ARRAY['DEADLINE'::character varying, 'ANNOUNCEMENT'::character varying, 'INTERVIEW'::character varying, 'EVENT'::character varying])::text[])))", true),
+        Internal.createCheck(this, DSL.name("schedules_overlap_time_check"), "((((overlap_start_time IS NULL) AND (overlap_end_time IS NULL)) OR ((overlap_start_time IS NOT NULL) AND (overlap_end_time IS NOT NULL) AND (overlap_end_time > overlap_start_time))))", true),
         Internal.createCheck(this, DSL.name("schedules_slot_check"), "(((slot)::text = ANY ((ARRAY['APPLICATION'::character varying, 'ACTIVITY'::character varying])::text[])))", true),
         Internal.createCheck(this, DSL.name("schedules_status_check"), "(((status)::text = ANY ((ARRAY['TENTATIVE'::character varying, 'CONFIRMED'::character varying, 'CANCELLED'::character varying])::text[])))", true),
         Internal.createCheck(this, DSL.name("schedules_time_type_check"), "(((time_type)::text = ANY ((ARRAY['TIMED'::character varying, 'ALL_DAY'::character varying])::text[])))", true)

@@ -665,6 +665,96 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         // 문구만으로는 만들 수 있다
         val labelled = read(mvc.post("/v1/admin/activities/$activity/schedules") { asAdmin(); body("""{"title":"결과 발표","kind":"ANNOUNCEMENT","dateLabel":"12월 중"}""") }.andExpect { status { isCreated() } })
         assertEquals(listOf(true, "12월 중"), listOf(labelled["startAt"].isNull, labelled["dateLabel"].asString()))
+        // 겹침 확인 시간(native-v1.md "겹침 확인 시간"): 세부 일정과 모집·활동 기간 모두 PATCH의 overlapCheck로 두고 null로 지운다. 다른 필드를 고쳐도 유지된다
+        fun overlap(node: JsonNode) = node["overlapCheck"].takeUnless { it.isNull }?.let { it["startTime"].asString() to it["endTime"].asString() }
+        val withOverlap = read(mvc.patch("/v1/admin/activities/$activity/schedules/$scheduleId") { asAdmin(); patchBody("""{"overlapCheck":{"startTime":"09:30","endTime":"18:00"}}""") }.andExpect { status { isOk() } })
+        assertEquals(("09:30" to "18:00") to "1차 면접(온라인)", overlap(withOverlap) to withOverlap["title"].asString())
+        assertEquals("09:30" to "18:00", overlap(read(mvc.patch("/v1/admin/activities/$activity/schedules/$scheduleId") { asAdmin(); patchBody("""{"note":"공지 PDF 4쪽"}""") }.andExpect { status { isOk() } })))
+        assertEquals("10:00" to "17:00", overlap(read(mvc.patch("/v1/admin/activities/$activity/schedules/$slotSchedule") { asAdmin(); patchBody("""{"overlapCheck":{"startTime":"10:00","endTime":"17:00"}}""") }.andExpect { status { isOk() } })))
+        mvc.patch("/v1/admin/activities/$activity/schedules/$scheduleId") { asAdmin(); patchBody("""{"overlapCheck":{"startTime":"18:00","endTime":"09:00"}}""") }.andExpect { status { isBadRequest() } }
+        mvc.patch("/v1/admin/activities/$activity/schedules/$scheduleId") { asAdmin(); patchBody("""{"overlapCheck":{"startTime":"9시","endTime":"18:00"}}""") }.andExpect { status { isBadRequest() } }
+        mvc.patch("/v1/admin/activities/$activity/schedules/$slotSchedule") { asAdmin(); patchBody("""{"overlapCheck":{"startTime":"10:00","endTime":"17:00"},"title":"x"}""") }.andExpect { status { isBadRequest() } }
+        assertEquals(null, overlap(read(mvc.patch("/v1/admin/activities/$activity/schedules/$slotSchedule") { asAdmin(); patchBody("""{"overlapCheck":null}""") }.andExpect { status { isOk() } })))
+
+        // 활동 PATCH·POST의 모집·활동 기간 객체 안 overlapCheck(어드민 웹이 쓰는 형태): 날짜와 함께 바꾸고, overlapCheck만 보내면 날짜는 그대로, null은 지운다
+        val periods = read(mvc.patch("/v1/admin/activities/$activity") {
+            asAdmin(); patchBody("""{"activitySchedule":{"startDate":"2026-12-01","endDate":"2026-12-03","overlapCheck":{"startTime":"13:00","endTime":"18:00"}},"application":{"startDate":"2026-11-01","endDate":"2026-11-10","overlapCheck":{"startTime":"09:00","endTime":"09:30"}}}""")
+        }.andExpect { status { isOk() } })
+        assertEquals(listOf("13:00" to "18:00", "09:00" to "09:30"), listOf(overlap(periods["activitySchedule"]), overlap(periods["application"])))
+        val cleared = read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"application":{"overlapCheck":null}}""") }.andExpect { status { isOk() } })
+        assertEquals(listOf(null, "2026-11-01"), listOf(overlap(cleared["application"]), cleared["application"]["startDate"].asString()))
+        assertEquals("13:00" to "18:00", overlap(cleared["activitySchedule"]))
+        mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"activitySchedule":{"overlapCheck":{"startTime":"18:00","endTime":"13:00"}}}""") }.andExpect { status { isBadRequest() } }
+        mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"activitySchedule":{"overlapCheck":null}}""") }.andExpect { status { isOk() } }
+        val posted = read(
+            mvc.post("/v1/admin/activities") {
+                asAdmin()
+                body("""{"programId":$programId,"name":"겹침 확인 등록","description":"","officialUrl":"https://example.org/overlap","activitySchedule":{"startDate":"2027-01-10","endDate":"2027-01-11","overlapCheck":{"startTime":"10:00","endTime":"16:00"}},"application":{"endDate":"2027-01-05","overlapCheck":{"startTime":"20:00","endTime":"23:00"}}}""")
+            }.andExpect { status { isCreated() } }
+        )
+        assertEquals(listOf("10:00" to "16:00", "20:00" to "23:00"), listOf(overlap(posted["activitySchedule"]), overlap(posted["application"])))
+
+        // 일정 상태(native-v1.md "내 활동 서버 저장·일정 상태"): 지정 전에는 기본 세 개(id null), PUT은 순서대로 통째로 바꾼다
+        fun statuses(node: JsonNode) = node["items"].toList().map { it["name"].asString() to it["kind"].asString() }
+        fun putStatuses(target: Long, value: String) = mvc.put("/v1/admin/activities/$activity/schedules/$target/statuses") { asAdmin(); body(value) }
+        val initial = read(mvc.get("/v1/admin/activities/$activity/schedules/$scheduleId/statuses") { asAdmin() }.andExpect { status { isOk() } })
+        assertEquals(listOf("대기" to "WAITING", "통과" to "PASSED", "탈락" to "FAILED"), statuses(initial))
+        assertEquals(true, initial["items"].toList().all { it["id"].isNull })
+        val defined = read(putStatuses(scheduleId, """{"items":[{"name":"서류 대기","kind":"WAITING"},{"name":" 최종 합격 ","kind":"PASSED"},{"name":"보류","kind":"OTHER"}]}""").andExpect { status { isOk() } })
+        assertEquals(listOf("서류 대기" to "WAITING", "최종 합격" to "PASSED", "보류" to "OTHER"), statuses(defined))
+        val (waitingId, passedId) = defined["items"].toList().map { it["id"].asLong() }
+        // 공개·어드민 일정 응답에도 같은 목록이 실린다
+        assertEquals(listOf("서류 대기", "최종 합격", "보류"), read(mvc.patch("/v1/admin/activities/$activity/schedules/$scheduleId") { asAdmin(); patchBody("{}") })["statuses"].toList().map { it["name"].asString() })
+        // 검증: 8개까지, 이름 1~20자·일정 안에서 겹치지 않음, 다른 일정의 id·모르는 종류는 400
+        putStatuses(scheduleId, """{"items":[${(1..9).joinToString(",") { """{"name":"상태$it","kind":"OTHER"}""" }}]}""").andExpect { status { isBadRequest() } }
+        putStatuses(scheduleId, """{"items":[{"name":"같음","kind":"WAITING"},{"name":"같음","kind":"PASSED"}]}""").andExpect { status { isBadRequest() } }
+        putStatuses(scheduleId, """{"items":[{"name":"${"가".repeat(21)}","kind":"WAITING"}]}""").andExpect { status { isBadRequest() } }
+        putStatuses(scheduleId, """{"items":[{"name":"x","kind":"MAYBE"}]}""").andExpect { status { isBadRequest() } }
+        putStatuses(slotSchedule, """{"items":[{"id":$waitingId,"name":"x","kind":"WAITING"}]}""").andExpect { status { isBadRequest() } }
+        // 지운 상태를 고른 사용자 선택은 그 상태의 기본 종류로 옮기고(OTHER는 지운다), 남긴 상태는 id를 지킨 채 이름을 바꾼다
+        val user = java.util.UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
+        val userActivity = java.util.UUID.randomUUID()
+        jdbc.sql("insert into user_activities (id, user_id, activity_id, created_at, updated_at) values (?, ?, ?, now(), now())").params(userActivity, user, activity).update()
+        jdbc.sql("insert into user_activity_schedule_statuses (user_activity_id, schedule_id, schedule_status_id, updated_at) values (?, ?, ?, now())").params(userActivity, scheduleId, passedId).update()
+        val labelledOther = read(putStatuses(labelled["id"].asLong(), """{"items":[{"name":"보류","kind":"OTHER"}]}""").andExpect { status { isOk() } })["items"][0]["id"].asLong()
+        jdbc.sql("insert into user_activity_schedule_statuses (user_activity_id, schedule_id, schedule_status_id, updated_at) values (?, ?, ?, now())").params(userActivity, labelled["id"].asLong(), labelledOther).update()
+        val renamedStatuses = read(putStatuses(scheduleId, """{"items":[{"id":$waitingId,"name":"서류 검토 중","kind":"WAITING"},{"name":"합격","kind":"PASSED"}]}""").andExpect { status { isOk() } })
+        assertEquals(waitingId, renamedStatuses["items"][0]["id"].asLong())
+        assertEquals(listOf("서류 검토 중" to "WAITING", "합격" to "PASSED"), statuses(renamedStatuses))
+        assertEquals(listOf<Any?>(null, "PASSED"), jdbc.sql("select schedule_status_id, default_kind from user_activity_schedule_statuses where user_activity_id = ? and schedule_id = ?")
+            .params(userActivity, scheduleId).query { rs, _ -> listOf(rs.getObject(1), rs.getString(2)) }.single())
+        // 다른 일정의 OTHER 상태를 지우면 그 선택은 지워진다(기본 종류가 없다)
+        putStatuses(labelled["id"].asLong(), """{"items":[{"name":"발표 대기","kind":"WAITING"}]}""").andExpect { status { isOk() } }
+        assertEquals(0, jdbc.sql("select count(*) from user_activity_schedule_statuses where schedule_id = ?").param(labelled["id"].asLong()).query(Int::class.java).single())
+        // 빈 목록은 기본 세 개로 되돌리고, 지운 상태를 고른 선택은 그 종류의 기본 상태로 옮긴다
+        jdbc.sql("update user_activity_schedule_statuses set schedule_status_id = ?, default_kind = null where user_activity_id = ? and schedule_id = ?").params(waitingId, userActivity, scheduleId).update()
+        val reset = read(putStatuses(scheduleId, """{"items":[]}""").andExpect { status { isOk() } })
+        assertEquals(listOf("대기" to "WAITING", "통과" to "PASSED", "탈락" to "FAILED"), statuses(reset))
+        assertEquals(true, reset["items"].toList().all { it["id"].isNull })
+        assertEquals(0, jdbc.sql("select count(*) from schedule_statuses where schedule_id = ?").param(scheduleId).query(Int::class.java).single())
+        assertEquals("WAITING", jdbc.sql("select default_kind from user_activity_schedule_statuses where user_activity_id = ? and schedule_id = ?").params(userActivity, scheduleId).query(String::class.java).single())
+        // 만들 때도 겹침 확인 시간을 줄 수 있다(null은 없음)
+        val createdWithOverlap = read(mvc.post("/v1/admin/activities/$activity/schedules") { asAdmin(); body("""{"title":"OT","kind":"EVENT","dateLabel":"12월 1일","overlapCheck":{"startTime":"19:00","endTime":"21:00"}}""") }.andExpect { status { isCreated() } })
+        assertEquals("19:00" to "21:00", overlap(createdWithOverlap))
+        val createdWithoutOverlap = read(mvc.post("/v1/admin/activities/$activity/schedules") { asAdmin(); body("""{"title":"OT2","kind":"EVENT","dateLabel":"12월 2일","overlapCheck":null}""") }.andExpect { status { isCreated() } })
+        assertEquals(null, overlap(createdWithoutOverlap))
+        listOf(createdWithOverlap, createdWithoutOverlap).forEach { mvc.delete("/v1/admin/activities/$activity/schedules/${it["id"].asLong()}") { asAdmin() }.andExpect { status { isNoContent() } } }
+        mvc.post("/v1/admin/activities/$activity/schedules") { asAdmin(); body("""{"title":"OT3","kind":"EVENT","dateLabel":"12월 3일","overlapCheck":{"startTime":"21:00","endTime":"21:00"}}""") }.andExpect { status { isBadRequest() } }
+        // 모집·활동 기간에도 상태를 둘 수 있다
+        assertEquals(listOf("참가 확정" to "PASSED"), statuses(read(putStatuses(slotSchedule, """{"items":[{"name":"참가 확정","kind":"PASSED"}]}""").andExpect { status { isOk() } })))
+        // 수집한(운영자 지정 아닌) 세부 일정에 상태를 두면 다시 수집해도 지워지지 않게 운영자 지정으로 남는다
+        val collected = jdbc.sql("insert into schedules (activity_id, title, kind, status, date_label, sequence, created_at, updated_at) values (?, '수집 일정', 'EVENT', 'CONFIRMED', '1월', 0, localtimestamp, localtimestamp) returning id")
+            .param(activity).query(Long::class.java).single()
+        putStatuses(collected, """{"items":[{"name":"참석","kind":"PASSED"}]}""").andExpect { status { isOk() } }
+        assertEquals(true, jdbc.sql("select curated from schedules where id = ?").param(collected).query(Boolean::class.java).single())
+        // 겹침 확인 시간만 고쳐도 마찬가지
+        val collectedOverlap = jdbc.sql("insert into schedules (activity_id, title, kind, status, date_label, sequence, created_at, updated_at) values (?, '수집 일정 2', 'EVENT', 'CONFIRMED', '2월', 0, localtimestamp, localtimestamp) returning id")
+            .param(activity).query(Long::class.java).single()
+        mvc.patch("/v1/admin/activities/$activity/schedules/$collectedOverlap") { asAdmin(); patchBody("""{"overlapCheck":{"startTime":"09:00","endTime":"10:00"}}""") }.andExpect { status { isOk() } }
+        assertEquals(true, jdbc.sql("select curated from schedules where id = ?").param(collectedOverlap).query(Boolean::class.java).single())
+        mvc.delete("/v1/admin/activities/$activity/schedules/$collectedOverlap") { asAdmin() }.andExpect { status { isNoContent() } }
+        mvc.delete("/v1/admin/activities/$activity/schedules/$collected") { asAdmin() }.andExpect { status { isNoContent() } }
+        mvc.get("/v1/admin/activities/$activity/schedules/999999/statuses") { asAdmin() }.andExpect { status { isNotFound() } }
         // 슬롯 일정(활동 기간)은 세부 일정 편집기로 고치거나 지울 수 없다. 없는 일정·다른 활동의 일정은 404
         mvc.patch("/v1/admin/activities/$activity/schedules/$slotSchedule") { asAdmin(); patchBody("""{"title":"x"}""") }.andExpect { status { isBadRequest() } }
         mvc.delete("/v1/admin/activities/$activity/schedules/$slotSchedule") { asAdmin() }.andExpect { status { isBadRequest() } }

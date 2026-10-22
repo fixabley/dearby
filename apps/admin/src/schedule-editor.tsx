@@ -1,9 +1,25 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Alert, App, Button, Calendar, Form, Input, Modal, Popconfirm, Segmented, Select, Space, Table, Tag, Tooltip } from "antd";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Alert, App, Button, Calendar, Form, Input, Modal, Popconfirm, Segmented, Select, Space, Spin, Table, Tag, Tooltip } from "antd";
+import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import dayjs, { type Dayjs } from "dayjs";
 import { api, useSingleFlight } from "./api";
-import { CuratedTag, rangeDraft, type RangeDraft, type Schedule, ScheduleBlock, scheduleInput, scheduleText, SEOUL } from "./activities";
+import {
+  CuratedTag,
+  type OverlapCheck,
+  type OverlapDraft,
+  overlapDraft,
+  overlapInput,
+  overlapUnavailable,
+  OverlapUnavailableTag,
+  rangeDraft,
+  type RangeDraft,
+  type Schedule,
+  ScheduleBlock,
+  scheduleInput,
+  scheduleText,
+  SEOUL,
+} from "./activities";
 
 /** 세부 일정 편집기 (contract admin-v1 "세부 일정 편집기", 2026-10-19): calendar and list views over an activity's detail schedules. */
 
@@ -26,7 +42,18 @@ type ScheduleItemInput = {
   endDate?: string;
   dateLabel?: string;
   note?: string;
+  /** null clears it on PATCH. */
+  overlapCheck?: OverlapCheck | null;
 };
+
+/** 일정 상태 (native-v1 "내 활동 서버 저장·일정 상태", 2026-10-22): the choices a user picks for one schedule's 진행 단계. */
+type StatusKind = "WAITING" | "PASSED" | "FAILED" | "OTHER";
+/** `GET/PUT activities/:id/schedules/:sid/statuses` item. Defaults (no stored rows) come back with `id: null`. */
+type ScheduleStatusItem = { id?: number | null; name: string; kind: StatusKind };
+const statusKindLabels: Record<StatusKind, string> = { WAITING: "대기", PASSED: "통과", FAILED: "탈락", OTHER: "기타" };
+type DraftStatus = ScheduleStatusItem & { key: string };
+const MAX_STATUSES = 8;
+const MAX_STATUS_NAME = 20;
 
 export type ScheduleEditorActivity = {
   id: number;
@@ -65,6 +92,7 @@ function byTime(a: Schedule, b: Schedule): number {
 export function ScheduleEditorModal({ activity, onClose }: { activity: ScheduleEditorActivity; onClose: () => void }) {
   const [view, setView] = useState<"calendar" | "list">("calendar");
   const [form, setForm] = useState<{ schedule?: Schedule; day?: Dayjs } | null>(null);
+  const [statusesFor, setStatusesFor] = useState<Schedule | null>(null);
   const { message } = App.useApp();
   const client = useQueryClient();
   const refresh = () => client.invalidateQueries({ queryKey: ["activities"] });
@@ -108,7 +136,7 @@ export function ScheduleEditorModal({ activity, onClose }: { activity: ScheduleE
             { title: "제목", dataIndex: "title", render: (title: string, schedule) => <>{title}{schedule.curated && <CuratedTag />}</> },
             { title: "종류", dataIndex: "kind", render: (kind: string) => <Tag color={kindColors[kindOf(kind)]}>{kindLabels[kindOf(kind)]}</Tag> },
             { title: "상태", dataIndex: "status", render: (status: string) => statusLabels[statusOf(status)] },
-            { title: "기간", render: (_, schedule) => scheduleText(schedule) },
+            { title: "기간", render: (_, schedule) => <>{scheduleText(schedule)}{overlapUnavailable(schedule) && <OverlapUnavailableTag />}</> },
             { title: "원문", dataIndex: "dateLabel", render: (label: string) => label || <span className="muted">없음</span> },
             { title: "사유", dataIndex: "curatedNote", render: (note: string | null | undefined) => note || <span className="muted">없음</span> },
             {
@@ -117,6 +145,9 @@ export function ScheduleEditorModal({ activity, onClose }: { activity: ScheduleE
                 <Space>
                   <Button size="small" onClick={() => setForm({ schedule })}>
                     편집
+                  </Button>
+                  <Button size="small" onClick={() => setStatusesFor(schedule)}>
+                    진행 상태
                   </Button>
                   <Popconfirm title="이 일정을 지울까요?" description="수집이 같은 일정을 다시 넣지 않아요." okText="지우기" okButtonProps={{ danger: true }} onConfirm={() => remove.mutate(schedule.id)}>
                     <Button size="small" danger>
@@ -130,6 +161,7 @@ export function ScheduleEditorModal({ activity, onClose }: { activity: ScheduleE
         />
       )}
       {form && <ScheduleForm activityId={activity.id} schedule={form.schedule} day={form.day} onClose={() => setForm(null)} onSaved={refresh} />}
+      {statusesFor && <ScheduleStatusesModal activityId={activity.id} schedule={statusesFor} onClose={() => setStatusesFor(null)} />}
     </Modal>
   );
 }
@@ -179,10 +211,10 @@ function ScheduleCalendar({
           >
             <div className="schedule-cell-day">{day.date()}</div>
             {items.slice(0, 3).map((schedule) => (
-              <Tooltip key={schedule.id} title={`${schedule.title} · ${scheduleText(schedule)}`}>
+              <Tooltip key={schedule.id} title={`${schedule.title} · ${scheduleText(schedule)}${overlapUnavailable(schedule) ? " · 겹침 확인 불가" : ""}`}>
                 <button
                   type="button"
-                  className={`schedule-chip kind-${kindOf(schedule.kind).toLowerCase()}`}
+                  className={`schedule-chip kind-${kindOf(schedule.kind).toLowerCase()}${overlapUnavailable(schedule) ? " no-overlap" : ""}`}
                   onClick={(event) => {
                     event.stopPropagation();
                     onPickSchedule(schedule);
@@ -241,8 +273,9 @@ function ScheduleForm({
           range: initial.range,
           timed: initial.timed,
           note: schedule?.curatedNote ?? "",
+          overlap: overlapDraft(schedule?.overlapCheck),
         }}
-        onFinish={(values: { title: string; kind: ScheduleKind; status: ScheduleStatus; dateLabel: string; range: RangeDraft["range"]; timed: boolean; note: string }) => {
+        onFinish={(values: { title: string; kind: ScheduleKind; status: ScheduleStatus; dateLabel: string; range: RangeDraft["range"]; timed: boolean; note: string; overlap: OverlapDraft }) => {
           const period = scheduleInput({ range: values.range, timed: values.timed }, values.note);
           const dateLabel = values.dateLabel.trim();
           if (!period && !dateLabel) {
@@ -258,6 +291,8 @@ function ScheduleForm({
               ...dates,
               ...(dateLabel && { dateLabel }),
               ...(note && { note }),
+              // Always sent, so clearing the pickers clears it (null on POST is simply none).
+              overlapCheck: overlapInput(values.overlap),
             }),
           );
         }}
@@ -274,11 +309,121 @@ function ScheduleForm({
             <Select style={{ width: 120 }} options={(Object.keys(statusLabels) as ScheduleStatus[]).map((status) => ({ value: status, label: statusLabels[status] }))} />
           </Form.Item>
         </Space>
-        <ScheduleBlock title="기간" schedule={schedule} rangeName="range" timedName="timed" noteName="note" timed={timed} startOptional />
+        <ScheduleBlock title="기간" schedule={schedule} rangeName="range" timedName="timed" noteName="note" overlapName="overlap" timed={timed} startOptional />
         <Form.Item name="dateLabel" label="원문 문구(선택)">
           <Input maxLength={200} placeholder="예: 11월 둘째 주 중" />
         </Form.Item>
       </Form>
+    </Modal>
+  );
+}
+
+/**
+ * 진행 상태 편집: the ordered choices users pick for this schedule. PUT replaces the whole list; an empty list goes back to the
+ * defaults (대기·통과·탈락). Users who picked a status that is removed move to the default status of the same kind (server rule).
+ */
+function ScheduleStatusesModal({ activityId, schedule, onClose }: { activityId: number; schedule: Schedule; onClose: () => void }) {
+  const path = `activities/${activityId}/schedules/${schedule.id}/statuses`;
+  const queryKey = ["schedule-statuses", activityId, schedule.id];
+  const { message, modal } = App.useApp();
+  const client = useQueryClient();
+  const saveOnce = useSingleFlight();
+  const loaded = useQuery({ queryKey, queryFn: () => api<{ items: ScheduleStatusItem[] }>(path) });
+  // Rows carry a local key so inputs keep focus and identity while they are moved.
+  const [edited, setEdited] = useState<DraftStatus[] | null>(null);
+  const draft: DraftStatus[] = edited ?? (loaded.data?.items ?? []).map((item, index) => ({ ...item, key: `loaded-${index}` }));
+  const save = useMutation({
+    mutationFn: (items: ScheduleStatusItem[]) => api<{ items: ScheduleStatusItem[] }>(path, "PUT", { items }),
+    onSuccess: async () => {
+      message.success("진행 상태를 저장했어요.");
+      // Activity responses carry each schedule's statuses too.
+      await Promise.all([client.invalidateQueries({ queryKey }), client.invalidateQueries({ queryKey: ["activities"] })]);
+      onClose();
+    },
+  });
+  const update = (index: number, change: Partial<DraftStatus>) => setEdited(draft.map((item, at) => (at === index ? { ...item, ...change } : item)));
+  const move = (index: number, by: number) => {
+    const next = [...draft];
+    [next[index], next[index + by]] = [next[index + by], next[index]];
+    setEdited(next);
+  };
+  const names = draft.map((item) => item.name.trim());
+  const problem =
+    draft.length === 0
+      ? "상태를 하나 이상 두거나 기본값으로 되돌려 주세요."
+      : names.some((name) => !name)
+        ? "이름을 모두 입력해 주세요."
+        : new Set(names).size !== names.length
+          ? "같은 이름의 상태가 있어요."
+          : null;
+  /** Stored statuses that the save would drop; users who picked them move to the default of the same kind. */
+  const removedNames = (next: ScheduleStatusItem[]) =>
+    (loaded.data?.items ?? []).filter((item) => item.id != null && !next.some((kept) => kept.id === item.id)).map((item) => item.name);
+  const submit = (items: ScheduleStatusItem[], title: string) => {
+    const removed = removedNames(items);
+    modal.confirm({
+      title,
+      content: removed.length ? `지우는 상태(${removed.join(", ")})를 고른 사용자는 같은 종류의 기본 상태(대기·통과·탈락)로 옮겨져요.` : undefined,
+      okText: "저장",
+      cancelText: "취소",
+      onOk: () => saveOnce(() => save.mutateAsync(items)),
+    });
+  };
+  const isDefault = loaded.data !== undefined && loaded.data.items.every((item) => item.id == null);
+  return (
+    <Modal
+      open
+      title={`진행 상태 · ${schedule.title}`}
+      onCancel={onClose}
+      okText="저장"
+      cancelText="취소"
+      // An untouched list is not sent: saving the defaults unchanged would store them and they would stop following the defaults.
+      okButtonProps={{ disabled: edited === null || !!problem, loading: save.isPending }}
+      onOk={() => submit(draft.map(({ id, name, kind }) => ({ ...(id != null && { id }), name: name.trim(), kind })), "진행 상태를 저장할까요?")}
+      destroyOnClose
+    >
+      <p className="field-note">사용자가 이 일정의 진행 단계에서 고르는 상태예요. 위에서부터 이 순서로 보여요. 탈락 종류를 고르면 끝난 활동으로 옮겨져요.</p>
+      {loaded.error && <Alert className="form-error" type="error" showIcon message={loaded.error.message} />}
+      {save.error && <Alert className="form-error" type="error" showIcon message={save.error.message} />}
+      {loaded.isPending ? (
+        <Spin />
+      ) : (
+        <Space direction="vertical" style={{ width: "100%" }}>
+          {isDefault && edited === null && <Tag>기본값 사용 중</Tag>}
+          {draft.map((item, index) => (
+            <Space key={item.key} wrap>
+              <Input
+                aria-label={`${index + 1}번째 상태 이름`}
+                style={{ width: 200 }}
+                maxLength={MAX_STATUS_NAME}
+                value={item.name}
+                status={!item.name.trim() || names.indexOf(item.name.trim()) !== index ? "error" : undefined}
+                onChange={(event) => update(index, { name: event.target.value })}
+              />
+              <Select<StatusKind>
+                aria-label={`${index + 1}번째 상태 종류`}
+                style={{ width: 100 }}
+                value={item.kind}
+                onChange={(kind) => update(index, { kind })}
+                options={(Object.keys(statusKindLabels) as StatusKind[]).map((kind) => ({ value: kind, label: statusKindLabels[kind] }))}
+              />
+              <Button aria-label="위로" icon={<ArrowUpOutlined />} disabled={index === 0} onClick={() => move(index, -1)} />
+              <Button aria-label="아래로" icon={<ArrowDownOutlined />} disabled={index === draft.length - 1} onClick={() => move(index, 1)} />
+              <Button aria-label="지우기" danger icon={<DeleteOutlined />} onClick={() => setEdited(draft.filter((_, at) => at !== index))} />
+            </Space>
+          ))}
+          {problem && edited !== null && <Alert type="warning" showIcon message={problem} />}
+          <Space>
+            <Button icon={<PlusOutlined />} disabled={draft.length >= MAX_STATUSES} onClick={() => setEdited([...draft, { name: "", kind: "OTHER", key: crypto.randomUUID() }])}>
+              상태 추가
+            </Button>
+            <Button disabled={isDefault && edited === null} onClick={() => submit([], "기본값(대기·통과·탈락)으로 되돌릴까요?")}>
+              기본값으로
+            </Button>
+            <span className="muted">최대 {MAX_STATUSES}개, 이름은 {MAX_STATUS_NAME}자까지</span>
+          </Space>
+        </Space>
+      )}
     </Modal>
   );
 }

@@ -4,7 +4,10 @@ import Observation
 /// Discovery as a program accordion (contract "발견 프로그램 묶음 — 2026-10-18"): `GET /v1/discovery/programs` with server search (`q`)
 /// and cursor paging; an expanded program loads its open activities with `GET /v1/activities?programId=&open=true` (the server judges
 /// openness, contract "열린 활동 판정 일원화") and, when none is open, its past activities of the last two years ("모집 중인 프로그램만 보기").
-/// Also the session's applied / confirmed marks and the apply-confirmation prompt, shared with 내 활동 and the detail screen.
+/// Also 내 활동 — the applied activities and their stage marks — and the apply-confirmation prompt, shared with 내 활동 and the detail screen.
+/// 내 활동 storage (contract "내 활동 서버 저장" 2026-10-22): signed out, the marks live in this model's memory as before (the app has no
+/// device copy of them); signed in, `signedIn(_:)` uploads those once with `import`, then the server's list replaces them and every
+/// change is sent to `/v1/me/activities…` as it is made. A failed change shows `notice` and reloads the server's list.
 @MainActor @Observable final class ActivityViewModel {
     enum Phase: Equatable { case loading, failed, loaded }
     private(set) var phase = Phase.loading
@@ -33,12 +36,20 @@ import Observation
     private(set) var refreshFailed = false
     // Discovery is judged at load time so the list does not change while it is on screen.
     private(set) var loadedAt = Date()
-    // Example application marks, memory only and keyed by real activity IDs.
-    var appliedIDs: Set<String> = []
-    // The user's own participation mark, not an organizer confirmation.
-    var confirmedIDs: Set<String> = []
-    /// The user's stage marks (contract "내 활동 진행 트랙"), memory only like `appliedIDs`: activity id → stage id → mark.
-    var stageMarks: [String: [String: StageMark]] = [:]
+    /// Activities in 내 활동, keyed by activity id.
+    private(set) var appliedIDs: Set<String> = []
+    /// The user's stage marks (contract "내 활동 진행 트랙"): activity id → schedule id → mark.
+    private(set) var stageMarks: [String: [String: StageMark]] = [:]
+    /// Server records whose activity answers 404 (contract "삭제된 활동"): listed apart with only 빼기, in id order.
+    private(set) var deletedIDs: [String] = []
+    /// True while the signed-in list loads and nothing is shown yet.
+    private(set) var mineLoading = false
+    /// A one-shot message after a 내 활동 change could not be saved; cleared with `clearNotice()`.
+    private(set) var notice: String?
+    /// The signed-in account's 내 활동 calls; nil while signed out.
+    private var server: MineServer?
+    /// The marks above mirror the server (the device records were imported or there were none).
+    private var synced = false
     /// Contract #148 "신청 확인": after an official application link opened, ask once when the app comes back.
     enum ApplyAnswer { case applied, notYet, neverAsk }
     private(set) var asking: ActivityModel?
@@ -57,10 +68,14 @@ import Observation
     private let fetchPrograms: @Sendable (_ query: String, _ cursor: Int64?, _ openOnly: Bool) async throws -> ProgramPage
     /// `open` true asks for open activities only; false for every activity of the program (past list).
     private let fetchActivities: @Sendable (_ programID: Int64, _ open: Bool) async throws -> ActivityPage
+    /// `GET /v1/activities/:id` for 내 활동 records not seen in discovery; nil when the activity is gone (404).
+    private let fetchActivity: @Sendable (_ id: String) async throws -> ActivityModel?
     init(programs: @escaping @Sendable (_ query: String, _ cursor: Int64?, _ openOnly: Bool) async throws -> ProgramPage,
-         activities: @escaping @Sendable (_ programID: Int64, _ open: Bool) async throws -> ActivityPage) {
+         activities: @escaping @Sendable (_ programID: Int64, _ open: Bool) async throws -> ActivityPage,
+         activity: @escaping @Sendable (_ id: String) async throws -> ActivityModel?) {
         fetchPrograms = programs
         fetchActivities = activities
+        fetchActivity = activity
     }
 
     func activity(_ id: String) -> ActivityModel? { seen[id] }
@@ -72,8 +87,11 @@ import Observation
     func progress(_ activity: ActivityModel, now: Date) -> ActivityProgress? {
         ActivityStages.build(activity, marks: stageMarks[activity.id] ?? [:], now: now)
     }
-    func stageMark(_ activityID: String, _ stageID: String) -> StageMark { stageMarks[activityID]?[stageID] ?? .wait }
-    func markStage(_ activityID: String, _ stageID: String, _ mark: StageMark) { stageMarks[activityID, default: [:]][stageID] = mark }
+    func markStage(_ activityID: String, _ scheduleID: String, _ mark: StageMark) {
+        stageMarks[activityID, default: [:]][scheduleID] = mark
+        guard let server, synced, let activity = Int64(activityID), let schedule = Int64(scheduleID) else { return }
+        save { _ = try await server.putStatus(activity, schedule, mark.statusID, mark.kind.rawValue) }
+    }
     /// Shows `text`'s programs from the first page, unless they are already shown or loading.
     func search(_ text: String) {
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -225,7 +243,9 @@ import Observation
         }
     }
     func apply(_ id: String, _ value: Bool) {
-        if value { appliedIDs.insert(id) } else { appliedIDs.remove(id); confirmedIDs.remove(id); stageMarks[id] = nil }
+        if value { appliedIDs.insert(id) } else { appliedIDs.remove(id); stageMarks[id] = nil; deletedIDs.removeAll { $0 == id } }
+        guard let server, synced, let activity = Int64(id) else { return }
+        save { if value { _ = try await server.put(activity) } else { try await server.delete(activity) } }
     }
     /// An application link for `id` was handed to the browser. Applied or "never ask" activities are not asked.
     func openedApplication(_ id: String) {
@@ -251,7 +271,103 @@ import Observation
         case .neverAsk: neverAsk.insert(id)
         }
     }
-    func confirm(_ id: String, _ value: Bool) {
-        if value && appliedIDs.contains(id) { confirmedIDs.insert(id) } else { confirmedIDs.remove(id) }
+
+    /// The account signed in (or the app started signed in): from now on 내 활동 is the server's.
+    func signedIn(_ server: MineServer) async {
+        self.server = server
+        await syncMine()
     }
+    /// The account signed out: the server's records leave with it; marks made signed out stay in memory.
+    func signedOut() {
+        server = nil
+        mineLoading = false
+        guard synced else { return }
+        synced = false
+        appliedIDs = []
+        stageMarks = [:]
+        deletedIDs = []
+    }
+    /// Loads the server's 내 활동 (pull to refresh, a failed change). Before the first success the records kept signed out are
+    /// uploaded with `import` instead and then replaced by its answer; a failed import keeps them here for the next try.
+    func syncMine() async {
+        guard let server else { return }
+        let local = synced ? [] : importItems()
+        if !synced && appliedIDs.isEmpty { mineLoading = true }
+        defer { mineLoading = false }
+        do {
+            let items = local.isEmpty ? try await server.list() : try await server.importItems(local)
+            guard self.server != nil else { return }
+            replace(items)
+            await resolve(items.map { String($0.activityId) })
+        } catch {
+            notice = Self.message(error, saving: !local.isEmpty)
+        }
+    }
+    func clearNotice() { notice = nil }
+    private func importItems() -> [AccountClient.MyActivityImport] {
+        appliedIDs.sorted().compactMap { id in
+            guard let activityID = Int64(id) else { return nil }
+            // Import carries default kinds only (contract): waiting is the default anyway, and OTHER has no default status.
+            let statuses = (stageMarks[id] ?? [:]).compactMap { schedule, mark in
+                [.passed, .failed].contains(mark.kind)
+                    ? Int64(schedule).map { AccountClient.MyActivityImport.Status(scheduleId: $0, kind: mark.kind.rawValue) } : nil
+            }
+            return AccountClient.MyActivityImport(activityId: activityID, statuses: statuses)
+        }
+    }
+    private func replace(_ items: [AccountClient.MyActivity]) {
+        synced = true
+        appliedIDs = Set(items.map { String($0.activityId) })
+        stageMarks = Dictionary(items.map { item in
+            (String(item.activityId), Dictionary(item.statuses.map { status in
+                (String(status.scheduleId), StageMark(statusID: status.statusId, kind: ScheduleStatus.Kind(rawValue: status.kind) ?? .other))
+            }, uniquingKeysWith: { $1 }))
+        }, uniquingKeysWith: { $1 })
+        deletedIDs = deletedIDs.filter(appliedIDs.contains)
+    }
+    /// Loads the activities discovery has not shown; a 404 marks the record "삭제된 활동", any other failure leaves it for the next load.
+    private func resolve(_ ids: [String]) async {
+        await withTaskGroup(of: (String, Result<ActivityModel?, Error>).self) { group in
+            for id in ids where seen[id] == nil {
+                group.addTask { [fetchActivity] in
+                    do { return (id, .success(try await fetchActivity(id))) } catch { return (id, .failure(error)) }
+                }
+            }
+            for await (id, result) in group {
+                switch result {
+                case .success(let activity?): seen[id] = activity; deletedIDs.removeAll { $0 == id }
+                case .success(nil): if !deletedIDs.contains(id) { deletedIDs.append(id) }
+                case .failure: break
+                }
+            }
+        }
+        deletedIDs.sort { (Int64($0) ?? 0) < (Int64($1) ?? 0) }
+    }
+    /// Sends one change; on failure says so and reloads the server's list, which undoes the change on screen.
+    private func save(_ call: @escaping @MainActor () async throws -> Void) {
+        Task {
+            do { try await call() } catch {
+                notice = Self.message(error, saving: true)
+                await syncMine()
+            }
+        }
+    }
+    private static func message(_ error: Error, saving: Bool) -> String {
+        switch error as? AccountError {
+        case .unauthorized: "로그인이 만료됐어요. 다시 로그인해 주세요."
+        case .consentRequired: "바뀐 개인정보 처리방침에 동의해야 내 활동을 저장할 수 있어요. 프로필 탭에서 동의해 주세요."
+        default: saving ? "내 활동을 저장하지 못했어요. 잠시 후 다시 시도해 주세요." : "내 활동을 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
+        }
+    }
+}
+
+/// The signed-in account's 내 활동 calls (contract "내 활동 서버 저장" 2026-10-22), built by the app from `AccountClient` with the
+/// account's token refresh.
+struct MineServer: Sendable {
+    let list: @Sendable () async throws -> [AccountClient.MyActivity]
+    /// Adds the activity.
+    let put: @Sendable (_ activityID: Int64) async throws -> AccountClient.MyActivity
+    let delete: @Sendable (_ activityID: Int64) async throws -> Void
+    let putStatus: @Sendable (_ activityID: Int64, _ scheduleID: Int64, _ statusID: Int64?, _ kind: String) async throws -> AccountClient.MyActivity
+    let importItems: @Sendable (_ items: [AccountClient.MyActivityImport]) async throws -> [AccountClient.MyActivity]
 }
