@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.*
@@ -101,7 +102,7 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                 val programs = state.programs
                 // The centred states fill the list area (they scroll only when they overflow, and pull-to-refresh still works through that scroll).
                 when {
-                    state.phase == ActivityListPhase.LOADING -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { DearbyLoadingState("활동을 불러오는 중이에요.") }
+                    state.phase == ActivityListPhase.LOADING -> DearbySkeleton(Modifier.fillMaxSize().padding(horizontal = 20.dp)) { repeat(4) { ProgramCardSkeleton() } }
                     state.phase == ActivityListPhase.FAILED -> DearbyErrorState("활동을 불러오지 못했어요", "연결을 확인한 뒤 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
                     programs.isEmpty() && state.query.isNotBlank() -> DearbyEmptyState("검색 결과가 없어요", "다른 검색어로 찾아 보세요.", Modifier.fillMaxSize(), Icons.Rounded.Search)
                     programs.isEmpty() && state.openOnly -> DearbyEmptyState("지금 모집 중인 프로그램이 없어요", "‘마감 숨기기’를 끄면 최근 2년 안에 활동한 프로그램도 보여요.", Modifier.fillMaxSize())
@@ -186,7 +187,8 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
 @Composable private fun ProgramBody(programId: String, state: ActivityListState, open: (String) -> Unit, retryProgram: (String) -> Unit) {
     val loaded = state.programActivities[programId]
     when (loaded?.phase) {
-        null, ProgramPhase.LOADING -> Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) { CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp) }
+        // Kept until both the open list and the 모집 예정·지난 활동 list arrive (loadProgram goes LOADED once, after both), so no empty-state flash.
+        null, ProgramPhase.LOADING -> DearbySkeleton(Modifier.fillMaxWidth()) { repeat(2) { ActivityCardSkeleton() } }
         ProgramPhase.FAILED -> Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) { TextButton({ retryProgram(programId) }, Modifier.heightIn(min = 48.dp)) { Text("활동을 불러오지 못했어요 · 다시 시도") } }
         ProgramPhase.LOADED -> {
             val activities = loaded.ids.mapNotNull(state.known::get)
@@ -207,6 +209,22 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
         }
     }
 }
+
+/** A collapsed [ProgramCard]'s outline: logo, title and organization lines (contract "내용 로딩은 스켈레톤"). */
+@Composable private fun ProgramCardSkeleton() =
+    Row(Modifier.fillMaxWidth().border(BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest), RoundedCornerShape(20.dp)).padding(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        SkeletonBlock(Modifier.size(44.dp), RoundedCornerShape(14.dp))
+        Column(Modifier.weight(1f).padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) { SkeletonLine(.6f, 18.dp); SkeletonLine(.35f, 12.dp) }
+    }
+
+/** An [ActivityCard]'s outline: title and chip, then the 모집·활동 rows. */
+@Composable private fun ActivityCardSkeleton() =
+    Column(Modifier.fillMaxWidth().border(BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest), RoundedCornerShape(14.dp)).padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) { Box(Modifier.weight(1f)) { SkeletonLine(.7f, 18.dp) }; SkeletonBlock(Modifier.size(52.dp, 24.dp), RoundedCornerShape(8.dp)) }
+        SkeletonLine(.55f, 12.dp)
+        SkeletonLine(.45f, 12.dp)
+    }
 
 @Composable private fun GroupHeading(text: String) =
     Text(text, Modifier.padding(start = 6.dp, end = 6.dp, top = 6.dp).semantics { heading() }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
