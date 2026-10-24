@@ -48,15 +48,15 @@ const DOUBLE_TAP_MS = 250;
 const CANDIDATES = 30;
 
 const eligibilityGlyphs: Record<(typeof eligibilityIcons)[number], IconName> = {
-  age: "person",
+  age: "cake",
   education: "graduation",
-  schoolYear: "graduation",
+  schoolYear: "hash",
   employment: "briefcase",
   region: "map-pin",
   major: "book",
   nationality: "globe",
-  experience: "trend-up",
-  team: "network",
+  experience: "clock",
+  team: "people",
   other: "info",
 };
 
