@@ -112,6 +112,8 @@ export const tagSchema = z.object({
   parentId: z.number().int().nullable().optional().catch(null),
 });
 export type Tag = z.infer<typeof tagSchema>;
+/** `GET /v1/tags` (contract "태그"): the whole dictionary, for the recommendation funnel's 분야·성격 choices. */
+export const tagListSchema = z.object({ items: z.array(tagSchema) });
 const tags = z.array(tagSchema).optional().catch([]);
 // Kept `undefined` when absent so an older response falls back to `tags` (see `traitTagsOf`).
 const splitTags = z.array(tagSchema).optional().catch(undefined);
@@ -185,6 +187,11 @@ export const programPageSchema = z.object({
   nextCursor: z.number().int().nullable(),
 });
 export type ProgramSummary = z.infer<typeof programSummarySchema>;
+/** `GET /v1/discovery/recommendations` (contract "추천 API"): open activities with their program and short human reasons, best first. */
+export const recommendationListSchema = z.object({
+  items: z.array(z.object({ activity: activitySchema, program: programSummarySchema, reasons: z.array(text) })),
+});
+export type Recommendation = z.infer<typeof recommendationListSchema>["items"][number];
 export type ProgramPage = z.infer<typeof programPageSchema>;
 /** `10월 24일 마감` in Seoul time (contract "발견 카드 리뉴얼" meta line), or undefined when the end is missing or unreadable. */
 export function deadlineLabel(endAt: string | null): string | undefined {
