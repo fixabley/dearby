@@ -20,7 +20,7 @@ data class AgentInput(
     val watchlist: List<WatchEntry>,
     val previous: PreviousEdition?,
     val feedback: List<CollectionFeedback>,
-    val tagNames: List<String>,
+    val tags: List<io.wid.dearby.domain.Tag>, // 태그 사전 전부(사전 순). 요청에 분야·성격으로 나눠 넣는다
 )
 
 // 서비스가 에이전트에게 주는 도구. fetch·render는 받을 수 없으면 PageFetchException(이유는 서비스가 rejected_reasons에 남긴다)

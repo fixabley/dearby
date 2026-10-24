@@ -72,6 +72,7 @@ class CollectionJobTest(
             val httpUrls = mutableListOf<String>()
             var rendererClosed = 0
             var extractedTags: List<String> = listOf("창업", "없는 태그") // 태그 테스트: 사전 밖 이름은 버려진다
+            var extractedFieldTags: List<Map<String, Any>> = listOf(mapOf("name" to "시험하위분야", "relevance" to 130), mapOf("name" to "없는 분야", "relevance" to 50))
             var extractedSchedules: List<ExtractedSchedule> = emptyList() // 세부 일정 테스트에서 채운다(admin-v1.md "세부 일정 편집기")
             var script: ((String, McpClient) -> Map<String, Any?>)? = null // 테스트가 바꿔 끼우는 CLI 대본. 없으면 defaultScript
             var pageExtra = "" // 장소 테스트에서 받은 페이지 본문 뒤에 붙인다
@@ -115,7 +116,7 @@ class CollectionJobTest(
                 "roundKey" to "2026-컨퍼런스", "name" to "Let'Swift 2026 컨퍼런스", "nameEn" to "Let'Swift 2026 Conference", "description" to "본행사", "descriptionEn" to "Main event", "participationType" to "REGISTRATION",
                 "applicationUrl" to "https://letswift.kr/2026/apply", "recruitmentStartAt" to "2026-11-01T10:00:00+09:00",
                 "recruitmentEndAt" to "2026-11-10T23:59:00+09:00", "dateLabel" to "2026-11-29", "startDate" to "2026-11-29", "endDate" to "2026-11-29", "schedules" to extractedSchedules,
-                "location" to null, "cost" to null, "audience" to null, "evidenceQuote" to "참가 신청은 11월 1일부터 11월 10일까지입니다", "category" to extractedCategory, "tags" to extractedTags,
+                "location" to null, "cost" to null, "audience" to null, "evidenceQuote" to "참가 신청은 11월 1일부터 11월 10일까지입니다", "category" to extractedCategory, "tags" to extractedTags, "fieldTags" to extractedFieldTags,
             ),
             mapOf(
                 "roundKey" to "2026-가짜", "name" to "원문에 없는 활동", "nameEn" to null, "description" to "", "descriptionEn" to null, "participationType" to null,
@@ -229,6 +230,9 @@ class CollectionJobTest(
     @Test
     fun `원문으로 확인된 활동만 초안으로 저장하고, 같은 날은 다시 수집하지 않는다`() {
         officialSetting()
+        // 분야 태그(native-v1.md "분야·성격 태그와 아이콘"): 상위 > 하위 분야 사전
+        val topField = jdbc.sql("insert into tags (name, kind, sort_order) values ('시험상위분야', 'FIELD', 101) returning id").query(Long::class.java).single()
+        jdbc.sql("insert into tags (name, kind, parent_id, sort_order) values ('시험하위분야', 'FIELD', ?, 102)").param(topField).update()
         // 이전 기수(V5의 Let'Swift 활동)에 대상 원문·대상자 조건을 두면, 본문에 없던 새 초안이 그 값을 가져오고 inherited_fields에 남긴다
         jdbc.sql("update activities set audience = 'Swift 개발자', eligibility = '{\"op\":\"all\",\"items\":[{\"field\":\"나이\",\"fieldEn\":\"age\",\"from\":19}]}'::jsonb where source_id = '01b773dc-5e13-4d14-a182-9642b47d596e'").update()
         assertEquals(BatchStatus.COMPLETED, run("2026-10-20").status)
@@ -247,9 +251,14 @@ class CollectionJobTest(
         // 실제로 받은 페이지만 fetched_urls에 남는다(404였던 탐색 주소는 빠진다). 활동 종류는 모델이 뽑은 값 그대로 초안에
         assertEquals("https://letswift.kr/2026/", jdbc.sql("select array_to_string(fetched_urls, ',') from collection_runs").query(String::class.java).single())
         assertEquals(listOf("CONFERENCE"), jdbc.sql("select category from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
-        // 태그(native-v1.md "태그"): 모델이 사전 이름으로 고른 것만 남고(없는 태그는 버림), 추출 요청에는 사전 전체가 넘어간다
-        assertEquals(listOf("창업"), jdbc.sql("select t.name from activity_tags at join tags t on t.id = at.tag_id join activities a on a.id = at.activity_id where a.name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
-        assertTrue(Fakes.lastPrompt.lines().single { it.startsWith("태그 사전") }.let { it.contains("창업") && it.contains("멘토링") })
+        // 태그(native-v1.md "태그"): 모델이 사전 이름으로 고른 것만 남고(없는 태그는 버림), 추출 요청에는 사전이 종류별로 넘어간다.
+        // 분야 태그는 연관도(0~100으로 자름)를 함께 남기고 성격 태그는 연관도가 없다
+        assertEquals(
+            listOf("창업|null", "시험하위분야|100"),
+            jdbc.sql("select t.name || '|' || coalesce(at.relevance::text, 'null') from activity_tags at join tags t on t.id = at.tag_id join activities a on a.id = at.activity_id where a.name = ? order by t.sort_order").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list(),
+        )
+        assertTrue(Fakes.lastPrompt.lines().single { it.startsWith("성격 태그 사전") }.let { it.contains("창업") && it.contains("멘토링") && !it.contains("시험") })
+        assertTrue(Fakes.lastPrompt.lines().single { it.startsWith("분야 태그 사전") }.contains("시험상위분야 > 시험하위분야"))
         assertEquals(listOf(true), jdbc.sql("select official_source from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(Boolean::class.java).list())
         assertEquals(listOf("Let'Swift 2026 Conference|Main event"), jdbc.sql("select name_en || '|' || description_en from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
         val schedules = jdbc.sql("select slot from schedules s join activities a on a.id = s.activity_id where a.name = ? order by slot")
@@ -270,7 +279,7 @@ class CollectionJobTest(
         assertEquals(2, runCount())
         assertEquals(listOf("STUDY"), jdbc.sql("select category from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
         // 운영자가 지정한 태그(curated tags)는 다시 수집해도 그대로
-        assertEquals(listOf("창업", "멘토링"), jdbc.sql("select t.name from activity_tags at join tags t on t.id = at.tag_id join activities a on a.id = at.activity_id where a.name = ? order by t.sort_order").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
+        assertEquals(listOf("창업", "멘토링", "시험하위분야"), jdbc.sql("select t.name from activity_tags at join tags t on t.id = at.tag_id join activities a on a.id = at.activity_id where a.name = ? order by t.sort_order").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
         assertEquals(
             listOf("Curated EN|본행사|Swift 개발자|30|[\"audience\"]"),
             jdbc.sql("select name_en || '|' || description || '|' || audience || '|' || (eligibility->'items'->0->>'from') || '|' || inherited_fields::text from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list(),
@@ -338,14 +347,17 @@ class CollectionJobTest(
         jdbc.sql("insert into program_tags (program_id, tag_id) select p.id, t.id from programs p, tags t where p.source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db' and t.name = '협업'").update()
         Fakes.extractedCategory = null
         Fakes.extractedTags = emptyList()
+        Fakes.extractedFieldTags = emptyList()
         try {
             assertEquals(BatchStatus.COMPLETED, run("2026-10-22").status)
             assertEquals(listOf("MEETUP"), jdbc.sql("select category from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
             assertEquals(listOf("협업"), jdbc.sql("select t.name from activity_tags at join tags t on t.id = at.tag_id join activities a on a.id = at.activity_id where a.name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
         } finally {
             Fakes.extractedCategory = "CONFERENCE"
+            Fakes.extractedFieldTags = listOf(mapOf("name" to "시험하위분야", "relevance" to 130), mapOf("name" to "없는 분야", "relevance" to 50))
             Fakes.extractedTags = listOf("창업", "없는 태그")
             jdbc.sql("delete from program_tags").update()
+            jdbc.sql("delete from tags where name in ('시험상위분야', '시험하위분야')").update()
             jdbc.sql("update programs set category = null where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").update()
         }
     }
@@ -689,10 +701,13 @@ class CollectionJobTest(
             "activities" to listOf(mapOf(
                 "id" to activityId,
                 "eligibility" to mapOf("op" to "all", "items" to listOf(mapOf("field" to "나이", "fieldEn" to "age", "from" to 19))),
-                "tagNames" to listOf("멘토링", "없는태그", "반도체"), "tagNameEn" to mapOf("반도체" to "Semiconductor"),
+                "tagNames" to listOf("멘토링", "없는태그", "반도체"), "tagNameEn" to mapOf("반도체" to "Semiconductor"), "tagKind" to mapOf("반도체" to "FIELD"),
                 "place" to mapOf("name" to "코엑스", "address" to "서울 강남구 영동대로 513", "lat" to 37.5115, "lng" to 127.0595),
             )),
-            "programs" to listOf(mapOf("id" to programId, "tagNames" to listOf("네트워킹"))),
+            "programs" to listOf(mapOf(
+                "id" to programId, "tagNames" to listOf("시험공학", "반도체", "네트워킹"),
+                "tagNameEn" to mapOf("시험공학" to "testEngineering", "반도체" to "Semiconductor"), "tagKind" to mapOf("시험공학" to "FIELD"), "tagParent" to mapOf("반도체" to "시험공학"),
+            )),
             "organizationLogos" to listOf(mapOf("organizationId" to organizationId, "file" to "org.png")),
         )))
         fun eligibility() = jdbc.sql("select coalesce(eligibility->'items'->0->>'from', '') from activities where id = ?").param(activityId).query(String::class.java).single()
@@ -718,7 +733,11 @@ class CollectionJobTest(
             assertEquals(1, jdbc.sql("select count(*) from activity_eligibility_terms where activity_id = ?").param(activityId).query(Int::class.java).single())
             assertEquals(listOf("멘토링", "반도체"), activityTags())
             assertEquals(listOf("코엑스"), place())
-            assertEquals(listOf("네트워킹"), jdbc.sql("select t.name from program_tags x join tags t on t.id = x.tag_id where x.program_id = ?").param(programId).query(String::class.java).list())
+            // 프로그램 태그는 보낸 순서가 position(사전 순과 다르다). 새 태그는 tagKind로 종류를, tagParent로 상위 분야를 단다
+            assertEquals(
+                listOf("시험공학|FIELD|", "반도체|FIELD|시험공학", "네트워킹|TRAIT|"),
+                jdbc.sql("select t.name || '|' || t.kind || '|' || coalesce(p.name, '') from program_tags x join tags t on t.id = x.tag_id left join tags p on p.id = t.parent_id where x.program_id = ? order by x.position").param(programId).query(String::class.java).list(),
+            )
             assertEquals(1, logoCount())
             assertEquals("[]", jdbc.sql("select curated_fields::text from activities where id = ?").param(activityId).query(String::class.java).single())
 
@@ -733,7 +752,7 @@ class CollectionJobTest(
             jdbc.sql("delete from activity_eligibility_terms where activity_id = ?").param(activityId).update()
             jdbc.sql("delete from activity_tags where activity_id = ?").param(activityId).update()
             jdbc.sql("delete from program_tags where program_id = ?").param(programId).update()
-            jdbc.sql("delete from tags where name = '반도체'").update()
+            jdbc.sql("delete from tags where name in ('반도체', '시험공학')").update()
             jdbc.sql("delete from organization_logos where organization_id = ?").param(organizationId).update()
             jdbc.sql("update schedules set address_line1 = null, address_line2 = null, lat = null, lng = null where activity_id = ? and slot = 'ACTIVITY'").param(activityId).update()
         }

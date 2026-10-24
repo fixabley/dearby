@@ -48,6 +48,7 @@ object ActivityVerifier {
                 participationType = ParticipationType.entries.firstOrNull { it.name == candidate.participationType }, // 본문에 없으면 null(저장할 때 이전 기수에서 가져온다)
                 category = ActivityCategory.entries.firstOrNull { it.name == candidate.category }, // 모르는 코드는 미분류
                 tags = candidate.tags.map { it.trim() }.filter { it.isNotEmpty() }.distinct().take(MAX_TAGS), // 사전 대조는 저장할 때
+                fieldTags = candidate.fieldTags.filter { it.name.isNotBlank() }.take(MAX_TAGS).associate { it.name.trim() to it.relevance?.coerceIn(0, 100) },
                 recruitmentStartAt = start,
                 recruitmentEndAt = end,
                 recruitmentStartDate = recruitmentStartDate,
