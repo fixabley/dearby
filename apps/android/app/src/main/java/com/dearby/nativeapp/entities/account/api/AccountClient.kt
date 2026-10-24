@@ -30,6 +30,14 @@ import com.dearby.nativeapp.entities.account.model.toPasskey
 import com.dearby.nativeapp.entities.account.model.toPasskeyChallenge
 import com.dearby.nativeapp.entities.account.model.toPasskeys
 import com.dearby.nativeapp.entities.account.model.toSession
+import com.dearby.nativeapp.entities.account.model.EligibilityProfile
+import com.dearby.nativeapp.entities.account.model.RecommendationPage
+import com.dearby.nativeapp.entities.account.model.RecommendationPreferences
+import com.dearby.nativeapp.entities.account.model.toDictionaryTags
+import com.dearby.nativeapp.entities.account.model.toEligibilityProfile
+import com.dearby.nativeapp.entities.account.model.toPutJson
+import com.dearby.nativeapp.entities.account.model.toRecommendationPreferences
+import com.dearby.nativeapp.entities.account.model.toRecommendations
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -206,6 +214,27 @@ class AccountClient(private val api: String, private val transport: Transport = 
         send("PUT", "me/activities/$activityId/schedules/$scheduleId", if (statusId != null) JSONObject().put("statusId", statusId.toLong()) else JSONObject().put("kind", kind), session).toMyActivity()
     /** The device-only records, once, right after signing in; records the server already has keep the server's values. */
     suspend fun importMyActivities(records: List<MyActivityRecord>, session: AccountSession) = send("POST", "me/activities/import", records.toImportJson(), session).toMyActivities()
+
+    // 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천", 2026-10-24). 404 ([AccountError.NOT_FOUND]) means the server does not have it yet; callers hide the feature.
+    suspend fun recommendationPreferences(session: AccountSession) = send("GET", "me/recommendation-preferences", null, session).toRecommendationPreferences()
+    suspend fun saveRecommendationPreferences(preferences: RecommendationPreferences, session: AccountSession) {
+        request("PUT", "me/recommendation-preferences", preferences.toJson(), session)
+    }
+    /** 지원 자격 정보: null values when nothing was entered. The values are never logged. */
+    suspend fun eligibilityProfile(session: AccountSession) = send("GET", "me/eligibility-profile", null, session).toEligibilityProfile()
+    /** 400 when [EligibilityProfile.consentVersion] is not the current version. */
+    suspend fun saveEligibilityProfile(profile: EligibilityProfile, session: AccountSession) { request("PUT", "me/eligibility-profile", profile.toPutJson(), session) }
+    /** Removes the values and the consent record. */
+    suspend fun deleteEligibilityProfile(session: AccountSession) { request("DELETE", "me/eligibility-profile", null, session) }
+    /** Signed in, the server uses the saved settings and 지원 자격 정보; signed out, [preferences] go as comma lists. */
+    suspend fun recommendations(preferences: RecommendationPreferences?, session: AccountSession?, size: Int = 10): RecommendationPage {
+        val params = listOfNotNull("size=$size", preferences?.fieldTagIds?.takeIf { it.isNotEmpty() }?.let { "fieldTagIds=" + it.joinToString(",") },
+            preferences?.categories?.takeIf { it.isNotEmpty() }?.let { "categories=" + it.joinToString(",") },
+            preferences?.traitTagIds?.takeIf { it.isNotEmpty() }?.let { "traitTagIds=" + it.joinToString(",") })
+        return send("GET", "discovery/recommendations?" + params.joinToString("&"), null, session).toRecommendations(api)
+    }
+    /** The public tag dictionary (`GET /v1/tags`) with kinds and upper fields, for the funnel's chips. */
+    suspend fun tags() = send("GET", "tags", null).toDictionaryTags()
 
     private fun passkeyBody(challengeId: String, credential: String) = JSONObject().put("challengeId", challengeId).put("credential", JSONObject(credential))
 
