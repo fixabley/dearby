@@ -29,12 +29,18 @@ class ProgramSummaryService(
             filteredSummaries(condition, now).drop(condition.cursor).take(condition.size + 1)
         }
         val page = found.take(condition.size)
-        // 묶음 머리의 태그(native-v1.md "태그"): 프로그램 태그, 없으면 열린 활동 태그의 합집합
+        // 묶음 머리의 태그(native-v1.md "태그", "분야·성격 태그와 아이콘"): 대상자 필터 경로도 거치도록 여기서 한 번에 찾는다
         val tags = summaries.tagsByProgram(page.map { it.id }, now)
         // 로고(native-v1.md "조직 로고와 로고 계승"): 프로그램 로고, 없으면 가장 가까운 조직 로고. 대상자 필터 경로도 거치도록 여기서 한 번에 찾는다
         val logo = logos.of(page.associate { it.id to it.organizationId })
         return ProgramSummaryPage(
-            page.map { it.copy(tags = tags[it.id].orEmpty(), logoUrl = logo[it.id]?.url) },
+            page.map { summary ->
+                val found = tags[summary.id]
+                summary.copy(
+                    tags = found?.tags.orEmpty(), fieldTags = found?.fieldTags.orEmpty().take(MAX_FIELD_TAGS), traitTags = found?.traitTags.orEmpty(),
+                    logoUrl = logo[summary.id]?.url,
+                )
+            },
             if (found.size > condition.size) condition.cursor + condition.size else null,
         )
     }
@@ -73,5 +79,6 @@ class ProgramSummaryService(
         const val DEFAULT_PAGE_SIZE = 20
         const val MAX_PAGE_SIZE = 100
         const val MAX_QUERY_LENGTH = 100
+        const val MAX_FIELD_TAGS = 2 // 발견 카드 로고 밑 분야 아이콘 수(native-v1.md "분야·성격 태그와 아이콘")
     }
 }

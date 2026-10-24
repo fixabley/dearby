@@ -158,14 +158,25 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             writeSchedule(activityId, null, it.title, it.kind, it.startAt, it.endAt, it.startDate, it.endDate, it.dateLabel, now, it.recurrence)
         }
         EligibilityRows.writeTerms(dsl, activityId, eligibility)
-        // 태그(native-v1.md "태그"): 운영자가 정한 연결은 두고, 아니면 모델이 사전에서 고른 이름(모르는 이름은 버림), 비면 프로그램 태그
+        // 태그(native-v1.md "태그"): 운영자가 정한 연결은 두고, 아니면 모델이 사전에서 고른 이름(모르는 이름은 버림), 비면 프로그램 태그(연관도 없음).
+        // 분야 태그는 모델이 답한 연관도를 함께 쓴다(native-v1.md "분야·성격 태그와 아이콘")
         if (CuratedFields.TAGS !in curated) {
-            val wanted = activity.tags.map { it.replace(Regex("\\s"), "").lowercase() }.filter { it.isNotEmpty() }.toSet()
-            val fromModel = if (wanted.isEmpty()) emptyList() else dsl.select(TAGS.ID).from(TAGS)
-                .where(DSL.lower(withoutSpaces(TAGS.NAME)).`in`(wanted).or(DSL.lower(withoutSpaces(TAGS.NAME_EN)).`in`(wanted))).fetch(TAGS.ID).filterNotNull()
-            val tagIds = fromModel.ifEmpty { dsl.select(PROGRAM_TAGS.TAG_ID).from(PROGRAM_TAGS).where(PROGRAM_TAGS.PROGRAM_ID.eq(programId)).fetch(PROGRAM_TAGS.TAG_ID).filterNotNull() }
+            fun key(name: String) = name.replace(Regex("\\s"), "").lowercase()
+            val relevance = activity.fieldTags.mapKeys { key(it.key) }
+            val wanted = (activity.tags + activity.fieldTags.keys).map(::key).filter { it.isNotEmpty() }.toSet()
+            val fromModel = if (wanted.isEmpty()) emptyList() else dsl.select(TAGS.ID, TAGS.NAME, TAGS.NAME_EN, TAGS.KIND).from(TAGS)
+                .where(DSL.lower(withoutSpaces(TAGS.NAME)).`in`(wanted).or(DSL.lower(withoutSpaces(TAGS.NAME_EN)).`in`(wanted)))
+                .fetch { row ->
+                    val score = if (row[TAGS.KIND] == TagKind.FIELD.name) (relevance[key(row[TAGS.NAME]!!)] ?: row[TAGS.NAME_EN]?.let { relevance[key(it)] }) else null
+                    row[TAGS.ID]!! to score?.toShort() // 0~100은 ActivityVerifier가 맞춘다
+                }
+            val tagIds = fromModel.ifEmpty {
+                dsl.select(PROGRAM_TAGS.TAG_ID).from(PROGRAM_TAGS).where(PROGRAM_TAGS.PROGRAM_ID.eq(programId)).fetch { it.value1()!! to null }
+            }
             dsl.deleteFrom(ACTIVITY_TAGS).where(ACTIVITY_TAGS.ACTIVITY_ID.eq(activityId)).execute()
-            tagIds.toSet().forEach { dsl.insertInto(ACTIVITY_TAGS).set(ACTIVITY_TAGS.ACTIVITY_ID, activityId).set(ACTIVITY_TAGS.TAG_ID, it).execute() }
+            tagIds.distinctBy { it.first }.forEach { (tagId, score) ->
+                dsl.insertInto(ACTIVITY_TAGS).set(ACTIVITY_TAGS.ACTIVITY_ID, activityId).set(ACTIVITY_TAGS.TAG_ID, tagId).set(ACTIVITY_TAGS.RELEVANCE, score).execute()
+            }
         }
         return DraftSaveResult.SAVED
     }

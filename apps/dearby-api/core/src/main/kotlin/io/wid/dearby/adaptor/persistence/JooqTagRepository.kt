@@ -7,6 +7,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.references.TAGS
 import io.wid.dearby.application.tag.TagRepository
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.Tag
+import io.wid.dearby.domain.TagKind
 import org.jooq.DSLContext
 import org.jooq.Field
 import org.jooq.impl.DSL
@@ -18,11 +19,11 @@ import java.time.LocalDateTime
 class JooqTagRepository(private val dsl: DSLContext) : TagRepository {
 
     override fun findAll(): List<Tag> =
-        dsl.selectFrom(TAGS).orderBy(TAGS.SORT_ORDER, TAGS.ID).fetch { Tag(it.id!!, it.name!!, it.nameEn) }
+        dsl.selectFrom(TAGS).orderBy(TAGS.SORT_ORDER, TAGS.ID).fetch { TagRows.tag(it) }
 
     override fun findAllById(ids: Collection<Id>): List<Tag> {
         if (ids.isEmpty()) return emptyList()
-        return dsl.selectFrom(TAGS).where(TAGS.ID.`in`(ids)).orderBy(TAGS.SORT_ORDER, TAGS.ID).fetch { Tag(it.id!!, it.name!!, it.nameEn) }
+        return dsl.selectFrom(TAGS).where(TAGS.ID.`in`(ids)).orderBy(TAGS.SORT_ORDER, TAGS.ID).fetch { TagRows.tag(it) }
     }
 
     override fun findByNames(names: Collection<String>): List<Tag> {
@@ -31,38 +32,46 @@ class JooqTagRepository(private val dsl: DSLContext) : TagRepository {
         return dsl.selectFrom(TAGS)
             .where(DSL.lower(withoutSpaces(TAGS.NAME)).`in`(wanted).or(DSL.lower(withoutSpaces(TAGS.NAME_EN)).`in`(wanted)))
             .orderBy(TAGS.SORT_ORDER, TAGS.ID)
-            .fetch { Tag(it.id!!, it.name!!, it.nameEn) }
+            .fetch { TagRows.tag(it) }
     }
 
     @Transactional
-    override fun create(name: String, nameEn: String?): Tag {
-        dsl.selectFrom(TAGS).where(DSL.lower(withoutSpaces(TAGS.NAME)).eq(normalize(name))).fetchOne()?.let { return Tag(it.id!!, it.name!!, it.nameEn) }
+    override fun create(name: String, nameEn: String?, kind: TagKind, parentId: Id?): Tag {
+        dsl.selectFrom(TAGS).where(DSL.lower(withoutSpaces(TAGS.NAME)).eq(normalize(name))).fetchOne()?.let { return TagRows.tag(it) }
         // 새 태그는 사전 맨 뒤에 둔다
         val nextOrder = dsl.select(DSL.coalesce(DSL.max(TAGS.SORT_ORDER), 0).plus(1)).from(TAGS).fetchOne()!!.value1()
         val row = dsl.insertInto(TAGS)
             .set(TAGS.NAME, name)
             .set(TAGS.NAME_EN, nameEn)
             .set(TAGS.SORT_ORDER, nextOrder)
-            .returning(TAGS.ID, TAGS.NAME, TAGS.NAME_EN)
+            .set(TAGS.KIND, kind.name)
+            .set(TAGS.PARENT_ID, parentId)
+            .returning()
             .fetchOne()!!
-        return Tag(row.id!!, row.name!!, row.nameEn)
+        return TagRows.tag(row)
     }
 
-    override fun update(id: Id, name: String?, nameEn: String?): Boolean {
+    override fun update(id: Id, name: String?, nameEn: String?, kind: TagKind, parentId: Id?): Boolean {
         val changes = buildMap<Field<*>, Any?> {
             name?.let { put(TAGS.NAME, it) }
             nameEn?.let { put(TAGS.NAME_EN, it.ifEmpty { null }) }
+            put(TAGS.KIND, kind.name)
+            put(TAGS.PARENT_ID, parentId)
         }
-        if (changes.isEmpty()) return dsl.fetchExists(TAGS, TAGS.ID.eq(id))
         return dsl.update(TAGS).set(changes).where(TAGS.ID.eq(id)).execute() > 0
     }
+
+    override fun hasChildren(id: Id): Boolean = dsl.fetchExists(TAGS, TAGS.PARENT_ID.eq(id))
 
     override fun delete(id: Id): Boolean = dsl.deleteFrom(TAGS).where(TAGS.ID.eq(id)).execute() > 0
 
     @Transactional
     override fun setProgramTags(programId: Id, tagIds: Collection<Id>) {
         dsl.deleteFrom(PROGRAM_TAGS).where(PROGRAM_TAGS.PROGRAM_ID.eq(programId)).execute()
-        tagIds.toSet().forEach { dsl.insertInto(PROGRAM_TAGS).set(PROGRAM_TAGS.PROGRAM_ID, programId).set(PROGRAM_TAGS.TAG_ID, it).execute() }
+        // 보낸 순서가 position(분야 태그 순서, native-v1.md "분야·성격 태그와 아이콘")
+        tagIds.distinct().forEachIndexed { position, tagId ->
+            dsl.insertInto(PROGRAM_TAGS).set(PROGRAM_TAGS.PROGRAM_ID, programId).set(PROGRAM_TAGS.TAG_ID, tagId).set(PROGRAM_TAGS.POSITION, position.toShort()).execute()
+        }
     }
 
     @Transactional

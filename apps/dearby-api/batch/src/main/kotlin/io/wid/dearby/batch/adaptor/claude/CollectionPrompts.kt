@@ -6,6 +6,8 @@ import io.wid.dearby.domain.collection.PreviousEdition
 import io.wid.dearby.domain.collection.WatchKind
 import io.wid.dearby.batch.application.AgentInput
 import io.wid.dearby.batch.application.FetchedPage
+import io.wid.dearby.domain.Tag
+import io.wid.dearby.domain.TagKind
 
 // 수집 에이전트의 실행마다 바뀌는 요청과 submit_candidate 입력 스키마. 바뀌지 않는 작업 절차는 resources/collector/WORKFLOW.md
 object CollectionPrompts {
@@ -23,8 +25,9 @@ object CollectionPrompts {
         if (target.officialUrls.isNotEmpty()) append("\n시작 주소: ${target.officialUrls.joinToString(", ")}")
         if (target.officialOnly) append("\n허용 도메인: ${target.allowedHosts.joinToString(", ")}")
         append("\n한도: 페이지 ${maxPages}쪽, 차례 ${maxTurns}번")
-        // 태그 사전(native-v1.md "태그"): 이 이름 중에서만 고른다. 사전 밖 이름은 저장할 때 버린다
-        input.tagNames.takeIf { it.isNotEmpty() }?.let { append("\n태그 사전(tags는 이 중에서만 고른다): ${it.joinToString(", ")}") }
+        // 태그 사전(native-v1.md "태그", "분야·성격 태그와 아이콘"): 종류별로 나눠 이 이름 중에서만 고른다. 사전 밖 이름은 저장할 때 버린다
+        fieldDictionary(input.tags).takeIf { it.isNotEmpty() }?.let { append("\n분야 태그 사전(fieldTags는 이 중에서만, 가장 구체적인 분야로): $it") }
+        input.tags.filter { it.kind == TagKind.TRAIT }.takeIf { it.isNotEmpty() }?.let { append("\n성격 태그 사전(tags는 이 중에서만 고른다): ${it.joinToString(", ") { tag -> tag.name }}") }
         // 운영자 피드백(collection_feedback): 이 프로그램의 최근 기록. 더 필요하면 search_feedback으로 찾는다
         input.feedback.takeIf { it.isNotEmpty() }?.let { rows ->
             append("\n운영자 피드백(이 프로그램의 최근 기록):")
@@ -42,6 +45,15 @@ object CollectionPrompts {
         }
         input.watchlist.filter { it.kind == WatchKind.ALIAS && it.canonicalActivityName != null }.takeIf { it.isNotEmpty() }?.let { aliases ->
             append("\n이미 있는 활동의 다른 표기: ${aliases.joinToString(", ") { "${it.name} → ${it.canonicalActivityName}" }}")
+        }
+    }
+
+    // 상위 분야 아래 하위 분야를 붙인다: "IT > 데이터·AI, 클라우드; 봉사"
+    fun fieldDictionary(tags: List<Tag>): String {
+        val fields = tags.filter { it.kind == TagKind.FIELD }
+        val children = fields.filter { it.parentId != null }.groupBy { it.parentId }
+        return fields.filter { it.parentId == null }.joinToString("; ") { top ->
+            children[top.id]?.let { "${top.name} > ${it.joinToString(", ") { child -> child.name }}" } ?: top.name
         }
     }
 
@@ -108,6 +120,10 @@ object CollectionPrompts {
             "cost" to nullableString(),
             "audience" to nullableString(),
             "tags" to mapOf("type" to "array", "items" to string()),
+            "fieldTags" to mapOf(
+                "type" to "array",
+                "items" to obj(mapOf("name" to string(), "relevance" to mapOf("type" to "integer"))),
+            ),
             "eligibility" to eligibilityGroup(depth = 1),
             "evidenceQuote" to string(),
             "sourceUrl" to string(),

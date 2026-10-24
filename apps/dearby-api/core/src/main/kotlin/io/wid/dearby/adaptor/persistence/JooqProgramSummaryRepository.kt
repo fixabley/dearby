@@ -11,7 +11,8 @@ import io.wid.dearby.application.program.ProgramSummaryRepository
 import io.wid.dearby.application.program.ProgramSummarySearch
 import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.Id
-import io.wid.dearby.domain.Tag
+import io.wid.dearby.domain.TagKind
+import io.wid.dearby.application.program.ProgramTags
 import io.wid.dearby.domain.PublicationStatus
 import org.jooq.Condition
 import org.jooq.DSLContext
@@ -130,25 +131,37 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
         return OpenActivityConditions.activityStart.ge(cutoff).or(deadline.ge(cutoff)).or(ACTIVITIES.CREATED_AT.ge(cutoff.toLocalDateTime()))
     }
 
-    // 프로그램 태그가 있으면 그것, 없으면 최근 3년 안의 게시 활동 태그의 합집합(최대 MAX_SUMMARY_TAGS개, 사전 순).
-    // 열린 활동만 모으면 마감된 프로그램(우아콘 2026처럼)의 카드가 비므로 모집 상태와 무관하게 모은다(2026-10-20)
-    override fun tagsByProgram(programIds: Collection<Id>, now: OffsetDateTime): Map<Id, List<Tag>> {
+    // 묶음 머리의 태그(native-v1.md "태그", "분야·성격 태그와 아이콘"). 활동 쪽은 최근 3년 안의 게시 활동(모집 상태와 무관, 2026-10-20: 마감된 프로그램도 태그가 보이게)
+    // tags: 프로그램 태그가 있으면 그것, 없으면 활동 태그의 합집합(최대 MAX_SUMMARY_TAGS개), 사전 순
+    // fieldTags: 프로그램 분야 태그(없으면 활동 분야 태그 합집합)를 활동 연관도 평균 내림차순 → position → 사전 순. traitTags: 프로그램 성격 태그(없으면 활동 합집합), 사전 순
+    override fun tagsByProgram(programIds: Collection<Id>, now: OffsetDateTime): Map<Id, ProgramTags> {
         if (programIds.isEmpty()) return emptyMap()
-        val own = TagRows.ofPrograms(dsl, programIds)
-        val missing = programIds.filter { own[it].isNullOrEmpty() }
-        if (missing.isEmpty()) return own
-        val fromActivities = dsl.selectDistinct(ACTIVITIES.PROGRAM_ID, TAGS.ID, TAGS.NAME, TAGS.NAME_EN, TAGS.SORT_ORDER)
+        val own = TagRows.programRows(dsl, programIds)
+        val relevance = DSL.avg(ACTIVITY_TAGS.RELEVANCE)
+        val fromActivities = dsl.select(TagRows.FIELDS + ACTIVITIES.PROGRAM_ID + relevance)
             .from(ACTIVITIES)
             .join(ACTIVITY_TAGS).on(ACTIVITY_TAGS.ACTIVITY_ID.eq(ACTIVITIES.ID))
             .join(TAGS).on(TAGS.ID.eq(ACTIVITY_TAGS.TAG_ID))
             .leftJoin(app).on(appJoin)
             .leftJoin(act).on(actJoin)
-            .where(ACTIVITIES.PROGRAM_ID.`in`(missing), ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name), recent(now))
-            .orderBy(ACTIVITIES.PROGRAM_ID, TAGS.SORT_ORDER, TAGS.ID)
+            .where(ACTIVITIES.PROGRAM_ID.`in`(programIds), ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name), recent(now))
+            .groupBy(TagRows.FIELDS + ACTIVITIES.PROGRAM_ID + TAGS.SORT_ORDER)
+            .orderBy(TAGS.SORT_ORDER, TAGS.ID)
             .fetch()
-            .groupBy({ it.value1()!! }) { Tag(it.value2()!!, it.value3()!!, it.value4()) }
-            .mapValues { (_, tags) -> tags.take(MAX_SUMMARY_TAGS) }
-        return own + fromActivities
+            .groupBy({ it[ACTIVITIES.PROGRAM_ID]!! }) { TagRows.tag(it) to it[relevance]?.toDouble() }
+        return programIds.associateWith { id ->
+            val mine = own[id].orEmpty()
+            val theirs = fromActivities[id].orEmpty()
+            val averages = theirs.associate { (tag, average) -> tag.id to average }
+            val ownFields = mine.filter { it.first.kind == TagKind.FIELD }
+            val fields = if (ownFields.isNotEmpty()) ownFields.map { (tag, position) -> TagRows.RankedField(tag, averages[tag.id], position) }
+            else theirs.filter { it.first.kind == TagKind.FIELD }.map { (tag, average) -> TagRows.RankedField(tag, average, null) }
+            ProgramTags(
+                tags = mine.map { it.first }.ifEmpty { theirs.map { it.first }.take(MAX_SUMMARY_TAGS) },
+                fieldTags = TagRows.orderFields(fields),
+                traitTags = mine.map { it.first }.filter { it.kind == TagKind.TRAIT }.ifEmpty { theirs.map { it.first }.filter { it.kind == TagKind.TRAIT } },
+            )
+        }
     }
 
     private companion object {

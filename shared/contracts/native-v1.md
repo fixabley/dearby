@@ -367,6 +367,48 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **API**: 공개 `Activity`에 `location: string|null`(기존 문구)과 `place: {name, address, lat, lng}|null`(아래 "활동 장소")을 더한다.
 - 색·글꼴은 기존 토큰. 접근성: 프로그램 카드는 `펼침/접힘` 상태를 가진 버튼, 활동 카드는 상태 칩을 라벨에 포함.
 
+## 분야·성격 태그와 아이콘 — 2026-10-24 사용자 결정
+
+사용자: "개발지식 지워줘. 나눠서 보여줘. 대신 분야는 가장 연관있는 2개만 보여줘. 태그는 아이콘으로 표현할 수 있으면 그렇게 해줘." 분야 순서는 "수집할 때 연관도를 측정해줘", 성격은 "아이콘+글자, 목록에선 아이콘만", 배치는 "분야 태그는 로고아이콘 바로밑에 수직으로 배치해줘". 같은 날 태그 사전 정리(운영 데이터): 포트폴리오·창의성·취업·발표·문제해결·리더십·글로벌·개발지식·협업 삭제(협업은 프로젝트 활동의 96%·멘토링 활동의 93%에 함께 붙어 구분력이 없어 사용자 "협업태그 지워줘"), `프로젝트 개발`→`프로젝트`(project), 분야 태그 13개 추가.
+
+- **태그 종류**: `tags.kind` = `FIELD`(분야, 무엇을 하나) | `TRAIT`(성격, 무엇을 얻나). V50에서 기존 태그는 `TRAIT`, 이후 운영 데이터 단계에서 분야 태그를 `FIELD`로 바꾼다. 공개 Tag = `{id, name, nameEn, kind, parentId}`(`parentId`는 아래 "하위 분야"), 어드민 태그 만들기·고치기에 `kind?`(기본 `TRAIT`), 어드민 태그 목록·선택에 종류 표시.
+- **연관도**: `activity_tags.relevance smallint null`(0~100). 수집기는 지시문에 사전을 **종류별로 나눠** 넘기고, 분야 태그마다 그 활동과의 연관도(0~100)를 함께 답한다(성격 태그는 연관도 없음, null). 사전 밖 이름은 지금처럼 버린다. 운영자가 활동 태그를 지정하면 연관도는 null(운영자 지정은 순서로 본다, 아래).
+- **프로그램 분야 순서**: `program_tags.position smallint not null default 0`(운영자가 적은 순서, 작을수록 앞). 프로그램의 분야 태그 순서 = 그 프로그램 게시 활동(최근 3년 창, 기존 태그 합집합 규칙과 같다)의 수집 연관도 평균 내림차순 → 연관도가 없는 태그는 뒤에서 `position` 순 → `sort_order`. 지금은 활동에 분야 태그가 없으므로 당분간 `position`이 실제 순서다. 프로그램에 분야 태그가 없으면 게시 활동 분야 태그의 합집합(연관도 순).
+- **응답 모양**: `ProgramSummary`·`Activity`에 `fieldTags: Tag[]`(서버가 정렬, **최대 2개**)와 `traitTags: Tag[]`(성격 전부, 사전 순)를 더한다. 기존 `tags`는 이전 앱 호환으로 남긴다(분야+성격, 기존 최대 6개 규칙). 활동 상세용 `Activity.fieldTagsAll: Tag[]`(분야 전부, 같은 순서)도 준다. 활동 분야 순서는 연관도 내림차순 → 사전 순이고, 분야 태그가 없는 활동은 프로그램 분야 순서를 쓴다. 프로그램 `traitTags`는 프로그램 성격 태그, 없으면 게시 활동(최근 3년 창) 성격 태그의 합집합(분야와 따로 판단한다).
+- **발견 프로그램 카드**: 로고 자리(44) **바로 밑에 분야 태그를 세로로**(최대 2개) 둔다. 폭이 44라 글자 대신 **아이콘 배지**(지름 22, 민트 바탕·청록 아이콘, 간격 4)로 그리고 접근성 이름은 태그 이름("분야: 데이터·AI"). 조직 이름 아래 태그 칩 줄은 **성격 아이콘 줄**(아이콘 16, 보조색, 간격 8, 글자 없음, 접근성 이름 "얻을 수 있는 것: 프로젝트, 멘토링")로 바꾼다. 펼친 활동 행도 같은 성격 아이콘 줄.
+- **활동 상세**: `분야` 소제목 아래 분야 전부를 아이콘+글자 칩으로, `얻을 수 있는 것` 아래 성격 전부를 아이콘+글자 칩으로 나눠 보인다(없는 묶음은 생략).
+- **하위 분야**(2026-10-24 사용자 "하위 분야를 만들어줄 수 있을까?" → "그렇게 해주세요"): V50 `tags.parent_id`(→ tags, 지우면 null). 분야 태그만 상위 분야를 가질 수 있고 상위 분야는 하위 분야가 없는 분야 태그다(한 단계). 어드민 `POST/PATCH /v1/admin/tags`의 `parentId?`(PATCH 생략은 유지, null은 해제)가 어긋나면 400(성격 태그·상위 분야가 있는 태그를 상위로·하위 분야가 있는 태그에 상위 지정·하위 분야가 있는 태그를 성격으로). 공개·어드민 Tag에 `parentId`. 운영 데이터 가져오기는 `tagParent: {"<하위>": "<상위>"}`.
+  - 저장은 가장 구체적인 분야로 한다(상위 분야는 하위 분야가 함의). 분야 순서에서 하위 분야와 그 상위 분야가 함께 있으면 상위 분야를 `fieldTags`·`fieldTagsAll`에서 뺀다. 나머지는 위 연관도 → `position` → `sort_order` 규칙.
+  - 검색: `q`가 상위 분야 이름(한글·영문)에 맞으면 그 하위 분야를 가진 활동·프로그램도 맞고, `tagIds`에 상위 분야 id를 주면 하위 분야를 가진 활동도 맞는다.
+  - 수집기 사전은 `IT > 데이터·AI, 클라우드, 보안; 봉사`처럼 계층을 보이고 가장 구체적인 분야를 고르게 한다.
+  - 운영 계획(배포 뒤 운영 데이터): IT > 데이터·AI, 클라우드, 보안, 웹·앱, 게임, 오픈소스; 공학(engineering) > 반도체, 기계, 토목·건설; 경제·경영 > 마케팅·광고, 금융·투자; 상위 없음: 봉사, 독서·토론, 영상.
+- **아이콘**: 각 플랫폼 기본 아이콘(iOS SF Symbols, Android `material-icons-extended`, 웹은 같은 모양의 인라인 SVG). 매핑은 `nameEn`으로 하고 각 플랫폼 `shared/ui`에 둔다. 모르는 `nameEn`(운영자가 새로 만든 태그)은 기본 아이콘(SF `tag` / `Sell`)이고 상세에서는 글자로 구분된다.
+
+| nameEn | 태그 | iOS | Android |
+|---|---|---|---|
+| startup | 창업 | `lightbulb` | `Lightbulb` |
+| project | 프로젝트 | `hammer` | `Build` |
+| mentoring | 멘토링 | `bubble.left.and.bubble.right` | `Forum` |
+| networking | 네트워킹 | `point.3.connected.trianglepath.dotted` | `Hub` |
+| funding | 장학·지원금 | `wonsign.circle` | `Payments` |
+| it | IT | `laptopcomputer` | `Computer` |
+| dataAi | 데이터·AI | `sparkles` | `AutoAwesome` |
+| cloud | 클라우드 | `cloud` | `Cloud` |
+| semiconductor | 반도체 | `cpu` | `Memory` |
+| mechanical | 기계 | `gearshape.2` | `PrecisionManufacturing` |
+| civilEngineering | 토목·건설 | `building.2` | `Domain` |
+| security | 보안 | `lock.shield` | `Security` |
+| business | 경제·경영 | `chart.bar` | `BarChart` |
+| marketing | 마케팅·광고 | `megaphone` | `Campaign` |
+| investing | 금융·투자 | `chart.line.uptrend.xyaxis` | `TrendingUp` |
+| volunteering | 봉사 | `heart` | `VolunteerActivism` |
+| reading | 독서·토론 | `book` | `MenuBook` |
+| video | 영상 | `video` | `Videocam` |
+| engineering | 공학 | `wrench.and.screwdriver` | `Engineering` |
+| webApp | 웹·앱 | `apps.iphone` | `Devices` |
+| game | 게임 | `gamecontroller` | `SportsEsports` |
+| openSource | 오픈소스 | `chevron.left.forwardslash.chevron.right` | `Code` |
+
 ## 조직 로고와 로고 계승 — 2026-10-22 사용자 결정
 
 사용자: "각 프로그램별 로고 추가해 주고 없으면 상위 조직 로고 계승해 줘."
