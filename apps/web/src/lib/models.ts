@@ -101,10 +101,28 @@ const eligibilitySchema: z.ZodType<Eligibility> = z.lazy(() =>
     items: z.array(z.union([eligibilitySchema, eligibilityConditionSchema])),
   }),
 );
-// 얻을 수 있는 것 태그 (contract "태그"): dictionary entries; older responses omit the list.
-export const tagSchema = z.object({ id: z.number().int().positive(), name: text, nameEn: text.nullable().optional() });
+// 태그 (contract "태그"): dictionary entries; older responses omit the list. `kind` (contract "분야·성격 태그와 아이콘"):
+// FIELD 분야 | TRAIT 성격(얻을 수 있는 것); missing or unknown means TRAIT.
+export const tagSchema = z.object({
+  id: z.number().int().positive(),
+  name: text,
+  nameEn: text.nullable().optional(),
+  kind: z.enum(["FIELD", "TRAIT"]).optional().catch(undefined),
+  // 상위 분야 id; display ignores it (the server already orders fieldTags).
+  parentId: z.number().int().nullable().optional().catch(null),
+});
 export type Tag = z.infer<typeof tagSchema>;
 const tags = z.array(tagSchema).optional().catch([]);
+// Kept `undefined` when absent so an older response falls back to `tags` (see `traitTagsOf`).
+const splitTags = z.array(tagSchema).optional().catch(undefined);
+/** 분야 tags the server sorted (at most two on a summary); none on older responses. */
+export function fieldTagsOf(item: { fieldTags?: Tag[] }): Tag[] {
+  return item.fieldTags ?? [];
+}
+/** 성격 tags (얻을 수 있는 것); older responses only send `tags`, which were all traits then. */
+export function traitTagsOf(item: { traitTags?: Tag[]; tags?: Tag[] }): Tag[] {
+  return item.traitTags ?? item.tags ?? [];
+}
 const placeSchema = z.object({ name: text, address: text, lat: z.number(), lng: z.number() });
 export type Place = z.infer<typeof placeSchema>;
 export const activitySchema = z.object({
@@ -123,7 +141,12 @@ export const activitySchema = z.object({
   schedules: z.array(scheduleSchema),
   // 활동 종류 code (contract "활동 종류"); older responses omit it.
   category: text.nullable().optional().catch(null),
+  /** 분야+성격, kept for older apps; read `fieldTags`/`traitTags` instead (contract "분야·성격 태그와 아이콘"). */
   tags,
+  fieldTags: splitTags,
+  traitTags: splitTags,
+  /** Every 분야 tag in the same order, for the detail page. */
+  fieldTagsAll: splitTags,
   // A malformed eligibility must not break the activity.
   eligibility: eligibilitySchema.nullable().optional().catch(null),
   // 활동 장소 (contract "활동 장소 — 2026-10-19"): the collected phrase and the curated place; older responses omit both.
@@ -150,8 +173,10 @@ export const programSummarySchema = z.object({
   /** 모집 예정 activities and the earliest of their recruitment (else activity) starts; absent on older responses (contract "마감 숨기기", 2026-10-19 밤). */
   upcomingActivityCount: z.number().int().nonnegative().optional().catch(0),
   nearestRecruitmentStartAt: text.nullable().optional().catch(null),
-  /** Program tags, else the union of its open activities' tags (contract "태그"). */
+  /** Program tags, else the union of its open activities' tags (contract "태그"); kept for older apps. */
   tags,
+  fieldTags: splitTags,
+  traitTags: splitTags,
   /** `/v1/programs/{id}/logo?v=…` on the API origin, null without a logo; absent on older responses (contract "프로그램 로고", 2026-10-19 밤). */
   logoUrl: text.nullable().optional().catch(null),
 });
