@@ -28,6 +28,7 @@ data class AdminActivityResponse(
     val cost: String?,
     val audience: String?,
     val eligibility: JsonNode?, // 대상자 조건(native-v1.md "대상자 조건"). 없으면 null
+    val eligibilityChecked: Boolean, // 지원 자격을 확인했는지(native-v1.md "추천 설정 퍼널·지원 자격 정보·추천"). eligibility를 고치거나 지우면 true
     val category: String?, // 활동 종류 코드(native-v1.md "활동 종류"). null은 미분류
     val tags: List<TagResponse>, // 태그(native-v1.md "태그"), 사전 순
     val inheritedFields: List<String>, // 이전 기수에서 가져온 필드 이름(admin-v1.md "이전 기수 정보 자동완성")
@@ -59,6 +60,7 @@ data class AdminActivityResponse(
                 cost = curation.cost,
                 audience = curation.audience,
                 eligibility = activity.eligibility?.let(EligibilityJson::toNode),
+                eligibilityChecked = activity.eligibilityChecked,
                 category = activity.category?.name,
                 tags = activity.tags.map(TagResponse::from),
                 inheritedFields = curation.inheritedFields,

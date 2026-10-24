@@ -65,7 +65,7 @@
 - fieldTags: 이 활동이 다루는 분야를 요청의 "분야 태그 사전" 이름 그대로 최대 5개 고르고, 각각 활동과의 연관도(0~100, 활동의 중심 분야일수록 높게)를 relevance에 적는다. "상위 > 하위"로 적힌 분야는 맞는 하위 분야가 있으면 하위 분야를 고른다(상위 분야를 함께 고르지 않는다). 사전에 없는 말은 쓰지 않고, 알 수 없으면 빈 배열.
 - tags: 참가자가 이 활동에서 얻는 것을 요청의 "성격 태그 사전" 이름 그대로 최대 5개 고른다. 사전에 없는 말은 쓰지 않고, 알 수 없으면 빈 배열.
 - category: 활동의 성격으로 판단한다. 부트캠프 BOOTCAMP, 컨퍼런스 CONFERENCE, 워크샵 WORKSHOP, 스터디 STUDY, 동아리(연합동아리 등) CLUB, 강연 LECTURE, 해커톤 HACKATHON, 공모전 CONTEST, 밋업 MEETUP, 그 외 OTHER. 모르면 null.
-- audience는 대상자 원문 문장 그대로다. eligibility는 그 대상자를 조건 트리로 정리한 것이다(본문에 대상 조건이 없으면 null).
+- audience는 대상자 원문 문장 그대로다. 본문이 대상에 제한이 없다고 밝히면("누구나", "제한 없음") 그 구절을 audience에 넣는다. eligibility는 그 대상자를 조건 트리로 정리한 것이다(본문에 대상 조건이 없거나 제한이 없으면 null).
   - 트리: 그룹은 op("all"=모두 충족, "any"=하나 이상)와 items, 조건은 field(한글 어휘)·fieldEn(영문 어휘)과 범위 from·to(숫자, 포함, 한쪽 생략 가능) 또는 집합 values(한글)·valuesEn(영문, 같은 순서) 중 하나, 선택으로 note·noteEn(원문 구절). 최상위는 그룹이고 3단계까지만 중첩한다.
   - 어휘(한글 → 영문): 나이 → age(만 나이, 숫자 범위), 출생연도 → birthYear(숫자), 학년 → schoolYear(숫자), 학력 → educationLevel(값 고졸 highSchool·대학 university·대학원 graduateSchool), 재학상태 → educationStatus(재학 enrolled·졸업 graduated·휴학 onLeave·졸업예정 graduating), 전공 → major, 지역 → region, 취업상태 → employment(학생 student·미취업 unemployed·재직 employed·창업 founder), 경력연수 → experienceYears(숫자), 국적 → nationality(ISO 3166-1 alpha-2, 예 KR), 팀규모 → teamSize(숫자), 기타 → other(note만).
   - 어휘에 없는 조건은 field "기타", fieldEn "other"로 두고 note에 원문을 적는다. 본문에 없는 조건을 만들지 않는다.
