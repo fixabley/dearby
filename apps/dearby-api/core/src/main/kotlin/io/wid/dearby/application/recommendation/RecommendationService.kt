@@ -82,7 +82,7 @@ class RecommendationService(
 
     // 로그인이면 저장된 설정(없으면 쿼리 값)과 지원 자격 정보, 비로그인이면 쿼리 값만
     @Transactional(readOnly = true)
-    fun recommend(userId: UserId?, query: RecommendationPreferences, size: Int): List<Recommendation> {
+    fun recommend(userId: UserId?, query: RecommendationPreferences, size: Int): RecommendationPage {
         if (size !in 1..MAX_SIZE) throw InvalidInputException("size는 1에서 ${MAX_SIZE} 사이여야 합니다")
         val preferences = userId?.let(recommendations::findPreferences) ?: query
         val filter = userId?.let(recommendations::findEligibility)?.filter(currentYear())
@@ -115,7 +115,7 @@ class RecommendationService(
                 matchedActivityIds = emptyList(), category = first.program.category,
             )
         }).associateBy { it.id }
-        return picked.map { Recommendation(it.listing, programs.getValue(it.listing.program.id), it.reasons) }
+        return RecommendationPage(picked.map { Recommendation(it.listing, programs.getValue(it.listing.program.id), it.reasons) }, scored.size)
     }
 
     private class Scored(val listing: ActivityListing, val points: Int, val matched: Boolean, val unchecked: Boolean, val deadline: OffsetDateTime?, val reasons: List<String>)
@@ -191,3 +191,6 @@ class RecommendationService(
 
 // 추천 한 항목. reasons는 사람이 읽는 짧은 이유(분야·종류·성격·마감, 지원 자격 확인 필요)
 data class Recommendation(val listing: ActivityListing, val program: ProgramSummary, val reasons: List<String>)
+
+// total: 판정·설정 일치를 지난 추천 후보 수(프로그램당 2개·size로 자르기 전). 퍼널 결과의 "n개"
+data class RecommendationPage(val items: List<Recommendation>, val total: Int)

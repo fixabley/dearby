@@ -36,14 +36,16 @@ class RecommendationController(private val recommendations: RecommendationServic
         val query = RecommendationPreferences(
             TagIds.parse(fieldTagIds).orEmpty().toList(), ActivityCategory.parseList(categories).orEmpty().toList(), TagIds.parse(traitTagIds).orEmpty().toList(),
         )
-        val items = recommendations.recommend(jwt?.let { UUID.fromString(it.subject) }, query, size).map {
+        val page = recommendations.recommend(jwt?.let { UUID.fromString(it.subject) }, query, size)
+        val items = page.items.map {
             RecommendationResponse(ActivityResponse.from(it.listing, language), ProgramSummaryResponse.from(it.program, language), it.reasons)
         }
         return ResponseEntity.ok().varyBy(HttpHeaders.ACCEPT_LANGUAGE, HttpHeaders.AUTHORIZATION).header(HttpHeaders.CONTENT_LANGUAGE, language.tag)
-            .body(RecommendationPageResponse(items))
+            .body(RecommendationPageResponse(items, page.total))
     }
 }
 
 data class RecommendationResponse(val activity: ActivityResponse, val program: ProgramSummaryResponse, val reasons: List<String>)
 
-data class RecommendationPageResponse(val items: List<RecommendationResponse>)
+// total은 자르기 전 추천 후보 수(퍼널 결과 "지금 지원할 수 있는 활동 n개")
+data class RecommendationPageResponse(val items: List<RecommendationResponse>, val total: Int)

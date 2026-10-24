@@ -649,7 +649,10 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         fun reasons(items: JsonNode, id: Long) = items.toList().single { it["activity"]["id"].asLong() == id }["reasons"].toList().map { it.asString() }
 
         // 비로그인: 쿼리 설정. 고른 하위 분야 일치(exact)가 상위 분야로 맞은 것(young)보다 앞이고, 같은 프로그램은 2개까지라 weak는 빠진다
-        val anonymous = body(mvc.get("/v1/discovery/recommendations?fieldTagIds=$parent,$childB").andExpect { status { isOk() } })["items"]
+        val anonymousPage = body(mvc.get("/v1/discovery/recommendations?fieldTagIds=$parent,$childB").andExpect { status { isOk() } })
+        val anonymous = anonymousPage["items"]
+        // total은 프로그램당 2개로 자르기 전 후보 수(weak 포함)
+        assertTrue(anonymousPage["total"].asInt() >= 3)
         assertEquals(listOf(exact, young), ids(anonymous))
         assertEquals(setOf("activity", "program", "reasons"), anonymous[0].propertyNames().toSet())
         assertEquals("Let’Swift", anonymous[0]["program"]["name"].asString())
