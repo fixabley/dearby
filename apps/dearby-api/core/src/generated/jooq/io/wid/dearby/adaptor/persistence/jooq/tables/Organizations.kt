@@ -10,8 +10,11 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.ORGANIZATIONS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ORGANIZATIONS_SOURCE_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ORGANIZATION_CONTACTS__ORGANIZATION_CONTACTS_ORGANIZATION_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ORGANIZATION_LOGOS__ORGANIZATION_LOGOS_ORGANIZATION_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ORG_AFFINITY__USER_ORG_AFFINITY_ORGANIZATION_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts.OrganizationContactsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationLogos.OrganizationLogosPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserOrgAffinity.UserOrgAffinityPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.Users.UsersPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.OrganizationsRecord
 
 import java.time.LocalDateTime
@@ -206,6 +209,29 @@ open class Organizations(
 
     val organizationLogos: OrganizationLogosPath
         get(): OrganizationLogosPath = organizationLogos()
+
+    private lateinit var _userOrgAffinity: UserOrgAffinityPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.user_org_affinity</code> table
+     */
+    fun userOrgAffinity(): UserOrgAffinityPath {
+        if (!this::_userOrgAffinity.isInitialized)
+            _userOrgAffinity = UserOrgAffinityPath(this, null, USER_ORG_AFFINITY__USER_ORG_AFFINITY_ORGANIZATION_ID_FKEY.inverseKey)
+
+        return _userOrgAffinity;
+    }
+
+    val userOrgAffinity: UserOrgAffinityPath
+        get(): UserOrgAffinityPath = userOrgAffinity()
+
+    /**
+     * Get the implicit many-to-many join path to the <code>public.users</code>
+     * table
+     */
+    val users: UsersPath
+        get(): UsersPath = userOrgAffinity().users()
     override fun getChecks(): List<Check<OrganizationsRecord>> = listOf(
         Internal.createCheck(this, DSL.name("organizations_check"), "((((lat IS NULL) AND (lng IS NULL) AND (address_line1 IS NULL) AND (address_line2 IS NULL)) OR ((lat IS NOT NULL) AND (lng IS NOT NULL) AND (address_line1 IS NOT NULL) AND (address_line2 IS NOT NULL))))", true)
     )

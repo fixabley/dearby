@@ -3,6 +3,7 @@ package io.wid.dearby.admin.adaptor.web
 import io.wid.dearby.admin.application.AdminActivity
 import io.wid.dearby.application.eligibility.EligibilityJson
 import tools.jackson.databind.JsonNode
+import io.wid.dearby.domain.Highlight
 import io.wid.dearby.domain.PublicationStatus
 import java.time.OffsetDateTime
 
@@ -34,6 +35,8 @@ data class AdminActivityResponse(
     val inheritedFields: List<String>, // 이전 기수에서 가져온 필드 이름(admin-v1.md "이전 기수 정보 자동완성")
     val curatedFields: List<String>, // 어드민이 고친 필드 이름(admin-v1.md "운영자 지정 필드")
     val sourceCheckedAt: OffsetDateTime?,
+    val hook: String?, // 대기열 한 줄 소개(native-v1.md "맞춤 대기열"). 없으면 null
+    val highlights: List<HighlightResponse>, // 대기열 핵심 줄 [{icon, text}]
 ) {
     companion object {
         fun from(item: AdminActivity): AdminActivityResponse {
@@ -66,7 +69,15 @@ data class AdminActivityResponse(
                 inheritedFields = curation.inheritedFields,
                 curatedFields = curation.curatedFields,
                 sourceCheckedAt = curation.sourceCheckedAt,
+                hook = activity.hook,
+                highlights = activity.highlights.map(HighlightResponse::from),
             )
         }
+    }
+}
+
+data class HighlightResponse(val icon: String, val text: String) {
+    companion object {
+        fun from(highlight: Highlight) = HighlightResponse(highlight.icon.code, highlight.text)
     }
 }

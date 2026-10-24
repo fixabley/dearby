@@ -168,6 +168,7 @@ class AdminActivityInfoController(private val activityInfo: AdminActivityInfoSer
                 officialUrl = request.officialUrl, applicationUrl = request.applicationUrl,
                 category = categoryChange(request.category), tagIds = request.tagIds, place = placeChange(request.place),
                 activityTiming = timingChange(request.activitySchedule), applicationTiming = timingChange(request.application),
+                hook = request.hook, highlights = request.highlights?.map { it.icon to it.text },
             )
         )
     }

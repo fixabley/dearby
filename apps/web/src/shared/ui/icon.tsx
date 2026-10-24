@@ -3,7 +3,8 @@
  * (달력 calendar, 시각 clock, 장소 map-pin, 외부 링크 external-link, 검색 search, 지우기 clear, 닫기 close, 뒤로 chevron-left,
  * 펼침 chevron-down, 확인 check-circle, 오류 warning, 정보 info, QR qr, 명함 card, 공유 share, 지도 map, 활동 둘러보기 explore,
  * 받은 명함 inbox, 전화 phone, 메일 mail) plus the contact kinds the card rows need (kakao, instagram, github, behance — not in the
- * mobile table yet) and the tag glyphs `TagIcon` picks by `nameEn`. Three sizes only: `inline` follows the text (1em), `row` is the 24px glyph before a row, `state` is the 28px
+ * mobile table yet), the tag glyphs `TagIcon` picks by `nameEn`, and the 맞춤 대기열 controls and highlight glyphs (trophy, ticket,
+ * chevron-up, more, pause, play; 지원 대상 cake, hash, people, graduation, briefcase, globe). Three sizes only: `inline` follows the text (1em), `row` is the 24px glyph before a row, `state` is the 28px
  * glyph inside a CenteredMessage circle. Colour is `currentColor`; `tone` pins it to the secondary or teal accent.
  */
 export type IconName = keyof typeof paths;
@@ -201,6 +202,30 @@ const paths = {
   ),
   "trend-up": <path d="M3 20h18M4 16l5-5 4 3 7-7m-5 0h5v5" />,
   heart: <path d="M12 20s-7.5-4.5-7.5-10A4.3 4.3 0 0 1 12 7.5a4.3 4.3 0 0 1 7.5 2.5c0 5.5-7.5 10-7.5 10Z" />,
+  trophy: <path d="M8 4h8v5a4 4 0 0 1-8 0V4Zm0 2H5a3 3 0 0 0 3 4m8-4h3a3 3 0 0 1-3 4m-4 3v4m-4 3h8m-6-3h4" />,
+  ticket: <path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4V7Zm10 0v10" />,
+  "chevron-up": <path d="m6 15 6-6 6 6" />,
+  cake: <path d="M4 21h16v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8Zm0-5c2 1.5 4 1.5 5.3 0 1.4 1.5 4 1.5 5.4 0 1.3 1.5 3.3 1.5 5.3 0M12 11V7m0-4c-1 1-1 2.2 0 3 1-.8 1-2 0-3Z" />,
+  hash: <path d="M10 4 8 20m8-16-2 16M5 9h15M4 15h15" />,
+  people: (
+    <>
+      <circle cx="12" cy="7.5" r="2.5" />
+      <circle cx="5.5" cy="10" r="2" />
+      <circle cx="18.5" cy="10" r="2" />
+      <path d="M7.5 19a4.5 4.5 0 0 1 9 0M2 19a3.5 3.5 0 0 1 5-3.2M22 19a3.5 3.5 0 0 0-5-3.2" />
+    </>
+  ),
+  graduation: <path d="m3 9 9-4 9 4-9 4-9-4Zm4 2v4.5c1.5 1.3 3 2 5 2s3.5-.7 5-2V11m4-2v5" />,
+  briefcase: <path d="M4 8h16v11H4V8Zm5 0V5h6v3M4 13h16" />,
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9Z" />
+    </>
+  ),
+  more: <path d="M5.5 12h.01M12 12h.01M18.5 12h.01" />,
+  pause: <path d="M9 6v12m6-12v12" />,
+  play: <path d="M8 5.5v13l10-6.5-10-6.5Z" />,
   book: <path d="M12 6.5C10 5 7 4.5 3.5 5v13c3.5-.5 6.5 0 8.5 1.5 2-1.5 5-2 8.5-1.5V5C17 4.5 14 5 12 6.5Zm0 0v13" />,
   // 휴대폰과 창(웹·앱).
   devices: (

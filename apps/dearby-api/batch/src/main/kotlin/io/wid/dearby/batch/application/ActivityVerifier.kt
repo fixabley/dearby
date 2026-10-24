@@ -6,6 +6,7 @@ import io.wid.dearby.domain.OverlapCheck
 import io.wid.dearby.domain.ParticipationType
 import io.wid.dearby.domain.Recurrence
 import io.wid.dearby.domain.ScheduleTime
+import io.wid.dearby.domain.StoryTexts
 import io.wid.dearby.domain.collection.CollectedRecurrence
 import io.wid.dearby.domain.ScheduleKind
 import io.wid.dearby.domain.collection.CollectedActivity
@@ -67,6 +68,9 @@ object ActivityVerifier {
                 },
                 location = candidate.location?.trim()?.ifEmpty { null },
                 cost = candidate.cost?.trim()?.ifEmpty { null },
+                // 대기열 장면 글(native-v1.md "맞춤 대기열"): 길거나 모르는 icon은 그 항목만 버린다
+                hook = StoryTexts.collectedHook(candidate.hook),
+                highlights = StoryTexts.collectedHighlights(candidate.highlights.map { it.icon to it.text }),
                 audience = candidate.audience?.trim()?.ifEmpty { null },
                 // 모델이 뽑은 대상자 조건을 어휘로 정리한다. 어휘 밖 필드·틀린 모양은 기타(note)로 바꾸고, 쓸 만한 조건이 없으면 null
                 eligibility = EligibilityJson.parse(candidate.eligibility, lenient = true),
