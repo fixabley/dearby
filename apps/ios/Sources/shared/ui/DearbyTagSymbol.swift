@@ -7,7 +7,7 @@ enum DearbyTagSymbol {
         "startup": "lightbulb", "project": "hammer", "mentoring": "bubble.left.and.bubble.right",
         "networking": "point.3.connected.trianglepath.dotted", "funding": "wonsign.circle",
         "it": "laptopcomputer", "dataAi": "sparkles", "cloud": "cloud", "semiconductor": "cpu", "mechanical": "gearshape.2",
-        "civilEngineering": "building.2", "security": "lock.shield", "business": "chart.bar", "marketing": "megaphone",
+        "civilEngineering": "building.2", "engineering": "wrench.and.screwdriver", "security": "lock.shield", "business": "chart.bar", "marketing": "megaphone",
         "investing": "chart.line.uptrend.xyaxis", "volunteering": "heart", "reading": "book", "video": "video",
     ]
 }
