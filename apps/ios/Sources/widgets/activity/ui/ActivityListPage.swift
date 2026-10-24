@@ -171,7 +171,8 @@ struct ActivityListPage: View {
             ProgramHeader(name: program.name, organization: program.organization, logoURL: program.logoURL, openCount: program.openActivityCount,
                           nearestDeadline: program.nearestRecruitmentEnd, upcomingCount: program.upcomingActivityCount,
                           nearestStart: program.nearestRecruitmentStart, latestActivity: program.latestActivity,
-                          fieldTags: program.fieldTags, traitTags: program.traitTags, expanded: open) {
+                          fieldTags: program.fieldTags, traitTags: program.traitTags,
+                          matchedCount: program.matchedActivityIDs.count, expanded: open) {
                 withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.85)) { state.toggle(program.id) }
             }
             if open {
@@ -235,7 +236,7 @@ struct ActivityListPage: View {
     private func card(_ activity: ActivityModel) -> some View {
         ActivityCard(activityID: activity.id, title: activity.title, recruitment: activity.recruitment(at: state.loadedAt),
                      recruitmentText: activity.recruitmentText(at: state.loadedAt), scheduleText: activity.scheduleText(at: state.loadedAt),
-                     place: activity.place?.name ?? activity.location, traitTags: activity.traitTags) {
+                     place: activity.place?.name ?? activity.location, fieldTag: activity.fieldTags.first, traitTags: activity.traitTags) {
             path.append(activity.id)
         }
     }

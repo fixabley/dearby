@@ -315,7 +315,7 @@ struct ProgramSummary: Equatable, Identifiable, Sendable {
     let openActivityCount: Int
     /// Raw ISO 8601 of the nearest recruitment deadline among them; nil when none has a deadline.
     let nearestRecruitmentEndAt: String?
-    /// Open activities whose name matched `q`; such programs start expanded.
+    /// Open activities whose name matched `q`; the collapsed card says `맞는 활동 n개`.
     let matchedActivityIDs: [String]
     /// Raw ISO 8601 of the program's most recent published activity start (contract "모집 중인 프로그램만 보기"); nil when unknown.
     var latestActivityAt: String? = nil

@@ -49,6 +49,8 @@ struct RecommendationPage: Sendable {
 struct TagOption: Identifiable, Equatable, Sendable {
     let id: Int64
     let name: String
+    /// The icon key (`DearbyTagSymbol`); nil on older servers.
+    var nameEn: String?
     let isField: Bool
     let parentID: Int64?
 }
