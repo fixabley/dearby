@@ -202,11 +202,11 @@ class DiscoveryQueueService(
         val weights = mutableMapOf<Id, Double>()
         signals.filter { it.kind.weight != 0.0 }.forEach { weights.merge(it.activityId, it.kind.weight * decay(it.at), Double::plus) }
         implicit.forEach { weights.merge(it.activityId, it.strength.weight * decay(it.at), Double::plus) }
-        val refs = discovery.activityRefs(weights.keys + implicit.map { it.activityId })
+        val refs = discovery.activityRefs(signals.map { it.activityId } + implicit.map { it.activityId }) // 가중치 없는 숨김 신호도(닫힌 활동이어도) 프로그램을 찾는다
         val vectors = catalog.model?.let { discovery.activityVectors(weights.keys, it) }.orEmpty()
 
         val mine = implicit.map { it.activityId }.toSet()
-        val hiddenPrograms = signals.filter { it.kind == SignalKind.HIDE_PROGRAM }.mapNotNull { refs[it.activityId]?.programId ?: catalog.open[it.activityId]?.program?.id }.toSet()
+        val hiddenPrograms = signals.filter { it.kind == SignalKind.HIDE_PROGRAM }.mapNotNull { refs[it.activityId]?.programId }.toSet()
         val excluded = signals.filter { it.kind == SignalKind.DISMISS || it.kind == SignalKind.INELIGIBLE }.map { it.activityId }.toSet()
         // 지금 참여 중인 활동과 같은 프로그램이고 기간이 겹치는 기수는 뺀다
         val participating = implicit.filter { it.strength == Engagement.PARTICIPATED }.mapNotNull { activities.findById(it.activityId, null) }

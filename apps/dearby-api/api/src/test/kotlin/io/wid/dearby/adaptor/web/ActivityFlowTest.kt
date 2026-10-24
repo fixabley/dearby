@@ -823,6 +823,12 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
             // 프로그램 숨기기는 그 프로그램을 모두 빼고, 되돌리면 돌아온다(관심 없어요 한 활동은 그대로 빠짐)
             signal("""{"activityId":$second,"kind":"HIDE_PROGRAM"}""").andExpect { status { isNoContent() } }
             assertTrue(queue()["items"].toList().none { it["program"]["id"].asLong() == otherProgram })
+            // 숨긴 활동이 마감돼도 프로그램은 계속 숨는다
+            val third = open("대기열 확인 다섯", mapOf(4 to 1.0), otherProgram)
+            jdbc.sql("update schedules set end_at = now() - interval '1 hour' where activity_id = ? and slot = 'APPLICATION'").param(second).update()
+            assertTrue(third !in ids(queue()))
+            jdbc.sql("update schedules set end_at = now() + interval '5 days' where activity_id = ? and slot = 'APPLICATION'").param(second).update()
+            jdbc.sql("update activities set publication_status = 'DRAFT' where id = ?").param(third).update()
             mvc.delete("/v1/me/recommendation-signals?activityId=$second&kind=HIDE_PROGRAM") { asUser() }.andExpect { status { isNoContent() } }
             assertEquals(listOf(second), ids(queue()).filter { it == first || it == second })
 
