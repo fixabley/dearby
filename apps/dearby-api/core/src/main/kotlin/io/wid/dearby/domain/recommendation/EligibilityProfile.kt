@@ -23,7 +23,8 @@ data class EligibilityProfile(
             }
         }
         val values = buildMap {
-            educationStatus?.let { put(EligibilityField.EDUCATION_STATUS, it) }
+            // 퍼널의 "직장에 다녀요"는 재학상태를 보내지 않는다. 재학 조건에 맞지 않게 졸업으로 본다(2026-10-24 결정)
+            (educationStatus ?: GRADUATED.takeIf { employment == EMPLOYED })?.let { put(EligibilityField.EDUCATION_STATUS, it) }
             employment?.let { put(EligibilityField.EMPLOYMENT, it) }
         }
         return if (numeric.isEmpty() && values.isEmpty()) null else EligibilityFilter(numeric, values)
@@ -34,5 +35,7 @@ data class EligibilityProfile(
         const val CONSENT_VERSION = "2026-10-24"
         const val MAX_SCHOOL_YEAR = 5
         const val MIN_BIRTH_YEAR = 1900
+        private const val EMPLOYED = "employed"
+        private const val GRADUATED = "graduated"
     }
 }

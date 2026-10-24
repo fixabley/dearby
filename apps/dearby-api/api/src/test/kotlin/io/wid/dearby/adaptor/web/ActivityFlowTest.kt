@@ -694,6 +694,12 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         // 퍼널의 재학 중(enrolled + student), 23세는 "재학생 또는 미취업자" 활동에 맞는다(any 그룹은 하나만 맞으면 된다)
         putEligibility("""{"consentVersion":"2026-10-24","educationStatus":"enrolled","employment":"student","birthYear":${thirty + 7}}""").andExpect { status { isOk() } }
         assertEquals(student, ids(body(mvc.get("/v1/discovery/recommendations") { asUser() })["items"]).first())
+        // 직장(employed, 재학상태 없음)은 졸업으로 보아 "재학생 또는 미취업자" 활동에서 빠진다
+        putEligibility("""{"consentVersion":"2026-10-24","employment":"employed","birthYear":${thirty + 7}}""").andExpect { status { isOk() } }
+        assertTrue(student !in ids(body(mvc.get("/v1/discovery/recommendations") { asUser() })["items"]))
+        // 읽을 수 없는 본문은 400(보낸 값은 응답에 싣지 않는다)
+        val unreadable = putEligibility("""{"consentVersion":"2026-10-24","birthYear":"secret-1999"}""").andExpect { status { isBadRequest() } }.andReturn().response.contentAsString
+        assertTrue("secret-1999" !in unreadable)
         // 35세면 빠진다
         putEligibility("""{"consentVersion":"2026-10-24","educationStatus":"enrolled","employment":"student","birthYear":${thirty - 5}}""").andExpect { status { isOk() } }
         assertTrue(student !in ids(body(mvc.get("/v1/discovery/recommendations") { asUser() })["items"]))
