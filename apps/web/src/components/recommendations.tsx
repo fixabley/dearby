@@ -13,7 +13,7 @@ import { RecommendationRow } from "@/widgets/recommendation/recommendation-row";
 /**
  * 발견 탭 `추천` 묶음 (contract "발견 탭 노출"): the top three recommendations stacked, `더 보기` for the rest of the ten, and `설정`
  * to re-open the funnel. A skipped funnel shows one `나에게 맞는 활동 찾기` row instead. Hidden while the API has no
- * recommendations route yet (404).
+ * recommendations route yet (401/404).
  */
 export function RecommendationSection({
   preferences,
@@ -35,7 +35,8 @@ export function RecommendationSection({
       .then((json) => setItems(recommendationListSchema.parse(json).items))
       .catch((error) => {
         if (controller.signal.aborted) return;
-        if (error instanceof RequestError && error.status === 404) setItems("missing");
+        // Until the API ships the route it answers 401 (unknown paths need a token) or 404: hide the section.
+        if (error instanceof RequestError && [401, 404].includes(error.status)) setItems("missing");
         else setError(errorMessage(error));
       });
     return () => controller.abort();
