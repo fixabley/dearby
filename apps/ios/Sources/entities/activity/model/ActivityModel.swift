@@ -44,6 +44,9 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     var location: String? = nil
     /// The curated place with coordinates (contract "활동 장소"); nil when none.
     var place: ActivityPlace? = nil
+    /// 한 줄 소개 and 핵심 세 줄 (contract "맞춤 대기열" 2026-10-24); nil/empty when none or on older responses.
+    var hook: String? = nil
+    var highlights: [ActivityHighlight] = []
 
     /// Recruitment only from the application window against now (contract "열린 활동 판정 일원화", 2026-10-19). A timed window
     /// compares instants and a missing bound is open on that side; a date-only window compares Seoul days
@@ -137,6 +140,12 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
         return formatter
     }()
     private nonisolated(unsafe) static let plainInstant = ISO8601DateFormatter()
+}
+/// One 핵심 줄 (`highlights[]`, contract "맞춤 대기열" 2026-10-24): an icon from the contract's set (nil for an unknown one) and a short text.
+struct ActivityHighlight: Equatable, Sendable {
+    enum Icon: String, Sendable { case cost, period, team, mentor, award, place, talk, ticket }
+    let icon: Icon?
+    let text: String
 }
 /// A curated place (contract "활동 장소 — 2026-10-19"): name, road address and coordinates, all present together.
 struct ActivityPlace: Equatable, Sendable {

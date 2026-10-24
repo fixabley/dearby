@@ -14,7 +14,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.DearbyButton
-import com.dearby.nativeapp.widgets.recommendation.recommendationRows.RecommendationRow
 
 /**
  * 추천 설정 퍼널 (contract "추천 설정 퍼널(발견 탭 첫 진입)"): one question per screen with a progress bar, `건너뛰기` (`나중에` on the intro) in the top bar
@@ -42,7 +41,7 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
                 FunnelStep.CATEGORIES -> "어떤 활동을\n찾고 있어요?" to "여러 개 골라도 돼요."
                 FunnelStep.TRAITS -> "활동하면서\n무엇을 얻고 싶어요?" to "고르지 않아도 괜찮아요."
                 // No answer from the recommendation API (not deployed yet, or offline): the settings were still saved.
-                FunnelStep.RESULT -> state.found?.let { "지금 지원할 수 있는\n활동 ${it}개를 찾았어요" to "" } ?: ("설정을 저장했어요" to "추천이 준비되면 발견 맨 위에 보여 드릴게요.")
+                FunnelStep.RESULT -> state.found?.let { "지금 지원할 수 있는\n활동 ${it}개를 찾았어요" to "" } ?: ("설정을 저장했어요" to "발견 맨 위 오늘의 맞춤 대기열에서 볼 수 있어요.")
             }
             Text(title, Modifier.semantics { heading() }, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineMedium)
             if (subtitle.isNotEmpty()) Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
@@ -67,7 +66,6 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
                 }
                 FunnelStep.CATEGORIES -> Chips(null, FUNNEL_CATEGORIES, state.categories) { toggle(FunnelStep.CATEGORIES, it) }
                 FunnelStep.RESULT -> {
-                    state.preview.forEach { RecommendationRow(it, null) }
                     if (state.eligibilityMissing) Text("지원 자격까지 맞추려면 프로필 › 지원 자격 정보를 입력해요", Modifier.padding(top = 8.dp),
                         color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                 }
@@ -75,7 +73,7 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
         }
         DearbyButton(next, Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp).heightIn(min = 56.dp), enabled = !state.saving) {
             if (state.saving) CircularProgressIndicator(Modifier.size(20.dp), color = LocalContentColor.current, strokeWidth = 2.dp)
-            else Text(when (state.step) { FunnelStep.INTRO -> "시작하기"; FunnelStep.RESULT -> "추천 보러 가기"; else -> "다음" }, style = MaterialTheme.typography.titleMedium)
+            else Text(when (state.step) { FunnelStep.INTRO -> "시작하기"; FunnelStep.RESULT -> "맞춤 대기열 보러 가기"; else -> "다음" }, style = MaterialTheme.typography.titleMedium)
         }
     }
 }

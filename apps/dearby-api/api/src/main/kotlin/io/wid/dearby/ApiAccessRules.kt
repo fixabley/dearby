@@ -18,6 +18,8 @@ class ApiAccessRules : AccessRules {
         authorize(HttpMethod.GET, "/v1/discovery/recommendations", permitAll)
         // 프로그램 로고 이미지(native-v1.md "프로그램 로고")
         authorize(HttpMethod.GET, "/v1/programs/*/logo", permitAll)
+        // 프로그램 커버 이미지(native-v1.md "맞춤 대기열")
+        authorize(HttpMethod.GET, "/v1/programs/*/cover", permitAll)
         // 조직 로고 이미지(native-v1.md "조직 로고와 로고 계승")
         authorize(HttpMethod.GET, "/v1/organizations/*/logo", permitAll)
         // 태그 사전(native-v1.md "태그")

@@ -74,6 +74,26 @@ struct ConnectionProvider: Sendable {
         try await ActivityClient.fetchRecommendations(api: origins.api, size: 10, fieldTagIDs: preferences.fieldTagIds,
                                                       categories: preferences.categories, traitTagIDs: preferences.traitTagIds, bearer: nil)
     }
+    /// 맞춤 대기열 while signed out (contract "맞춤 대기열" 2026-10-24): 40 추천 results, so `더 받기` has others to show.
+    func queueCandidates(_ preferences: AccountClient.RecommendationPreferences) async throws -> RecommendationPage? {
+        try await ActivityClient.fetchRecommendations(api: origins.api, size: 40, fieldTagIDs: preferences.fieldTagIds,
+                                                      categories: preferences.categories, traitTagIDs: preferences.traitTagIds, bearer: nil)
+    }
+    /// 맞춤 대기열 for the signed-in `account`; each call refreshes the tokens once on a 401.
+    @MainActor func discoveryQueueServer(_ account: AccountViewModel) -> DiscoveryQueueServer {
+        let api = origins.api
+        @Sendable func authorized<Value: Sendable>(_ call: @escaping @Sendable (String) async throws -> Value) async throws -> Value {
+            try await account.authorized { session in
+                do { return try await call(session.accessToken) } catch ActivityClient.RecommendationFailure.unauthorized { throw AccountError.unauthorized }
+            }
+        }
+        return DiscoveryQueueServer(
+            load: { try await authorized { try await ActivityClient.fetchDiscoveryQueue(api: api, bearer: $0) } },
+            refill: { try await authorized { try await ActivityClient.refillDiscoveryQueue(api: api, bearer: $0) } },
+            signal: { id, kind, tag in
+                try await authorized { try await ActivityClient.sendRecommendationSignal(api: api, activityID: id, kind: kind, tagID: tag, bearer: $0) }
+            })
+    }
     func tagOptions() async throws -> [TagOption] { try await ActivityClient.fetchTagOptions(api: origins.api) }
     /// 추천 for the signed-in `account` (saved answers and 지원 자격 정보 on the server); each call refreshes the tokens once on a 401.
     @MainActor func recommendationServer(_ account: AccountViewModel) -> RecommendationServer {

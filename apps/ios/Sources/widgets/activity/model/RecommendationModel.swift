@@ -1,26 +1,22 @@
 import Foundation
 import Observation
 
-/// 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): the funnel's answers and the 발견 tab's 추천 section.
+/// 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): the funnel's answers and its result preview.
 /// Signed out, the answers live on the device (`preferencesKey`, a new key; no earlier app data is read) and go to the server as a query.
 /// Signed in, `signedIn(_:)` reads the account's answers; when it has none, the device answers are uploaded once.
 /// Whether the funnel was done is also kept on the device (`completedKey`, cached from the server signed in), so signing out does not show it
-/// again. The recommendation API only decides the 추천 section: a 404 hides it, nothing else.
+/// again. The recommendation API only gives the funnel result's count; a 404 reads as none.
 @MainActor @Observable final class RecommendationModel {
     typealias Preferences = AccountClient.RecommendationPreferences
     /// The answers in use; nil until they are read, or when there are none yet.
     private(set) var preferences: Preferences?
     /// The answers have been read (device or server), so the funnel may decide whether to show.
     private(set) var ready = false
-    /// The server answered the recommendation API (`probed`); false after a 404 hides the 추천 section.
-    private(set) var available = false
-    private(set) var probed = false
-    private(set) var items: [RecommendedActivity] = []
     /// The server's count of matching activities when it sends `total`; else the items received.
     private(set) var total = 0
     private(set) var tags: [TagOption] = []
     /// The funnel is on screen: first entry (the app sets it once `needsFunnel` holds on the 발견 tab), or reopened from 프로필
-    /// `관심 분야·활동 종류`, the section's `설정` or `나에게 맞는 활동 찾기`. Latched, so finishing does not close it before its last step.
+    /// `관심 분야·활동 종류`, or on the way to the 맞춤 대기열. Latched, so finishing does not close it before its last step.
     var presentingFunnel = false
     /// The answers just given are being saved and their recommendations loaded.
     private(set) var loading = false
@@ -30,11 +26,8 @@ import Observation
     var needsFunnel: Bool { ready && !completed }
     /// Finished on this device or by this account.
     private var completed: Bool { preferences?.completedAt != nil || defaults.bool(forKey: Self.completedKey) }
-    /// The 추천 section: finished with something picked, and the API there (skeleton until it answers). Finished with nothing picked shows
-    /// `나에게 맞는 활동 찾기` instead.
-    var showsSection: Bool { completed && preferences?.isEmpty != true && (available || !probed) }
-    var sectionPending: Bool { completed && preferences?.isEmpty != true && !probed }
-    var showsFinder: Bool { completed && preferences?.isEmpty == true }
+    /// The funnel was opened on the way to the 맞춤 대기열 (its entry, or the result's `맞춤 대기열 보러 가기`): the app opens the queue once it closes.
+    var queueAfterFunnel = false
     static let preferencesKey = "dearby.recommendation.preferences"
     static let completedKey = "dearby.recommendation.completed"
     private var server: RecommendationServer?
@@ -51,7 +44,6 @@ import Observation
     /// Signed out (also at launch without an account): the device answers.
     func signedOut() async {
         server = nil
-        probed = false
         preferences = deviceValue
         ready = true
         await refresh()
@@ -59,7 +51,6 @@ import Observation
     func signedIn(_ server: RecommendationServer) async {
         self.server = server
         ready = false
-        probed = false
         preferences = nil
         var remote: Preferences?
         do { remote = try await server.load() } catch {
@@ -76,15 +67,12 @@ import Observation
         ready = true
         await refresh()
     }
-    /// Loads the recommendations for the answers in use. A failure other than 404 keeps what is shown.
+    /// Counts the recommendations for the answers in use (the funnel result's `n개`); a failure keeps the last count.
     func refresh() async {
         let preferences = preferences ?? Preferences()
         do {
             let loaded = if let server { try await server.recommendations() } else { try await fetchAnonymous(preferences) }
-            available = loaded != nil
-            items = loaded?.items ?? []
-            total = loaded?.total ?? items.count
-            probed = true
+            total = loaded?.total ?? loaded?.items.count ?? 0
         } catch {}
     }
     func loadTags() async {

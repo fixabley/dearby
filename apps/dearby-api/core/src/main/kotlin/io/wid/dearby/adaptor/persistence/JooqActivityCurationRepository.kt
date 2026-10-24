@@ -163,6 +163,17 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
             .execute() > 0
     }
 
+    override fun updateStory(activityId: Id, hook: String?, highlights: List<Highlight>?): Boolean {
+        val curated = dsl.select(ACTIVITIES.CURATED_FIELDS).from(ACTIVITIES).where(ACTIVITIES.ID.eq(activityId)).fetchOne()?.value1() ?: return false
+        var update = dsl.update(ACTIVITIES).set(ACTIVITIES.UPDATED_AT, LocalDateTime.now())
+        val touched = mutableListOf<String>()
+        hook?.let { update = update.set(ACTIVITIES.HOOK, it.ifEmpty { null }); touched += CuratedFields.HOOK }
+        highlights?.let { update = update.set(ACTIVITIES.HIGHLIGHTS, HighlightRows.jsonb(it)); touched += CuratedFields.HIGHLIGHTS }
+        return update.set(ACTIVITIES.CURATED_FIELDS, CuratedFields.jsonb(CuratedFields.read(curated) + touched))
+            .where(ACTIVITIES.ID.eq(activityId))
+            .execute() > 0
+    }
+
     override fun applyProgramCategory(programId: Id, category: ActivityCategory): Int =
         dsl.update(ACTIVITIES)
             .set(ACTIVITIES.CATEGORY, category.name)

@@ -23,6 +23,7 @@ import java.time.ZoneId
 import io.wid.dearby.application.organization.OrganizationLogoRepository
 import io.wid.dearby.application.organization.OrganizationRepository
 import io.wid.dearby.application.program.EffectiveLogos
+import io.wid.dearby.application.program.ProgramCoverRepository
 import io.wid.dearby.application.program.ProgramLogoRepository
 import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.application.tag.TagRepository
@@ -46,6 +47,7 @@ class AdminActivityInfoService(
     private val logos: ProgramLogoRepository,
     private val organizationLogos: OrganizationLogoRepository,
     private val effectiveLogos: EffectiveLogos,
+    private val covers: ProgramCoverRepository,
     private val feedback: CollectionFeedbackRepository,
     private val catalog: CatalogWrites,
 ) {
@@ -191,8 +193,12 @@ class AdminActivityInfoService(
         place: PlaceChange = PlaceChange.Keep,
         activityTiming: TimingChange? = null, // 활동·모집 기간 객체의 겹침 확인 시간·반복 규칙. null이면 그대로
         applicationTiming: TimingChange? = null,
+        hook: String? = null, // 대기열 한 줄 소개: 빈 문자열은 지운다
+        highlights: List<Pair<String?, String?>>? = null, // 대기열 핵심 줄 (icon, text) 전체
     ): AdminActivity {
         val current = activities.getById(activityId, publicationStatus = null).activity
+        // 대기열 장면 글(native-v1.md "맞춤 대기열"): 검사를 먼저 해 틀리면 아무것도 바꾸지 않는다
+        val story = hook?.let { StoryTexts.requireHook(it).orEmpty() } to highlights?.let(StoryTexts::requireHighlights)
         val collected = feedback.collectedActivity(activityId)
         curations.updateTexts(
             activityId,
@@ -233,6 +239,7 @@ class AdminActivityInfoService(
             PlaceChange.Clear -> curations.updatePlace(activityId, null)
             is PlaceChange.Set -> curations.updatePlace(activityId, place.place)
         }
+        if (story.first != null || story.second != null) curations.updateStory(activityId, story.first, story.second)
         collected?.let { recordCorrections(it, current, name, eligibility, category, tagIds, place, activitySchedule, application) }
         return withCuration(listOf(activities.getById(activityId, publicationStatus = null))).single()
     }
@@ -477,6 +484,7 @@ class AdminActivityInfoService(
         val lastFetched = settings.lastFetchedUrls(ids)
         val logoUpdatedAt = logos.updatedAtByProgram(ids)
         val effective = effectiveLogos.of(page.associate { it.id to it.organizationId })
+        val coverInfo = covers.infoByProgram(ids)
         val today = LocalDate.now(SEOUL)
         return page.map {
             val collection = settingsById[it.id] ?: CollectionSettings.DEFAULT
@@ -493,6 +501,7 @@ class AdminActivityInfoService(
                 lastFetchedUrls = lastFetched[it.id].orEmpty(),
                 logoUrl = logoUpdatedAt[it.id]?.let { at -> ProgramLogo.url(it.id, at) },
                 effectiveLogo = effective[it.id],
+                cover = coverInfo[it.id],
             )
         }
     }

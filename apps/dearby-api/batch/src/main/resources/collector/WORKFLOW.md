@@ -64,6 +64,7 @@
 - participationType: 신청하면 참가하면 REGISTRATION, 심사로 선발하면 SELECTION.
 - fieldTags: 이 활동이 다루는 분야를 요청의 "분야 태그 사전" 이름 그대로 최대 5개 고르고, 각각 활동과의 연관도(0~100, 활동의 중심 분야일수록 높게)를 relevance에 적는다. "상위 > 하위"로 적힌 분야는 맞는 하위 분야가 있으면 하위 분야를 고른다(상위 분야를 함께 고르지 않는다). 사전에 없는 말은 쓰지 않고, 알 수 없으면 빈 배열.
 - tags: 참가자가 이 활동에서 얻는 것을 요청의 "성격 태그 사전" 이름 그대로 최대 5개 고른다. 사전에 없는 말은 쓰지 않고, 알 수 없으면 빈 배열.
+- hook·highlights는 맞춤 대기열 카드의 글이다(본문 설명으로만 쓴다, 지어내지 않는다). hook은 활동을 처음 보는 사람에게 건네는 30자 안팎 한국어 한 줄(이름을 되풀이하지 않는다, 60자 넘으면 버려진다). highlights는 이 활동에서 하는 일·받는 것을 짧은 문장(40자 이하) 최대 3개로, 각 icon은 비용·지원금 cost, 기간·일정 period, 팀 활동 team, 멘토링 mentor, 상·상금 award, 장소 place, 강연·발표 talk, 참가권·혜택 ticket 중 가장 맞는 것. 본문으로 만들 수 없으면 hook은 null, highlights는 빈 배열. 날짜·마감은 넣지 않는다(화면이 따로 보인다).
 - category: 활동의 성격으로 판단한다. 부트캠프 BOOTCAMP, 컨퍼런스 CONFERENCE, 워크샵 WORKSHOP, 스터디 STUDY, 동아리(연합동아리 등) CLUB, 강연 LECTURE, 해커톤 HACKATHON, 공모전 CONTEST, 밋업 MEETUP, 그 외 OTHER. 모르면 null.
 - audience는 대상자 원문 문장 그대로다. 본문이 대상에 제한이 없다고 밝히면("누구나", "제한 없음") 그 구절을 audience에 넣는다. eligibility는 그 대상자를 조건 트리로 정리한 것이다(본문에 대상 조건이 없거나 제한이 없으면 null).
   - 트리: 그룹은 op("all"=모두 충족, "any"=하나 이상)와 items, 조건은 field(한글 어휘)·fieldEn(영문 어휘)과 범위 from·to(숫자, 포함, 한쪽 생략 가능) 또는 집합 values(한글)·valuesEn(영문, 같은 순서) 중 하나, 선택으로 note·noteEn(원문 구절). 최상위는 그룹이고 3단계까지만 중첩한다.

@@ -301,7 +301,7 @@ struct AccountClient: Sendable {
         var categories: [String] = []
         var traitTagIds: [Int64] = []
         var completedAt: String?
-        /// Finished with nothing picked: discovery offers `나에게 맞는 활동 찾기` instead of the 추천 section.
+        /// Finished with nothing picked.
         var isEmpty: Bool { fieldTagIds.isEmpty && categories.isEmpty && traitTagIds.isEmpty }
     }
     /// `GET /v1/me/eligibility-profile`; every value nil when nothing was entered. Values use the eligibility vocabulary (contract "대상자 조건").

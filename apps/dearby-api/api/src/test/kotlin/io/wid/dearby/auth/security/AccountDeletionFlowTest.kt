@@ -82,6 +82,13 @@ class AccountDeletionFlowTest(
         // 내 활동과 일정 상태(native-v1.md "내 활동 서버 저장"). 일정 상태는 논리키라 직접 지운다
         jdbc.sql("insert into user_activities (id, user_id, activity_id, created_at, updated_at) values (?, ?, -1, now(), now())").params(id, id).update()
         jdbc.sql("insert into user_activity_schedule_statuses (user_activity_id, schedule_id, default_kind, updated_at) values (?, -1, 'PASSED', now())").param(id).update()
+        // 맞춤 대기열(native-v1.md "맞춤 대기열"): 신호·조직 친화도·취향·대기열은 users cascade
+        val activity = jdbc.sql("select min(id) from activities").query(Long::class.java).single()
+        val organization = jdbc.sql("select min(id) from organizations").query(Long::class.java).single()
+        jdbc.sql("insert into recommendation_signals (user_id, activity_id, kind, created_at) values (?, ?, 'LIKE', now())").params(id, activity).update()
+        jdbc.sql("insert into user_org_affinity (user_id, organization_id, score, updated_at) values (?, ?, 0.5, now())").params(id, organization).update()
+        jdbc.sql("insert into user_taste (user_id, model, embedding, updated_at) values (?, 'test', ('[' || array_to_string(array_fill(0.01, array[1024]), ',') || ']')::halfvec, now())").param(id).update()
+        jdbc.sql("insert into discovery_queue (user_id, queue_date, position, activity_id, reasons, generated_at) values (?, current_date, 0, ?, '[]', now())").params(id, activity).update()
         // 패스키: user handle = UUID 16바이트(base64url)
         jdbc.sql("insert into user_entities (id, name, display_name) values (?, 'Dearby', 'Dearby')").param(handle(id)).update()
         appleToken?.let {
@@ -168,6 +175,10 @@ class AccountDeletionFlowTest(
         assertEquals(0, count("user_activities", "user_id", user.id))
         assertEquals(0, count("user_activity_schedule_statuses", "user_activity_id", user.id))
         assertEquals(1, count("user_activity_schedule_statuses", "user_activity_id", other.id))
+        for (table in listOf("recommendation_signals", "user_org_affinity", "user_taste", "discovery_queue")) {
+            assertEquals(0, count(table, "user_id", user.id), table)
+            assertEquals(1, count(table, "user_id", other.id), table)
+        }
         // 내 명함에 대한 신고와 내가 하거나 받은 차단은 지우고, 내가 한 신고는 신고자만 비워 남긴다
         assertEquals(0, count("card_reports", "reporter_user_id", user.id))
         assertEquals(0, count("card_blocks", "blocker_user_id", user.id) + count("card_blocks", "blocked_user_id", user.id))

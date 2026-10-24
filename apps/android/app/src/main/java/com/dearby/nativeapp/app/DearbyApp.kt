@@ -14,7 +14,7 @@ import com.dearby.nativeapp.widgets.activity.applyPrompt.ApplyConfirmationSheet
 import com.dearby.nativeapp.entities.account.model.PublishedCard
 import com.dearby.nativeapp.pages.recommendation.FunnelStep
 import com.dearby.nativeapp.pages.recommendation.RecommendationFunnelPage
-import com.dearby.nativeapp.widgets.recommendation.recommendationRows.RecommendationSection
+import com.dearby.nativeapp.widgets.recommendation.recommendationRows.QueueEntryRow
 
 /** Four tabs (contract "명함 탭 통합", 2026-10-20): 내 명함 and 받은 명함 are the two segments of 명함. */
 private enum class Tab(val label: String, val icon: ImageVector) {
@@ -31,10 +31,12 @@ private sealed interface Route {
     data object Composer : Route
     /** 설정 (contract "설정"), opened from every tab's header. */
     data object Settings : Route
+    /** 오늘의 맞춤 대기열 (contract "맞춤 대기열(스토리형 쇼츠)"), from the `오늘의 맞춤 대기열` row atop 발견. */
+    data object Queue : Route
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, myCards: MyCardsViewModel, wallet: WalletViewModel, profile: ProfileViewModel, settings: SettingsViewModel, recommendation: RecommendationViewModel, screenshot: String? = null) {
+@Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, myCards: MyCardsViewModel, wallet: WalletViewModel, profile: ProfileViewModel, settings: SettingsViewModel, recommendation: RecommendationViewModel, queue: QueueViewModel, screenshot: String? = null) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     // The 명함 tab's segment, kept in memory for the app's lifetime (contract "명함 탭 통합").
     var cardsSegment by remember { mutableStateOf(CardsSegment.MINE) }
@@ -45,6 +47,8 @@ private sealed interface Route {
     var route by remember { mutableStateOf<Route?>(null) }
     var activityDetail by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<String?>(null) }
+    // 오늘의 맞춤 대기열: [queueReturn] reopens it after the detail its 자세히 opened.
+    var queueReturn by remember { mutableStateOf(false) }
     // Store screenshots (Debug only, `ScreenshotScene.kt`): the detail opens through 내 활동에서 보기; 내 활동 gets the first activity added.
     LaunchedEffect(screenshot) {
         when (screenshot) {
@@ -74,7 +78,7 @@ private sealed interface Route {
     val activityListState by activityModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(activityListState.linked, activityListState.linkNotice) {
         activityListState.linked?.let { wallet.closeShared(); route = null; tab = Tab.Discovery; discoveryOpen = it }
-        activityListState.linkNotice?.let { notice = it }
+        activityListState.linkNotice?.let { notice = it; queueReturn = false }
         if (activityListState.linked != null || activityListState.linkNotice != null) activityModel.consumeLinked()
     }
     // 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천"): the funnel takes the whole screen on the first visit to 발견 (not in store screenshots).
@@ -82,9 +86,12 @@ private sealed interface Route {
     val recoFunnel by recommendation.funnel.collectAsStateWithLifecycle()
     val eligibilityForm by recommendation.form.collectAsStateWithLifecycle()
     LaunchedEffect(tab, route, reco.needsFunnel) { if (screenshot == null && tab == Tab.Discovery && route == null && reco.needsFunnel) recommendation.openFunnel(first = true) }
-    val recoHeader: (@Composable () -> Unit)? = if (!reco.available || !reco.completed) null else {
-        { RecommendationSection(reco.items, reco.personalized, activityModel::openLinked) { recommendation.openFunnel(first = false) } }
-    }
+    // 오늘의 맞춤 대기열: its 자세히 opens the activity on 발견 and, once that detail closes, the queue comes back where it was.
+    LaunchedEffect(activityDetail) { if (!activityDetail && queueReturn) { queueReturn = false; route = Route.Queue } }
+    // 2026-10-25 user decision "추천은 없애고 맞춤대기열 진입만 남겨줘": one `오늘의 맞춤 대기열` row tops 발견; a never-finished funnel comes first and its
+    // result button (`맞춤 대기열 보러 가기`) opens the queue. The row always shows; a failed read is the queue screen's own retry state.
+    val openQueue = { queue.open(); route = Route.Queue }
+    val recoHeader: @Composable () -> Unit = { QueueEntryRow { if (reco.completed) openQueue() else recommendation.openFunnel(first = true) } }
     LaunchedEffect(auth.phase, walletState.needSignIn) { if (auth.phase == AccountPhase.SIGNED_IN && walletState.needSignIn) wallet.retryPending() }
     // Every screen sits on the theme `background`, which this Surface spreads under the status bar, navigation bar and keyboard too (contract "안전 영역
     // 배경"); cards, sheets and tiles are `surface` on top. Every screen inside starts with a `DearbyTopBar`, which takes the status-bar inset itself, so
@@ -97,8 +104,8 @@ private sealed interface Route {
                 val funnel = recoFunnel
                 if (funnel != null) {
                     BackHandler(onBack = recommendation::back)
-                    // 추천 보러 가기 lands on 발견, where the 추천 묶음 is.
-                    RecommendationFunnelPage(funnel, recommendation::toggle, { if (funnel.step == FunnelStep.RESULT) { tab = Tab.Discovery; route = null }; recommendation.next() },
+                    // 맞춤 대기열 보러 가기 lands on 발견 and opens the queue.
+                    RecommendationFunnelPage(funnel, recommendation::toggle, { if (funnel.step == FunnelStep.RESULT) { tab = Tab.Discovery; route = null; openQueue() }; recommendation.next() },
                         recommendation::skip, recommendation::back, recommendation::retryTags)
                 } else when (val screen = route) {
                     is Route.Detail -> walletState.cards.firstOrNull { it.id == screen.id }?.let { WalletCardRoute(it, wallet, myCards) { route = null } }
@@ -107,6 +114,7 @@ private sealed interface Route {
                     is Route.Qr -> CardQrRoute(screen.card, activityModel, myCards) { route = null }
                     Route.Composer -> CardComposerRoute(publish, account) { route = null }
                     Route.Settings -> SettingsRoute(settings, account, profile) { route = null }
+                    Route.Queue -> QueueRoute(queue, openDetail = { queueReturn = true; activityModel.openLinked(it) }) { route = null }
                     null -> when (tab) {
                         // 설정·알림 sit in each tab's pinned `DearbyTopBar` (contract "iOS 상단 바…" Android sentence).
                         Tab.Discovery, Tab.Mine -> key(tab) {

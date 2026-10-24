@@ -34,6 +34,10 @@ open class ProgramLogosRecord() : UpdatableRecordImpl<ProgramLogosRecord>(Progra
         set(value): Unit = set(3, value)
         get(): OffsetDateTime? = get(3) as OffsetDateTime?
 
+    open var brandColor: String?
+        set(value): Unit = set(4, value)
+        get(): String? = get(4) as String?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -43,11 +47,12 @@ open class ProgramLogosRecord() : UpdatableRecordImpl<ProgramLogosRecord>(Progra
     /**
      * Create a detached, initialised ProgramLogosRecord
      */
-    constructor(programId: Long? = null, contentType: String? = null, `data`: ByteArray? = null, updatedAt: OffsetDateTime? = null): this() {
+    constructor(programId: Long? = null, contentType: String? = null, `data`: ByteArray? = null, updatedAt: OffsetDateTime? = null, brandColor: String? = null): this() {
         this.programId = programId
         this.contentType = contentType
         this.`data` = `data`
         this.updatedAt = updatedAt
+        this.brandColor = brandColor
         resetTouchedOnNotNull()
     }
 }
