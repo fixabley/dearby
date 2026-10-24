@@ -617,4 +617,78 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(listOf(second), mine().map { it["activityId"].asLong() })
         assertEquals(0, jdbc.sql("select count(*) from user_activity_schedule_statuses where schedule_id = ?").param(interview).query(Long::class.java).single())
     }
+
+    @Test
+    fun `추천은 고른 분야·종류로 점수를 매기고 프로그램마다 2개, 지원 자격 정보가 있으면 맞지 않는 활동을 뺀다`() {
+        val user = UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
+        fun MockHttpServletRequestDsl.asUser() = with(jwt().jwt { it.subject(user.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER")))
+        fun body(result: org.springframework.test.web.servlet.ResultActionsDsl): JsonNode = json.readTree(result.andReturn().response.contentAsString)
+        fun tag(name: String, kind: String, parentId: Long? = null) =
+            jdbc.sql("insert into tags (name, name_en, kind, parent_id, sort_order) values (?, ?, ?, ?, 900) returning id").param(name).param(name).param(kind).param(parentId).query(Long::class.java).single()
+        val parent = tag("추천 상위", "FIELD")
+        val childA = tag("추천 하위 A", "FIELD", parent)
+        val childB = tag("추천 하위 B", "FIELD", parent)
+        val trait = tag("추천 성격", "TRAIT")
+        // 모두 Let'Swift 프로그램, 모집 중. 나이 25세 이하 조건(확인함)은 young에만 있다
+        fun open(name: String, fieldTag: Long, relevance: Int): Long = createActivity(name).also { id ->
+            jdbc.sql(
+                """
+                insert into schedules (activity_id, slot, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+                values (?, 'APPLICATION', '신청 기간', 'DEADLINE', 'CONFIRMED', 'TIMED', now() - interval '1 day', now() + interval '5 days', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp)
+                """
+            ).param(id).update()
+            jdbc.sql("insert into activity_tags (activity_id, tag_id, relevance) values (?, ?, ?)").params(id, fieldTag, relevance).update()
+        }
+        val young = open("추천 확인 청년", childA, 80)
+        val exact = open("추천 확인 정확", childB, 80)
+        val weak = open("추천 확인 약함", childA, 10)
+        jdbc.sql("""update activities set category = 'BOOTCAMP', eligibility_checked = true, eligibility = '{"op":"all","items":[{"field":"나이","fieldEn":"age","to":25}]}'::jsonb where id = ?""").param(young).update()
+        jdbc.sql("insert into activity_eligibility_terms (activity_id, field_en, from_value, to_value, value_en) values (?, 'age', null, 25, null)").param(young).update()
+        jdbc.sql("insert into activity_tags (activity_id, tag_id) values (?, ?)").params(exact, trait).update()
+        fun ids(items: JsonNode) = items.toList().map { it["activity"]["id"].asLong() }
+        fun reasons(items: JsonNode, id: Long) = items.toList().single { it["activity"]["id"].asLong() == id }["reasons"].toList().map { it.asString() }
+
+        // 비로그인: 쿼리 설정. 고른 하위 분야 일치(exact)가 상위 분야로 맞은 것(young)보다 앞이고, 같은 프로그램은 2개까지라 weak는 빠진다
+        val anonymous = body(mvc.get("/v1/discovery/recommendations?fieldTagIds=$parent,$childB").andExpect { status { isOk() } })["items"]
+        assertEquals(listOf(exact, young), ids(anonymous))
+        assertEquals(setOf("activity", "program", "reasons"), anonymous[0].propertyNames().toSet())
+        assertEquals("Let’Swift", anonymous[0]["program"]["name"].asString())
+        assertEquals("추천 하위 B", reasons(anonymous, exact).first())
+        assertTrue(reasons(anonymous, exact).last().endsWith("일 마감"))
+        assertEquals(listOf("추천 하위 A", "부트캠프"), reasons(body(mvc.get("/v1/discovery/recommendations?fieldTagIds=$childA&categories=BOOTCAMP"))["items"], young).take(2))
+        mvc.get("/v1/discovery/recommendations?categories=NOPE").andExpect { status { isBadRequest() } }
+        mvc.get("/v1/discovery/recommendations?size=0").andExpect { status { isBadRequest() } }
+
+        // 추천 설정: 저장 전에는 빈 값, 분야 자리에 성격 태그를 넣으면 400, 저장하면 완료 시각이 남는다
+        mvc.get("/v1/me/recommendation-preferences").andExpect { status { isUnauthorized() } }
+        assertTrue(body(mvc.get("/v1/me/recommendation-preferences") { asUser() })["completedAt"].isNull)
+        fun putPreferences(content: String) = mvc.put("/v1/me/recommendation-preferences") { asUser(); contentType = MediaType.APPLICATION_JSON; this.content = content }
+        putPreferences("""{"fieldTagIds":[$trait]}""").andExpect { status { isBadRequest() } }
+        val saved = body(putPreferences("""{"fieldTagIds":[$parent],"categories":["hackathon"],"traitTagIds":[$trait]}""").andExpect { status { isOk() } })
+        assertEquals(listOf("HACKATHON"), saved["categories"].toList().map { it.asString() })
+        assertTrue(!saved["completedAt"].isNull)
+        // 로그인이면 저장된 설정을 쓴다(쿼리는 무시). 성격 일치가 더해진 exact가 앞이다
+        assertEquals(listOf(exact, young), ids(body(mvc.get("/v1/discovery/recommendations?fieldTagIds=$childB") { asUser() })["items"]))
+
+        // 지원 자격 정보: 현재 동의 버전이 아니면 400, 값이 어휘 밖이면 400
+        fun putEligibility(content: String) = mvc.put("/v1/me/eligibility-profile") { asUser(); contentType = MediaType.APPLICATION_JSON; this.content = content }
+        assertEquals("CONSENT_VERSION", body(putEligibility("""{"birthYear":1990}""").andExpect { status { isBadRequest() } })["code"].asString())
+        putEligibility("""{"consentVersion":"2026-10-24","educationStatus":"student"}""").andExpect { status { isBadRequest() } }
+        val thirty = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).year - 30
+        val profile = body(putEligibility("""{"consentVersion":"2026-10-24","educationStatus":"enrolled","schoolYear":3,"birthYear":$thirty}""").andExpect { status { isOk() } })
+        assertEquals("2026-10-24", profile["consent"]["version"].asString())
+        assertEquals(listOf("enrolled", "3"), listOf(profile["educationStatus"].asString(), profile["schoolYear"].asString()))
+        // 30세라 25세 이하 활동은 빠지고, 조건을 확인하지 않은 활동은 남되 이유에 알린다
+        val eligible = body(mvc.get("/v1/discovery/recommendations") { asUser() })["items"]
+        assertEquals(exact, ids(eligible).first())
+        assertTrue(young !in ids(eligible))
+        assertEquals("지원 자격 확인 필요", reasons(eligible, exact).last())
+        // 지우면 값과 동의 기록이 모두 사라지고 다시 거르지 않는다
+        mvc.delete("/v1/me/eligibility-profile") { asUser() }.andExpect { status { isNoContent() } }
+        assertTrue(body(mvc.get("/v1/me/eligibility-profile") { asUser() })["consent"].isNull)
+        assertEquals(listOf(exact, young), ids(body(mvc.get("/v1/discovery/recommendations") { asUser() })["items"]))
+
+        jdbc.sql("update activities set publication_status = 'DRAFT' where id in (?, ?, ?)").params(young, exact, weak).update()
+        jdbc.sql("delete from tags where id in (?, ?, ?, ?)").params(childA, childB, parent, trait).update()
+    }
 }
