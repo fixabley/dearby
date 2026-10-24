@@ -4,12 +4,8 @@ import io.wid.dearby.application.activity.ActivityListing
 import io.wid.dearby.application.activity.ActivityService
 import io.wid.dearby.application.profile.ProfileService
 import io.wid.dearby.application.program.ProgramSummary
-import io.wid.dearby.application.program.ProgramSummaryService
 import io.wid.dearby.application.tag.TagRepository
-import io.wid.dearby.domain.Activity
-import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.InvalidInputException
-import io.wid.dearby.domain.ScheduleTime
 import io.wid.dearby.domain.TagKind
 import io.wid.dearby.domain.UserId
 import io.wid.dearby.domain.eligibility.EligibilityField
@@ -18,11 +14,9 @@ import io.wid.dearby.domain.recommendation.RecommendationPreferences
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
-import java.time.Duration
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZoneOffset
-import kotlin.math.roundToInt
 
 // 추천 설정·지원 자격 정보·추천(native-v1.md "추천 설정 퍼널·지원 자격 정보·추천"). 1단계는 규칙 점수다
 @Service

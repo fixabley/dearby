@@ -56,7 +56,8 @@ class OnnxTextEmbedder(private val properties: EmbeddingProperties) : TextEmbedd
         val dir = Path.of(properties.modelDir)
         val tokenizer = HuggingFaceTokenizer.newInstance(
             dir.resolve("tokenizer.json"),
-            mapOf("truncation" to "true", "maxLength" to properties.maxTokens.toString(), "padding" to "false"),
+            // modelMaxLength: 내보낸 tokenizer.json은 512로 적혀 있어 그대로 두면 maxLength를 512로 줄인다
+            mapOf("truncation" to "true", "maxLength" to properties.maxTokens.toString(), "modelMaxLength" to properties.maxTokens.toString(), "padding" to "false"),
         )
         val options = OrtSession.SessionOptions().apply {
             setIntraOpNumThreads(properties.threads)
