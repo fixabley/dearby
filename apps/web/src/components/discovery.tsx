@@ -8,8 +8,9 @@ import {
   type ActivityPage,
   type ProgramPage,
   type ProgramSummary,
-  type Tag,
   deadlineLabel,
+  fieldTagsOf,
+  traitTagsOf,
   programLogoSrc,
   startLabel,
   recruitment,
@@ -20,7 +21,7 @@ import { cn } from "@/shared/lib/utils";
 import { Failure } from "@/shared/ui/states";
 import { CenteredMessage } from "@/shared/ui/centered-message";
 import { Icon } from "@/shared/ui/icon";
-import { Badge } from "@/shared/ui/badge";
+import { FieldTagBadges, TraitIconRow } from "@/shared/ui/tag-icon";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
@@ -244,26 +245,6 @@ function ProgramAvatar({ name, src }: { name: string; src: string | undefined })
     </span>
   );
 }
-/** Up to three tag chips and a `+n` remainder (contract "태그") under the program name; nothing without tags. */
-function TagChips({ tags }: { tags: Tag[] }) {
-  if (!tags.length) return null;
-  const shown = tags.slice(0, 3);
-  const rest = tags.length - shown.length;
-  return (
-    <span className="mt-1.5 flex flex-wrap gap-1.5" aria-label="얻을 수 있는 것">
-      {shown.map((tag) => (
-        <Badge key={tag.id} variant="neutral" className="font-medium">
-          {tag.name}
-        </Badge>
-      ))}
-      {rest > 0 && (
-        <Badge variant="neutral" className="font-medium">
-          +{rest}
-        </Badge>
-      )}
-    </span>
-  );
-}
 /**
  * Props the renewed activity card needs (contract "발견 카드 리뉴얼"): the chip tone comes from the group the caller placed the
  * activity in (open list → live recruitment state; 모집 예정 group → soon; 지난 활동 → closed), and the `모집` row is emphasised
@@ -280,6 +261,7 @@ function cardProps(activity: Activity, statusTone: StatusTone, now: number) {
     activityLabel: scheduleLabel(activity.activitySchedule, "activity", now),
     // 장소 이름만 (contract "활동 장소"); the collected phrase stands in when no place is curated.
     placeName: activity.place?.name ?? activity.location ?? null,
+    traitTags: traitTagsOf(activity),
   };
 }
 /** Chip tone for an activity the server lists as open: 모집 예정 before its start, 마감 once passed, otherwise 모집 중. */
@@ -505,11 +487,15 @@ function ProgramRow({
             aria-controls={panelId}
             onClick={toggle}
           >
-            <ProgramAvatar key={logoSrc ?? ""} name={program.name} src={logoSrc} />
+            {/* 분야 badges stacked right under the logo (contract "분야·성격 태그와 아이콘"). */}
+            <span className="flex shrink-0 flex-col items-center gap-1">
+              <ProgramAvatar key={logoSrc ?? ""} name={program.name} src={logoSrc} />
+              <FieldTagBadges tags={fieldTagsOf(program)} />
+            </span>
             <span className="flex min-w-0 flex-col gap-0.5">
               <span className="text-headline font-semibold break-keep">{program.name}</span>
               <span className="text-subheadline text-secondary-label">{program.organization.name}</span>
-              <TagChips tags={program.tags ?? []} />
+              <TraitIconRow tags={traitTagsOf(program)} className="mt-1.5" />
             </span>
           </button>
           <div className="flex shrink-0 flex-col items-end gap-1.5">

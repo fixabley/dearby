@@ -23,7 +23,9 @@ data class ProgramSummary(
     val nearestRecruitmentStartAt: OffsetDateTime? = null, // 모집 예정 활동의 가장 이른 모집 시작(없으면 활동 시작). 모집 예정이 없으면 null
     val category: ActivityCategory? = null, // 프로그램 기본 종류(admin-v1.md "프로그램 기본 종류")
     val latestActivityAt: OffsetDateTime? = null, // 게시 활동의 가장 최근 활동 시작(native-v1.md "모집 중인 프로그램만 보기"). 없으면 null
-    val tags: List<Tag> = emptyList(), // 프로그램 태그가 있으면 그것, 없으면 열린 활동 태그의 합집합(최대 6개, 사전 순)(native-v1.md "태그")
+    val tags: List<Tag> = emptyList(), // 프로그램 태그가 있으면 그것, 없으면 게시 활동 태그의 합집합(최대 6개, 사전 순)(native-v1.md "태그")
+    val fieldTags: List<Tag> = emptyList(), // 분야 태그 최대 2개, 서버 순서(native-v1.md "분야·성격 태그와 아이콘")
+    val traitTags: List<Tag> = emptyList(), // 성격 태그 전부, 사전 순
     val logoUrl: String? = null, // 보일 로고 공개 경로: 프로그램 로고, 없으면 가장 가까운 조직 로고(native-v1.md "조직 로고와 로고 계승"), 없으면 null
 )
 

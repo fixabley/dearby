@@ -24,6 +24,10 @@ open class ActivityTagsRecord() : UpdatableRecordImpl<ActivityTagsRecord>(Activi
         set(value): Unit = set(1, value)
         get(): Long? = get(1) as Long?
 
+    open var relevance: Short?
+        set(value): Unit = set(2, value)
+        get(): Short? = get(2) as Short?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -33,9 +37,10 @@ open class ActivityTagsRecord() : UpdatableRecordImpl<ActivityTagsRecord>(Activi
     /**
      * Create a detached, initialised ActivityTagsRecord
      */
-    constructor(activityId: Long? = null, tagId: Long? = null): this() {
+    constructor(activityId: Long? = null, tagId: Long? = null, relevance: Short? = null): this() {
         this.activityId = activityId
         this.tagId = tagId
+        this.relevance = relevance
         resetTouchedOnNotNull()
     }
 }

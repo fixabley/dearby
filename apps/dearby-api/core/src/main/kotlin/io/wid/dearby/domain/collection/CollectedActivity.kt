@@ -37,6 +37,7 @@ data class CollectedActivity(
     val checkedAt: OffsetDateTime,
     val category: ActivityCategory? = null, // 활동 종류(native-v1.md "활동 종류"). 본문으로 판단할 수 없으면 null
     val tags: List<String> = emptyList(), // 모델이 사전에서 고른 태그 이름(native-v1.md "태그"). 저장할 때 사전과 맞춰 모르는 이름은 버린다
+    val fieldTags: Map<String, Int?> = emptyMap(), // 모델이 고른 분야 태그 이름 → 연관도 0~100(답하지 않았으면 null)(native-v1.md "분야·성격 태그와 아이콘"). 사전 대조는 tags와 같다
     val activityRecurrence: CollectedRecurrence? = null, // 활동 기간의 반복(날짜만 있는 활동 기간 + 회차 시각). 활동 기간 행에 반복·겹침 확인 시간이 없을 때만 채운다
     val place: Address? = null, // 지오코딩이 확실한 장소(native-v1.md "수집기 장소"). 활동 기간 행에 장소가 없고 운영자 지정이 아닐 때만 채운다
 )

@@ -16,6 +16,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivityTagsRecord
 import kotlin.collections.Collection
 import kotlin.collections.List
 
+import org.jooq.Check
 import org.jooq.Condition
 import org.jooq.Field
 import org.jooq.ForeignKey
@@ -87,6 +88,11 @@ open class ActivityTags(
      */
     val TAG_ID: TableField<ActivityTagsRecord, Long?> = createField(DSL.name("tag_id"), SQLDataType.BIGINT.nullable(false), this, "")
 
+    /**
+     * The column <code>public.activity_tags.relevance</code>.
+     */
+    val RELEVANCE: TableField<ActivityTagsRecord, Short?> = createField(DSL.name("relevance"), SQLDataType.SMALLINT, this, "")
+
     private constructor(alias: Name, aliased: Table<ActivityTagsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ActivityTagsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ActivityTagsRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -134,6 +140,9 @@ open class ActivityTags(
      */
     fun tags(): TagsPath = tags
     val tags: TagsPath by lazy { TagsPath(this, ACTIVITY_TAGS__ACTIVITY_TAGS_TAG_ID_FKEY, null) }
+    override fun getChecks(): List<Check<ActivityTagsRecord>> = listOf(
+        Internal.createCheck(this, DSL.name("activity_tags_relevance_check"), "(((relevance >= 0) AND (relevance <= 100)))", true)
+    )
     override fun `as`(alias: String): ActivityTags = ActivityTags(DSL.name(alias), this)
     override fun `as`(alias: Name): ActivityTags = ActivityTags(alias, this)
     override fun `as`(alias: Table<*>): ActivityTags = ActivityTags(alias.qualifiedName, this)

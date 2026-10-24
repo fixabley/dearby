@@ -17,6 +17,7 @@ import io.wid.dearby.domain.OrganizationLogo
 import io.wid.dearby.domain.ProgramLogo
 import io.wid.dearby.domain.PublicationStatus
 import io.wid.dearby.domain.Tag
+import io.wid.dearby.domain.TagKind
 import io.wid.dearby.domain.curation.CollectionSettings
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
@@ -103,7 +104,7 @@ class CurationImportService(
                 resolved.isEmpty() -> Line(target, TAGS, SKIP, "쓸 태그 없음")
                 TAGS in curated -> Line(target, TAGS, SKIP, "운영자 지정")
                 activity.tags.isNotEmpty() && !overwrite -> Line(target, TAGS, SKIP, "이미 있음: ${activity.tags.joinToString { it.name }}")
-                else -> Line(target, TAGS, SET, resolved.joinToString { it.name }).also { if (apply) tags.setActivityTags(id, tagIds(resolved), curate = false) }
+                else -> Line(target, TAGS, SET, resolved.joinToString { it.name }).also { if (apply) tags.setActivityTags(id, tagIds(resolved, item), curate = false) }
             }
         }
 
@@ -200,7 +201,7 @@ class CurationImportService(
         return unknown.map { Line(target, TAGS, SKIP, "사전에 없음, 영문 이름 없음: $it") } + when {
             resolved.isEmpty() -> Line(target, TAGS, SKIP, "쓸 태그 없음")
             program.tags.isNotEmpty() && !item.path("overwrite").asBoolean(false) -> Line(target, TAGS, SKIP, "이미 있음: ${program.tags.joinToString { it.name }}")
-            else -> Line(target, TAGS, SET, resolved.joinToString { it.name }).also { if (apply) tags.setProgramTags(id, tagIds(resolved)) }
+            else -> Line(target, TAGS, SET, resolved.joinToString { it.name }).also { if (apply) tags.setProgramTags(id, tagIds(resolved, item)) }
         }
     }
 
@@ -226,17 +227,37 @@ class CurationImportService(
         return listOf(Line(target, LOGO, SET, "$type ${data.size} bytes"))
     }
 
-    // 사전 이름(한글·영문, 띄어쓰기·대소문자 무시)으로 찾는다. 없는 이름은 tagNameEn에 영문이 있을 때만 새 태그 후보(id 0)가 되고, 실제로 쓸 때 만든다
+    // 사전 이름(한글·영문, 띄어쓰기·대소문자 무시)으로 찾는다. 없는 이름은 tagNameEn에 영문이 있을 때만 새 태그 후보(id 0)가 되고, 실제로 쓸 때 만든다.
+    // 순서는 보낸 순서(프로그램 태그의 position, native-v1.md "분야·성격 태그와 아이콘")
     private fun resolveTags(names: JsonNode, english: JsonNode): Pair<List<Tag>, List<String>> {
         val wanted = buildList<String> { names.forEach { node: JsonNode -> node.asString("").trim().takeIf { it.isNotEmpty() }?.let(::add) } }.distinct()
         val found = tags.findByNames(wanted)
         val known = found.flatMap { listOfNotNull(it.name, it.nameEn) }.map(::key).toSet()
         val missing = wanted.filter { key(it) !in known }
         val (creatable, unknown) = missing.partition { name: String -> english.path(name).asString("").isNotBlank() }
-        return (found + creatable.map { name: String -> Tag(NEW_TAG, name, english.path(name).asString("").trim()) }).distinctBy { key(it.name) } to unknown
+        val candidates = found + creatable.map { name: String -> Tag(NEW_TAG, name, english.path(name).asString("").trim(), TagKind.TRAIT) }
+        fun order(tag: Tag) = wanted.indexOfFirst { key(it) == key(tag.name) || tag.nameEn?.let { en -> key(it) == key(en) } == true }
+        return candidates.sortedBy(::order).distinctBy { key(it.name) } to unknown
     }
 
-    private fun tagIds(resolved: List<Tag>): List<Id> = resolved.map { if (it.id == NEW_TAG) tags.create(it.name, it.nameEn).id else it.id }
+    // 새 태그는 tagKind: {"<이름>": "FIELD"|"TRAIT"}(기본 TRAIT)로 만든다. tagParent: {"<하위 분야>": "<상위 분야>"}는 이 목록의 분야 태그에 상위 분야를 단다
+    // (상위 분야는 사전의 최상위 분야 태그, 한 단계. 어긋나면 이 항목 전체를 건너뛴다)
+    private fun tagIds(resolved: List<Tag>, item: JsonNode): List<Id> {
+        val kinds = item.path("tagKind")
+        val created = resolved.map { tag ->
+            if (tag.id != NEW_TAG) tag
+            else tags.create(tag.name, tag.nameEn, TagKind.valueOf(kinds.path(tag.name).asString(TagKind.TRAIT.name)))
+        }
+        item.path("tagParent").properties().forEach { (childName, parentName) ->
+            val child = created.firstOrNull { key(it.name) == key(childName) } ?: throw IllegalArgumentException("tagParent의 하위 분야가 tagNames에 없음: $childName")
+            val parent = tags.findByNames(listOf(parentName.asString())).firstOrNull() ?: throw IllegalArgumentException("tagParent의 상위 분야가 사전에 없음: ${parentName.asString()}")
+            require(child.kind == TagKind.FIELD && parent.kind == TagKind.FIELD && parent.parentId == null && parent.id != child.id && !tags.hasChildren(child.id)) {
+                "하위 분야는 분야 태그끼리 한 단계만: $childName > ${parent.name}"
+            }
+            tags.update(child.id, null, null, child.kind, parent.id)
+        }
+        return created.map { it.id }
+    }
 
     private fun key(name: String) = name.replace(Regex("\\s"), "").lowercase()
 

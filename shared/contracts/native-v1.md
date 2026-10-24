@@ -367,6 +367,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **API**: 공개 `Activity`에 `location: string|null`(기존 문구)과 `place: {name, address, lat, lng}|null`(아래 "활동 장소")을 더한다.
 - 색·글꼴은 기존 토큰. 접근성: 프로그램 카드는 `펼침/접힘` 상태를 가진 버튼, 활동 카드는 상태 칩을 라벨에 포함.
 
+<<<<<<< HEAD
 ## 추천 설정 퍼널·지원 자격 정보·추천 — 2026-10-24 사용자 결정
 
 사용자: "탐색탭을 처음 들어갈 때, 추천해줄 수 있게 설정에 필요한 항목들을 토스의 퍼널처럼 만들어줄 수 있을까?" → "개인정보는 동의받고 프로필에서 입력하게 해줘" → "지원자격 정보는 토스처럼 입력하는 곳에서 동의를 구해줘" → "그렇게 해줘". 벡터 RAG 제안은 지금 규모(프로그램 약 100·활동 약 300, 태그·대상자 조건이 구조화됨)에서 규칙 점수가 더 정확하고 이유를 설명할 수 있어 1단계는 규칙 기반으로 하고, 자유 문장 입력·"비슷한 활동"이 필요해지면 pgvector 의미 검색을 점수에 더한다. 시안: https://claude.ai/artifact/EPFgtMjufqq5aDMea4LN7y (F·E 줄).
@@ -378,8 +379,51 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
   - 저장: `profile_eligibility(user_id pk, education_status, employment, school_year, birth_year, consent_version, consented_at, updated_at)`. 명함·공개 프로필·운영자 화면 어디에도 노출하지 않는다(서버 로그에도 값을 남기지 않는다). 약관 버전이 바뀌면 다음 입력 때 다시 동의 시트.
   - 개인정보처리방침에 항목·목적·보관(삭제·탈퇴 시 즉시)을 더한다. 문구 게시는 사용자 확인 뒤.
 - **추천 API**: `GET /v1/discovery/recommendations?size=10` (로그인이면 저장된 설정·지원 자격 정보, 비로그인이면 쿼리 `fieldTagIds`·`categories`·`traitTagIds`). 대상은 열린 활동(기존 판정). 지원 자격 정보가 있으면 대상자 조건 1·2차 판정으로 **맞지 않는 활동을 뺀다**. 점수: 분야 일치(활동 분야 태그가 고른 분야이거나 그 하위면, 수집 연관도 0~100을 가중치로, 하위 분야 일치가 상위 일치보다 높다) + 종류 일치 + 성격 일치 수 + 마감 임박(14일 안이면 가산). 응답 항목 `{activity: Activity, program: ProgramSummary, reasons: string[]}` — `reasons`는 사람이 읽는 짧은 이유(`데이터·AI`, `부트캠프`, `11월 7일 마감`), 점수 숫자는 내보내지 않는다. 같은 프로그램의 활동은 최대 2개.
-- **지원 자격을 모르는 활동**: 지금 규칙은 조건이 없으면 제한 없음으로 통과한다. 그러나 2026-10-24 운영 데이터에서 게시 활동 59개 중 대상자 조건이 구조화된 것은 21개뿐이고(원문 `audience`만 있는 것 21, 둘 다 없는 것 17) 조건 없음이 "제한 없음"인지 "아직 모름"인지 구분되지 않는다. 그래서 `activities.eligibility_checked boolean not null default false`를 둔다(운영자가 확인했거나 수집기가 원문에서 조건을 읽었으면 true, 원문에 제한이 없다고 명시돼도 true). 추천은 지원 자격 정보가 있을 때 `eligibility_checked=false` 활동을 빼지 않되 `reasons`에 `지원 자격 확인 필요`를 붙이고 같은 점수에서 뒤로 보낸다. 수집기는 원문 대상 구절이 있으면 조건을 채우고 `eligibility_checked`를 true로 한다.
+- **지원 자격을 모르는 활동**: 지금 규칙은 조건이 없으면 제한 없음으로 통과한다. 그러나 2026-10-24 운영 데이터에서 게시 활동 59개 중 대상자 조건이 구조화된 것은 21개뿐이고(원문 `audience`만 있는 것 21, 둘 다 없는 것 17) 조건 없음이 "제한 없음"인지 "아직 모름"인지 구분되지 않는다. 그래서 `activities.eligibility_checked boolean not null default false`를 둔다(운영자가 확인했거나 수집기가 원문에서 조건을 읽었으면 true, 원문에 제한이 없다고 명시돼도 true). 추천은 지원 자격 정보가 있을 때 `eligibility_checked=false` 활동을 빼지 않되 `reasons`에 `지원 자격 확인 필요`를 붙이고 같은 점수에서 뒤로 보낸다. 수집기는 원문 대상 구절이 있으면 조건을 채우고 `eligibility_checked`를 true로 한다. 마이그레이션은 `eligibility`가 있는 활동을 true로 채우고, 2026-10-24 사용자 결정("셋 다 그렇게 해주세요")으로 대상 문구가 없는 **종류 CONFERENCE** 활동은 누구나 등록하는 공개 행사로 보아 true로 한다(운영 데이터 단계, 대회가 함께 열리는 행사의 대회 활동은 제외).
 - **발견 탭 노출**: 퍼널을 마쳤으면 발견 목록 맨 위에 `추천` 묶음(가로가 아닌 세로 3개 + `더 보기`), 각 항목에 이유 칩. 퍼널을 건너뛰었으면 `나에게 맞는 활동 찾기` 한 줄 행으로 다시 열 수 있다.
+=======
+## 분야·성격 태그와 아이콘 — 2026-10-24 사용자 결정
+
+사용자: "개발지식 지워줘. 나눠서 보여줘. 대신 분야는 가장 연관있는 2개만 보여줘. 태그는 아이콘으로 표현할 수 있으면 그렇게 해줘." 분야 순서는 "수집할 때 연관도를 측정해줘", 성격은 "아이콘+글자, 목록에선 아이콘만", 배치는 "분야 태그는 로고아이콘 바로밑에 수직으로 배치해줘". 같은 날 태그 사전 정리(운영 데이터): 포트폴리오·창의성·취업·발표·문제해결·리더십·글로벌·개발지식·협업 삭제(협업은 프로젝트 활동의 96%·멘토링 활동의 93%에 함께 붙어 구분력이 없어 사용자 "협업태그 지워줘"), `프로젝트 개발`→`프로젝트`(project), 분야 태그 13개 추가.
+
+- **태그 종류**: `tags.kind` = `FIELD`(분야, 무엇을 하나) | `TRAIT`(성격, 무엇을 얻나). V50에서 기존 태그는 `TRAIT`, 이후 운영 데이터 단계에서 분야 태그를 `FIELD`로 바꾼다. 공개 Tag = `{id, name, nameEn, kind, parentId}`(`parentId`는 아래 "하위 분야"), 어드민 태그 만들기·고치기에 `kind?`(기본 `TRAIT`), 어드민 태그 목록·선택에 종류 표시.
+- **연관도**: `activity_tags.relevance smallint null`(0~100). 수집기는 지시문에 사전을 **종류별로 나눠** 넘기고, 분야 태그마다 그 활동과의 연관도(0~100)를 함께 답한다(성격 태그는 연관도 없음, null). 사전 밖 이름은 지금처럼 버린다. 운영자가 활동 태그를 지정하면 연관도는 null(운영자 지정은 순서로 본다, 아래).
+- **프로그램 분야 순서**: `program_tags.position smallint not null default 0`(운영자가 적은 순서, 작을수록 앞). 프로그램의 분야 태그 순서 = 그 프로그램 게시 활동(최근 3년 창, 기존 태그 합집합 규칙과 같다)의 수집 연관도 평균 내림차순 → 연관도가 없는 태그는 뒤에서 `position` 순 → `sort_order`. 지금은 활동에 분야 태그가 없으므로 당분간 `position`이 실제 순서다. 프로그램에 분야 태그가 없으면 게시 활동 분야 태그의 합집합(연관도 순).
+- **응답 모양**: `ProgramSummary`·`Activity`에 `fieldTags: Tag[]`(서버가 정렬, **최대 2개**)와 `traitTags: Tag[]`(성격 전부, 사전 순)를 더한다. 기존 `tags`는 이전 앱 호환으로 남긴다(분야+성격, 기존 최대 6개 규칙). 활동 상세용 `Activity.fieldTagsAll: Tag[]`(분야 전부, 같은 순서)도 준다. 활동 분야 순서는 연관도 내림차순 → 사전 순이고, 분야 태그가 없는 활동은 프로그램 분야 순서를 쓴다. 프로그램 `traitTags`는 프로그램 성격 태그, 없으면 게시 활동(최근 3년 창) 성격 태그의 합집합(분야와 따로 판단한다).
+- **발견 프로그램 카드**: 로고 자리(44) **바로 밑에 분야 태그를 세로로**(최대 2개) 둔다. 폭이 44라 글자 대신 **아이콘 배지**(지름 22, 민트 바탕·청록 아이콘, 간격 4)로 그리고 접근성 이름은 태그 이름("분야: 데이터·AI"). 조직 이름 아래 태그 칩 줄은 **성격 아이콘 줄**(아이콘 16, 보조색, 간격 8, 글자 없음, 접근성 이름 "얻을 수 있는 것: 프로젝트, 멘토링")로 바꾼다. 펼친 활동 행도 같은 성격 아이콘 줄.
+- **활동 상세**: `분야` 소제목 아래 분야 전부를 아이콘+글자 칩으로, `얻을 수 있는 것` 아래 성격 전부를 아이콘+글자 칩으로 나눠 보인다(없는 묶음은 생략).
+- **하위 분야**(2026-10-24 사용자 "하위 분야를 만들어줄 수 있을까?" → "그렇게 해주세요"): V50 `tags.parent_id`(→ tags, 지우면 null). 분야 태그만 상위 분야를 가질 수 있고 상위 분야는 하위 분야가 없는 분야 태그다(한 단계). 어드민 `POST/PATCH /v1/admin/tags`의 `parentId?`(PATCH 생략은 유지, null은 해제)가 어긋나면 400(성격 태그·상위 분야가 있는 태그를 상위로·하위 분야가 있는 태그에 상위 지정·하위 분야가 있는 태그를 성격으로). 공개·어드민 Tag에 `parentId`. 운영 데이터 가져오기는 `tagParent: {"<하위>": "<상위>"}`.
+  - 저장은 가장 구체적인 분야로 한다(상위 분야는 하위 분야가 함의). 분야 순서에서 하위 분야와 그 상위 분야가 함께 있으면 상위 분야를 `fieldTags`·`fieldTagsAll`에서 뺀다. 나머지는 위 연관도 → `position` → `sort_order` 규칙.
+  - 검색: `q`가 상위 분야 이름(한글·영문)에 맞으면 그 하위 분야를 가진 활동·프로그램도 맞고, `tagIds`에 상위 분야 id를 주면 하위 분야를 가진 활동도 맞는다.
+  - 수집기 사전은 `IT > 데이터·AI, 클라우드, 보안; 봉사`처럼 계층을 보이고 가장 구체적인 분야를 고르게 한다.
+  - 운영 계획(배포 뒤 운영 데이터): IT > 데이터·AI, 클라우드, 보안, 웹·앱, 게임, 오픈소스; 공학(engineering) > 반도체, 기계, 토목·건설; 경제·경영 > 마케팅·광고, 금융·투자; 상위 없음: 봉사, 독서·토론, 영상.
+- **아이콘**: 각 플랫폼 기본 아이콘(iOS SF Symbols, Android `material-icons-extended`, 웹은 같은 모양의 인라인 SVG). 매핑은 `nameEn`으로 하고 각 플랫폼 `shared/ui`에 둔다. 모르는 `nameEn`(운영자가 새로 만든 태그)은 기본 아이콘(SF `tag` / `Sell`)이고 상세에서는 글자로 구분된다.
+
+| nameEn | 태그 | iOS | Android |
+|---|---|---|---|
+| startup | 창업 | `lightbulb` | `Lightbulb` |
+| project | 프로젝트 | `hammer` | `Build` |
+| mentoring | 멘토링 | `bubble.left.and.bubble.right` | `Forum` |
+| networking | 네트워킹 | `point.3.connected.trianglepath.dotted` | `Hub` |
+| funding | 장학·지원금 | `wonsign.circle` | `Payments` |
+| it | IT | `laptopcomputer` | `Computer` |
+| dataAi | 데이터·AI | `sparkles` | `AutoAwesome` |
+| cloud | 클라우드 | `cloud` | `Cloud` |
+| semiconductor | 반도체 | `cpu` | `Memory` |
+| mechanical | 기계 | `gearshape.2` | `PrecisionManufacturing` |
+| civilEngineering | 토목·건설 | `building.2` | `Domain` |
+| security | 보안 | `lock.shield` | `Security` |
+| business | 경제·경영 | `chart.bar` | `BarChart` |
+| marketing | 마케팅·광고 | `megaphone` | `Campaign` |
+| investing | 금융·투자 | `chart.line.uptrend.xyaxis` | `TrendingUp` |
+| volunteering | 봉사 | `heart` | `VolunteerActivism` |
+| reading | 독서·토론 | `book` | `MenuBook` |
+| video | 영상 | `video` | `Videocam` |
+| engineering | 공학 | `wrench.and.screwdriver` | `Engineering` |
+| webApp | 웹·앱 | `apps.iphone` | `Devices` |
+| game | 게임 | `gamecontroller` | `SportsEsports` |
+| openSource | 오픈소스 | `chevron.left.forwardslash.chevron.right` | `Code` |
+>>>>>>> origin/main
 
 ## 조직 로고와 로고 계승 — 2026-10-22 사용자 결정
 

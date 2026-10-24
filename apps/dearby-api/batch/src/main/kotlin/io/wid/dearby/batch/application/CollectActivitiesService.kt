@@ -45,8 +45,8 @@ class CollectActivitiesService(
         val previous = drafts.findPreviousEdition(target.programId)
         // 운영자 피드백(collection_feedback): 이 프로그램의 최근 기록을 요청에 넣는다. 더 필요하면 에이전트가 search_feedback으로 찾는다
         val recent = feedback.latest(target.programId, RECENT_FEEDBACK)
-        // 태그 사전(native-v1.md "태그"): 모델이 이 이름 중에서만 고르게 한다
-        val tagNames = tags.findAll().map { it.name }
+        // 태그 사전(native-v1.md "태그", "분야·성격 태그와 아이콘"): 모델이 이 이름 중에서만 고르게 한다
+        val dictionary = tags.findAll()
         val tools = Tools(target, watched)
         tools.injected += recent.map { it.id }
         // 시작 주소 토큰(admin-v1.md "주소 토큰"): 올해·내년, 다음·현재 기수로 펼친다. 기수를 모르면 그 주소는 건너뛰고 이유만 남긴다
@@ -56,7 +56,7 @@ class CollectActivitiesService(
         // 피드백 검색의 "같은 호스트": 허용 호스트, 없으면 시작 주소의 호스트. 둘 다 없으면(웹 전체 수집) 같은 프로그램 다음은 유사도 순
         tools.hosts = target.allowedHosts.ifEmpty { startUrls.mapNotNull { runCatching { URI(it).host }.getOrNull() } }
         val run = try {
-            agent.run(AgentInput(target.copy(officialUrls = startUrls), watched, previous, recent, tagNames), tools)
+            agent.run(AgentInput(target.copy(officialUrls = startUrls), watched, previous, recent, dictionary), tools)
         } finally {
             // 렌더링을 쓴 프로그램이 끝나면 브라우저를 내린다(다음 프로그램이 쓰면 다시 띄운다)
             if (tools.rendered) renderer.close()
