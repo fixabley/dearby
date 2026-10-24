@@ -21,7 +21,7 @@ import { cn } from "@/shared/lib/utils";
 import { Failure } from "@/shared/ui/states";
 import { CenteredMessage } from "@/shared/ui/centered-message";
 import { Icon } from "@/shared/ui/icon";
-import { FieldTagBadges, TraitIconRow } from "@/shared/ui/tag-icon";
+import { TagChipRow } from "@/shared/ui/tag-icon";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
@@ -124,7 +124,8 @@ function QueueEntry({ skipped, onFunnel }: { skipped: boolean; onFunnel: (mode: 
 /**
  * Discovery as a program accordion (contract "발견 프로그램 묶음 — 2026-10-18"): programs with open activities,
  * searched by `q` (from the `/?q=` URL; tag names match too, there is no tag chip row — contract "태그 칩 줄 제거") and paged
- * with the API cursor. Expanding a header loads that program's open activities as the usual activity cards.
+ * with the API cursor. A card expands only when tapped — never on first load, search, recommendations or coming back (contract
+ * "태그 아이콘+라벨·분야 1개·자동 펼침 없음"); expanding a header loads that program's open activities as the usual activity cards.
  */
 function Programs({ q, top }: { q: string; top: ReactNode }) {
   const [page, setPage] = useState<ProgramPage>();
@@ -138,11 +139,7 @@ function Programs({ q, top }: { q: string; top: ReactNode }) {
   useEffect(() => {
     const controller = new AbortController();
     request<ProgramPage>(programsPath(q, openOnly), { signal: controller.signal })
-      .then((result) => {
-        setPage(result);
-        // Auto-expand applies only while the toggle is on.
-        setExpanded(new Set(openOnly ? result.items.filter(startsOpen).map((p) => p.id) : []));
-      })
+      .then(setPage)
       .catch((error) => {
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
@@ -158,11 +155,6 @@ function Programs({ q, top }: { q: string; top: ReactNode }) {
           items: [...(current?.items ?? []), ...next.items],
           nextCursor: next.nextCursor,
         }));
-        setExpanded((ids) => {
-          const all = new Set(ids);
-          if (openOnly) next.items.filter(startsOpen).forEach((p) => all.add(p.id));
-          return all;
-        });
       })
       .catch((error) => setMoreError(errorMessage(error)))
       .finally(() => setLoadingMore(false));
@@ -324,6 +316,7 @@ function cardProps(activity: Activity, statusTone: StatusTone, now: number) {
     activityLabel: scheduleLabel(activity.activitySchedule, "activity", now),
     // 장소 이름만 (contract "활동 장소"); the collected phrase stands in when no place is curated.
     placeName: activity.place?.name ?? activity.location ?? null,
+    fieldTag: fieldTagsOf(activity)[0],
     traitTags: traitTagsOf(activity),
   };
 }
@@ -333,7 +326,6 @@ function openTone(activity: Activity, now: number): StatusTone {
   return label === "모집 예정" ? "soon" : label === "모집 마감" ? "closed" : "open";
 }
 
-/** Single open activity, or a search hit on an activity name, starts expanded. */
 /** 모집일 순 (contract "활동 종류"): earlier recruitment deadline first, no deadline last, ties by name. */
 function byDeadline(a: Activity, b: Activity): number {
   return deadline(a) - deadline(b) || a.name.localeCompare(b.name, "ko");
@@ -431,12 +423,10 @@ function OtherActivities({
     </>
   );
 }
-function startsOpen(program: ProgramSummary) {
-  return program.openActivityCount === 1 || program.matchedActivityIds.length > 0;
-}
 
 /**
- * One program card (contract "발견 카드 리뉴얼 — 2026-10-19"): logo or initial avatar, name · organization · tag chips, and on the right the
+ * One program card (contract "발견 카드 리뉴얼 — 2026-10-19"): logo or initial avatar, name · organization · one line of tag chips
+ * (분야 1개 + 성격, contract "태그 아이콘+라벨·분야 1개·자동 펼침 없음") · `맞는 활동 n개` for an activity-name search hit, and on the right the
  * open + upcoming count badge that becomes an up-chevron `접기` button once expanded. The whole header toggles. The body stays
  * mounted so `grid-template-rows 0fr→1fr` can animate; its open activities come from `GET /activities?programId=&open=true`
  * (the server decides what is open) on the first expansion.
@@ -550,15 +540,14 @@ function ProgramRow({
             aria-controls={panelId}
             onClick={toggle}
           >
-            {/* 분야 badges stacked right under the logo (contract "분야·성격 태그와 아이콘"). */}
-            <span className="flex shrink-0 flex-col items-center gap-1">
-              <ProgramAvatar key={logoSrc ?? ""} name={program.name} src={logoSrc} />
-              <FieldTagBadges tags={fieldTagsOf(program)} />
-            </span>
-            <span className="flex min-w-0 flex-col gap-0.5">
+            <ProgramAvatar key={logoSrc ?? ""} name={program.name} src={logoSrc} />
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
               <span className="text-headline font-semibold break-keep">{program.name}</span>
               <span className="text-subheadline text-secondary-label">{program.organization.name}</span>
-              <TraitIconRow tags={traitTagsOf(program)} className="mt-1.5" />
+              <TagChipRow field={fieldTagsOf(program)[0]} traits={traitTagsOf(program)} className="mt-1.5" />
+              {program.matchedActivityIds.length > 0 && (
+                <span className="mt-1 text-footnote text-secondary-label">맞는 활동 {program.matchedActivityIds.length}개</span>
+              )}
             </span>
           </button>
           <div className="flex shrink-0 flex-col items-end gap-1.5">

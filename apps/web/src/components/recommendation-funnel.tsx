@@ -13,28 +13,28 @@ import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { Icon } from "@/shared/ui/icon";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
+import { TagIcon } from "@/shared/ui/tag-icon";
 
-const order = ["intro", "fields", "categories", "traits", "result"] as const;
-type Step = (typeof order)[number];
-type Choice = { id: number | string; label: string; name?: string };
-type Group = { title: string; choices: Choice[] };
+const order = ["intro", "fields", "subfields", "categories", "traits", "result"] as const;
+type BaseStep = (typeof order)[number];
+/** `sub:<parent id>` is one parent's 하위 분야 question; `subfields` holds them all on one screen (3+ parents picked). */
+type Step = BaseStep | `sub:${number}`;
+type Choice = { id: number | string; label: string; nameEn?: string | null };
+type Group = { title?: string; choices: Choice[] };
 const none: RecommendationPreferences = { fieldTagIds: [], categories: [], traitTagIds: [], completedAt: null };
 
-/** 분야 tags grouped under their 상위 분야 (the parent itself as `전체`); 분야 without a parent or children go last as `그 밖에`. */
-function fieldGroups(tags: Tag[]): Group[] {
+/**
+ * 분야 (contract "추천 퍼널 분야 단계(상위 → 하위)"): the first question lists 상위 분야 (fields with children) and fields without a
+ * parent; each picked 상위 분야 then gets its children. `fieldTagIds` alone records both levels — a 상위 id means `전부 좋아요`, child
+ * ids mean those only — so a saved list restores both questions (a child id implies its parent was picked).
+ */
+function fieldTree(tags: Tag[]) {
   const fields = tags.filter((tag) => tag.kind === "FIELD");
-  const parents = fields.filter((tag) => !tag.parentId && fields.some((child) => child.parentId === tag.id));
-  const loose = fields.filter((tag) => !parents.includes(tag) && !parents.some((parent) => parent.id === tag.parentId));
-  return [
-    ...parents.map((parent) => ({
-      title: parent.name,
-      choices: [
-        { id: parent.id, label: "전체", name: `${parent.name} 전체` },
-        ...fields.filter((tag) => tag.parentId === parent.id).map((tag) => ({ id: tag.id, label: tag.name })),
-      ],
-    })),
-    ...(loose.length ? [{ title: parents.length ? "그 밖에" : "분야", choices: loose.map((tag) => ({ id: tag.id, label: tag.name })) }] : []),
-  ];
+  const childrenOf = (id: number) => fields.filter((tag) => tag.parentId === id);
+  const top = fields.filter((tag) => !tag.parentId || !fields.some((parent) => parent.id === tag.parentId));
+  // 상위 분야 first, then the fields without children, each in dictionary order.
+  const parent = (tag: Tag) => (childrenOf(tag.id).length ? 0 : 1);
+  return { top: top.sort((a, b) => parent(a) - parent(b)), childrenOf };
 }
 
 /**
@@ -74,17 +74,27 @@ export function RecommendationFunnel({
   // A new question moves focus to its title so screen readers read it.
   useEffect(() => heading.current?.focus(), [step]);
 
-  const groups = tags ? fieldGroups(tags) : undefined;
+  const tree = tags ? fieldTree(tags) : undefined;
   const traits = tags?.filter((tag) => tag.kind !== "FIELD");
-  const steps = order.filter(
-    (name) =>
-      (name !== "intro" || !initial) &&
-      (name !== "fields" || !groups || groups.length > 0) &&
-      (name !== "traits" || !traits || traits.length > 0),
+  // Picked 상위 분야 with children, in dictionary order: chosen as a whole (its id) or through any of its children.
+  const pickedParents = (tree?.top ?? []).filter((tag) => {
+    const children = tree!.childrenOf(tag.id);
+    return children.length > 0 && [tag, ...children].some((each) => picks.fieldTagIds.includes(each.id));
+  });
+  const subSteps: Step[] = pickedParents.length >= 3 ? ["subfields"] : pickedParents.map((tag) => `sub:${tag.id}` as const);
+  const steps = order.flatMap((name): Step[] =>
+    name === "subfields"
+      ? subSteps
+      : (name !== "intro" || !initial) &&
+          (name !== "fields" || !tree || tree.top.length > 0) &&
+          (name !== "traits" || !traits || traits.length > 0)
+        ? [name]
+        : [],
   );
   const index = steps.indexOf(step);
   // The dictionary arrived without 분야 or 성격 tags while that question was showing: move on to the next one that exists.
-  if (index < 0) setStep(steps.find((name) => order.indexOf(name) > order.indexOf(step)) ?? "result");
+  const rank = (name: Step) => order.indexOf(name.startsWith("sub") ? "subfields" : (name as BaseStep));
+  if (index < 0) setStep(steps.find((name) => rank(name) > rank(step)) ?? "result");
   const found = Array.isArray(result) ? result : undefined;
   function go(to: number) {
     const next = steps[to];
@@ -101,7 +111,43 @@ export function RecommendationFunnel({
     savePreferences({ ...none, completedAt: new Date().toISOString() });
     onClose();
   }
-  function toggle(key: "fieldTagIds" | "categories" | "traitTagIds", id: number | string) {
+  /** First 분야 question: picking a 상위 분야 starts at `전부 좋아요` (its id); unpicking drops its children too. */
+  function toggleField(tag: Tag) {
+    const family = [tag.id, ...(tree?.childrenOf(tag.id) ?? []).map((child) => child.id)];
+    setPicks((current) => {
+      const on = current.fieldTagIds.some((id) => family.includes(id));
+      const rest = current.fieldTagIds.filter((id) => !family.includes(id));
+      return { ...current, fieldTagIds: on ? rest : [...rest, tag.id] };
+    });
+  }
+  /** 하위 분야 question: `전부 좋아요` (the parent id) and the children exclude each other; unpicking the last child returns to `전부`. */
+  function toggleChild(parent: Tag, id: number) {
+    const childIds = (tree?.childrenOf(parent.id) ?? []).map((child) => child.id);
+    setPicks((current) => {
+      const rest = current.fieldTagIds.filter((each) => each !== parent.id && !childIds.includes(each));
+      const children = current.fieldTagIds.filter((each) => childIds.includes(each));
+      const next = id === parent.id ? [] : children.includes(id) ? children.filter((each) => each !== id) : [...children, id];
+      return { ...current, fieldTagIds: [...rest, ...(next.length ? next : [parent.id])] };
+    });
+  }
+  function subGroup(parent: Tag, titled: boolean) {
+    return (
+      <Choices
+        key={parent.id}
+        group={{
+          title: titled ? parent.name : undefined,
+          choices: [
+            { id: parent.id, label: `${parent.name} 전부 좋아요` },
+            ...tree!.childrenOf(parent.id).map((tag) => ({ id: tag.id, label: tag.name, nameEn: tag.nameEn ?? null })),
+          ],
+        }}
+        picked={picks.fieldTagIds}
+        toggle={(id) => toggleChild(parent, id as number)}
+      />
+    );
+  }
+  const subParent = step.startsWith("sub:") ? pickedParents.find((tag) => `sub:${tag.id}` === step) : undefined;
+  function toggle(key: "categories" | "traitTagIds", id: number | string) {
     setPicks((current) => {
       const list = current[key] as (number | string)[];
       return { ...current, [key]: list.includes(id) ? list.filter((value) => value !== id) : [...list, id] };
@@ -111,9 +157,10 @@ export function RecommendationFunnel({
     ...(tags ?? []).filter((tag) => picks.fieldTagIds.includes(tag.id) || picks.traitTagIds.includes(tag.id)).map((tag) => tag.name),
     ...funnelCategories.filter(([code]) => picks.categories.includes(code)).map(([, label]) => label),
   ];
-  const copy: Record<Step, { title: string; sub: string; cta: string }> = {
-    intro: { title: "나에게 맞는 활동을\n찾아 드릴게요", sub: "질문 3개면 끝나요.\n답하지 않은 건 그냥 넘어가도 돼요.", cta: "시작하기" },
+  const copy: Record<BaseStep, { title: string; sub: string; cta: string }> = {
+    intro: { title: "나에게 맞는 활동을\n찾아 드릴게요", sub: "몇 가지 질문이면 끝나요.\n답하지 않은 건 그냥 넘어가도 돼요.", cta: "시작하기" },
     fields: { title: "어떤 분야에\n관심 있어요?", sub: "여러 개 골라도 돼요.", cta: "다음" },
+    subfields: { title: "분야별로 더 골라 볼까요?", sub: "고르지 않으면 그 분야 전부를 찾아요.", cta: "다음" },
     categories: { title: "어떤 활동을\n찾고 있어요?", sub: "여러 개 골라도 돼요.", cta: "다음" },
     traits: { title: "활동하면서\n무엇을 얻고 싶어요?", sub: "고르지 않아도 괜찮아요.", cta: "다음" },
     result: {
@@ -128,7 +175,9 @@ export function RecommendationFunnel({
       cta: found && !found.length ? "전체 목록 보기" : "맞춤 대기열 보러 가기",
     },
   };
-  const { title, sub, cta } = copy[step];
+  const { title, sub, cta } = subParent
+    ? { title: `${subParent.name} 중에서는\n어떤 분야요?`, sub: copy.subfields.sub, cta: "다음" }
+    : copy[step.startsWith("sub:") ? "subfields" : (step as BaseStep)];
   const showBack = index > 0 || Boolean(initial);
   return (
     <section aria-labelledby="funnel-title" className="flex min-h-[calc(100dvh-44px-env(safe-area-inset-top))] flex-col">
@@ -175,10 +224,14 @@ export function RecommendationFunnel({
         </h1>
         {sub && <p className="mb-4 text-subheadline whitespace-pre-line text-secondary-label">{sub}</p>}
         {step === "fields" &&
-          (groups ? (
-            groups.map((group) => (
-              <Choices key={group.title} group={group} picked={picks.fieldTagIds} toggle={(id) => toggle("fieldTagIds", id)} />
-            ))
+          (tree ? (
+            <Choices
+              group={{ choices: tree.top.map((tag) => ({ id: tag.id, label: tag.name, nameEn: tag.nameEn ?? null })) }}
+              picked={tree.top
+                .filter((tag) => [tag, ...tree.childrenOf(tag.id)].some((each) => picks.fieldTagIds.includes(each.id)))
+                .map((tag) => tag.id)}
+              toggle={(id) => toggleField(tree.top.find((tag) => tag.id === id)!)}
+            />
           ) : (
             <SkeletonGroup className="flex flex-wrap gap-2">
               {[0, 1, 2, 3, 4].map((key) => (
@@ -186,6 +239,8 @@ export function RecommendationFunnel({
               ))}
             </SkeletonGroup>
           ))}
+        {subParent && subGroup(subParent, false)}
+        {step === "subfields" && pickedParents.map((parent) => subGroup(parent, true))}
         {step === "categories" && (
           <Choices
             group={{ title: "활동 종류", choices: funnelCategories.map(([id, label]) => ({ id, label })) }}
@@ -230,7 +285,7 @@ function Choices({
 }) {
   return (
     <section className="mb-4 flex flex-col gap-2.5">
-      <h2 className="text-footnote font-semibold text-secondary-label">{group.title}</h2>
+      {group.title && <h2 className="text-footnote font-semibold text-secondary-label">{group.title}</h2>}
       <div className="flex flex-wrap gap-2">
         {group.choices.map((choice) => {
           const on = picked.includes(choice.id);
@@ -239,13 +294,17 @@ function Choices({
               key={choice.id}
               type="button"
               aria-pressed={on}
-              aria-label={choice.name}
               onClick={() => toggle(choice.id)}
               className={cn(
-                "min-h-10 rounded-full border-[1.5px] px-3.5 text-subheadline font-medium transition-colors",
+                "inline-flex min-h-10 items-center gap-1.5 rounded-full border-[1.5px] px-3.5 text-subheadline font-medium transition-colors",
                 on ? "border-teal bg-mint text-teal" : "border-separator bg-card text-label",
               )}
             >
+              {choice.nameEn !== undefined && (
+                <span aria-hidden="true" className="flex">
+                  <TagIcon nameEn={choice.nameEn} />
+                </span>
+              )}
               {choice.label}
             </button>
           );
