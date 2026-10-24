@@ -249,9 +249,16 @@ export function deadlineLabel(endAt: string | null): string | undefined {
 export function daysToDeadline(application: Schedule | null, now = Date.now()): number | undefined {
   const endAt = parseTime(application?.endAt ?? null);
   const exclusive = parseTime(application?.endDateExclusive ?? null);
-  // Both sides are Seoul calendar days read as UTC midnights, so the difference is whole days.
-  const last = endAt !== undefined ? Date.parse(seoulDay(endAt)) : exclusive !== undefined ? exclusive - DAY : undefined;
-  return last === undefined ? undefined : Math.round((last - Date.parse(seoulDay(now))) / DAY);
+  return seoulDaysUntil(endAt !== undefined ? Date.parse(seoulDay(endAt)) : exclusive !== undefined ? exclusive - DAY : undefined, now);
+}
+/** Seoul days left until a schedule's first day (컨퍼런스 행사일), or undefined without a readable start. */
+export function daysToStart(schedule: Schedule | null, now = Date.now()): number | undefined {
+  const startAt = parseTime(schedule?.startAt ?? null);
+  return seoulDaysUntil(startAt !== undefined ? Date.parse(seoulDay(startAt)) : parseTime(schedule?.startDate ?? null), now);
+}
+// Both sides are Seoul calendar days read as UTC midnights, so the difference is whole days.
+function seoulDaysUntil(day: number | undefined, now: number): number | undefined {
+  return day === undefined ? undefined : Math.round((day - Date.parse(seoulDay(now))) / DAY);
 }
 /** `10월 24일 시작` in Seoul time, or undefined when the start is missing or unreadable. */
 export function startLabel(startAt: string | null): string | undefined {
