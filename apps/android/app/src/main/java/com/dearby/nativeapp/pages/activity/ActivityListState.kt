@@ -1,6 +1,7 @@
 package com.dearby.nativeapp.pages.activity
 
 import com.dearby.nativeapp.entities.activity.model.Place
+import com.dearby.nativeapp.shared.ui.TagLabel
 import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
 import com.dearby.nativeapp.widgets.activity.progress.ProgressState
 import java.time.Instant
@@ -28,8 +29,10 @@ data class ActivityState(
     val category: String? = null, val categoryOrder: Int = Int.MAX_VALUE,
     /** Discovery order inside a category group: recruitment deadline, else activity start; null last. */
     val sortKey: Instant? = null,
-    /** 얻을 수 있는 것 tag names in dictionary order (contract "태그"). */
-    val tags: List<String> = emptyList(),
+    /** 분야, at most 2 by relevance, and every 분야 for the detail (contract "분야·성격 태그와 아이콘"). */
+    val fieldTags: List<TagLabel> = emptyList(), val fieldTagsAll: List<TagLabel> = emptyList(),
+    /** 얻을 수 있는 것 (성격) in dictionary order. */
+    val traitTags: List<TagLabel> = emptyList(),
     /** The curated venue for the detail `장소` section and the map link (contract "활동 장소"). */
     val place: Place? = null,
     /** The operator's https application link, or null (contract "신청 확인 조건 완화·공개 applicationUrl"). */
@@ -55,8 +58,8 @@ data class ScheduleItemState(val name: String, val dateText: String, val draft: 
 data class ProgramState(
     val id: String, val title: String, val organization: String, val openCount: Int, val deadline: Instant?, val matched: Boolean, val latestActivityAt: Instant? = null,
     val upcomingCount: Int = 0, val nearestStart: Instant? = null,
-    /** Program (or open-activity union) tag names, at most 6 (contract "태그"). */
-    val tags: List<String> = emptyList(),
+    /** 분야 (at most 2, relevance order) and 성격 of the program (contract "분야·성격 태그와 아이콘"). */
+    val fieldTags: List<TagLabel> = emptyList(), val traitTags: List<TagLabel> = emptyList(),
     /** The program logo URL for the card's 44dp logo slot, or null for the initial avatar (contract "프로그램 로고"). */
     val logoUrl: String? = null,
 )

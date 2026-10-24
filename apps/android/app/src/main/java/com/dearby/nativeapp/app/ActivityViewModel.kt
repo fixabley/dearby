@@ -26,6 +26,8 @@ import com.dearby.nativeapp.widgets.activity.progress.StatusOption
 import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
 import com.dearby.nativeapp.pages.activity.ScheduleItemState
 import com.dearby.nativeapp.entities.activity.model.Stage
+import com.dearby.nativeapp.entities.activity.model.Tag
+import com.dearby.nativeapp.shared.ui.TagLabel
 import com.dearby.nativeapp.entities.account.api.AccountError
 import com.dearby.nativeapp.entities.account.api.AccountException
 import com.dearby.nativeapp.entities.account.model.AccountSession
@@ -168,7 +170,7 @@ class ActivityViewModel(
     }
     /** Programs with one open activity, or whose activity name matched the search, start expanded (contract rule; only while the switch is on). */
     private fun show(page: ProgramPage, append: Boolean) {
-        val programs = page.items.map { ProgramState(it.id, it.name, it.organization, it.openActivityCount, instant(it.nearestRecruitmentEndAt), it.matchedActivityIds.isNotEmpty(), instant(it.latestActivityAt), tags = it.tags.map { tag -> tag.name }, upcomingCount = it.upcomingActivityCount, nearestStart = instant(it.nearestRecruitmentStartAt), logoUrl = it.logoUrl) }
+        val programs = page.items.map { ProgramState(it.id, it.name, it.organization, it.openActivityCount, instant(it.nearestRecruitmentEndAt), it.matchedActivityIds.isNotEmpty(), instant(it.latestActivityAt), fieldTags = it.fieldTags.labels(), traitTags = it.traitTags.labels(), upcomingCount = it.upcomingActivityCount, nearestStart = instant(it.nearestRecruitmentStartAt), logoUrl = it.logoUrl) }
         val opening = if (state.value.openOnly) programs.filter { it.openCount == 1 || it.matched }.map { it.id } else emptyList()
         mutable.update { state ->
             state.copy(phase = ActivityListPhase.LOADED, programs = (if (append) state.programs else emptyList()) + programs,
@@ -390,6 +392,8 @@ private fun ActivityModel.draft(stage: Stage): CalendarDraft? {
     return CalendarDraft("$name · ${if (stage.kind == "APPLICATION") "모집 마감" else stage.name}", start.toEpochMilli(), (stage.eventEnd ?: start).toEpochMilli(), stage.allDay, stage.recurrence)
 }
 
+private fun List<Tag>.labels() = map { TagLabel(it.name, it.nameEn) }
+
 private fun ActivityModel.toState(now: Instant) = ActivityState(
     // The activity period by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.
     id, name, description, organization, program, statusLabel(now), activitySchedule?.scheduleText()?.ifBlank { null } ?: dateLabel, venue, safeHttpsUrl(imageUrl),
@@ -398,7 +402,7 @@ private fun ActivityModel.toState(now: Instant) = ActivityState(
     eligibility = eligibility?.lines() ?: emptyList(),
     category = category?.label, categoryOrder = category?.ordinal ?: Int.MAX_VALUE,
     sortKey = sortKey,
-    tags = tags.map { it.name },
+    fieldTags = fieldTags.labels(), fieldTagsAll = fieldTagsAll.labels(), traitTags = traitTags.labels(),
     place = place,
     applicationUrl = safeHttpsUrl(applicationUrl),
     overlapCheckable = schedules.isNotEmpty(),
