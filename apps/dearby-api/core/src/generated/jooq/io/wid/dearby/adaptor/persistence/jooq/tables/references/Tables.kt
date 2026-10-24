@@ -8,6 +8,7 @@ package io.wid.dearby.adaptor.persistence.jooq.tables.references
 import io.wid.dearby.adaptor.persistence.jooq.tables.Activities
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEligibilityTerms
+import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEmbeddings
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityParticipations
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags
@@ -20,7 +21,9 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionRuns
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue
 import io.wid.dearby.adaptor.persistence.jooq.tables.DismissedActivitySources
+import io.wid.dearby.adaptor.persistence.jooq.tables.EmbeddingSettings
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestCards
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestHandoffs
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestSessions
@@ -38,6 +41,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions
 import io.wid.dearby.adaptor.persistence.jooq.tables.Profiles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCollectionSettings
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCovers
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramLogos
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaffRoles
@@ -45,10 +49,12 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationPreferences
+import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.Roles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleStatuses
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules
+import io.wid.dearby.adaptor.persistence.jooq.tables.TagEmbeddings
 import io.wid.dearby.adaptor.persistence.jooq.tables.Tags
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivityScheduleStatuses
@@ -56,7 +62,9 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.UserConsents
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserOrgAffinity
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserTaste
 import io.wid.dearby.adaptor.persistence.jooq.tables.Users
 import io.wid.dearby.adaptor.persistence.jooq.tables.WebauthnChallenges
 
@@ -76,6 +84,11 @@ val ACTIVITY_CONTACTS: ActivityContacts = ActivityContacts.ACTIVITY_CONTACTS
  * The table <code>public.activity_eligibility_terms</code>.
  */
 val ACTIVITY_ELIGIBILITY_TERMS: ActivityEligibilityTerms = ActivityEligibilityTerms.ACTIVITY_ELIGIBILITY_TERMS
+
+/**
+ * The table <code>public.activity_embeddings</code>.
+ */
+val ACTIVITY_EMBEDDINGS: ActivityEmbeddings = ActivityEmbeddings.ACTIVITY_EMBEDDINGS
 
 /**
  * The table <code>public.activity_participations</code>.
@@ -138,9 +151,19 @@ val COLLECTION_WATCHLIST: CollectionWatchlist = CollectionWatchlist.COLLECTION_W
 val CONTACTS: Contacts = Contacts.CONTACTS
 
 /**
+ * The table <code>public.discovery_queue</code>.
+ */
+val DISCOVERY_QUEUE: DiscoveryQueue = DiscoveryQueue.DISCOVERY_QUEUE
+
+/**
  * The table <code>public.dismissed_activity_sources</code>.
  */
 val DISMISSED_ACTIVITY_SOURCES: DismissedActivitySources = DismissedActivitySources.DISMISSED_ACTIVITY_SOURCES
+
+/**
+ * The table <code>public.embedding_settings</code>.
+ */
+val EMBEDDING_SETTINGS: EmbeddingSettings = EmbeddingSettings.EMBEDDING_SETTINGS
 
 /**
  * The table <code>public.guest_cards</code>.
@@ -228,6 +251,11 @@ val PROGRAM_COLLECTION_SETTINGS: ProgramCollectionSettings = ProgramCollectionSe
 val PROGRAM_CONTACTS: ProgramContacts = ProgramContacts.PROGRAM_CONTACTS
 
 /**
+ * The table <code>public.program_covers</code>.
+ */
+val PROGRAM_COVERS: ProgramCovers = ProgramCovers.PROGRAM_COVERS
+
+/**
  * The table <code>public.program_logos</code>.
  */
 val PROGRAM_LOGOS: ProgramLogos = ProgramLogos.PROGRAM_LOGOS
@@ -263,6 +291,11 @@ val RECEIPTS: Receipts = Receipts.RECEIPTS
 val RECOMMENDATION_PREFERENCES: RecommendationPreferences = RecommendationPreferences.RECOMMENDATION_PREFERENCES
 
 /**
+ * The table <code>public.recommendation_signals</code>.
+ */
+val RECOMMENDATION_SIGNALS: RecommendationSignals = RecommendationSignals.RECOMMENDATION_SIGNALS
+
+/**
  * The table <code>public.refresh_tokens</code>.
  */
 val REFRESH_TOKENS: RefreshTokens = RefreshTokens.REFRESH_TOKENS
@@ -281,6 +314,11 @@ val SCHEDULE_STATUSES: ScheduleStatuses = ScheduleStatuses.SCHEDULE_STATUSES
  * The table <code>public.schedules</code>.
  */
 val SCHEDULES: Schedules = Schedules.SCHEDULES
+
+/**
+ * The table <code>public.tag_embeddings</code>.
+ */
+val TAG_EMBEDDINGS: TagEmbeddings = TagEmbeddings.TAG_EMBEDDINGS
 
 /**
  * The table <code>public.tags</code>.
@@ -318,9 +356,19 @@ val USER_ENTITIES: UserEntities = UserEntities.USER_ENTITIES
 val USER_IDENTITIES: UserIdentities = UserIdentities.USER_IDENTITIES
 
 /**
+ * The table <code>public.user_org_affinity</code>.
+ */
+val USER_ORG_AFFINITY: UserOrgAffinity = UserOrgAffinity.USER_ORG_AFFINITY
+
+/**
  * The table <code>public.user_roles</code>.
  */
 val USER_ROLES: UserRoles = UserRoles.USER_ROLES
+
+/**
+ * The table <code>public.user_taste</code>.
+ */
+val USER_TASTE: UserTaste = UserTaste.USER_TASTE
 
 /**
  * The table <code>public.users</code>.

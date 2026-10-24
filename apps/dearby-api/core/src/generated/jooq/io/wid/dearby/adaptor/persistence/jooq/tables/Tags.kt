@@ -7,12 +7,16 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_TAGS__ACTIVITY_TAGS_TAG_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_TAGS__PROGRAM_TAGS_TAG_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.RECOMMENDATION_SIGNALS__RECOMMENDATION_SIGNALS_TAG_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.TAGS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.TAGS__TAGS_PARENT_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.TAG_EMBEDDINGS__TAG_EMBEDDINGS_TAG_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.Activities.ActivitiesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags.ActivityTagsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramTags.ProgramTagsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs.ProgramsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals.RecommendationSignalsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.TagEmbeddings.TagEmbeddingsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.TagsRecord
 
 import java.time.OffsetDateTime
@@ -190,6 +194,38 @@ open class Tags(
 
     val programTags: ProgramTagsPath
         get(): ProgramTagsPath = programTags()
+
+    private lateinit var _recommendationSignals: RecommendationSignalsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.recommendation_signals</code> table
+     */
+    fun recommendationSignals(): RecommendationSignalsPath {
+        if (!this::_recommendationSignals.isInitialized)
+            _recommendationSignals = RecommendationSignalsPath(this, null, RECOMMENDATION_SIGNALS__RECOMMENDATION_SIGNALS_TAG_ID_FKEY.inverseKey)
+
+        return _recommendationSignals;
+    }
+
+    val recommendationSignals: RecommendationSignalsPath
+        get(): RecommendationSignalsPath = recommendationSignals()
+
+    private lateinit var _tagEmbeddings: TagEmbeddingsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.tag_embeddings</code> table
+     */
+    fun tagEmbeddings(): TagEmbeddingsPath {
+        if (!this::_tagEmbeddings.isInitialized)
+            _tagEmbeddings = TagEmbeddingsPath(this, null, TAG_EMBEDDINGS__TAG_EMBEDDINGS_TAG_ID_FKEY.inverseKey)
+
+        return _tagEmbeddings;
+    }
+
+    val tagEmbeddings: TagEmbeddingsPath
+        get(): TagEmbeddingsPath = tagEmbeddings()
 
     /**
      * Get the implicit many-to-many join path to the

@@ -28,8 +28,13 @@ data class ExtractedActivity(
     val tags: List<String> = emptyList(), // 성격 사전에서 고른 태그 이름(native-v1.md "태그"). 사전 밖 이름은 저장할 때 버린다
     val fieldTags: List<ExtractedFieldTag> = emptyList(), // 분야 사전에서 고른 태그와 연관도(native-v1.md "분야·성격 태그와 아이콘")
     val activityRecurrence: ExtractedRecurrence? = null, // 활동 기간의 규칙적인 시간표(예: 평일 09:00~17:00). startDate부터
+    val hook: String? = null, // 대기열 한 줄 소개(native-v1.md "맞춤 대기열"). 공개 설명으로 30자 안팎
+    val highlights: List<ExtractedHighlight> = emptyList(), // 대기열 핵심 줄 최대 3개
     val place: ExtractedPlace? = null, // 한 곳을 가리키는 장소(native-v1.md "수집기 장소"). 지역만·여러 곳이면 null
 )
+
+// 핵심 줄: icon은 cost·period·team·mentor·award·place·talk·ticket 중 하나
+data class ExtractedHighlight(val icon: String?, val text: String?)
 
 // 분야 태그 이름과 그 활동과의 연관도(0~100)
 data class ExtractedFieldTag(val name: String, val relevance: Int? = null)

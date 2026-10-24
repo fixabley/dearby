@@ -29,6 +29,8 @@ object CuratedFields {
     const val COST = "cost"
     const val CATEGORY = "category" // 활동 종류(native-v1.md "활동 종류", 2026-10-19)
     const val TAGS = "tags" // 태그(native-v1.md "태그", 2026-10-19). activity_tags 연결을 운영자가 정했음
+    const val HOOK = "hook" // 대기열 한 줄 소개·핵심 줄(native-v1.md "맞춤 대기열", 2026-10-24)
+    const val HIGHLIGHTS = "highlights"
     const val PLACE = "place" // 활동 장소(native-v1.md "활동 장소", 2026-10-19). 활동 기간(slot ACTIVITY) 행의 address_line1/2·lat·lng
 
     fun read(value: JSONB?): Set<String> = FieldNames.read(value)

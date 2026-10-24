@@ -95,6 +95,11 @@ open class ProgramLogos(
      */
     val UPDATED_AT: TableField<ProgramLogosRecord, OffsetDateTime?> = createField(DSL.name("updated_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "")
 
+    /**
+     * The column <code>public.program_logos.brand_color</code>.
+     */
+    val BRAND_COLOR: TableField<ProgramLogosRecord, String?> = createField(DSL.name("brand_color"), SQLDataType.VARCHAR(7), this, "")
+
     private constructor(alias: Name, aliased: Table<ProgramLogosRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ProgramLogosRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ProgramLogosRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)

@@ -68,7 +68,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals("https://letswift.kr/2026/", item["officialUrl"].asString())
         assertEquals("https://ticketa.co/e/vdb8aajs/l/website", item["applicationUrl"].asString()) // V5 application_url
         // 관리자만 보는 정보는 내보내지 않는다
-        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "applicationUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags", "fieldTags", "fieldTagsAll", "traitTags", "location", "place"), item.propertyNames().toSet())
+        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "applicationUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags", "fieldTags", "fieldTagsAll", "traitTags", "location", "place", "cost", "hook", "highlights"), item.propertyNames().toSet())
         // 시각은 일정의 시간대로 표기한다(같은 순간)
         assertEquals("2026-10-08T00:00:00+09:00", item["application"]["endAt"].asString())
         assertEquals("2026-10-08", item["activitySchedule"]["dateLabel"].asString())
@@ -495,6 +495,34 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         }
     }
 
+    // 대기열 커버(native-v1.md "맞춤 대기열"): 켜진 커버만 coverUrl과 공개 이미지(로고와 같은 캐시), 끄면 null·404
+    @Test
+    fun `프로그램 커버가 켜져 있으면 묶음에 coverUrl이 오고, 끄면 null이고 공개 경로는 404`() {
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        fun summary(): JsonNode = json.readTree(mvc.get("/v1/discovery/programs?openOnly=false&q=swift").andExpect { status { isOk() } }.andReturn().response.contentAsString)["items"].single()
+        assertEquals(true, summary()["coverUrl"].isNull)
+        assertEquals(true, summary()["brandColor"].isNull)
+        // 로고 대표색(커버가 없을 때 그라데이션): 저장된 brand_color를 계승 로고와 함께 준다
+        jdbc.sql("insert into program_logos (program_id, content_type, data, updated_at, brand_color) values (?, 'image/png', ?, now(), '#3366CC')").param(programId).param(byteArrayOf(1)).update()
+        assertEquals("#3366CC", summary()["brandColor"].asString())
+        jdbc.sql("delete from program_logos where program_id = ?").param(programId).update()
+        jdbc.sql("insert into program_covers (program_id, content_type, data, enabled, updated_at) values (?, 'image/webp', ?, true, timestamptz '2026-10-24T00:00:00Z')")
+            .param(programId).param(byteArrayOf(5, 6)).update()
+        try {
+            val v = java.time.Instant.parse("2026-10-24T00:00:00Z").epochSecond
+            assertEquals("/v1/programs/$programId/cover?v=$v", summary()["coverUrl"].asString())
+            val response = mvc.get("/v1/programs/$programId/cover?v=$v").andExpect { status { isOk() } }.andReturn().response
+            assertEquals("image/webp", response.contentType)
+            assertEquals("public, max-age=31536000, immutable", response.getHeader(HttpHeaders.CACHE_CONTROL))
+            assertEquals(listOf<Byte>(5, 6), response.contentAsByteArray.toList())
+            jdbc.sql("update program_covers set enabled = false where program_id = ?").param(programId).update()
+            assertEquals(true, summary()["coverUrl"].isNull)
+            mvc.get("/v1/programs/$programId/cover?v=$v").andExpect { status { isNotFound() } }
+        } finally {
+            jdbc.sql("delete from program_covers where program_id = ?").param(programId).update()
+        }
+    }
+
     // 로고 계승(native-v1.md "조직 로고와 로고 계승"): 프로그램 로고 → 조직 → 상위 조직 순으로 처음 있는 것, 조직 로고 공개 GET은 인증 없이 영구 캐시
     @Test
     fun `프로그램 로고가 없으면 조직, 그다음 상위 조직 로고를 계승하고 프로그램 로고가 있으면 그것을 쓴다`() {
@@ -654,7 +682,10 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         // total은 프로그램당 2개로 자르기 전 후보 수(weak 포함)
         assertTrue(anonymousPage["total"].asInt() >= 3)
         assertEquals(listOf(exact, young), ids(anonymous))
-        assertEquals(setOf("activity", "program", "reasons"), anonymous[0].propertyNames().toSet())
+        assertEquals(setOf("activity", "program", "reasons", "scenes"), anonymous[0].propertyNames().toSet())
+        // 비로그인 대기열 화면용 장면: 한 줄 소개(없으면 이름)로 시작해 마감으로 끝난다
+        assertEquals(listOf("HOOK", "DEADLINE"), anonymous[0]["scenes"].toList().map { it["type"].asString() })
+        assertEquals("마감까지", anonymous[0]["scenes"][1]["label"].asString())
         assertEquals("Let’Swift", anonymous[0]["program"]["name"].asString())
         assertEquals("추천 하위 B", reasons(anonymous, exact).first())
         assertTrue(reasons(anonymous, exact).last().endsWith("일 마감"))
@@ -711,4 +742,110 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         jdbc.sql("update activities set publication_status = 'DRAFT' where id in (?, ?, ?, ?)").params(young, exact, weak, student).update()
         jdbc.sql("delete from tags where id in (?, ?, ?, ?)").params(childA, childB, parent, trait).update()
     }
+
+    // native-v1.md "맞춤 대기열(스토리형 쇼츠)·조직 친화도·활동 벡터": 장면, 프로그램당 2개, 신호(관심·숨김·관심 없음·되돌리기), 취향 이유, 더 받기, 내 활동 제외
+    @Test
+    fun `맞춤 대기열은 장면을 만들고 신호로 다시 만들며 숨김·관심 없음·내 활동을 빼고 관심 표시와 비슷한 활동을 알린다`() {
+        mvc.get("/v1/me/discovery-queue").andExpect { status { isUnauthorized() } }
+        val user = UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
+        fun MockHttpServletRequestDsl.asUser() = with(jwt().jwt { it.subject(user.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER")))
+        fun body(result: org.springframework.test.web.servlet.ResultActionsDsl): JsonNode = json.readTree(result.andReturn().response.contentAsString)
+        fun queue(): JsonNode = body(mvc.get("/v1/me/discovery-queue") { asUser() }.andExpect { status { isOk() } })
+        fun signal(content: String) = mvc.post("/v1/me/recommendation-signals") { asUser(); contentType = MediaType.APPLICATION_JSON; this.content = content }
+        fun ids(page: JsonNode) = page["items"].toList().map { it["activity"]["id"].asLong() }
+        fun item(page: JsonNode, id: Long) = page["items"].toList().single { it["activity"]["id"].asLong() == id }
+
+        // 두 번째 프로그램(조직도 다르다)
+        val organization = jdbc.sql("insert into organizations (name, created_at, updated_at) values ('대기열 확인 조직', localtimestamp, localtimestamp) returning id").query(Long::class.java).single()
+        fun program(name: String) = jdbc.sql("insert into programs (organization_id, name, created_at, updated_at) values (?, ?, localtimestamp, localtimestamp) returning id").params(organization, name).query(Long::class.java).single()
+        val likedProgram = program("대기열 확인 프로그램 A")
+        val otherProgram = program("대기열 확인 프로그램 B")
+        fun open(name: String, vector: Map<Int, Double>, programId: Long): Long = createActivity(name).also { id ->
+            jdbc.sql("update activities set program_id = ? where id = ?").params(programId, id).update()
+            jdbc.sql(
+                """
+                insert into schedules (activity_id, slot, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+                values (?, 'APPLICATION', '신청 기간', 'DEADLINE', 'CONFIRMED', 'TIMED', now() - interval '1 day', now() + interval '5 days', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp)
+                """
+            ).param(id).update()
+            val text = (0 until 1024).joinToString(",", "[", "]") { (vector[it] ?: 0.0).toString() }
+            jdbc.sql("insert into activity_embeddings (activity_id, model, embedding, source_hash, updated_at) values (?, 'test-model', cast(? as halfvec), ?, now())").params(id, text, "h$id").update()
+        }
+        val liked = open("대기열 확인 하나", mapOf(0 to 1.0), likedProgram)
+        val similar = open("대기열 확인 둘", mapOf(0 to 0.8, 1 to 0.6), likedProgram)
+        val first = open("대기열 확인 셋", mapOf(2 to 1.0), otherProgram)
+        val second = open("대기열 확인 넷", mapOf(3 to 1.0), otherProgram)
+        val ours = listOf(liked, similar, first, second)
+        jdbc.sql("insert into embedding_settings (id, active_model, updated_at) values (true, 'test-model', now()) on conflict (id) do update set active_model = 'test-model'").update()
+        // 장면: 한 줄 소개·핵심 줄·대상(확인함)·무료·마감. 비용 문구는 공개 Activity에도 실린다
+        jdbc.sql("""update activities set hook = '하루 만에 앱 하나', highlights = '[{"icon":"team","text":"4명 한 팀"}]'::jsonb, cost = '참가비 무료', audience = '대학생 누구나', eligibility_checked = true where id = ?""").param(liked).update()
+        try {
+            val initial = queue()
+            assertEquals(java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).toString(), initial["date"].asString())
+            assertEquals(0, initial["seen"].asInt())
+            assertTrue(ids(initial).containsAll(ours), initial["items"].toList().joinToString { it["activity"]["name"].asString() + "/" + it["program"]["id"].asString() })
+            assertEquals(setOf("activity", "program", "reasons", "scenes", "mySignal"), initial["items"][0].propertyNames().toSet())
+            val scenes = item(initial, liked)["scenes"].toList()
+            assertEquals(listOf("HOOK", "HIGHLIGHTS", "ELIGIBILITY", "BENEFIT", "DEADLINE"), scenes.map { it["type"].asString() })
+            assertEquals("하루 만에 앱 하나|대기열 확인 하나", scenes[0]["hook"].asString() + "|" + scenes[0]["name"].asString())
+            assertEquals("""[{"icon":"team","text":"4명 한 팀"}]""", scenes[1]["items"].toString())
+            assertEquals(listOf("대학생 누구나", "참가비 무료"), listOf(scenes[2]["text"].asString(), scenes[3]["text"].asString()))
+            assertEquals(listOf("5", "마감까지"), listOf(scenes[4]["dday"].asString(), scenes[4]["label"].asString()))
+            assertEquals("참가비 무료", item(initial, liked)["activity"]["cost"].asString())
+            // 핵심 줄이 없고 대체할 줄이 두 줄이 안 되면 장면 ②를 뺀다(한 줄 소개는 이름)
+            assertEquals(listOf("HOOK", "DEADLINE"), item(initial, second)["scenes"].toList().map { it["type"].asString() })
+            assertEquals("대기열 확인 넷", item(initial, second)["scenes"][0]["hook"].asString())
+            assertTrue(item(initial, liked)["mySignal"].isNull)
+
+            // 신호 검사: 서버 전용 종류·모르는 종류는 400, 분야 덜 보기는 분야 태그가 필요, 없는 활동은 404
+            signal("""{"activityId":$liked,"kind":"REMOVE"}""").andExpect { status { isBadRequest() } }
+            signal("""{"activityId":$liked,"kind":"NOPE"}""").andExpect { status { isBadRequest() } }
+            signal("""{"activityId":$liked,"kind":"LESS_FIELD"}""").andExpect { status { isBadRequest() } }
+            signal("""{"activityId":-1,"kind":"LIKE"}""").andExpect { status { isNotFound() } }
+
+            // 관심 있어요: 반응한 카드는 앞자리에 남고(seen), 비슷한 활동에 이유가 붙는다
+            signal("""{"activityId":$liked,"kind":"LIKE"}""").andExpect { status { isNoContent() } }
+            signal("""{"activityId":$liked,"kind":"LIKE"}""").andExpect { status { isNoContent() } } // 같은 신호는 한 행
+            assertEquals(1, jdbc.sql("select count(*) from recommendation_signals where user_id = ?").param(user).query(Int::class.java).single())
+            val afterLike = queue()
+            assertEquals(liked, ids(afterLike).first())
+            assertEquals(1, afterLike["seen"].asInt())
+            assertEquals("LIKE", item(afterLike, liked)["mySignal"].asString())
+            assertTrue("관심 표시한 대기열 확인 하나와 비슷해요" in item(afterLike, similar)["reasons"].toList().map { it.asString() })
+            assertTrue(jdbc.sql("select count(*) from user_taste where user_id = ? and model = 'test-model'").param(user).query(Int::class.java).single() == 1)
+            assertTrue(jdbc.sql("select score from user_org_affinity where user_id = ?").param(user).query(Double::class.java).list().single()!! > 0)
+
+            // 관심 없어요는 빼고, 관심 취소는 표시만 지운다
+            signal("""{"activityId":$first,"kind":"DISMISS"}""").andExpect { status { isNoContent() } }
+            assertTrue(first !in ids(queue()))
+            signal("""{"activityId":$liked,"kind":"UNLIKE"}""").andExpect { status { isNoContent() } }
+            assertTrue(queue()["items"].toList().none { it["mySignal"].asString("") == "LIKE" })
+            // 프로그램 숨기기는 그 프로그램을 모두 빼고, 되돌리면 돌아온다(관심 없어요 한 활동은 그대로 빠짐)
+            signal("""{"activityId":$second,"kind":"HIDE_PROGRAM"}""").andExpect { status { isNoContent() } }
+            assertTrue(queue()["items"].toList().none { it["program"]["id"].asLong() == otherProgram })
+            // 숨긴 활동이 마감돼도 프로그램은 계속 숨는다
+            val third = open("대기열 확인 다섯", mapOf(4 to 1.0), otherProgram)
+            jdbc.sql("update schedules set end_at = now() - interval '1 hour' where activity_id = ? and slot = 'APPLICATION'").param(second).update()
+            assertTrue(third !in ids(queue()))
+            jdbc.sql("update schedules set end_at = now() + interval '5 days' where activity_id = ? and slot = 'APPLICATION'").param(second).update()
+            jdbc.sql("update activities set publication_status = 'DRAFT' where id = ?").param(third).update()
+            mvc.delete("/v1/me/recommendation-signals?activityId=$second&kind=HIDE_PROGRAM") { asUser() }.andExpect { status { isNoContent() } }
+            assertEquals(listOf(second), ids(queue()).filter { it == first || it == second })
+
+            // 더 받기: 오늘 받은 활동을 빼고 뒤에 붙인다(겹치지 않는다)
+            val refilled = body(mvc.post("/v1/me/discovery-queue/refill") { asUser() }.andExpect { status { isOk() } })
+            assertEquals(ids(refilled).size, ids(refilled).toSet().size)
+
+            // 내 활동에 넣으면 빠지고, 내 활동에서 지우면 REMOVE 신호가 남는다
+            mvc.put("/v1/me/activities/$similar") { asUser() }.andExpect { status { isOk() } }
+            assertTrue(similar !in ids(queue()))
+            mvc.delete("/v1/me/activities/$similar") { asUser() }.andExpect { status { isNoContent() } }
+            assertEquals(1, jdbc.sql("select count(*) from recommendation_signals where user_id = ? and activity_id = ? and kind = 'REMOVE'").params(user, similar).query(Int::class.java).single())
+        } finally {
+            jdbc.sql("update activities set publication_status = 'DRAFT' where id in (${ours.joinToString(",")})").update()
+            jdbc.sql("delete from embedding_settings").update()
+            jdbc.sql("delete from activity_embeddings where model = 'test-model'").update()
+        }
+    }
+
 }
