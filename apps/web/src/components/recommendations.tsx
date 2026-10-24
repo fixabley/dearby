@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { type Recommendation, recommendationListSchema } from "@/lib/models";
+import type { Recommendation } from "@/lib/models";
 import { RequestError, errorMessage, request } from "@/lib/client";
 import { type RecommendationPreferences, isEmpty, recommendationsPath } from "@/lib/recommendation";
 import { Button } from "@/shared/ui/button";
@@ -31,8 +31,8 @@ export function RecommendationSection({
   useEffect(() => {
     if (skipped) return;
     const controller = new AbortController();
-    request<unknown>(path, { signal: controller.signal })
-      .then((json) => setItems(recommendationListSchema.parse(json).items))
+    request<{ items: Recommendation[] }>(path, { signal: controller.signal })
+      .then((json) => setItems(json.items))
       .catch((error) => {
         if (controller.signal.aborted) return;
         // Until the API ships the route it answers 401 (unknown paths need a token) or 404: hide the section.

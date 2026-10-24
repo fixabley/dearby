@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { type Recommendation, type Tag, recommendationListSchema, tagListSchema } from "@/lib/models";
+import type { Recommendation, Tag } from "@/lib/models";
 import { request } from "@/lib/client";
 import {
   type RecommendationPreferences,
@@ -57,8 +57,8 @@ export function RecommendationFunnel({
   const heading = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
     const controller = new AbortController();
-    request<unknown>("/tags", { signal: controller.signal })
-      .then((json) => setTags(tagListSchema.parse(json).items))
+    request<{ items: Tag[] }>("/tags", { signal: controller.signal })
+      .then((json) => setTags(json.items))
       // Without the dictionary the 분야·성격 questions are left out; the funnel still works.
       .catch(() => !controller.signal.aborted && setTags([]));
     return () => controller.abort();
@@ -66,8 +66,8 @@ export function RecommendationFunnel({
   useEffect(() => {
     if (step !== "result") return;
     const controller = new AbortController();
-    request<unknown>(recommendationsPath(picks, 100), { signal: controller.signal })
-      .then((json) => setResult(recommendationListSchema.parse(json).items))
+    request<{ items: Recommendation[] }>(recommendationsPath(picks, 100), { signal: controller.signal })
+      .then((json) => setResult(json.items))
       .catch(() => !controller.signal.aborted && setResult("failed"));
     return () => controller.abort();
   }, [step, picks]);
