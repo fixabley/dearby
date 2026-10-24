@@ -236,9 +236,9 @@ function Pager({
     element.scrollTo({ top: Math.max(0, target) * element.clientHeight, behavior: reduce ? "auto" : "smooth" });
   }
   function stepScene(delta: 1 | -1) {
-    if (!current) return;
-    if (scene + delta >= scenes.length) goTo(index + 1);
-    else setSceneOf({ id: current.activity.id, scene: Math.max(0, scene + delta) });
+    // The last scene stays (all segments full) until the viewer moves on with a swipe, ↓ or 다음.
+    if (!current || scene + delta >= scenes.length) return;
+    setSceneOf({ id: current.activity.id, scene: Math.max(0, scene + delta) });
   }
   function like(item: Recommendation, on: boolean) {
     saveSignals({ ...signals, liked: toggled(signals.liked, item.activity.id, on) });
@@ -267,7 +267,7 @@ function Pager({
     if (choice.field === "lessFields") goTo(index + 1);
   }
 
-  // Auto-advance: 4s per scene, the last scene moves to the next card. Pausing keeps the time left, like the paused bar.
+  // Auto-advance: 4s per scene, stopping on the last one. Pausing keeps the time left, like the paused bar.
   const sceneEnded = useEffectEvent(() => stepScene(1));
   useEffect(() => {
     if (paused) return;
