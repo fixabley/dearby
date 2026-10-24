@@ -187,13 +187,13 @@ struct QueueStoryCard: View {
                 }
             }
         case .eligibility(let text):
-            Rise(order: 0) { label("지원 자격") }
+            Rise(order: 0) { label("지원 대상") }
             Rise(order: 1) { Text(text).font(.dearby(.title2).weight(.bold)).lineLimit(5) }
         case .benefit(let text):
-            Rise(order: 0) { label("얻을 수 있는 것") }
+            Rise(order: 0) { label("혜택") }
             Rise(order: 1) { Text(text).font(.dearby(.title2).weight(.bold)).lineLimit(5) }
         case let .deadline(dday, deadlineText, reasons):
-            Rise(order: 0) { label("마감까지") }
+            Rise(order: 0) { label(isEvent ? "행사까지" : "마감까지") }
             Rise(order: 1) {
                 Text(dday ?? "마감일 미정").font(dday == nil ? .dearby(.largeTitle).weight(.heavy) : .system(size: 64, weight: .heavy))
             }
@@ -220,8 +220,14 @@ struct QueueStoryCard: View {
                         (activity.place?.name ?? activity.location).map { ActivityHighlight(icon: .place, text: $0) }].compactMap { $0 }
         return fallback.isEmpty ? [ActivityHighlight(icon: nil, text: activity.summary)] : fallback
     }
-    /// The last day to apply: a timed window's end, or the day before a date-only window's exclusive end.
+    /// A conference counts down to the event (`행사까지`), everything else to the application deadline (`마감까지`).
+    private var isEvent: Bool { activity.category == .conference }
+    /// The counted day: a conference's start; else the last day to apply (a timed window's end, or the day before a date-only window's
+    /// exclusive end).
     private var lastDay: (date: Date, zone: TimeZone)? {
+        if isEvent, let stage = activity.activityStage, let start = stage.start {
+            return (start, stage.allDay ? ActivityText.seoul : TimeZone(identifier: stage.timeZone) ?? ActivityText.seoul)
+        }
         guard let stage = activity.applicationStage, let end = stage.end else { return nil }
         if stage.allDay { return Self.seoul.date(byAdding: .day, value: -1, to: end).map { ($0, ActivityText.seoul) } }
         return (end, TimeZone(identifier: stage.timeZone) ?? ActivityText.seoul)
@@ -234,7 +240,8 @@ struct QueueStoryCard: View {
     }
     /// `11월 15일 (일) 마감 · 나이 19~34세`.
     private var deadlineLine: String? {
-        let deadline = lastDay.map { ActivityText.format($0.date, "M월 d일 (E)", zone: $0.zone) + " 마감" } ?? activity.recruitmentText(at: now)
+        let deadline = lastDay.map { ActivityText.format($0.date, "M월 d일 (E)", zone: $0.zone) + (isEvent ? " 행사" : " 마감") }
+            ?? activity.recruitmentText(at: now)
         let audience = activity.eligibility.map { EligibilityText.chips($0).prefix(2).joined(separator: " · ") }
         let parts = [deadline, audience].compactMap { $0 }.filter { !$0.isEmpty }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
