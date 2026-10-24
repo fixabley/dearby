@@ -6,14 +6,18 @@ import io.wid.dearby.application.catalog.CatalogWrites
 import io.wid.dearby.application.eligibility.EligibilityJson
 import io.wid.dearby.application.organization.OrganizationLogoRepository
 import io.wid.dearby.application.organization.OrganizationRepository
+import io.wid.dearby.application.program.ProgramCoverRepository
 import io.wid.dearby.application.program.ProgramLogoRepository
 import io.wid.dearby.application.program.ProgramRepository
 import io.wid.dearby.application.tag.TagRepository
 import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.Address
 import io.wid.dearby.domain.Id
+import io.wid.dearby.domain.CoverFile
 import io.wid.dearby.domain.LogoFile
 import io.wid.dearby.domain.OrganizationLogo
+import io.wid.dearby.domain.ProgramCover
+import io.wid.dearby.domain.ProgramCoverInfo
 import io.wid.dearby.domain.ProgramLogo
 import io.wid.dearby.domain.PublicationStatus
 import io.wid.dearby.domain.Tag
@@ -41,6 +45,7 @@ class CurationImportService(
     private val tags: TagRepository,
     private val programLogos: ProgramLogoRepository,
     private val organizationLogos: OrganizationLogoRepository,
+    private val programCovers: ProgramCoverRepository,
     private val transactions: TransactionTemplate,
     private val catalog: CatalogWrites,
     private val json: JsonMapper,
@@ -62,6 +67,7 @@ class CurationImportService(
         root.path("programs").forEach { item -> lines += item(apply) { program(item, apply) } }
         root.path("organizationLogos").forEach { item -> lines += item(apply) { organizationLogo(item, base, orgKeys, apply) } }
         root.path("programLogos").forEach { item -> lines += item(apply) { programLogo(item, base, programKeys, apply) } }
+        root.path("programCovers").forEach { item -> lines += item(apply) { programCover(item, base, programKeys, apply) } }
         return lines
     }
 
@@ -227,6 +233,20 @@ class CurationImportService(
         return listOf(Line(target, LOGO, SET, "$type ${data.size} bytes"))
     }
 
+    // 대기열 커버(admin-v1.md "프로그램 커버"): 어드민 올리기와 같은 검사(PNG·JPEG·WebP 350KB 이하), 출처 페이지·원본 이미지 주소를 함께 남기고 켠 상태로 둔다
+    private fun programCover(item: JsonNode, base: Path, programKeys: Map<String, Id>, apply: Boolean): List<Line> {
+        val id = reference(item, "programId", "programKey", programKeys) ?: return listOf(Line("program -", COVER, SKIP, "프로그램 없음"))
+        val target = "program $id"
+        if (id == PENDING) return listOf(Line("program ${item.path("programKey").asString("")}", COVER, SET, "새 프로그램에 올림"))
+        if (programs.findAllById(listOf(id)).isEmpty()) return listOf(Line(target, COVER, SKIP, "프로그램 없음"))
+        if (programCovers.find(id) != null && !item.path("overwrite").asBoolean(false)) return listOf(Line(target, COVER, SKIP, "이미 있음"))
+        val (type, data) = imageFile(base, item.path("file").asString(), CoverFile::contentType)
+        val source = { field: String -> item.path(field).asString("").trim().ifEmpty { null }?.also { require(it.startsWith("https://")) { "${field}는 https 주소여야 합니다" } } }
+        val info = ProgramCoverInfo(id, source("sourcePage"), source("sourceImage"), enabled = true, updatedAt = OffsetDateTime.now(ZoneOffset.UTC))
+        if (apply) programCovers.save(ProgramCover(info, type, data))
+        return listOf(Line(target, COVER, SET, "$type ${data.size} bytes"))
+    }
+
     // 사전 이름(한글·영문, 띄어쓰기·대소문자 무시)으로 찾는다. 없는 이름은 tagNameEn에 영문이 있을 때만 새 태그 후보(id 0)가 되고, 실제로 쓸 때 만든다.
     // 순서는 보낸 순서(프로그램 태그의 position, native-v1.md "분야·성격 태그와 아이콘")
     private fun resolveTags(names: JsonNode, english: JsonNode): Pair<List<Tag>, List<String>> {
@@ -269,8 +289,10 @@ class CurationImportService(
         return Address(node.path("lat").asDouble(), node.path("lng").asDouble(), name, address)
     }
 
-    // 확장자로 형식을 정하고 어드민 올리기와 같은 검사(PNG·JPEG·WebP 1MB 이하)를 거친다
-    private fun logoFile(base: Path, file: String): Pair<String, ByteArray> {
+    // 확장자로 형식을 정하고 어드민 올리기와 같은 검사(로고 PNG·JPEG·WebP 1MB 이하, 커버 350KB 이하)를 거친다
+    private fun logoFile(base: Path, file: String) = imageFile(base, file, LogoFile::contentType)
+
+    private fun imageFile(base: Path, file: String, check: (String?, ByteArray) -> String): Pair<String, ByteArray> {
         val path = base.resolve(file).normalize()
         val data = Files.readAllBytes(path)
         val type = when (path.fileName.toString().substringAfterLast('.').lowercase()) {
@@ -279,7 +301,7 @@ class CurationImportService(
             "webp" -> "image/webp"
             else -> null
         }
-        return LogoFile.contentType(type, data) to data
+        return check(type, data) to data
     }
 
     private companion object {
@@ -290,6 +312,7 @@ class CurationImportService(
         const val TAGS = "tags"
         const val PLACE = "place"
         const val LOGO = "logo"
+        const val COVER = "cover"
         const val PUBLISH = "publish"
         const val DISMISS = "dismiss"
         const val CREATED = "created"

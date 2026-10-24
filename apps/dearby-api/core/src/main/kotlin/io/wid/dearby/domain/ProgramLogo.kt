@@ -35,3 +35,23 @@ object LogoFile {
 data class EffectiveLogo(val url: String, val source: LogoSource, val organizationId: Id?, val organizationName: String?)
 
 enum class LogoSource { PROGRAM, ORGANIZATION }
+
+// 프로그램 커버(native-v1.md "맞춤 대기열" 커버 이미지, admin-v1.md "프로그램 커버"). 로고처럼 DB에 두고 enabled=false면 공개하지 않는다
+data class ProgramCover(val info: ProgramCoverInfo, val contentType: String, val data: ByteArray)
+
+// 이미지 바이트 없는 정보(목록·어드민 표시용)
+data class ProgramCoverInfo(val programId: Id, val sourcePage: String?, val sourceImage: String?, val enabled: Boolean, val updatedAt: OffsetDateTime) {
+    val url: String get() = "/v1/programs/$programId/cover?v=${updatedAt.toEpochSecond()}"
+}
+
+// 올릴 수 있는 커버: 로고와 같은 형식 검사, 350KB 이하. 세로 4:5·1080×1350은 권장(서버가 픽셀을 읽지 않는다)
+object CoverFile {
+    private val TYPES = setOf("image/png", "image/jpeg", "image/webp")
+    private const val MAX_BYTES = 350 * 1024
+
+    fun contentType(contentType: String?, data: ByteArray): String {
+        val type = contentType?.substringBefore(';')?.trim()?.lowercase()
+        if (type == null || type !in TYPES || data.isEmpty() || data.size > MAX_BYTES) throw InvalidInputException("커버는 PNG·JPEG·WebP 350KB 이하여야 합니다")
+        return type
+    }
+}

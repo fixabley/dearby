@@ -118,6 +118,8 @@ class CollectionJobTest(
                 "applicationUrl" to "https://letswift.kr/2026/apply", "recruitmentStartAt" to "2026-11-01T10:00:00+09:00",
                 "recruitmentEndAt" to "2026-11-10T23:59:00+09:00", "dateLabel" to "2026-11-29", "startDate" to "2026-11-29", "endDate" to "2026-11-29", "schedules" to extractedSchedules,
                 "location" to null, "cost" to null, "audience" to extractedAudience, "evidenceQuote" to "참가 신청은 11월 1일부터 11월 10일까지입니다", "category" to extractedCategory, "tags" to extractedTags, "fieldTags" to extractedFieldTags,
+                // 대기열 장면 글: 모르는 icon·너무 긴 글은 그 항목만 버린다
+                "hook" to "Swift 개발자가 한자리에", "highlights" to listOf(mapOf("icon" to "talk", "text" to "세션 20개"), mapOf("icon" to "rocket", "text" to "모르는 아이콘"), mapOf("icon" to "ticket", "text" to "가".repeat(41))),
             ),
             mapOf(
                 "roundKey" to "2026-가짜", "name" to "원문에 없는 활동", "nameEn" to null, "description" to "", "descriptionEn" to null, "participationType" to null,
@@ -255,6 +257,10 @@ class CollectionJobTest(
         // 실제로 받은 페이지만 fetched_urls에 남는다(404였던 탐색 주소는 빠진다). 활동 종류는 모델이 뽑은 값 그대로 초안에
         assertEquals("https://letswift.kr/2026/", jdbc.sql("select array_to_string(fetched_urls, ',') from collection_runs").query(String::class.java).single())
         assertEquals(listOf("CONFERENCE"), jdbc.sql("select category from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
+        assertEquals(
+            listOf("""Swift 개발자가 한자리에|[{"icon": "talk", "text": "세션 20개"}]"""),
+            jdbc.sql("select hook || '|' || highlights::text from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list(),
+        )
         // 태그(native-v1.md "태그"): 모델이 사전 이름으로 고른 것만 남고(없는 태그는 버림), 추출 요청에는 사전이 종류별로 넘어간다.
         // 분야 태그는 연관도(0~100으로 자름)를 함께 남기고 성격 태그는 연관도가 없다
         assertEquals(
@@ -277,11 +283,13 @@ class CollectionJobTest(
 
         // 운영자 지정 필드(admin-v1.md): curated_fields에 있는 필드만 지키고, 전에 수집·가져온 값은 다시 수집하면 새 값으로 갱신한다
         jdbc.sql("insert into activity_tags (activity_id, tag_id) select a.id, t.id from activities a, tags t where a.name = ? and t.name = '멘토링' on conflict do nothing").param("Let'Swift 2026 컨퍼런스").update()
-        jdbc.sql("update activities set category = 'STUDY', curated_fields = '[\"eligibility\",\"nameEn\",\"category\",\"tags\"]'::jsonb, name_en = 'Curated EN', eligibility = '{\"op\":\"all\",\"items\":[{\"field\":\"나이\",\"fieldEn\":\"age\",\"from\":30}]}'::jsonb, description = '옛 설명', audience = '옛 대상', inherited_fields = '[]'::jsonb where name = ?")
+        jdbc.sql("update activities set category = 'STUDY', curated_fields = '[\"eligibility\",\"nameEn\",\"category\",\"tags\",\"hook\"]'::jsonb, hook = '운영자 소개', name_en = 'Curated EN', eligibility = '{\"op\":\"all\",\"items\":[{\"field\":\"나이\",\"fieldEn\":\"age\",\"from\":30}]}'::jsonb, description = '옛 설명', audience = '옛 대상', inherited_fields = '[]'::jsonb where name = ?")
             .param("Let'Swift 2026 컨퍼런스").update()
         assertEquals(BatchStatus.COMPLETED, run("2026-10-21").status)
         assertEquals(2, runCount())
         assertEquals(listOf("STUDY"), jdbc.sql("select category from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
+        // 운영자가 고친 한 줄 소개는 지키고, 고치지 않은 핵심 줄은 수집값으로 갱신한다
+        assertEquals(listOf("운영자 소개|1"), jdbc.sql("select hook || '|' || jsonb_array_length(highlights) from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
         // 운영자가 지정한 태그(curated tags)는 다시 수집해도 그대로
         assertEquals(listOf("창업", "멘토링", "시험하위분야"), jdbc.sql("select t.name from activity_tags at join tags t on t.id = at.tag_id join activities a on a.id = at.activity_id where a.name = ? order by t.sort_order").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list())
         assertEquals(
@@ -711,6 +719,7 @@ class CollectionJobTest(
         val saved = jdbc.sql("select coalesce(eligibility::text, ''), curated_fields::text from activities where id = ?").param(activityId).query { rs, _ -> rs.getString(1) to rs.getString(2) }.single()
         val dir = Files.createTempDirectory("curation")
         Files.write(dir.resolve("org.png"), byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 1, 2, 3))
+        Files.write(dir.resolve("cover.webp"), byteArrayOf(0x52, 0x49, 0x46, 0x46, 9))
         val file = dir.resolve("curation.json")
         Files.writeString(file, json.writeValueAsString(mapOf(
             "activities" to listOf(mapOf(
@@ -724,6 +733,7 @@ class CollectionJobTest(
                 "tagNameEn" to mapOf("시험공학" to "testEngineering", "반도체" to "Semiconductor"), "tagKind" to mapOf("시험공학" to "FIELD"), "tagParent" to mapOf("반도체" to "시험공학"),
             )),
             "organizationLogos" to listOf(mapOf("organizationId" to organizationId, "file" to "org.png")),
+            "programCovers" to listOf(mapOf("programId" to programId, "file" to "cover.webp", "sourcePage" to "https://letswift.kr/2026/", "sourceImage" to "https://letswift.kr/2026/og.webp")),
         )))
         fun eligibility() = jdbc.sql("select coalesce(eligibility->'items'->0->>'from', '') from activities where id = ?").param(activityId).query(String::class.java).single()
         fun activityTags() = jdbc.sql("select t.name from activity_tags x join tags t on t.id = x.tag_id where x.activity_id = ? order by t.name").param(activityId).query(String::class.java).list()
@@ -737,7 +747,7 @@ class CollectionJobTest(
 
             // dry run: 계획만 나오고 아무것도 바뀌지 않는다(새 태그도 만들지 않는다)
             val plan = curationImport.import(file, apply = false)
-            assertEquals(listOf("eligibility", "tags", "place", "tags", "logo"), plan.filter { it.action == "SET" }.map { it.field })
+            assertEquals(listOf("eligibility", "tags", "place", "tags", "logo", "cover"), plan.filter { it.action == "SET" }.map { it.field })
             assertEquals(listOf("사전에 없음, 영문 이름 없음: 없는태그"), plan.filter { it.action == "SKIP" }.map { it.detail })
             assertEquals("", eligibility()); assertEquals(emptyList(), activityTags()); assertEquals(0, logoCount())
             assertEquals(0, jdbc.sql("select count(*) from tags where name = '반도체'").query(Int::class.java).single())
@@ -754,6 +764,10 @@ class CollectionJobTest(
                 jdbc.sql("select t.name || '|' || t.kind || '|' || coalesce(p.name, '') from program_tags x join tags t on t.id = x.tag_id left join tags p on p.id = t.parent_id where x.program_id = ? order by x.position").param(programId).query(String::class.java).list(),
             )
             assertEquals(1, logoCount())
+            assertEquals(
+                listOf("image/webp|https://letswift.kr/2026/|https://letswift.kr/2026/og.webp|true"),
+                jdbc.sql("select content_type || '|' || source_page || '|' || source_image || '|' || enabled from program_covers where program_id = ?").param(programId).query(String::class.java).list(),
+            )
             assertEquals("[]", jdbc.sql("select curated_fields::text from activities where id = ?").param(activityId).query(String::class.java).single())
 
             // 이미 채워진 것은 다시 실행해도 건너뛰고, 운영자 지정 필드는 overwrite여도 건드리지 않는다
@@ -769,6 +783,7 @@ class CollectionJobTest(
             jdbc.sql("delete from program_tags where program_id = ?").param(programId).update()
             jdbc.sql("delete from tags where name in ('반도체', '시험공학')").update()
             jdbc.sql("delete from organization_logos where organization_id = ?").param(organizationId).update()
+            jdbc.sql("delete from program_covers where program_id = ?").param(programId).update()
             jdbc.sql("update schedules set address_line1 = null, address_line2 = null, lat = null, lng = null where activity_id = ? and slot = 'ACTIVITY'").param(activityId).update()
         }
     }

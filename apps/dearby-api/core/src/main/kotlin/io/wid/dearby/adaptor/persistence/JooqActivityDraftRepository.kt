@@ -37,7 +37,7 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             ACTIVITIES.AUDIENCE, ACTIVITIES.ELIGIBILITY, ACTIVITIES.PARTICIPATION_TYPE, ACTIVITIES.INHERITED_FIELDS, ACTIVITIES.CURATED_FIELDS,
             // 운영자 지정으로 보호할 수 있는 나머지 열(없는 열을 읽으면 jOOQ가 예외를 던진다)
             ACTIVITIES.OFFICIAL_URL, ACTIVITIES.APPLICATION_URL, ACTIVITIES.LOCATION, ACTIVITIES.COST, ACTIVITIES.CATEGORY,
-            ACTIVITIES.ELIGIBILITY_CHECKED,
+            ACTIVITIES.ELIGIBILITY_CHECKED, ACTIVITIES.HOOK, ACTIVITIES.HIGHLIGHTS,
         )
             .from(ACTIVITIES)
             .where(ACTIVITIES.SOURCE_ID.eq(sourceId))
@@ -67,6 +67,9 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         val applicationUrl = if (CuratedFields.APPLICATION_URL in curated) existing?.get(ACTIVITIES.APPLICATION_URL) else activity.applicationUrl
         val location = if (CuratedFields.LOCATION in curated) existing?.get(ACTIVITIES.LOCATION) else activity.location
         val cost = if (CuratedFields.COST in curated) existing?.get(ACTIVITIES.COST) else activity.cost
+        // 대기열 한 줄 소개·핵심 줄(native-v1.md "맞춤 대기열"): 운영자가 고쳤으면 지키고, 아니면 이번 수집값(없으면 지운다)
+        val hook = if (CuratedFields.HOOK in curated) existing?.get(ACTIVITIES.HOOK) else activity.hook
+        val highlights = if (CuratedFields.HIGHLIGHTS in curated) existing?.get(ACTIVITIES.HIGHLIGHTS) else HighlightRows.jsonb(activity.highlights)
         // 종류: 모델이 못 뽑으면 프로그램 기본 종류(admin-v1.md "프로그램 기본 종류")
         val category = if (CuratedFields.CATEGORY in curated) existing?.get(ACTIVITIES.CATEGORY)
             else activity.category?.name ?: dsl.select(PROGRAMS.CATEGORY).from(PROGRAMS).where(PROGRAMS.ID.eq(programId)).fetchOne()?.value1()
@@ -107,6 +110,8 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             .set(ACTIVITIES.PARTICIPATION_TYPE, participationType.name)
             .set(ACTIVITIES.LOCATION, location)
             .set(ACTIVITIES.COST, cost)
+            .set(ACTIVITIES.HOOK, hook)
+            .set(ACTIVITIES.HIGHLIGHTS, highlights)
             .set(ACTIVITIES.CATEGORY, category)
             .set(ACTIVITIES.AUDIENCE, audience)
             .set(ACTIVITIES.ELIGIBILITY, EligibilityRows.jsonb(eligibility))

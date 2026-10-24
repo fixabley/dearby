@@ -881,6 +881,69 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         }
     }
 
+    // 대기열 커버(admin-v1.md "프로그램 커버"): 로고와 같은 형식 검사(350KB), 출처 주소, 끄기·켜기, 프로그램 응답의 cover
+    @Test
+    fun `프로그램 커버는 출처와 함께 올리고 끄고 켤 수 있으며, 종류·크기·출처가 틀리면 400`() {
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        val url = "/v1/admin/programs/$programId/cover"
+        fun upload(type: String, bytes: ByteArray, query: String = "") = mvc.multipart(HttpMethod.PUT, "$url$query") { file(MockMultipartFile("file", "cover", type, bytes)); asAdmin() }
+        fun listed(): JsonNode = read(mvc.get("/v1/admin/programs?q=Let") { asAdmin() })["items"].single()["cover"]
+        try {
+            mvc.get(url) { asAdmin() }.andExpect { status { isNotFound() } }
+            assertEquals(true, listed().isNull)
+            assertEquals("커버는 PNG·JPEG·WebP 350KB 이하여야 합니다", read(upload("image/gif", byteArrayOf(1)).andExpect { status { isBadRequest() } })["detail"].asString())
+            upload("image/webp", ByteArray(350 * 1024 + 1)).andExpect { status { isBadRequest() } }
+            upload("image/webp", byteArrayOf(1), "?sourcePage=http://example.com").andExpect { status { isBadRequest() } }
+            mvc.patch(url) { asAdmin(); body("""{"enabled":false}""") }.andExpect { status { isNotFound() } }
+            val saved = read(upload("image/webp", byteArrayOf(4, 5), "?sourcePage=https://example.com/event&sourceImage=https://example.com/a.webp").andExpect { status { isOk() } })
+            assertEquals(true, Regex("/v1/programs/$programId/cover\\?v=\\d+").matches(saved["coverUrl"].asString()))
+            assertEquals(listOf("true", "https://example.com/event", "https://example.com/a.webp"), listOf(saved["enabled"].asString(), saved["sourcePage"].asString(), saved["sourceImage"].asString()))
+            assertEquals(saved, listed())
+            assertEquals(listOf<Byte>(4, 5), mvc.get(url) { asAdmin() }.andReturn().response.contentAsByteArray.toList())
+            // 끄면 enabled=false(어드민 미리보기는 그대로), 다시 켤 수 있다
+            assertEquals(false, read(mvc.patch(url) { asAdmin(); body("""{"enabled":false}""") }.andExpect { status { isOk() } })["enabled"].asBoolean())
+            assertEquals(false, listed()["enabled"].asBoolean())
+            mvc.get(url) { asAdmin() }.andExpect { status { isOk() } }
+            assertEquals(true, read(mvc.patch(url) { asAdmin(); body("""{"enabled":true}""") }.andExpect { status { isOk() } })["enabled"].asBoolean())
+            mvc.delete(url) { asAdmin() }.andExpect { status { isNoContent() } }
+            assertEquals(true, listed().isNull)
+        } finally {
+            jdbc.sql("delete from program_covers where program_id = ?").param(programId).update()
+        }
+    }
+
+    // 대기열 장면 글(native-v1.md "맞춤 대기열"): hook·highlights를 고치면 운영자 지정 필드로 남고, 빈 값은 지운다
+    @Test
+    fun `활동의 한 줄 소개와 핵심 줄을 고치면 운영자 지정으로 남고, 틀린 icon·길이는 400`() {
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        val id = read(
+            mvc.post("/v1/admin/activities") {
+                asAdmin(); body("""{"programId":$programId,"name":"대기열 글 활동","description":"d","officialUrl":"https://example.org/q","activitySchedule":{"dateLabel":"2027"}}""")
+            }.andExpect { status { isCreated() } }
+        )["id"].asLong()
+        try {
+            val patched = read(
+                mvc.patch("/v1/admin/activities/$id") {
+                    asAdmin(); patchBody("""{"hook":" 6주 만에 앱 하나를 끝까지 ","highlights":[{"icon":"team","text":"4명이 한 팀"},{"icon":"cost","text":"참가비 없음"}]}""")
+                }.andExpect { status { isOk() } }
+            )
+            assertEquals("6주 만에 앱 하나를 끝까지", patched["hook"].asString())
+            assertEquals("""[{"icon":"team","text":"4명이 한 팀"},{"icon":"cost","text":"참가비 없음"}]""", patched["highlights"].toString())
+            assertEquals(true, patched["curatedFields"].toList().map { it.asString() }.containsAll(listOf("hook", "highlights")))
+            // 모르는 icon, 4개, 61자 한 줄 소개는 400이고 아무것도 바꾸지 않는다
+            mvc.patch("/v1/admin/activities/$id") { asAdmin(); patchBody("""{"hook":"바뀌면 안 됨","highlights":[{"icon":"rocket","text":"x"}]}""") }.andExpect { status { isBadRequest() } }
+            mvc.patch("/v1/admin/activities/$id") { asAdmin(); patchBody("""{"highlights":[{"icon":"team","text":"a"},{"icon":"team","text":"b"},{"icon":"team","text":"c"},{"icon":"team","text":"d"}]}""") }.andExpect { status { isBadRequest() } }
+            mvc.patch("/v1/admin/activities/$id") { asAdmin(); patchBody("""{"hook":"${"가".repeat(61)}"}""") }.andExpect { status { isBadRequest() } }
+            // 생략은 그대로, 빈 문자열·빈 배열은 지운다
+            assertEquals("6주 만에 앱 하나를 끝까지", read(mvc.patch("/v1/admin/activities/$id") { asAdmin(); patchBody("""{"nameEn":"Story"}""") })["hook"].asString())
+            val cleared = read(mvc.patch("/v1/admin/activities/$id") { asAdmin(); patchBody("""{"hook":"","highlights":[]}""") }.andExpect { status { isOk() } })
+            assertEquals(true, cleared["hook"].isNull)
+            assertEquals(0, cleared["highlights"].size())
+        } finally {
+            jdbc.sql("delete from activities where id = ?").param(id).update()
+        }
+    }
+
     // 조직 로고(admin-v1.md "조직 로고"): 같은 파일 규칙, 조직 응답에 logoUrl, 프로그램 응답의 effectiveLogo는 자체 로고가 없으면 조직 로고를 계승한다
     @Test
     fun `조직 로고를 올리면 조직에 logoUrl이 보이고 자체 로고가 없는 프로그램은 그 로고를 계승한다`() {

@@ -68,7 +68,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals("https://letswift.kr/2026/", item["officialUrl"].asString())
         assertEquals("https://ticketa.co/e/vdb8aajs/l/website", item["applicationUrl"].asString()) // V5 application_url
         // 관리자만 보는 정보는 내보내지 않는다
-        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "applicationUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags", "fieldTags", "fieldTagsAll", "traitTags", "location", "place"), item.propertyNames().toSet())
+        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "applicationUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags", "fieldTags", "fieldTagsAll", "traitTags", "location", "place", "hook", "highlights"), item.propertyNames().toSet())
         // 시각은 일정의 시간대로 표기한다(같은 순간)
         assertEquals("2026-10-08T00:00:00+09:00", item["application"]["endAt"].asString())
         assertEquals("2026-10-08", item["activitySchedule"]["dateLabel"].asString())
@@ -492,6 +492,29 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
             assertEquals(listOf<Byte>(1, 2, 3), response.contentAsByteArray.toList())
         } finally {
             jdbc.sql("delete from program_logos where program_id = ?").param(programId).update()
+        }
+    }
+
+    // 대기열 커버(native-v1.md "맞춤 대기열"): 켜진 커버만 coverUrl과 공개 이미지(로고와 같은 캐시), 끄면 null·404
+    @Test
+    fun `프로그램 커버가 켜져 있으면 묶음에 coverUrl이 오고, 끄면 null이고 공개 경로는 404`() {
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        fun summary(): JsonNode = json.readTree(mvc.get("/v1/discovery/programs?openOnly=false&q=swift").andExpect { status { isOk() } }.andReturn().response.contentAsString)["items"].single()
+        assertEquals(true, summary()["coverUrl"].isNull)
+        jdbc.sql("insert into program_covers (program_id, content_type, data, enabled, updated_at) values (?, 'image/webp', ?, true, timestamptz '2026-10-24T00:00:00Z')")
+            .param(programId).param(byteArrayOf(5, 6)).update()
+        try {
+            val v = java.time.Instant.parse("2026-10-24T00:00:00Z").epochSecond
+            assertEquals("/v1/programs/$programId/cover?v=$v", summary()["coverUrl"].asString())
+            val response = mvc.get("/v1/programs/$programId/cover?v=$v").andExpect { status { isOk() } }.andReturn().response
+            assertEquals("image/webp", response.contentType)
+            assertEquals("public, max-age=31536000, immutable", response.getHeader(HttpHeaders.CACHE_CONTROL))
+            assertEquals(listOf<Byte>(5, 6), response.contentAsByteArray.toList())
+            jdbc.sql("update program_covers set enabled = false where program_id = ?").param(programId).update()
+            assertEquals(true, summary()["coverUrl"].isNull)
+            mvc.get("/v1/programs/$programId/cover?v=$v").andExpect { status { isNotFound() } }
+        } finally {
+            jdbc.sql("delete from program_covers where program_id = ?").param(programId).update()
         }
     }
 

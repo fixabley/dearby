@@ -26,6 +26,7 @@ data class ProgramSummary(
     val tags: List<Tag> = emptyList(), // 프로그램 태그가 있으면 그것, 없으면 게시 활동 태그의 합집합(최대 6개, 사전 순)(native-v1.md "태그")
     val fieldTags: List<Tag> = emptyList(), // 분야 태그 최대 2개, 서버 순서(native-v1.md "분야·성격 태그와 아이콘")
     val traitTags: List<Tag> = emptyList(), // 성격 태그 전부, 사전 순
+    val coverUrl: String? = null, // 대기열 커버 공개 경로 `/v1/programs/{id}/cover?v=…`(native-v1.md "맞춤 대기열"). 없거나 꺼졌으면 null
     val logoUrl: String? = null, // 보일 로고 공개 경로: 프로그램 로고, 없으면 가장 가까운 조직 로고(native-v1.md "조직 로고와 로고 계승"), 없으면 null
 )
 

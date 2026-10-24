@@ -128,6 +128,8 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             fieldTags = tags?.second.orEmpty(),
             eligibilityChecked = row.eligibilityChecked!!,
             location = row.location,
+            hook = row.hook,
+            highlights = HighlightRows.read(row.highlights),
         )
     }
 
