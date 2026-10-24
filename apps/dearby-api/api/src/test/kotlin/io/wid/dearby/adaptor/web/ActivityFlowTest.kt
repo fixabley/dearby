@@ -162,7 +162,23 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
             values (?, 'APPLICATION', '신청 기간', 'DEADLINE', 'CONFIRMED', 'TIMED', now() - interval '10 days', now() - interval '1 hour', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp)
             """
         ).param(timedClosedId).update()
+        // 활동 기간이 끝난 행사는 모집 기간에 끝이 없어도 열지 않는다(2026-10-25, 운영 NDC 2026: 모집 시작만 있고 6월 행사가 10월에도 열림)
+        val pastConferenceId = createActivity("지난 컨퍼런스")
+        jdbc.sql("update activities set category = 'CONFERENCE' where id = ?").param(pastConferenceId).update()
+        jdbc.sql(
+            """
+            update schedules set time_type = 'ALL_DAY', start_date = (now() at time zone 'Asia/Seoul')::date - 130,
+                end_date_exclusive = (now() at time zone 'Asia/Seoul')::date - 127 where activity_id = ? and slot = 'ACTIVITY'
+            """
+        ).param(pastConferenceId).update()
+        jdbc.sql(
+            """
+            insert into schedules (activity_id, slot, title, kind, status, time_type, start_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, 'APPLICATION', '신청 기간', 'DEADLINE', 'CONFIRMED', 'TIMED', now() - interval '160 days', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp)
+            """
+        ).param(pastConferenceId).update()
         fun ids(page: JsonNode) = (0 until page["items"].size()).map { page["items"][it]["id"].asLong() }
+        assertTrue(pastConferenceId in ids(search("q=지난 컨퍼런스")) && pastConferenceId !in ids(search("open=true&q=지난 컨퍼런스")))
         assertEquals(2, programs("")["items"].single()["openActivityCount"].asInt())
         // 검색은 단어 유사도까지 보므로 포함 여부로 확인한다
         val openSimilar = ids(search("open=true&q=종일 모집"))
@@ -171,7 +187,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertTrue(timedClosedId in ids(search("q=시각 모집 끝")))
         assertTrue(timedClosedId !in ids(search("open=true&q=시각 모집 끝")))
         assertEquals(setOf(openId, allDayOpenId), ids(search("open=true")).toSet())
-        jdbc.sql("update activities set publication_status = 'DRAFT' where id in (?, ?, ?)").params(allDayOpenId, allDayEndedId, timedClosedId).update()
+        jdbc.sql("update activities set publication_status = 'DRAFT' where id in (?, ?, ?, ?)").params(allDayOpenId, allDayEndedId, timedClosedId, pastConferenceId).update()
         // 모집 중인 프로그램만 보기(native-v1.md): openOnly=false면 최근 3년 안에 활동이 있었던 프로그램까지, 열린 프로그램 먼저. 3년 넘게 지난 활동만 있는 프로그램은 빠진다
         fun pastProgram(name: String, daysAgo: Int): Long {
             jdbc.sql("insert into programs (organization_id, name, created_at, updated_at) values (?, ?, localtimestamp, localtimestamp)").params(organizationId, name).update()
