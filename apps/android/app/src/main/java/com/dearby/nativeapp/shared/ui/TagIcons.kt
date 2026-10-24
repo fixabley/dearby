@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 /** A tag as the UI needs it: its Korean [name] and the [nameEn] key that picks its icon. */
 data class TagLabel(val name: String, val nameEn: String?)
 
-/** Contract "분야·성격 태그와 아이콘" table (plus the parent 분야 `engineering` 공학), keyed by `nameEn`; an unknown key (a tag an operator just made) is `Sell`. */
+/** Contract "분야·성격 태그와 아이콘" table (plus 공학 `engineering`, 웹·앱 `webApp`, 게임 `game`, 오픈소스 `openSource` added later), keyed by `nameEn`; an unknown key (a tag an operator just made) is `Sell`. */
 fun tagIcon(nameEn: String?): ImageVector = when (nameEn) {
     "startup" -> Icons.Rounded.Lightbulb
     "project" -> Icons.Rounded.Build
@@ -31,6 +31,9 @@ fun tagIcon(nameEn: String?): ImageVector = when (nameEn) {
     "networking" -> Icons.Rounded.Hub
     "funding" -> Icons.Rounded.Payments
     "it" -> Icons.Rounded.Computer
+    "webApp" -> Icons.Rounded.Devices
+    "game" -> Icons.Rounded.SportsEsports
+    "openSource" -> Icons.Rounded.Code
     "dataAi" -> Icons.Rounded.AutoAwesome
     "cloud" -> Icons.Rounded.Cloud
     "semiconductor" -> Icons.Rounded.Memory
