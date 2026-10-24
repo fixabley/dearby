@@ -37,7 +37,8 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
                 FunnelStep.FIELDS -> "어떤 분야에\n관심 있어요?" to "여러 개 골라도 돼요."
                 FunnelStep.CATEGORIES -> "어떤 활동을\n찾고 있어요?" to "여러 개 골라도 돼요."
                 FunnelStep.TRAITS -> "활동하면서\n무엇을 얻고 싶어요?" to "고르지 않아도 괜찮아요."
-                FunnelStep.RESULT -> "지금 지원할 수 있는\n활동 ${state.found}개를 찾았어요" to ""
+                // No answer from the recommendation API (not deployed yet, or offline): the settings were still saved.
+                FunnelStep.RESULT -> state.found?.let { "지금 지원할 수 있는\n활동 ${it}개를 찾았어요" to "" } ?: ("설정을 저장했어요" to "추천이 준비되면 발견 맨 위에 보여 드릴게요.")
             }
             Text(title, Modifier.semantics { heading() }, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.headlineMedium)
             if (subtitle.isNotEmpty()) Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)

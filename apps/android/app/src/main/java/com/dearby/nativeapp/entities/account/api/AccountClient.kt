@@ -31,7 +31,7 @@ import com.dearby.nativeapp.entities.account.model.toPasskeyChallenge
 import com.dearby.nativeapp.entities.account.model.toPasskeys
 import com.dearby.nativeapp.entities.account.model.toSession
 import com.dearby.nativeapp.entities.account.model.EligibilityProfile
-import com.dearby.nativeapp.entities.account.model.Recommendation
+import com.dearby.nativeapp.entities.account.model.RecommendationPage
 import com.dearby.nativeapp.entities.account.model.RecommendationPreferences
 import com.dearby.nativeapp.entities.account.model.toDictionaryTags
 import com.dearby.nativeapp.entities.account.model.toEligibilityProfile
@@ -227,7 +227,7 @@ class AccountClient(private val api: String, private val transport: Transport = 
     /** Removes the values and the consent record. */
     suspend fun deleteEligibilityProfile(session: AccountSession) { request("DELETE", "me/eligibility-profile", null, session) }
     /** Signed in, the server uses the saved settings and 지원 자격 정보; signed out, [preferences] go as comma lists. */
-    suspend fun recommendations(preferences: RecommendationPreferences?, session: AccountSession?, size: Int = 10): List<Recommendation> {
+    suspend fun recommendations(preferences: RecommendationPreferences?, session: AccountSession?, size: Int = 10): RecommendationPage {
         val params = listOfNotNull("size=$size", preferences?.fieldTagIds?.takeIf { it.isNotEmpty() }?.let { "fieldTagIds=" + it.joinToString(",") },
             preferences?.categories?.takeIf { it.isNotEmpty() }?.let { "categories=" + it.joinToString(",") },
             preferences?.traitTagIds?.takeIf { it.isNotEmpty() }?.let { "traitTagIds=" + it.joinToString(",") })

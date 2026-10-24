@@ -69,6 +69,8 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
     toggle: (String) -> Unit, retryProgram: (String) -> Unit, setOpenOnly: (Boolean) -> Unit = {}, notify: () -> Unit = {}, clearRefreshFailure: () -> Unit = {}, settings: () -> Unit = {},
     /** The 추천 묶음 above the programs (contract "발견 탭 노출"), or null when there is none; hidden while searching. */
     header: (@Composable () -> Unit)? = null,
+    /** The skeleton stays up while the app still reads whether the 추천 funnel should cover the list. */
+    waiting: Boolean = false,
 ) {
     val listState = rememberLazyListState()
     val reduceMotion = rememberReduceMotion()
@@ -79,7 +81,7 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
     LaunchedEffect(state.refreshFailed) { if (state.refreshFailed) try { snackbar.showSnackbar("새로 고치지 못했어요") } finally { clearRefreshFailure() } }
     val collapse = remember(reduceMotion, focusManager) { SearchAreaCollapse(reduceMotion, scope, focusManager::clearFocus) }
     // The program list is drawn only with programs; loading, failure and empty results are centred states in its place (contract "비스크롤 화면 배치·CTA").
-    val listShown = state.phase == ActivityListPhase.LOADED && state.programs.isNotEmpty()
+    val listShown = !waiting && state.phase == ActivityListPhase.LOADED && state.programs.isNotEmpty()
     // The list state keeps its last values while a centred state replaces the list, so the read is gated on the list being shown.
     val farDown by remember(listShown) { derivedStateOf { listShown && listState.pastOneScreen() } }
     // Pinned top bar (contract "iOS 상단 바…" Android): the bar tints once anything scrolls under it — the collapse connection's consumption counts too.
@@ -104,7 +106,7 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                 val programs = state.programs
                 // The centred states fill the list area (they scroll only when they overflow, and pull-to-refresh still works through that scroll).
                 when {
-                    state.phase == ActivityListPhase.LOADING -> DearbySkeleton(Modifier.fillMaxSize().padding(horizontal = 20.dp)) { repeat(4) { ProgramCardSkeleton() } }
+                    waiting || state.phase == ActivityListPhase.LOADING -> DearbySkeleton(Modifier.fillMaxSize().padding(horizontal = 20.dp)) { repeat(4) { ProgramCardSkeleton() } }
                     state.phase == ActivityListPhase.FAILED -> DearbyErrorState("활동을 불러오지 못했어요", "연결을 확인한 뒤 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
                     programs.isEmpty() && state.query.isNotBlank() -> DearbyEmptyState("검색 결과가 없어요", "다른 검색어로 찾아 보세요.", Modifier.fillMaxSize(), Icons.Rounded.Search)
                     programs.isEmpty() && state.openOnly -> DearbyEmptyState("지금 모집 중인 프로그램이 없어요", "‘마감 숨기기’를 끄면 최근 2년 안에 활동한 프로그램도 보여요.", Modifier.fillMaxSize())

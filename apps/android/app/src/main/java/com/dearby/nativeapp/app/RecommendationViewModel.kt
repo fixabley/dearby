@@ -8,6 +8,7 @@ import com.dearby.nativeapp.entities.account.api.AccountException
 import com.dearby.nativeapp.entities.account.model.DictionaryTag
 import com.dearby.nativeapp.entities.account.model.EligibilityProfile
 import com.dearby.nativeapp.entities.account.model.Recommendation
+import com.dearby.nativeapp.entities.account.model.RecommendationPage
 import com.dearby.nativeapp.entities.account.model.RecommendationPreferences
 import com.dearby.nativeapp.entities.account.model.toRecommendationPreferences
 import com.dearby.nativeapp.pages.recommendation.ChipGroup
@@ -31,16 +32,19 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import org.json.JSONObject
 
 /**
  * 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천", 2026-10-24): the funnel's settings, 지원 자격 정보 and the recommendations.
- * Settings live on the server when signed in (`/v1/me/recommendation-preferences`) and in the app's settings store ([loadLocal]/[saveLocal], a new key)
+ * Settings live on the server when signed in (`/v1/me/recommendation-preferences`) and in the app's settings store ([store], new keys)
  * when signed out; on sign-in a device copy is uploaded once if the server has none. 지원 자격 정보 needs a session and its own consent.
- * Any failure of the recommendation read (404 before the server ships it) leaves [RecommendationViewState.available] false, so nothing shows.
+ * Whether the funnel shows is decided by the device's completion flag alone (a server `completedAt` is copied into it, so signing out does not bring
+ * the funnel back); the recommendation read only shows or hides the 추천 묶음 ([RecommendationViewState.available] false on any failure, 404 included).
  * The eligibility values are never logged.
  */
-class RecommendationViewModel(private val account: AccountViewModel, private val loadLocal: () -> String?, private val saveLocal: (String) -> Unit) : ViewModel() {
+class RecommendationViewModel(private val account: AccountViewModel, private val store: RecommendationStore) : ViewModel() {
     private val mutable = MutableStateFlow(RecommendationViewState())
     val state = mutable.asStateFlow()
     private val funnelState = MutableStateFlow<RecommendationFunnelState?>(null)
@@ -55,35 +59,41 @@ class RecommendationViewModel(private val account: AccountViewModel, private val
     private val client get() = account.client
 
     init {
-        viewModelScope.launch { account.state.map { it.phase }.filter { it != AccountPhase.WORKING }.distinctUntilChanged().collect { load() } }
+        viewModelScope.launch {
+            val done = withContext(Dispatchers.IO) { store.completed() }
+            mutable.update { it.copy(localLoaded = true, completed = it.completed || done) }
+            account.state.map { it.phase }.filter { it != AccountPhase.WORKING }.distinctUntilChanged().collect { load() }
+        }
     }
 
     private fun load() {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
-            val local = loadLocal()?.let { runCatching { JSONObject(it).toRecommendationPreferences() }.getOrNull() }
+            val local = withContext(Dispatchers.IO) { store.preferences() }?.let { runCatching { JSONObject(it).toRecommendationPreferences() }.getOrNull() }
             try {
                 if (signedIn) {
                     val server = account.authorized { client.recommendationPreferences(it) }
                     preferences = if (server.completedAt == null && local?.completedAt != null) local.also { copy -> account.authorized { client.saveRecommendationPreferences(copy, it) } } else server
+                    if (preferences.completedAt != null) markCompleted()
                     eligibility = try { account.authorized { client.eligibilityProfile(it) } } catch (e: AccountException) { if (e.error == AccountError.NOT_FOUND) null else throw e }
                 } else {
                     preferences = local ?: RecommendationPreferences()
+                    if (preferences.completedAt != null) markCompleted()
                     eligibility = null
                 }
                 show(recommendations())
             } catch (e: CancellationException) { throw e } catch (e: Exception) {
                 Log.w("Dearby", "Recommendations from ${ApiOrigin.current} unavailable: ${e.javaClass.simpleName} ${(e as? AccountException)?.error}")
-                mutable.value = RecommendationViewState()
+                mutable.update { it.copy(available = false, items = emptyList()) }
             }
         }
     }
-    private suspend fun recommendations(): List<Recommendation> =
+    private suspend fun recommendations(): RecommendationPage =
         if (signedIn) account.authorized { client.recommendations(null, it) } else client.recommendations(preferences, null)
-    private fun show(items: List<Recommendation>) {
+    private fun show(page: RecommendationPage) {
         val profile = eligibility
         mutable.update {
-            it.copy(available = true, completed = preferences.completedAt != null, personalized = !preferences.empty, items = items.map(::item),
+            it.copy(available = true, personalized = !preferences.empty, items = page.items.map(::item),
                 eligibilitySummary = profile?.summary(), eligibilityConsented = profile?.consentVersion == ConsentVersions.ELIGIBILITY)
         }
     }
@@ -96,7 +106,7 @@ class RecommendationViewModel(private val account: AccountViewModel, private val
     // ---- 추천 설정 퍼널 ----
     /** [first]: the first visit to 발견 (starts at the intro); otherwise 설정·`관심 분야·활동 종류`·`나에게 맞는 활동 찾기` reopen it at the first question. */
     fun openFunnel(first: Boolean) {
-        if (funnelState.value != null || !state.value.available) return
+        if (funnelState.value != null) return
         funnelState.value = RecommendationFunnelState(if (first) FunnelStep.INTRO else FunnelStep.FIELDS, first,
             preferences.fieldTagIds.map(Long::toString).toSet(), preferences.categories.toSet(), preferences.traitTagIds.map(Long::toString).toSet())
         loadTags()
@@ -166,18 +176,26 @@ class RecommendationViewModel(private val account: AccountViewModel, private val
         viewModelScope.launch {
             persist(chosen)
             val items = try { recommendations() } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
-            items?.let(::show) ?: mutable.update { it.copy(completed = true, personalized = !chosen.empty) }
-            funnelState.update { it?.copy(step = FunnelStep.RESULT, saving = false, found = items?.size ?: 0, preview = items.orEmpty().take(3).map(::item), eligibilityMissing = eligibility?.summary() == null) }
+            items?.let(::show)
+            funnelState.update { it?.copy(step = FunnelStep.RESULT, saving = false, found = items?.total, preview = items?.items.orEmpty().take(3).map(::item), eligibilityMissing = eligibility?.summary() == null) }
         }
     }
     private fun save(chosen: RecommendationPreferences) {
-        mutable.update { it.copy(completed = true, personalized = !chosen.empty) }
+        // Completed at once, so the closing funnel is not asked to open again before the write lands.
+        mutable.update { it.copy(completed = true) }
         viewModelScope.launch { persist(chosen) }
+    }
+    /** The device flag that keeps the funnel from coming back, for both signed-in and signed-out use. */
+    private suspend fun markCompleted() {
+        mutable.update { it.copy(completed = true) }
+        withContext(Dispatchers.IO) { store.markCompleted() }
     }
     /** Signed in → the server (a failure says so; the funnel is not asked again this session); signed out → the device copy. */
     private suspend fun persist(chosen: RecommendationPreferences) {
         preferences = chosen
-        if (!signedIn) return saveLocal(chosen.toJson().toString())
+        mutable.update { it.copy(personalized = !chosen.empty) }
+        markCompleted()
+        if (!signedIn) return withContext(Dispatchers.IO) { store.savePreferences(chosen.toJson().toString()) }
         try { account.authorized { client.saveRecommendationPreferences(chosen, it) } }
         catch (e: CancellationException) { throw e } catch (e: Exception) { mutable.update { it.copy(notice = "추천 설정을 저장하지 못했어요. 잠시 뒤 다시 시도해 주세요.") } }
     }
@@ -233,6 +251,14 @@ class RecommendationViewModel(private val account: AccountViewModel, private val
             refresh()
         } catch (e: CancellationException) { throw e } catch (e: Exception) { mutable.update { it.copy(eligibilityError = "지원 자격 정보를 지우지 못했어요. 잠시 뒤 다시 시도해 주세요.") } }
     }
+}
+
+/** The app's settings store (contract "추천 설정 저장": new keys in the existing file): the signed-out settings JSON and the funnel's completion flag. */
+interface RecommendationStore {
+    fun preferences(): String?
+    fun savePreferences(json: String)
+    fun completed(): Boolean
+    fun markCompleted()
 }
 
 private fun chip(tag: DictionaryTag) = ChipOption(tag.id.toString(), tag.name)

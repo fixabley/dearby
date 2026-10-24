@@ -60,9 +60,18 @@ class MainActivity : ComponentActivity() {
     private val profile: ProfileViewModel by viewModels { viewModelFactory { initializer { ProfileViewModel(account) } } }
     private val myCards: MyCardsViewModel by viewModels { viewModelFactory { initializer { MyCardsViewModel(account) } } }
     private val settings: SettingsViewModel by viewModels { viewModelFactory { initializer { SettingsViewModel(account, "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})") } } }
-    // 추천 설정 while signed out (contract "추천 설정 저장": the app's existing settings store, a new key); nothing older is read.
+    // 추천 설정 while signed out and the funnel's completion flag (contract "추천 설정 저장": the app's existing settings store, new keys); nothing older is read.
     private val recommendation: RecommendationViewModel by viewModels {
-        viewModelFactory { initializer { RecommendationViewModel(account, { onboarding.getString(RECOMMENDATION_KEY, null) }, { onboarding.edit { putString(RECOMMENDATION_KEY, it) } }) } }
+        viewModelFactory {
+            initializer {
+                RecommendationViewModel(account, object : RecommendationStore {
+                    override fun preferences() = onboarding.getString(RECOMMENDATION_KEY, null)
+                    override fun savePreferences(json: String) = onboarding.edit { putString(RECOMMENDATION_KEY, json) }
+                    override fun completed() = onboarding.getBoolean(RECOMMENDATION_DONE_KEY, false)
+                    override fun markCompleted() = onboarding.edit { putBoolean(RECOMMENDATION_DONE_KEY, true) }
+                })
+            }
+        }
     }
     // First-launch intro, remembered in its own new preferences file; no earlier stored data is read.
     private val onboarding by lazy { getSharedPreferences("dearby.onboarding", MODE_PRIVATE) }
@@ -116,3 +125,4 @@ class MainActivity : ComponentActivity() {
 }
 
 private const val RECOMMENDATION_KEY = "dearby.recommendation.preferences"
+private const val RECOMMENDATION_DONE_KEY = "dearby.recommendation.completed"

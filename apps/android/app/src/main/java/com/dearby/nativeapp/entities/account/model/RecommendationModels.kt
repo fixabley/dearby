@@ -26,8 +26,11 @@ fun EligibilityProfile.toPutJson(): JSONObject = JSONObject().put("consentVersio
 
 /** One recommended activity: only what the 추천 row shows; the detail is read by id when it opens. [reasons] are the server's short phrases. */
 data class Recommendation(val activityId: String, val name: String, val program: String, val organization: String, val logoUrl: String?, val reasons: List<String>)
-/** `{items: [{activity, program, reasons}]}`; an unreadable item is skipped. The program logo path is resolved against [api]. */
-fun JSONObject.toRecommendations(api: String): List<Recommendation> = getJSONArray("items").let { items -> List(items.length()) { items.getJSONObject(it) } }.mapNotNull { item ->
+/** One answer of the recommendation API: [total] is the server's count of matches (`total`, when it sends one), else the items' count. */
+data class RecommendationPage(val items: List<Recommendation>, val total: Int)
+/** `{items: [{activity, program, reasons}], total?}`; an unreadable item is skipped. The program logo path is resolved against [api]. */
+fun JSONObject.toRecommendations(api: String): RecommendationPage = recommendationItems(api).let { RecommendationPage(it, if (has("total") && !isNull("total")) getInt("total") else it.size) }
+private fun JSONObject.recommendationItems(api: String): List<Recommendation> = getJSONArray("items").let { items -> List(items.length()) { items.getJSONObject(it) } }.mapNotNull { item ->
     runCatching {
         val activity = item.getJSONObject("activity")
         val program = item.optJSONObject("program") ?: activity.getJSONObject("program")
