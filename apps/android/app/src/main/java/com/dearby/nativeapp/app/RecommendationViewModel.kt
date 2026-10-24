@@ -52,6 +52,8 @@ class RecommendationViewModel(private val account: AccountViewModel, private val
     private val formState = MutableStateFlow<EligibilityFormState?>(null)
     val form = formState.asStateFlow()
     private var preferences = RecommendationPreferences()
+    /** The settings in use (server or device copy), for 오늘의 맞춤 대기열 while signed out. */
+    val currentPreferences get() = preferences
     private var eligibility: EligibilityProfile? = null
     private var tags: List<DictionaryTag>? = null
     private var loadJob: Job? = null

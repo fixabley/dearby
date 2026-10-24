@@ -6,6 +6,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.AutoAwesomeMotion
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -52,10 +53,18 @@ data class RecommendationItemState(val id: String, val title: String, val subtit
 
 /**
  * 발견 탭 `추천` 묶음 (contract "발견 탭 노출"): a vertical list of three with `더 보기` (the rest inline) and the header's `설정`. When the funnel was skipped
- * ([personalized] false) only the one-line `나에게 맞는 활동 찾기` row shows, which reopens it.
+ * ([personalized] false) only the one-line `나에게 맞는 활동 찾기` row shows, which reopens it. [queue] non-null adds the `오늘의 맞춤 대기열` entry
+ * (contract "맞춤 대기열(스토리형 쇼츠)") on top.
  */
-@Composable fun RecommendationSection(items: List<RecommendationItemState>, personalized: Boolean, open: (String) -> Unit, settings: () -> Unit) {
+@Composable fun RecommendationSection(items: List<RecommendationItemState>, personalized: Boolean, open: (String) -> Unit, settings: () -> Unit, queue: (() -> Unit)? = null) {
+    val queueRow: @Composable () -> Unit = {
+        if (queue != null) ListItem(headlineContent = { Text("오늘의 맞춤 대기열", fontWeight = FontWeight.SemiBold) }, Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = queue),
+            supportingContent = { Text("위로 넘기며 나에게 맞는 활동을 둘러봐요") },
+            leadingContent = { Icon(Icons.Rounded.AutoAwesomeMotion, null, tint = MaterialTheme.colorScheme.primary) },
+            trailingContent = { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null) }, colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface))
+    }
     if (!personalized) {
+        queueRow()
         ListItem(headlineContent = { Text("나에게 맞는 활동 찾기") }, Modifier.clip(RoundedCornerShape(12.dp)).clickable(onClick = settings),
             leadingContent = { Icon(Icons.Rounded.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary) },
             trailingContent = { Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null) }, colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface))
@@ -67,6 +76,7 @@ data class RecommendationItemState(val id: String, val title: String, val subtit
             Text("추천", Modifier.weight(1f).padding(start = 6.dp).semantics { heading() }, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
             TextButton(settings) { Icon(Icons.Rounded.Tune, null, Modifier.size(18.dp)); Spacer(Modifier.width(6.dp)); Text("설정") }
         }
+        queueRow()
         if (items.isEmpty()) Text("지금 맞는 활동이 없어요. 설정을 바꿔 보세요.", Modifier.padding(horizontal = 6.dp, vertical = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         (if (expanded) items else items.take(3)).forEach { RecommendationRow(it) { open(it.id) } }
         if (items.size > 3) TextButton({ expanded = !expanded }, Modifier.align(Alignment.CenterHorizontally)) { Text(if (expanded) "접기" else "더 보기") }

@@ -73,6 +73,17 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    // 오늘의 맞춤 대기열 reactions while signed out (contract "맞춤 대기열": 신호는 기기에만), a new key in the same file.
+    private val queue: QueueViewModel by viewModels {
+        viewModelFactory {
+            initializer {
+                QueueViewModel(account, { recommendation.currentPreferences }, object : QueueStore {
+                    override fun signals() = onboarding.getString(QUEUE_SIGNALS_KEY, null)
+                    override fun saveSignals(json: String) = onboarding.edit { putString(QUEUE_SIGNALS_KEY, json) }
+                })
+            }
+        }
+    }
     // First-launch intro, remembered in its own new preferences file; no earlier stored data is read.
     private val onboarding by lazy { getSharedPreferences("dearby.onboarding", MODE_PRIVATE) }
     private var intro by mutableStateOf(false)
@@ -100,7 +111,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             DearbyTheme {
                 if (intro) IntroRoute(account, ::introShown)
-                else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings, recommendation, screenshot)
+                else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings, recommendation, queue, screenshot)
                 PendingAccountRoute(account)
             }
         }
@@ -126,3 +137,4 @@ class MainActivity : ComponentActivity() {
 
 private const val RECOMMENDATION_KEY = "dearby.recommendation.preferences"
 private const val RECOMMENDATION_DONE_KEY = "dearby.recommendation.completed"
+private const val QUEUE_SIGNALS_KEY = "dearby.queue.signals"
