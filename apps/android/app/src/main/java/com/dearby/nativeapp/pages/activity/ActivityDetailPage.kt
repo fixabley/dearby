@@ -38,12 +38,10 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
             if (!activity.applied) TextButton(addToMine, Modifier.semantics { contentDescription = "내 활동에 추가" }) { Text("추가") }
             IconButton(share) { Icon(Icons.Rounded.Share, "활동 공유", tint = MaterialTheme.colorScheme.primary) }
         }
-        // No image header (contract "활동 상세 이미지 섹션 제거", 2026-10-19 밤): status, tags and title start at the top.
+        // No image header (contract "활동 상세 이미지 섹션 제거", 2026-10-19 밤): status and title start at the top.
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { ExampleBadge(activity.status, true); activity.category?.let { ExampleBadge(it) } }
-                // 얻을 수 있는 것 (contract "태그"): every tag, wrapping.
-                if (activity.tags.isNotEmpty()) TagChips(activity.tags)
                 Text(activity.title, style = MaterialTheme.typography.headlineMedium)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Icon(Icons.Rounded.Business, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -67,6 +65,9 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
                 HorizontalDivider()
                 Text("소개", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
                 Text(activity.summary)
+                // Contract "분야·성격 태그와 아이콘": every 분야, then every 성격, as icon + text chips; an empty group is left out.
+                TagGroup("분야", activity.fieldTagsAll)
+                TagGroup("얻을 수 있는 것", activity.traitTags)
                 if (activity.eligibility.isNotEmpty()) {
                     HorizontalDivider()
                     Text("대상", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
@@ -117,12 +118,15 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
     }
 }
 
-/** Contract "대상자 조건": each line is one condition (an `any` group already reads `… 또는 …`), shown as a soft chip. */
 @OptIn(ExperimentalLayoutApi::class)
-@Composable private fun TagChips(tags: List<String>) = FlowRow(Modifier.semantics { contentDescription = "태그 " + tags.joinToString(", ") }, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-    tags.forEach { ExampleBadge(it) }
+@Composable private fun TagGroup(title: String, tags: List<TagLabel>) {
+    if (tags.isEmpty()) return
+    HorizontalDivider()
+    Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) { tags.forEach { TagChip(it) } }
 }
 
+/** Contract "대상자 조건": each line is one condition (an `any` group already reads `… 또는 …`), shown as a soft chip. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable private fun EligibilityChips(lines: List<String>) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
