@@ -4,11 +4,14 @@ import com.dearby.nativeapp.entities.activity.model.ActivityCategory
 import com.dearby.nativeapp.entities.activity.model.ActivityModel
 import com.dearby.nativeapp.entities.activity.model.EligibilityCondition
 import com.dearby.nativeapp.entities.activity.model.EligibilityGroup
+import com.dearby.nativeapp.entities.activity.model.Highlight
 import com.dearby.nativeapp.entities.activity.model.ActivityPage
 import com.dearby.nativeapp.entities.activity.model.ApplicationWindow
 import com.dearby.nativeapp.entities.activity.model.Place
 import com.dearby.nativeapp.entities.activity.model.ProgramPage
 import com.dearby.nativeapp.entities.activity.model.ProgramSummary
+import com.dearby.nativeapp.entities.activity.model.QueueItem
+import com.dearby.nativeapp.entities.activity.model.QueueScene
 import com.dearby.nativeapp.entities.activity.model.ScheduleStatus
 import com.dearby.nativeapp.entities.activity.model.StageSchedule
 import com.dearby.nativeapp.entities.activity.model.Tag
@@ -100,6 +103,8 @@ private fun parseActivity(activity: JSONObject): ActivityModel {
         // A malformed place (contract "활동 장소": four fields together) never fails the activity.
         activity.optJSONObject("place")?.let { runCatching { Place(it.getString("name"), it.getString("address"), it.getDouble("lat"), it.getDouble("lng")) }.getOrNull() },
         activity.text("applicationUrl"),
+        activity.text("hook"),
+        activity.highlights("highlights"),
     )
 }
 
@@ -134,19 +139,51 @@ private fun JSONObject.eligibilityGroup(depth: Int): EligibilityGroup? {
 /** [api] is the origin the `logoUrl` path (`/v1/programs/{id}/logo?v=`) is resolved against; an unreadable path leaves no logo. */
 fun parsePrograms(json: String, api: String): ProgramPage {
     val body = JSONObject(json)
-    return ProgramPage(body.getJSONArray("items").objects().map { program ->
-        val matched = program.optJSONArray("matchedActivityIds")
-        ProgramSummary(
-            program.getLong("id").toString(), program.getString("name"), program.text("nameEn"),
-            program.getJSONObject("organization").getString("name"), program.getInt("openActivityCount"),
-            program.text("nearestRecruitmentEndAt"), if (matched == null) emptyList() else List(matched.length()) { matched.getLong(it).toString() },
-            program.text("latestActivityAt"),
-            upcomingActivityCount = program.optInt("upcomingActivityCount", 0), nearestRecruitmentStartAt = program.text("nearestRecruitmentStartAt"),
-            program.tags("fieldTags"), program.traitTags(),
-            logoUrl = program.text("logoUrl")?.let { path -> runCatching { URI(api).resolve(path).toString() }.getOrNull() },
-        )
-    }, if (body.isNull("nextCursor")) null else body.getLong("nextCursor").toString())
+    return ProgramPage(body.getJSONArray("items").objects().map { it.programSummary(api) }, if (body.isNull("nextCursor")) null else body.getLong("nextCursor").toString())
 }
+
+/** The program's paths (`logoUrl`, `coverUrl`) are resolved against [api]; counts an item leaves out (a 추천·대기열 program) read as 0. */
+private fun JSONObject.programSummary(api: String): ProgramSummary {
+    val matched = optJSONArray("matchedActivityIds")
+    fun path(key: String) = text(key)?.let { runCatching { URI(api).resolve(it).toString() }.getOrNull() }
+    return ProgramSummary(
+        getLong("id").toString(), getString("name"), text("nameEn"),
+        optJSONObject("organization")?.text("name").orEmpty(), optInt("openActivityCount", 0),
+        text("nearestRecruitmentEndAt"), if (matched == null) emptyList() else List(matched.length()) { matched.getLong(it).toString() },
+        text("latestActivityAt"),
+        upcomingActivityCount = optInt("upcomingActivityCount", 0), nearestRecruitmentStartAt = text("nearestRecruitmentStartAt"),
+        tags("fieldTags"), traitTags(), logoUrl = path("logoUrl"), coverUrl = path("coverUrl"),
+    )
+}
+
+/**
+ * 오늘의 맞춤 대기열 (`GET /v1/me/discovery-queue`, `POST …/refill`) and the 추천 API (`/v1/discovery/recommendations`) share the item shape
+ * `{items: [{activity, program, reasons}]}` (contract "맞춤 대기열"); an unreadable item is skipped. A missing `program` falls back to the activity's.
+ */
+fun parseQueue(body: JSONObject, api: String): List<QueueItem> = body.getJSONArray("items").objects().mapNotNull { item ->
+    runCatching {
+        val activity = item.getJSONObject("activity")
+        val program = item.optJSONObject("program") ?: activity.getJSONObject("program")
+        QueueItem(parseActivity(activity), program.programSummary(api), item.strings("reasons"),
+            item.optJSONArray("scenes")?.objects()?.mapNotNull { runCatching { it.scene() }.getOrNull() }?.ifEmpty { null })
+    }.getOrNull()
+}
+
+/** One server scene; an unknown `type` (or an unreadable one) is null and skipped. `dday` is days left (a `D-22`/`D-DAY` text reads too). */
+private fun JSONObject.scene(): QueueScene? = when (text("type")) {
+    "HOOK" -> QueueScene.Hook(getString("hook"), text("name"))
+    "HIGHLIGHTS" -> highlights("items").takeIf { it.isNotEmpty() }?.let(QueueScene::Highlights)
+    "ELIGIBILITY" -> QueueScene.Eligibility(text("text"), highlights("items")).takeIf { it.text != null || it.items.isNotEmpty() }
+    "BENEFIT" -> QueueScene.Benefit(getString("text"))
+    "DEADLINE" -> QueueScene.Deadline(text("label"),
+        when (val dday = opt("dday")) { is Number -> dday.toInt(); is String -> if (dday.equals("D-DAY", true)) 0 else dday.removePrefix("D-").toIntOrNull(); else -> null },
+        text("deadlineText"), strings("reasons"))
+    else -> null
+}
+/** `[{icon, text}]`; an entry without text is skipped (the icon is read by the app, unknown ones fall back there). */
+private fun JSONObject.highlights(key: String): List<Highlight> =
+    optJSONArray(key)?.objects()?.mapNotNull { item -> item.text("text")?.let { Highlight(item.text("icon") ?: "", it) } }.orEmpty()
+private fun JSONObject.strings(key: String): List<String> = optJSONArray(key)?.let { r -> List(r.length()) { r.getString(it) } }.orEmpty()
 
 /** Contract "분야·성격 태그와 아이콘": every tag array is optional (older API) and an unreadable entry is skipped. */
 private fun JSONObject.tags(key: String): List<Tag> = optJSONArray(key)?.objects()?.mapNotNull { runCatching { it.tag() }.getOrNull() } ?: emptyList()
