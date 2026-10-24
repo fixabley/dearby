@@ -105,7 +105,7 @@ function sceneText(scene: QueueScene): string[] {
     case "ELIGIBILITY":
       return [`지원 대상: ${scene.text}`];
     case "BENEFIT":
-      return [`얻을 수 있는 것: ${scene.text}`];
+      return [`혜택: ${scene.text}`];
     case "DEADLINE": {
       const dday = dDayLabel(scene.dday);
       return [
@@ -644,7 +644,7 @@ function SceneView({ scene, kicker }: { scene: QueueScene; kicker: string }) {
     case "BENEFIT":
       return (
         <>
-          <span className={sceneHeading}>{scene.type === "ELIGIBILITY" ? "지원 대상" : "얻을 수 있는 것"}</span>
+          <span className={sceneHeading}>{scene.type === "ELIGIBILITY" ? "지원 대상" : "혜택"}</span>
           <span className="text-[24px] leading-snug font-bold break-keep">{scene.text}</span>
         </>
       );
