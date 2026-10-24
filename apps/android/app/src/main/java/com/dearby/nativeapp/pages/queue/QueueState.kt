@@ -10,11 +10,11 @@ sealed interface QueueSceneState {
     data class Hook(val hook: String, val name: String?) : QueueSceneState
     /** `이런 걸 해요` with the lines. */
     data class Highlights(val facts: List<QueueFact>) : QueueSceneState
-    /** `지원 자격` / `이런 걸 얻어요` with one sentence. */
+    /** `지원 대상` / `혜택` with one sentence. */
     data class Eligibility(val text: String) : QueueSceneState
     data class Benefit(val text: String) : QueueSceneState
-    /** `마감까지` [dday] (`D-22`, null without a deadline), [deadline] (`11월 15일 마감 · 만 34세 이하`) and the reason chips. */
-    data class Deadline(val dday: String?, val deadline: String?, val reasons: List<String>) : QueueSceneState
+    /** `마감까지` (`행사까지` for an [event], a conference) [dday] (`D-22`, null when undated), [deadline] (`11월 15일 마감 · 만 34세 이하`) and the reason chips. */
+    data class Deadline(val dday: String?, val deadline: String?, val reasons: List<String>, val event: Boolean = false) : QueueSceneState
 }
 
 /**

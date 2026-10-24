@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dearby.nativeapp.entities.account.model.RecommendationPreferences
 import com.dearby.nativeapp.entities.activity.api.parseQueue
+import com.dearby.nativeapp.entities.activity.model.ActivityCategory
 import com.dearby.nativeapp.entities.activity.model.QueueItem
 import com.dearby.nativeapp.entities.activity.model.QueueScene
 import com.dearby.nativeapp.entities.activity.model.lines
@@ -192,16 +193,19 @@ class QueueViewModel(private val account: AccountViewModel, private val preferen
         val activity = item.activity
         val program = item.program
         val field = fieldOf(item)
+        val event = activity.category == ActivityCategory.CONFERENCE
         val scenes = item.scenes?.map { scene ->
             when (scene) {
                 is QueueScene.Hook -> QueueSceneState.Hook(scene.hook, scene.name)
                 is QueueScene.Highlights -> QueueSceneState.Highlights(scene.items.map { QueueFact(it.icon.queueIcon(), it.text) })
                 is QueueScene.Eligibility -> QueueSceneState.Eligibility(scene.text)
                 is QueueScene.Benefit -> QueueSceneState.Benefit(scene.text)
-                is QueueScene.Deadline -> QueueSceneState.Deadline(scene.dday, scene.deadlineText, scene.reasons)
+                is QueueScene.Deadline -> QueueSceneState.Deadline(scene.dday, scene.deadlineText, scene.reasons, event)
             }
         } ?: run {
-            val deadline = activity.stages().firstOrNull { it.kind == "APPLICATION" }?.takeIf { it.day != null }
+            // A conference counts to the event (`행사까지`), everything else to the application deadline.
+            val stages = activity.stages()
+            val deadline = (if (event) stages.lastOrNull()?.takeIf { activity.activitySchedule != null } else stages.firstOrNull { it.kind == "APPLICATION" })?.takeIf { it.day != null }
             val left = deadline?.day?.let { ChronoUnit.DAYS.between(LocalDate.now(SEOUL), it) }
             val facts = activity.highlights.take(3).map { QueueFact(it.icon.queueIcon(), it.text) }.ifEmpty {
                 listOfNotNull(
@@ -213,7 +217,7 @@ class QueueViewModel(private val account: AccountViewModel, private val preferen
                 QueueSceneState.Hook(activity.hook ?: activity.name, if (activity.hook != null) activity.name else program.name),
                 facts.takeIf { it.size >= 2 }?.let(QueueSceneState::Highlights),
                 QueueSceneState.Deadline(when { left == null || left < 0 -> null; left == 0L -> "D-DAY"; else -> "D-$left" },
-                    listOfNotNull(deadline?.dateText, activity.eligibility?.lines()?.firstOrNull()).joinToString(" · ").ifEmpty { null }, item.reasons),
+                    listOfNotNull(deadline?.dateText, activity.eligibility?.lines()?.firstOrNull()).joinToString(" · ").ifEmpty { null }, item.reasons, event),
             )
         }
         return QueueCardState(
