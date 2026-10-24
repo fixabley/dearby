@@ -11,15 +11,16 @@ import com.dearby.nativeapp.entities.account.model.Recommendation
 import com.dearby.nativeapp.entities.account.model.RecommendationPage
 import com.dearby.nativeapp.entities.account.model.RecommendationPreferences
 import com.dearby.nativeapp.entities.account.model.toRecommendationPreferences
-import com.dearby.nativeapp.pages.recommendation.ChipGroup
 import com.dearby.nativeapp.pages.recommendation.ChipOption
 import com.dearby.nativeapp.pages.recommendation.EducationChoice
 import com.dearby.nativeapp.pages.recommendation.EligibilityFormState
 import com.dearby.nativeapp.pages.recommendation.EligibilityStep
+import com.dearby.nativeapp.pages.recommendation.FieldNode
 import com.dearby.nativeapp.pages.recommendation.FunnelStep
 import com.dearby.nativeapp.pages.recommendation.RecommendationFunnelState
 import com.dearby.nativeapp.pages.recommendation.RecommendationViewState
 import com.dearby.nativeapp.shared.config.ConsentVersions
+import com.dearby.nativeapp.shared.ui.tagIcon
 import com.dearby.nativeapp.widgets.recommendation.recommendationRows.RecommendationItemState
 import java.time.Instant
 import java.time.LocalDate
@@ -120,32 +121,51 @@ class RecommendationViewModel(private val account: AccountViewModel, private val
             catch (e: CancellationException) { throw e } catch (e: Exception) { funnelState.update { it?.copy(tagsLoading = false, tagsFailed = true) } }
         }
     }
-    /** Fields grouped by their upper field (contract "하위 분야"); upper fields without sub-fields and orphans go under `그 밖에`. */
+    /**
+     * 분야 as a tree (contract "추천 퍼널 분야 단계(상위 → 하위)"): upper fields and fields without one, in dictionary order, each with its children
+     * (a child whose upper field is missing stands alone). The saved ids come back as picks: a child id picks its upper field with that child.
+     */
     private fun applyTags(all: List<DictionaryTag>) {
         val fields = all.filter { it.kind == "FIELD" }
-        val children = fields.filter { it.parentId != null }.groupBy { it.parentId }
-        val roots = fields.filter { it.parentId == null }
-        val grouped = roots.filter { it.id in children }.map { root -> ChipGroup(root.name, children.getValue(root.id).map(::chip)) }
-        val rootIds = roots.map { it.id }.toSet()
-        val loose = roots.filter { it.id !in children } + fields.filter { it.parentId != null && it.parentId !in rootIds }
-        val groups = grouped + if (loose.isEmpty()) emptyList() else listOf(ChipGroup(if (grouped.isEmpty()) "분야" else "그 밖에", loose.map(::chip)))
-        funnelState.update { it?.copy(fieldGroups = groups, traitOptions = all.filter { tag -> tag.kind == "TRAIT" }.map(::chip), tagsLoading = false, tagsFailed = false) }
+        val ids = fields.map { it.id }.toSet()
+        val children = fields.filter { it.parentId in ids }.groupBy { it.parentId }
+        val tree = fields.filter { it.parentId !in ids }.map { FieldNode(chip(it), children[it.id].orEmpty().map(::chip)) }
+        val parentOf = fields.filter { it.parentId in ids }.associate { it.id.toString() to it.parentId.toString() }
+        funnelState.update { funnel ->
+            funnel ?: return@update null
+            val picked = funnel.fieldTagIds.filter { it.toLongOrNull() in ids }
+            funnel.copy(fieldTree = tree, traitOptions = all.filter { tag -> tag.kind == "TRAIT" }.map(::chip), tagsLoading = false, tagsFailed = false,
+                fields = picked.map { parentOf[it] ?: it }.toSet(), subFields = picked.filter { it in parentOf }.groupBy { parentOf.getValue(it) }.mapValues { it.value.toSet() })
+        }
     }
     fun toggle(step: FunnelStep, id: String) = funnelState.update { funnel ->
         funnel ?: return@update null
         fun Set<String>.flip() = if (id in this) this - id else this + id
         when (step) {
-            FunnelStep.FIELDS -> funnel.copy(fields = funnel.fields.flip())
+            // Unpicking an upper field drops its sub-answer too.
+            FunnelStep.FIELDS -> funnel.copy(fields = funnel.fields.flip(), subFields = funnel.subFields - id)
+            // An upper field's id is its `전부 좋아요`: back to no child picked. A child flips; none left means `전부 좋아요` again.
+            FunnelStep.SUBFIELDS -> funnel.fieldTree.firstOrNull { node -> node.option.id == id || node.children.any { it.id == id } }?.let { node ->
+                val parent = node.option.id
+                funnel.copy(subFields = funnel.subFields + (parent to if (id == parent) emptySet() else funnel.subFields[parent].orEmpty().flip()))
+            } ?: funnel
             FunnelStep.CATEGORIES -> funnel.copy(categories = funnel.categories.flip())
             FunnelStep.TRAITS -> funnel.copy(traits = funnel.traits.flip())
             else -> funnel
         }
     }
+    /** The question after this one: 분야 → each sub-question screen → 활동 종류 → 성격. */
+    private fun RecommendationFunnelState.forward() = when {
+        step == FunnelStep.FIELDS && subScreens.isNotEmpty() -> copy(step = FunnelStep.SUBFIELDS, subIndex = 0)
+        step == FunnelStep.FIELDS -> copy(step = FunnelStep.CATEGORIES)
+        step == FunnelStep.SUBFIELDS && subIndex + 1 < subScreens.size -> copy(subIndex = subIndex + 1)
+        else -> copy(step = FunnelStep.entries[step.ordinal + 1])
+    }
     /** The big button: next question; after the last one the settings are saved and the result shown; on the result, close. */
     fun next() {
         val funnel = funnelState.value ?: return
         when (funnel.step) {
-            FunnelStep.INTRO, FunnelStep.FIELDS, FunnelStep.CATEGORIES -> funnelState.value = funnel.copy(step = FunnelStep.entries[funnel.step.ordinal + 1])
+            FunnelStep.INTRO, FunnelStep.FIELDS, FunnelStep.SUBFIELDS, FunnelStep.CATEGORIES -> funnelState.value = funnel.forward()
             FunnelStep.TRAITS -> finish(funnel)
             FunnelStep.RESULT -> funnelState.value = null
         }
@@ -155,7 +175,9 @@ class RecommendationViewModel(private val account: AccountViewModel, private val
         val funnel = funnelState.value ?: return
         when (funnel.step) {
             FunnelStep.INTRO -> { save(preferences.copy(completedAt = Instant.now().toString())); funnelState.value = null }
-            FunnelStep.FIELDS -> funnelState.value = funnel.copy(fields = emptySet(), step = FunnelStep.CATEGORIES)
+            FunnelStep.FIELDS -> funnelState.value = funnel.copy(fields = emptySet(), subFields = emptyMap(), step = FunnelStep.CATEGORIES)
+            // A skipped sub-question keeps `전부 좋아요` for its upper fields.
+            FunnelStep.SUBFIELDS -> funnelState.value = funnel.copy(subFields = funnel.subFields - funnel.subScreens[funnel.subIndex].map { it.option.id }.toSet()).forward()
             FunnelStep.CATEGORIES -> funnelState.value = funnel.copy(categories = emptySet(), step = FunnelStep.TRAITS)
             FunnelStep.TRAITS -> finish(funnel.copy(traits = emptySet()))
             FunnelStep.RESULT -> funnelState.value = null
@@ -167,12 +189,16 @@ class RecommendationViewModel(private val account: AccountViewModel, private val
         if (funnel.step == FunnelStep.INTRO) return skip()
         funnelState.value = when {
             funnel.step == FunnelStep.RESULT || (funnel.step == FunnelStep.FIELDS && !funnel.first) -> null
+            funnel.step == FunnelStep.SUBFIELDS && funnel.subIndex > 0 -> funnel.copy(subIndex = funnel.subIndex - 1)
+            funnel.step == FunnelStep.SUBFIELDS -> funnel.copy(step = FunnelStep.FIELDS)
+            funnel.step == FunnelStep.CATEGORIES && funnel.subScreens.isNotEmpty() -> funnel.copy(step = FunnelStep.SUBFIELDS, subIndex = funnel.subScreens.size - 1)
+            funnel.step == FunnelStep.CATEGORIES -> funnel.copy(step = FunnelStep.FIELDS)
             else -> funnel.copy(step = FunnelStep.entries[funnel.step.ordinal - 1])
         }
     }
     private fun finish(funnel: RecommendationFunnelState) {
         funnelState.value = funnel.copy(saving = true)
-        val chosen = RecommendationPreferences(funnel.fields.mapNotNull(String::toLongOrNull), funnel.categories.toList(), funnel.traits.mapNotNull(String::toLongOrNull), Instant.now().toString())
+        val chosen = RecommendationPreferences(funnel.fieldTagIds.mapNotNull(String::toLongOrNull), funnel.categories.toList(), funnel.traits.mapNotNull(String::toLongOrNull), Instant.now().toString())
         viewModelScope.launch {
             persist(chosen)
             val items = try { recommendations() } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
@@ -261,7 +287,7 @@ interface RecommendationStore {
     fun markCompleted()
 }
 
-private fun chip(tag: DictionaryTag) = ChipOption(tag.id.toString(), tag.name)
+private fun chip(tag: DictionaryTag) = ChipOption(tag.id.toString(), tag.name, tagIcon(tag.nameEn))
 private fun item(recommendation: Recommendation) = RecommendationItemState(recommendation.activityId, recommendation.name,
     "${recommendation.program} · ${recommendation.organization}", recommendation.reasons, recommendation.logoUrl)
 /** `재학 중 · 3학년 · 2003년생`; null when nothing was entered. */

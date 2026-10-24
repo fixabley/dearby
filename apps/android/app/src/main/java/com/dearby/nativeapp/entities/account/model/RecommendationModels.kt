@@ -40,10 +40,10 @@ private fun JSONObject.recommendationItems(api: String): List<Recommendation> = 
     }.getOrNull()
 }
 
-/** A dictionary tag with its kind (`FIELD`·`TRAIT`) and upper field (contract "태그 종류"·"하위 분야"); older APIs without `kind` read as TRAIT. */
-data class DictionaryTag(val id: Long, val name: String, val kind: String, val parentId: Long?)
+/** A dictionary tag with its kind, icon key [nameEn] (`FIELD`·`TRAIT`) and upper field (contract "태그 종류"·"하위 분야"); older APIs without `kind` read as TRAIT. */
+data class DictionaryTag(val id: Long, val name: String, val kind: String, val parentId: Long?, val nameEn: String? = null)
 fun JSONObject.toDictionaryTags(): List<DictionaryTag> = getJSONArray("items").let { items -> List(items.length()) { items.getJSONObject(it) } }.mapNotNull { tag ->
-    runCatching { DictionaryTag(tag.getLong("id"), tag.getString("name"), tag.optText("kind") ?: "TRAIT", if (tag.isNull("parentId") || !tag.has("parentId")) null else tag.getLong("parentId")) }.getOrNull()
+    runCatching { DictionaryTag(tag.getLong("id"), tag.getString("name"), tag.optText("kind") ?: "TRAIT", if (tag.isNull("parentId") || !tag.has("parentId")) null else tag.getLong("parentId"), tag.optText("nameEn")) }.getOrNull()
 }
 
 private fun JSONObject.optText(key: String): String? = if (!has(key) || isNull(key)) null else getString(key).takeIf { it.isNotBlank() }
