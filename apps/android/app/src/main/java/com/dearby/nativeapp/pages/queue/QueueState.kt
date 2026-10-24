@@ -1,7 +1,7 @@
 package com.dearby.nativeapp.pages.queue
 
-/** The 핵심 세 줄 icons of the contract (`cost`·`period`·`team`·`mentor`·`award`·`place`·`talk`·`ticket`). */
-enum class QueueIcon { COST, PERIOD, TEAM, MENTOR, AWARD, PLACE, TALK, TICKET }
+/** The 핵심 세 줄 icons (`cost`·`period`·`team`·`mentor`·`award`·`place`·`talk`·`ticket`) and the 지원 대상 ones (age … other; region is PLACE, team TEAM). */
+enum class QueueIcon { COST, PERIOD, TEAM, MENTOR, AWARD, PLACE, TALK, TICKET, AGE, EDUCATION, SCHOOL_YEAR, EMPLOYMENT, MAJOR, NATIONALITY, EXPERIENCE, OTHER }
 data class QueueFact(val icon: QueueIcon, val text: String)
 
 /** One scene of a card, in the order played; the card stops on the last one. */
@@ -10,8 +10,9 @@ sealed interface QueueSceneState {
     data class Hook(val hook: String, val name: String?) : QueueSceneState
     /** `이런 걸 해요` with the lines. */
     data class Highlights(val facts: List<QueueFact>) : QueueSceneState
-    /** `지원 대상` / `혜택` with one sentence. */
-    data class Eligibility(val text: String) : QueueSceneState
+    /** `지원 대상` as icon rows ([facts]), else one sentence ([text]). */
+    data class Eligibility(val text: String?, val facts: List<QueueFact>) : QueueSceneState
+    /** `혜택` with one sentence. */
     data class Benefit(val text: String) : QueueSceneState
     /**
      * [heading] (the server's `label`, else `마감까지` / `행사까지` for a conference) over [dday] days left: `D-n`, `D-DAY`; once passed the heading becomes

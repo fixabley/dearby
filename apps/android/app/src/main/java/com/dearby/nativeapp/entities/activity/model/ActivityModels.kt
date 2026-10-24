@@ -203,7 +203,7 @@ data class ProgramSummary(
     val coverUrl: String? = null,
 )
 
-/** One of an activity's 핵심 세 줄: [icon] is `cost`·`period`·`team`·`mentor`·`award`·`place`·`talk`·`ticket` (anything else reads as `talk`). */
+/** One icon-and-text line: an activity's 핵심 세 줄 (`cost`·`period`·`team`·`mentor`·`award`·`place`·`talk`·`ticket`) or an ELIGIBILITY scene item. */
 data class Highlight(val icon: String, val text: String)
 
 /**
@@ -216,7 +216,8 @@ data class QueueItem(val activity: ActivityModel, val program: ProgramSummary, v
 sealed interface QueueScene {
     data class Hook(val hook: String, val name: String?) : QueueScene
     data class Highlights(val items: List<Highlight>) : QueueScene
-    data class Eligibility(val text: String) : QueueScene
+    /** [items] `{icon, text}` (`age`·`education`·`schoolYear`·`employment`·`region`·`major`·`nationality`·`experience`·`team`·`other`); [text] when there are none. */
+    data class Eligibility(val text: String?, val items: List<Highlight>) : QueueScene
     data class Benefit(val text: String) : QueueScene
     /** [label] the server's heading (`마감까지`·`행사까지`), [dday] days left (negative once passed), null when undated. */
     data class Deadline(val label: String?, val dday: Int?, val deadlineText: String?, val reasons: List<String>) : QueueScene

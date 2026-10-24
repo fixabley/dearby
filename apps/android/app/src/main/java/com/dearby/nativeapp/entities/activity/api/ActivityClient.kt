@@ -104,7 +104,7 @@ private fun parseActivity(activity: JSONObject): ActivityModel {
         activity.optJSONObject("place")?.let { runCatching { Place(it.getString("name"), it.getString("address"), it.getDouble("lat"), it.getDouble("lng")) }.getOrNull() },
         activity.text("applicationUrl"),
         activity.text("hook"),
-        activity.optJSONArray("highlights")?.objects()?.mapNotNull { runCatching { Highlight(it.text("icon") ?: "talk", it.getString("text")) }.getOrNull()?.takeIf { h -> h.text.isNotBlank() } }.orEmpty(),
+        activity.highlights("highlights"),
     )
 }
 
@@ -172,15 +172,17 @@ fun parseQueue(body: JSONObject, api: String): List<QueueItem> = body.getJSONArr
 /** One server scene; an unknown `type` (or an unreadable one) is null and skipped. `dday` is days left (a `D-22`/`D-DAY` text reads too). */
 private fun JSONObject.scene(): QueueScene? = when (text("type")) {
     "HOOK" -> QueueScene.Hook(getString("hook"), text("name"))
-    "HIGHLIGHTS" -> getJSONArray("items").objects().mapNotNull { runCatching { Highlight(it.text("icon") ?: "talk", it.getString("text")) }.getOrNull() }
-        .takeIf { it.isNotEmpty() }?.let(QueueScene::Highlights)
-    "ELIGIBILITY" -> QueueScene.Eligibility(getString("text"))
+    "HIGHLIGHTS" -> highlights("items").takeIf { it.isNotEmpty() }?.let(QueueScene::Highlights)
+    "ELIGIBILITY" -> QueueScene.Eligibility(text("text"), highlights("items")).takeIf { it.text != null || it.items.isNotEmpty() }
     "BENEFIT" -> QueueScene.Benefit(getString("text"))
     "DEADLINE" -> QueueScene.Deadline(text("label"),
         when (val dday = opt("dday")) { is Number -> dday.toInt(); is String -> if (dday.equals("D-DAY", true)) 0 else dday.removePrefix("D-").toIntOrNull(); else -> null },
         text("deadlineText"), strings("reasons"))
     else -> null
 }
+/** `[{icon, text}]`; an entry without text is skipped (the icon is read by the app, unknown ones fall back there). */
+private fun JSONObject.highlights(key: String): List<Highlight> =
+    optJSONArray(key)?.objects()?.mapNotNull { item -> item.text("text")?.let { Highlight(item.text("icon") ?: "", it) } }.orEmpty()
 private fun JSONObject.strings(key: String): List<String> = optJSONArray(key)?.let { r -> List(r.length()) { r.getString(it) } }.orEmpty()
 
 /** Contract "분야·성격 태그와 아이콘": every tag array is optional (older API) and an unreadable entry is skipped. */

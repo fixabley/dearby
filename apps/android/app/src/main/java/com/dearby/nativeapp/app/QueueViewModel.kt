@@ -199,7 +199,7 @@ class QueueViewModel(private val account: AccountViewModel, private val preferen
             when (scene) {
                 is QueueScene.Hook -> QueueSceneState.Hook(scene.hook, scene.name)
                 is QueueScene.Highlights -> QueueSceneState.Highlights(scene.items.map { QueueFact(it.icon.queueIcon(), it.text) })
-                is QueueScene.Eligibility -> QueueSceneState.Eligibility(scene.text)
+                is QueueScene.Eligibility -> QueueSceneState.Eligibility(scene.text, scene.items.map { QueueFact(it.icon.eligibilityIcon(), it.text) })
                 is QueueScene.Benefit -> QueueSceneState.Benefit(scene.text)
                 is QueueScene.Deadline -> QueueSceneState.Deadline(scene.label ?: heading, scene.dday, scene.deadlineText, scene.reasons)
             }
@@ -235,6 +235,12 @@ class QueueViewModel(private val account: AccountViewModel, private val preferen
 private fun String.queueIcon() = when (this) {
     "cost" -> QueueIcon.COST; "period" -> QueueIcon.PERIOD; "team" -> QueueIcon.TEAM; "mentor" -> QueueIcon.MENTOR
     "award" -> QueueIcon.AWARD; "place" -> QueueIcon.PLACE; "ticket" -> QueueIcon.TICKET; else -> QueueIcon.TALK
+}
+
+private fun String.eligibilityIcon() = when (this) {
+    "age" -> QueueIcon.AGE; "education" -> QueueIcon.EDUCATION; "schoolYear" -> QueueIcon.SCHOOL_YEAR; "employment" -> QueueIcon.EMPLOYMENT
+    "region" -> QueueIcon.PLACE; "major" -> QueueIcon.MAJOR; "nationality" -> QueueIcon.NATIONALITY; "experience" -> QueueIcon.EXPERIENCE
+    "team" -> QueueIcon.TEAM; else -> QueueIcon.OTHER
 }
 
 /** Signed-out reactions (contract "비로그인은 … 신호는 기기에만 둔다"), as ids: liked and excluded activities, hidden programs, `덜 보기` field tags. */

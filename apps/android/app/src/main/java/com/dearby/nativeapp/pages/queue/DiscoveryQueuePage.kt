@@ -16,6 +16,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -185,16 +186,11 @@ private val QueueReaction.icon: ImageVector get() = when (this) {
                     Text(shown.hook, Modifier.rise(1, scene, still), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, lineHeight = 1.25.em, letterSpacing = (-0.5).sp)
                     shown.name?.let { Text(it, Modifier.rise(2, scene, still), color = Color.White.copy(0.9f), fontSize = 15.sp) }
                 }
-                is QueueSceneState.Highlights -> {
-                    label("이런 걸 해요")
-                    shown.facts.forEachIndexed { i, fact ->
-                        Row(Modifier.rise(i + 1, scene, still), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Box(Modifier.size(36.dp).background(Color.White.copy(0.18f), CircleShape), contentAlignment = Alignment.Center) { Icon(fact.icon.vector, null, Modifier.size(20.dp), tint = Color.White) }
-                            Text(fact.text, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 19.sp)
-                        }
-                    }
+                is QueueSceneState.Highlights -> { label("이런 걸 해요"); Facts(shown.facts, scene, still) }
+                is QueueSceneState.Eligibility -> {
+                    label("지원 대상")
+                    if (shown.facts.isNotEmpty()) Facts(shown.facts, scene, still) else shown.text?.let { Sentence(it, scene, still) }
                 }
-                is QueueSceneState.Eligibility -> { label("지원 대상"); Sentence(shown.text, scene, still) }
                 is QueueSceneState.Benefit -> { label("혜택"); Sentence(shown.text, scene, still) }
                 is QueueSceneState.Deadline -> {
                     label(shown.title)
@@ -222,6 +218,15 @@ private val QueueReaction.icon: ImageVector get() = when (this) {
             Rail(null) { RailButton(Icons.Rounded.MoreHoriz, "더 보기", more) }
         }
         HeartBurst(burst, reduceMotion, Modifier.align(Alignment.Center))
+    }
+}
+
+@Composable private fun Facts(facts: List<QueueFact>, scene: Int, still: Boolean) {
+    facts.forEachIndexed { i, fact ->
+        Row(Modifier.rise(i + 1, scene, still), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Box(Modifier.size(36.dp).background(Color.White.copy(0.18f), CircleShape), contentAlignment = Alignment.Center) { Icon(fact.icon.vector, null, Modifier.size(20.dp), tint = Color.White) }
+            Text(fact.text, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 19.sp)
+        }
     }
 }
 
@@ -307,4 +312,12 @@ private val QueueIcon.vector: ImageVector get() = when (this) {
     QueueIcon.PLACE -> Icons.Rounded.Place
     QueueIcon.TALK -> Icons.Rounded.Mic
     QueueIcon.TICKET -> Icons.Rounded.ConfirmationNumber
+    QueueIcon.AGE -> Icons.Rounded.Cake
+    QueueIcon.EDUCATION -> Icons.Rounded.School
+    QueueIcon.SCHOOL_YEAR -> Icons.Rounded.Numbers
+    QueueIcon.EMPLOYMENT -> Icons.Rounded.Work
+    QueueIcon.MAJOR -> Icons.AutoMirrored.Rounded.MenuBook
+    QueueIcon.NATIONALITY -> Icons.Rounded.Public
+    QueueIcon.EXPERIENCE -> Icons.Rounded.Schedule
+    QueueIcon.OTHER -> Icons.Rounded.Info
 }
