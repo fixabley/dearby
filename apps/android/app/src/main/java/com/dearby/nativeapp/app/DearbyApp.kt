@@ -12,6 +12,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.activity.applyPrompt.ApplyConfirmationSheet
 import com.dearby.nativeapp.entities.account.model.PublishedCard
+import com.dearby.nativeapp.pages.recommendation.FunnelStep
+import com.dearby.nativeapp.pages.recommendation.RecommendationFunnelPage
+import com.dearby.nativeapp.widgets.recommendation.recommendationRows.RecommendationSection
 
 /** Four tabs (contract "명함 탭 통합", 2026-10-20): 내 명함 and 받은 명함 are the two segments of 명함. */
 private enum class Tab(val label: String, val icon: ImageVector) {
@@ -31,7 +34,7 @@ private sealed interface Route {
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, myCards: MyCardsViewModel, wallet: WalletViewModel, profile: ProfileViewModel, settings: SettingsViewModel, screenshot: String? = null) {
+@Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, myCards: MyCardsViewModel, wallet: WalletViewModel, profile: ProfileViewModel, settings: SettingsViewModel, recommendation: RecommendationViewModel, screenshot: String? = null) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     // The 명함 tab's segment, kept in memory for the app's lifetime (contract "명함 탭 통합").
     var cardsSegment by remember { mutableStateOf(CardsSegment.MINE) }
@@ -74,6 +77,14 @@ private sealed interface Route {
         activityListState.linkNotice?.let { notice = it }
         if (activityListState.linked != null || activityListState.linkNotice != null) activityModel.consumeLinked()
     }
+    // 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천"): the funnel takes the whole screen on the first visit to 발견 (not in store screenshots).
+    val reco by recommendation.state.collectAsStateWithLifecycle()
+    val recoFunnel by recommendation.funnel.collectAsStateWithLifecycle()
+    val eligibilityForm by recommendation.form.collectAsStateWithLifecycle()
+    LaunchedEffect(tab, route, reco.needsFunnel) { if (screenshot == null && tab == Tab.Discovery && route == null && reco.needsFunnel) recommendation.openFunnel(first = true) }
+    val recoHeader: (@Composable () -> Unit)? = if (!reco.available || !reco.completed) null else {
+        { RecommendationSection(reco.items, reco.personalized, activityModel::openLinked) { recommendation.openFunnel(first = false) } }
+    }
     LaunchedEffect(auth.phase, walletState.needSignIn) { if (auth.phase == AccountPhase.SIGNED_IN && walletState.needSignIn) wallet.retryPending() }
     // Every screen sits on the theme `background`, which this Surface spreads under the status bar, navigation bar and keyboard too (contract "안전 영역
     // 배경"); cards, sheets and tiles are `surface` on top. Every screen inside starts with a `DearbyTopBar`, which takes the status-bar inset itself, so
@@ -83,7 +94,13 @@ private sealed interface Route {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onSurface) {
         Column(Modifier.navigationBarsPadding().imePadding()) {
             Box(Modifier.weight(1f)) {
-                when (val screen = route) {
+                val funnel = recoFunnel
+                if (funnel != null) {
+                    BackHandler(onBack = recommendation::back)
+                    // 추천 보러 가기 lands on 발견, where the 추천 묶음 is.
+                    RecommendationFunnelPage(funnel, recommendation::toggle, { if (funnel.step == FunnelStep.RESULT) { tab = Tab.Discovery; route = null }; recommendation.next() },
+                        recommendation::skip, recommendation::back, recommendation::retryTags)
+                } else when (val screen = route) {
                     is Route.Detail -> walletState.cards.firstOrNull { it.id == screen.id }?.let { WalletCardRoute(it, wallet, myCards) { route = null } }
                         ?: LaunchedEffect(screen) { route = null }
                     Route.Shared -> walletState.shared?.let { SharedCardRoute(it, wallet, wallet::closeShared) }
@@ -94,18 +111,18 @@ private sealed interface Route {
                         // 설정·알림 sit in each tab's pinned `DearbyTopBar` (contract "iOS 상단 바…" Android sentence).
                         Tab.Discovery, Tab.Mine -> key(tab) {
                             ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }, settings = openSettings, notify = notify,
-                                openInMine = { mineOpen = it; tab = Tab.Mine }, open = if (tab == Tab.Mine) mineOpen else discoveryOpen, consumeOpen = { if (tab == Tab.Mine) mineOpen = null else discoveryOpen = null }, openConsent = { activityDetail = false; tab = Tab.Profile }) { activityDetail = it }
+                                openInMine = { mineOpen = it; tab = Tab.Mine }, open = if (tab == Tab.Mine) mineOpen else discoveryOpen, consumeOpen = { if (tab == Tab.Mine) mineOpen = null else discoveryOpen = null }, openConsent = { activityDetail = false; tab = Tab.Profile }, header = recoHeader) { activityDetail = it }
                         }
                         Tab.Cards -> CardsRoute(cardsSegment, { cardsSegment = it }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
                             edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify)
-                        Tab.Profile -> ProfileRoute(profile, account, compose, openSettings, notify)
+                        Tab.Profile -> ProfileRoute(profile, account, recommendation, compose, openSettings, notify)
                     }
                 }
             }
             // The first-profile funnel (never saved) takes the whole screen, like Toss: no tab bar until the profile exists.
             val settingUp = tab == Tab.Profile && profileState.settingUp
             // Stock Material 3 navigation bar with the theme's defaults (2026-10-18 user decision: no custom styling). The Column already pads the system bar.
-            if (route == null && !activityDetail && !settingUp && !imeVisible) {
+            if (route == null && !activityDetail && !settingUp && !imeVisible && recoFunnel == null && !(tab == Tab.Profile && eligibilityForm != null)) {
                 NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
                     Tab.entries.forEach { item -> NavigationBarItem(selected = tab == item, onClick = { tab = item }, icon = { Icon(item.icon, null) }, label = { Text(item.label) }) }
                 }
@@ -132,6 +149,7 @@ private sealed interface Route {
         }
     }
     notice?.let { value -> AlertDialog(onDismissRequest = { notice = null }, title = { Text("안내") }, text = { Text(value) }, confirmButton = { TextButton({ notice = null }) { Text("확인") } }) }
+    reco.notice?.let { value -> AlertDialog(onDismissRequest = recommendation::dismissNotice, title = { Text("추천") }, text = { Text(value) }, confirmButton = { TextButton(recommendation::dismissNotice) { Text("확인") } }) }
     walletState.notice?.let { value -> AlertDialog(onDismissRequest = wallet::dismissNotice, title = { Text("안내") }, text = { Text(value) }, confirmButton = { TextButton(wallet::dismissNotice) { Text("확인") } }) }
     if (walletState.needSignIn && auth.phase != AccountPhase.SIGNED_IN) SignInRoute(account, close = wallet::dismissSignIn)
 }

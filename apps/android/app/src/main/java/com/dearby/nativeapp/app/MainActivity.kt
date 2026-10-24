@@ -60,6 +60,10 @@ class MainActivity : ComponentActivity() {
     private val profile: ProfileViewModel by viewModels { viewModelFactory { initializer { ProfileViewModel(account) } } }
     private val myCards: MyCardsViewModel by viewModels { viewModelFactory { initializer { MyCardsViewModel(account) } } }
     private val settings: SettingsViewModel by viewModels { viewModelFactory { initializer { SettingsViewModel(account, "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})") } } }
+    // 추천 설정 while signed out (contract "추천 설정 저장": the app's existing settings store, a new key); nothing older is read.
+    private val recommendation: RecommendationViewModel by viewModels {
+        viewModelFactory { initializer { RecommendationViewModel(account, { onboarding.getString(RECOMMENDATION_KEY, null) }, { onboarding.edit { putString(RECOMMENDATION_KEY, it) } }) } }
+    }
     // First-launch intro, remembered in its own new preferences file; no earlier stored data is read.
     private val onboarding by lazy { getSharedPreferences("dearby.onboarding", MODE_PRIVATE) }
     private var intro by mutableStateOf(false)
@@ -87,7 +91,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             DearbyTheme {
                 if (intro) IntroRoute(account, ::introShown)
-                else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings, screenshot)
+                else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings, recommendation, screenshot)
                 PendingAccountRoute(account)
             }
         }
@@ -110,3 +114,5 @@ class MainActivity : ComponentActivity() {
         activityAppLink(link, BuildConfig.WEB_ORIGIN)?.let(activityModel::openLinked)
     }
 }
+
+private const val RECOMMENDATION_KEY = "dearby.recommendation.preferences"

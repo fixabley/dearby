@@ -32,7 +32,7 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
  */
 @Composable fun ActivityRoute(
     model: ActivityViewModel, mine: Boolean = false, explore: () -> Unit = {}, settings: () -> Unit = {}, notify: () -> Unit = {},
-    openInMine: (String) -> Unit = {}, open: String? = null, consumeOpen: () -> Unit = {}, openConsent: () -> Unit = {}, active: (Boolean) -> Unit,
+    openInMine: (String) -> Unit = {}, open: String? = null, consumeOpen: () -> Unit = {}, openConsent: () -> Unit = {}, header: (@Composable () -> Unit)? = null, active: (Boolean) -> Unit,
 ) {
     val state by model.state.collectAsStateWithLifecycle()
     var selected by remember { mutableStateOf<String?>(null) }
@@ -95,7 +95,7 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
         progress != null && progressActivity != null -> ActivityProgressPage(progress, { progressId = null }, { selected = progress.id; linkError = null },
             { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it }, { model.apply(progress.id, false); progressId = null }, { addToCalendar(it, progressActivity) })
         mine -> MyActivitiesPage(state, { selected = it; linkError = null }, { progressId = it }, explore, settings, notify) { model.apply(it, false) }
-        else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify, model::clearRefreshFailure, settings)
+        else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify, model::clearRefreshFailure, settings, header)
     }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
