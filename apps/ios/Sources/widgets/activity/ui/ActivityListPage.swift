@@ -8,7 +8,10 @@ struct ActivityListPage: View {
     let state: ActivityViewModel
     /// 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): the section above `마감 숨기기`, hidden while searching.
     let recommendations: RecommendationModel
+    /// 오늘의 맞춤 대기열 (contract "맞춤 대기열" 2026-10-24): the first row of the 추천 section, full screen when opened.
+    let queue: DiscoveryQueueModel
     @Binding var path: NavigationPath
+    @State private var showsQueue = false
     /// More than one screen down: show `맨 위로`.
     @State private var farDown = false
     @State private var position = ScrollPosition()
@@ -114,6 +117,9 @@ struct ActivityListPage: View {
             state.search(state.searchText)
         }
         .navigationDestination(for: String.self) { id in ActivityDetailView(state: state, activityID: id) }
+        .fullScreenCover(isPresented: $showsQueue) {
+            DiscoveryQueuePage(model: queue, state: state, preferences: recommendations.preferences)
+        }
         .navigationDestination(for: RecommendationListRoute.self) { _ in
             RecommendationListPage(items: recommendations.items, open: open)
         }
@@ -141,6 +147,10 @@ struct ActivityListPage: View {
                     Button("설정") { recommendations.presentingFunnel = true }.font(.dearby(.subheadline)).accessibilityIdentifier("reco-settings")
                 }.padding(.horizontal, 6)
                 VStack(alignment: .leading, spacing: 0) {
+                    if !recommendations.sectionPending, queue.showsEntry(hasRecommendations: !recommendations.items.isEmpty) {
+                        DiscoveryQueueEntry { showsQueue = true }
+                        Divider()
+                    }
                     if recommendations.sectionPending {
                         DearbyRowsSkeleton()
                     } else if recommendations.items.isEmpty {
