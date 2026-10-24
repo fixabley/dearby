@@ -67,7 +67,7 @@ struct EligibilityFlow: View {
     var body: some View {
         NavigationStack(path: $path) {
             DearbyQuestionPage(progress: 1 / 3, title: "지금 어떤 상황이에요?", button: "다음", disabled: status == nil, next: afterStatus) {
-                Section { ForEach(EligibilityStatus.allCases, id: \.self) { choice in pick(choice.label, selected: status == choice) { status = choice; afterStatus() } } }
+                Section { ForEach(EligibilityStatus.allCases, id: \.self) { choice in pick(choice.option, selected: status == choice) { status = choice; afterStatus() } } }
             }
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { dismiss() } } }
             .navigationDestination(for: Step.self) { step in

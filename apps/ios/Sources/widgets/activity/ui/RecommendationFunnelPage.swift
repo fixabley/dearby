@@ -80,7 +80,7 @@ struct RecommendationFunnelPage: View {
         }
         ForEach(roots) { root in
             Section(root.name) {
-                check(root.name, root.id, in: \.fieldTagIds)
+                check(fields.contains { $0.parentID == root.id } ? "\(root.name) 전체" : root.name, root.id, in: \.fieldTagIds)
                 ForEach(fields.filter { $0.parentID == root.id }) { child in check(child.name, child.id, in: \.fieldTagIds) }
             }
         }
@@ -122,7 +122,7 @@ struct RecommendationRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(item.activity.title).font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(.primary).multilineTextAlignment(.leading)
-            if let program = item.activity.program { Text(program).font(.dearby(.footnote)).foregroundStyle(.secondary) }
+            if let program = item.programName { Text(program).font(.dearby(.footnote)).foregroundStyle(.secondary) }
             if !item.reasons.isEmpty {
                 ChipFlow(spacing: 6) { ForEach(item.reasons, id: \.self) { DearbyBadge(title: $0, quiet: true) } }
             }

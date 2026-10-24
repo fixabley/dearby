@@ -4,6 +4,7 @@ import Foundation
 /// (`데이터·AI`, `부트캠프`, `11월 7일 마감`, `지원 자격 확인 필요`). Scores are never sent.
 struct RecommendedActivity: Identifiable, Sendable {
     let activity: ActivityModel
+    let programName: String?
     let reasons: [String]
     var id: String { activity.id }
 }

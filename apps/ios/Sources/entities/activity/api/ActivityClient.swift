@@ -55,7 +55,7 @@ enum ActivityClient {
         let data: Data
         do { data = try await get(api, path: "v1/discovery/recommendations", items, bearer: bearer) } catch ActivityFetchError.notFound { return nil }
         return try JSONDecoder().decode(RecommendationPayload.self, from: data).items.map {
-            RecommendedActivity(activity: model($0.activity), reasons: $0.reasons)
+            RecommendedActivity(activity: model($0.activity), programName: $0.program?.value?.name ?? $0.activity.program?.name, reasons: $0.reasons)
         }
     }
     enum RecommendationFailure: Error { case unauthorized }
@@ -66,7 +66,8 @@ enum ActivityClient {
         }
     }
     private struct RecommendationPayload: Decodable {
-        struct Item: Decodable { let activity: Activity; let reasons: [String] }
+        /// `program` (ProgramSummary) rides beside the activity; only its name is read, and a malformed one falls back to the activity's.
+        struct Item: Decodable { let activity: Activity; let program: Lenient<Named>?; let reasons: [String] }
         let items: [Item]
     }
     private struct TagOptionPayload: Decodable {

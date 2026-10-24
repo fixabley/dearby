@@ -171,8 +171,10 @@ struct ProfilePage: View {
             case .loaded(let profile):
                 if !editing {
                     ScrollView {
-                        ProfileReadView(profile: profile).padding(20)
-                        recommendationGroup.padding(.horizontal, 20).padding(.bottom, 20)
+                        VStack(alignment: .leading, spacing: 0) {
+                            ProfileReadView(profile: profile).padding(20)
+                            recommendationGroup.padding(.horizontal, 20).padding(.bottom, 20)
+                        }
                     }
                 } else if let binding = Binding($form) {
                     editor(binding, saved: profile)

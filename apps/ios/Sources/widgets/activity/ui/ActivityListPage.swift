@@ -90,7 +90,12 @@ struct ActivityListPage: View {
                     .transition(.opacity)
             }
         }
-        .refreshable { await state.refresh() }
+        .refreshable {
+            // A failed first 추천 probe (bad connection) gets another try here.
+            async let recommended: Void = recommendations.refresh()
+            await state.refresh()
+            await recommended
+        }
         .scrollDismissesKeyboard(.interactively)
         .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > $0.containerSize.height } action: { _, far in
             withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { farDown = far }

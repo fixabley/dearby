@@ -59,8 +59,8 @@ import Observation
     }
 }
 
-/// 지금 상황: one choice, stored with the eligibility vocabulary (contract "대상자 조건"). 직장 is `employment: employed` without a school status;
-/// the others are `educationStatus` only.
+/// 지금 상황: one choice, stored with the eligibility vocabulary (contract "대상자 조건"; the same mapping as the server and Android): 재학·휴학·
+/// 졸업 예정 are that `educationStatus` with `employment: student`, 졸업 is `graduated` alone, 직장 is `employment: employed` alone.
 enum EligibilityStatus: CaseIterable, Sendable {
     case enrolled, onLeave, graduating, graduated, employed
     var label: String {
@@ -70,6 +70,14 @@ enum EligibilityStatus: CaseIterable, Sendable {
         case .graduating: "졸업 예정"
         case .graduated: "졸업"
         case .employed: "직장"
+        }
+    }
+    /// The question's wording; `label` is the short form in the row's summary.
+    var option: String {
+        switch self {
+        case .graduated: "졸업했어요"
+        case .employed: "직장에 다녀요"
+        default: label
         }
     }
     /// 학년 is asked only while still at school.
@@ -83,7 +91,7 @@ enum EligibilityStatus: CaseIterable, Sendable {
         case .employed: nil
         }
     }
-    var employment: String? { self == .employed ? "employed" : nil }
+    var employment: String? { self == .employed ? "employed" : hasGrade ? "student" : nil }
     init?(_ profile: AccountClient.EligibilityProfile) {
         if profile.employment == "employed" { self = .employed; return }
         guard let status = Self.allCases.first(where: { $0.educationStatus != nil && $0.educationStatus == profile.educationStatus }) else { return nil }
