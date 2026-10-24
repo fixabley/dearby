@@ -6,19 +6,23 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.keys.CONTACTS__CONTACTS_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_ELIGIBILITY__PROFILE_ELIGIBILITY_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_HISTORIES__PROFILE_HISTORIES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_JOBS__PROFILE_JOBS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_VERSIONS__PROFILE_VERSIONS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECEIPTS__RECEIPTS_RECIPIENT_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.RECOMMENDATION_PREFERENCES__RECOMMENDATION_PREFERENCES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ACTIVITIES__USER_ACTIVITIES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_CONSENTS__USER_CONSENTS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ROLES__USER_ROLES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts.ContactsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileEligibility.ProfileEligibilityPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories.ProfileHistoriesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileJobs.ProfileJobsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions.ProfileVersionsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts.ReceiptsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationPreferences.RecommendationPreferencesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivities.UserActivitiesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserConsents.UserConsentsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles.UserRolesPath
@@ -149,6 +153,22 @@ open class Users(
     val contacts: ContactsPath
         get(): ContactsPath = contacts()
 
+    private lateinit var _profileEligibility: ProfileEligibilityPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.profile_eligibility</code> table
+     */
+    fun profileEligibility(): ProfileEligibilityPath {
+        if (!this::_profileEligibility.isInitialized)
+            _profileEligibility = ProfileEligibilityPath(this, null, PROFILE_ELIGIBILITY__PROFILE_ELIGIBILITY_USER_ID_FKEY.inverseKey)
+
+        return _profileEligibility;
+    }
+
+    val profileEligibility: ProfileEligibilityPath
+        get(): ProfileEligibilityPath = profileEligibility()
+
     private lateinit var _profileHistories: ProfileHistoriesPath
 
     /**
@@ -212,6 +232,22 @@ open class Users(
 
     val receipts: ReceiptsPath
         get(): ReceiptsPath = receipts()
+
+    private lateinit var _recommendationPreferences: RecommendationPreferencesPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.recommendation_preferences</code> table
+     */
+    fun recommendationPreferences(): RecommendationPreferencesPath {
+        if (!this::_recommendationPreferences.isInitialized)
+            _recommendationPreferences = RecommendationPreferencesPath(this, null, RECOMMENDATION_PREFERENCES__RECOMMENDATION_PREFERENCES_USER_ID_FKEY.inverseKey)
+
+        return _recommendationPreferences;
+    }
+
+    val recommendationPreferences: RecommendationPreferencesPath
+        get(): RecommendationPreferencesPath = recommendationPreferences()
 
     private lateinit var _userActivities: UserActivitiesPath
 

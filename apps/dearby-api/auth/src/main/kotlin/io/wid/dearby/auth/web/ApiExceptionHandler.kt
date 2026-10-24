@@ -10,6 +10,7 @@ import io.wid.dearby.domain.ServiceUnavailableException
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
 import org.springframework.http.ProblemDetail
+import org.springframework.http.converter.HttpMessageNotReadableException
 import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import java.net.URI
@@ -25,6 +26,13 @@ class ApiExceptionHandler {
 
     @ExceptionHandler(InvalidInputException::class)
     fun invalidInput(e: InvalidInputException) = problem(HttpStatus.BAD_REQUEST, e.detail, e).also { detail -> e.code?.let { detail.setProperty("code", it) } }
+
+    // 읽을 수 없는 요청 본문: 파서 메시지에는 보낸 값(예: 지원 자격 정보)이 들어 있어 응답·로그에 남기지 않는다
+    @ExceptionHandler(HttpMessageNotReadableException::class)
+    fun unreadable(e: HttpMessageNotReadableException): ProblemDetail {
+        log.info("400 unreadable request body")
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "요청 본문을 읽을 수 없습니다")
+    }
 
     @ExceptionHandler(AuthenticationFailedException::class)
     fun authenticationFailed(e: AuthenticationFailedException) = problem(HttpStatus.UNAUTHORIZED, e.detail, e)

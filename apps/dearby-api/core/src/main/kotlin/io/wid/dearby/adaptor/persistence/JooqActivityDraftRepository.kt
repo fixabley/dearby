@@ -37,6 +37,7 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             ACTIVITIES.AUDIENCE, ACTIVITIES.ELIGIBILITY, ACTIVITIES.PARTICIPATION_TYPE, ACTIVITIES.INHERITED_FIELDS, ACTIVITIES.CURATED_FIELDS,
             // 운영자 지정으로 보호할 수 있는 나머지 열(없는 열을 읽으면 jOOQ가 예외를 던진다)
             ACTIVITIES.OFFICIAL_URL, ACTIVITIES.APPLICATION_URL, ACTIVITIES.LOCATION, ACTIVITIES.COST, ACTIVITIES.CATEGORY,
+            ACTIVITIES.ELIGIBILITY_CHECKED,
         )
             .from(ACTIVITIES)
             .where(ACTIVITIES.SOURCE_ID.eq(sourceId))
@@ -71,6 +72,8 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             else activity.category?.name ?: dsl.select(PROGRAMS.CATEGORY).from(PROGRAMS).where(PROGRAMS.ID.eq(programId)).fetchOne()?.value1()
         val eligibility = resolve(InheritedFields.ELIGIBILITY, EligibilityRows.read(existing?.get(ACTIVITIES.ELIGIBILITY)), activity.eligibility, previous?.eligibility)
         val audience = resolve(InheritedFields.AUDIENCE, existing?.get(ACTIVITIES.AUDIENCE)?.ifBlank { null }, activity.audience?.ifBlank { null }, previous?.audience?.ifBlank { null })
+        // 지원 자격 확인(native-v1.md "추천 설정 퍼널·지원 자격 정보·추천"): 이번 원문에서 대상 구절(제한 없음 명시 포함)이나 조건을 읽었으면 true. 이전 기수에서 가져온 값은 확인이 아니고, 한 번 true면 내리지 않는다
+        val eligibilityChecked = existing?.get(ACTIVITIES.ELIGIBILITY_CHECKED) == true || activity.eligibility != null || !activity.audience.isNullOrBlank()
         val participationType = resolve(
             InheritedFields.PARTICIPATION_TYPE,
             existing?.get(ACTIVITIES.PARTICIPATION_TYPE)?.let(ParticipationType::valueOf), activity.participationType, previous?.participationType,
@@ -107,6 +110,7 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             .set(ACTIVITIES.CATEGORY, category)
             .set(ACTIVITIES.AUDIENCE, audience)
             .set(ACTIVITIES.ELIGIBILITY, EligibilityRows.jsonb(eligibility))
+            .set(ACTIVITIES.ELIGIBILITY_CHECKED, eligibilityChecked)
             .set(ACTIVITIES.INHERITED_FIELDS, InheritedFields.jsonb(inherited))
             .set(ACTIVITIES.SOURCE_CHECKED_AT, activity.checkedAt)
             .set(ACTIVITIES.VALID_UNTIL, activity.checkedAt.plus(VERIFICATION_LIFETIME))

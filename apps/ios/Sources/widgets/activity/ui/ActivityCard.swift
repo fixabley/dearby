@@ -13,6 +13,8 @@ struct ActivityCard: View {
     var scheduleText: String?
     /// Place name (contract "활동 장소"); nil omits the row.
     var place: String?
+    /// 성격 tags as the icon row under the rows (contract "분야·성격 태그와 아이콘" 2026-10-24); empty omits it.
+    var traitTags: [Tag] = []
     let open: () -> Void
     var body: some View {
         Button(action: open) {
@@ -27,13 +29,14 @@ struct ActivityCard: View {
                     LabeledContent("활동") { Text(scheduleText ?? "미정") }.labeledContentStyle(DiscoveryRowStyle())
                     if let place, !place.isEmpty { LabeledContent("장소") { Text(place) }.labeledContentStyle(DiscoveryRowStyle()) }
                 }
+                TraitTagIcons(tags: traitTags)
             }
             .padding(EdgeInsets(top: 12, leading: 12, bottom: 10, trailing: 12)).frame(maxWidth: .infinity)
             .background(Color(.systemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous)).contentShape(Rectangle())
         }.buttonStyle(.plain)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel([title, statusText, "모집 " + (recruitmentText ?? "미정"), "활동 " + (scheduleText ?? "미정"),
-                                 place.map { "장소 " + $0 }].compactMap { $0 }.joined(separator: ", "))
+                                 place.map { "장소 " + $0 }, TraitTagIcons.label(traitTags)].compactMap { $0 }.joined(separator: ", "))
             .accessibilityHint("누르면 활동 상세를 보여요")
             .accessibilityIdentifier("activity-\(activityID)")
     }
@@ -80,7 +83,8 @@ struct ActivityCardSample: View {
     var body: some View {
         VStack(spacing: 8) {
             ActivityCard(activityID: "1", title: "부스트캠프 Web·Mobile 10기", recruitment: .open,
-                         recruitmentText: "10월 20일 (화) 10:00 ~ 11월 10일 (화) 18:00", scheduleText: "2026년 11월 24일 (화) ~ 2027년 2월 6일 (토)", place: "온라인 · 서울 강남") {}
+                         recruitmentText: "10월 20일 (화) 10:00 ~ 11월 10일 (화) 18:00", scheduleText: "2026년 11월 24일 (화) ~ 2027년 2월 6일 (토)", place: "온라인 · 서울 강남",
+                         traitTags: [Tag(id: 2, name: "프로젝트", nameEn: "project"), Tag(id: 4, name: "멘토링", nameEn: "mentoring")]) {}
             ActivityCard(activityID: "2", title: "SK AIGEN 1기", recruitment: .upcoming,
                          recruitmentText: "11월 1일 (일) ~ 11월 15일 (일)", scheduleText: "2027년 3월 11일부터", place: "SK 서린빌딩") {}
             ActivityCard(activityID: "3", title: "우아콘 2025", recruitment: .closed, scheduleText: "2025년 10월 30일 (목)") {}

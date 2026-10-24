@@ -30,6 +30,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationLogos
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMembers
 import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileEligibility
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileJobs
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions
@@ -42,6 +43,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaffRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts
+import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationPreferences
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.Roles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleStatuses
@@ -209,6 +211,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val ORGANIZATIONS: Organizations get() = Organizations.ORGANIZATIONS
 
     /**
+     * The table <code>public.profile_eligibility</code>.
+     */
+    val PROFILE_ELIGIBILITY: ProfileEligibility get() = ProfileEligibility.PROFILE_ELIGIBILITY
+
+    /**
      * The table <code>public.profile_histories</code>.
      */
     val PROFILE_HISTORIES: ProfileHistories get() = ProfileHistories.PROFILE_HISTORIES
@@ -267,6 +274,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
      * The table <code>public.receipts</code>.
      */
     val RECEIPTS: Receipts get() = Receipts.RECEIPTS
+
+    /**
+     * The table <code>public.recommendation_preferences</code>.
+     */
+    val RECOMMENDATION_PREFERENCES: RecommendationPreferences get() = RecommendationPreferences.RECOMMENDATION_PREFERENCES
 
     /**
      * The table <code>public.refresh_tokens</code>.
@@ -367,6 +379,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES,
         OrganizationMembers.ORGANIZATION_MEMBERS,
         Organizations.ORGANIZATIONS,
+        ProfileEligibility.PROFILE_ELIGIBILITY,
         ProfileHistories.PROFILE_HISTORIES,
         ProfileJobs.PROFILE_JOBS,
         ProfileVersions.PROFILE_VERSIONS,
@@ -379,6 +392,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         ProgramTags.PROGRAM_TAGS,
         Programs.PROGRAMS,
         Receipts.RECEIPTS,
+        RecommendationPreferences.RECOMMENDATION_PREFERENCES,
         RefreshTokens.REFRESH_TOKENS,
         Roles.ROLES,
         ScheduleStatuses.SCHEDULE_STATUSES,

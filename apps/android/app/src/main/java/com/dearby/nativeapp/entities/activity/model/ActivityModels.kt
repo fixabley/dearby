@@ -91,8 +91,12 @@ data class ActivityModel(
     val eligibility: EligibilityGroup? = null,
     /** 활동 종류; null = 미분류 (contract "활동 종류(category)"). */
     val category: ActivityCategory? = null,
-    /** 얻을 수 있는 것 (contract "태그"), dictionary order; empty when the API sent none. */
-    val tags: List<Tag> = emptyList(),
+    /** 분야, at most 2 in the server's relevance order (contract "분야·성격 태그와 아이콘"), for the expanded row; empty when the API sent none. */
+    val fieldTags: List<Tag> = emptyList(),
+    /** 얻을 수 있는 것 (성격), dictionary order; an older API's `tags` when `traitTags` is missing. */
+    val traitTags: List<Tag> = emptyList(),
+    /** Every 분야 in the same order, for the detail's `분야` group. */
+    val fieldTagsAll: List<Tag> = emptyList(),
     /** The collected venue phrase (`location`), already the place name when a [place] is set (contract "활동 장소"). */
     val location: String? = null,
     /** The curated venue with coordinates, or null (contract "활동 장소"). */
@@ -185,8 +189,10 @@ data class ProgramSummary(
     val id: String, val name: String, val nameEn: String?, val organization: String, val openActivityCount: Int,
     val nearestRecruitmentEndAt: String?, val matchedActivityIds: List<String>, val latestActivityAt: String? = null,
     val upcomingActivityCount: Int = 0, val nearestRecruitmentStartAt: String? = null,
-    /** Program tags, or the union of its open activities' tags (contract "태그", at most 6). */
-    val tags: List<Tag> = emptyList(),
+    /** 분야, at most 2 in the server's relevance order (contract "분야·성격 태그와 아이콘"); empty for an older API. */
+    val fieldTags: List<Tag> = emptyList(),
+    /** 얻을 수 있는 것 (성격), dictionary order; an older API's `tags` when `traitTags` is missing. */
+    val traitTags: List<Tag> = emptyList(),
     /** The program logo as an absolute URL (contract "프로그램 로고": `/v1/programs/{id}/logo?v=` on the API origin), or null when it has none. */
     val logoUrl: String? = null,
 )

@@ -12,6 +12,7 @@ import com.dearby.nativeapp.entities.activity.model.ProgramSummary
 import com.dearby.nativeapp.entities.activity.model.ScheduleStatus
 import com.dearby.nativeapp.entities.activity.model.StageSchedule
 import com.dearby.nativeapp.entities.activity.model.Tag
+import com.dearby.nativeapp.entities.activity.model.TagKind
 import com.dearby.nativeapp.entities.activity.model.instant
 import android.os.LocaleList
 import java.net.HttpURLConnection
@@ -94,7 +95,7 @@ private fun parseActivity(activity: JSONObject): ActivityModel {
         // An unreadable eligibility never fails the activity.
         activity.optJSONObject("eligibility")?.let { runCatching { it.eligibilityGroup(0) }.getOrNull() },
         ActivityCategory.fromCode(activity.text("category")),
-        activity.tags(),
+        activity.tags("fieldTags"), activity.traitTags(), activity.tags("fieldTagsAll"),
         activity.text("location"),
         // A malformed place (contract "활동 장소": four fields together) never fails the activity.
         activity.optJSONObject("place")?.let { runCatching { Place(it.getString("name"), it.getString("address"), it.getDouble("lat"), it.getDouble("lng")) }.getOrNull() },
@@ -141,15 +142,17 @@ fun parsePrograms(json: String, api: String): ProgramPage {
             program.text("nearestRecruitmentEndAt"), if (matched == null) emptyList() else List(matched.length()) { matched.getLong(it).toString() },
             program.text("latestActivityAt"),
             upcomingActivityCount = program.optInt("upcomingActivityCount", 0), nearestRecruitmentStartAt = program.text("nearestRecruitmentStartAt"),
-            program.tags(),
+            program.tags("fieldTags"), program.traitTags(),
             logoUrl = program.text("logoUrl")?.let { path -> runCatching { URI(api).resolve(path).toString() }.getOrNull() },
         )
     }, if (body.isNull("nextCursor")) null else body.getLong("nextCursor").toString())
 }
 
-/** `tags` is optional (older API) and an unreadable entry is skipped. */
-private fun JSONObject.tags(): List<Tag> = optJSONArray("tags")?.objects()?.mapNotNull { runCatching { it.tag() }.getOrNull() } ?: emptyList()
-private fun JSONObject.tag() = Tag(getLong("id").toString(), getString("name"), text("nameEn"))
+/** Contract "분야·성격 태그와 아이콘": every tag array is optional (older API) and an unreadable entry is skipped. */
+private fun JSONObject.tags(key: String): List<Tag> = optJSONArray(key)?.objects()?.mapNotNull { runCatching { it.tag() }.getOrNull() } ?: emptyList()
+/** An older API has no `traitTags`; its `tags` stand in as 성격. */
+private fun JSONObject.traitTags() = tags(if (has("traitTags")) "traitTags" else "tags")
+private fun JSONObject.tag() = Tag(getLong("id").toString(), getString("name"), text("nameEn"), if (text("kind") == "FIELD") TagKind.FIELD else TagKind.TRAIT)
 
 private fun JSONArray.objects() = List(length()) { getJSONObject(it) }
 /** Null for a missing, null or blank value. */

@@ -240,6 +240,11 @@ open class Activities(
      */
     val CATEGORY: TableField<ActivitiesRecord, String?> = createField(DSL.name("category"), SQLDataType.VARCHAR(20), this, "")
 
+    /**
+     * The column <code>public.activities.eligibility_checked</code>.
+     */
+    val ELIGIBILITY_CHECKED: TableField<ActivitiesRecord, Boolean?> = createField(DSL.name("eligibility_checked"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "")
+
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)

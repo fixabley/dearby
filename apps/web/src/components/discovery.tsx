@@ -29,7 +29,11 @@ import { LargeTitle } from "@/shared/ui/nav-title";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 import { Switch } from "@/shared/ui/switch";
 import { ActivityCard, ActivityCardSkeleton, type StatusTone } from "@/widgets/activity/activity-card";
+import { ProgramAvatar } from "@/widgets/activity/program-avatar";
 import { groupByCategory } from "@/lib/category";
+import { useRecommendationPreferences } from "@/lib/recommendation";
+import { RecommendationFunnel } from "@/components/recommendation-funnel";
+import { RecommendationSection } from "@/components/recommendations";
 
 function programsPath(q: string, openOnly: boolean, cursor?: number) {
   const params = new URLSearchParams();
@@ -40,11 +44,55 @@ function programsPath(q: string, openOnly: boolean, cursor?: number) {
 }
 
 /**
+ * 발견 탭 (contract "추천 설정 퍼널"): the first visit without a query opens the recommendation funnel; afterwards the program
+ * list with the 추천 section on top. Nothing but the loading shape renders until this browser's saved settings are read, so the
+ * list never flashes before the funnel.
+ */
+export function Discovery({ q }: { q: string }) {
+  const preferences = useRecommendationPreferences();
+  const [funnel, setFunnel] = useState<"first" | "edit">();
+  if (preferences === null && !q && !funnel) setFunnel("first");
+  if (preferences === undefined)
+    return (
+      <>
+        <LargeTitle>활동 둘러보기</LargeTitle>
+        <ProgramsLoading />
+      </>
+    );
+  if (funnel)
+    return (
+      <RecommendationFunnel
+        initial={funnel === "edit" ? preferences : null}
+        onClose={() => {
+          window.scrollTo(0, 0);
+          setFunnel(undefined);
+        }}
+      />
+    );
+  return (
+    <Programs
+      q={q}
+      top={
+        !q && preferences ? (
+          <RecommendationSection
+            preferences={preferences}
+            onEdit={() => {
+              window.scrollTo(0, 0);
+              setFunnel("edit");
+            }}
+          />
+        ) : null
+      }
+    />
+  );
+}
+
+/**
  * Discovery as a program accordion (contract "발견 프로그램 묶음 — 2026-10-18"): programs with open activities,
  * searched by `q` (from the `/?q=` URL; tag names match too, there is no tag chip row — contract "태그 칩 줄 제거") and paged
  * with the API cursor. Expanding a header loads that program's open activities as the usual activity cards.
  */
-export function Discovery({ q }: { q: string }) {
+function Programs({ q, top }: { q: string; top: ReactNode }) {
   const [page, setPage] = useState<ProgramPage>();
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -113,6 +161,7 @@ export function Discovery({ q }: { q: string }) {
           }}
         />
       </label>
+      {top}
       {error ? (
         <Failure
           message={error}
@@ -225,26 +274,6 @@ function SearchField({ q }: { q: string }) {
   );
 }
 
-/**
- * 44px logo slot (contract "프로그램 로고"): the program logo through the same-origin proxy, else — null, older response,
- * or a failed load — the initial-letter avatar. Keyed by `src` upstream so a new `v` retries after a failure.
- */
-function ProgramAvatar({ name, src }: { name: string; src: string | undefined }) {
-  const [failed, setFailed] = useState(false);
-  return (
-    <span
-      aria-hidden="true"
-      className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-[14px] bg-mint text-[18px] font-bold text-teal"
-    >
-      {src && !failed ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt="" loading="lazy" decoding="async" className="size-full object-cover" onError={() => setFailed(true)} />
-      ) : (
-        ([...name.trim()][0] ?? "?")
-      )}
-    </span>
-  );
-}
 /**
  * Props the renewed activity card needs (contract "발견 카드 리뉴얼"): the chip tone comes from the group the caller placed the
  * activity in (open list → live recruitment state; 모집 예정 group → soon; 지난 활동 → closed), and the `모집` row is emphasised

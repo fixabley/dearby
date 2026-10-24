@@ -99,6 +99,8 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
         val row = dsl.select(ACTIVITIES.INHERITED_FIELDS, ACTIVITIES.CURATED_FIELDS).from(ACTIVITIES).where(ACTIVITIES.ID.eq(activityId)).fetchOne() ?: return false
         val updated = dsl.update(ACTIVITIES)
             .set(ACTIVITIES.ELIGIBILITY, EligibilityRows.jsonb(eligibility))
+            // 운영자가 정했으므로 지원 자격을 확인한 것으로 본다(지운 것은 "제한 없음"으로 확인)
+            .set(ACTIVITIES.ELIGIBILITY_CHECKED, true)
             .set(ACTIVITIES.INHERITED_FIELDS, InheritedFields.jsonb(InheritedFields.read(row.value1()) - InheritedFields.ELIGIBILITY))
             .set(ACTIVITIES.CURATED_FIELDS, CuratedFields.jsonb(CuratedFields.read(row.value2()) + listOfNotNull(CuratedFields.ELIGIBILITY.takeIf { curate })))
             .set(ACTIVITIES.UPDATED_AT, LocalDateTime.now())

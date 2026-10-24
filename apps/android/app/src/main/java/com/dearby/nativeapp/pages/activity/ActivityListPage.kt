@@ -115,7 +115,7 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                         if (header != null && state.query.isBlank()) item(key = "recommendation") { header() }
                         items(programs, key = { "program-" + it.id }) { program ->
                             ProgramCard(program.title, program.organization, program.openCount, program.upcomingCount, program.deadline, program.nearestStart, program.latestActivityAt,
-                                program.tags, program.id in state.expanded, { toggle(program.id) }, logoUrl = program.logoUrl) { ProgramBody(program.id, state, open, retryProgram) }
+                                program.fieldTags, program.traitTags, program.id in state.expanded, { toggle(program.id) }, logoUrl = program.logoUrl) { ProgramBody(program.id, state, open, retryProgram) }
                         }
                         if (state.nextCursor != null) item(key = "more") {
                             // Shown as the list nears its end; each new page re-arms it.
@@ -235,7 +235,7 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
     Text(text, Modifier.padding(start = 6.dp, end = 6.dp, top = 6.dp).semantics { heading() }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
 
 @Composable private fun Card(activity: ActivityState, open: (String) -> Unit) =
-    ActivityCard(activity.title, activity.status, activity.recruiting, activity.period, activity.date, activity.location, { open(activity.id) })
+    ActivityCard(activity.title, activity.status, activity.recruiting, activity.period, activity.date, activity.location, { open(activity.id) }, traitTags = activity.traitTags)
 
 /** Activity row used by My Activities. */
 @Composable internal fun ActivityRow(activity: ActivityState, open: (String) -> Unit, trailing: @Composable () -> Unit = {}, footer: @Composable ColumnScope.() -> Unit = {}) {

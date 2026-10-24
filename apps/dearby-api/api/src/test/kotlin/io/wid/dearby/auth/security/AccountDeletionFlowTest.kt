@@ -56,6 +56,9 @@ class AccountDeletionFlowTest(
         val id = user.id
         jdbc.sql("insert into users (id) values (?)").param(id).update()
         jdbc.sql("insert into user_consents (user_id, privacy_version, terms_version, consented_at) values (?, '2026-10-22', '2026-10-22', now())").param(id).update()
+        // 지원 자격 정보·추천 설정(native-v1.md "추천 설정 퍼널·지원 자격 정보·추천")
+        jdbc.sql("insert into profile_eligibility (user_id, birth_year, consent_version, consented_at, updated_at) values (?, 2003, '2026-10-24', now(), now())").param(id).update()
+        jdbc.sql("insert into recommendation_preferences (user_id, categories, completed_at, updated_at) values (?, '{BOOTCAMP}', now(), now())").param(id).update()
         jdbc.sql("insert into user_roles (user_id, role) values (?, 'USER')").param(id).update()
         jdbc.sql("insert into contacts (id, user_id, kind, label, value, position) values (?, ?, 'EMAIL', '메일', 'a@example.com', 0)").params(UUID.randomUUID(), id).update()
         jdbc.sql("insert into profiles (user_id, name, introduction, version, created_at, updated_at) values (?, '이름', '', 1, now(), now())").param(id).update()
@@ -160,6 +163,8 @@ class AccountDeletionFlowTest(
         }
         assertEquals(0, count("user_entities", "id", handle(user.id)))
         assertEquals(0, count("user_consents", "user_id", user.id))
+        assertEquals(0, count("profile_eligibility", "user_id", user.id) + count("recommendation_preferences", "user_id", user.id))
+        assertEquals(2, count("profile_eligibility", "user_id", other.id) + count("recommendation_preferences", "user_id", other.id))
         assertEquals(0, count("user_activities", "user_id", user.id))
         assertEquals(0, count("user_activity_schedule_statuses", "user_activity_id", user.id))
         assertEquals(1, count("user_activity_schedule_statuses", "user_activity_id", other.id))
