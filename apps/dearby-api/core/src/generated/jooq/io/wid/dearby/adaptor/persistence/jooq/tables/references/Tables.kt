@@ -31,6 +31,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationLogos
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMembers
 import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileEligibility
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileJobs
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions
@@ -43,6 +44,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaffRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts
+import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationPreferences
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
 import io.wid.dearby.adaptor.persistence.jooq.tables.Roles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleStatuses
@@ -191,6 +193,11 @@ val ORGANIZATION_MEMBERS: OrganizationMembers = OrganizationMembers.ORGANIZATION
 val ORGANIZATIONS: Organizations = Organizations.ORGANIZATIONS
 
 /**
+ * The table <code>public.profile_eligibility</code>.
+ */
+val PROFILE_ELIGIBILITY: ProfileEligibility = ProfileEligibility.PROFILE_ELIGIBILITY
+
+/**
  * The table <code>public.profile_histories</code>.
  */
 val PROFILE_HISTORIES: ProfileHistories = ProfileHistories.PROFILE_HISTORIES
@@ -249,6 +256,11 @@ val PROGRAMS: Programs = Programs.PROGRAMS
  * The table <code>public.receipts</code>.
  */
 val RECEIPTS: Receipts = Receipts.RECEIPTS
+
+/**
+ * The table <code>public.recommendation_preferences</code>.
+ */
+val RECOMMENDATION_PREFERENCES: RecommendationPreferences = RecommendationPreferences.RECOMMENDATION_PREFERENCES
 
 /**
  * The table <code>public.refresh_tokens</code>.

@@ -21,6 +21,7 @@ data class Activity(
     val category: ActivityCategory? = null, // 활동 종류(native-v1.md "활동 종류"). null은 미분류
     val tags: List<Tag> = emptyList(), // 태그(native-v1.md "태그"), 사전 순
     val fieldTags: List<Tag> = emptyList(), // 분야 태그 전부(native-v1.md "분야·성격 태그와 아이콘"): 연관도 순, 없으면 프로그램 분야 순서
+    val eligibilityChecked: Boolean = false, // 지원 자격을 확인했는지(native-v1.md "추천 설정 퍼널·지원 자격 정보·추천"): 조건 없음이 "제한 없음"인지 "아직 모름"인지 나눈다
     val location: String? = null, // 장소 문구(activities.location). 좌표가 있는 장소는 activitySchedule.address(native-v1.md "활동 장소")
 ) {
     // 사용자가 캘린더에 추가할 일정을 고르는 후보
