@@ -2,6 +2,7 @@ package io.wid.dearby.application.activity
 
 import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.Address
+import io.wid.dearby.domain.Highlight
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.OverlapCheck
 import io.wid.dearby.domain.Recurrence
@@ -35,6 +36,9 @@ interface ActivityCurationRepository {
 
     // 활동 종류(native-v1.md "활동 종류"): null이면 미분류. 운영자 지정 필드 category에 남긴다. 활동이 없으면 false
     fun updateCategory(activityId: Id, category: ActivityCategory?): Boolean
+
+    // 대기열 한 줄 소개·핵심 줄(native-v1.md "맞춤 대기열"). null은 그대로, 빈 hook·빈 목록은 지운다. 바꾼 쪽을 운영자 지정 필드에 남긴다. 활동이 없으면 false
+    fun updateStory(activityId: Id, hook: String?, highlights: List<Highlight>?): Boolean
 
     // 운영자 직접 등록(admin-v1.md "POST /v1/admin/activities"): 초안 행과 활동 기간 일정(문구, curated)을 만들고 id를 돌려준다
     fun insert(creation: ActivityCreation): Id

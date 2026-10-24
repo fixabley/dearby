@@ -21,7 +21,7 @@ import { cn } from "@/shared/lib/utils";
 import { Failure } from "@/shared/ui/states";
 import { CenteredMessage } from "@/shared/ui/centered-message";
 import { Icon } from "@/shared/ui/icon";
-import { FieldTagBadges, TraitIconRow } from "@/shared/ui/tag-icon";
+import { TagChipRow } from "@/shared/ui/tag-icon";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
@@ -31,9 +31,8 @@ import { Switch } from "@/shared/ui/switch";
 import { ActivityCard, ActivityCardSkeleton, type StatusTone } from "@/widgets/activity/activity-card";
 import { ProgramAvatar } from "@/widgets/activity/program-avatar";
 import { groupByCategory } from "@/lib/category";
-import { useRecommendationPreferences } from "@/lib/recommendation";
+import { isEmpty, useRecommendationPreferences } from "@/lib/recommendation";
 import { RecommendationFunnel } from "@/components/recommendation-funnel";
-import { RecommendationSection } from "@/components/recommendations";
 
 function programsPath(q: string, openOnly: boolean, cursor?: number) {
   const params = new URLSearchParams();
@@ -45,7 +44,7 @@ function programsPath(q: string, openOnly: boolean, cursor?: number) {
 
 /**
  * 발견 탭 (contract "추천 설정 퍼널"): the first visit without a query opens the recommendation funnel; afterwards the program
- * list with the 추천 section on top. Nothing but the loading shape renders until this browser's saved settings are read, so the
+ * list with the `오늘의 맞춤 대기열` entry on top. Nothing but the loading shape renders until this browser's saved settings are read, so the
  * list never flashes before the funnel.
  */
 export function Discovery({ q }: { q: string }) {
@@ -74,12 +73,12 @@ export function Discovery({ q }: { q: string }) {
       q={q}
       top={
         !q && preferences ? (
-          <RecommendationSection
-            preferences={preferences}
-            onEdit={() => {
+          <QueueEntry
+            onFunnel={(mode) => {
               window.scrollTo(0, 0);
-              setFunnel("edit");
+              setFunnel(mode);
             }}
+            skipped={isEmpty(preferences)}
           />
         ) : null
       }
@@ -88,9 +87,45 @@ export function Discovery({ q }: { q: string }) {
 }
 
 /**
+ * 발견 탭 맨 위 `오늘의 맞춤 대기열` 한 줄 (contract "맞춤 대기열(스토리형 쇼츠)", 2026-10-25 — 추천 묶음 대신): opens the queue, or
+ * the funnel first when it was skipped (its result opens the queue). `설정` re-opens the funnel with the saved picks.
+ */
+function QueueEntry({ skipped, onFunnel }: { skipped: boolean; onFunnel: (mode: "first" | "edit") => void }) {
+  const label = (
+    <>
+      <Icon name="play" tone="teal" />
+      <span className="flex flex-1 flex-col">
+        <span className="text-body font-semibold">오늘의 맞춤 대기열</span>
+        <span className="text-footnote text-secondary-label">나에게 맞는 활동을 한 장씩 넘겨 봐요</span>
+      </span>
+    </>
+  );
+  const row = "flex min-h-11 flex-1 items-center gap-3 px-4 py-3 text-left active:opacity-70";
+  return (
+    <Card className="mb-4 flex items-center">
+      {skipped ? (
+        <button type="button" onClick={() => onFunnel("first")} className={row}>
+          {label}
+        </button>
+      ) : (
+        <Link href="/queue" className={row}>
+          {label}
+        </Link>
+      )}
+      {!skipped && (
+        <Button variant="plain" size="sm" onClick={() => onFunnel("edit")} aria-label="추천 설정" className="mr-1">
+          설정
+        </Button>
+      )}
+    </Card>
+  );
+}
+
+/**
  * Discovery as a program accordion (contract "발견 프로그램 묶음 — 2026-10-18"): programs with open activities,
  * searched by `q` (from the `/?q=` URL; tag names match too, there is no tag chip row — contract "태그 칩 줄 제거") and paged
- * with the API cursor. Expanding a header loads that program's open activities as the usual activity cards.
+ * with the API cursor. A card expands only when tapped — never on first load, search, recommendations or coming back (contract
+ * "태그 아이콘+라벨·분야 1개·자동 펼침 없음"); expanding a header loads that program's open activities as the usual activity cards.
  */
 function Programs({ q, top }: { q: string; top: ReactNode }) {
   const [page, setPage] = useState<ProgramPage>();
@@ -104,11 +139,7 @@ function Programs({ q, top }: { q: string; top: ReactNode }) {
   useEffect(() => {
     const controller = new AbortController();
     request<ProgramPage>(programsPath(q, openOnly), { signal: controller.signal })
-      .then((result) => {
-        setPage(result);
-        // Auto-expand applies only while the toggle is on.
-        setExpanded(new Set(openOnly ? result.items.filter(startsOpen).map((p) => p.id) : []));
-      })
+      .then(setPage)
       .catch((error) => {
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
@@ -124,11 +155,6 @@ function Programs({ q, top }: { q: string; top: ReactNode }) {
           items: [...(current?.items ?? []), ...next.items],
           nextCursor: next.nextCursor,
         }));
-        setExpanded((ids) => {
-          const all = new Set(ids);
-          if (openOnly) next.items.filter(startsOpen).forEach((p) => all.add(p.id));
-          return all;
-        });
       })
       .catch((error) => setMoreError(errorMessage(error)))
       .finally(() => setLoadingMore(false));
@@ -290,6 +316,7 @@ function cardProps(activity: Activity, statusTone: StatusTone, now: number) {
     activityLabel: scheduleLabel(activity.activitySchedule, "activity", now),
     // 장소 이름만 (contract "활동 장소"); the collected phrase stands in when no place is curated.
     placeName: activity.place?.name ?? activity.location ?? null,
+    fieldTag: fieldTagsOf(activity)[0],
     traitTags: traitTagsOf(activity),
   };
 }
@@ -299,7 +326,6 @@ function openTone(activity: Activity, now: number): StatusTone {
   return label === "모집 예정" ? "soon" : label === "모집 마감" ? "closed" : "open";
 }
 
-/** Single open activity, or a search hit on an activity name, starts expanded. */
 /** 모집일 순 (contract "활동 종류"): earlier recruitment deadline first, no deadline last, ties by name. */
 function byDeadline(a: Activity, b: Activity): number {
   return deadline(a) - deadline(b) || a.name.localeCompare(b.name, "ko");
@@ -397,12 +423,10 @@ function OtherActivities({
     </>
   );
 }
-function startsOpen(program: ProgramSummary) {
-  return program.openActivityCount === 1 || program.matchedActivityIds.length > 0;
-}
 
 /**
- * One program card (contract "발견 카드 리뉴얼 — 2026-10-19"): logo or initial avatar, name · organization · tag chips, and on the right the
+ * One program card (contract "발견 카드 리뉴얼 — 2026-10-19"): logo or initial avatar, name · organization · one line of tag chips
+ * (분야 1개 + 성격, contract "태그 아이콘+라벨·분야 1개·자동 펼침 없음") · `맞는 활동 n개` for an activity-name search hit, and on the right the
  * open + upcoming count badge that becomes an up-chevron `접기` button once expanded. The whole header toggles. The body stays
  * mounted so `grid-template-rows 0fr→1fr` can animate; its open activities come from `GET /activities?programId=&open=true`
  * (the server decides what is open) on the first expansion.
@@ -516,15 +540,14 @@ function ProgramRow({
             aria-controls={panelId}
             onClick={toggle}
           >
-            {/* 분야 badges stacked right under the logo (contract "분야·성격 태그와 아이콘"). */}
-            <span className="flex shrink-0 flex-col items-center gap-1">
-              <ProgramAvatar key={logoSrc ?? ""} name={program.name} src={logoSrc} />
-              <FieldTagBadges tags={fieldTagsOf(program)} />
-            </span>
-            <span className="flex min-w-0 flex-col gap-0.5">
+            <ProgramAvatar key={logoSrc ?? ""} name={program.name} src={logoSrc} />
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
               <span className="text-headline font-semibold break-keep">{program.name}</span>
               <span className="text-subheadline text-secondary-label">{program.organization.name}</span>
-              <TraitIconRow tags={traitTagsOf(program)} className="mt-1.5" />
+              <TagChipRow field={fieldTagsOf(program)[0]} traits={traitTagsOf(program)} className="mt-1.5" />
+              {program.matchedActivityIds.length > 0 && (
+                <span className="mt-1 text-footnote text-secondary-label">맞는 활동 {program.matchedActivityIds.length}개</span>
+              )}
             </span>
           </button>
           <div className="flex shrink-0 flex-col items-end gap-1.5">
