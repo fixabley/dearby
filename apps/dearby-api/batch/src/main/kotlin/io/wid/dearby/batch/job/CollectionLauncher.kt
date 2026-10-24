@@ -1,6 +1,7 @@
 package io.wid.dearby.batch.job
 
 import io.wid.dearby.batch.application.CollectionReadiness
+import io.wid.dearby.batch.application.StoryBackfillService
 import org.slf4j.LoggerFactory
 import org.springframework.batch.core.job.Job
 import org.springframework.batch.core.job.parameters.JobParametersBuilder
@@ -23,6 +24,7 @@ class CollectionLauncher(
     private val jobOperator: JobOperator,
     private val collectActivitiesJob: Job,
     private val buildDiscoveryQueuesJob: Job,
+    private val stories: StoryBackfillService,
     private val readiness: CollectionReadiness,
     private val context: ConfigurableApplicationContext,
 ) : ApplicationRunner {
@@ -41,6 +43,12 @@ class CollectionLauncher(
         // --build-queues-now: 임베딩·대기열만 한 번 만들고 끝낸다
         if (args.containsOption("build-queues-now")) {
             buildQueues("manual-${System.currentTimeMillis()}")
+            exitProcess(SpringApplication.exit(context))
+        }
+        // --backfill-hooks-now: 게시 활동의 비어 있는 대기열 글을 저장된 설명으로 채우고 끝낸다(페이지를 받지 않는다)
+        if (args.containsOption("backfill-hooks-now")) {
+            readiness.problem()?.let { log.warn("Collection engine not ready ({}); skipping story backfill", it) }
+                ?: log.info("Story backfill: {}", stories.backfill())
             exitProcess(SpringApplication.exit(context))
         }
         if (!args.containsOption("collect-now")) return
