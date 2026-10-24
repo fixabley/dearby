@@ -9,6 +9,7 @@ enum DearbyTagSymbol {
         "it": "laptopcomputer", "dataAi": "sparkles", "cloud": "cloud", "semiconductor": "cpu", "mechanical": "gearshape.2",
         "civilEngineering": "building.2", "engineering": "wrench.and.screwdriver", "security": "lock.shield", "business": "chart.bar", "marketing": "megaphone",
         "investing": "chart.line.uptrend.xyaxis", "volunteering": "heart", "reading": "book", "video": "video",
+        "webApp": "apps.iphone", "game": "gamecontroller", "openSource": "chevron.left.forwardslash.chevron.right",
     ]
 }
 
