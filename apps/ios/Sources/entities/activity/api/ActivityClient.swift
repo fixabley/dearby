@@ -85,28 +85,14 @@ enum ActivityClient {
     private struct SceneDTO: Decodable {
         let type: String
         let hook: String?; let name: String?; let items: [HighlightDTO]?; let text: String?
-        let dday: Lenient<DDay>?; let deadlineText: String?; let reasons: [String]?
-        /// `dday` as a day count (0 is the day itself, below 0 closed) or as text.
-        enum DDay: Decodable {
-            case days(Int), text(String)
-            init(from decoder: Decoder) throws {
-                let container = try decoder.singleValueContainer()
-                if let days = try? container.decode(Int.self) { self = .days(days) } else { self = .text(try container.decode(String.self)) }
-            }
-            var label: String {
-                switch self {
-                case .days(let days): days > 0 ? "D-\(days)" : days == 0 ? "D-day" : "마감"
-                case .text(let text): text
-                }
-            }
-        }
+        let label: String?; let dday: Lenient<Int>?; let deadlineText: String?; let reasons: [String]?
         var scene: QueueScene? {
             switch type {
             case "HOOK": hook.map { .hook(hook: $0, name: name ?? "") }
             case "HIGHLIGHTS": .highlights((items ?? []).map(\.highlight))
             case "ELIGIBILITY": text.map(QueueScene.eligibility)
             case "BENEFIT": text.map(QueueScene.benefit)
-            case "DEADLINE": .deadline(dday: dday?.value?.label, deadlineText: deadlineText, reasons: reasons ?? [])
+            case "DEADLINE": .deadline(label: label.flatMap { $0.isEmpty ? nil : $0 }, days: dday?.value, deadlineText: deadlineText, reasons: reasons ?? [])
             default: nil
             }
         }

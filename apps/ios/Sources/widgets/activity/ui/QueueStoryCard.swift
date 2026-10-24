@@ -164,7 +164,7 @@ struct QueueStoryCard: View {
         if let scenes = item.scenes, !scenes.isEmpty { return scenes }
         let hook = QueueScene.hook(hook: activity.hook ?? activity.title,
                                    name: activity.hook == nil ? item.programName ?? activity.organization : activity.title)
-        let deadline = QueueScene.deadline(dday: dDay, deadlineText: deadlineLine, reasons: item.reasons)
+        let deadline = QueueScene.deadline(label: nil, days: days, deadlineText: deadlineLine, reasons: item.reasons)
         return lines.count >= 2 ? [hook, .highlights(lines), deadline] : [hook, deadline]
     }
     private var last: Int { scenes.count - 1 }
@@ -192,11 +192,10 @@ struct QueueStoryCard: View {
         case .benefit(let text):
             Rise(order: 0) { label("혜택") }
             Rise(order: 1) { Text(text).font(.dearby(.title2).weight(.bold)).lineLimit(5) }
-        case let .deadline(dday, deadlineText, reasons):
-            Rise(order: 0) { label(isEvent ? "행사까지" : "마감까지") }
-            Rise(order: 1) {
-                Text(dday ?? "마감일 미정").font(dday == nil ? .dearby(.largeTitle).weight(.heavy) : .system(size: 64, weight: .heavy))
-            }
+        case let .deadline(heading, days, deadlineText, reasons):
+            let countdown = countdown(label: heading, days: days)
+            Rise(order: 0) { label(countdown.heading) }
+            if let dday = countdown.dday { Rise(order: 1) { Text(dday).font(.system(size: 64, weight: .heavy)) } }
             if let deadlineText { Rise(order: 2) { Text(deadlineText).font(.dearby(.callout)).opacity(0.9) } }
             if !reasons.isEmpty {
                 Rise(order: 3) {
@@ -232,11 +231,17 @@ struct QueueStoryCard: View {
         if stage.allDay { return Self.seoul.date(byAdding: .day, value: -1, to: end).map { ($0, ActivityText.seoul) } }
         return (end, TimeZone(identifier: stage.timeZone) ?? ActivityText.seoul)
     }
-    /// `D-22`, `D-day`, by Seoul days; nil without a deadline.
-    private var dDay: String? {
-        guard let lastDay else { return nil }
-        guard let days = Self.seoul.dateComponents([.day], from: Self.seoul.startOfDay(for: now), to: Self.seoul.startOfDay(for: lastDay.date)).day else { return nil }
-        return days > 0 ? "D-\(days)" : days == 0 ? "D-day" : "마감"
+    /// Seoul days to the counted day; nil without one.
+    private var days: Int? {
+        lastDay.flatMap { Self.seoul.dateComponents([.day], from: Self.seoul.startOfDay(for: now), to: Self.seoul.startOfDay(for: $0.date)).day }
+    }
+    /// The countdown as web shows it (PR #336): the server's `label` (else `행사까지` for a 컨퍼런스, `마감까지` otherwise) with `D-n`/`D-DAY`;
+    /// once past, `모집 마감`/`행사 종료` alone; without a count, the heading alone.
+    private func countdown(label: String?, days: Int?) -> (heading: String, dday: String?) {
+        let label = label ?? (isEvent ? "행사까지" : "마감까지")
+        guard let days else { return (label, nil) }
+        if days < 0 { return (label == "행사까지" ? "행사 종료" : "모집 마감", nil) }
+        return (label, days == 0 ? "D-DAY" : "D-\(days)")
     }
     /// `11월 15일 (일) 마감 · 나이 19~34세`.
     private var deadlineLine: String? {

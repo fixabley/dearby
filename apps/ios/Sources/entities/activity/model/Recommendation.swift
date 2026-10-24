@@ -22,8 +22,8 @@ enum QueueScene: Equatable, Sendable {
     case highlights([ActivityHighlight])
     case eligibility(String)
     case benefit(String)
-    /// `dday` as shown (`D-22`, `D-day`); nil when there is no deadline.
-    case deadline(dday: String?, deadlineText: String?, reasons: [String])
+    /// `label` is the heading (`마감까지`, `행사까지`; nil: the app picks), `days` the count to it (0 the day itself, below 0 past; nil none).
+    case deadline(label: String?, days: Int?, deadlineText: String?, reasons: [String])
 }
 
 /// 맞춤 대기열 반응 (contract "맞춤 대기열" 2026-10-24 `POST /v1/me/recommendation-signals`): signed in only.
