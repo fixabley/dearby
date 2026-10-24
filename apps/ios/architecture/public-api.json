@@ -42,7 +42,11 @@
     "ScheduleStatus",
     "OverlapCheck",
     "RecommendedActivity",
-    "TagOption"
+    "TagOption",
+    "ActivityHighlight",
+    "RecommendationSignal",
+    "QueueScene",
+    "AudienceLine"
   ],
   "entities/identity": [
     "CardModel",
@@ -119,9 +123,11 @@
     "RecommendationModel",
     "RecommendationServer",
     "RecommendationFunnelPage",
-    "RecommendationListPage",
-    "RecommendationListRoute",
-    "RecommendationRow"
+    "DiscoveryQueueModel",
+    "DiscoveryQueueServer",
+    "DiscoveryQueuePage",
+    "DiscoveryQueueEntry",
+    "QueueStoryCard"
   ],
   "widgets/identity": [
     "AccountViewModel",
