@@ -2,7 +2,10 @@
 import { useEffect, useState } from "react";
 import {
   type Activity,
+  type Tag,
+  fieldTagsOf,
   httpsUrl,
+  traitTagsOf,
   recruitment,
   scheduleLabel,
 } from "@/lib/models";
@@ -17,12 +20,13 @@ import { BottomBar } from "@/shared/ui/bottom-bar";
 import { Button } from "@/shared/ui/button";
 import { Card } from "@/shared/ui/card";
 import { InsetGroup } from "@/shared/ui/inset-group";
+import { TagIcon } from "@/shared/ui/tag-icon";
 import { LargeTitle } from "@/shared/ui/nav-title";
 import { Separator } from "@/shared/ui/separator";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 
 /**
- * Activity detail (contract "웹 리디자인" › 활동 상세, iOS `ActivityDetailView`): an information block (status/category/tag capsules,
+ * Activity detail (contract "웹 리디자인" › 활동 상세, iOS `ActivityDetailView`): an information block (status/category capsules,
  * the name as a title that collapses into the bar, organization, description), inset-grouped sections, and a sticky bottom CTA.
  */
 export function ActivityDetail({ id }: { id: number }) {
@@ -87,11 +91,6 @@ export function ActivityDetail({ id }: { id: number }) {
           <div className="flex flex-wrap gap-1.5">
             <Badge variant={status.open ? "filled" : status.label === "모집 예정" ? "tinted" : "neutral"}>{status.label}</Badge>
             {activity.category && <Badge>{categoryLabel(activity.category)}</Badge>}
-            {(activity.tags ?? []).map((tag) => (
-              <Badge key={tag.id} className="font-medium">
-                {tag.name}
-              </Badge>
-            ))}
           </div>
           <LargeTitle size="title1">{activity.name}</LargeTitle>
           <p className="text-headline font-semibold text-secondary-label">{activity.organization.name}</p>
@@ -110,6 +109,9 @@ export function ActivityDetail({ id }: { id: number }) {
             </li>
           ))}
         </InsetGroup>
+        {/* 분야·얻을 수 있는 것 as icon+text chips, each group omitted when empty (contract "분야·성격 태그와 아이콘"). */}
+        <TagGroup title="분야" tags={activity.fieldTagsAll ?? fieldTagsOf(activity)} />
+        <TagGroup title="얻을 수 있는 것" tags={traitTagsOf(activity)} />
         {eligibility.length > 0 && (
           <InsetGroup title="대상" plain>
             <ul className="flex flex-wrap gap-1.5">
@@ -243,5 +245,24 @@ function DetailLoading() {
         ))}
       </Card>
     </SkeletonGroup>
+  );
+}
+
+/** One tag group on the detail page: every tag as an icon+name chip; nothing when empty. */
+function TagGroup({ title, tags }: { title: string; tags: Tag[] }) {
+  if (!tags.length) return null;
+  return (
+    <InsetGroup title={title} plain>
+      <ul className="flex flex-wrap gap-1.5">
+        {tags.map((tag) => (
+          <li key={tag.id}>
+            <Badge className="gap-1.5 px-2.5 py-1 text-footnote">
+              <TagIcon nameEn={tag.nameEn} />
+              {tag.name}
+            </Badge>
+          </li>
+        ))}
+      </ul>
+    </InsetGroup>
   );
 }

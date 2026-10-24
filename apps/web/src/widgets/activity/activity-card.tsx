@@ -2,6 +2,8 @@ import Link from "next/link";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
 import { Skeleton } from "@/shared/ui/skeleton";
+import { TraitIconRow } from "@/shared/ui/tag-icon";
+import type { Tag } from "@/lib/models";
 
 /** Recruitment state the chip shows (contract "발견 카드 리뉴얼"): 모집 중 teal fill / 모집 예정 teal tint / 마감 system fill. */
 export type StatusTone = "open" | "soon" | "closed";
@@ -10,7 +12,7 @@ const statusVariant = { open: "filled", soon: "tinted", closed: "neutral" } as c
 
 /**
  * 펼친 프로그램 안의 활동 카드 한 장 (contract "발견 카드 리뉴얼 — 2026-10-19", iOS `ActivityCard`): grouped-background tile inside
- * the program card, 활동명 and the status capsule on top, then `모집`·`활동`·`장소` label/value rows. While recruitment is not past
+ * the program card, 활동명 and the status capsule on top, the 얻을 수 있는 것 icon row, then `모집`·`활동`·`장소` label/value rows. While recruitment is not past
  * (`recruitmentActive`) the `모집` value is teal semibold on a mint band. The whole card links to the detail.
  */
 export function ActivityCard({
@@ -21,6 +23,7 @@ export function ActivityCard({
   recruitmentActive,
   activityLabel,
   placeName,
+  traitTags = [],
 }: {
   id: number;
   name: string;
@@ -33,6 +36,8 @@ export function ActivityCard({
   activityLabel: string;
   /** 장소 이름; 없으면 줄을 생략한다. */
   placeName?: string | null;
+  /** 얻을 수 있는 것 icon row under the name (contract "분야·성격 태그와 아이콘"); omitted when empty. */
+  traitTags?: Tag[];
 }) {
   const rows: [string, string, boolean][] = [
     ["모집", recruitmentLabel || "미정", recruitmentActive],
@@ -50,6 +55,7 @@ export function ActivityCard({
           {statusText[statusTone]}
         </Badge>
       </span>
+      <TraitIconRow tags={traitTags} />
       <dl className="flex flex-col gap-[3px] text-footnote">
         {rows.map(([label, value, emphasized]) => (
           <div
