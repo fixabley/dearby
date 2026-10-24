@@ -206,8 +206,37 @@ export const programPageSchema = z.object({
 });
 export type ProgramSummary = z.infer<typeof programSummarySchema>;
 /** `GET /v1/discovery/recommendations` (contract "추천 API"): open activities with their program and short human reasons, best first. */
+/**
+ * One 맞춤 대기열 scene the server composed (contract "맞춤 대기열(스토리형 쇼츠)"); how many and which vary per activity.
+ * `dday` is the server's label (`D-12`) or the day count.
+ */
+const sceneSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("HOOK"), hook: text, name: text }),
+  z.object({ type: z.literal("HIGHLIGHTS"), items: z.array(highlightSchema).min(1) }),
+  z.object({ type: z.literal("ELIGIBILITY"), text }),
+  z.object({ type: z.literal("BENEFIT"), text }),
+  z.object({
+    type: z.literal("DEADLINE"),
+    dday: z.union([text, z.number().int()]).nullable().optional().catch(null),
+    deadlineText: text.nullable().optional().catch(null),
+    reasons: z.array(text).optional().catch([]),
+  }),
+]);
+export type QueueScene = z.infer<typeof sceneSchema>;
 export const recommendationListSchema = z.object({
-  items: z.array(z.object({ activity: activitySchema, program: programSummarySchema, reasons: z.array(text) })),
+  items: z.array(
+    z.object({
+      activity: activitySchema,
+      program: programSummarySchema,
+      reasons: z.array(text),
+      // Unknown or malformed scene types are skipped, not fatal; absent (older API) → the app builds them.
+      scenes: z
+        .array(z.unknown())
+        .transform((list) => list.flatMap((value) => sceneSchema.safeParse(value).data ?? []))
+        .optional()
+        .catch(undefined),
+    }),
+  ),
 });
 export type Recommendation = z.infer<typeof recommendationListSchema>["items"][number];
 export type ProgramPage = z.infer<typeof programPageSchema>;

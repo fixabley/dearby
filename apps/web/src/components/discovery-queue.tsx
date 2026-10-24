@@ -20,6 +20,7 @@ import {
 import { eligibilityLines } from "@/lib/eligibility";
 import {
   type Highlight,
+  type QueueScene,
   type Recommendation,
   daysToDeadline,
   programCoverSrc,
@@ -55,14 +56,14 @@ const highlightGlyphs: Record<Highlight["icon"], IconName> = {
   ticket: "ticket",
 };
 
-type Scene = { kind: "hook" } | { kind: "highlights"; lines: Highlight[] } | { kind: "deadline" };
-
 /**
- * One activity's scenes (contract "맞춤 대기열(스토리형 쇼츠)" › 콘텐츠): ① `hook` (else the activity name alone), ② `highlights`
- * (else 기간·장소·성격 from the public fields — 비용 is not public, so it is left out; the scene drops when nothing is left), ③ 마감.
+ * One activity's scenes (contract "맞춤 대기열(스토리형 쇼츠)" › 콘텐츠): the server's `scenes` (unknown types already dropped)
+ * when it sends any; otherwise built here — HOOK (`hook`, else the activity name alone), HIGHLIGHTS when two or more lines
+ * (`highlights`, else 기간·장소·성격 from public fields; 비용 is not public), DEADLINE.
  */
-function scenesOf(item: Recommendation): Scene[] {
-  const { activity } = item;
+function scenesOf(item: Recommendation, now: number): QueueScene[] {
+  if (item.scenes?.length) return item.scenes;
+  const { activity, program } = item;
   const lines: Highlight[] = activity.highlights?.length
     ? activity.highlights.slice(0, 3)
     : (
@@ -72,19 +73,47 @@ function scenesOf(item: Recommendation): Scene[] {
           { icon: "award", text: traitTagsOf(activity).map((tag) => tag.name).join(" · ") },
         ] satisfies Highlight[]
       ).filter((line) => line.text);
-  return [{ kind: "hook" }, ...(lines.length ? [{ kind: "highlights" as const, lines }] : []), { kind: "deadline" }];
+  const { application, eligibility } = activity;
+  return [
+    activity.hook
+      ? { type: "HOOK", hook: activity.hook, name: activity.name }
+      : { type: "HOOK", hook: activity.name, name: program.name },
+    ...(lines.length >= 2 ? [{ type: "HIGHLIGHTS" as const, items: lines }] : []),
+    {
+      type: "DEADLINE",
+      dday: daysToDeadline(application, now),
+      deadlineText: [recruitmentPhrase(application, now), eligibilityLines(eligibility)[0]].filter(Boolean).join(" · "),
+      reasons: item.reasons,
+    },
+  ];
 }
 
-/** `D-DAY`/`D-12`, or undefined without an end. */
-function dDay(item: Recommendation, now: number): string | undefined {
-  const days = daysToDeadline(item.activity.application, now);
-  if (days === undefined || days < 0) return;
-  return days === 0 ? "D-DAY" : `D-${days}`;
+/** `D-DAY`/`D-12` from a day count, the server's label as is, or undefined. */
+function dDayLabel(dday: string | number | null | undefined): string | undefined {
+  if (typeof dday === "string") return dday || undefined;
+  if (dday === undefined || dday === null || dday < 0) return;
+  return dday === 0 ? "D-DAY" : `D-${dday}`;
 }
 
-function deadlineLine(item: Recommendation, now: number): string {
-  const { application, eligibility } = item.activity;
-  return [recruitmentPhrase(application, now), eligibilityLines(eligibility)[0]].filter(Boolean).join(" · ");
+/** What a screen reader hears for a scene, all scenes read together. */
+function sceneText(scene: QueueScene): string[] {
+  switch (scene.type) {
+    case "HOOK":
+      return [scene.hook];
+    case "HIGHLIGHTS":
+      return scene.items.map((line) => line.text);
+    case "ELIGIBILITY":
+      return [`지원 대상: ${scene.text}`];
+    case "BENEFIT":
+      return [`얻을 수 있는 것: ${scene.text}`];
+    case "DEADLINE": {
+      const dday = dDayLabel(scene.dday);
+      return [
+        [dday && `마감까지 ${dday}`, scene.deadlineText].filter(Boolean).join(", "),
+        scene.reasons?.length ? `추천 이유: ${scene.reasons.join(", ")}` : "",
+      ].filter(Boolean);
+    }
+  }
 }
 
 /** `부트캠프 · 데이터·AI` above the hook. */
@@ -214,7 +243,7 @@ function Pager({
     .filter((item): item is Recommendation => !!item && isShown(item, signals));
   const { index } = position;
   const current = shown[index] as Recommendation | undefined;
-  const scenes = current ? scenesOf(current) : [];
+  const scenes = current ? scenesOf(current, now) : [];
   // Scene of the card in view; a different card (scrolled to, or slid in after a 숨기기) starts at ①.
   const [sceneOf, setSceneOf] = useState({ id: 0, scene: 0 });
   const scene = current && sceneOf.id === current.activity.id ? sceneOf.scene : 0;
@@ -326,10 +355,9 @@ function Pager({
             item={item}
             at={at}
             total={shown.length}
-            now={now}
             active={at === index}
             scene={at === index ? scene : 0}
-            scenes={at === index ? scenes : scenesOf(item)}
+            scenes={at === index ? scenes : scenesOf(item, now)}
             step={step}
             paused={paused}
             liked={signals.liked.includes(item.activity.id)}
@@ -451,7 +479,6 @@ function Story({
   item,
   at,
   total,
-  now,
   active,
   scene,
   scenes,
@@ -467,10 +494,9 @@ function Story({
   item: Recommendation;
   at: number;
   total: number;
-  now: number;
   active: boolean;
   scene: number;
-  scenes: Scene[];
+  scenes: QueueScene[];
   step: string;
   paused: boolean;
   liked: boolean;
@@ -480,11 +506,9 @@ function Story({
   onNext: () => void;
   onMore: () => void;
 }) {
-  const { activity, program, reasons } = item;
+  const { activity, program } = item;
   const logo = programLogoSrc(program.logoUrl);
   const shownScene = scenes[scene];
-  const days = dDay(item, now);
-  const highlights = scenes.find((value) => value.kind === "highlights");
   return (
     <section
       aria-roledescription="활동 카드"
@@ -501,16 +525,9 @@ function Story({
         <div className="sr-only">
           <h2>{activity.name}</h2>
           <p>{program.name}</p>
-          {activity.hook && <p>{activity.hook}</p>}
-          {highlights?.kind === "highlights" && (
-            <ul>
-              {highlights.lines.map((line) => (
-                <li key={line.text}>{line.text}</li>
-              ))}
-            </ul>
-          )}
-          <p>{[days && `마감까지 ${days}`, deadlineLine(item, now)].filter(Boolean).join(", ")}</p>
-          {reasons.length > 0 && <p>추천 이유: {reasons.join(", ")}</p>}
+          {scenes.flatMap(sceneText).map((line, key) => (
+            <p key={key}>{line}</p>
+          ))}
         </div>
         <div aria-hidden="true" className="absolute inset-x-3 top-[max(12px,env(safe-area-inset-top))] flex gap-1">
           {scenes.map((value, key) => (
@@ -567,44 +584,7 @@ function Story({
           key={active ? step : "idle"}
           className={cn("pointer-events-none absolute right-[84px] bottom-12 left-[18px] flex flex-col gap-2.5", active && "queue-rise")}
         >
-          {shownScene?.kind === "hook" && (
-            <>
-              {kicker(item) && <span className="text-subheadline font-semibold text-[#7fe3e3]">{kicker(item)}</span>}
-              <span className="text-[30px] leading-tight font-extrabold tracking-[-0.5px] break-keep">
-                {activity.hook || activity.name}
-              </span>
-              <span className="text-subheadline opacity-90 break-keep">{activity.hook ? activity.name : program.name}</span>
-            </>
-          )}
-          {shownScene?.kind === "highlights" && (
-            <>
-              <span className="text-subheadline font-semibold text-[#7fe3e3]">이런 걸 해요</span>
-              {shownScene.lines.map((line) => (
-                <span key={line.text} className="flex items-center gap-2.5 text-[19px] leading-snug font-bold break-keep">
-                  <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/20">
-                    <Icon name={highlightGlyphs[line.icon]} size="inline" />
-                  </span>
-                  {line.text}
-                </span>
-              ))}
-            </>
-          )}
-          {shownScene?.kind === "deadline" && (
-            <>
-              <span className="text-subheadline font-semibold text-[#7fe3e3]">마감까지</span>
-              <span className="text-[64px] leading-none font-extrabold">{days ?? "상시"}</span>
-              <span className="text-body opacity-90 break-keep">{deadlineLine(item, now)}</span>
-              {reasons.length > 0 && (
-                <span className="flex flex-wrap gap-1.5">
-                  {reasons.map((reason) => (
-                    <span key={reason} className="rounded-full bg-white/20 px-2.5 py-1 text-footnote font-semibold">
-                      {reason}
-                    </span>
-                  ))}
-                </span>
-              )}
-            </>
-          )}
+          {shownScene && <SceneView scene={shownScene} kicker={kicker(item)} />}
         </div>
         <nav aria-label="이 활동" className="absolute right-2.5 bottom-14 flex flex-col items-center gap-4 text-caption">
           <RailButton label="관심" pressed={liked} onClick={onLike} ariaLabel="관심 있어요">
@@ -632,6 +612,60 @@ function Story({
       </div>
     </section>
   );
+}
+
+const sceneHeading = "text-subheadline font-semibold text-[#7fe3e3]";
+
+function SceneView({ scene, kicker }: { scene: QueueScene; kicker: string }) {
+  switch (scene.type) {
+    case "HOOK":
+      return (
+        <>
+          {kicker && <span className={sceneHeading}>{kicker}</span>}
+          <span className="text-[30px] leading-tight font-extrabold tracking-[-0.5px] break-keep">{scene.hook}</span>
+          <span className="text-subheadline opacity-90 break-keep">{scene.name}</span>
+        </>
+      );
+    case "HIGHLIGHTS":
+      return (
+        <>
+          <span className={sceneHeading}>이런 걸 해요</span>
+          {scene.items.map((line) => (
+            <span key={line.text} className="flex items-center gap-2.5 text-[19px] leading-snug font-bold break-keep">
+              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/20">
+                <Icon name={highlightGlyphs[line.icon]} size="inline" />
+              </span>
+              {line.text}
+            </span>
+          ))}
+        </>
+      );
+    case "ELIGIBILITY":
+    case "BENEFIT":
+      return (
+        <>
+          <span className={sceneHeading}>{scene.type === "ELIGIBILITY" ? "지원 대상" : "얻을 수 있는 것"}</span>
+          <span className="text-[24px] leading-snug font-bold break-keep">{scene.text}</span>
+        </>
+      );
+    case "DEADLINE":
+      return (
+        <>
+          <span className={sceneHeading}>마감까지</span>
+          <span className="text-[64px] leading-none font-extrabold">{dDayLabel(scene.dday) ?? "상시"}</span>
+          {scene.deadlineText && <span className="text-body opacity-90 break-keep">{scene.deadlineText}</span>}
+          {!!scene.reasons?.length && (
+            <span className="flex flex-wrap gap-1.5">
+              {scene.reasons.map((reason) => (
+                <span key={reason} className="rounded-full bg-white/20 px-2.5 py-1 text-footnote font-semibold">
+                  {reason}
+                </span>
+              ))}
+            </span>
+          )}
+        </>
+      );
+  }
 }
 
 function RailCircle({ children }: { children: React.ReactNode }) {
