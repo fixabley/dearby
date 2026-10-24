@@ -76,11 +76,12 @@ import com.dearby.nativeapp.shared.ui.DearbyTopBar
                 EligibilityStep.YEAR -> Options(SCHOOL_YEARS, (state.schoolYear ?: 0) - 1) { chooseYear(it + 1) }
                 EligibilityStep.BIRTH -> {
                     // The platform wheel (android.widget.NumberPicker), the native counterpart of iOS's wheel picker.
-                    AndroidView({ context -> NumberPicker(context).apply { wrapSelectorWheel = false; setOnValueChangedListener { _, _, value -> birthYear(value) } } },
-                        Modifier.fillMaxWidth(), update = { picker ->
-                            picker.minValue = state.years.first; picker.maxValue = state.years.last
-                            picker.setFormatter { "${it}년" }; picker.value = state.birthYear
-                        })
+                    // displayedValues rather than setFormatter: the formatter's first frame shows bare numbers until the wheel moves.
+                    val years = state.years
+                    AndroidView({ context -> NumberPicker(context).apply {
+                        minValue = 0; maxValue = years.count() - 1; displayedValues = years.map { "${it}년" }.toTypedArray(); wrapSelectorWheel = false
+                        setOnValueChangedListener { _, _, index -> birthYear(years.first + index) }
+                    } }, Modifier.fillMaxWidth(), update = { it.value = (state.birthYear - years.first).coerceIn(0, years.count() - 1) })
                     Text("나이 제한이 있는 활동을 거를 때만 써요. 내 계정에만 저장돼요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
                 }
             }
