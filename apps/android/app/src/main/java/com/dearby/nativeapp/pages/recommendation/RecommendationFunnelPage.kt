@@ -34,11 +34,11 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
         LinearProgressIndicator({ state.progress }, Modifier.fillMaxWidth().padding(horizontal = 20.dp))
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 28.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val (title, subtitle) = when (state.step) {
-                FunnelStep.INTRO -> "나에게 맞는 활동을\n찾아 드릴게요" to "질문 3개, 30초면 끝나요.\n답하지 않은 건 그냥 넘어가도 돼요."
+                FunnelStep.INTRO -> "나에게 맞는 활동을\n찾아 드릴게요" to "몇 가지 질문이면 끝나요.\n답하지 않은 건 그냥 넘어가도 돼요."
                 FunnelStep.FIELDS -> "어떤 분야에\n관심 있어요?" to "여러 개 골라도 돼요."
                 // One upper field asks about itself; 3 or more share one screen, each under its own question.
                 FunnelStep.SUBFIELDS -> state.subScreens.getOrNull(state.subIndex)?.singleOrNull()?.let { "${it.option.label} 중에서는\n어떤 분야요?" to "여러 개 골라도 돼요." }
-                    ?: ("분야를 조금 더\n알려 주세요" to "여러 개 골라도 돼요.")
+                    ?: ("분야별로 더\n골라 볼까요?" to "고르지 않으면 그 분야 전부를 찾아요.")
                 FunnelStep.CATEGORIES -> "어떤 활동을\n찾고 있어요?" to "여러 개 골라도 돼요."
                 FunnelStep.TRAITS -> "활동하면서\n무엇을 얻고 싶어요?" to "고르지 않아도 괜찮아요."
                 // No answer from the recommendation API (not deployed yet, or offline): the settings were still saved.
