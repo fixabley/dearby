@@ -41,16 +41,50 @@ enum ActivityClient {
                            logoURL: program.logoUrl.flatMap { URL(string: $0, relativeTo: api)?.absoluteURL })
         }, nextCursor: payload.nextCursor)
     }
-    private static func get(_ api: URL, path: String, _ items: [URLQueryItem]) async throws -> Data {
+    /// 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): `GET /v1/discovery/recommendations`. Signed in, `bearer` is the access
+    /// token and the server uses the saved preferences and 지원 자격 정보; signed out, the device preferences go in the query.
+    /// Nil on 404 (a server without recommendations yet): discovery hides the section. A 401 throws `RecommendationFailure.unauthorized`.
+    static func fetchRecommendations(api: URL, size: Int, fieldTagIDs: [Int64], categories: [String], traitTagIDs: [Int64],
+                                     bearer: String?) async throws -> [RecommendedActivity]? {
+        var items = [URLQueryItem(name: "size", value: String(size))]
+        if bearer == nil {
+            if !fieldTagIDs.isEmpty { items.append(URLQueryItem(name: "fieldTagIds", value: fieldTagIDs.map(String.init).joined(separator: ","))) }
+            if !categories.isEmpty { items.append(URLQueryItem(name: "categories", value: categories.joined(separator: ","))) }
+            if !traitTagIDs.isEmpty { items.append(URLQueryItem(name: "traitTagIds", value: traitTagIDs.map(String.init).joined(separator: ","))) }
+        }
+        let data: Data
+        do { data = try await get(api, path: "v1/discovery/recommendations", items, bearer: bearer) } catch ActivityFetchError.notFound { return nil }
+        return try JSONDecoder().decode(RecommendationPayload.self, from: data).items.map {
+            RecommendedActivity(activity: model($0.activity), reasons: $0.reasons)
+        }
+    }
+    enum RecommendationFailure: Error { case unauthorized }
+    /// The tag vocabulary for the 추천 funnel (`GET /v1/tags`) with each tag's kind and 상위 분야. Older servers send neither; such a tag is a 성격.
+    static func fetchTagOptions(api: URL) async throws -> [TagOption] {
+        try JSONDecoder().decode(TagOptionPayload.self, from: try await get(api, path: "v1/tags", [])).items.map {
+            TagOption(id: $0.id, name: $0.name, isField: $0.kind == "FIELD", parentID: $0.parentId)
+        }
+    }
+    private struct RecommendationPayload: Decodable {
+        struct Item: Decodable { let activity: Activity; let reasons: [String] }
+        let items: [Item]
+    }
+    private struct TagOptionPayload: Decodable {
+        struct Item: Decodable { let id: Int64; let name: String; let kind: String?; let parentId: Int64? }
+        let items: [Item]
+    }
+    private static func get(_ api: URL, path: String, _ items: [URLQueryItem], bearer: String? = nil) async throws -> Data {
         var components = URLComponents(url: api.appending(path: path), resolvingAgainstBaseURL: false)
         components?.queryItems = items.isEmpty ? nil : items
         guard let url = components?.url else { throw URLError(.badURL) }
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue(acceptLanguage(Locale.preferredLanguages), forHTTPHeaderField: "Accept-Language")
+        if let bearer { request.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization") }
         let (data, response) = try await URLSession.shared.data(for: request)
         let status = (response as? HTTPURLResponse)?.statusCode
         if status == 404 { throw ActivityFetchError.notFound }
+        if status == 401 { throw RecommendationFailure.unauthorized }
         guard status == 200 else { throw URLError(.badServerResponse) }
         return data
     }

@@ -274,6 +274,64 @@ struct AccountClient: Sendable {
         try await send("me/activities/import", method: "POST", body: ItemsInput(items: items), session: session, as: ItemList<MyActivity>.self).items
     }
 
+    /// 추천 설정 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): nil when the account has none yet (404 or `completedAt` and lists
+    /// all empty are both "none"; the caller decides). Other failures throw.
+    func recommendationPreferences(_ session: TokenPair) async throws -> RecommendationPreferences? {
+        do { return try await send("me/recommendation-preferences", session: session, as: RecommendationPreferences.self) } catch AccountError.notFound { return nil }
+    }
+    func saveRecommendationPreferences(_ preferences: RecommendationPreferences, _ session: TokenPair) async throws -> RecommendationPreferences {
+        try await send("me/recommendation-preferences", method: "PUT", body: preferences, session: session, as: RecommendationPreferences.self)
+    }
+    /// 지원 자격 정보: `notFound` when the server does not have the endpoint yet.
+    func eligibilityProfile(_ session: TokenPair) async throws -> EligibilityProfile {
+        try await send("me/eligibility-profile", session: session, as: EligibilityProfile.self)
+    }
+    /// A missing or stale `consentVersion` is a 400 (`rejected`/`invalidInput`): the sheet asks again.
+    func saveEligibilityProfile(_ input: EligibilityInput, _ session: TokenPair) async throws -> EligibilityProfile {
+        try await send("me/eligibility-profile", method: "PUT", body: input, session: session, as: EligibilityProfile.self)
+    }
+    /// 지원 자격 정보 지우기: the values and the consent record go together.
+    func deleteEligibilityProfile(_ session: TokenPair) async throws {
+        _ = try await request("me/eligibility-profile", method: "DELETE", session: session)
+    }
+
+    /// The funnel's answers; `completedAt` is set even when everything was skipped (`나중에`), so the funnel shows once.
+    struct RecommendationPreferences: Codable, Equatable, Sendable {
+        var fieldTagIds: [Int64] = []
+        var categories: [String] = []
+        var traitTagIds: [Int64] = []
+        var completedAt: String?
+        /// Finished with nothing picked: discovery offers `나에게 맞는 활동 찾기` instead of the 추천 section.
+        var isEmpty: Bool { fieldTagIds.isEmpty && categories.isEmpty && traitTagIds.isEmpty }
+    }
+    /// `GET /v1/me/eligibility-profile`; every value nil when nothing was entered. Values use the eligibility vocabulary (contract "대상자 조건").
+    struct EligibilityProfile: Decodable, Equatable, Sendable {
+        struct Consent: Decodable, Equatable, Sendable { let version: String; let agreedAt: String? }
+        var consent: Consent?
+        var educationStatus: String?
+        var employment: String?
+        var schoolYear: Int?
+        var birthYear: Int?
+        static let empty = EligibilityProfile()
+    }
+    /// PUT replaces every value, so nil fields go out as `null` (a status change can drop the 학년).
+    struct EligibilityInput: Encodable, Equatable, Sendable {
+        let consentVersion: String
+        var educationStatus: String?
+        var employment: String?
+        var schoolYear: Int?
+        var birthYear: Int?
+        private enum CodingKeys: String, CodingKey { case consentVersion, educationStatus, employment, schoolYear, birthYear }
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(consentVersion, forKey: .consentVersion)
+            try container.encode(educationStatus, forKey: .educationStatus)
+            try container.encode(employment, forKey: .employment)
+            try container.encode(schoolYear, forKey: .schoolYear)
+            try container.encode(birthYear, forKey: .birthYear)
+        }
+    }
+
     /// One 내 활동 record. `statusId` is nil for a default status; `kind` is WAITING·PASSED·FAILED·OTHER.
     struct MyActivity: Decodable, Equatable, Sendable {
         struct Status: Codable, Equatable, Sendable { let scheduleId: Int64; var statusId: Int64? = nil; let kind: String }
