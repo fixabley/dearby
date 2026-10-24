@@ -74,7 +74,7 @@ struct ConnectionProvider: Sendable {
         try await ActivityClient.fetchRecommendations(api: origins.api, size: 10, fieldTagIDs: preferences.fieldTagIds,
                                                       categories: preferences.categories, traitTagIDs: preferences.traitTagIds, bearer: nil)
     }
-    /// 맞춤 대기열 while signed out (contract "맞춤 대기열" 2026-10-24): more 추천 results than the section, so `더 받기` has others to show.
+    /// 맞춤 대기열 while signed out (contract "맞춤 대기열" 2026-10-24): 40 추천 results, so `더 받기` has others to show.
     func queueCandidates(_ preferences: AccountClient.RecommendationPreferences) async throws -> RecommendationPage? {
         try await ActivityClient.fetchRecommendations(api: origins.api, size: 40, fieldTagIDs: preferences.fieldTagIds,
                                                       categories: preferences.categories, traitTagIDs: preferences.traitTagIds, bearer: nil)

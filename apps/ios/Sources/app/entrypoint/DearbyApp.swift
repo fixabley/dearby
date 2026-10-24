@@ -7,6 +7,7 @@ import SwiftUI
     @State private var wallet: WalletModel
     @State private var recommendations: RecommendationModel
     @State private var queue: DiscoveryQueueModel
+    @State private var showsQueue = false
     @State private var eligibility: EligibilityModel
     @State private var tab = 0
     /// Which section the 명함 tab shows (contract "명함 탭 통합"); memory only.
@@ -52,10 +53,15 @@ import SwiftUI
                     IntroPage(account: account, done: finishIntro)
                 } else {
                     HomePage(selectedTab: $tab, hidesTabs: tab == 3 && profile.profile?.version == 0,
-                        discovery: { ActivityListPage(state: activityModel, recommendations: recommendations, queue: queue, path: $0) }, mine: { MyActivitiesPage(state: activityModel, path: $0, explore: { tab = 0 }) },
+                        discovery: { ActivityListPage(state: activityModel, recommendations: recommendations,
+                                                      showsQueueEntry: queue.showsEntry(recommendationsAvailable: recommendations.available || !recommendations.probed),
+                                                      openQueue: openQueue, path: $0) }, mine: { MyActivitiesPage(state: activityModel, path: $0, explore: { tab = 0 }) },
                         cards: CardsPage(segment: $cardsSegment, cards: cards, wallet: wallet), profile: ProfilePage(state: profile, eligibility: eligibility,
                                                                                          editRecommendations: { recommendations.presentingFunnel = true }),
                         settings: { SettingsPage(account: account, webOrigin: links.origins.web) })
+                    .fullScreenCover(isPresented: $showsQueue) {
+                        DiscoveryQueuePage(model: queue, state: activityModel, preferences: recommendations.preferences)
+                    }
                 }
             }
             // One accent for every screen and sheet, including those presented from this root (contract "색 체계").
@@ -107,7 +113,11 @@ import SwiftUI
                 #endif
                 if show { recommendations.presentingFunnel = true }
             }
-            .fullScreenCover(isPresented: $recommendations.presentingFunnel) {
+            .fullScreenCover(isPresented: $recommendations.presentingFunnel, onDismiss: {
+                guard recommendations.queueAfterFunnel else { return }
+                recommendations.queueAfterFunnel = false
+                showsQueue = true
+            }) {
                 RecommendationFunnelPage(model: recommendations) { tab = 0 }
             }
             // Signed in, the server judges 지원 자격 with the saved values: a change reloads the recommendations.
@@ -143,6 +153,15 @@ import SwiftUI
         }
     }
     #endif
+    /// `오늘의 맞춤 대기열`: the funnel first when it was never finished, then the queue (after the funnel closes).
+    private func openQueue() {
+        if recommendations.needsFunnel {
+            recommendations.queueAfterFunnel = true
+            recommendations.presentingFunnel = true
+        } else {
+            showsQueue = true
+        }
+    }
     private func finishIntro() {
         UserDefaults.standard.set(true, forKey: Self.introShownKey)
         showIntro = false

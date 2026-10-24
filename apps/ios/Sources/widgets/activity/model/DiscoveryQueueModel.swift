@@ -66,9 +66,9 @@ import Observation
         local = defaults.data(forKey: Self.localKey).flatMap { try? JSONDecoder().decode(LocalSignals.self, from: $0) } ?? LocalSignals()
     }
 
-    /// The entry under 추천: signed in when the server has the queue, signed out when there is something to recommend.
+    /// The discovery entry: signed in when the server has the queue, signed out when it has the 추천 API (`recommendationsAvailable`).
     /// A failed probe (connection) still shows it; opening it then offers to try again.
-    func showsEntry(hasRecommendations: Bool) -> Bool { server != nil ? available || !probed : hasRecommendations }
+    func showsEntry(recommendationsAvailable: Bool) -> Bool { server != nil ? available || !probed : recommendationsAvailable }
     func signedIn(_ server: DiscoveryQueueServer) async {
         self.server = server
         reset()

@@ -45,7 +45,8 @@
     "TagOption",
     "ActivityHighlight",
     "RecommendationSignal",
-    "QueueScene"
+    "QueueScene",
+    "AudienceLine"
   ],
   "entities/identity": [
     "CardModel",
@@ -122,8 +123,6 @@
     "RecommendationModel",
     "RecommendationServer",
     "RecommendationFunnelPage",
-    "RecommendationListPage",
-    "RecommendationListRoute",
     "RecommendationRow",
     "DiscoveryQueueModel",
     "DiscoveryQueueServer",

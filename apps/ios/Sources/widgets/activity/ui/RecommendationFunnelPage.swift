@@ -5,7 +5,7 @@ import SwiftUI
 /// 된다. `나중에`와 끝까지 건너뛰기도 완료로 기록한다(다시 띄우지 않음). 다시 열면(이미 마친 뒤) 시작 화면 없이 지금 답을 고른 채 1부터. 개인정보는 묻지 않는다.
 struct RecommendationFunnelPage: View {
     let model: RecommendationModel
-    /// `추천 보러 가기`: the app shows the 발견 tab.
+    /// `맞춤 대기열 보러 가기`: the app shows the 발견 tab and, once this closes, the queue.
     var done: () -> Void = {}
     @State private var answers: AccountClient.RecommendationPreferences
     @State private var path: [Step] = []
@@ -94,8 +94,12 @@ struct RecommendationFunnelPage: View {
     private var result: some View {
         let count = model.total
         let title = model.loading ? "맞는 활동을 찾고 있어요" : count == 0 ? "지금 지원할 수 있는 활동을 찾지 못했어요" : "지금 지원할 수 있는 활동 \(count)개를 찾았어요"
-        return DearbyQuestionPage(progress: 1, title: title, message: picked.isEmpty ? nil : picked, button: "추천 보러 가기", busy: model.loading,
-                                  next: { dismiss(); done() }) {
+        return DearbyQuestionPage(progress: 1, title: title, message: picked.isEmpty ? nil : picked, button: "맞춤 대기열 보러 가기", busy: model.loading,
+                                  next: {
+                                      model.queueAfterFunnel = true
+                                      dismiss()
+                                      done()
+                                  }) {
             Section {
                 if model.loading {
                     DearbyRowsSkeleton()

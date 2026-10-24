@@ -128,7 +128,7 @@ struct DiscoveryQueuePage: View {
     }
 }
 
-/// Presents `DiscoveryQueuePage` from the 발견 tab's 추천 section.
+/// Presents `DiscoveryQueuePage` from the top of the 발견 tab.
 struct DiscoveryQueueEntry: View {
     let action: () -> Void
     var body: some View {
