@@ -16,11 +16,18 @@ struct RecommendedActivity: Identifiable, Sendable {
     var id: String { activity.id }
 }
 
+/// One 지원 대상 row of the ELIGIBILITY scene: an icon from the set (nil for an unknown one) and its text.
+struct AudienceLine: Equatable, Sendable {
+    enum Icon: String, Sendable { case age, education, schoolYear, employment, region, major, nationality, experience, team, other }
+    let icon: Icon?
+    let text: String
+}
 /// One scene of a 맞춤 대기열 card (`scenes[].type`): any number, in order; unknown types are dropped when read.
 enum QueueScene: Equatable, Sendable {
     case hook(hook: String, name: String)
     case highlights([ActivityHighlight])
-    case eligibility(String)
+    /// 지원 대상 as icon rows; `text` stands in when the server sent no `items`.
+    case eligibility(items: [AudienceLine], text: String?)
     case benefit(String)
     /// `label` is the heading (`마감까지`, `행사까지`; nil: the app picks), `days` the count to it (0 the day itself, below 0 past; nil none).
     case deadline(label: String?, days: Int?, deadlineText: String?, reasons: [String])

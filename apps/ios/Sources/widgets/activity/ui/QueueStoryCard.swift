@@ -186,9 +186,16 @@ struct QueueStoryCard: View {
                     }
                 }
             }
-        case .eligibility(let text):
+        case let .eligibility(items, text):
             Rise(order: 0) { label("지원 대상") }
-            Rise(order: 1) { Text(text).font(.dearby(.title2).weight(.bold)).lineLimit(5) }
+            if items.isEmpty, let text {
+                Rise(order: 1) { Text(text).font(.dearby(.title2).weight(.bold)).lineLimit(5) }
+            }
+            ForEach(Array(items.prefix(4).enumerated()), id: \.offset) { index, line in
+                Rise(order: index + 1) {
+                    Label(line.text, systemImage: Self.symbol(line.icon)).font(.dearby(.title3).weight(.bold)).lineLimit(2)
+                }
+            }
         case .benefit(let text):
             Rise(order: 0) { label("혜택") }
             Rise(order: 1) { Text(text).font(.dearby(.title2).weight(.bold)).lineLimit(5) }
@@ -269,6 +276,20 @@ struct QueueStoryCard: View {
         calendar.timeZone = ActivityText.seoul
         return calendar
     }()
+    static func symbol(_ icon: AudienceLine.Icon?) -> String {
+        switch icon {
+        case .age: "birthday.cake"
+        case .education: "graduationcap"
+        case .schoolYear: "number"
+        case .employment: "briefcase"
+        case .region: "mappin.and.ellipse"
+        case .major: "book"
+        case .nationality: "globe"
+        case .experience: "clock"
+        case .team: "person.3"
+        case .other, nil: "info.circle"
+        }
+    }
     static func symbol(_ icon: ActivityHighlight.Icon?) -> String {
         switch icon {
         case .cost: "wonsign.circle"

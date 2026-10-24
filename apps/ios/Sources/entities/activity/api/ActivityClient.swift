@@ -44,7 +44,7 @@ enum ActivityClient {
     }
     /// 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): `GET /v1/discovery/recommendations`. Signed in, `bearer` is the access
     /// token and the server uses the saved preferences and 지원 자격 정보; signed out, the device preferences go in the query.
-    /// Nil on 404 (a server without recommendations yet): discovery hides the section. A 401 throws `RecommendationFailure.unauthorized`.
+    /// Nil on 404 (a server without recommendations yet): discovery hides the 맞춤 대기열 entry (signed out). A 401 throws `RecommendationFailure.unauthorized`.
     static func fetchRecommendations(api: URL, size: Int, fieldTagIDs: [Int64], categories: [String], traitTagIDs: [Int64],
                                      bearer: String?) async throws -> RecommendationPage? {
         var items = [URLQueryItem(name: "size", value: String(size))]
@@ -90,7 +90,10 @@ enum ActivityClient {
             switch type {
             case "HOOK": hook.map { .hook(hook: $0, name: name ?? "") }
             case "HIGHLIGHTS": .highlights((items ?? []).map(\.highlight))
-            case "ELIGIBILITY": text.map(QueueScene.eligibility)
+            case "ELIGIBILITY":
+                (items ?? []).isEmpty && text == nil ? nil
+                    : .eligibility(items: (items ?? []).map { AudienceLine(icon: $0.icon.flatMap(AudienceLine.Icon.init(rawValue:)), text: $0.text) },
+                                   text: text)
             case "BENEFIT": text.map(QueueScene.benefit)
             case "DEADLINE": .deadline(label: label.flatMap { $0.isEmpty ? nil : $0 }, days: dday?.value, deadlineText: deadlineText, reasons: reasons ?? [])
             default: nil
