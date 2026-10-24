@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.dearby.nativeapp.entities.account.model.RecommendationPreferences
 import com.dearby.nativeapp.entities.activity.api.parseQueue
 import com.dearby.nativeapp.entities.activity.model.QueueItem
+import com.dearby.nativeapp.entities.activity.model.QueueScene
 import com.dearby.nativeapp.entities.activity.model.lines
 import com.dearby.nativeapp.entities.activity.model.scheduleText
 import com.dearby.nativeapp.entities.activity.model.stages
@@ -13,6 +14,7 @@ import com.dearby.nativeapp.pages.queue.QueueCardState
 import com.dearby.nativeapp.pages.queue.QueueFact
 import com.dearby.nativeapp.pages.queue.QueueIcon
 import com.dearby.nativeapp.pages.queue.QueueReaction
+import com.dearby.nativeapp.pages.queue.QueueSceneState
 import com.dearby.nativeapp.pages.queue.QueueUndo
 import com.dearby.nativeapp.pages.queue.QueueViewState
 import java.time.LocalDate
@@ -182,27 +184,42 @@ class QueueViewModel(private val account: AccountViewModel, private val preferen
         viewModelScope.launch(Dispatchers.IO) { store.saveSignals(next.toJson().toString()) }
     }
 
+    /**
+     * The server's scenes when it sent them; otherwise HOOK, HIGHLIGHTS when there are at least two lines (`highlights`, else 기간·장소 — the public
+     * API has no 비용) and DEADLINE.
+     */
     private fun card(item: QueueItem): QueueCardState {
         val activity = item.activity
         val program = item.program
         val field = fieldOf(item)
-        val deadline = activity.stages().firstOrNull { it.kind == "APPLICATION" }?.takeIf { it.day != null }
-        val left = deadline?.day?.let { ChronoUnit.DAYS.between(LocalDate.now(SEOUL), it) }
-        val facts = activity.highlights.take(3).map { QueueFact(it.icon.queueIcon(), it.text) }.ifEmpty {
-            // No highlights yet: 기간·장소 from the activity (the public API has no 비용).
+        val scenes = item.scenes?.map { scene ->
+            when (scene) {
+                is QueueScene.Hook -> QueueSceneState.Hook(scene.hook, scene.name)
+                is QueueScene.Highlights -> QueueSceneState.Highlights(scene.items.map { QueueFact(it.icon.queueIcon(), it.text) })
+                is QueueScene.Eligibility -> QueueSceneState.Eligibility(scene.text)
+                is QueueScene.Benefit -> QueueSceneState.Benefit(scene.text)
+                is QueueScene.Deadline -> QueueSceneState.Deadline(scene.dday, scene.deadlineText, scene.reasons)
+            }
+        } ?: run {
+            val deadline = activity.stages().firstOrNull { it.kind == "APPLICATION" }?.takeIf { it.day != null }
+            val left = deadline?.day?.let { ChronoUnit.DAYS.between(LocalDate.now(SEOUL), it) }
+            val facts = activity.highlights.take(3).map { QueueFact(it.icon.queueIcon(), it.text) }.ifEmpty {
+                listOfNotNull(
+                    (activity.activitySchedule?.scheduleText()?.ifBlank { null } ?: activity.dateLabel.ifBlank { null })?.let { QueueFact(QueueIcon.PERIOD, it) },
+                    activity.venue?.let { QueueFact(QueueIcon.PLACE, it) },
+                )
+            }
             listOfNotNull(
-                (activity.activitySchedule?.scheduleText()?.ifBlank { null } ?: activity.dateLabel.ifBlank { null })?.let { QueueFact(QueueIcon.PERIOD, it) },
-                activity.venue?.let { QueueFact(QueueIcon.PLACE, it) },
-            ).ifEmpty { listOf(QueueFact(QueueIcon.TALK, "자세히에서 내용을 확인해요")) }
+                QueueSceneState.Hook(activity.hook ?: activity.name, if (activity.hook != null) activity.name else program.name),
+                facts.takeIf { it.size >= 2 }?.let(QueueSceneState::Highlights),
+                QueueSceneState.Deadline(when { left == null || left < 0 -> null; left == 0L -> "D-DAY"; else -> "D-$left" },
+                    listOfNotNull(deadline?.dateText, activity.eligibility?.lines()?.firstOrNull()).joinToString(" · ").ifEmpty { null }, item.reasons),
+            )
         }
         return QueueCardState(
             activity.id, program.organization.ifBlank { activity.organization }, program.logoUrl, program.coverUrl, (program.id.hashCode().toLong() and 0xffff).rem(360).toFloat(),
             listOfNotNull(activity.category?.label, field?.name).joinToString(" · ").ifEmpty { null },
-            activity.hook ?: activity.name, if (activity.hook != null) activity.name else program.name,
-            facts,
-            when { left == null || left < 0 -> null; left == 0L -> "D-DAY"; else -> "D-$left" },
-            listOfNotNull(deadline?.dateText, activity.eligibility?.lines()?.firstOrNull()).joinToString(" · ").ifEmpty { null },
-            item.reasons, activity.id in liked, field?.name,
+            scenes, activity.id in liked, field?.name,
         )
     }
     private fun fieldOf(item: QueueItem) = item.activity.fieldTags.firstOrNull() ?: item.program.fieldTags.firstOrNull()

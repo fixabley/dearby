@@ -11,6 +11,7 @@ import com.dearby.nativeapp.entities.activity.model.Place
 import com.dearby.nativeapp.entities.activity.model.ProgramPage
 import com.dearby.nativeapp.entities.activity.model.ProgramSummary
 import com.dearby.nativeapp.entities.activity.model.QueueItem
+import com.dearby.nativeapp.entities.activity.model.QueueScene
 import com.dearby.nativeapp.entities.activity.model.ScheduleStatus
 import com.dearby.nativeapp.entities.activity.model.StageSchedule
 import com.dearby.nativeapp.entities.activity.model.Tag
@@ -163,9 +164,24 @@ fun parseQueue(body: JSONObject, api: String): List<QueueItem> = body.getJSONArr
     runCatching {
         val activity = item.getJSONObject("activity")
         val program = item.optJSONObject("program") ?: activity.getJSONObject("program")
-        QueueItem(parseActivity(activity), program.programSummary(api), item.optJSONArray("reasons")?.let { r -> List(r.length()) { r.getString(it) } }.orEmpty())
+        QueueItem(parseActivity(activity), program.programSummary(api), item.strings("reasons"),
+            item.optJSONArray("scenes")?.objects()?.mapNotNull { runCatching { it.scene() }.getOrNull() }?.ifEmpty { null })
     }.getOrNull()
 }
+
+/** One server scene; an unknown `type` (or an unreadable one) is null and skipped. A numeric `dday` is days left. */
+private fun JSONObject.scene(): QueueScene? = when (text("type")) {
+    "HOOK" -> QueueScene.Hook(getString("hook"), text("name"))
+    "HIGHLIGHTS" -> getJSONArray("items").objects().mapNotNull { runCatching { Highlight(it.text("icon") ?: "talk", it.getString("text")) }.getOrNull() }
+        .takeIf { it.isNotEmpty() }?.let(QueueScene::Highlights)
+    "ELIGIBILITY" -> QueueScene.Eligibility(getString("text"))
+    "BENEFIT" -> QueueScene.Benefit(getString("text"))
+    "DEADLINE" -> QueueScene.Deadline(
+        when (val dday = opt("dday")) { is Number -> dday.toInt().let { if (it == 0) "D-DAY" else if (it > 0) "D-$it" else null }; is String -> dday.ifBlank { null }; else -> null },
+        text("deadlineText"), strings("reasons"))
+    else -> null
+}
+private fun JSONObject.strings(key: String): List<String> = optJSONArray(key)?.let { r -> List(r.length()) { r.getString(it) } }.orEmpty()
 
 /** Contract "분야·성격 태그와 아이콘": every tag array is optional (older API) and an unreadable entry is skipped. */
 private fun JSONObject.tags(key: String): List<Tag> = optJSONArray(key)?.objects()?.mapNotNull { runCatching { it.tag() }.getOrNull() } ?: emptyList()

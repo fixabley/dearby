@@ -43,7 +43,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
-private const val SCENES = 3
 private const val SCENE_MILLIS = 4_000L
 private val Accent = Color(0xFF7FE3E3)
 private val Heart = Color(0xFFFF4D6D)
@@ -51,10 +50,11 @@ private val Glass = Color.Black.copy(alpha = 0.35f)
 
 /**
  * 오늘의 맞춤 대기열 (contract "맞춤 대기열(스토리형 쇼츠)"): full-screen [VerticalPager], one activity per page and an end page after the last.
- * Each activity plays three scenes, [SCENE_MILLIS] apiece (top progress, tap right/left for the next/previous scene); after the third it moves on.
+ * Each activity plays its scenes (as many as the server sends), [SCENE_MILLIS] apiece (one progress segment each, tap right/left for the next/previous
+ * scene); after the last it stays there, every segment full, until a swipe or `다음`.
  * [reduceMotion] (the system's 애니메이션 삭제) keeps the cover, text and heart still while the scenes still change; [autoAdvance] false (a screen
  * reader) leaves the scenes to taps and the custom actions. [skipEarly] fires when an activity is left forward on its first scene, [complete]
- * when its third scene ends. The `되돌리기` snackbar answers [undo] or [commit].
+ * when its last scene ends. The `되돌리기` snackbar answers [undo] or [commit].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun DiscoveryQueuePage(
@@ -132,13 +132,15 @@ private val QueueReaction.icon: ImageVector get() = when (this) {
     scene: Int, setScene: (Int) -> Unit, next: () -> Unit, complete: () -> Unit,
     like: (Boolean?) -> Unit, detail: () -> Unit, more: () -> Unit, react: (QueueReaction) -> Unit, close: () -> Unit,
 ) {
-    val forward = { if (scene < SCENES - 1) setScene(scene + 1) else { complete(); next() } }
+    // After the last scene the card stays put, every segment full (2026-10-24 user decision "멈춰줘"); only a swipe or `다음` moves on.
+    val last = card.scenes.lastIndex
+    val forward = { if (scene < last) setScene(scene + 1) else complete() }
     val back = { if (scene > 0) setScene(scene - 1) }
     var progress by remember(card.id, scene) { mutableFloatStateOf(0f) }
     // The scene clock runs on frame time, not on an animation, so the system animation scale cannot shorten it.
     LaunchedEffect(active, scene, autoAdvance) {
-        if (!active || !autoAdvance) return@LaunchedEffect
-        if (reduceMotion) delay(SCENE_MILLIS)
+        if (!active || !autoAdvance || progress >= 1f) return@LaunchedEffect
+        if (reduceMotion) { delay(SCENE_MILLIS); progress = 1f }
         else {
             val start = withFrameMillis { it }
             while (progress < 1f) progress = ((withFrameMillis { it } - start) / SCENE_MILLIS.toFloat()).coerceAtMost(1f)
@@ -156,7 +158,7 @@ private val QueueReaction.icon: ImageVector get() = when (this) {
         })
         Column(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth().clearAndSetSemantics {}, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                repeat(SCENES) { k ->
+                repeat(card.scenes.size) { k ->
                     val value = when { k < scene -> 1f; k > scene -> 0f; reduceMotion || !autoAdvance -> 1f; else -> progress }
                     LinearProgressIndicator({ value }, Modifier.weight(1f).height(3.dp), color = Color.White, trackColor = Color.White.copy(0.35f), gapSize = 0.dp, drawStopIndicator = {})
                 }
@@ -176,27 +178,30 @@ private val QueueReaction.icon: ImageVector get() = when (this) {
         Column(Modifier.align(Alignment.BottomStart).padding(start = 18.dp, end = 84.dp, bottom = 50.dp).semantics(mergeDescendants = true) { customActions = actions },
             verticalArrangement = Arrangement.spacedBy(10.dp)) {
             val still = reduceMotion
-            when (scene) {
-                0 -> {
-                    card.tagLine?.let { Text(it, Modifier.rise(0, scene, still), color = Accent, fontWeight = FontWeight.SemiBold, fontSize = 15.sp) }
-                    Text(card.hook, Modifier.rise(1, scene, still), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, lineHeight = 1.25.em, letterSpacing = (-0.5).sp)
-                    Text(card.name, Modifier.rise(2, scene, still), color = Color.White.copy(0.9f), fontSize = 15.sp)
+            val label: @Composable (String) -> Unit = { Text(it, Modifier.rise(0, scene, still), color = Accent, fontWeight = FontWeight.SemiBold, fontSize = 15.sp) }
+            when (val shown = card.scenes[scene.coerceIn(0, last)]) {
+                is QueueSceneState.Hook -> {
+                    card.tagLine?.let { label(it) }
+                    Text(shown.hook, Modifier.rise(1, scene, still), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 30.sp, lineHeight = 1.25.em, letterSpacing = (-0.5).sp)
+                    shown.name?.let { Text(it, Modifier.rise(2, scene, still), color = Color.White.copy(0.9f), fontSize = 15.sp) }
                 }
-                1 -> {
-                    Text("이런 걸 해요", Modifier.rise(0, scene, still), color = Accent, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                    card.facts.forEachIndexed { i, fact ->
+                is QueueSceneState.Highlights -> {
+                    label("이런 걸 해요")
+                    shown.facts.forEachIndexed { i, fact ->
                         Row(Modifier.rise(i + 1, scene, still), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             Box(Modifier.size(36.dp).background(Color.White.copy(0.18f), CircleShape), contentAlignment = Alignment.Center) { Icon(fact.icon.vector, null, Modifier.size(20.dp), tint = Color.White) }
                             Text(fact.text, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 19.sp)
                         }
                     }
                 }
-                else -> {
-                    Text(if (card.dday != null) "마감까지" else "모집 일정", Modifier.rise(0, scene, still), color = Accent, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                    card.dday?.let { Text(it, Modifier.rise(1, scene, still), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 64.sp, lineHeight = 1.em) }
-                    Text(card.deadline ?: "마감일은 공식 안내에서 확인해요", Modifier.rise(2, scene, still), color = Color.White.copy(0.9f), fontSize = 16.sp)
-                    if (card.reasons.isNotEmpty()) Row(Modifier.rise(2, scene, still), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        card.reasons.take(3).forEach { reason ->
+                is QueueSceneState.Eligibility -> { label("지원 자격"); Sentence(shown.text, scene, still) }
+                is QueueSceneState.Benefit -> { label("이런 걸 얻어요"); Sentence(shown.text, scene, still) }
+                is QueueSceneState.Deadline -> {
+                    label(if (shown.dday != null) "마감까지" else "모집 일정")
+                    shown.dday?.let { Text(it, Modifier.rise(1, scene, still), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 64.sp, lineHeight = 1.em) }
+                    Text(shown.deadline ?: "마감일은 공식 안내에서 확인해요", Modifier.rise(2, scene, still), color = Color.White.copy(0.9f), fontSize = 16.sp)
+                    if (shown.reasons.isNotEmpty()) Row(Modifier.rise(2, scene, still), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        shown.reasons.take(3).forEach { reason ->
                             Surface(color = Color.White.copy(0.22f), contentColor = Color.White, shape = RoundedCornerShape(50)) {
                                 Text(reason, Modifier.padding(horizontal = 10.dp, vertical = 4.dp), fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1)
                             }
@@ -218,6 +223,10 @@ private val QueueReaction.icon: ImageVector get() = when (this) {
         }
         HeartBurst(burst, reduceMotion, Modifier.align(Alignment.Center))
     }
+}
+
+@Composable private fun Sentence(text: String, scene: Int, still: Boolean) {
+    Text(text, Modifier.rise(1, scene, still), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 24.sp, lineHeight = 1.3.em)
 }
 
 @Composable private fun Rail(label: String?, button: @Composable () -> Unit) {

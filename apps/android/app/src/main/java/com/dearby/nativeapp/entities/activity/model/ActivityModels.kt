@@ -206,8 +206,21 @@ data class ProgramSummary(
 /** One of an activity's 핵심 세 줄: [icon] is `cost`·`period`·`team`·`mentor`·`award`·`place`·`talk`·`ticket` (anything else reads as `talk`). */
 data class Highlight(val icon: String, val text: String)
 
-/** One card of 오늘의 맞춤 대기열 (or a 추천 item shown the same way): the activity, its program and the server's short [reasons]. */
-data class QueueItem(val activity: ActivityModel, val program: ProgramSummary, val reasons: List<String>)
+/**
+ * One card of 오늘의 맞춤 대기열 (or a 추천 item shown the same way): the activity, its program and the server's short [reasons]. [scenes] are the
+ * server's scenes in order (unknown types skipped); null when it sent none, and the app builds them.
+ */
+data class QueueItem(val activity: ActivityModel, val program: ProgramSummary, val reasons: List<String>, val scenes: List<QueueScene>? = null)
+
+/** A server scene (`item.scenes[]`, by `type`): HOOK·HIGHLIGHTS·ELIGIBILITY·BENEFIT·DEADLINE. */
+sealed interface QueueScene {
+    data class Hook(val hook: String, val name: String?) : QueueScene
+    data class Highlights(val items: List<Highlight>) : QueueScene
+    data class Eligibility(val text: String) : QueueScene
+    data class Benefit(val text: String) : QueueScene
+    /** [dday] as the server words it (`D-22`, `D-DAY`), null without a deadline. */
+    data class Deadline(val dday: String?, val deadlineText: String?, val reasons: List<String>) : QueueScene
+}
 
 /** One page of `GET /v1/discovery/programs`; [nextCursor] is the next integer offset as text, null on the last page. */
 data class ProgramPage(val items: List<ProgramSummary>, val nextCursor: String?)

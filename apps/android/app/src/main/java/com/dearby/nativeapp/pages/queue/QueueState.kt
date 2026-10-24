@@ -4,15 +4,26 @@ package com.dearby.nativeapp.pages.queue
 enum class QueueIcon { COST, PERIOD, TEAM, MENTOR, AWARD, PLACE, TALK, TICKET }
 data class QueueFact(val icon: QueueIcon, val text: String)
 
+/** One scene of a card, in the order played; the card stops on the last one. */
+sealed interface QueueSceneState {
+    /** [hook] big, [name] under it; the card's tagLine above. */
+    data class Hook(val hook: String, val name: String?) : QueueSceneState
+    /** `이런 걸 해요` with the lines. */
+    data class Highlights(val facts: List<QueueFact>) : QueueSceneState
+    /** `지원 자격` / `이런 걸 얻어요` with one sentence. */
+    data class Eligibility(val text: String) : QueueSceneState
+    data class Benefit(val text: String) : QueueSceneState
+    /** `마감까지` [dday] (`D-22`, null without a deadline), [deadline] (`11월 15일 마감 · 만 34세 이하`) and the reason chips. */
+    data class Deadline(val dday: String?, val deadline: String?, val reasons: List<String>) : QueueSceneState
+}
+
 /**
- * One activity of 오늘의 맞춤 대기열 (contract "맞춤 대기열(스토리형 쇼츠)"), already worded for its three scenes: ① [tagLine] (`부트캠프 · 데이터·AI`),
- * [hook] and [name]; ② [facts]; ③ [dday] (`D-22`, null without a deadline), [deadline] (`11월 15일 마감 · 만 34세 이하`) and [reasons].
+ * One activity of 오늘의 맞춤 대기열 (contract "맞춤 대기열(스토리형 쇼츠)"): [scenes] (at least one) with [tagLine] (`부트캠프 · 데이터·AI`) over the hook.
  * Without [coverUrl] (or when it fails) the cover is the logo on a gradient of [hue]. [field] is the 분야 `이 분야는 덜 보기` names, null hides it.
  */
 data class QueueCardState(
     val id: String, val organization: String, val logoUrl: String?, val coverUrl: String?, val hue: Float,
-    val tagLine: String?, val hook: String, val name: String, val facts: List<QueueFact>,
-    val dday: String?, val deadline: String?, val reasons: List<String>, val liked: Boolean, val field: String?,
+    val tagLine: String?, val scenes: List<QueueSceneState>, val liked: Boolean, val field: String?,
 )
 
 /** The `⋯` sheet's choices; [done] is the snackbar line offered with `되돌리기`. */
