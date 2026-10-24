@@ -537,8 +537,13 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
     fun `수집 설정은 https 주소와 호스트 이름만 받는다`() {
         val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
         val url = "/v1/admin/programs/$programId/collection-settings"
-        mvc.put(url) { asAdmin(); body("""{"officialUrl":"http://letswift.kr","allowedHosts":["letswift.kr"],"intervalDays":1,"enabled":true}""") }
+        // http는 그 호스트를 허용 호스트에 적었을 때만(2026-10-24)
+        mvc.put(url) { asAdmin(); body("""{"officialUrl":"http://letswift.kr","intervalDays":1,"enabled":true}""") }
             .andExpect { status { isBadRequest() } }
+        mvc.put(url) { asAdmin(); body("""{"officialUrl":"http://letswift.kr","allowedHosts":["other.kr"],"intervalDays":1,"enabled":true}""") }
+            .andExpect { status { isBadRequest() } }
+        mvc.put(url) { asAdmin(); body("""{"officialUrl":"http://letswift.kr","allowedHosts":["letswift.kr"],"intervalDays":1,"enabled":true}""") }
+            .andExpect { status { isOk() } }
         mvc.put(url) { asAdmin(); body("""{"allowedHosts":["https://letswift.kr/2026"],"intervalDays":1,"enabled":true}""") }
             .andExpect { status { isBadRequest() } }
         mvc.put(url) { asAdmin(); body("""{"allowedHosts":["letswift.kr"],"intervalDays":0,"enabled":true}""") }
