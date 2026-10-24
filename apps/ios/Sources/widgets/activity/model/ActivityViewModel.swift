@@ -13,7 +13,8 @@ import Observation
     private(set) var phase = Phase.loading
     /// The current query's programs, in server order (nearest deadline first).
     private(set) var programs: [ProgramSummary] = []
-    /// Expanded programs; memory only. Programs with one open activity or a matched activity name start expanded.
+    /// Expanded programs; memory only. Only the user's tap expands one (contract "태그 아이콘+라벨·분야 1개·자동 펼침 없음" 2026-10-24: never on
+    /// first entry, search results, 추천 or a link's return); a matched activity name shows as `맞는 활동 n개` on the collapsed card.
     private(set) var expanded: Set<Int64> = []
     /// Open activities per program, once loaded.
     private(set) var openActivities: [Int64: [ActivityModel]] = [:]
@@ -224,11 +225,6 @@ import Observation
         let fresh = page.items.filter { !known.contains($0.id) }
         programs += fresh
         cursor = page.nextCursor
-        // Auto-expanding a single open activity applies only while the list is limited to recruiting programs.
-        for program in fresh where (openOnly && program.openActivityCount == 1) || !program.matchedActivityIDs.isEmpty {
-            expanded.insert(program.id)
-            loadActivities(program.id)
-        }
     }
     /// `reload` fetches again even when the program's activities are already shown (pull to refresh keeps the old ones until then).
     private func loadActivities(_ programID: Int64, reload: Bool = false) {

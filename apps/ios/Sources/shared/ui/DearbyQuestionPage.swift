@@ -24,6 +24,8 @@ struct DearbyQuestionPage<Content: View>: View {
             content
         }
         .font(.dearby(.body))
+        // A long answer list can end right behind the bottom button, so the scroll bar flashes once to show there is more.
+        .scrollIndicatorsFlash(onAppear: true)
         .safeAreaInset(edge: .top, spacing: 0) {
             ProgressView(value: progress).tint(DearbyStyle.teal).padding(.horizontal, 20).padding(.vertical, 8)
                 .accessibilityLabel("진행").accessibilityValue("\(Int((progress * 100).rounded()))%")

@@ -64,7 +64,7 @@ enum ActivityClient {
     /// The tag vocabulary for the 추천 funnel (`GET /v1/tags`) with each tag's kind and 상위 분야. Older servers send neither; such a tag is a 성격.
     static func fetchTagOptions(api: URL) async throws -> [TagOption] {
         try JSONDecoder().decode(TagOptionPayload.self, from: try await get(api, path: "v1/tags", [])).items.map {
-            TagOption(id: $0.id, name: $0.name, isField: $0.kind == "FIELD", parentID: $0.parentId)
+            TagOption(id: $0.id, name: $0.name, nameEn: $0.nameEn, isField: $0.kind == "FIELD", parentID: $0.parentId)
         }
     }
     private struct RecommendationPayload: Decodable {
@@ -75,7 +75,7 @@ enum ActivityClient {
         let total: Int?
     }
     private struct TagOptionPayload: Decodable {
-        struct Item: Decodable { let id: Int64; let name: String; let kind: String?; let parentId: Int64? }
+        struct Item: Decodable { let id: Int64; let name: String; let nameEn: String?; let kind: String?; let parentId: Int64? }
         let items: [Item]
     }
     private static func get(_ api: URL, path: String, _ items: [URLQueryItem], bearer: String? = nil) async throws -> Data {
