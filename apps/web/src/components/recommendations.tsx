@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Recommendation } from "@/lib/models";
 import { RequestError, errorMessage, request } from "@/lib/client";
@@ -12,7 +13,7 @@ import { RecommendationRow } from "@/widgets/recommendation/recommendation-row";
 
 /**
  * 발견 탭 `추천` 묶음 (contract "발견 탭 노출"): the top three recommendations stacked, `더 보기` for the rest of the ten, and `설정`
- * to re-open the funnel. A skipped funnel shows one `나에게 맞는 활동 찾기` row instead. Hidden while the API has no
+ * to re-open the funnel, with the `오늘의 맞춤 대기열` entry on top once there is something to show. A skipped funnel shows one `나에게 맞는 활동 찾기` row instead. Hidden while the API has no
  * recommendations route yet (401/404).
  */
 export function RecommendationSection({
@@ -96,6 +97,17 @@ export function RecommendationSection({
         </Card>
       ) : (
         <Card>
+          {/* 오늘의 맞춤 대기열 (contract "맞춤 대기열(스토리형 쇼츠)"): the same recommendations as full-screen story cards. */}
+          <Link href="/queue" className="flex min-h-11 items-center gap-3 border-b border-separator px-4 py-3 active:opacity-70">
+            <Icon name="play" tone="teal" />
+            <span className="flex flex-1 flex-col">
+              <span className="text-body font-semibold">오늘의 맞춤 대기열</span>
+              <span className="text-footnote text-secondary-label">추천 활동을 한 장씩 넘겨 봐요</span>
+            </span>
+            <span aria-hidden="true" className="text-secondary-label">
+              ›
+            </span>
+          </Link>
           <ul className="divide-y divide-separator">
             {shown.map((item) => (
               <li key={item.activity.id}>
