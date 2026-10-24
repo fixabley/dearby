@@ -103,6 +103,10 @@ data class ActivityModel(
     val place: Place? = null,
     /** The operator's application link (contract "신청 확인 조건 완화·공개 applicationUrl"), or null; https only when used. */
     val applicationUrl: String? = null,
+    /** 한 줄 소개 (contract "맞춤 대기열": `hook`), null when the API sent none. */
+    val hook: String? = null,
+    /** 핵심 세 줄 (`highlights`); empty when the API sent none. */
+    val highlights: List<Highlight> = emptyList(),
 ) {
     /** The venue name to show: the curated place, else the collected phrase, else the schedule address. */
     val venue: String? get() = place?.name ?: location ?: address
@@ -195,7 +199,15 @@ data class ProgramSummary(
     val traitTags: List<Tag> = emptyList(),
     /** The program logo as an absolute URL (contract "프로그램 로고": `/v1/programs/{id}/logo?v=` on the API origin), or null when it has none. */
     val logoUrl: String? = null,
+    /** The 4:5 cover (contract "맞춤 대기열": `/v1/programs/{id}/cover?v=`) as an absolute URL, or null. */
+    val coverUrl: String? = null,
 )
+
+/** One of an activity's 핵심 세 줄: [icon] is `cost`·`period`·`team`·`mentor`·`award`·`place`·`talk`·`ticket` (anything else reads as `talk`). */
+data class Highlight(val icon: String, val text: String)
+
+/** One card of 오늘의 맞춤 대기열 (or a 추천 item shown the same way): the activity, its program and the server's short [reasons]. */
+data class QueueItem(val activity: ActivityModel, val program: ProgramSummary, val reasons: List<String>)
 
 /** One page of `GET /v1/discovery/programs`; [nextCursor] is the next integer offset as text, null on the last page. */
 data class ProgramPage(val items: List<ProgramSummary>, val nextCursor: String?)
