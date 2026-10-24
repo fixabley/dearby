@@ -43,7 +43,7 @@ class ProgramSummaryService(
             val found = tags[summary.id]
             summary.copy(
                 tags = found?.tags.orEmpty(), fieldTags = found?.fieldTags.orEmpty().take(MAX_FIELD_TAGS), traitTags = found?.traitTags.orEmpty(),
-                logoUrl = logo[summary.id]?.url, coverUrl = cover[summary.id]?.url,
+                logoUrl = logo[summary.id]?.url, brandColor = logo[summary.id]?.brandColor, coverUrl = cover[summary.id]?.url,
             )
         }
     }

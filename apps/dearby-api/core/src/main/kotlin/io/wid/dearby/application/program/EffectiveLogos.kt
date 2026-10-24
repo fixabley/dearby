@@ -22,6 +22,7 @@ class EffectiveLogos(
     fun of(organizationIdByProgram: Map<Id, Id>): Map<Id, EffectiveLogo> {
         if (organizationIdByProgram.isEmpty()) return emptyMap()
         val own = programLogos.updatedAtByProgram(organizationIdByProgram.keys)
+        val ownColors = programLogos.brandColors(own.keys)
         val needed = organizationIdByProgram.filterKeys { it !in own }
         val orgIds = needed.values.toSet()
         val names = organizations.findAllById(orgIds).associate { it.id to it.name }
@@ -29,10 +30,11 @@ class EffectiveLogos(
         // 조직별 사슬: 자기 자신부터 가까운 상위 순, 최대 5개
         val chains = orgIds.associateWith { id -> (listOf(id to names[id]) + ancestors[id].orEmpty().reversed()).take(MAX_CHAIN) }
         val orgLogos = organizationLogos.updatedAtByOrganization(chains.values.flatten().map { it.first }.toSet())
+        val orgColors = organizationLogos.brandColors(orgLogos.keys)
         return organizationIdByProgram.mapNotNull { (programId, organizationId) ->
-            own[programId]?.let { return@mapNotNull programId to EffectiveLogo(ProgramLogo.url(programId, it), LogoSource.PROGRAM, null, null) }
+            own[programId]?.let { return@mapNotNull programId to EffectiveLogo(ProgramLogo.url(programId, it), LogoSource.PROGRAM, null, null, ownColors[programId]) }
             val (id, name) = chains[organizationId]?.firstOrNull { it.first in orgLogos } ?: return@mapNotNull null
-            programId to EffectiveLogo(OrganizationLogo.url(id, orgLogos.getValue(id)), LogoSource.ORGANIZATION, id, name)
+            programId to EffectiveLogo(OrganizationLogo.url(id, orgLogos.getValue(id)), LogoSource.ORGANIZATION, id, name, orgColors[id])
         }.toMap()
     }
 

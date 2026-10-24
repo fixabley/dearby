@@ -32,7 +32,7 @@ object LogoFile {
 }
 
 // 프로그램에 실제로 보일 로고(native-v1.md "조직 로고와 로고 계승"): 프로그램 로고, 없으면 가장 가까운 조직 로고
-data class EffectiveLogo(val url: String, val source: LogoSource, val organizationId: Id?, val organizationName: String?)
+data class EffectiveLogo(val url: String, val source: LogoSource, val organizationId: Id?, val organizationName: String?, val brandColor: String? = null)
 
 enum class LogoSource { PROGRAM, ORGANIZATION }
 

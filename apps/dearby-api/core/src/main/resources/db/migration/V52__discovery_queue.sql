@@ -2,6 +2,12 @@
 -- 운영 id를 적지 않는다. 벡터는 pgvector(운영·개발·테스트 DB 모두 pgvector/pgvector:pg17)
 create extension if not exists vector;
 
+-- 커버가 없을 때 앱이 그리는 그라데이션 색: 로고의 흰색·검정이 아닌 대표색(#RRGGBB). 로고를 저장할 때 서버가 계산한다(없으면 null)
+alter table program_logos
+    add column brand_color varchar(7);
+alter table organization_logos
+    add column brand_color varchar(7);
+
 -- 대기열 장면 ①·②: 수집이 공개 설명으로 만들고 운영자가 고친다(curated_fields의 hook·highlights)
 alter table activities
     add column hook       varchar(100),

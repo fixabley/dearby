@@ -29,6 +29,7 @@ data class ActivityResponse(
     val traitTags: List<TagResponse>, // 성격 태그 전부, 사전 순
     val location: String?, // 장소 문구(native-v1.md "활동 장소"). 좌표 장소가 있으면 그 이름, 없으면 수집·운영자 문구
     val place: PlaceResponse?, // 좌표가 있는 활동 장소. 없으면 null
+    val cost: String?, // 비용 문구(수집·운영자). 대기열 장면 ②가 핵심 줄이 없을 때 쓴다. 없으면 null
     val hook: String?, // 맞춤 대기열 장면 ① 한 줄 소개(native-v1.md "맞춤 대기열"). 없으면 null(앱은 활동 이름)
     val highlights: List<HighlightResponse>, // 장면 ② 핵심 줄 [{icon, text}] 최대 3개. 비면 앱이 기간·장소로 만든다
 ) {
@@ -56,6 +57,7 @@ data class ActivityResponse(
                 traitTags = activity.tags.filter { it.kind == TagKind.TRAIT }.map(TagResponse::from),
                 location = place?.name ?: activity.location,
                 place = place,
+                cost = activity.cost,
                 hook = activity.hook,
                 highlights = activity.highlights.map { HighlightResponse(it.icon.code, it.text) },
             )

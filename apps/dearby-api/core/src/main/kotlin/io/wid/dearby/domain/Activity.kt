@@ -23,6 +23,8 @@ data class Activity(
     val fieldTags: List<Tag> = emptyList(), // 분야 태그 전부(native-v1.md "분야·성격 태그와 아이콘"): 연관도 순, 없으면 프로그램 분야 순서
     val eligibilityChecked: Boolean = false, // 지원 자격을 확인했는지(native-v1.md "추천 설정 퍼널·지원 자격 정보·추천"): 조건 없음이 "제한 없음"인지 "아직 모름"인지 나눈다
     val location: String? = null, // 장소 문구(activities.location). 좌표가 있는 장소는 activitySchedule.address(native-v1.md "활동 장소")
+    val cost: String? = null, // 비용 문구(activities.cost). 없으면 null
+    val audience: String? = null, // 대상 원문(activities.audience). 없으면 null
     val hook: String? = null, // 대기열 장면 ① 한 줄 소개(native-v1.md "맞춤 대기열"). 없으면 null
     val highlights: List<Highlight> = emptyList(), // 대기열 장면 ② 핵심 줄(최대 3개)
 ) {

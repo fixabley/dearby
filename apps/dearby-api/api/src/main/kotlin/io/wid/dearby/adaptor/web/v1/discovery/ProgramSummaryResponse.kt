@@ -22,6 +22,7 @@ data class ProgramSummaryResponse(
     val tags: List<TagResponse>, // 프로그램 태그, 없으면 게시 활동 태그의 합집합(최대 6개)(native-v1.md "태그"). 이전 앱 호환
     val fieldTags: List<TagResponse>, // 분야 태그 최대 2개, 서버 순서(native-v1.md "분야·성격 태그와 아이콘")
     val traitTags: List<TagResponse>, // 성격 태그 전부, 사전 순
+    val brandColor: String?, // 로고(계승 포함) 대표색 "#RRGGBB", 커버가 없을 때 그라데이션. 없으면 null
     val coverUrl: String?, // 대기열 커버 경로 `/v1/programs/{id}/cover?v=…`(native-v1.md "맞춤 대기열"), 없거나 꺼졌으면 null
     val logoUrl: String?, // 프로그램 로고 경로 `/v1/programs/{id}/logo?v=…`(native-v1.md "프로그램 로고"), 없으면 null
 ) {
@@ -41,6 +42,7 @@ data class ProgramSummaryResponse(
             tags = summary.tags.map(TagResponse::from),
             fieldTags = summary.fieldTags.map(TagResponse::from),
             traitTags = summary.traitTags.map(TagResponse::from),
+            brandColor = summary.brandColor,
             coverUrl = summary.coverUrl,
             logoUrl = summary.logoUrl,
         )
