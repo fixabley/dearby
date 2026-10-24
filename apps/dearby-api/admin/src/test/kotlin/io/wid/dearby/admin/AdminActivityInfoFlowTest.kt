@@ -367,7 +367,10 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         assertEquals(listOf("나이", "취업상태"), listOf(withEligibility["items"][0]["field"].asString(), withEligibility["items"][1]["field"].asString()))
         assertEquals("미취업", withEligibility["items"][1]["values"][0].asString())
         assertEquals(2, jdbc.sql("select count(*) from activity_eligibility_terms where activity_id = ?").param(activity).query(Int::class.java).single())
-        assertEquals(true, read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"eligibility":null}""") }.andExpect { status { isOk() } })["eligibility"].isNull)
+        // 지운 것도 운영자가 확인한 것이다(제한 없음, native-v1.md "추천 설정 퍼널·지원 자격 정보·추천")
+        jdbc.sql("update activities set eligibility_checked = false where id = ?").param(activity).update()
+        val clearedEligibility = read(mvc.patch("/v1/admin/activities/$activity") { asAdmin(); patchBody("""{"eligibility":null}""") }.andExpect { status { isOk() } })
+        assertEquals(listOf(true, true), listOf(clearedEligibility["eligibility"].isNull, clearedEligibility["eligibilityChecked"].asBoolean()))
         assertEquals(0, jdbc.sql("select count(*) from activity_eligibility_terms where activity_id = ?").param(activity).query(Int::class.java).single())
         // 이전 기수에서 가져온 표시(admin-v1.md "이전 기수 정보 자동완성")는 운영자가 그 필드를 고치면 빠진다
         jdbc.sql("update activities set inherited_fields = '[\"eligibility\",\"audience\"]'::jsonb where id = ?").param(activity).update()
