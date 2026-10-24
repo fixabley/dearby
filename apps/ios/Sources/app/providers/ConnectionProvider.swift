@@ -69,6 +69,27 @@ struct ConnectionProvider: Sendable {
             },
             importItems: { items in try await account.authorized { try await client.importMyActivities(items, $0) } })
     }
+    /// 추천 while signed out: the device answers go in the query. Nil when the server has no recommendation API (404).
+    func recommendations(_ preferences: AccountClient.RecommendationPreferences) async throws -> [RecommendedActivity]? {
+        try await ActivityClient.fetchRecommendations(api: origins.api, size: 10, fieldTagIDs: preferences.fieldTagIds,
+                                                      categories: preferences.categories, traitTagIDs: preferences.traitTagIds, bearer: nil)
+    }
+    func tagOptions() async throws -> [TagOption] { try await ActivityClient.fetchTagOptions(api: origins.api) }
+    /// 추천 for the signed-in `account` (saved answers and 지원 자격 정보 on the server); each call refreshes the tokens once on a 401.
+    @MainActor func recommendationServer(_ account: AccountViewModel) -> RecommendationServer {
+        let client = account.client, api = origins.api
+        return RecommendationServer(
+            load: { try await account.authorized { try await client.recommendationPreferences($0) } },
+            save: { preferences in try await account.authorized { try await client.saveRecommendationPreferences(preferences, $0) } },
+            recommendations: {
+                try await account.authorized { session in
+                    do {
+                        return try await ActivityClient.fetchRecommendations(api: api, size: 10, fieldTagIDs: [], categories: [], traitTagIDs: [],
+                                                                             bearer: session.accessToken)
+                    } catch ActivityClient.RecommendationFailure.unauthorized { throw AccountError.unauthorized }
+                }
+            })
+    }
     /// One program's activities: the open ones (server-judged, up to 100) or, for the past list, the first 20 of every activity.
     func programActivities(programID: Int64, open: Bool) async throws -> ActivityPage {
         do { return try await ActivityClient.fetch(api: origins.api, query: "", cursor: nil, programID: programID, size: open ? 100 : 20, open: open) } catch {
