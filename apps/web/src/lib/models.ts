@@ -74,7 +74,16 @@ const scheduleSchema = z.object({
   startDate: text.nullable(),
   endDateExclusive: text.nullable(),
   dateLabel: text,
-  address: text.nullable(),
+  // The API sends `{addressLine1, addressLine2, lat, lng}` since schedules carry places; older responses a string. Shown as one line.
+  address: z
+    .union([
+      text,
+      z
+        .object({ addressLine1: text.nullable().optional(), addressLine2: text.nullable().optional() })
+        .transform((value) => [value.addressLine1, value.addressLine2].filter(Boolean).join(", ") || null),
+    ])
+    .nullable()
+    .catch(null),
 });
 export type Schedule = z.infer<typeof scheduleSchema>;
 const named = z.object({ id: z.number().int(), name: text });
