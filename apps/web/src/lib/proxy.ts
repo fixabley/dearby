@@ -89,7 +89,7 @@ function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
     query.set("participationType", participationType);
   return query;
 }
-/** `GET programs/:id/logo?v=<epoch seconds>` (contract "프로그램 로고"): only `v` is forwarded; anything else is rejected. */
+/** `GET programs/:id/logo|cover?v=<epoch seconds>` (contract "프로그램 로고"): only `v` is forwarded; anything else is rejected. */
 function logoQuery(url: URL): URLSearchParams | undefined {
   const keys = [...url.searchParams.keys()];
   const v = url.searchParams.get("v");
@@ -119,7 +119,7 @@ function recommendationQuery(url: URL): URLSearchParams | undefined {
   }
   return query;
 }
-// Stored logo kinds (admin-v1.md "프로그램 로고"); any other upstream type is not served under this origin.
+// Stored logo and cover kinds (admin-v1.md "프로그램 로고"); any other upstream type is not served under this origin.
 const LOGO_TYPE = /^image\/(png|jpeg|webp)$/;
 
 export async function proxy(
@@ -131,8 +131,8 @@ export async function proxy(
   // `discovery/*` has no id segment; treating "programs" as one failed the uuid check and 422-ed every discovery list.
   const id = segments[0] === "discovery" ? "" : segments[guest ? 2 : 1];
   const activityRoute = segments.length === 2 && segments[0] === "activities";
-  // Public program logo image (contract "프로그램 로고"): binary passthrough, cached like the API says.
-  const logoRoute = segments.length === 3 && segments[0] === "programs" && segments[2] === "logo";
+  // Public program logo and 맞춤 대기열 cover images (contracts "프로그램 로고", "맞춤 대기열"): binary passthrough, cached like the API says.
+  const logoRoute = segments.length === 3 && segments[0] === "programs" && ["logo", "cover"].includes(segments[2]);
   const programs = path === "discovery/programs";
   const recommendations = path === "discovery/recommendations";
   const tagsRoute = path === "tags";
@@ -257,7 +257,7 @@ export async function proxy(
     }
     if (logoRoute) {
       // Pass the image and the API's cache headers through (`public, max-age=31536000, immutable`; `v` busts it),
-      // not this proxy's `private, no-store` set. The body is at most 1MB (admin upload cap).
+      // not this proxy's `private, no-store` set. The body is at most 1MB for a logo, 350KB for a cover (admin upload caps).
       const contentType = result.headers.get("content-type") ?? "";
       if (!LOGO_TYPE.test(contentType)) throw new Error("Unexpected logo type");
       const logoHeaders: Record<string, string> = {

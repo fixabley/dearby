@@ -136,6 +136,10 @@ export function traitTagsOf(item: { traitTags?: Tag[]; tags?: Tag[] }): Tag[] {
 }
 const placeSchema = z.object({ name: text, address: text, lat: z.number(), lng: z.number() });
 export type Place = z.infer<typeof placeSchema>;
+/** A 대기열 highlight line; an unknown icon code falls back to `period`'s glyph slot instead of dropping the line. */
+export const highlightIcons = ["cost", "period", "team", "mentor", "award", "place", "talk", "ticket"] as const;
+const highlightSchema = z.object({ icon: z.enum(highlightIcons).catch("period"), text });
+export type Highlight = z.infer<typeof highlightSchema>;
 export const activitySchema = z.object({
   id: z.number().int().positive(),
   name: text,
@@ -163,6 +167,9 @@ export const activitySchema = z.object({
   // 활동 장소 (contract "활동 장소 — 2026-10-19"): the collected phrase and the curated place; older responses omit both.
   location: text.nullable().optional().catch(null),
   place: placeSchema.nullable().optional().catch(null),
+  // 맞춤 대기열 장면 ①② (contract "맞춤 대기열(스토리형 쇼츠)"): a one-line hook and three short lines; older responses omit them.
+  hook: text.nullable().optional().catch(null),
+  highlights: z.array(highlightSchema).nullable().optional().catch(null),
 });
 export const activityPageSchema = z.object({
   items: z.array(activitySchema),
@@ -190,6 +197,8 @@ export const programSummarySchema = z.object({
   traitTags: splitTags,
   /** `/v1/programs/{id}/logo?v=…` on the API origin, null without a logo; absent on older responses (contract "프로그램 로고", 2026-10-19 밤). */
   logoUrl: text.nullable().optional().catch(null),
+  /** `/v1/programs/{id}/cover?v=…`, the 4:5 맞춤 대기열 cover; null without one, absent on older responses. */
+  coverUrl: text.nullable().optional().catch(null),
 });
 export const programPageSchema = z.object({
   items: z.array(programSummarySchema),
@@ -206,6 +215,14 @@ export type ProgramPage = z.infer<typeof programPageSchema>;
 export function deadlineLabel(endAt: string | null): string | undefined {
   const day = monthDay(endAt);
   return day && `${day} 마감`;
+}
+/** Seoul days left until the recruitment's last day (0 on the day), or undefined without a readable end. */
+export function daysToDeadline(application: Schedule | null, now = Date.now()): number | undefined {
+  const endAt = parseTime(application?.endAt ?? null);
+  const exclusive = parseTime(application?.endDateExclusive ?? null);
+  // Both sides are Seoul calendar days read as UTC midnights, so the difference is whole days.
+  const last = endAt !== undefined ? Date.parse(seoulDay(endAt)) : exclusive !== undefined ? exclusive - DAY : undefined;
+  return last === undefined ? undefined : Math.round((last - Date.parse(seoulDay(now))) / DAY);
 }
 /** `10월 24일 시작` in Seoul time, or undefined when the start is missing or unreadable. */
 export function startLabel(startAt: string | null): string | undefined {
@@ -318,7 +335,14 @@ function parseTime(value: string | null): number | undefined {
  * proxy path `/api/programs/{id}/logo?v=…`; anything else (null, older shape, foreign origin) yields undefined → initial avatar.
  */
 export function programLogoSrc(logoUrl: string | null | undefined): string | undefined {
-  const match = logoUrl?.match(/^\/v1\/(programs\/[1-9]\d{0,17}\/logo\?v=\d{1,18})$/);
+  return programImageSrc(logoUrl, "logo");
+}
+/** The same for the 맞춤 대기열 cover (`/v1/programs/{id}/cover?v=…`); undefined → logo + gradient cover. */
+export function programCoverSrc(coverUrl: string | null | undefined): string | undefined {
+  return programImageSrc(coverUrl, "cover");
+}
+function programImageSrc(url: string | null | undefined, kind: "logo" | "cover"): string | undefined {
+  const match = url?.match(new RegExp(`^/v1/(programs/[1-9]\\d{0,17}/${kind}\\?v=\\d{1,18})$`));
   return match ? `/api/${match[1]}` : undefined;
 }
 /** HTTPS-only link for activity official pages and images. */
