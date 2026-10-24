@@ -14,6 +14,7 @@ class ProgramSummaryService(
     private val programs: ProgramRepository,
     private val organizations: OrganizationRepository,
     private val logos: EffectiveLogos,
+    private val covers: ProgramCoverRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -37,11 +38,12 @@ class ProgramSummaryService(
     fun decorate(page: List<ProgramSummary>): List<ProgramSummary> {
         val tags = summaries.tagsByProgram(page.map { it.id }, OffsetDateTime.now(ZoneOffset.UTC))
         val logo = logos.of(page.associate { it.id to it.organizationId })
+        val cover = covers.infoByProgram(page.map { it.id }).filterValues { it.enabled }
         return page.map { summary ->
             val found = tags[summary.id]
             summary.copy(
                 tags = found?.tags.orEmpty(), fieldTags = found?.fieldTags.orEmpty().take(MAX_FIELD_TAGS), traitTags = found?.traitTags.orEmpty(),
-                logoUrl = logo[summary.id]?.url,
+                logoUrl = logo[summary.id]?.url, brandColor = logo[summary.id]?.brandColor, coverUrl = cover[summary.id]?.url,
             )
         }
     }

@@ -14,6 +14,7 @@ data class ProgramResponse(
     val tags: List<TagResponse> = emptyList(), // 프로그램 태그(native-v1.md "태그")
     val appliedTagActivityCount: Int? = null, // PATCH에서 applyTagsToActivities로 태그가 더해진 활동 수. 다른 응답에서는 null
     val logoUrl: String? = null, // 프로그램 자체 로고 경로(admin-v1.md "프로그램 로고"), 없으면 null
+    val cover: CoverResponse? = null, // 대기열 커버(admin-v1.md "프로그램 커버"), 없으면 null
     val effectiveLogo: EffectiveLogoResponse? = null, // 자체 또는 계승한 로고(admin-v1.md "조직 로고"), 없으면 null
 ) {
     companion object {
@@ -28,6 +29,7 @@ data class ProgramResponse(
             tags = listing.program.tags.map(TagResponse::from),
             appliedTagActivityCount = appliedTagActivityCount,
             logoUrl = listing.logoUrl,
+            cover = listing.cover?.let(CoverResponse::from),
             effectiveLogo = listing.effectiveLogo?.let { EffectiveLogoResponse(it.url, it.source.name, it.organizationId, it.organizationName) },
         )
     }

@@ -16,15 +16,21 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITIES_SOURCE_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_CONTACTS__ACTIVITY_CONTACTS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_ELIGIBILITY_TERMS__ACTIVITY_ELIGIBILITY_TERMS_ACTIVITY_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_EMBEDDINGS__ACTIVITY_EMBEDDINGS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_ROLES__ACTIVITY_ROLES_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_TAGS__ACTIVITY_TAGS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.COLLECTION_WATCHLIST__COLLECTION_WATCHLIST_CANONICAL_ACTIVITY_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.DISCOVERY_QUEUE__DISCOVERY_QUEUE_ACTIVITY_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.RECOMMENDATION_SIGNALS__RECOMMENDATION_SIGNALS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES__SCHEDULES_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts.ActivityContactsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEligibilityTerms.ActivityEligibilityTermsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEmbeddings.ActivityEmbeddingsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles.ActivityRolesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags.ActivityTagsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist.CollectionWatchlistPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue.DiscoveryQueuePath
+import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals.RecommendationSignalsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules.SchedulesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Tags.TagsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivitiesRecord
@@ -245,6 +251,16 @@ open class Activities(
      */
     val ELIGIBILITY_CHECKED: TableField<ActivitiesRecord, Boolean?> = createField(DSL.name("eligibility_checked"), SQLDataType.BOOLEAN.nullable(false).defaultValue(DSL.field(DSL.raw("false"), SQLDataType.BOOLEAN)), this, "")
 
+    /**
+     * The column <code>public.activities.hook</code>.
+     */
+    val HOOK: TableField<ActivitiesRecord, String?> = createField(DSL.name("hook"), SQLDataType.VARCHAR(100), this, "")
+
+    /**
+     * The column <code>public.activities.highlights</code>.
+     */
+    val HIGHLIGHTS: TableField<ActivitiesRecord, JSONB?> = createField(DSL.name("highlights"), SQLDataType.JSONB, this, "")
+
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -314,6 +330,22 @@ open class Activities(
     val activityEligibilityTerms: ActivityEligibilityTermsPath
         get(): ActivityEligibilityTermsPath = activityEligibilityTerms()
 
+    private lateinit var _activityEmbeddings: ActivityEmbeddingsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.activity_embeddings</code> table
+     */
+    fun activityEmbeddings(): ActivityEmbeddingsPath {
+        if (!this::_activityEmbeddings.isInitialized)
+            _activityEmbeddings = ActivityEmbeddingsPath(this, null, ACTIVITY_EMBEDDINGS__ACTIVITY_EMBEDDINGS_ACTIVITY_ID_FKEY.inverseKey)
+
+        return _activityEmbeddings;
+    }
+
+    val activityEmbeddings: ActivityEmbeddingsPath
+        get(): ActivityEmbeddingsPath = activityEmbeddings()
+
     private lateinit var _activityRoles: ActivityRolesPath
 
     /**
@@ -361,6 +393,38 @@ open class Activities(
 
     val collectionWatchlist: CollectionWatchlistPath
         get(): CollectionWatchlistPath = collectionWatchlist()
+
+    private lateinit var _discoveryQueue: DiscoveryQueuePath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.discovery_queue</code> table
+     */
+    fun discoveryQueue(): DiscoveryQueuePath {
+        if (!this::_discoveryQueue.isInitialized)
+            _discoveryQueue = DiscoveryQueuePath(this, null, DISCOVERY_QUEUE__DISCOVERY_QUEUE_ACTIVITY_ID_FKEY.inverseKey)
+
+        return _discoveryQueue;
+    }
+
+    val discoveryQueue: DiscoveryQueuePath
+        get(): DiscoveryQueuePath = discoveryQueue()
+
+    private lateinit var _recommendationSignals: RecommendationSignalsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.recommendation_signals</code> table
+     */
+    fun recommendationSignals(): RecommendationSignalsPath {
+        if (!this::_recommendationSignals.isInitialized)
+            _recommendationSignals = RecommendationSignalsPath(this, null, RECOMMENDATION_SIGNALS__RECOMMENDATION_SIGNALS_ACTIVITY_ID_FKEY.inverseKey)
+
+        return _recommendationSignals;
+    }
+
+    val recommendationSignals: RecommendationSignalsPath
+        get(): RecommendationSignalsPath = recommendationSignals()
 
     private lateinit var _schedules: SchedulesPath
 

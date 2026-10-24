@@ -14,6 +14,7 @@ dependencies {
     api("org.jetbrains.kotlin:kotlin-reflect")
     api("tools.jackson.module:jackson-module-kotlin")
     implementation("org.springframework:spring-web") // 장소 검색 제공자(RestClient, native-v1.md "수집기 장소"). 어드민·batch가 함께 쓴다
+    implementation("com.twelvemonkeys.imageio:imageio-webp:3.12.0") // 로고 대표색 계산에 WebP 읽기(ImageIO에는 WebP가 없다)
     runtimeOnly("org.postgresql:postgresql")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
