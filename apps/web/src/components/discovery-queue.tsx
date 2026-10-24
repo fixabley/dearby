@@ -98,19 +98,20 @@ function scenesOf(item: Recommendation, now: number): QueueScene[] {
   ];
 }
 
-/** `D-12`, `D-DAY` on the day, `마감` once past; undefined without a count. */
-function dDayLabel(dday: number | null | undefined): string | undefined {
-  if (dday === undefined || dday === null) return;
-  return dday < 0 ? "마감" : dday === 0 ? "D-DAY" : `D-${dday}`;
-}
-
-/** The server's `label`, else `행사까지` for a 컨퍼런스 (its D-day is the event) and `마감까지` otherwise. */
-function countdownHeading(scene: QueueScene, item: Recommendation): string {
-  return (scene.type === "DEADLINE" && scene.label) || (item.activity.category === "CONFERENCE" ? "행사까지" : "마감까지");
+/**
+ * The countdown scene's heading and D-number: the server's `label` (else `행사까지` for a 컨퍼런스, whose D-day is the event, and
+ * `마감까지` otherwise) with `D-n`/`D-DAY`; once past, `모집 마감`/`행사 종료` alone; no count, the heading alone.
+ */
+function countdownOf(scene: QueueScene, item: Recommendation): { heading: string; dday?: string } {
+  const label = (scene.type === "DEADLINE" && scene.label) || (item.activity.category === "CONFERENCE" ? "행사까지" : "마감까지");
+  const days = scene.type === "DEADLINE" ? scene.dday : undefined;
+  if (days === undefined || days === null) return { heading: label };
+  if (days < 0) return { heading: label === "행사까지" ? "행사 종료" : "모집 마감" };
+  return { heading: label, dday: days === 0 ? "D-DAY" : `D-${days}` };
 }
 
 /** What a screen reader hears for a scene, all scenes read together. */
-function sceneText(scene: QueueScene, heading: string): string[] {
+function sceneText(scene: QueueScene, item: Recommendation): string[] {
   switch (scene.type) {
     case "HOOK":
       return [scene.hook];
@@ -121,9 +122,9 @@ function sceneText(scene: QueueScene, heading: string): string[] {
     case "BENEFIT":
       return [`혜택: ${scene.text}`];
     case "DEADLINE": {
-      const dday = dDayLabel(scene.dday);
+      const { heading, dday } = countdownOf(scene, item);
       return [
-        [dday && `${heading} ${dday}`, scene.deadlineText].filter(Boolean).join(", "),
+        [dday ? `${heading} ${dday}` : heading, scene.deadlineText].filter(Boolean).join(", "),
         scene.reasons?.length ? `추천 이유: ${scene.reasons.join(", ")}` : "",
       ].filter(Boolean);
     }
@@ -539,7 +540,7 @@ function Story({
         <div className="sr-only">
           <h2>{activity.name}</h2>
           <p>{program.name}</p>
-          {scenes.flatMap((value) => sceneText(value, countdownHeading(value, item))).map((line, key) => (
+          {scenes.flatMap((value) => sceneText(value, item)).map((line, key) => (
             <p key={key}>{line}</p>
           ))}
         </div>
@@ -598,7 +599,7 @@ function Story({
           key={active ? step : "idle"}
           className={cn("pointer-events-none absolute right-[84px] bottom-12 left-[18px] flex flex-col gap-2.5", active && "queue-rise")}
         >
-          {shownScene && <SceneView scene={shownScene} kicker={kicker(item)} countdown={countdownHeading(shownScene, item)} />}
+          {shownScene && <SceneView scene={shownScene} kicker={kicker(item)} countdown={countdownOf(shownScene, item)} />}
         </div>
         <nav aria-label="이 활동" className="absolute right-2.5 bottom-14 flex flex-col items-center gap-4 text-caption">
           <RailButton label="관심" pressed={liked} onClick={onLike} ariaLabel="관심 있어요">
@@ -630,7 +631,15 @@ function Story({
 
 const sceneHeading = "text-subheadline font-semibold text-[#7fe3e3]";
 
-function SceneView({ scene, kicker, countdown }: { scene: QueueScene; kicker: string; countdown: string }) {
+function SceneView({
+  scene,
+  kicker,
+  countdown,
+}: {
+  scene: QueueScene;
+  kicker: string;
+  countdown: { heading: string; dday?: string };
+}) {
   switch (scene.type) {
     case "HOOK":
       return (
@@ -665,8 +674,8 @@ function SceneView({ scene, kicker, countdown }: { scene: QueueScene; kicker: st
     case "DEADLINE":
       return (
         <>
-          <span className={sceneHeading}>{countdown}</span>
-          <span className="text-[64px] leading-none font-extrabold">{dDayLabel(scene.dday) ?? "상시"}</span>
+          <span className={sceneHeading}>{countdown.heading}</span>
+          {countdown.dday && <span className="text-[64px] leading-none font-extrabold">{countdown.dday}</span>}
           {scene.deadlineText && <span className="text-body opacity-90 break-keep">{scene.deadlineText}</span>}
           {!!scene.reasons?.length && (
             <span className="flex flex-wrap gap-1.5">
