@@ -14,13 +14,13 @@ enum ActivityClient {
         if open { items.append(URLQueryItem(name: "open", value: "true")) }
         if let cursor { items.append(URLQueryItem(name: "cursor", value: String(cursor))) }
         if let size { items.append(URLQueryItem(name: "size", value: String(size))) }
-        return try decode(try await get(api, path: "v1/activities", items))
+        return try decode(try await send(api, path: "v1/activities", items))
     }
     /// One activity (`GET /v1/activities/:id`); nil on 404 (deleted, unpublished or without its program), so 내 활동 can show it as
     /// "삭제된 활동". Any other failure throws.
     static func fetch(api: URL, id: String) async throws -> ActivityModel? {
         do {
-            return model(try JSONDecoder().decode(Activity.self, from: try await get(api, path: "v1/activities/\(id)", [])))
+            return model(try JSONDecoder().decode(Activity.self, from: try await send(api, path: "v1/activities/\(id)", [])))
         } catch ActivityFetchError.notFound { return nil }
     }
     /// Programs for the discovery accordion (contract "발견 프로그램 묶음"), matching `query` by program, organization or activity name.
@@ -31,7 +31,7 @@ enum ActivityClient {
         if !query.isEmpty { items.append(URLQueryItem(name: "q", value: query)) }
         if !openOnly { items.append(URLQueryItem(name: "openOnly", value: "false")) }
         if let cursor { items.append(URLQueryItem(name: "cursor", value: String(cursor))) }
-        let payload = try JSONDecoder().decode(ProgramPayload.self, from: try await get(api, path: "v1/discovery/programs", items))
+        let payload = try JSONDecoder().decode(ProgramPayload.self, from: try await send(api, path: "v1/discovery/programs", items))
         return ProgramPage(items: payload.items.map { program in
             ProgramSummary(id: program.id, name: program.name, nameEn: program.nameEn, organization: program.organization.name,
                            openActivityCount: program.openActivityCount, nearestRecruitmentEndAt: program.nearestRecruitmentEndAt,
@@ -44,7 +44,7 @@ enum ActivityClient {
     }
     /// 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): `GET /v1/discovery/recommendations`. Signed in, `bearer` is the access
     /// token and the server uses the saved preferences and 지원 자격 정보; signed out, the device preferences go in the query.
-    /// Nil on 404 (a server without recommendations yet): discovery hides the section. A 401 throws `RecommendationFailure.unauthorized`.
+    /// Nil on 404 (a server without recommendations yet): the caller reads it as none. A 401 throws `RecommendationFailure.unauthorized`.
     static func fetchRecommendations(api: URL, size: Int, fieldTagIDs: [Int64], categories: [String], traitTagIDs: [Int64],
                                      bearer: String?) async throws -> RecommendationPage? {
         var items = [URLQueryItem(name: "size", value: String(size))]
@@ -54,22 +54,69 @@ enum ActivityClient {
             if !traitTagIDs.isEmpty { items.append(URLQueryItem(name: "traitTagIds", value: traitTagIDs.map(String.init).joined(separator: ","))) }
         }
         let data: Data
-        do { data = try await get(api, path: "v1/discovery/recommendations", items, bearer: bearer) } catch ActivityFetchError.notFound { return nil }
+        do { data = try await send(api, path: "v1/discovery/recommendations", items, bearer: bearer) } catch ActivityFetchError.notFound { return nil }
         let payload = try JSONDecoder().decode(RecommendationPayload.self, from: data)
-        return RecommendationPage(items: payload.items.map {
-            RecommendedActivity(activity: model($0.activity), programName: $0.program?.value?.name ?? $0.activity.program?.name, reasons: $0.reasons)
-        }, total: payload.total)
+        return RecommendationPage(items: payload.items.map { recommended($0, api: api) }, total: payload.total)
     }
+    /// 맞춤 대기열 (contract "맞춤 대기열(스토리형 쇼츠)" 2026-10-24): `GET /v1/me/discovery-queue`, today's cards in order. Nil on 404 (a
+    /// server without the queue yet): discovery hides the entry. A 401 throws `RecommendationFailure.unauthorized`. `seen` is not read.
+    static func fetchDiscoveryQueue(api: URL, bearer: String) async throws -> [RecommendedActivity]? {
+        let data: Data
+        do { data = try await send(api, path: "v1/me/discovery-queue", [], bearer: bearer) } catch ActivityFetchError.notFound { return nil }
+        return try JSONDecoder().decode(RecommendationPayload.self, from: data).items.map { recommended($0, api: api) }
+    }
+    /// `더 받기`: `POST /v1/me/discovery-queue/refill` rebuilds today's queue from the remaining candidates; the caller reads it again.
+    static func refillDiscoveryQueue(api: URL, bearer: String) async throws {
+        _ = try await send(api, path: "v1/me/discovery-queue/refill", [], method: "POST", body: Data("{}".utf8), bearer: bearer)
+    }
+    /// One 반응 (`POST /v1/me/recommendation-signals {activityId, kind, tagId?}`); `tagId` only for `LESS_FIELD`.
+    static func sendRecommendationSignal(api: URL, activityID: String, kind: RecommendationSignal, tagID: Int64?, bearer: String) async throws {
+        guard let id = Int64(activityID) else { return }
+        let body = try JSONEncoder().encode(SignalInput(activityId: id, kind: kind.rawValue, tagId: tagID))
+        _ = try await send(api, path: "v1/me/recommendation-signals", [], method: "POST", body: body, bearer: bearer)
+    }
+    private static func recommended(_ item: RecommendationPayload.Item, api: URL) -> RecommendedActivity {
+        let program = item.program?.value
+        func resolve(_ path: String?) -> URL? { path.flatMap { URL(string: $0, relativeTo: api)?.absoluteURL } }
+        return RecommendedActivity(activity: model(item.activity), programName: program?.name ?? item.activity.program?.name, reasons: item.reasons,
+                                   programID: program?.id, logoURL: resolve(program?.logoUrl), coverURL: resolve(program?.coverUrl),
+                                   scenes: item.scenes?.value.map { $0.compactMap { $0.value?.scene } })
+    }
+    private struct SceneDTO: Decodable {
+        let type: String
+        let hook: String?; let name: String?; let items: [HighlightDTO]?; let text: String?
+        let label: String?; let dday: Lenient<Int>?; let deadlineText: String?; let reasons: [String]?
+        var scene: QueueScene? {
+            switch type {
+            case "HOOK": hook.map { .hook(hook: $0, name: name ?? "") }
+            case "HIGHLIGHTS": .highlights((items ?? []).map(\.highlight))
+            case "ELIGIBILITY":
+                (items ?? []).isEmpty && text == nil ? nil
+                    : .eligibility(items: (items ?? []).map { AudienceLine(icon: $0.icon.flatMap(AudienceLine.Icon.init(rawValue:)), text: $0.text) },
+                                   text: text)
+            case "BENEFIT": text.map(QueueScene.benefit)
+            case "DEADLINE": .deadline(label: label.flatMap { $0.isEmpty ? nil : $0 }, days: dday?.value, deadlineText: deadlineText, reasons: reasons ?? [])
+            default: nil
+            }
+        }
+    }
+    /// Nil fields are left out of the JSON (synthesized `encodeIfPresent`).
+    private struct SignalInput: Encodable { let activityId: Int64; let kind: String; let tagId: Int64? }
     enum RecommendationFailure: Error { case unauthorized }
     /// The tag vocabulary for the 추천 funnel (`GET /v1/tags`) with each tag's kind and 상위 분야. Older servers send neither; such a tag is a 성격.
     static func fetchTagOptions(api: URL) async throws -> [TagOption] {
-        try JSONDecoder().decode(TagOptionPayload.self, from: try await get(api, path: "v1/tags", [])).items.map {
+        try JSONDecoder().decode(TagOptionPayload.self, from: try await send(api, path: "v1/tags", [])).items.map {
             TagOption(id: $0.id, name: $0.name, nameEn: $0.nameEn, isField: $0.kind == "FIELD", parentID: $0.parentId)
         }
     }
     private struct RecommendationPayload: Decodable {
-        /// `program` (ProgramSummary) rides beside the activity; only its name is read, and a malformed one falls back to the activity's.
-        struct Item: Decodable { let activity: Activity; let program: Lenient<Named>?; let reasons: [String] }
+        /// `program` (ProgramSummary) rides beside the activity; its id, name, logo and cover are read, and a malformed one falls back to the activity's name.
+        struct Item: Decodable {
+            let activity: Activity; let program: Lenient<ProgramRef>?; let reasons: [String]
+            /// 맞춤 대기열 only; a malformed scene is dropped, a malformed list reads as absent.
+            let scenes: Lenient<[Lenient<SceneDTO>]>?
+        }
+        struct ProgramRef: Decodable { let id: Int64?; let name: String; let logoUrl: String?; let coverUrl: String? }
         let items: [Item]
         /// Every matching activity; absent on servers that do not count.
         let total: Int?
@@ -78,11 +125,17 @@ enum ActivityClient {
         struct Item: Decodable { let id: Int64; let name: String; let nameEn: String?; let kind: String?; let parentId: Int64? }
         let items: [Item]
     }
-    private static func get(_ api: URL, path: String, _ items: [URLQueryItem], bearer: String? = nil) async throws -> Data {
+    private static func send(_ api: URL, path: String, _ items: [URLQueryItem], method: String = "GET", body: Data? = nil,
+                             bearer: String? = nil) async throws -> Data {
         var components = URLComponents(url: api.appending(path: path), resolvingAgainstBaseURL: false)
         components?.queryItems = items.isEmpty ? nil : items
         guard let url = components?.url else { throw URLError(.badURL) }
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+        request.httpMethod = method
+        if let body {
+            request.httpBody = body
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        }
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue(acceptLanguage(Locale.preferredLanguages), forHTTPHeaderField: "Accept-Language")
         if let bearer { request.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization") }
@@ -90,7 +143,7 @@ enum ActivityClient {
         let status = (response as? HTTPURLResponse)?.statusCode
         if status == 404 { throw ActivityFetchError.notFound }
         if status == 401 { throw RecommendationFailure.unauthorized }
-        guard status == 200 else { throw URLError(.badServerResponse) }
+        guard let status, (200..<300).contains(status) else { throw URLError(.badServerResponse) }
         return data
     }
     /// The device language order, so the API answers activity text in English when English comes before Korean.
@@ -121,7 +174,9 @@ enum ActivityClient {
             fieldTags: (activity.fieldTagsAll ?? activity.fieldTags ?? []).map(\.tag),
             traitTags: (activity.traitTags ?? activity.tags ?? []).map(\.tag),
             location: activity.location.flatMap { $0.isEmpty ? nil : $0 },
-            place: activity.place?.value.map { ActivityPlace(name: $0.name, address: $0.address, lat: $0.lat, lng: $0.lng) })
+            place: activity.place?.value.map { ActivityPlace(name: $0.name, address: $0.address, lat: $0.lat, lng: $0.lng) },
+            hook: activity.hook?.value.flatMap { $0.isEmpty ? nil : $0 },
+            highlights: (activity.highlights?.value ?? []).filter { !$0.text.isEmpty }.map(\.highlight))
     }
     /// Stages keep every schedule: timed (either bound may be missing), all-day (either day may be missing), or date-less.
     /// An unknown kind reads as an event.
@@ -199,6 +254,13 @@ enum ActivityClient {
         /// 장소 (contract "활동 장소"); both absent on older responses. A malformed `place` reads as none.
         let location: String?
         let place: Lenient<PlaceDTO>?
+        /// 한 줄 소개·핵심 세 줄 (contract "맞춤 대기열" 2026-10-24); absent on older responses, and a malformed value reads as none.
+        let hook: Lenient<String>?
+        let highlights: Lenient<[HighlightDTO]>?
+    }
+    private struct HighlightDTO: Decodable {
+        let icon: String?; let text: String
+        var highlight: ActivityHighlight { ActivityHighlight(icon: icon.flatMap(ActivityHighlight.Icon.init(rawValue:)), text: text) }
     }
     private struct PlaceDTO: Decodable { let name: String; let address: String; let lat: Double; let lng: Double }
     /// Decodes to nil instead of throwing when the value has an unexpected shape.

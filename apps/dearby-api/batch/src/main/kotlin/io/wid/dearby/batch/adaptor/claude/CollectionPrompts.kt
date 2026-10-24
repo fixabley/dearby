@@ -6,6 +6,7 @@ import io.wid.dearby.domain.collection.PreviousEdition
 import io.wid.dearby.domain.collection.WatchKind
 import io.wid.dearby.batch.application.AgentInput
 import io.wid.dearby.batch.application.FetchedPage
+import io.wid.dearby.domain.HighlightIcon
 import io.wid.dearby.domain.Tag
 import io.wid.dearby.domain.TagKind
 
@@ -119,6 +120,11 @@ object CollectionPrompts {
             ),
             "cost" to nullableString(),
             "audience" to nullableString(),
+            "hook" to nullableString(),
+            "highlights" to mapOf(
+                "type" to "array",
+                "items" to obj(mapOf("icon" to mapOf("type" to "string", "enum" to HighlightIcon.entries.map { it.code }), "text" to string())),
+            ),
             "tags" to mapOf("type" to "array", "items" to string()),
             "fieldTags" to mapOf(
                 "type" to "array",

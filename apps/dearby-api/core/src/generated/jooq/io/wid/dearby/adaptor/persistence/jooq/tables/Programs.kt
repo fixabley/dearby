@@ -11,11 +11,13 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.COLLECTION_WATCHLIST__COLLECT
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAMS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAMS_SOURCE_ID_KEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_CONTACTS__PROGRAM_CONTACTS_PROGRAM_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_COVERS__PROGRAM_COVERS_PROGRAM_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_LOGOS__PROGRAM_LOGOS_PROGRAM_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_TAGS__PROGRAM_TAGS_PROGRAM_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionFeedback.CollectionFeedbackPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist.CollectionWatchlistPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramContacts.ProgramContactsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramCovers.ProgramCoversPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramLogos.ProgramLogosPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramTags.ProgramTagsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Tags.TagsPath
@@ -224,6 +226,22 @@ open class Programs(
 
     val programContacts: ProgramContactsPath
         get(): ProgramContactsPath = programContacts()
+
+    private lateinit var _programCovers: ProgramCoversPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.program_covers</code> table
+     */
+    fun programCovers(): ProgramCoversPath {
+        if (!this::_programCovers.isInitialized)
+            _programCovers = ProgramCoversPath(this, null, PROGRAM_COVERS__PROGRAM_COVERS_PROGRAM_ID_FKEY.inverseKey)
+
+        return _programCovers;
+    }
+
+    val programCovers: ProgramCoversPath
+        get(): ProgramCoversPath = programCovers()
 
     private lateinit var _programLogos: ProgramLogosPath
 

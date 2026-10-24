@@ -3,6 +3,7 @@ package io.wid.dearby.adaptor.web.v1.discovery
 import io.wid.dearby.adaptor.web.v1.activities.ActivityResponse
 import io.wid.dearby.adaptor.web.v1.activities.ResponseLanguage
 import io.wid.dearby.adaptor.web.v1.tags.TagIds
+import io.wid.dearby.application.discovery.StoryScenes
 import io.wid.dearby.application.recommendation.RecommendationService
 import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.recommendation.RecommendationPreferences
@@ -38,14 +39,16 @@ class RecommendationController(private val recommendations: RecommendationServic
         )
         val page = recommendations.recommend(jwt?.let { UUID.fromString(it.subject) }, query, size)
         val items = page.items.map {
-            RecommendationResponse(ActivityResponse.from(it.listing, language), ProgramSummaryResponse.from(it.program, language), it.reasons)
+            val activity = ActivityResponse.from(it.listing, language)
+            RecommendationResponse(activity, ProgramSummaryResponse.from(it.program, language), it.reasons, StoryScenes.of(it.listing, it.reasons).map { s -> SceneResponse.from(s, activity.name) })
         }
         return ResponseEntity.ok().varyBy(HttpHeaders.ACCEPT_LANGUAGE, HttpHeaders.AUTHORIZATION).header(HttpHeaders.CONTENT_LANGUAGE, language.tag)
             .body(RecommendationPageResponse(items, page.total))
     }
 }
 
-data class RecommendationResponse(val activity: ActivityResponse, val program: ProgramSummaryResponse, val reasons: List<String>)
+// scenes: 비로그인 대기열 화면이 쓰는 장면(맞춤 대기열과 같은 모양)
+data class RecommendationResponse(val activity: ActivityResponse, val program: ProgramSummaryResponse, val reasons: List<String>, val scenes: List<Map<String, Any?>>)
 
 // total은 자르기 전 추천 후보 수(퍼널 결과 "지금 지원할 수 있는 활동 n개")
 data class RecommendationPageResponse(val items: List<RecommendationResponse>, val total: Int)

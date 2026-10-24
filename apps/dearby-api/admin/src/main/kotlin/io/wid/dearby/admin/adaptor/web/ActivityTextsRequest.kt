@@ -17,5 +17,9 @@ data class ActivityTextsRequest(
     val activitySchedule: JsonNode? = null,
     val application: JsonNode? = null,
     val place: JsonNode? = null, // 활동 장소 {name, address, lat, lng}(admin-v1.md "활동 장소와 지오코딩"). 생략은 유지, JSON null은 삭제
+    val hook: String? = null, // 대기열 한 줄 소개(native-v1.md "맞춤 대기열"). 생략은 유지, 빈 문자열은 삭제, 60자까지. 운영자 지정 hook으로 보호
+    val highlights: List<HighlightRequest>? = null, // 대기열 핵심 줄 전체(최대 3개). 생략은 유지, 빈 배열은 삭제. 운영자 지정 highlights로 보호
     val tagIds: List<Long>? = null, // 활동 태그 전체(native-v1.md "태그"). 생략은 유지, 빈 배열은 모두 해제. 운영자 지정 tags로 보호
 )
+
+data class HighlightRequest(val icon: String? = null, val text: String? = null)

@@ -7,7 +7,7 @@ import SwiftUI
 /// 개인정보는 묻지 않는다. 분야 답은 저장 모양 그대로 `fieldTagIds` 하나다: 상위 id는 `{상위} 전부 좋아요`, 하위 id는 그 하위만, 하위 id만 있으면 그 상위를 고른 것.
 struct RecommendationFunnelPage: View {
     let model: RecommendationModel
-    /// `추천 보러 가기`: the app shows the 발견 tab.
+    /// `맞춤 대기열 보러 가기`: the app shows the 발견 tab and, once this closes, the queue.
     var done: () -> Void = {}
     @State private var answers: AccountClient.RecommendationPreferences
     @State private var path: [Step] = []
@@ -162,15 +162,13 @@ struct RecommendationFunnelPage: View {
     private var result: some View {
         let count = model.total
         let title = model.loading ? "맞는 활동을 찾고 있어요" : count == 0 ? "지금 지원할 수 있는 활동을 찾지 못했어요" : "지금 지원할 수 있는 활동 \(count)개를 찾았어요"
-        return DearbyQuestionPage(progress: 1, title: title, message: picked.isEmpty ? nil : picked, button: "추천 보러 가기", busy: model.loading,
-                                  next: { dismiss(); done() }) {
-            Section {
-                if model.loading {
-                    DearbyRowsSkeleton()
-                } else {
-                    ForEach(model.items.prefix(3)) { item in RecommendationRow(item: item) }
-                }
-            } footer: {
+        return DearbyQuestionPage(progress: 1, title: title, message: picked.isEmpty ? nil : picked, button: "맞춤 대기열 보러 가기", busy: model.loading,
+                                  next: {
+                                      model.queueAfterFunnel = true
+                                      dismiss()
+                                      done()
+                                  }) {
+            Section {} footer: {
                 if !model.hasEligibility { Text("지원 자격까지 맞추려면 프로필 › 지원 자격 정보를 입력해요").font(.dearby(.subheadline)) }
             }
         }
@@ -181,21 +179,5 @@ struct RecommendationFunnelPage: View {
         let names = Dictionary(model.tags.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
         let categories = Self.categories.filter { answers.categories.contains($0.code.rawValue) }.map(\.label)
         return (answers.fieldTagIds.compactMap { names[$0] } + categories + answers.traitTagIds.compactMap { names[$0] }).joined(separator: " · ")
-    }
-}
-
-/// One 추천 item: activity name, program, and the server's reason chips.
-struct RecommendationRow: View {
-    let item: RecommendedActivity
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(item.activity.title).font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(.primary).multilineTextAlignment(.leading)
-            if let program = item.programName { Text(program).font(.dearby(.footnote)).foregroundStyle(.secondary) }
-            if !item.reasons.isEmpty {
-                ChipFlow(spacing: 6) { ForEach(item.reasons, id: \.self) { DearbyBadge(title: $0, quiet: true) } }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
     }
 }
