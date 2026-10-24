@@ -6,6 +6,8 @@ import SwiftUI
 /// (아래로 스크롤하면 시스템이 접고 위로 당기면 다시 보인다). `마감 숨기기`는 목록의 첫 행이고, 풀투 리프레시·맨 위로 버튼은 그대로다.
 struct ActivityListPage: View {
     let state: ActivityViewModel
+    /// 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): the section above `마감 숨기기`, hidden while searching.
+    let recommendations: RecommendationModel
     @Binding var path: NavigationPath
     /// More than one screen down: show `맨 위로`.
     @State private var farDown = false
@@ -25,7 +27,10 @@ struct ActivityListPage: View {
         @Bindable var state = state
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 10) {
-                if state.phase != .loading { openOnlyRow }
+                if state.phase != .loading {
+                    if (state.query ?? "").isEmpty { recommendationBlock }
+                    openOnlyRow
+                }
                 switch state.phase {
                 case .loading:
                     programsSkeleton
@@ -85,7 +90,12 @@ struct ActivityListPage: View {
                     .transition(.opacity)
             }
         }
-        .refreshable { await state.refresh() }
+        .refreshable {
+            // A failed first 추천 probe (bad connection) gets another try here.
+            async let recommended: Void = recommendations.refresh()
+            await state.refresh()
+            await recommended
+        }
         .scrollDismissesKeyboard(.interactively)
         .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > $0.containerSize.height } action: { _, far in
             withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { farDown = far }
@@ -104,6 +114,9 @@ struct ActivityListPage: View {
             state.search(state.searchText)
         }
         .navigationDestination(for: String.self) { id in ActivityDetailView(state: state, activityID: id) }
+        .navigationDestination(for: RecommendationListRoute.self) { _ in
+            RecommendationListPage(items: recommendations.items, open: open)
+        }
         // An `/activities/<id>` link (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): push its detail once this tab is on screen.
         .onChange(of: state.showInDiscovery, initial: true) { _, id in
             guard let id else { return }
@@ -117,6 +130,53 @@ struct ActivityListPage: View {
         .tint(DearbyStyle.teal)
         .navigationTitle("활동 둘러보기").navigationBarTitleDisplayMode(.inline)
         .toolbar { TabRootToolbar() }
+    }
+    /// 퍼널을 마쳤으면 `추천` 묶음(세로 3개 + `더 보기`, 머리에 `설정`), 건너뛰었으면 `나에게 맞는 활동 찾기` 한 줄. API가 없으면(404) 아무것도 없다.
+    @ViewBuilder private var recommendationBlock: some View {
+        if recommendations.showsSection {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("추천").font(.dearby(.headline)).accessibilityAddTraits(.isHeader)
+                    Spacer()
+                    Button("설정") { recommendations.presentingFunnel = true }.font(.dearby(.subheadline)).accessibilityIdentifier("reco-settings")
+                }.padding(.horizontal, 6)
+                VStack(alignment: .leading, spacing: 0) {
+                    if recommendations.sectionPending {
+                        DearbyRowsSkeleton()
+                    } else if recommendations.items.isEmpty {
+                        Text("지금 추천할 활동이 없어요").font(.dearby(.subheadline)).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    }
+                    ForEach(Array(recommendations.items.prefix(3).enumerated()), id: \.element.id) { index, item in
+                        if index > 0 { Divider() }
+                        Button { open(item) } label: { RecommendationRow(item: item).contentShape(Rectangle()) }.buttonStyle(.plain)
+                    }
+                    if recommendations.items.count > 3 {
+                        Divider()
+                        Button("더 보기") { path.append(RecommendationListRoute()) }.frame(maxWidth: .infinity, minHeight: 44)
+                            .accessibilityIdentifier("reco-more")
+                    }
+                }
+                .padding(.horizontal, 16).padding(.vertical, 6)
+                .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
+            }
+        } else if recommendations.showsFinder {
+            Button { recommendations.presentingFunnel = true } label: {
+                HStack {
+                    Label("나에게 맞는 활동 찾기", systemImage: "sparkles").font(.dearby(.body)).foregroundStyle(.primary)
+                    Spacer(minLength: 12)
+                    Image(systemName: "chevron.right").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(.tertiary)
+                }
+                .padding(.horizontal, 16).frame(minHeight: 44)
+                .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).accessibilityIdentifier("reco-finder")
+        }
+    }
+    private func open(_ item: RecommendedActivity) {
+        state.remember(item.activity)
+        path.append(item.activity.id)
     }
     /// `마감 숨기기` as the first list row: the whole row toggles (one control; the switch is the row's indicator), label beside the switch.
     private var openOnlyRow: some View {

@@ -40,7 +40,9 @@
     "Eligibility",
     "Tag",
     "ScheduleStatus",
-    "OverlapCheck"
+    "OverlapCheck",
+    "RecommendedActivity",
+    "TagOption"
   ],
   "entities/identity": [
     "CardModel",
@@ -93,7 +95,8 @@
     "SettingsRoute",
     "TabRootToolbar",
     "DearbyMenuItem",
-    "DearbyRowsSkeleton"
+    "DearbyRowsSkeleton",
+    "DearbyQuestionPage"
   ],
   "widgets/activity": [
     "ActivityCard",
@@ -112,7 +115,13 @@
     "ProgramHeader",
     "DiscoveryRowStyle",
     "EligibilityText",
-    "MineServer"
+    "MineServer",
+    "RecommendationModel",
+    "RecommendationServer",
+    "RecommendationFunnelPage",
+    "RecommendationListPage",
+    "RecommendationListRoute",
+    "RecommendationRow"
   ],
   "widgets/identity": [
     "AccountViewModel",
@@ -147,6 +156,10 @@
     "SettingsPage",
     "CardsPage",
     "CardsSegment",
-    "ProfileReadView"
+    "ProfileReadView",
+    "EligibilityModel",
+    "EligibilityStatus",
+    "EligibilityConsentSheet",
+    "EligibilityFlow"
   ]
 }

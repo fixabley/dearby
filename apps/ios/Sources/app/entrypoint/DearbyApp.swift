@@ -5,6 +5,8 @@ import SwiftUI
     @State private var cards: MyCardsModel
     @State private var profile: ProfileModel
     @State private var wallet: WalletModel
+    @State private var recommendations: RecommendationModel
+    @State private var eligibility: EligibilityModel
     @State private var tab = 0
     /// Which section the 명함 tab shows (contract "명함 탭 통합"); memory only.
     @State private var cardsSegment = CardsSegment.myCards
@@ -38,6 +40,8 @@ import SwiftUI
             return [activity.program, activity.title].compactMap { $0 }.joined(separator: " ")
         })
         _profile = State(initialValue: ProfileModel(account: account, webOrigin: links.origins.web))
+        _recommendations = State(initialValue: RecommendationModel(recommendations: links.recommendations, tags: links.tagOptions))
+        _eligibility = State(initialValue: EligibilityModel(account: account))
     }
     var body: some Scene {
         WindowGroup {
@@ -46,8 +50,9 @@ import SwiftUI
                     IntroPage(account: account, done: finishIntro)
                 } else {
                     HomePage(selectedTab: $tab, hidesTabs: tab == 3 && profile.profile?.version == 0,
-                        discovery: { ActivityListPage(state: activityModel, path: $0) }, mine: { MyActivitiesPage(state: activityModel, path: $0, explore: { tab = 0 }) },
-                        cards: CardsPage(segment: $cardsSegment, cards: cards, wallet: wallet), profile: ProfilePage(state: profile),
+                        discovery: { ActivityListPage(state: activityModel, recommendations: recommendations, path: $0) }, mine: { MyActivitiesPage(state: activityModel, path: $0, explore: { tab = 0 }) },
+                        cards: CardsPage(segment: $cardsSegment, cards: cards, wallet: wallet), profile: ProfilePage(state: profile, eligibility: eligibility,
+                                                                                         editRecommendations: { recommendations.presentingFunnel = true }),
                         settings: { SettingsPage(account: account, webOrigin: links.origins.web) })
                 }
             }
@@ -81,10 +86,30 @@ import SwiftUI
             // 내 활동 follows the account (contract "내 활동 서버 저장"): signing in imports this run's marks once and then uses the server.
             .onChange(of: account.phase, initial: true) { _, phase in
                 switch phase {
-                case .signedIn: Task { await activityModel.signedIn(links.mineServer(account)) }
-                case .signedOut: activityModel.signedOut()
+                case .signedIn:
+                    Task { await activityModel.signedIn(links.mineServer(account)) }
+                    Task { await recommendations.signedIn(links.recommendationServer(account)) }
+                case .signedOut:
+                    activityModel.signedOut()
+                    Task { await recommendations.signedOut() }
                 case .signingIn: break
                 }
+                if phase != .signingIn { Task { await eligibility.load() } }
+            }
+            // 추천 설정 퍼널 (contract "추천 설정 퍼널·지원 자격 정보·추천"): once, on the first visit to 발견 after the answers are read.
+            .onChange(of: tab == 0 && !showIntro && recommendations.needsFunnel, initial: true) { _, show in
+                #if DEBUG
+                if ScreenshotScene.current != nil { return }
+                #endif
+                if show { recommendations.presentingFunnel = true }
+            }
+            .fullScreenCover(isPresented: $recommendations.presentingFunnel) {
+                RecommendationFunnelPage(model: recommendations) { tab = 0 }
+            }
+            // Signed in, the server judges 지원 자격 with the saved values: a change reloads the recommendations.
+            .onChange(of: eligibility.profile) { _, _ in
+                recommendations.hasEligibility = eligibility.hasValues
+                Task { await recommendations.refresh() }
             }
             .alert(activityModel.notice ?? "", isPresented: Binding(get: { activityModel.notice != nil },
                                                                      set: { if !$0 { activityModel.clearNotice() } })) {

@@ -9,6 +9,15 @@ import SwiftUI
 /// `consentRequired`: pulling it down or 닫기 means not consented — the sheet stays away until a save comes back 403 `CONSENT_REQUIRED`, which shows it again.
 struct ProfilePage: View {
     let state: ProfileModel
+    /// 프로필 `추천` 묶음 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): `지원 자격 정보` and `관심 분야·활동 종류`.
+    let eligibility: EligibilityModel
+    /// Reopens the 추천 funnel.
+    let editRecommendations: () -> Void
+    @State private var eligibilityConsent = false
+    @State private var eligibilityAgreed = false
+    @State private var eligibilityInput = false
+    @State private var eligibilityChoice = false
+    @State private var eligibilityError: String?
     @State private var form: ProfileForm?
     @State private var funnel: HistoryFunnelTarget?
     /// Read mode is the default; `editing` lives only for the app run.
@@ -74,6 +83,58 @@ struct ProfilePage: View {
         }
         .sheet(isPresented: $composing, onDismiss: { Task { await state.load() } }) { NavigationStack { CardComposerPage(account: state.account) } }
         .sheet(isPresented: $signingIn) { NavigationStack { SignInSheet(account: state.account) { Task { await state.load() } } } }
+        .sheet(isPresented: $eligibilityConsent, onDismiss: { if eligibilityAgreed { eligibilityAgreed = false; eligibilityInput = true } }) {
+            EligibilityConsentSheet(webOrigin: state.webOrigin) { eligibilityAgreed = true; eligibilityConsent = false }
+                .presentationDetents([.medium, .large]).presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $eligibilityInput) { EligibilityFlow(model: eligibility) }
+        .confirmationDialog("지원 자격 정보", isPresented: $eligibilityChoice, titleVisibility: .hidden) {
+            Button("고치기") { eligibilityInput = true }
+            Button("지원 자격 정보 지우기", role: .destructive) { Task { eligibilityError = await eligibility.delete() } }
+            Button("취소", role: .cancel) {}
+        }
+        .alert(eligibilityError ?? "", isPresented: Binding(get: { eligibilityError != nil }, set: { if !$0 { eligibilityError = nil } })) {
+            Button("확인", role: .cancel) {}
+        }
+    }
+    /// `추천` 묶음; `지원 자격 정보` is hidden on servers without its API.
+    private var recommendationGroup: some View {
+        let showsEligibility = eligibility.phase != .unavailable
+        return VStack(alignment: .leading, spacing: 6) {
+            Text("추천").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(.secondary).padding(.horizontal, 16)
+                .accessibilityAddTraits(.isHeader)
+            VStack(spacing: 0) {
+                if showsEligibility {
+                    groupRow("지원 자격 정보", detail: eligibility.summary ?? "입력하면 지원할 수 있는 활동만 추천해요", action: openEligibility)
+                        .accessibilityIdentifier("profile-eligibility")
+                    Divider().padding(.leading, 16)
+                }
+                groupRow("관심 분야·활동 종류", action: editRecommendations).accessibilityIdentifier("profile-recommendation")
+            }
+            .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
+        }
+    }
+    private func groupRow(_ title: String, detail: String? = nil, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.dearby(.body)).foregroundStyle(.primary)
+                    if let detail { Text(detail).font(.dearby(.footnote)).foregroundStyle(.secondary) }
+                }
+                Spacer(minLength: 8)
+                Image(systemName: "chevron.right").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 16).padding(.vertical, 8).frame(minHeight: 44).contentShape(Rectangle())
+        }.buttonStyle(.plain)
+    }
+    /// Signed out → sign in. Entered (and consented to this version) → 고치기·지우기. Otherwise the consent sheet, then the questions.
+    private func openEligibility() {
+        switch eligibility.phase {
+        case .signedOut: signingIn = true
+        case .loaded where eligibility.hasValues && !eligibility.needsConsent: eligibilityChoice = true
+        case .loaded: if eligibility.needsConsent { eligibilityConsent = true } else { eligibilityInput = true }
+        case .failed, .loading, .unavailable: Task { await eligibility.load() }
+        }
     }
     private var toolbarReady: Bool {
         if case .loaded = state.phase { return !state.consentPending && !settingUp }
@@ -92,8 +153,11 @@ struct ProfilePage: View {
         Group {
             switch state.phase {
             case .signedOut:
-                CenteredMessage(symbol: "person.crop.circle", title: "프로필은 계정에 저장돼요", message: "명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.",
-                                primary: MessageAction("명함 만들기") { composing = true }, secondary: MessageAction("로그인") { signingIn = true })
+                VStack(spacing: 0) {
+                    CenteredMessage(symbol: "person.crop.circle", title: "프로필은 계정에 저장돼요", message: "명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.",
+                                    primary: MessageAction("명함 만들기") { composing = true }, secondary: MessageAction("로그인") { signingIn = true })
+                    recommendationGroup.padding(.horizontal, 20).padding(.bottom, 16)
+                }
             case .loading:
                 // Contract "내용 로딩은 스켈레톤" 2026-10-22: the read view with sample values.
                 ScrollView { ProfileReadView(profile: .placeholder).padding(20).dearbySkeleton() }.scrollDisabled(true)
@@ -102,7 +166,12 @@ struct ProfilePage: View {
                                 primary: MessageAction("다시 시도") { Task { await state.load() } })
             case .loaded(let profile):
                 if !editing {
-                    ScrollView { ProfileReadView(profile: profile).padding(20) }
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ProfileReadView(profile: profile).padding(20)
+                            recommendationGroup.padding(.horizontal, 20).padding(.bottom, 20)
+                        }
+                    }
                 } else if let binding = Binding($form) {
                     editor(binding, saved: profile)
                 }

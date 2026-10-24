@@ -84,6 +84,8 @@ import Observation
     }
 
     func activity(_ id: String) -> ActivityModel? { seen[id] }
+    /// An activity shown outside the program list (추천), so its detail can open.
+    func remember(_ activity: ActivityModel) { seen[activity.id] = activity }
     /// Opens a linked activity in 발견, loading it first when discovery has not shown it. A 404 still opens the detail, which says the
     /// activity is gone; any other failure says so and stays put.
     func openLinked(_ id: String) async {
