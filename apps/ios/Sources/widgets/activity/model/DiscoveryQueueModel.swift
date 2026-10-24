@@ -47,8 +47,9 @@ import Observation
     /// The last load failed (connection); the screen offers to try again.
     private(set) var failed = false
     private(set) var pending: Pending?
-    /// Signed in: the server answered the queue API (not 404). Signed out the 추천 results decide (`showsEntry`).
+    /// Signed in: the server answered the queue API (`probed`); false after a 404. Signed out the 추천 results decide (`showsEntry`).
     private(set) var available = false
+    private var probed = false
     static let localKey = "dearby.discoveryQueue.local"
     private var server: DiscoveryQueueServer?
     private let candidates: @Sendable (AccountClient.RecommendationPreferences) async throws -> RecommendationPage?
@@ -66,7 +67,8 @@ import Observation
     }
 
     /// The entry under 추천: signed in when the server has the queue, signed out when there is something to recommend.
-    func showsEntry(hasRecommendations: Bool) -> Bool { server != nil ? available : hasRecommendations }
+    /// A failed probe (connection) still shows it; opening it then offers to try again.
+    func showsEntry(hasRecommendations: Bool) -> Bool { server != nil ? available || !probed : hasRecommendations }
     func signedIn(_ server: DiscoveryQueueServer) async {
         self.server = server
         reset()
@@ -74,7 +76,6 @@ import Observation
     }
     func signedOut() {
         server = nil
-        available = false
         reset()
     }
     /// The screen opened: signed in the server's queue is read every time; signed out the stand-in is kept until `더 받기` or new answers.
@@ -91,6 +92,7 @@ import Observation
                 let loaded = try await server.load()
                 guard self.server != nil else { return }
                 available = loaded != nil
+                probed = true
                 items = loaded ?? []
             } else {
                 let page = try await candidates(preferences ?? .init())
@@ -169,20 +171,17 @@ import Observation
         // Best effort: a lost reaction only weakens tomorrow's queue.
         Task { try? await server.signal(item.activity.id, kind, tagID) }
     }
-    /// Signed out: without reacted-to cards and hidden programs, 덜 보기 fields last, at most two per program, ten in all.
+    /// Signed out: without reacted-to cards and hidden programs, 덜 보기 fields last, ten in all (the server already keeps two per program).
     private func signedOutQueue(_ all: [RecommendedActivity]) -> [RecommendedActivity] {
         let kept = all.filter { item in
             !local.excluded.contains(item.id) && item.programID.map(local.hiddenPrograms.contains) != true && !shown.contains(item.id)
         }
         let lessened = { (item: RecommendedActivity) in item.activity.fieldTags.contains { self.local.lessFields.contains($0.id) } }
-        var perProgram: [Int64: Int] = [:]
-        return (kept.filter { !lessened($0) } + kept.filter(lessened)).filter { item in
-            guard let program = item.programID else { return true }
-            perProgram[program, default: 0] += 1
-            return perProgram[program, default: 0] <= 2
-        }.prefix(10).map { $0 }
+        return Array((kept.filter { !lessened($0) } + kept.filter(lessened)).prefix(10))
     }
     private func reset() {
+        available = false
+        probed = false
         items = []
         pending = nil
         failed = false

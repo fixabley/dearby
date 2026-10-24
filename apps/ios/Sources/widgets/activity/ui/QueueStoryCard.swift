@@ -41,7 +41,7 @@ struct QueueStoryCard: View {
                         .transition(.scale(scale: 0.3).combined(with: .opacity)).allowsHitTesting(false).accessibilityHidden(true)
                 }
                 VStack(alignment: .leading, spacing: 10) {
-                    sceneContent.id(scene)
+                    sceneContent
                 }
                 .padding(.leading, 18).padding(.trailing, 84).padding(.bottom, insets.bottom + 40)
                 .allowsHitTesting(false)

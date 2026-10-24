@@ -55,6 +55,12 @@ struct DiscoveryQueuePage: View {
                 ActivityDetailView(state: state, activityID: item.id)
                     .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { detail = nil } } }
             }
+            // The app root cannot present `신청하셨나요?` over this screen, so the detail asks it here (same sheet as the root's).
+            .sheet(item: Binding(get: { state.asking }, set: { if $0 == nil { state.answer(.notYet) } })) { activity in
+                ApplyConfirmationSheet(activityTitle: activity.title, applied: { state.answer(.applied) },
+                                       notYet: { state.answer(.notYet) }, neverAsk: { state.answer(.neverAsk) })
+                    .presentationDetents([.medium])
+            }
         }
     }
     private func card(_ item: RecommendedActivity, index: Int, insets: EdgeInsets) -> some View {
