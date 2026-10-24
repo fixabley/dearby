@@ -79,7 +79,37 @@ enum ActivityClient {
         let program = item.program?.value
         func resolve(_ path: String?) -> URL? { path.flatMap { URL(string: $0, relativeTo: api)?.absoluteURL } }
         return RecommendedActivity(activity: model(item.activity), programName: program?.name ?? item.activity.program?.name, reasons: item.reasons,
-                                   programID: program?.id, logoURL: resolve(program?.logoUrl), coverURL: resolve(program?.coverUrl))
+                                   programID: program?.id, logoURL: resolve(program?.logoUrl), coverURL: resolve(program?.coverUrl),
+                                   scenes: item.scenes?.value.map { $0.compactMap { $0.value?.scene } })
+    }
+    private struct SceneDTO: Decodable {
+        let type: String
+        let hook: String?; let name: String?; let items: [HighlightDTO]?; let text: String?
+        let dday: Lenient<DDay>?; let deadlineText: String?; let reasons: [String]?
+        /// `dday` as a day count (0 is the day itself, below 0 closed) or as text.
+        enum DDay: Decodable {
+            case days(Int), text(String)
+            init(from decoder: Decoder) throws {
+                let container = try decoder.singleValueContainer()
+                if let days = try? container.decode(Int.self) { self = .days(days) } else { self = .text(try container.decode(String.self)) }
+            }
+            var label: String {
+                switch self {
+                case .days(let days): days > 0 ? "D-\(days)" : days == 0 ? "D-day" : "마감"
+                case .text(let text): text
+                }
+            }
+        }
+        var scene: QueueScene? {
+            switch type {
+            case "HOOK": hook.map { .hook(hook: $0, name: name ?? "") }
+            case "HIGHLIGHTS": .highlights((items ?? []).map(\.highlight))
+            case "ELIGIBILITY": text.map(QueueScene.eligibility)
+            case "BENEFIT": text.map(QueueScene.benefit)
+            case "DEADLINE": .deadline(dday: dday?.value?.label, deadlineText: deadlineText, reasons: reasons ?? [])
+            default: nil
+            }
+        }
     }
     /// Nil fields are left out of the JSON (synthesized `encodeIfPresent`).
     private struct SignalInput: Encodable { let activityId: Int64; let kind: String; let tagId: Int64? }
@@ -92,7 +122,11 @@ enum ActivityClient {
     }
     private struct RecommendationPayload: Decodable {
         /// `program` (ProgramSummary) rides beside the activity; its id, name, logo and cover are read, and a malformed one falls back to the activity's name.
-        struct Item: Decodable { let activity: Activity; let program: Lenient<ProgramRef>?; let reasons: [String] }
+        struct Item: Decodable {
+            let activity: Activity; let program: Lenient<ProgramRef>?; let reasons: [String]
+            /// 맞춤 대기열 only; a malformed scene is dropped, a malformed list reads as absent.
+            let scenes: Lenient<[Lenient<SceneDTO>]>?
+        }
         struct ProgramRef: Decodable { let id: Int64?; let name: String; let logoUrl: String?; let coverUrl: String? }
         let items: [Item]
         /// Every matching activity; absent on servers that do not count.
@@ -153,9 +187,7 @@ enum ActivityClient {
             location: activity.location.flatMap { $0.isEmpty ? nil : $0 },
             place: activity.place?.value.map { ActivityPlace(name: $0.name, address: $0.address, lat: $0.lat, lng: $0.lng) },
             hook: activity.hook?.value.flatMap { $0.isEmpty ? nil : $0 },
-            highlights: (activity.highlights?.value ?? []).compactMap {
-                $0.text.isEmpty ? nil : ActivityHighlight(icon: $0.icon.flatMap(ActivityHighlight.Icon.init(rawValue:)), text: $0.text)
-            })
+            highlights: (activity.highlights?.value ?? []).filter { !$0.text.isEmpty }.map(\.highlight))
     }
     /// Stages keep every schedule: timed (either bound may be missing), all-day (either day may be missing), or date-less.
     /// An unknown kind reads as an event.
@@ -237,7 +269,10 @@ enum ActivityClient {
         let hook: Lenient<String>?
         let highlights: Lenient<[HighlightDTO]>?
     }
-    private struct HighlightDTO: Decodable { let icon: String?; let text: String }
+    private struct HighlightDTO: Decodable {
+        let icon: String?; let text: String
+        var highlight: ActivityHighlight { ActivityHighlight(icon: icon.flatMap(ActivityHighlight.Icon.init(rawValue:)), text: text) }
+    }
     private struct PlaceDTO: Decodable { let name: String; let address: String; let lat: Double; let lng: Double }
     /// Decodes to nil instead of throwing when the value has an unexpected shape.
     private struct Lenient<Value: Decodable>: Decodable {

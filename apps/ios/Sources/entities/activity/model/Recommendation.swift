@@ -11,7 +11,19 @@ struct RecommendedActivity: Identifiable, Sendable {
     var programID: Int64? = nil
     var logoURL: URL? = nil
     var coverURL: URL? = nil
+    /// The story's scenes as the server composed them (맞춤 대기열 `scenes`, coordinator 2026-10-24); nil when absent, so the app builds them.
+    var scenes: [QueueScene]? = nil
     var id: String { activity.id }
+}
+
+/// One scene of a 맞춤 대기열 card (`scenes[].type`): any number, in order; unknown types are dropped when read.
+enum QueueScene: Equatable, Sendable {
+    case hook(hook: String, name: String)
+    case highlights([ActivityHighlight])
+    case eligibility(String)
+    case benefit(String)
+    /// `dday` as shown (`D-22`, `D-day`); nil when there is no deadline.
+    case deadline(dday: String?, deadlineText: String?, reasons: [String])
 }
 
 /// 맞춤 대기열 반응 (contract "맞춤 대기열" 2026-10-24 `POST /v1/me/recommendation-signals`): signed in only.

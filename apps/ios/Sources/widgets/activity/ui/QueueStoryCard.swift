@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// 맞춤 대기열의 활동 한 장(contract "맞춤 대기열(스토리형 쇼츠)" 2026-10-24, 시안 Q3): 장면 3개를 4초마다 넘기고(위 진행 막대, 왼쪽 30% 탭은 이전·나머지는
+/// 맞춤 대기열의 활동 한 장(contract "맞춤 대기열(스토리형 쇼츠)" 2026-10-24, 시안 Q3): 장면(서버 `scenes`, 없으면 앱이 만든 2~3개)을 4초마다 넘기고(위 진행 막대, 왼쪽 30% 탭은 이전·나머지는
 /// 다음 장면, 두 번 탭은 관심 있어요와 하트 효과), 배경 커버는 느리게 확대·이동(켄 번즈)하고 글자는 아래에서 차례로 떠오른다. 동작 줄이기에서는 움직임 없이
-/// 장면만 바뀌고, 화면 읽기를 켜면 저절로 넘기지 않고 사용자 지정 동작으로 같은 일을 한다. 장면 ③까지 보면 `complete`, 장면 ①에서 떠나면 `skipEarly`.
+/// 장면만 바뀌고, 화면 읽기를 켜면 저절로 넘기지 않고 사용자 지정 동작으로 같은 일을 한다. 마지막 장면이 끝나면 `complete`(그 장면에 멈춘다), 장면 ①에서 떠나면 `skipEarly`.
 struct QueueStoryCard: View {
     let item: RecommendedActivity
     let position: Int
@@ -21,7 +21,7 @@ struct QueueStoryCard: View {
     let complete: () -> Void
     let skipEarly: () -> Void
     @State private var scene = 0
-    /// Scene ③ ran its 4 seconds: the card stays there with every segment full until the user moves on (no auto-advance to the next card).
+    /// The last scene ran its 4 seconds: the card stays there with every segment full until the user moves on (no auto-advance to the next card).
     @State private var finished = false
     @State private var zoomed = false
     @State private var bursts = 0
@@ -48,7 +48,7 @@ struct QueueStoryCard: View {
                 .padding(.leading, 18).padding(.trailing, 84).padding(.bottom, insets.bottom + 40)
                 .allowsHitTesting(false)
                 .accessibilityElement(children: .combine)
-                .accessibilityHint("장면 \(scene + 1)/3")
+                .accessibilityHint("장면 \(scene + 1)/\(scenes.count)")
                 .accessibilityActions { actions }
                 rail.frame(maxWidth: .infinity, alignment: .trailing).padding(.trailing, 10).padding(.bottom, insets.bottom + 46)
             }
@@ -68,12 +68,12 @@ struct QueueStoryCard: View {
         }
         .onChange(of: current) { _, onScreen in if !onScreen, scene == 0 { skipEarly() } }
     }
-    /// Every 4 seconds the next scene; after the third, `complete` once and the card stays on it.
+    /// Every 4 seconds the next scene; after the last, `complete` once and the card stays on it.
     private func advance() async {
         guard current, playing, !voiceOver, !finished else { return }
         try? await Task.sleep(for: .seconds(4))
         guard !Task.isCancelled else { return }
-        if scene < 2 {
+        if scene < last {
             scene += 1
         } else {
             finished = true
@@ -81,9 +81,9 @@ struct QueueStoryCard: View {
         }
     }
     private func step(_ delta: Int) {
-        scene = min(max(scene + delta, 0), 2)
+        scene = min(max(scene + delta, 0), last)
         // Going back to an earlier scene plays from there again (COMPLETE is still sent once per card).
-        if scene < 2 { finished = false }
+        if scene < last { finished = false }
     }
     private func burstLike() {
         doubleTapLike()
@@ -141,7 +141,7 @@ struct QueueStoryCard: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 4) {
-                ForEach(0..<3, id: \.self) { index in
+                ForEach(scenes.indices, id: \.self) { index in
                     ProgressSegment(state: index < scene || finished ? .done : index > scene ? .waiting : .playing(current && playing && !voiceOver && !reduceMotion))
                         .id("\(index)-\(scene)-\(current && playing)")
                 }
@@ -159,18 +159,25 @@ struct QueueStoryCard: View {
     }
     // MARK: - Scenes
 
+    /// The server's `scenes` when it sends any; else hook, 핵심 줄 (two or more), deadline.
+    private var scenes: [QueueScene] {
+        if let scenes = item.scenes, !scenes.isEmpty { return scenes }
+        let hook = QueueScene.hook(hook: activity.hook ?? activity.title,
+                                   name: activity.hook == nil ? item.programName ?? activity.organization : activity.title)
+        let deadline = QueueScene.deadline(dday: dDay, deadlineText: deadlineLine, reasons: item.reasons)
+        return lines.count >= 2 ? [hook, .highlights(lines), deadline] : [hook, deadline]
+    }
+    private var last: Int { scenes.count - 1 }
     @ViewBuilder private var sceneContent: some View {
-        switch scene {
-        case 0:
+        switch scenes[min(scene, last)] {
+        case let .hook(hook, name):
             let tag = [activity.category?.label, activity.fieldTags.first?.name].compactMap { $0 }.joined(separator: " · ")
-            if !tag.isEmpty { Rise(order: 0) { Text(tag).font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(Self.accent) } }
-            Rise(order: 1) {
-                Text(activity.hook ?? activity.title).font(.dearby(.largeTitle).weight(.heavy)).lineLimit(4).minimumScaleFactor(0.7)
-            }
-            Rise(order: 2) { Text(activity.hook == nil ? item.programName ?? activity.organization : activity.title).font(.dearby(.subheadline)).opacity(0.9) }
-        case 1:
-            Rise(order: 0) { Text("이런 걸 해요").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(Self.accent) }
-            ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
+            if !tag.isEmpty { Rise(order: 0) { label(tag) } }
+            Rise(order: 1) { Text(hook).font(.dearby(.largeTitle).weight(.heavy)).lineLimit(4).minimumScaleFactor(0.7) }
+            if !name.isEmpty { Rise(order: 2) { Text(name).font(.dearby(.subheadline)).opacity(0.9) } }
+        case .highlights(let lines):
+            Rise(order: 0) { label("이런 걸 해요") }
+            ForEach(Array(lines.prefix(3).enumerated()), id: \.offset) { index, line in
                 Rise(order: index + 1) {
                     HStack(spacing: 10) {
                         Image(systemName: Self.symbol(line.icon)).font(.dearby(.body)).frame(width: 36, height: 36)
@@ -179,16 +186,22 @@ struct QueueStoryCard: View {
                     }
                 }
             }
-        default:
-            Rise(order: 0) { Text("마감까지").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(Self.accent) }
+        case .eligibility(let text):
+            Rise(order: 0) { label("지원 자격") }
+            Rise(order: 1) { Text(text).font(.dearby(.title2).weight(.bold)).lineLimit(5) }
+        case .benefit(let text):
+            Rise(order: 0) { label("얻을 수 있는 것") }
+            Rise(order: 1) { Text(text).font(.dearby(.title2).weight(.bold)).lineLimit(5) }
+        case let .deadline(dday, deadlineText, reasons):
+            Rise(order: 0) { label("마감까지") }
             Rise(order: 1) {
-                Text(dDay ?? "마감일 미정").font(dDay == nil ? .dearby(.largeTitle).weight(.heavy) : .system(size: 64, weight: .heavy))
+                Text(dday ?? "마감일 미정").font(dday == nil ? .dearby(.largeTitle).weight(.heavy) : .system(size: 64, weight: .heavy))
             }
-            if let deadline = deadlineLine { Rise(order: 2) { Text(deadline).font(.dearby(.callout)).opacity(0.9) } }
-            if !item.reasons.isEmpty {
+            if let deadlineText { Rise(order: 2) { Text(deadlineText).font(.dearby(.callout)).opacity(0.9) } }
+            if !reasons.isEmpty {
                 Rise(order: 3) {
                     ChipFlow(spacing: 6) {
-                        ForEach(item.reasons, id: \.self) { reason in
+                        ForEach(reasons, id: \.self) { reason in
                             Text(reason).font(.dearby(.footnote).weight(.semibold)).padding(.horizontal, 10).padding(.vertical, 4)
                                 .background(.white.opacity(0.22), in: Capsule())
                         }
@@ -196,6 +209,9 @@ struct QueueStoryCard: View {
                 }
             }
         }
+    }
+    private func label(_ text: String) -> some View {
+        Text(text).font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(Self.accent)
     }
     /// `highlights`, or (contract: 없으면 기간·장소; cost is not in the public activity) the period and place; the summary when neither is known.
     private var lines: [ActivityHighlight] {
