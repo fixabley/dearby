@@ -67,6 +67,7 @@ class CollectionJobTest(
             var lastWorkflow = "" // 마지막 실행에 --system-prompt-file로 넘긴 파일 내용
             fun option(command: List<String>, name: String) = command[command.indexOf(name) + 1]
             var extractedCategory: String? = "CONFERENCE" // 프로그램 기본 종류 테스트에서 null로 바꾼다
+            var extractedAudience: String? = null // 지원 자격 확인 테스트에서 원문 대상 구절을 준다
             // 브라우저 렌더링(admin-v1.md): 렌더링 경로로 받은 주소와 HTML 경로로 받은 주소, 브라우저를 내린 횟수
             val renderedUrls = mutableListOf<String>()
             val httpUrls = mutableListOf<String>()
@@ -116,7 +117,7 @@ class CollectionJobTest(
                 "roundKey" to "2026-컨퍼런스", "name" to "Let'Swift 2026 컨퍼런스", "nameEn" to "Let'Swift 2026 Conference", "description" to "본행사", "descriptionEn" to "Main event", "participationType" to "REGISTRATION",
                 "applicationUrl" to "https://letswift.kr/2026/apply", "recruitmentStartAt" to "2026-11-01T10:00:00+09:00",
                 "recruitmentEndAt" to "2026-11-10T23:59:00+09:00", "dateLabel" to "2026-11-29", "startDate" to "2026-11-29", "endDate" to "2026-11-29", "schedules" to extractedSchedules,
-                "location" to null, "cost" to null, "audience" to null, "evidenceQuote" to "참가 신청은 11월 1일부터 11월 10일까지입니다", "category" to extractedCategory, "tags" to extractedTags, "fieldTags" to extractedFieldTags,
+                "location" to null, "cost" to null, "audience" to extractedAudience, "evidenceQuote" to "참가 신청은 11월 1일부터 11월 10일까지입니다", "category" to extractedCategory, "tags" to extractedTags, "fieldTags" to extractedFieldTags,
             ),
             mapOf(
                 "roundKey" to "2026-가짜", "name" to "원문에 없는 활동", "nameEn" to null, "description" to "", "descriptionEn" to null, "participationType" to null,
@@ -241,6 +242,9 @@ class CollectionJobTest(
             jdbc.sql("select audience || '|' || (eligibility->'items'->0->>'from') || '|' || inherited_fields::text from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list(),
         )
         assertEquals(1, jdbc.sql("select count(*) from activity_eligibility_terms t join activities a on a.id = t.activity_id where a.name = ?").param("Let'Swift 2026 컨퍼런스").query(Int::class.java).single())
+        // 지원 자격 확인(native-v1.md "추천 설정 퍼널·지원 자격 정보·추천"): 이전 기수에서 가져온 조건은 이번 원문에서 읽은 것이 아니다
+        fun eligibilityChecked() = jdbc.sql("select eligibility_checked from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(Boolean::class.java).single()
+        assertEquals(false, eligibilityChecked())
 
         assertEquals(listOf("DRAFT"), status("Let'Swift 2026 컨퍼런스"))
         assertEquals(emptyList(), status("원문에 없는 활동"))
@@ -284,6 +288,17 @@ class CollectionJobTest(
             listOf("Curated EN|본행사|Swift 개발자|30|[\"audience\"]"),
             jdbc.sql("select name_en || '|' || description || '|' || audience || '|' || (eligibility->'items'->0->>'from') || '|' || inherited_fields::text from activities where name = ?").param("Let'Swift 2026 컨퍼런스").query(String::class.java).list(),
         )
+        // 원문이 대상에 제한이 없다고 밝히면(대상 구절) 조건이 없어도 확인한 것이고, 다음 수집에 구절이 없어도 내리지 않는다
+        assertEquals(false, eligibilityChecked())
+        try {
+            Fakes.extractedAudience = "누구나 참가할 수 있습니다"
+            assertEquals(BatchStatus.COMPLETED, run("2026-10-22").status)
+            assertEquals(true, eligibilityChecked())
+        } finally {
+            Fakes.extractedAudience = null
+        }
+        assertEquals(BatchStatus.COMPLETED, run("2026-10-23").status)
+        assertEquals(true, eligibilityChecked())
     }
 
     @Test

@@ -126,6 +126,7 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             category = row.category?.let(ActivityCategory::valueOf),
             tags = tags?.first.orEmpty(),
             fieldTags = tags?.second.orEmpty(),
+            eligibilityChecked = row.eligibilityChecked!!,
             location = row.location,
         )
     }

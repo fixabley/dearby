@@ -28,21 +28,22 @@ class ProgramSummaryService(
         } else {
             filteredSummaries(condition, now).drop(condition.cursor).take(condition.size + 1)
         }
-        val page = found.take(condition.size)
-        // 묶음 머리의 태그(native-v1.md "태그", "분야·성격 태그와 아이콘"): 대상자 필터 경로도 거치도록 여기서 한 번에 찾는다
-        val tags = summaries.tagsByProgram(page.map { it.id }, now)
-        // 로고(native-v1.md "조직 로고와 로고 계승"): 프로그램 로고, 없으면 가장 가까운 조직 로고. 대상자 필터 경로도 거치도록 여기서 한 번에 찾는다
+        return ProgramSummaryPage(decorate(found.take(condition.size)), if (found.size > condition.size) condition.cursor + condition.size else null)
+    }
+
+    // 묶음 머리의 태그(native-v1.md "태그", "분야·성격 태그와 아이콘")와 로고(native-v1.md "조직 로고와 로고 계승": 프로그램 로고, 없으면 가장 가까운 조직 로고).
+    // 대상자 필터 경로와 추천도 거치도록 여기서 한 번에 찾는다
+    @Transactional(readOnly = true)
+    fun decorate(page: List<ProgramSummary>): List<ProgramSummary> {
+        val tags = summaries.tagsByProgram(page.map { it.id }, OffsetDateTime.now(ZoneOffset.UTC))
         val logo = logos.of(page.associate { it.id to it.organizationId })
-        return ProgramSummaryPage(
-            page.map { summary ->
-                val found = tags[summary.id]
-                summary.copy(
-                    tags = found?.tags.orEmpty(), fieldTags = found?.fieldTags.orEmpty().take(MAX_FIELD_TAGS), traitTags = found?.traitTags.orEmpty(),
-                    logoUrl = logo[summary.id]?.url,
-                )
-            },
-            if (found.size > condition.size) condition.cursor + condition.size else null,
-        )
+        return page.map { summary ->
+            val found = tags[summary.id]
+            summary.copy(
+                tags = found?.tags.orEmpty(), fieldTags = found?.fieldTags.orEmpty().take(MAX_FIELD_TAGS), traitTags = found?.traitTags.orEmpty(),
+                logoUrl = logo[summary.id]?.url,
+            )
+        }
     }
 
     // 대상자 필터(native-v1.md "대상자 조건"): 열린 활동을 1차(SQL)·2차(JSON op) 판정으로 거른 뒤 그 활동들로 묶음을 만든다.

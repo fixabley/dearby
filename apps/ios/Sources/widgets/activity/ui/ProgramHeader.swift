@@ -1,7 +1,8 @@
 import SwiftUI
 
 /// 발견 프로그램 카드의 머리(contract "발견 카드 리뉴얼" 2026-10-19, iOS 네이티브 관용구 — AGENTS.md 2026-10-19 "플랫폼별 네이티브 디자인"):
-/// 왼쪽 로고 자리(44, 모서리 14: `logoURL`을 `AsyncImage`로 꽉 채워 보이고 로딩 중·실패·없음은 이름 첫 글자 아바타 — contract "프로그램 로고"), 가운데 이름·조직·태그 칩, 오른쪽 모집 중 + 모집 예정 활동 수(`.borderedProminent` 캡슐 배지)와
+/// 왼쪽 로고 자리(44, 모서리 14: `logoURL`을 `AsyncImage`로 꽉 채워 보이고 로딩 중·실패·없음은 이름 첫 글자 아바타 — contract "프로그램 로고")와 그 밑 분야 배지 세로 줄,
+/// 가운데 이름·조직·성격 아이콘 줄(contract "분야·성격 태그와 아이콘" 2026-10-24), 오른쪽 모집 중 + 모집 예정 활동 수(`.borderedProminent` 캡슐 배지)와
 /// 보조 글자(`M월 d일 마감` / `M월 d일 시작` / `최근 yyyy.M`). 펼치면 배지가 `.bordered` 원형 버튼 안의 SF Symbol `chevron.down`(180° 회전, `접기`)으로 바뀐다.
 /// 머리 어디를 눌러도 `toggle`. 접근성에서는 `펼침`/`접힘` 상태를 가진 버튼으로 읽히고, 동작 줄이기에서는 배지↔화살표가 즉시 바뀐다.
 struct ProgramHeader: View {
@@ -16,8 +17,9 @@ struct ProgramHeader: View {
     var nearestStart: Date?
     /// The program's most recent activity start; `최근 yyyy.M` when nothing is recruiting or upcoming.
     var latestActivity: Date?
-    /// Program tags (contract "태그"): at most three chips and `+n`.
-    var tags: [Tag] = []
+    /// 분야 tags under the logo (at most two) and 성격 tags as the icon row under the organization.
+    var fieldTags: [Tag] = []
+    var traitTags: [Tag] = []
     let expanded: Bool
     let toggle: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -25,17 +27,20 @@ struct ProgramHeader: View {
         HStack(alignment: .top, spacing: 12) {
             Button(action: toggle) {
                 HStack(alignment: .top, spacing: 12) {
-                    logo
+                    VStack(spacing: 4) {
+                        logo
+                        FieldTagBadges(tags: fieldTags)
+                    }
                     VStack(alignment: .leading, spacing: 2) {
                         Text(name).font(.dearby(.headline)).foregroundStyle(.primary).multilineTextAlignment(.leading)
                         Text(organization).font(.dearby(.subheadline)).foregroundStyle(.secondary)
-                        TagChips(tags: tags, limit: 3).padding(.top, 6)
+                        TraitTagIcons(tags: traitTags).padding(.top, 6)
                     }
                     Spacer(minLength: 0)
                 }.contentShape(Rectangle())
             }.buttonStyle(.plain)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel([name, organization, countLabel, meta, tags.isEmpty ? nil : "태그 " + tags.map(\.name).joined(separator: ", ")]
+                .accessibilityLabel(([name, organization, countLabel, meta] + fieldTags.map { "분야: " + $0.name } + [TraitTagIcons.label(traitTags)])
                     .compactMap { $0 }.joined(separator: ", "))
                 .accessibilityValue(expanded ? "펼침" : "접힘").accessibilityHint(expanded ? "누르면 접어요" : "누르면 활동을 보여요")
                 .accessibilityIdentifier("program-\(name)")
@@ -105,10 +110,11 @@ struct ProgramHeader: View {
     VStack(spacing: 10) {
         ProgramHeader(name: "부스트캠프", organization: "네이버 커넥트재단", openCount: 2,
                       nearestDeadline: ISO8601DateFormatter().date(from: "2026-11-10T09:00:00Z"),
-                      tags: [Tag(id: 1, name: "개발지식"), Tag(id: 2, name: "프로젝트 개발"), Tag(id: 3, name: "협업"), Tag(id: 4, name: "멘토링")], expanded: true) {}
+                      fieldTags: [Tag(id: 10, name: "IT", nameEn: "it", kind: .field), Tag(id: 11, name: "데이터·AI", nameEn: "dataAi", kind: .field)],
+                      traitTags: [Tag(id: 2, name: "프로젝트", nameEn: "project"), Tag(id: 4, name: "멘토링", nameEn: "mentoring")], expanded: true) {}
             .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
         ProgramHeader(name: "SK AIGEN", organization: "SK", openCount: 0, upcomingCount: 1,
-                      nearestStart: ISO8601DateFormatter().date(from: "2026-10-31T15:00:00Z"), tags: [Tag(id: 5, name: "창업")], expanded: false) {}
+                      nearestStart: ISO8601DateFormatter().date(from: "2026-10-31T15:00:00Z"), traitTags: [Tag(id: 5, name: "창업", nameEn: "startup")], expanded: false) {}
             .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
         ProgramHeader(name: "Let'Swift", organization: "Let'Swift", openCount: 0,
                       latestActivity: ISO8601DateFormatter().date(from: "2025-10-08T01:00:00Z"), expanded: false) {}
