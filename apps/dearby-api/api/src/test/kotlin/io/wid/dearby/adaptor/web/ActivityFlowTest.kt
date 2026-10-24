@@ -686,12 +686,23 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(exact, ids(eligible).first())
         assertTrue(young !in ids(eligible))
         assertEquals("지원 자격 확인 필요", reasons(eligible, exact).last())
+        // 계약 예시 "19~34세이고 재학생 또는 미취업자"
+        val student = open("추천 확인 재학생", childB, 100)
+        jdbc.sql("""update activities set eligibility_checked = true, eligibility = '{"op":"all","items":[{"field":"나이","fieldEn":"age","from":19,"to":34},{"op":"any","items":[{"field":"재학상태","fieldEn":"educationStatus","values":["재학"],"valuesEn":["enrolled"]},{"field":"취업상태","fieldEn":"employment","values":["미취업"],"valuesEn":["unemployed"]}]}]}'::jsonb where id = ?""").param(student).update()
+        jdbc.sql("insert into activity_eligibility_terms (activity_id, field_en, from_value, to_value, value_en) values (?, 'age', 19, 34, null), (?, 'educationStatus', null, null, 'enrolled'), (?, 'employment', null, null, 'unemployed')").params(student, student, student).update()
+        jdbc.sql("insert into activity_tags (activity_id, tag_id) values (?, ?)").params(student, trait).update()
+        // 퍼널의 재학 중(enrolled + student), 23세는 "재학생 또는 미취업자" 활동에 맞는다(any 그룹은 하나만 맞으면 된다)
+        putEligibility("""{"consentVersion":"2026-10-24","educationStatus":"enrolled","employment":"student","birthYear":${thirty + 7}}""").andExpect { status { isOk() } }
+        assertEquals(student, ids(body(mvc.get("/v1/discovery/recommendations") { asUser() })["items"]).first())
+        // 35세면 빠진다
+        putEligibility("""{"consentVersion":"2026-10-24","educationStatus":"enrolled","employment":"student","birthYear":${thirty - 5}}""").andExpect { status { isOk() } }
+        assertTrue(student !in ids(body(mvc.get("/v1/discovery/recommendations") { asUser() })["items"]))
         // 지우면 값과 동의 기록이 모두 사라지고 다시 거르지 않는다
         mvc.delete("/v1/me/eligibility-profile") { asUser() }.andExpect { status { isNoContent() } }
         assertTrue(body(mvc.get("/v1/me/eligibility-profile") { asUser() })["consent"].isNull)
-        assertEquals(listOf(exact, young), ids(body(mvc.get("/v1/discovery/recommendations") { asUser() })["items"]))
+        assertEquals(listOf(student, exact), ids(body(mvc.get("/v1/discovery/recommendations") { asUser() })["items"]))
 
-        jdbc.sql("update activities set publication_status = 'DRAFT' where id in (?, ?, ?)").params(young, exact, weak).update()
+        jdbc.sql("update activities set publication_status = 'DRAFT' where id in (?, ?, ?, ?)").params(young, exact, weak, student).update()
         jdbc.sql("delete from tags where id in (?, ?, ?, ?)").params(childA, childB, parent, trait).update()
     }
 }

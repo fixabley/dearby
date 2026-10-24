@@ -32,10 +32,11 @@ class ActivityService(
         return ActivityPage(listings(raw, condition.eligibility), if (found.size > condition.size) raw.last().id else null)
     }
 
-    // 추천 후보(native-v1.md "추천 설정 퍼널·지원 자격 정보·추천"): 열린 활동 전부를 대상자 조건 1·2차 판정까지 거친 목록 항목으로
+    // 추천 후보(native-v1.md "추천 설정 퍼널·지원 자격 정보·추천"): 열린 활동 전부를 조건 트리 판정(2차)으로 거른 목록 항목으로.
+    // SQL 1차는 필드마다 맞는 조건을 요구해 any 그룹을 너무 엄하게 거른다(재학생 또는 미취업자 활동을 재학·학생인 사람에게서 뺀다). 여러 필드를 함께 보내는 추천은 트리만 본다
     @Transactional(readOnly = true)
     fun openListings(eligibility: EligibilityFilter?): List<ActivityListing> =
-        listings(activities.search(ActivitySearch(null, null, null, null, MAX_OPEN_LISTINGS, eligibility = eligibility, openOnly = true)), eligibility)
+        listings(activities.search(ActivitySearch(null, null, null, null, MAX_OPEN_LISTINGS, openOnly = true)), eligibility)
 
     private fun listings(raw: List<Activity>, eligibility: EligibilityFilter?): List<ActivityListing> {
         // 2차 판정(native-v1.md "대상자 조건"): 1차(SQL)를 지난 활동의 조건 트리를 op대로 평가한다
