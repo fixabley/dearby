@@ -298,6 +298,19 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         assertEquals(true, created["nameEn"].isNull)
         assertEquals("Test Tag", read(mvc.patch("/v1/admin/tags/${created["id"].asLong()}") { asAdmin(); patchBody("""{"nameEn":"Test Tag"}""") }.andExpect { status { isOk() } })["nameEn"].asString())
         mvc.post("/v1/admin/tags") { asAdmin(); body("""{"name":" "}""") }.andExpect { status { isBadRequest() } }
+        // 종류·하위 분야(native-v1.md "분야·성격 태그와 아이콘"): 기본 TRAIT. 상위 분야는 FIELD 최상위만, 한 단계
+        assertEquals(listOf("TRAIT", "true"), listOf(created["kind"].asString(), created["parentId"].isNull.toString()))
+        val top = read(mvc.post("/v1/admin/tags") { asAdmin(); body("""{"name":"시험 상위 분야","kind":"FIELD"}""") }.andExpect { status { isCreated() } })["id"].asLong()
+        val child = read(mvc.post("/v1/admin/tags") { asAdmin(); body("""{"name":"시험 하위 분야","kind":"FIELD","parentId":$top}""") }.andExpect { status { isCreated() } })
+        assertEquals(top, child["parentId"].asLong())
+        mvc.post("/v1/admin/tags") { asAdmin(); body("""{"name":"시험 성격","parentId":$top}""") }.andExpect { status { isBadRequest() } }
+        mvc.post("/v1/admin/tags") { asAdmin(); body("""{"name":"시험 손자 분야","kind":"FIELD","parentId":${child["id"].asLong()}}""") }.andExpect { status { isBadRequest() } }
+        mvc.post("/v1/admin/tags") { asAdmin(); body("""{"name":"시험 종류","kind":"NOPE"}""") }.andExpect { status { isBadRequest() } }
+        mvc.patch("/v1/admin/tags/$top") { asAdmin(); patchBody("""{"kind":"TRAIT"}""") }.andExpect { status { isBadRequest() } }
+        mvc.patch("/v1/admin/tags/$top") { asAdmin(); patchBody("""{"parentId":${child["id"].asLong()}}""") }.andExpect { status { isBadRequest() } }
+        assertEquals(true, read(mvc.patch("/v1/admin/tags/${child["id"].asLong()}") { asAdmin(); patchBody("""{"parentId":null}""") }.andExpect { status { isOk() } })["parentId"].isNull)
+        assertEquals("FIELD", read(mvc.get("/v1/admin/tags") { asAdmin() }.andExpect { status { isOk() } })["items"].toList().single { it["id"].asLong() == top }["kind"].asString())
+        jdbc.sql("delete from tags where id in (?, ?)").params(top, child["id"].asLong()).update()
         val keptId = jdbc.sql(
             """
             insert into activities (program_id, name, description, participation_type, recruitment_status, official_url,
@@ -309,10 +322,12 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         jdbc.sql("insert into schedules (activity_id, slot, title, kind, status, date_label, sequence, created_at, updated_at) values (?, 'ACTIVITY', 't', 'EVENT', 'CONFIRMED', '', 0, localtimestamp, localtimestamp)")
             .param(keptId).update()
         val taggedProgram = read(
-            mvc.patch("/v1/admin/programs/${program["id"].asLong()}") { asAdmin(); patchBody("""{"tagIds":[${startup["id"].asLong()},${created["id"].asLong()}],"applyTagsToActivities":true}""") }
+            mvc.patch("/v1/admin/programs/${program["id"].asLong()}") { asAdmin(); patchBody("""{"tagIds":[${created["id"].asLong()},${startup["id"].asLong()}],"applyTagsToActivities":true}""") }
                 .andExpect { status { isOk() } }
         )
-        assertEquals(listOf("창업", "테스트 태그"), taggedProgram["tags"].let(::tagNames))
+        // 프로그램 태그는 보낸 순서를 position으로 남기고 그 순서로 돌려준다(분야 태그 순서)
+        assertEquals(listOf("테스트 태그", "창업"), taggedProgram["tags"].let(::tagNames))
+        assertEquals(listOf(0, 1), jdbc.sql("select position from program_tags where program_id = ? order by tag_id = ? desc").params(program["id"].asLong(), created["id"].asLong()).query(Int::class.java).list())
         // plain·activity(운영자 미지정)에는 더해지고 kept(운영자 지정)는 그대로
         assertEquals(2, taggedProgram["appliedTagActivityCount"].asInt())
         assertEquals(listOf(2, 0), listOf(plain, keptId).map { jdbc.sql("select count(*) from activity_tags where activity_id = ?").param(it).query(Int::class.java).single() })
@@ -320,6 +335,10 @@ class AdminActivityInfoFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc
         val taggedActivity = read(mvc.patch("/v1/admin/activities/$plain") { asAdmin(); patchBody("""{"tagIds":[${created["id"].asLong()}]}""") }.andExpect { status { isOk() } })
         assertEquals(listOf("테스트 태그"), taggedActivity["tags"].let(::tagNames))
         assertEquals(true, taggedActivity["curatedFields"].toList().any { it.asString() == "tags" })
+        // 운영자 지정 활동 태그는 연관도가 없다
+        jdbc.sql("update activity_tags set relevance = 50 where activity_id = ?").param(plain).update()
+        mvc.patch("/v1/admin/activities/$plain") { asAdmin(); patchBody("""{"tagIds":[${created["id"].asLong()}]}""") }.andExpect { status { isOk() } }
+        assertEquals(listOf<Int?>(null), jdbc.sql("select relevance from activity_tags where activity_id = ?").param(plain).query { rs, _ -> rs.getObject(1) as Int? }.list())
         mvc.patch("/v1/admin/activities/$plain") { asAdmin(); patchBody("""{"tagIds":[999999]}""") }.andExpect { status { isBadRequest() } }
         // 운영자 생성 활동은 tagIds를 생략하면 프로그램 태그를 기본으로 받는다
         val createdActivity = read(
