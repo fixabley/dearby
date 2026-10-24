@@ -86,7 +86,7 @@ class AgentToolbox(private val tools: AgentTools, private val programId: Id, pri
 
         // MCP tools/list 형태(name·description·inputSchema)
         val DEFINITIONS: List<Map<String, Any>> = listOf(
-            definition(FETCH, "페이지를 직접 받아 본문(태그를 뺀 텍스트)과 링크 목록을 돌려준다. https, 허용 도메인 안의 주소만.", mapOf("url" to mapOf("type" to "string"))),
+            definition(FETCH, "페이지를 직접 받아 본문(태그를 뺀 텍스트)과 링크 목록을 돌려준다. https(허용 도메인이면 http도), 허용 도메인 안의 주소만.", mapOf("url" to mapOf("type" to "string"))),
             definition(RENDER, "자바스크립트로 그리는 페이지를 헤드리스 브라우저로 실행한 뒤 본문과 링크를 돌려준다. fetch_page 본문이 비었거나 아주 짧을 때만.", mapOf("url" to mapOf("type" to "string"))),
             mapOf(
                 "name" to SUBMIT,

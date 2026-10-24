@@ -86,14 +86,15 @@ class CatalogWrites(
 
     fun validate(collection: CollectionSettings): CollectionSettings {
         val url = collection.officialUrl?.trim()?.ifEmpty { null }
-        // 주소 토큰(admin-v1.md): 모르는 {…}는 400, https 검사는 토큰을 샘플 값으로 바꾼 주소로 한다
+        // 주소 토큰(admin-v1.md): 모르는 {…}는 400, 스킴 검사는 토큰을 샘플 값으로 바꾼 주소로 한다
         url?.let { CollectionUrlTemplate.unknownTokens(it).firstOrNull() }?.let { throw InvalidInputException("알 수 없는 주소 토큰입니다: {$it}") }
-        val sample = url?.let(CollectionUrlTemplate::sample)
-        if (sample != null && runCatching { URI(sample) }.getOrNull()?.let { it.scheme == "https" && !it.host.isNullOrEmpty() } != true) {
-            throw InvalidInputException("공식 안내 페이지는 https 주소여야 합니다")
-        }
         val hosts = collection.allowedHosts.map { it.trim().lowercase() }.filter { it.isNotEmpty() }.distinct()
         hosts.firstOrNull { !HOST.matches(it) }?.let { throw InvalidInputException("허용 호스트는 도메인 이름만 씁니다: $it") }
+        // http는 그 호스트를 허용 호스트에 적었을 때만(수집기 UrlGuard와 같은 규칙, 2026-10-24)
+        val sample = url?.let(CollectionUrlTemplate::sample)?.let { runCatching { URI(it) }.getOrNull() }
+        if (url != null && (sample == null || sample.host.isNullOrEmpty() || !(sample.scheme == "https" || (sample.scheme == "http" && sample.host.lowercase() in hosts)))) {
+            throw InvalidInputException("공식 안내 페이지는 https 주소여야 합니다(http는 그 호스트를 허용 호스트에 적을 때만)")
+        }
         return collection.copy(officialUrl = url, allowedHosts = hosts)
     }
 
