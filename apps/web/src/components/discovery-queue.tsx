@@ -23,6 +23,7 @@ import {
   type QueueScene,
   type Recommendation,
   daysToDeadline,
+  eligibilityIcons,
   daysToStart,
   programCoverSrc,
   programLogoSrc,
@@ -45,6 +46,19 @@ const TOAST_MS = 5000;
 const DOUBLE_TAP_MS = 250;
 // More candidates than one queue, so `더 받기` can make the next round from the rest (contract "대기열 만들기").
 const CANDIDATES = 30;
+
+const eligibilityGlyphs: Record<(typeof eligibilityIcons)[number], IconName> = {
+  age: "person",
+  education: "graduation",
+  schoolYear: "graduation",
+  employment: "briefcase",
+  region: "map-pin",
+  major: "book",
+  nationality: "globe",
+  experience: "trend-up",
+  team: "network",
+  other: "info",
+};
 
 const highlightGlyphs: Record<Highlight["icon"], IconName> = {
   cost: "won",
@@ -118,7 +132,7 @@ function sceneText(scene: QueueScene, item: Recommendation): string[] {
     case "HIGHLIGHTS":
       return scene.items.map((line) => line.text);
     case "ELIGIBILITY":
-      return [`지원 대상: ${scene.text}`];
+      return [`지원 대상: ${scene.items?.length ? scene.items.map((line) => line.text).join(", ") : scene.text}`];
     case "BENEFIT":
       return [`혜택: ${scene.text}`];
     case "DEADLINE": {
@@ -654,20 +668,25 @@ function SceneView({
         <>
           <span className={sceneHeading}>이런 걸 해요</span>
           {scene.items.map((line) => (
-            <span key={line.text} className="flex items-center gap-2.5 text-[19px] leading-snug font-bold break-keep">
-              <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/20">
-                <Icon name={highlightGlyphs[line.icon]} size="inline" />
-              </span>
-              {line.text}
-            </span>
+            <IconLine key={line.text} icon={highlightGlyphs[line.icon]} text={line.text} />
           ))}
         </>
       );
     case "ELIGIBILITY":
+      return (
+        <>
+          <span className={sceneHeading}>지원 대상</span>
+          {scene.items?.length ? (
+            scene.items.map((line) => <IconLine key={line.text} icon={eligibilityGlyphs[line.icon]} text={line.text} />)
+          ) : (
+            <span className="text-[24px] leading-snug font-bold break-keep">{scene.text}</span>
+          )}
+        </>
+      );
     case "BENEFIT":
       return (
         <>
-          <span className={sceneHeading}>{scene.type === "ELIGIBILITY" ? "지원 대상" : "혜택"}</span>
+          <span className={sceneHeading}>혜택</span>
           <span className="text-[24px] leading-snug font-bold break-keep">{scene.text}</span>
         </>
       );
@@ -689,6 +708,18 @@ function SceneView({
         </>
       );
   }
+}
+
+/** A scene line with its glyph in a translucent circle (이런 걸 해요, 지원 대상). */
+function IconLine({ icon, text }: { icon: IconName; text: string }) {
+  return (
+    <span className="flex items-center gap-2.5 text-[19px] leading-snug font-bold break-keep">
+      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/20">
+        <Icon name={icon} size="inline" />
+      </span>
+      {text}
+    </span>
+  );
 }
 
 function RailCircle({ children }: { children: React.ReactNode }) {

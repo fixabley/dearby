@@ -4,7 +4,7 @@
  * 펼침 chevron-down, 확인 check-circle, 오류 warning, 정보 info, QR qr, 명함 card, 공유 share, 지도 map, 활동 둘러보기 explore,
  * 받은 명함 inbox, 전화 phone, 메일 mail) plus the contact kinds the card rows need (kakao, instagram, github, behance — not in the
  * mobile table yet), the tag glyphs `TagIcon` picks by `nameEn`, and the 맞춤 대기열 controls and highlight glyphs (trophy, ticket,
- * chevron-up, more, pause, play). Three sizes only: `inline` follows the text (1em), `row` is the 24px glyph before a row, `state` is the 28px
+ * chevron-up, more, pause, play; 지원 대상 person, graduation, briefcase, globe). Three sizes only: `inline` follows the text (1em), `row` is the 24px glyph before a row, `state` is the 28px
  * glyph inside a CenteredMessage circle. Colour is `currentColor`; `tone` pins it to the secondary or teal accent.
  */
 export type IconName = keyof typeof paths;
@@ -205,6 +205,20 @@ const paths = {
   trophy: <path d="M8 4h8v5a4 4 0 0 1-8 0V4Zm0 2H5a3 3 0 0 0 3 4m8-4h3a3 3 0 0 1-3 4m-4 3v4m-4 3h8m-6-3h4" />,
   ticket: <path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4V7Zm10 0v10" />,
   "chevron-up": <path d="m6 15 6-6 6 6" />,
+  person: (
+    <>
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5 20a7 7 0 0 1 14 0" />
+    </>
+  ),
+  graduation: <path d="m3 9 9-4 9 4-9 4-9-4Zm4 2v4.5c1.5 1.3 3 2 5 2s3.5-.7 5-2V11m4-2v5" />,
+  briefcase: <path d="M4 8h16v11H4V8Zm5 0V5h6v3M4 13h16" />,
+  globe: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.5 2.5 3.5 5.5 3.5 9s-1 6.5-3.5 9c-2.5-2.5-3.5-5.5-3.5-9s1-6.5 3.5-9Z" />
+    </>
+  ),
   more: <path d="M5.5 12h.01M12 12h.01M18.5 12h.01" />,
   pause: <path d="M9 6v12m6-12v12" />,
   play: <path d="M8 5.5v13l10-6.5-10-6.5Z" />,

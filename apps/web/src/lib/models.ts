@@ -206,13 +206,32 @@ export const programPageSchema = z.object({
 });
 export type ProgramSummary = z.infer<typeof programSummarySchema>;
 /** `GET /v1/discovery/recommendations` (contract "추천 API"): open activities with their program and short human reasons, best first. */
+export const eligibilityIcons = [
+  "age",
+  "education",
+  "schoolYear",
+  "employment",
+  "region",
+  "major",
+  "nationality",
+  "experience",
+  "team",
+  "other",
+] as const;
 /**
  * One 맞춤 대기열 scene the server composed (contract "맞춤 대기열(스토리형 쇼츠)"); how many and which vary per activity.
  */
 const sceneSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("HOOK"), hook: text, name: text }),
   z.object({ type: z.literal("HIGHLIGHTS"), items: z.array(highlightSchema).min(1) }),
-  z.object({ type: z.literal("ELIGIBILITY"), text }),
+  // 참여 대상 as icon + text lines; `text` is the older one-line form, kept as the fallback.
+  z
+    .object({
+      type: z.literal("ELIGIBILITY"),
+      items: z.array(z.object({ icon: z.enum(eligibilityIcons).catch("other"), text })).optional().catch(undefined),
+      text: text.optional().catch(undefined),
+    })
+    .refine((scene) => scene.items?.length || scene.text),
   z.object({ type: z.literal("BENEFIT"), text }),
   z.object({
     type: z.literal("DEADLINE"),
