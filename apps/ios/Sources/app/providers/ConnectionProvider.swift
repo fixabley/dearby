@@ -70,7 +70,7 @@ struct ConnectionProvider: Sendable {
             importItems: { items in try await account.authorized { try await client.importMyActivities(items, $0) } })
     }
     /// 추천 while signed out: the device answers go in the query. Nil when the server has no recommendation API (404).
-    func recommendations(_ preferences: AccountClient.RecommendationPreferences) async throws -> [RecommendedActivity]? {
+    func recommendations(_ preferences: AccountClient.RecommendationPreferences) async throws -> RecommendationPage? {
         try await ActivityClient.fetchRecommendations(api: origins.api, size: 10, fieldTagIDs: preferences.fieldTagIds,
                                                       categories: preferences.categories, traitTagIDs: preferences.traitTagIds, bearer: nil)
     }

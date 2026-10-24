@@ -141,7 +141,9 @@ struct ActivityListPage: View {
                     Button("설정") { recommendations.presentingFunnel = true }.font(.dearby(.subheadline)).accessibilityIdentifier("reco-settings")
                 }.padding(.horizontal, 6)
                 VStack(alignment: .leading, spacing: 0) {
-                    if recommendations.items.isEmpty {
+                    if recommendations.sectionPending {
+                        DearbyRowsSkeleton()
+                    } else if recommendations.items.isEmpty {
                         Text("지금 추천할 활동이 없어요").font(.dearby(.subheadline)).foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                     }

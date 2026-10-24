@@ -45,7 +45,7 @@ enum ActivityClient {
     /// token and the server uses the saved preferences and 지원 자격 정보; signed out, the device preferences go in the query.
     /// Nil on 404 (a server without recommendations yet): discovery hides the section. A 401 throws `RecommendationFailure.unauthorized`.
     static func fetchRecommendations(api: URL, size: Int, fieldTagIDs: [Int64], categories: [String], traitTagIDs: [Int64],
-                                     bearer: String?) async throws -> [RecommendedActivity]? {
+                                     bearer: String?) async throws -> RecommendationPage? {
         var items = [URLQueryItem(name: "size", value: String(size))]
         if bearer == nil {
             if !fieldTagIDs.isEmpty { items.append(URLQueryItem(name: "fieldTagIds", value: fieldTagIDs.map(String.init).joined(separator: ","))) }
@@ -54,9 +54,10 @@ enum ActivityClient {
         }
         let data: Data
         do { data = try await get(api, path: "v1/discovery/recommendations", items, bearer: bearer) } catch ActivityFetchError.notFound { return nil }
-        return try JSONDecoder().decode(RecommendationPayload.self, from: data).items.map {
+        let payload = try JSONDecoder().decode(RecommendationPayload.self, from: data)
+        return RecommendationPage(items: payload.items.map {
             RecommendedActivity(activity: model($0.activity), programName: $0.program?.value?.name ?? $0.activity.program?.name, reasons: $0.reasons)
-        }
+        }, total: payload.total)
     }
     enum RecommendationFailure: Error { case unauthorized }
     /// The tag vocabulary for the 추천 funnel (`GET /v1/tags`) with each tag's kind and 상위 분야. Older servers send neither; such a tag is a 성격.
@@ -69,6 +70,8 @@ enum ActivityClient {
         /// `program` (ProgramSummary) rides beside the activity; only its name is read, and a malformed one falls back to the activity's.
         struct Item: Decodable { let activity: Activity; let program: Lenient<Named>?; let reasons: [String] }
         let items: [Item]
+        /// Every matching activity; absent on servers that do not count.
+        let total: Int?
     }
     private struct TagOptionPayload: Decodable {
         struct Item: Decodable { let id: Int64; let name: String; let kind: String?; let parentId: Int64? }

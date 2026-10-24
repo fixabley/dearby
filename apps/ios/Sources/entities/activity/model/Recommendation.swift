@@ -9,6 +9,12 @@ struct RecommendedActivity: Identifiable, Sendable {
     var id: String { activity.id }
 }
 
+/// `GET /v1/discovery/recommendations`: the items and, when the server sends it, how many activities match in all.
+struct RecommendationPage: Sendable {
+    let items: [RecommendedActivity]
+    let total: Int?
+}
+
 /// A tag as the 추천 funnel lists it: 분야 (`isField`, grouped under its 상위 분야 `parentID`) or 성격.
 struct TagOption: Identifiable, Equatable, Sendable {
     let id: Int64

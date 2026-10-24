@@ -92,7 +92,7 @@ struct RecommendationFunnelPage: View {
         })) { Text(label) }
     }
     private var result: some View {
-        let count = model.items.count
+        let count = model.total
         let title = model.loading ? "맞는 활동을 찾고 있어요" : count == 0 ? "지금 지원할 수 있는 활동을 찾지 못했어요" : "지금 지원할 수 있는 활동 \(count)개를 찾았어요"
         return DearbyQuestionPage(progress: 1, title: title, message: picked.isEmpty ? nil : picked, button: "추천 보러 가기", busy: model.loading,
                                   next: { dismiss(); done() }) {

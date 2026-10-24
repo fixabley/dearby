@@ -11,8 +11,8 @@ struct ProfilePage: View {
     let state: ProfileModel
     /// 프로필 `추천` 묶음 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): `지원 자격 정보` and `관심 분야·활동 종류`.
     let eligibility: EligibilityModel
-    /// Reopens the 추천 funnel; nil while the server has no recommendations (the row is hidden).
-    var editRecommendations: (() -> Void)?
+    /// Reopens the 추천 funnel.
+    let editRecommendations: () -> Void
     @State private var eligibilityConsent = false
     @State private var eligibilityAgreed = false
     @State private var eligibilityInput = false
@@ -97,25 +97,21 @@ struct ProfilePage: View {
             Button("확인", role: .cancel) {}
         }
     }
-    /// `추천` 묶음: hidden when neither row applies (servers without the APIs).
-    @ViewBuilder private var recommendationGroup: some View {
+    /// `추천` 묶음; `지원 자격 정보` is hidden on servers without its API.
+    private var recommendationGroup: some View {
         let showsEligibility = eligibility.phase != .unavailable
-        if showsEligibility || editRecommendations != nil {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("추천").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(.secondary).padding(.horizontal, 16)
-                    .accessibilityAddTraits(.isHeader)
-                VStack(spacing: 0) {
-                    if showsEligibility {
-                        groupRow("지원 자격 정보", detail: eligibility.summary ?? "입력하면 지원할 수 있는 활동만 추천해요", action: openEligibility)
-                            .accessibilityIdentifier("profile-eligibility")
-                    }
-                    if let editRecommendations {
-                        if showsEligibility { Divider().padding(.leading, 16) }
-                        groupRow("관심 분야·활동 종류", action: editRecommendations).accessibilityIdentifier("profile-recommendation")
-                    }
+        return VStack(alignment: .leading, spacing: 6) {
+            Text("추천").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(.secondary).padding(.horizontal, 16)
+                .accessibilityAddTraits(.isHeader)
+            VStack(spacing: 0) {
+                if showsEligibility {
+                    groupRow("지원 자격 정보", detail: eligibility.summary ?? "입력하면 지원할 수 있는 활동만 추천해요", action: openEligibility)
+                        .accessibilityIdentifier("profile-eligibility")
+                    Divider().padding(.leading, 16)
                 }
-                .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
+                groupRow("관심 분야·활동 종류", action: editRecommendations).accessibilityIdentifier("profile-recommendation")
             }
+            .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
         }
     }
     private func groupRow(_ title: String, detail: String? = nil, action: @escaping () -> Void) -> some View {

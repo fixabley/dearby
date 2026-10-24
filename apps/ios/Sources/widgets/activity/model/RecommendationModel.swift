@@ -4,16 +4,20 @@ import Observation
 /// 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): the funnel's answers and the 발견 tab's 추천 section.
 /// Signed out, the answers live on the device (`preferencesKey`, a new key; no earlier app data is read) and go to the server as a query.
 /// Signed in, `signedIn(_:)` reads the account's answers; when it has none, the device answers are uploaded once.
-/// A server without the recommendation API (404) hides the funnel and the section; nothing else changes.
+/// Whether the funnel was done is also kept on the device (`completedKey`, cached from the server signed in), so signing out does not show it
+/// again. The recommendation API only decides the 추천 section: a 404 hides it, nothing else.
 @MainActor @Observable final class RecommendationModel {
     typealias Preferences = AccountClient.RecommendationPreferences
     /// The answers in use; nil until they are read, or when there are none yet.
     private(set) var preferences: Preferences?
     /// The answers have been read (device or server), so the funnel may decide whether to show.
     private(set) var ready = false
-    /// The server answered the recommendation API; false hides everything here.
+    /// The server answered the recommendation API (`probed`); false after a 404 hides the 추천 section.
     private(set) var available = false
+    private(set) var probed = false
     private(set) var items: [RecommendedActivity] = []
+    /// The server's count of matching activities when it sends `total`; else the items received.
+    private(set) var total = 0
     private(set) var tags: [TagOption] = []
     /// The funnel is on screen: first entry (the app sets it once `needsFunnel` holds on the 발견 tab), or reopened from 프로필
     /// `관심 분야·활동 종류`, the section's `설정` or `나에게 맞는 활동 찾기`. Latched, so finishing does not close it before its last step.
@@ -23,16 +27,21 @@ import Observation
     /// The account has 지원 자격 정보 (set by the app from the profile side); the funnel's last step says so when it does not.
     var hasEligibility = false
     /// First entry: the funnel shows until it is finished or put off (`나중에` counts as finished).
-    var needsFunnel: Bool { ready && available && preferences?.completedAt == nil }
-    /// The 추천 section: finished with something picked. Finished with nothing picked shows `나에게 맞는 활동 찾기` instead.
-    var showsSection: Bool { available && preferences.map { $0.completedAt != nil && !$0.isEmpty } == true }
-    var showsFinder: Bool { available && preferences.map { $0.completedAt != nil && $0.isEmpty } == true }
+    var needsFunnel: Bool { ready && !completed }
+    /// Finished on this device or by this account.
+    private var completed: Bool { preferences?.completedAt != nil || defaults.bool(forKey: Self.completedKey) }
+    /// The 추천 section: finished with something picked, and the API there (skeleton until it answers). Finished with nothing picked shows
+    /// `나에게 맞는 활동 찾기` instead.
+    var showsSection: Bool { completed && preferences?.isEmpty != true && (available || !probed) }
+    var sectionPending: Bool { completed && preferences?.isEmpty != true && !probed }
+    var showsFinder: Bool { completed && preferences?.isEmpty == true }
     static let preferencesKey = "dearby.recommendation.preferences"
+    static let completedKey = "dearby.recommendation.completed"
     private var server: RecommendationServer?
-    private let fetchAnonymous: @Sendable (Preferences) async throws -> [RecommendedActivity]?
+    private let fetchAnonymous: @Sendable (Preferences) async throws -> RecommendationPage?
     private let fetchTags: @Sendable () async throws -> [TagOption]
     private let defaults: UserDefaults
-    init(recommendations: @escaping @Sendable (Preferences) async throws -> [RecommendedActivity]?,
+    init(recommendations: @escaping @Sendable (Preferences) async throws -> RecommendationPage?,
          tags: @escaping @Sendable () async throws -> [TagOption], defaults: UserDefaults = .standard) {
         fetchAnonymous = recommendations
         fetchTags = tags
@@ -42,6 +51,7 @@ import Observation
     /// Signed out (also at launch without an account): the device answers.
     func signedOut() async {
         server = nil
+        probed = false
         preferences = deviceValue
         ready = true
         await refresh()
@@ -49,6 +59,7 @@ import Observation
     func signedIn(_ server: RecommendationServer) async {
         self.server = server
         ready = false
+        probed = false
         preferences = nil
         var remote: Preferences?
         do { remote = try await server.load() } catch {
@@ -61,6 +72,7 @@ import Observation
         }
         guard self.server != nil else { return }
         preferences = remote
+        if remote?.completedAt != nil { defaults.set(true, forKey: Self.completedKey) }
         ready = true
         await refresh()
     }
@@ -70,7 +82,9 @@ import Observation
         do {
             let loaded = if let server { try await server.recommendations() } else { try await fetchAnonymous(preferences) }
             available = loaded != nil
-            items = loaded ?? []
+            items = loaded?.items ?? []
+            total = loaded?.total ?? items.count
+            probed = true
         } catch {}
     }
     func loadTags() async {
@@ -83,6 +97,7 @@ import Observation
         var answers = answers
         answers.completedAt = ISO8601DateFormatter().string(from: Date())
         preferences = answers
+        defaults.set(true, forKey: Self.completedKey)
         if server == nil, let data = try? JSONEncoder().encode(answers) { defaults.set(data, forKey: Self.preferencesKey) }
         loading = true
         Task {
@@ -101,5 +116,5 @@ struct RecommendationServer: Sendable {
     let load: @Sendable () async throws -> AccountClient.RecommendationPreferences?
     let save: @Sendable (AccountClient.RecommendationPreferences) async throws -> AccountClient.RecommendationPreferences
     /// Nil when the server has no recommendation API (404).
-    let recommendations: @Sendable () async throws -> [RecommendedActivity]?
+    let recommendations: @Sendable () async throws -> RecommendationPage?
 }
