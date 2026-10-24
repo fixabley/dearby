@@ -21,6 +21,8 @@ struct QueueStoryCard: View {
     let complete: () -> Void
     let skipEarly: () -> Void
     @State private var scene = 0
+    /// Scene ③ ran its 4 seconds: the card stays there with every segment full until the user moves on (no auto-advance to the next card).
+    @State private var finished = false
     @State private var zoomed = false
     @State private var bursts = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -66,15 +68,22 @@ struct QueueStoryCard: View {
         }
         .onChange(of: current) { _, onScreen in if !onScreen, scene == 0 { skipEarly() } }
     }
-    /// Every 4 seconds the next scene; after the third, `complete` once and the card stays.
+    /// Every 4 seconds the next scene; after the third, `complete` once and the card stays on it.
     private func advance() async {
-        guard current, playing, !voiceOver else { return }
+        guard current, playing, !voiceOver, !finished else { return }
         try? await Task.sleep(for: .seconds(4))
         guard !Task.isCancelled else { return }
-        if scene < 2 { scene += 1 } else { complete() }
+        if scene < 2 {
+            scene += 1
+        } else {
+            finished = true
+            complete()
+        }
     }
     private func step(_ delta: Int) {
         scene = min(max(scene + delta, 0), 2)
+        // Going back to an earlier scene plays from there again (COMPLETE is still sent once per card).
+        if scene < 2 { finished = false }
     }
     private func burstLike() {
         doubleTapLike()
@@ -133,7 +142,7 @@ struct QueueStoryCard: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 4) {
                 ForEach(0..<3, id: \.self) { index in
-                    ProgressSegment(state: index < scene ? .done : index > scene ? .waiting : .playing(current && playing && !voiceOver && !reduceMotion))
+                    ProgressSegment(state: index < scene || finished ? .done : index > scene ? .waiting : .playing(current && playing && !voiceOver && !reduceMotion))
                         .id("\(index)-\(scene)-\(current && playing)")
                 }
             }
