@@ -1,14 +1,12 @@
 package com.dearby.nativeapp.pages.recommendation
 
-import com.dearby.nativeapp.widgets.recommendation.recommendationRows.RecommendationItemState
-
 /**
  * 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천", 2026-10-24). [available] is false until the recommendation API answered (404 before the server
- * ships it): then the 추천 묶음 and the profile rows hide; the funnel does not depend on it. [completed] is the funnel's completion (also `나중에`·끝까지 건너뛰기); [personalized] means something was picked.
+ * ships it): then the profile rows hide; the funnel does not depend on it. [completed] is the funnel's completion (also `나중에`·끝까지 건너뛰기).
  * [eligibilitySummary] is the 지원 자격 정보 row's supporting text (`재학 중 · 3학년 · 2003년생`), null when nothing is entered.
  */
 data class RecommendationViewState(
-    val available: Boolean = false, val localLoaded: Boolean = false, val completed: Boolean = false, val personalized: Boolean = false, val items: List<RecommendationItemState> = emptyList(),
+    val available: Boolean = false, val localLoaded: Boolean = false, val completed: Boolean = false,
     val eligibilitySummary: String? = null, val eligibilityConsented: Boolean = false, val eligibilityError: String? = null, val notice: String? = null,
 ) {
     /** The first visit to 발견 shows the funnel: decided by the device's completion flag alone, never by the recommendation API. */
@@ -23,7 +21,7 @@ data class ChipGroup(val title: String, val options: List<ChipOption>)
 data class RecommendationFunnelState(
     val step: FunnelStep, val first: Boolean, val fields: Set<String>, val categories: Set<String>, val traits: Set<String>,
     val fieldGroups: List<ChipGroup> = emptyList(), val traitOptions: List<ChipOption> = emptyList(), val tagsLoading: Boolean = true, val tagsFailed: Boolean = false,
-    val saving: Boolean = false, val found: Int? = null, val preview: List<RecommendationItemState> = emptyList(), val eligibilityMissing: Boolean = true,
+    val saving: Boolean = false, val found: Int? = null, val eligibilityMissing: Boolean = true,
 ) {
     /** Progress over the three questions and the result; the intro is 0. */
     val progress get() = step.ordinal / (FunnelStep.entries.size - 1f)

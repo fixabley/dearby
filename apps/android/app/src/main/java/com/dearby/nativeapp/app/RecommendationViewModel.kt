@@ -7,7 +7,6 @@ import com.dearby.nativeapp.entities.account.api.AccountError
 import com.dearby.nativeapp.entities.account.api.AccountException
 import com.dearby.nativeapp.entities.account.model.DictionaryTag
 import com.dearby.nativeapp.entities.account.model.EligibilityProfile
-import com.dearby.nativeapp.entities.account.model.Recommendation
 import com.dearby.nativeapp.entities.account.model.RecommendationPage
 import com.dearby.nativeapp.entities.account.model.RecommendationPreferences
 import com.dearby.nativeapp.entities.account.model.toRecommendationPreferences
@@ -20,7 +19,6 @@ import com.dearby.nativeapp.pages.recommendation.FunnelStep
 import com.dearby.nativeapp.pages.recommendation.RecommendationFunnelState
 import com.dearby.nativeapp.pages.recommendation.RecommendationViewState
 import com.dearby.nativeapp.shared.config.ConsentVersions
-import com.dearby.nativeapp.widgets.recommendation.recommendationRows.RecommendationItemState
 import java.time.Instant
 import java.time.LocalDate
 import kotlin.coroutines.cancellation.CancellationException
@@ -41,7 +39,7 @@ import org.json.JSONObject
  * Settings live on the server when signed in (`/v1/me/recommendation-preferences`) and in the app's settings store ([store], new keys)
  * when signed out; on sign-in a device copy is uploaded once if the server has none. 지원 자격 정보 needs a session and its own consent.
  * Whether the funnel shows is decided by the device's completion flag alone (a server `completedAt` is copied into it, so signing out does not bring
- * the funnel back); the recommendation read only shows or hides the 추천 묶음 ([RecommendationViewState.available] false on any failure, 404 included).
+ * the funnel back); the recommendation read only shows or hides the profile 추천 rows and the signed-out queue entry ([RecommendationViewState.available] false on any failure, 404 included).
  * The eligibility values are never logged.
  */
 class RecommendationViewModel(private val account: AccountViewModel, private val store: RecommendationStore) : ViewModel() {
@@ -86,7 +84,7 @@ class RecommendationViewModel(private val account: AccountViewModel, private val
                 show(recommendations())
             } catch (e: CancellationException) { throw e } catch (e: Exception) {
                 Log.w("Dearby", "Recommendations from ${ApiOrigin.current} unavailable: ${e.javaClass.simpleName} ${(e as? AccountException)?.error}")
-                mutable.update { it.copy(available = false, items = emptyList()) }
+                mutable.update { it.copy(available = false) }
             }
         }
     }
@@ -95,7 +93,7 @@ class RecommendationViewModel(private val account: AccountViewModel, private val
     private fun show(page: RecommendationPage) {
         val profile = eligibility
         mutable.update {
-            it.copy(available = true, personalized = !preferences.empty, items = page.items.map(::item),
+            it.copy(available = true,
                 eligibilitySummary = profile?.summary(), eligibilityConsented = profile?.consentVersion == ConsentVersions.ELIGIBILITY)
         }
     }
@@ -179,7 +177,7 @@ class RecommendationViewModel(private val account: AccountViewModel, private val
             persist(chosen)
             val items = try { recommendations() } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
             items?.let(::show)
-            funnelState.update { it?.copy(step = FunnelStep.RESULT, saving = false, found = items?.total, preview = items?.items.orEmpty().take(3).map(::item), eligibilityMissing = eligibility?.summary() == null) }
+            funnelState.update { it?.copy(step = FunnelStep.RESULT, saving = false, found = items?.total, eligibilityMissing = eligibility?.summary() == null) }
         }
     }
     private fun save(chosen: RecommendationPreferences) {
@@ -195,7 +193,6 @@ class RecommendationViewModel(private val account: AccountViewModel, private val
     /** Signed in → the server (a failure says so; the funnel is not asked again this session); signed out → the device copy. */
     private suspend fun persist(chosen: RecommendationPreferences) {
         preferences = chosen
-        mutable.update { it.copy(personalized = !chosen.empty) }
         markCompleted()
         if (!signedIn) return withContext(Dispatchers.IO) { store.savePreferences(chosen.toJson().toString()) }
         try { account.authorized { client.saveRecommendationPreferences(chosen, it) } }
@@ -264,8 +261,6 @@ interface RecommendationStore {
 }
 
 private fun chip(tag: DictionaryTag) = ChipOption(tag.id.toString(), tag.name)
-private fun item(recommendation: Recommendation) = RecommendationItemState(recommendation.activityId, recommendation.name,
-    "${recommendation.program} · ${recommendation.organization}", recommendation.reasons, recommendation.logoUrl)
 /** `재학 중 · 3학년 · 2003년생`; null when nothing was entered. */
 private fun EligibilityProfile.summary(): String? {
     val choice = EducationChoice.entries.firstOrNull { it.educationStatus != null && it.educationStatus == educationStatus } ?: EducationChoice.EMPLOYED.takeIf { employment == "employed" }

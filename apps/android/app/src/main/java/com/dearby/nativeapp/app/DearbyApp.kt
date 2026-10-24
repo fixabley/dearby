@@ -14,7 +14,7 @@ import com.dearby.nativeapp.widgets.activity.applyPrompt.ApplyConfirmationSheet
 import com.dearby.nativeapp.entities.account.model.PublishedCard
 import com.dearby.nativeapp.pages.recommendation.FunnelStep
 import com.dearby.nativeapp.pages.recommendation.RecommendationFunnelPage
-import com.dearby.nativeapp.widgets.recommendation.recommendationRows.RecommendationSection
+import com.dearby.nativeapp.widgets.recommendation.recommendationRows.QueueEntryRow
 
 /** Four tabs (contract "명함 탭 통합", 2026-10-20): 내 명함 and 받은 명함 are the two segments of 명함. */
 private enum class Tab(val label: String, val icon: ImageVector) {
@@ -31,7 +31,7 @@ private sealed interface Route {
     data object Composer : Route
     /** 설정 (contract "설정"), opened from every tab's header. */
     data object Settings : Route
-    /** 오늘의 맞춤 대기열 (contract "맞춤 대기열(스토리형 쇼츠)"), from the 추천 묶음. */
+    /** 오늘의 맞춤 대기열 (contract "맞춤 대기열(스토리형 쇼츠)"), from the `오늘의 맞춤 대기열` row atop 발견. */
     data object Queue : Route
 }
 
@@ -89,9 +89,12 @@ private sealed interface Route {
     LaunchedEffect(tab, route, reco.needsFunnel) { if (screenshot == null && tab == Tab.Discovery && route == null && reco.needsFunnel) recommendation.openFunnel(first = true) }
     // 오늘의 맞춤 대기열: its 자세히 opens the activity on 발견 and, once that detail closes, the queue comes back where it was.
     LaunchedEffect(activityDetail) { if (!activityDetail && queueReturn) { queueReturn = false; route = Route.Queue } }
-    val openQueue = if (queueAvailable) ({ queue.open(); route = Route.Queue }) else null
-    val recoHeader: (@Composable () -> Unit)? = if (!reco.available || !reco.completed) null else {
-        { RecommendationSection(reco.items, reco.personalized, activityModel::openLinked, settings = { recommendation.openFunnel(first = false) }, queue = openQueue) }
+    // 2026-10-25 user decision "추천은 없애고 맞춤대기열 진입만 남겨줘": one `오늘의 맞춤 대기열` row tops 발견; a never-finished funnel comes first and its
+    // result button (`맞춤 대기열 보러 가기`) opens the queue. Signed out the queue is the 추천 API's answer, so it needs that API too.
+    val showQueue = queueAvailable && (auth.phase == AccountPhase.SIGNED_IN || reco.available)
+    val openQueue = { queue.open(); route = Route.Queue }
+    val recoHeader: (@Composable () -> Unit)? = if (!showQueue) null else {
+        { QueueEntryRow { if (reco.completed) openQueue() else recommendation.openFunnel(first = true) } }
     }
     LaunchedEffect(auth.phase, walletState.needSignIn) { if (auth.phase == AccountPhase.SIGNED_IN && walletState.needSignIn) wallet.retryPending() }
     // Every screen sits on the theme `background`, which this Surface spreads under the status bar, navigation bar and keyboard too (contract "안전 영역
@@ -105,8 +108,8 @@ private sealed interface Route {
                 val funnel = recoFunnel
                 if (funnel != null) {
                     BackHandler(onBack = recommendation::back)
-                    // 추천 보러 가기 lands on 발견, where the 추천 묶음 is.
-                    RecommendationFunnelPage(funnel, recommendation::toggle, { if (funnel.step == FunnelStep.RESULT) { tab = Tab.Discovery; route = null }; recommendation.next() },
+                    // 맞춤 대기열 보러 가기 lands on 발견 and opens the queue.
+                    RecommendationFunnelPage(funnel, recommendation::toggle, { if (funnel.step == FunnelStep.RESULT) { tab = Tab.Discovery; route = null; if (showQueue) openQueue() }; recommendation.next() },
                         recommendation::skip, recommendation::back, recommendation::retryTags)
                 } else when (val screen = route) {
                     is Route.Detail -> walletState.cards.firstOrNull { it.id == screen.id }?.let { WalletCardRoute(it, wallet, myCards) { route = null } }
