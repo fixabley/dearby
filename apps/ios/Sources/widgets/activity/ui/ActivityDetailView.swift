@@ -56,11 +56,9 @@ struct ActivityDetailView: View {
                 DearbyBadge(title: activity.statusLabel(at: state.loadedAt))
                 if let category = activity.category { DearbyBadge(title: category.label, quiet: true) }
             }
-            if !activity.tags.isEmpty {
-                // 얻을 수 있는 것 (contract "태그"): every tag, wrapping.
-                ChipFlow(spacing: 6) { ForEach(activity.tags) { tag in DearbyBadge(title: tag.name, quiet: true) } }
-                    .accessibilityElement(children: .ignore).accessibilityLabel("태그 " + activity.tags.map(\.name).joined(separator: ", "))
-            }
+            // 분야·얻을 수 있는 것 (contract "분야·성격 태그와 아이콘" 2026-10-24): every tag as icon and text, empty groups omitted.
+            tagGroup("분야", activity.fieldTags)
+            tagGroup("얻을 수 있는 것", activity.traitTags)
             Text(activity.title).font(.title.bold())
             Text(activity.organization).font(.headline).foregroundStyle(.secondary)
             Divider()
@@ -69,6 +67,15 @@ struct ActivityDetailView: View {
             Divider()
             Text("소개").font(.title2.bold()).foregroundStyle(DearbyStyle.teal)
             Text(activity.summary).lineSpacing(5)
+        }
+    }
+    @ViewBuilder private func tagGroup(_ title: String, _ tags: [Tag]) -> some View {
+        if !tags.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title).font(.dearby(.caption).weight(.semibold)).foregroundStyle(.secondary).accessibilityAddTraits(.isHeader)
+                ChipFlow(spacing: 6) { ForEach(tags) { tag in DearbyTagChip(title: tag.name, nameEn: tag.nameEn) } }
+                    .accessibilityElement(children: .ignore).accessibilityLabel(tags.map(\.name).joined(separator: ", "))
+            }
         }
     }
     /// Who may apply (contract "대상자 조건"): one chip per condition, `any` groups joined with 또는.

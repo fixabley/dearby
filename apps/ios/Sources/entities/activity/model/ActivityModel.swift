@@ -36,8 +36,10 @@ struct ActivityModel: Equatable, Identifiable, Sendable {
     /// at Seoul midnight when the window is date-only. When no usable deadline exists (no window, or a window without an
     /// end) the activity start (instant, or start date at Seoul midnight) stands in; nil when neither exists.
     var recruitmentDeadline: Date? = nil
-    /// What a participant gains (contract "태그"); empty when none or on older responses.
-    var tags: [Tag] = []
+    /// Every 분야 tag in the server's relevance order (contract "분야·성격 태그와 아이콘": `fieldTagsAll`); empty when none or on older responses.
+    var fieldTags: [Tag] = []
+    /// What a participant gains (성격 tags, vocabulary order); older responses' `tags` stand in.
+    var traitTags: [Tag] = []
     /// Free-text place (collected, or the curated place's name; contract "활동 장소"); nil when unknown.
     var location: String? = nil
     /// The curated place with coordinates (contract "활동 장소"); nil when none.
@@ -312,8 +314,10 @@ struct ProgramSummary: Equatable, Identifiable, Sendable {
     var upcomingActivityCount: Int = 0
     /// Raw ISO 8601 of the earliest recruitment start among the upcoming ones (activity start without a window); nil when none.
     var nearestRecruitmentStartAt: String? = nil
-    /// Program tags, or the union of its open activities' tags (contract "태그": at most 6, vocabulary order).
-    var tags: [Tag] = []
+    /// The program's most relevant 분야 tags, at most two (contract "분야·성격 태그와 아이콘"); empty on older responses.
+    var fieldTags: [Tag] = []
+    /// The program's 성격 tags (vocabulary order); older responses' `tags` stand in.
+    var traitTags: [Tag] = []
     /// The program logo (contract "프로그램 로고" 2026-10-19 밤), already resolved against the API origin; nil without a logo.
     var logoURL: URL? = nil
     var nearestRecruitmentEnd: Date? { ActivityModel.instant(nearestRecruitmentEndAt) }
