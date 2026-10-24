@@ -93,6 +93,10 @@ struct DiscoveryQueuePage: View {
         } else if model.failed && model.items.isEmpty {
             CenteredMessage(symbol: "exclamationmark.triangle", danger: true, title: "대기열을 불러오지 못했어요", message: "연결을 확인한 뒤 다시 시도해 주세요.",
                             primary: MessageAction("다시 시도", identifier: "queue-retry") { Task { await model.load(preferences) } })
+        } else if model.items.isEmpty {
+            // Nothing today, also when the server has no queue yet (404): the entry stays, this says so (as Android and web).
+            CenteredMessage(symbol: "sparkles", title: "아직 대기열이 없어요", message: "추천 설정을 마치면 맞춤 대기열을 볼 수 있어요.",
+                            primary: MessageAction("닫기", identifier: "queue-close") { dismiss() })
         } else {
             CenteredMessage(symbol: "checkmark.circle", title: "오늘 대기열을 다 봤어요", message: "남은 후보로 대기열을 다시 만들 수 있어요.",
                             primary: MessageAction("더 받기", identifier: "queue-refill") {
@@ -128,19 +132,24 @@ struct DiscoveryQueuePage: View {
     }
 }
 
-/// Presents `DiscoveryQueuePage` from the top of the 발견 tab.
+/// Presents `DiscoveryQueuePage` from the top of the 발견 tab; `설정` reopens the 추천 funnel.
 struct DiscoveryQueueEntry: View {
     let action: () -> Void
+    let settings: () -> Void
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 12) {
-                Image(systemName: "rectangle.stack.fill").font(.dearby(.body)).foregroundStyle(DearbyStyle.teal)
-                Text("오늘의 맞춤 대기열").font(.dearby(.body).weight(.semibold)).foregroundStyle(.primary)
-                Spacer(minLength: 12)
-                Image(systemName: "chevron.right").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(.tertiary)
+        HStack(spacing: 4) {
+            Button(action: action) {
+                HStack(spacing: 12) {
+                    Image(systemName: "rectangle.stack.fill").font(.dearby(.body)).foregroundStyle(DearbyStyle.teal)
+                    Text("오늘의 맞춤 대기열").font(.dearby(.body).weight(.semibold)).foregroundStyle(.primary)
+                    Spacer(minLength: 12)
+                    Image(systemName: "chevron.right").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(.tertiary)
+                }
+                .frame(minHeight: 44).contentShape(Rectangle())
             }
-            .frame(minHeight: 44).contentShape(Rectangle())
+            .buttonStyle(.plain).accessibilityIdentifier("reco-queue")
+            Button("설정", action: settings).font(.dearby(.subheadline)).frame(minWidth: 44, minHeight: 44)
+                .accessibilityLabel("추천 설정").accessibilityIdentifier("reco-settings")
         }
-        .buttonStyle(.plain).accessibilityIdentifier("reco-queue")
     }
 }

@@ -47,9 +47,6 @@ import Observation
     /// The last load failed (connection); the screen offers to try again.
     private(set) var failed = false
     private(set) var pending: Pending?
-    /// Signed in: the server answered the queue API (`probed`); false after a 404. Signed out the 추천 results decide (`showsEntry`).
-    private(set) var available = false
-    private var probed = false
     static let localKey = "dearby.discoveryQueue.local"
     private var server: DiscoveryQueueServer?
     private let candidates: @Sendable (AccountClient.RecommendationPreferences) async throws -> RecommendationPage?
@@ -66,9 +63,6 @@ import Observation
         local = defaults.data(forKey: Self.localKey).flatMap { try? JSONDecoder().decode(LocalSignals.self, from: $0) } ?? LocalSignals()
     }
 
-    /// The discovery entry: signed in when the server has the queue, signed out when it has the 추천 API (`recommendationsAvailable`).
-    /// A failed probe (connection) still shows it; opening it then offers to try again.
-    func showsEntry(recommendationsAvailable: Bool) -> Bool { server != nil ? available || !probed : recommendationsAvailable }
     func signedIn(_ server: DiscoveryQueueServer) async {
         self.server = server
         reset()
@@ -91,8 +85,6 @@ import Observation
             if let server {
                 let loaded = try await server.load()
                 guard self.server != nil else { return }
-                available = loaded != nil
-                probed = true
                 items = loaded ?? []
             } else {
                 let page = try await candidates(preferences ?? .init())
@@ -180,8 +172,6 @@ import Observation
         return Array((kept.filter { !lessened($0) } + kept.filter(lessened)).prefix(10))
     }
     private func reset() {
-        available = false
-        probed = false
         items = []
         pending = nil
         failed = false

@@ -100,13 +100,7 @@ struct RecommendationFunnelPage: View {
                                       dismiss()
                                       done()
                                   }) {
-            Section {
-                if model.loading {
-                    DearbyRowsSkeleton()
-                } else {
-                    ForEach(model.items.prefix(3)) { item in RecommendationRow(item: item) }
-                }
-            } footer: {
+            Section {} footer: {
                 if !model.hasEligibility { Text("지원 자격까지 맞추려면 프로필 › 지원 자격 정보를 입력해요").font(.dearby(.subheadline)) }
             }
         }
@@ -117,21 +111,5 @@ struct RecommendationFunnelPage: View {
         let names = Dictionary(model.tags.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
         let categories = Self.categories.filter { answers.categories.contains($0.code.rawValue) }.map(\.label)
         return (answers.fieldTagIds.compactMap { names[$0] } + categories + answers.traitTagIds.compactMap { names[$0] }).joined(separator: " · ")
-    }
-}
-
-/// One 추천 item: activity name, program, and the server's reason chips.
-struct RecommendationRow: View {
-    let item: RecommendedActivity
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(item.activity.title).font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(.primary).multilineTextAlignment(.leading)
-            if let program = item.programName { Text(program).font(.dearby(.footnote)).foregroundStyle(.secondary) }
-            if !item.reasons.isEmpty {
-                ChipFlow(spacing: 6) { ForEach(item.reasons, id: \.self) { DearbyBadge(title: $0, quiet: true) } }
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
     }
 }

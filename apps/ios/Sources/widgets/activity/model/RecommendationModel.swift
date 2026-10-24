@@ -5,17 +5,13 @@ import Observation
 /// Signed out, the answers live on the device (`preferencesKey`, a new key; no earlier app data is read) and go to the server as a query.
 /// Signed in, `signedIn(_:)` reads the account's answers; when it has none, the device answers are uploaded once.
 /// Whether the funnel was done is also kept on the device (`completedKey`, cached from the server signed in), so signing out does not show it
-/// again. Signed out, the recommendation API decides the 맞춤 대기열 entry: a 404 hides it, nothing else.
+/// again. The recommendation API only gives the funnel result's count; a 404 reads as none.
 @MainActor @Observable final class RecommendationModel {
     typealias Preferences = AccountClient.RecommendationPreferences
     /// The answers in use; nil until they are read, or when there are none yet.
     private(set) var preferences: Preferences?
     /// The answers have been read (device or server), so the funnel may decide whether to show.
     private(set) var ready = false
-    /// The server answered the recommendation API (`probed`); false after a 404.
-    private(set) var available = false
-    private(set) var probed = false
-    private(set) var items: [RecommendedActivity] = []
     /// The server's count of matching activities when it sends `total`; else the items received.
     private(set) var total = 0
     private(set) var tags: [TagOption] = []
@@ -48,7 +44,6 @@ import Observation
     /// Signed out (also at launch without an account): the device answers.
     func signedOut() async {
         server = nil
-        probed = false
         preferences = deviceValue
         ready = true
         await refresh()
@@ -56,7 +51,6 @@ import Observation
     func signedIn(_ server: RecommendationServer) async {
         self.server = server
         ready = false
-        probed = false
         preferences = nil
         var remote: Preferences?
         do { remote = try await server.load() } catch {
@@ -73,15 +67,12 @@ import Observation
         ready = true
         await refresh()
     }
-    /// Loads the recommendations for the answers in use. A failure other than 404 keeps what is shown.
+    /// Counts the recommendations for the answers in use (the funnel result's `n개`); a failure keeps the last count.
     func refresh() async {
         let preferences = preferences ?? Preferences()
         do {
             let loaded = if let server { try await server.recommendations() } else { try await fetchAnonymous(preferences) }
-            available = loaded != nil
-            items = loaded?.items ?? []
-            total = loaded?.total ?? items.count
-            probed = true
+            total = loaded?.total ?? loaded?.items.count ?? 0
         } catch {}
     }
     func loadTags() async {

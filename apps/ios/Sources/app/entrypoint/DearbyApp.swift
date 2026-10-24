@@ -53,9 +53,8 @@ import SwiftUI
                     IntroPage(account: account, done: finishIntro)
                 } else {
                     HomePage(selectedTab: $tab, hidesTabs: tab == 3 && profile.profile?.version == 0,
-                        discovery: { ActivityListPage(state: activityModel, recommendations: recommendations,
-                                                      showsQueueEntry: queue.showsEntry(recommendationsAvailable: recommendations.available || !recommendations.probed),
-                                                      openQueue: openQueue, path: $0) }, mine: { MyActivitiesPage(state: activityModel, path: $0, explore: { tab = 0 }) },
+                        discovery: { ActivityListPage(state: activityModel, openQueue: openQueue,
+                                                      editRecommendations: { recommendations.presentingFunnel = true }, path: $0) }, mine: { MyActivitiesPage(state: activityModel, path: $0, explore: { tab = 0 }) },
                         cards: CardsPage(segment: $cardsSegment, cards: cards, wallet: wallet), profile: ProfilePage(state: profile, eligibility: eligibility,
                                                                                          editRecommendations: { recommendations.presentingFunnel = true }),
                         settings: { SettingsPage(account: account, webOrigin: links.origins.web) })

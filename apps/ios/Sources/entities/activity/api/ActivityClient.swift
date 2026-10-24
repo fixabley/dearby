@@ -44,7 +44,7 @@ enum ActivityClient {
     }
     /// 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): `GET /v1/discovery/recommendations`. Signed in, `bearer` is the access
     /// token and the server uses the saved preferences and 지원 자격 정보; signed out, the device preferences go in the query.
-    /// Nil on 404 (a server without recommendations yet): discovery hides the 맞춤 대기열 entry (signed out). A 401 throws `RecommendationFailure.unauthorized`.
+    /// Nil on 404 (a server without recommendations yet): the caller reads it as none. A 401 throws `RecommendationFailure.unauthorized`.
     static func fetchRecommendations(api: URL, size: Int, fieldTagIDs: [Int64], categories: [String], traitTagIDs: [Int64],
                                      bearer: String?) async throws -> RecommendationPage? {
         var items = [URLQueryItem(name: "size", value: String(size))]

@@ -123,7 +123,6 @@
     "RecommendationModel",
     "RecommendationServer",
     "RecommendationFunnelPage",
-    "RecommendationRow",
     "DiscoveryQueueModel",
     "DiscoveryQueueServer",
     "DiscoveryQueuePage",

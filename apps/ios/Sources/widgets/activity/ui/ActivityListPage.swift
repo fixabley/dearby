@@ -6,12 +6,11 @@ import SwiftUI
 /// (아래로 스크롤하면 시스템이 접고 위로 당기면 다시 보인다). `마감 숨기기`는 목록의 첫 행이고, 풀투 리프레시·맨 위로 버튼은 그대로다.
 struct ActivityListPage: View {
     let state: ActivityViewModel
-    /// 추천 answers' results (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): pull to refresh retries a failed first probe.
-    let recommendations: RecommendationModel
-    /// `오늘의 맞춤 대기열` (user 2026-10-25 "추천은 없애고 맞춤대기열 진입만 남겨줘"): the one row above `마감 숨기기`, hidden while
-    /// searching; the app opens the queue (the funnel first when it was never finished).
-    let showsQueueEntry: Bool
+    /// `오늘의 맞춤 대기열` (user 2026-10-25 "추천은 없애고 맞춤대기열 진입만 남겨줘"): the one row above `마감 숨기기`, hidden only while
+    /// searching (the queue screen shows its own empty and retry states); the app opens the queue (the funnel first when it was never
+    /// finished). Its `설정` reopens the funnel.
     let openQueue: () -> Void
+    let editRecommendations: () -> Void
     @Binding var path: NavigationPath
     /// More than one screen down: show `맨 위로`.
     @State private var farDown = false
@@ -32,7 +31,7 @@ struct ActivityListPage: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 10) {
                 if state.phase != .loading {
-                    if (state.query ?? "").isEmpty, showsQueueEntry { queueEntry }
+                    if (state.query ?? "").isEmpty { queueEntry }
                     openOnlyRow
                 }
                 switch state.phase {
@@ -94,12 +93,7 @@ struct ActivityListPage: View {
                     .transition(.opacity)
             }
         }
-        .refreshable {
-            // A failed first 추천 probe (bad connection) gets another try here.
-            async let recommended: Void = recommendations.refresh()
-            await state.refresh()
-            await recommended
-        }
+        .refreshable { await state.refresh() }
         .scrollDismissesKeyboard(.interactively)
         .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > $0.containerSize.height } action: { _, far in
             withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { farDown = far }
@@ -133,7 +127,7 @@ struct ActivityListPage: View {
         .toolbar { TabRootToolbar() }
     }
     private var queueEntry: some View {
-        DiscoveryQueueEntry(action: openQueue).padding(.horizontal, 16)
+        DiscoveryQueueEntry(action: openQueue, settings: editRecommendations).padding(.leading, 16).padding(.trailing, 6)
             .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
     }
     /// `마감 숨기기` as the first list row: the whole row toggles (one control; the switch is the row's indicator), label beside the switch.
