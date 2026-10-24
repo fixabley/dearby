@@ -2,6 +2,7 @@ package io.wid.dearby.batch
 
 import io.wid.dearby.application.geocode.GeocodeResult
 import io.wid.dearby.application.geocode.Geocoder
+import io.wid.dearby.application.discovery.TextEmbedder
 import io.wid.dearby.batch.adaptor.claude.ClaudeCli
 import io.wid.dearby.batch.adaptor.claude.CollectionProperties
 import io.wid.dearby.batch.adaptor.claude.CollectionPrompts
@@ -57,6 +58,7 @@ class CollectionJobTest(
     @Autowired val recall: RecallService,
     @Autowired val json: JsonMapper,
     @Autowired val curationImport: CurationImportService,
+    @Autowired val buildDiscoveryQueuesJob: Job,
 ) {
 
     @TestConfiguration
@@ -78,6 +80,8 @@ class CollectionJobTest(
             var script: ((String, McpClient) -> Map<String, Any?>)? = null // 테스트가 바꿔 끼우는 CLI 대본. 없으면 defaultScript
             var pageExtra = "" // 장소 테스트에서 받은 페이지 본문 뒤에 붙인다
             var addressResults: List<GeocodeResult> = emptyList() // 가짜 지오코더(네트워크 없음)의 주소 검색 결과
+            var embeddingModel = "fake-model" // 가짜 임베딩 모델 id(모델 바꾸기 테스트에서 바꾼다)
+            val embeddedTexts = mutableListOf<String>()
 
             // claude -p --output-format json 결과 모양
             fun cliResult(subtype: String = "success", turns: Int = 3) = mapOf(
@@ -128,6 +132,21 @@ class CollectionJobTest(
             ),
         )
 
+
+        // 모델 대신 낱말 해시로 만드는 결정적 벡터(native-v1.md "활동 벡터"). 받은 글을 남겨 임베딩 글 규칙과 바뀐 것만 다시 하는지를 본다
+        @Bean
+        @Primary
+        fun fakeEmbedder() = object : TextEmbedder {
+            override val modelId: String get() = embeddingModel
+            override fun problem(): String? = null
+            override fun embed(text: String): FloatArray {
+                embeddedTexts += text
+                val vector = FloatArray(1024)
+                text.split(Regex("\\s+")).forEach { word -> vector[Math.floorMod(word.hashCode(), vector.size)] += 1f }
+                val norm = kotlin.math.sqrt(vector.sumOf { (it * it).toDouble() }).toFloat()
+                return FloatArray(vector.size) { vector[it] / norm }
+            }
+        }
 
         @Bean
         @Primary
@@ -867,4 +886,75 @@ class CollectionJobTest(
         assertEquals(listOf("old-session-digest"), jdbc.sql("select session_digest from guest_cards where recalled_at is not null").query(String::class.java).list())
         jdbc.sql("delete from guest_sessions where digest in ('old-session-digest', 'new-session-digest')").update()
     }
+
+    // 맞춤 대기열 잡(native-v1.md "맞춤 대기열"): 로고 대표색 채우기 → 바뀐 활동·태그만 임베딩(날짜·URL·연락처 없는 글) → 새 모델은 다 만든 뒤 넘김 → 사용자 대기열
+    @Test
+    fun `대기열 잡은 로고 대표색을 채우고 바뀐 활동만 임베딩하며 새 모델은 다 만든 뒤 넘기고 사용자 대기열을 만든다`() {
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        val png = java.io.ByteArrayOutputStream().also { out ->
+            val image = java.awt.image.BufferedImage(8, 8, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+            for (x in 0 until 8) for (y in 0 until 8) image.setRGB(x, y, if (x < 2) 0xFFFFFFFF.toInt() else 0xFFE5322D.toInt()) // 흰 테두리 + 빨강
+            javax.imageio.ImageIO.write(image, "png", out)
+        }.toByteArray()
+        jdbc.sql("insert into program_logos (program_id, content_type, data, updated_at) values (?, 'image/png', ?, now())").param(programId).param(png).update()
+        val open = jdbc.sql(
+            """
+            insert into activities (program_id, name, description, participation_type, recruitment_status, official_url, freshness, source_note, publication_status, created_at, updated_at)
+            values (?, '대기열 배치 활동', '문의 010-1234-5678, https://example.com/apply 2026.11.01 마감, 참가비 30,000원, 만 19세 이상. 6주 동안 팀으로 앱을 만든다', 'SELECTION', 'UNKNOWN', 'https://example.com', 'STALE', '', 'PUBLISHED', localtimestamp, localtimestamp) returning id
+            """
+        ).param(programId).query(Long::class.java).single()
+        jdbc.sql("insert into schedules (activity_id, slot, title, kind, status, date_label, sequence, created_at, updated_at) values (?, 'ACTIVITY', 'a', 'EVENT', 'CONFIRMED', '미정', 0, localtimestamp, localtimestamp)").param(open).update()
+        jdbc.sql(
+            """
+            insert into schedules (activity_id, slot, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, 'APPLICATION', '신청 기간', 'DEADLINE', 'CONFIRMED', 'TIMED', now() - interval '1 day', now() + interval '5 days', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp)
+            """
+        ).param(open).update()
+        val user = java.util.UUID.randomUUID()
+        jdbc.sql("insert into users (id) values (?)").param(user).update()
+        jdbc.sql("insert into recommendation_preferences (user_id, categories, completed_at, updated_at) values (?, '{BOOTCAMP}', now(), now())").param(user).update()
+        fun runQueues() {
+            val execution = jobOperator.start(buildDiscoveryQueuesJob, JobParametersBuilder().addString("trigger", "test-${System.nanoTime()}").toJobParameters())
+            while (execution.isRunning) Thread.sleep(50)
+            assertEquals(BatchStatus.COMPLETED, execution.status)
+        }
+        fun count(sql: String) = jdbc.sql(sql).query(Int::class.java).single()
+        val published = count("select count(*) from activities where publication_status = 'PUBLISHED'")
+        try {
+            Fakes.embeddedTexts.clear()
+            runQueues()
+            assertEquals("#E5322D", jdbc.sql("select brand_color from program_logos where program_id = ?").param(programId).query(String::class.java).single())
+            assertEquals(published, count("select count(*) from activity_embeddings where model = 'fake-model'"))
+            assertEquals(count("select count(*) from tags"), count("select count(*) from tag_embeddings where model = 'fake-model'"))
+            assertEquals("fake-model", jdbc.sql("select active_model from embedding_settings").query(String::class.java).single())
+            // 임베딩 글: 이름·조직·설명은 넣고 전화·URL·날짜·금액·나이 조건은 뺀다
+            val text = Fakes.embeddedTexts.single { "대기열 배치 활동" in it }
+            assertTrue("프로그램: Let’Swift" in text && "6주 동안 팀으로 앱을 만든다" in text)
+            assertTrue(listOf("010-1234-5678", "https://", "2026.11.01", "30,000원", "19세").none { it in text }, text)
+            assertEquals(listOf(open), jdbc.sql("select activity_id from discovery_queue where user_id = ?").param(user).query(Long::class.java).list())
+
+            // 다시 돌려도 바뀐 것이 없으면 임베딩하지 않고, 이름을 바꾼 활동만 다시 한다
+            Fakes.embeddedTexts.clear()
+            runQueues()
+            assertEquals(0, Fakes.embeddedTexts.size)
+            jdbc.sql("update activities set name = '대기열 배치 활동 2' where id = ?").param(open).update()
+            runQueues()
+            assertEquals(1, Fakes.embeddedTexts.size)
+
+            // 모델을 바꾸면 새 모델 벡터를 모두 만든 뒤 읽기를 넘기고 옛 모델 벡터를 지운다
+            Fakes.embeddingModel = "fake-model-2"
+            runQueues()
+            assertEquals("fake-model-2", jdbc.sql("select active_model from embedding_settings").query(String::class.java).single())
+            assertEquals(0, count("select count(*) from activity_embeddings where model <> 'fake-model-2'") + count("select count(*) from tag_embeddings where model <> 'fake-model-2'"))
+            assertEquals(published, count("select count(*) from activity_embeddings"))
+        } finally {
+            Fakes.embeddingModel = "fake-model"
+            jdbc.sql("delete from users where id = ?").param(user).update()
+            jdbc.sql("delete from program_logos where program_id = ?").param(programId).update()
+            jdbc.sql("delete from activity_embeddings").update()
+            jdbc.sql("delete from tag_embeddings").update()
+            jdbc.sql("delete from embedding_settings").update()
+        }
+    }
+
 }

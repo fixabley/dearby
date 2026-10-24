@@ -24,3 +24,10 @@ dearby:
   # 수집기 장소 지오코딩(native-v1.md "수집기 장소"): 카카오 REST API 키. 비어 있으면 Nominatim(OpenStreetMap)
   geocode:
     kakao-key: ${KAKAO_REST_API_KEY:}
+  # 활동 벡터(native-v1.md "활동 벡터"): 이미지 안의 ONNX 모델(batch/Dockerfile). 모델·가중치 판을 바꾸면 model-id도 바꾼다(같은 model-id 벡터끼리만 비교)
+  embedding:
+    model-id: ${EMBEDDING_MODEL_ID:nlpai-lab/KURE-v1@8b418a5:int8}
+    model-dir: ${EMBEDDING_MODEL_DIR:/app/models/kure-v1}
+    model-file: ${EMBEDDING_MODEL_FILE:model.onnx}
+    max-tokens: ${EMBEDDING_MAX_TOKENS:8192}
+    threads: ${EMBEDDING_THREADS:4}
