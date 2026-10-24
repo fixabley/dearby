@@ -6,7 +6,18 @@ struct RecommendedActivity: Identifiable, Sendable {
     let activity: ActivityModel
     let programName: String?
     let reasons: [String]
+    /// The program beside it (contract "맞춤 대기열" 2026-10-24: `HIDE_PROGRAM` hides its other cards too) with its logo and 세로 커버
+    /// (`ProgramSummary.coverUrl`), both resolved against the API origin; nil when the server sent none.
+    var programID: Int64? = nil
+    var logoURL: URL? = nil
+    var coverURL: URL? = nil
     var id: String { activity.id }
+}
+
+/// 맞춤 대기열 반응 (contract "맞춤 대기열" 2026-10-24 `POST /v1/me/recommendation-signals`): signed in only.
+enum RecommendationSignal: String, Sendable {
+    case like = "LIKE", unlike = "UNLIKE", dismiss = "DISMISS", lessField = "LESS_FIELD", hideProgram = "HIDE_PROGRAM"
+    case ineligible = "INELIGIBLE", complete = "COMPLETE", skipEarly = "SKIP_EARLY", openDetail = "OPEN_DETAIL"
 }
 
 /// `GET /v1/discovery/recommendations`: the items and, when the server sends it, how many activities match in all.
