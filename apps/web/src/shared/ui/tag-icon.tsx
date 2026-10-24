@@ -6,7 +6,7 @@ type TagLike = { id: number; name: string; nameEn?: string | null };
 
 /**
  * 태그 아이콘 매핑 (contract "분야·성격 태그와 아이콘", 2026-10-24): `nameEn` → the glyph shaped like the iOS SF Symbol in the
- * contract table (plus 공학 `engineering`, wrench and screwdriver). An unknown `nameEn` (a tag the operator added later) gets the default `tag` glyph.
+ * contract table (plus 공학 `engineering`, 웹·앱 `webApp`, 게임 `game`, 오픈소스 `openSource`). An unknown `nameEn` (a tag the operator added later) gets the default `tag` glyph.
  */
 const tagIcons: Record<string, IconName> = {
   startup: "lightbulb",
@@ -28,6 +28,9 @@ const tagIcons: Record<string, IconName> = {
   reading: "book",
   video: "video",
   engineering: "tools",
+  webApp: "devices",
+  game: "gamepad",
+  openSource: "github", // the `</>` code-brackets glyph
 };
 
 /** The tag's glyph at the surrounding font size (`size="inline"`). */
