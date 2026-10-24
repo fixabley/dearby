@@ -13,8 +13,15 @@ sealed interface QueueSceneState {
     /** `지원 대상` / `혜택` with one sentence. */
     data class Eligibility(val text: String) : QueueSceneState
     data class Benefit(val text: String) : QueueSceneState
-    /** `마감까지` (`행사까지` for an [event], a conference) [dday] (`D-22`, null when undated), [deadline] (`11월 15일 마감 · 만 34세 이하`) and the reason chips. */
-    data class Deadline(val dday: String?, val deadline: String?, val reasons: List<String>, val event: Boolean = false) : QueueSceneState
+    /**
+     * [heading] (the server's `label`, else `마감까지` / `행사까지` for a conference) over [dday] days left: `D-n`, `D-DAY`; once passed the heading becomes
+     * `모집 마감` / `행사 종료` with no number; null shows the heading only. Then [deadline] (`11월 15일 마감 · 만 34세 이하`) and the reason chips.
+     */
+    data class Deadline(val heading: String, val dday: Int?, val deadline: String?, val reasons: List<String>) : QueueSceneState {
+        val event get() = heading == "행사까지"
+        val title get() = if (dday != null && dday < 0) (if (event) "행사 종료" else "모집 마감") else heading
+        val count get() = when { dday == null || dday < 0 -> null; dday == 0 -> "D-DAY"; else -> "D-$dday" }
+    }
 }
 
 /**

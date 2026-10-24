@@ -218,8 +218,8 @@ sealed interface QueueScene {
     data class Highlights(val items: List<Highlight>) : QueueScene
     data class Eligibility(val text: String) : QueueScene
     data class Benefit(val text: String) : QueueScene
-    /** [dday] as the server words it (`D-22`, `D-DAY`), null without a deadline. */
-    data class Deadline(val dday: String?, val deadlineText: String?, val reasons: List<String>) : QueueScene
+    /** [label] the server's heading (`마감까지`·`행사까지`), [dday] days left (negative once passed), null when undated. */
+    data class Deadline(val label: String?, val dday: Int?, val deadlineText: String?, val reasons: List<String>) : QueueScene
 }
 
 /** One page of `GET /v1/discovery/programs`; [nextCursor] is the next integer offset as text, null on the last page. */

@@ -197,8 +197,8 @@ private val QueueReaction.icon: ImageVector get() = when (this) {
                 is QueueSceneState.Eligibility -> { label("지원 대상"); Sentence(shown.text, scene, still) }
                 is QueueSceneState.Benefit -> { label("혜택"); Sentence(shown.text, scene, still) }
                 is QueueSceneState.Deadline -> {
-                    label(if (shown.event) "행사까지" else "마감까지")
-                    shown.dday?.let { Text(it, Modifier.rise(1, scene, still), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 64.sp, lineHeight = 1.em) }
+                    label(shown.title)
+                    shown.count?.let { Text(it, Modifier.rise(1, scene, still), color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 64.sp, lineHeight = 1.em) }
                     Text(shown.deadline ?: if (shown.event) "행사 날짜는 공식 안내에서 확인해요" else "마감일은 공식 안내에서 확인해요", Modifier.rise(2, scene, still), color = Color.White.copy(0.9f), fontSize = 16.sp)
                     if (shown.reasons.isNotEmpty()) Row(Modifier.rise(2, scene, still), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         shown.reasons.take(3).forEach { reason ->

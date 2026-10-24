@@ -194,13 +194,14 @@ class QueueViewModel(private val account: AccountViewModel, private val preferen
         val program = item.program
         val field = fieldOf(item)
         val event = activity.category == ActivityCategory.CONFERENCE
+        val heading = if (event) "행사까지" else "마감까지"
         val scenes = item.scenes?.map { scene ->
             when (scene) {
                 is QueueScene.Hook -> QueueSceneState.Hook(scene.hook, scene.name)
                 is QueueScene.Highlights -> QueueSceneState.Highlights(scene.items.map { QueueFact(it.icon.queueIcon(), it.text) })
                 is QueueScene.Eligibility -> QueueSceneState.Eligibility(scene.text)
                 is QueueScene.Benefit -> QueueSceneState.Benefit(scene.text)
-                is QueueScene.Deadline -> QueueSceneState.Deadline(scene.dday, scene.deadlineText, scene.reasons, event)
+                is QueueScene.Deadline -> QueueSceneState.Deadline(scene.label ?: heading, scene.dday, scene.deadlineText, scene.reasons)
             }
         } ?: run {
             // A conference counts to the event (`행사까지`), everything else to the application deadline.
@@ -216,8 +217,8 @@ class QueueViewModel(private val account: AccountViewModel, private val preferen
             listOfNotNull(
                 QueueSceneState.Hook(activity.hook ?: activity.name, if (activity.hook != null) activity.name else program.name),
                 facts.takeIf { it.size >= 2 }?.let(QueueSceneState::Highlights),
-                QueueSceneState.Deadline(when { left == null || left < 0 -> null; left == 0L -> "D-DAY"; else -> "D-$left" },
-                    listOfNotNull(deadline?.dateText, activity.eligibility?.lines()?.firstOrNull()).joinToString(" · ").ifEmpty { null }, item.reasons, event),
+                QueueSceneState.Deadline(heading, left?.toInt(),
+                    listOfNotNull(deadline?.dateText, activity.eligibility?.lines()?.firstOrNull()).joinToString(" · ").ifEmpty { null }, item.reasons),
             )
         }
         return QueueCardState(
