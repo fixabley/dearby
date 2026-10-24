@@ -31,9 +31,8 @@ import { Switch } from "@/shared/ui/switch";
 import { ActivityCard, ActivityCardSkeleton, type StatusTone } from "@/widgets/activity/activity-card";
 import { ProgramAvatar } from "@/widgets/activity/program-avatar";
 import { groupByCategory } from "@/lib/category";
-import { useRecommendationPreferences } from "@/lib/recommendation";
+import { isEmpty, useRecommendationPreferences } from "@/lib/recommendation";
 import { RecommendationFunnel } from "@/components/recommendation-funnel";
-import { RecommendationSection } from "@/components/recommendations";
 
 function programsPath(q: string, openOnly: boolean, cursor?: number) {
   const params = new URLSearchParams();
@@ -45,7 +44,7 @@ function programsPath(q: string, openOnly: boolean, cursor?: number) {
 
 /**
  * 발견 탭 (contract "추천 설정 퍼널"): the first visit without a query opens the recommendation funnel; afterwards the program
- * list with the 추천 section on top. Nothing but the loading shape renders until this browser's saved settings are read, so the
+ * list with the `오늘의 맞춤 대기열` entry on top. Nothing but the loading shape renders until this browser's saved settings are read, so the
  * list never flashes before the funnel.
  */
 export function Discovery({ q }: { q: string }) {
@@ -74,16 +73,51 @@ export function Discovery({ q }: { q: string }) {
       q={q}
       top={
         !q && preferences ? (
-          <RecommendationSection
-            preferences={preferences}
-            onEdit={() => {
+          <QueueEntry
+            onFunnel={(mode) => {
               window.scrollTo(0, 0);
-              setFunnel("edit");
+              setFunnel(mode);
             }}
+            skipped={isEmpty(preferences)}
           />
         ) : null
       }
     />
+  );
+}
+
+/**
+ * 발견 탭 맨 위 `오늘의 맞춤 대기열` 한 줄 (contract "맞춤 대기열(스토리형 쇼츠)", 2026-10-25 — 추천 묶음 대신): opens the queue, or
+ * the funnel first when it was skipped (its result opens the queue). `설정` re-opens the funnel with the saved picks.
+ */
+function QueueEntry({ skipped, onFunnel }: { skipped: boolean; onFunnel: (mode: "first" | "edit") => void }) {
+  const label = (
+    <>
+      <Icon name="play" tone="teal" />
+      <span className="flex flex-1 flex-col">
+        <span className="text-body font-semibold">오늘의 맞춤 대기열</span>
+        <span className="text-footnote text-secondary-label">나에게 맞는 활동을 한 장씩 넘겨 봐요</span>
+      </span>
+    </>
+  );
+  const row = "flex min-h-11 flex-1 items-center gap-3 px-4 py-3 text-left active:opacity-70";
+  return (
+    <Card className="mb-4 flex items-center">
+      {skipped ? (
+        <button type="button" onClick={() => onFunnel("first")} className={row}>
+          {label}
+        </button>
+      ) : (
+        <Link href="/queue" className={row}>
+          {label}
+        </Link>
+      )}
+      {!skipped && (
+        <Button variant="plain" size="sm" onClick={() => onFunnel("edit")} aria-label="추천 설정" className="mr-1">
+          설정
+        </Button>
+      )}
+    </Card>
   );
 }
 

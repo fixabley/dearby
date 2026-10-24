@@ -6,26 +6,35 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.keys.CONTACTS__CONTACTS_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.DISCOVERY_QUEUE__DISCOVERY_QUEUE_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_ELIGIBILITY__PROFILE_ELIGIBILITY_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_HISTORIES__PROFILE_HISTORIES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_JOBS__PROFILE_JOBS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_VERSIONS__PROFILE_VERSIONS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECEIPTS__RECEIPTS_RECIPIENT_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECOMMENDATION_PREFERENCES__RECOMMENDATION_PREFERENCES_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.RECOMMENDATION_SIGNALS__RECOMMENDATION_SIGNALS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ACTIVITIES__USER_ACTIVITIES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_CONSENTS__USER_CONSENTS_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ORG_AFFINITY__USER_ORG_AFFINITY_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ROLES__USER_ROLES_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.USER_TASTE__USER_TASTE_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts.ContactsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue.DiscoveryQueuePath
+import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations.OrganizationsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileEligibility.ProfileEligibilityPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories.ProfileHistoriesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileJobs.ProfileJobsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions.ProfileVersionsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts.ReceiptsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationPreferences.RecommendationPreferencesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals.RecommendationSignalsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivities.UserActivitiesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserConsents.UserConsentsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserOrgAffinity.UserOrgAffinityPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles.UserRolesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserTaste.UserTastePath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.UsersRecord
 
 import java.time.OffsetDateTime
@@ -153,6 +162,22 @@ open class Users(
     val contacts: ContactsPath
         get(): ContactsPath = contacts()
 
+    private lateinit var _discoveryQueue: DiscoveryQueuePath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.discovery_queue</code> table
+     */
+    fun discoveryQueue(): DiscoveryQueuePath {
+        if (!this::_discoveryQueue.isInitialized)
+            _discoveryQueue = DiscoveryQueuePath(this, null, DISCOVERY_QUEUE__DISCOVERY_QUEUE_USER_ID_FKEY.inverseKey)
+
+        return _discoveryQueue;
+    }
+
+    val discoveryQueue: DiscoveryQueuePath
+        get(): DiscoveryQueuePath = discoveryQueue()
+
     private lateinit var _profileEligibility: ProfileEligibilityPath
 
     /**
@@ -249,6 +274,22 @@ open class Users(
     val recommendationPreferences: RecommendationPreferencesPath
         get(): RecommendationPreferencesPath = recommendationPreferences()
 
+    private lateinit var _recommendationSignals: RecommendationSignalsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.recommendation_signals</code> table
+     */
+    fun recommendationSignals(): RecommendationSignalsPath {
+        if (!this::_recommendationSignals.isInitialized)
+            _recommendationSignals = RecommendationSignalsPath(this, null, RECOMMENDATION_SIGNALS__RECOMMENDATION_SIGNALS_USER_ID_FKEY.inverseKey)
+
+        return _recommendationSignals;
+    }
+
+    val recommendationSignals: RecommendationSignalsPath
+        get(): RecommendationSignalsPath = recommendationSignals()
+
     private lateinit var _userActivities: UserActivitiesPath
 
     /**
@@ -281,6 +322,22 @@ open class Users(
     val userConsents: UserConsentsPath
         get(): UserConsentsPath = userConsents()
 
+    private lateinit var _userOrgAffinity: UserOrgAffinityPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.user_org_affinity</code> table
+     */
+    fun userOrgAffinity(): UserOrgAffinityPath {
+        if (!this::_userOrgAffinity.isInitialized)
+            _userOrgAffinity = UserOrgAffinityPath(this, null, USER_ORG_AFFINITY__USER_ORG_AFFINITY_USER_ID_FKEY.inverseKey)
+
+        return _userOrgAffinity;
+    }
+
+    val userOrgAffinity: UserOrgAffinityPath
+        get(): UserOrgAffinityPath = userOrgAffinity()
+
     private lateinit var _userRoles: UserRolesPath
 
     /**
@@ -296,6 +353,29 @@ open class Users(
 
     val userRoles: UserRolesPath
         get(): UserRolesPath = userRoles()
+
+    private lateinit var _userTaste: UserTastePath
+
+    /**
+     * Get the implicit to-many join path to the <code>public.user_taste</code>
+     * table
+     */
+    fun userTaste(): UserTastePath {
+        if (!this::_userTaste.isInitialized)
+            _userTaste = UserTastePath(this, null, USER_TASTE__USER_TASTE_USER_ID_FKEY.inverseKey)
+
+        return _userTaste;
+    }
+
+    val userTaste: UserTastePath
+        get(): UserTastePath = userTaste()
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>public.organizations</code> table
+     */
+    val organizations: OrganizationsPath
+        get(): OrganizationsPath = userOrgAffinity().organizations()
     override fun `as`(alias: String): Users = Users(DSL.name(alias), this)
     override fun `as`(alias: Name): Users = Users(alias, this)
     override fun `as`(alias: Table<*>): Users = Users(alias.qualifiedName, this)

@@ -1,4 +1,5 @@
 "use client";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { Recommendation, Tag } from "@/lib/models";
 import { request } from "@/lib/client";
@@ -10,11 +11,9 @@ import {
 } from "@/lib/recommendation";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
-import { Card } from "@/shared/ui/card";
 import { Icon } from "@/shared/ui/icon";
 import { Skeleton, SkeletonGroup } from "@/shared/ui/skeleton";
 import { TagIcon } from "@/shared/ui/tag-icon";
-import { RecommendationRow } from "@/widgets/recommendation/recommendation-row";
 
 const order = ["intro", "fields", "subfields", "categories", "traits", "result"] as const;
 type BaseStep = (typeof order)[number];
@@ -50,6 +49,7 @@ export function RecommendationFunnel({
   initial: RecommendationPreferences | null;
   onClose: () => void;
 }) {
+  const router = useRouter();
   const [step, setStep] = useState<Step>(initial ? "fields" : "intro");
   const [picks, setPicks] = useState(initial ?? none);
   const [tags, setTags] = useState<Tag[]>();
@@ -95,9 +95,11 @@ export function RecommendationFunnel({
   // The dictionary arrived without 분야 or 성격 tags while that question was showing: move on to the next one that exists.
   const rank = (name: Step) => order.indexOf(name.startsWith("sub") ? "subfields" : (name as BaseStep));
   if (index < 0) setStep(steps.find((name) => rank(name) > rank(step)) ?? "result");
+  const found = Array.isArray(result) ? result : undefined;
   function go(to: number) {
     const next = steps[to];
-    if (!next) return onClose();
+    // The result opens 오늘의 맞춤 대기열 (contract "맞춤 대기열", 2026-10-25); with nothing found it returns to the list instead.
+    if (!next) return found && !found.length ? onClose() : router.push("/queue");
     if (next === "result") {
       setResult(undefined);
       savePreferences({ ...picks, completedAt: new Date().toISOString() });
@@ -155,7 +157,6 @@ export function RecommendationFunnel({
     ...(tags ?? []).filter((tag) => picks.fieldTagIds.includes(tag.id) || picks.traitTagIds.includes(tag.id)).map((tag) => tag.name),
     ...funnelCategories.filter(([code]) => picks.categories.includes(code)).map(([, label]) => label),
   ];
-  const found = Array.isArray(result) ? result : undefined;
   const copy: Record<BaseStep, { title: string; sub: string; cta: string }> = {
     intro: { title: "나에게 맞는 활동을\n찾아 드릴게요", sub: "몇 가지 질문이면 끝나요.\n답하지 않은 건 그냥 넘어가도 돼요.", cta: "시작하기" },
     fields: { title: "어떤 분야에\n관심 있어요?", sub: "여러 개 골라도 돼요.", cta: "다음" },
@@ -171,7 +172,7 @@ export function RecommendationFunnel({
             ? `지금 지원할 수 있는\n활동 ${result.length}개를 찾았어요`
             : "지금 지원할 수 있는\n활동을 찾지 못했어요",
       sub: found && !found.length ? "설정을 바꾸거나 전체 목록에서 찾아보세요." : labels.join(" · "),
-      cta: "추천 보러 가기",
+      cta: found && !found.length ? "전체 목록 보기" : "맞춤 대기열 보러 가기",
     },
   };
   const { title, sub, cta } = subParent
@@ -256,31 +257,6 @@ export function RecommendationFunnel({
         )}
         {step === "result" && (
           <>
-            {!result ? (
-              <SkeletonGroup>
-                <Card className="flex flex-col gap-3 p-4">
-                  {[0, 1, 2].map((key) => (
-                    <div key={key} className="flex items-center gap-3">
-                      <Skeleton className="size-11 rounded-[14px]" />
-                      <Skeleton className="h-4 flex-1" />
-                    </div>
-                  ))}
-                </Card>
-              </SkeletonGroup>
-            ) : (
-              found &&
-              found.length > 0 && (
-                <Card>
-                  <ul className="divide-y divide-separator">
-                    {found.slice(0, 3).map((item) => (
-                      <li key={item.activity.id}>
-                        <RecommendationRow item={item} />
-                      </li>
-                    ))}
-                  </ul>
-                </Card>
-              )
-            )}
             {/* The web has no sign-in or profile, so 지원 자격 정보 is entered in the app (contract "지원 자격 정보"). */}
             <p className="mt-3 text-footnote text-secondary-label break-keep">
               지원 자격까지 맞추려면 Dearby 앱의 프로필 › 지원 자격 정보를 입력해요.
