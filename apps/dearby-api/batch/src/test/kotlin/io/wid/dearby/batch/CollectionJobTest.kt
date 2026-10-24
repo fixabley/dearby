@@ -7,6 +7,7 @@ import io.wid.dearby.batch.adaptor.claude.ClaudeCli
 import io.wid.dearby.batch.adaptor.claude.CollectionProperties
 import io.wid.dearby.batch.adaptor.claude.CollectionPrompts
 import io.wid.dearby.batch.application.UrlGuard
+import io.wid.dearby.batch.application.StoryBackfillService
 import io.wid.dearby.batch.application.ExtractedActivity
 import io.wid.dearby.batch.application.ExtractedSchedule
 import io.wid.dearby.batch.application.FetchedPage
@@ -59,6 +60,7 @@ class CollectionJobTest(
     @Autowired val json: JsonMapper,
     @Autowired val curationImport: CurationImportService,
     @Autowired val buildDiscoveryQueuesJob: Job,
+    @Autowired val stories: StoryBackfillService,
 ) {
 
     @TestConfiguration
@@ -97,6 +99,11 @@ class CollectionJobTest(
             override fun execute(command: List<String>, prompt: String, workDir: Path): JsonNode {
                 lastCommand = command
                 lastPrompt = prompt
+                // 도구 없는 한 번 묻기(대기열 글 채우기): 받은 활동마다 같은 글을 답한다
+                if ("--mcp-config" !in command) {
+                    val items = json.readTree(prompt).toList().map { mapOf("id" to it["id"].asLong(), "hook" to "설명으로 쓴 소개", "highlights" to listOf(mapOf("icon" to "team", "text" to "팀 활동"), mapOf("icon" to "rocket", "text" to "버려질 줄"))) }
+                    return json.valueToTree(cliResult() + ("result" to "답입니다: " + json.writeValueAsString(mapOf("items" to items))))
+                }
                 lastWorkflow = Files.readString(Path.of(option(command, "--system-prompt-file")))
                 val mcpUrl = json.readTree(Files.readString(Path.of(option(command, "--mcp-config")))).path("mcpServers").path("dearby").path("url").asString()
                 return json.valueToTree((script ?: ::defaultScript)(prompt, McpClient(mcpUrl, json)))
@@ -486,11 +493,18 @@ class CollectionJobTest(
     fun `게시된 활동은 다시 수집해도 덮어쓰지 않는다`() {
         officialSetting()
         run("2026-10-21")
-        jdbc.sql("update activities set publication_status = 'PUBLISHED', name = '관리자가 고친 이름' where name = ?").param("Let'Swift 2026 컨퍼런스").update()
+        // 게시 뒤 대기열 글이 비어 있고 핵심 줄은 운영자 지정이면, 다시 수집할 때 한 줄 소개만 채운다(다른 필드는 그대로)
+        jdbc.sql("update activities set publication_status = 'PUBLISHED', name = '관리자가 고친 이름', hook = null, highlights = null, curated_fields = '[\"highlights\"]'::jsonb where name = ?").param("Let'Swift 2026 컨퍼런스").update()
 
         run("2026-10-22")
 
         assertEquals(listOf("PUBLISHED"), status("관리자가 고친 이름"))
+        fun story() = jdbc.sql("select coalesce(hook, '-') || '|' || coalesce(highlights::text, '-') from activities where name = '관리자가 고친 이름'").query(String::class.java).single()
+        assertEquals("Swift 개발자가 한자리에|-", story())
+        // 이미 있는 한 줄 소개는 덮어쓰지 않는다
+        jdbc.sql("update activities set hook = '운영 소개' where name = '관리자가 고친 이름'").update()
+        run("2026-10-23")
+        assertEquals("운영 소개|-", story())
         val reasons = jdbc.sql("select array_to_string(rejected_reasons, '|') from collection_runs where run_date = '2026-10-22'").query(String::class.java).single()
         assertEquals(true, reasons.contains("이미 게시된 활동"))
     }
@@ -955,6 +969,36 @@ class CollectionJobTest(
             jdbc.sql("delete from tag_embeddings").update()
             jdbc.sql("delete from embedding_settings").update()
         }
+    }
+
+
+    // --backfill-hooks-now(2026-10-25): 게시 활동의 빈 대기열 글을 저장된 설명으로 채운다. 페이지를 받지 않고 도구 없이 묻고, 운영자 지정·이미 있는 값·초안은 건드리지 않는다
+    @Test
+    fun `대기열 글 채우기는 빈 게시 활동만 저장된 설명으로 채우고 운영자 지정과 초안은 그대로 둔다`() {
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        fun activity(name: String, status: String, curated: String = "[]") = jdbc.sql(
+            """
+            insert into activities (program_id, name, description, participation_type, recruitment_status, official_url, freshness, source_note, publication_status, curated_fields, created_at, updated_at)
+            values (?, ?, '6주 동안 팀으로 앱을 만드는 과정', 'SELECTION', 'UNKNOWN', 'https://example.com', 'STALE', '', ?, ?::jsonb, localtimestamp, localtimestamp) returning id
+            """
+        ).params(programId, name, status, curated).query(Long::class.java).single()
+        val empty = activity("글 채우기 빈 활동", "PUBLISHED")
+        val curated = activity("글 채우기 운영자 활동", "PUBLISHED", """["hook"]""")
+        val draft = activity("글 채우기 초안", "DRAFT")
+        fun story(id: Long) = jdbc.sql("select coalesce(hook, '-') || '|' || coalesce(highlights::text, '-') from activities where id = ?").param(id).query(String::class.java).single()
+
+        val report = stories.backfill()
+
+        assertEquals("설명으로 쓴 소개|[{\"icon\": \"team\", \"text\": \"팀 활동\"}]", story(empty))
+        assertEquals("-|-", story(curated))
+        assertEquals("-|-", story(draft))
+        assertTrue(report.filled >= 1 && report.failedBatches == 0)
+        // 도구 없이 묻고(--tools "", 도구 서버 없음) 저장된 설명을 넘긴다
+        assertEquals("", Fakes.option(Fakes.lastCommand, "--tools"))
+        assertFalse("--mcp-config" in Fakes.lastCommand)
+        assertTrue("6주 동안 팀으로 앱을 만드는 과정" in Fakes.lastPrompt)
+        // 다시 돌리면 채울 것이 없다(채운 활동은 후보에서 빠진다)
+        assertTrue(stories.backfill().candidates < report.candidates)
     }
 
 }
