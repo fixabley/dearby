@@ -208,7 +208,6 @@ export type ProgramSummary = z.infer<typeof programSummarySchema>;
 /** `GET /v1/discovery/recommendations` (contract "추천 API"): open activities with their program and short human reasons, best first. */
 /**
  * One 맞춤 대기열 scene the server composed (contract "맞춤 대기열(스토리형 쇼츠)"); how many and which vary per activity.
- * `dday` is the server's label (`D-12`) or the day count.
  */
 const sceneSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("HOOK"), hook: text, name: text }),
@@ -217,7 +216,9 @@ const sceneSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("BENEFIT"), text }),
   z.object({
     type: z.literal("DEADLINE"),
-    dday: z.union([text, z.number().int()]).nullable().optional().catch(null),
+    // Whole days: 0 on the day, negative once past.
+    dday: z.number().int().nullable().optional().catch(null),
+    label: z.enum(["마감까지", "행사까지"]).optional().catch(undefined),
     deadlineText: text.nullable().optional().catch(null),
     reasons: z.array(text).optional().catch([]),
   }),

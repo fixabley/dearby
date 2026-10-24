@@ -84,6 +84,7 @@ function scenesOf(item: Recommendation, now: number): QueueScene[] {
     ...(lines.length >= 2 ? [{ type: "HIGHLIGHTS" as const, items: lines }] : []),
     {
       type: "DEADLINE",
+      label: conference ? "행사까지" : "마감까지",
       dday: conference ? daysToStart(activity.activitySchedule, now) : daysToDeadline(application, now),
       deadlineText: [
         conference ? scheduleLabel(activity.activitySchedule, "activity") : "",
@@ -97,16 +98,15 @@ function scenesOf(item: Recommendation, now: number): QueueScene[] {
   ];
 }
 
-/** `D-DAY`/`D-12` from a day count, the server's label as is, or undefined. */
-function dDayLabel(dday: string | number | null | undefined): string | undefined {
-  if (typeof dday === "string") return dday || undefined;
-  if (dday === undefined || dday === null || dday < 0) return;
-  return dday === 0 ? "D-DAY" : `D-${dday}`;
+/** `D-12`, `D-DAY` on the day, `마감` once past; undefined without a count. */
+function dDayLabel(dday: number | null | undefined): string | undefined {
+  if (dday === undefined || dday === null) return;
+  return dday < 0 ? "마감" : dday === 0 ? "D-DAY" : `D-${dday}`;
 }
 
-/** `행사까지` for a 컨퍼런스 (its D-day is the event), else `마감까지`. */
-function countdownHeading(item: Recommendation): string {
-  return item.activity.category === "CONFERENCE" ? "행사까지" : "마감까지";
+/** The server's `label`, else `행사까지` for a 컨퍼런스 (its D-day is the event) and `마감까지` otherwise. */
+function countdownHeading(scene: QueueScene, item: Recommendation): string {
+  return (scene.type === "DEADLINE" && scene.label) || (item.activity.category === "CONFERENCE" ? "행사까지" : "마감까지");
 }
 
 /** What a screen reader hears for a scene, all scenes read together. */
@@ -539,7 +539,7 @@ function Story({
         <div className="sr-only">
           <h2>{activity.name}</h2>
           <p>{program.name}</p>
-          {scenes.flatMap((value) => sceneText(value, countdownHeading(item))).map((line, key) => (
+          {scenes.flatMap((value) => sceneText(value, countdownHeading(value, item))).map((line, key) => (
             <p key={key}>{line}</p>
           ))}
         </div>
@@ -598,7 +598,7 @@ function Story({
           key={active ? step : "idle"}
           className={cn("pointer-events-none absolute right-[84px] bottom-12 left-[18px] flex flex-col gap-2.5", active && "queue-rise")}
         >
-          {shownScene && <SceneView scene={shownScene} kicker={kicker(item)} countdown={countdownHeading(item)} />}
+          {shownScene && <SceneView scene={shownScene} kicker={kicker(item)} countdown={countdownHeading(shownScene, item)} />}
         </div>
         <nav aria-label="이 활동" className="absolute right-2.5 bottom-14 flex flex-col items-center gap-4 text-caption">
           <RailButton label="관심" pressed={liked} onClick={onLike} ariaLabel="관심 있어요">
