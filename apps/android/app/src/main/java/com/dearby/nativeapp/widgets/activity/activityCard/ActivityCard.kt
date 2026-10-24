@@ -17,14 +17,14 @@ import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.*
 
 /**
- * 펼친 프로그램 카드 안의 활동 카드(contract "발견 카드 리뉴얼", Material 3 `Card`): 로고 없이 왼쪽 위 활동명, 오른쪽 위 모집 상태 `SuggestionChip`, 그 아래 성격 [traitTags] 아이콘 줄(없으면 생략), `모집`·`활동`·`장소` 세 줄.
+ * 펼친 프로그램 카드 안의 활동 카드(contract "발견 카드 리뉴얼", Material 3 `Card`): 로고 없이 왼쪽 위 활동명, 오른쪽 위 모집 상태 `SuggestionChip`, 그 아래 분야 [fieldTag] 1개와 성격 [traitTags]의 아이콘+글자 칩 한 줄(넘치면 `+n`, 없으면 생략), `모집`·`활동`·`장소` 세 줄.
  * [status]는 `application` 판정(`모집 중`·`모집 예정`·`모집 마감`·`모집 여부 확인 필요`)이며 칩은 청록 채움(`TealFill`·흰 글자) / 민트 / 회색 `마감`(판정 불가는 회색 `확인 필요`)이다.
  * [recruitment]이 null이면 `미정`, [place]가 null이면 `장소` 줄을 생략한다. 모집이 지나지 않았으면([recruiting]) `모집` 값은 청록 굵은 글씨에 민트 바탕이다.
  * 카드(또는 상태 칩)를 누르면 [open](상세 이동). 접근성에서는 카드 하나로 읽히고 상태가 상태 설명으로 붙는다.
  */
 @Composable fun ActivityCard(
     title: String, status: String, recruiting: Boolean, recruitment: String?, period: String, place: String?, open: () -> Unit, modifier: Modifier = Modifier,
-    traitTags: List<TagLabel> = emptyList(),
+    fieldTag: TagLabel? = null, traitTags: List<TagLabel> = emptyList(),
 ) {
     val (label, container, content) = when (status) {
         "모집 중" -> Triple(status, TealFill, Color.White)
@@ -40,8 +40,8 @@ import com.dearby.nativeapp.shared.ui.*
                 SuggestionChip(open, { Text(label, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium) }, Modifier.height(28.dp).clearAndSetSemantics {},
                     colors = SuggestionChipDefaults.suggestionChipColors(containerColor = container, labelColor = content), border = null)
             }
-            // 성격 icons, the same row as the program card's (contract "분야·성격 태그와 아이콘").
-            TraitIconRow(traitTags)
+            // 분야 1개 + 성격, the same chip line as the program card's (contract "태그 아이콘+라벨·분야 1개").
+            TagChipRow(fieldTag, traitTags)
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 ValueRow("모집", recruitment ?: "미정", emphasised = recruiting)
                 ValueRow("활동", period.ifBlank { "미정" })

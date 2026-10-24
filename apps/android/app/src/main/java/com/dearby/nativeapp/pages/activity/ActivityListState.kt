@@ -51,12 +51,12 @@ data class ActivityState(
  */
 data class ScheduleItemState(val name: String, val dateText: String, val draft: CalendarDraft?)
 /**
- * One program header in discovery (contract "발견 프로그램 묶음"); [matched] when the search hit an open activity's name.
+ * One program header in discovery (contract "발견 프로그램 묶음"); [matchedCount] is how many open activities' names the search hit (shown as `맞는 활동 n개`).
  * [openCount] is 0 for a program with only upcoming or past activities; [upcomingCount] and [nearestStart] describe its 모집 예정
  * activities; [latestActivityAt] is its most recent activity start (contract "마감 숨기기").
  */
 data class ProgramState(
-    val id: String, val title: String, val organization: String, val openCount: Int, val deadline: Instant?, val matched: Boolean, val latestActivityAt: Instant? = null,
+    val id: String, val title: String, val organization: String, val openCount: Int, val deadline: Instant?, val matchedCount: Int, val latestActivityAt: Instant? = null,
     val upcomingCount: Int = 0, val nearestStart: Instant? = null,
     /** 분야 (at most 2, relevance order) and 성격 of the program (contract "분야·성격 태그와 아이콘"). */
     val fieldTags: List<TagLabel> = emptyList(), val traitTags: List<TagLabel> = emptyList(),

@@ -17,7 +17,8 @@ import com.dearby.nativeapp.shared.ui.DearbyButton
 
 /**
  * 추천 설정 퍼널 (contract "추천 설정 퍼널(발견 탭 첫 진입)"): one question per screen with a progress bar, `건너뛰기` (`나중에` on the intro) in the top bar
- * and a large filled button below. Fields are FilterChips grouped by upper field; activity kinds and traits are FilterChips too. No personal data is asked.
+ * and a large filled button below. 분야 is upper fields and fields without one, then a sub-question per picked upper field (contract "추천 퍼널 분야 단계(상위 → 하위)");
+ * all choices are FilterChips. No personal data is asked.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable fun RecommendationFunnelPage(
@@ -32,8 +33,11 @@ import com.dearby.nativeapp.shared.ui.DearbyButton
         LinearProgressIndicator({ state.progress }, Modifier.fillMaxWidth().padding(horizontal = 20.dp))
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 28.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val (title, subtitle) = when (state.step) {
-                FunnelStep.INTRO -> "나에게 맞는 활동을\n찾아 드릴게요" to "질문 3개, 30초면 끝나요.\n답하지 않은 건 그냥 넘어가도 돼요."
+                FunnelStep.INTRO -> "나에게 맞는 활동을\n찾아 드릴게요" to "몇 가지 질문이면 끝나요.\n답하지 않은 건 그냥 넘어가도 돼요."
                 FunnelStep.FIELDS -> "어떤 분야에\n관심 있어요?" to "여러 개 골라도 돼요."
+                // One upper field asks about itself; 3 or more share one screen, each under its own question.
+                FunnelStep.SUBFIELDS -> state.subScreens.getOrNull(state.subIndex)?.singleOrNull()?.let { "${it.option.label} 중에서는\n어떤 분야요?" to "여러 개 골라도 돼요." }
+                    ?: ("분야별로 더\n골라 볼까요?" to "고르지 않으면 그 분야 전부를 찾아요.")
                 FunnelStep.CATEGORIES -> "어떤 활동을\n찾고 있어요?" to "여러 개 골라도 돼요."
                 FunnelStep.TRAITS -> "활동하면서\n무엇을 얻고 싶어요?" to "고르지 않아도 괜찮아요."
                 // No answer from the recommendation API (not deployed yet, or offline): the settings were still saved.
@@ -47,10 +51,18 @@ import com.dearby.nativeapp.shared.ui.DearbyButton
                 FunnelStep.FIELDS, FunnelStep.TRAITS -> when {
                     state.tagsLoading -> CircularProgressIndicator()
                     state.tagsFailed -> TextButton(retryTags) { Text("목록을 불러오지 못했어요 · 다시 시도") }
-                    (if (state.step == FunnelStep.FIELDS) state.fieldGroups.isEmpty() else state.traitOptions.isEmpty()) ->
+                    (if (state.step == FunnelStep.FIELDS) state.fieldTree.isEmpty() else state.traitOptions.isEmpty()) ->
                         Text("아직 고를 항목이 없어요. 건너뛰어도 돼요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
-                    state.step == FunnelStep.FIELDS -> state.fieldGroups.forEach { group -> Chips(group.title, group.options, state.fields) { toggle(FunnelStep.FIELDS, it) } }
+                    state.step == FunnelStep.FIELDS -> Chips(null, state.fieldTree.map { it.option }, state.fields) { toggle(FunnelStep.FIELDS, it) }
                     else -> Chips(null, state.traitOptions, state.traits) { toggle(FunnelStep.TRAITS, it) }
+                }
+                // `{상위} 전부 좋아요` (the upper field's id) is picked while no child is.
+                FunnelStep.SUBFIELDS -> state.subScreens.getOrNull(state.subIndex).orEmpty().let { nodes ->
+                    nodes.forEach { node ->
+                        val picked = state.subFields[node.option.id].orEmpty().ifEmpty { setOf(node.option.id) }
+                        Chips(if (nodes.size > 1) "${node.option.label} 중에서는 어떤 분야요?" else null,
+                            listOf(node.option.copy(label = "${node.option.label} 전부 좋아요")) + node.children, picked) { toggle(FunnelStep.SUBFIELDS, it) }
+                    }
                 }
                 FunnelStep.CATEGORIES -> Chips(null, FUNNEL_CATEGORIES, state.categories) { toggle(FunnelStep.CATEGORIES, it) }
                 FunnelStep.RESULT -> {
@@ -77,8 +89,10 @@ private val FUNNEL_CATEGORIES = listOf(ChipOption("BOOTCAMP", "부트캠프"), C
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             options.forEach { option ->
                 val selected = option.id in picked
+                // 분야·성격 always show their tag icon (contract "아이콘+글자 칩"); 활동 종류 shows a check while picked.
+                val icon = option.icon ?: Icons.Rounded.Check.takeIf { selected }
                 FilterChip(selected, { toggle(option.id) }, { Text(option.label) },
-                    leadingIcon = if (selected) { { Icon(Icons.Rounded.Check, null, Modifier.size(FilterChipDefaults.IconSize)) } } else null)
+                    leadingIcon = icon?.let { { Icon(it, null, Modifier.size(FilterChipDefaults.IconSize)) } })
             }
         }
     }

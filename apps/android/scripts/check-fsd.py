@@ -28,7 +28,7 @@ API = {
     'pages.onboarding': {'IntroPage'},
     'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletCardPage', 'SharedCardPage', 'SharedCard', 'ReceivedCard', 'filterWallet', 'WalletSection', 'walletSections'},
     'features.calendar': {'CalendarConflictSheet', 'CalendarAccessState', 'CalendarConflictFlow', 'openCalendarInsert'},
-    'pages.recommendation': {'RecommendationViewState', 'RecommendationFunnelState', 'FunnelStep', 'ChipOption', 'ChipGroup', 'EducationChoice', 'EligibilityStep', 'EligibilityFormState', 'RecommendationFunnelPage', 'EligibilityConsentSheet', 'EligibilityActionsSheet', 'EligibilityFormPage'},
+    'pages.recommendation': {'RecommendationViewState', 'RecommendationFunnelState', 'FunnelStep', 'ChipOption', 'FieldNode', 'EducationChoice', 'EligibilityStep', 'EligibilityFormState', 'RecommendationFunnelPage', 'EligibilityConsentSheet', 'EligibilityActionsSheet', 'EligibilityFormPage'},
     'pages.queue': {'DiscoveryQueuePage', 'QueueViewState', 'QueueCardState', 'QueueSceneState', 'QueueFact', 'QueueIcon', 'QueueReaction', 'QueueUndo'},
     'widgets.recommendation.recommendationRows': {'QueueEntryRow', 'RecommendationProfileGroup'},
     'pages.activity': {'ProgramActivities', 'ApplicationReportDialog', 'ActivityListState', 'ActivityProgressPage', 'ActivityDetailPage', 'ProgramState', 'ProgramPhase', 'MyActivitiesPage', 'ActivityState', 'ScheduleItemState', 'ActivityListPhase', 'ActivityListPage'},

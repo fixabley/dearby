@@ -168,15 +168,13 @@ class ActivityViewModel(
         Log.w("Dearby", "Programs load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
         null
     }
-    /** Programs with one open activity, or whose activity name matched the search, start expanded (contract rule; only while the switch is on). */
+    /** Programs never start expanded (contract "자동 펼침 없음"); only a tap on a card expands it. */
     private fun show(page: ProgramPage, append: Boolean) {
-        val programs = page.items.map { ProgramState(it.id, it.name, it.organization, it.openActivityCount, instant(it.nearestRecruitmentEndAt), it.matchedActivityIds.isNotEmpty(), instant(it.latestActivityAt), fieldTags = it.fieldTags.labels(), traitTags = it.traitTags.labels(), upcomingCount = it.upcomingActivityCount, nearestStart = instant(it.nearestRecruitmentStartAt), logoUrl = it.logoUrl) }
-        val opening = if (state.value.openOnly) programs.filter { it.openCount == 1 || it.matched }.map { it.id } else emptyList()
+        val programs = page.items.map { ProgramState(it.id, it.name, it.organization, it.openActivityCount, instant(it.nearestRecruitmentEndAt), it.matchedActivityIds.size, instant(it.latestActivityAt), fieldTags = it.fieldTags.labels(), traitTags = it.traitTags.labels(), upcomingCount = it.upcomingActivityCount, nearestStart = instant(it.nearestRecruitmentStartAt), logoUrl = it.logoUrl) }
         mutable.update { state ->
             state.copy(phase = ActivityListPhase.LOADED, programs = (if (append) state.programs else emptyList()) + programs,
-                expanded = state.expanded + opening, nextCursor = page.nextCursor, loadingMore = false)
+                nextCursor = page.nextCursor, loadingMore = false)
         }
-        opening.forEach(::loadProgram)
     }
     /** Expand or collapse a program; the first expand loads its open activities. */
     fun toggle(programId: String) {

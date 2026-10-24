@@ -1,8 +1,6 @@
 package com.dearby.nativeapp.shared.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
@@ -15,9 +13,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.Placeable
+import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
 /** A tag as the UI needs it: its Korean [name] and the [nameEn] key that picks its icon. */
@@ -50,18 +52,53 @@ fun tagIcon(nameEn: String?): ImageVector = when (nameEn) {
     else -> Icons.Rounded.Sell
 }
 
-/** One 분야 under the discovery card's logo: a 22dp mint circle with the teal icon, read as "분야: 이름". */
-@Composable fun FieldTagBadge(tag: TagLabel) =
-    Box(Modifier.size(22.dp).background(MaterialTheme.colorScheme.primaryContainer, CircleShape).clearAndSetSemantics { contentDescription = "분야: " + tag.name }, contentAlignment = Alignment.Center) {
-        Icon(tagIcon(tag.nameEn), null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
-    }
-
-/** 성격 as 16dp icons without text (discovery card and expanded activity rows), read once as "얻을 수 있는 것: a, b"; nothing when [tags] is empty. */
-@Composable fun TraitIconRow(tags: List<TagLabel>, modifier: Modifier = Modifier) {
+/**
+ * Discovery card and expanded activity rows (contract "태그 아이콘+라벨·분야 1개"): one line of icon + text chips, [field] first on mint
+ * with teal text, then [traits] on the neutral container. Chips that do not fit are dropped from the end and counted in a trailing `+n`;
+ * the line never wraps. Read once as every tag's text in order, the hidden ones too (unplaced measure-only chips stay out of the tree). Nothing
+ * when there are no tags.
+ */
+@Composable fun TagChipRow(field: TagLabel?, traits: List<TagLabel>, modifier: Modifier = Modifier) {
+    val tags = listOfNotNull(field) + traits
     if (tags.isEmpty()) return
-    Row(modifier.clearAndSetSemantics { contentDescription = "얻을 수 있는 것: " + tags.joinToString(", ") { it.name } }, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        tags.forEach { Icon(tagIcon(it.nameEn), null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+    val chip: @Composable (Int) -> Unit = { i ->
+        if (i == 0 && field != null) LabelChip(tags[i], MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
+        else LabelChip(tags[i], MaterialTheme.colorScheme.surfaceContainerHighest, MaterialTheme.colorScheme.onSurfaceVariant)
     }
+    SubcomposeLayout(modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = tags.joinToString(", ") { it.name } }) { constraints ->
+        val loose = constraints.copy(minWidth = 0, minHeight = 0)
+        val spacing = 6.dp.roundToPx()
+        val chips = subcompose("chips") { tags.indices.forEach { chip(it) } }.map { it.measure(loose) }
+        fun widthOf(n: Int) = chips.take(n).sumOf { it.width } + spacing * (n - 1).coerceAtLeast(0)
+        var shown = chips.size
+        var more: Placeable? = null
+        // Drop chips from the end until the rest plus `+n` fit; the first chip always stays (its text ellipsizes when it alone is too wide).
+        while (widthOf(shown) + (more?.let { it.width + spacing } ?: 0) > constraints.maxWidth && shown > 1) {
+            shown--
+            more = subcompose("more$shown") { MoreChip(chips.size - shown) }.single().measure(loose)
+        }
+        val firstMax = (constraints.maxWidth - (more?.let { it.width + spacing } ?: 0)).coerceAtLeast(0)
+        val first = if (chips[0].width <= firstMax) chips[0] else subcompose("first") { chip(0) }.single().measure(loose.copy(maxWidth = firstMax))
+        val kept = listOf(first) + chips.subList(1, shown)
+        val row = kept + listOfNotNull(more)
+        val height = row.maxOf { it.height }
+        layout(constraints.maxWidth, height) {
+            var x = 0
+            row.forEach { it.placeRelative(x, (height - it.height) / 2); x += it.width + spacing }
+        }
+    }
+}
+
+@Composable private fun LabelChip(tag: TagLabel, container: Color, content: Color) = Surface(color = container, contentColor = content, shape = RoundedCornerShape(8.dp)) {
+    Row(Modifier.padding(horizontal = 8.dp, vertical = 3.dp), horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(tagIcon(tag.nameEn), null, Modifier.size(14.dp))
+        Text(tag.name, style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** The `+n` of [TagChipRow]. */
+@Composable private fun MoreChip(count: Int) = Surface(color = MaterialTheme.colorScheme.surfaceContainerHighest, contentColor = MaterialTheme.colorScheme.onSurfaceVariant, shape = RoundedCornerShape(8.dp)) {
+    Text("+$count", Modifier.padding(horizontal = 8.dp, vertical = 3.dp), style = MaterialTheme.typography.labelMedium, maxLines = 1)
 }
 
 /** A tag as icon + text (activity detail's `분야` and `얻을 수 있는 것` groups); not interactive, so a plain surface rather than a chip button. */
