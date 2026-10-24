@@ -37,8 +37,8 @@ import org.json.JSONObject
 
 /**
  * 오늘의 맞춤 대기열 (contract "맞춤 대기열(스토리형 쇼츠)·조직 친화도·활동 벡터", 2026-10-24). Signed in, the cards are the server's queue
- * (`GET /v1/me/discovery-queue`, `더 받기` = `POST …/refill`) and every reaction goes to `POST /v1/me/recommendation-signals`; the entry hides
- * ([available] false) when the queue cannot be read, 404 before the server ships it included. Signed out, the cards are the 추천 API's answer for
+ * (`GET /v1/me/discovery-queue`, `더 받기` = `POST …/refill`) and every reaction goes to `POST /v1/me/recommendation-signals`. The entry always
+ * shows; a failed read (404 before the server ships it included) is the queue screen's retry state. Signed out, the cards are the 추천 API's answer for
  * the device settings ([preferences]) and reactions stay on the device ([store]): they leave out dismissed activities and hidden programs and put
  * `덜 보기` fields last. A `⋯` reaction waits for its `되돌리기` snackbar before it is sent or saved. Liked marks are kept for the session when signed in
  * (the server has no read of them).
@@ -46,8 +46,6 @@ import org.json.JSONObject
 class QueueViewModel(private val account: AccountViewModel, private val preferences: () -> RecommendationPreferences, private val store: QueueStore) : ViewModel() {
     private val mutable = MutableStateFlow(QueueViewState())
     val state = mutable.asStateFlow()
-    private val availableState = MutableStateFlow(false)
-    val available = availableState.asStateFlow()
     private var items: List<QueueItem> = emptyList()
     private val liked = mutableSetOf<String>()
     private var local = LocalSignals()
@@ -56,7 +54,6 @@ class QueueViewModel(private val account: AccountViewModel, private val preferen
     /** Signed out: what this run already showed, so `더 받기` brings the rest. */
     private val shown = mutableSetOf<String>()
     private var pending: Pending? = null
-    private var probed: JSONObject? = null
     private var undoSerial = 0
     private var job: Job? = null
     private val signedIn get() = account.state.value.phase == AccountPhase.SIGNED_IN
@@ -67,18 +64,14 @@ class QueueViewModel(private val account: AccountViewModel, private val preferen
     init {
         viewModelScope.launch {
             local = withContext(Dispatchers.IO) { store.signals() }?.let { runCatching { LocalSignals.from(JSONObject(it)) }.getOrNull() } ?: LocalSignals()
-            account.state.map { it.phase }.filter { it != AccountPhase.WORKING }.distinctUntilChanged().collect { probe() }
+            account.state.map { it.phase }.filter { it != AccountPhase.WORKING }.distinctUntilChanged().collect { reset() }
         }
     }
 
-    /** Whether to offer the entry: signed out it rides on the 추천 묶음; signed in the queue must answer (kept for the first open). */
-    private suspend fun probe() {
-        liked.clear(); sent.clear(); shown.clear(); items = emptyList(); probed = null
-        if (!signedIn) { liked += local.liked; availableState.value = true; return }
-        availableState.value = try { probed = account.authorized { client.discoveryQueue(it) }; true } catch (e: CancellationException) { throw e } catch (e: Exception) {
-            Log.w("Dearby", "Discovery queue from ${ApiOrigin.current} unavailable: ${e.javaClass.simpleName}")
-            false
-        }
+    /** A new account state starts over: signed out the device's liked marks come back. */
+    private fun reset() {
+        liked.clear(); sent.clear(); shown.clear(); items = emptyList()
+        if (!signedIn) liked += local.liked
     }
 
     fun open() {
@@ -95,10 +88,9 @@ class QueueViewModel(private val account: AccountViewModel, private val preferen
             try {
                 val body = when {
                     signedIn && refill -> account.authorized { client.refillDiscoveryQueue(it) }
-                    signedIn -> probed ?: account.authorized { client.discoveryQueue(it) }
+                    signedIn -> account.authorized { client.discoveryQueue(it) }
                     else -> client.recommendationsBody(preferences(), null, if (refill) 50 else 30)
                 }
-                probed = null
                 val got = parseQueue(body, ApiOrigin.current).let { if (signedIn) it else signedOutQueue(it, refill) }
                 if (refill && got.isEmpty()) return@launch mutable.update { it.copy(loading = false, refilling = false, exhausted = true) }
                 items = got

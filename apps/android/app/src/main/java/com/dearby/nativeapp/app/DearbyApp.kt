@@ -47,8 +47,7 @@ private sealed interface Route {
     var route by remember { mutableStateOf<Route?>(null) }
     var activityDetail by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf<String?>(null) }
-    // 오늘의 맞춤 대기열: offered while it can be read; [queueReturn] reopens it after the detail its 자세히 opened.
-    val queueAvailable by queue.available.collectAsStateWithLifecycle()
+    // 오늘의 맞춤 대기열: [queueReturn] reopens it after the detail its 자세히 opened.
     var queueReturn by remember { mutableStateOf(false) }
     // Store screenshots (Debug only, `ScreenshotScene.kt`): the detail opens through 내 활동에서 보기; 내 활동 gets the first activity added.
     LaunchedEffect(screenshot) {
@@ -90,12 +89,9 @@ private sealed interface Route {
     // 오늘의 맞춤 대기열: its 자세히 opens the activity on 발견 and, once that detail closes, the queue comes back where it was.
     LaunchedEffect(activityDetail) { if (!activityDetail && queueReturn) { queueReturn = false; route = Route.Queue } }
     // 2026-10-25 user decision "추천은 없애고 맞춤대기열 진입만 남겨줘": one `오늘의 맞춤 대기열` row tops 발견; a never-finished funnel comes first and its
-    // result button (`맞춤 대기열 보러 가기`) opens the queue. Signed out the queue is the 추천 API's answer, so it needs that API too.
-    val showQueue = queueAvailable && (auth.phase == AccountPhase.SIGNED_IN || reco.available)
+    // result button (`맞춤 대기열 보러 가기`) opens the queue. The row always shows; a failed read is the queue screen's own retry state.
     val openQueue = { queue.open(); route = Route.Queue }
-    val recoHeader: (@Composable () -> Unit)? = if (!showQueue) null else {
-        { QueueEntryRow { if (reco.completed) openQueue() else recommendation.openFunnel(first = true) } }
-    }
+    val recoHeader: @Composable () -> Unit = { QueueEntryRow { if (reco.completed) openQueue() else recommendation.openFunnel(first = true) } }
     LaunchedEffect(auth.phase, walletState.needSignIn) { if (auth.phase == AccountPhase.SIGNED_IN && walletState.needSignIn) wallet.retryPending() }
     // Every screen sits on the theme `background`, which this Surface spreads under the status bar, navigation bar and keyboard too (contract "안전 영역
     // 배경"); cards, sheets and tiles are `surface` on top. Every screen inside starts with a `DearbyTopBar`, which takes the status-bar inset itself, so
@@ -109,7 +105,7 @@ private sealed interface Route {
                 if (funnel != null) {
                     BackHandler(onBack = recommendation::back)
                     // 맞춤 대기열 보러 가기 lands on 발견 and opens the queue.
-                    RecommendationFunnelPage(funnel, recommendation::toggle, { if (funnel.step == FunnelStep.RESULT) { tab = Tab.Discovery; route = null; if (showQueue) openQueue() }; recommendation.next() },
+                    RecommendationFunnelPage(funnel, recommendation::toggle, { if (funnel.step == FunnelStep.RESULT) { tab = Tab.Discovery; route = null; openQueue() }; recommendation.next() },
                         recommendation::skip, recommendation::back, recommendation::retryTags)
                 } else when (val screen = route) {
                     is Route.Detail -> walletState.cards.firstOrNull { it.id == screen.id }?.let { WalletCardRoute(it, wallet, myCards) { route = null } }

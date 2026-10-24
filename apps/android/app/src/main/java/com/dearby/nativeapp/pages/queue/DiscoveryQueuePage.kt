@@ -71,6 +71,7 @@ private val Glass = Color.Black.copy(alpha = 0.35f)
             state.cards.isEmpty() && state.failed -> Column(Modifier.align(Alignment.Center).padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("대기열을 불러오지 못했어요", color = Color.White, style = MaterialTheme.typography.titleMedium)
                 Button(retry) { Text("다시 시도") }
+                TextButton(close) { Text("닫기", color = Color.White) }
             }
             else -> {
                 val cards = state.cards
