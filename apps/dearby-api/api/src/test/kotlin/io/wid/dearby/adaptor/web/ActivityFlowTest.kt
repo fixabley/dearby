@@ -778,7 +778,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         val ours = listOf(liked, similar, first, second)
         jdbc.sql("insert into embedding_settings (id, active_model, updated_at) values (true, 'test-model', now()) on conflict (id) do update set active_model = 'test-model'").update()
         // 장면: 한 줄 소개·핵심 줄·대상(확인함)·무료·마감. 비용 문구는 공개 Activity에도 실린다
-        jdbc.sql("""update activities set hook = '하루 만에 앱 하나', highlights = '[{"icon":"team","text":"4명 한 팀"}]'::jsonb, cost = '참가비 무료', audience = '대학생 누구나', eligibility_checked = true where id = ?""").param(liked).update()
+        jdbc.sql("""update activities set hook = '하루 만에 앱 하나', highlights = '[{"icon":"team","text":"4명 한 팀"}]'::jsonb, cost = '참가비 무료', audience = '대학생 누구나', eligibility_checked = true, eligibility = '{"op":"all","items":[{"field":"나이","fieldEn":"age","to":34},{"op":"any","items":[{"field":"재학상태","fieldEn":"educationStatus","values":["재학","휴학"],"valuesEn":["enrolled","onLeave"]},{"field":"취업상태","fieldEn":"employment","values":["미취업"],"valuesEn":["unemployed"]}]},{"field":"기타","fieldEn":"other","note":"노트북 지참"},{"field":"지역","fieldEn":"region","values":["서울","경기"],"valuesEn":["seoul","gyeonggi"]},{"field":"학년","fieldEn":"schoolYear","from":3}]}'::jsonb where id = ?""").param(liked).update()
         try {
             val initial = queue()
             assertEquals(java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).toString(), initial["date"].asString())
@@ -790,6 +790,11 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
             assertEquals("하루 만에 앱 하나|대기열 확인 하나", scenes[0]["hook"].asString() + "|" + scenes[0]["name"].asString())
             assertEquals("""[{"icon":"team","text":"4명 한 팀"}]""", scenes[1]["items"].toString())
             assertEquals(listOf("대학생 누구나", "참가비 무료"), listOf(scenes[2]["text"].asString(), scenes[3]["text"].asString()))
+            // 대상 아이콘 라벨: 조건마다 하나, any 그룹은 "또는"으로 한 항목, 중요도 순 최대 4개(기타는 빠진다)
+            assertEquals(
+                listOf("age|만 34세 이하", "education|재학·휴학생 또는 미취업자", "schoolYear|3학년 이상", "region|서울·경기"),
+                scenes[2]["items"].toList().map { it["icon"].asString() + "|" + it["text"].asString() },
+            )
             assertEquals(listOf("5", "마감까지"), listOf(scenes[4]["dday"].asString(), scenes[4]["label"].asString()))
             assertEquals("참가비 무료", item(initial, liked)["activity"]["cost"].asString())
             // 핵심 줄이 없고 대체할 줄이 두 줄이 안 되면 장면 ②를 뺀다(한 줄 소개는 이름)

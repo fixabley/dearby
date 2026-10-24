@@ -444,7 +444,22 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
   - 점수: 규칙 점수(추천 API와 같은 점수, 100으로 나눠 0~1) + 0.25 × 코사인(취향, 활동) + 0.15 × (조직 친화도 + 같은 프로그램 가산) − 0.5 × 분야 덜 보기(그 분야 또는 그 하위 분야를 가진 활동, 감쇠한 신호 합). 추천 설정이 맞지 않는 활동도 후보다(추천 API와 다름). 조직 친화도: 프로그램별 감쇠 가중치 합 P, 조직 0.6·P, 상위 조직 0.3·P(하위 조직 10개 초과면 올리지 않음), 1 − e^(−합). 같은 프로그램 가산 1 − e^(−P). 후보의 친화도 = max(조직, 상위 조직) + 같은 프로그램 가산. MMR은 λ·점수 − (1−λ)·이미 고른 카드와의 최대 코사인(벡터 없으면 0), 동점은 id.
   - 다시 만들기: 설정·지원 자격·내 활동·신호가 바뀌면 오늘 대기열이 있는 사용자만, 오늘 반응한 카드는 앞에 그대로 두고 나머지를 새로 고른다(전체 길이 유지, 최소 10). 밤 배치는 수집 뒤 추천 설정·신호·내 활동·대기열이 있는 사용자 전부. 지난 날짜 대기열은 지운다.
   - 이유: 규칙 이유 → `관심 표시한 {활동}과/와 비슷해요`(관심 있어요 한 활동과 코사인 0.75 이상) → `지난 기수에 지원했어요`(같은 프로그램에 지원·참여) / `내 활동에 담았던 프로그램` / `{조직}에 관심을 보였어요` / `같은 {상위 조직} 그룹`(친화도 0.3 이상) 중 하나 → `지원 자격 확인 필요`(맨 뒤).
-  - `Scene`(2026-10-24 사용자 "장면개수는 유동적으로", 이 순서로 내용이 있을 때만, 앱은 모르는 type을 건너뛴다): `{type:"HOOK", hook, name}`(늘, hook이 없으면 활동 이름) · `{type:"HIGHLIGHTS", items:[{icon, text}]}`(highlights, 없으면 비용·활동 기간 문구·장소 이름이 두 줄 이상일 때) · `{type:"ELIGIBILITY", text}`(지원 자격을 확인한 활동의 대상 원문) · `{type:"BENEFIT", text}`(비용 문구에 무료·전액 지원, 없으면 장학·지원금 태그면 `장학·지원금이 있어요`) · `{type:"DEADLINE", dday, label, deadlineText, reasons}`(늘 마지막. `dday`는 서울 날짜로 남은 날 정수, 0 = 당일, 음수 = 지남, 모르면 null. `label`은 `마감까지`, 컨퍼런스·밋업·강연은 행사 날짜로 `행사까지`. `deadlineText` 예 `11월 7일 마감`/`11월 29일 행사`. 앱이 D-day를 꾸민다). 추천 API 항목에도 같은 `scenes`를 싣는다(비로그인 대기열 화면).
+  - `Scene`(2026-10-24 사용자 "장면개수는 유동적으로", 이 순서로 내용이 있을 때만, 앱은 모르는 type을 건너뛴다): `{type:"HOOK", hook, name}`(늘, hook이 없으면 활동 이름) · `{type:"HIGHLIGHTS", items:[{icon, text}]}`(highlights, 없으면 비용·활동 기간 문구·장소 이름이 두 줄 이상일 때) · `{type:"ELIGIBILITY", text, items:[{icon, text}]}`(지원 자격을 확인한 활동만. `items`는 아래 "대상 아이콘 라벨", `text`는 대상 원문이고 없으면 라벨을 ` · `로 이은 글; 원문도 라벨도 없으면 장면을 뺀다) · `{type:"BENEFIT", text}`(비용 문구에 무료·전액 지원, 없으면 장학·지원금 태그면 `장학·지원금이 있어요`) · `{type:"DEADLINE", dday, label, deadlineText, reasons}`(늘 마지막. `dday`는 서울 날짜로 남은 날 정수, 0 = 당일, 음수 = 지남, 모르면 null. `label`은 `마감까지`, 컨퍼런스·밋업·강연은 행사 날짜로 `행사까지`. `deadlineText` 예 `11월 7일 마감`/`11월 29일 행사`. 앱이 D-day를 꾸민다). 추천 API 항목에도 같은 `scenes`를 싣는다(비로그인 대기열 화면).
+  - **대상 아이콘 라벨**(2026-10-25 사용자 "맞춤 대기열에서 참여대상이 문자열로 나오는데 아이콘 라벨로"): 대상자 조건 트리에서 조건 하나가 항목 하나(`all` 그룹은 펼침), `any` 그룹은 ` 또는 `으로 이은 한 항목(아이콘은 가장 중요한 조건의 것). 중요도 순 나이 > 학력·재학 > 취업 > 학년 > 지역 > 그 밖(전공·국적·경력·팀·기타)으로 최대 4개, 나머지는 버린다. 기타는 메모가 20자 이하일 때만. 글 예: `만 34세 이하`·`만 19~34세`·`2000~2006년생`, `재학·휴학생`·`졸업예정자`·`대학·대학원 학력`, `미취업자`·`재직자`, `3학년 이상`, `서울·경기`, `컴퓨터 전공`/`전공 무관`, `대한민국 국적`, `경력 2년 이하`, `2~4인 팀`. 앱은 아이콘 + 글로 그리고 모르는 icon은 `other` 아이콘.
+
+| icon | 조건 | iOS | Android |
+|---|---|---|---|
+| age | 나이·출생연도 | `birthday.cake` | `Cake` |
+| education | 재학상태·학력 | `graduationcap` | `School` |
+| schoolYear | 학년 | `number` | `Numbers` |
+| employment | 취업상태 | `briefcase` | `Work` |
+| region | 지역 | `mappin.and.ellipse` | `Place` |
+| major | 전공 | `book` | `MenuBook` |
+| nationality | 국적 | `globe` | `Public` |
+| experience | 경력연수 | `clock` | `Schedule` |
+| team | 팀규모 | `person.3` | `Groups` |
+| other | 기타 | `info.circle` | `Info` |
+
   - 응답 필드 추가: `Activity.hook: string|null`, `Activity.highlights: [{icon, text}]`, `Activity.cost: string|null`(장면 ② 대체용 비용 문구), `ProgramSummary.coverUrl: string|null`(켜진 커버만), `ProgramSummary.brandColor: "#RRGGBB"|null`(보일 로고(계승 포함)의 흰색·검정·회색이 아닌 대표색, 로고를 저장·가져올 때 서버가 계산해 `program_logos`·`organization_logos.brand_color`에 두고 밤 배치가 빈 것을 채운다; 앱은 커버가 없을 때 그라데이션에 쓴다).
   - 커버: 공개 `GET /v1/programs/{id}/cover?v={updatedAt epoch 초}`(인증 없음, 로고와 같은 `public, max-age=31536000, immutable`), 없거나 꺼졌으면 404·`coverUrl` null. 끄면 `updated_at`이 바뀌어 새 주소가 된다(이미 받은 사본은 기기 캐시에 남을 수 있다). PNG·JPEG·WebP 350KB 이하(4:5·1080×1350은 권장, 서버가 픽셀을 검사하지 않는다).
   - 벡터 저장: `activities.embedding` 열 대신 `activity_embeddings(activity_id, model, embedding halfvec(1024), source_hash, updated_at)`·`tag_embeddings(tag_id, …)`(대상과 모델마다 한 행; activities 행을 읽을 때 벡터를 끌고 다니지 않고, 모델을 바꿀 때 새 벡터를 다 만든 뒤 읽기를 넘긴다). `source_hash = sha256(모델 id + 임베딩 글)`이 같으면 다시 임베딩하지 않는다. 지금 읽는 모델은 `embedding_settings.active_model` 한 행이고, 배치가 새 모델로 게시 활동·태그를 실패 없이 모두 만든 뒤에만 바꾸며 그때 다른 모델의 활동·태그 벡터와 `user_taste`를 지운다. 비교는 같은 모델 id 벡터끼리만. 마이그레이션 V52가 `create extension if not exists vector`(운영 DB에 아직 확장이 없다).

@@ -14,7 +14,8 @@ import java.time.temporal.ChronoUnit
 sealed interface Scene {
     data class Hook(val hook: String, val name: String) : Scene
     data class Highlights(val items: List<Highlight>) : Scene
-    data class Eligibility(val text: String) : Scene
+    // items: 조건 트리로 만든 아이콘 라벨(최대 4개), text: 대상 원문(없으면 라벨을 이은 글)
+    data class Eligibility(val text: String, val items: List<EligibilityItem>) : Scene
     data class Benefit(val text: String) : Scene
     // dday: 서울 날짜로 남은 날(0 = 당일, 음수 = 지남), 모르면 null. label: "마감까지" 또는 행사 종류의 "행사까지"
     data class Deadline(val dday: Int?, val label: String, val deadlineText: String?, val reasons: List<String>) : Scene
@@ -40,8 +41,12 @@ object StoryScenes {
             ).takeIf { it.size >= MIN_FALLBACK_LINES }.orEmpty()
         }
         if (lines.isNotEmpty()) scenes += Scene.Highlights(lines)
-        // 지원 자격을 확인한 활동의 대상 원문
-        activity.audience?.trim()?.takeIf { activity.eligibilityChecked && it.isNotEmpty() }?.let { scenes += Scene.Eligibility(it) }
+        // 지원 자격을 확인한 활동의 대상(조건 트리 라벨 + 원문)
+        if (activity.eligibilityChecked) {
+            val items = EligibilityLabels.of(activity.eligibility)
+            (activity.audience?.trim()?.ifEmpty { null } ?: items.takeIf { it.isNotEmpty() }?.joinToString(" · ") { it.text })
+                ?.let { scenes += Scene.Eligibility(it, items) }
+        }
         // 무료·전액 지원 비용 문구, 없으면 장학·지원금 태그
         val benefit = activity.cost?.trim()?.takeIf { FREE.containsMatchIn(it) }
             ?: "장학·지원금이 있어요".takeIf { activity.tags.any { it.nameEn == FUNDING_TAG } }
