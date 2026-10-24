@@ -37,7 +37,8 @@ enum ActivityClient {
                            openActivityCount: program.openActivityCount, nearestRecruitmentEndAt: program.nearestRecruitmentEndAt,
                            matchedActivityIDs: program.matchedActivityIds.map(String.init), latestActivityAt: program.latestActivityAt,
                            upcomingActivityCount: program.upcomingActivityCount ?? 0, nearestRecruitmentStartAt: program.nearestRecruitmentStartAt,
-                           tags: (program.tags ?? []).map(\.tag),
+                           fieldTags: Array((program.fieldTags ?? []).prefix(2)).map(\.tag),
+                           traitTags: (program.traitTags ?? program.tags ?? []).map(\.tag),
                            logoURL: program.logoUrl.flatMap { URL(string: $0, relativeTo: api)?.absoluteURL })
         }, nextCursor: payload.nextCursor)
     }
@@ -79,7 +80,8 @@ enum ActivityClient {
             // Sort key: the application's end; when no usable deadline exists, the activity start stands in for it.
             recruitmentDeadline: activity.application.flatMap { ActivityModel.instant($0.endAt) ?? ActivityModel.seoulDay($0.endDateExclusive) }
                 ?? activity.activitySchedule.flatMap { ActivityModel.instant($0.startAt) ?? ActivityModel.seoulDay($0.startDate) },
-            tags: (activity.tags ?? []).map(\.tag),
+            fieldTags: (activity.fieldTagsAll ?? activity.fieldTags ?? []).map(\.tag),
+            traitTags: (activity.traitTags ?? activity.tags ?? []).map(\.tag),
             location: activity.location.flatMap { $0.isEmpty ? nil : $0 },
             place: activity.place?.value.map { ActivityPlace(name: $0.name, address: $0.address, lat: $0.lat, lng: $0.lng) })
     }
@@ -122,14 +124,15 @@ enum ActivityClient {
         let id: Int64; let name: String; let nameEn: String?; let organization: Named
         let openActivityCount: Int; let nearestRecruitmentEndAt: String?; let matchedActivityIds: [Int64]; let latestActivityAt: String?
         let upcomingActivityCount: Int?; let nearestRecruitmentStartAt: String?
-        /// Absent on older responses.
-        let tags: [TagDTO]?
+        /// 분야 (at most two, relevance order) and 성격 tags (contract "분야·성격 태그와 아이콘" 2026-10-24); absent on older responses,
+        /// which only send the mixed `tags`.
+        let fieldTags: [TagDTO]?; let traitTags: [TagDTO]?; let tags: [TagDTO]?
         /// Program logo path, or nil without a logo (contract "프로그램 로고" 2026-10-19 밤); absent on older responses.
         let logoUrl: String?
     }
     private struct TagDTO: Decodable {
-        let id: Int64; let name: String; let nameEn: String?
-        var tag: Tag { Tag(id: id, name: name, nameEn: nameEn) }
+        let id: Int64; let name: String; let nameEn: String?; let kind: String?
+        var tag: Tag { Tag(id: id, name: name, nameEn: nameEn, kind: kind.flatMap(Tag.Kind.init(rawValue:)) ?? .trait) }
     }
     private struct Named: Decodable { let name: String }
     private struct Schedule: Decodable {
@@ -153,8 +156,8 @@ enum ActivityClient {
         let eligibility: Lenient<EligibilityNode>?
         /// 활동 종류 code; absent on older responses.
         let category: String?
-        /// 태그; absent on older responses.
-        let tags: [TagDTO]?
+        /// 분야 (`fieldTagsAll` every one, `fieldTags` at most two) and 성격 tags (2026-10-24); absent on older responses, which send `tags`.
+        let fieldTags: [TagDTO]?; let fieldTagsAll: [TagDTO]?; let traitTags: [TagDTO]?; let tags: [TagDTO]?
         /// 장소 (contract "활동 장소"); both absent on older responses. A malformed `place` reads as none.
         let location: String?
         let place: Lenient<PlaceDTO>?
