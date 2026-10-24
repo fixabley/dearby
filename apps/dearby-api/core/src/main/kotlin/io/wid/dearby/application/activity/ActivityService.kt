@@ -2,18 +2,22 @@ package io.wid.dearby.application.activity
 
 import io.wid.dearby.application.organization.OrganizationRepository
 import io.wid.dearby.application.program.ProgramRepository
+import io.wid.dearby.application.program.ProgramSummaryRepository
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.InvalidInputException
 import io.wid.dearby.domain.NotFoundException
 import io.wid.dearby.domain.PublicationStatus
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 
 @Service
 class ActivityService(
     private val activities: ActivityRepository,
     private val programs: ProgramRepository,
     private val organizations: OrganizationRepository,
+    private val summaries: ProgramSummaryRepository,
 ) {
 
     @Transactional(readOnly = true)
@@ -33,7 +37,7 @@ class ActivityService(
             val organization = organizationById[program.organizationId] ?: return@mapNotNull null
             ActivityListing(activity, program, organization)
         }
-        return ActivityPage(items, if (found.size > condition.size) raw.last().id else null)
+        return ActivityPage(withProgramFields(items), if (found.size > condition.size) raw.last().id else null)
     }
 
     @Transactional(readOnly = true)
@@ -43,7 +47,18 @@ class ActivityService(
         // 목록과 같이, 소속을 찾지 못한 활동은 없는 것으로 본다
         val program = programs.findAllById(listOf(activity.programId)).singleOrNull() ?: throw notFound()
         val organization = organizations.findAllById(listOf(program.organizationId)).singleOrNull() ?: throw notFound()
-        return ActivityListing(activity, program, organization)
+        return withProgramFields(listOf(ActivityListing(activity, program, organization))).single()
+    }
+
+    // 분야 태그가 없는 활동은 프로그램의 분야 태그 순서를 쓴다(native-v1.md "분야·성격 태그와 아이콘")
+    private fun withProgramFields(items: List<ActivityListing>): List<ActivityListing> {
+        val programIds = items.filter { it.activity.fieldTags.isEmpty() }.map { it.program.id }.toSet()
+        if (programIds.isEmpty()) return items
+        val tags = summaries.tagsByProgram(programIds, OffsetDateTime.now(ZoneOffset.UTC))
+        return items.map { item ->
+            if (item.activity.fieldTags.isNotEmpty()) item
+            else item.copy(activity = item.activity.copy(fieldTags = tags[item.program.id]?.fieldTags.orEmpty()))
+        }
     }
 
     companion object {

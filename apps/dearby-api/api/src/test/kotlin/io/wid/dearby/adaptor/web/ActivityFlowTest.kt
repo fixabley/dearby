@@ -68,7 +68,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals("https://letswift.kr/2026/", item["officialUrl"].asString())
         assertEquals("https://ticketa.co/e/vdb8aajs/l/website", item["applicationUrl"].asString()) // V5 application_url
         // 관리자만 보는 정보는 내보내지 않는다
-        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "applicationUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags", "location", "place"), item.propertyNames().toSet())
+        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "applicationUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags", "fieldTags", "fieldTagsAll", "traitTags", "location", "place"), item.propertyNames().toSet())
         // 시각은 일정의 시간대로 표기한다(같은 순간)
         assertEquals("2026-10-08T00:00:00+09:00", item["application"]["endAt"].asString())
         assertEquals("2026-10-08", item["activitySchedule"]["dateLabel"].asString())
@@ -290,6 +290,39 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals(listOf("창업", "창의성"), listOf(dictionary[0]["name"].asString(), dictionary[1]["name"].asString()))
         jdbc.sql("delete from program_tags where program_id = ?").param(programId).update()
         jdbc.sql("delete from activity_tags where activity_id = ?").param(openId).update()
+
+        // 분야·성격 태그(native-v1.md "분야·성격 태그와 아이콘"): 분야는 연관도 내림차순 → 연관도 없는 것은 뒤, 최대 2개(전부는 fieldTagsAll).
+        // 하위 분야가 함께 있는 상위 분야는 빠진다. 성격은 사전 순 전부
+        fun fieldTag(name: String, order: Int, parentId: Long? = null) = jdbc.sql("insert into tags (name, name_en, kind, parent_id, sort_order) values (?, ?, 'FIELD', ?, ?) returning id")
+            .params(listOf(name, "$name-en", parentId, order)).query(Long::class.java).single()
+        val topField = fieldTag("시험상위분야", 101)
+        val dataField = fieldTag("시험데이터", 102, topField)
+        val cloudField = fieldTag("시험클라우드", 103, topField)
+        val serviceField = fieldTag("시험봉사", 104)
+        jdbc.sql("insert into activity_tags (activity_id, tag_id, relevance) values (?, ?, 40), (?, ?, 90), (?, ?, null), (?, ?, null), (?, ?, null)")
+            .params(openId, dataField, openId, cloudField, openId, serviceField, openId, topField, openId, mentoring).update()
+        assertEquals(listOf("시험클라우드", "시험데이터"), openItem()["fieldTags"].let(::tagNames))
+        assertEquals(listOf("시험클라우드", "시험데이터", "시험봉사"), openItem()["fieldTagsAll"].let(::tagNames))
+        assertEquals(listOf("멘토링"), openItem()["traitTags"].let(::tagNames))
+        assertEquals(listOf("FIELD", "TRAIT"), listOf(openItem()["fieldTags"][0]["kind"].asString(), openItem()["traitTags"][0]["kind"].asString()))
+        assertEquals(topField, openItem()["fieldTags"][0]["parentId"].asLong())
+        // 프로그램 태그가 없으면 게시 활동 분야 태그의 합집합을 연관도 평균 순으로
+        assertEquals(listOf("시험클라우드", "시험데이터"), programs("")["items"].single()["fieldTags"].let(::tagNames))
+        assertEquals(listOf("멘토링"), programs("")["items"].single()["traitTags"].let(::tagNames))
+        // 상위 분야 이름·id로 찾으면 하위 분야를 가진 활동도 맞는다
+        jdbc.sql("delete from activity_tags where activity_id = ? and tag_id = ?").params(openId, topField).update()
+        assertTrue(search("q=시험상위분야")["items"].toList().any { it["id"].asLong() == openId })
+        assertEquals(listOf(openId), search("tagIds=$topField")["items"].toList().map { it["id"].asLong() })
+        // 프로그램 분야 태그: 연관도 평균이 있는 것 먼저, 없는 것은 운영자 순서(position). 프로그램에 없는 활동 분야는 빠진다
+        jdbc.sql("insert into program_tags (program_id, tag_id, position) values (?, ?, 0), (?, ?, 1), (?, ?, 2)").params(programId, serviceField, programId, dataField, programId, mentoring).update()
+        assertEquals(listOf("시험데이터", "시험봉사"), programs("")["items"].single()["fieldTags"].let(::tagNames))
+        // 분야 태그가 없는 활동은 프로그램 분야 순서를 쓴다(여기서는 연관도가 없어 position 순)
+        jdbc.sql("delete from activity_tags where activity_id = ? and tag_id <> ?").params(openId, mentoring).update()
+        assertEquals(listOf("시험봉사", "시험데이터"), openItem()["fieldTags"].let(::tagNames))
+        assertEquals("TRAIT", dictionary[0]["kind"].asString())
+        jdbc.sql("delete from program_tags where program_id = ?").param(programId).update()
+        jdbc.sql("delete from activity_tags where activity_id = ?").param(openId).update()
+        jdbc.sql("delete from tags where id in (?, ?, ?, ?)").params(dataField, cloudField, serviceField, topField).update()
 
         // 대상자 조건(native-v1.md "대상자 조건"): 나이 19~34 이고(재학 또는 미취업)인 활동. 조건이 없는 활동은 어떤 필터에도 통과한다
         jdbc.sql(

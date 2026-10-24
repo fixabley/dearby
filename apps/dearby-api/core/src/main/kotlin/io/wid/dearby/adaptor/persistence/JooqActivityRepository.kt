@@ -93,14 +93,14 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             }
         val tags = TagRows.ofActivities(dsl, ids)
         val statuses = progressStatusesOf(dsl, schedules.values.flatten().map { it.id!! })
-        return rows.map { toActivity(it, schedules[it.id].orEmpty(), contacts[it.id].orEmpty(), tags[it.id].orEmpty(), statuses) }
+        return rows.map { toActivity(it, schedules[it.id].orEmpty(), contacts[it.id].orEmpty(), tags[it.id], statuses) }
     }
 
     private fun toActivity(
         row: ActivitiesRecord,
         schedules: List<SchedulesRecord>,
         contacts: List<ActivityContact>,
-        tags: List<Tag>,
+        tags: Pair<List<Tag>, List<Tag>>?, // 태그 전부(사전 순)와 분야 태그 순서
         statuses: Map<Id, List<ProgressStatus>>,
     ): Activity {
         fun toSchedule(row: SchedulesRecord) = row.toSchedule(statuses[row.id].orEmpty())
@@ -124,7 +124,8 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
             eligibility = EligibilityRows.read(row.eligibility),
             timestamps = Timestamps(row.createdAt!!, row.updatedAt!!),
             category = row.category?.let(ActivityCategory::valueOf),
-            tags = tags,
+            tags = tags?.first.orEmpty(),
+            fieldTags = tags?.second.orEmpty(),
             location = row.location,
         )
     }

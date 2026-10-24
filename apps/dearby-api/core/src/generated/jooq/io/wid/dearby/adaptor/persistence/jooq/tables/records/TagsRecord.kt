@@ -38,6 +38,14 @@ open class TagsRecord() : UpdatableRecordImpl<TagsRecord>(Tags.TAGS) {
         set(value): Unit = set(4, value)
         get(): OffsetDateTime? = get(4) as OffsetDateTime?
 
+    open var kind: String?
+        set(value): Unit = set(5, value)
+        get(): String? = get(5) as String?
+
+    open var parentId: Long?
+        set(value): Unit = set(6, value)
+        get(): Long? = get(6) as Long?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -47,12 +55,14 @@ open class TagsRecord() : UpdatableRecordImpl<TagsRecord>(Tags.TAGS) {
     /**
      * Create a detached, initialised TagsRecord
      */
-    constructor(id: Long? = null, name: String? = null, nameEn: String? = null, sortOrder: Int? = null, createdAt: OffsetDateTime? = null): this() {
+    constructor(id: Long? = null, name: String? = null, nameEn: String? = null, sortOrder: Int? = null, createdAt: OffsetDateTime? = null, kind: String? = null, parentId: Long? = null): this() {
         this.id = id
         this.name = name
         this.nameEn = nameEn
         this.sortOrder = sortOrder
         this.createdAt = createdAt
+        this.kind = kind
+        this.parentId = parentId
         resetTouchedOnNotNull()
     }
 }

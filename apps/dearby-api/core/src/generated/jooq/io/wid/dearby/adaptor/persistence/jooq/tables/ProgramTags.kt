@@ -85,6 +85,11 @@ open class ProgramTags(
      */
     val TAG_ID: TableField<ProgramTagsRecord, Long?> = createField(DSL.name("tag_id"), SQLDataType.BIGINT.nullable(false), this, "")
 
+    /**
+     * The column <code>public.program_tags.position</code>.
+     */
+    val POSITION: TableField<ProgramTagsRecord, Short?> = createField(DSL.name("position"), SQLDataType.SMALLINT.nullable(false).defaultValue(DSL.field(DSL.raw("0"), SQLDataType.SMALLINT)), this, "")
+
     private constructor(alias: Name, aliased: Table<ProgramTagsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ProgramTagsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ProgramTagsRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)

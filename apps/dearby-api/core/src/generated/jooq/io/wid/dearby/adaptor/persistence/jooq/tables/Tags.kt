@@ -8,6 +8,7 @@ import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_TAGS__ACTIVITY_TAGS_TAG_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_TAGS__PROGRAM_TAGS_TAG_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.TAGS_PKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.TAGS__TAGS_PARENT_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.Activities.ActivitiesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags.ActivityTagsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramTags.ProgramTagsPath
@@ -17,7 +18,9 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.records.TagsRecord
 import java.time.OffsetDateTime
 
 import kotlin.collections.Collection
+import kotlin.collections.List
 
+import org.jooq.Check
 import org.jooq.Condition
 import org.jooq.Field
 import org.jooq.ForeignKey
@@ -104,6 +107,16 @@ open class Tags(
      */
     val CREATED_AT: TableField<TagsRecord, OffsetDateTime?> = createField(DSL.name("created_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false).defaultValue(DSL.field(DSL.raw("now()"), SQLDataType.TIMESTAMPWITHTIMEZONE)), this, "")
 
+    /**
+     * The column <code>public.tags.kind</code>.
+     */
+    val KIND: TableField<TagsRecord, String?> = createField(DSL.name("kind"), SQLDataType.VARCHAR(10).nullable(false).defaultValue(DSL.field(DSL.raw("'TRAIT'::character varying"), SQLDataType.VARCHAR)), this, "")
+
+    /**
+     * The column <code>public.tags.parent_id</code>.
+     */
+    val PARENT_ID: TableField<TagsRecord, Long?> = createField(DSL.name("parent_id"), SQLDataType.BIGINT, this, "")
+
     private constructor(alias: Name, aliased: Table<TagsRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<TagsRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<TagsRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -138,6 +151,13 @@ open class Tags(
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
     override fun getIdentity(): Identity<TagsRecord, Long?> = super.getIdentity() as Identity<TagsRecord, Long?>
     override fun getPrimaryKey(): UniqueKey<TagsRecord> = TAGS_PKEY
+    override fun getReferences(): List<ForeignKey<TagsRecord, *>> = listOf(TAGS__TAGS_PARENT_ID_FKEY)
+
+    /**
+     * Get the implicit join path to the <code>public.tags</code> table.
+     */
+    fun tags(): TagsPath = tags
+    val tags: TagsPath by lazy { TagsPath(this, TAGS__TAGS_PARENT_ID_FKEY, null) }
 
     private lateinit var _activityTags: ActivityTagsPath
 
@@ -184,6 +204,9 @@ open class Tags(
      */
     val programs: ProgramsPath
         get(): ProgramsPath = programTags().programs()
+    override fun getChecks(): List<Check<TagsRecord>> = listOf(
+        Internal.createCheck(this, DSL.name("tags_kind_check"), "(((kind)::text = ANY ((ARRAY['FIELD'::character varying, 'TRAIT'::character varying])::text[])))", true)
+    )
     override fun `as`(alias: String): Tags = Tags(DSL.name(alias), this)
     override fun `as`(alias: Name): Tags = Tags(alias, this)
     override fun `as`(alias: Table<*>): Tags = Tags(alias.qualifiedName, this)

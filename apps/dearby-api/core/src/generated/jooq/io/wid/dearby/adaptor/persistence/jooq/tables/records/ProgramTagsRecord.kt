@@ -24,6 +24,10 @@ open class ProgramTagsRecord() : UpdatableRecordImpl<ProgramTagsRecord>(ProgramT
         set(value): Unit = set(1, value)
         get(): Long? = get(1) as Long?
 
+    open var position: Short?
+        set(value): Unit = set(2, value)
+        get(): Short? = get(2) as Short?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -33,9 +37,10 @@ open class ProgramTagsRecord() : UpdatableRecordImpl<ProgramTagsRecord>(ProgramT
     /**
      * Create a detached, initialised ProgramTagsRecord
      */
-    constructor(programId: Long? = null, tagId: Long? = null): this() {
+    constructor(programId: Long? = null, tagId: Long? = null, position: Short? = null): this() {
         this.programId = programId
         this.tagId = tagId
+        this.position = position
         resetTouchedOnNotNull()
     }
 }
