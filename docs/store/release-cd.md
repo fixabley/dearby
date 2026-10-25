@@ -14,7 +14,7 @@
 
 - 문안 원본은 이제 fastlane 메타데이터 파일이다(`apps/ios/fastlane/metadata/ko/*.txt`, `apps/android/fastlane/metadata/android/ko-KR/*.txt`). [2026-10-25 문안·개인정보 답안](listing-2026-10-25.md)이 현재 기준이고, [2026-10-19 문안](listing-2026-10-19.md)은 그 시점 기록으로 남긴다.
 - `release_notes.txt`(iOS)는 저장소에 두지 않는다. App Store는 첫 버전에 "새로운 기능"을 받지 않으므로 `whats_new` 입력이 있을 때만 실행 중에 만든다. Play `changelogs/default.txt`는 저장소 기본값이 있고 `release_notes` 입력이 덮어쓴다.
-- 카테고리(주 `PRODUCTIVITY`, 보조 `BUSINESS`)와 저작권(`2026 Dearby`)은 문안 초안의 제안값으로 넣었다. 운영자 명의가 정해지면 `metadata/copyright.txt`를 고친다.
+- 카테고리는 주 `BUSINESS`, 보조 `EDUCATION`(2026-10-25 사용자 결정, Play도 비즈니스)이다. 저작권(`2026 Dearby`)은 문안 초안의 제안값이다. 운영자 명의가 정해지면 `metadata/copyright.txt`를 고친다.
 
 ## 필요한 저장소 설정(이름만)
 
