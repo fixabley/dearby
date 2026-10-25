@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   title: "지원",
   description: "Dearby 문의, 명함 신고, 계정과 데이터 삭제 방법을 안내합니다.",
 };
-// 계약 native-v1.md "명함 신고·차단" › 연락처 공개(2026-10-22)·"계정 삭제"·"설정", analytics-v1.md. App Store 지원 URL과 Play 계정 삭제 URL(#delete-account)·데이터 삭제 URL(#delete-data)이 이 페이지다.
+// 계약 native-v1.md "명함 신고·차단" › 연락처 공개(2026-10-22)·"계정 삭제"·"설정"·"맞춤 대기열 끝 광고(AdMob, 비개인화)", analytics-v1.md. App Store 지원 URL과 Play 계정 삭제 URL(#delete-account)·데이터 삭제 URL(#delete-data)이 이 페이지다.
 // 지워지는 범위는 서버 JooqUserRepository.delete와 users on delete cascade 마이그레이션, 보유 기간은 개인정보 처리방침 "보관 기간과 삭제"와 맞춘다(2026-10-25).
 export default function SupportPage() {
   return (
@@ -42,6 +42,11 @@ export default function SupportPage() {
       <ul>
         <li>내가 다른 사람의 명함을 신고한 기록: 신고자 정보는 바로 지우고, 신고한 명함 내용과 사유는 신고일로부터 1개월이 지나면 지웁니다.</li>
         <li>앱 사용 통계(Firebase Analytics): 서비스의 사용자 ID와 연결하지 않아 계정 삭제로 함께 지울 수 없고, 수집일로부터 14개월이 지나면 지워집니다.</li>
+        <li>
+          광고 데이터(Google AdMob): 맞춤 대기열 끝 비개인화 광고를 보일 때 Google에 간 기기·광고 식별자, IP 주소, 광고 노출·클릭 기록은 서비스 계정과 연결하지 않아 계정 삭제로 지울 수
+          없고 Google 정책에 따라 보관됩니다. Android는 기기 설정에서 광고 ID를 삭제하거나 재설정하고, iPhone은 설정 &gt; 개인정보 보호 및 보안 &gt; 추적에서 Dearby를 끄면 광고
+          식별자를 보내지 않습니다.
+        </li>
         <li>기기에 저장된 패스키: 앱이 지울 수 없으니 iPhone은 설정 &gt; 암호, Android는 비밀번호 관리자에서 지워 주세요.</li>
         <li>브라우저에 저장한 명함은 저장한 명함 화면에서 지우거나 쿠키를 삭제하면 사라집니다.</li>
         <li>
@@ -59,7 +64,7 @@ export default function SupportPage() {
         <li>내 활동: 내 활동 탭에서 활동을 밀거나 길게 눌러 내 활동에서 빼기를 누릅니다. 일정별 진행 상태도 함께 지워집니다.</li>
         <li>푸시 기기 토큰: 프로필 탭의 알림에서 새 모집 알림을 끄거나 로그아웃(설정 → 계정 → 로그아웃)하면 이 기기의 토큰을 지웁니다.</li>
         <li>로그인 수단: 설정의 연결된 로그인에서 Apple·Google 연결을 해제하거나 패스키를 삭제합니다. 마지막 로그인 수단은 지울 수 없습니다.</li>
-        <li>앱 사용 통계: 프로필 탭의 알림에서 사용 통계 보내기를 끄면 그 기기에서 이후 수집을 멈춥니다. 이미 보낸 통계는 수집일로부터 14개월이 지나면 지워집니다.</li>
+        <li>앱 사용 통계: 프로필 탭의 알림에서 사용 통계 보내기를 끄면 그 기기에서 이후 수집을 멈춥니다. 이 설정은 광고(Google AdMob)에는 적용되지 않습니다. 이미 보낸 통계는 수집일로부터 14개월이 지나면 지워집니다.</li>
         <li>
           그 밖의 데이터(맞춤 대기열 반응, 알림 목록, 받은 명함 한 장만 지우기 등)는 지울 항목을 적어{" "}
           <a href="mailto:fixabley@naver.com?subject=Dearby%20데이터%20삭제%20요청">fixabley@naver.com</a>로 요청해 주세요. 본인 확인 뒤 처리합니다.
