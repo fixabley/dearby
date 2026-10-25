@@ -38,7 +38,7 @@
 - 명함 카드(`CardView`, 계약 "명함 표현" 2026-10-18, Mobbin 참고): 내 명함·받은 명함 상세가 같은 카드를 쓴다. `secondarySystemGroupedBackground` 바탕·모서리 20·구분선 테두리·안쪽 여백 20인 한 장의 카드 안에 가운데 머리(이니셜 아바타 56 → 이름 → `job`을 ` · `로 나눈 직무 칩(줄바꿈) → 가장 최근 승인 이력의 조직), `introduction` 마크다운, `연락처` 절(왼쪽 종류 아이콘 24 보조색·값, 글자 라벨 없음, 열 수 있으면 외부 링크 표시와 행 전체 버튼), `활동 이력` 절(기간·조직 · 프로그램 · 활동·역할과 `확인됨`/`미확인` 배지·설명)이 쌓인다. 비면 `공개된 연락처가 없어요`/`공개된 활동 이력이 없어요`. 행동 버튼은 카드 바깥에 둔다.
 - 받은 명함(`WalletPage`): `GET /v1/wallet`의 저장 명함을 이름 첫 글자(한글 초성 ㄱ…ㅎ, 영문 A–Z, 그 밖 `#`, `NameIndex`)로 묶은 색인 목록으로 보인다(2026-10-18, Outlook 연락처 참고). 묶음 머리글은 고정되고, 묶음이 7개 이상이면 오른쪽 색인 레일을 누르거나 끌어 이동한다(동작 줄이기에서는 애니메이션 없음). 행은 이니셜·이름·직무와 가장 최근 승인 이력의 조직 칩, 교환한 프로그램 칩, 오른쪽 끝 배지(`맞교환` 또는 서버가 준 `expiresAt` 기준 `N일 뒤 사라져요`/`오늘 사라져요`)이며 화살표는 없다. 검색 중에도 묶음을 유지한다. 상세는 카드 위에 `<프로그램> <활동>에서 받음 · <받은 날>`, 카드 아래 `내 명함도 건네기`(`POST /v1/wallet/cards/:id/reciprocate`, 내 명함이 여럿이면 고름)이고 맞교환이면 `맞교환했어요` 배지로 바뀐다. 새로 받는 경로는 웹 명함 페이지의 "Dearby 앱에 저장"이 여는 `dearby://cards/<id>?activity=<n>`이다: `DearbyApp.onOpenURL`이 명함 탭의 받은 명함 구역으로 옮기고 `WalletModel.receive`가 `PUT /v1/wallet/cards/:id`로 저장한 뒤 상세를 연다. 로그아웃 상태면 로그인 시트를 먼저 띄우고 이어서 저장하며, 내 명함이면 "내 명함이에요"만 알린다(계약 "명함 교환" 2026-10-19).
 
-로그인 토큰(Keychain)과 첫 실행 소개를 봤는지 표시하는 UserDefaults `dearby.onboarding.shown`(참/거짓 하나) 외의 영구 저장과 푸시는 없습니다.
+로그인 토큰(Keychain)과 첫 실행 소개를 봤는지 표시하는 UserDefaults `dearby.onboarding.shown`(참/거짓 하나) 외의 영구 저장과 푸시는 없습니다. 이전 빌드가 비로그인 추천용으로 쓰던 `dearby.recommendation.*`·`dearby.discoveryQueue.local`은 읽지도 지우지도 않습니다(계약 "비로그인에서 만들기·추천을 막음" 2026-10-25).
 이전 앱의 기기 데이터는 읽기·초기화·삭제·마이그레이션하지 않습니다.
 복구 태그: `backup/mobile-service-before-prototype-20261003`.
 서버/웹/어드민/운영 DB는 변경하지 않습니다.
@@ -116,6 +116,15 @@
 - 명함 만들기(`CardComposerPage`): `Form`에서 명함 이름(선택)과 공개할 연락처·이력(`Toggle` 행)만 고른다. 본문은 앱 내장 기본 템플릿(`TemplateDocument.starter`: `{{profile.name}}`·`{{profile.job}}`·`{{profile.introduction}}`·전화·이메일 `{{contact:<id>}}`)이고 화면에는 채운 결과를 읽기 전용 미리보기(`DearbyMarkdownText`)로 보인다. 서버가 발행할 때 채운다(`POST /v1/cards {template}`). 템플릿에 든 연락처는 자동으로 공개되고, 승인되지 않은 이력은 고를 수 없다. 이름·선택이 바뀌면 "원래대로"가 나타나며, 내 명함 탭의 "이 명함 고치기"는 그 명함의 이름·선택으로 채워 열고 같은 명함을 고친다(계약 "명함 고치기는 같은 명함을 수정" 2026-10-20): 제목 `명함 고치기`, 버튼 `고친 내용 저장`, 완료 시 `AccountClient.updateCard` → `PUT /v1/cards/:id`(POST와 같은 body·템플릿, 같은 Card 응답), 완료 문구 "고친 내용을 저장했어요", 404는 "이 명함은 더 이상 없어요. 내 명함 목록을 다시 확인해 주세요.". `+ 새 명함`은 prefill 없이 여는 별도 시트라 항상 `POST`다. 내 명함의 고치기 버튼 아래와 저장 막대에 "고친 내용은 이 명함에 바로 반영돼요. QR과 링크는 그대로예요."를 두고, 닫으면 목록을 다시 불러오며 id가 같아 선택이 유지된다. 2026-10-18 사용자 결정으로 앱 안 꾸미기(렌더링 화면 편집기 `TemplateEditor`, 데이터 넣기)와 같은 날 추가한 웹 버전 스위치를 지웠다(계약 "템플릿 — 2026-10-18 앱 안 꾸미기 삭제").
 - 오류는 ProblemDetail의 `detail`(`AccountError.rejected`)을 그대로 보인다.
 - 확인하지 못한 것: 실제 서버·기기에서의 흐름(시뮬레이터 대상 빌드만 통과).
+
+## 사용 통계 (2026-10-25, Firebase Analytics)
+
+계약 `shared/contracts/analytics-v1.md`의 사용자 속성·퍼널·대기열·전환·메뉴 이벤트와 화면 이름을 보낸다(`features/analytics/AppAnalytics.swift`). 광고 ID를 쓰지 않는 `FirebaseAnalyticsCore`(12.0에서 `FirebaseAnalyticsWithoutAdIdSupport`가 바뀐 이름, `firebase-ios-sdk` 13.1.1 고정)만 넣어 ATT 창이 없다. 푸시는 Firebase Messaging 없이 APNs 그대로다.
+
+- 설정 파일: `Config/GoogleService-Info.plist`(gitignore)가 있을 때만 `generate_project.rb`가 리소스로 넣는다. 없으면 빌드는 되고 통계는 꺼진다. 기기 빌드는 `~/.dearby-deploy/GoogleService-Info.plist`를 복사해 넣는다. CI(`native.yml`·`ios-testflight.yml`)는 시크릿 `IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`가 있으면 그 파일을 쓴다(`base64 -i ~/.dearby-deploy/GoogleService-Info.plist | gh secret set IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`).
+- Info.plist(두 파일 같음): `FIREBASE_ANALYTICS_COLLECTION_ENABLED` false(앱이 시작할 때 `사용 통계 보내기` 값으로 켠다), IDFV·광고 개인화 신호·광고 네트워크 등록·자동 화면 보고·앱 델리게이트 스위즐링 끔.
+- 프로필 `알림` 묶음 `사용 통계 보내기`(기본 켬, 기기 키 `dearby.analytics.enabled`, 로그인과 상관없이 보임)가 `setAnalyticsCollectionEnabled`를 바꾼다.
+- 기기에서 확인: 실행 인자 `-FIRDebugEnabled`(GA DebugView), 콘솔의 `Logging event:` 줄.
 
 ## 검증
 

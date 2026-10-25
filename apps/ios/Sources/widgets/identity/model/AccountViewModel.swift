@@ -155,8 +155,13 @@ import SwiftUI
     /// Leaves the new-or-link choice; the link token is simply left to expire.
     func clearPendingLink() { pendingLink = nil }
     /// Signing out always forgets the device tokens, even if the server call fails.
+    /// Runs with the session before 로그아웃 ends it (this device's push token leaves the account, contract "즐겨찾기(하트)·새 모집 푸시 알림").
+    @ObservationIgnored var willSignOut: (@MainActor (TokenPair) async -> Void)?
     func signOut() async {
-        if let session { try? await client.logout(session) }
+        if let session {
+            await willSignOut?(session)
+            try? await client.logout(session)
+        }
         forget()
     }
     enum DeletionResult: Equatable {

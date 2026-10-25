@@ -45,6 +45,8 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
     changed: Boolean, edit: (Boolean) -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {},
     /** 프로필 `추천` 묶음 (contract "추천 설정 퍼널·지원 자격 정보·추천"), drawn in read mode and while signed out; null when the feature is not there. */
     recommendation: (@Composable () -> Unit)? = null,
+    /** 프로필 `알림` 묶음 ([NotificationRow] signed in, [UsageStatsRow] always) in read mode and while signed out. */
+    notifications: (@Composable () -> Unit)? = null,
 ) {
     // 직무 label row → focuses the picker's search field (contract "입력 영역 터치"); 계정 삭제 lives in 설정 since 2026-10-20.
     val jobSearchFocus = remember { FocusRequester() }
@@ -68,15 +70,16 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
         when (state.phase) {
             // Signed out and failed states are CenteredMessages (contract "비스크롤 화면 배치·CTA").
             ProfilePhase.SIGNED_OUT -> {
-                CenteredMessage(Icons.Rounded.AccountCircle, "프로필은 계정에 저장돼요", "명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.", Modifier.weight(1f).fillMaxWidth(),
-                    primary = MessageAction("명함 만들기", compose), secondary = MessageAction("로그인", signIn))
+                CenteredMessage(Icons.Rounded.AccountCircle, "프로필은 계정에 저장돼요", "로그인하면 프로필을 저장하고 고칠 수 있어요.", Modifier.weight(1f).fillMaxWidth(),
+                    primary = MessageAction("로그인", signIn))
                 recommendation?.let { Box(Modifier.padding(20.dp)) { it() } }
+                notifications?.let { Box(Modifier.padding(horizontal = 20.dp).padding(bottom = 20.dp)) { it() } }
             }
             ProfilePhase.LOADING -> DearbySkeleton(Modifier.fillMaxSize().padding(20.dp)) { SkeletonCardBody(); SkeletonRows(3) }
             ProfilePhase.FAILED -> DearbyErrorState("프로필을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.", retry, Modifier.weight(1f).fillMaxWidth())
             ProfilePhase.LOADED -> state.form?.let { form ->
                 if (settingUp) { ProfileSetupPage(form, state.saving, state.error, state.jobSearch, searchJobs, change, save, Modifier.weight(1f)); return@let }
-                if (!state.editing) { ReadOnlyProfile(form, rows, Modifier.weight(1f), recommendation); return@let }
+                if (!state.editing) { ReadOnlyProfile(form, rows, Modifier.weight(1f), recommendation, notifications); return@let }
                 Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     Text("기본 정보", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
                     // Floating-label rows (contract "플로팅 라벨·필수 표시"·"입력 영역 터치"): the whole row focuses its field; Next moves down, Done closes the keyboard.
@@ -121,7 +124,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
 
 /** Read mode (contract "프로필 탭은 읽기 모드가 기본"): the same sections as the editor as read-only rows in the card body's idiom; no inputs, no bar. */
 @OptIn(ExperimentalLayoutApi::class)
-@Composable private fun ReadOnlyProfile(form: ProfileFormState, rows: List<HistoryRowState>, modifier: Modifier = Modifier, recommendation: (@Composable () -> Unit)? = null) {
+@Composable private fun ReadOnlyProfile(form: ProfileFormState, rows: List<HistoryRowState>, modifier: Modifier = Modifier, recommendation: (@Composable () -> Unit)? = null, notifications: (@Composable () -> Unit)? = null) {
     Column(modifier.verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(form.name.ifBlank { "이름 없음" }, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
@@ -141,6 +144,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
         if (rows.isEmpty()) Text("활동 이력이 없어요.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         rows.forEach { HistoryRow(it, null, null) }
         recommendation?.invoke()
+        notifications?.invoke()
     }
 }
 

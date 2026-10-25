@@ -64,6 +64,11 @@ jobs:
       # Caches the Gradle distribution, dependencies and build cache; only main writes the cache.
       - uses: gradle/actions/setup-gradle@v6
       - run: python3 scripts/check-fsd.py
+      # 새 모집 푸시: Firebase config from the optional secret ANDROID_GOOGLE_SERVICES_JSON (file content); without it the build has no push.
+      - name: Write google-services.json (optional)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON }}
+        run: if [ -n "$GOOGLE_SERVICES_JSON" ]; then printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json; fi
       - run: ./gradlew lintDebug assembleDebug
   # Kotlin API: tests on PostgreSQL, plus a check that the committed jOOQ code matches the migrations.
   api:
@@ -122,6 +127,17 @@ jobs:
         run: |
           bash scripts/setup_swiftlint.sh
           bash scripts/run_swiftlint.sh
+      # 사용 통계 (analytics-v1.md): the Firebase config comes from an optional secret; without it the app builds with Analytics off.
+      - name: Firebase config
+        env:
+          PLIST: ${{ secrets.IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+        run: |
+          if [ -n "$PLIST" ]; then
+            mkdir -p Config && printf '%s' "$PLIST" | base64 --decode > Config/GoogleService-Info.plist
+            echo "Firebase config written"
+          else
+            echo "No IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64; building without Analytics"
+          fi
       # The Xcode project is generated, not tracked (avoids merge conflicts on project.pbxproj).
       - name: Generate Xcode project
         run: |

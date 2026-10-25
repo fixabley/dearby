@@ -62,6 +62,10 @@ private val Glass = Color.Black.copy(alpha = 0.35f)
     state: QueueViewState, reduceMotion: Boolean, autoAdvance: Boolean, close: () -> Unit, retry: () -> Unit, page: (Int) -> Unit,
     like: (String, Boolean?) -> Unit, detail: (String) -> Unit, react: (String, QueueReaction) -> Unit,
     complete: (String) -> Unit, skipEarly: (String) -> Unit, refill: () -> Unit, undo: () -> Unit, commit: () -> Unit,
+    /** Favorited activity ids (the ♥ is the 즐겨찾기 heart) and those in 내 활동 (the `+` beside it, [plus]). */
+    liked: Set<String> = emptySet(), inMine: Set<String> = emptySet(), plus: (String) -> Unit = {},
+    /** A card stayed centred for a second (usage statistics `queue_card_view`). */
+    cardViewed: (String) -> Unit = {},
 ) {
     val snackbar = remember { SnackbarHostState() }
     var sheetFor by remember { mutableStateOf<QueueCardState?>(null) }
@@ -89,6 +93,7 @@ private val Glass = Color.Black.copy(alpha = 0.35f)
                     }
                 }
                 // Undo and 더 받기 move the queue ([QueueViewState.moves]); the user's own paging only reports back through [page].
+                LaunchedEffect(pager.settledPage) { delay(1_000); cards.getOrNull(pager.settledPage)?.let { cardViewed(it.id) } }
                 LaunchedEffect(state.moves) { if (pager.currentPage != state.index) pager.scrollToPage(state.index.coerceIn(0, cards.size)) }
                 VerticalPager(pager, Modifier.fillMaxSize(), key = { if (it < cards.size) cards[it].id else "end" }) { index ->
                     val card = cards.getOrNull(index)
@@ -98,7 +103,7 @@ private val Glass = Color.Black.copy(alpha = 0.35f)
                         QueueCard(card, index, cards.size, active = pager.settledPage == index && sheetFor == null, reduceMotion, autoAdvance,
                             scene = scenes[card.id] ?: 0, setScene = { scenes[card.id] = it }, next = next, complete = { complete(card.id) },
                             like = { like(card.id, it) }, detail = { detail(card.id) }, more = { sheetFor = card },
-                            react = { react(card.id, it) }, close = close)
+                            react = { react(card.id, it) }, close = close, liked = card.id in liked, added = card.id in inMine, plus = { plus(card.id) })
                     }
                 }
             }
@@ -133,6 +138,7 @@ private val QueueReaction.icon: ImageVector get() = when (this) {
     card: QueueCardState, index: Int, count: Int, active: Boolean, reduceMotion: Boolean, autoAdvance: Boolean,
     scene: Int, setScene: (Int) -> Unit, next: () -> Unit, complete: () -> Unit,
     like: (Boolean?) -> Unit, detail: () -> Unit, more: () -> Unit, react: (QueueReaction) -> Unit, close: () -> Unit,
+    liked: Boolean, added: Boolean, plus: () -> Unit,
 ) {
     // After the last scene the card stays put, every segment full (2026-10-24 user decision "멈춰줘"); only a swipe or `다음` moves on.
     val last = card.scenes.lastIndex
@@ -174,7 +180,8 @@ private val QueueReaction.icon: ImageVector get() = when (this) {
         }
         val actions = listOf(
             CustomAccessibilityAction("다음 장면") { forward(); true }, CustomAccessibilityAction("이전 장면") { back(); true },
-            CustomAccessibilityAction(if (card.liked) "관심 취소" else "관심 있어요") { like(null); true },
+            CustomAccessibilityAction(if (liked) "즐겨찾기 해제" else "즐겨찾기") { like(null); true },
+            CustomAccessibilityAction(if (added) "내 활동에 있음" else "내 활동에 추가") { plus(); true },
             CustomAccessibilityAction("자세히 보기") { detail(); true }, CustomAccessibilityAction("다음 활동") { next(); true },
         ) + QueueReaction.entries.filter { it != QueueReaction.LESS_FIELD || card.field != null }.map { CustomAccessibilityAction(it.label) { react(it); true } }
         Column(Modifier.align(Alignment.BottomStart).padding(start = 18.dp, end = 84.dp, bottom = 50.dp).semantics(mergeDescendants = true) { customActions = actions },
@@ -208,12 +215,14 @@ private val QueueReaction.icon: ImageVector get() = when (this) {
             }
         }
         Column(Modifier.align(Alignment.BottomEnd).padding(end = 10.dp, bottom = 56.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Rail("관심") {
-                FilledIconToggleButton(card.liked, { like(it) }, Modifier.size(48.dp), colors = IconButtonDefaults.filledIconToggleButtonColors(
+            Rail("즐겨찾기") {
+                FilledIconToggleButton(liked, { like(it) }, Modifier.size(48.dp), colors = IconButtonDefaults.filledIconToggleButtonColors(
                     containerColor = Glass, contentColor = Color.White, checkedContainerColor = Glass, checkedContentColor = Heart)) {
-                    Icon(if (card.liked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "관심", Modifier.size(26.dp))
+                    Icon(if (liked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, if (liked) "즐겨찾기 해제" else "즐겨찾기", Modifier.size(26.dp))
                 }
             }
+            // `+` right beside the heart (contract "`+` 내 활동에 추가").
+            Rail("내 활동") { RailButton(if (added) Icons.Rounded.CheckCircle else Icons.Rounded.AddCircleOutline, if (added) "내 활동에 있음" else "내 활동에 추가", plus) }
             Rail("자세히") { RailButton(Icons.Rounded.Info, "자세히 보기", detail) }
             Rail("다음") { RailButton(Icons.Rounded.KeyboardArrowUp, "다음 활동", next) }
             Rail(null) { RailButton(Icons.Rounded.MoreHoriz, "더 보기", more) }

@@ -23,6 +23,7 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.COLLECTION_WATCHLIST__COLLECT
 import io.wid.dearby.adaptor.persistence.jooq.keys.DISCOVERY_QUEUE__DISCOVERY_QUEUE_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECOMMENDATION_SIGNALS__RECOMMENDATION_SIGNALS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES__SCHEDULES_ACTIVITY_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.USER_NOTIFICATIONS__USER_NOTIFICATIONS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts.ActivityContactsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEligibilityTerms.ActivityEligibilityTermsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEmbeddings.ActivityEmbeddingsPath
@@ -33,6 +34,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue.DiscoveryQue
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals.RecommendationSignalsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules.SchedulesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Tags.TagsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserNotifications.UserNotificationsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivitiesRecord
 
 import java.time.LocalDateTime
@@ -261,6 +263,11 @@ open class Activities(
      */
     val HIGHLIGHTS: TableField<ActivitiesRecord, JSONB?> = createField(DSL.name("highlights"), SQLDataType.JSONB, this, "")
 
+    /**
+     * The column <code>public.activities.published_at</code>.
+     */
+    val PUBLISHED_AT: TableField<ActivitiesRecord, OffsetDateTime?> = createField(DSL.name("published_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6), this, "")
+
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<ActivitiesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)
@@ -441,6 +448,22 @@ open class Activities(
 
     val schedules: SchedulesPath
         get(): SchedulesPath = schedules()
+
+    private lateinit var _userNotifications: UserNotificationsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.user_notifications</code> table
+     */
+    fun userNotifications(): UserNotificationsPath {
+        if (!this::_userNotifications.isInitialized)
+            _userNotifications = UserNotificationsPath(this, null, USER_NOTIFICATIONS__USER_NOTIFICATIONS_ACTIVITY_ID_FKEY.inverseKey)
+
+        return _userNotifications;
+    }
+
+    val userNotifications: UserNotificationsPath
+        get(): UserNotificationsPath = userNotifications()
 
     /**
      * Get the implicit many-to-many join path to the <code>public.tags</code>

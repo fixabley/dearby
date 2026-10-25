@@ -6,10 +6,9 @@ import org.json.JSONObject
 
 /**
  * 추천 설정 (contract "추천 설정 퍼널·지원 자격 정보·추천", 2026-10-24): the funnel's answers. [completedAt] is set once the funnel was finished,
- * skipped to the end or put off (`나중에`); null means it has not been shown yet. The same JSON is the server body and the device copy.
+ * skipped to the end or put off (`나중에`); null means it has not been shown yet. The same JSON is the server's body.
  */
 data class RecommendationPreferences(val fieldTagIds: List<Long> = emptyList(), val categories: List<String> = emptyList(), val traitTagIds: List<Long> = emptyList(), val completedAt: String? = null) {
-    val empty get() = fieldTagIds.isEmpty() && categories.isEmpty() && traitTagIds.isEmpty()
     fun toJson(): JSONObject = JSONObject().put("fieldTagIds", JSONArray(fieldTagIds)).put("categories", JSONArray(categories))
         .put("traitTagIds", JSONArray(traitTagIds)).put("completedAt", completedAt ?: JSONObject.NULL)
 }

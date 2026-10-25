@@ -68,7 +68,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertEquals("https://letswift.kr/2026/", item["officialUrl"].asString())
         assertEquals("https://ticketa.co/e/vdb8aajs/l/website", item["applicationUrl"].asString()) // V5 application_url
         // 관리자만 보는 정보는 내보내지 않는다
-        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "applicationUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags", "fieldTags", "fieldTagsAll", "traitTags", "location", "place", "cost", "hook", "highlights"), item.propertyNames().toSet())
+        assertEquals(setOf("id", "name", "description", "organization", "program", "officialUrl", "applicationUrl", "imageUrl", "application", "activitySchedule", "schedules", "eligibility", "category", "tags", "fieldTags", "fieldTagsAll", "traitTags", "location", "place", "cost", "hook", "highlights", "favorited"), item.propertyNames().toSet())
         // 시각은 일정의 시간대로 표기한다(같은 순간)
         assertEquals("2026-10-08T00:00:00+09:00", item["application"]["endAt"].asString())
         assertEquals("2026-10-08", item["activitySchedule"]["dateLabel"].asString())
@@ -162,7 +162,23 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
             values (?, 'APPLICATION', '신청 기간', 'DEADLINE', 'CONFIRMED', 'TIMED', now() - interval '10 days', now() - interval '1 hour', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp)
             """
         ).param(timedClosedId).update()
+        // 활동 기간이 끝난 행사는 모집 기간에 끝이 없어도 열지 않는다(2026-10-25, 운영 NDC 2026: 모집 시작만 있고 6월 행사가 10월에도 열림)
+        val pastConferenceId = createActivity("지난 컨퍼런스")
+        jdbc.sql("update activities set category = 'CONFERENCE' where id = ?").param(pastConferenceId).update()
+        jdbc.sql(
+            """
+            update schedules set time_type = 'ALL_DAY', start_date = (now() at time zone 'Asia/Seoul')::date - 130,
+                end_date_exclusive = (now() at time zone 'Asia/Seoul')::date - 127 where activity_id = ? and slot = 'ACTIVITY'
+            """
+        ).param(pastConferenceId).update()
+        jdbc.sql(
+            """
+            insert into schedules (activity_id, slot, title, kind, status, time_type, start_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, 'APPLICATION', '신청 기간', 'DEADLINE', 'CONFIRMED', 'TIMED', now() - interval '160 days', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp)
+            """
+        ).param(pastConferenceId).update()
         fun ids(page: JsonNode) = (0 until page["items"].size()).map { page["items"][it]["id"].asLong() }
+        assertTrue(pastConferenceId in ids(search("q=지난 컨퍼런스")) && pastConferenceId !in ids(search("open=true&q=지난 컨퍼런스")))
         assertEquals(2, programs("")["items"].single()["openActivityCount"].asInt())
         // 검색은 단어 유사도까지 보므로 포함 여부로 확인한다
         val openSimilar = ids(search("open=true&q=종일 모집"))
@@ -171,7 +187,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         assertTrue(timedClosedId in ids(search("q=시각 모집 끝")))
         assertTrue(timedClosedId !in ids(search("open=true&q=시각 모집 끝")))
         assertEquals(setOf(openId, allDayOpenId), ids(search("open=true")).toSet())
-        jdbc.sql("update activities set publication_status = 'DRAFT' where id in (?, ?, ?)").params(allDayOpenId, allDayEndedId, timedClosedId).update()
+        jdbc.sql("update activities set publication_status = 'DRAFT' where id in (?, ?, ?, ?)").params(allDayOpenId, allDayEndedId, timedClosedId, pastConferenceId).update()
         // 모집 중인 프로그램만 보기(native-v1.md): openOnly=false면 최근 3년 안에 활동이 있었던 프로그램까지, 열린 프로그램 먼저. 3년 넘게 지난 활동만 있는 프로그램은 빠진다
         fun pastProgram(name: String, daysAgo: Int): Long {
             jdbc.sql("insert into programs (organization_id, name, created_at, updated_at) values (?, ?, localtimestamp, localtimestamp)").params(organizationId, name).update()
@@ -453,7 +469,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         val id = createActivity("다국어 확인 활동")
         jdbc.sql("update activities set name_en = 'Language check', description_en = 'In English' where id = ?").param(id).update()
         fun get(language: String?) = mvc.get("/v1/activities/$id") { language?.let { header(HttpHeaders.ACCEPT_LANGUAGE, it) } }
-            .andExpect { status { isOk() }; header { string(HttpHeaders.VARY, HttpHeaders.ACCEPT_LANGUAGE) } }.andReturn().response
+            .andExpect { status { isOk() }; header { string(HttpHeaders.VARY, "${HttpHeaders.ACCEPT_LANGUAGE}, ${HttpHeaders.AUTHORIZATION}") } }.andReturn().response
         fun names(language: String?) = json.readTree(get(language).contentAsString).let {
             listOf(it["name"].asString(), it["description"].asString(), it["organization"]["name"].asString())
         }
@@ -647,7 +663,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
     }
 
     @Test
-    fun `추천은 고른 분야·종류로 점수를 매기고 프로그램마다 2개, 지원 자격 정보가 있으면 맞지 않는 활동을 뺀다`() {
+    fun `추천은 로그인만 받고 고른 분야·종류로 점수를 매기고 프로그램마다 2개, 지원 자격 정보가 있으면 맞지 않는 활동을 뺀다`() {
         val user = UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
         fun MockHttpServletRequestDsl.asUser() = with(jwt().jwt { it.subject(user.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER")))
         fun body(result: org.springframework.test.web.servlet.ResultActionsDsl): JsonNode = json.readTree(result.andReturn().response.contentAsString)
@@ -676,32 +692,37 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         fun ids(items: JsonNode) = items.toList().map { it["activity"]["id"].asLong() }
         fun reasons(items: JsonNode, id: Long) = items.toList().single { it["activity"]["id"].asLong() == id }["reasons"].toList().map { it.asString() }
 
-        // 비로그인: 쿼리 설정. 고른 하위 분야 일치(exact)가 상위 분야로 맞은 것(young)보다 앞이고, 같은 프로그램은 2개까지라 weak는 빠진다
-        val anonymousPage = body(mvc.get("/v1/discovery/recommendations?fieldTagIds=$parent,$childB").andExpect { status { isOk() } })
-        val anonymous = anonymousPage["items"]
-        // total은 프로그램당 2개로 자르기 전 후보 수(weak 포함)
-        assertTrue(anonymousPage["total"].asInt() >= 3)
-        assertEquals(listOf(exact, young), ids(anonymous))
-        assertEquals(setOf("activity", "program", "reasons", "scenes"), anonymous[0].propertyNames().toSet())
-        // 비로그인 대기열 화면용 장면: 한 줄 소개(없으면 이름)로 시작해 마감으로 끝난다
-        assertEquals(listOf("HOOK", "DEADLINE"), anonymous[0]["scenes"].toList().map { it["type"].asString() })
-        assertEquals("마감까지", anonymous[0]["scenes"][1]["label"].asString())
-        assertEquals("Let’Swift", anonymous[0]["program"]["name"].asString())
-        assertEquals("추천 하위 B", reasons(anonymous, exact).first())
-        assertTrue(reasons(anonymous, exact).last().endsWith("일 마감"))
-        assertEquals(listOf("추천 하위 A", "부트캠프"), reasons(body(mvc.get("/v1/discovery/recommendations?fieldTagIds=$childA&categories=BOOTCAMP"))["items"], young).take(2))
-        mvc.get("/v1/discovery/recommendations?categories=NOPE").andExpect { status { isBadRequest() } }
-        mvc.get("/v1/discovery/recommendations?size=0").andExpect { status { isBadRequest() } }
+        // 로그인만 받는다(native-v1.md "비로그인에서 만들기·추천을 막음"). 쿼리 설정으로 받던 비로그인 경로는 없다
+        mvc.get("/v1/discovery/recommendations?fieldTagIds=$parent,$childB").andExpect { status { isUnauthorized() } }
 
         // 추천 설정: 저장 전에는 빈 값, 분야 자리에 성격 태그를 넣으면 400, 저장하면 완료 시각이 남는다
         mvc.get("/v1/me/recommendation-preferences").andExpect { status { isUnauthorized() } }
         assertTrue(body(mvc.get("/v1/me/recommendation-preferences") { asUser() })["completedAt"].isNull)
         fun putPreferences(content: String) = mvc.put("/v1/me/recommendation-preferences") { asUser(); contentType = MediaType.APPLICATION_JSON; this.content = content }
         putPreferences("""{"fieldTagIds":[$trait]}""").andExpect { status { isBadRequest() } }
+
+        // 고른 하위 분야 일치(exact)가 상위 분야로 맞은 것(young)보다 앞이고, 같은 프로그램은 2개까지라 weak는 빠진다
+        putPreferences("""{"fieldTagIds":[$parent,$childB]}""").andExpect { status { isOk() } }
+        val page = body(mvc.get("/v1/discovery/recommendations") { asUser() }.andExpect { status { isOk() } })
+        val items = page["items"]
+        // total은 프로그램당 2개로 자르기 전 후보 수(weak 포함)
+        assertTrue(page["total"].asInt() >= 3)
+        assertEquals(listOf(exact, young), ids(items))
+        assertEquals(setOf("activity", "program", "reasons", "scenes"), items[0].propertyNames().toSet())
+        // 장면: 한 줄 소개(없으면 이름)로 시작해 마감으로 끝난다
+        assertEquals(listOf("HOOK", "DEADLINE"), items[0]["scenes"].toList().map { it["type"].asString() })
+        assertEquals("마감까지", items[0]["scenes"][1]["label"].asString())
+        assertEquals("Let’Swift", items[0]["program"]["name"].asString())
+        assertEquals("추천 하위 B", reasons(items, exact).first())
+        assertTrue(reasons(items, exact).last().endsWith("일 마감"))
+        putPreferences("""{"fieldTagIds":[$childA],"categories":["BOOTCAMP"]}""").andExpect { status { isOk() } }
+        assertEquals(listOf("추천 하위 A", "부트캠프"), reasons(body(mvc.get("/v1/discovery/recommendations") { asUser() })["items"], young).take(2))
+        mvc.get("/v1/discovery/recommendations?size=0") { asUser() }.andExpect { status { isBadRequest() } }
+
         val saved = body(putPreferences("""{"fieldTagIds":[$parent],"categories":["hackathon"],"traitTagIds":[$trait]}""").andExpect { status { isOk() } })
         assertEquals(listOf("HACKATHON"), saved["categories"].toList().map { it.asString() })
         assertTrue(!saved["completedAt"].isNull)
-        // 로그인이면 저장된 설정을 쓴다(쿼리는 무시). 성격 일치가 더해진 exact가 앞이다
+        // 저장된 설정을 쓴다(쿼리는 무시). 성격 일치가 더해진 exact가 앞이다
         assertEquals(listOf(exact, young), ids(body(mvc.get("/v1/discovery/recommendations?fieldTagIds=$childB") { asUser() })["items"]))
 
         // 지원 자격 정보: 현재 동의 버전이 아니면 400, 값이 어휘 밖이면 400
@@ -850,6 +871,118 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
             jdbc.sql("update activities set publication_status = 'DRAFT' where id in (${ours.joinToString(",")})").update()
             jdbc.sql("delete from embedding_settings").update()
             jdbc.sql("delete from activity_embeddings where model = 'test-model'").update()
+        }
+    }
+
+    // native-v1.md "즐겨찾기(하트)·새 모집 푸시 알림": 로그인만, 활동 하트 = 대기열 LIKE(양방향), 응답의 favorited, 새 모집·확인, 알림 수준, 기기 토큰·알림 설정
+    @Test
+    fun `즐겨찾기는 로그인만 받고 활동 하트는 대기열 관심과 하나이며 새 모집과 알림 수준·기기 토큰·알림 설정을 저장한다`() {
+        mvc.get("/v1/me/favorites").andExpect { status { isUnauthorized() } }
+        val user = UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
+        fun MockHttpServletRequestDsl.asUser() = with(jwt().jwt { it.subject(user.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER")))
+        fun body(result: org.springframework.test.web.servlet.ResultActionsDsl): JsonNode = json.readTree(result.andReturn().response.contentAsString)
+        fun favorites(): JsonNode = body(mvc.get("/v1/me/favorites") { asUser() }.andExpect { status { isOk() } })
+        fun put(path: String, content: String? = null) = mvc.put("/v1/me/favorites/$path") { asUser(); content?.let { contentType = MediaType.APPLICATION_JSON; this.content = it } }
+        fun likes(activityId: Long) = jdbc.sql("select count(*) from recommendation_signals where user_id = ? and activity_id = ? and kind = 'LIKE'").params(user, activityId).query(Int::class.java).single()
+        val programId = jdbc.sql("select id from programs where source_id = '2e8633be-5cac-5d8e-a4c0-42d2e89185db'").query(Long::class.java).single()
+        val activity = createActivity("즐겨찾기 확인 활동")
+        jdbc.sql(
+            """
+            insert into schedules (activity_id, slot, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, 'APPLICATION', '신청 기간', 'DEADLINE', 'CONFIRMED', 'TIMED', now() - interval '1 day', now() + interval '5 days', 'Asia/Seoul', '', 0, localtimestamp, localtimestamp)
+            """
+        ).param(activity).update()
+        try {
+            // 활동 하트: 멱등 204, LIKE 한 행, 관심 없어요는 지운다. 없는 활동 404, 모르는 대상·수준 400·404
+            mvc.post("/v1/me/recommendation-signals") { asUser(); contentType = MediaType.APPLICATION_JSON; content = """{"activityId":$activity,"kind":"DISMISS"}""" }
+            put("activities/$activity").andExpect { status { isNoContent() } }
+            put("activities/$activity").andExpect { status { isNoContent() } }
+            assertEquals(1, likes(activity))
+            assertEquals(0, jdbc.sql("select count(*) from recommendation_signals where user_id = ? and kind = 'DISMISS'").param(user).query(Int::class.java).single())
+            put("activities/-1").andExpect { status { isNotFound() } }
+            put("organizations/$programId").andExpect { status { isNotFound() } }
+            put("programs/$programId", """{"notifyLevel":"LOUD"}""").andExpect { status { isBadRequest() } }
+
+            // favorited: 로그인 응답에만, 캐시는 Authorization으로 나뉜다
+            val signedIn = mvc.get("/v1/activities/$activity") { asUser() }.andExpect { status { isOk() } }.andReturn().response
+            assertEquals(true, json.readTree(signedIn.contentAsString)["favorited"].asBoolean())
+            assertTrue(signedIn.getHeaders("Vary").joinToString().contains("Authorization"))
+            assertEquals(false, json.readTree(mvc.get("/v1/activities/$activity").andReturn().response.contentAsString)["favorited"].asBoolean())
+            fun programFavorited() = body(mvc.get("/v1/discovery/programs?size=100") { asUser() })["items"].toList().single { it["id"].asLong() == programId }["favorited"].asBoolean()
+            assertEquals(false, programFavorited())
+
+            // 프로그램 하트: 수준을 고르고, 본문 없이 다시 보내면 수준은 그대로
+            put("programs/$programId", """{"notifyLevel":"ALL"}""").andExpect { status { isNoContent() } }
+            put("programs/$programId").andExpect { status { isNoContent() } }
+            assertEquals(true, programFavorited())
+            put("activities/$activity", """{"notifyLevel":"NONE"}""").andExpect { status { isNoContent() } }
+            val page = favorites()
+            val program = page["programs"].toList().single()
+            assertEquals(listOf(programId.toString(), "ALL", "false", "true"), listOf(program["program"]["id"].asString(), program["notifyLevel"].asString(), program["newRecruitment"].asString(), program["program"]["favorited"].asString()))
+            assertTrue(program["favoritedAt"].isString)
+            val item = page["activities"].toList().single()
+            assertEquals(listOf(activity.toString(), "NONE", "true"), listOf(item["activity"]["id"].asString(), item["notifyLevel"].asString(), item["activity"]["favorited"].asString()))
+            // 캘린더 보기: 모집 기간 일정이 함께 온다
+            assertTrue(item["activity"]["application"]["startAt"].isString, item["activity"]["application"].toString())
+            assertEquals(programId, item["program"]["id"].asLong())
+
+            // 새 모집: 즐겨찾기 뒤 게시된 열린 활동. 프로그램을 열면(seen) 꺼진다
+            jdbc.sql("update activities set published_at = now() + interval '1 second' where id = ?").param(activity).update()
+            assertEquals(true, favorites()["programs"][0]["newRecruitment"].asBoolean())
+            jdbc.sql("update activities set published_at = now() where id = ?").param(activity).update()
+            mvc.post("/v1/me/favorites/programs/$programId/seen") { asUser() }.andExpect { status { isNoContent() } }
+            assertEquals(false, favorites()["programs"][0]["newRecruitment"].asBoolean())
+
+            // 대기열 관심 취소·관심 있어요는 즐겨찾기에도 반영된다
+            mvc.post("/v1/me/recommendation-signals") { asUser(); contentType = MediaType.APPLICATION_JSON; content = """{"activityId":$activity,"kind":"UNLIKE"}""" }.andExpect { status { isNoContent() } }
+            assertEquals(0, favorites()["activities"].size())
+            mvc.post("/v1/me/recommendation-signals") { asUser(); contentType = MediaType.APPLICATION_JSON; content = """{"activityId":$activity,"kind":"LIKE"}""" }.andExpect { status { isNoContent() } }
+            assertEquals("APPLICATION", favorites()["activities"][0]["notifyLevel"].asString())
+            // 즐겨찾기 해제 = UNLIKE(없어도 204)
+            mvc.delete("/v1/me/favorites/activities/$activity") { asUser() }.andExpect { status { isNoContent() } }
+            mvc.delete("/v1/me/favorites/activities/$activity") { asUser() }.andExpect { status { isNoContent() } }
+            assertEquals(0, likes(activity))
+            mvc.delete("/v1/me/favorites/programs/$programId") { asUser() }.andExpect { status { isNoContent() } }
+            assertEquals("""{"programs":[],"activities":[]}""", favorites().toString())
+
+            // 알림 전체 스위치(기본 켜짐)와 기기 토큰(시간대 IANA)
+            assertEquals("""{"newRecruitment":true}""", body(mvc.get("/v1/me/notification-settings") { asUser() }).toString())
+            assertEquals("""{"newRecruitment":false}""", body(mvc.put("/v1/me/notification-settings") { asUser(); contentType = MediaType.APPLICATION_JSON; content = """{"newRecruitment":false}""" }.andExpect { status { isOk() } }).toString())
+            assertEquals(false, body(mvc.get("/v1/me/notification-settings") { asUser() })["newRecruitment"].asBoolean())
+            fun device(content: String) = mvc.put("/v1/me/push-devices") { asUser(); contentType = MediaType.APPLICATION_JSON; this.content = content }
+            device("""{"platform":"IOS","token":"test-token-$user","timeZone":"America/New_York","appVersion":"1.0"}""").andExpect { status { isNoContent() } }
+            device("""{"platform":"WEB","token":"x"}""").andExpect { status { isBadRequest() } }
+            device("""{"platform":"ANDROID","token":"x","timeZone":"Mars/Base"}""").andExpect { status { isBadRequest() } }
+            assertEquals("America/New_York", jdbc.sql("select time_zone from push_devices where user_id = ?").param(user).query(String::class.java).single())
+            mvc.delete("/v1/me/push-devices/test-token-$user") { asUser() }.andExpect { status { isNoContent() } }
+            assertEquals(0, jdbc.sql("select count(*) from push_devices where user_id = ?").param(user).query(Int::class.java).single())
+
+            // 알림 목록(native-v1.md "알림 목록"): 프로그램 카드로 묶고 최근 순, 읽지 않은 수, 읽음·모두 읽음. 남의 알림은 404
+            mvc.get("/v1/me/notifications").andExpect { status { isUnauthorized() } }
+            fun notification(kind: String, hoursAgo: Int) = jdbc.sql(
+                "insert into user_notifications (user_id, activity_id, program_id, kind, local_date, created_at) values (?, ?, ?, ?, current_date - ?, now() - make_interval(hours => ?)) returning id"
+            ).params(user, activity, programId, kind, hoursAgo / 24, hoursAgo).query(Long::class.java).single()
+            val older = notification("NEW", 30)
+            val newer = notification("DEADLINE_EVE", 1)
+            val inbox = body(mvc.get("/v1/me/notifications") { asUser() }.andExpect { status { isOk() } })
+            val group = inbox["groups"].toList().single()
+            assertEquals(listOf(programId, 2L), listOf(group["program"]["id"].asLong(), group["unread"].asLong()))
+            assertEquals(listOf("$newer DEADLINE_EVE", "$older NEW"), group["items"].toList().map { it["id"].asString() + " " + it["kind"].asString() })
+            assertEquals("즐겨찾기 확인 활동", group["items"][0]["activity"]["name"].asString())
+            assertTrue(group["items"][0]["readAt"].isNull && inbox["nextCursor"].isNull)
+            fun unread() = body(mvc.get("/v1/me/notifications/unread-count") { asUser() })["count"].asInt()
+            assertEquals(2, unread())
+            mvc.post("/v1/me/notifications/$newer/read") { asUser() }.andExpect { status { isNoContent() } }
+            mvc.post("/v1/me/notifications/$newer/read") { asUser() }.andExpect { status { isNoContent() } }
+            assertEquals(1, unread())
+            val stranger = UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
+            mvc.post("/v1/me/notifications/$older/read") { with(jwt().jwt { it.subject(stranger.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER"))) }.andExpect { status { isNotFound() } }
+            jdbc.sql("delete from users where id = ?").param(stranger).update()
+            mvc.post("/v1/me/notifications/read-all") { asUser() }.andExpect { status { isNoContent() } }
+            assertEquals(0, unread())
+        } finally {
+            jdbc.sql("update activities set publication_status = 'DRAFT' where id = ?").param(activity).update()
+            jdbc.sql("delete from users where id = ?").param(user).update()
         }
     }
 

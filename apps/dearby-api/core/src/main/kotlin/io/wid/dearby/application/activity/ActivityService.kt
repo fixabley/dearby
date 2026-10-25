@@ -38,6 +38,13 @@ class ActivityService(
     fun openListings(eligibility: EligibilityFilter?): List<ActivityListing> =
         listings(activities.search(ActivitySearch(null, null, null, null, MAX_OPEN_LISTINGS, openOnly = true)), eligibility)
 
+    // 즐겨찾기·알림: 이 활동들 또는 이 프로그램들의 게시 활동(닫힌 것 포함). 빈 집합이면 빈 목록
+    @Transactional(readOnly = true)
+    fun publishedListings(ids: Set<Id>? = null, programIds: Set<Id>? = null): List<ActivityListing> {
+        if (ids?.isEmpty() == true || programIds?.isEmpty() == true) return emptyList()
+        return listings(activities.search(ActivitySearch(null, null, null, null, MAX_OPEN_LISTINGS, ids = ids, programIds = programIds)), null)
+    }
+
     private fun listings(raw: List<Activity>, eligibility: EligibilityFilter?): List<ActivityListing> {
         // 2차 판정(native-v1.md "대상자 조건"): 1차(SQL)를 지난 활동의 조건 트리를 op대로 평가한다
         val page = eligibility?.let { filter -> raw.filter { it.eligibility?.accepts(filter) ?: true } } ?: raw

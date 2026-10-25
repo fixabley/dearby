@@ -27,6 +27,14 @@ import com.dearby.nativeapp.BuildConfig
 import com.dearby.nativeapp.shared.config.activityAppLink
 import com.dearby.nativeapp.shared.config.authRedirect
 import com.dearby.nativeapp.shared.config.cardLink
+import com.dearby.nativeapp.shared.config.favoritesLink
+import com.dearby.nativeapp.features.push.Push
+import com.dearby.nativeapp.features.analytics.Analytics
+import com.dearby.nativeapp.pages.activity.FavoritesView
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
+import androidx.core.content.ContextCompat
 import com.dearby.nativeapp.shared.ui.DearbyTheme
 
 class MainActivity : ComponentActivity() {
@@ -60,30 +68,24 @@ class MainActivity : ComponentActivity() {
     private val profile: ProfileViewModel by viewModels { viewModelFactory { initializer { ProfileViewModel(account) } } }
     private val myCards: MyCardsViewModel by viewModels { viewModelFactory { initializer { MyCardsViewModel(account) } } }
     private val settings: SettingsViewModel by viewModels { viewModelFactory { initializer { SettingsViewModel(account, "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})") } } }
-    // 추천 설정 while signed out and the funnel's completion flag (contract "추천 설정 저장": the app's existing settings store, new keys); nothing older is read.
-    private val recommendation: RecommendationViewModel by viewModels {
-        viewModelFactory {
-            initializer {
-                RecommendationViewModel(account, object : RecommendationStore {
-                    override fun preferences() = onboarding.getString(RECOMMENDATION_KEY, null)
-                    override fun savePreferences(json: String) = onboarding.edit { putString(RECOMMENDATION_KEY, json) }
-                    override fun completed() = onboarding.getBoolean(RECOMMENDATION_DONE_KEY, false)
-                    override fun markCompleted() = onboarding.edit { putBoolean(RECOMMENDATION_DONE_KEY, true) }
-                })
-            }
-        }
+    // 추천 and 오늘의 맞춤 대기열 need a session (contract "비로그인에서 만들기·추천을 막음", 2026-10-25): nothing is kept on the device, and the
+    // earlier keys (signed-out settings, queue reactions, the funnel's completion flag) are neither read nor removed.
+    private val recommendation: RecommendationViewModel by viewModels { viewModelFactory { initializer { RecommendationViewModel(account) } } }
+    private val queue: QueueViewModel by viewModels { viewModelFactory { initializer { QueueViewModel(account) } } }
+    private val inbox: InboxViewModel by viewModels { viewModelFactory { initializer { InboxViewModel(account) } } }
+    // 즐겨찾기·새 모집 푸시 (contract "즐겨찾기(하트)·새 모집 푸시 알림", 2026-10-25): the view choice and the asked-once flag in a new preferences file.
+    private val device by lazy { DevicePreferences(applicationContext) }
+    private val favorites: FavoritesViewModel by viewModels {
+        viewModelFactory { initializer { FavoritesViewModel(account, device.favoritesView, { device.favoritesView = it }, activityModel::adopt) } }
     }
-    // 오늘의 맞춤 대기열 reactions while signed out (contract "맞춤 대기열": 신호는 기기에만), a new key in the same file.
-    private val queue: QueueViewModel by viewModels {
-        viewModelFactory {
-            initializer {
-                QueueViewModel(account, { recommendation.currentPreferences }, object : QueueStore {
-                    override fun signals() = onboarding.getString(QUEUE_SIGNALS_KEY, null)
-                    override fun saveSignals(json: String) = onboarding.edit { putString(QUEUE_SIGNALS_KEY, json) }
-                })
-            }
-        }
+    private val notifications: NotificationViewModel by viewModels {
+        viewModelFactory { initializer { NotificationViewModel(account, Push.available(applicationContext), { Push.token(applicationContext) }, Push.refreshed,
+            { device.pushStarted }, { device.pushStarted = true; Push.enable(applicationContext) }) } }
     }
+    // `오늘 일정 n개` opens 즐겨찾기 in this view (dearby://favorites?view=calendar), consumed once by DearbyApp.
+    private var favoritesLink by mutableStateOf<FavoritesView?>(null)
+    // The server sends at 8 in the morning in the device's time zone, so a change is sent again while the app runs (and at every start).
+    private val timeZoneChanged = object : BroadcastReceiver() { override fun onReceive(context: Context, intent: Intent) = notifications.register() }
     // First-launch intro, remembered in its own new preferences file; no earlier stored data is read.
     private val onboarding by lazy { getSharedPreferences("dearby.onboarding", MODE_PRIVATE) }
     private var intro by mutableStateOf(false)
@@ -108,13 +110,22 @@ class MainActivity : ComponentActivity() {
         }
         // A recreated Activity gets its launch intent again; the provider's code is single-use and was handled the first time.
         receive(intent, recreated = savedInstanceState != null)
+        Push.createChannel(this)
+        Analytics.start(applicationContext, device.analyticsEnabled)
+        account.beforeSignOut = notifications::unregister
+        ContextCompat.registerReceiver(this, timeZoneChanged, IntentFilter(Intent.ACTION_TIMEZONE_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED)
         setContent {
             DearbyTheme {
                 if (intro) IntroRoute(account, ::introShown)
-                else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings, recommendation, queue, screenshot)
+                else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings, recommendation, queue, favorites, notifications, inbox, device,
+                    favoritesLink, { favoritesLink = null }, screenshot)
                 PendingAccountRoute(account)
             }
         }
+    }
+    override fun onDestroy() {
+        unregisterReceiver(timeZoneChanged)
+        super.onDestroy()
     }
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -127,14 +138,20 @@ class MainActivity : ComponentActivity() {
      * `/activities/<id>`, which opens the detail on 발견. Other links only open the app.
      */
     private fun receive(intent: Intent?, recreated: Boolean = false) {
-        val link = intent?.dataString ?: return
+        // A push tapped while the app was in the background starts it with the message's `data` as extras (`url`, contract "즐겨찾기(하트)·새 모집 푸시 알림").
+        intent ?: return
+        val link = intent.dataString ?: intent.getStringExtra("url") ?: return
         if (recreated) return
+        // Opened from a push (analytics-v1 `push_open`); the server's `kind` when it sends one, the summary by its favorites link.
+        val fromPush = intent.getBooleanExtra(Push.OPENED, false) || (intent.dataString == null && intent.hasExtra("url"))
+        if (fromPush) {
+            val kind = intent.getStringExtra("kind")?.lowercase() ?: if (favoritesLink(link) != null) "summary" else null
+            Analytics.event("push_open", *listOfNotNull(kind?.let { "kind" to it }).toTypedArray())
+            intent.getStringExtra("notificationId")?.let(inbox::read)
+        }
+        favoritesLink(link)?.let { view -> favoritesLink = FavoritesView.entries.firstOrNull { it.name.equals(view, ignoreCase = true) } ?: FavoritesView.LIST; return }
         authRedirect(link)?.let { account.returned(it); return }
         cardLink(link, BuildConfig.WEB_ORIGIN)?.let { if (it.web) wallet.view(it) else wallet.receive(it); return }
-        activityAppLink(link, BuildConfig.WEB_ORIGIN)?.let(activityModel::openLinked)
+        activityAppLink(link, BuildConfig.WEB_ORIGIN)?.let { activityModel.openLinked(it, if (fromPush) "push" else "link") }
     }
 }
-
-private const val RECOMMENDATION_KEY = "dearby.recommendation.preferences"
-private const val RECOMMENDATION_DONE_KEY = "dearby.recommendation.completed"
-private const val QUEUE_SIGNALS_KEY = "dearby.queue.signals"

@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// 맞춤 대기열의 활동 한 장(contract "맞춤 대기열(스토리형 쇼츠)" 2026-10-24, 시안 Q3): 장면(서버 `scenes`, 없으면 앱이 만든 2~3개)을 4초마다 넘기고(위 진행 막대, 왼쪽 30% 탭은 이전·나머지는
-/// 다음 장면, 두 번 탭은 관심 있어요와 하트 효과), 배경 커버는 느리게 확대·이동(켄 번즈)하고 글자는 아래에서 차례로 떠오른다. 동작 줄이기에서는 움직임 없이
+/// 다음 장면, 두 번 탭은 즐겨찾기와 하트 효과), 배경 커버는 느리게 확대·이동(켄 번즈)하고 글자는 아래에서 차례로 떠오른다. 동작 줄이기에서는 움직임 없이
 /// 장면만 바뀌고, 화면 읽기를 켜면 저절로 넘기지 않고 사용자 지정 동작으로 같은 일을 한다. 마지막 장면이 끝나면 `complete`(그 장면에 멈춘다), 장면 ①에서 떠나면 `skipEarly`.
 struct QueueStoryCard: View {
     let item: RecommendedActivity
@@ -10,21 +10,29 @@ struct QueueStoryCard: View {
     /// The page on screen; `playing` also needs nothing over it (⋯ dialog, detail) and the app in the foreground.
     let current: Bool
     let playing: Bool
-    let liked: Bool
+    /// The favorite's 알림 수준; nil when the activity is not a favorite (the ♥ is its heart, contract "즐겨찾기(하트)" 2026-10-25).
+    let level: NotifyLevel?
+    /// In 내 활동 (the `+` shows a check).
+    let added: Bool
     let insets: EdgeInsets
     let now: Date
     let toggleLike: () -> Void
     let doubleTapLike: () -> Void
+    let setLevel: (NotifyLevel) -> Void
+    let addToMine: () -> Void
     let detail: () -> Void
     let next: () -> Void
     let more: () -> Void
-    let complete: () -> Void
+    /// The last scene ended; the scene count (사용 통계 `queue_card_complete`).
+    let complete: (Int) -> Void
     let skipEarly: () -> Void
     @State private var scene = 0
     /// The last scene ran its 4 seconds: the card stays there with every segment full until the user moves on (no auto-advance to the next card).
     @State private var finished = false
     @State private var zoomed = false
     @State private var bursts = 0
+    @State private var choosingLevel = false
+    private var liked: Bool { level != nil }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
     private var activity: ActivityModel { item.activity }
@@ -77,7 +85,7 @@ struct QueueStoryCard: View {
             scene += 1
         } else {
             finished = true
-            complete()
+            complete(scenes.count)
         }
     }
     private func step(_ delta: Int) {
@@ -94,7 +102,7 @@ struct QueueStoryCard: View {
             withAnimation(.easeOut(duration: 0.2)) { bursts = 0 }
         }
     }
-    /// Left 30%: previous scene; the rest: next. Double tap anywhere: 관심 있어요. Hidden from VoiceOver (custom actions do the same).
+    /// Left 30%: previous scene; the rest: next. Double tap anywhere: 즐겨찾기. Hidden from VoiceOver (custom actions do the same).
     private func tapLayer(width: CGFloat) -> some View {
         Color.clear.contentShape(Rectangle())
             .gesture(SpatialTapGesture(count: 2).onEnded { _ in burstLike() }
@@ -104,7 +112,8 @@ struct QueueStoryCard: View {
     @ViewBuilder private var actions: some View {
         Button("다음 장면") { step(1) }
         Button("이전 장면") { step(-1) }
-        Button(liked ? "관심 취소" : "관심 있어요", action: toggleLike)
+        Button(liked ? "즐겨찾기 해제" : "즐겨찾기", action: toggleLike)
+        Button(added ? "내 활동에 있음" : "내 활동에 추가", action: addToMine)
         Button("자세히", action: detail)
         Button("다음 활동", action: next)
         Button("더 보기", action: more)
@@ -262,9 +271,15 @@ struct QueueStoryCard: View {
 
     private var rail: some View {
         VStack(spacing: 16) {
-            RailButton(symbol: liked ? "heart.fill" : "heart", title: "관심", label: liked ? "관심 취소" : "관심 있어요", tint: liked ? .pink : .white,
+            RailButton(symbol: liked ? "heart.fill" : "heart", title: "즐겨찾기", label: liked ? "즐겨찾기 해제" : "즐겨찾기", tint: liked ? .pink : .white,
                        bounce: liked && !reduceMotion, action: toggleLike)
                 .accessibilityAddTraits(liked ? .isSelected : [])
+            if let level {
+                RailButton(symbol: level.symbol, title: "알림", label: "알림 \(level.title)") { choosingLevel = true }
+                    .sheet(isPresented: $choosingLevel) { NotifyLevelSheet(level: level, choose: setLevel) }
+            }
+            RailButton(symbol: added ? "checkmark.circle.fill" : "plus.circle", title: added ? "내 활동" : "추가",
+                       label: added ? "내 활동에 있음" : "내 활동에 추가", action: addToMine)
             RailButton(symbol: "info.circle", title: "자세히", label: "자세히 보기", action: detail)
             RailButton(symbol: "chevron.up", title: "다음", label: "다음 활동", action: next)
             RailButton(symbol: "ellipsis", title: nil, label: "더 보기", action: more)

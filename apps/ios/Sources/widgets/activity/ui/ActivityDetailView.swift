@@ -3,6 +3,10 @@ import SwiftUI
 struct ActivityDetailView: View {
     let state: ActivityViewModel
     let activityID: String
+    /// 사용 통계 `source` of `activity_view`, `myactivity_add` and `apply_click`: where the detail was opened from (a link or a notification
+    /// overrides it, `ActivityViewModel.takeLinkSource`).
+    var source = "discovery"
+    @State private var openedFrom: String?
     @State private var showCalendar = false
     @State private var calendarDraft: CalendarEventDraft?
     private var activity: ActivityModel? { state.activity(activityID) }
@@ -30,6 +34,13 @@ struct ActivityDetailView: View {
             }
         }
         .navigationTitle("활동 상세").navigationBarTitleDisplayMode(.inline)
+        .analyticsScreen("activity_detail")
+        .onAppear {
+            guard openedFrom == nil else { return }
+            let from = state.takeLinkSource(activityID) ?? source
+            openedFrom = from
+            AppAnalytics.event("activity_view", parameters(["source": from]))
+        }
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
             // The activity's Dearby page, not the official notice (contract "유니버설 링크·App Links·활동 공유·오픈그래프"); the official
@@ -38,17 +49,15 @@ struct ActivityDetailView: View {
                 ShareLink(item: state.calendarLink(activity.id), subject: Text(activity.title)) { Image(systemName: "square.and.arrow.up") }
                     .accessibilityLabel("활동 공유")
             }
-            // 추가 beside share (contract "활동 상세 내 활동 행동 정리" 2026-10-22): marks it applied; hidden once added.
-            if activity != nil && !applied {
-                Button("추가") { state.apply(activityID, true) }
-                    .accessibilityLabel("내 활동에 추가").accessibilityIdentifier("add-to-mine")
-            }
         }
         .sheet(isPresented: $showCalendar) {
             if let activity { CalendarConflictView(schedules: activity.overlapSchedules, activityLink: state.calendarLink(activity.id)) }
         }
         .sheet(item: $calendarDraft) { AddToCalendarSheet(draft: $0).ignoresSafeArea() }
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)
+    }
+    private func parameters(_ extra: [String: Any]) -> [String: Any] {
+        AppAnalytics.activity(activityID, activity).merging(extra) { $1 }
     }
     private func identity(_ activity: ActivityModel) -> some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -59,7 +68,11 @@ struct ActivityDetailView: View {
             // 분야·얻을 수 있는 것 (contract "분야·성격 태그와 아이콘" 2026-10-24): every tag as icon and text, empty groups omitted.
             tagGroup("분야", activity.fieldTags)
             tagGroup("얻을 수 있는 것", activity.traitTags)
-            Text(activity.title).font(.title.bold())
+            // The heart, bell and `+` beside the title (contract "즐겨찾기(하트)"·"`+` 내 활동에 추가" 2026-10-25: the toolbar's 추가 is gone).
+            HStack(alignment: .top, spacing: 8) {
+                Text(activity.title).font(.title.bold()).frame(maxWidth: .infinity, alignment: .leading)
+                FavoriteControls(target: .activity(activity.id), mine: (applied, { state.addToMine(activity.id, source: openedFrom ?? source) }))
+            }
             Text(activity.organization).font(.headline).foregroundStyle(.secondary)
             Divider()
             DearbyInfoRow(title: "모집 상태", value: activity.statusLabel(at: state.loadedAt), symbol: "calendar")
@@ -93,7 +106,7 @@ struct ActivityDetailView: View {
     }
     /// The CTA opens the application link, else the official notice (contract "신청 확인 조건 완화" 2026-10-19 밤). Unless applying
     /// is over it reads as applying and arms the "신청하셨나요?" prompt for when the app comes back from the browser.
-    /// Adding is the toolbar's `추가` (contract "활동 상세 내 활동 행동 정리" 2026-10-22). Once applied the block grows upward with a teal
+    /// Adding is the `+` beside the title (contract "`+` 내 활동에 추가" 2026-10-25). Once applied the block grows upward with a teal
     /// `checkmark.circle.fill` "이미 추가된 항목입니다" line whose trailing `내 활동으로 >` opens it in 내 활동; removing is only in 내 활동.
     @ViewBuilder private func applicationActions(_ activity: ActivityModel) -> some View {
         let site = activity.applicationSiteURL
@@ -118,7 +131,10 @@ struct ActivityDetailView: View {
                 .buttonStyle(.borderedProminent).tint(DearbyStyle.tealFill).accessibilityIdentifier("open-application")
                 .accessibilityHint("외부 브라우저로 열려요")
                 .environment(\.openURL, OpenURLAction { opened in
-                    if !closed { state.openedApplication(activity.id) }
+                    if !closed {
+                        AppAnalytics.event("apply_click", parameters(["source": openedFrom ?? source]))
+                        state.openedApplication(activity.id)
+                    }
                     return .systemAction(opened)
                 })
             }

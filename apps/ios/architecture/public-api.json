@@ -46,7 +46,15 @@
     "ActivityHighlight",
     "RecommendationSignal",
     "QueueScene",
-    "AudienceLine"
+    "AudienceLine",
+    "FavoriteTarget",
+    "NotifyLevel",
+    "FavoriteProgram",
+    "FavoriteActivity",
+    "FavoriteList",
+    "InboxGroup",
+    "InboxItem",
+    "InboxPage"
   ],
   "entities/identity": [
     "CardModel",
@@ -65,6 +73,9 @@
     "FixtureCalendarEventSource",
     "AddToCalendarSheet",
     "CalendarEventDraft"
+  ],
+  "features/analytics": [
+    "AppAnalytics"
   ],
   "pages/home": [
     "HomePage"
@@ -100,7 +111,9 @@
     "TabRootToolbar",
     "DearbyMenuItem",
     "DearbyRowsSkeleton",
-    "DearbyQuestionPage"
+    "DearbyQuestionPage",
+    "InboxRoute",
+    "InboxEntry"
   ],
   "widgets/activity": [
     "ActivityCard",

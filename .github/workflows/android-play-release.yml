@@ -87,6 +87,11 @@ jobs:
             echo "ANDROID_VERSION_CODE=$((GITHUB_RUN_NUMBER + 1))"
           } >> "$GITHUB_ENV"
           if [ -n "$RELEASE_NOTES" ]; then printf '%s\n' "$RELEASE_NOTES" > fastlane/metadata/android/ko-KR/changelogs/default.txt; fi
+      # 새 모집 푸시: Firebase config from the optional secret ANDROID_GOOGLE_SERVICES_JSON (file content); without it the release has no push.
+      - name: Write google-services.json (optional)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON }}
+        run: if [ -n "$GOOGLE_SERVICES_JSON" ]; then printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json; fi
       - name: Build release AAB
         run: |
           ./gradlew bundleRelease

@@ -69,30 +69,39 @@ struct ConnectionProvider: Sendable {
             },
             importItems: { items in try await account.authorized { try await client.importMyActivities(items, $0) } })
     }
-    /// 추천 while signed out: the device answers go in the query. Nil when the server has no recommendation API (404).
-    func recommendations(_ preferences: AccountClient.RecommendationPreferences) async throws -> RecommendationPage? {
-        try await ActivityClient.fetchRecommendations(api: origins.api, size: 10, fieldTagIDs: preferences.fieldTagIds,
-                                                      categories: preferences.categories, traitTagIDs: preferences.traitTagIds, bearer: nil)
-    }
-    /// 맞춤 대기열 while signed out (contract "맞춤 대기열" 2026-10-24): 40 추천 results, so `더 받기` has others to show.
-    func queueCandidates(_ preferences: AccountClient.RecommendationPreferences) async throws -> RecommendationPage? {
-        try await ActivityClient.fetchRecommendations(api: origins.api, size: 40, fieldTagIDs: preferences.fieldTagIds,
-                                                      categories: preferences.categories, traitTagIDs: preferences.traitTagIds, bearer: nil)
-    }
     /// 맞춤 대기열 for the signed-in `account`; each call refreshes the tokens once on a 401.
     @MainActor func discoveryQueueServer(_ account: AccountViewModel) -> DiscoveryQueueServer {
         let api = origins.api
-        @Sendable func authorized<Value: Sendable>(_ call: @escaping @Sendable (String) async throws -> Value) async throws -> Value {
-            try await account.authorized { session in
-                do { return try await call(session.accessToken) } catch ActivityClient.RecommendationFailure.unauthorized { throw AccountError.unauthorized }
-            }
-        }
         return DiscoveryQueueServer(
-            load: { try await authorized { try await ActivityClient.fetchDiscoveryQueue(api: api, bearer: $0) } },
-            refill: { try await authorized { try await ActivityClient.refillDiscoveryQueue(api: api, bearer: $0) } },
+            load: { try await Self.bearer(account) { try await ActivityClient.fetchDiscoveryQueue(api: api, bearer: $0) } },
+            refill: { try await Self.bearer(account) { try await ActivityClient.refillDiscoveryQueue(api: api, bearer: $0) } },
             signal: { id, kind, tag in
-                try await authorized { try await ActivityClient.sendRecommendationSignal(api: api, activityID: id, kind: kind, tagID: tag, bearer: $0) }
+                try await Self.bearer(account) { try await ActivityClient.sendRecommendationSignal(api: api, activityID: id, kind: kind, tagID: tag, bearer: $0) }
             })
+    }
+    /// 즐겨찾기 for the signed-in `account`; each call refreshes the tokens once on a 401.
+    @MainActor func favoritesServer(_ account: AccountViewModel) -> FavoritesServer {
+        let api = origins.api
+        return FavoritesServer(
+            load: { try await Self.bearer(account) { try await ActivityClient.fetchFavorites(api: api, bearer: $0) } },
+            put: { target, level in try await Self.bearer(account) { try await ActivityClient.putFavorite(api: api, target, level: level, bearer: $0) } },
+            delete: { target in try await Self.bearer(account) { try await ActivityClient.deleteFavorite(api: api, target, bearer: $0) } },
+            seen: { id in try await Self.bearer(account) { try await ActivityClient.markFavoriteProgramSeen(api: api, programID: id, bearer: $0) } })
+    }
+    /// 알림 목록 for the signed-in `account`; each call refreshes the tokens once on a 401.
+    @MainActor func inboxServer(_ account: AccountViewModel) -> InboxServer {
+        let api = origins.api
+        return InboxServer(
+            load: { cursor in try await Self.bearer(account) { try await ActivityClient.fetchInbox(api: api, cursor: cursor, bearer: $0) } },
+            unreadCount: { try await Self.bearer(account) { try await ActivityClient.fetchUnreadCount(api: api, bearer: $0) } },
+            read: { id in try await Self.bearer(account) { try await ActivityClient.markNotificationsRead(api: api, id: id, bearer: $0) } })
+    }
+    /// An `ActivityClient` call with the account's access token; its 401 is the account's, so the tokens are refreshed once.
+    @MainActor private static func bearer<Value: Sendable>(_ account: AccountViewModel, _ call: @escaping @Sendable (String) async throws -> Value)
+        async throws -> Value {
+        try await account.authorized { session in
+            do { return try await call(session.accessToken) } catch ActivityClient.RecommendationFailure.unauthorized { throw AccountError.unauthorized }
+        }
     }
     func tagOptions() async throws -> [TagOption] { try await ActivityClient.fetchTagOptions(api: origins.api) }
     /// 추천 for the signed-in `account` (saved answers and 지원 자격 정보 on the server); each call refreshes the tokens once on a 401.
@@ -104,8 +113,7 @@ struct ConnectionProvider: Sendable {
             recommendations: {
                 try await account.authorized { session in
                     do {
-                        return try await ActivityClient.fetchRecommendations(api: api, size: 10, fieldTagIDs: [], categories: [], traitTagIDs: [],
-                                                                             bearer: session.accessToken)
+                        return try await ActivityClient.fetchRecommendations(api: api, size: 10, bearer: session.accessToken)
                     } catch ActivityClient.RecommendationFailure.unauthorized { throw AccountError.unauthorized }
                 }
             })

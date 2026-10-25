@@ -226,16 +226,9 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun saveEligibilityProfile(profile: EligibilityProfile, session: AccountSession) { request("PUT", "me/eligibility-profile", profile.toPutJson(), session) }
     /** Removes the values and the consent record. */
     suspend fun deleteEligibilityProfile(session: AccountSession) { request("DELETE", "me/eligibility-profile", null, session) }
-    /** Signed in, the server uses the saved settings and 지원 자격 정보; signed out, [preferences] go as comma lists. */
-    suspend fun recommendations(preferences: RecommendationPreferences?, session: AccountSession?, size: Int = 10): RecommendationPage =
-        recommendationsBody(preferences, session, size).toRecommendations(api)
-    /** The raw 추천 answer, for 오늘의 맞춤 대기열 while signed out (the queue reads whole activities; `entities/activity` parses them). */
-    suspend fun recommendationsBody(preferences: RecommendationPreferences?, session: AccountSession?, size: Int): JSONObject {
-        val params = listOfNotNull("size=$size", preferences?.fieldTagIds?.takeIf { it.isNotEmpty() }?.let { "fieldTagIds=" + it.joinToString(",") },
-            preferences?.categories?.takeIf { it.isNotEmpty() }?.let { "categories=" + it.joinToString(",") },
-            preferences?.traitTagIds?.takeIf { it.isNotEmpty() }?.let { "traitTagIds=" + it.joinToString(",") })
-        return send("GET", "discovery/recommendations?" + params.joinToString("&"), null, session)
-    }
+    /** The server uses the saved settings and 지원 자격 정보; signed out is 401 (contract "비로그인에서 만들기·추천을 막음", 2026-10-25). */
+    suspend fun recommendations(session: AccountSession, size: Int = 10): RecommendationPage =
+        send("GET", "discovery/recommendations?size=$size", null, session).toRecommendations(api)
     /** 오늘의 맞춤 대기열 (contract "맞춤 대기열"): `{date, items: [{activity, program, reasons}], seen}`; 404 before the server ships it. */
     suspend fun discoveryQueue(session: AccountSession) = send("GET", "me/discovery-queue", null, session)
     /** `더 받기`: the queue rebuilt from the remaining candidates, in the same shape. */
@@ -244,6 +237,34 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun sendRecommendationSignal(activityId: String, kind: String, tagId: String?, session: AccountSession) {
         request("POST", "me/recommendation-signals", JSONObject().put("activityId", activityId.toLong()).put("kind", kind).apply { tagId?.let { put("tagId", it.toLong()) } }, session)
     }
+    // 즐겨찾기·새 모집 푸시 (contract "즐겨찾기(하트)·새 모집 푸시 알림", 2026-10-25). 404 ([AccountError.NOT_FOUND]) before the server ships them.
+    /** The raw `{programs, activities}`; `entities/activity/api/parseFavorites` reads it. */
+    suspend fun favorites(session: AccountSession) = send("GET", "me/favorites", null, session)
+    /** [kind] is `programs` or `activities`. Idempotent 204; [notifyLevel] (`ALL`·`APPLICATION`·`NONE`) null keeps the server default or the saved level. */
+    suspend fun saveFavorite(kind: String, id: String, notifyLevel: String?, session: AccountSession) {
+        request("PUT", "me/favorites/$kind/$id", notifyLevel?.let { JSONObject().put("notifyLevel", it) } ?: JSONObject(), session)
+    }
+    suspend fun deleteFavorite(kind: String, id: String, session: AccountSession) { request("DELETE", "me/favorites/$kind/$id", null, session) }
+    /** The program was opened from 즐겨찾기: its `새 모집` badge goes. */
+    suspend fun seenFavoriteProgram(id: String, session: AccountSession) { request("POST", "me/favorites/programs/$id/seen", JSONObject(), session) }
+    /** This device's FCM token with its IANA [timeZone] (the server sends at 8 in the morning there). The token is never logged. */
+    suspend fun savePushDevice(token: String, timeZone: String, session: AccountSession) {
+        request("PUT", "me/push-devices", JSONObject().put("platform", "ANDROID").put("token", token).put("timeZone", timeZone), session)
+    }
+    suspend fun deletePushDevice(token: String, session: AccountSession) {
+        request("DELETE", "me/push-devices/" + java.net.URLEncoder.encode(token, "UTF-8"), null, session)
+    }
+    /** `{newRecruitment}`: the account-wide 새 모집 알림 switch. */
+    suspend fun newRecruitmentNotifications(session: AccountSession) = send("GET", "me/notification-settings", null, session).optBoolean("newRecruitment", true)
+    suspend fun saveNewRecruitmentNotifications(on: Boolean, session: AccountSession) {
+        request("PUT", "me/notification-settings", JSONObject().put("newRecruitment", on), session)
+    }
+    // 알림 목록 (contract "알림 목록(발견 우상단 종)", 2026-10-25); 404 before the server ships it.
+    /** The raw `{groups, nextCursor}`; `entities/activity/api/parseInbox` reads it. */
+    suspend fun notifications(cursor: String?, session: AccountSession) = send("GET", "me/notifications" + (cursor?.let { "?cursor=" + java.net.URLEncoder.encode(it, "UTF-8") } ?: ""), null, session)
+    suspend fun unreadNotifications(session: AccountSession) = send("GET", "me/notifications/unread-count", null, session).optInt("count", 0)
+    suspend fun readNotification(id: String, session: AccountSession) { request("POST", "me/notifications/$id/read", JSONObject(), session) }
+    suspend fun readAllNotifications(session: AccountSession) { request("POST", "me/notifications/read-all", JSONObject(), session) }
     /** The public tag dictionary (`GET /v1/tags`) with kinds and upper fields, for the funnel's chips. */
     suspend fun tags() = send("GET", "tags", null).toDictionaryTags()
 

@@ -4,15 +4,21 @@ import SwiftUI
 /// starts with the step funnel (`ProfileFunnelPage`). Afterwards the tab is **read mode** (`ProfileReadView`, contract "프로필 읽기/수정 모드" 2026-10-20);
 /// the toolbar `수정` (pencil) swaps in the inset-grouped `Form` editor with the 저장 / 원래대로 bar once anything differs from the loaded profile
 /// (contract "프로필과 버전 이력"). `수정` becomes `완료`: no change → back to reading, changes → 저장 / 버리기 / 취소. A successful save returns to read mode.
-/// 변경 이력·명함 만들기 live in the toolbar `더 보기` menu. Card decoration lives in 명함 만들기. Sign-in is asked for only from the 로그인 button.
+/// 변경 이력·명함 만들기 live in the toolbar `더 보기` menu. Card decoration lives in 명함 만들기. Signed out (contract "비로그인에서 만들기·추천을 막음"
+/// 2026-10-25) there is nothing to make or edit: the page offers 로그인, and `지원 자격 정보`·`관심 분야·활동 종류` open sign-in too (the app opens it for the latter).
 /// The consent gate (contract "개인정보 동의", "동의 시트 닫기" 2026-10-20) is a sheet over the funnel/editor whenever the server says
 /// `consentRequired`: pulling it down or 닫기 means not consented — the sheet stays away until a save comes back 403 `CONSENT_REQUIRED`, which shows it again.
 struct ProfilePage: View {
     let state: ProfileModel
     /// 프로필 `추천` 묶음 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): `지원 자격 정보` and `관심 분야·활동 종류`.
     let eligibility: EligibilityModel
-    /// Reopens the 추천 funnel.
+    /// Reopens the 추천 funnel (signed out, the app opens sign-in first).
     let editRecommendations: () -> Void
+    /// 프로필 `알림` 묶음 (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25): `새 모집 알림`, and Settings when permission was refused.
+    let notifications: NotificationModel
+    @Environment(\.openURL) private var openURL
+    /// `사용 통계 보내기` (2026-10-25, as Android): on until turned off, kept on the device, signed in or not.
+    @AppStorage(AppAnalytics.enabledKey) private var analyticsEnabled = true
     @State private var eligibilityConsent = false
     @State private var eligibilityAgreed = false
     @State private var eligibilityInput = false
@@ -46,7 +52,7 @@ struct ProfilePage: View {
         }
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
         // System navigation bar on every branch (contract "iOS 상단 바는 시스템 내비게이션 바"); the funnel sets its own title inside.
-        .navigationTitle("내 프로필").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("내 프로필").navigationBarTitleDisplayMode(.inline).analyticsScreen("profile")
         // [수정/완료] [설정] [알림] [더 보기: 변경 이력 · 명함 만들기] (contract "상단 바 구성"); the profile-only parts appear once a saved profile is loaded.
         .toolbar {
             TabRootToolbar(menu: toolbarReady ? menuItems : []) {
@@ -80,8 +86,9 @@ struct ProfilePage: View {
             NavigationStack {
                 HistoryFunnelPage(draft: target.draft, state: state, saved: target.saved, startAtSummary: target.saved) { done in form?.put(done) }
             }
+            .analyticsMenu("history")
         }
-        .sheet(isPresented: $composing, onDismiss: { Task { await state.load() } }) { NavigationStack { CardComposerPage(account: state.account) } }
+        .sheet(isPresented: $composing, onDismiss: { Task { await state.load() } }) { NavigationStack { CardComposerPage(account: state.account) }.analyticsMenu("card_create") }
         .sheet(isPresented: $signingIn) { NavigationStack { SignInSheet(account: state.account) { Task { await state.load() } } } }
         .sheet(isPresented: $eligibilityConsent, onDismiss: { if eligibilityAgreed { eligibilityAgreed = false; eligibilityInput = true } }) {
             EligibilityConsentSheet(webOrigin: state.webOrigin) { eligibilityAgreed = true; eligibilityConsent = false }
@@ -114,6 +121,49 @@ struct ProfilePage: View {
             .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
         }
     }
+    /// `알림` 묶음: signed in, the account's 새 모집 알림 switch and, when the system permission was refused, a row to the app's notification
+    /// settings; always `사용 통계 보내기`.
+    private func notificationGroup(signedIn: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("알림").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(.secondary).padding(.horizontal, 16)
+                .accessibilityAddTraits(.isHeader)
+            VStack(spacing: 0) {
+                if signedIn { newRecruitmentRows }
+                Toggle(isOn: $analyticsEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("사용 통계 보내기").font(.dearby(.body))
+                        Text("어떤 화면과 기능을 쓰는지 개인정보 없이 모아 앱을 고치는 데 써요").font(.dearby(.footnote)).foregroundStyle(.secondary)
+                    }
+                }
+                .tint(DearbyStyle.teal).padding(.horizontal, 16).padding(.vertical, 8).frame(minHeight: 44)
+                .accessibilityIdentifier("profile-usage-stats")
+                .onChange(of: analyticsEnabled) { _, on in AppAnalytics.setEnabled(on) }
+            }
+            .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
+        }
+        .alert(notifications.notice ?? "", isPresented: Binding(get: { notifications.notice != nil }, set: { if !$0 { notifications.notice = nil } })) {
+            Button("확인", role: .cancel) {}
+        }
+    }
+    @ViewBuilder private var newRecruitmentRows: some View {
+        Toggle(isOn: Binding(get: { notifications.newRecruitment ?? true },
+                             set: { on in Task { await notifications.setNewRecruitment(on) } })) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("새 모집 알림").font(.dearby(.body))
+                Text("즐겨찾기한 프로그램·활동의 새 모집과 일정").font(.dearby(.footnote)).foregroundStyle(.secondary)
+            }
+        }
+        .tint(DearbyStyle.teal).padding(.horizontal, 16).padding(.vertical, 8).frame(minHeight: 44)
+        .accessibilityIdentifier("profile-new-recruitment")
+        Divider().padding(.leading, 16)
+        if notifications.denied {
+            groupRow("기기 알림이 꺼져 있어요", detail: "설정에서 Dearby 알림을 켜면 받을 수 있어요") {
+                AppAnalytics.event("menu_open", ["menu": "notifications"])
+                if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) }
+            }.accessibilityIdentifier("profile-notification-settings")
+            Divider().padding(.leading, 16)
+        }
+    }
     private func groupRow(_ title: String, detail: String? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 12) {
@@ -129,6 +179,7 @@ struct ProfilePage: View {
     }
     /// Signed out → sign in. Entered (and consented to this version) → 고치기·지우기. Otherwise the consent sheet, then the questions.
     private func openEligibility() {
+        AppAnalytics.event("menu_open", ["menu": "eligibility"])
         switch eligibility.phase {
         case .signedOut: signingIn = true
         case .loaded where eligibility.hasValues && !eligibility.needsConsent: eligibilityChoice = true
@@ -146,7 +197,11 @@ struct ProfilePage: View {
     }
     /// 완료: nothing changed → read mode; otherwise ask 저장 / 버리기 / 취소.
     private func done() {
-        guard editing else { editing = true; return }
+        guard editing else {
+            AppAnalytics.event("menu_open", ["menu": "profile_edit"])
+            editing = true
+            return
+        }
         if form?.changed == true { confirmingDone = true } else { editing = false }
     }
     private var editorScreen: some View {
@@ -154,9 +209,10 @@ struct ProfilePage: View {
             switch state.phase {
             case .signedOut:
                 VStack(spacing: 0) {
-                    CenteredMessage(symbol: "person.crop.circle", title: "프로필은 계정에 저장돼요", message: "명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.",
-                                    primary: MessageAction("명함 만들기") { composing = true }, secondary: MessageAction("로그인") { signingIn = true })
+                    CenteredMessage(symbol: "person.crop.circle", title: "프로필은 계정에 저장돼요", message: "로그인하면 프로필을 적고 명함을 만들 수 있어요.",
+                                    primary: MessageAction("로그인") { signingIn = true })
                     recommendationGroup.padding(.horizontal, 20).padding(.bottom, 16)
+                    notificationGroup(signedIn: false).padding(.horizontal, 20).padding(.bottom, 16)
                 }
             case .loading:
                 // Contract "내용 로딩은 스켈레톤" 2026-10-22: the read view with sample values.
@@ -170,6 +226,7 @@ struct ProfilePage: View {
                         VStack(alignment: .leading, spacing: 0) {
                             ProfileReadView(profile: profile).padding(20)
                             recommendationGroup.padding(.horizontal, 20).padding(.bottom, 20)
+                            notificationGroup(signedIn: true).padding(.horizontal, 20).padding(.bottom, 20)
                         }
                     }
                 } else if let binding = Binding($form) {
