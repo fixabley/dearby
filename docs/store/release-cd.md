@@ -25,10 +25,11 @@
 
 ## 스크린샷
 
-- Debug 빌드에만 있는 장면 훅: iOS 실행 인자 `-DearbyScreenshot <scene>`(`Sources/shared/config/ScreenshotScene.swift`, `#if DEBUG`), Android 인텐트 extra `dearbyScreenshot`(`app/ScreenshotScene.kt`, `BuildConfig.DEBUG`일 때만 읽음). 장면은 `discover`, `discover-expanded`(첫 프로그램 펼침), `detail`(첫 프로그램의 첫 모집 중·예정 활동), `mine`(그 활동을 내 활동에 담은 상태), `cards`, `settings`.
+- Debug 빌드에만 있는 장면 훅: iOS 실행 인자 `-DearbyScreenshot <scene>`(`Sources/shared/config/ScreenshotScene.swift`, `#if DEBUG`), Android 인텐트 extra `dearbyScreenshot`(`app/ScreenshotScene.kt`, `BuildConfig.DEBUG`일 때만 읽음). 장면은 `discover`, `discover-expanded`(첫 프로그램 펼침), `detail`(첫 프로그램의 첫 모집 중·예정 활동), `mine`(그 활동을 내 활동에 담은 상태), `queue`(오늘의 맞춤 대기열 첫 카드, 추천 설정 퍼널·`menu_open` 없이 바로), `favorites-calendar`(내 활동 탭 즐겨찾기의 캘린더 보기), `cards`, `settings`. 스크립트 기본 순서(파일 이름 순서 = 스토어 순서)는 `discover discover-expanded queue detail mine favorites-calendar cards settings`.
 - `bash apps/ios/scripts/capture_screenshots.sh`: iPhone 17 Pro Max·iPad Pro 13-inch 시뮬레이터, 상태 막대 9:41·배터리 100%, 운영 API로 Debug 빌드 → `apps/ios/fastlane/screenshots/ko/{iPhone69,iPad13}_NN_<scene>.png`.
 - `bash apps/android/scripts/capture_screenshots.sh`: 연결된 **실기기**에 운영 API Debug 빌드를 설치하고 데모 모드 상태 막대, 화면 크기 `1080x2160`(Play는 긴 변이 짧은 변의 두 배를 넘으면 거부)으로 캡처 → `…/ko-KR/images/phoneScreenshots/NN_<scene>.png`. 끝나면 데모 모드·화면 크기를 되돌린다.
-- 명함·설정(과 로그인 시 내 활동)은 계정이 있어야 의미 있는 화면이다. 캡처 전에 각 시뮬레이터·기기의 Debug 앱에서 한 번 로그인한다. 시연용 계정의 명함 내용은 공개 스크린샷에 실리므로 실제 개인정보가 아닌 값으로 채운다.
+- `queue`·`favorites-calendar`는 **로그인이 필요하다**(비로그인이면 보일 내용이 없다). 즐겨찾기 캘린더는 계정에 일정이 있는 즐겨찾기가 있어야 채워지고, 이 장면이 고른 `캘린더` 보기는 기기에 저장된 채 남는다. 대기열 장면을 열면 그 계정에 대기열 반응 신호가 기록될 수 있다.
+- 명함·설정(과 로그인 시 내 활동)도 계정이 있어야 의미 있는 화면이다. 캡처 전에 각 시뮬레이터·기기의 Debug 앱에서 한 번 로그인한다. 시연용 계정의 명함 내용은 공개 스크린샷에 실리므로 실제 개인정보가 아닌 값으로 채운다.
 
 ## 콘솔에서 남은 수동 단계
 
