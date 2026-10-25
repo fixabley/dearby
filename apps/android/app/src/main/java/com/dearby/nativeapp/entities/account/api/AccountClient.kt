@@ -259,6 +259,12 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun saveNewRecruitmentNotifications(on: Boolean, session: AccountSession) {
         request("PUT", "me/notification-settings", JSONObject().put("newRecruitment", on), session)
     }
+    // 알림 목록 (contract "알림 목록(발견 우상단 종)", 2026-10-25); 404 before the server ships it.
+    /** The raw `{groups, nextCursor}`; `entities/activity/api/parseInbox` reads it. */
+    suspend fun notifications(cursor: String?, session: AccountSession) = send("GET", "me/notifications" + (cursor?.let { "?cursor=" + java.net.URLEncoder.encode(it, "UTF-8") } ?: ""), null, session)
+    suspend fun unreadNotifications(session: AccountSession) = send("GET", "me/notifications/unread-count", null, session).optInt("count", 0)
+    suspend fun readNotification(id: String, session: AccountSession) { request("POST", "me/notifications/$id/read", JSONObject(), session) }
+    suspend fun readAllNotifications(session: AccountSession) { request("POST", "me/notifications/read-all", JSONObject(), session) }
     /** The public tag dictionary (`GET /v1/tags`) with kinds and upper fields, for the funnel's chips. */
     suspend fun tags() = send("GET", "tags", null).toDictionaryTags()
 

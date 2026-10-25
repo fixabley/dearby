@@ -6,6 +6,9 @@ import com.dearby.nativeapp.entities.activity.model.EligibilityCondition
 import com.dearby.nativeapp.entities.activity.model.FavoriteActivity
 import com.dearby.nativeapp.entities.activity.model.FavoriteProgram
 import com.dearby.nativeapp.entities.activity.model.Favorites
+import com.dearby.nativeapp.entities.activity.model.InboxGroup
+import com.dearby.nativeapp.entities.activity.model.InboxItem
+import com.dearby.nativeapp.entities.activity.model.InboxPage
 import com.dearby.nativeapp.entities.activity.model.NotifyLevel
 import com.dearby.nativeapp.entities.activity.model.EligibilityGroup
 import com.dearby.nativeapp.entities.activity.model.Highlight
@@ -187,6 +190,21 @@ fun parseFavorites(body: JSONObject, api: String): Favorites = Favorites(
             FavoriteActivity(parseActivity(activity), (item.optJSONObject("program") ?: activity.getJSONObject("program")).programSummary(api), item.text("favoritedAt"), NotifyLevel.of(item.text("notifyLevel")))
         }.getOrNull()
     }.orEmpty(),
+)
+
+/** 알림 목록 (`GET /v1/me/notifications`): an unreadable group or item is skipped; `nextCursor` is passed back as text. */
+fun parseInbox(body: JSONObject, api: String): InboxPage = InboxPage(
+    body.optJSONArray("groups")?.objects()?.mapNotNull { group ->
+        runCatching {
+            InboxGroup(group.getJSONObject("program").programSummary(api), group.optInt("unread", 0), group.getJSONArray("items").objects().mapNotNull { item ->
+                runCatching {
+                    val activity = item.getJSONObject("activity")
+                    InboxItem(item.get("id").toString(), item.getString("kind"), activity.get("id").toString(), activity.getString("name"), instant(item.text("createdAt")), !item.isNull("readAt") && item.has("readAt"))
+                }.getOrNull()
+            })
+        }.getOrNull()
+    }.orEmpty(),
+    if (body.isNull("nextCursor") || !body.has("nextCursor")) null else body.get("nextCursor").toString(),
 )
 
 /** One server scene; an unknown `type` (or an unreadable one) is null and skipped. `dday` is days left (a `D-22`/`D-DAY` text reads too). */

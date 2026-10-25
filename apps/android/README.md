@@ -158,10 +158,15 @@ python3 scripts/check-fsd.py --self-test
 사용자 결정 "Analytics SDK 넣어줘". `features/analytics/Analytics`가 Firebase Analytics를 감싼다(google-services.json이 없으면 아무것도 하지 않음).
 
 - 개인정보 최소: 매니페스트 `google_analytics_adid_collection_enabled`·`google_analytics_ssaid_collection_enabled`·`google_analytics_default_allow_ad_personalization_signals`를 모두 false, 병합되는 `AD_ID`·`ACCESS_ADSERVICES_AD_ID`·`ACCESS_ADSERVICES_ATTRIBUTION` 권한은 `tools:node="remove"`. 사용자 id·개인정보를 넣지 않는다.
-- 남기는 것: 화면 보기(`DearbyApp`이 고른 FSD 페이지 이름, 예 `ActivityListPage`·`FavoritesPage`·`ActivityDetailPage`)와 이벤트 `funnel_complete`, `queue_open`, `queue_like`(`activity_id`), `favorite_add`(`type` program|activity, `id`), `myactivity_add`(`activity_id`), `apply_click`(`activity_id`). 매개변수는 id와 코드뿐이다.
+- 남기는 것: 이벤트 사전 [analytics-v1](../../shared/contracts/analytics-v1.md) 그대로. 사용자 속성 `interest_fields`·`interest_kinds`·`has_eligibility`(yes/no만)·`signed_in`(`app/Tracking`, 추천 설정을 읽거나 저장할 때·로그인·로그아웃 때), 퍼널(`funnel_start/step/skip/later/complete/exit`, `RecommendationViewModel`), 대기열 도달(`queue_open/card_view(1초)/card_complete/like/dismiss/detail/end/exit`, `QueueViewModel`), 전환(`activity_view`(source)·`favorite_add/remove`·`notify_level_set`·`myactivity_add`·`apply_click`·`push_open`), 메뉴 접근(`tab_select`·`menu_open`), `screen_view`의 화면 이름(`discovery`·`activity_detail`·`queue`·`favorites`·`favorites_calendar`·`my_activity`·`profile`·`notifications_inbox` 등). `field`는 활동 첫 분야 태그의 상위 분야 nameEn(공개 태그 사전으로 찾음), `category`는 활동 종류 코드 소문자. 매개변수는 id와 코드뿐이다.
+- GA 콘솔(사용자): 맞춤 측정기준으로 사용자 범위 `interest_fields`·`interest_kinds`·`has_eligibility`·`signed_in`, 이벤트 범위 `step`·`entry`·`tab`·`menu`·`position`·`field`·`category`·`source`·`type`·`level`·`kind`·`reason`을 등록한다(등록 전 데이터는 보고서에 쓸 수 없다).
 - 내 프로필 `사용 통계 보내기` 스위치(기본 켬, 로그인과 무관): `setAnalyticsCollectionEnabled`, 선택은 `app/DevicePreferences`(`dearby.favorites` 파일)에 둔다.
 - 개인정보처리방침에 Firebase Analytics(Google, 앱 인스턴스 id, 사용 이벤트, 국외 이전)를 적어야 한다.
 - 확인: `adb shell setprop debug.firebase.analytics.app io.wid.dearby` 뒤 `adb logcat -s FA FA-SVC`.
+
+## 알림 목록 (2026-10-25)
+
+계약 [native-v1 "알림 목록(발견 우상단 종)"](../../shared/contracts/native-v1.md). 탭 상단 종(발견·내 활동·명함; 읽지 않은 수 `BadgedBox`, 9 넘으면 `9+`)이 `pages/inbox/InboxPage`를 연다(비로그인은 로그인 시트). 발견 프로그램 카드(`ProgramCard`, 개수 자리에 읽지 않은 수)로 묶고 누르면 펼친다(자동 펼침 없음). 안쪽 행은 활동 이름·종류 칩·받은 시각·읽지 않음 청록 점, 누르면 활동 상세(`activity_view(source=inbox)`)와 `POST …/{id}/read`, 상세를 닫으면 알림 목록으로 돌아온다. `이번 주`/`지난 알림`, `모두 읽음`. 푸시 `data.notificationId`로 열면 그 알림을 읽음으로 한다. 서버 배포 전 404는 빈 목록·배지 없음. `app/InboxViewModel`.
 
 ## 프로필·명함 v2 (2026-10-17)
 

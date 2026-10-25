@@ -16,13 +16,14 @@ import com.dearby.nativeapp.pages.recommendation.FunnelStep
 import com.dearby.nativeapp.pages.recommendation.RecommendationFunnelPage
 import com.dearby.nativeapp.widgets.recommendation.recommendationRows.QueueEntryRow
 import com.dearby.nativeapp.features.push.Push
+import com.dearby.nativeapp.pages.inbox.InboxPage
 import com.dearby.nativeapp.features.analytics.Analytics
 import com.dearby.nativeapp.pages.activity.FavoriteHearts
 import com.dearby.nativeapp.pages.activity.FavoritesView
 
 /** Four tabs (contract "명함 탭 통합", 2026-10-20): 내 명함 and 받은 명함 are the two segments of 명함. */
-private enum class Tab(val label: String, val icon: ImageVector) {
-    Discovery("발견", Icons.Rounded.Explore), Mine("내 활동", Icons.Rounded.Checklist), Cards("명함", Icons.Rounded.Badge), Profile("내 프로필", Icons.Rounded.AccountCircle),
+private enum class Tab(val label: String, val icon: ImageVector, val code: String) {
+    Discovery("발견", Icons.Rounded.Explore, "discovery"), Mine("내 활동", Icons.Rounded.Checklist, "my_activity"), Cards("명함", Icons.Rounded.Badge, "cards"), Profile("내 프로필", Icons.Rounded.AccountCircle, "profile"),
 }
 /** A full-screen route pushed over the tabs (the tab bar hides). */
 private sealed interface Route {
@@ -37,11 +38,13 @@ private sealed interface Route {
     data object Settings : Route
     /** 오늘의 맞춤 대기열 (contract "맞춤 대기열(스토리형 쇼츠)"), from the `오늘의 맞춤 대기열` row atop 발견. */
     data object Queue : Route
+    /** 알림 목록 (contract "알림 목록(발견 우상단 종)"), from the tab bars' bell. */
+    data object Inbox : Route
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, myCards: MyCardsViewModel, wallet: WalletViewModel, profile: ProfileViewModel, settings: SettingsViewModel, recommendation: RecommendationViewModel, queue: QueueViewModel,
-    favorites: FavoritesViewModel, notifications: NotificationViewModel, device: DevicePreferences, favoritesLink: FavoritesView? = null, consumeFavoritesLink: () -> Unit = {}, screenshot: String? = null) {
+    favorites: FavoritesViewModel, notifications: NotificationViewModel, inbox: InboxViewModel, device: DevicePreferences, favoritesLink: FavoritesView? = null, consumeFavoritesLink: () -> Unit = {}, screenshot: String? = null) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     // The 내 활동 tab's `내 활동 | 즐겨찾기` top tab, in memory for the app's lifetime like the 명함 tab's.
     var mineSegment by remember { mutableStateOf(MineSegment.MINE) }
@@ -71,32 +74,40 @@ private sealed interface Route {
     BackHandler(route is Route.Detail || route is Route.Qr) { route = null }
     BackHandler(route == Route.Shared) { wallet.closeShared() }
     // The fixed header buttons of every tab (contract "알림 아이콘은 다섯 탭 모두 우상단 고정"·"설정"); the notification screen is still a placeholder notice.
-    val openSettings = { route = Route.Settings }
-    val notify = { notice = "새 알림이 없어요.\n이 앱은 고정 예시로 둘러보는 프로토타입입니다." }
+    // analytics-v1 "메뉴별 접근률": `menu_open` for the main menus, `tab_select` for a tapped tab.
+    val openSettings = { Tracking.menu("settings"); route = Route.Settings }
     val profileState by profile.state.collectAsStateWithLifecycle()
     val walletState by wallet.state.collectAsStateWithLifecycle()
     val auth by account.state.collectAsStateWithLifecycle()
     // Signed out, making a card and the funnel→queue entry open the sign-in sheet instead (contract "비로그인에서 만들기·추천을 막음", 2026-10-25); `이 명함 고치기` only shows signed in.
     var signingIn by remember { mutableStateOf(false) }
+    // The bell opens 알림 목록 (signed out → sign-in); [inboxReturn] brings it back after the detail one of its rows opened.
+    var inboxReturn by remember { mutableStateOf(false) }
+    val inboxState by inbox.state.collectAsStateWithLifecycle()
+    val notify = { if (auth.phase == AccountPhase.SIGNED_IN) { Tracking.menu("notifications_inbox"); inbox.open(); route = Route.Inbox } else { signingIn = true } }
     // Signed in from the `오늘의 맞춤 대기열` row: once the settings are read, a never-finished funnel opens (its result opens the queue), else the queue.
     var queueAfterSignIn by remember { mutableStateOf(false) }
     val signedIn = auth.phase == AccountPhase.SIGNED_IN
-    LaunchedEffect(signedIn) { if (signedIn) signingIn = false }
-    val compose = { if (signedIn) { publish.start(); route = Route.Composer } else { signingIn = true } }
+    LaunchedEffect(signedIn) { if (signedIn) signingIn = false; Tracking.signedIn(signedIn) }
+    val compose = { if (signedIn) { Tracking.menu("card_create"); publish.start(); route = Route.Composer } else { signingIn = true } }
     // 즐겨찾기 하트 (contract "즐겨찾기(하트)·새 모집 푸시 알림"): signed out a heart opens sign-in. The first program heart on Android 13+ asks for the
     // notification permission once and starts push (never at launch, never again after a refusal; 알림 in 내 프로필 then points to the system settings).
     val context = androidx.compose.ui.platform.LocalContext.current
     val askNotifications = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted -> if (granted) notifications.register() }
+    val activityListState by activityModel.state.collectAsStateWithLifecycle()
     val favoriteIds by favorites.ids.collectAsStateWithLifecycle()
     val hearts = FavoriteHearts(favoriteIds.activities, favoriteIds.programs, favoriteIds.levels, toggle = { program, id ->
         if (!signedIn) signingIn = true
         else {
             // The first program heart starts push (token only from now on) and, on Android 13+, asks for the permission this once.
             if (program && id !in favoriteIds.programs && !device.pushStarted) { if (Push.needsPermission(context)) askNotifications.launch(Push.PERMISSION); notifications.start() }
-            if (id !in (if (program) favoriteIds.programs else favoriteIds.activities)) Analytics.event("favorite_add", "type" to if (program) "program" else "activity", "id" to id)
+            val adding = id !in (if (program) favoriteIds.programs else favoriteIds.activities)
+            val details = if (program) listOfNotNull(activityListState.programs.firstOrNull { it.id == id }?.fieldTags?.firstOrNull()?.nameEn?.let { "field" to it.lowercase() }).toTypedArray()
+                else activityModel.track(id, idKey = null)
+            Analytics.event(if (adding) "favorite_add" else "favorite_remove", "type" to if (program) "program" else "activity", "id" to id, *details)
             favorites.toggle(program, id)
         }
-    }, setLevel = favorites::setLevel)
+    }, setLevel = { program, id, level -> Analytics.event("notify_level_set", "type" to if (program) "program" else "activity", "level" to level.name.lowercase()); favorites.setLevel(program, id, level) })
     // `오늘 일정 n개` (dearby://favorites?view=calendar): 내 활동 → 즐겨찾기 in that view.
     LaunchedEffect(favoritesLink) { favoritesLink?.let { route = null; wallet.closeShared(); tab = Tab.Mine; mineSegment = MineSegment.FAVORITES; favorites.setView(it); consumeFavoritesLink() } }
     val favoriteNotice by favorites.notice.collectAsStateWithLifecycle()
@@ -109,24 +120,26 @@ private sealed interface Route {
     LaunchedEffect(walletState.shared) { if (walletState.shared != null) route = Route.Shared else if (route == Route.Shared) route = null }
     LaunchedEffect(walletState.opened) { walletState.opened?.let { tab = Tab.Cards; cardsSegment = CardsSegment.RECEIVED; activityDetail = false; route = Route.Detail(it); wallet.consumeOpened() } }
     // A linked activity, once loaded, opens on 발견 with its detail pushed over whatever was showing; a gone or unreadable one only says so.
-    val activityListState by activityModel.state.collectAsStateWithLifecycle()
     LaunchedEffect(activityListState.linked, activityListState.linkNotice) {
         activityListState.linked?.let { wallet.closeShared(); route = null; tab = Tab.Discovery; discoveryOpen = it }
-        activityListState.linkNotice?.let { notice = it; queueReturn = false }
+        activityListState.linkNotice?.let { notice = it; queueReturn = false; inboxReturn = false }
         if (activityListState.linked != null || activityListState.linkNotice != null) activityModel.consumeLinked()
     }
     // 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천"): the funnel takes the whole screen on the first signed-in visit to 발견 (not in store screenshots).
     val reco by recommendation.state.collectAsStateWithLifecycle()
     val recoFunnel by recommendation.funnel.collectAsStateWithLifecycle()
     val eligibilityForm by recommendation.form.collectAsStateWithLifecycle()
-    LaunchedEffect(tab, route, reco.needsFunnel, signedIn) { if (screenshot == null && signedIn && tab == Tab.Discovery && route == null && reco.needsFunnel) recommendation.openFunnel(first = true) }
+    LaunchedEffect(tab, route, reco.needsFunnel, signedIn) { if (screenshot == null && signedIn && tab == Tab.Discovery && route == null && reco.needsFunnel) recommendation.openFunnel(first = true, entry = "auto") }
     // 오늘의 맞춤 대기열: its 자세히 opens the activity on 발견 and, once that detail closes, the queue comes back where it was.
-    LaunchedEffect(activityDetail) { if (!activityDetail && queueReturn) { queueReturn = false; route = Route.Queue } }
+    LaunchedEffect(activityDetail) {
+        if (!activityDetail && queueReturn) { queueReturn = false; route = Route.Queue }
+        if (!activityDetail && inboxReturn) { inboxReturn = false; route = Route.Inbox }
+    }
     // 2026-10-25 user decision "추천은 없애고 맞춤대기열 진입만 남겨줘": one `오늘의 맞춤 대기열` row tops 발견; a never-finished funnel comes first and its
     // result button (`맞춤 대기열 보러 가기`) opens the queue. The row always shows; a failed read is the queue screen's own retry state. Signed out it
     // asks for sign-in and then carries on by itself ([queueAfterSignIn]).
-    val openQueue = { Analytics.event("queue_open"); queue.open(); route = Route.Queue }
-    val enterQueue = { if (reco.completed) openQueue() else recommendation.openFunnel(first = true) }
+    val openQueue = { Tracking.menu("queue"); queue.open(); route = Route.Queue }
+    val enterQueue = { if (reco.completed) openQueue() else recommendation.openFunnel(first = true, entry = "queue_row") }
     LaunchedEffect(signedIn, reco.preferencesRead, queueAfterSignIn) { if (queueAfterSignIn && signedIn && reco.preferencesRead) { queueAfterSignIn = false; enterQueue() } }
     val recoHeader: @Composable () -> Unit = {
         QueueEntryRow(signedIn) { if (signedIn) enterQueue() else { signingIn = true; queueAfterSignIn = true } }
@@ -136,20 +149,22 @@ private sealed interface Route {
     // 배경"); cards, sheets and tiles are `surface` on top. Every screen inside starts with a `DearbyTopBar`, which takes the status-bar inset itself, so
     // only the bottom insets are padded here. The IME inset is applied once here (contract "키보드 내리기"): pages add `imeNestedScroll()` on their
     // scroll containers but no `imePadding()` of their own, and the tab bar is hidden while the keyboard is up.
-    // 사용 통계: one screen view per page shown (the FSD page names), nothing else about the screen.
+    // 사용 통계: one `screen_view` per screen shown (analytics-v1 screen names), nothing else about the screen.
+    val favoritesView by favorites.state.collectAsStateWithLifecycle()
     val screenName = when {
-        recoFunnel != null -> "RecommendationFunnelPage"
-        route is Route.Detail -> "WalletCardPage"
-        route == Route.Shared -> "SharedCardPage"
-        route is Route.Qr -> "CardQrPage"
-        route == Route.Composer -> "CardComposer"
-        route == Route.Settings -> "SettingsPage"
-        route == Route.Queue -> "DiscoveryQueuePage"
-        activityDetail -> "ActivityDetailPage"
-        tab == Tab.Discovery -> "ActivityListPage"
-        tab == Tab.Mine -> if (mineSegment == MineSegment.FAVORITES) "FavoritesPage" else "MyActivitiesPage"
-        tab == Tab.Cards -> if (cardsSegment == CardsSegment.MINE) "MyCardsPage" else "WalletPage"
-        else -> "ProfilePage"
+        recoFunnel != null -> "funnel"
+        route is Route.Detail -> "received_card"
+        route == Route.Shared -> "shared_card"
+        route is Route.Qr -> "card_qr"
+        route == Route.Composer -> "card_create"
+        route == Route.Settings -> "settings"
+        route == Route.Queue -> "queue"
+        route == Route.Inbox -> "notifications_inbox"
+        activityDetail -> "activity_detail"
+        tab == Tab.Discovery -> "discovery"
+        tab == Tab.Mine -> if (mineSegment != MineSegment.FAVORITES) "my_activity" else if (favoritesView.view == FavoritesView.CALENDAR) "favorites_calendar" else "favorites"
+        tab == Tab.Cards -> if (cardsSegment == CardsSegment.MINE) "my_cards" else "received_cards"
+        else -> "profile"
     }
     // Logged on every change and on coming back to the app (a view logged while in the background is dropped by Firebase).
     androidx.lifecycle.compose.LifecycleResumeEffect(screenName) { Analytics.screen(screenName); onPauseOrDispose {} }
@@ -170,27 +185,31 @@ private sealed interface Route {
                     is Route.Qr -> CardQrRoute(screen.card, activityModel, myCards) { route = null }
                     Route.Composer -> CardComposerRoute(publish, account) { route = null }
                     Route.Settings -> SettingsRoute(settings, account, profile) { route = null }
-                    Route.Queue -> QueueRoute(queue, openDetail = { queueReturn = true; activityModel.openLinked(it) }, liked = favoriteIds.activities,
+                    Route.Inbox -> {
+                        BackHandler { route = null }
+                        InboxPage(inboxState, { route = null }, { row -> inbox.read(row.id); inboxReturn = true; activityModel.openLinked(row.activityId, "inbox") }, inbox::readAll, inbox::open, inbox::loadMore)
+                    }
+                    Route.Queue -> QueueRoute(queue, openDetail = { queueReturn = true; activityModel.openLinked(it, "queue") }, liked = favoriteIds.activities,
                         inMine = activityListState.known.values.filter { it.applied }.map { it.id }.toSet(),
                         like = { id, force ->
                             if ((force ?: (id !in favoriteIds.activities)) != (id in favoriteIds.activities)) {
-                                if (id !in favoriteIds.activities) Analytics.event("queue_like", "activity_id" to id)
+                                if (id !in favoriteIds.activities) queue.liked(id)
                                 hearts.toggle(false, id)
                             }
                         },
                         plus = { id ->
                             if (activityListState.known[id]?.applied == true) { queue.close(); route = null; mineSegment = MineSegment.MINE; mineOpen = id; tab = Tab.Mine }
-                            else { queue.model(id)?.let { activityModel.adopt(listOf(it)) }; activityModel.apply(id, true) }
+                            else { queue.model(id)?.let { activityModel.adopt(listOf(it)) }; activityModel.apply(id, true, "queue") }
                         }) { route = null }
                     null -> when (tab) {
                         // 설정·알림 sit in each tab's pinned `DearbyTopBar` (contract "iOS 상단 바…" Android sentence).
                         Tab.Discovery, Tab.Mine -> key(tab) {
                             ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }, settings = openSettings, notify = notify,
                                 openInMine = { mineOpen = it; mineSegment = MineSegment.MINE; tab = Tab.Mine }, open = if (tab == Tab.Mine) mineOpen else discoveryOpen, consumeOpen = { if (tab == Tab.Mine) mineOpen = null else discoveryOpen = null }, openConsent = { activityDetail = false; tab = Tab.Profile }, header = recoHeader,
-                                hearts = hearts, favorites = favorites, segment = mineSegment, selectSegment = { mineSegment = it }, signIn = { signingIn = true }) { activityDetail = it }
+                                hearts = hearts, favorites = favorites, segment = mineSegment, selectSegment = { mineSegment = it; Tracking.menu(if (it == MineSegment.FAVORITES) "favorites" else "my_activity_list") }, signIn = { signingIn = true }, unread = inboxState.unread) { activityDetail = it }
                         }
-                        Tab.Cards -> CardsRoute(cardsSegment, { cardsSegment = it }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
-                            edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify)
+                        Tab.Cards -> CardsRoute(cardsSegment, { cardsSegment = it; Tracking.menu(if (it == CardsSegment.MINE) "my_cards" else "received_cards") }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
+                            edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify, unread = inboxState.unread)
                         Tab.Profile -> ProfileRoute(profile, account, recommendation, notifications, analyticsOn, { analyticsOn = it; device.analyticsEnabled = it; Analytics.setEnabled(it) }, compose, openSettings, notify)
                     }
                 }
@@ -201,7 +220,7 @@ private sealed interface Route {
             // Stock Material 3 navigation bar with the theme's defaults (2026-10-18 user decision: no custom styling). The Column already pads the system bar.
             if (route == null && !activityDetail && !settingUp && !imeVisible && recoFunnel == null && !(tab == Tab.Profile && eligibilityForm != null)) {
                 NavigationBar(windowInsets = WindowInsets(0, 0, 0, 0)) {
-                    Tab.entries.forEach { item -> NavigationBarItem(selected = tab == item, onClick = { tab = item }, icon = { Icon(item.icon, null) }, label = { Text(item.label) }) }
+                    Tab.entries.forEach { item -> NavigationBarItem(selected = tab == item, onClick = { if (tab != item) Analytics.event("tab_select", "tab" to item.code); tab = item }, icon = { Icon(item.icon, null) }, label = { Text(item.label) }) }
                 }
             }
         }
@@ -212,7 +231,7 @@ private sealed interface Route {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             when (event) {
                 androidx.lifecycle.Lifecycle.Event.ON_STOP -> activityModel.appLeft()
-                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> activityModel.appReturned()
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> { activityModel.appReturned(); inbox.refreshCount() }
                 else -> Unit
             }
         }
