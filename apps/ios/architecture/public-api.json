@@ -46,7 +46,15 @@
     "ActivityHighlight",
     "RecommendationSignal",
     "QueueScene",
-    "AudienceLine"
+    "AudienceLine",
+    "FavoriteTarget",
+    "NotifyLevel",
+    "FavoriteProgram",
+    "FavoriteActivity",
+    "FavoriteList",
+    "InboxGroup",
+    "InboxItem",
+    "InboxPage"
   ],
   "entities/identity": [
     "CardModel",
@@ -100,7 +108,9 @@
     "TabRootToolbar",
     "DearbyMenuItem",
     "DearbyRowsSkeleton",
-    "DearbyQuestionPage"
+    "DearbyQuestionPage",
+    "InboxRoute",
+    "InboxEntry"
   ],
   "widgets/activity": [
     "ActivityCard",

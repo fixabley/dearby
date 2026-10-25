@@ -295,6 +295,26 @@ struct AccountClient: Sendable {
         _ = try await request("me/eligibility-profile", method: "DELETE", session: session)
     }
 
+    /// 푸시 알림 (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25): this device's APNs token with its IANA time zone (the server sends
+    /// at 8:00 there, "프로그램·활동별 알림 수준"); the same token again updates it.
+    func putPushDevice(token: String, timeZone: String, _ session: TokenPair) async throws {
+        _ = try await request("me/push-devices", method: "PUT", body: PushDeviceInput(platform: "IOS", token: token, timeZone: timeZone), session: session)
+    }
+    /// Sign-out and 새 모집 알림 off: this device stops receiving (204, also when it was not there).
+    func deletePushDevice(token: String, _ session: TokenPair) async throws {
+        _ = try await request("me/push-devices/\(token)", method: "DELETE", session: session)
+    }
+    /// `GET /v1/me/notification-settings`: `notFound` when the server does not have it yet.
+    func notificationSettings(_ session: TokenPair) async throws -> NotificationSettings {
+        try await send("me/notification-settings", session: session, as: NotificationSettings.self)
+    }
+    func saveNotificationSettings(_ settings: NotificationSettings, _ session: TokenPair) async throws {
+        _ = try await request("me/notification-settings", method: "PUT", body: settings, session: session)
+    }
+    /// 새 모집 알림: the account-wide switch; off, nothing is sent to any device.
+    struct NotificationSettings: Codable, Equatable, Sendable { var newRecruitment: Bool }
+    private struct PushDeviceInput: Encodable { let platform: String; let token: String; let timeZone: String }
+
     /// The funnel's answers; `completedAt` is set even when everything was skipped (`나중에`), so the funnel shows once.
     struct RecommendationPreferences: Codable, Equatable, Sendable {
         var fieldTagIds: [Int64] = []
