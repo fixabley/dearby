@@ -5,6 +5,7 @@ import SwiftUI
 /// an inset-grouped `Form`, the question as the open section's header, help and errors in its footer, the keyboard open as
 /// a step appears. Rows stack the label over a `.title3` input (`DearbyFormRow`, contract "폼 라벨·입력 크기" 2026-10-20) and the whole row
 /// focuses the field; the keyboard 완료 clears both focus states. The tab bar is hidden meanwhile (`HomePage.hidesTabs`). Shown until the profile is saved once.
+/// It is the tab's root, so there is no navigation back: `이전` beside `다음` reopens the step before the open one with every answer kept (contract "뒤로 가기").
 struct ProfileFunnelPage: View {
     @Binding var form: ProfileForm
     let account: AccountViewModel
@@ -30,6 +31,7 @@ struct ProfileFunnelPage: View {
     }
     private var allReached: Bool { reached.count == Step.allCases.count }
     private var reachedSteps: [Step] { Step.allCases.filter { reached.contains($0) } }
+    private var previous: Step? { Step.allCases.firstIndex(of: open).flatMap { $0 > 0 ? Step.allCases[$0 - 1] : nil } }
     var body: some View {
         VStack(spacing: 0) {
             Form {
@@ -91,11 +93,15 @@ struct ProfileFunnelPage: View {
     private var bar: some View {
         VStack(spacing: 8) {
             if let error { DearbyFieldError(text: error).frame(maxWidth: .infinity, alignment: .leading) }
-            Button(action: next) {
-                Group { if saving { ProgressView().tint(DearbyStyle.onTeal) } else { Text(allReached ? "프로필 저장" : "다음") } }
-                    .frame(maxWidth: .infinity)
-            }.buttonStyle(.borderedProminent).controlSize(.large).tint(DearbyStyle.tealFill).font(.dearby(.body).weight(.semibold))
-                .disabled(saving).accessibilityIdentifier("profile-setup-next")
+            HStack(spacing: 10) {
+                if let previous {
+                    Button { tried = false; open = previous } label: { Text("이전").frame(maxWidth: .infinity) }.buttonStyle(.bordered)
+                }
+                Button(action: next) {
+                    Group { if saving { ProgressView().tint(DearbyStyle.onTeal) } else { Text(allReached ? "프로필 저장" : "다음") } }
+                        .frame(maxWidth: .infinity)
+                }.buttonStyle(.borderedProminent).tint(DearbyStyle.tealFill).accessibilityIdentifier("profile-setup-next")
+            }.controlSize(.large).font(.dearby(.body).weight(.semibold)).disabled(saving)
         }.padding(.horizontal, 20).padding(.vertical, 12).background(.bar)
     }
     private func next() {

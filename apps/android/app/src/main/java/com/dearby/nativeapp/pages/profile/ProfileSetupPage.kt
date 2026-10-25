@@ -1,5 +1,6 @@
 package com.dearby.nativeapp.pages.profile
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -32,6 +33,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
  * First profile entry, Toss-style accordion (2026-10-17 user decision): sections stack in order, only one is open, and
  * answered sections collapse to a tall row that reopens on tap. Fields are Material 3 `OutlinedTextField`s at their default size
  * (contract "폼은 플랫폼 기본 컴포넌트", 2026-10-19 밤); the tab bar is hidden meanwhile (DearbyApp). Shown until the profile is saved once.
+ * `이전` and system back reopen the section before the open one with every answer kept (contract "뒤로 가기"); from the first section back is the system's.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable fun ProfileSetupPage(
@@ -57,6 +59,8 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
         }
     }
     fun reopen(step: SetupStep) { tried = false; open = step }
+    val previous = sections.getOrNull(open.ordinal - 1)
+    BackHandler(previous != null && !saving) { previous?.let(::reopen) }
     LaunchedEffect(open) { if (open != SetupStep.JOBS) runCatching { focus.requestFocus() } }
     Column(modifier.fillMaxWidth()) {
         Text("프로필 만들기", Modifier.padding(horizontal = 24.dp, vertical = 12.dp).semantics { heading() }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
@@ -69,8 +73,9 @@ import com.dearby.nativeapp.widgets.profile.profileFields.PickerItem
             error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodyMedium) }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHighest)
-        Box(Modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 24.dp, vertical = 12.dp)) {
-            DearbyButton(::next, Modifier.fillMaxWidth(), enabled = !saving) {
+        Row(Modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 24.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            previous?.let { DearbyOutlineButton({ reopen(it) }, Modifier.weight(1f), enabled = !saving) { Text("이전") } }
+            DearbyButton(::next, Modifier.weight(1f), enabled = !saving) {
                 if (saving) CircularProgressIndicator(Modifier.size(20.dp), color = LocalContentColor.current, strokeWidth = 2.dp)
                 else Text(if (allReached) "프로필 저장" else "다음")
             }
