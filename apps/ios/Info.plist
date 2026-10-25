@@ -38,6 +38,8 @@
 	<false/>
 	<key>GOOGLE_ANALYTICS_REGISTRATION_WITH_AD_NETWORK_ENABLED</key>
 	<false/>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>광고 노출 횟수 제한과 광고 성과 측정에 사용해요. 허용하지 않아도 광고는 개인 맞춤이 아닌 일반 광고로 보여요.</string>
 	<key>GADApplicationIdentifier</key>
 	<string>$(ADMOB_APP_ID)</string>
 	<key>DearbyAdMobNativeUnitID</key>

@@ -1,10 +1,12 @@
+import AppTrackingTransparency
 import GoogleMobileAds
 import SwiftUI
 
 /// 맞춤 대기열 끝 광고 (contract native-v1.md "맞춤 대기열 끝 광고(AdMob, 비개인화)" 2026-10-25): one AdMob native ad (media ratio ANY, the default)
 /// per queue opening, requested once after the queue arrives and never again; the page owns the loader, so closing the queue drops the ad.
-/// Requests are non-personalised (`npa=1`, publisher first-party ID off) and capped at PG; no ATT prompt, no UMP (Korea only). An ATT request,
-/// if decided later, goes before the first `load()`. The unit comes from the build (Info.plist `DearbyAdMobNativeUnitID`): Google's native test
+/// Requests are non-personalised (`npa=1`, publisher first-party ID off) and capped at PG whatever the answer to the ATT prompt (2026-10-25 user
+/// decision: asked once, before the first request of an ad-enabled build, never at launch; frequency capping and measurement only), no UMP
+/// (Korea only). The unit comes from the build (Info.plist `DearbyAdMobNativeUnitID`): Google's native test
 /// unit in Debug, and empty in a Release build without AdMob IDs, where the SDK is never started and the queue has no ad page.
 @MainActor @Observable final class QueueAdLoader: NSObject, NativeAdLoaderDelegate {
     static let enabled = !unitID.isEmpty
@@ -13,10 +15,20 @@ import SwiftUI
     /// The request failed (사용 통계 `queue_ad_skipped_unloaded` reason `failed`, else `loading`).
     private(set) var failed = false
     @ObservationIgnored private var loader: AdLoader?
+    @ObservationIgnored private var requested = false
 
-    /// One request per loader; a failure leaves `nativeAd` nil.
-    func load() {
-        guard Self.enabled, loader == nil else { return }
+    /// One request per loader; a failure leaves `nativeAd` nil. The first time (ATT `notDetermined`, app active so the system sheet shows) it
+    /// asks for tracking and waits for the answer; the request goes ahead whatever it is.
+    func load() async {
+        guard Self.enabled, !requested else { return }
+        requested = true
+        if ATTrackingManager.trackingAuthorizationStatus == .notDetermined, UIApplication.shared.applicationState == .active {
+            _ = await ATTrackingManager.requestTrackingAuthorization()
+        }
+        request()
+    }
+    /// Starting the SDK does not wait for it: a request made meanwhile is queued by the SDK.
+    private func request() {
         let configuration = MobileAds.shared.requestConfiguration
         configuration.maxAdContentRating = .parentalGuidance
         configuration.setPublisherFirstPartyIDEnabled(false)

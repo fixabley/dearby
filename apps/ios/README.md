@@ -119,7 +119,7 @@
 
 ## 사용 통계 (2026-10-25, Firebase Analytics)
 
-계약 `shared/contracts/analytics-v1.md`의 사용자 속성·퍼널·대기열·전환·메뉴 이벤트와 화면 이름을 보낸다(`features/analytics/AppAnalytics.swift`). 광고 ID를 쓰지 않는 `FirebaseAnalyticsCore`(12.0에서 `FirebaseAnalyticsWithoutAdIdSupport`가 바뀐 이름, `firebase-ios-sdk` 13.1.1 고정)만 넣어 ATT 창이 없다. 푸시는 Firebase Messaging 없이 APNs 그대로다.
+계약 `shared/contracts/analytics-v1.md`의 사용자 속성·퍼널·대기열·전환·메뉴 이벤트와 화면 이름을 보낸다(`features/analytics/AppAnalytics.swift`). 광고 ID를 쓰지 않는 `FirebaseAnalyticsCore`(12.0에서 `FirebaseAnalyticsWithoutAdIdSupport`가 바뀐 이름, `firebase-ios-sdk` 13.1.1 고정)만 넣어 통계 자체는 광고 ID·ATT와 무관하다(ATT 창은 대기열 광고가 묻는다, 아래). 푸시는 Firebase Messaging 없이 APNs 그대로다.
 
 - 설정 파일: `Config/GoogleService-Info.plist`(gitignore)가 있을 때만 `generate_project.rb`가 리소스로 넣는다. 없으면 빌드는 되고 통계는 꺼진다. 기기 빌드는 `~/.dearby-deploy/GoogleService-Info.plist`를 복사해 넣는다. CI(`native.yml`·`ios-testflight.yml`)는 시크릿 `IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`가 있으면 그 파일을 쓴다(`base64 -i ~/.dearby-deploy/GoogleService-Info.plist | gh secret set IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`).
 - Info.plist(두 파일 같음): `FIREBASE_ANALYTICS_COLLECTION_ENABLED` false(앱이 시작할 때 `사용 통계 보내기` 값으로 켠다), IDFV·광고 개인화 신호·광고 네트워크 등록·자동 화면 보고·앱 델리게이트 스위즐링 끔.
@@ -131,10 +131,10 @@
 계약 native-v1.md "맞춤 대기열 끝 광고(AdMob, 비개인화)". `features/ads/QueueAd.swift`의 `QueueAdLoader`가 대기열 응답을 받은 뒤 네이티브 광고 1개(미디어 비율 기본 ANY)를 한 번만 요청하고, `DiscoveryQueuePage`가 마지막 활동 다음·끝 화면 앞에 `QueueAdView` 한 장을 넣는다. 광고 장면은 흐린 진행 구간 하나, 왼쪽 위 `광고` 배지(15pt)·AdChoices(닫기·CTA와 먼 모서리), 남은 높이의 미디어, 광고주·헤드라인·본문·CTA이며 자산은 SDK `NativeAdView`에 그대로 묶는다. 자동 넘김·탭 영역·두 번 탭·오른쪽 버튼 줄·추천 신호는 없고 상하 스와이프와 대기열 닫기로 넘긴다. 끝 화면에 닿을 때까지 받지 못했으면 이번 열람에는 넣지 않고 다시 요청하지 않으며, `더 받기` 뒤에도 넣지 않는다(열람당 최대 1장). 대기열을 닫으면 로더와 광고를 함께 버린다(iOS에는 `destroy`가 없다).
 
 - SDK: `swift-package-manager-google-mobile-ads` 13.11.0 고정(`generate_project.rb`). 의존성으로 UMP 패키지가 함께 받아지지만 쓰지 않는다.
-- 비개인화·등급: 요청마다 `Extras.additionalParameters = ["npa": "1"]`, 요청 전 `requestConfiguration.maxAdContentRating = .parentalGuidance`·`setPublisherFirstPartyIDEnabled(false)` 뒤 `MobileAds.shared.start`. ATT 요청·`NSUserTrackingUsageDescription`·UMP 동의 창은 없다(한국 전용). ATT를 정하면 첫 `load()` 앞에 붙인다.
+- 비개인화·등급: 요청마다 `Extras.additionalParameters = ["npa": "1"]`, 요청 전 `requestConfiguration.maxAdContentRating = .parentalGuidance`·`setPublisherFirstPartyIDEnabled(false)` 뒤 `MobileAds.shared.start`. ATT(2026-10-25 사용자 결정): 광고가 켜진 빌드에서 대기열을 처음 열어 첫 광고를 요청하기 전, 상태가 `notDetermined`이고 앱이 active일 때 한 번 `requestTrackingAuthorization`을 묻고 답을 기다린 뒤 요청한다(거절·제한이어도 요청, 앱 시작 때는 묻지 않음). 답과 무관하게 npa·PG·자사 ID 끔은 그대로다. `NSUserTrackingUsageDescription`(두 Info.plist): "광고 노출 횟수 제한과 광고 성과 측정에 사용해요. 허용하지 않아도 광고는 개인 맞춤이 아닌 일반 광고로 보여요." UMP 동의 창은 없다(한국 전용).
 - ID: Info.plist `GADApplicationIdentifier = $(ADMOB_APP_ID)`, `DearbyAdMobNativeUnitID = $(ADMOB_NATIVE_UNIT_ID)`와 Google 공식 `SKAdNetworkItems` 50개(빠른 시작 페이지, 2026-10-25 확인; 두 파일 같음). Debug는 Google 테스트 앱 ID·네이티브 테스트 단위. Release는 `generate_project.rb`가 환경의 `ADMOB_IOS_APP_ID`·`ADMOB_IOS_QUEUE_NATIVE_UNIT_ID`(CI는 같은 이름의 저장소 변수, 없으면 경고)를 읽고, 하나라도 없으면 단위를 비우고 앱 ID에는 테스트 앱 ID를 넣는다(키가 없으면 SDK가 멈출 수 있어서). 단위가 비면 앱은 SDK를 시작하지도 요청하지도 않는다.
 - 사용 통계: `queue_ad_shown`(광고 장면이 처음 화면에 올 때), `queue_ad_skipped_unloaded`(`reason` `loading`·`failed`, 광고가 켜진 빌드에서 받지 못한 채 끝 화면에 닿을 때). 광고 장면에서 닫으면 `queue_exit`의 `position`은 마지막 활동 카드 번호다.
-- 개인정보 매니페스트: 앱 매니페스트는 그대로 둔다(SDK가 자체 `PrivacyInfo.xcprivacy`를 갖는다). 13.11.0 매니페스트는 광고 데이터·제품 상호작용·대략적 위치·진단·성능·충돌과 함께 `NSPrivacyCollectedDataTypeDeviceID`를 **추적 true**로 선언하므로, ATT 없이도 아카이브 Privacy Report와 App Store 라벨의 "추적에 사용되는 데이터"에 기기 ID가 잡힐 수 있다. 라벨은 Privacy Report로 맞춘다(docs/store/ads-2026-10-25.md).
+- 개인정보 매니페스트: 앱 매니페스트는 그대로 둔다(SDK가 자체 `PrivacyInfo.xcprivacy`를 갖는다). 13.11.0 매니페스트는 광고 데이터·제품 상호작용·대략적 위치·진단·성능·충돌과 함께 `NSPrivacyCollectedDataTypeDeviceID`를 **추적 true**로 선언하므로 아카이브 Privacy Report와 App Store 라벨의 "추적에 사용되는 데이터"에 기기 ID가 잡힐 수 있다. 라벨은 Privacy Report로 맞춘다(docs/store/ads-2026-10-25.md).
 
 ## 검증
 

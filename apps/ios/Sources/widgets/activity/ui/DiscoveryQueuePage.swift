@@ -59,8 +59,8 @@ struct DiscoveryQueuePage: View {
         .overlay(alignment: .bottom) { notice.environment(\.colorScheme, .dark) }
         .task {
             await model.load()
-            if !model.items.isEmpty { ads.load() }
             AppAnalytics.event("queue_open", ["size": model.items.count, "seen": model.items.filter { favorites.isFavorite(.activity($0.id)) }.count])
+            if !model.items.isEmpty { await ads.load() }
         }
         .analyticsScreen("queue")
         .onChange(of: position) { _, position in
