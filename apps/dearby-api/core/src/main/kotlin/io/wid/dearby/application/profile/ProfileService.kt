@@ -142,7 +142,8 @@ class ProfileService(
             throw InvalidInputException("광고 목적 개인정보 제3자 제공 동의 버전이 현재 버전과 다릅니다", "Ad consent version mismatch: $version", code = CONSENT_VERSION)
         }
         consents.findAd(userId)?.takeIf { it.version == version }?.let { return it }
-        return AdConsent(version, OffsetDateTime.now(ZoneOffset.UTC)).also { consents.saveAd(userId, it) }
+        // DB(timestamptz)는 마이크로초까지라 응답도 저장값과 같게 자른다
+        return AdConsent(version, OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(java.time.temporal.ChronoUnit.MICROS)).also { consents.saveAd(userId, it) }
     }
 
     @Transactional
