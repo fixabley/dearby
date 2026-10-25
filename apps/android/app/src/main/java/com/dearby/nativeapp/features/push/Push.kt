@@ -42,6 +42,8 @@ object Push {
     fun enable(context: Context) { if (available(context)) FirebaseMessaging.getInstance().isAutoInitEnabled = true }
 
     /** This install's FCM token, or null when Firebase is not configured or the token cannot be had right now. The token is never logged. */
+    // Firebase Messaging 26 (BoM 35) deprecates the token API for installation-ID registration; the server still sends to tokens, so it stays.
+    @Suppress("DEPRECATION")
     suspend fun token(context: Context): String? {
         if (!available(context)) return null
         return suspendCancellableCoroutine { done ->
@@ -67,6 +69,7 @@ object Push {
  * with the `data` keys (`url`, `activityId`) as extras; in the foreground this posts the same notification, whose tap opens `url` in this app.
  */
 class DearbyMessagingService : FirebaseMessagingService() {
+    @Deprecated("Firebase Messaging 26 deprecates token callbacks; kept while the server sends to FCM tokens (see Push.token).")
     override fun onNewToken(token: String) = Push.tokenChanged()
 
     override fun onMessageReceived(message: RemoteMessage) {

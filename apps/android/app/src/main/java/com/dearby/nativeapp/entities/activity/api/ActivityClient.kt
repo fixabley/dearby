@@ -214,7 +214,7 @@ private fun JSONObject.scene(): QueueScene? = when (text("type")) {
     "ELIGIBILITY" -> QueueScene.Eligibility(text("text"), highlights("items")).takeIf { it.text != null || it.items.isNotEmpty() }
     "BENEFIT" -> QueueScene.Benefit(getString("text"))
     "DEADLINE" -> QueueScene.Deadline(text("label"),
-        when (val dday = opt("dday")) { is Number -> dday.toInt(); is String -> if (dday.equals("D-DAY", true)) 0 else dday.removePrefix("D-").toIntOrNull(); else -> null },
+        when (val dday: Any? = opt("dday")) { is Number -> dday.toInt(); is String -> if (dday.equals("D-DAY", true)) 0 else dday.removePrefix("D-").toIntOrNull(); else -> null },
         text("deadlineText"), strings("reasons"))
     else -> null
 }
