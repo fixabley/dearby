@@ -144,6 +144,15 @@ python3 scripts/check-fsd.py --self-test
 
 실제 실행 결과는 `docs/VERIFICATION.md`, 구조는 `ARCHITECTURE.md`를 참고하세요.
 
+## 즐겨찾기·새 모집 푸시 (2026-10-25)
+
+계약 [native-v1 "즐겨찾기(하트)·새 모집 푸시 알림"](../../shared/contracts/native-v1.md)을 따른다.
+
+- 하트: 활동 상세 머리·펼친 활동 행·맞춤 대기열 오른쪽 줄(활동은 하트 옆 `+` 내 활동에 추가, 상세 우상단 `추가`는 없앴다)과 프로그램 카드. 즐겨찾기하면 종 버튼이 생기고 시트에서 `전체`·`신청일만`·`없음`을 고른다. 비로그인 하트는 로그인 시트. 발견 API는 비로그인 요청이라 `favorited`를 받지 않으므로 로그인하면 `GET /v1/me/favorites`의 id 집합으로 하트를 그린다(`app/FavoritesViewModel`). 쓰기 실패(서버 배포 전 404 포함)는 하트를 되돌리고 스낵바를 띄운다.
+- 내 활동 탭 위 `PrimaryTabRow` `내 활동 | 즐겨찾기`. 즐겨찾기는 프로그램(펼치면 `…/seen`으로 `새 모집` 배지 해제)·활동 묶음, 밀어서 해제 + `되돌리기`, `목록 | 캘린더`(선택은 `app/DevicePreferences`의 새 파일 `dearby.favorites`에 기억; 앱 안 보기만, 기기 캘린더에 쓰지 않음).
+- 푸시(FCM): `features/push`. **`app/google-services.json`이 있을 때만** `com.google.gms.google-services` 플러그인을 적용한다. 파일은 저장소에 넣지 않고(`apps/android/.gitignore`) `~/.dearby-deploy/google-services.json`에 두었다가 푸시를 받을 빌드 전에 `apps/android/app/`로 복사한다. 없으면 Firebase가 초기화되지 않고 앱은 푸시 없이 동작한다(CI·로컬 빌드). Firebase 콘솔에서 Android 앱 `io.wid.dearby`를 등록해 받은 파일이며, 서버 발송 자격(FCM HTTP v1 서비스 계정)은 운영 `.env.prod`에만 둔다. Play 출시 워크플로가 푸시를 담으려면 같은 파일을 시크릿으로 받아 빌드 전에 써야 한다(아직 없음).
+- 알림 권한(Android 13+)은 앱 시작 때 묻지 않고 처음 프로그램 하트를 누를 때 한 번만 묻는다. 로그인 상태에서 `새 모집 알림`이 켜져 있으면 시작·로그인·새 토큰·시간대 변경·권한 허용 때 `PUT /v1/me/push-devices {platform, token, timeZone}`, 로그아웃·알림 끄기 때 `DELETE`. 채널 `new_recruitment`(`새 모집`). 알림을 누르면 `data.url`(`/activities/{id}` App Link 또는 `dearby://favorites?view=calendar`)을 연다. 프로필 `알림` 묶음의 `새 모집 알림`은 `/v1/me/notification-settings`이고, 시스템 알림이 꺼져 있으면 설정 열기 줄이 붙는다.
+
 ## 프로필·명함 v2 (2026-10-17)
 
 계약 `native-v1.md` "프로필·명함 v2". 유비쿼터스 언어는 "활동"(조직·프로그램·활동·역할을 아우르는 코드 이름은 `ActivityInfo`).
