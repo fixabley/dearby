@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dearby.nativeapp.entities.activity.api.parseQueue
+import com.dearby.nativeapp.features.ads.QueueAd
 import com.dearby.nativeapp.features.analytics.Analytics
 import com.dearby.nativeapp.entities.activity.model.ActivityCategory
 import com.dearby.nativeapp.entities.activity.model.QueueItem
@@ -37,8 +38,9 @@ import kotlinx.coroutines.launch
  * shows; a failed read (404 before the server ships it included) is the queue screen's retry state. Signed out there is no queue (contract
  * "비로그인에서 만들기·추천을 막음", 2026-10-25: the entry opens sign-in), and the old device reactions are neither read nor written.
  * A `⋯` reaction waits for its `되돌리기` snackbar before it is sent. The ♥ and `+` belong to 즐겨찾기 and 내 활동 (QueueRoute).
+ * 맞춤 대기열 끝 광고 (2026-10-25): [ads] is requested on [open]; reaching the last activity decides once per view whether the ad page follows it.
  */
-class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
+class QueueViewModel(private val account: AccountViewModel, val ads: QueueAd) : ViewModel() {
     private val mutable = MutableStateFlow(QueueViewState())
     val state = mutable.asStateFlow()
     private var items: List<QueueItem> = emptyList()
@@ -65,6 +67,8 @@ class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
 
     fun open() {
         mutable.value = QueueViewState()
+        adDecided = false; adShown = false
+        ads.load()
         load(refill = false)
     }
     fun retry() = load(refill = false)
@@ -79,6 +83,8 @@ class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
                 val got = parseQueue(body, ApiOrigin.current)
                 if (refill && got.isEmpty()) return@launch mutable.update { it.copy(loading = false, refilling = false, exhausted = true) }
                 items = got
+                // 더 받기 starts a new run of cards without the ad, which this view already had its chance at.
+                if (refill) { mutable.update { it.copy(ad = false) }; ads.clear() }
                 if (!refill) {
                     ended = false; viewed.clear()
                     val seen = body.optJSONArray("seen")?.length() ?: body.optInt("seen", 0)
@@ -92,12 +98,19 @@ class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
         }
     }
     private fun show(index: Int, move: Boolean, change: (QueueViewState) -> QueueViewState = { it }) = mutable.update {
-        change(it).copy(cards = items.map(::card), index = index.coerceIn(0, items.size), moves = if (move) it.moves + 1 else it.moves)
+        change(it).copy(cards = items.map(::card), index = index.coerceIn(0, items.size + if (it.ad) 1 else 0), moves = if (move) it.moves + 1 else it.moves)
     }
     fun page(index: Int) {
         mutable.update { it.copy(index = index) }
-        if (index == items.size && items.isNotEmpty() && !ended) { ended = true; Analytics.event("queue_end", "viewed" to viewed.size.toString()) }
+        if (index == items.lastIndex && !adDecided) {
+            adDecided = true
+            if (ads.ad != null) mutable.update { it.copy(ad = true) } else if (QueueAd.enabled) Analytics.event("queue_ad_skipped_unloaded")
+        }
+        if (index == items.size && state.value.ad && !adShown) { adShown = true; Analytics.event("queue_ad_shown") }
+        if (index == state.value.end && items.isNotEmpty() && !ended) { ended = true; Analytics.event("queue_end", "viewed" to viewed.size.toString()) }
     }
+    private var adDecided = false
+    private var adShown = false
 
     // analytics-v1 "맞춤 대기열 도달": positions count from 1 in today's queue.
     private var ended = false
@@ -108,8 +121,12 @@ class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
     fun cardViewed(id: String) { if (viewed.add(id)) Analytics.event("queue_card_view", "position" to position(id), *card(id)) }
     /** The ♥ turned a card into a favorite. */
     fun liked(id: String) = Analytics.event("queue_like", "position" to position(id), *card(id))
-    /** The queue closed by the user before its end page. */
-    fun exit() { if (!ended && items.isNotEmpty()) Analytics.event("queue_exit", "position" to (state.value.index + 1).coerceAtMost(items.size).toString()) }
+    /** The queue closed by the user (`queue_exit` before its end page); the ad goes with it. */
+    fun exit() {
+        if (!ended && items.isNotEmpty()) Analytics.event("queue_exit", "position" to (state.value.index + 1).coerceAtMost(items.size).toString())
+        ads.clear()
+    }
+    override fun onCleared() = ads.clear()
 
     /** The activity behind a card, for 즐겨찾기 and `+` (the ♥ is the 즐겨찾기 heart; the server records LIKE/UNLIKE from it, 2026-10-25). */
     fun model(id: String) = items.firstOrNull { it.activity.id == id }?.activity

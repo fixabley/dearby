@@ -5,10 +5,12 @@
     <uses-permission android:name="android.permission.READ_CALENDAR"/>
     <!-- 새 모집 푸시 (contract "즐겨찾기(하트)·새 모집 푸시 알림"): Android 13+ asks once, at the first program heart, never at launch. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <!-- 사용 통계 never reads an advertising id: the ad-id and Privacy Sandbox ad permissions Firebase Analytics would merge in are removed. -->
-    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove"/>
+    <!-- 맞춤 대기열 끝 광고 (2026-10-25): AdMob reads the advertising id (com.google.android.gms.permission.AD_ID, merged from the SDK) even for
+         non-personalised ads, for frequency capping and fraud checks. 사용 통계 still never collects it (google_analytics_adid_collection_enabled).
+         The Privacy Sandbox permissions the SDK and Firebase merge in (Topics is interest targeting, Attribution is measurement) stay removed. -->
     <uses-permission android:name="android.permission.ACCESS_ADSERVICES_AD_ID" tools:node="remove"/>
     <uses-permission android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION" tools:node="remove"/>
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_TOPICS" tools:node="remove"/>
     <application android:label="Dearby" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:dataExtractionRules="@xml/data_extraction_rules" android:allowBackup="false" android:fullBackupContent="false" android:supportsRtl="true" android:theme="@style/Theme.Dearby" android:usesCleartextTraffic="false">
         <!-- singleTask: the dearby://auth/apple redirect must reach this instance (onNewIntent), which holds the verifier, and close the Custom Tab above it. -->
         <activity android:name=".app.MainActivity" android:exported="true" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:theme="@style/Theme.Dearby.Starting">
@@ -53,6 +55,8 @@
         <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/dearby_symbol"/>
         <!-- 2026-10-25 user decisions: no FCM token until the first program heart (Push.enable); Firebase Analytics without the advertising id,
              SSAID or ad personalisation (collection itself follows 내 프로필 `사용 통계 보내기`, features/analytics). -->
+        <!-- AdMob app id from ANDROID_ADMOB_APP_ID (build.gradle.kts); Google's test app id in Debug or when the release has none. -->
+        <meta-data android:name="com.google.android.gms.ads.APPLICATION_ID" android:value="${adMobAppId}"/>
         <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false"/>
         <meta-data android:name="google_analytics_adid_collection_enabled" android:value="false"/>
         <meta-data android:name="google_analytics_ssaid_collection_enabled" android:value="false"/>

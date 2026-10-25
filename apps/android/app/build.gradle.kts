@@ -17,6 +17,12 @@ val apiOrigin = connection("DEARBY_API_ORIGIN")
 val webOrigin = connection("DEARBY_WEB_ORIGIN") ?: "https://dearby.wid.io.kr"
 // Google sign-in (contract "구글 로그인 — 2026-10-19 네이티브"): the web OAuth client id the ID token is issued for. Empty hides the button.
 val googleServerClientId = connection("GOOGLE_SERVER_CLIENT_ID") ?: ""
+// 맞춤 대기열 끝 광고 (2026-10-25 user decision, AdMob native, non-personalised). Debug always uses Google's published test ids so no real ad is
+// ever served or clicked in development. Release needs both ids; with either missing the manifest still gets the test app id (the SDK's init
+// provider throws at launch without one) while the unit id stays empty, so the app never initialises or requests ads and skips the ad scene.
+val testAdMobAppId = "ca-app-pub-3940256099942544~3347511713"
+val testAdMobNativeUnitId = "ca-app-pub-3940256099942544/2247696110"
+val adMob = listOf("ANDROID_ADMOB_APP_ID", "ANDROID_ADMOB_NATIVE_UNIT_ID").map(::connection).takeIf { ids -> ids.all { it != null } }?.map { it!! }
 // Debug falls back to the API dev server on the emulator host.
 val debugApiOrigin = apiOrigin ?: "http://10.0.2.2:3000"
 // Play upload key (2026-10-19): keystore and passwords live outside the repository (env or same-named Gradle properties).
@@ -49,12 +55,16 @@ android {
             buildConfigField("String", "API_ORIGIN", "\"$debugApiOrigin\"")
             buildConfigField("String", "WEB_ORIGIN", "\"$webOrigin\"")
             buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"$googleServerClientId\"")
+            manifestPlaceholders["adMobAppId"] = testAdMobAppId
+            buildConfigField("String", "ADMOB_NATIVE_UNIT_ID", "\"$testAdMobNativeUnitId\"")
         }
         release {
             uploadSigning?.let { signingConfig = signingConfigs.getByName("upload") }
             buildConfigField("String", "API_ORIGIN", "\"${apiOrigin.orEmpty()}\"")
             buildConfigField("String", "WEB_ORIGIN", "\"$webOrigin\"")
             buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"$googleServerClientId\"")
+            manifestPlaceholders["adMobAppId"] = adMob?.get(0) ?: testAdMobAppId
+            buildConfigField("String", "ADMOB_NATIVE_UNIT_ID", "\"${adMob?.get(1).orEmpty()}\"")
         }
     }
     buildFeatures { compose = true; buildConfig = true }
@@ -103,6 +113,8 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging")
     // 사용 통계 (2026-10-25 user decision): Firebase Analytics, privacy-minimal (manifest: no ad id, no SSAID, no ad personalisation).
     implementation("com.google.firebase:firebase-analytics")
+    // 맞춤 대기열 끝 광고 (2026-10-25): one AdMob native ad per queue view, requested non-personalised (features/ads).
+    implementation("com.google.android.gms:play-services-ads:25.5.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.10.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")
