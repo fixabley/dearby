@@ -83,10 +83,8 @@ struct ProfilePage: View {
         // A fresh requirement (sign-in to another account, a new policy version) shows the sheet again even if an earlier one was closed.
         .onChange(of: state.consentPending) { _, pending in if pending { consentDismissed = false } }
         .sheet(item: $funnel) { target in
-            NavigationStack {
-                HistoryFunnelPage(draft: target.draft, state: state, saved: target.saved, startAtSummary: target.saved) { done in form?.put(done) }
-            }
-            .analyticsMenu("history")
+            HistoryFunnelPage(draft: target.draft, state: state, saved: target.saved, startAtSummary: target.saved) { done in form?.put(done) }
+                .analyticsMenu("history")
         }
         .sheet(isPresented: $composing, onDismiss: { Task { await state.load() } }) { NavigationStack { CardComposerPage(account: state.account) }.analyticsMenu("card_create") }
         .sheet(isPresented: $signingIn) { NavigationStack { SignInSheet(account: state.account) { Task { await state.load() } } } }
