@@ -42,6 +42,8 @@
 	<string>광고 노출 횟수 제한과 광고 성과 측정에 사용해요. 허용하지 않아도 광고는 개인 맞춤이 아닌 일반 광고로 보여요.</string>
 	<key>GADApplicationIdentifier</key>
 	<string>$(ADMOB_APP_ID)</string>
+	<key>GADDelayAppMeasurementInit</key>
+	<true/>
 	<key>DearbyAdMobNativeUnitID</key>
 	<string>$(ADMOB_NATIVE_UNIT_ID)</string>
 	<key>SKAdNetworkItems</key>

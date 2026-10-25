@@ -4,14 +4,16 @@ import SwiftUI
 /// 설정 (contract "설정" 2026-10-19 밤), pushed from any tab's title line: an inset-grouped `List` of 계정 (가입일, 로그인 수단, 로그아웃, 계정 삭제),
 /// 연결된 로그인 (Apple·Google: linked → email·date·연결 해제, else 연결하기), 패스키 (rename·delete by swipe or tap, 패스키 추가) and 정보
 /// (policy pages in the in-app browser, version). Above 정보: 알림 (새 모집 알림 and, when the system permission was refused, a row to the
-/// app's notification settings; only signed in with consent, since push is an account feature) and 개인정보 (`사용 통계 보내기`, always; the
-/// 광고 제3자 제공 동의 철회 switch will join it). Signed out it shows only the 로그인 CTA, 개인정보 and 정보. The last sign-in method cannot be
+/// app's notification settings; only signed in with consent, since push is an account feature) and 개인정보 (`사용 통계 보내기`, always, and
+/// `광고 목적 정보 제공` signed in with consent in a build with ads). Signed out it shows only the 로그인 CTA, 개인정보 and 정보. The last sign-in method cannot be
 /// removed: its button is disabled with the reason, and a server 409 says the same.
 struct SettingsPage: View {
     @State private var model: SettingsModel
     let webOrigin: URL
     /// 새 모집 알림; nil signed out or before consent (contract "설정" 2026-10-25).
     let notifications: NotificationModel?
+    /// 광고 목적 정보 제공; nil signed out or before consent (contract "광고 목적 개인정보 제3자 제공 동의(선택)" 2026-10-25).
+    let adConsent: AdConsentModel?
     @Environment(\.authorizationController) private var authorizationController
     @Environment(\.openURL) private var openURL
     /// `사용 통계 보내기`: on until turned off, kept on the device, signed in or not.
@@ -24,10 +26,11 @@ struct SettingsPage: View {
     @State private var renaming: PasskeySummary?
     @State private var newLabel = ""
     @State private var opening: URL?
-    init(account: AccountViewModel, webOrigin: URL, notifications: NotificationModel? = nil) {
+    init(account: AccountViewModel, webOrigin: URL, notifications: NotificationModel? = nil, adConsent: AdConsentModel? = nil) {
         _model = State(initialValue: SettingsModel(account: account))
         self.webOrigin = webOrigin
         self.notifications = notifications
+        self.adConsent = QueueAdLoader.enabled ? adConsent : nil
     }
     private var account: AccountViewModel { model.account }
     var body: some View {
@@ -66,6 +69,11 @@ struct SettingsPage: View {
         .navigationTitle("설정").navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar).toolbar(.hidden, for: .tabBar)
         .task { await model.load() }
+        .task(id: adConsent != nil) { await adConsent?.refresh() }
+        .adConsentSheet(adConsent, at: .settings)
+        .alert(adConsent?.notice ?? "", isPresented: Binding(get: { adConsent?.notice != nil }, set: { if !$0 { adConsent?.notice = nil } })) {
+            Button("확인", role: .cancel) {}
+        }
         .sheet(isPresented: $signingIn) { NavigationStack { SignInSheet(account: account) { Task { await model.load() } } } }
         .sheet(item: $opening) { url in SafariView(url: url).ignoresSafeArea() }
         .confirmationDialog("로그아웃할까요?", isPresented: $confirmingSignOut, titleVisibility: .visible) {
@@ -212,7 +220,22 @@ struct SettingsPage: View {
             }
             .tint(DearbyStyle.teal).accessibilityIdentifier("settings-usage-stats")
             .onChange(of: analyticsEnabled) { _, on in AppAnalytics.setEnabled(on) }
-        } header: { Text("개인정보").font(.dearby(.footnote)) }
+            if let adConsent { adConsentRow(adConsent) }
+        } header: {
+            Text("개인정보").font(.dearby(.footnote))
+        } footer: {
+            if adConsent != nil { Text("광고 제공을 꺼도 이미 시작한 광고 기능은 앱을 완전히 닫을 때까지 남을 수 있어요.").font(.dearby(.footnote)) }
+        }
+    }
+    /// On asks with the consent sheet and saves only on 동의하고 계속; off withdraws at once.
+    private func adConsentRow(_ adConsent: AdConsentModel) -> some View {
+        Toggle(isOn: Binding(get: { adConsent.agreed ?? false }, set: { on in Task { on ? await adConsent.turnOn() : await adConsent.turnOff() } })) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("광고 목적 정보 제공")
+                Text("끄면 광고가 보이지 않아요").font(.dearby(.footnote)).foregroundStyle(.secondary)
+            }
+        }
+        .tint(DearbyStyle.teal).disabled(adConsent.agreed == nil).accessibilityIdentifier("settings-ad-consent")
     }
     private var about: some View {
         Section {

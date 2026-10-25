@@ -31,9 +31,9 @@ struct SignInSheet: View {
     }
 
     private var choices: some View {
-        CenteredMessage(title: social ? "로그인" : "패스키로 로그인",
-                        message: social ? "애플·구글 계정이나 패스키로 바로 로그인해요. 비밀번호와 인증번호는 필요 없어요."
-                            : "Face ID나 Touch ID로 바로 로그인해요. 비밀번호와 인증번호는 필요 없어요.") {
+        // With Apple or Google (2026-10-25 사용자): no heading under the navigation title, and the passkey is the quiet text button below.
+        CenteredMessage(title: social ? nil : "패스키로 로그인",
+                        message: social ? nil : "Face ID나 Touch ID로 바로 로그인해요. 비밀번호와 인증번호는 필요 없어요.") {
             DearbyLockup()
         } actions: {
             message
@@ -43,7 +43,8 @@ struct SignInSheet: View {
             if account.googleSignInEnabled {
                 DearbyGoogleButton { run(.google) }.disabled(busy).accessibilityIdentifier("sign-in-google")
             }
-            button("패스키로 로그인", .passkey).accessibilityIdentifier("sign-in-passkey")
+            if social { SignInPrivacyNotice() }
+            button("패스키로 로그인", .passkey, prominent: !social).accessibilityIdentifier("sign-in-passkey")
         }
     }
 
@@ -68,13 +69,16 @@ struct SignInSheet: View {
         }
     }
 
-    /// A full-width `.borderedProminent` system button showing a spinner while its action runs.
-    private func button(_ title: String, _ action: Action) -> some View {
-        Button { run(action) } label: {
-            Group {
-                if busy && running == action { ProgressView().tint(DearbyStyle.onTeal) } else { Text(title) }
-            }.frame(maxWidth: .infinity)
-        }.buttonStyle(.borderedProminent).disabled(busy)
+    /// A full-width system button showing a spinner while its action runs: `.borderedProminent`, or a teal text button when not `prominent`.
+    @ViewBuilder private func button(_ title: String, _ action: Action, prominent: Bool = true) -> some View {
+        let label = Group {
+            if busy && running == action { ProgressView().tint(prominent ? DearbyStyle.onTeal : DearbyStyle.teal) } else { Text(title) }
+        }.frame(maxWidth: .infinity, minHeight: 44)
+        if prominent {
+            Button { run(action) } label: { label }.buttonStyle(.borderedProminent).disabled(busy)
+        } else {
+            Button { run(action) } label: { label }.buttonStyle(.borderless).tint(DearbyStyle.teal).disabled(busy)
+        }
     }
 
     private func run(_ action: Action) {

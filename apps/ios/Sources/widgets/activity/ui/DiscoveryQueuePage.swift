@@ -7,6 +7,8 @@ import SwiftUI
 struct DiscoveryQueuePage: View {
     let model: DiscoveryQueueModel
     let state: ActivityViewModel
+    /// Asked right before the ad request; no ad (no SDK, no ATT prompt) unless agreed.
+    let adConsent: AdConsentModel
     @Environment(FavoritesModel.self) private var favorites
     @State private var position: String?
     @State private var detail: RecommendedActivity?
@@ -60,16 +62,17 @@ struct DiscoveryQueuePage: View {
         .task {
             await model.load()
             AppAnalytics.event("queue_open", ["size": model.items.count, "seen": model.items.filter { favorites.isFavorite(.activity($0.id)) }.count])
-            if !model.items.isEmpty { await ads.load() }
+            if !model.items.isEmpty, await adConsent.allowsQueueAd() { await ads.load() }
         }
         .analyticsScreen("queue")
+        .adConsentSheet(adConsent, at: .queue)
         .onChange(of: position) { _, position in
             if position == Self.adID, adSlot == .open {
                 adSlot = .shown
                 AppAnalytics.event("queue_ad_shown")
             } else if position == Self.endID, adSlot == .open, !model.items.isEmpty {
                 adSlot = .closed
-                if QueueAdLoader.enabled, ads.nativeAd == nil { AppAnalytics.event("queue_ad_skipped_unloaded", ["reason": ads.failed ? "failed" : "loading"]) }
+                if ads.requested, ads.nativeAd == nil { AppAnalytics.event("queue_ad_skipped_unloaded", ["reason": ads.failed ? "failed" : "loading"]) }
             }
             guard position == Self.endID, !model.items.isEmpty, !reachedEnd else { return }
             reachedEnd = true

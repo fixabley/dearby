@@ -292,6 +292,21 @@ struct AccountClient: Sendable {
         _ = try await request("me/eligibility-profile", method: "DELETE", session: session)
     }
 
+    /// 광고 목적 개인정보 제3자 제공 동의 (contract "광고 목적 개인정보 제3자 제공 동의(선택)" 2026-10-25): `agreed` only for the current version.
+    func adConsent(_ session: TokenPair) async throws -> AdConsent {
+        try await send("me/consents/ad-third-party", session: session, as: AdConsent.self)
+    }
+    /// A version other than the server's is a 400 (`rejected`); agreeing again keeps the first `agreedAt`.
+    func agreeAdConsent(version: String, _ session: TokenPair) async throws -> AdConsent {
+        try await send("me/consents/ad-third-party", method: "PUT", body: AdConsentInput(version: version), session: session, as: AdConsent.self)
+    }
+    /// 철회: 204, also when there was nothing.
+    func withdrawAdConsent(_ session: TokenPair) async throws {
+        _ = try await request("me/consents/ad-third-party", method: "DELETE", session: session)
+    }
+    struct AdConsent: Decodable, Equatable, Sendable { let agreed: Bool }
+    private struct AdConsentInput: Encodable { let version: String }
+
     /// 푸시 알림 (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25): this device's APNs token with its IANA time zone (the server sends
     /// at 8:00 there, "프로그램·활동별 알림 수준"); the same token again updates it.
     func putPushDevice(token: String, timeZone: String, _ session: TokenPair) async throws {
