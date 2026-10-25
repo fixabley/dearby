@@ -12,7 +12,7 @@
 | App Store | `ios-appstore-submit.yml` (수동) | `apps/ios/fastlane` `submit` 레인: 처리 끝난 TestFlight 빌드(지정 번호, 없으면 그 버전의 최신)를 최대 40분 기다려 App Store 버전에 붙이고 `metadata/ko`·`screenshots/ko`를 올린 뒤 `submit`이면 심사 제출. 승인 후 출시는 수동(`automatic_release: false`). 바이너리를 올리지 않으니 ubuntu에서 돈다. |
 | Google Play | `android-play-release.yml` (수동) | 업로드 키로 서명한 `bundleRelease`(versionCode = run 번호 + 1)를 `fastlane/metadata/android/ko-KR`와 함께 `internal` 또는 `production` 트랙에 올린다. `production`이 Google 심사 제출이다. |
 
-- 문안 원본은 이제 fastlane 메타데이터 파일이다(`apps/ios/fastlane/metadata/ko/*.txt`, `apps/android/fastlane/metadata/android/ko-KR/*.txt`). [2026-10-19 문안](listing-2026-10-19.md)은 그 시점 초안·설문 답안 기록으로 남긴다.
+- 문안 원본은 이제 fastlane 메타데이터 파일이다(`apps/ios/fastlane/metadata/ko/*.txt`, `apps/android/fastlane/metadata/android/ko-KR/*.txt`). [2026-10-25 문안·개인정보 답안](listing-2026-10-25.md)이 현재 기준이고, [2026-10-19 문안](listing-2026-10-19.md)은 그 시점 기록으로 남긴다.
 - `release_notes.txt`(iOS)는 저장소에 두지 않는다. App Store는 첫 버전에 "새로운 기능"을 받지 않으므로 `whats_new` 입력이 있을 때만 실행 중에 만든다. Play `changelogs/default.txt`는 저장소 기본값이 있고 `release_notes` 입력이 덮어쓴다.
 - 카테고리(주 `PRODUCTIVITY`, 보조 `BUSINESS`)와 저작권(`2026 Dearby`)은 문안 초안의 제안값으로 넣었다. 운영자 명의가 정해지면 `metadata/copyright.txt`를 고친다.
 
@@ -34,8 +34,8 @@
 
 App Store Connect
 
-- 앱 개인정보(App Privacy) 라벨 — [초안](listing-2026-10-19.md) "App Privacy 답안 초안".
-- 연령 등급 설문, 가격·배포 국가, 심사 연락처(이름·전화·이메일)와 심사 노트·데모 계정 안내: **[연락 이메일]**, **[테스트 계정 안내]**. 패스키·Apple·Google만 있으므로 심사용 로그인 방법을 노트에 적어야 한다.
+- 앱 개인정보(App Privacy) 라벨 — [답안](listing-2026-10-25.md) "App Privacy(App Store) 답안".
+- 연령 등급 설문, 가격·배포 국가, 심사 연락처(이름·전화·이메일)와 심사 노트·데모 계정 안내: **[연락 이메일]**, **[테스트 계정]**. 노트 초안은 [listing-2026-10-25.md](listing-2026-10-25.md) "심사 노트 초안".
 - 첫 제출 전 `metadata/ko`의 지원 URL(`https://dearby.wid.io.kr`)이 실제 연락 수단을 보여 주는지 확인(가이드라인 1.5). 별도 지원 페이지가 생기면 `support_url.txt`를 바꾼다: **[지원 페이지]**.
 
 Google Play Console
@@ -43,10 +43,16 @@ Google Play Console
 - 앱 만들기(패키지 `io.wid.dearby`), Play 앱 서명 등록, **첫 AAB 수동 업로드**(API는 앱이 콘솔에 있어야 하고 첫 업로드는 콘솔에서 한다; versionCode 1).
 - Google Cloud: Google Play Android Developer API 사용 설정, 서비스 계정 생성(키 없음), GitHub OIDC 공급자가 있는 Workload Identity 풀 생성(속성 조건으로 이 저장소만 허용, 예: `assertion.repository == 'fixabley/dearby'`), 그 풀의 주체에 서비스 계정 `roles/iam.workloadIdentityUser` 부여. 값은 위 두 variable에 넣는다.
 - Play Console "사용자 및 권한"에서 그 서비스 계정 이메일을 초대하고 이 앱에 출시 권한을 준다.
-- 데이터 보안(Data safety), `READ_CALENDAR` 권한 선언, 콘텐츠 등급, 타깃층, 광고 없음, 개인정보처리방침 URL, 앱 액세스(심사용 로그인 안내) — [초안](listing-2026-10-19.md).
+- 데이터 보안(Data safety), `READ_CALENDAR` 권한 선언, 콘텐츠 등급, 타깃층, 광고 없음, 개인정보처리방침 URL, 앱 액세스(심사용 로그인 안내) — [답안](listing-2026-10-25.md) "Play 데이터 보안" · "심사 노트 초안".
 - 앱이 아직 한 번도 게시되지 않았으면 Play API는 `draft` 상태 출시만 받는다. 첫 실행은 `track=internal`, `status=draft`로 하고 콘솔에서 출시를 마친다.
 - 새 개인 개발자 계정이면 프로덕션 신청 전 비공개 테스트 요건(테스터 수·기간)이 붙을 수 있다 — 계정 유형에 따라 확인.
 
 ## 출시 문안의 전제
 
-설명·프로모션 문안에는 2026-10-22 기준 **아직 main에 없는** 두 기능이 들어 있다: `캘린더에 추가`(계약 "내 캘린더에 추가", `ee27a568`)와 로그인 시 계정에 저장되는 내 활동(`feat/user-activities-server`). 두 기능이 제출하는 빌드에 들어가기 전에는 심사 제출(`submit`/`production`)을 하지 않는다. 설명에 없는 기능을 적으면 App Store 2.3.1 거절 사유다.
+2026-10-25 기준(main `e4583544`) 설명·프로모션 문안이 적은 기능은 모두 main에 있다: 2026-10-22에 빠져 있던 `캘린더에 추가`와 로그인 시 계정에 저장되는 내 활동(`/v1/me/activities`)도 iOS·Android에 들어왔다. 기능별 근거는 [listing-2026-10-25.md](listing-2026-10-25.md) "문안이 주장하는 기능과 근거". 설명에 없는 기능을 적거나 있는 기능을 빠뜨리면 App Store 2.3.1 거절 사유이므로, 제출하는 빌드가 그 커밋 이후인지 확인한다.
+
+심사 제출(`submit`/`production`) 전에 남은 것:
+
+- 웹 `/privacy`(시행일 2026-10-22)에 Firebase Analytics·기기 토큰과 시간대·알림 기록·즐겨찾기·추천 설정·맞춤 대기열 반응·지원 자격 정보를 더해 개인정보 라벨·데이터 보안 답안과 맞춘다(문구 게시는 사용자 확인 뒤).
+- 운영 빌드에 Firebase 설정 파일(`GoogleService-Info.plist`·`google-services.json`)이 들어가는지 확인한다. 라벨·데이터 보안 답안은 Firebase가 켜진 빌드 기준이다.
+- 맞춤 대기열·즐겨찾기 캘린더 스크린샷 장면이 없다(위 "스크린샷" 장면 목록). 필수는 아니지만 설명의 주요 기능을 보이려면 더한다.
