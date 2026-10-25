@@ -367,6 +367,18 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **API**: 공개 `Activity`에 `location: string|null`(기존 문구)과 `place: {name, address, lat, lng}|null`(아래 "활동 장소")을 더한다.
 - 색·글꼴은 기존 토큰. 접근성: 프로그램 카드는 `펼침/접힘` 상태를 가진 버튼, 활동 카드는 상태 칩을 라벨에 포함.
 
+## 즐겨찾기(하트)·새 모집 푸시 알림 — 2026-10-25 사용자 결정
+
+사용자: "조직 프로그램 활동에 하트버튼을 두는 건 어떨까? 내 활동탭에서 상단탭바로 즐겨찾기에 추가해주는 식으로" → 하트 대상 "활동 + 프로그램"(조직은 조직 화면이 생기면), 새 모집 알림 "푸시 알림까지 지금".
+
+- **하트(로그인만)**: 활동 상세 머리·발견의 펼친 활동 행·맞춤 대기열 오른쪽 ♥, 프로그램 카드(발견)·프로그램 상세 머리. 비로그인에서 누르면 로그인 시트(위 "비로그인에서 만들기·추천을 막음"). 채워진 하트 = 즐겨찾기됨, 접근성 이름 `즐겨찾기`/`즐겨찾기 해제`. iOS `heart`/`heart.fill`, Android `FavoriteBorder`/`Favorite`. 웹은 로그인이 없어 하트를 두지 않는다.
+- **저장·API**: `user_favorites(user_id, target_type ACTIVITY|PROGRAM, target_id, created_at)` PK(user_id, target_type, target_id), 사용자 삭제 cascade. `GET /v1/me/favorites` → `{programs: [{program: ProgramSummary, favoritedAt, newRecruitment: boolean}], activities: [{activity: Activity, program: ProgramSummary, favoritedAt}]}`(활동은 마감 임박 순, 지난 활동은 뒤). `PUT /v1/me/favorites/{programs|activities}/{id}`·`DELETE` 같은 경로(멱등, 204). 로그인 응답의 `Activity.favorited`·`ProgramSummary.favorited: boolean`(비로그인 false).
+- **추천과 하나로**: 활동 하트 = 맞춤 대기열의 `LIKE` 신호(대기열 ♥도 즐겨찾기에 넣고, 즐겨찾기 해제 = `UNLIKE`). 프로그램 하트는 조직 친화도에 프로그램 신호 +0.6(반감기 같음)으로 더한다.
+- **내 활동 탭 상단 탭**: `내 활동 | 즐겨찾기` 두 칸(iOS 기본 세그먼트 `Picker(.segmented)`, Android Material 3 `PrimaryTabRow`). 즐겨찾기 화면: `프로그램` 묶음(로고·이름·다음 모집 상태, 새 모집이 열렸으면 `새 모집` 배지) → `활동` 묶음(마감 순, 기존 활동 행). 비어 있으면 `하트를 누르면 여기에 모여요`. 밀어서 즐겨찾기 해제(되돌리기 알림).
+- **새 모집**: 즐겨찾기한 프로그램에 즐겨찾기 이후 게시된 활동이 열린 활동(기존 판정)이 되면 `newRecruitment=true`(사용자가 즐겨찾기 화면에서 그 프로그램을 열면 false로, `POST /v1/me/favorites/programs/{id}/seen`).
+- **푸시 알림**: 기기 토큰 `push_devices(user_id, platform IOS|ANDROID, token, app_version, updated_at)`, `PUT /v1/me/push-devices {platform, token}`·`DELETE /v1/me/push-devices/{token}`(로그아웃·알림 끄기). 알림 권한은 앱 시작 때 묻지 않고 **처음 프로그램 하트를 누를 때** 시스템 권한 창을 띄운다(거절하면 다시 묻지 않고 프로필 `알림` 행에서 설정으로 안내). 밤 수집·대기열 배치 뒤 서버가 "즐겨찾기 프로그램의 새 모집"을 사용자·활동마다 한 번만 보낸다: 제목 `{프로그램} 새 모집이 열렸어요`, 본문 `{활동 이름} · {M월 d일 마감}`, 누르면 활동 상세(유니버설 링크 경로 `/activities/{id}`). 하루 최대 3건, 22:00~08:00(서울)에는 보내지 않고 다음 아침으로 미룬다. 보낸 기록 `push_deliveries(user_id, activity_id, sent_at)`. 프로필 `알림` 행에서 `새 모집 알림` 켜기/끄기(서버 `notification_settings`).
+- **발송 경로와 인증 정보(사용자 준비)**: iOS는 APNs 토큰 인증(.p8 키·Key ID·Team ID, 운영 `.env.prod`에만), Android는 FCM HTTP v1(Firebase 프로젝트, `google-services.json`, 서버 발송 자격). 인증 정보가 없으면 서버는 발송만 건너뛰고(로그 한 줄) 나머지 기능은 동작한다. 개인정보처리방침에 기기 토큰·알림 기록을 더한다.
+
 ## 비로그인에서 만들기·추천을 막음 — 2026-10-25 사용자 결정
 
 사용자: "명함과 프로필, 지원 자격, 관심 분야, 활동 종류 생성은 비로그인 시점에서 지원하지 말아줘" + "오늘의 맞춤대기열도 비로그인 시점에서 제공하지 말아줘". 아래 규칙이 이 문서의 앞선 비로그인 문구(추천 설정 기기 저장, 비로그인 추천 쿼리, 비로그인 대기열)를 대신한다.
