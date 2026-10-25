@@ -1,14 +1,10 @@
 package io.wid.dearby.adaptor.persistence
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.NOTIFICATION_SETTINGS
-import io.wid.dearby.adaptor.persistence.jooq.tables.references.PUSH_DELIVERIES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.PUSH_DEVICES
 import io.wid.dearby.application.push.PushRepository
-import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.UserId
-import io.wid.dearby.domain.push.PushDelivery
 import io.wid.dearby.domain.push.PushDevice
-import io.wid.dearby.domain.push.PushKind
 import io.wid.dearby.domain.push.PushPlatform
 import org.jooq.DSLContext
 import org.springframework.stereotype.Repository
@@ -43,7 +39,7 @@ class JooqPushRepository(private val dsl: DSLContext) : PushRepository {
     }
 
     override fun devices(): List<PushDevice> =
-        dsl.selectFrom(PUSH_DEVICES).orderBy(PUSH_DEVICES.USER_ID, PUSH_DEVICES.TOKEN)
+        dsl.selectFrom(PUSH_DEVICES).orderBy(PUSH_DEVICES.USER_ID, PUSH_DEVICES.UPDATED_AT.desc(), PUSH_DEVICES.TOKEN)
             .fetch { PushDevice(it.token!!, it.userId!!, PushPlatform.valueOf(it.platform!!), it.timeZone!!) }
 
     override fun newRecruitmentEnabled(userId: UserId): Boolean =
@@ -65,25 +61,5 @@ class JooqPushRepository(private val dsl: DSLContext) : PushRepository {
         return dsl.select(NOTIFICATION_SETTINGS.USER_ID).from(NOTIFICATION_SETTINGS)
             .where(NOTIFICATION_SETTINGS.USER_ID.`in`(userIds), NOTIFICATION_SETTINGS.NEW_RECRUITMENT.isFalse)
             .fetchSet { it.value1()!! }
-    }
-
-    override fun deliveries(userId: UserId, activityIds: Collection<Id>): List<PushDelivery> {
-        if (activityIds.isEmpty()) return emptyList()
-        return dsl.selectFrom(PUSH_DELIVERIES).where(PUSH_DELIVERIES.USER_ID.eq(userId), PUSH_DELIVERIES.ACTIVITY_ID.`in`(activityIds))
-            .fetch { PushDelivery(it.userId!!, it.deviceToken!!, it.activityId!!, PushKind.valueOf(it.kind!!), it.deliveryDate!!) }
-    }
-
-    override fun saveDeliveries(deliveries: List<PushDelivery>, at: OffsetDateTime) {
-        deliveries.forEach { d ->
-            dsl.insertInto(PUSH_DELIVERIES)
-                .set(PUSH_DELIVERIES.USER_ID, d.userId)
-                .set(PUSH_DELIVERIES.DEVICE_TOKEN, d.deviceToken)
-                .set(PUSH_DELIVERIES.ACTIVITY_ID, d.activityId)
-                .set(PUSH_DELIVERIES.KIND, d.kind.name)
-                .set(PUSH_DELIVERIES.DELIVERY_DATE, d.date)
-                .set(PUSH_DELIVERIES.SENT_AT, at)
-                .onConflictDoNothing()
-                .execute()
-        }
     }
 }
