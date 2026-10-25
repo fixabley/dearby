@@ -6,13 +6,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
  * 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천", 2026-10-24). [available] is false until the recommendation API answered (404 before the server
  * ships it): then the profile rows hide; the funnel does not depend on it. [completed] is the funnel's completion (also `나중에`·끝까지 건너뛰기).
  * [eligibilitySummary] is the 지원 자격 정보 row's supporting text (`재학 중 · 3학년 · 2003년생`), null when nothing is entered.
+ * [preferencesRead]: the signed-in settings read answered (or failed), so a `completedAt` from another device is already in [completed].
  */
 data class RecommendationViewState(
-    val available: Boolean = false, val localLoaded: Boolean = false, val completed: Boolean = false,
+    val available: Boolean = false, val localLoaded: Boolean = false, val completed: Boolean = false, val preferencesRead: Boolean = false,
     val eligibilitySummary: String? = null, val eligibilityConsented: Boolean = false, val eligibilityError: String? = null, val notice: String? = null,
 ) {
-    /** The first visit to 발견 shows the funnel: decided by the device's completion flag alone, never by the recommendation API. */
-    val needsFunnel get() = localLoaded && !completed
+    /** The first signed-in visit to 발견 shows the funnel: decided by the completion flag (device, or the server's once read), never by the recommendation API. */
+    val needsFunnel get() = localLoaded && preferencesRead && !completed
 }
 
 enum class FunnelStep { INTRO, FIELDS, SUBFIELDS, CATEGORIES, TRAITS, RESULT }
