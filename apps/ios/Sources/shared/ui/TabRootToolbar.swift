@@ -46,14 +46,42 @@ extension TabRootToolbar where Primary == EmptyView {
     init(menu: [DearbyMenuItem] = []) { self.init(menu: menu) { EmptyView() } }
 }
 
-/// 알림 버튼: 알림 화면은 아직 자리만이라 기존 안내 문구를 띄운다(contract "알림 아이콘은 … 우상단 고정").
+/// 알림 버튼(contract "알림 목록(발견 우상단 종)" 2026-10-25): 로그인이면 탭의 스택에 `InboxRoute`를 밀고(목적지는 `HomePage`), 비로그인이면
+/// `inboxEntry.signIn`(로그인 시트). 읽지 않은 수는 종 위 숫자(9 넘으면 `9+`). 앱이 `inboxEntry`를 넘기지 않은 미리보기에서는 안내 문구만.
 private struct NotificationsButton: View {
+    @Environment(\.inboxEntry) private var entry
     @State private var showNotice = false
     var body: some View {
-        Button { showNotice = true } label: { Image(systemName: "bell") }
-            .accessibilityLabel("알림").accessibilityIdentifier("page-notifications")
-            .alert("알림", isPresented: $showNotice) { Button("확인") {} } message: { Text("새로운 알림이 없어요.") }
+        if let entry, entry.signedIn {
+            NavigationLink(value: InboxRoute()) { bell(entry.unread) }
+                .accessibilityLabel("알림").accessibilityValue(entry.unread > 0 ? "읽지 않은 알림 \(entry.unread)개" : "")
+                .accessibilityIdentifier("page-notifications")
+        } else {
+            Button { if let entry { entry.signIn() } else { showNotice = true } } label: { bell(0) }
+                .accessibilityLabel("알림").accessibilityIdentifier("page-notifications")
+                .alert("알림", isPresented: $showNotice) { Button("확인") {} } message: { Text("새로운 알림이 없어요.") }
+        }
     }
+    private func bell(_ unread: Int) -> some View {
+        Image(systemName: "bell").overlay(alignment: .topTrailing) {
+            if unread > 0 {
+                Text(unread > 9 ? "9+" : "\(unread)").font(.system(size: 11, weight: .semibold)).monospacedDigit().foregroundStyle(.white)
+                    .padding(.horizontal, 4).frame(minWidth: 16, minHeight: 16).background(.red, in: Capsule())
+                    .offset(x: 8, y: -6).accessibilityHidden(true)
+            }
+        }
+    }
+}
+
+/// 종이 미는 값과 앱이 넘기는 상태: 로그인 여부, 읽지 않은 수, 비로그인에서 누를 때의 로그인 시트.
+struct InboxRoute: Hashable {}
+struct InboxEntry {
+    var signedIn: Bool
+    var unread: Int
+    var signIn: () -> Void
+}
+extension EnvironmentValues {
+    @Entry var inboxEntry: InboxEntry?
 }
 
 /// 설정 버튼이 미는 값. 설정 화면 자체는 `widgets`에 있어 `HomePage`가 목적지를 단다.

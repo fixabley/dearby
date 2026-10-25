@@ -14,6 +14,9 @@ struct ProfilePage: View {
     let eligibility: EligibilityModel
     /// Reopens the 추천 funnel (signed out, the app opens sign-in first).
     let editRecommendations: () -> Void
+    /// 프로필 `알림` 묶음 (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25): `새 모집 알림`, and Settings when permission was refused.
+    let notifications: NotificationModel
+    @Environment(\.openURL) private var openURL
     @State private var eligibilityConsent = false
     @State private var eligibilityAgreed = false
     @State private var eligibilityInput = false
@@ -115,6 +118,34 @@ struct ProfilePage: View {
             .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
         }
     }
+    /// `알림` 묶음: the account's 새 모집 알림 switch, and, when the system permission was refused, a row to the app's notification settings.
+    private var notificationGroup: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("알림").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(.secondary).padding(.horizontal, 16)
+                .accessibilityAddTraits(.isHeader)
+            VStack(spacing: 0) {
+                Toggle(isOn: Binding(get: { notifications.newRecruitment ?? true },
+                                     set: { on in Task { await notifications.setNewRecruitment(on) } })) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("새 모집 알림").font(.dearby(.body))
+                        Text("즐겨찾기한 프로그램·활동의 새 모집과 일정").font(.dearby(.footnote)).foregroundStyle(.secondary)
+                    }
+                }
+                .tint(DearbyStyle.teal).padding(.horizontal, 16).padding(.vertical, 8).frame(minHeight: 44)
+                .accessibilityIdentifier("profile-new-recruitment")
+                if notifications.denied {
+                    Divider().padding(.leading, 16)
+                    groupRow("기기 알림이 꺼져 있어요", detail: "설정에서 Dearby 알림을 켜면 받을 수 있어요") {
+                        if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) }
+                    }.accessibilityIdentifier("profile-notification-settings")
+                }
+            }
+            .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
+        }
+        .alert(notifications.notice ?? "", isPresented: Binding(get: { notifications.notice != nil }, set: { if !$0 { notifications.notice = nil } })) {
+            Button("확인", role: .cancel) {}
+        }
+    }
     private func groupRow(_ title: String, detail: String? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 12) {
@@ -171,6 +202,7 @@ struct ProfilePage: View {
                         VStack(alignment: .leading, spacing: 0) {
                             ProfileReadView(profile: profile).padding(20)
                             recommendationGroup.padding(.horizontal, 20).padding(.bottom, 20)
+                            notificationGroup.padding(.horizontal, 20).padding(.bottom, 20)
                         }
                     }
                 } else if let binding = Binding($form) {
