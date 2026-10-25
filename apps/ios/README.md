@@ -126,6 +126,16 @@
 - 프로필 `알림` 묶음 `사용 통계 보내기`(기본 켬, 기기 키 `dearby.analytics.enabled`, 로그인과 상관없이 보임)가 `setAnalyticsCollectionEnabled`를 바꾼다.
 - 기기에서 확인: 실행 인자 `-FIRDebugEnabled`(GA DebugView), 콘솔의 `Logging event:` 줄.
 
+## 맞춤 대기열 끝 광고 (2026-10-25, AdMob)
+
+계약 native-v1.md "맞춤 대기열 끝 광고(AdMob, 비개인화)". `features/ads/QueueAd.swift`의 `QueueAdLoader`가 대기열을 열 때 네이티브 광고 1개를 요청하고, `DiscoveryQueuePage`가 마지막 활동 다음·끝 화면 앞에 `QueueAdView` 한 장(상단 `광고` 배지·AdChoices, 미디어·광고주·헤드라인·본문·CTA; 자산은 SDK `NativeAdView`에 그대로 묶음)을 넣는다. 끝 화면에 닿을 때까지 받지 못했으면 이번 열람에는 넣지 않고, `더 받기` 뒤에도 다시 넣지 않는다(열람당 최대 1장).
+
+- SDK: `swift-package-manager-google-mobile-ads` 13.11.0 고정(`generate_project.rb`). UMP 패키지가 의존성으로 함께 받아지지만 쓰지 않는다.
+- 비개인화·등급: 요청마다 `Extras.additionalParameters = ["npa": "1"]`, 처음 한 번 `requestConfiguration.maxAdContentRating = .parentalGuidance`·`publisherPrivacyPersonalizationState = .disabled` 뒤 `MobileAds.shared.start`. ATT 요청·`NSUserTrackingUsageDescription`·UMP 동의 화면은 없다(한국 전용).
+- ID: Info.plist `GADApplicationIdentifier = $(ADMOB_APP_ID)`, `DearbyAdMobNativeUnitID = $(ADMOB_NATIVE_UNIT_ID)`와 Google 공식 `SKAdNetworkItems`(두 파일 같음). Debug는 Google 테스트 앱 ID·네이티브 테스트 단위. Release는 `generate_project.rb`가 환경의 `ADMOB_APP_ID`·`ADMOB_NATIVE_UNIT_ID`(CI는 저장소 변수 `IOS_ADMOB_APP_ID`·`IOS_ADMOB_NATIVE_UNIT_ID`, 없으면 경고)를 읽고, 둘 중 하나라도 없으면 단위를 비우고 앱 ID에는 테스트 앱 ID를 넣는다(값이 없으면 SDK가 실행 시 멈추므로). 단위가 비면 앱은 SDK를 시작하지도 요청하지도 않는다.
+- 사용 통계: `queue_ad_shown`(광고 장면이 처음 화면에 올 때), `queue_ad_skipped_unloaded`(광고가 켜진 빌드에서 받지 못한 채 끝 화면에 닿을 때).
+- 개인정보 매니페스트: SDK가 자체 `PrivacyInfo.xcprivacy`(광고 데이터·기기 ID·대략적 위치 등)를 갖고 있어 앱 매니페스트는 그대로 둔다. App Store Connect의 앱 개인정보 답변은 광고 SDK 수집 항목을 반영해 따로 고쳐야 한다.
+
 ## 검증
 
 `Dearby.xcodeproj`는 저장소에 두지 않는 생성물이다(병합 충돌 방지). Xcode로 열거나 빌드하기 전에 생성한다. `xcodeproj` gem이 필요하다(`gem install --user-install xcodeproj`). 자동 테스트는 2026-10-06 사용자 요청으로 모두 지웠다. 사용자와 하나씩 다시 만든다.
