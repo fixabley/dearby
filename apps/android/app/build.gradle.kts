@@ -22,7 +22,7 @@ val googleServerClientId = connection("GOOGLE_SERVER_CLIENT_ID") ?: ""
 // provider throws at launch without one) while the unit id stays empty, so the app never initialises or requests ads and skips the ad scene.
 val testAdMobAppId = "ca-app-pub-3940256099942544~3347511713"
 val testAdMobNativeUnitId = "ca-app-pub-3940256099942544/2247696110"
-val adMob = listOf("ANDROID_ADMOB_APP_ID", "ANDROID_ADMOB_NATIVE_UNIT_ID").map(::connection).takeIf { ids -> ids.all { it != null } }?.map { it!! }
+val adMob = listOf("ADMOB_ANDROID_APP_ID", "ADMOB_ANDROID_QUEUE_NATIVE_UNIT_ID").map(::connection).takeIf { ids -> ids.all { it != null } }?.map { it!! }
 // Debug falls back to the API dev server on the emulator host.
 val debugApiOrigin = apiOrigin ?: "http://10.0.2.2:3000"
 // Play upload key (2026-10-19): keystore and passwords live outside the repository (env or same-named Gradle properties).

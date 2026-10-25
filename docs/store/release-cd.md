@@ -21,7 +21,7 @@
 - 이미 있음(TestFlight): secrets `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`, `IOS_DIST_P12_BASE64`, `IOS_DIST_P12_PASSWORD`, `IOS_APPSTORE_PROFILE_BASE64`; vars `APPLE_TEAM_ID`, `DEARBY_API_ORIGIN`. 제출 워크플로는 앞의 세 키만 쓴다(API 키 역할은 App Manager 이상).
 - Play 서명(2026-10-22 등록됨): secrets `ANDROID_UPLOAD_JKS_BASE64`(`~/.dearby-deploy/android-upload.jks`의 base64; 워크플로가 `$RUNNER_TEMP/upload.jks`로 풀고 `ANDROID_KEYSTORE_PATH`로 넘긴다), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`(`android-signing.env`와 같은 이름).
 - Play 접근: Google Cloud 조직이 서비스 계정 키 생성을 막아(`iam.disableServiceAccountKeyCreation`) JSON 키는 쓰지 않고 **Workload Identity Federation**으로 인증한다. repository variables `GCP_WIF_PROVIDER`(`projects/<번호>/locations/global/workloadIdentityPools/<풀>/providers/<공급자>`), `PLAY_SERVICE_ACCOUNT`(서비스 계정 이메일). `google-github-actions/auth@v2`가 키 없는 `external_account` 자격 파일을 만들고 fastlane supply(2.241.1 이상, Gemfile 고정)가 그것을 `json_key`로 읽는다. 둘 중 하나라도 비면 첫 단계에서 실패한다.
-- 선택: secret `GOOGLE_SERVER_CLIENT_ID`(없으면 경고만 내고 구글 로그인 버튼이 없는 빌드). var `DEARBY_API_ORIGIN`은 공용. `DEARBY_WEB_ORIGIN`은 비우면 `https://dearby.wid.io.kr`. vars `ANDROID_ADMOB_APP_ID`·`ANDROID_ADMOB_NATIVE_UNIT_ID`(맞춤 대기열 끝 광고, 둘 다 있어야 광고를 요청하고 하나라도 없으면 경고만 내고 광고 장면이 없는 빌드).
+- 선택: secret `GOOGLE_SERVER_CLIENT_ID`(없으면 경고만 내고 구글 로그인 버튼이 없는 빌드). var `DEARBY_API_ORIGIN`은 공용. `DEARBY_WEB_ORIGIN`은 비우면 `https://dearby.wid.io.kr`. vars `ADMOB_ANDROID_APP_ID`·`ADMOB_ANDROID_QUEUE_NATIVE_UNIT_ID`(맞춤 대기열 끝 광고, 둘 다 있어야 광고를 요청하고 하나라도 없으면 경고만 내고 광고 장면이 없는 빌드).
 
 ## 스크린샷
 

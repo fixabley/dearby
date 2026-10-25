@@ -34,8 +34,8 @@ jobs:
       DEARBY_API_ORIGIN: ${{ vars.DEARBY_API_ORIGIN }}
       GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
       # 맞춤 대기열 끝 광고: AdMob ids (not secret; both or the release shows no ad).
-      ANDROID_ADMOB_APP_ID: ${{ vars.ANDROID_ADMOB_APP_ID }}
-      ANDROID_ADMOB_NATIVE_UNIT_ID: ${{ vars.ANDROID_ADMOB_NATIVE_UNIT_ID }}
+      ADMOB_ANDROID_APP_ID: ${{ vars.ADMOB_ANDROID_APP_ID }}
+      ADMOB_ANDROID_QUEUE_NATIVE_UNIT_ID: ${{ vars.ADMOB_ANDROID_QUEUE_NATIVE_UNIT_ID }}
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
       ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -82,7 +82,7 @@ jobs:
         run: |
           # The Google button is hidden without it; warn instead of failing so a build without Google sign-in stays possible.
           test -n "$GOOGLE_SERVER_CLIENT_ID" || echo "::warning::GOOGLE_SERVER_CLIENT_ID is empty; the release hides Google sign-in."
-          test -n "$ANDROID_ADMOB_APP_ID" -a -n "$ANDROID_ADMOB_NATIVE_UNIT_ID" || echo "::warning::ANDROID_ADMOB_APP_ID or ANDROID_ADMOB_NATIVE_UNIT_ID is empty; the release shows no queue ad."
+          test -n "$ADMOB_ANDROID_APP_ID" -a -n "$ADMOB_ANDROID_QUEUE_NATIVE_UNIT_ID" || echo "::warning::ADMOB_ANDROID_APP_ID or ADMOB_ANDROID_QUEUE_NATIVE_UNIT_ID is empty; the release shows no queue ad."
           printf '%s' "$UPLOAD_JKS" | base64 --decode > "$RUNNER_TEMP/upload.jks"
           # Version code: monotonic above the manual first upload (1); a re-run of the same run reuses it and Play refuses the duplicate.
           {
