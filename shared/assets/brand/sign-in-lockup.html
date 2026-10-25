@@ -1,0 +1,23 @@
+<!doctype html>
+<!-- 로그인 시트 락업(2026-10-25 사용자 요청): 워드마크(wordmark.svg와 같은 심볼·"Dearby") 아래 캐치프레이즈 "대외활동, 매일 맞춤으로".
+     1440×560 투명 PNG로 뽑는다. ?theme=dark면 다크 변형(워드마크 #3FB3B4, 문구 밝은 회색). 뽑는 법은 README "다시 뽑을 때". -->
+<html lang="ko"><head><meta charset="utf-8"><style>
+  @font-face { font-family: "Pretendard"; src: url("../fonts/pretendard/Pretendard-Bold.otf") format("opentype"); font-weight: 700; }
+  @font-face { font-family: "Pretendard"; src: url("../fonts/pretendard/Pretendard-SemiBold.otf") format("opentype"); font-weight: 600; }
+  :root { --mark: #007F80; --caption: #6E6E73; }
+  :root.dark { --mark: #3FB3B4; --caption: #AEAEB2; }
+  html, body { margin: 0; width: 1440px; height: 560px; background: transparent; overflow: hidden; }
+  body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 44px; font-family: "Pretendard", sans-serif; }
+  svg { height: 300px; display: block; }
+  p { margin: 0; font-size: 116px; font-weight: 600; letter-spacing: -2px; color: var(--caption); line-height: 1; }
+</style><script>if (location.search.includes("theme=dark")) document.documentElement.className = "dark";</script></head>
+<body>
+  <svg viewBox="58 32 1210 300" aria-label="Dearby">
+    <g transform="translate(0 -96)" fill="none" stroke="var(--mark)" stroke-width="58" stroke-linecap="round">
+      <path d="M187 355 A100 100 0 1 1 296 278"/>
+      <path d="M325 157 A100 100 0 1 1 216 235"/>
+    </g>
+    <text x="500" y="274" font-size="210" fill="var(--mark)" letter-spacing="-4" font-family="Pretendard" font-weight="700">Dearby</text>
+  </svg>
+  <p>대외활동, 매일 맞춤으로</p>
+</body></html>

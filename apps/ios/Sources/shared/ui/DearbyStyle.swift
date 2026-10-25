@@ -72,11 +72,11 @@ struct DearbyBrand: View {
     }
 }
 
-/// 가로 워드마크(심볼 + "Dearby", `DearbyLogo` = shared/assets/brand/wordmark-2172x724.png). 청록 단색이라 템플릿으로 그려 다크 모드에서 밝은 청록을 따른다. 로그인 시트 위에 쓴다.
-struct DearbyWordmark: View {
-    var height: CGFloat = 40
+/// 로그인 시트 락업: 가로 워드마크 아래 캐치프레이즈를 한 장으로 그린 이미지(`DearbyLockup`, 원본 shared/assets/brand/sign-in-lockup.html, 라이트·다크 두 장).
+/// 큰 글씨 설정과 무관하게 고정 크기(시트 안 여백까지 가득, 최대 너비 400pt, 비율 1440:560 → iPhone에서 높이 약 150pt).
+struct DearbyLockup: View {
     var body: some View {
-        Image("DearbyLogo").renderingMode(.template).resizable().scaledToFit().frame(height: height)
-            .foregroundStyle(DearbyStyle.teal).accessibilityLabel("Dearby")
+        Image("DearbyLockup").resizable().scaledToFit().frame(maxWidth: 400)
+            .accessibilityLabel("Dearby, 대외활동, 매일 맞춤으로")
     }
 }

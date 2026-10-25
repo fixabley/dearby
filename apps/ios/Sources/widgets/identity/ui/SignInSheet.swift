@@ -5,7 +5,7 @@ import SwiftUI
 /// it is off) and an existing passkey are peers; new accounts start only with Apple or Google (2026-10-25). A first-time Apple or Google account
 /// links to this device's passkey account or starts a separate one by itself (`AccountViewModel.linkOrStart`); the
 /// new-or-link choice below appears only when the person closed that passkey sheet.
-/// Layout is the centred message (contract "비스크롤 화면 배치·CTA"): horizontal wordmark with the catchphrase, title, explanation in the middle; the buttons stacked at the bottom.
+/// Layout is the centred message (contract "비스크롤 화면 배치·CTA"): the lockup image (wordmark + catchphrase), title, explanation in the middle; the buttons stacked at the bottom.
 struct SignInSheet: View {
     let account: AccountViewModel
     let signedIn: () -> Void
@@ -32,10 +32,7 @@ struct SignInSheet: View {
         CenteredMessage(title: social ? "로그인" : "패스키로 로그인",
                         message: social ? "처음이라면 애플이나 구글 계정으로 시작해요. 패스키가 있으면 바로 로그인해요."
                             : "Face ID나 Touch ID로 바로 로그인해요. 비밀번호와 인증번호는 필요 없어요.") {
-            VStack(spacing: 8) {
-                DearbyWordmark()
-                Text("대외활동, 매일 맞춤으로").font(.dearby(.subheadline)).foregroundStyle(.secondary)
-            }
+            DearbyLockup()
         } actions: {
             message
             if account.appleSignInEnabled {
