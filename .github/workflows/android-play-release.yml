@@ -100,6 +100,12 @@ jobs:
           jarsigner -verify "$aab" | grep -q "jar verified" || { echo "AAB is not signed"; exit 1; }
           echo "AAB_PATH=$PWD/$aab" >> "$GITHUB_ENV"
           echo "versionCode $ANDROID_VERSION_CODE → $PLAY_TRACK ($PLAY_RELEASE_STATUS)" >> "$GITHUB_STEP_SUMMARY"
+      # Kept for a manual upload in Play Console (the first release of an app, or when the API is refused).
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: ${{ env.AAB_PATH }}
+          retention-days: 7
       - name: Upload to Play
         run: bundle exec fastlane android release
       - name: Clean up signing material
