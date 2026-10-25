@@ -74,7 +74,7 @@ import SwiftUI
     }
     var body: some Scene {
         WindowGroup {
-            Group {
+            accountSync(Group {
                 if showIntro {
                     IntroPage(account: account, done: finishIntro)
                 } else {
@@ -147,45 +147,7 @@ import SwiftUI
             // `내 활동으로` on an activity detail: the 내 활동 tab opens that activity (it pushes once it is on screen).
             .onChange(of: activityModel.showInMine) { _, id in if id != nil { tab = 1 } }
             .onChange(of: activityModel.showInDiscovery) { _, id in if id != nil { tab = 0 } }
-            // 내 활동 follows the account (contract "내 활동 서버 저장"): signing in imports this run's marks once and then uses the server.
-            .onChange(of: account.phase, initial: true) { _, phase in
-                switch phase {
-                case .signedIn:
-                    // The consent state comes with the profile; account sync waits for it (`accountReady`).
-                    Task { await profile.load() }
-                case .signedOut:
-                    activityModel.signedOut()
-                    recommendations.signedOut()
-                    queue.signedOut()
-                    favorites.signedOut()
-                    inbox.signedOut()
-                    // A failed attempt inside the open sheet keeps it; a sign-out later drops a continuation that never ran.
-                    if !signingIn { afterSignIn = nil }
-                case .signingIn: break
-                }
-                if phase == .signedOut {
-                    AppAnalytics.userProperty("signed_in", "no")
-                    Task { await eligibility.load() }
-                }
-            }
-            .onChange(of: accountReady, initial: true) { _, ready in
-                guard ready else { return }
-                AppAnalytics.userProperty("signed_in", "yes")
-                Task { await eligibility.load() }
-                Task { await activityModel.signedIn(links.mineServer(account)) }
-                Task { await favorites.signedIn(links.favoritesServer(account)) }
-                Task { await inbox.signedIn(links.inboxServer(account)) }
-                Task { await notifications.refresh() }
-                Task { await recommendations.signedIn(links.recommendationServer(account)) }
-                Task { await queue.signedIn(links.discoveryQueueServer(account)) }
-                if let token = delegate.deviceToken { notifications.registered(token) }
-            }
-            // Asked at launch and after sign-in once the profile says so (not over the intro or the sign-in sheet; `continueAfterSignIn` asks then).
-            .onChange(of: consentNeeded && !showIntro && !signingIn, initial: true) { _, ask in if ask { showsConsent = true } }
-            // Agreed right after sign-up: on to 프로필 만들기.
-            .onChange(of: profile.consentPending) { was, pending in
-                if was, !pending, account.phase == .signedIn, profile.profile?.version == 0 { tab = 3 }
-            }
+            )
             // The account's answers arrived after a sign-in from the queue row or 관심 분야·활동 종류 (the sheet may still be closing).
             .onChange(of: recommendations.ready) { _, _ in continueAfterSignIn() }
             // 추천 설정 퍼널 (contract "추천 설정 퍼널·지원 자격 정보·추천"): once, on the first visit to 발견 after the account's answers are read.
@@ -234,6 +196,49 @@ import SwiftUI
                                        notYet: { activityModel.answer(.notYet) }, neverAsk: { activityModel.answer(.neverAsk) })
                     .presentationDetents([.medium])
             }
+        }
+    }
+    /// Account sync and the consent prompts, kept apart from `body` so the compiler can type-check it.
+    private func accountSync(_ content: some View) -> some View {
+        content
+        // 내 활동 follows the account (contract "내 활동 서버 저장"): signing in imports this run's marks once and then uses the server.
+        .onChange(of: account.phase, initial: true) { _, phase in
+            switch phase {
+            case .signedIn:
+                // The consent state comes with the profile; account sync waits for it (`accountReady`).
+                Task { await profile.load() }
+            case .signedOut:
+                activityModel.signedOut()
+                recommendations.signedOut()
+                queue.signedOut()
+                favorites.signedOut()
+                inbox.signedOut()
+                // A failed attempt inside the open sheet keeps it; a sign-out later drops a continuation that never ran.
+                if !signingIn { afterSignIn = nil }
+            case .signingIn: break
+            }
+            if phase == .signedOut {
+                AppAnalytics.userProperty("signed_in", "no")
+                Task { await eligibility.load() }
+            }
+        }
+        .onChange(of: accountReady, initial: true) { _, ready in
+            guard ready else { return }
+            AppAnalytics.userProperty("signed_in", "yes")
+            Task { await eligibility.load() }
+            Task { await activityModel.signedIn(links.mineServer(account)) }
+            Task { await favorites.signedIn(links.favoritesServer(account)) }
+            Task { await inbox.signedIn(links.inboxServer(account)) }
+            Task { await notifications.refresh() }
+            Task { await recommendations.signedIn(links.recommendationServer(account)) }
+            Task { await queue.signedIn(links.discoveryQueueServer(account)) }
+            if let token = delegate.deviceToken { notifications.registered(token) }
+        }
+        // Asked at launch and after sign-in once the profile says so (not over the intro or the sign-in sheet; `continueAfterSignIn` asks then).
+        .onChange(of: consentNeeded && !showIntro && !signingIn, initial: true) { _, ask in if ask { showsConsent = true } }
+        // Agreed right after sign-up: on to 프로필 만들기.
+        .onChange(of: profile.consentPending) { was, pending in
+            if was, !pending, account.phase == .signedIn, profile.profile?.version == 0 { tab = 3 }
         }
     }
     /// 사용 통계 `field`/`category` of a favorite, from whichever list has it.
