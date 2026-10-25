@@ -18,7 +18,7 @@ JSON camelCase, UUID 문자열 식별자, UTC ISO8601 시각. 기본 `/v1`. 인�
 - Receipt: `id`, `card: Card`, `context: ExchangeContext`, `receivedAt`, `reciprocal: boolean`.
 - GuestSavedCard (기기 전용): `cardId`, `context`, `savedAt`. 영구 원본은 ID 중심, 오프라인 표시 캐시와 구분. 가져오기 성공 항목만 이관 완료 처리. 실패/미선택 보존.
 
-명함 발행은 현재 공개 선택의 스냅샷이다. 프로필 편집이 기존 발행본에 자동 전파되지 않는다. 이는 공개 범위가 의도치 않게 확대되는 것을 막는 초기 구현 결정이다. 명함 철회는 서버 재조회 시 404이며 이미 전달된 정보 자체의 원격 삭제를 보장하지 않는다. 갱신 정책 확대는 별도 이슈로 추적한다.
+명함 발행은 현재 공개 선택의 스냅샷이다. 프로필 편집이 기존 발행본에 자동 전파되지 않는다. 이는 공개 범위가 의도치 않게 확대되는 것을 막는 초기 구현 결정이다. 명함 철회는 서버 재조회 시 404이고 서버의 명함 내용도 바로 비운다(2026-10-25, 아래 "명함 지우기"). 이미 전달된 정보 자체의 원격 삭제는 보장하지 않는다. 갱신 정책 확대는 별도 이슈로 추적한다.
 
 ## 첫 수직 구현 API
 
@@ -242,10 +242,11 @@ TypeScript API를 지운 뒤 비어 있던 프로필·명함·지갑 경로를 K
 | GET /v1/cards | Bearer | — | 200 `{items: Card[]}` 철회 안 한 내 명함, 만든 순 |
 | POST /v1/cards | Bearer | `{name, description, template, contactIds[], historyIds[]}` | 201 Card. 내 프로필의 id가 아니거나 `approval`이 `approved`가 아닌 이력이면 400. `template`은 앱 내장 기본 템플릿(아래 "템플릿") |
 | GET /v1/cards/:id | 없음 | — | 200 Card. 없거나 철회면 404 |
-| DELETE /v1/cards/:id | Bearer(소유자) | — | 204 철회. 남의 것 403 |
+| DELETE /v1/cards/:id | Bearer(소유자) | — | 204 철회(지우기, 아래 "명함 지우기"). 남의 것 403 |
 | GET /v1/wallet | Bearer | — | 200 `{items: Receipt[]}`. Receipt 형태와 저장·맞교환 경로는 아래 "명함 교환" |
 
 - Card: `{id, ownerId, name, description, template, introduction, profileName, job, contacts: Contact[], histories: History[], createdAt}`. 발행 시점 스냅샷이며 프로필을 고쳐도 바뀌지 않는다. `template`은 발행할 때 보낸 마크다운 템플릿, `introduction`은 그것을 **채운 결과**(공개 본문)다. 이력에는 `evidence`가 없고 `verification`만 남는다. 공개 조회(`GET /v1/cards/:id`)에는 `template`을 싣지 않는다.
+- **명함 지우기**(2026-10-25 사용자 결정): `DELETE /v1/cards/:id`(어드민 내리기 `POST /v1/admin/cards/:id/withdraw`도 같다)는 철회와 함께 서버에서 그 명함의 내용(`name`·`description`·`template`·`introduction`·`profileName`·`job`·`contacts`·`histories`)을 바로 비운다. 행과 `id`·`ownerId`·`createdAt`·`updatedAt`은 남는다(QR 코드·받은 명함·비로그인 저장·신고가 이 id를 가리킨다). 지운 명함은 지금처럼 모든 조회에서 404·목록 제외라 빈 값이 화면에 나가지 않는다. 신고 시점 스냅샷(`card_reports.card_snapshot`)은 신고 근거라 그대로 두고 신고일로부터 1개월 뒤 지운다("명함 신고·차단"). V56이 이미 지운 명함의 내용도 비웠다. 이미 받은 사람 기기의 캐시는 원격으로 지우지 못한다.
 - Receipt: 아래 "명함 교환"(2026-10-19)의 형태. 새 Receipt는 `PUT /v1/wallet/cards/:cardId`와 `reciprocate`가 만든다.
 - 웹 비로그인 저장(`/v1/guest/*`, 홈 화면 세션 잇기)은 2026-10-17 Kotlin API에 다시 구현했다(위 "웹 비로그인 명함 저장"·"홈 화면 세션 잇기" 계약 그대로; `GET /v1/guest/cards`의 항목 형태와 `activityId`는 아래 "명함 교환"). 오류 본문은 다른 경로와 같은 ProblemDetail이며 웹 프록시는 상태 코드만 옮긴다(401 `GUEST_SESSION_INVALID`, 그 외 `REQUEST_FAILED`). API의 `GUEST_PROXY_SECRET`이 비어 있으면 `/v1/guest/*`만 503이다.
 - 아직 없는 것: `POST /v1/wallet/import`, `POST /v1/exchanges`. 앱이 쓰지 않아 만들지 않는다.
