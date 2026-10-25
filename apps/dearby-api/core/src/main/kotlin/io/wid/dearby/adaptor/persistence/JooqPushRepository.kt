@@ -70,13 +70,14 @@ class JooqPushRepository(private val dsl: DSLContext) : PushRepository {
     override fun deliveries(userId: UserId, activityIds: Collection<Id>): List<PushDelivery> {
         if (activityIds.isEmpty()) return emptyList()
         return dsl.selectFrom(PUSH_DELIVERIES).where(PUSH_DELIVERIES.USER_ID.eq(userId), PUSH_DELIVERIES.ACTIVITY_ID.`in`(activityIds))
-            .fetch { PushDelivery(it.userId!!, it.activityId!!, PushKind.valueOf(it.kind!!), it.deliveryDate!!) }
+            .fetch { PushDelivery(it.userId!!, it.deviceToken!!, it.activityId!!, PushKind.valueOf(it.kind!!), it.deliveryDate!!) }
     }
 
     override fun saveDeliveries(deliveries: List<PushDelivery>, at: OffsetDateTime) {
         deliveries.forEach { d ->
             dsl.insertInto(PUSH_DELIVERIES)
                 .set(PUSH_DELIVERIES.USER_ID, d.userId)
+                .set(PUSH_DELIVERIES.DEVICE_TOKEN, d.deviceToken)
                 .set(PUSH_DELIVERIES.ACTIVITY_ID, d.activityId)
                 .set(PUSH_DELIVERIES.KIND, d.kind.name)
                 .set(PUSH_DELIVERIES.DELIVERY_DATE, d.date)

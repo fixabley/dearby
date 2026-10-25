@@ -1021,7 +1021,7 @@ class CollectionJobTest(
         assertTrue(stories.backfill().candidates < report.candidates)
     }
 
-    // 즐겨찾기 알림(native-v1.md "프로그램·활동별 알림 수준"): 기기 시간대 아침 8시, 신청일만/전체, 활동 수준이 앞섬, 신규는 한 번, 3개 넘으면 묶음, 지운 토큰, 전체 스위치, 인증 정보 없음
+    // 즐겨찾기 알림(native-v1.md "프로그램·활동별 알림 수준"): 기기마다 그 시간대 아침 8시, 신청일만/전체, 활동 수준이 앞섬, 신규는 한 번, 3개 넘으면 묶음, 지운 토큰, 전체 스위치, 인증 정보 없음
     @Test
     fun `즐겨찾기 알림은 기기 시간대 아침 8시에 수준대로 하루 한 번 보내고 3개를 넘으면 묶으며 지운 토큰과 꺼진 스위치를 지킨다`() {
         val seoul = java.time.ZoneId.of("Asia/Seoul")
@@ -1094,6 +1094,14 @@ class CollectionJobTest(
             Fakes.pushed.clear()
             pushes.send(now.plusMinutes(30))
             assertTrue(Fakes.pushed.isEmpty())
+            // 뉴욕 기기는 그 시간대 8시에 그 날짜의 거리를 따로 받는다(기기마다 한 번). 서울 7시 10분 모집 시작은 뉴욕에서는 전날이라 빠진다
+            val nyNow = today.atTime(8, 10).atZone(java.time.ZoneId.of("America/New_York")).toOffsetDateTime()
+            pushes.send(nyNow)
+            assertEquals(listOf("알림 마감 전날 내일 마감", "알림 프로그램 새 모집이 열렸어요"), sent("push-ny").map { it.title }.sorted())
+            assertTrue(sent("push-a").isEmpty())
+            pushes.send(nyNow.plusMinutes(20))
+            assertEquals(2, sent("push-ny").size)
+            Fakes.pushed.clear()
             pushes.send(now.plusDays(1))
             assertEquals(listOf("알림 마감 전날 오늘 마감"), sent("push-a").map { it.title })
 

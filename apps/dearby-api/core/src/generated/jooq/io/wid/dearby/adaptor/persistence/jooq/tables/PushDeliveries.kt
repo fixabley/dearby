@@ -105,6 +105,11 @@ open class PushDeliveries(
      */
     val SENT_AT: TableField<PushDeliveriesRecord, OffsetDateTime?> = createField(DSL.name("sent_at"), SQLDataType.TIMESTAMPWITHTIMEZONE(6).nullable(false), this, "")
 
+    /**
+     * The column <code>public.push_deliveries.device_token</code>.
+     */
+    val DEVICE_TOKEN: TableField<PushDeliveriesRecord, String?> = createField(DSL.name("device_token"), SQLDataType.VARCHAR(500).nullable(false), this, "")
+
     private constructor(alias: Name, aliased: Table<PushDeliveriesRecord>?): this(alias, null, null, null, aliased, null, null)
     private constructor(alias: Name, aliased: Table<PushDeliveriesRecord>?, parameters: Array<Field<*>?>?): this(alias, null, null, null, aliased, parameters, null)
     private constructor(alias: Name, aliased: Table<PushDeliveriesRecord>?, where: Condition?): this(alias, null, null, null, aliased, null, where)

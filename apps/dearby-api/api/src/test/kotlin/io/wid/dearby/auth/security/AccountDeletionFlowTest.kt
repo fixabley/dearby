@@ -93,7 +93,7 @@ class AccountDeletionFlowTest(
         jdbc.sql("insert into user_favorites (user_id, target_type, target_id, created_at) values (?, 'ACTIVITY', ?, now())").params(id, activity).update()
         jdbc.sql("insert into push_devices (token, user_id, platform, updated_at) values (?, ?, 'IOS', now())").params("token-$id", id).update()
         jdbc.sql("insert into notification_settings (user_id, new_recruitment, updated_at) values (?, false, now())").param(id).update()
-        jdbc.sql("insert into push_deliveries (user_id, activity_id, kind, delivery_date, sent_at) values (?, ?, 'DEADLINE', current_date, now())").params(id, activity).update()
+        jdbc.sql("insert into push_deliveries (user_id, device_token, activity_id, kind, delivery_date, sent_at) values (?, ?, ?, 'DEADLINE', current_date, now())").params(id, "token-$id", activity).update()
         // 패스키: user handle = UUID 16바이트(base64url)
         jdbc.sql("insert into user_entities (id, name, display_name) values (?, 'Dearby', 'Dearby')").param(handle(id)).update()
         appleToken?.let {

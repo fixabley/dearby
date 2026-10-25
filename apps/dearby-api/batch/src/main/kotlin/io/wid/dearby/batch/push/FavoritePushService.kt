@@ -25,7 +25,7 @@ import java.time.ZoneOffset
 // 즐겨찾기 알림(native-v1.md "프로그램·활동별 알림 수준"): 매시 돌며 기기 시간대가 아침 8시인 기기에 그날 알림 거리를 보낸다.
 // 거리: 신규 항목(즐겨찾기 프로그램에 새로 게시되어 열린 활동, 한 번만) · 신청일(모집 시작 당일·마감 하루 전·마감 당일) · 전체면 그 밖의 일정 당일.
 // 활동 단위 수준이 프로그램 수준보다 앞서고, 전체 스위치(notification_settings)가 꺼지면 보내지 않는다. 거리가 3개를 넘으면 "오늘 일정 n개" 하나로 묶는다.
-// (사용자, 활동, 종류, 그 기기 날짜)마다 한 번(push_deliveries). 토큰은 로그에 남기지 않는다
+// (사용자, 기기, 활동, 종류, 그 기기 날짜)마다 한 번(push_deliveries): 기기마다 그 시간대 8시에 그날 거리를 받는다. 묶음도 기기마다. 토큰은 로그에 남기지 않는다
 @Service
 class FavoritePushService(
     private val push: PushRepository,
@@ -66,28 +66,32 @@ class FavoritePushService(
         val activityLevels = all.filter { it.target == FavoriteTarget.ACTIVITY }.associate { it.targetId to it.notifyLevel }
         val listings = (activities.publishedListings(ids = activityLevels.keys) + activities.publishedListings(programIds = programLevels.keys))
             .distinctBy { it.activity.id }
-        val delivered = push.deliveries(userId, listings.map { it.activity.id }).toMutableList()
+        val delivered = push.deliveries(userId, listings.map { it.activity.id }).groupBy { it.deviceToken }
         var count = 0
-        devices.groupBy { zoneOf(it) }.forEach { (zone, group) ->
+        devices.forEach { device ->
+            val zone = zoneOf(device)
             val today = now.atZoneSameInstant(zone).toLocalDate()
+            val sent = delivered[device.token].orEmpty()
             val items = listings.flatMap { listing ->
                 val level = activityLevels[listing.activity.id] ?: programLevels[listing.program.id] ?: NotifyLevel.NONE
                 if (level == NotifyLevel.NONE) emptyList()
                 else items(listing, level, isNew = listing.activity.id in fresh && listing.program.id in programLevels, zone, today)
             }.filter { item ->
-                delivered.none { it.activityId == item.listing.activity.id && it.kind == item.kind && (item.kind == PushKind.NEW_ACTIVITY || it.date == today) }
+                sent.none { it.activityId == item.listing.activity.id && it.kind == item.kind && (item.kind == PushKind.NEW_ACTIVITY || it.date == today) }
             }
             if (items.isEmpty()) return@forEach
             val messages = if (items.size > MAX_SEPARATE) listOf(summary(items) to items) else items.map { message(it, zone) to listOf(it) }
-            messages.forEach { (message, covered) ->
-                val results = group.map { device ->
-                    sender.send(device.platform, device.token, message).also { if (it == PushResult.UNREGISTERED) push.deleteToken(device.token) }
-                }
-                if (PushResult.SENT in results) {
-                    val records = covered.map { PushDelivery(userId, it.listing.activity.id, it.kind, today) }
-                    push.saveDeliveries(records, now)
-                    delivered += records
-                    count++
+            for ((message, covered) in messages) {
+                when (sender.send(device.platform, device.token, message)) {
+                    PushResult.SENT -> {
+                        push.saveDeliveries(covered.map { PushDelivery(userId, device.token, it.listing.activity.id, it.kind, today) }, now)
+                        count++
+                    }
+                    PushResult.UNREGISTERED -> {
+                        push.deleteToken(device.token)
+                        break
+                    }
+                    PushResult.FAILED -> Unit
                 }
             }
         }
