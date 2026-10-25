@@ -8,4 +8,7 @@ enum ConsentVersions {
     /// 지원 자격 정보 수집·이용 동의 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): sent as `consentVersion` with the values; a
     /// different stored version asks again. Must match the server's current version.
     static let eligibility = "2026-10-24"
+    /// 광고 목적 개인정보 제3자 제공 동의 (contract "광고 목적 개인정보 제3자 제공 동의(선택)" 2026-10-25): the server's `AdConsent.VERSION`; a
+    /// different stored version is `agreed=false` and the queue asks again.
+    static let adThirdParty = "2026-10-25"
 }

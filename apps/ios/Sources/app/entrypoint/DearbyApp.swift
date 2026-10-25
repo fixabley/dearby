@@ -15,6 +15,7 @@ import SwiftUI
     @State private var wallet: WalletModel
     @State private var recommendations: RecommendationModel
     @State private var queue: DiscoveryQueueModel
+    @State private var adConsent: AdConsentModel
     @State private var showsQueue = false
     /// Signed out, the queue row, its 설정 and 프로필 `관심 분야·활동 종류` open sign-in (contract "비로그인에서 만들기·추천을 막음" 2026-10-25);
     /// once signed in and the account's answers are read, `afterSignIn` continues where the tap was going.
@@ -66,6 +67,7 @@ import SwiftUI
         _profile = State(initialValue: ProfileModel(account: account, webOrigin: links.origins.web))
         _recommendations = State(initialValue: RecommendationModel(tags: links.tagOptions))
         _queue = State(initialValue: DiscoveryQueueModel())
+        _adConsent = State(initialValue: AdConsentModel(webOrigin: links.origins.web))
         _eligibility = State(initialValue: EligibilityModel(account: account))
         let notifications = NotificationModel(account: account)
         _notifications = State(initialValue: notifications)
@@ -86,10 +88,11 @@ import SwiftUI
                                                                                          editRecommendations: { editRecommendations("profile") },
                                                                                          leaveSetup: { tab = 0 },
                                              consentNeeded: consentNeeded, askConsent: { showsConsent = true }),
-                        settings: { SettingsPage(account: account, webOrigin: links.origins.web, notifications: accountReady ? notifications : nil) },
+                        settings: { SettingsPage(account: account, webOrigin: links.origins.web, notifications: accountReady ? notifications : nil,
+                                                 adConsent: accountReady ? adConsent : nil) },
                         inbox: { NotificationInboxPage(model: inbox, state: activityModel) })
                     .fullScreenCover(isPresented: $showsQueue) {
-                        DiscoveryQueuePage(model: queue, state: activityModel)
+                        DiscoveryQueuePage(model: queue, state: activityModel, adConsent: adConsent)
                     }
                     .sheet(isPresented: $signingIn, onDismiss: continueAfterSignIn) {
                         NavigationStack { SignInSheet(account: account) {} }
@@ -211,6 +214,7 @@ import SwiftUI
                 activityModel.signedOut()
                 recommendations.signedOut()
                 queue.signedOut()
+                adConsent.signedOut()
                 favorites.signedOut()
                 inbox.signedOut()
                 // A failed attempt inside the open sheet keeps it; a sign-out later drops a continuation that never ran.
@@ -232,6 +236,7 @@ import SwiftUI
             Task { await notifications.refresh() }
             Task { await recommendations.signedIn(links.recommendationServer(account)) }
             Task { await queue.signedIn(links.discoveryQueueServer(account)) }
+            adConsent.signedIn(links.adConsentServer(account))
             if let token = delegate.deviceToken { notifications.registered(token) }
         }
         // Asked at launch and after sign-in once the profile says so (not over the intro or the sign-in sheet; `continueAfterSignIn` asks then).
