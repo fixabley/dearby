@@ -67,7 +67,7 @@ private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).w
     fieldTags: List<TagLabel>, traitTags: List<TagLabel>, expanded: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier, logoUrl: String? = null, matchedCount: Int = 0,
     /** `새 모집` badge beside the title (즐겨찾기, contract "즐겨찾기(하트)·새 모집 푸시 알림"). */
     newRecruitment: Boolean = false,
-    /** The program heart (and its bell) under the count badge and date, with their own taps and names. */
+    /** The program heart (and its bell) left of the count badge, with their own taps and names. */
     actions: (@Composable () -> Unit)? = null, content: @Composable ColumnScope.() -> Unit,
 ) {
     val reduceMotion = rememberReduceMotion()
@@ -99,15 +99,17 @@ private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).w
                 if (matchedCount > 0) Text("맞는 활동 ${matchedCount}개", color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 2.dp), style = MaterialTheme.typography.labelMedium)
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (expanded) IconButton(onToggle, Modifier.size(44.dp).semantics { contentDescription = "접기" }, colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)) {
-                    Icon(Icons.Rounded.ExpandMore, null, Modifier.rotate(rotation.value))
-                } else Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                    Badge(Modifier.size(32.dp).semantics { contentDescription = "활동 ${count}개" }, if (count > 0) TealFill else MaterialTheme.colorScheme.surfaceContainer, if (count > 0) Color.White else MaterialTheme.colorScheme.onSurfaceVariant) {
-                        Text(count.toString(), Modifier.weight(1f), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    actions?.invoke()
+                    if (expanded) IconButton(onToggle, Modifier.size(44.dp).semantics { contentDescription = "접기" }, colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)) {
+                        Icon(Icons.Rounded.ExpandMore, null, Modifier.rotate(rotation.value))
+                    } else Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                        Badge(Modifier.size(32.dp).semantics { contentDescription = "활동 ${count}개" }, if (count > 0) TealFill else MaterialTheme.colorScheme.surfaceContainer, if (count > 0) Color.White else MaterialTheme.colorScheme.onSurfaceVariant) {
+                            Text(count.toString(), Modifier.weight(1f), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                        }
                     }
                 }
                 if (meta != null) Text(meta, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, maxLines = 1)
-                actions?.invoke()
             }
         }
         AnimatedVisibility(expanded, enter = expandVertically(sizeSpec) + fadeIn(fadeSpec), exit = shrinkVertically(sizeSpec) + fadeOut(fadeSpec)) {

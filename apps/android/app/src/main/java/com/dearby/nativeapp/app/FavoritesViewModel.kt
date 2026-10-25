@@ -95,7 +95,7 @@ class FavoritesViewModel(
                 show()
             } catch (e: CancellationException) { throw e } catch (e: Exception) {
                 if ((e as? AccountException)?.error == AccountError.UNAUTHORIZED) return@launch
-                Log.w("Dearby", "Favorites load from ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
+                Log.w("Dearby", "Favorites load from ${ApiOrigin.current} failed: ${(e as? AccountException)?.error ?: e.javaClass.simpleName}")
                 if ((e as? AccountException)?.error == AccountError.NOT_FOUND) { programs = emptyList(); activities = emptyList(); show() }
                 else mutable.update { it.copy(phase = FavoritesPhase.FAILED) }
             }
@@ -174,7 +174,7 @@ class FavoritesViewModel(
                 if (refresh) load()
             } catch (e: CancellationException) { throw e } catch (e: Exception) {
                 if ((e as? AccountException)?.error == AccountError.UNAUTHORIZED) return@launch
-                Log.w("Dearby", "Favorite write to ${ApiOrigin.current} failed: ${e.javaClass.simpleName}")
+                Log.w("Dearby", "Favorite write to ${ApiOrigin.current} failed: ${(e as? AccountException)?.error ?: e.javaClass.simpleName}")
                 revert()
                 noticeFlow.value = "즐겨찾기를 바꾸지 못했어요. 잠시 뒤 다시 시도해 주세요."
             }

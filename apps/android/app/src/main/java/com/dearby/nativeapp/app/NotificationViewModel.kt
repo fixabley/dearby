@@ -46,7 +46,7 @@ class NotificationViewModel(
 
     private fun load() = viewModelScope.launch {
         val on = try { account.authorized { account.client.newRecruitmentNotifications(it) } } catch (e: CancellationException) { throw e } catch (e: Exception) {
-            Log.w("Dearby", "Notification settings read failed: ${e.javaClass.simpleName}")
+            Log.w("Dearby", "Notification settings read failed: ${(e as? AccountException)?.error ?: e.javaClass.simpleName}")
             true
         }
         mutable.update { it.copy(newRecruitment = on) }
@@ -62,7 +62,7 @@ class NotificationViewModel(
             try {
                 val token = token() ?: return@launch
                 account.authorized { account.client.savePushDevice(token, ZoneId.systemDefault().id, it) }
-            } catch (e: CancellationException) { throw e } catch (e: Exception) { Log.w("Dearby", "Push device save failed: ${e.javaClass.simpleName}") }
+            } catch (e: CancellationException) { throw e } catch (e: Exception) { Log.w("Dearby", "Push device save failed: ${(e as? AccountException)?.error ?: e.javaClass.simpleName}") }
         }
     }
 
