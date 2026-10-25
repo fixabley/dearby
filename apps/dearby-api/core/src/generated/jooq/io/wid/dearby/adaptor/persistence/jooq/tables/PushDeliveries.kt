@@ -6,20 +6,15 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.keys.PUSH_DELIVERIES_PKEY
-import io.wid.dearby.adaptor.persistence.jooq.keys.PUSH_DELIVERIES__PUSH_DELIVERIES_ACTIVITY_ID_FKEY
-import io.wid.dearby.adaptor.persistence.jooq.keys.PUSH_DELIVERIES__PUSH_DELIVERIES_USER_ID_FKEY
-import io.wid.dearby.adaptor.persistence.jooq.tables.Activities.ActivitiesPath
-import io.wid.dearby.adaptor.persistence.jooq.tables.Users.UsersPath
+import io.wid.dearby.adaptor.persistence.jooq.keys.PUSH_DELIVERIES__PUSH_DELIVERIES_NOTIFICATION_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserNotifications.UserNotificationsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.PushDeliveriesRecord
 
-import java.time.LocalDate
 import java.time.OffsetDateTime
-import java.util.UUID
 
 import kotlin.collections.Collection
 import kotlin.collections.List
 
-import org.jooq.Check
 import org.jooq.Condition
 import org.jooq.Field
 import org.jooq.ForeignKey
@@ -81,24 +76,14 @@ open class PushDeliveries(
     override fun getRecordType(): Class<PushDeliveriesRecord> = PushDeliveriesRecord::class.java
 
     /**
-     * The column <code>public.push_deliveries.user_id</code>.
+     * The column <code>public.push_deliveries.notification_id</code>.
      */
-    val USER_ID: TableField<PushDeliveriesRecord, UUID?> = createField(DSL.name("user_id"), SQLDataType.UUID.nullable(false), this, "")
+    val NOTIFICATION_ID: TableField<PushDeliveriesRecord, Long?> = createField(DSL.name("notification_id"), SQLDataType.BIGINT.nullable(false), this, "")
 
     /**
-     * The column <code>public.push_deliveries.activity_id</code>.
+     * The column <code>public.push_deliveries.device_token</code>.
      */
-    val ACTIVITY_ID: TableField<PushDeliveriesRecord, Long?> = createField(DSL.name("activity_id"), SQLDataType.BIGINT.nullable(false), this, "")
-
-    /**
-     * The column <code>public.push_deliveries.kind</code>.
-     */
-    val KIND: TableField<PushDeliveriesRecord, String?> = createField(DSL.name("kind"), SQLDataType.VARCHAR(20).nullable(false), this, "")
-
-    /**
-     * The column <code>public.push_deliveries.delivery_date</code>.
-     */
-    val DELIVERY_DATE: TableField<PushDeliveriesRecord, LocalDate?> = createField(DSL.name("delivery_date"), SQLDataType.LOCALDATE.nullable(false), this, "")
+    val DEVICE_TOKEN: TableField<PushDeliveriesRecord, String?> = createField(DSL.name("device_token"), SQLDataType.VARCHAR(500).nullable(false), this, "")
 
     /**
      * The column <code>public.push_deliveries.sent_at</code>.
@@ -138,22 +123,14 @@ open class PushDeliveries(
     }
     override fun getSchema(): Schema? = if (aliased()) null else Public.PUBLIC
     override fun getPrimaryKey(): UniqueKey<PushDeliveriesRecord> = PUSH_DELIVERIES_PKEY
-    override fun getReferences(): List<ForeignKey<PushDeliveriesRecord, *>> = listOf(PUSH_DELIVERIES__PUSH_DELIVERIES_ACTIVITY_ID_FKEY, PUSH_DELIVERIES__PUSH_DELIVERIES_USER_ID_FKEY)
+    override fun getReferences(): List<ForeignKey<PushDeliveriesRecord, *>> = listOf(PUSH_DELIVERIES__PUSH_DELIVERIES_NOTIFICATION_ID_FKEY)
 
     /**
-     * Get the implicit join path to the <code>public.activities</code> table.
+     * Get the implicit join path to the <code>public.user_notifications</code>
+     * table.
      */
-    fun activities(): ActivitiesPath = activities
-    val activities: ActivitiesPath by lazy { ActivitiesPath(this, PUSH_DELIVERIES__PUSH_DELIVERIES_ACTIVITY_ID_FKEY, null) }
-
-    /**
-     * Get the implicit join path to the <code>public.users</code> table.
-     */
-    fun users(): UsersPath = users
-    val users: UsersPath by lazy { UsersPath(this, PUSH_DELIVERIES__PUSH_DELIVERIES_USER_ID_FKEY, null) }
-    override fun getChecks(): List<Check<PushDeliveriesRecord>> = listOf(
-        Internal.createCheck(this, DSL.name("push_deliveries_kind_check"), "(((kind)::text = ANY ((ARRAY['NEW_ACTIVITY'::character varying, 'APPLICATION_START'::character varying, 'DEADLINE_EVE'::character varying, 'DEADLINE'::character varying, 'SCHEDULE'::character varying])::text[])))", true)
-    )
+    fun userNotifications(): UserNotificationsPath = userNotifications
+    val userNotifications: UserNotificationsPath by lazy { UserNotificationsPath(this, PUSH_DELIVERIES__PUSH_DELIVERIES_NOTIFICATION_ID_FKEY, null) }
     override fun `as`(alias: String): PushDeliveries = PushDeliveries(DSL.name(alias), this)
     override fun `as`(alias: Name): PushDeliveries = PushDeliveries(alias, this)
     override fun `as`(alias: Table<*>): PushDeliveries = PushDeliveries(alias.qualifiedName, this)

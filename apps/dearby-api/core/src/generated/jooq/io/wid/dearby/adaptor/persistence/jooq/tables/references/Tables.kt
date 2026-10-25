@@ -66,6 +66,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserFavorites
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserNotifications
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserOrgAffinity
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserTaste
@@ -378,6 +379,11 @@ val USER_FAVORITES: UserFavorites = UserFavorites.USER_FAVORITES
  * The table <code>public.user_identities</code>.
  */
 val USER_IDENTITIES: UserIdentities = UserIdentities.USER_IDENTITIES
+
+/**
+ * The table <code>public.user_notifications</code>.
+ */
+val USER_NOTIFICATIONS: UserNotifications = UserNotifications.USER_NOTIFICATIONS
 
 /**
  * The table <code>public.user_org_affinity</code>.

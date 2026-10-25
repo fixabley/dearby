@@ -174,10 +174,12 @@ struct ActivityListPage: View {
                           nearestStart: program.nearestRecruitmentStart, latestActivity: program.latestActivity,
                           fieldTags: program.fieldTags, traitTags: program.traitTags,
                           matchedCount: program.matchedActivityIDs.count, expanded: open) {
+                FavoriteControls(target: .program(program.id))
+            } toggle: {
                 withAnimation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.85)) { state.toggle(program.id) }
             }
             if open {
-                VStack(alignment: .leading, spacing: 8) { activities(program) }
+                VStack(alignment: .leading, spacing: 8) { ProgramActivityGroups(state: state, programID: program.id, path: $path, showsPast: !state.openOnly) }
                     .padding(EdgeInsets(top: 0, leading: 10, bottom: 12, trailing: 10))
                     .transition(reduceMotion ? .identity : .opacity.combined(with: .move(edge: .top)))
             }
@@ -186,59 +188,13 @@ struct ActivityListPage: View {
         .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
         .clipShape(.rect(cornerRadius: 20, style: .continuous))
     }
-    @ViewBuilder private func activities(_ program: ProgramSummary) -> some View {
-        if let activities = state.openActivities[program.id] {
-            let upcoming = state.upcomingActivities[program.id] ?? []
-            let past = state.openOnly ? [] : (state.pastActivities[program.id] ?? [])
-            if activities.isEmpty && upcoming.isEmpty && past.isEmpty {
-                Text("지금 모집 중인 활동이 없어요").font(.dearby(.subheadline)).foregroundStyle(DearbyStyle.quiet).padding(.horizontal, 6)
-            } else if !activities.isEmpty {
-                // Grouped by 활동 종류 in contract order, 미분류 last; a single group needs no heading.
-                let groups = ActivityCategory.group(activities)
-                ForEach(groups, id: \.label) { group in
-                    if groups.count > 1 { heading("\(group.label) (\(group.activities.count))") }
-                    ForEach(group.activities) { activity in card(activity) }
-                }
-            }
-            // `모집 예정` always, `지난 활동` only while 마감 숨기기 is off (contract 2026-10-19 밤). Empty groups omitted.
-            if !upcoming.isEmpty {
-                heading("모집 예정")
-                ForEach(upcoming) { activity in card(activity) }
-            }
-            if !past.isEmpty {
-                heading("지난 활동")
-                ForEach(past) { activity in card(activity) }
-            }
-        } else if state.failedPrograms.contains(program.id) {
-            Button("활동 다시 불러오기") { state.retryActivities(program.id) }.frame(maxWidth: .infinity, minHeight: 44)
-        } else {
-            // Until both the open and the upcoming/past lists arrive (contract "내용 로딩은 스켈레톤" 2026-10-22).
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(0..<2, id: \.self) { _ in
-                    ActivityCard(activityID: "", title: "불러오는 활동 이름", recruitment: .open, recruitmentText: "10월 20일 (화) ~ 11월 10일 (화)",
-                                 scheduleText: "2026년 11월 24일 (화) ~ 2027년 2월 6일 (토)", place: "온라인") {}
-                }
-            }.dearbySkeleton()
-        }
-    }
     /// The first load (contract "내용 로딩은 스켈레톤" 2026-10-22): collapsed program cards with sample values.
     private var programsSkeleton: some View {
         VStack(alignment: .leading, spacing: 10) {
             ForEach(0..<4, id: \.self) { _ in
-                ProgramHeader(name: "불러오는 프로그램", organization: "주최 기관 이름", openCount: 1, nearestDeadline: nil, expanded: false) {}
+                ProgramHeader(name: "불러오는 프로그램", organization: "주최 기관 이름", openCount: 1, nearestDeadline: nil, expanded: false) { EmptyView() } toggle: {}
                     .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
             }
         }.dearbySkeleton()
-    }
-    private func heading(_ text: String) -> some View {
-        Text(text).font(.dearby(.caption).weight(.semibold)).foregroundStyle(.secondary)
-            .padding(.horizontal, 6).padding(.top, 6).accessibilityAddTraits(.isHeader)
-    }
-    private func card(_ activity: ActivityModel) -> some View {
-        ActivityCard(activityID: activity.id, title: activity.title, recruitment: activity.recruitment(at: state.loadedAt),
-                     recruitmentText: activity.recruitmentText(at: state.loadedAt), scheduleText: activity.scheduleText(at: state.loadedAt),
-                     place: activity.place?.name ?? activity.location, fieldTag: activity.fieldTags.first, traitTags: activity.traitTags) {
-            path.append(activity.id)
-        }
     }
 }

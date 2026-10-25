@@ -53,12 +53,13 @@ class HttpPushSender(private val properties: PushProperties, private val json: J
         PushResult.FAILED
     }
 
-    // APNs: aps.alert{title, body} + activityId(숫자) + url
+    // APNs: aps.alert{title, body} + activityId·notificationId(숫자) + url
     private fun sendApns(token: String, message: PushMessage): PushResult {
         val host = if (properties.apnsEnv.equals("production", ignoreCase = true)) "api.push.apple.com" else "api.sandbox.push.apple.com"
         val payload = buildMap<String, Any> {
             put("aps", mapOf("alert" to mapOf("title" to message.title, "body" to message.body), "sound" to "default"))
             message.activityId?.let { put("activityId", it) }
+            message.notificationId?.let { put("notificationId", it) }
             put("url", message.url)
         }
         val request = HttpRequest.newBuilder(URI.create("https://$host/3/device/$token"))
@@ -81,9 +82,13 @@ class HttpPushSender(private val properties: PushProperties, private val json: J
         }
     }
 
-    // FCM HTTP v1: notification{title, body} + data{activityId, url}(값은 문자열), 안드로이드 채널 new_recruitment
+    // FCM HTTP v1: notification{title, body} + data{activityId, notificationId, url}(값은 문자열), 안드로이드 채널 new_recruitment
     private fun sendFcm(token: String, message: PushMessage): PushResult {
-        val data = buildMap { message.activityId?.let { put("activityId", it.toString()) }; put("url", message.url) }
+        val data = buildMap {
+            message.activityId?.let { put("activityId", it.toString()) }
+            message.notificationId?.let { put("notificationId", it.toString()) }
+            put("url", message.url)
+        }
         val payload = mapOf(
             "message" to mapOf(
                 "token" to token,

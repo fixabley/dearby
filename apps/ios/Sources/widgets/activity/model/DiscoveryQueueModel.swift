@@ -4,6 +4,7 @@ import Observation
 /// 맞춤 대기열 (contract "맞춤 대기열(스토리형 쇼츠)·조직 친화도·활동 벡터" 2026-10-24): today's cards and the reactions to them.
 /// Signed in only (contract "비로그인에서 만들기·추천을 막음" 2026-10-25): the server builds the queue (`GET /v1/me/discovery-queue`, `더 받기`
 /// refills it) and every reaction goes to it. Reactions an earlier build kept on the device (`dearby.discoveryQueue.local`) are neither read nor removed.
+/// The ♥ is the activity's favorite (`FavoritesModel`, contract "즐겨찾기(하트)" 2026-10-25): the server records its LIKE/UNLIKE, so it is not sent here.
 /// The ⋯ choices take the card out at once but are sent only when their `되돌리기` notice ends (the API has no undo), or when the screen closes.
 @MainActor @Observable final class DiscoveryQueueModel {
     enum Choice: CaseIterable, Identifiable {
@@ -42,7 +43,6 @@ import Observation
         let removed: [Int: RecommendedActivity]
     }
     private(set) var items: [RecommendedActivity] = []
-    private(set) var liked: Set<String> = []
     private(set) var loading = false
     /// The last load failed (connection); the screen offers to try again.
     private(set) var failed = false
@@ -83,17 +83,6 @@ import Observation
         }
         await load()
     }
-    func toggleLike(_ item: RecommendedActivity) {
-        setLike(item, !liked.contains(item.id))
-    }
-    /// Double tap: 관심 있어요 only (a second double tap keeps it).
-    func like(_ item: RecommendedActivity) {
-        if !liked.contains(item.id) { setLike(item, true) }
-    }
-    private func setLike(_ item: RecommendedActivity, _ on: Bool) {
-        if on { liked.insert(item.id) } else { liked.remove(item.id) }
-        send(on ? .like : .unlike, item)
-    }
     /// Once per card: `COMPLETE` (all three scenes), `SKIP_EARLY` (left on the first scene), `OPEN_DETAIL` (자세히).
     func viewed(_ item: RecommendedActivity, _ kind: RecommendationSignal) {
         guard server != nil, sent.insert("\(item.id)|\(kind.rawValue)").inserted else { return }
@@ -130,7 +119,6 @@ import Observation
         pending = nil
         failed = false
         sent = []
-        liked = []
     }
 }
 

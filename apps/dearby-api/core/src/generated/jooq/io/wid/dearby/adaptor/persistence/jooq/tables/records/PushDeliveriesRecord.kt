@@ -6,11 +6,9 @@ package io.wid.dearby.adaptor.persistence.jooq.tables.records
 
 import io.wid.dearby.adaptor.persistence.jooq.tables.PushDeliveries
 
-import java.time.LocalDate
 import java.time.OffsetDateTime
-import java.util.UUID
 
-import org.jooq.Record4
+import org.jooq.Record2
 import org.jooq.impl.UpdatableRecordImpl
 
 
@@ -20,40 +18,30 @@ import org.jooq.impl.UpdatableRecordImpl
 @Suppress("warnings")
 open class PushDeliveriesRecord() : UpdatableRecordImpl<PushDeliveriesRecord>(PushDeliveries.PUSH_DELIVERIES) {
 
-    open var userId: UUID?
+    open var notificationId: Long?
         set(value): Unit = set(0, value)
-        get(): UUID? = get(0) as UUID?
+        get(): Long? = get(0) as Long?
 
-    open var activityId: Long?
+    open var deviceToken: String?
         set(value): Unit = set(1, value)
-        get(): Long? = get(1) as Long?
-
-    open var kind: String?
-        set(value): Unit = set(2, value)
-        get(): String? = get(2) as String?
-
-    open var deliveryDate: LocalDate?
-        set(value): Unit = set(3, value)
-        get(): LocalDate? = get(3) as LocalDate?
+        get(): String? = get(1) as String?
 
     open var sentAt: OffsetDateTime?
-        set(value): Unit = set(4, value)
-        get(): OffsetDateTime? = get(4) as OffsetDateTime?
+        set(value): Unit = set(2, value)
+        get(): OffsetDateTime? = get(2) as OffsetDateTime?
 
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
 
-    override fun key(): Record4<UUID?, Long?, String?, LocalDate?> = super.key() as Record4<UUID?, Long?, String?, LocalDate?>
+    override fun key(): Record2<Long?, String?> = super.key() as Record2<Long?, String?>
 
     /**
      * Create a detached, initialised PushDeliveriesRecord
      */
-    constructor(userId: UUID? = null, activityId: Long? = null, kind: String? = null, deliveryDate: LocalDate? = null, sentAt: OffsetDateTime? = null): this() {
-        this.userId = userId
-        this.activityId = activityId
-        this.kind = kind
-        this.deliveryDate = deliveryDate
+    constructor(notificationId: Long? = null, deviceToken: String? = null, sentAt: OffsetDateTime? = null): this() {
+        this.notificationId = notificationId
+        this.deviceToken = deviceToken
         this.sentAt = sentAt
         resetTouchedOnNotNull()
     }
