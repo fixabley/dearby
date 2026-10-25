@@ -6,6 +6,11 @@ import android.provider.Settings
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.dearby.nativeapp.features.push.Push
 import com.dearby.nativeapp.pages.profile.NotificationRow
+import com.dearby.nativeapp.pages.profile.UsageStatsRow
+import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,7 +34,7 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
 
 /** 내 프로필 tab: read mode by default with the top-bar 수정 editor (contract "프로필 읽기/수정 모드"), the history funnel (with file pickers for evidence) and the version screens. */
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun ProfileRoute(model: ProfileViewModel, account: AccountViewModel, recommendation: RecommendationViewModel, notifications: NotificationViewModel, compose: () -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {}) {
+@Composable fun ProfileRoute(model: ProfileViewModel, account: AccountViewModel, recommendation: RecommendationViewModel, notifications: NotificationViewModel, analytics: Boolean, setAnalytics: (Boolean) -> Unit, compose: () -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {}) {
     val state by model.state.collectAsStateWithLifecycle()
     val funnel by model.funnel.collectAsStateWithLifecycle()
     val versions by model.versions.collectAsStateWithLifecycle()
@@ -64,10 +69,13 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
     val notice by notifications.state.collectAsStateWithLifecycle()
     var systemOn by remember { mutableStateOf(true) }
     LifecycleResumeEffect(Unit) { systemOn = Push.enabled(context); onPauseOrDispose {} }
-    val notificationGroup: (@Composable () -> Unit)? = if (!signedIn) null else {
-        { NotificationRow(notice.newRecruitment, notice.saving, !systemOn, notifications::setNewRecruitment) {
-            runCatching { context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)) }
-        } }
+    val notificationGroup: @Composable () -> Unit = {
+        Column {
+            if (signedIn) NotificationRow(notice.newRecruitment, notice.saving, !systemOn, notifications::setNewRecruitment) {
+                runCatching { context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)) }
+            } else Text("알림", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
+            UsageStatsRow(analytics, setAnalytics)
+        }
     }
     val resolver = context.contentResolver
     fun read(uri: Uri?, fallbackType: String, fallbackName: String) {

@@ -98,9 +98,11 @@ dependencies {
     implementation("androidx.browser:browser:1.10.0")
     // QR encoding only for 내 명함 QR 보이기 (contract "명함 교환"); no camera, no scanning.
     implementation("com.google.zxing:core:3.5.3")
-    // 새 모집 푸시: FCM token and messages (Apache-2.0); inert until google-services.json configures Firebase.
-    implementation(platform("com.google.firebase:firebase-bom:35.1.0"))
+    // 새 모집 푸시: FCM token and messages (Apache-2.0); inert, like Analytics below, until google-services.json configures Firebase.
+    implementation(platform("com.google.firebase:firebase-bom:34.12.0"))
     implementation("com.google.firebase:firebase-messaging")
+    // 사용 통계 (2026-10-25 user decision): Firebase Analytics, privacy-minimal (manifest: no ad id, no SSAID, no ad personalisation).
+    implementation("com.google.firebase:firebase-analytics")
     debugImplementation("androidx.compose.ui:ui-tooling")
     implementation("androidx.lifecycle:lifecycle-viewmodel:2.10.0")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.10.0")

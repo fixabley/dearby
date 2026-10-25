@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dearby.nativeapp.entities.activity.model.ActivityModel
+import com.dearby.nativeapp.features.analytics.Analytics
 import com.dearby.nativeapp.entities.activity.model.lines
 import com.dearby.nativeapp.entities.activity.model.ActivityPage
 import com.dearby.nativeapp.entities.activity.model.ProgramPage
@@ -246,6 +247,7 @@ class ActivityViewModel(
     fun apply(id: String, value: Boolean) {
         if ((state.value.known[id] ?: return).applied == value) return
         update(id) { it.copy(applied = value) }
+        if (value) Analytics.event("myactivity_add", "activity_id" to id)
         if (value) write { account, session -> account.client.saveMyActivity(id, session) }
         else write { account, session -> account.client.deleteMyActivity(id, session) }
         if (value || id !in marks) return

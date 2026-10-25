@@ -150,8 +150,18 @@ python3 scripts/check-fsd.py --self-test
 
 - 하트: 활동 상세 머리·펼친 활동 행·맞춤 대기열 오른쪽 줄(활동은 하트 옆 `+` 내 활동에 추가, 상세 우상단 `추가`는 없앴다)과 프로그램 카드. 즐겨찾기하면 종 버튼이 생기고 시트에서 `전체`·`신청일만`·`없음`을 고른다. 비로그인 하트는 로그인 시트. 발견 API는 비로그인 요청이라 `favorited`를 받지 않으므로 로그인하면 `GET /v1/me/favorites`의 id 집합으로 하트를 그린다(`app/FavoritesViewModel`). 쓰기 실패(서버 배포 전 404 포함)는 하트를 되돌리고 스낵바를 띄운다.
 - 내 활동 탭 위 `PrimaryTabRow` `내 활동 | 즐겨찾기`. 즐겨찾기는 프로그램(펼치면 `…/seen`으로 `새 모집` 배지 해제)·활동 묶음, 밀어서 해제 + `되돌리기`, `목록 | 캘린더`(선택은 `app/DevicePreferences`의 새 파일 `dearby.favorites`에 기억; 앱 안 보기만, 기기 캘린더에 쓰지 않음).
-- 푸시(FCM): `features/push`. **`app/google-services.json`이 있을 때만** `com.google.gms.google-services` 플러그인을 적용한다. 파일은 저장소에 넣지 않고(`apps/android/.gitignore`) `~/.dearby-deploy/google-services.json`에 두었다가 푸시를 받을 빌드 전에 `apps/android/app/`로 복사한다. 없으면 Firebase가 초기화되지 않고 앱은 푸시 없이 동작한다(CI·로컬 빌드). Firebase 콘솔에서 Android 앱 `io.wid.dearby`를 등록해 받은 파일이며, 서버 발송 자격(FCM HTTP v1 서비스 계정)은 운영 `.env.prod`에만 둔다. CI(`native.yml`)와 Play 출시(`android-play-release.yml`)는 저장소 시크릿 `ANDROID_GOOGLE_SERVICES_JSON`(파일 내용 그대로)이 있으면 빌드 전에 이 파일로 쓰고, 없으면 푸시 없이 빌드한다. 2026-10-25 사용자 결정으로 Firebase는 `firebase-messaging`만 쓴다(애널리틱스·크래시리틱스 없음; 매니페스트에서 `firebase_analytics_collection_deactivated`·`firebase_messaging_auto_init_enabled=false`).
+- 푸시(FCM): `features/push`. **`app/google-services.json`이 있을 때만** `com.google.gms.google-services` 플러그인을 적용한다. 파일은 저장소에 넣지 않고(`apps/android/.gitignore`) `~/.dearby-deploy/google-services.json`에 두었다가 푸시를 받을 빌드 전에 `apps/android/app/`로 복사한다. 없으면 Firebase가 초기화되지 않고 앱은 푸시 없이 동작한다(CI·로컬 빌드). Firebase 콘솔에서 Android 앱 `io.wid.dearby`를 등록해 받은 파일이며, 서버 발송 자격(FCM HTTP v1 서비스 계정)은 운영 `.env.prod`에만 둔다. CI(`native.yml`)와 Play 출시(`android-play-release.yml`)는 저장소 시크릿 `ANDROID_GOOGLE_SERVICES_JSON`(파일 내용 그대로)이 있으면 빌드 전에 이 파일로 쓰고, 없으면 푸시 없이 빌드한다. Firebase는 `firebase-messaging`과 `firebase-analytics`만 쓴다(크래시리틱스 등 없음). BoM은 34.12.0: 35.x의 analytics(play-services-measurement 24)는 Kotlin 2.4 메타데이터라 이 프로젝트의 Kotlin 2.2.10으로 컴파일되지 않는다. 매니페스트 `firebase_messaging_auto_init_enabled=false`.
 - 푸시는 처음 프로그램 하트를 누를 때 시작한다: 그때 FCM 자동 초기화를 켜 토큰을 만들고(그 전에는 토큰이 없다), Android 13+에서는 알림 권한을 이때 한 번만 묻는다(앱 시작 때 묻지 않음). 시작한 뒤 로그인 상태에서 `새 모집 알림`이 켜져 있으면 시작·로그인·새 토큰·시간대 변경·권한 허용 때 `PUT /v1/me/push-devices {platform, token, timeZone}`, 로그아웃·알림 끄기 때 `DELETE`. 채널 `new_recruitment`(`새 모집`). 알림을 누르면 `data.url`(`/activities/{id}` App Link 또는 `dearby://favorites?view=calendar`)을 연다. 프로필 `알림` 묶음의 `새 모집 알림`은 `/v1/me/notification-settings`이고, 시스템 알림이 꺼져 있으면 설정 열기 줄이 붙는다.
+
+## 사용 통계 (2026-10-25)
+
+사용자 결정 "Analytics SDK 넣어줘". `features/analytics/Analytics`가 Firebase Analytics를 감싼다(google-services.json이 없으면 아무것도 하지 않음).
+
+- 개인정보 최소: 매니페스트 `google_analytics_adid_collection_enabled`·`google_analytics_ssaid_collection_enabled`·`google_analytics_default_allow_ad_personalization_signals`를 모두 false, 병합되는 `AD_ID` 권한은 `tools:node="remove"`. 사용자 id·개인정보를 넣지 않는다.
+- 남기는 것: 화면 보기(`DearbyApp`이 고른 FSD 페이지 이름, 예 `ActivityListPage`·`FavoritesPage`·`ActivityDetailPage`)와 이벤트 `funnel_complete`, `queue_open`, `queue_like`(`activity_id`), `favorite_add`(`type` program|activity, `id`), `myactivity_add`(`activity_id`), `apply_click`(`activity_id`). 매개변수는 id와 코드뿐이다.
+- 내 프로필 `사용 통계 보내기` 스위치(기본 켬, 로그인과 무관): `setAnalyticsCollectionEnabled`, 선택은 `app/DevicePreferences`(`dearby.favorites` 파일)에 둔다.
+- 개인정보처리방침에 Firebase Analytics(Google, 앱 인스턴스 id, 사용 이벤트, 국외 이전)를 적어야 한다.
+- 확인: `adb shell setprop debug.firebase.analytics.app io.wid.dearby` 뒤 `adb logcat -s FA FA-SVC`.
 
 ## 프로필·명함 v2 (2026-10-17)
 

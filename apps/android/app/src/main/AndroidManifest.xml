@@ -1,10 +1,12 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <!-- Contract "모바일 실제 연결 경계": network only for the real-service scope (activities, sign-in, cards). -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Contract "기기 캘린더 겹침": requested only when 겹치는 시간 확인 is tapped; read-only, compared on device. -->
     <uses-permission android:name="android.permission.READ_CALENDAR"/>
     <!-- 새 모집 푸시 (contract "즐겨찾기(하트)·새 모집 푸시 알림"): Android 13+ asks once, at the first program heart, never at launch. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- 사용 통계 never reads the advertising id: the permission Firebase Analytics would merge in is removed. -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove"/>
     <application android:label="Dearby" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:dataExtractionRules="@xml/data_extraction_rules" android:allowBackup="false" android:fullBackupContent="false" android:supportsRtl="true" android:theme="@style/Theme.Dearby" android:usesCleartextTraffic="false">
         <!-- singleTask: the dearby://auth/apple redirect must reach this instance (onNewIntent), which holds the verifier, and close the Custom Tab above it. -->
         <activity android:name=".app.MainActivity" android:exported="true" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:theme="@style/Theme.Dearby.Starting">
@@ -47,9 +49,11 @@
         </service>
         <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="new_recruitment"/>
         <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/dearby_symbol"/>
-        <!-- 2026-10-25 user decision: Firebase is messaging only. No token until the first program heart (Push.start), and analytics stays off
-             even if a library ever pulled it in. -->
+        <!-- 2026-10-25 user decisions: no FCM token until the first program heart (Push.enable); Firebase Analytics without the advertising id,
+             SSAID or ad personalisation (collection itself follows 내 프로필 `사용 통계 보내기`, features/analytics). -->
         <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false"/>
-        <meta-data android:name="firebase_analytics_collection_deactivated" android:value="true"/>
+        <meta-data android:name="google_analytics_adid_collection_enabled" android:value="false"/>
+        <meta-data android:name="google_analytics_ssaid_collection_enabled" android:value="false"/>
+        <meta-data android:name="google_analytics_default_allow_ad_personalization_signals" android:value="false"/>
     </application>
 </manifest>

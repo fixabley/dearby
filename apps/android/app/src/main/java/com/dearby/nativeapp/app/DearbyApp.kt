@@ -16,6 +16,7 @@ import com.dearby.nativeapp.pages.recommendation.FunnelStep
 import com.dearby.nativeapp.pages.recommendation.RecommendationFunnelPage
 import com.dearby.nativeapp.widgets.recommendation.recommendationRows.QueueEntryRow
 import com.dearby.nativeapp.features.push.Push
+import com.dearby.nativeapp.features.analytics.Analytics
 import com.dearby.nativeapp.pages.activity.FavoriteHearts
 import com.dearby.nativeapp.pages.activity.FavoritesView
 
@@ -44,6 +45,8 @@ private sealed interface Route {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     // The 내 활동 tab's `내 활동 | 즐겨찾기` top tab, in memory for the app's lifetime like the 명함 tab's.
     var mineSegment by remember { mutableStateOf(MineSegment.MINE) }
+    // 내 프로필 `사용 통계 보내기` (2026-10-25), kept on the device.
+    var analyticsOn by remember { mutableStateOf(device.analyticsEnabled) }
     // The 명함 tab's segment, kept in memory for the app's lifetime (contract "명함 탭 통합").
     var cardsSegment by remember { mutableStateOf(CardsSegment.MINE) }
     // 내 활동에서 보기 (contract "내 활동 직접 추가"): the activity the 내 활동 tab should open next, consumed by its route.
@@ -90,6 +93,7 @@ private sealed interface Route {
         else {
             // The first program heart starts push (token only from now on) and, on Android 13+, asks for the permission this once.
             if (program && id !in favoriteIds.programs && !device.pushStarted) { if (Push.needsPermission(context)) askNotifications.launch(Push.PERMISSION); notifications.start() }
+            if (id !in (if (program) favoriteIds.programs else favoriteIds.activities)) Analytics.event("favorite_add", "type" to if (program) "program" else "activity", "id" to id)
             favorites.toggle(program, id)
         }
     }, setLevel = favorites::setLevel)
@@ -121,7 +125,7 @@ private sealed interface Route {
     // 2026-10-25 user decision "추천은 없애고 맞춤대기열 진입만 남겨줘": one `오늘의 맞춤 대기열` row tops 발견; a never-finished funnel comes first and its
     // result button (`맞춤 대기열 보러 가기`) opens the queue. The row always shows; a failed read is the queue screen's own retry state. Signed out it
     // asks for sign-in and then carries on by itself ([queueAfterSignIn]).
-    val openQueue = { queue.open(); route = Route.Queue }
+    val openQueue = { Analytics.event("queue_open"); queue.open(); route = Route.Queue }
     val enterQueue = { if (reco.completed) openQueue() else recommendation.openFunnel(first = true) }
     LaunchedEffect(signedIn, reco.preferencesRead, queueAfterSignIn) { if (queueAfterSignIn && signedIn && reco.preferencesRead) { queueAfterSignIn = false; enterQueue() } }
     val recoHeader: @Composable () -> Unit = {
@@ -132,6 +136,23 @@ private sealed interface Route {
     // 배경"); cards, sheets and tiles are `surface` on top. Every screen inside starts with a `DearbyTopBar`, which takes the status-bar inset itself, so
     // only the bottom insets are padded here. The IME inset is applied once here (contract "키보드 내리기"): pages add `imeNestedScroll()` on their
     // scroll containers but no `imePadding()` of their own, and the tab bar is hidden while the keyboard is up.
+    // 사용 통계: one screen view per page shown (the FSD page names), nothing else about the screen.
+    val screenName = when {
+        recoFunnel != null -> "RecommendationFunnelPage"
+        route is Route.Detail -> "WalletCardPage"
+        route == Route.Shared -> "SharedCardPage"
+        route is Route.Qr -> "CardQrPage"
+        route == Route.Composer -> "CardComposer"
+        route == Route.Settings -> "SettingsPage"
+        route == Route.Queue -> "DiscoveryQueuePage"
+        activityDetail -> "ActivityDetailPage"
+        tab == Tab.Discovery -> "ActivityListPage"
+        tab == Tab.Mine -> if (mineSegment == MineSegment.FAVORITES) "FavoritesPage" else "MyActivitiesPage"
+        tab == Tab.Cards -> if (cardsSegment == CardsSegment.MINE) "MyCardsPage" else "WalletPage"
+        else -> "ProfilePage"
+    }
+    // Logged on every change and on coming back to the app (a view logged while in the background is dropped by Firebase).
+    androidx.lifecycle.compose.LifecycleResumeEffect(screenName) { Analytics.screen(screenName); onPauseOrDispose {} }
     val imeVisible = WindowInsets.isImeVisible
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background, contentColor = MaterialTheme.colorScheme.onSurface) {
         Column(Modifier.navigationBarsPadding().imePadding()) {
@@ -151,7 +172,12 @@ private sealed interface Route {
                     Route.Settings -> SettingsRoute(settings, account, profile) { route = null }
                     Route.Queue -> QueueRoute(queue, openDetail = { queueReturn = true; activityModel.openLinked(it) }, liked = favoriteIds.activities,
                         inMine = activityListState.known.values.filter { it.applied }.map { it.id }.toSet(),
-                        like = { id, force -> if ((force ?: (id !in favoriteIds.activities)) != (id in favoriteIds.activities)) hearts.toggle(false, id) },
+                        like = { id, force ->
+                            if ((force ?: (id !in favoriteIds.activities)) != (id in favoriteIds.activities)) {
+                                if (id !in favoriteIds.activities) Analytics.event("queue_like", "activity_id" to id)
+                                hearts.toggle(false, id)
+                            }
+                        },
                         plus = { id ->
                             if (activityListState.known[id]?.applied == true) { queue.close(); route = null; mineSegment = MineSegment.MINE; mineOpen = id; tab = Tab.Mine }
                             else { queue.model(id)?.let { activityModel.adopt(listOf(it)) }; activityModel.apply(id, true) }
@@ -165,7 +191,7 @@ private sealed interface Route {
                         }
                         Tab.Cards -> CardsRoute(cardsSegment, { cardsSegment = it }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
                             edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify)
-                        Tab.Profile -> ProfileRoute(profile, account, recommendation, notifications, compose, openSettings, notify)
+                        Tab.Profile -> ProfileRoute(profile, account, recommendation, notifications, analyticsOn, { analyticsOn = it; device.analyticsEnabled = it; Analytics.setEnabled(it) }, compose, openSettings, notify)
                     }
                 }
                 SnackbarHost(snackbar, Modifier.align(androidx.compose.ui.Alignment.BottomCenter))

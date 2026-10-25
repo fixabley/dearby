@@ -2,6 +2,7 @@ package com.dearby.nativeapp.app
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import com.dearby.nativeapp.features.analytics.Analytics
 import androidx.lifecycle.viewModelScope
 import com.dearby.nativeapp.entities.account.api.AccountError
 import com.dearby.nativeapp.entities.account.api.AccountException
@@ -193,6 +194,7 @@ class RecommendationViewModel(private val account: AccountViewModel) : ViewModel
             persist(chosen)
             val items = try { recommendations() } catch (e: CancellationException) { throw e } catch (e: Exception) { null }
             items?.let(::show)
+            Analytics.event("funnel_complete")
             funnelState.update { it?.copy(step = FunnelStep.RESULT, saving = false, found = items?.total, eligibilityMissing = eligibility?.summary() == null) }
         }
     }

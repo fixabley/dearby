@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dearby.nativeapp.BuildConfig
+import com.dearby.nativeapp.features.analytics.Analytics
 import com.dearby.nativeapp.features.calendar.CalendarConflictFlow
 import com.dearby.nativeapp.features.calendar.openCalendarInsert
 import com.dearby.nativeapp.pages.activity.ActivityState
@@ -65,7 +66,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
             .onSuccess {
                 // Only the detail CTA while recruitment is not closed (open, upcoming or unknown) leads to the "신청하셨나요?" prompt.
-                activity?.takeIf { it.applyUrl == url }?.let { model.openedApplication(it.id) }
+                activity?.takeIf { it.applyUrl == url }?.let { Analytics.event("apply_click", "activity_id" to it.id); model.openedApplication(it.id) }
             }
             .onFailure { linkError = "링크를 열지 못했어요." }
     }

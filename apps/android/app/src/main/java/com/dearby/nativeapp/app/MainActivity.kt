@@ -29,6 +29,7 @@ import com.dearby.nativeapp.shared.config.authRedirect
 import com.dearby.nativeapp.shared.config.cardLink
 import com.dearby.nativeapp.shared.config.favoritesLink
 import com.dearby.nativeapp.features.push.Push
+import com.dearby.nativeapp.features.analytics.Analytics
 import com.dearby.nativeapp.pages.activity.FavoritesView
 import android.content.BroadcastReceiver
 import android.content.Context
@@ -109,6 +110,7 @@ class MainActivity : ComponentActivity() {
         // A recreated Activity gets its launch intent again; the provider's code is single-use and was handled the first time.
         receive(intent, recreated = savedInstanceState != null)
         Push.createChannel(this)
+        Analytics.start(applicationContext, device.analyticsEnabled)
         account.beforeSignOut = notifications::unregister
         ContextCompat.registerReceiver(this, timeZoneChanged, IntentFilter(Intent.ACTION_TIMEZONE_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED)
         setContent {

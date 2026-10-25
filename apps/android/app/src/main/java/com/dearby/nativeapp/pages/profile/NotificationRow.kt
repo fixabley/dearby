@@ -25,3 +25,10 @@ import androidx.compose.ui.unit.dp
             trailingContent = { TextButton(openSettings) { Text("설정 열기") } }, colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface))
     }
 }
+
+/** `사용 통계 보내기` (2026-10-25): anonymous usage statistics (screens and a few actions, no personal data), on until turned off; signed in or not. */
+@Composable fun UsageStatsRow(on: Boolean, toggle: (Boolean) -> Unit) {
+    ListItem({ Text("사용 통계 보내기") }, Modifier.toggleable(on, role = Role.Switch, onValueChange = toggle),
+        supportingContent = { Text("어떤 화면과 기능을 쓰는지 개인정보 없이 모아 앱을 고치는 데 써요") }, trailingContent = { Switch(on, null) },
+        colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface))
+}

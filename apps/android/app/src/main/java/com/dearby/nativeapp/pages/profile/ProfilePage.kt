@@ -45,7 +45,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
     changed: Boolean, edit: (Boolean) -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {},
     /** 프로필 `추천` 묶음 (contract "추천 설정 퍼널·지원 자격 정보·추천"), drawn in read mode and while signed out; null when the feature is not there. */
     recommendation: (@Composable () -> Unit)? = null,
-    /** 프로필 `알림` 묶음 ([NotificationRow]) in read mode, signed in only. */
+    /** 프로필 `알림` 묶음 ([NotificationRow] signed in, [UsageStatsRow] always) in read mode and while signed out. */
     notifications: (@Composable () -> Unit)? = null,
 ) {
     // 직무 label row → focuses the picker's search field (contract "입력 영역 터치"); 계정 삭제 lives in 설정 since 2026-10-20.
@@ -73,6 +73,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
                 CenteredMessage(Icons.Rounded.AccountCircle, "프로필은 계정에 저장돼요", "로그인하면 프로필을 저장하고 고칠 수 있어요.", Modifier.weight(1f).fillMaxWidth(),
                     primary = MessageAction("로그인", signIn))
                 recommendation?.let { Box(Modifier.padding(20.dp)) { it() } }
+                notifications?.let { Box(Modifier.padding(horizontal = 20.dp).padding(bottom = 20.dp)) { it() } }
             }
             ProfilePhase.LOADING -> DearbySkeleton(Modifier.fillMaxSize().padding(20.dp)) { SkeletonCardBody(); SkeletonRows(3) }
             ProfilePhase.FAILED -> DearbyErrorState("프로필을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.", retry, Modifier.weight(1f).fillMaxWidth())
