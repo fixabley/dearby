@@ -47,5 +47,9 @@
         </service>
         <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="new_recruitment"/>
         <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/dearby_symbol"/>
+        <!-- 2026-10-25 user decision: Firebase is messaging only. No token until the first program heart (Push.start), and analytics stays off
+             even if a library ever pulled it in. -->
+        <meta-data android:name="firebase_messaging_auto_init_enabled" android:value="false"/>
+        <meta-data android:name="firebase_analytics_collection_deactivated" android:value="true"/>
     </application>
 </manifest>

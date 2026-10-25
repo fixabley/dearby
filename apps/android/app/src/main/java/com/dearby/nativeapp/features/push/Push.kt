@@ -36,6 +36,9 @@ object Push {
 
     fun available(context: Context) = FirebaseApp.getApps(context).isNotEmpty()
 
+    /** The first program heart (2026-10-25 user decision): only from now may FCM make and refresh a token (auto-init is off in the manifest). */
+    fun enable(context: Context) { if (available(context)) FirebaseMessaging.getInstance().isAutoInitEnabled = true }
+
     /** This install's FCM token, or null when Firebase is not configured or the token cannot be had right now. The token is never logged. */
     suspend fun token(context: Context): String? {
         if (!available(context)) return null

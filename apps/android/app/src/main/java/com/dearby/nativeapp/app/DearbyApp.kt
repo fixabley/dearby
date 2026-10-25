@@ -81,14 +81,15 @@ private sealed interface Route {
     LaunchedEffect(signedIn) { if (signedIn) signingIn = false }
     val compose = { if (signedIn) { publish.start(); route = Route.Composer } else { signingIn = true } }
     // 즐겨찾기 하트 (contract "즐겨찾기(하트)·새 모집 푸시 알림"): signed out a heart opens sign-in. The first program heart on Android 13+ asks for the
-    // notification permission once (never at launch, never again after a refusal; 알림 in 내 프로필 then points to the system settings).
+    // notification permission once and starts push (never at launch, never again after a refusal; 알림 in 내 프로필 then points to the system settings).
     val context = androidx.compose.ui.platform.LocalContext.current
     val askNotifications = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted -> if (granted) notifications.register() }
     val favoriteIds by favorites.ids.collectAsStateWithLifecycle()
     val hearts = FavoriteHearts(favoriteIds.activities, favoriteIds.programs, favoriteIds.levels, toggle = { program, id ->
         if (!signedIn) signingIn = true
         else {
-            if (program && id !in favoriteIds.programs && !device.notificationsAsked && Push.needsPermission(context)) { device.notificationsAsked = true; askNotifications.launch(Push.PERMISSION) }
+            // The first program heart starts push (token only from now on) and, on Android 13+, asks for the permission this once.
+            if (program && id !in favoriteIds.programs && !device.pushStarted) { if (Push.needsPermission(context)) askNotifications.launch(Push.PERMISSION); notifications.start() }
             favorites.toggle(program, id)
         }
     }, setLevel = favorites::setLevel)

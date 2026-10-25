@@ -77,7 +77,8 @@ class MainActivity : ComponentActivity() {
         viewModelFactory { initializer { FavoritesViewModel(account, device.favoritesView, { device.favoritesView = it }, activityModel::adopt) } }
     }
     private val notifications: NotificationViewModel by viewModels {
-        viewModelFactory { initializer { NotificationViewModel(account, Push.available(applicationContext), { Push.token(applicationContext) }, Push.refreshed) } }
+        viewModelFactory { initializer { NotificationViewModel(account, Push.available(applicationContext), { Push.token(applicationContext) }, Push.refreshed,
+            { device.pushStarted }, { device.pushStarted = true; Push.enable(applicationContext) }) } }
     }
     // `오늘 일정 n개` opens 즐겨찾기 in this view (dearby://favorites?view=calendar), consumed once by DearbyApp.
     private var favoritesLink by mutableStateOf<FavoritesView?>(null)

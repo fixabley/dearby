@@ -21,12 +21,16 @@ import kotlinx.coroutines.launch
 data class NotificationState(val pushable: Boolean, val newRecruitment: Boolean = true, val saving: Boolean = false, val message: String? = null)
 
 /**
- * 새 모집 푸시 (contract "즐겨찾기(하트)·새 모집 푸시 알림", 2026-10-25), signed in only. While 새 모집 알림 is on, this device's FCM token goes to
+ * 새 모집 푸시 (contract "즐겨찾기(하트)·새 모집 푸시 알림", 2026-10-25), signed in only and only after the first program heart. While 새 모집 알림 is on, this device's FCM token goes to
  * `PUT /v1/me/push-devices` with the device time zone at sign-in, at every start, on a new token ([refreshed]), a time-zone change and a granted
  * permission ([register]); turning it off or signing out ([unregister]) removes it. The switch is `/v1/me/notification-settings`: a failed read
  * (404 before the server ships it) leaves it on, a failed save puts it back with [NotificationState.message].
  */
-class NotificationViewModel(private val account: AccountViewModel, pushable: Boolean, private val token: suspend () -> String?, refreshed: Flow<Unit>) : ViewModel() {
+class NotificationViewModel(
+    private val account: AccountViewModel, pushable: Boolean, private val token: suspend () -> String?, refreshed: Flow<Unit>,
+    /** Push starts at the first program heart ([start]); before it no token is made or sent. */
+    private val started: () -> Boolean, private val markStarted: () -> Unit,
+) : ViewModel() {
     private val mutable = MutableStateFlow(NotificationState(pushable))
     val state = mutable.asStateFlow()
     private val signedIn get() = account.state.value.phase == AccountPhase.SIGNED_IN
@@ -49,8 +53,11 @@ class NotificationViewModel(private val account: AccountViewModel, pushable: Boo
         register()
     }
 
+    /** The first program heart: FCM may now make a token, and it is sent. */
+    fun start() { if (!started()) { markStarted(); register() } }
+
     fun register() {
-        if (!signedIn || !state.value.pushable || !state.value.newRecruitment) return
+        if (!signedIn || !started() || !state.value.pushable || !state.value.newRecruitment) return
         viewModelScope.launch {
             try {
                 val token = token() ?: return@launch
@@ -61,7 +68,7 @@ class NotificationViewModel(private val account: AccountViewModel, pushable: Boo
 
     /** Before the session goes (sign-out): the server forgets this device's token. Best effort. */
     suspend fun unregister(session: AccountSession) {
-        if (!state.value.pushable) return
+        if (!state.value.pushable || !started()) return
         runCatching { token()?.let { account.client.deletePushDevice(it, session) } }
     }
 
