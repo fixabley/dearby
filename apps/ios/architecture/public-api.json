@@ -51,7 +51,10 @@
     "NotifyLevel",
     "FavoriteProgram",
     "FavoriteActivity",
-    "FavoriteList"
+    "FavoriteList",
+    "InboxGroup",
+    "InboxItem",
+    "InboxPage"
   ],
   "entities/identity": [
     "CardModel",
@@ -105,7 +108,9 @@
     "TabRootToolbar",
     "DearbyMenuItem",
     "DearbyRowsSkeleton",
-    "DearbyQuestionPage"
+    "DearbyQuestionPage",
+    "InboxRoute",
+    "InboxEntry"
   ],
   "widgets/activity": [
     "ActivityCard",

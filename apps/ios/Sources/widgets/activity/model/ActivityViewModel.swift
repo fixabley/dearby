@@ -90,15 +90,19 @@ import Observation
     /// Opens a linked activity in 발견, loading it first when discovery has not shown it. A 404 still opens the detail, which says the
     /// activity is gone; any other failure says so and stays put.
     func openLinked(_ id: String) async {
-        if seen[id] == nil {
-            do {
-                if let activity = try await fetchActivity(id) { seen[id] = activity }
-            } catch {
-                notice = "활동을 불러오지 못했어요. 연결을 확인한 뒤 다시 시도해 주세요."
-                return
-            }
+        if await prepare(id) { showInDiscovery = id }
+    }
+    /// Loads an activity discovery has not shown so its detail can open (알림 목록 rows); false, with `notice`, when it could not be loaded.
+    /// A 404 is still true: the detail says the activity is gone.
+    func prepare(_ id: String) async -> Bool {
+        guard seen[id] == nil else { return true }
+        do {
+            if let activity = try await fetchActivity(id) { seen[id] = activity }
+            return true
+        } catch {
+            notice = "활동을 불러오지 못했어요. 연결을 확인한 뒤 다시 시도해 주세요."
+            return false
         }
-        showInDiscovery = id
     }
     /// The build's web origin (`DearbyWebOrigin`), for activity links written into calendar events.
     let webOrigin: URL

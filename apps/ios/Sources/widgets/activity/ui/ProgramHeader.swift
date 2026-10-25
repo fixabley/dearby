@@ -25,6 +25,9 @@ struct ProgramHeader<Accessory: View>: View {
     var matchedCount = 0
     /// `새 모집` (contract "즐겨찾기(하트)·새 모집 푸시 알림"): a badge after the name in the favorites screen.
     var newRecruitment = false
+    /// 알림 목록 (contract "알림 목록(발견 우상단 종)" 2026-10-25): the program's unread count takes the badge's place (no meta line); 0 shows a
+    /// quiet badge.
+    var unreadCount: Int?
     let expanded: Bool
     /// The heart and bell (`FavoriteControls`) before the badge; `EmptyView` for none.
     @ViewBuilder var accessory: Accessory
@@ -98,20 +101,27 @@ struct ProgramHeader<Accessory: View>: View {
             .accessibilityLabel("접기").accessibilityHint("누르면 접어요")
             .accessibilityIdentifier("program-toggle-\(name)")
             .transition(reduceMotion ? .identity : .scale(scale: 0.6).combined(with: .opacity))
+        } else if unreadCount == 0 {
+            Button(action: toggle) { countText(0) }
+                .buttonStyle(.bordered).buttonBorderShape(.capsule).tint(.secondary)
+                .accessibilityLabel("읽지 않은 알림 없음").accessibilityHint("누르면 알림을 보여요")
+                .accessibilityIdentifier("program-toggle-\(name)")
+                .transition(reduceMotion ? .identity : .scale(scale: 0.6).combined(with: .opacity))
         } else {
-            Button(action: toggle) {
-                Text("\(openCount + upcomingCount)").font(.dearby(.subheadline).weight(.semibold)).monospacedDigit()
-                    .frame(minWidth: 18, minHeight: 18)
-            }
+            Button(action: toggle) { countText(unreadCount ?? openCount + upcomingCount) }
             .buttonStyle(.borderedProminent).buttonBorderShape(.capsule).tint(DearbyStyle.tealFill)
-            .accessibilityLabel(countLabel ?? "활동 없음").accessibilityHint("누르면 활동을 보여요")
+            .accessibilityLabel(countLabel ?? "활동 없음").accessibilityHint(unreadCount != nil ? "누르면 알림을 보여요" : "누르면 활동을 보여요")
             .accessibilityIdentifier("program-toggle-\(name)")
             .transition(reduceMotion ? .identity : .scale(scale: 0.6).combined(with: .opacity))
         }
     }
+    private func countText(_ count: Int) -> some View {
+        Text("\(count)").font(.dearby(.subheadline).weight(.semibold)).monospacedDigit().frame(minWidth: 18, minHeight: 18)
+    }
     private var matched: String? { matchedCount > 0 ? "맞는 활동 \(matchedCount)개" : nil }
     /// Spoken count: the badge's number with its meaning.
     private var countLabel: String? {
+        if let unreadCount { return unreadCount > 0 ? "읽지 않은 알림 \(unreadCount)개" : nil }
         let total = openCount + upcomingCount
         guard total > 0 else { return nil }
         if openCount > 0 && upcomingCount > 0 { return "모집 중 \(openCount)개, 모집 예정 \(upcomingCount)개" }
@@ -119,6 +129,7 @@ struct ProgramHeader<Accessory: View>: View {
     }
     /// The meta line under the badge (contract): nearest deadline while recruiting, nearest start when only upcoming, else the latest activity month.
     private var meta: String? {
+        if unreadCount != nil { return nil }
         if openCount > 0, let nearestDeadline { return Self.format(nearestDeadline, "M월 d일") + " 마감" }
         if openCount == 0, upcomingCount > 0, let nearestStart { return Self.format(nearestStart, "M월 d일") + " 시작" }
         if openCount == 0, upcomingCount == 0, let latestActivity { return "최근 " + Self.format(latestActivity, "yyyy.M") }

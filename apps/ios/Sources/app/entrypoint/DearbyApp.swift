@@ -5,6 +5,7 @@ import SwiftUI
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var activityModel: ActivityViewModel
     @State private var favorites = FavoritesModel()
+    @State private var inbox = InboxModel()
     @State private var notifications: NotificationModel
     /// Which half of the 내 활동 tab shows (memory only); the summary notification opens 즐겨찾기.
     @State private var mineSegment = MineSegment.mine
@@ -74,7 +75,8 @@ import SwiftUI
                         cards: CardsPage(segment: $cardsSegment, cards: cards, wallet: wallet), profile: ProfilePage(state: profile, eligibility: eligibility,
                                                                                          editRecommendations: editRecommendations,
                                                                                          notifications: notifications),
-                        settings: { SettingsPage(account: account, webOrigin: links.origins.web) })
+                        settings: { SettingsPage(account: account, webOrigin: links.origins.web) },
+                        inbox: { NotificationInboxPage(model: inbox, state: activityModel) })
                     .fullScreenCover(isPresented: $showsQueue) {
                         DiscoveryQueuePage(model: queue, state: activityModel)
                     }
@@ -88,6 +90,8 @@ import SwiftUI
             }
             // Every heart reads the one favorites model, also inside sheets and the queue.
             .environment(favorites)
+            // Every tab's bell: the inbox signed in, sign-in otherwise (contract "알림 목록(발견 우상단 종)").
+            .environment(\.inboxEntry, InboxEntry(signedIn: account.phase == .signedIn, unread: inbox.unread) { signingIn = true })
             // A heart pressed signed out opens the sign-in sheet (contract "즐겨찾기(하트)": 로그인만).
             .onChange(of: favorites.signInRequested) { _, requested in
                 guard requested else { return }
@@ -99,6 +103,11 @@ import SwiftUI
                 favorites.programFavorited = { Task { await notifications.requestPermissionIfNeeded() } }
             }
             .onChange(of: delegate.deviceToken) { _, token in if let token { notifications.registered(token) } }
+            .onChange(of: delegate.tappedNotification, initial: true) { _, id in
+                guard let id else { return }
+                delegate.tappedNotification = nil
+                inbox.read(id)
+            }
             .onChange(of: delegate.tapped, initial: true) { _, tap in
                 guard let tap else { return }
                 delegate.tapped = nil
@@ -126,6 +135,7 @@ import SwiftUI
                 case .signedIn:
                     Task { await activityModel.signedIn(links.mineServer(account)) }
                     Task { await favorites.signedIn(links.favoritesServer(account)) }
+                    Task { await inbox.signedIn(links.inboxServer(account)) }
                     Task { await notifications.refresh() }
                     Task { await recommendations.signedIn(links.recommendationServer(account)) }
                     Task { await queue.signedIn(links.discoveryQueueServer(account)) }
@@ -134,6 +144,7 @@ import SwiftUI
                     recommendations.signedOut()
                     queue.signedOut()
                     favorites.signedOut()
+                    inbox.signedOut()
                     // A failed attempt inside the open sheet keeps it; a sign-out later drops a continuation that never ran.
                     if !signingIn { afterSignIn = nil }
                 case .signingIn: break
@@ -169,7 +180,10 @@ import SwiftUI
                 if phase == .background { activityModel.appLeft() } else if phase == .active {
                     activityModel.appReturned()
                     // The permission may have changed in Settings.
-                    if account.phase == .signedIn { Task { await notifications.refresh() } }
+                    if account.phase == .signedIn {
+                        Task { await notifications.refresh() }
+                        Task { await inbox.refreshCount() }
+                    }
                 }
             }
             .sheet(item: Binding(get: { activityModel.asking }, set: { if $0 == nil { activityModel.answer(.notYet) } })) { activity in

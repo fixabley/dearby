@@ -88,6 +88,14 @@ struct ConnectionProvider: Sendable {
             delete: { target in try await Self.bearer(account) { try await ActivityClient.deleteFavorite(api: api, target, bearer: $0) } },
             seen: { id in try await Self.bearer(account) { try await ActivityClient.markFavoriteProgramSeen(api: api, programID: id, bearer: $0) } })
     }
+    /// 알림 목록 for the signed-in `account`; each call refreshes the tokens once on a 401.
+    @MainActor func inboxServer(_ account: AccountViewModel) -> InboxServer {
+        let api = origins.api
+        return InboxServer(
+            load: { cursor in try await Self.bearer(account) { try await ActivityClient.fetchInbox(api: api, cursor: cursor, bearer: $0) } },
+            unreadCount: { try await Self.bearer(account) { try await ActivityClient.fetchUnreadCount(api: api, bearer: $0) } },
+            read: { id in try await Self.bearer(account) { try await ActivityClient.markNotificationsRead(api: api, id: id, bearer: $0) } })
+    }
     /// An `ActivityClient` call with the account's access token; its 401 is the account's, so the tokens are refreshed once.
     @MainActor private static func bearer<Value: Sendable>(_ account: AccountViewModel, _ call: @escaping @Sendable (String) async throws -> Value)
         async throws -> Value {

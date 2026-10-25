@@ -71,6 +71,49 @@ enum ActivityClient {
     static func markFavoriteProgramSeen(api: URL, programID: Int64, bearer: String) async throws {
         _ = try await send(api, path: "v1/me/favorites/programs/\(programID)/seen", [], method: "POST", body: Data("{}".utf8), bearer: bearer)
     }
+    /// 알림 목록 (contract "알림 목록(발견 우상단 종)" 2026-10-25): `GET /v1/me/notifications?cursor=`, 20 program groups a page. Nil on 404
+    /// (a server without the inbox yet). A malformed group or item is dropped.
+    static func fetchInbox(api: URL, cursor: String?, bearer: String) async throws -> InboxPage? {
+        let data: Data
+        let items = cursor.map { [URLQueryItem(name: "cursor", value: $0)] } ?? []
+        do { data = try await send(api, path: "v1/me/notifications", items, bearer: bearer) } catch ActivityFetchError.notFound { return nil }
+        let payload = try JSONDecoder().decode(InboxPayload.self, from: data)
+        return InboxPage(groups: (payload.groups ?? []).compactMap(\.value).map { group in
+            InboxGroup(program: summary(group.program, api: api), unread: group.unread ?? 0, items: (group.items ?? []).compactMap(\.value).map {
+                InboxItem(id: $0.id, kind: InboxItem.Kind(rawValue: $0.kind), activityID: String($0.activity.id), activityName: $0.activity.name,
+                          createdAt: ActivityModel.instant($0.createdAt), read: $0.readAt != nil)
+            })
+        }, nextCursor: payload.nextCursor?.value)
+    }
+    /// The bell's badge (`GET /v1/me/notifications/unread-count`); nil on 404.
+    static func fetchUnreadCount(api: URL, bearer: String) async throws -> Int? {
+        let data: Data
+        do { data = try await send(api, path: "v1/me/notifications/unread-count", [], bearer: bearer) } catch ActivityFetchError.notFound { return nil }
+        return try JSONDecoder().decode(CountPayload.self, from: data).count
+    }
+    /// `POST /v1/me/notifications/{id}/read`, or every one with `id` nil (`read-all`).
+    static func markNotificationsRead(api: URL, id: Int64?, bearer: String) async throws {
+        let path = id.map { "v1/me/notifications/\($0)/read" } ?? "v1/me/notifications/read-all"
+        _ = try await send(api, path: path, [], method: "POST", body: Data("{}".utf8), bearer: bearer)
+    }
+    private struct InboxPayload: Decodable {
+        struct Group: Decodable { let program: Program; let unread: Int?; let items: [Lenient<Item>]? }
+        struct Item: Decodable {
+            struct Ref: Decodable { let id: Int64; let name: String }
+            let id: Int64; let kind: String; let activity: Ref; let createdAt: String?; let readAt: String?
+        }
+        let groups: [Lenient<Group>]?
+        /// A string or a number on the wire; kept as text and sent back as is.
+        let nextCursor: Cursor?
+    }
+    private struct Cursor: Decodable {
+        let value: String
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            value = try (try? container.decode(String.self)) ?? String(container.decode(Int64.self))
+        }
+    }
+    private struct CountPayload: Decodable { let count: Int }
     private struct FavoritesPayload: Decodable {
         struct ProgramItem: Decodable { let program: Program; let newRecruitment: Bool?; let notifyLevel: String? }
         struct ActivityItem: Decodable {
