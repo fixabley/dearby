@@ -121,8 +121,6 @@ export const tagSchema = z.object({
   parentId: z.number().int().nullable().optional().catch(null),
 });
 export type Tag = z.infer<typeof tagSchema>;
-/** `GET /v1/tags` (contract "태그"): the whole dictionary, for the recommendation funnel's 분야·성격 choices. */
-export const tagListSchema = z.object({ items: z.array(tagSchema) });
 const tags = z.array(tagSchema).optional().catch([]);
 // Kept `undefined` when absent so an older response falls back to `tags` (see `traitTagsOf`).
 const splitTags = z.array(tagSchema).optional().catch(undefined);
@@ -136,10 +134,6 @@ export function traitTagsOf(item: { traitTags?: Tag[]; tags?: Tag[] }): Tag[] {
 }
 const placeSchema = z.object({ name: text, address: text, lat: z.number(), lng: z.number() });
 export type Place = z.infer<typeof placeSchema>;
-/** A 대기열 highlight line; an unknown icon code falls back to `period`'s glyph slot instead of dropping the line. */
-export const highlightIcons = ["cost", "period", "team", "mentor", "award", "place", "talk", "ticket"] as const;
-const highlightSchema = z.object({ icon: z.enum(highlightIcons).catch("period"), text });
-export type Highlight = z.infer<typeof highlightSchema>;
 export const activitySchema = z.object({
   id: z.number().int().positive(),
   name: text,
@@ -167,9 +161,6 @@ export const activitySchema = z.object({
   // 활동 장소 (contract "활동 장소 — 2026-10-19"): the collected phrase and the curated place; older responses omit both.
   location: text.nullable().optional().catch(null),
   place: placeSchema.nullable().optional().catch(null),
-  // 맞춤 대기열 장면 ①② (contract "맞춤 대기열(스토리형 쇼츠)"): a one-line hook and three short lines; older responses omit them.
-  hook: text.nullable().optional().catch(null),
-  highlights: z.array(highlightSchema).nullable().optional().catch(null),
 });
 export const activityPageSchema = z.object({
   items: z.array(activitySchema),
@@ -197,88 +188,17 @@ export const programSummarySchema = z.object({
   traitTags: splitTags,
   /** `/v1/programs/{id}/logo?v=…` on the API origin, null without a logo; absent on older responses (contract "프로그램 로고", 2026-10-19 밤). */
   logoUrl: text.nullable().optional().catch(null),
-  /** `/v1/programs/{id}/cover?v=…`, the 4:5 맞춤 대기열 cover; null without one, absent on older responses. */
-  coverUrl: text.nullable().optional().catch(null),
 });
 export const programPageSchema = z.object({
   items: z.array(programSummarySchema),
   nextCursor: z.number().int().nullable(),
 });
 export type ProgramSummary = z.infer<typeof programSummarySchema>;
-/** `GET /v1/discovery/recommendations` (contract "추천 API"): open activities with their program and short human reasons, best first. */
-export const eligibilityIcons = [
-  "age",
-  "education",
-  "schoolYear",
-  "employment",
-  "region",
-  "major",
-  "nationality",
-  "experience",
-  "team",
-  "other",
-] as const;
-/**
- * One 맞춤 대기열 scene the server composed (contract "맞춤 대기열(스토리형 쇼츠)"); how many and which vary per activity.
- */
-const sceneSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("HOOK"), hook: text, name: text }),
-  z.object({ type: z.literal("HIGHLIGHTS"), items: z.array(highlightSchema).min(1) }),
-  // 참여 대상 as icon + text lines; `text` is the older one-line form, kept as the fallback.
-  z
-    .object({
-      type: z.literal("ELIGIBILITY"),
-      items: z.array(z.object({ icon: z.enum(eligibilityIcons).catch("other"), text })).optional().catch(undefined),
-      text: text.optional().catch(undefined),
-    })
-    .refine((scene) => scene.items?.length || scene.text),
-  z.object({ type: z.literal("BENEFIT"), text }),
-  z.object({
-    type: z.literal("DEADLINE"),
-    // Whole days: 0 on the day, negative once past.
-    dday: z.number().int().nullable().optional().catch(null),
-    label: z.enum(["마감까지", "행사까지"]).optional().catch(undefined),
-    deadlineText: text.nullable().optional().catch(null),
-    reasons: z.array(text).optional().catch([]),
-  }),
-]);
-export type QueueScene = z.infer<typeof sceneSchema>;
-export const recommendationListSchema = z.object({
-  items: z.array(
-    z.object({
-      activity: activitySchema,
-      program: programSummarySchema,
-      reasons: z.array(text),
-      // Unknown or malformed scene types are skipped, not fatal; absent (older API) → the app builds them.
-      scenes: z
-        .array(z.unknown())
-        .transform((list) => list.flatMap((value) => sceneSchema.safeParse(value).data ?? []))
-        .optional()
-        .catch(undefined),
-    }),
-  ),
-});
-export type Recommendation = z.infer<typeof recommendationListSchema>["items"][number];
 export type ProgramPage = z.infer<typeof programPageSchema>;
 /** `10월 24일 마감` in Seoul time (contract "발견 카드 리뉴얼" meta line), or undefined when the end is missing or unreadable. */
 export function deadlineLabel(endAt: string | null): string | undefined {
   const day = monthDay(endAt);
   return day && `${day} 마감`;
-}
-/** Seoul days left until the recruitment's last day (0 on the day), or undefined without a readable end. */
-export function daysToDeadline(application: Schedule | null, now = Date.now()): number | undefined {
-  const endAt = parseTime(application?.endAt ?? null);
-  const exclusive = parseTime(application?.endDateExclusive ?? null);
-  return seoulDaysUntil(endAt !== undefined ? Date.parse(seoulDay(endAt)) : exclusive !== undefined ? exclusive - DAY : undefined, now);
-}
-/** Seoul days left until a schedule's first day (컨퍼런스 행사일), or undefined without a readable start. */
-export function daysToStart(schedule: Schedule | null, now = Date.now()): number | undefined {
-  const startAt = parseTime(schedule?.startAt ?? null);
-  return seoulDaysUntil(startAt !== undefined ? Date.parse(seoulDay(startAt)) : parseTime(schedule?.startDate ?? null), now);
-}
-// Both sides are Seoul calendar days read as UTC midnights, so the difference is whole days.
-function seoulDaysUntil(day: number | undefined, now: number): number | undefined {
-  return day === undefined ? undefined : Math.round((day - Date.parse(seoulDay(now))) / DAY);
 }
 /** `10월 24일 시작` in Seoul time, or undefined when the start is missing or unreadable. */
 export function startLabel(startAt: string | null): string | undefined {
@@ -391,14 +311,7 @@ function parseTime(value: string | null): number | undefined {
  * proxy path `/api/programs/{id}/logo?v=…`; anything else (null, older shape, foreign origin) yields undefined → initial avatar.
  */
 export function programLogoSrc(logoUrl: string | null | undefined): string | undefined {
-  return programImageSrc(logoUrl, "logo");
-}
-/** The same for the 맞춤 대기열 cover (`/v1/programs/{id}/cover?v=…`); undefined → logo + gradient cover. */
-export function programCoverSrc(coverUrl: string | null | undefined): string | undefined {
-  return programImageSrc(coverUrl, "cover");
-}
-function programImageSrc(url: string | null | undefined, kind: "logo" | "cover"): string | undefined {
-  const match = url?.match(new RegExp(`^/v1/(programs/[1-9]\\d{0,17}/${kind}\\?v=\\d{1,18})$`));
+  const match = logoUrl?.match(/^\/v1\/(programs\/[1-9]\d{0,17}\/logo\?v=\d{1,18})$/);
   return match ? `/api/${match[1]}` : undefined;
 }
 /** HTTPS-only link for activity official pages and images. */
