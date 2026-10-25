@@ -158,7 +158,10 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 
 ## 패스키 로그인 — 2026-10-10 사용자 결정
 
-계정은 패스키로만 만들고 로그인한다. 이메일 인증번호 로그인은 없앤다. 처음 패스키를 만들 때 계정도 함께 생기고, 이후에는 그 패스키로 로그인한다. 기기를 잃으면 OS의 패스키 동기화(iCloud 키체인·Google 비밀번호 관리자)에 의존하며, 별도 계정 복구 경로는 없다.
+이메일 인증번호 로그인은 없앤다. 패스키로 로그인한다. 기기를 잃으면 OS의 패스키 동기화(iCloud 키체인·Google 비밀번호 관리자)에 의존하며, 별도 계정 복구 경로는 없다.
+
+- **2026-10-25 사용자 결정 — 패스키 가입 제거**: 새 계정은 애플·구글 로그인으로만 만든다. 앱(iOS·Android)의 로그인 화면에서 "새 패스키로 시작"을 없앴고, 시작 화면의 "패스키로 시작하기"는 "패스키로 로그인"이 됐다. 이미 패스키로 만든 계정의 "패스키로 로그인"과 설정의 패스키 추가·이름 바꾸기·삭제(로그인한 계정에 패스키를 더함)는 그대로다. 서버의 Bearer 없는 `registration/options`·`registration`(새 계정 생성)은 이미 배포된 앱 버전이 쓰므로 이번에는 지우지 않는다. 새 클라이언트는 이 경로를 Bearer 없이 부르지 않는다.
+- 변경 이력: 2026-10-10 결정은 "계정은 패스키로만 만들고 로그인한다. 처음 패스키를 만들 때 계정도 함께 생기고, 이후에는 그 패스키로 로그인한다."였다(애플·구글 로그인 추가 뒤에도 패스키 가입은 2026-10-25까지 남아 있었다).
 
 ### 신뢰 당사자와 연결
 
@@ -173,8 +176,8 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 
 | 메서드·경로 | 인증 | 요청 | 성공 응답 |
 | --- | --- | --- | --- |
-| POST /v1/auth/passkeys/registration/options | 없음 | `{displayName?}` | 200 `{challengeId, options}` |
-| POST /v1/auth/passkeys/registration | 없음 | `{challengeId, credential}` | 201 TokenPair. 이때 계정이 생긴다 |
+| POST /v1/auth/passkeys/registration/options | 없음(가입, 배포된 옛 앱만) 또는 Bearer(패스키 추가) | `{displayName?}` | 200 `{challengeId, options}` |
+| POST /v1/auth/passkeys/registration | 없음(가입, 배포된 옛 앱만) 또는 Bearer(패스키 추가) | `{challengeId, credential}` | 201 TokenPair. Bearer 없으면 이때 계정이 생긴다(2026-10-25부터 새 앱은 쓰지 않음) |
 | POST /v1/auth/passkeys/authentication/options | 없음 | 없음 | 200 `{challengeId, options}` (`allowCredentials`는 비움, 기기에 있는 패스키 중 고름) |
 | POST /v1/auth/passkeys/authentication | 없음 | `{challengeId, credential}` | 200 TokenPair |
 | POST /v1/auth/refresh | 없음 | `{refreshToken}` | 200 TokenPair. 쓴 refresh token은 폐기된다(회전) |
@@ -186,8 +189,9 @@ HTTPS ingress는 catalog GET/HEAD, 공개 cards/:id GET/HEAD, 위 guest 경로�
 
 ### 앱 동작
 
-- 처음 실행할 때 한 번만(2026-10-14 사용자 결정) 로고와 "패스키로 시작하기"·"둘러보기"가 있는 시작 화면을 보여 준다. 로그인은 선택이며, 로그인에 성공하거나 둘러보기를 누르면 다시 보이지 않는다. 이미 로그인되어 있으면 건너뛴다. 매 실행의 OS 스플래시에는 로고만 둔다.
-- 로그인이 필요한 동작(명함 발행, 받은 명함 보기)에서 로그인 화면을 띄운다. "패스키로 로그인"이 기본이고, 패스키가 없거나 사용자가 고르면 "새 패스키로 시작"(가입)을 한다.
+- 처음 실행할 때 한 번만(2026-10-14 사용자 결정) 로고와 로그인 버튼(애플·구글·"패스키로 로그인", 2026-10-25 전에는 "패스키로 시작하기")·"둘러보기"가 있는 시작 화면을 보여 준다. 로그인은 선택이며, 로그인에 성공하거나 둘러보기를 누르면 다시 보이지 않는다. 이미 로그인되어 있으면 건너뛴다. 매 실행의 OS 스플래시에는 로고만 둔다.
+- 로그인이 필요한 동작(명함 발행, 받은 명함 보기)에서 로그인 화면을 띄운다. 애플·구글·"패스키로 로그인"을 고른다. 두 플랫폼 모두 애플·구글이 위 주 버튼, "패스키로 로그인"은 그 아래 보조 버튼이다(2026-10-25, Android도 iOS 순서로). 새 계정은 애플·구글로만 만든다(2026-10-25, 이전에는 "새 패스키로 시작"으로 가입했다). 이 기기에 패스키가 없으면 애플·구글로 시작하라고 안내한다.
+- 로그인 시트 맨 위에는 락업 이미지 한 장(가로 워드마크 + 그 아래 캐치프레이즈 "대외활동, 매일 맞춤으로", 원본 `shared/assets/brand/sign-in-lockup.html`, 1240×480 투명 PNG 라이트·다크 두 장)을 둔다. 시트는 두 플랫폼 모두 화면 절반 높이로 고정하고(iOS `.presentationDetents([.medium])`, Android 부분 펼침 없이 본문 높이 화면의 50%; 작은 화면에서는 위쪽 내용이 스크롤되고 버튼은 보인다), 이미지는 높이 96pt/dp·비율 유지(시트의 약 1/4)·글자 배율과 무관한 고정 크기로 시트 높이의 약 1/4, 접근성 라벨 "Dearby, 대외활동, 매일 맞춤으로"(2026-10-25 사용자 요청; 이전에는 심볼 아래 앱 이름 텍스트). 다크 변형은 워드마크 #3FB3B4·문구 밝은 회색. 시작 화면의 브랜드 표시(심볼 + 앱 이름)는 그대로다.
 - access token이 만료돼 401을 받으면 refresh를 한 번 시도한다. refresh가 401로 거절되면 토큰을 지우고 로그인 화면으로 돌아간다. 네트워크 오류·5xx면 토큰을 남기고 그 요청만 실패시킨다(불안정한 연결에서 로그아웃되지 않게). refresh token이 회전하므로 동시에 여러 요청이 401을 받아도 refresh는 한 번만 한다.
 - 로그아웃은 `/v1/auth/logout` 뒤 기기 토큰을 지운다. 네트워크 실패여도 기기 토큰은 지운다.
 - 기존 이메일 로그인 화면·저장 토큰(`sessionToken`)은 쓰지 않는다. 이전 앱 저장 데이터는 읽거나 지우지 않는다는 저장소 원칙을 따른다.
@@ -644,7 +648,7 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
   | GET /v1/me/passkeys | 200 `{items: [{id(credentialId), label, createdAt, lastUsedAt, backedUp, transports[]}]}` |
   | PATCH /v1/me/passkeys/{id} | `{label}`(1~60자) → 200 항목 |
   | DELETE /v1/me/passkeys/{id} | 204. 마지막 수단이면 409 `LAST_SIGN_IN_METHOD`. 남이 가진 id면 404 |
-  "마지막 수단" 판정: 패스키 수 + 연결된 OAuth 수가 1이면 그 하나는 지울 수 없다. 이미 있는 `POST /v1/auth/passkeys/registration/options`·`registration`은 Bearer가 있으면 그 계정에 패스키를 더한다(없으면 기존 가입 흐름).
+  "마지막 수단" 판정: 패스키 수 + 연결된 OAuth 수가 1이면 그 하나는 지울 수 없다. 이미 있는 `POST /v1/auth/passkeys/registration/options`·`registration`은 Bearer가 있으면 그 계정에 패스키를 더한다(없으면 기존 가입 흐름 — 2026-10-25부터 배포된 옛 앱만 쓴다).
 - 저장: `users.created_at`(V40, 기존 행은 가장 이른 로그인 수단·프로필 생성 시각으로 채움). `user_credentials`·`user_identities`는 그대로.
 - 구현 메모(2026-10-20): `POST /v1/auth/passkeys/registration/options`는 Bearer가 있으면 그 계정에 패스키를 더한다(응답은 기존처럼 201 TokenPair). 만료·잘못된 Bearer는 401(조용히 새 가입으로 넘어가지 않음). 로그인 상태 options에는 기존 패스키를 `excludeCredentials`로 넣어 키체인이 덮어쓰지 않게 하고, 요청 `displayName`이 새 패스키의 `label`이 된다(기본 `Dearby`). 경로의 `provider`는 소문자(apple|google), 연결돼 있지 않으면 404. PATCH label은 trim 후 1~60자(아니면 400). 다른 사용자의 패스키 id는 404(존재 여부를 구분하지 않음).
 

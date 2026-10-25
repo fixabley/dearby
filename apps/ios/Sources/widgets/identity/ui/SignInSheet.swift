@@ -2,16 +2,16 @@ import AuthenticationServices
 import SwiftUI
 
 /// Sign-in shown only when an action needs an account: Apple (when the build enables it), Google (until the server says
-/// it is off) and an existing passkey are peers; a new passkey starts a new account. A first-time Apple or Google account
+/// it is off) and an existing passkey are peers; new accounts start only with Apple or Google (2026-10-25). A first-time Apple or Google account
 /// links to this device's passkey account or starts a separate one by itself (`AccountViewModel.linkOrStart`); the
 /// new-or-link choice below appears only when the person closed that passkey sheet.
-/// Layout is the centred message (contract "비스크롤 화면 배치·CTA"): brand mark, title, explanation in the middle; the buttons stacked at the bottom.
+/// Layout is the centred message (contract "비스크롤 화면 배치·CTA"): the lockup image (wordmark + catchphrase), title, explanation in the middle; the buttons stacked at the bottom.
 struct SignInSheet: View {
     let account: AccountViewModel
     let signedIn: () -> Void
     @Environment(\.authorizationController) private var authorizationController
     @Environment(\.dismiss) private var dismiss
-    private enum Action { case apple, google, passkey, newPasskey, pendingNewAccount, pendingLink }
+    private enum Action { case apple, google, passkey, pendingNewAccount, pendingLink }
     @State private var running: Action?
     private var busy: Bool { account.phase == .signingIn }
     private var social: Bool { account.appleSignInEnabled || account.googleSignInEnabled }
@@ -26,13 +26,15 @@ struct SignInSheet: View {
             if phase == .signedIn { dismiss(); signedIn() }
         }
         .onDisappear { account.clearPendingLink() }
+        // Fixed half height (2026-10-25): on a small screen the heading scrolls and the buttons stay in view.
+        .presentationDetents([.medium])
     }
 
     private var choices: some View {
         CenteredMessage(title: social ? "로그인" : "패스키로 로그인",
                         message: social ? "애플·구글 계정이나 패스키로 바로 로그인해요. 비밀번호와 인증번호는 필요 없어요."
                             : "Face ID나 Touch ID로 바로 로그인해요. 비밀번호와 인증번호는 필요 없어요.") {
-            DearbyBrand()
+            DearbyLockup()
         } actions: {
             message
             if account.appleSignInEnabled {
@@ -41,9 +43,7 @@ struct SignInSheet: View {
             if account.googleSignInEnabled {
                 DearbyGoogleButton { run(.google) }.disabled(busy).accessibilityIdentifier("sign-in-google")
             }
-            button("패스키로 로그인", .passkey, prominent: true).accessibilityIdentifier("sign-in-passkey")
-            Text("처음이거나 이 기기에 패스키가 없나요?").font(.dearby(.footnote)).foregroundStyle(.secondary).padding(.top, 4)
-            button("새 패스키로 시작", .newPasskey, prominent: false).accessibilityIdentifier("sign-in-new-passkey")
+            button("패스키로 로그인", .passkey).accessibilityIdentifier("sign-in-passkey")
         }
     }
 
@@ -55,8 +55,8 @@ struct SignInSheet: View {
                 Text(email).font(.dearby(.footnote)).foregroundStyle(.secondary).accessibilityIdentifier("sign-in-link-email")
             }
             message
-            button("새 계정으로 시작", .pendingNewAccount, prominent: true).accessibilityIdentifier("sign-in-link-new")
-            button("기존 패스키 계정에 연결", .pendingLink, prominent: true).accessibilityIdentifier("sign-in-link-passkey")
+            button("새 계정으로 시작", .pendingNewAccount).accessibilityIdentifier("sign-in-link-new")
+            button("기존 패스키 계정에 연결", .pendingLink).accessibilityIdentifier("sign-in-link-passkey")
             Button { account.clearPendingLink() } label: { Text("다른 방법으로 로그인").frame(maxWidth: .infinity, minHeight: 44) }
                 .buttonStyle(.borderless).tint(DearbyStyle.teal).disabled(busy).accessibilityIdentifier("sign-in-link-back")
         }
@@ -68,16 +68,13 @@ struct SignInSheet: View {
         }
     }
 
-    /// A full-width system button (`.borderedProminent` for a main choice, `.borderless` text otherwise) showing a spinner while its action runs.
-    @ViewBuilder private func button(_ title: String, _ action: Action, prominent: Bool) -> some View {
-        let label = Group {
-            if busy && running == action { ProgressView().tint(prominent ? DearbyStyle.onTeal : DearbyStyle.teal) } else { Text(title) }
-        }.frame(maxWidth: .infinity, minHeight: prominent ? 0 : 44)
-        if prominent {
-            Button { run(action) } label: { label }.buttonStyle(.borderedProminent).disabled(busy)
-        } else {
-            Button { run(action) } label: { label }.buttonStyle(.borderless).tint(DearbyStyle.teal).disabled(busy)
-        }
+    /// A full-width `.borderedProminent` system button showing a spinner while its action runs.
+    private func button(_ title: String, _ action: Action) -> some View {
+        Button { run(action) } label: {
+            Group {
+                if busy && running == action { ProgressView().tint(DearbyStyle.onTeal) } else { Text(title) }
+            }.frame(maxWidth: .infinity)
+        }.buttonStyle(.borderedProminent).disabled(busy)
     }
 
     private func run(_ action: Action) {
@@ -87,7 +84,6 @@ struct SignInSheet: View {
             case .apple: await account.signInWithApple(using: authorizationController)
             case .google: await account.signInWithGoogle(using: authorizationController)
             case .passkey: await account.signIn(using: authorizationController)
-            case .newPasskey: await account.register(using: authorizationController)
             case .pendingNewAccount: await account.registerPendingAccount()
             case .pendingLink: await account.linkPendingToPasskey(using: authorizationController)
             }

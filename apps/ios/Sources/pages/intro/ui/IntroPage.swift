@@ -2,7 +2,7 @@ import AuthenticationServices
 import SwiftUI
 
 /// First-launch intro. Signing in is optional (App Store 5.1.1): "둘러보기" always opens the app.
-/// "패스키로 시작하기" reuses the sign-in sheet; closing it after a cancel or failure stays here.
+/// "패스키로 로그인" (existing passkey accounts; new accounts start with Apple or Google) reuses the sign-in sheet; closing it after a cancel or failure stays here.
 /// The Apple button (when the build enables it) and the Google button (until the server says it is off) sign in here;
 /// a first-time Apple or Google account opens the sheet's new-or-link choice.
 /// Layout is the centred message (contract "비스크롤 화면 배치·CTA") with the brand mark as its glyph; the buttons stack at the bottom.
@@ -26,7 +26,7 @@ struct IntroPage: View {
                 DearbyGoogleButton { Task { await account.signInWithGoogle(using: authorizationController) } }
                     .disabled(account.phase == .signingIn).accessibilityIdentifier("intro-google")
             }
-            Button { signingIn = true } label: { Text("패스키로 시작하기").frame(maxWidth: .infinity) }
+            Button { signingIn = true } label: { Text("패스키로 로그인").frame(maxWidth: .infinity) }
                 .buttonStyle(.borderedProminent).accessibilityIdentifier("intro-passkey")
             Button(action: done) { Text("둘러보기").frame(maxWidth: .infinity, minHeight: 44) }
                 .buttonStyle(.borderless).tint(DearbyStyle.teal).accessibilityIdentifier("intro-browse")

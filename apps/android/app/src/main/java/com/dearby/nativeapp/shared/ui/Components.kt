@@ -90,6 +90,10 @@ private val DarkScheme = darkColorScheme(
     Spacer(Modifier.height(12.dp))
     Text("Dearby", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
 }
+/** 로그인 시트 락업: 가로 워드마크 아래 캐치프레이즈를 한 장으로 그린 이미지(`dearby_lockup`, 원본 shared/assets/brand/sign-in-lockup.html; 다크는 drawable-night-nodpi).
+ *  고정 높이 96dp(비율 1240:480, 글자 배율과 무관): 절반 높이 로그인 시트의 약 1/4. */
+@Composable fun DearbyLockup(modifier: Modifier = Modifier) =
+    Image(painterResource(R.drawable.dearby_lockup), "Dearby, 대외활동, 매일 맞춤으로", modifier.height(96.dp).aspectRatio(1240f / 480f))
 /**
  * 주 버튼(contract "폼은 플랫폼 기본 컴포넌트", 2026-10-19 밤): Material 3 `Button`/`OutlinedButton` 기본 모양·글꼴에 최소 높이 48dp(터치 영역 규칙)만 둔다.
  * 사용자 정의 모서리·높이·글자 크기는 없다. 채운 버튼은 두 모드 모두 [TealFill] 바탕·흰 글자(contract "청록 채움 면 위 글자는 흰색"); 비활성 색은 Material 기본.

@@ -88,9 +88,6 @@ val httpTransport: Transport = object : Transport {
 
 /** Owner API (contract native-v1): passkey sign-in, profile and card publishing. */
 class AccountClient(private val api: String, private val transport: Transport = httpTransport) {
-    /** Passkey sign-up; the account is made when [register] succeeds. The server names the passkey (`Dearby 사용자`). */
-    suspend fun registrationOptions() = send("POST", "auth/passkeys/registration/options", JSONObject()).toPasskeyChallenge()
-    suspend fun register(challengeId: String, credential: String) = send("POST", "auth/passkeys/registration", passkeyBody(challengeId, credential)).toSession()
     // The contract has no request body; an explicit {} keeps HttpURLConnection from sending a bodiless POST.
     suspend fun authenticationOptions() = send("POST", "auth/passkeys/authentication/options", JSONObject()).toPasskeyChallenge()
     suspend fun authenticate(challengeId: String, credential: String) = send("POST", "auth/passkeys/authentication", passkeyBody(challengeId, credential)).toSession()

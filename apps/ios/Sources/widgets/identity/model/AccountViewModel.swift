@@ -41,18 +41,10 @@ import SwiftUI
 
     /// "패스키로 로그인": choose one of this app's passkeys on the device (or a nearby device).
     func signIn(using controller: AuthorizationController) async {
-        await start(failure: "패스키로 로그인하지 못했어요. 다시 시도하거나 새 패스키로 시작해 주세요.") { [client] in
+        await start(failure: "패스키로 로그인하지 못했어요. 다시 시도하거나 애플·구글로 로그인해 주세요.") { [client] in
             let challenge = try await client.authenticationOptions()
             let credential = try await Passkey.assert(challenge.options, with: controller)
             return try await client.authenticate(challengeId: challenge.challengeId, credential: credential)
-        }
-    }
-    /// "새 패스키로 시작": makes a new passkey, and with it a new account.
-    func register(using controller: AuthorizationController) async {
-        await start(failure: "새 패스키를 만들지 못했어요. 잠시 후 다시 시도해 주세요.") { [client] in
-            let challenge = try await client.registrationOptions()
-            let credential = try await Passkey.register(challenge.options, with: controller)
-            return try await client.register(challengeId: challenge.challengeId, credential: credential)
         }
     }
     /// "Apple로 계속하기": an Apple account already linked signs in; a first-time one sets `pendingLink` for the user's choice.
