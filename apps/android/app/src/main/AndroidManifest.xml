@@ -5,8 +5,10 @@
     <uses-permission android:name="android.permission.READ_CALENDAR"/>
     <!-- 새 모집 푸시 (contract "즐겨찾기(하트)·새 모집 푸시 알림"): Android 13+ asks once, at the first program heart, never at launch. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <!-- 사용 통계 never reads the advertising id: the permission Firebase Analytics would merge in is removed. -->
+    <!-- 사용 통계 never reads an advertising id: the ad-id and Privacy Sandbox ad permissions Firebase Analytics would merge in are removed. -->
     <uses-permission android:name="com.google.android.gms.permission.AD_ID" tools:node="remove"/>
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_AD_ID" tools:node="remove"/>
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION" tools:node="remove"/>
     <application android:label="Dearby" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:dataExtractionRules="@xml/data_extraction_rules" android:allowBackup="false" android:fullBackupContent="false" android:supportsRtl="true" android:theme="@style/Theme.Dearby" android:usesCleartextTraffic="false">
         <!-- singleTask: the dearby://auth/apple redirect must reach this instance (onNewIntent), which holds the verifier, and close the Custom Tab above it. -->
         <activity android:name=".app.MainActivity" android:exported="true" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:theme="@style/Theme.Dearby.Starting">

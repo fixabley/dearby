@@ -157,7 +157,7 @@ python3 scripts/check-fsd.py --self-test
 
 사용자 결정 "Analytics SDK 넣어줘". `features/analytics/Analytics`가 Firebase Analytics를 감싼다(google-services.json이 없으면 아무것도 하지 않음).
 
-- 개인정보 최소: 매니페스트 `google_analytics_adid_collection_enabled`·`google_analytics_ssaid_collection_enabled`·`google_analytics_default_allow_ad_personalization_signals`를 모두 false, 병합되는 `AD_ID` 권한은 `tools:node="remove"`. 사용자 id·개인정보를 넣지 않는다.
+- 개인정보 최소: 매니페스트 `google_analytics_adid_collection_enabled`·`google_analytics_ssaid_collection_enabled`·`google_analytics_default_allow_ad_personalization_signals`를 모두 false, 병합되는 `AD_ID`·`ACCESS_ADSERVICES_AD_ID`·`ACCESS_ADSERVICES_ATTRIBUTION` 권한은 `tools:node="remove"`. 사용자 id·개인정보를 넣지 않는다.
 - 남기는 것: 화면 보기(`DearbyApp`이 고른 FSD 페이지 이름, 예 `ActivityListPage`·`FavoritesPage`·`ActivityDetailPage`)와 이벤트 `funnel_complete`, `queue_open`, `queue_like`(`activity_id`), `favorite_add`(`type` program|activity, `id`), `myactivity_add`(`activity_id`), `apply_click`(`activity_id`). 매개변수는 id와 코드뿐이다.
 - 내 프로필 `사용 통계 보내기` 스위치(기본 켬, 로그인과 무관): `setAnalyticsCollectionEnabled`, 선택은 `app/DevicePreferences`(`dearby.favorites` 파일)에 둔다.
 - 개인정보처리방침에 Firebase Analytics(Google, 앱 인스턴스 id, 사용 이벤트, 국외 이전)를 적어야 한다.
