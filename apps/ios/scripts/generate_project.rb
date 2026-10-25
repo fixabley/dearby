@@ -30,6 +30,8 @@ validate.always_out_of_date = '1'
 app.build_phases.move(validate, 0)
 resources = project.main_group.new_group('Resources')
 app.resources_build_phase.add_file_reference(resources.new_file('Resources/Assets.xcassets'))
+# App-level privacy manifest (required-reason APIs, collected data); the SDKs carry their own.
+app.resources_build_phase.add_file_reference(resources.new_file('Resources/PrivacyInfo.xcprivacy'))
 # Pretendard copies of shared/assets/fonts/pretendard; also listed in UIAppFonts.
 Dir.glob('Resources/Fonts/*.otf').sort.each { |file| app.resources_build_phase.add_file_reference(resources.new_file(file)) }
 # Firebase configuration (gitignored; CI writes it from IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64, device builds copy ~/.dearby-deploy's).

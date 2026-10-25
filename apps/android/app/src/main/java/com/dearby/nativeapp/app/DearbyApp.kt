@@ -69,6 +69,9 @@ private sealed interface Route {
             "mine" -> { activityModel.screenshotActivity()?.let { activityModel.apply(it, true) }; tab = Tab.Mine }
             "cards" -> tab = Tab.Cards
             "settings" -> route = Route.Settings
+            // 오늘의 맞춤 대기열 directly (signed in; no funnel, no `menu_open`).
+            "queue" -> { queue.open(); route = Route.Queue }
+            "favorites-calendar" -> { tab = Tab.Mine; mineSegment = MineSegment.FAVORITES; favorites.setView(FavoritesView.CALENDAR) }
         }
     }
     BackHandler(route is Route.Detail || route is Route.Qr) { route = null }
