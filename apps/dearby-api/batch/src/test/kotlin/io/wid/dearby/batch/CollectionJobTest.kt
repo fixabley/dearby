@@ -910,7 +910,7 @@ class CollectionJobTest(
 
     // 명함 회수(native-v1.md "명함 교환"): batch가 매일 04:00에 부르는 RecallService. 규칙 자체는 api 모듈의 CardFlowTest·GuestFlowTest가 확인한다
     @Test
-    fun `회수는 30일이 지난 비로그인 저장을 빼고 그 안의 것은 남기며 1개월이 지난 신고는 상태와 관계없이 지운다`() {
+    fun `회수는 30일이 지난 비로그인 저장을 빼고 그 안의 것은 남기며 1개월이 지난 신고와 1년이 지났거나 세션이 없는 비로그인 차단을 지운다`() {
         jdbc.sql("insert into guest_sessions (digest, created_at) values ('old-session-digest', now()), ('new-session-digest', now())").update()
         jdbc.sql("insert into guest_cards (session_digest, card_id, saved_at) values ('old-session-digest', gen_random_uuid(), now() - interval '31 days'), ('new-session-digest', gen_random_uuid(), now())").update()
         // 신고 보유 기간(native-v1.md "명함 신고·차단"): 신고일로부터 1개월. 열린 신고도 지운다
@@ -920,14 +920,24 @@ class CollectionJobTest(
                (gen_random_uuid(), gen_random_uuid(), 'SPAM', '{}', 'RESOLVED', now() - interval '1 month 1 day'),
                (gen_random_uuid(), gen_random_uuid(), 'OTHER', '{}', 'OPEN', now() - interval '27 days')""",
         ).update()
+        // 비로그인 차단 보유 기간(native-v1.md "명함 신고·차단"): 차단일로부터 1년, 세션이 지워졌으면 바로. 로그인 차단은 그대로
+        jdbc.sql(
+            """insert into card_blocks (id, blocker_user_id, blocker_guest_digest, blocked_user_id, name, created_at) values
+               (gen_random_uuid(), null, 'new-session-digest', gen_random_uuid(), 'guest-old', now() - interval '1 year 1 day'),
+               (gen_random_uuid(), null, 'new-session-digest', gen_random_uuid(), 'guest-recent', now() - interval '11 months'),
+               (gen_random_uuid(), null, 'deleted-session-digest', gen_random_uuid(), 'guest-no-session', now()),
+               (gen_random_uuid(), gen_random_uuid(), null, gen_random_uuid(), 'user-old', now() - interval '2 years')""",
+        ).update()
 
         val report = recall.recall()
 
-        assertEquals(RecallService.Report(receipts = 0, guestCards = 1, reports = 2), report)
+        assertEquals(RecallService.Report(receipts = 0, guestCards = 1, reports = 2, guestBlocks = 2), report)
         assertEquals(listOf("old-session-digest"), jdbc.sql("select session_digest from guest_cards where recalled_at is not null").query(String::class.java).list())
         assertEquals(listOf("OTHER"), jdbc.sql("select reason from card_reports").query(String::class.java).list())
+        assertEquals(listOf("guest-recent", "user-old"), jdbc.sql("select name from card_blocks order by name").query(String::class.java).list())
         jdbc.sql("delete from guest_sessions where digest in ('old-session-digest', 'new-session-digest')").update()
         jdbc.sql("delete from card_reports").update()
+        jdbc.sql("delete from card_blocks").update()
     }
 
     // 맞춤 대기열 잡(native-v1.md "맞춤 대기열"): 로고 대표색 채우기 → 바뀐 활동·태그만 임베딩(날짜·URL·연락처 없는 글) → 새 모델은 다 만든 뒤 넘김 → 사용자 대기열

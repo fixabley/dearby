@@ -29,6 +29,9 @@ interface CardSafetyRepository {
     // 보유 기간이 지난 신고를 상태와 관계없이 지우고 지운 수를 돌려준다(CardReport.KEEP_FOR)
     fun deleteReportsBefore(at: OffsetDateTime): Int
 
+    // 비로그인 차단 중 at보다 먼저 만들었거나 게스트 세션이 지워진 것을 지우고 지운 수를 돌려준다(CardBlock.GUEST_KEEP_FOR)
+    fun deleteGuestBlocksBefore(at: OffsetDateTime): Int
+
     // 이미 차단했으면 그 행을 돌려준다
     fun block(blockerUser: UserId?, blockerGuest: String?, blockedUser: UserId, name: String, now: OffsetDateTime): CardBlock
 

@@ -1008,7 +1008,7 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 - `POST /v1/cards/:id/reports` 인증: Bearer 또는 게스트 토큰(웹 프록시) 또는 없음(웹에서 코드로 본 사람, 본문에 `code`). 명함을 볼 권한이 있는 사람만(위 "명함 QR 코드" 조회 권한과 같음, 아니면 403). 본문 `{reason: SPAM|IMPERSONATION|INAPPROPRIATE|OTHER, detail?: string(≤500), code?: string}`. 201. 같은 신고자(계정·게스트)가 같은 명함을 24시간 안에 다시 신고하면 200으로 기존 신고를 돌려준다(중복 방지). 자기 명함은 400.
 - 사유 표시: 스팸·광고 / 다른 사람 사칭 / 부적절한 내용 / 기타(기타는 설명 필수).
 - 저장: `card_reports(id uuid, card_id, reporter_user_id null, reporter_guest_id null, reason, detail, created_at, status OPEN|RESOLVED|DISMISSED, resolved_at, resolved_by, note)`(V48). 신고 시점의 명함 스냅샷(이름·직무·소개·연락처)을 `card_snapshot jsonb`로 함께 둔다(주인이 고치거나 지워도 근거가 남게).
-- 보유 기간(2026-10-25 사용자 결정): 신고 기록은 신고일(`created_at`)로부터 1개월이 지나면 상태(`OPEN` 포함)와 관계없이 지운다(batch 매일 04:00 명함 회수와 함께). 차단(`card_blocks`)은 대상이 아니다.
+- 보유 기간(2026-10-25 사용자 결정): 신고 기록은 신고일(`created_at`)로부터 1개월이 지나면 상태(`OPEN` 포함)와 관계없이 지운다(batch 매일 04:00 명함 회수와 함께). 차단(`card_blocks`) 보유 기간은 아래 "차단".
 - 화면: 받은 명함 상세(iOS 툴바 `ellipsis.circle` Menu, Android TopAppBar 더 보기 메뉴)와 웹 `/cards/:id`·`/saved` 상세의 카드 아래 작은 글자 버튼 `신고하기`. 사유 고르기(iOS confirmationDialog 또는 시트의 Picker, Android 라디오 목록 다이얼로그, 웹 shadcn Dialog) → 선택 설명 → 보내기. 성공하면 "신고를 받았어요. 24시간 안에 확인할게요." 신고만으로 명함이 사라지지는 않는다(차단은 따로).
 
 ### 차단
@@ -1018,6 +1018,7 @@ Mobbin의 Outlook 연락처 목록을 참고해 검색하기 쉬운 색인 목�
 - 게스트(웹 `/saved` 상세): `POST /v1/guest/blocks {cardId}`(게스트 토큰)로 같은 동작(`guest_cards` 회수 + 게스트 차단 기록, 이후 `PUT /v1/guest/cards/:id` 409).
 - `GET /v1/wallet/blocks` → `{items:[{id, name, blockedAt}]}`, `DELETE /v1/wallet/blocks/:id` 204(차단 해제, 지운 명함은 돌아오지 않는다). `name`은 차단할 때 그 명함의 이름 스냅샷. 앱 설정 화면에 `차단한 사람` 행 → 목록과 밀어서/편집으로 해제. 게스트는 목록·해제 없음(쿠키를 지우면 초기화).
 - 저장: `card_blocks(id uuid, blocker_user_id null, blocker_guest_id null, blocked_user_id, name, created_at)`(V48, 둘 중 하나만).
+- 보유 기간(2026-10-25 사용자 결정): 게스트 차단은 차단일(`created_at`)로부터 1년이 지나면 지우고, 게스트 세션이 지워졌으면(`DELETE /v1/guest/session`) 기간과 관계없이 지운다(batch 매일 04:00 명함 회수와 함께, 세션 삭제 뒤 다음 실행까지 남을 수 있다). 계정 차단은 해제할 때까지 둔다.
 
 ### 어드민
 
