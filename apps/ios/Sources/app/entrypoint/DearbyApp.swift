@@ -76,7 +76,7 @@ import SwiftUI
                                                       editRecommendations: { editRecommendations("queue_row") }, path: $0) }, mine: { MyActivitiesPage(state: activityModel, segment: $mineSegment, path: $0, explore: { tab = 0 }) },
                         cards: CardsPage(segment: $cardsSegment, cards: cards, wallet: wallet), profile: ProfilePage(state: profile, eligibility: eligibility,
                                                                                          editRecommendations: { editRecommendations("profile") },
-                                                                                         notifications: notifications),
+                                                                                         notifications: notifications, leaveSetup: { tab = 0 }),
                         settings: { SettingsPage(account: account, webOrigin: links.origins.web) },
                         inbox: { NotificationInboxPage(model: inbox, state: activityModel) })
                     .fullScreenCover(isPresented: $showsQueue) {

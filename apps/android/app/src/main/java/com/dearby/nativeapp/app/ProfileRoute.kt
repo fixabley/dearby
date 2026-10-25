@@ -15,6 +15,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dearby.nativeapp.BuildConfig
@@ -34,7 +35,7 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
 
 /** 내 프로필 tab: read mode by default with the top-bar 수정 editor (contract "프로필 읽기/수정 모드"), the history funnel (with file pickers for evidence) and the version screens. */
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun ProfileRoute(model: ProfileViewModel, account: AccountViewModel, recommendation: RecommendationViewModel, notifications: NotificationViewModel, analytics: Boolean, setAnalytics: (Boolean) -> Unit, compose: () -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {}) {
+@Composable fun ProfileRoute(model: ProfileViewModel, account: AccountViewModel, recommendation: RecommendationViewModel, notifications: NotificationViewModel, analytics: Boolean, setAnalytics: (Boolean) -> Unit, compose: () -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {}, leaveSetup: () -> Unit = {}) {
     val state by model.state.collectAsStateWithLifecycle()
     val funnel by model.funnel.collectAsStateWithLifecycle()
     val versions by model.versions.collectAsStateWithLifecycle()
@@ -45,6 +46,13 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
     var openVersion by remember { mutableStateOf<Int?>(null) }
     // 동의 시트 닫기 (contract, 2026-10-20): closing the consent page is "not consented"; the next save attempt brings it back instead of a doomed PUT.
     var consentDismissed by remember { mutableStateOf(false) }
+    // Right after sign-up (no profile saved yet) closing it cancels the sign-up (2026-10-25 user report): signed out, back to this tab's signed-out
+    // page, instead of the setup funnel behind it. A saved profile asked again for a new version stays signed in as before.
+    val scope = rememberCoroutineScope()
+    val closeConsent: () -> Unit = {
+        consentDismissed = true
+        if (state.settingUp) scope.launch { account.signOut() }
+    }
     val context = LocalContext.current
     // 지원 자격 정보 (contract "지원 자격 정보(프로필, 동의 필요)", signed in only): no current consent → the consent sheet; entered → 고치기·지우기.
     val reco by recommendation.state.collectAsStateWithLifecycle()
@@ -64,7 +72,7 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
     val recommendationGroup: (@Composable () -> Unit)? = if (!signedIn || !reco.available) null else {
         { RecommendationProfileGroup(reco.eligibilitySummary, { Tracking.menu("interests"); recommendation.openFunnel(first = false, entry = "profile") }, openEligibility) }
     }
-    LaunchedEffect(signedIn) { if (signedIn) signingIn = false; model.load() }
+    LaunchedEffect(signedIn) { if (signedIn) signingIn = false else consentDismissed = false; model.load() }
     // 알림 (contract "즐겨찾기(하트)·새 모집 푸시 알림"): the system switch is read again whenever the app comes back (e.g. from its settings).
     val notice by notifications.state.collectAsStateWithLifecycle()
     var systemOn by remember { mutableStateOf(true) }
@@ -94,12 +102,12 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
         }
         // 개인정보 동의 (contract "개인정보 동의"): before the first profile step and whenever the server asks again; never when signed out.
         signedIn && state.phase == ProfilePhase.LOADED && state.consentRequired && !consentDismissed -> {
-            BackHandler { consentDismissed = true }
+            BackHandler(onBack = closeConsent)
             ConsentPage(
                 state.consenting, state.consentError,
                 openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) },
                 openTerms = { OAuthBrowser(context).open(ConsentVersions.termsUrl(BuildConfig.WEB_ORIGIN)) },
-                agree = model::consent, close = { consentDismissed = true },
+                agree = model::consent, close = closeConsent,
             )
         }
         funnel != null -> funnel?.let { current ->
@@ -118,7 +126,7 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
             ProfileVersionsPage(versions, { openVersion = it }, { model.loadVersions(reset = false) }) { versionsOpen = false }
         }
         else -> ProfilePage(state, model.rows, model::change, model::searchJobs, model::addContact, model::openHistory, model::removeHistory, { if (state.consentRequired) consentDismissed = false else model.save() }, model::revert,
-            { Tracking.menu("history"); versionsOpen = true }, compose, { signingIn = true }, { model.load() }, model.changed, { if (it) Tracking.menu("profile_edit"); model.edit(it) }, settings, notify, recommendationGroup, notificationGroup)
+            { Tracking.menu("history"); versionsOpen = true }, compose, { signingIn = true }, { model.load() }, model.changed, { if (it) Tracking.menu("profile_edit"); model.edit(it) }, settings, notify, recommendationGroup, notificationGroup, leaveSetup)
     }
     if (signingIn && !signedIn) SignInRoute(account, close = { signingIn = false })
     eligibilitySheet?.let { sheet ->

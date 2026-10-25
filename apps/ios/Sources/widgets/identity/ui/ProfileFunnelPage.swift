@@ -6,12 +6,15 @@ import SwiftUI
 /// a step appears. Rows stack the label over a `.title3` input (`DearbyFormRow`, contract "폼 라벨·입력 크기" 2026-10-20) and the whole row
 /// focuses the field; the keyboard 완료 clears both focus states. The tab bar is hidden meanwhile (`HomePage.hidesTabs`). Shown until the profile is saved once.
 /// It is the tab's root, so there is no navigation back: `이전` beside `다음` reopens the step before the open one with every answer kept (contract "뒤로 가기").
+/// On the first step that slot is `나중에`: after "프로필은 나중에 프로필 탭에서 만들 수 있어요" the app shows 발견, still signed in, answers kept.
 struct ProfileFunnelPage: View {
     @Binding var form: ProfileForm
     let account: AccountViewModel
     let saving: Bool
     let error: String?
+    let later: () -> Void
     let save: () -> Void
+    @State private var leaving = false
     @State private var open = Step.name
     @State private var reached: Set<Step> = [.name]
     @State private var tried = false
@@ -47,6 +50,10 @@ struct ProfileFunnelPage: View {
         .navigationTitle("프로필 만들기").navigationBarTitleDisplayMode(.inline)
         .onAppear(perform: focusOpen)
         .onChange(of: open) { _, _ in focusOpen() }
+        .alert("프로필 만들기를 그만할까요?", isPresented: $leaving) {
+            Button("나중에 하기", action: later)
+            Button("계속 만들기", role: .cancel) {}
+        } message: { Text("프로필은 나중에 프로필 탭에서 만들 수 있어요.") }
     }
     private func openSection(_ step: Step) -> some View {
         Section {
@@ -96,6 +103,9 @@ struct ProfileFunnelPage: View {
             HStack(spacing: 10) {
                 if let previous {
                     Button { tried = false; open = previous } label: { Text("이전").frame(maxWidth: .infinity) }.buttonStyle(.bordered)
+                } else {
+                    Button { leaving = true } label: { Text("나중에").frame(maxWidth: .infinity) }.buttonStyle(.bordered)
+                        .accessibilityIdentifier("profile-setup-later")
                 }
                 Button(action: next) {
                     Group { if saving { ProgressView().tint(DearbyStyle.onTeal) } else { Text(allReached ? "프로필 저장" : "다음") } }

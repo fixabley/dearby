@@ -213,7 +213,7 @@ private sealed interface Route {
                         }
                         Tab.Cards -> CardsRoute(cardsSegment, { cardsSegment = it; Tracking.menu(if (it == CardsSegment.MINE) "my_cards" else "received_cards") }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
                             edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify, unread = inboxState.unread)
-                        Tab.Profile -> ProfileRoute(profile, account, recommendation, notifications, analyticsOn, { analyticsOn = it; device.analyticsEnabled = it; Analytics.setEnabled(it) }, compose, openSettings, notify)
+                        Tab.Profile -> ProfileRoute(profile, account, recommendation, notifications, analyticsOn, { analyticsOn = it; device.analyticsEnabled = it; Analytics.setEnabled(it) }, compose, openSettings, notify, leaveSetup = { tab = Tab.Discovery })
                     }
                 }
                 SnackbarHost(snackbar, Modifier.align(androidx.compose.ui.Alignment.BottomCenter))

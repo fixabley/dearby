@@ -16,6 +16,8 @@ struct ProfilePage: View {
     let editRecommendations: () -> Void
     /// 프로필 `알림` 묶음 (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25): `새 모집 알림`, and Settings when permission was refused.
     let notifications: NotificationModel
+    /// `나중에` on the first-profile funnel: the app shows 발견 (the funnel keeps its answers and comes back with this tab).
+    let leaveSetup: () -> Void
     @Environment(\.openURL) private var openURL
     /// `사용 통계 보내기` (2026-10-25, as Android): on until turned off, kept on the device, signed in or not.
     @AppStorage(AppAnalytics.enabledKey) private var analyticsEnabled = true
@@ -45,7 +47,7 @@ struct ProfilePage: View {
     var body: some View {
         Group {
             if settingUp, let binding = Binding($form) {
-                ProfileFunnelPage(form: binding, account: state.account, saving: saving, error: error) { save(binding.wrappedValue) }
+                ProfileFunnelPage(form: binding, account: state.account, saving: saving, error: error, later: leaveSetup) { save(binding.wrappedValue) }
             } else {
                 editorScreen
             }
@@ -74,10 +76,11 @@ struct ProfilePage: View {
         .task { await state.load() }
         // A reload (first load, save, restore, evidence) resets the form to the server state unless an edit is in flight.
         .onChange(of: state.profile, initial: true) { _, profile in
-            guard let profile else { form = nil; return }
+            // Signed out: the next account starts with the consent gate again.
+            guard let profile else { form = nil; consentDismissed = false; return }
             if form == nil || form?.changed == false || saving { form = ProfileForm(profile: profile); error = nil; tried = false }
         }
-        .sheet(isPresented: Binding(get: { state.profile != nil && state.consentPending && !consentDismissed }, set: { if !$0 { consentDismissed = true } })) {
+        .sheet(isPresented: Binding(get: { state.profile != nil && state.consentPending && !consentDismissed }, set: { if !$0 { closeConsent() } })) {
             NavigationStack { ConsentPage(state: state) }
         }
         // A fresh requirement (sign-in to another account, a new policy version) shows the sheet again even if an earlier one was closed.
@@ -174,6 +177,16 @@ struct ProfilePage: View {
             }
             .padding(.horizontal, 16).padding(.vertical, 8).frame(minHeight: 44).contentShape(Rectangle())
         }.buttonStyle(.plain)
+    }
+    /// Closing the consent sheet without agreeing. Right after sign-up (no profile saved yet) it cancels the sign-up (2026-10-25 user report): signed
+    /// out, back to this tab's signed-out page, instead of the funnel behind it. A saved profile asked again for a new version stays signed in as before.
+    private func closeConsent() {
+        consentDismissed = true
+        guard settingUp else { return }
+        Task {
+            await state.account.signOut()
+            await state.load()
+        }
     }
     /// Signed in only (the row is not shown signed out). Entered (and consented to this version) → 고치기·지우기. Otherwise the consent sheet, then the questions.
     private func openEligibility() {

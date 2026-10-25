@@ -47,6 +47,8 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
     recommendation: (@Composable () -> Unit)? = null,
     /** 프로필 `알림` 묶음 ([NotificationRow] signed in, [UsageStatsRow] always) in read mode and while signed out. */
     notifications: (@Composable () -> Unit)? = null,
+    /** `나중에` on the first-profile funnel ([ProfileSetupPage]). */
+    leaveSetup: () -> Unit = {},
 ) {
     // 직무 label row → focuses the picker's search field (contract "입력 영역 터치"); 계정 삭제 lives in 설정 since 2026-10-20.
     val jobSearchFocus = remember { FocusRequester() }
@@ -77,7 +79,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
             ProfilePhase.LOADING -> DearbySkeleton(Modifier.fillMaxSize().padding(20.dp)) { SkeletonCardBody(); SkeletonRows(3) }
             ProfilePhase.FAILED -> DearbyErrorState("프로필을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.", retry, Modifier.weight(1f).fillMaxWidth())
             ProfilePhase.LOADED -> state.form?.let { form ->
-                if (settingUp) { ProfileSetupPage(form, state.saving, state.error, state.jobSearch, searchJobs, change, save, Modifier.weight(1f)); return@let }
+                if (settingUp) { ProfileSetupPage(form, state.saving, state.error, state.jobSearch, searchJobs, change, save, leaveSetup, Modifier.weight(1f)); return@let }
                 if (!state.editing) { ReadOnlyProfile(form, rows, Modifier.weight(1f), recommendation, notifications); return@let }
                 Column(Modifier.weight(1f).imeNestedScroll().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
                     Text("기본 정보", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
