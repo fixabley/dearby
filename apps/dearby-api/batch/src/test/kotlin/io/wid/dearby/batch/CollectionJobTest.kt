@@ -15,6 +15,11 @@ import io.wid.dearby.batch.application.PageFetchException
 import io.wid.dearby.batch.application.PageFetcher
 import io.wid.dearby.batch.application.RenderingPageFetcher
 import io.wid.dearby.batch.job.CollectionJobConfig
+import io.wid.dearby.batch.push.FavoritePushService
+import io.wid.dearby.batch.push.PushMessage
+import io.wid.dearby.batch.push.PushResult
+import io.wid.dearby.batch.push.PushSender
+import io.wid.dearby.domain.push.PushPlatform
 import io.wid.dearby.batch.recall.RecallService
 import io.wid.dearby.batch.curation.CurationImportService
 import io.wid.dearby.domain.collection.CollectionUrlTemplate
@@ -61,6 +66,7 @@ class CollectionJobTest(
     @Autowired val curationImport: CurationImportService,
     @Autowired val buildDiscoveryQueuesJob: Job,
     @Autowired val stories: StoryBackfillService,
+    @Autowired val pushes: FavoritePushService,
 ) {
 
     @TestConfiguration
@@ -84,12 +90,26 @@ class CollectionJobTest(
             var addressResults: List<GeocodeResult> = emptyList() // 가짜 지오코더(네트워크 없음)의 주소 검색 결과
             var embeddingModel = "fake-model" // 가짜 임베딩 모델 id(모델 바꾸기 테스트에서 바꾼다)
             val embeddedTexts = mutableListOf<String>()
+            // 가짜 푸시(APNs·FCM 대신): 보낸 (토큰, 알림). 토큰에 gone이 있으면 지운 기기(410·UNREGISTERED)
+            val pushed = mutableListOf<Pair<String, PushMessage>>()
+            var pushProblem: String? = null
 
             // claude -p --output-format json 결과 모양
             fun cliResult(subtype: String = "success", turns: Int = 3) = mapOf(
                 "type" to "result", "subtype" to subtype, "is_error" to (subtype != "success"), "num_turns" to turns, "total_cost_usd" to 0.0125,
                 "usage" to mapOf("input_tokens" to 100, "cache_read_input_tokens" to 1000, "cache_creation_input_tokens" to 0, "output_tokens" to 200, "server_tool_use" to mapOf("web_search_requests" to 1)),
             )
+        }
+
+        @Bean
+        @Primary
+        fun fakePushSender() = object : PushSender {
+            override fun problem(platform: PushPlatform) = pushProblem
+            override fun send(platform: PushPlatform, token: String, message: PushMessage): PushResult {
+                if ("gone" in token) return PushResult.UNREGISTERED
+                pushed += token to message
+                return PushResult.SENT
+            }
         }
 
         // CLI 프로세스 대신 대본을 돌린다. 도구 서버·도구 처리·서비스의 대조·저장·기록은 실제 코드
@@ -999,6 +1019,97 @@ class CollectionJobTest(
         assertTrue("6주 동안 팀으로 앱을 만드는 과정" in Fakes.lastPrompt)
         // 다시 돌리면 채울 것이 없다(채운 활동은 후보에서 빠진다)
         assertTrue(stories.backfill().candidates < report.candidates)
+    }
+
+    // 즐겨찾기 알림(native-v1.md "프로그램·활동별 알림 수준"): 기기 시간대 아침 8시, 신청일만/전체, 활동 수준이 앞섬, 신규는 한 번, 3개 넘으면 묶음, 지운 토큰, 전체 스위치, 인증 정보 없음
+    @Test
+    fun `즐겨찾기 알림은 기기 시간대 아침 8시에 수준대로 하루 한 번 보내고 3개를 넘으면 묶으며 지운 토큰과 꺼진 스위치를 지킨다`() {
+        val seoul = java.time.ZoneId.of("Asia/Seoul")
+        val today = LocalDate.now(seoul)
+        val now = today.atTime(8, 10).atZone(seoul).toOffsetDateTime()
+        val organization = jdbc.sql("insert into organizations (name, created_at, updated_at) values ('알림 확인 조직', localtimestamp, localtimestamp) returning id").query(Long::class.java).single()
+        val programId = jdbc.sql("insert into programs (organization_id, name, created_at, updated_at) values (?, '알림 프로그램', localtimestamp, localtimestamp) returning id").param(organization).query(Long::class.java).single()
+        fun activity(name: String, publishedAt: java.time.OffsetDateTime? = null): Long = jdbc.sql(
+            """
+            insert into activities (program_id, name, description, participation_type, recruitment_status, official_url, freshness, source_note, publication_status, published_at, created_at, updated_at)
+            values (?, ?, '', 'SELECTION', 'UNKNOWN', 'https://example.com', 'STALE', '', 'PUBLISHED', ?, localtimestamp, localtimestamp) returning id
+            """
+        ).param(programId).param(name).param(publishedAt).query(Long::class.java).single()
+        fun recruiting(id: Long, start: java.time.OffsetDateTime, end: java.time.OffsetDateTime) = jdbc.sql(
+            """
+            insert into schedules (activity_id, slot, title, kind, status, time_type, start_at, end_at, time_zone, date_label, sequence, created_at, updated_at)
+            values (?, 'APPLICATION', '신청 기간', 'DEADLINE', 'CONFIRMED', 'TIMED', ?, ?, 'Asia/Seoul', '', 0, localtimestamp, localtimestamp)
+            """
+        ).params(id, start, end).update()
+        fun period(id: Long, start: LocalDate?) = jdbc.sql(
+            """
+            insert into schedules (activity_id, slot, title, kind, status, time_type, start_date, end_date_exclusive, date_label, sequence, created_at, updated_at)
+            values (?, 'ACTIVITY', '행사', 'EVENT', 'CONFIRMED', ?, ?, ?, '미정', 0, localtimestamp, localtimestamp)
+            """
+        ).param(id).param(start?.let { "ALL_DAY" }).param(start).param(start?.plusDays(2)).update()
+        // 새로 게시되어 열림(신규), 오늘 모집 시작, 내일 마감, 오늘 행사 둘
+        val fresh = activity("알림 신규", publishedAt = now.minusHours(1)).also { recruiting(it, now.minusMinutes(40), now.plusDays(10)); period(it, null) }
+        val starting = activity("알림 모집 시작").also { recruiting(it, now.minusHours(1), now.plusDays(10)); period(it, null) }
+        val closing = activity("알림 마감 전날").also { recruiting(it, now.minusDays(3), today.plusDays(1).atTime(18, 0).atZone(seoul).toOffsetDateTime()); period(it, null) }
+        val eventA = activity("알림 행사 하나").also { period(it, today) }
+        val eventB = activity("알림 행사 둘").also { period(it, today) }
+        fun user(level: String, device: String, timeZone: String = "Asia/Seoul"): java.util.UUID = java.util.UUID.randomUUID().also { id ->
+            jdbc.sql("insert into users (id) values (?)").param(id).update()
+            jdbc.sql("insert into user_favorites (user_id, target_type, target_id, notify_level, created_at) values (?, 'PROGRAM', ?, ?, ?)").params(id, programId, level, now.minusDays(1)).update()
+            jdbc.sql("insert into push_devices (token, user_id, platform, time_zone, updated_at) values (?, ?, 'IOS', ?, now())").params(device, id, timeZone).update()
+        }
+        val applicationOnly = user("APPLICATION", "push-a")
+        jdbc.sql("insert into push_devices (token, user_id, platform, time_zone, updated_at) values ('push-gone', ?, 'ANDROID', 'Asia/Seoul', now())").param(applicationOnly).update()
+        jdbc.sql("insert into push_devices (token, user_id, platform, time_zone, updated_at) values ('push-ny', ?, 'IOS', 'America/New_York', now())").param(applicationOnly).update()
+        val everything = user("ALL", "push-b")
+        jdbc.sql("insert into user_favorites (user_id, target_type, target_id, notify_level, created_at) values (?, 'ACTIVITY', ?, 'NONE', now())").params(everything, closing).update()
+        val switchedOff = user("ALL", "push-c")
+        jdbc.sql("insert into notification_settings (user_id, new_recruitment, updated_at) values (?, false, now())").param(switchedOff).update()
+        fun sent(token: String) = Fakes.pushed.filter { it.first == token }.map { it.second }
+        val users = listOf(applicationOnly, everything, switchedOff)
+        try {
+            Fakes.pushed.clear()
+            pushes.send(now)
+
+            // 신청일만: 신규(모집 시작은 신규에 포함) · 모집 시작 · 내일 마감, 행사는 빠진다. 서울 8시 기기만(뉴욕 기기는 아직)
+            val a = sent("push-a")
+            assertEquals(listOf("알림 프로그램 새 모집이 열렸어요", "알림 모집 시작 모집이 시작됐어요", "알림 마감 전날 내일 마감").sorted(), a.map { it.title }.sorted())
+            val newOne = a.single { it.activityId == fresh }
+            assertEquals("https://dearby.wid.io.kr/activities/$fresh", newOne.url)
+            assertEquals("알림 신규 · ${now.plusDays(10).monthValue}월 ${now.plusDays(10).dayOfMonth}일 마감", newOne.body)
+            assertTrue(sent("push-ny").isEmpty())
+            // 지운 기기(410·UNREGISTERED)는 토큰을 지운다
+            assertEquals(0, jdbc.sql("select count(*) from push_devices where token = 'push-gone'").query(Int::class.java).single())
+            // 전체: 행사 둘까지 4개(마감 전날은 활동 수준 없음이 앞선다) → "오늘 일정 4개" 하나, 즐겨찾기 캘린더로
+            val b = sent("push-b").single()
+            assertEquals("오늘 일정 4개", b.title)
+            assertEquals(null, b.activityId)
+            assertEquals("dearby://favorites?view=calendar", b.url)
+            assertEquals(4, jdbc.sql("select count(*) from push_deliveries where user_id = ?").param(everything).query(Int::class.java).single())
+            // 전체 스위치가 꺼지면 보내지 않는다
+            assertTrue(sent("push-c").isEmpty())
+            assertTrue(starting > 0 && eventA > 0 && eventB > 0)
+
+            // 같은 날 다시 돌려도 보내지 않고, 다음 날에는 신규를 다시 보내지 않는다(마감 당일만)
+            Fakes.pushed.clear()
+            pushes.send(now.plusMinutes(30))
+            assertTrue(Fakes.pushed.isEmpty())
+            pushes.send(now.plusDays(1))
+            assertEquals(listOf("알림 마감 전날 오늘 마감"), sent("push-a").map { it.title })
+
+            // 인증 정보가 없으면 발송만 건너뛴다(기기 시각과 상관없는 수동 실행도)
+            Fakes.pushed.clear()
+            Fakes.pushProblem = "APNS_KEY_P8 없음"
+            jdbc.sql("delete from push_deliveries").update()
+            assertEquals(0, pushes.send(now, anyHour = true).notifications)
+            assertTrue(Fakes.pushed.isEmpty())
+        } finally {
+            Fakes.pushProblem = null
+            users.forEach { jdbc.sql("delete from users where id = ?").param(it).update() }
+            jdbc.sql("delete from activities where program_id = ?").param(programId).update()
+            jdbc.sql("delete from programs where id = ?").param(programId).update()
+            jdbc.sql("delete from organizations where id = ?").param(organization).update()
+        }
     }
 
 }

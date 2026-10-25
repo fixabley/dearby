@@ -7,6 +7,8 @@ import io.wid.dearby.adaptor.web.v1.discovery.SceneResponse
 import io.wid.dearby.application.discovery.DiscoveryQueueService
 import io.wid.dearby.application.discovery.QueuePage
 import io.wid.dearby.application.discovery.StoryScenes
+import io.wid.dearby.application.favorite.FavoriteService
+import io.wid.dearby.domain.favorite.FavoriteIds
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
@@ -27,16 +29,16 @@ import java.util.UUID
 // native-v1.md "맞춤 대기열(스토리형 쇼츠)": 로그인 사용자의 오늘 대기열과 반응 신호. 비로그인은 추천 API와 기기 저장을 쓴다
 @RestController
 @RequestMapping("/v1/me")
-class DiscoveryQueueController(private val queue: DiscoveryQueueService) {
+class DiscoveryQueueController(private val queue: DiscoveryQueueService, private val favorites: FavoriteService) {
 
     @GetMapping("/discovery-queue")
     fun get(@AuthenticationPrincipal jwt: Jwt, @RequestHeader(HttpHeaders.ACCEPT_LANGUAGE, required = false) acceptLanguage: String?) =
-        respond(queue.queue(UUID.fromString(jwt.subject)), acceptLanguage)
+        respond(queue.queue(UUID.fromString(jwt.subject)), favorites.ids(UUID.fromString(jwt.subject)), acceptLanguage)
 
     // 더 받기: 남은 후보로 10개를 뒤에 붙인 오늘 대기열 전체
     @PostMapping("/discovery-queue/refill")
     fun refill(@AuthenticationPrincipal jwt: Jwt, @RequestHeader(HttpHeaders.ACCEPT_LANGUAGE, required = false) acceptLanguage: String?) =
-        respond(queue.refill(UUID.fromString(jwt.subject)), acceptLanguage)
+        respond(queue.refill(UUID.fromString(jwt.subject)), favorites.ids(UUID.fromString(jwt.subject)), acceptLanguage)
 
     @PostMapping("/recommendation-signals")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -49,12 +51,12 @@ class DiscoveryQueueController(private val queue: DiscoveryQueueService) {
     fun undo(@AuthenticationPrincipal jwt: Jwt, @RequestParam activityId: Long, @RequestParam kind: String) =
         queue.undo(UUID.fromString(jwt.subject), activityId, kind)
 
-    private fun respond(page: QueuePage, acceptLanguage: String?): ResponseEntity<DiscoveryQueueResponse> {
+    private fun respond(page: QueuePage, mine: FavoriteIds, acceptLanguage: String?): ResponseEntity<DiscoveryQueueResponse> {
         val language = ResponseLanguage.from(acceptLanguage)
         val items = page.items.map {
-            val activity = ActivityResponse.from(it.listing, language)
+            val activity = ActivityResponse.from(it.listing, language, mine)
             DiscoveryQueueItemResponse(
-                activity, ProgramSummaryResponse.from(it.program, language), it.reasons,
+                activity, ProgramSummaryResponse.from(it.program, language, mine), it.reasons,
                 StoryScenes.of(it.listing, it.reasons).map { s -> SceneResponse.from(s, activity.name) },
                 mySignal = if (it.liked) "LIKE" else null,
             )

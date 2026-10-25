@@ -2,7 +2,12 @@ package io.wid.dearby.adaptor.web.v1.discovery
 
 import io.wid.dearby.adaptor.web.v1.activities.ResponseLanguage
 import io.wid.dearby.adaptor.web.v1.tags.TagIds
+import io.wid.dearby.application.favorite.FavoriteService
 import io.wid.dearby.application.program.ProgramSummaryService
+import io.wid.dearby.domain.favorite.FavoriteIds
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.security.oauth2.jwt.Jwt
+import java.util.UUID
 import io.wid.dearby.application.program.ProgramSummarySearch
 import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.InvalidInputException
@@ -21,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController
 // 열린 활동이 있는 프로그램만, 가장 이른 모집 마감 순. 펼칠 때는 GET /v1/activities?programId= 를 쓴다
 @RestController
 @RequestMapping("/v1/discovery/programs")
-class DiscoveryProgramController(private val summaries: ProgramSummaryService) {
+class DiscoveryProgramController(private val summaries: ProgramSummaryService, private val favorites: FavoriteService) {
 
     @GetMapping
     fun search(
@@ -34,6 +39,7 @@ class DiscoveryProgramController(private val summaries: ProgramSummaryService) {
         @RequestParam(defaultValue = ProgramSummaryService.DEFAULT_PAGE_SIZE.toString()) size: Int,
         @RequestParam params: Map<String, String>, // 대상자 필터(age·educationStatus 등 camelCase 어휘)
         @RequestHeader(HttpHeaders.ACCEPT_LANGUAGE, required = false) acceptLanguage: String?,
+        @AuthenticationPrincipal jwt: Jwt?, // 로그인 응답에만 favorited가 켜진다
     ): ResponseEntity<ProgramSummaryPageResponse> {
         val language = ResponseLanguage.from(acceptLanguage)
         val type = participationType?.let { value ->
@@ -41,7 +47,8 @@ class DiscoveryProgramController(private val summaries: ProgramSummaryService) {
                 ?: throw InvalidInputException("participationType은 REGISTRATION 또는 SELECTION입니다")
         }
         val page = summaries.search(ProgramSummarySearch(q, type, cursor, size, EligibilityFilter.from(params), ActivityCategory.parseList(category), openOnly = openOnly, tagIds = TagIds.parse(tagIds)))
-        return ResponseEntity.ok().varyBy(HttpHeaders.ACCEPT_LANGUAGE).header(HttpHeaders.CONTENT_LANGUAGE, language.tag)
-            .body(ProgramSummaryPageResponse(page.items.map { ProgramSummaryResponse.from(it, language) }, page.nextCursor))
+        val mine = jwt?.let { favorites.ids(UUID.fromString(it.subject)) } ?: FavoriteIds.NONE
+        return ResponseEntity.ok().varyBy(HttpHeaders.ACCEPT_LANGUAGE, HttpHeaders.AUTHORIZATION).header(HttpHeaders.CONTENT_LANGUAGE, language.tag)
+            .body(ProgramSummaryPageResponse(page.items.map { ProgramSummaryResponse.from(it, language, mine) }, page.nextCursor))
     }
 }

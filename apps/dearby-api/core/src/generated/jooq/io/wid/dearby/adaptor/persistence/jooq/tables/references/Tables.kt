@@ -29,6 +29,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.GuestHandoffs
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestSessions
 import io.wid.dearby.adaptor.persistence.jooq.tables.HistoryEvidence
 import io.wid.dearby.adaptor.persistence.jooq.tables.Jobs
+import io.wid.dearby.adaptor.persistence.jooq.tables.NotificationSettings
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationLogos
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
@@ -47,6 +48,8 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaffRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
+import io.wid.dearby.adaptor.persistence.jooq.tables.PushDeliveries
+import io.wid.dearby.adaptor.persistence.jooq.tables.PushDevices
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationPreferences
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals
@@ -61,6 +64,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivityScheduleStatuse
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserConsents
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserFavorites
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserOrgAffinity
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles
@@ -191,6 +195,11 @@ val HISTORY_EVIDENCE: HistoryEvidence = HistoryEvidence.HISTORY_EVIDENCE
 val JOBS: Jobs = Jobs.JOBS
 
 /**
+ * The table <code>public.notification_settings</code>.
+ */
+val NOTIFICATION_SETTINGS: NotificationSettings = NotificationSettings.NOTIFICATION_SETTINGS
+
+/**
  * The table <code>public.organization_contacts</code>.
  */
 val ORGANIZATION_CONTACTS: OrganizationContacts = OrganizationContacts.ORGANIZATION_CONTACTS
@@ -281,6 +290,16 @@ val PROGRAM_TAGS: ProgramTags = ProgramTags.PROGRAM_TAGS
 val PROGRAMS: Programs = Programs.PROGRAMS
 
 /**
+ * The table <code>public.push_deliveries</code>.
+ */
+val PUSH_DELIVERIES: PushDeliveries = PushDeliveries.PUSH_DELIVERIES
+
+/**
+ * The table <code>public.push_devices</code>.
+ */
+val PUSH_DEVICES: PushDevices = PushDevices.PUSH_DEVICES
+
+/**
  * The table <code>public.receipts</code>.
  */
 val RECEIPTS: Receipts = Receipts.RECEIPTS
@@ -349,6 +368,11 @@ val USER_CREDENTIALS: UserCredentials = UserCredentials.USER_CREDENTIALS
  * The table <code>public.user_entities</code>.
  */
 val USER_ENTITIES: UserEntities = UserEntities.USER_ENTITIES
+
+/**
+ * The table <code>public.user_favorites</code>.
+ */
+val USER_FAVORITES: UserFavorites = UserFavorites.USER_FAVORITES
 
 /**
  * The table <code>public.user_identities</code>.

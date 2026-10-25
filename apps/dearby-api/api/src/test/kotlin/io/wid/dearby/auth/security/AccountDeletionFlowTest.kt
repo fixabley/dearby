@@ -89,6 +89,11 @@ class AccountDeletionFlowTest(
         jdbc.sql("insert into user_org_affinity (user_id, organization_id, score, updated_at) values (?, ?, 0.5, now())").params(id, organization).update()
         jdbc.sql("insert into user_taste (user_id, model, embedding, updated_at) values (?, 'test', ('[' || array_to_string(array_fill(0.01, array[1024]), ',') || ']')::halfvec, now())").param(id).update()
         jdbc.sql("insert into discovery_queue (user_id, queue_date, position, activity_id, reasons, generated_at) values (?, current_date, 0, ?, '[]', now())").params(id, activity).update()
+        // 즐겨찾기·푸시(native-v1.md "즐겨찾기(하트)·새 모집 푸시 알림"): 즐겨찾기·기기 토큰·알림 설정·보낸 기록도 users cascade
+        jdbc.sql("insert into user_favorites (user_id, target_type, target_id, created_at) values (?, 'ACTIVITY', ?, now())").params(id, activity).update()
+        jdbc.sql("insert into push_devices (token, user_id, platform, updated_at) values (?, ?, 'IOS', now())").params("token-$id", id).update()
+        jdbc.sql("insert into notification_settings (user_id, new_recruitment, updated_at) values (?, false, now())").param(id).update()
+        jdbc.sql("insert into push_deliveries (user_id, activity_id, kind, delivery_date, sent_at) values (?, ?, 'DEADLINE', current_date, now())").params(id, activity).update()
         // 패스키: user handle = UUID 16바이트(base64url)
         jdbc.sql("insert into user_entities (id, name, display_name) values (?, 'Dearby', 'Dearby')").param(handle(id)).update()
         appleToken?.let {
@@ -175,7 +180,7 @@ class AccountDeletionFlowTest(
         assertEquals(0, count("user_activities", "user_id", user.id))
         assertEquals(0, count("user_activity_schedule_statuses", "user_activity_id", user.id))
         assertEquals(1, count("user_activity_schedule_statuses", "user_activity_id", other.id))
-        for (table in listOf("recommendation_signals", "user_org_affinity", "user_taste", "discovery_queue")) {
+        for (table in listOf("recommendation_signals", "user_org_affinity", "user_taste", "discovery_queue", "user_favorites", "push_devices", "notification_settings", "push_deliveries")) {
             assertEquals(0, count(table, "user_id", user.id), table)
             assertEquals(1, count(table, "user_id", other.id), table)
         }

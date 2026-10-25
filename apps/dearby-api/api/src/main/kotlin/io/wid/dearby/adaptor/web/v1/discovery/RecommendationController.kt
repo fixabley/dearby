@@ -3,6 +3,7 @@ package io.wid.dearby.adaptor.web.v1.discovery
 import io.wid.dearby.adaptor.web.v1.activities.ActivityResponse
 import io.wid.dearby.adaptor.web.v1.activities.ResponseLanguage
 import io.wid.dearby.application.discovery.StoryScenes
+import io.wid.dearby.application.favorite.FavoriteService
 import io.wid.dearby.application.recommendation.RecommendationService
 import org.springframework.http.HttpHeaders
 import org.springframework.http.ResponseEntity
@@ -19,7 +20,7 @@ import java.util.UUID
 // 저장된 설정과 지원 자격 정보로 고른다. 점수는 내보내지 않고 이유(reasons)만 싣는다
 @RestController
 @RequestMapping("/v1/discovery/recommendations")
-class RecommendationController(private val recommendations: RecommendationService) {
+class RecommendationController(private val recommendations: RecommendationService, private val favorites: FavoriteService) {
 
     @GetMapping
     fun recommend(
@@ -28,10 +29,12 @@ class RecommendationController(private val recommendations: RecommendationServic
         @RequestHeader(HttpHeaders.ACCEPT_LANGUAGE, required = false) acceptLanguage: String?,
     ): ResponseEntity<RecommendationPageResponse> {
         val language = ResponseLanguage.from(acceptLanguage)
-        val page = recommendations.recommend(UUID.fromString(jwt.subject), size)
+        val userId = UUID.fromString(jwt.subject)
+        val page = recommendations.recommend(userId, size)
+        val mine = favorites.ids(userId)
         val items = page.items.map {
-            val activity = ActivityResponse.from(it.listing, language)
-            RecommendationResponse(activity, ProgramSummaryResponse.from(it.program, language), it.reasons, StoryScenes.of(it.listing, it.reasons).map { s -> SceneResponse.from(s, activity.name) })
+            val activity = ActivityResponse.from(it.listing, language, mine)
+            RecommendationResponse(activity, ProgramSummaryResponse.from(it.program, language, mine), it.reasons, StoryScenes.of(it.listing, it.reasons).map { s -> SceneResponse.from(s, activity.name) })
         }
         return ResponseEntity.ok().varyBy(HttpHeaders.ACCEPT_LANGUAGE, HttpHeaders.AUTHORIZATION).header(HttpHeaders.CONTENT_LANGUAGE, language.tag)
             .body(RecommendationPageResponse(items, page.total))

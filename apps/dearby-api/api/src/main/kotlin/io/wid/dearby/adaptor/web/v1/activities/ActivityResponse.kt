@@ -6,6 +6,7 @@ import io.wid.dearby.application.activity.ActivityListing
 import io.wid.dearby.application.eligibility.EligibilityJson
 import io.wid.dearby.application.program.ProgramSummaryService
 import io.wid.dearby.domain.TagKind
+import io.wid.dearby.domain.favorite.FavoriteIds
 import tools.jackson.databind.JsonNode
 
 // 모집 여부는 application(모집 기간)으로 판단한다. 이름·설명은 요청 언어 값 하나(영문이 없으면 한글)
@@ -32,9 +33,10 @@ data class ActivityResponse(
     val cost: String?, // 비용 문구(수집·운영자). 대기열 장면 ②가 핵심 줄이 없을 때 쓴다. 없으면 null
     val hook: String?, // 맞춤 대기열 장면 ① 한 줄 소개(native-v1.md "맞춤 대기열"). 없으면 null(앱은 활동 이름)
     val highlights: List<HighlightResponse>, // 장면 ② 핵심 줄 [{icon, text}] 최대 3개. 비면 앱이 기간·장소로 만든다
+    val favorited: Boolean, // 로그인 사용자가 즐겨찾기했는지(native-v1.md "즐겨찾기(하트)"). 비로그인은 false
 ) {
     companion object {
-        fun from(listing: ActivityListing, language: ResponseLanguage): ActivityResponse {
+        fun from(listing: ActivityListing, language: ResponseLanguage, favorites: FavoriteIds = FavoriteIds.NONE): ActivityResponse {
             val activity = listing.activity
             val place = activity.activitySchedule.address?.let(PlaceResponse::from)
             return ActivityResponse(
@@ -60,6 +62,7 @@ data class ActivityResponse(
                 cost = activity.cost,
                 hook = activity.hook,
                 highlights = activity.highlights.map { HighlightResponse(it.icon.code, it.text) },
+                favorited = activity.id in favorites.activities,
             )
         }
     }
