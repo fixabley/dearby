@@ -367,6 +367,16 @@ App Store 심사 기준 5.1.1(v)에 따라 앱 안에서 계정을 지울 수 �
 - **API**: 공개 `Activity`에 `location: string|null`(기존 문구)과 `place: {name, address, lat, lng}|null`(아래 "활동 장소")을 더한다.
 - 색·글꼴은 기존 토큰. 접근성: 프로그램 카드는 `펼침/접힘` 상태를 가진 버튼, 활동 카드는 상태 칩을 라벨에 포함.
 
+## 알림 목록(발견 우상단 종) — 2026-10-25 사용자 결정
+
+사용자: "알림도 우상단에 있는데, 눌렀을 때 알림 목록 화면으로 넘어가고, 되도록 프로그램 활동 목록과 비슷한 느낌을 받았으면 좋겠어요."
+
+- **진입**: 발견 우상단 종 버튼 → 알림 목록 화면(내비게이션 푸시). 읽지 않은 알림이 있으면 종에 숫자 배지(9 넘으면 `9+`; iOS `.badge`, Android `BadgedBox`). 비로그인에서는 로그인 시트(위 "비로그인에서 만들기·추천을 막음").
+- **화면 모양(발견 프로그램 목록과 같은 느낌)**: 알림을 **프로그램 카드로 묶는다** — 카드 머리는 발견 프로그램 카드와 같은 로고·프로그램 이름·조직 이름, 오른쪽 위에 그 프로그램의 읽지 않은 수 배지(발견의 개수 배지 자리·모양 그대로). 카드를 누르면 발견처럼 펼쳐지고, 안쪽 행은 발견 활동 행 모양: 활동 이름(굵게) + 알림 종류 칩(`새 모집`·`모집 시작`·`마감 D-1`·`오늘 마감`·`발표`·`면접`·`행사`·`활동 시작`) + 받은 시각(`오늘 08:00`·`어제`·`10월 21일`) + 읽지 않은 행 왼쪽 청록 점. 행을 누르면 활동 상세(그 알림 읽음). 카드 순서는 가장 최근 알림 순, 최근 7일은 `이번 주`, 그 전은 `지난 알림` 소제목 아래. 위 오른쪽 `모두 읽음`. 비어 있으면 `즐겨찾기한 프로그램·활동의 소식이 여기에 모여요`. 자동 펼침 없음(기존 원칙).
+- **알림 목록은 푸시와 별개로 쌓인다**: 서버가 매일 만든 알림 거리(위 "프로그램·활동별 알림 수준" — 신규·신청일·전체)를 사용자 시간대 08:00 기준으로 목록에 넣는다. 푸시 권한이 없거나 `새 모집 알림`을 꺼도 목록에는 쌓인다(알림 수준 `없음`인 항목만 빠진다). 같은 사용자·활동·종류·날짜는 하나. 90일 지난 알림은 지운다.
+- **API**: `GET /v1/me/notifications?cursor=` → `{groups: [{program: ProgramSummary, unread, items: [{id, kind: NEW|APPLICATION_START|DEADLINE_EVE|DEADLINE|ANNOUNCEMENT|INTERVIEW|EVENT|ACTIVITY_START, activity: {id, name}, createdAt, readAt|null}]}], nextCursor}`(그룹은 최근 알림 순, 한 번에 20그룹), `GET /v1/me/notifications/unread-count` → `{count}`, `POST /v1/me/notifications/{id}/read`, `POST /v1/me/notifications/read-all`. 저장 `user_notifications(id, user_id, activity_id, program_id, kind, local_date, created_at, read_at)` (사용자 삭제 cascade). 푸시 발송은 이 행을 근거로 기기마다(위 기기별 중복 규칙) 보낸다. 푸시를 눌러 열면 그 알림을 읽음으로 한다(페이로드에 `notificationId` 추가).
+- 통계: `menu_open(menu=notifications_inbox)`, 행 누름 `activity_view(source=inbox)`(analytics-v1.md에 더한다).
+
 ## 즐겨찾기(하트)·새 모집 푸시 알림 — 2026-10-25 사용자 결정
 
 사용자: "조직 프로그램 활동에 하트버튼을 두는 건 어떨까? 내 활동탭에서 상단탭바로 즐겨찾기에 추가해주는 식으로" → 하트 대상 "활동 + 프로그램"(조직은 조직 화면이 생기면), 새 모집 알림 "푸시 알림까지 지금".
