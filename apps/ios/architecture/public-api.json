@@ -74,6 +74,9 @@
     "AddToCalendarSheet",
     "CalendarEventDraft"
   ],
+  "features/analytics": [
+    "AppAnalytics"
+  ],
   "pages/home": [
     "HomePage"
   ],

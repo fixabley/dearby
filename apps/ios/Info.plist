@@ -26,6 +26,18 @@
 	<string>활동 일정과 겹치는 시간을 찾기 위해 캘린더를 읽어요. 일정은 이 기기 안에서만 비교하고 저장하거나 보내지 않아요.</string>
 	<key>NSCalendarsUsageDescription</key>
 	<string>활동 일정과 겹치는 시간을 찾기 위해 캘린더를 읽어요. 일정은 이 기기 안에서만 비교하고 저장하거나 보내지 않아요.</string>
+	<key>FIREBASE_ANALYTICS_COLLECTION_ENABLED</key>
+	<false/>
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
+	<key>FirebaseAutomaticScreenReportingEnabled</key>
+	<false/>
+	<key>GOOGLE_ANALYTICS_DEFAULT_ALLOW_AD_PERSONALIZATION_SIGNALS</key>
+	<false/>
+	<key>GOOGLE_ANALYTICS_IDFV_COLLECTION_ENABLED</key>
+	<false/>
+	<key>GOOGLE_ANALYTICS_REGISTRATION_WITH_AD_NETWORK_ENABLED</key>
+	<false/>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>UIAppFonts</key>

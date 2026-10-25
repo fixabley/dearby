@@ -8,7 +8,7 @@ import Observation
 @MainActor @Observable final class RecommendationModel {
     typealias Preferences = AccountClient.RecommendationPreferences
     /// The answers in use; nil until they are read, or when there are none yet.
-    private(set) var preferences: Preferences?
+    private(set) var preferences: Preferences? { didSet { publishInterests() } }
     /// The account's answers have been read, so the funnel may decide whether to show.
     private(set) var ready = false
     /// The server's count of matching activities when it sends `total`; else the items received.
@@ -25,6 +25,8 @@ import Observation
     var needsFunnel: Bool { ready && preferences?.completedAt == nil }
     /// The funnel was opened on the way to the 맞춤 대기열 (its entry, or the result's `맞춤 대기열 보러 가기`): the app opens the queue once it closes.
     var queueAfterFunnel = false
+    /// 사용 통계 `funnel_start` entry of the funnel being shown: `auto` (first visit to 발견), `queue_row` or `profile` (set by the app).
+    @ObservationIgnored var funnelEntry = "auto"
     private var server: RecommendationServer?
     private let fetchTags: @Sendable () async throws -> [TagOption]
     init(tags: @escaping @Sendable () async throws -> [TagOption]) { fetchTags = tags }
@@ -51,6 +53,8 @@ import Observation
         guard self.server != nil else { return }
         preferences = remote
         ready = true
+        // 사용 통계 `interest_fields` names the 상위 분야, which only the tag list knows.
+        if remote?.fieldTagIds.isEmpty == false { await loadTags() }
         await refresh()
     }
     /// Counts the recommendations for the answers in use (the funnel result's `n개`); a failure keeps the last count.
@@ -64,6 +68,19 @@ import Observation
     func loadTags() async {
         guard tags.isEmpty, let loaded = try? await fetchTags() else { return }
         tags = loaded
+        publishInterests()
+    }
+    /// 사용 통계 user properties for the answers in use: `interest_fields` (상위 분야 English names, once the tags are known) and
+    /// `interest_kinds` (활동 종류 codes in lower case); cleared without answers.
+    private func publishInterests() {
+        let byID = Dictionary(tags.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        var fields: [String] = []
+        for tag in (preferences?.fieldTagIds ?? []).compactMap({ byID[$0] }) {
+            if let name = (tag.parentID.flatMap { byID[$0] } ?? tag).nameEn, !name.isEmpty, !fields.contains(name) { fields.append(name) }
+        }
+        let kinds = (preferences?.categories ?? []).map { $0.lowercased() }
+        if !tags.isEmpty || preferences == nil { AppAnalytics.userProperty("interest_fields", fields.isEmpty ? nil : fields.joined(separator: ",")) }
+        AppAnalytics.userProperty("interest_kinds", kinds.isEmpty ? nil : kinds.joined(separator: ","))
     }
     /// The funnel ended (finished, skipped to the end, or `나중에`): recorded as finished at once so it does not show again, then saved and
     /// the recommendations for those answers load (`loading`). A failed save keeps the answers for this run only.

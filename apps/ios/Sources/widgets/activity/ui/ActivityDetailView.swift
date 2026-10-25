@@ -3,6 +3,10 @@ import SwiftUI
 struct ActivityDetailView: View {
     let state: ActivityViewModel
     let activityID: String
+    /// 사용 통계 `source` of `activity_view`, `myactivity_add` and `apply_click`: where the detail was opened from (a link or a notification
+    /// overrides it, `ActivityViewModel.takeLinkSource`).
+    var source = "discovery"
+    @State private var openedFrom: String?
     @State private var showCalendar = false
     @State private var calendarDraft: CalendarEventDraft?
     private var activity: ActivityModel? { state.activity(activityID) }
@@ -30,6 +34,13 @@ struct ActivityDetailView: View {
             }
         }
         .navigationTitle("활동 상세").navigationBarTitleDisplayMode(.inline)
+        .analyticsScreen("activity_detail")
+        .onAppear {
+            guard openedFrom == nil else { return }
+            let from = state.takeLinkSource(activityID) ?? source
+            openedFrom = from
+            AppAnalytics.event("activity_view", parameters(["source": from]))
+        }
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
             // The activity's Dearby page, not the official notice (contract "유니버설 링크·App Links·활동 공유·오픈그래프"); the official
@@ -45,6 +56,9 @@ struct ActivityDetailView: View {
         .sheet(item: $calendarDraft) { AddToCalendarSheet(draft: $0).ignoresSafeArea() }
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)
     }
+    private func parameters(_ extra: [String: Any]) -> [String: Any] {
+        AppAnalytics.activity(activityID, activity).merging(extra) { $1 }
+    }
     private func identity(_ activity: ActivityModel) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 8) {
@@ -57,7 +71,7 @@ struct ActivityDetailView: View {
             // The heart, bell and `+` beside the title (contract "즐겨찾기(하트)"·"`+` 내 활동에 추가" 2026-10-25: the toolbar's 추가 is gone).
             HStack(alignment: .top, spacing: 8) {
                 Text(activity.title).font(.title.bold()).frame(maxWidth: .infinity, alignment: .leading)
-                FavoriteControls(target: .activity(activity.id), mine: (applied, { state.addToMine(activity.id) }))
+                FavoriteControls(target: .activity(activity.id), mine: (applied, { state.addToMine(activity.id, source: openedFrom ?? source) }))
             }
             Text(activity.organization).font(.headline).foregroundStyle(.secondary)
             Divider()
@@ -117,7 +131,10 @@ struct ActivityDetailView: View {
                 .buttonStyle(.borderedProminent).tint(DearbyStyle.tealFill).accessibilityIdentifier("open-application")
                 .accessibilityHint("외부 브라우저로 열려요")
                 .environment(\.openURL, OpenURLAction { opened in
-                    if !closed { state.openedApplication(activity.id) }
+                    if !closed {
+                        AppAnalytics.event("apply_click", parameters(["source": openedFrom ?? source]))
+                        state.openedApplication(activity.id)
+                    }
                     return .systemAction(opened)
                 })
             }

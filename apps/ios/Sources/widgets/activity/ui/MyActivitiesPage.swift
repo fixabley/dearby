@@ -18,11 +18,13 @@ struct MyActivitiesPage: View {
     var body: some View {
         Group {
             switch segment {
-            case .mine: mine
+            case .mine: mine.analyticsScreen("my_activity")
             case .favorites: FavoritesPage(state: state, path: $path)
             }
         }
-        .navigationDestination(for: String.self) { id in ActivityDetailView(state: state, activityID: id) }
+        .navigationDestination(for: String.self) { id in
+            ActivityDetailView(state: state, activityID: id, source: segment == .favorites ? "favorites" : "my_activity")
+        }
         .navigationDestination(for: ActivityProgressRoute.self) { route in ActivityProgressPage(state: state, activityID: route.activityID) }
         .navigationDestination(for: ProgramRoute.self) { route in ProgramDetailPage(state: state, program: route.program, path: $path) }
         // `내 활동으로` on a detail (contract "활동 상세 내 활동 행동 정리"): open that activity here — its track when it has stages, else the plain detail.
@@ -36,7 +38,7 @@ struct MyActivitiesPage: View {
         .tint(DearbyStyle.teal).navigationTitle("내 활동").navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Picker("내 활동 구역", selection: $segment) {
+                Picker("내 활동 구역", selection: $segment.reporting { AppAnalytics.event("menu_open", ["menu": $0 == .favorites ? "favorites" : "my_activity_list"]) }) {
                     ForEach(MineSegment.allCases, id: \.self) { Text($0.title).tag($0) }
                 }.pickerStyle(.segmented).accessibilityIdentifier("mine-segment")
             }

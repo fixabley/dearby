@@ -20,7 +20,8 @@ import SwiftUI
     /// once signed in and the account's answers are read, `afterSignIn` continues where the tap was going.
     @State private var signingIn = false
     @State private var afterSignIn: AfterSignIn?
-    private enum AfterSignIn { case queue, funnel }
+    /// `funnel` carries the 사용 통계 `funnel_start` entry (`queue_row` or `profile`).
+    private enum AfterSignIn { case queue, funnel(String) }
     @State private var eligibility: EligibilityModel
     @State private var tab = 0
     /// Which section the 명함 tab shows (contract "명함 탭 통합"); memory only.
@@ -33,6 +34,7 @@ import SwiftUI
     /// New key (2026-10-14) holding only "intro seen"; no earlier app data is read.
     private static let introShownKey = "dearby.onboarding.shown"
     init() {
+        AppAnalytics.start()
         let links = ConnectionProvider()
         self.links = links
         let activityModel = ActivityViewModel(programs: links.programs, activities: links.programActivities, activity: links.activity(id:),
@@ -70,10 +72,10 @@ import SwiftUI
                     IntroPage(account: account, done: finishIntro)
                 } else {
                     HomePage(selectedTab: $tab, hidesTabs: tab == 3 && profile.profile?.version == 0,
-                        discovery: { ActivityListPage(state: activityModel, queueSignedIn: account.phase == .signedIn, openQueue: openQueue,
-                                                      editRecommendations: editRecommendations, path: $0) }, mine: { MyActivitiesPage(state: activityModel, segment: $mineSegment, path: $0, explore: { tab = 0 }) },
+                        discovery: { ActivityListPage(state: activityModel, queueSignedIn: account.phase == .signedIn, openQueue: queueRowTapped,
+                                                      editRecommendations: { editRecommendations("queue_row") }, path: $0) }, mine: { MyActivitiesPage(state: activityModel, segment: $mineSegment, path: $0, explore: { tab = 0 }) },
                         cards: CardsPage(segment: $cardsSegment, cards: cards, wallet: wallet), profile: ProfilePage(state: profile, eligibility: eligibility,
-                                                                                         editRecommendations: editRecommendations,
+                                                                                         editRecommendations: { editRecommendations("profile") },
                                                                                          notifications: notifications),
                         settings: { SettingsPage(account: account, webOrigin: links.origins.web) },
                         inbox: { NotificationInboxPage(model: inbox, state: activityModel) })
@@ -101,6 +103,8 @@ import SwiftUI
             .task {
                 // The first program heart asks for notification permission (never at launch).
                 favorites.programFavorited = { Task { await notifications.requestPermissionIfNeeded() } }
+                // 사용 통계: a favorite's 분야·활동 종류 from discovery, the queue or the favorites list.
+                favorites.describe = { [activityModel, favorites, queue] in Self.tags($0, activityModel, queue, favorites) }
             }
             .onChange(of: delegate.deviceToken) { _, token in if let token { notifications.registered(token) } }
             .onChange(of: delegate.tappedNotification, initial: true) { _, id in
@@ -112,8 +116,8 @@ import SwiftUI
                 guard let tap else { return }
                 delegate.tapped = nil
                 switch tap {
-                case .link(let url): open(url)
-                case .activity(let id): Task { await activityModel.openLinked(id) }
+                case .link(let url): open(url, source: "push")
+                case .activity(let id): Task { await activityModel.openLinked(id, source: "push") }
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in notifications.timeZoneChanged() }
@@ -122,7 +126,7 @@ import SwiftUI
             // Contract "유니버설 링크·App Links·활동 공유·오픈그래프": card links open the 명함 tab's 받은 명함 section — `dearby://` (from
             // "Dearby 앱에 저장") saves right away, the web origin's `/cards/*` opens the saved detail or 공유받은 명함 보기; `/activities/*`
             // opens that activity in 발견.
-            .onOpenURL(perform: open)
+            .onOpenURL { open($0) }
             #if DEBUG
             .task { await showScreenshotScene() }
             #endif
@@ -149,7 +153,10 @@ import SwiftUI
                     if !signingIn { afterSignIn = nil }
                 case .signingIn: break
                 }
-                if phase != .signingIn { Task { await eligibility.load() } }
+                if phase != .signingIn {
+                    AppAnalytics.userProperty("signed_in", phase == .signedIn ? "yes" : "no")
+                    Task { await eligibility.load() }
+                }
             }
             // The account's answers arrived after a sign-in from the queue row or 관심 분야·활동 종류 (the sheet may still be closing).
             .onChange(of: recommendations.ready) { _, _ in continueAfterSignIn() }
@@ -158,7 +165,7 @@ import SwiftUI
                 #if DEBUG
                 if ScreenshotScene.current != nil { return }
                 #endif
-                if show { recommendations.presentingFunnel = true }
+                if show { presentFunnel("auto") }
             }
             .fullScreenCover(isPresented: $recommendations.presentingFunnel, onDismiss: {
                 guard recommendations.queueAfterFunnel else { return }
@@ -170,6 +177,8 @@ import SwiftUI
             // Signed in, the server judges 지원 자격 with the saved values: a change reloads the recommendations.
             .onChange(of: eligibility.profile) { _, _ in
                 recommendations.hasEligibility = eligibility.hasValues
+                // 사용 통계: whether 지원 자격 정보 was entered, never its values.
+                AppAnalytics.userProperty("has_eligibility", eligibility.hasValues ? "yes" : "no")
                 Task { await recommendations.refresh() }
             }
             .alert(activityModel.notice ?? "", isPresented: Binding(get: { activityModel.notice != nil },
@@ -193,8 +202,21 @@ import SwiftUI
             }
         }
     }
-    /// A link the app was opened with, or a tapped notification's `url`.
-    private func open(_ url: URL) {
+    /// 사용 통계 `field`/`category` of a favorite, from whichever list has it.
+    private static func tags(_ target: FavoriteTarget, _ discovery: ActivityViewModel, _ queue: DiscoveryQueueModel,
+                             _ favorites: FavoritesModel) -> [String: Any] {
+        switch target {
+        case .activity(let id):
+            let activity = discovery.activity(id) ?? queue.items.first { $0.id == id }?.activity ?? favorites.activities.first { $0.id == id }?.activity
+            return AppAnalytics.tags(activity?.fieldTags ?? [], activity?.category)
+        case .program(let id):
+            let program = discovery.programs.first { $0.id == id } ?? favorites.programs.first { $0.id == id }?.program
+            return AppAnalytics.tags(program?.fieldTags ?? [], nil)
+        }
+    }
+    /// A link the app was opened with, or a tapped notification's `url`; `source` is the 사용 통계 `activity_view` source of an activity it
+    /// opens (`link`, or `push` for a tapped notification).
+    private func open(_ url: URL, source: String = "link") {
         // The Google SDK's own redirect comes back here first (contract "구글 로그인").
         if GoogleNativeSignIn.handle(url) { return }
         switch IncomingLink(url: url, web: links.origins.web) {
@@ -206,7 +228,7 @@ import SwiftUI
             tab = 2
             cardsSegment = .received
             Task { await wallet.view(incoming) }
-        case .activity(let id): Task { await activityModel.openLinked(id) }
+        case .activity(let id): Task { await activityModel.openLinked(id, source: source) }
         case .favorites(let calendar):
             tab = 1
             mineSegment = .favorites
@@ -228,6 +250,11 @@ import SwiftUI
         }
     }
     #endif
+    /// The 발견 row `오늘의 맞춤 대기열` (사용 통계 `menu_open(queue)` once per tap; a continuation after sign-in is not another tap).
+    private func queueRowTapped() {
+        AppAnalytics.event("menu_open", ["menu": "queue"])
+        openQueue()
+    }
     /// `오늘의 맞춤 대기열`: signed out, sign-in first; then the funnel when it was never finished, then the queue (after the funnel closes).
     private func openQueue() {
         if account.phase != .signedIn {
@@ -235,19 +262,26 @@ import SwiftUI
             signingIn = true
         } else if recommendations.needsFunnel {
             recommendations.queueAfterFunnel = true
-            recommendations.presentingFunnel = true
+            presentFunnel("queue_row")
         } else {
             showsQueue = true
         }
     }
-    /// Reopens the 추천 funnel; signed out, sign-in first.
-    private func editRecommendations() {
+    /// Reopens the 추천 funnel; signed out, sign-in first. `entry`: the queue row's 설정 (`queue_row`, menu `funnel`) or 프로필
+    /// `관심 분야·활동 종류` (`profile`, menu `interests`).
+    private func editRecommendations(_ entry: String) {
+        AppAnalytics.event("menu_open", ["menu": entry == "profile" ? "interests" : "funnel"])
         if account.phase == .signedIn {
-            recommendations.presentingFunnel = true
+            presentFunnel(entry)
         } else {
-            afterSignIn = .funnel
+            afterSignIn = .funnel(entry)
             signingIn = true
         }
+    }
+    /// Shows the 추천 funnel; `entry` is its 사용 통계 `funnel_start` entry (`auto`, `queue_row`, `profile`).
+    private func presentFunnel(_ entry: String) {
+        recommendations.funnelEntry = entry
+        recommendations.presentingFunnel = true
     }
     /// After the sign-in sheet closes: nothing when it closed without signing in; otherwise, once the answers are read, the queue or the funnel.
     private func continueAfterSignIn() {
@@ -257,7 +291,7 @@ import SwiftUI
         afterSignIn = nil
         switch next {
         case .queue: openQueue()
-        case .funnel: recommendations.presentingFunnel = true
+        case .funnel(let entry): presentFunnel(entry)
         }
     }
     private func finishIntro() {

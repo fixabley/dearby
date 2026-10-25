@@ -8,6 +8,8 @@ struct ProgramActivityGroups: View {
     let programID: Int64
     @Binding var path: NavigationPath
     let showsPast: Bool
+    /// 사용 통계 `myactivity_add` source: `discovery`, or `favorites` on a favorite program's page.
+    var source = "discovery"
     var body: some View {
         if let activities = state.openActivities[programID] {
             let upcoming = state.upcomingActivities[programID] ?? []
@@ -51,7 +53,7 @@ struct ProgramActivityGroups: View {
         ActivityCard(activityID: activity.id, title: activity.title, recruitment: activity.recruitment(at: state.loadedAt),
                      recruitmentText: activity.recruitmentText(at: state.loadedAt), scheduleText: activity.scheduleText(at: state.loadedAt),
                      place: activity.place?.name ?? activity.location, fieldTag: activity.fieldTags.first, traitTags: activity.traitTags) {
-            FavoriteControls(target: .activity(activity.id), mine: (state.appliedIDs.contains(activity.id), { state.addToMine(activity.id) }))
+            FavoriteControls(target: .activity(activity.id), mine: (state.appliedIDs.contains(activity.id), { state.addToMine(activity.id, source: source) }))
         } open: {
             path.append(activity.id)
         }

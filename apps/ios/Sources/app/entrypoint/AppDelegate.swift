@@ -38,6 +38,8 @@ private let log = Logger(subsystem: "com.dearby.app", category: "push")
         let activityID = (info["activityId"] as? NSNumber)?.stringValue ?? info["activityId"] as? String
         let notificationID = (info["notificationId"] as? NSNumber)?.int64Value ?? (info["notificationId"] as? String).flatMap { Int64($0) }
         await MainActor.run {
+            // 사용 통계 `push_open`: the payload carries no kind, so only the day's summary (no `activityId`) is told apart.
+            AppAnalytics.event("push_open", activityID == nil ? ["kind": "summary"] : [:])
             tappedNotification = notificationID
             tapped = url.map(Tap.link) ?? activityID.map(Tap.activity)
         }

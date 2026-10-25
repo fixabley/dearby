@@ -22,7 +22,8 @@ struct HomePage<Discovery: View, Mine: View, Cards: View, Profile: View, Setting
     // 내 활동 pushes three route types (progress track, activity detail, settings).
     @State private var minePath = NavigationPath()
     var body: some View {
-        TabView(selection: $selectedTab) {
+        // 사용 통계 `tab_select`: only a tap on the bar goes through this setter (links and buttons that switch tabs set `selectedTab` directly).
+        TabView(selection: $selectedTab.reporting { AppAnalytics.event("tab_select", ["tab": ["discovery", "my_activity", "cards", "profile"][$0]]) }) {
             Tab("발견", systemImage: "safari", value: 0) {
                 NavigationStack(path: $discoveryPath) { withSettings(discovery($discoveryPath)) }
                     .toolbar(discoveryPath.isEmpty ? .visible : .hidden, for: .tabBar)
@@ -42,7 +43,7 @@ struct HomePage<Discovery: View, Mine: View, Cards: View, Profile: View, Setting
         .tint(DearbyStyle.teal)
     }
     private func withSettings(_ root: some View) -> some View {
-        root.navigationDestination(for: SettingsRoute.self) { _ in settings() }
-            .navigationDestination(for: InboxRoute.self) { _ in inbox() }
+        root.navigationDestination(for: SettingsRoute.self) { _ in settings().analyticsMenu("settings").analyticsScreen("settings") }
+            .navigationDestination(for: InboxRoute.self) { _ in inbox().analyticsMenu("notifications_inbox").analyticsScreen("notifications_inbox") }
     }
 }

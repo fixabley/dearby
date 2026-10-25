@@ -37,7 +37,7 @@ struct ActivityProgressPage: View {
                 CenteredMessage(symbol: "checklist", title: "진행 단계가 없는 활동이에요", message: "일정이 등록되면 단계가 여기에 보여요.")
             }
         }
-        .navigationTitle("진행 단계").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("진행 단계").navigationBarTitleDisplayMode(.inline).analyticsScreen("activity_progress")
         .toolbar(.visible, for: .navigationBar)
         .background(Color(.systemBackground)).tint(DearbyStyle.teal)
         .sheet(item: $calendarStage) { stage in

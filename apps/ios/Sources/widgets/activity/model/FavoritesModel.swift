@@ -27,6 +27,8 @@ import Observation
     var signInRequested = false
     /// A program was just favorited: the app asks for notification permission the first time (contract "푸시 알림").
     @ObservationIgnored var programFavorited: () -> Void = {}
+    /// 사용 통계 `field`/`category` of a target, from what the app has loaded (set by the app).
+    @ObservationIgnored var describe: (FavoriteTarget) -> [String: Any] = { _ in [:] }
     private var server: FavoritesServer?
 
     func isFavorite(_ target: FavoriteTarget) -> Bool { levels[target] != nil }
@@ -63,6 +65,7 @@ import Observation
         guard let server else { signInRequested = true; return }
         commitPending()
         let before = levels[target]
+        log(before == nil ? "favorite_add" : "favorite_remove", target)
         if before == nil {
             levels[target] = .application
             if case .program = target { programFavorited() }
@@ -80,6 +83,7 @@ import Observation
     func setLevel(_ target: FavoriteTarget, _ level: NotifyLevel) {
         guard let server, let before = levels[target], before != level else { return }
         setStoredLevel(target, level)
+        AppAnalytics.event("notify_level_set", ["type": Self.type(target), "level": level.rawValue.lowercased()])
         send(failure: "알림 설정을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.", revert: { $0.setStoredLevel(target, before) }) {
             try await server.put(target, level)
         }
@@ -112,7 +116,22 @@ import Observation
         guard let pending, let server else { return }
         self.pending = nil
         let target = pending.target
+        log("favorite_remove", target)
         send(failure: "즐겨찾기를 해제하지 못했어요. 잠시 후 다시 시도해 주세요.", revert: { _ in }) { try await server.delete(target) }
+    }
+    /// 사용 통계 `favorite_add`/`favorite_remove`: the target's type, id and tags.
+    private func log(_ event: String, _ target: FavoriteTarget) {
+        let id = switch target {
+        case .program(let id): String(id)
+        case .activity(let id): id
+        }
+        AppAnalytics.event(event, describe(target).merging(["type": Self.type(target), "id": id]) { $1 })
+    }
+    private static func type(_ target: FavoriteTarget) -> String {
+        switch target {
+        case .program: "program"
+        case .activity: "activity"
+        }
     }
     private func drop(_ target: FavoriteTarget) {
         levels[target] = nil

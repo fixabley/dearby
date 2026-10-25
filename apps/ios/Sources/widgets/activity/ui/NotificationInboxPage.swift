@@ -45,7 +45,7 @@ struct NotificationInboxPage: View {
                     .accessibilityIdentifier("inbox-read-all")
             }
         }
-        .navigationDestination(item: $opened) { ActivityDetailView(state: state, activityID: $0) }
+        .navigationDestination(item: $opened) { ActivityDetailView(state: state, activityID: $0, source: "inbox") }
         .task { await model.load() }
     }
     @ViewBuilder private func section(_ title: String, _ groups: [InboxGroup], now: Date) -> some View {

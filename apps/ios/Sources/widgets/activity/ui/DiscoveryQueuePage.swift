@@ -11,6 +11,10 @@ struct DiscoveryQueuePage: View {
     @State private var detail: RecommendedActivity?
     @State private var choosing: RecommendedActivity?
     @State private var now = Date()
+    /// 사용 통계: cards on screen for a second this time (`queue_card_view` once each), the last card shown, and whether the end was reached.
+    @State private var viewedIDs: Set<String> = []
+    @State private var lastPosition = 0
+    @State private var reachedEnd = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -41,8 +45,20 @@ struct DiscoveryQueuePage: View {
             .foregroundStyle(.white).accessibilityLabel("닫기").padding(.trailing, 6).padding(.top, 10)
         }
         .overlay(alignment: .bottom) { notice.environment(\.colorScheme, .dark) }
-        .task { await model.load() }
-        .onDisappear { model.commitPending() }
+        .task {
+            await model.load()
+            AppAnalytics.event("queue_open", ["size": model.items.count, "seen": model.items.filter { favorites.isFavorite(.activity($0.id)) }.count])
+        }
+        .analyticsScreen("queue")
+        .onChange(of: position) { _, position in
+            guard position == Self.endID, !model.items.isEmpty, !reachedEnd else { return }
+            reachedEnd = true
+            AppAnalytics.event("queue_end", ["viewed": viewedIDs.count])
+        }
+        .onDisappear {
+            model.commitPending()
+            if !reachedEnd { AppAnalytics.event("queue_exit", ["position": lastPosition]) }
+        }
         // `+` on an added activity opens it in 내 활동: the queue gives way to that tab.
         .onChange(of: state.showInMine) { _, id in if id != nil { dismiss() } }
         .confirmationDialog("이 활동", isPresented: Binding(get: { choosing != nil }, set: { if !$0 { choosing = nil } }),
@@ -53,7 +69,7 @@ struct DiscoveryQueuePage: View {
         }
         .sheet(item: $detail) { item in
             NavigationStack {
-                ActivityDetailView(state: state, activityID: item.id)
+                ActivityDetailView(state: state, activityID: item.id, source: "queue")
                     .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { detail = nil } } }
             }
             // The app root cannot present `신청하셨나요?` over this screen, so the detail asks it here (same sheet as the root's).
@@ -66,23 +82,51 @@ struct DiscoveryQueuePage: View {
     }
     private func card(_ item: RecommendedActivity, index: Int, insets: EdgeInsets) -> some View {
         let current = (position ?? model.items.first?.id) == item.id
+        let analytics = AppAnalytics.activity(item.id, item.activity).merging(["position": index + 1]) { $1 }
+        let logLike = { if !favorites.isFavorite(.activity(item.id)) { AppAnalytics.event("queue_like", analytics) } }
         return QueueStoryCard(
             item: item, position: index + 1, count: model.items.count, current: current,
             playing: detail == nil && choosing == nil && scenePhase == .active, level: favorites.levels[.activity(item.id)],
             added: state.appliedIDs.contains(item.id), insets: insets, now: now,
-            toggleLike: { favorites.toggle(.activity(item.id)) }, doubleTapLike: { favorites.add(.activity(item.id)) },
-            setLevel: { favorites.setLevel(.activity(item.id), $0) }, addToMine: { state.addToMine(item.id) },
+            toggleLike: {
+                logLike()
+                favorites.toggle(.activity(item.id))
+            },
+            doubleTapLike: {
+                logLike()
+                favorites.add(.activity(item.id))
+            },
+            setLevel: { favorites.setLevel(.activity(item.id), $0) },
+            addToMine: {
+                state.remember(item.activity)
+                state.addToMine(item.id, source: "queue")
+            },
             detail: {
+                AppAnalytics.event("queue_detail", ["position": index + 1, "activity_id": item.id])
                 state.remember(item.activity)
                 model.viewed(item, .openDetail)
                 detail = item
             },
             next: { move(after: index) }, more: { choosing = item },
-            complete: { model.viewed(item, .complete) }, skipEarly: { model.viewed(item, .skipEarly) })
+            complete: { scenes in
+                AppAnalytics.event("queue_card_complete", ["position": index + 1, "scenes": scenes])
+                model.viewed(item, .complete)
+            },
+            skipEarly: { model.viewed(item, .skipEarly) })
+        // `queue_card_view`: a second on screen.
+        .task(id: current) {
+            guard current else { return }
+            lastPosition = index + 1
+            try? await Task.sleep(for: .seconds(1))
+            guard !Task.isCancelled, viewedIDs.insert(item.id).inserted else { return }
+            AppAnalytics.event("queue_card_view", analytics)
+        }
     }
     /// The card (and with `이 프로그램 숨기기` its program's others) leaves; the next remaining card takes its page.
     private func choose(_ choice: DiscoveryQueueModel.Choice, _ item: RecommendedActivity) {
         let following = model.items.drop { $0.id != item.id }.dropFirst().map(\.id)
+        let index = model.items.firstIndex { $0.id == item.id } ?? 0
+        AppAnalytics.event("queue_dismiss", AppAnalytics.activity(item.id, item.activity).merging(["position": index + 1, "reason": choice.signal.rawValue.lowercased()]) { $1 })
         model.choose(choice, item)
         position = following.first { id in model.items.contains { $0.id == id } } ?? Self.endID
     }

@@ -5,3 +5,4 @@ xcuserdata/
 *.xcresult
 build/
 Dearby.xcodeproj/
+Config/GoogleService-Info.plist

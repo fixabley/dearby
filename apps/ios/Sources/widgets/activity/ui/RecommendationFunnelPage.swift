@@ -12,6 +12,9 @@ struct RecommendationFunnelPage: View {
     @State private var answers: AccountClient.RecommendationPreferences
     @State private var path: [Step] = []
     private let reopened: Bool
+    /// 사용 통계: the result was reached or `나중에` pressed, so closing is not a `funnel_exit`; `funnel_complete` went out.
+    @State private var ended = false
+    @State private var completed = false
     @Environment(\.dismiss) private var dismiss
     /// `subfields(id)`: one 상위 분야's 하위 question; `allSubfields`: every picked one's on one screen (three or more picked).
     enum Step: Hashable { case fields, subfields(Int64), allSubfields, categories, traits, result }
@@ -37,6 +40,11 @@ struct RecommendationFunnelPage: View {
                 .navigationDestination(for: Step.self) { page($0) }
         }
         .tint(DearbyStyle.teal)
+        .analyticsScreen("funnel")
+        .onAppear { AppAnalytics.event("funnel_start", ["entry": model.funnelEntry]) }
+        .onDisappear {
+            if !ended { AppAnalytics.event("funnel_exit", ["step": (path.last ?? .fields).analyticsName ?? "fields"]) }
+        }
         .task { await model.loadTags() }
     }
     private var intro: some View {
@@ -44,7 +52,12 @@ struct RecommendationFunnelPage: View {
                            button: "시작하기", next: { path.append(.fields) }) {}
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("나중에") { model.finish(.init()); dismiss() }.accessibilityIdentifier("reco-later")
+                    Button("나중에") {
+                        ended = true
+                        AppAnalytics.event("funnel_later")
+                        model.finish(.init())
+                        dismiss()
+                    }.accessibilityIdentifier("reco-later")
                 }
             }
     }
@@ -79,7 +92,15 @@ struct RecommendationFunnelPage: View {
         let next = questions.drop { $0 != step }.dropFirst().first ?? .result
         return DearbyQuestionPage(progress: Double(position) / Double(questions.count + 1), title: title, message: message, button: "다음",
                                   next: { go(next) }, content: rows)
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("건너뛰기") { go(next) } } }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("건너뛰기") {
+                        AppAnalytics.event("funnel_skip", ["step": step.analyticsName ?? ""])
+                        go(next)
+                    }
+                }
+            }
+            .onAppear { AppAnalytics.event("funnel_step", ["step": step.analyticsName ?? "", "index": position, "total": questions.count]) }
     }
     /// The questions in order for what is picked now; the progress bar follows their count.
     private var questions: [Step] {
@@ -89,7 +110,10 @@ struct RecommendationFunnelPage: View {
     }
     /// Entering the result records the answers (`finish`) and loads their recommendations.
     private func go(_ step: Step) {
-        if step == .result { model.finish(answers) }
+        if step == .result {
+            ended = true
+            model.finish(answers)
+        }
         path.append(step)
     }
     // MARK: 분야
@@ -173,11 +197,31 @@ struct RecommendationFunnelPage: View {
             }
         }
         .navigationBarBackButtonHidden(model.loading)
+        // Once the count for these answers is in.
+        .onChange(of: model.loading, initial: true) { _, loading in
+            guard !loading, !completed else { return }
+            completed = true
+            AppAnalytics.event("funnel_complete", ["fields_count": answers.fieldTagIds.count, "kinds_count": answers.categories.count,
+                                                   "traits_count": answers.traitTagIds.count, "found": model.total])
+        }
     }
     /// What was picked, in the funnel's order (`데이터·AI · 부트캠프`).
     private var picked: String {
         let names = Dictionary(model.tags.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
         let categories = Self.categories.filter { answers.categories.contains($0.code.rawValue) }.map(\.label)
         return (answers.fieldTagIds.compactMap { names[$0] } + categories + answers.traitTagIds.compactMap { names[$0] }).joined(separator: " · ")
+    }
+}
+
+private extension RecommendationFunnelPage.Step {
+    /// 사용 통계 `step`: every 하위 분야 screen is `subfields`; the result has none.
+    var analyticsName: String? {
+        switch self {
+        case .fields: "fields"
+        case .subfields, .allSubfields: "subfields"
+        case .categories: "categories"
+        case .traits: "traits"
+        case .result: nil
+        }
     }
 }

@@ -117,6 +117,15 @@
 - 오류는 ProblemDetail의 `detail`(`AccountError.rejected`)을 그대로 보인다.
 - 확인하지 못한 것: 실제 서버·기기에서의 흐름(시뮬레이터 대상 빌드만 통과).
 
+## 사용 통계 (2026-10-25, Firebase Analytics)
+
+계약 `shared/contracts/analytics-v1.md`의 사용자 속성·퍼널·대기열·전환·메뉴 이벤트와 화면 이름을 보낸다(`features/analytics/AppAnalytics.swift`). 광고 ID를 쓰지 않는 `FirebaseAnalyticsCore`(12.0에서 `FirebaseAnalyticsWithoutAdIdSupport`가 바뀐 이름, `firebase-ios-sdk` 13.1.1 고정)만 넣어 ATT 창이 없다. 푸시는 Firebase Messaging 없이 APNs 그대로다.
+
+- 설정 파일: `Config/GoogleService-Info.plist`(gitignore)가 있을 때만 `generate_project.rb`가 리소스로 넣는다. 없으면 빌드는 되고 통계는 꺼진다. 기기 빌드는 `~/.dearby-deploy/GoogleService-Info.plist`를 복사해 넣는다. CI(`native.yml`·`ios-testflight.yml`)는 시크릿 `IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`가 있으면 그 파일을 쓴다(`base64 -i ~/.dearby-deploy/GoogleService-Info.plist | gh secret set IOS_GOOGLE_SERVICE_INFO_PLIST_BASE64`).
+- Info.plist(두 파일 같음): `FIREBASE_ANALYTICS_COLLECTION_ENABLED` false(앱이 시작할 때 `사용 통계 보내기` 값으로 켠다), IDFV·광고 개인화 신호·광고 네트워크 등록·자동 화면 보고·앱 델리게이트 스위즐링 끔.
+- 프로필 `알림` 묶음 `사용 통계 보내기`(기본 켬, 기기 키 `dearby.analytics.enabled`, 로그인과 상관없이 보임)가 `setAnalyticsCollectionEnabled`를 바꾼다.
+- 기기에서 확인: 실행 인자 `-FIRDebugEnabled`(GA DebugView), 콘솔의 `Logging event:` 줄.
+
 ## 검증
 
 `Dearby.xcodeproj`는 저장소에 두지 않는 생성물이다(병합 충돌 방지). Xcode로 열거나 빌드하기 전에 생성한다. `xcodeproj` gem이 필요하다(`gem install --user-install xcodeproj`). 자동 테스트는 2026-10-06 사용자 요청으로 모두 지웠다. 사용자와 하나씩 다시 만든다.
