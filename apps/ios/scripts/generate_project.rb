@@ -56,7 +56,8 @@ project.targets.each do |target|
         'GOOGLE_IOS_CLIENT_ID' => ENV.fetch('GOOGLE_IOS_CLIENT_ID', ''),
         'GOOGLE_IOS_URL_SCHEME' => ENV.fetch('GOOGLE_IOS_URL_SCHEME', '')
       })
-      # Passkeys need webcredentials for the RP ID (contract "패스키 로그인") in both builds.
+      # Passkeys need webcredentials for the RP ID (contract "패스키 로그인") in both builds; aps-environment is development in Debug and
+      # production in Release (contract "즐겨찾기(하트)·새 모집 푸시 알림": the App ID and the store profile need Push Notifications).
       config.build_settings['CODE_SIGN_ENTITLEMENTS'] = config.name == 'Release' ? 'Dearby.entitlements' : 'Dearby-Debug.entitlements'
       if config.name == 'Debug'
         config.build_settings['SWIFT_ACTIVE_COMPILATION_CONDITIONS'] = 'DEBUG'

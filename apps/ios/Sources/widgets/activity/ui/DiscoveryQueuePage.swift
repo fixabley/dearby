@@ -6,6 +6,7 @@ import SwiftUI
 struct DiscoveryQueuePage: View {
     let model: DiscoveryQueueModel
     let state: ActivityViewModel
+    @Environment(FavoritesModel.self) private var favorites
     @State private var position: String?
     @State private var detail: RecommendedActivity?
     @State private var choosing: RecommendedActivity?
@@ -42,6 +43,8 @@ struct DiscoveryQueuePage: View {
         .overlay(alignment: .bottom) { notice.environment(\.colorScheme, .dark) }
         .task { await model.load() }
         .onDisappear { model.commitPending() }
+        // `+` on an added activity opens it in 내 활동: the queue gives way to that tab.
+        .onChange(of: state.showInMine) { _, id in if id != nil { dismiss() } }
         .confirmationDialog("이 활동", isPresented: Binding(get: { choosing != nil }, set: { if !$0 { choosing = nil } }),
                             titleVisibility: .hidden, presenting: choosing) { item in
             ForEach(DiscoveryQueueModel.Choice.allCases.filter { $0 != .lessField || !item.activity.fieldTags.isEmpty }) { choice in
@@ -65,8 +68,10 @@ struct DiscoveryQueuePage: View {
         let current = (position ?? model.items.first?.id) == item.id
         return QueueStoryCard(
             item: item, position: index + 1, count: model.items.count, current: current,
-            playing: detail == nil && choosing == nil && scenePhase == .active, liked: model.liked.contains(item.id), insets: insets, now: now,
-            toggleLike: { model.toggleLike(item) }, doubleTapLike: { model.like(item) },
+            playing: detail == nil && choosing == nil && scenePhase == .active, level: favorites.levels[.activity(item.id)],
+            added: state.appliedIDs.contains(item.id), insets: insets, now: now,
+            toggleLike: { favorites.toggle(.activity(item.id)) }, doubleTapLike: { favorites.add(.activity(item.id)) },
+            setLevel: { favorites.setLevel(.activity(item.id), $0) }, addToMine: { state.addToMine(item.id) },
             detail: {
                 state.remember(item.activity)
                 model.viewed(item, .openDetail)

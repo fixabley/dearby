@@ -190,6 +190,12 @@ import Observation
         loadActivities(programID)
     }
     func retryActivities(_ programID: Int64) { loadActivities(programID) }
+    /// A program page (from 즐겨찾기) shows the same groups as an expanded card: loads them unless they are loaded or loading.
+    func loadProgram(_ programID: Int64) { loadActivities(programID) }
+    /// The `+` beside an activity's heart (contract "`+` 내 활동에 추가" 2026-10-25): adds it, or once added opens it in 내 활동.
+    func addToMine(_ id: String) {
+        if appliedIDs.contains(id) { showInMine = id } else { apply(id, true) }
+    }
     private func start(_ query: String) {
         firstPage?.cancel()
         nextPage?.cancel()

@@ -46,7 +46,12 @@
     "ActivityHighlight",
     "RecommendationSignal",
     "QueueScene",
-    "AudienceLine"
+    "AudienceLine",
+    "FavoriteTarget",
+    "NotifyLevel",
+    "FavoriteProgram",
+    "FavoriteActivity",
+    "FavoriteList"
   ],
   "entities/identity": [
     "CardModel",

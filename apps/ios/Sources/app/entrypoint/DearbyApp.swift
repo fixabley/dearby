@@ -1,7 +1,14 @@
 import SwiftUI
 
 @main struct DearbyApp: App {
+    /// APNs token and notification taps (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25).
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var delegate
     @State private var activityModel: ActivityViewModel
+    @State private var favorites = FavoritesModel()
+    @State private var notifications: NotificationModel
+    /// Which half of the 내 활동 tab shows (memory only); the summary notification opens 즐겨찾기.
+    @State private var mineSegment = MineSegment.mine
+    @AppStorage(FavoritesLayout.storageKey) private var favoritesLayout = FavoritesLayout.list
     @State private var cards: MyCardsModel
     @State private var profile: ProfileModel
     @State private var wallet: WalletModel
@@ -50,6 +57,10 @@ import SwiftUI
         _recommendations = State(initialValue: RecommendationModel(tags: links.tagOptions))
         _queue = State(initialValue: DiscoveryQueueModel())
         _eligibility = State(initialValue: EligibilityModel(account: account))
+        let notifications = NotificationModel(account: account)
+        _notifications = State(initialValue: notifications)
+        // This device's push token leaves the account before 로그아웃 ends the session.
+        account.willSignOut = { await notifications.signingOut($0) }
     }
     var body: some Scene {
         WindowGroup {
@@ -59,9 +70,10 @@ import SwiftUI
                 } else {
                     HomePage(selectedTab: $tab, hidesTabs: tab == 3 && profile.profile?.version == 0,
                         discovery: { ActivityListPage(state: activityModel, queueSignedIn: account.phase == .signedIn, openQueue: openQueue,
-                                                      editRecommendations: editRecommendations, path: $0) }, mine: { MyActivitiesPage(state: activityModel, path: $0, explore: { tab = 0 }) },
+                                                      editRecommendations: editRecommendations, path: $0) }, mine: { MyActivitiesPage(state: activityModel, segment: $mineSegment, path: $0, explore: { tab = 0 }) },
                         cards: CardsPage(segment: $cardsSegment, cards: cards, wallet: wallet), profile: ProfilePage(state: profile, eligibility: eligibility,
-                                                                                         editRecommendations: editRecommendations),
+                                                                                         editRecommendations: editRecommendations,
+                                                                                         notifications: notifications),
                         settings: { SettingsPage(account: account, webOrigin: links.origins.web) })
                     .fullScreenCover(isPresented: $showsQueue) {
                         DiscoveryQueuePage(model: queue, state: activityModel)
@@ -69,29 +81,39 @@ import SwiftUI
                     .sheet(isPresented: $signingIn, onDismiss: continueAfterSignIn) {
                         NavigationStack { SignInSheet(account: account) {} }
                     }
+                    .alert(favorites.notice ?? "", isPresented: Binding(get: { favorites.notice != nil }, set: { if !$0 { favorites.notice = nil } })) {
+                        Button("확인", role: .cancel) {}
+                    }
                 }
             }
+            // Every heart reads the one favorites model, also inside sheets and the queue.
+            .environment(favorites)
+            // A heart pressed signed out opens the sign-in sheet (contract "즐겨찾기(하트)": 로그인만).
+            .onChange(of: favorites.signInRequested) { _, requested in
+                guard requested else { return }
+                favorites.signInRequested = false
+                signingIn = true
+            }
+            .task {
+                // The first program heart asks for notification permission (never at launch).
+                favorites.programFavorited = { Task { await notifications.requestPermissionIfNeeded() } }
+            }
+            .onChange(of: delegate.deviceToken) { _, token in if let token { notifications.registered(token) } }
+            .onChange(of: delegate.tapped, initial: true) { _, tap in
+                guard let tap else { return }
+                delegate.tapped = nil
+                switch tap {
+                case .link(let url): open(url)
+                case .activity(let id): Task { await activityModel.openLinked(id) }
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in notifications.timeZoneChanged() }
             // One accent for every screen and sheet, including those presented from this root (contract "색 체계").
             .tint(DearbyStyle.teal)
             // Contract "유니버설 링크·App Links·활동 공유·오픈그래프": card links open the 명함 tab's 받은 명함 section — `dearby://` (from
             // "Dearby 앱에 저장") saves right away, the web origin's `/cards/*` opens the saved detail or 공유받은 명함 보기; `/activities/*`
             // opens that activity in 발견.
-            .onOpenURL { url in
-                // The Google SDK's own redirect comes back here first (contract "구글 로그인").
-                if GoogleNativeSignIn.handle(url) { return }
-                switch IncomingLink(url: url, web: links.origins.web) {
-                case .saveCard(let incoming):
-                    tab = 2
-                    cardsSegment = .received
-                    Task { await wallet.receive(incoming) }
-                case .viewCard(let incoming):
-                    tab = 2
-                    cardsSegment = .received
-                    Task { await wallet.view(incoming) }
-                case .activity(let id): Task { await activityModel.openLinked(id) }
-                case nil: break
-                }
-            }
+            .onOpenURL(perform: open)
             #if DEBUG
             .task { await showScreenshotScene() }
             #endif
@@ -103,12 +125,15 @@ import SwiftUI
                 switch phase {
                 case .signedIn:
                     Task { await activityModel.signedIn(links.mineServer(account)) }
+                    Task { await favorites.signedIn(links.favoritesServer(account)) }
+                    Task { await notifications.refresh() }
                     Task { await recommendations.signedIn(links.recommendationServer(account)) }
                     Task { await queue.signedIn(links.discoveryQueueServer(account)) }
                 case .signedOut:
                     activityModel.signedOut()
                     recommendations.signedOut()
                     queue.signedOut()
+                    favorites.signedOut()
                     // A failed attempt inside the open sheet keeps it; a sign-out later drops a continuation that never ran.
                     if !signingIn { afterSignIn = nil }
                 case .signingIn: break
@@ -141,13 +166,38 @@ import SwiftUI
                 Button("확인", role: .cancel) {}
             }
             .onChange(of: scene) { _, phase in
-                if phase == .background { activityModel.appLeft() } else if phase == .active { activityModel.appReturned() }
+                if phase == .background { activityModel.appLeft() } else if phase == .active {
+                    activityModel.appReturned()
+                    // The permission may have changed in Settings.
+                    if account.phase == .signedIn { Task { await notifications.refresh() } }
+                }
             }
             .sheet(item: Binding(get: { activityModel.asking }, set: { if $0 == nil { activityModel.answer(.notYet) } })) { activity in
                 ApplyConfirmationSheet(activityTitle: activity.title, applied: { activityModel.answer(.applied) },
                                        notYet: { activityModel.answer(.notYet) }, neverAsk: { activityModel.answer(.neverAsk) })
                     .presentationDetents([.medium])
             }
+        }
+    }
+    /// A link the app was opened with, or a tapped notification's `url`.
+    private func open(_ url: URL) {
+        // The Google SDK's own redirect comes back here first (contract "구글 로그인").
+        if GoogleNativeSignIn.handle(url) { return }
+        switch IncomingLink(url: url, web: links.origins.web) {
+        case .saveCard(let incoming):
+            tab = 2
+            cardsSegment = .received
+            Task { await wallet.receive(incoming) }
+        case .viewCard(let incoming):
+            tab = 2
+            cardsSegment = .received
+            Task { await wallet.view(incoming) }
+        case .activity(let id): Task { await activityModel.openLinked(id) }
+        case .favorites(let calendar):
+            tab = 1
+            mineSegment = .favorites
+            if calendar { favoritesLayout = .calendar }
+        case nil: break
         }
     }
     #if DEBUG

@@ -6,18 +6,49 @@ import SwiftUI
 /// was deleted show as "삭제된 활동" with only 빼기. With nothing applied the whole page is one centred message (contract "비스크롤 화면 배치·CTA"). The bar is the system navigation bar
 /// (contract "iOS 상단 바는 시스템 내비게이션 바"·"상단 바 구성" 2026-10-20): inline title, 설정·알림 on the trailing side. The old `예시` badge is gone and
 /// the `더 보기` menu stays hidden: there is no example dataset for a `예시 데이터 보기/숨기기` item to toggle (내 활동 is the user's own applied marks).
+/// The tab's top is a segmented `내 활동 | 즐겨찾기` in the bar's title place (contract "즐겨찾기(하트)" 2026-10-25, iOS `Picker(.segmented)`); the
+/// app holds the choice (memory only) so a notification can open 즐겨찾기.
 struct MyActivitiesPage: View {
     let state: ActivityViewModel
+    @Binding var segment: MineSegment
     @Binding var path: NavigationPath
     let explore: () -> Void
     @State private var showEnded = false
     @State private var removing: String?
     var body: some View {
+        Group {
+            switch segment {
+            case .mine: mine
+            case .favorites: FavoritesPage(state: state, path: $path)
+            }
+        }
+        .navigationDestination(for: String.self) { id in ActivityDetailView(state: state, activityID: id) }
+        .navigationDestination(for: ActivityProgressRoute.self) { route in ActivityProgressPage(state: state, activityID: route.activityID) }
+        .navigationDestination(for: ProgramRoute.self) { route in ProgramDetailPage(state: state, program: route.program, path: $path) }
+        // `내 활동으로` on a detail (contract "활동 상세 내 활동 행동 정리"): open that activity here — its track when it has stages, else the plain detail.
+        .onChange(of: state.showInMine, initial: true) { _, id in
+            guard let id, let activity = state.activity(id) else { return }
+            state.showInMine = nil
+            segment = .mine
+            if state.progress(activity, now: Date()) != nil { path.append(ActivityProgressRoute(activityID: id)) } else { path.append(id) }
+        }
+        .background(Color(.systemGroupedBackground).ignoresSafeArea())
+        .tint(DearbyStyle.teal).navigationTitle("내 활동").navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Picker("내 활동 구역", selection: $segment) {
+                    ForEach(MineSegment.allCases, id: \.self) { Text($0.title).tag($0) }
+                }.pickerStyle(.segmented).accessibilityIdentifier("mine-segment")
+            }
+            TabRootToolbar()
+        }
+    }
+    private var mine: some View {
         let now = Date()
         let applied = state.appliedProgress(now: now)
         let active = applied.filter { !($0.progress?.ended ?? false) }
         let ended = applied.filter { $0.progress?.ended ?? false }
-        Group {
+        return Group {
             if applied.isEmpty && state.deletedIDs.isEmpty {
                 if state.mineLoading {
                     skeleton
@@ -51,17 +82,7 @@ struct MyActivitiesPage: View {
                 .refreshable { await state.syncMine() }
             }
         }
-        .navigationDestination(for: String.self) { id in ActivityDetailView(state: state, activityID: id) }
-        .navigationDestination(for: ActivityProgressRoute.self) { route in ActivityProgressPage(state: state, activityID: route.activityID) }
-        // `내 활동으로` on a detail (contract "활동 상세 내 활동 행동 정리"): open that activity here — its track when it has stages, else the plain detail.
-        .onChange(of: state.showInMine, initial: true) { _, id in
-            guard let id, let activity = state.activity(id) else { return }
-            state.showInMine = nil
-            if state.progress(activity, now: Date()) != nil { path.append(ActivityProgressRoute(activityID: id)) } else { path.append(id) }
-        }
-        .scrollContentBackground(.hidden).background(Color(.systemGroupedBackground).ignoresSafeArea())
-        .tint(DearbyStyle.teal).navigationTitle("내 활동").navigationBarTitleDisplayMode(.inline)
-        .toolbar { TabRootToolbar() }
+        .scrollContentBackground(.hidden)
         .removeFromMineDialog($removing, state: state)
     }
     /// Loading the account's list (contract "내용 로딩은 스켈레톤" 2026-10-22): progress rows filled with a sample activity.
@@ -119,5 +140,16 @@ struct MyActivitiesPage: View {
                 .accessibilityIdentifier("deleted-remove-\(id)")
         }
         .padding(14).background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous)), id: id)
+    }
+}
+
+/// The two halves of the 내 활동 tab.
+enum MineSegment: CaseIterable {
+    case mine, favorites
+    var title: String {
+        switch self {
+        case .mine: "내 활동"
+        case .favorites: "즐겨찾기"
+        }
     }
 }

@@ -32,16 +32,55 @@ enum ActivityClient {
         if !openOnly { items.append(URLQueryItem(name: "openOnly", value: "false")) }
         if let cursor { items.append(URLQueryItem(name: "cursor", value: String(cursor))) }
         let payload = try JSONDecoder().decode(ProgramPayload.self, from: try await send(api, path: "v1/discovery/programs", items))
-        return ProgramPage(items: payload.items.map { program in
-            ProgramSummary(id: program.id, name: program.name, nameEn: program.nameEn, organization: program.organization.name,
-                           openActivityCount: program.openActivityCount, nearestRecruitmentEndAt: program.nearestRecruitmentEndAt,
-                           matchedActivityIDs: program.matchedActivityIds.map(String.init), latestActivityAt: program.latestActivityAt,
-                           upcomingActivityCount: program.upcomingActivityCount ?? 0, nearestRecruitmentStartAt: program.nearestRecruitmentStartAt,
-                           fieldTags: Array((program.fieldTags ?? []).prefix(2)).map(\.tag),
-                           traitTags: (program.traitTags ?? program.tags ?? []).map(\.tag),
-                           logoURL: program.logoUrl.flatMap { URL(string: $0, relativeTo: api)?.absoluteURL })
-        }, nextCursor: payload.nextCursor)
+        return ProgramPage(items: payload.items.map { summary($0, api: api) }, nextCursor: payload.nextCursor)
     }
+    private static func summary(_ program: Program, api: URL) -> ProgramSummary {
+        ProgramSummary(id: program.id, name: program.name, nameEn: program.nameEn, organization: program.organization.name,
+                       openActivityCount: program.openActivityCount ?? 0, nearestRecruitmentEndAt: program.nearestRecruitmentEndAt,
+                       matchedActivityIDs: (program.matchedActivityIds ?? []).map(String.init), latestActivityAt: program.latestActivityAt,
+                       upcomingActivityCount: program.upcomingActivityCount ?? 0, nearestRecruitmentStartAt: program.nearestRecruitmentStartAt,
+                       fieldTags: Array((program.fieldTags ?? []).prefix(2)).map(\.tag),
+                       traitTags: (program.traitTags ?? program.tags ?? []).map(\.tag),
+                       logoURL: program.logoUrl.flatMap { URL(string: $0, relativeTo: api)?.absoluteURL })
+    }
+    /// 즐겨찾기 (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25): `GET /v1/me/favorites`, programs then activities in the server's
+    /// order. Nil on 404 (a server without favorites yet). A malformed item is dropped. A 401 throws `RecommendationFailure.unauthorized`.
+    static func fetchFavorites(api: URL, bearer: String) async throws -> FavoriteList? {
+        let data: Data
+        do { data = try await send(api, path: "v1/me/favorites", [], bearer: bearer) } catch ActivityFetchError.notFound { return nil }
+        let payload = try JSONDecoder().decode(FavoritesPayload.self, from: data)
+        return FavoriteList(
+            programs: (payload.programs ?? []).compactMap(\.value).map {
+                FavoriteProgram(program: summary($0.program, api: api), newRecruitment: $0.newRecruitment ?? false, level: NotifyLevel(raw: $0.notifyLevel))
+            },
+            activities: (payload.activities ?? []).compactMap(\.value).map {
+                FavoriteActivity(activity: model($0.activity), programName: $0.program?.value?.name ?? $0.activity.program?.name,
+                                 level: NotifyLevel(raw: $0.notifyLevel))
+            })
+    }
+    /// `PUT /v1/me/favorites/{programs|activities}/{id} {notifyLevel?}` (204, idempotent): without a level the server keeps the one it has,
+    /// or the default for a new favorite (contract "프로그램·활동별 알림 수준").
+    static func putFavorite(api: URL, _ target: FavoriteTarget, level: NotifyLevel?, bearer: String) async throws {
+        let body = try JSONEncoder().encode(LevelInput(notifyLevel: level?.rawValue))
+        _ = try await send(api, path: "v1/me/favorites/\(target.path)", [], method: "PUT", body: body, bearer: bearer)
+    }
+    static func deleteFavorite(api: URL, _ target: FavoriteTarget, bearer: String) async throws {
+        _ = try await send(api, path: "v1/me/favorites/\(target.path)", [], method: "DELETE", bearer: bearer)
+    }
+    /// The favorites screen opened the program: its `새 모집` badge goes away (`POST /v1/me/favorites/programs/{id}/seen`).
+    static func markFavoriteProgramSeen(api: URL, programID: Int64, bearer: String) async throws {
+        _ = try await send(api, path: "v1/me/favorites/programs/\(programID)/seen", [], method: "POST", body: Data("{}".utf8), bearer: bearer)
+    }
+    private struct FavoritesPayload: Decodable {
+        struct ProgramItem: Decodable { let program: Program; let newRecruitment: Bool?; let notifyLevel: String? }
+        struct ActivityItem: Decodable {
+            let activity: Activity; let program: Lenient<Named>?; let notifyLevel: String?
+        }
+        let programs: [Lenient<ProgramItem>]?
+        let activities: [Lenient<ActivityItem>]?
+    }
+    /// A nil level is left out of the JSON (`{}`).
+    private struct LevelInput: Encodable { let notifyLevel: String? }
     /// 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): `GET /v1/discovery/recommendations`, signed in only (contract
     /// "비로그인에서 만들기·추천을 막음" 2026-10-25): `bearer` is the access token and the server uses the saved preferences and 지원 자격 정보.
     /// Nil on 404 (a server without recommendations yet): the caller reads it as none. A 401 throws `RecommendationFailure.unauthorized`.
@@ -208,7 +247,8 @@ enum ActivityClient {
     }
     private struct Program: Decodable {
         let id: Int64; let name: String; let nameEn: String?; let organization: Named
-        let openActivityCount: Int; let nearestRecruitmentEndAt: String?; let matchedActivityIds: [Int64]; let latestActivityAt: String?
+        /// Both absent outside discovery (a favorite's ProgramSummary); read as 0 and none.
+        let openActivityCount: Int?; let nearestRecruitmentEndAt: String?; let matchedActivityIds: [Int64]?; let latestActivityAt: String?
         let upcomingActivityCount: Int?; let nearestRecruitmentStartAt: String?
         /// 분야 (at most two, relevance order) and 성격 tags (contract "분야·성격 태그와 아이콘" 2026-10-24); absent on older responses,
         /// which only send the mixed `tags`.

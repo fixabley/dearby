@@ -6,7 +6,7 @@ import SwiftUI
 /// 그 아래 줄 `맞는 활동 n개`, 오른쪽 모집 중 + 모집 예정 활동 수(`.borderedProminent` 캡슐 배지)와
 /// 보조 글자(`M월 d일 마감` / `M월 d일 시작` / `최근 yyyy.M`). 펼치면 배지가 `.bordered` 원형 버튼 안의 SF Symbol `chevron.down`(180° 회전, `접기`)으로 바뀐다.
 /// 머리 어디를 눌러도 `toggle`. 접근성에서는 `펼침`/`접힘` 상태를 가진 버튼으로 읽히고, 동작 줄이기에서는 배지↔화살표가 즉시 바뀐다.
-struct ProgramHeader: View {
+struct ProgramHeader<Accessory: View>: View {
     let name: String
     let organization: String
     /// The program logo, resolved against the API origin; nil without one.
@@ -23,34 +23,54 @@ struct ProgramHeader: View {
     var traitTags: [Tag] = []
     /// Activities whose name matched the search; the card says `맞는 활동 n개` and stays collapsed.
     var matchedCount = 0
+    /// `새 모집` (contract "즐겨찾기(하트)·새 모집 푸시 알림"): a badge after the name in the favorites screen.
+    var newRecruitment = false
     let expanded: Bool
-    let toggle: () -> Void
+    /// The heart and bell (`FavoriteControls`) before the badge; `EmptyView` for none.
+    @ViewBuilder var accessory: Accessory
+    /// Nil on a program page: the header is information only, without the badge button.
+    let toggle: (() -> Void)?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Button(action: toggle) {
-                HStack(alignment: .top, spacing: 12) {
-                    logo
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(name).font(.dearby(.headline)).foregroundStyle(.primary).multilineTextAlignment(.leading)
-                        Text(organization).font(.dearby(.subheadline)).foregroundStyle(.secondary)
-                        TagChipLine(field: fieldTags.first, traits: traitTags).padding(.top, 6)
-                        if let matched { Text(matched).font(.dearby(.footnote)).foregroundStyle(.secondary).padding(.top, 4) }
-                    }
-                    Spacer(minLength: 0)
-                }.contentShape(Rectangle())
-            }.buttonStyle(.plain)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(([name, organization, matched, countLabel, meta, TagChipLine.label(field: fieldTags.first, traits: traitTags)])
-                    .compactMap { $0 }.joined(separator: ", "))
-                .accessibilityValue(expanded ? "펼침" : "접힘").accessibilityHint(expanded ? "누르면 접어요" : "누르면 활동을 보여요")
-                .accessibilityIdentifier("program-\(name)")
+            if let toggle {
+                Button(action: toggle) { information }.buttonStyle(.plain)
+                    .accessibilityElement(children: .ignore).accessibilityLabel(spokenLabel)
+                    .accessibilityValue(expanded ? "펼침" : "접힘").accessibilityHint(expanded ? "누르면 접어요" : "누르면 활동을 보여요")
+                    .accessibilityIdentifier("program-\(name)")
+            } else {
+                information.accessibilityElement(children: .ignore).accessibilityLabel(spokenLabel).accessibilityAddTraits(.isHeader)
+            }
             VStack(alignment: .trailing, spacing: 6) {
-                control.frame(minHeight: 34)
-                    .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.85), value: expanded)
+                HStack(spacing: 0) {
+                    accessory
+                    if let toggle {
+                        control(toggle).frame(minHeight: 34)
+                            .animation(reduceMotion ? nil : .spring(response: 0.35, dampingFraction: 0.85), value: expanded)
+                    }
+                }
                 if let meta { Text(meta).font(.dearby(.caption2)).foregroundStyle(.secondary).lineLimit(1) }
             }
         }.padding(EdgeInsets(top: 14, leading: 16, bottom: 12, trailing: 16))
+    }
+    private var information: some View {
+        HStack(alignment: .top, spacing: 12) {
+            logo
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(name).font(.dearby(.headline)).foregroundStyle(.primary).multilineTextAlignment(.leading)
+                    if newRecruitment { DearbyBadge(title: "새 모집") }
+                }
+                Text(organization).font(.dearby(.subheadline)).foregroundStyle(.secondary)
+                TagChipLine(field: fieldTags.first, traits: traitTags).padding(.top, 6)
+                if let matched { Text(matched).font(.dearby(.footnote)).foregroundStyle(.secondary).padding(.top, 4) }
+            }
+            Spacer(minLength: 0)
+        }.contentShape(Rectangle())
+    }
+    private var spokenLabel: String {
+        [name, newRecruitment ? "새 모집" : nil, organization, matched, countLabel, meta, TagChipLine.label(field: fieldTags.first, traits: traitTags)]
+            .compactMap { $0 }.joined(separator: ", ")
     }
     /// The 44-point logo slot: the image filled and clipped to a 14-point continuous corner; the initial avatar until it loads, on failure or without a URL.
     @ViewBuilder private var logo: some View {
@@ -68,7 +88,7 @@ struct ProgramHeader: View {
             .frame(width: 44, height: 44).background(DearbyStyle.mint, in: .rect(cornerRadius: 14, style: .continuous))
     }
     /// Collapsed: the count as a prominent capsule badge. Expanded: a bordered circular chevron pointing up (`chevron.down` rotated 180°).
-    @ViewBuilder private var control: some View {
+    @ViewBuilder private func control(_ toggle: @escaping () -> Void) -> some View {
         if expanded {
             Button(action: toggle) {
                 Image(systemName: "chevron.down").font(.dearby(fixedSize: 14, weight: .semibold)).frame(width: 18, height: 18)
@@ -113,14 +133,14 @@ struct ProgramHeader: View {
         ProgramHeader(name: "부스트캠프", organization: "네이버 커넥트재단", openCount: 2,
                       nearestDeadline: ISO8601DateFormatter().date(from: "2026-11-10T09:00:00Z"),
                       fieldTags: [Tag(id: 10, name: "IT", nameEn: "it", kind: .field), Tag(id: 11, name: "데이터·AI", nameEn: "dataAi", kind: .field)],
-                      traitTags: [Tag(id: 2, name: "프로젝트", nameEn: "project"), Tag(id: 4, name: "멘토링", nameEn: "mentoring")], expanded: true) {}
+                      traitTags: [Tag(id: 2, name: "프로젝트", nameEn: "project"), Tag(id: 4, name: "멘토링", nameEn: "mentoring")], expanded: true) { EmptyView() } toggle: {}
             .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
         ProgramHeader(name: "SK AIGEN", organization: "SK", openCount: 0, upcomingCount: 1,
                       nearestStart: ISO8601DateFormatter().date(from: "2026-10-31T15:00:00Z"), traitTags: [Tag(id: 5, name: "창업", nameEn: "startup")],
-                      matchedCount: 1, expanded: false) {}
+                      matchedCount: 1, expanded: false) { EmptyView() } toggle: {}
             .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
         ProgramHeader(name: "Let'Swift", organization: "Let'Swift", openCount: 0,
-                      latestActivity: ISO8601DateFormatter().date(from: "2025-10-08T01:00:00Z"), expanded: false) {}
+                      latestActivity: ISO8601DateFormatter().date(from: "2025-10-08T01:00:00Z"), expanded: false) { EmptyView() } toggle: {}
             .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
     }.padding(16).background(Color(.systemGroupedBackground))
 }

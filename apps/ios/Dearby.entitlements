@@ -2,6 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- Push Notifications (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25): the App ID needs the capability. -->
+	<key>aps-environment</key>
+	<string>production</string>
 	<key>com.apple.developer.applesignin</key>
 	<array>
 		<string>Default</string>
