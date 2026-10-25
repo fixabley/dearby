@@ -142,7 +142,6 @@ struct ProfilePage: View {
             }
             .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
         }
-        .task { await notifications.refresh() }
         .alert(notifications.notice ?? "", isPresented: Binding(get: { notifications.notice != nil }, set: { if !$0 { notifications.notice = nil } })) {
             Button("확인", role: .cancel) {}
         }
