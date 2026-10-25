@@ -51,6 +51,22 @@ open class ClaudeCli(
         }
     }
 
+    // 도구 없이 한 번 묻는다(게시 활동 대기열 글 채우기, 2026-10-25). 페이지를 받지 않고 넘긴 글만 본다. 모델 답 글(result)을 돌려준다
+    fun ask(systemPrompt: String, prompt: String): String {
+        val workDir = Files.createTempDirectory("dearby-claude-")
+        try {
+            val command = listOf(
+                properties.cliPath, "-p", "--model", properties.model, "--output-format", "json", "--system-prompt", systemPrompt,
+                "--max-turns", "1", "--tools", "", "--strict-mcp-config", "--setting-sources", "", "--no-session-persistence",
+            )
+            val result = execute(command, prompt, workDir)
+            if (result.path("is_error").asBoolean(false)) throw IllegalStateException("claude CLI failed: ${result.path("subtype").asString("")}")
+            return result.path("result").asString("")
+        } finally {
+            workDir.toFile().deleteRecursively()
+        }
+    }
+
     // 운영에서 내려 둔 파일(COLLECTION_WORKFLOW_PATH)이 있으면 그것, 없으면 jar 안의 기본 파일을 이번 실행 폴더에 꺼내 쓴다.
     // 마운트할 파일이 없으면 Docker가 그 자리에 폴더를 만들므로 일반 파일인지 본다
     fun workflow(workDir: Path): Path =

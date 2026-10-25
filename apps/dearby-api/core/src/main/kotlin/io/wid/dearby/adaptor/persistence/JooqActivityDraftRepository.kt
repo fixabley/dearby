@@ -8,6 +8,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.references.DISMISSED_ACTIVI
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.PROGRAMS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.SCHEDULES
 import io.wid.dearby.application.collection.ActivityDraftRepository
+import io.wid.dearby.application.collection.StorylessActivity
 import io.wid.dearby.domain.*
 import io.wid.dearby.domain.collection.CollectedActivity
 import io.wid.dearby.domain.collection.DraftSaveResult
@@ -43,7 +44,11 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
             .where(ACTIVITIES.SOURCE_ID.eq(sourceId))
             .forUpdate()
             .fetchOne()
-        if (existing?.get(ACTIVITIES.PUBLICATION_STATUS) == PublicationStatus.PUBLISHED.name) return DraftSaveResult.SKIPPED_PUBLISHED
+        if (existing?.get(ACTIVITIES.PUBLICATION_STATUS) == PublicationStatus.PUBLISHED.name) {
+            // 게시 활동은 덮어쓰지 않되 비어 있는 대기열 글만 채운다(2026-10-25: 게시 활동에 hook이 하나도 없던 문제)
+            fillStory(existing.get(ACTIVITIES.ID)!!, activity.hook, activity.highlights)
+            return DraftSaveResult.SKIPPED_PUBLISHED
+        }
 
         // 운영자 지정 필드(admin-v1.md "이전 기수 정보 자동완성" 보완): curated_fields에 있는 필드만 기존 값을 지키고, 나머지는 수집값으로 갱신한다.
         // 이전 기수 자동완성: 수집값이 비어 있는 대상자 조건·대상 원문·참여 방식은 같은 프로그램의 이전 기수에서 가져오고 inherited_fields에 남긴다.
@@ -189,6 +194,24 @@ class JooqActivityDraftRepository(private val dsl: DSLContext) : ActivityDraftRe
         }
         return DraftSaveResult.SAVED
     }
+
+    override fun fillStory(activityId: Id, hook: String?, highlights: List<Highlight>): Boolean {
+        fun notCurated(field: String) = DSL.condition("not (coalesce({0}, '[]'::jsonb) @> {1}::jsonb)", ACTIVITIES.CURATED_FIELDS, DSL.inline("[\"$field\"]"))
+        val hookFilled = hook != null && dsl.update(ACTIVITIES).set(ACTIVITIES.HOOK, hook)
+            .where(ACTIVITIES.ID.eq(activityId), ACTIVITIES.HOOK.isNull, notCurated(CuratedFields.HOOK)).execute() > 0
+        val highlightsFilled = highlights.isNotEmpty() && dsl.update(ACTIVITIES).set(ACTIVITIES.HIGHLIGHTS, HighlightRows.jsonb(highlights))
+            .where(ACTIVITIES.ID.eq(activityId), ACTIVITIES.HIGHLIGHTS.isNull, notCurated(CuratedFields.HIGHLIGHTS)).execute() > 0
+        return hookFilled || highlightsFilled
+    }
+
+    override fun findStoryless(): List<StorylessActivity> =
+        dsl.select(ACTIVITIES.ID, ACTIVITIES.NAME, ACTIVITIES.DESCRIPTION).from(ACTIVITIES)
+            .where(
+                ACTIVITIES.PUBLICATION_STATUS.eq(PublicationStatus.PUBLISHED.name), ACTIVITIES.HOOK.isNull,
+                DSL.condition("not (coalesce({0}, '[]'::jsonb) @> {1}::jsonb)", ACTIVITIES.CURATED_FIELDS, DSL.inline("[\"${CuratedFields.HOOK}\"]")),
+            )
+            .orderBy(ACTIVITIES.ID)
+            .fetch { StorylessActivity(it.value1()!!, it.value2()!!, it.value3()!!) }
 
     override fun findPreviousEdition(programId: Id): PreviousEdition? = findPreviousEdition(programId, excluding = null)
 
