@@ -27,6 +27,7 @@ data class MessageAction(val label: String, val onClick: () -> Unit, val enabled
  * 아이콘(청록 채움 원 64 안의 흰 Rounded 글리프 28, [error]면 `error` 채움)·제목(`headlineSmall` 굵게)·설명(`bodyLarge` 보조색, 최대 3줄)을 가운데 두고, 행동은 아래쪽
  * 전체 너비 주 버튼 [primary]과 그 밑 텍스트 버튼 [secondary]로 둔다. 좌우 여백 24, 아래 16. 다른 글자 크기는 섞지 않는다.
  *
+ * [title]이 null이면 제목 없이 그린다(로그인 시트, 2026-10-25).
  * [symbol]은 아이콘 원 대신 그릴 것(로그인·시작 화면의 `DearbyBrand`, QR 이미지), [content]는 설명 아래 가운데 내용(동의 체크 행·오류 문구·활동 칩), [actions]는 주 버튼과
  * 텍스트 버튼 사이에 세로로 쌓이는 추가 버튼(Apple·Google 로그인; 가로 분할 금지).
  *
@@ -35,7 +36,7 @@ data class MessageAction(val label: String, val onClick: () -> Unit, val enabled
  * 시트처럼 높이가 내용에 맞는 곳에서는 최소 높이 없이 내용 높이만큼 그린다. `DearbyApp`이 인셋을 한 번 적용하므로 여기서는 안전 영역 여백을 더하지 않는다.
  */
 @Composable fun CenteredMessage(
-    icon: ImageVector?, title: String, message: String?, modifier: Modifier = Modifier, error: Boolean = false,
+    icon: ImageVector?, title: String?, message: String?, modifier: Modifier = Modifier, error: Boolean = false,
     primary: MessageAction? = null, secondary: MessageAction? = null,
     symbol: (@Composable () -> Unit)? = null, content: @Composable ColumnScope.() -> Unit = {}, actions: @Composable ColumnScope.() -> Unit = {},
 ) = BoxWithConstraints(modifier) {
@@ -51,7 +52,7 @@ data class MessageAction(val label: String, val onClick: () -> Unit, val enabled
             icon != null -> StateIcon(icon, error)
         }
         if (symbol != null || icon != null) Spacer(Modifier.height(20.dp))
-        Text(title, Modifier.semantics { heading() }, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = MaterialTheme.typography.headlineSmall)
+        if (title != null) Text(title, Modifier.semantics { heading() }, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = MaterialTheme.typography.headlineSmall)
         if (!message.isNullOrBlank()) Text(message, Modifier.padding(top = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
             maxLines = 3, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyLarge)
         Column(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
