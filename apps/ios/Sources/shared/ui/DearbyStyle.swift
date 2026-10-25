@@ -71,3 +71,12 @@ struct DearbyBrand: View {
         .accessibilityElement(children: .ignore).accessibilityLabel("Dearby")
     }
 }
+
+/// 가로 워드마크(심볼 + "Dearby", `DearbyLogo` = shared/assets/brand/wordmark-2172x724.png). 청록 단색이라 템플릿으로 그려 다크 모드에서 밝은 청록을 따른다. 로그인 시트 위에 쓴다.
+struct DearbyWordmark: View {
+    var height: CGFloat = 40
+    var body: some View {
+        Image("DearbyLogo").renderingMode(.template).resizable().scaledToFit().frame(height: height)
+            .foregroundStyle(DearbyStyle.teal).accessibilityLabel("Dearby")
+    }
+}
