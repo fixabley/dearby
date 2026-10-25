@@ -40,11 +40,11 @@ Dir.glob('Resources/Fonts/*.otf').sort.each { |file| app.resources_build_phase.a
 # Without it the app builds and 사용 통계 is off (`AppAnalytics.start`).
 firebase_config = 'Config/GoogleService-Info.plist'
 app.resources_build_phase.add_file_reference(resources.new_file(firebase_config)) if File.exist?(firebase_config)
-# 맞춤 대기열 끝 광고 (AdMob): Debug uses Google's sample app and native test unit. Release takes ADMOB_APP_ID and ADMOB_NATIVE_UNIT_ID from the
-# environment (CI: repository variables IOS_ADMOB_APP_ID / IOS_ADMOB_NATIVE_UNIT_ID); without both the unit is empty, the app never starts the SDK
-# and the ad page is left out. GADApplicationIdentifier still gets the sample app ID then, because the SDK aborts at launch when it is missing.
+# 맞춤 대기열 끝 광고 (AdMob, native-v1.md): Debug uses Google's sample app and native test unit. Release takes ADMOB_IOS_APP_ID and
+# ADMOB_IOS_QUEUE_NATIVE_UNIT_ID from the environment (CI: the repository variables of those names); without both the unit is empty, the app
+# never starts the SDK and the ad page is left out. GADApplicationIdentifier still gets the sample app ID then, because the SDK aborts at launch when it is missing.
 admob_test_app = 'ca-app-pub-3940256099942544~1458002511'
-admob_release = [ENV.fetch('ADMOB_APP_ID', ''), ENV.fetch('ADMOB_NATIVE_UNIT_ID', '')]
+admob_release = [ENV.fetch('ADMOB_IOS_APP_ID', ''), ENV.fetch('ADMOB_IOS_QUEUE_NATIVE_UNIT_ID', '')]
 admob_release = [admob_test_app, ''] if admob_release.any?(&:empty?)
 admob = { 'Debug' => [admob_test_app, 'ca-app-pub-3940256099942544/3986624511'], 'Release' => admob_release }
 project.targets.each do |target|
