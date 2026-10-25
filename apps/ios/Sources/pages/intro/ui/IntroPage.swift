@@ -26,6 +26,7 @@ struct IntroPage: View {
                 DearbyGoogleButton { Task { await account.signInWithGoogle(using: authorizationController) } }
                     .disabled(account.phase == .signingIn).accessibilityIdentifier("intro-google")
             }
+            if account.appleSignInEnabled || account.googleSignInEnabled { SignInPrivacyNotice() }
             Button { signingIn = true } label: { Text("패스키로 로그인").frame(maxWidth: .infinity) }
                 .buttonStyle(.borderedProminent).accessibilityIdentifier("intro-passkey")
             Button(action: done) { Text("둘러보기").frame(maxWidth: .infinity, minHeight: 44) }
