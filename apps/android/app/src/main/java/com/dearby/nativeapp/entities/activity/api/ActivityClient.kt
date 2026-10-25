@@ -3,6 +3,10 @@ package com.dearby.nativeapp.entities.activity.api
 import com.dearby.nativeapp.entities.activity.model.ActivityCategory
 import com.dearby.nativeapp.entities.activity.model.ActivityModel
 import com.dearby.nativeapp.entities.activity.model.EligibilityCondition
+import com.dearby.nativeapp.entities.activity.model.FavoriteActivity
+import com.dearby.nativeapp.entities.activity.model.FavoriteProgram
+import com.dearby.nativeapp.entities.activity.model.Favorites
+import com.dearby.nativeapp.entities.activity.model.NotifyLevel
 import com.dearby.nativeapp.entities.activity.model.EligibilityGroup
 import com.dearby.nativeapp.entities.activity.model.Highlight
 import com.dearby.nativeapp.entities.activity.model.ActivityPage
@@ -168,6 +172,22 @@ fun parseQueue(body: JSONObject, api: String): List<QueueItem> = body.getJSONArr
             item.optJSONArray("scenes")?.objects()?.mapNotNull { runCatching { it.scene() }.getOrNull() }?.ifEmpty { null })
     }.getOrNull()
 }
+
+/**
+ * 즐겨찾기 (`GET /v1/me/favorites`, contract "즐겨찾기(하트)·새 모집 푸시 알림"): `{programs: [{program, favoritedAt, newRecruitment, notifyLevel}],
+ * activities: [{activity, program, favoritedAt, notifyLevel}]}`; an unreadable entry is skipped, a missing `program` falls back to the activity's.
+ */
+fun parseFavorites(body: JSONObject, api: String): Favorites = Favorites(
+    body.optJSONArray("programs")?.objects()?.mapNotNull { item ->
+        runCatching { FavoriteProgram(item.getJSONObject("program").programSummary(api), item.text("favoritedAt"), item.optBoolean("newRecruitment"), NotifyLevel.of(item.text("notifyLevel"))) }.getOrNull()
+    }.orEmpty(),
+    body.optJSONArray("activities")?.objects()?.mapNotNull { item ->
+        runCatching {
+            val activity = item.getJSONObject("activity")
+            FavoriteActivity(parseActivity(activity), (item.optJSONObject("program") ?: activity.getJSONObject("program")).programSummary(api), item.text("favoritedAt"), NotifyLevel.of(item.text("notifyLevel")))
+        }.getOrNull()
+    }.orEmpty(),
+)
 
 /** One server scene; an unknown `type` (or an unreadable one) is null and skipped. `dday` is days left (a `D-22`/`D-DAY` text reads too). */
 private fun JSONObject.scene(): QueueScene? = when (text("type")) {
