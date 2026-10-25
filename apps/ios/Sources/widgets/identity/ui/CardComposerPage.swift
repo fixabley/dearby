@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Makes a real card from the saved profile: decorate, choose what to show, publish. Signing in is asked for when
-/// the composer opens signed out; profile data itself is edited in 내 프로필.
+/// Makes a real card from the saved profile: decorate, choose what to show, publish. Opened only signed in (contract "비로그인에서 만들기·추천을
+/// 막음" 2026-10-25); the signed-out message covers a session that ended while it was open. Profile data itself is edited in 내 프로필.
 /// Every state that is not the form (published, signed out, no profile yet, failed) is one centred message (contract "비스크롤 화면 배치·CTA").
 struct CardComposerPage: View {
     @State private var model: CardPublishModel

@@ -25,7 +25,7 @@ struct MyCardsPage: View {
                                 primary: MessageAction("로그인") { signingIn = true })
             case .noCard:
                 CenteredMessage(symbol: "person.text.rectangle", title: "첫 명함을 만들어 보세요",
-                                message: "프로필의 연락처와 이력 중 보여 줄 것만 골라 발행해요. 발행할 때 패스키로 로그인해요.",
+                                message: "프로필의 연락처와 이력 중 보여 줄 것만 골라 발행해요.",
                                 primary: MessageAction("명함 만들기") { editor = true })
             case .loading:
                 skeleton

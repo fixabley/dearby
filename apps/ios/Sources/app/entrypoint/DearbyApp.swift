@@ -8,6 +8,11 @@ import SwiftUI
     @State private var recommendations: RecommendationModel
     @State private var queue: DiscoveryQueueModel
     @State private var showsQueue = false
+    /// Signed out, the queue row, its 설정 and 프로필 `관심 분야·활동 종류` open sign-in (contract "비로그인에서 만들기·추천을 막음" 2026-10-25);
+    /// once signed in and the account's answers are read, `afterSignIn` continues where the tap was going.
+    @State private var signingIn = false
+    @State private var afterSignIn: AfterSignIn?
+    private enum AfterSignIn { case queue, funnel }
     @State private var eligibility: EligibilityModel
     @State private var tab = 0
     /// Which section the 명함 tab shows (contract "명함 탭 통합"); memory only.
@@ -42,8 +47,8 @@ import SwiftUI
             return [activity.program, activity.title].compactMap { $0 }.joined(separator: " ")
         })
         _profile = State(initialValue: ProfileModel(account: account, webOrigin: links.origins.web))
-        _recommendations = State(initialValue: RecommendationModel(recommendations: links.recommendations, tags: links.tagOptions))
-        _queue = State(initialValue: DiscoveryQueueModel(candidates: links.queueCandidates))
+        _recommendations = State(initialValue: RecommendationModel(tags: links.tagOptions))
+        _queue = State(initialValue: DiscoveryQueueModel())
         _eligibility = State(initialValue: EligibilityModel(account: account))
     }
     var body: some Scene {
@@ -53,13 +58,16 @@ import SwiftUI
                     IntroPage(account: account, done: finishIntro)
                 } else {
                     HomePage(selectedTab: $tab, hidesTabs: tab == 3 && profile.profile?.version == 0,
-                        discovery: { ActivityListPage(state: activityModel, openQueue: openQueue,
-                                                      editRecommendations: { recommendations.presentingFunnel = true }, path: $0) }, mine: { MyActivitiesPage(state: activityModel, path: $0, explore: { tab = 0 }) },
+                        discovery: { ActivityListPage(state: activityModel, queueSignedIn: account.phase == .signedIn, openQueue: openQueue,
+                                                      editRecommendations: editRecommendations, path: $0) }, mine: { MyActivitiesPage(state: activityModel, path: $0, explore: { tab = 0 }) },
                         cards: CardsPage(segment: $cardsSegment, cards: cards, wallet: wallet), profile: ProfilePage(state: profile, eligibility: eligibility,
-                                                                                         editRecommendations: { recommendations.presentingFunnel = true }),
+                                                                                         editRecommendations: editRecommendations),
                         settings: { SettingsPage(account: account, webOrigin: links.origins.web) })
                     .fullScreenCover(isPresented: $showsQueue) {
-                        DiscoveryQueuePage(model: queue, state: activityModel, preferences: recommendations.preferences)
+                        DiscoveryQueuePage(model: queue, state: activityModel)
+                    }
+                    .sheet(isPresented: $signingIn, onDismiss: continueAfterSignIn) {
+                        NavigationStack { SignInSheet(account: account) {} }
                     }
                 }
             }
@@ -99,14 +107,18 @@ import SwiftUI
                     Task { await queue.signedIn(links.discoveryQueueServer(account)) }
                 case .signedOut:
                     activityModel.signedOut()
-                    Task { await recommendations.signedOut() }
+                    recommendations.signedOut()
                     queue.signedOut()
+                    // A failed attempt inside the open sheet keeps it; a sign-out later drops a continuation that never ran.
+                    if !signingIn { afterSignIn = nil }
                 case .signingIn: break
                 }
                 if phase != .signingIn { Task { await eligibility.load() } }
             }
-            // 추천 설정 퍼널 (contract "추천 설정 퍼널·지원 자격 정보·추천"): once, on the first visit to 발견 after the answers are read.
-            .onChange(of: tab == 0 && !showIntro && recommendations.needsFunnel, initial: true) { _, show in
+            // The account's answers arrived after a sign-in from the queue row or 관심 분야·활동 종류 (the sheet may still be closing).
+            .onChange(of: recommendations.ready) { _, _ in continueAfterSignIn() }
+            // 추천 설정 퍼널 (contract "추천 설정 퍼널·지원 자격 정보·추천"): once, on the first visit to 발견 after the account's answers are read.
+            .onChange(of: tab == 0 && !showIntro && !signingIn && recommendations.needsFunnel, initial: true) { _, show in
                 #if DEBUG
                 if ScreenshotScene.current != nil { return }
                 #endif
@@ -152,13 +164,36 @@ import SwiftUI
         }
     }
     #endif
-    /// `오늘의 맞춤 대기열`: the funnel first when it was never finished, then the queue (after the funnel closes).
+    /// `오늘의 맞춤 대기열`: signed out, sign-in first; then the funnel when it was never finished, then the queue (after the funnel closes).
     private func openQueue() {
-        if recommendations.needsFunnel {
+        if account.phase != .signedIn {
+            afterSignIn = .queue
+            signingIn = true
+        } else if recommendations.needsFunnel {
             recommendations.queueAfterFunnel = true
             recommendations.presentingFunnel = true
         } else {
             showsQueue = true
+        }
+    }
+    /// Reopens the 추천 funnel; signed out, sign-in first.
+    private func editRecommendations() {
+        if account.phase == .signedIn {
+            recommendations.presentingFunnel = true
+        } else {
+            afterSignIn = .funnel
+            signingIn = true
+        }
+    }
+    /// After the sign-in sheet closes: nothing when it closed without signing in; otherwise, once the answers are read, the queue or the funnel.
+    private func continueAfterSignIn() {
+        guard let next = afterSignIn, !signingIn else { return }
+        guard account.phase == .signedIn else { afterSignIn = nil; return }
+        guard recommendations.ready else { return }
+        afterSignIn = nil
+        switch next {
+        case .queue: openQueue()
+        case .funnel: recommendations.presentingFunnel = true
         }
     }
     private func finishIntro() {
