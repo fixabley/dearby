@@ -69,6 +69,8 @@ private sealed interface Route {
     val auth by account.state.collectAsStateWithLifecycle()
     // Signed out, making a card and the funnel→queue entry open the sign-in sheet instead (contract "비로그인에서 만들기·추천을 막음", 2026-10-25); `이 명함 고치기` only shows signed in.
     var signingIn by remember { mutableStateOf(false) }
+    // Signed in from the `오늘의 맞춤 대기열` row: once the settings are read, a never-finished funnel opens (its result opens the queue), else the queue.
+    var queueAfterSignIn by remember { mutableStateOf(false) }
     val signedIn = auth.phase == AccountPhase.SIGNED_IN
     LaunchedEffect(signedIn) { if (signedIn) signingIn = false }
     val compose = { if (signedIn) { publish.start(); route = Route.Composer } else { signingIn = true } }
@@ -94,10 +96,12 @@ private sealed interface Route {
     LaunchedEffect(activityDetail) { if (!activityDetail && queueReturn) { queueReturn = false; route = Route.Queue } }
     // 2026-10-25 user decision "추천은 없애고 맞춤대기열 진입만 남겨줘": one `오늘의 맞춤 대기열` row tops 발견; a never-finished funnel comes first and its
     // result button (`맞춤 대기열 보러 가기`) opens the queue. The row always shows; a failed read is the queue screen's own retry state. Signed out it
-    // asks for sign-in; once signed in, the effect above brings a never-finished funnel.
+    // asks for sign-in and then carries on by itself ([queueAfterSignIn]).
     val openQueue = { queue.open(); route = Route.Queue }
+    val enterQueue = { if (reco.completed) openQueue() else recommendation.openFunnel(first = true) }
+    LaunchedEffect(signedIn, reco.preferencesRead, queueAfterSignIn) { if (queueAfterSignIn && signedIn && reco.preferencesRead) { queueAfterSignIn = false; enterQueue() } }
     val recoHeader: @Composable () -> Unit = {
-        QueueEntryRow(signedIn) { if (!signedIn) { signingIn = true } else if (reco.completed) openQueue() else recommendation.openFunnel(first = true) }
+        QueueEntryRow(signedIn) { if (signedIn) enterQueue() else { signingIn = true; queueAfterSignIn = true } }
     }
     LaunchedEffect(auth.phase, walletState.needSignIn) { if (auth.phase == AccountPhase.SIGNED_IN && walletState.needSignIn) wallet.retryPending() }
     // Every screen sits on the theme `background`, which this Surface spreads under the status bar, navigation bar and keyboard too (contract "안전 영역
@@ -126,7 +130,7 @@ private sealed interface Route {
                         // 설정·알림 sit in each tab's pinned `DearbyTopBar` (contract "iOS 상단 바…" Android sentence).
                         Tab.Discovery, Tab.Mine -> key(tab) {
                             ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }, settings = openSettings, notify = notify,
-                                openInMine = { mineOpen = it; tab = Tab.Mine }, open = if (tab == Tab.Mine) mineOpen else discoveryOpen, consumeOpen = { if (tab == Tab.Mine) mineOpen = null else discoveryOpen = null }, openConsent = { activityDetail = false; tab = Tab.Profile }, header = recoHeader, waiting = !reco.localLoaded) { activityDetail = it }
+                                openInMine = { mineOpen = it; tab = Tab.Mine }, open = if (tab == Tab.Mine) mineOpen else discoveryOpen, consumeOpen = { if (tab == Tab.Mine) mineOpen = null else discoveryOpen = null }, openConsent = { activityDetail = false; tab = Tab.Profile }, header = recoHeader) { activityDetail = it }
                         }
                         Tab.Cards -> CardsRoute(cardsSegment, { cardsSegment = it }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
                             edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify)
@@ -167,5 +171,5 @@ private sealed interface Route {
     reco.notice?.let { value -> AlertDialog(onDismissRequest = recommendation::dismissNotice, title = { Text("추천") }, text = { Text(value) }, confirmButton = { TextButton(recommendation::dismissNotice) { Text("확인") } }) }
     walletState.notice?.let { value -> AlertDialog(onDismissRequest = wallet::dismissNotice, title = { Text("안내") }, text = { Text(value) }, confirmButton = { TextButton(wallet::dismissNotice) { Text("확인") } }) }
     if (walletState.needSignIn && auth.phase != AccountPhase.SIGNED_IN) SignInRoute(account, close = wallet::dismissSignIn)
-    else if (signingIn && !signedIn) SignInRoute(account, close = { signingIn = false })
+    else if (signingIn && !signedIn) SignInRoute(account, close = { signingIn = false; queueAfterSignIn = false })
 }

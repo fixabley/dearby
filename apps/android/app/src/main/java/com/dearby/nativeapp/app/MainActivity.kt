@@ -60,18 +60,9 @@ class MainActivity : ComponentActivity() {
     private val profile: ProfileViewModel by viewModels { viewModelFactory { initializer { ProfileViewModel(account) } } }
     private val myCards: MyCardsViewModel by viewModels { viewModelFactory { initializer { MyCardsViewModel(account) } } }
     private val settings: SettingsViewModel by viewModels { viewModelFactory { initializer { SettingsViewModel(account, "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})") } } }
-    // The funnel's completion flag (contract "추천 설정 저장": the app's existing settings store, a new key). Since 2026-10-25 (contract "비로그인에서
-    // 만들기·추천을 막음") signed-out 추천 설정 and 대기열 reactions are no longer kept; their old keys are neither read nor removed.
-    private val recommendation: RecommendationViewModel by viewModels {
-        viewModelFactory {
-            initializer {
-                RecommendationViewModel(account, object : RecommendationStore {
-                    override fun completed() = onboarding.getBoolean(RECOMMENDATION_DONE_KEY, false)
-                    override fun markCompleted() = onboarding.edit { putBoolean(RECOMMENDATION_DONE_KEY, true) }
-                })
-            }
-        }
-    }
+    // 추천 and 오늘의 맞춤 대기열 need a session (contract "비로그인에서 만들기·추천을 막음", 2026-10-25): nothing is kept on the device, and the
+    // earlier keys (signed-out settings, queue reactions, the funnel's completion flag) are neither read nor removed.
+    private val recommendation: RecommendationViewModel by viewModels { viewModelFactory { initializer { RecommendationViewModel(account) } } }
     private val queue: QueueViewModel by viewModels { viewModelFactory { initializer { QueueViewModel(account) } } }
     // First-launch intro, remembered in its own new preferences file; no earlier stored data is read.
     private val onboarding by lazy { getSharedPreferences("dearby.onboarding", MODE_PRIVATE) }
@@ -123,5 +114,3 @@ class MainActivity : ComponentActivity() {
         activityAppLink(link, BuildConfig.WEB_ORIGIN)?.let(activityModel::openLinked)
     }
 }
-
-private const val RECOMMENDATION_DONE_KEY = "dearby.recommendation.completed"

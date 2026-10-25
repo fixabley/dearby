@@ -68,8 +68,8 @@ def check_source(path, text):
             errors.append('UI requires State/callbacks, not domain/I/O: ' + ref)
     if rendering and re.search(r'\b(LocalContext|SharedPreferences|getSharedPreferences|AssetManager|Intent|startActivity|\w+ViewModel|\w+Repository)\b', code): errors.append('UI directly accesses provider/OS side effect')
     # Contract "모바일 실제 연결 경계": only the activity and account clients open connections; only the account vault keeps the session
-    # and MainActivity keeps only the first-launch intro flag (2026-10-14) and the 추천 funnel's completion flag (2026-10-24; signed-out 추천 설정·대기열
-    # reactions are no longer kept since 2026-10-25 "비로그인에서 만들기·추천을 막음"). AccountViewModel keeps the web sign-in verifier and pending
+    # and MainActivity keeps only the first-launch intro flag (2026-10-14; since 2026-10-25 "비로그인에서 만들기·추천을 막음" no 추천·대기열 state is
+    # kept on the device). AccountViewModel keeps the web sign-in verifier and pending
     # link token across process death while Apple's page is open (2026-10-16 "애플 로그인"); Google's 202 link token too (2026-10-19 native).
     # The account client's transport is OkHttp since 2026-10-20 (PATCH for 설정); the activity client still opens HttpURLConnection.
     allowed = {'entities/activity/api/ActivityClient.kt': {'HttpURLConnection'}, 'entities/account/api/AccountClient.kt': {'HttpURLConnection', 'OkHttpClient'},
