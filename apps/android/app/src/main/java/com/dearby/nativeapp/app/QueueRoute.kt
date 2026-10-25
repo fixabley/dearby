@@ -12,6 +12,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dearby.nativeapp.features.ads.NativeAdCard
 import com.dearby.nativeapp.pages.queue.DiscoveryQueuePage
 
 /**
@@ -33,5 +34,6 @@ import com.dearby.nativeapp.pages.queue.DiscoveryQueuePage
     val leave = { model.exit(); model.close(); close() }
     BackHandler(onBack = leave)
     DiscoveryQueuePage(state, reduceMotion, !screenReader, leave, model::retry, model::page, like,
-        { model.openedDetail(it); model.close(); openDetail(it) }, model::react, model::complete, model::skipEarly, model::refill, model::undo, model::commit, liked, inMine, plus, model::cardViewed)
+        { model.openedDetail(it); model.close(); openDetail(it) }, model::react, model::complete, model::skipEarly, model::refill, model::undo, model::commit, liked, inMine, plus, model::cardViewed,
+        ad = model.ads.ad?.let { ad -> { modifier -> NativeAdCard(ad, modifier) } })
 }

@@ -25,6 +25,7 @@ API = {
     'features.google': {'GoogleSignIn'},
     'features.push': {'Push', 'DearbyMessagingService'},
     'features.analytics': {'Analytics'},
+    'features.ads': {'QueueAd', 'NativeAdCard'},
     'pages.account': {'SignInSheet', 'LinkAccountSheet'},
     'pages.settings': {'SettingsPage', 'SettingsState', 'SettingsPhase', 'SettingsIdentityState', 'SettingsPasskeyState', 'SettingsBlockState'},
     'pages.onboarding': {'IntroPage'},
