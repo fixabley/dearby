@@ -68,8 +68,8 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
         when (state.phase) {
             // Signed out and failed states are CenteredMessages (contract "비스크롤 화면 배치·CTA").
             ProfilePhase.SIGNED_OUT -> {
-                CenteredMessage(Icons.Rounded.AccountCircle, "프로필은 계정에 저장돼요", "명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.", Modifier.weight(1f).fillMaxWidth(),
-                    primary = MessageAction("명함 만들기", compose), secondary = MessageAction("로그인", signIn))
+                CenteredMessage(Icons.Rounded.AccountCircle, "프로필은 계정에 저장돼요", "로그인하면 프로필을 저장하고 고칠 수 있어요.", Modifier.weight(1f).fillMaxWidth(),
+                    primary = MessageAction("로그인", signIn))
                 recommendation?.let { Box(Modifier.padding(20.dp)) { it() } }
             }
             ProfilePhase.LOADING -> DearbySkeleton(Modifier.fillMaxSize().padding(20.dp)) { SkeletonCardBody(); SkeletonRows(3) }

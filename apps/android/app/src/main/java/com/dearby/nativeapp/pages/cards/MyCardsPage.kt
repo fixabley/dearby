@@ -63,7 +63,9 @@ data class MyCardsState(
             }
             MyCardsPhase.FAILED -> DearbyErrorState("명함을 불러오지 못했어요", "연결을 확인하고 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
             // Empty / signed out: a CenteredMessage on the page background, no card (contract "비스크롤 화면 배치·CTA").
-            MyCardsPhase.SIGNED_OUT, MyCardsPhase.NO_CARD -> DearbyEmptyState("내 명함을 만드세요", "프로필 데이터로 명함을 꾸며 발행해요. 발행할 때 로그인해요.", Modifier.fillMaxSize(), Icons.Rounded.Badge, MessageAction("명함 만들기", create))
+            MyCardsPhase.NO_CARD -> DearbyEmptyState("내 명함을 만드세요", "프로필 데이터로 명함을 꾸며 발행해요.", Modifier.fillMaxSize(), Icons.Rounded.Badge, MessageAction("명함 만들기", create))
+            // Signed out the button opens sign-in (contract "비로그인에서 만들기·추천을 막음", 2026-10-25).
+            MyCardsPhase.SIGNED_OUT -> DearbyEmptyState("내 명함을 만드세요", "로그인하면 프로필 데이터로 명함을 꾸며 발행할 수 있어요.", Modifier.fillMaxSize(), Icons.Rounded.Badge, MessageAction("명함 만들기", create))
             MyCardsPhase.LOADED -> LazyVerticalGrid(GridCells.Fixed(2), Modifier.fillMaxSize(), contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 item { NewCardTile(create) }
