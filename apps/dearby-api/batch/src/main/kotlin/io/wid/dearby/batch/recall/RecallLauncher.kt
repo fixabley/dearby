@@ -9,7 +9,7 @@ import kotlin.system.exitProcess
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
 
-// 매일 한국 시간 04:00에 회수한다(2026-10-19 사용자 결정). --recall-now로 띄우면 기동하자마자 한 번 더 실행한다(--collect-now와 같은 방식)
+// 매일 한국 시간 04:00에 회수하고 보유 기간이 지난 명함 신고를 지운다(2026-10-19 사용자 결정). --recall-now로 띄우면 기동하자마자 한 번 더 실행한다(--collect-now와 같은 방식)
 @Component
 class RecallLauncher(private val recall: RecallService, private val context: ConfigurableApplicationContext) : ApplicationRunner {
 
@@ -27,6 +27,6 @@ class RecallLauncher(private val recall: RecallService, private val context: Con
 
     fun launch(trigger: String) {
         val report = recall.recall()
-        log.info("Card recall {} finished: {} receipts, {} guest cards recalled", trigger, report.receipts, report.guestCards)
+        log.info("Card recall {} finished: {} receipts, {} guest cards recalled, {} old reports removed", trigger, report.receipts, report.guestCards, report.reports)
     }
 }

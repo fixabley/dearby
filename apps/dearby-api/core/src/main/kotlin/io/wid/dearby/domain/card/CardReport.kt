@@ -2,6 +2,7 @@ package io.wid.dearby.domain.card
 
 import io.wid.dearby.domain.UserId
 import java.time.OffsetDateTime
+import java.time.Period
 import java.util.*
 
 // 명함 신고(native-v1.md "명함 신고·차단"). 스냅샷은 신고 시점의 명함 내용이라 주인이 고치거나 지워도 근거가 남는다
@@ -28,7 +29,12 @@ data class CardReport(
     val status: ReportStatus,
     val createdAt: OffsetDateTime,
     val note: String?,
-)
+) {
+    companion object {
+        // 보유 기간(2026-10-25 사용자 결정): 신고일(createdAt)로부터 1개월이 지나면 상태와 관계없이 지운다(batch RecallService)
+        val KEEP_FOR: Period = Period.ofMonths(1)
+    }
+}
 
 // 어드민 목록 한 줄: 같은 명함 신고 수와 명함이 이미 내려갔는지(철회·삭제)
 data class CardReportListing(val report: CardReport, val reportCount: Int, val cardWithdrawn: Boolean)
