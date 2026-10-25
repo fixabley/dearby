@@ -154,7 +154,10 @@ class HistoryReviewFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: Jd
         mvc.post("/v1/admin/cards/${UUID.randomUUID()}/withdraw") { asAdmin(); body("""{"reportId":"$newer","note":"사칭"}""") }.andExpect { status { isNotFound() } }
         mvc.post("/v1/admin/cards/$card/withdraw") { asAdmin(); body("""{"reportId":"$newer","note":"사칭"}""") }.andExpect { status { isNoContent() } }
         assertEquals(true, jdbc.sql("select revoked from business_cards where id = ?").param(card).query(Boolean::class.java).single())
+        // 내린 명함의 내용은 비고(2026-10-25 "명함 지우기"), 신고 스냅샷은 근거로 남는다
+        assertEquals("", jdbc.sql("select name || introduction || profile_name || job from business_cards where id = ?").param(card).query(String::class.java).single())
         val all = read(mvc.get("/v1/admin/card-reports") { asAdmin() })["items"].values().filter { it["cardId"].asString() == card.toString() }.associateBy { it["id"].asString() }
+        assertEquals("신고된 사람", all[newer.toString()]!!["cardSnapshot"]["profileName"].asString())
         assertEquals(listOf("RESOLVED", "사칭", "true"), listOf(all[newer.toString()]!!["status"].asString(), all[newer.toString()]!!["note"].asString(), all[newer.toString()]!!["cardWithdrawn"].asString()))
         assertEquals("DISMISSED", all[older.toString()]!!["status"].asString())
         mvc.post("/v1/admin/cards/$card/withdraw") { asAdmin(); body("""{"note":"다시"}""") }.andExpect { status { isNoContent() } }

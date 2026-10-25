@@ -107,6 +107,10 @@ class CardFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClient,
         // 철회된 명함은 코드가 있어도 404이고, 그 명함의 코드는 모두 끝난다
         mvc.get("/v1/cards/$cardId?code=$code").andExpect { status { isNotFound() } }
         assertEquals(0, jdbc.sql("select count(*) from card_qr_codes where card_id = ? and revoked_at is null").param(UUID.fromString(cardId)).query(Int::class.java).single())
+        // 지우면 행·주인은 남고 명함 내용은 바로 빈다(2026-10-25 "명함 지우기")
+        val left = jdbc.sql("select user_id, name || description || template || introduction || profile_name || job as text, contacts::text as contacts, histories::text as histories from business_cards where id = ?")
+            .param(UUID.fromString(cardId)).query { rs, _ -> listOf(rs.getString("user_id"), rs.getString("text"), rs.getString("contacts"), rs.getString("histories")) }.single()
+        assertEquals(listOf(user.toString(), "", "[]", "[]"), left)
         mvc.delete("/v1/cards/$cardId") { asUser(user) }.andExpect { status { isNotFound() } }
     }
 

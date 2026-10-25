@@ -56,8 +56,21 @@ class JooqCardRepository(private val dsl: DSLContext) : CardRepository {
     override fun listByOwner(ownerId: UserId): List<BusinessCard> =
         dsl.selectFrom(BUSINESS_CARDS).where(BUSINESS_CARDS.USER_ID.eq(ownerId), BUSINESS_CARDS.REVOKED.isFalse).orderBy(BUSINESS_CARDS.SEQ).fetch().map(::toCard)
 
+    // 지우기(2026-10-25 사용자 결정, native-v1.md "명함 지우기"): 행과 id·주인·시각은 남기고(QR·받은 명함·신고가 id를 가리킨다) 내용은 바로 비운다.
+    // 비우는 값은 V56과 같다. 철회된 명함은 어디서도 읽지 않으므로 빈 값이 화면에 나가지 않는다
     override fun revoke(id: UUID): Boolean =
-        dsl.update(BUSINESS_CARDS).set(BUSINESS_CARDS.REVOKED, true).where(BUSINESS_CARDS.ID.eq(id), BUSINESS_CARDS.REVOKED.isFalse).execute() > 0
+        dsl.update(BUSINESS_CARDS)
+            .set(BUSINESS_CARDS.REVOKED, true)
+            .set(BUSINESS_CARDS.NAME, "")
+            .set(BUSINESS_CARDS.DESCRIPTION, "")
+            .set(BUSINESS_CARDS.TEMPLATE, "")
+            .set(BUSINESS_CARDS.INTRODUCTION, "")
+            .set(BUSINESS_CARDS.PROFILE_NAME, "")
+            .set(BUSINESS_CARDS.JOB, "")
+            .set(BUSINESS_CARDS.CONTACTS, JSONB.valueOf("[]"))
+            .set(BUSINESS_CARDS.HISTORIES, JSONB.valueOf("[]"))
+            .where(BUSINESS_CARDS.ID.eq(id), BUSINESS_CARDS.REVOKED.isFalse)
+            .execute() > 0
 
     private fun toCard(it: BusinessCardsRecord) = BusinessCard(
         id = it.id!!,
