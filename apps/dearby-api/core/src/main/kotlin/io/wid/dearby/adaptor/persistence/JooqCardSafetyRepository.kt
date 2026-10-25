@@ -87,6 +87,9 @@ class JooqCardSafetyRepository(private val dsl: DSLContext) : CardSafetyReposito
             .where(CARD_REPORTS.CARD_ID.eq(cardId), CARD_REPORTS.STATUS.eq(ReportStatus.OPEN.name)).execute()
     }
 
+    override fun deleteReportsBefore(at: OffsetDateTime) =
+        dsl.deleteFrom(CARD_REPORTS).where(CARD_REPORTS.CREATED_AT.lt(at)).execute()
+
     private fun blocker(user: UserId?, guest: String?): Condition =
         if (user != null) CARD_BLOCKS.BLOCKER_USER_ID.eq(user) else CARD_BLOCKS.BLOCKER_GUEST_DIGEST.eq(guest)
 

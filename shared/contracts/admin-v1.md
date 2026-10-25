@@ -273,6 +273,8 @@ native-v1.md "반복 일정과 겹침 결과 묶음"의 어드민 쪽. Schedule 
 
 native-v1.md "명함 신고·차단"의 어드민 쪽. `GET /v1/admin/card-reports?status=OPEN|RESOLVED|DISMISSED`(생략 시 전체, 최신순, 열린 것 먼저) → `{items:[{id, cardId, cardSnapshot, reason, detail, createdAt, status, note, reportCount, cardWithdrawn}]}`. `PATCH /v1/admin/card-reports/:id {status, note?}` 200. `POST /v1/admin/cards/:id/withdraw {reportId?, note}` 204(이미 철회면 204). 모두 ADMIN 역할.
 
+보유 기간(2026-10-25 사용자 결정): 신고 기록은 신고일(`createdAt`)로부터 1개월이 지나면 상태(`OPEN` 포함)와 관계없이 지운다. batch가 매일 04:00(한국 시간) 명함 회수와 함께 지우고 지운 수를 로그에 남긴다. 그래서 목록·`reportCount`는 최근 1개월 신고만 센다. 어드민 웹 신고 화면 머리말에 이 기간을 적는다.
+
 ## 조직 로고 — 2026-10-22
 
 native-v1.md "조직 로고와 로고 계승"의 어드민 쪽. 프로그램 로고와 같은 규칙.
