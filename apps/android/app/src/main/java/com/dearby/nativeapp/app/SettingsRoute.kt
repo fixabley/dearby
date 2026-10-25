@@ -6,6 +6,8 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.dearby.nativeapp.features.push.Push
 import com.dearby.nativeapp.pages.profile.NotificationRow
 import com.dearby.nativeapp.pages.profile.UsageStatsRow
+import com.dearby.nativeapp.pages.profile.AdConsentRow
+import com.dearby.nativeapp.features.ads.AdConsentSheet
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -34,6 +36,7 @@ import kotlinx.coroutines.launch
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var signingIn by remember { mutableStateOf(false) }
+    var askingAd by remember { mutableStateOf(false) }
     val signedIn = auth.phase == AccountPhase.SIGNED_IN
     BackHandler(onBack = close)
     // The system notification switch is read again whenever the app comes back (e.g. from its settings).
@@ -59,7 +62,11 @@ import kotlinx.coroutines.launch
             }
             notice.message?.let { value -> AlertDialog(onDismissRequest = push::dismissMessage, title = { Text("알림") }, text = { Text(value) }, confirmButton = { TextButton(push::dismissMessage) { Text("확인") } }) }
         } },
-        privacy = { UsageStatsRow(analytics, setAnalytics) })
+        privacy = {
+            UsageStatsRow(analytics, setAnalytics)
+            state.adConsent?.let { on -> AdConsentRow(on, !state.busy) { if (it) askingAd = true else model.setAdConsent(false) } }
+        })
+    if (askingAd) AdConsentSheet({ askingAd = false; model.setAdConsent(true) }, { askingAd = false }) { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) }
     // Link failures and the deletion result are one-time notices of their own owners.
     auth.linkMessage?.let { AlertDialog(onDismissRequest = account::clearLinkMessage, text = { Text(it) }, confirmButton = { TextButton(account::clearLinkMessage) { Text("확인") } }) }
     deletion.notice?.let { AlertDialog(onDismissRequest = profile::dismissDeletionNotice, text = { Text(it) }, confirmButton = { TextButton(profile::dismissDeletionNotice) { Text("확인") } }) }

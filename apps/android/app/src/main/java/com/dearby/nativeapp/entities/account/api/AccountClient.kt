@@ -223,6 +223,12 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun saveEligibilityProfile(profile: EligibilityProfile, session: AccountSession) { request("PUT", "me/eligibility-profile", profile.toPutJson(), session) }
     /** Removes the values and the consent record. */
     suspend fun deleteEligibilityProfile(session: AccountSession) { request("DELETE", "me/eligibility-profile", null, session) }
+    // 광고 목적 개인정보 제3자 제공 동의(선택) (contract, 2026-10-25): `agreed` is true only for the current version.
+    suspend fun adConsent(session: AccountSession) = send("GET", "me/consents/ad-third-party", null, session).getBoolean("agreed")
+    /** 400 `CONSENT_VERSION` when [version] is not the current one. */
+    suspend fun agreeAdConsent(version: String, session: AccountSession) { request("PUT", "me/consents/ad-third-party", JSONObject().put("version", version), session) }
+    /** 204, also when there was none. */
+    suspend fun withdrawAdConsent(session: AccountSession) { request("DELETE", "me/consents/ad-third-party", null, session) }
     /** The server uses the saved settings and 지원 자격 정보; signed out is 401 (contract "비로그인에서 만들기·추천을 막음", 2026-10-25). */
     suspend fun recommendations(session: AccountSession, size: Int = 10): RecommendationPage =
         send("GET", "discovery/recommendations?size=$size", null, session).toRecommendations(api)

@@ -30,7 +30,7 @@ import com.dearby.nativeapp.shared.ui.*
     openPrivacy: () -> Unit, openTerms: () -> Unit, dismissNotice: () -> Unit, googleAvailable: Boolean = true,
     /** `알림` rows (새 모집 알림); null signed out or before consent, since push is an account feature. */
     notifications: (@Composable () -> Unit)? = null,
-    /** `개인정보` rows (사용 통계 보내기, later the 광고 제3자 제공 동의 철회 switch), signed in or not. */
+    /** `개인정보` rows (사용 통계 보내기 signed in or not; 광고 목적 정보 제공 signed in with consent, in a build with ads). */
     privacy: @Composable () -> Unit = {},
 ) {
     var confirm by remember { mutableStateOf<Confirm?>(null) }
