@@ -243,6 +243,12 @@ import SwiftUI
         // 발견 장면은 마감 숨기기를 꺼 최근 활동 프로그램까지 보인다(빈 화면 방지).
         case .discover: activityModel.openOnly = false
         case .cards: tab = 2
+        // 오늘의 맞춤 대기열 directly (signed in; no funnel, no `menu_open`).
+        case .queue: showsQueue = true
+        case .favoritesCalendar:
+            tab = 1
+            mineSegment = .favorites
+            favoritesLayout = .calendar
         case .mine:
             if let id = await activityModel.screenshotActivity() { activityModel.apply(id, true) }
             tab = 1

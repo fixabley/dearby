@@ -44,7 +44,7 @@ export function Reports() {
         <div>
           <span className="eyebrow">CARD</span>
           <h1>신고</h1>
-          <p>사용자가 신고한 명함이에요. 24시간 안에 확인하고, 필요하면 명함을 내려요.</p>
+          <p>사용자가 신고한 명함이에요. 24시간 안에 확인하고, 필요하면 명함을 내려요. 신고 기록은 신고일로부터 1개월이 지나면 처리 여부와 관계없이 지워져요.</p>
         </div>
       </header>
       <div className="list-toolbar">

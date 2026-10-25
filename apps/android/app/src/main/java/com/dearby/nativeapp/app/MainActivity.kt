@@ -29,6 +29,7 @@ import com.dearby.nativeapp.shared.config.authRedirect
 import com.dearby.nativeapp.shared.config.cardLink
 import com.dearby.nativeapp.shared.config.favoritesLink
 import com.dearby.nativeapp.features.push.Push
+import com.dearby.nativeapp.features.ads.QueueAd
 import com.dearby.nativeapp.features.analytics.Analytics
 import com.dearby.nativeapp.pages.activity.FavoritesView
 import android.content.BroadcastReceiver
@@ -71,7 +72,7 @@ class MainActivity : ComponentActivity() {
     // 추천 and 오늘의 맞춤 대기열 need a session (contract "비로그인에서 만들기·추천을 막음", 2026-10-25): nothing is kept on the device, and the
     // earlier keys (signed-out settings, queue reactions, the funnel's completion flag) are neither read nor removed.
     private val recommendation: RecommendationViewModel by viewModels { viewModelFactory { initializer { RecommendationViewModel(account) } } }
-    private val queue: QueueViewModel by viewModels { viewModelFactory { initializer { QueueViewModel(account) } } }
+    private val queue: QueueViewModel by viewModels { viewModelFactory { initializer { QueueViewModel(account, QueueAd(applicationContext)) } } }
     private val inbox: InboxViewModel by viewModels { viewModelFactory { initializer { InboxViewModel(account) } } }
     // 즐겨찾기·새 모집 푸시 (contract "즐겨찾기(하트)·새 모집 푸시 알림", 2026-10-25): the view choice and the asked-once flag in a new preferences file.
     private val device by lazy { DevicePreferences(applicationContext) }

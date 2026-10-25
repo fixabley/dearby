@@ -21,14 +21,15 @@
 - 이미 있음(TestFlight): secrets `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`, `IOS_DIST_P12_BASE64`, `IOS_DIST_P12_PASSWORD`, `IOS_APPSTORE_PROFILE_BASE64`; vars `APPLE_TEAM_ID`, `DEARBY_API_ORIGIN`. 제출 워크플로는 앞의 세 키만 쓴다(API 키 역할은 App Manager 이상).
 - Play 서명(2026-10-22 등록됨): secrets `ANDROID_UPLOAD_JKS_BASE64`(`~/.dearby-deploy/android-upload.jks`의 base64; 워크플로가 `$RUNNER_TEMP/upload.jks`로 풀고 `ANDROID_KEYSTORE_PATH`로 넘긴다), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`(`android-signing.env`와 같은 이름).
 - Play 접근: Google Cloud 조직이 서비스 계정 키 생성을 막아(`iam.disableServiceAccountKeyCreation`) JSON 키는 쓰지 않고 **Workload Identity Federation**으로 인증한다. repository variables `GCP_WIF_PROVIDER`(`projects/<번호>/locations/global/workloadIdentityPools/<풀>/providers/<공급자>`), `PLAY_SERVICE_ACCOUNT`(서비스 계정 이메일). `google-github-actions/auth@v2`가 키 없는 `external_account` 자격 파일을 만들고 fastlane supply(2.241.1 이상, Gemfile 고정)가 그것을 `json_key`로 읽는다. 둘 중 하나라도 비면 첫 단계에서 실패한다.
-- 선택: secret `GOOGLE_SERVER_CLIENT_ID`(없으면 경고만 내고 구글 로그인 버튼이 없는 빌드). var `DEARBY_API_ORIGIN`은 공용. `DEARBY_WEB_ORIGIN`은 비우면 `https://dearby.wid.io.kr`.
+- 선택: secret `GOOGLE_SERVER_CLIENT_ID`(없으면 경고만 내고 구글 로그인 버튼이 없는 빌드). var `DEARBY_API_ORIGIN`은 공용. `DEARBY_WEB_ORIGIN`은 비우면 `https://dearby.wid.io.kr`. vars `ADMOB_ANDROID_APP_ID`·`ADMOB_ANDROID_QUEUE_NATIVE_UNIT_ID`(맞춤 대기열 끝 광고, 둘 다 있어야 광고를 요청하고 하나라도 없으면 경고만 내고 광고 장면이 없는 빌드).
 
 ## 스크린샷
 
-- Debug 빌드에만 있는 장면 훅: iOS 실행 인자 `-DearbyScreenshot <scene>`(`Sources/shared/config/ScreenshotScene.swift`, `#if DEBUG`), Android 인텐트 extra `dearbyScreenshot`(`app/ScreenshotScene.kt`, `BuildConfig.DEBUG`일 때만 읽음). 장면은 `discover`, `discover-expanded`(첫 프로그램 펼침), `detail`(첫 프로그램의 첫 모집 중·예정 활동), `mine`(그 활동을 내 활동에 담은 상태), `cards`, `settings`.
+- Debug 빌드에만 있는 장면 훅: iOS 실행 인자 `-DearbyScreenshot <scene>`(`Sources/shared/config/ScreenshotScene.swift`, `#if DEBUG`), Android 인텐트 extra `dearbyScreenshot`(`app/ScreenshotScene.kt`, `BuildConfig.DEBUG`일 때만 읽음). 장면은 `discover`, `discover-expanded`(첫 프로그램 펼침), `detail`(첫 프로그램의 첫 모집 중·예정 활동), `mine`(그 활동을 내 활동에 담은 상태), `queue`(오늘의 맞춤 대기열 첫 카드, 추천 설정 퍼널·`menu_open` 없이 바로), `favorites-calendar`(내 활동 탭 즐겨찾기의 캘린더 보기), `cards`, `settings`. 스크립트 기본 순서(파일 이름 순서 = 스토어 순서)는 `discover discover-expanded queue detail mine favorites-calendar cards settings`.
 - `bash apps/ios/scripts/capture_screenshots.sh`: iPhone 17 Pro Max·iPad Pro 13-inch 시뮬레이터, 상태 막대 9:41·배터리 100%, 운영 API로 Debug 빌드 → `apps/ios/fastlane/screenshots/ko/{iPhone69,iPad13}_NN_<scene>.png`.
 - `bash apps/android/scripts/capture_screenshots.sh`: 연결된 **실기기**에 운영 API Debug 빌드를 설치하고 데모 모드 상태 막대, 화면 크기 `1080x2160`(Play는 긴 변이 짧은 변의 두 배를 넘으면 거부)으로 캡처 → `…/ko-KR/images/phoneScreenshots/NN_<scene>.png`. 끝나면 데모 모드·화면 크기를 되돌린다.
-- 명함·설정(과 로그인 시 내 활동)은 계정이 있어야 의미 있는 화면이다. 캡처 전에 각 시뮬레이터·기기의 Debug 앱에서 한 번 로그인한다. 시연용 계정의 명함 내용은 공개 스크린샷에 실리므로 실제 개인정보가 아닌 값으로 채운다.
+- `queue`·`favorites-calendar`는 **로그인이 필요하다**(비로그인이면 보일 내용이 없다). 즐겨찾기 캘린더는 계정에 일정이 있는 즐겨찾기가 있어야 채워지고, 이 장면이 고른 `캘린더` 보기는 기기에 저장된 채 남는다. 대기열 장면을 열면 그 계정에 대기열 반응 신호가 기록될 수 있다.
+- 명함·설정(과 로그인 시 내 활동)도 계정이 있어야 의미 있는 화면이다. 캡처 전에 각 시뮬레이터·기기의 Debug 앱에서 한 번 로그인한다. 시연용 계정의 명함 내용은 공개 스크린샷에 실리므로 실제 개인정보가 아닌 값으로 채운다.
 
 ## 콘솔에서 남은 수동 단계
 

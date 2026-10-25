@@ -2,12 +2,12 @@
 # App Store screenshots (2026-10-22 user allowed simulators for this only): builds the Debug app for the simulator against the
 # production API, opens each `-DearbyScreenshot` scene (Sources/shared/config/ScreenshotScene.swift) on an iPhone 6.9" and an
 # iPad 13" simulator, and saves PNGs into fastlane/screenshots/ko for deliver (it sorts by name and tells devices apart by size).
-# 명함·설정·내 활동(로그인 시) need an account: sign in once on each simulator first; the session stays in its keychain.
+# 맞춤 대기열(queue)·즐겨찾기 캘린더(favorites-calendar)·명함·설정·내 활동(로그인 시) need an account: sign in once on each simulator first; the session stays in its keychain.
 # Usage: bash apps/ios/scripts/capture_screenshots.sh   (WAIT=<seconds per scene>, SCENES="discover detail" to narrow)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 WAIT="${WAIT:-8}"
-SCENES="${SCENES:-discover discover-expanded detail mine cards settings}"
+SCENES="${SCENES:-discover discover-expanded queue detail mine favorites-calendar cards settings}"
 OUT=fastlane/screenshots/ko
 DERIVED="${TMPDIR:-/tmp}/dearby-screenshots"
 BUNDLE=io.wid.dearby
