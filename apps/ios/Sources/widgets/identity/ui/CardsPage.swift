@@ -10,15 +10,15 @@ struct CardsPage: View {
     var body: some View {
         Group {
             switch segment {
-            case .myCards: MyCardsPage(state: cards)
-            case .received: WalletPage(state: wallet)
+            case .myCards: MyCardsPage(state: cards).analyticsScreen("my_cards")
+            case .received: WalletPage(state: wallet).analyticsScreen("received_cards")
             }
         }
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .navigationTitle("명함").navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                Picker("명함 구역", selection: $segment) {
+                Picker("명함 구역", selection: $segment.reporting { AppAnalytics.event("menu_open", ["menu": $0 == .received ? "received_cards" : "my_cards"]) }) {
                     ForEach(CardsSegment.allCases, id: \.self) { Text($0.title).tag($0) }
                 }.pickerStyle(.segmented).accessibilityIdentifier("cards-segment")
             }

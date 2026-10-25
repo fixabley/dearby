@@ -23,7 +23,8 @@ struct QueueStoryCard: View {
     let detail: () -> Void
     let next: () -> Void
     let more: () -> Void
-    let complete: () -> Void
+    /// The last scene ended; the scene count (사용 통계 `queue_card_complete`).
+    let complete: (Int) -> Void
     let skipEarly: () -> Void
     @State private var scene = 0
     /// The last scene ran its 4 seconds: the card stays there with every segment full until the user moves on (no auto-advance to the next card).
@@ -84,7 +85,7 @@ struct QueueStoryCard: View {
             scene += 1
         } else {
             finished = true
-            complete()
+            complete(scenes.count)
         }
     }
     private func step(_ delta: Int) {

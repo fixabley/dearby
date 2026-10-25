@@ -62,6 +62,7 @@ import Observation
     /// An `/activities/<id>` universal link (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): the activity the 발견 tab should push
     /// next; the tab clears it once pushed.
     var showInDiscovery: String?
+    @ObservationIgnored private var linkSources: [String: String] = [:]
     /// Every activity seen this session, so details and applied marks outlive a new search.
     private var seen: [String: ActivityModel] = [:]
     private var cursor: Int64?
@@ -89,9 +90,12 @@ import Observation
     func remember(_ activity: ActivityModel) { seen[activity.id] = activity }
     /// Opens a linked activity in 발견, loading it first when discovery has not shown it. A 404 still opens the detail, which says the
     /// activity is gone; any other failure says so and stays put.
-    func openLinked(_ id: String) async {
+    /// `source` (`link` or `push`) is the 사용 통계 `activity_view` source; the detail it opens reads it once (`takeLinkSource`).
+    func openLinked(_ id: String, source: String) async {
+        linkSources[id] = source
         if await prepare(id) { showInDiscovery = id }
     }
+    func takeLinkSource(_ id: String) -> String? { linkSources.removeValue(forKey: id) }
     /// Loads an activity discovery has not shown so its detail can open (알림 목록 rows); false, with `notice`, when it could not be loaded.
     /// A 404 is still true: the detail says the activity is gone.
     func prepare(_ id: String) async -> Bool {
@@ -197,8 +201,12 @@ import Observation
     /// A program page (from 즐겨찾기) shows the same groups as an expanded card: loads them unless they are loaded or loading.
     func loadProgram(_ programID: Int64) { loadActivities(programID) }
     /// The `+` beside an activity's heart (contract "`+` 내 활동에 추가" 2026-10-25): adds it, or once added opens it in 내 활동.
-    func addToMine(_ id: String) {
-        if appliedIDs.contains(id) { showInMine = id } else { apply(id, true) }
+    /// `source` is the 사용 통계 `myactivity_add` source (`discovery`, `queue`, `favorites`, …).
+    func addToMine(_ id: String, source: String) {
+        if appliedIDs.contains(id) { showInMine = id } else {
+            AppAnalytics.event("myactivity_add", AppAnalytics.activity(id, seen[id]).merging(["source": source]) { $1 })
+            apply(id, true)
+        }
     }
     private func start(_ query: String) {
         firstPage?.cancel()

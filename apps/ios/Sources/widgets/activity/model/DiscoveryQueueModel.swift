@@ -27,6 +27,15 @@ import Observation
             case .ineligible: "지원 자격이 안 되는 활동으로 표시했어요"
             }
         }
+        /// 사용 통계 `queue_dismiss` `reason`.
+        var analyticsReason: String {
+            switch self {
+            case .dismiss: "dismiss"
+            case .lessField: "less_field"
+            case .hideProgram: "hide_program"
+            case .ineligible: "ineligible"
+            }
+        }
         var signal: RecommendationSignal {
             switch self {
             case .dismiss: .dismiss

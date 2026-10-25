@@ -34,7 +34,7 @@ struct FavoritesPage: View {
             if favorites.phase != .signedOut {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Picker("보기", selection: $layout) {
+                        Picker("보기", selection: $layout.reporting { if $0 == .calendar { AppAnalytics.event("menu_open", ["menu": "favorites_calendar"]) } }) {
                             Label("목록", systemImage: "list.bullet").tag(FavoritesLayout.list)
                             Label("캘린더", systemImage: "calendar").tag(FavoritesLayout.calendar)
                         }
@@ -48,6 +48,7 @@ struct FavoritesPage: View {
         }
         .overlay(alignment: .bottom) { undoNotice }
         .onDisappear { favorites.commitPending() }
+        .analyticsScreen(layout == .calendar ? "favorites_calendar" : "favorites")
     }
     private var list: some View {
         List {
@@ -87,7 +88,7 @@ struct FavoritesPage: View {
                             recruitmentText: activity.recruitmentText(at: now), scheduleText: activity.scheduleText(at: now),
                             place: activity.place?.name ?? activity.location, fieldTag: activity.fieldTags.first, traitTags: activity.traitTags,
                             surface: Color(.secondarySystemGroupedBackground)) {
-            FavoriteControls(target: .activity(activity.id), mine: (state.appliedIDs.contains(activity.id), { state.addToMine(activity.id) }),
+            FavoriteControls(target: .activity(activity.id), mine: (state.appliedIDs.contains(activity.id), { state.addToMine(activity.id, source: "favorites") }),
                              showsLevel: true)
         } open: {
             path.append(activity.id)
@@ -157,13 +158,13 @@ struct ProgramDetailPage: View {
                               accessory: { FavoriteControls(target: .program(program.id)) }, toggle: nil)
                     .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 20, style: .continuous))
                     .padding(.bottom, 8)
-                ProgramActivityGroups(state: state, programID: program.id, path: $path, showsPast: true)
+                ProgramActivityGroups(state: state, programID: program.id, path: $path, showsPast: true, source: "favorites")
             }
             .padding(.horizontal, 20).padding(.vertical, 12)
         }
         // Loads again when a discovery search dropped the loaded lists.
         .task(id: state.openActivities[program.id] == nil) { state.loadProgram(program.id) }
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
-        .navigationTitle(program.name).navigationBarTitleDisplayMode(.inline)
+        .navigationTitle(program.name).navigationBarTitleDisplayMode(.inline).analyticsScreen("program_detail")
     }
 }

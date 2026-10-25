@@ -124,7 +124,7 @@ struct ActivityListPage: View {
         #endif
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .tint(DearbyStyle.teal)
-        .navigationTitle("활동 둘러보기").navigationBarTitleDisplayMode(.inline)
+        .navigationTitle("활동 둘러보기").navigationBarTitleDisplayMode(.inline).analyticsScreen("discovery")
         .toolbar { TabRootToolbar() }
     }
     private var queueEntry: some View {
