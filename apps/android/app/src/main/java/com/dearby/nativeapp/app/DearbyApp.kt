@@ -61,13 +61,19 @@ private sealed interface Route {
     }
     BackHandler(route is Route.Detail || route is Route.Qr) { route = null }
     BackHandler(route == Route.Shared) { wallet.closeShared() }
-    val compose = { publish.start(); route = Route.Composer }
     // The fixed header buttons of every tab (contract "알림 아이콘은 다섯 탭 모두 우상단 고정"·"설정"); the notification screen is still a placeholder notice.
     val openSettings = { route = Route.Settings }
     val notify = { notice = "새 알림이 없어요.\n이 앱은 고정 예시로 둘러보는 프로토타입입니다." }
     val profileState by profile.state.collectAsStateWithLifecycle()
     val walletState by wallet.state.collectAsStateWithLifecycle()
     val auth by account.state.collectAsStateWithLifecycle()
+    // Signed out, making a card and the funnel→queue entry open the sign-in sheet instead (contract "비로그인에서 만들기·추천을 막음", 2026-10-25); `이 명함 고치기` only shows signed in.
+    var signingIn by remember { mutableStateOf(false) }
+    // Signed in from the `오늘의 맞춤 대기열` row: once the settings are read, a never-finished funnel opens (its result opens the queue), else the queue.
+    var queueAfterSignIn by remember { mutableStateOf(false) }
+    val signedIn = auth.phase == AccountPhase.SIGNED_IN
+    LaunchedEffect(signedIn) { if (signedIn) signingIn = false }
+    val compose = { if (signedIn) { publish.start(); route = Route.Composer } else { signingIn = true } }
     // 명함 교환 (contract): a dearby://cards/… link saved a card → open it; signed out → sign in, then the link is saved.
     // A saved exchanged card opens on the 명함 tab's 받은 명함 segment with its detail pushed.
     // A card App Link not in the wallet opens 공유받은 명함 보기 over whatever was showing; once it closes (or saved), the route goes too.
@@ -81,17 +87,22 @@ private sealed interface Route {
         activityListState.linkNotice?.let { notice = it; queueReturn = false }
         if (activityListState.linked != null || activityListState.linkNotice != null) activityModel.consumeLinked()
     }
-    // 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천"): the funnel takes the whole screen on the first visit to 발견 (not in store screenshots).
+    // 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천"): the funnel takes the whole screen on the first signed-in visit to 발견 (not in store screenshots).
     val reco by recommendation.state.collectAsStateWithLifecycle()
     val recoFunnel by recommendation.funnel.collectAsStateWithLifecycle()
     val eligibilityForm by recommendation.form.collectAsStateWithLifecycle()
-    LaunchedEffect(tab, route, reco.needsFunnel) { if (screenshot == null && tab == Tab.Discovery && route == null && reco.needsFunnel) recommendation.openFunnel(first = true) }
+    LaunchedEffect(tab, route, reco.needsFunnel, signedIn) { if (screenshot == null && signedIn && tab == Tab.Discovery && route == null && reco.needsFunnel) recommendation.openFunnel(first = true) }
     // 오늘의 맞춤 대기열: its 자세히 opens the activity on 발견 and, once that detail closes, the queue comes back where it was.
     LaunchedEffect(activityDetail) { if (!activityDetail && queueReturn) { queueReturn = false; route = Route.Queue } }
     // 2026-10-25 user decision "추천은 없애고 맞춤대기열 진입만 남겨줘": one `오늘의 맞춤 대기열` row tops 발견; a never-finished funnel comes first and its
-    // result button (`맞춤 대기열 보러 가기`) opens the queue. The row always shows; a failed read is the queue screen's own retry state.
+    // result button (`맞춤 대기열 보러 가기`) opens the queue. The row always shows; a failed read is the queue screen's own retry state. Signed out it
+    // asks for sign-in and then carries on by itself ([queueAfterSignIn]).
     val openQueue = { queue.open(); route = Route.Queue }
-    val recoHeader: @Composable () -> Unit = { QueueEntryRow { if (reco.completed) openQueue() else recommendation.openFunnel(first = true) } }
+    val enterQueue = { if (reco.completed) openQueue() else recommendation.openFunnel(first = true) }
+    LaunchedEffect(signedIn, reco.preferencesRead, queueAfterSignIn) { if (queueAfterSignIn && signedIn && reco.preferencesRead) { queueAfterSignIn = false; enterQueue() } }
+    val recoHeader: @Composable () -> Unit = {
+        QueueEntryRow(signedIn) { if (signedIn) enterQueue() else { signingIn = true; queueAfterSignIn = true } }
+    }
     LaunchedEffect(auth.phase, walletState.needSignIn) { if (auth.phase == AccountPhase.SIGNED_IN && walletState.needSignIn) wallet.retryPending() }
     // Every screen sits on the theme `background`, which this Surface spreads under the status bar, navigation bar and keyboard too (contract "안전 영역
     // 배경"); cards, sheets and tiles are `surface` on top. Every screen inside starts with a `DearbyTopBar`, which takes the status-bar inset itself, so
@@ -119,7 +130,7 @@ private sealed interface Route {
                         // 설정·알림 sit in each tab's pinned `DearbyTopBar` (contract "iOS 상단 바…" Android sentence).
                         Tab.Discovery, Tab.Mine -> key(tab) {
                             ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }, settings = openSettings, notify = notify,
-                                openInMine = { mineOpen = it; tab = Tab.Mine }, open = if (tab == Tab.Mine) mineOpen else discoveryOpen, consumeOpen = { if (tab == Tab.Mine) mineOpen = null else discoveryOpen = null }, openConsent = { activityDetail = false; tab = Tab.Profile }, header = recoHeader, waiting = !reco.localLoaded) { activityDetail = it }
+                                openInMine = { mineOpen = it; tab = Tab.Mine }, open = if (tab == Tab.Mine) mineOpen else discoveryOpen, consumeOpen = { if (tab == Tab.Mine) mineOpen = null else discoveryOpen = null }, openConsent = { activityDetail = false; tab = Tab.Profile }, header = recoHeader) { activityDetail = it }
                         }
                         Tab.Cards -> CardsRoute(cardsSegment, { cardsSegment = it }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
                             edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify)
@@ -160,4 +171,5 @@ private sealed interface Route {
     reco.notice?.let { value -> AlertDialog(onDismissRequest = recommendation::dismissNotice, title = { Text("추천") }, text = { Text(value) }, confirmButton = { TextButton(recommendation::dismissNotice) { Text("확인") } }) }
     walletState.notice?.let { value -> AlertDialog(onDismissRequest = wallet::dismissNotice, title = { Text("안내") }, text = { Text(value) }, confirmButton = { TextButton(wallet::dismissNotice) { Text("확인") } }) }
     if (walletState.needSignIn && auth.phase != AccountPhase.SIGNED_IN) SignInRoute(account, close = wallet::dismissSignIn)
+    else if (signingIn && !signedIn) SignInRoute(account, close = { signingIn = false; queueAfterSignIn = false })
 }

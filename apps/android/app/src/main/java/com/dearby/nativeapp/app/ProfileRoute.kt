@@ -50,8 +50,9 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
             else -> recommendation.startEligibility()
         }
     }
-    val recommendationGroup: (@Composable () -> Unit)? = if (!reco.available) null else {
-        { RecommendationProfileGroup(reco.eligibilitySummary, { recommendation.openFunnel(first = false) }, openEligibility) }
+    // Signed out the rows still show and open sign-in (contract "비로그인에서 만들기·추천을 막음", 2026-10-25); signed in they wait for the recommendation API.
+    val recommendationGroup: (@Composable () -> Unit)? = if (signedIn && !reco.available) null else {
+        { RecommendationProfileGroup(reco.eligibilitySummary, { if (signedIn) recommendation.openFunnel(first = false) else { signingIn = true } }, openEligibility) }
     }
     LaunchedEffect(signedIn) { if (signedIn) signingIn = false; model.load() }
     val resolver = context.contentResolver

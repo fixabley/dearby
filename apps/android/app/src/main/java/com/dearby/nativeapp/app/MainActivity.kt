@@ -60,30 +60,10 @@ class MainActivity : ComponentActivity() {
     private val profile: ProfileViewModel by viewModels { viewModelFactory { initializer { ProfileViewModel(account) } } }
     private val myCards: MyCardsViewModel by viewModels { viewModelFactory { initializer { MyCardsViewModel(account) } } }
     private val settings: SettingsViewModel by viewModels { viewModelFactory { initializer { SettingsViewModel(account, "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})") } } }
-    // 추천 설정 while signed out and the funnel's completion flag (contract "추천 설정 저장": the app's existing settings store, new keys); nothing older is read.
-    private val recommendation: RecommendationViewModel by viewModels {
-        viewModelFactory {
-            initializer {
-                RecommendationViewModel(account, object : RecommendationStore {
-                    override fun preferences() = onboarding.getString(RECOMMENDATION_KEY, null)
-                    override fun savePreferences(json: String) = onboarding.edit { putString(RECOMMENDATION_KEY, json) }
-                    override fun completed() = onboarding.getBoolean(RECOMMENDATION_DONE_KEY, false)
-                    override fun markCompleted() = onboarding.edit { putBoolean(RECOMMENDATION_DONE_KEY, true) }
-                })
-            }
-        }
-    }
-    // 오늘의 맞춤 대기열 reactions while signed out (contract "맞춤 대기열": 신호는 기기에만), a new key in the same file.
-    private val queue: QueueViewModel by viewModels {
-        viewModelFactory {
-            initializer {
-                QueueViewModel(account, { recommendation.currentPreferences }, object : QueueStore {
-                    override fun signals() = onboarding.getString(QUEUE_SIGNALS_KEY, null)
-                    override fun saveSignals(json: String) = onboarding.edit { putString(QUEUE_SIGNALS_KEY, json) }
-                })
-            }
-        }
-    }
+    // 추천 and 오늘의 맞춤 대기열 need a session (contract "비로그인에서 만들기·추천을 막음", 2026-10-25): nothing is kept on the device, and the
+    // earlier keys (signed-out settings, queue reactions, the funnel's completion flag) are neither read nor removed.
+    private val recommendation: RecommendationViewModel by viewModels { viewModelFactory { initializer { RecommendationViewModel(account) } } }
+    private val queue: QueueViewModel by viewModels { viewModelFactory { initializer { QueueViewModel(account) } } }
     // First-launch intro, remembered in its own new preferences file; no earlier stored data is read.
     private val onboarding by lazy { getSharedPreferences("dearby.onboarding", MODE_PRIVATE) }
     private var intro by mutableStateOf(false)
@@ -134,7 +114,3 @@ class MainActivity : ComponentActivity() {
         activityAppLink(link, BuildConfig.WEB_ORIGIN)?.let(activityModel::openLinked)
     }
 }
-
-private const val RECOMMENDATION_KEY = "dearby.recommendation.preferences"
-private const val RECOMMENDATION_DONE_KEY = "dearby.recommendation.completed"
-private const val QUEUE_SIGNALS_KEY = "dearby.queue.signals"

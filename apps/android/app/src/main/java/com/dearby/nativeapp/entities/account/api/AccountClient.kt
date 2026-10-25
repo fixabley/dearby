@@ -226,16 +226,9 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun saveEligibilityProfile(profile: EligibilityProfile, session: AccountSession) { request("PUT", "me/eligibility-profile", profile.toPutJson(), session) }
     /** Removes the values and the consent record. */
     suspend fun deleteEligibilityProfile(session: AccountSession) { request("DELETE", "me/eligibility-profile", null, session) }
-    /** Signed in, the server uses the saved settings and 지원 자격 정보; signed out, [preferences] go as comma lists. */
-    suspend fun recommendations(preferences: RecommendationPreferences?, session: AccountSession?, size: Int = 10): RecommendationPage =
-        recommendationsBody(preferences, session, size).toRecommendations(api)
-    /** The raw 추천 answer, for 오늘의 맞춤 대기열 while signed out (the queue reads whole activities; `entities/activity` parses them). */
-    suspend fun recommendationsBody(preferences: RecommendationPreferences?, session: AccountSession?, size: Int): JSONObject {
-        val params = listOfNotNull("size=$size", preferences?.fieldTagIds?.takeIf { it.isNotEmpty() }?.let { "fieldTagIds=" + it.joinToString(",") },
-            preferences?.categories?.takeIf { it.isNotEmpty() }?.let { "categories=" + it.joinToString(",") },
-            preferences?.traitTagIds?.takeIf { it.isNotEmpty() }?.let { "traitTagIds=" + it.joinToString(",") })
-        return send("GET", "discovery/recommendations?" + params.joinToString("&"), null, session)
-    }
+    /** The server uses the saved settings and 지원 자격 정보; signed out is 401 (contract "비로그인에서 만들기·추천을 막음", 2026-10-25). */
+    suspend fun recommendations(session: AccountSession, size: Int = 10): RecommendationPage =
+        send("GET", "discovery/recommendations?size=$size", null, session).toRecommendations(api)
     /** 오늘의 맞춤 대기열 (contract "맞춤 대기열"): `{date, items: [{activity, program, reasons}], seen}`; 404 before the server ships it. */
     suspend fun discoveryQueue(session: AccountSession) = send("GET", "me/discovery-queue", null, session)
     /** `더 받기`: the queue rebuilt from the remaining candidates, in the same shape. */

@@ -14,7 +14,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dearby.nativeapp.shared.ui.*
 import com.dearby.nativeapp.widgets.card.cardContent.CardComposer
 
-/** Makes a real card from the saved profile: choose what to show, publish (the body is the built-in template) — or, opened from `이 명함 고치기`, saves onto that same card (contract "명함 고치기는 같은 명함을 수정"). Signing in is asked for when the composer opens signed out. */
+/** Makes a real card from the saved profile: choose what to show, publish (the body is the built-in template) — or, opened from `이 명함 고치기`, saves onto that same card (contract "명함 고치기는 같은 명함을 수정"). Signed out it is not opened (the shell asks for sign-in first); a session that lapses here asks for sign-in again. */
 @Composable fun CardComposerRoute(model: CardPublishViewModel, account: AccountViewModel, close: () -> Unit) {
     val state by model.state.collectAsStateWithLifecycle()
     val auth by account.state.collectAsStateWithLifecycle()
