@@ -128,8 +128,8 @@ export default function PrivacyPage() {
         <li>Apple 로그인, Google 로그인: 로그인 과정에서 각 회사가 발급한 식별자와(검증된 경우) 이메일을 받습니다. 로그인을 위해 이들에게 사용자 정보를 보내지는 않습니다.</li>
         <li>푸시 발송: iOS 알림은 Apple Push Notification service(APNs), Android 알림은 Firebase Cloud Messaging(FCM, Google)을 거쳐 기기에 보냅니다. 이때 기기 토큰과 알림 문구(활동·프로그램 이름, 마감일)가 전달됩니다.</li>
         <li>앱 사용 통계: Google의 Firebase Analytics에 위 &ldquo;앱 사용 통계&rdquo; 항목의 처리를 맡깁니다. Google이 서비스 제공자로 처리하며, 서비스는 Google 광고 연결·Google 신호를 쓰지 않습니다.</li>
-        <li>웹 호스팅: 이 웹사이트는 Vercel에서 제공됩니다(정적 페이지와 서버 프록시).</li>
-        <li>API·데이터베이스 서버: <strong>[서버 소재지·제공자]</strong>에서 운영합니다.</li>
+        <li>웹 호스팅: 이 웹사이트는 Vercel에서 제공됩니다(정적 페이지와 서버 프록시, 처리 리전 서울).</li>
+        <li>API·데이터베이스 서버: <strong>대한민국</strong>에서 <strong>조민준</strong>이 운영합니다.</li>
         <li>맞춤 대기열의 내용 비교(임베딩)는 서비스 서버 안에서 공개된 활동 설명으로만 계산하며, 사용자 정보는 이 계산에 쓰거나 외부로 보내지 않습니다.</li>
         <li>그 밖의 제3자 제공과 광고 목적의 추적은 하지 않습니다.</li>
       </ul>
@@ -148,28 +148,36 @@ export default function PrivacyPage() {
         </thead>
         <tbody>
           <tr>
-            <td>Google LLC ([연락처])</td>
-            <td>[이전 국가]</td>
+            <td>Google LLC (<a href="mailto:googlekrsupport@google.com">googlekrsupport@google.com</a>)</td>
+            <td>미국</td>
             <td>앱을 쓰는 동안 수시로, 네트워크(TLS)로 전송</td>
             <td>앱 사용 통계(앱 인스턴스 ID·설치 ID, 화면·이벤트, 사용자 속성, 앱·기기 정보, IP 주소로 추정한 대략적 위치)</td>
             <td>앱 사용 통계 분석</td>
-            <td>[Firebase Analytics 데이터 보존 기간]</td>
+            <td>수집일로부터 14개월</td>
           </tr>
           <tr>
-            <td>Google LLC ([연락처])</td>
-            <td>[이전 국가]</td>
+            <td>Google LLC (<a href="mailto:googlekrsupport@google.com">googlekrsupport@google.com</a>)</td>
+            <td>미국</td>
             <td>알림을 보낼 때마다, 네트워크(TLS)로 전송</td>
             <td>Android 기기 토큰(FCM), 알림 문구</td>
             <td>Android 푸시 알림 발송</td>
-            <td>[보유 기간]</td>
+            <td>발송 처리 후 각 사업자 정책에 따름</td>
           </tr>
           <tr>
-            <td>Apple Inc. ([연락처])</td>
-            <td>[이전 국가]</td>
+            <td>Apple Inc. (<a href="https://www.apple.com/kr/privacy/contact/">apple.com/kr/privacy/contact</a>)</td>
+            <td>미국</td>
             <td>알림을 보낼 때마다, 네트워크(TLS)로 전송</td>
             <td>iOS 기기 토큰(APNs), 알림 문구</td>
             <td>iOS 푸시 알림 발송</td>
-            <td>[보유 기간]</td>
+            <td>발송 처리 후 각 사업자 정책에 따름</td>
+          </tr>
+          <tr>
+            <td>Vercel Inc. (<a href="mailto:privacy@vercel.com">privacy@vercel.com</a>)</td>
+            <td>미국 법인, 처리 리전: 서울(icn1)</td>
+            <td>웹사이트에 접속할 때마다, 네트워크(TLS)로 전송</td>
+            <td>웹 요청 처리 시 접속 기록(IP 주소, 요청 시각·경로, 브라우저 정보), 웹에서 주고받는 요청·응답 내용(공개 명함, 비로그인 저장 쿠키와 저장한 명함 목록)</td>
+            <td>웹사이트 제공과 서버 프록시</td>
+            <td>요청 처리 후 Vercel 정책에 따름</td>
           </tr>
         </tbody>
       </table>
@@ -181,8 +189,9 @@ export default function PrivacyPage() {
         <li>즐겨찾기·알림 수준·&ldquo;새 모집 알림&rdquo; 설정은 사용자가 지우거나 바꿀 때까지, 계정이 있는 동안 보관합니다.</li>
         <li>푸시 기기 토큰과 함께 저장한 시간대·앱 판은 로그아웃하거나 앱에서 &ldquo;새 모집 알림&rdquo;을 끌 때, Apple·Google이 그 토큰을 더는 쓸 수 없다고 알려 줄 때, 계정을 삭제할 때 지웁니다. 같은 기기에서 다른 계정으로 로그인하면 토큰은 그 계정으로 옮겨 갑니다.</li>
         <li>알림 목록과 그 알림의 푸시 발송 기록은 만든 날부터 90일이 지나면 지웁니다. 계정을 삭제하면 즉시 함께 지웁니다.</li>
-        <li>명함 신고는 검토를 위해 [보유 기간] 동안 보관합니다. 계정을 삭제하면 내 명함에 대한 신고와 내가 하거나 받은 차단은 지우고, 내가 한 신고는 신고자 정보만 지운 채 남깁니다.</li>
-        <li>앱 사용 통계는 Google Firebase Analytics에서 [보유 기간] 동안 보관합니다. 서비스의 사용자 ID와 연결하지 않으므로 계정 삭제로 함께 지워지지는 않습니다.</li>
+        <li>명함 신고 기록은 신고일로부터 1개월이 지나면 지웁니다. 그 전에 계정을 삭제하면 내 명함에 대한 신고는 지우고, 내가 한 신고는 신고자 정보만 지운 채 남깁니다.</li>
+        <li>차단 목록은 신고 기록과 별개로, 차단을 풀거나 차단한 쪽 또는 차단된 쪽이 계정을 삭제할 때까지 유지합니다. 로그인하지 않고 웹에서 한 차단은 [보유 기간] 동안 유지합니다.</li>
+        <li>앱 사용 통계는 Google Firebase Analytics에서 수집일로부터 14개월 동안 보관합니다. 서비스의 사용자 ID와 연결하지 않으므로 계정 삭제로 함께 지워지지는 않습니다.</li>
         <li>발행한 명함은 사용자가 지울 때까지 남습니다. 단방향으로 받은 명함은 30일 뒤 목록에서 거두고, 명함을 건넨 사람이 명함을 지우면 받은 쪽에서도 사라집니다.</li>
         <li>비로그인 웹 저장은 브라우저 쿠키가 남아 있는 동안(최대 400일) 유지되며, 쿠키를 지우면 서버에서 다시 찾을 수 없습니다.</li>
         <li>법령이 보존을 요구하는 기록은 그 기간 동안만 분리 보관합니다.</li>
