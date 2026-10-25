@@ -50,14 +50,14 @@ class QueueViewModel(private val account: AccountViewModel, val ads: QueueAd) : 
     private var pending: Pending? = null
     private var undoSerial = 0
     private var job: Job? = null
-    private val signedIn get() = account.state.value.phase == AccountPhase.SIGNED_IN
+    private val signedIn get() = account.ready.value
     private val client get() = account.client
 
     private data class Pending(val before: List<QueueItem>, val item: QueueItem, val reaction: QueueReaction)
 
     init {
         viewModelScope.launch {
-            account.state.map { it.phase }.filter { it != AccountPhase.WORKING }.distinctUntilChanged().collect { reset() }
+            account.ready.collect { reset() }
         }
     }
 

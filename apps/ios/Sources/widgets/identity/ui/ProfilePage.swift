@@ -5,20 +5,20 @@ import SwiftUI
 /// the toolbar `수정` (pencil) swaps in the inset-grouped `Form` editor with the 저장 / 원래대로 bar once anything differs from the loaded profile
 /// (contract "프로필과 버전 이력"). `수정` becomes `완료`: no change → back to reading, changes → 저장 / 버리기 / 취소. A successful save returns to read mode.
 /// 변경 이력·명함 만들기 live in the toolbar `더 보기` menu. Card decoration lives in 명함 만들기. Signed out (contract "비로그인에서 만들기·추천을 막음"
-/// 2026-10-25) there is nothing to make or edit: the page offers 로그인, and `지원 자격 정보`·`관심 분야·활동 종류` open sign-in too (the app opens it for the latter).
-/// The consent gate (contract "개인정보 동의", "동의 시트 닫기" 2026-10-20) is a sheet over the funnel/editor whenever the server says
-/// `consentRequired`: pulling it down or 닫기 means not consented — the sheet stays away until a save comes back 403 `CONSENT_REQUIRED`, which shows it again.
+/// 2026-10-25) there is nothing to make or edit and no recommendation: the page offers 로그인, without the `추천` 묶음.
+/// Signed in without the current consent (contract "개인정보 동의" 2026-10-25) the tab shows `ConsentRequiredView` instead of the funnel or the
+/// profile; the consent sheet itself belongs to the app (`askConsent`), which also asks at launch and on return to the foreground.
 struct ProfilePage: View {
     let state: ProfileModel
     /// 프로필 `추천` 묶음 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): `지원 자격 정보` and `관심 분야·활동 종류`.
     let eligibility: EligibilityModel
-    /// Reopens the 추천 funnel (signed out, the app opens sign-in first).
+    /// Reopens the 추천 funnel (the row shows signed in only).
     let editRecommendations: () -> Void
-    /// 프로필 `알림` 묶음 (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25): `새 모집 알림`, and Settings when permission was refused.
-    let notifications: NotificationModel
-    @Environment(\.openURL) private var openURL
-    /// `사용 통계 보내기` (2026-10-25, as Android): on until turned off, kept on the device, signed in or not.
-    @AppStorage(AppAnalytics.enabledKey) private var analyticsEnabled = true
+    /// `나중에` on the first-profile funnel: the app shows 발견 (the funnel keeps its answers and comes back with this tab).
+    let leaveSetup: () -> Void
+    /// Signed in without the current required consent (the app's state: signed in and `consentPending`).
+    let consentNeeded: Bool
+    let askConsent: () -> Void
     @State private var eligibilityConsent = false
     @State private var eligibilityAgreed = false
     @State private var eligibilityInput = false
@@ -35,8 +35,6 @@ struct ProfilePage: View {
     @State private var saving = false
     @State private var error: String?
     @State private var tried = false
-    /// 닫기/pull-down on the consent sheet; cleared when a save is refused for missing consent so the sheet comes back.
-    @State private var consentDismissed = false
     /// Editor rows (`name`·`introduction`·`phone`·`email`·추가 연락처 id) and the 직무 search; the keyboard 완료 clears both.
     @FocusState private var field: String?
     @FocusState private var jobSearch: Bool
@@ -44,8 +42,10 @@ struct ProfilePage: View {
     private var settingUp: Bool { state.profile?.version == 0 }
     var body: some View {
         Group {
-            if settingUp, let binding = Binding($form) {
-                ProfileFunnelPage(form: binding, account: state.account, saving: saving, error: error) { save(binding.wrappedValue) }
+            if consentNeeded {
+                ConsentRequiredView(ask: askConsent)
+            } else if settingUp, let binding = Binding($form) {
+                ProfileFunnelPage(form: binding, account: state.account, saving: saving, error: error, later: leaveSetup) { save(binding.wrappedValue) }
             } else {
                 editorScreen
             }
@@ -77,16 +77,9 @@ struct ProfilePage: View {
             guard let profile else { form = nil; return }
             if form == nil || form?.changed == false || saving { form = ProfileForm(profile: profile); error = nil; tried = false }
         }
-        .sheet(isPresented: Binding(get: { state.profile != nil && state.consentPending && !consentDismissed }, set: { if !$0 { consentDismissed = true } })) {
-            NavigationStack { ConsentPage(state: state) }
-        }
-        // A fresh requirement (sign-in to another account, a new policy version) shows the sheet again even if an earlier one was closed.
-        .onChange(of: state.consentPending) { _, pending in if pending { consentDismissed = false } }
         .sheet(item: $funnel) { target in
-            NavigationStack {
-                HistoryFunnelPage(draft: target.draft, state: state, saved: target.saved, startAtSummary: target.saved) { done in form?.put(done) }
-            }
-            .analyticsMenu("history")
+            HistoryFunnelPage(draft: target.draft, state: state, saved: target.saved, startAtSummary: target.saved) { done in form?.put(done) }
+                .analyticsMenu("history")
         }
         .sheet(isPresented: $composing, onDismiss: { Task { await state.load() } }) { NavigationStack { CardComposerPage(account: state.account) }.analyticsMenu("card_create") }
         .sheet(isPresented: $signingIn) { NavigationStack { SignInSheet(account: state.account) { Task { await state.load() } } } }
@@ -121,49 +114,6 @@ struct ProfilePage: View {
             .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
         }
     }
-    /// `알림` 묶음: signed in, the account's 새 모집 알림 switch and, when the system permission was refused, a row to the app's notification
-    /// settings; always `사용 통계 보내기`.
-    private func notificationGroup(signedIn: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("알림").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(.secondary).padding(.horizontal, 16)
-                .accessibilityAddTraits(.isHeader)
-            VStack(spacing: 0) {
-                if signedIn { newRecruitmentRows }
-                Toggle(isOn: $analyticsEnabled) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("사용 통계 보내기").font(.dearby(.body))
-                        Text("어떤 화면과 기능을 쓰는지 개인정보 없이 모아 앱을 고치는 데 써요").font(.dearby(.footnote)).foregroundStyle(.secondary)
-                    }
-                }
-                .tint(DearbyStyle.teal).padding(.horizontal, 16).padding(.vertical, 8).frame(minHeight: 44)
-                .accessibilityIdentifier("profile-usage-stats")
-                .onChange(of: analyticsEnabled) { _, on in AppAnalytics.setEnabled(on) }
-            }
-            .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
-        }
-        .alert(notifications.notice ?? "", isPresented: Binding(get: { notifications.notice != nil }, set: { if !$0 { notifications.notice = nil } })) {
-            Button("확인", role: .cancel) {}
-        }
-    }
-    @ViewBuilder private var newRecruitmentRows: some View {
-        Toggle(isOn: Binding(get: { notifications.newRecruitment ?? true },
-                             set: { on in Task { await notifications.setNewRecruitment(on) } })) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("새 모집 알림").font(.dearby(.body))
-                Text("즐겨찾기한 프로그램·활동의 새 모집과 일정").font(.dearby(.footnote)).foregroundStyle(.secondary)
-            }
-        }
-        .tint(DearbyStyle.teal).padding(.horizontal, 16).padding(.vertical, 8).frame(minHeight: 44)
-        .accessibilityIdentifier("profile-new-recruitment")
-        Divider().padding(.leading, 16)
-        if notifications.denied {
-            groupRow("기기 알림이 꺼져 있어요", detail: "설정에서 Dearby 알림을 켜면 받을 수 있어요") {
-                AppAnalytics.event("menu_open", ["menu": "notifications"])
-                if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) }
-            }.accessibilityIdentifier("profile-notification-settings")
-            Divider().padding(.leading, 16)
-        }
-    }
     private func groupRow(_ title: String, detail: String? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 12) {
@@ -177,14 +127,13 @@ struct ProfilePage: View {
             .padding(.horizontal, 16).padding(.vertical, 8).frame(minHeight: 44).contentShape(Rectangle())
         }.buttonStyle(.plain)
     }
-    /// Signed out → sign in. Entered (and consented to this version) → 고치기·지우기. Otherwise the consent sheet, then the questions.
+    /// Signed in only (the row is not shown signed out). Entered (and consented to this version) → 고치기·지우기. Otherwise the consent sheet, then the questions.
     private func openEligibility() {
         AppAnalytics.event("menu_open", ["menu": "eligibility"])
         switch eligibility.phase {
-        case .signedOut: signingIn = true
         case .loaded where eligibility.hasValues && !eligibility.needsConsent: eligibilityChoice = true
         case .loaded: if eligibility.needsConsent { eligibilityConsent = true } else { eligibilityInput = true }
-        case .failed, .loading, .unavailable: Task { await eligibility.load() }
+        case .signedOut, .failed, .loading, .unavailable: Task { await eligibility.load() }
         }
     }
     private var toolbarReady: Bool {
@@ -211,8 +160,6 @@ struct ProfilePage: View {
                 VStack(spacing: 0) {
                     CenteredMessage(symbol: "person.crop.circle", title: "프로필은 계정에 저장돼요", message: "로그인하면 프로필을 적고 명함을 만들 수 있어요.",
                                     primary: MessageAction("로그인") { signingIn = true })
-                    recommendationGroup.padding(.horizontal, 20).padding(.bottom, 16)
-                    notificationGroup(signedIn: false).padding(.horizontal, 20).padding(.bottom, 16)
                 }
             case .loading:
                 // Contract "내용 로딩은 스켈레톤" 2026-10-22: the read view with sample values.
@@ -226,7 +173,6 @@ struct ProfilePage: View {
                         VStack(alignment: .leading, spacing: 0) {
                             ProfileReadView(profile: profile).padding(20)
                             recommendationGroup.padding(.horizontal, 20).padding(.bottom, 20)
-                            notificationGroup(signedIn: true).padding(.horizontal, 20).padding(.bottom, 20)
                         }
                     }
                 } else if let binding = Binding($form) {
@@ -306,8 +252,7 @@ struct ProfilePage: View {
         Task {
             error = await state.save(form)
             saving = false
-            // 403 CONSENT_REQUIRED re-raises the consent sheet even after the user closed it (contract "다시 저장하면 다시 뜬다").
-            if state.consentPending { consentDismissed = false }
+            // 403 CONSENT_REQUIRED sets `consentPending`: the app shows the consent sheet again and this tab its gate.
             if error == nil, let profile = state.profile { self.form = ProfileForm(profile: profile); tried = false; editing = false }
         }
     }

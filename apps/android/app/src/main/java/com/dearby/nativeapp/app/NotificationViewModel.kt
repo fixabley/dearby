@@ -33,11 +33,11 @@ class NotificationViewModel(
 ) : ViewModel() {
     private val mutable = MutableStateFlow(NotificationState(pushable))
     val state = mutable.asStateFlow()
-    private val signedIn get() = account.state.value.phase == AccountPhase.SIGNED_IN
+    private val signedIn get() = account.ready.value
 
     init {
         viewModelScope.launch {
-            account.state.map { it.phase }.filter { it != AccountPhase.WORKING }.distinctUntilChanged().collect { phase ->
+            account.ready.map { if (it) AccountPhase.SIGNED_IN else AccountPhase.SIGNED_OUT }.collect { phase ->
                 if (phase == AccountPhase.SIGNED_IN) load() else mutable.update { NotificationState(it.pushable) }
             }
         }

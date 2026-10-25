@@ -20,13 +20,18 @@ import com.dearby.nativeapp.shared.ui.*
  * 설정 (contract "설정", 2026-10-19 밤): a pushed screen with a back title and Material 3 `ListItem` sections — 계정 (가입일, 로그인 수단 수, 로그아웃,
  * 계정 삭제), 연결된 로그인 (Apple·Google: linked → email·date + 연결 해제, else 연결하기), 패스키 (rows open a menu: 이름 바꾸기·삭제; 패스키 추가 at the
  * bottom), 정보 (개인정보 처리방침·이용약관 in the in-app browser, app version). The last sign-in method cannot be removed: those buttons disable with
- * an explanation, and a server 409 reaches the screen as [SettingsState.notice]. Signed out ([SettingsPhase.SIGNED_OUT]) only the 로그인 CTA and 정보 show.
+ * an explanation, and a server 409 reaches the screen as [SettingsState.notice]. Above 정보: 알림 ([notifications], signed in with consent) and 개인정보
+ * ([privacy]). Signed out ([SettingsPhase.SIGNED_OUT]) only the 로그인 CTA, 개인정보 and 정보 show.
  * Confirmations (로그아웃·연결 해제·패스키 삭제·계정 삭제) are `AlertDialog`s; 이름 바꾸기 is a dialog with an `OutlinedTextField` (1~60자).
  */
 @Composable fun SettingsPage(
     state: SettingsState, back: () -> Unit, signIn: () -> Unit, signOut: () -> Unit, deleteAccount: () -> Unit, retry: () -> Unit,
     link: (String) -> Unit, unlink: (String) -> Unit, addPasskey: () -> Unit, renamePasskey: (String, String) -> Unit, deletePasskey: (String) -> Unit, unblock: (String) -> Unit,
     openPrivacy: () -> Unit, openTerms: () -> Unit, dismissNotice: () -> Unit, googleAvailable: Boolean = true,
+    /** `알림` rows (새 모집 알림); null signed out or before consent, since push is an account feature. */
+    notifications: (@Composable () -> Unit)? = null,
+    /** `개인정보` rows (사용 통계 보내기, later the 광고 제3자 제공 동의 철회 switch), signed in or not. */
+    privacy: @Composable () -> Unit = {},
 ) {
     var confirm by remember { mutableStateOf<Confirm?>(null) }
     var renaming by remember { mutableStateOf<SettingsPasskeyState?>(null) }
@@ -81,6 +86,14 @@ import com.dearby.nativeapp.shared.ui.*
                     ActionRow("차단한 사람", supporting = if (state.blocks.isEmpty()) "차단한 사람이 없어요." else "${state.blocks.size}명") { showingBlocks = true }
                     HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 }
+                notifications?.let {
+                    SectionTitle("알림")
+                    it()
+                    HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                }
+                SectionTitle("개인정보")
+                privacy()
+                HorizontalDivider(Modifier.padding(vertical = 8.dp))
                 SectionTitle("정보")
                 ActionRow("개인정보 처리방침", onClick = openPrivacy)
                 ActionRow("이용약관", onClick = openTerms)

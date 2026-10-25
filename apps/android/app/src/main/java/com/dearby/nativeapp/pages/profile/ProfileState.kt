@@ -158,7 +158,11 @@ fun ProfileVersionDetail.view() = VersionDetailView(version, createdAt, profile.
 
 /** The funnel sheet: which draft is open, whether the history exists on the server (evidence can be attached), and the picker search. */
 data class FunnelState(val draft: HistoryDraft, val saved: Boolean, val step: HistoryDraft.Step, val tried: Boolean = false,
-    val search: PickerSearchState = PickerSearchState(), val evidenceBusy: Boolean = false, val evidenceError: String? = null)
+    val search: PickerSearchState = PickerSearchState(), val evidenceBusy: Boolean = false, val evidenceError: String? = null,
+    /** The draft as opened; leaving with other answers asks first (contract "뒤로 가기"). Evidence is already on the server, so it does not count. */
+    val original: HistoryDraft = draft) {
+    val edited get() = draft.copy(evidence = original.evidence, verification = original.verification) != original
+}
 data class PickerSearchState(val query: String = "", val items: List<ActivityInfoItem> = emptyList(), val loading: Boolean = false, val failed: Boolean = false)
 
 /** 변경 이력 screens. */

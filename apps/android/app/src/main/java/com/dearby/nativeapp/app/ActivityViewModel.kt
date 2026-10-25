@@ -93,8 +93,8 @@ class ActivityViewModel(
         reload()
         account?.let { account ->
             viewModelScope.launch {
-                // WORKING is the sign-in prompt itself; only the settled phases switch the storage.
-                account.state.map { it.phase }.filter { it != AccountPhase.WORKING }.distinctUntilChanged().collect { phase ->
+                // Server storage only once signed in with the consent given ([AccountViewModel.ready], contract "개인정보 동의" 2026-10-25).
+                account.ready.map { if (it) AccountPhase.SIGNED_IN else AccountPhase.SIGNED_OUT }.collect { phase ->
                     if (phase == AccountPhase.SIGNED_IN && !serverMode) { serverMode = true; importing = deviceRecords(); mutable.update { it.copy(mineLoading = true) }; syncMine() }
                     else if (phase == AccountPhase.SIGNED_OUT && serverMode) signedOut()
                 }

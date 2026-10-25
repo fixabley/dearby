@@ -23,6 +23,9 @@ import SwiftUI
     /// `funnel` carries the 사용 통계 `funnel_start` entry (`queue_row` or `profile`).
     private enum AfterSignIn { case queue, funnel(String) }
     @State private var eligibility: EligibilityModel
+    /// 개인정보 동의 (contract "개인정보 동의" 2026-10-25): the consent sheet over the whole app, asked at launch, on return to the foreground and
+    /// whenever an account feature is opened while the current versions are not agreed. Closing it keeps the session.
+    @State private var showsConsent = false
     @State private var tab = 0
     /// Which section the 명함 tab shows (contract "명함 탭 통합"); memory only.
     @State private var cardsSegment = CardsSegment.myCards
@@ -33,6 +36,10 @@ import SwiftUI
     private let account: AccountViewModel
     /// New key (2026-10-14) holding only "intro seen"; no earlier app data is read.
     private static let introShownKey = "dearby.onboarding.shown"
+    /// Signed in without the current required consent: account features show the consent instead.
+    private var consentNeeded: Bool { account.phase == .signedIn && profile.consentPending }
+    /// Signed in, consent known and given: only then does the app sync or send account data (mine, favorites, inbox, push, recommendations, queue).
+    private var accountReady: Bool { account.phase == .signedIn && profile.profile != nil && !profile.consentPending }
     init() {
         AppAnalytics.start()
         let links = ConnectionProvider()
@@ -67,23 +74,29 @@ import SwiftUI
     }
     var body: some Scene {
         WindowGroup {
-            Group {
+            accountSync(Group {
                 if showIntro {
                     IntroPage(account: account, done: finishIntro)
                 } else {
-                    HomePage(selectedTab: $tab, hidesTabs: tab == 3 && profile.profile?.version == 0,
-                        discovery: { ActivityListPage(state: activityModel, queueSignedIn: account.phase == .signedIn, openQueue: queueRowTapped,
+                    HomePage(selectedTab: $tab, hidesTabs: tab == 3 && profile.profile?.version == 0 && !profile.consentPending,
+                        discovery: { ActivityListPage(state: activityModel, queueSignedIn: accountReady, openQueue: queueRowTapped,
                                                       editRecommendations: { editRecommendations("queue_row") }, path: $0) }, mine: { MyActivitiesPage(state: activityModel, segment: $mineSegment, path: $0, explore: { tab = 0 }) },
-                        cards: CardsPage(segment: $cardsSegment, cards: cards, wallet: wallet), profile: ProfilePage(state: profile, eligibility: eligibility,
+                        cards: CardsPage(segment: $cardsSegment, cards: cards, wallet: wallet, consentNeeded: consentNeeded) { showsConsent = true },
+                        profile: ProfilePage(state: profile, eligibility: eligibility,
                                                                                          editRecommendations: { editRecommendations("profile") },
-                                                                                         notifications: notifications),
-                        settings: { SettingsPage(account: account, webOrigin: links.origins.web) },
+                                                                                         leaveSetup: { tab = 0 },
+                                             consentNeeded: consentNeeded, askConsent: { showsConsent = true }),
+                        settings: { SettingsPage(account: account, webOrigin: links.origins.web, notifications: accountReady ? notifications : nil) },
                         inbox: { NotificationInboxPage(model: inbox, state: activityModel) })
                     .fullScreenCover(isPresented: $showsQueue) {
                         DiscoveryQueuePage(model: queue, state: activityModel)
                     }
                     .sheet(isPresented: $signingIn, onDismiss: continueAfterSignIn) {
                         NavigationStack { SignInSheet(account: account) {} }
+                    }
+                    // Closes itself once agreed (the getter reads the pending state); pulled down or 닫기 it asks again next time.
+                    .sheet(isPresented: Binding(get: { showsConsent && consentNeeded }, set: { if !$0 { showsConsent = false } })) {
+                        NavigationStack { ConsentPage(state: profile) }
                     }
                     .alert(favorites.notice ?? "", isPresented: Binding(get: { favorites.notice != nil }, set: { if !$0 { favorites.notice = nil } })) {
                         Button("확인", role: .cancel) {}
@@ -93,12 +106,12 @@ import SwiftUI
             // Every heart reads the one favorites model, also inside sheets and the queue.
             .environment(favorites)
             // Every tab's bell: the inbox signed in, sign-in otherwise (contract "알림 목록(발견 우상단 종)").
-            .environment(\.inboxEntry, InboxEntry(signedIn: account.phase == .signedIn, unread: inbox.unread) { signingIn = true })
+            .environment(\.inboxEntry, InboxEntry(signedIn: accountReady, unread: inbox.unread, signIn: needAccount))
             // A heart pressed signed out opens the sign-in sheet (contract "즐겨찾기(하트)": 로그인만).
             .onChange(of: favorites.signInRequested) { _, requested in
                 guard requested else { return }
                 favorites.signInRequested = false
-                signingIn = true
+                needAccount()
             }
             .task {
                 // The first program heart asks for notification permission (never at launch).
@@ -106,7 +119,8 @@ import SwiftUI
                 // 사용 통계: a favorite's 분야·활동 종류 from discovery, the queue or the favorites list.
                 favorites.describe = { [activityModel, favorites, queue] in Self.tags($0, activityModel, queue, favorites) }
             }
-            .onChange(of: delegate.deviceToken) { _, token in if let token { notifications.registered(token) } }
+            // No push token reaches the server before consent; `accountReady` sends the one APNs gave meanwhile.
+            .onChange(of: delegate.deviceToken) { _, token in if let token, accountReady { notifications.registered(token) } }
             .onChange(of: delegate.tappedNotification, initial: true) { _, id in
                 guard let id else { return }
                 delegate.tappedNotification = nil
@@ -120,7 +134,7 @@ import SwiftUI
                 case .activity(let id): Task { await activityModel.openLinked(id, source: "push") }
                 }
             }
-            .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in notifications.timeZoneChanged() }
+            .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in if accountReady { notifications.timeZoneChanged() } }
             // One accent for every screen and sheet, including those presented from this root (contract "색 체계").
             .tint(DearbyStyle.teal)
             // Contract "유니버설 링크·App Links·활동 공유·오픈그래프": card links open the 명함 tab's 받은 명함 section — `dearby://` (from
@@ -133,35 +147,11 @@ import SwiftUI
             // `내 활동으로` on an activity detail: the 내 활동 tab opens that activity (it pushes once it is on screen).
             .onChange(of: activityModel.showInMine) { _, id in if id != nil { tab = 1 } }
             .onChange(of: activityModel.showInDiscovery) { _, id in if id != nil { tab = 0 } }
-            // 내 활동 follows the account (contract "내 활동 서버 저장"): signing in imports this run's marks once and then uses the server.
-            .onChange(of: account.phase, initial: true) { _, phase in
-                switch phase {
-                case .signedIn:
-                    Task { await activityModel.signedIn(links.mineServer(account)) }
-                    Task { await favorites.signedIn(links.favoritesServer(account)) }
-                    Task { await inbox.signedIn(links.inboxServer(account)) }
-                    Task { await notifications.refresh() }
-                    Task { await recommendations.signedIn(links.recommendationServer(account)) }
-                    Task { await queue.signedIn(links.discoveryQueueServer(account)) }
-                case .signedOut:
-                    activityModel.signedOut()
-                    recommendations.signedOut()
-                    queue.signedOut()
-                    favorites.signedOut()
-                    inbox.signedOut()
-                    // A failed attempt inside the open sheet keeps it; a sign-out later drops a continuation that never ran.
-                    if !signingIn { afterSignIn = nil }
-                case .signingIn: break
-                }
-                if phase != .signingIn {
-                    AppAnalytics.userProperty("signed_in", phase == .signedIn ? "yes" : "no")
-                    Task { await eligibility.load() }
-                }
-            }
+            )
             // The account's answers arrived after a sign-in from the queue row or 관심 분야·활동 종류 (the sheet may still be closing).
             .onChange(of: recommendations.ready) { _, _ in continueAfterSignIn() }
             // 추천 설정 퍼널 (contract "추천 설정 퍼널·지원 자격 정보·추천"): once, on the first visit to 발견 after the account's answers are read.
-            .onChange(of: tab == 0 && !showIntro && !signingIn && recommendations.needsFunnel, initial: true) { _, show in
+            .onChange(of: tab == 0 && !showIntro && !signingIn && !consentNeeded && recommendations.needsFunnel, initial: true) { _, show in
                 #if DEBUG
                 if ScreenshotScene.current != nil { return }
                 #endif
@@ -188,8 +178,14 @@ import SwiftUI
             .onChange(of: scene) { _, phase in
                 if phase == .background { activityModel.appLeft() } else if phase == .active {
                     activityModel.appReturned()
-                    // The permission may have changed in Settings.
+                    // The permission may have changed in Settings; the consent is read again and asked again while missing.
                     if account.phase == .signedIn {
+                        Task {
+                            await profile.load()
+                            if consentNeeded, !signingIn { showsConsent = true }
+                        }
+                    }
+                    if accountReady {
                         Task { await notifications.refresh() }
                         Task { await inbox.refreshCount() }
                     }
@@ -200,6 +196,49 @@ import SwiftUI
                                        notYet: { activityModel.answer(.notYet) }, neverAsk: { activityModel.answer(.neverAsk) })
                     .presentationDetents([.medium])
             }
+        }
+    }
+    /// Account sync and the consent prompts, kept apart from `body` so the compiler can type-check it.
+    private func accountSync(_ content: some View) -> some View {
+        content
+        // 내 활동 follows the account (contract "내 활동 서버 저장"): signing in imports this run's marks once and then uses the server.
+        .onChange(of: account.phase, initial: true) { _, phase in
+            switch phase {
+            case .signedIn:
+                // The consent state comes with the profile; account sync waits for it (`accountReady`).
+                Task { await profile.load() }
+            case .signedOut:
+                activityModel.signedOut()
+                recommendations.signedOut()
+                queue.signedOut()
+                favorites.signedOut()
+                inbox.signedOut()
+                // A failed attempt inside the open sheet keeps it; a sign-out later drops a continuation that never ran.
+                if !signingIn { afterSignIn = nil }
+            case .signingIn: break
+            }
+            if phase == .signedOut {
+                AppAnalytics.userProperty("signed_in", "no")
+                Task { await eligibility.load() }
+            }
+        }
+        .onChange(of: accountReady, initial: true) { _, ready in
+            guard ready else { return }
+            AppAnalytics.userProperty("signed_in", "yes")
+            Task { await eligibility.load() }
+            Task { await activityModel.signedIn(links.mineServer(account)) }
+            Task { await favorites.signedIn(links.favoritesServer(account)) }
+            Task { await inbox.signedIn(links.inboxServer(account)) }
+            Task { await notifications.refresh() }
+            Task { await recommendations.signedIn(links.recommendationServer(account)) }
+            Task { await queue.signedIn(links.discoveryQueueServer(account)) }
+            if let token = delegate.deviceToken { notifications.registered(token) }
+        }
+        // Asked at launch and after sign-in once the profile says so (not over the intro or the sign-in sheet; `continueAfterSignIn` asks then).
+        .onChange(of: consentNeeded && !showIntro && !signingIn, initial: true) { _, ask in if ask { showsConsent = true } }
+        // Agreed right after sign-up: on to 프로필 만들기.
+        .onChange(of: profile.consentPending) { was, pending in
+            if was, !pending, account.phase == .signedIn, profile.profile?.version == 0 { tab = 3 }
         }
     }
     /// 사용 통계 `field`/`category` of a favorite, from whichever list has it.
@@ -220,6 +259,9 @@ import SwiftUI
         // The Google SDK's own redirect comes back here first (contract "구글 로그인").
         if GoogleNativeSignIn.handle(url) { return }
         switch IncomingLink(url: url, web: links.origins.web) {
+        case .saveCard where consentNeeded, .viewCard where consentNeeded:
+            tab = 2
+            showsConsent = true
         case .saveCard(let incoming):
             tab = 2
             cardsSegment = .received
@@ -263,9 +305,9 @@ import SwiftUI
     }
     /// `오늘의 맞춤 대기열`: signed out, sign-in first; then the funnel when it was never finished, then the queue (after the funnel closes).
     private func openQueue() {
-        if account.phase != .signedIn {
+        if !accountReady {
             afterSignIn = .queue
-            signingIn = true
+            needAccount()
         } else if recommendations.needsFunnel {
             recommendations.queueAfterFunnel = true
             presentFunnel("queue_row")
@@ -277,11 +319,11 @@ import SwiftUI
     /// `관심 분야·활동 종류` (`profile`, menu `interests`).
     private func editRecommendations(_ entry: String) {
         AppAnalytics.event("menu_open", ["menu": entry == "profile" ? "interests" : "funnel"])
-        if account.phase == .signedIn {
+        if accountReady {
             presentFunnel(entry)
         } else {
             afterSignIn = .funnel(entry)
-            signingIn = true
+            needAccount()
         }
     }
     /// Shows the 추천 funnel; `entry` is its 사용 통계 `funnel_start` entry (`auto`, `queue_row`, `profile`).
@@ -290,7 +332,12 @@ import SwiftUI
         recommendations.presentingFunnel = true
     }
     /// After the sign-in sheet closes: nothing when it closed without signing in; otherwise, once the answers are read, the queue or the funnel.
+    /// Signed out → sign-in; signed in without consent → the consent sheet (the account features are behind it).
+    private func needAccount() {
+        if account.phase == .signedIn { showsConsent = true } else { signingIn = true }
+    }
     private func continueAfterSignIn() {
+        if consentNeeded, !signingIn { showsConsent = true }
         guard let next = afterSignIn, !signingIn else { return }
         guard account.phase == .signedIn else { afterSignIn = nil; return }
         guard recommendations.ready else { return }

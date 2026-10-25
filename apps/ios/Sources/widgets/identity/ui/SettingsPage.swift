@@ -3,12 +3,19 @@ import SwiftUI
 
 /// 설정 (contract "설정" 2026-10-19 밤), pushed from any tab's title line: an inset-grouped `List` of 계정 (가입일, 로그인 수단, 로그아웃, 계정 삭제),
 /// 연결된 로그인 (Apple·Google: linked → email·date·연결 해제, else 연결하기), 패스키 (rename·delete by swipe or tap, 패스키 추가) and 정보
-/// (policy pages in the in-app browser, version). Signed out it shows only the 로그인 CTA and 정보. The last sign-in method cannot be
+/// (policy pages in the in-app browser, version). Above 정보: 알림 (새 모집 알림 and, when the system permission was refused, a row to the
+/// app's notification settings; only signed in with consent, since push is an account feature) and 개인정보 (`사용 통계 보내기`, always; the
+/// 광고 제3자 제공 동의 철회 switch will join it). Signed out it shows only the 로그인 CTA, 개인정보 and 정보. The last sign-in method cannot be
 /// removed: its button is disabled with the reason, and a server 409 says the same.
 struct SettingsPage: View {
     @State private var model: SettingsModel
     let webOrigin: URL
+    /// 새 모집 알림; nil signed out or before consent (contract "설정" 2026-10-25).
+    let notifications: NotificationModel?
     @Environment(\.authorizationController) private var authorizationController
+    @Environment(\.openURL) private var openURL
+    /// `사용 통계 보내기`: on until turned off, kept on the device, signed in or not.
+    @AppStorage(AppAnalytics.enabledKey) private var analyticsEnabled = true
     @State private var signingIn = false
     @State private var confirmingSignOut = false
     @State private var confirmingDeletion = false
@@ -17,9 +24,10 @@ struct SettingsPage: View {
     @State private var renaming: PasskeySummary?
     @State private var newLabel = ""
     @State private var opening: URL?
-    init(account: AccountViewModel, webOrigin: URL) {
+    init(account: AccountViewModel, webOrigin: URL, notifications: NotificationModel? = nil) {
         _model = State(initialValue: SettingsModel(account: account))
         self.webOrigin = webOrigin
+        self.notifications = notifications
     }
     private var account: AccountViewModel { model.account }
     var body: some View {
@@ -50,6 +58,8 @@ struct SettingsPage: View {
                     NavigationLink { BlockedPeoplePage(account: account) } label: { Label("차단한 사람", systemImage: "hand.raised") }
                 } footer: { Text("차단한 사람의 명함은 받은 명함에 들어오지 않아요.").font(.dearby(.footnote)) }
             }
+            if let notifications { notificationSection(notifications) }
+            privacySection
             about
         }
         .listStyle(.insetGrouped).font(.dearby(.body)).disabled(model.busy)
@@ -167,6 +177,42 @@ struct SettingsPage: View {
                  ? "마지막 로그인 수단은 지울 수 없어요. 패스키를 하나 더 만들거나 다른 로그인을 연결해 주세요."
                  : "이 계정으로 로그인할 수 있는 패스키예요. 밀거나 눌러서 이름을 바꾸거나 지워요.").font(.dearby(.footnote))
         }
+    }
+    private func notificationSection(_ notifications: NotificationModel) -> some View {
+        Section {
+            Toggle(isOn: Binding(get: { notifications.newRecruitment ?? true }, set: { on in Task { await notifications.setNewRecruitment(on) } })) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("새 모집 알림")
+                    Text("즐겨찾기한 프로그램·활동의 새 모집과 일정").font(.dearby(.footnote)).foregroundStyle(.secondary)
+                }
+            }.tint(DearbyStyle.teal).accessibilityIdentifier("settings-new-recruitment")
+            if notifications.denied {
+                Button {
+                    AppAnalytics.event("menu_open", ["menu": "notifications"])
+                    if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) }
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("기기 알림이 꺼져 있어요").foregroundStyle(.primary)
+                        Text("설정에서 Dearby 알림을 켜면 받을 수 있어요").font(.dearby(.footnote)).foregroundStyle(.secondary)
+                    }
+                }.accessibilityIdentifier("settings-notification-settings")
+            }
+        } header: { Text("알림").font(.dearby(.footnote)) }
+        .alert(notifications.notice ?? "", isPresented: Binding(get: { notifications.notice != nil }, set: { if !$0 { notifications.notice = nil } })) {
+            Button("확인", role: .cancel) {}
+        }
+    }
+    private var privacySection: some View {
+        Section {
+            Toggle(isOn: $analyticsEnabled) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("사용 통계 보내기")
+                    Text("어떤 화면과 기능을 쓰는지 모아 앱을 고치는 데 써요. 이름·연락처는 보내지 않아요.").font(.dearby(.footnote)).foregroundStyle(.secondary)
+                }
+            }
+            .tint(DearbyStyle.teal).accessibilityIdentifier("settings-usage-stats")
+            .onChange(of: analyticsEnabled) { _, on in AppAnalytics.setEnabled(on) }
+        } header: { Text("개인정보").font(.dearby(.footnote)) }
     }
     private var about: some View {
         Section {
