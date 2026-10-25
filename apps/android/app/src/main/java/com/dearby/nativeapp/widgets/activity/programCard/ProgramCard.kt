@@ -64,7 +64,11 @@ private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).w
  */
 @Composable fun ProgramCard(
     title: String, organization: String, openCount: Int, upcomingCount: Int, deadline: Instant?, nearestStart: Instant?, latestActivityAt: Instant?,
-    fieldTags: List<TagLabel>, traitTags: List<TagLabel>, expanded: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier, logoUrl: String? = null, matchedCount: Int = 0, content: @Composable ColumnScope.() -> Unit,
+    fieldTags: List<TagLabel>, traitTags: List<TagLabel>, expanded: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier, logoUrl: String? = null, matchedCount: Int = 0,
+    /** `새 모집` badge beside the title (즐겨찾기, contract "즐겨찾기(하트)·새 모집 푸시 알림"). */
+    newRecruitment: Boolean = false,
+    /** The program heart (and its bell) left of the count badge, with their own taps and names. */
+    actions: (@Composable () -> Unit)? = null, content: @Composable ColumnScope.() -> Unit,
 ) {
     val reduceMotion = rememberReduceMotion()
     val sizeSpec: FiniteAnimationSpec<IntSize> = if (reduceMotion) snap() else spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)
@@ -89,16 +93,20 @@ private val monthFormat = DateTimeFormatter.ofPattern("yyyy.M", Locale.KOREAN).w
             ProgramLogo(logoUrl, title)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                if (newRecruitment) Badge(containerColor = TealFill, contentColor = Color.White) { Text("새 모집", Modifier.padding(horizontal = 4.dp, vertical = 2.dp), style = MaterialTheme.typography.labelSmall) }
                 Text(organization, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 TagChipRow(fieldTags.firstOrNull(), traitTags, Modifier.padding(top = 4.dp))
                 if (matchedCount > 0) Text("맞는 활동 ${matchedCount}개", color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 2.dp), style = MaterialTheme.typography.labelMedium)
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                if (expanded) IconButton(onToggle, Modifier.size(44.dp).semantics { contentDescription = "접기" }, colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)) {
-                    Icon(Icons.Rounded.ExpandMore, null, Modifier.rotate(rotation.value))
-                } else Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
-                    Badge(Modifier.size(32.dp).semantics { contentDescription = "활동 ${count}개" }, if (count > 0) TealFill else MaterialTheme.colorScheme.surfaceContainer, if (count > 0) Color.White else MaterialTheme.colorScheme.onSurfaceVariant) {
-                        Text(count.toString(), Modifier.weight(1f), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    actions?.invoke()
+                    if (expanded) IconButton(onToggle, Modifier.size(44.dp).semantics { contentDescription = "접기" }, colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer, contentColor = MaterialTheme.colorScheme.onPrimaryContainer)) {
+                        Icon(Icons.Rounded.ExpandMore, null, Modifier.rotate(rotation.value))
+                    } else Box(Modifier.size(44.dp), contentAlignment = Alignment.Center) {
+                        Badge(Modifier.size(32.dp).semantics { contentDescription = "활동 ${count}개" }, if (count > 0) TealFill else MaterialTheme.colorScheme.surfaceContainer, if (count > 0) Color.White else MaterialTheme.colorScheme.onSurfaceVariant) {
+                            Text(count.toString(), Modifier.weight(1f), fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+                        }
                     }
                 }
                 if (meta != null) Text(meta, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall, maxLines = 1)

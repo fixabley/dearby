@@ -69,6 +69,10 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
     toggle: (String) -> Unit, retryProgram: (String) -> Unit, setOpenOnly: (Boolean) -> Unit = {}, notify: () -> Unit = {}, clearRefreshFailure: () -> Unit = {}, settings: () -> Unit = {},
     /** The 추천 묶음 above the programs (contract "발견 탭 노출"), or null when there is none; hidden while searching. */
     header: (@Composable () -> Unit)? = null,
+    /** Hearts on program cards and activity rows; [plus] is an activity row's `+` (add to 내 활동, or open it there once added). */
+    hearts: FavoriteHearts = FavoriteHearts(), plus: (String) -> Unit = {},
+    /** Unread notifications on the bell (알림 목록). */
+    unread: Int = 0,
 ) {
     val listState = rememberLazyListState()
     val reduceMotion = rememberReduceMotion()
@@ -87,7 +91,7 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
     // Fields and buttons take their own taps first, so this only catches taps on empty space.
     Box(Modifier.fillMaxSize().imePadding().nestedScroll(topBar.nestedScrollConnection).pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } }) {
         Column(Modifier.fillMaxSize()) {
-            DearbyTopBar("활동 둘러보기", scrollBehavior = topBar) { TabActions(settings, notify) }
+            DearbyTopBar("활동 둘러보기", scrollBehavior = topBar) { TabActions(settings, notify, unread = unread) }
             // Search field and 마감 숨기기 switch: outside the list so the field keeps focus and the keyboard while results change.
             Column(Modifier.fillMaxWidth().collapsing(collapse)) {
                 DearbySearchField(state.query, search, "프로그램·조직·활동 이름으로 검색",
@@ -113,7 +117,8 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                         if (header != null && state.query.isBlank()) item(key = "recommendation") { header() }
                         items(programs, key = { "program-" + it.id }) { program ->
                             ProgramCard(program.title, program.organization, program.openCount, program.upcomingCount, program.deadline, program.nearestStart, program.latestActivityAt,
-                                program.fieldTags, program.traitTags, program.id in state.expanded, { toggle(program.id) }, logoUrl = program.logoUrl, matchedCount = program.matchedCount) { ProgramBody(program.id, state, open, retryProgram) }
+                                program.fieldTags, program.traitTags, program.id in state.expanded, { toggle(program.id) }, logoUrl = program.logoUrl, matchedCount = program.matchedCount,
+                                actions = { FavoriteActions(hearts, true, program.id, program.title) }) { ProgramBody(program.id, state, open, retryProgram, hearts, plus) }
                         }
                         if (state.nextCursor != null) item(key = "more") {
                             // Shown as the list nears its end; each new page re-arms it.
@@ -187,7 +192,7 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
 }.graphicsLayer { alpha = if (state.height == 0) 1f else 1f + state.offset / state.height }
 
 /** The expanded program's activities (loading, failed, empty, then the 모집 중 category groups and the 모집 예정/지난 활동 groups). */
-@Composable private fun ProgramBody(programId: String, state: ActivityListState, open: (String) -> Unit, retryProgram: (String) -> Unit) {
+@Composable internal fun ProgramBody(programId: String, state: ActivityListState, open: (String) -> Unit, retryProgram: (String) -> Unit, hearts: FavoriteHearts, plus: (String) -> Unit) {
     val loaded = state.programActivities[programId]
     when (loaded?.phase) {
         // Kept until both the open list and the 모집 예정·지난 활동 list arrive (loadProgram goes LOADED once, after both), so no empty-state flash.
@@ -202,12 +207,12 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
             val groups = activities.groupBy { it.category }.entries.sortedBy { (_, group) -> group.first().categoryOrder }
             groups.forEach { (category, unsorted) ->
                 if (groups.size > 1) GroupHeading(category ?: "미분류")
-                unsorted.sortedWith(compareBy<ActivityState, Instant?>(nullsLast()) { it.sortKey }.thenBy { it.title }).forEach { Card(it, open) }
+                unsorted.sortedWith(compareBy<ActivityState, Instant?>(nullsLast()) { it.sortKey }.thenBy { it.title }).forEach { Card(it, open, hearts, plus) }
             }
             // 모집 예정 (always) · 지난 활동 (switch off only): no category headings; an empty group is omitted.
             listOf("모집 예정" to loaded.upcomingIds, "지난 활동" to loaded.pastIds).forEach { (heading, ids) ->
                 val rows = ids.mapNotNull(state.known::get)
-                if (rows.isNotEmpty()) { GroupHeading(heading); rows.forEach { Card(it, open) } }
+                if (rows.isNotEmpty()) { GroupHeading(heading); rows.forEach { Card(it, open, hearts, plus) } }
             }
         }
     }
@@ -232,8 +237,9 @@ private fun Modifier.collapsing(state: SearchAreaCollapse): Modifier = clipToBou
 @Composable private fun GroupHeading(text: String) =
     Text(text, Modifier.padding(start = 6.dp, end = 6.dp, top = 6.dp).semantics { heading() }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium)
 
-@Composable private fun Card(activity: ActivityState, open: (String) -> Unit) =
-    ActivityCard(activity.title, activity.status, activity.recruiting, activity.period, activity.date, activity.location, { open(activity.id) }, fieldTag = activity.fieldTags.firstOrNull(), traitTags = activity.traitTags)
+@Composable private fun Card(activity: ActivityState, open: (String) -> Unit, hearts: FavoriteHearts, plus: (String) -> Unit) =
+    ActivityCard(activity.title, activity.status, activity.recruiting, activity.period, activity.date, activity.location, { open(activity.id) }, fieldTag = activity.fieldTags.firstOrNull(), traitTags = activity.traitTags,
+        actions = { FavoriteActions(hearts, false, activity.id, activity.title, activity.applied) { plus(activity.id) } })
 
 /** Activity row used by My Activities. */
 @Composable internal fun ActivityRow(activity: ActivityState, open: (String) -> Unit, trailing: @Composable () -> Unit = {}, footer: @Composable ColumnScope.() -> Unit = {}) {

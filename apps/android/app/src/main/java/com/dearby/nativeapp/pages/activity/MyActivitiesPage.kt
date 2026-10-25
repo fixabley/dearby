@@ -20,7 +20,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
@@ -36,16 +35,12 @@ import com.dearby.nativeapp.widgets.activity.progress.ProgressState
  * stage over) collapsed below. An activity without stages keeps the plain `신청함` row. A track row opens
  * [openProgress]; a plain row opens the detail with [open]. The applied marks survive discovery searches (README rule).
  */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable fun MyActivitiesPage(state: ActivityListState, open: (String) -> Unit, openProgress: (String) -> Unit, explore: () -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {}, remove: (String) -> Unit = {}) {
+@Composable fun MyActivitiesPage(state: ActivityListState, open: (String) -> Unit, openProgress: (String) -> Unit, explore: () -> Unit, remove: (String) -> Unit = {}) {
     val active = state.activeActivities
     val ended = state.endedActivities
     var showEnded by remember { mutableStateOf(false) }
-    val topBar = TopAppBarDefaults.pinnedScrollBehavior()
-    Column(Modifier.fillMaxSize().nestedScroll(topBar.nestedScrollConnection)) {
-        // Pinned Material 3 top bar (contract "상단 바 구성(네 탭 공통)", 2026-10-20): the 예시 badge is gone; the `더 보기` menu stays hidden because Android has no
-        // example dataset for a `예시 데이터 보기/숨기기` item to toggle (내 활동 is the user's own applied marks).
-        DearbyTopBar("내 활동", scrollBehavior = topBar) { TabActions(settings, notify) }
+    // The pinned top bar and the `내 활동 | 즐겨찾기` tabs above belong to the tab (app `MineRoute`, contract "즐겨찾기(하트)·새 모집 푸시 알림").
+    Column(Modifier.fillMaxSize()) {
         // Empty: a CenteredMessage on the page background (contract "비스크롤 화면 배치·CTA"), the discovery CTA at the bottom.
         if (active.isEmpty() && ended.isEmpty() && state.mineLoading) DearbySkeleton(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 4.dp)) {
             SkeletonLine(.7f, 12.dp)

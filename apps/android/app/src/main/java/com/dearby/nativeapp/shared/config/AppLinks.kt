@@ -71,3 +71,13 @@ private val QR_CODE = Regex("^[A-Za-z0-9_-]{43}$")
 /** What the 내 명함 QR encodes: the card page with the activity the card is handed out at (when there is one) and the QR [code]. */
 fun cardQrUrl(webOrigin: String, cardId: String, activityId: String?, code: String): String =
     "${webOrigin.trimEnd('/')}/cards/$cardId?" + (activityId?.let { "activity=$it&" } ?: "") + "code=$code"
+
+/**
+ * `dearby://favorites?view=calendar|list` (the `오늘 일정 n개` push, contract "프로그램·활동별 알림 수준"): the `view` value, or `list` when it is missing;
+ * anything else is null.
+ */
+fun favoritesLink(link: String): String? = runCatching {
+    val uri = URI(link)
+    if (uri.scheme != "dearby" || uri.rawAuthority != "favorites" || uri.rawFragment != null || !uri.rawPath.isNullOrEmpty() && uri.rawPath != "/") return null
+    uri.rawQuery?.split('&')?.firstNotNullOfOrNull { pair -> pair.split('=', limit = 2).takeIf { it.size == 2 && it[0] == "view" }?.get(1) } ?: "list"
+}.getOrNull()
