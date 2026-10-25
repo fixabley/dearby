@@ -26,6 +26,8 @@ struct SignInSheet: View {
             if phase == .signedIn { dismiss(); signedIn() }
         }
         .onDisappear { account.clearPendingLink() }
+        // Half height first (2026-10-25); the heading scrolls if it does not fit, and the sheet can still be pulled up.
+        .presentationDetents([.medium, .large])
     }
 
     private var choices: some View {
