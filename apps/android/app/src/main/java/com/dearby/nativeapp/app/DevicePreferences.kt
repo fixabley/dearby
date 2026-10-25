@@ -13,7 +13,7 @@ class DevicePreferences(context: Context) {
     var favoritesView: FavoritesView
         get() = FavoritesView.entries.firstOrNull { it.name == preferences.getString("view", null) } ?: FavoritesView.LIST
         set(value) = preferences.edit { putString("view", value.name) }
-    /** 내 프로필 `사용 통계 보내기` (2026-10-25), on until turned off. */
+    /** 설정 `사용 통계 보내기` (2026-10-25), on until turned off. */
     var analyticsEnabled: Boolean
         get() = preferences.getBoolean("analyticsEnabled", true)
         set(value) = preferences.edit { putBoolean("analyticsEnabled", value) }

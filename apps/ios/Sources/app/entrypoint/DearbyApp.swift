@@ -84,9 +84,9 @@ import SwiftUI
                         cards: CardsPage(segment: $cardsSegment, cards: cards, wallet: wallet, consentNeeded: consentNeeded) { showsConsent = true },
                         profile: ProfilePage(state: profile, eligibility: eligibility,
                                                                                          editRecommendations: { editRecommendations("profile") },
-                                                                                         notifications: notifications, leaveSetup: { tab = 0 },
+                                                                                         leaveSetup: { tab = 0 },
                                              consentNeeded: consentNeeded, askConsent: { showsConsent = true }),
-                        settings: { SettingsPage(account: account, webOrigin: links.origins.web) },
+                        settings: { SettingsPage(account: account, webOrigin: links.origins.web, notifications: accountReady ? notifications : nil) },
                         inbox: { NotificationInboxPage(model: inbox, state: activityModel) })
                     .fullScreenCover(isPresented: $showsQueue) {
                         DiscoveryQueuePage(model: queue, state: activityModel)

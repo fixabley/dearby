@@ -14,16 +14,11 @@ struct ProfilePage: View {
     let eligibility: EligibilityModel
     /// Reopens the 추천 funnel (the row shows signed in only).
     let editRecommendations: () -> Void
-    /// 프로필 `알림` 묶음 (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25): `새 모집 알림`, and Settings when permission was refused.
-    let notifications: NotificationModel
     /// `나중에` on the first-profile funnel: the app shows 발견 (the funnel keeps its answers and comes back with this tab).
     let leaveSetup: () -> Void
     /// Signed in without the current required consent (the app's state: signed in and `consentPending`).
     let consentNeeded: Bool
     let askConsent: () -> Void
-    @Environment(\.openURL) private var openURL
-    /// `사용 통계 보내기` (2026-10-25, as Android): on until turned off, kept on the device, signed in or not.
-    @AppStorage(AppAnalytics.enabledKey) private var analyticsEnabled = true
     @State private var eligibilityConsent = false
     @State private var eligibilityAgreed = false
     @State private var eligibilityInput = false
@@ -119,49 +114,6 @@ struct ProfilePage: View {
             .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
         }
     }
-    /// `알림` 묶음: signed in, the account's 새 모집 알림 switch and, when the system permission was refused, a row to the app's notification
-    /// settings; always `사용 통계 보내기`.
-    private func notificationGroup(signedIn: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("알림").font(.dearby(.subheadline).weight(.semibold)).foregroundStyle(.secondary).padding(.horizontal, 16)
-                .accessibilityAddTraits(.isHeader)
-            VStack(spacing: 0) {
-                if signedIn { newRecruitmentRows }
-                Toggle(isOn: $analyticsEnabled) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("사용 통계 보내기").font(.dearby(.body))
-                        Text("어떤 화면과 기능을 쓰는지 개인정보 없이 모아 앱을 고치는 데 써요").font(.dearby(.footnote)).foregroundStyle(.secondary)
-                    }
-                }
-                .tint(DearbyStyle.teal).padding(.horizontal, 16).padding(.vertical, 8).frame(minHeight: 44)
-                .accessibilityIdentifier("profile-usage-stats")
-                .onChange(of: analyticsEnabled) { _, on in AppAnalytics.setEnabled(on) }
-            }
-            .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
-        }
-        .alert(notifications.notice ?? "", isPresented: Binding(get: { notifications.notice != nil }, set: { if !$0 { notifications.notice = nil } })) {
-            Button("확인", role: .cancel) {}
-        }
-    }
-    @ViewBuilder private var newRecruitmentRows: some View {
-        Toggle(isOn: Binding(get: { notifications.newRecruitment ?? true },
-                             set: { on in Task { await notifications.setNewRecruitment(on) } })) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("새 모집 알림").font(.dearby(.body))
-                Text("즐겨찾기한 프로그램·활동의 새 모집과 일정").font(.dearby(.footnote)).foregroundStyle(.secondary)
-            }
-        }
-        .tint(DearbyStyle.teal).padding(.horizontal, 16).padding(.vertical, 8).frame(minHeight: 44)
-        .accessibilityIdentifier("profile-new-recruitment")
-        Divider().padding(.leading, 16)
-        if notifications.denied {
-            groupRow("기기 알림이 꺼져 있어요", detail: "설정에서 Dearby 알림을 켜면 받을 수 있어요") {
-                AppAnalytics.event("menu_open", ["menu": "notifications"])
-                if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) }
-            }.accessibilityIdentifier("profile-notification-settings")
-            Divider().padding(.leading, 16)
-        }
-    }
     private func groupRow(_ title: String, detail: String? = nil, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 12) {
@@ -208,7 +160,6 @@ struct ProfilePage: View {
                 VStack(spacing: 0) {
                     CenteredMessage(symbol: "person.crop.circle", title: "프로필은 계정에 저장돼요", message: "로그인하면 프로필을 적고 명함을 만들 수 있어요.",
                                     primary: MessageAction("로그인") { signingIn = true })
-                    notificationGroup(signedIn: false).padding(.horizontal, 20).padding(.bottom, 16)
                 }
             case .loading:
                 // Contract "내용 로딩은 스켈레톤" 2026-10-22: the read view with sample values.
@@ -222,7 +173,6 @@ struct ProfilePage: View {
                         VStack(alignment: .leading, spacing: 0) {
                             ProfileReadView(profile: profile).padding(20)
                             recommendationGroup.padding(.horizontal, 20).padding(.bottom, 20)
-                            notificationGroup(signedIn: true).padding(.horizontal, 20).padding(.bottom, 20)
                         }
                     }
                 } else if let binding = Binding($form) {

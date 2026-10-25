@@ -37,7 +37,7 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
 
 /** 내 프로필 tab: read mode by default with the top-bar 수정 editor (contract "프로필 읽기/수정 모드"), the history funnel (with file pickers for evidence) and the version screens. */
 @OptIn(ExperimentalMaterial3Api::class)
-@Composable fun ProfileRoute(model: ProfileViewModel, account: AccountViewModel, recommendation: RecommendationViewModel, notifications: NotificationViewModel, analytics: Boolean, setAnalytics: (Boolean) -> Unit, compose: () -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {}, leaveSetup: () -> Unit = {}, askConsent: () -> Unit = {}) {
+@Composable fun ProfileRoute(model: ProfileViewModel, account: AccountViewModel, recommendation: RecommendationViewModel, compose: () -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {}, leaveSetup: () -> Unit = {}, askConsent: () -> Unit = {}) {
     val state by model.state.collectAsStateWithLifecycle()
     val funnel by model.funnel.collectAsStateWithLifecycle()
     val versions by model.versions.collectAsStateWithLifecycle()
@@ -66,18 +66,6 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
         { RecommendationProfileGroup(reco.eligibilitySummary, { Tracking.menu("interests"); recommendation.openFunnel(first = false, entry = "profile") }, openEligibility) }
     }
     LaunchedEffect(signedIn) { if (signedIn) signingIn = false; model.load() }
-    // 알림 (contract "즐겨찾기(하트)·새 모집 푸시 알림"): the system switch is read again whenever the app comes back (e.g. from its settings).
-    val notice by notifications.state.collectAsStateWithLifecycle()
-    var systemOn by remember { mutableStateOf(true) }
-    LifecycleResumeEffect(Unit) { systemOn = Push.enabled(context); onPauseOrDispose {} }
-    val notificationGroup: @Composable () -> Unit = {
-        Column {
-            if (signedIn) NotificationRow(notice.newRecruitment, notice.saving, !systemOn, notifications::setNewRecruitment) {
-                runCatching { context.startActivity(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)) }
-            } else Text("알림", Modifier.semantics { heading() }, style = MaterialTheme.typography.titleMedium)
-            UsageStatsRow(analytics, setAnalytics)
-        }
-    }
     val resolver = context.contentResolver
     fun read(uri: Uri?, fallbackType: String, fallbackName: String) {
         uri ?: return
@@ -114,7 +102,7 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
             ProfileVersionsPage(versions, { openVersion = it }, { model.loadVersions(reset = false) }) { versionsOpen = false }
         }
         else -> ProfilePage(state, model.rows, model::change, model::searchJobs, model::addContact, model::openHistory, model::removeHistory, { if (state.consentRequired) askConsent() else model.save() }, model::revert,
-            { Tracking.menu("history"); versionsOpen = true }, compose, { signingIn = true }, { model.load() }, model.changed, { if (it) Tracking.menu("profile_edit"); model.edit(it) }, settings, notify, recommendationGroup, notificationGroup, leaveSetup)
+            { Tracking.menu("history"); versionsOpen = true }, compose, { signingIn = true }, { model.load() }, model.changed, { if (it) Tracking.menu("profile_edit"); model.edit(it) }, settings, notify, recommendationGroup, leaveSetup)
     }
     if (signingIn && !signedIn) SignInRoute(account, close = { signingIn = false })
     eligibilitySheet?.let { sheet ->
@@ -130,7 +118,6 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
     if (confirmDelete) AlertDialog({ confirmDelete = false }, title = { Text("지원 자격 정보를 지울까요?") }, text = { Text("입력한 정보와 동의 기록이 바로 삭제돼요.") },
         confirmButton = { TextButton({ confirmDelete = false; recommendation.deleteEligibility() }) { Text("지우기", color = MaterialTheme.colorScheme.error) } },
         dismissButton = { TextButton({ confirmDelete = false }) { Text("취소") } })
-    notice.message?.let { value -> AlertDialog(onDismissRequest = notifications::dismissMessage, title = { Text("알림") }, text = { Text(value) }, confirmButton = { TextButton(notifications::dismissMessage) { Text("확인") } }) }
     reco.eligibilityError?.let { value -> AlertDialog(onDismissRequest = recommendation::dismissNotice, title = { Text("지원 자격 정보") }, text = { Text(value) }, confirmButton = { TextButton(recommendation::dismissNotice) { Text("확인") } }) }
 }
 

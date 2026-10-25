@@ -56,7 +56,7 @@ private sealed interface Route {
     var tab by remember { mutableStateOf(Tab.Discovery) }
     // The 내 활동 tab's `내 활동 | 즐겨찾기` top tab, in memory for the app's lifetime like the 명함 tab's.
     var mineSegment by remember { mutableStateOf(MineSegment.MINE) }
-    // 내 프로필 `사용 통계 보내기` (2026-10-25), kept on the device.
+    // 설정 `개인정보` `사용 통계 보내기` (2026-10-25), kept on the device.
     var analyticsOn by remember { mutableStateOf(device.analyticsEnabled) }
     // The 명함 tab's segment, kept in memory for the app's lifetime (contract "명함 탭 통합").
     var cardsSegment by remember { mutableStateOf(CardsSegment.MINE) }
@@ -209,7 +209,7 @@ private sealed interface Route {
                     Route.Shared -> walletState.shared?.let { SharedCardRoute(it, wallet, wallet::closeShared) }
                     is Route.Qr -> CardQrRoute(screen.card, activityModel, myCards) { route = null }
                     Route.Composer -> CardComposerRoute(publish, account) { route = null }
-                    Route.Settings -> SettingsRoute(settings, account, profile) { route = null }
+                    Route.Settings -> SettingsRoute(settings, account, profile, if (ready) notifications else null, analyticsOn, { analyticsOn = it; device.analyticsEnabled = it; Analytics.setEnabled(it) }) { route = null }
                     Route.Consent -> {
                         BackHandler { route = null }
                         ConsentPage(profileState.consenting, profileState.consentError,
@@ -247,7 +247,7 @@ private sealed interface Route {
                         }
                         Tab.Cards -> CardsRoute(consentNeeded, { route = Route.Consent }, cardsSegment, { cardsSegment = it; Tracking.menu(if (it == CardsSegment.MINE) "my_cards" else "received_cards") }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
                             edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify, unread = inboxState.unread)
-                        Tab.Profile -> ProfileRoute(profile, account, recommendation, notifications, analyticsOn, { analyticsOn = it; device.analyticsEnabled = it; Analytics.setEnabled(it) }, compose, openSettings, notify, leaveSetup = { tab = Tab.Discovery }, askConsent = { route = Route.Consent })
+                        Tab.Profile -> ProfileRoute(profile, account, recommendation, compose, openSettings, notify, leaveSetup = { tab = Tab.Discovery }, askConsent = { route = Route.Consent })
                     }
                 }
                 SnackbarHost(snackbar, Modifier.align(androidx.compose.ui.Alignment.BottomCenter))
