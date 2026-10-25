@@ -88,7 +88,7 @@ native-v1.md "맞춤 대기열(스토리형 쇼츠)"의 커버 이미지. 로고
 | GET /v1/admin/activities | `q?`, `organizationId?`, `programId?`, `publicationStatus?`(`DRAFT`·`PUBLISHED`), `cursor?`, `size?` | 200 `{items: AdminActivity[], nextCursor}`. 초안 포함 |
 | POST /v1/admin/activities | ActivityCreateInput | 201 AdminActivity(2026-10-19 사용자 요청 "활동 추가 플로우가 어드민에 없어"). 프로그램이 없으면 400, 같은 프로그램에 띄어쓰기만 다른 같은 이름이 있으면 400 |
 | PATCH /v1/admin/activities/:id | `{name?, nameEn?, description?, descriptionEn?, eligibility?, officialUrl?, applicationUrl?, category?, activitySchedule?, application?, hook?, highlights?}` | 200 AdminActivity. 보낸 필드만 바꾼다(아래 "운영자 지정 필드"·"일정 직접 지정"). 없으면 404, 한글 이름을 비우면 400, 공식 안내 URL은 https 필수, 신청 링크는 빈 문자열이면 삭제 |
-| PATCH /v1/admin/activities/:id/publication-status | `{publicationStatus}` | 200 AdminActivity. 없으면 404 |
+| PATCH /v1/admin/activities/:id/publication-status | `{publicationStatus}` | 200 AdminActivity. 없으면 404. 처음 `PUBLISHED`로 바꿀 때 `activities.published_at`을 남긴다(2026-10-25, native-v1.md "새 모집": 즐겨찾기 프로그램의 새 모집 배지·알림 기준. 내렸다 다시 올려도 처음 시각) |
 | DELETE /v1/admin/activities/:id | — | 204. 없으면 404. 일정·역할·연락처도 함께 지워진다. 수집으로 생긴 활동이면 그 출처(`source_id`)를 남겨 다음 수집에서 다시 만들지 않고, 이름을 수집 피드백 `DRAFT_DISMISSED`로 남긴다(아래 "수집 피드백") |
 | POST /v1/admin/activities/:id/schedules | ScheduleItemInput | 201 Schedule(2026-10-19 사용자 요청 "활동에 스케줄들도 편집, 구글캘린더 느낌"). 세부 일정(슬롯 없음) 추가, `curated = true` |
 | PATCH /v1/admin/activities/:id/schedules/:scheduleId | ScheduleItemInput(부분) | 200 Schedule. 슬롯 일정(모집·활동 기간)은 기존 PATCH 활동의 `application`·`activitySchedule`로만 고친다(여기서는 400) |

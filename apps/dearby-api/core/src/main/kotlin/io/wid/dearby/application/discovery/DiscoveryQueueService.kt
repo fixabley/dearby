@@ -3,6 +3,9 @@ package io.wid.dearby.application.discovery
 import io.wid.dearby.application.activity.ActivityListing
 import io.wid.dearby.application.activity.ActivityRepository
 import io.wid.dearby.application.activity.ActivityService
+import io.wid.dearby.application.favorite.FavoriteRepository
+import io.wid.dearby.application.program.ProgramRepository
+import io.wid.dearby.domain.favorite.FavoriteTarget
 import io.wid.dearby.application.organization.OrganizationRepository
 import io.wid.dearby.application.program.ProgramSummary
 import io.wid.dearby.application.recommendation.RecommendationInputsChanged
@@ -44,6 +47,8 @@ class DiscoveryQueueService(
     private val activityService: ActivityService,
     private val activities: ActivityRepository,
     private val organizations: OrganizationRepository,
+    private val programs: ProgramRepository,
+    private val favorites: FavoriteRepository,
     private val rules: RecommendationRules,
     private val events: ApplicationEventPublisher,
     private val transactions: TransactionTemplate,
@@ -72,12 +77,14 @@ class DiscoveryQueueService(
         return page(user, catalog, rows)
     }
 
-    // POST /v1/me/recommendation-signals. UNLIKE는 LIKE를 지우고, 관심 있어요·관심 없어요는 서로를 지운다
+    // POST /v1/me/recommendation-signals. UNLIKE는 LIKE를 지우고, 관심 있어요·관심 없어요는 서로를 지운다.
+    // 관심 있어요 = 활동 즐겨찾기(native-v1.md "추천과 하나로"): LIKE는 즐겨찾기에 넣고, UNLIKE·관심 없어요는 뺀다
     @Transactional
     fun signal(userId: UserId, activityId: Id, kind: String, tagId: Id?) {
         if (activities.findById(activityId) == null) throw NotFoundException("활동을 찾을 수 없습니다", "Activity not found: $activityId")
         if (kind == UNLIKE) {
             discovery.deleteSignal(userId, activityId, SignalKind.LIKE)
+            favorites.delete(userId, FavoriteTarget.ACTIVITY, activityId)
         } else {
             val parsed = SignalKind.entries.firstOrNull { it.name == kind && it.fromClient }
                 ?: throw InvalidInputException("kind는 ${(SignalKind.entries.filter { it.fromClient }.map { it.name } + UNLIKE).joinToString(", ")} 중 하나입니다")
@@ -86,8 +93,14 @@ class DiscoveryQueueService(
                     ?: throw InvalidInputException("LESS_FIELD에는 분야 태그 tagId가 필요합니다")
             } else null
             when (parsed) {
-                SignalKind.LIKE -> discovery.deleteSignal(userId, activityId, SignalKind.DISMISS)
-                SignalKind.DISMISS -> discovery.deleteSignal(userId, activityId, SignalKind.LIKE)
+                SignalKind.LIKE -> {
+                    discovery.deleteSignal(userId, activityId, SignalKind.DISMISS)
+                    favorites.save(userId, FavoriteTarget.ACTIVITY, activityId, null, now())
+                }
+                SignalKind.DISMISS -> {
+                    discovery.deleteSignal(userId, activityId, SignalKind.LIKE)
+                    favorites.delete(userId, FavoriteTarget.ACTIVITY, activityId)
+                }
                 else -> Unit
             }
             discovery.saveSignal(userId, activityId, parsed, field, now())
@@ -100,6 +113,7 @@ class DiscoveryQueueService(
     fun undo(userId: UserId, activityId: Id, kind: String) {
         val parsed = SignalKind.entries.firstOrNull { it.name == kind && it.fromClient } ?: throw InvalidInputException("모르는 kind입니다")
         discovery.deleteSignal(userId, activityId, parsed)
+        if (parsed == SignalKind.LIKE) favorites.delete(userId, FavoriteTarget.ACTIVITY, activityId)
         events.publishEvent(RecommendationInputsChanged(userId))
     }
 
@@ -226,7 +240,10 @@ class DiscoveryQueueService(
         }
         val lessField = signals.filter { it.kind == SignalKind.LESS_FIELD && it.tagId != null }.groupBy { it.tagId!! }.mapValues { (_, list) -> list.sumOf { decay(it.at) } }
         val engaged = implicit.groupBy { it.programId }.mapValues { (_, list) -> list.maxOf { it.strength.weight } }
-        val affinity = Affinity.of(weights, refs, engaged, organizations)
+        // 프로그램 하트: 프로그램 신호 +0.6(같은 반감기)
+        val programHearts = favorites.findAll(userId).filter { it.target == FavoriteTarget.PROGRAM }.associate { it.targetId to PROGRAM_FAVORITE_WEIGHT * decay(it.createdAt) }
+        val programSignals = programs.findAllById(programHearts.keys).associate { it.id to (it.organizationId to programHearts.getValue(it.id)) }
+        val affinity = Affinity.of(weights, refs, engaged, organizations, programSignals)
         val likes = signals.filter { it.kind == SignalKind.LIKE }.mapNotNull { s -> vectors[s.activityId]?.let { v -> refs[s.activityId]?.let { it to v } } }
         return UserInputs(userId, preferences, eligibility, candidates, signals, taste, affinity, lessField, likes)
     }
@@ -286,6 +303,7 @@ class DiscoveryQueueService(
         private const val AFFINITY_WEIGHT = 0.15
         private const val LESS_FIELD_WEIGHT = 0.5
         private const val HALF_LIFE_DAYS = 90.0
+        private const val PROGRAM_FAVORITE_WEIGHT = 0.6
         private const val SIMILAR_REASON = 0.75 // 이 유사도 이상일 때만 "관심 표시한 …과 비슷해요"
         private val SEOUL: ZoneId = ZoneId.of("Asia/Seoul")
     }

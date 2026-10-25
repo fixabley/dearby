@@ -2,6 +2,11 @@ package io.wid.dearby.adaptor.web.v1.activities
 
 import io.wid.dearby.application.activity.ActivitySearch
 import io.wid.dearby.application.activity.ActivityService
+import io.wid.dearby.application.favorite.FavoriteService
+import io.wid.dearby.domain.favorite.FavoriteIds
+import org.springframework.security.core.annotation.AuthenticationPrincipal
+import org.springframework.security.oauth2.jwt.Jwt
+import java.util.UUID
 import io.wid.dearby.adaptor.web.v1.tags.TagIds
 import io.wid.dearby.domain.ActivityCategory
 import io.wid.dearby.domain.eligibility.EligibilityFilter
@@ -18,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController
 // 언어는 Accept-Language로 고르고, 캐시가 언어별로 나뉘도록 Vary를 붙인다
 @RestController
 @RequestMapping("/v1/activities")
-class ActivityController(private val activities: ActivityService) {
+class ActivityController(private val activities: ActivityService, private val favorites: FavoriteService) {
 
     @GetMapping
     fun search(
@@ -33,21 +38,26 @@ class ActivityController(private val activities: ActivityService) {
         @RequestParam(defaultValue = ActivityService.DEFAULT_PAGE_SIZE.toString()) size: Int,
         @RequestParam params: Map<String, String>, // 대상자 필터(age·educationStatus 등 camelCase 어휘)는 여기서 골라낸다
         @RequestHeader(HttpHeaders.ACCEPT_LANGUAGE, required = false) acceptLanguage: String?,
+        @AuthenticationPrincipal jwt: Jwt?,
     ): ResponseEntity<ActivityPageResponse> {
         val language = ResponseLanguage.from(acceptLanguage)
         val page = activities.search(ActivitySearch(q, organizationId, programId, cursor, size, eligibility = EligibilityFilter.from(params), categories = ActivityCategory.parseList(category), openOnly = open, tagIds = TagIds.parse(tagIds), forHistory = forHistory))
-        return localized(language, ActivityPageResponse(page.items.map { ActivityResponse.from(it, language) }, page.nextCursor))
+        return localized(language, ActivityPageResponse(page.items.map { ActivityResponse.from(it, language, favoritesOf(jwt)) }, page.nextCursor))
     }
 
     @GetMapping("/{id}")
     fun get(
         @PathVariable id: Long,
         @RequestHeader(HttpHeaders.ACCEPT_LANGUAGE, required = false) acceptLanguage: String?,
+        @AuthenticationPrincipal jwt: Jwt?,
     ): ResponseEntity<ActivityResponse> {
         val language = ResponseLanguage.from(acceptLanguage)
-        return localized(language, ActivityResponse.from(activities.getById(id), language))
+        return localized(language, ActivityResponse.from(activities.getById(id), language, favoritesOf(jwt)))
     }
 
+    // 로그인 응답에만 favorited가 켜진다. 캐시가 사용자별로 나뉘도록 Vary에 Authorization을 붙인다
+    private fun favoritesOf(jwt: Jwt?): FavoriteIds = jwt?.let { favorites.ids(UUID.fromString(it.subject)) } ?: FavoriteIds.NONE
+
     private fun <T : Any> localized(language: ResponseLanguage, body: T): ResponseEntity<T> =
-        ResponseEntity.ok().varyBy(HttpHeaders.ACCEPT_LANGUAGE).header(HttpHeaders.CONTENT_LANGUAGE, language.tag).body(body)
+        ResponseEntity.ok().varyBy(HttpHeaders.ACCEPT_LANGUAGE, HttpHeaders.AUTHORIZATION).header(HttpHeaders.CONTENT_LANGUAGE, language.tag).body(body)
 }

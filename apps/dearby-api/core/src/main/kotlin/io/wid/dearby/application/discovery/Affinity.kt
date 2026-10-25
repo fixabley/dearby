@@ -40,11 +40,16 @@ class Affinity private constructor(
         private const val MAX_CHILDREN = 10
         private const val REASON_MIN = 0.3
 
-        // weights: 활동 → 감쇠한 신호 가중치 합, refs: 그 활동들의 소속, engaged: 프로그램 → 내 활동 가중치
-        fun of(weights: Map<Id, Double>, refs: Map<Id, ActivityRef>, engaged: Map<Id, Double>, organizations: OrganizationRepository): Affinity {
+        // weights: 활동 → 감쇠한 신호 가중치 합, refs: 그 활동들의 소속, engaged: 프로그램 → 내 활동 가중치,
+        // programSignals: 프로그램 → (조직, 감쇠한 프로그램 신호). 프로그램 하트(native-v1.md "추천과 하나로": +0.6)
+        fun of(
+            weights: Map<Id, Double>, refs: Map<Id, ActivityRef>, engaged: Map<Id, Double>, organizations: OrganizationRepository,
+            programSignals: Map<Id, Pair<Id, Double>> = emptyMap(),
+        ): Affinity {
             val byProgram = mutableMapOf<Id, Double>()
             val orgOfProgram = mutableMapOf<Id, Id>()
             weights.forEach { (activityId, w) -> refs[activityId]?.let { byProgram.merge(it.programId, w, Double::plus); orgOfProgram[it.programId] = it.organizationId } }
+            programSignals.forEach { (programId, signal) -> byProgram.merge(programId, signal.second, Double::plus); orgOfProgram[programId] = signal.first }
             val orgIds = orgOfProgram.values.toSet()
             val orgs = organizations.findAllById(orgIds)
             val parents = orgs.mapNotNull { o -> o.parentOrganizationId?.let { o.id to it } }.toMap()

@@ -28,6 +28,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.GuestHandoffs
 import io.wid.dearby.adaptor.persistence.jooq.tables.GuestSessions
 import io.wid.dearby.adaptor.persistence.jooq.tables.HistoryEvidence
 import io.wid.dearby.adaptor.persistence.jooq.tables.Jobs
+import io.wid.dearby.adaptor.persistence.jooq.tables.NotificationSettings
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationContacts
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationLogos
 import io.wid.dearby.adaptor.persistence.jooq.tables.OrganizationMemberRoles
@@ -46,6 +47,8 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaff
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramStaffRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramTags
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
+import io.wid.dearby.adaptor.persistence.jooq.tables.PushDeliveries
+import io.wid.dearby.adaptor.persistence.jooq.tables.PushDevices
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationPreferences
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals
@@ -60,6 +63,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivityScheduleStatuse
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserConsents
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserFavorites
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserOrgAffinity
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles
@@ -209,6 +213,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val JOBS: Jobs get() = Jobs.JOBS
 
     /**
+     * The table <code>public.notification_settings</code>.
+     */
+    val NOTIFICATION_SETTINGS: NotificationSettings get() = NotificationSettings.NOTIFICATION_SETTINGS
+
+    /**
      * The table <code>public.organization_contacts</code>.
      */
     val ORGANIZATION_CONTACTS: OrganizationContacts get() = OrganizationContacts.ORGANIZATION_CONTACTS
@@ -299,6 +308,16 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val PROGRAMS: Programs get() = Programs.PROGRAMS
 
     /**
+     * The table <code>public.push_deliveries</code>.
+     */
+    val PUSH_DELIVERIES: PushDeliveries get() = PushDeliveries.PUSH_DELIVERIES
+
+    /**
+     * The table <code>public.push_devices</code>.
+     */
+    val PUSH_DEVICES: PushDevices get() = PushDevices.PUSH_DEVICES
+
+    /**
      * The table <code>public.receipts</code>.
      */
     val RECEIPTS: Receipts get() = Receipts.RECEIPTS
@@ -369,6 +388,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val USER_ENTITIES: UserEntities get() = UserEntities.USER_ENTITIES
 
     /**
+     * The table <code>public.user_favorites</code>.
+     */
+    val USER_FAVORITES: UserFavorites get() = UserFavorites.USER_FAVORITES
+
+    /**
      * The table <code>public.user_identities</code>.
      */
     val USER_IDENTITIES: UserIdentities get() = UserIdentities.USER_IDENTITIES
@@ -425,6 +449,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         GuestSessions.GUEST_SESSIONS,
         HistoryEvidence.HISTORY_EVIDENCE,
         Jobs.JOBS,
+        NotificationSettings.NOTIFICATION_SETTINGS,
         OrganizationContacts.ORGANIZATION_CONTACTS,
         OrganizationLogos.ORGANIZATION_LOGOS,
         OrganizationMemberRoles.ORGANIZATION_MEMBER_ROLES,
@@ -443,6 +468,8 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         ProgramStaffRoles.PROGRAM_STAFF_ROLES,
         ProgramTags.PROGRAM_TAGS,
         Programs.PROGRAMS,
+        PushDeliveries.PUSH_DELIVERIES,
+        PushDevices.PUSH_DEVICES,
         Receipts.RECEIPTS,
         RecommendationPreferences.RECOMMENDATION_PREFERENCES,
         RecommendationSignals.RECOMMENDATION_SIGNALS,
@@ -457,6 +484,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         UserConsents.USER_CONSENTS,
         UserCredentials.USER_CREDENTIALS,
         UserEntities.USER_ENTITIES,
+        UserFavorites.USER_FAVORITES,
         UserIdentities.USER_IDENTITIES,
         UserOrgAffinity.USER_ORG_AFFINITY,
         UserRoles.USER_ROLES,
