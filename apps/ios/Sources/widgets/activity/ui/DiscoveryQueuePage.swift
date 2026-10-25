@@ -83,16 +83,17 @@ struct DiscoveryQueuePage: View {
     private func card(_ item: RecommendedActivity, index: Int, insets: EdgeInsets) -> some View {
         let current = (position ?? model.items.first?.id) == item.id
         let analytics = AppAnalytics.activity(item.id, item.activity).merging(["position": index + 1]) { $1 }
+        let logLike = { if !favorites.isFavorite(.activity(item.id)) { AppAnalytics.event("queue_like", analytics) } }
         return QueueStoryCard(
             item: item, position: index + 1, count: model.items.count, current: current,
             playing: detail == nil && choosing == nil && scenePhase == .active, level: favorites.levels[.activity(item.id)],
             added: state.appliedIDs.contains(item.id), insets: insets, now: now,
             toggleLike: {
-                if !favorites.isFavorite(.activity(item.id)) { AppAnalytics.event("queue_like", analytics) }
+                logLike()
                 favorites.toggle(.activity(item.id))
             },
             doubleTapLike: {
-                if !favorites.isFavorite(.activity(item.id)) { AppAnalytics.event("queue_like", analytics) }
+                logLike()
                 favorites.add(.activity(item.id))
             },
             setLevel: { favorites.setLevel(.activity(item.id), $0) },
@@ -125,7 +126,7 @@ struct DiscoveryQueuePage: View {
     private func choose(_ choice: DiscoveryQueueModel.Choice, _ item: RecommendedActivity) {
         let following = model.items.drop { $0.id != item.id }.dropFirst().map(\.id)
         let index = model.items.firstIndex { $0.id == item.id } ?? 0
-        AppAnalytics.event("queue_dismiss", AppAnalytics.activity(item.id, item.activity).merging(["position": index + 1, "reason": choice.analyticsReason]) { $1 })
+        AppAnalytics.event("queue_dismiss", AppAnalytics.activity(item.id, item.activity).merging(["position": index + 1, "reason": choice.signal.rawValue.lowercased()]) { $1 })
         model.choose(choice, item)
         position = following.first { id in model.items.contains { $0.id == id } } ?? Self.endID
     }

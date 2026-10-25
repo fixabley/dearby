@@ -88,7 +88,10 @@ struct FavoritesPage: View {
                             recruitmentText: activity.recruitmentText(at: now), scheduleText: activity.scheduleText(at: now),
                             place: activity.place?.name ?? activity.location, fieldTag: activity.fieldTags.first, traitTags: activity.traitTags,
                             surface: Color(.secondarySystemGroupedBackground)) {
-            FavoriteControls(target: .activity(activity.id), mine: (state.appliedIDs.contains(activity.id), { state.addToMine(activity.id, source: "favorites") }),
+            FavoriteControls(target: .activity(activity.id), mine: (state.appliedIDs.contains(activity.id), {
+                state.remember(activity)
+                state.addToMine(activity.id, source: "favorites")
+            }),
                              showsLevel: true)
         } open: {
             path.append(activity.id)

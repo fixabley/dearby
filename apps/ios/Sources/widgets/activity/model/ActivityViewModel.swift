@@ -92,8 +92,10 @@ import Observation
     /// activity is gone; any other failure says so and stays put.
     /// `source` (`link` or `push`) is the 사용 통계 `activity_view` source; the detail it opens reads it once (`takeLinkSource`).
     func openLinked(_ id: String, source: String) async {
-        linkSources[id] = source
-        if await prepare(id) { showInDiscovery = id }
+        if await prepare(id) {
+            linkSources[id] = source
+            showInDiscovery = id
+        }
     }
     func takeLinkSource(_ id: String) -> String? { linkSources.removeValue(forKey: id) }
     /// Loads an activity discovery has not shown so its detail can open (알림 목록 rows); false, with `notice`, when it could not be loaded.

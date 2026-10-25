@@ -72,7 +72,7 @@ import SwiftUI
                     IntroPage(account: account, done: finishIntro)
                 } else {
                     HomePage(selectedTab: $tab, hidesTabs: tab == 3 && profile.profile?.version == 0,
-                        discovery: { ActivityListPage(state: activityModel, queueSignedIn: account.phase == .signedIn, openQueue: openQueue,
+                        discovery: { ActivityListPage(state: activityModel, queueSignedIn: account.phase == .signedIn, openQueue: queueRowTapped,
                                                       editRecommendations: { editRecommendations("queue_row") }, path: $0) }, mine: { MyActivitiesPage(state: activityModel, segment: $mineSegment, path: $0, explore: { tab = 0 }) },
                         cards: CardsPage(segment: $cardsSegment, cards: cards, wallet: wallet), profile: ProfilePage(state: profile, eligibility: eligibility,
                                                                                          editRecommendations: { editRecommendations("profile") },
@@ -250,9 +250,13 @@ import SwiftUI
         }
     }
     #endif
+    /// The 발견 row `오늘의 맞춤 대기열` (사용 통계 `menu_open(queue)` once per tap; a continuation after sign-in is not another tap).
+    private func queueRowTapped() {
+        AppAnalytics.event("menu_open", ["menu": "queue"])
+        openQueue()
+    }
     /// `오늘의 맞춤 대기열`: signed out, sign-in first; then the funnel when it was never finished, then the queue (after the funnel closes).
     private func openQueue() {
-        AppAnalytics.event("menu_open", ["menu": "queue"])
         if account.phase != .signedIn {
             afterSignIn = .queue
             signingIn = true
