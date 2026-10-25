@@ -77,6 +77,10 @@
   "features/analytics": [
     "AppAnalytics"
   ],
+  "features/ads": [
+    "QueueAdLoader",
+    "QueueAdView"
+  ],
   "pages/home": [
     "HomePage"
   ],
