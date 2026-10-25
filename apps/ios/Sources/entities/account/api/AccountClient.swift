@@ -301,8 +301,6 @@ struct AccountClient: Sendable {
         var categories: [String] = []
         var traitTagIds: [Int64] = []
         var completedAt: String?
-        /// Finished with nothing picked.
-        var isEmpty: Bool { fieldTagIds.isEmpty && categories.isEmpty && traitTagIds.isEmpty }
     }
     /// `GET /v1/me/eligibility-profile`; every value nil when nothing was entered. Values use the eligibility vocabulary (contract "대상자 조건").
     struct EligibilityProfile: Decodable, Equatable, Sendable {

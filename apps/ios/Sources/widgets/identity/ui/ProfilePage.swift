@@ -4,14 +4,15 @@ import SwiftUI
 /// starts with the step funnel (`ProfileFunnelPage`). Afterwards the tab is **read mode** (`ProfileReadView`, contract "프로필 읽기/수정 모드" 2026-10-20);
 /// the toolbar `수정` (pencil) swaps in the inset-grouped `Form` editor with the 저장 / 원래대로 bar once anything differs from the loaded profile
 /// (contract "프로필과 버전 이력"). `수정` becomes `완료`: no change → back to reading, changes → 저장 / 버리기 / 취소. A successful save returns to read mode.
-/// 변경 이력·명함 만들기 live in the toolbar `더 보기` menu. Card decoration lives in 명함 만들기. Sign-in is asked for only from the 로그인 button.
+/// 변경 이력·명함 만들기 live in the toolbar `더 보기` menu. Card decoration lives in 명함 만들기. Signed out (contract "비로그인에서 만들기·추천을 막음"
+/// 2026-10-25) there is nothing to make or edit: the page offers 로그인, and `지원 자격 정보`·`관심 분야·활동 종류` open sign-in too (the app opens it for the latter).
 /// The consent gate (contract "개인정보 동의", "동의 시트 닫기" 2026-10-20) is a sheet over the funnel/editor whenever the server says
 /// `consentRequired`: pulling it down or 닫기 means not consented — the sheet stays away until a save comes back 403 `CONSENT_REQUIRED`, which shows it again.
 struct ProfilePage: View {
     let state: ProfileModel
     /// 프로필 `추천` 묶음 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): `지원 자격 정보` and `관심 분야·활동 종류`.
     let eligibility: EligibilityModel
-    /// Reopens the 추천 funnel.
+    /// Reopens the 추천 funnel (signed out, the app opens sign-in first).
     let editRecommendations: () -> Void
     @State private var eligibilityConsent = false
     @State private var eligibilityAgreed = false
@@ -154,8 +155,8 @@ struct ProfilePage: View {
             switch state.phase {
             case .signedOut:
                 VStack(spacing: 0) {
-                    CenteredMessage(symbol: "person.crop.circle", title: "프로필은 계정에 저장돼요", message: "명함을 만들거나 로그인하면 프로필을 저장하고 고칠 수 있어요.",
-                                    primary: MessageAction("명함 만들기") { composing = true }, secondary: MessageAction("로그인") { signingIn = true })
+                    CenteredMessage(symbol: "person.crop.circle", title: "프로필은 계정에 저장돼요", message: "로그인하면 프로필을 적고 명함을 만들 수 있어요.",
+                                    primary: MessageAction("로그인") { signingIn = true })
                     recommendationGroup.padding(.horizontal, 20).padding(.bottom, 16)
                 }
             case .loading:

@@ -42,19 +42,12 @@ enum ActivityClient {
                            logoURL: program.logoUrl.flatMap { URL(string: $0, relativeTo: api)?.absoluteURL })
         }, nextCursor: payload.nextCursor)
     }
-    /// 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): `GET /v1/discovery/recommendations`. Signed in, `bearer` is the access
-    /// token and the server uses the saved preferences and 지원 자격 정보; signed out, the device preferences go in the query.
+    /// 추천 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): `GET /v1/discovery/recommendations`, signed in only (contract
+    /// "비로그인에서 만들기·추천을 막음" 2026-10-25): `bearer` is the access token and the server uses the saved preferences and 지원 자격 정보.
     /// Nil on 404 (a server without recommendations yet): the caller reads it as none. A 401 throws `RecommendationFailure.unauthorized`.
-    static func fetchRecommendations(api: URL, size: Int, fieldTagIDs: [Int64], categories: [String], traitTagIDs: [Int64],
-                                     bearer: String?) async throws -> RecommendationPage? {
-        var items = [URLQueryItem(name: "size", value: String(size))]
-        if bearer == nil {
-            if !fieldTagIDs.isEmpty { items.append(URLQueryItem(name: "fieldTagIds", value: fieldTagIDs.map(String.init).joined(separator: ","))) }
-            if !categories.isEmpty { items.append(URLQueryItem(name: "categories", value: categories.joined(separator: ","))) }
-            if !traitTagIDs.isEmpty { items.append(URLQueryItem(name: "traitTagIds", value: traitTagIDs.map(String.init).joined(separator: ","))) }
-        }
+    static func fetchRecommendations(api: URL, size: Int, bearer: String) async throws -> RecommendationPage? {
         let data: Data
-        do { data = try await send(api, path: "v1/discovery/recommendations", items, bearer: bearer) } catch ActivityFetchError.notFound { return nil }
+        do { data = try await send(api, path: "v1/discovery/recommendations", [URLQueryItem(name: "size", value: String(size))], bearer: bearer) } catch ActivityFetchError.notFound { return nil }
         let payload = try JSONDecoder().decode(RecommendationPayload.self, from: data)
         return RecommendationPage(items: payload.items.map { recommended($0, api: api) }, total: payload.total)
     }

@@ -6,8 +6,6 @@ import SwiftUI
 struct DiscoveryQueuePage: View {
     let model: DiscoveryQueueModel
     let state: ActivityViewModel
-    /// Signed out, the 추천 answers the stand-in queue is built from.
-    let preferences: AccountClient.RecommendationPreferences?
     @State private var position: String?
     @State private var detail: RecommendedActivity?
     @State private var choosing: RecommendedActivity?
@@ -42,7 +40,7 @@ struct DiscoveryQueuePage: View {
             .foregroundStyle(.white).accessibilityLabel("닫기").padding(.trailing, 6).padding(.top, 10)
         }
         .overlay(alignment: .bottom) { notice.environment(\.colorScheme, .dark) }
-        .task { await model.open(preferences) }
+        .task { await model.load() }
         .onDisappear { model.commitPending() }
         .confirmationDialog("이 활동", isPresented: Binding(get: { choosing != nil }, set: { if !$0 { choosing = nil } }),
                             titleVisibility: .hidden, presenting: choosing) { item in
@@ -92,7 +90,7 @@ struct DiscoveryQueuePage: View {
             ProgressView().tint(.white).frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if model.failed && model.items.isEmpty {
             CenteredMessage(symbol: "exclamationmark.triangle", danger: true, title: "대기열을 불러오지 못했어요", message: "연결을 확인한 뒤 다시 시도해 주세요.",
-                            primary: MessageAction("다시 시도", identifier: "queue-retry") { Task { await model.load(preferences) } })
+                            primary: MessageAction("다시 시도", identifier: "queue-retry") { Task { await model.load() } })
         } else if model.items.isEmpty {
             // Nothing today, also when the server has no queue yet (404): the entry stays, this says so (as Android and web).
             CenteredMessage(symbol: "sparkles", title: "아직 대기열이 없어요", message: "추천 설정을 마치면 맞춤 대기열을 볼 수 있어요.",
@@ -101,7 +99,7 @@ struct DiscoveryQueuePage: View {
             CenteredMessage(symbol: "checkmark.circle", title: "오늘 대기열을 다 봤어요", message: "남은 후보로 대기열을 다시 만들 수 있어요.",
                             primary: MessageAction("더 받기", identifier: "queue-refill") {
                                 Task {
-                                    await model.refill(preferences)
+                                    await model.refill()
                                     now = Date()
                                     position = model.items.first?.id ?? Self.endID
                                 }
@@ -132,8 +130,10 @@ struct DiscoveryQueuePage: View {
     }
 }
 
-/// Presents `DiscoveryQueuePage` from the top of the 발견 tab; `설정` reopens the 추천 funnel.
+/// Presents `DiscoveryQueuePage` from the top of the 발견 tab; `설정` reopens the 추천 funnel. Signed out (contract "비로그인에서 만들기·추천을
+/// 막음" 2026-10-25) the row says signing in comes first and has no `설정`; the app opens the sign-in sheet.
 struct DiscoveryQueueEntry: View {
+    let signedIn: Bool
     let action: () -> Void
     let settings: () -> Void
     var body: some View {
@@ -141,15 +141,20 @@ struct DiscoveryQueueEntry: View {
             Button(action: action) {
                 HStack(spacing: 12) {
                     Image(systemName: "rectangle.stack.fill").font(.dearby(.body)).foregroundStyle(DearbyStyle.teal)
-                    Text("오늘의 맞춤 대기열").font(.dearby(.body).weight(.semibold)).foregroundStyle(.primary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("오늘의 맞춤 대기열").font(.dearby(.body).weight(.semibold)).foregroundStyle(.primary)
+                        if !signedIn { Text("로그인하면 나에게 맞는 활동을 골라 드려요").font(.dearby(.footnote)).foregroundStyle(.secondary) }
+                    }
                     Spacer(minLength: 12)
                     Image(systemName: "chevron.right").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(.tertiary)
                 }
                 .frame(minHeight: 44).contentShape(Rectangle())
             }
             .buttonStyle(.plain).accessibilityIdentifier("reco-queue")
-            Button("설정", action: settings).font(.dearby(.subheadline)).frame(minWidth: 44, minHeight: 44)
-                .accessibilityLabel("추천 설정").accessibilityIdentifier("reco-settings")
+            if signedIn {
+                Button("설정", action: settings).font(.dearby(.subheadline)).frame(minWidth: 44, minHeight: 44)
+                    .accessibilityLabel("추천 설정").accessibilityIdentifier("reco-settings")
+            }
         }
     }
 }

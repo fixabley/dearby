@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 /// 내 프로필: the account's data profile (`GET`/`PUT /v1/profile`), its saved versions and history evidence.
-/// Signed out, there is nothing to load and the tab offers card making or sign-in; a failed save keeps what was typed.
+/// Signed out, there is nothing to load and the tab offers sign-in; a failed save keeps what was typed.
 @MainActor @Observable final class ProfileModel {
     enum Phase: Equatable { case signedOut, loading, loaded(AccountProfile), failed }
     private(set) var phase = Phase.loading

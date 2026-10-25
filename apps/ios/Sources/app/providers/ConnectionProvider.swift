@@ -69,16 +69,6 @@ struct ConnectionProvider: Sendable {
             },
             importItems: { items in try await account.authorized { try await client.importMyActivities(items, $0) } })
     }
-    /// 추천 while signed out: the device answers go in the query. Nil when the server has no recommendation API (404).
-    func recommendations(_ preferences: AccountClient.RecommendationPreferences) async throws -> RecommendationPage? {
-        try await ActivityClient.fetchRecommendations(api: origins.api, size: 10, fieldTagIDs: preferences.fieldTagIds,
-                                                      categories: preferences.categories, traitTagIDs: preferences.traitTagIds, bearer: nil)
-    }
-    /// 맞춤 대기열 while signed out (contract "맞춤 대기열" 2026-10-24): 40 추천 results, so `더 받기` has others to show.
-    func queueCandidates(_ preferences: AccountClient.RecommendationPreferences) async throws -> RecommendationPage? {
-        try await ActivityClient.fetchRecommendations(api: origins.api, size: 40, fieldTagIDs: preferences.fieldTagIds,
-                                                      categories: preferences.categories, traitTagIDs: preferences.traitTagIds, bearer: nil)
-    }
     /// 맞춤 대기열 for the signed-in `account`; each call refreshes the tokens once on a 401.
     @MainActor func discoveryQueueServer(_ account: AccountViewModel) -> DiscoveryQueueServer {
         let api = origins.api
@@ -104,8 +94,7 @@ struct ConnectionProvider: Sendable {
             recommendations: {
                 try await account.authorized { session in
                     do {
-                        return try await ActivityClient.fetchRecommendations(api: api, size: 10, fieldTagIDs: [], categories: [], traitTagIDs: [],
-                                                                             bearer: session.accessToken)
+                        return try await ActivityClient.fetchRecommendations(api: api, size: 10, bearer: session.accessToken)
                     } catch ActivityClient.RecommendationFailure.unauthorized { throw AccountError.unauthorized }
                 }
             })
