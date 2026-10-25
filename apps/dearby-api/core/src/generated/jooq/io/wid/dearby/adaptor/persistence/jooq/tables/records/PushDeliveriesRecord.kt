@@ -10,7 +10,7 @@ import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.util.UUID
 
-import org.jooq.Record4
+import org.jooq.Record5
 import org.jooq.impl.UpdatableRecordImpl
 
 
@@ -40,21 +40,26 @@ open class PushDeliveriesRecord() : UpdatableRecordImpl<PushDeliveriesRecord>(Pu
         set(value): Unit = set(4, value)
         get(): OffsetDateTime? = get(4) as OffsetDateTime?
 
+    open var deviceToken: String?
+        set(value): Unit = set(5, value)
+        get(): String? = get(5) as String?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
 
-    override fun key(): Record4<UUID?, Long?, String?, LocalDate?> = super.key() as Record4<UUID?, Long?, String?, LocalDate?>
+    override fun key(): Record5<UUID?, String?, Long?, String?, LocalDate?> = super.key() as Record5<UUID?, String?, Long?, String?, LocalDate?>
 
     /**
      * Create a detached, initialised PushDeliveriesRecord
      */
-    constructor(userId: UUID? = null, activityId: Long? = null, kind: String? = null, deliveryDate: LocalDate? = null, sentAt: OffsetDateTime? = null): this() {
+    constructor(userId: UUID? = null, activityId: Long? = null, kind: String? = null, deliveryDate: LocalDate? = null, sentAt: OffsetDateTime? = null, deviceToken: String? = null): this() {
         this.userId = userId
         this.activityId = activityId
         this.kind = kind
         this.deliveryDate = deliveryDate
         this.sentAt = sentAt
+        this.deviceToken = deviceToken
         resetTouchedOnNotNull()
     }
 }
