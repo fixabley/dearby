@@ -50,9 +50,17 @@
 
 유입경로 예: `activity_view` → `favorite_add` 또는 `myactivity_add` → `apply_click`.
 
+## 메뉴별 접근률 (2026-10-25 사용자 "각 메뉴별 접근률도")
+| 이벤트 | 시점 | 매개변수 |
+|---|---|---|
+| `tab_select` | 하단 탭을 누름(앱 시작 때 첫 탭은 보내지 않음) | `tab` = `discovery`·`my_activity`·`cards`·`profile` |
+| `menu_open` | 탭 안의 주요 메뉴·행을 엶 | `menu` = `my_activity_list`·`favorites`·`favorites_calendar`·`queue`·`funnel`·`eligibility`·`interests`·`notifications`·`my_cards`·`received_cards`·`card_create`·`profile_edit`·`history`·`settings`(새 메뉴는 이 목록에 먼저 더한다) |
+
+접근률 = 기간 안 `tab_select(tab=x)` 또는 `menu_open(menu=x)` 사용자 수 ÷ 활성 사용자 수. GA 탐색 › 자유 형식에서 측정기준 `tab`·`menu`, 측정항목 `활성 사용자`로 본다. 매개변수 `tab`, `menu`도 맞춤 측정기준으로 등록한다.
+
 ## 이탈률·참여
 
 GA4 기본 `engagement_rate`(참여 세션 비율)과 그 반대인 이탈률을 그대로 쓴다. 화면 이름은 `screen_view`의 `screen_name`에 FSD 페이지 이름(예 `discovery`, `activity_detail`, `queue`, `favorites`, `favorites_calendar`, `my_activity`, `profile`)을 넣는다. 화면별 이탈은 GA 탐색 › 경로 탐색에서 본다.
 
 ## GA 콘솔에서 할 일(사용자)
-맞춤 정의 › 맞춤 측정기준에 위 사용자 속성 4개(사용자 범위)와 매개변수 `step`, `entry`, `position`, `field`, `category`, `source`, `type`, `level`, `kind`, `reason`(이벤트 범위)을 등록한다. 등록 전 데이터는 보고서 측정기준으로 쓸 수 없다.
+맞춤 정의 › 맞춤 측정기준에 위 사용자 속성 4개(사용자 범위)와 매개변수 `step`, `entry`, `tab`, `menu`, `position`, `field`, `category`, `source`, `type`, `level`, `kind`, `reason`(이벤트 범위)을 등록한다. 등록 전 데이터는 보고서 측정기준으로 쓸 수 없다.
