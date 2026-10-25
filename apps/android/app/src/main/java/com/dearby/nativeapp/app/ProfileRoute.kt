@@ -104,7 +104,6 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
             )
         }
         funnel != null -> funnel?.let { current ->
-            BackHandler(onBack = model::closeFunnel)
             HistoryFunnelPage(current, model::changeDraft, model::goTo, model::next, model::search,
                 { pickImage.launch(androidx.activity.result.PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                 { pickPdf.launch(arrayOf("application/pdf")) }, model::deleteEvidence, model::closeFunnel)
