@@ -52,15 +52,17 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
     val changed get() = mutable.value.let { it.form != null && it.profile != null && profile(it.form) != profile(ProfileFormState.from(it.profile)) }
 
     fun load() = viewModelScope.launch {
-        if (account.state.value.phase != AccountPhase.SIGNED_IN) { mutable.value = ProfileViewState(ProfilePhase.SIGNED_OUT); return@launch }
+        if (account.state.value.phase != AccountPhase.SIGNED_IN) { mutable.value = ProfileViewState(ProfilePhase.SIGNED_OUT); account.consentKnown(null); return@launch }
         if (mutable.value.profile == null) mutable.update { it.copy(phase = ProfilePhase.LOADING) }
         try {
             val stored = account.authorized { account.client.profile(it) }
             // A reload resets the form unless an edit is pending.
             mutable.update { it.copy(phase = ProfilePhase.LOADED, profile = stored, form = if (changed && !it.saving) it.form else ProfileFormState.from(stored), errors = null, error = null,
                 consentRequired = stored.consentRequired, consentError = null) }
+            account.consentKnown(!stored.consentRequired)
         } catch (e: AccountException) {
             mutable.update { ProfileViewState(if (e.error == AccountError.UNAUTHORIZED) ProfilePhase.SIGNED_OUT else ProfilePhase.FAILED) }
+            account.consentKnown(null)
         }
     }
     /** 개인정보 동의 (contract "개인정보 동의"): records both versions, then reloads so the profile (or the setup funnel) can start. */
@@ -108,7 +110,7 @@ class ProfileViewModel(private val account: AccountViewModel) : ViewModel() {
                 mutable.update { it.copy(profile = saved, form = ProfileFormState.from(saved), saving = false, editing = false) }
             } catch (e: AccountException) {
                 // 403 CONSENT_REQUIRED (contract "개인정보 동의"): the consent screen comes back instead of an error line.
-                if (e.error == AccountError.FORBIDDEN && e.code == "CONSENT_REQUIRED") { mutable.update { it.copy(saving = false, consentRequired = true) }; return@launch }
+                if (e.error == AccountError.FORBIDDEN && e.code == "CONSENT_REQUIRED") { mutable.update { it.copy(saving = false, consentRequired = true) }; account.consentKnown(false); return@launch }
                 mutable.update { it.copy(saving = false, error = message(e, "저장하지 못했어요. 잠시 후 다시 시도해 주세요.")) }
             }
         }

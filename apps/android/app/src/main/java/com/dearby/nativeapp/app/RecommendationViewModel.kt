@@ -51,12 +51,12 @@ class RecommendationViewModel(private val account: AccountViewModel) : ViewModel
     private var eligibility: EligibilityProfile? = null
     private var tags: List<DictionaryTag>? = null
     private var loadJob: Job? = null
-    private val signedIn get() = account.state.value.phase == AccountPhase.SIGNED_IN
+    private val signedIn get() = account.ready.value
     private val client get() = account.client
 
     init {
         viewModelScope.launch {
-            account.state.map { it.phase }.filter { it != AccountPhase.WORKING }.distinctUntilChanged().collect { load() }
+            account.ready.collect { load() }
         }
         // analytics-v1: each question screen as `funnel_step` (index from 1 of this user's questions).
         viewModelScope.launch {

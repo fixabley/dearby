@@ -36,11 +36,11 @@ class InboxViewModel(private val account: AccountViewModel) : ViewModel() {
     val state = mutable.asStateFlow()
     private var groups: List<InboxGroup> = emptyList()
     private var job: Job? = null
-    private val signedIn get() = account.state.value.phase == AccountPhase.SIGNED_IN
+    private val signedIn get() = account.ready.value
 
     init {
         viewModelScope.launch {
-            account.state.map { it.phase }.filter { it != AccountPhase.WORKING }.distinctUntilChanged().collect { phase ->
+            account.ready.map { if (it) AccountPhase.SIGNED_IN else AccountPhase.SIGNED_OUT }.collect { phase ->
                 groups = emptyList()
                 mutable.value = InboxViewState()
                 if (phase == AccountPhase.SIGNED_IN) refreshCount()

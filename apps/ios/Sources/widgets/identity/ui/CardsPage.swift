@@ -7,22 +7,34 @@ struct CardsPage: View {
     @Binding var segment: CardsSegment
     let cards: MyCardsModel
     let wallet: WalletModel
+    /// Signed in without the current consent (contract "개인정보 동의" 2026-10-25): both sections are account data, so the gate shows instead.
+    var consentNeeded = false
+    var askConsent: () -> Void = {}
     var body: some View {
         Group {
-            switch segment {
-            case .myCards: MyCardsPage(state: cards).analyticsScreen("my_cards")
-            case .received: WalletPage(state: wallet).analyticsScreen("received_cards")
+            if consentNeeded {
+                ConsentRequiredView(ask: askConsent)
+            } else {
+                sections
             }
         }
         .background(Color(.systemGroupedBackground).ignoresSafeArea())
         .navigationTitle("명함").navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                Picker("명함 구역", selection: $segment.reporting { AppAnalytics.event("menu_open", ["menu": $0 == .received ? "received_cards" : "my_cards"]) }) {
-                    ForEach(CardsSegment.allCases, id: \.self) { Text($0.title).tag($0) }
-                }.pickerStyle(.segmented).accessibilityIdentifier("cards-segment")
+            if !consentNeeded {
+                ToolbarItem(placement: .principal) {
+                    Picker("명함 구역", selection: $segment.reporting { AppAnalytics.event("menu_open", ["menu": $0 == .received ? "received_cards" : "my_cards"]) }) {
+                        ForEach(CardsSegment.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }.pickerStyle(.segmented).accessibilityIdentifier("cards-segment")
+                }
             }
             TabRootToolbar()
+        }
+    }
+    @ViewBuilder private var sections: some View {
+        switch segment {
+        case .myCards: MyCardsPage(state: cards).analyticsScreen("my_cards")
+        case .received: WalletPage(state: wallet).analyticsScreen("received_cards")
         }
     }
 }

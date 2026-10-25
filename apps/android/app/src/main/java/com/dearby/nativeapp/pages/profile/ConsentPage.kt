@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Text
@@ -32,9 +34,11 @@ import com.dearby.nativeapp.shared.ui.MessageAction
  * Material 3 `ListItem`s with a `Checkbox` (contract "폼은 플랫폼 기본 컴포넌트") and `보기` opening the web document (the route layer launches
  * the browser), then the full-width CTA at the bottom.
  */
-@Composable fun ConsentPage(consenting: Boolean, error: String?, openPrivacy: () -> Unit, openTerms: () -> Unit, agree: () -> Unit, close: () -> Unit) {
+@Composable fun ConsentPage(consenting: Boolean, error: String?, openPrivacy: () -> Unit, openTerms: () -> Unit, agree: () -> Unit, close: () -> Unit,
+    cancelSignUp: (() -> Unit)? = null, signOut: () -> Unit = {}) {
     var privacy by remember { mutableStateOf(false) }
     var terms by remember { mutableStateOf(false) }
+    var confirming by remember { mutableStateOf(false) }
     // Closable (contract "동의 시트 닫기", 2026-10-20): the back arrow leaves without consenting; saving stays blocked until agreed.
     Column(Modifier.fillMaxSize()) {
         DearbyTopBar("동의", close)
@@ -44,9 +48,19 @@ import com.dearby.nativeapp.shared.ui.MessageAction
             ConsentRow("이용약관에 동의합니다 (필수)", terms, { terms = it }, openTerms)
             error?.let { DearbyFieldError(it) }
         },
-            primary = MessageAction(if (consenting) "저장하는 중…" else "동의하고 계속", agree, enabled = privacy && terms, busy = consenting))
+            primary = MessageAction(if (consenting) "저장하는 중…" else "동의하고 계속", agree, enabled = privacy && terms, busy = consenting),
+            secondary = MessageAction(if (cancelSignUp != null) "가입 취소" else "로그아웃", { confirming = true }, enabled = !consenting))
     }
+    if (confirming) AlertDialog({ confirming = false }, title = { Text(if (cancelSignUp != null) "가입을 취소할까요?" else "로그아웃할까요?") },
+        text = cancelSignUp?.let { { Text("가입을 취소하면 방금 만든 계정이 삭제돼요.") } },
+        confirmButton = { TextButton({ confirming = false; (cancelSignUp ?: signOut)() }) { Text(if (cancelSignUp != null) "가입 취소" else "로그아웃", color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton({ confirming = false }) { Text(if (cancelSignUp != null) "계속 가입" else "취소") } })
 }
+
+/** What an account tab shows while signed in without the current required consent (contract "개인정보 동의" 2026-10-25): its button opens the consent screen. */
+@Composable fun ConsentRequiredMessage(ask: () -> Unit, modifier: Modifier = Modifier) =
+    CenteredMessage(Icons.Rounded.Lock, "동의가 필요해요", "개인정보 수집·이용과 이용약관에 동의하면 프로필·명함·즐겨찾기 같은 계정 기능을 쓸 수 있어요.", modifier,
+        primary = MessageAction("동의하기", ask))
 
 /** A `ListItem` whose whole row toggles the checkbox; `보기` opens the document. */
 @Composable private fun ConsentRow(label: String, checked: Boolean, onChecked: (Boolean) -> Unit, open: () -> Unit) = ListItem(

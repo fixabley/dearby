@@ -1,5 +1,11 @@
 package com.dearby.nativeapp.app
 
+import com.dearby.nativeapp.BuildConfig
+import com.dearby.nativeapp.features.oauth.OAuthBrowser
+import com.dearby.nativeapp.pages.profile.ConsentPage
+import com.dearby.nativeapp.pages.profile.ProfilePhase
+import com.dearby.nativeapp.shared.config.ConsentVersions
+import kotlinx.coroutines.launch
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -40,6 +46,8 @@ private sealed interface Route {
     data object Queue : Route
     /** 알림 목록 (contract "알림 목록(발견 우상단 종)"), from the tab bars' bell. */
     data object Inbox : Route
+    /** 개인정보 동의 (contract "개인정보 동의" 2026-10-25): signed in without the current consent, at launch, on return and from account features. */
+    data object Consent : Route
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -87,12 +95,23 @@ private sealed interface Route {
     // The bell opens 알림 목록 (signed out → sign-in); [inboxReturn] brings it back after the detail one of its rows opened.
     var inboxReturn by remember { mutableStateOf(false) }
     val inboxState by inbox.state.collectAsStateWithLifecycle()
-    val notify = { if (auth.phase == AccountPhase.SIGNED_IN) { Tracking.menu("notifications_inbox"); inbox.open(); route = Route.Inbox } else { signingIn = true } }
+    // Signed in without the current consent the account features (and their data sync, [AccountViewModel.ready]) wait behind the consent screen.
+    val ready by account.ready.collectAsStateWithLifecycle()
+    val needAccount = { if (auth.phase == AccountPhase.SIGNED_IN) route = Route.Consent else signingIn = true }
+    val notify = { if (ready) { Tracking.menu("notifications_inbox"); inbox.open(); route = Route.Inbox } else needAccount() }
     // Signed in from the `오늘의 맞춤 대기열` row: once the settings are read, a never-finished funnel opens (its result opens the queue), else the queue.
     var queueAfterSignIn by remember { mutableStateOf(false) }
     val signedIn = auth.phase == AccountPhase.SIGNED_IN
-    LaunchedEffect(signedIn) { if (signedIn) signingIn = false; Tracking.signedIn(signedIn) }
-    val compose = { if (signedIn) { Tracking.menu("card_create"); publish.start(); route = Route.Composer } else { signingIn = true } }
+    // The consent state comes with the profile, read at sign-in and on every return to the app.
+    LaunchedEffect(signedIn) { if (signedIn) { signingIn = false; profile.load() } }
+    LaunchedEffect(ready) { Tracking.signedIn(ready) }
+    val consentNeeded = signedIn && profileState.phase == ProfilePhase.LOADED && profileState.consentRequired
+    var resumed by remember { mutableIntStateOf(0) }
+    LaunchedEffect(consentNeeded, resumed) { if (consentNeeded && route == null && !signingIn) route = Route.Consent }
+    // Agreed (or signed out): the screen goes; right after sign-up on to 프로필 만들기.
+    LaunchedEffect(consentNeeded) { if (!consentNeeded && route == Route.Consent) { route = null; if (profileState.settingUp) tab = Tab.Profile } }
+    val consentScope = rememberCoroutineScope()
+    val compose = { if (ready) { Tracking.menu("card_create"); publish.start(); route = Route.Composer } else needAccount() }
     // 즐겨찾기 하트 (contract "즐겨찾기(하트)·새 모집 푸시 알림"): signed out a heart opens sign-in. The first program heart on Android 13+ asks for the
     // notification permission once and starts push (never at launch, never again after a refusal; 알림 in 내 프로필 then points to the system settings).
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -100,7 +119,7 @@ private sealed interface Route {
     val activityListState by activityModel.state.collectAsStateWithLifecycle()
     val favoriteIds by favorites.ids.collectAsStateWithLifecycle()
     val hearts = FavoriteHearts(favoriteIds.activities, favoriteIds.programs, favoriteIds.levels, toggle = { program, id ->
-        if (!signedIn) signingIn = true
+        if (!ready) needAccount()
         else {
             // The first program heart starts push (token only from now on) and, on Android 13+, asks for the permission this once.
             if (program && id !in favoriteIds.programs && !device.pushStarted) { if (Push.needsPermission(context)) askNotifications.launch(Push.PERMISSION); notifications.start() }
@@ -132,7 +151,7 @@ private sealed interface Route {
     val reco by recommendation.state.collectAsStateWithLifecycle()
     val recoFunnel by recommendation.funnel.collectAsStateWithLifecycle()
     val eligibilityForm by recommendation.form.collectAsStateWithLifecycle()
-    LaunchedEffect(tab, route, reco.needsFunnel, signedIn) { if (screenshot == null && signedIn && tab == Tab.Discovery && route == null && reco.needsFunnel) recommendation.openFunnel(first = true, entry = "auto") }
+    LaunchedEffect(tab, route, reco.needsFunnel, ready) { if (screenshot == null && ready && tab == Tab.Discovery && route == null && reco.needsFunnel) recommendation.openFunnel(first = true, entry = "auto") }
     // 오늘의 맞춤 대기열: its 자세히 opens the activity on 발견 and, once that detail closes, the queue comes back where it was.
     LaunchedEffect(activityDetail) {
         if (!activityDetail && queueReturn) { queueReturn = false; route = Route.Queue }
@@ -143,11 +162,13 @@ private sealed interface Route {
     // asks for sign-in and then carries on by itself ([queueAfterSignIn]).
     val openQueue = { Tracking.menu("queue"); queue.open(); route = Route.Queue }
     val enterQueue = { if (reco.completed) openQueue() else recommendation.openFunnel(first = true, entry = "queue_row") }
-    LaunchedEffect(signedIn, reco.preferencesRead, queueAfterSignIn) { if (queueAfterSignIn && signedIn && reco.preferencesRead) { queueAfterSignIn = false; enterQueue() } }
+    LaunchedEffect(ready, reco.preferencesRead, queueAfterSignIn) { if (queueAfterSignIn && ready && reco.preferencesRead) { queueAfterSignIn = false; enterQueue() } }
     val recoHeader: @Composable () -> Unit = {
-        QueueEntryRow(signedIn) { if (signedIn) enterQueue() else { signingIn = true; queueAfterSignIn = true } }
+        QueueEntryRow(ready) { if (ready) enterQueue() else { needAccount(); queueAfterSignIn = true } }
     }
-    LaunchedEffect(auth.phase, walletState.needSignIn) { if (auth.phase == AccountPhase.SIGNED_IN && walletState.needSignIn) wallet.retryPending() }
+    // A card link to save: after sign-in and consent it carries on; signed in without consent it asks for the consent first.
+    LaunchedEffect(ready, walletState.needSignIn) { if (ready && walletState.needSignIn) wallet.retryPending() }
+    LaunchedEffect(signedIn, ready, walletState.needSignIn) { if (signedIn && !ready && walletState.needSignIn && consentNeeded) route = Route.Consent }
     // Every screen sits on the theme `background`, which this Surface spreads under the status bar, navigation bar and keyboard too (contract "안전 영역
     // 배경"); cards, sheets and tiles are `surface` on top. Every screen inside starts with a `DearbyTopBar`, which takes the status-bar inset itself, so
     // only the bottom insets are padded here. The IME inset is applied once here (contract "키보드 내리기"): pages add `imeNestedScroll()` on their
@@ -163,6 +184,7 @@ private sealed interface Route {
         route == Route.Settings -> "settings"
         route == Route.Queue -> "queue"
         route == Route.Inbox -> "notifications_inbox"
+        route == Route.Consent -> "consent"
         activityDetail -> "activity_detail"
         tab == Tab.Discovery -> "discovery"
         tab == Tab.Mine -> if (mineSegment != MineSegment.FAVORITES) "my_activity" else if (favoritesView.view == FavoritesView.CALENDAR) "favorites_calendar" else "favorites"
@@ -188,6 +210,18 @@ private sealed interface Route {
                     is Route.Qr -> CardQrRoute(screen.card, activityModel, myCards) { route = null }
                     Route.Composer -> CardComposerRoute(publish, account) { route = null }
                     Route.Settings -> SettingsRoute(settings, account, profile) { route = null }
+                    Route.Consent -> {
+                        BackHandler { route = null }
+                        ConsentPage(profileState.consenting, profileState.consentError,
+                            openPrivacy = { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) },
+                            openTerms = { OAuthBrowser(context).open(ConsentVersions.termsUrl(BuildConfig.WEB_ORIGIN)) },
+                            agree = profile::consent, close = { route = null },
+                            // Right after sign-up (no profile saved) 가입 취소 deletes the account; an account asked again for a new version gets 로그아웃.
+                            cancelSignUp = if (profileState.profile?.version == 0) {
+                                { consentScope.launch { runCatching { account.deleteAccount() }.onFailure { notice = "가입을 취소하지 못했어요. 잠시 후 다시 시도해 주세요." }; profile.load() } }
+                            } else null,
+                            signOut = { consentScope.launch { account.signOut(); profile.load() } })
+                    }
                     Route.Inbox -> {
                         BackHandler { route = null }
                         InboxPage(inboxState, { route = null }, { row -> inbox.read(row.id); inboxReturn = true; activityModel.openLinked(row.activityId, "inbox") }, inbox::readAll, inbox::open, inbox::loadMore)
@@ -208,12 +242,12 @@ private sealed interface Route {
                         // 설정·알림 sit in each tab's pinned `DearbyTopBar` (contract "iOS 상단 바…" Android sentence).
                         Tab.Discovery, Tab.Mine -> key(tab) {
                             ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }, settings = openSettings, notify = notify,
-                                openInMine = { mineOpen = it; mineSegment = MineSegment.MINE; tab = Tab.Mine }, open = if (tab == Tab.Mine) mineOpen else discoveryOpen, consumeOpen = { if (tab == Tab.Mine) mineOpen = null else discoveryOpen = null }, openConsent = { activityDetail = false; tab = Tab.Profile }, header = recoHeader,
-                                hearts = hearts, favorites = favorites, segment = mineSegment, selectSegment = { mineSegment = it; Tracking.menu(if (it == MineSegment.FAVORITES) "favorites" else "my_activity_list") }, signIn = { signingIn = true }, unread = inboxState.unread) { activityDetail = it }
+                                openInMine = { mineOpen = it; mineSegment = MineSegment.MINE; tab = Tab.Mine }, open = if (tab == Tab.Mine) mineOpen else discoveryOpen, consumeOpen = { if (tab == Tab.Mine) mineOpen = null else discoveryOpen = null }, openConsent = { activityDetail = false; route = Route.Consent }, header = recoHeader,
+                                hearts = hearts, favorites = favorites, segment = mineSegment, selectSegment = { mineSegment = it; Tracking.menu(if (it == MineSegment.FAVORITES) "favorites" else "my_activity_list") }, signIn = needAccount, unread = inboxState.unread) { activityDetail = it }
                         }
-                        Tab.Cards -> CardsRoute(cardsSegment, { cardsSegment = it; Tracking.menu(if (it == CardsSegment.MINE) "my_cards" else "received_cards") }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
+                        Tab.Cards -> CardsRoute(consentNeeded, { route = Route.Consent }, cardsSegment, { cardsSegment = it; Tracking.menu(if (it == CardsSegment.MINE) "my_cards" else "received_cards") }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
                             edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify, unread = inboxState.unread)
-                        Tab.Profile -> ProfileRoute(profile, account, recommendation, notifications, analyticsOn, { analyticsOn = it; device.analyticsEnabled = it; Analytics.setEnabled(it) }, compose, openSettings, notify, leaveSetup = { tab = Tab.Discovery })
+                        Tab.Profile -> ProfileRoute(profile, account, recommendation, notifications, analyticsOn, { analyticsOn = it; device.analyticsEnabled = it; Analytics.setEnabled(it) }, compose, openSettings, notify, leaveSetup = { tab = Tab.Discovery }, askConsent = { route = Route.Consent })
                     }
                 }
                 SnackbarHost(snackbar, Modifier.align(androidx.compose.ui.Alignment.BottomCenter))
@@ -234,7 +268,8 @@ private sealed interface Route {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             when (event) {
                 androidx.lifecycle.Lifecycle.Event.ON_STOP -> activityModel.appLeft()
-                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> { activityModel.appReturned(); inbox.refreshCount() }
+                // The consent is read again on every return and asked again while missing (contract "개인정보 동의" 2026-10-25).
+                androidx.lifecycle.Lifecycle.Event.ON_RESUME -> { activityModel.appReturned(); inbox.refreshCount(); if (account.state.value.phase == AccountPhase.SIGNED_IN) { profile.load(); resumed++ } }
                 else -> Unit
             }
         }

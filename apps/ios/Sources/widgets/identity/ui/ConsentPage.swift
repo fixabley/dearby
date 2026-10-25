@@ -5,7 +5,8 @@ import SwiftUI
 /// An inset-grouped `Form` (contract "폼은 플랫폼 기본 컴포넌트"); the head above the rows is the centred state symbol·title·explanation
 /// (contract "비스크롤 화면 배치·CTA") and the CTA is the full-width bottom button.
 /// Presented as a sheet it can be pulled down or closed with 닫기 (contract "동의 시트 닫기" 2026-10-20): closing means not consented, so
-/// saving stays blocked and the server's 403 brings the page back. In the tab root (full screen) there is nothing to dismiss, so no 닫기 shows.
+/// the session stays and the app asks again (launch, foreground, an account feature; contract "개인정보 동의" 2026-10-25). Under the CTA, an account
+/// right after sign-up (no profile saved) gets `가입 취소` — the account is deleted through the usual deletion — and one asked again for a new version `로그아웃`.
 struct ConsentPage: View {
     let state: ProfileModel
     @State private var privacy = false
@@ -13,6 +14,10 @@ struct ConsentPage: View {
     @State private var opening: URL?
     @State private var saving = false
     @State private var error: String?
+    @State private var confirmingCancel = false
+    @State private var confirmingSignOut = false
+    /// Right after sign-up: nothing saved yet, so leaving cancels the sign-up instead of signing out.
+    private var freshAccount: Bool { state.profile?.version == 0 }
     @Environment(\.dismiss) private var dismiss
     @Environment(\.isPresented) private var isPresented
     private var ready: Bool { privacy && terms && !saving }
@@ -40,12 +45,28 @@ struct ConsentPage: View {
         }
         .font(.dearby(.body))
         .safeAreaInset(edge: .bottom) {
-            Button { agree() } label: {
-                Group { if saving { ProgressView().tint(DearbyStyle.onTeal) } else { Text("동의하고 계속") } }.frame(maxWidth: .infinity)
+            VStack(spacing: 4) {
+                Button { agree() } label: {
+                    Group { if saving { ProgressView().tint(DearbyStyle.onTeal) } else { Text("동의하고 계속") } }.frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent).controlSize(.large).tint(DearbyStyle.tealFill).font(.dearby(.body).weight(.semibold)).disabled(!ready)
+                .accessibilityIdentifier("consent-continue")
+                if freshAccount {
+                    Button("가입 취소", role: .destructive) { confirmingCancel = true }.accessibilityIdentifier("consent-cancel-signup")
+                        .frame(minHeight: 44).disabled(saving)
+                } else {
+                    Button("로그아웃") { confirmingSignOut = true }.accessibilityIdentifier("consent-sign-out").frame(minHeight: 44).disabled(saving)
+                }
             }
-            .buttonStyle(.borderedProminent).controlSize(.large).tint(DearbyStyle.tealFill).font(.dearby(.body).weight(.semibold)).disabled(!ready)
-            .accessibilityIdentifier("consent-continue")
-            .padding(.horizontal, 24).padding(.vertical, 12).background(.bar)
+            .font(.dearby(.body)).padding(.horizontal, 24).padding(.vertical, 12).background(.bar)
+        }
+        .confirmationDialog("가입을 취소할까요?", isPresented: $confirmingCancel, titleVisibility: .visible) {
+            Button("가입 취소", role: .destructive) { leave { await state.account.deleteAccount() != .failed } }
+            Button("계속 가입", role: .cancel) {}
+        } message: { Text("가입을 취소하면 방금 만든 계정이 삭제돼요.") }
+        .confirmationDialog("로그아웃할까요?", isPresented: $confirmingSignOut, titleVisibility: .visible) {
+            Button("로그아웃", role: .destructive) { leave { await state.account.signOut(); return true } }
+            Button("취소", role: .cancel) {}
         }
         .background(Color(.systemGroupedBackground))
         .interactiveDismissDisabled(false)
@@ -59,6 +80,14 @@ struct ConsentPage: View {
     private func link(_ title: String, page: String) -> some View {
         Button { opening = state.webOrigin.appending(path: page) } label: {
             Label(title, systemImage: "arrow.up.right").font(.dearby(.subheadline)).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
+        }
+    }
+    /// 가입 취소 / 로그아웃: once signed out the app's sheet closes by itself (it shows only while signed in without consent).
+    private func leave(_ action: @escaping () async -> Bool) {
+        saving = true
+        Task {
+            if await action() { await state.load() } else { error = "가입을 취소하지 못했어요. 잠시 후 다시 시도해 주세요." }
+            saving = false
         }
     }
     private func agree() {
