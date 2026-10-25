@@ -4,6 +4,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.records.CardBlocksRecord
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.BUSINESS_CARDS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.CARD_BLOCKS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.CARD_REPORTS
+import io.wid.dearby.adaptor.persistence.jooq.tables.references.GUEST_SESSIONS
 import io.wid.dearby.application.card.CardSafetyRepository
 import io.wid.dearby.domain.UserId
 import io.wid.dearby.domain.card.*
@@ -89,6 +90,12 @@ class JooqCardSafetyRepository(private val dsl: DSLContext) : CardSafetyReposito
 
     override fun deleteReportsBefore(at: OffsetDateTime) =
         dsl.deleteFrom(CARD_REPORTS).where(CARD_REPORTS.CREATED_AT.lt(at)).execute()
+
+    override fun deleteGuestBlocksBefore(at: OffsetDateTime) =
+        dsl.deleteFrom(CARD_BLOCKS).where(
+            CARD_BLOCKS.BLOCKER_GUEST_DIGEST.isNotNull,
+            CARD_BLOCKS.CREATED_AT.lt(at).or(CARD_BLOCKS.BLOCKER_GUEST_DIGEST.notIn(dsl.select(GUEST_SESSIONS.DIGEST).from(GUEST_SESSIONS))),
+        ).execute()
 
     private fun blocker(user: UserId?, guest: String?): Condition =
         if (user != null) CARD_BLOCKS.BLOCKER_USER_ID.eq(user) else CARD_BLOCKS.BLOCKER_GUEST_DIGEST.eq(guest)

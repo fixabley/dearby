@@ -40,4 +40,9 @@ data class CardReport(
 data class CardReportListing(val report: CardReport, val reportCount: Int, val cardWithdrawn: Boolean)
 
 // 차단(차단 단위는 명함 주인). name은 차단할 때 그 명함의 이름
-data class CardBlock(val id: UUID, val name: String, val blockedAt: OffsetDateTime)
+data class CardBlock(val id: UUID, val name: String, val blockedAt: OffsetDateTime) {
+    companion object {
+        // 비로그인 차단 보유 기간(2026-10-25 사용자 결정): 차단일(createdAt)로부터 1년. 세션이 지워진 차단은 기간과 관계없이 지운다(batch RecallService). 로그인 차단은 대상 아님
+        val GUEST_KEEP_FOR: Period = Period.ofYears(1)
+    }
+}
