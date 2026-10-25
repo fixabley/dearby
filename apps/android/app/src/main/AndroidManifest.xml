@@ -3,6 +3,8 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Contract "기기 캘린더 겹침": requested only when 겹치는 시간 확인 is tapped; read-only, compared on device. -->
     <uses-permission android:name="android.permission.READ_CALENDAR"/>
+    <!-- 새 모집 푸시 (contract "즐겨찾기(하트)·새 모집 푸시 알림"): Android 13+ asks once, at the first program heart, never at launch. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application android:label="Dearby" android:icon="@mipmap/ic_launcher" android:roundIcon="@mipmap/ic_launcher_round" android:dataExtractionRules="@xml/data_extraction_rules" android:allowBackup="false" android:fullBackupContent="false" android:supportsRtl="true" android:theme="@style/Theme.Dearby" android:usesCleartextTraffic="false">
         <!-- singleTask: the dearby://auth/apple redirect must reach this instance (onNewIntent), which holds the verifier, and close the Custom Tab above it. -->
         <activity android:name=".app.MainActivity" android:exported="true" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:theme="@style/Theme.Dearby.Starting">
@@ -21,6 +23,12 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:scheme="dearby" android:host="cards" android:pathPrefix="/"/>
             </intent-filter>
+            <!-- `오늘 일정 n개` push (contract "프로그램·활동별 알림 수준"): dearby://favorites?view=calendar opens 즐겨찾기. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="dearby" android:host="favorites"/>
+            </intent-filter>
             <!-- App Links (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): only the web origin's /cards/* and /activities/* open the app;
                  the host comes from DEARBY_WEB_ORIGIN (build.gradle.kts), verified against the web's /.well-known/assetlinks.json. -->
             <intent-filter android:autoVerify="true">
@@ -33,5 +41,11 @@
                 <data android:pathPrefix="/activities/"/>
             </intent-filter>
         </activity>
+        <!-- FCM (inert without google-services.json): background notifications land on the 새 모집 channel with the Dearby symbol. -->
+        <service android:name=".features.push.DearbyMessagingService" android:exported="false">
+            <intent-filter><action android:name="com.google.firebase.MESSAGING_EVENT"/></intent-filter>
+        </service>
+        <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="new_recruitment"/>
+        <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/dearby_symbol"/>
     </application>
 </manifest>

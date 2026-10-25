@@ -30,19 +30,22 @@ import com.dearby.nativeapp.widgets.activity.progress.CalendarDraft
 @Composable fun ActivityDetailPage(
     activity: ActivityState, error: String?, back: () -> Unit, openLink: (String) -> Unit, editReport: () -> Unit, checkCalendar: () -> Unit, share: () -> Unit,
     openMap: () -> Unit = {}, addToMine: () -> Unit = {}, viewInMine: () -> Unit = {}, addToCalendar: (CalendarDraft) -> Unit = {},
+    hearts: FavoriteHearts = FavoriteHearts(),
 ) {
     Column(Modifier.fillMaxSize()) {
-        // 추가 sits beside share until the activity is in 내 활동 (contract "활동 상세 내 활동 행동 정리", 2026-10-22); share is always there
-        // and sends the Dearby link (contract "유니버설 링크·App Links·활동 공유·오픈그래프").
+        // Share sends the Dearby link (contract "유니버설 링크·App Links·활동 공유·오픈그래프"). 추가 left the bar for the `+` beside the heart
+        // under the title (contract "`+` 내 활동에 추가", 2026-10-25).
         DearbyTopBar("활동 상세", back) {
-            if (!activity.applied) TextButton(addToMine, Modifier.semantics { contentDescription = "내 활동에 추가" }) { Text("추가") }
             IconButton(share) { Icon(Icons.Rounded.Share, "활동 공유", tint = MaterialTheme.colorScheme.primary) }
         }
         // No image header (contract "활동 상세 이미지 섹션 제거", 2026-10-19 밤): status and title start at the top.
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { ExampleBadge(activity.status, true); activity.category?.let { ExampleBadge(it) } }
-                Text(activity.title, style = MaterialTheme.typography.headlineMedium)
+                Row(verticalAlignment = Alignment.Top) {
+                    Text(activity.title, Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium)
+                    FavoriteActions(hearts, false, activity.id, activity.title, activity.applied) { if (activity.applied) viewInMine() else addToMine() }
+                }
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Icon(Icons.Rounded.Business, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(activity.organization, Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)

@@ -31,7 +31,7 @@ sealed interface QueueSceneState {
  */
 data class QueueCardState(
     val id: String, val organization: String, val logoUrl: String?, val coverUrl: String?, val hue: Float,
-    val tagLine: String?, val scenes: List<QueueSceneState>, val liked: Boolean, val field: String?,
+    val tagLine: String?, val scenes: List<QueueSceneState>, val field: String?,
 )
 
 /** The `⋯` sheet's choices; [done] is the snackbar line offered with `되돌리기`. */

@@ -7,6 +7,7 @@ import com.dearby.nativeapp.entities.activity.model.ActivityModel
 import com.dearby.nativeapp.entities.activity.model.lines
 import com.dearby.nativeapp.entities.activity.model.ActivityPage
 import com.dearby.nativeapp.entities.activity.model.ProgramPage
+import com.dearby.nativeapp.entities.activity.model.ProgramSummary
 import com.dearby.nativeapp.entities.activity.model.currentStage
 import com.dearby.nativeapp.entities.activity.model.instant
 import com.dearby.nativeapp.entities.activity.model.safeHttpsUrl
@@ -170,7 +171,7 @@ class ActivityViewModel(
     }
     /** Programs never start expanded (contract "자동 펼침 없음"); only a tap on a card expands it. */
     private fun show(page: ProgramPage, append: Boolean) {
-        val programs = page.items.map { ProgramState(it.id, it.name, it.organization, it.openActivityCount, instant(it.nearestRecruitmentEndAt), it.matchedActivityIds.size, instant(it.latestActivityAt), fieldTags = it.fieldTags.labels(), traitTags = it.traitTags.labels(), upcomingCount = it.upcomingActivityCount, nearestStart = instant(it.nearestRecruitmentStartAt), logoUrl = it.logoUrl) }
+        val programs = page.items.map { it.toState() }
         mutable.update { state ->
             state.copy(phase = ActivityListPhase.LOADED, programs = (if (append) state.programs else emptyList()) + programs,
                 nextCursor = page.nextCursor, loadingMore = false)
@@ -267,6 +268,22 @@ class ActivityViewModel(
             mutable.update { it.copy(known = it.known + (id to shown), progress = it.progress + (id to model.toProgress(marks[id].orEmpty(), today())), linked = id) }
         }
     }
+    /**
+     * Activities read elsewhere (즐겨찾기, 맞춤 대기열) become known here, so their rows and details open and `+` can add them to 내 활동; an activity
+     * already known keeps its 내 활동 mark.
+     */
+    fun adopt(loaded: List<ActivityModel>) {
+        if (loaded.isEmpty()) return
+        models = models + loaded.associateBy { it.id }
+        val now = Instant.now()
+        val today = today()
+        mutable.update { state ->
+            state.copy(known = state.known + loaded.associate { model -> model.id to model.toState(now).copy(applied = state.known[model.id]?.applied == true) },
+                progress = state.progress + loaded.associate { it.id to it.toProgress(marks[it.id].orEmpty(), today) })
+        }
+    }
+    /** 즐겨찾기 expanded a program card: its activities load once, as in discovery. */
+    fun ensureProgram(programId: String) { if (state.value.programActivities[programId]?.phase != ProgramPhase.LOADED) loadProgram(programId) }
     fun consumeLinked() = mutable.update { it.copy(linked = null, linkNotice = null) }
     /** An application link for [id] was handed to the browser. Applied or "never ask" activities are not asked. */
     fun openedApplication(id: String) {
@@ -391,6 +408,9 @@ private fun ActivityModel.draft(stage: Stage): CalendarDraft? {
 }
 
 private fun List<Tag>.labels() = map { TagLabel(it.name, it.nameEn) }
+/** One program card's state, for discovery and 즐겨찾기 alike. */
+internal fun ProgramSummary.toState() = ProgramState(id, name, organization, openActivityCount, instant(nearestRecruitmentEndAt), matchedActivityIds.size, instant(latestActivityAt),
+    fieldTags = fieldTags.labels(), traitTags = traitTags.labels(), upcomingCount = upcomingActivityCount, nearestStart = instant(nearestRecruitmentStartAt), logoUrl = logoUrl)
 
 private fun ActivityModel.toState(now: Instant) = ActivityState(
     // The activity period by the structured-first rule (contract "일정 표시 우선순위"); the collected label only when no date exists.

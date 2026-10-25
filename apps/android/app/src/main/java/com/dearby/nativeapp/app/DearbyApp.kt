@@ -15,6 +15,9 @@ import com.dearby.nativeapp.entities.account.model.PublishedCard
 import com.dearby.nativeapp.pages.recommendation.FunnelStep
 import com.dearby.nativeapp.pages.recommendation.RecommendationFunnelPage
 import com.dearby.nativeapp.widgets.recommendation.recommendationRows.QueueEntryRow
+import com.dearby.nativeapp.features.push.Push
+import com.dearby.nativeapp.pages.activity.FavoriteHearts
+import com.dearby.nativeapp.pages.activity.FavoritesView
 
 /** Four tabs (contract "명함 탭 통합", 2026-10-20): 내 명함 and 받은 명함 are the two segments of 명함. */
 private enum class Tab(val label: String, val icon: ImageVector) {
@@ -36,8 +39,11 @@ private sealed interface Route {
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
-@Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, myCards: MyCardsViewModel, wallet: WalletViewModel, profile: ProfileViewModel, settings: SettingsViewModel, recommendation: RecommendationViewModel, queue: QueueViewModel, screenshot: String? = null) {
+@Composable fun DearbyApp(activityModel: ActivityViewModel, account: AccountViewModel, publish: CardPublishViewModel, myCards: MyCardsViewModel, wallet: WalletViewModel, profile: ProfileViewModel, settings: SettingsViewModel, recommendation: RecommendationViewModel, queue: QueueViewModel,
+    favorites: FavoritesViewModel, notifications: NotificationViewModel, device: DevicePreferences, favoritesLink: FavoritesView? = null, consumeFavoritesLink: () -> Unit = {}, screenshot: String? = null) {
     var tab by remember { mutableStateOf(Tab.Discovery) }
+    // The 내 활동 tab's `내 활동 | 즐겨찾기` top tab, in memory for the app's lifetime like the 명함 tab's.
+    var mineSegment by remember { mutableStateOf(MineSegment.MINE) }
     // The 명함 tab's segment, kept in memory for the app's lifetime (contract "명함 탭 통합").
     var cardsSegment by remember { mutableStateOf(CardsSegment.MINE) }
     // 내 활동에서 보기 (contract "내 활동 직접 추가"): the activity the 내 활동 tab should open next, consumed by its route.
@@ -74,6 +80,23 @@ private sealed interface Route {
     val signedIn = auth.phase == AccountPhase.SIGNED_IN
     LaunchedEffect(signedIn) { if (signedIn) signingIn = false }
     val compose = { if (signedIn) { publish.start(); route = Route.Composer } else { signingIn = true } }
+    // 즐겨찾기 하트 (contract "즐겨찾기(하트)·새 모집 푸시 알림"): signed out a heart opens sign-in. The first program heart on Android 13+ asks for the
+    // notification permission once (never at launch, never again after a refusal; 알림 in 내 프로필 then points to the system settings).
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val askNotifications = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted -> if (granted) notifications.register() }
+    val favoriteIds by favorites.ids.collectAsStateWithLifecycle()
+    val hearts = FavoriteHearts(favoriteIds.activities, favoriteIds.programs, favoriteIds.levels, toggle = { program, id ->
+        if (!signedIn) signingIn = true
+        else {
+            if (program && id !in favoriteIds.programs && !device.notificationsAsked && Push.needsPermission(context)) { device.notificationsAsked = true; askNotifications.launch(Push.PERMISSION) }
+            favorites.toggle(program, id)
+        }
+    }, setLevel = favorites::setLevel)
+    // `오늘 일정 n개` (dearby://favorites?view=calendar): 내 활동 → 즐겨찾기 in that view.
+    LaunchedEffect(favoritesLink) { favoritesLink?.let { route = null; wallet.closeShared(); tab = Tab.Mine; mineSegment = MineSegment.FAVORITES; favorites.setView(it); consumeFavoritesLink() } }
+    val favoriteNotice by favorites.notice.collectAsStateWithLifecycle()
+    val snackbar = remember { SnackbarHostState() }
+    LaunchedEffect(favoriteNotice) { favoriteNotice?.let { try { snackbar.showSnackbar(it) } finally { favorites.dismissNotice() } } }
     // 명함 교환 (contract): a dearby://cards/… link saved a card → open it; signed out → sign in, then the link is saved.
     // A saved exchanged card opens on the 명함 tab's 받은 명함 segment with its detail pushed.
     // A card App Link not in the wallet opens 공유받은 명함 보기 over whatever was showing; once it closes (or saved), the route goes too.
@@ -125,18 +148,26 @@ private sealed interface Route {
                     is Route.Qr -> CardQrRoute(screen.card, activityModel, myCards) { route = null }
                     Route.Composer -> CardComposerRoute(publish, account) { route = null }
                     Route.Settings -> SettingsRoute(settings, account, profile) { route = null }
-                    Route.Queue -> QueueRoute(queue, openDetail = { queueReturn = true; activityModel.openLinked(it) }) { route = null }
+                    Route.Queue -> QueueRoute(queue, openDetail = { queueReturn = true; activityModel.openLinked(it) }, liked = favoriteIds.activities,
+                        inMine = activityListState.known.values.filter { it.applied }.map { it.id }.toSet(),
+                        like = { id, force -> if ((force ?: (id !in favoriteIds.activities)) != (id in favoriteIds.activities)) hearts.toggle(false, id) },
+                        plus = { id ->
+                            if (activityListState.known[id]?.applied == true) { queue.close(); route = null; mineSegment = MineSegment.MINE; mineOpen = id; tab = Tab.Mine }
+                            else { queue.model(id)?.let { activityModel.adopt(listOf(it)) }; activityModel.apply(id, true) }
+                        }) { route = null }
                     null -> when (tab) {
                         // 설정·알림 sit in each tab's pinned `DearbyTopBar` (contract "iOS 상단 바…" Android sentence).
                         Tab.Discovery, Tab.Mine -> key(tab) {
                             ActivityRoute(activityModel, mine = tab == Tab.Mine, explore = { tab = Tab.Discovery }, settings = openSettings, notify = notify,
-                                openInMine = { mineOpen = it; tab = Tab.Mine }, open = if (tab == Tab.Mine) mineOpen else discoveryOpen, consumeOpen = { if (tab == Tab.Mine) mineOpen = null else discoveryOpen = null }, openConsent = { activityDetail = false; tab = Tab.Profile }, header = recoHeader) { activityDetail = it }
+                                openInMine = { mineOpen = it; mineSegment = MineSegment.MINE; tab = Tab.Mine }, open = if (tab == Tab.Mine) mineOpen else discoveryOpen, consumeOpen = { if (tab == Tab.Mine) mineOpen = null else discoveryOpen = null }, openConsent = { activityDetail = false; tab = Tab.Profile }, header = recoHeader,
+                                hearts = hearts, favorites = favorites, segment = mineSegment, selectSegment = { mineSegment = it }, signIn = { signingIn = true }) { activityDetail = it }
                         }
                         Tab.Cards -> CardsRoute(cardsSegment, { cardsSegment = it }, myCards, wallet, account, compose, showQr = { route = Route.Qr(it) },
                             edit = { card -> publish.start(card); route = Route.Composer }, openReceived = { route = Route.Detail(it.id) }, settings = openSettings, notify = notify)
-                        Tab.Profile -> ProfileRoute(profile, account, recommendation, compose, openSettings, notify)
+                        Tab.Profile -> ProfileRoute(profile, account, recommendation, notifications, compose, openSettings, notify)
                     }
                 }
+                SnackbarHost(snackbar, Modifier.align(androidx.compose.ui.Alignment.BottomCenter))
             }
             // The first-profile funnel (never saved) takes the whole screen, like Toss: no tab bar until the profile exists.
             val settingUp = tab == Tab.Profile && profileState.settingUp

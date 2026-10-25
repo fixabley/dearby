@@ -25,6 +25,12 @@ import com.dearby.nativeapp.pages.activity.ActivityDetailPage
 import com.dearby.nativeapp.pages.activity.ActivityProgressPage
 import com.dearby.nativeapp.pages.activity.ApplicationReportDialog
 import com.dearby.nativeapp.pages.activity.MyActivitiesPage
+import com.dearby.nativeapp.pages.activity.FavoriteHearts
+import com.dearby.nativeapp.pages.activity.FavoritesPage
+import com.dearby.nativeapp.shared.ui.DearbyTopBar
+import com.dearby.nativeapp.shared.ui.TabActions
+import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 
 /**
  * [settings] and [notify] are the fixed 설정·알림 header buttons of both tab roots (contract "설정"). [openInMine] asks the shell to show an activity's
@@ -32,9 +38,13 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
  */
 @Composable fun ActivityRoute(
     model: ActivityViewModel, mine: Boolean = false, explore: () -> Unit = {}, settings: () -> Unit = {}, notify: () -> Unit = {},
-    openInMine: (String) -> Unit = {}, open: String? = null, consumeOpen: () -> Unit = {}, openConsent: () -> Unit = {}, header: (@Composable () -> Unit)? = null, active: (Boolean) -> Unit,
+    openInMine: (String) -> Unit = {}, open: String? = null, consumeOpen: () -> Unit = {}, openConsent: () -> Unit = {}, header: (@Composable () -> Unit)? = null,
+    hearts: FavoriteHearts = FavoriteHearts(), favorites: FavoritesViewModel? = null, segment: MineSegment = MineSegment.MINE, selectSegment: (MineSegment) -> Unit = {},
+    signIn: () -> Unit = {}, active: (Boolean) -> Unit,
 ) {
     val state by model.state.collectAsStateWithLifecycle()
+    // `+` beside an activity heart (contract "`+` 내 활동에 추가"): adds it to 내 활동, or opens it there once it is in.
+    val plus: (String) -> Unit = { id -> if (state.known[id]?.applied == true) openInMine(id) else model.apply(id, true) }
     var selected by remember { mutableStateOf<String?>(null) }
     // 내 활동: the activity whose stage timeline is open, and the stage whose calendar comparison is open.
     var progressId by remember { mutableStateOf<String?>(null) }
@@ -91,11 +101,20 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
     Box(Modifier.fillMaxSize()) { when {
         activity != null -> ActivityDetailPage(activity, linkError, { selected = null }, openLink, { prompt = true },
             { calendar = true }, share, openMap,
-            addToMine = { model.apply(activity.id, true) }, viewInMine = { openInMine(activity.id) }, addToCalendar = { addToCalendar(it, activity) })
+            addToMine = { model.apply(activity.id, true) }, viewInMine = { openInMine(activity.id) }, addToCalendar = { addToCalendar(it, activity) }, hearts = hearts)
         progress != null && progressActivity != null -> ActivityProgressPage(progress, { progressId = null }, { selected = progress.id; linkError = null },
             { stage, value -> model.mark(progress.id, stage, value) }, { stageCalendar = it }, { model.apply(progress.id, false); progressId = null }, { addToCalendar(it, progressActivity) })
-        mine -> MyActivitiesPage(state, { selected = it; linkError = null }, { progressId = it }, explore, settings, notify) { model.apply(it, false) }
-        else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify, model::clearRefreshFailure, settings, header)
+        mine -> MineTab(segment, selectSegment, settings, notify) {
+            val openDetail: (String) -> Unit = { selected = it; linkError = null }
+            if (segment == MineSegment.MINE || favorites == null) MyActivitiesPage(state, openDetail, { progressId = it }, explore) { model.apply(it, false) }
+            else {
+                val favoritesState by favorites.state.collectAsStateWithLifecycle()
+                LaunchedEffect(Unit) { favorites.load() }
+                FavoritesPage(favoritesState, state, hearts, openDetail, plus, { favorites.seen(it); model.ensureProgram(it) }, model::retryProgram,
+                    favorites::remove, favorites::undo, favorites::commit, favorites::setView, signIn, favorites::load)
+            }
+        }
+        else -> ActivityListPage(state, { selected = it; linkError = null }, model::search, model::reload, model::refresh, model::loadMore, model::toggle, model::retryProgram, model::setOpenOnly, notify, model::clearRefreshFailure, settings, header, hearts, plus)
     }
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
@@ -109,6 +128,22 @@ import com.dearby.nativeapp.pages.activity.MyActivitiesPage
         confirmButton = { TextButton({ model.clearMineNotice(); openConsent() }) { Text("동의하러 가기") } }, dismissButton = { TextButton(model::clearMineNotice) { Text("나중에") } })
     else state.mineNotice?.let { value -> AlertDialog(onDismissRequest = model::clearMineNotice, title = { Text("내 활동") }, text = { Text(value) }, confirmButton = { TextButton(model::clearMineNotice) { Text("확인") } }) }
     if (prompt && activity != null) ApplicationReportDialog({ model.apply(activity.id, it); prompt = false }, { prompt = false })
+}
+
+/** The 내 활동 tab's two top tabs (contract "즐겨찾기(하트)·새 모집 푸시 알림", 2026-10-25). */
+enum class MineSegment(val label: String) { MINE("내 활동"), FAVORITES("즐겨찾기") }
+
+/** One pinned top bar (설정·알림) over a Material 3 `PrimaryTabRow` `내 활동 | 즐겨찾기`, like the 명함 tab. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable private fun MineTab(segment: MineSegment, select: (MineSegment) -> Unit, settings: () -> Unit, notify: () -> Unit, content: @Composable () -> Unit) {
+    val topBar = TopAppBarDefaults.pinnedScrollBehavior()
+    Column(Modifier.fillMaxSize().nestedScroll(topBar.nestedScrollConnection)) {
+        DearbyTopBar("내 활동", scrollBehavior = topBar) { TabActions(settings, notify) }
+        PrimaryTabRow(segment.ordinal, containerColor = MaterialTheme.colorScheme.background) {
+            MineSegment.entries.forEach { Tab(segment == it, { select(it) }, text = { Text(it.label) }) }
+        }
+        content()
+    }
 }
 
 /**

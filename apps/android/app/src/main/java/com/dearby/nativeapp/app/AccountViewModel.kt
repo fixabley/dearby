@@ -319,8 +319,11 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
         else -> throw e
     }
 
+    /** Runs with the session still valid right before 로그아웃 (the push token leaves the server, contract "즐겨찾기(하트)·새 모집 푸시 알림"). */
+    var beforeSignOut: suspend (AccountSession) -> Unit = {}
     /** Signing out always forgets this device's tokens, even if the server call fails. */
     suspend fun signOut() {
+        session?.let { runCatching { beforeSignOut(it) } }
         session?.let { runCatching { client.logout(it.refreshToken) } }
         forget()
     }

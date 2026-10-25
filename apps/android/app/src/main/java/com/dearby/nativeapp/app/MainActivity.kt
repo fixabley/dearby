@@ -27,6 +27,13 @@ import com.dearby.nativeapp.BuildConfig
 import com.dearby.nativeapp.shared.config.activityAppLink
 import com.dearby.nativeapp.shared.config.authRedirect
 import com.dearby.nativeapp.shared.config.cardLink
+import com.dearby.nativeapp.shared.config.favoritesLink
+import com.dearby.nativeapp.features.push.Push
+import com.dearby.nativeapp.pages.activity.FavoritesView
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
+import androidx.core.content.ContextCompat
 import com.dearby.nativeapp.shared.ui.DearbyTheme
 
 class MainActivity : ComponentActivity() {
@@ -64,6 +71,18 @@ class MainActivity : ComponentActivity() {
     // earlier keys (signed-out settings, queue reactions, the funnel's completion flag) are neither read nor removed.
     private val recommendation: RecommendationViewModel by viewModels { viewModelFactory { initializer { RecommendationViewModel(account) } } }
     private val queue: QueueViewModel by viewModels { viewModelFactory { initializer { QueueViewModel(account) } } }
+    // 즐겨찾기·새 모집 푸시 (contract "즐겨찾기(하트)·새 모집 푸시 알림", 2026-10-25): the view choice and the asked-once flag in a new preferences file.
+    private val device by lazy { DevicePreferences(applicationContext) }
+    private val favorites: FavoritesViewModel by viewModels {
+        viewModelFactory { initializer { FavoritesViewModel(account, device.favoritesView, { device.favoritesView = it }, activityModel::adopt) } }
+    }
+    private val notifications: NotificationViewModel by viewModels {
+        viewModelFactory { initializer { NotificationViewModel(account, Push.available(applicationContext), { Push.token(applicationContext) }, Push.refreshed) } }
+    }
+    // `오늘 일정 n개` opens 즐겨찾기 in this view (dearby://favorites?view=calendar), consumed once by DearbyApp.
+    private var favoritesLink by mutableStateOf<FavoritesView?>(null)
+    // The server sends at 8 in the morning in the device's time zone, so a change is sent again while the app runs (and at every start).
+    private val timeZoneChanged = object : BroadcastReceiver() { override fun onReceive(context: Context, intent: Intent) = notifications.register() }
     // First-launch intro, remembered in its own new preferences file; no earlier stored data is read.
     private val onboarding by lazy { getSharedPreferences("dearby.onboarding", MODE_PRIVATE) }
     private var intro by mutableStateOf(false)
@@ -88,13 +107,21 @@ class MainActivity : ComponentActivity() {
         }
         // A recreated Activity gets its launch intent again; the provider's code is single-use and was handled the first time.
         receive(intent, recreated = savedInstanceState != null)
+        Push.createChannel(this)
+        account.beforeSignOut = notifications::unregister
+        ContextCompat.registerReceiver(this, timeZoneChanged, IntentFilter(Intent.ACTION_TIMEZONE_CHANGED), ContextCompat.RECEIVER_NOT_EXPORTED)
         setContent {
             DearbyTheme {
                 if (intro) IntroRoute(account, ::introShown)
-                else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings, recommendation, queue, screenshot)
+                else DearbyApp(activityModel, account, publish, myCards, wallet, profile, settings, recommendation, queue, favorites, notifications, device,
+                    favoritesLink, { favoritesLink = null }, screenshot)
                 PendingAccountRoute(account)
             }
         }
+    }
+    override fun onDestroy() {
+        unregisterReceiver(timeZoneChanged)
+        super.onDestroy()
     }
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -107,8 +134,10 @@ class MainActivity : ComponentActivity() {
      * `/activities/<id>`, which opens the detail on 발견. Other links only open the app.
      */
     private fun receive(intent: Intent?, recreated: Boolean = false) {
-        val link = intent?.dataString ?: return
+        // A push tapped while the app was in the background starts it with the message's `data` as extras (`url`, contract "즐겨찾기(하트)·새 모집 푸시 알림").
+        val link = intent?.dataString ?: intent?.getStringExtra("url") ?: return
         if (recreated) return
+        favoritesLink(link)?.let { view -> favoritesLink = FavoritesView.entries.firstOrNull { it.name.equals(view, ignoreCase = true) } ?: FavoritesView.LIST; return }
         authRedirect(link)?.let { account.returned(it); return }
         cardLink(link, BuildConfig.WEB_ORIGIN)?.let { if (it.web) wallet.view(it) else wallet.receive(it); return }
         activityAppLink(link, BuildConfig.WEB_ORIGIN)?.let(activityModel::openLinked)

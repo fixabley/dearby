@@ -35,13 +35,12 @@ import kotlinx.coroutines.launch
  * (`GET /v1/me/discovery-queue`, `더 받기` = `POST …/refill`) and every reaction goes to `POST /v1/me/recommendation-signals`. The entry always
  * shows; a failed read (404 before the server ships it included) is the queue screen's retry state. Signed out there is no queue (contract
  * "비로그인에서 만들기·추천을 막음", 2026-10-25: the entry opens sign-in), and the old device reactions are neither read nor written.
- * A `⋯` reaction waits for its `되돌리기` snackbar before it is sent. Liked marks are kept for the session (the server has no read of them).
+ * A `⋯` reaction waits for its `되돌리기` snackbar before it is sent. The ♥ and `+` belong to 즐겨찾기 and 내 활동 (QueueRoute).
  */
 class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
     private val mutable = MutableStateFlow(QueueViewState())
     val state = mutable.asStateFlow()
     private var items: List<QueueItem> = emptyList()
-    private val liked = mutableSetOf<String>()
     /** COMPLETE·SKIP_EARLY·OPEN_DETAIL go once per activity and session. */
     private val sent = mutableSetOf<Pair<String, String>>()
     private var pending: Pending? = null
@@ -60,7 +59,7 @@ class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
 
     /** A new account state starts over. */
     private fun reset() {
-        liked.clear(); sent.clear(); items = emptyList()
+        sent.clear(); items = emptyList()
     }
 
     fun open() {
@@ -91,14 +90,8 @@ class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
     }
     fun page(index: Int) = mutable.update { it.copy(index = index) }
 
-    /** ♥: [force] true is the double tap (only ever likes); null toggles. */
-    fun like(id: String, force: Boolean?) {
-        val on = force ?: (id !in liked)
-        if (on == id in liked) return
-        if (on) liked += id else liked -= id
-        signal(id, if (on) "LIKE" else "UNLIKE")
-        show(state.value.index, move = false)
-    }
+    /** The activity behind a card, for 즐겨찾기 and `+` (the ♥ is the 즐겨찾기 heart; the server records LIKE/UNLIKE from it, 2026-10-25). */
+    fun model(id: String) = items.firstOrNull { it.activity.id == id }?.activity
 
     /** A `⋯` choice: the card (every card of the program for 숨기기) leaves at once; [commit] sends it, [undo] puts the queue back. */
     fun react(id: String, reaction: QueueReaction) {
@@ -184,7 +177,7 @@ class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
         return QueueCardState(
             activity.id, program.organization.ifBlank { activity.organization }, program.logoUrl, program.coverUrl, (program.id.hashCode().toLong() and 0xffff).rem(360).toFloat(),
             listOfNotNull(activity.category?.label, field?.name).joinToString(" · ").ifEmpty { null },
-            scenes, activity.id in liked, field?.name,
+            scenes, field?.name,
         )
     }
     private fun fieldOf(item: QueueItem) = item.activity.fieldTags.firstOrNull() ?: item.program.fieldTags.firstOrNull()
