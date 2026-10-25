@@ -35,6 +35,8 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
                 )
             }
             condition.programId?.let { add(ACTIVITIES.PROGRAM_ID.eq(it)) }
+            condition.ids?.let { add(ACTIVITIES.ID.`in`(it)) }
+            condition.programIds?.let { add(ACTIVITIES.PROGRAM_ID.`in`(it)) }
             condition.organizationId?.let {
                 add(ACTIVITIES.PROGRAM_ID.`in`(DSL.select(PROGRAMS.ID).from(PROGRAMS).where(PROGRAMS.ORGANIZATION_ID.eq(it))))
             }

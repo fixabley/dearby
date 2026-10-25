@@ -2,6 +2,7 @@ package io.wid.dearby.batch.job
 
 import io.wid.dearby.batch.application.CollectionReadiness
 import io.wid.dearby.batch.application.StoryBackfillService
+import io.wid.dearby.batch.push.FavoritePushService
 import org.slf4j.LoggerFactory
 import org.springframework.batch.core.job.Job
 import org.springframework.batch.core.job.parameters.JobParametersBuilder
@@ -17,7 +18,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 // 매일 한국 시간 자정에 수집하고 이어서 맞춤 대기열을 만든다(2026-10-15·2026-10-24 사용자 결정). --collect-now로 띄우면 기동하자마자 수집을 한 번 더 실행하고,
-// --build-queues-now면 대기열만 만든다.
+// --build-queues-now면 대기열만 만든다. 즐겨찾기 알림은 매시 정각에 기기 시간대가 아침 8시인 기기로 보낸다(--send-push-now는 지금 한 번).
 // 수집 엔진을 쓸 수 없으면(API 키 없음, CLI 없음) 실행하지 않고 경고만 남긴다(컨테이너가 재시작을 반복하지 않게)
 @Component
 class CollectionLauncher(
@@ -26,6 +27,7 @@ class CollectionLauncher(
     private val buildDiscoveryQueuesJob: Job,
     private val stories: StoryBackfillService,
     private val readiness: CollectionReadiness,
+    private val pushes: FavoritePushService,
     private val context: ConfigurableApplicationContext,
 ) : ApplicationRunner {
 
@@ -38,11 +40,22 @@ class CollectionLauncher(
         buildQueues("schedule")
     }
 
+    // 즐겨찾기 알림(native-v1.md "프로그램·활동별 알림 수준"): 각 기기 시간대의 아침 8시. 인증 정보가 없으면 발송만 건너뛴다
+    @Scheduled(cron = "0 0 * * * *", zone = ZONE)
+    fun hourlyPush() {
+        pushes.send()
+    }
+
     // 일회성 실행(2026-10-19): 수동 수집이 끝나면 프로세스를 끝낸다. 스케줄과 함께 남아 정기 수집이 두 번 돌던 문제를 막는다
     override fun run(args: ApplicationArguments) {
         // --build-queues-now: 임베딩·대기열만 한 번 만들고 끝낸다
         if (args.containsOption("build-queues-now")) {
             buildQueues("manual-${System.currentTimeMillis()}")
+            exitProcess(SpringApplication.exit(context))
+        }
+        // --send-push-now: 기기 시각과 상관없이 오늘 알림 거리를 지금 보내고 끝낸다(같은 날 다시 보내지 않는다)
+        if (args.containsOption("send-push-now")) {
+            log.info("Push now: {}", pushes.send(anyHour = true))
             exitProcess(SpringApplication.exit(context))
         }
         // --backfill-hooks-now: 게시 활동의 비어 있는 대기열 글을 저장된 설명으로 채우고 끝낸다(페이지를 받지 않는다)

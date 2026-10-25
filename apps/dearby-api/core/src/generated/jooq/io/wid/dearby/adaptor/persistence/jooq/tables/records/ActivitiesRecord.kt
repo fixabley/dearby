@@ -145,6 +145,10 @@ open class ActivitiesRecord() : UpdatableRecordImpl<ActivitiesRecord>(Activities
         set(value): Unit = set(30, value)
         get(): JSONB? = get(30) as JSONB?
 
+    open var publishedAt: OffsetDateTime?
+        set(value): Unit = set(31, value)
+        get(): OffsetDateTime? = get(31) as OffsetDateTime?
+
     // -------------------------------------------------------------------------
     // Primary key information
     // -------------------------------------------------------------------------
@@ -154,7 +158,7 @@ open class ActivitiesRecord() : UpdatableRecordImpl<ActivitiesRecord>(Activities
     /**
      * Create a detached, initialised ActivitiesRecord
      */
-    constructor(id: Long? = null, sourceId: UUID? = null, programId: Long? = null, name: String? = null, description: String? = null, participationType: String? = null, recruitmentStatus: String? = null, location: String? = null, cost: String? = null, audience: String? = null, officialUrl: String? = null, applicationUrl: String? = null, sourceCheckedAt: OffsetDateTime? = null, validUntil: OffsetDateTime? = null, freshness: String? = null, sourceNote: String? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null, imageUrl: String? = null, qualification: JSONB? = null, publicationStatus: String? = null, officialSource: Boolean? = null, nameEn: String? = null, descriptionEn: String? = null, eligibility: JSONB? = null, inheritedFields: JSONB? = null, curatedFields: JSONB? = null, category: String? = null, eligibilityChecked: Boolean? = null, hook: String? = null, highlights: JSONB? = null): this() {
+    constructor(id: Long? = null, sourceId: UUID? = null, programId: Long? = null, name: String? = null, description: String? = null, participationType: String? = null, recruitmentStatus: String? = null, location: String? = null, cost: String? = null, audience: String? = null, officialUrl: String? = null, applicationUrl: String? = null, sourceCheckedAt: OffsetDateTime? = null, validUntil: OffsetDateTime? = null, freshness: String? = null, sourceNote: String? = null, createdAt: LocalDateTime? = null, updatedAt: LocalDateTime? = null, imageUrl: String? = null, qualification: JSONB? = null, publicationStatus: String? = null, officialSource: Boolean? = null, nameEn: String? = null, descriptionEn: String? = null, eligibility: JSONB? = null, inheritedFields: JSONB? = null, curatedFields: JSONB? = null, category: String? = null, eligibilityChecked: Boolean? = null, hook: String? = null, highlights: JSONB? = null, publishedAt: OffsetDateTime? = null): this() {
         this.id = id
         this.sourceId = sourceId
         this.programId = programId
@@ -186,6 +190,7 @@ open class ActivitiesRecord() : UpdatableRecordImpl<ActivitiesRecord>(Activities
         this.eligibilityChecked = eligibilityChecked
         this.hook = hook
         this.highlights = highlights
+        this.publishedAt = publishedAt
         resetTouchedOnNotNull()
     }
 }

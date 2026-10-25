@@ -89,7 +89,7 @@ class JooqProgramSummaryRepository(private val dsl: DSLContext) : ProgramSummary
             .leftJoin(app).on(appJoin)
             .leftJoin(act).on(actJoin)
             .where(activityFilter)
-            .and(if (condition.openOnly) isOpenOrUpcoming else recent)
+            .and(condition.programIds?.let { PROGRAMS.ID.`in`(it) } ?: if (condition.openOnly) isOpenOrUpcoming else recent)
             .groupBy(PROGRAMS.ID, PROGRAMS.NAME, PROGRAMS.NAME_EN, PROGRAMS.CATEGORY, ORGANIZATIONS.ID, ORGANIZATIONS.NAME, ORGANIZATIONS.NAME_EN)
         val filtered = if (programMatches != null && activityMatches != null) {
             select.having(DSL.condition(DSL.boolOr(programMatches)).or(DSL.condition(DSL.boolOr(activityMatches))))

@@ -24,7 +24,7 @@ interface DiscoveryRepository {
     // 지운 활동은 빠진다(게시 여부와 상관없이)
     fun activityRefs(activityIds: Collection<Id>): Map<Id, ActivityRef>
 
-    // 밤 배치가 대기열을 만들 사용자: 추천 설정·신호·내 활동·대기열 중 하나라도 있는 사용자
+    // 밤 배치가 대기열을 만들 사용자: 추천 설정·신호·내 활동·대기열·즐겨찾기 중 하나라도 있는 사용자
     fun queueUsers(): List<UserId>
 
     // 벡터는 지금 읽는 모델(embedding_settings)의 것만. 모델이 없으면 null
