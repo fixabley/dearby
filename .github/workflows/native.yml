@@ -64,6 +64,11 @@ jobs:
       # Caches the Gradle distribution, dependencies and build cache; only main writes the cache.
       - uses: gradle/actions/setup-gradle@v6
       - run: python3 scripts/check-fsd.py
+      # 새 모집 푸시: Firebase config from the optional secret ANDROID_GOOGLE_SERVICES_JSON (file content); without it the build has no push.
+      - name: Write google-services.json (optional)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.ANDROID_GOOGLE_SERVICES_JSON }}
+        run: if [ -n "$GOOGLE_SERVICES_JSON" ]; then printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json; fi
       - run: ./gradlew lintDebug assembleDebug
   # Kotlin API: tests on PostgreSQL, plus a check that the committed jOOQ code matches the migrations.
   api:

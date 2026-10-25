@@ -3,6 +3,13 @@ package com.dearby.nativeapp.entities.activity.api
 import com.dearby.nativeapp.entities.activity.model.ActivityCategory
 import com.dearby.nativeapp.entities.activity.model.ActivityModel
 import com.dearby.nativeapp.entities.activity.model.EligibilityCondition
+import com.dearby.nativeapp.entities.activity.model.FavoriteActivity
+import com.dearby.nativeapp.entities.activity.model.FavoriteProgram
+import com.dearby.nativeapp.entities.activity.model.Favorites
+import com.dearby.nativeapp.entities.activity.model.InboxGroup
+import com.dearby.nativeapp.entities.activity.model.InboxItem
+import com.dearby.nativeapp.entities.activity.model.InboxPage
+import com.dearby.nativeapp.entities.activity.model.NotifyLevel
 import com.dearby.nativeapp.entities.activity.model.EligibilityGroup
 import com.dearby.nativeapp.entities.activity.model.Highlight
 import com.dearby.nativeapp.entities.activity.model.ActivityPage
@@ -169,6 +176,37 @@ fun parseQueue(body: JSONObject, api: String): List<QueueItem> = body.getJSONArr
     }.getOrNull()
 }
 
+/**
+ * 즐겨찾기 (`GET /v1/me/favorites`, contract "즐겨찾기(하트)·새 모집 푸시 알림"): `{programs: [{program, favoritedAt, newRecruitment, notifyLevel}],
+ * activities: [{activity, program, favoritedAt, notifyLevel}]}`; an unreadable entry is skipped, a missing `program` falls back to the activity's.
+ */
+fun parseFavorites(body: JSONObject, api: String): Favorites = Favorites(
+    body.optJSONArray("programs")?.objects()?.mapNotNull { item ->
+        runCatching { FavoriteProgram(item.getJSONObject("program").programSummary(api), item.text("favoritedAt"), item.optBoolean("newRecruitment"), NotifyLevel.of(item.text("notifyLevel"))) }.getOrNull()
+    }.orEmpty(),
+    body.optJSONArray("activities")?.objects()?.mapNotNull { item ->
+        runCatching {
+            val activity = item.getJSONObject("activity")
+            FavoriteActivity(parseActivity(activity), (item.optJSONObject("program") ?: activity.getJSONObject("program")).programSummary(api), item.text("favoritedAt"), NotifyLevel.of(item.text("notifyLevel")))
+        }.getOrNull()
+    }.orEmpty(),
+)
+
+/** 알림 목록 (`GET /v1/me/notifications`): an unreadable group or item is skipped; `nextCursor` is passed back as text. */
+fun parseInbox(body: JSONObject, api: String): InboxPage = InboxPage(
+    body.optJSONArray("groups")?.objects()?.mapNotNull { group ->
+        runCatching {
+            InboxGroup(group.getJSONObject("program").programSummary(api), group.optInt("unread", 0), group.getJSONArray("items").objects().mapNotNull { item ->
+                runCatching {
+                    val activity = item.getJSONObject("activity")
+                    InboxItem(item.get("id").toString(), item.getString("kind"), activity.get("id").toString(), activity.getString("name"), instant(item.text("createdAt")), !item.isNull("readAt") && item.has("readAt"))
+                }.getOrNull()
+            })
+        }.getOrNull()
+    }.orEmpty(),
+    if (body.isNull("nextCursor") || !body.has("nextCursor")) null else body.get("nextCursor").toString(),
+)
+
 /** One server scene; an unknown `type` (or an unreadable one) is null and skipped. `dday` is days left (a `D-22`/`D-DAY` text reads too). */
 private fun JSONObject.scene(): QueueScene? = when (text("type")) {
     "HOOK" -> QueueScene.Hook(getString("hook"), text("name"))
@@ -176,7 +214,7 @@ private fun JSONObject.scene(): QueueScene? = when (text("type")) {
     "ELIGIBILITY" -> QueueScene.Eligibility(text("text"), highlights("items")).takeIf { it.text != null || it.items.isNotEmpty() }
     "BENEFIT" -> QueueScene.Benefit(getString("text"))
     "DEADLINE" -> QueueScene.Deadline(text("label"),
-        when (val dday = opt("dday")) { is Number -> dday.toInt(); is String -> if (dday.equals("D-DAY", true)) 0 else dday.removePrefix("D-").toIntOrNull(); else -> null },
+        when (val dday: Any? = opt("dday")) { is Number -> dday.toInt(); is String -> if (dday.equals("D-DAY", true)) 0 else dday.removePrefix("D-").toIntOrNull(); else -> null },
         text("deadlineText"), strings("reasons"))
     else -> null
 }

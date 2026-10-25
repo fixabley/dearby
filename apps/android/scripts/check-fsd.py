@@ -18,21 +18,24 @@ API = {
     'widgets.activity.programCard': {'ProgramCard'},
     'widgets.activity.progress': {'ActivityProgressRow', 'ProgressState', 'ProgressStage', 'ProgressStatus', 'StatusOption', 'CalendarDraft', 'stageIcon'},
     'widgets.card.cardContent': {'CardState', 'CardHistoryState', 'ContactState', 'CardContent', 'ReceivedCardRow', 'CardComposer', 'ComposerContact', 'ComposerHistory'},
-    'pages.profile': {'ConsentPage', 'ProfilePage', 'ProfilePhase', 'ProfileViewState', 'ProfileFormState', 'ProfileErrors', 'HistoryDraft', 'FunnelState', 'PickerSearchState', 'VersionsState', 'HistoryFunnelPage', 'ProfileVersionsPage', 'ProfileVersionPage', 'HistoryRowState', 'VersionDetailView', 'rowState', 'view', 'periodText', 'errors', 'SetupStep', 'ProfileSetupPage'},
+    'pages.profile': {'NotificationRow', 'UsageStatsRow', 'ConsentPage', 'ProfilePage', 'ProfilePhase', 'ProfileViewState', 'ProfileFormState', 'ProfileErrors', 'HistoryDraft', 'FunnelState', 'PickerSearchState', 'VersionsState', 'HistoryFunnelPage', 'ProfileVersionsPage', 'ProfileVersionPage', 'HistoryRowState', 'VersionDetailView', 'rowState', 'view', 'periodText', 'errors', 'SetupStep', 'ProfileSetupPage'},
     'pages.cards': {'MyCardsPage', 'MyCardsState', 'MyCardsPhase', 'MyCardChoice', 'CardQrPage', 'CardQrState', 'QrActivity'},
     'features.passkey': {'Passkeys'},
     'features.oauth': {'OAuthBrowser', 'OAuthVerifier'},
     'features.google': {'GoogleSignIn'},
+    'features.push': {'Push', 'DearbyMessagingService'},
+    'features.analytics': {'Analytics'},
     'pages.account': {'SignInSheet', 'LinkAccountSheet'},
     'pages.settings': {'SettingsPage', 'SettingsState', 'SettingsPhase', 'SettingsIdentityState', 'SettingsPasskeyState', 'SettingsBlockState'},
     'pages.onboarding': {'IntroPage'},
     'pages.wallet': {'WalletPage', 'WalletState', 'WalletPhase', 'WalletCardPage', 'SharedCardPage', 'SharedCard', 'ReceivedCard', 'filterWallet', 'WalletSection', 'walletSections'},
     'features.calendar': {'CalendarConflictSheet', 'CalendarAccessState', 'CalendarConflictFlow', 'openCalendarInsert'},
     'pages.recommendation': {'RecommendationViewState', 'RecommendationFunnelState', 'FunnelStep', 'ChipOption', 'FieldNode', 'EducationChoice', 'EligibilityStep', 'EligibilityFormState', 'RecommendationFunnelPage', 'EligibilityConsentSheet', 'EligibilityActionsSheet', 'EligibilityFormPage'},
+    'pages.inbox': {'InboxPage', 'InboxViewState', 'InboxPhase', 'InboxCard', 'InboxRow'},
     'pages.queue': {'DiscoveryQueuePage', 'QueueViewState', 'QueueCardState', 'QueueSceneState', 'QueueFact', 'QueueIcon', 'QueueReaction', 'QueueUndo'},
     'widgets.recommendation.recommendationRows': {'QueueEntryRow', 'RecommendationProfileGroup'},
-    'pages.activity': {'ProgramActivities', 'ApplicationReportDialog', 'ActivityListState', 'ActivityProgressPage', 'ActivityDetailPage', 'ProgramState', 'ProgramPhase', 'MyActivitiesPage', 'ActivityState', 'ScheduleItemState', 'ActivityListPhase', 'ActivityListPage'},
-    'entities.activity': {'api.fetchActivities', 'api.fetchActivity', 'api.fetchPrograms', 'model.ActivityCategory', 'model.ActivityModel', 'model.ActivityPage', 'model.EligibilityCondition', 'model.EligibilityGroup', 'model.EligibilityItem', 'model.Place', 'model.ProgramPage', 'model.QueueItem', 'model.QueueScene', 'model.Highlight', 'api.parseQueue', 'model.ProgramSummary', 'model.Recurrence', 'model.ScheduleModel', 'model.ScheduleStatus', 'model.Stage', 'model.StageSchedule', 'model.Tag', 'model.currentStage', 'model.instant', 'model.lines', 'model.safeHttpsUrl', 'model.scheduleText', 'model.stageBadge', 'model.stages'},
+    'pages.activity': {'FavoritesPage', 'FavoritesViewState', 'FavoritesView', 'FavoritesPhase', 'FavoriteProgramRow', 'CalendarEntry', 'CalendarMark', 'FavoriteUndo', 'FavoriteHearts', 'favoriteKey', 'ProgramActivities', 'ApplicationReportDialog', 'ActivityListState', 'ActivityProgressPage', 'ActivityDetailPage', 'ProgramState', 'ProgramPhase', 'MyActivitiesPage', 'ActivityState', 'ScheduleItemState', 'ActivityListPhase', 'ActivityListPage'},
+    'entities.activity': {'api.parseInbox', 'model.InboxPage', 'model.InboxGroup', 'model.InboxItem', 'api.parseFavorites', 'model.Favorites', 'model.FavoriteProgram', 'model.FavoriteActivity', 'model.NotifyLevel', 'api.fetchActivities', 'api.fetchActivity', 'api.fetchPrograms', 'model.ActivityCategory', 'model.ActivityModel', 'model.ActivityPage', 'model.EligibilityCondition', 'model.EligibilityGroup', 'model.EligibilityItem', 'model.Place', 'model.ProgramPage', 'model.QueueItem', 'model.QueueScene', 'model.Highlight', 'api.parseQueue', 'model.ProgramSummary', 'model.Recurrence', 'model.ScheduleModel', 'model.ScheduleStatus', 'model.Stage', 'model.StageSchedule', 'model.Tag', 'model.currentStage', 'model.instant', 'model.lines', 'model.safeHttpsUrl', 'model.scheduleText', 'model.stageBadge', 'model.stages'},
     'entities.account': {'api.AccountClient', 'api.AccountError', 'api.AccountException', 'api.SessionStore', 'api.SessionVault', 'model.AccountContact', 'model.AccountHistory', 'model.AccountProfile', 'model.AccountSession', 'model.AccountSummary', 'model.ActivityInfoItem', 'model.ActivityInfoPage', 'model.ActivityInfoRef', 'model.BlockedPerson', 'model.ConsentRecord', 'model.DictionaryTag', 'model.EligibilityProfile', 'model.Recommendation', 'model.RecommendationPage', 'model.RecommendationPreferences', 'model.ContactRules', 'model.EvidenceMeta', 'model.ExchangeContext', 'model.LinkedIdentity', 'model.MyActivityRecord', 'model.MyScheduleStatus', 'model.PasskeyItem', 'model.ProfileJob', 'model.ProfileVersionDetail', 'model.ProfileVersionList', 'model.ProfileVersionSummary', 'model.PublishedCard', 'model.QrCode', 'model.Wallet', 'model.WalletReceipt', 'model.WebSignIn'},
 }
 
@@ -75,6 +78,8 @@ def check_source(path, text):
     allowed = {'entities/activity/api/ActivityClient.kt': {'HttpURLConnection'}, 'entities/account/api/AccountClient.kt': {'HttpURLConnection', 'OkHttpClient'},
                'entities/account/api/SessionVault.kt': {'getSharedPreferences'}, 'app/MainActivity.kt': {'getSharedPreferences'},
                'app/AccountViewModel.kt': {'SavedStateHandle'},
+               # 2026-10-25 "즐겨찾기(하트)·새 모집 푸시 알림": the 목록|캘린더 choice and the notification permission's asked-once flag, in their own new file.
+               'app/DevicePreferences.kt': {'getSharedPreferences'},
                # Contract "기기 캘린더 겹침" (2026-10-19): only the device calendar source reads CalendarContract
                'features/calendar/DeviceCalendar.kt': {'CalendarContract'},
                # Contract "내 캘린더에 추가" (2026-10-22): the insert intent only opens the calendar app's add screen; nothing is read or written here.

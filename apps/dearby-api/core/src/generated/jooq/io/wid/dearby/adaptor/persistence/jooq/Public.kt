@@ -65,6 +65,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserFavorites
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserNotifications
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserOrgAffinity
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserTaste
@@ -398,6 +399,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val USER_IDENTITIES: UserIdentities get() = UserIdentities.USER_IDENTITIES
 
     /**
+     * The table <code>public.user_notifications</code>.
+     */
+    val USER_NOTIFICATIONS: UserNotifications get() = UserNotifications.USER_NOTIFICATIONS
+
+    /**
      * The table <code>public.user_org_affinity</code>.
      */
     val USER_ORG_AFFINITY: UserOrgAffinity get() = UserOrgAffinity.USER_ORG_AFFINITY
@@ -486,6 +492,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         UserEntities.USER_ENTITIES,
         UserFavorites.USER_FAVORITES,
         UserIdentities.USER_IDENTITIES,
+        UserNotifications.USER_NOTIFICATIONS,
         UserOrgAffinity.USER_ORG_AFFINITY,
         UserRoles.USER_ROLES,
         UserTaste.USER_TASTE,

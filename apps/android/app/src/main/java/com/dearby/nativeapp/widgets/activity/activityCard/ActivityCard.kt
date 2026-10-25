@@ -25,6 +25,8 @@ import com.dearby.nativeapp.shared.ui.*
 @Composable fun ActivityCard(
     title: String, status: String, recruiting: Boolean, recruitment: String?, period: String, place: String?, open: () -> Unit, modifier: Modifier = Modifier,
     fieldTag: TagLabel? = null, traitTags: List<TagLabel> = emptyList(),
+    /** 즐겨찾기 하트·`+` (contract "즐겨찾기(하트)·새 모집 푸시 알림"), at the end of the tag line; their own taps, not the card's. */
+    actions: (@Composable () -> Unit)? = null,
 ) {
     val (label, container, content) = when (status) {
         "모집 중" -> Triple(status, TealFill, Color.White)
@@ -41,7 +43,8 @@ import com.dearby.nativeapp.shared.ui.*
                     colors = SuggestionChipDefaults.suggestionChipColors(containerColor = container, labelColor = content), border = null)
             }
             // 분야 1개 + 성격, the same chip line as the program card's (contract "태그 아이콘+라벨·분야 1개").
-            TagChipRow(fieldTag, traitTags)
+            if (actions == null) TagChipRow(fieldTag, traitTags)
+            else Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { TagChipRow(fieldTag, traitTags) }; actions() }
             Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 ValueRow("모집", recruitment ?: "미정", emphasised = recruiting)
                 ValueRow("활동", period.ifBlank { "미정" })

@@ -237,6 +237,34 @@ class AccountClient(private val api: String, private val transport: Transport = 
     suspend fun sendRecommendationSignal(activityId: String, kind: String, tagId: String?, session: AccountSession) {
         request("POST", "me/recommendation-signals", JSONObject().put("activityId", activityId.toLong()).put("kind", kind).apply { tagId?.let { put("tagId", it.toLong()) } }, session)
     }
+    // 즐겨찾기·새 모집 푸시 (contract "즐겨찾기(하트)·새 모집 푸시 알림", 2026-10-25). 404 ([AccountError.NOT_FOUND]) before the server ships them.
+    /** The raw `{programs, activities}`; `entities/activity/api/parseFavorites` reads it. */
+    suspend fun favorites(session: AccountSession) = send("GET", "me/favorites", null, session)
+    /** [kind] is `programs` or `activities`. Idempotent 204; [notifyLevel] (`ALL`·`APPLICATION`·`NONE`) null keeps the server default or the saved level. */
+    suspend fun saveFavorite(kind: String, id: String, notifyLevel: String?, session: AccountSession) {
+        request("PUT", "me/favorites/$kind/$id", notifyLevel?.let { JSONObject().put("notifyLevel", it) } ?: JSONObject(), session)
+    }
+    suspend fun deleteFavorite(kind: String, id: String, session: AccountSession) { request("DELETE", "me/favorites/$kind/$id", null, session) }
+    /** The program was opened from 즐겨찾기: its `새 모집` badge goes. */
+    suspend fun seenFavoriteProgram(id: String, session: AccountSession) { request("POST", "me/favorites/programs/$id/seen", JSONObject(), session) }
+    /** This device's FCM token with its IANA [timeZone] (the server sends at 8 in the morning there). The token is never logged. */
+    suspend fun savePushDevice(token: String, timeZone: String, session: AccountSession) {
+        request("PUT", "me/push-devices", JSONObject().put("platform", "ANDROID").put("token", token).put("timeZone", timeZone), session)
+    }
+    suspend fun deletePushDevice(token: String, session: AccountSession) {
+        request("DELETE", "me/push-devices/" + java.net.URLEncoder.encode(token, "UTF-8"), null, session)
+    }
+    /** `{newRecruitment}`: the account-wide 새 모집 알림 switch. */
+    suspend fun newRecruitmentNotifications(session: AccountSession) = send("GET", "me/notification-settings", null, session).optBoolean("newRecruitment", true)
+    suspend fun saveNewRecruitmentNotifications(on: Boolean, session: AccountSession) {
+        request("PUT", "me/notification-settings", JSONObject().put("newRecruitment", on), session)
+    }
+    // 알림 목록 (contract "알림 목록(발견 우상단 종)", 2026-10-25); 404 before the server ships it.
+    /** The raw `{groups, nextCursor}`; `entities/activity/api/parseInbox` reads it. */
+    suspend fun notifications(cursor: String?, session: AccountSession) = send("GET", "me/notifications" + (cursor?.let { "?cursor=" + java.net.URLEncoder.encode(it, "UTF-8") } ?: ""), null, session)
+    suspend fun unreadNotifications(session: AccountSession) = send("GET", "me/notifications/unread-count", null, session).optInt("count", 0)
+    suspend fun readNotification(id: String, session: AccountSession) { request("POST", "me/notifications/$id/read", JSONObject(), session) }
+    suspend fun readAllNotifications(session: AccountSession) { request("POST", "me/notifications/read-all", JSONObject(), session) }
     /** The public tag dictionary (`GET /v1/tags`) with kinds and upper fields, for the funnel's chips. */
     suspend fun tags() = send("GET", "tags", null).toDictionaryTags()
 

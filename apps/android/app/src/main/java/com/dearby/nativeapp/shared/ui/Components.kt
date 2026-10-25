@@ -147,11 +147,16 @@ data class MenuAction(val label: String, val icon: ImageVector, val onClick: () 
 /**
  * 탭 첫 화면 상단 바의 공통 오른쪽 끝(contract "상단 바 구성(네 탭 공통)", 2026-10-20): [설정] [알림] [메뉴] 순서의 48dp `IconButton`(44 터치 영역 이상). 탭 고유 주 행동(프로필의
  * `수정`)은 호출 측이 이 앞에 둔다. [menu]가 비어 있지 않으면 `Menu` 아이콘(접근성 `더 보기`)이 `DropdownMenu`를 열고 항목은 `DropdownMenuItem(leadingIcon + text)`다; 비면 메뉴 버튼이 없다.
- * 알림 화면은 아직 자리만이라 [notify]는 안내 문구를 연다.
+ * [notify]는 알림 목록을 연다(2026-10-25 "알림 목록(발견 우상단 종)").
  */
-@Composable fun TabActions(settings: () -> Unit, notify: () -> Unit, menu: List<MenuAction> = emptyList()) {
+@Composable fun TabActions(settings: () -> Unit, notify: () -> Unit, menu: List<MenuAction> = emptyList(), unread: Int = 0) {
     IconButton(settings) { Icon(Icons.Rounded.Settings, "설정") }
-    IconButton(notify) { Icon(Icons.Rounded.Notifications, "알림") }
+    // [unread] (알림 목록, 2026-10-25): a number badge, `9+` above nine.
+    IconButton(notify) {
+        BadgedBox({ if (unread > 0) Badge { Text(if (unread > 9) "9+" else unread.toString()) } }) {
+            Icon(Icons.Rounded.Notifications, if (unread > 0) "알림, 읽지 않음 ${unread}개" else "알림")
+        }
+    }
     if (menu.isEmpty()) return
     var open by remember { mutableStateOf(false) }
     Box {

@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dearby.nativeapp.entities.activity.api.parseQueue
+import com.dearby.nativeapp.features.analytics.Analytics
 import com.dearby.nativeapp.entities.activity.model.ActivityCategory
 import com.dearby.nativeapp.entities.activity.model.QueueItem
 import com.dearby.nativeapp.entities.activity.model.QueueScene
@@ -35,13 +36,12 @@ import kotlinx.coroutines.launch
  * (`GET /v1/me/discovery-queue`, `더 받기` = `POST …/refill`) and every reaction goes to `POST /v1/me/recommendation-signals`. The entry always
  * shows; a failed read (404 before the server ships it included) is the queue screen's retry state. Signed out there is no queue (contract
  * "비로그인에서 만들기·추천을 막음", 2026-10-25: the entry opens sign-in), and the old device reactions are neither read nor written.
- * A `⋯` reaction waits for its `되돌리기` snackbar before it is sent. Liked marks are kept for the session (the server has no read of them).
+ * A `⋯` reaction waits for its `되돌리기` snackbar before it is sent. The ♥ and `+` belong to 즐겨찾기 and 내 활동 (QueueRoute).
  */
 class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
     private val mutable = MutableStateFlow(QueueViewState())
     val state = mutable.asStateFlow()
     private var items: List<QueueItem> = emptyList()
-    private val liked = mutableSetOf<String>()
     /** COMPLETE·SKIP_EARLY·OPEN_DETAIL go once per activity and session. */
     private val sent = mutableSetOf<Pair<String, String>>()
     private var pending: Pending? = null
@@ -60,7 +60,7 @@ class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
 
     /** A new account state starts over. */
     private fun reset() {
-        liked.clear(); sent.clear(); items = emptyList()
+        sent.clear(); items = emptyList()
     }
 
     fun open() {
@@ -79,6 +79,11 @@ class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
                 val got = parseQueue(body, ApiOrigin.current)
                 if (refill && got.isEmpty()) return@launch mutable.update { it.copy(loading = false, refilling = false, exhausted = true) }
                 items = got
+                if (!refill) {
+                    ended = false; viewed.clear()
+                    val seen = body.optJSONArray("seen")?.length() ?: body.optInt("seen", 0)
+                    Analytics.event("queue_open", "size" to got.size.toString(), "seen" to seen.toString())
+                }
                 show(0, move = true) { it.copy(loading = false, refilling = false, failed = false, exhausted = false) }
             } catch (e: CancellationException) { throw e } catch (e: Exception) {
                 Log.w("Dearby", "Discovery queue load failed: ${e.javaClass.simpleName}")
@@ -89,16 +94,25 @@ class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
     private fun show(index: Int, move: Boolean, change: (QueueViewState) -> QueueViewState = { it }) = mutable.update {
         change(it).copy(cards = items.map(::card), index = index.coerceIn(0, items.size), moves = if (move) it.moves + 1 else it.moves)
     }
-    fun page(index: Int) = mutable.update { it.copy(index = index) }
-
-    /** ♥: [force] true is the double tap (only ever likes); null toggles. */
-    fun like(id: String, force: Boolean?) {
-        val on = force ?: (id !in liked)
-        if (on == id in liked) return
-        if (on) liked += id else liked -= id
-        signal(id, if (on) "LIKE" else "UNLIKE")
-        show(state.value.index, move = false)
+    fun page(index: Int) {
+        mutable.update { it.copy(index = index) }
+        if (index == items.size && items.isNotEmpty() && !ended) { ended = true; Analytics.event("queue_end", "viewed" to viewed.size.toString()) }
     }
+
+    // analytics-v1 "맞춤 대기열 도달": positions count from 1 in today's queue.
+    private var ended = false
+    private val viewed = mutableSetOf<String>()
+    private fun position(id: String) = (items.indexOfFirst { it.activity.id == id } + 1).toString()
+    private fun card(id: String) = Tracking.activity(model(id), id)
+    /** A card stayed centred for a second. */
+    fun cardViewed(id: String) { if (viewed.add(id)) Analytics.event("queue_card_view", "position" to position(id), *card(id)) }
+    /** The ♥ turned a card into a favorite. */
+    fun liked(id: String) = Analytics.event("queue_like", "position" to position(id), *card(id))
+    /** The queue closed by the user before its end page. */
+    fun exit() { if (!ended && items.isNotEmpty()) Analytics.event("queue_exit", "position" to (state.value.index + 1).coerceAtMost(items.size).toString()) }
+
+    /** The activity behind a card, for 즐겨찾기 and `+` (the ♥ is the 즐겨찾기 heart; the server records LIKE/UNLIKE from it, 2026-10-25). */
+    fun model(id: String) = items.firstOrNull { it.activity.id == id }?.activity
 
     /** A `⋯` choice: the card (every card of the program for 숨기기) leaves at once; [commit] sends it, [undo] puts the queue back. */
     fun react(id: String, reaction: QueueReaction) {
@@ -121,6 +135,7 @@ class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
         mutable.update { it.copy(undo = null) }
         val activity = done.item.activity
         val field = fieldOf(done.item)
+        Analytics.event("queue_dismiss", "reason" to done.reaction.name.lowercase(), "position" to (done.before.indexOf(done.item) + 1).toString(), *Tracking.activity(activity, activity.id))
         when (done.reaction) {
             QueueReaction.DISMISS -> signal(activity.id, "DISMISS")
             QueueReaction.LESS_FIELD -> signal(activity.id, "LESS_FIELD", field?.id)
@@ -131,9 +146,17 @@ class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
     /** Leaving the queue sends a reaction still waiting on its snackbar. */
     fun close() = commit()
 
-    fun complete(id: String) = once(id, "COMPLETE")
+    fun complete(id: String) {
+        if (sent.add(id to "COMPLETE")) {
+            signal(id, "COMPLETE")
+            Analytics.event("queue_card_complete", "position" to position(id), "scenes" to (state.value.cards.firstOrNull { it.id == id }?.scenes?.size ?: 0).toString())
+        }
+    }
     fun skipEarly(id: String) = once(id, "SKIP_EARLY")
-    fun openedDetail(id: String) = once(id, "OPEN_DETAIL")
+    fun openedDetail(id: String) {
+        Analytics.event("queue_detail", "position" to position(id), "activity_id" to id)
+        once(id, "OPEN_DETAIL")
+    }
     private fun once(id: String, kind: String) { if (sent.add(id to kind)) signal(id, kind) }
 
     /** Signed in only (the session can lapse while the queue is open); a failure is logged and dropped. */
@@ -184,7 +207,7 @@ class QueueViewModel(private val account: AccountViewModel) : ViewModel() {
         return QueueCardState(
             activity.id, program.organization.ifBlank { activity.organization }, program.logoUrl, program.coverUrl, (program.id.hashCode().toLong() and 0xffff).rem(360).toFloat(),
             listOfNotNull(activity.category?.label, field?.name).joinToString(" · ").ifEmpty { null },
-            scenes, activity.id in liked, field?.name,
+            scenes, field?.name,
         )
     }
     private fun fieldOf(item: QueueItem) = item.activity.fieldTags.firstOrNull() ?: item.program.fieldTags.firstOrNull()
