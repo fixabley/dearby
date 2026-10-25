@@ -30,8 +30,8 @@ import com.dearby.nativeapp.pages.queue.DiscoveryQueuePage
         bars?.isAppearanceLightStatusBars = false
         onDispose { light?.let { bars.isAppearanceLightStatusBars = it } }
     }
-    val leave = { model.close(); close() }
+    val leave = { model.exit(); model.close(); close() }
     BackHandler(onBack = leave)
     DiscoveryQueuePage(state, reduceMotion, !screenReader, leave, model::retry, model::page, like,
-        { model.openedDetail(it); model.close(); openDetail(it) }, model::react, model::complete, model::skipEarly, model::refill, model::undo, model::commit, liked, inMine, plus)
+        { model.openedDetail(it); model.close(); openDetail(it) }, model::react, model::complete, model::skipEarly, model::refill, model::undo, model::commit, liked, inMine, plus, model::cardViewed)
 }

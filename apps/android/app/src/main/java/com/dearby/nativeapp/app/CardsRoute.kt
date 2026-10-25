@@ -26,11 +26,11 @@ enum class CardsSegment(val label: String) { MINE("내 명함"), RECEIVED("받�
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun CardsRoute(
     segment: CardsSegment, select: (CardsSegment) -> Unit, myCards: MyCardsViewModel, wallet: WalletViewModel, account: AccountViewModel,
-    create: () -> Unit, showQr: (PublishedCard) -> Unit, edit: (PublishedCard) -> Unit, openReceived: (ReceivedCard) -> Unit, settings: () -> Unit, notify: () -> Unit,
+    create: () -> Unit, showQr: (PublishedCard) -> Unit, edit: (PublishedCard) -> Unit, openReceived: (ReceivedCard) -> Unit, settings: () -> Unit, notify: () -> Unit, unread: Int = 0,
 ) {
     val topBar = TopAppBarDefaults.pinnedScrollBehavior()
     Column(Modifier.fillMaxSize().nestedScroll(topBar.nestedScrollConnection)) {
-        DearbyTopBar("명함", scrollBehavior = topBar) { TabActions(settings, notify) }
+        DearbyTopBar("명함", scrollBehavior = topBar) { TabActions(settings, notify, unread = unread) }
         PrimaryTabRow(segment.ordinal, containerColor = MaterialTheme.colorScheme.background) {
             CardsSegment.entries.forEach { Tab(segment == it, { select(it) }, text = { Text(it.label) }) }
         }

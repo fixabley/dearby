@@ -13,3 +13,11 @@ data class FavoriteActivity(val activity: ActivityModel, val program: ProgramSum
 enum class NotifyLevel { ALL, APPLICATION, NONE;
     companion object { fun of(code: String?) = entries.firstOrNull { it.name == code } ?: APPLICATION }
 }
+
+/**
+ * 알림 목록 (contract "알림 목록(발견 우상단 종)", 2026-10-25): `GET /v1/me/notifications` groups by program, most recent first. [InboxItem.kind] is
+ * the server's code (`NEW`·`APPLICATION_START`·`DEADLINE_EVE`·`DEADLINE`·`ANNOUNCEMENT`·`INTERVIEW`·`EVENT`·`ACTIVITY_START`).
+ */
+data class InboxPage(val groups: List<InboxGroup>, val nextCursor: String?)
+data class InboxGroup(val program: ProgramSummary, val unread: Int, val items: List<InboxItem>)
+data class InboxItem(val id: String, val kind: String, val activityId: String, val activityName: String, val createdAt: java.time.Instant?, val read: Boolean)

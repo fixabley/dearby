@@ -64,6 +64,8 @@ private val Glass = Color.Black.copy(alpha = 0.35f)
     complete: (String) -> Unit, skipEarly: (String) -> Unit, refill: () -> Unit, undo: () -> Unit, commit: () -> Unit,
     /** Favorited activity ids (the ♥ is the 즐겨찾기 heart) and those in 내 활동 (the `+` beside it, [plus]). */
     liked: Set<String> = emptySet(), inMine: Set<String> = emptySet(), plus: (String) -> Unit = {},
+    /** A card stayed centred for a second (usage statistics `queue_card_view`). */
+    cardViewed: (String) -> Unit = {},
 ) {
     val snackbar = remember { SnackbarHostState() }
     var sheetFor by remember { mutableStateOf<QueueCardState?>(null) }
@@ -91,6 +93,7 @@ private val Glass = Color.Black.copy(alpha = 0.35f)
                     }
                 }
                 // Undo and 더 받기 move the queue ([QueueViewState.moves]); the user's own paging only reports back through [page].
+                LaunchedEffect(pager.settledPage) { delay(1_000); cards.getOrNull(pager.settledPage)?.let { cardViewed(it.id) } }
                 LaunchedEffect(state.moves) { if (pager.currentPage != state.index) pager.scrollToPage(state.index.coerceIn(0, cards.size)) }
                 VerticalPager(pager, Modifier.fillMaxSize(), key = { if (it < cards.size) cards[it].id else "end" }) { index ->
                     val card = cards.getOrNull(index)

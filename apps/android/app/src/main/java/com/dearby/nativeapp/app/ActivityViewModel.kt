@@ -244,10 +244,11 @@ class ActivityViewModel(
         write { account, session -> account.client.saveScheduleStatus(id, scheduleId, option.id, option.kind, session) }
     }
     /** Marks [id] applied. Removing it (contract "빼기는 눈에 보이게") also clears the stage statuses. */
-    fun apply(id: String, value: Boolean) {
+    /** [source] is analytics-v1 `myactivity_add.source` (where the add was made). */
+    fun apply(id: String, value: Boolean, source: String = "detail") {
         if ((state.value.known[id] ?: return).applied == value) return
         update(id) { it.copy(applied = value) }
-        if (value) Analytics.event("myactivity_add", "activity_id" to id)
+        if (value) Analytics.event("myactivity_add", *track(id), "source" to source)
         if (value) write { account, session -> account.client.saveMyActivity(id, session) }
         else write { account, session -> account.client.deleteMyActivity(id, session) }
         if (value || id !in marks) return
@@ -258,7 +259,13 @@ class ActivityViewModel(
      * An App Link `/activities/<id>` (contract "유니버설 링크·App Links·활동 공유·오픈그래프"): an activity discovery has not loaded is read
      * first (`GET /v1/activities/:id`), then [ActivityListState.linked] asks 발견 to open its detail; gone or unreadable → [ActivityListState.linkNotice].
      */
-    fun openLinked(id: String) {
+    /** analytics-v1 `field`·`category` (and the id under [idKey]) of a loaded activity. */
+    fun track(id: String, idKey: String? = "activity_id") = Tracking.activity(models[id], id, idKey)
+    /** Where the pending [openLinked] came from (`link`·`push`·`queue`·`inbox`), taken once by the detail it opens. */
+    private var linkSource: String? = null
+    fun takeLinkSource() = linkSource.also { linkSource = null }
+    fun openLinked(id: String, source: String = "link") {
+        linkSource = source
         if (id in models && state.value.known[id]?.deleted == false) return mutable.update { it.copy(linked = id) }
         viewModelScope.launch {
             val model = try { fetchOne(id) } catch (e: CancellationException) { throw e } catch (e: Exception) {
@@ -307,7 +314,7 @@ class ActivityViewModel(
         val id = state.value.askingId ?: return
         mutable.update { it.copy(askingId = null) }
         when (answer) {
-            ApplyAnswer.APPLIED -> apply(id, true)
+            ApplyAnswer.APPLIED -> apply(id, true, "apply_prompt")
             ApplyAnswer.NOT_YET -> Unit
             ApplyAnswer.NEVER_ASK -> neverAsk += id
         }

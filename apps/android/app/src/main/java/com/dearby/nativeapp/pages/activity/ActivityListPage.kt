@@ -71,6 +71,8 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
     header: (@Composable () -> Unit)? = null,
     /** Hearts on program cards and activity rows; [plus] is an activity row's `+` (add to 내 활동, or open it there once added). */
     hearts: FavoriteHearts = FavoriteHearts(), plus: (String) -> Unit = {},
+    /** Unread notifications on the bell (알림 목록). */
+    unread: Int = 0,
 ) {
     val listState = rememberLazyListState()
     val reduceMotion = rememberReduceMotion()
@@ -89,7 +91,7 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
     // Fields and buttons take their own taps first, so this only catches taps on empty space.
     Box(Modifier.fillMaxSize().imePadding().nestedScroll(topBar.nestedScrollConnection).pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } }) {
         Column(Modifier.fillMaxSize()) {
-            DearbyTopBar("활동 둘러보기", scrollBehavior = topBar) { TabActions(settings, notify) }
+            DearbyTopBar("활동 둘러보기", scrollBehavior = topBar) { TabActions(settings, notify, unread = unread) }
             // Search field and 마감 숨기기 switch: outside the list so the field keeps focus and the keyboard while results change.
             Column(Modifier.fillMaxWidth().collapsing(collapse)) {
                 DearbySearchField(state.query, search, "프로그램·조직·활동 이름으로 검색",

@@ -29,6 +29,8 @@ import kotlinx.coroutines.suspendCancellableCoroutine
  */
 object Push {
     const val CHANNEL = "new_recruitment"
+    /** Set on the intent of a notification this app posted in the foreground (a background tap carries the message's `data` extras instead). */
+    const val OPENED = "dearby.push"
     private val changes = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     /** A new FCM token while the app runs (a token that changes with the app closed is sent on the next start). */
     val refreshed = changes.asSharedFlow()
@@ -72,8 +74,10 @@ class DearbyMessagingService : FirebaseMessagingService() {
 
     override fun onMessageReceived(message: RemoteMessage) {
         val title = message.notification?.title ?: return
-        val open = message.data["url"]?.let { Intent(Intent.ACTION_VIEW, it.toUri()).setPackage(packageName) }
-            ?: packageManager.getLaunchIntentForPackage(packageName) ?: return
+        val open = (message.data["url"]?.let { Intent(Intent.ACTION_VIEW, it.toUri()).setPackage(packageName) }
+            ?: packageManager.getLaunchIntentForPackage(packageName) ?: return)
+            // The same keys a background tap brings as extras: the app marks it opened from a push (and the inbox row read).
+            .putExtra(Push.OPENED, true).apply { message.data.forEach { (key, value) -> putExtra(key, value) } }
         val tap = PendingIntent.getActivity(this, message.messageId.hashCode(), open.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val shown = NotificationCompat.Builder(this, Push.CHANNEL).setSmallIcon(R.drawable.dearby_symbol).setContentTitle(title).setContentText(message.notification?.body)
             .setAutoCancel(true).setContentIntent(tap).build()
