@@ -12,7 +12,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.dearby.nativeapp.BuildConfig
+import com.dearby.nativeapp.features.ads.AdConsentSheet
 import com.dearby.nativeapp.features.ads.NativeAdCard
+import com.dearby.nativeapp.features.oauth.OAuthBrowser
+import com.dearby.nativeapp.shared.config.ConsentVersions
 import com.dearby.nativeapp.pages.queue.DiscoveryQueuePage
 
 /**
@@ -21,6 +25,7 @@ import com.dearby.nativeapp.pages.queue.DiscoveryQueuePage
  */
 @Composable fun QueueRoute(model: QueueViewModel, openDetail: (String) -> Unit, liked: Set<String>, inMine: Set<String>, like: (String, Boolean?) -> Unit, plus: (String) -> Unit, close: () -> Unit) {
     val state by model.state.collectAsStateWithLifecycle()
+    val askAdConsent by model.adConsentAsk.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val reduceMotion = remember { Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f }
     val screenReader = remember { context.getSystemService(AccessibilityManager::class.java)?.isTouchExplorationEnabled == true }
@@ -36,4 +41,5 @@ import com.dearby.nativeapp.pages.queue.DiscoveryQueuePage
     DiscoveryQueuePage(state, reduceMotion, !screenReader, leave, model::retry, model::page, like,
         { model.openedDetail(it); model.close(); openDetail(it) }, model::react, model::complete, model::skipEarly, model::refill, model::undo, model::commit, liked, inMine, plus, model::cardViewed,
         ad = model.ads.ad?.let { ad -> { modifier -> NativeAdCard(ad, modifier) } })
+    if (askAdConsent != null) AdConsentSheet(model::agreeAd, model::declineAd) { OAuthBrowser(context).open(ConsentVersions.privacyUrl(BuildConfig.WEB_ORIGIN)) }
 }

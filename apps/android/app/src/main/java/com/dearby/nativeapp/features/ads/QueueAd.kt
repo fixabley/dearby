@@ -33,20 +33,25 @@ import kotlin.concurrent.thread
 
 /**
  * 맞춤 대기열 끝 광고 (contract "맞춤 대기열 끝 광고(AdMob, 비개인화)", 2026-10-25): one AdMob native ad, requested once the queue has loaded
- * and shown after its last activity. Non-personalised (`npa=1`), PG content ceiling, publisher first-party id off; no consent form (Korea only).
+ * and shown after its last activity. Non-personalised (`npa=1`), PG content ceiling, publisher first-party id off; no UMP form (Korea only).
+ * [load] is called only after 광고 목적 개인정보 제3자 제공 동의 (QueueViewModel), and the SDK is initialised on that first [load], never at launch.
  * Without a native unit id (a release built without the AdMob ids) nothing is initialised or requested and [ad] stays null. [load] replaces the
- * held ad and calls [loaded] when the new one arrives; [failed] tells a failed request from one still loading. [clear] destroys the held ad.
+ * held ad and calls [loaded] when the new one arrives; [requested] says a request went out for this view and [failed] tells a failed request
+ * from one still loading. [clear] destroys the held ad.
  */
 class QueueAd(private val context: Context) {
     var ad by mutableStateOf<NativeAd?>(null)
         private set
     var failed = false
         private set
+    var requested = false
+        private set
     private var serial = 0
 
     fun load(loaded: () -> Unit) {
         clear()
         if (!enabled) return
+        requested = true
         val mine = serial
         whenReady(context) { if (mine == serial) request(mine, loaded) }
     }
@@ -72,6 +77,7 @@ class QueueAd(private val context: Context) {
     fun clear() {
         serial++
         failed = false
+        requested = false
         ad?.destroy()
         ad = null
     }

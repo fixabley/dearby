@@ -27,6 +27,13 @@ import androidx.compose.ui.unit.dp
 }
 
 /** 설정 `개인정보` `사용 통계 보내기` (2026-10-25): screens and a few actions, never name or contacts; on until turned off, signed in or not. */
+/** 설정 › 개인정보 `광고 목적 정보 제공` (contract "광고 목적 개인정보 제3자 제공 동의(선택)"): [toggle] true opens the consent sheet first. */
+@Composable fun AdConsentRow(on: Boolean, enabled: Boolean, toggle: (Boolean) -> Unit) {
+    ListItem({ Text("광고 목적 정보 제공") }, Modifier.toggleable(on, enabled, Role.Switch, onValueChange = toggle),
+        supportingContent = { Text("끄면 광고가 보이지 않아요. 이미 시작된 광고 기능은 앱을 완전히 닫을 때까지 남을 수 있어요.") }, trailingContent = { Switch(on, null, enabled = enabled) },
+        colors = ListItemDefaults.colors(containerColor = Color.Transparent))
+}
+
 @Composable fun UsageStatsRow(on: Boolean, toggle: (Boolean) -> Unit) {
     ListItem({ Text("사용 통계 보내기") }, Modifier.toggleable(on, role = Role.Switch, onValueChange = toggle),
         supportingContent = { Text("어떤 화면과 기능을 쓰는지 모아 앱을 고치는 데 써요. 이름·연락처는 보내지 않아요.") }, trailingContent = { Switch(on, null) },
