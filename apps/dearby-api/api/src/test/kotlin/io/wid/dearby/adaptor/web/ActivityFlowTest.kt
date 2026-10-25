@@ -956,6 +956,30 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
             assertEquals("America/New_York", jdbc.sql("select time_zone from push_devices where user_id = ?").param(user).query(String::class.java).single())
             mvc.delete("/v1/me/push-devices/test-token-$user") { asUser() }.andExpect { status { isNoContent() } }
             assertEquals(0, jdbc.sql("select count(*) from push_devices where user_id = ?").param(user).query(Int::class.java).single())
+
+            // 알림 목록(native-v1.md "알림 목록"): 프로그램 카드로 묶고 최근 순, 읽지 않은 수, 읽음·모두 읽음. 남의 알림은 404
+            mvc.get("/v1/me/notifications").andExpect { status { isUnauthorized() } }
+            fun notification(kind: String, hoursAgo: Int) = jdbc.sql(
+                "insert into user_notifications (user_id, activity_id, program_id, kind, local_date, created_at) values (?, ?, ?, ?, current_date - ?, now() - make_interval(hours => ?)) returning id"
+            ).params(user, activity, programId, kind, hoursAgo / 24, hoursAgo).query(Long::class.java).single()
+            val older = notification("NEW", 30)
+            val newer = notification("DEADLINE_EVE", 1)
+            val inbox = body(mvc.get("/v1/me/notifications") { asUser() }.andExpect { status { isOk() } })
+            val group = inbox["groups"].toList().single()
+            assertEquals(listOf(programId, 2L), listOf(group["program"]["id"].asLong(), group["unread"].asLong()))
+            assertEquals(listOf("$newer DEADLINE_EVE", "$older NEW"), group["items"].toList().map { it["id"].asString() + " " + it["kind"].asString() })
+            assertEquals("즐겨찾기 확인 활동", group["items"][0]["activity"]["name"].asString())
+            assertTrue(group["items"][0]["readAt"].isNull && inbox["nextCursor"].isNull)
+            fun unread() = body(mvc.get("/v1/me/notifications/unread-count") { asUser() })["count"].asInt()
+            assertEquals(2, unread())
+            mvc.post("/v1/me/notifications/$newer/read") { asUser() }.andExpect { status { isNoContent() } }
+            mvc.post("/v1/me/notifications/$newer/read") { asUser() }.andExpect { status { isNoContent() } }
+            assertEquals(1, unread())
+            val stranger = UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
+            mvc.post("/v1/me/notifications/$older/read") { with(jwt().jwt { it.subject(stranger.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER"))) }.andExpect { status { isNotFound() } }
+            jdbc.sql("delete from users where id = ?").param(stranger).update()
+            mvc.post("/v1/me/notifications/read-all") { asUser() }.andExpect { status { isNoContent() } }
+            assertEquals(0, unread())
         } finally {
             jdbc.sql("update activities set publication_status = 'DRAFT' where id = ?").param(activity).update()
             jdbc.sql("delete from users where id = ?").param(user).update()

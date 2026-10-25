@@ -15,6 +15,7 @@ interface FavoriteRepository {
     fun delete(userId: UserId, target: FavoriteTarget, targetId: Id)
     fun markSeen(userId: UserId, programId: Id, at: OffsetDateTime)
     fun findAll(userId: UserId): List<Favorite>
+    fun userIds(): List<UserId> // 즐겨찾기가 하나라도 있는 사용자(알림 목록을 만들 대상)
 
     // 새 모집: 즐겨찾기한 프로그램에 즐겨찾기(또는 마지막으로 연 시각) 뒤 게시된 활동 중 지금 열린 것. 사용자 → (프로그램 → 활동 id들)
     fun newRecruitments(userIds: Collection<UserId>, now: OffsetDateTime): Map<UserId, Map<Id, List<Id>>>

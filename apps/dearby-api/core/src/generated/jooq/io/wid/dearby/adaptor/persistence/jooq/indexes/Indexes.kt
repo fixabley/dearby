@@ -37,6 +37,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivityScheduleStatuse
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserFavorites
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserNotifications
 import io.wid.dearby.adaptor.persistence.jooq.tables.WebauthnChallenges
 
 import org.jooq.Index
@@ -97,4 +98,5 @@ val USER_ACTIVITY_SCHEDULE_STATUSES_STATUS_IDX: Index = Internal.createIndex(DSL
 val USER_CREDENTIALS_USER_ENTITY_USER_ID_IDX: Index = Internal.createIndex(DSL.name("user_credentials_user_entity_user_id_idx"), UserCredentials.USER_CREDENTIALS, arrayOf(UserCredentials.USER_CREDENTIALS.USER_ENTITY_USER_ID), false)
 val USER_FAVORITES_TARGET_IDX: Index = Internal.createIndex(DSL.name("user_favorites_target_idx"), UserFavorites.USER_FAVORITES, arrayOf(UserFavorites.USER_FAVORITES.TARGET_TYPE, UserFavorites.USER_FAVORITES.TARGET_ID), false)
 val USER_IDENTITIES_USER_ID_IDX: Index = Internal.createIndex(DSL.name("user_identities_user_id_idx"), UserIdentities.USER_IDENTITIES, arrayOf(UserIdentities.USER_IDENTITIES.USER_ID), false)
+val USER_NOTIFICATIONS_USER_IDX: Index = Internal.createIndex(DSL.name("user_notifications_user_idx"), UserNotifications.USER_NOTIFICATIONS, arrayOf(UserNotifications.USER_NOTIFICATIONS.USER_ID, UserNotifications.USER_NOTIFICATIONS.CREATED_AT.desc()), false)
 val WEBAUTHN_CHALLENGES_EXPIRES_AT_IDX: Index = Internal.createIndex(DSL.name("webauthn_challenges_expires_at_idx"), WebauthnChallenges.WEBAUTHN_CHALLENGES, arrayOf(WebauthnChallenges.WEBAUTHN_CHALLENGES.EXPIRES_AT), false)

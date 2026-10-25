@@ -40,6 +40,8 @@ class JooqFavoriteRepository(private val dsl: DSLContext) : FavoriteRepository {
             Favorite(FavoriteTarget.valueOf(it.targetType!!), it.targetId!!, NotifyLevel.valueOf(it.notifyLevel!!), it.createdAt!!, it.seenAt)
         }
 
+    override fun userIds(): List<UserId> = dsl.selectDistinct(USER_FAVORITES.USER_ID).from(USER_FAVORITES).fetch { it.value1()!! }
+
     // 즐겨찾기 화면의 새 모집 배지와 신규 알림이 같은 규칙을 쓴다(열린 활동 판정은 OpenActivityConditions)
     override fun newRecruitments(userIds: Collection<UserId>, now: OffsetDateTime): Map<UserId, Map<Id, List<Id>>> {
         if (userIds.isEmpty()) return emptyMap()

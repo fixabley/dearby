@@ -21,9 +21,9 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_ROLES__ACTIVITY_ROLE
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_TAGS__ACTIVITY_TAGS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.COLLECTION_WATCHLIST__COLLECTION_WATCHLIST_CANONICAL_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.DISCOVERY_QUEUE__DISCOVERY_QUEUE_ACTIVITY_ID_FKEY
-import io.wid.dearby.adaptor.persistence.jooq.keys.PUSH_DELIVERIES__PUSH_DELIVERIES_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECOMMENDATION_SIGNALS__RECOMMENDATION_SIGNALS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULES__SCHEDULES_ACTIVITY_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.USER_NOTIFICATIONS__USER_NOTIFICATIONS_ACTIVITY_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityContacts.ActivityContactsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEligibilityTerms.ActivityEligibilityTermsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityEmbeddings.ActivityEmbeddingsPath
@@ -31,10 +31,10 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityRoles.ActivityRoles
 import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags.ActivityTagsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.CollectionWatchlist.CollectionWatchlistPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue.DiscoveryQueuePath
-import io.wid.dearby.adaptor.persistence.jooq.tables.PushDeliveries.PushDeliveriesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals.RecommendationSignalsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Schedules.SchedulesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Tags.TagsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserNotifications.UserNotificationsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.ActivitiesRecord
 
 import java.time.LocalDateTime
@@ -417,22 +417,6 @@ open class Activities(
     val discoveryQueue: DiscoveryQueuePath
         get(): DiscoveryQueuePath = discoveryQueue()
 
-    private lateinit var _pushDeliveries: PushDeliveriesPath
-
-    /**
-     * Get the implicit to-many join path to the
-     * <code>public.push_deliveries</code> table
-     */
-    fun pushDeliveries(): PushDeliveriesPath {
-        if (!this::_pushDeliveries.isInitialized)
-            _pushDeliveries = PushDeliveriesPath(this, null, PUSH_DELIVERIES__PUSH_DELIVERIES_ACTIVITY_ID_FKEY.inverseKey)
-
-        return _pushDeliveries;
-    }
-
-    val pushDeliveries: PushDeliveriesPath
-        get(): PushDeliveriesPath = pushDeliveries()
-
     private lateinit var _recommendationSignals: RecommendationSignalsPath
 
     /**
@@ -464,6 +448,22 @@ open class Activities(
 
     val schedules: SchedulesPath
         get(): SchedulesPath = schedules()
+
+    private lateinit var _userNotifications: UserNotificationsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.user_notifications</code> table
+     */
+    fun userNotifications(): UserNotificationsPath {
+        if (!this::_userNotifications.isInitialized)
+            _userNotifications = UserNotificationsPath(this, null, USER_NOTIFICATIONS__USER_NOTIFICATIONS_ACTIVITY_ID_FKEY.inverseKey)
+
+        return _userNotifications;
+    }
+
+    val userNotifications: UserNotificationsPath
+        get(): UserNotificationsPath = userNotifications()
 
     /**
      * Get the implicit many-to-many join path to the <code>public.tags</code>

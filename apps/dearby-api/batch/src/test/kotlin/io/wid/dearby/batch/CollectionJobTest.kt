@@ -1064,9 +1064,12 @@ class CollectionJobTest(
         val everything = user("ALL", "push-b")
         jdbc.sql("insert into user_favorites (user_id, target_type, target_id, notify_level, created_at) values (?, 'ACTIVITY', ?, 'NONE', now())").params(everything, closing).update()
         val switchedOff = user("ALL", "push-c")
+        val noDevice = user("APPLICATION", "push-d")
+        jdbc.sql("delete from push_devices where token = 'push-d'").update()
+        jdbc.sql("insert into user_notifications (user_id, activity_id, program_id, kind, local_date, created_at) values (?, ?, ?, 'NEW', current_date - 100, now() - interval '100 days')").params(noDevice, eventA, programId).update()
         jdbc.sql("insert into notification_settings (user_id, new_recruitment, updated_at) values (?, false, now())").param(switchedOff).update()
         fun sent(token: String) = Fakes.pushed.filter { it.first == token }.map { it.second }
-        val users = listOf(applicationOnly, everything, switchedOff)
+        val users = listOf(applicationOnly, everything, switchedOff, noDevice)
         try {
             Fakes.pushed.clear()
             pushes.send(now)
@@ -1076,6 +1079,8 @@ class CollectionJobTest(
             assertEquals(listOf("알림 프로그램 새 모집이 열렸어요", "알림 모집 시작 모집이 시작됐어요", "알림 마감 전날 내일 마감").sorted(), a.map { it.title }.sorted())
             val newOne = a.single { it.activityId == fresh }
             assertEquals("https://dearby.wid.io.kr/activities/$fresh", newOne.url)
+            // 알림 목록의 그 행을 함께 보낸다(앱이 열 때 읽음)
+            assertEquals(jdbc.sql("select id from user_notifications where user_id = ? and activity_id = ? and kind = 'NEW'").params(applicationOnly, fresh).query(Long::class.java).single(), newOne.notificationId)
             assertEquals("알림 신규 · ${now.plusDays(10).monthValue}월 ${now.plusDays(10).dayOfMonth}일 마감", newOne.body)
             assertTrue(sent("push-ny").isEmpty())
             // 지운 기기(410·UNREGISTERED)는 토큰을 지운다
@@ -1085,22 +1090,28 @@ class CollectionJobTest(
             assertEquals("오늘 일정 4개", b.title)
             assertEquals(null, b.activityId)
             assertEquals("dearby://favorites?view=calendar", b.url)
-            assertEquals(4, jdbc.sql("select count(*) from push_deliveries where user_id = ?").param(everything).query(Int::class.java).single())
-            // 전체 스위치가 꺼지면 보내지 않는다
+            assertEquals(4, jdbc.sql("select count(*) from push_deliveries where device_token = 'push-b'").query(Int::class.java).single())
+            // 전체 스위치가 꺼지면 보내지 않지만 알림 목록에는 쌓인다. 기기가 없는 사용자도 서울 8시에 쌓이고, 활동 수준 없음은 빠진다
             assertTrue(sent("push-c").isEmpty())
+            fun kinds(user: java.util.UUID) = jdbc.sql("select kind from user_notifications where user_id = ? order by kind").param(user).query(String::class.java).list()
+            assertEquals(listOf("ACTIVITY_START", "ACTIVITY_START", "APPLICATION_START", "DEADLINE_EVE", "NEW"), kinds(switchedOff))
+            assertEquals(listOf("APPLICATION_START", "DEADLINE_EVE", "NEW"), kinds(noDevice))
+            assertEquals(listOf("ACTIVITY_START", "ACTIVITY_START", "APPLICATION_START", "NEW"), kinds(everything))
+            // 90일 지난 알림은 지운다
+            assertEquals(0, jdbc.sql("select count(*) from user_notifications where created_at < now() - interval '90 days'").query(Int::class.java).single())
             assertTrue(starting > 0 && eventA > 0 && eventB > 0)
 
             // 같은 날 다시 돌려도 보내지 않고, 다음 날에는 신규를 다시 보내지 않는다(마감 당일만)
             Fakes.pushed.clear()
             pushes.send(now.plusMinutes(30))
             assertTrue(Fakes.pushed.isEmpty())
-            // 뉴욕 기기는 그 시간대 8시에 그 날짜의 거리를 따로 받는다(기기마다 한 번). 서울 7시 10분 모집 시작은 뉴욕에서는 전날이라 빠진다
+            // 뉴욕 기기는 그 시간대 8시에 그 날짜의 알림 행을 따로 받는다(기기마다 한 번)
             val nyNow = today.atTime(8, 10).atZone(java.time.ZoneId.of("America/New_York")).toOffsetDateTime()
             pushes.send(nyNow)
-            assertEquals(listOf("알림 마감 전날 내일 마감", "알림 프로그램 새 모집이 열렸어요"), sent("push-ny").map { it.title }.sorted())
+            assertEquals(listOf("알림 마감 전날 내일 마감", "알림 모집 시작 모집이 시작됐어요", "알림 프로그램 새 모집이 열렸어요"), sent("push-ny").map { it.title }.sorted())
             assertTrue(sent("push-a").isEmpty())
             pushes.send(nyNow.plusMinutes(20))
-            assertEquals(2, sent("push-ny").size)
+            assertEquals(3, sent("push-ny").size)
             Fakes.pushed.clear()
             pushes.send(now.plusDays(1))
             assertEquals(listOf("알림 마감 전날 오늘 마감"), sent("push-a").map { it.title })
