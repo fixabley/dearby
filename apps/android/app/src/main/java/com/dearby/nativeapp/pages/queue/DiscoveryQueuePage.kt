@@ -56,6 +56,7 @@ private val Glass = Color.Black.copy(alpha = 0.35f)
  * [reduceMotion] (the system's 애니메이션 삭제) keeps the cover, text and heart still while the scenes still change; [autoAdvance] false (a screen
  * reader) leaves the scenes to taps and the custom actions. [skipEarly] fires when an activity is left forward on its first scene, [complete]
  * when its last scene ends. The `되돌리기` snackbar answers [undo] or [commit].
+ * With [QueueViewState.ad] the page after the last activity is the native ad that [ad] draws (2026-10-25), passed over by a swipe like a card.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun DiscoveryQueuePage(
@@ -66,6 +67,7 @@ private val Glass = Color.Black.copy(alpha = 0.35f)
     liked: Set<String> = emptySet(), inMine: Set<String> = emptySet(), plus: (String) -> Unit = {},
     /** A card stayed centred for a second (usage statistics `queue_card_view`). */
     cardViewed: (String) -> Unit = {},
+    ad: (@Composable (Modifier) -> Unit)? = null,
 ) {
     val snackbar = remember { SnackbarHostState() }
     var sheetFor by remember { mutableStateOf<QueueCardState?>(null) }
@@ -79,7 +81,7 @@ private val Glass = Color.Black.copy(alpha = 0.35f)
             }
             else -> {
                 val cards = state.cards
-                val pager = rememberPagerState(initialPage = state.index.coerceIn(0, cards.size)) { cards.size + 1 }
+                val pager = rememberPagerState(initialPage = state.index.coerceIn(0, state.end)) { state.end + 1 }
                 val scope = rememberCoroutineScope()
                 // The scene each activity is on, so leaving one on scene ① can be told apart (SKIP_EARLY) and coming back resumes it.
                 val scenes = remember { mutableStateMapOf<String, Int>() }
@@ -94,10 +96,11 @@ private val Glass = Color.Black.copy(alpha = 0.35f)
                 }
                 // Undo and 더 받기 move the queue ([QueueViewState.moves]); the user's own paging only reports back through [page].
                 LaunchedEffect(pager.settledPage) { delay(1_000); cards.getOrNull(pager.settledPage)?.let { cardViewed(it.id) } }
-                LaunchedEffect(state.moves) { if (pager.currentPage != state.index) pager.scrollToPage(state.index.coerceIn(0, cards.size)) }
-                VerticalPager(pager, Modifier.fillMaxSize(), key = { if (it < cards.size) cards[it].id else "end" }) { index ->
+                LaunchedEffect(state.moves) { if (pager.currentPage != state.index) pager.scrollToPage(state.index.coerceIn(0, state.end)) }
+                VerticalPager(pager, Modifier.fillMaxSize(), key = { if (it < cards.size) cards[it].id else if (it < state.end) "ad" else "end" }) { index ->
                     val card = cards.getOrNull(index)
-                    if (card == null) EndPage(state, refill, close)
+                    if (card == null && index < state.end) AdPage(ad, close)
+                    else if (card == null) EndPage(state, refill, close)
                     else {
                         val next = { scope.launch { pager.animateScrollToPage(index + 1) }; Unit }
                         QueueCard(card, index, cards.size, active = pager.settledPage == index && sheetFor == null, reduceMotion, autoAdvance,
@@ -298,6 +301,16 @@ private val LogoAlignment = androidx.compose.ui.BiasAlignment(0f, -0.35f)
     val t = remember(key) { Animatable(0f) }
     LaunchedEffect(key) { delay(150L * order); t.animateTo(1f, tween(500)) }
     return graphicsLayer { alpha = t.value; translationY = (1f - t.value) * 18.dp.toPx() }
+}
+
+/** The ad below a close button; the ad view itself carries the `광고` badge and AdChoices. */
+@Composable private fun AdPage(ad: (@Composable (Modifier) -> Unit)?, close: () -> Unit) {
+    Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp), horizontalArrangement = Arrangement.End) {
+            IconButton(close) { Icon(Icons.Rounded.Close, "닫기", tint = Color.White) }
+        }
+        ad?.invoke(Modifier.weight(1f).fillMaxWidth())
+    }
 }
 
 @Composable private fun EndPage(state: QueueViewState, refill: () -> Unit, close: () -> Unit) {
