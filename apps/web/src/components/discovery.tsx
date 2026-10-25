@@ -31,8 +31,6 @@ import { Switch } from "@/shared/ui/switch";
 import { ActivityCard, ActivityCardSkeleton, type StatusTone } from "@/widgets/activity/activity-card";
 import { ProgramAvatar } from "@/widgets/activity/program-avatar";
 import { groupByCategory } from "@/lib/category";
-import { isEmpty, useRecommendationPreferences } from "@/lib/recommendation";
-import { RecommendationFunnel } from "@/components/recommendation-funnel";
 
 function programsPath(q: string, openOnly: boolean, cursor?: number) {
   const params = new URLSearchParams();
@@ -43,91 +41,13 @@ function programsPath(q: string, openOnly: boolean, cursor?: number) {
 }
 
 /**
- * 발견 탭 (contract "추천 설정 퍼널"): the first visit without a query opens the recommendation funnel; afterwards the program
- * list with the `오늘의 맞춤 대기열` entry on top. Nothing but the loading shape renders until this browser's saved settings are read, so the
- * list never flashes before the funnel.
- */
-export function Discovery({ q }: { q: string }) {
-  const preferences = useRecommendationPreferences();
-  const [funnel, setFunnel] = useState<"first" | "edit">();
-  if (preferences === null && !q && !funnel) setFunnel("first");
-  if (preferences === undefined)
-    return (
-      <>
-        <LargeTitle>활동 둘러보기</LargeTitle>
-        <ProgramsLoading />
-      </>
-    );
-  if (funnel)
-    return (
-      <RecommendationFunnel
-        initial={funnel === "edit" ? preferences : null}
-        onClose={() => {
-          window.scrollTo(0, 0);
-          setFunnel(undefined);
-        }}
-      />
-    );
-  return (
-    <Programs
-      q={q}
-      top={
-        !q && preferences ? (
-          <QueueEntry
-            onFunnel={(mode) => {
-              window.scrollTo(0, 0);
-              setFunnel(mode);
-            }}
-            skipped={isEmpty(preferences)}
-          />
-        ) : null
-      }
-    />
-  );
-}
-
-/**
- * 발견 탭 맨 위 `오늘의 맞춤 대기열` 한 줄 (contract "맞춤 대기열(스토리형 쇼츠)", 2026-10-25 — 추천 묶음 대신): opens the queue, or
- * the funnel first when it was skipped (its result opens the queue). `설정` re-opens the funnel with the saved picks.
- */
-function QueueEntry({ skipped, onFunnel }: { skipped: boolean; onFunnel: (mode: "first" | "edit") => void }) {
-  const label = (
-    <>
-      <Icon name="play" tone="teal" />
-      <span className="flex flex-1 flex-col">
-        <span className="text-body font-semibold">오늘의 맞춤 대기열</span>
-        <span className="text-footnote text-secondary-label">나에게 맞는 활동을 한 장씩 넘겨 봐요</span>
-      </span>
-    </>
-  );
-  const row = "flex min-h-11 flex-1 items-center gap-3 px-4 py-3 text-left active:opacity-70";
-  return (
-    <Card className="mb-4 flex items-center">
-      {skipped ? (
-        <button type="button" onClick={() => onFunnel("first")} className={row}>
-          {label}
-        </button>
-      ) : (
-        <Link href="/queue" className={row}>
-          {label}
-        </Link>
-      )}
-      {!skipped && (
-        <Button variant="plain" size="sm" onClick={() => onFunnel("edit")} aria-label="추천 설정" className="mr-1">
-          설정
-        </Button>
-      )}
-    </Card>
-  );
-}
-
-/**
- * Discovery as a program accordion (contract "발견 프로그램 묶음 — 2026-10-18"): programs with open activities,
+ * 발견 탭 as a program accordion (contract "발견 프로그램 묶음 — 2026-10-18"; the web has no sign-in, so no 추천 설정 퍼널 or
+ * 맞춤 대기열 — contract "비로그인에서 만들기·추천을 막음"): programs with open activities,
  * searched by `q` (from the `/?q=` URL; tag names match too, there is no tag chip row — contract "태그 칩 줄 제거") and paged
- * with the API cursor. A card expands only when tapped — never on first load, search, recommendations or coming back (contract
+ * with the API cursor. A card expands only when tapped — never on first load, search or coming back (contract
  * "태그 아이콘+라벨·분야 1개·자동 펼침 없음"); expanding a header loads that program's open activities as the usual activity cards.
  */
-function Programs({ q, top }: { q: string; top: ReactNode }) {
+export function Discovery({ q }: { q: string }) {
   const [page, setPage] = useState<ProgramPage>();
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
@@ -187,7 +107,6 @@ function Programs({ q, top }: { q: string; top: ReactNode }) {
           }}
         />
       </label>
-      {top}
       {error ? (
         <Failure
           message={error}

@@ -81,12 +81,12 @@ class RecommendationService(
         events.publishEvent(RecommendationInputsChanged(userId))
     }
 
-    // 로그인이면 저장된 설정(없으면 쿼리 값)과 지원 자격 정보, 비로그인이면 쿼리 값만
+    // 저장된 설정(없으면 빈 설정)과 지원 자격 정보로. 로그인만 받는다(native-v1.md "비로그인에서 만들기·추천을 막음")
     @Transactional(readOnly = true)
-    fun recommend(userId: UserId?, query: RecommendationPreferences, size: Int): RecommendationPage {
+    fun recommend(userId: UserId, size: Int): RecommendationPage {
         if (size !in 1..MAX_SIZE) throw InvalidInputException("size는 1에서 ${MAX_SIZE} 사이여야 합니다")
-        val preferences = userId?.let(recommendations::findPreferences) ?: query
-        val filter = userId?.let(recommendations::findEligibility)?.filter(currentYear())
+        val preferences = recommendations.findPreferences(userId) ?: RecommendationPreferences.NONE
+        val filter = recommendations.findEligibility(userId)?.filter(currentYear())
         // 열린 활동 + 지원 자격 정보가 있으면 대상자 조건 1·2차 판정으로 맞지 않는 활동을 뺀다
         val candidates = activities.openListings(filter)
         val scored = rules.score(candidates, preferences, flagUnchecked = filter != null)

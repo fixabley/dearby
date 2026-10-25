@@ -14,8 +14,6 @@ class ApiAccessRules : AccessRules {
         authorize(HttpMethod.GET, "/v1/activities/*", permitAll)
         // 발견 프로그램 묶음(native-v1.md "발견 프로그램 묶음")
         authorize(HttpMethod.GET, "/v1/discovery/programs", permitAll)
-        // 추천(native-v1.md "추천 설정 퍼널·지원 자격 정보·추천"): 비로그인은 쿼리 설정으로, 토큰이 있으면 저장된 설정으로
-        authorize(HttpMethod.GET, "/v1/discovery/recommendations", permitAll)
         // 프로그램 로고 이미지(native-v1.md "프로그램 로고")
         authorize(HttpMethod.GET, "/v1/programs/*/logo", permitAll)
         // 프로그램 커버 이미지(native-v1.md "맞춤 대기열")

@@ -6,11 +6,8 @@ import {
   guestListSchema,
   activityPageSchema,
   programPageSchema,
-  recommendationListSchema,
-  tagListSchema,
   uuid,
 } from "./models";
-import { categoryLabels } from "./category";
 import {
   apiOrigin,
   guestCookie,
@@ -89,7 +86,7 @@ function searchQuery(url: URL, programs: boolean): URLSearchParams | undefined {
     query.set("participationType", participationType);
   return query;
 }
-/** `GET programs/:id/logo|cover?v=<epoch seconds>` (contract "프로그램 로고"): only `v` is forwarded; anything else is rejected. */
+/** `GET programs/:id/logo?v=<epoch seconds>` (contract "프로그램 로고"): only `v` is forwarded; anything else is rejected. */
 function logoQuery(url: URL): URLSearchParams | undefined {
   const keys = [...url.searchParams.keys()];
   const v = url.searchParams.get("v");
@@ -98,28 +95,7 @@ function logoQuery(url: URL): URLSearchParams | undefined {
   if (v !== null) query.set("v", v);
   return query;
 }
-const ID_LIST = /^[1-9]\d{0,17}(,[1-9]\d{0,17}){0,49}$/;
-/**
- * `GET discovery/recommendations` for a browser without an account (contract "추천 API"): only `size` (1–100), `fieldTagIds`·
- * `traitTagIds` (comma lists of ids) and `categories` (comma list of 활동 종류 codes) are forwarded; anything else is rejected.
- */
-function recommendationQuery(url: URL): URLSearchParams | undefined {
-  const query = new URLSearchParams();
-  for (const [key, value] of url.searchParams) {
-    const valid =
-      key === "size"
-        ? /^\d{1,3}$/.test(value) && +value >= 1 && +value <= 100
-        : key === "fieldTagIds" || key === "traitTagIds"
-          ? ID_LIST.test(value)
-          : key === "categories" &&
-            value.split(",").length <= 10 &&
-            value.split(",").every((code) => Object.hasOwn(categoryLabels, code));
-    if (!valid) return;
-    query.set(key, value);
-  }
-  return query;
-}
-// Stored logo and cover kinds (admin-v1.md "프로그램 로고"); any other upstream type is not served under this origin.
+// Stored logo kinds (admin-v1.md "프로그램 로고"); any other upstream type is not served under this origin.
 const LOGO_TYPE = /^image\/(png|jpeg|webp)$/;
 
 export async function proxy(
@@ -131,18 +107,16 @@ export async function proxy(
   // `discovery/*` has no id segment; treating "programs" as one failed the uuid check and 422-ed every discovery list.
   const id = segments[0] === "discovery" ? "" : segments[guest ? 2 : 1];
   const activityRoute = segments.length === 2 && segments[0] === "activities";
-  // Public program logo and 맞춤 대기열 cover images (contracts "프로그램 로고", "맞춤 대기열"): binary passthrough, cached like the API says.
-  const logoRoute = segments.length === 3 && segments[0] === "programs" && ["logo", "cover"].includes(segments[2]);
+  // Public program logo images (contract "프로그램 로고"): binary passthrough, cached like the API says.
+  const logoRoute = segments.length === 3 && segments[0] === "programs" && segments[2] === "logo";
   const programs = path === "discovery/programs";
-  const recommendations = path === "discovery/recommendations";
-  const tagsRoute = path === "tags";
   const cardRoute = segments.length === 2 && segments[0] === "cards";
   const reportRoute = segments.length === 3 && segments[0] === "cards" && segments[2] === "reports";
   const blockRoute = path === "guest/blocks";
   const search = path === "activities" || programs;
   const method = request.method;
   const allowed =
-    ((search || recommendations || tagsRoute) && method === "GET") ||
+    (search && method === "GET") ||
     (activityRoute && method === "GET") ||
     (logoRoute && method === "GET") ||
     (cardRoute && method === "GET") ||
@@ -161,14 +135,12 @@ export async function proxy(
   if (cardCode !== null && !TOKEN.test(cardCode)) return failure(422, "INVALID_INPUT");
   const query = search
     ? searchQuery(new URL(request.url), programs)
-    : recommendations
-      ? recommendationQuery(new URL(request.url))
-      : logoRoute
+    : logoRoute
       ? logoQuery(new URL(request.url))
       : cardCode
         ? new URLSearchParams({ code: cardCode })
         : undefined;
-  if ((search || recommendations || logoRoute) && !query) return failure(422, "INVALID_INPUT");
+  if ((search || logoRoute) && !query) return failure(422, "INVALID_INPUT");
   const mutation = method !== "GET";
   if (
     mutation &&
@@ -230,7 +202,7 @@ export async function proxy(
       query,
       accept: logoRoute ? "image/*" : undefined,
       acceptLanguage:
-        search || activityRoute || recommendations
+        search || activityRoute
           ? acceptLanguage(request.headers.get("accept-language"))
           : undefined,
     });
@@ -257,7 +229,7 @@ export async function proxy(
     }
     if (logoRoute) {
       // Pass the image and the API's cache headers through (`public, max-age=31536000, immutable`; `v` busts it),
-      // not this proxy's `private, no-store` set. The body is at most 1MB for a logo, 350KB for a cover (admin upload caps).
+      // not this proxy's `private, no-store` set. The body is at most 1MB (the admin upload cap).
       const contentType = result.headers.get("content-type") ?? "";
       if (!LOGO_TYPE.test(contentType)) throw new Error("Unexpected logo type");
       const logoHeaders: Record<string, string> = {
@@ -271,7 +243,7 @@ export async function proxy(
       return new Response(await result.arrayBuffer(), { headers: logoHeaders });
     }
     const outputHeaders: Record<string, string> = { ...headers };
-    if (search || activityRoute || recommendations)
+    if (search || activityRoute)
       outputHeaders.Vary = `${headers.Vary}, Accept-Language`;
     if (guest && token) outputHeaders["Set-Cookie"] = guestCookie(token);
     if (method === "DELETE")
@@ -295,10 +267,6 @@ export async function proxy(
         ? activityPageSchema.parse(json)
         : programs
           ? programPageSchema.parse(json)
-          : recommendations
-          ? recommendationListSchema.parse(json)
-          : tagsRoute
-          ? tagListSchema.parse(json)
           : activityRoute
           ? activitySchema.parse(json)
           : guest

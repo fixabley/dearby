@@ -663,7 +663,7 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
     }
 
     @Test
-    fun `추천은 고른 분야·종류로 점수를 매기고 프로그램마다 2개, 지원 자격 정보가 있으면 맞지 않는 활동을 뺀다`() {
+    fun `추천은 로그인만 받고 고른 분야·종류로 점수를 매기고 프로그램마다 2개, 지원 자격 정보가 있으면 맞지 않는 활동을 뺀다`() {
         val user = UUID.randomUUID().also { jdbc.sql("insert into users (id) values (?)").param(it).update() }
         fun MockHttpServletRequestDsl.asUser() = with(jwt().jwt { it.subject(user.toString()) }.authorities(SimpleGrantedAuthority("ROLE_USER")))
         fun body(result: org.springframework.test.web.servlet.ResultActionsDsl): JsonNode = json.readTree(result.andReturn().response.contentAsString)
@@ -692,32 +692,37 @@ class ActivityFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcCli
         fun ids(items: JsonNode) = items.toList().map { it["activity"]["id"].asLong() }
         fun reasons(items: JsonNode, id: Long) = items.toList().single { it["activity"]["id"].asLong() == id }["reasons"].toList().map { it.asString() }
 
-        // 비로그인: 쿼리 설정. 고른 하위 분야 일치(exact)가 상위 분야로 맞은 것(young)보다 앞이고, 같은 프로그램은 2개까지라 weak는 빠진다
-        val anonymousPage = body(mvc.get("/v1/discovery/recommendations?fieldTagIds=$parent,$childB").andExpect { status { isOk() } })
-        val anonymous = anonymousPage["items"]
-        // total은 프로그램당 2개로 자르기 전 후보 수(weak 포함)
-        assertTrue(anonymousPage["total"].asInt() >= 3)
-        assertEquals(listOf(exact, young), ids(anonymous))
-        assertEquals(setOf("activity", "program", "reasons", "scenes"), anonymous[0].propertyNames().toSet())
-        // 비로그인 대기열 화면용 장면: 한 줄 소개(없으면 이름)로 시작해 마감으로 끝난다
-        assertEquals(listOf("HOOK", "DEADLINE"), anonymous[0]["scenes"].toList().map { it["type"].asString() })
-        assertEquals("마감까지", anonymous[0]["scenes"][1]["label"].asString())
-        assertEquals("Let’Swift", anonymous[0]["program"]["name"].asString())
-        assertEquals("추천 하위 B", reasons(anonymous, exact).first())
-        assertTrue(reasons(anonymous, exact).last().endsWith("일 마감"))
-        assertEquals(listOf("추천 하위 A", "부트캠프"), reasons(body(mvc.get("/v1/discovery/recommendations?fieldTagIds=$childA&categories=BOOTCAMP"))["items"], young).take(2))
-        mvc.get("/v1/discovery/recommendations?categories=NOPE").andExpect { status { isBadRequest() } }
-        mvc.get("/v1/discovery/recommendations?size=0").andExpect { status { isBadRequest() } }
+        // 로그인만 받는다(native-v1.md "비로그인에서 만들기·추천을 막음"). 쿼리 설정으로 받던 비로그인 경로는 없다
+        mvc.get("/v1/discovery/recommendations?fieldTagIds=$parent,$childB").andExpect { status { isUnauthorized() } }
 
         // 추천 설정: 저장 전에는 빈 값, 분야 자리에 성격 태그를 넣으면 400, 저장하면 완료 시각이 남는다
         mvc.get("/v1/me/recommendation-preferences").andExpect { status { isUnauthorized() } }
         assertTrue(body(mvc.get("/v1/me/recommendation-preferences") { asUser() })["completedAt"].isNull)
         fun putPreferences(content: String) = mvc.put("/v1/me/recommendation-preferences") { asUser(); contentType = MediaType.APPLICATION_JSON; this.content = content }
         putPreferences("""{"fieldTagIds":[$trait]}""").andExpect { status { isBadRequest() } }
+
+        // 고른 하위 분야 일치(exact)가 상위 분야로 맞은 것(young)보다 앞이고, 같은 프로그램은 2개까지라 weak는 빠진다
+        putPreferences("""{"fieldTagIds":[$parent,$childB]}""").andExpect { status { isOk() } }
+        val page = body(mvc.get("/v1/discovery/recommendations") { asUser() }.andExpect { status { isOk() } })
+        val items = page["items"]
+        // total은 프로그램당 2개로 자르기 전 후보 수(weak 포함)
+        assertTrue(page["total"].asInt() >= 3)
+        assertEquals(listOf(exact, young), ids(items))
+        assertEquals(setOf("activity", "program", "reasons", "scenes"), items[0].propertyNames().toSet())
+        // 장면: 한 줄 소개(없으면 이름)로 시작해 마감으로 끝난다
+        assertEquals(listOf("HOOK", "DEADLINE"), items[0]["scenes"].toList().map { it["type"].asString() })
+        assertEquals("마감까지", items[0]["scenes"][1]["label"].asString())
+        assertEquals("Let’Swift", items[0]["program"]["name"].asString())
+        assertEquals("추천 하위 B", reasons(items, exact).first())
+        assertTrue(reasons(items, exact).last().endsWith("일 마감"))
+        putPreferences("""{"fieldTagIds":[$childA],"categories":["BOOTCAMP"]}""").andExpect { status { isOk() } }
+        assertEquals(listOf("추천 하위 A", "부트캠프"), reasons(body(mvc.get("/v1/discovery/recommendations") { asUser() })["items"], young).take(2))
+        mvc.get("/v1/discovery/recommendations?size=0") { asUser() }.andExpect { status { isBadRequest() } }
+
         val saved = body(putPreferences("""{"fieldTagIds":[$parent],"categories":["hackathon"],"traitTagIds":[$trait]}""").andExpect { status { isOk() } })
         assertEquals(listOf("HACKATHON"), saved["categories"].toList().map { it.asString() })
         assertTrue(!saved["completedAt"].isNull)
-        // 로그인이면 저장된 설정을 쓴다(쿼리는 무시). 성격 일치가 더해진 exact가 앞이다
+        // 저장된 설정을 쓴다(쿼리는 무시). 성격 일치가 더해진 exact가 앞이다
         assertEquals(listOf(exact, young), ids(body(mvc.get("/v1/discovery/recommendations?fieldTagIds=$childB") { asUser() })["items"]))
 
         // 지원 자격 정보: 현재 동의 버전이 아니면 400, 값이 어휘 밖이면 400
