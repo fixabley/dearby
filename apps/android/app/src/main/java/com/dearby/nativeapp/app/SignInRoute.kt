@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
     if (auth.pending == null) SignInSheet(auth.phase == AccountPhase.WORKING, auth.message,
         signIn = { scope.launch { account.signIn(Passkeys(context)) } }, apple = { scope.launch { account.startWeb(AuthProvider.APPLE, OAuthBrowser(context)) } },
         google = if (auth.googleAvailable) ({ scope.launch { account.signInWithGoogle(GoogleSignIn(context)) } }) else null,
-        signUp = { scope.launch { account.signUp(Passkeys(context)) } }, close = close,
+        close = close,
     )
 }
 

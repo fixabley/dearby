@@ -23,14 +23,14 @@ import androidx.credentials.exceptions.GetCredentialUnsupportedException
 class Passkeys(private val context: Context) {
     private val manager = CredentialManager.create(context)
 
-    /** Sign-up: `PublicKeyCredentialCreationOptionsJSON` in, `RegistrationResponseJSON` out. */
+    /** 패스키 추가 (signed in): `PublicKeyCredentialCreationOptionsJSON` in, `RegistrationResponseJSON` out. */
     suspend fun create(options: String): String? = try {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) throw CreateCredentialUnsupportedException("Passkeys need Android 9")
         (manager.createCredential(context, CreatePublicKeyCredentialRequest(options)) as CreatePublicKeyCredentialResponse).registrationResponseJson
     } catch (e: CreateCredentialCancellationException) { null }
 
     /** Sign-in: `PublicKeyCredentialRequestOptionsJSON` in, `AuthenticationResponseJSON` out. Without a saved passkey it fails
-     *  at once instead of offering to make one, so the sheet can point to "새 패스키로 시작". */
+     *  at once instead of offering to make one, so the sheet can point to Apple or Google. */
     suspend fun get(options: String): String? = try {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) throw GetCredentialUnsupportedException("Passkeys need Android 9")
         val request = GetCredentialRequest.Builder().addCredentialOption(GetPublicKeyCredentialOption(options))

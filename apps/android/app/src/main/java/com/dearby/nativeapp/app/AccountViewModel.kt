@@ -73,11 +73,6 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
         val challenge = client.authenticationOptions()
         passkeys.get(challenge.options)?.let { client.authenticate(challenge.id, it) }
     }
-    /** "새 패스키로 시작": a new passkey, and with it a new account. */
-    suspend fun signUp(passkeys: Passkeys) = enter {
-        val challenge = client.registrationOptions()
-        passkeys.create(challenge.options)?.let { client.register(challenge.id, it) }
-    }
 
     /**
      * "Google로 계속하기" (contract "구글 로그인", native): a server nonce, then Credential Manager's Google account chooser, then the
@@ -304,7 +299,7 @@ class AccountViewModel(val client: AccountClient, private val vault: SessionStor
     /** The sentence shown for a failed prompt (sign-in and 설정 연결하기 alike); anything unexpected (cancellation included) is rethrown. */
     private fun failureMessage(e: Exception, provider: AuthProvider?): String = when (e) {
         is GetCredentialUnsupportedException, is CreateCredentialUnsupportedException -> UNSUPPORTED
-        is NoCredentialException -> "이 기기에 Dearby 패스키가 없어요. 새 패스키로 시작해 주세요."
+        is NoCredentialException -> "이 기기에 Dearby 패스키가 없어요. Apple이나 Google로 시작해 주세요."
         is GetCredentialException -> "패스키로 로그인하지 못했어요. 잠시 후 다시 시도해 주세요."
         is CreateCredentialException -> "패스키를 만들지 못했어요. 잠시 후 다시 시도해 주세요."
         is AccountException -> when (e.error) {
