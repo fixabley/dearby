@@ -17,6 +17,10 @@ class DevicePreferences(context: Context) {
     var analyticsEnabled: Boolean
         get() = preferences.getBoolean("analyticsEnabled", true)
         set(value) = preferences.edit { putBoolean("analyticsEnabled", value) }
+    /** 광고 동의 시트의 거부·설정 스위치 끔 (contract "광고 목적 개인정보 제3자 제공 동의(선택)"): remembered per account and version, never sent. */
+    fun adConsentDeclined(account: String, version: String) = "$account/$version" in preferences.getStringSet("adConsentDeclined", emptySet()).orEmpty()
+    fun declineAdConsent(account: String, version: String) =
+        preferences.edit { putStringSet("adConsentDeclined", preferences.getStringSet("adConsentDeclined", emptySet()).orEmpty() + "$account/$version") }
     var pushStarted: Boolean
         get() = preferences.getBoolean("pushStarted", false)
         set(value) = preferences.edit { putBoolean("pushStarted", value) }

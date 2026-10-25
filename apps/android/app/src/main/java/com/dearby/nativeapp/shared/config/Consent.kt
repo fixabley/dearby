@@ -9,6 +9,8 @@ object ConsentVersions {
     const val TERMS = "2026-10-22"
     /** 지원 자격 정보 수집·이용 동의 (contract "추천 설정 퍼널·지원 자격 정보·추천", 2026-10-24). The contract names no version string yet; the decision date until the server publishes one. */
     const val ELIGIBILITY = "2026-10-24"
+    /** 광고 목적 개인정보 제3자 제공 동의(선택) (contract, 2026-10-25): the server's `AdConsent.VERSION`. */
+    const val AD = "2026-10-25"
     fun privacyUrl(webOrigin: String) = "$webOrigin/privacy"
     fun termsUrl(webOrigin: String) = "$webOrigin/terms"
 }
