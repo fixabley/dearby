@@ -128,13 +128,13 @@
 
 ## 맞춤 대기열 끝 광고 (2026-10-25, AdMob)
 
-계약 native-v1.md "맞춤 대기열 끝 광고(AdMob, 비개인화)". `features/ads/QueueAd.swift`의 `QueueAdLoader`가 대기열을 열 때 네이티브 광고 1개를 요청하고, `DiscoveryQueuePage`가 마지막 활동 다음·끝 화면 앞에 `QueueAdView` 한 장(상단 `광고` 배지·AdChoices, 미디어·광고주·헤드라인·본문·CTA; 자산은 SDK `NativeAdView`에 그대로 묶음)을 넣는다. 끝 화면에 닿을 때까지 받지 못했으면 이번 열람에는 넣지 않고, `더 받기` 뒤에도 다시 넣지 않는다(열람당 최대 1장).
+계약 native-v1.md "맞춤 대기열 끝 광고(AdMob, 비개인화)". `features/ads/QueueAd.swift`의 `QueueAdLoader`가 대기열 응답을 받은 뒤 네이티브 광고 1개(미디어 비율 기본 ANY)를 한 번만 요청하고, `DiscoveryQueuePage`가 마지막 활동 다음·끝 화면 앞에 `QueueAdView` 한 장을 넣는다. 광고 장면은 흐린 진행 구간 하나, 왼쪽 위 `광고` 배지(15pt)·AdChoices(닫기·CTA와 먼 모서리), 남은 높이의 미디어, 광고주·헤드라인·본문·CTA이며 자산은 SDK `NativeAdView`에 그대로 묶는다. 자동 넘김·탭 영역·두 번 탭·오른쪽 버튼 줄·추천 신호는 없고 상하 스와이프와 대기열 닫기로 넘긴다. 끝 화면에 닿을 때까지 받지 못했으면 이번 열람에는 넣지 않고 다시 요청하지 않으며, `더 받기` 뒤에도 넣지 않는다(열람당 최대 1장). 대기열을 닫으면 로더와 광고를 함께 버린다(iOS에는 `destroy`가 없다).
 
-- SDK: `swift-package-manager-google-mobile-ads` 13.11.0 고정(`generate_project.rb`). UMP 패키지가 의존성으로 함께 받아지지만 쓰지 않는다.
-- 비개인화·등급: 요청마다 `Extras.additionalParameters = ["npa": "1"]`, 처음 한 번 `requestConfiguration.maxAdContentRating = .parentalGuidance`·`publisherPrivacyPersonalizationState = .disabled` 뒤 `MobileAds.shared.start`. ATT 요청·`NSUserTrackingUsageDescription`·UMP 동의 화면은 없다(한국 전용).
-- ID: Info.plist `GADApplicationIdentifier = $(ADMOB_APP_ID)`, `DearbyAdMobNativeUnitID = $(ADMOB_NATIVE_UNIT_ID)`와 Google 공식 `SKAdNetworkItems`(두 파일 같음). Debug는 Google 테스트 앱 ID·네이티브 테스트 단위. Release는 `generate_project.rb`가 환경의 `ADMOB_APP_ID`·`ADMOB_NATIVE_UNIT_ID`(CI는 저장소 변수 `IOS_ADMOB_APP_ID`·`IOS_ADMOB_NATIVE_UNIT_ID`, 없으면 경고)를 읽고, 둘 중 하나라도 없으면 단위를 비우고 앱 ID에는 테스트 앱 ID를 넣는다(값이 없으면 SDK가 실행 시 멈추므로). 단위가 비면 앱은 SDK를 시작하지도 요청하지도 않는다.
-- 사용 통계: `queue_ad_shown`(광고 장면이 처음 화면에 올 때), `queue_ad_skipped_unloaded`(광고가 켜진 빌드에서 받지 못한 채 끝 화면에 닿을 때).
-- 개인정보 매니페스트: SDK가 자체 `PrivacyInfo.xcprivacy`(광고 데이터·기기 ID·대략적 위치 등)를 갖고 있어 앱 매니페스트는 그대로 둔다. App Store Connect의 앱 개인정보 답변은 광고 SDK 수집 항목을 반영해 따로 고쳐야 한다.
+- SDK: `swift-package-manager-google-mobile-ads` 13.11.0 고정(`generate_project.rb`). 의존성으로 UMP 패키지가 함께 받아지지만 쓰지 않는다.
+- 비개인화·등급: 요청마다 `Extras.additionalParameters = ["npa": "1"]`, 요청 전 `requestConfiguration.maxAdContentRating = .parentalGuidance`·`setPublisherFirstPartyIDEnabled(false)` 뒤 `MobileAds.shared.start`. ATT 요청·`NSUserTrackingUsageDescription`·UMP 동의 창은 없다(한국 전용). ATT를 정하면 첫 `load()` 앞에 붙인다.
+- ID: Info.plist `GADApplicationIdentifier = $(ADMOB_APP_ID)`, `DearbyAdMobNativeUnitID = $(ADMOB_NATIVE_UNIT_ID)`와 Google 공식 `SKAdNetworkItems` 50개(빠른 시작 페이지, 2026-10-25 확인; 두 파일 같음). Debug는 Google 테스트 앱 ID·네이티브 테스트 단위. Release는 `generate_project.rb`가 환경의 `ADMOB_IOS_APP_ID`·`ADMOB_IOS_QUEUE_NATIVE_UNIT_ID`(CI는 같은 이름의 저장소 변수, 없으면 경고)를 읽고, 하나라도 없으면 단위를 비우고 앱 ID에는 테스트 앱 ID를 넣는다(키가 없으면 SDK가 멈출 수 있어서). 단위가 비면 앱은 SDK를 시작하지도 요청하지도 않는다.
+- 사용 통계: `queue_ad_shown`(광고 장면이 처음 화면에 올 때), `queue_ad_skipped_unloaded`(`reason` `loading`·`failed`, 광고가 켜진 빌드에서 받지 못한 채 끝 화면에 닿을 때). 광고 장면에서 닫으면 `queue_exit`의 `position`은 마지막 활동 카드 번호다.
+- 개인정보 매니페스트: 앱 매니페스트는 그대로 둔다(SDK가 자체 `PrivacyInfo.xcprivacy`를 갖는다). 13.11.0 매니페스트는 광고 데이터·제품 상호작용·대략적 위치·진단·성능·충돌과 함께 `NSPrivacyCollectedDataTypeDeviceID`를 **추적 true**로 선언하므로, ATT 없이도 아카이브 Privacy Report와 App Store 라벨의 "추적에 사용되는 데이터"에 기기 ID가 잡힐 수 있다. 라벨은 Privacy Report로 맞춘다(docs/store/ads-2026-10-25.md).
 
 ## 검증
 

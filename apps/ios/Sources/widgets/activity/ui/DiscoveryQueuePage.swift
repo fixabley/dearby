@@ -17,6 +17,7 @@ struct DiscoveryQueuePage: View {
     @State private var lastPosition = 0
     @State private var reachedEnd = false
     /// The ad of this opening: its page follows the last card once loaded, until the end page is reached without it or `더 받기` (one per opening).
+    /// Closing on it logs `queue_exit` with the last activity card's number (`lastPosition`; the ad page does not count).
     @State private var ads = QueueAdLoader()
     @State private var adSlot = AdSlot.open
     private enum AdSlot { case open, shown, closed }
@@ -57,8 +58,8 @@ struct DiscoveryQueuePage: View {
         }
         .overlay(alignment: .bottom) { notice.environment(\.colorScheme, .dark) }
         .task {
-            ads.load()
             await model.load()
+            if !model.items.isEmpty { ads.load() }
             AppAnalytics.event("queue_open", ["size": model.items.count, "seen": model.items.filter { favorites.isFavorite(.activity($0.id)) }.count])
         }
         .analyticsScreen("queue")
@@ -68,7 +69,7 @@ struct DiscoveryQueuePage: View {
                 AppAnalytics.event("queue_ad_shown")
             } else if position == Self.endID, adSlot == .open, !model.items.isEmpty {
                 adSlot = .closed
-                if QueueAdLoader.enabled, ads.nativeAd == nil { AppAnalytics.event("queue_ad_skipped_unloaded") }
+                if QueueAdLoader.enabled, ads.nativeAd == nil { AppAnalytics.event("queue_ad_skipped_unloaded", ["reason": ads.failed ? "failed" : "loading"]) }
             }
             guard position == Self.endID, !model.items.isEmpty, !reachedEnd else { return }
             reachedEnd = true
