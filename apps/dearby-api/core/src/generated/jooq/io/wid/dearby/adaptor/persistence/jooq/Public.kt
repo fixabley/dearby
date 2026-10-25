@@ -60,6 +60,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.TagEmbeddings
 import io.wid.dearby.adaptor.persistence.jooq.tables.Tags
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivityScheduleStatuses
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserAdConsents
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserConsents
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
@@ -374,6 +375,11 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
     val USER_ACTIVITY_SCHEDULE_STATUSES: UserActivityScheduleStatuses get() = UserActivityScheduleStatuses.USER_ACTIVITY_SCHEDULE_STATUSES
 
     /**
+     * The table <code>public.user_ad_consents</code>.
+     */
+    val USER_AD_CONSENTS: UserAdConsents get() = UserAdConsents.USER_AD_CONSENTS
+
+    /**
      * The table <code>public.user_consents</code>.
      */
     val USER_CONSENTS: UserConsents get() = UserConsents.USER_CONSENTS
@@ -487,6 +493,7 @@ open class Public : SchemaImpl(DSL.name("public"), DefaultCatalog.DEFAULT_CATALO
         Tags.TAGS,
         UserActivities.USER_ACTIVITIES,
         UserActivityScheduleStatuses.USER_ACTIVITY_SCHEDULE_STATUSES,
+        UserAdConsents.USER_AD_CONSENTS,
         UserConsents.USER_CONSENTS,
         UserCredentials.USER_CREDENTIALS,
         UserEntities.USER_ENTITIES,
