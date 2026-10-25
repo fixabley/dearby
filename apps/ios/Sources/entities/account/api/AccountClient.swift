@@ -30,13 +30,10 @@ struct AccountClient: Sendable {
         }
     }
 
-    /// Passkey sign-up: the server picks the passkey's `user.name` and `user.id`; the account is made on `register`.
-    /// With a `session` (Bearer) the same calls add a passkey to that account instead (contract "설정 — 패스키 추가").
-    func registrationOptions(session: TokenPair? = nil) async throws -> PasskeyChallenge<Passkey.CreationOptions> {
+    /// 패스키 추가 to the signed-in account (contract "설정"). The same endpoint without a Bearer still signs up for apps
+    /// already shipped, but new accounts start only with Apple or Google (2026-10-25), so this client always sends one.
+    func registrationOptions(session: TokenPair) async throws -> PasskeyChallenge<Passkey.CreationOptions> {
         try await send("auth/passkeys/registration/options", method: "POST", body: [String: String](), session: session, as: PasskeyChallenge.self)
-    }
-    func register(challengeId: String, credential: Passkey.Credential) async throws -> TokenPair {
-        try await send("auth/passkeys/registration", method: "POST", body: PasskeyAnswer(challengeId: challengeId, credential: credential), as: TokenPair.self)
     }
     /// Finishes adding a passkey to the signed-in account; the answer body (if any) is not needed, the session stays as it is.
     func addPasskey(challengeId: String, credential: Passkey.Credential, _ session: TokenPair) async throws {
