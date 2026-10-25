@@ -1,11 +1,11 @@
 package com.dearby.nativeapp.pages.account
 
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.style.TextAlign
 import com.dearby.nativeapp.shared.ui.*
 
 /**
@@ -17,10 +17,11 @@ import com.dearby.nativeapp.shared.ui.*
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable fun SignInSheet(busy: Boolean, message: String?, signIn: () -> Unit, apple: () -> Unit, google: (() -> Unit)?, close: () -> Unit) {
     ModalBottomSheet(close, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true), containerColor = MaterialTheme.colorScheme.surface) {
-        CenteredMessage(null, "로그인", "패스키는 기기 잠금(지문·얼굴·PIN)으로 로그인해요. 비밀번호는 필요 없어요.",
+        // Fixed at half the screen (2026-10-25): skipPartiallyExpanded leaves one expanded state, and the body is half the height,
+        // so the sheet does not move between partial and full. On a small screen the heading scrolls and the buttons stay in view.
+        CenteredMessage(null, "로그인", "패스키는 기기 잠금(지문·얼굴·PIN)으로 로그인해요. 비밀번호는 필요 없어요.", Modifier.fillMaxHeight(0.5f),
             symbol = { DearbyLockup() },
             content = {
-                Text("처음이라면 Apple이나 Google 계정으로 시작해요.", color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyLarge)
                 message?.let { DearbyFieldError(it) }
             },
             actions = {

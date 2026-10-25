@@ -26,13 +26,13 @@ struct SignInSheet: View {
             if phase == .signedIn { dismiss(); signedIn() }
         }
         .onDisappear { account.clearPendingLink() }
-        // Half height first (2026-10-25); the heading scrolls if it does not fit, and the sheet can still be pulled up.
-        .presentationDetents([.medium, .large])
+        // Fixed half height (2026-10-25): on a small screen the heading scrolls and the buttons stay in view.
+        .presentationDetents([.medium])
     }
 
     private var choices: some View {
         CenteredMessage(title: social ? "로그인" : "패스키로 로그인",
-                        message: social ? "처음이라면 애플이나 구글 계정으로 시작해요. 패스키가 있으면 바로 로그인해요."
+                        message: social ? "애플·구글 계정이나 패스키로 바로 로그인해요. 비밀번호와 인증번호는 필요 없어요."
                             : "Face ID나 Touch ID로 바로 로그인해요. 비밀번호와 인증번호는 필요 없어요.") {
             DearbyLockup()
         } actions: {

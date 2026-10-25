@@ -73,7 +73,7 @@ struct DearbyBrand: View {
 }
 
 /// 로그인 시트 락업: 가로 워드마크 아래 캐치프레이즈를 한 장으로 그린 이미지(`DearbyLockup`, 원본 shared/assets/brand/sign-in-lockup.html, 라이트·다크 두 장).
-/// 큰 글씨 설정과 무관하게 고정 높이 96pt(비율 1440:560 → 너비 약 247pt): 절반 높이 로그인 시트의 약 1/4.
+/// 고정 높이 96pt(비율 1240:480 → 너비 약 248pt, 큰 글씨 설정과 무관): 중간 높이 로그인 시트의 약 1/4.
 struct DearbyLockup: View {
     var body: some View {
         Image("DearbyLockup").resizable().scaledToFit().frame(height: 96)
