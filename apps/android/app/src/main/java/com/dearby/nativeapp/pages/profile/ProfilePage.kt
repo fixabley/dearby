@@ -43,7 +43,7 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
     state: ProfileViewState, rows: List<HistoryRowState>, change: (ProfileFormState) -> Unit, searchJobs: (String) -> Unit, addContact: (String) -> Unit, openHistory: (String?) -> Unit,
     removeHistory: (String) -> Unit, save: () -> Unit, revert: () -> Unit, versions: () -> Unit, compose: () -> Unit, signIn: () -> Unit, retry: () -> Unit,
     changed: Boolean, edit: (Boolean) -> Unit, settings: () -> Unit = {}, notify: () -> Unit = {},
-    /** 프로필 `추천` 묶음 (contract "추천 설정 퍼널·지원 자격 정보·추천"), drawn in read mode and while signed out; null when the feature is not there. */
+    /** 프로필 `추천` 묶음 (contract "추천 설정 퍼널·지원 자격 정보·추천"), drawn in read mode; null signed out and when the feature is not there. */
     recommendation: (@Composable () -> Unit)? = null,
     /** 프로필 `알림` 묶음 ([NotificationRow] signed in, [UsageStatsRow] always) in read mode and while signed out. */
     notifications: (@Composable () -> Unit)? = null,
@@ -72,7 +72,6 @@ import com.dearby.nativeapp.widgets.profile.profileFields.ProfileContactFields
             ProfilePhase.SIGNED_OUT -> {
                 CenteredMessage(Icons.Rounded.AccountCircle, "프로필은 계정에 저장돼요", "로그인하면 프로필을 저장하고 고칠 수 있어요.", Modifier.weight(1f).fillMaxWidth(),
                     primary = MessageAction("로그인", signIn))
-                recommendation?.let { Box(Modifier.padding(20.dp)) { it() } }
                 notifications?.let { Box(Modifier.padding(horizontal = 20.dp).padding(bottom = 20.dp)) { it() } }
             }
             ProfilePhase.LOADING -> DearbySkeleton(Modifier.fillMaxSize().padding(20.dp)) { SkeletonCardBody(); SkeletonRows(3) }

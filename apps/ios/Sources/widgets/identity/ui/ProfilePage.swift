@@ -5,14 +5,14 @@ import SwiftUI
 /// the toolbar `수정` (pencil) swaps in the inset-grouped `Form` editor with the 저장 / 원래대로 bar once anything differs from the loaded profile
 /// (contract "프로필과 버전 이력"). `수정` becomes `완료`: no change → back to reading, changes → 저장 / 버리기 / 취소. A successful save returns to read mode.
 /// 변경 이력·명함 만들기 live in the toolbar `더 보기` menu. Card decoration lives in 명함 만들기. Signed out (contract "비로그인에서 만들기·추천을 막음"
-/// 2026-10-25) there is nothing to make or edit: the page offers 로그인, and `지원 자격 정보`·`관심 분야·활동 종류` open sign-in too (the app opens it for the latter).
+/// 2026-10-25) there is nothing to make or edit and no recommendation: the page offers 로그인, without the `추천` 묶음.
 /// The consent gate (contract "개인정보 동의", "동의 시트 닫기" 2026-10-20) is a sheet over the funnel/editor whenever the server says
 /// `consentRequired`: pulling it down or 닫기 means not consented — the sheet stays away until a save comes back 403 `CONSENT_REQUIRED`, which shows it again.
 struct ProfilePage: View {
     let state: ProfileModel
     /// 프로필 `추천` 묶음 (contract "추천 설정 퍼널·지원 자격 정보·추천" 2026-10-24): `지원 자격 정보` and `관심 분야·활동 종류`.
     let eligibility: EligibilityModel
-    /// Reopens the 추천 funnel (signed out, the app opens sign-in first).
+    /// Reopens the 추천 funnel (the row shows signed in only).
     let editRecommendations: () -> Void
     /// 프로필 `알림` 묶음 (contract "즐겨찾기(하트)·새 모집 푸시 알림" 2026-10-25): `새 모집 알림`, and Settings when permission was refused.
     let notifications: NotificationModel
@@ -175,14 +175,13 @@ struct ProfilePage: View {
             .padding(.horizontal, 16).padding(.vertical, 8).frame(minHeight: 44).contentShape(Rectangle())
         }.buttonStyle(.plain)
     }
-    /// Signed out → sign in. Entered (and consented to this version) → 고치기·지우기. Otherwise the consent sheet, then the questions.
+    /// Signed in only (the row is not shown signed out). Entered (and consented to this version) → 고치기·지우기. Otherwise the consent sheet, then the questions.
     private func openEligibility() {
         AppAnalytics.event("menu_open", ["menu": "eligibility"])
         switch eligibility.phase {
-        case .signedOut: signingIn = true
         case .loaded where eligibility.hasValues && !eligibility.needsConsent: eligibilityChoice = true
         case .loaded: if eligibility.needsConsent { eligibilityConsent = true } else { eligibilityInput = true }
-        case .failed, .loading, .unavailable: Task { await eligibility.load() }
+        case .signedOut, .failed, .loading, .unavailable: Task { await eligibility.load() }
         }
     }
     private var toolbarReady: Bool {
@@ -209,7 +208,6 @@ struct ProfilePage: View {
                 VStack(spacing: 0) {
                     CenteredMessage(symbol: "person.crop.circle", title: "프로필은 계정에 저장돼요", message: "로그인하면 프로필을 적고 명함을 만들 수 있어요.",
                                     primary: MessageAction("로그인") { signingIn = true })
-                    recommendationGroup.padding(.horizontal, 20).padding(.bottom, 16)
                     notificationGroup(signedIn: false).padding(.horizontal, 20).padding(.bottom, 16)
                 }
             case .loading:

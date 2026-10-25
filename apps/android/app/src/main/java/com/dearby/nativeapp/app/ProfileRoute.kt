@@ -46,7 +46,7 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
     // 동의 시트 닫기 (contract, 2026-10-20): closing the consent page is "not consented"; the next save attempt brings it back instead of a doomed PUT.
     var consentDismissed by remember { mutableStateOf(false) }
     val context = LocalContext.current
-    // 지원 자격 정보 (contract "지원 자격 정보(프로필, 동의 필요)"): signed out → sign in; no current consent → the consent sheet; entered → 고치기·지우기.
+    // 지원 자격 정보 (contract "지원 자격 정보(프로필, 동의 필요)", signed in only): no current consent → the consent sheet; entered → 고치기·지우기.
     val reco by recommendation.state.collectAsStateWithLifecycle()
     val eligibilityForm by recommendation.form.collectAsStateWithLifecycle()
     var eligibilitySheet by remember { mutableStateOf<EligibilitySheet?>(null) }
@@ -55,15 +55,14 @@ import com.dearby.nativeapp.widgets.recommendation.recommendationRows.Recommenda
         Tracking.menu("eligibility")
         eligibilitySheet = null
         when {
-            !signedIn -> signingIn = true
             !reco.eligibilityConsented -> eligibilitySheet = EligibilitySheet.CONSENT
             reco.eligibilitySummary != null -> eligibilitySheet = EligibilitySheet.ACTIONS
             else -> recommendation.startEligibility()
         }
     }
-    // Signed out the rows still show and open sign-in (contract "비로그인에서 만들기·추천을 막음", 2026-10-25); signed in they wait for the recommendation API.
-    val recommendationGroup: (@Composable () -> Unit)? = if (signedIn && !reco.available) null else {
-        { RecommendationProfileGroup(reco.eligibilitySummary, { if (signedIn) { Tracking.menu("interests"); recommendation.openFunnel(first = false, entry = "profile") } else { signingIn = true } }, openEligibility) }
+    // Signed out there is no recommendation, so no 추천 묶음 (contract "비로그인에서 만들기·추천을 막음", 2026-10-25); signed in it waits for the recommendation API.
+    val recommendationGroup: (@Composable () -> Unit)? = if (!signedIn || !reco.available) null else {
+        { RecommendationProfileGroup(reco.eligibilitySummary, { Tracking.menu("interests"); recommendation.openFunnel(first = false, entry = "profile") }, openEligibility) }
     }
     LaunchedEffect(signedIn) { if (signedIn) signingIn = false; model.load() }
     // 알림 (contract "즐겨찾기(하트)·새 모집 푸시 알림"): the system switch is read again whenever the app comes back (e.g. from its settings).
