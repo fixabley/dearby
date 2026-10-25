@@ -7,31 +7,39 @@ package io.wid.dearby.adaptor.persistence.jooq.tables
 import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.keys.CONTACTS__CONTACTS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.DISCOVERY_QUEUE__DISCOVERY_QUEUE_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.NOTIFICATION_SETTINGS__NOTIFICATION_SETTINGS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_ELIGIBILITY__PROFILE_ELIGIBILITY_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_HISTORIES__PROFILE_HISTORIES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_JOBS__PROFILE_JOBS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROFILE_VERSIONS__PROFILE_VERSIONS_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.PUSH_DELIVERIES__PUSH_DELIVERIES_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.PUSH_DEVICES__PUSH_DEVICES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECEIPTS__RECEIPTS_RECIPIENT_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECOMMENDATION_PREFERENCES__RECOMMENDATION_PREFERENCES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECOMMENDATION_SIGNALS__RECOMMENDATION_SIGNALS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USERS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ACTIVITIES__USER_ACTIVITIES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_CONSENTS__USER_CONSENTS_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.USER_FAVORITES__USER_FAVORITES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ORG_AFFINITY__USER_ORG_AFFINITY_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ROLES__USER_ROLES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_TASTE__USER_TASTE_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts.ContactsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue.DiscoveryQueuePath
+import io.wid.dearby.adaptor.persistence.jooq.tables.NotificationSettings.NotificationSettingsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Organizations.OrganizationsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileEligibility.ProfileEligibilityPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileHistories.ProfileHistoriesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileJobs.ProfileJobsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProfileVersions.ProfileVersionsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.PushDeliveries.PushDeliveriesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.PushDevices.PushDevicesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts.ReceiptsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationPreferences.RecommendationPreferencesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals.RecommendationSignalsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivities.UserActivitiesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserConsents.UserConsentsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserFavorites.UserFavoritesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserOrgAffinity.UserOrgAffinityPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles.UserRolesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserTaste.UserTastePath
@@ -178,6 +186,22 @@ open class Users(
     val discoveryQueue: DiscoveryQueuePath
         get(): DiscoveryQueuePath = discoveryQueue()
 
+    private lateinit var _notificationSettings: NotificationSettingsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.notification_settings</code> table
+     */
+    fun notificationSettings(): NotificationSettingsPath {
+        if (!this::_notificationSettings.isInitialized)
+            _notificationSettings = NotificationSettingsPath(this, null, NOTIFICATION_SETTINGS__NOTIFICATION_SETTINGS_USER_ID_FKEY.inverseKey)
+
+        return _notificationSettings;
+    }
+
+    val notificationSettings: NotificationSettingsPath
+        get(): NotificationSettingsPath = notificationSettings()
+
     private lateinit var _profileEligibility: ProfileEligibilityPath
 
     /**
@@ -241,6 +265,38 @@ open class Users(
 
     val profileVersions: ProfileVersionsPath
         get(): ProfileVersionsPath = profileVersions()
+
+    private lateinit var _pushDeliveries: PushDeliveriesPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.push_deliveries</code> table
+     */
+    fun pushDeliveries(): PushDeliveriesPath {
+        if (!this::_pushDeliveries.isInitialized)
+            _pushDeliveries = PushDeliveriesPath(this, null, PUSH_DELIVERIES__PUSH_DELIVERIES_USER_ID_FKEY.inverseKey)
+
+        return _pushDeliveries;
+    }
+
+    val pushDeliveries: PushDeliveriesPath
+        get(): PushDeliveriesPath = pushDeliveries()
+
+    private lateinit var _pushDevices: PushDevicesPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.push_devices</code> table
+     */
+    fun pushDevices(): PushDevicesPath {
+        if (!this::_pushDevices.isInitialized)
+            _pushDevices = PushDevicesPath(this, null, PUSH_DEVICES__PUSH_DEVICES_USER_ID_FKEY.inverseKey)
+
+        return _pushDevices;
+    }
+
+    val pushDevices: PushDevicesPath
+        get(): PushDevicesPath = pushDevices()
 
     private lateinit var _receipts: ReceiptsPath
 
@@ -321,6 +377,22 @@ open class Users(
 
     val userConsents: UserConsentsPath
         get(): UserConsentsPath = userConsents()
+
+    private lateinit var _userFavorites: UserFavoritesPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.user_favorites</code> table
+     */
+    fun userFavorites(): UserFavoritesPath {
+        if (!this::_userFavorites.isInitialized)
+            _userFavorites = UserFavoritesPath(this, null, USER_FAVORITES__USER_FAVORITES_USER_ID_FKEY.inverseKey)
+
+        return _userFavorites;
+    }
+
+    val userFavorites: UserFavoritesPath
+        get(): UserFavoritesPath = userFavorites()
 
     private lateinit var _userOrgAffinity: UserOrgAffinityPath
 

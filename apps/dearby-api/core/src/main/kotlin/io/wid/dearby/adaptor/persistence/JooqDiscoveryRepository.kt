@@ -12,6 +12,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.references.SCHEDULE_STATUSE
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.TAG_EMBEDDINGS
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.USER_ACTIVITIES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.USER_ACTIVITY_SCHEDULE_STATUSES
+import io.wid.dearby.adaptor.persistence.jooq.tables.references.USER_FAVORITES
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.USER_ORG_AFFINITY
 import io.wid.dearby.adaptor.persistence.jooq.tables.references.USER_TASTE
 import io.wid.dearby.application.discovery.DiscoveryRepository
@@ -100,6 +101,7 @@ class JooqDiscoveryRepository(private val dsl: DSLContext) : DiscoveryRepository
             .union(DSL.select(RECOMMENDATION_SIGNALS.USER_ID).from(RECOMMENDATION_SIGNALS))
             .union(DSL.select(USER_ACTIVITIES.USER_ID).from(USER_ACTIVITIES))
             .union(DSL.select(DISCOVERY_QUEUE.USER_ID).from(DISCOVERY_QUEUE))
+            .union(DSL.select(USER_FAVORITES.USER_ID).from(USER_FAVORITES))
             .fetch { it.value1()!! }
 
     override fun activeModel(): String? = dsl.select(EMBEDDING_SETTINGS.ACTIVE_MODEL).from(EMBEDDING_SETTINGS).fetchOne()?.value1()

@@ -4,6 +4,7 @@ import io.wid.dearby.adaptor.web.ReferenceResponse
 import io.wid.dearby.adaptor.web.v1.activities.ResponseLanguage
 import io.wid.dearby.adaptor.web.v1.tags.TagResponse
 import io.wid.dearby.application.program.ProgramSummary
+import io.wid.dearby.domain.favorite.FavoriteIds
 import java.time.OffsetDateTime
 
 // 발견 화면의 프로그램 묶음 머리글(native-v1.md "발견 프로그램 묶음"). 이름은 요청 언어 값 하나(영문이 없으면 한글)
@@ -25,9 +26,10 @@ data class ProgramSummaryResponse(
     val brandColor: String?, // 로고(계승 포함) 대표색 "#RRGGBB", 커버가 없을 때 그라데이션. 없으면 null
     val coverUrl: String?, // 대기열 커버 경로 `/v1/programs/{id}/cover?v=…`(native-v1.md "맞춤 대기열"), 없거나 꺼졌으면 null
     val logoUrl: String?, // 프로그램 로고 경로 `/v1/programs/{id}/logo?v=…`(native-v1.md "프로그램 로고"), 없으면 null
+    val favorited: Boolean, // 로그인 사용자가 즐겨찾기했는지(native-v1.md "즐겨찾기(하트)"). 비로그인은 false
 ) {
     companion object {
-        fun from(summary: ProgramSummary, language: ResponseLanguage) = ProgramSummaryResponse(
+        fun from(summary: ProgramSummary, language: ResponseLanguage, favorites: FavoriteIds = FavoriteIds.NONE) = ProgramSummaryResponse(
             id = summary.id,
             name = language.pick(summary.name, summary.nameEn),
             nameEn = summary.nameEn,
@@ -45,6 +47,7 @@ data class ProgramSummaryResponse(
             brandColor = summary.brandColor,
             coverUrl = summary.coverUrl,
             logoUrl = summary.logoUrl,
+            favorited = summary.id in favorites.programs,
         )
     }
 }

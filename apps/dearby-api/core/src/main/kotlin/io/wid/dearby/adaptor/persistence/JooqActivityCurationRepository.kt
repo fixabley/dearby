@@ -359,6 +359,8 @@ class JooqActivityCurationRepository(private val dsl: DSLContext) : ActivityCura
     override fun updatePublicationStatus(activityId: Id, status: PublicationStatus): Boolean =
         dsl.update(ACTIVITIES)
             .set(ACTIVITIES.PUBLICATION_STATUS, status.name)
+            // 처음 게시한 시각(native-v1.md "새 모집": 즐겨찾기 이후 게시된 활동). 내렸다가 다시 올려도 처음 시각을 지킨다
+            .set(ACTIVITIES.PUBLISHED_AT, if (status == PublicationStatus.PUBLISHED) DSL.coalesce(ACTIVITIES.PUBLISHED_AT, DSL.currentOffsetDateTime()) else ACTIVITIES.PUBLISHED_AT)
             .set(ACTIVITIES.UPDATED_AT, LocalDateTime.now())
             .where(ACTIVITIES.ID.eq(activityId))
             .execute() > 0

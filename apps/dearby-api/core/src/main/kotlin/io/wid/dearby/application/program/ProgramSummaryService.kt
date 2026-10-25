@@ -32,6 +32,14 @@ class ProgramSummaryService(
         return ProgramSummaryPage(decorate(found.take(condition.size)), if (found.size > condition.size) condition.cursor + condition.size else null)
     }
 
+    // 즐겨찾기한 프로그램의 묶음 머리(게시 활동이 하나도 없는 프로그램은 빠진다)
+    @Transactional(readOnly = true)
+    fun byIds(ids: Collection<io.wid.dearby.domain.Id>): Map<io.wid.dearby.domain.Id, ProgramSummary> {
+        if (ids.isEmpty()) return emptyMap()
+        val found = summaries.search(ProgramSummarySearch(null, null, 0, ids.size, programIds = ids.toSet()), OffsetDateTime.now(ZoneOffset.UTC))
+        return decorate(found).associateBy { it.id }
+    }
+
     // 묶음 머리의 태그(native-v1.md "태그", "분야·성격 태그와 아이콘")와 로고(native-v1.md "조직 로고와 로고 계승": 프로그램 로고, 없으면 가장 가까운 조직 로고).
     // 대상자 필터 경로와 추천도 거치도록 여기서 한 번에 찾는다
     @Transactional(readOnly = true)
