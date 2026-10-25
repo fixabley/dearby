@@ -61,6 +61,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.TagEmbeddings
 import io.wid.dearby.adaptor.persistence.jooq.tables.Tags
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivityScheduleStatuses
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserAdConsents
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserConsents
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserEntities
@@ -354,6 +355,11 @@ val USER_ACTIVITIES: UserActivities = UserActivities.USER_ACTIVITIES
  * The table <code>public.user_activity_schedule_statuses</code>.
  */
 val USER_ACTIVITY_SCHEDULE_STATUSES: UserActivityScheduleStatuses = UserActivityScheduleStatuses.USER_ACTIVITY_SCHEDULE_STATUSES
+
+/**
+ * The table <code>public.user_ad_consents</code>.
+ */
+val USER_AD_CONSENTS: UserAdConsents = UserAdConsents.USER_AD_CONSENTS
 
 /**
  * The table <code>public.user_consents</code>.

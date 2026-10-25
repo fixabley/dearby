@@ -131,6 +131,24 @@ class ProfileService(
         consents.save(userId, Consent(privacyVersion, termsVersion, OffsetDateTime.now(ZoneOffset.UTC)))
     }
 
+    // 광고 목적 제3자 제공 동의(선택, native-v1.md "광고 목적 개인정보 제3자 제공 동의(선택)"): 프로필 동의와 별개이고 프로필 쓰기를 막지 않는다
+    @Transactional(readOnly = true)
+    fun adConsent(userId: UserId): AdConsent? = consents.findAd(userId)
+
+    // 현재 버전이 아니면 400 CONSENT_VERSION. 같은 버전에 다시 동의하면 처음 동의 시각을 지킨다
+    @Transactional
+    fun giveAdConsent(userId: UserId, version: String): AdConsent {
+        if (version != AdConsent.VERSION) {
+            throw InvalidInputException("광고 목적 개인정보 제3자 제공 동의 버전이 현재 버전과 다릅니다", "Ad consent version mismatch: $version", code = CONSENT_VERSION)
+        }
+        consents.findAd(userId)?.takeIf { it.version == version }?.let { return it }
+        // DB(timestamptz)는 마이크로초까지라 응답도 저장값과 같게 자른다
+        return AdConsent(version, OffsetDateTime.now(ZoneOffset.UTC).truncatedTo(java.time.temporal.ChronoUnit.MICROS)).also { consents.saveAd(userId, it) }
+    }
+
+    @Transactional
+    fun withdrawAdConsent(userId: UserId) = consents.deleteAd(userId)
+
     private fun requireConsent(userId: UserId) {
         if (!consentVersions.satisfiedBy(consents.find(userId))) {
             throw PermissionDeniedException("개인정보 수집·이용과 이용약관에 먼저 동의해 주세요", "Consent required: $userId", code = CONSENT_REQUIRED)

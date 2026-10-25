@@ -289,4 +289,28 @@ class ProfileFlowTest(@Autowired val mvc: MockMvc, @Autowired val jdbc: JdbcClie
         jdbc.sql("insert into user_consents (user_id, privacy_version, terms_version, consented_at) values (?, '2026-10-19', '2026-10-19', now())").param(earlier).update()
         assertEquals(true, read(mvc.get("/v1/profile") { asUser(earlier) })["consentRequired"].asBoolean())
     }
+
+    @Test
+    fun `광고 목적 제3자 제공 동의는 선택이라 프로필 동의와 따로 기록·철회되고, 현재 버전일 때만 agreed다`() {
+        val user = userWithoutConsent()
+        fun get() = read(mvc.get("/v1/me/consents/ad-third-party") { asUser(user) }.andExpect { status { isOk() } })
+        fun putAd(version: String) = mvc.put("/v1/me/consents/ad-third-party") { asUser(user); contentType = MediaType.APPLICATION_JSON; content = """{"version":"$version"}""" }
+        assertEquals(listOf(true, false), listOf(get()["consent"].isNull, get()["agreed"].asBoolean()))
+        assertEquals("CONSENT_VERSION", read(putAd("2026-10-24").andExpect { status { isBadRequest() } })["code"].asString())
+        // 프로필 동의가 없어도 기록된다(서로 묶지 않는다)
+        val given = read(putAd("2026-10-25").andExpect { status { isOk() } })
+        assertEquals(listOf(true, "2026-10-25"), listOf(given["agreed"].asBoolean(), given["consent"]["version"].asString()))
+        fun instant(body: JsonNode) = java.time.OffsetDateTime.parse(body["consent"]["agreedAt"].asString()).toInstant()
+        // 같은 버전에 다시 동의해도 처음 시각을 지킨다(응답 시간대는 저장 경로마다 다를 수 있어 시각으로 비교)
+        assertEquals(instant(given), instant(read(putAd("2026-10-25").andExpect { status { isOk() } })))
+        assertEquals(instant(given), instant(get()))
+        assertEquals(true, read(mvc.get("/v1/profile") { asUser(user) })["consentRequired"].asBoolean())
+        // 옛 버전 기록은 agreed=false(다시 묻는다)
+        jdbc.sql("update user_ad_consents set version = '2026-01-01' where user_id = ?").param(user).update()
+        assertEquals(listOf(false, "2026-01-01"), listOf(get()["agreed"].asBoolean(), get()["consent"]["version"].asString()))
+        // 철회는 멱등이다
+        repeat(2) { mvc.delete("/v1/me/consents/ad-third-party") { asUser(user) }.andExpect { status { isNoContent() } } }
+        assertEquals(listOf(true, false), listOf(get()["consent"].isNull, get()["agreed"].asBoolean()))
+        mvc.get("/v1/me/consents/ad-third-party").andExpect { status { isUnauthorized() } }
+    }
 }
