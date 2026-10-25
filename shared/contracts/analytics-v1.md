@@ -1,6 +1,6 @@
 # 앱 사용 통계(Firebase Analytics) 이벤트 사전 — 2026-10-25
 
-사용자 결정: "Analytics SDK 넣어줘"(광고 ID 없이), "분야 등을 지정해서 넣을 수도"(사용자 속성), "퍼널 통과율 같은 것도 GA로 적용해주세요. 이탈률, 도달율도". iOS·Android가 같은 이름을 쓴다(웹은 Analytics를 넣지 않는다). 개인정보: 광고 ID·SSAID·사용자 ID를 보내지 않고, 지원 자격 값(나이·재학 등)·이름·연락처·명함 내용은 어떤 이벤트·속성에도 넣지 않는다. 프로필 `사용 통계 보내기`를 끄면 수집을 멈춘다.
+사용자 결정: "Analytics SDK 넣어줘"(광고 ID 없이), "분야 등을 지정해서 넣을 수도"(사용자 속성), "퍼널 통과율 같은 것도 GA로 적용해주세요. 이탈률, 도달율도". iOS·Android가 같은 이름을 쓴다(웹은 Analytics를 넣지 않는다). 개인정보: 광고 ID·SSAID·사용자 ID를 보내지 않고(2026-10-25부터 앱에 AdMob 광고가 있어 광고 SDK는 광고 ID를 쓰지만 Firebase 사용 통계는 여전히 쓰지 않는다), 지원 자격 값(나이·재학 등)·이름·연락처·명함 내용은 어떤 이벤트·속성에도 넣지 않는다. 프로필 `사용 통계 보내기`를 끄면 수집을 멈춘다.
 
 ## 사용자 속성 (GA 맞춤 정의 — 사용자 범위로 등록)
 
@@ -35,8 +35,10 @@
 | `queue_detail` | `자세히` | `position`, `activity_id` |
 | `queue_end` | 끝 화면 도달 | `viewed`(본 카드 수) |
 | `queue_exit` | 끝 전 닫음 | `position`(마지막으로 본 카드) |
+| `queue_ad_shown` | 대기열 끝 광고 카드가 화면에 보임(열람당 최대 1번, 2026-10-25) | `viewed`(그때까지 본 활동 카드 수) |
+| `queue_ad_skipped_unloaded` | 마지막 카드에서 넘겼는데 광고가 로드돼 있지 않거나 실패해 광고 카드를 건너뜀 | `reason` = `loading`(아직 요청 중)·`failed` (Release에 광고 ID가 없어 광고를 끈 빌드는 보내지 않는다) |
 
-도달률 = `queue_card_view(position=n)` 사용자 수 ÷ `queue_open` 사용자 수(n=1…10), 완주율 = `queue_end` ÷ `queue_open`.
+도달률 = `queue_card_view(position=n)` 사용자 수 ÷ `queue_open` 사용자 수(n=1…10), 완주율 = `queue_end` ÷ `queue_open`. 광고 카드는 끝 화면 전이므로 광고 카드에서 닫으면 `queue_exit`(`position` = 마지막 활동 카드 번호)를 보내고 완주로 세지 않는다. 광고 노출률 = `queue_ad_shown` ÷ (`queue_ad_shown` + `queue_ad_skipped_unloaded`). 클릭·수익은 AdMob 보고서로 본다([native-v1.md](native-v1.md) "맞춤 대기열 끝 광고").
 
 ### 3. 관심 → 신청 전환
 | 이벤트 | 매개변수 |
