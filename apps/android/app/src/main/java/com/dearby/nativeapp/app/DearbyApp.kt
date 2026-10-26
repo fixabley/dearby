@@ -181,7 +181,8 @@ private sealed interface Route {
     var qrActivity by remember { mutableStateOf<String?>(null) }
     val showTodayQr: (String) -> Unit = { id ->
         val card = myCardsState.selectedId?.let(myCards::card)
-        if (card != null) route = Route.Qr(card, id) else { qrActivity = id; tab = Tab.Cards; cardsSegment = CardsSegment.MINE }
+        // `load()` first: a stale SIGNED_OUT·NO_CARD·FAILED phase from an earlier visit would otherwise drop [qrActivity] before 내 명함's own read starts.
+        if (card != null) route = Route.Qr(card, id) else { qrActivity = id; myCards.load(); tab = Tab.Cards; cardsSegment = CardsSegment.MINE }
     }
     LaunchedEffect(myCardsState.phase, myCardsState.selectedId, qrActivity) {
         val id = qrActivity ?: return@LaunchedEffect
