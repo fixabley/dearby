@@ -63,8 +63,8 @@ export function upstreamFetch(
     query,
     accept = "application/json",
     acceptLanguage,
-    revalidate,
     ifMatch,
+    revalidate,
     formData,
   }: {
     method?: string;
@@ -78,10 +78,10 @@ export function upstreamFetch(
     accept?: string;
     /** Already validated; the API answers activity text in ko or en from it. */
     acceptLanguage?: string;
+    /** Already validated `If-Match` of an account mutation (the profile version check). */
+    ifMatch?: string;
     /** Seconds to keep the response in the data cache (public, cookie-free reads such as Open Graph); otherwise never cached. */
     revalidate?: number;
-    /** Profile version for `PUT /v1/profile` (contract "프로필과 버전 이력"); the API answers 409 when it moved on. */
-    ifMatch?: string;
     /** Multipart upload (photo, 인증자료): sent as is so the runtime sets the boundary; `body` is ignored then. */
     formData?: FormData;
   },
@@ -95,7 +95,7 @@ export function upstreamFetch(
   if (bearer) headers.Authorization = `Bearer ${bearer}`;
   if (body !== undefined && !formData) headers["Content-Type"] = "application/json";
   if (acceptLanguage) headers["Accept-Language"] = acceptLanguage;
-  if (ifMatch !== undefined) headers["If-Match"] = ifMatch;
+  if (ifMatch) headers["If-Match"] = ifMatch;
   const url = new URL(`/v1/${path}`, origin);
   if (query) url.search = query.toString();
   return fetch(url, {

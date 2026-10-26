@@ -79,6 +79,9 @@ export function errorMessage(error: unknown): string {
     return "요청이 많아 잠시 쉬고 있어요. 잠시 후 다시 시도해 주세요.";
   return "서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.";
 }
+/** Name used by 내 활동 (2단계 B) for the same refresh-once request. */
+export const accountRequest = account;
+
 // Same origin Web Locks serialize first saves across tabs before a cookie exists.
 export async function mutateGuest<T>(
   path: string,

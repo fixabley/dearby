@@ -15,7 +15,7 @@ import { useUnread } from "@/features/notifications/model/unread";
  * a hairline once the page scrolls — whose centre shows the page's large title after it scrolls under the bar. Home-level pages
  * carry the brand on the left; the activity detail and a public card get a back link instead. On the right, signed out: 저장한 명함
  * and `로그인` (contract "웹 로그인"); signed in (contract "웹 화면 — 2단계 C"): the 알림 bell with its unread badge and the 메뉴 button
- * whose dropdown lists 내 활동 · 즐겨찾기 · 명함 · 받은 명함 · 프로필 · 알림 · 설정 with icons. Content is 720px max, 16px gutters.
+ * whose dropdown lists 내 활동 · 명함 · 받은 명함 · 프로필 · 알림 · 설정 · 저장한 명함(브라우저) with icons; the 내 활동 glyph link (2단계 B) stays in the bar. Content is 720px max, 16px gutters.
  */
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -53,16 +53,18 @@ function backFor(path: string, signedIn: boolean): { href: string; label: string
   if (path.startsWith("/activities/")) return { href: "/", label: "둘러보기" };
   if (path.startsWith("/cards/") && path !== "/cards/mine") return signedIn ? { href: "/wallet", label: "받은 명함" } : { href: "/saved", label: "저장한 명함" };
   if (path.startsWith("/wallet/")) return { href: "/wallet", label: "받은 명함" };
+  if (path.startsWith("/mine/")) return { href: "/mine", label: "내 활동" };
 }
-/** The signed-in menu (contract "웹 화면 — 2단계 C" › 상단 바): 내 활동·즐겨찾기 come from the sibling PRs' routes. */
+/** The signed-in menu (contract "웹 화면 — 2단계 C" › 상단 바); 즐겨찾기 has no web route yet (contract: 웹은 하트를 두지 않는다). */
 const MENU: MenuItem[] = [
-  { href: "/my-activities", label: "내 활동", icon: "calendar" },
-  { href: "/favorites", label: "즐겨찾기", icon: "heart" },
+  { href: "/mine", label: "내 활동", icon: "check-circle" },
   { href: "/cards/mine", label: "명함", icon: "card" },
   { href: "/wallet", label: "받은 명함", icon: "inbox" },
   { href: "/profile", label: "프로필", icon: "person" },
   { href: "/notifications", label: "알림", icon: "bell" },
   { href: "/settings", label: "설정", icon: "gear" },
+  // 비로그인 저장 목록은 바에서 빠지므로(로그인 뒤 "나중에"로 옮기기를 미룬 사람용) 메뉴 끝에 둔다.
+  { href: "/saved", label: "저장한 명함(브라우저)", icon: "inbox" },
 ];
 
 function NavBar() {
@@ -114,14 +116,28 @@ function NavBar() {
             {title}
           </span>
           <div className="flex min-w-0 items-center justify-end gap-1">
+            {/* 내 활동 (web 2단계 B): signed in only — the web keeps no device copy. */}
+            {auth.signedIn && !back?.href.startsWith("/mine") && (
+              <Link
+                href="/mine"
+                aria-label="내 활동"
+                aria-current={path === "/mine" ? "page" : undefined}
+                className="inline-flex min-h-11 items-center gap-1 px-2 text-body text-teal aria-[current=page]:font-semibold"
+              >
+                <Icon name="check-circle" size="inline" />
+                <span className="hidden truncate sm:inline">내 활동</span>
+              </Link>
+            )}
             {!auth.signedIn && !back?.href.startsWith("/saved") && (
               <Link
                 href="/saved"
+                aria-label="저장한 명함"
                 aria-current={savedHere ? "page" : undefined}
                 className="inline-flex min-h-11 items-center gap-1 px-2 text-body text-teal aria-[current=page]:font-semibold"
               >
                 <Icon name="inbox" size="inline" />
-                <span className="truncate">저장한 명함</span>
+                {/* Labels from `sm`; phone widths keep the glyphs so three items fit beside the collapsed title. */}
+                <span className="hidden truncate sm:inline">저장한 명함</span>
               </Link>
             )}
             {auth.signedIn ? (

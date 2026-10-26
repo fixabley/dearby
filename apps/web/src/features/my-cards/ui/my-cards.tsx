@@ -21,14 +21,14 @@ import { QrScreen } from "./qr-screen";
  * selected card's face under it, and `QR 보이기` · `이 명함 고치기` · `이 명함 지우기`. The selection lives in memory only. `openNew`
  * (from `?new=1`) opens the editor at once.
  */
-export function MyCards({ openNew = false }: { openNew?: boolean }) {
+export function MyCards({ openNew = false, openQr }: { openNew?: boolean; /** `?qr=<activityId>` (오늘 내 행사 카드의 `명함 QR`): open the QR of the selected card with that activity chip. */ openQr?: number }) {
   const { signedOutLocally } = useAuth();
   const [cards, setCards] = useState<MyCard[]>();
   const [selectedId, setSelectedId] = useState<string>();
   const [error, setError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [editor, setEditor] = useState<{ card?: MyCard } | undefined>(openNew ? {} : undefined);
-  const [qr, setQr] = useState(false);
+  const [qr, setQr] = useState(openQr !== undefined);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState("");
@@ -168,7 +168,7 @@ export function MyCards({ openNew = false }: { openNew?: boolean }) {
         </>
       )}
       {editor && <CardEditor card={editor.card} onClose={() => setEditor(undefined)} onSaved={saved} />}
-      {qr && selected && <QrScreen card={selected} onClose={() => setQr(false)} />}
+      {qr && selected && <QrScreen card={selected} presetActivityId={openQr} onClose={() => setQr(false)} />}
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent>
           <DialogTitle>이 명함을 지울까요?</DialogTitle>

@@ -28,10 +28,10 @@ import {
   reciprocateSchema,
   recommendationPreferencesSchema,
   unreadCountSchema,
-  userActivitiesSchema,
   walletSaveBodySchema,
   walletSchema,
 } from "./account-models";
+import { activityId, favoriteSessionListSchema, myActivityListSchema, myActivitySchema, statusPickSchema } from "./models";
 
 const headers = { "Cache-Control": "private, no-store, max-age=0", Vary: "Cookie, Origin" };
 function failure(status: number, code: string, detail?: string) {
@@ -58,6 +58,7 @@ const bodies = {
   githubComplete: githubCompleteBodySchema,
   emailChallenge: emailChallengeBodySchema,
   emailVerify: emailVerifyBodySchema,
+  statusPick: statusPickSchema,
 };
 /** Response shapes that cross to the browser (tokens never do). */
 const meSchema = z.object({
@@ -152,6 +153,16 @@ function route(method: string, segments: string[], url?: URL): Route | undefined
   if (method === "POST" && segments.length === 3 && segments[0] === "me" && segments[1] === "identities" && ["apple", "google"].includes(segments[2]))
     return { body: "linkToken", parse: () => undefined, noContent: true };
   if (method === "POST" && path === "wallet/import-guest") return { body: "empty", parse: (json) => importSchema.parse(json) };
+  // 내 활동 (contract "내 활동 서버 저장·일정 상태", web 2단계 B): the list, add (idempotent PUT, empty body), remove, and a stage mark.
+  if (method === "GET" && path === "me/activities") return { parse: (json) => myActivityListSchema.parse(json) };
+  if (segments[0] === "me" && segments[1] === "activities" && activityId(segments[2] ?? "") !== undefined) {
+    if (segments.length === 3 && method === "PUT") return { body: "empty", parse: (json) => myActivitySchema.parse(json) };
+    if (segments.length === 3 && method === "DELETE") return { parse: () => undefined, noContent: true };
+    if (segments.length === 5 && segments[3] === "schedules" && activityId(segments[4]) !== undefined && method === "PUT")
+      return { body: "statusPick", parse: (json) => myActivitySchema.parse(json) };
+  }
+  // 찜한 세션, read only (the 오늘 내 행사 card shows the next favorited session; 찜 itself stays in the apps).
+  if (method === "GET" && path === "me/session-favorites") return { parse: (json) => favoriteSessionListSchema.parse(json) };
 
   // ── 2단계 C (contract "웹 화면 — 2단계 C"): 프로필·내 명함·받은 명함·알림·연락처 인증 ─────────────────────────────────────
   const query = (allowed: Record<string, RegExp>) => (url ? pickQuery(url, allowed) : new URLSearchParams());
@@ -199,8 +210,6 @@ function route(method: string, segments: string[], url?: URL): Route | undefined
   if (method === "POST" && path === "me/notifications/read-all") return { parse: () => undefined, noContent: true };
   if (method === "POST" && segments.length === 4 && segments[0] === "me" && segments[1] === "notifications" && DIGITS.test(segments[2]) && segments[3] === "read")
     return { parse: () => undefined, noContent: true };
-  // 내 활동 (contract "내 활동 서버 저장"): read only, for the QR screen's activity chip.
-  if (method === "GET" && path === "me/activities") return { parse: (json) => userActivitiesSchema.parse(json) };
   // 연락처 인증 (contract "연락처 인증")
   if (method === "POST" && path === "me/contacts/github/start") return { body: "githubStart", parse: (json) => githubStartSchema.parse(json) };
   if (method === "POST" && path === "me/contacts/github/complete") return { body: "githubComplete", parse: (json) => profileSchema.parse(json) };
@@ -269,6 +278,7 @@ export async function accountProxy(request: Request, segments: string[]): Promis
     body = { guestToken };
   }
   const path = segments.join("/");
+  // `If-Match` crosses as it is (contract "웹에서 쓰는 로그인 기능": the profile PUT's version check); a malformed value is dropped.
   try {
     const result = await callAsAccount(cookieHeader, {
       path,

@@ -25,7 +25,7 @@ const MAX_ACTIVITIES = 20;
  * top-right button (the previous one is closed → 2분 뒤 만료), and closing the screen closes the current code. The activity chip
  * defaults to today's activity among 내 활동 and only changes the address, never the code. Nothing is drawn without a code.
  */
-export function QrScreen({ card, onClose }: { card: MyCard; onClose: () => void }) {
+export function QrScreen({ card, onClose, presetActivityId }: { card: MyCard; onClose: () => void; /** 오늘 내 행사 카드의 `명함 QR`이 미리 고른 활동 (contract "오늘 내 행사 카드"). */ presetActivityId?: number }) {
   const [code, setCode] = useState<QrCode>();
   const [issuing, setIssuing] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -84,7 +84,7 @@ export function QrScreen({ card, onClose }: { card: MyCard; onClose: () => void 
         if (cancelled) return;
         const list = found.filter((item): item is Activity => item !== undefined);
         setActivities(list);
-        setActivity(todayActivity(list));
+        setActivity(list.find((item) => item.id === presetActivityId) ?? todayActivity(list));
       })
       .catch(() => {
         if (!cancelled) setActivities([]);
@@ -92,7 +92,7 @@ export function QrScreen({ card, onClose }: { card: MyCard; onClose: () => void 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [presetActivityId]);
 
   const url = useMemo(() => {
     if (!code) return;

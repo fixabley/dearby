@@ -9,6 +9,9 @@
          user allows it in the system settings; without it the alarm is inexact) and setting them again after a reboot. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <!-- 행사 당일 진행 중 알림 (2026-10-26, device-local): Android 16's live update (status bar chip, One UI 8 Now Bar) is granted per app with this
+         normal permission, which the user can revoke in the notification settings; below Android 16 it is an ordinary ongoing notification. -->
+    <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS"/>
     <!-- 맞춤 대기열 끝 광고 (2026-10-25): AdMob reads the advertising id (com.google.android.gms.permission.AD_ID, merged from the SDK) even for
          non-personalised ads, for frequency capping and fraud checks. 사용 통계 still never collects it (google_analytics_adid_collection_enabled).
          The Privacy Sandbox permissions the SDK and Firebase merge in (Topics is interest targeting, Attribution is measurement) stay removed. -->
@@ -66,6 +69,8 @@
         <meta-data android:name="com.google.firebase.messaging.default_notification_channel_id" android:value="new_recruitment"/>
         <!-- 세션 이동 알림: the alarm's receiver (explicit intents from this app only) and the reboot/exact-alarm-allowed restore (system broadcasts). -->
         <receiver android:name=".features.reminder.SessionReminderReceiver" android:exported="false"/>
+        <!-- 행사 진행 중: the redraw alarm's receiver (explicit intents from this app only); the reboot restore is the boot receiver below. -->
+        <receiver android:name=".features.live.LiveSessionReceiver" android:exported="false"/>
         <receiver android:name=".app.SessionReminderBootReceiver" android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
