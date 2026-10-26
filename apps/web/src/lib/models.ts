@@ -46,11 +46,18 @@ export const cardSchema = z.object({
 });
 export type Card = z.infer<typeof cardSchema>;
 // 명함 교환(contract "명함 교환 — 2026-10-19"): where a saved card was exchanged and when the server recalls it.
+// 교환 세션 맥락(contract "교환 세션 맥락", 2026-10-26): optional until the server sends them; absent on older receipts.
+const sessionField = text.nullable().optional().catch(undefined);
 const exchangeContext = z.object({
   activityId: z.number().int().nullable(),
   activityName: text.nullable(),
   programName: text.nullable(),
+  scheduleTitle: sessionField,
+  sessionTitle: sessionField,
+  trackName: sessionField,
+  room: sessionField,
 });
+export type ExchangeContext = z.infer<typeof exchangeContext>;
 export const guestItemSchema = z.object({
   card: cardSchema,
   context: exchangeContext,
@@ -59,6 +66,14 @@ export const guestItemSchema = z.object({
 });
 export const guestListSchema = z.object({ items: z.array(guestItemSchema) });
 export type GuestItem = z.infer<typeof guestItemSchema>;
+/**
+ * `우아콘 2026 · 오후 세션 · 트랙 B · 그랜드볼룸 B`, then the session title as a second line; empty when the receipt carries no
+ * session fields, so a plain program chip stays as it was.
+ */
+export function sessionContextLines({ programName, scheduleTitle, sessionTitle, trackName, room }: ExchangeContext): string[] {
+  if (!scheduleTitle && !sessionTitle && !trackName && !room) return [];
+  return [[programName, scheduleTitle, trackName, room].filter(Boolean).join(" · "), sessionTitle].filter((line): line is string => !!line);
+}
 /** `N일 뒤 사라져요`, or `오늘 사라져요` when the recall is today or already due. */
 export function expiryLabel(expiresAt: string, now = Date.now()): string {
   const time = Date.parse(expiresAt);
