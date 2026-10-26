@@ -20,6 +20,7 @@
 | [에이전트 운영](agent-roster.md) | UI·유저플로우·어드민·API 담당 경로와 금지 작업 |
 | [Git·워크트리 상태](orca-sessions-and-worktrees.md) | 통합·폴더 정리 기록 |
 | [현재 작업과 결정](coordinator-current-task-and-decisions.md) | 현재 상태(운영 배포·마이그레이션·기기), 남은 일·사용자 결정 대기, 2026-10-18·19 결정 로그 |
+| [비공개 테스트 계획 2026-10](test-plan-2026-10.md) | 성공 지표 둘(활동 추가 → 참석, 명함 교환 3회)의 정의·GA4 계산식·목표값(추정)·기간(10/28 우아콘)·테스터 부탁·측정 전제; 이벤트는 [analytics-v1.md](../../shared/contracts/analytics-v1.md) "비공개 테스트 성공 지표" |
 
 ## 보존한 서비스와 운영
 
