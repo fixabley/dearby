@@ -43,8 +43,10 @@ struct ConnectionProvider: Sendable {
         return AccountViewModel(client: .live(api: origins.api), vault: vault, appleSignInEnabled: appleSignInEnabled, googleSignInEnabled: googleSignInEnabled)
     }
     /// Programs for the discovery accordion (contract "발견 프로그램 묶음"), by the chosen 활동 상태 (contract "활동 상태").
-    func programs(query: String, cursor: Int64?, status: [ActivityStatus], kind: DiscoveryKind) async throws -> ProgramPage {
-        do { return try await ActivityClient.fetchPrograms(api: origins.api, query: query, cursor: cursor, status: status, kind: kind) } catch {
+    func programs(query: String, cursor: Int64?, status: [ActivityStatus], kind: DiscoveryKind, categories: [ActivityCategory]) async throws -> ProgramPage {
+        do {
+            return try await ActivityClient.fetchPrograms(api: origins.api, query: query, cursor: cursor, status: status, kind: kind, categories: categories)
+        } catch {
             // Only the origin and the failure kind; the search text is not logged.
             log.warning("Program load from \(origins.api.absoluteString, privacy: .public) failed: \(String(describing: error), privacy: .public)")
             throw error
@@ -141,9 +143,10 @@ struct ConnectionProvider: Sendable {
             })
     }
     /// One program's activities in the given 활동 상태 (server-judged), up to 100.
-    func programActivities(programID: Int64, status: [ActivityStatus], kind: DiscoveryKind) async throws -> ActivityPage {
+    func programActivities(programID: Int64, status: [ActivityStatus], kind: DiscoveryKind, categories: [ActivityCategory]) async throws -> ActivityPage {
         do {
-            return try await ActivityClient.fetch(api: origins.api, query: "", cursor: nil, programID: programID, size: 100, kind: kind, status: status)
+            return try await ActivityClient.fetch(api: origins.api, query: "", cursor: nil, programID: programID, size: 100, kind: kind, status: status,
+                                                  categories: categories)
         } catch {
             log.warning("Activity load from \(origins.api.absoluteString, privacy: .public) failed: \(String(describing: error), privacy: .public)")
             throw error

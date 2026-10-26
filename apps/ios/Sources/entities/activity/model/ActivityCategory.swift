@@ -19,6 +19,21 @@ enum ActivityCategory: String, CaseIterable, Sendable {
         case .other: "기타"
         }
     }
+    /// SF Symbol (contract "아이콘 통일" 의미별 표의 활동 종류, 2026-10-26): the program card's 종류 줄 and the detail's 종류 칩.
+    var systemImage: String {
+        switch self {
+        case .bootcamp: "graduationcap"
+        case .conference: "person.3"
+        case .workshop: "pencil.and.ruler"
+        case .study: "books.vertical"
+        case .club: "person.2"
+        case .lecture: "mic"
+        case .hackathon: "keyboard"
+        case .contest: "trophy"
+        case .meetup: "cup.and.saucer"
+        case .other: "square.grid.2x2"
+        }
+    }
     static let unclassifiedLabel = "미분류"
     /// Activities grouped in contract order, 미분류 last; one entry per category present. Inside a group the nearest
     /// recruitment deadline comes first, activities without one last, ties by title.
@@ -47,4 +62,15 @@ enum ActivityCategory: String, CaseIterable, Sendable {
 enum DiscoveryKind: String, CaseIterable, Sendable {
     case program, event
     var title: String { self == .program ? "프로그램" : "이벤트" }
+    /// 종류 필터의 항목 (contract "종류 필터" 2026-10-26): this side's 종류 in contract order (the server's 이벤트 set is
+    /// 컨퍼런스·워크샵·강연·밋업, everything else is 프로그램).
+    var categories: [ActivityCategory] {
+        ActivityCategory.allCases.filter { [.conference, .workshop, .lecture, .meetup].contains($0) == (self == .event) }
+    }
+    /// The 종류 button's summary: `전체` for none, up to two names joined, else `부트캠프 외 2`.
+    func summary(_ chosen: Set<ActivityCategory>) -> String {
+        let names = categories.filter(chosen.contains).map(\.label)
+        if names.isEmpty { return "전체" }
+        return names.count <= 2 ? names.joined(separator: "·") : "\(names[0]) 외 \(names.count - 1)"
+    }
 }

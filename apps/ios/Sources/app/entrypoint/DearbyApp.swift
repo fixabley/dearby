@@ -46,7 +46,8 @@ import SwiftUI
         AppAnalytics.start()
         let links = ConnectionProvider()
         self.links = links
-        let activityModel = ActivityViewModel(programs: links.programs(query:cursor:status:kind:), activities: links.programActivities(programID:status:kind:), activity: links.activity(id:),
+        let activityModel = ActivityViewModel(programs: links.programs(query:cursor:status:kind:categories:),
+                                              activities: links.programActivities(programID:status:kind:categories:), activity: links.activity(id:),
                                               timetable: links.timetable(activityID:scheduleID:),
                                               webOrigin: links.origins.web)
         _activityModel = State(initialValue: activityModel)

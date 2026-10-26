@@ -38,7 +38,8 @@ import { Segmented } from "@/shared/ui/segmented";
 import { MultiSelect } from "@/shared/ui/multi-select";
 import { ActivityCard, ActivityCardSkeleton } from "@/widgets/activity/activity-card";
 import { ProgramAvatar } from "@/widgets/activity/program-avatar";
-import { groupByCategory } from "@/lib/category";
+import { categoriesSummary, categoryLabels, groupByCategory, kindCategories } from "@/lib/category";
+import { CategoryIcon } from "@/shared/ui/category-icon";
 
 /**
  * 프로그램 | 이벤트 (contract "프로그램·이벤트 전환"): the server's `kind` filter — 이벤트 is 컨퍼런스·워크샵·밋업·강연, 프로그램 every other
@@ -51,14 +52,15 @@ function statusParam(groups: StatusGroup[]): string {
   return groups.length === 1 && groups[0] === "available" ? "" : groups.join(",");
 }
 /**
- * `/` or `/?kind=event`, plus the search and the 활동 상태 묶음; both live in the URL so a search, 전체 보기 or a reload keeps them
- * (contract "활동 상태": 선택 기억은 웹 URL 쿼리).
+ * `/` or `/?kind=event`, plus the search, the 활동 상태 묶음 and the 종류; all live in the URL so a search, 전체 보기 or a reload keeps
+ * them (contract "활동 상태"·"종류 필터": 선택 기억은 웹 URL 쿼리). The 종류 belong to one side, so switching sides drops them.
  */
-function homePath(kind: Kind, q = "", groups: StatusGroup[] = ["available"]) {
+function homePath(kind: Kind, q = "", groups: StatusGroup[] = ["available"], categories: string[] = []) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   if (kind === "event") params.set("kind", kind);
   if (statusParam(groups)) params.set("status", statusParam(groups));
+  if (categories.length) params.set("category", categories.join(","));
   return params.size ? `/?${params}` : "/";
 }
 /** `지원 가능` · `지원 가능·진행 중` · `전체`. */
@@ -66,10 +68,11 @@ function groupsSummary(groups: StatusGroup[]): string {
   return groups.length === STATUS_GROUP_IDS.length ? "전체" : groups.map((group) => STATUS_GROUPS[group].label).join("·");
 }
 
-function programsPath(q: string, groups: StatusGroup[], kind: Kind, cursor?: number) {
+function programsPath(q: string, groups: StatusGroup[], kind: Kind, categories: string[], cursor?: number) {
   const params = new URLSearchParams();
   if (q) params.set("q", q);
   params.set("kind", kind);
+  if (categories.length) params.set("category", categories.join(","));
   params.set("status", groupStatuses(groups).join(","));
   if (cursor !== undefined) params.set("cursor", String(cursor));
   return `/discovery/programs?${params}`;
@@ -83,7 +86,7 @@ function programsPath(q: string, groups: StatusGroup[], kind: Kind, cursor?: num
  * "태그 아이콘+라벨·분야 1개·자동 펼침 없음"); expanding a header loads that program's activities in the chosen 활동 상태 묶음
  * (`groups`, contract "활동 상태" 2026-10-26) as the usual activity cards.
  */
-export function Discovery({ q, kind, groups }: { q: string; kind: Kind; groups: StatusGroup[] }) {
+export function Discovery({ q, kind, groups, categories }: { q: string; kind: Kind; groups: StatusGroup[]; categories: string[] }) {
   const router = useRouter();
   const [page, setPage] = useState<ProgramPage>();
   const [error, setError] = useState("");
@@ -93,20 +96,22 @@ export function Discovery({ q, kind, groups }: { q: string; kind: Kind; groups: 
   const [expanded, setExpanded] = useState<Set<number>>(new Set());
   // The groups as one value, so the effect reruns when the URL's `status` changes.
   const statusKey = groups.join(",");
+  const categoryKey = categories.join(",");
   useEffect(() => {
     const controller = new AbortController();
-    request<ProgramPage>(programsPath(q, statusKey.split(",") as StatusGroup[], kind), { signal: controller.signal })
+    const chosen = categoryKey ? categoryKey.split(",") : [];
+    request<ProgramPage>(programsPath(q, statusKey.split(",") as StatusGroup[], kind, chosen), { signal: controller.signal })
       .then(setPage)
       .catch((error) => {
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
     return () => controller.abort();
-  }, [q, statusKey, kind, attempt]);
+  }, [q, statusKey, categoryKey, kind, attempt]);
   function loadMore() {
     if (page?.nextCursor == null || loadingMore) return;
     setLoadingMore(true);
     setMoreError("");
-    request<ProgramPage>(programsPath(q, groups, kind, page.nextCursor))
+    request<ProgramPage>(programsPath(q, groups, kind, categories, page.nextCursor))
       .then((next) => {
         setPage((current) => ({
           items: [...(current?.items ?? []), ...next.items],
@@ -115,6 +120,14 @@ export function Discovery({ q, kind, groups }: { q: string; kind: Kind; groups: 
       })
       .catch((error) => setMoreError(errorMessage(error)))
       .finally(() => setLoadingMore(false));
+  }
+  /** The user changed the 종류 (사용 통계 `discovery_category_filter`, empty for 전체): reloads the list with them in the URL. */
+  function chooseCategories(next: string[]) {
+    if (next.join(",") === categoryKey) return;
+    track("discovery_category_filter", { categories: next.map((code) => code.toLowerCase()).join(",") });
+    setPage(undefined);
+    setExpanded(new Set());
+    router.replace(homePath(kind, q, groups, next), { scroll: false });
   }
   function toggle(id: number) {
     setExpanded((ids) => {
@@ -127,7 +140,7 @@ export function Discovery({ q, kind, groups }: { q: string; kind: Kind; groups: 
   return (
     <>
       <LargeTitle>활동 둘러보기</LargeTitle>
-      <SearchField q={q} kind={kind} groups={groups} />
+      <SearchField q={q} kind={kind} groups={groups} categories={categories} />
       <Segmented
         label="활동 묶음"
         className="mt-3"
@@ -152,8 +165,17 @@ export function Discovery({ q, kind, groups }: { q: string; kind: Kind; groups: 
           // Clear the list so the loading state shows while the other states load.
           setPage(undefined);
           setExpanded(new Set());
-          router.replace(homePath(kind, q, chosen), { scroll: false });
+          router.replace(homePath(kind, q, chosen, categories), { scroll: false });
         }}
+      />
+      {/* 종류 (contract "종류 필터" 2026-10-26): this side's 종류 with their icons; none chosen is 전체. */}
+      <MultiSelect
+        label="종류"
+        summary={categoriesSummary(categories)}
+        className="mb-2.5"
+        options={kindCategories(kind).map((code) => ({ value: code, label: categoryLabels[code], icon: <CategoryIcon code={code} /> }))}
+        value={categories}
+        onChange={(next) => chooseCategories(next)}
       />
       {error ? (
         <Failure
@@ -171,7 +193,14 @@ export function Discovery({ q, kind, groups }: { q: string; kind: Kind; groups: 
             icon="search"
             title={`‘${q}’에 맞는 ${kind === "event" ? "이벤트가" : "프로그램이"} 없어요`}
             message={`다른 검색어로 찾아보거나 전체 ${kind === "event" ? "이벤트를" : "프로그램을"} 확인해 보세요.`}
-            primary={{ label: `전체 ${KIND_LABEL[kind]} 보기`, href: homePath(kind, "", groups) }}
+            primary={{ label: `전체 ${KIND_LABEL[kind]} 보기`, href: homePath(kind, "", groups, categories) }}
+          />
+        ) : categories.length ? (
+          <CenteredMessage
+            icon="explore"
+            title={`고른 조건의 ${kind === "event" ? "이벤트가" : "프로그램이"} 없어요`}
+            message="다른 종류를 고르거나 종류 필터를 지워 보세요."
+            primary={{ label: "종류 필터 지우기", onClick: () => chooseCategories([]) }}
           />
         ) : groups.includes("past") ? (
           <CenteredMessage
@@ -184,7 +213,7 @@ export function Discovery({ q, kind, groups }: { q: string; kind: Kind; groups: 
             icon="explore"
             title={
               statusKey !== "available"
-                ? `고른 상태의 ${kind === "event" ? "이벤트가" : "프로그램이"} 없어요`
+                ? `고른 조건의 ${kind === "event" ? "이벤트가" : "프로그램이"} 없어요`
                 : kind === "event"
                   ? "지금 열린 이벤트가 없어요"
                   : "지금 모집 중인 프로그램이 없어요"
@@ -196,7 +225,7 @@ export function Discovery({ q, kind, groups }: { q: string; kind: Kind; groups: 
       ) : (
         <>
           {/* Keyed by the groups so each program loads its activities again for new ones. */}
-          <ul key={statusKey} className="flex flex-col gap-2.5">
+          <ul key={`${statusKey}:${categoryKey}`} className="flex flex-col gap-2.5">
             {page.items.map((program) => (
               <ProgramRow
                 key={program.id}
@@ -205,6 +234,7 @@ export function Discovery({ q, kind, groups }: { q: string; kind: Kind; groups: 
                 toggle={() => toggle(program.id)}
                 groups={groups}
                 kind={kind}
+                categories={categories}
               />
             ))}
           </ul>
@@ -241,7 +271,7 @@ export function Discovery({ q, kind, groups }: { q: string; kind: Kind; groups: 
  * Discovery search (contract "발견 검색·토글"): a stacked label over a system-looking `type="search"` field with a magnifier and a
  * clear button; Enter submits the form so `/?q=` stays the source of truth. Clearing an applied query returns to `/` (keeping `?kind=event`).
  */
-function SearchField({ q, kind, groups }: { q: string; kind: Kind; groups: StatusGroup[] }) {
+function SearchField({ q, kind, groups, categories }: { q: string; kind: Kind; groups: StatusGroup[]; categories: string[] }) {
   const router = useRouter();
   const [value, setValue] = useState(q);
   return (
@@ -266,6 +296,7 @@ function SearchField({ q, kind, groups }: { q: string; kind: Kind; groups: Statu
         />
         {kind === "event" && <input type="hidden" name="kind" value={kind} />}
         {statusParam(groups) && <input type="hidden" name="status" value={statusParam(groups)} />}
+        {categories.length > 0 && <input type="hidden" name="category" value={categories.join(",")} />}
         {value && (
           <button
             type="button"
@@ -273,7 +304,7 @@ function SearchField({ q, kind, groups }: { q: string; kind: Kind; groups: Statu
             className="absolute right-0 grid size-11 place-items-center text-secondary-label"
             onClick={() => {
               setValue("");
-              if (q) router.push(homePath(kind, "", groups));
+              if (q) router.push(homePath(kind, "", groups, categories));
             }}
           >
             <Icon name="clear" size="inline" />
@@ -404,6 +435,7 @@ function ProgramRow({
   toggle,
   groups,
   kind,
+  categories,
 }: {
   program: ProgramSummary;
   open: boolean;
@@ -412,6 +444,8 @@ function ProgramRow({
   kind: Kind;
   /** The chosen 활동 상태 묶음: the same `status` as the list. */
   groups: StatusGroup[];
+  /** The chosen 종류 (none: every 종류): the same `category` as the list. */
+  categories: string[];
 }) {
   const [activities, setActivities] = useState<ActivityPage>();
   const [error, setError] = useState("");
@@ -422,13 +456,16 @@ function ProgramRow({
     if (!open || activities) return;
     const controller = new AbortController();
     const status = groupStatuses(groups).join(",");
-    request<ActivityPage>(`/activities?programId=${program.id}&kind=${kind}&status=${status}&size=100`, { signal: controller.signal })
+    const category = categories.length ? `&category=${categories.join(",")}` : "";
+    request<ActivityPage>(`/activities?programId=${program.id}&kind=${kind}&status=${status}${category}&size=100`, {
+      signal: controller.signal,
+    })
       .then(setActivities)
       .catch((error) => {
         if (!controller.signal.aborted) setError(errorMessage(error));
       });
     return () => controller.abort();
-  }, [open, activities, program.id, kind, groups, attempt]);
+  }, [open, activities, program.id, kind, groups, categories, attempt]);
   useEffect(() => {
     if (!open) return;
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -512,6 +549,13 @@ function ProgramRow({
           >
             <ProgramAvatar key={logoSrc ?? ""} name={program.name} src={logoSrc} />
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+              {/* 종류 줄 (contract "종류 아이콘 라벨" 2026-10-26): read first; none for 미분류 or an unknown code. */}
+              {program.category && categoryLabels[program.category] && (
+                <span className="flex items-center gap-1 text-caption text-secondary-label">
+                  <CategoryIcon code={program.category} />
+                  {categoryLabels[program.category]}
+                </span>
+              )}
               <span className="text-headline font-semibold break-keep">{program.name}</span>
               <span className="text-subheadline text-secondary-label">{program.organization.name}</span>
               <TagChipRow field={fieldTagsOf(program)[0]} traits={traitTagsOf(program)} className="mt-1.5" />
@@ -577,6 +621,7 @@ function ProgramsLoading() {
         <Card key={key} className="flex items-start gap-3 p-4">
           <Skeleton className="size-11 rounded-[14px]" />
           <div className="flex flex-1 flex-col gap-2 pt-1">
+            <Skeleton className="h-3 w-1/5" />
             <Skeleton className="h-4 w-2/3" />
             <Skeleton className="h-3.5 w-1/3" />
           </div>

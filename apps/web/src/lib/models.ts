@@ -246,6 +246,8 @@ export const programSummarySchema = z.object({
   name: text,
   nameEn: text.nullable(),
   organization: named,
+  /** 프로그램 기본 종류 code (contract "활동 종류"), null when unset; absent on older responses. */
+  category: text.nullable().optional().catch(null),
   openActivityCount: z.number().int().nonnegative(),
   nearestRecruitmentEndAt: text.nullable(),
   /** `nearestRecruitmentEndAt` is an activity start (no recruitment deadline), shown as `행사`; absent on older responses. */

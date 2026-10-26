@@ -337,6 +337,8 @@ struct ProgramSummary: Equatable, Identifiable, Sendable {
     let name: String
     let nameEn: String?
     let organization: String
+    /// 프로그램 기본 종류 (contract "활동 종류": `ProgramSummary.category`); nil when unset, unknown or on older responses.
+    var category: ActivityCategory? = nil
     /// Open activities that match the query and type filter; 0 when the list also shows programs without open activities.
     let openActivityCount: Int
     /// Raw ISO 8601 of the nearest recruitment deadline among them; nil when none has a deadline.

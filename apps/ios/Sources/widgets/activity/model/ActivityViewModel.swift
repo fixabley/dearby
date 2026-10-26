@@ -37,14 +37,35 @@ import Observation
     /// 발견 `프로그램 | 이벤트` (user 2026-10-26): 프로그램 by default; the choice stays on the device (`dearby.discovery.kind`, a new key).
     /// Switching reloads the list and the expanded programs' activities (both read with `kind`) for the current search. The queue row
     /// and 추천 do not change.
-    var kind = DiscoveryKind(rawValue: UserDefaults.standard.string(forKey: ActivityViewModel.kindKey) ?? "") ?? .program {
+    var kind = ActivityViewModel.storedKind() {
         didSet {
             guard kind != oldValue else { return }
             UserDefaults.standard.set(kind.rawValue, forKey: Self.kindKey)
+            categories = Self.storedCategories(kind)
             start(query ?? "")
         }
     }
     private static let kindKey = "dearby.discovery.kind"
+    private static func storedKind() -> DiscoveryKind { DiscoveryKind(rawValue: UserDefaults.standard.string(forKey: kindKey) ?? "") ?? .program }
+    /// 종류 필터 (contract "종류 필터" 2026-10-26): none chosen is every 종류 (미분류 included). Kept per side on the device
+    /// (`dearby.discovery.categories.program|event`, comma-separated codes); switching sides brings back that side's choice.
+    private(set) var categories = ActivityViewModel.storedCategories(ActivityViewModel.storedKind())
+    private static func categoriesKey(_ kind: DiscoveryKind) -> String { "dearby.discovery.categories.\(kind.rawValue)" }
+    private static func storedCategories(_ kind: DiscoveryKind) -> Set<ActivityCategory> {
+        let codes = (UserDefaults.standard.string(forKey: categoriesKey(kind)) ?? "").split(separator: ",")
+        return Set(codes.compactMap { ActivityCategory(rawValue: String($0)) }.filter(kind.categories.contains))
+    }
+    /// Applies a 종류 choice (this side's 종류 only) and reloads the list; true when it changed.
+    @discardableResult func setCategories(_ chosen: Set<ActivityCategory>) -> Bool {
+        let chosen = chosen.intersection(kind.categories)
+        guard chosen != categories else { return false }
+        categories = chosen
+        UserDefaults.standard.set(categoryList.map(\.rawValue).joined(separator: ","), forKey: Self.categoriesKey(kind))
+        start(query ?? "")
+        return true
+    }
+    /// The chosen 종류 in contract order, as the requests send them.
+    var categoryList: [ActivityCategory] { ActivityCategory.allCases.filter(categories.contains) }
     private(set) var loadingPrograms: Set<Int64> = []
     private(set) var failedPrograms: Set<Int64> = []
     /// The search field. Kept here so it survives leaving the tab.
@@ -90,16 +111,20 @@ import Observation
     private var firstPage: Task<Void, Never>?
     private var nextPage: Task<Void, Never>?
     /// In-flight activity loads with the groups each asked for.
-    private var programLoads: [Int64: (groups: Set<StatusGroup>, task: Task<Void, Never>)] = [:]
-    private let fetchPrograms: @Sendable (_ query: String, _ cursor: Int64?, _ status: [ActivityStatus], _ kind: DiscoveryKind) async throws -> ProgramPage
-    /// One program's activities in the given states.
-    private let fetchActivities: @Sendable (_ programID: Int64, _ status: [ActivityStatus], _ kind: DiscoveryKind) async throws -> ActivityPage
+    private var programLoads: [Int64: (groups: Set<StatusGroup>, categories: Set<ActivityCategory>, task: Task<Void, Never>)] = [:]
+    private let fetchPrograms: @Sendable (_ query: String, _ cursor: Int64?, _ status: [ActivityStatus], _ kind: DiscoveryKind,
+                                          _ categories: [ActivityCategory]) async throws -> ProgramPage
+    /// One program's activities in the given states and 종류 (none: every 종류).
+    private let fetchActivities: @Sendable (_ programID: Int64, _ status: [ActivityStatus], _ kind: DiscoveryKind,
+                                            _ categories: [ActivityCategory]) async throws -> ActivityPage
     /// `GET /v1/activities/:id` for 내 활동 records and linked activities not seen in discovery; nil when the activity is gone (404).
     private let fetchActivity: @Sendable (_ id: String) async throws -> ActivityModel?
     /// One block's 트랙·세션 시간표; nil on 404.
     private let fetchTimetable: @Sendable (_ activityID: String, _ scheduleID: String) async throws -> Timetable?
-    init(programs: @escaping @Sendable (_ query: String, _ cursor: Int64?, _ status: [ActivityStatus], _ kind: DiscoveryKind) async throws -> ProgramPage,
-         activities: @escaping @Sendable (_ programID: Int64, _ status: [ActivityStatus], _ kind: DiscoveryKind) async throws -> ActivityPage,
+    init(programs: @escaping @Sendable (_ query: String, _ cursor: Int64?, _ status: [ActivityStatus], _ kind: DiscoveryKind,
+                                        _ categories: [ActivityCategory]) async throws -> ProgramPage,
+         activities: @escaping @Sendable (_ programID: Int64, _ status: [ActivityStatus], _ kind: DiscoveryKind,
+                                          _ categories: [ActivityCategory]) async throws -> ActivityPage,
          activity: @escaping @Sendable (_ id: String) async throws -> ActivityModel?,
          timetable: @escaping @Sendable (_ activityID: String, _ scheduleID: String) async throws -> Timetable?,
          webOrigin: URL = URL(string: AppOrigins.defaultWeb)!) {
@@ -175,7 +200,7 @@ import Observation
         refreshFailed = false
         let task = Task {
             do {
-                let page = try await fetchPrograms(query, nil, Self.statuses(statusGroups), kind)
+                let page = try await fetchPrograms(query, nil, Self.statuses(statusGroups), kind, categoryList)
                 guard !Task.isCancelled else { return }
                 loadedAt = Date()
                 programs = []
@@ -190,7 +215,7 @@ import Observation
                 // Activities of programs no longer listed are dropped; the kept ones stay until their reload lands.
                 loadedActivities = loadedActivities.filter { shown.contains($0.key) }
                 // Programs `append` just started loading are skipped by the in-flight guard.
-                for id in expanded { loadActivities(id, groups: statusGroups, reload: true) }
+                for id in expanded { loadActivities(id, groups: statusGroups, categories: categories, reload: true) }
             } catch {
                 guard !Task.isCancelled else { return }
                 // A list already on screen stays; only a refresh with nothing shown falls back to the error screen.
@@ -209,7 +234,7 @@ import Observation
         nextPage = Task {
             defer { if !Task.isCancelled { loadingMore = false; nextPage = nil } }
             do {
-                let page = try await fetchPrograms(query, cursor, Self.statuses(statusGroups), kind)
+                let page = try await fetchPrograms(query, cursor, Self.statuses(statusGroups), kind, categoryList)
                 guard !Task.isCancelled else { return }
                 append(page)
             } catch {
@@ -222,14 +247,17 @@ import Observation
     func toggle(_ programID: Int64) {
         if expanded.contains(programID) { expanded.remove(programID); return }
         expanded.insert(programID)
-        loadActivities(programID, groups: statusGroups)
+        loadActivities(programID, groups: statusGroups, categories: categories)
     }
-    func retryActivities(_ programID: Int64, groups: Set<StatusGroup>) { loadActivities(programID, groups: groups) }
-    /// A program page (from 즐겨찾기) shows every state: loads them unless they are loaded or loading.
-    func loadProgram(_ programID: Int64) { loadActivities(programID, groups: Set(StatusGroup.allCases)) }
-    /// The program's loaded activities when they cover `groups` (a program page loads every state, so a discovery card can reuse them).
-    func activities(_ programID: Int64, for groups: Set<StatusGroup>) -> ProgramActivities? {
-        loadedActivities[programID].flatMap { $0.groups.isSuperset(of: groups) ? $0 : nil }
+    func retryActivities(_ programID: Int64, groups: Set<StatusGroup>, categories: Set<ActivityCategory>) {
+        loadActivities(programID, groups: groups, categories: categories)
+    }
+    /// A program page (from 즐겨찾기) shows every state and 종류: loads them unless they are loaded or loading.
+    func loadProgram(_ programID: Int64) { loadActivities(programID, groups: Set(StatusGroup.allCases), categories: []) }
+    /// The program's loaded activities when they cover `groups` and were read with the same 종류 (a program page loads every state and
+    /// 종류, so a discovery card without a 종류 choice can reuse them).
+    func activities(_ programID: Int64, for groups: Set<StatusGroup>, categories: Set<ActivityCategory> = []) -> ProgramActivities? {
+        loadedActivities[programID].flatMap { $0.groups.isSuperset(of: groups) && $0.categories == categories ? $0 : nil }
     }
     /// The `+` beside an activity's heart (contract "`+` 내 활동에 추가" 2026-10-25): adds it, or once added opens it in 내 활동.
     /// `source` is the 사용 통계 `myactivity_add` source (`discovery`, `queue`, `favorites`, …).
@@ -257,7 +285,7 @@ import Observation
         moreFailed = false
         firstPage = Task {
             do {
-                let page = try await fetchPrograms(query, nil, Self.statuses(statusGroups), kind)
+                let page = try await fetchPrograms(query, nil, Self.statuses(statusGroups), kind, categoryList)
                 guard !Task.isCancelled else { return }
                 loadedAt = Date()
                 append(page)
@@ -275,10 +303,10 @@ import Observation
     }
     /// Loads the program's activities in `groups`' states unless loaded or loading ones cover them; `reload` fetches again even then
     /// (pull to refresh keeps the old ones on screen until the answer lands). A load for fewer groups in flight gives way.
-    private func loadActivities(_ programID: Int64, groups: Set<StatusGroup>, reload: Bool = false) {
-        if !reload, activities(programID, for: groups) != nil { return }
+    private func loadActivities(_ programID: Int64, groups: Set<StatusGroup>, categories: Set<ActivityCategory>, reload: Bool = false) {
+        if !reload, activities(programID, for: groups, categories: categories) != nil { return }
         if let inFlight = programLoads[programID] {
-            if inFlight.groups.isSuperset(of: groups) { return }
+            if inFlight.groups.isSuperset(of: groups) && inFlight.categories == categories { return }
             inFlight.task.cancel()
         }
         loadingPrograms.insert(programID)
@@ -286,15 +314,15 @@ import Observation
         let task = Task {
             defer { if !Task.isCancelled { loadingPrograms.remove(programID); programLoads[programID] = nil } }
             do {
-                let page = try await fetchActivities(programID, Self.statuses(groups), kind)
+                let page = try await fetchActivities(programID, Self.statuses(groups), kind, ActivityCategory.allCases.filter(categories.contains))
                 guard !Task.isCancelled else { return }
                 for item in page.items { seen[item.id] = item }
-                loadedActivities[programID] = ProgramActivities(groups: groups, items: page.items, now: loadedAt)
+                loadedActivities[programID] = ProgramActivities(groups: groups, categories: categories, items: page.items, now: loadedAt)
             } catch {
                 if !Task.isCancelled { failedPrograms.insert(programID) }
             }
         }
-        programLoads[programID] = (groups, task)
+        programLoads[programID] = (groups, categories, task)
     }
     func apply(_ id: String, _ value: Bool) {
         if value { appliedIDs.insert(id) } else { appliedIDs.remove(id); stageMarks[id] = nil; deletedIDs.removeAll { $0 == id } }
@@ -432,12 +460,15 @@ struct MineServer: Sendable {
 /// activity outside them (an older server ignores `status`) is left out.
 struct ProgramActivities {
     let groups: Set<StatusGroup>
+    /// The 종류 they were read with; empty is every 종류.
+    let categories: Set<ActivityCategory>
     let recruiting: [ActivityModel]
     let upcoming: [ActivityModel]
     let inProgress: [ActivityModel]
     let past: [ActivityModel]
-    init(groups: Set<StatusGroup>, items: [ActivityModel], now: Date) {
+    init(groups: Set<StatusGroup>, categories: Set<ActivityCategory>, items: [ActivityModel], now: Date) {
         self.groups = groups
+        self.categories = categories
         let since = Calendar(identifier: .gregorian).date(byAdding: .year, value: -3, to: now) ?? now
         var byStatus: [ActivityStatus: [ActivityModel]] = [:]
         for item in items {

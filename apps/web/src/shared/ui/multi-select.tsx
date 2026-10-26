@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/shared/lib/utils";
 import { Icon } from "@/shared/ui/icon";
 
@@ -18,7 +18,8 @@ export function MultiSelect<T extends string>({
 }: {
   label: string;
   summary: string;
-  options: { value: T; label: string }[];
+  /** `icon` is an optional glyph before the label (hidden from screen readers; the label is read). */
+  options: { value: T; label: string; icon?: ReactNode }[];
   value: T[];
   onChange: (value: T[]) => void;
   className?: string;
@@ -80,6 +81,7 @@ export function MultiSelect<T extends string>({
                   )
                 }
               />
+              {option.icon && <span className="flex text-secondary-label">{option.icon}</span>}
               <span className="text-body">{option.label}</span>
             </label>
           ))}
