@@ -10,6 +10,7 @@ import androidx.compose.material.icons.rounded.RemoveCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -46,6 +47,10 @@ val ProfileContactKinds = listOf(
     phoneError: String? = null, emailError: String? = null,
 ) {
     var choosing by remember { mutableStateOf(false) }
+    // A contact just added from the sheet takes the focus (and the keyboard) once its field is on screen.
+    var focusAdded by remember { mutableStateOf(false) }
+    val added = remember { FocusRequester() }
+    LaunchedEffect(extras.size) { if (focusAdded) { focusAdded = false; runCatching { added.requestFocus() } } }
     // Icon-led large fields; Next walks down the fields and the last one answers Done (contract "키보드의 내리기 버튼").
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         DearbyField("전화번호", phone, onPhoneChange, placeholder = "010-0000-0000", error = phoneError, required = true, imeAction = ImeAction.Next, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
@@ -59,6 +64,7 @@ val ProfileContactKinds = listOf(
             DearbyField(label, item.value, { onExtraChange(item.typed(it)) }, placeholder = meta?.third,
                 imeAction = if (index == extras.lastIndex) ImeAction.Done else ImeAction.Next, prefix = item.prefix,
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None, autoCorrectEnabled = false, keyboardType = KeyboardType.Ascii),
+                focusRequester = added.takeIf { index == extras.lastIndex },
                 leadingIcon = contactIcon(item.kind), trailingIcon = { IconButton({ onRemoveExtra(item.id) }) { Icon(Icons.Rounded.RemoveCircle, "$label 삭제") } })
         }
         AddRow("연락처 추가") { choosing = true }
@@ -67,7 +73,7 @@ val ProfileContactKinds = listOf(
         Column(Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Text("추가할 연락처", Modifier.padding(horizontal = 16.dp, vertical = 8.dp), style = MaterialTheme.typography.titleMedium)
             ProfileContactKinds.forEach { (kind, label, hint) ->
-                ListItem({ Text(label) }, Modifier.clickable(role = Role.Button) { choosing = false; onAdd(kind) }, supportingContent = { Text(hint) },
+                ListItem({ Text(label) }, Modifier.clickable(role = Role.Button) { choosing = false; focusAdded = true; onAdd(kind) }, supportingContent = { Text(hint) },
                     leadingContent = { Icon(contactIcon(kind), null, tint = MaterialTheme.colorScheme.onSurfaceVariant) })
             }
         }
