@@ -10,6 +10,7 @@ import org.springframework.security.oauth2.jwt.Jwt
 import java.util.UUID
 import io.wid.dearby.adaptor.web.v1.tags.TagIds
 import io.wid.dearby.domain.ActivityCategory
+import io.wid.dearby.domain.ActivityStatus
 import io.wid.dearby.domain.DiscoveryKind
 import io.wid.dearby.domain.eligibility.EligibilityFilter
 import org.springframework.http.HttpHeaders
@@ -35,6 +36,7 @@ class ActivityController(private val activities: ActivityService, private val fa
         @RequestParam(required = false) category: String?, // 활동 종류 코드 하나 또는 쉼표 목록(native-v1.md "활동 종류")
         @RequestParam(required = false) kind: String?, // program|event, 생략하면 전부(native-v1.md "발견 프로그램·이벤트 전환")
         @RequestParam(defaultValue = "false") open: Boolean, // true면 열린 활동만(native-v1.md "열린 활동 판정 일원화")
+        @RequestParam(required = false) status: String?, // 활동 상태 쉼표 목록(native-v1.md "활동 상태"), 생략하면 전부
         @RequestParam(required = false) tagIds: String?, // 태그 id 쉼표 목록, 모두 가진 활동만(native-v1.md "태그")
         @RequestParam(defaultValue = "false") forHistory: Boolean, // true면 활동 이력 후보만(native-v1.md "활동 이력에서 단기 행사 제외")
         @RequestParam(required = false) cursor: Long?,
@@ -44,7 +46,7 @@ class ActivityController(private val activities: ActivityService, private val fa
         @AuthenticationPrincipal jwt: Jwt?,
     ): ResponseEntity<ActivityPageResponse> {
         val language = ResponseLanguage.from(acceptLanguage)
-        val page = activities.search(ActivitySearch(q, organizationId, programId, cursor, size, eligibility = EligibilityFilter.from(params), categories = ActivityCategory.parseList(category), kind = DiscoveryKind.parse(kind), openOnly = open, tagIds = TagIds.parse(tagIds), forHistory = forHistory))
+        val page = activities.search(ActivitySearch(q, organizationId, programId, cursor, size, eligibility = EligibilityFilter.from(params), categories = ActivityCategory.parseList(category), kind = DiscoveryKind.parse(kind), openOnly = open, tagIds = TagIds.parse(tagIds), forHistory = forHistory, statuses = ActivityStatus.parseList(status)))
         return localized(language, ActivityPageResponse(page.items.map { ActivityResponse.from(it, language, favoritesOf(jwt)) }, page.nextCursor))
     }
 

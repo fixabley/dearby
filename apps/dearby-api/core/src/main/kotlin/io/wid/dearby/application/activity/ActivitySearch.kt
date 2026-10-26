@@ -1,6 +1,7 @@
 package io.wid.dearby.application.activity
 
 import io.wid.dearby.domain.ActivityCategory
+import io.wid.dearby.domain.ActivityStatus
 import io.wid.dearby.domain.DiscoveryKind
 import io.wid.dearby.domain.Id
 import io.wid.dearby.domain.PublicationStatus
@@ -23,4 +24,5 @@ data class ActivitySearch(
     val forHistory: Boolean = false, // true면 활동 이력 후보만(native-v1.md "활동 이력에서 단기 행사 제외": 7일 미만 행사 제외)
     val ids: Set<Id>? = null, // 이 활동들만(즐겨찾기). null이면 전부
     val programIds: Set<Id>? = null, // 이 프로그램들의 활동만(즐겨찾기 프로그램 알림). null이면 전부
+    val statuses: Set<ActivityStatus>? = null, // 활동 상태 필터(native-v1.md "활동 상태"). null이면 전부
 )
