@@ -8,6 +8,7 @@ import io.wid.dearby.adaptor.persistence.jooq.Public
 import io.wid.dearby.adaptor.persistence.jooq.keys.ACTIVITY_TAGS__ACTIVITY_TAGS_TAG_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.PROGRAM_TAGS__PROGRAM_TAGS_TAG_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.RECOMMENDATION_SIGNALS__RECOMMENDATION_SIGNALS_TAG_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.SCHEDULE_SESSION_TAGS__SCHEDULE_SESSION_TAGS_TAG_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.TAGS_PKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.TAGS__TAGS_PARENT_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.TAG_EMBEDDINGS__TAG_EMBEDDINGS_TAG_ID_FKEY
@@ -16,6 +17,8 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.ActivityTags.ActivityTagsPa
 import io.wid.dearby.adaptor.persistence.jooq.tables.ProgramTags.ProgramTagsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Programs.ProgramsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals.RecommendationSignalsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessionTags.ScheduleSessionTagsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessions.ScheduleSessionsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.TagEmbeddings.TagEmbeddingsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.TagsRecord
 
@@ -211,6 +214,22 @@ open class Tags(
     val recommendationSignals: RecommendationSignalsPath
         get(): RecommendationSignalsPath = recommendationSignals()
 
+    private lateinit var _scheduleSessionTags: ScheduleSessionTagsPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.schedule_session_tags</code> table
+     */
+    fun scheduleSessionTags(): ScheduleSessionTagsPath {
+        if (!this::_scheduleSessionTags.isInitialized)
+            _scheduleSessionTags = ScheduleSessionTagsPath(this, null, SCHEDULE_SESSION_TAGS__SCHEDULE_SESSION_TAGS_TAG_ID_FKEY.inverseKey)
+
+        return _scheduleSessionTags;
+    }
+
+    val scheduleSessionTags: ScheduleSessionTagsPath
+        get(): ScheduleSessionTagsPath = scheduleSessionTags()
+
     private lateinit var _tagEmbeddings: TagEmbeddingsPath
 
     /**
@@ -240,6 +259,13 @@ open class Tags(
      */
     val programs: ProgramsPath
         get(): ProgramsPath = programTags().programs()
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>public.schedule_sessions</code> table
+     */
+    val scheduleSessions: ScheduleSessionsPath
+        get(): ScheduleSessionsPath = scheduleSessionTags().scheduleSessions()
     override fun getChecks(): List<Check<TagsRecord>> = listOf(
         Internal.createCheck(this, DSL.name("tags_kind_check"), "(((kind)::text = ANY ((ARRAY['FIELD'::character varying, 'TRAIT'::character varying])::text[])))", true)
     )

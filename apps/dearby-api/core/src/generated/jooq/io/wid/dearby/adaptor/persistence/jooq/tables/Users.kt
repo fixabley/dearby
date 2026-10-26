@@ -25,6 +25,7 @@ import io.wid.dearby.adaptor.persistence.jooq.keys.USER_FAVORITES__USER_FAVORITE
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_NOTIFICATIONS__USER_NOTIFICATIONS_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ORG_AFFINITY__USER_ORG_AFFINITY_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_ROLES__USER_ROLES_USER_ID_FKEY
+import io.wid.dearby.adaptor.persistence.jooq.keys.USER_SESSION_FAVORITES__USER_SESSION_FAVORITES_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.keys.USER_TASTE__USER_TASTE_USER_ID_FKEY
 import io.wid.dearby.adaptor.persistence.jooq.tables.Contacts.ContactsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.DiscoveryQueue.DiscoveryQueuePath
@@ -39,6 +40,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.PushDevices.PushDevicesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts.ReceiptsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationPreferences.RecommendationPreferencesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.RecommendationSignals.RecommendationSignalsPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessions.ScheduleSessionsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivities.UserActivitiesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserAdConsents.UserAdConsentsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserConsents.UserConsentsPath
@@ -46,6 +48,7 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.UserFavorites.UserFavorites
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserNotifications.UserNotificationsPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserOrgAffinity.UserOrgAffinityPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserRoles.UserRolesPath
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserSessionFavorites.UserSessionFavoritesPath
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserTaste.UserTastePath
 import io.wid.dearby.adaptor.persistence.jooq.tables.records.UsersRecord
 
@@ -462,6 +465,22 @@ open class Users(
     val userRoles: UserRolesPath
         get(): UserRolesPath = userRoles()
 
+    private lateinit var _userSessionFavorites: UserSessionFavoritesPath
+
+    /**
+     * Get the implicit to-many join path to the
+     * <code>public.user_session_favorites</code> table
+     */
+    fun userSessionFavorites(): UserSessionFavoritesPath {
+        if (!this::_userSessionFavorites.isInitialized)
+            _userSessionFavorites = UserSessionFavoritesPath(this, null, USER_SESSION_FAVORITES__USER_SESSION_FAVORITES_USER_ID_FKEY.inverseKey)
+
+        return _userSessionFavorites;
+    }
+
+    val userSessionFavorites: UserSessionFavoritesPath
+        get(): UserSessionFavoritesPath = userSessionFavorites()
+
     private lateinit var _userTaste: UserTastePath
 
     /**
@@ -484,6 +503,13 @@ open class Users(
      */
     val organizations: OrganizationsPath
         get(): OrganizationsPath = userOrgAffinity().organizations()
+
+    /**
+     * Get the implicit many-to-many join path to the
+     * <code>public.schedule_sessions</code> table
+     */
+    val scheduleSessions: ScheduleSessionsPath
+        get(): ScheduleSessionsPath = userSessionFavorites().scheduleSessions()
     override fun `as`(alias: String): Users = Users(DSL.name(alias), this)
     override fun `as`(alias: Name): Users = Users(alias, this)
     override fun `as`(alias: Table<*>): Users = Users(alias.qualifiedName, this)

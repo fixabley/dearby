@@ -102,6 +102,7 @@ object CollectionPrompts {
                         "endDate" to nullableString(),
                         "dateLabel" to string(),
                         "recurrence" to nullableString(),
+                        "timetable" to timetable(),
                     )
                 ),
             ),
@@ -162,6 +163,31 @@ object CollectionPrompts {
         )
         return obj(condition)
     }
+
+    // 일정 블록의 하위 시간표(native-v1.md "트랙·세션 시간표"). 없으면 null
+    private fun timetable(): Map<String, Any> = mapOf(
+        "type" to listOf("object", "null"),
+        "properties" to mapOf(
+            "tracks" to mapOf("type" to "array", "items" to obj(mapOf("name" to string(), "room" to nullableString()))),
+            "sessions" to mapOf(
+                "type" to "array",
+                "items" to obj(
+                    mapOf(
+                        "track" to nullableString(),
+                        "kind" to mapOf("type" to listOf("string", "null"), "enum" to listOf("TALK", "KEYNOTE", "BREAK", "MEAL", "OTHER", null)),
+                        "title" to string(),
+                        "startAt" to nullableString(),
+                        "endAt" to nullableString(),
+                        "speakers" to mapOf("type" to "array", "items" to obj(mapOf("name" to string(), "affiliation" to nullableString()))),
+                        "tags" to mapOf("type" to "array", "items" to string()),
+                        "description" to nullableString(),
+                    )
+                ),
+            ),
+        ),
+        "required" to listOf("tracks", "sessions"),
+        "additionalProperties" to false,
+    )
 
     private fun string() = mapOf("type" to "string")
     private fun nullableString() = mapOf("type" to listOf("string", "null"))

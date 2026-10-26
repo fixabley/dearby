@@ -32,12 +32,15 @@ import io.wid.dearby.adaptor.persistence.jooq.tables.Programs
 import io.wid.dearby.adaptor.persistence.jooq.tables.PushDevices
 import io.wid.dearby.adaptor.persistence.jooq.tables.Receipts
 import io.wid.dearby.adaptor.persistence.jooq.tables.RefreshTokens
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleSessions
 import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleStatuses
+import io.wid.dearby.adaptor.persistence.jooq.tables.ScheduleTracks
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserActivityScheduleStatuses
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserCredentials
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserFavorites
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserIdentities
 import io.wid.dearby.adaptor.persistence.jooq.tables.UserNotifications
+import io.wid.dearby.adaptor.persistence.jooq.tables.UserSessionFavorites
 import io.wid.dearby.adaptor.persistence.jooq.tables.WebauthnChallenges
 
 import org.jooq.Index
@@ -93,10 +96,13 @@ val PROGRAMS_ORGANIZATION_ID_IDX: Index = Internal.createIndex(DSL.name("program
 val PUSH_DEVICES_USER_IDX: Index = Internal.createIndex(DSL.name("push_devices_user_idx"), PushDevices.PUSH_DEVICES, arrayOf(PushDevices.PUSH_DEVICES.USER_ID), false)
 val RECEIPTS_RECALL_IDX: Index = Internal.createIndex(DSL.name("receipts_recall_idx"), Receipts.RECEIPTS, arrayOf(Receipts.RECEIPTS.RECEIVED_AT), false)
 val REFRESH_TOKENS_USER_ID_IDX: Index = Internal.createIndex(DSL.name("refresh_tokens_user_id_idx"), RefreshTokens.REFRESH_TOKENS, arrayOf(RefreshTokens.REFRESH_TOKENS.USER_ID), false)
+val SCHEDULE_SESSIONS_SCHEDULE_IDX: Index = Internal.createIndex(DSL.name("schedule_sessions_schedule_idx"), ScheduleSessions.SCHEDULE_SESSIONS, arrayOf(ScheduleSessions.SCHEDULE_SESSIONS.SCHEDULE_ID, ScheduleSessions.SCHEDULE_SESSIONS.START_AT), false)
 val SCHEDULE_STATUSES_SCHEDULE_ID_IDX: Index = Internal.createIndex(DSL.name("schedule_statuses_schedule_id_idx"), ScheduleStatuses.SCHEDULE_STATUSES, arrayOf(ScheduleStatuses.SCHEDULE_STATUSES.SCHEDULE_ID), false)
+val SCHEDULE_TRACKS_SCHEDULE_IDX: Index = Internal.createIndex(DSL.name("schedule_tracks_schedule_idx"), ScheduleTracks.SCHEDULE_TRACKS, arrayOf(ScheduleTracks.SCHEDULE_TRACKS.SCHEDULE_ID), false)
 val USER_ACTIVITY_SCHEDULE_STATUSES_STATUS_IDX: Index = Internal.createIndex(DSL.name("user_activity_schedule_statuses_status_idx"), UserActivityScheduleStatuses.USER_ACTIVITY_SCHEDULE_STATUSES, arrayOf(UserActivityScheduleStatuses.USER_ACTIVITY_SCHEDULE_STATUSES.SCHEDULE_STATUS_ID), false)
 val USER_CREDENTIALS_USER_ENTITY_USER_ID_IDX: Index = Internal.createIndex(DSL.name("user_credentials_user_entity_user_id_idx"), UserCredentials.USER_CREDENTIALS, arrayOf(UserCredentials.USER_CREDENTIALS.USER_ENTITY_USER_ID), false)
 val USER_FAVORITES_TARGET_IDX: Index = Internal.createIndex(DSL.name("user_favorites_target_idx"), UserFavorites.USER_FAVORITES, arrayOf(UserFavorites.USER_FAVORITES.TARGET_TYPE, UserFavorites.USER_FAVORITES.TARGET_ID), false)
 val USER_IDENTITIES_USER_ID_IDX: Index = Internal.createIndex(DSL.name("user_identities_user_id_idx"), UserIdentities.USER_IDENTITIES, arrayOf(UserIdentities.USER_IDENTITIES.USER_ID), false)
 val USER_NOTIFICATIONS_USER_IDX: Index = Internal.createIndex(DSL.name("user_notifications_user_idx"), UserNotifications.USER_NOTIFICATIONS, arrayOf(UserNotifications.USER_NOTIFICATIONS.USER_ID, UserNotifications.USER_NOTIFICATIONS.CREATED_AT.desc()), false)
+val USER_SESSION_FAVORITES_SESSION_IDX: Index = Internal.createIndex(DSL.name("user_session_favorites_session_idx"), UserSessionFavorites.USER_SESSION_FAVORITES, arrayOf(UserSessionFavorites.USER_SESSION_FAVORITES.SESSION_ID), false)
 val WEBAUTHN_CHALLENGES_EXPIRES_AT_IDX: Index = Internal.createIndex(DSL.name("webauthn_challenges_expires_at_idx"), WebauthnChallenges.WEBAUTHN_CHALLENGES, arrayOf(WebauthnChallenges.WEBAUTHN_CHALLENGES.EXPIRES_AT), false)

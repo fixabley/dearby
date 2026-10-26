@@ -284,6 +284,18 @@ native-v1.md "조직 로고와 로고 계승"의 어드민 쪽. 프로그램 로
 - `AdminOrganization.logoUrl: string|null`. `AdminProgram`에 `logoUrl`(프로그램 자체 로고, 지금 그대로)과 `effectiveLogo: {url, source: PROGRAM|ORGANIZATION, organizationId: number|null, organizationName: string|null}|null`(계승 결과).
 - 어드민 웹: 조직 편집에 로고 올리기·지우기·미리보기(프로그램 로고 편집기와 같은 모양). 프로그램 편집의 로고 자리는 자체 로고가 없을 때 계승한 로고를 흐리게 보여 주고 "<조직 이름> 로고를 쓰는 중"이라고 적는다. 프로그램 목록 로고 열도 계승 로고를 보여 준다.
 
+## 트랙·세션 시간표 — 2026-10-26
+
+native-v1.md "트랙·세션 시간표"의 어드민 편집. 시간표는 일정 블록(활동 기간 또는 세부 일정, 모집 기간 제외) 하나에 딸린다.
+
+- `GET /v1/admin/activities/:id/schedules/:scheduleId/timetable` → `{scheduleId, tracks: [{id, name, room, position}], sessions: [{id, trackId, track, kind, title, description, startAt, endAt, speakers: [{name, affiliation}], tags: Tag[]}]}`(없으면 빈 목록, `track`은 tracks 순번). 게시 전 활동도 된다.
+- `PUT` 같은 경로 `{tracks: [{id?, name, room?}], sessions: [{id?, track?, kind, title, description?, startAt, endAt, speakers?: [{name, affiliation?}], tagIds?}]}` → 같은 응답. **통째로 바꾼다**: `id`가 있으면 그 트랙·세션을 고치고(세션 찜 유지), 없으면 새로 만들고, 빠진 것은 지운다(그 세션의 찜도 지워짐). `track`은 요청 `tracks` 순번(0부터), 없으면 전폭 세션. 트랙 0개면 단일 진행. 빈 목록 둘이면 시간표를 지운다.
+- 400: 모집 기간·반복·날짜 미정 블록, 블록 시간 밖 세션, 끝 ≤ 시작, 같은 트랙(또는 전폭) 세션 시간 겹침, 트랙 이름 중복, 순번 밖 `track`, 다른 블록의 id, 없는 태그, 개수·길이 한도(트랙 20, 세션 300, 연사 10, 태그 5). 404: 없거나 지운 블록.
+- 세부 일정 블록에 시간표를 붙이면 그 블록은 `curated = true`가 된다(재수집이 지우지 않게, 세션 id 유지).
+- 일정 응답(`application`·`activitySchedule`·`schedules[]`)에 `hasTimetable`.
+- 화면(다음 단계): 일정 탭의 블록 행마다 `시간표` 버튼 → 트랙 목록(이름·방·순서)과 세션 표(시작·끝·트랙·종류·제목·연사·태그) 편집.
+- 가져오기(아래 "운영 데이터 가져오기"): `activities[].timetables: [{scheduleId, overwrite?, tracks: [{name, room?}], sessions: [{track?, kind, title, startAt, endAt, speakers?, tagNames?, description?}]}]`. 세션이 이미 있으면 `overwrite`일 때만 바꾼다(이때 기존 세션 id가 바뀌어 찜이 지워진다). 태그는 사전 이름으로 찾고 모르는 이름은 버린다. 검증은 위 PUT과 같다.
+
 ## 운영 데이터 가져오기 — 2026-10-22
 
 운영 서비스 토큰이 없어, 조사로 모은 대상자 조건·태그·장소·로고를 batch 일회성 명령으로 넣는다. 어드민 편집과 같은 검증(대상자 조건 strict 파서와 검색용 펼침, 로고 PNG·JPEG·WebP 1MB 이하)을 거친다.

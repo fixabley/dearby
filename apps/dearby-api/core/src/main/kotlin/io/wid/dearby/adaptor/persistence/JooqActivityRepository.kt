@@ -94,8 +94,10 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
                 ActivityContact(it.id!!, it.activityId!!, ContactKind.valueOf(it.kind!!), it.label!!, it.value!!)
             }
         val tags = TagRows.ofActivities(dsl, ids)
-        val statuses = progressStatusesOf(dsl, schedules.values.flatten().map { it.id!! })
-        return rows.map { toActivity(it, schedules[it.id].orEmpty(), contacts[it.id].orEmpty(), tags[it.id], statuses) }
+        val scheduleIds = schedules.values.flatten().map { it.id!! }
+        val statuses = progressStatusesOf(dsl, scheduleIds)
+        val timetables = TimetableRows.scheduleIdsWithSessions(dsl, scheduleIds)
+        return rows.map { toActivity(it, schedules[it.id].orEmpty(), contacts[it.id].orEmpty(), tags[it.id], statuses, timetables) }
     }
 
     private fun toActivity(
@@ -104,8 +106,9 @@ class JooqActivityRepository(private val dsl: DSLContext) : ActivityRepository {
         contacts: List<ActivityContact>,
         tags: Pair<List<Tag>, List<Tag>>?, // 태그 전부(사전 순)와 분야 태그 순서
         statuses: Map<Id, List<ProgressStatus>>,
+        timetables: Set<Id>, // 시간표가 붙은 일정 id
     ): Activity {
-        fun toSchedule(row: SchedulesRecord) = row.toSchedule(statuses[row.id].orEmpty())
+        fun toSchedule(row: SchedulesRecord) = row.toSchedule(statuses[row.id].orEmpty(), row.id in timetables)
         val bySlot = schedules.groupBy { it.slot }
         val activitySchedule = bySlot[SLOT_ACTIVITY]?.single()?.let(::toSchedule)
             ?: error("Activity ${row.id} has no ACTIVITY schedule")
