@@ -34,6 +34,8 @@ import com.dearby.nativeapp.shared.ui.*
     deadlineCount: String? = null,
     /** 모집 일정 미정 (contract "활동 상태": `NO_RECRUITMENT`): no chip, and [status] is the `모집` value. */
     undated: Boolean = false,
+    /** `프로그램 · 조직` under the title (내 활동 진행 단계's head card); null leaves it out, as on discovery. */
+    subtitle: String? = null,
 ) {
     val (label, container, content) = when (status) {
         "모집 중" -> Triple(status, TealFill, Color.White)
@@ -50,6 +52,7 @@ import com.dearby.nativeapp.shared.ui.*
                 if (!undated) SuggestionChip(open, { Text(label, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.labelMedium) }, Modifier.height(28.dp).clearAndSetSemantics {},
                     colors = SuggestionChipDefaults.suggestionChipColors(containerColor = container, labelColor = content), border = null)
             }
+            subtitle?.let { Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             // 분야 1개 + 성격, the same chip line as the program card's (contract "태그 아이콘+라벨·분야 1개").
             if (actions == null) TagChipRow(fieldTag, traitTags)
             else Row(verticalAlignment = Alignment.CenterVertically) { Box(Modifier.weight(1f)) { TagChipRow(fieldTag, traitTags) }; actions() }

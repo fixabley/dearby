@@ -79,7 +79,7 @@ internal const val PROGRESS_NOTE = "단계 상태는 내가 남기는 것이며 
         val more: @Composable () -> Unit = { RemoveMenu { remove(activity.id) } }
         when {
             activity.deleted -> DeletedRow(more)
-            progress != null && progress.stages.isNotEmpty() -> ActivityProgressRow(progress, { openProgress(activity.id) }, trailing = more)
+            progress != null && progress.stages.isNotEmpty() -> ActivityProgressRow(progress, { openProgress(activity.id) }, trailing = more, timetable = activity.hasTimetable)
             else -> ActivityRow(activity, open, trailing = more) { ExampleBadge("신청함") }
         }
     }
