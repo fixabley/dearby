@@ -343,7 +343,7 @@ import SwiftUI
     private func showScreenshotScene() async {
         switch ScreenshotScene.current {
         // 발견 장면은 상태 묶음을 모두 골라 최근 활동 프로그램까지 보인다(빈 화면 방지).
-        case .discover: activityModel.setStatusGroups(Set(StatusGroup.allCases))
+        case .discover: activityModel.applyFilters(groups: Set(StatusGroup.allCases), categories: activityModel.categories)
         case .cards: tab = 2
         // 오늘의 맞춤 대기열 directly (signed in; no funnel, no `menu_open`).
         case .queue: showsQueue = true

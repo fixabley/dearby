@@ -1,6 +1,6 @@
 /**
  * The one inline SVG icon set (contract "아이콘 통일" + "웹에도 같은 규칙", 2026-10-20). Names carry the mobile table's meaning
- * (달력 calendar, 시각 clock, 장소 map-pin, 외부 링크 external-link, 검색 search, 지우기 clear, 닫기 close, 뒤로 chevron-left, 열기 chevron-right,
+ * (달력 calendar, 시각 clock, 장소 map-pin, 외부 링크 external-link, 검색 search, 필터 filter, 지우기 clear, 닫기 close, 뒤로 chevron-left, 열기 chevron-right,
  * 펼침 chevron-down, 확인 check-circle, 오류 warning, 정보 info, QR qr, 명함 card, 공유 share, 지도 map, 활동 둘러보기 explore,
  * 받은 명함 inbox, 전화 phone, 메일 mail, 링크 link) plus the contact kinds the card rows need (kakao, instagram, github, behance — Simple Icons
  * filled brand glyphs, same as the apps) and notion for the 소개 링크 button and the tag glyphs `TagIcon` picks by `nameEn`. Three sizes only: `inline` follows the text (1em), `row` is the 24px glyph before a row, `state` is the 28px
@@ -35,6 +35,13 @@ const paths = {
     <>
       <circle cx="11" cy="11" r="7" />
       <path d="m20 20-4.2-4.2" />
+    </>
+  ),
+  // 필터 (contract "필터 시트" 2026-10-26): SF `line.3.horizontal.decrease.circle`.
+  filter: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M7.5 9h9M9.5 12h5M11 15h2" />
     </>
   ),
   clear: (

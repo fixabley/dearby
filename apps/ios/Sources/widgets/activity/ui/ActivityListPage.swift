@@ -1,9 +1,10 @@
 import SwiftUI
 
-/// 발견: 프로그램 카드 목록(contract "발견 카드 리뉴얼" 2026-10-19; iOS는 inset-grouped 섹션 관용구, AGENTS.md "플랫폼별 네이티브 디자인"). 첫 행의 `활동 상태`
-/// 메뉴(contract "활동 상태" 2026-10-26)에서 고른 묶음(`지원 가능` 기본·`진행 중`·`지난 활동`)의 활동이 있는 프로그램만 보이고, 카드를 펼치면 그 상태의 활동만 보인다.
-/// 상단은 시스템 내비게이션 바(contract "iOS 상단 바는 시스템 내비게이션 바" 2026-10-20): inline 제목 `활동 둘러보기`, 우상단 설정·알림, 검색은 `.searchable`의 내비게이션 바 서랍(맨 위에서는 펼침, 스크롤하면 접힘)
-/// (아래로 스크롤하면 시스템이 접고 위로 당기면 다시 보인다). `활동 상태`는 목록의 첫 행이고, 풀투 리프레시·맨 위로 버튼은 그대로다.
+/// 발견: 프로그램 카드 목록(contract "발견 카드 리뉴얼" 2026-10-19; iOS는 inset-grouped 섹션 관용구, AGENTS.md "플랫폼별 네이티브 디자인"). 첫 행의 `필터`
+/// 버튼과 적용된 필터 칩(contract "필터 시트" 2026-10-26: 시트에서 `활동 상태` 묶음(`지원 가능` 기본·`진행·예정`·`지난 활동`)과 프로그램 쪽 `종류`를 고른다)으로
+/// 거른 활동이 있는 프로그램만 보이고, 카드를 펼치면 그 상태·종류의 활동만 보인다.
+/// 상단은 시스템 내비게이션 바(contract "iOS 상단 바는 시스템 내비게이션 바" 2026-10-20): inline 제목 `활동 둘러보기`, 가운데 `프로그램 | 이벤트`, 우상단 설정·알림, 검색은
+/// `.searchable`의 내비게이션 바 서랍(맨 위에서는 펼침, 아래로 스크롤하면 시스템이 접고 위로 당기면 다시 보인다). 풀투 리프레시·맨 위로 버튼은 그대로다.
 /// 맨 위, 맞춤 대기열 행 위에 `오늘 내 행사` 카드(contract "오늘 내 행사 카드" 2026-10-26, `TodayEvent`·`TodayEventCard`)가 로그인 상태에서 해당 활동이 있을 때만 보인다.
 struct ActivityListPage: View {
     let state: ActivityViewModel
@@ -51,9 +52,8 @@ struct ActivityListPage: View {
                         }
                     }
                 }
-                // Always on screen: a change reloads the list (`.loading`), and removing a row would close its menu mid-choice.
-                statusFilterRow
-                categoryFilterRow
+                // Always on screen: applying reloads the list (`.loading`) and the bar must not jump away under the sheet.
+                DiscoveryFilterBar(kind: state.kind, groups: state.statusGroups, categories: state.categories, apply: apply)
                 switch state.phase {
                 case .loading:
                     programsSkeleton
@@ -70,13 +70,13 @@ struct ActivityListPage: View {
                         // 종류 필터 (contract "종류 필터" 2026-10-26): the way out is clearing the 종류.
                         CenteredMessage(symbol: "calendar", title: "고른 조건의 \(state.kind == .event ? "이벤트가" : "프로그램이") 없어요",
                                         message: "다른 종류를 고르거나 종류 필터를 지워 보세요.", embedded: true,
-                                        primary: MessageAction("종류 필터 지우기", identifier: "activity-clear-categories") { chooseCategories([]) })
+                                        primary: MessageAction("종류 필터 지우기", identifier: "activity-clear-categories") { apply(state.statusGroups, []) })
                             .frame(minHeight: viewport)
                     } else if !state.statusGroups.contains(.past) {
                         CenteredMessage(symbol: "calendar", title: emptyTitle,
                                         message: "새 모집이 열리면 여기에서 볼 수 있어요. ‘지난 활동’도 고르면 최근 활동한 프로그램도 보여요.", embedded: true,
                                         primary: MessageAction("지난 활동도 보기", identifier: "activity-show-closed") {
-                                            choose(state.statusGroups.union([.past]))
+                                            apply(state.statusGroups.union([.past]), state.categories)
                                         })
                             .frame(minHeight: viewport)
                     } else {
@@ -188,54 +188,16 @@ struct ActivityListPage: View {
         DiscoveryQueueEntry(signedIn: queueSignedIn, needsConsent: queueNeedsConsent, action: openQueue, settings: editRecommendations).padding(.leading, 16).padding(.trailing, 6)
             .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
     }
-    /// 활동 상태 (contract "활동 상태" 2026-10-26, replacing `마감 숨기기`) as the first list row: a system `Menu` with one checkmark `Toggle` per
-    /// 묶음 that stays open while choosing, the chosen ones summarised beside the label. Unchecking the last one falls back to `지원 가능`.
-    private var statusFilterRow: some View {
-        filterRow("활동 상태", summary: StatusGroup.summary(state.statusGroups), identifier: "discovery-status-filter") {
-            ForEach(StatusGroup.allCases, id: \.self) { group in
-                Toggle(group.title, isOn: Binding(get: { state.statusGroups.contains(group) }) { isOn in
-                    choose(isOn ? state.statusGroups.union([group]) : state.statusGroups.subtracting([group]))
-                })
-            }
+    /// The 필터 sheet's `적용`, a chip's × or an empty state's button: applies both filters in one reload and reports the ones that changed
+    /// (사용 통계 `discovery_status_filter` with the 묶음 ids, `discovery_category_filter` with the 종류 codes, empty for 전체).
+    private func apply(_ groups: Set<StatusGroup>, _ categories: Set<ActivityCategory>) {
+        let changed = state.applyFilters(groups: groups, categories: categories)
+        if changed.groups {
+            AppAnalytics.event("discovery_status_filter", ["groups": StatusGroup.allCases.filter(state.statusGroups.contains).map(\.rawValue).joined(separator: ",")])
         }
-    }
-    /// 종류 필터 (contract "종류 필터" 2026-10-26) under 활동 상태, the same menu row: this side's 종류 with their icons; none chosen is `전체`.
-    private var categoryFilterRow: some View {
-        filterRow("종류", summary: state.kind.summary(state.categories), identifier: "discovery-category-filter") {
-            ForEach(state.kind.categories, id: \.self) { category in
-                Toggle(isOn: Binding(get: { state.categories.contains(category) }) { isOn in
-                    chooseCategories(isOn ? state.categories.union([category]) : state.categories.subtracting([category]))
-                }) { Label(category.label, systemImage: category.systemImage) }
-            }
+        if changed.categories {
+            AppAnalytics.event("discovery_category_filter", ["categories": state.categoryList.map { $0.rawValue.lowercased() }.joined(separator: ",")])
         }
-    }
-    /// A filter as a list row: a system `Menu` of checkmark `Toggle`s that stays open while choosing, the choice summarised beside the label.
-    private func filterRow(_ title: String, summary: String, identifier: String, @ViewBuilder items: () -> some View) -> some View {
-        Menu(content: items) {
-            HStack(spacing: 6) {
-                Text(title).font(.dearby(.body)).foregroundStyle(.primary)
-                Spacer(minLength: 12)
-                Text(summary).font(.dearby(.body)).foregroundStyle(.secondary).lineLimit(1)
-                Image(systemName: "chevron.up.chevron.down").font(.dearby(.footnote).weight(.semibold)).foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 16).frame(minHeight: 44)
-            .background(Color(.secondarySystemGroupedBackground), in: .rect(cornerRadius: 14, style: .continuous))
-            .contentShape(Rectangle())
-        }
-        .menuActionDismissBehavior(.disabled)
-        .accessibilityLabel(title).accessibilityValue(summary).accessibilityIdentifier(identifier)
-    }
-    /// The user changed the 종류: applies it and reports the chosen codes (사용 통계 `discovery_category_filter`, empty for 전체).
-    private func chooseCategories(_ categories: Set<ActivityCategory>) {
-        guard state.setCategories(categories) else { return }
-        AppAnalytics.event("discovery_category_filter", ["categories": state.categoryList.map { $0.rawValue.lowercased() }.joined(separator: ",")])
-    }
-    /// The user changed the filter: applies it and reports the chosen groups (사용 통계 `discovery_status_filter`).
-    private func choose(_ groups: Set<StatusGroup>) {
-        let before = state.statusGroups
-        state.setStatusGroups(groups)
-        guard state.statusGroups != before else { return }
-        AppAnalytics.event("discovery_status_filter", ["groups": StatusGroup.allCases.filter(state.statusGroups.contains).map(\.rawValue).joined(separator: ",")])
     }
     /// The empty list's title without 지난 활동: the old wording for `지원 가능` alone, else the chosen states.
     private var emptyTitle: String {
