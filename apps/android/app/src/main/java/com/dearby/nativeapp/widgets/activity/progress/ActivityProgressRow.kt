@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.dearby.nativeapp.shared.ui.ExampleBadge
 import com.dearby.nativeapp.shared.ui.TealFill
+import com.dearby.nativeapp.shared.ui.TimetableMark
 
 private const val MAX_SEGMENTS = 4
 
@@ -29,13 +30,16 @@ private const val MAX_SEGMENTS = 4
  * hatched primary outline, upcoming surfaceContainerHighest) with stage names under it, and the D-day badge. Over four stages the track shows
  * four and `+N`; [trailing] sits after the badge (내 활동's `더 보기` menu). Nothing on the track animates. The track is one accessibility node, [ProgressState.trackDescription].
  */
-@Composable fun ActivityProgressRow(progress: ProgressState, onClick: () -> Unit, modifier: Modifier = Modifier, trailing: @Composable () -> Unit = {}) {
+@Composable fun ActivityProgressRow(progress: ProgressState, onClick: () -> Unit, modifier: Modifier = Modifier, trailing: @Composable () -> Unit = {},
+    /** The activity has a 트랙·세션 시간표 (contract "트랙·세션 시간표"): the `시간표` mark under the subtitle, as on the activity card. */
+    timetable: Boolean = false) {
     Surface(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surface, border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceContainerHighest)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(progress.title, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     Text(progress.subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (timetable) TimetableMark(Modifier.padding(top = 2.dp))
                 }
                 ExampleBadge(progress.badge, accent = !progress.ended, danger = progress.failed)
                 trailing()
