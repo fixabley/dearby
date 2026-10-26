@@ -13,11 +13,11 @@ enum class ActivityListPhase { LOADING, FAILED, LOADED }
 data class CategoryOption(val code: String, val label: String)
 /**
  * 발견 `프로그램 | 이벤트` (2026-10-26, contract "프로그램·이벤트 전환"): the API `kind` code. 이벤트 is 컨퍼런스·워크샵·밋업·강연; 프로그램 is every
- * other kind and 미분류 (해커톤 included). [categories] are the 종류 filter's items for this kind (2026-10-26 사용자 요청), in menu order.
+ * other kind and 미분류 (해커톤 included). [categories] are the 종류 filter's items for this kind (contract "종류 필터", 2026-10-26), in the contract's category order.
  */
 enum class DiscoveryKind(val code: String, val label: String, val categories: List<CategoryOption>) {
-    PROGRAM("program", "프로그램", options(ActivityCategory.BOOTCAMP, ActivityCategory.CLUB, ActivityCategory.HACKATHON, ActivityCategory.CONTEST, ActivityCategory.STUDY, ActivityCategory.OTHER)),
-    EVENT("event", "이벤트", options(ActivityCategory.CONFERENCE, ActivityCategory.MEETUP, ActivityCategory.LECTURE, ActivityCategory.WORKSHOP));
+    PROGRAM("program", "프로그램", options(ActivityCategory.BOOTCAMP, ActivityCategory.STUDY, ActivityCategory.CLUB, ActivityCategory.HACKATHON, ActivityCategory.CONTEST, ActivityCategory.OTHER)),
+    EVENT("event", "이벤트", options(ActivityCategory.CONFERENCE, ActivityCategory.WORKSHOP, ActivityCategory.LECTURE, ActivityCategory.MEETUP));
     /** The chosen [categories] in menu order; codes of the other kind (or unknown) are dropped. */
     fun chosen(codes: Set<String>) = categories.filter { it.code in codes }
     /** The `category=` value, or null for 전체 (nothing chosen). */

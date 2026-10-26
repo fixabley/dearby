@@ -108,10 +108,9 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                 }
                 DearbySearchField(state.query, search, "프로그램·조직·활동 이름으로 검색",
                     Modifier.padding(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 12.dp).testTag("activity-search").onFocusChanged { collapse.locked = it.isFocused; if (it.isFocused) collapse.expand() })
-                Row(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    StatusFilter(state.statusGroups, setStatusGroups)
-                    CategoryFilter(state.kind.categories, state.categories, setCategories)
-                }
+                // 상태 above 종류 (contract "종류 필터": two rows, since both summaries clip side by side at narrow widths).
+                StatusFilter(state.statusGroups, setStatusGroups, Modifier.padding(start = 20.dp, end = 20.dp))
+                CategoryFilter(state.kind.categories, state.categories, setCategories, Modifier.padding(start = 20.dp, end = 20.dp, bottom = 4.dp))
             }
             // The collapse connection sits outside the pull gesture: a pull at the top re-enters the search area first, then the indicator grows below it.
             PullToRefreshBox(state.refreshing, refresh, Modifier.fillMaxSize().nestedScroll(collapse.connection)) {
@@ -122,7 +121,9 @@ import com.dearby.nativeapp.widgets.activity.programCard.ProgramCard
                     state.phase == ActivityListPhase.FAILED -> DearbyErrorState("활동을 불러오지 못했어요", "연결을 확인한 뒤 다시 시도해 주세요.", retry, Modifier.fillMaxSize())
                     programs.isEmpty() && state.query.isNotBlank() -> DearbyEmptyState("검색 결과가 없어요", "다른 검색어로 찾아 보세요.", Modifier.fillMaxSize(), Icons.Rounded.Search)
                     programs.isEmpty() && state.statusGroups == StatusGroup.DEFAULT && state.kind.categoryQuery(state.categories) == null -> DearbyEmptyState("지금 지원할 수 있는 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "상태에서 ‘진행 중’이나 ‘지난 활동’도 고르면 최근 3년 안의 ${state.kind.label}도 보여요.", Modifier.fillMaxSize())
-                    programs.isEmpty() -> DearbyEmptyState("고른 조건의 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "새 모집이 열리면 여기에서 볼 수 있어요.", Modifier.fillMaxSize())
+                    // A chosen 종류 offers `종류 필터 지우기` (back to 전체, contract "종류 필터" 빈 결과).
+                    programs.isEmpty() -> DearbyEmptyState("고른 조건의 ${state.kind.label}${if (state.kind == DiscoveryKind.PROGRAM) "이" else "가"} 없어요", "새 모집이 열리면 여기에서 볼 수 있어요.", Modifier.fillMaxSize(),
+                        action = if (state.kind.categoryQuery(state.categories) != null) MessageAction("종류 필터 지우기", { setCategories(emptySet()) }) else null)
                     else -> LazyColumn(Modifier.fillMaxSize(), listState, contentPadding = PaddingValues(start = 20.dp, end = 20.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         if (header != null && state.query.isBlank()) item(key = "recommendation") { header() }
                         items(programs, key = { "program-" + it.id }) { program ->

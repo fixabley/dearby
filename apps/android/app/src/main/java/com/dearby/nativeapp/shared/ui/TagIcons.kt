@@ -53,15 +53,18 @@ fun tagIcon(nameEn: String?): ImageVector = when (nameEn) {
     else -> Icons.Rounded.Sell
 }
 
-/** 활동 종류 icon by API code (contract "활동 종류(category)"); an unknown code is `Category`, like 기타. */
+/**
+ * 활동 종류 icon by API code (contract "아이콘 통일" 활동 종류 table, 2026-10-26); an unknown code is `Category`, like 기타. 워크샵·스터디·해커톤 avoid
+ * `Build`·`MenuBook`·`Computer`, which the same card's tag chips use for 프로젝트·독서·IT.
+ */
 fun categoryIcon(code: String?): ImageVector = when (code) {
     "BOOTCAMP" -> Icons.Rounded.School
     "CONFERENCE" -> Icons.Rounded.Groups
-    "WORKSHOP" -> Icons.Rounded.Build
-    "STUDY" -> Icons.AutoMirrored.Rounded.MenuBook
+    "WORKSHOP" -> Icons.Rounded.DesignServices
+    "STUDY" -> Icons.Rounded.LibraryBooks
     "CLUB" -> Icons.Rounded.Group
     "LECTURE" -> Icons.Rounded.Mic
-    "HACKATHON" -> Icons.Rounded.Computer
+    "HACKATHON" -> Icons.Rounded.Keyboard
     "CONTEST" -> Icons.Rounded.EmojiEvents
     "MEETUP" -> Icons.Rounded.LocalCafe
     else -> Icons.Rounded.Category
